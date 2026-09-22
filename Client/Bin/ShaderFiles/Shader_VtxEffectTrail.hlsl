@@ -10,6 +10,7 @@
 float4x4 g_WorldMatrix;
 float4x4 g_ViewMatrix;
 float4x4 g_ProjMatrix;
+float4 g_CameraPosition;
 // Per-draw coverage scale/offset and reviewed positive-tiling adapter enable.
 float4 g_TrailSourceUVTransform;
 
@@ -60,13 +61,18 @@ float4 Resolve_NativeTrailUV(float2 distanceUV, float2 coverageUV,
         // AnimationTrail: alpha mask uses xy; detail/noise uses zw.
         // FlowRib 2410 (Valtan axe ribbon): x is a finite 0..1 length
         // gradient (2x-1, 1-x); the tiled/panned samples read zw.
-        if (sourceProfile == 2379u || sourceProfile == 2410u)
+        if (sourceProfile == 2379u || sourceProfile == 2410u ||
+            sourceProfile == 4058u || sourceProfile == 4059u ||
+            sourceProfile == 4177u || sourceProfile == 4178u ||
+            sourceProfile == 4203u || sourceProfile == 4256u)
             return float4(coverageUV, distanceUV);
         // WaterRibbon: the mask and finite 0..1 end taper both use zw.
         if (sourceProfile == 2346u || sourceProfile == 2836u ||
             sourceProfile == 3007u)
             return float4(distanceUV, coverageUV);
     }
+    if (sourceProfile == 3968u || sourceProfile == 3969u || sourceProfile == 4027u)
+        return float4(coverageUV, coverageUV.yx);
     return float4(distanceUV, distanceUV.yx);
 }
 
@@ -95,7 +101,7 @@ EFFECT_PS_OUT PS_MATERIAL(VS_OUT input)
         clip(-1.f);
         return output;
     }
-    if (g_SourceMaterialProfile >= 2304u && g_SourceMaterialProfile <= 3967u)
+    if (g_SourceMaterialProfile >= 2304u && g_SourceMaterialProfile <= 4607u)
     {
         ARTIST_NATIVE_INPUT nativeInput = (ARTIST_NATIVE_INPUT)0;
         const float4 packedUV = Resolve_NativeTrailUV(input.runtimeUV,
@@ -111,6 +117,34 @@ EFFECT_PS_OUT PS_MATERIAL(VS_OUT input)
         nativeInput.projectionW = input.sourceProjectionW * 100.f;
         nativeInput.projectionZ = input.position.z * nativeInput.projectionW;
         nativeInput.frontFace = true;
+        if ((g_SourceMaterialProfile >= 3968u && g_SourceMaterialProfile <= 4303u) ||
+            g_SourceMaterialProfile == 4542u)
+        {
+            // These recovered programs consume a tangent-space view vector.
+            // Derive the frame from the actual strip and its UV orientation;
+            // zero-initialized input causes the native rsqrt(dot(view,view)) to fail.
+            const float3 dx = ddx(input.worldPosition);
+            const float3 dy = ddy(input.worldPosition);
+            const float2 du = ddx(input.runtimeUV);
+            const float2 dv = ddy(input.runtimeUV);
+            const float determinant = du.x * dv.y - du.y * dv.x;
+            clip(abs(determinant) - 1.e-12f);
+            const float3 rawTangent = (dx * dv.y - dy * du.y) / determinant;
+            clip(dot(rawTangent, rawTangent) - 1.e-12f);
+            const float3 tangent = normalize(rawTangent);
+            const float3 rawBinormal = (dy * du.x - dx * dv.x) / determinant;
+            const float3 orthogonalBinormal = rawBinormal - tangent * dot(rawBinormal, tangent);
+            clip(dot(orthogonalBinormal, orthogonalBinormal) - 1.e-12f);
+            const float3 binormal = normalize(orthogonalBinormal);
+            const float3 normal = normalize(cross(tangent, binormal));
+            const float3 toCamera = g_CameraPosition.xyz - input.worldPosition;
+            clip(dot(toCamera, toCamera) - 1.e-12f);
+            nativeInput.tangentView = float3(dot(tangent, toCamera), dot(binormal, toCamera), dot(normal, toCamera));
+            nativeInput.sourceBasisX = float3(tangent.x, binormal.x, normal.x);
+            nativeInput.sourceBasisZ = float3(tangent.y, binormal.y, normal.y);
+            nativeInput.handedness = 1.f;
+            nativeInput.tangentUp = nativeInput.sourceBasisZ;
+        }
         return Shade_EffectArtistNative(g_SourceMaterialProfile, nativeInput);
     }
     if (35u == g_SourceMaterialProfile)

@@ -1763,6 +1763,7 @@ float4 ArtistNative4041(ARTIST_NATIVE_INPUT input)
     source[0].x=1.f; // Project engine opacity multiplier.
     float4 output=0.f;
     source[1]=input.color; // Native mesh particle color prefix.
+    source[0]=input.color; // Native masked mesh particle RGBA prefix.
     source[1] = g_ArtistSourceMaterialParameters[10u];
     source[2] = ArtistNativeAppend(ArtistNativeAppend(g_ArtistSourceMaterialParameters[3u].wwww,g_ArtistSourceMaterialParameters[3u].wwww,1u),float4(1.0, 0.0, 0.0, 0.0),2u);
     source[3] = ArtistNativeAppend(g_ArtistSourceMaterialParameters[0u].wwww,g_ArtistSourceMaterialParameters[1u].zzzz,1u);
@@ -5663,6 +5664,7 @@ float4 ArtistNative4057(ARTIST_NATIVE_INPUT input)
     float4 source[14]; [unroll] for (uint i=0u; i<14u; ++i) source[i]=0.f;
     source[0].x=1.f; // Project engine opacity multiplier.
     float4 output=0.f;
+    [unroll] for(uint row=0u;row<3u;++row) source[1u+row]=g_ArtistSourceWorldToLocal[row];
     source[4] = g_ArtistSourceMaterialParameters[9u];
     source[5] = g_ArtistSourceMaterialParameters[8u];
     source[6].x = (g_ArtistSourceMaterialParameters[4u].yyyy).x;
@@ -5974,7 +5976,7 @@ float4 ArtistNative4058(ARTIST_NATIVE_INPUT input)
     passValues[0]=float4(.5f,-.5f,.5f,.5f);
     float4 v0 = float4(input.sourceBasisX,0.f); // native texcoord10
     float4 v1 = float4(input.sourceBasisZ,input.handedness); // native texcoord11
-    float4 v2 = float4(input.uv,float2(0.f,0.f)); // native texcoord0
+    float4 v2 = float4(input.uv,input.uv1); // native texcoord0
     float4 v3 = input.color; // native texcoord1
     float4 v4 = input.dynamicParameter; // native texcoord2
     float4 v5 = float4(0.f,0.f,0.f,1.f); // native texcoord4
@@ -6252,7 +6254,7 @@ float4 ArtistNative4059(ARTIST_NATIVE_INPUT input)
     passValues[0]=float4(.5f,-.5f,.5f,.5f);
     float4 v0 = float4(input.sourceBasisX,0.f); // native texcoord10
     float4 v1 = float4(input.sourceBasisZ,input.handedness); // native texcoord11
-    float4 v2 = float4(input.uv,float2(0.f,0.f)); // native texcoord0
+    float4 v2 = float4(input.uv,input.uv1); // native texcoord0
     float4 v3 = input.color; // native texcoord1
     float4 v4 = input.dynamicParameter; // native texcoord2
     float4 v5 = float4(0.f,0.f,0.f,1.f); // native texcoord4
@@ -12277,6 +12279,7 @@ float4 ArtistNative4086(ARTIST_NATIVE_INPUT input)
     float4 source[16]; [unroll] for (uint i=0u; i<16u; ++i) source[i]=0.f;
     source[0].x=1.f; // Project engine opacity multiplier.
     float4 output=0.f;
+    source[0]=float4(0.f,0.f,0.f,1.f); // Absolute source world origin and original opacity W.
     source[1] = g_ArtistSourceMaterialParameters[6u];
     source[2] = g_ArtistSourceMaterialParameters[5u];
     source[3] = ArtistNativeAppend(ArtistNativePeriodic((g_ArtistSourceMaterialTime.xxxx*float4(-0.0149999997, 0.0, 0.0, 0.0))),ArtistNativePeriodic((g_ArtistSourceMaterialTime.xxxx*float4(-0.0209999997, 0.0, 0.0, 0.0))),1u);
@@ -12328,7 +12331,7 @@ float4 ArtistNative4086(ARTIST_NATIVE_INPUT input)
     float4 v4 = input.dynamicParameter; // native texcoord2
     float4 v5 = float4(0.f,0.f,0.f,1.f); // native texcoord4
     float4 v6 = float4(input.tangentView,1.f); // native texcoord6
-    float4 v7 = float4((input.screenUV*float2(2.f,-2.f)+float2(-1.f,1.f))*input.projectionW,input.projectionZ,input.projectionW); // native texcoord5
+    float4 v7 = float4(input.sourceWorldPosition,1.f); // native texcoord5
     float4 v8 = asfloat(uint4(input.frontFace ? 0xffffffffu : 0u,0u,0u,0u)); // native sv_isfrontface0
     float4 r0=0.f, r1=0.f, r2=0.f, r3=0.f, r4=0.f;
     // 1: add r0.xyzw, v2.xyxy, l(-0.020000, -0.030000, -0.500000, -0.500000)
@@ -12761,6 +12764,7 @@ float4 ArtistNative4088(ARTIST_NATIVE_INPUT input)
     source[0].x=1.f; // Project engine opacity multiplier.
     float4 output=0.f;
     source[1]=input.color; // Native mesh particle color prefix.
+    source[0]=input.color; // Native masked mesh particle RGBA prefix.
     source[1] = g_ArtistSourceMaterialParameters[7u];
     source[2] = ArtistNativeAppend(ArtistNativeAppend(g_ArtistSourceMaterialParameters[2u].zzzz,g_ArtistSourceMaterialParameters[2u].zzzz,1u),float4(1.0, 0.0, 0.0, 0.0),2u);
     source[3] = ArtistNativeAppend(g_ArtistSourceMaterialParameters[0u].zzzz,g_ArtistSourceMaterialParameters[1u].yyyy,1u);

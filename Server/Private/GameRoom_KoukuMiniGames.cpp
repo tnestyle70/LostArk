@@ -344,6 +344,106 @@ void LostArk::Server::CGameRoom::Resolve_CardMazeHammerHit(
 	for (const auto id : removed) Remove_CardMazeTarget(id);
 }
 
+bool LostArk::Server::CGameRoom::Spawn_KoukuCardRainSoldiers(
+    LostArk::Shared::NET_ENTITY_ID ownerId, std::uint32_t tick)
+{
+    using namespace LostArk::Shared;
+    const auto owner = std::find_if(m_WorldEntities.begin(), m_WorldEntities.end(),
+        [ownerId](const auto& entity) { return entity.iNetEntityId == ownerId; });
+    if (m_eWorldId != WORLD_ID::KAKULSAYDON_ARENA || owner == m_WorldEntities.end() ||
+        owner->eKind != WORLD_BOOTSTRAP_KIND::BOSS || !owner->iCurrentHp || owner->strPatternId.empty() ||
+        !m_ServerNavigation.Is_Loaded() || !m_GameplayCatalog.Get_ActiveRevision().Is_Valid())
+    { m_strStatus = "Card rain soldiers preserved: owner or navigation unavailable"; return false; }
+    const auto sequence = owner->iPatternSequence;
+    if (std::any_of(m_KoukuCardRainSoldiers.begin(), m_KoukuCardRainSoldiers.end(),
+        [&](const auto& entry) { return entry.second.ownerId == ownerId && entry.second.patternSequence == sequence; }))
+        return true;
+    // Source summons use the same three PPCH model families as the maze.
+    // Count/radius/30-second bound are PROJECT_TUNED; no maze membership is added.
+    constexpr std::array archetypes{ "MONSTER_KOUKU_CARD_CLUB", "MONSTER_KOUKU_CARD_HEART", "MONSTER_KOUKU_CARD_DIAMOND" };
+    std::array<const MONSTER_RUNTIME_PROFILE*, 3u> profiles{};
+    std::array<SPAWN_GROUP_ANCHOR, 3u> anchors{};
+    const float x = owner->fPositionX, y = owner->fPositionY, z = owner->fPositionZ;
+    const std::string group = "kouku.cardrain." + std::to_string(ownerId) + "." + std::to_string(sequence);
+    std::uint32_t random = ownerId ^ (sequence * 747796405u) ^ tick;
+    const auto unit = [&]() { random = random * 1664525u + 1013904223u; return float(random >> 8u) / 16777216.f; };
+    for (std::size_t index = 0u; index < archetypes.size(); ++index)
+    {
+        profiles[index] = m_SpawnGroupBootstrap.Find_Profile(archetypes[index]);
+        if (!profiles[index]) { m_strStatus = "Card rain soldier profile unavailable"; return false; }
+        bool found = false;
+        for (std::uint32_t attempt = 0u; attempt < 48u && !found; ++attempt)
+        {
+            const float angle = unit() * 6.28318530718f, radius = 3.f + unit() * 3.f;
+            SERVER_NAV_POINT position{};
+            if (!m_ServerNavigation.Sample_Position(x + std::cos(angle) * radius, z + std::sin(angle) * radius, position) ||
+                !std::isfinite(position.y) || std::abs(position.y - y) > 1.f ||
+                !m_ServerNavigation.Is_PointWalkableExact(position.x, position.z)) continue;
+            bool separated = true;
+            for (std::size_t previous = 0u; previous < index; ++previous)
+            {
+                const float dx = anchors[previous].fPositionX - position.x, dz = anchors[previous].fPositionZ - position.z;
+                separated = separated && dx * dx + dz * dz >= 2.25f;
+            }
+            if (!separated) continue;
+            auto& anchor = anchors[index];
+            anchor.strAnchorId = group + ".anchor." + std::to_string(index);
+            anchor.fPositionX = position.x; anchor.fPositionY = position.y; anchor.fPositionZ = position.z;
+            anchor.fYawDegrees = std::atan2(x - position.x, z - position.z) * 57.2957795131f;
+            found = true;
+        }
+        if (!found) { m_strStatus = "Card rain soldiers preserved: no three separated navigation points"; return false; }
+    }
+    if (m_iNextNetEntityId == INVALID_NET_ENTITY_ID ||
+        m_iNextNetEntityId > (std::numeric_limits<NET_ENTITY_ID>::max)() - 3u) return false;
+    const auto firstId = m_iNextNetEntityId;
+    m_WorldEntities.reserve(m_WorldEntities.size() + 3u);
+    for (std::uint32_t index = 0u; index < 3u; ++index)
+    {
+        SPAWN_GROUP_ENTRY entry{};
+        entry.strArchetypeId = archetypes[index]; entry.strAnchorId = anchors[index].strAnchorId; entry.iCount = 1u;
+        const auto id = m_iNextNetEntityId;
+        if (!Spawn_Monster(group, entry, anchors[index], *profiles[index], index))
+        {
+            for (auto it = m_WorldEntities.begin(); it != m_WorldEntities.end();)
+            {
+                if (it->strSpawnGroupId != group) { ++it; continue; }
+                Broadcast_WorldEntityDespawned(it->iNetEntityId);
+                m_KoukuCardRainSoldiers.erase(it->iNetEntityId);
+                it = m_WorldEntities.erase(it);
+            }
+            m_iNextNetEntityId = firstId;
+            m_strStatus = "Card rain soldier batch rolled back";
+            return false;
+        }
+        m_KoukuCardRainSoldiers.emplace(id, KOUKU_CARD_RAIN_SOLDIER_STATE{
+            ownerId, sequence, CKoukuSaydonLogicRuntime::Add_Ticks(tick, CKoukuSaydonLogicRuntime::Ticks_FromMs(30000u)) });
+    }
+    m_strStatus = "Card rain spawned three authoritative card soldiers";
+    return true;
+}
+
+void LostArk::Server::CGameRoom::Update_KoukuCardRainSoldiers(std::uint32_t tick)
+{
+    for (auto state = m_KoukuCardRainSoldiers.begin(); state != m_KoukuCardRainSoldiers.end();)
+    {
+        auto entity = std::find_if(m_WorldEntities.begin(), m_WorldEntities.end(),
+            [&](const auto& row) { return row.iNetEntityId == state->first; });
+        const auto owner = std::find_if(m_WorldEntities.begin(), m_WorldEntities.end(),
+            [&](const auto& row) { return row.iNetEntityId == state->second.ownerId; });
+        const bool expired = owner == m_WorldEntities.end() || !owner->iCurrentHp || owner->strPatternId.empty() ||
+            owner->iPatternSequence != state->second.patternSequence ||
+            CKoukuSaydonLogicRuntime::Has_ReachedTick(tick, state->second.expiresAt);
+        if (entity == m_WorldEntities.end()) { state = m_KoukuCardRainSoldiers.erase(state); continue; }
+        if (!expired) { ++state; continue; }
+        m_CombatObjectRuntime.Cancel_Source(entity->iNetEntityId);
+        if (!Broadcast_CombatObjectLifecycle()) Mark_RuntimeFailure("card-rain.despawn");
+        Broadcast_WorldEntityDespawned(entity->iNetEntityId);
+        m_WorldEntities.erase(entity);
+        state = m_KoukuCardRainSoldiers.erase(state);
+    }
+}
+
 bool LostArk::Server::CGameRoom::Spawn_CardMazeTarget(const CKoukuCardMazeRuntime::SPAWN_REQUEST& request)
 {
 	const auto* profile = m_SpawnGroupBootstrap.Find_Profile(CKoukuCardMazeRuntime::Archetype_ForSuit(request.eSuit));

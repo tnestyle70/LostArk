@@ -314,6 +314,7 @@ bool LostArk::Server::CGameRoom::Build_WorldEntity(
 bool LostArk::Server::CGameRoom::Initialize_WorldEntities()
 {
 	m_WorldEntities.clear();
+	m_KoukuCardRainSoldiers.clear();
 	for (const WORLD_BOOTSTRAP_PLACEMENT& placement :
 		m_WorldBootstrap.Get_Placements())
 	{
@@ -629,19 +630,20 @@ bool LostArk::Server::CGameRoom::Resolve_ArenaRandomVolleyOrigins(
 	const BOSS_COMBAT_OBJECT_DEFINITION& definition,
 	const std::uint32_t spawnWaveOrdinal,
 	std::vector<SERVER_COMBAT_OBJECT_LOCKED_TARGET>& outOrigins,
-	const float explicitMinimumSpacingM)
+	const float explicitMinimumSpacingM, const SERVER_NAV_POINT* anchorOverride)
 {
 	outOrigins.clear();
 	const BOSS_COMBAT_OBJECT_VOLLEY& volley = action.Volley;
+	const SERVER_NAV_POINT anchor = anchorOverride ? *anchorOverride : SERVER_NAV_POINT{boss.fSpawnPositionX, boss.fSpawnPositionY, boss.fSpawnPositionZ};
 	if (0u == volley.iArenaRandomCount)
 		return true;
 	if (!m_ServerNavigation.Is_Loaded() ||
 		BOSS_COMBAT_OBJECT_ARENA_ANCHOR_POLICY::BOSS_SPAWN_POSITION !=
 			volley.eArenaAnchorPolicy ||
 		0u == boss.iNetEntityId || 0u == boss.iPatternSequence ||
-		!std::isfinite(boss.fSpawnPositionX) ||
-		!std::isfinite(boss.fSpawnPositionY) ||
-		!std::isfinite(boss.fSpawnPositionZ) ||
+		!std::isfinite(anchor.x) ||
+		!std::isfinite(anchor.y) ||
+		!std::isfinite(anchor.z) ||
 		!std::isfinite(volley.fArenaRandomRadiusM) ||
 		volley.fArenaRandomRadiusM <= 0.f ||
 		!std::isfinite(volley.fArenaHeightToleranceM) ||
@@ -666,14 +668,14 @@ bool LostArk::Server::CGameRoom::Resolve_ArenaRandomVolleyOrigins(
 	   authoritative navigation/height and separates centres by the authored
 	   spacing or the existing damage diameter. */
 	const auto IsSpawnPointWalkable =
-		[this, &boss, &volley](
+		[this, &anchor, &volley](
 			const float centerX, const float centerZ, float& outY)
 		{
 			SERVER_NAV_POINT center{};
 			if (!m_ServerNavigation.Is_PointWalkableExact(centerX, centerZ) ||
 				!m_ServerNavigation.Sample_Position(centerX, centerZ, center) ||
 				!std::isfinite(center.y) ||
-				std::abs(center.y - boss.fSpawnPositionY) >
+				std::abs(center.y - anchor.y) >
 					volley.fArenaHeightToleranceM)
 			{
 				return false;
@@ -709,8 +711,8 @@ bool LostArk::Server::CGameRoom::Resolve_ArenaRandomVolleyOrigins(
 			volley.fArenaRandomRadiusM;
 		const float angle = DeterministicUnitFloat(
 			attemptSeed ^ 0xa0761d6478bd642full) * TWO_PI;
-		const float x = boss.fSpawnPositionX + std::cos(angle) * radius;
-		const float z = boss.fSpawnPositionZ + std::sin(angle) * radius;
+		const float x = anchor.x + std::cos(angle) * radius;
+		const float z = anchor.z + std::sin(angle) * radius;
 		float y = 0.f;
 		if (!IsSpawnPointWalkable(x, z, y))
 			continue;

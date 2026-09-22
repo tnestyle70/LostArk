@@ -329,7 +329,8 @@ public:
     void Release_CompositionPreviewSuppression() { if (m_iCompositionPreviewSuppressions) --m_iCompositionPreviewSuppressions; }
     bool Is_PresentationVisible() const { return m_bPresentationVisible && m_iCompositionPreviewSuppressions == 0u; }
     // Presentation owner gates this using the approved Server pattern clock.
-    void Set_ChargeAfterimageEnabled(bool enabled) { m_ChargeAfterimageEnabled = enabled; }
+    void Set_ChargeAfterimageEnabled(bool enabled, bool backstep = false,
+        float previewClockSeconds = -1.f);
     // A nonnegative clock belongs to Tool Preview; product uses its received state.
     void Set_CounterAfterimageEnabled(bool enabled, float previewClockSeconds = -1.f);
     void Reset_AfterimageHistory();
@@ -374,6 +375,10 @@ private:
 	shared_ptr<Engine::CShader> m_pShaderCom = { nullptr };
 	bool_t m_bNativeBinaryBasePass = false;
     bool m_ChargeAfterimageEnabled = false;
+    bool m_BackstepAfterimageStyle = false;
+    bool m_ChargeAfterimageExternalClock = false;
+    float m_ChargeAfterimageClockSeconds = 0.f;
+    float m_ChargeAfterimageLastSampleSeconds = -1.f;
     CSkeletalAfterimage m_BodyAfterimage;
     CSkeletalAfterimage m_WeaponAfterimage;
     CSkeletalAfterimage m_HatAfterimage;

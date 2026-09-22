@@ -22,8 +22,8 @@
       "attackRecoveryMs": 650,
       "deadDespawnMs": 1800,
       "hitKnockbackScale": 1.0,
-      "attackPushRangeM": 0.5,
-      "attackPushMs": 150,
+      "attackPushRangeM": 0.0,
+      "attackPushMs": 0,
       "attackKnockdown": false,
       "attackDownMs": 0
     },
@@ -46,8 +46,8 @@
       "attackRecoveryMs": 877,
       "deadDespawnMs": 1900,
       "hitKnockbackScale": 1.0,
-      "attackPushRangeM": 0.5,
-      "attackPushMs": 150,
+      "attackPushRangeM": 0.0,
+      "attackPushMs": 0,
       "attackKnockdown": false,
       "attackDownMs": 0
     },
@@ -70,8 +70,8 @@
       "attackRecoveryMs": 750,
       "deadDespawnMs": 2000,
       "hitKnockbackScale": 1.0,
-      "attackPushRangeM": 0.6,
-      "attackPushMs": 150,
+      "attackPushRangeM": 0.0,
+      "attackPushMs": 0,
       "attackKnockdown": false,
       "attackDownMs": 0
     },
@@ -94,10 +94,10 @@
       "attackRecoveryMs": 1050,
       "deadDespawnMs": 3000,
       "hitKnockbackScale": 0.0,
-      "attackPushRangeM": 2.0,
-      "attackPushMs": 250,
-      "attackKnockdown": true,
-      "attackDownMs": 2000
+      "attackPushRangeM": 0.0,
+      "attackPushMs": 0,
+      "attackKnockdown": false,
+      "attackDownMs": 0
     },
     {
       "archetypeId": "MONSTER_VALTAN_SJFC_ELITE",
@@ -118,8 +118,8 @@
       "attackRecoveryMs": 760,
       "deadDespawnMs": 1900,
       "hitKnockbackScale": 1.0,
-      "attackPushRangeM": 0.5,
-      "attackPushMs": 150,
+      "attackPushRangeM": 0.0,
+      "attackPushMs": 0,
       "attackKnockdown": false,
       "attackDownMs": 0
     },
@@ -406,8 +406,8 @@
       "attackRecoveryMs": 800,
       "deadDespawnMs": 2000,
       "hitKnockbackScale": 1.0,
-      "attackPushRangeM": 0.5,
-      "attackPushMs": 150,
+      "attackPushRangeM": 0.0,
+      "attackPushMs": 0,
       "attackKnockdown": false,
       "attackDownMs": 0
     },
@@ -430,8 +430,8 @@
       "attackRecoveryMs": 800,
       "deadDespawnMs": 2000,
       "hitKnockbackScale": 1.0,
-      "attackPushRangeM": 0.5,
-      "attackPushMs": 150,
+      "attackPushRangeM": 0.0,
+      "attackPushMs": 0,
       "attackKnockdown": false,
       "attackDownMs": 0
     },
@@ -454,8 +454,8 @@
       "attackRecoveryMs": 800,
       "deadDespawnMs": 2000,
       "hitKnockbackScale": 1.0,
-      "attackPushRangeM": 0.5,
-      "attackPushMs": 150,
+      "attackPushRangeM": 0.0,
+      "attackPushMs": 0,
       "attackKnockdown": false,
       "attackDownMs": 0
     },
@@ -478,8 +478,8 @@
       "attackRecoveryMs": 1000,
       "deadDespawnMs": 2500,
       "hitKnockbackScale": 0.5,
-      "attackPushRangeM": 0.5,
-      "attackPushMs": 150,
+      "attackPushRangeM": 0.0,
+      "attackPushMs": 0,
       "attackKnockdown": false,
       "attackDownMs": 0
     }

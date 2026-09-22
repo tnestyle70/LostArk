@@ -24,6 +24,14 @@ class SourceModelActorTests(unittest.TestCase):
             self.assertEqual({r['name'] for r in tracks}, {'dead', 'emissive_intensity', 'transcolor'})
             self.assertEqual(next(r for r in tracks if r['name'] == 'transcolor')['kind'], 'COLOR')
 
+    def test_dragon_resonance_first_only_flag_keeps_original_actor_transform(self):
+        actor=source_actor(CASES[3]['notifies'],0)
+        self.assertEqual(actor['sourcePositionUeCm'],[0.,0.,40.])
+        self.assertEqual(actor['sourceRotator'],[0,0,0])
+        for value in actor['sourceScale']:self.assertAlmostEqual(value,2.3,places=6)
+        self.assertEqual(actor['localTransform']['position'],[0.,.4,0.])
+        self.assertEqual(actor['clip'],'sk_dragonicresonance_02')
+
     def test_truncated_child_tail_cannot_become_identity_transform(self):
         case = json.loads(json.dumps(CASES[2]))
         payload = case['notifies'][-1]['serializedPayload']

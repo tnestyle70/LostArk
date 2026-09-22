@@ -37,49 +37,6 @@
 #include "Model.h"
 #include "Transform.h"
 
-namespace
-{
-	bool Has_SourceLockedAxisSprite(const Client::EFFECT_ELEMENT_DESC& Element)
-	{
-		if (!Element.SourceRecipe.bEnabled || Element.SourceRecipe.strRendererShape != "sprite")
-			return false;
-		bool bFixedAxis = false;
-		for (const auto& Module : Element.SourceRecipe.Modules)
-		{
-			const auto FindLiteral = [&](const std::string_view Property) {
-				return std::find_if(Module.Literals.begin(), Module.Literals.end(),
-					[&](const auto& Literal) { return Literal.strPropertyPath == Property; });
-			};
-			const auto Enabled = FindLiteral("benabled");
-			if (Enabled != Module.Literals.end() &&
-				Enabled->eKind == Client::EFFECT_SOURCE_LITERAL_KIND::BOOLEAN && !Enabled->bBoolean)
-				continue;
-			std::string_view Class = Module.strClassName;
-			if (Class.starts_with("efparticlemodule")) Class.remove_prefix(2u);
-			if (Class.ends_with("_seeded")) Class.remove_suffix(7u);
-			const bool bRequired = Class == "particlemodulerequired";
-			if (!bRequired && Class != "particlemoduleorientationaxislock") continue;
-			const auto Value = FindLiteral(bRequired ? "screenalignment" : "lockaxisflags");
-			if (Value == Module.Literals.end() || Value->eKind != Client::EFFECT_SOURCE_LITERAL_KIND::STRING)
-				continue;
-			const std::string_view Alignment = Value->strString;
-			// Preserve runtime module order: later Required modules can replace
-			// an earlier fixed or rotating axis orientation.
-			if (bRequired)
-			{
-				if (Alignment.ends_with("psa_rectangle") || Alignment.ends_with("psa_velocity") ||
-					Alignment.ends_with("psa_square")) bFixedAxis = false;
-			}
-			else if (Alignment.ends_with("epal_x") || Alignment.ends_with("epal_y") ||
-				Alignment.ends_with("epal_z") || Alignment.ends_with("epal_negative_x") ||
-				Alignment.ends_with("epal_negative_y") || Alignment.ends_with("epal_negative_z"))
-				bFixedAxis = true;
-			else if (Alignment.ends_with("epal_rotate_x") || Alignment.ends_with("epal_rotate_y") ||
-				Alignment.ends_with("epal_rotate_z")) bFixedAxis = true;
-		}
-		return bFixedAxis;
-	}
-}
 
 bool_t Client::CEffect_Tool::Render_ProjectTunedSurfaceParameters(
 	EFFECT_ELEMENT_DESC& Element,
@@ -1052,7 +1009,7 @@ void Client::CEffect_Tool::Render_KindDetail(
 
 			ImGui::SeparatorText("Particle Lifetime and Shape");
 			if (DragFloat2("Particle Life Min/Max",
-			Detail.Particle.vLifeTimeSeconds, 0.01f, 0.001f, 30.f))
+			Detail.Particle.vLifeTimeSeconds, 0.01f, 0.001f, Element.SourceRecipe.bEnabled ? 120.f : 30.f))
 		{
             Detail.Particle.vLifeTimeSeconds.y = (std::max)(
                 Detail.Particle.vLifeTimeSeconds.x,

@@ -2301,6 +2301,7 @@ float4 ArtistNative4295(ARTIST_NATIVE_INPUT input)
     source[0].x=1.f; // Project engine opacity multiplier.
     float4 output=0.f;
     source[1]=input.color; // Native mesh particle color prefix.
+    source[0]=input.color; // Native masked mesh particle RGBA prefix.
     source[1] = g_ArtistSourceMaterialParameters[10u];
     source[2] = input.dynamicParameter;
     source[3] = ArtistNativeAppend(cos(((float4(0.523599029, 0.0, 0.0, 0.0)*g_ArtistSourceMaterialParameters[4u].wwww)*float4(1.0, 0.0, 0.0, 0.0))),(float4(-1.0, 0.0, 0.0, 0.0)*sin(((float4(0.523599029, 0.0, 0.0, 0.0)*g_ArtistSourceMaterialParameters[4u].wwww)*float4(1.0, 0.0, 0.0, 0.0)))),1u);

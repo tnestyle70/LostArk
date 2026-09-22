@@ -401,10 +401,14 @@ namespace
 		{ outStatus = "Airborne phase values belong to ALBION_AIRBORNE."; return false; }
 		const bool_t hasRandomVolleys = !logic.RandomVolleyOccurrenceSets.empty();
 		const bool_t hasRandomValues = hasRandomVolleys || logic.iRandomSpawnIntervalMs != 0u ||
-			logic.fRandomArenaRadiusM != 0.0 || logic.fRandomArenaHeightToleranceM != 0.0;
+			logic.fRandomArenaRadiusM != 0.0 || logic.fRandomArenaHeightToleranceM != 0.0 ||
+			logic.strRandomAnchorKind != "BOSS_SPAWN" || logic.fRandomScaleMin != 1.0 || logic.fRandomScaleMax != 1.0;
 		if (hasRandomValues)
 		{
-			if (!hasRandomVolleys || (logic.strFixedSelectionGroupId.empty() && logic.strTrackingPresentationOccurrenceId.empty()) ||
+			if (!hasRandomVolleys ||
+				(logic.strRandomAnchorKind != "BOSS_SPAWN" && logic.strRandomAnchorKind != "BOSS") ||
+				!std::isfinite(logic.fRandomScaleMin) || !std::isfinite(logic.fRandomScaleMax) ||
+				logic.fRandomScaleMin < .01 || logic.fRandomScaleMax > 10.0 || logic.fRandomScaleMax < logic.fRandomScaleMin ||
 				logic.RandomVolleyOccurrenceSets.size() > 32u ||
 				logic.iRandomSpawnIntervalMs < 1u || logic.iRandomSpawnIntervalMs > MAX_TIME_MS ||
 				!std::isfinite(logic.fRandomArenaRadiusM) || logic.fRandomArenaRadiusM <= 0.0 || logic.fRandomArenaRadiusM > 1000.0 ||
@@ -782,12 +786,12 @@ namespace
 				std::any_of(logic.TeleportPosition.begin(), logic.TeleportPosition.end(), [](double x) { return x != 0.0; }))
 			{ outStatus = "ENTER_AREA geometry belongs to its linked Collider occurrence."; return false; }
 		}
-		else if (logic.strTriggerKind == "CARD_MAZE_HIDE_NEXT" || logic.strTriggerKind == "CARD_MAZE_ENTER" || ((logic.strTriggerKind == "BOSS_TELEPORT_XZ" || logic.strTriggerKind == "BOSS_TELEPORT_GROUNDED") || logic.strTriggerKind == "BOSS_TELEPORT_FACE_CENTER" || logic.strTriggerKind == "MARIO_PHASE2_PLAYERS"))
+		else if (logic.strTriggerKind == "CARD_RAIN_SOLDIERS" || logic.strTriggerKind == "CARD_MAZE_HIDE_NEXT" || logic.strTriggerKind == "CARD_MAZE_ENTER" || ((logic.strTriggerKind == "BOSS_TELEPORT_XZ" || logic.strTriggerKind == "BOSS_TELEPORT_GROUNDED") || logic.strTriggerKind == "BOSS_TELEPORT_FACE_CENTER" || logic.strTriggerKind == "MARIO_PHASE2_PLAYERS"))
 		{
 			if (!logic.strHudMode.empty() || !logic.strClonePatternId.empty() || !logic.ClockHours.empty() ||
 				logic.fFaceCenterYawOffsetDegrees != 0.0 ||
 				!std::all_of(logic.TeleportPosition.begin(), logic.TeleportPosition.end(), [](double x) { return std::isfinite(x) && std::abs(x) <= 100000.0; }) ||
-				(logic.strTriggerKind == "CARD_MAZE_HIDE_NEXT" &&
+				((logic.strTriggerKind == "CARD_MAZE_HIDE_NEXT" || logic.strTriggerKind == "CARD_RAIN_SOLDIERS") &&
 				 std::any_of(logic.TeleportPosition.begin(), logic.TeleportPosition.end(), [](double x) { return x != 0.0; })))
 			{ outStatus = "Hide has no values; maze entry and boss XZ teleport accept only finite bounded teleportPosition."; return false; }
 		}
@@ -2131,12 +2135,15 @@ namespace
 						const auto row = std::find_if(pattern.PresentationOccurrences.begin(), pattern.PresentationOccurrences.end(),
 							[&](const auto& value) { return value.strOccurrenceId == id; });
 						if (row == pattern.PresentationOccurrences.end() || !presentationResources.contains(row->strResourceId) ||
-							presentationResources.at(row->strResourceId)->eKind != KOUKU_SAYDON_PRESENTATION_KIND::EFFECT ||
+							(presentationResources.at(row->strResourceId)->eKind != KOUKU_SAYDON_PRESENTATION_KIND::EFFECT &&
+                            !(presentationResources.at(row->strResourceId)->eKind == KOUKU_SAYDON_PRESENTATION_KIND::SOUND &&
+                              row->strAnchorKind == "MAP" && !row->bFollowBoss)) ||
 							!row->strBone.empty() || row->strBoneTarget != "BODY" || !row->strWorldId.empty() ||
 							!row->strWorldOccurrenceId.empty() || row->iWorldEmissionIndex != 0u || !row->strLogicOccurrenceId.empty() ||
 							!((row->strAnchorKind == "MAP" && !row->bFollowBoss) || (row->strAnchorKind == "BOSS" && row->bFollowBoss)))
-						{ outStatus = "SHOWTIME random volley requires same-pattern Effect rows with MAP or following BOSS anchors: " + id; return false; }
-						hasMap |= row->strAnchorKind == "MAP";
+						{ outStatus = "SHOWTIME random volley requires Effect rows with MAP/following BOSS anchors or fixed MAP Sound cues: " + id; return false; }
+						hasMap |= row->strAnchorKind == "MAP" &&
+                            presentationResources.at(row->strResourceId)->eKind == KOUKU_SAYDON_PRESENTATION_KIND::EFFECT;
 					}
 					if (!hasMap) { outStatus = "SHOWTIME random volley needs a MAP anchor marker."; return false; }
 				}
@@ -3051,7 +3058,7 @@ bool_t Client::CKoukuSaydonCompositionDocument::Parse_Text(
 			if (!Has_Properties(logicValue, { "logicId", "displayName", "logicType" },
 					{ "judgementKind", "fixedHits", "trackingHits", "projectileHits", "randomVolleyHits", "fixedSelectionGroupId", "trackingPresentationOccurrenceId", "spawnIntervalMs", "followSpeedScale",
                       "visualIds", "contactVisualId", "speedMps", "contactRadiusM", "spawnRadiusM", "lifetimeMs", "homing", "countPerWave",
-					  "randomVolleyOccurrenceSets", "randomSpawnIntervalMs", "randomArenaRadiusM", "randomArenaHeightToleranceM", "insideOutcome", "sectorCount", "sectorSymbols", "regionIds", "centerX", "centerZ",
+					  "randomVolleyOccurrenceSets", "randomSpawnIntervalMs", "randomArenaRadiusM", "randomArenaHeightToleranceM", "randomAnchorKind", "randomScaleMin", "randomScaleMax", "insideOutcome", "sectorCount", "sectorSymbols", "regionIds", "centerX", "centerZ",
 					  "outerRadiusM", "worldSequenceInstanceId", "halfAngleDegrees",
 					  "maxDistanceM", "poseIndex", "threshold", "shieldArcDegrees",
 					  "endsPatternOnSuccess", "normalYawOffsetDegrees", "faceCenterYawOffsetDegrees", "outcomeKind", "percent", "durationMs", "pushRangeM", "pushMs", "pushDirection", "forcePush", "pushCanLeaveArena", "pushBallistic", "pushYawOffsetDegrees", "targetWorldInstanceId", "motionInstanceId", "targetRadiusM",
@@ -3113,7 +3120,8 @@ bool_t Client::CKoukuSaydonCompositionDocument::Parse_Text(
 			}
 			const auto* randomSets = logicValue.Find("randomVolleyOccurrenceSets");
 			const bool hasRandomFields = randomSets || logicValue.Find("randomSpawnIntervalMs") ||
-				logicValue.Find("randomArenaRadiusM") || logicValue.Find("randomArenaHeightToleranceM");
+				logicValue.Find("randomArenaRadiusM") || logicValue.Find("randomArenaHeightToleranceM") ||
+                logicValue.Find("randomAnchorKind") || logicValue.Find("randomScaleMin") || logicValue.Find("randomScaleMax");
 			if (hasRandomFields)
 			{
 				if (!randomSets || !randomSets->Is_Array() || randomSets->Get_Array().empty() || randomSets->Get_Array().size() > 32u ||
@@ -3157,6 +3165,9 @@ bool_t Client::CKoukuSaydonCompositionDocument::Parse_Text(
 				!optionalUnsigned("randomSpawnIntervalMs", MAX_TIME_MS, stagedLogic.iRandomSpawnIntervalMs) ||
 				!optionalFinite("randomArenaRadiusM", 0.0, 1000.0, stagedLogic.fRandomArenaRadiusM) ||
 				!optionalFinite("randomArenaHeightToleranceM", 0.0, 10.0, stagedLogic.fRandomArenaHeightToleranceM) ||
+				!optionalText("randomAnchorKind", stagedLogic.strRandomAnchorKind) ||
+				!optionalFinite("randomScaleMin", .01, 10.0, stagedLogic.fRandomScaleMin) ||
+				!optionalFinite("randomScaleMax", .01, 10.0, stagedLogic.fRandomScaleMax) ||
 				!optionalText("insideOutcome", stagedLogic.strInsideOutcome) ||
 				!optionalUnsigned("sectorCount", 64u, stagedLogic.iSectorCount) ||
 				!Try_ParseTextList(logicValue.Find("sectorSymbols"), 64u, stagedLogic.SectorSymbols) ||
@@ -3230,6 +3241,9 @@ bool_t Client::CKoukuSaydonCompositionDocument::Parse_Text(
 				outStatus = "KoukuSaydon Logic definition typed value is invalid: " + stagedLogic.strLogicId;
 				return false;
 			}
+            if (stagedLogic.strTriggerKind == "CARD_RAIN_SOLDIERS" && !Has_ExactProperties(logicValue,
+                { "logicId", "displayName", "logicType", "triggerKind" }))
+            { outStatus = "CARD_RAIN_SOLDIERS has no per-player or presentation parameters."; return false; }
             const bool stagePlayers = stagedLogic.strLogicType == "TRIGGER" && stagedLogic.strTriggerKind == "CARD_MAZE_STAGE_PLAYERS";
             if (const auto* ids = logicValue.Find("playerEntryEffectOccurrenceIds"); ids &&
                 ids->Get_Array().size() != stagedLogic.PlayerEntryEffectOccurrenceIds.size())
@@ -4491,7 +4505,10 @@ std::string Client::CKoukuSaydonCompositionDocument::Serialize(
 					}
 					output << "],\n      \"randomSpawnIntervalMs\": " << logic.iRandomSpawnIntervalMs
 						<< ",\n      \"randomArenaRadiusM\": " << logic.fRandomArenaRadiusM
-						<< ",\n      \"randomArenaHeightToleranceM\": " << logic.fRandomArenaHeightToleranceM;
+						<< ",\n      \"randomArenaHeightToleranceM\": " << logic.fRandomArenaHeightToleranceM
+                        << ",\n      \"randomAnchorKind\": \"" << CDataJson::Escape(logic.strRandomAnchorKind) << "\""
+                        << ",\n      \"randomScaleMin\": " << logic.fRandomScaleMin
+                        << ",\n      \"randomScaleMax\": " << logic.fRandomScaleMax;
 				}
 			}
 			else if ("BOSS_TRACK_TARGET" == logic.strJudgementKind)

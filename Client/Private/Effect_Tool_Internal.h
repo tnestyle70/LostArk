@@ -14,6 +14,7 @@ enum class EFFECT_RUNTIME_RENDERER_KIND : uint8_t;
 
 namespace EffectToolDetail
 {
+    bool Has_SourceLockedAxisSprite(const Client::EFFECT_ELEMENT_DESC& element);
     struct ATTACHMENT_ELEMENT_GROUP
     {
         std::string key, label, editReason;
@@ -26,7 +27,8 @@ namespace EffectToolDetail
         bool anchorEditable = false;
         float3_t anchorPosition{}, anchorRotationDegrees{};
     };
-    std::vector<ATTACHMENT_ELEMENT_GROUP> Build_AttachmentElementGroups(const Client::EFFECT_DOCUMENT_DESC& document);
+    std::vector<ATTACHMENT_ELEMENT_GROUP> Build_AttachmentElementGroups(const Client::EFFECT_DOCUMENT_DESC& document,
+        const std::string& elementId = {});
     bool Set_AttachmentGroupAnchor(Client::EFFECT_DOCUMENT_DESC& document,
         const std::string& groupKey, const float3_t& position, const float3_t& rotationDegrees, std::string& error);
     bool Translate_AttachmentElementGroup(Client::EFFECT_DOCUMENT_DESC& document,

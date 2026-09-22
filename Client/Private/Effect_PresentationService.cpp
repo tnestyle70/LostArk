@@ -4969,6 +4969,7 @@ bool_t Client::CEffectPresentationService::Spawn(
 	}
 	const EFFECT_OWNER_VIEW Owner = Resolve_Owner(Desc);
 	const bool_t bDescriptorValid = Owner.Is_Valid() &&
+		(!Desc.PendingAdmission || !Desc.PendingAdmission->expired()) &&
 		!Desc.strAnchorSlotId.empty() && !Desc.strOccurrenceId.empty() &&
 		std::isfinite(Desc.fPlaybackRate) && Desc.fPlaybackRate > 0.f &&
 		Desc.fPlaybackRate <= 16.f &&
@@ -5439,6 +5440,11 @@ void Client::CEffectPresentationService::Commit_PendingSpawns()
 				"Discarded queued Effect because its source level changed.";
 			continue;
 		}
+		if (Request.Desc.PendingAdmission && Request.Desc.PendingAdmission->expired())
+		{
+			g_strStatus = "Discarded queued Effect because its action admission expired.";
+			continue;
+		}
 		std::string Status;
 		if (!Spawn_Immediate(Request.Desc, Status))
 		{
@@ -5492,6 +5498,11 @@ void Client::CEffectPresentationService::Commit_PendingWorldRootSpawns(
 		{
 			g_strStatus =
 				"Discarded queued world-root Effect because its source level changed.";
+			continue;
+		}
+		if (Request.Desc.PendingAdmission && Request.Desc.PendingAdmission->expired())
+		{
+			g_strStatus = "Discarded queued Effect because its action admission expired.";
 			continue;
 		}
 		std::string Status;

@@ -164,7 +164,7 @@ LOGIC_KIND_VALUE_KEYS = {
     "CROSS_DIRECTION_CLONES": {"directionPatternIds", "cloneEndStageId", "summonOccurrenceId"},
     "PATTERN_COMPLETION_COUNT": {"patternIds", "completionCount"},
     "SHOWTIME_PLAYER_TARGETS": {"fixedHits", "trackingHits", "randomVolleyHits", "fixedSelectionGroupId", "trackingPresentationOccurrenceId", "spawnIntervalMs", "followSpeedScale",
-                               "randomVolleyOccurrenceSets", "randomSpawnIntervalMs", "randomArenaRadiusM", "randomArenaHeightToleranceM"},
+                               "randomVolleyOccurrenceSets", "randomSpawnIntervalMs", "randomArenaRadiusM", "randomArenaHeightToleranceM", "randomAnchorKind", "randomScaleMin", "randomScaleMax"},
 }
 LOGIC_DURATION_VALUE_KEYS = {"judgementKind"} | set().union(*LOGIC_KIND_VALUE_KEYS.values())
 LOGIC_RESULT_VALUE_KEYS = {"outcomeKind", "percent", "durationMs", "followupPatternId", "targetWorldInstanceId", "motionInstanceId",
@@ -727,9 +727,9 @@ def _validate_logic_definition(
                 _stable_id(target, f"{context} player entry effect")
             if not targets or len(set(targets)) != len(targets):
                 raise CompositionError(f"{context} staging needs 1..4 distinct Effect occurrences")
-        elif kind == "CARD_MAZE_HIDE_NEXT":
+        elif kind in {"CARD_MAZE_HIDE_NEXT", "CARD_RAIN_SOLDIERS"}:
             if extra != {"triggerKind"}:
-                raise CompositionError(f"{context} CARD_MAZE_HIDE_NEXT carries unrelated values")
+                raise CompositionError(f"{context} {kind} carries unrelated values")
         elif kind in {"CARD_MAZE_ENTER", "BOSS_TELEPORT_XZ", "BOSS_TELEPORT_GROUNDED", "BOSS_TELEPORT_FACE_CENTER", "MARIO_PHASE2_PLAYERS"}:
             if extra != {"triggerKind", "teleportPosition"}:
                 raise CompositionError(f"{context} {kind} requires only teleportPosition")
@@ -5003,12 +5003,12 @@ def _showtime_logic_occurrences(document: dict[str, Any], pattern: dict[str, Any
 def _showtime_random_volley_fields(logic: dict[str, Any], context: str) -> dict[str, Any]:
     fields = {"randomVolleyOccurrenceSets", "randomSpawnIntervalMs", "randomArenaRadiusM", "randomArenaHeightToleranceM"}
     present = fields & logic.keys()
+    if not present and {"randomAnchorKind", "randomScaleMin", "randomScaleMax"} & logic.keys():
+        raise CompositionError(f"{context} scale and anchor require a random volley pool")
     if not present:
         return {}
     if present != fields:
         raise CompositionError(f"{context} random volley fields must be supplied together")
-    if not logic.get("fixedSelectionGroupId") and not logic.get("trackingPresentationOccurrenceId"):
-        raise CompositionError(f"{context} random volleys supplement a fixed or tracking target")
     sets = _array(logic["randomVolleyOccurrenceSets"], f"{context} randomVolleyOccurrenceSets", 32)
     if not sets:
         raise CompositionError(f"{context} requires 1..32 ordered random volley sets")
@@ -5024,7 +5024,12 @@ def _showtime_random_volley_fields(logic: dict[str, Any], context: str) -> dict[
     height = _number(logic["randomArenaHeightToleranceM"], f"{context} height tolerance", 0, 10)
     if radius <= 0 or height <= 0:
         raise CompositionError(f"{context} requires positive arena radius and height tolerance")
-    return {"randomVolleyOccurrenceSets": sets,
+    anchor = logic.get("randomAnchorKind", "BOSS_SPAWN")
+    minimum = _number(logic.get("randomScaleMin", 1), f"{context} minimum scale", .01, 10)
+    maximum = _number(logic.get("randomScaleMax", 1), f"{context} maximum scale", minimum, 10)
+    if anchor not in {"BOSS_SPAWN", "BOSS"}:
+        raise CompositionError(f"{context} invalid random anchor")
+    return {"randomVolleyOccurrenceSets": sets, "randomAnchorKind": anchor, "randomScaleMin": minimum, "randomScaleMax": maximum,
             "randomSpawnIntervalMs": _integer(logic["randomSpawnIntervalMs"], f"{context} interval", 1, MAX_TIMELINE_MS),
             "randomArenaRadiusM": radius, "randomArenaHeightToleranceM": height}
 
@@ -5067,7 +5072,8 @@ def _project_presentation_occurrence(document: dict[str, Any], pattern: dict[str
 def _showtime_visual_template(document: dict[str, Any], pattern: dict[str, Any], members: list[dict[str, Any]], role: str, *, random_mixed: bool = False,
                              selection_start_ms: int | None = None) -> dict[str, Any]:
     resources = {row["resourceId"]: row for row in document.get("presentationResources", [])}
-    anchor_members = [row for row in members if row.get("anchorKind", "BOSS") == "MAP"] if random_mixed else members
+    anchor_members = [row for row in members if row.get("anchorKind", "BOSS") == "MAP"
+                      and resources.get(row["resourceId"], {}).get("kind") == "EFFECT"] if random_mixed else members
     if not anchor_members:
         raise CompositionError("SHOWTIME random volley requires at least one MAP marker")
     anchor = min(anchor_members, key=lambda row: (row["startMs"], row["occurrenceId"]))
@@ -5080,8 +5086,11 @@ def _showtime_visual_template(document: dict[str, Any], pattern: dict[str, Any],
     content_key = lambda row: json.dumps(row, ensure_ascii=False, sort_keys=True, separators=(",", ":"), allow_nan=False)
     for member in members:
         resource = resources.get(member["resourceId"])
-        if resource is None or resource["kind"] != "EFFECT":
-            raise CompositionError("SHOWTIME templates require same-pattern EFFECT occurrences")
+        if resource is None or (resource["kind"] != "EFFECT" and
+                                not (random_mixed and role == "fixed" and resource["kind"] == "SOUND")):
+            raise CompositionError("SHOWTIME templates require EFFECT occurrences; finite random volleys also admit MAP SOUND cues")
+        if resource["kind"] == "SOUND" and (member.get("anchorKind", "BOSS") != "MAP" or member.get("followBoss", False)):
+            raise CompositionError("SHOWTIME random SOUND cues require a fixed MAP anchor")
         row = _project_presentation_occurrence(document, pattern, member, resource)
         allowed_anchor = ((row["anchorKind"] == "MAP" and not row["followBoss"]) or
                           (random_mixed and row["anchorKind"] == "BOSS" and row["followBoss"]))
@@ -5158,7 +5167,7 @@ def _project_showtime_targets(document: dict[str, Any], pattern: dict[str, Any])
         fixed_group = logic.get("fixedSelectionGroupId", "")
         tracking_id = logic.get("trackingPresentationOccurrenceId", "")
         random_fields = _showtime_random_volley_fields(logic, "SHOWTIME random volleys")
-        if not fixed_group and not tracking_id:
+        if not fixed_group and not tracking_id and not random_fields:
             raise CompositionError("SHOWTIME_PLAYER_TARGETS requires a fixed Effect group or tracking Effect occurrence before Product publication")
         if any(outcome_logic_ids(box, slot) for slot in OUTCOME_SLOTS) or box.get("holdLogicOccurrenceId"):
             raise CompositionError("SHOWTIME_PLAYER_TARGETS owns targeted visuals and cannot carry judgement outcomes or Hold references")
@@ -5195,7 +5204,7 @@ def _project_showtime_targets(document: dict[str, Any], pattern: dict[str, Any])
                     try: row["randomVolleys"][-1]["hits"] = validate_hits(logic["randomVolleyHits"][len(row["randomVolleys"]) - 1], template["durationMs"])
                     except ValueError as error: raise CompositionError(str(error)) from error
                 controlled.update(identities)
-            for field in ("randomSpawnIntervalMs", "randomArenaRadiusM", "randomArenaHeightToleranceM"):
+            for field in ("randomSpawnIntervalMs", "randomArenaRadiusM", "randomArenaHeightToleranceM", "randomAnchorKind", "randomScaleMin", "randomScaleMax"):
                 row[field] = random_fields[field]
         rows.append(row)
     rows.sort(key=lambda row: (row["startMs"], row["occurrenceId"]))

@@ -2950,3 +2950,100 @@ clamp 상한보다 올려도 이미 잘리는 부분은 복구되지 않는다. 
 가로채지 않는지 검사한다. 허용된 portable mesh carrier의 명시 간격만 기존 생성기를
 사용하고 source 위치·이동 module과 섞지 않는다. 1.2배 외형 변경은 mesh 크기에만 적용하고
 birth center·간격·Server cover와 폭발 시점은 유지한다.
+
+### Ctrl 핑의 물리 클릭과 UI 소유권
+
+Ctrl 핑은 물리 좌클릭을 사용하며 mouse-button swap과 독립이다. raw edge는 UI·focus·capture 분기 전부터 관찰하되, 실제 소비 시에는 전역 차단뿐 아니라 버튼별 filtered LB와 UIInputRouter의 같은 프레임 claim도 확인한다. 소비한 press는 release까지 이동·평타·MAZE LMB·ground-target confirm에서 제외한다. Ctrl+Z/X/C의 typed Esther 명령은 유지한다. 과녁과 핑의 native source texture 및 로컬 표시 검증은 [Clown·MAZE 결과](09-22/2026-09-22_CLOWN_MAZE_MARKERS_RESULT.md)를 따른다.
+
+### 비활성 Effect 문서의 삭제와 preview 준비
+
+CPU-only Open 문서의 Element 삭제·편집은 선택 모델·source bone·GPU 준비를 요구하지 않는다. 활성 preview만 stage 후 commit하며 실패하면 문서·선택·필터를 보존한다. 마지막 Solo Family 삭제 뒤 남은 문서가 있으면 COMPLETE로 조정하고, 실패 시 기존 family도 복원한다. 실제 코드 재현 범위는 [삭제 결과](09-22/2026-09-22_EFFECT_ELEMENT_DELETE_RESULT.md)에 기록한다.
+
+### 화염파동 바닥과 수동 그룹 식별
+
+발광만 남은 바닥은 bloom부터 바꾸지 말고 실제 source ground carrier가 문서에 있는지 확인한다. WandDecal 착지 섬광은 FireWave의 지면 고정 화염과 별개다. Element groupId가 있어도 Effect Tool 수동 그룹은 manual. 접두어를 요구하므로 독립 위치 편집을 의도한 파생 문서에서 이를 명시한다. 원본 disabled notify, 기존 사용자 occurrence offset·수명과 독립 저작 파생의 추가를 구분한다.
+
+### 신규 SourceCharacter Light program의 입력 ABI
+
+MN_PPPP_00 선물상자 native109는 Base와 Light가 다른 varying 배치를 쓴다. shader 함수와 material row만 추가하면 `MakeSourceCharacterInput`의 Light 2/3/5/6 분기에서 빠져 UV·조명 방향을 상수로 읽을 수 있다. 새 program은 원본 Base/Light DXBC 선언과 실제 input builder 양쪽을 대조하고 필요한 program만 해당 분기에 등록한다. 기존 program의 ABI를 통째로 바꾸지 않는다. Engine/Client mirror와 실제 FxCompile wrapper도 함께 확인한다.
+
+### 원본 버프 수명·Beam2 carrier·백스텝 잔상
+
+Source leaf 존재와 finite 성공만으로 제품 복원을 판단하지 않는다. 속박은 Server bound 상태의 실제 소비자·해제·사망·Reset까지 연결한다. 원본 particle lifetime이 30초를 넘을 수 있으므로 source recipe는 finite 120초, 수동 particle은 30초를 허용하며 UI와 Codec 범위, 기존 particle capacity를 함께 유지한다. Required EmitterLoops 생략값0을1로 가정하면 지속 방패가 중간에 꺼진다. 원본 반복을 복원하고 기존 loopEffectToDuration의 소유자 window로 종료한다.
+
+Action occurrence를 source leaf로 보강할 때 material/runtimeCarrier만 복사하지 않는다. 원본 TypeData에 맞는 kind·rendererShape·Detail.Trail도 대조한다. Beam2를 particle/sprite로 남긴 채 carrier만 연결하면 drawable admission이 실패한다. native3008의 별 선 sprite 지원은 동일 원본 재질 ABI에 한정하며 기존 ribbon 경로를 바꾸지 않는다.
+
+TrailGhost의 원본5ms는 float에서 .004999999888이므로 decoder 경계에 최소 float 오차만 허용한다. 실제 설치 모델·preScale·본·socket TRS로 검증하고, 흰 반투명 appearance의 PROJECT_AUTHORED 경계와 사용자 화면 판정을 분리한다. FX_Buff_01을 actor-ground translation으로 대응한 것은 실제 본 부착 검증이 아니다. 자세한 증거는 [주사위·무력화·백스텝 결과](09-22/2026-09-22_KOUKU_DICE_STAGGER_BACKSTEP_RESULT.md)를 따른다.
+
+
+### EventReceiver와 LocationDirect의 위치 소유권
+
+EventReceiverSpawn은 일반적으로 source event 위치를 상속하지만, 활성 LocationDirect가 emitter-local 절대 위치를 지정하면 같은 부모 높이를 다시 더해서는 안 된다. `Spawn_Particles`의 prepared recipe에 활성 `LOCATION_DIRECT`가 있는 경우에만 event origin을 0으로 시작하고, 일반 event receiver의 위치·속도 상속은 유지한다. 비활성 module 이름이나 문서 전체에 LocationDirect가 있다는 이유로 모든 event origin을 제거하지 않는다.
+
+원본 낙하가 사라진 경우에는 기존 nested RawDistribution/CDO 절차를 먼저 적용한다. ScaleFactor 누락을 복구한 뒤 event 부모·자식 각각의 실제 world 위치도 비교해야 두 결함을 구분할 수 있다. 카드비에서는 원본 CDO 상속 복구와 자식의 중복 7m 제거를 별도로 검증했다. 동일 문서의 일반 입자와 LocationDirect가 없는 controlled event-receiver fixture도 이전 playback과 대조했다. 이 CPU 수치 성공을 GPU 발광·실제 화면 성공으로 기록하지 않는다. [카드비·DJ 결과](09-22/2026-09-22_KOUKU_CARDRAIN_DJ_EFFECT_RESULT.md)를 따른다.
+
+랜덤 투하의 개별 사운드는 보스 Pattern의 고정 SOUND 한 행으로 대신하지 않는다. 원본 Projectile timer를 확인해 각 CombatObject birth 기준의 유한 MAP SOUND로 같은 targeted template에 포함한다. MAP EFFECT가 위치 원점을 소유하고 SoundCue는 기존 재생/seek/종료 경로를 사용한다. 같은 템플릿의 모든 투하가 한 변형만 고르지 않도록 targeted session identity도 variant 선택에 포함하며, 일반 Pattern의 기존 선택은 보존한다. 원본 카드비의 사운드1350ms와 카드 시작1500ms·충돌1650ms가 다르므로 임의로 같은 시점에 맞추지 않는다.
+
+### Pattern Flow의 마지막 항목과 반복 소유권
+
+순서가 저장되고 게시됐다는 사실만으로 순환 반복을 완료 처리하지 않는다. 전투 전용 Client Play_Flow와 Sequence 포함 Server RaidFlow의 마지막 완료 처리를 각각 확인한다. GATE1은 마지막 wait 이후 첫 entry를 다시 실행한다. Server에서 index 0으로 돌아올 때는 continueRaid 조건도 함께 확인하여 기존 epoch·게시 revision·잔여 row 소유권을 유지한다. 최초 epoch 0 입장과 반복 입장을 구분하고 Stop·거절·중단·관문 완료는 기존 종료 경로를 보존한다. 두 번째 주기 및 다른 관문 회귀를 검사한다.
+
+
+### Monster 공격 1회와 Full Restore preview identity
+
+MonsterBrain의 공격 접촉은 공용 Apply_WorldToPlayer가 HP·damage event·hit reaction을 소유한다. 호출 전에 HP를 직접 차감하거나 같은 damage event를 추가하면 한 collider가 두 번 피해를 준다. 공격 push/down을 없앨 때는 대상 MonsterProfiles의 attackPushRangeM/attackPushMs/attackKnockdown/attackDownMs만 바꾸고 boss reaction 및 몬스터 자신의 hitKnockbackScale을 섞지 않는다.
+
+Full Restore COMBO preview는 전체 Effect tree의 enrichment cache만으로 stage를 판단하지 않는다. 선택한 실제 모델의 skillbindings·animevents에서 effect ID와 clip window가 일치하는 유일한 stage를 조회한다. target 선택은 catalog reload를 할 수 있으므로 그 이전의 skill 포인터를 유지하지 않는다. 시작 실패뿐 아니라 재생 중 실패도 현재 Effect 목록에 이유를 남긴다.
+
+ALT V source camera와 model actor를 따로 복원할 때 위치뿐 아니라 forward/up의 좌표 basis도 비교한다. 원본 줌아웃 키가 이미 있는데 camera만 다른 축이면 새 키를 추측해서 추가하지 않는다. 배경을 대체하는 실제 opaque carrier에 sceneBackdrop을 연결하고, 해당 활성 window만 기존 배경 숨김을 적용한다. finite camera 성공과 실제 구도 성공은 별개다. 개별 수치는 09-22 Guardian 재생·카메라 RESULT를 따른다.
+
+
+### Interaction 준비 지연과 pending commit 사이의 취소
+
+준비가 늦은 첫 Clown/MAZE action을 최초 snapshot 한 번만 검사하면 이펙트가 빠진다. 동일 Server action 안에서 현재 age와 실제 clip/playRate·Server lock·Effect 수명을 확인하며 재시도하고, queue admission 성공 후 중복 제출을 막는다. queue 이후 같은 프레임에 취소·사망·class/form 교체가 들어올 수 있으므로 opted-in weak PendingAdmission을 실제 commit에서도 확인한다. old Character의 외부 참조가 남아 있는 경우까지 고려하며 이미 active인 E의 자연 꼬리를 Stop_Owner로 함께 지우지 않는다. 기본 nullopt 호출자는 기존 동작을 유지한다. 09-22 Gate1 복원 RESULT의 후속 검증을 따른다.
+
+### World prop의 상태 이름과 sustained source 오라
+
+`On/GoOff/Off` 이름으로 색이나 지속 여부를 추측하지 않는다. 원본 DeployData→Prop DB→LookInfo→ParticleSystem의 상태 참조를 찾고 ColorOverLife·EmitterLoops·lifetime을 대조한다. Gate3 진입오라는 On이 녹색 지속, GoOff가 파랑 지속이고 Off는 종료1회다. 원본 source-loop는 zero lifetime/loop0 계약과 실제 owner-sustained 소비자까지 함께 검사한다. trigger bounds는 실제 WModel 정점×modelPreScale×StartSize 및 occurrence 회전으로 계산한다. source code/window 성공을 실제 GPU 표시 성공으로 기록하지 않는다. [Gate3 결과](09-22/2026-09-22_GATE3_WORLD_AURA_IMPLEMENTATION_RESULT.md).
+
+
+### 원본 sprite의 carrier guard와 engine cbuffer prefix
+
+Codec의 sourceRecipe 허용이나 CPU 입자 수만으로 복원 성공을 판단하지 않는다. 실제 선택된 shader의 function·dispatch·HasProfile 세 guard와 renderer carrier를 모두 대조한다. 동일 원본 PS를 ribbon과 sprite가 공유할 때는 검증한 material/PS/VF/VS 조합만 함께 허용하고 기존 carrier는 보존한다.
+
+원본 material이 소유하지 않는 CB0 prefix를 항상 row0.X opacity로 가정하지 않는다. ParticleMacroUV는 원본 PS에 따라 center/scale 두 row 뒤 opacity가 별도 row에 있다. materialMap의 owned/unowned row와 실제 o0.w 명령으로 입력을 복원하고 최종 alpha를 강제하지 않는다. MacroUV는 실제 ParticleSystem occurrence 중심과 원본 world-space 반경을 사용한다. 같은 native를 공유하는 설치 문서 전체의 source literal·renderer predicate까지 연결한 뒤 실제 DDS pixel 출력과 opacity0 control을 검사한다.
+
+source tail이 occurrence 끝에서 잘리는지는 실제 입자 종료 시점으로 판단한다. visual tail을 늘릴 때 stage/Logic 시계는 별도로 보존한다. 사용자 저장 window는 보수적인 document 상한으로 자동 확대하지 않는다. Tool의 실제 모델 잔상은 미리보기 외부시계로 pause/rewind/stop을 처리하고 Product 기본 시계를 보존한다. 개별 근거는09-22 Flame/Dice/Stagger/Backstep 결과에 둔다.
+
+### Native carrier와 shader 입력 연결을 따로 확인한다
+
+- 새 native ID가 설치돼도 Trail/Decal pixel dispatch 상한이 옛 범위면 generic 재질로
+  빠진다. Native의 빈 generic resources가 흰 mask를 소비하면 큰 사각형이 생긴다.
+  C++ validation, HLSL dispatch와 installer range를 함께 갱신한다.
+- Masked LocalVF를 CB0[0].x opacity 계약으로 통일하지 않는다. 정확한 PS/VS와
+  unowned prefix를 확인하면 CB0[0]에 particle RGBA가 필요한 permutation이 있다.
+- Beamtrail UV0.zw는 source VS 출력과 runtime uv1 소비를 대조한다. tangentView가
+  필요한 PS에는 실제 strip world/UV frame을 공급한다. 전역 alpha 보정을 하지 않는다.
+- Identity-root CPU에서 bone-follow가 비었다는 사실은 Tool이 bone을 공급하지 않는다는
+  증거가 아니다. 설치 WModel의 actual pose와 Tool anchor/time history를 별도 확인한다.
+
+### IdentityParts 종료 정책과 skeletal actor의 중첩 payload
+
+원본 IdentityParts의 MakeParts=false와 bExecuteNotifyEnd=true를 구간 전체 hide로 옮기지 않는다.
+원본 실행 시점과 installed IDENTITY 파츠의 stance baseline을 함께 확인하고, 저작 playback의 구간
+표시는 기존 owner token의 저장·복원 경로에서만 추가한다. preview의 requiredStance도 실제 편집용
+CCharacter에 적용하고 Stop 때 복원하며 Server stance를 대신 변경하지 않는다.
+
+source skeletal actor의 자식 material/particle payload에는 부모 actor와 비슷한 필드가 포함될 수 있다.
+부모의 enclosing tail과 reflection으로 확인한 LoopCount/StartAnimTime/StartAnimTimeUseOnlyFirst를
+구분하고 실제 설치 WModel의 본을 사용한다. 지원 bool의 0/1 차이로 전체 actor를 버리거나 nested
+particle transform을 actor transform으로 쓰지 않는다. 신규 source native material의 color 선택이
+완료돼도 별도 selected_distortion_programs 원본 pass의 생성·설치 여부를 함께 확인한다.
+
+### 개별·그룹 회전과 실제 고정축 면
+
+Element rotation이 shader 좌표에 전달돼도 fixed-axis sprite의 최종 quad가 같은 emitter basis를 소비하는지 확인한다. 명시적 회전 편집은 공통 pivot helper와 기존 followEmitterAxisRotation을 함께 사용하며, camera/velocity billboard의 정책은 유지한다. 단일 선택을 unrelated animated sibling이 막지 않게 하되 서로 다른 부모 공간의 raw 위치 평균을 Group center로 쓰지 않는다. camera-relative offset은 pivot 회전 기대값에 포함하지 않는다. paused preview는 새 문서·birth history를 현재 cursor까지 재생성하는지도 확인한다. 실제 팡파레·fog와 source mesh 검증은09-22 EFFECT_ROTATION_PIVOT_IMPLEMENTATION_RESULT를 따른다.
+
+### Effect 모델 그림자의 native coverage와 카메라
+
+skeletal ModelCue를 SHADOW group에 추가할 때 surface와 다른 animation clock이나 model clone을 만들지 않는다. 동일 evaluated frame의 pose/root/material track을 다시 사용한다. Shadow light의 View/Proj를 source material의 camera 입력으로 넘기면 view-dependent mask가 달라질 수 있으므로 raster light 행렬과 실제 scene camera 행렬을 분리한다. generic CDO CastShadow=true는 notify별 native override를 증명하지 않으며 별도 projectile/decal의 존재와 시점을 함께 조사한다. optional castsShadow 누락은 false로 유지해 다른 Effect의 표시를 바꾸지 않는다.

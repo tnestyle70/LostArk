@@ -13,6 +13,7 @@
 #include <cstdint>
 #include <filesystem>
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -28,11 +29,16 @@ class CEffectScreenOverlayPresentation;
 class CNpc;
 class CValtan;
 
+/* Optional pending-only admission lifetime. The producer releases its token
+   when the authoritative action is superseded; active effects keep their tails. */
+struct EFFECT_PENDING_SPAWN_ADMISSION final {};
+
 struct EFFECT_SPAWN_DESC final
 {
     std::string strEffectAssetId;
     std::string strElementId;
 	std::weak_ptr<CCharacter> pOwner;
+	std::optional<std::weak_ptr<const EFFECT_PENDING_SPAWN_ADMISSION>> PendingAdmission;
 	std::weak_ptr<CValtan> pBossOwner;
 	/* A level-owned world-root spawn whose follow anchors read this NPC's body
 	   model. The NPC is never the budget/lifetime owner. */

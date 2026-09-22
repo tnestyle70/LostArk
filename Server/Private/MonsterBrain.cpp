@@ -477,49 +477,7 @@ void LostArk::Server::CMonsterBrain::Update(
 			if (LostArk::Shared::CombatCollision::Circles_Overlap(
 				attackCircle, targetBody))
 			{
-				const PLAYER_RUNTIME_PROFILE* playerProfile =
-					catalog.Find_Player(target->eCharacterClass);
-				const std::uint32_t damage = CGameplayCatalog::Apply_Defense(
-					monster.iAttackPower,
-					nullptr == playerProfile ? 0u : playerProfile->iDefense);
-				target->iCurrentHp = damage >= target->iCurrentHp ?
-					0u : target->iCurrentHp - damage;
-				if (0u != damage &&
-					outDamageEvents.size() < LostArk::Shared::MAX_DAMAGE_EVENTS)
-				{
-					LostArk::Shared::DAMAGE_EVENT event{};
-					event.iTargetNetEntityId = target->iNetEntityId;
-					event.iAmount = damage;
-					event.fPositionX = target->fPositionX;
-					event.fPositionY = target->fPositionY;
-					event.fPositionZ = target->fPositionZ;
-					event.isOutgoing = false;
-					outDamageEvents.push_back(event);
-				}
-				if (0u == target->iCurrentHp)
-				{
-					target->eAction = LostArk::Shared::PLAYER_ACTION_STATE::DEAD;
-					target->iCurrentSkillId =
-						LostArk::Shared::INVALID_SKILL_ID;
-					target->Clear_SkillTarget();
-					target->iActionStartTick = 0u == serverTick ? 1u : serverTick;
-					target->hasBufferedComboInput = false;
-					target->PendingCommand.Clear();
-					target->hasMoveGoal = false;
-					target->MovePath.clear();
-				}
-				else
-				{
-					CPlayerSkillSystem::Arm_PlayerHitReaction(
-						*target,
-						monster.fPositionX,
-						monster.fPositionZ,
-						monster.fAttackPushRangeM,
-						monster.iAttackPushMs,
-						monster.bAttackKnockdown,
-						monster.iAttackDownMs,
-						serverTick);
-				}
+				// The common hit owner applies damage, death and reactions once.
 				SERVER_WORLD_TO_PLAYER_HIT incoming{};
 				incoming.iRawDamage = monster.iAttackPower;
 				incoming.fSourceX = monster.fPositionX;

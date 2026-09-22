@@ -59,7 +59,8 @@ SOURCE_CHARACTER_NATIVE_INPUT MakeSourceCharacterInput(float2 uv, float4 extraUV
     input.values[5] = float4(tangentLight, 1.f);
     input.values[7] = float4(tangentView, 1.f);
     input.values[8] = (g_SourceCharacterProgram == 3u || g_SourceCharacterProgram == 8u ||
-        g_SourceCharacterProgram == 9u) ? clipPosition : sourcePosition;
+        g_SourceCharacterProgram == 9u || g_SourceCharacterProgram == 110u ||
+        g_SourceCharacterProgram == 111u) ? clipPosition : sourcePosition;
     if (g_SourceCharacterProgram == 5u) // Eye's own UV1/UV2 varyings.
     {
         input.values[2] = float4(uv, extraUV.yx);
@@ -69,7 +70,7 @@ SOURCE_CHARACTER_NATIVE_INPUT MakeSourceCharacterInput(float2 uv, float4 extraUV
         input.values[7] = clipPosition;
     }
     if (g_SourceCharacterProgram == 12u || g_SourceCharacterProgram == 22u || g_SourceCharacterProgram == 84u ||
-        g_SourceCharacterProgram == 92u || g_SourceCharacterProgram == 93u || staticMapMonster)
+        g_SourceCharacterProgram == 92u || g_SourceCharacterProgram == 93u || g_SourceCharacterProgram == 109u || staticMapMonster)
     {
         // The legacy head direct VS packs UV/light/view/position into 2/3/5/6.
         // Its base pass uses the common layout above.

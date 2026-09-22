@@ -1032,6 +1032,7 @@ void LostArk::Server::CGameRoom::Tick(const float fixedDeltaSeconds,
 		if (player.eCardMazeRole != LostArk::Shared::CARD_MAZE_ROLE::NONE)
 			m_CardMazePreviousPositions[id] = {player.fPositionX, player.fPositionZ};
 	Update_Players(fixedDeltaSeconds);
+	Update_KoukuCardRainSoldiers(updateTick);
 	Update_CardMaze(updateTick);
 	Update_KoukuBingo(updateTick);
 	m_CombatObjectRuntime.Update(

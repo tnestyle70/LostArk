@@ -1,0 +1,106 @@
+{
+  "schema": "lostark.effect-authoring",
+  "version": 13,
+  "effectAssetId": "effect.kouku.gate1.backstep.afterimage",
+  "displayName": "백스텝 흰색 실제 모델 잔상",
+  "particleSystem": {
+    "uniformScaleMultiplier": 1,
+    "yawOffsetDegrees": 0,
+    "directionYawDegrees": 0,
+    "initialSpeedMultiplier": 1
+  },
+  "modelCues": [
+    {
+      "cueId": "saydon.backstep.source-ghost",
+      "modelAssetId": "Character/KoukuSaton/MN_RPCT_05/MN_RPCT_05.wmodel",
+      "clipName": "rpct00_att_battle_34_04",
+      "startDelaySeconds": 0,
+      "durationSeconds": 0.55,
+      "alphaMode": "TRANSLUCENT",
+      "opacity": 1,
+      "colorMultiply": [
+        1,
+        1,
+        1,
+        0.38
+      ],
+      "holdLastFrame": false,
+      "loop": false,
+      "visible": true,
+      "suppressHorizontalRootMotionBone": "b_root",
+      "rootMotionVerticalAxis": 2,
+      "rootMotionVerticalScale": 0,
+      "localTransform": {
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "rotationDegrees": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "assetPreTransform": {
+        "scale": [
+          0.017,
+          0.017,
+          0.017
+        ],
+        "rotationDegrees": [
+          0,
+          0,
+          0
+        ]
+      },
+      "afterimage": {
+        "emissionStartSeconds": 0,
+        "emissionEndSeconds": 0.05000000074505806,
+        "sampleIntervalSeconds": 0.005,
+        "sampleLifetimeSeconds": 0.5,
+        "maxSamples": 64,
+        "appearanceBasis": "PROJECT_AUTHORED",
+        "sourceColorIntensity": 1.0,
+        "captureInitialPose": true
+      }
+    }
+  ],
+  "elements": [],
+  "sourceModelPreview": {
+    "gateId": "GATE1",
+    "actorProfileId": "MN_RPCT_05",
+    "targetBossPlacementId": "boss.kakulsaydon.g1.saydon",
+    "animations": [
+      {
+        "runtimeClip": "rpct00_att_battle_34_04",
+        "startOffsetMs": 0,
+        "sourceStartMs": 0,
+        "playMs": 1600,
+        "playRate": 1,
+        "endPolicy": "EXACT"
+      },
+      {
+        "runtimeClip": "rpct00_att_battle_14_01",
+        "startOffsetMs": 1600,
+        "sourceStartMs": 0,
+        "playMs": 1667,
+        "playRate": 1,
+        "endPolicy": "EXACT"
+      },
+      {
+        "runtimeClip": "rpct00_att_battle_14_02",
+        "startOffsetMs": 3267,
+        "sourceStartMs": 0,
+        "playMs": 3167,
+        "playRate": 1,
+        "endPolicy": "EXACT"
+      }
+    ]
+  }
+}

@@ -452,5 +452,234 @@
         ]
       }
     ]
+  },
+  {
+    "sourceActionId": 49290,
+    "sourceStageIndex": 1,
+    "notifies": [
+      {
+        "notifyId": "action-49290/stage-001/notify-004",
+        "sourceType": "PlaySkeletalMesh",
+        "category": "mesh",
+        "authority": "PRESENTATION",
+        "resolutionStatus": "SOURCE_ASSET_EXPLICIT",
+        "localTimeSeconds": 0.0,
+        "sourceEndSeconds": 0.0,
+        "durationSeconds": 0.0,
+        "sourceOffset": 3326204,
+        "assetReferences": [
+          {
+            "className": "SkeletalMesh",
+            "objectPath": "SK_DDK_DRR_01.Mesh.SK_DDK_DRR_01_SK"
+          },
+          {
+            "className": "AnimSet",
+            "objectPath": "SK_DDK_DRR_01.Ani.SK_DDK_DRR_01_Ani"
+          },
+          {
+            "className": "MaterialInstanceConstant",
+            "objectPath": "SK_DDK_DRR_01.Mat.SK_DDK_DRR_01_head_ST_MI_FX_Dead"
+          },
+          {
+            "className": "MaterialInstanceConstant",
+            "objectPath": "SK_DDK_DRR_01.Mat.SK_DDK_DRR_01_neck_ST_MI_FX_Dead"
+          },
+          {
+            "className": "ParticleSystem",
+            "objectPath": "FX_PC_DDK_03.Par_S_DDK_DResonance_SK_Cast_02"
+          },
+          {
+            "className": "ParticleSystem",
+            "objectPath": "FX_PC_DDK_03.Par_S_DDK_DResonance_SK_Trail_02"
+          },
+          {
+            "className": "ParticleSystem",
+            "objectPath": "FX_CM_02.Light.Par_MP_Light_01"
+          },
+          {
+            "className": "ParticleSystem",
+            "objectPath": "FX_PC_DDK_03.Par_S_DDK_DResonance_SK_Mouth_02"
+          },
+          {
+            "className": "ParticleSystem",
+            "objectPath": "FX_PC_DDK_03.Par_S_DDK_DResonance_SK_Eye_02"
+          }
+        ],
+        "serializedPayload": {
+          "encoding": "base64",
+          "byteOffset": 3326204,
+          "byteSize": 2663,
+          "sha256": "77dd9429ee8562669581f13d922cdbae482b4549ed97cd1d365a23b9b61891f1",
+          "data": "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"
+        },
+        "serializedLabels": [
+          "FX-08",
+          "SkeletalMesh'SK_DDK_DRR_01.Mesh.SK_DDK_DRR_01_SK'",
+          "AnimSet'SK_DDK_DRR_01.Ani.SK_DDK_DRR_01_Ani'",
+          "M",
+          "MaterialInstanceConstant'SK_DDK_DRR_01.Mat.SK_DDK_DRR_01_neck_ST_MI_FX_Dead'",
+          "SK_DragonicResonance_02",
+          "CEFAN_Particle",
+          "CEFParticleData",
+          "ParticleSystem'FX_PC_DDK_03.Par_S_DDK_DResonance_SK_Cast_02'",
+          "B_Root",
+          "CEFAN_Particle",
+          "CEFParticleData",
+          "ParticleSystem'FX_PC_DDK_03.Par_S_DDK_DResonance_SK_Trail_02'",
+          "B_Neck_01",
+          "B_Neck_03",
+          "CEFAN_Particle",
+          "CEFParticleData",
+          "ParticleSystem'FX_CM_02.Light.Par_MP_Light_01'",
+          "B_Neck_01",
+          "Spawn",
+          "Lifetime",
+          "Size",
+          "Color",
+          "Alpha",
+          "Location",
+          "CEFAN_Particle",
+          "CEFParticleData",
+          "ParticleSystem'FX_PC_DDK_03.Par_S_DDK_DResonance_SK_Mouth_02'",
+          "B_Tongue_01",
+          "CEFAN_Particle",
+          "CEFParticleData",
+          "ParticleSystem'FX_PC_DDK_03.Par_S_DDK_DResonance_SK_Eye_02'",
+          "B_Skull"
+        ]
+      },
+      {
+        "notifyId": "action-49290/stage-001/notify-005",
+        "sourceType": "AnimEvent_MaterialParamterScalar",
+        "category": "material",
+        "authority": "PRESENTATION",
+        "resolutionStatus": "SOURCE_PARAMETERS_SERIALIZED",
+        "localTimeSeconds": 4.158619110839312e+21,
+        "sourceEndSeconds": 1.7975107461463409e+19,
+        "durationSeconds": 7.214338310722972e+22,
+        "sourceOffset": 3328867,
+        "assetReferences": [],
+        "serializedPayload": {
+          "encoding": "base64",
+          "byteOffset": 3328867,
+          "byteSize": 95,
+          "sha256": "8437db40f5822b3e4407d8c9f7c36a9afbbd91293e57aaf895914d2ab4de2576",
+          "data": "Q0VGQWN0aW9uTm90aWZ5X0FuaW1FdmVudF9NYXRlcmlhbFBhcmFtdGVyU2NhbGFyAAEAAAAAAAAAzcxMPhIAAABvcGFjaXR5X2ludGVuc2l0eQAAAAAAAACAPzEAAAA="
+        },
+        "serializedLabels": [
+          "opacity_intensity"
+        ]
+      },
+      {
+        "notifyId": "action-49290/stage-001/notify-006",
+        "sourceType": "AnimEvent_MaterialParamterScalar",
+        "category": "material",
+        "authority": "PRESENTATION",
+        "resolutionStatus": "SOURCE_PARAMETERS_SERIALIZED",
+        "localTimeSeconds": 4.158619110839312e+21,
+        "sourceEndSeconds": 1.7975107461463409e+19,
+        "durationSeconds": 7.214338310722972e+22,
+        "sourceOffset": 3328962,
+        "assetReferences": [],
+        "serializedPayload": {
+          "encoding": "base64",
+          "byteOffset": 3328962,
+          "byteSize": 95,
+          "sha256": "f80d26cefa4d1561bb367de719322cddef4948d23139d383520e42b7dad13f7c",
+          "data": "Q0VGQWN0aW9uTm90aWZ5X0FuaW1FdmVudF9NYXRlcmlhbFBhcmFtdGVyU2NhbGFyAAEAAAAAAAA/zczMPhIAAABvcGFjaXR5X2ludGVuc2l0eQAAAIA/AAAAADEAAAA="
+        },
+        "serializedLabels": [
+          "opacity_intensity"
+        ]
+      },
+      {
+        "notifyId": "action-49290/stage-001/notify-007",
+        "sourceType": "AnimEvent_MaterialParamterScalar",
+        "category": "material",
+        "authority": "PRESENTATION",
+        "resolutionStatus": "SOURCE_PARAMETERS_SERIALIZED",
+        "localTimeSeconds": 1.6631257495523585e+22,
+        "sourceEndSeconds": 0.0,
+        "durationSeconds": 8.828180325246348e-44,
+        "sourceOffset": 3329057,
+        "assetReferences": [],
+        "serializedPayload": {
+          "encoding": "base64",
+          "byteOffset": 3329057,
+          "byteSize": 82,
+          "sha256": "2c568647ce812995a611008cdae56903cff891b8efe2d724e69b2015416481d2",
+          "data": "Q0VGQWN0aW9uTm90aWZ5X0FuaW1FdmVudF9NYXRlcmlhbFBhcmFtdGVyU2NhbGFyAAEAAAAAAAAAmpmZPgUAAABEZWFkAAAAAD8AAAAAMQAAAA=="
+        },
+        "serializedLabels": [
+          "Dead"
+        ]
+      },
+      {
+        "notifyId": "action-49290/stage-001/notify-008",
+        "sourceType": "AnimEvent_MaterialParamterScalar",
+        "category": "material",
+        "authority": "PRESENTATION",
+        "resolutionStatus": "SOURCE_PARAMETERS_SERIALIZED",
+        "localTimeSeconds": 1.6631257495523585e+22,
+        "sourceEndSeconds": 107374592.0,
+        "durationSeconds": -8.688050478813866e-44,
+        "sourceOffset": 3329139,
+        "assetReferences": [],
+        "serializedPayload": {
+          "encoding": "base64",
+          "byteOffset": 3329139,
+          "byteSize": 82,
+          "sha256": "528119ad4668c35025289ccea63ef0216cb3ed23e6c383a95e0b2b16bbc4ff4f",
+          "data": "Q0VGQWN0aW9uTm90aWZ5X0FuaW1FdmVudF9NYXRlcmlhbFBhcmFtdGVyU2NhbGFyAAEAAADNzEw/mpmZPgUAAABEZWFkAM3MTD4AAIA/NgAAAA=="
+        },
+        "serializedLabels": [
+          "Dead"
+        ]
+      },
+      {
+        "notifyId": "action-49290/stage-001/notify-009",
+        "sourceType": "AnimEvent_MaterialParamterLinearColor",
+        "category": "material",
+        "authority": "PRESENTATION",
+        "resolutionStatus": "SOURCE_PARAMETERS_SERIALIZED",
+        "localTimeSeconds": 1.7443085358005817e+28,
+        "sourceEndSeconds": 1.1576116261810758e+27,
+        "durationSeconds": 4.1051038512395516e-41,
+        "sourceOffset": 3329221,
+        "assetReferences": [],
+        "serializedPayload": {
+          "encoding": "base64",
+          "byteOffset": 3329221,
+          "byteSize": 117,
+          "sha256": "136260d807a84773e9ca22974b5ed76ba2d04dd8c5f3c76f764605105b64ccba",
+          "data": "Q0VGQWN0aW9uTm90aWZ5X0FuaW1FdmVudF9NYXRlcmlhbFBhcmFtdGVyTGluZWFyQ29sb3IAAQAAAAAAAACamRk/CwAAAFRyYW5zY29sb3IAAAAAAAAAAAAAAAAAAACAP83MTD4AAIA/AADgQAAAgD82AAAA"
+        },
+        "serializedLabels": [
+          "Transcolor"
+        ]
+      },
+      {
+        "notifyId": "action-49290/stage-001/notify-010",
+        "sourceType": "AnimEvent_MaterialParamterLinearColor",
+        "category": "material",
+        "authority": "PRESENTATION",
+        "resolutionStatus": "SOURCE_PARAMETERS_SERIALIZED",
+        "localTimeSeconds": 1.7443085358005817e+28,
+        "sourceEndSeconds": 1.1576116261810758e+27,
+        "durationSeconds": -134686448.0,
+        "sourceOffset": 3329338,
+        "assetReferences": [],
+        "serializedPayload": {
+          "encoding": "base64",
+          "byteOffset": 3329338,
+          "byteSize": 202,
+          "sha256": "9c476145ede99ac6c6a14fc4c340e156c3bf81da71ac89982eec0f9a8cb1b053",
+          "data": "Q0VGQWN0aW9uTm90aWZ5X0FuaW1FdmVudF9NYXRlcmlhbFBhcmFtdGVyTGluZWFyQ29sb3IAAQAAAM3MTD+amZk+CwAAAFRyYW5zY29sb3IAzcxMPgAAgD8AAOBAAACAPwAAAAAAAAAAAAAAAAAAgD8BAAAAAAAAAAEAAAABAAAAAAAAAAAAAAAAACBCAAAAAAAAAAAAAAAAMzMTQDMzE0AzMxNAAAAAAAAAAAAAAAAABQAAAE5vbmUAAAAAAAAAAAAAAAAAHAAAAA=="
+        },
+        "serializedLabels": [
+          "Transcolor"
+        ]
+      }
+    ]
   }
 ]

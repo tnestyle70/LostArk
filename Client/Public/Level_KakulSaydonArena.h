@@ -772,17 +772,28 @@ private:
 	   one. With no result at all only a Debug build shows the sample page. */
 	void Show_MvpResult(bool_t bReplayLast);
 	std::uint32_t m_iNextGateRequestSequence = 1u;
+	std::array<EFFECT_WORLD_ROOT_HANDLE, 2> m_Gate3AuraHandles{};
+	std::array<std::string, 2> m_Gate3AuraAttempted{};
+	std::string m_strGate3AuraFailure;
+	std::uint32_t m_iGate3AuraStartTick = 0u;
+	std::uint32_t m_iGate3AuraRunEpoch = 0u;
+	bool_t m_bGate3AuraOccupied = false;
+	bool_t m_bGate3AuraSubmitted = false;
+	f32_t m_fGate3AuraSecondsLeft = 10.f;
+	void Update_Gate3EntryAura(bool_t canPropose, bool_t entryAvailable);
+	void Submit_Gate3Auras();
+	void Clear_Gate3Auras();
 	// Attempt once on each playback edge; missing media never retries every frame.
-	bool_t m_bReadyTerraceBgmInitialized = false;
-	bool_t m_bReadyTerraceBgmWanted = false;
+	bool_t m_bRaidBgmInitialized = false;
+	std::wstring m_strRaidBgmWanted;
 	bool_t m_bLocalSequencePlaybackActive = false;
-	bool_t m_bReadyTerraceBgmStarted = false;
+	bool_t m_bRaidBgmStarted = false;
 	std::uint32_t m_iReadyTerraceObservedRunEpoch = 0u;
 	LostArk::Shared::KOUKUSAYDON_RAID_PHASE m_eReadyTerraceObservedPhase = LostArk::Shared::KOUKUSAYDON_RAID_PHASE::INACTIVE;
 	bool_t Try_GetReplicatedLocalPlayerPosition(float3_t& outPosition) const;
-	void Start_ReadyTerraceBgm();
-	void Stop_ReadyTerraceBgm();
-	void Update_ReadyTerraceBgm();
+	void Start_RaidBgm(const wchar_t* assetId);
+	void Stop_RaidBgm();
+	void Update_RaidBgm();
 	void Update_GateProgress(f32_t fTimeDelta);
 	void Apply_GateProgressState(const LostArk::Shared::S2C_GATE_PROGRESS_STATE& State);
 	/* Both Server gate routes share the same object / lighting commit. Active Raid

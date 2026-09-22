@@ -1600,6 +1600,10 @@ void Client::CEffect_Tool::Render_UnifiedEffectTree(
 		ImGui::SetTooltip("Load this saved Skill Effect if needed, then play it from the beginning.");
 	if (!bDrawable)
 		ImGui::TextDisabled("Saved partial Effect: %s", DrawableError.c_str());
+	else if (!bPreviewReady)
+		ImGui::TextWrapped("Play All unavailable: %s", PreviewReadinessError.c_str());
+	if (bActive && !m_strPreviewStatus.empty())
+		ImGui::TextWrapped("%s", m_strPreviewStatus.c_str());
 
 	// Keep the view local to this draw: document edits never leave cached pointers.
 	std::array<std::vector<const EFFECT_ELEMENT_DESC*>,
@@ -1978,6 +1982,8 @@ void Client::CEffect_Tool::Render_ActiveAuthoredEffectTree()
 	if (ImGui::SmallButton("Play All##active-authored"))
 		(void)Try_PlayActiveUnifiedEffect();
 	ImGui::EndDisabled();
+	if (!m_bActiveDocumentDrawable && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+		ImGui::SetTooltip("%s", m_strActiveDocumentDrawableError.c_str());
     ImGui::SameLine();
     ImGui::BeginDisabled(!m_bActiveDocumentDrawable || !m_pAuthoringSequencer || m_MarkedElementIds.empty());
     if (ImGui::SmallButton("Play Group")) (void)Try_PlayMarkedElementGroup();
@@ -1986,7 +1992,10 @@ void Client::CEffect_Tool::Render_ActiveAuthoredEffectTree()
         ImGui::SetTooltip("Shift-click Element rows, then play the marked selection together in a loop.");
 	ImGui::SameLine();
 	ImGui::TextDisabled("%zu Elements", m_ActiveDocument->Elements.size());
-	ImGui::SameLine();
+	if (!m_bActiveDocumentDrawable)
+		ImGui::TextWrapped("Play All unavailable: %s", m_strActiveDocumentDrawableError.c_str());
+	else if (!m_strPreviewStatus.empty())
+		ImGui::TextWrapped("%s", m_strPreviewStatus.c_str());
     float leadingDelay = 0.f;
     std::string delayError;
     const bool canTrimMapDelay = Resolve_CinematicLeadingDelay(*m_ActiveDocument, leadingDelay, delayError);

@@ -372,6 +372,63 @@ int LostArk::Server::Run_ServerCardMazeContractTests()
 		tests.Require(beforeArrival && returned && room->m_KoukuCardMaze.Get_Phase() == Maze::PHASE::INACTIVE,
 			"After every hunter takes the personal portal all 1..4 participants finish the Gate 2 return together");
 	}
+	// Card-rain soldiers use the same catalog bodies, but never become maze targets.
+	{
+		auto room = std::make_unique<CGameRoom>(WORLD_ID::KAKULSAYDON_ARENA);
+		const auto* placement = room->Find_Placement("boss.kakulsaydon.g1.saydon");
+		tests.Require(room->Is_Ready() && placement, "Card rain uses the actual room and Saydon placement");
+		if (room->Is_Ready() && placement)
+		{
+			SERVER_WORLD_ENTITY owner{}; owner.iNetEntityId = room->m_iNextNetEntityId++;
+			owner.eKind = WORLD_BOOTSTRAP_KIND::BOSS; owner.iCurrentHp = owner.iMaximumHp = 1000u;
+			owner.strPatternId = "cardrain.contract"; owner.iPatternSequence = 1u;
+			owner.fPositionX = placement->fPositionX; owner.fPositionY = placement->fPositionY; owner.fPositionZ = placement->fPositionZ;
+			room->m_WorldEntities.push_back(owner);
+			const auto base = room->m_WorldEntities.size();
+			tests.Require(!room->Spawn_KoukuCardRainSoldiers(INVALID_NET_ENTITY_ID, 100u) && room->m_WorldEntities.size() == base,
+				"Invalid card-rain owner preserves all existing entities");
+			BOSS_PATTERN_MECHANIC_TRIGGER trigger{}; trigger.eKind = BOSS_PATTERN_MECHANIC_TRIGGER_KIND::CARD_RAIN_SOLDIERS;
+			trigger.strTriggerId = "cardrain.contract.trigger";
+			room->m_PendingKoukuMechanicTriggers.push_back({owner.iNetEntityId, owner.iPatternSequence, trigger});
+			room->Commit_KoukuMechanicTriggers(100u);
+			const bool spawned = room->m_KoukuCardRainSoldiers.size() == 3u;
+			tests.Require(spawned && room->m_KoukuCardRainSoldiers.size() == 3u && room->m_WorldEntities.size() == base + 3u,
+				"Card rain commits exactly three normal replicated monsters");
+			if (spawned)
+			{
+				std::set<std::string> suits; bool grounded = true;
+				for (const auto& [id, state] : room->m_KoukuCardRainSoldiers)
+				{
+					const auto entity = std::find_if(room->m_WorldEntities.begin(), room->m_WorldEntities.end(),
+						[id](const auto& row) { return row.iNetEntityId == id; });
+					if (entity == room->m_WorldEntities.end()) { grounded = false; continue; }
+					suits.insert(entity->strArchetypeId); SERVER_NAV_POINT ground{};
+					grounded = grounded && entity->eKind == WORLD_BOOTSTRAP_KIND::MONSTER && !room->m_KoukuCardMaze.Is_Target(id) &&
+						room->m_ServerNavigation.Sample_Position(entity->fPositionX, entity->fPositionZ, ground) &&
+						std::abs(ground.y - entity->fPositionY) < .01f;
+				}
+				tests.Require(grounded && suits == std::set<std::string>{"MONSTER_KOUKU_CARD_CLUB", "MONSTER_KOUKU_CARD_HEART", "MONSTER_KOUKU_CARD_DIAMOND"},
+					"All three source suits use navigation and do not enter the maze kill ledger");
+				tests.Require(room->Spawn_KoukuCardRainSoldiers(owner.iNetEntityId, 101u) && room->m_WorldEntities.size() == base + 3u,
+					"Replaying the same pattern trigger does not duplicate soldiers");
+				const auto expiry = 100u + CKoukuSaydonLogicRuntime::Ticks_FromMs(30000u);
+				room->Update_KoukuCardRainSoldiers(expiry - 1u);
+				tests.Require(room->m_KoukuCardRainSoldiers.size() == 3u, "Soldiers stay alive before their bounded deadline");
+				room->Update_KoukuCardRainSoldiers(expiry);
+				tests.Require(room->m_KoukuCardRainSoldiers.empty() && room->m_WorldEntities.size() == base,
+					"The 30-second deadline removes only the summoned soldiers");
+				auto boss = std::find_if(room->m_WorldEntities.begin(), room->m_WorldEntities.end(),
+					[&](const auto& row) { return row.iNetEntityId == owner.iNetEntityId; });
+				boss->iPatternSequence = 2u;
+				tests.Require(room->Spawn_KoukuCardRainSoldiers(owner.iNetEntityId, expiry + 1u), "A new pattern can summon a fresh batch");
+				boss = std::find_if(room->m_WorldEntities.begin(), room->m_WorldEntities.end(),
+					[&](const auto& row) { return row.iNetEntityId == owner.iNetEntityId; });
+				boss->strPatternId.clear(); room->Update_KoukuCardRainSoldiers(expiry + 2u);
+				tests.Require(room->m_KoukuCardRainSoldiers.empty() && room->m_WorldEntities.size() == base,
+					"Finishing the owning pattern cleans its soldiers without waiting for timeout");
+			}
+		}
+	}
 	std::cout << "card maze failures: " << tests.failures << '\n';
 	return tests.failures == 0 ? 0 : 1;
 }

@@ -54,6 +54,7 @@ optional `koukuHudMode`는 `MARIO/MAZE/NONE`이고 Server가 이동 성공 후 �
 Clown 본체는 `Character/KoukuSaton/MN_RPCZ_00-1/MN_RPCZ_00-1.wmodel`이며 admission scale은
 `0.017 × 0.709`다. 별도 프라이팬 `IT_GSTFP_00` 장착 part를 제외했고 본체와 망치 몸동작은 유지한다.
 `Data/Animation/Authored/KoukuSaydon/Clown.interactionbindings.json`이 mode/index별 clip을 소유한다.
+Interaction Effect는 동일 Server action의 준비가 끝날 때까지 현재 action age로 재시도하되 실제 clip/playRate, Server action lock, Effect 수명 안에서 한 번만 제출한다. 선택적인 `EFFECT_SPAWN_DESC::PendingAdmission`은 producer가 소유하는 typed lifetime token의 weak 참조다. 기본 nullopt는 기존 호출 동작을 유지하며 Effect service는 queue admission과 commit에서 만료된 요청만 폐기한다. 새 action·취소·사망·class/form 교체는 기존 Character의 token을 해제한다. 이미 active인 Effect의 자연 꼬리는 이 token으로 중단하지 않는다. 저장 JSON과 network wire는 바뀌지 않는다.
 G1 전투 진입 snapshot 전에 Server가 참가자 1~4명의 문양을 중복 없이 배정하고 색 RED/BLACK은 독립으로 선택한다. 유효한 기존 배정은 유지하며 G2 진입 연출 시작과 퇴장에 NONE으로 정리한다. Client는 8개 `boss.kouku.card.*` V2 group을 머리 위에 표시하고 카드 상태를 생성하지 않는다.
 
 카드미로의 여섯 class는 `Data/Animation/Authored/<Class>/<Class>.interactionbindings.json`의 원본 손 본과 clip을 사용한다. LMB는 오른쪽에서 왼쪽으로 휘두르는 clip, Q는 점프 내려찍기이며 기존 typed interaction command와 Server hit 시각을 따른다. 기본 무기를 숨기고 별도 카드미로 망치를 표시하며 퇴장 시 기본 무기로 복귀한다. 일반 광기 광대는 망치를 숨기고 Mario 광대만 표시한다.
@@ -497,6 +498,8 @@ class 배율을 상속하지 않는다. catalog는 process 최초 초기화에�
 character를 다시 생성해야 한다. runtime hot reload는 아니다.
 
 ### 5.1 Source Effect attachment basis
+
+Effect Tool의 개별 Element와 Group 회전은 같은 pivot 계산을 사용한다. 기본은 Anchor origin이며 Group center, Custom point, Element origin을 선택할 수 있다. 선택한 pivot은 편집 세션 상태이고 결과 위치·회전·속도·선형 이동 끝점은 기존 Element 필드로 저장한다. 명시적인 회전 편집은 source fixed-axis sprite에 기존 `followEmitterAxisRotation`을 켜 실제 면에도 emitter basis를 전달한다. camera/velocity billboard의 방향 정책은 유지한다. 서로 다른 ParticleSystem 부모 공간을 쓰는 그룹의 개별 편집에서는 Group center를 사용할 수 없고, source/master가 별도 소유하는 애니메이션 경로는 해당 소유자를 편집한다. 현재 cursor의 preview 재생성으로 world-space 입자 birth history도 갱신하며, 실행 중 제품 Effect를 소급 회전하는 계약은 아니다.
 
 Imported/Product Effect의 attachment는 `FOLLOW_NAMED_ANCHORS`와 `SNAPSHOT_ROOT`를 같은 transform
 경로로 취급하지 않는다. named-bone follow는 admitted model/bone world가 소유한 import basis를
@@ -951,6 +954,9 @@ Server가 저장 Action·Sequence revision과 Flow를 검증하고 실행 epoch�
 Stop은 실행 owner와 epoch가 일치할 때만 처리한다. `Play Saved Pattern Flow`는 전투 순서만 실행하고 `Composition Play All`은 선택 관문의
 게시 목록에서 Bundle을 하나의 동시 실행 항목으로 유지하며 해당 child의 중복 단독 재생을 제외한다.
 Flow는 정확한 Server COMPLETED를 받은 뒤 대기 시간을 거쳐 다음 typed Pattern/Bundle 요청을 보낸다.
+GATE1은 마지막 항목 완료와 대기 후 첫 항목으로 순환한다. 이 동작은 전투 전용 Saved Pattern Flow와
+Sequence를 포함한 Server RaidFlow 모두에 적용한다. Server RaidFlow는 반복 경계에서도 같은 실행 epoch와
+게시 revision을 유지하며 잔여 row를 넘긴다. Stop·중단·관문 완료·연결 또는 revision 변경은 기존 종료 경로를 따른다.
 거부·취소·연결 종료는 남은 순서를 취소한다. Server는 묶음의 모든 대상을
 검증한 뒤 하나의 run epoch와 공통 시작 tick을 확정한다. offset은 30Hz tick으로 올림하며 Stop/Restart는
 원래 run epoch를 명시한다. 같은 방의 Client와 늦게 입장한 Client는 복제된 묶음 상태와 시작 tick을 소비한다.
@@ -1883,3 +1889,29 @@ VehicleCatalog formatVersion 4는 optional ambientEffectCues(MOUNT_END), mountEf
 Effect 저작 문서의 optional ownerControls는 재질·로컬 방향광·일시 가시성을 저장한다. Effect Tool과 component assembly 변환은 같은 배열과 stable control ID를 보존하고, 제어만 있는 문서도 기존 Effect playback clock으로 재생한다. 범용 저장·원복 규칙은 [렌더링·이펙트 복원 V2](../GB/렌더링이펙트복원V2.md)의 OwnerControls 항목을 따른다.
 
 `CEffectObject`는 weak Character owner와 effect occurrence token, 제품 action-start identity를 전달한다. `CCharacter`는 활성 key sample만 적용하며 취소·숨김·실패·owner 변경·종료 때 해당 token을 해제한다. 재질은 제어 전 실제 CModel 값을 복원하고 일시 visibility flag는 기존 stance/장비 상태와 분리한다. 서로 다른 occurrence나 사용자 재질 변경을 전체 Clear로 지우지 않는다. UI는 이 기존 경계로만 제어를 제출하며 Shared/Server gameplay state나 판정 권위를 추가하지 않는다.
+
+### Ctrl 핑 표시 입력
+
+`CPlayerController`는 Ctrl 새 press부터 다음 물리 좌클릭 한 번을 로컬 핑으로 소비한다. Ctrl 해제·다른 키/우클릭·UI/focus/capture 차단은 대기를 취소한다. 대기 과녁은 실제 캐릭터 머리를 따라가고, 핑은 기존 피킹 XZ와 Character navigation 높이에 3초 표시한다. 기존 `CClickMoveEffect -> CEffectPresentationService`의 준비·수명 경계를 재사용한다. 이 표시에는 이동·공격·MAZE command나 party broadcast가 없으며 Ctrl+Z/X/C Esther 명령은 기존 typed sink를 사용한다.
+
+
+### 쿠크 카드비·관문 음악 소비 계약
+
+SHOWTIME_PLAYER_TARGETS의 random volley는 fixed/tracking template 없이 단독으로 사용할 수 있다. 기존4개 random 필드는 함께 저장하며 optional `randomAnchorKind`는 `BOSS_SPAWN`(기본값) 또는 현재 `BOSS`, `randomScaleMin/Max`는 기본1과 finite[.01,10]의정렬된범위를 사용한다. Action Workbench가 저장·표시하고 projector→Gameplay publisher→Server가 동일 값으로 소비한다. Server가 navigation에서 확정한 occurrence scale은 Shared protocol103의 S2C_COMBAT_OBJECT_SPAWNED에 불변값으로 포함되며 Client 재시도·late join과 타격 primitive에 동일하게 적용한다. UI가 scale·위치를 독립 추첨하지 않는다.
+
+유한 random volley에는 MAP SOUND occurrence를 함께 포함할 수 있다. 최소 한 개의 MAP EFFECT가 위치 기준을 소유하며 SOUND만 있는 세트, BOSS-follow SOUND 및 looping targeted SOUND는 거부한다. Sound도 같은 content-addressed visual ID와 Server birth clock에 속하므로 각 투하에서 한 번 재생하고 늦은 입장에서는 이미 지난 음원 구간을 다시 시작하지 않는다. 기존 SoundCueCatalog의 variant는 해당 CombatObject ID/spawn tick/occurrence로 고정되며, 원본 Wwise avoid-repeat 메모리 전체를 재구현한 계약은 아니다.
+
+`CARD_RAIN_SOLDIERS`는 추가 매개변수가 없는 typed trigger다. 기존 MonsterCatalog/CardMaze profile의 CLUB·HEART·DIAMOND를 Server Spawn_Monster에서 생성하며 maze 진행 상태에는 등록하지 않는다. owner 패턴/sequence 종료·owner 제거 및30초상한에 정리된다. 원본NPC 모델 대응과 프로젝트 수량·수명 조정은 대응RESULT에 기록한다.
+
+쿠크 Level의 단일 BGM owner가 Ready Terrace·GATE1/2/3·Mario1~4·Card Maze·Bingo를 승인된 player/raid 상태에서 선택한다. 시퀀스와컷씬/카메라 재생 중에는 BGM을 중지하고 같은 state의 반복 snapshot은 음악을 재시작하지 않는다. 원본 intro/loop 구간은 WAV smpl metadata를 소비한다. cue sound는 기존 pattern presentation 경로를 사용한다.
+
+
+### Guardian 변신·Monster 공격·Gate3 오라 입력
+
+GuardianKnight Z는 identity 충전량에 관계없이 Server에 변신을 요청한다. 실제 stance commit에서 identity와 Ember orb를 채우며 기존 3초 공통 cooldown과 15초 지속을 유지한다. Client가 stance를 직접 교체하지 않는다.
+
+GuardianKnight 일반 S `49220 / 스피닝 플레임`은 `PlayerSkillTargeting.json`의 `GROUND_POINT`로 차원술사 T와 같은 S 조준 → LMB 확정 경로를 사용한다. Server가 4.5m 사거리와 navigation을 다시 검증하며 지점 표시는 현재 피해 반경 1.3m와 같은 지름 2.6m다. HUMAN stance, stable skill ID, 피해·쿨타임·Ember 계약은 유지한다. 사용자가 지정한 원본 `49290` 용머리/원형 이펙트는 `49220.source.49290` Effect ID와 skillbinding의 두 clipOccurrenceId로 provenance를 보존한다. `skill_target` snapshot cue가 승인 지점에 재생되고 내부 원본 model/bone anchor는 그대로 사용한다. 두 body/FX clip의 presentation playRate는 2.888889/1.333333으로 기존 피해 300ms와 action 2000ms에 맞춘 프로젝트 조정값이다. DRAGON S `49230`은 이 교체 대상에 포함하지 않는다.
+
+발탄 일반·루가루, 쿠크 시작 4종·카드미로 병정의 공격은 MonsterProfiles의 attackPushRangeM/attackPushMs/attackKnockdown/attackDownMs=0/0/false/0으로 피해만 적용한다. Valtan/Kouku boss push와 몬스터 자신의 hitKnockbackScale은 유지한다. MonsterBrain은 공용 Apply_WorldToPlayer 한 번만 호출한다.
+
+Gate3 진입 오라는 원본 Prop300010 사각형의 회전과 실측 크기를 사용한다. Client는 replicated player 위치와 Server tick으로 10초 연속 체류를 표시한 뒤 기존 IPlayerCommandSink::Request_GateProgressPropose(ENTER_GATE3)를 한 번 제출한다. 이탈·사망·phase 변경은 취소하고 파티 동의 및 최종 이동은 기존 Server 입장 계약을 유지한다. WAIT_ENTRY의 이동만 준비 데크 안에서 허용하고 스킬은 계속 차단한다.

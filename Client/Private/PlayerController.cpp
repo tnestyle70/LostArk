@@ -150,6 +150,8 @@ void Client::CPlayerController::Set_LocalCharacter(const shared_ptr<CCharacter>&
 	m_BasicAttackPressEdgeGate.Reset();
 	m_BasicAttackResendGate.Reset();
 	m_CaptureInputGate.Reset();
+	m_PingInputGate.Reset();
+	m_wasPingKeyDown.fill(false);
 	m_LastMoveGoalSentAt = {};
 	m_LastSentMoveGoal = {};
 	m_LastSkillAimSentAt = {};
@@ -216,6 +218,45 @@ void Client::CPlayerController::Update(
 	const bool_t isRightMousePressed =
 		isRightMousePhysicallyDown && !m_wasRightMousePhysicallyDown;
 	m_wasRightMousePhysicallyDown = isRightMousePhysicallyDown;
+	const bool_t pingLeftDown =
+		0 != (CGameInstance::Get().Get_DIMouseStateRaw(Engine::DIM::LB) & 0x80);
+	const bool_t pingCtrlDown =
+		0 != (CGameInstance::Get().Get_DIKeyStateRaw(DIK_LCONTROL) & 0x80) ||
+		0 != (CGameInstance::Get().Get_DIKeyStateRaw(DIK_RCONTROL) & 0x80);
+	bool_t otherPingCommand =
+		0 != (CGameInstance::Get().Get_DIMouseStateRaw(Engine::DIM::RB) & 0x80);
+	for (std::size_t key = 0u; key < m_wasPingKeyDown.size(); ++key)
+	{
+		const bool_t down = 0 != (CGameInstance::Get().Get_DIKeyStateRaw(
+			static_cast<uint8_t>(key)) & 0x80);
+		if (key != DIK_LCONTROL && key != DIK_RCONTROL && down && !m_wasPingKeyDown[key])
+			otherPingCommand = true;
+		m_wasPingKeyDown[key] = down;
+	}
+	const auto& pingPlayer = CCombatHUDViewModel::Get().Get_Player();
+	const bool_t pingEnabled = gameplayCommandsEnabled && !isControlCaptured && !marioControlsActive &&
+		!isMoveClickSuppressed && !m_pLocalCharacter.expired() && pingPlayer.isValid &&
+		0u != pingPlayer.iCurrentHp && !CGameInstance::Get().IsMouseInputBlocked() &&
+		!CUIInputRouter::Get().Is_MouseClaimedThisFrame() &&
+		(!pingLeftDown || 0 != (CGameInstance::Get().Get_DIMouseState(Engine::DIM::LB) & 0x80)) &&
+		(m_allowCapturedKeyboardInput || !CGameInstance::Get().IsKeyboardInputBlocked()) &&
+		!ImGui::GetIO().WantTextInput && !CUIInputRouter::Get().Is_TextInputActive();
+	const bool_t pingRequested = m_PingInputGate.Observe(
+		pingCtrlDown, pingLeftDown, otherPingCommand, pingEnabled);
+	if (m_pClickMoveEffect)
+		m_pClickMoveEffect->Set_PingPending(m_PingInputGate.Is_Pending(), m_pLocalCharacter.lock());
+	if (pingRequested)
+	{
+		Cancel_GroundTargeting();
+		m_BasicAttackResendGate.Suppress_UntilRelease();
+		const auto owner = m_pLocalCharacter.lock();
+		const auto transform = owner ? owner->Get_Transform() : nullptr;
+		float3_t picked{}, grounded{};
+		if (transform && m_pClickMoveEffect &&
+			Try_PickGroundPlane(XMVectorGetY(transform->Get_State(STATE::POSITION)), picked) &&
+			owner->Try_SampleTargetGround(picked.x, picked.z, grounded))
+			m_pClickMoveEffect->Play_Ping(grounded, owner);
+	}
 	for (std::size_t key = 0u; key < m_wasKeyDown.size(); ++key)
 	{
 		const bool_t down = 0 != (CGameInstance::Get().Get_DIKeyStateRaw(
@@ -265,6 +306,7 @@ void Client::CPlayerController::Update(
 	const bool_t isRightMouseDown =
 		!m_CaptureInputGate.Is_Blocked(CPLAYER_CAPTURE_INPUT_GATE::RIGHT_MOUSE) &&
 		!CGameInstance::Get().IsMouseInputBlocked() &&
+		!(Engine::DIM::LB == Move_MouseButton() && m_PingInputGate.Owns_LeftPress()) &&
 		0 != (CGameInstance::Get().Get_DIMouseState(Move_MouseButton()) & 0x80);
 	const bool_t isKeyboardBlocked =
 		CGameInstance::Get().IsKeyboardInputBlocked();
@@ -283,7 +325,7 @@ void Client::CPlayerController::Update(
 		m_pCommandSink;
 
 	if (LostArk::Shared::KOUKU_HUD_MODE::MAZE == CCombatHUDViewModel::Get().Get_Player().eKoukuHudMode &&
-		gameplayCommandsEnabled && character && commandSink && isMazeLeftPressed &&
+		gameplayCommandsEnabled && character && commandSink && isMazeLeftPressed && !m_PingInputGate.Owns_LeftPress() &&
 		!isControlCaptured && GetForegroundWindow() == g_hWnd &&
 		!CGameInstance::Get().IsMouseInputBlocked() &&
 		!m_CaptureInputGate.Is_Blocked(CPLAYER_CAPTURE_INPUT_GATE::LEFT_MOUSE))
@@ -343,6 +385,7 @@ void Client::CPlayerController::Update(
 					!m_wasTargetingRightMouseDown;
 				const bool_t confirmEdge =
 					!CGameInstance::Get().IsMouseInputBlocked() &&
+					!m_PingInputGate.Owns_LeftPress() &&
 					0 != (CGameInstance::Get().Get_DIMouseState(Attack_MouseButton()) & 0x80) &&
 					isLeftMousePhysicallyDown &&
 					!m_wasTargetingLeftMouseDown;
@@ -775,7 +818,8 @@ void Client::CPlayerController::Poll_BasicAttack(
 	}
 	const bool_t commandEligible =
 		!m_CaptureInputGate.Is_Blocked(CPLAYER_CAPTURE_INPUT_GATE::LEFT_MOUSE) &&
-		isGameplayDown && !commandSuppressed && !resendSuppressed && nullptr != pSkill &&
+		isGameplayDown && !commandSuppressed && !resendSuppressed &&
+		!m_PingInputGate.Owns_LeftPress() && nullptr != pSkill &&
 		LostArk::Shared::INVALID_SKILL_ID == outSkillId;
 	if (!m_BasicAttackPressEdgeGate.Should_Submit(
 			isPhysicallyDown, commandEligible, now))

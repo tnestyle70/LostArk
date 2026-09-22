@@ -610,6 +610,8 @@ public:
     using AFTERIMAGE_OWNER_PROVIDER = std::function<bool_t(uint32_t, bool_t, std::vector<CSkeletalAfterimage::MODEL_VIEW>&)>;
     void Set_AfterimageOwnerProvider(AFTERIMAGE_OWNER_PROVIDER provider) { m_AfterimageOwnerProvider = std::move(provider); Reset_ModelCueAfterimages(); }
 	bool_t Has_NonBlendModelCues() const;
+	bool_t Has_ShadowModelCues(const EFFECT_EVALUATED_FRAME& Frame) const;
+	HRESULT Render_ShadowModelCues(const EFFECT_EVALUATED_FRAME& Frame);
 	bool_t Has_WorldMarkElements() const;
 	bool_t Has_ActiveSceneBackdrop(const EFFECT_EVALUATED_FRAME& Frame) const;
 	HRESULT Render_NonBlendModelCues(const EFFECT_EVALUATED_FRAME& Frame);
@@ -814,6 +816,8 @@ private:
 		const EFFECT_MODEL_CUE_DESC& Cue, MODEL_CUE_RESOURCE& Resource,
 		f32_t fSampleTimeSeconds, const float4x4_t& RootWorld,
 		float4x4_t& OutWorld, std::string& strOutError);
+	HRESULT Apply_ModelCueSourceMaterialTracks(
+		const EFFECT_MODEL_CUE_DESC& Cue, Engine::CModel& Model, f32_t fLocalTime);
 	HRESULT Render_ModelCues(
 		const EFFECT_EVALUATED_FRAME& Frame,
 		bool_t bNonBlendSurfaceOnly);

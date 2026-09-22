@@ -276,6 +276,13 @@ inline bool Has_ArtistMaterialContract(const EFFECT_ELEMENT_DESC& Element)
             Element.RuntimeCarrier.eKind != EFFECT_AUTHORED_RUNTIME_CARRIER_KIND::ANIMATION_TRAIL_BAKED_EDGE_V1)
             return false;
     }
+    // Sk12_9 also uses this exact material on a Cascade sprite emitter.
+    // Admit only that measured VF; the original ribbon contract remains below.
+    else if (Program->iProfileIndex == 3008u && Element.eKind == EFFECT_ELEMENT_KIND::PARTICLE)
+    {
+        if (!Element.SourceRecipe.bEnabled || Element.SourceRecipe.strRendererShape != "sprite" ||
+            !Element.RuntimeCarrier.Is_Empty()) return false;
+    }
     else if (Program->strRuntimeProfileId.starts_with("effect.ue3.kouku-") &&
         (Program->strRendererShape == "ribbon" || Program->strRendererShape == "beam"))
     {

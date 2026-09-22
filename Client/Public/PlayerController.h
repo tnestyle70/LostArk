@@ -42,6 +42,35 @@ namespace Client
 		bool_t m_suppressUntilRelease = false;
 	};
 
+	/* One Ctrl press arms one physical left click. Raw edges are observed even
+	while UI/focus blocks commands, and a consumed click stays owned until up. */
+	class CPING_INPUT_GATE final
+	{
+	public:
+		constexpr void Reset() { *this = {}; }
+		constexpr bool_t Observe(bool_t ctrl, bool_t left, bool_t otherCommand, bool_t enabled)
+		{
+			const bool_t ctrlPressed = ctrl && !m_wasCtrl;
+			const bool_t leftPressed = left && !m_wasLeft;
+			m_wasCtrl = ctrl;
+			m_wasLeft = left;
+			if (!left) m_ownsLeft = false;
+			if (!enabled || !ctrl) m_pending = false;
+			else if (ctrlPressed) m_pending = true;
+			if (otherCommand) m_pending = false;
+			const bool_t fire = enabled && m_pending && leftPressed;
+			if (fire) { m_pending = false; m_ownsLeft = true; }
+			return fire;
+		}
+		constexpr bool_t Is_Pending() const { return m_pending; }
+		constexpr bool_t Owns_LeftPress() const { return m_ownsLeft; }
+	private:
+		bool_t m_wasCtrl = false;
+		bool_t m_wasLeft = false;
+		bool_t m_pending = false;
+		bool_t m_ownsLeft = false;
+	};
+
 	/* A Server capture (left-hand grab or pattern bind) consumes every held
 	physical press. A different released key can be used immediately after the
 	capture ends, but the captured press cannot turn into an automatic move,
@@ -667,6 +696,8 @@ namespace Client
 		CBASIC_ATTACK_PRESS_EDGE_GATE m_BasicAttackPressEdgeGate;
 		CBASIC_ATTACK_RESEND_GATE m_BasicAttackResendGate;
 		CPLAYER_CAPTURE_INPUT_GATE m_CaptureInputGate;
+		CPING_INPUT_GATE m_PingInputGate;
+		std::array<bool_t, 256> m_wasPingKeyDown{};
 		bool_t m_allowCapturedKeyboardInput = false;
 		/* Esther edges are tracked apart from m_wasKeyDown: the quick-slot
 		table commits Z and X every frame, and a Ctrl press must not read as

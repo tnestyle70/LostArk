@@ -4,6 +4,7 @@
 #include "AnimationTargetService.h"
 #include "HitAreaWire.h"
 #include "CharacterPreviewPanel.h"
+#include "Network/PacketMessages.h"
 #include "EffectCompositionModelPreview.h"
 #include "Effect_AuthoringDocument.h"
 #include "ValtanCinematicCameraDocument.h"
@@ -123,6 +124,7 @@ private:
         std::string id, label, error;
         std::vector<CLIP> clips;
         std::uint32_t durationMs = 0u;
+        std::uint32_t skillId = 0u; // Read-only Product owner for preview stance.
     };
     struct V1_ANCHOR_HISTORY final
     {
@@ -257,6 +259,8 @@ private:
     bool Record_V1Anchors(EFFECT_ROW& row, const float4x4_t& pivot, float age);
     void Release_Row(EFFECT_ROW& row);
     bool Sample(bool forceSeekSounds = false);
+    bool Apply_CharacterPreviewStance(std::uint32_t skillId);
+    void Restore_CharacterPreviewStance();
     std::uint32_t DurationMs() const;
     const MODEL_SEQUENCE* Selected_Sequence() const;
     void Draw_KoukuInventory();
@@ -312,6 +316,9 @@ private:
     std::string m_SelectedCamera;
     bool m_CameraOwned = false;
     std::string m_AssetName, m_SelectedSequence, m_AnchorMember, m_SelectedEffect, m_Status;
+    std::weak_ptr<CCharacter> m_StancePreviewCharacter;
+    LostArk::Shared::PLAYER_STANCE_ID m_PreviousPreviewStance = LostArk::Shared::PLAYER_STANCE_ID::NONE;
+    std::uint32_t m_CharacterActionSkillId = 0u;
     std::weak_ptr<Engine::CModel> m_Model;
     std::uint64_t m_ModelGeneration = 0u, m_InventoryGeneration = 0u;
     std::uint32_t m_PreviousClip = 0u, m_NextEffectOrdinal = 1u;

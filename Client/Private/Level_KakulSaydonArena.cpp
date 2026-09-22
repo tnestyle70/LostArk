@@ -70,6 +70,29 @@ namespace
 	constexpr const wchar_t* KOUKU_READY_TERRACE_BGM_ASSET_ID =
 		L"Sound/KoukuSaton/S_BGM_COMMANDERRAID/bgm_midnightc_ed_m12_ready_terrace_2ndcircus__559227263.wav";
 
+    const wchar_t* Resolve_KoukuRaidBgmAsset(const bool suppressed, const bool readyArea,
+        const LostArk::Shared::KOUKUSAYDON_RAID_PHASE phase, const std::string_view gate,
+        const std::uint8_t marioStage, const bool maze)
+    {
+        using PHASE = LostArk::Shared::KOUKUSAYDON_RAID_PHASE;
+        if (suppressed || phase == PHASE::COMPLETE || phase == PHASE::ABORTED) return nullptr;
+        // Mario/maze come only from this player's replicated mechanic state.
+        static constexpr const wchar_t* mario[] = {
+            L"Sound/KoukuSaton/Raid/mario1.wav", L"Sound/KoukuSaton/Raid/mario2.wav",
+            L"Sound/KoukuSaton/Raid/mario3.wav", L"Sound/KoukuSaton/Raid/mario4.wav" };
+        if (marioStage >= 1u && marioStage <= 4u) return mario[marioStage - 1u];
+        if (maze) return L"Sound/KoukuSaton/Raid/maze.wav";
+        if (phase == PHASE::COMBAT)
+        {
+            if (gate == "GATE1") return L"Sound/KoukuSaton/S_BGM_COMMANDERRAID/midnightc_ed__398225682.wav";
+            if (gate == "GATE2") return L"Sound/KoukuSaton/Raid/gate2.wav";
+            if (gate == "GATE3") return L"Sound/KoukuSaton/Raid/gate3.wav";
+            if (gate == "BINGO") return L"Sound/KoukuSaton/Raid/bingo.wav";
+            return nullptr;
+        }
+        return readyArea ? KOUKU_READY_TERRACE_BGM_ASSET_ID : nullptr;
+    }
+
 	std::optional<CWorldSequencePlayer::OBJECT_PLACEMENT> WorldPlacementFromCue(
 		const LostArk::Shared::S2C_WORLD_SEQUENCE_PLAY& play)
 	{
@@ -771,9 +794,10 @@ Client::CLevel_KakulSaydonArena::CLevel_KakulSaydonArena(
 
 Client::CLevel_KakulSaydonArena::~CLevel_KakulSaydonArena()
 {
-	Stop_ReadyTerraceBgm();
+	Stop_RaidBgm();
 	Stop_CompositionCamera(true);
 	Clear_EntranceTriggerMarkers();
+	Clear_Gate3Auras();
 	if (this == s_pActiveInstance)
 		s_pActiveInstance = nullptr;
 #ifdef _DEBUG
@@ -1592,28 +1616,28 @@ HRESULT Client::CLevel_KakulSaydonArena::Initialize()
 	return S_OK;
 }
 
-void Client::CLevel_KakulSaydonArena::Start_ReadyTerraceBgm()
+void Client::CLevel_KakulSaydonArena::Start_RaidBgm(const wchar_t* assetId)
 {
 	if (this != s_pActiveInstance) return;
-	const std::filesystem::path path = CRuntimeAssetRoot::Resolve(KOUKU_READY_TERRACE_BGM_ASSET_ID);
+	const std::filesystem::path path = CRuntimeAssetRoot::Resolve(assetId);
 	if (!path.empty() && std::filesystem::is_regular_file(path) &&
 		SUCCEEDED(CGameInstance::Get().Play_Music(path.wstring(), 1.f, true)))
 	{
-		m_bReadyTerraceBgmStarted = true;
+		m_bRaidBgmStarted = true;
 		return;
 	}
 	// Play_Music stages replacement transactionally; preserve an existing owner
 	// if this edge could not load or start its exact resource.
-	OutputDebugStringA("[Level_KakulSaydonArena] Ready terrace BGM is unavailable; this playback edge was isolated.\n");
+	OutputDebugStringA("[Level_KakulSaydonArena] Raid BGM is unavailable; this playback edge was isolated.\n");
 }
 
-void Client::CLevel_KakulSaydonArena::Stop_ReadyTerraceBgm()
+void Client::CLevel_KakulSaydonArena::Stop_RaidBgm()
 {
 	// A newer arena can already be initialized before the previous Level dies.
 	// Only this active Level may release the Music channel that it started.
-	if (m_bReadyTerraceBgmStarted && this == s_pActiveInstance)
+	if (m_bRaidBgmStarted && this == s_pActiveInstance)
 		CGameInstance::Get().Stop_Music();
-	m_bReadyTerraceBgmStarted = false;
+	m_bRaidBgmStarted = false;
 }
 
 bool_t Client::CLevel_KakulSaydonArena::Try_GetReplicatedLocalPlayerPosition(float3_t& outPosition) const
@@ -1642,37 +1666,52 @@ bool_t Client::CLevel_KakulSaydonArena::Is_AtGate3EntryTerrace() const
 void Client::CLevel_KakulSaydonArena::Notify_SequencePlaybackStarted()
 {
 	m_bLocalSequencePlaybackActive = true;
-	Update_ReadyTerraceBgm();
+	Update_RaidBgm();
 }
 
 void Client::CLevel_KakulSaydonArena::Notify_SequencePlaybackEnded()
 {
 	m_bLocalSequencePlaybackActive = false;
-	Update_ReadyTerraceBgm();
+	Update_RaidBgm();
 }
 
-void Client::CLevel_KakulSaydonArena::Update_ReadyTerraceBgm()
+void Client::CLevel_KakulSaydonArena::Update_RaidBgm()
 {
-	using PHASE = LostArk::Shared::KOUKUSAYDON_RAID_PHASE;
-	const auto& state = Get_KoukuRaidState();
-	float3_t position{};
-	const bool_t inReadyArea = Try_GetReplicatedLocalPlayerPosition(position) &&
-		(LostArk::Shared::Is_KoukuArenaStartArea(position.x, position.y, position.z) ||
-		 LostArk::Shared::Is_KoukuGate3EntryTerrace(position.x, position.y, position.z));
-	const bool_t wanted = inReadyArea && !m_bLocalSequencePlaybackActive &&
-		state.ePhase != PHASE::CINEMATIC && state.ePhase != PHASE::COMBAT;
-	const bool_t newWaitingRun = wanted && state.iRunEpoch && state.ePhase == PHASE::WAIT_ENTRY &&
-		(state.iRunEpoch != m_iReadyTerraceObservedRunEpoch || m_eReadyTerraceObservedPhase != PHASE::WAIT_ENTRY);
-	const bool_t playbackEdge = !m_bReadyTerraceBgmInitialized || wanted != m_bReadyTerraceBgmWanted || newWaitingRun;
-	m_bReadyTerraceBgmInitialized = true;
-	m_bReadyTerraceBgmWanted = wanted;
-	m_iReadyTerraceObservedRunEpoch = state.iRunEpoch;
-	m_eReadyTerraceObservedPhase = state.ePhase;
-	if (!playbackEdge) return;
-	// Start only after the replicated player is inside a ready space. Repeated
-	// snapshots and failed media loads cannot restart the track every frame.
-	if (wanted) Start_ReadyTerraceBgm();
-	else Stop_ReadyTerraceBgm();
+    using PHASE = LostArk::Shared::KOUKUSAYDON_RAID_PHASE;
+    const auto& state = Get_KoukuRaidState();
+    const auto& player = CCombatHUDViewModel::Get().Get_Player();
+    const bool_t localPlayer = player.isValid && !player.isPreview;
+    const bool_t cameraPlaying = std::any_of(m_CameraShots.begin(), m_CameraShots.end(),
+        [this, &player](const KAKUL_CAMERA_SHOT& shot)
+        {
+            return m_bCameraShotHeld && shot.strShotId == m_strActiveCameraShotId &&
+                shot.hasCameraTrack && !shot.followsPlayer && !shot.strSequenceInstanceId.empty() &&
+                Is_SequenceCameraAudience(shot.strSequenceInstanceId, player.iMarioStage) &&
+                m_SequencePlayer.Is_Playing(shot.strSequenceInstanceId);
+        });
+    float3_t position{};
+    const bool_t inReadyArea = Try_GetReplicatedLocalPlayerPosition(position) &&
+        (LostArk::Shared::Is_KoukuArenaStartArea(position.x, position.y, position.z) ||
+         LostArk::Shared::Is_KoukuGate3EntryTerrace(position.x, position.y, position.z));
+    const wchar_t* assetId = Resolve_KoukuRaidBgmAsset(
+        !localPlayer || m_bLocalSequencePlaybackActive || m_bSequenceCombatPending || cameraPlaying ||
+        state.ePhase == PHASE::CINEMATIC,
+        inReadyArea, state.ePhase, state.strGateId,
+        localPlayer ? player.iMarioStage : 0u,
+        localPlayer && player.eKoukuHudMode == LostArk::Shared::KOUKU_HUD_MODE::MAZE);
+    const std::wstring wanted = assetId ? assetId : L"";
+    const bool_t newWaitingRun = !wanted.empty() && state.iRunEpoch && state.ePhase == PHASE::WAIT_ENTRY &&
+        (state.iRunEpoch != m_iReadyTerraceObservedRunEpoch || m_eReadyTerraceObservedPhase != PHASE::WAIT_ENTRY);
+    const bool_t playbackEdge = !m_bRaidBgmInitialized || wanted != m_strRaidBgmWanted || newWaitingRun;
+    m_bRaidBgmInitialized = true;
+    m_strRaidBgmWanted = wanted;
+    m_iReadyTerraceObservedRunEpoch = state.iRunEpoch;
+    m_eReadyTerraceObservedPhase = state.ePhase;
+    if (!playbackEdge) return;
+    // One Level owns the Music channel; cinematic SOUND occurrences retain their own handles.
+    // Missing media is isolated once per edge, never retried on every snapshot.
+    if (assetId) Start_RaidBgm(assetId);
+    else Stop_RaidBgm();
 }
 
 void Client::CLevel_KakulSaydonArena::Update(const f32_t fTimeDelta)
@@ -1732,7 +1771,6 @@ void Client::CLevel_KakulSaydonArena::Update(const f32_t fTimeDelta)
 			40u | (220u << 8u) | (255u << 16u) | (255u << 24u));
 	}
 #endif
-	Update_ReadyTerraceBgm();
 	Update_DeadScene(fTimeDelta);
 	Update_RaidClear(fTimeDelta);
 	if (nullptr != m_pMvpResultView)
@@ -2004,6 +2042,7 @@ void Client::CLevel_KakulSaydonArena::Update(const f32_t fTimeDelta)
 	Update_CompositionCamera(fTimeDelta);
 	Update_CameraShots(fTimeDelta);
 	Update_CinematicSurroundings();
+	Update_RaidBgm();
 	// Consume this frame's Server-started camera sequence before accepting input.
 	// A completed shot may keep following the player and must not block controls.
 	const bool_t isCameraTrackPlaying = std::any_of(
@@ -2015,8 +2054,7 @@ void Client::CLevel_KakulSaydonArena::Update(const f32_t fTimeDelta)
 				Is_SequenceCameraAudience(shot.strSequenceInstanceId, CCombatHUDViewModel::Get().Get_Player().iMarioStage) &&
 				m_SequencePlayer.Is_Playing(shot.strSequenceInstanceId);
 		});
-	bool_t sequenceInputReady = !m_bSequenceCombatPending &&
-		Get_KoukuRaidState().ePhase != LostArk::Shared::KOUKUSAYDON_RAID_PHASE::WAIT_ENTRY;
+	bool_t sequenceInputReady = !m_bSequenceCombatPending;
 #ifdef _DEBUG
 	sequenceInputReady = sequenceInputReady && !Is_DebugGatePending();
 #endif
@@ -2393,6 +2431,13 @@ HRESULT Client::CLevel_KakulSaydonArena::Render()
 			viewport.x * 0.5f, viewport.y * heightRatio,
 			promptLineSpacing * promptScale * sizeMultiplier, tint);
 	};
+	if (m_bGate3AuraOccupied && !m_bGate3AuraSubmitted && Is_LocalRaidLeader())
+	{
+		drawPrompt(L"\uC7A0\uC2DC \uD6C4 \uB2E4\uC74C \uC9C0\uC810\uC73C\uB85C \uC774\uB3D9\uB429\uB2C8\uB2E4.",
+			0.045f, 1.25f, Colors::White);
+		const std::wstring countdown = std::to_wstring(static_cast<int>(std::ceil(m_fGate3AuraSecondsLeft))) + L"\uCD08";
+		drawPrompt(countdown.c_str(), 0.088f, 1.4f, Colors::Yellow);
+	}
 	const std::string& offered =
 		CCombatHUDViewModel::Get().Get_InteractPromptTriggerId();
 	if (!offered.empty() && 0u != CCombatHUDViewModel::Get().Get_Player().iMarioStage)
@@ -2791,6 +2836,96 @@ void Client::CLevel_KakulSaydonArena::Apply_GateProgressState(
 	}
 }
 
+void Client::CLevel_KakulSaydonArena::Update_Gate3EntryAura(const bool_t canPropose, const bool_t entryAvailable)
+{
+	const auto epoch = Get_KoukuRaidState().iRunEpoch;
+	if (epoch != m_iGate3AuraRunEpoch)
+	{
+		m_iGate3AuraRunEpoch = epoch;
+		m_bGate3AuraOccupied = false;
+		m_bGate3AuraSubmitted = false;
+	}
+	float3_t position{};
+	const auto& player = CCombatHUDViewModel::Get().Get_Player();
+	const bool_t occupied = entryAvailable && player.isValid && player.iCurrentHp &&
+		Try_GetReplicatedLocalPlayerPosition(position) &&
+		LostArk::Shared::Is_KoukuGate3EntryAura(position.x, position.y, position.z);
+	if (!occupied)
+	{
+		m_bGate3AuraOccupied = false;
+		m_bGate3AuraSubmitted = false;
+		m_fGate3AuraSecondsLeft = 10.f;
+		return;
+	}
+	const auto tick = m_Replication.Get_LastServerTick();
+	if (!m_bGate3AuraOccupied) m_iGate3AuraStartTick = tick;
+	m_bGate3AuraOccupied = true;
+	// Count confirmed Server time, never paused or local frame time.
+	const auto elapsed = tick - m_iGate3AuraStartTick;
+	if (elapsed > 0x7fffffffu) { m_iGate3AuraStartTick = tick; m_fGate3AuraSecondsLeft = 10.f; return; }
+	m_fGate3AuraSecondsLeft = (std::max)(0.f, 10.f - static_cast<float>(elapsed) / 30.f);
+	if (!canPropose || m_bGate3AuraSubmitted || elapsed < 300u || !m_pPlayerCommandSink) return;
+	m_bGate3AuraSubmitted = true;
+	if (!m_pPlayerCommandSink->Request_GateProgressPropose(m_iNextGateRequestSequence++,
+		LostArk::Shared::GATE_PROGRESS_KIND::ENTER_GATE3))
+		m_GateProgressView.Show_Notice(L"Gate 3 entry request failed. Leave the aura and retry.", 4.f);
+}
+
+void Client::CLevel_KakulSaydonArena::Clear_Gate3Auras()
+{
+	for (auto& handle : m_Gate3AuraHandles)
+	{
+		CEffectPresentationService::Stop_WorldRoot(handle);
+		handle = {};
+	}
+	m_Gate3AuraAttempted = {};
+	m_strGate3AuraFailure.clear();
+}
+
+void Client::CLevel_KakulSaydonArena::Submit_Gate3Auras()
+{
+	if (!Is_AtGate3EntryTerrace() || Is_CinematicPresentationActive())
+	{
+		Clear_Gate3Auras();
+		return;
+	}
+	const char* assets[] = { m_bGate3AuraOccupied ? "effect.world.entry_aura.active" : "effect.world.entry_aura",
+		"effect.world.respawn_aura" };
+	const float3_t positions[] = { { -22.20617676f, 25.59f, 954.59429688f }, { -11.9999292f, 25.59f, 964.54328125f } };
+	const float rotations[] = { -67.5f, -22.5f };
+	for (size_t i = 0; i < m_Gate3AuraHandles.size(); ++i)
+	{
+		if (m_Gate3AuraAttempted[i] == assets[i]) continue;
+		m_Gate3AuraAttempted[i] = assets[i];
+		EFFECT_LEVEL_PLACEMENT_SPAWN_DESC desc;
+		desc.iLevelIndex = ETOUI(LEVEL::KAKULSAYDON_ARENA);
+		desc.strPlacementId = i == 0 ? "kouku.gate3.entry_aura" : "kouku.gate3.respawn_aura";
+		desc.strEffectAssetId = assets[i];
+		desc.bOwnerSustainedSourceLoops = true;
+		XMStoreFloat4x4(&desc.RootWorld, XMMatrixRotationY(XMConvertToRadians(rotations[i])) *
+			XMMatrixTranslation(positions[i].x, positions[i].y, positions[i].z));
+		EFFECT_WORLD_ROOT_HANDLE staged;
+		std::string status;
+		if (!CEffectPresentationService::Spawn_LevelPlacement(desc, staged, status))
+		{
+			m_strGate3AuraFailure = status;
+			OutputDebugStringA(("[Gate3Aura] " + desc.strEffectAssetId + ": " + status + "\n").c_str());
+			continue;
+		}
+		CEffectPresentationService::Commit_PendingWorldRootSpawns({ staged });
+		if (!CEffectPresentationService::Update_WorldRoot(staged, desc.RootWorld))
+		{
+			m_strGate3AuraFailure = CEffectPresentationService::Get_Status();
+			CEffectPresentationService::Stop_WorldRoot(staged);
+			OutputDebugStringA(("[Gate3Aura] Activation failed; previous aura preserved: " +
+				m_strGate3AuraFailure + "\n").c_str());
+			continue;
+		}
+		CEffectPresentationService::Stop_WorldRoot(m_Gate3AuraHandles[i]);
+		m_Gate3AuraHandles[i] = staged;
+	}
+}
+
 void Client::CLevel_KakulSaydonArena::Update_GateProgress(const f32_t fTimeDelta)
 {
 	using namespace LostArk::Shared;
@@ -2837,6 +2972,7 @@ void Client::CLevel_KakulSaydonArena::Update_GateProgress(const f32_t fTimeDelta
         (!Is_ServerRaidActive() && Is_AtGate3EntryTerrace()))
 		eButton = CRaidGateProgressView::BUTTON::ENTER_GATE3;
 	const bool_t canPropose = canInteract && Is_LocalRaidLeader() && !bVoteOpen;
+	Update_Gate3EntryAura(canPropose, eButton == CRaidGateProgressView::BUTTON::ENTER_GATE3 && canInteract);
 	m_GateProgressView.Set_Button(eButton, canPropose);
 	// Bingo is the encore after the three displayed gate icons.
 	m_GateProgressView.Set_Progress(iShownGate, iShownGate > 3u ?
@@ -2851,7 +2987,8 @@ void Client::CLevel_KakulSaydonArena::Update_GateProgress(const f32_t fTimeDelta
 		(void)m_pPlayerCommandSink->Request_GateProgressPropose(m_iNextGateRequestSequence++, GATE_PROGRESS_KIND::ADVANCE);
 		break;
     case CRaidGateProgressView::INTENT::PROPOSE_ENTER_GATE3:
-        if (!canPropose || eButton != CRaidGateProgressView::BUTTON::ENTER_GATE3) break;
+        if (!canPropose || m_bGate3AuraSubmitted || eButton != CRaidGateProgressView::BUTTON::ENTER_GATE3) break;
+        m_bGate3AuraSubmitted = true;
         (void)m_pPlayerCommandSink->Request_GateProgressPropose(m_iNextGateRequestSequence++, GATE_PROGRESS_KIND::ENTER_GATE3);
         break;
 	case CRaidGateProgressView::INTENT::PROPOSE_RESTART:
@@ -4490,6 +4627,7 @@ void Client::CLevel_KakulSaydonArena::Submit_EntranceTriggerMarkers()
 	CProfilerScope profile(CGameInstance::Get().Get_Profiler(), "Level.Kouku.Markers.Prepare");
 	if (CGameInstance::Get().Get_CurrentLevelID() != ETOUI(LEVEL::KAKULSAYDON_ARENA))
 		return;
+	Submit_Gate3Auras();
 	MAP_CAMERA_CULL_SNAPSHOT camera;
 	const bool_t cameraValid = CMapAssetRenderUtils::Capture_CameraCullSnapshot(camera);
 	for (auto& marker : m_EntranceTriggerMarkers)

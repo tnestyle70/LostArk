@@ -303,6 +303,12 @@ bool_t Client::CEffectDocumentCodec::Validate(
                 Cue.vColorMultiply.w < 0.f || Cue.vColorMultiply.w > 1.f)
             { strOutError = "Model Cue afterimage timing, appearance, or bounds are invalid: " + Cue.strCueId; return false; }
         }
+		if (Cue.bCastsShadow && (Cue.Afterimage || Cue.Material ||
+			Cue.eAlphaMode == EFFECT_MODEL_CUE_ALPHA_MODE::TRANSLUCENT_SURFACE))
+		{
+			strOutError = "Model Cue shadow requires an opaque or masked CModel surface: " + Cue.strCueId;
+			return false;
+		}
 		if (Cue.bLoop && Cue.bHoldLastFrame)
 		{
 			strOutError = "Effect Model Cue cannot loop and hold its last frame: " +
@@ -724,7 +730,7 @@ bool_t Client::CEffectDocumentCodec::Validate(
 			D.Particle.fFixedCenterSpacingWorldUnits <= 1000.f &&
 			Is_Finite(D.Particle.vLifeTimeSeconds) &&
 			(D.Particle.vLifeTimeSeconds.x > 0.f ||
-			 (Element.SourceRecipe.bEnabled && D.Particle.vLifeTimeSeconds.x == 0.f)) && D.Particle.vLifeTimeSeconds.y >= D.Particle.vLifeTimeSeconds.x && D.Particle.vLifeTimeSeconds.y <= 30.f &&
+			 (Element.SourceRecipe.bEnabled && D.Particle.vLifeTimeSeconds.x == 0.f)) && D.Particle.vLifeTimeSeconds.y >= D.Particle.vLifeTimeSeconds.x && D.Particle.vLifeTimeSeconds.y <= (Element.SourceRecipe.bEnabled ? 120.f : 30.f) &&
 			Is_Finite(D.Particle.vInitialPositionMin) && Is_Finite(D.Particle.vInitialPositionMax) &&
 			D.Particle.vInitialPositionMax.x >= D.Particle.vInitialPositionMin.x &&
 			D.Particle.vInitialPositionMax.y >= D.Particle.vInitialPositionMin.y &&

@@ -175,7 +175,14 @@ void CEffect_Tool::Set_AuthoringCamera(const shared_ptr<Engine::CCamera>& camera
 }
 void CEffect_Tool::Update_AuthoringWorkspace(float dt, bool active)
 {
-    if (m_pAuthoringSequencer) m_pAuthoringSequencer->Update(dt, active);
+    if (!m_pAuthoringSequencer) return;
+    const bool wasPlaying = m_pAuthoringSequencer->Is_Active();
+    const std::string previousStatus = m_pAuthoringSequencer->Status();
+    m_pAuthoringSequencer->Update(dt, active);
+    // A failure after the initial frame must remain visible in the Effect browser too.
+    if (wasPlaying && m_pAuthoringSequencer->Status() != previousStatus &&
+        !m_pAuthoringSequencer->Status().empty())
+        m_strPreviewStatus = m_pAuthoringSequencer->Status();
 }
 
 bool CEffect_Tool::Update_AuthoringPlacementInput(const bool active)

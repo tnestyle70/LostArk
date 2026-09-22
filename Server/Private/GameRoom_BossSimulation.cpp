@@ -822,6 +822,16 @@ void LostArk::Server::CGameRoom::Update_KoukuRandomVolley(
 	definition.eOriginPolicy = BOSS_COMBAT_OBJECT_ORIGIN_POLICY::LOCKED_TARGET_PER_ALIVE_PLAYER;
 	definition.iLifeMs = selected.iLifetimeMs;
 	definition.AttackTemplates = selected.Hits;
+    std::uint32_t scaleSeed = boss.iPatternSequence * 747796405u ^ boss.iNetEntityId ^ (window.iRandomWaveOrdinal * 2891336453u);
+    for (const unsigned char ch : trigger.strTriggerId) scaleSeed = (scaleSeed ^ ch) * 16777619u;
+    scaleSeed ^= scaleSeed >> 16u; scaleSeed *= 2246822519u; scaleSeed ^= scaleSeed >> 13u;
+    const float uniformScale = trigger.fRandomScaleMin + (trigger.fRandomScaleMax - trigger.fRandomScaleMin) * float(scaleSeed & 0x00ffffffu) / 16777215.f;
+    for (auto& hit : definition.AttackTemplates)
+    {
+        hit.fRadiusM *= uniformScale; hit.fInnerRadiusM *= uniformScale;
+        hit.fLengthM *= uniformScale; hit.fHalfWidthM *= uniformScale;
+        hit.fOffsetForwardM *= uniformScale; hit.fOffsetRightM *= uniformScale;
+    }
 	definition.PresentationPulses.push_back({ "combatpresentation.kouku.showtime.started", 0u });
 	BOSS_PATTERN_STAGE_ACTION randomAction;
 	randomAction.strTargetId = trigger.strTriggerId + ".random";
@@ -832,7 +842,14 @@ void LostArk::Server::CGameRoom::Update_KoukuRandomVolley(
 	std::vector<SERVER_COMBAT_OBJECT_LOCKED_TARGET> origins;
 	// The existing sampler admits an exact walkable centre on the arena deck.
 	// One centre has no intra-wave spacing constraint; no player overlap is a hit here.
-	if (!Resolve_ArenaRandomVolleyOrigins(boss, randomAction, definition, window.iRandomWaveOrdinal, origins, 1.f)) return;
+    SERVER_NAV_POINT currentAnchor{};
+    const SERVER_NAV_POINT* anchorOverride = nullptr;
+    if (trigger.strRandomAnchorKind == "BOSS")
+    {
+        if (!m_ServerNavigation.Sample_Position(boss.fPositionX, boss.fPositionZ, currentAnchor)) return;
+        anchorOverride = &currentAnchor;
+    }
+    if (!Resolve_ArenaRandomVolleyOrigins(boss, randomAction, definition, window.iRandomWaveOrdinal, origins, 1.f, anchorOverride)) return;
 	auto transaction = m_CombatObjectRuntime.Begin_Transaction();
 	std::string status;
 	if (origins.size() != 1u || !m_CombatObjectRuntime.Stage_BossCombatObject(
@@ -842,6 +859,8 @@ void LostArk::Server::CGameRoom::Update_KoukuRandomVolley(
 	pose.fYawDegrees = 0.f; pose.fDirectionX = 0.f; pose.fDirectionZ = 1.f;
 	transaction.Objects.back().LiveState.PreviousPose = pose;
 	transaction.Spawned.back().fYawDegrees = 0.f;
+	transaction.Objects.back().fUniformScale = uniformScale;
+	transaction.Spawned.back().fUniformScale = uniformScale;
 	if (!m_CombatObjectRuntime.Commit(std::move(transaction)))
 	{ m_strStatus = "Showtime random volley preserved its interval: transaction changed"; return; }
 	++window.iRandomWaveOrdinal;
@@ -965,6 +984,13 @@ void LostArk::Server::CGameRoom::Update_KoukuPlayerTargets(
 			Update_KoukuPursuitProjectiles(boss, trigger, window, catalog, serverTick);
 			continue;
 		}
+        if (trigger.eKind == BOSS_PATTERN_MECHANIC_TRIGGER_KIND::SHOWTIME_PLAYER_TARGETS &&
+            trigger.strFixedVisualId.empty() && trigger.strTrackingVisualId.empty() && !trigger.RandomVolleys.empty())
+        {
+            const bool hasAlivePlayers = std::any_of(m_Players.begin(), m_Players.end(), [&](const auto& entry) { return eligible(entry.second); });
+            Update_KoukuRandomVolley(boss, trigger, window, catalog, serverTick, hasAlivePlayers);
+            continue;
+        }
 		const bool rotateOnly = trigger.eKind == BOSS_PATTERN_MECHANIC_TRIGGER_KIND::BOSS_TRACK_TARGET;
 		// RPCT_05 and RPCT_06 face model +X in every tracking mode. The same
 		// basis must aim the stationary Showtime body and moving pursuit.
@@ -1472,6 +1498,11 @@ void LostArk::Server::CGameRoom::Commit_KoukuMechanicTriggers(const std::uint32_
 			{ m_WorldEntities.push_back(std::move(clone)); Broadcast_WorldEntitySpawned(m_WorldEntities.back()); }
 			m_iNextNetEntityId = nextId;
 			m_strStatus = "Cross direction selected real Pattern " + trigger.DirectionPatternIds[selected] + "; three clones end at " + trigger.strCloneEndStageId;
+			continue;
+		}
+		if (trigger.eKind == BOSS_PATTERN_MECHANIC_TRIGGER_KIND::CARD_RAIN_SOLDIERS)
+		{
+			if (!detached) (void)Spawn_KoukuCardRainSoldiers(owner->iNetEntityId, serverTick);
 			continue;
 		}
 		if (trigger.eKind == BOSS_PATTERN_MECHANIC_TRIGGER_KIND::SUMMON_PATTERNS)

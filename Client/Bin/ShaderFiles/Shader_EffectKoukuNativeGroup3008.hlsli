@@ -1,5 +1,5 @@
 // Original Kouku material programs 3008..3071; native IDs and expressions are unchanged.
-#if !defined(EFFECT_NATIVE_MESH_CARRIER) && !defined(EFFECT_NATIVE_PARTICLE_CARRIER) && !defined(EFFECT_NATIVE_DECAL_CARRIER) && !defined(EFFECT_NATIVE_SCREEN_POST_CARRIER)
+#if !defined(EFFECT_NATIVE_MESH_CARRIER) && !defined(EFFECT_NATIVE_DECAL_CARRIER) && !defined(EFFECT_NATIVE_SCREEN_POST_CARRIER)
 #ifndef ARTIST_NATIVE_MODEL_ONLY
 // fx_k_pa_turbpa_06_tr: 142d7eeccb6dec4b8b4233dcf6db51a2; selected map 1f8ae9aed7bae93344c781be239cb610ad315e63de228050a9f4abce3bea8db8.
 float4 ArtistNative3008(ARTIST_NATIVE_INPUT input)

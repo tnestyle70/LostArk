@@ -9900,6 +9900,9 @@ float4 ArtistNative2873(ARTIST_NATIVE_INPUT input)
     float4 source[7]; [unroll] for (uint i=0u; i<7u; ++i) source[i]=0.f;
     source[0].x=1.f; // Project engine opacity multiplier.
     float4 output=0.f;
+    source[0]=float4(g_ArtistSourceMacroUV.xy,0.f,0.f);
+    source[1]=float4(0.f,0.f,g_ArtistSourceMacroUV.zw);
+    source[2].x=1.f; // Native ParticleMacroUV external opacity.
     source[3] = g_ArtistSourceMaterialParameters[0u];
     source[4] = ArtistNativeAppend(ArtistNativePeriodic((g_ArtistSourceMaterialTime.xxxx*float4(0.0299999993, 0.0, 0.0, 0.0))),ArtistNativePeriodic((g_ArtistSourceMaterialTime.xxxx*float4(0.150000006, 0.0, 0.0, 0.0))),1u);
     source[5] = ArtistNativeAppend(ArtistNativePeriodic((g_ArtistSourceMaterialTime.xxxx*float4(0.119999997, 0.0, 0.0, 0.0))),ArtistNativePeriodic((g_ArtistSourceMaterialTime.xxxx*float4(0.200000003, 0.0, 0.0, 0.0))),1u);

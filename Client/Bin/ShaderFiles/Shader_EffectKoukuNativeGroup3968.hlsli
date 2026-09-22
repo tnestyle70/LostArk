@@ -651,7 +651,7 @@ float4 ArtistNative3970(ARTIST_NATIVE_INPUT input)
     passValues[0]=float4(.5f,-.5f,.5f,.5f);
     float4 v0 = float4(input.sourceBasisX,0.f); // native texcoord10
     float4 v1 = float4(input.sourceBasisZ,input.handedness); // native texcoord11
-    float4 v2 = float4(input.uv,float2(0.f,0.f)); // native texcoord0
+    float4 v2 = float4(input.uv,input.uv1); // native texcoord0
     float4 v3 = input.color; // native texcoord1
     float4 v4 = input.dynamicParameter; // native texcoord2
     float4 v5 = float4(0.f,0.f,0.f,1.f); // native texcoord4
@@ -815,7 +815,7 @@ float4 ArtistNative3970Distortion(ARTIST_NATIVE_INPUT input)
     float4 passValues[4]; [unroll] for(uint passIndex=0u;passIndex<4u;++passIndex) passValues[passIndex]=0.f;
     passValues[0]=float4(.5f,-.5f,.5f,.5f);
     float4 v0 = float4(input.sourceBasisX,0.f); // native texcoord10
-    float4 v1 = float4(input.uv,float2(0.f,0.f)); // native texcoord0
+    float4 v1 = float4(input.uv,input.uv1); // native texcoord0
     float4 v2 = input.color; // native texcoord1
     float4 v3 = input.dynamicParameter; // native texcoord2
     float4 v4 = float4((input.screenUV*float2(2.f,-2.f)+float2(-1.f,1.f))*input.projectionW,input.projectionZ,input.projectionW); // native texcoord5
@@ -1028,7 +1028,7 @@ float4 ArtistNative3971(ARTIST_NATIVE_INPUT input)
     passValues[0]=float4(.5f,-.5f,.5f,.5f);
     float4 v0 = float4(input.sourceBasisX,0.f); // native texcoord10
     float4 v1 = float4(input.sourceBasisZ,input.handedness); // native texcoord11
-    float4 v2 = float4(input.uv,float2(0.f,0.f)); // native texcoord0
+    float4 v2 = float4(input.uv,input.uv1); // native texcoord0
     float4 v3 = input.color; // native texcoord1
     float4 v4 = input.dynamicParameter; // native texcoord2
     float4 v5 = float4(0.f,0.f,0.f,1.f); // native texcoord4
@@ -1291,7 +1291,7 @@ float4 ArtistNative3971Distortion(ARTIST_NATIVE_INPUT input)
     float4 passValues[4]; [unroll] for(uint passIndex=0u;passIndex<4u;++passIndex) passValues[passIndex]=0.f;
     passValues[0]=float4(.5f,-.5f,.5f,.5f);
     float4 v0 = float4(input.sourceBasisX,0.f); // native texcoord10
-    float4 v1 = float4(input.uv,float2(0.f,0.f)); // native texcoord0
+    float4 v1 = float4(input.uv,input.uv1); // native texcoord0
     float4 v2 = input.color; // native texcoord1
     float4 v3 = input.dynamicParameter; // native texcoord2
     float4 v4 = float4((input.screenUV*float2(2.f,-2.f)+float2(-1.f,1.f))*input.projectionW,input.projectionZ,input.projectionW); // native texcoord5
@@ -19159,7 +19159,7 @@ float4 ArtistNative4028(ARTIST_NATIVE_INPUT input)
     passValues[0]=float4(.5f,-.5f,.5f,.5f);
     float4 v0 = float4(input.sourceBasisX,0.f); // native texcoord10
     float4 v1 = float4(input.sourceBasisZ,input.handedness); // native texcoord11
-    float4 v2 = float4(input.uv,float2(0.f,0.f)); // native texcoord0
+    float4 v2 = float4(input.uv,input.uv1); // native texcoord0
     float4 v3 = input.color; // native texcoord1
     float4 v4 = input.dynamicParameter; // native texcoord2
     float4 v5 = float4(0.f,0.f,0.f,1.f); // native texcoord4

@@ -77,7 +77,11 @@ bool Reject_KoukuGroundWarningReceiver(uint materialProfile, float depthMarker,
 {
     const bool groundWarning = materialProfile == 3600u ||
         materialProfile == 3601u || materialProfile == 3602u ||
-        materialProfile == 3607u;
+        materialProfile == 3607u ||
+        // Guardian Quake Smash's four source floor decals use the same
+        // environment-only projector contract. Their 3m depth must not stamp
+        // the character's head while the root is already 5cm above ground.
+        (materialProfile >= 4156u && materialProfile <= 4159u);
     if (!groundWarning)
         return false;
     const uint receiverBits = asuint(receiverPayload);
@@ -92,7 +96,7 @@ bool Reject_KoukuGroundWarningReceiver(uint materialProfile, float depthMarker,
     // rigid attachments. Source map families 25/30/80..83 remain receivers;
     // program 30's animated bomb is excluded by the skinned bit above.
     return (sourceProgram >= 1u && sourceProgram <= 24u) ||
-        (sourceProgram >= 26u && sourceProgram <= 29u);
+        (sourceProgram >= 26u && sourceProgram <= 29u) || sourceProgram == 84u;
 }
 
 EFFECT_PS_OUT PS_MATERIAL(VS_OUT input)
@@ -132,7 +136,7 @@ EFFECT_PS_OUT PS_MATERIAL(VS_OUT input)
         local.x / (halfSize.x * 2.f) + 0.5f,
         0.5f - local.z / (halfSize.y * 2.f));
     EFFECT_PS_OUT output = (EFFECT_PS_OUT)0;
-    if (g_SourceMaterialProfile >= 2304u && g_SourceMaterialProfile <= 3967u)
+    if (g_SourceMaterialProfile >= 2304u && g_SourceMaterialProfile <= 4607u)
     {
         ARTIST_NATIVE_INPUT nativeInput = (ARTIST_NATIVE_INPUT)0;
         nativeInput.uv = decalUV;

@@ -807,6 +807,25 @@
     <None Include="..\..\Data\Effects\Authored\effect.kouku.albion.frontthree.electric.impact.effect.json"></None>
     <None Include="..\..\Data\Effects\Authored\effect.world.mouse_click.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.world.move_destination.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.clown.polymorph.q.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.clown.polymorph.w.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.clown.polymorph.e.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.world.target_reticle.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.card.match.bind.floor.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.card.match.bind.release.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate1.stagger.shield.full.restore.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate1.stagger.explosion.full.restore.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.card.match.dice.full.restore.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.card.match.prepare.full.restore.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.card.match.emit.full.restore.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate1.stagger.star.draw.full.restore.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate1.backstep.afterimage.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate1.cardrain.drop.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.common.spinning.card.overhead.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.common.spinning.card.flying.effect.json" />
+    <None Include="..\..\Data\Effects\V2\Authored\boss.kouku.dj.cardrain.effectv2.json" />
+    <None Include="..\..\Data\Effects\V2\Authored\boss.kouku.dj.delivery.effectv2.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.world.ping.effect.json" />
     <None Include="..\..\Data\Effects\V2\Authored\kouku.gate2.intro.fade.black.effectv2.json" />
     <None Include="..\..\Data\Effects\V2\Groups\kouku.gate2.intro.fade.effectv2group.json" />
     <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050100.restore.effect.json" />
@@ -3698,5 +3717,41 @@
     <None Include="..\..\Data\Effects\Authored\effect.guardianknight.skill.49420.clip.0.full.restore.effect.json"></None>
     <None Include="..\..\Data\Effects\Authored\effect.guardianknight.skill.49330.clip.1.full.restore.effect.json"></None>
     <None Include="..\..\Data\Effects\Sequences\effect.guardianknight.skill.49420.clip.0.full.restore.effectsequence.json"></None>
+  </ItemGroup>
+  <ItemGroup>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectMeshKouku4416.hlsl">
+      <DisableOptimizations Condition="'$(Platform)'=='x64'">false</DisableOptimizations>
+      <AdditionalOptions Condition="'$(Platform)'=='x64'">/O1 %(AdditionalOptions)</AdditionalOptions>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectParticleKouku4416.hlsl">
+      <DisableOptimizations Condition="'$(Platform)'=='x64'">false</DisableOptimizations>
+      <AdditionalOptions Condition="'$(Platform)'=='x64'">/O1 %(AdditionalOptions)</AdditionalOptions>
+    </FxCompile>
+    <None Include="..\Bin\ShaderFiles\Shader_EffectKoukuNativeGroup4416.hlsli" />
+    <None Include="..\Bin\ShaderFiles\Shader_EffectArtistNativeDispatchKoukuNativeCases4416.hlsli" />
+    <None Include="..\Bin\ShaderFiles\Shader_EffectArtistNativeSelectedGroup4416.hlsli" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\Data\Effects\Authored\effect.world.entry_aura.active.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.world.entry_aura.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.world.respawn_aura.effect.json" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.common.spinning.card.casting.effect.json" />
+  </ItemGroup>
+  <ItemGroup>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectMeshKouku4544.hlsl">
+      <DisableOptimizations Condition="'$(Platform)'=='x64'">false</DisableOptimizations>
+      <AdditionalOptions Condition="'$(Platform)'=='x64'">/O1 %(AdditionalOptions)</AdditionalOptions>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectParticleKouku4544.hlsl">
+      <DisableOptimizations Condition="'$(Platform)'=='x64'">false</DisableOptimizations>
+      <AdditionalOptions Condition="'$(Platform)'=='x64'">/O1 %(AdditionalOptions)</AdditionalOptions>
+    </FxCompile>
+    <None Include="..\Bin\ShaderFiles\Shader_EffectKoukuNativeGroup4544.hlsli" />
+    <None Include="..\Bin\ShaderFiles\Shader_EffectArtistNativeDispatchKoukuNativeCases4544.hlsli" />
+    <None Include="..\Bin\ShaderFiles\Shader_EffectArtistNativeSelectedGroup4544.hlsli" />
+    <None Include="..\..\Data\Effects\Authored\effect.guardianknight.skill.49220.source.49290.clip.0.full.restore.effect.json"></None>
+    <None Include="..\..\Data\Effects\Authored\effect.guardianknight.skill.49220.source.49290.clip.1.full.restore.effect.json"></None>
   </ItemGroup>
 </Project>
