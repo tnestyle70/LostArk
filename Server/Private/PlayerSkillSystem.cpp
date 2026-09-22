@@ -8,6 +8,7 @@
 #include <algorithm>
 #include <cmath>
 #include <limits>
+#include <random>
 
 namespace
 {
@@ -18,6 +19,28 @@ namespace
 	bool OwnsHealthDamage(const LostArk::Server::PLAYER_SKILL_HIT& hit)
 	{
 		return hit.iResultKind == 0u || hit.iResultKind == 1u;
+	}
+
+	/* Rolls one landed hit's critical outcome. The chance is a whole percent
+	from the published player profile, so a bootstrap published without a
+	balance profile carries 0 and never rolls. */
+	bool RollCriticalHit(const std::uint32_t chancePercent)
+	{
+		if (0u == chancePercent) return false;
+		if (chancePercent >= 100u) return true;
+		static thread_local std::mt19937 generator{ std::random_device{}() };
+		std::uniform_int_distribution<std::uint32_t> roll(1u, 100u);
+		return roll(generator) <= chancePercent;
+	}
+
+	std::uint32_t ScaleCriticalDamage(
+		const std::uint32_t rawDamage,
+		const std::uint32_t criticalDamagePercent)
+	{
+		const std::uint64_t scaled = static_cast<std::uint64_t>(rawDamage) *
+			static_cast<std::uint64_t>(criticalDamagePercent) / 100ull;
+		return static_cast<std::uint32_t>((std::min<std::uint64_t>)(
+			scaled, (std::numeric_limits<std::uint32_t>::max)()));
 	}
 
 	void Sample_RootMotion(
@@ -68,6 +91,7 @@ namespace
 		const std::uint32_t partDamage,
 		const std::uint32_t counterPower,
 		const std::uint32_t rawDamage,
+		const LostArk::Server::PLAYER_RUNTIME_PROFILE* pCasterProfile,
 		const LostArk::Server::PLAYER_SKILL_HIT* pHit,
 		const float sourceX,
 		const float sourceZ,
@@ -82,6 +106,15 @@ namespace
 		incoming.iSourcePlayerId = sourcePlayerId;
 		incoming.iSkillId = skillId;
 		incoming.iRawDamage = kind <= 1u ? rawDamage : 0u;
+		/* Rolled per landed hit, as the original does: one skill can crit on
+		one target and stay ordinary on the next. */
+		if (0u != incoming.iRawDamage && nullptr != pCasterProfile &&
+			RollCriticalHit(pCasterProfile->iCriticalChancePercent))
+		{
+			incoming.bCritical = true;
+			incoming.iRawDamage = ScaleCriticalDamage(
+				incoming.iRawDamage, pCasterProfile->iCriticalDamagePercent);
+		}
 		incoming.iStaggerDamage = kind == 0u || kind == 2u ? staggerDamage : 0u;
 		incoming.iPartDamage = kind <= 1u ? partDamage : 0u;
 		incoming.iCounterPower = kind == 0u || kind == 3u ? counterPower : 0u;
@@ -828,6 +861,7 @@ void LostArk::Server::CPlayerSkillSystem::Update_Projectiles(
 						skill->iCounterPower,
 						ownsDamage ? DamageOfSubHit(projectile.iTotalDamage, projectile.iSubHitTotal,
 							subHitIndex + mark->iAppliedCount) : 0u,
+						catalog.Find_Player(player.eCharacterClass),
 						&hit.Hit, projectile.fPositionX, projectile.fPositionZ,
 						projectile.fDirectionX, projectile.fDirectionZ,
 						serverTick, outDamageEvents);
@@ -881,6 +915,7 @@ void LostArk::Server::CPlayerSkillSystem::Update_Projectiles(
 						skill->iCounterPower,
 						ownsDamage ? DamageOfSubHit(projectile.iTotalDamage, projectile.iSubHitTotal,
 							subHitIndex) : 0u,
+						catalog.Find_Player(player.eCharacterClass),
 						&hit.Hit, projectile.fPositionX, projectile.fPositionZ,
 						projectile.fDirectionX, projectile.fDirectionZ,
 						serverTick, outDamageEvents);
@@ -1206,7 +1241,7 @@ void LostArk::Server::CPlayerSkillSystem::Update(
 		ApplyPlayerHitDamage(target,
 			player.iPlayerId, skill->iSkillId,
 			skill->iStaggerDamage, skill->iPartDamage, skill->iCounterPower,
-			rawDamage, pHit,
+			rawDamage, catalog.Find_Player(player.eCharacterClass), pHit,
 			player.fPositionX, player.fPositionZ,
 			player.fSkillAimDirectionX, player.fSkillAimDirectionZ,
 			serverTick, outDamageEvents);

@@ -1383,6 +1383,11 @@ namespace LostArk::Server
 		std::uint32_t iResourceRegenPerSecond = 0;
 		std::uint32_t iAttackPower = 0;
 		std::uint32_t iDefense = 0;
+		/* Chance in percent that a hit rolls critical, and what that hit is
+		worth against an ordinary one. A 0 chance never rolls, which is what a
+		bootstrap published without a balance profile carries. */
+		std::uint32_t iCriticalChancePercent = 0;
+		std::uint32_t iCriticalDamagePercent = 200;
 		float fMoveSpeed = 0.f;
 		/* Multiplies fMoveSpeed while the player holds a defensive stance. 1
 		leaves the class unchanged, which is what every class without one uses. */

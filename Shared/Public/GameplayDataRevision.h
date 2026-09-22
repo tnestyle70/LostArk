@@ -17,7 +17,7 @@ namespace LostArk::Shared
 	/* Shared by the publisher, Server loader, and Client presentation
 	   admission so an authored bootstrap version bump cannot leave one
 	   consumer silently pinned to an older format. */
-	inline constexpr std::uint32_t GAMEPLAY_BOOTSTRAP_FORMAT_VERSION = 34u;
+	inline constexpr std::uint32_t GAMEPLAY_BOOTSTRAP_FORMAT_VERSION = 35u;
 	inline constexpr std::uint32_t GAMEPLAY_BOOTSTRAP_MAX_ROWS = 65536u;
 
 	// SHA-256 content identity for one immutable gameplay/presentation bundle.

@@ -76,7 +76,8 @@ namespace
 		std::vector<LostArk::Shared::DAMAGE_EVENT>& events,
 		const LostArk::Shared::PLAYER_ID sourcePlayerId = LostArk::Shared::INVALID_PLAYER_ID,
 		const std::uint32_t staggerAmount = 0u,
-		const bool counterSuccess = false)
+		const bool counterSuccess = false,
+		const bool critical = false)
 	{
 		/* A counter or stagger-only hit still reaches the combat analyzer. */
 		if ((0u == amount && 0u == staggerAmount && !counterSuccess) ||
@@ -92,6 +93,8 @@ namespace
 		event.iSourcePlayerId = sourcePlayerId;
 		event.iStaggerAmount = staggerAmount;
 		event.isCounterSuccess = counterSuccess;
+		if (critical && 0u != amount)
+			event.eHitFlag = LostArk::Shared::DAMAGE_HIT_FLAG::CRITICAL;
 		events.push_back(event);
 	}
 }
@@ -214,7 +217,7 @@ LostArk::Server::CServerCombatHitRuntime::Apply_PlayerToWorld(
 			target.iNetEntityId, damage,
 			target.fPositionX, target.fPositionY, target.fPositionZ,
 			true, outDamageEvents,
-			hit.iSourcePlayerId, staggerDealt, counterTriggered);
+			hit.iSourcePlayerId, staggerDealt, counterTriggered, hit.bCritical);
 	}
 
 	const float pushDistance = 0u == hit.iPushMs ?

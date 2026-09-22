@@ -5821,7 +5821,7 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 		else if (!fields.empty() && "PLAYER" == fields[0])
 		{
 			PLAYER_RUNTIME_PROFILE player{};
-			if (15u != fields.size() ||
+			if (17u != fields.size() ||
 				!ParseCharacterClass(fields[1], player.eCharacterClass) ||
 				!ParseNumber(fields[2], player.iMaximumHp) ||
 				!ParseNumber(fields[3], player.iMaximumResource) ||
@@ -5836,6 +5836,10 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 				!ParseNumber(fields[12], player.iIdentityStanceSwitchCost) ||
 				!ParseNumber(fields[13], player.iIdentityCyclic) ||
 				!ParseStance(fields[14], player.eDefaultStance) ||
+				!ParseNumber(fields[15], player.iCriticalChancePercent) ||
+				!ParseNumber(fields[16], player.iCriticalDamagePercent) ||
+				player.iCriticalChancePercent > 100u ||
+				player.iCriticalDamagePercent < 100u ||
 				0u == player.iMaximumHp || 0u == player.iMaximumResource ||
 				0u == player.iResourceRegenPerSecond ||
 				player.iResourceRegenPerSecond > player.iMaximumResource ||

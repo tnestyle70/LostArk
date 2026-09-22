@@ -26,6 +26,9 @@ namespace LostArk::Server
 		std::uint32_t iStaggerDamage = 0u;
 		std::uint32_t iPartDamage = 0u;
 		std::uint32_t iCounterPower = 0u;
+		/* The caster rolled a critical hit for this one hit. iRawDamage already
+		carries the critical multiplier; this only colours the damage event. */
+		bool bCritical = false;
 		float fSourceX = 0.f;
 		float fSourceZ = 0.f;
 		float fFallbackDirectionX = 0.f;
