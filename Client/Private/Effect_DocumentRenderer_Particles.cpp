@@ -697,7 +697,8 @@ HRESULT Client::CEffectDocumentRenderer::Render_Particles(
 		iPass = Adapter.iPassIndex;
 	}
 	const bool_t bArtistWorldToLocal = 2349u == pResource->iSourceMaterialProfile ||
-		2874u == pResource->iSourceMaterialProfile || 3316u == pResource->iSourceMaterialProfile;
+		2874u == pResource->iSourceMaterialProfile || 3316u == pResource->iSourceMaterialProfile ||
+        4057u == pResource->iSourceMaterialProfile || 4268u == pResource->iSourceMaterialProfile;
 	if (341u == pResource->iSourceMaterialProfile || 361u == pResource->iSourceMaterialProfile ||
 		bArtistWorldToLocal)
 	{
@@ -721,7 +722,8 @@ HRESULT Client::CEffectDocumentRenderer::Render_Particles(
 		if (FAILED(hResult))
 			return Fail_RenderOperation("Native particle WorldToLocal binding failed.", hResult, true);
 	}
-	if (2360u == pResource->iSourceMaterialProfile)
+	if (2360u == pResource->iSourceMaterialProfile || 2873u == pResource->iSourceMaterialProfile ||
+		4275u == pResource->iSourceMaterialProfile)
 	{
 		// ParticleMacroUV is centred on the source ParticleSystem occurrence,
 		// even when its already-spawned particles simulate in world space.
@@ -1074,7 +1076,7 @@ HRESULT Client::CEffectDocumentRenderer::Render_Trails(
 		const bool_t bTypedSourceRibbon =
 			bTypedArtistRibbon || bFlowRibbon01 || bKoukuNativeRibbon;
         const auto Curve = bKoukuNativeRibbon && !bSourceBeam &&
-            pResource->iSourceMaterialProfile >= 2304u && pResource->iSourceMaterialProfile <= 4543u ?
+            pResource->iSourceMaterialProfile >= 2304u && pResource->iSourceMaterialProfile <= 4607u ?
             Native_RibbonCurveSettings(*Trail.pElement) : NATIVE_RIBBON_CURVE_SETTINGS{};
         if (Curve.enabled && Trail.Points.size() > 512u)
             return Fail_RenderOperation("Native Ribbon exceeds its control-point limit.", E_INVALIDARG, true);
@@ -1323,7 +1325,7 @@ HRESULT Client::CEffectDocumentRenderer::Render_Trails(
 					Point.fCumulativeDistance / fTilingDistance :
 					static_cast<f32_t>(iPair);
                 const bool bKoukuNativeTrail = pResource->iSourceMaterialProfile >= 2304u &&
-                    pResource->iSourceMaterialProfile <= 4543u;
+                    pResource->iSourceMaterialProfile <= 4607u;
                 if (bKoukuNativeTrail && Point.iSourceColorComponentMask != 0x0fu)
                     return Fail_RenderOperation("Kouku source trail color payload is incomplete.", E_INVALIDARG, true);
                 const float4_t Color = bKoukuNativeTrail ? Point.vSourceColor : bRuntimeMaterialV2Ribbon ?
@@ -1483,13 +1485,18 @@ HRESULT Client::CEffectDocumentRenderer::Render_Trails(
 				Vertices.data(), Vertices.size()));
 #endif
         // Build separate finite coverage and distance-detail coordinates from
-        // the final uploaded strip. Explicit zero tiling keeps the legacy ABI.
+        // the final uploaded strip. Reviewed Guardian zero-tiling trails also
+        // require normalized coverage; other zero-tiling programs keep their ABI.
         // Bind every draw so a different material cannot inherit this contract.
         float4_t SourceUVTransform{1.f, 0.f, 0.f, 0.f};
         const uint32_t sourceProfile = pResource->iSourceMaterialProfile;
-        if (fTilingDistance > 0.f && (sourceProfile == 2346u ||
+        const bool guardianCoverage = sourceProfile == 3968u || sourceProfile == 3969u ||
+            sourceProfile == 4027u || sourceProfile == 4058u || sourceProfile == 4059u ||
+            sourceProfile == 4177u || sourceProfile == 4178u || sourceProfile == 4203u ||
+            sourceProfile == 4256u;
+        if (guardianCoverage || (fTilingDistance > 0.f && (sourceProfile == 2346u ||
             sourceProfile == 2379u || sourceProfile == 2410u ||
-            sourceProfile == 2836u || sourceProfile == 3007u))
+            sourceProfile == 2836u || sourceProfile == 3007u)))
         {
             const f32_t firstU = Vertices.front().vTexcoord.x;
             const f32_t spanU = Vertices.back().vTexcoord.x - firstU;
@@ -1498,6 +1505,11 @@ HRESULT Client::CEffectDocumentRenderer::Render_Trails(
             const f32_t inverseSpan = spanU > 1.e-6f ? 1.f / spanU : 0.f;
             SourceUVTransform = {inverseSpan, -firstU * inverseSpan, 1.f, 0.f};
         }
+        const float4_t TrailCameraPosition = *CGameInstance::Get().Get_CamPosition();
+        hResult = m_pTrailShader->Bind_RawValue("g_CameraPosition",
+            &TrailCameraPosition, sizeof(TrailCameraPosition));
+        if (FAILED(hResult))
+            return Fail_RenderOperation("Trail camera-position shader binding failed.", hResult);
         hResult = m_pTrailShader->Bind_RawValue("g_TrailSourceUVTransform",
             &SourceUVTransform, sizeof(SourceUVTransform));
         if (FAILED(hResult))

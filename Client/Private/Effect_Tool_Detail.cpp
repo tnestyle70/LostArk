@@ -133,7 +133,7 @@ void Client::CEffect_Tool::Render_CurrentEffectAttachmentGroups()
                 translation = float3_t(center.x - group.center.x, center.y - group.center.y, center.z - group.center.z);
             }
             ImGui::EndDisabled();
-            ImGui::BeginDisabled(!group.rotationEditable || Has_UnappliedDetailDraft());
+            ImGui::BeginDisabled(Has_UnappliedDetailDraft());
             auto& edit = m_GroupRotationEdits[m_ActiveDocument->strEffectAssetId + ":" + group.elementIds.front()];
             if (!edit.elementId.empty() && std::find(group.elementIds.begin(), group.elementIds.end(), edit.elementId) == group.elementIds.end())
                 edit.elementId.clear();
@@ -144,10 +144,10 @@ void Client::CEffect_Tool::Render_CurrentEffectAttachmentGroups()
                     if (ImGui::Selectable(id.c_str(), edit.elementId == id)) edit.elementId = id;
                 ImGui::EndCombo();
             }
-            ImGui::Combo("Rotation pivot", &edit.pivotMode, "Group center\0Anchor origin\0Custom point\0");
+            ImGui::Combo("Rotation pivot", &edit.pivotMode, "Group center\0Anchor origin\0Custom point\0Element origin\0");
             if (edit.pivotMode == 2)
                 ImGui::InputFloat3("Pivot (anchor-local m)", &edit.customPivot.x, "%.3f");
-            const float3_t pivot = edit.pivotMode == 0 ? group.center :
+            float3_t pivot = edit.pivotMode == 0 || (edit.pivotMode == 3 && edit.elementId.empty()) ? group.center :
                 edit.pivotMode == 1 ? float3_t{} : edit.customPivot;
             auto angles = group.rotationDegrees;
             if (!edit.elementId.empty())
@@ -155,7 +155,16 @@ void Client::CEffect_Tool::Render_CurrentEffectAttachmentGroups()
                 const auto target = std::find_if(m_ActiveDocument->Elements.begin(), m_ActiveDocument->Elements.end(),
                     [&](const auto& element) { return element.strElementId == edit.elementId; });
                 angles = target->Detail.Transform.vRotationDegrees;
+                if (edit.pivotMode == 3) pivot = target->Detail.Transform.vPosition;
             }
+            const auto targetGroups = edit.elementId.empty() ? std::vector<ATTACHMENT_ELEMENT_GROUP>{} :
+                Build_AttachmentElementGroups(*m_ActiveDocument, edit.elementId);
+            const bool canUseCenter = group.editable || (edit.pivotMode != 0 &&
+                (edit.pivotMode != 3 || !edit.elementId.empty()));
+            const bool targetCanRotate = edit.elementId.empty() ? group.rotationEditable :
+                !targetGroups.empty() && targetGroups.front().rotationEditable;
+            const bool canRotate = canUseCenter && targetCanRotate;
+            ImGui::BeginDisabled(!canRotate);
             if (ImGui::DragFloat3("Rotation about pivot (deg)", &angles.x, .25f, -36000.f, 36000.f, "%.2f"))
             {
                 rotatedGroup = group.key;
@@ -164,12 +173,15 @@ void Client::CEffect_Tool::Render_CurrentEffectAttachmentGroups()
                 rotationPivot = pivot;
             }
             ImGui::EndDisabled();
-            if (!group.editable) ImGui::TextWrapped("%s", group.editReason.c_str());
+            ImGui::EndDisabled();
+            if (!canUseCenter) ImGui::TextWrapped("Group center is unavailable across distinct transform owners. Choose Anchor origin, Custom point or Element origin.");
+            else if (!targetCanRotate) ImGui::TextWrapped("%s", edit.elementId.empty() ?
+                group.rotationEditReason.c_str() : targetGroups.empty() ? "The rotation target is unavailable." : targetGroups.front().rotationEditReason.c_str());
             else if (Has_UnappliedDetailDraft()) ImGui::TextDisabled("Apply or Revert the open Detail draft first; its edits are preserved.");
             else
             {
                 ImGui::TextWrapped("Anchor origin keeps the emission end fixed. Custom point rotates around an exact local coordinate. Whole group uses its first Element as the angle reference. Save Changes persists the resulting Element transforms, not the editor pivot choice.");
-                if (!group.rotationEditable) ImGui::TextWrapped("%s", group.rotationEditReason.c_str());
+
             }
             for (size_t i = 0; i < group.elementIds.size(); ++i)
             {
@@ -1949,7 +1961,7 @@ void Client::CEffect_Tool::Render_Detail(
 		ImGui::TextWrapped(
 			"Bone uses the animated socket axes. Owner yaw keeps its position with +Z forward, +X right and +Y up. Apply and Save preserve this Element's offset.");
 	}
-	Render_TransformDetail(Element.Detail, bChanged);
+	Render_TransformDetail(Element, bChanged);
 	Render_TimingDetail(Element, bChanged);
 	Render_SizeDetail(Element, bChanged);
 	const bool_t bParticleMasterNamedEmission =
@@ -2432,17 +2444,74 @@ void Client::CEffect_Tool::Render_CompositionDetail(
 }
 
 void Client::CEffect_Tool::Render_TransformDetail(
-    EFFECT_DETAIL_DESC& Detail,
+    EFFECT_ELEMENT_DESC& Element,
     bool_t& bChanged)
 {
     if (!ImGui::CollapsingHeader("Transform", ImGuiTreeNodeFlags_DefaultOpen))
         return;
     ImGui::TextDisabled(
         "Start values update the live preview immediately; Lerp checkboxes only enable Start-to-End interpolation.");
+    auto& Detail = Element.Detail;
     bChanged |= DragFloat3(
         "Position", Detail.Transform.vPosition, 0.01f, -1000.f, 1000.f);
-    bChanged |= DragFloat3("Rotation (Degrees)",
-        Detail.Transform.vRotationDegrees, 0.25f, -360.f, 360.f);
+    const auto groups = m_ActiveDocument ? Build_AttachmentElementGroups(*m_ActiveDocument) :
+        std::vector<ATTACHMENT_ELEMENT_GROUP>{};
+    const auto group = std::find_if(groups.begin(), groups.end(), [&](const auto& candidate) {
+        return std::find(candidate.elementIds.begin(), candidate.elementIds.end(),
+            Element.strElementId) != candidate.elementIds.end();
+    });
+    const auto targetGroups = m_ActiveDocument ? Build_AttachmentElementGroups(*m_ActiveDocument, Element.strElementId) :
+        std::vector<ATTACHMENT_ELEMENT_GROUP>{};
+    if (group != groups.end() && !targetGroups.empty() && targetGroups.front().rotationEditable)
+    {
+        auto& edit = m_GroupRotationEdits[m_ActiveDocument->strEffectAssetId + ":" + group->elementIds.front()];
+        ImGui::Combo("Rotation pivot", &edit.pivotMode, "Group center\0Anchor origin\0Custom point\0Element origin\0");
+        if (edit.pivotMode == 2)
+            ImGui::InputFloat3("Pivot (anchor-local m)", &edit.customPivot.x, "%.3f");
+        const bool canUseCenter = edit.pivotMode != 0 || group->editable;
+        if (!canUseCenter) ImGui::TextWrapped("Group center is unavailable across distinct transform owners. Choose Anchor origin, Custom point or Element origin.");
+        ImGui::BeginDisabled(!canUseCenter);
+        auto angles = Detail.Transform.vRotationDegrees;
+        if (DragFloat3("Rotation about pivot (Degrees)", angles, .25f, -36000.f, 36000.f))
+        {
+            // Rotate the current Detail draft, not a stale ActiveDocument copy.
+            auto staged = *m_ActiveDocument;
+            const auto member = std::find_if(staged.Elements.begin(), staged.Elements.end(),
+                [&](const auto& value) { return value.strElementId == Element.strElementId; });
+            if (member != staged.Elements.end())
+            {
+                *member = Element;
+                const auto stagedGroups = Build_AttachmentElementGroups(staged);
+                const auto current = std::find_if(stagedGroups.begin(), stagedGroups.end(), [&](const auto& value) {
+                    return std::find(value.elementIds.begin(), value.elementIds.end(),
+                        Element.strElementId) != value.elementIds.end();
+                });
+                if (current != stagedGroups.end())
+                {
+                    const auto pivot = edit.pivotMode == 0 ? current->center :
+                        edit.pivotMode == 1 ? float3_t{} : edit.pivotMode == 3 ? Element.Detail.Transform.vPosition : edit.customPivot;
+                    if (Rotate_AttachmentElementGroup(staged, current->key, angles,
+                        m_strDetailStatus, edit.pivotMode == 0 ? nullptr : &pivot, Element.strElementId))
+                    {
+                        Element = *member;
+                        bChanged = true;
+                    }
+                }
+            }
+        }
+        ImGui::EndDisabled();
+        ImGui::TextDisabled("Uses the same pivot as Group Rotation and rotates this Element's position and direction together.");
+    }
+    else
+    {
+        if (DragFloat3("Local Rotation (Degrees)", Detail.Transform.vRotationDegrees, .25f, -36000.f, 36000.f))
+        {
+            if (Has_SourceLockedAxisSprite(Element)) Detail.Sprite.bFollowEmitterAxisRotation = true;
+            bChanged = true;
+        }
+        if (!targetGroups.empty()) ImGui::TextWrapped("%s", targetGroups.front().rotationEditReason.c_str());
+        ImGui::TextDisabled("Local rotation preserves the separate source/master motion owner; use that owner to move its path around a pivot.");
+    }
     bChanged |= DragFloat3("Revolution (Degrees/Second)",
         Detail.Transform.vRevolutionDegreesPerSecond,
         0.5f, -3600.f, 3600.f);

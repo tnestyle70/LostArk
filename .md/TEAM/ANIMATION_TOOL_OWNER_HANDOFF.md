@@ -26,6 +26,15 @@ Preview와 toolbar는 공통 shell이 소유하고 각 세션은 자기 문서·
   Motion 편집에 들어간다. 저장은 기존 World Sequence atomic save와 Area publish, 열린 Composition의
   dirty/외부 변경 검사를 유지한다.
 
+Character 안의 `Character Actions`, `Clown / interaction / mount actions`, `Monster`는 각각 접고 펼칠 수 있다.
+Monster는 발탄 일반 몬스터·루가루, 쿠크 시작 구역 몬스터, 카드미로 병정의 설치 WModel 전체 clip을
+기존 공유 preview에 연다. `MonsterCatalog`의 clip/rate/모델 배율과 `MonsterProfiles`의 body 반경,
+`attackRange + collisionRadius` 원형 공격을 함께 표시한다. 일반 공격의 damage row는 첫 active tick
+한 번이며 카드미로 병정은 별도 미니게임 controller가 동작하므로 참고 공격 clip에 일반 공격 판정을
+붙이지 않는다. `Refresh monster clips / colliders`로 목록을 다시 읽고 clip 선택 시 profile을 다시 읽는다.
+이 표시와 Save Effect Sequence는 저작 preview이며 Server gameplay를 바꾸지 않는다. 제품 수치는
+MonsterProfiles 저장, World publisher, Server 재시작 순서로 반영한다.
+
 카테고리 전환과 창 닫기는 preview만 정리한다. Character class의 변경·재로드는 현재 binding/combat/cue
 초안을 먼저 저장해야 한다. source baseline이 외부에서 바뀌면 Save는 기존 파일·초안을 보존하고 거절한다.
 독립 Effect 문서와 skillbinding, cue, combat의 서로 다른 파일을 하나의 원자 Save라고 표시하지 않는다.

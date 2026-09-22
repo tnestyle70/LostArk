@@ -2135,12 +2135,15 @@ namespace
 						const auto row = std::find_if(pattern.PresentationOccurrences.begin(), pattern.PresentationOccurrences.end(),
 							[&](const auto& value) { return value.strOccurrenceId == id; });
 						if (row == pattern.PresentationOccurrences.end() || !presentationResources.contains(row->strResourceId) ||
-							presentationResources.at(row->strResourceId)->eKind != KOUKU_SAYDON_PRESENTATION_KIND::EFFECT ||
+							(presentationResources.at(row->strResourceId)->eKind != KOUKU_SAYDON_PRESENTATION_KIND::EFFECT &&
+                            !(presentationResources.at(row->strResourceId)->eKind == KOUKU_SAYDON_PRESENTATION_KIND::SOUND &&
+                              row->strAnchorKind == "MAP" && !row->bFollowBoss)) ||
 							!row->strBone.empty() || row->strBoneTarget != "BODY" || !row->strWorldId.empty() ||
 							!row->strWorldOccurrenceId.empty() || row->iWorldEmissionIndex != 0u || !row->strLogicOccurrenceId.empty() ||
 							!((row->strAnchorKind == "MAP" && !row->bFollowBoss) || (row->strAnchorKind == "BOSS" && row->bFollowBoss)))
-						{ outStatus = "SHOWTIME random volley requires same-pattern Effect rows with MAP or following BOSS anchors: " + id; return false; }
-						hasMap |= row->strAnchorKind == "MAP";
+						{ outStatus = "SHOWTIME random volley requires Effect rows with MAP/following BOSS anchors or fixed MAP Sound cues: " + id; return false; }
+						hasMap |= row->strAnchorKind == "MAP" &&
+                            presentationResources.at(row->strResourceId)->eKind == KOUKU_SAYDON_PRESENTATION_KIND::EFFECT;
 					}
 					if (!hasMap) { outStatus = "SHOWTIME random volley needs a MAP anchor marker."; return false; }
 				}

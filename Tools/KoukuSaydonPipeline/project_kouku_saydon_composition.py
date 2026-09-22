@@ -5072,7 +5072,8 @@ def _project_presentation_occurrence(document: dict[str, Any], pattern: dict[str
 def _showtime_visual_template(document: dict[str, Any], pattern: dict[str, Any], members: list[dict[str, Any]], role: str, *, random_mixed: bool = False,
                              selection_start_ms: int | None = None) -> dict[str, Any]:
     resources = {row["resourceId"]: row for row in document.get("presentationResources", [])}
-    anchor_members = [row for row in members if row.get("anchorKind", "BOSS") == "MAP"] if random_mixed else members
+    anchor_members = [row for row in members if row.get("anchorKind", "BOSS") == "MAP"
+                      and resources.get(row["resourceId"], {}).get("kind") == "EFFECT"] if random_mixed else members
     if not anchor_members:
         raise CompositionError("SHOWTIME random volley requires at least one MAP marker")
     anchor = min(anchor_members, key=lambda row: (row["startMs"], row["occurrenceId"]))
@@ -5085,8 +5086,11 @@ def _showtime_visual_template(document: dict[str, Any], pattern: dict[str, Any],
     content_key = lambda row: json.dumps(row, ensure_ascii=False, sort_keys=True, separators=(",", ":"), allow_nan=False)
     for member in members:
         resource = resources.get(member["resourceId"])
-        if resource is None or resource["kind"] != "EFFECT":
-            raise CompositionError("SHOWTIME templates require same-pattern EFFECT occurrences")
+        if resource is None or (resource["kind"] != "EFFECT" and
+                                not (random_mixed and role == "fixed" and resource["kind"] == "SOUND")):
+            raise CompositionError("SHOWTIME templates require EFFECT occurrences; finite random volleys also admit MAP SOUND cues")
+        if resource["kind"] == "SOUND" and (member.get("anchorKind", "BOSS") != "MAP" or member.get("followBoss", False)):
+            raise CompositionError("SHOWTIME random SOUND cues require a fixed MAP anchor")
         row = _project_presentation_occurrence(document, pattern, member, resource)
         allowed_anchor = ((row["anchorKind"] == "MAP" and not row["followBoss"]) or
                           (random_mixed and row["anchorKind"] == "BOSS" and row["followBoss"]))

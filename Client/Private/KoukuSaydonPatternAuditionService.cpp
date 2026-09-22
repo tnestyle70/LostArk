@@ -224,13 +224,15 @@ void Client::CKoukuSaydonPatternAuditionService::Update_Flow()
 	if (m_Snapshot.eState != KOUKU_SAYDON_PATTERN_AUDITION_STATE::COMPLETED) return;
 	if (!m_bFlowEntryCompleted)
 	{
-		if (m_FlowSnapshot.iEntryIndex + 1u == m_FlowEntries.size())
+		if (m_FlowSnapshot.iEntryIndex + 1u == m_FlowEntries.size() && m_FlowSnapshot.strGateId != "GATE1")
 		{ Cancel_Flow("Pattern Flow completed; every selected Pattern and Bundle finished on the Server."); return; }
 		m_iFlowNextStartAtMilliseconds = Now_Milliseconds() + m_FlowEntries[m_FlowSnapshot.iEntryIndex].iWaitAfterMs;
 		m_bFlowEntryCompleted = true;
 	}
 	if (Now_Milliseconds() < m_iFlowNextStartAtMilliseconds) return;
 	++m_FlowSnapshot.iEntryIndex;
+	if (m_FlowSnapshot.strGateId == "GATE1" && m_FlowSnapshot.iEntryIndex == m_FlowEntries.size())
+		m_FlowSnapshot.iEntryIndex = 0u;
 	std::string status;
 	Submit_FlowEntry(status);
 }

@@ -356,8 +356,8 @@
           ],
           "rotationDegrees": [
             0.0,
-            0.0,
-            -0.0
+            90.0,
+            0.0
           ],
           "revolutionDegreesPerSecond": [
             0.0,
@@ -2286,8 +2286,8 @@
           ],
           "rotationDegrees": [
             0.0,
-            0.0,
-            -0.0
+            90.0,
+            0.0
           ],
           "revolutionDegreesPerSecond": [
             0.0,
@@ -4971,8 +4971,8 @@
           ],
           "rotationDegrees": [
             0.0,
-            0.0,
-            -0.0
+            90.0,
+            0.0
           ],
           "revolutionDegreesPerSecond": [
             0.0,
@@ -7075,8 +7075,8 @@
           ],
           "rotationDegrees": [
             0.0,
-            0.0,
-            -0.0
+            90.0,
+            0.0
           ],
           "revolutionDegreesPerSecond": [
             0.0,
@@ -9548,8 +9548,8 @@
           ],
           "rotationDegrees": [
             0.0,
-            0.0,
-            -0.0
+            90.0,
+            0.0
           ],
           "revolutionDegreesPerSecond": [
             0.0,
@@ -12540,8 +12540,8 @@
           ],
           "rotationDegrees": [
             0.0,
-            0.0,
-            -0.0
+            90.0,
+            0.0
           ],
           "revolutionDegreesPerSecond": [
             0.0,
@@ -15148,8 +15148,8 @@
           ],
           "rotationDegrees": [
             0.0,
-            0.0,
-            -0.0
+            90.0,
+            0.0
           ],
           "revolutionDegreesPerSecond": [
             0.0,

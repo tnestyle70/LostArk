@@ -465,7 +465,7 @@ bool_t Client::CEffectDocumentCodec::Parse_Value(
 				(bSourceContract && !Validate_ExactFields(CueValue,
 					{ "cueId", "modelAssetId", "animationSetAssetId", "clipName",
 						"startDelaySeconds", "durationSeconds", "clipPlayRate", "alphaMode",
-						"opacity", "colorMultiply", "holdLastFrame", "loop", "visible",
+						"opacity", "colorMultiply", "holdLastFrame", "loop", "visible", "castsShadow",
 						"suppressHorizontalRootMotionBone", "rootMotionVerticalAxis", "rootMotionVerticalScale", "afterimage",
 						"localTransform", "assetPreTransform", "material", "materialParameterTracks", "sourceMaterialProfile" },
 					"Effect source-contract Model Cue", strOutError)))
@@ -496,6 +496,7 @@ bool_t Client::CEffectDocumentCodec::Parse_Value(
 				!Read_OptionalBool(CueValue, "holdLastFrame",
 					Cue.bHoldLastFrame, strOutError) ||
 				!Read_OptionalBool(CueValue, "loop", Cue.bLoop, strOutError) ||
+				!Read_OptionalBool(CueValue, "castsShadow", Cue.bCastsShadow, strOutError) ||
 				(CueValue.Find("suppressHorizontalRootMotionBone") &&
 				 !Read_String(CueValue, "suppressHorizontalRootMotionBone",
 					 Cue.strSuppressHorizontalRootMotionBone, strOutError)) ||
@@ -979,6 +980,7 @@ std::string Client::CEffectDocumentCodec::Serialize(
 			<< MODEL_CUE_ALPHA_MODE_TOKENS[static_cast<size_t>(Cue.eAlphaMode)]
 			<< "\""
 			<< ", \"visible\": " << (Cue.bVisible ? "true" : "false")
+			<< ", \"castsShadow\": " << (Cue.bCastsShadow ? "true" : "false")
 			<< ",\n      \"localTransform\": { \"position\": ";
 		Write_Float3(Output, Cue.LocalTransform.vPosition);
 		Output << ", \"rotationDegrees\": ";

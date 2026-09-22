@@ -6176,10 +6176,12 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 			const bool hasAirborne = std::any_of(pattern.MechanicTriggers.begin(), pattern.MechanicTriggers.end(),
 				[](const auto& trigger) { return trigger.eKind == BOSS_PATTERN_MECHANIC_TRIGGER_KIND::ALBION_AIRBORNE ||
                     trigger.eKind == BOSS_PATTERN_MECHANIC_TRIGGER_KIND::PURSUIT_PROJECTILES; });
+            const bool hasShowtimeTargets = std::any_of(pattern.MechanicTriggers.begin(), pattern.MechanicTriggers.end(),
+                [](const auto& trigger) { return trigger.eKind == BOSS_PATTERN_MECHANIC_TRIGGER_KIND::SHOWTIME_PLAYER_TARGETS; });
             const bool hasPhysicalHook = std::any_of(pattern.LogicWindows.begin(), pattern.LogicWindows.end(), [](const auto& window) {
                 return std::any_of(window.CardRegions.begin(), window.CardRegions.end(), [](const auto& region) {
                     return std::any_of(region.WorldTrack.Keys.begin(), region.WorldTrack.Keys.end(), [](const auto& key) { return key.bHasGripPosition; }); }); });
-            if ((hasAirborne || hasPhysicalHook) && (!isKoukuSaydonGateOne || !CKoukuSaydonBrain::Validate_AnimationOnlyPattern(pattern, m_strStatus)))
+            if ((hasAirborne || hasShowtimeTargets || hasPhysicalHook) && (!isKoukuSaydonGateOne || !CKoukuSaydonBrain::Validate_AnimationOnlyPattern(pattern, m_strStatus)))
 			{ if (m_strStatus.empty()) m_strStatus = "Albion airborne requires a Kouku Product pattern"; return false; }
 			for (const auto& trigger : pattern.MechanicTriggers)
 			{

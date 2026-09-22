@@ -1,6 +1,8 @@
 #include "imgui.h"
 #include "Effect_Tool_Internal.h"
 #include "ActorCatalog.h"
+#include "AnimationSkillBindingDocument.h"
+#include "AnimationTargetService.h"
 #include "Character.h"
 #include "CharacterSpec.h"
 #include "CombatHUDViewModel.h"
@@ -982,6 +984,8 @@ bool_t Client::CEffect_Tool::Try_PlayUnifiedEffect(
 				m_PendingDocumentLoad->strModelCueSelectionId.clear();
 				m_PendingDocumentLoad->bPlayCompleteAfterLoad = true;
 			}
+			m_strPreviewStatus = m_strDocumentStatus.empty() ?
+				"Play All could not load the saved Effect; the current document was preserved." : m_strDocumentStatus;
 			return false;
 		}
 	}
@@ -1058,20 +1062,39 @@ bool_t Client::CEffect_Tool::Prepare_RecoveryPreviewTarget()
     const auto* skill = CPlayerSkillCatalog::Find_ById(binding->iSkillId);
     if (skill && skill->eSkillKind == LostArk::Shared::PLAYER_SKILL_KIND::COMBO)
     {
-        // Select from actual Product clip ownership, never a BA filename suffix
-        // or the metadata-only candidate's default stage index.
-        for (const auto& owner : m_AllEffects)
+        // Resolve the selected class directly. An unrelated class enrichment
+        // failure can leave the navigation tree without ProductCues on cold entry.
+        if (!m_pAuthoringSequencer->Select_CharacterSkill(modelAsset, skillId))
+        { m_strPreviewStatus = m_pAuthoringSequencer->Status(); return false; }
+        // Selection can reload the catalog and invalidate its previous definition pointer.
+        const auto* selectedSkill = CPlayerSkillCatalog::Find_ById(binding->iSkillId);
+        if (!selectedSkill)
+        { m_strPreviewStatus = "The selected COMBO skill is no longer available."; return false; }
+        const auto model = CAnimationTargetService::Resolve_Model();
+        if (!model)
+        { m_strPreviewStatus = "The selected recovery model is unavailable."; return false; }
+        std::vector<std::string> clipNames;
+        for (uint32_t i = 0u; i < model->Get_NumAnimations(); ++i)
+            if (const auto* name = model->Get_AnimationName(i)) clipNames.emplace_back(name);
+        ANIMATION_SKILL_BINDING_DOCUMENT bindings;
+        ANIMATION_EFFECT_CUE_DOCUMENT cues;
+        if (!CAnimationSkillBindingDocument::Load(modelAsset, binding->eCharacterClass,
+                CPlayerSkillCatalog::Get_Skills(), clipNames, bindings, m_strPreviewStatus) ||
+            !CAnimationEffectCueDocument::Load(modelAsset, clipNames, cues, m_strPreviewStatus, true))
+            return false;
+        for (const auto& owner : bindings.Bindings)
         {
-            if (owner.Skill.iSkillId != binding->iSkillId ||
-                owner.Skill.eCharacterClass != binding->eCharacterClass) continue;
-            for (const auto& cue : owner.ProductCues)
+            if (owner.iSkillId != binding->iSkillId) continue;
+            for (size_t stage = 0u; stage < owner.Stages.size(); ++stage)
+            for (const auto& clip : owner.Stages[stage].Clips)
+            for (const auto& cue : cues.Cues)
             {
-                if (cue.Cue.strEffectAssetId != assetId &&
-                    cue.Cue.strEffectAssetId != productOwnerId) continue;
-                if (cue.iStageIndex >= skill->ComboStages.size() ||
-                    (stageIndex && *stageIndex != cue.iStageIndex))
+                if (cue.strClipName != clip.strClipName ||
+                    (cue.strEffectAssetId != assetId && cue.strEffectAssetId != productOwnerId) ||
+                    !CAnimationEffectCueDocument::Is_CueStartInClipWindow(clip, cue.iStartMs)) continue;
+                if (stage >= selectedSkill->ComboStages.size() || (stageIndex && *stageIndex != stage))
                 { m_strPreviewStatus = "Recovery Effect belongs to ambiguous or stale COMBO stages."; return false; }
-                stageIndex = static_cast<uint32_t>(cue.iStageIndex);
+                stageIndex = static_cast<uint32_t>(stage);
             }
         }
         if (!stageIndex)

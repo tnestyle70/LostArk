@@ -317,6 +317,7 @@ bool CEffectAuthoringSequencer::Reload_ModelSequences()
         {
             const auto* skill = CPlayerSkillCatalog::Find_ById(binding.iSkillId);
             MODEL_SEQUENCE sequence; sequence.id = "skill." + std::to_string(binding.iSkillId);
+            sequence.skillId = binding.iSkillId;
             sequence.label = skill ? skill->strInputSlot + " / " + skill->strDisplayName : sequence.id;
             const bool combo = skill && skill->eSkillKind == LostArk::Shared::PLAYER_SKILL_KIND::COMBO;
             std::vector<MODEL_SEQUENCE> stageSequences;
@@ -324,6 +325,7 @@ bool CEffectAuthoringSequencer::Reload_ModelSequences()
             for (const auto& stage : binding.Stages)
             {
                 MODEL_SEQUENCE stageSequence;
+                stageSequence.skillId = binding.iSkillId;
                 stageSequence.id = sequence.id + ".stage." + std::to_string(stageOrdinal);
                 stageSequence.label = sequence.label + " / Stage " + std::to_string(stageOrdinal + 1u);
                 std::uint32_t clipOrdinal = 0u;
@@ -531,6 +533,7 @@ bool CEffectAuthoringSequencer::Stage_CharacterAction(const std::string& asset,
     m_AnimationRows = std::move(animations); m_Effects = std::move(effects); m_Sounds = std::move(sounds); m_Colliders = std::move(colliders);
     m_CameraRows = std::move(cameras); m_CustomAnimation = true; m_UseKouku = false; m_SelectedSequence.clear();
     m_AssetName = asset; m_InventoryGeneration = generation; m_ModelRoot = true; m_ClockMs = 0; m_Dirty = false;
+    m_CharacterActionSkillId = binding.iSkillId;
     m_Status = "Character Product preview prepared. Save remains with animation, cue and combat document owners.";
     return true;
 }
@@ -915,6 +918,7 @@ bool CEffectAuthoringSequencer::Select_ModelSequence(const std::string& id)
     if (found == m_Sequences.end() || !found->error.empty())
     { m_Status = found == m_Sequences.end() ? "Saved animation sequence is unavailable." : found->error; return false; }
     Stop(); m_BoxDetailDraft.reset(); m_UseKouku = false; m_CustomAnimation = false; m_AnimationRows.clear(); m_SelectedSequence = id; m_AnchorMember.clear(); m_ClockMs = 0;
+    m_CharacterActionSkillId = found->skillId;
     m_SourceModelEffectId.clear(); m_Dirty = true; m_Status = "Selected " + found->label; return true;
 }
 bool CEffectAuthoringSequencer::Select_Kouku(const std::string& id, const bool bundle)
@@ -925,6 +929,33 @@ bool CEffectAuthoringSequencer::Select_Kouku(const std::string& id, const bool b
     m_BoxDetailDraft.reset(); m_UseKouku = true; m_CustomAnimation = false; m_AnimationRows.clear(); m_ClockMs = 0;
     m_AnchorMember = m_Kouku.Actors().empty() ? "" : m_Kouku.Actors().front().memberId;
     m_SourceModelEffectId.clear(); m_Dirty = true; m_Status = m_Kouku.Status(); return true;
+}
+bool CEffectAuthoringSequencer::Apply_CharacterPreviewStance(const std::uint32_t skillId)
+{
+    const auto* skill = CPlayerSkillCatalog::Find_ById(skillId);
+    if (!skill || skill->eRequiredStance == LostArk::Shared::PLAYER_STANCE_ID::NONE) return true;
+    const auto character = CAnimationTargetService::Resolve_Character();
+    if (!m_Panel || !m_Panel->Is_PreviewActive() || !character || !character->Get_Spec() ||
+        character->Get_BodyModel() != CAnimationTargetService::Resolve_Model() ||
+        character->Get_Spec()->eCharacterClass != skill->eCharacterClass)
+    { m_Status = "Skill stance requires its admitted Character preview."; return false; }
+    if (m_StancePreviewCharacter.lock() != character)
+    {
+        Restore_CharacterPreviewStance();
+        if (!character->Try_Get_NetworkStance(m_PreviousPreviewStance))
+        { m_Status = "The Character preview has no restorable stance."; return false; }
+        m_StancePreviewCharacter = character;
+    }
+    // Only the editor clone is bound here; gameplay keeps its Server stance.
+    character->Apply_NetworkStance(skill->eRequiredStance);
+    return true;
+}
+void CEffectAuthoringSequencer::Restore_CharacterPreviewStance()
+{
+    if (const auto character = m_StancePreviewCharacter.lock())
+        character->Apply_NetworkStance(m_PreviousPreviewStance);
+    m_StancePreviewCharacter.reset();
+    m_PreviousPreviewStance = LostArk::Shared::PLAYER_STANCE_ID::NONE;
 }
 bool CEffectAuthoringSequencer::Begin_Model()
 {
@@ -974,6 +1005,9 @@ bool CEffectAuthoringSequencer::Begin_Model()
         m_PreviousClip = model->Get_CurrentAnimIndex(); m_PreviousPaused = model->Is_AnimPaused(); m_PreviousLoop = model->Is_AnimLoop();
         float duration = 0.f; model->Get_AnimationProgress(m_PreviousClip, m_PreviousPosition, duration);
     }
+    const auto* sequence = Selected_Sequence();
+    const auto skillId = m_CustomAnimation ? m_CharacterActionSkillId : (sequence ? sequence->skillId : 0u);
+    if (!Apply_CharacterPreviewStance(skillId)) return false;
     return Sample_Model(ClockMs());
 }
 bool CEffectAuthoringSequencer::Sample_Model(const std::uint32_t clockMs)
@@ -1036,7 +1070,8 @@ bool CEffectAuthoringSequencer::Sample_Model(const std::uint32_t clockMs)
         (std::min)(clockMs > selected->startMs ? clockMs - selected->startMs : 0u, selected->durationMs) * .001f, sample))
     { m_Status = "Could not sample the Product animation source clock."; return false; }
     model->Set_Animation(index, false); model->Skip_Blend(); model->Set_AnimPaused(true);
-    if (!model->Set_AnimTrackPosition(index, sample.fClipSourceTimeSeconds * tickRate)) return false;
+    if (!model->Set_AnimTrackPosition(index, sample.fClipSourceTimeSeconds * tickRate))
+    { m_Status = "The selected animation rejected its sampled time: " + selected->clipName; return false; }
     model->Play_Animation(0.f); m_Panel->Synchronize_PreviewWeapon(); return true;
 }
 bool CEffectAuthoringSequencer::Resolve_Root(float4x4_t& root)
@@ -1067,7 +1102,12 @@ bool CEffectAuthoringSequencer::Resolve_Root(float4x4_t& root)
         { m_Status = "Select an available model member for the Effect anchor."; return false; }
         return true;
     }
-    if (m_ModelRoot && m_Panel && m_Panel->Is_PreviewActive()) return CAnimationTargetService::Resolve_RootTransform(&root);
+    if (m_ModelRoot && m_Panel && m_Panel->Is_PreviewActive())
+    {
+        if (CAnimationTargetService::Resolve_RootTransform(&root)) return true;
+        m_Status = "The selected preview model has no valid root transform.";
+        return false;
+    }
     root = m_WorldRoot; return true;
 }
 bool CEffectAuthoringSequencer::Validate_Anchor(const std::string& anchor, const bool modelRoot, const bool useKouku)
@@ -1204,8 +1244,12 @@ bool CEffectAuthoringSequencer::Stage_Row(EFFECT_ROW& row, const float4x4_t& roo
     if (row.key.eOwnerKind == EFFECT_RESOURCE_OWNER_KIND::V1_DOCUMENT)
     {
         if (!m_V1Factory || !m_V1Release) { m_Status = "Effect document playback owner is unavailable."; return false; }
+        m_Status.clear();
         if (!m_V1Factory(row.key, row.previewElementIds, root, row.v1, row.previewStartMs, row.durationMs, m_Status) || !row.v1)
-        { Release_Row(row); return false; }
+        {
+            if (m_Status.empty()) m_Status = "Effect playback could not stage document: " + row.key.strStableId;
+            Release_Row(row); return false;
+        }
         if (row.bloomIntensityOverride &&
             !row.v1->Set_BloomIntensity(*row.bloomIntensityOverride, m_Status))
         { Release_Row(row); return false; }
@@ -1336,7 +1380,11 @@ bool CEffectAuthoringSequencer::Sample_Row(EFFECT_ROW& row, const float4x4_t& ro
         const bool sampled = row.sampledAge < 0.f || age < row.sampledAge || cycleStart != row.sampledCycleStart ?
             row.v1->Set_SampleTimeWithTransformHistory(sourceAge, provider, m_Status) :
             row.v1->Advance_PreviewWithTransformHistory(age - row.sampledAge, provider, m_Status);
-        if (!sampled) return false;
+        if (!sampled)
+        {
+            if (m_Status.empty()) m_Status = "Effect sampling failed: " + row.key.strStableId;
+            return false;
+        }
         row.sampledAge = age; row.sampledCycleStart = cycleStart;
         row.v1->Set_Visible(true);
         if (row.v1->Is_RenderFailureIsolated()) { m_Status = row.v1->Get_Status(); return false; }
@@ -1859,6 +1907,7 @@ void CEffectAuthoringSequencer::Stop()
     if (m_KoukuEffectPreview && m_KoukuEffectPreview->model) m_KoukuEffectPreview->model->Stop();
     m_KoukuEffectPreview.reset(); m_PendingKoukuEffectPreview.reset();
     m_Kouku.Stop();
+    Restore_CharacterPreviewStance();
     if (const auto model = m_Model.lock(); model && model == CAnimationTargetService::Resolve_Model() && m_ModelGeneration == CAnimationTargetService::Resolve_TargetGeneration())
     {
         model->Set_Animation(m_PreviousClip, m_PreviousLoop); model->Skip_Blend();
@@ -2350,6 +2399,7 @@ bool CEffectAuthoringSequencer::Load_Sequence(const bool discard)
     }
     Stop(); m_BoxDetailDraft.reset(); m_Effects = std::move(staged); m_CameraRows = std::move(cameras); m_SelectedCamera.clear(); m_ClockMs = 0; m_SelectedEffect.clear(); m_UseKouku = kind != "MODEL_SEQUENCE";
     m_AnimationRows = std::move(animations); m_CustomAnimation = customAnimation;
+    m_CharacterActionSkillId = 0u; // Never carry a previous skill stance into an unrelated saved draft.
     m_Sounds = std::move(sounds); m_Colliders = std::move(colliders); m_SelectedRowId.clear();
     if (m_CustomAnimation) m_InventoryGeneration = CAnimationTargetService::Resolve_TargetGeneration();
     m_SourceModelEffectId = sourceModel ? sequenceId : std::string{};

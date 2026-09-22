@@ -53,14 +53,57 @@
 
 namespace EffectToolDetail
 {
+	bool Has_SourceLockedAxisSprite(const Client::EFFECT_ELEMENT_DESC& Element)
+	{
+		if (!Element.SourceRecipe.bEnabled || Element.SourceRecipe.strRendererShape != "sprite")
+			return false;
+		bool bFixedAxis = false;
+		for (const auto& Module : Element.SourceRecipe.Modules)
+		{
+			const auto FindLiteral = [&](const std::string_view Property) {
+				return std::find_if(Module.Literals.begin(), Module.Literals.end(),
+					[&](const auto& Literal) { return Literal.strPropertyPath == Property; });
+			};
+			const auto Enabled = FindLiteral("benabled");
+			if (Enabled != Module.Literals.end() &&
+				Enabled->eKind == Client::EFFECT_SOURCE_LITERAL_KIND::BOOLEAN && !Enabled->bBoolean)
+				continue;
+			std::string_view Class = Module.strClassName;
+			if (Class.starts_with("efparticlemodule")) Class.remove_prefix(2u);
+			if (Class.ends_with("_seeded")) Class.remove_suffix(7u);
+			const bool bRequired = Class == "particlemodulerequired";
+			if (!bRequired && Class != "particlemoduleorientationaxislock") continue;
+			const auto Value = FindLiteral(bRequired ? "screenalignment" : "lockaxisflags");
+			if (Value == Module.Literals.end() || Value->eKind != Client::EFFECT_SOURCE_LITERAL_KIND::STRING)
+				continue;
+			const std::string_view Alignment = Value->strString;
+			// Preserve runtime module order: later Required modules can replace
+			// an earlier fixed or rotating axis orientation.
+			if (bRequired)
+			{
+				if (Alignment.ends_with("psa_rectangle") || Alignment.ends_with("psa_velocity") ||
+					Alignment.ends_with("psa_square")) bFixedAxis = false;
+			}
+			else if (Alignment.ends_with("epal_x") || Alignment.ends_with("epal_y") ||
+				Alignment.ends_with("epal_z") || Alignment.ends_with("epal_negative_x") ||
+				Alignment.ends_with("epal_negative_y") || Alignment.ends_with("epal_negative_z"))
+				bFixedAxis = true;
+			else if (Alignment.ends_with("epal_rotate_x") || Alignment.ends_with("epal_rotate_y") ||
+				Alignment.ends_with("epal_rotate_z")) bFixedAxis = true;
+		}
+		return bFixedAxis;
+	}
 
-    std::vector<ATTACHMENT_ELEMENT_GROUP> Build_AttachmentElementGroups(const Client::EFFECT_DOCUMENT_DESC& document)
+
+    std::vector<ATTACHMENT_ELEMENT_GROUP> Build_AttachmentElementGroups(const Client::EFFECT_DOCUMENT_DESC& document,
+        const std::string& elementId)
     {
         using namespace Client;
         std::vector<ATTACHMENT_ELEMENT_GROUP> groups;
         std::map<std::string, size_t> indices;
         for (const auto& element : document.Elements)
         {
+            if (!elementId.empty() && element.strElementId != elementId) continue;
             const auto& attachment = element.ActionCueAttachment;
             std::ostringstream key;
             key << std::hexfloat;
@@ -196,6 +239,10 @@ namespace EffectToolDetail
             if (std::find(group->elementIds.begin(), group->elementIds.end(), element.strElementId) != group->elementIds.end())
             {
                 auto& socket = element.ActionCueAttachment.SocketLocalTransform;
+                const auto oldRotation = socket.vRotationDegrees;
+                if ((oldRotation.x != rotationDegrees.x || oldRotation.y != rotationDegrees.y ||
+                    oldRotation.z != rotationDegrees.z) && Has_SourceLockedAxisSprite(element))
+                    element.Detail.Sprite.bFollowEmitterAxisRotation = true;
                 socket.vPosition = position;
                 socket.vRotationDegrees = rotationDegrees;
             }
@@ -254,7 +301,18 @@ namespace EffectToolDetail
         const auto groups = Build_AttachmentElementGroups(document);
         const auto group = std::find_if(groups.begin(), groups.end(), [&](const auto& item) { return item.key == groupKey; });
         if (group == groups.end()) return reject("The attachment group changed. Select its current anchor group again.");
-        if (!group->rotationEditable) return reject(group->rotationEditReason);
+        if (elementId.empty())
+        {
+            if (!group->rotationEditable) return reject(group->rotationEditReason);
+        }
+        else
+        {
+            const auto target = Build_AttachmentElementGroups(document, elementId);
+            if (target.empty() || !target.front().rotationEditable)
+                return reject(target.empty() ? "The rotation target is unavailable." : target.front().rotationEditReason);
+        }
+        if (!pivot && !group->editable)
+            return reject("Group center is unavailable across distinct transform owners. Choose Anchor origin, Custom point or Element origin.");
         const float3_t center = pivot ? *pivot : group->center;
         if (!inRange(center, 100000.f)) return reject("Rotation pivot must be finite and within +/-100000 metres.");
         float3_t referenceRotation = group->rotationDegrees;
@@ -284,7 +342,7 @@ namespace EffectToolDetail
                 value.y - center.y, value.z - center.z));
             return float3_t(center.x + relative.x, center.y + relative.y, center.z + relative.z);
         };
-        struct ROTATION_EDIT { size_t index; Client::EFFECT_TRANSFORM_DESC transform; Client::EFFECT_LINEAR_LERP_DESC lerp; };
+        struct ROTATION_EDIT { size_t index; Client::EFFECT_TRANSFORM_DESC transform; Client::EFFECT_LINEAR_LERP_DESC lerp; bool followAxis; };
         std::vector<ROTATION_EDIT> edits;
         for (const auto& id : group->elementIds)
         {
@@ -292,7 +350,8 @@ namespace EffectToolDetail
             const auto member = std::find_if(document.Elements.begin(), document.Elements.end(),
                 [&](const auto& element) { return element.strElementId == id; });
             if (member == document.Elements.end()) return reject("A group member is unavailable; all Elements are unchanged.");
-            ROTATION_EDIT edit{static_cast<size_t>(member - document.Elements.begin()), member->Detail.Transform, member->Detail.LinearLerp};
+            ROTATION_EDIT edit{static_cast<size_t>(member - document.Elements.begin()), member->Detail.Transform, member->Detail.LinearLerp,
+                member->Detail.Sprite.bFollowEmitterAxisRotation || Has_SourceLockedAxisSprite(*member)};
             edit.transform.vPosition = rotatePosition(edit.transform.vPosition);
             edit.transform.vVelocityPerSecond = rotateVector(edit.transform.vVelocityPerSecond);
             DirectX::SimpleMath::Quaternion composed;
@@ -314,6 +373,9 @@ namespace EffectToolDetail
             auto& detail = document.Elements[edit.index].Detail;
             detail.Transform = edit.transform;
             detail.LinearLerp = edit.lerp;
+            // An explicit placement edit opts only locked-axis sprites into the
+            // existing emitter-basis path; original replay remains unchanged.
+            detail.Sprite.bFollowEmitterAxisRotation = edit.followAxis;
         }
         error.clear();
         return true;

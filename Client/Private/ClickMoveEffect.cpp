@@ -7,6 +7,7 @@
 #include "WorldPlayerNameplateView.h"
 
 #include <cmath>
+#include <string_view>
 
 namespace
 {
@@ -31,8 +32,11 @@ std::vector<std::string> Client::CClickMoveEffect::Queue_LevelResources(const LE
 	if (!Uses_LevelMarkers(level)) return accepted;
 	// Register each optional decoration independently: one missing asset must
 	// neither hide the other nor fail the playable Level's admission.
-	for (const char* id : { CLICK_EFFECT_ID, DESTINATION_EFFECT_ID, PING_EFFECT_ID, PENDING_EFFECT_ID })
+	for (const char* id : { CLICK_EFFECT_ID, DESTINATION_EFFECT_ID, PING_EFFECT_ID, PENDING_EFFECT_ID,
+		"effect.world.entry_aura", "effect.world.entry_aura.active", "effect.world.respawn_aura" })
 	{
+		if (std::string_view(id).find("aura") != std::string_view::npos &&
+			LEVEL::KAKULSAYDON_ARENA != level) continue;
 		if (id == DESTINATION_EFFECT_ID &&
 			LEVEL::KAKULSAYDON_ARENA != level && LEVEL::VALTAN_ARENA != level)
 			continue;

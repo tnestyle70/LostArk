@@ -118,3 +118,17 @@ Effect Tool V1에서 기존 화염파동 saved Effect를 열고 `Current Effect 
 
 불바닥 색·형태·밀도와 첨부 이미지의 시각 일치는 사용자 확인 전이다. GPU first pixel,
 visual PASS 또는 원본 action의 disabled notify 복구 완료로 기록하지 않았다.
+
+## G06. 설치본 재감사 — G1 간격·원본 GPU 입력·실제 잔여 수명
+
+초기 적용 후 현재 파일 SHA가 최초 applied-manifest와 같아 G1 같은 position 필드에 사용자의 후속 변경이 없음을 확인했다. 기존 G1 일부5.220m 간격은 요청을 충족하지 않아14그룹 전체를2/3/4/5행,열3.5m·행3.031m로 재배치했다. 현재14점 centroid와 right/forward basis, element별 내부 offset·rotation·scale·material·timing은 보존했다. 392개 stable element position만 후보로 전달했고 root가 최신 저장본에 병합했다. G3 기존3.5m 간격은 보존했다.
+
+현재 설치 Full Effect의 실제 Playback sweep에서 원본 FireWave01 ground가7.28333378s까지 살아 있었고 기존 P58 occurrence5352ms 이후 visible particle sample2504개가 있었다. 두 occurrence를9100ms로, P58 visual duration만15247ms로 늘렸다. stage합11534ms, Logic/World/Summon/Scene은 보존했다. projector의 stageDuration과 visualDuration 분리, Server stage clock, Client Retire_ProductSession의 실제 PRODUCT_TAIL handle/history 이관을 확인했다. root가 Composition2195와 대응 patternbindings2195로 설치·게시했다.
+
+GPU 감사에서 native2873은 shader guard는 열려 있으나 원본 opacity CB0[2].x를0으로 둔 채 다른 ABI의 CB0[0].x만1로 입력하여 실제 DDS가0pixel이었다. 원본 PS/materialMap의 engine prefix를 확인하고 exact material/PS/VF/VS guard 아래 MacroUV center/scale와 opacity row2를 기존 adapter로 연결했다. native2874는 기존 WorldToLocal 경로로 정상 출력되어 수식을 변경하지 않았다.
+
+현 게임 원본 패키지에서 engine ParticleSystem CDO 반경200cm/position0 및 FireWave01·FireDecal01·Bazooka_C_Fire instance override 부재를 재확인했다. source literal4개만 추가하는6파일36element stable-ID 후보를 root가 현재 저장본에 병합했다. 원본 PS를 공유하는 library들도 같은 입력을 받아 renderer admission에서 실패하지 않는다. 기존14그룹 최신 위치는 유지했다.
+
+실제 product particle shader의 창 없는 D3D11 WARP 검사: native2873 수정 전 DDS0pixel→수정 후1844/1757pixel(maxAlpha .0018075/.00230781), white4096pixel/원본 alpha식 .25, opacity0 control0pixel. native2874는 전후2504/2519pixel/maxAlpha .626821 동일, D3D11 error0. 밝기를 임의 보정하지 않았다. 실제 설치6문서를 현재 Codec/Playback14TU로 별도 컴파일하여 root yaw0/90/180·scale1.7·translation과5시간샘플을 평가했다. MacroUV390samples에서 실제 emitter 중심 오차0, radius2m unscaled, projected 반경 finite, 실패0이다.
+
+현재 수정 범위·SHA·전후 GPU 로그·현재 설치 데이터 inventory는 `out/Gate1EffectReaudit20260922/`에 있다. 상세 판단은 `flame-dice-stagger-backstep-review.md`를 따른다. 초기 G05의 후보/미설치 상태는 이 통합 결과로 갱신됐으며, 최종 게임 화면의 불바닥 색·형태·밀도와14그룹 배치는 여전히 사용자 확인 범위다.

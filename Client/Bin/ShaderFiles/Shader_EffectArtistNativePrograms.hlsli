@@ -295,8 +295,14 @@
 #if !defined(ARTIST_NATIVE_MODEL_ONLY) && (!defined(EFFECT_NATIVE_PROFILE_GROUP) || EFFECT_NATIVE_PROFILE_GROUP == 4352)
 #include "Shader_EffectKoukuNativeGroup4352.hlsli"
 #endif
-#if !defined(ARTIST_NATIVE_MODEL_ONLY) && (!defined(EFFECT_NATIVE_PROFILE_GROUP) || EFFECT_NATIVE_PROFILE_GROUP == 4480 || defined(EFFECT_NATIVE_TRAIL_CARRIER))
+#if !defined(ARTIST_NATIVE_MODEL_ONLY) && (!defined(EFFECT_NATIVE_PROFILE_GROUP) || EFFECT_NATIVE_PROFILE_GROUP == 4416)
+#include "Shader_EffectKoukuNativeGroup4416.hlsli"
+#endif
+#if !defined(ARTIST_NATIVE_MODEL_ONLY) && (!defined(EFFECT_NATIVE_PROFILE_GROUP) || EFFECT_NATIVE_PROFILE_GROUP == 4480 || defined(EFFECT_NATIVE_DECAL_CARRIER) || defined(EFFECT_NATIVE_TRAIL_CARRIER))
 #include "Shader_EffectKoukuNativeGroup4480.hlsli"
+#endif
+#if !defined(ARTIST_NATIVE_MODEL_ONLY) && (!defined(EFFECT_NATIVE_PROFILE_GROUP) || EFFECT_NATIVE_PROFILE_GROUP == 4544 || defined(EFFECT_NATIVE_DECAL_CARRIER))
+#include "Shader_EffectKoukuNativeGroup4544.hlsli"
 #endif
 // END KOUKU NATIVE GROUP
 #ifndef ARTIST_NATIVE_MODEL_ONLY
@@ -405,7 +411,7 @@ EFFECT_PS_OUT Shade_EffectArtistNative(uint profile, ARTIST_NATIVE_INPUT input)
 #if !defined(EFFECT_NATIVE_PROFILE_GROUP) || EFFECT_NATIVE_PROFILE_GROUP == 3904 || defined(EFFECT_NATIVE_DECAL_CARRIER) || defined(EFFECT_NATIVE_TRAIL_CARRIER)
 #include "Shader_EffectArtistNativeDispatchKoukuNativeCases3904.hlsli"
 #endif
-#if !defined(EFFECT_NATIVE_PROFILE_GROUP) || EFFECT_NATIVE_PROFILE_GROUP == 4480 || defined(EFFECT_NATIVE_TRAIL_CARRIER)
+#if !defined(EFFECT_NATIVE_PROFILE_GROUP) || EFFECT_NATIVE_PROFILE_GROUP == 4480 || defined(EFFECT_NATIVE_DECAL_CARRIER) || defined(EFFECT_NATIVE_TRAIL_CARRIER)
 #include "Shader_EffectArtistNativeDispatchKoukuNativeCases4480.hlsli"
 #endif
 #if !defined(EFFECT_NATIVE_PROFILE_GROUP) || EFFECT_NATIVE_PROFILE_GROUP == 3968 || defined(EFFECT_NATIVE_DECAL_CARRIER) || defined(EFFECT_NATIVE_TRAIL_CARRIER)
@@ -428,6 +434,12 @@ EFFECT_PS_OUT Shade_EffectArtistNative(uint profile, ARTIST_NATIVE_INPUT input)
 #endif
 #if !defined(EFFECT_NATIVE_PROFILE_GROUP) || EFFECT_NATIVE_PROFILE_GROUP == 4352
 #include "Shader_EffectArtistNativeDispatchKoukuNativeCases4352.hlsli"
+#endif
+#if !defined(EFFECT_NATIVE_PROFILE_GROUP) || EFFECT_NATIVE_PROFILE_GROUP == 4416
+#include "Shader_EffectArtistNativeDispatchKoukuNativeCases4416.hlsli"
+#endif
+#if !defined(EFFECT_NATIVE_PROFILE_GROUP) || EFFECT_NATIVE_PROFILE_GROUP == 4544 || defined(EFFECT_NATIVE_DECAL_CARRIER)
+#include "Shader_EffectArtistNativeDispatchKoukuNativeCases4544.hlsli"
 #endif
 // END KOUKU NATIVE CASES
     default: clip(-1.f); return output;

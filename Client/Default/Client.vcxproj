@@ -3718,4 +3718,40 @@
     <None Include="..\..\Data\Effects\Authored\effect.guardianknight.skill.49330.clip.1.full.restore.effect.json"></None>
     <None Include="..\..\Data\Effects\Sequences\effect.guardianknight.skill.49420.clip.0.full.restore.effectsequence.json"></None>
   </ItemGroup>
+  <ItemGroup>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectMeshKouku4416.hlsl">
+      <DisableOptimizations Condition="'$(Platform)'=='x64'">false</DisableOptimizations>
+      <AdditionalOptions Condition="'$(Platform)'=='x64'">/O1 %(AdditionalOptions)</AdditionalOptions>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectParticleKouku4416.hlsl">
+      <DisableOptimizations Condition="'$(Platform)'=='x64'">false</DisableOptimizations>
+      <AdditionalOptions Condition="'$(Platform)'=='x64'">/O1 %(AdditionalOptions)</AdditionalOptions>
+    </FxCompile>
+    <None Include="..\Bin\ShaderFiles\Shader_EffectKoukuNativeGroup4416.hlsli" />
+    <None Include="..\Bin\ShaderFiles\Shader_EffectArtistNativeDispatchKoukuNativeCases4416.hlsli" />
+    <None Include="..\Bin\ShaderFiles\Shader_EffectArtistNativeSelectedGroup4416.hlsli" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\Data\Effects\Authored\effect.world.entry_aura.active.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.world.entry_aura.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.world.respawn_aura.effect.json" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.common.spinning.card.casting.effect.json" />
+  </ItemGroup>
+  <ItemGroup>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectMeshKouku4544.hlsl">
+      <DisableOptimizations Condition="'$(Platform)'=='x64'">false</DisableOptimizations>
+      <AdditionalOptions Condition="'$(Platform)'=='x64'">/O1 %(AdditionalOptions)</AdditionalOptions>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectParticleKouku4544.hlsl">
+      <DisableOptimizations Condition="'$(Platform)'=='x64'">false</DisableOptimizations>
+      <AdditionalOptions Condition="'$(Platform)'=='x64'">/O1 %(AdditionalOptions)</AdditionalOptions>
+    </FxCompile>
+    <None Include="..\Bin\ShaderFiles\Shader_EffectKoukuNativeGroup4544.hlsli" />
+    <None Include="..\Bin\ShaderFiles\Shader_EffectArtistNativeDispatchKoukuNativeCases4544.hlsli" />
+    <None Include="..\Bin\ShaderFiles\Shader_EffectArtistNativeSelectedGroup4544.hlsli" />
+    <None Include="..\..\Data\Effects\Authored\effect.guardianknight.skill.49220.source.49290.clip.0.full.restore.effect.json"></None>
+    <None Include="..\..\Data\Effects\Authored\effect.guardianknight.skill.49220.source.49290.clip.1.full.restore.effect.json"></None>
+  </ItemGroup>
 </Project>

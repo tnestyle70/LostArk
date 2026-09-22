@@ -198,6 +198,7 @@ float g_ArtistSourceMaterialTime = 0.f;
 uint g_KoukuDoveDirectionalCount = 0u;
 float4 g_KoukuDoveDirectionalDirections[16];
 float4 g_KoukuDoveDirectionalColors[16];
+float4 g_ArtistSourceMacroUV;
 float4 g_ArtistSourceWorldToLocal[3];
 float4 g_ArtistSourceLocalToWorld[3];
 float4 g_ArtistSourceWorldToView[3];
@@ -516,6 +517,12 @@ for ordinal, selection in enumerate(selections):
             'da323567908fb948a423cf24a1eaae89': ('5d79421dc8571c45aa49790f50274f51', 9, [0, 1, 2, 7, 8, 9, 10, 11]),
             '015fa6f730aec44fb0479a94935919a7': ('5d79421dc8571c45aa49790f50274f51', 16, [0, 1, 2, 14, 15, 16, 17, 18]),
             '4c80ea0c0cb28e41b7cc44920bd162a5': ('5d79421dc8571c45aa49790f50274f51', 12, [0, 1, 2, 10, 11, 12, 13, 14]),
+            # Guardian Dragon Resonance: exact LocalDecal projection and sky rows.
+            'ccffbc09263fbe46887a361b9ea901f5': ('5d79421dc8571c45aa49790f50274f51', 13, [0, 1, 2, 11, 12, 13, 14, 15]),
+            '3e2151eaa9254c408a93249c1647aaa6': ('5d79421dc8571c45aa49790f50274f51', 20, [0, 1, 2, 18, 19, 20, 21, 22]),
+            # Guardian ALT V fixed-area impact and DragonDecal source permutations.
+            'b319111a4ef50d40a6b4b960d6c835c7': ('5d79421dc8571c45aa49790f50274f51', 16, [0, 1, 2, 14, 15, 16, 17, 18]),
+            '225313f3418d1644afd364c8fc464a7d': ('772e94581a5e6548b9529bc7cc103bca', None, [0, 1, 2]),
         }.get(sid) if decal else None
         if kouku_decal:
             assert selection['sourceVS'] == kouku_decal[0]
@@ -671,6 +678,57 @@ for ordinal, selection in enumerate(selections):
                 lines += ['    source[0]=float4(0.f,0.f,0.f,1.f); // Absolute world origin and neutral external opacity.',
                           '    float4 projection[4]; [unroll] for(uint i=0u;i<4u;++i) projection[i]=input.sourceProjection[i];']
             lines += [f'    source[{sky}]=float4(input.skyUpperColor,0.f);', f'    source[{sky+1}]=float4(input.skyLowerColor,0.f);', f'    source[{sky+2}]=float4(input.ambientColor,input.skyIntensity);']
+        guardian_world_position = sid in (
+            '6c98ffeb71f43947910f9d868cbb2b55', 'c33eb51395d71c4b804cf843eee2a488')
+        guardian_world_to_local = sid in (
+            '34ab808091791e4ea33d0193d9a46f79', 'c33eb51395d71c4b804cf843eee2a488')
+        if guardian_world_position:
+            assert selection['rendererShape'] == 'sprite'
+            assert selection['sourceVS'] in ('c7afe261ee6b2342b612cebb098b1933', '1933037c8b482b47b9c7f17238734ad2')
+            assert bindings['constantBufferClosure']['unownedConstantBuffer0Slots'] == ([0,1,2,3] if guardian_world_to_local else [0])
+            lines += ['    source[0]=float4(0.f,0.f,0.f,1.f); // Absolute source world origin and original opacity W.']
+        if guardian_world_to_local:
+            assert selection['rendererShape'] == 'sprite'
+            assert bindings['constantBufferClosure']['unownedConstantBuffer0Slots'] == [0,1,2,3]
+            lines += ['    [unroll] for(uint row=0u;row<3u;++row) source[1u+row]=g_ArtistSourceWorldToLocal[row];']
+        if sid == 'eaac28d26f446743a4f6e0a035d6cfb6':
+            assert selection['rendererShape'] == 'sprite' and selection['sourceVS'] == '5825675b4ffbc840ad691ec56973cf7e'
+            assert bindings['constantBufferClosure']['unownedConstantBuffer0Slots'] == [0,1,2]
+            lines += ['    source[0]=0.f; // Absolute origin: no pre-view translation.',
+                      '    source[1]=float4(input.sourceCameraPosition,1.f);',
+                      '    source[2].x=1.f; // Native external opacity follows the camera rows.']
+        macro_uv_vertex = {
+            '84810d1df112094a8330255c42fb5870': '2dd6d96a7e6c974fac82106409a5b9b8',
+            '1c52877bf8998d4fa2659be93d5a9995': '5825675b4ffbc840ad691ec56973cf7e',
+        }.get(sid)
+        if macro_uv_vertex:
+            assert selection['rendererShape'] == 'sprite' and selection['sourceVS'] == macro_uv_vertex
+            assert bindings['constantBufferClosure']['unownedConstantBuffer0Slots'] == [0,1,2]
+            if sid == '1c52877bf8998d4fa2659be93d5a9995':
+                assert selection['sourceVF'] == 'fparticledynamicparametervertexfactory'
+                assert r['sourceMaterial'] == 'fx_m_mi_00.fx_mi.fx_c_pa_fi_02_1_tr'
+                assert [line for line in instructions if 'cb0[2]' in line] == ['mul o0.w, r0.x, cb0[2].x']
+                assert 'add r0.yz, r0.yyzy, -cb0[0].xxyx' in instructions
+                assert 'mad r1.xy, r0.yzyy, cb0[1].zwzz, l(0.500000, 0.500000, 0.000000, 0.000000)' in instructions
+            lines += ['    source[0]=float4(g_ArtistSourceMacroUV.xy,0.f,0.f);',
+                      '    source[1]=float4(0.f,0.f,g_ArtistSourceMacroUV.zw);',
+                      '    source[2].x=1.f; // Native ParticleMacroUV external opacity.']
+        guardian_masked_color = sid in (
+            '2077f21c99ab524387c5f96cadfede88', 'bc2b789f66273341bdcb9da418d00a0a',
+            '2d85fecf0b7dd9478dc9dad608124fba', '24b9fab146df71489895883c8b8fadca',
+            '3b18265f1649424d9c83b0a824f4033b', '75790cbcee5d864d9ec925c6158e33d7',
+            '3fdc451142ff60449bcad09ea75935ed')
+        if guardian_masked_color:
+            # These exact masked LocalVF programs have no opacity-prefix row.
+            # CB0[0] is MeshEmitterVertexColor (RGB tint, W mask coverage),
+            # whereas CB0[1] already belongs to SelectionColor. Supplying the
+            # translucent prefix leaves W zero and discards every shield/rock.
+            assert mesh and selection['sourceVF'] == 'flocalvertexfactory'
+            assert selection['sourceVS'] == 'd17daa101dec2b4493fce2f510407f32'
+            assert bindings['constantBufferClosure']['unownedConstantBuffer0Slots'] == [0]
+            assert r['parentProperties']['blendmode']['value'] == 'blend_masked'
+            assert any('cb0[0].w' in instruction for instruction in instructions)
+            lines += ['    source[0]=input.color; // Native masked mesh particle RGBA prefix.']
         if mesh and sid == '8f0b8e72c2782945b5c7c927c80a73c5':
             # Quest's opaque pass has no leading opacity uniform. Its sole
             # engine-owned row is particle color; selectioncolor binds row 1.
@@ -757,6 +815,21 @@ for ordinal, selection in enumerate(selections):
             '4d739536c182294da40111bf6ba66fd1': ('f6b274c2c28e4b45b0c2762be4e095fb', 'mov o2.xyzw, v3.xyzw'),
             '34c7dac3b50dcd40b8c18be67bbf7d5a': ('f6b274c2c28e4b45b0c2762be4e095fb', 'mov o2.xyzw, v3.xyzw'),
             '602579e9d74c2744acfda3bca9b987bb': ('91ccb94877dac34e988dd1d7bf625e2c', 'mov o1.xyzw, v3.xyzw'),
+            # Guardian trail/ribbon color and distortion share the reviewed four-lane VS ABI.
+            '4fadeb6d325abb4da6ee7cb2cc48f1ea': ('f6b274c2c28e4b45b0c2762be4e095fb', 'mov o2.xyzw, v3.xyzw'),
+            'bdfaa809f0359f4195f9316fea2a4af2': ('f6b274c2c28e4b45b0c2762be4e095fb', 'mov o2.xyzw, v3.xyzw'),
+            'e827bcec62f20a4bac513dd9107aafc6': ('f6b274c2c28e4b45b0c2762be4e095fb', 'mov o2.xyzw, v3.xyzw'),
+            'd1e3e2d34da42d448045af7b08e27e15': ('f6b274c2c28e4b45b0c2762be4e095fb', 'mov o2.xyzw, v3.xyzw'),
+            '61d43cc5864dd7468d0f37af6614df44': ('f6b274c2c28e4b45b0c2762be4e095fb', 'mov o2.xyzw, v3.xyzw'),
+            '768fc78707aafe4c9dc0f4454fdaa459': ('f6b274c2c28e4b45b0c2762be4e095fb', 'mov o2.xyzw, v3.xyzw'),
+            '67ce158b5cfe9f4d8d2a11002c299008': ('f6b274c2c28e4b45b0c2762be4e095fb', 'mov o2.xyzw, v3.xyzw'),
+            '93cd08021eb2234cb0d474c6eda62f3c': ('f6b274c2c28e4b45b0c2762be4e095fb', 'mov o2.xyzw, v3.xyzw'),
+            '5955037cc36c674cb40f64dd5203c7f3': ('f6b274c2c28e4b45b0c2762be4e095fb', 'mov o2.xyzw, v3.xyzw'),
+            '2668cf8f704b6847822e1dfb58f7c37e': ('f6b274c2c28e4b45b0c2762be4e095fb', 'mov o2.xyzw, v3.xyzw'),
+            'f5add518a67dfc4791fba737492b4868': ('91ccb94877dac34e988dd1d7bf625e2c', 'mov o1.xyzw, v3.xyzw'),
+            'd0343de6d387fb448583bea9b26c6e80': ('91ccb94877dac34e988dd1d7bf625e2c', 'mov o1.xyzw, v3.xyzw'),
+            'a5ce32cc4646da42a80d41c4af46a9a5': ('91ccb94877dac34e988dd1d7bf625e2c', 'mov o1.xyzw, v3.xyzw'),
+            '9123301bd4b9e347943503e81cadd16f': ('91ccb94877dac34e988dd1d7bf625e2c', 'mov o1.xyzw, v3.xyzw'),
         }.get(sid) if arguments.profile_domain == 'kouku' and selection['rendererShape'] in ('ribbon', 'animationTrail', 'animTrail') else None
         if ribbon_uv1_vs:
             assert selection['sourceVF'] == 'fparticlebeamtraildynamicparametervertexfactory'
@@ -773,7 +846,7 @@ for ordinal, selection in enumerate(selections):
                     values.update({0:'float4(input.uv,input.uv1)',7:'float4(input.tangentUp,0.f)'})
                 if ribbon_uv1_vs:
                     values[0]='float4(input.uv,input.uv1)'
-                if kouku_ground:
+                if kouku_ground or guardian_world_position:
                     values[5]='float4(input.sourceWorldPosition,1.f)'
                 if kouku_ice_distortion or kouku_world_distortion or kouku_fire_world:
                     values[5]='float4(input.sourceWorldPosition,1.f)'

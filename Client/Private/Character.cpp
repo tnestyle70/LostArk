@@ -1047,14 +1047,15 @@ void CCharacter::Rebuild_PresentationOwnerControls()
         if(const auto model=baseline.Model.lock())
             model->Override_SourceCharacterConstants(baseline.MaterialName.c_str(),baseline.Parameters);
     bool materialActive=false;
-    bool hideAll=false,hideWeapon=false,hideIdentity=false;
+    bool hideAll=false,hideWeapon=false,hideIdentity=false,showIdentity=false;
     for(const auto& [token,samples]:m_PresentationOwnerControls)
     {
         (void)token;
         for(const auto& sample:samples)
         {
             const auto& cue=sample.Control;
-            if(cue.strKind=="IDENTITY_VISIBILITY") {hideIdentity|=sample.Value.x<.5f;continue;}
+            if(cue.strKind=="IDENTITY_VISIBILITY")
+            {hideIdentity|=sample.Value.x<.5f;showIdentity|=sample.Value.x>=.5f;continue;}
             if(cue.strKind=="PAWN_VISIBILITY")
             {if(cue.iSourceTargetType==9u)hideWeapon|=sample.Value.x<.5f;else hideAll|=sample.Value.x<.5f;continue;}
             if(cue.strKind=="DIRECTIONAL_BRIGHTNESS")
@@ -1095,7 +1096,7 @@ void CCharacter::Rebuild_PresentationOwnerControls()
         }
     }
     if(!materialActive)m_PresentationMaterialBaselines.clear();
-    Set_PresentationVisibilityControls(hideAll,hideWeapon,hideIdentity);
+    Set_PresentationVisibilityControls(hideAll,hideWeapon,hideIdentity,showIdentity);
 }
 
 f32_t CCharacter::Get_VehicleDirectionalBrightness() const
@@ -2246,12 +2247,20 @@ bool_t CCharacter::Apply_NetworkAction(
 		m_isWallClimbRootMotionSuppressed = false;
 		m_isWallClimbEndClipActive = false;
 	}
+	if (PLAYER_ACTION_STATE::INTERACTION != action)
+		Cancel_PendingInteractionEffectAdmission();
 	if (PLAYER_ACTION_STATE::INTERACTION == action)
 	{
 		if (!Is_Valid_KoukuHudMode(interactionMode) || interactionMode == KOUKU_HUD_MODE::NONE ||
 			skillId >= 4u || actionStartTick == 0u) return false;
 		const bool_t same = m_eNetworkAction == action && m_iLastNetworkActionStartTick == actionStartTick;
-		if (same && (m_eInteractionMode != interactionMode || m_iInteractionIndex != skillId)) return false;
+		if (same && (m_eInteractionMode != interactionMode || m_iInteractionIndex != skillId))
+		{
+			Cancel_PendingInteractionEffectAdmission();
+			return false;
+		}
+		f32_t age = 0.f;
+		if (!CActionPresentationTimeline::Try_ResolveActionAgeSeconds(serverTick, actionStartTick, SERVER_TICK_HZ, age)) return false;
 		if (!same)
 		{
 			m_pChain = nullptr; m_iChainStage = 0; m_iChainStep = 0;
@@ -2259,9 +2268,10 @@ bool_t CCharacter::Apply_NetworkAction(
 			m_eInteractionMode = interactionMode; m_iInteractionIndex = skillId;
 			m_iLastNetworkActionStartTick = actionStartTick;
 			m_iCurrentEffectSkillId = INVALID_SKILL_ID; m_iEffectActionStartTick = 0;
+			m_bInteractionEffectSubmitted = false;
+			m_pInteractionEffectAdmission = std::make_shared<EFFECT_PENDING_SPAWN_ADMISSION>();
 		}
-		f32_t age = 0.f;
-		if (!CActionPresentationTimeline::Try_ResolveActionAgeSeconds(serverTick, actionStartTick, SERVER_TICK_HZ, age)) return false;
+		f32_t interactionClipSeconds = 0.f;
 		const auto& clips = m_InteractionClips[static_cast<std::size_t>(interactionMode)];
 		if (skillId < clips.size())
 		{
@@ -2269,6 +2279,7 @@ bool_t CCharacter::Apply_NetworkAction(
 			std::uint32_t animation; float duration;
 			if (Resolve_ClipTiming(step, animation, duration) && (same || Start_Clip(step)))
 			{
+				interactionClipSeconds = duration / step.playRate;
 				const float seconds = (std::min)(age * step.playRate, (std::max)(0.f, duration - .0001f));
 				m_pBodyModel->Set_AnimTrackPosition(animation, seconds * m_pBodyModel->Get_AnimationTickPerSecond(animation));
 				m_pBodyModel->Play_Animation(0.f);
@@ -2277,11 +2288,19 @@ bool_t CCharacter::Apply_NetworkAction(
 		else if (!same) OutputDebugStringA("[Interaction] Approved action has no admitted clip binding.\n");
 		const auto& effects = m_InteractionEffectIds[static_cast<std::size_t>(interactionMode)];
 		f32_t preparedEffectSeconds = 0.f;
-		if (!same && skillId < effects.size() &&
-			CEffectPresentationService::Try_Get_PreparedProductDurationSeconds(effects[skillId], preparedEffectSeconds))
+		const bool_t effectPrepared = skillId < effects.size() &&
+			CEffectPresentationService::Try_Get_PreparedProductDurationSeconds(effects[skillId], preparedEffectSeconds);
+		if (age >= interactionClipSeconds ||
+			age >= static_cast<f32_t>(Kouku_InteractionActionMs(interactionMode, skillId)) * .001f ||
+			(effectPrepared && age >= preparedEffectSeconds))
+			Cancel_PendingInteractionEffectAdmission();
+		// Preparation may finish after the first snapshot. Retry only this live action,
+		// then let the accepted effect keep its authored natural tail.
+		if (m_pInteractionEffectAdmission && !m_bInteractionEffectSubmitted && effectPrepared)
 		{
 			EFFECT_SPAWN_DESC desc;
 			desc.strEffectAssetId = effects[skillId];
+			desc.PendingAdmission = m_pInteractionEffectAdmission;
 			desc.pOwner = static_pointer_cast<CCharacter>(shared_from_this());
 			desc.iActionStartTick = actionStartTick;
 			desc.strOccurrenceId = "interaction:" + std::to_string(static_cast<unsigned>(interactionMode)) + ":" + std::to_string(skillId);
@@ -2290,7 +2309,7 @@ bool_t CCharacter::Apply_NetworkAction(
 			desc.bHasActionFacingYaw = true;
 			desc.fActionFacingYawDegrees = actionFacingYawDegrees;
 			std::string status;
-			CEffectPresentationService::Spawn(desc, status);
+			m_bInteractionEffectSubmitted = CEffectPresentationService::Spawn(desc, status);
 		}
 		m_eNetworkAction = action;
 		return true;
@@ -3840,7 +3859,7 @@ void CCharacter::Load_FaceMorphs()
 void CCharacter::Late_Update(f32_t fTimeDelta)
 {
 	// Skip the composite part render queues without changing equipment visibility.
-    Set_PresentationVisibilityControls(m_isSourcePawnHidden, m_isSourceWeaponHidden, m_isSourceIdentityHidden);
+    Set_PresentationVisibilityControls(m_isSourcePawnHidden, m_isSourceWeaponHidden, m_isSourceIdentityHidden, m_isSourceIdentityVisible);
 	if (m_isNetworkPresentationHidden || m_isSourcePawnHidden) return;
 	__super::Late_Update(fTimeDelta);
 
@@ -4154,13 +4173,19 @@ HRESULT CCharacter::Render_PreviewParts(
 }
 
 void CCharacter::Set_PresentationVisibilityControls(const bool_t all,
-    const bool_t weapon, const bool_t identity)
+    const bool_t weapon, const bool_t identity, const bool_t showIdentity)
 {
     m_isSourcePawnHidden = all; m_isSourceWeaponHidden = weapon; m_isSourceIdentityHidden = identity;
+    m_isSourceIdentityVisible = showIdentity;
     for (const auto& [id, part] : m_PartObjects)
         if (auto* equipment = dynamic_cast<CPart_Equipment*>(part.get()))
+        {
+            // The authored stance/user visibility remains the baseline. An
+            // active source IdentityParts window overlays it until removal.
+            equipment->Set_PresentationVisible(showIdentity && 0u == m_iVehicleId);
             equipment->Set_PresentationSuppressed(all ||
                 (weapon && equipment->Is_WeaponPart()) || (identity && equipment->Is_IdentityPart()));
+        }
 }
 
 bool CCharacter::Collect_PresentationAfterimageModels(const uint32_t sourcePartType,
@@ -4197,7 +4222,7 @@ bool CCharacter::Collect_PresentationAfterimageModels(const uint32_t sourcePartT
 HRESULT CCharacter::Render_PreviewPartsInternal(
 	uint32_t iSkinnedPassIndex, uint32_t iSocketedPassIndex)
 {
-    Set_PresentationVisibilityControls(m_isSourcePawnHidden, m_isSourceWeaponHidden, m_isSourceIdentityHidden);
+    Set_PresentationVisibilityControls(m_isSourcePawnHidden, m_isSourceWeaponHidden, m_isSourceIdentityHidden, m_isSourceIdentityVisible);
     if (m_isSourcePawnHidden) return S_OK;
 	for (auto& Pair : m_PartObjects)
 	{

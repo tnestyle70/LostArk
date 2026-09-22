@@ -517,6 +517,109 @@ HRESULT Client::CEffectDocumentRenderer::Bind_ModelCueNativeMaterial(const EFFEC
 	return S_OK;
 }
 
+HRESULT Client::CEffectDocumentRenderer::Apply_ModelCueSourceMaterialTracks(
+    const EFFECT_MODEL_CUE_DESC& Cue, Engine::CModel& Model, const f32_t fLocalTime)
+{
+        if (Cue.SourceMaterialProfile && !Cue.MaterialParameterTracks.empty())
+        {
+            auto parameters = Cue.SourceMaterialProfile->parameters;
+            for (const auto& track : Cue.MaterialParameterTracks)
+            {
+                const auto value = CEffectDistribution::Evaluate(track.Values, fLocalTime, 0.f);
+                auto& output = parameters.at(track.strName);
+                if (!track.bVector) output.fill(value.x);
+                else
+                {
+                    output[0] = value.x; output[1] = value.y; output[2] = value.z;
+                    if (track.Values.iComponentCount == 4u) output[3] = value.w;
+                }
+            }
+            Engine::MODEL_SOURCE_CHARACTER_PARAMETERS packed;
+            if (!SourceCharacterMaterial::Configure(Cue.SourceMaterialProfile->family, parameters, packed) ||
+                !Model.Override_SourceCharacterConstants(Cue.SourceMaterialProfile->materialName.c_str(), packed))
+                return Fail_RenderOperation("Model Cue CMaterial sample failed: " + Cue.strCueId, E_FAIL, true);
+        }
+    return S_OK;
+}
+
+bool_t Client::CEffectDocumentRenderer::Has_ShadowModelCues(
+    const EFFECT_EVALUATED_FRAME& Frame) const
+{
+    if (m_bOccurrenceElementSelected || !m_bModelCueRenderingEnabled) return false;
+    return std::ranges::any_of(Get_StagedDocument().ModelCues,
+        [&](const EFFECT_MODEL_CUE_DESC& Cue) {
+            const f32_t local = Frame.fSampleTimeSeconds - Cue.fStartDelaySeconds;
+            return Cue.bCastsShadow && Cue.bVisible && !Cue.Afterimage && !Cue.Material &&
+                Cue.eAlphaMode != EFFECT_MODEL_CUE_ALPHA_MODE::TRANSLUCENT_SURFACE &&
+                Cue.fOpacity > 0.f && Cue.vColorMultiply.w > 0.f &&
+                local >= 0.f && local <= Cue.fDurationSeconds;
+        });
+}
+
+HRESULT Client::CEffectDocumentRenderer::Render_ShadowModelCues(
+    const EFFECT_EVALUATED_FRAME& Frame)
+{
+    m_strRenderFailureDetail.clear();
+    m_bLastRenderFailureObjectLocal = false;
+    if (!Has_ShadowModelCues(Frame)) return S_FALSE;
+    std::string gateStatus;
+    if (!m_bSourceVisualProgramActive && !m_ReconstructedRuntimeBoundary.Admit_Render(gateStatus))
+    {
+        m_strStatus = std::move(gateStatus);
+        m_bLastRenderFailureObjectLocal = true;
+        return E_FAIL;
+    }
+    constexpr uint32_t MODEL_CUE_SHADOW_PASS = 15u;
+    const auto FailShadow = [this](std::string detail)
+    {
+        m_strStatus = "Effect model-cue shadow failed: " + detail;
+        return Fail_RenderOperation(std::move(detail), E_FAIL, true);
+    };
+    const float4_t* camera = CGameInstance::Get().Get_CamPosition();
+    if (!camera) return FailShadow("Scene camera is unavailable.");
+    for (const auto& cue : Get_StagedDocument().ModelCues)
+    {
+        const f32_t local = Frame.fSampleTimeSeconds - cue.fStartDelaySeconds;
+        if (!cue.bCastsShadow || !cue.bVisible || cue.Afterimage || cue.Material ||
+            cue.eAlphaMode == EFFECT_MODEL_CUE_ALPHA_MODE::TRANSLUCENT_SURFACE ||
+            cue.fOpacity <= 0.f || cue.vColorMultiply.w <= 0.f || local < 0.f || local > cue.fDurationSeconds)
+            continue;
+        auto resource = m_ModelCueResources.find(cue.strCueId);
+        if (resource == m_ModelCueResources.end() || !resource->second.pModel)
+            return FailShadow("Model resource missing: " + cue.strCueId);
+        auto& model = *resource->second.pModel;
+        float4x4_t world{};
+        std::string poseError;
+        if (!Sample_ModelCuePose(cue, resource->second, Frame.fSampleTimeSeconds, Frame.RootWorld, world, poseError))
+            return FailShadow(std::move(poseError));
+        HRESULT result = Apply_ModelCueSourceMaterialTracks(cue, model, local);
+        if (FAILED(result)) return FailShadow(m_strRenderFailureDetail);
+        const uint32_t sceneReadMode = 0u;
+        const uint32_t alphaClip = cue.eAlphaMode == EFFECT_MODEL_CUE_ALPHA_MODE::MASKED_SURFACE ? 1u : 0u;
+        if (FAILED(m_pAnimatedModelShader->Bind_Matrix("g_WorldMatrix", &world)) ||
+            FAILED(CGameInstance::Get().Bind_Transform(m_pAnimatedModelShader, "g_ViewMatrix", D3DTS::VIEW)) ||
+            FAILED(CGameInstance::Get().Bind_Transform(m_pAnimatedModelShader, "g_ProjMatrix", D3DTS::PROJ)) ||
+            FAILED(CGameInstance::Get().Bind_ShadowLight_ShaderResource(m_pAnimatedModelShader, "g_EffectModelCueShadowLightViewMatrix", D3DTS::VIEW)) ||
+            FAILED(CGameInstance::Get().Bind_ShadowLight_ShaderResource(m_pAnimatedModelShader, "g_EffectModelCueShadowLightProjMatrix", D3DTS::PROJ)) ||
+            FAILED(m_pAnimatedModelShader->Bind_RawValue("g_vCamPosition", camera, sizeof(*camera))) ||
+            FAILED(m_pAnimatedModelShader->Bind_RawValue("g_EffectSceneReadMode", &sceneReadMode, sizeof(sceneReadMode))) ||
+            FAILED(m_pAnimatedModelShader->Bind_RawValue("g_EffectModelCueShadowAlphaClip", &alphaClip, sizeof(alphaClip))) ||
+            FAILED(m_pAnimatedModelShader->Bind_RawValue("g_EffectModelCueColorMultiply", &cue.vColorMultiply, sizeof(cue.vColorMultiply))) ||
+            FAILED(m_pAnimatedModelShader->Bind_RawValue("g_EffectModelCueOpacity", &cue.fOpacity, sizeof(cue.fOpacity))))
+            return FailShadow("Transform bind failed: " + cue.strCueId);
+        for (uint32_t mesh = 0u; mesh < model.Get_NumMeshes(); ++mesh)
+        {
+            if (FAILED(Bind_DeferredMaterialInputs(model, m_pAnimatedModelShader, mesh)) ||
+                FAILED(model.Bind_BoneMatrices(m_pAnimatedModelShader, "g_BoneMatrices", mesh)) ||
+                FAILED(m_pAnimatedModelShader->Begin(MODEL_CUE_SHADOW_PASS)) ||
+                FAILED(model.Render(mesh)))
+                return FailShadow("Material/bone/draw failed: " + cue.strCueId);
+        }
+    }
+    m_strStatus = "Effect animated model-cue shadow rendering completed.";
+    return S_OK;
+}
+
 HRESULT Client::CEffectDocumentRenderer::Render_ModelCues(
 	const EFFECT_EVALUATED_FRAME& Frame,
 	const bool_t bNonBlendSurfaceOnly)
@@ -649,25 +752,8 @@ HRESULT Client::CEffectDocumentRenderer::Render_ModelCues(
 		if (FAILED(hResult))
 			return Fail_RenderOperation(
 				"Animated model-cue bind failed: opacity.", hResult);
-        if (Cue.SourceMaterialProfile && !Cue.MaterialParameterTracks.empty())
-        {
-            auto parameters = Cue.SourceMaterialProfile->parameters;
-            for (const auto& track : Cue.MaterialParameterTracks)
-            {
-                const auto value = CEffectDistribution::Evaluate(track.Values, fLocalTime, 0.f);
-                auto& output = parameters.at(track.strName);
-                if (!track.bVector) output.fill(value.x);
-                else
-                {
-                    output[0] = value.x; output[1] = value.y; output[2] = value.z;
-                    if (track.Values.iComponentCount == 4u) output[3] = value.w;
-                }
-            }
-            Engine::MODEL_SOURCE_CHARACTER_PARAMETERS packed;
-            if (!SourceCharacterMaterial::Configure(Cue.SourceMaterialProfile->family, parameters, packed) ||
-                !Model.Override_SourceCharacterConstants(Cue.SourceMaterialProfile->materialName.c_str(), packed))
-                return Fail_RenderOperation("Model Cue CMaterial sample failed: " + Cue.strCueId, E_FAIL, true);
-        }
+        hResult = Apply_ModelCueSourceMaterialTracks(Cue, Model, fLocalTime);
+        if (FAILED(hResult)) return hResult;
 		for (uint32_t iMesh = 0u; iMesh < Model.Get_NumMeshes(); ++iMesh)
 		{
 			hResult = Resource->second.pMaterialResource ?

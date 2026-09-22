@@ -59,7 +59,8 @@ SOURCE_CHARACTER_NATIVE_INPUT MakeSourceCharacterInput(float2 uv, float4 extraUV
     input.values[5] = float4(tangentLight, 1.f);
     input.values[7] = float4(tangentView, 1.f);
     input.values[8] = (g_SourceCharacterProgram == 3u || g_SourceCharacterProgram == 8u ||
-        g_SourceCharacterProgram == 9u) ? clipPosition : sourcePosition;
+        g_SourceCharacterProgram == 9u || g_SourceCharacterProgram == 110u ||
+        g_SourceCharacterProgram == 111u) ? clipPosition : sourcePosition;
     if (g_SourceCharacterProgram == 5u) // Eye's own UV1/UV2 varyings.
     {
         input.values[2] = float4(uv, extraUV.yx);

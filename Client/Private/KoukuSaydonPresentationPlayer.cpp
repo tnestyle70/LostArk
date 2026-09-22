@@ -1248,9 +1248,9 @@ Client::CKoukuSaydonPresentationPlayer::Read_TargetedCombatVisuals(const DATA_JS
         for (const auto& value : resources.Get_Array())
         {
             auto resource = Read_Resource(value);
-            if (resource.eKind != KIND::EFFECT || !stableId(resource.strResourceId) ||
-                !kinds.emplace(resource.strResourceId, resource.eKind).second)
-                throw std::runtime_error("Targeted visual requires unique Effect resources.");
+            if ((resource.eKind != KIND::EFFECT && !(resource.eKind == KIND::SOUND && !definition->loop)) ||
+                !stableId(resource.strResourceId) || !kinds.emplace(resource.strResourceId, resource.eKind).second)
+                throw std::runtime_error("Targeted visual requires unique Effect resources or finite Sound cues.");
             presentation.document.PresentationResources.push_back(std::move(resource));
         }
         sourceBossPresentation.document = presentation.document;
@@ -1263,7 +1263,7 @@ Client::CKoukuSaydonPresentationPlayer::Read_TargetedCombatVisuals(const DATA_JS
             const bool sourceBoss = box.strAnchorKind == "BOSS" && box.bFollowBoss && !definition->loop;
             const bool map = box.strAnchorKind == "MAP" && !box.bFollowBoss;
             if (!stableId(box.strOccurrenceId) || !ids.insert(box.strOccurrenceId).second ||
-                (!map && !sourceBoss) || !box.strBone.empty() || box.strBoneTarget != "BODY" ||
+                (resource->second == KIND::SOUND && !map) || (!map && !sourceBoss) || !box.strBone.empty() || box.strBoneTarget != "BODY" ||
                 !box.strWorldId.empty() || !box.strWorldOccurrenceId.empty() ||
                 !box.strLogicOccurrenceId.empty() || box.iWorldEmissionIndex != 0u)
                 throw std::runtime_error("Targeted occurrence requires a relative MAP or following source BOSS placement.");
@@ -1279,8 +1279,9 @@ Client::CKoukuSaydonPresentationPlayer::Read_TargetedCombatVisuals(const DATA_JS
             box.bFollowBoss = definition->loop;
             presentation.pattern.PresentationOccurrences.push_back(std::move(box));
         }
-        if (presentation.pattern.PresentationOccurrences.empty())
-            throw std::runtime_error("Targeted visual requires at least one MAP occurrence.");
+        if (std::none_of(presentation.pattern.PresentationOccurrences.begin(), presentation.pattern.PresentationOccurrences.end(),
+            [&](const auto& box) { return kinds.at(box.strResourceId) == KIND::EFFECT; }))
+            throw std::runtime_error("Targeted visual requires at least one MAP Effect occurrence.");
         if (!staged.emplace(id, std::move(definition)).second)
             throw std::runtime_error("Duplicate targeted combat visual identity.");
     }
@@ -2701,6 +2702,11 @@ void Client::CKoukuSaydonPresentationPlayer::Sample(SESSION& session,
                     // One choice per occurrence remains stable when scrubbing the same cue.
                     // Source Layer/Sequence trees are already rendered into each event variant.
                     std::uint64_t selection = 14695981039346656037ull;
+                    // Each authoritative volley keeps a stable choice across snapshots
+                    // while distinct CombatObject births may choose different variants.
+                    if (session.key.starts_with("targeted:"))
+                        for (const unsigned char c : session.key)
+                            selection = (selection ^ c) * 1099511628211ull;
                     for (const unsigned char c : box.strOccurrenceId)
                         selection = (selection ^ c) * 1099511628211ull;
                     asset = variants[selection % variants.size()];
@@ -3524,6 +3530,7 @@ void Client::CKoukuSaydonPresentationPlayer::Release_BundlePreviewMembers(
         if (member.actor)
         {
             member.actor->Set_CounterAfterimageEnabled(false);
+            member.actor->Set_ChargeAfterimageEnabled(false);
             member.actor->Reset_AfterimageHistory();
         }
         if (member.rootMotion)
@@ -4656,6 +4663,11 @@ void Client::CKoukuSaydonPresentationPlayer::Sample_BundlePreview()
         const float counterAge = localMs >= 0.0 && localMs < member.durationMs ?
             Counter_AfterimageAgeSeconds(m_PreviewDocument, member.pattern, localMs) : -1.f;
         member.actor->Set_CounterAfterimageEnabled(counterAge >= 0.f, counterAge);
+        bool backstepAfterimage = false;
+        const bool chargeAfterimage = localMs >= 0.0 && localMs < member.durationMs &&
+            Charge_AfterimageActive(member.pattern, float(localMs), backstepAfterimage);
+        member.actor->Set_ChargeAfterimageEnabled(chargeAfterimage, backstepAfterimage,
+            float((std::max)(0.0, localMs) * .001));
 #ifdef _DEBUG
         if (m_bBundleWorldExternal && !member.finiteActorLifetime)
         {

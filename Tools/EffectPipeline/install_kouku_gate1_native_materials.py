@@ -9,7 +9,7 @@ import argparse, copy, hashlib, json, re
 from native_material_tables import read_material_bytes, read_material_source, write_material_source
 
 ROOT=Path(__file__).resolve().parents[2]
-FIRST,LAST=2304,4543
+FIRST,LAST=2304,4607
 def read(path):return json.loads(path.read_text(encoding='utf-8-sig'))
 def write(path,value):
     path.parent.mkdir(parents=True,exist_ok=True)

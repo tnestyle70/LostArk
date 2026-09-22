@@ -194,6 +194,12 @@ SOURCE_CHARACTER_NATIVE_OUTPUT EvaluateSourceCharacterBase(SOURCE_CHARACTER_NATI
 #if !defined(SOURCE_CHARACTER_PROGRAM_GROUP) || SOURCE_CHARACTER_PROGRAM_GROUP == 84
     case 109u: return SourceCharacterBase109(input);
 #endif // SOURCE_CHARACTER_PROGRAM_GROUP
+#if !defined(SOURCE_CHARACTER_PROGRAM_GROUP) || SOURCE_CHARACTER_PROGRAM_GROUP == 84
+    case 110u: return SourceCharacterBase110(input);
+#endif // SOURCE_CHARACTER_PROGRAM_GROUP
+#if !defined(SOURCE_CHARACTER_PROGRAM_GROUP) || SOURCE_CHARACTER_PROGRAM_GROUP == 84
+    case 111u: return SourceCharacterBase111(input);
+#endif // SOURCE_CHARACTER_PROGRAM_GROUP
 #if !defined(SOURCE_CHARACTER_PROGRAM_GROUP) || SOURCE_CHARACTER_PROGRAM_GROUP == 80
     case 80u: { if (input.hasBakedLighting) return SourceMapMonsterBaked80(input); return SourceCharacterBase80(input); }
 #endif // SOURCE_CHARACTER_PROGRAM_GROUP

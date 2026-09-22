@@ -1,4 +1,4 @@
-LOSTARK_ANIM_EVENTS 6 "GuardianKnight" 2247
+LOSTARK_ANIM_EVENTS 6 "GuardianKnight" 2249
 "ddk_att_battle_1_01" CANCEL startms=0 endms=1400 payload="비늘 갑옷" src=orig
 "ddk_att_battle_1_01" SOUND startms=10 payload="PC_DRAGONKNIGHT_F.PC_DragonKnight_F_Att_Battle1_1" src=orig
 "ddk_att_battle_1_01" CANCEL startms=200 endms=520 payload="[선스]" src=orig
@@ -2246,3 +2246,5 @@ LOSTARK_ANIM_EVENTS 6 "GuardianKnight" 2247
 "ddk_sk_prayforembereth_03" EFFECT startms=0 payload="effect.guardianknight.skill.49400.clip.2.full.restore" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
 "ddk_sk_super_sanctumofembereth" EFFECT startms=0 payload="effect.guardianknight.skill.49420.clip.0.full.restore" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
 "ddk_sk_deepimpact_02" EFFECT startms=0 payload="effect.guardianknight.skill.49330.clip.1.full.restore" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
+"ddk_sk_dragonicresonance_01" EFFECT startms=0 payload="effect.guardianknight.skill.49220.source.49290.clip.0.full.restore" effectref=asset anchor="skill_target" follow=snapshot stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
+"ddk_sk_dragonicresonance_02" EFFECT startms=0 payload="effect.guardianknight.skill.49220.source.49290.clip.1.full.restore" effectref=asset anchor="skill_target" follow=snapshot stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1

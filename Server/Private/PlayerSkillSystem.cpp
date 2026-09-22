@@ -459,20 +459,6 @@ bool LostArk::Server::CPlayerSkillSystem::Try_StartInternal(
 	{
 		return false;
 	}
-	/* An ember class leaves its default stance only on a full orb gauge. */
-	if (nullptr != catalog.Find_EmberProfile(player.eCharacterClass) &&
-		PLAYER_STANCE_ID::NONE != skill->eSetsStance)
-	{
-		const PLAYER_RUNTIME_PROFILE* emberOwner =
-			catalog.Find_Player(player.eCharacterClass);
-		if (nullptr != emberOwner &&
-			skill->eSetsStance != emberOwner->eDefaultStance &&
-			player.eStance == emberOwner->eDefaultStance &&
-			player.iCurrentIdentity < player.iMaximumIdentity)
-		{
-			return false;
-		}
-	}
 	/* A pair of opposite-direction stance-swap skills (LanceMaster's 34000/34500)
 	sit on their own independent CooldownEndTickBySkillId entries, so the reverse
 	skill is otherwise free to fire the instant the first one's action completes
@@ -566,9 +552,9 @@ void LostArk::Server::CPlayerSkillSystem::Commit_StanceChange(
 				player.iCurrentIdentity -=
 					stanceProfile->iIdentityStanceSwitchCost;
 			}
-			/* Entering the dragon form reopens every socket and refills the
-			ember pool; leaving it, by the toggle or by the gauge running out,
-			empties the gauge so the form has to be earned again. */
+			/* The stance toggle is available at any gauge value. Fill the
+			duration gauge only on the authoritative stance commit, otherwise
+			an empty-gauge entry would revert on its first dragon tick. */
 			if (const GUARDIAN_EMBER_PROFILE* ember =
 				catalog.Find_EmberProfile(player.eCharacterClass))
 			{
@@ -578,6 +564,7 @@ void LostArk::Server::CPlayerSkillSystem::Commit_StanceChange(
 				}
 				else
 				{
+					player.iCurrentIdentity = player.iMaximumIdentity;
 					player.iEmberLockedSockets = 0u;
 					player.iEmberOrbs = ember->iMaximumSockets;
 				}

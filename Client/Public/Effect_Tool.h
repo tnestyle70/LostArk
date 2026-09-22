@@ -750,7 +750,7 @@ private:
 	void Render_CompositionDetail(
 		EFFECT_ELEMENT_DESC& Element,
 		bool_t& bChanged);
-    void Render_TransformDetail(EFFECT_DETAIL_DESC& Detail, bool_t& bChanged);
+    void Render_TransformDetail(EFFECT_ELEMENT_DESC& Element, bool_t& bChanged);
     void Render_ColorDetail(
         EFFECT_DETAIL_DESC& Detail,
         bool_t& bChanged,
@@ -1332,7 +1332,7 @@ private:
     // Editor-session pivot selection; only the resulting Element TRS is saved.
     struct GROUP_ROTATION_EDIT_STATE
     {
-        int pivotMode = 0; // Group center, anchor origin, custom local point.
+        int pivotMode = 1; // Group center, anchor origin, custom local point, Element origin.
         float3_t customPivot{};
         std::string elementId; // Empty rotates the complete attachment group.
     };

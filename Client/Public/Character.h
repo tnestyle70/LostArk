@@ -29,6 +29,8 @@ NS_END
 
 NS_BEGIN(Client)
 
+struct EFFECT_PENDING_SPAWN_ADMISSION;
+
 /* One playable character, whatever the class. Everything class-specific arrives
 as a CHARACTER_SPEC plus an ICharacterLogic, so this stays shared by the team.
 
@@ -159,6 +161,9 @@ public:
 			m_iCurrentEffectSkillId != LostArk::Shared::INVALID_SKILL_ID;
 	}
 
+	// Cancels only requests awaiting Effect commit, never active natural tails.
+	void Cancel_PendingInteractionEffectAdmission() { m_pInteractionEffectAdmission.reset(); }
+
 	bool_t Is_LocallyControlled() const
 	{
 		return m_isLocallyControlled;
@@ -205,7 +210,7 @@ public:
 	void Apply_NetworkStance(LostArk::Shared::PLAYER_STANCE_ID stance);
 	void Apply_NetworkPresentationHidden(bool_t hidden) { m_isNetworkPresentationHidden = hidden; }
     // Transient cue overlays never replace replicated stance or user part visibility.
-    void Set_PresentationVisibilityControls(bool_t all, bool_t weapon, bool_t identity);
+    void Set_PresentationVisibilityControls(bool_t all, bool_t weapon, bool_t identity, bool_t showIdentity);
 	/* Replication hands over the replicated vehicle. Zero dismounts. A vehicle
 	whose presentation is not admitted leaves the character on foot and logs
 	once; gameplay truth stays on the Server either way. */
@@ -412,6 +417,7 @@ private:
 	wstring_t m_strNavigationPrototypeTag;
 	bool_t m_isNetworkPresentationHidden = false;
     bool_t m_isSourcePawnHidden = false, m_isSourceWeaponHidden = false, m_isSourceIdentityHidden = false;
+    bool_t m_isSourceIdentityVisible = false;
 	std::uint32_t m_iVehicleId = 0u;
 	std::uint32_t m_iRejectedVehicleId = 0u;
 	shared_ptr<class CPart_Vehicle> m_pVehiclePart;
@@ -610,6 +616,8 @@ private:
 	bool_t m_isWallClimbRootMotionSuppressed = false;
 	LostArk::Shared::KOUKU_HUD_MODE m_eInteractionMode = LostArk::Shared::KOUKU_HUD_MODE::NONE;
 	std::uint32_t m_iInteractionIndex = UINT32_MAX;
+	bool_t m_bInteractionEffectSubmitted = false;
+	std::shared_ptr<const EFFECT_PENDING_SPAWN_ADMISSION> m_pInteractionEffectAdmission;
 	void Commit_PendingClipChains();
 	/* Plays a clip from its first frame. Set_Animation alone only switches the
 	index, so a clip that already ran would resume at its end -- which chains

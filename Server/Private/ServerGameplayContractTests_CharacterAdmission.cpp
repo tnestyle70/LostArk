@@ -84,6 +84,23 @@ void LostArk::Server::CServerGameplayContractRunner::Run_CharacterAdmission(TEST
 			SERVER_ENTITY_ACTION::PATTERN_WINDUP == monster.eAction &&
 			players.begin()->second.iNetEntityId == monster.iTargetEntityId,
 			"Ignore protected players and acquire the same player after combat admission");
+		monster.eAction = SERVER_ENTITY_ACTION::PATTERN_ACTIVE;
+		monster.fActionElapsedSeconds = 0.f;
+		monster.iPatternActiveMs = 500u;
+		monster.iAttackPower = 80u;
+		monster.hasAppliedPatternDamage = false;
+		auto& target = players.begin()->second;
+		target.iCurrentHp = target.iMaximumHp = 10000u;
+		const auto* playerProfile = catalog.Find_Player(target.eCharacterClass);
+		const auto expectedDamage = CGameplayCatalog::Apply_Defense(monster.iAttackPower,
+			nullptr == playerProfile ? 0u : playerProfile->iDefense);
+		monsterBrain.Update(monster, players, catalog, navigation, 1.f / 30.f, 3u, damageEvents);
+		monsterBrain.Update(monster, players, catalog, navigation, 1.f / 30.f, 4u, damageEvents);
+		tests.Require(target.iCurrentHp == 10000u - expectedDamage && damageEvents.size() == 1u &&
+			damageEvents.front().iAmount == expectedDamage && target.fKnockbackRemainingSeconds == 0.f &&
+			target.iKnockdownEndTick == 0u,
+			"One ordinary monster attack applies damage exactly once without push or knockdown");
+
 	}
 	{
 		CServerNavigation navigation;

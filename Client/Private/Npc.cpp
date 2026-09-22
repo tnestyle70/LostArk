@@ -826,8 +826,23 @@ void CNpc::Set_DebugPresentationYawOffset(const f32_t fYawOffsetDegrees)
 }
 #endif
 
+void CNpc::Set_ChargeAfterimageEnabled(const bool enabled, const bool backstep,
+    const float previewClockSeconds)
+{
+    const bool externalClock = std::isfinite(previewClockSeconds) && previewClockSeconds >= 0.f;
+    if (externalClock != m_ChargeAfterimageExternalClock ||
+        (externalClock && previewClockSeconds < m_ChargeAfterimageClockSeconds))
+        Reset_AfterimageHistory();
+    m_ChargeAfterimageEnabled = enabled;
+    m_ChargeAfterimageExternalClock = externalClock;
+    if (externalClock) m_ChargeAfterimageClockSeconds = previewClockSeconds;
+    // Keep the source lifetime/style while the last emitted pose fades out.
+    if (enabled) m_BackstepAfterimageStyle = backstep;
+}
+
 void CNpc::Reset_AfterimageHistory()
 {
+    m_ChargeAfterimageLastSampleSeconds = -1.f;
     m_BodyAfterimage.Reset();
     m_WeaponAfterimage.Reset();
     m_HatAfterimage.Reset();
@@ -879,11 +894,26 @@ void CNpc::Late_Update(f32_t fTimeDelta)
         (void)m_BodyAfterimage.Configure(settings);
         (void)m_WeaponAfterimage.Configure(settings);
         const auto& bodyWorld = *m_pTransformCom->Get_WorldMatrixPtr();
+        const bool initialPreviewPose = m_ChargeAfterimageExternalClock &&
+            m_ChargeAfterimageLastSampleSeconds < 0.f;
+        const float afterimageDelta = m_ChargeAfterimageExternalClock ?
+            (initialPreviewPose ? 0.f : (std::max)(0.f,
+                m_ChargeAfterimageClockSeconds - m_ChargeAfterimageLastSampleSeconds)) : fTimeDelta;
+        if (m_ChargeAfterimageExternalClock)
+            m_ChargeAfterimageLastSampleSeconds = m_ChargeAfterimageClockSeconds;
         const auto sample = [&](CSkeletalAfterimage& afterimage,
             const std::shared_ptr<CModel>& model, const float4x4_t& world) {
             if (m_CounterAfterimageEnabled)
                 afterimage.Sample_Pulse(m_CounterAfterimageClockSeconds, model, world);
-            else afterimage.Update(fTimeDelta, m_ChargeAfterimageEnabled, model, world);
+            else if (initialPreviewPose && m_ChargeAfterimageEnabled && model && model->Is_Skinned())
+            {
+                // Capture only the already sampled pose, including time zero.
+                // A paused clock neither ages it nor invents missed history.
+                CSkeletalAfterimage::MODEL_VIEW view;
+                view.model = model; view.world = world;
+                (void)afterimage.Capture_Initial(view, 0.f);
+            }
+            else afterimage.Update(afterimageDelta, m_ChargeAfterimageEnabled, model, world);
         };
         sample(m_BodyAfterimage, m_pModelCom, bodyWorld);
         ANIMATION_MODEL_TARGET_VIEW weaponView;

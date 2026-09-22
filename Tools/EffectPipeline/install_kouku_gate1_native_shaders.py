@@ -108,7 +108,7 @@ def install_partitioned_groups(shader_text, case_text):
         assert len(names) == 1, 'A carrier block must contain one native function'
         name, number = names[0]
         number = int(number)
-        assert 2304 <= number <= 4543 and name not in functions, name
+        assert 2304 <= number <= 4607 and name not in functions, name
         assert not re.search(r'\bprojection\[', block) or re.search(r'float4\s+projection\[4\]', block), (
             'Stale generated projection adapter; regenerate this source cohort with '
             'generate_artist_native_runtime_shader.py before installing', name)
@@ -239,13 +239,31 @@ def color_case(row):
     return f'    case {identifier}u: nativeColor=ArtistNative{identifier}(input); opaqueCoverage={opaque}; break;\n'
 
 
+def reviewed_carrier_guard(row):
+    carrier = {'mesh': 'MESH', 'decal': 'DECAL', 'ribbon': 'TRAIL', 'beam': 'TRAIL',
+               'animationTrail': 'TRAIL', 'animTrail': 'TRAIL', 'screenPost': 'SCREEN_POST'}.get(row['rendererShape'], 'PARTICLE')
+    carriers = {carrier}
+    if row['program'] == 3008:
+        # Sk12_9 sprites and the existing ribbon use the same original PS.
+        # That PS consumes UV.xy, particle color and DynamicParameter only;
+        # both reviewed VFs feed those lanes through ARTIST_NATIVE_INPUT.
+        assert row['sourceMaterial'] == 'fx_m_mi_02.fx_mi.fx_k_pa_turbpa_06_tr'
+        assert row['sourcePS'] == '142d7eeccb6dec4b8b4233dcf6db51a2'
+        assert (row['sourceVF'], row['sourceVS'], row['rendererShape']) in (
+            ('fparticlebeamtraildynamicparametervertexfactory', 'f6b274c2c28e4b45b0c2762be4e095fb', 'ribbon'),
+            ('fparticledynamicparametervertexfactory', '5825675b4ffbc840ad691ec56973cf7e', 'sprite'))
+        carriers = {'TRAIL', 'PARTICLE'}
+    return ' && '.join(f'!defined(EFFECT_NATIVE_{kind}_CARRIER)' for kind in
+                      ('MESH', 'PARTICLE', 'DECAL', 'TRAIL', 'SCREEN_POST') if kind not in carriers)
+
+
 def append_reviewed(source_dir, resource_root=None):
     """Add a bounded reviewed cohort while preserving installed shader bodies."""
     contract = json.loads((source_dir / 'native_runtime_contract.json').read_bytes())
     rows = contract['programs']
     assert rows and not contract.get('deferredPrograms')
     owned = {row['program'] for row in rows}
-    assert len(owned) == len(rows) and owned <= set(range(2304, 4544))
+    assert len(owned) == len(rows) and owned <= set(range(2304, 4608))
     merged_path = source_dir / 'merged_native_runtime_contract.json'
     if merged_path.is_file():
         merged = json.loads(merged_path.read_bytes())
@@ -291,10 +309,7 @@ def append_reviewed(source_dir, resource_root=None):
         if int(re.search(r'case (\d+)u:', block)[1]) not in owned:
             case_blocks.append(block)
     for row in rows:
-        carrier = {'mesh': 'MESH', 'decal': 'DECAL', 'ribbon': 'TRAIL', 'beam': 'TRAIL',
-                   'animationTrail': 'TRAIL', 'animTrail': 'TRAIL', 'screenPost': 'SCREEN_POST'}.get(row['rendererShape'], 'PARTICLE')
-        guard = ' && '.join(f'!defined(EFFECT_NATIVE_{kind}_CARRIER)' for kind in
-                           ('MESH', 'PARTICLE', 'DECAL', 'TRAIL', 'SCREEN_POST') if kind != carrier)
+        guard = reviewed_carrier_guard(row)
         identifier = row['program']
         previous_blocks.append('#if ' + guard + '\n' + additions[identifier] + '\n#endif\n')
         if identifier in distortion:
@@ -337,7 +352,7 @@ def install(source_dir, append_source_dir=None):
         rows += additional["programs"]
         source += "\n" + (directory / "Shader_EffectArtistNative.hlsli").read_text(encoding="utf8")
     identifiers = {r["program"] for r in rows}
-    assert len(identifiers) == len(rows) and set(range(2304, 2342)) <= identifiers <= set(range(2304, 4544))
+    assert len(identifiers) == len(rows) and set(range(2304, 2342)) <= identifiers <= set(range(2304, 4608))
     # A newly recovered pass may belong to a byte-identical program reused from
     # an older cohort. Join that pass by its original material/VS/PS identity;
     # the older base-color function and stable program ID remain authoritative.
@@ -366,11 +381,7 @@ def install(source_dir, append_source_dir=None):
     shaders = ROOT / "Client/Bin/ShaderFiles"
     installed = installed_kouku_programs(shaders)
     assert installed <= identifiers, ("Supply all installed Kouku groups; refusing to remove programs", sorted(installed - identifiers))
-    def carrier_for(row):
-        return {"mesh": "MESH", "decal": "DECAL", "animationTrail": "TRAIL", "animTrail": "TRAIL", "ribbon": "TRAIL", "beam": "TRAIL", "screenPost": "SCREEN_POST"}.get(row["rendererShape"], "PARTICLE")
-    def carrier_guard(row):
-        return " && ".join(f"!defined(EFFECT_NATIVE_{kind}_CARRIER)" for kind in
-            ("MESH", "PARTICLE", "DECAL", "TRAIL", "SCREEN_POST") if kind != carrier_for(row))
+    carrier_guard = reviewed_carrier_guard
     by_program = {row["program"]: row for row in rows}
     if 2360 in by_program:
         def bind_macro_uv(text):
@@ -449,7 +460,7 @@ def install(source_dir, append_source_dir=None):
         def extend_dispatch(text):
             pattern = r'g_SourceMaterialProfile >= 2304u && g_SourceMaterialProfile <= \d+u'
             assert len(re.findall(pattern, text)) == expected, name
-            return re.sub(pattern, 'g_SourceMaterialProfile >= 2304u && g_SourceMaterialProfile <= 4543u', text)
+            return re.sub(pattern, 'g_SourceMaterialProfile >= 2304u && g_SourceMaterialProfile <= 4607u', text)
         update(shaders / name, extend_dispatch)
 
     print(f"Installed {summary[0]} Kouku native programs in {summary[1]} groups and {summary[2]} existing-family shader carriers.")

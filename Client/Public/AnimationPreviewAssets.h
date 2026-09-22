@@ -170,6 +170,87 @@ inline constexpr std::array ANIMATION_PREVIEW_ASSETS =
 		-90.f,
 		true
 	},
+	ANIMATION_PREVIEW_ASSET
+	{
+		"monster.monster_valtan_sjfc_elite",
+		"[Monster] MONSTER_VALTAN_SJFC_ELITE",
+		"Monster_Valtan_SJFC_Elite",
+		"Character/Monster/NPC_480002_MN_SJFC_00_4/NPC_480002_MN_SJFC_00_4.wmodel",
+		L"Prototype_Component_Model_AnimationPreview_Monster_Valtan_SJFC_Elite",
+		false, 0.0115f, -90.0f, true
+	},
+	ANIMATION_PREVIEW_ASSET
+	{
+		"monster.monster_kouku_cmdup_02",
+		"[Monster] MONSTER_KOUKU_CMDUP_02",
+		"Monster_Kouku_CMDUP_02",
+		"Character/Monster/NPC_480702_MN_CMDUP_02/NPC_480702_MN_CMDUP_02.wmodel",
+		L"Prototype_Component_Model_AnimationPreview_Monster_Kouku_CMDUP_02",
+		false, 0.01f, -90.0f, true
+	},
+	ANIMATION_PREVIEW_ASSET
+	{
+		"monster.monster_kouku_reup_04",
+		"[Monster] MONSTER_KOUKU_REUP_04",
+		"Monster_Kouku_REUP_04",
+		"Character/Monster/NPC_480701_MN_REUP_04/NPC_480701_MN_REUP_04.wmodel",
+		L"Prototype_Component_Model_AnimationPreview_Monster_Kouku_REUP_04",
+		false, 0.01f, -90.0f, true
+	},
+	ANIMATION_PREVIEW_ASSET
+	{
+		"monster.monster_kouku_rhkp_06",
+		"[Monster] MONSTER_KOUKU_RHKP_06",
+		"Monster_Kouku_RHKP_06",
+		"Character/Monster/NPC_480703_MN_RHKP_06/NPC_480703_MN_RHKP_06.wmodel",
+		L"Prototype_Component_Model_AnimationPreview_Monster_Kouku_RHKP_06",
+		false, 0.01f, -90.0f, true
+	},
+	ANIMATION_PREVIEW_ASSET
+	{
+		"monster.monster_kouku_cmdgr_03",
+		"[Monster] MONSTER_KOUKU_CMDGR_03",
+		"Monster_Kouku_CMDGR_03",
+		"Character/Monster/NPC_480704_MN_CMDGR_03/NPC_480704_MN_CMDGR_03.wmodel",
+		L"Prototype_Component_Model_AnimationPreview_Monster_Kouku_CMDGR_03",
+		false, 0.01f, -90.0f, true
+	},
+	ANIMATION_PREVIEW_ASSET
+	{
+		"monster.monster_kouku_card_heart",
+		"[Monster] MONSTER_KOUKU_CARD_HEART",
+		"Monster_Card_Heart",
+		"Character/KoukuSaton/CardMiro_Monster_Heart/CardMiro_Monster_Heart.wmodel",
+		L"Prototype_Component_Model_AnimationPreview_Monster_Card_Heart",
+		false, 0.015f, -90.0f, true
+	},
+	ANIMATION_PREVIEW_ASSET
+	{
+		"monster.monster_kouku_card_diamond",
+		"[Monster] MONSTER_KOUKU_CARD_DIAMOND",
+		"Monster_Card_Diamond",
+		"Character/KoukuSaton/CardMiro_Monster_Diamond/CardMiro_Monster_Diamond.wmodel",
+		L"Prototype_Component_Model_AnimationPreview_Monster_Card_Diamond",
+		false, 0.015f, -90.0f, true
+	},
+	ANIMATION_PREVIEW_ASSET
+	{
+		"monster.monster_kouku_card_club",
+		"[Monster] MONSTER_KOUKU_CARD_CLUB",
+		"Monster_Card_Club",
+		"Character/KoukuSaton/CardMiro_Monster_Clover/CardMiro_Monster_Clover.wmodel",
+		L"Prototype_Component_Model_AnimationPreview_Monster_Card_Club",
+		false, 0.015f, -90.0f, true
+	},
+	ANIMATION_PREVIEW_ASSET
+	{
+		"monster.monster_kouku_card_spade",
+		"[Monster] MONSTER_KOUKU_CARD_SPADE",
+		"Monster_Card_Spade",
+		"Character/KoukuSaton/CardMiro_Monster_Spade/CardMiro_Monster_Spade.wmodel",
+		L"Prototype_Component_Model_AnimationPreview_Monster_Card_Spade",
+		false, 0.01f, -90.0f, true
+	},
 	/* Registered local preview bodies for Character Select, Development and both raid arenas.
 	   These descriptors do not supply a Server entity or boss archetype identity. */
 	ANIMATION_PREVIEW_ASSET
