@@ -1861,6 +1861,7 @@ Composition Result의 optional pushBallistic은 기존 직선 push 기본값을 
 Character Size Save/Reload는 계속 선택 맵별 camera JSON을 소유한다. 카메라 컷신 재생 여부가 크기 적용을 막지 않는다. Test/Training/Maharaka 공용 Development는 CharacterSelect의 저장된 크기만 읽고 기존 카메라 포즈를 유지한다. 현재 맵들의 Artist/DimensionMaster 배율을 동일하게 맞춘 값은 각 Data/Camera 문서가 정본이며 모델 자체 catalog scale은 별개다.
 
 
+
 ### 쿠크 추적 카드 Trigger와 접촉 Preview
 
 `TRIGGER / PURSUIT_PROJECTILES`는 각 Logic Box의 `startMs`에 한 번 생성하며 `spawnIntervalMs=0`이다. 박스 길이는 이미 생성한 카드의 수명이 아니다. `lifetimeMs=0`, homing과 거리 제한0은 기존 room-owned 추적으로 접촉 전까지 유지하며 명시 Stop·대상 무효·방 정리는 기존 소유권 경로로 종료한다. `DURATION`의 기존 순차 생성은 계속 지원한다. 두 종류 모두 설치된 세이튼 +X 전방을 body yaw+90도로 해석한다. 영구 추적의 전체 수명 CONTACT는 임시 최대시간을 실제 만료로 사용하지 않으며 명시한 짧은 판정 창은 보존한다.
