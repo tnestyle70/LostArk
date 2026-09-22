@@ -10,6 +10,7 @@
 #include <filesystem>
 #include <functional>
 #include <memory>
+#include <optional>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -616,6 +617,7 @@ private:
 		std::uint32_t resourceCost = 0;
 		std::uint32_t identityCost = 0;
 		double movementDistance = 0.0;
+		std::optional<double> rootMotionScale;
 		double maximumRange = 0.0;
 		std::string damageProfileId;
 		std::string effectId;

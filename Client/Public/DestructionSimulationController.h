@@ -74,6 +74,8 @@ public:
 	void Request_Collision(const std::string& receiverCollisionId);
 
 	void Update(f32_t frameDeltaSeconds);
+	/* External editor transport owns time; repeated samples do not step physics. */
+	bool_t Sample_ExternalTime(f32_t sampleTimeSeconds, std::string& outStatus);
 	void Post_Physics_Update();
 	void Clear();
 

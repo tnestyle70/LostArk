@@ -20,6 +20,7 @@
 #include "Effect_Tool.h"
 #include "EffectV2_Catalog.h"
 #include "MainApp.h"
+#include "Level_ValtanArena.h"
 #include "ProjectDataRoot.h"
 
 #include <algorithm>
@@ -3645,6 +3646,15 @@ bool_t Client::CValtanActionWorkbench::Play_EffectivePreview(
 	{
 		return false;
 	}
+#ifdef _DEBUG
+	if (auto* arena = CLevel_ValtanArena::Get_Active(); arena &&
+		!arena->Debug_PrepareActionWorkbenchDestruction(Pattern, status))
+	{
+		std::string stopped;
+		m_pAnimationTool->Stop_ValtanCompositionPattern(stopped);
+		return false;
+	}
+#endif
 	m_iPreviewDraftGeneration = nullptr == m_pBalanceTool ? 0u :
 		m_pBalanceTool->Get_ValtanDraftGeneration();
 	m_eStagedPreviewPath = m_ePreviewPath;
@@ -6278,6 +6288,8 @@ void Client::CValtanActionWorkbench::Render_Preview(
 	}
 
 	ImGui::SeparatorText("Local Timeline Editing Preview");
+	if (!m_strCinematicPreviewStatus.empty())
+		ImGui::TextWrapped("%s", m_strCinematicPreviewStatus.c_str());
 	ImGui::TextDisabled(
 		"This transport supports pause, seek and unsaved draft inspection. It is not Server verification; its clone uses the canonical arena boss transform instead of the player position.");
 	CAnimation_Tool::COMPOSITION_PREVIEW_STATE Preview;
@@ -10189,6 +10201,8 @@ void Client::CValtanActionWorkbench::Render_Timeline(
 		if (!m_bProductSourceReady) ImGui::TextWrapped("Publish required: %s", m_strProductReadiness.c_str());
 		ImGui::TreePop();
 	}
+	if (!m_strCinematicPreviewStatus.empty())
+		ImGui::TextWrapped("%s", m_strCinematicPreviewStatus.c_str());
 	if (!m_strStatus.empty()) ImGui::TextWrapped("%s", m_strStatus.c_str());
 	int32_t iPreviewPath = static_cast<int32_t>(m_ePreviewPath);
 	ImGui::SetNextItemWidth(250.f);

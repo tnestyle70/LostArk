@@ -115,9 +115,15 @@ namespace
 	}
 
 	bool IsExactObject(const DATA_JSON_VALUE& value,
-		const std::initializer_list<const char*> keys)
+		const std::initializer_list<const char*> keys,
+		const std::initializer_list<const char*> optionalKeys = {})
 	{
-		if (!value.Is_Object() || value.Get_Object().size() != keys.size())
+		if (!value.Is_Object())
+			return false;
+		const std::size_t expectedSize = keys.size() +
+			static_cast<std::size_t>(std::count_if(optionalKeys.begin(), optionalKeys.end(),
+				[&value](const char* key) { return nullptr != value.Find(key); }));
+		if (value.Get_Object().size() != expectedSize)
 			return false;
 		return std::all_of(keys.begin(), keys.end(),
 			[&value](const char* key) { return nullptr != value.Find(key); });
@@ -6697,7 +6703,8 @@ bool Client::CBalanceTool::Reload()
 			"counterPower", "characterClass", "inputSlot", "displayName",
 			"actionId", "skillKind", "cooldownMs", "actionDurationMs", "hitTimeMs",
 			"resourceCost", "identityCost", "movementDistance", "maximumRange", "serverDamageProfileId",
-			"effectId", "requiredStance", "setsStance", "comboStages" }) ||
+			"effectId", "requiredStance", "setsStance", "comboStages" },
+			{ "rootMotionScale" }) ||
 			!ReadU32(value, "skillId", row.skillId) ||
 			!ReadU32(value, "staggerDamage", row.staggerDamage) ||
 			!ReadU32(value, "partDamage", row.partDamage) ||
@@ -6720,8 +6727,23 @@ bool Client::CBalanceTool::Reload()
 			!ReadString(value, "setsStance", row.setsStance) ||
 			nullptr == stagesValue)
 		{
-			m_status = "Reload failed: invalid skill definition.";
+			std::uint32_t rejectedSkillId = 0u;
+			(void)ReadU32(value, "skillId", rejectedSkillId);
+			m_status = "Reload failed: invalid skill definition (skillId=" +
+				std::to_string(rejectedSkillId) + ").";
 			return false;
+		}
+		if (nullptr != value.Find("rootMotionScale"))
+		{
+			double scale = 0.0;
+			if (!ReadDouble(value, "rootMotionScale", scale) ||
+				scale <= 0.0 || scale > 8.0 || scale == 1.0)
+			{
+				m_status = "Reload failed: invalid rootMotionScale for skill " +
+					std::to_string(row.skillId) + ". Expected 0 < scale <= 8, excluding 1.";
+				return false;
+			}
+			row.rootMotionScale = scale;
 		}
 		for (const DATA_JSON_VALUE& stageValue : stagesValue->Get_Array())
 		{
@@ -9603,6 +9625,9 @@ bool Client::CBalanceTool::ValidateDraft(std::string& status) const
 			skill.identityCost > maximumPlayerIdentity ||
 			!std::isfinite(skill.maximumRange) ||
 			!std::isfinite(skill.movementDistance) || skill.movementDistance < 0.f ||
+			(skill.rootMotionScale.has_value() &&
+				(!std::isfinite(*skill.rootMotionScale) || *skill.rootMotionScale <= 0.0 ||
+				 *skill.rootMotionScale > 8.0 || *skill.rootMotionScale == 1.0)) ||
 			(dealsDamage && (nullptr == FindDamageRate(skill.damageProfileId) ||
 				skill.maximumRange <= 0.f)) ||
 			(!dealsDamage && (skill.maximumRange != 0.f || 0u != skill.hitTimeMs)) ||
@@ -12036,8 +12061,10 @@ bool Client::CBalanceTool::Save(
 			<< ",\n      \"serverDamageProfileId\": " << Quote(s.damageProfileId)
 			<< ",\n      \"effectId\": " << Quote(s.effectId)
 			<< ",\n      \"requiredStance\": " << Quote(s.requiredStance)
-			<< ",\n      \"setsStance\": " << Quote(s.setsStance)
-			<< ",\n      \"comboStages\": [";
+			<< ",\n      \"setsStance\": " << Quote(s.setsStance);
+		if (s.rootMotionScale.has_value())
+			skills << ",\n      \"rootMotionScale\": " << FormatJsonNumber(*s.rootMotionScale);
+		skills << ",\n      \"comboStages\": [";
 		if (!s.comboStages.empty()) skills << "\n";
 		for (std::size_t stageIndex = 0; stageIndex < s.comboStages.size(); ++stageIndex)
 		{
@@ -12517,6 +12544,16 @@ bool Client::CBalanceTool::Run_ReadOnlyRoundTripContractTest(
 	{
 		const SKILL_EDIT& expected = tool.m_skills[index];
 		const DATA_JSON_VALUE& actual = skills->Get_Array()[index];
+		const bool hasRootMotionScale = nullptr != actual.Find("rootMotionScale");
+		double rootMotionScale = 0.0;
+		if (hasRootMotionScale != expected.rootMotionScale.has_value() ||
+			(hasRootMotionScale &&
+				(!ReadDouble(actual, "rootMotionScale", rootMotionScale) ||
+				 rootMotionScale != *expected.rootMotionScale)))
+		{
+			status = "Balance Tool round-trip changed optional rootMotionScale.";
+			return false;
+		}
 		std::uint32_t skillId = 0u;
 		std::uint32_t identityCost = 0u;
 		const DATA_JSON_VALUE* stages =

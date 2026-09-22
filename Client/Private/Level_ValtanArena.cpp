@@ -183,6 +183,8 @@ CLevel_ValtanArena::CLevel_ValtanArena(
 CLevel_ValtanArena::~CLevel_ValtanArena()
 {
 #ifdef _DEBUG
+	std::string destructionStatus;
+	(void)Debug_StopActionWorkbenchDestruction(destructionStatus);
 	Debug_StopActionWorkbenchCinematic();
 	m_ActionWorkbenchCinematicPlayer.Clear();
 #endif
@@ -354,6 +356,17 @@ HRESULT CLevel_ValtanArena::Initialize()
 	replicationDesc.pDeployPropRuntime = &m_DeployRuntime;
 	replicationDesc.pWorldDestructionProjection =
 		&m_WorldDestructionProjectionDocument;
+#ifdef _DEBUG
+	replicationDesc.beforeWorldDestructionProjection = [this](std::string& status)
+	{
+		const bool active = !m_strWorkbenchDestructionPattern.empty();
+		if (!Debug_StopActionWorkbenchDestruction(status)) return false;
+		if (active)
+			m_strWorkbenchDestructionFailure =
+				"Wall preview stopped for Server world update; restart local Play when the arena is idle.";
+		return true;
+	};
+#endif
 	replicationDesc.onWorldEntityDespawned =
 		[this](const std::string_view placementId,
 			const std::string_view archetypeId)
@@ -770,6 +783,7 @@ bool_t CLevel_ValtanArena::Try_Get_AuthoringPreviewPlacement(
 bool_t CLevel_ValtanArena::Debug_SampleActionWorkbenchCinematic(
 	const std::string_view patternId,
 	const uint32_t patternClockMs,
+	const bool_t paused,
 	const shared_ptr<CValtan>& previewBoss,
 	std::string& status)
 {
@@ -820,7 +834,10 @@ bool_t CLevel_ValtanArena::Debug_SampleActionWorkbenchCinematic(
 			return false;
 		}
 	}
-	const auto targets = SourceCinematicTargets();
+	auto targets = SourceCinematicTargets();
+	// This editor sample runs after MainApp's normal Effect spawn commit,
+	// like Map Tool. Admit only our new world roots for this same-frame seek.
+	targets.bCommitWorldRootEffectsAfterSpawn = true;
 	if (m_ActionWorkbenchCinematicPlayer.Get_Document().Get_AreaId().empty())
 	{
 		/* Ready_SourceCinematics consumes the one Loader-prepared Area when it
@@ -875,6 +892,15 @@ bool_t CLevel_ValtanArena::Debug_SampleActionWorkbenchCinematic(
 	const uint64_t sourceStartMs =
 		static_cast<uint64_t>(firstStage->iStartOffsetMs) +
 		preview->stageOffsetMs;
+	// A source cinematic owns only its authored interval. Previously the
+	// clamped final pose hid the ordinary Pattern actor through every later
+	// stage (including the pizza attack after the roar).
+	if (patternClockMs < sourceStartMs ||
+		static_cast<uint64_t>(patternClockMs) >= sourceStartMs + sequence->durationMs)
+	{
+		Debug_StopActionWorkbenchCinematic();
+		return true;
+	}
 
 	const shared_ptr<CValtan> previousBoss =
 		m_pActionWorkbenchCinematicBoss.lock();
@@ -940,6 +966,7 @@ bool_t CLevel_ValtanArena::Debug_SampleActionWorkbenchCinematic(
 	if (patternClockMs >= sourceStartMs &&
 		!m_bActionWorkbenchCinematicSourcePlaying)
 	{
+		m_ActionWorkbenchCinematicPlayer.Set_Paused(paused);
 		bool_t played = m_ActionWorkbenchCinematicPlayer.Play(instanceId, targets);
 		if (played && preview->suffix == "entrance")
 		{
@@ -966,6 +993,7 @@ bool_t CLevel_ValtanArena::Debug_SampleActionWorkbenchCinematic(
 	}
 	if (m_bActionWorkbenchCinematicSourcePlaying)
 	{
+		m_ActionWorkbenchCinematicPlayer.Set_Paused(paused);
 		bool_t sampled = m_ActionWorkbenchCinematicPlayer.Seek_InstanceToMs(
 			instanceId, sourceClockMs, targets, false);
 		if (sampled && preview->suffix == "entrance")
@@ -1018,6 +1046,173 @@ bool_t CLevel_ValtanArena::Debug_SampleActionWorkbenchCinematic(
 	   non-authoritative tracking root consumed by Stage camera cues. */
 	previewBoss->Set_CinematicPresentationSuppressed(
 		m_bActionWorkbenchCinematicSourcePlaying);
+	status = "Source cinematic: " + std::string(preview->suffix) +
+		" | actor / effects / sound / subtitles: shared source clock " +
+		std::to_string(static_cast<uint32_t>(sourceClockMs)) +
+		" ms" + (paused ? " (paused)" : "");
+	return true;
+}
+
+bool_t CLevel_ValtanArena::Debug_PrepareActionWorkbenchDestruction(
+	const VALTAN_PATTERN_VIEW& pattern, std::string& status)
+{
+	// Only this cinematic's deterministic stage events are supported here;
+	// collision-triggered destruction still requires Server Exact playback.
+	if (pattern.strPatternId != "VALTAN_ARENA_BREAK_109") return true;
+	CWorldDestructionDocument source;
+	if (!source.Load(CProjectDataRoot::Resolve(
+		L"Encounters/Valtan/ValtanWorldEvents.json"),
+		"LV_LUT_HEARTRB_ED", "ENCOUNTER_VALTAN", status)) return false;
+	DESTRUCTION_SIMULATION_PROFILE profile;
+	profile.profileId = "preview.workbench.valtan.arena-break-109";
+	profile.groupId = "preview.group.workbench.valtan.arena-break-109";
+	profile.isPreviewGroundEnabled = false;
+	uint64_t durationMs = 0u;
+	for (const auto& stage : pattern.Stages) durationMs += stage.iDurationMs;
+	if (durationMs == 0u || durationMs > 60000u)
+	{
+		status = "Wall preview requires a pattern duration within 60 seconds.";
+		return false;
+	}
+	profile.fDurationSeconds = static_cast<float>(durationMs) * 0.001f;
+	CWorldDestructionDocument combined;
+	combined.Reset_Empty();
+	if (!combined.Add_Group(profile.groupId, status)) return false;
+	std::set<std::string> groups;
+	for (const auto& binding : source.Get_Bindings())
+	{
+		if (!binding.isEnabled || binding.patternId != pattern.strPatternId ||
+			binding.eTriggerKind != DESTRUCTION_TRIGGER_KIND::STAGE_ENTER) continue;
+		uint32_t stageStartMs = 0u;
+		const VALTAN_STAGE_VIEW* matchedStage = nullptr;
+		for (const auto& stage : pattern.Stages)
+		{
+			if (stage.strStageId == binding.stageId) { matchedStage = &stage; break; }
+			stageStartMs += stage.iDurationMs;
+		}
+		const auto* mutation = source.Find_Mutation(binding.mutationId);
+		const auto* group = mutation ? source.Find_Group(mutation->groupId) : nullptr;
+		const auto* debris = group ?
+			m_WorldDestructionDebrisPresentationDocument.Find_Group(group->groupId) : nullptr;
+		const auto* projection = group ?
+			m_WorldDestructionProjectionDocument.Find_Group(group->groupId) : nullptr;
+		if (!matchedStage || !mutation || !group || !debris || !projection ||
+			projection->bRemovesGround || debris->strMutationId != mutation->mutationId ||
+			projection->strMutationId != mutation->mutationId ||
+			!groups.insert(group->groupId).second ||
+			stageStartMs + binding.iOffsetMs >= durationMs)
+		{
+			status = "Wall preview binding/profile join failed: " + binding.bindingId;
+			return false;
+		}
+		std::set<uint64_t> publishedMembers(projection->MemberPlacementIds.begin(),
+			projection->MemberPlacementIds.end());
+		publishedMembers.insert(projection->SuppressionAliasPlacementIds.begin(),
+			projection->SuppressionAliasPlacementIds.end());
+		if (publishedMembers != std::set<uint64_t>(
+			group->memberPlacementIds.begin(), group->memberPlacementIds.end()))
+		{
+			status = "Wall projection is stale relative to WorldEvents: " + group->groupId;
+			return false;
+		}
+		std::set<uint64_t> projectedMembers;
+		for (const auto& emitter : debris->Emitters)
+		{
+			DESTRUCTION_SIMULATION_ELEMENT element;
+			element.elementId = binding.bindingId + "." +
+				std::to_string(emitter.iSourceRuntimePlacementId);
+			element.sourceRuntimePlacementId = emitter.iSourceRuntimePlacementId;
+			element.suppressionAliasPlacementIds = emitter.SuppressionAliasPlacementIds;
+			element.vSpawnOffset = emitter.vSpawnOffset;
+			element.vDirection = emitter.vDirection;
+			element.fSpeedMetersPerSecond = emitter.fSpeedMetersPerSecond;
+			element.fGravityScale = emitter.fGravityScale;
+			element.fLifetimeSeconds = emitter.fLifetimeSeconds;
+			element.Trigger.eKind = DESTRUCTION_SIMULATION_TRIGGER_KIND::TIMELINE_TIME;
+			element.Trigger.fTimeSeconds = (stageStartMs + binding.iOffsetMs) * 0.001f;
+			std::vector<uint64_t> members = emitter.SuppressionAliasPlacementIds;
+			members.push_back(emitter.iSourceRuntimePlacementId);
+			for (uint64_t member : members)
+			{
+				if (!projectedMembers.insert(member).second ||
+					!combined.Add_Member(profile.groupId, member, status))
+				{
+					status = "Duplicate wall preview member: " + std::to_string(member);
+					return false;
+				}
+			}
+			profile.Elements.push_back(std::move(element));
+		}
+		if (projectedMembers != std::set<uint64_t>(
+			group->memberPlacementIds.begin(), group->memberPlacementIds.end()))
+		{
+			status = "Wall preview members differ from WorldEvents: " + group->groupId;
+			return false;
+		}
+	}
+	if (profile.Elements.empty() ||
+		!CDestructionSimulationDocument::Validate_Profile(profile, status))
+	{
+		if (status.empty()) status = "No wall events were found for this pattern.";
+		return false;
+	}
+	// ImGui transport only stages data; MainApp consumes it after typed commands.
+	m_ActionWorkbenchDestructionGroup = std::move(combined);
+	m_PendingWorkbenchDestruction = std::move(profile);
+	m_strWorkbenchDestructionPattern = pattern.strPatternId;
+	m_strWorkbenchDestructionFailure.clear();
+	return true;
+}
+
+bool_t CLevel_ValtanArena::Debug_StopActionWorkbenchDestruction(std::string& status)
+{
+	m_ActionWorkbenchDestruction.Clear();
+	if (m_ActionWorkbenchDestruction.Get_Runtime().Is_Staged())
+	{
+		status = m_ActionWorkbenchDestruction.Get_Runtime().Get_Status();
+		return false;
+	}
+	m_PendingWorkbenchDestruction.reset();
+	m_strWorkbenchDestructionPattern.clear();
+	m_strWorkbenchDestructionFailure.clear();
+	return true;
+}
+
+bool_t CLevel_ValtanArena::Debug_SampleActionWorkbenchDestruction(
+	const std::string_view patternId, const uint32_t clockMs, std::string& status)
+{
+	if (patternId != "VALTAN_ARENA_BREAK_109")
+		return Debug_StopActionWorkbenchDestruction(status);
+	if (!m_strWorkbenchDestructionFailure.empty())
+	{
+		status = m_strWorkbenchDestructionFailure;
+		return false;
+	}
+	auto fail = [&](std::string failure)
+	{
+		std::string cleanup;
+		if (!Debug_StopActionWorkbenchDestruction(cleanup)) failure += "; " + cleanup;
+		m_strWorkbenchDestructionFailure = std::move(failure);
+		status = m_strWorkbenchDestructionFailure;
+		return false;
+	};
+	if (!m_strSourceCinematic.empty() ||
+		m_WorldDestructionDebrisPresentationRuntime.Get_ActiveActorCount() != 0u)
+		return fail("Local wall preview yielded to active Server destruction/cinematic playback.");
+	if (m_strWorkbenchDestructionPattern != patternId)
+		return fail("Wall preview is not prepared; restart local Play.");
+	if (m_PendingWorkbenchDestruction)
+	{
+		m_ActionWorkbenchDestruction.Clear();
+		if (m_ActionWorkbenchDestruction.Get_Runtime().Is_Staged())
+			return fail(m_ActionWorkbenchDestruction.Get_Runtime().Get_Status());
+		m_ActionWorkbenchDestruction.Request_StageProfile(
+			*m_PendingWorkbenchDestruction, m_PendingWorkbenchDestruction->groupId,
+			m_ActionWorkbenchDestructionGroup, m_DeployRuntime, ETOUI(LEVEL::VALTAN_ARENA));
+		m_PendingWorkbenchDestruction.reset();
+	}
+	if (!m_ActionWorkbenchDestruction.Sample_ExternalTime(clockMs * 0.001f, status))
+		return fail(status);
 	return true;
 }
 
@@ -1931,6 +2126,9 @@ void CLevel_ValtanArena::Update_CinematicCamera(const f32_t fTimeDelta)
 	input.iPatternSequence = boss.iPatternSequence;
 	input.iStageIndex = boss.iPatternStageIndex;
 	input.iActionStartTick = boss.iActionStartTick;
+	if (const auto* pattern = m_ValtanEncounterReference.Find_Pattern(input.strPatternId);
+		pattern && input.iStageIndex < pattern->stages.size())
+		input.strStageId = pattern->stages[input.iStageIndex].stageId;
 	input.vBossPosition = boss.vPosition;
 	input.fBossYawDegrees = boss.fYawDegrees;
     std::vector<BOSS_STAGE_CAMERA_SAMPLE> cameraInvocations;
@@ -1990,12 +2188,16 @@ void CLevel_ValtanArena::Update_CinematicCamera(const f32_t fTimeDelta)
     m_SourceCinematicPlayer.Update_SoundTails(fTimeDelta);
 	Prepare_SourceCinematicInput(input);
 	VALTAN_CINEMATIC_CAMERA_POSE pose{};
-	if (!m_ValtanCinematicCameraController.Update(input, fTimeDelta, pose))
+	const bool_t hasCameraPose = m_ValtanCinematicCameraController.Update(input, fTimeDelta, pose);
+	// Camera cuts may end before the source actor, FX and dialogue. They share
+	// the Server action origin, not the camera's ownership lifetime.
+	if (!Update_SourceCinematic(input))
 	{
-        if (!m_strSourceCinematic.empty())
-            Stop_SourceCinematic(m_ValtanCinematicCameraController.Did_FinishCueNaturally());
-        else if (!input.isValid)
-            m_SourceCinematicPlayer.Stop_All(SourceCinematicTargets(), true);
+		End_CinematicCamera();
+		return;
+	}
+	if (!hasCameraPose)
+	{
 		/* A cue-authored exit handoff retains the same Server cinematic owner
 		   until its final submitted pose exactly matches live gameplay follow. */
 		if (Update_CinematicCameraExitTransition(fTimeDelta))
@@ -2006,11 +2208,6 @@ void CLevel_ValtanArena::Update_CinematicCamera(const f32_t fTimeDelta)
 		return;
 	}
 
-	if (!Update_SourceCinematic(input))
-	{
-		End_CinematicCamera();
-		return;
-	}
 #ifdef _DEBUG
 	/* A Server-authored cue always preempts the local comparison aid before it
 	tries to acquire the single camera presentation owner. */
@@ -3257,6 +3454,27 @@ void CLevel_ValtanArena::Prepare_SourceCinematicInput(VALTAN_CINEMATIC_CAMERA_IN
 
 bool_t CLevel_ValtanArena::Update_SourceCinematic(const VALTAN_CINEMATIC_CAMERA_INPUT& input)
 {
+    if (!input.isValid || !input.iNetEntityId || !input.iServerTick || !input.iActionStartTick)
+    {
+        Stop_SourceCinematic();
+        return true;
+    }
+    f32_t stageAgeSeconds = 0.f;
+    if (m_ValtanCinematicCameraController.Is_Active())
+        stageAgeSeconds = m_ValtanCinematicCameraController.Get_ElapsedSeconds() +
+            (input.isBossDead ? 0.f : input.iCameraStartOffsetMs * .001f);
+    else if (input.isBossDead)
+    {
+        Stop_SourceCinematic(true);
+        return true;
+    }
+    else if (!CActionPresentationTimeline::Try_ResolveActionAgeSeconds(
+        input.iServerTick, input.iActionStartTick,
+        static_cast<f32_t>(m_ValtanEncounterReference.Get_FixedTickHz()), stageAgeSeconds))
+    {
+        Stop_SourceCinematic();
+        return false;
+    }
     std::string selected;
     f32_t sourceOffsetMs = 0.f;
     if (input.isBossDead && m_bSourceDeathStarted && !m_bSourceDeathFinished)
@@ -3267,7 +3485,7 @@ bool_t CLevel_ValtanArena::Update_SourceCinematic(const VALTAN_CINEMATIC_CAMERA_
         selected = "entrance";
     else if (input.strPatternId == "VALTAN_ARENA_BREAK_109" &&
         (input.strStageId == "WIDE_REVEAL" || input.strStageId == "RECOVERY" ||
-         (input.strStageId == "IMPACT_HOLD" && m_ValtanCinematicCameraController.Get_ElapsedSeconds() >= 0.6f)))
+         (input.strStageId == "IMPACT_HOLD" && stageAgeSeconds >= 0.6f)))
         selected = "phase2";
     else if (input.strPatternId == "VALTAN_TRASH" &&
         (input.strStageActionId == "valtan.sequence.center-trash-rush-if.step-05" ||
@@ -3300,9 +3518,25 @@ bool_t CLevel_ValtanArena::Update_SourceCinematic(const VALTAN_CINEMATIC_CAMERA_
     }
     const auto targets = SourceCinematicTargets();
     const std::string prefix = "world.sequence.instance.valtan.source-preview.";
-    constexpr std::array<std::string_view, 1> entranceCompanions = { "entrance.colorless" };
+    f32_t timeMs = sourceOffsetMs + stageAgeSeconds * 1000.f;
     const bool changed = selected != m_strSourceCinematic ||
         m_iSourceCinematicSequence != input.iPatternSequence || m_iSourceCinematicEntity != input.iNetEntityId;
+    // Returning from a smoothed camera clock to the last Server snapshot can
+    // otherwise rewind a few milliseconds and re-seek the playing WAV. Only
+    // bound the same product occurrence; editor scrubbing remains reversible.
+    f32_t previousSourceMs = 0.f;
+    if (!changed && m_SourceCinematicPlayer.Try_GetElapsedMs(prefix + selected, previousSourceMs))
+        timeMs = (std::max)(timeMs, previousSourceMs);
+    const auto& sourceDocument = m_SourceCinematicPlayer.Get_Document();
+    const auto* sourceInstance = sourceDocument.Find_Instance(prefix + selected);
+    const auto* sourceSequence = sourceInstance ? sourceDocument.Find_Template(sourceInstance->templateId) : nullptr;
+    if (!sourceSequence) return false;
+    if (timeMs < 0.f || timeMs >= static_cast<f32_t>(sourceSequence->durationMs))
+    {
+        Stop_SourceCinematic(true);
+        return true;
+    }
+    constexpr std::array<std::string_view, 1> entranceCompanions = { "entrance.colorless" };
     if (changed)
     {
         if (!m_strSourceCinematic.empty()) Stop_SourceCinematic();
@@ -3323,9 +3557,8 @@ bool_t CLevel_ValtanArena::Update_SourceCinematic(const VALTAN_CINEMATIC_CAMERA_
         if (const auto primary = m_pSourceCinematicBoss.lock())
             primary->Set_CinematicPresentationSuppressed(true);
     }
-    // The existing Server camera controller owns one smoothed action clock;
-    // actor animation and source FX sample exactly that clock, including joins.
-    const f32_t timeMs = sourceOffsetMs + m_ValtanCinematicCameraController.Get_ElapsedSeconds() * 1000.f;
+    // Use the camera's smoothed action age while a cut is active; after its
+    // return, the same Server action timestamps finish the remaining actors/FX.
     bool sampled = m_SourceCinematicPlayer.Seek_InstanceToMs(prefix + selected, timeMs, targets, false);
     if (sampled && selected == "entrance")
         for (const auto suffix : entranceCompanions)

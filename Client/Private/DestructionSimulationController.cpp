@@ -368,3 +368,41 @@ void Client::CDestructionSimulationController::Clear()
 	m_requestSingleStep = false;
 	m_Snapshot = {};
 }
+
+bool_t Client::CDestructionSimulationController::Sample_ExternalTime(
+	const f32_t sampleTimeSeconds, std::string& outStatus)
+{
+	Consume_Commands();
+	if (!m_Runtime.Is_Staged() || !std::isfinite(sampleTimeSeconds) ||
+		sampleTimeSeconds < 0.f)
+	{
+		outStatus = "Destruction external clock is not staged: " + m_Snapshot.status;
+		return false;
+	}
+	const auto toStep = [](const f32_t seconds)
+	{
+		return static_cast<uint32_t>(std::llround(
+			static_cast<f64_t>(seconds) / FIXED_DELTA_SECONDS));
+	};
+	const uint32_t targetStep = toStep((std::min)(
+		sampleTimeSeconds, m_Runtime.Get_DurationSeconds()));
+	uint32_t currentStep = toStep(m_Runtime.Get_Frame().fSampleTimeSeconds);
+	if (targetStep < currentStep)
+	{
+		if (!Reset_Internal()) { outStatus = m_Snapshot.status; return false; }
+		currentStep = 0u;
+	}
+	// Document duration is bounded to 60 seconds, including a seek from zero.
+	for (; currentStep < targetStep && !m_Runtime.Is_Finished(); ++currentStep)
+	{
+		if (!Step_Once()) { outStatus = m_Snapshot.status; return false; }
+	}
+	m_fAccumulatorSeconds = 0.0;
+	m_Snapshot.eState = m_Runtime.Is_Finished() ?
+		DESTRUCTION_SIMULATION_PLAYBACK_STATE::FINISHED :
+		DESTRUCTION_SIMULATION_PLAYBACK_STATE::PAUSED;
+	Refresh_Snapshot();
+	outStatus = "Wall preview clock " + std::to_string(sampleTimeSeconds) + " s";
+	m_Snapshot.status = outStatus;
+	return true;
+}

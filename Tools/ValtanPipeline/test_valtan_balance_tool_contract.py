@@ -61,6 +61,20 @@ def function_body(source: str, signature: str) -> str:
 
 
 class ValtanBalanceToolContractTests(unittest.TestCase):
+    def test_optional_root_motion_scale_is_preserved_and_validated(self) -> None:
+        self.assertIn("std::optional<double> rootMotionScale", self.balance_h)
+        reload_body = function_body(self.balance_cpp, "bool Client::CBalanceTool::Reload()")
+        self.assertIn('{ "rootMotionScale" })', reload_body)
+        self.assertIn('ReadDouble(value, "rootMotionScale", scale)', reload_body)
+        self.assertIn("scale <= 0.0 || scale > 8.0 || scale == 1.0", reload_body)
+        self.assertIn("row.rootMotionScale = scale", reload_body)
+        self.assertIn("if (s.rootMotionScale.has_value())", self.balance_cpp)
+        self.assertIn("FormatJsonNumber(*s.rootMotionScale)", self.balance_cpp)
+        self.assertIn("hasRootMotionScale != expected.rootMotionScale.has_value()", self.balance_cpp)
+        validate = function_body(self.balance_cpp, "bool Client::CBalanceTool::ValidateDraft(std::string& status) const")
+        self.assertIn("!std::isfinite(*skill.rootMotionScale)", validate)
+        self.assertIn("*skill.rootMotionScale > 8.0 || *skill.rootMotionScale == 1.0", validate)
+
     @classmethod
     def setUpClass(cls) -> None:
         cls.balance_cpp = BALANCE_CPP.read_text(encoding="utf-8")

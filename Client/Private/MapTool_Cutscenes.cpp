@@ -56,15 +56,15 @@ bool_t Client::CMapTool::Ensure_WorldObjectPrototype()
 	if (m_bWorldObjectPrototypeReady)
 		return true;
 	const std::string levelText = std::to_string(m_iAuthoringLevelIndex);
-	/* Level_KakulSaydonArena adds this prototype under its own index, so the
-	   tool never registers a second copy there. Every other Level this tool
-	   can author - the isolated editor shell and the Valtan arena it attaches
-	   to - registers nothing, and without this no actor is ever created. */
-	if (ETOUI(LEVEL::KAKULSAYDON_ARENA) == m_iAuthoringLevelIndex)
+	/* Raid Levels own this factory before any editor opens: Kouku registers
+	   it on activation and Valtan in its Loader rollback scope. Only isolated
+	   editor Levels need the Map Tool registration below. */
+	if (ETOUI(LEVEL::KAKULSAYDON_ARENA) == m_iAuthoringLevelIndex ||
+		ETOUI(LEVEL::VALTAN_ARENA) == m_iAuthoringLevelIndex)
 	{
 		m_bWorldObjectPrototypeReady = true;
 		m_strWorldObjectPrototypeStatus =
-			"World Object prototype is owned by the Kouku arena Level " +
+			"World Object prototype is owned by the raid Level " +
 			levelText + ".";
 		return true;
 	}

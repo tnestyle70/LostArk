@@ -962,6 +962,11 @@ public:
 	{
 		if (m_ownsClock)
 			return true;
+		if (nullptr != s_pClockOwner && s_pClockOwner != this)
+		{
+			outStatus = "Another destruction preview owns the physics clock; stop it first";
+			return false;
+		}
 		m_pManager = CGameInstance::Get().Get_PhysicsManager();
 		if (nullptr == m_pManager)
 		{
@@ -971,6 +976,7 @@ public:
 		m_wasPaused = m_pManager->Get_StepStats().isPaused;
 		m_pManager->Set_DebugPaused(true);
 		m_ownsClock = true;
+		s_pClockOwner = this;
 		return true;
 	}
 
@@ -980,6 +986,8 @@ public:
 			CGameInstance::Get().Get_PhysicsManager();
 		if (m_ownsClock && nullptr != m_pManager && current == m_pManager)
 			current->Set_DebugPaused(m_wasPaused);
+		if (s_pClockOwner == this)
+			s_pClockOwner = nullptr;
 		m_pManager = nullptr;
 		m_ownsClock = false;
 		m_wasPaused = false;
@@ -1101,6 +1109,7 @@ public:
 
 private:
 	shared_ptr<Engine::CRigidBody> m_pGround;
+	inline static CPhysicsAdapter* s_pClockOwner = nullptr;
 	Engine::CPhysics_Manager* m_pManager = nullptr;
 	bool_t m_ownsClock = false;
 	bool_t m_wasPaused = false;
