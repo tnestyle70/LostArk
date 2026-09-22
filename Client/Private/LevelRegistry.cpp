@@ -134,7 +134,9 @@ const CLIENT_LEVEL_DESCRIPTOR* CLevelRegistry::Find(
 			"scene.character-select.warm-high-key.v1",
 			MakeFullMapScope(),
 			CreateCharacterSelect,
-			&CLoader::Ready_For_CharacterSelect
+			&CLoader::Ready_For_CharacterSelect,
+			"LV_LOBBY_CLASSSELECT_SL10",
+			MakeFullMapScope()
 		},
 		{
 			LEVEL::BERN,

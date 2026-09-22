@@ -167,6 +167,16 @@ namespace
 				snapshot.iEmberLockedSockets <= snapshot.iEmberMaximumSockets &&
 			snapshot.iCurrentMadness <= snapshot.iMaximumMadness &&
 			Is_Valid_PlayerMadnessForm(snapshot.eMadnessForm) &&
+			snapshot.eVehicleFlightPhase < LostArk::Shared::VEHICLE_FLIGHT_PHASE::END &&
+			std::isfinite(snapshot.fVehicleFlightPhaseDurationSeconds) &&
+			snapshot.fVehicleFlightPhaseDurationSeconds >= 0.f && snapshot.fVehicleFlightPhaseDurationSeconds <= 600.f &&
+			(snapshot.eVehicleFlightPhase == LostArk::Shared::VEHICLE_FLIGHT_PHASE::GROUNDED ?
+			 (snapshot.iVehicleFlightPhaseStartTick == 0u && snapshot.fVehicleFlightPhaseDurationSeconds == 0.f) :
+			 (snapshot.iVehicleId == LostArk::Shared::ANCIENT_SEA_VEHICLE_ID &&
+			  snapshot.eAction == LostArk::Shared::PLAYER_ACTION_STATE::VEHICLE_SKILL &&
+			  snapshot.iVehicleFlightPhaseStartTick != 0u &&
+			  (snapshot.eVehicleFlightPhase == LostArk::Shared::VEHICLE_FLIGHT_PHASE::FLYING ||
+			   snapshot.fVehicleFlightPhaseDurationSeconds > 0.f))) &&
 			(LostArk::Shared::INVALID_VEHICLE_ID == snapshot.iVehicleId ||
 			 (snapshot.iCurrentHp != 0u &&
 			  (LostArk::Shared::PLAYER_ACTION_STATE::NONE == snapshot.eAction ||
@@ -1916,45 +1926,31 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader, S2C_PLAYER_DESPAWNED& 
 
 bool LostArk::Shared::Write_Message(CPacketWriter& writer, const C2S_MOVE& message)
 {
-    if (0 == message.iClientSequence ||
-        !std::isfinite(message.fGoalX) ||
-        !std::isfinite(message.fGoalZ))
-    {
+    if (0u == message.iClientSequence || message.eIntent >= PLAYER_MOVE_INTENT::END ||
+        !std::isfinite(message.fGoalX) || !std::isfinite(message.fGoalZ) ||
+        !std::isfinite(message.fVerticalInput) ||
+        (message.eIntent == PLAYER_MOVE_INTENT::GROUND_GOAL ? message.fVerticalInput != 0.f :
+         (std::abs(message.fVerticalInput) > 1.f ||
+          message.fGoalX * message.fGoalX + message.fGoalZ * message.fGoalZ > 1.0001f)))
         return false;
-    }
-
     writer.Write_U32(message.iClientSequence);
     writer.Write_F32(message.fGoalX);
     writer.Write_F32(message.fGoalZ);
-
+    writer.Write_U8(static_cast<std::uint8_t>(message.eIntent));
+    writer.Write_F32(message.fVerticalInput);
     return true;
 }
 
 bool LostArk::Shared::Read_Message(CPacketReader& reader, C2S_MOVE& message)
 {
-    std::uint32_t clientSequence = 0;
-    float fGoalX = 0.f;
-    float fGoalZ = 0.f;
-
-    if (!reader.Read_U32(clientSequence) ||
-        !reader.Read_F32(fGoalX) ||
-        !reader.Read_F32(fGoalZ))
-    {
-        return false;
-    }
-
-    if (0 == clientSequence ||
-        !std::isfinite(fGoalX) ||
-        !std::isfinite(fGoalZ))
-    {
-        return false;
-    }
-
     C2S_MOVE decoded{};
-    decoded.iClientSequence = clientSequence;
-    decoded.fGoalX = fGoalX;
-    decoded.fGoalZ = fGoalZ;
-
+    std::uint8_t intent = 0u;
+    if (!reader.Read_U32(decoded.iClientSequence) || !reader.Read_F32(decoded.fGoalX) ||
+        !reader.Read_F32(decoded.fGoalZ) || !reader.Read_U8(intent) ||
+        !reader.Read_F32(decoded.fVerticalInput)) return false;
+    decoded.eIntent = static_cast<PLAYER_MOVE_INTENT>(intent);
+    CPacketWriter validation;
+    if (!Write_Message(validation, decoded)) return false;
     message = decoded;
     return true;
 }
@@ -2600,6 +2596,50 @@ bool LostArk::Shared::Read_Message(
 }
 
 bool LostArk::Shared::Write_Message(
+	CPacketWriter& writer, const C2S_DEBUG_USE_ESTHER& message)
+{
+	if (0u == message.iRequestSequence ||
+		!Is_Known_World_Id(message.eWorldId) ||
+		!Is_Valid_EstherId(message.eEsther) ||
+		!std::isfinite(message.fAimX) ||
+		!std::isfinite(message.fAimZ))
+	{
+		return false;
+	}
+	writer.Write_U32(message.iRequestSequence);
+	writer.Write_U16(static_cast<std::uint16_t>(message.eWorldId));
+	writer.Write_U8(static_cast<std::uint8_t>(message.eEsther));
+	writer.Write_F32(message.fAimX);
+	writer.Write_F32(message.fAimZ);
+	return true;
+}
+
+bool LostArk::Shared::Read_Message(
+	CPacketReader& reader, C2S_DEBUG_USE_ESTHER& message)
+{
+	C2S_DEBUG_USE_ESTHER decoded{};
+	std::uint16_t rawWorldId = 0u;
+	std::uint8_t rawEsther = 0u;
+	if (!reader.Read_U32(decoded.iRequestSequence) ||
+		0u == decoded.iRequestSequence ||
+		!reader.Read_U16(rawWorldId) ||
+		!Is_Known_World_Id(static_cast<WORLD_ID>(rawWorldId)) ||
+		!reader.Read_U8(rawEsther) ||
+		!Is_Valid_EstherId(static_cast<ESTHER_ID>(rawEsther)) ||
+		!reader.Read_F32(decoded.fAimX) ||
+		!reader.Read_F32(decoded.fAimZ) ||
+		!std::isfinite(decoded.fAimX) ||
+		!std::isfinite(decoded.fAimZ))
+	{
+		return false;
+	}
+	decoded.eWorldId = static_cast<WORLD_ID>(rawWorldId);
+	decoded.eEsther = static_cast<ESTHER_ID>(rawEsther);
+	message = decoded;
+	return true;
+}
+
+bool LostArk::Shared::Write_Message(
 	CPacketWriter& writer, const C2S_DEBUG_SET_MADNESS_FORM& message)
 {
 	if (0u == message.iRequestSequence || !Is_Known_World_Id(message.eWorldId) ||
@@ -3142,6 +3182,9 @@ bool LostArk::Shared::Write_Message(CPacketWriter& writer, const S2C_WORLD_SNAPS
 		writer.Write_F32(player.fMoveWaypointY);
 		writer.Write_F32(player.fMoveWaypointZ);
 		writer.Write_U32(player.iVehicleId);
+		writer.Write_U8(static_cast<std::uint8_t>(player.eVehicleFlightPhase));
+		writer.Write_U32(player.iVehicleFlightPhaseStartTick);
+		writer.Write_F32(player.fVehicleFlightPhaseDurationSeconds);
 		writer.Write_U32(player.iHonorTitleId);
     }
 	for (const WORLD_ENTITY_SNAPSHOT& entity : message.Entities)
@@ -3452,6 +3495,7 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader, S2C_WORLD_SNAPSHOT& me
 			}
 			player.Cooldowns.push_back(cooldown);
 		}
+		std::uint8_t rawVehicleFlightPhase = 0u;
 		std::uint8_t rawCanPredictMove = 0u;
 		std::uint8_t rawHasMoveGoal = 0u;
 		if (!reader.Read_U32(player.iLastProcessedMoveSequence) ||
@@ -3462,10 +3506,14 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader, S2C_WORLD_SNAPSHOT& me
 			!reader.Read_F32(player.fMoveWaypointY) ||
 			!reader.Read_F32(player.fMoveWaypointZ) ||
 			!reader.Read_U32(player.iVehicleId) ||
+			!reader.Read_U8(rawVehicleFlightPhase) ||
+			!reader.Read_U32(player.iVehicleFlightPhaseStartTick) ||
+			!reader.Read_F32(player.fVehicleFlightPhaseDurationSeconds) ||
 			!reader.Read_U32(player.iHonorTitleId))
 		{
 			return false;
 		}
+		player.eVehicleFlightPhase = static_cast<VEHICLE_FLIGHT_PHASE>(rawVehicleFlightPhase);
 		player.canPredictMove = rawCanPredictMove != 0u;
 		player.hasMoveGoal = rawHasMoveGoal != 0u;
 

@@ -56,6 +56,8 @@ namespace Engine
 		f32_t	fDepthBias = 0.0015f;
 		f32_t	fNormalBias = 0.02f;
 		f32_t	fStrength = 0.7f;
+        // Optional modulation of PBR baked irradiance by dynamic casters only.
+        f32_t fDynamicBakedStrength = 0.f;
 	}SHADOW_SETTINGS;
 
 	typedef struct tagShadowLightDesc
@@ -129,7 +131,24 @@ namespace Engine
 		ROUGHNESS,
 		METALLIC,
 		AMBIENT_OCCLUSION,
+		BAKED_DIFFUSE,
+		ENVIRONMENT_SPECULAR,
+		DIRECT_DIFFUSE,
+		SCENE_HDR,
+		SCENE_TONE,
+		SCENE_GRADED,
 		END,
+	};
+
+	struct MAP_PBR_COMPARISON_SETTINGS
+	{
+		bool_t bEnabled = false;
+		uint32_t iLevel = 0u;
+		// Direct diffuse, direct specular, RNM diffuse, environment specular.
+		float4_t vContributionScale = { 1.f, 1.f, 1.f, 1.f };
+		// Normal multiplier, roughness offset, legacy RNM equation (0/1), reserved.
+		float4_t vSurfaceParameters = { 1.f, 0.f, 0.f, 0.f };
+		bool_t Is_Active(uint32_t level) const noexcept { return bEnabled && iLevel == level; }
 	};
 
 	/* Session-only comparison state; never serialized with scene quality. */
@@ -137,6 +156,7 @@ namespace Engine
 	{
 		bool_t bUseSourceMaterials = true;
 		MATERIAL_DEBUG_VIEW eDebugView = MATERIAL_DEBUG_VIEW::FINAL;
+		MAP_PBR_COMPARISON_SETTINGS MapPBR;
 	};
 
 	/* Height fog is a screen space term applied where the deferred combine

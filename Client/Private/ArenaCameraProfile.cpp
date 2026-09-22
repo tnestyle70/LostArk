@@ -114,11 +114,18 @@ namespace
 		}
 		if (const auto* sizes = root.Find("classSizeMultipliers"))
 		{
-			if (!sizes->Is_Object() || sizes->Get_Object().size() != 7u)
-			{ status = "Class size tuning requires exactly the seven playable class names."; return false; }
+			// Before Guardian Knight was added, valid profiles saved six named classes.
+			// Only that version may omit its new key; every original class stays required.
+			const bool legacySixClasses = sizes->Is_Object() && sizes->Get_Object().size() == 6u &&
+				sizes->Find("GUARDIANKNIGHT") == nullptr;
+			if (!sizes->Is_Object() || (!legacySixClasses && sizes->Get_Object().size() != 7u))
+			{ status = "Class size tuning requires the seven playable class names or the six-class legacy profile."; return false; }
 			for (size_t i = 0u; i < CLASS_SIZE_KEYS.size(); ++i)
-				if (CLASS_SIZE_KEYS[i] && !ReadFloat(sizes->Find(CLASS_SIZE_KEYS[i]), staged.classSizeMultipliers[i]))
+			{
+				if (!CLASS_SIZE_KEYS[i] || (legacySixClasses && i == 7u)) continue;
+				if (!ReadFloat(sizes->Find(CLASS_SIZE_KEYS[i]), staged.classSizeMultipliers[i]))
 				{ status = "Class size tuning has an unknown/missing class or nonfinite multiplier."; return false; }
+			}
 		}
 		if (!CArenaCameraProfile::Validate(staged, status))
 			return false;

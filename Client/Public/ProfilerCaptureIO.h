@@ -3,6 +3,7 @@
 #include "Client_Defines.h"
 #include "Profiler.h"
 
+#include <array>
 #include <filesystem>
 #include <memory>
 #include <thread>
@@ -22,13 +23,29 @@ struct FProfilerCaptureFile final
 	uint32_t VolumeSerial = 0u;
 };
 
+// Context is sampled at export on the main thread; it does not assert that every
+// historical frame used the same camera, level, render settings or window size.
+struct FProfilerCaptureContext final
+{
+    bool Valid = false;
+    uint32_t LevelId = 0;
+    std::array<float, 2> Viewport{};
+    std::array<float, 4> CameraPosition{};
+    std::array<float, 16> ViewMatrix{}, ProjectionMatrix{};
+    bool ShadowEnabled = false, SSAOEnabled = false, BloomEnabled = false, FXAAEnabled = false;
+    float ShadowWidth = 0.f, ShadowHeight = 0.f, ShadowStrength = 0.f;
+    std::string Adapter;
+    uint32_t DeviceCreationFlags = 0;
+};
+
 class CProfilerCaptureIO final
 {
 public:
 	static bool_t Save_Json(
 		const Engine::FProfilerCaptureSnapshot& Snapshot,
 		const filesystem::path& OutputPath,
-		string* pOutError = nullptr);
+		string* pOutError = nullptr,
+        const FProfilerCaptureContext& Context = {});
 
 	static filesystem::path Get_CaptureDirectory();
 	static filesystem::path Make_DefaultPath(uint64_t iFrameNumber);
@@ -61,7 +78,8 @@ public:
 	CProfilerCaptureExporter& operator=(const CProfilerCaptureExporter&) = delete;
 
 	bool_t BeginSave(Engine::FProfilerCaptureSnapshot&& Snapshot,
-		filesystem::path OutputPath, string* pOutError = nullptr);
+		filesystem::path OutputPath, string* pOutError = nullptr,
+        FProfilerCaptureContext Context = {});
 	[[nodiscard]] bool_t IsSaving() const noexcept;
 	bool_t Poll(FProfilerCaptureSaveResult& OutResult);
 

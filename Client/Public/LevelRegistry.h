@@ -35,6 +35,9 @@ struct CLIENT_LEVEL_DESCRIPTOR final
 	MAP_LOAD_SCOPE MapLoadScope{};
 	CREATE_FUNCTION pCreate = nullptr;
 	LOAD_FUNCTION pLoad = nullptr;
+	// Optional presentation-only Area in the same Level; Loader and runtime share its scope.
+	const char_t* pPresentationMapAreaId = nullptr;
+	MAP_LOAD_SCOPE PresentationMapLoadScope{};
 };
 
 class CLevelRegistry final

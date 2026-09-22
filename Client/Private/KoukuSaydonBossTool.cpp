@@ -867,7 +867,7 @@ bool Client::CKoukuSaydonBossTool::Play_PatternFlow(const std::string_view gateI
 		entry.strBossArchetypeId = CKoukuSaydonCompositionDocument::Resolve_BossArchetypeId(entry.strBossPlacementId);
 		entries.push_back(std::move(entry));
 	}
-	return Play_LoadedFlow(gateId, entries, status);
+	return Play_LoadedFlow(gateId, entries, status, flow.strLoopStartEntryId);
 }
 
 bool Client::CKoukuSaydonBossTool::Play_CompositionAll(const std::string_view gateId, std::string& status)
@@ -909,7 +909,7 @@ bool Client::CKoukuSaydonBossTool::Play_CompositionAll(const std::string_view ga
 }
 
 bool Client::CKoukuSaydonBossTool::Play_LoadedFlow(const std::string_view gateId,
-	const std::vector<KOUKU_SAYDON_PATTERN_FLOW_ENTRY>& entries, std::string& status)
+	const std::vector<KOUKU_SAYDON_PATTERN_FLOW_ENTRY>& entries, std::string& status, const std::string_view loopStartEntryId)
 {
 	std::vector<std::string> targets, patternIds, bundleIds;
 	for (const auto& entry : entries)
@@ -928,8 +928,8 @@ bool Client::CKoukuSaydonBossTool::Play_LoadedFlow(const std::string_view gateId
 	const auto revision = CNetworkManager::Get().Get_GameplayRevisionState().ServerActiveRevision;
 	const auto sourceRevision = m_iSourceRevision;
 	return Prepare_ServerPlay(gateId, std::move(targets), std::move(patternIds), std::move(bundleIds),
-		[gate = std::string(gateId), entries, revision, sourceRevision](std::string& output) {
-			return CKoukuSaydonPatternAuditionService::Get().Play_Flow(gate, entries, revision, sourceRevision, output);
+		[gate = std::string(gateId), entries, revision, sourceRevision, loopStart = std::string(loopStartEntryId)](std::string& output) {
+			return CKoukuSaydonPatternAuditionService::Get().Play_Flow(gate, entries, revision, sourceRevision, output, loopStart);
 		}, status);
 }
 
@@ -1235,11 +1235,21 @@ void Client::CKoukuSaydonBossTool::Render_PatternFlowEditor(const std::string_vi
 	ImGui::BeginDisabled(!hasSelection);
 	if (ImGui::Button("Remove"))
 	{
+		if (flow->strLoopStartEntryId == flow->Entries[index].strEntryId) flow->strLoopStartEntryId.clear();
 		flow->Entries.erase(flow->Entries.begin() + index);
 		m_strSelectedFlowEntryId.clear();
 		m_bFlowDirty = true;
 	}
 	ImGui::EndDisabled();
+	ImGui::SameLine();
+	ImGui::BeginDisabled(!hasSelection || m_strSelectedFlowEntryId.empty());
+	if (ImGui::Button("Repeat From Selected")) { flow->strLoopStartEntryId = m_strSelectedFlowEntryId; m_bFlowDirty = true; }
+	ImGui::EndDisabled();
+	if (!flow->strLoopStartEntryId.empty())
+	{
+		ImGui::SameLine();
+		if (ImGui::Button("Clear Repeat")) { flow->strLoopStartEntryId.clear(); m_bFlowDirty = true; }
+	}
 	if (ImGui::BeginTable("##KoukuPatternFlowRows", 4, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_Resizable | ImGuiTableFlags_ScrollY,
 		ImVec2(0.f, (std::max)(140.f, ImGui::GetContentRegionAvail().y))))
 	{
@@ -1258,7 +1268,7 @@ void Client::CKoukuSaydonBossTool::Render_PatternFlowEditor(const std::string_vi
 			ImGui::TableSetColumnIndex(0); ImGui::Text("%02zu", i + 1u);
 			ImGui::TableSetColumnIndex(1); ImGui::TextUnformatted(entry.strKind.c_str());
 			ImGui::TableSetColumnIndex(2);
-			if (ImGui::Selectable((name + (error.empty() ? "" : " [Unavailable]")).c_str(), m_strSelectedFlowEntryId == entry.strEntryId))
+			if (ImGui::Selectable((name + (entry.strEntryId == flow->strLoopStartEntryId ? " [Repeat Start]" : "") + (error.empty() ? "" : " [Unavailable]")).c_str(), m_strSelectedFlowEntryId == entry.strEntryId))
 				m_strSelectedFlowEntryId = entry.strEntryId;
 			if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s\n%s", entry.strTargetId.c_str(), error.c_str());
 			ImGui::TableSetColumnIndex(3);

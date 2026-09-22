@@ -962,7 +962,7 @@ bool_t CRenderingProfileService::Parse_Catalog(
 			!Has_ExactFields(*pShadow,
 				{ "enabled", "focus", "distance", "orthographicWidth",
 				  "orthographicHeight", "near", "far", "depthBias",
-				  "normalBias", "strength" }) ||
+				  "normalBias", "strength" }, { "dynamicBakedStrength" }) ||
 			!Has_ExactFields(*pFog,
 				{ "enabled", "color", "density", "heightFalloff",
 				  "topHeight", "startDistance", "maximumOpacity",
@@ -1027,6 +1027,9 @@ bool_t CRenderingProfileService::Parse_Catalog(
 				profile.ShadowSettings.fNormalBias) ||
 			!Read_Float(*pShadow, "strength", 0.f, 1.f,
 				profile.ShadowSettings.fStrength) ||
+            (pShadow->Find("dynamicBakedStrength") &&
+                !Read_Float(*pShadow, "dynamicBakedStrength", 0.f, 1.f,
+                    profile.ShadowSettings.fDynamicBakedStrength)) ||
 			nullptr == pFogEnabled ||
 			!Read_Float4(*pFog, "color", profile.Fog.vColor) ||
 			!Read_Float(*pFog, "density", 0.f, 8.f,
@@ -1401,7 +1404,8 @@ bool_t CRenderingProfileService::Validate_Profile(
 		shadow.fFar > shadow.fNear &&
 		Is_FiniteRange(shadow.fDepthBias, 0.f, 0.05f) &&
 		Is_FiniteRange(shadow.fNormalBias, 0.f, 10.f) &&
-		Is_FiniteRange(shadow.fStrength, 0.f, 1.f);
+		Is_FiniteRange(shadow.fStrength, 0.f, 1.f) &&
+        Is_FiniteRange(shadow.fDynamicBakedStrength, 0.f, 1.f);
 	if (!valid)
 		strOutStatus = "Scene profile ID/light/multiplier/shadow is invalid.";
 	return valid;
@@ -1604,7 +1608,9 @@ string CRenderingProfileService::Serialize_Catalog(const CATALOG& Catalog)
 			"        \"normalBias\": " <<
 			profile.ShadowSettings.fNormalBias << ",\n"
 			"        \"strength\": " <<
-			profile.ShadowSettings.fStrength << "\n"
+			profile.ShadowSettings.fStrength << ",\n"
+            "        \"dynamicBakedStrength\": " <<
+            profile.ShadowSettings.fDynamicBakedStrength << "\n"
 			"      },\n"
 			"      \"fog\": {\n"
 			"        \"enabled\": " <<

@@ -1004,16 +1004,18 @@ void LostArk::Server::CGameRoom::Update_KoukuPlayerTargets(
 			trigger.strFixedVisualId.empty() != (trigger.iFixedLifetimeMs == 0u) ||
 			!std::isfinite(trigger.fFollowSpeedScale) || trigger.fFollowSpeedScale < .01f || trigger.fFollowSpeedScale > 10.f))
 		{ m_strStatus = "Showtime target window lost its validated definition"; continue; }
-		// Body facing has one server-owned target; independent player visuals keep map axes.
+		// Fixed drops capture each player without turning the authored boss motion.
+		// Tracking visuals and rotate-only windows keep the existing facing policy.
+		const bool tracksFacing = rotateOnly || trigger.strFixedVisualId.empty() || !trigger.strTrackingVisualId.empty();
 		const auto findFacingTarget = [&](const NET_ENTITY_ID id) -> SERVER_PLAYER* {
 			for (auto& [playerId, player] : m_Players)
 				if (player.iNetEntityId == id && eligible(player) && player.eAction != PLAYER_ACTION_STATE::GRABBED)
 					return &player;
 			return nullptr;
 		};
-		auto* facingTarget = findFacingTarget(boss.iPatternTargetEntityId);
-		if (!facingTarget) facingTarget = findFacingTarget(boss.iTargetEntityId);
-		if (!facingTarget) facingTarget = Select_BossRandomAliveTarget(boss, trigger.strTriggerId, "boss.target.pattern", serverTick);
+		auto* facingTarget = tracksFacing ? findFacingTarget(boss.iPatternTargetEntityId) : nullptr;
+		if (tracksFacing && !facingTarget) facingTarget = findFacingTarget(boss.iTargetEntityId);
+		if (tracksFacing && !facingTarget) facingTarget = Select_BossRandomAliveTarget(boss, trigger.strTriggerId, "boss.target.pattern", serverTick);
 		if (facingTarget)
 		{
 			boss.iTargetEntityId = boss.iPatternTargetEntityId = facingTarget->iNetEntityId;
@@ -1046,7 +1048,7 @@ void LostArk::Server::CGameRoom::Update_KoukuPlayerTargets(
 				}
 			}
 		}
-		else
+		else if (tracksFacing)
 		{
 			boss.iTargetEntityId = boss.iPatternTargetEntityId = INVALID_NET_ENTITY_ID;
 			boss.bHasPatternTargetLastPosition = false;

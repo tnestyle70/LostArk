@@ -63,6 +63,7 @@ public:
 	bool Consume_DebugKoukuHudModeResult(
 		LostArk::Shared::S2C_DEBUG_SET_KOUKU_HUD_MODE_RESULT& result) override;
 
+	bool Request_VehicleFlightInput(std::uint32_t sequence, float x, float z, float vertical) override;
 	bool Request_MoveGoal(
 		std::uint32_t clientSequence,
 		float goalX,
@@ -97,6 +98,11 @@ public:
 	bool Request_EstherSkill(
 		std::uint32_t clientSequence,
 		std::uint8_t slotIndex,
+		float aimX,
+		float aimZ) override;
+	bool Request_DebugUseEsther(
+		std::uint32_t requestSequence,
+		LostArk::Shared::ESTHER_ID esther,
 		float aimX,
 		float aimZ) override;
 	bool Request_UseSquareHole(

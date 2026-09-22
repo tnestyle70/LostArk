@@ -12,6 +12,17 @@ def fixture(body, tail=''):
 
 
 class NamedSourceVectorPatchTests(unittest.TestCase):
+    def test_guarded_dispatch_preserves_packing_and_named_vector_detection(self):
+        header = fixture('        staged.baseConstants[4] = vector(parameter("transcolor"));')
+        guarded = header.replace('if (family == ', 'if (staged.program == 0u && family == ')
+        self.assertEqual(source.named_vector_bindings(header), source.named_vector_bindings(guarded))
+        body = '    else if (family == "source.fixture.v1")\n    {\n        staged.program = 80u;\n    }\n'
+        canonical = source.guarded_configure_block(body)
+        self.assertEqual(canonical, body.replace('else if (family == ', 'if (staged.program == 0u && family == '))
+        self.assertEqual(source.guarded_configure_block(canonical), canonical)
+        with self.assertRaises(SystemExit):
+            source.guarded_configure_block(body.replace('80u;', '0u;'))
+
     def test_direct_copy_and_overwrite_order(self):
         header = fixture('''        staged.baseConstants[4] = vector(parameter("transcolor"));
         staged.baseConstants[5] = vector(parameter("buffcolor"));

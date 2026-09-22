@@ -52,6 +52,9 @@
 #include "UITextOcclusion.h"
 #include "PlayerSkillCatalog.h"
 #include "Profiler.h"
+#include "ProfilerTool.h"
+#include "AnimationTargetService.h"
+#include "Character.h"
 #include "Presentation_Manager.h"
 #include "ProjectDataRoot.h"
 #include "RuntimeAssetRoot.h"
@@ -84,8 +87,6 @@
 #ifdef _DEBUG
 #include "ActorCatalog.h"
 #include "Animation_Tool.h"
-#include "AnimationTargetService.h"
-#include "Character.h"
 #include "KoukuSaydonActionWorkbench.h"
 #include "KoukuSaydonBossTool.h"
 #include "ValtanActionWorkbench.h"
@@ -104,8 +105,6 @@
 #include "LevelNavigationDebug.h"
 #include "MapTool.h"
 #include "NetworkPlayerCommandSink.h"
-#include "ProfilerCaptureIO.h"
-#include "ProfilerTool.h"
 #include "RenderingBenchmark.h"
 #include "SequencerTool.h"
 #include "CharacterActionWorkbench.h"
@@ -1608,11 +1607,9 @@ void CMainApp::Update(const f32_t fTimeDelta)
 	CUIInputRouter::Get().Begin_Frame();
 	CUITextOcclusion::Get().Begin_Frame();
 	Sync_KoukuCinematicUI();
+	UpdateProfilerRuntime();
 
 #ifdef _DEBUG
-	// Complete export even when F1 or the profiler window is hidden.
-	if (m_pProfilerTool)
-		m_pProfilerTool->Update_SaveState();
 	UpdateDebugToolShortcut();
 #endif
 
@@ -3354,6 +3351,8 @@ HRESULT CMainApp::Render()
 		pValtan->Render_MvpPortraits();
 	}
 
+	CEffectPresentationService::Submit_VisibleLevelPresentations();
+
 	// Composition WORLD/Seek/Stop has committed this frame before choosing the map-light owner.
 	if (auto* arena = CLevel_KakulSaydonArena::Get_Active(); arena &&
 		CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::KAKULSAYDON_ARENA))
@@ -3410,7 +3409,7 @@ HRESULT CMainApp::Render()
 		const bool_t isCharSelectOverlayOpen = isCharSelectDebugPreviewOpen ||
 			(ETOUI(LEVEL::CHARACTER_SELECT) == hudLevel &&
 				nullptr != CLevel_CharacterSelect::Get_Active() &&
-				CLevel_CharacterSelect::Get_Active()->Is_CustomizingOpen());
+				CLevel_CharacterSelect::Get_Active()->Is_ProductPresentationOpen());
 		if (!CUIInputRouter::Get().Is_CinematicSuppressed() && nullptr != m_pHUDLayoutTool && hudPlayer.isValid &&
 			supportsAuthoredHUD && !skillWindowOpenForPreview &&
 			!isCharSelectOverlayOpen)
@@ -3692,17 +3691,6 @@ HRESULT CMainApp::Render()
 				focusNextWindow(DEBUG_TOOL::RENDERING);
 				RenderRenderingWorkbench();
 			}
-			if (IsDebugToolVisible(DEBUG_TOOL::PROFILER) &&
-				nullptr != m_pProfilerTool)
-			{
-				focusNextWindow(DEBUG_TOOL::PROFILER);
-				{
-					Engine::CProfilerScope toolScope(CGameInstance::Get().Get_Profiler(), "ImGui.Tool.CompositionProfiler.Build");
-					m_pProfilerTool->Render(CGameInstance::Get().Get_Profiler());
-				}
-				if (!m_pProfilerTool->Is_Open())
-					SetDebugToolVisible(DEBUG_TOOL::PROFILER, false);
-			}
 			/* Skill Window's slots are still authored by their existing UI owner;
 			   rendering it alongside other tools does not create a second UI runtime. */
 			if (IsDebugToolVisible(DEBUG_TOOL::UI) && nullptr != m_pHUDLayoutTool)
@@ -3778,6 +3766,27 @@ HRESULT CMainApp::Render()
 			}
 		}
 #endif
+        bool_t profilerWindowVisible = m_bRuntimeProfilerVisible;
+#ifdef _DEBUG
+        profilerWindowVisible |= m_bDeveloperToolsVisible && IsDebugToolVisible(DEBUG_TOOL::PROFILER);
+        if (profilerWindowVisible && DEBUG_TOOL::PROFILER == m_eDebugWindowFocusPending)
+        {
+            ImGui::SetNextWindowFocus();
+            m_eDebugWindowFocusPending = DEBUG_TOOL::NONE;
+        }
+#endif
+        if (profilerWindowVisible && m_pProfilerTool)
+        {
+            Engine::CProfilerScope toolScope(CGameInstance::Get().Get_Profiler(), "ImGui.Tool.CompositionProfiler.Build");
+            m_pProfilerTool->Render(CGameInstance::Get().Get_Profiler());
+            if (!m_pProfilerTool->Is_Open())
+            {
+                m_bRuntimeProfilerVisible = false;
+#ifdef _DEBUG
+                SetDebugToolVisible(DEBUG_TOOL::PROFILER, false);
+#endif
+            }
+        }
 		{
 			Engine::CProfilerScope cpuPhaseScope(CGameInstance::Get().Get_Profiler(), "ImGui.BackendSubmit");
 		Engine::CProfilerGpuScope gpuPhaseScope(CGameInstance::Get().Get_Profiler(), "ImGui.BackendSubmit");
@@ -3818,7 +3827,7 @@ HRESULT CMainApp::Render()
 	const bool_t isCharSelectOverlayOpen = isCharSelectDebugPreviewOpenForText ||
 		(ETOUI(LEVEL::CHARACTER_SELECT) == CGameInstance::Get().Get_CurrentLevelID() &&
 			nullptr != CLevel_CharacterSelect::Get_Active() &&
-			CLevel_CharacterSelect::Get_Active()->Is_CustomizingOpen());
+			CLevel_CharacterSelect::Get_Active()->Is_ProductPresentationOpen());
 	if (!isCharSelectOverlayOpen && !Is_MvpResultPageOpen())
 	{
 		CUITextLayerScope HudText(UI_TEXT_LAYER::HUD);
@@ -4019,7 +4028,7 @@ void CMainApp::Update_CombatHUD(const f32_t fTimeDelta)
 	const bool_t isCharSelectOverlayOpen = isCharSelectDebugPreviewOpen ||
 		(ETOUI(LEVEL::CHARACTER_SELECT) == currentLevel &&
 			nullptr != CLevel_CharacterSelect::Get_Active() &&
-			CLevel_CharacterSelect::Get_Active()->Is_CustomizingOpen());
+			CLevel_CharacterSelect::Get_Active()->Is_ProductPresentationOpen());
 
 	const HUD_PLAYER_STATE& player =
 		CCombatHUDViewModel::Get().Get_Player();
@@ -4395,6 +4404,11 @@ void CMainApp::Update_CombatHUD(const f32_t fTimeDelta)
 	if (LostArk::Shared::CHARACTER_CLASS_ID::LANCE_MASTER == player.eCharacterClass)
 		Update_LanceMasterIdentityGauge();
 
+	/* The class-owned slots are already gated by Set_ActiveOwnerClass; this only drives the
+	dynamic part (orb fill, stance art, socket count) when the class is actually the local one. */
+	if (LostArk::Shared::CHARACTER_CLASS_ID::GUARDIANKNIGHT == player.eCharacterClass)
+		Update_GuardianKnightIdentity();
+
 	Update_ChargeGauge();
 	Update_SkillIcons();
 	Update_SkillSlotMarks();
@@ -4617,6 +4631,33 @@ void CMainApp::RenderQuickSlotKeyLabels()
 	}
 	if (m_bHudSpecialSlotShown)
 		DrawKeyLabel("Special_Space", L"Space");
+
+	/* GuardianKnight's identity toggle key. Unlike the Artist/Warlord Z/X cases below, this one
+	does have a real non-keyframe anchor to read -- skillKey_bg is an ordinary slot with its own
+	authored rect -- so the label can be centred on it. Colour follows
+	DragonKnightSkinFrame.draw(): white once the gauge is full or the dragon stance is held,
+	0x686C20 otherwise, which is how retail says "you can press this now". */
+	if (LostArk::Shared::CHARACTER_CLASS_ID::GUARDIANKNIGHT == keyLabelPlayer.eCharacterClass)
+	{
+		f32_t fKeyX = 0.f, fKeyY = 0.f, fKeyWidth = 0.f, fKeyHeight = 0.f;
+		if (m_pHUDRuntimeView->Get_SlotRect("GK_Id_SkillKeyBg", fKeyX, fKeyY, fKeyWidth, fKeyHeight))
+		{
+			const bool_t bGaugeFull = 0u != keyLabelPlayer.iMaximumIdentity &&
+				keyLabelPlayer.iCurrentIdentity >= keyLabelPlayer.iMaximumIdentity;
+			const bool_t bUsable = bGaugeFull ||
+				LostArk::Shared::PLAYER_STANCE_ID::GUARDIANKNIGHT_DRAGON == keyLabelPlayer.eStance;
+			const float2_t vKeyMeasured =
+				CGameInstance::Get().Measure_Text(TEXT("Font_YoonGasiIIM"), L"Z");
+			const f32_t fKeyScale = (vKeyMeasured.y > 0.f) ?
+				(fKeyHeight * 0.82f / vKeyMeasured.y) : 1.f;
+			CGameInstance::Get().Draw_Text(TEXT("Font_YoonGasiIIM"), L"Z",
+				float2_t((fKeyX + fKeyWidth * 0.5f) * textScaleX,
+					(fKeyY + fKeyHeight * 0.5f) * textScaleY),
+				bUsable ? Colors::White :
+					XMVectorSet(0x68 / 255.f, 0x6C / 255.f, 0x20 / 255.f, 1.f),
+				0.f, float2_t(0.5f, 0.5f), fKeyScale * textUiScale);
+		}
+	}
 
 	/* Artist's Z ("저무는 달") and Warlord's X/Z ("전장의 방패"/"방어 태세 전환") are not drawn
 	here. The only "Skill_Z" slot in HUD_Layout.json is Warlord-owned, KEYFRAME_ANIMATION type
@@ -6910,6 +6951,128 @@ void CMainApp::Update_LanceMasterIdentityGauge()
 	}
 }
 
+void CMainApp::Update_GuardianKnightIdentity()
+{
+	Engine::CProfilerScope scope(CGameInstance::Get().Get_Profiler(), "UI.Runtime.GuardianKnightIdentity.Update");
+	const HUD_PLAYER_STATE& player = CCombatHUDViewModel::Get().Get_Player();
+	if (!player.isValid || nullptr == m_pHUDRuntimeView)
+		return;
+
+	/* Retail replaces the mana bar outright with the Embereth socket bar, which is authored at
+	the same place; leaving both on would stack two bars in one strip. */
+	m_pHUDRuntimeView->Set_SlotVisible("ManaBar_BG", false);
+	m_pHUDRuntimeView->Set_SlotVisible("ManaBar", false);
+	m_pHUDRuntimeView->Set_SlotVisible("ManaBar_Fill", false);
+
+	const bool_t bDragon =
+		LostArk::Shared::PLAYER_STANCE_ID::GUARDIANKNIGHT_DRAGON == player.eStance;
+
+	/* ark.controls.Progress fills by target.width, but the orb is placed rotated: orbGauge's
+	own matrix is (scaleX/Y ~0, rotateSkew0 -1, rotateSkew1 1), which maps local +X to screen
+	-Y, and the track inside carries the opposite turn so its art still stands upright. So the
+	gauge rises from the bottom and drains downward on screen, not left to right. Reproduced
+	here by revealing the bottom slice of the orb -- rect shrunk to it and the texture window
+	moved with it, so the art keeps its own scale instead of squashing. The fill art itself is
+	Gauge_Track's per-stance frame (1 human / 2 dragon), which is what
+	DragonKnightSkinFrame.inMarkGaugeState() switches. */
+	const f32_t fIdentityRatio = 0u != player.iMaximumIdentity ?
+		std::clamp(static_cast<f32_t>(player.iCurrentIdentity) /
+			static_cast<f32_t>(player.iMaximumIdentity), 0.f, 1.f) : 0.f;
+	m_pHUDRuntimeView->Set_SlotTexture("GK_Id_OrbFill", bDragon ?
+		"UI/HUD/GuardianKnight/Orb_Fill_Dragon.png" :
+		"UI/HUD/GuardianKnight/Orb_Fill_Human.png");
+	m_pHUDRuntimeView->Set_SlotVisible("GK_Id_OrbFill", fIdentityRatio > 0.f);
+
+	/* The empty orb is never moved, so it stays the reference both the fill slice and the mark
+	are measured against -- reading the fill's own rect back would compound each frame. */
+	f32_t fOrbX = 0.f, fOrbY = 0.f, fOrbWidth = 0.f, fOrbHeight = 0.f;
+	if (fIdentityRatio > 0.f &&
+		m_pHUDRuntimeView->Get_SlotRect("GK_Id_OrbEmpty", fOrbX, fOrbY, fOrbWidth, fOrbHeight))
+	{
+		const f32_t fFillHeight = fOrbHeight * fIdentityRatio;
+		m_pHUDRuntimeView->Set_SlotRect("GK_Id_OrbFill",
+			fOrbX, fOrbY + fOrbHeight - fFillHeight, fOrbWidth, fFillHeight);
+		m_pHUDRuntimeView->Set_SlotUVWindow("GK_Id_OrbFill",
+			0.f, 1.f - fIdentityRatio, 1.f, fIdentityRatio);
+
+		/* Progress::updateMark rides the fill edge and useAutoHideMark hides it at exactly
+		empty and exactly full. After the rotation above that edge is the liquid level, so the
+		mark travels vertically and stays centred across the orb. */
+		f32_t fMarkX = 0.f, fMarkY = 0.f, fMarkWidth = 0.f, fMarkHeight = 0.f;
+		if (m_pHUDRuntimeView->Get_SlotRect("GK_Id_OrbMark", fMarkX, fMarkY, fMarkWidth, fMarkHeight))
+		{
+			/* Centred on the level line, but kept inside the orb: at the very top the line is
+			the orb's own rim, and a mark centred there would hang half of itself above the
+			sphere. */
+			const f32_t fLevelY = fOrbY + fOrbHeight - fFillHeight - fMarkHeight * 0.5f;
+			m_pHUDRuntimeView->Set_SlotPosition("GK_Id_OrbMark",
+				fOrbX + fOrbWidth * 0.5f - fMarkWidth * 0.5f,
+				std::clamp(fLevelY, fOrbY, fOrbY + fOrbHeight - fMarkHeight));
+		}
+	}
+	/* useAutoHideMark hides it at the two ends. The ratio is a float division, so "full" is
+	tested with a tolerance rather than an exact 1 -- otherwise a gauge sitting at its maximum
+	leaves the mark drawn on the rim. */
+	constexpr f32_t MARK_END_EPSILON = 0.001f;
+	m_pHUDRuntimeView->Set_SlotVisible("GK_Id_OrbMark",
+		fIdentityRatio > MARK_END_EPSILON && fIdentityRatio < 1.f - MARK_END_EPSILON);
+
+	/* skillKey_bg carries the Z label drawn in the text pass; the label's own colour rule lives
+	there (DragonKnightSkinFrame.draw(): white while full or transformed, 0x686C20 otherwise). */
+	m_pHUDRuntimeView->Set_SlotVisible("GK_Id_SkillKeyBg", true);
+
+	/* skillStatusList is visible in both stances this project has (its own visibility rule is
+	_localStance < NORMAL_AP13). The 8 dots are the class's skill slots, and a red one marks a
+	slot carrying an awakening skill -- DragonKnightSkillStatusList just does
+	_useList[i].visible = isUse over a plain dark plate, so a slot without one shows the plate
+	through. Which slots those are has no source in this project's data, so the set is the
+	user's own call: the bottom row's 1st, 2nd and 4th. Index 0..3 is the top row. */
+	constexpr bool_t AWAKENING_SLOT_DOTS[8] =
+		{ false, false, false, false, true, true, false, true };
+	m_pHUDRuntimeView->Set_SlotVisible("GK_Id_StatusPlate", true);
+	for (int32_t i = 0; i < 8; ++i)
+	{
+		m_pHUDRuntimeView->Set_SlotVisible(
+			string("GK_Id_StatusDot") + std::to_string(i), AWAKENING_SLOT_DOTS[i]);
+	}
+
+	/* invokeDragonKnightBloodGauge(filled, unlocked) walks all 10 sockets: those below `unlocked`
+	are lit or empty by the filled count, and the rest wear the padlock. `unlocked` is the very
+	capacity expression the server already spends against (iMaximumSockets - locked), so this
+	reads the ember pool rather than deriving a count of its own. */
+	constexpr int32_t SOCKET_COUNT = 10;
+	const int32_t iUnlockedSockets = std::clamp(
+		static_cast<int32_t>(player.iEmberMaximumSockets) -
+		static_cast<int32_t>(player.iEmberLockedSockets), 0, SOCKET_COUNT);
+	const int32_t iFilledSockets =
+		(std::min)(static_cast<int32_t>(player.iEmberOrbs), iUnlockedSockets);
+	const bool_t bHasEmberPool = 0u != player.iEmberMaximumSockets;
+	m_pHUDRuntimeView->Set_SlotVisible("GK_Embereth_Frame", bHasEmberPool);
+	for (int32_t i = 0; i < SOCKET_COUNT; ++i)
+	{
+		const string strIndex = std::to_string(i);
+		m_pHUDRuntimeView->Set_SlotVisible("GK_Embereth_Socket" + strIndex, bHasEmberPool);
+
+		const string strStateSlot = "GK_Embereth_State" + strIndex;
+		m_pHUDRuntimeView->Set_SlotVisible(strStateSlot, bHasEmberPool);
+		if (!bHasEmberPool)
+		{
+			m_EmberSocketStates[i].clear();
+			continue;
+		}
+		/* invokeDragonKnightBloodGauge's own branch: a socket whose state changed plays that
+		label's transition -- the gem's pop, the ember rising away, the padlock settling -- and
+		one that did not change holds the label's end frame instead of replaying it. */
+		const string strState = i >= iUnlockedSockets ? "lock" :
+			(i < iFilledSockets ? "show" : "hide");
+		if (m_EmberSocketStates[i] != strState)
+		{
+			m_pHUDRuntimeView->Play_KeyframeAnimation(strStateSlot, strState);
+			m_EmberSocketStates[i] = strState;
+		}
+	}
+}
+
 void CMainApp::Update_SkillCooldowns()
 {
 	Engine::CProfilerScope scope(CGameInstance::Get().Get_Profiler(), "UI.Runtime.SkillCooldowns.Update");
@@ -7188,7 +7351,7 @@ void CMainApp::Update_BossHealthBar()
 	const bool_t isCharSelectOverlayOpen = isCharSelectDebugPreviewOpen ||
 		(ETOUI(LEVEL::CHARACTER_SELECT) == currentLevel &&
 			nullptr != CLevel_CharacterSelect::Get_Active() &&
-			CLevel_CharacterSelect::Get_Active()->Is_CustomizingOpen());
+			CLevel_CharacterSelect::Get_Active()->Is_ProductPresentationOpen());
 
 	const HUD_BOSS_STATE& boss = CCombatHUDViewModel::Get().Get_Boss();
 	if (!isSupportedLevel || skillWindowOpen || isCharSelectOverlayOpen ||
@@ -8162,12 +8325,33 @@ namespace
 		{ 2050500, "UI/Skill/DimensionMaster/2050500_KarmaBoundary.png" },
 		/* DimensionMaster -- V (awakening) */
 		{ 2050520, "UI/Skill/DimensionMaster/2050520_TimeShackles.png" },
+		/* GuardianKnight -- human stance */
+		{ 49100, "UI/Skill/GuardianKnight/49100_Cleave.png" },
+		{ 49110, "UI/Skill/GuardianKnight/49110_WildStrike.png" },
+		{ 49120, "UI/Skill/GuardianKnight/49120_Ignite.png" },
+		{ 49130, "UI/Skill/GuardianKnight/49130_ValiantCharge.png" },
+		{ 49150, "UI/Skill/GuardianKnight/49150_QuakeSmash.png" },
+		{ 49200, "UI/Skill/GuardianKnight/49200_DragonsBlow.png" },
+		{ 49220, "UI/Skill/GuardianKnight/49220_BurningFlame.png" },
+		{ 49260, "UI/Skill/GuardianKnight/49260_InfernoStrike.png" },
+		/* GuardianKnight -- dragon stance */
+		{ 49210, "UI/Skill/GuardianKnight/49210_DragonsSpear.png" },
+		{ 49230, "UI/Skill/GuardianKnight/49230_AbaddonFlame.png" },
+		{ 49270, "UI/Skill/GuardianKnight/49270_InfernoFlame.png" },
+		{ 49330, "UI/Skill/GuardianKnight/49330_FireBreath.png" },
+		/* GuardianKnight -- stance-free, and the Z toggle in both directions */
+		{ 49400, "UI/Skill/GuardianKnight/49400_DragonRampage.png" },
+		{ 49420, "UI/Skill/GuardianKnight/49420_BreathOfDestruction.png" },
+		{ 49040, "UI/Skill/GuardianKnight/49040_DragonAvatar.png" },
+		{ 49041, "UI/Skill/GuardianKnight/49041_DragonAvatarRelease.png" },
 		/* Move (Space) skills, cut by build_quickslot_hud_ui.py for the special slot. */
 		{ 34020, "UI/Skill/LanceMaster/34020_Space.png" },
 		{ 34520, "UI/Skill/LanceMaster/34520_Space.png" },
 		{ 17020, "UI/Skill/Warlord/17020_Space.png" },
 		{ 31020, "UI/Skill/Artist/31020_Space.png" },
 		{ 2050020, "UI/Skill/DimensionMaster/2050020_Space.png" },
+		{ 49020, "UI/Skill/GuardianKnight/49020_Lunge.png" },
+		{ 49021, "UI/Skill/GuardianKnight/49021_Glide.png" },
 	};
 
 	const char* Find_HudSkillIcon(const LostArk::Shared::SKILL_ID iSkillId)
@@ -8204,16 +8388,47 @@ void CMainApp::Update_SkillIcons()
 		stripped from the base slot) draws over both -- the same border-above-icon stacking the
 		old redraw achieved. */
 		const char* pIconPath = nullptr;
+		bool_t bUsableInStance = true;
 		if (const PLAYER_SKILL_DEFINITION* pSkill = CPlayerSkillCatalog::Find_BySlot(
 			player.eCharacterClass, pInputSlot, player.eStance))
 		{
 			pIconPath = Find_HudSkillIcon(pSkill->iSkillId);
+		}
+		else if (LostArk::Shared::CHARACTER_CLASS_ID::GUARDIANKNIGHT == player.eCharacterClass &&
+			0 == std::strcmp(pInputSlot, "T"))
+		{
+			/* GuardianKnight's T is the dragon-form breath, so in the human stance the slot
+			resolves to nothing and used to sit empty. Retail keeps the icon there and dims it
+			until the stance makes it usable. Only this one slot is scoped that way: every
+			other GuardianKnight slot either exists in both stances or in neither, and the
+			other stance classes are left as they are. */
+			for (const PLAYER_SKILL_DEFINITION& Skill : CPlayerSkillCatalog::Get_Skills())
+			{
+				if (Skill.eCharacterClass != player.eCharacterClass ||
+					Skill.strInputSlot != pInputSlot ||
+					LostArk::Shared::PLAYER_STANCE_ID::NONE == Skill.eRequiredStance)
+				{
+					continue;
+				}
+				pIconPath = Find_HudSkillIcon(Skill.iSkillId);
+				if (nullptr != pIconPath)
+				{
+					bUsableInStance = false;
+					break;
+				}
+			}
 		}
 
 		const string strIconSlot = string("Skill_") + pInputSlot + "_Icon";
 		if (nullptr != pIconPath)
 		{
 			m_pHUDRuntimeView->Set_SlotTexture(strIconSlot, pIconPath);
+			/* There is no greyed copy of a skill icon in the data -- IconInfo has one DDK_Skill
+			page and no gray variant. Retail dims at draw time: ARKNewSlot sets its content
+			canvas to ColorTransform(1,1,1,1) while active and ColorTransform(0.3,0.3,0.3,1)
+			otherwise, so this is that same flat 0.3 multiply on RGB with alpha untouched. */
+			m_pHUDRuntimeView->Set_SlotTint(strIconSlot, bUsableInStance ?
+				float4_t(1.f, 1.f, 1.f, 1.f) : float4_t(0.3f, 0.3f, 0.3f, 1.f));
 			m_pHUDRuntimeView->Set_SlotVisible(strIconSlot, true);
 		}
 		else
@@ -8286,14 +8501,11 @@ void CMainApp::RenderCombatHUDText()
 	{
 		const wstring hp = std::to_wstring(player.iCurrentHp) +
 			L" / " + std::to_wstring(player.iMaximumHp);
-		const wstring mana = 0u != player.iEmberMaximumSockets ?
-			/* Guardian Knight: orb gauge percent and ember orbs over the open
-			sockets, in place of mana until the class HUD art exists. */
-			L"\uC624\uBE0C " + std::to_wstring(0u == player.iMaximumIdentity ? 0u :
-				player.iCurrentIdentity * 100u / player.iMaximumIdentity) +
-			L"%  \uAE30\uC6B4 " + std::to_wstring(player.iEmberOrbs) + L" / " +
-			std::to_wstring(player.iEmberMaximumSockets - player.iEmberLockedSockets) :
-			std::to_wstring(player.iCurrentResource) +
+		/* A class with an ember pool draws its own gauge art over this strip -- the orb and the
+		10 sockets (Update_GuardianKnightIdentity) -- so the numeric stand-in that stood here
+		until that art existed would now just sit on top of the sockets. */
+		const bool_t bHasEmberPool = 0u != player.iEmberMaximumSockets;
+		const wstring mana = std::to_wstring(player.iCurrentResource) +
 			L" / " + std::to_wstring(player.iMaximumResource);
 		/* Positions/size follow the same 0.75 anchor-scale (around 673.675, 747.092) and -12
 		vertical shift applied to the whole bottom HUD in HUD_Layout.json -- these two labels
@@ -8301,8 +8513,11 @@ void CMainApp::RenderCombatHUDText()
 		they drift off the now-smaller HP/mana bars. */
 		CGameInstance::Get().Draw_Text(TEXT("Font_YG760"), hp.c_str(),
 			position(504.419f, 635.273f), Colors::White, 0.f, float2_t(0.5f, 0.5f), 0.315f * textScale);
-		CGameInstance::Get().Draw_Text(TEXT("Font_YG760"), mana.c_str(),
-			position(835.169f, 635.273f), Colors::White, 0.f, float2_t(0.5f, 0.5f), 0.315f * textScale);
+		if (!bHasEmberPool)
+		{
+			CGameInstance::Get().Draw_Text(TEXT("Font_YG760"), mana.c_str(),
+				position(835.169f, 635.273f), Colors::White, 0.f, float2_t(0.5f, 0.5f), 0.315f * textScale);
+		}
 	}
 	/* Boss HP number/name/grade text moved into RenderBossHealthBarText() -- the decompiled
 	targetstatus_loc_int.gfx places them relative to the bar's own real position (see that
@@ -9252,6 +9467,37 @@ HRESULT CMainApp::ReadyImGuiRuntime()
 	return S_OK;
 }
 
+void CMainApp::UpdateProfilerRuntime()
+{
+    // F7 owns only the profiler. Hiding it leaves collection active for measuring UI overhead.
+    if (m_pProfilerTool) m_pProfilerTool->Update_SaveState();
+    const bool_t down = IsWindowOwnedByCurrentProcess(GetForegroundWindow()) &&
+        0 != (GetAsyncKeyState(VK_F7) & 0x8000);
+    if (down && !m_bF7Down && !ImGui::GetIO().WantTextInput &&
+        !CUIInputRouter::Get().Is_TextInputActive())
+    {
+        bool_t visible = m_bRuntimeProfilerVisible;
+#ifdef _DEBUG
+        visible |= m_bDeveloperToolsVisible && IsDebugToolVisible(DEBUG_TOOL::PROFILER);
+#endif
+        m_bRuntimeProfilerVisible = !visible;
+        if (m_bRuntimeProfilerVisible)
+        {
+            if (!m_pProfilerTool)
+            {
+                m_pProfilerTool = make_unique<CProfilerTool>(m_pDevice.Get());
+                if (auto* profiler = CGameInstance::Get().Get_Profiler())
+                    m_pProfilerTool->Begin_Capture(*profiler);
+            }
+            m_pProfilerTool->Open();
+        }
+#ifdef _DEBUG
+        else SetDebugToolVisible(DEBUG_TOOL::PROFILER, false);
+#endif
+    }
+    m_bF7Down = down;
+}
+
 #ifdef _DEBUG
 HRESULT CMainApp::ReadyDebugTools()
 {
@@ -9522,7 +9768,7 @@ HRESULT CMainApp::EnsureDebugTool(const DEBUG_TOOL eTool)
 		break;
 	case DEBUG_TOOL::PROFILER:
 		if (nullptr == m_pProfilerTool)
-			m_pProfilerTool = make_unique<CProfilerTool>();
+			m_pProfilerTool = make_unique<CProfilerTool>(m_pDevice.Get());
 		m_pProfilerTool->Open();
 		if (Engine::CProfiler* pProfiler = CGameInstance::Get().Get_Profiler())
 			pProfiler->Set_Enabled(true);
@@ -9661,6 +9907,51 @@ HRESULT CMainApp::EnsureDebugTool(const DEBUG_TOOL eTool)
 				m_pValtanActionWorkbench.get(), m_pKoukuSaydonActionWorkbench.get());
 			m_pSequencerTool->Set_ActionSessions(m_pCharacterActionWorkbench.get(),
 				m_pWorldObjectTool.get(), m_pSequenceActionWorkbench.get());
+			CSequencerTool::CLASS_SELECTION_PREVIEW_CALLBACKS classSelection;
+			classSelection.state = [] {
+				CSequencerTool::CLASS_SELECTION_PREVIEW_STATE state;
+				auto* level = CLevel_CharacterSelect::Get_Active();
+				if (!level || CGameInstance::Get().Get_CurrentLevelID() != ETOUI(LEVEL::CHARACTER_SELECT))
+				{ state.status = "Enter Character Select from Lobby to preview this WORLD scene."; return state; }
+				const auto& preview = level->Get_ClassSelectionPresentation();
+				state.available = level->Can_PlayClassCinematic() && preview.Has_Class("GUARDIANKNIGHT");
+				state.active = preview.Is_Active();
+				state.paused = preview.Is_Paused();
+				state.looping = preview.Is_Looping();
+				state.ownerToken = preview.Get_PlaybackToken();
+				state.loopCycle = preview.Get_LoopCycle();
+				state.clockMs = preview.Get_ClockMs();
+				state.durationMs = preview.Get_DurationMs();
+				state.introDurationMs = preview.Get_PhaseDurationMs("GUARDIANKNIGHT", false);
+				state.loopDurationMs = preview.Get_PhaseDurationMs("GUARDIANKNIGHT", true);
+				state.status = level->Get_ClassCinematicStatus();
+				if (preview.Has_Class("GUARDIANKNIGHT") && !level->Can_PlayClassCinematic())
+					state.status = "Class cinematic is ready; close customizing or another preview and wait for the arena to finish connecting.";
+				return state;
+			};
+			classSelection.play = [] {
+				auto* level = CLevel_CharacterSelect::Get_Active();
+				return level && level->Can_PlayClassCinematic() &&
+					CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::CHARACTER_SELECT) &&
+					level->Get_ClassSelectionPresentation().Play("GUARDIANKNIGHT");
+			};
+			classSelection.stop = [] {
+				if (auto* level = CLevel_CharacterSelect::Get_Active(); level &&
+					CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::CHARACTER_SELECT))
+					level->Get_ClassSelectionPresentation().Stop();
+			};
+			classSelection.setPaused = [](bool paused) {
+				if (auto* level = CLevel_CharacterSelect::Get_Active(); level &&
+					CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::CHARACTER_SELECT))
+					level->Get_ClassSelectionPresentation().Set_Paused(paused);
+			};
+			classSelection.seek = [](bool loop, double timeMs) {
+				auto* level = CLevel_CharacterSelect::Get_Active();
+				return level && level->Can_PlayClassCinematic() &&
+					CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::CHARACTER_SELECT) &&
+					level->Get_ClassSelectionPresentation().Seek("GUARDIANKNIGHT", loop, timeMs);
+			};
+			m_pSequencerTool->Set_ClassSelectionPreviewCallbacks(std::move(classSelection));
 			/* The Map Tool hosts the same Sequence session for its integrated
 			   cutscene view. One owner and one draft, borrowed per frame. */
 			if (m_pMapTool)
@@ -9678,7 +9969,9 @@ HRESULT CMainApp::EnsureDebugTool(const DEBUG_TOOL eTool)
 				m_eDebugInputOwner = target == COMPOSITION_WORKBENCH_TARGET::OBJECT ? DEBUG_TOOL::WORLD_OBJECT :
 					(target == COMPOSITION_WORKBENCH_TARGET::SEQUENCE ? DEBUG_TOOL::SEQUENCER_BENCHMARK : DEBUG_TOOL::SEQUENCER);
 			});
-			m_pSequencerTool->Open(ETOUI(LEVEL::KAKULSAYDON_ARENA) ==
+			if (CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::CHARACTER_SELECT))
+				m_pSequencerTool->Open(COMPOSITION_WORKBENCH_TARGET::WORLD);
+			else m_pSequencerTool->Open(ETOUI(LEVEL::KAKULSAYDON_ARENA) ==
 				CGameInstance::Get().Get_CurrentLevelID() ?
 				COMPOSITION_WORKBENCH_BOSS::KOUKU_SAYDON : COMPOSITION_WORKBENCH_BOSS::VALTAN);
 		}
@@ -9686,7 +9979,9 @@ HRESULT CMainApp::EnsureDebugTool(const DEBUG_TOOL eTool)
 		{
 			const auto level = CGameInstance::Get().Get_CurrentLevelID();
 			const bool selectedValtan = m_pSequencerTool->Get_SelectedBoss() == COMPOSITION_WORKBENCH_BOSS::VALTAN;
-			if (m_pSequencerTool->Is_BossSelected() && level == ETOUI(LEVEL::KAKULSAYDON_ARENA) && selectedValtan)
+			if (m_pSequencerTool->Is_BossSelected() && level == ETOUI(LEVEL::CHARACTER_SELECT))
+				m_pSequencerTool->Open(COMPOSITION_WORKBENCH_TARGET::WORLD);
+			else if (m_pSequencerTool->Is_BossSelected() && level == ETOUI(LEVEL::KAKULSAYDON_ARENA) && selectedValtan)
 				m_pSequencerTool->Open(COMPOSITION_WORKBENCH_BOSS::KOUKU_SAYDON);
 			else if (m_pSequencerTool->Is_BossSelected() && level == ETOUI(LEVEL::VALTAN_ARENA) && !selectedValtan)
 				m_pSequencerTool->Open(COMPOSITION_WORKBENCH_BOSS::VALTAN);
@@ -10319,7 +10614,7 @@ void CMainApp::RenderArenaFollowCameraSettings()
 		if (ImGui::Button("Save##CharacterSize")) save();
 		ImGui::SameLine();
 		if (ImGui::Button("Reload saved##CharacterSize")) reload();
-		ImGui::TextWrapped("Class values multiply the current catalog model. Artist 1.6x, DimensionMaster 0.7x and madness clown 0.7x are the requested defaults. Mario 1x keeps its 1.5m admission height.");
+		ImGui::TextWrapped("Class values multiply the current catalog model. Artist 0.7x, DimensionMaster 1.0x and madness clown 0.7x are the requested defaults. Mario 1x keeps its 1.5m admission height.");
 		ImGui::Text("Save / Reload target: %s", names[index]);
 		ImGui::TextDisabled("Sizes apply during camera sequences too. Save keeps this map's settings for local and remote characters.");
 		ImGui::TreePop();
@@ -12686,10 +12981,34 @@ void CMainApp::RenderDeveloperTools()
 
 	RenderSequenceViewer();
 
-	if (ImGui::CollapsingHeader("Esther Cutin (Debug)"))
+	if (ImGui::CollapsingHeader("Esther Skill (Debug)"))
 	{
 		ImGui::TextDisabled(
-			"Replays the full-screen cutin movie (NpcCatalog cutinMovie) once.");
+			"Summon asks the Server for that Esther by name: no gauge, no roster slot,"
+			" same cast and summon as Ctrl+Z/X/C. Needs a live player standing idle.");
+		CPlayerController* const pEstherController = Find_ActivePlayerController();
+		ImGui::BeginDisabled(nullptr == pEstherController);
+		const auto summonButton = [pEstherController](
+			const char_t* pLabel, const LostArk::Shared::ESTHER_ID esther)
+		{
+			if (ImGui::Button(pLabel) && nullptr != pEstherController)
+				(void)pEstherController->Request_DebugUseEsther(esther);
+		};
+		summonButton("Summon Sillian", LostArk::Shared::ESTHER_ID::SILLIAN);
+		ImGui::SameLine();
+		summonButton("Summon Wei", LostArk::Shared::ESTHER_ID::WEI);
+		ImGui::SameLine();
+		summonButton("Summon Bahuntur", LostArk::Shared::ESTHER_ID::BAHUNTUR);
+		ImGui::SameLine();
+		summonButton("Summon Ninav", LostArk::Shared::ESTHER_ID::NINAV);
+		ImGui::SameLine();
+		summonButton("Summon Inanna", LostArk::Shared::ESTHER_ID::INANNA);
+		ImGui::EndDisabled();
+		if (nullptr == pEstherController)
+			ImGui::TextDisabled("No Server-driven player in this level.");
+
+		ImGui::TextDisabled(
+			"Preview replays the full-screen cutin movie (NpcCatalog cutinMovie) once.");
 		const auto previewButton = [](
 			const char_t* pLabel, const char_t* pArchetypeId)
 		{
@@ -12741,7 +13060,7 @@ void CMainApp::RenderDeveloperTools()
 			showcaseTuning.fRectHeight);
 	}
 
-	ImGui::TextDisabled("F1: Developer Tools  |  F6: Follow/Free Camera");
+	ImGui::TextDisabled("F1: Developer Tools  |  F6: Follow/Free Camera  |  F7: Profiler");
 	ImGui::End();
 }
 
@@ -12923,79 +13242,7 @@ void CMainApp::RenderRenderingWorkbench()
     ImGui::TextWrapped("Exposure scales brightness; LUT grading runs once. Directional toggles diffuse/specular while ambient stays active.");
     ImGui::TextWrapped("Comparison applies to the current view, including Mario. Reset, close, or change Level to return to authored settings. These switches are not saved.");
 
-	ImGui::SeparatorText("Map Materials");
-	MATERIAL_RENDER_SETTINGS materialSettings =
-		CGameInstance::Get().Get_MaterialRenderSettings();
-	bool_t materialChanged = ImGui::Checkbox(
-		"Recovered map materials (B)", &materialSettings.bUseSourceMaterials);
-	static constexpr const char* materialViews[] = {
-		"Final", "Base color", "Normal", "Direct specular", "Reflection delta",
-		"Roughness", "Metallic", "Material AO"
-	};
-	int materialView = static_cast<int>(materialSettings.eDebugView);
-	if (ImGui::Combo("Material debug view", &materialView,
-		materialViews, static_cast<int>(std::size(materialViews))))
-	{
-		materialSettings.eDebugView = static_cast<MATERIAL_DEBUG_VIEW>(materialView);
-		materialChanged = true;
-	}
-	if (materialChanged && FAILED(
-		CGameInstance::Get().Apply_MaterialRenderSettings(materialSettings)))
-	{
-		m_strRenderingStatus = "Could not apply material comparison settings.";
-	}
-	ImGui::TextWrapped(
-		"Only materials declared in mapmaterials; restart after data edits. "
-		"Reflection view shows absolute base-color change.");
-	const auto surfaceBindings = CMapAssetRenderUtils::Get_RecentSurfaceBindings();
-	ImGui::TextDisabled("Bindings collected while this pane is open (last second, up to 32).");
-	if (surfaceBindings.empty())
-		ImGui::TextDisabled("No declared map material was recently bound.");
-	else if (ImGui::BeginTable("RecentFloorMaterialBindings", 4,
-		ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_Resizable))
-	{
-		ImGui::TableSetupColumn("Asset");
-		ImGui::TableSetupColumn("Material");
-		ImGui::TableSetupColumn("Source family");
-		ImGui::TableSetupColumn("Active program");
-		ImGui::TableHeadersRow();
-		for (const auto& row : surfaceBindings)
-		{
-			ImGui::TableNextRow();
-			ImGui::TableSetColumnIndex(0);
-			ImGui::TextWrapped("%s", row.assetId.c_str());
-			ImGui::TableSetColumnIndex(1);
-			ImGui::TextWrapped("%s", row.materialName.c_str());
-			ImGui::TableSetColumnIndex(2);
-			switch (row.family)
-			{
-			case MODEL_SURFACE_FAMILY::SPECULAR_TEXTURE_REFLECTION:
-				ImGui::TextWrapped("Specular texture + reflection");
-				break;
-			case MODEL_SURFACE_FAMILY::DIFFUSE_SPECULAR_REFLECTION:
-				ImGui::TextWrapped("Diffuse specular + reflection");
-				break;
-            case MODEL_SURFACE_FAMILY::PBR_SEAMLESS_OPAQUE:
-                ImGui::TextWrapped("Source seamless PBR");
-                break;
-            case MODEL_SURFACE_FAMILY::PBR_OPAQUE:
-                ImGui::TextWrapped("Source PBR");
-                break;
-            case MODEL_SURFACE_FAMILY::SOURCE_SPECULAR_OPAQUE:
-                ImGui::TextWrapped("Source opaque specular");
-                break;
-            case MODEL_SURFACE_FAMILY::SOURCE_OVERLAY_OPAQUE:
-                ImGui::TextWrapped("Source stone overlay + baked lighting");
-                break;
-			default:
-				ImGui::Text("Unknown (%u)", static_cast<uint32_t>(row.family));
-				break;
-			}
-			ImGui::TableSetColumnIndex(3);
-			ImGui::Text("%s (%u)", row.activeProgram == 0u ? "Legacy A" : "Recovered B", row.activeProgram);
-		}
-		ImGui::EndTable();
-	}
+	ImGui::TextDisabled("Pixel inputs and material comparisons are in the Benchmark section.");
 
 	CPresentation_Manager& Presentation = CPresentation_Manager::Get();
 	ImGui::SeparatorText("Effect Presentation");
@@ -13032,7 +13279,7 @@ void CMainApp::RenderRenderingWorkbench()
 		"Enabled##SSAO", &m_RenderQualityDraft.bSSAOEnabled);
 	ImGui::BeginDisabled(!m_RenderQualityDraft.bSSAOEnabled);
 	globalChanged |= ImGui::DragFloat(
-		"SSAO Radius", &m_RenderQualityDraft.fSSAORadius,
+		"SSAO Radius (m)", &m_RenderQualityDraft.fSSAORadius,
 		0.01f, 0.01f, 8.f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
 	globalChanged |= ImGui::DragFloat(
 		"SSAO Bias", &m_RenderQualityDraft.fSSAOBias,
@@ -13048,7 +13295,7 @@ void CMainApp::RenderRenderingWorkbench()
 		0.25f, 1.f, 1000.f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
 	ImGui::EndDisabled();
 	ImGui::TextDisabled(
-		"SSAO darkens ambient lighting only; direct light, emissive, and Bloom remain independent.");
+		"SSAO darkens ambient and PBR baked/IBL light in nearby creases. Radius is metres; intensity/power deepen it. It cannot cast a long directional shadow. True emissive remains independent.");
 
 	ImGui::SeparatorText("Bloom / Tone / Anti-Aliasing");
 	globalChanged |= ImGui::Checkbox(
@@ -13075,9 +13322,12 @@ void CMainApp::RenderRenderingWorkbench()
 	globalChanged |= ImGui::DragFloat(
 		"Base Exposure", &m_RenderQualityDraft.fExposure,
 		0.01f, 0.01f, 32.f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
+	ImGui::BeginDisabled(m_RenderQualityDraft.SourcePostProcess.bEnabled);
 	globalChanged |= ImGui::DragFloat(
 		"Hable White Point", &m_RenderQualityDraft.fWhitePoint,
 		0.05f, 1.f, 64.f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
+    ImGui::EndDisabled();
+    ImGui::TextWrapped("Exposure scales all HDR light; it cannot restore missing normals or shadows. Hable White Point is unused with Source Tone enabled. Bloom spreads bright pixels; FXAA smooths edges and can soften small details.");
 	globalChanged |= ImGui::DragFloat(
 		"Display Gamma", &m_RenderQualityDraft.fGamma,
 		0.005f, 1.f, 3.f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
@@ -13305,11 +13555,8 @@ void CMainApp::Free()
 	CGameInstance::Get().SetInputBlocked(false, false);
 
 #ifdef _DEBUG
-	if (Engine::CProfiler* pProfiler = CGameInstance::Get().Get_Profiler())
-		pProfiler->Set_Enabled(false);
 	m_pSequencerTool.reset();
 	m_pSequenceActionWorkbench.reset();
-	m_pProfilerTool.reset();
 	m_pRenderingBenchmark.reset();
 	m_pKoukuSaydonActionWorkbench.reset();
 	m_pValtanActionWorkbench.reset();
@@ -13329,6 +13576,8 @@ void CMainApp::Free()
 	m_pMapTool.reset();
 #endif
 
+	if (auto* profiler = CGameInstance::Get().Get_Profiler()) profiler->Set_Enabled(false);
+	m_pProfilerTool.reset();
 	if (nullptr != m_pImGuiLayer)
 		m_pImGuiLayer->Shutdown();
 	m_pImGuiLayer.reset();

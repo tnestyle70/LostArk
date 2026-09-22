@@ -10409,10 +10409,12 @@ float4 ALTVNative191(ALTV_NATIVE_INPUT input)
 
 #endif // ALTV_NATIVE_CAPTURE_ONLY
 // fx_m_me_swp_box_01: 7a34bdb1e8c49f48b1f747c41f5c1880; selected map 71e3af30a40e72420b44e66fc636115067f70cbdbc126b91596f6526ad129a02.
-float4 ALTVNative178(ALTV_NATIVE_INPUT input)
+float4 ALTVNative178(ALTV_NATIVE_INPUT input, float captureWeight)
 {
     float4 source[18]; [unroll] for (uint i=0u; i<18u; ++i) source[i]=0.f;
-    source[2]=1.f; // Project capture color scale; native capture-view constants were not exported.
+    // The skeletal central-cube mask affects only the transported scene RGB term.
+    // The native aura, edge, alpha and geometry remain unchanged on all skin islands.
+    source[2]=saturate(captureWeight); // Native capture-view constants were not exported.
     source[3]=float4(1.f,0.f,0.f,0.f);
     source[4]=float4(0.f,1.f,0.f,0.f);
     float4 output=0.f;
@@ -10690,4 +10692,10 @@ float4 ALTVNative178(ALTV_NATIVE_INPUT input)
     output.w = (float4(asfloat(0u),asfloat(0u),asfloat(0u),asfloat(0u))).w;
     output.a=saturate(input.color.a);
     return output;
+}
+
+// Static camera capture meshes keep their existing unmasked material contract.
+float4 ALTVNative178(ALTV_NATIVE_INPUT input)
+{
+    return ALTVNative178(input, 1.f);
 }

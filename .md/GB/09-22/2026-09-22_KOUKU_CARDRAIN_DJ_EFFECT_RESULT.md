@@ -84,3 +84,15 @@ portrait는 `EFUI_ICONATLAS_C`의 `common_gamenote_npc_img_4.dds`에서 index 23
 - 통합 담당의 scratch C++ 18 TU 컴파일에 이 작업의 GameRoom/GameplayCatalog/CompositionDocument/CardMazeTests가 포함되어 PASS했다. 이후 추가한 Workbench의 작은 dropdown 변경은 최종 통합 빌드에서 확인한다.
 - `ServerGameplayContractTests_CardMaze.cpp`에 실제 Saydon placement/nav로 typed commit 소환·세 suit·maze 비등록·중복방지·30초 만료·패턴 종료 정리 검증을 추가했다. 실제 실행 결과는 통합 담당의 `--card-maze-contract-test` 결과로 판정한다.
 - 관련 변경의 `git diff --check` PASS. GPU의 발광 정도·화면 카드 크기·원본 HUD와의 최종 시각 차이는 사용자 확인 대상이다.
+
+## DJ PNG의 실제 V2 Prewarm 복구
+
+후속 Complete Play의 `player 3 preparation failed → raid effect prewarm failed → boss.kouku.dj.cardrain`은 파일 누락이 아니라 decoder 불일치였다. 두 설치 PNG는 기존 SHA-256과 같은 정상 RGBA8 671×145 이미지다. `CEffectV2Object::Acquire_Texture`가 확장자와 관계없이 DDS 전용 함수를 호출해 PNG를 거부했다. 이 DJ LEAF는 V1이 아닌 V2 ScreenPost 경로를 사용하며 delivery도 같은 결함의 대상이다.
+
+`Client/Private/EffectV2_Object.cpp`에 WIC 헤더와 DDS/WIC 확장자 분기를 추가했다. DDS flags, authored colorTexturesSRGB의 FORCE/IGNORE 정책, Resources 상대 경로 검증, 성공 후 cache commit을 유지한다. WIC에는 device만 전달하므로 Loader worker에서 immediate context를 사용하지 않는다. 기존 MainApp/Loader COM 초기화를 소비한다. Data·PNG·asset ID·프로젝트 등록은 변경하지 않았고 DDS 변환도 하지 않았다.
+
+수정 TU의 MSVC Debug 컴파일 PASS(`out/KoukuDjPrewarm20260922/compile.log`). 기존 EngineSDK의 CP949 주석을 scratch /utf-8로 읽는 C4828 경고는 있으며 컴파일 오류는 없다. 실제 설치 파일과 DirectXTK/WARP 검사에서 이전 DDS loader는 두 PNG 모두 `0x80004005`, WIC는 모두 S_OK였다. 생성 SRV는 linear BGRA8 형식87 또는 sRGB 형식91이며 Engine Presentation_Manager의 alpha coverage 허용 형식이다. 기존 fear.face_1 DDS는 BC3 linear77/sRGB78을 유지한다. 근거는 `asset-probe/probe.log`다.
+
+수정한 전체 EffectV2_Object.cpp OBJ와 실제 RuntimeAssetRoot를 링크한 소형 native probe에서 두 PNG×linear/sRGB의 첫 Prewarm 및 cache 재사용 8회 성공, missing PNG와 root 탈출 경로 2회 거부, failures=0을 확인했다. 관련 없는 Part_Body/Valtan target-anchor 기호3개는 호출 시 abort하는 링크 전용 stub이며 이 검사는 SCREEN_POST Prewarm만 호출한다. Client/UI 실행·스폰·시각 판정을 대신하지 않는다. 근거는 `out/KoukuDjPrewarm20260922/prewarm-probe.log`다.
+
+공식 Debug Product Build는 `20260922T142932411Z-debug-product.json`에서 실행 중인 Client PID31844와 Server PID45680의 표준 출력 점유로 시작 전에 차단됐다. 실행 파일은 아직 교체하지 않았다. 사용자에게 저장 후 직접 종료를 요청했으며 프로그램을 자동 종료하지 않았다. 최종 Product 반영과 사용자 Complete Play 확인은 이 검증과 분리한다.

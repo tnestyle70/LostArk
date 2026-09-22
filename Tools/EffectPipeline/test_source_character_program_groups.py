@@ -5,6 +5,7 @@ import tempfile
 import unittest
 
 from native_shader_dispatch import (
+    SOURCE_CHARACTER_PROGRAM_GROUPS,
     expand_source_character_stage,
     partition_source_character_stage,
     write_partitioned_source_character_stage,
@@ -45,7 +46,8 @@ class SourceCharacterProgramGroups(unittest.TestCase):
     def test_unregistered_program_is_rejected_before_writing(self):
         path = SHADERS / 'Shader_SourceCharacterBasePrograms.hlsli'
         source = expand_source_character_stage(path.read_text(encoding='utf8'), SHADERS)
-        source = source.replace('SourceCharacterBase88(', 'SourceCharacterBase110(')
+        unsupported = max(last for _first, last in SOURCE_CHARACTER_PROGRAM_GROUPS) + 1
+        source = source.replace('SourceCharacterBase88(', f'SourceCharacterBase{unsupported}(')
         with self.assertRaisesRegex(ValueError, 'registered CSO cohort'):
             partition_source_character_stage(source, 'Base', SHADERS)
 

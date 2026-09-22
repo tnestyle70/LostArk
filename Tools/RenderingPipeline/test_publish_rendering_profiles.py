@@ -50,6 +50,24 @@ def next_positive_float32(value: float) -> float:
 
 
 class RenderingProfilePublisherTest(unittest.TestCase):
+    def test_dynamic_baked_shadow_round_trip_and_rollback(self) -> None:
+        document = copy.deepcopy(self.source_document)
+        document["profiles"][0]["shadow"]["dynamicBakedStrength"] = 0.7
+        with tempfile.TemporaryDirectory() as directory:
+            source = Path(directory) / "source.json"
+            destination = Path(directory) / "runtime.json"
+            self.write_document(source, document)
+            result = self.run_publisher(source, "Publish", destination)
+            self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+            before = destination.read_bytes()
+            self.assertEqual(0.7, json.loads(before)["profiles"][0]["shadow"]["dynamicBakedStrength"])
+            for invalid in (-0.01, 1.01, True, "0.7", None):
+                document["profiles"][0]["shadow"]["dynamicBakedStrength"] = invalid
+                self.write_document(source, document)
+                result = self.run_publisher(source, "Publish", destination)
+                self.assertNotEqual(0, result.returncode)
+                self.assertEqual(before, destination.read_bytes())
+
     def test_independent_native_ambient_round_trip_and_rejected_input_rollback(self) -> None:
         document = copy.deepcopy(json.loads(AUTHORED.read_text(encoding="utf-8")))
         profile = next(p for p in document["profiles"] if p["profileId"] == "scene.kakulsaydon.g1.base.v1")

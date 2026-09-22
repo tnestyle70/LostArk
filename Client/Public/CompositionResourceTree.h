@@ -31,6 +31,7 @@ void InsertResourceTree(
 std::size_t FinalizeResourceTree(COMPOSITION_RESOURCE_TREE_NODE& Node);
 void RenderResourceTree(
 	const COMPOSITION_RESOURCE_TREE_NODE& Node,
-	const std::function<void(std::size_t)>& RenderLeaf);
+	const std::function<void(std::size_t)>& RenderLeaf,
+	const char* emptyMessage = nullptr);
 
 NS_END

@@ -71,6 +71,9 @@ private:
         bool hasTiming = false;
     };
     void Render_Actions();
+    void Render_CreateSkills();
+    bool Open_Composition(bool loadSaved = false);
+    bool Save_Composition();
     void Render_Timeline();
     void Render_Resources();
     void Render_AnimationResources();
@@ -127,8 +130,12 @@ private:
     std::unique_ptr<CBoneAnimationWorkbench> m_BoneEditor;
     std::unique_ptr<CCharacterModelWorkbench> m_ModelEditor;
     bool m_ModelMode = false;
+    bool m_CompositionMode = true;
+    bool m_CompositionReady = false;
     std::function<void(const std::string&)> m_OpenEffect;
     ANIMATION_SKILL_BINDING_DOCUMENT m_Bindings;
+    ANIMATION_SKILL_BINDING m_CompositionBaselineBinding;
+    std::string m_CompositionCueBaseline;
     ANIMATION_EFFECT_CUE_DOCUMENT m_Cues;
     CCharacterActionCombatDocument m_Combat;
     std::vector<CHARACTER_ACTION_COMBAT_ROW> m_CombatRows;
@@ -145,6 +152,9 @@ private:
     std::string m_RemoveCollider, m_SoundEditRow, m_SoundEditEvent;
     std::uint32_t m_SoundEditStartMs = 0u;
     int m_ClassIndex = -1;
+    int m_CreateClass = 0;
+    std::uint32_t m_CreateSkill = 0u;
+    std::string m_CreateClip;
     std::uint32_t m_SkillId = 0u, m_Duration = 1u, m_CanvasMs = 1u, m_PreviewClock = 0u;
     std::optional<std::uint32_t> m_Stage;
     std::uint64_t m_Generation = 0u, m_SoundPreviewHandle = 0u;

@@ -147,6 +147,7 @@ CCharacterActionWorkbench::CCharacterActionWorkbench(std::shared_ptr<CCharacterP
 }
 CCharacterActionWorkbench::~CCharacterActionWorkbench()
 {
+    if (m_Sequencer) m_Sequencer->Set_WorkbenchSaveCallback({});
     On_WorkbenchDeactivated();
     if (m_Panel) m_Panel->Set_SessionLock(CHARACTER_PREVIEW_LOCK_OWNER::CHARACTER_ACTION_WORKBENCH, false, {});
 }
@@ -157,8 +158,8 @@ void CCharacterActionWorkbench::Set_Camera(const std::shared_ptr<Engine::CCamera
 void CCharacterActionWorkbench::Update(const float dt, const bool active)
 {
     if (!m_Sequencer) return;
-    if (m_BoneEditor && m_BoneEditor->Is_Active()) m_Sequencer->Stop();
-    else m_Sequencer->Update(dt, active);
+    if (m_BoneEditor && m_BoneEditor->Is_Active() && m_Sequencer->Is_Active()) m_BoneEditor->Stop();
+    m_Sequencer->Update(dt, active);
     if (m_BoneEditor) m_BoneEditor->Update(active ? dt : 0.f);
     if (!m_PreviewDirty) m_PreviewClock = m_Sequencer->ClockMs();
 }
@@ -215,6 +216,7 @@ bool CCharacterActionWorkbench::Restore_PreviewTarget()
 bool CCharacterActionWorkbench::Has_Draft() const
 {
     return m_BindingsDirty || m_CombatDirty || (m_BoneEditor && m_BoneEditor->Is_Dirty()) ||
+        (!m_ModelMode && m_CompositionReady && m_Sequencer && m_Sequencer->Is_Dirty()) ||
         (m_ModelMode && m_ModelEditor && m_ModelEditor->Is_Dirty()) ||
         (m_AnimationTool && m_AnimationTool->Has_CharacterActionCueChanges(m_Asset));
 }
@@ -239,6 +241,7 @@ void CCharacterActionWorkbench::Begin_WorkbenchFrame()
 }
 void CCharacterActionWorkbench::End_WorkbenchFrame()
 {
+    if (m_BoneEditor && m_BoneEditor->Consume_PreviewRequest() && m_Sequencer) m_Sequencer->Stop();
     if (m_AddCollider) { m_AddCollider = false; Add_Collider(); }
     if (!m_RemoveCollider.empty()) { const auto retired = m_RemoveCollider; m_RemoveCollider.clear(); Remove_Collider(retired); }
     if (m_SaveBindings) { m_SaveBindings = false; Save_Bindings(); }
@@ -255,6 +258,34 @@ void CCharacterActionWorkbench::Render_WorkbenchPane(const COMPOSITION_WORKBENCH
         if (pane == COMPOSITION_WORKBENCH_PANE::DETAILS && m_BoneEditor &&
             ImGui::CollapsingHeader("Bone & Animation Edit", ImGuiTreeNodeFlags_DefaultOpen)) m_BoneEditor->Render();
         m_ModelEditor->Render(pane); return;
+    }
+    if (m_Sequencer) m_Sequencer->Set_WorkbenchSaveCallback([this]() { return Save_Composition(); });
+    if (m_CompositionMode && m_CompositionReady && pane != COMPOSITION_WORKBENCH_PANE::PATTERNS)
+    {
+        switch (pane)
+        {
+        case COMPOSITION_WORKBENCH_PANE::SEQUENCER: m_Sequencer->Render_Sequencer("Character composition", false, true); break;
+        case COMPOSITION_WORKBENCH_PANE::RESOURCES: m_Sequencer->Render_WorkbenchResources(); break;
+        case COMPOSITION_WORKBENCH_PANE::DETAILS:
+            m_Sequencer->Render_WorkbenchDetail();
+            if (ImGui::Button("Edit Skill Binding / Combat"))
+            {
+                if (m_Sequencer->Is_Dirty()) m_Status = "Save the composition before editing its Product binding or combat rows.";
+                else m_CompositionMode = false;
+            }
+            break;
+        case COMPOSITION_WORKBENCH_PANE::TOOLBAR:
+        case COMPOSITION_WORKBENCH_PANE::PREVIEW:
+            if (!Target_IsCurrent() && ImGui::Button("Restore selected Character"))
+                if (Restore_PreviewTarget()) m_Sequencer->Rebind_CharacterModel(m_Status);
+            if (ImGui::Button("Save Character Composition")) Save_Composition();
+            ImGui::SameLine(); if (ImGui::Button("Play Character Composition")) m_Sequencer->Play();
+            ImGui::SameLine(); if (ImGui::Button("Stop Character Composition")) m_Sequencer->Stop();
+            ImGui::TextWrapped("%s", m_Status.c_str());
+            break;
+        default: break;
+        }
+        return;
     }
     switch (pane)
     {
@@ -277,14 +308,38 @@ void CCharacterActionWorkbench::Render_WorkbenchPane(const COMPOSITION_WORKBENCH
 
 void CCharacterActionWorkbench::Render_Actions()
 {
-    if (ImGui::CollapsingHeader("Character Actions", ImGuiTreeNodeFlags_DefaultOpen))
+    Render_CreateSkills();
+    if (!m_ModelMode && Selected_Binding())
+    {
+        if (ImGui::RadioButton("Composition Sequencer", m_CompositionMode))
+        {
+            if (m_BindingsDirty || m_CombatDirty) m_Status = "Save the binding/combat draft before returning to the composition.";
+            else { m_CompositionMode = true; if (!m_CompositionReady) Open_Composition(); }
+        }
+        ImGui::SameLine();
+        if (ImGui::RadioButton("Skill Binding / Combat", !m_CompositionMode))
+        {
+            if (m_Sequencer && m_Sequencer->Is_Dirty()) m_Status = "Save the composition before editing its Product binding or combat rows.";
+            else { m_CompositionMode = false; On_WorkbenchDeactivated(); }
+        }
+    }
+    if (ImGui::CollapsingHeader("Character Actors", ImGuiTreeNodeFlags_DefaultOpen))
     {
         if (!m_CatalogLoaded) ImGui::TextWrapped("%s", m_Status.c_str());
         ImGui::InputTextWithHint("##CharacterActionSearch", "Slot, skill ID or name", m_Search, sizeof(m_Search));
         for (std::size_t i = 0u; i < CLASSES.size(); ++i)
         {
             ImGui::PushID(static_cast<int>(i));
-            if (ImGui::TreeNodeEx(CLASSES[i].label, ImGuiTreeNodeFlags_DefaultOpen))
+            const bool actorOpen = ImGui::TreeNodeEx(CLASSES[i].label,
+                ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_SpanAvailWidth);
+            if (ImGui::IsItemClicked() && !ImGui::IsItemToggledOpen())
+            {
+                const PLAYER_SKILL_DEFINITION* first = nullptr;
+                for (const auto& skill : CPlayerSkillCatalog::Get_Skills())
+                    if (skill.eCharacterClass == CLASSES[i].id && (!first || Slot_Order(skill.strInputSlot) < Slot_Order(first->strInputSlot))) first = &skill;
+                if (first) Select_Action(static_cast<int>(i), first->iSkillId, {});
+            }
+            if (actorOpen)
             {
                 std::vector<const PLAYER_SKILL_DEFINITION*> skills;
                 for (const auto& skill : CPlayerSkillCatalog::Get_Skills())
@@ -324,6 +379,166 @@ void CCharacterActionWorkbench::Render_Actions()
     if (m_ModelEditor->Render_MonsterActions(Has_Draft()))
     { On_WorkbenchDeactivated(); m_ModelMode = true; }
     ImGui::TextWrapped("%s", m_Status.c_str());
+}
+
+void CCharacterActionWorkbench::Render_CreateSkills()
+{
+    if (ImGui::Button("Create Skills"))
+    {
+        m_CreateClass = (std::max)(0, m_ClassIndex);
+        m_CreateSkill = m_SkillId;
+        m_CreateClip.clear();
+        ImGui::OpenPopup("Create Skills / Key Binding");
+    }
+    if (!ImGui::BeginPopupModal("Create Skills / Key Binding", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) return;
+    if (ImGui::BeginCombo("Character", CLASSES[m_CreateClass].label))
+    {
+        for (int index = 0; index < static_cast<int>(CLASSES.size()); ++index)
+            if (ImGui::Selectable(CLASSES[index].label, m_CreateClass == index))
+            { m_CreateClass = index; m_CreateSkill = 0u; m_CreateClip.clear(); }
+        ImGui::EndCombo();
+    }
+    const auto* selected = CPlayerSkillCatalog::Find_ById(m_CreateSkill);
+    const std::string current = selected ? selected->strInputSlot + " | " + selected->strDisplayName : "Choose a key / skill";
+    if (ImGui::BeginCombo("Key Binding", current.c_str()))
+    {
+        for (const auto& skill : CPlayerSkillCatalog::Get_Skills())
+            if (skill.eCharacterClass == CLASSES[m_CreateClass].id)
+            {
+                const auto label = skill.strInputSlot + " | " + skill.strDisplayName + " | " + std::to_string(skill.iSkillId);
+                if (ImGui::Selectable(label.c_str(), skill.iSkillId == m_CreateSkill)) m_CreateSkill = skill.iSkillId;
+            }
+        ImGui::EndCombo();
+    }
+    if (ImGui::Button("Open Slot"))
+    {
+        if (m_CreateSkill && Select_Action(m_CreateClass, m_CreateSkill, {})) ImGui::CloseCurrentPopup();
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("Load Character Clips") && !Has_Draft()) Load_Class(m_CreateClass);
+    if (m_ClassIndex == m_CreateClass && ImGui::BeginCombo("Initial Animation", m_CreateClip.empty() ? "Choose model clip" : m_CreateClip.c_str()))
+    {
+        for (const auto& name : m_ClipNames)
+            if (ImGui::Selectable(name.c_str(), name == m_CreateClip)) m_CreateClip = name;
+        ImGui::EndCombo();
+    }
+    ImGui::BeginDisabled(!m_CreateSkill || m_CreateClip.empty() || m_ClassIndex != m_CreateClass || Has_Draft());
+    if (ImGui::Button("Create / Bind Skill Slot"))
+    {
+        const auto name = m_CreateClip;
+        if (Select_Action(m_CreateClass, m_CreateSkill, 0u))
+        {
+            auto* binding = Selected_Binding();
+            const auto original = m_CompositionBaselineBinding;
+            ANIMATION_SKILL_CLIP clip; clip.strClipName = name;
+            clip.strClipOccurrenceId = CEffectEditingSession::New_Id("character.clip.");
+            binding->Stages.front().Clips = {std::move(clip)};
+            if (Open_Composition(false))
+            {
+                m_CompositionBaselineBinding = original;
+                m_BindingsDirty = m_RowsDirty = true;
+                m_Status = "Skill slot bound to its catalog key. Save writes the animation and cue owners.";
+                ImGui::CloseCurrentPopup();
+            }
+            else *binding = original;
+        }
+    }
+    ImGui::EndDisabled();
+    ImGui::TextWrapped("Keys and skill IDs come from PlayerSkills. Choose a slot, bind a model clip, then append animations and Effects in Composition Sequencer.");
+    ImGui::TextWrapped("%s", m_Status.c_str());
+    if (ImGui::Button("Close")) ImGui::CloseCurrentPopup();
+    ImGui::EndPopup();
+}
+
+bool CCharacterActionWorkbench::Open_Composition(const bool loadSaved)
+{
+    const auto* binding = Selected_Binding();
+    if (!binding || !m_Sequencer || !Target_IsCurrent()) return false;
+    m_CompositionReady = false;
+    std::string baseline;
+    if (!Read_Source(CProjectDataRoot::Resolve(std::filesystem::path("Animation/Authored") / m_Asset / (m_Asset + ".animevents")), baseline))
+    { m_Status = "Cannot read the Character cue baseline; the existing composition is preserved."; return false; }
+    ANIMATION_EFFECT_CUE_DOCUMENT currentCues;
+    if (!CAnimationEffectCueDocument::Load_FromText(m_Asset, baseline, m_ClipNames, currentCues, m_Status)) return false;
+    if (!m_Sequencer->Stage_CharacterAction(m_Asset, *binding, currentCues, m_CombatRows, m_Stage))
+    { m_Status = m_Sequencer->Status(); return false; }
+    const auto id = "action." + m_Asset + ".skill." + std::to_string(m_SkillId) +
+        (m_Stage ? ".stage." + std::to_string(*m_Stage) : "");
+    if (!m_Sequencer->Open_CharacterModelSequence(id, loadSaved))
+    { m_Status = m_Sequencer->Status(); return false; }
+    m_CompositionBaselineBinding = *binding;
+    m_Cues = std::move(currentCues); m_RowsDirty = true;
+    m_CompositionCueBaseline = std::move(baseline);
+    m_CompositionReady = true; m_PreviewDirty = false;
+    m_ViewRequest.showResources = m_ViewRequest.restoreSequencer = true;
+    m_Status = "Character composition opened. Save writes skill clips and Effect/Sound cues; Combat uses its dedicated Product editor.";
+    return true;
+}
+
+bool CCharacterActionWorkbench::Save_Composition()
+{
+    if (!m_CompositionReady || !m_Sequencer || !m_AnimationTool || !Selected_Binding() || !Target_IsCurrent())
+    { m_Status = "Restore the selected Character composition before saving."; return false; }
+    ANIMATION_SKILL_BINDING exported; exported.iSkillId = m_SkillId;
+    ANIMATION_EFFECT_CUE_DOCUMENT cues;
+    if (!m_Sequencer->Export_CharacterModelAction(exported, cues, m_Asset, m_Status, true)) return false;
+    auto replacement = *Selected_Binding();
+    if (m_Stage) replacement.Stages[*m_Stage] = exported.Stages.front();
+    else
+    {
+        std::unordered_map<std::string, std::pair<std::size_t, bool>> owners;
+        for (std::size_t stage = 0; stage < replacement.Stages.size(); ++stage)
+            for (const auto& clip : replacement.Stages[stage].Clips) owners.emplace(clip.strClipOccurrenceId, std::pair{stage, clip.isHoldPose});
+        for (auto& stage : replacement.Stages) stage.Clips.clear();
+        std::size_t stage = 0u;
+        for (auto clip : exported.Stages.front().Clips)
+        {
+            const auto owner = owners.find(clip.strClipOccurrenceId);
+            if (owner != owners.end())
+            {
+                if (owner->second.first < stage)
+                { m_Status = "Keep Server stages in order; select a Stage to edit its clip chain."; return false; }
+                stage = owner->second.first; clip.isHoldPose = owner->second.second;
+            }
+            replacement.Stages[stage].Clips.push_back(std::move(clip));
+        }
+    }
+    // Retain HOLD pose semantics for exact retained occurrences in a stage edit.
+    for (auto& stage : replacement.Stages) for (auto& clip : stage.Clips)
+        for (const auto& oldStage : m_CompositionBaselineBinding.Stages) for (const auto& old : oldStage.Clips)
+            if (old.strClipOccurrenceId == clip.strClipOccurrenceId) clip.isHoldPose = old.isHoldPose;
+    auto document = m_Bindings;
+    ANIMATION_SKILL_BINDING_DOCUMENT previousDocument;
+    if (!CAnimationSkillBindingDocument::Parse_Text(m_Baseline, previousDocument, m_Status)) return false;
+    for (auto& binding : document.Bindings) if (binding.iSkillId == m_SkillId) binding = replacement;
+    if (!CAnimationSkillBindingDocument::Validate(document, m_Asset, CLASSES[m_ClassIndex].id,
+        CPlayerSkillCatalog::Get_Skills(), m_ClipNames, m_Status)) return false;
+    auto previousCues = m_CompositionBaselineBinding, proposedCues = replacement;
+    if (m_Stage)
+    { previousCues.Stages = {previousCues.Stages[*m_Stage]}; proposedCues.Stages = {proposedCues.Stages[*m_Stage]}; }
+    std::string committedCues;
+    if (!m_AnimationTool->Save_CharacterActionCompositionCues(m_Asset, previousCues, proposedCues, cues,
+        m_CompositionCueBaseline, committedCues, m_Status, true)) return false;
+    std::string committed;
+    if (!CAnimationSkillBindingDocument::Save_AtomicWithBaseline(document, m_Asset, CLASSES[m_ClassIndex].id,
+        CPlayerSkillCatalog::Get_Skills(), m_ClipNames, m_Baseline, committed, m_Status)) return false;
+    if (!m_AnimationTool->Save_CharacterActionCompositionCues(m_Asset, previousCues, proposedCues, cues,
+        m_CompositionCueBaseline, committedCues, m_Status))
+    {
+        const auto failure = m_Status; std::string rollbackBytes, rollbackStatus;
+        if (CAnimationSkillBindingDocument::Save_AtomicWithBaseline(previousDocument, m_Asset, CLASSES[m_ClassIndex].id,
+            CPlayerSkillCatalog::Get_Skills(), m_ClipNames, committed, rollbackBytes, rollbackStatus))
+        { m_Baseline = std::move(rollbackBytes); m_Status = failure + " Animation binding restored; composition draft retained."; }
+        else { m_Baseline = std::move(committed); m_Status = failure + " Animation binding was saved; rollback refused: " + rollbackStatus; }
+        return false;
+    }
+    m_Bindings = std::move(document); m_Baseline = std::move(committed);
+    m_CompositionBaselineBinding = std::move(replacement); m_CompositionCueBaseline = std::move(committedCues);
+    m_BindingsDirty = false; Refresh_Cues();
+    if (!m_Sequencer->Save_WorkbenchSequence())
+    { m_Status = "Product animation and cues saved. Composition arrangement remains unsaved: " + m_Sequencer->Status(); return false; }
+    m_Status = "Saved Product skill clips, Effect/Sound cues and composition arrangement. Re-enter the character to reload Product presentation.";
+    return true;
 }
 
 ANIMATION_SKILL_BINDING* CCharacterActionWorkbench::Selected_Binding()
@@ -463,6 +678,7 @@ bool CCharacterActionWorkbench::Load_Class(const int classIndex)
     m_CombatRows = m_Combat.Get_Rows(); m_ClipNames = std::move(names); m_Baseline = std::move(baseline);
     m_SoundEvents = std::move(soundEvents); m_SoundEventNames = std::move(soundNames); m_SoundStatus = std::move(soundStatus);
     m_Asset = entry.asset; m_ClassIndex = classIndex; m_Generation = CAnimationTargetService::Resolve_TargetGeneration();
+    m_ModelMode = false; m_CompositionReady = false; m_SkillId = 0u;
     m_BindingsDirty = m_CombatDirty = m_CombatPublishPending = false; m_PreviewDirty = true; m_SelectedRow.clear();
     m_Status = "Loaded Product bindings, cues and independent Collider / Logic / Result rows.";
     return true;
@@ -470,6 +686,10 @@ bool CCharacterActionWorkbench::Load_Class(const int classIndex)
 bool CCharacterActionWorkbench::Select_Action(const int classIndex, const std::uint32_t skillId,
     const std::optional<std::uint32_t> stage)
 {
+    if (!m_ModelMode && m_ClassIndex == classIndex && m_SkillId == skillId && m_Stage == stage && m_CompositionReady && Target_IsCurrent())
+    { m_CompositionMode = true; m_ViewRequest.restoreSequencer = true; return true; }
+    if (m_CompositionReady && m_Sequencer && m_Sequencer->Is_Dirty())
+    { m_Status = "Save the current composition before selecting another skill or stage."; return false; }
     if (m_ModelMode && Has_Draft()) { m_Status = "Save the model sequence/bone draft before switching actions"; return false; }
     if ((m_ModelMode || m_ClassIndex != classIndex) && !Load_Class(classIndex)) return false;
     if (!Restore_PreviewTarget()) return false;
@@ -479,7 +699,9 @@ bool CCharacterActionWorkbench::Select_Action(const int classIndex, const std::u
     On_WorkbenchDeactivated();
     m_SkillId = skillId; m_Stage = stage; m_SelectedRow.clear(); m_PreviewDirty = true; m_PreviewClock = 0u;
     if (!Selected_Binding()) { m_Status = "The selected skill is missing its Product animation binding."; return false; }
-    return Rebuild_Rows();
+    if (!Rebuild_Rows()) return false;
+    m_CompositionMode = true;
+    return Open_Composition();
 }
 bool CCharacterActionWorkbench::Reload_Selected()
 {
@@ -1350,6 +1572,8 @@ void CCharacterActionWorkbench::Stop_SoundPreview()
 bool CCharacterActionWorkbench::Can_AppendCompositionAnimationResource(const COMPOSITION_ANIMATION_RESOURCE& resource,
     const bool replace, std::string& status) const
 {
+    if ((m_ModelMode || (m_CompositionMode && m_CompositionReady)) && m_Sequencer)
+        return m_Sequencer->Can_AppendCharacterAnimation(resource, replace, status);
     if (!Target_IsCurrent() || !Selected_Binding() || resource.strTargetAssetName != m_Asset ||
         std::find(m_ClipNames.begin(), m_ClipNames.end(), resource.strRuntimeClip) == m_ClipNames.end())
     { status = "Select an action on this exact Character model before appending its clip."; return false; }
@@ -1368,6 +1592,8 @@ bool CCharacterActionWorkbench::Can_AppendCompositionAnimationResource(const COM
 bool CCharacterActionWorkbench::Append_CompositionAnimationResource(const COMPOSITION_ANIMATION_RESOURCE& resource,
     const bool replace, std::string& status)
 {
+    if ((m_ModelMode || (m_CompositionMode && m_CompositionReady)) && m_Sequencer)
+        return m_Sequencer->Append_CharacterAnimation(resource, replace, status);
     if (!Can_AppendCompositionAnimationResource(resource, replace, status)) return false;
     if (replace)
     {
@@ -1508,14 +1734,14 @@ bool CCharacterActionWorkbench::Save_Bindings()
     std::string committed;
     if (!CAnimationSkillBindingDocument::Save_AtomicWithBaseline(m_Bindings, m_Asset, CLASSES[m_ClassIndex].id,
         CPlayerSkillCatalog::Get_Skills(), m_ClipNames, m_Baseline, committed, m_Status)) return false;
-    m_Baseline = std::move(committed); m_BindingsDirty = false;
+    m_Baseline = std::move(committed); m_BindingsDirty = false; m_CompositionReady = false;
     m_Status += " Preview uses this draft; re-enter the world to reload Product presentation.";
     return true;
 }
 bool CCharacterActionWorkbench::Save_Combat()
 {
     if (!m_Combat.Save_Atomic(m_CombatRows, m_Status)) return false;
-    m_CombatDirty = false; m_CombatPublishPending = true;
+    m_CombatDirty = false; m_CombatPublishPending = true; m_CompositionReady = false;
     m_Status += " Run Tools/GameplayPipeline/Publish-GameplayBalance.ps1 -Mode Publish and restart Server to apply.";
     return true;
 }

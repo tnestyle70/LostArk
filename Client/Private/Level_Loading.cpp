@@ -11,6 +11,7 @@
 #include "ActorCatalog.h"
 #include "CharacterCatalog.h"
 #include "CharacterSelectionState.h"
+#include "ClassSelectionPresentation.h"
 #include "CharacterSpec.h"
 #include "ClickMoveEffect.h"
 #include "DataJson.h"
@@ -686,6 +687,17 @@ bool_t CLevel_Loading::Advance_TargetEffectPreparation()
 		// CPU resources join this same Loader worker; per-target failures already
 		// settle as isolated decorations and never require a first-click load.
 		m_EffectPreparationTargets = CClickMoveEffect::Queue_LevelResources(m_eNextLevelID);
+		if (bCharacterSelect && CClassSelectionPresentation::Is_Configured())
+		{
+			std::vector<std::string> selectionEffects, selectionTargets;
+			// This scene is optional. Missing authoring isolates only its preview;
+			// admitted resources share the existing Loading preparation worker.
+			if (CClassSelectionPresentation::Load_EffectTargets("LV_LOBBY_CLASSSELECT_SL00", selectionEffects, Status) &&
+				CEffectPresentationService::Queue_ProductTargets_Priority(selectionEffects, selectionTargets, Status))
+				m_EffectPreparationTargets.insert(m_EffectPreparationTargets.end(), selectionTargets.begin(), selectionTargets.end());
+			else
+				OutputDebugStringA(("[Level_Loading][ClassSelection] " + Status + "\n").c_str());
+		}
 		if (bCharacterSelect || bBern || bValtanArena || bKoukuArena)
 		{
 		using LostArk::Shared::CHARACTER_CLASS_ID;
@@ -720,7 +732,7 @@ bool_t CLevel_Loading::Advance_TargetEffectPreparation()
 		{
 			std::vector<std::string> EstherEffectAssetIds;
 			for (const char* pEstherArchetypeId :
-				{ "NPC_59030", "NPC_58700", "NPC_59060" })
+				{ "NPC_59030", "NPC_58700", "NPC_59060", "NPC_59620", "NPC_59504" })
 			{
 				if (!CNpcActionEffectCueDocument::Load(pEstherArchetypeId, Status))
 					return IsolateFailure(Status);

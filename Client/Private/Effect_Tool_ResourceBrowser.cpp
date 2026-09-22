@@ -2999,23 +2999,35 @@ void Client::CEffect_Tool::Render_AllEffectsWindow()
 										strEditableStatus);
 								if (nullptr == pEditablePath)
 									m_strElementStatus = strEditableStatus;
-								else
-									Try_LoadDocumentPath(*pEditablePath,
-										EFFECT_DOCUMENT_SOURCE::AUTHORED,
-										pBinding->strEffectAssetId);
+								else if (!Try_LoadDocumentPath(*pEditablePath,
+									EFFECT_DOCUMENT_SOURCE::AUTHORED,
+									pBinding->strEffectAssetId))
+									m_strElementStatus = m_strDocumentStatus;
 							}
 							ImGui::EndDisabled();
+							if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+								ImGui::SetTooltip("%s", bActive ?
+									"This saved document is open. Select an Element below to edit its Details." :
+									"Open this saved document for editing, independently of Product cue mapping.");
 							ImGui::SameLine();
 							if (ImGui::SmallButton("Play Saved Effect"))
 								Try_PlaySavedUnifiedEffect(*pBinding);
 							const auto Cache = m_UnifiedCandidateCaches.find(
 								pBinding->strEffectAssetId);
-							if (Cache != m_UnifiedCandidateCaches.end() &&
-								Cache->second.bObserved &&
-								!Cache->second.strStatus.empty())
+							const bool_t bOpened = m_ActiveDocument &&
+								m_eActiveDocumentSource == EFFECT_DOCUMENT_SOURCE::AUTHORED &&
+								m_ActiveDocument->strEffectAssetId == pBinding->strEffectAssetId;
+							if (Cache != m_UnifiedCandidateCaches.end())
 							{
-								ImGui::TextWrapped("Last document validation (not an Element Solo check): %s",
-									Cache->second.strStatus.c_str());
+								// Decode on Open/Play only. Editing a saved source does not
+								// depend on the optional Product cue enrichment succeeding.
+								if (bOpened && (!bActive || !Cache->second.bObserved))
+									Refresh_UnifiedEffectCache(Cache->second,
+										pBinding->Path, pBinding->strEffectAssetId);
+								if (Cache->second.bObserved && !Cache->second.strStatus.empty())
+									ImGui::TextWrapped("Saved document: %s", Cache->second.strStatus.c_str());
+								if (Cache->second.bValid)
+									Render_UnifiedEffectTree(Cache->second, "Editable Elements");
 							}
 							ImGui::TreePop();
 						}

@@ -8,6 +8,7 @@ import unittest
 
 import raid_flow_projection as subject
 import prepare_raid_integration as prepare
+import project_kouku_saydon_composition as composition
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -32,6 +33,44 @@ def documents():
 
 
 class RaidProjectionTests(unittest.TestCase):
+    def test_authoring_validator_rejects_a_loop_boundary_outside_its_flow(self):
+        action, _ = documents()
+        for flow in action["patternFlows"]:
+            flow["displayName"] = flow["gateId"]
+        flow = action["patternFlows"][1]
+        flow["loopStartEntryId"] = flow["entries"][0]["entryId"]
+        composition.validate_pattern_flows(action)
+        for value in (None, 2, "entry.GATE1", "not present", "missing.entry"):
+            with self.subTest(value=value):
+                flow["loopStartEntryId"] = value
+                with self.assertRaises(composition.CompositionError):
+                    composition.validate_pattern_flows(action)
+
+    def test_saved_loop_boundary_uses_entry_identity_and_survives_reordering(self):
+        action, sequence = documents()
+        flow = action["patternFlows"][1]
+        second = dict(flow["entries"][0], entryId="entry.gate2.repeat")
+        flow["entries"].append(second)
+        flow["loopStartEntryId"] = second["entryId"]
+        before = copy.deepcopy(action)
+        projected = subject.project_raid_gates(action, sequence)[1]
+        self.assertEqual(second["entryId"], projected["loopStartEntryId"])
+        self.assertEqual(before, action)
+        flow["entries"].reverse()
+        self.assertEqual(second["entryId"], subject.project_raid_gates(action, sequence)[1]["loopStartEntryId"])
+        flow["entries"].remove(second)
+        with self.assertRaisesRegex(ValueError, "loop start"):
+            subject.project_raid_gates(action, sequence)
+
+    def test_absent_loop_boundary_preserves_legacy_and_invalid_types_are_rejected(self):
+        action, sequence = documents()
+        self.assertNotIn("loopStartEntryId", subject.project_raid_gates(action, sequence)[1])
+        for value in (None, 1, ["entry.GATE2"], "missing.entry"):
+            with self.subTest(value=value):
+                action["patternFlows"][1]["loopStartEntryId"] = value
+                with self.assertRaisesRegex(ValueError, "loop start"):
+                    subject.project_raid_gates(action, sequence)
+
     def test_bingo_reuses_saved_encore_intro_then_combat_and_ending(self):
         action, sequence = documents()
         sequence["patterns"].append({"patternId": PREFIX + "9", "gateId": "BINGO",
@@ -122,6 +161,13 @@ class RaidProjectionTests(unittest.TestCase):
         first = valid["raidGates"][0]
         first["entries"] = [dict(first["entries"][0], entryId=f"entry.{i}") for i in range(12)]
         cases = [{"name": "valid", "accepted": True, "document": valid}]
+        repeating = copy.deepcopy(valid)
+        repeating["raidGates"][1]["loopStartEntryId"] = repeating["raidGates"][1]["entries"][0]["entryId"]
+        cases.append({"name": "repeat_boundary", "accepted": True, "document": repeating})
+        for boundary in ("missing.entry", 3, None):
+            invalid = copy.deepcopy(repeating)
+            invalid["raidGates"][1]["loopStartEntryId"] = boundary
+            cases.append({"name": "invalid_repeat_boundary", "accepted": False, "document": invalid})
         for name in ("missing_slot", "duplicate_id", "orphan_clear"):
             doc = copy.deepcopy(valid)
             arrivals = doc["raidGates"][0]["arrivals"]
@@ -157,6 +203,11 @@ foreach ($case in (Get-Content -LiteralPath $Cases -Raw | ConvertFrom-Json)) {
         foreach ($gate in $case.document.raidGates) {
             $gateRows = @($sorted | Where-Object { $f=$_.Split("`t"); ($f[0] -ceq 'RAIDGATE' -and $f[2] -ceq $gate.gateId) -or ($f[0] -cne 'RAIDGATE' -and $f[1] -ceq $gate.gateId) })
             if (-not $gateRows[0].StartsWith("RAIDGATE`t")) { throw 'Gate did not precede child rows' }
+            if ($null -ne $gate.PSObject.Properties['loopStartEntryId'] -and $gate.loopStartEntryId) {
+                if ($gateRows[0].Split("`t").Count -ne 14 -or $gateRows[0].Split("`t")[13] -cne $gate.loopStartEntryId) {
+                    throw 'Loop boundary was not serialized as the authored entry identity'
+                }
+            }
             $index = 0
             foreach ($row in $gateRows) { if ($row.StartsWith("RAIDFLOWSTEP`t")) { if ([int]$row.Split("`t")[2] -ne $index) { throw 'Flow order was not dense' }; ++$index } }
         }

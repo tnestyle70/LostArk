@@ -3,7 +3,7 @@
   "formatVersion": 1,
   "compositionId": "boss.composition.valtan",
   "sourceRevision": 1,
-  "compositionRevision": "2dc55ea8518cd8ddda61ccb75c2d529275dea492eb332e2026df6c7a358ffa6e",
+  "compositionRevision": "6f292738f94d728714d8fb5fb0c140ddeaa0372f147a125d0cd6973c52934184",
   "status": "SHADOW",
   "runtimeEligible": false,
   "displayName": "Valtan Boss Composition",
@@ -13,7 +13,7 @@
   "sourceManifest": {
     "schema": "lostark.composition-source-manifest",
     "formatVersion": 1,
-    "sourceManifestId": "2dc55ea8518cd8ddda61ccb75c2d529275dea492eb332e2026df6c7a358ffa6e",
+    "sourceManifestId": "6f292738f94d728714d8fb5fb0c140ddeaa0372f147a125d0cd6973c52934184",
     "files": [
       {
         "path": "Data/Animation/Authored/Valtan/Valtan.combatobjectsoundcues.json",
@@ -387,8 +387,8 @@
       },
       {
         "path": "Data/Effects/EffectCatalog.json",
-        "sha256": "3867f4fc326946d63c329311c032a8a1f2aa6addf80b0e9de149efc0ab7642b4",
-        "bytes": 331076
+        "sha256": "010a12a4488177531e9e0e6b62866d1678eee971c53471f9b9b1f08329940caa",
+        "bytes": 335422
       },
       {
         "path": "Data/Effects/V2/Authored/bingo.bomb.mark_1.effectv2.json",
@@ -1997,8 +1997,8 @@
       },
       {
         "path": "Data/Sound/CharacterSoundCatalog.json",
-        "sha256": "edf36f66f6919dfd0ca06e5e852ba44430158f01d1e66c83ba0d45e29712ca39",
-        "bytes": 762650
+        "sha256": "48a5f2d05dfc25ce134749fa0c8dd017b237bbef2c86669e551da321496b2288",
+        "bytes": 764244
       },
       {
         "path": "Data/Valtan/Valtan.combatobjects.json",

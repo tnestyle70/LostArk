@@ -39,8 +39,8 @@
       "effects": "Client/Bin/DataFiles/Map/LV_LUT_HEARTRB_ED.mapeffects.json",
       "sourceCameraShots": "Data/Maps/Authoring/LV_LUT_HEARTRB_ED/LV_LUT_HEARTRB_ED.camerashots.json",
       "cameraShots": "Client/Bin/DataFiles/Map/LV_LUT_HEARTRB_ED.camerashots.json",
-    "sourceSequences": "Data/Maps/Authoring/LV_LUT_HEARTRB_ED/LV_LUT_HEARTRB_ED.worldsequences.json",
-    "sequences": "Client/Bin/DataFiles/Map/LV_LUT_HEARTRB_ED.worldsequences.json",
+      "sourceSequences": "Data/Maps/Authoring/LV_LUT_HEARTRB_ED/LV_LUT_HEARTRB_ED.worldsequences.json",
+      "sequences": "Client/Bin/DataFiles/Map/LV_LUT_HEARTRB_ED.worldsequences.json",
       "sourceDeployCatalog": "Data/Maps/Imported/LV_LUT_HEARTRB_ED/LV_LUT_HEARTRB_ED.deployassets",
       "sourceDeployPlacements": "Data/Maps/Authoring/LV_LUT_HEARTRB_ED/LV_LUT_HEARTRB_ED.deployplacements",
       "deployCatalog": "Client/Bin/DataFiles/Map/LV_LUT_HEARTRB_ED.deployassets",
@@ -96,12 +96,14 @@
       "navigationPaint": "Data/Navigation/LV_LOBBY_CLASSSELECT_SL00.navpaint",
       "gameplayDocument": "Data/Worlds/LV_LOBBY_CLASSSELECT_SL00/Gameplay.world.json",
       "placementCount": 804,
-      "assetCount": 209,
+      "assetCount": 226,
       "runtimeAssetRoot": "Map/CHARACTERSELECTMAP",
       "sourceMaterials": "Data/Maps/Authoring/LV_LOBBY_CLASSSELECT_SL00/LV_LOBBY_CLASSSELECT_SL00.mapmaterials.json",
       "materials": "Client/Bin/DataFiles/Map/LV_LOBBY_CLASSSELECT_SL00.mapmaterials.json",
       "sourceLights": "Data/Maps/Authoring/LV_LOBBY_CLASSSELECT_SL00/LV_LOBBY_CLASSSELECT_SL00.maplights.json",
-      "lights": "Client/Bin/DataFiles/Map/LV_LOBBY_CLASSSELECT_SL00.maplights.json"
+      "lights": "Client/Bin/DataFiles/Map/LV_LOBBY_CLASSSELECT_SL00.maplights.json",
+      "sourceSequences": "Data/Maps/Authoring/LV_LOBBY_CLASSSELECT_SL00/LV_LOBBY_CLASSSELECT_SL00.worldsequences.json",
+      "sequences": "Client/Bin/DataFiles/Map/LV_LOBBY_CLASSSELECT_SL00.worldsequences.json"
     },
     {
       "id": "LV_LUT_MIDNIGHTC_ED",
@@ -145,6 +147,20 @@
       "placementCount": 3839,
       "assetCount": 398,
       "runtimeAssetRoot": "Map/LV_OCN_EVENTIS_MHP"
+    },
+    {
+      "id": "LV_LOBBY_CLASSSELECT_SL10",
+      "kind": "product",
+      "catalogType": "single",
+      "sourceCatalog": "Data/Maps/Imported/LV_LOBBY_CLASSSELECT_SL10/LV_LOBBY_CLASSSELECT_SL10.mapassets",
+      "sourcePlacements": "Data/Maps/Authoring/LV_LOBBY_CLASSSELECT_SL10/LV_LOBBY_CLASSSELECT_SL10.mapplacements",
+      "sourceMaterials": "Data/Maps/Authoring/LV_LOBBY_CLASSSELECT_SL10/LV_LOBBY_CLASSSELECT_SL10.mapmaterials.json",
+      "catalog": "Client/Bin/DataFiles/Map/LV_LOBBY_CLASSSELECT_SL10.mapassets",
+      "placements": "Client/Bin/DataFiles/Map/LV_LOBBY_CLASSSELECT_SL10.mapplacements",
+      "materials": "Client/Bin/DataFiles/Map/LV_LOBBY_CLASSSELECT_SL10.mapmaterials.json",
+      "placementCount": 1356,
+      "assetCount": 574,
+      "runtimeAssetRoot": "Map/LV_LOBBY_CLASSSELECT_SL10"
     }
   ],
   "editorSelection": {

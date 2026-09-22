@@ -2,6 +2,8 @@
 #include "Engine_RenderTypes.h"
 
 #include "Light.h"
+#include "GameInstance.h"
+#include "Profiler.h"
 #include "Presentation_Manager.h"
 #include "Shader.h"
 #include "VIBuffer_Rect.h"
@@ -9,9 +11,102 @@
 #include <array>
 
 #include <cmath>
+#include <limits>
 
 namespace
 {
+	struct LIGHT_CAMERA_VOLUME final
+	{
+		double planes[6][4]{};
+		double roundoffWeights[6][4]{};
+		bool valid = false;
+
+		static bool HasFiniteInverse(const float4x4_t* matrix)
+		{
+			if (!matrix) return false;
+			double rows[4][4]{};
+			for (size_t row = 0u; row < 4u; ++row)
+				for (size_t column = 0u; column < 4u; ++column)
+				{
+					rows[row][column] = matrix->m[row][column];
+					if (!std::isfinite(rows[row][column])) return false;
+				}
+			for (size_t column = 0u; column < 4u; ++column)
+			{
+				size_t pivot = column;
+				for (size_t row = column + 1u; row < 4u; ++row)
+					if (std::abs(rows[row][column]) > std::abs(rows[pivot][column])) pivot = row;
+				if (std::abs(rows[pivot][column]) <= (std::numeric_limits<double>::min)()) return false;
+				for (size_t entry = column; entry < 4u; ++entry)
+					std::swap(rows[column][entry], rows[pivot][entry]);
+				for (size_t row = column + 1u; row < 4u; ++row)
+				{
+					const double factor = rows[row][column] / rows[column][column];
+					for (size_t entry = column + 1u; entry < 4u; ++entry)
+					{
+						rows[row][entry] -= factor * rows[column][entry];
+						if (!std::isfinite(rows[row][entry])) return false;
+					}
+				}
+			}
+			return true;
+		}
+
+		LIGHT_CAMERA_VOLUME(const float4x4_t* view, const float4x4_t* projection)
+		{
+			if (!HasFiniteInverse(view) || !HasFiniteInverse(projection)) return;
+			// Row-vector D3D clip inequalities: +/-x-w, +/-y-w, z-w, -z.
+			for (size_t plane = 0u; plane < 6u; ++plane)
+			{
+				const size_t axis = plane / 2u;
+				const double axisSign = (plane & 1u) ? -1. : 1.;
+				const double wSign = plane == 5u ? 0. : -1.;
+				for (size_t row = 0u; row < 4u; ++row)
+					for (size_t column = 0u; column < 4u; ++column)
+					{
+						const double a = projection->m[column][axis];
+						const double w = wSign * projection->m[column][3];
+						planes[plane][row] += double(view->m[row][column]) * (axisSign * a + w);
+						roundoffWeights[plane][row] += std::abs(double(view->m[row][column])) *
+							(std::abs(a) + std::abs(w));
+					}
+				const double length = std::sqrt(planes[plane][0] * planes[plane][0] +
+					planes[plane][1] * planes[plane][1] + planes[plane][2] * planes[plane][2]);
+				if (!std::isfinite(length) || length <= (std::numeric_limits<double>::min)()) return;
+				for (size_t entry = 0u; entry < 4u; ++entry)
+				{
+					planes[plane][entry] /= length;
+					roundoffWeights[plane][entry] /= length;
+					if (!std::isfinite(planes[plane][entry]) || !std::isfinite(roundoffWeights[plane][entry])) return;
+				}
+			}
+			valid = true;
+		}
+
+		bool Intersects(const LIGHT_DESC& light) const
+		{
+			if (!valid) return true;
+			const double center[3] = {light.vPosition.x, light.vPosition.y, light.vPosition.z};
+			const double radius = double(light.fRange) + 0.05;
+			bool outside = false;
+			for (size_t plane = 0u; plane < 6u; ++plane)
+			{
+				double distance = planes[plane][3];
+				double magnitude = roundoffWeights[plane][3];
+				for (size_t axis = 0u; axis < 3u; ++axis)
+				{
+					distance += planes[plane][axis] * center[axis];
+					magnitude += roundoffWeights[plane][axis] * (std::abs(center[axis]) + radius);
+				}
+				// Enclose float view/projection evaluation, including cancellation at large world coordinates.
+				const double tolerance = 32. * std::numeric_limits<float>::epsilon() * (1. + magnitude);
+				if (!std::isfinite(distance) || !std::isfinite(tolerance)) return true;
+				outside = outside || distance > radius + tolerance;
+			}
+			return !outside;
+		}
+	};
+
 	bool_t IsFinite4(const float4_t& Value)
 	{
 		return std::isfinite(Value.x) && std::isfinite(Value.y) &&
@@ -96,6 +191,10 @@ HRESULT CLight_Manager::Render_Lights(
     if (!pShader || !pVIBuffer || (ePassReceiver != LIGHT_RECEIVER::ALL &&
         ePassReceiver != LIGHT_RECEIVER::SOURCE_CHARACTER)) return E_INVALIDARG;
 
+    CProfiler* const profiler = CGameInstance::Get().Get_Profiler();
+    CProfilerScope stageScope(profiler, "Render.Lights.StageAndSubmit");
+    const LIGHT_CAMERA_VOLUME cameraVolume(CGameInstance::Get().Get_Transform(D3DTS::VIEW),
+        CGameInstance::Get().Get_Transform(D3DTS::PROJ));
     // Upload bounded shader records repeatedly; the frame has no light-count cap.
     constexpr uint32_t maximumLightInstances = CPresentation_Manager::LIGHT_RENDER_BATCH_SIZE;
     struct LightInstance
@@ -114,6 +213,12 @@ HRESULT CLight_Manager::Render_Lights(
     const auto flush = [&]() -> HRESULT
     {
         if (count == 0u) return S_OK;
+        CProfilerScope submitScope(profiler, "Render.Lights.UploadAndDraw");
+        if (profiler)
+        {
+            profiler->Add_Counter(EProfilerCounter::LightRecords, count);
+            profiler->Add_Counter(EProfilerCounter::LightUploadBytes, sizeof(LightInstance) * count);
+        }
         if (FAILED(pShader->Bind_RawValue("g_LightInstances", instances.data(),
             sizeof(LightInstance) * count))) return E_FAIL;
         // Preserve source order and type runs, including across batch boundaries.
@@ -127,6 +232,7 @@ HRESULT CLight_Manager::Render_Lights(
             if (FAILED(pShader->Bind_RawValue("g_LightInstanceOffset", &first, sizeof(first))) ||
                 FAILED(pShader->Begin(pass)) ||
                 FAILED(pVIBuffer->Render_Instanced(end - first))) return E_FAIL;
+            if (profiler) profiler->Add_Counter(EProfilerCounter::LightDrawCalls);
             first = end;
         }
         count = 0u;
@@ -137,6 +243,16 @@ HRESULT CLight_Manager::Render_Lights(
         if (light.eReceiver == LIGHT_RECEIVER::SOURCE_CHARACTER &&
             ePassReceiver == LIGHT_RECEIVER::ALL) return S_OK;
         if (!CLight::Is_ValidDesc(light)) return E_INVALIDARG;
+        if (light.eType != LIGHT::DIRECTIONAL)
+        {
+            if (profiler) profiler->Add_Counter(EProfilerCounter::LightCullingCandidates);
+            // Cull only this deferred submission. Forward consumers retain the original light list.
+            if (!cameraVolume.Intersects(light))
+            {
+                if (profiler) profiler->Add_Counter(EProfilerCounter::LightCullingRejected);
+                return S_OK;
+            }
+        }
         if (count == maximumLightInstances && FAILED(flush())) return E_FAIL;
         const bool_t directional = light.eType == LIGHT::DIRECTIONAL;
         const bool_t shadow = scene && directional && bEnableSceneDirectionalShadow && !directionalShadowConsumed;

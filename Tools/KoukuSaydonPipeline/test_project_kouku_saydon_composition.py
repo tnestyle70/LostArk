@@ -977,6 +977,24 @@ class KoukuSaydonCompositionProjectionTests(unittest.TestCase):
         self.assertEqual(rows, encounter["showtimeTargets"])
         self.assertEqual(before, document)
 
+    def test_showtime_single_compound_effect_keeps_targeted_ownership(self):
+        document = self.showtime_document()
+        pattern = self.first_product(document)
+        pattern["presentationOccurrences"] = pattern["presentationOccurrences"][:1]
+        document["logics"][0]["trackingPresentationOccurrenceId"] = ""
+        self.validate(document)
+        rows, templates, controlled = subject._project_showtime_targets(document, pattern)
+        template = templates[rows[0]["fixedVisualId"]]
+        self.assertEqual((1, 1000, False), (len(template["occurrences"]), template["durationMs"], template["loop"]))
+        self.assertEqual((1000, "", 1), (rows[0]["fixedLifetimeMs"], rows[0]["trackingVisualId"], len(controlled)))
+        self.assertEqual([0, -.2, 0], template["occurrences"][0]["positionOffset"])
+        presentation = subject.project_presentation(document)
+        self.assertEqual([], self.first_product(presentation)["presentationOccurrences"])
+        self.assertEqual(1, len(presentation["targetedCombatVisuals"]))
+        pattern["presentationOccurrences"].clear()
+        with self.assertRaisesRegex(subject.CompositionError, "missing or unresolved"):
+            subject._project_showtime_targets(document, pattern)
+
     def test_showtime_content_identity_deduplicates_copies_and_pins_changed_content(self):
         document = self.showtime_document()
         pattern = self.first_product(document)
@@ -1000,6 +1018,65 @@ class KoukuSaydonCompositionProjectionTests(unittest.TestCase):
         rows, templates, _ = subject._project_showtime_targets(document, pattern)
         self.assertEqual((2, 2), (len(rows), len(templates)))
         self.assertEqual(rows[0]["fixedVisualId"], rows[1]["fixedVisualId"])
+
+    def fixed_sound_document(self):
+        document = self.showtime_document()
+        pattern = self.first_product(document)
+        pattern["stages"][0]["durationMs"] = 10000
+        pattern["stages"][0]["animationOccurrences"][0]["playMs"] = 10000
+        document["logics"][0]["trackingPresentationOccurrenceId"] = ""
+        pattern["logicOccurrences"][0].update(startMs=2800, durationMs=2001)
+        resource = dict(resourceId="sound.fixed.projectile", displayName="Drop projectile",
+                        kind="SOUND", assetId="Sound/KoukuSaton/Events/projectile.wav",
+                        durationMs=3667, defaultAnchorKind="MAP")
+        document["presentationResources"].append(resource)
+        effect = copy.deepcopy(pattern["presentationOccurrences"][0])
+        effect.update(occurrenceId=FIRST_PRODUCT_ID + ".presentation.2", startMs=2800, durationMs=5150)
+        launch = dict(occurrenceId=FIRST_PRODUCT_ID + ".presentation.1", resourceId=resource["resourceId"],
+                      startMs=2800, durationMs=3667, anchorKind="MAP", followBoss=False,
+                      selectionGroupId="showtime.fixed.group", positionOffset=[99, 0, 99], volume=.6)
+        impact = {**launch, "occurrenceId": FIRST_PRODUCT_ID + ".presentation.3",
+                  "startMs": 5833, "durationMs": 1734, "positionOffset": [10, 0, 20]}
+        pattern["presentationOccurrences"] = [launch, effect, impact]
+        return document
+
+    def test_showtime_fixed_group_sound_is_spawn_owned_and_uses_effect_pivot(self):
+        document = self.fixed_sound_document()
+        pattern = self.first_product(document)
+        before = copy.deepcopy(document)
+        self.validate(document)
+        rows, templates, controlled = subject._project_showtime_targets(document, pattern)
+        template = templates[rows[0]["fixedVisualId"]]
+        self.assertEqual((5150, False, 3), (template["durationMs"], template["loop"], len(controlled)))
+        self.assertEqual(5150, rows[0]["fixedLifetimeMs"])
+        effects = [row for row in template["occurrences"] if row["kind"] == "EFFECT"]
+        sounds = [row for row in template["occurrences"] if row["kind"] == "SOUND"]
+        self.assertEqual([0, -.2, 0], effects[0]["positionOffset"])
+        self.assertEqual([(0, 3667), (3033, 1734)], [(row["startMs"], row["durationMs"]) for row in sounds])
+        self.assertEqual([[89, 0, 79], [0, 0, 0]], [row["positionOffset"] for row in sounds])
+        self.assertEqual([], self.first_product(subject.project_presentation(document))["presentationOccurrences"])
+        self.assertEqual(before, document)
+        pattern["presentationOccurrences"].reverse()
+        self.assertEqual(template["clientVisualId"], subject._project_showtime_targets(document, pattern)[0][0]["fixedVisualId"])
+        sound = next(row for row in pattern["presentationOccurrences"] if row["startMs"] == 5833)
+        sound["startMs"] += 1
+        self.assertNotEqual(template["clientVisualId"], subject._project_showtime_targets(document, pattern)[0][0]["fixedVisualId"])
+
+    def test_showtime_fixed_group_sound_rejects_unowned_sound_only_tracking_and_boss(self):
+        for case in ("unowned", "sound_only", "tracking", "boss", "following", "collider"):
+            document = self.fixed_sound_document()
+            pattern = self.first_product(document)
+            sound, effect, _ = pattern["presentationOccurrences"]
+            if case == "unowned": document["logics"][0]["fixedSelectionGroupId"] = ""
+            if case == "sound_only": pattern["presentationOccurrences"].remove(effect)
+            if case == "tracking": document["logics"][0]["trackingPresentationOccurrenceId"] = sound["occurrenceId"]
+            if case == "boss": sound["anchorKind"] = "BOSS"
+            if case == "following": sound["followBoss"] = True
+            if case == "collider": document["presentationResources"][0].update(kind="COLLIDER", assetId="", resourceKind="")
+            before = copy.deepcopy(document)
+            with self.subTest(case=case), self.assertRaises(subject.CompositionError):
+                self.validate(document)
+            self.assertEqual(before, document)
 
     def test_showtime_optional_roles_disabled_control_and_incomplete_authoring(self):
         for omitted in ("fixedSelectionGroupId", "trackingPresentationOccurrenceId"):
@@ -1263,13 +1340,11 @@ class KoukuSaydonCompositionProjectionTests(unittest.TestCase):
         self.assertEqual(grouped, subject._project_pattern_presentation(document, reopened))
         self.assertNotIn("selectionGroupId", subject.serialize_json(grouped).decode("utf-8"))
 
-    def test_effect_selection_group_rejects_singleton_mixed_kind_and_invalid_id(self):
-        for invalid in ("singleton", "mixed", "bad_id"):
+    def test_effect_selection_group_rejects_mixed_kind_and_invalid_id(self):
+        for invalid in ("mixed", "bad_id"):
             resources, pattern = self.collider_selection_group_fixture()
             resources["collider.group.fixture"]["kind"] = "EFFECT"
-            if invalid == "singleton":
-                pattern["presentationOccurrences"] = pattern["presentationOccurrences"][:1]
-            elif invalid == "mixed":
+            if invalid == "mixed":
                 resources["other"] = {"kind": "COLLIDER"}
                 pattern["presentationOccurrences"][0]["resourceId"] = "other"
             else:
@@ -4301,6 +4376,12 @@ class KoukuSaydonCompositionProjectionTests(unittest.TestCase):
         self.assertEqual([{"trigger": "ENTER", "kind": "RETARGET_RANDOM_ALIVE",
                           "targetId": "boss.target.pattern", "value": 1, "durationMs": 0}],
                          subject._project_stage(stage)["actions"])
+        stage["retargetTarget"] = "NEAREST_ALIVE"
+        self.validate(document)
+        self.assertEqual("boss.target.nearest", subject._project_stage(stage)["actions"][0]["targetId"])
+        stage["retargetTarget"] = "RANDOM_ALIVE"
+        self.assertEqual("boss.target.pattern", subject._project_stage(stage)["actions"][0]["targetId"])
+        stage.pop("retargetTarget")
         for value in (None, 0, 1, "true", [], {}):
             rejected = copy.deepcopy(document)
             self.first_product(rejected)["stages"][0]["retargetOnEnter"] = value

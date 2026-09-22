@@ -539,7 +539,8 @@ HRESULT CMaterial::Initialize(const MODEL_MATERIAL_DATA& material)
         {
             const uint32_t program = m_Surface.sourceCharacter.program;
             const bool supportsBaked = (program >= 80u && program <= 83u) ||
-                (program >= 40u && program <= 63u && program != 47u && program != 53u && program != 55u);
+                (program >= 40u && program <= 63u && program != 47u && program != 53u && program != 55u) ||
+                program == 209u || program == 210u || (program >= 214u && program <= 234u) || program == 237u;
             if (!supportsBaked ||
                 FAILED(LoadSharedTexture(m_pDevice, m_SharedTextureViews, material.bakedAveragePath, m_Surface.bakedLightingSRGB, m_BakedAverage, true)) ||
                 FAILED(LoadSharedTexture(m_pDevice, m_SharedTextureViews, material.bakedDirectionalPath, m_Surface.bakedLightingSRGB, m_BakedDirectional, true))) return E_FAIL;
@@ -890,7 +891,8 @@ HRESULT CMaterial::Bind_SourceCharacterInputs(shared_ptr<CShader> shader,
     if (FAILED(shader->Bind_RawValue("g_SourceMapMonsterBakedEnabled", &hasBaked, sizeof(hasBaked)))) return E_FAIL;
     if (!lightPass)
     {
-        if (source.program >= 80u && source.program <= 83u && FAILED(Bind_StaticShadow(shader))) return E_FAIL;
+        if (((source.program >= 80u && source.program <= 83u) ||
+            (source.program >= 214u && source.program <= 234u) || source.program == 237u) && FAILED(Bind_StaticShadow(shader))) return E_FAIL;
         if (hasBaked && (FAILED(shader->Bind_Texture("g_SourceMapMonsterAverageTexture", m_BakedAverage)) ||
             FAILED(shader->Bind_Texture("g_SourceMapMonsterDirectionalTexture", m_BakedDirectional)))) return E_FAIL;
         const auto environment = CGameInstance::Get().Get_RenderEnvironment();
@@ -900,7 +902,8 @@ HRESULT CMaterial::Bind_SourceCharacterInputs(shared_ptr<CShader> shader,
             FAILED(shader->Bind_RawValue("g_SourceCharacterEnvironmentRotation", &environment.vRotationIntensity, sizeof(float4_t))) ||
             FAILED(shader->Bind_Texture("g_SourceCharacterEnvironmentCube", environment.pCube))) return E_FAIL;
     }
-    const bool forward = source.program >= 38u && source.program <= 63u;
+    const bool forward = (source.program >= 38u && source.program <= 63u) || source.program == 209u ||
+        (source.program >= 224u && source.program <= 226u) || source.program == 237u;
     if (!lightPass && forward && FAILED(shader->Bind_RawValue("g_SourceCharacterLightConstants",
         source.lightConstants.data(), sizeof(source.lightConstants)))) return E_FAIL;
     const auto& constants = lightPass ? source.lightConstants : source.baseConstants;
@@ -935,7 +938,8 @@ HRESULT CMaterial::Bind_SourceCharacter(shared_ptr<CShader> shader)
 {
     if (m_Surface.family != MODEL_SURFACE_FAMILY::SOURCE_CHARACTER) return S_FALSE;
     const uint32_t program = m_Surface.sourceCharacter.program;
-    if (program >= 33u && program <= 65u)
+    if ((program >= 33u && program <= 65u) || program == 209u ||
+        (program >= 224u && program <= 226u) || program == 237u)
         return Bind_SourceCharacterInputs(shader, false, 0u);
     auto found = std::find_if(g_SourceCharacterFrame.begin(), g_SourceCharacterFrame.end(),
         [this](const auto& entry) { return entry.get() == this; });

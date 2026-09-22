@@ -91,11 +91,18 @@ def acquire():
         index.objects[key] = obj
         index.by_source_id[key] = obj
     occurrences = []
+    empty_emitters = []
     for asset, (system, _) in TARGETS.items():
         for prop, emitter_key in index.objects[system].references:
             if prop != 'emitters':
                 continue
-            lod = next(index.objects[k] for p, k in index.objects[emitter_key].references if p.startswith('lodlevels'))
+            lods = [index.objects[k] for p, k in index.objects[emitter_key].references if p.startswith('lodlevels')]
+            if not lods:
+                assert not imported.prop(index.objects[emitter_key].properties, 'lodlevels', [])
+                empty_emitters.append(dict(sourceSystem=system, sourceEmitter=emitter_key,
+                    reason='SOURCE_EMITTER_HAS_ZERO_LODS'))
+                continue
+            lod = lods[0]
             if not imported.prop(lod.properties, 'benabled', True):
                 continue
             modules = [index.objects[k] for p, k in lod.references if p in ('requiredmodule', 'modules', 'typedatamodule', 'spawnmodule')]
@@ -109,6 +116,7 @@ def acquire():
                 kind=kind, sourceMesh=mesh, moduleOrder=[m.key for m in modules],
                 sourceTimeSeconds=0, sourceDurationSeconds=10))
     source.write(OUT / 'source_occurrences.json', occurrences)
+    source.write(OUT / 'source_empty_emitters.json', empty_emitters)
     source.write(OUT / 'source_module_inputs.json', {'records': {key: records[key] for key in selected}})
     source.write(OUT / 'source_class_defaults.json', {'records': [r for key, r in records.items() if key not in selected]})
     source.write(OUT / 'packages.json', {k: str(v) for k, v in PACKAGES.items()})

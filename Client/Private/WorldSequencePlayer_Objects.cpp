@@ -26,6 +26,43 @@ using namespace Engine;
 
 CWorldSequencePlayer::~CWorldSequencePlayer() { Clear(); }
 
+bool_t CWorldSequencePlayer::Set_ObjectMaterialConstants(const std::string& instanceId,
+    const std::string& slotId, const std::string& materialName,
+    const MODEL_SOURCE_CHARACTER_PARAMETERS& parameters)
+{
+    const auto active = std::find_if(m_Active.begin(), m_Active.end(),
+        [&](const auto& value) { return value.instanceId == instanceId; });
+    if (active == m_Active.end() || materialName.empty())
+    { m_Status = "World Object material target is inactive: " + instanceId; return false; }
+    bool matched = false;
+    for (const auto& entry : active->objects)
+    {
+        if (entry.slotId != slotId || !entry.object) continue;
+        const auto& model = entry.object->Get_Model();
+        if (!model) return false;
+        bool exact = false;
+        for (uint32_t mesh = 0u; mesh < model->Get_NumMeshes(); ++mesh)
+        {
+            const auto& name = model->Get_MaterialName(mesh);
+            if (name.find(materialName) == std::string::npos) continue;
+            const auto* surface = model->Get_MaterialSurface(mesh);
+            if (name != materialName || !surface ||
+                surface->family != MODEL_SURFACE_FAMILY::SOURCE_CHARACTER ||
+                surface->sourceCharacter.program != parameters.program)
+            { m_Status = "World Object material name/program mismatch: " + materialName; return false; }
+            exact = true;
+        }
+        if (!exact || model->Override_SourceCharacterConstants(materialName.c_str(), parameters) == 0u)
+        { m_Status = "World Object material override was rejected: " + materialName; return false; }
+        matched = true;
+    }
+    // A source actor can be hidden before its first emission. It still exists
+    // once emitted, and its material is checked as soon as the clone appears.
+    if (!matched)
+    { m_Status = "World Object material slot has no live clone: " + slotId; return false; }
+    return true;
+}
+
 namespace
 {
 /* The product Valtan part group: a static weapon on the body's grip bone and

@@ -102,6 +102,25 @@ inline bool Configure(const std::string& family,
             staged.baseConstants[3] = float4_t(bias, power, 0.f, 0.f);
         }
     }
+    else if (family == "source.map.emissive-reflection.v1")
+    {
+        [&]() {
+        staged.program = 209u;
+        staged.baseTextureMask = 7u;
+        staged.baseConstants[1] = vector(parameter("selectioncolor"));
+        staged.baseConstants[2] = vector(parameter("emissive_uv_tiling"));
+        staged.baseConstants[3] = vector(parameter("emissive_color"));
+        staged.baseConstants[4] = vector(parameter("reflection_color"));
+        staged.baseConstants[5] = vector(parameter("diffuse_color"));
+        staged.baseConstants[6] = float4_t(parameter("emissive_intensity")[0],parameter("reflection_tiling")[0],parameter("reflection_contrast")[0],parameter("reflection_intensity")[0]);
+        staged.baseConstants[7] = float4_t(parameter("diffuse_brightness")[0],parameter("opacity_intensity")[0],0.f,0.f);
+        staged.lightTextureMask = 6u;
+        staged.lightConstants[1] = vector(parameter("reflection_color"));
+        staged.lightConstants[2] = vector(parameter("diffuse_color"));
+        staged.lightConstants[3] = float4_t(parameter("emissive_intensity")[0],parameter("reflection_tiling")[0],parameter("reflection_contrast")[0],parameter("reflection_intensity")[0]);
+        staged.lightConstants[4] = float4_t(parameter("diffuse_brightness")[0],parameter("opacity_intensity")[0],0.f,0.f);
+        }();
+    }
     else return false;
     if (!valid || consumed.size()!=parameters.size()) return false;
     result=staged;

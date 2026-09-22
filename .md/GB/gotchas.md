@@ -10,6 +10,11 @@
   원본 사운드에 Timeline pause도 전달한다. pending Effect seek 자체는 허용되므로
   commit 시점 차이를 영구 사운드 누락 원인으로 단정하지 않는다.
 
+### 새 클래스 추가 뒤 기존 Camera 크기 저장본의 이행
+
+classSizeMultipliers의 필수 키 수만 늘리면 기존 여섯 클래스 Camera JSON을 읽지 못하고 빈 source baseline 때문에 Save도 외부 변경으로 거절된다. 새 GuardianKnight 키만 없는 유효한 이전 문서는 기존 여섯 값을 보존하고 새 값 1로 이행한다. 다른 키 누락·unknown·손상값은 계속 거부하고 다음 Save에서 일곱 이름을 저장한다. 초기값 변경은 실제 map 저장본과 함께 확인하며 freshness 검사를 제거하지 않는다. 재현과 네 저장본 반영은 [크기 결과 G04](09-20/2026-09-20_CHARACTER_SIZE_AND_ALTV_RESULT.md#g04-2026-09-22-크기-save-회귀-복구)에 기록한다.
+
+
 ### 보스 연출 클립의 Character 계약과 로딩 초기화 rollback
 
 - BossCatalog의 bodyModel·animationSetId는 Client ActorCatalog가 허용하는 `Character/.../*.wmodel`이어야 한다. 같은 골격의 Map 전용 연출 모델을 직접 열 수 있다는 이유로 catalog ID에 넣으면 전체 catalog 초기화가 실패해 다른 Level 입장도 막힌다. publisher의 donor 지원도 같은 경로 계약으로 검증한다.
@@ -1330,6 +1335,9 @@ Client 배포 DLL의 유효 크기/PE 형식·일치 여부도 확인한다. 실
 - `Particle.Simulate`의 spawn/update 동명 scope, 부모·자식 inclusive 시간, 여러 playback의 fixed-step 호출 합계를 구분한다. 고정 스텝 따라잡기와 동기 Save JSON의 프레임 간섭도 기록한다.
 - JSON의 counter 키 존재는 실제 writer 존재를 뜻하지 않는다. 확장 전 renderSubmissions/texture 계열의 writer 없는 0값을 작업량 0의 증거로 쓰지 않는다. 새 renderSubmissions는 실제 enqueue에 연결되며 미연결 texture counter는 N/A로 표시한다. occurrence별 SceneColor refresh도 실제 copy 함수 안에서 계측해야 초기 snapshot만 보이는 누락을 막는다.
 
+- 수만 draw에 raw CPU scope를 항상 기록하면 scope cap에 걸리고 측정 자체가 frame을 늘린다. 기본은 pass/counter이며 per-draw detail은 별도 비교 실험에서만 켠다. frame의 droppedCpuScopes와 window 합계는 누적 drop과 구별한다. cpuScopesWithinBudget는 overflow가 없었다는 뜻이며 모든 함수의 계측 완료를 뜻하지 않는다.
+- Capture/Reset/detail 변경은 frame 경계에서 적용하고 pause 전 열린 worker scope가 재개 history에 들어오지 않도록 epoch를 확인한다. worker가 mutex를 기다린 뒤에도 epoch를 다시 확인한다. Reset 후 첫 frame interval은 이전 pause 시간을 포함하지 않는다. export metadata는 저장 시점 snapshot이며 과거 모든 frame의 설정 증거가 아니다.
+
 ### ImGui backend에 Engine 헤더를 넣을 때 Debug new 매크로를 격리한다
 
 - `Engine_Defines.h`는 `_DEBUG`에서 `new`를 CRT debug allocation 매크로로 바꾼다. 이를 ImGui backend에 그대로 유입하면 `IM_NEW`의 placement-new가 C2226 `ImNewWrapper` 오류로 깨진다. backend의 Engine 헤더 include 전후에 `push_macro("new")` / `pop_macro("new")`로 진입 시 상태를 복원한다. Engine 전체의 debug allocation 설정을 끄지 않는다.
@@ -1475,7 +1483,7 @@ Client 배포 DLL의 유효 크기/PE 형식·일치 여부도 확인한다. 실
 - cache 수명은 호출 안으로 제한한다. 출력 교체 전후 원본 bytes와 모델 hash를 다시 확인하고 변경되면 기존 rollback을 수행한다. 길이·mtime만 같다고 동일 입력으로 판정하지 않는다. PowerShell 원문 비교는 culture 비교인 `-cne` 대신 `StringComparison.Ordinal`을 사용한다.
 - projector 직접 변환 시간과 Product/Map/World/Balance 전체 게시 시간은 다르다. 같은 고정 입력의 전후 bytes와 단계별 실측을 함께 기록하고, 한국어 표시명이나 Resources 전체 hash를 측정 없이 원인으로 단정하지 않는다. 실제 imported 도구도 domain fingerprint에 포함한다. [Parent 타임라인 결과 G06](09-12/2026-09-12_KOUKU_PARENT_PATTERN_TIMELINE_IMPLEMENTATION_RESULT.md).
 
-- GPU LOD는 원본 geometry와 현재 draw 재질을 함께 검사한다. CModel material variant는 CMesh를 공유하므로 load-time opaque admission만으로 masked/교체 재질까지 LOD를 적용하지 않는다. indirect index 수는 CPU 추정치를 실제값처럼 기록하지 않고 별도 LOD0 상한 counter를 사용한다. 작은 draw는 dispatch 손익 검증 후 기존 direct 경로를 유지한다.
+- Static mesh LOD는 원본 geometry와 현재 draw 재질을 함께 검사한다. CModel material variant는 CMesh를 공유하므로 load-time opaque admission만으로 masked/교체 재질까지 LOD를 적용하지 않는다. CPU가 이미 가진 scalar 화면 오차는 CPU에서 선택해 direct instanced draw로 제출하며 기존 0.25px 품질 경계를 유지한다. 선택된 direct index 수는 실제값을 기록하고 다른 indirect draw의 상한과 섞지 않는다. 넓게 분포한 instance를 하나의 world sphere로 감싸면 횡방향 폭이 가까운 깊이로 오인되어 LOD0에 묶일 수 있다. 각 visible instance의 보수적 view depth/XY envelope를 사용하고 finite·near·재질 실패는 원본으로 되돌린다.
 - light quad의 clip distance는 같은 VS 위치/UV를 유지해도 clipping 이후 interpolation 정밀도 차이를 만들 수 있다. coverage 누락과 FP16 출력 차이, clip-disabled control 및 사용자 visual 판정을 구분한다. 상세 근거는09-12 맵·캐릭터 성능 RESULT의G12–G14를 따른다.
 
 - Composition Patterns의 편집 대상과 Resources의 추가할 Pattern은 별도 session 선택이다. 공용 Pattern Tree를 재사용해도 Resources의 Gate/Parent/Bundle/leaf 탐색은 대상·커서·preview를 바꾸면 안 된다. 실제 Append에서 현재 target/source를 다시 검사하고 잘리는 source 수명을 표시한다. [Parent 타임라인 결과 G07](09-12/2026-09-12_KOUKU_PARENT_PATTERN_TIMELINE_IMPLEMENTATION_RESULT.md).
@@ -2888,6 +2896,8 @@ deadline에는 지연 안내를 표시하고 요청 소유권은 실제 typed �
 
 ### Bone Clips와 순차 timeline 소유권
 
+- live 본 자세는 Set key 전까지 문서가 아니다. 미확정 TRS가 있을 때 본·클립·시간 변경이나 Undo가 Read_Key를 호출해 값을 지우지 않도록 선택을 잠그고 Set/Cancel/명시적 Discard만 허용한다. baked clip 길이 축소는 duration만 줄이지 않고 모든 본 key를 재샘플링해 범위와 시작·끝 자세를 함께 보존한다.
+- 골격 overlay의 화면 클릭을 ImGui Render에서 뒤늦게 claim하면 이미 처리된 gameplay 입력을 막지 못한다. 실제 early input owner와 연결하지 않은 overlay는 표시/hover로 제한하고 본 선택은 panel에서 한다. bone combined matrix의 preScale과 actual BoneRoot도 한 번만 합성한다.
 - 본 편집기의 Stop은 자신이 manual pose를 소유할 때만 pause한다. 비활성 본 패널이 매 frame 다른 Sequencer의 CModel 재생을 정지시키면 안 된다.
 - authored animation은 native WModel section의 39-byte name 제한 대신 별도 stable ID를 쓰며 native clip과 index를 저장 ID로 공유하지 않는다. exact skeletonHash/bone/source clip DAG와 finite quaternion·시간 범위를 모두 검증한 후 전체 채널을 교체한다.
 - 발탄 Bone Clips source는 prototype이 직접 읽지 않는다. PublishV2가 검증한 optional Published bone 문서와 generation closure를 사용한다. source 변경은 publisher CAS read set에 포함하고 실패 시 이전 Product를 보존한다.
@@ -2994,9 +3004,28 @@ EventReceiverSpawn은 일반적으로 source event 위치를 상속하지만, �
 
 랜덤 투하의 개별 사운드는 보스 Pattern의 고정 SOUND 한 행으로 대신하지 않는다. 원본 Projectile timer를 확인해 각 CombatObject birth 기준의 유한 MAP SOUND로 같은 targeted template에 포함한다. MAP EFFECT가 위치 원점을 소유하고 SoundCue는 기존 재생/seek/종료 경로를 사용한다. 같은 템플릿의 모든 투하가 한 변형만 고르지 않도록 targeted session identity도 variant 선택에 포함하며, 일반 Pattern의 기존 선택은 보존한다. 원본 카드비의 사운드1350ms와 카드 시작1500ms·충돌1650ms가 다르므로 임의로 같은 시점에 맞추지 않는다.
 
+고정 플레이어 대상 공에도 같은 위치·birth clock의 SOUND가 필요하면 기존 SHOWTIME fixed
+그룹의 소유자를 검사해 MAP EFFECT+MAP SOUND만 허용한다. SOUND-only·tracking Sound·일반
+선택 그룹·Collider 혼합까지 넓히지 않는다. 사용자가 이미 편집한 Action 사운드는 원본 notify
+시각이나 반복 개수와 다르다는 이유로 자동 보충하지 않는다. 보충할 Pattern을 명시적으로
+제한하고 나머지는 기존 sound 행 전체가 같은지 확인한다.
+
+파생 후보의 freshness는 후보 JSON과 manifest 해시만으로 닫히지 않는다. 원본 leaf TRS,
+source recipe·재질·모델 등 실제 입력도 생성 시점 해시로 고정해 설치 직전에 확인한다.
+baseline은 후보를 계산할 때 읽은 동일 bytes여야 한다. 계산 뒤 최신 파일을 다시 읽어 baseline
+해시로 삼으면 동시 저장을 승인한 것처럼 잘못 처리해 새 편집을 덮어쓸 수 있다.
+
 ### Pattern Flow의 마지막 항목과 반복 소유권
 
-순서가 저장되고 게시됐다는 사실만으로 순환 반복을 완료 처리하지 않는다. 전투 전용 Client Play_Flow와 Sequence 포함 Server RaidFlow의 마지막 완료 처리를 각각 확인한다. GATE1은 마지막 wait 이후 첫 entry를 다시 실행한다. Server에서 index 0으로 돌아올 때는 continueRaid 조건도 함께 확인하여 기존 epoch·게시 revision·잔여 row 소유권을 유지한다. 최초 epoch 0 입장과 반복 입장을 구분하고 Stop·거절·중단·관문 완료는 기존 종료 경로를 보존한다. 두 번째 주기 및 다른 관문 회귀를 검사한다.
+순서가 저장되고 게시됐다는 사실만으로 순환 반복을 완료 처리하지 않는다. 전투 전용 Client Play_Flow와 Sequence 포함 Server RaidFlow의 마지막 완료 처리를 각각 확인한다. optional `patternFlows.loopStartEntryId`는 vector index가 아니라 같은 Flow의 stable entry ID다. 최초 전체 진행 뒤 마지막 wait를 지키고 지정 entry부터 반복하며, reorder 뒤에도 ID로 찾는다. 저장/게시/Server catalog는 잘못되거나 누락된 기점을 거부하며 첫 entry로 임의 대체하지 않는다. Tool에서 기점을 삭제하면 설정도 지운다. 미지정 시 Client는 GATE1, Server는 GATE1·BINGO만 기존 처음 반복을 유지한다. Server에서 index 0으로 돌아오는 명시적 기점도 continueRaid 조건에 포함하여 기존 epoch·게시 revision·잔여 row 소유권을 유지한다. 최초 epoch 0 입장과 반복 입장을 구분하고 Stop·거절·중단·관문 완료는 기존 종료 경로를 보존한다. 두 번째 주기 및 다른 관문 회귀를 검사한다.
+
+Client codec의 문서 Load 성공은 모든 Pattern admission 성공을 뜻하지 않는다. malformed
+Pattern을 quarantine하고 나머지 문서를 보존할 수 있으므로 Play Pattern 검사는 각 행의
+quarantine 사유와 Expand 결과까지 확인한다. Stage optional 필드를 Python에 추가했다면
+C++ struct·허용 property·strict 값 검증·Parse/Serialize·실제 Preview도 함께 연결한다.
+`retargetTarget`의 RANDOM_ALIVE/NEAREST_ALIVE와 retargetOnEnter 종속성을 일치시키며,
+부모 clip의 중간 파편에서 retargetOnEnter를 끄면 selector도 제거한다. 사용자 저장 필드를
+지워서 admission 오류를 숨기지 않는다.
 
 
 ### Monster 공격 1회와 Full Restore preview identity
@@ -3078,3 +3107,205 @@ writer admission이 거부될 수 있다. `invalid skill definition`이면 publi
 읽기/범위 검증/직렬화까지 보존하며 unknown-field 검사를 제거하거나 스킬 필드를
 삭제하지 않는다. 미저장 Flow를 확보하기 전에 Load Flow/종료를 안내하지 않는다.
 09-22 VALTAN_FLOW_SAVE_SKILL_COMPAT_RESULT에 실제 복구와 빌드 증거를 기록했다.
+
+HLSL의 invocation-local `static` 변수는 FX 외부 uniform이 아니다. `g_EffectSceneReadMode`처럼
+shader 내부에서 초기화·전환하는 상태에 C++ Bind_RawValue를 추가하면 shader 컴파일이 성공해도
+실제 FX reflection 바인딩이 실패한다. 제품 CSO로 CShader를 생성하고 base/cohort의 새 pass와
+실제 uniform 바인딩을 함께 검증한다. FXC 실행 중 source가 바뀌면 완성 파일 timestamp만으로
+최신 내용을 증명하지 말고 해당 입력 재컴파일과 새 심볼/실제 로더를 확인한다.
+
+### PBR 간접광과 발광, 그림자의 거리 단위
+
+RNM/IBL을 Emissive에 합쳐 저장하면 ambient SSAO와 직접광 shadow strength를 올려도 구운 바닥은
+계속 밝다. PBR marker3만 기존 geometry RGB에 간접광을 분리하고 실제 emissive는 보존한다.
+구운 정적 그림자에 shadow map을 그대로 한 번 더 곱하지 않는다. optional dynamicBakedStrength는
+static cache보다 앞에 생긴 동적 caster만 판별하는 프로젝트 근사이며 cache 무효 시 비활성이다.
+shadow depthBias는 정규화된 광원 깊이다. orthographic far-near를 곱한 실제 거리와 normalBias(m),
+shadow 폭/해상도를 함께 확인한다. SSAO 반경과 FXAA 혼합을 RGB 색 보정으로 대신하지 않는다.
+Deferred base와 모든 source cohort CSO를 함께 재컴파일한 뒤 실제 CShader 로더와 pixel 회귀로 확인한다.
+
+공용 native family의 긴 else-if chain은 family별 lambda로 stack을 분리해도 MSVC C1061 중첩
+한계를 넘을 수 있다. 유일한 nonzero program을 설정하는 첫 일치 계약을 확인해 guarded sibling
+분기를 생성하고 마지막 unknown-family guard와 공통 validation/commit을 유지한다. header만
+바꾸면 정본 installer와 named-vector/face reader의 분기 경계 탐색이 깨지므로 같이 수정한다.
+135개 family의 본문 보존과 실제 실패 시 result 보존 검사는
+[기본 의상 결과](09-22/2026-09-22_CHARACTER_EQUIPMENT_MATERIAL_RESTORE_RESULT.md)의 G09에 있다.
+
+### Source trail 준비와 All Effects 편집의 실제 소비 경계
+
+native animationTrail의 마지막 baked sample은 notify window보다 짧을 수 있다. document-owned
+projection에서는 clamp=min(notify lifetime, sourceEnd)를 검증한다. Stage_Document만 직접 호출해
+성공한 것은 제품 입장 준비 성공이 아니다. Create_DocumentOwnedRuntimeProjection부터 검사하고
+일반 저작 trail의 duration equality, sourceRecipe.enabled 금지와 잘못된 clamp 거부는 유지한다.
+
+preview clone은 Server snapshot이 없어도 presentation stance를 가진다. preview 종료 복원에
+network stance getter를 쓰지 않으며 실제 scene Character는 편집 대상에서 제외한다. 다른 class의
+animevents 실패로 전체 All Effects의 Product cues를 비우지 않는다. 실패 class만 보존하고 Saved
+document 편집은 Product enrichment와 분리한다. `Document validation passed`는 오류가 아니다.
+
+카메라 emitter의 source XY 화면 평면/-Z depth를 캐릭터 actor 전방 basis로 처리하면 near plane
+뒤나 화면 아래로 내려갈 수 있다. 해당 camera occurrence의 socket과 fixed-axis 추종만 교정하고
+원본 occurrence/time/scale는 보존한다. 원본 native camera 생성 코드를 확보하지 못한 adapter
+보정은 원본 코드 복원과 구분한다. 확대 요청은 실제 세 클립의 bone/mesh 최소높이를 확인해
+배율을 정하며, 과대한 임의 배율 때문에 생긴 지면 침범을 별도 가짜 본 보정곡선으로 덮지 않는다.
+
+### SourceCharacter engine lookup의0 대체와 역수
+
+원본 engine-owned BRDF sample이 미복구일 때0으로 반환하는 것만으로 안전하지 않다.
+Guardian110/111의 e56633f Base는 lookup.y의 역수 후 곱셈 때문에0*Inf가 최종RGB NaN으로
+전파됐다. shader identity와 원본 명령을 고정해 분모0만0기여로 처리하고 유효한lookup의 원본
+DXBC 일치를 확인한다. NaN 제거를 원본 LUT 복원으로 기록하지 않는다. scene cube가 연결돼도
+해당 shader의 color/rotation suffix CB rows가 실제 공급되는지 별도로 확인한다.
+
+### 건슬링어·슬레이어 기본 의상 source 연결
+
+CharacterCatalog에 본체/기본 장비 경로가 있어도 `modelMaterialOverrides`가 없으면 기존 단순 재질로
+그려진다. 실제 WModel의 named slot과 원본 mesh의 Materials를 먼저 join한다. Slayer의
+`pc_wr_f_face_mi`처럼 basename이 `PC_WR_F_FACE`와 `PC_WBK_F_00.mat_high`에 모두 있는 경우
+실제 mesh의 package 참조를 사용한다. 머리·눈 native family를 연결할 때 원본 UV1/UV2도 필요하며,
+같은 position/UV0의 hair seam은 원본 triangle corner로 구분한다. 임의 첫 vertex나 UV0 복제는 금지한다.
+
+MIC native texture expression 수는 referenced texture table 수보다 클 수 있다. 여러 expression이
+같은 source texture를 참조하기 때문이다. expression 개수로 table을 거절하지 말고 실제 fallback의
+referencedTextureIndex 범위와 object identity를 검사한다. 기본 두 의상31재질의 설치·검증 경계는
+`09-22/2026-09-22_CHARACTER_EQUIPMENT_MATERIAL_RESTORE_RESULT.md`를 따른다.
+
+### Character Composition의 Product source와 저장 freshness
+
+Character Product를 sequencer로 열 때 `.animevents`의 새 bytes만 baseline으로 잡고 이전에 cache한
+cue를 stage하면 다음 Save가 다른 도구의 새 cue를 지운다. baseline으로 읽은 동일 bytes를 parse하여
+stage하고, 기존 writer가 `Load_Events`로 다시 읽은 뒤에도 expected baseline을 비교한다. 저장된
+`.effectsequence`는 이전 Product의 배치일 수 있으므로 Product 선택에 자동 overlay하지 않는다.
+별도 배치 복원은 명시적인 Load Effect Sequence로 구분한다.
+
+`.animevents`는 source clip별 정본이다. 한 action이 같은 clip을 반복할 때 occurrence 한쪽의 cue만
+추가·삭제하면 runtime에서 모든 occurrence가 바뀐다. 겹치는 source window의 cue signature multiset을
+비교하여 누락·추가·TRS·policy 차이까지 거절하고, 같은 cue 편집을 적용하거나 별도 authored clip을 쓴다.
+서로 다른 source 범위는 그대로 보존한다. binding/cue의 여러 파일 저장 실패는 자기 변경만 baseline
+조건으로 rollback하며 다른 writer의 최신 저장본을 덮어쓰지 않는다.
+
+Composition의 cue 삭제·교체 범위를 previous+proposed binding 합집합으로 잡지 않는다. Animation 교체·삭제나
+trim 축소로 빠진 원래 clip/window의 cue는 다른 스킬에서도 소비할 수 있다. proposed source window만 갱신하고
+제거된 구간은 보존한다. 이전 binding은 rollback을 위해 유지하는 값이다.
+
+interaction의 explicit `effectCues.endMs`를 재열기 시 native clip 길이로 다시 합성하면 Save 후 길이가
+늘어난다. 원래 end가 없었던 기존 cue에만 duration을 보충하고, 유효한 CUE_END source end는 보존한다.
+
+### 쿠크 복합 투사체의 수명과 표시 이름
+
+공의 Action notify만 연결해 후속 Projectile과 death/timer 폭발을 빠뜨리지 않는다. 세 공의
+receiver event 이름과 particle-system occurrence를 분리하고 마지막 위치를 event가 전달하는지
+실제 Playback으로 확인한다. source 속도·높이는 원본 값이지만 저작 목적지는 프로젝트 값이다.
+Effect 수명이 clip 뒤까지 이어지면 Pattern duration을 보충하며 애니메이션 속도를 늘리지 않는다.
+
+리소스 표시 이름 `yellow-gaze`만으로 노란 경고라고 판단하지 않는다. source eye_01/eye_02,
+원본 색과 설치된 양안 bone basis를 확인한다. 파란 구체도 G/U variant와 alpha·SceneColor를
+대조한다. WModel의 raw cm 정점에 particle World만 적용한 크기는100배 오류가 날 수 있으므로
+CModel modelPreScale를 포함한다. synthetic anchor의 성공은 실제 모델 부착 성공이 아니다.
+
+나팔의 원형·방사 방향은 비슷한 asset 이름이나 등각 분할로 추정하지 않는다. Action의
+직접 notify와 SkillDecal/SkillEffect 방향을 대조한다. compact CEFParticleData의 검증된
+transform+40 int32 FRotator를 +28 float 벡터로 읽으면 회전이 모두0이 될 수 있다.
+disabled notify도 제외해야 한다. 원본 occurrence 회전과 leaf의 MeshRotation turn·TypeData
+pre-rotation을 구분하고 기존 좌표 변환을 한 번만 적용한다.
+
+### Alt V 중앙 큐브와 submesh 내부 skin island
+
+`altv.source.notify036.cube` 한 cue에는25개의 cube가 들어 있다. 한 submesh/하나의 material
+바인딩을 중앙 표면 한 개로 해석하면 주변에 캡처 이미지가 반복된다. 실제 mesh의 skin
+indices/weights를 세고 중앙 `b_cube_1_02`를 이름으로 resolve한다. 전체 출력색이나 alpha를
+마스킹하면 주변 aura/edge까지 사라지므로 frozen Color/Bloom의 capture RGB항만 한정한다.
+
+공용 skinned shader에 uniform을 추가하면 base와 모든 SourceGroup의 FX 변수 계약을 함께
+확인한다. FXC 실행 중 source가 바뀌면 이전 입력으로 만든 CSO의 수정 시각이 source보다
+늦을 수 있다. mtime만으로 최신이라고 판단하지 않고 입력·출력 기록과 실제 FX reflection을
+대조한다. 실행 중 compiler의 대상이 아닌 것으로 확인한 stale 생성물만 백업 후 재생성한다.
+
+### 선택 장비 source 재질과 native UV
+
+기본 캐릭터의 source material override는 EquipmentPresentationService의 단순 경로 로드에
+자동 적용되지 않는다. 선택 장비도 ActorCatalog의 MODEL_ASSET_LOAD_DESC를 소비해야 한다.
+머리·fur의 native PS가 추가 UV를 읽으면 원본 GPU-skin VS와 WModel submesh별 채널을 함께
+검사한다. 원본 position/UV0가 같은 seam은 normal·triangle corner로 확정하며 같은 geometry의
+`_old` mesh는 LookInfo가 가리킨 export로 구분한다. source에 없는 채널을 복사로 만들어 내지
+않는다. program7의 두 Base/Light two-tone 상수가0인 경우만 추가 UV 없이 정확한 원본 색이
+가능하며, 이후 그 분기를 활성화하는 변경은 같은 geometry에서 거절한다.
+
+
+### Character Select 간접광과 장면 전체 색 진단
+
+원본 PBR RNM 항을 albedo×lightmap만으로 축약하면 `(1-metallic)`과
+`(1-reflectionBRDF)` 에너지 분배가 빠진다. 원본 PS 수식과 같은 입력으로 비교하고,
+미연결 SH/hemisphere 계수는 이 확인된 수식 누락과 구분한다. 맵은 SH 곱을 생략하고
+일부 native character는0 상수를 소비하므로 같은 환경 큐브를 바인딩해도 간접광은 같지 않다.
+
+전체 장면의 황색 편향은 material debug만으로 확정하지 않는다. 최종 SceneHDR, tone 뒤,
+grading 뒤를 같은 카메라에서 비교한다. 중립 LUT·감마 검사 통과는 조명/표면 입력까지
+원본 동등함을 뜻하지 않는다. Benchmark의 수치는 실제 바인딩/설정이며 GPU 픽셀 샘플은
+아니다. per-instance RNM 값이 없는 CPU snapshot을 RNM 미연결로 오판하지 않는다.
+
+
+### 보이지 않는 환경 효과와 광원을 줄일 때의 범위 계약
+
+이펙트 중심점만 frustum 밖이라고 simulation을 중단하지 않는다. 최종 camera와 전체 sprite
+분포·수명·이동·크기를 감싸는 bound가 필요하다. 현재 정적 SOURCE_LOOP bound는 stationary
+root와 rigid camera를 전제로 하며 scaled/sheared camera, 미지원 source module, mesh/trail/light/
+screen/control/외부 anchor는 기존 경로를 유지한다. source size는 spawn 순서와 update 순서를
+각각 포함해야 하고, 재질 PS 분기 수만으로 sprite VS의 WPO 존재를 추정하지 않는다.
+
+LEVEL_ACTIVE 환경 표현의 offscreen pause는 입자·RNG 보존과 visual clock 정지다. 숨은 wall time을
+몰아서 replay하거나 연속 재생과 같은 위상이라고 설명하지 않는다. 기존 draw distance의 Stop/
+respawn은 별도다. externally sampled 이동 표식과 Server trigger·combat 시간은 계속 기존 계약을
+사용한다. explicit render submission을 켠 대상은 최종 camera 경계에서 정확히 한 번만 제출한다.
+
+화면 밖 POINT/SPOT도 영향 sphere가 화면 안 receiver를 비추면 남긴다. deferred 제출에서 생략한
+광원을 원본 transient 목록이나 forward consumer에서 지우지 않는다. shadow caster에는 camera
+culling 결과를 전파하지 않는다. 실제 적용과 검사는
+[공통 성능 결과](09-22/2026-09-22_BERN_RELEASE_PROFILER_OPTIMIZATION_RESULT.md)의 G07을 따른다.
+
+### 클래스 선택의 검은 팔각 바닥과 소개 씬
+
+SL00의11개 floor/star 쌍은 정지 캐릭터 미리보기 자리이며 원본 diffuse brightness0은 정상 입력이다.
+밝은 중앙 무대 장식이나 class 소개 배경으로 잘못 해석해 일괄 복원하지 않는다. 사용자가 이동한
+배치와 원본 좌표를 구분한다. GuardianDragonHuman의 짧은 customization zoom과
+SCENE01 ChangeClass9의 Matinee75→74/SL10 소개 연출은 다른 경로다.
+
+카메라 반복과 particle 재시작도 같은 동작이 아니다. source infinite emitter와 finite burst의
+Lifetime0을 구분하고, 입자의 원본 나이와 owner 종료 창을 유지한다. 같은 이름의 skill FX보다
+해당 PSC의 실제 template·redirector를 먼저 대조한다. 조사·후보·설치·화면 검증의 경계는
+[가디언 선택 연출 결과](09-22/2026-09-22_GUARDIAN_CLASS_SELECTION_CINEMATIC_IMPLEMENTATION_RESULT.md)를 따른다.
+
+### 클래스 선택 연출의 연속 재생과 도구 소유권
+
+- 원본 SL00의 11개 floor/star를 따로 옮겼다면 한 개 공통 offset으로 카메라를 옮기지 않는다.
+  소개 연출 SL10의 원본 WORLD 좌표는 별도이며, 무대를 이동할 때에는 배우·배경·camera·FX·light
+  전체에 같은 source/destination frame 변환을 적용해야 한다.
+- intro에서 loop로 한 번 전환한 뒤 WorldSequence player와 PSC handle을 재사용한다.
+  particle source age는 camera loop clock과 별도로 누적한다. Lifetime0 burst의 종료 horizon을
+  현재 끝점과 같게 두면 float 반올림으로 장시간 반복 후 사라질 수 있으므로 다음 구간까지 연장한다.
+- Workbench가 정리할 재생은 Level 포인터만으로 구분하지 않는다. 외부 Play/Seek마다 새 token을
+  발급하고 내부 loop는 유지한다. slider float 끝점은 double duration을 초과할 수 있어 clamp한다.
+  customization·전환·연결 상태의 재생 조건은 Level과 Workbench가 동일한 gate를 소비한다.
+
+- WModel의 Python read/finite 검사만으로 설치 가능한 animation donor라고 판단하지 않는다.
+  Engine WANM은 clip당 총 TRS key 1,000,000개를 제한한다. 긴 컷신을 모든 본에60Hz로 bake하면
+  정상 정지 포즈도 이 상한을 넘을 수 있다. 같은 packed-float 값의 연속 구간 내부 키만 제거하고
+  구간 양끝·시간·bone palette를 보존한 뒤 실제 CModel Create/Attach/Clone으로 admission한다.
+
+- native map RNM program을 늘릴 때 MapAssetCatalog/publisher와 CModel override 검증만 바꾸지
+  않는다. CMaterial::Initialize의 supportsBaked와 Bind_SourceCharacterInputs 소비자까지 같은
+  program 범위로 맞추고, 실제 Loader의 CModel/Create_MaterialVariant로 설치 모델을 검사한다.
+  catalog/placement parse 및 캐릭터 donor 검증 성공은 배경 모델 admission을 보증하지 않는다.
+
+- WorldSequence의 Area 준비에서 optional Deploy 두 문서를 무조건 Load_Default하지 않는다.
+  두 파일 모두 없으면 빈 대상, 한쪽 누락·손상은 실패이며 실제 DEPLOY_PLACEMENT binding은
+  대상 검증을 유지한다. 정상 아레나 입장과 모델 admission 성공은 연출 Initialize/Play 성공의
+  증거가 아니다. 준비 실패 이유를 Level에서 보존하여 Workbench에 전달한다.
+
+### V2 ScreenPost PNG의 존재와 실제 decoder를 구분한다
+
+V2 `Acquire_Texture`는 DDS와 WIC(PNG 등)를 확장자로 분기하고 두 경로에 같은 FORCE/IGNORE_SRGB 정책을 적용한다. 정상 PNG를 DDS 전용 loader에 전달하면 파일 존재 검사를 통과해도 prewarm은 실패한다. 확장자를 DDS로 바꾸거나 원본 PNG를 변환해 로더 누락을 숨기지 않는다. 설치 파일의 실제 decode·SRV 형식·ScreenPost alpha coverage admission까지 확인하며 JSON/CPU 재생 성공으로 대체하지 않는다. 구체적인 수정과 검증은 [카드비·DJ 결과](09-22/2026-09-22_KOUKU_CARDRAIN_DJ_EFFECT_RESULT.md)를 따른다.
+
+### 병렬 native material ID 발급 뒤 병합
+
+충돌 없는 숫자처럼 보여도 양쪽 branch가 같은 native program ID를 다른 material/PS/layout에 발급했는지 base와 양 parent를 비교한다. 다른 의미라면 한 cohort에 미사용 ID를 배정하고 authored runtimeShaderProfileId, C++ table, group HLSLI 함수, dispatch, selected switch를 함께 옮긴다. 같은 숫자의 main 효과까지 전역 치환하지 않으며 기존 material 식·texture·TRS와 지원 group 범위를 유지한다. PR449의 Guardian/Esther 충돌과 protocol104 결합 검증은 [병합 결과](09-22/2026-09-22_PR449_MAIN_MERGE_RESULT.md)에 기록한다.

@@ -3,7 +3,7 @@
   "formatVersion": 1,
   "sequencerId": "arena.sequencer.kakulsaydon",
   "sourceRevision": 2,
-  "compositionRevision": "eb84ffd62da1ca59e36b8db94ddca967962e4da0eb5d7db6b61b0e14fb091910",
+  "compositionRevision": "a9bb15ff3f5a0e0b39ae20cf29bf57b408e6770924e4501ac37335ed0d3cb23c",
   "status": "SHADOW",
   "runtimeEligible": false,
   "displayName": "KoukuSaydon Arena Sequencer",
@@ -13,7 +13,7 @@
   "sourceManifest": {
     "schema": "lostark.composition-source-manifest",
     "formatVersion": 1,
-    "sourceManifestId": "eb84ffd62da1ca59e36b8db94ddca967962e4da0eb5d7db6b61b0e14fb091910",
+    "sourceManifestId": "a9bb15ff3f5a0e0b39ae20cf29bf57b408e6770924e4501ac37335ed0d3cb23c",
     "files": [
       {
         "path": "Data/Compositions/Bosses/KoukuSaydonGate1.bosscomposition.json",
@@ -37,8 +37,8 @@
       },
       {
         "path": "Data/Rendering/Authored/RenderingProfiles.json",
-        "sha256": "34471d54fd24512a47a2c1956d2b19fc4b76c688cd61809d8283bcef377ca4ea",
-        "bytes": 120347
+        "sha256": "7e009baea1d15984dc7c862050351f7e01e6dbc8a92cd1a4d4f65cc236bb186a",
+        "bytes": 120357
       }
     ]
   },

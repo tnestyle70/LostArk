@@ -1,0 +1,16 @@
+{
+  "schema": "lostark.npc-action-effect-cues",
+  "formatVersion": 1,
+  "archetypeId": "NPC_59620",
+  "cues": [
+    {
+      "cueId": "npc_59620.npc_sk_magicshield",
+      "effectAssetId": "effect.esther.inanna.cameo.npc_sk_magicshield.full.restore",
+      "clip": "npc_sk_magicshield",
+      "startMs": 0,
+      "durationMs": 47000,
+      "bone": "b_effectroot",
+      "followBone": false
+    }
+  ]
+}

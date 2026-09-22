@@ -172,6 +172,14 @@ namespace LostArk::Server
 		admit it, and Enforce_VehicleRidingState clears it before the snapshot
 		whenever the player can no longer ride. */
 		LostArk::Shared::VEHICLE_ID iVehicleId = LostArk::Shared::INVALID_VEHICLE_ID;
+		LostArk::Shared::VEHICLE_FLIGHT_PHASE eVehicleFlightPhase = LostArk::Shared::VEHICLE_FLIGHT_PHASE::GROUNDED;
+		std::uint32_t iVehicleFlightPhaseStartTick = 0u;
+		float fVehicleFlightPhaseSeconds = 0.f;
+		float fVehicleFlightGroundY = 0.f;
+		float fVehicleFlightStartHeight = 0.f;
+		float fVehicleFlightInputX = 0.f, fVehicleFlightInputZ = 0.f, fVehicleFlightInputY = 0.f;
+		float fVehicleFlightInputAge = 0.f;
+		float fVehicleFlightVelocityX = 0.f, fVehicleFlightVelocityZ = 0.f, fVehicleFlightVelocityY = 0.f;
 		/* Worn honor title (cosmetic); admitted from the honor title bootstrap only and
 		carried through world transfers. */
 		LostArk::Shared::HONOR_TITLE_ID iHonorTitleId = LostArk::Shared::INVALID_HONOR_TITLE_ID;

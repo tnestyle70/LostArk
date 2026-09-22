@@ -339,7 +339,9 @@ public:
 	static constexpr uint32_t MAX_TEMPLATE_COUNT = 512;
 	static constexpr uint32_t MAX_INSTANCE_COUNT = 2048;
 	static constexpr uint32_t MAX_TRACK_COUNT = 64;
-	static constexpr uint32_t MAX_KEY_COUNT = 256;
+	// Dense source Matinee curves retain their measured transform tolerance.
+	// The existing 16 MiB document and aggregate track budgets still apply.
+	static constexpr uint32_t MAX_KEY_COUNT = 4096;
 	static constexpr uint32_t MAX_DURATION_MS = 600000;
 
 public:

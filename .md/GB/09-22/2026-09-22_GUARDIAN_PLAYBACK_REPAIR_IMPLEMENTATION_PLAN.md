@@ -1,5 +1,7 @@
 # Guardian 재생·화신화·ALT V 수정 계획
 
+G01~G07은 앞선 구현의 계획 기록이다. 후속 사용자 지정의 현재 범위와 우선순위는 G08~G10을 따른다.
+
 ## G00. 현재 기준과 변경 경계
 
 2026-09-22 사용자가 첨부한 10개 이미지는 원작/현재 표시 참고다. 사용자 요청은 Monster 저작 목록과 피해 전용 collider, Gate3 오라/10초 입장, Guardian 이펙트/재생 복원이다. Monster와 Gate3, particle/native material은 별도 대응 PLAN/RESULT에서 담당하고 이 문서는 Guardian 재생 제어를 소유한다.
@@ -41,6 +43,20 @@ skillbindings의 현재 schema는 skillId와 clips만 허용하므로 새 source
 
 기존 Effect ModelCue에 optional `castsShadow`(누락 시 false)를 추가한다. codec parse/save/validation과 prepared resource 비교에 연결하고 원본49420 용의 5개 material-part cue만 true로 설정한다. CEffectObject는 기존 SHADOW group에 제출하고 CEffectDocumentRenderer는 surface와 동일 Sample_ModelCuePose, source material parameter tracks, CModel bone/material을 사용해 깊이를 그린다. 기존 Shader_VtxAnimMeshBinary의15개 pass(0..14) 순서를 유지하면서 전용 shadow pass15를 끝에 추가한다. 이 pass는 동일 source coverage/dead dissolve 계산을 소비하며 기존 Character shadow pass1은 변경하지 않는다. 신규 C++ 파일은 없으며 프로젝트 등록도 필요 없다. codec roundtrip/old default/invalid input, 실제 pose 재사용과 변경 부분 컴파일, pass 순서와 shader compile을 확인하고 최종 화면 판정은 사용자가 한다.
 
-## G04. 일반 S 용머리 원본 재질
+## G07. 일반 S 용머리 원본 재질
 
 source49290의 SK_DDK_DRR_01 head/neck WModel은 기존 CModel model cue로 재생한다. 두 override 재질 *_st_mi_fx_dead의 정확한 GPU-skin BasePass/DirectionalLight shader와 texture8개를 추출하여 SourceCharacter native110/111로 추가한다. 원본 geometry slot *_st_mi와 notify override *_st_mi_fx_dead의 대응을 명시하고 texture/object provenance를 보존한다. 기존 shader function과 material family는 변경하지 않으며 새 프로그램은 기존 CMaterial 소비 경로를 사용한다.
+
+## G08. 사용자 화면 재검토 후 편집·스킬 연결
+
+편집용 Character clone의 presentation stance와 Server replicated stance 조회를 분리한다. Saved Unified Effect도 기존 Element tree를 열며, 다른 class의 enrichment 실패는 해당 class의 실패로 격리한다. Guardian/Dimension LMB 및 Guardian Q/D의 실제 binding과 원본 animationTrailBakedEdgeV1의 GPU consumer를 대조한다. 일반 S는 원본 붉은 Spinning Flame 즉시시전으로, 이전 일반 S의 용 presentation은 변신 S로 옮긴다. A 방패의 source 단위, Z A 방향, BA2/3·R2 검격, ALT V decal/모델 방향·높이·후속 발생은 개별 occurrence에서 교정한다. live authoring은 후보 검증을 끝낸 뒤 최신 저장본 기준 필드 병합한다.
+
+## G09. Character Select 간접광·그림자와 Workbench
+
+PBR map의 RNM/환경 반사와 실제 emissive를 기존 MRT의 marker3용 빈 geometry RGB로 분리한다. Deferred combine에서 이 간접광에 SSAO를 적용하며 진짜 emissive는 보존한다. 현재 캐시된 static-only shadow depth와 final depth를 비교해 정적 baked shadow를 다시 어둡게 하지 않고 움직이는 caster만 판별한다. optional shadow.dynamicBakedStrength(0~1, 기존 기본값0)는 이 PBR 간접광의 프로젝트 modulated shadow 강도이며 원본 GI 복원으로 부르지 않는다. static 캐시가 유효하지 않으면 이 보정만 생략한다. 새 texture allocation이나 draw pass 없이 기존 캐시에 SRV를 추가한다.
+
+Character Select profile 후보는 큰 depth/normal bias를 줄이고 SSAO 거리와 그림자 강도를 조정한다. 사용자의 범위 변경에 따라 맵 재질·배치 조명·의상 재질 복원은 별도 세션으로 넘기며 이 변경에서 수정하지 않는다. 색은 source material tint를 임의 탈색하지 않고 직접광·구운 조명·추가 조명을 구분해 점검한다. Workbench에는 metre 단위, 실제 bias 거리, direct/indirect/emission, Bloom/FXAA의 역할과 source tone에서 Hable white point가 미사용임을 설명한다. GI·Nanite 검토는 현재 DX11 renderer 및 추출된 UE3 RNM/IBL과 구분해 결과 문서에 남긴다.
+
+## G10. 쿠크세이튼 진입과 통합 검증
+
+사용자 로그에서 Guardian의 쿠크세이튼 입장은 Server 승인 뒤 Client 이펙트 준비에서 실패했다. 실패한 source AnimationTrail의 실제 runtime projection과 Stage 경로를 수정하고 Product 57개 이펙트를 같은 입장 경계로 재검증한다. 검증을 생략하거나 부분 준비로 입장시키는 우회는 넣지 않는다. 장비 재질 조사와 미완성 consumer 변경은 별도 세션 인계 자료로 분리하며 이 작업의 재질 복원 완료로 기록하지 않는다. 변경 JSON/XML parse, 실패 시 기존 상태 보존, focused source/playback/shader 검사와 Product Debug 증분 컴파일·링크·배포를 수행한다. Client/UI는 실행하지 않는다.

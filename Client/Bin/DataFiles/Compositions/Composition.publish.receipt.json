@@ -4,7 +4,7 @@
   "sourceManifest": {
     "schema": "lostark.composition-source-manifest",
     "formatVersion": 1,
-    "sourceManifestId": "fab8b641b5e9c607745e2d54695b45f812240d813f1b8d1b7b060f6ca968d239",
+    "sourceManifestId": "1e4f285e9c33e8c3aba78d5570a33e03a7dd04eee2c908b25f1eb7f50340e5d2",
     "files": [
       {
         "path": "Data/Animation/Authored/KoukuSaydon/MN_RPCT_05.actionbindings.json",
@@ -453,8 +453,8 @@
       },
       {
         "path": "Data/Effects/EffectCatalog.json",
-        "sha256": "3867f4fc326946d63c329311c032a8a1f2aa6addf80b0e9de149efc0ab7642b4",
-        "bytes": 331076
+        "sha256": "010a12a4488177531e9e0e6b62866d1678eee971c53471f9b9b1f08329940caa",
+        "bytes": 335422
       },
       {
         "path": "Data/Effects/V2/Authored/bingo.bomb.mark_1.effectv2.json",
@@ -2083,13 +2083,13 @@
       },
       {
         "path": "Data/Rendering/Authored/RenderingProfiles.json",
-        "sha256": "34471d54fd24512a47a2c1956d2b19fc4b76c688cd61809d8283bcef377ca4ea",
-        "bytes": 120347
+        "sha256": "7e009baea1d15984dc7c862050351f7e01e6dbc8a92cd1a4d4f65cc236bb186a",
+        "bytes": 120357
       },
       {
         "path": "Data/Sound/CharacterSoundCatalog.json",
-        "sha256": "edf36f66f6919dfd0ca06e5e852ba44430158f01d1e66c83ba0d45e29712ca39",
-        "bytes": 762650
+        "sha256": "48a5f2d05dfc25ce134749fa0c8dd017b237bbef2c86669e551da321496b2288",
+        "bytes": 764244
       },
       {
         "path": "Data/Valtan/Valtan.combatobjects.json",
@@ -2126,12 +2126,12 @@
     },
     {
       "path": "Bosses/Valtan.bosscomposition.json",
-      "sha256": "cbcbeeb6318925f97f0542affb3cdda4c90789e75614c2c60beb9aec789118ae",
+      "sha256": "d49e63362e26c580f7d7b0a35129aad0ec2cef23c3894571a3fb00f265cc9e09",
       "bytes": 3807536
     },
     {
       "path": "Sequences/KoukuSaydonArena.sequencer.json",
-      "sha256": "28a016c989be6247043b2fffe672b411dc505725cae472c8317e3ad9965c856f",
+      "sha256": "9af804025383b21ee6961a392080756b1d95a3b6d38faa9ce9787099b0f8c019",
       "bytes": 2152
     },
     {

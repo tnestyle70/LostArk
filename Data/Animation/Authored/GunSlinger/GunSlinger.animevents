@@ -1,4 +1,4 @@
-LOSTARK_ANIM_EVENTS 3 "GunSlinger" 2327
+LOSTARK_ANIM_EVENTS 3 "GunSlinger" 2326
 "gdh_att_battle_1_01" CANCEL startms=0 endms=324 payload="[선스]" src=orig
 "gdh_att_battle_1_01" CANCEL startms=0 endms=418 payload="[선이]" src=orig
 "gdh_att_battle_1_01" SOUND startms=0 payload="PC_DEVILHUNTER_F.PC_DevilHunter_F_Att_Pistol1_1" src=orig

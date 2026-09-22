@@ -93,8 +93,10 @@ namespace
 	}
 
 	void RecordSurfaceBinding(const std::string& assetId, const std::string& materialName,
-		Engine::MODEL_SURFACE_FAMILY family, uint32_t program)
+		const Engine::MODEL_SURFACE_PARAMETERS& surface, uint32_t program,
+		const Engine::MODEL_BAKED_LIGHTING_INSTANCE& lighting)
 	{
+		const auto family = surface.family;
 		const uint64_t now = GetTickCount64();
 		if (now >= g_SurfaceBindingRequestedUntilMs.load(std::memory_order_relaxed))
 			return;
@@ -111,6 +113,8 @@ namespace
 			existing->family = family;
 			existing->activeProgram = program;
 			existing->lastSeenTickMs = now;
+			existing->surface = surface;
+			existing->lighting = lighting;
 			return;
 		}
 		if (g_SurfaceBindings.size() >= 32u)
@@ -121,7 +125,7 @@ namespace
 					return left.lastSeenTickMs < right.lastSeenTickMs;
 				}));
 		}
-		g_SurfaceBindings.push_back({ assetId, materialName, family, program, now });
+		g_SurfaceBindings.push_back({ assetId, materialName, family, program, now, surface, lighting });
 	}
 
 	std::mutex g_DiagnosticMutex;
@@ -846,7 +850,8 @@ HRESULT Client::CMapAssetRenderUtils::Bind_Material(
 	const MAP_ASSET_RENDER_PROFILE& profile,
 	f32_t elapsedTime, const ComPtr<ID3D11ShaderResourceView>& diffuseOverride,
 	const std::string& diagnosticAssetId,
-    const Engine::MODEL_BAKED_LIGHTING_INSTANCE* bakedLighting, const float4_t* worldCullSphere)
+    const Engine::MODEL_BAKED_LIGHTING_INSTANCE* bakedLighting, const float4_t* worldCullSphere,
+    MAP_MATERIAL_BINDING_MODE bindingMode)
 {
 	if (nullptr == model ||
 		nullptr == shader ||
@@ -867,11 +872,14 @@ HRESULT Client::CMapAssetRenderUtils::Bind_Material(
 	// diffuse SRV skips CMaterial's reset, so a preceding source character draw
 	// must not select its program (or leave its dye/hit tint) for this mesh.
 	// The instanced map shader omits these optional character-only variables.
-	const float4_t identityEmissive(1.f, 1.f, 1.f, 1.f);
-	for (const char_t* name : { "g_SourceCharacterProgram", "g_SourceCharacterRow",
-		"g_HasDyeMask", "g_HasFullSurfaceEmissiveOverride" })
-		shader->Bind_RawValue(name, &noSurfaceEmissive, sizeof(noSurfaceEmissive));
-	shader->Bind_RawValue("g_EmissiveColor", &identityEmissive, sizeof(identityEmissive));
+	if (bindingMode == MAP_MATERIAL_BINDING_MODE::OBJECT)
+	{
+		const float4_t identityEmissive(1.f, 1.f, 1.f, 1.f);
+		for (const char_t* name : { "g_SourceCharacterProgram", "g_SourceCharacterRow",
+			"g_HasDyeMask", "g_HasFullSurfaceEmissiveOverride" })
+			shader->Bind_RawValue(name, &noSurfaceEmissive, sizeof(noSurfaceEmissive));
+		shader->Bind_RawValue("g_EmissiveColor", &identityEmissive, sizeof(identityEmissive));
+	}
 
 	const auto* nativeSurface = model->Get_MaterialSurface(meshIndex);
     const uint32_t sourceBgUnlit = nativeSurface && nativeSurface->sourceBgUnlit &&
@@ -1026,7 +1034,8 @@ HRESULT Client::CMapAssetRenderUtils::Bind_Material(
     const auto& shadowLighting = bakedLighting ? *bakedLighting : emptyShadowLighting;
     const uint32_t hasStaticShadow = nativeSurface && nativeSurface->hasStaticShadow ? 1u : 0u;
     if (FAILED(shader->Bind_RawValue("g_HasStaticShadow", &hasStaticShadow, sizeof(hasStaticShadow))) ||
-        FAILED(shader->Bind_RawValue("g_StaticShadowScaleBias", &shadowLighting.shadowScaleBias, sizeof(shadowLighting.shadowScaleBias))) ||
+        (bindingMode == MAP_MATERIAL_BINDING_MODE::OBJECT &&
+         FAILED(shader->Bind_RawValue("g_StaticShadowScaleBias", &shadowLighting.shadowScaleBias, sizeof(shadowLighting.shadowScaleBias)))) ||
         (hasStaticShadow && FAILED(model->Bind_SurfaceLighting(shader, meshIndex)))) return E_FAIL;
 
     if (nativeSurface && nativeSurface->family == Engine::MODEL_SURFACE_FAMILY::SOURCE_CHARACTER)
@@ -1035,9 +1044,9 @@ HRESULT Client::CMapAssetRenderUtils::Bind_Material(
         if (FAILED(shader->Bind_RawValue("g_SurfaceProgram", &noMapSurface, sizeof(noMapSurface))) ||
             FAILED(shader->Bind_RawValue("g_HasSurfaceDefinition", &noMapSurface, sizeof(noMapSurface)))) return E_FAIL;
         const uint32_t sourceProgram = nativeSurface->sourceCharacter.program;
-        const bool forwardBakedProgram = sourceProgram >= 40u && sourceProgram <= 63u &&
-            sourceProgram != 47u && sourceProgram != 53u && sourceProgram != 55u;
-        if (sourceProgram >= 80u && sourceProgram <= 83u)
+        const bool forwardBakedProgram = (sourceProgram >= 40u && sourceProgram <= 63u &&
+            sourceProgram != 47u && sourceProgram != 53u && sourceProgram != 55u) || sourceProgram == 209u;
+        if ((sourceProgram >= 80u && sourceProgram <= 83u) || sourceProgram == 210u)
         {
             const Engine::MODEL_BAKED_LIGHTING_INSTANCE emptyLighting{};
             const auto& instanceLighting = bakedLighting ? *bakedLighting : emptyLighting;
@@ -1045,7 +1054,7 @@ HRESULT Client::CMapAssetRenderUtils::Bind_Material(
                 FAILED(shader->Bind_RawValue("g_LightmapAverageScale", &instanceLighting.averageScale, sizeof(instanceLighting.averageScale))) ||
                 FAILED(shader->Bind_RawValue("g_LightmapDirectionalScale", &instanceLighting.directionalScale, sizeof(instanceLighting.directionalScale)))) return E_FAIL;
         }
-        if ((sourceProgram >= 33u && sourceProgram <= 63u) || sourceProgram == 65u)
+        if ((sourceProgram >= 33u && sourceProgram <= 63u) || sourceProgram == 65u || sourceProgram == 209u)
         {
             float4_t ambient(0.f, 0.f, 0.f, 1.f);
             for (const auto& light : CGameInstance::Get().Get_SceneLights())
@@ -1062,9 +1071,9 @@ HRESULT Client::CMapAssetRenderUtils::Bind_Material(
                 FAILED(CGameInstance::Get().Bind_RT_SRV(TEXT("Target_EffectSceneColor"), shader,
                     "g_SourceMapSceneColor"))) return E_FAIL;
         }
-        if (sourceProgram >= 38u && sourceProgram <= 63u &&
+        if (((sourceProgram >= 38u && sourceProgram <= 63u) || sourceProgram == 209u) &&
             FAILED(BindForwardSceneLights(shader, forwardBakedProgram && nativeSurface->hasBakedLighting && bakedLighting, worldCullSphere))) return E_FAIL;
-        if (sourceProgram >= 40u && sourceProgram <= 63u)
+        if ((sourceProgram >= 40u && sourceProgram <= 63u) || sourceProgram == 209u)
         {
             const uint32_t hasBaked = forwardBakedProgram && nativeSurface->hasBakedLighting && bakedLighting ? 1u : 0u;
             const Engine::MODEL_BAKED_LIGHTING_INSTANCE emptyLighting{};
@@ -1086,6 +1095,11 @@ HRESULT Client::CMapAssetRenderUtils::Bind_Material(
 	const uint32_t program = hasDefinition && settings.bUseSourceMaterials ?
 		static_cast<uint32_t>(surface->family) : 0u;
 	const uint32_t debugView = static_cast<uint32_t>(settings.eDebugView);
+    const bool pbrComparisonActive = settings.MapPBR.Is_Active(Engine::CGameInstance::Get().Get_CurrentLevelID());
+    const float4_t pbrContributions = pbrComparisonActive ? settings.MapPBR.vContributionScale : float4_t(1.f, 1.f, 1.f, 1.f);
+    const float4_t pbrParameters = pbrComparisonActive ? settings.MapPBR.vSurfaceParameters : float4_t(1.f, 0.f, 0.f, 0.f);
+    if (FAILED(shader->Bind_RawValue("g_MapPBRContributionScale", &pbrContributions, sizeof(pbrContributions))) ||
+        FAILED(shader->Bind_RawValue("g_MapPBRDiagnosticParameters", &pbrParameters, sizeof(pbrParameters)))) return E_FAIL;
 	// Bind last: the legacy diffuse binder resets source programs on shared shaders.
 	if (FAILED(shader->Bind_RawValue("g_SurfaceProgram", &program, sizeof(program))) ||
 		FAILED(shader->Bind_RawValue("g_HasSurfaceDefinition", &hasSurface, sizeof(hasSurface))) ||
@@ -1098,9 +1112,10 @@ HRESULT Client::CMapAssetRenderUtils::Bind_Material(
     if (FAILED(shader->Bind_RawValue("g_HasBakedLighting", &hasBaked, sizeof(hasBaked))) ||
         FAILED(shader->Bind_RawValue("g_HasEnvironmentCube", &hasEnvironment, sizeof(hasEnvironment))) ||
         FAILED(shader->Bind_RawValue("g_HasEnvironmentBRDFLookup", &hasEnvironment, sizeof(hasEnvironment))) ||
-        FAILED(shader->Bind_RawValue("g_LightmapScaleBias", &lighting.scaleBias, sizeof(lighting.scaleBias))) ||
+        (bindingMode == MAP_MATERIAL_BINDING_MODE::OBJECT &&
+        (FAILED(shader->Bind_RawValue("g_LightmapScaleBias", &lighting.scaleBias, sizeof(lighting.scaleBias))) ||
         FAILED(shader->Bind_RawValue("g_LightmapAverageScale", &lighting.averageScale, sizeof(lighting.averageScale))) ||
-        FAILED(shader->Bind_RawValue("g_LightmapDirectionalScale", &lighting.directionalScale, sizeof(lighting.directionalScale)))) return E_FAIL;
+        FAILED(shader->Bind_RawValue("g_LightmapDirectionalScale", &lighting.directionalScale, sizeof(lighting.directionalScale)))))) return E_FAIL;
     // A static-shadow bind above already supplies this material's RNM and environment SRVs.
     // Reuse only within this call; sibling materials share the Effect and may replace them.
     if ((hasBaked || hasEnvironment) && !hasStaticShadow)
@@ -1113,7 +1128,7 @@ HRESULT Client::CMapAssetRenderUtils::Bind_Material(
 	const auto recordBinding = [&]()
 	{
 		if (hasDefinition && !diagnosticAssetId.empty())
-			RecordSurfaceBinding(diagnosticAssetId, model->Get_MaterialName(meshIndex), surface->family, program);
+			RecordSurfaceBinding(diagnosticAssetId, model->Get_MaterialName(meshIndex), *surface, program, lighting);
 	};
 	if (program == 0u)
 	{

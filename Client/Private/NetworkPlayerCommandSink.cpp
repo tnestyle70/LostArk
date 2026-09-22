@@ -162,6 +162,12 @@ bool Client::CNetworkPlayerCommandSink::Consume_DebugKoukuHudModeResult(
  return CNetworkManager::Get().Try_Consume_DebugKoukuHudModeResult(result);
 }
 
+bool Client::CNetworkPlayerCommandSink::Request_VehicleFlightInput(
+    std::uint32_t sequence, float x, float z, float vertical)
+{
+    return CNetworkManager::Get().Send_VehicleFlightInput(sequence, x, z, vertical);
+}
+
 bool Client::CNetworkPlayerCommandSink::Request_MoveGoal(
 	std::uint32_t clientSequence,
 	float goalX,
@@ -246,6 +252,16 @@ bool Client::CNetworkPlayerCommandSink::Request_EstherSkill(
 {
 	return CNetworkManager::Get().Send_EstherSkill(
 		clientSequence, slotIndex, aimX, aimZ);
+}
+
+bool Client::CNetworkPlayerCommandSink::Request_DebugUseEsther(
+	const std::uint32_t requestSequence,
+	const LostArk::Shared::ESTHER_ID esther,
+	const float aimX,
+	const float aimZ)
+{
+	return CNetworkManager::Get().Send_DebugUseEsther(
+		requestSequence, esther, aimX, aimZ);
 }
 
 bool Client::CNetworkPlayerCommandSink::Request_UseSquareHole(

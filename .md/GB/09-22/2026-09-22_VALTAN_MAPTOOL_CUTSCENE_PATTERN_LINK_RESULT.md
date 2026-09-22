@@ -168,6 +168,16 @@ Map Tool Camera의 대상 5개 연출은 모두 기존 Action Workbench Boss 패
 
 ## G20. 전투 게시 실패 수정 및 70개 순서 게시 완료
 
+### PR #450 main 충돌 해결 (2026-09-23)
+
+- origin/main aec0af78 병합. gotchas의 양쪽 항목 모두 보존.
+- Gameplay.bootstrap은 ours/theirs 선택 없이 병합된 source로 Server owner 정본 게시를 다시 실행했다. 최신 쿠크 sourceRevision 2198, 96 product patterns/505 stages와 발탄 70개 순서를 함께 반영.
+- Server owner 전체 게시 PASS, Composition 게시 PASS. 70개 발탄 pattern ID와 69개 wait 전수 일치.
+- 새 참조 generation a193c5746a1c0a79bad1c2bef500f3a3247a48dc6e2478309b6c94dcca6437a5.json도 커밋에 포함.
+- 컷신 focused/실제 publisher loop 10case, presentation generation 13 tests PASS.
+- 실행 중 Client/Server/VS는 종료하지 않았으며 병합 후 C++ 재빌드는 하지 않았다. 이전 빌드 성공과 병합 후 빌드 미확인을 구분한다.
+- main에서 들어온 셰이더 네 파일의 기존 EOF 공백 경고는 무관한 변경으로 수정하지 않는다. PR 기준 origin/main 대비 diff를 별도 검사한다.
+
 이 절은 아래 23:48 게시 실패 기록의 후속 해결 상태다. 원인은 게시기의
 고정 지점 도약(LEAP_TO_ANCHOR) 시선 예외가 BOSS_XZ에만 적용된 것이었다.
 Client WORLD 소비는 절대좌표를 그대로 사용하므로 원본 Matinee lookAt을

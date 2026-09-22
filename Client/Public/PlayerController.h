@@ -532,6 +532,9 @@ namespace Client
 		/* Debug F1 "Normal Monster 1/2"; the Server re-summons the mapped wave group. */
 		bool_t Request_DebugResummonWaveMonsters(LostArk::Shared::WAVE_MONSTER_BUTTON button);
 		bool_t Request_DebugMadnessForm(LostArk::Shared::PLAYER_MADNESS_FORM form);
+		/* F1 Esther summon by name, aimed a few metres ahead of the local
+		character; the Server owns the cast, the gauge is untouched. */
+		bool_t Request_DebugUseEsther(LostArk::Shared::ESTHER_ID esther);
 		bool_t Is_DebugMadnessFormPending() const { return 0u != m_pendingDebugMadnessFormSequence; }
 		const std::string& Get_DebugMadnessFormStatus() const { return m_debugMadnessFormStatus; }
 		void Set_DebugMarioJumpEnabled(bool_t enabled) { m_debugMarioJumpEnabled = enabled; }
@@ -619,6 +622,7 @@ namespace Client
 		intent, and an R press while mounted into a dismount. The first catalog
 		vehicle with a rider pose for the class mounts. */
 		void Update_VehicleRiding(bool_t inputAllowed, bool_t useRawKeyboard);
+		void Update_VehicleFlightInput(bool_t inputAllowed, bool_t useRawKeyboard);
 		/* While mounted, Space/Q/W/E submit the ridden vehicle's skill on that slot
 		as an ordinary skill intent; the Server decides whether it starts. */
 		void Poll_VehicleSkillSlots(
@@ -664,6 +668,11 @@ namespace Client
 		bool_t m_wasVehicleKeyDown = false;
 		bool_t m_wasVehicleDismountKeyDown = false;
 		std::array<bool_t, 4> m_wasVehicleSkillKeyDown{};
+		std::chrono::steady_clock::time_point m_VehicleFlightInputSentAt{};
+		float3_t m_LastVehicleFlightInput{};
+		float3_t m_VehicleFlightDirection{};
+		int m_iVehicleFlightAxes = 0;
+		CPLAYER_CAPTURE_INPUT_GATE m_VehicleFlightInputGate;
 		std::uint32_t m_nextVehicleRidingSequence = 1u;
 		std::uint32_t m_pendingVehicleRidingSequence = 0u;
 		std::chrono::steady_clock::time_point m_vehicleRidingSentAt{};

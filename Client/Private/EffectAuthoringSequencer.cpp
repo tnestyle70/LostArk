@@ -206,7 +206,7 @@ bool CEffectAuthoringSequencer::Validate_AnimationRows(const std::vector<CLIP>& 
         { m_Status = "Animation occurrences overlap on the same model: " + enabled[i - 1u]->id + " / " + enabled[i]->id; return false; }
     return true;
 }
-bool CEffectAuthoringSequencer::Append_Animation(const std::string& clipName)
+bool CEffectAuthoringSequencer::Append_Animation(const std::string& clipName, const bool atEnd)
 {
     if (m_UseKouku || !m_Panel || !m_Panel->Is_PreviewActive())
     { m_Status = "Select one preview model before appending an Animation clip."; return false; }
@@ -225,8 +225,10 @@ bool CEffectAuthoringSequencer::Append_Animation(const std::string& clipName)
             { m_Status = "Reload the saved model sequence before editing its Animation rows."; return false; }
             staged = sequence->clips;
         }
+    std::uint32_t start = atEnd ? 0u : ClockMs();
+    if (atEnd) for (const auto& clip : staged) start = (std::max)(start, clip.startMs + clip.durationMs);
     CLIP row; row.id = CEffectEditingSession::New_Id("animation.occurrence."); row.label = row.clipName = clipName;
-    row.startMs = ClockMs(); row.durationMs = static_cast<std::uint32_t>(duration); staged.push_back(row);
+    row.startMs = start; row.durationMs = static_cast<std::uint32_t>(duration); staged.push_back(row);
     if (!Validate_AnimationRows(staged)) return false;
     const auto previousRows = m_AnimationRows;
     const auto previousSequence = m_SelectedSequence, previousAsset = m_AssetName;
@@ -415,6 +417,7 @@ bool CEffectAuthoringSequencer::Stage_CharacterAction(const std::string& asset,
             { m_Status = "Invalid Character source window: " + source.strClipName; return false; }
             CLIP clip;
             clip.id = source.strClipOccurrenceId.empty() ? CEffectEditingSession::New_Id("character.preview.") : source.strClipOccurrenceId;
+            clip.memberId = "stage." + std::to_string(stage);
             clip.clipName = clip.label = source.strClipName;
             clip.sourceStartMs = source.iSourceStartMs; clip.sourcePlayMs = source.iPlayMs; clip.playRate = source.fPlayRate;
             clip.startMs = clock; clip.durationMs = (std::max)(1u, static_cast<std::uint32_t>(std::ceil(wallDuration * 1000.f)));
@@ -538,7 +541,7 @@ bool CEffectAuthoringSequencer::Stage_CharacterAction(const std::string& asset,
     return true;
 }
 
-bool CEffectAuthoringSequencer::Open_CharacterModelSequence(const std::string& sequenceId)
+bool CEffectAuthoringSequencer::Open_CharacterModelSequence(const std::string& sequenceId, const bool loadSaved)
 {
     if (m_Dirty || !CEffectV2Document::Is_ValidEffectId(sequenceId) || sequenceId.size() >= sizeof(m_SequenceId))
     { m_Status = "Save the current sequence before selecting another action"; return false; }
@@ -548,15 +551,20 @@ bool CEffectAuthoringSequencer::Open_CharacterModelSequence(const std::string& s
     std::string bytes; bool exists = false;
     if (!Read_SequenceText(path, bytes, exists, m_Status)) return false;
     if (!exists) return true;
-    return Load_Sequence();
+    if (!loadSaved) { m_SequenceBaseline = bytes; m_SequenceExisted = true; return true; }
+    const auto skillId = m_CharacterActionSkillId;
+    if (!Load_Sequence()) return false;
+    m_CharacterActionSkillId = skillId;
+    return true;
 }
 
 bool CEffectAuthoringSequencer::Export_CharacterModelAction(ANIMATION_SKILL_BINDING& binding,
-    ANIMATION_EFFECT_CUE_DOCUMENT& cues, const std::string& soundOwner, std::string& status)
+    ANIMATION_EFFECT_CUE_DOCUMENT& cues, const std::string& soundOwner, std::string& status,
+    const bool presentationOnly)
 {
     if (!m_CustomAnimation || m_AnimationRows.empty() || !Validate_AnimationRows(m_AnimationRows))
     { status = "Select a valid model action before saving its Product binding"; return false; }
-    if (!m_Colliders.empty() || !m_CameraRows.empty())
+    if (!presentationOnly && (!m_Colliders.empty() || !m_CameraRows.empty()))
     { status = "Collider and Camera rows belong to Save Effect Sequence; this Product binding has no combat/camera authority"; return false; }
     auto rows = m_AnimationRows;
     std::stable_sort(rows.begin(), rows.end(), [](const auto& a, const auto& b) { return a.startMs < b.startMs; });
@@ -567,13 +575,36 @@ bool CEffectAuthoringSequencer::Export_CharacterModelAction(ANIMATION_SKILL_BIND
     {
         if (row.muted || row.loop || row.startMs != end)
         { status = "Product chains require consecutive, unmuted, non-looping animation rows; save gaps/loops as a sequence or bake them into an authored bone clip"; return false; }
-        staged.Stages.front().Clips.push_back({row.clipName, row.sourcePlayMs, row.playRate, row.sourceStartMs, row.id});
+        std::uint32_t index = 0u; float ticks = 0.f, tickRate = 0.f;
+        if (!Clip_Metadata(CAnimationTargetService::Resolve_Model(), row.clipName, index, ticks, tickRate))
+        { status = "Cannot resolve the Product animation source duration."; return false; }
+        const ACTION_PRESENTATION_CLIP_TIMING timing{ticks / tickRate, row.sourcePlayMs, row.playRate, false, row.sourceStartMs * .001f};
+        float sourceDuration = 0.f, wallDuration = 0.f;
+        if (!CActionPresentationTimeline::Resolve_ClipDuration(timing, sourceDuration, wallDuration)) return false;
+        const auto wallMs = static_cast<std::uint32_t>(std::ceil(wallDuration * 1000.f));
+        std::uint32_t playMs = row.sourcePlayMs;
+        if (row.durationMs > wallMs + 1u)
+        { status = "This Animation box holds beyond its source. Adjust playback rate or bake the hold before saving Product clips."; return false; }
+        if (row.durationMs + 1u < wallMs)
+            playMs = (std::max)(1u, static_cast<std::uint32_t>(std::floor(row.durationMs * row.playRate)));
+        staged.Stages.front().Clips.push_back({row.clipName, playMs, row.playRate, row.sourceStartMs, row.id});
         end += row.durationMs;
     }
     const auto source = [&](uint32_t clock) -> const CLIP* {
         for (const auto& row : rows) if (clock >= row.startMs && clock < row.startMs + row.durationMs) return &row;
         return nullptr;
     };
+    std::vector<std::pair<std::size_t, std::string>> cueProjections;
+    const auto signature = [](const ANIMATION_EFFECT_CUE& cue) {
+        std::ostringstream out; out.imbue(std::locale::classic()); out.precision(9);
+        out << "E " << cue.iStartMs << ' ' << (cue.eStopPolicy == EFFECT_STOP_POLICY::NATURAL ? 0u : cue.iEndMs)
+            << ' ' << cue.strEffectAssetId << ' ' << cue.strAnchorSlotId << ' ' << static_cast<int>(cue.eFollowPolicy)
+            << ' ' << static_cast<int>(cue.eStopPolicy) << ' ' << static_cast<int>(cue.eOrientationPolicy);
+        for (const auto& value : {cue.LocalTransform.vPosition, cue.LocalTransform.vRotationDegrees, cue.LocalTransform.vScale})
+            out << ' ' << value.x << ' ' << value.y << ' ' << value.z;
+        return out.str();
+    };
+    std::vector<std::uint32_t> projectionTimes;
     for (const auto& row : m_Effects)
     {
         if (row.muted || row.productExternalOwner) continue;
@@ -586,7 +617,10 @@ bool CEffectAuthoringSequencer::Export_CharacterModelAction(ANIMATION_SKILL_BIND
         cue.strEffectAssetId = row.key.strStableId; cue.strAnchorSlotId = row.anchorSlotId;
         cue.LocalTransform.vPosition = row.offset; cue.LocalTransform.vRotationDegrees = row.rotation; cue.LocalTransform.vScale = row.scale;
         cue.eFollowPolicy = row.productSnapshot ? EFFECT_FOLLOW_POLICY::SNAPSHOT : EFFECT_FOLLOW_POLICY::FOLLOW;
+        cue.eOrientationPolicy = row.productActionFacing ? EFFECT_ORIENTATION_POLICY::ACTION_FACING : EFFECT_ORIENTATION_POLICY::ANCHOR;
         cue.eStopPolicy = row.productNaturalDuration ? EFFECT_STOP_POLICY::NATURAL : EFFECT_STOP_POLICY::CUE_END;
+        cueProjections.emplace_back(static_cast<std::size_t>(clip - rows.data()), signature(cue));
+        projectionTimes.push_back(cue.iStartMs);
         events.Cues.push_back(std::move(cue));
     }
     CSoundCueCatalog::EVENT_VARIANTS variants; std::string soundStatus;
@@ -599,13 +633,91 @@ bool CEffectAuthoringSequencer::Export_CharacterModelAction(ANIMATION_SKILL_BIND
         if (!clip || row.sourceStartMs || std::abs(row.volume - 1.f) > .0001f)
         { status = "Product sound cues require full catalog events at unit volume"; return false; }
         std::string event;
-        for (const auto& [name, assets] : variants)
-            if (std::find(assets.begin(), assets.end(), row.assetId) != assets.end())
-            { if (!event.empty() && event != name) { status = "Sound asset belongs to multiple events; select an unambiguous event"; return false; } event = name; }
+        const auto labeled = variants.find(row.label);
+        if (labeled != variants.end() && std::find(labeled->second.begin(), labeled->second.end(), row.assetId) != labeled->second.end())
+            event = labeled->first;
+        if (event.empty())
+            for (const auto& [name, assets] : variants)
+                if (std::find(assets.begin(), assets.end(), row.assetId) != assets.end())
+                { if (!event.empty() && event != name) { status = "Sound asset belongs to multiple events; select an unambiguous event"; return false; } event = name; }
         if (event.empty()) { status = "Sound is not in this action's sound catalog"; return false; }
-        events.Sounds.push_back({clip->clipName, clip->sourceStartMs + static_cast<uint32_t>(std::llround((row.startMs - clip->startMs) * clip->playRate)), event});
+        const auto start = clip->sourceStartMs + static_cast<uint32_t>(std::llround((row.startMs - clip->startMs) * clip->playRate));
+        events.Sounds.push_back({clip->clipName, start, event});
+        cueProjections.emplace_back(static_cast<std::size_t>(clip - rows.data()), "S " + std::to_string(start) + " " + event);
+        projectionTimes.push_back(start);
     }
+    for (std::size_t first = 0u; first < rows.size(); ++first)
+        for (std::size_t second = first + 1u; second < rows.size(); ++second)
+        {
+            if (rows[first].clipName != rows[second].clipName) continue;
+            const auto begin = (std::max)(rows[first].sourceStartMs, rows[second].sourceStartMs);
+            const auto end = (std::min)(rows[first].sourceStartMs + static_cast<std::uint32_t>(std::ceil(rows[first].durationMs * rows[first].playRate)),
+                rows[second].sourceStartMs + static_cast<std::uint32_t>(std::ceil(rows[second].durationMs * rows[second].playRate)));
+            if (end <= begin) continue;
+            std::vector<std::string> left, right;
+            for (std::size_t cue = 0u; cue < cueProjections.size(); ++cue)
+                if (projectionTimes[cue] >= begin && projectionTimes[cue] < end)
+                {
+                    if (cueProjections[cue].first == first) left.push_back(cueProjections[cue].second);
+                    if (cueProjections[cue].first == second) right.push_back(cueProjections[cue].second);
+                }
+            std::sort(left.begin(), left.end()); std::sort(right.begin(), right.end());
+            if (left != right)
+            { status = "Repeated source clips have different Effect/Sound cues. Apply the edit to every occurrence or use separate authored clips before Product Save."; return false; }
+        }
     binding = std::move(staged); cues = std::move(events); return true;
+}
+
+bool CEffectAuthoringSequencer::Can_AppendCharacterAnimation(const COMPOSITION_ANIMATION_RESOURCE& resource,
+    const bool replace, std::string& status) const
+{
+    const auto model = CAnimationTargetService::Resolve_Model();
+    if (!m_Panel || !m_Panel->Is_PreviewActive() || !model || resource.strTargetAssetName != m_AssetName ||
+        m_AssetName != CAnimationTargetService::Resolve_AssetName() || !m_CustomAnimation)
+    { status = "Select this model's Character action before appending its animation."; return false; }
+    std::uint32_t index = 0u; float ticks = 0.f, rate = 0.f;
+    if (!Clip_Metadata(model, resource.strRuntimeClip, index, ticks, rate))
+    { status = "The animation is missing or ambiguous on the selected model."; return false; }
+    if (replace && (m_SelectedTrack != TRACK_KIND::ANIMATION ||
+        std::none_of(m_AnimationRows.begin(), m_AnimationRows.end(), [&](const auto& row) { return row.id == m_SelectedRowId; })))
+    { status = "Select the Animation box to replace."; return false; }
+    return true;
+}
+
+bool CEffectAuthoringSequencer::Rebind_CharacterModel(std::string& status)
+{
+    if (!m_Panel || !m_Panel->Is_PreviewActive() || m_AssetName != CAnimationTargetService::Resolve_AssetName() ||
+        !m_CustomAnimation || !Validate_AnimationRows(m_AnimationRows))
+    { status = "Restore this composition's exact model before continuing: " + m_AssetName; return false; }
+    for (const auto& row : m_Effects)
+        if (!row.worldAnchor && !Validate_Anchor(row.anchorSlotId, true, false)) { status = m_Status; return false; }
+    Stop(); m_InventoryGeneration = CAnimationTargetService::Resolve_TargetGeneration();
+    Refresh_ModelResources();
+    status = "Restored the composition model; animation and Effect drafts were preserved.";
+    return true;
+}
+
+bool CEffectAuthoringSequencer::Append_CharacterAnimation(const COMPOSITION_ANIMATION_RESOURCE& resource,
+    const bool replace, std::string& status)
+{
+    if (!Can_AppendCharacterAnimation(resource, replace, status)) return false;
+    bool result = false;
+    if (replace)
+    {
+        auto row = *std::find_if(m_AnimationRows.begin(), m_AnimationRows.end(), [&](const auto& value) { return value.id == m_SelectedRowId; });
+        row.clipName = row.label = resource.strRuntimeClip;
+        row.sourceStartMs = row.sourcePlayMs = 0u;
+        std::uint32_t index = 0u; float ticks = 0.f, rate = 0.f;
+        if (!Clip_Metadata(CAnimationTargetService::Resolve_Model(), row.clipName, index, ticks, rate)) return false;
+        const double duration = std::ceil(static_cast<double>(ticks) / rate / row.playRate * 1000.0);
+        if (!std::isfinite(duration) || duration < 1.0 || duration > MAX_MS)
+        { status = "Replacement duration exceeds the composition range."; return false; }
+        row.durationMs = static_cast<std::uint32_t>(duration);
+        result = Apply_AnimationRow(row);
+    }
+    else result = Append_Animation(resource.strRuntimeClip, true);
+    status = m_Status;
+    return result;
 }
 
 bool CEffectAuthoringSequencer::Resolve_ScenePreviewPlacement(float4x4_t& root)
@@ -936,13 +1048,14 @@ bool CEffectAuthoringSequencer::Apply_CharacterPreviewStance(const std::uint32_t
     if (!skill || skill->eRequiredStance == LostArk::Shared::PLAYER_STANCE_ID::NONE) return true;
     const auto character = CAnimationTargetService::Resolve_Character();
     if (!m_Panel || !m_Panel->Is_PreviewActive() || !character || !character->Get_Spec() ||
+        character == CAnimationTargetService::Resolve_SceneCharacter() ||
         character->Get_BodyModel() != CAnimationTargetService::Resolve_Model() ||
         character->Get_Spec()->eCharacterClass != skill->eCharacterClass)
     { m_Status = "Skill stance requires its admitted Character preview."; return false; }
     if (m_StancePreviewCharacter.lock() != character)
     {
         Restore_CharacterPreviewStance();
-        if (!character->Try_Get_NetworkStance(m_PreviousPreviewStance))
+        if (!character->Try_Get_PresentationStance(m_PreviousPreviewStance))
         { m_Status = "The Character preview has no restorable stance."; return false; }
         m_StancePreviewCharacter = character;
     }
@@ -2256,6 +2369,7 @@ bool CEffectAuthoringSequencer::Save_Sequence()
             << ", \"worldAnchor\": " << (row.worldAnchor ? "true" : "false")
             << ", \"productNaturalDuration\": " << (row.productNaturalDuration ? "true" : "false")
             << ", \"productSnapshot\": " << (row.productSnapshot ? "true" : "false")
+            << ", \"productActionFacing\": " << (row.productActionFacing ? "true" : "false")
             << ", \"productExternalOwner\": " << (row.productExternalOwner ? "true" : "false")
             << ", \"rotationDegrees\": [" << row.rotation.x << ", " << row.rotation.y << ", " << row.rotation.z << "]"
             << ", \"scale\": [" << row.scale.x << ", " << row.scale.y << ", " << row.scale.z << "]}";
@@ -2348,13 +2462,20 @@ bool CEffectAuthoringSequencer::Load_Sequence(const bool discard)
         if (!row.key.Is_Valid() || (row.screenPost && row.key.eOwnerKind != EFFECT_RESOURCE_OWNER_KIND::V2_LEAF))
         { m_Status = "Invalid typed Effect ID or Screen Post owner; current timeline preserved."; return false; }
         for (const auto& field : {std::pair<const char*, bool*>{"productNaturalDuration", &row.productNaturalDuration},
-            {"productSnapshot", &row.productSnapshot}, {"productExternalOwner", &row.productExternalOwner}})
+            {"productSnapshot", &row.productSnapshot}, {"productActionFacing", &row.productActionFacing}, {"productExternalOwner", &row.productExternalOwner}})
             if (const auto* policy = value.Find(field.first))
             {
                 if (!policy->Is_Boolean()) { m_Status = "Invalid saved Product cue policy"; return false; }
                 *field.second = policy->Get_Boolean();
             }
         if (!row.productNaturalDuration) row.productStopDuration = row.durationMs;
+        if (row.productActionFacing)
+        {
+            float4x4_t owner;
+            if (!CAnimationTargetService::Resolve_RootTransform(&owner))
+            { m_Status = "Restore the Character root before loading action-facing Effect cues."; return false; }
+            row.productFacingDegrees = XMConvertToDegrees(std::atan2(owner._31, owner._33));
+        }
         row.muted = muted->Get_Boolean(); staged.push_back(std::move(row));
     }
     if (kind == "MODEL_SEQUENCE" && (customAnimation || !sequenceId.empty()))

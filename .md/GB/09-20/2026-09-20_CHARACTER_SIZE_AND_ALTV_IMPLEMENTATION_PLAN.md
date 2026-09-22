@@ -31,3 +31,11 @@ full/tuning 문서는 최신 파일과 hash를 보존한 뒤 해당 stable Scree
 `RenderArenaFollowCameraSettings`의 Character Size에서 `Requested size defaults` 바로 아래에 `Save` 버튼을 둔다. 기존 `CArenaCameraProfile::Save`로 현재 선택 map의 크기를 포함한 profile을 저장하고 성공하면 활성 map의 기존 `Set_FollowCameraProfile`로 즉시 runtime snapshot을 갱신한다. 저장 실패 시 snapshot 적용을 하지 않고 기존 오류를 보존한다. 저장 후 적용은 `Set_FollowEnabled`를 호출하지 않아 F6 상태와 진행 중 presentation override를 유지한다. 비활성 map은 저장 뒤 다음 입장에서 적용하며 이를 UI 상태로 구분한다. 아래 기존 camera Save도 같은 저장·적용 흐름을 사용한다.
 
 수정 파일은 `MainApp.cpp`, `Level_Development.h/.cpp`이며 새 파일·project/filter 등록은 없다. 인코딩·CRLF를 보존하고 실제 Data/Camera 파일은 사용자 Save 클릭 전까지 변경하지 않는다. 기존 비UI profile 검사로 실제 Save/Load·stale 실패 보존을 재검증하고 두 변경 TU를 Debug/Release에서 최소 컴파일한다. map camera 연결, Server Move Player 범위, Save 순서를 읽기 검토하며 실제 F1 조작과 화면 크기 판정은 사용자가 한다.
+
+## G06. 2026-09-22 일곱 클래스 이행과 크기 저장 복구
+
+현재 네 Camera JSON은 여섯 classSizeMultipliers 키를 저장하지만 ArenaCameraProfile::Parse는 일곱 개를 요구한다. Load 실패로 baseline이 비어 Save의 freshness 검사도 실패한다. 기존 여섯 키를 모두 검증한 이전 문서에 한해 GUARDIANKNIGHT=1을 기본값으로 이행하고, 알 수 없는 키·기존 키 누락·비유한 값은 계속 거부한다. 다음 Save는 일곱 이름을 직렬화한다. 기존 Save의 source baseline·임시 파일 재파싱·교체 직전 확인·원자적 교체는 유지한다.
+
+ArenaCameraProfile.h의 classSizeMultipliers 기본값과 네 Data/Camera 저장본의 ARTIST=0.7, DIMENSIONMASTER=1.0을 맞춘다. Character Select 값을 쓰는 Development/Training/Maharaka와 쿠크 세 관문도 같은 저장값을 소비한다. 모델 단위·CharacterCatalog의 admission scale·Server 판정 크기는 그대로다. MainApp의 Character Size 안내도 새 기본값으로 수정한다. 저장 대상은 선택 map임을 유지한다.
+
+기존 H/CPP만 변경하므로 project/filter 추가는 없다. 사용자 편집 보존을 위해 네 JSON의 변경 필드만 candidate로 준비하고 기존 실제 C++ profile 검사로 Load/Save/Reload, 6→7 이행, stale Save 거부, 손상 문서 보존을 확인한다. 실행 중 Client의 저장본 기준 적용 의사를 확인한 최종 시점에 최신 bytes를 다시 읽고 해당 class 필드만 병합한다. 다른 카메라·망치·광대 설정은 보존한다. 변경 TU 최소 컴파일과 정상 Product 증분 Build, JSON parse와 diff check를 실행하고 화면 검증은 사용자에게 남긴다.

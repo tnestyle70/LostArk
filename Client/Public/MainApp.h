@@ -194,6 +194,7 @@ private:
 			INVALID_LOBBY_COMMAND_TOKEN);
 	void Apply_LevelRequest();
 	HRESULT ReadyImGuiRuntime();
+	void UpdateProfilerRuntime();
 	/* Drives every real CUI_Sprite (CUILayoutRuntime) state for the always-on combat HUD
 	(HUD_Layout.json) from Update(): the per-class ownerClass slot filter (the old
 	Render(strOwnerClass, 0) pass), every per-class identity block (LanceMaster stance/gauge,
@@ -453,6 +454,15 @@ private:
 	(Gauge0/1/2Fill.json) plus the one-shot ignite -> sustain-loop burn flourish, driven off
 	iCurrentIdentity exactly as the decompiled LanceMasterProgress.as formula prescribes. */
 	void Update_LanceMasterIdentityGauge();
+	/* GuardianKnight's identity frame, orb gauge and the 10-socket Embereth bar that stands
+	where every other class draws its mana bar. Presentation only: the gauge, the stance and
+	the socket count are all read from the server snapshot, so this shows an empty orb until
+	that data exists rather than inventing a local value. */
+	void Update_GuardianKnightIdentity();
+	/* Last state each ember socket was driven to ("show"/"hide"/"lock"), so a change plays the
+	socket's own transition and an unchanged state holds its end frame -- the same pair of calls
+	invokeDragonKnightBloodGauge makes. Empty means nothing has been driven yet. */
+	string m_EmberSocketStates[10];
 	/* Floating combat-log numbers at each DAMAGE_EVENT's real hit position (Get_DamageEvents(),
 	server-authoritative). Positions are world-space and captured at hit time, so a number stays
 	where the hit landed instead of following the target. Already pure CGameInstance::Draw_Text
@@ -595,6 +605,9 @@ private:
 	CLightResourceCatalog m_LightResources;
 	unique_ptr<CKoukuSaydonPresentationPlayer> m_pKoukuPresentationPlayer;
 	unique_ptr<Engine::CImGuiLayer> m_pImGuiLayer = { nullptr };
+	unique_ptr<CProfilerTool> m_pProfilerTool;
+	bool_t m_bRuntimeProfilerVisible = false;
+	bool_t m_bF7Down = false;
 	/* Not _DEBUG-gated: the runtime HUD art must render in Release too. Real CUI_Sprite
 	GameObjects under LEVEL::STATIC (Update_CombatHUD drives them), created before every other
 	STATIC UI document so the always-on HUD draws underneath all of them. */
@@ -946,7 +959,6 @@ private:
 	DEBUG_TOOL m_eColliderAuthoringOwner = DEBUG_TOOL::NONE;
 	uint64_t m_iColliderAuthoringDraftGeneration = UINT64_MAX;
 	uint64_t m_iColliderAuthoringSerial = 0;
-	unique_ptr<CProfilerTool> m_pProfilerTool = { nullptr };
 	unique_ptr<CRenderingBenchmark> m_pRenderingBenchmark = { nullptr };
 	bool_t m_bF1Down = false;
 	bool_t m_bDeveloperToolsVisible = false;

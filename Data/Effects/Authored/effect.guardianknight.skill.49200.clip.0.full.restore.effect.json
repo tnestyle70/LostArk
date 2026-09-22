@@ -6341,7 +6341,7 @@
         },
         "mesh": {
           "useModelMaterial": false,
-          "modelPreScale": 0.01
+          "modelPreScale": 0.03
         },
         "sprite": {
           "billboard": true

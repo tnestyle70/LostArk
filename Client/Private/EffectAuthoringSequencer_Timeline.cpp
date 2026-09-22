@@ -255,7 +255,8 @@ void CEffectAuthoringSequencer::Render_Sequencer(const char* title, const bool i
             ImGui::SameLine(); if (ImGui::Button("Details")) m_BoxDetailOpen = true;
         }
         ImGui::SetNextItemWidth(255.f); ImGui::InputText("Sequence ID", m_SequenceId, sizeof(m_SequenceId));
-        ImGui::SameLine(); if (ImGui::Button(embedded ? "Save Effect Sequence" : "Save")) Save_Sequence();
+        ImGui::SameLine(); if (ImGui::Button(embedded && m_WorkbenchSave ? "Save" : embedded ? "Save Effect Sequence" : "Save"))
+        { if (embedded && m_WorkbenchSave) m_WorkbenchSave(); else Save_Sequence(); }
         ImGui::SameLine(); if (ImGui::Button(embedded ? "Load Effect Sequence" : "Load")) Load_Sequence();
         ImGui::SameLine(); if (ImGui::Button("Revert")) Load_Sequence(true);
         ImGui::SameLine(); if (ImGui::Button("New"))
@@ -293,10 +294,11 @@ void CEffectAuthoringSequencer::Render_Sequencer(const char* title, const bool i
             TRACK_KIND kind; std::string id, label; std::uint32_t start, duration;
             bool muted, editable;
         };
-        std::array<std::vector<BOX>, 6> lanes;
+        std::array<std::vector<BOX>, 13> lanes;
+        constexpr std::array<std::size_t, 6> workbenchLanes{{1u, 6u, 9u, 7u, 8u, 12u}};
         auto add = [&](TRACK_KIND kind, const std::string& id, const std::string& label,
             std::uint32_t start, std::uint32_t duration, bool muted, bool editable = true)
-        { lanes[static_cast<std::size_t>(kind)].push_back({kind, id, label, start, duration, muted, editable}); };
+        { lanes[embedded ? workbenchLanes[static_cast<std::size_t>(kind)] : static_cast<std::size_t>(kind)].push_back({kind, id, label, start, duration, muted, editable}); };
         if (m_UseKouku && !m_ValtanEffectPreview)
             for (const auto& clip : m_Kouku.Rows())
                 add(TRACK_KIND::ANIMATION, clip.memberId + "." + clip.occurrenceId, clip.runtimeClip,
@@ -310,6 +312,19 @@ void CEffectAuthoringSequencer::Render_Sequencer(const char* title, const bool i
             if (clips) for (const auto& clip : *clips)
                 add(TRACK_KIND::ANIMATION, clip.id, clip.label.empty() ? clip.clipName : clip.label,
                     clip.startMs, clip.durationMs, clip.muted, !recoveryAnimation);
+            if (embedded && clips)
+                for (const auto& clip : *clips)
+                {
+                    const auto id = clip.memberId.empty() ? "stage.0" : clip.memberId;
+                    const auto found = std::find_if(lanes[0].begin(), lanes[0].end(), [&](const auto& row) { return row.id == id; });
+                    if (found == lanes[0].end())
+                        lanes[0].push_back({TRACK_KIND::ANIMATION, id, id, clip.startMs, clip.durationMs, false, false});
+                    else
+                    {
+                        const auto end = (std::max)(found->start + found->duration, clip.startMs + clip.durationMs);
+                        found->start = (std::min)(found->start, clip.startMs); found->duration = end - found->start;
+                    }
+                }
         }
         const bool elementPreview = m_Transient && !m_Transient->previewElementIds.empty();
         auto addEffect = [&](const EFFECT_ROW& row, bool transient)
@@ -332,7 +347,7 @@ void CEffectAuthoringSequencer::Render_Sequencer(const char* title, const bool i
         }
         const auto& cameras = m_Transient ? m_TransientCameraRows : m_CameraRows;
         for (const auto& row : cameras) add(TRACK_KIND::CAMERA, row.id, row.label, row.startMs, row.cue.iDurationMs, row.muted, !m_Transient);
-        constexpr float labels = 160.f, rowHeight = 29.f;
+        const float labels = CompositionTimeline::LabelWidth, rowHeight = CompositionTimeline::LaneHeight;
         const auto canvasMs = (std::min)(LIMIT_MS, (std::max)(10000u, DurationMs() + 1000u));
         const float width = (std::max)(ImGui::GetContentRegionAvail().x - 5.f, labels + canvasMs * m_Zoom * .001f + 30.f);
         ImGui::SetNextWindowContentSize({width, 0.f});
@@ -350,11 +365,18 @@ void CEffectAuthoringSequencer::Render_Sequencer(const char* title, const bool i
                 if (!m_Active || ms != ClockMs()) Seek(ms);
                 m_Interaction = true;
             }
-            const char* names[] = {"Animation", "Effect", "Collider", "Sound", "Camera", "Screen Post"};
-            const ImU32 colors[] = {IM_COL32(68,125,177,230), IM_COL32(173,107,48,230), IM_COL32(65,171,165,230),
+            const char* regularNames[] = {"Animation", "Effect", "Collider", "Sound", "Camera", "Screen Post"};
+            const char* workbenchNames[] = {"Stages", "Animation", "Logic", "Summon", "World", "Scene Profile", "Effect", "Sound", "Camera", "Collider", "Light", "Subtitle", "Screen Post"};
+            const ImU32 regularColors[] = {IM_COL32(68,125,177,230), IM_COL32(173,107,48,230), IM_COL32(65,171,165,230),
                 IM_COL32(130,176,83,230), IM_COL32(118,85,184,230), IM_COL32(190,90,144,230)};
+            const ImU32 workbenchColors[] = {IM_COL32(108,108,126,230), IM_COL32(68,125,177,230), IM_COL32(196,118,64,230),
+                IM_COL32(103,165,140,230), IM_COL32(92,148,195,230), IM_COL32(153,150,183,230), IM_COL32(91,164,154,230),
+                IM_COL32(91,164,154,230), IM_COL32(91,164,154,230), IM_COL32(91,164,154,230), IM_COL32(91,164,154,230),
+                IM_COL32(91,164,154,230), IM_COL32(190,90,144,230)};
+            const auto* names = embedded ? workbenchNames : regularNames;
+            const auto* colors = embedded ? workbenchColors : regularColors;
             float y = origin.y + rowHeight;
-            for (std::size_t lane = 0; lane < lanes.size(); ++lane)
+            for (std::size_t lane = 0; lane < (embedded ? lanes.size() : 6u); ++lane)
             {
                 auto& boxes = lanes[lane];
                 std::vector<std::uint32_t> rowEnds;
@@ -376,7 +398,7 @@ void CEffectAuthoringSequencer::Render_Sequencer(const char* title, const bool i
                     lane % 2 ? IM_COL32(31,34,41,255) : IM_COL32(38,41,49,255));
                 draw->AddLine({origin.x, y}, {origin.x + width, y}, IM_COL32(64,68,76,255));
                 draw->AddText({origin.x + 8.f, y + 6.f}, colors[lane], names[lane]);
-                if (boxes.empty()) draw->AddText({origin.x + labels + 8.f, y + 6.f}, IM_COL32(115,118,127,255), integratedEffectWorkspace ? "Append from All Effects" : "Add from Composition Resources");
+                if (boxes.empty() && !embedded) draw->AddText({origin.x + labels + 8.f, y + 6.f}, IM_COL32(115,118,127,255), integratedEffectWorkspace ? "Append from All Effects" : "Add from Composition Resources");
                 for (std::size_t i = 0; i < boxes.size(); ++i)
                 {
                     const auto& box = boxes[i];

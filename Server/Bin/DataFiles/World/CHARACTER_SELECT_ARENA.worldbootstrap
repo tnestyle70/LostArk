@@ -1,6 +1,50 @@
-LOSTARK_WORLD_BOOTSTRAP	11	CHARACTER_SELECT_ARENA	LV_LOBBY_CLASSSELECT_SL00	3	5	0	0	0
+LOSTARK_WORLD_BOOTSTRAP	11	CHARACTER_SELECT_ARENA	LV_LOBBY_CLASSSELECT_SL00	3	5	44	0	0
 boss.valtan.character-select.lazy	boss	BOSS_VALTAN	ENCOUNTER_VALTAN	-772	-142.55	207	180	0
 player.spawn.character-select.party01	playerSpawn	-	-	-772	-142.55	197	180	1
 player.spawn.character-select.party02	playerSpawn	-	-	-770	-142.55	197	180	1
 player.spawn.character-select.party03	playerSpawn	-	-	-774	-142.55	197	180	1
 player.spawn.character-select.party04	playerSpawn	-	-	-772	-142.55	199	180	1
+world.sequence.instance.classselect.guardianknight.intro.a12253.p0
+world.sequence.instance.classselect.guardianknight.intro.a12253.p1
+world.sequence.instance.classselect.guardianknight.intro.a12253.p2
+world.sequence.instance.classselect.guardianknight.intro.a12253.p3
+world.sequence.instance.classselect.guardianknight.intro.a12253.p4
+world.sequence.instance.classselect.guardianknight.intro.a12254.p0
+world.sequence.instance.classselect.guardianknight.intro.a12255.p0
+world.sequence.instance.classselect.guardianknight.intro.a12255.p1
+world.sequence.instance.classselect.guardianknight.intro.a12256.p0
+world.sequence.instance.classselect.guardianknight.intro.a12257.p0
+world.sequence.instance.classselect.guardianknight.intro.a12257.p1
+world.sequence.instance.classselect.guardianknight.intro.a12264.p0
+world.sequence.instance.classselect.guardianknight.intro.a12265.p0
+world.sequence.instance.classselect.guardianknight.intro.a12265.p1
+world.sequence.instance.classselect.guardianknight.intro.a12265.p2
+world.sequence.instance.classselect.guardianknight.intro.a739.p0
+world.sequence.instance.classselect.guardianknight.intro.a739.p1
+world.sequence.instance.classselect.guardianknight.intro.a739.p2
+world.sequence.instance.classselect.guardianknight.intro.a739.p3
+world.sequence.instance.classselect.guardianknight.intro.a739.p4
+world.sequence.instance.classselect.guardianknight.intro.a739.p5
+world.sequence.instance.classselect.guardianknight.intro.a744.p0
+world.sequence.instance.classselect.guardianknight.loop.a12253.p0
+world.sequence.instance.classselect.guardianknight.loop.a12253.p1
+world.sequence.instance.classselect.guardianknight.loop.a12253.p2
+world.sequence.instance.classselect.guardianknight.loop.a12253.p3
+world.sequence.instance.classselect.guardianknight.loop.a12253.p4
+world.sequence.instance.classselect.guardianknight.loop.a12254.p0
+world.sequence.instance.classselect.guardianknight.loop.a12255.p0
+world.sequence.instance.classselect.guardianknight.loop.a12255.p1
+world.sequence.instance.classselect.guardianknight.loop.a12256.p0
+world.sequence.instance.classselect.guardianknight.loop.a12257.p0
+world.sequence.instance.classselect.guardianknight.loop.a12257.p1
+world.sequence.instance.classselect.guardianknight.loop.a12264.p0
+world.sequence.instance.classselect.guardianknight.loop.a12265.p0
+world.sequence.instance.classselect.guardianknight.loop.a12265.p1
+world.sequence.instance.classselect.guardianknight.loop.a12265.p2
+world.sequence.instance.classselect.guardianknight.loop.a739.p0
+world.sequence.instance.classselect.guardianknight.loop.a739.p1
+world.sequence.instance.classselect.guardianknight.loop.a739.p2
+world.sequence.instance.classselect.guardianknight.loop.a739.p3
+world.sequence.instance.classselect.guardianknight.loop.a739.p4
+world.sequence.instance.classselect.guardianknight.loop.a739.p5
+world.sequence.instance.classselect.guardianknight.loop.a744.p0

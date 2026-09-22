@@ -2,6 +2,8 @@
 #ifndef LOSTARK_SOURCE_MAP_DIRECT_PROGRAMS
 #define LOSTARK_SOURCE_MAP_DIRECT_PROGRAMS
 float4 g_SourceCharacterLightConstants[64];
+#include "Shader_SourceMapCharacterSelectDirect.hlsli"
+#include "Shader_SourceMapSL10Direct.hlsli"
 SamplerState SourceMapDirectSkySampler{Filter=MIN_MAG_MIP_LINEAR;AddressU=Wrap;AddressV=Clamp;};
 
 // dad0c6b258a72a4ca16fdcb5ab7e94ce

@@ -615,14 +615,24 @@ namespace
 		EFFECT_VISUAL_PROGRAM_SUPPLEMENTAL_ELEMENT& Out,
 		std::string& strOutError)
 	{
+		// Baked edges own geometry; native animation-trail modules still own
+		// point color and dynamic parameters. A captured final sample may end
+		// before the notify window, so retain both clocks without extending it.
+		const bool_t bNativeRecipe =
+			Element.SourceRecipe.strRendererShape == "animationTrail" &&
+			Element.Material.SourceMaterial.bEnabled &&
+			Element.Material.SourceMaterial.strRuntimeShaderProfileId.starts_with(
+				"effect.ue3.kouku-");
+		const double fExpectedClamp = bNativeRecipe ? (std::min)(
+			static_cast<double>(Element.Detail.Timing.fLifeTimeSeconds),
+			History.fSourceEndTimeSeconds) : Element.Detail.Timing.fLifeTimeSeconds;
 		if (!Validate_SourceRuntimeTrailTarget(Element, strOutError) ||
 			Element.SourceRecipe.bEnabled ||
 			!Element.SourcePresentation.bEnabled ||
 			Element.SourcePresentation.strSourceObjectPath.empty() ||
 			Element.SourcePresentation.strSourceActionCueId.empty() ||
 			Element.SourcePresentation.strSourceEventId.empty() ||
-			std::abs(static_cast<double>(Element.Detail.Timing.fLifeTimeSeconds) -
-				History.fPlaybackClampSeconds) > SOURCE_OWNED_RUNTIME_EPSILON)
+			std::abs(fExpectedClamp - History.fPlaybackClampSeconds) > SOURCE_OWNED_RUNTIME_EPSILON)
 		{
 			if (strOutError.empty())
 				strOutError =

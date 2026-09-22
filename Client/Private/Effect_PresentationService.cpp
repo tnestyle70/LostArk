@@ -17,6 +17,7 @@
 #include "Effect_VisualProgramCorpus.h"
 #include "GameInstance.h"
 #include "Model.h"
+#include "MapAssetRenderUtils.h"
 #include "Npc.h"
 #include "Profiler.h"
 #include "RuntimeAssetRoot.h"
@@ -256,6 +257,12 @@ namespace
 		float4x4_t WorldRoot{};
 		bool_t bLevelOwned = false;
 		bool_t bExternallySampled = false;
+		bool_t bDeferredAmbientPresentation = false;
+		bool_t bStaticAmbientBoundsValid = false;
+		bool_t bAmbientRecentlyVisible = false;
+		bool_t bAmbientTickReady = false;
+		f32_t fAmbientWorldRadius = 0.f;
+		f32_t fAmbientTickDelta = 0.f;
 		Client::EFFECT_FIXED_STEP_TRANSFORM_PROVIDER ExternalTransformProvider;
 		bool_t bExternalHistorySampled = false;
 		std::string strLevelPlacementId;
@@ -4187,6 +4194,8 @@ bool_t Client::CEffectPresentationService::Requires_SourceBoneImportScaleNormali
 	return strEffectAssetId.starts_with("effect.vehicle.") ||
 		strEffectAssetId.starts_with("effect.guardianknight.") ||
 		strEffectAssetId.starts_with("effect.esther.silian.") ||
+		strEffectAssetId.starts_with("effect.esther.inanna.") ||
+		strEffectAssetId.starts_with("effect.esther.ninave.") ||
 		(strEffectAssetId.starts_with("effect.valtan.action.") &&
 		strEffectAssetId.ends_with(".full.restore")) ||
 		strEffectAssetId == WARLORD_Q_SOURCE_BONE_SCALE.strEffectAssetId ||
@@ -5197,6 +5206,7 @@ bool_t Client::CEffectPresentationService::Spawn_LevelPlacement(
 	spawn.iLevelOwnerIndex = Desc.iLevelIndex;
 	spawn.bExternallySampled = Desc.bExternallySampled;
 	spawn.bOwnerSustainedSourceLoops = Desc.bOwnerSustainedSourceLoops;
+	spawn.bAllowOffscreenPause = Desc.bAllowOffscreenPause;
 	spawn.fSourceLoopEndSeconds = Desc.fSourceLoopEndSeconds;
 	spawn.bExternalModelCueAnchors = Desc.bExternalModelCueAnchors;
 	spawn.pNpcAnchorOwner = Desc.pAnchorOwner;
@@ -5229,11 +5239,42 @@ bool_t Client::CEffectPresentationService::Update_WorldRoot(
 		if (Effect.iWorldRootHandle == Handle.iValue &&
 			nullptr != Effect.pObject)
 		{
+			// Existing world-space particles can retain the previous root. Once moved,
+			// keep this occurrence visible instead of trusting a new static sphere.
+			if (Effect.bDeferredAmbientPresentation &&
+				std::memcmp(&Effect.WorldRoot, &RootWorld, sizeof(RootWorld)) != 0)
+				Effect.bStaticAmbientBoundsValid = false;
 			Effect.WorldRoot = RootWorld;
 			Effect.pObject->Set_RootWorldForNextUpdate(RootWorld);
 			return true;
 		}
 	}
+	return false;
+}
+
+bool_t Client::CEffectPresentationService::Set_WorldRootSourceLoopEndSeconds(
+	const EFFECT_WORLD_ROOT_HANDLE Handle, const f32_t fEndSeconds, std::string& strOutStatus)
+{
+	if (!Handle.Is_Valid() || !std::isfinite(fEndSeconds) || fEndSeconds <= 0.f)
+	{ strOutStatus = "Source loop continuation needs a valid handle and finite positive end."; return false; }
+	for (auto& pending : g_PendingEffectSpawns)
+		if (pending.Desc.iWorldRootHandle == Handle.iValue)
+		{
+			if (!pending.Desc.bExternallySampled || pending.Desc.bOwnerSustainedSourceLoops ||
+				pending.Desc.fSourceLoopEndSeconds <= 0.f || fEndSeconds < pending.Desc.fSourceLoopEndSeconds)
+			{ strOutStatus = "Only an admitted external source loop may extend its end."; return false; }
+			pending.Desc.fSourceLoopEndSeconds = fEndSeconds;
+			strOutStatus.clear();
+			return true;
+		}
+	for (auto& effect : g_ActiveEffects)
+		if (effect.iWorldRootHandle == Handle.iValue && effect.pObject)
+		{
+			if (!effect.bExternallySampled)
+			{ strOutStatus = "Source loop continuation requires an external clock."; return false; }
+			return effect.pObject->Set_SourceLoopEndSeconds(fEndSeconds, strOutStatus);
+		}
+	strOutStatus = "Source loop continuation handle is no longer active.";
 	return false;
 }
 
@@ -5275,6 +5316,43 @@ bool_t Client::CEffectPresentationService::Seek_WorldRoot(
 		}
 	}
 	return false;
+}
+
+bool_t Client::CEffectPresentationService::Is_WorldPresentationVisible(
+    const float3_t& center, const f32_t radius, const bool_t recentlyVisible)
+{
+    auto* profiler = CGameInstance::Get().Get_Profiler();
+    if (profiler) profiler->Add_Counter(EProfilerCounter::EffectBoundsCandidates);
+    const auto* camera = CMapAssetRenderUtils::Capture_CameraCullSnapshotView();
+    if (!camera) return true;
+    // Sprite billboard axes/camera offset use the unnormalized inverse view.
+    // Static visual bounds assume a rigid camera; unusual scaled/sheared views
+    // must retain playback instead of clipping a larger billboard.
+    const auto& view = camera->view;
+    if (std::abs(view._14) > 1.e-6f || std::abs(view._24) > 1.e-6f ||
+        std::abs(view._34) > 1.e-6f || std::abs(view._44 - 1.f) > 1.e-6f) return true;
+    for (size_t row = 0u; row < 3u; ++row)
+        for (size_t other = row; other < 3u; ++other)
+        {
+            double dot = 0.0;
+            for (size_t axis = 0u; axis < 3u; ++axis)
+                dot += double(view.m[row][axis]) * view.m[other][axis];
+            if (!std::isfinite(dot) || std::abs(dot - (row == other ? 1.0 : 0.0)) > 1.e-4)
+                return true;
+        }
+    MAP_FRUSTUM_CULLING_POLICY policy;
+    // The admitted sphere already encloses the complete visual footprint.
+    // Keep only a small reentry band, not tens of metres of hidden playback.
+    policy.baseMargin = recentlyVisible ? 0.5f : 0.f;
+    policy.largeObjectRadiusThreshold = 0.f;
+    policy.largeObjectAbsoluteMargin = 0.f;
+    policy.largeObjectRelativeMargin = 0.f;
+    MAP_FRUSTUM_RUNTIME_STATE state;
+    MAP_FRUSTUM_CULL_DECISION decision;
+    const bool_t visible = !CMapAssetRenderUtils::Evaluate_FrustumVisibility(
+        policy, *camera, {}, {}, 0u, center, radius, state, decision) || decision.shouldRender;
+    if (!visible && profiler) profiler->Add_Counter(EProfilerCounter::EffectBoundsCulled);
+    return visible;
 }
 
 HRESULT Client::CEffectPresentationService::Submit_LevelPlacementSample(
@@ -5818,6 +5896,19 @@ bool_t Client::CEffectPresentationService::Spawn_Immediate(
 	Active.ExternalTransformProvider = Desc.ExternalTransformProvider;
 	Active.strLevelPlacementId = Desc.strLevelPlacementId;
 	Active.bVehicleModelAnchors = Desc.bVehicleModelAnchors;
+	if (Desc.bAllowOffscreenPause && Desc.bLevelOwned && Desc.bUseWorldRoot &&
+		Desc.bOwnerSustainedSourceLoops && !Desc.bExternallySampled &&
+		!Desc.bExternalModelCueAnchors && !Desc.ExternalTransformProvider &&
+		!Owner.pCharacter && !Owner.pBoss && !Owner.pNpcAnchors &&
+		Active.SourceAnchorRequests.empty() &&
+		CEffectPlayback::Try_GetStaticSourceLoopBounds(
+			*pDocument, Desc.WorldRoot, Active.fAmbientWorldRadius))
+	{
+		Active.bDeferredAmbientPresentation = true;
+		Active.bStaticAmbientBoundsValid = true;
+		pEffect->Use_ExplicitRenderSubmission();
+		pEffect->Set_Visible(false);
+	}
     g_ActiveEffects.push_back(std::move(Active));
     strOutStatus = "Spawned admitted Effect: " + Desc.strEffectAssetId;
     g_strStatus = strOutStatus;
@@ -5970,6 +6061,13 @@ void Client::CEffectPresentationService::Update(const f32_t fTimeDelta)
 				continue;
 			}
 		}
+		else if (Effect.bDeferredAmbientPresentation && nullptr != Effect.pObject &&
+			!Effect.bFollowAnchorMissing)
+		{
+			// Overwrite rather than accumulate: hidden visual time is intentionally paused.
+			Effect.fAmbientTickDelta = (std::max)(0.f, fTimeDelta) * Effect.fPlaybackRate;
+			Effect.bAmbientTickReady = true;
+		}
 		else if (Effect.bPendingInitialSeek && nullptr != Effect.pObject &&
 			!Effect.bFollowAnchorMissing)
 		{
@@ -5998,6 +6096,54 @@ void Client::CEffectPresentationService::Update(const f32_t fTimeDelta)
             continue;
         }
     }
+}
+
+void Client::CEffectPresentationService::Submit_VisibleLevelPresentations()
+{
+	auto* profiler = CGameInstance::Get().Get_Profiler();
+	Engine::CProfilerScope profile(profiler, "Effect.LevelPresentation.VisibleUpdate");
+	const uint32_t currentLevel = CGameInstance::Get().Get_CurrentLevelID();
+	for (size_t index = g_ActiveEffects.size(); index-- > 0u;)
+	{
+		ACTIVE_EFFECT& effect = g_ActiveEffects[index];
+		if (!effect.bDeferredAmbientPresentation || !effect.bAmbientTickReady) continue;
+		effect.bAmbientTickReady = false;
+		if (!effect.pObject || effect.iLevelIndex != currentLevel ||
+			effect.bFollowAnchorMissing || effect.pObject->Is_RenderFailureIsolated())
+		{
+			Remove_At(index);
+			continue;
+		}
+		const float3_t center{effect.WorldRoot._41, effect.WorldRoot._42, effect.WorldRoot._43};
+		const bool_t visible = !effect.bStaticAmbientBoundsValid || Is_WorldPresentationVisible(
+			center, effect.fAmbientWorldRadius, effect.bAmbientRecentlyVisible);
+		if (!visible)
+		{
+			if (effect.bAmbientRecentlyVisible) effect.pObject->Set_Visible(false);
+			effect.bAmbientRecentlyVisible = false;
+			if (profiler) profiler->Add_Counter(EProfilerCounter::EffectAmbientSuspended);
+			continue;
+		}
+		if (!effect.bAmbientRecentlyVisible) effect.pObject->Set_Visible(true);
+		effect.bAmbientRecentlyVisible = true;
+		if (effect.bPendingInitialSeek)
+		{
+			effect.pObject->Set_SampleTime(effect.fPendingInitialSampleTimeSeconds);
+			effect.bPendingInitialSeek = false;
+		}
+		else
+		{
+			effect.pObject->Advance_Preview(effect.fAmbientTickDelta);
+			effect.fElapsedCueTimeSeconds += effect.fAmbientTickDelta;
+		}
+		if (profiler) profiler->Add_Counter(EProfilerCounter::EffectAmbientAdvanced);
+		if (FAILED(effect.pObject->Submit_RenderGroups()))
+		{
+			g_strStatus = effect.pObject->Get_Status();
+			Record_ActiveEffectRuntimeFailure(effect, "V1.ambient.submit", g_strStatus);
+			Remove_At(index);
+		}
+	}
 }
 
 void Client::CEffectPresentationService::Synchronize_FollowAnchors()

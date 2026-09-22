@@ -123,7 +123,7 @@ namespace Client
 		bool Play_Flow(std::string_view gateId,
 			const std::vector<KOUKU_SAYDON_PATTERN_FLOW_ENTRY>& entries,
 			const LostArk::Shared::GameplayDataRevision& revision,
-			std::uint32_t sourceRevision, std::string& status);
+			std::uint32_t sourceRevision, std::string& status, std::string_view loopStartEntryId = {});
 		const KOUKU_SAYDON_PATTERN_FLOW_SNAPSHOT& Get_FlowSnapshot() const noexcept { return m_FlowSnapshot; }
 		bool Stop(std::string& status);
 		bool Restart_Bundle(std::string& status);
@@ -198,6 +198,7 @@ namespace Client
 		std::uint64_t m_iStateStartedAtMilliseconds = 0u;
 		KOUKU_SAYDON_PATTERN_FLOW_SNAPSHOT m_FlowSnapshot;
 		std::vector<KOUKU_SAYDON_PATTERN_FLOW_ENTRY> m_FlowEntries;
+		std::string m_strFlowLoopStartEntryId;
 		LostArk::Shared::GameplayDataRevision m_FlowRevision{};
 		std::uint32_t m_iFlowSourceRevision = 0u;
 		std::uint32_t m_iFlowRequestSequence = 0u;

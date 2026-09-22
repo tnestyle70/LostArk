@@ -3117,7 +3117,7 @@
         "transform": {
           "position": [
             -0.2,
-            -0.4,
+            0.7999999999999999,
             -0.6
           ],
           "rotationDegrees": [
@@ -5814,7 +5814,7 @@
         "transform": {
           "position": [
             -0.2,
-            -0.4,
+            0.7999999999999999,
             -0.6
           ],
           "rotationDegrees": [
@@ -8069,7 +8069,7 @@
         "transform": {
           "position": [
             -0.2,
-            -0.4,
+            0.7999999999999999,
             -0.6
           ],
           "rotationDegrees": [
@@ -10237,7 +10237,7 @@
         "transform": {
           "position": [
             -0.2,
-            -0.4,
+            0.7999999999999999,
             -0.6
           ],
           "rotationDegrees": [
@@ -13020,7 +13020,7 @@
         "transform": {
           "position": [
             -0.2,
-            -0.4,
+            0.7999999999999999,
             -0.6
           ],
           "rotationDegrees": [
@@ -15658,7 +15658,7 @@
         "transform": {
           "position": [
             -0.2,
-            -0.4,
+            0.7999999999999999,
             -0.6
           ],
           "rotationDegrees": [
@@ -18534,7 +18534,7 @@
         "transform": {
           "position": [
             -0.2,
-            -0.4,
+            0.7999999999999999,
             -0.6
           ],
           "rotationDegrees": [
@@ -21526,7 +21526,7 @@
         "transform": {
           "position": [
             -0.2,
-            -0.4,
+            0.7999999999999999,
             -0.6
           ],
           "rotationDegrees": [
@@ -24455,7 +24455,7 @@
         "transform": {
           "position": [
             -0.2,
-            -0.4,
+            0.7999999999999999,
             -0.6
           ],
           "rotationDegrees": [
@@ -26436,7 +26436,7 @@
         "transform": {
           "position": [
             -0.2,
-            -0.4,
+            0.7999999999999999,
             -0.6
           ],
           "rotationDegrees": [
@@ -28830,7 +28830,7 @@
         "transform": {
           "position": [
             -0.2,
-            -0.4,
+            0.7999999999999999,
             -0.6
           ],
           "rotationDegrees": [
@@ -31323,7 +31323,7 @@
         "transform": {
           "position": [
             -0.2,
-            -0.4,
+            0.7999999999999999,
             -0.6
           ],
           "rotationDegrees": [
@@ -57179,63 +57179,63 @@
     }
   ],
   "ownerControls": [
-  {
-    "controlId": "action-49001.stage-001.notify-004.material_vector",
-    "kind": "MATERIAL_VECTOR",
-    "parameter": "transcolor",
-    "mappingBasis": "PROJECT_ADAPTER",
-    "sourceTargetType": 1,
-    "onlyLocalPlayer": false,
-    "startSeconds": 0.19517800211906433,
-    "keys": [
-      {
-        "seconds": 0.0,
-        "value": [
-          0.0,
-          0.0,
-          0.0,
-          1.0
-        ]
-      },
-      {
-        "seconds": 0.10000000149011612,
-        "value": [
-          10.0,
-          0.44999998807907104,
-          0.30000001192092896,
-          1.0
-        ]
-      },
-      {
-        "seconds": 0.20000000298023224,
-        "value": [
-          10.0,
-          0.44999998807907104,
-          0.30000001192092896,
-          1.0
-        ]
-      },
-      {
-        "seconds": 0.4000000059604645,
-        "value": [
-          0.0,
-          0.0,
-          0.0,
-          1.0
-        ]
-      }
-    ],
-    "sourceValues": [
-      0,
-      0,
-      0,
-      1,
-      1,
-      1,
-      1,
-      0.10000000149011612,
-      0.0
-    ]
-  }
-]
+    {
+      "controlId": "action-49001.stage-001.notify-004.material_vector",
+      "kind": "MATERIAL_VECTOR",
+      "parameter": "transcolor",
+      "mappingBasis": "PROJECT_ADAPTER",
+      "sourceTargetType": 1,
+      "onlyLocalPlayer": false,
+      "startSeconds": 0.19517800211906433,
+      "keys": [
+        {
+          "seconds": 0.0,
+          "value": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        },
+        {
+          "seconds": 0.10000000149011612,
+          "value": [
+            10.0,
+            0.44999998807907104,
+            0.30000001192092896,
+            1.0
+          ]
+        },
+        {
+          "seconds": 0.20000000298023224,
+          "value": [
+            10.0,
+            0.44999998807907104,
+            0.30000001192092896,
+            1.0
+          ]
+        },
+        {
+          "seconds": 0.4000000059604645,
+          "value": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        }
+      ],
+      "sourceValues": [
+        0,
+        0,
+        0,
+        1,
+        1,
+        1,
+        1,
+        0.10000000149011612,
+        0.0
+      ]
+    }
+  ]
 }

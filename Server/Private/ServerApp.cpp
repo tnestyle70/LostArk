@@ -3041,6 +3041,17 @@ void LostArk::Server::CServerApp::On_SessionFrame(
 		command.eType = ROOM_COMMAND_TYPE::DEBUG_RESUMMON_WAVE_MONSTERS;
 		command.DebugResummonWaveMonsters = request;
 	}
+	else if (frame.ePacketType == PACKET_TYPE::C2S_DEBUG_USE_ESTHER)
+	{
+		C2S_DEBUG_USE_ESTHER request{};
+		if (!Read_Message(reader, request) || 0u != reader.Get_RemainingSize())
+		{
+			closeMalformedPayload("C2S_DEBUG_USE_ESTHER");
+			return;
+		}
+		command.eType = ROOM_COMMAND_TYPE::DEBUG_USE_ESTHER;
+		command.DebugUseEsther = request;
+	}
 	else if (frame.ePacketType == PACKET_TYPE::C2S_DEBUG_SET_MADNESS_FORM)
 	{
 		C2S_DEBUG_SET_MADNESS_FORM request{};

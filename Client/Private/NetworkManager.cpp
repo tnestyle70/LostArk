@@ -771,7 +771,7 @@ std::string CNetworkManager::Resolve_ServerHost()
 {
 	/* The temporary team LAN endpoint is the direct-launch fallback. The
 	   process-local environment still wins so isolated tests can name loopback. */
-	constexpr char DEFAULT_SERVER_HOST[] = "192.168.0.14";
+	constexpr char DEFAULT_SERVER_HOST[] = "192.168.0.22";
 	constexpr char SERVER_HOST_ENVIRONMENT[] = "LOSTARK_SERVER_HOST";
 	char configuredHost[64]{};
 	const DWORD configuredLength = ::GetEnvironmentVariableA(
@@ -1245,6 +1245,20 @@ bool CNetworkManager::Send_EnterWorld(
 	return true;
 }
 
+bool CNetworkManager::Send_VehicleFlightInput(std::uint32_t sequence, float x, float z, float vertical)
+{
+    using namespace LostArk::Shared;
+    if (!Is_Connected()) return false;
+    C2S_MOVE message{};
+    message.iClientSequence = sequence;
+    message.eIntent = PLAYER_MOVE_INTENT::VEHICLE_FLIGHT;
+    message.fGoalX = x; message.fGoalZ = z; message.fVerticalInput = vertical;
+    CPacketWriter writer;
+    std::vector<std::uint8_t> frame;
+    return Write_Message(writer, message) && Build_Packet_Frame(PACKET_TYPE::C2S_MOVE,
+        writer.Get_Buffer(), frame) && Send_All(frame);
+}
+
 bool CNetworkManager::Send_MoveGoal(std::uint32_t clientSequence, float goalX, float goalZ)
 {
 	//���� ���� �˻� -> C2S_MOVE �� ����ü ���� -> sequence�� goal XZ ����
@@ -1391,6 +1405,30 @@ bool CNetworkManager::Send_EstherSkill(
 		PACKET_TYPE::C2S_USE_ESTHER_SKILL,
 		payloadWriter.Get_Buffer(),
 		frameBytes) && Send_All(frameBytes);
+}
+
+bool CNetworkManager::Send_DebugUseEsther(
+	const std::uint32_t requestSequence,
+	const LostArk::Shared::ESTHER_ID esther,
+	const float aimX,
+	const float aimZ)
+{
+	using namespace LostArk::Shared;
+	if (!Is_Connected() || !Is_Known_World_Id(m_eWorldId) ||
+		INVALID_PLAYER_ID == m_iLocalPlayerId)
+		return false;
+	C2S_DEBUG_USE_ESTHER message{};
+	message.iRequestSequence = requestSequence;
+	message.eWorldId = m_eWorldId;
+	message.eEsther = esther;
+	message.fAimX = aimX;
+	message.fAimZ = aimZ;
+	CPacketWriter writer;
+	if (!Write_Message(writer, message))
+		return false;
+	std::vector<std::uint8_t> frame;
+	return Build_Packet_Frame(PACKET_TYPE::C2S_DEBUG_USE_ESTHER,
+		writer.Get_Buffer(), frame) && Send_All(frame);
 }
 
 bool CNetworkManager::Send_UseSquareHole(

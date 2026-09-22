@@ -61,6 +61,15 @@ namespace
 			"pickingReadbackBytes",
             "indirectDrawCalls",
             "indirectIndexUpperBound",
+            "shadowCacheHits", "shadowCacheMisses", "shadowStaticCasters", "shadowDynamicCasters",
+            "mapCullingCandidates", "mapCullingVisible", "mapLod0Draws", "mapLod1Draws", "mapLod2Draws",
+            "mapLodSourceIndices", "mapLodSubmittedIndices",
+            "lightRecords", "lightDrawCalls", "lightUploadBytes",
+            "mapLodAvailableDraws",
+            "lightCullingCandidates", "lightCullingRejected",
+            "effectBoundsCandidates", "effectBoundsCulled",
+            "effectMarkerSamples", "effectMarkerHistoryRequests",
+            "effectAmbientSuspended", "effectAmbientAdvanced",
 	};
 
 	const char* GpuStatusName(const Engine::EProfilerGpuFrameStatus Status)
@@ -133,10 +142,110 @@ namespace
 		return true;
 	}
 
+    void WriteDistribution(std::ostream& stream, std::vector<double> values)
+    {
+        std::sort(values.begin(), values.end());
+        if (values.empty())
+        {
+            stream << "{\"samples\": 0, \"meanMs\": null, \"p50Ms\": null, \"p95Ms\": null, \"p99Ms\": null, \"maxMs\": null}";
+            return;
+        }
+        double total = 0.0;
+        for (double value : values) total += value;
+        const auto percentile = [&](double fraction)
+        {
+            const size_t rank = static_cast<size_t>(std::ceil(fraction * values.size()));
+            return values[(std::max)(size_t{1}, rank) - 1];
+        };
+        stream << "{\"samples\": " << values.size() << ", \"meanMs\": " << total / values.size()
+            << ", \"p50Ms\": " << percentile(.50) << ", \"p95Ms\": " << percentile(.95)
+            << ", \"p99Ms\": " << percentile(.99) << ", \"maxMs\": " << values.back() << "}";
+    }
+
+    void WriteSummary(std::ostream& stream, const Engine::FProfilerCaptureSnapshot& snapshot)
+    {
+        std::vector<double> intervals, cpu, gpu;
+        size_t cpuPartial = 0, gpuPartial = 0, gpuPending = 0, over60 = 0, over30 = 0, over100 = 0;
+        uint64_t omittedCpuScopes = 0;
+        for (const auto& frame : snapshot.Frames)
+        {
+            if (std::isfinite(frame.FrameIntervalMs) && frame.FrameIntervalMs > 0.0)
+            {
+                intervals.push_back(frame.FrameIntervalMs);
+                over60 += frame.FrameIntervalMs > 1000.0 / 60.0;
+                over30 += frame.FrameIntervalMs > 1000.0 / 30.0;
+                over100 += frame.FrameIntervalMs > 100.0;
+            }
+            if (std::isfinite(frame.CpuFrameMs) && frame.CpuFrameMs >= 0.0) cpu.push_back(frame.CpuFrameMs);
+            omittedCpuScopes += frame.DroppedCpuScopes;
+            cpuPartial += frame.DroppedCpuScopes != 0;
+            gpuPending += frame.GpuStatus == Engine::EProfilerGpuFrameStatus::Pending;
+            gpuPartial += frame.DroppedGpuScopes != 0;
+            if (frame.GpuValid && frame.GpuStatus == Engine::EProfilerGpuFrameStatus::Valid &&
+                std::isfinite(frame.GpuFrameMs) && frame.GpuFrameMs >= 0.0) gpu.push_back(frame.GpuFrameMs);
+        }
+        stream << "  \"summary\": {\n    \"percentileMethod\": \"nearest-rank\",\n"
+            << "    \"frameCount\": " << snapshot.Frames.size() << ",\n"
+            << "    \"frameInterval\": "; WriteDistribution(stream, std::move(intervals));
+        stream << ",\n    \"cpuFrame\": "; WriteDistribution(stream, std::move(cpu));
+        stream << ",\n    \"gpuFrameValidOnly\": "; WriteDistribution(stream, std::move(gpu));
+        stream << ",\n    \"framesOver16_667Ms\": " << over60 << ",\n    \"framesOver33_333Ms\": " << over30
+            << ",\n    \"framesOver100Ms\": " << over100 << ",\n    \"cpuPartialFrames\": " << cpuPartial
+            << ",\n    \"windowDroppedCpuScopes\": " << omittedCpuScopes
+            << ",\n    \"gpuPendingFrames\": " << gpuPending << ",\n    \"gpuPartialScopeFrames\": " << gpuPartial
+            << ",\n    \"cpuScopesWithinBudget\": " << (cpuPartial == 0 ? "true" : "false")
+            << ",\n    \"note\": \"Frame durations include all frames; scope attribution is incomplete in frames with drops. GPU timestamps measure elapsed intervals, not utilization. Reset-scoped drop totals can include history outside this exported window.\"\n  },\n";
+    }
+
+    template<size_t Size>
+    void WriteFloatArray(std::ostream& stream, const std::array<float, Size>& values)
+    {
+        stream << '[';
+        for (size_t i = 0; i < Size; ++i)
+        {
+            if (i) stream << ", ";
+            if (std::isfinite(values[i])) stream << values[i]; else stream << "null";
+        }
+        stream << ']';
+    }
+
+    void WriteContext(std::ostream& stream, const Client::FProfilerCaptureContext& context)
+    {
+#ifdef _DEBUG
+        constexpr const char* build = "Debug";
+#else
+        constexpr const char* build = "Release";
+#endif
+        stream << "  \"metadata\": {\n    \"sampledAtExport\": true,\n"
+            << "    \"buildConfiguration\": \"" << build << "\",\n"
+            << "    \"compilerMscVersion\": " << _MSC_VER << ",\n"
+            << "    \"iteratorDebugLevel\": " << _ITERATOR_DEBUG_LEVEL << ",\n"
+            << "    \"processId\": " << GetCurrentProcessId() << ",\n"
+            << "    \"debuggerAttached\": " << (IsDebuggerPresent() ? "true" : "false") << ",\n"
+            << "    \"logicalProcessors\": " << GetActiveProcessorCount(ALL_PROCESSOR_GROUPS) << ",\n"
+            << "    \"runtimeContextValid\": " << (context.Valid ? "true" : "false") << ",\n"
+            << "    \"adapter\": \"" << EscapeJson(context.Adapter) << "\",\n"
+            << "    \"deviceCreationFlags\": " << context.DeviceCreationFlags << ",\n"
+            << "    \"d3dDebugLayer\": " << ((context.DeviceCreationFlags & D3D11_CREATE_DEVICE_DEBUG) ? "true" : "false") << ",\n"
+            << "    \"levelId\": " << context.LevelId << ",\n    \"viewport\": ";
+        WriteFloatArray(stream, context.Viewport);
+        stream << ",\n    \"cameraPosition\": "; WriteFloatArray(stream, context.CameraPosition);
+        stream << ",\n    \"viewMatrix\": "; WriteFloatArray(stream, context.ViewMatrix);
+        stream << ",\n    \"projectionMatrix\": "; WriteFloatArray(stream, context.ProjectionMatrix);
+        stream << ",\n    \"shadowEnabled\": " << (context.ShadowEnabled ? "true" : "false")
+            << ",\n    \"shadowWidthHeightStrength\": ";
+        WriteFloatArray(stream, std::array<float, 3>{context.ShadowWidth, context.ShadowHeight, context.ShadowStrength});
+        stream << ",\n    \"ssaoEnabled\": " << (context.SSAOEnabled ? "true" : "false")
+            << ",\n    \"bloomEnabled\": " << (context.BloomEnabled ? "true" : "false")
+            << ",\n    \"fxaaEnabled\": " << (context.FXAAEnabled ? "true" : "false")
+            << ",\n    \"note\": \"Current runtime context only; historical frames may have different levels, cameras, viewport sizes and settings.\"\n  },\n";
+    }
+
 bool SaveJsonImpl(
 	const Engine::FProfilerCaptureSnapshot& Snapshot,
 	const filesystem::path& OutputPath,
-	string* pOutError, const std::atomic_bool* pCancel, bool ReplaceExisting)
+	string* pOutError, const std::atomic_bool* pCancel, bool ReplaceExisting,
+    const Client::FProfilerCaptureContext& Context)
 {
 	if (Cancelled(pCancel, pOutError))
 		return false;
@@ -171,6 +280,8 @@ bool SaveJsonImpl(
 	Stream << fixed << setprecision(6);
 	Stream << "{\n";
 	Stream << "  \"schema\": \"LostArkProfilerCapture.v3\",\n";
+    WriteContext(Stream, Context);
+    WriteSummary(Stream, Snapshot);
 	Stream << "  \"droppedCpuScopes\": " << Snapshot.DroppedCpuScopes << ",\n";
 	Stream << "  \"droppedGpuFrames\": " << Snapshot.DroppedGpuFrames << ",\n";
 	Stream << "  \"droppedGpuScopes\": " << Snapshot.DroppedGpuScopes << ",\n";
@@ -207,6 +318,8 @@ bool SaveJsonImpl(
 		Stream << "    {\n";
 		Stream << "      \"frameNumber\": " << Frame.FrameNumber << ",\n";
 		Stream << "      \"cpuFrameMs\": " << Frame.CpuFrameMs << ",\n";
+        Stream << "      \"droppedCpuScopes\": " << Frame.DroppedCpuScopes << ",\n";
+        Stream << "      \"detailedCpuScopes\": " << (Frame.DetailedCpuScopes ? "true" : "false") << ",\n";
 		Stream << "      \"frameIntervalMs\": " << Frame.FrameIntervalMs << ",\n";
 		Stream << "      \"gpuFrameMs\": " << Frame.GpuFrameMs << ",\n";
 		Stream << "      \"gpuValid\": " << (Frame.GpuValid ? "true" : "false") << ",\n";
@@ -316,11 +429,12 @@ bool SaveJsonImpl(
 
 	bool SaveJsonSafely(const Engine::FProfilerCaptureSnapshot& Snapshot,
 		const filesystem::path& OutputPath, string* pOutError,
-		const std::atomic_bool* pCancel = nullptr, bool ReplaceExisting = true)
+		const std::atomic_bool* pCancel = nullptr, bool ReplaceExisting = true,
+        const Client::FProfilerCaptureContext& Context = {})
 	{
 		try
 		{
-			return SaveJsonImpl(Snapshot, OutputPath, pOutError, pCancel, ReplaceExisting);
+			return SaveJsonImpl(Snapshot, OutputPath, pOutError, pCancel, ReplaceExisting, Context);
 		}
 		catch (const std::exception& Exception)
 		{
@@ -332,9 +446,9 @@ bool SaveJsonImpl(
 
 bool_t Client::CProfilerCaptureIO::Save_Json(
 	const Engine::FProfilerCaptureSnapshot& Snapshot,
-	const filesystem::path& OutputPath, string* pOutError)
+	const filesystem::path& OutputPath, string* pOutError, const FProfilerCaptureContext& Context)
 {
-	return SaveJsonSafely(Snapshot, OutputPath, pOutError);
+	return SaveJsonSafely(Snapshot, OutputPath, pOutError, nullptr, true, Context);
 }
 
 struct Client::CProfilerCaptureExporter::FSaveJob final
@@ -367,7 +481,7 @@ Client::CProfilerCaptureExporter::~CProfilerCaptureExporter()
 
 bool_t Client::CProfilerCaptureExporter::BeginSave(
 	Engine::FProfilerCaptureSnapshot&& Snapshot,
-	filesystem::path OutputPath, string* pOutError)
+	filesystem::path OutputPath, string* pOutError, FProfilerCaptureContext Context)
 {
 	if (IsSaving())
 	{
@@ -385,10 +499,10 @@ bool_t Client::CProfilerCaptureExporter::BeginSave(
 		Job->Result.OutputPath = std::move(OutputPath);
 		// Capturing the snapshot in the worker also releases its large vectors
 		// on that thread, rather than stalling the next main-thread Poll.
-		m_Worker = std::thread([Job, Captured = std::move(Snapshot)]()
+		m_Worker = std::thread([Job, Captured = std::move(Snapshot), Context = std::move(Context)]()
 		{
 			Job->Result.Succeeded = SaveJsonSafely(Captured,
-				Job->Result.OutputPath, &Job->Result.Error, &Job->Cancel, false);
+				Job->Result.OutputPath, &Job->Result.Error, &Job->Cancel, false, Context);
 			OutputDebugStringA(Job->Result.Succeeded ?
 				"[Profiler] JSON capture save completed.\n" :
 				"[Profiler] JSON capture save failed or was cancelled.\n");

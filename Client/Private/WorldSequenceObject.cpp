@@ -6,6 +6,7 @@
 #include "Part_Equipment.h"
 #include "Shader.h"
 #include "NpcPresentationAssetService.h"
+#include "SourceEquipmentMaterialPrograms.h"
 #include <algorithm>
 #include <cmath>
 
@@ -20,6 +21,7 @@ namespace
     uint32_t Resolve_TranslucentSourcePass(const MODEL_SURFACE_PARAMETERS* surface)
     {
         if (!surface || surface->family != MODEL_SURFACE_FAMILY::SOURCE_CHARACTER) return 0u;
+        if (SourceEquipmentMaterial::Is_Translucent(surface->sourceCharacter.program)) return 9u;
         switch (surface->sourceCharacter.program)
         {
         case 18u: return 9u;
@@ -150,6 +152,7 @@ bool_t CWorldSequenceObject::Reset_ForReuse()
 {
     Hide();
     if (!m_Model || !Get_RenderStatus().empty()) return false;
+    m_Model->Clear_SourceCharacterOverrides();
     if (m_Model->Is_Skinned())
     {
         m_Model->Clear_AnimationTransitionPose();

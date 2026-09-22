@@ -47,6 +47,79 @@ namespace
 {
 	ARENA_CAMERA_PROFILE g_MapPresentationSizeProfile;
 
+	bool_t Read_InteractionEffectCues(const DATA_JSON_VALUE& skill, const std::string& clip,
+		std::vector<ANIMATION_EFFECT_CUE>& out, std::string& status)
+	{
+		std::vector<ANIMATION_EFFECT_CUE> staged;
+		const auto* rows = skill.Find("effectCues");
+		const auto* legacy = skill.Find("effectAssetId");
+		const auto validId = [](const DATA_JSON_VALUE* value) {
+			return value && value->Is_String() && !value->Get_String().empty() &&
+				value->Get_String().size() <= 256u && std::none_of(value->Get_String().begin(),
+					value->Get_String().end(), [](unsigned char c) { return c < 0x20u; });
+		};
+		const auto fail = [&]() { status = "invalid interaction effectCues; prior bindings preserved"; return false; };
+		if (rows && legacy) return fail();
+		if (legacy)
+		{
+			if (!validId(legacy)) return fail();
+			ANIMATION_EFFECT_CUE cue;
+			cue.strClipName = clip; cue.strEffectAssetId = legacy->Get_String();
+			cue.eOrientationPolicy = EFFECT_ORIENTATION_POLICY::ACTION_FACING;
+			staged.push_back(std::move(cue));
+		}
+		if (rows)
+		{
+			if (!rows->Is_Array() || rows->Get_Array().size() > 256u) return fail();
+			const auto readMs = [](const DATA_JSON_VALUE* value, uint32_t& target) {
+				if (!value || !value->Is_Number() || !std::isfinite(value->Get_Number()) ||
+					value->Get_Number() < 0.0 || value->Get_Number() > 600000.0 ||
+					std::floor(value->Get_Number()) != value->Get_Number()) return false;
+				target = static_cast<uint32_t>(value->Get_Number()); return true;
+			};
+			const auto readVector = [](const DATA_JSON_VALUE* value, float3_t& target) {
+				if (!value || !value->Is_Array() || value->Get_Array().size() != 3u) return false;
+				float values[3]{};
+				for (size_t i = 0u; i < 3u; ++i)
+				{
+					const auto& v = value->Get_Array()[i];
+					if (!v.Is_Number() || !std::isfinite(v.Get_Number()) ||
+						std::abs(v.Get_Number()) > (std::numeric_limits<float>::max)()) return false;
+					values[i] = static_cast<float>(v.Get_Number());
+				}
+				target = {values[0], values[1], values[2]}; return true;
+			};
+			const auto text = [](const DATA_JSON_VALUE& value, const char* key) {
+				const auto* field = value.Find(key);
+				return field && field->Is_String() ? field->Get_String() : std::string{};
+			};
+			for (const auto& row : rows->Get_Array())
+			{
+				ANIMATION_EFFECT_CUE cue;
+				if (!row.Is_Object() || row.Get_Object().size() != 10u ||
+					!validId(row.Find("effectAssetId")) || !validId(row.Find("anchorSlotId")) ||
+					!readMs(row.Find("startMs"), cue.iStartMs) || !readMs(row.Find("endMs"), cue.iEndMs) ||
+					!readVector(row.Find("position"), cue.LocalTransform.vPosition) ||
+					!readVector(row.Find("rotationDegrees"), cue.LocalTransform.vRotationDegrees) ||
+					!readVector(row.Find("scale"), cue.LocalTransform.vScale) ||
+					cue.LocalTransform.vScale.x <= 0.f || cue.LocalTransform.vScale.y <= 0.f || cue.LocalTransform.vScale.z <= 0.f)
+					return fail();
+				cue.strClipName = clip; cue.strEffectAssetId = text(row, "effectAssetId");
+				cue.strAnchorSlotId = text(row, "anchorSlotId");
+				const auto follow = text(row, "followPolicy"), stop = text(row, "stopPolicy"), orientation = text(row, "orientationPolicy");
+				if ((follow != "FOLLOW" && follow != "SNAPSHOT") || (stop != "NATURAL" && stop != "CUE_END") ||
+					(orientation != "ANCHOR" && orientation != "ACTION_FACING") ||
+					(cue.iEndMs && cue.iEndMs <= cue.iStartMs) || (stop == "CUE_END" && cue.iEndMs <= cue.iStartMs)) return fail();
+				cue.eFollowPolicy = follow == "FOLLOW" ? EFFECT_FOLLOW_POLICY::FOLLOW : EFFECT_FOLLOW_POLICY::SNAPSHOT;
+				cue.eStopPolicy = stop == "NATURAL" ? EFFECT_STOP_POLICY::NATURAL : EFFECT_STOP_POLICY::CUE_END;
+				cue.eOrientationPolicy = orientation == "ANCHOR" ? EFFECT_ORIENTATION_POLICY::ANCHOR : EFFECT_ORIENTATION_POLICY::ACTION_FACING;
+				staged.push_back(std::move(cue));
+			}
+		}
+		out = std::move(staged);
+		return true;
+	}
+
 	double LocalMoveClockSeconds()
 	{
 		return std::chrono::duration<double>(
@@ -324,7 +397,7 @@ void CCharacter::Load_InteractionAnimationBindings()
   m_hasWallClimbClips = true;
  }
  std::array<std::vector<CLIP_STEP>, 5> staged;
- std::array<std::vector<std::string>, 5> effects;
+ std::array<std::vector<std::vector<ANIMATION_EFFECT_CUE>>, 5> effects;
  for (const auto& mode : modes->Get_Array())
  {
   const auto* name = mode.Find("mode");
@@ -348,25 +421,21 @@ void CCharacter::Load_InteractionAnimationBindings()
    std::uint32_t animation; float duration;
    if (!Resolve_ClipTiming(step, animation, duration))
    { status = "model has no clip " + step.clip; fail(); return; }
-   std::string effectId;
-   if (const auto* effect = skill.Find("effectAssetId"))
-   {
-    if (!effect->Is_String() || effect->Get_String().empty())
-    { status = "invalid effect asset id"; fail(); return; }
-    effectId = effect->Get_String();
-   }
-   effects[index].push_back(std::move(effectId));
+   std::vector<ANIMATION_EFFECT_CUE> cues;
+   if (!Read_InteractionEffectCues(skill, step.clip, cues, status)) { fail(); return; }
+   effects[index].push_back(std::move(cues));
    staged[index].push_back(std::move(step));
   }
  }
  m_InteractionClips = std::move(staged);
- m_InteractionEffectIds = std::move(effects);
+ m_InteractionEffectCues = std::move(effects);
  // Blank, registered authoring slots stay silent until the user supplies FX.
  // A later ordinary Effect Tool Save replaces the prepared target in place.
  std::vector<std::string> targets;
- for (const auto& mode : m_InteractionEffectIds)
-  for (const auto& id : mode)
-   if (!id.empty() && CEffectCatalog::Contains(id))
+ for (const auto& mode : m_InteractionEffectCues)
+  for (const auto& action : mode)
+   for (const auto& cue : action)
+   if (const auto& id = cue.strEffectAssetId; CEffectCatalog::Contains(id))
    {
     const auto document = CEffectCatalog::Find(id);
     if (document && CEffectDocumentCodec::Validate_Drawable(*document, status) &&
@@ -2268,14 +2337,15 @@ bool_t CCharacter::Apply_NetworkAction(
 			m_eInteractionMode = interactionMode; m_iInteractionIndex = skillId;
 			m_iLastNetworkActionStartTick = actionStartTick;
 			m_iCurrentEffectSkillId = INVALID_SKILL_ID; m_iEffectActionStartTick = 0;
-			m_bInteractionEffectSubmitted = false;
+			m_InteractionEffectsSubmitted.clear();
 			m_pInteractionEffectAdmission = std::make_shared<EFFECT_PENDING_SPAWN_ADMISSION>();
 		}
-		f32_t interactionClipSeconds = 0.f;
+		f32_t interactionClipSeconds = 0.f, interactionRate = 1.f;
 		const auto& clips = m_InteractionClips[static_cast<std::size_t>(interactionMode)];
 		if (skillId < clips.size())
 		{
 			const auto& step = clips[skillId];
+			interactionRate = step.playRate;
 			std::uint32_t animation; float duration;
 			if (Resolve_ClipTiming(step, animation, duration) && (same || Start_Clip(step)))
 			{
@@ -2286,32 +2356,45 @@ bool_t CCharacter::Apply_NetworkAction(
 			}
 		}
 		else if (!same) OutputDebugStringA("[Interaction] Approved action has no admitted clip binding.\n");
-		const auto& effects = m_InteractionEffectIds[static_cast<std::size_t>(interactionMode)];
-		f32_t preparedEffectSeconds = 0.f;
-		const bool_t effectPrepared = skillId < effects.size() &&
-			CEffectPresentationService::Try_Get_PreparedProductDurationSeconds(effects[skillId], preparedEffectSeconds);
-		if (age >= interactionClipSeconds ||
-			age >= static_cast<f32_t>(Kouku_InteractionActionMs(interactionMode, skillId)) * .001f ||
-			(effectPrepared && age >= preparedEffectSeconds))
-			Cancel_PendingInteractionEffectAdmission();
-		// Preparation may finish after the first snapshot. Retry only this live action,
-		// then let the accepted effect keep its authored natural tail.
-		if (m_pInteractionEffectAdmission && !m_bInteractionEffectSubmitted && effectPrepared)
-		{
-			EFFECT_SPAWN_DESC desc;
-			desc.strEffectAssetId = effects[skillId];
-			desc.PendingAdmission = m_pInteractionEffectAdmission;
-			desc.pOwner = static_pointer_cast<CCharacter>(shared_from_this());
-			desc.iActionStartTick = actionStartTick;
-			desc.strOccurrenceId = "interaction:" + std::to_string(static_cast<unsigned>(interactionMode)) + ":" + std::to_string(skillId);
-			desc.fInitialSampleTimeSeconds = age;
-			desc.eOrientationPolicy = EFFECT_ORIENTATION_POLICY::ACTION_FACING;
-			desc.bHasActionFacingYaw = true;
-			desc.fActionFacingYawDegrees = actionFacingYawDegrees;
-			std::string status;
-			m_bInteractionEffectSubmitted = CEffectPresentationService::Spawn(desc, status);
-		}
+		const auto& effects = m_InteractionEffectCues[static_cast<std::size_t>(interactionMode)];
 		m_eNetworkAction = action;
+		if (age >= interactionClipSeconds ||
+			age >= static_cast<f32_t>(Kouku_InteractionActionMs(interactionMode, skillId)) * .001f)
+			Cancel_PendingInteractionEffectAdmission();
+		if (m_pInteractionEffectAdmission && skillId < effects.size())
+		{
+			const auto& cues = effects[skillId];
+			if (m_InteractionEffectsSubmitted.size() != cues.size()) m_InteractionEffectsSubmitted.assign(cues.size(), false);
+			for (size_t index = 0u; index < cues.size(); ++index)
+			{
+				if (m_InteractionEffectsSubmitted[index]) continue;
+				const auto& cue = cues[index];
+				const f32_t sampleAge = age * interactionRate - static_cast<f32_t>(cue.iStartMs) * .001f;
+				if (sampleAge < 0.f) continue;
+				f32_t effectSeconds = 0.f;
+				const bool_t prepared = CEffectPresentationService::Try_Get_PreparedProductDurationSeconds(cue.strEffectAssetId, effectSeconds);
+				if ((cue.eStopPolicy == EFFECT_STOP_POLICY::CUE_END && sampleAge * 1000.f >= cue.iEndMs - cue.iStartMs) ||
+					(prepared && sampleAge >= effectSeconds))
+				{ m_InteractionEffectsSubmitted[index] = true; continue; }
+				// Late preparation retries only this still-live occurrence; accepted natural tails remain independent.
+				if (!prepared) continue;
+				EFFECT_SPAWN_DESC desc;
+				desc.strEffectAssetId = cue.strEffectAssetId;
+				desc.PendingAdmission = m_pInteractionEffectAdmission;
+				desc.pOwner = static_pointer_cast<CCharacter>(shared_from_this());
+				desc.iActionStartTick = actionStartTick; desc.iCueStartMs = cue.iStartMs;
+				desc.strOccurrenceId = "interaction:" + std::to_string(static_cast<unsigned>(interactionMode)) + ":" +
+					std::to_string(skillId) + "/cue:" + std::to_string(index);
+				desc.strAnchorSlotId = cue.strAnchorSlotId; desc.LocalTransform = cue.LocalTransform;
+				desc.eFollowPolicy = cue.eFollowPolicy; desc.eStopPolicy = cue.eStopPolicy;
+				desc.iCueDurationMs = cue.iEndMs > cue.iStartMs ? cue.iEndMs - cue.iStartMs : 0u;
+				desc.fInitialSampleTimeSeconds = sampleAge; desc.fPlaybackRate = interactionRate;
+				desc.eOrientationPolicy = cue.eOrientationPolicy;
+				desc.bHasActionFacingYaw = true; desc.fActionFacingYawDegrees = actionFacingYawDegrees;
+				std::string status;
+				m_InteractionEffectsSubmitted[index] = CEffectPresentationService::Spawn(desc, status);
+			}
+		}
 		return true;
 	}
 	if (PLAYER_ACTION_STATE::VEHICLE_SKILL == action)
@@ -2335,6 +2418,17 @@ bool_t CCharacter::Apply_NetworkAction(
 		const VEHICLE_SKILL_ENTRY* vehicleSkill = nullptr == vehicle ? nullptr : vehicle->Find_Skill(skillId);
 		const VEHICLE_SKILL_RIDER_ENTRY* rider =
 			nullptr == vehicleSkill ? nullptr : vehicleSkill->Find_Rider(m_eCharacterClass);
+		m_iVehicleFlightRiderAnimation = UINT32_MAX;
+		bool flying = m_eVehicleFlightPhase != VEHICLE_FLIGHT_PHASE::GROUNDED &&
+			vehicleSkill && vehicleSkill->flightLoopEndSeconds > vehicleSkill->flightLoopStartSeconds;
+		if (flying && m_pVehiclePart)
+		{
+			flying = m_pVehiclePart->Set_FlightPlayback(vehicleSkill->vehicleClips, m_eVehicleFlightPhase,
+				m_fVehicleFlightPhaseAgeSeconds, m_fVehicleFlightPhaseDurationSeconds,
+				vehicleSkill->flightLoopStartSeconds, vehicleSkill->flightLoopEndSeconds,
+				vehicleSkill->flightLandingStartSeconds);
+			age = m_pVehiclePart->Get_FlightClipSeconds();
+		}
 		if (nullptr != rider)
 		{
 			f32_t remaining = age;
@@ -2357,14 +2451,18 @@ bool_t CCharacter::Apply_NetworkAction(
 					m_pBodyModel->Set_AnimTrackPosition(
 						animation, seconds * m_pBodyModel->Get_AnimationTickPerSecond(animation));
 					m_pBodyModel->Play_Animation(0.f);
+					if (flying) m_iVehicleFlightRiderAnimation = animation;
 				}
 				break;
 			}
 		}
 		if (nullptr != vehicleSkill && nullptr != m_pVehiclePart)
 		{
-			(void)m_pVehiclePart->Seek_SkillChain(vehicleSkill->vehicleClips, age);
-			Update_VehicleSkillCues(*vehicleSkill, actionStartTick, age);
+			if (!flying) (void)m_pVehiclePart->Seek_SkillChain(vehicleSkill->vehicleClips, age);
+			else if (m_iVehicleFlightRiderAnimation != UINT32_MAX)
+				(void)m_pVehiclePart->Pose_FlightRider(m_pBodyModel, m_iVehicleFlightRiderAnimation);
+			if (!flying || m_eVehicleFlightPhase == VEHICLE_FLIGHT_PHASE::TAKEOFF)
+				Update_VehicleSkillCues(*vehicleSkill, actionStartTick, age);
             m_iVehicleControlSkillId = skillId;
             m_fVehicleControlAgeSeconds = age;
 		}
@@ -3297,6 +3395,24 @@ const VEHICLE_RIDER_ENTRY* CCharacter::Find_VehicleRider() const
 	return nullptr != pVehicle ? pVehicle->Find_Rider(m_eCharacterClass) : nullptr;
 }
 
+void CCharacter::Apply_NetworkVehicleFlight(const LostArk::Shared::VEHICLE_FLIGHT_PHASE phase,
+    const std::uint32_t serverTick, const std::uint32_t phaseStartTick, const f32_t phaseDurationSeconds)
+{
+    const bool wasFlying = m_eVehicleFlightPhase != LostArk::Shared::VEHICLE_FLIGHT_PHASE::GROUNDED;
+    m_eVehicleFlightPhase = phase;
+    m_fVehicleFlightPhaseDurationSeconds = phaseDurationSeconds;
+    m_fVehicleFlightPhaseAgeSeconds = 0.f;
+    if (phase != LostArk::Shared::VEHICLE_FLIGHT_PHASE::GROUNDED)
+        CActionPresentationTimeline::Try_ResolveActionAgeSeconds(serverTick, phaseStartTick,
+            SERVER_TICK_HZ, m_fVehicleFlightPhaseAgeSeconds);
+    if (wasFlying && phase == LostArk::Shared::VEHICLE_FLIGHT_PHASE::GROUNDED)
+    {
+        m_iVehicleFlightRiderAnimation = UINT32_MAX;
+        if (m_pVehiclePart) m_pVehiclePart->Clear_FlightPlayback();
+        if (m_pBodyModel) { m_pBodyModel->Clear_AnimationTransitionPose(); m_pBodyModel->Set_AnimPaused(false); }
+    }
+}
+
 void CCharacter::Apply_NetworkVehicle(const std::uint32_t vehicleId)
 {
 	static const wstring_t VEHICLE_PART_TAG = TEXT("Part_Vehicle");
@@ -3503,6 +3619,12 @@ void CCharacter::Update(f32_t fTimeDelta)
 
 	Update_PresentationRootMatrix();
 	__super::Update(fTimeDelta);
+	if (m_pVehiclePart && m_iVehicleFlightRiderAnimation != UINT32_MAX &&
+		m_eVehicleFlightPhase != LostArk::Shared::VEHICLE_FLIGHT_PHASE::GROUNDED)
+	{
+		(void)m_pVehiclePart->Pose_FlightRider(m_pBodyModel, m_iVehicleFlightRiderAnimation);
+		Update_PresentationRootMatrix();
+	}
 	if (LostArk::Shared::PLAYER_ACTION_STATE::SKILL == m_eNetworkAction &&
 		nullptr != m_pChain && std::isfinite(fTimeDelta) && fTimeDelta > 0.f)
 	{

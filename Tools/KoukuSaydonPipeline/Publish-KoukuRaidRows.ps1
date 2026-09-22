@@ -10,6 +10,7 @@ function Add-KoukuRaidRows([object]$Encounter, [object]$Rows) {
             'introPatternId','introDurationMs','clearPatternId','clearDurationMs','primaryBossPlacementId',
             'entries','arrivals')
         if ($null -ne $gate.PSObject.Properties['entrySequenceInstanceId']) { $gateProperties += 'entrySequenceInstanceId' }
+        if ($null -ne $gate.PSObject.Properties['loopStartEntryId']) { $gateProperties += 'loopStartEntryId' }
         Assert-ExactProperties $gate $gateProperties 'Kouku raid gate'
         if ($gate.gateId -cnotin @('GATE1','GATE2','GATE3','BINGO') -or $seenGates.ContainsKey($gate.gateId)) {
             throw 'Kouku raid gate is unknown or duplicated.'
@@ -44,9 +45,22 @@ function Add-KoukuRaidRows([object]$Encounter, [object]$Rows) {
                 $entrySequence = $gate.entrySequenceInstanceId
             }
         }
-        $Rows.Add((@('RAIDGATE',$Encounter.encounterId,$gate.gateId,$gate.flowId,$gate.sequenceCompositionId,
+        $loopStart = ''
+        if ($null -ne $gate.PSObject.Properties['loopStartEntryId']) {
+            if ($gate.loopStartEntryId -isnot [string]) { throw 'Kouku raid loop start must be a string.' }
+            $loopStart = $gate.loopStartEntryId
+            if ($loopStart) {
+                Assert-StableId $loopStart 'Kouku raid loop start'
+                if (@($gate.entries | Where-Object { $_.entryId -ceq $loopStart }).Count -ne 1) {
+                    throw 'Kouku raid loop start must reference exactly one saved entry.'
+                }
+            }
+        }
+        $gateRow = @('RAIDGATE',$Encounter.encounterId,$gate.gateId,$gate.flowId,$gate.sequenceCompositionId,
             $gate.sequenceRevision,$(if ($gate.introPatternId) { $gate.introPatternId } else { 'NONE' }),$gate.introDurationMs,$clearId,$gate.clearDurationMs,
-            $gate.primaryBossPlacementId,@($gate.entries).Count,$entrySequence) -join "`t"))
+            $gate.primaryBossPlacementId,@($gate.entries).Count,$entrySequence)
+        if ($loopStart) { $gateRow += $loopStart }
+        $Rows.Add(($gateRow -join "`t"))
         $entryIds = @{}
         for ($index = 0; $index -lt @($gate.entries).Count; ++$index) {
             $entry = $gate.entries[$index]

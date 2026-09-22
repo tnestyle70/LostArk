@@ -1814,6 +1814,9 @@ namespace
 			const std::string occurrencePrefix = pattern.strPatternId + ".animation.";
 			for (const KOUKU_SAYDON_COMPOSITION_STAGE& stage : pattern.Stages)
 			{
+                if (stage.RetargetTarget && (!stage.bRetargetOnEnter ||
+                    (*stage.RetargetTarget != "RANDOM_ALIVE" && *stage.RetargetTarget != "NEAREST_ALIVE")))
+                { outStatus = "Stage retargetTarget requires retargetOnEnter and RANDOM_ALIVE or NEAREST_ALIVE."; return false; }
 				patternDurationMs += stage.iDurationMs;
 				if (patternDurationMs > MAX_TIME_MS) { outStatus = "Pattern exceeds 600 seconds."; return false; }
 				if (!Is_StableId(stage.strStageId) ||
@@ -1932,6 +1935,13 @@ namespace
 			std::unordered_set<std::string> companionWorldBoxes;
 			std::unordered_map<std::string, std::pair<
 				const KOUKU_SAYDON_COMPOSITION_PRESENTATION_OCCURRENCE*, std::size_t>> selectionGroups;
+            std::unordered_set<std::string> fixedSoundGroups, groupsWithSound;
+            for (const auto& box : pattern.LogicOccurrences)
+            {
+                const auto* owner = findLogic(box.strLogicId);
+                if (owner && owner->strLogicType == "DURATION" && owner->strJudgementKind == "SHOWTIME_PLAYER_TARGETS" &&
+                    !owner->strFixedSelectionGroupId.empty()) fixedSoundGroups.insert(owner->strFixedSelectionGroupId);
+            }
 			for (const auto& row : pattern.PresentationOccurrences)
 			{
 				const std::uint64_t endMs = static_cast<std::uint64_t>(row.iStartMs) + row.iDurationMs;
@@ -1979,16 +1989,22 @@ namespace
                 { outStatus = "World Object anchor requires a worldId; fixed world coordinates use MAP: " + row.strOccurrenceId; return false; }
 				if (!row.strSelectionGroupId.empty())
 				{
+                    const bool fixedSound = resource->eKind == KOUKU_SAYDON_PRESENTATION_KIND::SOUND &&
+                        fixedSoundGroups.contains(row.strSelectionGroupId) && row.strAnchorKind == "MAP" && !row.bFollowBoss;
 					if ((resource->eKind != KOUKU_SAYDON_PRESENTATION_KIND::COLLIDER &&
-						resource->eKind != KOUKU_SAYDON_PRESENTATION_KIND::EFFECT) || !Is_StableId(row.strSelectionGroupId))
-					{ outStatus = "Selection Group requires a stable ID on an Effect or Collider: " + row.strOccurrenceId; return false; }
+						resource->eKind != KOUKU_SAYDON_PRESENTATION_KIND::EFFECT && !fixedSound) || !Is_StableId(row.strSelectionGroupId))
+					{ outStatus = "Selection Group requires Effect/Collider, or fixed SHOWTIME MAP Sound: " + row.strOccurrenceId; return false; }
+                    if (fixedSound) groupsWithSound.insert(row.strSelectionGroupId);
 					if (resource->eKind == KOUKU_SAYDON_PRESENTATION_KIND::COLLIDER && row.strAnchorKind != "BOSS")
 					{ outStatus = "Selection Group requires BOSS anchors; WORLD, MAP and PLAYER are unsupported."; return false; }
 					auto& group = selectionGroups[row.strSelectionGroupId];
 					if (nullptr == group.first) group.first = &row;
 					const auto& first = *group.first;
 					const auto* firstResource = presentationResources.at(first.strResourceId);
-					if (!firstResource || firstResource->eKind != resource->eKind)
+                    const bool fixedVisualMix = firstResource && fixedSoundGroups.contains(row.strSelectionGroupId) &&
+                        (firstResource->eKind == KOUKU_SAYDON_PRESENTATION_KIND::EFFECT || firstResource->eKind == KOUKU_SAYDON_PRESENTATION_KIND::SOUND) &&
+                        (resource->eKind == KOUKU_SAYDON_PRESENTATION_KIND::EFFECT || resource->eKind == KOUKU_SAYDON_PRESENTATION_KIND::SOUND);
+					if (!firstResource || (firstResource->eKind != resource->eKind && !fixedVisualMix))
 					{ outStatus = "Selection Group cannot mix Effect and Collider boxes: " + row.strSelectionGroupId; return false; }
 					if (resource->eKind == KOUKU_SAYDON_PRESENTATION_KIND::COLLIDER && (row.strAnchorKind != first.strAnchorKind || row.bFollowBoss != first.bFollowBoss ||
 						row.strBone != first.strBone || row.strBoneTarget != first.strBoneTarget ||
@@ -2068,8 +2084,14 @@ namespace
 				{ outStatus = "PRODUCT roulette region needs an explicit World, region ID, symbol and color: " + row.strOccurrenceId; return false; }
 			}
 			for (const auto& [groupId, group] : selectionGroups)
-				if (group.second < 2u)
-				{ outStatus = "Selection Group requires at least two boxes of one kind in one Pattern: " + groupId; return false; }
+            {
+				if (group.second < 2u && presentationResources.at(group.first->strResourceId)->eKind == KOUKU_SAYDON_PRESENTATION_KIND::COLLIDER)
+				{ outStatus = "Collider Selection Group requires at least two boxes in one Pattern: " + groupId; return false; }
+                if (groupsWithSound.contains(groupId) && std::none_of(pattern.PresentationOccurrences.begin(), pattern.PresentationOccurrences.end(),
+                    [&](const auto& member) { return member.strSelectionGroupId == groupId && member.strAnchorKind == "MAP" && !member.bFollowBoss &&
+                        presentationResources.at(member.strResourceId)->eKind == KOUKU_SAYDON_PRESENTATION_KIND::EFFECT; }))
+                { outStatus = "Fixed SHOWTIME Sound group requires at least one MAP Effect."; return false; }
+            }
 			std::unordered_set<std::string> logicBoxIds;
 			std::optional<std::array<double, 3u>> captureGrip;
 			std::vector<std::string> rouletteInstances;
@@ -2104,6 +2126,14 @@ namespace
 						!row->strLogicOccurrenceId.empty() || row->iStartMs < box.iStartMs)
 					{ outStatus = "Card maze entry requires same-pattern fixed MAP Effects starting at or after the staging Trigger: " + id; return false; }
 				}
+                if (!owner.strTrackingPresentationOccurrenceId.empty())
+                {
+                    const auto tracking = std::find_if(pattern.PresentationOccurrences.begin(), pattern.PresentationOccurrences.end(),
+                        [&](const auto& row) { return row.strOccurrenceId == owner.strTrackingPresentationOccurrenceId; });
+                    if (tracking != pattern.PresentationOccurrences.end() &&
+                        presentationResources.at(tracking->strResourceId)->eKind == KOUKU_SAYDON_PRESENTATION_KIND::SOUND)
+                    { outStatus = "Tracking SHOWTIME cannot loop a Sound occurrence."; return false; }
+                }
                 if (!owner.strSelectedEffectGroupId.empty())
                 {
                     size_t members = 0u;
@@ -2555,6 +2585,9 @@ namespace
                     if (!exists) { outStatus = "Pattern Flow target is missing or belongs to another Gate: " + entry.strTargetId; return false; }
                 }
             }
+            if (!flow.strLoopStartEntryId.empty() &&
+                (!Is_StableId(flow.strLoopStartEntryId) || !entries.contains(flow.strLoopStartEntryId)))
+            { outStatus = "Pattern Flow loop start must reference an entry in this flow."; return false; }
         }
         outStatus = "Validated KoukuSaydon composition structure.";
 		return true;
@@ -3590,7 +3623,7 @@ bool_t Client::CKoukuSaydonCompositionDocument::Parse_Text(
 		{
 			if (!Has_Properties(stageValue,
 					{ "stageId", "actionId", "stageKind", "durationMs",
-					  "animationOccurrences" }, { "retargetOnEnter" }))
+					  "animationOccurrences" }, { "retargetOnEnter", "retargetTarget" }))
 			{
 				outStatus = "KoukuSaydon Stage has unexpected properties.";
 				return false;
@@ -3621,6 +3654,13 @@ bool_t Client::CKoukuSaydonCompositionDocument::Parse_Text(
 				{ outStatus = "KoukuSaydon Stage retargetOnEnter must be boolean."; return false; }
 				stagedStage.bRetargetOnEnter = retarget->Get_Boolean();
 			}
+            if (const auto* target = stageValue.Find("retargetTarget"))
+            {
+                if (!stagedStage.bRetargetOnEnter || !target->Is_String() ||
+                    (target->Get_String() != "RANDOM_ALIVE" && target->Get_String() != "NEAREST_ALIVE"))
+                { outStatus = "KoukuSaydon Stage retargetTarget requires retargetOnEnter and RANDOM_ALIVE or NEAREST_ALIVE."; return false; }
+                stagedStage.RetargetTarget = target->Get_String();
+            }
 			parsedOccurrences += occurrences->Get_Array().size();
 			stagedStage.AnimationOccurrences.reserve(occurrences->Get_Array().size());
 
@@ -4295,10 +4335,12 @@ bool_t Client::CKoukuSaydonCompositionDocument::Parse_Text(
 		{
 			KOUKU_SAYDON_COMPOSITION_PATTERN_FLOW flow;
 			const auto* entries = Required(value, "entries", DATA_JSON_TYPE::ARRAY);
-			if (!Has_ExactProperties(value, {"flowId", "gateId", "displayName", "entries"}) ||
+			if (!Has_Properties(value, {"flowId", "gateId", "displayName", "entries"}, {"loopStartEntryId"}) ||
 				!readText(value, "flowId", flow.strFlowId) || !readText(value, "gateId", flow.strGateId) ||
 				!readText(value, "displayName", flow.strDisplayName) || !entries || entries->Get_Array().size() > 256u)
 			{ outStatus = "Pattern Flow properties are invalid."; return false; }
+			if (value.Find("loopStartEntryId") && !readText(value, "loopStartEntryId", flow.strLoopStartEntryId))
+			{ outStatus = "Pattern Flow loop start must be a string."; return false; }
 			for (const auto& row : entries->Get_Array())
 			{
 				KOUKU_SAYDON_COMPOSITION_FLOW_ENTRY entry;
@@ -4817,6 +4859,7 @@ std::string Client::CKoukuSaydonCompositionDocument::Serialize(
 				<< "          \"stageKind\": \"" << CDataJson::Escape(stage.strStageKind) << "\",\n"
 				<< "          \"durationMs\": " << stage.iDurationMs << ",\n";
 			if (stage.bRetargetOnEnter) output << "          \"retargetOnEnter\": true,\n";
+            if (stage.RetargetTarget) output << "          \"retargetTarget\": \"" << CDataJson::Escape(*stage.RetargetTarget) << "\",\n";
 			output << "          \"animationOccurrences\": [\n";
 			for (std::size_t occurrenceIndex = 0u;
 				occurrenceIndex < stage.AnimationOccurrences.size(); ++occurrenceIndex)
@@ -5068,7 +5111,10 @@ std::string Client::CKoukuSaydonCompositionDocument::Serialize(
         const auto& flow = document.PatternFlows[i];
         output << "    {\"flowId\": \"" << CDataJson::Escape(flow.strFlowId)
             << "\", \"gateId\": \"" << CDataJson::Escape(flow.strGateId)
-            << "\", \"displayName\": \"" << CDataJson::Escape(flow.strDisplayName) << "\", \"entries\": [";
+            << "\", \"displayName\": \"" << CDataJson::Escape(flow.strDisplayName) << "\"";
+        if (!flow.strLoopStartEntryId.empty())
+            output << ", \"loopStartEntryId\": \"" << CDataJson::Escape(flow.strLoopStartEntryId) << "\"";
+        output << ", \"entries\": [";
         for (size_t j = 0; j < flow.Entries.size(); ++j)
         {
             const auto& entry = flow.Entries[j];
@@ -5451,6 +5497,7 @@ bool_t Client::CKoukuSaydonCompositionDocument::Try_ExpandPatternDocument(
         TimedStage item{destination, original};
         item.stage.iDurationMs = end - begin;
         item.stage.bRetargetOnEnter = original.bRetargetOnEnter && begin == origin;
+        if (!item.stage.bRetargetOnEnter) item.stage.RetargetTarget.reset();
         item.stage.AnimationOccurrences.clear();
         for (const auto& originalAnimation : original.AnimationOccurrences)
         {

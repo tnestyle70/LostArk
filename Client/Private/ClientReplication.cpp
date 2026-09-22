@@ -4326,6 +4326,9 @@ bool Client::CClientReplication::Apply_PlayerSnapshot(
 		player.eLocomotionState ==
 		PLAYER_LOCOMOTION_STATE::MOVING;
 
+	character->Apply_NetworkVehicle(player.iVehicleId);
+	character->Apply_NetworkVehicleFlight(player.eVehicleFlightPhase, serverTick,
+		player.iVehicleFlightPhaseStartTick, player.fVehicleFlightPhaseDurationSeconds);
 	character->Apply_LocalMoveSnapshot(LocalMoveSnapshot(player, serverTick),
 		player.eAction == LostArk::Shared::PLAYER_ACTION_STATE::SKILL ||
 		player.eAction == LostArk::Shared::PLAYER_ACTION_STATE::VEHICLE_SKILL);

@@ -160,6 +160,7 @@ public:
 		LostArk::Shared::CHARACTER_CLASS_ID characterClass,
 		std::string_view nickName);
 	//playercontroller�� ��ǥ XZ�� �����ϴ� public ���
+	bool Send_VehicleFlightInput(std::uint32_t sequence, float x, float z, float vertical);
 	bool Send_MoveGoal(
 		std::uint32_t clientSequence,
 		float goalX,
@@ -190,6 +191,13 @@ public:
 	bool Send_EstherSkill(
 		std::uint32_t clientSequence,
 		std::uint8_t slotIndex,
+		float aimX,
+		float aimZ);
+	/* Debug F1 Esther summon by name. The Server owns the cast and the summon;
+	both ride the world snapshot, so there is no result message. */
+	bool Send_DebugUseEsther(
+		std::uint32_t requestSequence,
+		LostArk::Shared::ESTHER_ID esther,
 		float aimX,
 		float aimZ);
 	bool Send_UseSquareHole(

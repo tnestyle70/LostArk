@@ -74,6 +74,7 @@ public:
 	virtual bool Consume_DebugKoukuHudModeResult(
 		LostArk::Shared::S2C_DEBUG_SET_KOUKU_HUD_MODE_RESULT& result) = 0;
 
+	virtual bool Request_VehicleFlightInput(std::uint32_t, float, float, float) { return false; }
 	virtual bool Request_MoveGoal(
 		std::uint32_t clientSequence,
 		float goalX,
@@ -136,6 +137,10 @@ public:
 		std::uint8_t slotIndex,
 		float aimX,
 		float aimZ) = 0;
+	/* Debug F1 Esther summon by name, outside the roster slots and the gauge.
+	Sinks without a Server reject it. */
+	virtual bool Request_DebugUseEsther(
+		std::uint32_t, LostArk::Shared::ESTHER_ID, float, float) { return false; }
 	// World map square hole click. holeId is the 1-based row of the zone's square-hole
 	// document; the Server owns the song lock and (later) the teleport.
 	virtual bool Request_UseSquareHole(

@@ -665,7 +665,8 @@ bool_t CMapAssetCatalog::Parse_MaterialOverrides(const DATA_JSON_VALUE& root)
                 const auto program = material.surface.sourceCharacter.program;
                 std::string space;
                 const bool supportsBaked = (program >= 80u && program <= 83u) ||
-                    (program >= 40u && program <= 63u && program != 47u && program != 53u && program != 55u);
+                    (program >= 40u && program <= 63u && program != 47u && program != 53u && program != 55u) || program == 209u || program == 210u ||
+                    (program >= 214u && program <= 234u) || program == 237u;
                 if (!supportsBaked ||
                     !exactFields(*baked, { "averageTexture", "directionalTexture", "colorSpace" }) ||
                     !readString(*baked, "colorSpace", space) || (space != "linear" && space != "srgb"))

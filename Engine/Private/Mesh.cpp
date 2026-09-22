@@ -198,12 +198,11 @@ HRESULT CMesh::Render_Instanced(ID3D11Buffer* pInstanceBuffer,
 		requiredBytes > instanceDesc.ByteWidth)
 		return E_INVALIDARG;
 
-    // Measured crossover: small submissions cost more in dispatch/indirect work
-    // than they save. Keep their exact original direct draw.
-    constexpr uint64_t minimumLodSubmittedIndices = 294912u;
+    // The view and immutable LOD errors are already CPU-owned. Select a range
+    // directly instead of submitting a one-thread compute dispatch per draw.
+    CStaticMeshLod::SELECTION selection{ m_iNumIndices, 0u, 0u };
     const bool_t useLod = screenLod && m_StaticLod && !Has_MorphBaseVertices() &&
-        uint64_t(m_iNumIndices) * iNumInstances >= minimumLodSubmittedIndices &&
-        S_OK == m_StaticLod->Prepare(m_pContext.Get(), *screenLod, iNumInstances);
+        S_OK == m_StaticLod->Select_Range(*screenLod, selection) && selection.level > 0u;
 
 	ID3D11Buffer* vertexBuffers[] =
 	{
@@ -248,24 +247,27 @@ HRESULT CMesh::Render_Instanced(ID3D11Buffer* pInstanceBuffer,
 			EProfilerCounter::Instances,
 			iNumInstances);
 
-        if (useLod) pProfiler->Add_Counter(EProfilerCounter::IndirectDrawCalls);
-        // Direct indices remain exact. GPU-selected geometry gets its own upper
-        // bound; post-frame pipeline statistics measure actual indirect work.
-		pProfiler->Add_Counter(
-            useLod ? EProfilerCounter::IndirectIndexUpperBound : EProfilerCounter::Indices,
-			static_cast<uint64_t>(m_iNumIndices) *
-			iNumInstances);
-	}
+        const uint64_t submittedIndices = uint64_t(selection.indexCount) * iNumInstances;
+        pProfiler->Add_Counter(EProfilerCounter::Indices, submittedIndices);
+        if (screenLod)
+        {
+            if (m_StaticLod && !Has_MorphBaseVertices())
+                pProfiler->Add_Counter(EProfilerCounter::MapLodAvailableDraws);
+            const EProfilerCounter levelCounter = selection.level == 2u ? EProfilerCounter::MapLod2Draws :
+                selection.level == 1u ? EProfilerCounter::MapLod1Draws : EProfilerCounter::MapLod0Draws;
+            pProfiler->Add_Counter(levelCounter);
+            pProfiler->Add_Counter(EProfilerCounter::MapLodSourceIndices,
+                uint64_t(m_iNumIndices) * iNumInstances);
+            pProfiler->Add_Counter(EProfilerCounter::MapLodSubmittedIndices, submittedIndices);
+        }
+    }
 
-    if (useLod)
-        m_pContext->DrawIndexedInstancedIndirect(m_StaticLod->Get_DrawArguments(), 0u);
-    else
-	m_pContext->DrawIndexedInstanced(
-		m_iNumIndices,
-		iNumInstances,
-		0,
-		0,
-		0);
+    m_pContext->DrawIndexedInstanced(
+        selection.indexCount,
+        iNumInstances,
+        selection.firstIndex,
+        0,
+        0);
 
 	return S_OK;
 }

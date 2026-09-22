@@ -50,7 +50,8 @@ void LostArk::Server::CGameRoom::Handle_Move(
 
 	SERVER_PLAYER& player = playerIter->second;
 	if (entryTerraceMove &&
-		(!LostArk::Shared::Is_KoukuGate3EntryTerrace(player.fPositionX, player.fPositionY, player.fPositionZ) ||
+		(move.eIntent != LostArk::Shared::PLAYER_MOVE_INTENT::GROUND_GOAL ||
+		 !LostArk::Shared::Is_KoukuGate3EntryTerrace(player.fPositionX, player.fPositionY, player.fPositionZ) ||
 		 !LostArk::Shared::Is_KoukuGate3EntryTerrace(move.fGoalX, player.fPositionY, move.fGoalZ))) return;
 	std::string validationFailure;
 	if (!Is_NewerSequence(move.iClientSequence, player.iLastMoveSequence))
@@ -99,6 +100,20 @@ void LostArk::Server::CGameRoom::Handle_Move(
 		return;
 	}
 #endif
+	if (move.eIntent == LostArk::Shared::PLAYER_MOVE_INTENT::VEHICLE_FLIGHT)
+	{
+		if (player.iVehicleId == LostArk::Shared::ANCIENT_SEA_VEHICLE_ID && Can_RideVehicle(player) &&
+			player.eVehicleFlightPhase == LostArk::Shared::VEHICLE_FLIGHT_PHASE::FLYING &&
+			std::isfinite(move.fVerticalInput) && std::abs(move.fVerticalInput) <= 1.f &&
+			move.fGoalX * move.fGoalX + move.fGoalZ * move.fGoalZ <= 1.0001f)
+		{
+			player.fVehicleFlightInputX = move.fGoalX;
+			player.fVehicleFlightInputZ = move.fGoalZ;
+			player.fVehicleFlightInputY = move.fVerticalInput;
+			player.fVehicleFlightInputAge = 0.f;
+		}
+		return;
+	}
 	/* Walking away is the hunter's own input, so it ends a spent hammer swing
 	instead of being refused for the rest of the pose. */
 	(void)Cancel_MazeHammerRecovery(player, m_iServerTick);
@@ -774,38 +789,48 @@ void LostArk::Server::CGameRoom::Finish_SquareHoleSong(SERVER_PLAYER& player)
 	Update_MarioControlState(player);
 }
 
-void LostArk::Server::CGameRoom::Handle_UseEstherSkill(
+LostArk::Server::SERVER_PLAYER* LostArk::Server::CGameRoom::Find_EstherCaster(
 	const SESSION_ID sessionId,
-	const LostArk::Shared::C2S_USE_ESTHER_SKILL& useEstherSkill)
+	const char* pCommandName)
 {
 	const auto sessionIter = m_PlayerIdBySessionId.find(sessionId);
 	if (sessionIter == m_PlayerIdBySessionId.end())
 	{
 		Close_SessionForBindingFailure(
-			sessionId, "C2S_USE_ESTHER_SKILL", "missing-player-binding");
-		return;
+			sessionId, pCommandName, "missing-player-binding");
+		return nullptr;
 	}
 	const auto playerIter = m_Players.find(sessionIter->second);
 	if (playerIter == m_Players.end())
 	{
 		Close_SessionForBindingFailure(
-			sessionId, "C2S_USE_ESTHER_SKILL", "missing-player-state");
-		return;
+			sessionId, pCommandName, "missing-player-state");
+		return nullptr;
 	}
 	if (playerIter->second.fKnockbackRemainingSeconds > 0.f ||
 		LostArk::Shared::INVALID_VEHICLE_ID != playerIter->second.iVehicleId)
-		return;
+		return nullptr;
 	/* The call locks the caster into ESTHER_CAST, so only an idle caster may
 	start one: a running skill, knockdown, fall or death keeps the gauge full. */
 	if (LostArk::Shared::PLAYER_ACTION_STATE::NONE !=
 		playerIter->second.eAction)
 	{
-		return;
+		return nullptr;
 	}
 	/* The entity id is checked before the gauge so a consume can never be
 	followed by a failed spawn: rejecting here leaves the gauge untouched and
 	the snapshot keeps telling every party member it is still full. */
 	if (LostArk::Shared::INVALID_NET_ENTITY_ID == m_iNextNetEntityId)
+		return nullptr;
+	return &playerIter->second;
+}
+
+void LostArk::Server::CGameRoom::Handle_UseEstherSkill(
+	const SESSION_ID sessionId,
+	const LostArk::Shared::C2S_USE_ESTHER_SKILL& useEstherSkill)
+{
+	SERVER_PLAYER* pCaster = Find_EstherCaster(sessionId, "C2S_USE_ESTHER_SKILL");
+	if (nullptr == pCaster)
 		return;
 
 	const ESTHER_ROSTER_ENTRY* pRosterEntry = nullptr;
@@ -814,21 +839,51 @@ void LostArk::Server::CGameRoom::Handle_UseEstherSkill(
 	{
 		return;
 	}
+	Begin_EstherCall(*pCaster, *pRosterEntry, useEstherSkill.fAimX, useEstherSkill.fAimZ);
+}
 
+void LostArk::Server::CGameRoom::Handle_DebugUseEsther(
+	const SESSION_ID sessionId,
+	const LostArk::Shared::C2S_DEBUG_USE_ESTHER& request)
+{
+#ifdef _DEBUG
+	/* Names an Esther directly: no gauge, no roster slot. The world must still
+	own an Esther contract so the cast and summon presentation are the same as
+	the slot path in that arena. */
+	if (request.eWorldId != m_eWorldId || !m_EstherSkillSystem.Is_Enabled())
+		return;
+	const ESTHER_ROSTER_ENTRY* pRosterEntry = Find_EstherDefinition(request.eEsther);
+	if (nullptr == pRosterEntry)
+		return;
+	SERVER_PLAYER* pCaster = Find_EstherCaster(sessionId, "C2S_DEBUG_USE_ESTHER");
+	if (nullptr == pCaster)
+		return;
+	Begin_EstherCall(*pCaster, *pRosterEntry, request.fAimX, request.fAimZ);
+#else
+	(void)sessionId;
+	(void)request;
+#endif
+}
+
+void LostArk::Server::CGameRoom::Begin_EstherCall(
+	SERVER_PLAYER& caster,
+	const ESTHER_ROSTER_ENTRY& rosterEntry,
+	const float aimX,
+	const float aimZ)
+{
 	/* The gauge is gone now; the summon lands after the delay, forward along
 	the aim. Position, height and facing are frozen here so a caster who moves
 	during the delay does not drag the landing spot with them. A degenerate
 	aim (cursor on the caster) keeps the caster's yaw and lands at their feet. */
-	SERVER_PLAYER& caster = playerIter->second;
 	PENDING_ESTHER_SUMMON pending{};
-	pending.pRosterEntry = pRosterEntry;
+	pending.pRosterEntry = &rosterEntry;
 	pending.fPositionX = caster.fPositionX;
 	pending.fPositionY = caster.fPositionY;
 	pending.fPositionZ = caster.fPositionZ;
 	pending.fYawDegrees = caster.fYawDegrees;
 	pending.fRemainingSeconds = ESTHER_SUMMON_DELAY_SECONDS;
-	const float directionX = useEstherSkill.fAimX - caster.fPositionX;
-	const float directionZ = useEstherSkill.fAimZ - caster.fPositionZ;
+	const float directionX = aimX - caster.fPositionX;
+	const float directionZ = aimZ - caster.fPositionZ;
 	const float directionLengthSq = directionX * directionX + directionZ * directionZ;
 	if (std::isfinite(directionX) && std::isfinite(directionZ) &&
 		directionLengthSq > 0.0001f)
@@ -1018,6 +1073,7 @@ LostArk::Server::CGameRoom::Apply_CharacterClassChange(
 	staged.iMaximumMadness = SERVER_PLAYER::MADNESS_GAUGE_MAXIMUM;
 	staged.Clear_MarioControl();
 	staged.eMadnessForm = PLAYER_MADNESS_FORM::NORMAL;
+	End_VehicleSkill(staged);
 	staged.iVehicleId = INVALID_VEHICLE_ID;
 	staged.Clear_KoukuInteractionState();
 	staged.eAction = PLAYER_ACTION_STATE::NONE;

@@ -1,25 +1,43 @@
 # -*- coding: utf-8 -*-
-"""Turn extracted commander-movie PNG frames into raid-entry background flipbook DDS.
+"""Cook the commander-entrance movies into the raid-entry background flipbook.
 
-Source frames are RAD-extracted PNGs (1200x848, RGB, 300 frames @30fps).
-Output: DXT1 (BC1, opaque) DDS at the boss-portrait slot size (800x560, /4 for BCn),
-named <prefix>_NNN.dds, into Client/Bin/Resources/UI/Bern/<folder>/.
+Chain, all of it in this folder:
 
-DXT1 = 0.5 byte/px -> ~220KB/frame, 300 frames -> ~66MB per boss in VRAM (GPU-native,
-no decompress). The UI runtime already loads .dds via CreateDDSTextureFromFileEx.
+  1. dump_commander_bk2.py   decrypts every EFGame/Movies .ipk and writes the 1200x848
+                             commander entrances as .bk2 plus a manifest naming each one
+                             (movies_names.txt resolves the obfuscated file names).
+  2. bink_to_png.py          decodes a .bk2 to straight-alpha PNGs with the game's own
+                             bink2w64.dll.
+  3. this script             saves those frames as DDS next to each other.
+
+**Frames are kept at the movie's own 1200x848.** They used to be cooked down to 800x560,
+the portrait slot's size in the 1280x720 authoring reference. That is only 1:1 on a
+1280-wide window: the layout projects the slot by the real viewport, so a 1920-wide window
+draws it at 1202x843 and the client was upscaling a frame it had already thrown detail
+away from -- a 1200 -> 800 -> 1202 round trip. Every other UI asset in the project is cut
+from retail's own 1920x1080 stage (the median authored-size / source-size across the UI
+documents is 0.667), so native frames put this movie on that same footing: 1:1 at 1920,
+downscaled and sharp below it.
+
+The cost is disk and VRAM: 1200x848 is 2.27x the pixels of 800x560, so roughly 150 MB per
+boss across 300 frames rather than 66.
+
+DXT5, because the movie's top region is genuinely transparent (alpha 0) rather than the
+flat grey a no-alpha export bakes in -- extract with RAD option 4 (filter premultiplied ->
+standard alpha) or bink_to_png.py, which already writes straight alpha.
 """
 import os, glob
 from PIL import Image
 
-REPO = r"C:\Users\엄태준\OneDrive\Desktop\Lost Ark"
-DEST = os.path.join(REPO, r"Client\Bin\Resources\UI\Bern")
-W, H = 800, 560  # boss-portrait slot (~800x562), rounded to /4 for block compression
+REPO = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".."))
+DEST = os.path.join(REPO, r"Client\Bin\Resources\UI\RaidEntry")
 
-# Alpha-preserving RAD extraction (option 4: filter premultiplied -> standard alpha). The
-# movie's top region is transparent (alpha=0), not the flat grey a no-alpha export bakes in.
+# The movie's own size. Not the slot's -- see the note above.
+W, H = 1200, 848
+
 JOBS = [
-    (r"D:\ClaudeWork\movietest\out\발탄", "RaidEntry_BG_Valtan"),
-    (r"D:\ClaudeWork\movietest\out\쿠크", "RaidEntry_BG_Kukusaton"),
+    (r"D:\ClaudeWork\movietest\out_native\valtan", "RaidEntry_BG_Valtan"),
+    (r"D:\ClaudeWork\movietest\out_native\kouku", "RaidEntry_BG_Kukusaton"),
 ]
 
 
@@ -29,17 +47,20 @@ def main():
         os.makedirs(outdir, exist_ok=True)
         frames = sorted(glob.glob(os.path.join(src, "*.png")))
         if not frames:
-            print(f"[skip] {folder}: no source frames in {src}")
+            print("[skip] %s: no source frames in %s" % (folder, src))
             continue
+        for stale in glob.glob(os.path.join(outdir, "*.dds")):
+            os.remove(stale)
         for i, fp in enumerate(frames):
-            # Premultiply against black before the resize so LANCZOS doesn't bleed opaque colour
-            # out under transparent pixels (fringing), then keep straight alpha for DXT5.
-            im = Image.open(fp).convert("RGBA").resize((W, H), Image.LANCZOS)
-            outp = os.path.join(outdir, f"{folder}_{i:03d}.dds")
-            im.save(outp, format="DDS", pixel_format="DXT5")
+            im = Image.open(fp).convert("RGBA")
+            if im.size != (W, H):
+                im = im.resize((W, H), Image.LANCZOS)
+            im.save(os.path.join(outdir, "%s_%03d.dds" % (folder, i)), format="DDS",
+                    pixel_format="DXT5")
         total = sum(os.path.getsize(os.path.join(outdir, f))
                     for f in os.listdir(outdir) if f.endswith(".dds"))
-        print(f"[ok] {folder}: {len(frames)} DDS, {total/1024/1024:.1f} MB on disk -> {outdir}")
+        print("[ok] %s: %d DDS at %dx%d, %.1f MB -> %s"
+              % (folder, len(frames), W, H, total / 1024 / 1024, outdir))
 
 
 if __name__ == "__main__":

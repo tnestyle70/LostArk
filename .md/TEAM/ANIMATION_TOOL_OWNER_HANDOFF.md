@@ -1463,7 +1463,7 @@ Effect는 Offset·Bone/socket, Collider는 Offset·Rotation·Scale·Bone/socket�
 사용한다. 값 입력을 마치거나 `Apply`로 적용하고, Detail의 `Revert`로 미적용 편집을 되돌린다.
 `Duplicate`와 `Remove`는 선택한 occurrence를 대상으로 한다.
 
-Animation 수정은 이 Sequence의 custom 배치에 저장한다. 단일 모델에서 활성 clip 구간이 겹치면
+독립 Effect Sequencer의 Animation 수정은 이 Sequence의 custom 배치에 저장한다. 단일 모델에서 활성 clip 구간이 겹치면
 기존 값을 유지하고 이유를 표시한다. 원래 skillbindings와 쿠크 Pattern/Bundle의 clip은 이 Save로
 변경하지 않는다. `Play`, `Pause/Resume`, `Restart`, `Stop`, `Loop`는 공통 clock을 사용한다.
 Sound의 박스가 실제 source보다 길면 남은 구간은 침묵이며, 정지 상태 seek는 소리를 재생하지 않는다.
@@ -1550,4 +1550,55 @@ Character는 playable class 외에 광기 광대(POLYMORPH), Mario, 카드미로
 
 Bone Clips는 실제 preview의 골격 본과 무기 socket 본을 선택해 local position/rotation/scale key를 편집한다. native clip 참조 segment와 본 key를 `<Asset>.boneclips.json`에 저장하고 기존 CModel animation channel로 재생한다. 회전은 normalize quaternion slerp다. 원본 WModel/native clip은 수정하지 않는다. playable/vehicle 제품 모델도 prototype admission 전에 이를 로드하므로 skillbinding의 `authored.*` 이름을 같은 소비자가 재생한다. 바다의 flight/glide/ascent는 새 authored 예시이며 원본 추출 clip이 아니다.
 
+Bone & Animation Edit의 Source in/out은 새 authored clip을 만들며, Held pose는 실제 원본 시각의 자세를 유지한다. Show skeleton in scene은 실제 모델 본과 선택 본을 표시하고, Bone hierarchy에서 선택한 본의 TRS를 끌면 저장 전 live pose가 보인다. Set key at cursor로 확정하거나 Cancel pose로 취소하며 미확정 상태에서는 본·클립·시각 변경과 Save를 막는다. Undo/Redo는 저장 전 문서 편집을 되돌리고 Save 이후 history는 초기화한다. source segment가 없는 baked clip의 Retime clip duration은 모든 본 key를 재샘플링하여 첫·끝 자세를 보존한다.
+
+고대의 바다 `authored.dragon.glide`는 실제 npc_sk_look의 2500ms 자세를 2초 유지하고, `authored.dragon.ascent`는 1800~2766.6667ms 날갯짓을 967ms로 만들며 마지막120ms를 시작 pose에 연결한다. 두 clip은 bip001의 수직 변위를 rest로 고정한 제자리 저작 클립이다. 기존 authored.example 예시는 보존한다. Create dragon glide + ascent는 없는 두 stable ID를 draft에 추가하며 동명 clip은 덮지 않는다. 저장 후 기존 Animation Resources에서 선택할 수 있고 실제 Server 비행 phase의 binding을 자동 변경하지 않는다. 골격 표시는 수동적인 overlay이며 scene 클릭 picking, IK, 3D 회전 gizmo는 제공하지 않는다.
 발탄은 Bone Clips source Save 후 Pattern source revision을 Reload하고 Composition Resources를 Refresh하여 새 `authored.*` clip을 추가한다. Pattern Save는 source, PublishV2는 검증된 `Valtan/Published/Valtan.boneclips.json`과 기존 Pattern Product를 함께 게시한다. published bone clip도 presentation generation hash closure에 포함된다. 재입장 시 prototype을 다시 로드하며 클립 이름으로 재생한다. invalid source/키/골격/의존 cycle은 저장·게시를 거부하고 기존 모델/Product를 보존한다.
+
+
+### Character Actors의 Composition Sequencer와 Product Save
+
+`Composition Actions → Character → Character Actors`에서 배우 이름을 누르면 해당 class의 첫 입력 슬롯을,
+스킬 또는 Stage를 누르면 그 실제 binding을 공용 Sequencer로 연다. `Create Skills`는 PlayerSkills의
+key/skill을 골라 실제 모델 clip을 연결한다. 임의의 gameplay ID나 중복 key를 만들지 않는다.
+`Composition Sequencer`가 기본 편집창이고 `Skill Binding / Combat`에서 기존 HitShapes 및 Server timing을
+편집·조회한다. Character의 공용 Animation browser는 선택 배우의 실제 clip만 append/replace한다.
+
+Character composition의 `Save`는 실제 `skillbindings.json`과 `.animevents`에 선택된 clip 및 Effect/Sound
+source cue를 저장하고, 추가 편집 배치는 `Data/Effects/Sequences/action.<Asset>.skill.<id>[.stage.n].effectsequence.json`에
+보존한다. Collider의 Server authority는 기존 `Save Combat`/Gameplay publisher다. Camera와 추가 preview
+배치는 sequence owner에만 저장되며 이 Save가 Server 판정을 바꾸지 않는다. 저장 후 Product presentation은
+캐릭터 재입장으로 다시 읽는다. 모델 action의 Save 역시 interaction/vehicle Product owner를 먼저 저장한다.
+
+Product action 선택은 항상 현재 Product를 stage한다. 과거 `.effectsequence`를 자동 덮어씌우지 않으며
+별도 배치를 복원할 때만 명시적으로 `Load Effect Sequence`를 누른다. source baseline 검증 실패 시 draft를
+유지한다. Character binding 저장 뒤 cue 저장이 실패하면 자기 binding 변경만 baseline 조건으로 rollback한다.
+동시 쓰기가 rollback을 막으면 부분 저장 상태를 표시한다. 반복 source clip의 겹치는 source 구간에서 cue가
+서로 다르면 Product 저장을 거절한다. `.animevents`는 occurrence별 문서가 아니라 source clip별 정본이므로
+각 occurrence에 같은 cue 변경을 적용하거나 별도 authored clip을 사용한다.
+
+Composition cue Save의 갱신 범위는 새 binding이 포함하는 source clip/window다. Animation을 교체·삭제하거나
+trim을 줄여서 빠진 기존 source 구간의 cue는 다른 스킬도 사용할 수 있으므로 보존한다. 이전 binding은
+실패 시 binding rollback 경계이며 이전 source 전체의 cue 삭제 권한은 아니다.
+
+### Clown / Mario / MAZE의 여러 Effect cue
+
+`<Asset>.interactionbindings.json`과 `KoukuSaydon/Clown.interactionbindings.json`의 기존 v1 skill은
+한 `clip`과 `playRate`를 유지한다. optional `effectCues`는 최대 256개이며 legacy 단일 `effectAssetId`와
+동시에 저장하지 않는다. Composition Save는 legacy Effect를 array로 옮긴다.
+
+| 필드 | 계약 |
+|---|---|
+| `effectAssetId` | 기존 Product V1 Effect stable ID |
+| `startMs`, `endMs` | 선택 clip의 source ms, 정수 0..600000. CUE_END는 end > start |
+| `anchorSlotId` | root 또는 현재 모델의 실제 bone/socket |
+| `position`, `rotationDegrees`, `scale` | 세 성분 local TRS. finite, scale 양수 |
+| `followPolicy` | FOLLOW / SNAPSHOT |
+| `stopPolicy` | NATURAL / CUE_END |
+| `orientationPolicy` | ANCHOR / ACTION_FACING |
+
+Character는 실제 승인 interaction의 `actionAge * playRate - startMs`로 각 Effect를 기존
+EffectPresentationService에 제출한다. 준비 지연은 살아 있는 동일 action에서만 재시도하고 각 occurrence는
+한 번 제출한다. action 변경은 pending admission을 취소한다. CUE_END는 source 길이를 rate로 변환한
+수명과 interaction action owner를 함께 사용한다. legacy scalar는 start 0, root, ACTION_FACING을 유지한다.
+이 계약은 애니메이션·Effect presentation이며 Mario/MAZE 입력·피해·이동의 Server authority를 바꾸지 않는다.

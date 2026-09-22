@@ -97,6 +97,51 @@ bool Commit(const std::filesystem::path& path, const std::string& baseline, cons
     { std::filesystem::remove(temp, error); status = "Product atomic save/freshness check failed; prior document preserved"; return false; }
     return true;
 }
+bool ReadFlightWindow(const Json& action, std::array<float, 3>& window)
+{
+    const auto* value = action.Find("flightWindow");
+    if (!value) return false;
+    if (!value->Is_Object() || value->Get_Object().size() != 3u)
+        throw std::runtime_error("Invalid flight window fields");
+    const char* names[] = {"loopStartSeconds", "loopEndSeconds", "landingStartSeconds"};
+    for (size_t i = 0; i < window.size(); ++i)
+    {
+        const auto* field = value->Find(names[i]);
+        if (!field || !field->Is_Number() || !std::isfinite(field->Get_Number()))
+            throw std::runtime_error("Invalid flight window time");
+        window[i] = static_cast<float>(field->Get_Number());
+    }
+    return true;
+}
+float ValidateFlightWindow(uint32_t vehicleId, const Json& action, const std::array<float, 3>& window)
+{
+    if (vehicleId != 9523u || Text(action, "inputSlot") != "E" ||
+        !std::isfinite(window[0]) || !std::isfinite(window[1]) || !std::isfinite(window[2]) ||
+        window[0] <= 0.f || window[1] <= window[0] || window[2] < window[1] || window[2] > 60.f)
+        throw std::runtime_error("Flight requires 0 < loop start < loop end <= landing start < clip end");
+    const auto& names = Array(action, "vehicleClips");
+    if (names.size() != 1u || !names.front().Is_String())
+        throw std::runtime_error("Flight logic requires one source animation clip");
+    const auto* vehicle = CActorCatalog::Find_Vehicle(vehicleId);
+    std::vector<Engine::MODEL_ANIMATION_CATALOG_ENTRY> clips; std::string status;
+    if (!vehicle || !Engine::CWModelDecoder::Read_AnimationCatalog(
+        CRuntimeAssetRoot::Resolve(vehicle->modelAssetId), clips, status))
+        throw std::runtime_error("Cannot validate flight animation: " + status);
+    const auto clip = std::find_if(clips.begin(), clips.end(), [&](const auto& value) {
+        return value.name == names.front().Get_String(); });
+    if (clip == clips.end() || !std::isfinite(clip->durationTicks) ||
+        !std::isfinite(clip->ticksPerSecond) || clip->ticksPerSecond <= 0.f)
+        throw std::runtime_error("Flight animation timing is unavailable");
+    const float seconds = clip->durationTicks / clip->ticksPerSecond;
+    if (!std::isfinite(seconds) || seconds <= window[2])
+        throw std::runtime_error("Landing start must precede the installed animation's end");
+    return seconds;
+}
+Json FlightWindowJson(const std::array<float, 3>& window)
+{
+    return Json::Object({{"loopStartSeconds", Json::Number(window[0])},
+        {"loopEndSeconds", Json::Number(window[1])}, {"landingStartSeconds", Json::Number(window[2])}});
+}
 std::string MonsterClipKey(const std::string& clip)
 {
     // Keep the source clip identity stable across refreshes and below the
@@ -113,10 +158,25 @@ bool IdentityTransform(const ANIMATION_EFFECT_CUE& cue)
         t.vRotationDegrees.x == 0.f && t.vRotationDegrees.y == 0.f && t.vRotationDegrees.z == 0.f &&
         t.vScale.x == 1.f && t.vScale.y == 1.f && t.vScale.z == 1.f;
 }
+float3_t Vector(const Json& value, const char* name)
+{
+    const auto& fields = Array(value, name);
+    if (fields.size() != 3u) throw std::runtime_error(std::string("Invalid cue vector: ") + name);
+    float3_t result{}; float* components[] = {&result.x, &result.y, &result.z};
+    for (size_t index = 0; index < 3u; ++index)
+    {
+        if (!fields[index].Is_Number() || !std::isfinite(fields[index].Get_Number()) || std::abs(fields[index].Get_Number()) > 100000.0)
+            throw std::runtime_error(std::string("Invalid cue vector: ") + name);
+        *components[index] = static_cast<float>(fields[index].Get_Number());
+    }
+    return result;
+}
+Json Vector(const float3_t& value)
+{ return Json::Array({Json::Number(value.x), Json::Number(value.y), Json::Number(value.z)}); }
 }
 CCharacterModelWorkbench::CCharacterModelWorkbench(std::shared_ptr<CCharacterPreviewPanel> panel,
     std::shared_ptr<CEffectAuthoringSequencer> sequencer) : m_Panel(std::move(panel)), m_Sequencer(std::move(sequencer)) {}
-bool CCharacterModelWorkbench::Is_Dirty() const { return !m_Selected.id.empty() && m_Sequencer && m_Sequencer->Is_Dirty(); }
+bool CCharacterModelWorkbench::Is_Dirty() const { return m_FlightDirty || (!m_Selected.id.empty() && m_Sequencer && m_Sequencer->Is_Dirty()); }
 std::filesystem::path CCharacterModelWorkbench::Owner_Path(const ACTION& action) const
 {
     if (action.sourceAction) return CProjectDataRoot::Resolve(std::filesystem::path("Animation/Authored") / action.asset / (action.asset + ".modelactions.json"));
@@ -385,9 +445,9 @@ bool CCharacterModelWorkbench::Select_Monster(const ACTION& action)
         { m_MonsterStatus = m_Panel ? m_Panel->Get_Status() : "Preview is unavailable"; return false; }
         if (!m_Sequencer->Stage_CharacterAction(action.asset, binding, cues, combat, {}, "KoukuSaydon"))
         { m_MonsterStatus = m_Sequencer->Status(); return false; }
-        m_Selected = action;
+        m_Selected = action; m_HasFlightWindow = m_FlightDirty = false;
         if (!m_Sequencer->Open_CharacterModelSequence("action." + action.id))
-        { m_Status = m_MonsterStatus = m_Sequencer->Status(); return true; }
+        { m_Status = m_MonsterStatus = m_Sequencer->Status(); return false; }
         m_Status = "Monster clips and Server collider dimensions loaded. Body radius=" + std::to_string(radius) +
             " m; attack radius=" + std::to_string(radius + range) + " m; windup=" + std::to_string(windup) + " ms. ";
         if (action.monsterArchetype.starts_with("MONSTER_KOUKU_CARD_"))
@@ -408,6 +468,9 @@ bool CCharacterModelWorkbench::Select(const ACTION& action)
         const auto* source = Find_Action(root, action);
         if (!source) { m_Status = "Product action is missing"; return false; }
         const Json baseline = *source;
+        std::array<float, 3> flightWindow{};
+        const bool hasFlightWindow = ReadFlightWindow(baseline, flightWindow);
+        const float flightSeconds = hasFlightWindow ? ValidateFlightWindow(action.vehicleId, baseline, flightWindow) : 0.f;
         ANIMATION_SKILL_BINDING binding; binding.iSkillId = action.skillId; binding.Stages.push_back({});
         ANIMATION_EFFECT_CUE_DOCUMENT cues; cues.strAnimationAssetId = action.asset;
         ANIMATION_EFFECT_CUE_DOCUMENT externalCues; externalCues.strAnimationAssetId = action.asset;
@@ -465,7 +528,36 @@ bool CCharacterModelWorkbench::Select(const ACTION& action)
             float rate = 1.f; if (const auto* value = source->Find("playRate")) { if (!value->Is_Number()) throw std::runtime_error("Invalid play rate"); rate = static_cast<float>(value->Get_Number()); }
             clips.push_back({name, 0u, rate, 0u, CEffectEditingSession::New_Id("interaction.clip.")});
             const std::string effect = Text(*source, "effectAssetId");
-            if (!effect.empty()) { ANIMATION_EFFECT_CUE cue; cue.strClipName = name; cue.strEffectAssetId = effect; cues.Cues.push_back(std::move(cue)); }
+            if (!effect.empty())
+            {
+                ANIMATION_EFFECT_CUE cue; cue.strClipName = name; cue.strEffectAssetId = effect;
+                cue.eOrientationPolicy = EFFECT_ORIENTATION_POLICY::ACTION_FACING;
+                cues.Cues.push_back(std::move(cue));
+            }
+            if (const auto* rows = source->Find("effectCues"))
+            {
+                if (!effect.empty() || !rows->Is_Array() || rows->Get_Array().size() > 256u)
+                    throw std::runtime_error("Interaction has incompatible or excessive Effect cues");
+                for (const auto& value : rows->Get_Array())
+                {
+                    ANIMATION_EFFECT_CUE cue; cue.strClipName = name; cue.strEffectAssetId = Text(value, "effectAssetId");
+                    cue.iStartMs = Number(value, "startMs"); cue.iEndMs = Number(value, "endMs");
+                    cue.strAnchorSlotId = Text(value, "anchorSlotId");
+                    cue.LocalTransform.vPosition = Vector(value, "position");
+                    cue.LocalTransform.vRotationDegrees = Vector(value, "rotationDegrees");
+                    cue.LocalTransform.vScale = Vector(value, "scale");
+                    const auto follow = Text(value, "followPolicy"), stop = Text(value, "stopPolicy"), orientation = Text(value, "orientationPolicy");
+                    if (cue.strEffectAssetId.empty() || cue.strAnchorSlotId.empty() || cue.iStartMs > 600000u || cue.iEndMs > 600000u ||
+                        (follow != "FOLLOW" && follow != "SNAPSHOT") || (stop != "NATURAL" && stop != "CUE_END") ||
+                        (orientation != "ANCHOR" && orientation != "ACTION_FACING") || (stop == "CUE_END" && cue.iEndMs <= cue.iStartMs) ||
+                        cue.LocalTransform.vScale.x <= 0.f || cue.LocalTransform.vScale.y <= 0.f || cue.LocalTransform.vScale.z <= 0.f)
+                        throw std::runtime_error("Invalid interaction Effect cue");
+                    cue.eFollowPolicy = follow == "SNAPSHOT" ? EFFECT_FOLLOW_POLICY::SNAPSHOT : EFFECT_FOLLOW_POLICY::FOLLOW;
+                    cue.eStopPolicy = stop == "CUE_END" ? EFFECT_STOP_POLICY::CUE_END : EFFECT_STOP_POLICY::NATURAL;
+                    cue.eOrientationPolicy = orientation == "ACTION_FACING" ? EFFECT_ORIENTATION_POLICY::ACTION_FACING : EFFECT_ORIENTATION_POLICY::ANCHOR;
+                    cues.Cues.push_back(std::move(cue));
+                }
+            }
         }
         if (clips.empty()) throw std::runtime_error("This action has no model clips");
         if (action.locomotion && vehicleOwner)
@@ -473,7 +565,8 @@ bool CCharacterModelWorkbench::Select(const ACTION& action)
         if (!m_Panel || !m_Sequencer || !m_Panel->Select_TargetAsset(action.asset))
         { m_Status = m_Panel ? m_Panel->Get_Status() : "Preview is unavailable"; return false; }
         if (const auto model = CAnimationTargetService::Resolve_Model())
-            for (auto* document : {&cues, &externalCues}) for (auto& cue : document->Cues) if (cue.eStopPolicy == EFFECT_STOP_POLICY::CUE_END)
+            for (auto* document : {&cues, &externalCues}) for (auto& cue : document->Cues)
+                if (cue.eStopPolicy == EFFECT_STOP_POLICY::CUE_END && cue.iEndMs <= cue.iStartMs)
                 for (uint32_t index = 0u; index < model->Get_NumAnimations(); ++index)
                     if (cue.strClipName == model->Get_AnimationName(index))
                     {
@@ -484,7 +577,10 @@ bool CCharacterModelWorkbench::Select(const ACTION& action)
         if (!m_Sequencer->Stage_CharacterAction(action.asset, binding, cues, {}, {}, action.vehicleId ? "Vehicle" : "KoukuSaydon", &externalCues))
         { m_Status = m_Sequencer->Status(); return false; }
         m_Selected = action; m_BaselineAction = baseline;
-        if (!m_Sequencer->Open_CharacterModelSequence("action." + action.id)) m_Status = m_Sequencer->Status();
+        m_HasFlightWindow = hasFlightWindow; m_FlightWindow = flightWindow;
+        m_FlightClipSeconds = flightSeconds; m_FlightDirty = false;
+        if (!m_Sequencer->Open_CharacterModelSequence("action." + action.id, false))
+        { m_Status = m_Sequencer->Status(); return false; }
         else m_Status = "Product clips loaded. The shared sequencer saves animation, Effect, Sound, Collider and Camera rows.";
         return true;
     }
@@ -537,15 +633,26 @@ bool CCharacterModelWorkbench::Save_Product()
         }
         else if (!m_Selected.vehicleId)
         {
-            if (clips.size() != 1u || cues.Cues.size() > 1u || !cues.Sounds.empty())
-                throw std::runtime_error("Interaction binding owns one animation and one optional start Effect; retain additional rows with Save Effect Sequence");
-            if (!cues.Cues.empty() && (cues.Cues.front().iStartMs || !IdentityTransform(cues.Cues.front())))
-                throw std::runtime_error("Interaction start Effect requires the model root and zero start offset");
+            if (clips.size() != 1u || cues.Cues.size() > 256u || !cues.Sounds.empty())
+                throw std::runtime_error("Interaction binding owns one animation and up to 256 Effect cues; Sound has a separate owner");
             Set(replacement, "clip", Json::String(clips.front().strClipName));
             Set(replacement, "playRate", Json::Number(clips.front().fPlayRate));
             auto fields = replacement.Get_Object(); fields.erase("effectAssetId");
             replacement = Json::Object(std::move(fields));
-            if (!cues.Cues.empty()) Set(replacement, "effectAssetId", Json::String(cues.Cues.front().strEffectAssetId));
+            Json::ARRAY effects;
+            for (const auto& cue : cues.Cues)
+            {
+                if (cue.iStartMs > 600000u || cue.iEndMs > 600000u)
+                    throw std::runtime_error("Interaction cue source time exceeds 600000 ms");
+                effects.push_back(Json::Object({{"effectAssetId", Json::String(cue.strEffectAssetId)},
+                    {"startMs", Json::Number(cue.iStartMs)}, {"endMs", Json::Number(cue.iEndMs)},
+                    {"anchorSlotId", Json::String(cue.strAnchorSlotId)}, {"position", Vector(cue.LocalTransform.vPosition)},
+                    {"rotationDegrees", Vector(cue.LocalTransform.vRotationDegrees)}, {"scale", Vector(cue.LocalTransform.vScale)},
+                    {"followPolicy", Json::String(cue.eFollowPolicy == EFFECT_FOLLOW_POLICY::SNAPSHOT ? "SNAPSHOT" : "FOLLOW")},
+                    {"stopPolicy", Json::String(cue.eStopPolicy == EFFECT_STOP_POLICY::CUE_END ? "CUE_END" : "NATURAL")},
+                    {"orientationPolicy", Json::String(cue.eOrientationPolicy == EFFECT_ORIENTATION_POLICY::ACTION_FACING ? "ACTION_FACING" : "ANCHOR")}}));
+            }
+            Set(replacement, "effectCues", Json::Array(std::move(effects)));
         }
         else
         {
@@ -571,6 +678,11 @@ bool CCharacterModelWorkbench::Save_Product()
             if (effects.size() > 256u || sounds.size() > 256u) throw std::runtime_error("Too many Product cues");
             Set(replacement, "effectCues", Json::Array(std::move(effects))); Set(replacement, "soundCues", Json::Array(std::move(sounds)));
         }
+        if (m_HasFlightWindow)
+        {
+            ValidateFlightWindow(m_Selected.vehicleId, replacement, m_FlightWindow);
+            Set(replacement, "flightWindow", FlightWindowJson(m_FlightWindow));
+        }
         Json current; std::string currentBytes;
         if (!Read(Owner_Path(m_Selected), currentBytes, current, m_Status)) return false;
         const auto* currentAction = Find_Action(current, m_Selected);
@@ -578,24 +690,66 @@ bool CCharacterModelWorkbench::Save_Product()
             throw std::runtime_error("This action changed externally; saved owner and current sequence are preserved");
         if (!Replace_Action(current, m_Selected, replacement)) throw std::runtime_error("The selected stable action no longer exists");
         if (!Commit(Owner_Path(m_Selected), currentBytes, current, m_Status)) return false;
-        m_BaselineAction = std::move(replacement);
+        m_BaselineAction = std::move(replacement); m_FlightDirty = false;
         m_Status = m_Selected.sourceAction ? "Saved source action clips and cues; Save Effect Sequence retains all editable rows." :
             "Saved Product presentation binding. It is read on the next Character spawn / Client catalog load. Save Effect Sequence also retains the full authoring arrangement.";
         return true;
     }
     catch (const std::exception& error) { m_Status = error.what(); return false; }
 }
+bool CCharacterModelWorkbench::Save_FlightLogic()
+{
+    try
+    {
+        if (!m_HasFlightWindow) return false;
+        const float duration = ValidateFlightWindow(m_Selected.vehicleId, m_BaselineAction, m_FlightWindow);
+        Json current; std::string bytes;
+        if (!Read(Owner_Path(m_Selected), bytes, current, m_Status)) return false;
+        const auto* action = Find_Action(current, m_Selected);
+        if (!action || Serialize(*action) != Serialize(m_BaselineAction))
+            throw std::runtime_error("Flight action changed externally; current document and draft preserved");
+        Json replacement = *action;
+        Set(replacement, "flightWindow", FlightWindowJson(m_FlightWindow));
+        if (!Replace_Action(current, m_Selected, replacement)) throw std::runtime_error("Flight action no longer exists");
+        if (!Commit(Owner_Path(m_Selected), bytes, current, m_Status)) return false;
+        m_BaselineAction = std::move(replacement); m_FlightClipSeconds = duration; m_FlightDirty = false;
+        m_Status = "Saved flight logic. Publish VehicleProfiles and restart Server and Client to apply it.";
+        return true;
+    }
+    catch (const std::exception& error) { m_Status = error.what(); return false; }
+}
+void CCharacterModelWorkbench::Render_FlightLogic()
+{
+    if (!m_HasFlightWindow) return;
+    ImGui::SeparatorText("Ancient Sea flight logic");
+    ImGui::TextWrapped("E: take off / land. WASD: fly. Hold Space: ascend. Hold Ctrl: descend. Left drag: orbit.");
+    m_FlightDirty |= ImGui::DragFloat("Wing loop start (seconds)", &m_FlightWindow[0], 1.f / 30.f, 0.f, m_FlightClipSeconds, "%.3f");
+    m_FlightDirty |= ImGui::DragFloat("Wing loop end (seconds)", &m_FlightWindow[1], 1.f / 30.f, 0.f, m_FlightClipSeconds, "%.3f");
+    m_FlightDirty |= ImGui::DragFloat("Landing start (seconds)", &m_FlightWindow[2], 1.f / 30.f, 0.f, m_FlightClipSeconds, "%.3f");
+    ImGui::Text("Takeoff: 0 - %.3fs | Repeat: %.3f - %.3fs | Landing: %.3f - %.3fs",
+        m_FlightWindow[0], m_FlightWindow[0], m_FlightWindow[1], m_FlightWindow[2], m_FlightClipSeconds);
+    if (ImGui::Button("Save Flight Logic")) Save_FlightLogic();
+    ImGui::SameLine();
+    if (ImGui::Button("Discard Flight Changes"))
+    {
+        try { ReadFlightWindow(m_BaselineAction, m_FlightWindow); m_FlightDirty = false; }
+        catch (const std::exception& error) { m_Status = error.what(); }
+    }
+    ImGui::TextWrapped("Flight windows use the source clip timeline. Save Flight Logic preserves the animation, Effect and Sound drafts. Publish-VehicleProfiles.ps1 derives Server takeoff and landing durations from this saved window.");
+}
 void CCharacterModelWorkbench::Render(const COMPOSITION_WORKBENCH_PANE pane)
 {
     if (!m_Sequencer || m_Selected.id.empty()) { ImGui::TextDisabled("Select a clown, mount or monster action."); return; }
+    m_Sequencer->Set_WorkbenchSaveCallback([this]() { return Save_Composition(); });
     switch (pane)
     {
     case COMPOSITION_WORKBENCH_PANE::SEQUENCER: m_Sequencer->Render_Sequencer("Character model sequence", false, true); break;
     case COMPOSITION_WORKBENCH_PANE::RESOURCES: m_Sequencer->Render_WorkbenchResources(); break;
     case COMPOSITION_WORKBENCH_PANE::DETAILS:
         ImGui::TextWrapped("%s / %s", m_Selected.category.c_str(), m_Selected.label.c_str());
+        Render_FlightLogic();
         if (m_Selected.monsterArchetype.empty())
-        { if (ImGui::Button(m_Selected.sourceAction ? "Save Source Action" : "Save Product Binding")) Save_Product(); }
+        { if (ImGui::Button(m_Selected.sourceAction ? "Save Source Action" : "Save Product Binding")) Save_Composition(); }
         else ImGui::TextWrapped("MonsterProfiles owns gameplay dimensions and timing. Save Effect Sequence stores only this preview arrangement.");
         if (m_Selected.locomotion) ImGui::TextWrapped("Ambient rows preview the mount lifetime owner. Save Product Binding changes this animation only; edit Ambient / while mounted to save its Effects.");
         if (m_Selected.lifetime) ImGui::TextWrapped("Ambient ends with riding; Mount spawn plays once. This view uses the idle pose and ends ambient with the preview. Save Product Binding stores the lifetime cues.");
@@ -604,10 +758,31 @@ void CCharacterModelWorkbench::Render(const COMPOSITION_WORKBENCH_PANE pane)
     case COMPOSITION_WORKBENCH_PANE::TOOLBAR:
     case COMPOSITION_WORKBENCH_PANE::PREVIEW:
         ImGui::TextWrapped("%s", m_Selected.asset.c_str());
+        if ((!m_Panel->Is_PreviewActive() || CAnimationTargetService::Resolve_AssetName() != m_Selected.asset) &&
+            ImGui::Button("Restore selected actor"))
+        {
+            const bool dirty = Is_Dirty();
+            m_Panel->Set_SessionLock(CHARACTER_PREVIEW_LOCK_OWNER::CHARACTER_ACTION_WORKBENCH, false, {});
+            if (m_Panel->Select_TargetAsset(m_Selected.asset)) m_Sequencer->Rebind_CharacterModel(m_Status);
+            else m_Status = m_Panel->Get_Status();
+            m_Panel->Set_SessionLock(CHARACTER_PREVIEW_LOCK_OWNER::CHARACTER_ACTION_WORKBENCH,
+                dirty, "Save the Character action draft before changing its preview model.");
+        }
         if (ImGui::Button("Preview Play")) m_Sequencer->Play();
         ImGui::SameLine(); if (ImGui::Button("Stop Preview")) m_Sequencer->Stop();
         ImGui::TextWrapped("%s", m_Sequencer->Status().c_str()); break;
     default: break;
     }
+}
+bool CCharacterModelWorkbench::Save_Composition()
+{
+    if (!m_Sequencer) return false;
+    if (m_Selected.monsterArchetype.empty() && !Save_Product()) return false;
+    if (!m_Sequencer->Save_WorkbenchSequence())
+    { m_Status = "Product binding saved; composition arrangement was not saved: " + m_Sequencer->Status(); return false; }
+    m_Status = m_Selected.monsterArchetype.empty() ?
+        "Saved Product binding and the full composition. Re-enter the character to reload its presentation." :
+        "Saved monster preview arrangement. MonsterProfiles remains the gameplay owner.";
+    return true;
 }
 }

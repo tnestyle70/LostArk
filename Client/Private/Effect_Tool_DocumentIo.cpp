@@ -1707,14 +1707,11 @@ bool_t Client::CEffect_Tool::Refresh_AllEffects(
 		   child data and must never hide Q/W/E/R/T/A/S/D/F on a cold entry. */
 		m_AllEffects = Staged;
 	}
-    const auto FailRefresh = [this, bHadPreviousAllEffectsTree](
-		const std::string& strReason)
+    std::string ClassError;
+    std::vector<std::string> IsolatedClasses;
+    const auto FailRefresh = [&ClassError](const std::string& strReason)
     {
-        m_strElementStatus =
-			(bHadPreviousAllEffectsTree ?
-				"All Effects Product enrichment preserved the previous tree: " :
-				"All Effects Product enrichment is unavailable; base PlayerSkills rows remain visible: ") +
-			strReason;
+        ClassError = strReason;
         return false;
     };
     constexpr LostArk::Shared::CHARACTER_CLASS_ID Classes[] = {
@@ -1729,7 +1726,7 @@ bool_t Client::CEffect_Tool::Refresh_AllEffects(
     size_t iProductSkillCount = 0u;
     size_t iSourceReferenceCount = 0u;
     std::set<std::string> MissingAuthoredTargets;
-    for (const LostArk::Shared::CHARACTER_CLASS_ID eClass : Classes)
+    const auto EnrichClass = [&](const LostArk::Shared::CHARACTER_CLASS_ID eClass) -> bool_t
     {
         const char* pAnimationAsset = Animation_AssetName(eClass);
         if (nullptr == pAnimationAsset)
@@ -1928,6 +1925,41 @@ bool_t Client::CEffect_Tool::Refresh_AllEffects(
             if (bEmptyPayload)
                 ++Entry.iEmptySourceReferenceCount;
         }
+        return true;
+    };
+    for (const LostArk::Shared::CHARACTER_CLASS_ID eClass : Classes)
+    {
+        // A broken optional presentation document only rolls back its own class.
+        // Saved authoring and the other classes remain usable on cold entry.
+        const auto BeforeClass = Staged;
+        const auto BeforeMissingTargets = MissingAuthoredTargets;
+        ClassError.clear();
+        if (!EnrichClass(eClass))
+        {
+            Staged = BeforeClass;
+            MissingAuthoredTargets = BeforeMissingTargets;
+            for (auto& Entry : Staged)
+            {
+                if (Entry.Skill.eCharacterClass != eClass) continue;
+                const auto Previous = std::find_if(m_AllEffects.begin(), m_AllEffects.end(),
+                    [&Entry](const auto& Row) { return Row.Skill.iSkillId == Entry.Skill.iSkillId &&
+                        Row.Skill.eCharacterClass == Entry.Skill.eCharacterClass; });
+                if (Previous == m_AllEffects.end()) continue;
+                Entry.ProductCues = Previous->ProductCues;
+                Entry.iSourceReferenceCount = Previous->iSourceReferenceCount;
+                Entry.iImportedReferenceCount = Previous->iImportedReferenceCount;
+                Entry.iEmptySourceReferenceCount = Previous->iEmptySourceReferenceCount;
+            }
+            const char* asset = Animation_AssetName(eClass);
+            IsolatedClasses.push_back(std::string(asset ? asset : "Unknown class") + ": " + ClassError);
+        }
+    }
+    iProductCueCount = iProductSkillCount = iSourceReferenceCount = 0u;
+    for (const auto& Entry : Staged)
+    {
+        iProductCueCount += Entry.ProductCues.size();
+        iProductSkillCount += Entry.ProductCues.empty() ? 0u : 1u;
+        iSourceReferenceCount += Entry.iSourceReferenceCount;
     }
     std::sort(Staged.begin(), Staged.end(),
         [](const EFFECT_SKILL_TREE_ENTRY& Left,
@@ -1953,7 +1985,9 @@ bool_t Client::CEffect_Tool::Refresh_AllEffects(
             std::to_string(MissingAuthoredTargets.size()) +
             " Product targets have no Authored document";
     m_strElementStatus += ".";
-    return true;
+    for (const auto& Error : IsolatedClasses)
+        m_strElementStatus += " Product refresh isolated (previous class rows preserved): " + Error + ".";
+    return IsolatedClasses.empty();
 }
 
 bool_t Client::CEffect_Tool::Refresh_DataFiles()

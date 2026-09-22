@@ -13,7 +13,8 @@
     "LanceMaster",
     "DimensionMaster",
     "Warlord",
-    "VehicleRiding"
+    "VehicleRiding",
+    "GuardianKnight"
   ],
   "slots": [
     {
@@ -9272,6 +9273,1561 @@
         "loop": true,
         "additive": false
       }
+    },
+    {
+      "id": "GK_Id_Glow",
+      "ownerClass": "GuardianKnight",
+      "type": 0,
+      "rect": {
+        "x": 597.5,
+        "y": 610.0333,
+        "width": 149.3333,
+        "height": 106.0
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/HUD/GuardianKnight/Frame_Glow.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1.0,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "GK_Id_Body",
+      "ownerClass": "GuardianKnight",
+      "type": 0,
+      "rect": {
+        "x": 609.5,
+        "y": 599.3667,
+        "width": 126.6667,
+        "height": 116.0
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/HUD/GuardianKnight/Frame_Body.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1.0,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "GK_Id_Inner",
+      "ownerClass": "GuardianKnight",
+      "type": 0,
+      "rect": {
+        "x": 635.5,
+        "y": 617.3667,
+        "width": 74.6667,
+        "height": 77.3333
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/HUD/GuardianKnight/Frame_Inner.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1.0,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "GK_Id_OrbEmpty",
+      "ownerClass": "GuardianKnight",
+      "type": 0,
+      "rect": {
+        "x": 649.5,
+        "y": 638.0333,
+        "width": 46.6667,
+        "height": 46.6667
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/HUD/GuardianKnight/Orb_Empty.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1.0,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "GK_Id_OrbFill",
+      "ownerClass": "GuardianKnight",
+      "type": 0,
+      "rect": {
+        "x": 649.5,
+        "y": 638.0333,
+        "width": 46.6667,
+        "height": 46.6667
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/HUD/GuardianKnight/Orb_Fill_Human.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1.0,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "GK_Id_OrbMark",
+      "ownerClass": "GuardianKnight",
+      "type": 0,
+      "rect": {
+        "x": 619.8333,
+        "y": 649.0333,
+        "width": 59.3333,
+        "height": 24.6667
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/HUD/GuardianKnight/Orb_Mark.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1.0,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "GK_Id_SkillKeyBg",
+      "ownerClass": "GuardianKnight",
+      "type": 0,
+      "rect": {
+        "x": 662.8333,
+        "y": 695.3667,
+        "width": 20.0,
+        "height": 10.6667
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/HUD/GuardianKnight/SkillKey_Bg.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1.0,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "GK_Id_StatusPlate",
+      "ownerClass": "GuardianKnight",
+      "type": 0,
+      "rect": {
+        "x": 626.8333,
+        "y": 692.7,
+        "width": 30.6667,
+        "height": 14.6667
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/HUD/GuardianKnight/SkillStatus_Plate.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1.0,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "GK_Id_StatusDot0",
+      "ownerClass": "GuardianKnight",
+      "type": 0,
+      "rect": {
+        "x": 631.5,
+        "y": 694.7,
+        "width": 5.3333,
+        "height": 5.3333
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/HUD/GuardianKnight/SkillStatus_Dot.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1.0,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "GK_Id_StatusDot1",
+      "ownerClass": "GuardianKnight",
+      "type": 0,
+      "rect": {
+        "x": 636.8333,
+        "y": 694.7,
+        "width": 5.3333,
+        "height": 5.3333
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/HUD/GuardianKnight/SkillStatus_Dot.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1.0,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "GK_Id_StatusDot2",
+      "ownerClass": "GuardianKnight",
+      "type": 0,
+      "rect": {
+        "x": 642.1667,
+        "y": 694.7,
+        "width": 5.3333,
+        "height": 5.3333
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/HUD/GuardianKnight/SkillStatus_Dot.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1.0,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "GK_Id_StatusDot3",
+      "ownerClass": "GuardianKnight",
+      "type": 0,
+      "rect": {
+        "x": 647.5,
+        "y": 694.7,
+        "width": 5.3333,
+        "height": 5.3333
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/HUD/GuardianKnight/SkillStatus_Dot.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1.0,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "GK_Id_StatusDot4",
+      "ownerClass": "GuardianKnight",
+      "type": 0,
+      "rect": {
+        "x": 631.5,
+        "y": 700.0333,
+        "width": 5.3333,
+        "height": 5.3333
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/HUD/GuardianKnight/SkillStatus_Dot.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1.0,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "GK_Id_StatusDot5",
+      "ownerClass": "GuardianKnight",
+      "type": 0,
+      "rect": {
+        "x": 636.8333,
+        "y": 700.0333,
+        "width": 5.3333,
+        "height": 5.3333
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/HUD/GuardianKnight/SkillStatus_Dot.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1.0,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "GK_Id_StatusDot6",
+      "ownerClass": "GuardianKnight",
+      "type": 0,
+      "rect": {
+        "x": 642.1667,
+        "y": 700.0333,
+        "width": 5.3333,
+        "height": 5.3333
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/HUD/GuardianKnight/SkillStatus_Dot.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1.0,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "GK_Id_StatusDot7",
+      "ownerClass": "GuardianKnight",
+      "type": 0,
+      "rect": {
+        "x": 647.5,
+        "y": 700.0333,
+        "width": 5.3333,
+        "height": 5.3333
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/HUD/GuardianKnight/SkillStatus_Dot.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1.0,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "GK_Embereth_Frame",
+      "ownerClass": "GuardianKnight",
+      "type": 0,
+      "rect": {
+        "x": 730.8333,
+        "y": 631.3667,
+        "width": 171.3333,
+        "height": 15.3333
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/HUD/GuardianKnight/Embereth/Frame.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1.0,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "GK_Embereth_Socket0",
+      "ownerClass": "GuardianKnight",
+      "type": 0,
+      "rect": {
+        "x": 740.1667,
+        "y": 628.0333,
+        "width": 14.6667,
+        "height": 16.6667
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/HUD/GuardianKnight/Embereth/Socket_Empty.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1.0,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "GK_Embereth_Socket1",
+      "ownerClass": "GuardianKnight",
+      "type": 0,
+      "rect": {
+        "x": 754.8333,
+        "y": 628.0333,
+        "width": 14.6667,
+        "height": 16.6667
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/HUD/GuardianKnight/Embereth/Socket_Empty.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1.0,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "GK_Embereth_Socket2",
+      "ownerClass": "GuardianKnight",
+      "type": 0,
+      "rect": {
+        "x": 769.5,
+        "y": 628.0333,
+        "width": 14.6667,
+        "height": 16.6667
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/HUD/GuardianKnight/Embereth/Socket_Empty.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1.0,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "GK_Embereth_Socket3",
+      "ownerClass": "GuardianKnight",
+      "type": 0,
+      "rect": {
+        "x": 784.1667,
+        "y": 628.0333,
+        "width": 14.6667,
+        "height": 16.6667
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/HUD/GuardianKnight/Embereth/Socket_Empty.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1.0,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "GK_Embereth_Socket4",
+      "ownerClass": "GuardianKnight",
+      "type": 0,
+      "rect": {
+        "x": 798.8333,
+        "y": 628.0333,
+        "width": 14.6667,
+        "height": 16.6667
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/HUD/GuardianKnight/Embereth/Socket_Empty.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1.0,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "GK_Embereth_Socket5",
+      "ownerClass": "GuardianKnight",
+      "type": 0,
+      "rect": {
+        "x": 815.5,
+        "y": 628.0333,
+        "width": 14.6667,
+        "height": 16.6667
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/HUD/GuardianKnight/Embereth/Socket_Empty.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1.0,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "GK_Embereth_Socket6",
+      "ownerClass": "GuardianKnight",
+      "type": 0,
+      "rect": {
+        "x": 830.1667,
+        "y": 628.0333,
+        "width": 14.6667,
+        "height": 16.6667
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/HUD/GuardianKnight/Embereth/Socket_Empty.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1.0,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "GK_Embereth_Socket7",
+      "ownerClass": "GuardianKnight",
+      "type": 0,
+      "rect": {
+        "x": 844.8333,
+        "y": 628.0333,
+        "width": 14.6667,
+        "height": 16.6667
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/HUD/GuardianKnight/Embereth/Socket_Empty.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1.0,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "GK_Embereth_Socket8",
+      "ownerClass": "GuardianKnight",
+      "type": 0,
+      "rect": {
+        "x": 859.5,
+        "y": 628.0333,
+        "width": 14.6667,
+        "height": 16.6667
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/HUD/GuardianKnight/Embereth/Socket_Empty.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1.0,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "GK_Embereth_Socket9",
+      "ownerClass": "GuardianKnight",
+      "type": 0,
+      "rect": {
+        "x": 874.1667,
+        "y": 628.0333,
+        "width": 14.6667,
+        "height": 16.6667
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/HUD/GuardianKnight/Embereth/Socket_Empty.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1.0,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "GK_Embereth_State0",
+      "ownerClass": "GuardianKnight",
+      "type": 9,
+      "rect": {
+        "x": 740.1667,
+        "y": 628.0333,
+        "width": 1.0,
+        "height": 1.0
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1.0,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      },
+      "keyframeAnimationPath": "UI/HUD/IdentityAnimation/GuardianKnight/EmberSocket.json",
+      "keyframeAnimationScale": 0.666667
+    },
+    {
+      "id": "GK_Embereth_State1",
+      "ownerClass": "GuardianKnight",
+      "type": 9,
+      "rect": {
+        "x": 754.8333,
+        "y": 628.0333,
+        "width": 1.0,
+        "height": 1.0
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1.0,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      },
+      "keyframeAnimationPath": "UI/HUD/IdentityAnimation/GuardianKnight/EmberSocket.json",
+      "keyframeAnimationScale": 0.666667
+    },
+    {
+      "id": "GK_Embereth_State2",
+      "ownerClass": "GuardianKnight",
+      "type": 9,
+      "rect": {
+        "x": 769.5,
+        "y": 628.0333,
+        "width": 1.0,
+        "height": 1.0
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1.0,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      },
+      "keyframeAnimationPath": "UI/HUD/IdentityAnimation/GuardianKnight/EmberSocket.json",
+      "keyframeAnimationScale": 0.666667
+    },
+    {
+      "id": "GK_Embereth_State3",
+      "ownerClass": "GuardianKnight",
+      "type": 9,
+      "rect": {
+        "x": 784.1667,
+        "y": 628.0333,
+        "width": 1.0,
+        "height": 1.0
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1.0,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      },
+      "keyframeAnimationPath": "UI/HUD/IdentityAnimation/GuardianKnight/EmberSocket.json",
+      "keyframeAnimationScale": 0.666667
+    },
+    {
+      "id": "GK_Embereth_State4",
+      "ownerClass": "GuardianKnight",
+      "type": 9,
+      "rect": {
+        "x": 798.8333,
+        "y": 628.0333,
+        "width": 1.0,
+        "height": 1.0
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1.0,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      },
+      "keyframeAnimationPath": "UI/HUD/IdentityAnimation/GuardianKnight/EmberSocket.json",
+      "keyframeAnimationScale": 0.666667
+    },
+    {
+      "id": "GK_Embereth_State5",
+      "ownerClass": "GuardianKnight",
+      "type": 9,
+      "rect": {
+        "x": 815.5,
+        "y": 628.0333,
+        "width": 1.0,
+        "height": 1.0
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1.0,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      },
+      "keyframeAnimationPath": "UI/HUD/IdentityAnimation/GuardianKnight/EmberSocket.json",
+      "keyframeAnimationScale": 0.666667
+    },
+    {
+      "id": "GK_Embereth_State6",
+      "ownerClass": "GuardianKnight",
+      "type": 9,
+      "rect": {
+        "x": 830.1667,
+        "y": 628.0333,
+        "width": 1.0,
+        "height": 1.0
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1.0,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      },
+      "keyframeAnimationPath": "UI/HUD/IdentityAnimation/GuardianKnight/EmberSocket.json",
+      "keyframeAnimationScale": 0.666667
+    },
+    {
+      "id": "GK_Embereth_State7",
+      "ownerClass": "GuardianKnight",
+      "type": 9,
+      "rect": {
+        "x": 844.8333,
+        "y": 628.0333,
+        "width": 1.0,
+        "height": 1.0
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1.0,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      },
+      "keyframeAnimationPath": "UI/HUD/IdentityAnimation/GuardianKnight/EmberSocket.json",
+      "keyframeAnimationScale": 0.666667
+    },
+    {
+      "id": "GK_Embereth_State8",
+      "ownerClass": "GuardianKnight",
+      "type": 9,
+      "rect": {
+        "x": 859.5,
+        "y": 628.0333,
+        "width": 1.0,
+        "height": 1.0
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1.0,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      },
+      "keyframeAnimationPath": "UI/HUD/IdentityAnimation/GuardianKnight/EmberSocket.json",
+      "keyframeAnimationScale": 0.666667
+    },
+    {
+      "id": "GK_Embereth_State9",
+      "ownerClass": "GuardianKnight",
+      "type": 9,
+      "rect": {
+        "x": 874.1667,
+        "y": 628.0333,
+        "width": 1.0,
+        "height": 1.0
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1.0,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      },
+      "keyframeAnimationPath": "UI/HUD/IdentityAnimation/GuardianKnight/EmberSocket.json",
+      "keyframeAnimationScale": 0.666667
     }
   ]
 }
