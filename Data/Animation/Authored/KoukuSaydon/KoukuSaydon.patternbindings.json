@@ -3,7 +3,7 @@
   "formatVersion": 1,
   "lightResourceRevision": 30,
   "bossArchetypeId": "BOSS_KAKULSAYDON_G1_KOUKU",
-  "sourceRevision": 2195,
+  "sourceRevision": 2198,
   "bindings": [
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_1.stage.43",
@@ -7114,6 +7114,61 @@
       "playMs": 1000,
       "playRate": 1,
       "endPolicy": "LOOP_TO_WINDOW"
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_105.stage.1",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_105.animation.1",
+      "clip": "rpcz00_att_battle_3_01",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 2500,
+      "playRate": 1,
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_105.stage.2",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_105.animation.2",
+      "clip": "rpcz00_att_battle_3_06",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 1900,
+      "playRate": 1,
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_105.stage.3",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_105.animation.3",
+      "clip": "rpcz00_att_battle_3_09",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 1000,
+      "playRate": 1,
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_106.stage.1",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_106.animation.1",
+      "clip": "rpcz00_att_battle_4_01",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 5800,
+      "playRate": 1,
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_106.stage.2",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_106.animation.2",
+      "clip": "rpcz00_att_battle_4_01",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 5800,
+      "playRate": 1,
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
     }
   ],
   "fearPresentations": [
@@ -8974,142 +9029,106 @@
       ]
     },
     {
-      "clientVisualId": "kouku.showtime.fixed.7aaf67f60352f601d8e37656db1b2cd3159ee4e802bc85c0d328eb76dac46f7f",
+      "clientVisualId": "kouku.showtime.fixed.af77b94f18f0619cc143333aebbcc76f5be3c2b0aa62c9dbdcd4765fe25d5fc2",
       "combatObjectArchetypeId": "combatobject.kouku.showtime.fixed",
-      "durationMs": 7200,
+      "durationMs": 5150,
       "loop": false,
       "resources": [
         {
           "resourceId": "showtime.resource.1",
-          "resourceKind": "GROUP",
+          "resourceKind": "",
           "elementId": "",
           "shape": "BOX",
           "colliderKind": "GEOMETRY",
           "halfExtents": [
-            1.0,
-            1.0,
-            1.0
+            1,
+            1,
+            1
           ],
-          "radiusM": 3.0,
-          "halfAngleDegrees": 45.0,
-          "soundEvent": "s_mob_g_koukusatan1.g_satan1_attack03_projexp1",
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "soundEvent": "s_mob_g_kouku1.g_kouku1_attack07_proj1",
           "subtitleText": "",
           "subtitlePosition": "NORMAL",
           "kind": "SOUND",
-          "assetId": "Sound/KoukuSaton/S_MOB_G_KOUKUSATAN1/g_satan1_attack03_projexp1__296208953.wav",
-          "resourceDurationMs": 3117
+          "assetId": "Sound/KoukuSaton/S_MOB_G_KOUKU1/g_kouku1_attack07_proj1__201491086.wav",
+          "resourceDurationMs": 3667
         },
         {
           "resourceId": "showtime.resource.2",
+          "resourceKind": "",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "soundEvent": "s_mob_g_kouku1.g_kouku1_attack07_projexp1",
+          "subtitleText": "",
+          "subtitlePosition": "NORMAL",
+          "kind": "SOUND",
+          "assetId": "Sound/KoukuSaton/S_MOB_G_KOUKU1/g_kouku1_attack07_projexp1__84606297.wav",
+          "resourceDurationMs": 1734
+        },
+        {
+          "resourceId": "showtime.resource.3",
           "resourceKind": "V1_EFFECT",
           "elementId": "",
           "shape": "BOX",
           "colliderKind": "GEOMETRY",
           "halfExtents": [
-            1.0,
-            1.0,
-            1.0
+            1,
+            1,
+            1
           ],
-          "radiusM": 3.0,
-          "halfAngleDegrees": 45.0,
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
           "soundEvent": "",
           "subtitleText": "",
           "subtitlePosition": "NORMAL",
           "kind": "EFFECT",
-          "assetId": "effect.kouku.gate1.cardrain.drop",
-          "resourceDurationMs": 7200
+          "assetId": "effect.kouku.gate2.entrance.drop.ball",
+          "resourceDurationMs": 5150
         }
       ],
       "occurrences": [
         {
-          "resourceKind": "V1_EFFECT",
+          "resourceKind": "",
           "elementId": "",
           "shape": "BOX",
           "colliderKind": "GEOMETRY",
           "halfExtents": [
-            1.0,
-            1.0,
-            1.0
-          ],
-          "radiusM": 3.0,
-          "halfAngleDegrees": 45.0,
-          "soundEvent": "",
-          "subtitleText": "",
-          "subtitlePosition": "NORMAL",
-          "resourceId": "showtime.resource.2",
-          "kind": "EFFECT",
-          "assetId": "effect.kouku.gate1.cardrain.drop",
-          "resourceDurationMs": 7200,
-          "positionOffset": [
-            0,
-            0.0,
-            0
-          ],
-          "rotationDegrees": [
-            0,
-            0,
-            0
-          ],
-          "scale": [
             1,
             1,
             1
           ],
-          "fadeInMs": 0,
-          "fadeOutMs": 0,
-          "dissolveStart": 0.85,
-          "dissolveEnd": 1.0,
-          "volume": 1.0,
-          "soundSourceStartMs": 0,
-          "followBoss": false,
-          "bone": "",
-          "regionId": "",
-          "cardSymbol": "NONE",
-          "cardColor": "NONE",
-          "anchorKind": "MAP",
-          "worldId": "",
-          "logicOccurrenceId": "",
-          "debugRender": true,
-          "worldOccurrenceId": "",
-          "worldEmissionIndex": 0,
-          "startMs": 0,
-          "durationMs": 7200,
-          "worldSequenceInstanceId": "",
-          "occurrenceId": "showtime.presentation.1"
-        },
-        {
-          "resourceKind": "GROUP",
-          "elementId": "",
-          "shape": "BOX",
-          "colliderKind": "GEOMETRY",
-          "halfExtents": [
-            1.0,
-            1.0,
-            1.0
-          ],
-          "radiusM": 3.0,
-          "halfAngleDegrees": 45.0,
-          "soundEvent": "s_mob_g_koukusatan1.g_satan1_attack03_projexp1",
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "soundEvent": "s_mob_g_kouku1.g_kouku1_attack07_proj1",
           "subtitleText": "",
           "subtitlePosition": "NORMAL",
           "resourceId": "showtime.resource.1",
           "kind": "SOUND",
-          "assetId": "Sound/KoukuSaton/S_MOB_G_KOUKUSATAN1/g_satan1_attack03_projexp1__296208953.wav",
-          "resourceDurationMs": 3117,
+          "assetId": "Sound/KoukuSaton/S_MOB_G_KOUKU1/g_kouku1_attack07_proj1__201491086.wav",
+          "resourceDurationMs": 3667,
           "positionOffset": [
             0,
             0.0,
             0
           ],
           "rotationDegrees": [
-            0,
-            0,
-            0
+            0.0,
+            0.0,
+            0.0
           ],
           "scale": [
-            1,
-            1,
-            1
+            1.0,
+            1.0,
+            1.0
           ],
           "fadeInMs": 0,
           "fadeOutMs": 0,
@@ -9128,10 +9147,124 @@
           "debugRender": true,
           "worldOccurrenceId": "",
           "worldEmissionIndex": 0,
-          "startMs": 1350,
-          "durationMs": 3117,
+          "startMs": 0,
+          "durationMs": 3667,
+          "worldSequenceInstanceId": "",
+          "occurrenceId": "showtime.presentation.1"
+        },
+        {
+          "resourceKind": "V1_EFFECT",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "soundEvent": "",
+          "subtitleText": "",
+          "subtitlePosition": "NORMAL",
+          "resourceId": "showtime.resource.3",
+          "kind": "EFFECT",
+          "assetId": "effect.kouku.gate2.entrance.drop.ball",
+          "resourceDurationMs": 5150,
+          "positionOffset": [
+            0,
+            0.0,
+            0
+          ],
+          "rotationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1,
+          "volume": 1,
+          "soundSourceStartMs": 0,
+          "followBoss": false,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "MAP",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "startMs": 0,
+          "durationMs": 5150,
+          "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
           "worldSequenceInstanceId": "",
           "occurrenceId": "showtime.presentation.2"
+        },
+        {
+          "resourceKind": "",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "soundEvent": "s_mob_g_kouku1.g_kouku1_attack07_projexp1",
+          "subtitleText": "",
+          "subtitlePosition": "NORMAL",
+          "resourceId": "showtime.resource.2",
+          "kind": "SOUND",
+          "assetId": "Sound/KoukuSaton/S_MOB_G_KOUKU1/g_kouku1_attack07_projexp1__84606297.wav",
+          "resourceDurationMs": 1734,
+          "positionOffset": [
+            0,
+            0.0,
+            0
+          ],
+          "rotationDegrees": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1.0,
+          "volume": 1,
+          "soundSourceStartMs": 0,
+          "followBoss": false,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "MAP",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "startMs": 3033,
+          "durationMs": 1734,
+          "worldSequenceInstanceId": "",
+          "occurrenceId": "showtime.presentation.3"
         }
       ]
     },
@@ -9532,6 +9665,172 @@
           "boneTarget": "BODY",
           "worldSequenceInstanceId": "",
           "occurrenceId": "showtime.presentation.5"
+        }
+      ]
+    },
+    {
+      "clientVisualId": "kouku.showtime.fixed.d03fd807df0196b1d64da39822e10b8948a35da36f1244320744e744175df780",
+      "combatObjectArchetypeId": "combatobject.kouku.showtime.fixed",
+      "durationMs": 7200,
+      "loop": false,
+      "resources": [
+        {
+          "resourceId": "showtime.resource.1",
+          "resourceKind": "GROUP",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "soundEvent": "s_mob_g_koukusatan1.g_satan1_attack03_projexp1",
+          "subtitleText": "",
+          "subtitlePosition": "NORMAL",
+          "kind": "SOUND",
+          "assetId": "Sound/KoukuSaton/S_MOB_G_KOUKUSATAN1/g_satan1_attack03_projexp1__296208953.wav",
+          "resourceDurationMs": 3117
+        },
+        {
+          "resourceId": "showtime.resource.2",
+          "resourceKind": "V1_EFFECT",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "soundEvent": "",
+          "subtitleText": "",
+          "subtitlePosition": "NORMAL",
+          "kind": "EFFECT",
+          "assetId": "effect.kouku.gate1.cardrain.drop",
+          "resourceDurationMs": 7200
+        }
+      ],
+      "occurrences": [
+        {
+          "resourceKind": "V1_EFFECT",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "soundEvent": "",
+          "subtitleText": "",
+          "subtitlePosition": "NORMAL",
+          "resourceId": "showtime.resource.2",
+          "kind": "EFFECT",
+          "assetId": "effect.kouku.gate1.cardrain.drop",
+          "resourceDurationMs": 7200,
+          "positionOffset": [
+            0,
+            0.0,
+            0
+          ],
+          "rotationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1,
+          "volume": 1,
+          "soundSourceStartMs": 0,
+          "followBoss": false,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "MAP",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "startMs": 0,
+          "durationMs": 7200,
+          "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
+          "worldSequenceInstanceId": "",
+          "occurrenceId": "showtime.presentation.1"
+        },
+        {
+          "resourceKind": "GROUP",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "soundEvent": "s_mob_g_koukusatan1.g_satan1_attack03_projexp1",
+          "subtitleText": "",
+          "subtitlePosition": "NORMAL",
+          "resourceId": "showtime.resource.1",
+          "kind": "SOUND",
+          "assetId": "Sound/KoukuSaton/S_MOB_G_KOUKUSATAN1/g_satan1_attack03_projexp1__296208953.wav",
+          "resourceDurationMs": 3117,
+          "positionOffset": [
+            0,
+            0.0,
+            0
+          ],
+          "rotationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1,
+          "volume": 1,
+          "soundSourceStartMs": 0,
+          "followBoss": false,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "MAP",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "startMs": 1350,
+          "durationMs": 3117,
+          "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
+          "worldSequenceInstanceId": "",
+          "occurrenceId": "showtime.presentation.2"
         }
       ]
     },
@@ -10152,7 +10451,7 @@
       "gateId": "GATE2",
       "folderId": "kakulsaydon.folder.1",
       "displayName": "세이튼등장_동시",
-      "durationMs": 7981,
+      "durationMs": 9950,
       "members": [
         {
           "memberId": "kakulsaydon.bundle.1.member.1",
@@ -10508,10 +10807,9 @@
           "occurrenceId": "KAKULSAYDON_G1_PATTERN_1.presentation.1",
           "startMs": 2263,
           "durationMs": 10684,
+          "loopEffectToDuration": true,
           "brightnessMultiplier": 1,
           "boneTarget": "BODY",
-          "fitEffectToDuration": false,
-          "loopEffectToDuration": true,
           "worldSequenceInstanceId": ""
         },
         {
@@ -10626,10 +10924,9 @@
           "occurrenceId": "KAKULSAYDON_G1_PATTERN_1.presentation.16",
           "startMs": 2263,
           "durationMs": 10684,
+          "loopEffectToDuration": true,
           "brightnessMultiplier": 1,
           "boneTarget": "BODY",
-          "fitEffectToDuration": false,
-          "loopEffectToDuration": true,
           "worldSequenceInstanceId": ""
         },
         {
@@ -20719,7 +21016,8 @@
       "gateId": "GATE2",
       "targetBossPlacementId": "boss.kakulsaydon.g2.kouku",
       "actorProfileId": "MN_RPCZ_00",
-      "durationMs": 7400,
+      "durationMs": 9950,
+      "stageDurationMs": 7400,
       "bossMotion": {
         "startMs": 1870,
         "endMs": 5780,
@@ -21401,6 +21699,64 @@
           "brightnessMultiplier": 1,
           "boneTarget": "BODY",
           "worldSequenceInstanceId": ""
+        },
+        {
+          "resourceKind": "V1_EFFECT",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "soundEvent": "",
+          "subtitleText": "",
+          "subtitlePosition": "NORMAL",
+          "resourceId": "kakulsaydon.effect.6b6e7d3e26ba67a7532c",
+          "kind": "EFFECT",
+          "assetId": "effect.kouku.gate2.entrance.rope.trail",
+          "resourceDurationMs": 6335,
+          "positionOffset": [
+            0,
+            0,
+            0
+          ],
+          "rotationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1,
+          "volume": 1,
+          "soundSourceStartMs": 0,
+          "followBoss": true,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "BOSS",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_8.presentation.12",
+          "startMs": 2379,
+          "durationMs": 6335,
+          "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
+          "worldSequenceInstanceId": ""
         }
       ]
     },
@@ -21815,6 +22171,62 @@
           "durationMs": 5333,
           "brightnessMultiplier": 1,
           "boneTarget": "BODY",
+          "worldSequenceInstanceId": ""
+        },
+        {
+          "resourceKind": "",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "soundEvent": "",
+          "subtitleText": "여러분들, 뿅망치 살인마가 등장합니다!\n과연 누가 살아남을까요?",
+          "subtitlePosition": "NORMAL",
+          "resourceId": "subtitle.kouku.gate2.saydon.appear",
+          "kind": "SUBTITLE",
+          "assetId": "subtitle.kouku.gate2.saydon.appear",
+          "resourceDurationMs": 7400,
+          "positionOffset": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotationDegrees": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1.0,
+          "volume": 1,
+          "soundSourceStartMs": 0,
+          "followBoss": false,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "MAP",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_9.presentation.9",
+          "startMs": 0,
+          "durationMs": 7400,
           "worldSequenceInstanceId": ""
         }
       ]
@@ -22417,7 +22829,7 @@
       ],
       "presentationOccurrences": [
         {
-          "resourceKind": "GROUP",
+          "resourceKind": "V1_EFFECT",
           "elementId": "",
           "shape": "BOX",
           "colliderKind": "GEOMETRY",
@@ -22431,14 +22843,14 @@
           "soundEvent": "",
           "subtitleText": "",
           "subtitlePosition": "NORMAL",
-          "resourceId": "kakulsaydon.g1.presentation.34",
+          "resourceId": "kakulsaydon.effect.81253c9e1ff62c1eee1d",
           "kind": "EFFECT",
-          "assetId": "boss.kouku.medusa.blue",
-          "resourceDurationMs": 10000,
+          "assetId": "effect.kouku.gate2.safezone.blue.full.restore",
+          "resourceDurationMs": 17521,
           "positionOffset": [
             1.5950000286102295,
             10.559999465942383,
-            313.8080139160156
+            316.3080139160156
           ],
           "rotationDegrees": [
             0,
@@ -22446,9 +22858,9 @@
             0
           ],
           "scale": [
-            1,
-            1,
-            1
+            1.8181817787768602,
+            1.8181817787768602,
+            1.8181817787768602
           ],
           "fadeInMs": 0,
           "fadeOutMs": 0,
@@ -22472,6 +22884,7 @@
           "durationMs": 17506,
           "brightnessMultiplier": 1,
           "boneTarget": "BODY",
+          "loopEffectToDuration": true,
           "worldSequenceInstanceId": ""
         },
         {
@@ -22533,7 +22946,7 @@
           "worldSequenceInstanceId": ""
         },
         {
-          "resourceKind": "GROUP",
+          "resourceKind": "V1_EFFECT",
           "elementId": "",
           "shape": "BOX",
           "colliderKind": "GEOMETRY",
@@ -22547,14 +22960,14 @@
           "soundEvent": "",
           "subtitleText": "",
           "subtitlePosition": "NORMAL",
-          "resourceId": "kakulsaydon.g1.presentation.34",
+          "resourceId": "kakulsaydon.effect.81253c9e1ff62c1eee1d",
           "kind": "EFFECT",
-          "assetId": "boss.kouku.medusa.blue",
-          "resourceDurationMs": 10000,
+          "assetId": "effect.kouku.gate2.safezone.blue.full.restore",
+          "resourceDurationMs": 17521,
           "positionOffset": [
             5.894999980926514,
             10.559999465942383,
-            323.1579895019531
+            325.6579895019531
           ],
           "rotationDegrees": [
             0,
@@ -22562,9 +22975,9 @@
             0
           ],
           "scale": [
-            1,
-            1,
-            1
+            1.8181817787768602,
+            1.8181817787768602,
+            1.8181817787768602
           ],
           "fadeInMs": 0,
           "fadeOutMs": 0,
@@ -22588,10 +23001,11 @@
           "durationMs": 17491,
           "brightnessMultiplier": 1,
           "boneTarget": "BODY",
+          "loopEffectToDuration": true,
           "worldSequenceInstanceId": ""
         },
         {
-          "resourceKind": "GROUP",
+          "resourceKind": "V1_EFFECT",
           "elementId": "",
           "shape": "BOX",
           "colliderKind": "GEOMETRY",
@@ -22605,14 +23019,14 @@
           "soundEvent": "",
           "subtitleText": "",
           "subtitlePosition": "NORMAL",
-          "resourceId": "kakulsaydon.g1.presentation.34",
+          "resourceId": "kakulsaydon.effect.81253c9e1ff62c1eee1d",
           "kind": "EFFECT",
-          "assetId": "boss.kouku.medusa.blue",
-          "resourceDurationMs": 10000,
+          "assetId": "effect.kouku.gate2.safezone.blue.full.restore",
+          "resourceDurationMs": 17521,
           "positionOffset": [
             11.345000267028809,
             10.559999465942383,
-            323.4580078125
+            325.9580078125
           ],
           "rotationDegrees": [
             0,
@@ -22620,9 +23034,9 @@
             0
           ],
           "scale": [
-            1,
-            1,
-            1
+            1.8181817787768602,
+            1.8181817787768602,
+            1.8181817787768602
           ],
           "fadeInMs": 0,
           "fadeOutMs": 0,
@@ -22646,6 +23060,7 @@
           "durationMs": 17521,
           "brightnessMultiplier": 1,
           "boneTarget": "BODY",
+          "loopEffectToDuration": true,
           "worldSequenceInstanceId": ""
         },
         {
@@ -25370,6 +25785,180 @@
           "occurrenceId": "KAKULSAYDON_G1_PATTERN_11.presentation.87",
           "startMs": 14705,
           "durationMs": 2122,
+          "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
+          "worldSequenceInstanceId": ""
+        },
+        {
+          "resourceKind": "V1_EFFECT",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "soundEvent": "",
+          "subtitleText": "",
+          "subtitlePosition": "NORMAL",
+          "resourceId": "kakulsaydon.effect.232ee6719545facad274",
+          "kind": "EFFECT",
+          "assetId": "effect.kouku.gate2.bigsaydon.yellow-eye-warning.full.restore",
+          "resourceDurationMs": 1350,
+          "positionOffset": [
+            0,
+            0,
+            0
+          ],
+          "rotationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1,
+          "volume": 1,
+          "soundSourceStartMs": 0,
+          "followBoss": true,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "BOSS",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_11.presentation.89",
+          "startMs": 0,
+          "durationMs": 1350,
+          "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
+          "worldSequenceInstanceId": ""
+        },
+        {
+          "resourceKind": "V1_EFFECT",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "soundEvent": "",
+          "subtitleText": "",
+          "subtitlePosition": "NORMAL",
+          "resourceId": "kakulsaydon.effect.232ee6719545facad274",
+          "kind": "EFFECT",
+          "assetId": "effect.kouku.gate2.bigsaydon.yellow-eye-warning.full.restore",
+          "resourceDurationMs": 1350,
+          "positionOffset": [
+            0,
+            0,
+            0
+          ],
+          "rotationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1,
+          "volume": 1,
+          "soundSourceStartMs": 0,
+          "followBoss": true,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "BOSS",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_11.presentation.90",
+          "startMs": 6532,
+          "durationMs": 1350,
+          "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
+          "worldSequenceInstanceId": ""
+        },
+        {
+          "resourceKind": "V1_EFFECT",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "soundEvent": "",
+          "subtitleText": "",
+          "subtitlePosition": "NORMAL",
+          "resourceId": "kakulsaydon.effect.232ee6719545facad274",
+          "kind": "EFFECT",
+          "assetId": "effect.kouku.gate2.bigsaydon.yellow-eye-warning.full.restore",
+          "resourceDurationMs": 1350,
+          "positionOffset": [
+            0,
+            0,
+            0
+          ],
+          "rotationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1,
+          "volume": 1,
+          "soundSourceStartMs": 0,
+          "followBoss": true,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "BOSS",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_11.presentation.91",
+          "startMs": 12990,
+          "durationMs": 1350,
           "brightnessMultiplier": 1,
           "boneTarget": "BODY",
           "worldSequenceInstanceId": ""
@@ -40007,24 +40596,24 @@
           "assetId": "Sound/KoukuSaton/S_MOB_G_KOUKU1/g_kouku1_attack03_shot8__864329720.wav",
           "resourceDurationMs": 2967,
           "positionOffset": [
-            0.0,
-            0.0,
-            0.0
+            0,
+            0,
+            0
           ],
           "rotationDegrees": [
-            0.0,
-            0.0,
-            0.0
+            0,
+            0,
+            0
           ],
           "scale": [
-            1.0,
-            1.0,
-            1.0
+            1,
+            1,
+            1
           ],
           "fadeInMs": 0,
           "fadeOutMs": 0,
           "dissolveStart": 0.85,
-          "dissolveEnd": 1.0,
+          "dissolveEnd": 1,
           "volume": 1,
           "soundSourceStartMs": 499,
           "followBoss": false,
@@ -40041,6 +40630,8 @@
           "occurrenceId": "KAKULSAYDON_G1_PATTERN_23.presentation.58",
           "startMs": 6522,
           "durationMs": 467,
+          "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
           "worldSequenceInstanceId": ""
         },
         {
@@ -40063,24 +40654,24 @@
           "assetId": "Sound/KoukuSaton/S_MOB_G_KOUKU1/g_kouku1_attack03_shot8__864329720.wav",
           "resourceDurationMs": 2967,
           "positionOffset": [
-            0.0,
-            0.0,
-            0.0
+            0,
+            0,
+            0
           ],
           "rotationDegrees": [
-            0.0,
-            0.0,
-            0.0
+            0,
+            0,
+            0
           ],
           "scale": [
-            1.0,
-            1.0,
-            1.0
+            1,
+            1,
+            1
           ],
           "fadeInMs": 0,
           "fadeOutMs": 0,
           "dissolveStart": 0.85,
-          "dissolveEnd": 1.0,
+          "dissolveEnd": 1,
           "volume": 1,
           "soundSourceStartMs": 966,
           "followBoss": false,
@@ -40097,6 +40688,8 @@
           "occurrenceId": "KAKULSAYDON_G1_PATTERN_23.presentation.59",
           "startMs": 7114,
           "durationMs": 2001,
+          "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
           "worldSequenceInstanceId": ""
         }
       ]
@@ -84279,12 +84872,12 @@
           "shape": "BOX",
           "colliderKind": "GEOMETRY",
           "halfExtents": [
-            1.0,
-            1.0,
-            1.0
+            1,
+            1,
+            1
           ],
-          "radiusM": 3.0,
-          "halfAngleDegrees": 45.0,
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
           "soundEvent": "",
           "subtitleText": "",
           "subtitlePosition": "NORMAL",
@@ -84337,12 +84930,12 @@
           "shape": "BOX",
           "colliderKind": "GEOMETRY",
           "halfExtents": [
-            1.0,
-            1.0,
-            1.0
+            1,
+            1,
+            1
           ],
-          "radiusM": 3.0,
-          "halfAngleDegrees": 45.0,
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
           "soundEvent": "",
           "subtitleText": "",
           "subtitlePosition": "NORMAL",
@@ -84395,12 +84988,12 @@
           "shape": "BOX",
           "colliderKind": "GEOMETRY",
           "halfExtents": [
-            1.0,
-            1.0,
-            1.0
+            1,
+            1,
+            1
           ],
-          "radiusM": 3.0,
-          "halfAngleDegrees": 45.0,
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
           "soundEvent": "",
           "subtitleText": "",
           "subtitlePosition": "NORMAL",
@@ -84453,12 +85046,12 @@
           "shape": "BOX",
           "colliderKind": "GEOMETRY",
           "halfExtents": [
-            1.0,
-            1.0,
-            1.0
+            1,
+            1,
+            1
           ],
-          "radiusM": 3.0,
-          "halfAngleDegrees": 45.0,
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
           "soundEvent": "",
           "subtitleText": "",
           "subtitlePosition": "NORMAL",
@@ -84511,12 +85104,12 @@
           "shape": "BOX",
           "colliderKind": "GEOMETRY",
           "halfExtents": [
-            1.0,
-            1.0,
-            1.0
+            1,
+            1,
+            1
           ],
-          "radiusM": 3.0,
-          "halfAngleDegrees": 45.0,
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
           "soundEvent": "",
           "subtitleText": "",
           "subtitlePosition": "NORMAL",
@@ -84569,12 +85162,12 @@
           "shape": "BOX",
           "colliderKind": "GEOMETRY",
           "halfExtents": [
-            1.0,
-            1.0,
-            1.0
+            1,
+            1,
+            1
           ],
-          "radiusM": 3.0,
-          "halfAngleDegrees": 45.0,
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
           "soundEvent": "",
           "subtitleText": "",
           "subtitlePosition": "NORMAL",
@@ -85323,12 +85916,12 @@
           "shape": "BOX",
           "colliderKind": "GEOMETRY",
           "halfExtents": [
-            1.0,
-            1.0,
-            1.0
+            1,
+            1,
+            1
           ],
-          "radiusM": 3.0,
-          "halfAngleDegrees": 45.0,
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
           "soundEvent": "",
           "subtitleText": "",
           "subtitlePosition": "NORMAL",
@@ -85337,25 +85930,25 @@
           "assetId": "effect.kouku.common.spinning.card.overhead",
           "resourceDurationMs": 3250,
           "positionOffset": [
-            0.0,
-            0.0,
-            0.0
+            0,
+            0,
+            0
           ],
           "rotationDegrees": [
-            0.0,
-            0.0,
-            0.0
+            0,
+            0,
+            0
           ],
           "scale": [
-            1.0,
-            1.0,
-            1.0
+            1,
+            1,
+            1
           ],
           "fadeInMs": 0,
           "fadeOutMs": 0,
           "dissolveStart": 0.85,
-          "dissolveEnd": 1.0,
-          "volume": 1.0,
+          "dissolveEnd": 1,
+          "volume": 1,
           "soundSourceStartMs": 0,
           "followBoss": true,
           "bone": "",
@@ -85371,6 +85964,8 @@
           "occurrenceId": "KAKULSAYDON_G1_PATTERN_48.presentation.23",
           "startMs": 0,
           "durationMs": 3250,
+          "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
           "worldSequenceInstanceId": ""
         }
       ]
@@ -100579,24 +101174,24 @@
           "assetId": "Sound/KoukuSaton/S_MOB_G_KOUKUSATAN1/g_satan1_attack08_shot1__730194094.wav",
           "resourceDurationMs": 2600,
           "positionOffset": [
-            0.0,
-            0.0,
-            0.0
+            0,
+            0,
+            0
           ],
           "rotationDegrees": [
-            0.0,
-            0.0,
-            0.0
+            0,
+            0,
+            0
           ],
           "scale": [
-            1.0,
-            1.0,
-            1.0
+            1,
+            1,
+            1
           ],
           "fadeInMs": 0,
           "fadeOutMs": 0,
           "dissolveStart": 0.85,
-          "dissolveEnd": 1.0,
+          "dissolveEnd": 1,
           "volume": 1,
           "soundSourceStartMs": 0,
           "followBoss": false,
@@ -100613,6 +101208,8 @@
           "occurrenceId": "KAKULSAYDON_G1_PATTERN_78.presentation.34",
           "startMs": 7644,
           "durationMs": 2600,
+          "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
           "worldSequenceInstanceId": ""
         },
         {
@@ -100635,24 +101232,24 @@
           "assetId": "Sound/KoukuSaton/S_MOB_G_KOUKUSATAN1/g_satan1_attack08_shot1__730194094.wav",
           "resourceDurationMs": 2600,
           "positionOffset": [
-            0.0,
-            0.0,
-            0.0
+            0,
+            0,
+            0
           ],
           "rotationDegrees": [
-            0.0,
-            0.0,
-            0.0
+            0,
+            0,
+            0
           ],
           "scale": [
-            1.0,
-            1.0,
-            1.0
+            1,
+            1,
+            1
           ],
           "fadeInMs": 0,
           "fadeOutMs": 0,
           "dissolveStart": 0.85,
-          "dissolveEnd": 1.0,
+          "dissolveEnd": 1,
           "volume": 1,
           "soundSourceStartMs": 0,
           "followBoss": false,
@@ -100669,6 +101266,8 @@
           "occurrenceId": "KAKULSAYDON_G1_PATTERN_78.presentation.35",
           "startMs": 9849,
           "durationMs": 2600,
+          "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
           "worldSequenceInstanceId": ""
         },
         {
@@ -100691,24 +101290,24 @@
           "assetId": "Sound/KoukuSaton/S_MOB_G_KOUKUSATAN1/g_satan1_attack08_shot1__730194094.wav",
           "resourceDurationMs": 2600,
           "positionOffset": [
-            0.0,
-            0.0,
-            0.0
+            0,
+            0,
+            0
           ],
           "rotationDegrees": [
-            0.0,
-            0.0,
-            0.0
+            0,
+            0,
+            0
           ],
           "scale": [
-            1.0,
-            1.0,
-            1.0
+            1,
+            1,
+            1
           ],
           "fadeInMs": 0,
           "fadeOutMs": 0,
           "dissolveStart": 0.85,
-          "dissolveEnd": 1.0,
+          "dissolveEnd": 1,
           "volume": 1,
           "soundSourceStartMs": 0,
           "followBoss": false,
@@ -100725,6 +101324,8 @@
           "occurrenceId": "KAKULSAYDON_G1_PATTERN_78.presentation.36",
           "startMs": 11998,
           "durationMs": 2600,
+          "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
           "worldSequenceInstanceId": ""
         },
         {
@@ -100747,24 +101348,24 @@
           "assetId": "Sound/KoukuSaton/S_MOB_G_KOUKUSATAN1/g_satan1_attack08_shot1__730194094.wav",
           "resourceDurationMs": 2600,
           "positionOffset": [
-            0.0,
-            0.0,
-            0.0
+            0,
+            0,
+            0
           ],
           "rotationDegrees": [
-            0.0,
-            0.0,
-            0.0
+            0,
+            0,
+            0
           ],
           "scale": [
-            1.0,
-            1.0,
-            1.0
+            1,
+            1,
+            1
           ],
           "fadeInMs": 0,
           "fadeOutMs": 0,
           "dissolveStart": 0.85,
-          "dissolveEnd": 1.0,
+          "dissolveEnd": 1,
           "volume": 1,
           "soundSourceStartMs": 0,
           "followBoss": false,
@@ -100781,6 +101382,8 @@
           "occurrenceId": "KAKULSAYDON_G1_PATTERN_78.presentation.37",
           "startMs": 14253,
           "durationMs": 2600,
+          "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
           "worldSequenceInstanceId": ""
         }
       ]
@@ -102072,24 +102675,24 @@
           "assetId": "Sound/KoukuSaton/Raid/kouku_notice_10.wav",
           "resourceDurationMs": 7862,
           "positionOffset": [
-            0.0,
-            0.0,
-            0.0
+            0,
+            0,
+            0
           ],
           "rotationDegrees": [
-            0.0,
-            0.0,
-            0.0
+            0,
+            0,
+            0
           ],
           "scale": [
-            1.0,
-            1.0,
-            1.0
+            1,
+            1,
+            1
           ],
           "fadeInMs": 0,
           "fadeOutMs": 0,
           "dissolveStart": 0.85,
-          "dissolveEnd": 1.0,
+          "dissolveEnd": 1,
           "volume": 1,
           "soundSourceStartMs": 0,
           "followBoss": false,
@@ -102106,6 +102709,8 @@
           "occurrenceId": "KAKULSAYDON_G1_PATTERN_79.presentation.29",
           "startMs": 0,
           "durationMs": 7862,
+          "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
           "worldSequenceInstanceId": ""
         },
         {
@@ -102114,12 +102719,12 @@
           "shape": "BOX",
           "colliderKind": "GEOMETRY",
           "halfExtents": [
-            1.0,
-            1.0,
-            1.0
+            1,
+            1,
+            1
           ],
-          "radiusM": 3.0,
-          "halfAngleDegrees": 45.0,
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
           "soundEvent": "",
           "subtitleText": "",
           "subtitlePosition": "NORMAL",
@@ -102128,25 +102733,25 @@
           "assetId": "boss.kouku.dj.delivery",
           "resourceDurationMs": 5000,
           "positionOffset": [
-            0.0,
-            0.0,
-            0.0
+            0,
+            0,
+            0
           ],
           "rotationDegrees": [
-            0.0,
-            0.0,
-            0.0
+            0,
+            0,
+            0
           ],
           "scale": [
-            1.0,
-            1.0,
-            1.0
+            1,
+            1,
+            1
           ],
           "fadeInMs": 0,
           "fadeOutMs": 0,
           "dissolveStart": 0.85,
-          "dissolveEnd": 1.0,
-          "volume": 1.0,
+          "dissolveEnd": 1,
+          "volume": 1,
           "soundSourceStartMs": 0,
           "followBoss": false,
           "bone": "",
@@ -102162,6 +102767,8 @@
           "occurrenceId": "KAKULSAYDON_G1_PATTERN_79.presentation.30",
           "startMs": 0,
           "durationMs": 5000,
+          "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
           "worldSequenceInstanceId": ""
         }
       ]
@@ -126248,6 +126855,174 @@
           "brightnessMultiplier": 1,
           "boneTarget": "BODY",
           "worldSequenceInstanceId": ""
+        },
+        {
+          "resourceKind": "",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "soundEvent": "s_mob_g_bigsatan1.g_bigsatan1_attack02_shotvox1",
+          "subtitleText": "",
+          "subtitlePosition": "NORMAL",
+          "resourceId": "sound.kouku.54097d51cac86e0ec7b3",
+          "kind": "SOUND",
+          "assetId": "Sound/KoukuSaton/S_MOB_G_BIGSATAN1/g_bigsatan1_attack02_shotvox1__899340577.wav",
+          "resourceDurationMs": 7994,
+          "positionOffset": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotationDegrees": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1.0,
+          "volume": 1,
+          "soundSourceStartMs": 0,
+          "followBoss": false,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "BOSS",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_99.presentation.7",
+          "startMs": 1,
+          "durationMs": 5734,
+          "worldSequenceInstanceId": ""
+        },
+        {
+          "resourceKind": "",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "soundEvent": "s_mob_g_bigsatan1.g_bigsatan1_attack02_cast1",
+          "subtitleText": "",
+          "subtitlePosition": "NORMAL",
+          "resourceId": "sound.kouku.6d52686086766e480830",
+          "kind": "SOUND",
+          "assetId": "Sound/KoukuSaton/S_MOB_G_BIGSATAN1/g_bigsatan1_attack02_cast1__752410728.wav",
+          "resourceDurationMs": 2667,
+          "positionOffset": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotationDegrees": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1.0,
+          "volume": 1,
+          "soundSourceStartMs": 0,
+          "followBoss": false,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "BOSS",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_99.presentation.8",
+          "startMs": 300,
+          "durationMs": 2667,
+          "worldSequenceInstanceId": ""
+        },
+        {
+          "resourceKind": "",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "soundEvent": "s_mob_g_bigsatan1.g_bigsatan1_attack02_shot1",
+          "subtitleText": "",
+          "subtitlePosition": "NORMAL",
+          "resourceId": "sound.kouku.21a0590c4cfe0a6302e5",
+          "kind": "SOUND",
+          "assetId": "Sound/KoukuSaton/S_MOB_G_BIGSATAN1/g_bigsatan1_attack02_shot1__65096931.wav",
+          "resourceDurationMs": 3419,
+          "positionOffset": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotationDegrees": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1.0,
+          "volume": 1,
+          "soundSourceStartMs": 0,
+          "followBoss": false,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "BOSS",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_99.presentation.9",
+          "startMs": 1550,
+          "durationMs": 3419,
+          "worldSequenceInstanceId": ""
         }
       ]
     },
@@ -126459,11 +127234,11 @@
           "shape": "BOX",
           "colliderKind": "GEOMETRY",
           "halfExtents": [
-            1.0,
+            1,
             0.5,
-            4.0
+            4
           ],
-          "radiusM": 8.0,
+          "radiusM": 8,
           "halfAngleDegrees": 45,
           "soundEvent": "",
           "subtitleText": "",
@@ -126474,8 +127249,8 @@
           "resourceDurationMs": 500,
           "positionOffset": [
             -4.300000000000001,
-            0.0,
-            0.0
+            0,
+            0
           ],
           "rotationDegrees": [
             0,
@@ -126490,8 +127265,8 @@
           "fadeInMs": 0,
           "fadeOutMs": 0,
           "dissolveStart": 0.85,
-          "dissolveEnd": 1.0,
-          "volume": 1.0,
+          "dissolveEnd": 1,
+          "volume": 1,
           "soundSourceStartMs": 0,
           "followBoss": true,
           "bone": "",
@@ -126507,6 +127282,8 @@
           "occurrenceId": "KAKULSAYDON_G1_PATTERN_100.presentation.5",
           "startMs": 2000,
           "durationMs": 500,
+          "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
           "worldSequenceInstanceId": ""
         },
         {
@@ -126529,24 +127306,24 @@
           "assetId": "Sound/KoukuSaton/S_MOB_G_KOUKUSATAN1/g_koukusatan1_attack16_cast1__620681764.wav",
           "resourceDurationMs": 1367,
           "positionOffset": [
-            0.0,
-            0.0,
-            0.0
+            0,
+            0,
+            0
           ],
           "rotationDegrees": [
-            0.0,
-            0.0,
-            0.0
+            0,
+            0,
+            0
           ],
           "scale": [
-            1.0,
-            1.0,
-            1.0
+            1,
+            1,
+            1
           ],
           "fadeInMs": 0,
           "fadeOutMs": 0,
           "dissolveStart": 0.85,
-          "dissolveEnd": 1.0,
+          "dissolveEnd": 1,
           "volume": 1,
           "soundSourceStartMs": 0,
           "followBoss": false,
@@ -126563,6 +127340,8 @@
           "occurrenceId": "KAKULSAYDON_G1_PATTERN_100.presentation.6",
           "startMs": 1,
           "durationMs": 1367,
+          "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
           "worldSequenceInstanceId": ""
         },
         {
@@ -126585,24 +127364,24 @@
           "assetId": "Sound/KoukuSaton/Events/event.bac793249d40acc3fc01.wav",
           "resourceDurationMs": 6050,
           "positionOffset": [
-            0.0,
-            0.0,
-            0.0
+            0,
+            0,
+            0
           ],
           "rotationDegrees": [
-            0.0,
-            0.0,
-            0.0
+            0,
+            0,
+            0
           ],
           "scale": [
-            1.0,
-            1.0,
-            1.0
+            1,
+            1,
+            1
           ],
           "fadeInMs": 0,
           "fadeOutMs": 0,
           "dissolveStart": 0.85,
-          "dissolveEnd": 1.0,
+          "dissolveEnd": 1,
           "volume": 1,
           "soundSourceStartMs": 0,
           "followBoss": false,
@@ -126619,6 +127398,8 @@
           "occurrenceId": "KAKULSAYDON_G1_PATTERN_100.presentation.7",
           "startMs": 1,
           "durationMs": 4532,
+          "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
           "worldSequenceInstanceId": ""
         },
         {
@@ -126641,24 +127422,24 @@
           "assetId": "Sound/KoukuSaton/S_MOB_G_KOUKUSATAN1/g_koukusatan1_attack16_cast2__1066173935.wav",
           "resourceDurationMs": 1866,
           "positionOffset": [
-            0.0,
-            0.0,
-            0.0
+            0,
+            0,
+            0
           ],
           "rotationDegrees": [
-            0.0,
-            0.0,
-            0.0
+            0,
+            0,
+            0
           ],
           "scale": [
-            1.0,
-            1.0,
-            1.0
+            1,
+            1,
+            1
           ],
           "fadeInMs": 0,
           "fadeOutMs": 0,
           "dissolveStart": 0.85,
-          "dissolveEnd": 1.0,
+          "dissolveEnd": 1,
           "volume": 1,
           "soundSourceStartMs": 0,
           "followBoss": false,
@@ -126675,6 +127456,8 @@
           "occurrenceId": "KAKULSAYDON_G1_PATTERN_100.presentation.8",
           "startMs": 850,
           "durationMs": 1866,
+          "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
           "worldSequenceInstanceId": ""
         },
         {
@@ -126697,24 +127480,24 @@
           "assetId": "Sound/KoukuSaton/S_MOB_G_KOUKUSATAN1/g_koukusatan1_attack16_shot1__10041710.wav",
           "resourceDurationMs": 1959,
           "positionOffset": [
-            0.0,
-            0.0,
-            0.0
+            0,
+            0,
+            0
           ],
           "rotationDegrees": [
-            0.0,
-            0.0,
-            0.0
+            0,
+            0,
+            0
           ],
           "scale": [
-            1.0,
-            1.0,
-            1.0
+            1,
+            1,
+            1
           ],
           "fadeInMs": 0,
           "fadeOutMs": 0,
           "dissolveStart": 0.85,
-          "dissolveEnd": 1.0,
+          "dissolveEnd": 1,
           "volume": 1,
           "soundSourceStartMs": 0,
           "followBoss": false,
@@ -126731,6 +127514,8 @@
           "occurrenceId": "KAKULSAYDON_G1_PATTERN_100.presentation.9",
           "startMs": 1900,
           "durationMs": 1959,
+          "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
           "worldSequenceInstanceId": ""
         }
       ]
@@ -127509,24 +128294,24 @@
           "assetId": "Sound/KoukuSaton/S_MOB_G_KOUKUSATAN1/g_satan1_attack03_cast1__196909979.wav",
           "resourceDurationMs": 1500,
           "positionOffset": [
-            0.0,
-            0.0,
-            0.0
+            0,
+            0,
+            0
           ],
           "rotationDegrees": [
-            0.0,
-            0.0,
-            0.0
+            0,
+            0,
+            0
           ],
           "scale": [
-            1.0,
-            1.0,
-            1.0
+            1,
+            1,
+            1
           ],
           "fadeInMs": 0,
           "fadeOutMs": 0,
           "dissolveStart": 0.85,
-          "dissolveEnd": 1.0,
+          "dissolveEnd": 1,
           "volume": 1,
           "soundSourceStartMs": 0,
           "followBoss": false,
@@ -127543,6 +128328,8 @@
           "occurrenceId": "KAKULSAYDON_G1_PATTERN_103.presentation.2",
           "startMs": 1,
           "durationMs": 1500,
+          "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
           "worldSequenceInstanceId": ""
         },
         {
@@ -127564,6 +128351,461 @@
           "kind": "SOUND",
           "assetId": "Sound/KoukuSaton/S_MOB_G_KOUKUSATAN1/g_satan1_attack03_shotvox1__625787035.wav",
           "resourceDurationMs": 10816,
+          "positionOffset": [
+            0,
+            0,
+            0
+          ],
+          "rotationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1,
+          "volume": 1,
+          "soundSourceStartMs": 0,
+          "followBoss": false,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "BOSS",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_103.presentation.3",
+          "startMs": 1,
+          "durationMs": 10442,
+          "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
+          "worldSequenceInstanceId": ""
+        },
+        {
+          "resourceKind": "",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "soundEvent": "s_mob_g_koukusatan1.g_satan1_attack03_shot1",
+          "subtitleText": "",
+          "subtitlePosition": "NORMAL",
+          "resourceId": "sound.kouku.bd337e4b721b4934b72f",
+          "kind": "SOUND",
+          "assetId": "Sound/KoukuSaton/S_MOB_G_KOUKUSATAN1/g_satan1_attack03_shot1__941457643.wav",
+          "resourceDurationMs": 1434,
+          "positionOffset": [
+            0,
+            0,
+            0
+          ],
+          "rotationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1,
+          "volume": 1,
+          "soundSourceStartMs": 0,
+          "followBoss": false,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "BOSS",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_103.presentation.4",
+          "startMs": 1700,
+          "durationMs": 1434,
+          "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
+          "worldSequenceInstanceId": ""
+        },
+        {
+          "resourceKind": "",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "soundEvent": "s_mob_g_koukusatan1.g_satan1_attack03_shot2",
+          "subtitleText": "",
+          "subtitlePosition": "NORMAL",
+          "resourceId": "sound.kouku.d626740fb044e1f99e69",
+          "kind": "SOUND",
+          "assetId": "Sound/KoukuSaton/S_MOB_G_KOUKUSATAN1/g_satan1_attack03_shot2__1055408822.wav",
+          "resourceDurationMs": 1734,
+          "positionOffset": [
+            0,
+            0,
+            0
+          ],
+          "rotationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1,
+          "volume": 1,
+          "soundSourceStartMs": 0,
+          "followBoss": false,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "BOSS",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_103.presentation.5",
+          "startMs": 3200,
+          "durationMs": 1734,
+          "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
+          "worldSequenceInstanceId": ""
+        },
+        {
+          "resourceKind": "",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "soundEvent": "s_mob_g_koukusatan1.g_satan1_attack03_shot3",
+          "subtitleText": "",
+          "subtitlePosition": "NORMAL",
+          "resourceId": "sound.kouku.ee746202da7642954076",
+          "kind": "SOUND",
+          "assetId": "Sound/KoukuSaton/S_MOB_G_KOUKUSATAN1/g_satan1_attack03_shot3__1070695957.wav",
+          "resourceDurationMs": 6567,
+          "positionOffset": [
+            0,
+            0,
+            0
+          ],
+          "rotationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1,
+          "volume": 1,
+          "soundSourceStartMs": 0,
+          "followBoss": false,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "BOSS",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_103.presentation.6",
+          "startMs": 3200,
+          "durationMs": 6567,
+          "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
+          "worldSequenceInstanceId": ""
+        },
+        {
+          "resourceKind": "",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "soundEvent": "s_mob_g_koukusatan1.g_satan1_attack03_shot4",
+          "subtitleText": "",
+          "subtitlePosition": "NORMAL",
+          "resourceId": "sound.kouku.d2ae130e4d3abf7951fa",
+          "kind": "SOUND",
+          "assetId": "Sound/KoukuSaton/S_MOB_G_KOUKUSATAN1/g_satan1_attack03_shot4__976184276.wav",
+          "resourceDurationMs": 1134,
+          "positionOffset": [
+            0,
+            0,
+            0
+          ],
+          "rotationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1,
+          "volume": 1,
+          "soundSourceStartMs": 0,
+          "followBoss": false,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "BOSS",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_103.presentation.7",
+          "startMs": 7501,
+          "durationMs": 1134,
+          "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
+          "worldSequenceInstanceId": ""
+        },
+        {
+          "resourceKind": "",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "soundEvent": "",
+          "subtitleText": "",
+          "subtitlePosition": "NORMAL",
+          "resourceId": "sound.kouku.notice.02",
+          "kind": "SOUND",
+          "assetId": "Sound/KoukuSaton/Raid/kouku_notice_02.wav",
+          "resourceDurationMs": 6134,
+          "positionOffset": [
+            0,
+            0,
+            0
+          ],
+          "rotationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1,
+          "volume": 1,
+          "soundSourceStartMs": 0,
+          "followBoss": false,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "BOSS",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_103.presentation.8",
+          "startMs": 0,
+          "durationMs": 6134,
+          "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
+          "worldSequenceInstanceId": ""
+        },
+        {
+          "resourceKind": "LEAF",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "soundEvent": "",
+          "subtitleText": "",
+          "subtitlePosition": "NORMAL",
+          "resourceId": "kakulsaydon.effect.3c5309b88a075b890fd6",
+          "kind": "EFFECT",
+          "assetId": "boss.kouku.dj.cardrain",
+          "resourceDurationMs": 5000,
+          "positionOffset": [
+            0,
+            0,
+            0
+          ],
+          "rotationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1,
+          "volume": 1,
+          "soundSourceStartMs": 0,
+          "followBoss": false,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "BOSS",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_103.presentation.9",
+          "startMs": 0,
+          "durationMs": 5000,
+          "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
+          "worldSequenceInstanceId": ""
+        }
+      ]
+    },
+    {
+      "patternId": "KAKULSAYDON_G1_PATTERN_104",
+      "gateId": "GATE1",
+      "targetBossPlacementId": "boss.kakulsaydon.g1.saydon",
+      "actorProfileId": "MN_RPCT_05",
+      "durationMs": 1000,
+      "animationRootHorizontalScale": 0,
+      "presentationOccurrences": []
+    },
+    {
+      "patternId": "KAKULSAYDON_G1_PATTERN_105",
+      "gateId": "GATE2",
+      "targetBossPlacementId": "boss.kakulsaydon.g2.kouku",
+      "actorProfileId": "MN_RPCZ_00",
+      "durationMs": 5500,
+      "stageDurationMs": 5400,
+      "animationRootVerticalScale": 0.0,
+      "sourceAnchorAnimations": [
+        {
+          "runtimeClip": "rpcz00_att_battle_3_01",
+          "sourceStartMs": 0,
+          "playMs": 2500,
+          "playRate": 1,
+          "endPolicy": "EXACT",
+          "startOffsetMs": 0,
+          "blendInMs": 0
+        },
+        {
+          "runtimeClip": "rpcz00_att_battle_3_06",
+          "sourceStartMs": 0,
+          "playMs": 1900,
+          "playRate": 1,
+          "endPolicy": "EXACT",
+          "startOffsetMs": 2500,
+          "blendInMs": 0
+        },
+        {
+          "runtimeClip": "rpcz00_att_battle_3_09",
+          "sourceStartMs": 0,
+          "playMs": 1000,
+          "playRate": 1,
+          "endPolicy": "EXACT",
+          "startOffsetMs": 4400,
+          "blendInMs": 0
+        }
+      ],
+      "presentationOccurrences": [
+        {
+          "resourceKind": "",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "soundEvent": "s_mob_g_kouku1.g_kouku1_attack03_castvox2",
+          "subtitleText": "",
+          "subtitlePosition": "NORMAL",
+          "resourceId": "sound.kouku.23d5cd1ec3001292670b",
+          "kind": "SOUND",
+          "assetId": "Sound/KoukuSaton/S_MOB_G_KOUKU1/g_kouku1_attack03_castvox2__222271900.wav",
+          "resourceDurationMs": 3600,
           "positionOffset": [
             0.0,
             0.0,
@@ -127596,9 +128838,9 @@
           "debugRender": true,
           "worldOccurrenceId": "",
           "worldEmissionIndex": 0,
-          "occurrenceId": "KAKULSAYDON_G1_PATTERN_103.presentation.3",
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_105.presentation.1",
           "startMs": 1,
-          "durationMs": 10442,
+          "durationMs": 3600,
           "worldSequenceInstanceId": ""
         },
         {
@@ -127613,12 +128855,12 @@
           ],
           "radiusM": 3,
           "halfAngleDegrees": 45,
-          "soundEvent": "s_mob_g_koukusatan1.g_satan1_attack03_shot1",
+          "soundEvent": "s_mob_g_kouku1.g_kouku1_attack01_cast1",
           "subtitleText": "",
           "subtitlePosition": "NORMAL",
-          "resourceId": "sound.kouku.bd337e4b721b4934b72f",
+          "resourceId": "sound.kouku.d6f9a733a35c991e1a3f",
           "kind": "SOUND",
-          "assetId": "Sound/KoukuSaton/S_MOB_G_KOUKUSATAN1/g_satan1_attack03_shot1__941457643.wav",
+          "assetId": "Sound/KoukuSaton/S_MOB_G_KOUKU1/g_kouku1_attack01_cast1__676223130.wav",
           "resourceDurationMs": 1434,
           "positionOffset": [
             0.0,
@@ -127652,8 +128894,8 @@
           "debugRender": true,
           "worldOccurrenceId": "",
           "worldEmissionIndex": 0,
-          "occurrenceId": "KAKULSAYDON_G1_PATTERN_103.presentation.4",
-          "startMs": 1700,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_105.presentation.2",
+          "startMs": 100,
           "durationMs": 1434,
           "worldSequenceInstanceId": ""
         },
@@ -127669,13 +128911,13 @@
           ],
           "radiusM": 3,
           "halfAngleDegrees": 45,
-          "soundEvent": "s_mob_g_koukusatan1.g_satan1_attack03_shot2",
+          "soundEvent": "s_mob_g_kouku1.g_kouku1_attack01_shot1",
           "subtitleText": "",
           "subtitlePosition": "NORMAL",
-          "resourceId": "sound.kouku.d626740fb044e1f99e69",
+          "resourceId": "sound.kouku.7ac50426af56b6d6dd18",
           "kind": "SOUND",
-          "assetId": "Sound/KoukuSaton/S_MOB_G_KOUKUSATAN1/g_satan1_attack03_shot2__1055408822.wav",
-          "resourceDurationMs": 1734,
+          "assetId": "Sound/KoukuSaton/S_MOB_G_KOUKU1/g_kouku1_attack01_shot1__305897273.wav",
+          "resourceDurationMs": 1067,
           "positionOffset": [
             0.0,
             0.0,
@@ -127708,9 +128950,9 @@
           "debugRender": true,
           "worldOccurrenceId": "",
           "worldEmissionIndex": 0,
-          "occurrenceId": "KAKULSAYDON_G1_PATTERN_103.presentation.5",
-          "startMs": 3200,
-          "durationMs": 1734,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_105.presentation.3",
+          "startMs": 1600,
+          "durationMs": 1067,
           "worldSequenceInstanceId": ""
         },
         {
@@ -127725,13 +128967,13 @@
           ],
           "radiusM": 3,
           "halfAngleDegrees": 45,
-          "soundEvent": "s_mob_g_koukusatan1.g_satan1_attack03_shot3",
+          "soundEvent": "s_mob_g_kouku1.g_kouku1_attack02_shot1",
           "subtitleText": "",
           "subtitlePosition": "NORMAL",
-          "resourceId": "sound.kouku.ee746202da7642954076",
+          "resourceId": "sound.kouku.a7c3570729adc3269fab",
           "kind": "SOUND",
-          "assetId": "Sound/KoukuSaton/S_MOB_G_KOUKUSATAN1/g_satan1_attack03_shot3__1070695957.wav",
-          "resourceDurationMs": 6567,
+          "assetId": "Sound/KoukuSaton/S_MOB_G_KOUKU1/g_kouku1_attack02_shot1__531920034.wav",
+          "resourceDurationMs": 1000,
           "positionOffset": [
             0.0,
             0.0,
@@ -127764,9 +129006,9 @@
           "debugRender": true,
           "worldOccurrenceId": "",
           "worldEmissionIndex": 0,
-          "occurrenceId": "KAKULSAYDON_G1_PATTERN_103.presentation.6",
-          "startMs": 3200,
-          "durationMs": 6567,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_105.presentation.4",
+          "startMs": 2000,
+          "durationMs": 1000,
           "worldSequenceInstanceId": ""
         },
         {
@@ -127781,13 +129023,13 @@
           ],
           "radiusM": 3,
           "halfAngleDegrees": 45,
-          "soundEvent": "s_mob_g_koukusatan1.g_satan1_attack03_shot4",
+          "soundEvent": "s_mob_g_kouku1.g_kouku1_attack03_cast2",
           "subtitleText": "",
           "subtitlePosition": "NORMAL",
-          "resourceId": "sound.kouku.d2ae130e4d3abf7951fa",
+          "resourceId": "sound.kouku.fa3e7792049e52ec6b2f",
           "kind": "SOUND",
-          "assetId": "Sound/KoukuSaton/S_MOB_G_KOUKUSATAN1/g_satan1_attack03_shot4__976184276.wav",
-          "resourceDurationMs": 1134,
+          "assetId": "Sound/KoukuSaton/S_MOB_G_KOUKU1/g_kouku1_attack03_cast2__785397227.wav",
+          "resourceDurationMs": 867,
           "positionOffset": [
             0.0,
             0.0,
@@ -127820,13 +129062,405 @@
           "debugRender": true,
           "worldOccurrenceId": "",
           "worldEmissionIndex": 0,
-          "occurrenceId": "KAKULSAYDON_G1_PATTERN_103.presentation.7",
-          "startMs": 7501,
-          "durationMs": 1134,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_105.presentation.5",
+          "startMs": 2501,
+          "durationMs": 867,
           "worldSequenceInstanceId": ""
         },
         {
           "resourceKind": "",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "soundEvent": "s_mob_g_kouku1.g_kouku1_attack03_shot2",
+          "subtitleText": "",
+          "subtitlePosition": "NORMAL",
+          "resourceId": "sound.kouku.1bfed6b6071e8ea98904",
+          "kind": "SOUND",
+          "assetId": "Sound/KoukuSaton/S_MOB_G_KOUKU1/g_kouku1_attack03_shot2__256295405.wav",
+          "resourceDurationMs": 1367,
+          "positionOffset": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotationDegrees": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1.0,
+          "volume": 1,
+          "soundSourceStartMs": 0,
+          "followBoss": false,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "BOSS",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_105.presentation.6",
+          "startMs": 2700,
+          "durationMs": 1367,
+          "worldSequenceInstanceId": ""
+        },
+        {
+          "resourceKind": "",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "soundEvent": "s_mob_g_kouku1.g_kouku1_attack03_shot5",
+          "subtitleText": "",
+          "subtitlePosition": "NORMAL",
+          "resourceId": "sound.kouku.e5c7f40954990e5bd6f8",
+          "kind": "SOUND",
+          "assetId": "Sound/KoukuSaton/S_MOB_G_KOUKU1/g_kouku1_attack03_shot5__834692003.wav",
+          "resourceDurationMs": 1867,
+          "positionOffset": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotationDegrees": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1.0,
+          "volume": 1,
+          "soundSourceStartMs": 0,
+          "followBoss": false,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "BOSS",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_105.presentation.7",
+          "startMs": 3450,
+          "durationMs": 1867,
+          "worldSequenceInstanceId": ""
+        },
+        {
+          "resourceKind": "",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "soundEvent": "s_mob_g_kouku1.g_kouku1_attack03_shot4",
+          "subtitleText": "",
+          "subtitlePosition": "NORMAL",
+          "resourceId": "sound.kouku.110d77594dc9eef0343f",
+          "kind": "SOUND",
+          "assetId": "Sound/KoukuSaton/S_MOB_G_KOUKU1/g_kouku1_attack03_shot4__79303359.wav",
+          "resourceDurationMs": 700,
+          "positionOffset": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotationDegrees": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1.0,
+          "volume": 1,
+          "soundSourceStartMs": 0,
+          "followBoss": false,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "BOSS",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_105.presentation.8",
+          "startMs": 4100,
+          "durationMs": 700,
+          "worldSequenceInstanceId": ""
+        },
+        {
+          "resourceKind": "",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "soundEvent": "s_mob_g_kouku1.g_kouku1_attack03_shotvox2",
+          "subtitleText": "",
+          "subtitlePosition": "NORMAL",
+          "resourceId": "sound.kouku.c22247334b03e8cf054e",
+          "kind": "SOUND",
+          "assetId": "Sound/KoukuSaton/S_MOB_G_KOUKU1/g_kouku1_attack03_shotvox2__699158982.wav",
+          "resourceDurationMs": 2134,
+          "positionOffset": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotationDegrees": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1.0,
+          "volume": 1,
+          "soundSourceStartMs": 0,
+          "followBoss": false,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "BOSS",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_105.presentation.9",
+          "startMs": 4401,
+          "durationMs": 999,
+          "worldSequenceInstanceId": ""
+        },
+        {
+          "resourceKind": "",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "soundEvent": "s_mob_g_kouku1.g_kouku1_attack02_shot3",
+          "subtitleText": "",
+          "subtitlePosition": "NORMAL",
+          "resourceId": "sound.kouku.667e1e7d4e2d0427da36",
+          "kind": "SOUND",
+          "assetId": "Sound/KoukuSaton/S_MOB_G_KOUKU1/g_kouku1_attack02_shot3__921647015.wav",
+          "resourceDurationMs": 467,
+          "positionOffset": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotationDegrees": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1.0,
+          "volume": 1,
+          "soundSourceStartMs": 0,
+          "followBoss": false,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "BOSS",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_105.presentation.10",
+          "startMs": 4700,
+          "durationMs": 467,
+          "worldSequenceInstanceId": ""
+        },
+        {
+          "resourceKind": "",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "soundEvent": "s_mob_g_kouku1.g_kouku1_attack03_shot1",
+          "subtitleText": "",
+          "subtitlePosition": "NORMAL",
+          "resourceId": "sound.kouku.0d0cc4a320b048dc1f8e",
+          "kind": "SOUND",
+          "assetId": "Sound/KoukuSaton/S_MOB_G_KOUKU1/g_kouku1_attack03_shot1__640745659.wav",
+          "resourceDurationMs": 667,
+          "positionOffset": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotationDegrees": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1.0,
+          "volume": 1,
+          "soundSourceStartMs": 0,
+          "followBoss": false,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "BOSS",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_105.presentation.11",
+          "startMs": 5200,
+          "durationMs": 200,
+          "worldSequenceInstanceId": ""
+        },
+        {
+          "resourceKind": "",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "soundEvent": "s_mob_g_kouku1.g_kouku1_attack01_shot6",
+          "subtitleText": "",
+          "subtitlePosition": "NORMAL",
+          "resourceId": "sound.kouku.fff9dd6da6e1528c8872",
+          "kind": "SOUND",
+          "assetId": "Sound/KoukuSaton/S_MOB_G_KOUKU1/g_kouku1_attack01_shot6__559861540.wav",
+          "resourceDurationMs": 2267,
+          "positionOffset": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotationDegrees": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1.0,
+          "volume": 1,
+          "soundSourceStartMs": 0,
+          "followBoss": false,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "BOSS",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_105.presentation.12",
+          "startMs": 5380,
+          "durationMs": 20,
+          "worldSequenceInstanceId": ""
+        },
+        {
+          "resourceKind": "V1_EFFECT",
           "elementId": "",
           "shape": "BOX",
           "colliderKind": "GEOMETRY",
@@ -127840,80 +129474,24 @@
           "soundEvent": "",
           "subtitleText": "",
           "subtitlePosition": "NORMAL",
-          "resourceId": "sound.kouku.notice.02",
-          "kind": "SOUND",
-          "assetId": "Sound/KoukuSaton/Raid/kouku_notice_02.wav",
-          "resourceDurationMs": 6134,
-          "positionOffset": [
-            0.0,
-            0.0,
-            0.0
-          ],
-          "rotationDegrees": [
-            0.0,
-            0.0,
-            0.0
-          ],
-          "scale": [
-            1.0,
-            1.0,
-            1.0
-          ],
-          "fadeInMs": 0,
-          "fadeOutMs": 0,
-          "dissolveStart": 0.85,
-          "dissolveEnd": 1.0,
-          "volume": 1,
-          "soundSourceStartMs": 0,
-          "followBoss": false,
-          "bone": "",
-          "regionId": "",
-          "cardSymbol": "NONE",
-          "cardColor": "NONE",
-          "anchorKind": "BOSS",
-          "worldId": "",
-          "logicOccurrenceId": "",
-          "debugRender": true,
-          "worldOccurrenceId": "",
-          "worldEmissionIndex": 0,
-          "occurrenceId": "KAKULSAYDON_G1_PATTERN_103.presentation.8",
-          "startMs": 0,
-          "durationMs": 6134,
-          "worldSequenceInstanceId": ""
-        },
-        {
-          "resourceKind": "LEAF",
-          "elementId": "",
-          "shape": "BOX",
-          "colliderKind": "GEOMETRY",
-          "halfExtents": [
-            1.0,
-            1.0,
-            1.0
-          ],
-          "radiusM": 3.0,
-          "halfAngleDegrees": 45.0,
-          "soundEvent": "",
-          "subtitleText": "",
-          "subtitlePosition": "NORMAL",
-          "resourceId": "kakulsaydon.effect.3c5309b88a075b890fd6",
+          "resourceId": "kakulsaydon.effect.63407288b8b31a822434",
           "kind": "EFFECT",
-          "assetId": "boss.kouku.dj.cardrain",
-          "resourceDurationMs": 5000,
+          "assetId": "effect.kouku.gate2.fanfare.circle.six-rays",
+          "resourceDurationMs": 1934,
           "positionOffset": [
-            0.0,
-            0.0,
-            0.0
+            0,
+            0,
+            0
           ],
           "rotationDegrees": [
-            0.0,
-            0.0,
-            0.0
+            0,
+            0,
+            0
           ],
           "scale": [
-            1.0,
-            1.0,
-            1.0
+            1,
+            1,
+            1
           ],
           "fadeInMs": 0,
           "fadeOutMs": 0,
@@ -127932,21 +129510,2487 @@
           "debugRender": true,
           "worldOccurrenceId": "",
           "worldEmissionIndex": 0,
-          "occurrenceId": "KAKULSAYDON_G1_PATTERN_103.presentation.9",
-          "startMs": 0,
-          "durationMs": 5000,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_105.presentation.13",
+          "startMs": 3444,
+          "durationMs": 1934,
+          "fitEffectToDuration": false,
+          "worldSequenceInstanceId": ""
+        },
+        {
+          "resourceKind": "V1_EFFECT",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "soundEvent": "",
+          "subtitleText": "",
+          "subtitlePosition": "NORMAL",
+          "resourceId": "kakulsaydon.effect.e3a2024b2f99af20023f",
+          "kind": "EFFECT",
+          "assetId": "effect.kouku.gate2.fanfare.front.music",
+          "resourceDurationMs": 3000,
+          "positionOffset": [
+            0,
+            0,
+            0
+          ],
+          "rotationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1.0,
+          "volume": 1.0,
+          "soundSourceStartMs": 0,
+          "followBoss": false,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "BOSS",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_105.presentation.14",
+          "startMs": 2500,
+          "durationMs": 3000,
+          "fitEffectToDuration": false,
+          "worldSequenceInstanceId": ""
+        },
+        {
+          "resourceKind": "V1_EFFECT",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "soundEvent": "",
+          "subtitleText": "",
+          "subtitlePosition": "NORMAL",
+          "resourceId": "kakulsaydon.effect.33a479c82e8a772bf22a",
+          "kind": "EFFECT",
+          "assetId": "effect.kouku.gate2.fanfare.rectangle.warning",
+          "resourceDurationMs": 1002,
+          "positionOffset": [
+            3.1819805153394642,
+            0,
+            3.1819805153394642
+          ],
+          "rotationDegrees": [
+            0,
+            45,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1.0,
+          "volume": 1.0,
+          "soundSourceStartMs": 0,
+          "followBoss": false,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "BOSS",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_105.presentation.15",
+          "startMs": 2500,
+          "durationMs": 1002,
+          "fitEffectToDuration": false,
+          "worldSequenceInstanceId": ""
+        },
+        {
+          "resourceKind": "V1_EFFECT",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "soundEvent": "",
+          "subtitleText": "",
+          "subtitlePosition": "NORMAL",
+          "resourceId": "kakulsaydon.effect.33a479c82e8a772bf22a",
+          "kind": "EFFECT",
+          "assetId": "effect.kouku.gate2.fanfare.rectangle.warning",
+          "resourceDurationMs": 1002,
+          "positionOffset": [
+            4.5,
+            0,
+            2.755455298081545e-16
+          ],
+          "rotationDegrees": [
+            0,
+            90,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1.0,
+          "volume": 1.0,
+          "soundSourceStartMs": 0,
+          "followBoss": false,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "BOSS",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_105.presentation.16",
+          "startMs": 2500,
+          "durationMs": 1002,
+          "fitEffectToDuration": false,
+          "worldSequenceInstanceId": ""
+        },
+        {
+          "resourceKind": "V1_EFFECT",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "soundEvent": "",
+          "subtitleText": "",
+          "subtitlePosition": "NORMAL",
+          "resourceId": "kakulsaydon.effect.33a479c82e8a772bf22a",
+          "kind": "EFFECT",
+          "assetId": "effect.kouku.gate2.fanfare.rectangle.warning",
+          "resourceDurationMs": 1002,
+          "positionOffset": [
+            3.1819805153394642,
+            0,
+            -3.181980515339464
+          ],
+          "rotationDegrees": [
+            0,
+            135,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1.0,
+          "volume": 1.0,
+          "soundSourceStartMs": 0,
+          "followBoss": false,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "BOSS",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_105.presentation.17",
+          "startMs": 2500,
+          "durationMs": 1002,
+          "fitEffectToDuration": false,
+          "worldSequenceInstanceId": ""
+        },
+        {
+          "resourceKind": "V1_EFFECT",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "soundEvent": "",
+          "subtitleText": "",
+          "subtitlePosition": "NORMAL",
+          "resourceId": "kakulsaydon.effect.33a479c82e8a772bf22a",
+          "kind": "EFFECT",
+          "assetId": "effect.kouku.gate2.fanfare.rectangle.warning",
+          "resourceDurationMs": 1002,
+          "positionOffset": [
+            -3.181980515339464,
+            0,
+            -3.1819805153394647
+          ],
+          "rotationDegrees": [
+            0,
+            225,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1.0,
+          "volume": 1.0,
+          "soundSourceStartMs": 0,
+          "followBoss": false,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "BOSS",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_105.presentation.18",
+          "startMs": 2500,
+          "durationMs": 1002,
+          "fitEffectToDuration": false,
+          "worldSequenceInstanceId": ""
+        },
+        {
+          "resourceKind": "V1_EFFECT",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "soundEvent": "",
+          "subtitleText": "",
+          "subtitlePosition": "NORMAL",
+          "resourceId": "kakulsaydon.effect.33a479c82e8a772bf22a",
+          "kind": "EFFECT",
+          "assetId": "effect.kouku.gate2.fanfare.rectangle.warning",
+          "resourceDurationMs": 1002,
+          "positionOffset": [
+            -4.5,
+            0,
+            -8.266365894244633e-16
+          ],
+          "rotationDegrees": [
+            0,
+            270,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1.0,
+          "volume": 1.0,
+          "soundSourceStartMs": 0,
+          "followBoss": false,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "BOSS",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_105.presentation.19",
+          "startMs": 2500,
+          "durationMs": 1002,
+          "fitEffectToDuration": false,
+          "worldSequenceInstanceId": ""
+        },
+        {
+          "resourceKind": "V1_EFFECT",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "soundEvent": "",
+          "subtitleText": "",
+          "subtitlePosition": "NORMAL",
+          "resourceId": "kakulsaydon.effect.33a479c82e8a772bf22a",
+          "kind": "EFFECT",
+          "assetId": "effect.kouku.gate2.fanfare.rectangle.warning",
+          "resourceDurationMs": 1002,
+          "positionOffset": [
+            -3.1819805153394647,
+            0,
+            3.181980515339463
+          ],
+          "rotationDegrees": [
+            0,
+            315,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1.0,
+          "volume": 1.0,
+          "soundSourceStartMs": 0,
+          "followBoss": false,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "BOSS",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_105.presentation.20",
+          "startMs": 2500,
+          "durationMs": 1002,
+          "fitEffectToDuration": false,
+          "worldSequenceInstanceId": ""
+        },
+        {
+          "resourceKind": "GROUP",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            0.75,
+            0.5,
+            4.5
+          ],
+          "radiusM": 9.0,
+          "halfAngleDegrees": 45,
+          "soundEvent": "",
+          "subtitleText": "",
+          "subtitlePosition": "NORMAL",
+          "resourceId": "kakulsaydon.collider.gate2.trumpet.421971302",
+          "kind": "COLLIDER",
+          "assetId": "",
+          "resourceDurationMs": 34,
+          "positionOffset": [
+            3.1819805153394642,
+            0,
+            3.1819805153394642
+          ],
+          "rotationDegrees": [
+            0,
+            45,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1.0,
+          "volume": 1.0,
+          "soundSourceStartMs": 0,
+          "followBoss": false,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "BOSS",
+          "worldId": "",
+          "logicOccurrenceId": "KAKULSAYDON_G1_PATTERN_105.logic.1",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_105.presentation.21",
+          "startMs": 3600,
+          "durationMs": 34,
+          "worldSequenceInstanceId": ""
+        },
+        {
+          "resourceKind": "GROUP",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            0.75,
+            0.5,
+            4.5
+          ],
+          "radiusM": 9.0,
+          "halfAngleDegrees": 45,
+          "soundEvent": "",
+          "subtitleText": "",
+          "subtitlePosition": "NORMAL",
+          "resourceId": "kakulsaydon.collider.gate2.trumpet.421971303",
+          "kind": "COLLIDER",
+          "assetId": "",
+          "resourceDurationMs": 34,
+          "positionOffset": [
+            4.5,
+            0,
+            2.755455298081545e-16
+          ],
+          "rotationDegrees": [
+            0,
+            90,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1.0,
+          "volume": 1.0,
+          "soundSourceStartMs": 0,
+          "followBoss": false,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "BOSS",
+          "worldId": "",
+          "logicOccurrenceId": "KAKULSAYDON_G1_PATTERN_105.logic.1",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_105.presentation.22",
+          "startMs": 3600,
+          "durationMs": 34,
+          "worldSequenceInstanceId": ""
+        },
+        {
+          "resourceKind": "GROUP",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            0.75,
+            0.5,
+            4.5
+          ],
+          "radiusM": 9.0,
+          "halfAngleDegrees": 45,
+          "soundEvent": "",
+          "subtitleText": "",
+          "subtitlePosition": "NORMAL",
+          "resourceId": "kakulsaydon.collider.gate2.trumpet.421971304",
+          "kind": "COLLIDER",
+          "assetId": "",
+          "resourceDurationMs": 34,
+          "positionOffset": [
+            3.1819805153394642,
+            0,
+            -3.181980515339464
+          ],
+          "rotationDegrees": [
+            0,
+            135,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1.0,
+          "volume": 1.0,
+          "soundSourceStartMs": 0,
+          "followBoss": false,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "BOSS",
+          "worldId": "",
+          "logicOccurrenceId": "KAKULSAYDON_G1_PATTERN_105.logic.1",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_105.presentation.23",
+          "startMs": 3600,
+          "durationMs": 34,
+          "worldSequenceInstanceId": ""
+        },
+        {
+          "resourceKind": "GROUP",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            0.75,
+            0.5,
+            4.5
+          ],
+          "radiusM": 9.0,
+          "halfAngleDegrees": 45,
+          "soundEvent": "",
+          "subtitleText": "",
+          "subtitlePosition": "NORMAL",
+          "resourceId": "kakulsaydon.collider.gate2.trumpet.421971306",
+          "kind": "COLLIDER",
+          "assetId": "",
+          "resourceDurationMs": 34,
+          "positionOffset": [
+            -3.181980515339464,
+            0,
+            -3.1819805153394647
+          ],
+          "rotationDegrees": [
+            0,
+            225,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1.0,
+          "volume": 1.0,
+          "soundSourceStartMs": 0,
+          "followBoss": false,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "BOSS",
+          "worldId": "",
+          "logicOccurrenceId": "KAKULSAYDON_G1_PATTERN_105.logic.1",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_105.presentation.24",
+          "startMs": 3600,
+          "durationMs": 34,
+          "worldSequenceInstanceId": ""
+        },
+        {
+          "resourceKind": "GROUP",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            0.75,
+            0.5,
+            4.5
+          ],
+          "radiusM": 9.0,
+          "halfAngleDegrees": 45,
+          "soundEvent": "",
+          "subtitleText": "",
+          "subtitlePosition": "NORMAL",
+          "resourceId": "kakulsaydon.collider.gate2.trumpet.421971307",
+          "kind": "COLLIDER",
+          "assetId": "",
+          "resourceDurationMs": 34,
+          "positionOffset": [
+            -4.5,
+            0,
+            -8.266365894244633e-16
+          ],
+          "rotationDegrees": [
+            0,
+            270,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1.0,
+          "volume": 1.0,
+          "soundSourceStartMs": 0,
+          "followBoss": false,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "BOSS",
+          "worldId": "",
+          "logicOccurrenceId": "KAKULSAYDON_G1_PATTERN_105.logic.1",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_105.presentation.25",
+          "startMs": 3600,
+          "durationMs": 34,
+          "worldSequenceInstanceId": ""
+        },
+        {
+          "resourceKind": "GROUP",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            0.75,
+            0.5,
+            4.5
+          ],
+          "radiusM": 9.0,
+          "halfAngleDegrees": 45,
+          "soundEvent": "",
+          "subtitleText": "",
+          "subtitlePosition": "NORMAL",
+          "resourceId": "kakulsaydon.collider.gate2.trumpet.421971308",
+          "kind": "COLLIDER",
+          "assetId": "",
+          "resourceDurationMs": 34,
+          "positionOffset": [
+            -3.1819805153394647,
+            0,
+            3.181980515339463
+          ],
+          "rotationDegrees": [
+            0,
+            315,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1.0,
+          "volume": 1.0,
+          "soundSourceStartMs": 0,
+          "followBoss": false,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "BOSS",
+          "worldId": "",
+          "logicOccurrenceId": "KAKULSAYDON_G1_PATTERN_105.logic.1",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_105.presentation.26",
+          "startMs": 3600,
+          "durationMs": 34,
           "worldSequenceInstanceId": ""
         }
       ]
     },
     {
-      "patternId": "KAKULSAYDON_G1_PATTERN_104",
-      "gateId": "GATE1",
-      "targetBossPlacementId": "boss.kakulsaydon.g1.saydon",
-      "actorProfileId": "MN_RPCT_05",
-      "durationMs": 1000,
-      "animationRootHorizontalScale": 0,
-      "presentationOccurrences": []
+      "patternId": "KAKULSAYDON_G1_PATTERN_106",
+      "gateId": "GATE2",
+      "targetBossPlacementId": "boss.kakulsaydon.g2.kouku",
+      "actorProfileId": "MN_RPCZ_00",
+      "durationMs": 15550,
+      "stageDurationMs": 11600,
+      "animationRootVerticalScale": 0.0,
+      "sourceAnchorAnimations": [
+        {
+          "runtimeClip": "rpcz00_att_battle_4_01",
+          "sourceStartMs": 0,
+          "playMs": 5800,
+          "playRate": 1,
+          "endPolicy": "EXACT",
+          "startOffsetMs": 0,
+          "blendInMs": 0
+        },
+        {
+          "runtimeClip": "rpcz00_att_battle_4_01",
+          "sourceStartMs": 0,
+          "playMs": 5800,
+          "playRate": 1,
+          "endPolicy": "EXACT",
+          "startOffsetMs": 5800,
+          "blendInMs": 0
+        }
+      ],
+      "presentationOccurrences": [
+        {
+          "resourceKind": "",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "soundEvent": "s_mob_g_kouku1.g_kouku1_attack04_shotvox1",
+          "subtitleText": "",
+          "subtitlePosition": "NORMAL",
+          "resourceId": "sound.kouku.165fb747dc475d8d5dda",
+          "kind": "SOUND",
+          "assetId": "Sound/KoukuSaton/S_MOB_G_KOUKU1/g_kouku1_attack04_shotvox1__274116398.wav",
+          "resourceDurationMs": 8434,
+          "positionOffset": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotationDegrees": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1.0,
+          "volume": 1,
+          "soundSourceStartMs": 0,
+          "followBoss": false,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "BOSS",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_106.presentation.1",
+          "startMs": 1,
+          "durationMs": 8434,
+          "worldSequenceInstanceId": ""
+        },
+        {
+          "resourceKind": "",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "soundEvent": "s_mob_g_kouku1.g_kouku1_attack04_shot1",
+          "subtitleText": "",
+          "subtitlePosition": "NORMAL",
+          "resourceId": "sound.kouku.167465a41b65f0649efb",
+          "kind": "SOUND",
+          "assetId": "Sound/KoukuSaton/S_MOB_G_KOUKU1/g_kouku1_attack04_shot1__5158097.wav",
+          "resourceDurationMs": 634,
+          "positionOffset": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotationDegrees": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1.0,
+          "volume": 1,
+          "soundSourceStartMs": 0,
+          "followBoss": false,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "BOSS",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_106.presentation.2",
+          "startMs": 1,
+          "durationMs": 634,
+          "worldSequenceInstanceId": ""
+        },
+        {
+          "resourceKind": "",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "soundEvent": "s_mob_g_kouku1.g_kouku1_attack02_shot2",
+          "subtitleText": "",
+          "subtitlePosition": "NORMAL",
+          "resourceId": "sound.kouku.733978eb3a6c0b0abea1",
+          "kind": "SOUND",
+          "assetId": "Sound/KoukuSaton/S_MOB_G_KOUKU1/g_kouku1_attack02_shot2__443664781.wav",
+          "resourceDurationMs": 1334,
+          "positionOffset": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotationDegrees": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1.0,
+          "volume": 1,
+          "soundSourceStartMs": 0,
+          "followBoss": false,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "BOSS",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_106.presentation.3",
+          "startMs": 50,
+          "durationMs": 1334,
+          "worldSequenceInstanceId": ""
+        },
+        {
+          "resourceKind": "",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "soundEvent": "s_mob_g_kouku1.g_kouku1_attack05_shot1",
+          "subtitleText": "",
+          "subtitlePosition": "NORMAL",
+          "resourceId": "sound.kouku.e658eea37df7be9ef973",
+          "kind": "SOUND",
+          "assetId": "Sound/KoukuSaton/S_MOB_G_KOUKU1/g_kouku1_attack05_shot1__80164222.wav",
+          "resourceDurationMs": 2167,
+          "positionOffset": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotationDegrees": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1.0,
+          "volume": 1,
+          "soundSourceStartMs": 0,
+          "followBoss": false,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "BOSS",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_106.presentation.4",
+          "startMs": 700,
+          "durationMs": 2167,
+          "worldSequenceInstanceId": ""
+        },
+        {
+          "resourceKind": "",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "soundEvent": "s_mob_g_kouku1.g_kouku1_attack04_shot2",
+          "subtitleText": "",
+          "subtitlePosition": "NORMAL",
+          "resourceId": "sound.kouku.908ec86126fe8a970903",
+          "kind": "SOUND",
+          "assetId": "Sound/KoukuSaton/S_MOB_G_KOUKU1/g_kouku1_attack04_shot2__464854483.wav",
+          "resourceDurationMs": 600,
+          "positionOffset": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotationDegrees": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1.0,
+          "volume": 1,
+          "soundSourceStartMs": 0,
+          "followBoss": false,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "BOSS",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_106.presentation.5",
+          "startMs": 2150,
+          "durationMs": 600,
+          "worldSequenceInstanceId": ""
+        },
+        {
+          "resourceKind": "",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "soundEvent": "s_mob_g_kouku1.g_kouku1_attack03_shotvox1",
+          "subtitleText": "",
+          "subtitlePosition": "NORMAL",
+          "resourceId": "sound.kouku.49ce5d38644cd1e0286c",
+          "kind": "SOUND",
+          "assetId": "Sound/KoukuSaton/S_MOB_G_KOUKU1/g_kouku1_attack03_shotvox1__301682638.wav",
+          "resourceDurationMs": 3167,
+          "positionOffset": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotationDegrees": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1.0,
+          "volume": 1,
+          "soundSourceStartMs": 0,
+          "followBoss": false,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "BOSS",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_106.presentation.6",
+          "startMs": 2900,
+          "durationMs": 3167,
+          "worldSequenceInstanceId": ""
+        },
+        {
+          "resourceKind": "",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "soundEvent": "s_mob_g_kouku1.g_kouku1_attack04_shot2",
+          "subtitleText": "",
+          "subtitlePosition": "NORMAL",
+          "resourceId": "sound.kouku.908ec86126fe8a970903",
+          "kind": "SOUND",
+          "assetId": "Sound/KoukuSaton/S_MOB_G_KOUKU1/g_kouku1_attack04_shot2__464854483.wav",
+          "resourceDurationMs": 600,
+          "positionOffset": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotationDegrees": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1.0,
+          "volume": 1,
+          "soundSourceStartMs": 0,
+          "followBoss": false,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "BOSS",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_106.presentation.7",
+          "startMs": 3670,
+          "durationMs": 600,
+          "worldSequenceInstanceId": ""
+        },
+        {
+          "resourceKind": "",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "soundEvent": "s_mob_g_kouku1.g_kouku1_attack04_shot2",
+          "subtitleText": "",
+          "subtitlePosition": "NORMAL",
+          "resourceId": "sound.kouku.908ec86126fe8a970903",
+          "kind": "SOUND",
+          "assetId": "Sound/KoukuSaton/S_MOB_G_KOUKU1/g_kouku1_attack04_shot2__464854483.wav",
+          "resourceDurationMs": 600,
+          "positionOffset": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotationDegrees": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1.0,
+          "volume": 1,
+          "soundSourceStartMs": 0,
+          "followBoss": false,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "BOSS",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_106.presentation.8",
+          "startMs": 5090,
+          "durationMs": 600,
+          "worldSequenceInstanceId": ""
+        },
+        {
+          "resourceKind": "",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "soundEvent": "s_mob_g_kouku1.g_kouku1_attack04_shotvox1",
+          "subtitleText": "",
+          "subtitlePosition": "NORMAL",
+          "resourceId": "sound.kouku.165fb747dc475d8d5dda",
+          "kind": "SOUND",
+          "assetId": "Sound/KoukuSaton/S_MOB_G_KOUKU1/g_kouku1_attack04_shotvox1__274116398.wav",
+          "resourceDurationMs": 8434,
+          "positionOffset": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotationDegrees": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1.0,
+          "volume": 1,
+          "soundSourceStartMs": 0,
+          "followBoss": false,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "BOSS",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_106.presentation.9",
+          "startMs": 5801,
+          "durationMs": 5799,
+          "worldSequenceInstanceId": ""
+        },
+        {
+          "resourceKind": "",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "soundEvent": "s_mob_g_kouku1.g_kouku1_attack04_shot1",
+          "subtitleText": "",
+          "subtitlePosition": "NORMAL",
+          "resourceId": "sound.kouku.167465a41b65f0649efb",
+          "kind": "SOUND",
+          "assetId": "Sound/KoukuSaton/S_MOB_G_KOUKU1/g_kouku1_attack04_shot1__5158097.wav",
+          "resourceDurationMs": 634,
+          "positionOffset": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotationDegrees": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1.0,
+          "volume": 1,
+          "soundSourceStartMs": 0,
+          "followBoss": false,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "BOSS",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_106.presentation.10",
+          "startMs": 5801,
+          "durationMs": 634,
+          "worldSequenceInstanceId": ""
+        },
+        {
+          "resourceKind": "",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "soundEvent": "s_mob_g_kouku1.g_kouku1_attack02_shot2",
+          "subtitleText": "",
+          "subtitlePosition": "NORMAL",
+          "resourceId": "sound.kouku.733978eb3a6c0b0abea1",
+          "kind": "SOUND",
+          "assetId": "Sound/KoukuSaton/S_MOB_G_KOUKU1/g_kouku1_attack02_shot2__443664781.wav",
+          "resourceDurationMs": 1334,
+          "positionOffset": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotationDegrees": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1.0,
+          "volume": 1,
+          "soundSourceStartMs": 0,
+          "followBoss": false,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "BOSS",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_106.presentation.11",
+          "startMs": 5850,
+          "durationMs": 1334,
+          "worldSequenceInstanceId": ""
+        },
+        {
+          "resourceKind": "",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "soundEvent": "s_mob_g_kouku1.g_kouku1_attack05_shot1",
+          "subtitleText": "",
+          "subtitlePosition": "NORMAL",
+          "resourceId": "sound.kouku.e658eea37df7be9ef973",
+          "kind": "SOUND",
+          "assetId": "Sound/KoukuSaton/S_MOB_G_KOUKU1/g_kouku1_attack05_shot1__80164222.wav",
+          "resourceDurationMs": 2167,
+          "positionOffset": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotationDegrees": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1.0,
+          "volume": 1,
+          "soundSourceStartMs": 0,
+          "followBoss": false,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "BOSS",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_106.presentation.12",
+          "startMs": 6500,
+          "durationMs": 2167,
+          "worldSequenceInstanceId": ""
+        },
+        {
+          "resourceKind": "",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "soundEvent": "s_mob_g_kouku1.g_kouku1_attack04_shot2",
+          "subtitleText": "",
+          "subtitlePosition": "NORMAL",
+          "resourceId": "sound.kouku.908ec86126fe8a970903",
+          "kind": "SOUND",
+          "assetId": "Sound/KoukuSaton/S_MOB_G_KOUKU1/g_kouku1_attack04_shot2__464854483.wav",
+          "resourceDurationMs": 600,
+          "positionOffset": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotationDegrees": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1.0,
+          "volume": 1,
+          "soundSourceStartMs": 0,
+          "followBoss": false,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "BOSS",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_106.presentation.13",
+          "startMs": 7950,
+          "durationMs": 600,
+          "worldSequenceInstanceId": ""
+        },
+        {
+          "resourceKind": "",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "soundEvent": "s_mob_g_kouku1.g_kouku1_attack03_shotvox1",
+          "subtitleText": "",
+          "subtitlePosition": "NORMAL",
+          "resourceId": "sound.kouku.49ce5d38644cd1e0286c",
+          "kind": "SOUND",
+          "assetId": "Sound/KoukuSaton/S_MOB_G_KOUKU1/g_kouku1_attack03_shotvox1__301682638.wav",
+          "resourceDurationMs": 3167,
+          "positionOffset": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotationDegrees": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1.0,
+          "volume": 1,
+          "soundSourceStartMs": 0,
+          "followBoss": false,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "BOSS",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_106.presentation.14",
+          "startMs": 8700,
+          "durationMs": 2900,
+          "worldSequenceInstanceId": ""
+        },
+        {
+          "resourceKind": "",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "soundEvent": "s_mob_g_kouku1.g_kouku1_attack04_shot2",
+          "subtitleText": "",
+          "subtitlePosition": "NORMAL",
+          "resourceId": "sound.kouku.908ec86126fe8a970903",
+          "kind": "SOUND",
+          "assetId": "Sound/KoukuSaton/S_MOB_G_KOUKU1/g_kouku1_attack04_shot2__464854483.wav",
+          "resourceDurationMs": 600,
+          "positionOffset": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotationDegrees": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1.0,
+          "volume": 1,
+          "soundSourceStartMs": 0,
+          "followBoss": false,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "BOSS",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_106.presentation.15",
+          "startMs": 9470,
+          "durationMs": 600,
+          "worldSequenceInstanceId": ""
+        },
+        {
+          "resourceKind": "",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "soundEvent": "s_mob_g_kouku1.g_kouku1_attack04_shot2",
+          "subtitleText": "",
+          "subtitlePosition": "NORMAL",
+          "resourceId": "sound.kouku.908ec86126fe8a970903",
+          "kind": "SOUND",
+          "assetId": "Sound/KoukuSaton/S_MOB_G_KOUKU1/g_kouku1_attack04_shot2__464854483.wav",
+          "resourceDurationMs": 600,
+          "positionOffset": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotationDegrees": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1.0,
+          "volume": 1,
+          "soundSourceStartMs": 0,
+          "followBoss": false,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "BOSS",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_106.presentation.16",
+          "startMs": 10890,
+          "durationMs": 600,
+          "worldSequenceInstanceId": ""
+        },
+        {
+          "resourceKind": "V1_EFFECT",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "soundEvent": "",
+          "subtitleText": "",
+          "subtitlePosition": "NORMAL",
+          "resourceId": "kakulsaydon.effect.601c9cca0e3871389a57",
+          "kind": "EFFECT",
+          "assetId": "effect.kouku.gate2.juggling.three.balls",
+          "resourceDurationMs": 9750,
+          "positionOffset": [
+            0,
+            0,
+            0
+          ],
+          "rotationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1,
+          "volume": 1,
+          "soundSourceStartMs": 0,
+          "followBoss": true,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "BOSS",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_106.presentation.17",
+          "startMs": 0,
+          "durationMs": 9750,
+          "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
+          "worldSequenceInstanceId": ""
+        },
+        {
+          "resourceKind": "V1_EFFECT",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "soundEvent": "",
+          "subtitleText": "",
+          "subtitlePosition": "NORMAL",
+          "resourceId": "kakulsaydon.effect.601c9cca0e3871389a57",
+          "kind": "EFFECT",
+          "assetId": "effect.kouku.gate2.juggling.three.balls",
+          "resourceDurationMs": 9750,
+          "positionOffset": [
+            0,
+            0,
+            0
+          ],
+          "rotationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1,
+          "volume": 1,
+          "soundSourceStartMs": 0,
+          "followBoss": true,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "BOSS",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_106.presentation.18",
+          "startMs": 5800,
+          "durationMs": 9750,
+          "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
+          "worldSequenceInstanceId": ""
+        },
+        {
+          "resourceKind": "",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "soundEvent": "s_mob_g_kouku1.g_kouku1_attack04_proj1",
+          "subtitleText": "",
+          "subtitlePosition": "NORMAL",
+          "resourceId": "sound.kouku.2860cca974a028bb5331",
+          "kind": "SOUND",
+          "assetId": "Sound/KoukuSaton/S_MOB_G_KOUKU1/g_kouku1_attack04_proj1__3705202.wav",
+          "resourceDurationMs": 2767,
+          "positionOffset": [
+            0.2,
+            1.5,
+            0
+          ],
+          "rotationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1,
+          "volume": 1,
+          "soundSourceStartMs": 0,
+          "followBoss": false,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "BOSS",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_106.presentation.19",
+          "startMs": 2200,
+          "durationMs": 2767,
+          "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
+          "worldSequenceInstanceId": ""
+        },
+        {
+          "resourceKind": "",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "soundEvent": "s_mob_g_kouku1.g_kouku1_attack04_projexp1",
+          "subtitleText": "",
+          "subtitlePosition": "NORMAL",
+          "resourceId": "sound.kouku.d6e507420826933916e4",
+          "kind": "SOUND",
+          "assetId": "Sound/KoukuSaton/S_MOB_G_KOUKU1/g_kouku1_attack04_projexp1__89092800.wav",
+          "resourceDurationMs": 1367,
+          "positionOffset": [
+            8,
+            0,
+            -2
+          ],
+          "rotationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1,
+          "volume": 1,
+          "soundSourceStartMs": 0,
+          "followBoss": false,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "BOSS",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_106.presentation.20",
+          "startMs": 3450,
+          "durationMs": 1367,
+          "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
+          "worldSequenceInstanceId": ""
+        },
+        {
+          "resourceKind": "",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "soundEvent": "s_mob_g_kouku1.g_kouku1_attack04_proj1",
+          "subtitleText": "",
+          "subtitlePosition": "NORMAL",
+          "resourceId": "sound.kouku.2860cca974a028bb5331",
+          "kind": "SOUND",
+          "assetId": "Sound/KoukuSaton/S_MOB_G_KOUKU1/g_kouku1_attack04_proj1__3705202.wav",
+          "resourceDurationMs": 2767,
+          "positionOffset": [
+            0.2,
+            1.5,
+            0
+          ],
+          "rotationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1,
+          "volume": 1,
+          "soundSourceStartMs": 0,
+          "followBoss": false,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "BOSS",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_106.presentation.21",
+          "startMs": 3700,
+          "durationMs": 2767,
+          "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
+          "worldSequenceInstanceId": ""
+        },
+        {
+          "resourceKind": "",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "soundEvent": "s_mob_g_kouku1.g_kouku1_attack04_projexp1",
+          "subtitleText": "",
+          "subtitlePosition": "NORMAL",
+          "resourceId": "sound.kouku.d6e507420826933916e4",
+          "kind": "SOUND",
+          "assetId": "Sound/KoukuSaton/S_MOB_G_KOUKU1/g_kouku1_attack04_projexp1__89092800.wav",
+          "resourceDurationMs": 1367,
+          "positionOffset": [
+            8,
+            0,
+            0
+          ],
+          "rotationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1,
+          "volume": 1,
+          "soundSourceStartMs": 0,
+          "followBoss": false,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "BOSS",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_106.presentation.22",
+          "startMs": 4917,
+          "durationMs": 1367,
+          "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
+          "worldSequenceInstanceId": ""
+        },
+        {
+          "resourceKind": "",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "soundEvent": "s_mob_g_kouku1.g_kouku1_attack04_proj1",
+          "subtitleText": "",
+          "subtitlePosition": "NORMAL",
+          "resourceId": "sound.kouku.2860cca974a028bb5331",
+          "kind": "SOUND",
+          "assetId": "Sound/KoukuSaton/S_MOB_G_KOUKU1/g_kouku1_attack04_proj1__3705202.wav",
+          "resourceDurationMs": 2767,
+          "positionOffset": [
+            0.2,
+            1.5,
+            0
+          ],
+          "rotationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1,
+          "volume": 1,
+          "soundSourceStartMs": 0,
+          "followBoss": false,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "BOSS",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_106.presentation.23",
+          "startMs": 5200,
+          "durationMs": 2767,
+          "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
+          "worldSequenceInstanceId": ""
+        },
+        {
+          "resourceKind": "",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "soundEvent": "s_mob_g_kouku1.g_kouku1_attack04_projexp1",
+          "subtitleText": "",
+          "subtitlePosition": "NORMAL",
+          "resourceId": "sound.kouku.d6e507420826933916e4",
+          "kind": "SOUND",
+          "assetId": "Sound/KoukuSaton/S_MOB_G_KOUKU1/g_kouku1_attack04_projexp1__89092800.wav",
+          "resourceDurationMs": 1367,
+          "positionOffset": [
+            8,
+            0,
+            2
+          ],
+          "rotationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1,
+          "volume": 1,
+          "soundSourceStartMs": 0,
+          "followBoss": false,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "BOSS",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_106.presentation.24",
+          "startMs": 6450,
+          "durationMs": 1367,
+          "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
+          "worldSequenceInstanceId": ""
+        },
+        {
+          "resourceKind": "",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "soundEvent": "s_mob_g_kouku1.g_kouku1_attack04_proj1",
+          "subtitleText": "",
+          "subtitlePosition": "NORMAL",
+          "resourceId": "sound.kouku.2860cca974a028bb5331",
+          "kind": "SOUND",
+          "assetId": "Sound/KoukuSaton/S_MOB_G_KOUKU1/g_kouku1_attack04_proj1__3705202.wav",
+          "resourceDurationMs": 2767,
+          "positionOffset": [
+            0.2,
+            1.5,
+            0
+          ],
+          "rotationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1,
+          "volume": 1,
+          "soundSourceStartMs": 0,
+          "followBoss": false,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "BOSS",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_106.presentation.25",
+          "startMs": 8000,
+          "durationMs": 2767,
+          "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
+          "worldSequenceInstanceId": ""
+        },
+        {
+          "resourceKind": "",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "soundEvent": "s_mob_g_kouku1.g_kouku1_attack04_projexp1",
+          "subtitleText": "",
+          "subtitlePosition": "NORMAL",
+          "resourceId": "sound.kouku.d6e507420826933916e4",
+          "kind": "SOUND",
+          "assetId": "Sound/KoukuSaton/S_MOB_G_KOUKU1/g_kouku1_attack04_projexp1__89092800.wav",
+          "resourceDurationMs": 1367,
+          "positionOffset": [
+            8,
+            0,
+            -2
+          ],
+          "rotationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1,
+          "volume": 1,
+          "soundSourceStartMs": 0,
+          "followBoss": false,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "BOSS",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_106.presentation.26",
+          "startMs": 9250,
+          "durationMs": 1367,
+          "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
+          "worldSequenceInstanceId": ""
+        },
+        {
+          "resourceKind": "",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "soundEvent": "s_mob_g_kouku1.g_kouku1_attack04_proj1",
+          "subtitleText": "",
+          "subtitlePosition": "NORMAL",
+          "resourceId": "sound.kouku.2860cca974a028bb5331",
+          "kind": "SOUND",
+          "assetId": "Sound/KoukuSaton/S_MOB_G_KOUKU1/g_kouku1_attack04_proj1__3705202.wav",
+          "resourceDurationMs": 2767,
+          "positionOffset": [
+            0.2,
+            1.5,
+            0
+          ],
+          "rotationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1,
+          "volume": 1,
+          "soundSourceStartMs": 0,
+          "followBoss": false,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "BOSS",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_106.presentation.27",
+          "startMs": 9500,
+          "durationMs": 2767,
+          "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
+          "worldSequenceInstanceId": ""
+        },
+        {
+          "resourceKind": "",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "soundEvent": "s_mob_g_kouku1.g_kouku1_attack04_projexp1",
+          "subtitleText": "",
+          "subtitlePosition": "NORMAL",
+          "resourceId": "sound.kouku.d6e507420826933916e4",
+          "kind": "SOUND",
+          "assetId": "Sound/KoukuSaton/S_MOB_G_KOUKU1/g_kouku1_attack04_projexp1__89092800.wav",
+          "resourceDurationMs": 1367,
+          "positionOffset": [
+            8,
+            0,
+            0
+          ],
+          "rotationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1,
+          "volume": 1,
+          "soundSourceStartMs": 0,
+          "followBoss": false,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "BOSS",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_106.presentation.28",
+          "startMs": 10717,
+          "durationMs": 1367,
+          "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
+          "worldSequenceInstanceId": ""
+        },
+        {
+          "resourceKind": "",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "soundEvent": "s_mob_g_kouku1.g_kouku1_attack04_proj1",
+          "subtitleText": "",
+          "subtitlePosition": "NORMAL",
+          "resourceId": "sound.kouku.2860cca974a028bb5331",
+          "kind": "SOUND",
+          "assetId": "Sound/KoukuSaton/S_MOB_G_KOUKU1/g_kouku1_attack04_proj1__3705202.wav",
+          "resourceDurationMs": 2767,
+          "positionOffset": [
+            0.2,
+            1.5,
+            0
+          ],
+          "rotationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1,
+          "volume": 1,
+          "soundSourceStartMs": 0,
+          "followBoss": false,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "BOSS",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_106.presentation.29",
+          "startMs": 11000,
+          "durationMs": 2767,
+          "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
+          "worldSequenceInstanceId": ""
+        },
+        {
+          "resourceKind": "",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "soundEvent": "s_mob_g_kouku1.g_kouku1_attack04_projexp1",
+          "subtitleText": "",
+          "subtitlePosition": "NORMAL",
+          "resourceId": "sound.kouku.d6e507420826933916e4",
+          "kind": "SOUND",
+          "assetId": "Sound/KoukuSaton/S_MOB_G_KOUKU1/g_kouku1_attack04_projexp1__89092800.wav",
+          "resourceDurationMs": 1367,
+          "positionOffset": [
+            8,
+            0,
+            2
+          ],
+          "rotationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1,
+          "volume": 1,
+          "soundSourceStartMs": 0,
+          "followBoss": false,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "BOSS",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_106.presentation.30",
+          "startMs": 12250,
+          "durationMs": 1367,
+          "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
+          "worldSequenceInstanceId": ""
+        }
+      ]
     }
   ]
 }

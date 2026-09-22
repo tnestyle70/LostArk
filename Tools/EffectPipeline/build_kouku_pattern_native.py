@@ -253,6 +253,13 @@ def prepare(evidence, first, last, reuse_roots=(), resource_root=None):
         if cached.is_file():
             for base_id, contexts in restore.read(cached).items():
                 scans.setdefault(base_id, contexts)
+    # Historical receipts can refer to the same material GUID at a different
+    # offset in another installed shader-cache revision. Validate its original
+    # GUID before reusing a range; a stale range must be located again.
+    for base_id in {r['baseId'] for r in rows} & set(scans):
+        if any(cache['reader'].read_logical_range(context['logicalOffset'], 16) != bytes.fromhex(base_id)
+               for context in scans[base_id]['materialMapContexts']):
+            del scans[base_id]
     missing = sorted({r['baseId'] for r in rows} - set(scans))
     if missing:
         scans.update(sm.scan_base_material_contexts(cache, layout, missing))
@@ -640,6 +647,13 @@ def prepare_distortion(out, merged, first, resource_root=None):
             first_texture = {key: value for key, value in source_texture.items() if key != 'assetId'}
             second_texture = {key: value for key, value in companion_texture.items() if key != 'assetId'}
             first_path, second_path = resources / source_texture['assetId'], resources / companion_texture['assetId']
+            # A staged cohort may reuse an already installed color program.
+            # Resolve that exact asset ID in the installed root when its bytes
+            # were intentionally not copied into the candidate resource tree.
+            if resource_root and not first_path.is_file():
+                first_path = ROOT / 'Client/Bin/Resources' / source_texture['assetId']
+            if resource_root and not second_path.is_file():
+                second_path = ROOT / 'Client/Bin/Resources' / companion_texture['assetId']
             assert first_texture == second_texture and first_path.is_file() and second_path.is_file(), ('distortion texture alias inputs differ', number)
             source_hash = hashlib.sha256(first_path.read_bytes()).hexdigest()
             assert source_hash == hashlib.sha256(second_path.read_bytes()).hexdigest(), ('distortion texture alias bytes differ', number)

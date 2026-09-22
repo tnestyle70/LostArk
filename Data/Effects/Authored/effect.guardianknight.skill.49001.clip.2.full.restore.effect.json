@@ -18908,7 +18908,7 @@
         "transform": {
           "position": [
             -0.1,
-            -0.8,
+            0.3999999999999999,
             -0.1
           ],
           "rotationDegrees": [
@@ -21154,7 +21154,7 @@
         "transform": {
           "position": [
             -0.1,
-            -0.8,
+            0.3999999999999999,
             -0.1
           ],
           "rotationDegrees": [
@@ -23763,7 +23763,7 @@
         "transform": {
           "position": [
             -0.1,
-            -0.8,
+            0.3999999999999999,
             -0.1
           ],
           "rotationDegrees": [
@@ -25982,7 +25982,7 @@
         "transform": {
           "position": [
             -0.1,
-            -0.8,
+            0.3999999999999999,
             -0.1
           ],
           "rotationDegrees": [
@@ -28299,7 +28299,7 @@
         "transform": {
           "position": [
             -0.1,
-            -0.8,
+            0.3999999999999999,
             -0.1
           ],
           "rotationDegrees": [
@@ -30597,7 +30597,7 @@
         "transform": {
           "position": [
             -0.1,
-            -0.8,
+            0.3999999999999999,
             -0.1
           ],
           "rotationDegrees": [
@@ -32852,7 +32852,7 @@
         "transform": {
           "position": [
             -0.1,
-            -0.8,
+            0.3999999999999999,
             -0.1
           ],
           "rotationDegrees": [
@@ -35204,7 +35204,7 @@
         "transform": {
           "position": [
             -0.1,
-            -0.8,
+            0.3999999999999999,
             -0.1
           ],
           "rotationDegrees": [
@@ -37564,7 +37564,7 @@
         "transform": {
           "position": [
             -0.1,
-            -0.8,
+            0.3999999999999999,
             -0.1
           ],
           "rotationDegrees": [
@@ -40427,7 +40427,7 @@
         "transform": {
           "position": [
             -0.1,
-            -0.8,
+            0.3999999999999999,
             -0.1
           ],
           "rotationDegrees": [
@@ -43065,7 +43065,7 @@
         "transform": {
           "position": [
             -0.1,
-            -0.8,
+            0.3999999999999999,
             -0.1
           ],
           "rotationDegrees": [
@@ -45701,7 +45701,7 @@
         "transform": {
           "position": [
             -0.1,
-            -0.8,
+            0.3999999999999999,
             -0.1
           ],
           "rotationDegrees": [
@@ -48577,7 +48577,7 @@
         "transform": {
           "position": [
             -0.1,
-            -0.8,
+            0.3999999999999999,
             -0.1
           ],
           "rotationDegrees": [
@@ -51569,7 +51569,7 @@
         "transform": {
           "position": [
             -0.1,
-            -0.8,
+            0.3999999999999999,
             -0.1
           ],
           "rotationDegrees": [
@@ -54561,7 +54561,7 @@
         "transform": {
           "position": [
             -0.1,
-            -0.8,
+            0.3999999999999999,
             -0.1
           ],
           "rotationDegrees": [
@@ -57553,7 +57553,7 @@
         "transform": {
           "position": [
             -0.1,
-            -0.8,
+            0.3999999999999999,
             -0.1
           ],
           "rotationDegrees": [
@@ -60482,7 +60482,7 @@
         "transform": {
           "position": [
             -0.1,
-            -0.8,
+            0.3999999999999999,
             -0.1
           ],
           "rotationDegrees": [
@@ -62463,7 +62463,7 @@
         "transform": {
           "position": [
             -0.1,
-            -0.8,
+            0.3999999999999999,
             -0.1
           ],
           "rotationDegrees": [
@@ -64677,7 +64677,7 @@
         "transform": {
           "position": [
             -0.1,
-            -0.8,
+            0.3999999999999999,
             -0.1
           ],
           "rotationDegrees": [
@@ -67071,7 +67071,7 @@
         "transform": {
           "position": [
             -0.1,
-            -0.8,
+            0.3999999999999999,
             -0.1
           ],
           "rotationDegrees": [
@@ -69691,7 +69691,7 @@
         "transform": {
           "position": [
             -0.1,
-            -0.8,
+            0.3999999999999999,
             -0.1
           ],
           "rotationDegrees": [
@@ -72184,7 +72184,7 @@
         "transform": {
           "position": [
             -0.1,
-            -0.8,
+            0.3999999999999999,
             -0.1
           ],
           "rotationDegrees": [
@@ -73989,7 +73989,7 @@
         "transform": {
           "position": [
             -0.1,
-            -0.8,
+            0.3999999999999999,
             -0.1
           ],
           "rotationDegrees": [
@@ -75814,7 +75814,7 @@
         "transform": {
           "position": [
             -0.1,
-            -0.8,
+            0.3999999999999999,
             -0.1
           ],
           "rotationDegrees": [
@@ -117556,121 +117556,121 @@
     }
   ],
   "ownerControls": [
-  {
-    "controlId": "action-49001.stage-002.notify-006.material_vector",
-    "kind": "MATERIAL_VECTOR",
-    "parameter": "transcolor",
-    "mappingBasis": "PROJECT_ADAPTER",
-    "sourceTargetType": 1,
-    "onlyLocalPlayer": false,
-    "startSeconds": 0.21347999572753906,
-    "keys": [
-      {
-        "seconds": 0.0,
-        "value": [
-          0.0,
-          0.0,
-          0.0,
-          1.0
-        ]
-      },
-      {
-        "seconds": 0.30000001192092896,
-        "value": [
-          10.0,
-          0.44999998807907104,
-          0.30000001192092896,
-          1.0
-        ]
-      },
-      {
-        "seconds": 0.5000000149011612,
-        "value": [
-          10.0,
-          0.44999998807907104,
-          0.30000001192092896,
-          1.0
-        ]
-      },
-      {
-        "seconds": 0.8000000268220901,
-        "value": [
-          0.0,
-          0.0,
-          0.0,
-          1.0
-        ]
-      }
-    ],
-    "sourceValues": [
-      0,
-      0,
-      0,
-      1,
-      1,
-      1,
-      1,
-      0.20000000298023224,
-      0.0
-    ]
-  },
-  {
-    "controlId": "action-49001.stage-002.notify-017.material_vector",
-    "kind": "MATERIAL_VECTOR",
-    "parameter": "transcolor",
-    "mappingBasis": "PROJECT_ADAPTER",
-    "sourceTargetType": 4,
-    "onlyLocalPlayer": false,
-    "startSeconds": 0.49724701046943665,
-    "keys": [
-      {
-        "seconds": 0.0,
-        "value": [
-          0.0,
-          0.0,
-          0.0,
-          1.0
-        ]
-      },
-      {
-        "seconds": 0.30000001192092896,
-        "value": [
-          2.5,
-          0.1685200035572052,
-          0.20970900356769562,
-          1.0
-        ]
-      },
-      {
-        "seconds": 0.5000000149011612,
-        "value": [
-          2.5,
-          0.21630899608135223,
-          0.0,
-          1.0
-        ]
-      },
-      {
-        "seconds": 0.6000000163912773,
-        "value": [
-          0.0,
-          0.0,
-          0.0,
-          1.0
-        ]
-      }
-    ],
-    "sourceValues": [
-      0,
-      0,
-      0,
-      1,
-      1,
-      1,
-      4,
-      0.20000000298023224,
-      0.0
-    ]
-  }
-]
+    {
+      "controlId": "action-49001.stage-002.notify-006.material_vector",
+      "kind": "MATERIAL_VECTOR",
+      "parameter": "transcolor",
+      "mappingBasis": "PROJECT_ADAPTER",
+      "sourceTargetType": 1,
+      "onlyLocalPlayer": false,
+      "startSeconds": 0.21347999572753906,
+      "keys": [
+        {
+          "seconds": 0.0,
+          "value": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        },
+        {
+          "seconds": 0.30000001192092896,
+          "value": [
+            10.0,
+            0.44999998807907104,
+            0.30000001192092896,
+            1.0
+          ]
+        },
+        {
+          "seconds": 0.5000000149011612,
+          "value": [
+            10.0,
+            0.44999998807907104,
+            0.30000001192092896,
+            1.0
+          ]
+        },
+        {
+          "seconds": 0.8000000268220901,
+          "value": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        }
+      ],
+      "sourceValues": [
+        0,
+        0,
+        0,
+        1,
+        1,
+        1,
+        1,
+        0.20000000298023224,
+        0.0
+      ]
+    },
+    {
+      "controlId": "action-49001.stage-002.notify-017.material_vector",
+      "kind": "MATERIAL_VECTOR",
+      "parameter": "transcolor",
+      "mappingBasis": "PROJECT_ADAPTER",
+      "sourceTargetType": 4,
+      "onlyLocalPlayer": false,
+      "startSeconds": 0.49724701046943665,
+      "keys": [
+        {
+          "seconds": 0.0,
+          "value": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        },
+        {
+          "seconds": 0.30000001192092896,
+          "value": [
+            2.5,
+            0.1685200035572052,
+            0.20970900356769562,
+            1.0
+          ]
+        },
+        {
+          "seconds": 0.5000000149011612,
+          "value": [
+            2.5,
+            0.21630899608135223,
+            0.0,
+            1.0
+          ]
+        },
+        {
+          "seconds": 0.6000000163912773,
+          "value": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        }
+      ],
+      "sourceValues": [
+        0,
+        0,
+        0,
+        1,
+        1,
+        1,
+        4,
+        0.20000000298023224,
+        0.0
+      ]
+    }
+  ]
 }

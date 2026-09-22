@@ -16,6 +16,7 @@ below is a real Release-build feature, so the include is no longer guarded. */
 #include "Character.h"
 #include "CombatHUDViewModel.h"
 #include "GameInstance.h"
+#include "Profiler.h"
 #include "HUDRuntimeView.h"
 #include "MvpAwardCatalog.h"
 #include "MvpResultView.h"
@@ -1986,23 +1987,13 @@ void CLevel_ValtanArena::Submit_TriggerMarkers()
 {
 	if (CGameInstance::Get().Get_CurrentLevelID() != ETOUI(LEVEL::VALTAN_ARENA))
 		return;
-	MAP_CAMERA_CULL_SNAPSHOT camera;
-	const bool_t cameraValid = CMapAssetRenderUtils::Capture_CameraCullSnapshot(camera);
 	for (auto& marker : m_TriggerMarkers)
 	{
-		if (marker.retired)
-			continue;
-		// The fixed move_destination asset fits an 8m sphere, including its
-		// source velocity/lifetime, billboard size, camera offset and mesh.
-		// The outer band retains live history during small camera reversals.
-		MAP_FRUSTUM_CULLING_POLICY policy;
-		policy.baseMargin = marker.active ? 32.f : 16.f;
-		MAP_FRUSTUM_RUNTIME_STATE cullState;
-		MAP_FRUSTUM_CULL_DECISION decision;
+		if (marker.retired) continue;
+		// The complete fixed marker footprint stays inside the existing 8m sphere.
 		const float3_t center{ marker.rootWorld._41, marker.rootWorld._42, marker.rootWorld._43 };
-		const bool_t visible = !cameraValid ||
-			!CMapAssetRenderUtils::Evaluate_FrustumVisibility(policy, camera, {}, {},
-				0u, center, 8.f, cullState, decision) || decision.shouldRender;
+		const bool_t visible = CEffectPresentationService::Is_WorldPresentationVisible(
+			center, 8.f, marker.active);
 		if (!visible)
 		{
 			if (marker.active && marker.handle.Is_Valid())
@@ -2040,6 +2031,12 @@ void CLevel_ValtanArena::Submit_TriggerMarkers()
 				status.clear();
 				return true;
 			};
+		if (auto* profiler = CGameInstance::Get().Get_Profiler())
+		{
+			profiler->Add_Counter(EProfilerCounter::EffectMarkerSamples);
+			if (firstSample || !marker.active)
+				profiler->Add_Counter(EProfilerCounter::EffectMarkerHistoryRequests);
+		}
 		const bool_t sampled = CEffectPresentationService::Seek_WorldRoot(marker.handle,
 			marker.seconds, provider, firstSample || !marker.active);
 		const HRESULT submitted = sampled ?

@@ -25,8 +25,10 @@ uint g_LightReceiver = 0u; // ALL=0, SOURCE_CHARACTER=1, UNBAKED=2.
 #include "Shader_SourceCharacterMaterial.hlsli"
 
 uint g_MaterialDebugView = 0;
+float4 g_MapPBRContributionScale = float4(1.f, 1.f, 1.f, 1.f);
 texture2D   g_EmissiveTexture;
 texture2D   g_LightDepthTexture;
+texture2D   g_StaticLightDepthTexture;
 texture2D   g_SceneHDRTexture;
 texture2D   g_PostProcessTexture;
 texture2D   g_PresentationOverlayTexture;
@@ -48,6 +50,8 @@ float2      g_vShadowTexelSize;
 float       g_fShadowDepthBias;
 float       g_fShadowNormalBias;
 float       g_fShadowStrength;
+float       g_fDynamicBakedShadowStrength = 0.f;
+uint        g_iDynamicBakedShadowEnabled = 0u;
 float2      g_vBloomTexelSize;
 float2      g_vInverseSceneSize;
 uint        g_iBloomEnabled;
@@ -417,11 +421,11 @@ PS_OUT_LIGHT Resolve_MapPBRLight(PS_IN input, float3 worldPosition,
     const float3 ambient = light.ambient.rgb * g_vMtrlAmbient.rgb * ao *
         (1.f - saturate(material.a)) * (hasBakedLighting ? 0.f : 1.f);
     output.vShade = float4(light.diffuse.rgb * attenuation *
-        (diffuseWeight * directShadow + ambient), 0.f);
+        (diffuseWeight * directShadow * g_MapPBRContributionScale.x + ambient), 0.f);
     // Native PBR uses one incoming light color for both BRDF lobes.
     // The legacy Phong specular control does not disable recovered PBR energy.
     output.vSpecular = float4(light.diffuse.rgb * specularContribution *
-        attenuation * directShadow, 0.f);
+        attenuation * directShadow * g_MapPBRContributionScale.y, 0.f);
     return output;
 }
 
@@ -556,9 +560,9 @@ PS_OUT_LIGHT Resolve_SourceCharacterLight(PS_IN input, float3 lightDirection,
     output.vSpecular = float4(native.targets[0].rgb * (attenuation * shadowAdapter), 0.f);
     // Engine-owned source SH/cube values are not authored in these MICs. Keep
     // the scene's explicit ambient approximation separate from recovered direct.
-    const bool nativeMapMaterial = g_SourceCharacterProgram >= 80u && g_SourceCharacterProgram <= 83u;
+    const bool nativeMapMaterial = (g_SourceCharacterProgram >= 80u && g_SourceCharacterProgram <= 83u) || IsSourceStaticMapSL10();
     const bool nativeMapBaked = nativeMapMaterial && g_SourceMapMonsterBakedEnabled != 0u &&
-        g_MaterialSpecularTexture.Load(pixel).w > .5f;
+        (IsSourceStaticMapSL10() ? g_MaterialSpecularTexture.Load(pixel).z : g_MaterialSpecularTexture.Load(pixel).w) > .5f;
     // A missing source SH/probe input may be supplied explicitly by the scene.
     // It is independent of excluded directional RGB, and defaults to zero.
     // Native IBL stays in RT4; resolved MRT3 albedo is multiplied once at combine.
@@ -581,9 +585,9 @@ bool Reject_LightReceiver(PS_IN input, DEFERRED_LIGHT_INPUT light)
     const int3 pixel = int3(int2(input.vPosition.xy), 0);
     const float marker = g_DepthTexture.Load(pixel).w;
     if (g_SourceCharacterRow != 0u)
-        return marker == 5.f && g_SourceCharacterProgram >= 80u &&
-            g_SourceCharacterProgram <= 83u && g_SourceMapMonsterBakedEnabled != 0u &&
-            g_MaterialSpecularTexture.Load(pixel).w > .5f;
+        return marker == 5.f && ((g_SourceCharacterProgram >= 80u &&
+            g_SourceCharacterProgram <= 83u) || IsSourceStaticMapSL10()) && g_SourceMapMonsterBakedEnabled != 0u &&
+            (IsSourceStaticMapSL10() ? g_MaterialSpecularTexture.Load(pixel).z : g_MaterialSpecularTexture.Load(pixel).w) > .5f;
     const bool sourceMap = marker == 3.f || marker == 4.f ||
         (marker >= 7.f && marker <= 13.f);
     return sourceMap && (asuint(g_GeometricNormalTexture.Load(pixel).w) & 0x00400000u) != 0u;
@@ -1016,6 +1020,34 @@ float3 Resolve_HeightFog(float3 vLitColor, float2 vTexcoord)
     return vLitColor * transfer.w + transfer.rgb;
 }
 
+float Resolve_DynamicBakedShadow(float3 position, float3 normal)
+{
+    if (g_iDynamicBakedShadowEnabled == 0u || g_fDynamicBakedShadowStrength <= 0.f)
+        return 1.f;
+    const float4 clip = mul(mul(float4(position + normalize(normal) *
+        g_fShadowNormalBias, 1.f), g_LightViewMatrix), g_LightProjMatrix);
+    if (clip.w <= 0.f) return 1.f;
+    const float3 ndc = clip.xyz / clip.w;
+    const float2 uv = ndc.xy * float2(.5f, -.5f) + .5f;
+    if (any(uv < 0.f) || any(uv > 1.f) || ndc.z <= 0.f || ndc.z >= 1.f)
+        return 1.f;
+    const float receiver = ndc.z - max(g_fShadowDepthBias, 0.f);
+    float occluded = 0.f;
+    [unroll] for (int y = -1; y <= 1; ++y)
+    {
+        [unroll] for (int x = -1; x <= 1; ++x)
+        {
+            const float2 sampleUV = uv + float2(x, y) * g_vShadowTexelSize;
+            const float complete = g_LightDepthTexture.SampleLevel(ShadowSampler, sampleUV, 0.f).r;
+            const float fixedDepth = g_StaticLightDepthTexture.SampleLevel(ShadowSampler, sampleUV, 0.f).r;
+            // Identical static depth must not shadow RNM a second time. A nearer
+            // moving caster can modulate it even though it is absent from RNM.
+            occluded += complete + 0.000001f < fixedDepth && receiver > complete ? 1.f : 0.f;
+        }
+    }
+    return 1.f - (occluded / 9.f) * saturate(g_fDynamicBakedShadowStrength);
+}
+
 PS_OUT_BACKBUFFER PS_MAIN_COMBINED(PS_IN In)
 {
     PS_OUT_BACKBUFFER Out = (PS_OUT_BACKBUFFER)0;
@@ -1031,13 +1063,21 @@ PS_OUT_BACKBUFFER PS_MAIN_COMBINED(PS_IN In)
     
     
     vector vLitColor = vDiffuse * vShade + vSpecular;
+    const int3 pixel = int3(int2(In.vPosition.xy), 0);
+    if (g_DepthTexture.Load(pixel).w == 3.f)
+    {
+        const float3 indirect = g_CharacterGeometryTexture.Load(pixel).rgb;
+        const float3 position = g_GeometricNormalTexture.Load(pixel).xyz;
+        const float3 normal = Decode_MapPBRGeometricNormal(pixel);
+        vLitColor.rgb += indirect * Resolve_AmbientOcclusion(In.vTexcoord) *
+            Resolve_DynamicBakedShadow(position, normal);
+    }
     vLitColor.rgb = Resolve_HeightFog(vLitColor.rgb, In.vTexcoord);
     /* Emissive and Effect HDR energy are light sources, not receivers.  They
        must remain available to bloom even when the carrier is in shadow. */
     Out.vBackBuffer = vLitColor + vEmissive;
     // Source-character GBuffer normal.a is otherwise unused by its typed lighting.
     // Preserve the document multiplier through the deferred model-cue path.
-    const int3 pixel = int3(int2(In.vPosition.xy), 0);
     const float bloomMarker = g_NormalTexture.Load(pixel).a;
     const bool hasBloomOverride = g_DepthTexture.Load(pixel).w == 5.f && bloomMarker > 0.f;
     // UNORM16 alpha0 means scene fallback. Explicit intensity0 has exact code3855.
@@ -1628,10 +1668,47 @@ float3 Resolve_FinalFXAA(float2 vTexcoord)
     return lerp(vCenter, vEdgeColor, saturate(g_fFXAASubpixel));
 }
 
+float3 Compress_MaterialDiagnosticHDR(float3 color)
+{
+    color = max(color, 0.f);
+    // One scalar compression preserves RGB ratios before display encoding.
+    const float peak = max(color.r, max(color.g, color.b));
+    return pow(color / (1.f + peak), 1.f / 2.2f);
+}
+
+float3 Resolve_SceneToneBeforeGrade(float2 uv)
+{
+    const float3 scene = Sanitize_HDR(g_SceneHDRTexture.Sample(
+        PostProcessSampler, clamp(uv, 0.f, 1.f)).rgb);
+    const float3 bloom = g_iBloomEnabled != 0u ? Sanitize_HDR(g_BloomTexture.Sample(
+        PostProcessSampler, clamp(uv, 0.f, 1.f)).rgb) : 0.f;
+    const float3 input = scene + bloom * g_vSceneBloomTint.rgb;
+    if (g_iSourcePostProcessEnabled != 0)
+        return Tonemap_SourceCustomizable(Sanitize_HDR(input * g_fToneMapExposure));
+    const float3 white = max(Tonemap_Hable(max(g_fToneMapWhitePoint, 1.f).xxx), 0.00001f);
+    const float3 mapped = Tonemap_Hable(input * max(g_fToneMapExposure, 0.01f)) / white;
+    return pow(saturate(mapped), 1.f / max(g_fToneMapGamma, 1.f));
+}
+
 /* SceneHDR을 백버퍼로 옮기는 유일한 지점. 톤매핑, 감마, FXAA는 UI 전에 여기서 처리한다. */
 PS_OUT_BACKBUFFER PS_MAIN_FINAL(PS_IN In)
 {
     PS_OUT_BACKBUFFER Out = (PS_OUT_BACKBUFFER)0;
+    // Whole-scene diagnostics include characters and background, regardless of marker.
+    // HDR is pre-Bloom/exposure/tone; Tone includes Bloom/exposure before grading;
+    // Graded uses the actual final color transform before FXAA and product UI.
+    if (g_MaterialDebugView >= 11u && g_MaterialDebugView <= 13u)
+    {
+        float3 color;
+        if (g_MaterialDebugView == 11u)
+            color = Compress_MaterialDiagnosticHDR(Sanitize_HDR(g_SceneHDRTexture.Sample(
+                PostProcessSampler, In.vTexcoord).rgb));
+        else if (g_MaterialDebugView == 12u)
+            color = Resolve_SceneToneBeforeGrade(In.vTexcoord);
+        else color = Resolve_FinalLDR(In.vTexcoord);
+        Out.vBackBuffer = float4(color, 1.f);
+        return Out;
+    }
     if (g_MaterialDebugView != 0u)
     {
         const int3 pixel = int3(int2(In.vPosition.xy), 0);
@@ -1670,6 +1747,16 @@ PS_OUT_BACKBUFFER PS_MAIN_FINAL(PS_IN In)
                         color = g_MaterialSpecularTexture.Load(pixel).aaa;
                     else if (g_MaterialDebugView == 7u)
                         color = g_DepthTexture.Load(pixel).zzz;
+                    else if (g_MaterialDebugView >= 8u && g_MaterialDebugView <= 10u)
+                    {
+                        const float3 environment = g_CharacterSurfaceTexture.Load(pixel).rgb;
+                        const float3 combined = g_CharacterGeometryTexture.Load(pixel).rgb;
+                        if (g_MaterialDebugView == 8u) color = combined - environment;
+                        else if (g_MaterialDebugView == 9u) color = environment;
+                        else color = g_DiffuseTexture.Load(pixel).rgb * g_ShadeTexture.Load(pixel).rgb;
+                        // The same HDR diagnostic curve as direct specular.
+                        color = Compress_MaterialDiagnosticHDR(color);
+                    }
                 }
             }
             else

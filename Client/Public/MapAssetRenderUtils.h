@@ -48,6 +48,15 @@ struct MAP_SURFACE_BINDING_ROW final
 	Engine::MODEL_SURFACE_FAMILY family = Engine::MODEL_SURFACE_FAMILY::LEGACY;
 	uint32_t activeProgram = {};
 	uint64_t lastSeenTickMs = {};
+	Engine::MODEL_SURFACE_PARAMETERS surface;
+	Engine::MODEL_BAKED_LIGHTING_INSTANCE lighting{};
+};
+
+// Instanced map shaders consume baked transforms from VTXMESHINSTANCE.
+enum class MAP_MATERIAL_BINDING_MODE : uint8_t
+{
+	OBJECT,
+	INSTANCED
 };
 
 class CMapAssetRenderUtils final
@@ -129,7 +138,8 @@ public:
 		const ComPtr<ID3D11ShaderResourceView>& diffuseOverride = nullptr,
 		const std::string& diagnosticAssetId = {},
         const Engine::MODEL_BAKED_LIGHTING_INSTANCE* bakedLighting = nullptr,
-        const float4_t* worldCullSphere = nullptr);
+        const float4_t* worldCullSphere = nullptr,
+        MAP_MATERIAL_BINDING_MODE bindingMode = MAP_MATERIAL_BINDING_MODE::OBJECT);
 
 	/* Scene and transient lights, their ambient and the scene fog for a
 	source-character material drawn forward after scene lighting. */

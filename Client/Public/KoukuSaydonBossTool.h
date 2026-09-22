@@ -131,7 +131,7 @@ namespace Client
 		bool Play_LoadedPatternById(std::string_view patternId, std::string& status);
 		bool Play_LoadedBundleById(std::string_view bundleId, std::string& status);
 		bool Play_LoadedFlow(std::string_view gateId,
-			const std::vector<KOUKU_SAYDON_PATTERN_FLOW_ENTRY>& entries, std::string& status);
+			const std::vector<KOUKU_SAYDON_PATTERN_FLOW_ENTRY>& entries, std::string& status, std::string_view loopStartEntryId = {});
 		void Normalize_Selection();
 		[[nodiscard]] const PRODUCT_PATTERN*
 			Find_SelectedPattern() const;

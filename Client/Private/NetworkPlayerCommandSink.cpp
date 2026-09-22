@@ -162,6 +162,12 @@ bool Client::CNetworkPlayerCommandSink::Consume_DebugKoukuHudModeResult(
  return CNetworkManager::Get().Try_Consume_DebugKoukuHudModeResult(result);
 }
 
+bool Client::CNetworkPlayerCommandSink::Request_VehicleFlightInput(
+    std::uint32_t sequence, float x, float z, float vertical)
+{
+    return CNetworkManager::Get().Send_VehicleFlightInput(sequence, x, z, vertical);
+}
+
 bool Client::CNetworkPlayerCommandSink::Request_MoveGoal(
 	std::uint32_t clientSequence,
 	float goalX,

@@ -157,8 +157,10 @@ public:
 
 	bool_t Is_EffectActionCurrent(const std::uint32_t actionStartTick) const
 	{
-		return actionStartTick != 0u && actionStartTick == m_iEffectActionStartTick &&
-			m_iCurrentEffectSkillId != LostArk::Shared::INVALID_SKILL_ID;
+		return actionStartTick != 0u &&
+			((actionStartTick == m_iEffectActionStartTick && m_iCurrentEffectSkillId != LostArk::Shared::INVALID_SKILL_ID) ||
+			 (m_eNetworkAction == LostArk::Shared::PLAYER_ACTION_STATE::INTERACTION &&
+			  actionStartTick == m_iLastNetworkActionStartTick && m_pInteractionEffectAdmission != nullptr));
 	}
 
 	// Cancels only requests awaiting Effect commit, never active natural tails.
@@ -215,6 +217,8 @@ public:
 	whose presentation is not admitted leaves the character on foot and logs
 	once; gameplay truth stays on the Server either way. */
 	void Apply_NetworkVehicle(std::uint32_t vehicleId);
+	void Apply_NetworkVehicleFlight(LostArk::Shared::VEHICLE_FLIGHT_PHASE phase,
+		std::uint32_t serverTick, std::uint32_t phaseStartTick, f32_t phaseDurationSeconds);
 	/* Replication hands over the replicated owner presentation while the Server
 	   reports GRABBED. The character keeps only a weak reference and the admitted
 	   grip; every Update re-resolves the socket so a vanished owner falls back to
@@ -223,6 +227,16 @@ public:
 		const std::shared_ptr<const IPlayerHandGripSocketSource>& pSource,
 		LostArk::Shared::PLAYER_ATTACHMENT_SLOT slot);
 	void Clear_NetworkAttachment();
+	/* Authoring clones have presentation state but never consume network
+	   snapshots. Use this only to restore a preview, not as gameplay authority. */
+	bool_t Try_Get_PresentationStance(
+		LostArk::Shared::PLAYER_STANCE_ID& outStance) const
+	{
+		if (m_eStance >= LostArk::Shared::PLAYER_STANCE_ID::END)
+			return false;
+		outStance = m_eStance;
+		return true;
+	}
 	/* A Model View clone may mirror the live scene stance, but only after that
 	   scene Character has consumed an authoritative snapshot. Before then its
 	   NONE member is initialization state, not a valid Lance stance. */
@@ -491,6 +505,10 @@ private:
     f32_t m_fVehicleEffectAgeSeconds = 0.f;
     uint32_t m_iVehicleControlSkillId = 0u;
     f32_t m_fVehicleControlAgeSeconds = 0.f;
+	uint32_t m_iVehicleFlightRiderAnimation = UINT32_MAX;
+	LostArk::Shared::VEHICLE_FLIGHT_PHASE m_eVehicleFlightPhase = LostArk::Shared::VEHICLE_FLIGHT_PHASE::GROUNDED;
+	f32_t m_fVehicleFlightPhaseAgeSeconds = 0.f;
+	f32_t m_fVehicleFlightPhaseDurationSeconds = 0.f;
     struct OWNER_CONTROL_SAMPLE final { EFFECT_OWNER_CONTROL_DESC Control; float4_t Value; };
     struct OWNER_MATERIAL_BASELINE final
     {
@@ -600,7 +618,7 @@ private:
 	bool_t Load_ClipChains(bool_t reloadSource = false);
 	void Load_InteractionAnimationBindings();
 	std::array<std::vector<CLIP_STEP>, 5> m_InteractionClips;
-	std::array<std::vector<std::string>, 5> m_InteractionEffectIds;
+	std::array<std::vector<std::vector<ANIMATION_EFFECT_CUE>>, 5> m_InteractionEffectCues;
 	/* Optional: a class whose base AnimSet has not been cooked yet keeps the
 	previous locomotion loop for a server movePlayer instead of failing. */
 	bool_t m_hasTerrainJumpClip = false;
@@ -616,7 +634,7 @@ private:
 	bool_t m_isWallClimbRootMotionSuppressed = false;
 	LostArk::Shared::KOUKU_HUD_MODE m_eInteractionMode = LostArk::Shared::KOUKU_HUD_MODE::NONE;
 	std::uint32_t m_iInteractionIndex = UINT32_MAX;
-	bool_t m_bInteractionEffectSubmitted = false;
+	std::vector<bool> m_InteractionEffectsSubmitted;
 	std::shared_ptr<const EFFECT_PENDING_SPAWN_ADMISSION> m_pInteractionEffectAdmission;
 	void Commit_PendingClipChains();
 	/* Plays a clip from its first frame. Set_Animation alone only switches the

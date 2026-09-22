@@ -58,6 +58,8 @@ namespace Client
 		std::vector<KOUKU_SAYDON_COMPOSITION_ANIMATION_OCCURRENCE>
 			AnimationOccurrences;
 		bool bRetargetOnEnter = false;
+        // Absent preserves RANDOM_ALIVE; explicit values survive authored Save.
+        std::optional<std::string> RetargetTarget;
 
 		bool operator==(const KOUKU_SAYDON_COMPOSITION_STAGE&) const = default;
 	};
@@ -619,6 +621,7 @@ namespace Client
 		std::string strFlowId;
 		std::string strGateId;
 		std::string strDisplayName;
+		std::string strLoopStartEntryId;
 		std::vector<KOUKU_SAYDON_COMPOSITION_FLOW_ENTRY> Entries;
 		bool operator==(const KOUKU_SAYDON_COMPOSITION_PATTERN_FLOW&) const = default;
 	};

@@ -10,6 +10,7 @@
 #include "Body_Valtan.h"
 #include "Character.h"
 #include "CharacterSelectionState.h"
+#include "ClassSelectionPresentation.h"
 #include "Collider.h"
 #include "DeployPropCatalog.h"
 #include "DeployPropObject.h"
@@ -515,7 +516,7 @@ HRESULT CLoader::Ready_For_CharacterSelect()
 	if (nullptr == pEntry || nullptr == pEntry->pMapAreaId)
 		return E_INVALIDARG;
 
-	Declare_Phases(8u);
+	Declare_Phases(9u);
 	Set_Status(TEXT("CHARACTER SELECT: visual map"));
 	if (FAILED(Ready_MapArea(
 		ETOUI(LEVEL::CHARACTER_SELECT),
@@ -564,6 +565,24 @@ HRESULT CLoader::Ready_For_CharacterSelect()
 		}
 	}
 #endif
+	Set_Status(TEXT("CHARACTER SELECT: class selection cinematics"));
+	if (CClassSelectionPresentation::Is_Configured() && pEntry->pPresentationMapAreaId && FAILED(Ready_MapArea(
+		ETOUI(LEVEL::CHARACTER_SELECT), pEntry->pPresentationMapAreaId,
+		pEntry->PresentationMapLoadScope, false)))
+	{
+		if (m_isCancellationRequested.load(std::memory_order_acquire))
+			return HRESULT_FROM_WIN32(ERROR_CANCELLED);
+		OutputDebugStringA("[Loader][ClassSelectionCinema] Optional background unavailable.\n");
+	}
+	std::string selectionSequenceStatus;
+	if (!CWorldSequencePlayer::Prepare_AreaLoad(ETOUI(LEVEL::CHARACTER_SELECT),
+		pEntry->pMapAreaId, pEntry->MapLoadScope, selectionSequenceStatus,
+		[this]() { return m_isCancellationRequested.load(std::memory_order_acquire); }))
+	{
+		if (m_isCancellationRequested.load(std::memory_order_acquire))
+			return HRESULT_FROM_WIN32(ERROR_CANCELLED);
+		OutputDebugStringA(("[Loader][ClassSelectionCinema] " + selectionSequenceStatus + "\n").c_str());
+	}
 	Set_Status(TEXT("Character Select loading complete"));
 	rollback.Commit();
 	return S_OK;
@@ -956,14 +975,14 @@ HRESULT CLoader::Ready_For_Maharaka()
 HRESULT CLoader::Ready_MapArea(
 	const uint32_t iLevelIndex,
 	const std::string& areaId,
-	const MAP_LOAD_SCOPE& loadScope)
+	const MAP_LOAD_SCOPE& loadScope, const bool_t prepareMapCore)
 {
 	if (iLevelIndex >= ETOUI(LEVEL::END) || areaId.empty())
 		return E_INVALIDARG;
 
 	try
 	{
-		if (FAILED(Ready_MapAuthoringCore(iLevelIndex)))
+		if (prepareMapCore && FAILED(Ready_MapAuthoringCore(iLevelIndex)))
 			return E_FAIL;
 
 		CMapAssetCatalog mapCatalog;

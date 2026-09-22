@@ -1,5 +1,6 @@
 #include "Part_Equipment.h"
 #include "BinaryAsset/ModelAssetData.h"
+#include "SourceEquipmentMaterialPrograms.h"
 
 #include "DeferredMaterialRenderUtils.h"
 #include "GameInstance.h"
@@ -18,7 +19,7 @@ namespace
 		if (nullptr == surface || surface->family != Engine::MODEL_SURFACE_FAMILY::SOURCE_CHARACTER)
 			return 0u;
 		const uint32_t program = surface->sourceCharacter.program;
-		return 6u == program || 7u == program || 18u == program || 99u == program ?
+		return 6u == program || 7u == program || 18u == program || 99u == program || SourceEquipmentMaterial::Is_Translucent(program) ?
 			SOURCE_TRANSLUCENT_TWO_SIDED_PASS : 0u;
 	}
 }
@@ -87,13 +88,8 @@ HRESULT CPart_Equipment::Initialize(void* pArg)
 		}
 	}
 
-	/* A socketed piece draws through the static-mesh shader, whose pass table has
-	no forward translucent slot, so only skinned pieces take that route. */
-	if (m_strSocketBoneName.empty())
-	{
-		for (uint32_t i = 0; i < m_pModelCom->Get_NumMeshes(); ++i)
-			m_hasTranslucentMeshes |= 0u != Resolve_TranslucentSourcePass(m_pModelCom->Get_MaterialSurface(i));
-	}
+	for (uint32_t i = 0; i < m_pModelCom->Get_NumMeshes(); ++i)
+		m_hasTranslucentMeshes |= 0u != Resolve_TranslucentSourcePass(m_pModelCom->Get_MaterialSurface(i));
 
 	return S_OK;
 }
@@ -160,17 +156,17 @@ HRESULT CPart_Equipment::Render_Group(RENDERGROUP group)
 
 HRESULT CPart_Equipment::Render_Translucent()
 {
-	if (!Is_Visible() || !m_strSocketBoneName.empty())
+	if (!Is_Visible())
 		return S_OK;
 	if (FAILED(Bind_ShaderResources()) ||
 		FAILED(CMapAssetRenderUtils::Bind_SourceCharacterForwardLights(m_pShaderCom)))
 		return E_FAIL;
 
-	if (!m_hasOwnBones &&
+	if (m_strSocketBoneName.empty() && !m_hasOwnBones &&
 		FAILED(m_pSkeletonModelCom->Bind_BoneMatrices(
 			m_pShaderCom, "g_BoneMatrices", 0)))
 		return E_FAIL;
-	if (m_hasOwnBones)
+	if (m_strSocketBoneName.empty() && m_hasOwnBones)
 		m_pModelCom->Pose_BonesFrom(*m_pSkeletonModelCom);
 
 	for (uint32_t i = 0; i < m_pModelCom->Get_NumMeshes(); ++i)
@@ -180,7 +176,7 @@ HRESULT CPart_Equipment::Render_Translucent()
 		const uint32_t pass = Resolve_TranslucentSourcePass(m_pModelCom->Get_MaterialSurface(i));
 		if (0u == pass)
 			continue;
-		if (m_hasOwnBones &&
+		if (m_strSocketBoneName.empty() && m_hasOwnBones &&
 			FAILED(m_pModelCom->Bind_BoneMatrices(m_pShaderCom, "g_BoneMatrices", i)))
 			return E_FAIL;
 
@@ -192,7 +188,7 @@ HRESULT CPart_Equipment::Render_Translucent()
 				*m_pModelCom, m_pShaderCom, i, Profile,
 				m_pEmissiveOverride)) ||
 			FAILED(m_pModelCom->Bind_SourceCharacterForwardLight(m_pShaderCom, i)) ||
-			FAILED(m_pShaderCom->Begin(pass)) ||
+			FAILED(m_pShaderCom->Begin(m_strSocketBoneName.empty() ? pass : 24u)) ||
 			FAILED(m_pModelCom->Render(i)))
 			return E_FAIL;
 	}
@@ -234,13 +230,13 @@ HRESULT CPart_Equipment::Render_Pass(
 		const auto* surface = m_pModelCom->Get_MaterialSurface(i);
 		/* The BLEND group draws these forward; the portrait's explicit passes
 		still take every mesh so the second draw keeps its own look. */
-		if (isSkinned && iPassIndex == 0u && 0u != Resolve_TranslucentSourcePass(surface))
+		if (iPassIndex == 0u && 0u != Resolve_TranslucentSourcePass(surface))
 			continue;
 		if (m_strSocketBoneName.empty() && iPassIndex == 0u && surface &&
 			surface->family == Engine::MODEL_SURFACE_FAMILY::SOURCE_CHARACTER &&
 			(surface->sourceCharacter.program == 6u || surface->sourceCharacter.program == 7u ||
              surface->sourceCharacter.program == 19u ||
-             surface->sourceCharacter.program == 20u))
+             surface->sourceCharacter.program == 20u || SourceEquipmentMaterial::Is_TwoSidedMasked(surface->sourceCharacter.program)))
 		{
 			materialPass = 6u;
 		}

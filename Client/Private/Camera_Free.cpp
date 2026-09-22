@@ -3,6 +3,7 @@
 #include "imgui.h"
 
 #include "Camera_Free.h"
+#include "CombatHUDViewModel.h"
 #include "Effect_PresentationService.h"
 
 #include "CameraShakeService.h"
@@ -18,6 +19,10 @@ namespace
 	constexpr f32_t MIN_SHAKE_FOVY = 10.f;
 	constexpr f32_t MAX_SHAKE_FOVY = 170.f;
 	constexpr f32_t FOLLOW_TARGET_DISCONTINUITY_METERS = 12.f;
+	constexpr std::uint32_t ANCIENT_SEA_VEHICLE_ID = 9523u;
+	constexpr f32_t VEHICLE_ORBIT_RADIANS_PER_PIXEL = 0.0035f;
+	constexpr f32_t VEHICLE_ORBIT_MIN_PITCH = -0.15f;
+	constexpr f32_t VEHICLE_ORBIT_MAX_PITCH = 1.35f;
 }
 
 CCamera_Free::CCamera_Free(ComPtr<ID3D11Device> pDevice, ComPtr<ID3D11DeviceContext> pContext)
@@ -94,6 +99,7 @@ void CCamera_Free::Update(f32_t fTimeDelta)
 void CCamera_Free::Late_Update(f32_t fTimeDelta)
 {
 	CEffectPresentationService::Set_FrameCamera(static_pointer_cast<CCamera_Free>(shared_from_this()));
+	Update_VehicleOrbitInput();
 	if (Is_PresentationOverrideActive())
 	{
 		// The cinematic owns the visible pose; do not feed it into follow smoothing.
@@ -127,7 +133,11 @@ void CCamera_Free::Set_FollowTarget(const shared_ptr<CTransform>& pFollowTarget)
 	const bool_t targetChanged =
 		m_pFollowTarget.lock() != pFollowTarget;
 	if (targetChanged)
+	{
 		m_bFollowInitialized = false;
+		m_isVehicleOrbitActive = false;
+		m_isVehicleOrbitDragging = false;
+	}
 
 	m_pFollowTarget = pFollowTarget;
 	m_bFollowEnabled =
@@ -148,6 +158,11 @@ void CCamera_Free::Set_FollowEnabled(bool_t isEnabled)
 		m_bFollowInitialized = false;
 
 	m_bFollowEnabled = nextEnabled;
+	if (!nextEnabled)
+	{
+		m_isVehicleOrbitActive = false;
+		m_isVehicleOrbitDragging = false;
+	}
 	if (m_bFollowEnabled && !m_bFollowInitialized && !Is_PresentationOverrideActive())
 	{
 		Update_FollowCamera(0.f);
@@ -302,11 +317,14 @@ void CCamera_Free::Update_FollowCamera(f32_t fTimeDelta)
 	const bool_t targetDiscontinuity = m_bFollowInitialized &&
 		XMVectorGetX(XMVector3LengthSq(targetDelta)) >
 			FOLLOW_TARGET_DISCONTINUITY_METERS * FOLLOW_TARGET_DISCONTINUITY_METERS;
+	float3_t positionOffset = m_vPositionOffset;
+	float3_t lookOffset = m_vLookOffset;
+	Update_VehicleOrbitOffsets(fTimeDelta, pFollowTarget, positionOffset, lookOffset);
 	const vector_t vDesiredEye = XMVectorSetW(
-		vTargetPosition + XMLoadFloat3(&m_vPositionOffset),
+		vTargetPosition + XMLoadFloat3(&positionOffset),
 		1.f);
 	const vector_t vDesiredAt = XMVectorSetW(
-		vTargetPosition + XMLoadFloat3(&m_vLookOffset),
+		vTargetPosition + XMLoadFloat3(&lookOffset),
 		1.f);
 
 	if (!m_bFollowInitialized || targetDiscontinuity ||
@@ -341,6 +359,83 @@ void CCamera_Free::Update_FollowCamera(f32_t fTimeDelta)
 		XMLoadFloat3(&m_vCurrentLookAt));
 	if (0.f != m_fFollowRollDegrees)
 		Apply_FollowRoll();
+}
+
+void CCamera_Free::Update_VehicleOrbitInput()
+{
+	const bool_t leftDown =
+		0 != (CGameInstance::Get().Get_DIMouseStateRaw(DIM::LB) & 0x80);
+	const bool_t leftPressed = leftDown && !m_wasVehicleOrbitLeftDown;
+	m_wasVehicleOrbitLeftDown = leftDown;
+	const auto& player = CCombatHUDViewModel::Get().Get_Player();
+	const auto& ui = CUIInputRouter::Get();
+	const bool_t allowed = m_isVehicleOrbitActive && m_bFollowEnabled &&
+		player.isValid && player.iVehicleId == ANCIENT_SEA_VEHICLE_ID &&
+		!Is_PresentationOverrideActive() && GetForegroundWindow() == g_hWnd &&
+		!CGameInstance::Get().IsMouseInputBlocked() &&
+		!ImGui::GetIO().WantCaptureMouse && !ImGui::GetIO().WantTextInput &&
+		!ui.Is_TextInputActive() && !ui.Is_MouseClaimedThisFrame() &&
+		!ui.Was_MouseClaimedLastFrame();
+	if (!allowed || !leftDown)
+		m_isVehicleOrbitDragging = false;
+	else if (leftPressed)
+		m_isVehicleOrbitDragging = true;
+	if (!m_isVehicleOrbitDragging)
+		return;
+
+	// DirectInput deltas already integrate mouse motion over this frame.
+	// Multiplying by delta time would make the orbit frame-rate dependent.
+	m_fVehicleOrbitYaw = std::remainder(m_fVehicleOrbitYaw -
+		CGameInstance::Get().Get_DIMouseMove(DIMM::X) * VEHICLE_ORBIT_RADIANS_PER_PIXEL,
+		XM_2PI);
+	m_fVehicleOrbitPitch = std::clamp(m_fVehicleOrbitPitch +
+		CGameInstance::Get().Get_DIMouseMove(DIMM::Y) * VEHICLE_ORBIT_RADIANS_PER_PIXEL,
+		VEHICLE_ORBIT_MIN_PITCH, VEHICLE_ORBIT_MAX_PITCH);
+}
+
+void CCamera_Free::Update_VehicleOrbitOffsets(const f32_t fTimeDelta,
+	const shared_ptr<CTransform>& target, float3_t& positionOffset, float3_t& lookOffset)
+{
+	const auto& player = CCombatHUDViewModel::Get().Get_Player();
+	if (!player.isValid || player.iVehicleId != ANCIENT_SEA_VEHICLE_ID)
+	{
+		m_isVehicleOrbitActive = false;
+		m_isVehicleOrbitDragging = false;
+		return;
+	}
+	const vector_t look = target->Get_State(STATE::LOOK);
+	const f32_t x = XMVectorGetX(look), z = XMVectorGetZ(look);
+	if (!std::isfinite(x) || !std::isfinite(z) || x * x + z * z < 0.000001f)
+		return;
+	const f32_t heading = std::atan2(x, z);
+	if (!m_isVehicleOrbitActive)
+	{
+		const vector_t offset = XMLoadFloat3(&positionOffset) - XMLoadFloat3(&lookOffset);
+		const f32_t radius = XMVectorGetX(XMVector3Length(offset));
+		if (!std::isfinite(radius) || radius < 0.001f)
+			return;
+		m_fVehicleOrbitRadius = (std::max)(radius, 12.f);
+		m_fVehicleOrbitYaw = std::atan2(XMVectorGetX(offset), XMVectorGetZ(offset));
+		m_fVehicleOrbitPitch = std::clamp(std::asin(std::clamp(
+			XMVectorGetY(offset) / radius, -1.f, 1.f)),
+			VEHICLE_ORBIT_MIN_PITCH, VEHICLE_ORBIT_MAX_PITCH);
+		m_fVehiclePreviousHeading = heading;
+		m_isVehicleOrbitActive = true;
+	}
+	else if (!m_isVehicleOrbitDragging && std::isfinite(fTimeDelta) && fTimeDelta > 0.f)
+	{
+		// Keep the user's viewing side while following the dragon's shortest turn.
+		m_fVehicleOrbitYaw = std::remainder(m_fVehicleOrbitYaw +
+			std::remainder(heading - m_fVehiclePreviousHeading, XM_2PI), XM_2PI);
+	}
+	m_fVehiclePreviousHeading = heading;
+	lookOffset.y = (std::max)(lookOffset.y, 2.4f);
+	const f32_t horizontal = m_fVehicleOrbitRadius * std::cos(m_fVehicleOrbitPitch);
+	positionOffset = {
+		lookOffset.x + horizontal * std::sin(m_fVehicleOrbitYaw),
+		lookOffset.y + m_fVehicleOrbitRadius * std::sin(m_fVehicleOrbitPitch),
+		lookOffset.z + horizontal * std::cos(m_fVehicleOrbitYaw)
+	};
 }
 
 void CCamera_Free::Apply_FollowRoll()

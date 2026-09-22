@@ -216,6 +216,7 @@
     <ClInclude Include="..\Public\Part_Equipment.h" />
 	<ClInclude Include="..\Public\DeferredMaterialRenderUtils.h" />
     <ClInclude Include="..\Public\SourceCharacterMaterialParameters.h" />
+    <ClInclude Include="..\Public\SourceEquipmentMaterialPrograms.h" />
     <ClInclude Include="..\Public\SourceMapForwardMaterialParameters.h" />
     <ClInclude Include="..\Public\SourceMapWaterMaterialParameters.h" />
     <ClInclude Include="..\Public\SourceMapTranslucentMaterialParameters.h" />
@@ -322,6 +323,7 @@
     <ClCompile Include="..\Private\CharacterActionWorkbench.cpp" />
     <ClCompile Include="..\Private\BoneAnimationDocument.cpp" />
     <ClCompile Include="..\Private\BoneAnimationWorkbench.cpp" />
+    <ClCompile Include="..\Private\BoneAnimationWorkbench_Viewport.cpp" />
     <ClCompile Include="..\Private\CharacterModelWorkbench.cpp" />
     <ClCompile Include="..\Private\CharacterActionCombatDocument.cpp" />
 	<ClCompile Include="..\Private\KoukuSaydonAnimationActionDocument.cpp" />
@@ -1167,11 +1169,11 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <OutDir>..\Bin\Debug\</OutDir>
-    <LocalDebuggerEnvironment>LOSTARK_SERVER_HOST=192.168.0.14</LocalDebuggerEnvironment>
+    <LocalDebuggerEnvironment>LOSTARK_SERVER_HOST=192.168.0.22</LocalDebuggerEnvironment>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <OutDir>..\Bin\Release\</OutDir>
-    <LocalDebuggerEnvironment>LOSTARK_SERVER_HOST=192.168.0.14</LocalDebuggerEnvironment>
+    <LocalDebuggerEnvironment>LOSTARK_SERVER_HOST=192.168.0.22</LocalDebuggerEnvironment>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -1295,7 +1297,6 @@
     <PhysXRuntimeRoot>$(EngineRoot)ThirdPartyLib\PhysX\Bin\$(Configuration)\</PhysXRuntimeRoot>
     <EngineCellShaderSource>$(EngineBinaryRoot)Shader_Cell.cso</EngineCellShaderSource>
     <EngineDeferredShaderSource>$(EngineBinaryRoot)Shader_Deferred.cso</EngineDeferredShaderSource>
-    <EngineMeshLodShaderSource>$(EngineBinaryRoot)Shader_MeshLod.cso</EngineMeshLodShaderSource>
   </PropertyGroup>
   <Target Name="ValidateClientBuildDomains" BeforeTargets="ClCompile" Condition="'$(Platform)'=='x64' and '$(LostArkPublishRuntimeData)'=='true'">
     <Exec Command="powershell.exe -NoProfile -ExecutionPolicy Bypass -File &quot;$(ProjectDir)..\..\Tools\Build\Invoke-BuildDomainOwner.ps1&quot; -Owner Client -ResourceRoot &quot;$(ProjectDir)..\Bin\Resources&quot;" />
@@ -1319,7 +1320,6 @@
   <Target Name="DeployClientCompiledShaders" AfterTargets="Build" Condition="'$(Platform)'=='x64'">
     <Error Condition="!Exists('$(EngineCellShaderSource)')" Text="Engine compiled shader is missing for $(Configuration): $(EngineCellShaderSource)" />
     <Error Condition="!Exists('$(EngineDeferredShaderSource)')" Text="Engine compiled shader is missing for $(Configuration): $(EngineDeferredShaderSource)" />
-    <Error Condition="!Exists('$(EngineMeshLodShaderSource)')" Text="Engine compiled shader is missing for $(Configuration): $(EngineMeshLodShaderSource)" />
     <ItemGroup>
       <ClientEngineCompiledShaders Include="$(EngineCellShaderSource)" />
       <ClientEngineCompiledShaders Include="$(EngineDeferredShaderSource)" />
@@ -1329,7 +1329,14 @@
       <ClientEngineCompiledShaders Include="$(EngineBinaryRoot)Shader_Deferred_SourceGroup025.cso" />
       <ClientEngineCompiledShaders Include="$(EngineBinaryRoot)Shader_Deferred_SourceGroup080.cso" />
       <ClientEngineCompiledShaders Include="$(EngineBinaryRoot)Shader_Deferred_SourceGroup084.cso" />
-      <ClientEngineCompiledShaders Include="$(EngineMeshLodShaderSource)" />
+    <ClientEngineCompiledShaders Include="$(EngineBinaryRoot)Shader_Deferred_SourceGroup160.cso" />
+    <ClientEngineCompiledShaders Include="$(EngineBinaryRoot)Shader_Deferred_SourceGroup176.cso" />
+    <ClientEngineCompiledShaders Include="$(EngineBinaryRoot)Shader_Deferred_SourceGroup192.cso" />
+    <ClientEngineCompiledShaders Include="$(EngineBinaryRoot)Shader_Deferred_SourceGroup208.cso" />
+    <ClientEngineCompiledShaders Include="$(EngineBinaryRoot)Shader_Deferred_SourceGroup235.cso" />
+    <ClientEngineCompiledShaders Include="$(EngineBinaryRoot)Shader_Deferred_SourceGroup214.cso" />
+    <ClientEngineCompiledShaders Include="$(EngineBinaryRoot)Shader_Deferred_SourceGroup224.cso" />
+    <ClientEngineCompiledShaders Include="$(EngineBinaryRoot)Shader_Deferred_SourceGroup237.cso" />
     </ItemGroup>
     <Error Condition="!Exists('%(ClientEngineCompiledShaders.Identity)')" Text="Required Engine compiled shader is missing: %(ClientEngineCompiledShaders.Identity)" />
     <MakeDir Directories="$(TargetDir)" />
@@ -1360,6 +1367,8 @@
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
   <ItemGroup>
+    <ClInclude Include="..\Public\ClassSelectionPresentation.h" />
+    <ClCompile Include="..\Private\ClassSelectionPresentation.cpp" />
     <ClInclude Include="..\Public\ArenaCameraProfile.h" />
     <ClCompile Include="..\Private\ArenaCameraProfile.cpp" />
     <None Include="..\..\Data\Camera\CharacterSelect.camera.json" />
@@ -1683,6 +1692,11 @@
     <None Include="..\Bin\ShaderFiles\Shader_EffectParticleFamilyCarrier.hlsli" />
     <None Include="..\Bin\ShaderFiles\Shader_EffectV2_Common.hlsli" />
     <None Include="..\Bin\ShaderFiles\Shader_SourceCharacterMaterial.hlsli" />
+    <None Include="..\Bin\ShaderFiles\Shader_SourceMapCharacterSelectDirect.hlsli" />
+    <None Include="..\Bin\ShaderFiles\Shader_SourceMapSL10Forward.hlsli" />
+    <None Include="..\Bin\ShaderFiles\Shader_SourceMapSL10Direct.hlsli" />
+    <None Include="..\Bin\ShaderFiles\Shader_SourceMapCharacterSelectPrograms.hlsli" />
+    <None Include="..\Bin\ShaderFiles\Shader_SourceCharacterForward.hlsli" />
     <None Include="..\Bin\ShaderFiles\Shader_SourceCharacterPrograms.hlsli" />
   </ItemGroup>
   <ItemGroup>
@@ -2537,18 +2551,42 @@
     <None Include="..\Bin\ShaderFiles\Shader_SourceCharacterBaseGroup025.hlsli" />
     <None Include="..\Bin\ShaderFiles\Shader_SourceCharacterBaseGroup080.hlsli" />
     <None Include="..\Bin\ShaderFiles\Shader_SourceCharacterBaseGroup084.hlsli" />
+    <None Include="..\Bin\ShaderFiles\Shader_SourceCharacterBaseGroup160.hlsli" />
+    <None Include="..\Bin\ShaderFiles\Shader_SourceCharacterBaseGroup176.hlsli" />
+    <None Include="..\Bin\ShaderFiles\Shader_SourceCharacterBaseGroup192.hlsli" />
+    <None Include="..\Bin\ShaderFiles\Shader_SourceCharacterBaseGroup208.hlsli" />
+    <None Include="..\Bin\ShaderFiles\Shader_SourceCharacterBaseGroup235.hlsli" />
+    <None Include="..\Bin\ShaderFiles\Shader_SourceCharacterBaseGroup214.hlsli" />
+    <None Include="..\Bin\ShaderFiles\Shader_SourceCharacterBaseGroup224.hlsli" />
+    <None Include="..\Bin\ShaderFiles\Shader_SourceCharacterBaseGroup237.hlsli" />
     <None Include="..\Bin\ShaderFiles\Shader_SourceCharacterLightGroup001.hlsli" />
     <None Include="..\Bin\ShaderFiles\Shader_SourceCharacterLightGroup009.hlsli" />
     <None Include="..\Bin\ShaderFiles\Shader_SourceCharacterLightGroup017.hlsli" />
     <None Include="..\Bin\ShaderFiles\Shader_SourceCharacterLightGroup025.hlsli" />
     <None Include="..\Bin\ShaderFiles\Shader_SourceCharacterLightGroup080.hlsli" />
     <None Include="..\Bin\ShaderFiles\Shader_SourceCharacterLightGroup084.hlsli" />
+    <None Include="..\Bin\ShaderFiles\Shader_SourceCharacterLightGroup160.hlsli" />
+    <None Include="..\Bin\ShaderFiles\Shader_SourceCharacterLightGroup176.hlsli" />
+    <None Include="..\Bin\ShaderFiles\Shader_SourceCharacterLightGroup192.hlsli" />
+    <None Include="..\Bin\ShaderFiles\Shader_SourceCharacterLightGroup208.hlsli" />
+    <None Include="..\Bin\ShaderFiles\Shader_SourceCharacterLightGroup235.hlsli" />
+    <None Include="..\Bin\ShaderFiles\Shader_SourceCharacterLightGroup214.hlsli" />
+    <None Include="..\Bin\ShaderFiles\Shader_SourceCharacterLightGroup224.hlsli" />
+    <None Include="..\Bin\ShaderFiles\Shader_SourceCharacterLightGroup237.hlsli" />
     <None Include="..\Bin\ShaderFiles\Shader_Deferred_SourceGroup001.hlsl" />
     <None Include="..\Bin\ShaderFiles\Shader_Deferred_SourceGroup009.hlsl" />
     <None Include="..\Bin\ShaderFiles\Shader_Deferred_SourceGroup017.hlsl" />
     <None Include="..\Bin\ShaderFiles\Shader_Deferred_SourceGroup025.hlsl" />
     <None Include="..\Bin\ShaderFiles\Shader_Deferred_SourceGroup080.hlsl" />
     <None Include="..\Bin\ShaderFiles\Shader_Deferred_SourceGroup084.hlsl" />
+    <None Include="..\Bin\ShaderFiles\Shader_Deferred_SourceGroup160.hlsl" />
+    <None Include="..\Bin\ShaderFiles\Shader_Deferred_SourceGroup176.hlsl" />
+    <None Include="..\Bin\ShaderFiles\Shader_Deferred_SourceGroup192.hlsl" />
+    <None Include="..\Bin\ShaderFiles\Shader_Deferred_SourceGroup208.hlsl" />
+    <None Include="..\Bin\ShaderFiles\Shader_Deferred_SourceGroup235.hlsl" />
+    <None Include="..\Bin\ShaderFiles\Shader_Deferred_SourceGroup214.hlsl" />
+    <None Include="..\Bin\ShaderFiles\Shader_Deferred_SourceGroup224.hlsl" />
+    <None Include="..\Bin\ShaderFiles\Shader_Deferred_SourceGroup237.hlsl" />
     <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxAnimMeshBinary_SourceGroup001.hlsl">
       <EnableDebuggingInformation Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</EnableDebuggingInformation>
       <DisableOptimizations Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</DisableOptimizations>
@@ -2579,6 +2617,46 @@
       <DisableOptimizations Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</DisableOptimizations>
       <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">/O1 %(AdditionalOptions)</AdditionalOptions>
     </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxAnimMeshBinary_SourceGroup160.hlsl">
+      <EnableDebuggingInformation Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</EnableDebuggingInformation>
+      <DisableOptimizations Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</DisableOptimizations>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">/O1 %(AdditionalOptions)</AdditionalOptions>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxAnimMeshBinary_SourceGroup176.hlsl">
+      <EnableDebuggingInformation Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</EnableDebuggingInformation>
+      <DisableOptimizations Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</DisableOptimizations>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">/O1 %(AdditionalOptions)</AdditionalOptions>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxAnimMeshBinary_SourceGroup192.hlsl">
+      <EnableDebuggingInformation Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</EnableDebuggingInformation>
+      <DisableOptimizations Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</DisableOptimizations>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">/O1 %(AdditionalOptions)</AdditionalOptions>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxAnimMeshBinary_SourceGroup208.hlsl">
+      <EnableDebuggingInformation Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</EnableDebuggingInformation>
+      <DisableOptimizations Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</DisableOptimizations>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">/O1 %(AdditionalOptions)</AdditionalOptions>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxAnimMeshBinary_SourceGroup235.hlsl">
+      <EnableDebuggingInformation Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</EnableDebuggingInformation>
+      <DisableOptimizations Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</DisableOptimizations>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">/O1 %(AdditionalOptions)</AdditionalOptions>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxAnimMeshBinary_SourceGroup214.hlsl">
+      <EnableDebuggingInformation Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</EnableDebuggingInformation>
+      <DisableOptimizations Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</DisableOptimizations>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">/O1 %(AdditionalOptions)</AdditionalOptions>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxAnimMeshBinary_SourceGroup224.hlsl">
+      <EnableDebuggingInformation Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</EnableDebuggingInformation>
+      <DisableOptimizations Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</DisableOptimizations>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">/O1 %(AdditionalOptions)</AdditionalOptions>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxAnimMeshBinary_SourceGroup237.hlsl">
+      <EnableDebuggingInformation Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</EnableDebuggingInformation>
+      <DisableOptimizations Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</DisableOptimizations>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">/O1 %(AdditionalOptions)</AdditionalOptions>
+    </FxCompile>
     <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxMeshBinary_SourceGroup001.hlsl">
       <EnableDebuggingInformation Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</EnableDebuggingInformation>
       <DisableOptimizations Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</DisableOptimizations>
@@ -2605,6 +2683,46 @@
       <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">/O1 %(AdditionalOptions)</AdditionalOptions>
     </FxCompile>
     <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxMeshBinary_SourceGroup084.hlsl">
+      <EnableDebuggingInformation Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</EnableDebuggingInformation>
+      <DisableOptimizations Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</DisableOptimizations>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">/O1 %(AdditionalOptions)</AdditionalOptions>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxMeshBinary_SourceGroup160.hlsl">
+      <EnableDebuggingInformation Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</EnableDebuggingInformation>
+      <DisableOptimizations Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</DisableOptimizations>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">/O1 %(AdditionalOptions)</AdditionalOptions>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxMeshBinary_SourceGroup176.hlsl">
+      <EnableDebuggingInformation Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</EnableDebuggingInformation>
+      <DisableOptimizations Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</DisableOptimizations>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">/O1 %(AdditionalOptions)</AdditionalOptions>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxMeshBinary_SourceGroup192.hlsl">
+      <EnableDebuggingInformation Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</EnableDebuggingInformation>
+      <DisableOptimizations Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</DisableOptimizations>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">/O1 %(AdditionalOptions)</AdditionalOptions>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxMeshBinary_SourceGroup208.hlsl">
+      <EnableDebuggingInformation Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</EnableDebuggingInformation>
+      <DisableOptimizations Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</DisableOptimizations>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">/O1 %(AdditionalOptions)</AdditionalOptions>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxMeshBinary_SourceGroup235.hlsl">
+      <EnableDebuggingInformation Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</EnableDebuggingInformation>
+      <DisableOptimizations Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</DisableOptimizations>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">/O1 %(AdditionalOptions)</AdditionalOptions>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxMeshBinary_SourceGroup214.hlsl">
+      <EnableDebuggingInformation Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</EnableDebuggingInformation>
+      <DisableOptimizations Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</DisableOptimizations>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">/O1 %(AdditionalOptions)</AdditionalOptions>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxMeshBinary_SourceGroup224.hlsl">
+      <EnableDebuggingInformation Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</EnableDebuggingInformation>
+      <DisableOptimizations Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</DisableOptimizations>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">/O1 %(AdditionalOptions)</AdditionalOptions>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxMeshBinary_SourceGroup237.hlsl">
       <EnableDebuggingInformation Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</EnableDebuggingInformation>
       <DisableOptimizations Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</DisableOptimizations>
       <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">/O1 %(AdditionalOptions)</AdditionalOptions>
@@ -3753,5 +3871,26 @@
     <None Include="..\Bin\ShaderFiles\Shader_EffectArtistNativeSelectedGroup4544.hlsli" />
     <None Include="..\..\Data\Effects\Authored\effect.guardianknight.skill.49220.source.49290.clip.0.full.restore.effect.json"></None>
     <None Include="..\..\Data\Effects\Authored\effect.guardianknight.skill.49220.source.49290.clip.1.full.restore.effect.json"></None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate2.fanfare.circle.six-rays.effect.json"></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate2.fanfare.front.music.effect.json"></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate2.fanfare.rectangle.warning.effect.json"></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate2.juggling.three.balls.effect.json"></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate2.entrance.rope.trail.effect.json"></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate2.entrance.drop.ball.effect.json"></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate2.safezone.blue.full.restore.effect.json"></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate2.bigsaydon.yellow-eye-warning.full.restore.effect.json"></None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\Data\Camera\ClassSelection.cinematics.json"></None>
+    <None Include="..\..\Data\Maps\Authoring\LV_LOBBY_CLASSSELECT_SL00\LV_LOBBY_CLASSSELECT_SL00.worldsequences.json"></None>
+    <None Include="..\..\Data\Maps\Imported\LV_LOBBY_CLASSSELECT_SL10\LV_LOBBY_CLASSSELECT_SL10.mapassets"></None>
+    <None Include="..\..\Data\Maps\Authoring\LV_LOBBY_CLASSSELECT_SL10\LV_LOBBY_CLASSSELECT_SL10.mapplacements"></None>
+    <None Include="..\..\Data\Maps\Authoring\LV_LOBBY_CLASSSELECT_SL10\LV_LOBBY_CLASSSELECT_SL10.mapmaterials.json"></None>
+    <None Include="..\..\Data\Effects\Authored\effect.classselect.guardianknight.fx_pc_ddk_04.par_m_ddk_guillotinespin_trail_01.effect.json"></None>
+    <None Include="..\..\Data\Effects\Authored\effect.classselect.guardianknight.fx_post.fx_par.par_c_zoomblur_01.effect.json"></None>
+    <None Include="..\..\Data\Effects\Authored\effect.classselect.guardianknight.fx_q_w_03.fx_par_01.par_q_pcselect_floatingember_01.effect.json"></None>
+    <None Include="..\..\Data\Effects\Authored\effect.classselect.guardianknight.fx_q_w_03.fx_par_01.par_q_watersplash_01.effect.json"></None>
   </ItemGroup>
 </Project>

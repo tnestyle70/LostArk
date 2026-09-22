@@ -3,6 +3,7 @@
 #include "Client_Defines.h"
 #include "ArenaCameraProfile.h"
 #include "ClientReplication.h"
+#include "ClassSelectionPresentation.h"
 #include "DeployPropRuntime.h"
 #include "Level.h"
 #include "LobbyCommandService.h"
@@ -91,6 +92,10 @@ public:
 	virtual HRESULT Initialize() override;
 	virtual void Update(f32_t fTimeDelta) override;
 	virtual HRESULT Render() override;
+	CClassSelectionPresentation& Get_ClassSelectionPresentation() { return m_ClassSelectionPresentation; }
+	const CClassSelectionPresentation& Get_ClassSelectionPresentation() const { return m_ClassSelectionPresentation; }
+	const std::string& Get_ClassCinematicStatus() const
+	{ return m_strClassCinemaPreparationFailure.empty() ? m_ClassSelectionPresentation.Get_Status() : m_strClassCinemaPreparationFailure; }
 	bool_t Reload_MapLights();
 	void Set_MapLightAuthoringOverride(const shared_ptr<CMapLightPresentationRuntime>& preview)
 	{ m_pMapLightAuthoringOverride = preview; }
@@ -208,6 +213,10 @@ public:
 	/* True while the customizing screen owns the screen: CMainApp hides the combat HUD
 	chrome behind it the same way it does for the Debug raid-entry preview. */
 	bool_t Is_CustomizingOpen() const;
+	bool_t Is_ClassCinematicActive() const { return m_ClassSelectionPresentation.Is_Active(); }
+	bool_t Can_PlayClassCinematic() const;
+	bool_t Is_ProductPresentationOpen() const
+	{ return Is_CustomizingOpen() || Is_ClassCinematicActive(); }
 	/* Takes the class-list stage down while character creation is open and restores each
 	placement's authored visibility when it closes. */
 	void Update_CustomizingStageVisibility();
@@ -295,6 +304,11 @@ public:
 	CDeployPropRuntime* Get_MapAuthoringDeployRuntime() override { return nullptr; }
 	bool_t Can_ChangeMapAuthoringStructure(std::string& outReason) const override
 	{
+		if (Is_ClassCinematicActive())
+		{
+			outReason = "Stop the class selection cinematic before editing map objects.";
+			return false;
+		}
 		if (Is_CustomizingOpen() || m_isCustomizingStageHidden)
 		{
 			outReason = "Close character customization before editing map objects; the stage is hidden while it is open.";
@@ -309,7 +323,8 @@ public:
 	}
 	void Rebase_MapAuthoringSelfMotions(const std::vector<MAP_PLACEMENT_RECORD>& records) override
 	{ Get_MapRuntime().Rebase_AuthoringSelfMotions(records); }
-	void Set_MapAuthoringActive(bool_t) override {}
+	void Set_MapAuthoringActive(bool_t active) override
+	{ if (active) m_ClassSelectionPresentation.Stop(); }
 	CWorldSequencePlayer::TARGET_SET Make_MapAuthoringTargets() override
 	{
 		CWorldSequencePlayer::TARGET_SET targets;
@@ -353,12 +368,14 @@ private:
 	std::array<std::string, ETOI(EQUIPMENT_SLOT_ID::END)> m_CustomizingOutfit{};
 
 	CMapPlacementRuntime m_MapRuntime;
-#ifdef _DEBUG
+	CClassSelectionPresentation m_ClassSelectionPresentation;
+	CMapPlacementRuntime m_ClassCinemaMap;
+	std::string m_strClassCinemaPreparationFailure;
+	bool_t m_isClassCinemaBackgroundVisible = false;
 	/* Stays empty: LV_LOBBY_CLASSSELECT_SL00 declares no DeployProp source
 	   pair, so Stage_DeployProps returns before touching it. Map Tool's runtime
 	   attach still needs a real owner because TARGET_SET::Is_Complete() does. */
 	CDeployPropRuntime m_MapAuthoringDeploy;
-#endif
 #ifdef _DEBUG
 	struct FLOOR_SWAP_SOURCE_PAIR
 	{

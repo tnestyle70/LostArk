@@ -1,5 +1,7 @@
 # 캐릭터 크기와 차원술사 Alt V 결과
 
+현재 크기 정본은 G04의 2026-09-22 변경이다. 전 맵 Artist 0.7, DimensionMaster 1.0을 사용하며, G00~G03의 이전 수치와 미반영 설명은 당시 기록이다.
+
 ## G00. 구현 상태
 
 `ArenaCameraProfile`은 기존 map별 camera JSON에 optional `classSizeMultipliers`, `clownSizeMultiplier`, `marioSizeMultiplier`를 저장한다. 클래스는 stable 이름 여섯 개로 검사하며 잘못된 이름·개수·비유한 값·0.25~4 밖의 값은 거부한다. 이전 문서는 새 기본값을 사용한다. F1의 Player Follow Camera → Character Size에서 전체, 여섯 class, 광기 광대, Mario 광대를 조절하고 기존 Save/Reload로 유지한다. 카메라 preset은 크기 편집값을 보존한다.
@@ -38,3 +40,11 @@ F1의 `Map Camera / Player`에서 Character Select, Bern, Valtan, KoukuSaydon, D
 - 관련 파일 `git diff --check` 성공. C++ UTF-8 BOM 없음·CRLF 유지, 기존 project/filter 등록 확인. 새 제품 파일은 없다.
 
 이는 소스·최소 컴파일·실저장 계약 검증이며 제품 링크·설치와 실제 화면 판정은 상위 통합 작업 및 사용자 확인 단계다. Client/UI를 실행하지 않았다. 새 제품에서 F1 속도 조절 후 F6 이동, 크기 변경 후 바로 아래 Save, 재입장 시 같은 크기 복원을 사용자가 확인한다.
+
+## G04. 2026-09-22 크기 Save 회귀 복구
+
+확인된 원인은 일곱 클래스 reader와 여섯 클래스 저장본의 불일치였다. 네 Camera JSON 모두 Load가 실패해 source baseline이 빈 상태로 남았고 Save의 기존 외부 변경 보호에서 거부됐다. 이전 여섯 키가 모두 존재하고 GUARDIANKNIGHT만 없을 때 기본값 1로 읽도록 수정했다. 알 수 없는 키·다른 class 누락·손상 값은 거부하고 기존 draft를 보존한다. 다음 Save는 일곱 키를 기록한다.
+
+사용자가 “반영해!”로 현재 디스크 저장본 기준 반영을 승인했다. 최신 네 파일의 ARTIST=0.7, DIMENSIONMASTER=1.0과 누락 GUARDIANKNIGHT=1만 병합했다. 카메라 pose/FOV·기존 광대 배율·망치 offset을 보존하고 교체 직전 byte 확인, 원본 백업, MoveFileEx 원자 교체 및 실패 시 자기 변경 rollback을 준비했다. 실제 반영 정보는 `out/CharacterSizeSave20260922/applied.json`, 원본은 같은 폴더 `backup-applied`다. C++ 기본값과 UI 설명도 새 요청값으로 맞췄다. CharacterCatalog의 admission scale과 Server collision은 변경하지 않았다.
+
+기존 실제 ArenaCameraProfile/DataJson 검사 프로그램을 새 격리 폴더에서 확장해 201개 검사를 통과했다. 기존 저장본 6→7 이행·신규 Save·Reload, 네 후보 JSON의 실제 reader 로드/저장/재로드, 외부 변경·unknown class·NaN의 보존을 포함한다. 중간 재실행에서 fresh Save 실패가 한 번 있었고 오류 출력 추가 후 새 격리 폴더에서 전체 통과했다. MainApp.cpp/ArenaCameraProfile.cpp Debug 최소 컴파일과 scoped diff check도 성공했으며 기존 C4819 경고는 남는다. 제품 링크와 실행 파일 교체는 이번 Composition/의상 통합 빌드 결과에서 별도 기록한다. 실행 중 Client 메모리 Reload와 화면 확인은 수행하지 않았다.

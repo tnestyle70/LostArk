@@ -96,7 +96,8 @@ private:
 	HRESULT Ready_MapArea(
 		uint32_t iLevelIndex,
 		const std::string& areaId,
-		const MAP_LOAD_SCOPE& loadScope = {});
+		const MAP_LOAD_SCOPE& loadScope = {},
+		bool_t prepareMapCore = true);
 	HRESULT Ready_MapAuthoringCore(uint32_t iLevelIndex);
 	HRESULT Ready_Camera_Prototype(uint32_t iLevelIndex);
 	HRESULT Ready_StaticMeshShader(uint32_t iLevelIndex);

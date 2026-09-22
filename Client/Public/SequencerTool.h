@@ -1,4 +1,5 @@
 #pragma once
+#include "CompositionResourceTree.h"
 
 #include "Client_Defines.h"
 #include "Engine_Defines.h"
@@ -7,6 +8,7 @@
 #include <array>
 #include <cstddef>
 #include <functional>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -29,6 +31,31 @@ public:
         std::uint32_t iDurationMs = 0u;
     };
 
+    struct CLASS_SELECTION_PREVIEW_STATE final
+    {
+        bool available = false;
+        bool active = false;
+        bool paused = false;
+        bool looping = false;
+        std::uint64_t ownerToken = 0;
+        std::uint64_t loopCycle = 0;
+        double clockMs = 0.;
+        double durationMs = 0.;
+        double introDurationMs = 0.;
+        double loopDurationMs = 0.;
+        std::string status;
+    };
+    // The Level owns playback, camera and resources. This session only submits
+    // transport commands to that same product presentation and reads its clock.
+    struct CLASS_SELECTION_PREVIEW_CALLBACKS final
+    {
+        std::function<CLASS_SELECTION_PREVIEW_STATE()> state;
+        std::function<bool()> play;
+        std::function<void()> stop;
+        std::function<void(bool)> setPaused;
+        std::function<bool(bool, double)> seek;
+    };
+
     CSequencerTool(
         ICompositionWorkbenchSession* pValtanSession,
         ICompositionWorkbenchSession* pKoukuSaydonSession,
@@ -36,6 +63,7 @@ public:
 
     void Set_ActionSessions(ICompositionWorkbenchSession* character,
         ICompositionWorkbenchSession* object, ICompositionWorkbenchSession* sequence);
+    void Set_ClassSelectionPreviewCallbacks(CLASS_SELECTION_PREVIEW_CALLBACKS callbacks);
     void Set_TargetChangedCallback(std::function<void(COMPOSITION_WORKBENCH_TARGET)> callback);
     /* Another tool may host the selected session for one frame. The shell
        still draws its windows but must not open a second session frame. */
@@ -89,6 +117,7 @@ private:
     ICompositionWorkbenchSession* m_pCharacterSession = nullptr;
     ICompositionWorkbenchSession* m_pObjectSession = nullptr;
     ICompositionWorkbenchSession* m_pSequenceSession = nullptr;
+    std::unique_ptr<ICompositionWorkbenchSession> m_pClassSelectionSession;
     std::function<void(COMPOSITION_WORKBENCH_TARGET)> m_TargetChanged;
     COMPOSITION_WORKBENCH_TARGET m_eSelectedTarget = COMPOSITION_WORKBENCH_TARGET::BOSS;
     COMPOSITION_WORKBENCH_TARGET m_ePendingTarget = COMPOSITION_WORKBENCH_TARGET::BOSS;
@@ -102,7 +131,7 @@ private:
     const bool m_bSequenceWorkspace;
     bool_t m_bOpen = true;
     bool_t m_bRestoreAuthoringPanesRequested = false;
-    bool_t m_bPhysicalAnimationBrowserVisible = false;
+    bool_t m_bPhysicalAnimationBrowserVisible = true;
     bool_t m_bResetLayoutRequested = false;
     bool_t m_bApplyResetLayoutThisFrame = false;
     bool_t m_bSequencerMaximized = false;
@@ -114,6 +143,9 @@ private:
     bool m_bAnimationPreviewPending = false;
     std::array<char, 160u> m_AnimationResourceSearch{};
     std::vector<COMPOSITION_ANIMATION_RESOURCE> m_AnimationResources;
+    COMPOSITION_RESOURCE_TREE_NODE m_AnimationResourceTree;
+    std::string m_AnimationResourceQuery;
+    bool m_bAnimationResourceTreeDirty = true;
     COMPOSITION_ANIMATION_RESOURCE m_SelectedAnimationResource;
     COMPOSITION_ANIMATION_RESOURCE m_PendingAnimationPreview;
     std::string m_strAnimationResourceStatus;

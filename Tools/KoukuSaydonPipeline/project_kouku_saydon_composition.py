@@ -1309,7 +1309,7 @@ def _expand_pattern_document(source, pattern_id, document):
                         "playMs": stage["durationMs"], "playRate": 1.0, "endPolicy": "LOOP_TO_WINDOW"}]
             return document
     _validate_presentation_selection_groups(parent, {row["resourceId"]: row
-        for row in document.get("presentationResources", [])})
+        for row in document.get("presentationResources", [])}, _showtime_fixed_sound_groups(document, parent))
     retained_groups = _showtime_selection_groups(document, parent)
     for row in parent.get("presentationOccurrences", []):
         if row.get("selectionGroupId") not in retained_groups:
@@ -1328,6 +1328,8 @@ def _expand_pattern_document(source, pattern_id, document):
         row = copy.deepcopy(stage)
         row["durationMs"] = end - begin
         row["retargetOnEnter"] = bool(stage.get("retargetOnEnter", False) and begin == stage_begin)
+        if not row["retargetOnEnter"]:
+            row.pop("retargetTarget", None)
         row["animationOccurrences"] = []
         for animation in stage["animationOccurrences"]:
             local_start = stage_begin + animation["startOffsetMs"]
@@ -2352,7 +2354,8 @@ def validate_document(document: dict[str, Any], root: Path = REPOSITORY_ROOT) ->
                 raise CompositionError(f"{context} bossMotion cannot also reset boss to spawn")
             if any(box.get("enabled", True) and logic_defs[box["logicId"]].get("kind") in {"REAL_GAZE_TELEPORT", "BOSS_TELEPORT_XZ", "BOSS_TELEPORT_GROUNDED"} for box in logic_occurrences):
                 raise CompositionError(f"{context} bossMotion cannot also teleport the boss")
-        _validate_presentation_occurrences(pattern, presentation_resources, pattern_duration_ms, worlds_by_id)
+        _validate_presentation_occurrences(pattern, presentation_resources, pattern_duration_ms, worlds_by_id,
+                                           _showtime_fixed_sound_groups(document, pattern))
         for box in logic_occurrences:
             definition = next(row for row in logics if row["logicId"] == box["logicId"])
             if definition.get("triggerKind") == "CARD_MAZE_STAGE_PLAYERS":
@@ -2361,6 +2364,10 @@ def validate_document(document: dict[str, Any], root: Path = REPOSITORY_ROOT) ->
         # disabled and draft controls; incomplete legacy group refs remain editable.
         by_presentation = {row["occurrenceId"]: row for row in pattern.get("presentationOccurrences", [])}
         for box in logic_occurrences:
+            tracking_id = logic_defs[box["logicId"]].get("trackingPresentationOccurrenceId", "")
+            tracking = by_presentation.get(tracking_id)
+            if tracking and presentation_resources[tracking["resourceId"]]["kind"] == "SOUND":
+                raise CompositionError("Tracking SHOWTIME cannot loop a Sound occurrence")
             for identities in logic_defs[box["logicId"]].get("randomVolleyOccurrenceSets", []):
                 if any(identity not in by_presentation for identity in identities):
                     raise CompositionError("SHOWTIME random volley reference is missing or unresolved in this Pattern")
@@ -2437,7 +2444,7 @@ def validate_pattern_flows(document: dict[str, Any]) -> None:
     patterns = {row.get("patternId"): row for row in document.get("patterns", []) if isinstance(row, dict)}
     bundles = {row.get("bundleId"): row for row in document.get("bundles", []) if isinstance(row, dict)}
     for flow in flows:
-        _exact_keys(flow, {"flowId", "gateId", "displayName", "entries"}, "Pattern Flow")
+        _exact_keys(flow, {"flowId", "gateId", "displayName", "entries"} | ({"loopStartEntryId"} if "loopStartEntryId" in flow else set()), "Pattern Flow")
         identity = _stable_id(flow["flowId"], "flowId")
         gate = _stable_id(flow["gateId"], "Flow gateId")
         _display_name(flow["displayName"], "Flow displayName")
@@ -2457,6 +2464,10 @@ def validate_pattern_flows(document: dict[str, Any]) -> None:
             target = (patterns if entry["kind"] == "PATTERN" else bundles).get(target_id)
             if target is None or target.get("gateId", "GATE1") != gate:
                 raise CompositionError("Pattern Flow target is missing or belongs to another Gate: " + target_id)
+        if "loopStartEntryId" in flow:
+            loop_start = flow["loopStartEntryId"]
+            if not isinstance(loop_start, str) or (loop_start and _stable_id(loop_start, "Flow loopStartEntryId") not in entry_ids):
+                raise CompositionError("Pattern Flow loop start must reference an entry in this flow")
 
 
 def _publication_candidate(source: dict[str, Any], pattern_ids: set[str],
@@ -4788,17 +4799,33 @@ def _resolve_collider_world_occurrence(pattern, collider):
     return candidates[0]
 
 
-def _validate_presentation_selection_groups(pattern: dict[str, Any], resources: dict[str, Any]) -> None:
+def _showtime_fixed_sound_groups(document: dict[str, Any], pattern: dict[str, Any]) -> set[str]:
+    definitions = {row["logicId"]: row for row in document.get("logics", [])}
+    return {owner["fixedSelectionGroupId"] for box in pattern.get("logicOccurrences", [])
+            if (owner := definitions.get(box["logicId"], {})).get("logicType") == "DURATION"
+            and owner.get("judgementKind") == "SHOWTIME_PLAYER_TARGETS" and owner.get("fixedSelectionGroupId")}
+
+
+def _validate_presentation_selection_groups(pattern: dict[str, Any], resources: dict[str, Any], fixed_sound_groups=None) -> None:
     selection_groups = {}
+    sound_groups = set()
+    map_effect_groups = set()
+    fixed_sound_groups = fixed_sound_groups or set()
     for box in pattern.get("presentationOccurrences", []):
         group_id = box.get("selectionGroupId", "")
         if group_id == "":
             continue
         _stable_id(group_id, "presentation selectionGroupId")
         kind = resources.get(box["resourceId"], {}).get("kind")
-        if kind not in {"COLLIDER", "EFFECT"}:
-            raise CompositionError("Selection Group requires Effect or Collider occurrences")
-        frame = (kind,)
+        fixed_sound = (kind == "SOUND" and group_id in fixed_sound_groups
+                       and box.get("anchorKind", "BOSS") == "MAP" and not box.get("followBoss", False))
+        if kind not in {"COLLIDER", "EFFECT"} and not fixed_sound:
+            raise CompositionError("Selection Group requires Effect/Collider, or fixed SHOWTIME MAP Sound")
+        if fixed_sound:
+            sound_groups.add(group_id)
+        if kind == "EFFECT" and box.get("anchorKind", "BOSS") == "MAP" and not box.get("followBoss", False):
+            map_effect_groups.add(group_id)
+        frame = ("EFFECT" if fixed_sound else kind,)
         if kind == "COLLIDER":
             normalized = {**PRESENTATION_OCCURRENCE_DEFAULTS, **box}
             if normalized["anchorKind"] != "BOSS":
@@ -4811,11 +4838,13 @@ def _validate_presentation_selection_groups(pattern: dict[str, Any], resources: 
         if group[0] != frame:
             raise CompositionError("Selection Group must use one kind; Colliders must share an anchor frame")
         group[1] += 1
-    if any(count < 2 for _, count in selection_groups.values()):
-        raise CompositionError("Selection Group requires at least two boxes of one kind in one Pattern")
+    if any(count < 2 and frame[0] != "EFFECT" for frame, count in selection_groups.values()):
+        raise CompositionError("Collider Selection Group requires at least two boxes in one Pattern")
+    if sound_groups - map_effect_groups:
+        raise CompositionError("Fixed SHOWTIME Sound group requires at least one MAP Effect")
 
 
-def _validate_presentation_occurrences(pattern: dict[str, Any], resources: dict[str, Any], duration: int, worlds: dict[str, Any]) -> None:
+def _validate_presentation_occurrences(pattern: dict[str, Any], resources: dict[str, Any], duration: int, worlds: dict[str, Any], fixed_sound_groups=None) -> None:
     boxes = _array(pattern.get("presentationOccurrences", []), "presentationOccurrences", 1024)
     next_id = _integer(pattern.get("nextPresentationOccurrenceOrdinal", 1), "nextPresentationOccurrenceOrdinal", 1, 1000000)
     ids = set()
@@ -4930,7 +4959,7 @@ def _validate_presentation_occurrences(pattern: dict[str, Any], resources: dict[
         if normalized["boneRotation"] == "BONE" and (resources[box["resourceId"]]["kind"] != "EFFECT" or
                 normalized["anchorKind"] != "BOSS" or not normalized["bone"]):
             raise CompositionError("BONE boneRotation requires a BOSS Effect and a named bone")
-    _validate_presentation_selection_groups(pattern, resources)
+    _validate_presentation_selection_groups(pattern, resources, fixed_sound_groups)
 
 
 def _pursuit_fields(logic: dict[str, Any], context: str) -> dict[str, Any]:
@@ -5070,12 +5099,12 @@ def _project_presentation_occurrence(document: dict[str, Any], pattern: dict[str
 
 
 def _showtime_visual_template(document: dict[str, Any], pattern: dict[str, Any], members: list[dict[str, Any]], role: str, *, random_mixed: bool = False,
-                             selection_start_ms: int | None = None) -> dict[str, Any]:
+                             selection_start_ms: int | None = None, fixed_sound: bool = False) -> dict[str, Any]:
     resources = {row["resourceId"]: row for row in document.get("presentationResources", [])}
     anchor_members = [row for row in members if row.get("anchorKind", "BOSS") == "MAP"
-                      and resources.get(row["resourceId"], {}).get("kind") == "EFFECT"] if random_mixed else members
+                      and resources.get(row["resourceId"], {}).get("kind") == "EFFECT"] if random_mixed or fixed_sound else members
     if not anchor_members:
-        raise CompositionError("SHOWTIME random volley requires at least one MAP marker")
+        raise CompositionError("SHOWTIME finite visual requires at least one MAP Effect marker")
     anchor = min(anchor_members, key=lambda row: (row["startMs"], row["occurrenceId"]))
     anchor_position = {**PRESENTATION_OCCURRENCE_DEFAULTS, **anchor}["positionOffset"]
     source_start = min(row["startMs"] for row in members) if selection_start_ms is None else selection_start_ms
@@ -5087,10 +5116,10 @@ def _showtime_visual_template(document: dict[str, Any], pattern: dict[str, Any],
     for member in members:
         resource = resources.get(member["resourceId"])
         if resource is None or (resource["kind"] != "EFFECT" and
-                                not (random_mixed and role == "fixed" and resource["kind"] == "SOUND")):
-            raise CompositionError("SHOWTIME templates require EFFECT occurrences; finite random volleys also admit MAP SOUND cues")
+                                not ((random_mixed or fixed_sound) and role == "fixed" and resource["kind"] == "SOUND")):
+            raise CompositionError("SHOWTIME templates require EFFECT occurrences; finite fixed groups and random volleys also admit MAP SOUND cues")
         if resource["kind"] == "SOUND" and (member.get("anchorKind", "BOSS") != "MAP" or member.get("followBoss", False)):
-            raise CompositionError("SHOWTIME random SOUND cues require a fixed MAP anchor")
+            raise CompositionError("SHOWTIME SOUND cues require a fixed MAP anchor")
         row = _project_presentation_occurrence(document, pattern, member, resource)
         allowed_anchor = ((row["anchorKind"] == "MAP" and not row["followBoss"]) or
                           (random_mixed and row["anchorKind"] == "BOSS" and row["followBoss"]))
@@ -5180,9 +5209,9 @@ def _project_showtime_targets(document: dict[str, Any], pattern: dict[str, Any])
                 continue
             members = ([member for member in presentation if member.get("selectionGroupId") == identity]
                        if role == "fixed" else ([by_id[identity]] if identity in by_id else []))
-            if not members or (role == "fixed" and len(members) < 2):
+            if not members:
                 raise CompositionError(f"SHOWTIME {role} reference is missing or unresolved in this Pattern: {identity}")
-            template = _showtime_visual_template(document, pattern, members, role)
+            template = _showtime_visual_template(document, pattern, members, role, fixed_sound=role == "fixed")
             templates[template["clientVisualId"]] = template
             row[role + "VisualId"] = template["clientVisualId"]
             if role == "fixed":

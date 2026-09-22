@@ -771,7 +771,7 @@ std::string CNetworkManager::Resolve_ServerHost()
 {
 	/* The temporary team LAN endpoint is the direct-launch fallback. The
 	   process-local environment still wins so isolated tests can name loopback. */
-	constexpr char DEFAULT_SERVER_HOST[] = "192.168.0.14";
+	constexpr char DEFAULT_SERVER_HOST[] = "192.168.0.22";
 	constexpr char SERVER_HOST_ENVIRONMENT[] = "LOSTARK_SERVER_HOST";
 	char configuredHost[64]{};
 	const DWORD configuredLength = ::GetEnvironmentVariableA(
@@ -1243,6 +1243,20 @@ bool CNetworkManager::Send_EnterWorld(
 	m_eLocalCharacterClass = characterClass;
 	m_SessionDiagnostic.Record_EnterSent(worldId);
 	return true;
+}
+
+bool CNetworkManager::Send_VehicleFlightInput(std::uint32_t sequence, float x, float z, float vertical)
+{
+    using namespace LostArk::Shared;
+    if (!Is_Connected()) return false;
+    C2S_MOVE message{};
+    message.iClientSequence = sequence;
+    message.eIntent = PLAYER_MOVE_INTENT::VEHICLE_FLIGHT;
+    message.fGoalX = x; message.fGoalZ = z; message.fVerticalInput = vertical;
+    CPacketWriter writer;
+    std::vector<std::uint8_t> frame;
+    return Write_Message(writer, message) && Build_Packet_Frame(PACKET_TYPE::C2S_MOVE,
+        writer.Get_Buffer(), frame) && Send_All(frame);
 }
 
 bool CNetworkManager::Send_MoveGoal(std::uint32_t clientSequence, float goalX, float goalZ)

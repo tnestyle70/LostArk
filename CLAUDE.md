@@ -361,11 +361,11 @@ Kouku의 `Book1_Monsters`/`Book2_Monsters`와 Valtan의 `Stage_1`/`Stage_2` 웨�
 
 ### 최소 수련장 Area
 
-`dev.training.ground`는 새 Engine Level이 아니라 기존 `LEVEL::DEVELOPMENT`를 사용하는 Debug Map Editor Test 진입이다. 제품 캐릭터 테스트는 `Lobby-approved WORLD_ID::CHARACTER_SELECT_ARENA -> LEVEL::CHARACTER_SELECT -> LV_LOBBY_CLASSSELECT_SL00`을 사용한다. Lobby가 port `7777`의 `S2C_ENTER_ACCEPTED` 전체 payload를 검증한 뒤에만 기존 socket을 one-shot handoff하며 offline Preview와 `Preview / Server Play` 분기는 없다. Character Select는 직접 connect/send하지 않고 queued snapshot을 `CClientReplication`으로 소비해 HUD, 우클릭 이동, class quick-slot 스킬을 Server snapshot으로 반영한다. class thumbnail 선택은 target asset을 admission한 뒤 typed class-change command를 즉시 제출한다. Server는 identity와 살아 있는 위치를 유지하고 새 profile로 전투 상태를 초기화하며, 사망 상태면 원래 spawn을 navigation projection한 위치에서 부활시킨다. Client는 snapshot class 변경을 보고 같은 entity presentation을 transactionally 교체하고 Controller sequence를 보존해 새 class skill을 계속 제출한다. Client host는 process-local `LOSTARK_SERVER_HOST`를 우선하며 값이 없거나 `0.0.0.0`이면 현재 팀 endpoint `192.168.0.14`를 사용한다. 연결 실패·거부·5초 승인 timeout은 Lobby에 남고, 진입 후 disconnect는 Lobby로 복귀하며 자동 local gameplay fallback은 없다. Debug ImGui의 `Monster / Mid Boss (Lugaru) / Valtan` 선택과 `Spawn Selected`는 stable ID만 Server에 보내며, Server가 Character Select의 SpawnGroups 또는 disabled Valtan placement를 검증·활성화한다. Client local spawn은 없고 Valtan presentation asset만 Engine batch prototype commit으로 지연 준비한다. `Show Combat Colliders`는 Server가 복제한 radius의 Debug wire만 토글하며 damage에는 관여하지 않는다. Bern/Valtan map 진입도 마지막 Server 승인 class로 Lobby Server 승인이 필수다.
+`dev.training.ground`는 새 Engine Level이 아니라 기존 `LEVEL::DEVELOPMENT`를 사용하는 Debug Map Editor Test 진입이다. 제품 캐릭터 테스트는 `Lobby-approved WORLD_ID::CHARACTER_SELECT_ARENA -> LEVEL::CHARACTER_SELECT -> LV_LOBBY_CLASSSELECT_SL00`을 사용한다. Lobby가 port `7777`의 `S2C_ENTER_ACCEPTED` 전체 payload를 검증한 뒤에만 기존 socket을 one-shot handoff하며 offline Preview와 `Preview / Server Play` 분기는 없다. Character Select는 직접 connect/send하지 않고 queued snapshot을 `CClientReplication`으로 소비해 HUD, 우클릭 이동, class quick-slot 스킬을 Server snapshot으로 반영한다. class thumbnail 선택은 target asset을 admission한 뒤 typed class-change command를 즉시 제출한다. Server는 identity와 살아 있는 위치를 유지하고 새 profile로 전투 상태를 초기화하며, 사망 상태면 원래 spawn을 navigation projection한 위치에서 부활시킨다. Client는 snapshot class 변경을 보고 같은 entity presentation을 transactionally 교체하고 Controller sequence를 보존해 새 class skill을 계속 제출한다. Client host는 process-local `LOSTARK_SERVER_HOST`를 우선하며 값이 없거나 `0.0.0.0`이면 현재 팀 endpoint `192.168.0.22`를 사용한다. 연결 실패·거부·5초 승인 timeout은 Lobby에 남고, 진입 후 disconnect는 Lobby로 복귀하며 자동 local gameplay fallback은 없다. Debug ImGui의 `Monster / Mid Boss (Lugaru) / Valtan` 선택과 `Spawn Selected`는 stable ID만 Server에 보내며, Server가 Character Select의 SpawnGroups 또는 disabled Valtan placement를 검증·활성화한다. Client local spawn은 없고 Valtan presentation asset만 Engine batch prototype commit으로 지연 준비한다. `Show Combat Colliders`는 Server가 복제한 radius의 Debug wire만 토글하며 damage에는 관여하지 않는다. Bern/Valtan map 진입도 마지막 Server 승인 class로 Lobby Server 승인이 필수다.
 
 Server는 `CHARACTER_SELECT_ARENA` 진입 session마다 독립된 `CGameRoom` simulation을 만든다. 따라서 class 변경, 몬스터 소환, collider 판정과 damage는 모두 Server에서 실행되지만 다른 Character Select session과 player/entity/HP/damage snapshot을 공유하지 않는다. session 퇴장 시 queued `LEAVE`를 room tick이 소비하고 private simulation을 폐기한다. `BERN`, `VALTAN_ARENA`, `TRAINING_GROUND`는 world별 shared simulation을 유지한다.
 
-2026-09-30 23:59 KST까지 공유 LAN Server는 `Framework.slnLaunch`의 `Server + Client` profile로 `0.0.0.0:7777`에 수신하고, 같은 팀 LAN의 Client는 `192.168.0.14:7777`에 접속한다. `Tools/Network/TeamLanEndpoint.json`이 endpoint와 만료일 정본이며 모든 에이전트는 pull 후 `Tools/Network/Sync-TeamLanEndpoint.ps1`을 실행해 Git 제외 debugger 설정을 동기화한다. 공유 x64 debugger 설정과 코드 기본값도 같은 endpoint를 사용하며, 실제 `Ctrl+F5` 시작은 사용자가 수행한다. Visual Studio가 이전 값을 캐시하면 project Reload 또는 IDE 재시작이 필요하다. `0.0.0.0`은 Server bind 주소이지 Client 접속 주소가 아니다. 세부 설정, 동일 revision/build/resource 준비와 `10049` 진단은 `.md/TEAM/TEAM_GAMEPLAY_INTERFACE_HANDBOOK.md`의 `서로 다른 장소에서 Server와 Client 연결`을 따른다.
+2026-09-30 23:59 KST까지 공유 LAN Server는 `Framework.slnLaunch`의 `Server + Client` profile로 `0.0.0.0:7777`에 수신하고, 같은 팀 LAN의 Client는 `192.168.0.22:7777`에 접속한다. `Tools/Network/TeamLanEndpoint.json`이 endpoint와 만료일 정본이며 모든 에이전트는 pull 후 `Tools/Network/Sync-TeamLanEndpoint.ps1`을 실행해 Git 제외 debugger 설정을 동기화한다. 공유 x64 debugger 설정과 코드 기본값도 같은 endpoint를 사용하며, 실제 `Ctrl+F5` 시작은 사용자가 수행한다. Visual Studio가 이전 값을 캐시하면 project Reload 또는 IDE 재시작이 필요하다. `0.0.0.0`은 Server bind 주소이지 Client 접속 주소가 아니다. 세부 설정, 동일 revision/build/resource 준비와 `10049` 진단은 `.md/TEAM/TEAM_GAMEPLAY_INTERFACE_HANDBOOK.md`의 `서로 다른 장소에서 Server와 Client 연결`을 따른다.
 
 Lobby fallback은 Client의 first-terminal reason과 semantic recovery를 실행 파일 옆 process별 JSONL에
 보존하고 Lobby에 표시한다. direct LAN의 한 connection은 Client `localEndpoint`와 Server
@@ -414,7 +414,7 @@ Area Loader는 여섯 class binary를 전부 선로드하지 않는다. `CPlayab
 
 ### 디버그 툴 (ImGui / MapTool)
 
-`_DEBUG`에서 `CMainApp`이 전역 Developer Tools 허브를 소유하고 F1로 토글한다. F6는 gameplay camera의 follow/free mode를 전환한다. Free camera는 WASD 이동, Tab mouse-look 전환을 사용하며 그동안 `CPlayerController`는 물리 key/mouse edge만 동기화하고 gameplay command는 제출하지 않는다. follow 복귀 뒤 새 press부터 제출한다. F2~F5와 F7~F12를 레벨/도구 전환에 사용하지 않는다. ImGui가 입력을 가져갈 때는 `CGameInstance::SetInputBlocked()`로 DirectInput 폴링을 막되 Character Select Server gameplay는 text input이 아닐 때만 명시적 keyboard passthrough를 사용한다. Client 실행 인자와 `CMainApp` 내부 runtime harness를 검증 경로로 다시 만들지 않는다.
+`_DEBUG`에서 `CMainApp`이 전역 Developer Tools 허브를 소유하고 F1로 토글한다. F6는 gameplay camera의 follow/free mode를 전환한다. Free camera는 WASD 이동, Tab mouse-look 전환을 사용하며 그동안 `CPlayerController`는 물리 key/mouse edge만 동기화하고 gameplay command는 제출하지 않는다. follow 복귀 뒤 새 press부터 제출한다. F7은 Debug/Release 공통 Profiler 창만 열고 닫는다. F2~F5와 F8~F12를 레벨/도구 전환에 사용하지 않는다. ImGui가 입력을 가져갈 때는 `CGameInstance::SetInputBlocked()`로 DirectInput 폴링을 막되 Character Select Server gameplay는 text input이 아닐 때만 명시적 keyboard passthrough를 사용한다. Client 실행 인자와 `CMainApp` 내부 runtime harness를 검증 경로로 다시 만들지 않는다.
 발탄·쿠크 자유 카메라의 기본 속도는 20m/s다. F1 `Arena Camera / Player`에서 현재 아레나 속도를
 0.1~400m/s로 조절하며 값은 아레나별 process-session에서 유지한다. Shift는 현재 속도의 30배다.
 F6 자유 카메라에서 `Move Player`를 누르면 mouse-look을 끄고 지면 한 번 선택을 대기한다.
@@ -435,10 +435,14 @@ Client 메인 루프는 대기 중 Windows 메시지를 처리한 뒤 실제 fra
 Server fixed tick은 Client FPS와 독립이며, Profiler CPU frame time과 실제 프레임 간격은 구분한다.
 F1 허브의 Diagnostics는 profiler 활성화와 무관하게 smoothed FPS와 최근 frame time을 항상 표시하며,
 Profiler 체크박스는 별도의 CPU/GPU 상세 overlay와 capture를 활성화한다.
-F1 → `Open Composition Profiler`는 같은 Engine profiler의 CPU 구간, GPU pass, 작업량과 긴 작업을
+Debug의 F1 → `Open Composition Profiler`와 Debug/Release 공통 F7은 같은 Engine profiler의 CPU 구간, GPU pass, 작업량과 긴 작업을
 보여준다. `Capture`로 수집하고 `Save JSON`으로 `Client/Bin/ProfilerCaptures`에 v3 캡처를 비동기
 저장한다. `Save name`은 한글을 포함한 선택 이름이며 같은 이름으로 다시 저장해도 timestamp/frame/process/sequence가 다른 새 파일을 만든다.
-각 JSON은 저장 시점의 최근 최대 1200프레임이고 세션 전체를 무제한 누적하는 파일은 아니다.
+F7 첫 열기는 수집을 시작하며 창을 닫아도 수집은 계속된다. Capture/Reset과 상세 CPU 모드는 다음 프레임 경계에서 반영한다.
+기본은 pass 시간과 작업량을 수집하고 `Detailed per-draw CPU scopes`를 켜면 map draw별 상세 scope도 기록한다.
+각 JSON은 기본으로 Frames 선택 구간(120프레임)만 복사·저장하고 선택을 해제하면 최근 최대 1200프레임을 저장한다.
+세션 전체를 무제한 누적하지 않는다. v3 additive metadata는 저장 시점의 build/adapter/viewport/camera/render 설정이며
+모든 과거 프레임의 설정으로 간주하지 않는다. summary는 frame interval P50/P95/P99와 표본 유효율·누락 수를 제공한다.
 `Saved JSON` 탭에서 `Refresh files`로 목록을 갱신하고 선택한 파일을 `Delete selected JSON`으로 삭제한다.
 외부에서 교체·수정된 선택은 다시 선택해야 하며 기존 파일 덮어쓰기는 거부한다.
 CPU Self는 자식 구간을 제외하며 GPU pass는 겹치는 inclusive timestamp 구간이다.
@@ -700,7 +704,7 @@ Debug Lobby의 `Test`는 기존 Server 승인을 받은 뒤 새 제품 Level을 
 
 Debug `Lobby → KoukuSaydon → F1 → Map Tool`에서는 현재 arena가 소유한 맵을 같은 편집기로 수정·저장할 수 있다. Test처럼 다른 Area로 전환하지 않으며 재생 중 target 변경은 Stop/Restore 후 수행한다. 원본 배치와 런타임 표시 상태를 분리해 저장하고, Server gameplay는 변경하지 않는다. 연결·저장 경계는 `.md/TEAM/AREA_DATA_LAYER_GUIDE.md`를 따른다.
 
-F1 Tools → `Action Workbench`는 `Composition Actions`의 Boss / Character / Object / Sequence를
+F1 Tools → `Action Workbench`는 `Composition Actions`의 Boss / Character / Object / Sequence / World를
 같은 Resources / Sequencer / Box Detail / Preview 창에서 편집한다. Boss와
 Sequence는 관문 선택을 따로 기억하고, 대상 전환은 preview를 정리하면서 각 문서의 초안과 선택을
 보존한다. 기존 Object/Sequence의 내부 열기 요청은 이 창의 해당 대상으로 연결한다.
@@ -709,6 +713,14 @@ Action에서 Effect resource를 편집하는 명령도 해당 독립 Effect owne
 Windows 메뉴에서 창을 다시 열거나 배치를 초기화한다. Character는 실제 여섯 class의 inputSlot과
 skillbindings를 조회한다. Animation 저장, Combat 저장과 Effect asset/clip cue 저장은 각각의
 실제 정본 owner를 사용한다. 세부 저장·검증 경계는 `.md/TEAM/ANIMATION_TOOL_OWNER_HANDOFF.md`를 따른다.
+
+Character Select에 Server 승인으로 입장한 뒤 `World → Character Select → Guardian Knight`에서
+Play/Restart, Pause/Resume, Stop과 Intro/Loop 시간 탐색을 사용한다. Level의 동일
+`CClassSelectionPresentation`이 `Data/Camera/ClassSelection.cinematics.json`과 게시된 SL00
+WorldSequences를 소비한다. 약31.735초 도입부 이후23.003초 반복이며 camera는 SL10 원본 무대로
+이동한다. SL00의11개 미리보기 바닥과 Server player 배치는 변경하지 않는다. Stop은 자기 camera와
+배우·이펙트를 정리하고 기존 플레이 화면을 복원한다. 이 패널은 재생 제어이며 연출 데이터 저장은
+제공하지 않는다. 누락·손상된 연출은 상태 메시지로 격리하며 Character Select 입장은 유지한다.
 
 KoukuSaydon의 Object는 이 통합 창에서 기존 World Object 문서를 편집한다.
 Object Resources는 Map/Character 앵커별 저장 상태와 Physical Resources 폴더를 보여 준다. 모델과 DDS는

@@ -1,5 +1,6 @@
 #include "Part_Body.h"
 #include "BinaryAsset/ModelAssetData.h"
+#include "SourceEquipmentMaterialPrograms.h"
 
 #include "DeferredMaterialRenderUtils.h"
 #include "GameInstance.h"
@@ -23,7 +24,7 @@ namespace
 		// The generic ghost preview uses the same forward material pass as CBody_Valtan.
 		if (84u == program)
 			return SOURCE_TRANSLUCENT_ONE_SIDED_PASS;
-		return 6u == program || 7u == program || 18u == program || 99u == program ?
+		return 6u == program || 7u == program || 18u == program || 99u == program || SourceEquipmentMaterial::Is_Translucent(program) ?
 			SOURCE_TRANSLUCENT_TWO_SIDED_PASS : 0u;
 	}
 }
@@ -175,7 +176,7 @@ HRESULT CPart_Body::Render_Pass(uint32_t iPassIndex)
         if (iPassIndex == 0u && surface &&
             surface->family == Engine::MODEL_SURFACE_FAMILY::SOURCE_CHARACTER &&
             (surface->sourceCharacter.program == 19u ||
-             surface->sourceCharacter.program == 20u))
+             surface->sourceCharacter.program == 20u || SourceEquipmentMaterial::Is_TwoSidedMasked(surface->sourceCharacter.program)))
             materialPass = 6u;
 		if (FAILED(Bind_DeferredMaterialInputs(
 				*m_pModelCom, m_pShaderCom, i, {},

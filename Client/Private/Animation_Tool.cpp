@@ -1693,6 +1693,81 @@ bool_t Client::CAnimation_Tool::Commit_CharacterActionSoundEvents(
     return false;
 }
 
+bool_t Client::CAnimation_Tool::Save_CharacterActionCompositionCues(const std::string& asset,
+    const ANIMATION_SKILL_BINDING& previous, const ANIMATION_SKILL_BINDING& proposed,
+    const ANIMATION_EFFECT_CUE_DOCUMENT& cues, const std::string& expectedBytes,
+    std::string& committedBytes, std::string& status, const bool validateOnly)
+{
+    shared_ptr<Engine::CModel> model;
+    if (!Prepare_CharacterActionSoundOwner(asset, model, status)) return false;
+    std::ifstream input(Get_EventFilePath(), std::ios::binary);
+    const std::string current{std::istreambuf_iterator<char>(input), {}};
+    if (!input || input.bad() || current != expectedBytes)
+    { status = "Character cues changed externally; the composition and saved cues were preserved."; return false; }
+    if (!Load_Events(model)) { status = m_Status; return false; }
+    if (!m_bEventSourceBaselineKnown || m_EventSourceBaseline != expectedBytes)
+    { status = "Character cues changed while preparing Save; the composition and saved cues were preserved."; return false; }
+    CSoundCueCatalog::EVENT_VARIANTS sounds; std::string soundStatus;
+    CSoundCueCatalog::Load_ClassSnapshot(asset, sounds, soundStatus);
+    // animevents is source-global. Removed clips and trimmed-away source windows
+    // can still be used by other skills; only the proposed windows are replaced.
+    // The workbench keeps previous for binding rollback, not source cue deletion.
+    (void)previous;
+    const auto inWindow = [&](const ANIM_EVENT& row) {
+        if (row.iStartMs < 0) return false;
+        for (const auto& stage : proposed.Stages)
+            for (const auto& clip : stage.Clips)
+                if (clip.strClipName == row.clipName && CAnimationEffectCueDocument::Is_CueStartInClipWindow(clip, row.iStartMs))
+                    return true;
+        return false;
+    };
+    auto candidate = m_Events;
+    std::erase_if(candidate, [&](const ANIM_EVENT& row) {
+        if (!inWindow(row)) return false;
+        if (row.eKind == EVENT_KIND::EFFECT) return row.eEffectReferenceKind == EFFECT_REFERENCE_KIND::EFFECT_ASSET_ID &&
+            CEffectCatalog::Contains(row.sPayload);
+        const auto sound = sounds.find(row.sPayload);
+        return row.eKind == EVENT_KIND::SOUND && sound != sounds.end() && !sound->second.empty();
+    });
+    const auto append = [&](ANIM_EVENT row) {
+        // A source clip may appear more than once in the action. Identical
+        // projections still own one cue; conflicting projections cannot save.
+        for (const auto& existing : candidate)
+            if (existing.eKind == row.eKind && existing.clipName == row.clipName &&
+                existing.iStartMs == row.iStartMs && existing.sPayload == row.sPayload)
+            {
+                auto comparable = existing; comparable.bImported = false;
+                if (!Events_AreEqual({comparable}, {row}))
+                { status = "Repeated source clips have conflicting cues; give the occurrences separate authored clips."; return false; }
+                return true;
+            }
+        candidate.push_back(std::move(row)); return true;
+    };
+    for (const auto& cue : cues.Cues)
+    {
+        ANIM_EVENT row{}; row.clipName = cue.strClipName; row.eKind = EVENT_KIND::EFFECT;
+        row.iStartMs = static_cast<int32_t>(cue.iStartMs);
+        row.iEndMs = static_cast<int32_t>(cue.eStopPolicy == EFFECT_STOP_POLICY::NATURAL ? cue.iStartMs : cue.iEndMs);
+        row.sPayload = cue.strEffectAssetId; row.eEffectReferenceKind = EFFECT_REFERENCE_KIND::EFFECT_ASSET_ID;
+        row.sAnchorSlotId = cue.strAnchorSlotId; row.eFollowPolicy = cue.eFollowPolicy;
+        row.eOrientationPolicy = cue.eOrientationPolicy; row.eStopPolicy = cue.eStopPolicy;
+        row.EffectLocalTransform = cue.LocalTransform;
+        if (!append(std::move(row))) return false;
+    }
+    for (const auto& cue : cues.Sounds)
+    {
+        ANIM_EVENT row{}; row.clipName = cue.strClipName; row.eKind = EVENT_KIND::SOUND;
+        row.iStartMs = row.iEndMs = static_cast<int32_t>(cue.iStartMs); row.sPayload = cue.strEventName;
+        if (!append(std::move(row))) return false;
+    }
+    if (!Validate_Events(model, candidate, status)) return false;
+    if (validateOnly) return true;
+    if (!Commit_CharacterActionSoundEvents(model, std::move(candidate), status)) return false;
+    committedBytes = m_EventSourceBaseline;
+    status = "Saved Character Effect and Sound cues to the Product animation event owner.";
+    return true;
+}
+
 bool_t Client::CAnimation_Tool::Apply_CharacterActionSoundEdit(const std::string& assetId,
     const std::string& clipName, const uint32_t oldStartMs, const uint32_t newStartMs,
     const std::string& eventName, std::string& status)

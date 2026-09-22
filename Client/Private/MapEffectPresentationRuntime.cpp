@@ -850,6 +850,8 @@ void CMapEffectPresentationRuntime::Update_ServerPresentation(
 		spawn.fInitialSampleTimeSeconds = sampleSeconds;
 		spawn.bOwnerSustainedSourceLoops =
 			MAP_EFFECT_PLAYBACK_POLICY::SOURCE_LOOP == world.playbackPolicy;
+		spawn.bAllowOffscreenPause = spawn.bOwnerSustainedSourceLoops &&
+			MAP_EFFECT_ACTIVATION_POLICY::LEVEL_ACTIVE == world.activationPolicy;
 		spawn.bExternallySampled = !spawn.bOwnerSustainedSourceLoops &&
 			MAP_EFFECT_PLAYBACK_POLICY::SOURCE_ONCE != world.playbackPolicy;
 		EFFECT_WORLD_ROOT_HANDLE handle;

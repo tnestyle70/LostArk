@@ -348,11 +348,11 @@ bool LostArk::Server::CGameRoom::Start_KoukuRaidEntry(const std::uint32_t tick)
     if (!Build_KoukuRaidEntryRequest(*gate, run.State.iFlowEntryIndex, request)) return false;
     const auto published = m_pKoukuPublishedProductGeneration; m_pKoukuPublishedProductGeneration = run.pCatalog;
     S2C_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_RESULT result;
-    const bool continueGate1 = run.State.strGateId == "GATE1" && run.iAuditionEpoch != 0u &&
+    const bool continueLoop = (run.State.strGateId == "GATE1" || !gate->strLoopStartEntryId.empty()) && run.iAuditionEpoch != 0u &&
         m_KoukuSaydonPatternAudition.iRoomAuditionEpoch == run.iAuditionEpoch &&
         m_KoukuSaydonPatternAudition.Request.Scope.strGateId == run.State.strGateId;
     const auto verdict = Evaluate_KoukuSaydonPatternAudition(run.iOwnerSessionId, request, result,
-        (run.State.iFlowEntryIndex > 0u || run.State.strGateId == "BINGO" || continueGate1) && run.iAuditionEpoch != 0u);
+        (run.State.iFlowEntryIndex > 0u || run.State.strGateId == "BINGO" || continueLoop) && run.iAuditionEpoch != 0u);
     m_pKoukuPublishedProductGeneration = published;
     if (verdict != KOUKUSAYDON_PATTERN_AUDITION_RESULT::QUEUED) { m_strStatus = result.strReason; return false; }
     run.iAuditionRequestSequence = request.iRequestSequence; run.iAuditionEpoch = result.iRoomAuditionEpoch; run.bEntryRunning = true;
@@ -594,7 +594,18 @@ void LostArk::Server::CGameRoom::Update_KoukuRaid(const std::uint32_t tick)
             run.bEntryRunning = false;
             run.iNextEntryTick = Add_ServerTicksSkippingReservedZero(tick, CKoukuSaydonLogicRuntime::Ticks_FromMs(gate->Entries[run.State.iFlowEntryIndex].iWaitAfterMs));
             ++run.State.iFlowEntryIndex;
-            if ((run.State.strGateId == "BINGO" || run.State.strGateId == "GATE1") && run.State.iFlowEntryIndex == gate->Entries.size()) run.State.iFlowEntryIndex = 0u;
+            if (run.State.iFlowEntryIndex == gate->Entries.size())
+            {
+                if (!gate->strLoopStartEntryId.empty())
+                {
+                    const auto loopStart = std::find_if(gate->Entries.begin(), gate->Entries.end(),
+                        [&](const auto& entry) { return entry.strEntryId == gate->strLoopStartEntryId; });
+                    if (loopStart == gate->Entries.end()) { Stop_KoukuRaid("Published flow loop start is missing"); return; }
+                    run.State.iFlowEntryIndex = static_cast<std::uint32_t>(loopStart - gate->Entries.begin());
+                }
+                else if (run.State.strGateId == "BINGO" || run.State.strGateId == "GATE1")
+                    run.State.iFlowEntryIndex = 0u;
+            }
         }
         if (!run.bEntryRunning && !mazeActive && run.State.iFlowEntryIndex < gate->Entries.size() && Has_ReachedServerTick(tick, run.iNextEntryTick))
             if (!Start_KoukuRaidEntry(tick)) Stop_KoukuRaid("Next flow entry rejected: " + m_strStatus);

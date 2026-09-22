@@ -573,6 +573,26 @@
           "visualSetId": "character.warlord.pc_wgl_05.outfit"
         }
       ]
+    },
+    "GuardianKnight": {
+      "costume": [
+        {
+          "objectUnit": 0,
+          "visualSetId": "character.guardian_knight.class_select_hr00.outfit"
+        },
+        {
+          "objectUnit": 1,
+          "visualSetId": "character.guardian_knight.original_00.outfit"
+        },
+        {
+          "objectUnit": 2,
+          "visualSetId": "character.guardian_knight.class_select_hr00.weapon"
+        },
+        {
+          "objectUnit": 3,
+          "visualSetId": "character.guardian_knight.original_00.weapon"
+        }
+      ]
     }
   }
 }

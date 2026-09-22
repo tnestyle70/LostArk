@@ -148,6 +148,9 @@ private:
     float4_t m_BatchBounds = {};
     MAP_FRUSTUM_RUNTIME_STATE m_BatchFrustumState{};
     float4_t m_VisibleLodBounds = {};
+    // Maximum |view X|, |view Y|, minimum view Z, valid flag; same camera
+    // revision and transactional lifetime as the uploaded visible payload.
+    float4_t m_VisibleTightLodBounds = {};
     f32_t m_fVisibleLodScale = 0.f;
 	bool_t m_bShadowInstancesDirty = true;
 	bool_t m_bShadowInstancesUsedLight = false;

@@ -313,8 +313,9 @@ def required_parameters(header: Path, family: str):
     """The parameter names Configure() reads for one family, from the header itself."""
     text = header.read_text(encoding="utf-8", errors="replace")
     start = text.index('family == "%s"' % family)
-    end = text.find('if (family == "', start + 10)
-    return sorted(set(re.findall(r'parameter\("([^"]+)"\)', text[start:end if end > 0 else len(text)])))
+    following = re.search(r'\n    (?:else )?if \((?:staged\.program == 0u && )?family == "', text[start + 10:])
+    end = start + 10 + following.start() if following else len(text)
+    return sorted(set(re.findall(r'parameter\("([^"]+)"\)', text[start:end])))
 
 
 def main() -> int:

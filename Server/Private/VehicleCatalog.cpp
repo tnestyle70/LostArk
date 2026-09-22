@@ -143,7 +143,7 @@ bool LostArk::Server::CVehicleCatalog::Load()
 	std::uint32_t version = 0u;
 	std::uint32_t rowCount = 0u;
 	if (3u != header.size() || "LOSTARK_VEHICLE_BOOTSTRAP" != header[0] ||
-		!ParseNumber(header[1], version) || 2u != version ||
+		!ParseNumber(header[1], version) || (2u != version && 3u != version) ||
 		!ParseNumber(header[2], rowCount) || 0u == rowCount || rowCount > 4096u)
 	{
 		m_strStatus = "Vehicle bootstrap header is invalid";
@@ -161,7 +161,7 @@ bool LostArk::Server::CVehicleCatalog::Load()
 		const std::vector<std::string_view> fields = SplitTabs(line);
 		SERVER_VEHICLE_DEFINITION vehicle{};
 		std::uint32_t skillCount = 0u;
-		if (4u != fields.size() || "VEHICLE" != fields[0] ||
+		if ((version == 3u ? 10u : 4u) != fields.size() || "VEHICLE" != fields[0] ||
 			!ParseNumber(fields[1], vehicle.iVehicleId) ||
 			LostArk::Shared::INVALID_VEHICLE_ID == vehicle.iVehicleId ||
 			!ParseNumber(fields[2], vehicle.fMoveSpeed) ||
@@ -172,6 +172,21 @@ bool LostArk::Server::CVehicleCatalog::Load()
 		{
 			m_strStatus = "Vehicle bootstrap row is invalid";
 			return false;
+		}
+		if (version == 3u)
+		{
+			float* flight[] = { &vehicle.fFlightTakeoffSeconds, &vehicle.fFlightLandingSeconds,
+				&vehicle.fFlightHoverHeight, &vehicle.fFlightMaximumHeight,
+				&vehicle.fFlightSpeed, &vehicle.fFlightVerticalSpeed };
+			for (std::size_t index = 0u; index < std::size(flight); ++index)
+				if (!ParseNumber(fields[index + 4u], *flight[index]) || !std::isfinite(*flight[index]) ||
+					*flight[index] < 0.f || *flight[index] > 60.f) return false;
+			if (vehicle.Has_Flight() && (vehicle.iVehicleId != LostArk::Shared::ANCIENT_SEA_VEHICLE_ID ||
+				vehicle.fFlightLandingSeconds <= 0.f || vehicle.fFlightHoverHeight < .1f ||
+				vehicle.fFlightMaximumHeight < vehicle.fFlightHoverHeight ||
+				vehicle.fFlightSpeed <= 0.f || vehicle.fFlightVerticalSpeed <= 0.f ||
+				vehicle.fFlightMaximumHeight / vehicle.fFlightVerticalSpeed > 600.f)) return false;
+			if (!vehicle.Has_Flight()) for (const auto field : flight) if (*field != 0.f) return false;
 		}
 		std::uint8_t usedSlots = 0u;
 		std::vector<LostArk::Shared::SKILL_ID> skillIds;

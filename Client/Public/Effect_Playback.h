@@ -368,6 +368,12 @@ public:
 	static bool_t Validate_ReconstructedSourceModuleExecution(
 		const EFFECT_SOURCE_MODULE_DESC& Module,
 		std::string& strOutError);
+	/* Conservative world sphere at RootWorld translation for a stationary,
+	   self-contained source loop and a rigid unit-scale camera. The caller must
+	   preserve both conditions; unsupported/unsafe data returns false. */
+	static bool_t Try_GetStaticSourceLoopBounds(
+		const EFFECT_DOCUMENT_DESC& Document, const float4x4_t& RootWorld,
+		f32_t& outWorldRadius);
 	static bool_t Validate_SourceParticleProviders(
 		const EFFECT_DOCUMENT_DESC& Document, std::string& strOutError);
 	static bool_t Prepare_DocumentResources(

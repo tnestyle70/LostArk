@@ -9099,6 +9099,30 @@
         "Sound/KoukuSaton/S_MOB_G_KOUKUSATAN1/g_satan1_attack03_projexp1__486264477.wav",
         "Sound/KoukuSaton/S_MOB_G_KOUKUSATAN1/g_satan1_attack03_projexp1__854155217.wav",
         "Sound/KoukuSaton/S_MOB_G_KOUKUSATAN1/g_satan1_attack03_projexp1__207177750.wav"
+      ],
+      "s_mob_g_kouku1.g_kouku1_attack04_proj1": [
+        "Sound/KoukuSaton/S_MOB_G_KOUKU1/g_kouku1_attack04_proj1__3705202.wav",
+        "Sound/KoukuSaton/S_MOB_G_KOUKU1/g_kouku1_attack04_proj1__130180320.wav",
+        "Sound/KoukuSaton/S_MOB_G_KOUKU1/g_kouku1_attack04_proj1__234997855.wav",
+        "Sound/KoukuSaton/S_MOB_G_KOUKU1/g_kouku1_attack04_proj1__948393374.wav"
+      ],
+      "s_mob_g_kouku1.g_kouku1_attack04_projexp1": [
+        "Sound/KoukuSaton/S_MOB_G_KOUKU1/g_kouku1_attack04_projexp1__89092800.wav",
+        "Sound/KoukuSaton/S_MOB_G_KOUKU1/g_kouku1_attack04_projexp1__370970230.wav",
+        "Sound/KoukuSaton/S_MOB_G_KOUKU1/g_kouku1_attack04_projexp1__385510120.wav",
+        "Sound/KoukuSaton/S_MOB_G_KOUKU1/g_kouku1_attack04_projexp1__725606344.wav"
+      ],
+      "s_mob_g_kouku1.g_kouku1_attack07_proj1": [
+        "Sound/KoukuSaton/S_MOB_G_KOUKU1/g_kouku1_attack07_proj1__201491086.wav",
+        "Sound/KoukuSaton/S_MOB_G_KOUKU1/g_kouku1_attack07_proj1__441929901.wav",
+        "Sound/KoukuSaton/S_MOB_G_KOUKU1/g_kouku1_attack07_proj1__541087627.wav",
+        "Sound/KoukuSaton/S_MOB_G_KOUKU1/g_kouku1_attack07_proj1__860196159.wav"
+      ],
+      "s_mob_g_kouku1.g_kouku1_attack07_projexp1": [
+        "Sound/KoukuSaton/S_MOB_G_KOUKU1/g_kouku1_attack07_projexp1__84606297.wav",
+        "Sound/KoukuSaton/S_MOB_G_KOUKU1/g_kouku1_attack07_projexp1__252111761.wav",
+        "Sound/KoukuSaton/S_MOB_G_KOUKU1/g_kouku1_attack07_projexp1__687064545.wav",
+        "Sound/KoukuSaton/S_MOB_G_KOUKU1/g_kouku1_attack07_projexp1__814036278.wav"
       ]
     },
     "GuardianKnight": {

@@ -2634,10 +2634,12 @@ namespace
 		CKoukuSaydonActionWorkbench effectEditor;
 		RequireEditorStep(effectEditor.Reload(status), status, "load Effect group fixture");
 		const auto effectBefore = effectEditor.Get_Composition();
-		Require(!effectEditor.Set_EffectSelectionGroup(patternId, {effectIds.front()}, true, status) &&
-			effectEditor.Get_Composition() == effectBefore, "Effect singleton changed the draft");
+		Require(!effectEditor.Set_EffectSelectionGroup(patternId, {}, true, status) &&
+			effectEditor.Get_Composition() == effectBefore, "Empty Effect selection changed the draft");
 		Require(!effectEditor.Set_ColliderSelectionGroup(patternId, effectIds, true, status) &&
 			effectEditor.Get_Composition() == effectBefore, "Collider command accepted Effect selection");
+		RequireEditorStep(effectEditor.Set_EffectSelectionGroup(patternId, {effectIds.front()}, true, status), status, "group one compound Effect");
+		RequireEditorRoundtrip(effectEditor);
 		RequireEditorStep(effectEditor.Set_EffectSelectionGroup(patternId, effectIds, true, status), status, "group left and right gun Effects");
 		const auto effectGrouped = EditorPattern(effectEditor, patternId);
 		const auto effectGroup = effectGrouped.PresentationOccurrences.front().strSelectionGroupId;

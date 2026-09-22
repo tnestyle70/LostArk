@@ -1377,8 +1377,8 @@ namespace
 		const std::int64_t requestedDeltaMs, PRESENTATION_TIMELINE_MOVE& outMove, std::string& outStatus)
 	{
 		const auto reject = [&](const char* reason) { outStatus = reason; return false; };
-		if (!pattern.strLoadError.empty() || selectedIds.size() < 2u)
-			return reject("Select multiple Effects or a complete saved Collider group before moving its timeline.");
+		if (!pattern.strLoadError.empty() || selectedIds.empty())
+			return reject("Select Effects or a complete saved Collider group before moving its timeline.");
 		const std::unordered_set<std::string> selected(selectedIds.begin(), selectedIds.end());
 		if (selected.size() != selectedIds.size()) return reject("Selection contains duplicate IDs; previous timing preserved.");
 		PRESENTATION_TIMELINE_MOVE staged;
@@ -1397,7 +1397,7 @@ namespace
 			kind = resource->eKind;
 			if (*kind == KOUKU_SAYDON_PRESENTATION_KIND::COLLIDER)
 			{
-				if (box->strSelectionGroupId.empty()) return reject("Save a Collider selection group before dragging.");
+				if (selectedIds.size() < 2u || box->strSelectionGroupId.empty()) return reject("Save a Collider selection group before dragging.");
 				if (colliderGroup.empty()) colliderGroup = box->strSelectionGroupId;
 				if (colliderGroup != box->strSelectionGroupId) return reject("Drag one saved Collider group at a time.");
 			}
@@ -2887,7 +2887,11 @@ bool_t Client::CKoukuSaydonActionWorkbench::Delete_Pattern(
 		if (std::erase_if(bundle.Members, [&](const auto& member) { return member.strPatternId == targetId; }))
 			bundle.strAuthoringStatus = "DRAFT";
 	for (auto& flow : candidate.PatternFlows)
+	{
 		std::erase_if(flow.Entries, [&](const auto& entry) { return entry.strKind == "PATTERN" && entry.strTargetId == targetId; });
+		if (!flow.strLoopStartEntryId.empty() && std::none_of(flow.Entries.begin(), flow.Entries.end(),
+			[&](const auto& entry) { return entry.strEntryId == flow.strLoopStartEntryId; })) flow.strLoopStartEntryId.clear();
+	}
 	Rebuild_PlayAllPatternIds(candidate);
 	if (!Commit_Candidate(std::move(candidate),
 		"Deleted Pattern and its listed timeline, bundle and flow links from the draft. Save stores the change; review affected drafts before Publish All Patterns.", outStatus))
@@ -3485,6 +3489,7 @@ bool_t Client::CKoukuSaydonActionWorkbench::Set_StageRetargetOnEnter(
 		return false;
 	}
 	stage->bRetargetOnEnter = retargetOnEnter;
+    if (!retargetOnEnter) stage->RetargetTarget.reset();
 	Mark_Draft(candidate, *pattern);
 	return Commit_Candidate(std::move(candidate), "Changed Stage entry retarget. Press Save.", outStatus);
 }
@@ -6794,7 +6799,8 @@ bool_t Client::CKoukuSaydonActionWorkbench::Set_PresentationSelectionGroup(
 			return reject("Select only boxes of the same Effect or Collider kind.");
 		hasGroup |= !box->strSelectionGroupId.empty();
 	}
-	if (grouped && selected.size() < 2u) return reject("Select at least two boxes to create a group.");
+	if (grouped && (selected.empty() || (kind == KOUKU_SAYDON_PRESENTATION_KIND::COLLIDER && selected.size() < 2u)))
+		return reject("Select at least one Effect or two Collider boxes to create a group.");
 	if (!grouped && !hasGroup) return reject("The selected boxes are not grouped.");
 	auto candidate = m_Draft;
 	auto* pattern = Find_Pattern(candidate, patternId);
@@ -7101,7 +7107,22 @@ bool_t Client::CKoukuSaydonActionWorkbench::Render_EffectGroupDetails(
 	const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern)
 {
 	if (m_strTimelineSelectionPatternId != pattern.strPatternId ||
-		!m_TimelineSelectedStageIds.empty() || m_TimelineSelectedOccurrenceIds.size() < 2u) return false;
+		!m_TimelineSelectedStageIds.empty() || m_TimelineSelectedOccurrenceIds.empty()) return false;
+	if (m_TimelineSelectedOccurrenceIds.size() == 1u)
+	{
+		const auto* box = Find_PresentationBox(pattern, m_TimelineSelectedOccurrenceIds.front());
+		const auto* resource = box ? Find_PresentationResource(m_Draft, box->strResourceId) : nullptr;
+		if (!resource || resource->eKind != KOUKU_SAYDON_PRESENTATION_KIND::EFFECT) return false;
+		const bool grouped = !box->strSelectionGroupId.empty();
+		if (ImGui::Button(grouped ? "Ungroup Effect" : "Set Effect Group"))
+		{
+			std::string status;
+			(void)Set_EffectSelectionGroup(pattern.strPatternId, m_TimelineSelectedOccurrenceIds, !grouped, status);
+			return true;
+		}
+		if (grouped) ImGui::TextDisabled("%s", box->strSelectionGroupId.c_str());
+		return false; // A singleton keeps its ordinary timing and placement controls.
+	}
 	bool anyGroup = false, sameGroup = true;
 	std::string firstGroup;
 	for (const auto& id : m_TimelineSelectedOccurrenceIds)
@@ -7610,7 +7631,8 @@ bool_t Client::CKoukuSaydonActionWorkbench::Clone_TimelineSelectionInto(
 		{
 			const auto a = (std::max)(base, first), b = (std::min)(end, last);
 			copy.iDurationMs = static_cast<std::uint32_t>(b - a);
-			if (!whole && copy.AnimationOccurrences.empty()) copy.bRetargetOnEnter = false;
+			if (!whole && copy.AnimationOccurrences.empty())
+            { copy.bRetargetOnEnter = false; copy.RetargetTarget.reset(); }
 			for (auto& box : copy.AnimationOccurrences) box.iStartOffsetMs -= static_cast<std::uint32_t>(a - base);
 			cloneStage(std::move(copy), true);
 			if (!paste) { insertIndex = index + 1u; insertMs = end; }
@@ -15323,7 +15345,9 @@ void Client::CKoukuSaydonActionWorkbench::Render_Details()
 		(void)Set_StageRetargetOnEnter(patternId, stageId, retargetOnEnter, status);
 		return;
 	}
-	ImGui::TextDisabled("Choose a living player at Stage entry, then keep that facing.");
+	ImGui::TextDisabled(stage->RetargetTarget == "NEAREST_ALIVE" ?
+        "Choose the nearest living player at Stage entry, then keep that facing." :
+        "Choose a living player at Stage entry, then keep that facing.");
 	int32_t durationMs = static_cast<int32_t>(stage->iDurationMs);
 	if (ImGui::InputInt("Duration ms", &durationMs, 10, 100))
 	{

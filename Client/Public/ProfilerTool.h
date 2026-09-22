@@ -10,12 +10,14 @@
 
 NS_BEGIN(Client)
 
-/* F1 Profiler window. It only reads Engine::CProfiler aggregates and never
+/* F1/F7 Profiler window, available in Debug and Release. It only reads Engine::CProfiler aggregates and never
    owns timing data: the Engine profiler stays the single owner of scopes,
    counters and GPU queries. */
 class CProfilerTool final
 {
 public:
+    explicit CProfilerTool(ID3D11Device* pDevice = nullptr);
+    void Begin_Capture(Engine::CProfiler& Profiler);
 	void Open() { m_bOpen = true; }
 	[[nodiscard]] bool_t Is_Open() const noexcept { return m_bOpen; }
 	void Render(Engine::CProfiler* pProfiler);
@@ -39,6 +41,8 @@ private:
 
 private:
 	bool_t m_bOpen = true;
+    FProfilerCaptureContext m_CaptureContext;
+    bool_t m_bSaveWindowOnly = true;
 	bool_t m_bShowUnobserved = true;
 	bool_t m_bCatalogRegistered = false;
 	int32_t m_iWindowFrameInput = 120;

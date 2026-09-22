@@ -56,3 +56,82 @@ headless 검사는 실제 native 함수, 설치 mesh, production frame 배치 �
 - 후보 두 문서를 실제 C++ `Load`/`Validate_Drawable`/`CEffectPlayback::Stage_Document`로 검사하여 2개 모두 PASS. `candidate-admission.log`.
 - 실제 설치 CModel과 최신 production rig/projection/ModelCue sample/anchor 본문을 추출한 headless 하네스가 화면비 3종×root yaw 2종×root scale 3종, 총 18조건에서 2,282 checks PASS. world-center 기준의 발밑 UV Y=.608919가 screen-center 기준 .500299로 교정됐다. 실제 model origin은 (.5,.5)다. 양수 Y 위치가 위로 이동하고, scale이 끝점 크기를 바꾸며, UV offset이 cube에도 한 번만 전달되는 것을 검사했다. bone attachment는 설치된 실제 본으로 792 samples를 대조하여 draw world와 최대 오차 0이었다. 추가 Model Cue Local Position, 무관한 cue의 원래 transform 보존, explicit motion hold, 잘못된 camera 거절도 검사했다. `rig_probe.log`.
 - Client/UI는 에이전트가 실행하지 않았다. 이번 사용자 화면 회귀는 수치·소비 경로까지 수정한 상태이며, 복구 후 실제 게임 화면 판정은 아직 미수신이다. 기존 G2의 GPU crop 검사를 이번 실제 화면 확인으로 대체하여 기록하지 않는다.
+
+## G05. 큐브25개 전체에 퍼진 화면 캡처의 중앙 큐브 한정
+
+### G05.1 원인
+
+09-22 사용자가 화면 축소 뒤 주변 큐브 여러 개에도 동일 캡처가 매핑되는 현상을 보고했다.
+설치 모델을 다시 읽은 결과600정점/900인덱스/52본이 한 submesh를 이루고, 그 안에는25개의
+rigid cube가 있다. 각 cube24정점이 각각 한 본에 weight1로 연결된다. 중앙 `b_cube_1_02`는
+현재 bone3이며 정점 중심은 원점, 각 축 bounds는±.0371621m다. 주변은 bone5,7…51이다.
+
+기존 `altv.source.notify036.cube` 선택은 이 모델 전체를 선택했다. renderer가 native178의
+texture lane2에 frozen 장면을 바인딩하고 전체 submesh를 그리므로25개 cube 모두 같은
+캡처를 받았다. 앞선 UV crop·2D handoff 검사는 이 skin island별 표면 선택을 검사하지 않았다.
+
+### G05.2 수정
+
+`Effect_DocumentRenderer_Rendering.cpp`는 정확한 모델과 cue에서 실제 CModel의
+`b_cube_1_02` index를 찾아 `g_ALTVCaptureBoneIndex`로 바인딩한다. 본이 없거나 해당 모델이
+아니면 그 draw를 거절한다. 다른 native ModelCue에는 sentinel index를 매번 공급한다.
+
+`Shader_VtxAnimMeshBinary.hlsl`의 skinned VS가 실제 vertex blend indices/weights에서
+중앙 본의 가중치를 계산하고 pixel shader로 전달한다. native178의 새 두 인자 호출은
+capture RGB항 `source[2]`에만 이 가중치를 곱한다. frozen Color와 Bloom 평가가 같은 값을
+소비하고, 주변24개 cube의 animation·geometry·aura·edge·alpha는 기존 계산을 유지한다.
+한 인자 native178 호출은 weight1로 이어져 static capture mesh의 기존 동작을 보존한다.
+
+수정은 Client 정본 C++1개/HLSL2개다. source 원본 재질의 새 해석이 아니라 요청에 따른
+표면 선택 adapter다. authored JSON, 설치 WModel, capture crop/축소 시간/TRS는 변경하지
+않았다. 다른 세션의 Renderer shadow 및 source-character forward shader 변경은 보존했다.
+
+### G05.3 검증 상태
+
+실제 설치 모델25개 skin island, 중앙24정점과 주변576정점의 bone/weight를 확인했다.
+중앙 정점의 active weight가 네 blend lane 중 세 번째에 있는 경우도 포함하여 모든 lane을
+가중 합산한다. `out/AltVCentralCube20260922/topology.json`에 설치 모델 hash와 본별 정점
+분포를 기록했다.
+
+현재 native178 함수·Color/Bloom sampling helper·VS weight 계산을 추출하여 D3D11 WARP에서
+실행했다. 실제25개 skin group × 화면비3종 × Color/Bloom2종에서 중앙6 draw는 기존 캡처
+출력과 일치하고, 주변144 draw는 캡처항만 빠지며 native aura·edge·alpha를 유지했다.
+static 한 인자 wrapper의 기존 출력과 잘못된 본 index의 캡처 차단도 포함하여 총171 draw,
+584,444 checks PASS, 최대 오차1.01328e-6이다. 이 검사는 설치 정점과 실제 shader 연산을
+사용한 통제된 headless 검증이며 게임 전체 화면 판정은 아니다. 로그는
+`out/AltVCentralCube20260922/gpu.log`, 하네스는 같은 폴더의 `gpu.cpp`와
+`native178_actual.hlsl`이다.
+
+수정 Renderer TU의 격리 Debug `/Zs` 검사와 C++/HLSL `git diff --check`가 통과했다.
+실제 animated shader와 static ALTV128 shader의 전체 `fxc /Od /T fx_5_0` 컴파일도 각각
+exit0으로 통과했다. X4000 경고가 남는다. 로그는 같은 폴더의 `compile.log`,
+`animated-shader.log`, `static-shader.log`이고 종합 근거는 `verification.receipt.json`이다.
+격리 최적화 compile은 정상 Product 컴파일과 중복되어 중단한 뒤 `/Od` 검증으로 교체했다.
+정상 최적화 Product Debug 빌드 결과는 통합 빌드 결과에 별도로 기록한다. Client/UI 실행·
+화면 캡처는 하지 않았으며 최종 게임 화면 판정은 사용자 확인 단계다.
+
+정상 Product의 `/O1`로 새로 생성된 animated base와 SourceGroup10개를 모두 확인했다.
+첫 컴파일 중 source가 바뀌어 이전 입력으로 만들어진 CSO를 mtime만으로 최신이라
+판정하지 않았다. 마지막 SourceGroup176도18:54:16 새 산출물이 생성됐다.
+18:46:39에 링크된 실제 `Engine/Bin/Debug/Engine.dll`과 이11개 CSO를 out sandbox에
+고정하여 FX11 변수 reflection11/11 valid 및 Set/Get S_OK, 실제
+`CShader::Create → Stage_ProgramVariants`, native178 Bind/Begin, sentinel/중앙 mask별
+20개 variant copy/Begin을 통과했다. source3개·Engine shader source·DLL·11개 CSO의
+검증 전후 hash도 일치했다. 이것은 windows0/draws0의 실제 엔진 로더 검증이다.
+`out/AltVCentralCube20260922/independent-review/admission/admission.receipt.json`과
+`admission.log`, `reflection-fresh.log`에 근거를 남겼다.
+
+19:04:54 최종 정상 Product Debug 빌드에서 Engine/Shared/Server/Client 모두 PASS다.
+설치된 `Client/Bin/Debug/Engine.dll`과 animated CSO11개가 위 실제 로더 검증 입력과
+모두 byte hash가 일치하며 Client.exe도 새로 링크됐다. 근거는
+`out/BuildPipeline/runs/20260922T100454659Z-debug-product.json`과
+`out/Gate2FlowAudio20260922/product-deployed-admission-hash.json`이다. 소스·개별 컴파일·
+GPU 연산·실제 엔진 로더·제품 빌드 및 배포 확인까지 완료했다. 실제 게임 화면은 사용자가
+확인하며, authored JSON과 WModel은 이번 중앙 큐브 수정에서 변경하지 않았다.
+
+19:41 상태 재확인에서 세 수정 소스와 설치 Engine.dll/Client.exe는 위 검증본과 같았고,
+animated CSO11개는19:26~19:29 후속 재생성으로 hash가 바뀌어 있었다. 현재 설치 파일을
+다시 고정하여 FX11 reflection11개와 실제 CShader admission·20개 variant copy/Begin을
+재실행해 모두 통과했다. source·DLL·CSO의 검사 중 동시 변경은 없었다. 19:04 검증의
+receipt/log3개는 `admission/verified-1904/`에 보존했고, 최신 설치본 근거는 기존
+`admission/admission.receipt.json`·`admission.log`·`reflection-fresh.log`다.

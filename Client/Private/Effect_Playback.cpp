@@ -1041,6 +1041,11 @@ namespace
 		const Client::EFFECT_ELEMENT_DESC& Target,
 		std::string& strOutError)
 	{
+		const bool_t bNativeRecipe =
+			Target.SourceRecipe.strRendererShape == "animationTrail" &&
+			Target.Material.SourceMaterial.bEnabled &&
+			Target.Material.SourceMaterial.strRuntimeShaderProfileId.starts_with(
+				"effect.ue3.kouku-");
 		if (!Supplemental.AnimationTrailPacket.has_value() ||
 			Supplemental.CascadeRibbonPacket.has_value() ||
 			Target.eKind != Client::EFFECT_ELEMENT_KIND::TRAIL ||
@@ -1079,7 +1084,9 @@ namespace
 				Supplemental.fSourceTimelineSeconds) ||
 			!Nearly_EqualTrailValue(Packet.fDurationSeconds,
 				Supplemental.fDurationSeconds) ||
-			(bBakedEdgePacket && !Nearly_EqualTrailValue(
+			(bNativeRecipe && (!bBakedEdgePacket ||
+				Packet.fPlaybackClampSeconds > Packet.fDurationSeconds + 1.e-5)) ||
+			(bBakedEdgePacket && !bNativeRecipe && !Nearly_EqualTrailValue(
 				Packet.fPlaybackClampSeconds, Packet.fDurationSeconds)) ||
 			!Matches_TrailTiming(Packet.TargetTiming, Target.Detail.Timing) ||
 			!Matches_TrailAttachment(Packet.Attachment,
@@ -2957,6 +2964,275 @@ bool_t Client::CEffectPlayback::Build_OwnerYawBoneAnchorWorld(
 	if (!IsValidAffine(Candidate))
 		return false;
 	OutWorld = Candidate;
+	return true;
+}
+
+bool_t Client::CEffectPlayback::Try_GetStaticSourceLoopBounds(
+	const EFFECT_DOCUMENT_DESC& Document, const float4x4_t& RootWorld,
+	f32_t& outWorldRadius)
+{
+	// This is an admission test, not a sampled bound. Unsupported features leave
+	// the caller on ordinary playback. The caller must keep this root stationary
+	// and must not supply external particle/anchor/control state after admission.
+	// Validated portable sprites use the registered unexpanded quad carrier;
+	// native renderer adapters and alternate geometry carriers are not admitted.
+	outWorldRadius = 0.f;
+	if (Document.Elements.empty() || !Document.ModelCues.empty() ||
+		Document.SourceModelPreview || !Document.OwnerControls.empty() ||
+		!Document.RuntimeExtensions.Is_Empty() ||
+		Document.ParticleSystem.fUniformScaleMultiplier != 1.f ||
+		Document.ParticleSystem.fYawOffsetDegrees != 0.f ||
+		Document.ParticleSystem.fDirectionYawDegrees != 0.f ||
+		Document.ParticleSystem.fInitialSpeedMultiplier != 1.f)
+		return false;
+	for (const auto& Row : RootWorld.m)
+		for (const f32_t Value : Row)
+			if (!std::isfinite(Value) || std::abs(Value) > 1.e6f) return false;
+	if (RootWorld._14 != 0.f || RootWorld._24 != 0.f ||
+		RootWorld._34 != 0.f || RootWorld._44 != 1.f) return false;
+	// sqrt(||A A^T||_infinity) bounds the spectral norm, including shear.
+	const auto MatrixNorm = [](const float4x4_t& Matrix)
+	{
+		f64_t Maximum = 0.0;
+		for (size_t i = 0u; i < 3u; ++i)
+		{
+			f64_t Sum = 0.0;
+			for (size_t j = 0u; j < 3u; ++j)
+			{
+				f64_t Dot = 0.0;
+				for (size_t k = 0u; k < 3u; ++k)
+					Dot += f64_t(Matrix.m[i][k]) * Matrix.m[j][k];
+				Sum += std::abs(Dot);
+			}
+			Maximum = (std::max)(Maximum, Sum);
+		}
+		return std::sqrt(Maximum);
+	};
+	float4x4_t Inverse;
+	XMStoreFloat4x4(&Inverse, XMMatrixInverse(nullptr, XMLoadFloat4x4(&RootWorld)));
+	for (const auto& Row : Inverse.m)
+		for (const f32_t Value : Row)
+			if (!std::isfinite(Value)) return false;
+	const f64_t RootNorm = MatrixNorm(RootWorld);
+	const f64_t InverseNorm = MatrixNorm(Inverse) * 1.001;
+	if (RootNorm < 1.e-4 || RootNorm > 1.e4 || InverseNorm > 1.e4 ||
+		RootNorm * InverseNorm > 1.e4) return false;
+	struct RANGE
+	{
+		std::array<f64_t, 3u> Low{}, High{};
+		f64_t Abs(size_t Axis) const { return (std::max)(std::abs(Low[Axis]), std::abs(High[Axis])); }
+		f64_t Norm() const { return std::sqrt(Abs(0u)*Abs(0u) + Abs(1u)*Abs(1u) + Abs(2u)*Abs(2u)); }
+	};
+	const auto DistributionRange = [](const EFFECT_DISTRIBUTION_DESC& Desc, RANGE& Range)
+	{
+		std::string Error;
+		if (!Desc.Keys.empty() || Desc.iOperation < 1u || Desc.iOperation > 3u ||
+			Desc.eParameterBinding != EFFECT_DISTRIBUTION_PARAMETER_BINDING::NONE ||
+			!Desc.strParameterName.empty() ||
+			(!Desc.strSourceClass.empty() && Desc.strSourceClass != "distributionvectoruniformrange" &&
+			 Desc.strSourceClass != "distributionvectorparticleparameter" &&
+			 Desc.strSourceClass != "distributionfloatparticleparameter") ||
+			!CEffectDistribution::Validate(Desc, Error)) return false;
+		Range = {};
+		const size_t Components = (std::min)(size_t(3u), size_t(Desc.iComponentCount));
+		for (size_t Axis = 0u; Axis < Components; ++Axis)
+		{
+			Range.Low[Axis] = (std::numeric_limits<f64_t>::max)();
+			Range.High[Axis] = -(std::numeric_limits<f64_t>::max)();
+		}
+		const auto Include = [&Range, Components](const f32_t* Values)
+		{
+			for (size_t Axis = 0u; Axis < Components; ++Axis)
+			{
+				Range.Low[Axis] = (std::min)(Range.Low[Axis], f64_t(Values[Axis]));
+				Range.High[Axis] = (std::max)(Range.High[Axis], f64_t(Values[Axis]));
+			}
+		};
+		if (Desc.LookupTable.empty())
+		{
+			Include(&Desc.vDefaultMinimum.x);
+			if (Desc.iOperation >= 2u) Include(&Desc.vDefaultMaximum.x);
+		}
+		else
+		{
+			const size_t Chunk = Desc.iLookupTableChunkSize != 0u ?
+				Desc.iLookupTableChunkSize : Desc.iComponentCount * (Desc.iOperation >= 2u ? 2u : 1u);
+			if (Chunk < Desc.iComponentCount * (Desc.iOperation >= 2u ? 2u : 1u) ||
+				Desc.LookupTable.size() < 2u + Chunk) return false;
+			for (size_t Start = 2u; Start + Chunk <= Desc.LookupTable.size(); Start += Chunk)
+			{
+				Include(Desc.LookupTable.data() + Start);
+				if (Desc.iOperation >= 2u) Include(Desc.LookupTable.data() + Start + Desc.iComponentCount);
+			}
+		}
+		for (size_t Axis = 0u; Axis < 3u; ++Axis)
+			if (!std::isfinite(Range.Abs(Axis)) || Range.Abs(Axis) > 1.e6) return false;
+		return true;
+	};
+	const auto IsZero = [](const float3_t& Value) { return Value.x == 0.f && Value.y == 0.f && Value.z == 0.f; };
+	f64_t Radius = 0.0;
+	for (const auto& Element : Document.Elements)
+	{
+		const auto& Recipe = Element.SourceRecipe;
+		const auto& Detail = Element.Detail;
+		const auto& Transform = Detail.Transform;
+		const auto& Lerp = Detail.LinearLerp;
+		if (Element.eKind != EFFECT_ELEMENT_KIND::PARTICLE || !Recipe.bEnabled ||
+			Recipe.strRendererShape != "sprite" || Recipe.iEmitterLoopCount != 0u ||
+			Element.Renderer.eType != EFFECT_RENDERER_TYPE::END ||
+			Element.Renderer.eSourceSpace != EFFECT_SOURCE_SPACE::END ||
+			Recipe.Modules.size() > 128u || !Recipe.LocalReferenceBindings.empty() ||
+			Is_MeshParticle(Element) || !Element.RuntimeCarrier.Is_Empty() ||
+			Element.SourcePresentation.bEnabled || Element.ActionCueAttachment.bEnabled ||
+			Element.TransformInheritance.bEnabled || Element.SourceTransformTrack ||
+			!Element.AuthoringOverrides.Is_Empty() || Element.Material.Execution.bEnabled ||
+			Element.eCompositionLayer != EFFECT_COMPOSITION_LAYER::NORMAL ||
+			!IsZero(Transform.vPosition) || !IsZero(Transform.vRotationDegrees) ||
+			!IsZero(Transform.vRevolutionDegreesPerSecond) || !IsZero(Transform.vVelocityPerSecond) ||
+			Transform.vScale.x != 1.f || Transform.vScale.y != 1.f || Transform.vScale.z != 1.f ||
+			Lerp.bPosition || Lerp.bRotation || Lerp.bRevolution || Lerp.bScale || Lerp.bVelocity ||
+			Detail.Sprite.bFollowEmitterAxisRotation || !Detail.Particle.SourceScale.Is_Default() ||
+			Detail.Particle.TargetAttractor.bEnabled || Detail.Particle.fFixedCenterSpacingWorldUnits != 0.f)
+			return false;
+		f64_t Position = 0.0, Velocity = 0.0, Acceleration = 0.0;
+		f64_t MinimumLife = 0.0, MaximumLife = 0.0, VelocityScale = 1.0, CameraOffset = 0.0;
+		std::array<f64_t, 3u> BaseSize{};
+		bool_t HasStartSize = false;
+		for (const auto& Module : Recipe.Modules)
+		{
+			// Exact class whitelist: newly supported simulation modules must add
+			// their envelope here before they may benefit from offscreen suspension.
+			const auto& Name = Module.strClassName;
+			static constexpr std::string_view Allowed[] = {
+				"particlemodulerequired", "particlemodulespawn", "particlemodulelifetime",
+				"particlemodulelocation", "particlemodulelocationprimitivecylinder",
+				"particlemodulevelocity", "particlemodulevelocitycone", "particlemoduleacceleration",
+				"particlemodulevelocityoverlifetime", "particlemodulesize", "particlemodulesizemultiplylife",
+				"particlemodulesizemultiplyvelocity", "particlemodulecameraoffset", "particlemodulerotation",
+				"particlemodulerotationrate", "particlemoduleorientationaxislock", "particlemodulecolor",
+				"particlemodulecoloroverlife", "particlemodulecolorscaleoverlife", "particlemodulesubuv",
+				"particlemoduleparameterdynamic" };
+			if (std::find(std::begin(Allowed), std::end(Allowed), Name) == std::end(Allowed)) return false;
+			for (const auto& Distribution : Module.Distributions)
+			{
+				RANGE Unused;
+				if (!DistributionRange(Distribution, Unused)) return false;
+			}
+			for (const auto& Literal : Module.Literals)
+				if (Literal.eKind == EFFECT_SOURCE_LITERAL_KIND::NUMBER &&
+					(!std::isfinite(Literal.fNumber) || std::abs(Literal.fNumber) > 1.e6)) return false;
+			if (!SourceModule_Enabled(Module)) continue;
+			const auto Range = [&](const std::string_view Path, const f64_t Fallback = 0.0)
+			{
+				RANGE Result; Result.Low.fill(Fallback); Result.High.fill(Fallback);
+				if (const auto* Desc = Find_SourceDistribution(&Module, Path)) DistributionRange(*Desc, Result);
+				return Result;
+			};
+			if (Name == "particlemodulelifetime")
+			{
+				const auto Life = Range("lifetime");
+				MinimumLife += (std::max)(0.0, Life.Low[0]); MaximumLife += (std::max)(0.0, Life.High[0]);
+			}
+			else if (Name == "particlemodulelocation") Position += 0.01 * Range("startlocation").Norm();
+			else if (Name == "particlemodulelocationprimitivecylinder")
+			{
+				const f64_t R = Range("startradius").Abs(0u), H = 0.5 * Range("startheight").Abs(0u);
+				const f64_t Offset = 0.01 * std::sqrt(R*R + H*H);
+				Position += 0.01 * Range("startlocation").Norm() + Offset;
+				if (SourceBool(Module, "velocity", false)) Velocity += Offset * Range("velocityscale").Abs(0u);
+			}
+			else if (Name == "particlemodulevelocity" || Name == "particlemodulevelocitycone")
+			{
+				const f64_t Space = Detail.Particle.bLocalSpace && SourceBool(Module, "binworldspace", false) ? InverseNorm : 1.0;
+				Velocity += 0.01 * Space * (Name == "particlemodulevelocity" ? Range("startvelocity").Norm() : Range("velocity").Abs(0u));
+				if (Name == "particlemodulevelocity") Velocity += 0.01 * Range("startvelocityradial").Abs(0u);
+			}
+			else if (Name == "particlemoduleacceleration")
+				Acceleration += 0.01 * Range("acceleration").Norm() * (SourceBool(Module, "balwaysinworldspace", false) ? InverseNorm : 1.0);
+			else if (Name == "particlemodulevelocityoverlifetime")
+			{
+				const auto Value = Range("veloverlife", 1.0);
+				if (SourceBool(Module, "absolute", false) || SourceBool(Module, "babsolute", false)) Velocity += 0.01 * Value.Norm();
+				else VelocityScale *= (std::max)({ 1.0, Value.Abs(0u), Value.Abs(1u), Value.Abs(2u) });
+			}
+			else if (Name == "particlemodulesize")
+			{
+				const auto* Desc = Find_SourceDistribution(&Module, "startsize");
+				if (Desc && !Is_SourceNullCdoDistribution(*Desc, 3u))
+				{
+					HasStartSize = true; const auto Value = Range("startsize");
+					for (size_t Axis = 0u; Axis < 3u; ++Axis) BaseSize[Axis] += 0.01 * Value.Abs(Axis);
+				}
+			}
+			else if (Name == "particlemodulecameraoffset")
+			{
+				const auto Method = SourceString(Module, "updatemethod");
+				if (Method.ends_with("additive") || Method.ends_with("scalar")) return false;
+				CameraOffset = (std::max)(CameraOffset, 0.01 * Range("cameraoffset").Abs(0u));
+			}
+		}
+		// Zero source lifetime is immortal. At most 60 seconds bounds the number
+		// of float age/position additions; one percent plus two birth steps covers
+		// their roundoff and the birth step that integrates before age advances.
+		if (!HasStartSize || MinimumLife <= 0.0 || MaximumLife > 60.0) return false;
+		const f64_t Horizon = (std::max)(0.001, MaximumLife) * 1.01 + 2.0 * FIXED_STEP_SECONDS;
+		const f64_t MaximumSpeed = (Velocity + Horizon * Acceleration) * VelocityScale;
+		// Spawn mutates the live size in source order; update starts from the
+		// sum of StartSize modules. Evaluate both paths instead of applying a
+		// later cap to size that a later spawn module has not added yet.
+		std::array<f64_t, 3u> MaximumSize{};
+		for (const bool_t Spawn : { true, false })
+		{
+			std::array<f64_t, 3u> Size = Spawn ? std::array<f64_t, 3u>{} : BaseSize;
+			for (const auto& Module : Recipe.Modules)
+			{
+				if (!SourceModule_Enabled(Module)) continue;
+				const bool_t Start = Module.strClassName == "particlemodulesize";
+				const bool_t ByVelocity = Module.strClassName == "particlemodulesizemultiplyvelocity";
+				if (Start && !Spawn) continue;
+				if (!Start && !ByVelocity && Module.strClassName != "particlemodulesizemultiplylife") continue;
+				if (!Start && !SourceBool(Module, Spawn ? "bspawnmodule" : "bupdatemodule", true)) continue;
+				RANGE Value;
+				Value.Low.fill(Start || ByVelocity ? 0.0 : 1.0); Value.High = Value.Low;
+				const auto* Desc = Find_SourceDistribution(&Module, Start ? "startsize" :
+					(ByVelocity ? "velocitymultiplier" : "lifemultiplier"));
+				if (Start && (!Desc || Is_SourceNullCdoDistribution(*Desc, 3u))) continue;
+				if (Desc) DistributionRange(*Desc, Value);
+				static constexpr std::string_view Masks[] = { "multiplyx", "multiplyy", "multiplyz" };
+				static constexpr std::string_view MinCaps[] = { "capminsize.x", "capminsize.y", "capminsize.z" };
+				static constexpr std::string_view MaxCaps[] = { "capmaxsize.x", "capmaxsize.y", "capmaxsize.z" };
+				for (size_t Axis = 0u; Axis < 3u; ++Axis)
+				{
+					if (Start) { Size[Axis] += 0.01 * Value.Abs(Axis); continue; }
+					if (!SourceBool(Module, Masks[Axis], true)) continue;
+					Size[Axis] *= Value.Abs(Axis) * (ByVelocity ? MaximumSpeed * 100.0 : 1.0);
+					if (ByVelocity)
+					{
+						const f64_t Minimum = 0.01 * SourceNumber(Module, MinCaps[Axis], 0.f);
+						const f64_t Maximum = 0.01 * SourceNumber(Module, MaxCaps[Axis], 0.f);
+						if (Minimum > 0.0) Size[Axis] = (std::max)(Size[Axis], Minimum);
+						// A positive lower cap removes negative values, so the upper
+						// cap can now reduce the absolute envelope safely.
+						if (Maximum > 0.0 && Minimum > 0.0) Size[Axis] = (std::min)(Size[Axis], Maximum);
+					}
+				}
+			}
+			for (size_t Axis = 0u; Axis < 3u; ++Axis)
+				MaximumSize[Axis] = (std::max)(MaximumSize[Axis], Size[Axis]);
+		}
+		EFFECT_PARTICLE_SPRITE_ALIGNMENT Alignment; float2_t Pivot; bool_t ImageFlipping;
+		Resolve_SourceSpritePresentation(Element, Alignment, Pivot, ImageFlipping);
+		if (!std::isfinite(Pivot.x) || !std::isfinite(Pivot.y)) return false;
+		// Renderer square/fixed-axis fallback can copy X into Y. Each billboard
+		// basis is unit length; the triangle inequality also covers pivot shifts.
+		const f64_t Extent = (std::max)({ MaximumSize[0], MaximumSize[1], MaximumSize[2] }) *
+			(1.0 + std::abs(0.5 - Pivot.x) + std::abs(0.5 - Pivot.y));
+		Radius = (std::max)(Radius, RootNorm * (Position + Horizon * MaximumSpeed + Extent) + CameraOffset);
+	}
+	// Reserve arithmetic/camera-basis error and world translation cancellation.
+	Radius = Radius * 1.02 + 1.e-4 * (1.0 + std::abs(RootWorld._41) + std::abs(RootWorld._42) + std::abs(RootWorld._43));
+	if (!std::isfinite(Radius) || Radius <= 0.0 || Radius > 1.e6) return false;
+	outWorldRadius = std::nextafter(static_cast<f32_t>(Radius), (std::numeric_limits<f32_t>::infinity)());
 	return true;
 }
 
@@ -6159,10 +6435,9 @@ void Client::CEffectPlayback::Update_Particles(
 	// Zero-Lifetime particles have no natural death, but their original
 	// occurrence still ends at its authored notify boundary. Owner-sustained
 	// ambience instead ends through the existing runtime owner contract.
-	const f32_t fSourceZeroEnd = m_bOwnerSustainedSourceLoops ?
-		(m_fSourceLoopEndSeconds > 0.f ? m_fSourceLoopEndSeconds :
-		 (std::numeric_limits<f32_t>::max)()) :
-		Element.Detail.Timing.fStartDelaySeconds + Element.Detail.Timing.fLifeTimeSeconds;
+	const f32_t fSourceZeroEnd = m_fSourceLoopEndSeconds > 0.f ? m_fSourceLoopEndSeconds :
+		(m_bOwnerSustainedSourceLoops ? (std::numeric_limits<f32_t>::max)() :
+		 Element.Detail.Timing.fStartDelaySeconds + Element.Detail.Timing.fLifeTimeSeconds);
 	if (m_fSampleTimeSeconds >= fSourceZeroEnd)
 		std::erase_if(State.Particles, [](const PARTICLE_STATE& Particle) {
 			return Particle.bSourceZeroLifetime;
@@ -8151,7 +8426,6 @@ void Client::CEffectPlayback::Rebuild_Frame(const float4x4_t& RootWorld,
 				(fPresentationTime < fPresentationLifeTimeSeconds ||
 					m_bOwnerSustainedSourceLoops ||
 				(m_fSourceLoopEndSeconds > 0.f && Element.SourceRecipe.bEnabled &&
-				 Element.SourceRecipe.iEmitterLoopCount == 0u &&
 				 m_fSampleTimeSeconds < m_fSourceLoopEndSeconds));
 		const bool_t bGpuVisualOccurrence = Is_GpuVisualOccurrence(Element);
 		const size_t iGpuOccurrence = m_Frame.GpuOccurrences.size();
@@ -9056,21 +9330,15 @@ bool_t Client::CEffectPlayback::Set_SourceLoopEndSeconds(
 						!element.SourceRecipe.bEnabled ||
 						!std::isfinite(element.SourceRecipe.fEmitterDurationSeconds) ||
 						element.SourceRecipe.fEmitterDurationSeconds <= 0.f;
-				}) ||
-			std::none_of(document.Elements.begin(), document.Elements.end(),
-				[this](const EFFECT_ELEMENT_DESC& element)
-				{
-					return Is_PlaybackElementAdmitted(element) &&
-						Is_ParticleSimulationElement(element,
-							Is_SourceVisualProgramElementAdmitted(element)) &&
-						element.SourceRecipe.bEnabled &&
-						element.SourceRecipe.iEmitterLoopCount == 0u;
-				}))
+			}))
 		{
-			strOutError = "Bounded source loops require admitted source sprite/mesh or native Cascade Ribbon emitters and EmitterLoops=0.";
+			strOutError = "Bounded source playback requires admitted source sprite/mesh or native Cascade Ribbon emitters.";
 			return false;
 		}
 	}
+	// A finite emitter can own Lifetime=0 particles (for example a frozen burst).
+	// Its original loop count still ends births; this explicit presentation window
+	// keeps those particles alive until the external owner stops or ends the scene.
 	// Reset/rewind preserves this instance policy. Staging another document clears it.
 	m_fSourceLoopEndSeconds = fEndSeconds;
 	m_bFrameInputsDirty = true;

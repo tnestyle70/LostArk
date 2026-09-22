@@ -13,9 +13,10 @@
     "LANCE_MASTER": 1,
     "GUNSLINGER": 1,
     "SLAYER": 1,
-    "ARTIST": 0.717000008,
-    "DIMENSIONMASTER": 0.987999976,
-    "WARLORD": 1
+    "ARTIST": 0.7,
+    "DIMENSIONMASTER": 1.0,
+    "WARLORD": 1,
+    "GUARDIANKNIGHT": 1
   },
   "clownSizeMultiplier": 0.699999988,
   "marioSizeMultiplier": 1,

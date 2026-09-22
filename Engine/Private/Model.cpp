@@ -46,6 +46,16 @@ namespace Engine
 
 namespace
 {
+    bool NativeHairUsesExtraUV(const Engine::MODEL_SOURCE_CHARACTER_PARAMETERS& source)
+    {
+        // Program 7 uses UV1 only for two-tone colour interpolation. Some retail
+        // hair meshes contain UV0 alone and disable this exact native branch.
+        return source.program == 7u &&
+            (source.baseConstants[16].x != 0.f || source.lightConstants[13].x != 0.f ||
+             source.baseConstants[18].y == 0.f || source.baseConstants[18].w == 0.f ||
+             source.lightConstants[15].y == 0.f || source.lightConstants[15].w == 0.f);
+    }
+
 	bool Is_FiniteMatrix(const float4x4_t& Matrix)
 	{
 		const f32_t* const Values = &Matrix._11;
@@ -1402,6 +1412,13 @@ uint32_t CModel::Override_SourceCharacterConstants(
         if (nullptr == pMaterial || !pMaterial->Has_SourceCharacterProgram() ||
             !MaterialNameContains(pMaterial->Get_Name(), fragment))
             continue;
+        if (NativeHairUsesExtraUV(parameters) && m_pMaterialSource)
+        {
+            const size_t materialIndex = static_cast<size_t>(&pMaterial - m_Materials.data());
+            if (any_of(m_pMaterialSource->meshes.begin(), m_pMaterialSource->meshes.end(),
+                [&](const auto& mesh) { return mesh.materialIndex == materialIndex && !mesh.hasTexcoord1; }))
+                continue;
+        }
         if (pMaterial.use_count() > 1) pMaterial = pMaterial->Clone_ForOverrides();
         if (pMaterial->Set_SourceCharacterConstants(parameters))
             ++matched;
@@ -1832,11 +1849,12 @@ HRESULT CModel::Apply_MaterialOverrides(MODEL_MATERIAL_SOURCE& materialSource, c
         {
             const auto& source = replacement.surface.sourceCharacter;
             const uint32_t mask = source.baseTextureMask | source.lightTextureMask;
-            if (source.program == 0u || source.program > 111u || (source.program > 65u && source.program < 80u) ||
+            if (source.program == 0u || source.program > 237u || (source.program > 112u && source.program < 160u) ||
+                (source.program > 200u && source.program < 208u) || (source.program > 65u && source.program < 80u) ||
                 (mask == 0u && source.program != 64u && source.program != 65u) ||
                 ((source.program == 64u || source.program == 65u) && mask != 0u) || source.requiredExtraUVMask > 3u ||
                 (mask >> SOURCE_CHARACTER_TEXTURE_COUNT) != 0u ||
-                (replacement.surface.hasBakedLighting && !((source.program >= 80u && source.program <= 83u) ||
+                (replacement.surface.hasBakedLighting && !(source.program == 209u || source.program == 210u || (source.program >= 214u && source.program <= 234u) || source.program == 237u || (source.program >= 80u && source.program <= 83u) ||
                     (source.program >= 40u && source.program <= 63u && source.program != 47u && source.program != 53u && source.program != 55u))) ||
                 replacement.surface.hasEnvironmentCube)
                 return failOverride("invalid source character program or texture mask");
@@ -1880,7 +1898,7 @@ HRESULT CModel::Apply_MaterialOverrides(MODEL_MATERIAL_SOURCE& materialSource, c
                         (((source.requiredExtraUVMask & 1u) != 0u && !mesh.hasTexcoord1) ||
                          ((source.requiredExtraUVMask & 2u) != 0u && !mesh.hasTexcoord2));
                 })) return failOverride("source material requires preserved extra UV channels");
-                if ((source.program == 5u || source.program == 7u ||
+                if ((source.program == 5u || NativeHairUsesExtraUV(source) ||
                     source.program == 18u || source.program == 19u) &&
                     any_of(materialSource.meshes.begin(), materialSource.meshes.end(), [&](const auto& mesh) {
                         return mesh.materialIndex == materialIndex &&

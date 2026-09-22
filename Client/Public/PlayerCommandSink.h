@@ -74,6 +74,7 @@ public:
 	virtual bool Consume_DebugKoukuHudModeResult(
 		LostArk::Shared::S2C_DEBUG_SET_KOUKU_HUD_MODE_RESULT& result) = 0;
 
+	virtual bool Request_VehicleFlightInput(std::uint32_t, float, float, float) { return false; }
 	virtual bool Request_MoveGoal(
 		std::uint32_t clientSequence,
 		float goalX,

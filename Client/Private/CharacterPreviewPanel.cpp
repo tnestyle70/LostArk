@@ -234,6 +234,13 @@ bool_t Client::CCharacterPreviewPanel::Select_TargetAsset(
 		if (nullptr != previewBoss && nullptr != previewBoss->Get_Transform())
 			previewBoss->Get_Transform()->Set_State(STATE::POSITION,
 				XMVectorSetW(XMLoadFloat3(&placement), 1.f));
+		else if (const auto previewCharacter = dynamic_pointer_cast<CCharacter>(m_pPreviewObject.lock());
+			previewCharacter && previewCharacter->Get_Transform())
+		{
+			previewCharacter->Get_Transform()->Set_State(STATE::POSITION,
+				XMVectorSetW(XMLoadFloat3(&placement), 1.f));
+			CAnimationTargetService::Bind_Preview(previewCharacter);
+		}
 		else
 		{
 			const shared_ptr<CPart_Body> body = dynamic_pointer_cast<CPart_Body>(m_pPreviewObject.lock());

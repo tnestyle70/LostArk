@@ -804,7 +804,11 @@ REGION "blocked" "closed" 0 1
 		room->m_CombatObjectRuntime.Reset(); showtime.MechanicTriggers.front() = targets;
 		if (trackingOnly) { showtime.MechanicTriggers.front().strFixedVisualId.clear(); showtime.MechanicTriggers.front().iFixedLifetimeMs = 0u; }
 		else showtime.MechanicTriggers.front().strTrackingVisualId.clear();
+		albionOwner.fYawDegrees = -123.f;
+		const auto targetBeforeDrop = albionOwner.iPatternTargetEntityId;
 		CKoukuSaydonLogicRuntime::Build(showtime, albionOwner, 2300u, showtimeLedger); updateTargets(2300u);
+		if (!trackingOnly) tests.Require(albionOwner.fYawDegrees == -123.f && albionOwner.iPatternTargetEntityId == targetBeforeDrop,
+			"Fixed-only player drops preserve the authored boss yaw and target during rope motion");
 		tests.Require(countTargetObjects(trackingOnly) == 4 && countTargetObjects(!trackingOnly) == 0,
 			trackingOnly ? "A tracking-only duration creates no fixed groups" : "A fixed-only duration allocates no trackers");
 	}
@@ -1026,10 +1030,12 @@ REGION "blocked" "closed" 0 1
         ATTACK_HIT_TEMPLATE cardHit; cardHit.strHitId = "cardrain.impact"; cardHit.iAtMs = 1650u;
         for (auto& volley : rain.RandomVolleys) volley.Hits = {cardHit};
         albionOwner.fPositionX = 12.f; albionOwner.fYawDegrees = 37.f;
+        const auto cardRainTargetBefore = albionOwner.iPatternTargetEntityId;
         CKoukuSaydonLogicRuntime::Build(showtime, albionOwner, 9500u, showtimeLedger);
         updateTargets(9500u); updateTargets(9515u);
         auto rainObjects = randomObjects();
-        bool rainValid = rainObjects.size() == 2u && countTargetObjects(true) == 0u && albionOwner.fYawDegrees == 37.f;
+        bool rainValid = rainObjects.size() == 2u && countTargetObjects(true) == 0u && albionOwner.fYawDegrees == 37.f &&
+            albionOwner.iPatternTargetEntityId == cardRainTargetBefore;
         for (const auto& object : rainObjects)
         {
             const auto& pose = object.LiveState.CurrentPose;

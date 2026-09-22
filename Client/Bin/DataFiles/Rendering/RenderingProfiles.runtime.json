@@ -2415,10 +2415,10 @@
                      {
                          "qualityOverride":  {
                                                  "ssaoEnabled":  true,
-                                                 "ssaoRadius":  0.0399999991,
-                                                 "ssaoBias":  0,
-                                                 "ssaoIntensity":  0.689999998,
-                                                 "ssaoPower":  2.0999999,
+                                                 "ssaoRadius":  0.7,
+                                                 "ssaoBias":  0.025,
+                                                 "ssaoIntensity":  1.0,
+                                                 "ssaoPower":  1.4,
                                                  "ssaoDistanceFade":  132.5,
                                                  "bloomEnabled":  true,
                                                  "bloomThreshold":  0.699999988,
@@ -2429,7 +2429,7 @@
                                                  "whitePoint":  1,
                                                  "gamma":  2.20000005,
                                                  "fxaaEnabled":  true,
-                                                 "fxaaSubpixel":  0.75,
+                                                 "fxaaSubpixel":  0.25,
                                                  "fxaaEdgeThreshold":  0.0311999992,
                                                  "fxaaEdgeThresholdMin":  0.0183000006,
                                                  "colorAdjustment":  {
@@ -2530,9 +2530,10 @@
                                         "orthographicHeight":  24,
                                         "near":  0.100000001,
                                         "far":  80,
-                                        "depthBias":  0.00150000001,
-                                        "normalBias":  0.0250000004,
-                                        "strength":  0.75
+                                        "depthBias":  0.00025,
+                                        "normalBias":  0.005,
+                                        "strength":  1.0,
+                                        "dynamicBakedStrength":  0.7
                                     },
                          "fog":  {
                                      "enabled":  false,
@@ -2561,10 +2562,10 @@
                      {
                          "qualityOverride":  {
                                                  "ssaoEnabled":  true,
-                                                 "ssaoRadius":  0.0399999991,
-                                                 "ssaoBias":  0,
-                                                 "ssaoIntensity":  0.689999998,
-                                                 "ssaoPower":  2.0999999,
+                                                 "ssaoRadius":  0.7,
+                                                 "ssaoBias":  0.025,
+                                                 "ssaoIntensity":  1.0,
+                                                 "ssaoPower":  1.4,
                                                  "ssaoDistanceFade":  132.5,
                                                  "bloomEnabled":  false,
                                                  "bloomThreshold":  0.699999988,
@@ -2575,7 +2576,7 @@
                                                  "whitePoint":  1,
                                                  "gamma":  2.20000005,
                                                  "fxaaEnabled":  true,
-                                                 "fxaaSubpixel":  0.75,
+                                                 "fxaaSubpixel":  0.25,
                                                  "fxaaEdgeThreshold":  0.0311999992,
                                                  "fxaaEdgeThresholdMin":  0.0183000006,
                                                  "colorAdjustment":  {
@@ -2675,9 +2676,10 @@
                                         "orthographicHeight":  24,
                                         "near":  0.100000001,
                                         "far":  80,
-                                        "depthBias":  0.00150000001,
-                                        "normalBias":  0.0250000004,
-                                        "strength":  0.75
+                                        "depthBias":  0.00025,
+                                        "normalBias":  0.005,
+                                        "strength":  1.0,
+                                        "dynamicBakedStrength":  0.7
                                     },
                          "fog":  {
                                      "enabled":  false,

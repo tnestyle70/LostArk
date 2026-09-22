@@ -33,7 +33,8 @@ namespace
 			!std::isfinite(Settings.fFar) ||
 			!std::isfinite(Settings.fDepthBias) ||
 			!std::isfinite(Settings.fNormalBias) ||
-			!std::isfinite(Settings.fStrength))
+			!std::isfinite(Settings.fStrength) ||
+            !std::isfinite(Settings.fDynamicBakedStrength))
 		{
 			return false;
 		}
@@ -60,7 +61,9 @@ namespace
 			Settings.fNormalBias >= 0.f &&
 			Settings.fNormalBias <= 10.f &&
 			Settings.fStrength >= 0.f &&
-			Settings.fStrength <= 1.f;
+			Settings.fStrength <= 1.f &&
+            Settings.fDynamicBakedStrength >= 0.f &&
+            Settings.fDynamicBakedStrength <= 1.f;
 	}
 }
 
@@ -152,7 +155,9 @@ HRESULT CShadow::Bind_LightingShaderResources(shared_ptr<class CShader> pShader)
 			sizeof(Settings.fNormalBias))) ||
 		FAILED(pShader->Bind_RawValue(
 			"g_fShadowStrength", &Settings.fStrength,
-			sizeof(Settings.fStrength))))
+			sizeof(Settings.fStrength))) ||
+        FAILED(pShader->Bind_RawValue("g_fDynamicBakedShadowStrength",
+            &Settings.fDynamicBakedStrength, sizeof(Settings.fDynamicBakedStrength))))
 	{
 		return E_FAIL;
 	}

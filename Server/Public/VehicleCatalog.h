@@ -33,6 +33,11 @@ namespace LostArk::Server
 	{
 		LostArk::Shared::VEHICLE_ID iVehicleId = LostArk::Shared::INVALID_VEHICLE_ID;
 		float fMoveSpeed = 0.f;
+		// Optional flight profile; absence preserves the ground-only vehicle contract.
+		float fFlightTakeoffSeconds = 0.f, fFlightLandingSeconds = 0.f;
+		float fFlightHoverHeight = 0.f, fFlightMaximumHeight = 0.f;
+		float fFlightSpeed = 0.f, fFlightVerticalSpeed = 0.f;
+		bool Has_Flight() const { return fFlightTakeoffSeconds > 0.f; }
 		std::vector<SERVER_VEHICLE_SKILL> Skills;
 
 		const SERVER_VEHICLE_SKILL* Find_Skill(const LostArk::Shared::SKILL_ID skillId) const

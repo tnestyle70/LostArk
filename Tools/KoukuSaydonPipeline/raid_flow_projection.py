@@ -35,6 +35,9 @@ def project_raid_gates(action: dict[str, Any], sequence: dict[str, Any]) -> list
             if row["targetId"] not in targets:
                 raise ValueError(f"{gate} flow cannot admit unavailable {row['targetId']}")
             entries.append(dict(row))
+        loop_start = flow.get("loopStartEntryId", "")
+        if not isinstance(loop_start, str) or (loop_start and loop_start not in {row["entryId"] for row in entries}):
+            raise ValueError(f"{gate} flow loop start is not a saved entry")
         arrivals = []
         intro_ready = gate == "BINGO"
         durations = {}
@@ -75,5 +78,6 @@ def project_raid_gates(action: dict[str, Any], sequence: dict[str, Any]) -> list
                        "introPatternId": intro["patternId"] if intro else "", "introDurationMs": durations["INTRO"],
                        "clearPatternId": clear["patternId"] if clear else "", "clearDurationMs": durations["CLEAR"],
                        "primaryBossPlacementId": primary, "entries": entries, "arrivals": arrivals,
-                       "entrySequenceInstanceId": next(iter(entry_sequences), "")})
+                       "entrySequenceInstanceId": next(iter(entry_sequences), ""),
+                       **({"loopStartEntryId": loop_start} if loop_start else {})})
     return result

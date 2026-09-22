@@ -4,6 +4,11 @@
 #include "Shader_SourceCharacterPrograms.hlsli"
 #include "Shader_StaticShadowMap.hlsli"
 
+bool IsSourceStaticMapSL10()
+{
+    return (g_SourceCharacterProgram >= 214u && g_SourceCharacterProgram <= 234u) || g_SourceCharacterProgram == 237u;
+}
+
 float3 SourceCharacterSafeUnit(float3 value)
 {
     return value * rsqrt(max(dot(value, value), 1e-12f));
@@ -36,23 +41,25 @@ SOURCE_CHARACTER_NATIVE_INPUT MakeSourceCharacterInput(float2 uv, float4 extraUV
     float3 n = SourceCharacterSafeUnit(normal);
     t = SourceCharacterSafeUnit(t - n * dot(t, n));
     // The existing character import's normal-map basis uses negative binormal.
-    const bool staticMapMonster = g_SourceCharacterProgram >= 80u && g_SourceCharacterProgram <= 83u;
-    float3 b = SourceCharacterSafeUnit(staticMapMonster ? binormal : -binormal);
+    const bool staticMapMonster = (g_SourceCharacterProgram >= 80u && g_SourceCharacterProgram <= 83u) ||
+        g_SourceCharacterProgram == 210u || IsSourceStaticMapSL10();
+    const bool staticMapBasis = staticMapMonster || g_SourceCharacterProgram == 208u;
+    float3 b = SourceCharacterSafeUnit(staticMapBasis ? binormal : -binormal);
     float3 view = SourceCharacterSafeUnit(cameraPosition - worldPosition);
     float3 light = SourceCharacterSafeUnit(lightDirection);
     float3 tangentView = float3(dot(t, view), dot(b, view), dot(n, view));
     float3 tangentLight = float3(dot(t, light), dot(b, light), dot(n, light));
     float3 up = float3(t.y, b.y, n.y);
-    float handedness = (staticMapMonster ? dot(cross(t, b), n) :
+    float handedness = (staticMapBasis ? dot(cross(t, b), n) :
         dot(cross(t.xzy, b.xzy), n.xzy)) < 0.f ? -1.f : 1.f;
     input.values[0] = float4(t.x, b.x, n.x, 0.f);
     input.values[1] = float4(t.y, b.y, n.y, handedness);
-    input.values[2] = 1.f;
+    input.values[2] = IsSourceStaticMapSL10() ? extraUV : 1.f;
     input.values[4] = float4(uv, extraUV.yx);
-    float4 sourcePosition = float4((staticMapMonster ?
+    float4 sourcePosition = float4((staticMapBasis ?
         float3(worldPosition.x, -worldPosition.z, worldPosition.y) : worldPosition.xzy) * 100.f, 1.f);
     input.projection[0] = viewProjection[0] * 0.01f;
-    input.projection[1] = viewProjection[2] * (staticMapMonster ? -0.01f : 0.01f);
+    input.projection[1] = viewProjection[2] * (staticMapBasis ? -0.01f : 0.01f);
     input.projection[2] = viewProjection[1] * 0.01f;
     input.projection[3] = viewProjection[3];
 #ifdef SOURCE_CHARACTER_LIGHT_PASS
@@ -70,7 +77,7 @@ SOURCE_CHARACTER_NATIVE_INPUT MakeSourceCharacterInput(float2 uv, float4 extraUV
         input.values[7] = clipPosition;
     }
     if (g_SourceCharacterProgram == 12u || g_SourceCharacterProgram == 22u || g_SourceCharacterProgram == 84u ||
-        g_SourceCharacterProgram == 92u || g_SourceCharacterProgram == 93u || g_SourceCharacterProgram == 109u || staticMapMonster)
+        g_SourceCharacterProgram == 92u || g_SourceCharacterProgram == 93u || g_SourceCharacterProgram == 109u || (g_SourceCharacterProgram >= 80u && g_SourceCharacterProgram <= 83u))
     {
         // The legacy head direct VS packs UV/light/view/position into 2/3/5/6.
         // Its base pass uses the common layout above.
@@ -110,6 +117,81 @@ SOURCE_CHARACTER_NATIVE_INPUT MakeSourceCharacterInput(float2 uv, float4 extraUV
     if (g_SourceCharacterProgram == 19u)
         input.values[8] = frontFace ? 1.f : 0.f;
 #endif
+    // Exact GPU-skin VS packing recovered with each equipment shader map.
+#ifdef SOURCE_CHARACTER_LIGHT_PASS
+    if (g_SourceCharacterProgram == 208u)
+    {
+        input.values[2] = float4(uv, 0.f, 0.f);
+        input.values[3] = float4(tangentLight, 1.f);
+        input.values[6] = clipPosition;
+    }
+    if (g_SourceCharacterProgram == 210u || g_SourceCharacterProgram == 180u || g_SourceCharacterProgram == 181u || g_SourceCharacterProgram == 183u || g_SourceCharacterProgram == 184u || g_SourceCharacterProgram == 185u || g_SourceCharacterProgram == 186u || g_SourceCharacterProgram == 188u || g_SourceCharacterProgram == 189u || g_SourceCharacterProgram == 190u || g_SourceCharacterProgram == 195u || g_SourceCharacterProgram == 198u || g_SourceCharacterProgram == 199u)
+        input.values[8] = clipPosition;
+    if (g_SourceCharacterProgram == 187u)
+    {
+        input.values[5] = float4(extraUV.zw, 0.f, 0.f);
+        input.values[6] = float4(tangentLight, 1.f);
+        input.values[8] = float4(tangentView, 1.f);
+        input.values[9] = sourcePosition;
+    }
+#else
+    if (g_SourceCharacterProgram == 160u || g_SourceCharacterProgram == 166u || g_SourceCharacterProgram == 168u || g_SourceCharacterProgram == 169u || g_SourceCharacterProgram == 170u || g_SourceCharacterProgram == 171u || g_SourceCharacterProgram == 172u || g_SourceCharacterProgram == 174u || g_SourceCharacterProgram == 182u || g_SourceCharacterProgram == 187u || g_SourceCharacterProgram == 190u || g_SourceCharacterProgram == 192u || g_SourceCharacterProgram == 195u)
+    {
+        input.values[5] = float4(0.f, 0.f, 0.f, 1.f);
+        input.values[6] = float4(tangentView, 1.f);
+        input.values[7] = float4(up, 0.f);
+        input.values[8] = sourcePosition;
+    }
+    if (g_SourceCharacterProgram == 180u || g_SourceCharacterProgram == 181u || g_SourceCharacterProgram == 183u || g_SourceCharacterProgram == 184u || g_SourceCharacterProgram == 185u || g_SourceCharacterProgram == 186u || g_SourceCharacterProgram == 188u || g_SourceCharacterProgram == 189u || g_SourceCharacterProgram == 198u || g_SourceCharacterProgram == 199u)
+        input.values[7] = clipPosition;
+    if (g_SourceCharacterProgram == 161u || g_SourceCharacterProgram == 167u || g_SourceCharacterProgram == 179u) input.values[8] = frontFace ? 1.f : 0.f;
+    if (g_SourceCharacterProgram == 166u || g_SourceCharacterProgram == 170u || g_SourceCharacterProgram == 172u || g_SourceCharacterProgram == 182u || g_SourceCharacterProgram == 192u) input.values[9] = frontFace ? 1.f : 0.f;
+    if (g_SourceCharacterProgram == 187u)
+    {
+        input.values[5] = float4(extraUV.zw, 0.f, 0.f);
+        input.values[6] = float4(0.f, 0.f, 0.f, 1.f);
+        input.values[7] = float4(tangentView, 1.f);
+        input.values[8] = float4(up, 0.f);
+        input.values[9] = sourcePosition;
+    }
+#endif
+    // Guardian selection MICs use their recovered GPU-skin varying layouts.
+#ifdef SOURCE_CHARACTER_LIGHT_PASS
+    if (g_SourceCharacterProgram == 104u || g_SourceCharacterProgram == 211u ||
+        g_SourceCharacterProgram == 235u || g_SourceCharacterProgram == 236u) input.values[8] = clipPosition;
+    if (g_SourceCharacterProgram == 212u)
+    {
+        input.values[2] = float4(uv, 0.f, 0.f);
+        input.values[3] = float4(tangentLight, 1.f);
+        input.values[5] = float4(tangentView, 1.f);
+        input.values[7] = frontFace ? 1.f : 0.f;
+    }
+#else
+    if (g_SourceCharacterProgram == 104u || g_SourceCharacterProgram == 211u ||
+        g_SourceCharacterProgram == 235u || g_SourceCharacterProgram == 236u) input.values[7] = clipPosition;
+    if (g_SourceCharacterProgram == 212u || g_SourceCharacterProgram == 213u)
+    {
+        input.values[5] = float4(0.f, 0.f, 0.f, 1.f);
+        input.values[6] = float4(tangentView, 1.f);
+        input.values[7] = float4(up, 0.f);
+        input.values[8] = sourcePosition;
+        input.values[9] = frontFace ? 1.f : 0.f;
+    }
+#endif
+    if (IsSourceStaticMapSL10())
+    {
+#ifdef SOURCE_CHARACTER_LIGHT_PASS
+        input.values[8] = clipPosition;
+        if (g_SourceCharacterProgram == 223u)
+        {
+            input.values[2] = float4(uv,0.f,0.f);
+            input.values[3] = float4(tangentLight,1.f);
+            input.values[5] = float4(tangentView,1.f);
+            input.values[6] = sourcePosition;
+        }
+#endif
+    }
+    input.sourceCameraPosition = float3(cameraPosition.x,-cameraPosition.z,cameraPosition.y)*100.f;
     input.lightColor = lightColor;
     input.shadow = shadow;
     return input;
@@ -132,14 +214,14 @@ SOURCE_CHARACTER_GBUFFER EvaluateSourceCharacterGeometry(float2 uv, float4 extra
     float3 worldPosition, float3 tangent, float3 binormal, float3 normal,
     float4 clipPosition, float4 screenPosition, float4x4 view, float4x4 projection, bool frontFace,
     float2 lightmapUV = 0.f, float4 averageScale = 0.f, float4 directionalScale = 0.f,
-    float2 staticShadowUV = 0.f)
+    float2 staticShadowUV = 0.f, float4 sourcePrimitiveBounds = 0.f)
 {
     float3 cameraPosition = -mul((float3x3)view, view[3].xyz);
     SOURCE_CHARACTER_NATIVE_INPUT nativeInput = MakeSourceCharacterInput(uv, extraUV,
         worldPosition, tangent, binormal, normal, cameraPosition, clipPosition,
         mul(view, projection), float3(0.f, 1.f, 0.f), 0.f, 1.f, frontFace);
-    if (g_SourceCharacterProgram >= 80u && g_SourceCharacterProgram <= 83u &&
-        g_SourceMapMonsterBakedEnabled != 0u && averageScale.w != 0.f)
+    if (((g_SourceCharacterProgram >= 80u && g_SourceCharacterProgram <= 83u) ||
+        g_SourceCharacterProgram == 210u || IsSourceStaticMapSL10()) && g_SourceMapMonsterBakedEnabled != 0u && averageScale.w != 0.f)
     {
         nativeInput.hasBakedLighting = true;
         nativeInput.values[3].zw = lightmapUV;
@@ -148,6 +230,7 @@ SOURCE_CHARACTER_GBUFFER EvaluateSourceCharacterGeometry(float2 uv, float4 extra
         nativeInput.bakedCoefficients = g_SourceMapMonsterDirectionalTexture.Sample(
             SourceCharacterLookupSampler, lightmapUV).rgb * directionalScale.rgb;
     }
+    nativeInput.sourcePrimitiveBounds = sourcePrimitiveBounds;
     SOURCE_CHARACTER_NATIVE_OUTPUT native = EvaluateSourceCharacterBase(nativeInput);
     if (native.discarded) discard;
     // Opaque native PS alpha is explicitly zero and is not coverage. Hair and
@@ -170,7 +253,8 @@ SOURCE_CHARACTER_GBUFFER EvaluateSourceCharacterGeometry(float2 uv, float4 extra
     // Specular; only the existing scene ambient multiplies this colour.
     output.diffuse = float4(native.targets[3].rgb, 1.f);
     float3 sourceMappedNormal = SourceCharacterOctDecode(native.targets[2].xy * 2.f - 1.f);
-    const float3 mappedNormal = (g_SourceCharacterProgram >= 80u && g_SourceCharacterProgram <= 83u) ?
+    const float3 mappedNormal = ((g_SourceCharacterProgram >= 80u && g_SourceCharacterProgram <= 83u) ||
+        g_SourceCharacterProgram == 208u || g_SourceCharacterProgram == 210u || IsSourceStaticMapSL10()) ?
         float3(sourceMappedNormal.x, sourceMappedNormal.z, -sourceMappedNormal.y) : sourceMappedNormal.xzy;
     output.normal = float4(mappedNormal * .5f + .5f, 0.f);
     output.depth = float4(clipPosition.z / clipPosition.w, clipPosition.w / 1000.f,
@@ -181,7 +265,7 @@ SOURCE_CHARACTER_GBUFFER EvaluateSourceCharacterGeometry(float2 uv, float4 extra
     output.pickPosition = float4(worldPosition,
         asfloat(0x3f800000u | (g_SourceCharacterProgram & 255u)));
     output.indirect = float4(native.targets[0].rgb, 0.f);
-    if (g_SourceCharacterProgram >= 80u && g_SourceCharacterProgram <= 83u)
+    if ((g_SourceCharacterProgram >= 80u && g_SourceCharacterProgram <= 83u) || g_SourceCharacterProgram == 210u || IsSourceStaticMapSL10())
     {
         output.indirect.a = 1.f - EvaluateMapStaticShadow(staticShadowUV);
         output.pickPosition.w = EncodeMapStaticShadowChannel(output.pickPosition.w);
@@ -189,8 +273,9 @@ SOURCE_CHARACTER_GBUFFER EvaluateSourceCharacterGeometry(float2 uv, float4 extra
     output.extraUV = extraUV;
     // Static monster light PS consumes only UV0; this unused auxiliary lane
     // records actual per-pixel RNM use, including mixed lit/unlit instances.
-    if (g_SourceCharacterProgram >= 80u && g_SourceCharacterProgram <= 83u)
+    if ((g_SourceCharacterProgram >= 80u && g_SourceCharacterProgram <= 83u) || g_SourceCharacterProgram == 210u)
         output.extraUV.w = nativeInput.hasBakedLighting ? 1.f : 0.f;
+    if (IsSourceStaticMapSL10()) output.extraUV.z = nativeInput.hasBakedLighting ? 1.f : 0.f;
     output.surfaceUVTangent = float4(uv, SourceCharacterOctEncode(SourceCharacterSafeUnit(tangent)));
     output.geometricNormal = float4(SourceCharacterSafeUnit(normal),
         (dot(cross(normal, tangent), binormal) < 0.f ? -1.f : 1.f) * (frontFace ? 1.f : 2.f));

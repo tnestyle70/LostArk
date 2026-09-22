@@ -1877,7 +1877,8 @@ namespace
 		{
 			0x07, 0x00, 0x00, 0x00,
 			0x00, 0x00, 0x20, 0x41,
-			0x00, 0x00, 0xA0, 0xC0
+			0x00, 0x00, 0xA0, 0xC0,
+			0x00, 0x00, 0x00, 0x00, 0x00
 		};
 
 		testRunner.Require(
@@ -1934,6 +1935,35 @@ namespace
 			unchanged.fGoalX == 77.f &&
 			unchanged.fGoalZ == 88.f,
 			"Failed Move Does Not Mutate");
+        C2S_MOVE flight{};
+        flight.iClientSequence = 8u;
+        flight.eIntent = PLAYER_MOVE_INTENT::VEHICLE_FLIGHT;
+        flight.fGoalX = .6f; flight.fGoalZ = .8f; flight.fVerticalInput = -1.f;
+        CPacketWriter flightWriter;
+        const bool flightWritten = Write_Message(flightWriter, flight);
+        CPacketReader flightReader{flightWriter.Get_Buffer()};
+        testRunner.Require(flightWritten && Read_Message(flightReader, decoded) &&
+            flightReader.Get_RemainingSize() == 0u && decoded.eIntent == PLAYER_MOVE_INTENT::VEHICLE_FLIGHT &&
+            decoded.fGoalX == .6f && decoded.fGoalZ == .8f && decoded.fVerticalInput == -1.f,
+            "Flight direction and held descent round trip without a position");
+        for (unsigned scenario = 0u; scenario < 5u; ++scenario)
+        {
+            auto invalid = flight;
+            if (scenario == 0u) invalid.fGoalX = 2.f;
+            if (scenario == 1u) invalid.fVerticalInput = 1.01f;
+            if (scenario == 2u) invalid.fVerticalInput = std::numeric_limits<float>::quiet_NaN();
+            if (scenario == 3u) invalid.eIntent = PLAYER_MOVE_INTENT::END;
+            if (scenario == 4u) invalid.eIntent = PLAYER_MOVE_INTENT::GROUND_GOAL;
+            CPacketWriter rejected;
+            testRunner.Require(!Write_Message(rejected, invalid) && rejected.Get_Buffer().empty(),
+                "Flight speed amplification, invalid vertical and mixed intents reject before write");
+        }
+        auto invalidWire = flightWriter.Get_Buffer();
+        invalidWire[12] = static_cast<std::uint8_t>(PLAYER_MOVE_INTENT::END);
+        CPacketReader invalidFlightReader{invalidWire};
+        decoded.iClientSequence = 99u;
+        testRunner.Require(!Read_Message(invalidFlightReader, decoded) && decoded.iClientSequence == 99u,
+            "Invalid flight intent on wire preserves previous command");
 	}
 
 	void Test_UseSkillRoundTrip(TEST_RUNNER& testRunner)
@@ -2301,10 +2331,10 @@ namespace
 				unchanged.eDirection == request.eDirection,
 				"Malformed Mario direction or stop preserves output");
 		}
-		testRunner.Require(NETWORK_PROTOCOL_VERSION == 103u && Is_Known_Packet_Type(PACKET_TYPE::C2S_MARIO_MOVE) &&
+		testRunner.Require(NETWORK_PROTOCOL_VERSION == 104u && Is_Known_Packet_Type(PACKET_TYPE::C2S_MARIO_MOVE) &&
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_MARIO_MOVE) ==
 			static_cast<std::uint16_t>(PACKET_TYPE::S2C_DEBUG_MARIO_JUMP_RESULT) + 1u,
-			"Mario direction packet retains its appended identity in protocol 103");
+			"Mario direction packet retains its appended identity in protocol 104");
 	}
 
     void Test_FearSnapshotProtocol(TEST_RUNNER& testRunner)
@@ -2702,11 +2732,11 @@ namespace
 				unchanged.eWorldId == WORLD_ID::BERN && unchanged.eResult == MARIO_RETURN_RESULT::REJECTED_DESTINATION,
 				"Invalid Mario return verdict preserves caller output");
 		}
-		testRunner.Require(NETWORK_PROTOCOL_VERSION == 103u &&
+		testRunner.Require(NETWORK_PROTOCOL_VERSION == 104u &&
 			Is_Known_Packet_Type(PACKET_TYPE::C2S_MARIO_RETURN) && Is_Known_Packet_Type(PACKET_TYPE::S2C_MARIO_RETURN_RESULT) &&
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_MARIO_RETURN) == static_cast<std::uint16_t>(PACKET_TYPE::S2C_SET_VEHICLE_RIDING_RESULT) + 1u &&
 			static_cast<std::uint16_t>(PACKET_TYPE::S2C_MARIO_RETURN_RESULT) == static_cast<std::uint16_t>(PACKET_TYPE::C2S_MARIO_RETURN) + 1u,
-			"Protocol 103 preserves Mario return packet identities");
+			"Protocol 104 preserves Mario return packet identities");
 	}
 
 	void Test_DebugMarioJumpProtocol(TEST_RUNNER& testRunner)
@@ -2823,14 +2853,14 @@ namespace
 				unchanged.eResult == DEBUG_MARIO_JUMP_RESULT::REJECTED_DISABLED,
 				"Mario invalid or truncated verdict preserves caller output");
 		}
-		testRunner.Require(NETWORK_PROTOCOL_VERSION == 103u &&
+		testRunner.Require(NETWORK_PROTOCOL_VERSION == 104u &&
 			Is_Known_Packet_Type(PACKET_TYPE::C2S_DEBUG_MARIO_JUMP) &&
 			Is_Known_Packet_Type(PACKET_TYPE::S2C_DEBUG_MARIO_JUMP_RESULT) &&
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_DEBUG_MARIO_JUMP) ==
 			static_cast<std::uint16_t>(PACKET_TYPE::S2C_SCENE_PROFILE_APPLY) + 1u &&
 			static_cast<std::uint16_t>(PACKET_TYPE::S2C_DEBUG_MARIO_JUMP_RESULT) ==
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_DEBUG_MARIO_JUMP) + 1u,
-			"Protocol 103 preserves Mario jump packet identities without renumbering existing peers");
+			"Protocol 104 preserves Mario jump packet identities without renumbering existing peers");
 	}
 
 	void Test_DebugMadnessFormProtocol(TEST_RUNNER& testRunner)
@@ -2959,6 +2989,34 @@ namespace
 			0u == snapshotReader.Get_RemainingSize() &&
 			decodedSnapshot.Players.front().iVehicleId == 6705u,
 			"Player snapshot preserves the ridden vehicle");
+        auto flying = source;
+        auto& air = flying.Players.front();
+        air.iVehicleId = ANCIENT_SEA_VEHICLE_ID;
+        air.eAction = PLAYER_ACTION_STATE::VEHICLE_SKILL;
+        air.iSkillId = 98523u; air.iActionStartTick = 90u;
+        air.eVehicleFlightPhase = VEHICLE_FLIGHT_PHASE::LANDING;
+        air.iVehicleFlightPhaseStartTick = 98u;
+        air.fVehicleFlightPhaseDurationSeconds = 3.5f;
+        CPacketWriter flightSnapshot;
+        const bool flightWritten = Write_Message(flightSnapshot, flying);
+        CPacketReader flightReader{flightSnapshot.Get_Buffer()};
+        testRunner.Require(flightWritten && Read_Message(flightReader, decodedSnapshot) &&
+            decodedSnapshot.Players.front().eVehicleFlightPhase == VEHICLE_FLIGHT_PHASE::LANDING &&
+            decodedSnapshot.Players.front().iVehicleFlightPhaseStartTick == 98u &&
+            decodedSnapshot.Players.front().fVehicleFlightPhaseDurationSeconds == 3.5f,
+            "Flight snapshot preserves Server phase, clock and altitude-scaled landing duration");
+        for (unsigned scenario = 0u; scenario < 5u; ++scenario)
+        {
+            auto invalid = flying;
+            auto& bad = invalid.Players.front();
+            if (scenario == 0u) bad.iVehicleId = 6705u;
+            if (scenario == 1u) bad.iVehicleFlightPhaseStartTick = 0u;
+            if (scenario == 2u) bad.eVehicleFlightPhase = VEHICLE_FLIGHT_PHASE::GROUNDED;
+            if (scenario == 3u) bad.fVehicleFlightPhaseDurationSeconds = 0.f;
+            if (scenario == 4u) bad.fVehicleFlightPhaseDurationSeconds = std::numeric_limits<float>::infinity();
+            CPacketWriter rejected;
+            testRunner.Require(!Write_Message(rejected, invalid), "Malformed flight ownership and phase clocks reject");
+        }
 		for (unsigned scenario = 0u; scenario < 4u; ++scenario)
 		{
 			auto invalid = source;
@@ -2980,14 +3038,14 @@ namespace
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_DEBUG_BINGO_HAMMER) + 1u &&
 			static_cast<std::uint16_t>(PACKET_TYPE::S2C_SET_VEHICLE_RIDING_RESULT) ==
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_SET_VEHICLE_RIDING) + 1u &&
-			NETWORK_PROTOCOL_VERSION == 103u,
+			NETWORK_PROTOCOL_VERSION == 104u,
 			"Riding packet identities append without renumbering peers");
 	}
 
 	void Test_WorldObjectMotionProtocol(TEST_RUNNER& testRunner)
 	{
 		using namespace LostArk::Shared;
-		testRunner.Require(NETWORK_PROTOCOL_VERSION == 103u, "World Object owner lifecycle, fear, zone pulse, wave re-summon, wall climb and ember use protocol 102");
+		testRunner.Require(NETWORK_PROTOCOL_VERSION == 104u, "World Object owner lifecycle, fear, zone pulse, wave re-summon, wall climb and ember use protocol 102");
 		testRunner.Require(
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_DEBUG_MARIO_JUMP) == 72u &&
 			static_cast<std::uint16_t>(PACKET_TYPE::S2C_DEBUG_MARIO_JUMP_RESULT) == 73u &&
@@ -3347,8 +3405,8 @@ namespace
 			static_cast<std::uint16_t>(PACKET_TYPE::S2C_INTERACT_PROMPT) + 1u &&
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_INTERACTION_SLOT) ==
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_INTERACT_TRIGGER) + 1u &&
-			NETWORK_PROTOCOL_VERSION == 103u,
-			"Protocol 103 preserves main trigger identities with WORLD occurrence placement");
+			NETWORK_PROTOCOL_VERSION == 104u,
+			"Protocol 104 preserves main trigger identities with WORLD occurrence placement");
 	}
 
 	void Test_KakulAuthoringCommandProtocol(TEST_RUNNER& testRunner)
@@ -3464,8 +3522,8 @@ namespace
 	void Test_PartyInviteProtocol(TEST_RUNNER& testRunner)
 	{
 		{
-			testRunner.Require(102u == NETWORK_PROTOCOL_VERSION,
-				"KoukuSaydon Source Pin And Existing Contracts Use Protocol 102");
+			testRunner.Require(104u == NETWORK_PROTOCOL_VERSION,
+				"KoukuSaydon Source Pin And Existing Contracts Use Protocol 104");
 			C2S_ENTER_WORLD oldPeer{};
 			oldPeer.iProtocolVersion = 40u;
 			oldPeer.eWorldId = WORLD_ID::BERN;
@@ -3982,8 +4040,8 @@ namespace
         constexpr std::size_t playerZonePulseBytes = 4;
 		// Protocol 81 appends the acknowledgement and ordinary movement state.
 		constexpr std::size_t playerPredictionBytes = 4 + 4 + 1 + 1 + (4 * 3);
-		// Protocol 84 appends the ridden vehicle id.
-		constexpr std::size_t playerVehicleBytes = 4;
+		// Protocol 104 adds flight phase, phase clock and duration after the vehicle id.
+		constexpr std::size_t playerVehicleBytes = 4 + 1 + 4 + 4;
         // Protocol 89 adds the equipped honor-title identity to every player.
         constexpr std::size_t playerHonorTitleBytes = 4;
 		/* The + 3 after the identity pair is the protocol 100 ember triple. */
@@ -6830,8 +6888,8 @@ namespace
 		}
 
 		testRunner.Require(
-			102u == NETWORK_PROTOCOL_VERSION,
-			"Session Diagnostics Use Current Protocol Version 100");
+			104u == NETWORK_PROTOCOL_VERSION,
+			"Session Diagnostics Use Current Protocol Version 104");
 		testRunner.Require(
 			allReasonsAreKnown && allValuesAreContiguous,
 			"Every Session Diagnostic Reason Is Known And Append Only");
@@ -6858,8 +6916,8 @@ namespace
 	void Test_DataRevisionHotReloadProtocol(TEST_RUNNER& testRunner)
 	{
 		testRunner.Require(
-			102u == NETWORK_PROTOCOL_VERSION,
-			"World Spawn Pin Complete Play And Two-Revision Restart CAS Use Protocol 102");
+			104u == NETWORK_PROTOCOL_VERSION,
+			"World Spawn Pin Complete Play And Two-Revision Restart CAS Use Protocol 104");
 		const GameplayDataRevision base = Make_GameplayDataRevision(10u);
 		const GameplayDataRevision candidate = Make_GameplayDataRevision(40u);
 		const std::uint32_t required =

@@ -3858,7 +3858,8 @@ bool Client::CKoukuSaydonPresentationPlayer::Begin_BundlePreview(
             airborne |= definition->strTriggerKind == "ALBION_AIRBORNE";
             spatialLogic |= (definition->strTriggerKind == "BOSS_TELEPORT_XZ" || definition->strTriggerKind == "BOSS_TELEPORT_GROUNDED");
             if (definition->strJudgementKind == "BOSS_TRACK_TARGET" ||
-                definition->strJudgementKind == "SHOWTIME_PLAYER_TARGETS")
+                (definition->strJudgementKind == "SHOWTIME_PLAYER_TARGETS" &&
+                 (definition->strFixedSelectionGroupId.empty() || !definition->strTrackingPresentationOccurrenceId.empty())))
             {
                 auto& tracking = member.targetTracking.emplace_back();
                 tracking.occurrenceId = box.strOccurrenceId;
@@ -4020,7 +4021,8 @@ bool Client::CKoukuSaydonPresentationPlayer::Begin_ModelReferencePreview(
         pattern.BossMotion.reset();
         pattern.fAnimationRootVerticalScale = 1.0;
         pattern.fAnimationRootHorizontalScale = 1.0;
-        for (auto& stage : pattern.Stages) stage.bRetargetOnEnter = false;
+        for (auto& stage : pattern.Stages)
+        { stage.bRetargetOnEnter = false; stage.RetargetTarget.reset(); }
         std::erase_if(pattern.LogicOccurrences, [&](const auto& box) {
             return std::none_of(reference.Logics.begin(), reference.Logics.end(),
                 [&](const auto& logic) { return logic.strLogicId == box.strLogicId; }); });
@@ -4173,6 +4175,8 @@ bool Client::CKoukuSaydonPresentationPlayer::Sample_BundlePreviewPose(
     std::vector<KOUKU_BOSS_PRESENTATION_VIEW> bosses;
     std::vector<KOUKU_CARD_PRESENTATION_VIEW> players;
     if (recordTargets && level && (!member.targetTracking.empty() ||
+        std::any_of(member.pattern.Stages.begin(), member.pattern.Stages.end(), [](const auto& stage) {
+            return stage.bRetargetOnEnter && stage.RetargetTarget == "NEAREST_ALIVE"; }) ||
         (member.rootMotion && !member.rootMotion->Airborne_Events().empty())))
         level->Collect_KoukuPresentationViews(bosses, players);
     players.erase(std::remove_if(players.begin(), players.end(), [](const auto& view) {
@@ -4344,10 +4348,33 @@ bool Client::CKoukuSaydonPresentationPlayer::Sample_BundlePreviewPose(
                     if (!recordTargets) return false;
                     sample = member.stageFacingYawDegrees.emplace(stage.strStageId, yaw).first;
                 }
-                if (inserted && player && player->Get_Transform())
+                std::optional<float3_t> targetPosition;
+                if (inserted && stage.RetargetTarget == "NEAREST_ALIVE")
+                {
+                    // Match Server XZ nearest selection; replicated IDs break distance ties.
+                    const auto closest = std::min_element(players.begin(), players.end(), [&](const auto& left, const auto& right) {
+                        const auto distance = [&](const auto& view) {
+                            const auto& s = view.Snapshot;
+                            const float dx = s.fPositionX - origin.x, dz = s.fPositionZ - origin.z;
+                            return dx * dx + dz * dz;
+                        };
+                        const auto a = distance(left), b = distance(right);
+                        return a != b ? a < b : left.Snapshot.iNetEntityId < right.Snapshot.iNetEntityId;
+                    });
+                    if (closest != players.end())
+                    {
+                        const auto& s = closest->Snapshot;
+                        targetPosition = float3_t{s.fPositionX, s.fPositionY, s.fPositionZ};
+                    }
+                }
+                else if (inserted && player && player->Get_Transform())
                 {
                     const auto& target = *player->Get_Transform()->Get_WorldMatrixPtr();
-                    if (targetYawAt(origin, {target._41, target._42, target._43}, sample->second) &&
+                    targetPosition = float3_t{target._41, target._42, target._43};
+                }
+                if (targetPosition)
+                {
+                    if (targetYawAt(origin, *targetPosition, sample->second) &&
                         CKoukuSaydonCompositionDocument::Resolve_BossArchetypeId(
                             member.pattern.strTargetBossPlacementId) == "BOSS_KAKULSAYDON_G2_KOUKU")
                         sample->second -= 90.f; // Match the Server stage retarget for the laser's model +X front.

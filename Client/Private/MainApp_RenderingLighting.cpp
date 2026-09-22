@@ -766,9 +766,19 @@ void Client::CMainApp::RenderSceneProfileDetail()
 	sceneChanged |= ImGui::DragFloat(
 		"Shadow Strength", &m_SceneRenderingDraft.ShadowSettings.fStrength,
 		0.005f, 0.f, 1.f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
+    sceneChanged |= ImGui::DragFloat("Dynamic Shadow on Baked PBR",
+        &m_SceneRenderingDraft.ShadowSettings.fDynamicBakedStrength,
+        0.005f, 0.f, 1.f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
+    if (ImGui::IsItemHovered()) ImGui::SetTooltip(
+        "Project modulation for moving casters on baked PBR maps. 0 disables it. Static baked shadows and true emission are preserved.");
 	ImGui::EndDisabled();
-	ImGui::TextDisabled(
-		"Shadow uses a fixed 2048 depth map with 3x3 PCF; light eye is derived from focus and scene direction.");
+    const auto& shadow = m_SceneRenderingDraft.ShadowSettings;
+    ImGui::Text("Shadow texel: %.2f x %.2f cm | Depth offset: %.2f cm | Normal offset: %.2f cm",
+        shadow.fOrthographicWidth * 100.f / 2048.f,
+        shadow.fOrthographicHeight * 100.f / 2048.f,
+        shadow.fDepthBias * (shadow.fFar - shadow.fNear) * 100.f,
+        shadow.fNormalBias * 100.f);
+    ImGui::TextWrapped("Direction sets the cast-shadow direction. Bias prevents self-shadow acne; too much detaches feet from the floor. Strength controls direct light. Baked PBR modulation affects only moving occluders, when the static cache is valid.");
 
 	ImGui::SeparatorText("Height Fog");
 	sceneChanged |= ImGui::Checkbox(

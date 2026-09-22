@@ -126,6 +126,69 @@ BONE_ANIMATION_KEY Interpolate(const BONE_ANIMATION_TRACK& track, float time)
     XMStoreFloat4(&result.rotation, XMQuaternionNormalize(XMQuaternionSlerp(XMLoadFloat4(&a.rotation), XMLoadFloat4(&b.rotation), weight)));
     return result;
 }
+void RequireNewClip(const CBoneAnimationDocument& document, const Engine::CModel& model, const std::string& name)
+{
+    if (!Stable(name) || !name.starts_with("authored.")) throw std::runtime_error("New clip needs a stable authored. name");
+    if (std::any_of(document.clips.begin(), document.clips.end(), [&](const auto& clip) { return clip.name == name; }))
+        throw std::runtime_error("Clip already exists; existing keys were preserved: " + name);
+    for (uint32_t i = 0u; i < model.Get_NumAnimations(); ++i)
+        if (name == model.Get_AnimationName(i)) throw std::runtime_error("Clip name is already installed: " + name);
+}
+float SourceDuration(const CBoneAnimationDocument& document, const Engine::CModel& model, const std::string& name)
+{
+    const auto found = std::find_if(document.clips.begin(), document.clips.end(), [&](const auto& clip) { return clip.name == name; });
+    if (found != document.clips.end()) return static_cast<float>(found->durationMs);
+    if (name.starts_with("authored.")) throw std::runtime_error("Source authored clip is missing: " + name);
+    return Duration(model, name);
+}
+void AppendRestRelativePose(const Engine::CModel& model, BONE_ANIMATION_CLIP& clip,
+    const std::vector<float4x4_t>& pose, uint32_t timeMs)
+{
+    const auto bones = model.Get_BoneNames();
+    if (pose.size() != bones.size()) throw std::runtime_error("Source pose does not match the installed skeleton");
+    if (clip.tracks.empty())
+        for (const auto& bone : bones) { BONE_ANIMATION_TRACK track; track.bone = bone; clip.tracks.push_back(std::move(track)); }
+    for (uint32_t bone = 0u; bone < bones.size(); ++bone)
+    {
+        matrix_t rest;
+        if (!model.Get_BoneRestLocalMatrix(bone, rest)) throw std::runtime_error("Source bone has no rest transform");
+        vector_t determinant;
+        const auto inverseRest = XMMatrixInverse(&determinant, rest);
+        if (!std::isfinite(XMVectorGetX(determinant)) || std::abs(XMVectorGetX(determinant)) < 1.e-12f)
+            throw std::runtime_error("Source bone has a singular rest transform");
+        const auto delta = XMLoadFloat4x4(&pose[bone]) * inverseRest;
+        vector_t scale, rotation, position;
+        if (!XMMatrixDecompose(&scale, &rotation, &position, delta)) throw std::runtime_error("Source pose cannot be represented by bone keys");
+        BONE_ANIMATION_KEY key; key.timeMs = timeMs;
+        XMStoreFloat3(&key.scale, scale); XMStoreFloat4(&key.rotation, rotation); XMStoreFloat3(&key.position, position);
+        Normalize(key);
+        const auto rebuilt = XMMatrixAffineTransformation(XMLoadFloat3(&key.scale), XMVectorZero(),
+            XMLoadFloat4(&key.rotation), XMVectorSetW(XMLoadFloat3(&key.position), 1.f)) * rest;
+        float4x4_t check; XMStoreFloat4x4(&check, rebuilt);
+        for (size_t component = 0u; component < 16u; ++component)
+        {
+            const float expected = (&pose[bone]._11)[component], actual = (&check._11)[component];
+            if (!std::isfinite(expected) || !std::isfinite(actual) || std::abs(expected - actual) > .001f * (std::max)(1.f, std::abs(expected)))
+                throw std::runtime_error("Source pose contains a non-TRS rest-relative transform");
+        }
+        clip.tracks[bone].keys.push_back(key);
+    }
+}
+void BlendLocalPose(std::vector<float4x4_t>& pose, const std::vector<float4x4_t>& target, float weight)
+{
+    if (pose.size() != target.size()) throw std::runtime_error("Loop poses have different skeletons");
+    if (weight >= 1.f) { pose = target; return; }
+    for (size_t bone = 0u; bone < pose.size(); ++bone)
+    {
+        vector_t aScale, aRotation, aPosition, bScale, bRotation, bPosition;
+        if (!XMMatrixDecompose(&aScale, &aRotation, &aPosition, XMLoadFloat4x4(&pose[bone])) ||
+            !XMMatrixDecompose(&bScale, &bRotation, &bPosition, XMLoadFloat4x4(&target[bone])))
+            throw std::runtime_error("Loop pose cannot decompose");
+        XMStoreFloat4x4(&pose[bone], XMMatrixAffineTransformation(XMVectorLerp(aScale, bScale, weight), XMVectorZero(),
+            XMQuaternionNormalize(XMQuaternionSlerp(XMQuaternionNormalize(aRotation), XMQuaternionNormalize(bRotation), weight)),
+            XMVectorLerp(aPosition, bPosition, weight)));
+    }
+}
 }
 
 std::filesystem::path CBoneAnimationDocument::Path(const std::string& asset)
@@ -360,6 +423,138 @@ bool CBoneAnimationDocument::Install(Engine::CModel& model, std::string& status)
 {
     std::vector<Engine::MODEL_ANIMATION_DATA> compiled;
     return Compile(model, compiled, status) && model.Install_AuthoredAnimations(compiled, status);
+}
+bool CBoneAnimationDocument::Create_FromSourceRange(const Engine::CModel& model, const std::string& name,
+    const std::string& source, uint32_t sourceStartMs, uint32_t sourceEndMs, float playRate, std::string& status)
+{
+    try
+    {
+        RequireNewClip(*this, model, name);
+        const float sourceDuration = SourceDuration(*this, model, source);
+        if (sourceStartMs >= sourceEndMs || sourceEndMs > 60000u || sourceEndMs > sourceDuration + .001f ||
+            !std::isfinite(playRate) || playRate < .01f || playRate > 16.f)
+            throw std::runtime_error("Select an increasing source range inside the clip and a rate from 0.01 to 16");
+        const double span = static_cast<double>(sourceEndMs - sourceStartMs);
+        const double roundedDuration = std::round(span / playRate);
+        if (roundedDuration < 1.0 || roundedDuration > 60000.0) throw std::runtime_error("New clip duration must be 1 to 60000 milliseconds");
+        BONE_ANIMATION_CLIP clip; clip.name = name; clip.durationMs = static_cast<uint32_t>(roundedDuration);
+        BONE_ANIMATION_SEGMENT segment; segment.id = "source.range"; segment.sourceClip = source;
+        segment.sourceStartMs = sourceStartMs; segment.durationMs = clip.durationMs;
+        // Integer millisecond storage slightly adjusts rate so the requested end pose remains exact.
+        segment.playRate = static_cast<float>(span / roundedDuration); segment.loop = false;
+        clip.segments.push_back(std::move(segment));
+        auto candidate = *this; candidate.clips.push_back(std::move(clip));
+        std::vector<Engine::MODEL_ANIMATION_DATA> compiled;
+        if (!candidate.Compile(model, compiled, status)) return false;
+        *this = std::move(candidate); status = "Source range added to the draft; save to keep it"; return true;
+    }
+    catch (const std::exception& error) { status = error.what(); return false; }
+}
+bool CBoneAnimationDocument::Create_HeldPose(const Engine::CModel& model, const std::string& name,
+    const std::string& source, uint32_t sourceTimeMs, uint32_t durationMs, std::string& status)
+{
+    try
+    {
+        RequireNewClip(*this, model, name);
+        if (!durationMs || durationMs > 60000u || sourceTimeMs > 60000u || sourceTimeMs > SourceDuration(*this, model, source) + .001f)
+            throw std::runtime_error("Hold time must be inside the source clip and duration must be 1 to 60000 milliseconds");
+        std::vector<float4x4_t> pose;
+        if (!Sample(model, source, static_cast<float>(sourceTimeMs), pose, status)) return false;
+        BONE_ANIMATION_CLIP clip; clip.name = name; clip.durationMs = durationMs;
+        AppendRestRelativePose(model, clip, pose, 0u); AppendRestRelativePose(model, clip, pose, durationMs);
+        auto candidate = *this; candidate.clips.push_back(std::move(clip));
+        std::vector<Engine::MODEL_ANIMATION_DATA> compiled;
+        if (!candidate.Compile(model, compiled, status)) return false;
+        *this = std::move(candidate); status = "Held pose added to the draft; save to keep it"; return true;
+    }
+    catch (const std::exception& error) { status = error.what(); return false; }
+}
+bool CBoneAnimationDocument::Create_AncientSeaFlightStudies(const Engine::CModel& model, std::string& status)
+{
+    try
+    {
+        if (asset != "Vehicle_9523" || skeletonHash != 0x4bd78391eec5de7aULL ||
+            model.Get_SkeletonHash() != skeletonHash || model.Get_BoneNames().size() != 91u)
+            throw std::runtime_error("Dragon studies require the installed Ancient Sea skeleton");
+        RequireNewClip(*this, model, "authored.dragon.glide"); RequireNewClip(*this, model, "authored.dragon.ascent");
+        if (std::abs(SourceDuration(*this, model, "npc_sk_look") - 160000.f / 30.f) > .01f)
+            throw std::runtime_error("Ancient Sea flight source timing changed; studies were not added");
+        const auto root = model.Find_BoneIndex("bip001"); matrix_t rest;
+        if (root < 0 || !model.Get_BoneRestLocalMatrix(root, rest)) throw std::runtime_error("Ancient Sea vertical root bone is missing");
+        const float restZ = XMVectorGetZ(rest.r[3]);
+        const auto sample = [&](float sourceTime, std::vector<float4x4_t>& pose)
+        {
+            if (!Sample(model, "npc_sk_look", sourceTime, pose, status)) throw std::runtime_error(status);
+            // This imported skeleton maps bip001 local -Z to up; Server owns flight height.
+            pose[root]._43 = restZ;
+        };
+        BONE_ANIMATION_CLIP glide; glide.name = "authored.dragon.glide"; glide.durationMs = 2000u;
+        BONE_ANIMATION_CLIP ascent; ascent.name = "authored.dragon.ascent"; ascent.durationMs = 967u;
+        std::vector<float4x4_t> held, first; sample(2500.f, held); sample(1800.f, first);
+        for (auto* clip : {&glide, &ascent})
+        {
+            std::set<uint32_t> times{0u, clip->durationMs};
+            for (uint32_t frame = 1u; frame * 1000u / 30u < clip->durationMs; ++frame) times.insert(frame * 1000u / 30u);
+            if (clip == &ascent) times.insert(ascent.durationMs - 120u);
+            for (const auto time : times)
+            {
+                auto pose = held;
+                if (clip == &ascent)
+                {
+                    sample(1800.f + (83000.f / 30.f - 1800.f) * (static_cast<float>(time) / ascent.durationMs), pose);
+                    if (time > ascent.durationMs - 120u) BlendLocalPose(pose, first, (time - (ascent.durationMs - 120u)) / 120.f);
+                }
+                AppendRestRelativePose(model, *clip, pose, time);
+            }
+        }
+        auto candidate = *this; candidate.clips.push_back(std::move(glide)); candidate.clips.push_back(std::move(ascent));
+        std::vector<Engine::MODEL_ANIMATION_DATA> compiled;
+        if (!candidate.Compile(model, compiled, status)) return false;
+        *this = std::move(candidate); status = "Glide and ascent studies added to the draft; visual review and save are pending"; return true;
+    }
+    catch (const std::exception& error) { status = error.what(); return false; }
+}
+bool CBoneAnimationDocument::Retime_Clip(const Engine::CModel& model, const std::string& name,
+    uint32_t durationMs, std::string& status)
+{
+    try
+    {
+        if (!durationMs || durationMs > 60000u) throw std::runtime_error("Clip duration must be 1 to 60000 milliseconds");
+        const auto found = std::find_if(clips.begin(), clips.end(), [&](const auto& clip) { return clip.name == name; });
+        if (found == clips.end()) throw std::runtime_error("The clip to retime is missing");
+        if (!found->segments.empty()) throw std::runtime_error("Source segment clips use source range/segment trim; retime is for held or baked bone clips");
+        if (!found->durationMs || found->durationMs > 60000u) throw std::runtime_error("Existing clip duration is invalid");
+        auto candidate = *this;
+        auto& retimed = candidate.clips[static_cast<size_t>(found - clips.begin())];
+        retimed.durationMs = durationMs;
+        for (size_t trackIndex = 0u; trackIndex < found->tracks.size(); ++trackIndex)
+        {
+            const auto& source = found->tracks[trackIndex];
+            if (source.keys.empty()) throw std::runtime_error("Cannot retime an empty bone track");
+            std::set<uint32_t> times{0u, durationMs};
+            for (uint32_t frame = 1u; frame * 1000u / 30u < durationMs; ++frame) times.insert(frame * 1000u / 30u);
+            uint32_t previous = 0u; bool first = true;
+            for (const auto& key : source.keys)
+            {
+                if (key.timeMs > found->durationMs || (!first && key.timeMs <= previous))
+                    throw std::runtime_error("Cannot retime invalid bone key times");
+                // Preserve authored breakpoints as closely as the millisecond schema permits.
+                const auto mapped = (static_cast<uint64_t>(key.timeMs) * durationMs + found->durationMs / 2u) / found->durationMs;
+                times.insert(static_cast<uint32_t>(mapped)); previous = key.timeMs; first = false;
+            }
+            auto& keys = retimed.tracks[trackIndex].keys; keys.clear(); keys.reserve(times.size());
+            for (const auto time : times)
+            {
+                auto key = time == 0u ? source.keys.front() : time == durationMs ? source.keys.back() :
+                    Interpolate(source, static_cast<float>(static_cast<double>(time) * found->durationMs / durationMs));
+                key.timeMs = time; keys.push_back(key);
+            }
+        }
+        std::vector<Engine::MODEL_ANIMATION_DATA> compiled;
+        if (!candidate.Compile(model, compiled, status)) return false;
+        *this = std::move(candidate); status = "Bone clip retimed in the draft; save to keep it"; return true;
+    }
+    catch (const std::exception& error) { status = error.what(); return false; }
 }
 bool CBoneAnimationDocument::Load_IntoModel(Engine::CModel& model, const std::string& owner, std::string& status)
 {

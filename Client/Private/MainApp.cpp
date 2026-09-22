@@ -52,6 +52,9 @@
 #include "UITextOcclusion.h"
 #include "PlayerSkillCatalog.h"
 #include "Profiler.h"
+#include "ProfilerTool.h"
+#include "AnimationTargetService.h"
+#include "Character.h"
 #include "Presentation_Manager.h"
 #include "ProjectDataRoot.h"
 #include "RuntimeAssetRoot.h"
@@ -84,8 +87,6 @@
 #ifdef _DEBUG
 #include "ActorCatalog.h"
 #include "Animation_Tool.h"
-#include "AnimationTargetService.h"
-#include "Character.h"
 #include "KoukuSaydonActionWorkbench.h"
 #include "KoukuSaydonBossTool.h"
 #include "ValtanActionWorkbench.h"
@@ -104,8 +105,6 @@
 #include "LevelNavigationDebug.h"
 #include "MapTool.h"
 #include "NetworkPlayerCommandSink.h"
-#include "ProfilerCaptureIO.h"
-#include "ProfilerTool.h"
 #include "RenderingBenchmark.h"
 #include "SequencerTool.h"
 #include "CharacterActionWorkbench.h"
@@ -1608,11 +1607,9 @@ void CMainApp::Update(const f32_t fTimeDelta)
 	CUIInputRouter::Get().Begin_Frame();
 	CUITextOcclusion::Get().Begin_Frame();
 	Sync_KoukuCinematicUI();
+	UpdateProfilerRuntime();
 
 #ifdef _DEBUG
-	// Complete export even when F1 or the profiler window is hidden.
-	if (m_pProfilerTool)
-		m_pProfilerTool->Update_SaveState();
 	UpdateDebugToolShortcut();
 #endif
 
@@ -3313,6 +3310,8 @@ HRESULT CMainApp::Render()
 		pValtan->Render_MvpPortraits();
 	}
 
+	CEffectPresentationService::Submit_VisibleLevelPresentations();
+
 	// Composition WORLD/Seek/Stop has committed this frame before choosing the map-light owner.
 	if (auto* arena = CLevel_KakulSaydonArena::Get_Active(); arena &&
 		CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::KAKULSAYDON_ARENA))
@@ -3369,7 +3368,7 @@ HRESULT CMainApp::Render()
 		const bool_t isCharSelectOverlayOpen = isCharSelectDebugPreviewOpen ||
 			(ETOUI(LEVEL::CHARACTER_SELECT) == hudLevel &&
 				nullptr != CLevel_CharacterSelect::Get_Active() &&
-				CLevel_CharacterSelect::Get_Active()->Is_CustomizingOpen());
+				CLevel_CharacterSelect::Get_Active()->Is_ProductPresentationOpen());
 		if (!CUIInputRouter::Get().Is_CinematicSuppressed() && nullptr != m_pHUDLayoutTool && hudPlayer.isValid &&
 			supportsAuthoredHUD && !skillWindowOpenForPreview &&
 			!isCharSelectOverlayOpen)
@@ -3651,17 +3650,6 @@ HRESULT CMainApp::Render()
 				focusNextWindow(DEBUG_TOOL::RENDERING);
 				RenderRenderingWorkbench();
 			}
-			if (IsDebugToolVisible(DEBUG_TOOL::PROFILER) &&
-				nullptr != m_pProfilerTool)
-			{
-				focusNextWindow(DEBUG_TOOL::PROFILER);
-				{
-					Engine::CProfilerScope toolScope(CGameInstance::Get().Get_Profiler(), "ImGui.Tool.CompositionProfiler.Build");
-					m_pProfilerTool->Render(CGameInstance::Get().Get_Profiler());
-				}
-				if (!m_pProfilerTool->Is_Open())
-					SetDebugToolVisible(DEBUG_TOOL::PROFILER, false);
-			}
 			/* Skill Window's slots are still authored by their existing UI owner;
 			   rendering it alongside other tools does not create a second UI runtime. */
 			if (IsDebugToolVisible(DEBUG_TOOL::UI) && nullptr != m_pHUDLayoutTool)
@@ -3737,6 +3725,27 @@ HRESULT CMainApp::Render()
 			}
 		}
 #endif
+        bool_t profilerWindowVisible = m_bRuntimeProfilerVisible;
+#ifdef _DEBUG
+        profilerWindowVisible |= m_bDeveloperToolsVisible && IsDebugToolVisible(DEBUG_TOOL::PROFILER);
+        if (profilerWindowVisible && DEBUG_TOOL::PROFILER == m_eDebugWindowFocusPending)
+        {
+            ImGui::SetNextWindowFocus();
+            m_eDebugWindowFocusPending = DEBUG_TOOL::NONE;
+        }
+#endif
+        if (profilerWindowVisible && m_pProfilerTool)
+        {
+            Engine::CProfilerScope toolScope(CGameInstance::Get().Get_Profiler(), "ImGui.Tool.CompositionProfiler.Build");
+            m_pProfilerTool->Render(CGameInstance::Get().Get_Profiler());
+            if (!m_pProfilerTool->Is_Open())
+            {
+                m_bRuntimeProfilerVisible = false;
+#ifdef _DEBUG
+                SetDebugToolVisible(DEBUG_TOOL::PROFILER, false);
+#endif
+            }
+        }
 		{
 			Engine::CProfilerScope cpuPhaseScope(CGameInstance::Get().Get_Profiler(), "ImGui.BackendSubmit");
 		Engine::CProfilerGpuScope gpuPhaseScope(CGameInstance::Get().Get_Profiler(), "ImGui.BackendSubmit");
@@ -3777,7 +3786,7 @@ HRESULT CMainApp::Render()
 	const bool_t isCharSelectOverlayOpen = isCharSelectDebugPreviewOpenForText ||
 		(ETOUI(LEVEL::CHARACTER_SELECT) == CGameInstance::Get().Get_CurrentLevelID() &&
 			nullptr != CLevel_CharacterSelect::Get_Active() &&
-			CLevel_CharacterSelect::Get_Active()->Is_CustomizingOpen());
+			CLevel_CharacterSelect::Get_Active()->Is_ProductPresentationOpen());
 	if (!isCharSelectOverlayOpen && !Is_MvpResultPageOpen())
 	{
 		CUITextLayerScope HudText(UI_TEXT_LAYER::HUD);
@@ -3978,7 +3987,7 @@ void CMainApp::Update_CombatHUD(const f32_t fTimeDelta)
 	const bool_t isCharSelectOverlayOpen = isCharSelectDebugPreviewOpen ||
 		(ETOUI(LEVEL::CHARACTER_SELECT) == currentLevel &&
 			nullptr != CLevel_CharacterSelect::Get_Active() &&
-			CLevel_CharacterSelect::Get_Active()->Is_CustomizingOpen());
+			CLevel_CharacterSelect::Get_Active()->Is_ProductPresentationOpen());
 
 	const HUD_PLAYER_STATE& player =
 		CCombatHUDViewModel::Get().Get_Player();
@@ -7147,7 +7156,7 @@ void CMainApp::Update_BossHealthBar()
 	const bool_t isCharSelectOverlayOpen = isCharSelectDebugPreviewOpen ||
 		(ETOUI(LEVEL::CHARACTER_SELECT) == currentLevel &&
 			nullptr != CLevel_CharacterSelect::Get_Active() &&
-			CLevel_CharacterSelect::Get_Active()->Is_CustomizingOpen());
+			CLevel_CharacterSelect::Get_Active()->Is_ProductPresentationOpen());
 
 	const HUD_BOSS_STATE& boss = CCombatHUDViewModel::Get().Get_Boss();
 	if (!isSupportedLevel || skillWindowOpen || isCharSelectOverlayOpen ||
@@ -9211,6 +9220,37 @@ HRESULT CMainApp::ReadyImGuiRuntime()
 	return S_OK;
 }
 
+void CMainApp::UpdateProfilerRuntime()
+{
+    // F7 owns only the profiler. Hiding it leaves collection active for measuring UI overhead.
+    if (m_pProfilerTool) m_pProfilerTool->Update_SaveState();
+    const bool_t down = IsWindowOwnedByCurrentProcess(GetForegroundWindow()) &&
+        0 != (GetAsyncKeyState(VK_F7) & 0x8000);
+    if (down && !m_bF7Down && !ImGui::GetIO().WantTextInput &&
+        !CUIInputRouter::Get().Is_TextInputActive())
+    {
+        bool_t visible = m_bRuntimeProfilerVisible;
+#ifdef _DEBUG
+        visible |= m_bDeveloperToolsVisible && IsDebugToolVisible(DEBUG_TOOL::PROFILER);
+#endif
+        m_bRuntimeProfilerVisible = !visible;
+        if (m_bRuntimeProfilerVisible)
+        {
+            if (!m_pProfilerTool)
+            {
+                m_pProfilerTool = make_unique<CProfilerTool>(m_pDevice.Get());
+                if (auto* profiler = CGameInstance::Get().Get_Profiler())
+                    m_pProfilerTool->Begin_Capture(*profiler);
+            }
+            m_pProfilerTool->Open();
+        }
+#ifdef _DEBUG
+        else SetDebugToolVisible(DEBUG_TOOL::PROFILER, false);
+#endif
+    }
+    m_bF7Down = down;
+}
+
 #ifdef _DEBUG
 HRESULT CMainApp::ReadyDebugTools()
 {
@@ -9481,7 +9521,7 @@ HRESULT CMainApp::EnsureDebugTool(const DEBUG_TOOL eTool)
 		break;
 	case DEBUG_TOOL::PROFILER:
 		if (nullptr == m_pProfilerTool)
-			m_pProfilerTool = make_unique<CProfilerTool>();
+			m_pProfilerTool = make_unique<CProfilerTool>(m_pDevice.Get());
 		m_pProfilerTool->Open();
 		if (Engine::CProfiler* pProfiler = CGameInstance::Get().Get_Profiler())
 			pProfiler->Set_Enabled(true);
@@ -9620,6 +9660,51 @@ HRESULT CMainApp::EnsureDebugTool(const DEBUG_TOOL eTool)
 				m_pValtanActionWorkbench.get(), m_pKoukuSaydonActionWorkbench.get());
 			m_pSequencerTool->Set_ActionSessions(m_pCharacterActionWorkbench.get(),
 				m_pWorldObjectTool.get(), m_pSequenceActionWorkbench.get());
+			CSequencerTool::CLASS_SELECTION_PREVIEW_CALLBACKS classSelection;
+			classSelection.state = [] {
+				CSequencerTool::CLASS_SELECTION_PREVIEW_STATE state;
+				auto* level = CLevel_CharacterSelect::Get_Active();
+				if (!level || CGameInstance::Get().Get_CurrentLevelID() != ETOUI(LEVEL::CHARACTER_SELECT))
+				{ state.status = "Enter Character Select from Lobby to preview this WORLD scene."; return state; }
+				const auto& preview = level->Get_ClassSelectionPresentation();
+				state.available = level->Can_PlayClassCinematic() && preview.Has_Class("GUARDIANKNIGHT");
+				state.active = preview.Is_Active();
+				state.paused = preview.Is_Paused();
+				state.looping = preview.Is_Looping();
+				state.ownerToken = preview.Get_PlaybackToken();
+				state.loopCycle = preview.Get_LoopCycle();
+				state.clockMs = preview.Get_ClockMs();
+				state.durationMs = preview.Get_DurationMs();
+				state.introDurationMs = preview.Get_PhaseDurationMs("GUARDIANKNIGHT", false);
+				state.loopDurationMs = preview.Get_PhaseDurationMs("GUARDIANKNIGHT", true);
+				state.status = level->Get_ClassCinematicStatus();
+				if (preview.Has_Class("GUARDIANKNIGHT") && !level->Can_PlayClassCinematic())
+					state.status = "Class cinematic is ready; close customizing or another preview and wait for the arena to finish connecting.";
+				return state;
+			};
+			classSelection.play = [] {
+				auto* level = CLevel_CharacterSelect::Get_Active();
+				return level && level->Can_PlayClassCinematic() &&
+					CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::CHARACTER_SELECT) &&
+					level->Get_ClassSelectionPresentation().Play("GUARDIANKNIGHT");
+			};
+			classSelection.stop = [] {
+				if (auto* level = CLevel_CharacterSelect::Get_Active(); level &&
+					CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::CHARACTER_SELECT))
+					level->Get_ClassSelectionPresentation().Stop();
+			};
+			classSelection.setPaused = [](bool paused) {
+				if (auto* level = CLevel_CharacterSelect::Get_Active(); level &&
+					CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::CHARACTER_SELECT))
+					level->Get_ClassSelectionPresentation().Set_Paused(paused);
+			};
+			classSelection.seek = [](bool loop, double timeMs) {
+				auto* level = CLevel_CharacterSelect::Get_Active();
+				return level && level->Can_PlayClassCinematic() &&
+					CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::CHARACTER_SELECT) &&
+					level->Get_ClassSelectionPresentation().Seek("GUARDIANKNIGHT", loop, timeMs);
+			};
+			m_pSequencerTool->Set_ClassSelectionPreviewCallbacks(std::move(classSelection));
 			/* The Map Tool hosts the same Sequence session for its integrated
 			   cutscene view. One owner and one draft, borrowed per frame. */
 			if (m_pMapTool)
@@ -9637,7 +9722,9 @@ HRESULT CMainApp::EnsureDebugTool(const DEBUG_TOOL eTool)
 				m_eDebugInputOwner = target == COMPOSITION_WORKBENCH_TARGET::OBJECT ? DEBUG_TOOL::WORLD_OBJECT :
 					(target == COMPOSITION_WORKBENCH_TARGET::SEQUENCE ? DEBUG_TOOL::SEQUENCER_BENCHMARK : DEBUG_TOOL::SEQUENCER);
 			});
-			m_pSequencerTool->Open(ETOUI(LEVEL::KAKULSAYDON_ARENA) ==
+			if (CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::CHARACTER_SELECT))
+				m_pSequencerTool->Open(COMPOSITION_WORKBENCH_TARGET::WORLD);
+			else m_pSequencerTool->Open(ETOUI(LEVEL::KAKULSAYDON_ARENA) ==
 				CGameInstance::Get().Get_CurrentLevelID() ?
 				COMPOSITION_WORKBENCH_BOSS::KOUKU_SAYDON : COMPOSITION_WORKBENCH_BOSS::VALTAN);
 		}
@@ -9645,7 +9732,9 @@ HRESULT CMainApp::EnsureDebugTool(const DEBUG_TOOL eTool)
 		{
 			const auto level = CGameInstance::Get().Get_CurrentLevelID();
 			const bool selectedValtan = m_pSequencerTool->Get_SelectedBoss() == COMPOSITION_WORKBENCH_BOSS::VALTAN;
-			if (m_pSequencerTool->Is_BossSelected() && level == ETOUI(LEVEL::KAKULSAYDON_ARENA) && selectedValtan)
+			if (m_pSequencerTool->Is_BossSelected() && level == ETOUI(LEVEL::CHARACTER_SELECT))
+				m_pSequencerTool->Open(COMPOSITION_WORKBENCH_TARGET::WORLD);
+			else if (m_pSequencerTool->Is_BossSelected() && level == ETOUI(LEVEL::KAKULSAYDON_ARENA) && selectedValtan)
 				m_pSequencerTool->Open(COMPOSITION_WORKBENCH_BOSS::KOUKU_SAYDON);
 			else if (m_pSequencerTool->Is_BossSelected() && level == ETOUI(LEVEL::VALTAN_ARENA) && !selectedValtan)
 				m_pSequencerTool->Open(COMPOSITION_WORKBENCH_BOSS::VALTAN);
@@ -10278,7 +10367,7 @@ void CMainApp::RenderArenaFollowCameraSettings()
 		if (ImGui::Button("Save##CharacterSize")) save();
 		ImGui::SameLine();
 		if (ImGui::Button("Reload saved##CharacterSize")) reload();
-		ImGui::TextWrapped("Class values multiply the current catalog model. Artist 1.6x, DimensionMaster 0.7x and madness clown 0.7x are the requested defaults. Mario 1x keeps its 1.5m admission height.");
+		ImGui::TextWrapped("Class values multiply the current catalog model. Artist 0.7x, DimensionMaster 1.0x and madness clown 0.7x are the requested defaults. Mario 1x keeps its 1.5m admission height.");
 		ImGui::Text("Save / Reload target: %s", names[index]);
 		ImGui::TextDisabled("Sizes apply during camera sequences too. Save keeps this map's settings for local and remote characters.");
 		ImGui::TreePop();
@@ -12700,7 +12789,7 @@ void CMainApp::RenderDeveloperTools()
 			showcaseTuning.fRectHeight);
 	}
 
-	ImGui::TextDisabled("F1: Developer Tools  |  F6: Follow/Free Camera");
+	ImGui::TextDisabled("F1: Developer Tools  |  F6: Follow/Free Camera  |  F7: Profiler");
 	ImGui::End();
 }
 
@@ -12882,79 +12971,7 @@ void CMainApp::RenderRenderingWorkbench()
     ImGui::TextWrapped("Exposure scales brightness; LUT grading runs once. Directional toggles diffuse/specular while ambient stays active.");
     ImGui::TextWrapped("Comparison applies to the current view, including Mario. Reset, close, or change Level to return to authored settings. These switches are not saved.");
 
-	ImGui::SeparatorText("Map Materials");
-	MATERIAL_RENDER_SETTINGS materialSettings =
-		CGameInstance::Get().Get_MaterialRenderSettings();
-	bool_t materialChanged = ImGui::Checkbox(
-		"Recovered map materials (B)", &materialSettings.bUseSourceMaterials);
-	static constexpr const char* materialViews[] = {
-		"Final", "Base color", "Normal", "Direct specular", "Reflection delta",
-		"Roughness", "Metallic", "Material AO"
-	};
-	int materialView = static_cast<int>(materialSettings.eDebugView);
-	if (ImGui::Combo("Material debug view", &materialView,
-		materialViews, static_cast<int>(std::size(materialViews))))
-	{
-		materialSettings.eDebugView = static_cast<MATERIAL_DEBUG_VIEW>(materialView);
-		materialChanged = true;
-	}
-	if (materialChanged && FAILED(
-		CGameInstance::Get().Apply_MaterialRenderSettings(materialSettings)))
-	{
-		m_strRenderingStatus = "Could not apply material comparison settings.";
-	}
-	ImGui::TextWrapped(
-		"Only materials declared in mapmaterials; restart after data edits. "
-		"Reflection view shows absolute base-color change.");
-	const auto surfaceBindings = CMapAssetRenderUtils::Get_RecentSurfaceBindings();
-	ImGui::TextDisabled("Bindings collected while this pane is open (last second, up to 32).");
-	if (surfaceBindings.empty())
-		ImGui::TextDisabled("No declared map material was recently bound.");
-	else if (ImGui::BeginTable("RecentFloorMaterialBindings", 4,
-		ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_Resizable))
-	{
-		ImGui::TableSetupColumn("Asset");
-		ImGui::TableSetupColumn("Material");
-		ImGui::TableSetupColumn("Source family");
-		ImGui::TableSetupColumn("Active program");
-		ImGui::TableHeadersRow();
-		for (const auto& row : surfaceBindings)
-		{
-			ImGui::TableNextRow();
-			ImGui::TableSetColumnIndex(0);
-			ImGui::TextWrapped("%s", row.assetId.c_str());
-			ImGui::TableSetColumnIndex(1);
-			ImGui::TextWrapped("%s", row.materialName.c_str());
-			ImGui::TableSetColumnIndex(2);
-			switch (row.family)
-			{
-			case MODEL_SURFACE_FAMILY::SPECULAR_TEXTURE_REFLECTION:
-				ImGui::TextWrapped("Specular texture + reflection");
-				break;
-			case MODEL_SURFACE_FAMILY::DIFFUSE_SPECULAR_REFLECTION:
-				ImGui::TextWrapped("Diffuse specular + reflection");
-				break;
-            case MODEL_SURFACE_FAMILY::PBR_SEAMLESS_OPAQUE:
-                ImGui::TextWrapped("Source seamless PBR");
-                break;
-            case MODEL_SURFACE_FAMILY::PBR_OPAQUE:
-                ImGui::TextWrapped("Source PBR");
-                break;
-            case MODEL_SURFACE_FAMILY::SOURCE_SPECULAR_OPAQUE:
-                ImGui::TextWrapped("Source opaque specular");
-                break;
-            case MODEL_SURFACE_FAMILY::SOURCE_OVERLAY_OPAQUE:
-                ImGui::TextWrapped("Source stone overlay + baked lighting");
-                break;
-			default:
-				ImGui::Text("Unknown (%u)", static_cast<uint32_t>(row.family));
-				break;
-			}
-			ImGui::TableSetColumnIndex(3);
-			ImGui::Text("%s (%u)", row.activeProgram == 0u ? "Legacy A" : "Recovered B", row.activeProgram);
-		}
-		ImGui::EndTable();
-	}
+	ImGui::TextDisabled("Pixel inputs and material comparisons are in the Benchmark section.");
 
 	CPresentation_Manager& Presentation = CPresentation_Manager::Get();
 	ImGui::SeparatorText("Effect Presentation");
@@ -12991,7 +13008,7 @@ void CMainApp::RenderRenderingWorkbench()
 		"Enabled##SSAO", &m_RenderQualityDraft.bSSAOEnabled);
 	ImGui::BeginDisabled(!m_RenderQualityDraft.bSSAOEnabled);
 	globalChanged |= ImGui::DragFloat(
-		"SSAO Radius", &m_RenderQualityDraft.fSSAORadius,
+		"SSAO Radius (m)", &m_RenderQualityDraft.fSSAORadius,
 		0.01f, 0.01f, 8.f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
 	globalChanged |= ImGui::DragFloat(
 		"SSAO Bias", &m_RenderQualityDraft.fSSAOBias,
@@ -13007,7 +13024,7 @@ void CMainApp::RenderRenderingWorkbench()
 		0.25f, 1.f, 1000.f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
 	ImGui::EndDisabled();
 	ImGui::TextDisabled(
-		"SSAO darkens ambient lighting only; direct light, emissive, and Bloom remain independent.");
+		"SSAO darkens ambient and PBR baked/IBL light in nearby creases. Radius is metres; intensity/power deepen it. It cannot cast a long directional shadow. True emissive remains independent.");
 
 	ImGui::SeparatorText("Bloom / Tone / Anti-Aliasing");
 	globalChanged |= ImGui::Checkbox(
@@ -13034,9 +13051,12 @@ void CMainApp::RenderRenderingWorkbench()
 	globalChanged |= ImGui::DragFloat(
 		"Base Exposure", &m_RenderQualityDraft.fExposure,
 		0.01f, 0.01f, 32.f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
+	ImGui::BeginDisabled(m_RenderQualityDraft.SourcePostProcess.bEnabled);
 	globalChanged |= ImGui::DragFloat(
 		"Hable White Point", &m_RenderQualityDraft.fWhitePoint,
 		0.05f, 1.f, 64.f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
+    ImGui::EndDisabled();
+    ImGui::TextWrapped("Exposure scales all HDR light; it cannot restore missing normals or shadows. Hable White Point is unused with Source Tone enabled. Bloom spreads bright pixels; FXAA smooths edges and can soften small details.");
 	globalChanged |= ImGui::DragFloat(
 		"Display Gamma", &m_RenderQualityDraft.fGamma,
 		0.005f, 1.f, 3.f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
@@ -13264,11 +13284,8 @@ void CMainApp::Free()
 	CGameInstance::Get().SetInputBlocked(false, false);
 
 #ifdef _DEBUG
-	if (Engine::CProfiler* pProfiler = CGameInstance::Get().Get_Profiler())
-		pProfiler->Set_Enabled(false);
 	m_pSequencerTool.reset();
 	m_pSequenceActionWorkbench.reset();
-	m_pProfilerTool.reset();
 	m_pRenderingBenchmark.reset();
 	m_pKoukuSaydonActionWorkbench.reset();
 	m_pValtanActionWorkbench.reset();
@@ -13288,6 +13305,8 @@ void CMainApp::Free()
 	m_pMapTool.reset();
 #endif
 
+	if (auto* profiler = CGameInstance::Get().Get_Profiler()) profiler->Set_Enabled(false);
+	m_pProfilerTool.reset();
 	if (nullptr != m_pImGuiLayer)
 		m_pImGuiLayer->Shutdown();
 	m_pImGuiLayer.reset();

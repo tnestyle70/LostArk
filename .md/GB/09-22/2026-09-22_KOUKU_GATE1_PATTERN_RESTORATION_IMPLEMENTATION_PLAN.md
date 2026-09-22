@@ -47,3 +47,7 @@ P100의 원본 공격 시점/범위에 collider와 기존 ballistic knockdown �
 카드비 Projectile421980301의 원본 개별 폭발음은 각 투하 birth+1350ms이다. 기존 random volley template에 유한 MAP SOUND를 함께 저장·게시·소비할 수 있게 projector, Composition validator, Workbench 선택항목과 targeted presentation reader를 연결한다. 최소 한 개 MAP EFFECT가 위치 원점을 소유해야 하며 SOUND 단독·BOSS 부착 SOUND·추적 루프 SOUND는 허용하지 않는다. 기존 `Sample`의 SoundCue 시작/seek/종료를 그대로 사용해 늦은 입장도 현재 나이에서 한 번만 재생한다.
 
 사용자가 지정한 1관문 음원 `Sound/KoukuSaton/S_BGM_COMMANDERRAID/midnightc_ed__398225682.wav`로 관문 selector를 교체한다. 이전에 선택한 M03와 구분해 전달 manifest도 갱신한다. 화염파동은 1관문 14그룹의 전체 중심·방향을 유지하면서 가로3.5m/행간3.031m로 줄이고, 5352ms에서 잘리던 불바닥을 기존 independent tail 경로로 끝까지 유지한다. 백스텝 Tool preview도 기존 실제 모델 afterimage 경로에 연결하며 pause/seek/stop과 Product 시계를 구분한다.
+
+## G07. DJ PNG의 V2 texture prewarm 복구
+
+`boss.kouku.dj.cardrain`과 `boss.kouku.dj.delivery`는 V2 ScreenPost LEAF이며 설치된 PNG는 정상이다. `Client/Private/EffectV2_Object.cpp`의 `Acquire_Texture`가 모든 입력을 DDS 전용 함수에 넘겨 실패한다. 같은 함수에 확장자별 DDS/WIC 분기를 추가한다. DDS의 기존 flags와 PNG의 FORCE/IGNORE_SRGB를 동일 정책으로 유지하고 성공한 SRV만 기존 cache에 넣는다. Loader와 MainApp의 기존 COM 초기화를 사용하며 immediate context는 전달하지 않는다. PNG·저작 JSON·asset ID는 변경하지 않는다. 새 C++ 파일과 project/filter 변경은 없다. 수정 TU의 Debug 컴파일, 실제 PNG/DDS decode 및 V2 Prewarm 검증 후 Product 실행 파일 반영과 사용자 Complete Play 확인을 구분한다.

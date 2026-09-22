@@ -22,17 +22,19 @@
 | 수정 파일 git diff --check | 통과 |
 
 scratch 게시 위치는 `out/MonsterComposition20260922/ServerWorld`와 `ClientWorld`다.
-이 작업에서 live runtime 게시 파일은 교체하지 않았다. 상위 통합 작업이 Gate3 변경과 함께 최종 게시한다.
+상위 통합 작업에서 공식 World publisher live Publish도 종료0으로 완료했다. 실제 Valtan/Kouku/
+Character Select spawngroupsbootstrap3개의 대상 공격 반응 필드에 반영됐고 boss는 보존했다.
 
 일부 카드미로 clip의 저장 tick rate가 30과 다르지만 런타임 CAnimation은 30을 사용한다.
 이번 preview도 동일한 엔진 clock을 사용하며 리소스 바이너리는 변경하지 않았다.
 
 ## G02. 실행하지 않은 검사와 사용자 경로
 
-제품 컴파일·링크 및 Server contract 실행은 상위 통합 작업에서 수행한다.
+제품 컴파일·링크는 상위 통합 Product Debug에서 통과했다.
 기존 CharacterAdmission 검사에 한 번의 일반 공격이 HP를 한 번만 깎고 damage event 한 개를 만들며
 push/down을 발생시키지 않는 단언을 추가했다. SpawnGroups의 게시 profile 기대값도 피해 전용으로 바꿨다.
-단언을 추가한 사실과 실행 성공을 구분한다.
+actual Server object·게시 bootstrap focused probe에서 피해1회·event1개·push/down없음을 실행해
+확인했다. 통합20/20 결과와 광역검사의 별도 기존 Kouku fixture 실패는 상위 RESULT에 구분했다.
 
 Client/UI 실행·화면 캡처·육안 판정은 하지 않았다. 통합 빌드와 World publish 후 사용자가
 F1 → Action Workbench → Composition Actions → Character → Monster에서 모델과 clip을 선택하고

@@ -20,6 +20,7 @@ CLASSES = {
     "ARTIST",
     "DIMENSIONMASTER",
     "WARLORD",
+    "GUARDIANKNIGHT",
 }
 
 
@@ -103,6 +104,12 @@ class EquipmentCatalogTests(unittest.TestCase):
                     float(part["socketYawDegrees"]),
                     stances[0] if stances else None,
                 )
+        # The retail Guardian preview (PCPreview 702) and the retained original
+        # halberd both bind WP_DDK_R's installed b_wp_1 battle socket.
+        for look in ("class_select_hr00", "original_00"):
+            expected_socket_contract[(f"character.guardian_knight.{look}.weapon", "weapon")] = (
+                "b_wp_1", 0.0, None,
+            )
         socketed = {key: value for key, value in parts.items() if value["attachmentMode"] == "SOCKETED"}
         self.assertEqual(set(expected_socket_contract), set(socketed))
         for key, expected in expected_socket_contract.items():
@@ -142,7 +149,7 @@ class EquipmentCatalogTests(unittest.TestCase):
         self.assertEqual(SLOTS, self.presets["slots"])
         class_presets = self.presets["classPresets"]
         self.assertEqual(CLASSES, {item["classId"] for item in class_presets})
-        self.assertEqual(6, len(class_presets))
+        self.assertEqual(len(CLASSES), len(class_presets))
 
         sets_by_id = {
             visual_set["visualSetId"]: visual_set

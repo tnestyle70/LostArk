@@ -9,6 +9,7 @@
 #include "Effect_AuthoringDocument.h"
 #include "ValtanCinematicCameraDocument.h"
 #include "CompositionResourceTree.h"
+#include "CompositionAnimationResource.h"
 #include <array>
 #include <iosfwd>
 #include "EffectResourceCatalog.h"
@@ -59,9 +60,17 @@ public:
     void Render_WorkbenchDetail() { Render_BoxDetail(true); }
     void Render_WorkbenchResources() { Render_CompositionResources(true); }
     bool Is_Dirty() const { return m_Dirty; }
-    bool Open_CharacterModelSequence(const std::string& sequenceId);
+    bool Open_CharacterModelSequence(const std::string& sequenceId, bool loadSaved = true);
     bool Export_CharacterModelAction(ANIMATION_SKILL_BINDING& binding,
-        ANIMATION_EFFECT_CUE_DOCUMENT& cues, const std::string& soundOwner, std::string& status);
+        ANIMATION_EFFECT_CUE_DOCUMENT& cues, const std::string& soundOwner, std::string& status,
+        bool presentationOnly = false);
+    bool Can_AppendCharacterAnimation(const COMPOSITION_ANIMATION_RESOURCE& resource,
+        bool replace, std::string& status) const;
+    bool Append_CharacterAnimation(const COMPOSITION_ANIMATION_RESOURCE& resource,
+        bool replace, std::string& status);
+    bool Rebind_CharacterModel(std::string& status);
+    void Set_WorkbenchSaveCallback(std::function<bool()> callback) { m_WorkbenchSave = std::move(callback); }
+    bool Save_WorkbenchSequence() { return Save_Sequence(); }
     void Refresh_ModelResources() { m_ResourceModelGeneration = ~std::uint64_t{0u}; }
 
     void Render_ModelView(); // Contents inside the existing Model View window.
@@ -200,7 +209,7 @@ private:
         std::vector<CLIP>& animations, bool& customAnimation,
         std::vector<SOUND_ROW>& sounds, std::vector<COLLIDER_ROW>& colliders);
     void Write_AdditionalRows(std::ostream& out) const;
-    bool Append_Animation(const std::string& clipName);
+    bool Append_Animation(const std::string& clipName, bool atEnd = false);
     bool Refresh_AnimationTiming();
     bool Commit_TransientPreview();
     bool Append_Sound(const std::string& assetId, std::uint32_t durationMs);
@@ -268,6 +277,7 @@ private:
     bool Load_Sequence(bool discard = false);
 
     ComPtr<ID3D11Device> m_Device;
+    std::function<bool()> m_WorkbenchSave;
     ComPtr<ID3D11DeviceContext> m_Context;
     std::shared_ptr<CCharacterPreviewPanel> m_Panel;
     CEffectCompositionModelPreview m_Kouku;

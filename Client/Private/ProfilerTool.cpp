@@ -1,5 +1,9 @@
 #include "imgui.h"
 #include "ProfilerTool.h"
+#include "GameInstance.h"
+#include "Engine_RenderTypes.h"
+#include <cstring>
+#include <dxgi.h>
 
 #include <algorithm>
 #include <cctype>
@@ -35,6 +39,7 @@ namespace
         "Client.Update",
         "Effect.Decal.Render",
         "Effect.FollowAnchors.Update",
+        "Effect.LevelPresentation.VisibleUpdate",
         "Effect.Material.Bind",
         "Effect.Mesh.BindAndDraw",
         "Effect.Mesh.DrawSubmission",
@@ -234,6 +239,8 @@ namespace
         "Render.Draw",
         "Render.Final",
         "Render.Lights",
+        "Render.Lights.StageAndSubmit",
+        "Render.Lights.UploadAndDraw",
         "Render.NonBlend",
         "Render.NonLight",
         "Render.Portraits",
@@ -244,6 +251,10 @@ namespace
         "Render.SceneHDR",
         "Render.ScreenPosts",
         "Render.Shadow",
+        "Render.Shadow.CacheAdmission",
+        "Render.Shadow.CacheCopy",
+        "Render.Shadow.StaticBuild",
+        "Render.Shadow.Dynamic",
         "Render.SubmitFrameProviders",
         "Render.UI",
         "Render.UIText",
@@ -304,6 +315,9 @@ namespace
         "Render.SceneHDR",
         "Render.ScreenPosts",
         "Render.Shadow",
+        "Render.Shadow.CacheCopy",
+        "Render.Shadow.StaticBuild",
+        "Render.Shadow.Dynamic",
         "Render.UI",
         "Render.UIText",
     };
@@ -342,6 +356,15 @@ namespace
         "Picking readback bytes",
         "Indirect draw calls",
         "Indirect indices (LOD0 upper bound)",
+        "Shadow cache hits", "Shadow cache misses", "Shadow static casters", "Shadow dynamic casters",
+        "Map culling candidates", "Map culling visible", "Map LOD 0 draws", "Map LOD 1 draws", "Map LOD 2 draws",
+        "Map source indices (LOD 0)", "Map submitted indices (chosen LOD)",
+        "Light records (receiver passes)", "Light draw calls", "Light record upload bytes",
+        "Map draws with generated LOD geometry",
+        "Local light culling candidates", "Local light culling rejected",
+        "Effect bounds candidates", "Effect bounds culled",
+        "Trigger marker sample attempts", "Trigger marker entry/reentry history requests",
+        "Ambient effects suspended", "Ambient effects advanced",
     };
 
     bool Contains_CaseInsensitive(std::string_view text, const char* query)
@@ -381,6 +404,32 @@ namespace
             ImGui::TableNextColumn(); ImGui::TextDisabled(i == 1 ? "not observed" : "--");
         }
     }
+}
+
+Client::CProfilerTool::CProfilerTool(ID3D11Device* device)
+{
+    if (!device) return;
+    m_CaptureContext.DeviceCreationFlags = device->GetCreationFlags();
+    Microsoft::WRL::ComPtr<IDXGIDevice> dxgiDevice;
+    Microsoft::WRL::ComPtr<IDXGIAdapter> adapter;
+    DXGI_ADAPTER_DESC desc{};
+    if (FAILED(device->QueryInterface(IID_PPV_ARGS(dxgiDevice.GetAddressOf()))) ||
+        FAILED(dxgiDevice->GetAdapter(adapter.GetAddressOf())) || FAILED(adapter->GetDesc(&desc))) return;
+    const int bytes = WideCharToMultiByte(CP_UTF8, 0, desc.Description, -1, nullptr, 0, nullptr, nullptr);
+    if (bytes > 1)
+    {
+        std::string text(static_cast<size_t>(bytes), '\0');
+        WideCharToMultiByte(CP_UTF8, 0, desc.Description, -1, text.data(), bytes, nullptr, nullptr);
+        text.pop_back();
+        m_CaptureContext.Adapter = std::move(text);
+    }
+}
+
+void Client::CProfilerTool::Begin_Capture(Engine::CProfiler& profiler)
+{
+    profiler.Reset_History();
+    profiler.Set_Enabled(true);
+    m_fLastRefreshTime = -1.0;
 }
 
 void Client::CProfilerTool::Refresh(Engine::CProfiler& profiler)
@@ -424,13 +473,37 @@ void Client::CProfilerTool::Request_Save(Engine::CProfiler& profiler)
     Engine::FProfilerCaptureSnapshot snapshot;
     {
         Engine::CProfilerScope scope(&profiler, "Profiler.Capture.Snapshot");
-        snapshot = profiler.Snapshot();
+        snapshot = profiler.Snapshot(m_bSaveWindowOnly ?
+            static_cast<size_t>((std::max)(m_iWindowFrameInput, 1)) : Engine::CProfiler::MAX_HISTORY_FRAMES);
     }
-    const uint64_t frame = snapshot.Frames.empty() ? 0 : snapshot.Frames.back().FrameNumber;
+    if (snapshot.Frames.empty())
+    { m_strCaptureStatus = "No completed frames. Enable Capture and wait before saving."; return; }
+    auto& game = Engine::CGameInstance::Get();
+    auto context = m_CaptureContext;
+    context.Valid = true;
+    context.LevelId = game.Get_CurrentLevelID();
+    const auto viewport = game.Get_ViewportSize();
+    context.Viewport = {viewport.x, viewport.y};
+    if (const auto* camera = game.Get_CamPosition())
+        context.CameraPosition = {camera->x, camera->y, camera->z, camera->w};
+    if (const auto* view = game.Get_Transform(Engine::D3DTS::VIEW))
+        std::memcpy(context.ViewMatrix.data(), view, sizeof(*view));
+    if (const auto* projection = game.Get_Transform(Engine::D3DTS::PROJ))
+        std::memcpy(context.ProjectionMatrix.data(), projection, sizeof(*projection));
+    const auto& shadow = game.Get_ShadowLightDesc().Settings;
+    context.ShadowEnabled = shadow.bEnabled;
+    context.ShadowWidth = shadow.fOrthographicWidth;
+    context.ShadowHeight = shadow.fOrthographicHeight;
+    context.ShadowStrength = shadow.fStrength;
+    const auto quality = game.Get_RenderQualitySettings();
+    context.SSAOEnabled = quality.bSSAOEnabled;
+    context.BloomEnabled = quality.bBloomEnabled;
+    context.FXAAEnabled = quality.bFXAAEnabled;
+    const uint64_t frame = snapshot.Frames.back().FrameNumber;
     std::filesystem::path output;
     if (!CProfilerCaptureIO::Make_NamedPath(m_CaptureName.data(), frame, output, &error))
     { m_strCaptureStatus = error; return; }
-    m_strCaptureStatus = m_Exporter.BeginSave(std::move(snapshot), output, &error) ?
+    m_strCaptureStatus = m_Exporter.BeginSave(std::move(snapshot), output, &error, std::move(context)) ?
         "Saving JSON in background..." : error;
 }
 
@@ -463,6 +536,12 @@ void Client::CProfilerTool::Render(Engine::CProfiler* profiler)
     ImGui::SetNextItemWidth(300.f);
     ImGui::InputTextWithHint("Save name", "Optional name (Korean supported)", m_CaptureName.data(), m_CaptureName.size());
     ImGui::SameLine(); ImGui::TextDisabled("Each save creates a new JSON file.");
+#ifdef _DEBUG
+    ImGui::TextDisabled("Build: Debug | F7 hides/shows this window; Capture controls measurement.");
+#else
+    ImGui::TextDisabled("Build: Release | F7 hides/shows this window; Capture controls measurement.");
+#endif
+    ImGui::TextWrapped("For comparable runs: warm the scene, Reset, hide with F7, reproduce the same camera and actions, then reopen and Save. Closing this panel does not pause capture. Context in JSON is sampled at export.");
     bool enabled = profiler->Is_Enabled();
     if (ImGui::Checkbox("Capture", &enabled))
     {
@@ -479,6 +558,16 @@ void Client::CProfilerTool::Render(Engine::CProfiler* profiler)
     if (ImGui::Button("Save JSON")) Request_Save(*profiler);
     ImGui::EndDisabled(); ImGui::SameLine();
     ImGui::TextDisabled("%zu / %zu history frames", m_iHistoryFrames, Engine::CProfiler::MAX_HISTORY_FRAMES);
+
+    bool detailed = profiler->Is_DetailedScopesEnabled();
+    if (ImGui::Checkbox("Detailed per-draw CPU scopes (higher overhead)", &detailed))
+    {
+        profiler->Set_DetailedScopesEnabled(detailed);
+        profiler->Reset_History();
+        m_fLastRefreshTime = -1.0;
+    }
+    ImGui::Checkbox("Save only selected frame window", &m_bSaveWindowOnly);
+    ImGui::SameLine(); ImGui::TextDisabled("Uncheck to save all retained history (up to 1200 frames).");
 
     const double now = ImGui::GetTime();
     if (m_fLastRefreshTime < 0.0 ||
@@ -508,6 +597,11 @@ void Client::CProfilerTool::Render(Engine::CProfiler* profiler)
         ImGui::TextWrapped("Incomplete capture since reset: omitted CPU scopes %llu / GPU frames %llu / GPU scopes %llu / animation samples %llu",
             static_cast<unsigned long long>(m_Live.TotalDroppedCpuScopes), static_cast<unsigned long long>(m_Live.TotalDroppedGpuFrames),
             static_cast<unsigned long long>(m_Live.TotalDroppedGpuScopes), static_cast<unsigned long long>(m_Live.TotalDroppedModelAnimationSamples));
+    if (m_bLiveValid && m_Live.DroppedCpuScopes)
+        ImGui::TextColored(ImVec4(1.f, .65f, .25f, 1.f), "Latest frame omitted %llu CPU scopes; parent/self attribution is incomplete.",
+            static_cast<unsigned long long>(m_Live.DroppedCpuScopes));
+    if (m_bLiveValid && m_Live.TotalDroppedCpuScopes)
+        ImGui::TextWrapped("CPU scopes were omitted since Reset. Inclusive/Self tables may be incomplete; disable detailed scopes and Reset before comparing bottlenecks.");
     if (!m_strCaptureStatus.empty()) ImGui::TextWrapped("%s", m_strCaptureStatus.c_str());
     ImGui::Separator();
     ImGui::SetNextItemWidth(280.f);

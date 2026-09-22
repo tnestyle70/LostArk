@@ -176,7 +176,9 @@ def command_extract(arguments):
         loaded = package(source['package'])
         count = struct.unpack_from('<I', source['tail'], 36)[0]
         texture_expressions = material_map['uniformExpressionSet']['pixelTexture2DExpressions']
-        if not (len(texture_expressions) <= count <= 64 and len(source['tail']) >= 40 + 4 * count):
+        # Multiple parameter expressions may share one referenced texture. The
+        # expression count therefore need not fit the serialized reference table.
+        if not (count <= 64 and len(source['tail']) >= 40 + 4 * count):
             fail(f'{target} referenced texture table is not at the static-resource offset')
         referenced = struct.unpack_from('<' + 'i' * count, source['tail'], 40)
         textures = []
@@ -184,6 +186,8 @@ def command_extract(arguments):
             name = expression.get('parameterName')
             path = row['textures'].get(name) if name else None
             if not path:
+                if not 0 <= expression['referencedTextureIndex'] < count:
+                    fail(f'{target} texture expression {index} has no valid source reference')
                 path = full_reference(source['package'], loaded, referenced[expression['referencedTextureIndex']])
             srgb = tagged_value(export(path)['properties'], 'srgb')
             textures.append(dict(expressionIndex=index, parameterName=name, sourceObject=path,
@@ -468,6 +472,7 @@ def emit_function(document, family, number, stage):
         'fe38b50e0f8656448805e1fc88f67c83': (30, 31),
         'fcf2ae320f020d48b6a207cedc870d36': (37, 38),
         '824358517f0ef0448e57d8ac93e923da': (31, 32),
+        'e56633f592e0154eb0794435cf3c2717': (24, 25),
     }
     if stage == 'base' and program['shaderId'] in environment_rows:
         color, rotation = environment_rows[program['shaderId']]
@@ -479,8 +484,13 @@ def emit_function(document, family, number, stage):
                   f'        source[{rotation}] = g_SourceCharacterEnvironmentRotation;', '    }']
     if stage == 'light':
         trailing = program['bindings']['constantBufferClosure']['trailingUnownedConstantBuffer0Slots']
+        if not trailing:
+            fail('Source directional light program has no native light-colour row')
         lines.append(f'    source[{trailing[0]}]=float4(input.lightColor,1.0);')
-        lines.append(f'    source[{trailing[1]}].x=1.0;')
+        # Hair permutations include engine shadow rows between light colour and
+        # its final scalar; masked/custom-shade permutations omit that scalar.
+        if len(trailing) > 1:
+            lines.append(f'    source[{trailing[-1]}].x=1.0;')
     lines.append('    float4 projection[4]; [unroll] for(uint p=0u;p<4u;++p) projection[p]=input.projection[p];')
     lines.append('    float4 passValues[5] = {float4(0.5,-0.5,0.5,0.5),float4(0,0,0,0),float4(0,0,0,0),float4(0,0,0,1),float4(1,1,1,1)};')
     lines.append('    float4 ' + ', '.join(f'v{i} = input.values[{i}]' for i in range(10)) + ';')
@@ -488,14 +498,24 @@ def emit_function(document, family, number, stage):
     lines.append('    float4 ' + ', '.join(f'r{i}=0.0' for i in range(temps)) + ';')
     for index, instruction in enumerate(program['disassembly']['instructions'], 1):
         lines.append(f'    // {index}: {instruction}')
-        lines.append('    ' + translate(instruction, texture_map, lookup, stage))
+        translated = translate(instruction, texture_map, lookup, stage)
+        if (stage == 'base' and program['shaderId'] == 'e56633f592e0154eb0794435cf3c2717' and
+                instruction == 'div r0.w, l(1.000000, 1.000000, 1.000000, 1.000000), r13.w'):
+            # This native engine BRDF lookup is not a material texture and its payload is
+            # not recovered yet. The explicit zero lookup must contribute zero reflection,
+            # not feed 1/0 followed by 0*INF into the entire surface colour. A valid nonzero
+            # lookup retains the exact native reciprocal; no substitute LUT is invented.
+            translated = 'r0.w = r13.w != 0.f ? 1.f / r13.w : 0.f;'
+        lines.append('    ' + translated)
     lines.append('}')
     return '\n'.join(lines) + '\n'
 
 
 def emit_configure(document, family, number):
+    if number <= 0:
+        fail('generated source program must be nonzero for guarded family dispatch')
     time_parameter = time_parameter_of(document)
-    lines = [f'    else if (family == "{family}")', '    {', '        [&]() {', f'        staged.program = {number}u;']
+    lines = [f'    if (staged.program == 0u && family == "{family}")', '    {', '        [&]() {', f'        staged.program = {number}u;']
     if time_parameter is not None:
         lines.append(f'        staged.baseConstants[{TIME_PARAMETER_ROW}] = vector(parameter("{time_parameter}"));')
         lines.append(f'        staged.lightConstants[{TIME_PARAMETER_ROW}] = vector(parameter("{time_parameter}"));')
@@ -534,6 +554,18 @@ def installed_function(path, name):
     return '\n'.join(lines[head:end + 1]) + '\n'
 
 
+def guarded_configure_block(block):
+    """Accept archived branches without reintroducing an unbounded else-if chain."""
+    programs = re.findall(r'staged\.program = (\d+)u;', block)
+    if len(programs) != 1 or int(programs[0]) == 0:
+        fail('generated family needs one nonzero source program')
+    result, count = re.subn(r'^    (?:else )?if \((?:staged\.program == 0u && )?family == ',
+                            '    if (staged.program == 0u && family == ', block, count=1)
+    if count != 1:
+        fail('generated family dispatch header changed')
+    return result
+
+
 def installed_configure(family):
     lines = read_text(PARAMETER_HEADER).split('\n')
     start = next((i for i, l in enumerate(lines) if f'family == "{family}"' in l), None)
@@ -541,7 +573,7 @@ def installed_configure(family):
         return None
     end = next(i for i in range(start + 2, len(lines)) if lines[i] == '    }')
     body = [l for l in lines[start:end + 1] if not l.strip().startswith('//')]
-    return '\n'.join(body) + '\n'
+    return guarded_configure_block('\n'.join(body) + '\n')
 
 
 def load_document(path):
@@ -562,7 +594,7 @@ def command_verify(arguments):
     generated = emit_configure(document, arguments.family, arguments.program)
     reserved = f'staged.baseConstants[{TIME_PARAMETER_ROW}]', f'staged.lightConstants[{TIME_PARAMETER_ROW}]'
     comparable = ''.join(l + '\n' for l in generated.splitlines() if not l.strip().startswith(reserved))
-    exact = installed is not None and installed.replace('    if (family', '    else if (family') in (generated, comparable)
+    exact = installed is not None and installed in (generated, comparable)
     failures += 0 if exact else 1
     print('configure', 'EXACT' if exact else 'MISMATCH')
     if failures:
@@ -613,7 +645,7 @@ def named_vector_bindings(header):
     begin = header.index('inline bool Configure(const std::string& family, const PARAMETER_VALUES& parameters,')
     end = header.index('inline bool Configure(const std::string& family, const DATA_JSON_VALUE& parameters,', begin)
     configure = header[begin:end]
-    families = list(re.finditer(r'^    (?:else )?if \(family == "[^"]+"\)\n    \{\n(.*?)^    \}', configure, re.M | re.S))
+    families = list(re.finditer(r'^    (?:else )?if \((?:staged\.program == 0u && )?family == "[^"]+"\)\n    \{\n(.*?)^    \}', configure, re.M | re.S))
     if not families:
         fail('named-vector patch found no generated source families')
     states = {}
@@ -739,11 +771,11 @@ def refresh_named_vector_patch(header):
 def command_install(arguments):
     base = (arguments.generated / f'base{arguments.program}.hlsli').read_text(encoding='utf8')
     light = (arguments.generated / f'light{arguments.program}.hlsli').read_text(encoding='utf8')
-    configure = (arguments.generated / f'configure{arguments.program}.h').read_text(encoding='utf8')
+    configure = guarded_configure_block((arguments.generated / f'configure{arguments.program}.h').read_text(encoding='utf8'))
     header = read_text(PARAMETER_HEADER)
     existing = installed_configure(arguments.family)
     if existing is None:
-        anchor = '    else return false;\n    if (staged.program == 80u)\n'
+        anchor = '    if (staged.program == 0u) return false;\n    if (staged.program == 80u)\n'
         if header.count(anchor) != 1:
             fail('SourceCharacterMaterialParameters.h family anchor changed')
         header = header.replace(anchor, configure + anchor)

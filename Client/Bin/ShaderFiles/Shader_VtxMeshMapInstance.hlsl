@@ -346,12 +346,20 @@ PS_OUT PS_MAIN(VS_OUT input)
             output.vPickPos.w = EncodeMapSurfaceGeometricNormal(input.vNormal.xyz,
                 g_HasBakedLighting != 0u && input.vLightmapAverageScale.w != 0.f);
         output.vPickPos.w = EncodeMapStaticShadowChannel(output.vPickPos.w);
-        // MRT4 carries already shaded source indirect light for selected families.
-        // Final resolve adds it as radiance; it is not an emissive material flag.
-        output.vEmissive = float4(EvaluateMapSourceIndirectLighting(surface,
+        float3 environmentSpecular;
+        const float3 indirect = EvaluateMapSourceIndirectLighting(surface,
             input.vLightmapUV, input.vLightmapAverageScale,
             input.vLightmapDirectionalScale, input.vWorldPos.xyz,
-            input.vTangent.xyz, input.vBinormal.xyz, input.vNormal.xyz) +
+            input.vTangent.xyz, input.vBinormal.xyz, input.vNormal.xyz, environmentSpecular);
+        // Marker 3 has no character geometry payload. Carry RNM/IBL separately
+        // so AO and moving-caster shadows never attenuate actual emission.
+        if (pbr)
+        {
+            output.vCharacterGeometry = float4(indirect, 0.f);
+            // PBR leaves RT6 free: preserve IBL for independent contribution views.
+            output.vCharacterSurface = float4(environmentSpecular, 0.f);
+        }
+        output.vEmissive = float4((pbr ? 0.f : indirect) +
             EvaluateMapSurfaceEmissive(input.vRawTexcoord),
             1.f - EvaluateMapStaticShadow(input.vStaticShadowUV));
         if (sourceBG) output.vCharacterSurface =

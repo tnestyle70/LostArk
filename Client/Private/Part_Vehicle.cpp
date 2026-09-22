@@ -249,8 +249,154 @@ bool_t CPart_Vehicle::Try_Get_LocomotionClipTime(
 	return true;
 }
 
+bool CPart_Vehicle::Set_FlightPlayback(const std::vector<std::string>& clips,
+    const LostArk::Shared::VEHICLE_FLIGHT_PHASE phase, const f32_t phaseAge,
+    const f32_t phaseDuration, const f32_t loopStart, const f32_t loopEnd, const f32_t landingStart)
+{
+    using LostArk::Shared::VEHICLE_FLIGHT_PHASE;
+    f32_t start = 0.f, duration = 0.f;
+    if (!m_pModelCom || clips.size() != 1u || phase <= VEHICLE_FLIGHT_PHASE::GROUNDED ||
+        phase >= VEHICLE_FLIGHT_PHASE::END || !std::isfinite(phaseAge) || phaseAge < 0.f ||
+        !std::isfinite(phaseDuration) || phaseDuration < 0.f ||
+        !std::isfinite(loopStart) || !std::isfinite(loopEnd) || !std::isfinite(landingStart) ||
+        loopStart <= 0.f || loopEnd <= loopStart || landingStart < loopEnd ||
+        !Try_Get_SkillClipWindow(clips, 0u, start, duration) || landingStart >= duration ||
+        (phase != VEHICLE_FLIGHT_PHASE::FLYING && phaseDuration <= 0.f)) return false;
+    if (!Seek_SkillChain(clips, 0.f)) return false;
+    m_iFlightAnimation = m_pModelCom->Get_CurrentAnimIndex();
+    m_FlightPhase = phase; m_fFlightAge = phaseAge; m_fFlightDuration = phaseDuration;
+    m_fFlightClipDuration = duration; m_fFlightLoopStart = loopStart;
+    m_fFlightLoopEnd = loopEnd; m_fFlightLandingStart = landingStart;
+    return Pose_FlightRider(m_pModelCom, m_iFlightAnimation);
+}
+
+void CPart_Vehicle::Resolve_FlightPoseTimes(f32_t& source, f32_t& target, f32_t& blend) const
+{
+    using LostArk::Shared::VEHICLE_FLIGHT_PHASE;
+    blend = 1.f;
+    if (m_FlightPhase == VEHICLE_FLIGHT_PHASE::TAKEOFF)
+        source = target = m_fFlightLoopStart * std::clamp(m_fFlightAge / m_fFlightDuration, 0.f, 1.f);
+    else if (m_FlightPhase == VEHICLE_FLIGHT_PHASE::LANDING)
+        source = target = m_fFlightLandingStart + (m_fFlightClipDuration - m_fFlightLandingStart) *
+            std::clamp(m_fFlightAge / m_fFlightDuration, 0.f, 1.f);
+    else
+    {
+        const f32_t span = m_fFlightLoopEnd - m_fFlightLoopStart;
+        const f32_t overlap = (std::min)(.12f, span * .2f);
+        // Overlap the end with the start, then resume after that already-played prefix.
+        const f32_t time = m_fFlightAge < span ? m_fFlightAge :
+            overlap + std::fmod(m_fFlightAge - span, span - overlap);
+        source = target = m_fFlightLoopStart + time;
+        if (time > span - overlap)
+        {
+            target = m_fFlightLoopStart + time - (span - overlap);
+            blend = (time - (span - overlap)) / overlap;
+        }
+    }
+    source = std::clamp(source, 0.f, m_fFlightClipDuration - .0001f);
+    target = std::clamp(target, 0.f, m_fFlightClipDuration - .0001f);
+}
+
+f32_t CPart_Vehicle::Get_FlightClipSeconds() const
+{
+    if (m_FlightPhase == LostArk::Shared::VEHICLE_FLIGHT_PHASE::GROUNDED) return 0.f;
+    f32_t source = 0.f, target = 0.f, blend = 0.f;
+    Resolve_FlightPoseTimes(source, target, blend);
+    return target;
+}
+
+bool CPart_Vehicle::Pose_FlightRider(const shared_ptr<CModel>& model, const uint32_t animation) const
+{
+    if (!model || m_FlightPhase == LostArk::Shared::VEHICLE_FLIGHT_PHASE::GROUNDED) return false;
+    f32_t cursor = 0.f, duration = 0.f;
+    const f32_t rate = model->Get_AnimationTickPerSecond(animation);
+    if (!model->Get_AnimationProgress(animation, cursor, duration) || rate <= 0.f) return false;
+    f32_t source = 0.f, target = 0.f, blend = 0.f;
+    Resolve_FlightPoseTimes(source, target, blend);
+    CModel::ANIMATION_TRANSITION_POSE pose{};
+    pose.sourceIndex = pose.targetIndex = animation;
+    pose.sourceTicks = (std::min)(source * rate, duration);
+    pose.targetTicks = (std::min)(target * rate, duration);
+    pose.durationSeconds = 1.f;
+    pose.elapsedSeconds = blend;
+    if (!model->Set_AnimationTransitionPose(pose)) return false;
+    model->Set_AnimPaused(true);
+    return true;
+}
+
+void CPart_Vehicle::Clear_FlightPlayback()
+{
+    if (m_FlightPhase == LostArk::Shared::VEHICLE_FLIGHT_PHASE::GROUNDED) return;
+    m_FlightPhase = LostArk::Shared::VEHICLE_FLIGHT_PHASE::GROUNDED;
+    m_iFlightAnimation = UINT32_MAX;
+    m_bFlightSteeringInitialized = false;
+    m_fFlightSteerYaw = m_fFlightSteerPitch = 0.f;
+    if (m_pModelCom) { m_pModelCom->Clear_AnimationTransitionPose(); m_pModelCom->Set_AnimPaused(false); }
+}
+
+void CPart_Vehicle::Apply_FlightHeadIK(const f32_t deltaSeconds)
+{
+    if (!m_pModelCom || !m_pParentMatrix || !std::isfinite(deltaSeconds) || deltaSeconds <= 0.f) return;
+    const matrix_t world = XMLoadFloat4x4(&m_CombinedWorldMatrix);
+    const matrix_t owner = XMLoadFloat4x4(m_pParentMatrix);
+    const float heading = std::atan2(XMVectorGetX(owner.r[2]), XMVectorGetZ(owner.r[2]));
+    const float y = XMVectorGetY(owner.r[3]);
+    if (!m_bFlightSteeringInitialized)
+    {
+        m_fFlightPreviousHeading = heading; m_fFlightPreviousY = y; m_bFlightSteeringInitialized = true;
+    }
+    const float turn = std::remainder(heading - m_fFlightPreviousHeading, XM_2PI) / deltaSeconds;
+    const float climb = (y - m_fFlightPreviousY) / deltaSeconds;
+    m_fFlightPreviousHeading = heading; m_fFlightPreviousY = y;
+    const float alpha = 1.f - std::exp(-7.f * deltaSeconds);
+    m_fFlightSteerYaw += (std::clamp(turn * .18f, -.45f, .45f) - m_fFlightSteerYaw) * alpha;
+    m_fFlightSteerPitch += (std::clamp(climb * .08f, -.25f, .25f) - m_fFlightSteerPitch) * alpha;
+    const int head = m_pModelCom->Find_BoneIndex("bip001-head");
+    const int tip = m_pModelCom->Find_BoneIndex("b_m_00");
+    matrix_t headPose{}, tipPose{};
+    if (head < 0 || tip < 0 || !m_pModelCom->Get_BoneCombinedMatrix(head, headPose) ||
+        !m_pModelCom->Get_BoneCombinedMatrix(tip, tipPose)) return;
+    const vector_t headPosition = XMVector3TransformCoord(headPose.r[3], world);
+    const vector_t tipPosition = XMVector3TransformCoord(tipPose.r[3], world);
+    vector_t forward = tipPosition - headPosition;
+    if (XMVectorGetX(XMVector3LengthSq(forward)) < .000001f) return;
+    const vector_t right = XMVector3Normalize(owner.r[0]);
+    forward = XMVector3TransformNormal(forward,
+        XMMatrixRotationY(m_fFlightSteerYaw) * XMMatrixRotationAxis(right, -m_fFlightSteerPitch));
+    const vector_t target = headPosition + forward;
+    // CCD on the installed neck/head chain. Each local rotation is expressed in its
+    // actual parent basis; no imported bone-axis or 90-degree correction is assumed.
+    const char* chain[] = { "bip001-neck", "bip001-neck1", "bip001-neck2", "bip001-head" };
+    for (const char* name : chain)
+    {
+        const int joint = m_pModelCom->Find_BoneIndex(name);
+        if (joint < 0) continue;
+        const int parent = m_pModelCom->Get_BoneParentIndex(joint);
+        matrix_t local{}, parentPose{}, jointPose{};
+        if (parent < 0 || !m_pModelCom->Get_BoneLocalMatrix(joint, local) ||
+            !m_pModelCom->Get_BoneCombinedMatrix(parent, parentPose) ||
+            !m_pModelCom->Get_BoneCombinedMatrix(joint, jointPose) ||
+            !m_pModelCom->Get_BoneCombinedMatrix(tip, tipPose)) continue;
+        const matrix_t inverseParent = XMMatrixInverse(nullptr, parentPose * world);
+        const vector_t pivot = XMVector3TransformCoord(jointPose.r[3], world);
+        vector_t from = XMVector3TransformNormal(XMVector3TransformCoord(tipPose.r[3], world) - pivot, inverseParent);
+        vector_t to = XMVector3TransformNormal(target - pivot, inverseParent);
+        if (XMVectorGetX(XMVector3LengthSq(from)) < .000001f || XMVectorGetX(XMVector3LengthSq(to)) < .000001f) continue;
+        from = XMVector3Normalize(from); to = XMVector3Normalize(to);
+        vector_t axis = XMVector3Cross(from, to);
+        if (XMVectorGetX(XMVector3LengthSq(axis)) < .000001f) continue;
+        const float angle = (std::min)(.12f, std::acos(std::clamp(XMVectorGetX(XMVector3Dot(from, to)), -1.f, 1.f)));
+        const vector_t translation = local.r[3];
+        local = local * XMMatrixRotationAxis(XMVector3Normalize(axis), angle);
+        local.r[3] = translation;
+        m_pModelCom->Set_BoneLocalMatrix(joint, local);
+        m_pModelCom->Refresh_BoneCombinedMatrices();
+    }
+}
+
 void CPart_Vehicle::Resume_Locomotion()
 {
+	Clear_FlightPlayback();
 	if (nullptr == m_pModelCom || !m_isPlayingSkill)
 		return;
 	m_isPlayingSkill = false;
@@ -282,10 +428,26 @@ void CPart_Vehicle::Priority_Update(f32_t fTimeDelta)
 
 void CPart_Vehicle::Update(f32_t fTimeDelta)
 {
-	m_pModelCom->Update_Animation(fTimeDelta);
-
-	__super::Update_CombinedWorldMatrix(
-		XMLoadFloat4x4(m_pTransformCom->Get_WorldMatrixPtr()));
+	const bool flight = m_FlightPhase != LostArk::Shared::VEHICLE_FLIGHT_PHASE::GROUNDED;
+	if (flight)
+	{
+		if (std::isfinite(fTimeDelta) && fTimeDelta > 0.f) m_fFlightAge += fTimeDelta;
+		(void)Pose_FlightRider(m_pModelCom, m_iFlightAnimation);
+		// The Server owns altitude. Remove only this clip's authored body lift, whose
+		// installed skeleton uses local Z; retaining it would add the ascent twice.
+		const int body = m_pModelCom->Find_BoneIndex("bip001");
+		matrix_t local{}, rest{};
+		if (body >= 0 && m_pModelCom->Get_BoneLocalMatrix(body, local) &&
+			m_pModelCom->Get_BoneRestLocalMatrix(body, rest))
+		{
+			local.r[3] = XMVectorSetZ(local.r[3], XMVectorGetZ(rest.r[3]));
+			m_pModelCom->Set_BoneLocalMatrix(body, local);
+			m_pModelCom->Refresh_BoneCombinedMatrices();
+		}
+	}
+	else m_pModelCom->Update_Animation(fTimeDelta);
+	__super::Update_CombinedWorldMatrix(XMLoadFloat4x4(m_pTransformCom->Get_WorldMatrixPtr()));
+	if (flight) Apply_FlightHeadIK(fTimeDelta);
 }
 
 void CPart_Vehicle::Late_Update(f32_t fTimeDelta)

@@ -540,6 +540,14 @@ HRESULT CRenderer::Apply_MaterialRenderSettings(const MATERIAL_RENDER_SETTINGS& 
 {
 	if (static_cast<uint32_t>(settings.eDebugView) >= static_cast<uint32_t>(MATERIAL_DEBUG_VIEW::END))
 		return E_INVALIDARG;
+	const auto& pbr = settings.MapPBR;
+	for (const auto value : { pbr.vContributionScale.x, pbr.vContributionScale.y,
+		pbr.vContributionScale.z, pbr.vContributionScale.w })
+		if (!IsFiniteInRange(value, 0.f, 4.f)) return E_INVALIDARG;
+	if (!IsFiniteInRange(pbr.vSurfaceParameters.x, 0.f, 4.f) ||
+		!IsFiniteInRange(pbr.vSurfaceParameters.y, -1.f, 1.f) ||
+		(pbr.vSurfaceParameters.z != 0.f && pbr.vSurfaceParameters.z != 1.f) ||
+		pbr.vSurfaceParameters.w != 0.f) return E_INVALIDARG;
 	m_MaterialRenderSettings = settings;
 	return S_OK;
 }
@@ -1050,6 +1058,15 @@ HRESULT CRenderer::Render_Shadow()
         reuse = previous.Identity == current.Identity && previous.Revision == current.Revision &&
             !previous.Owner.owner_before(current.Owner) && !current.Owner.owner_before(previous.Owner);
     }
+    if (enabled)
+    {
+        if (CProfiler* profiler = game.Get_Profiler())
+        {
+            profiler->Add_Counter(reuse ? EProfilerCounter::ShadowCacheHits : EProfilerCounter::ShadowCacheMisses);
+            profiler->Add_Counter(EProfilerCounter::ShadowStaticCasters, m_CandidateStaticShadowCasters.size());
+            profiler->Add_Counter(EProfilerCounter::ShadowDynamicCasters, objects.size() - m_CandidateStaticShadowCasters.size());
+        }
+    }
     if (!reuse) m_bStaticShadowCacheValid = false;
     if (!hasStatic) m_StaticShadowCasters.clear();
 
@@ -1068,6 +1085,7 @@ HRESULT CRenderer::Render_Shadow()
     const auto copyDepth = [&](ID3D11Texture2D* destination, ID3D11Texture2D* source)
     {
         CProfilerScope scope(game.Get_Profiler(), "Render.Shadow.CacheCopy");
+        CProfilerGpuScope gpuScope(game.Get_Profiler(), "Render.Shadow.CacheCopy");
         m_pContext->OMSetRenderTargets(0u, nullptr, nullptr);
         m_pContext->CopyResource(destination, source);
         m_pContext->OMSetRenderTargets(0u, nullptr, m_pShadowDSV.Get());
@@ -1266,6 +1284,11 @@ HRESULT CRenderer::Render_Lights()
 
 	HRESULT hResult = S_OK;
     const uint32_t noSourceCharacter = 0u;
+    const auto& pbrComparison = m_MaterialRenderSettings.MapPBR;
+    const float4_t pbrContributions = pbrComparison.Is_Active(CGameInstance::Get().Get_CurrentLevelID()) ?
+        pbrComparison.vContributionScale : float4_t(1.f, 1.f, 1.f, 1.f);
+    const HRESULT hBindPBR = m_pShader->Bind_RawValue("g_MapPBRContributionScale", &pbrContributions,
+        sizeof(pbrContributions));
 	const bool_t bShadowEnabled =
 		CGameInstance::Get().Is_ShadowLightEnabled();
 	const uint32_t iSSAOEnabled =
@@ -1276,7 +1299,7 @@ HRESULT CRenderer::Render_Lights()
 		hBindAO = CGameInstance::Get().Bind_RT_SRV(
 			TEXT("Target_SSAOBlur"), m_pShader, "g_SSAOTexture");
 	}
-    if (FAILED(m_pShader->Bind_RawValue("g_SourceCharacterProgram", &noSourceCharacter, sizeof(noSourceCharacter))) ||
+    if (FAILED(hBindPBR) || FAILED(m_pShader->Bind_RawValue("g_SourceCharacterProgram", &noSourceCharacter, sizeof(noSourceCharacter))) ||
         FAILED(m_pShader->Bind_RawValue("g_SourceCharacterRow", &noSourceCharacter, sizeof(noSourceCharacter))) ||
         FAILED(m_pShader->Bind_Matrix("g_SourceCharacterViewMatrix", CGameInstance::Get().Get_Transform(D3DTS::VIEW))) ||
         FAILED(m_pShader->Bind_Matrix("g_SourceCharacterProjMatrix", CGameInstance::Get().Get_Transform(D3DTS::PROJ))) ||
@@ -1373,6 +1396,17 @@ HRESULT CRenderer::Render_Combined()
     CProfiler* const profiler = CGameInstance::Get().Get_Profiler();
     CProfilerScope cpuScope(profiler, "Render.Combined");
     CProfilerGpuScope gpuScope(profiler, "Render.Combined");
+    const uint32_t dynamicBakedShadow = CGameInstance::Get().Is_ShadowLightEnabled() &&
+        m_bStaticShadowCacheValid && m_pStaticShadowSRV ? 1u : 0u;
+    if (FAILED(m_pShader->Bind_RawValue("g_iDynamicBakedShadowEnabled",
+            &dynamicBakedShadow, sizeof(dynamicBakedShadow))) ||
+        FAILED(m_pShader->Bind_Texture("g_StaticLightDepthTexture",
+            m_pStaticShadowSRV ? m_pStaticShadowSRV : m_pShadowSRV)) ||
+        FAILED(m_pShader->Bind_Texture("g_LightDepthTexture", m_pShadowSRV)) ||
+        FAILED(CGameInstance::Get().Bind_RT_SRV(TEXT("Target_CharacterGeometry"),
+            m_pShader, "g_CharacterGeometryTexture")) ||
+        FAILED(CGameInstance::Get().Bind_RT_SRV(TEXT("Target_PickPos"),
+            m_pShader, "g_GeometricNormalTexture"))) return E_FAIL;
 	if (FAILED(CGameInstance::Get().Bind_RT_SRV(TEXT("Target_Diffuse"), m_pShader, "g_DiffuseTexture")))
 		return E_FAIL;
 	if (FAILED(CGameInstance::Get().Bind_RT_SRV(TEXT("Target_Shade"), m_pShader, "g_ShadeTexture")))
@@ -2080,6 +2114,7 @@ HRESULT CRenderer::Render_BloomPass(const wstring_t& strMRTTag,
 HRESULT CRenderer::Render_Final()
 {
 	const uint32_t materialView = static_cast<uint32_t>(m_MaterialRenderSettings.eDebugView);
+	if (FAILED(CGameInstance::Get().Bind_RT_SRV(TEXT("Target_Shade"), m_pShader, "g_ShadeTexture"))) return E_FAIL;
 	if (FAILED(m_pShader->Bind_RawValue("g_MaterialDebugView", &materialView, sizeof(materialView))) ||
 		FAILED(CGameInstance::Get().Bind_RT_SRV(TEXT("Target_Diffuse"), m_pShader, "g_DiffuseTexture")) ||
 		FAILED(CGameInstance::Get().Bind_RT_SRV(TEXT("Target_Normal"), m_pShader, "g_NormalTexture")) ||
@@ -2280,11 +2315,14 @@ HRESULT CRenderer::Ready_Shadow_Resources()
     m_StaticShadowCasters.clear();
     m_CandidateStaticShadowCasters.clear();
     m_pStaticShadowDepthTexture.Reset();
-    // The optional copy-only texture uses the identical depth format and size.
-    // Allocation failure preserves the ordinary uncached shadow path.
-    TextureDesc.BindFlags = 0u;
-    (void)m_pDevice->CreateTexture2D(&TextureDesc, nullptr,
-        m_pStaticShadowDepthTexture.GetAddressOf());
+    m_pStaticShadowSRV.Reset();
+    // Read the existing static cache to distinguish moving occluders from
+    // shadows already baked into RNM. Failure preserves ordinary shadows.
+    TextureDesc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+    if (SUCCEEDED(m_pDevice->CreateTexture2D(&TextureDesc, nullptr,
+        m_pStaticShadowDepthTexture.GetAddressOf())))
+        (void)m_pDevice->CreateShaderResourceView(m_pStaticShadowDepthTexture.Get(),
+            &SRVDesc, m_pStaticShadowSRV.GetAddressOf());
 	return S_OK;
 }
 

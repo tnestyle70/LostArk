@@ -16,6 +16,33 @@
 #if !defined(SOURCE_CHARACTER_PROGRAM_GROUP) || SOURCE_CHARACTER_PROGRAM_GROUP == 84
 #include "Shader_SourceCharacterLightGroup084.hlsli"
 #endif // SOURCE_CHARACTER_PROGRAM_GROUP
+#if !defined(SOURCE_CHARACTER_PROGRAM_GROUP) || SOURCE_CHARACTER_PROGRAM_GROUP == 160
+#include "Shader_SourceCharacterLightGroup160.hlsli"
+#endif // SOURCE_CHARACTER_PROGRAM_GROUP
+#if !defined(SOURCE_CHARACTER_PROGRAM_GROUP) || SOURCE_CHARACTER_PROGRAM_GROUP == 176
+#include "Shader_SourceCharacterLightGroup176.hlsli"
+#endif // SOURCE_CHARACTER_PROGRAM_GROUP
+#if !defined(SOURCE_CHARACTER_PROGRAM_GROUP) || SOURCE_CHARACTER_PROGRAM_GROUP == 192
+#include "Shader_SourceCharacterLightGroup192.hlsli"
+#endif // SOURCE_CHARACTER_PROGRAM_GROUP
+#if !defined(SOURCE_CHARACTER_PROGRAM_GROUP) || SOURCE_CHARACTER_PROGRAM_GROUP == 208
+#include "Shader_SourceCharacterLightGroup208.hlsli"
+#endif // SOURCE_CHARACTER_PROGRAM_GROUP
+#if !defined(SOURCE_CHARACTER_PROGRAM_GROUP) || SOURCE_CHARACTER_PROGRAM_GROUP == 235
+#include "Shader_SourceCharacterLightGroup235.hlsli"
+#endif // SOURCE_CHARACTER_PROGRAM_GROUP
+#if !defined(SOURCE_CHARACTER_PROGRAM_GROUP) || SOURCE_CHARACTER_PROGRAM_GROUP == 214
+#include "Shader_SourceCharacterLightGroup214.hlsli"
+#endif // SOURCE_CHARACTER_PROGRAM_GROUP
+
+#if !defined(SOURCE_CHARACTER_PROGRAM_GROUP) || SOURCE_CHARACTER_PROGRAM_GROUP == 224
+#include "Shader_SourceCharacterLightGroup224.hlsli"
+#endif // SOURCE_CHARACTER_PROGRAM_GROUP
+
+#if !defined(SOURCE_CHARACTER_PROGRAM_GROUP) || SOURCE_CHARACTER_PROGRAM_GROUP == 237
+#include "Shader_SourceCharacterLightGroup237.hlsli"
+#endif // SOURCE_CHARACTER_PROGRAM_GROUP
+
 SOURCE_CHARACTER_NATIVE_OUTPUT EvaluateSourceCharacterLight(SOURCE_CHARACTER_NATIVE_INPUT input)
 {
     switch (g_SourceCharacterProgram)
@@ -200,6 +227,9 @@ SOURCE_CHARACTER_NATIVE_OUTPUT EvaluateSourceCharacterLight(SOURCE_CHARACTER_NAT
 #if !defined(SOURCE_CHARACTER_PROGRAM_GROUP) || SOURCE_CHARACTER_PROGRAM_GROUP == 84
     case 111u: return SourceCharacterLight111(input);
 #endif // SOURCE_CHARACTER_PROGRAM_GROUP
+#if !defined(SOURCE_CHARACTER_PROGRAM_GROUP) || SOURCE_CHARACTER_PROGRAM_GROUP == 84
+    case 112u: return SourceCharacterLight112(input);
+#endif // SOURCE_CHARACTER_PROGRAM_GROUP
 #if !defined(SOURCE_CHARACTER_PROGRAM_GROUP) || SOURCE_CHARACTER_PROGRAM_GROUP == 80
     case 80u: return SourceCharacterLight80(input);
 #endif // SOURCE_CHARACTER_PROGRAM_GROUP
@@ -211,6 +241,178 @@ SOURCE_CHARACTER_NATIVE_OUTPUT EvaluateSourceCharacterLight(SOURCE_CHARACTER_NAT
 #endif // SOURCE_CHARACTER_PROGRAM_GROUP
 #if !defined(SOURCE_CHARACTER_PROGRAM_GROUP) || SOURCE_CHARACTER_PROGRAM_GROUP == 80
     case 83u: return SourceCharacterLight83(input);
+#endif // SOURCE_CHARACTER_PROGRAM_GROUP
+#if !defined(SOURCE_CHARACTER_PROGRAM_GROUP) || SOURCE_CHARACTER_PROGRAM_GROUP == 160
+    case 160u: return SourceCharacterLight160(input);
+#endif // SOURCE_CHARACTER_PROGRAM_GROUP
+#if !defined(SOURCE_CHARACTER_PROGRAM_GROUP) || SOURCE_CHARACTER_PROGRAM_GROUP == 160
+    case 161u: return SourceCharacterLight161(input);
+#endif // SOURCE_CHARACTER_PROGRAM_GROUP
+#if !defined(SOURCE_CHARACTER_PROGRAM_GROUP) || SOURCE_CHARACTER_PROGRAM_GROUP == 160
+    case 162u: return SourceCharacterLight162(input);
+#endif // SOURCE_CHARACTER_PROGRAM_GROUP
+#if !defined(SOURCE_CHARACTER_PROGRAM_GROUP) || SOURCE_CHARACTER_PROGRAM_GROUP == 160
+    case 163u: return SourceCharacterLight163(input);
+#endif // SOURCE_CHARACTER_PROGRAM_GROUP
+#if !defined(SOURCE_CHARACTER_PROGRAM_GROUP) || SOURCE_CHARACTER_PROGRAM_GROUP == 160
+    case 164u: return SourceCharacterLight164(input);
+#endif // SOURCE_CHARACTER_PROGRAM_GROUP
+#if !defined(SOURCE_CHARACTER_PROGRAM_GROUP) || SOURCE_CHARACTER_PROGRAM_GROUP == 160
+    case 165u: return SourceCharacterLight165(input);
+#endif // SOURCE_CHARACTER_PROGRAM_GROUP
+#if !defined(SOURCE_CHARACTER_PROGRAM_GROUP) || SOURCE_CHARACTER_PROGRAM_GROUP == 160
+    case 166u: return SourceCharacterLight166(input);
+#endif // SOURCE_CHARACTER_PROGRAM_GROUP
+#if !defined(SOURCE_CHARACTER_PROGRAM_GROUP) || SOURCE_CHARACTER_PROGRAM_GROUP == 160
+    case 167u: return SourceCharacterLight167(input);
+#endif // SOURCE_CHARACTER_PROGRAM_GROUP
+#if !defined(SOURCE_CHARACTER_PROGRAM_GROUP) || SOURCE_CHARACTER_PROGRAM_GROUP == 160
+    case 168u: return SourceCharacterLight168(input);
+#endif // SOURCE_CHARACTER_PROGRAM_GROUP
+#if !defined(SOURCE_CHARACTER_PROGRAM_GROUP) || SOURCE_CHARACTER_PROGRAM_GROUP == 160
+    case 169u: return SourceCharacterLight169(input);
+#endif // SOURCE_CHARACTER_PROGRAM_GROUP
+#if !defined(SOURCE_CHARACTER_PROGRAM_GROUP) || SOURCE_CHARACTER_PROGRAM_GROUP == 160
+    case 170u: return SourceCharacterLight170(input);
+#endif // SOURCE_CHARACTER_PROGRAM_GROUP
+#if !defined(SOURCE_CHARACTER_PROGRAM_GROUP) || SOURCE_CHARACTER_PROGRAM_GROUP == 160
+    case 171u: return SourceCharacterLight171(input);
+#endif // SOURCE_CHARACTER_PROGRAM_GROUP
+#if !defined(SOURCE_CHARACTER_PROGRAM_GROUP) || SOURCE_CHARACTER_PROGRAM_GROUP == 160
+    case 172u: return SourceCharacterLight172(input);
+#endif // SOURCE_CHARACTER_PROGRAM_GROUP
+#if !defined(SOURCE_CHARACTER_PROGRAM_GROUP) || SOURCE_CHARACTER_PROGRAM_GROUP == 160
+    case 173u: return SourceCharacterLight173(input);
+#endif // SOURCE_CHARACTER_PROGRAM_GROUP
+#if !defined(SOURCE_CHARACTER_PROGRAM_GROUP) || SOURCE_CHARACTER_PROGRAM_GROUP == 160
+    case 174u: return SourceCharacterLight174(input);
+#endif // SOURCE_CHARACTER_PROGRAM_GROUP
+#if !defined(SOURCE_CHARACTER_PROGRAM_GROUP) || SOURCE_CHARACTER_PROGRAM_GROUP == 160
+    case 175u: return SourceCharacterLight175(input);
+#endif // SOURCE_CHARACTER_PROGRAM_GROUP
+#if !defined(SOURCE_CHARACTER_PROGRAM_GROUP) || SOURCE_CHARACTER_PROGRAM_GROUP == 176
+    case 176u: return SourceCharacterLight176(input);
+#endif // SOURCE_CHARACTER_PROGRAM_GROUP
+#if !defined(SOURCE_CHARACTER_PROGRAM_GROUP) || SOURCE_CHARACTER_PROGRAM_GROUP == 176
+    case 177u: return SourceCharacterLight177(input);
+#endif // SOURCE_CHARACTER_PROGRAM_GROUP
+#if !defined(SOURCE_CHARACTER_PROGRAM_GROUP) || SOURCE_CHARACTER_PROGRAM_GROUP == 176
+    case 178u: return SourceCharacterLight178(input);
+#endif // SOURCE_CHARACTER_PROGRAM_GROUP
+#if !defined(SOURCE_CHARACTER_PROGRAM_GROUP) || SOURCE_CHARACTER_PROGRAM_GROUP == 176
+    case 179u: return SourceCharacterLight179(input);
+#endif // SOURCE_CHARACTER_PROGRAM_GROUP
+#if !defined(SOURCE_CHARACTER_PROGRAM_GROUP) || SOURCE_CHARACTER_PROGRAM_GROUP == 176
+    case 180u: return SourceCharacterLight180(input);
+#endif // SOURCE_CHARACTER_PROGRAM_GROUP
+#if !defined(SOURCE_CHARACTER_PROGRAM_GROUP) || SOURCE_CHARACTER_PROGRAM_GROUP == 176
+    case 181u: return SourceCharacterLight181(input);
+#endif // SOURCE_CHARACTER_PROGRAM_GROUP
+#if !defined(SOURCE_CHARACTER_PROGRAM_GROUP) || SOURCE_CHARACTER_PROGRAM_GROUP == 176
+    case 182u: return SourceCharacterLight182(input);
+#endif // SOURCE_CHARACTER_PROGRAM_GROUP
+#if !defined(SOURCE_CHARACTER_PROGRAM_GROUP) || SOURCE_CHARACTER_PROGRAM_GROUP == 176
+    case 183u: return SourceCharacterLight183(input);
+#endif // SOURCE_CHARACTER_PROGRAM_GROUP
+#if !defined(SOURCE_CHARACTER_PROGRAM_GROUP) || SOURCE_CHARACTER_PROGRAM_GROUP == 176
+    case 184u: return SourceCharacterLight184(input);
+#endif // SOURCE_CHARACTER_PROGRAM_GROUP
+#if !defined(SOURCE_CHARACTER_PROGRAM_GROUP) || SOURCE_CHARACTER_PROGRAM_GROUP == 176
+    case 185u: return SourceCharacterLight185(input);
+#endif // SOURCE_CHARACTER_PROGRAM_GROUP
+#if !defined(SOURCE_CHARACTER_PROGRAM_GROUP) || SOURCE_CHARACTER_PROGRAM_GROUP == 176
+    case 186u: return SourceCharacterLight186(input);
+#endif // SOURCE_CHARACTER_PROGRAM_GROUP
+#if !defined(SOURCE_CHARACTER_PROGRAM_GROUP) || SOURCE_CHARACTER_PROGRAM_GROUP == 176
+    case 187u: return SourceCharacterLight187(input);
+#endif // SOURCE_CHARACTER_PROGRAM_GROUP
+#if !defined(SOURCE_CHARACTER_PROGRAM_GROUP) || SOURCE_CHARACTER_PROGRAM_GROUP == 176
+    case 188u: return SourceCharacterLight188(input);
+#endif // SOURCE_CHARACTER_PROGRAM_GROUP
+#if !defined(SOURCE_CHARACTER_PROGRAM_GROUP) || SOURCE_CHARACTER_PROGRAM_GROUP == 176
+    case 189u: return SourceCharacterLight189(input);
+#endif // SOURCE_CHARACTER_PROGRAM_GROUP
+#if !defined(SOURCE_CHARACTER_PROGRAM_GROUP) || SOURCE_CHARACTER_PROGRAM_GROUP == 176
+    case 190u: return SourceCharacterLight190(input);
+#endif // SOURCE_CHARACTER_PROGRAM_GROUP
+#if !defined(SOURCE_CHARACTER_PROGRAM_GROUP) || SOURCE_CHARACTER_PROGRAM_GROUP == 176
+    case 191u: return SourceCharacterLight191(input);
+#endif // SOURCE_CHARACTER_PROGRAM_GROUP
+#if !defined(SOURCE_CHARACTER_PROGRAM_GROUP) || SOURCE_CHARACTER_PROGRAM_GROUP == 192
+    case 192u: return SourceCharacterLight192(input);
+#endif // SOURCE_CHARACTER_PROGRAM_GROUP
+#if !defined(SOURCE_CHARACTER_PROGRAM_GROUP) || SOURCE_CHARACTER_PROGRAM_GROUP == 192
+    case 193u: return SourceCharacterLight193(input);
+#endif // SOURCE_CHARACTER_PROGRAM_GROUP
+#if !defined(SOURCE_CHARACTER_PROGRAM_GROUP) || SOURCE_CHARACTER_PROGRAM_GROUP == 192
+    case 194u: return SourceCharacterLight194(input);
+#endif // SOURCE_CHARACTER_PROGRAM_GROUP
+#if !defined(SOURCE_CHARACTER_PROGRAM_GROUP) || SOURCE_CHARACTER_PROGRAM_GROUP == 192
+    case 195u: return SourceCharacterLight195(input);
+#endif // SOURCE_CHARACTER_PROGRAM_GROUP
+#if !defined(SOURCE_CHARACTER_PROGRAM_GROUP) || SOURCE_CHARACTER_PROGRAM_GROUP == 192
+    case 196u: return SourceCharacterLight196(input);
+#endif // SOURCE_CHARACTER_PROGRAM_GROUP
+#if !defined(SOURCE_CHARACTER_PROGRAM_GROUP) || SOURCE_CHARACTER_PROGRAM_GROUP == 192
+    case 197u: return SourceCharacterLight197(input);
+#endif // SOURCE_CHARACTER_PROGRAM_GROUP
+#if !defined(SOURCE_CHARACTER_PROGRAM_GROUP) || SOURCE_CHARACTER_PROGRAM_GROUP == 192
+    case 198u: return SourceCharacterLight198(input);
+#endif // SOURCE_CHARACTER_PROGRAM_GROUP
+#if !defined(SOURCE_CHARACTER_PROGRAM_GROUP) || SOURCE_CHARACTER_PROGRAM_GROUP == 192
+    case 199u: return SourceCharacterLight199(input);
+#endif // SOURCE_CHARACTER_PROGRAM_GROUP
+#if !defined(SOURCE_CHARACTER_PROGRAM_GROUP) || SOURCE_CHARACTER_PROGRAM_GROUP == 192
+    case 200u: return SourceCharacterLight200(input);
+#endif // SOURCE_CHARACTER_PROGRAM_GROUP
+#if !defined(SOURCE_CHARACTER_PROGRAM_GROUP) || SOURCE_CHARACTER_PROGRAM_GROUP == 208
+    case 208u: return SourceCharacterLight208(input);
+#endif // SOURCE_CHARACTER_PROGRAM_GROUP
+#if !defined(SOURCE_CHARACTER_PROGRAM_GROUP) || SOURCE_CHARACTER_PROGRAM_GROUP == 208
+    case 210u: return SourceCharacterLight210(input);
+#endif // SOURCE_CHARACTER_PROGRAM_GROUP
+#if !defined(SOURCE_CHARACTER_PROGRAM_GROUP) || SOURCE_CHARACTER_PROGRAM_GROUP == 208
+    case 211u: return SourceCharacterLight211(input);
+#endif // SOURCE_CHARACTER_PROGRAM_GROUP
+#if !defined(SOURCE_CHARACTER_PROGRAM_GROUP) || SOURCE_CHARACTER_PROGRAM_GROUP == 208
+    case 212u: return SourceCharacterLight212(input);
+#endif // SOURCE_CHARACTER_PROGRAM_GROUP
+#if !defined(SOURCE_CHARACTER_PROGRAM_GROUP) || SOURCE_CHARACTER_PROGRAM_GROUP == 208
+    case 213u: return SourceCharacterLight213(input);
+#endif // SOURCE_CHARACTER_PROGRAM_GROUP
+#if !defined(SOURCE_CHARACTER_PROGRAM_GROUP) || SOURCE_CHARACTER_PROGRAM_GROUP == 235
+    case 235u: return SourceCharacterLight235(input);
+#endif // SOURCE_CHARACTER_PROGRAM_GROUP
+#if !defined(SOURCE_CHARACTER_PROGRAM_GROUP) || SOURCE_CHARACTER_PROGRAM_GROUP == 235
+    case 236u: return SourceCharacterLight236(input);
+#endif // SOURCE_CHARACTER_PROGRAM_GROUP
+#if !defined(SOURCE_CHARACTER_PROGRAM_GROUP) || SOURCE_CHARACTER_PROGRAM_GROUP == 214
+    case 214u: return SourceCharacterLight214(input);
+    case 215u: return SourceCharacterLight215(input);
+    case 216u: return SourceCharacterLight216(input);
+    case 217u: return SourceCharacterLight217(input);
+    case 218u: return SourceCharacterLight218(input);
+    case 219u: return SourceCharacterLight219(input);
+    case 220u: return SourceCharacterLight220(input);
+    case 221u: return SourceCharacterLight221(input);
+    case 222u: return SourceCharacterLight222(input);
+    case 223u: return SourceCharacterLight223(input);
+#endif // SOURCE_CHARACTER_PROGRAM_GROUP
+#if !defined(SOURCE_CHARACTER_PROGRAM_GROUP) || SOURCE_CHARACTER_PROGRAM_GROUP == 224
+    case 224u: return SourceCharacterLight224(input);
+    case 225u: return SourceCharacterLight225(input);
+    case 226u: return SourceCharacterLight226(input);
+    case 227u: return SourceCharacterLight227(input);
+    case 228u: return SourceCharacterLight228(input);
+    case 229u: return SourceCharacterLight229(input);
+    case 230u: return SourceCharacterLight230(input);
+    case 231u: return SourceCharacterLight231(input);
+    case 232u: return SourceCharacterLight232(input);
+    case 233u: return SourceCharacterLight233(input);
+    case 234u: return SourceCharacterLight234(input);
+#endif // SOURCE_CHARACTER_PROGRAM_GROUP
+#if !defined(SOURCE_CHARACTER_PROGRAM_GROUP) || SOURCE_CHARACTER_PROGRAM_GROUP == 237
+    case 237u: return SourceCharacterLight237(input);
 #endif // SOURCE_CHARACTER_PROGRAM_GROUP
     default: { SOURCE_CHARACTER_NATIVE_OUTPUT output=(SOURCE_CHARACTER_NATIVE_OUTPUT)0;output.discarded=true;return output; }
     }

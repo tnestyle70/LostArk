@@ -366,6 +366,9 @@
     <ClCompile Include="..\Private\BoneAnimationWorkbench.cpp">
       <Filter>03. Tools\05. Sequencer</Filter>
     </ClCompile>
+    <ClCompile Include="..\Private\BoneAnimationWorkbench_Viewport.cpp">
+      <Filter>03. Tools\05. Sequencer</Filter>
+    </ClCompile>
     <ClCompile Include="..\Private\CharacterModelWorkbench.cpp">
       <Filter>03. Tools\05. Sequencer</Filter>
     </ClCompile>
@@ -1424,6 +1427,9 @@
       <Filter>02.GameObjects\00. Character</Filter>
     </ClInclude>
 	<ClInclude Include="..\Public\SourceCharacterMaterialParameters.h">
+	  <Filter>02.GameObjects\00. Character</Filter>
+	</ClInclude>
+	<ClInclude Include="..\Public\SourceEquipmentMaterialPrograms.h">
 	  <Filter>02.GameObjects\00. Character</Filter>
 	</ClInclude>
 	<ClInclude Include="..\Public\SourceMapForwardMaterialParameters.h">
@@ -3109,6 +3115,12 @@
     <Filter Include="96.DataFiles\Camera">
       <UniqueIdentifier>{6ff4c424-008e-4768-834e-edbf0d14909d}</UniqueIdentifier>
     </Filter>
+    <ClInclude Include="..\Public\ClassSelectionPresentation.h">
+      <Filter>02.GameObjects\06. Camera</Filter>
+    </ClInclude>
+    <ClCompile Include="..\Private\ClassSelectionPresentation.cpp">
+      <Filter>02.GameObjects\06. Camera</Filter>
+    </ClCompile>
     <ClInclude Include="..\Public\ArenaCameraProfile.h">
       <Filter>02.GameObjects\06. Camera</Filter>
     </ClInclude>
@@ -3460,6 +3472,11 @@
     <None Include="..\Bin\ShaderFiles\Shader_EffectParticleFamilyCarrier.hlsli"><Filter>97.ShaderFiles</Filter></None>
     <None Include="..\Bin\ShaderFiles\Shader_EffectV2_Common.hlsli"><Filter>97.ShaderFiles</Filter></None>
     <None Include="..\Bin\ShaderFiles\Shader_SourceCharacterMaterial.hlsli"><Filter>97.ShaderFiles</Filter></None>
+    <None Include="..\Bin\ShaderFiles\Shader_SourceMapCharacterSelectDirect.hlsli"><Filter>97.ShaderFiles</Filter></None>
+    <None Include="..\Bin\ShaderFiles\Shader_SourceMapSL10Forward.hlsli"><Filter>97.ShaderFiles</Filter></None>
+    <None Include="..\Bin\ShaderFiles\Shader_SourceMapSL10Direct.hlsli"><Filter>97.ShaderFiles</Filter></None>
+    <None Include="..\Bin\ShaderFiles\Shader_SourceMapCharacterSelectPrograms.hlsli"><Filter>97.ShaderFiles</Filter></None>
+    <None Include="..\Bin\ShaderFiles\Shader_SourceCharacterForward.hlsli"><Filter>97.ShaderFiles</Filter></None>
     <None Include="..\Bin\ShaderFiles\Shader_SourceCharacterPrograms.hlsli"><Filter>97.ShaderFiles</Filter></None>
   </ItemGroup>
   <ItemGroup>
@@ -4216,6 +4233,30 @@
     <None Include="..\Bin\ShaderFiles\Shader_SourceCharacterBaseGroup084.hlsli">
       <Filter>97.ShaderFiles</Filter>
     </None>
+    <None Include="..\Bin\ShaderFiles\Shader_SourceCharacterBaseGroup160.hlsli">
+      <Filter>97.ShaderFiles</Filter>
+    </None>
+    <None Include="..\Bin\ShaderFiles\Shader_SourceCharacterBaseGroup176.hlsli">
+      <Filter>97.ShaderFiles</Filter>
+    </None>
+    <None Include="..\Bin\ShaderFiles\Shader_SourceCharacterBaseGroup192.hlsli">
+      <Filter>97.ShaderFiles</Filter>
+    </None>
+    <None Include="..\Bin\ShaderFiles\Shader_SourceCharacterBaseGroup208.hlsli">
+      <Filter>97.ShaderFiles</Filter>
+    </None>
+    <None Include="..\Bin\ShaderFiles\Shader_SourceCharacterBaseGroup235.hlsli">
+      <Filter>97.ShaderFiles</Filter>
+    </None>
+    <None Include="..\Bin\ShaderFiles\Shader_SourceCharacterBaseGroup214.hlsli">
+      <Filter>97.ShaderFiles</Filter>
+    </None>
+    <None Include="..\Bin\ShaderFiles\Shader_SourceCharacterBaseGroup224.hlsli">
+      <Filter>97.ShaderFiles</Filter>
+    </None>
+    <None Include="..\Bin\ShaderFiles\Shader_SourceCharacterBaseGroup237.hlsli">
+      <Filter>97.ShaderFiles</Filter>
+    </None>
     <None Include="..\Bin\ShaderFiles\Shader_SourceCharacterLightGroup001.hlsli">
       <Filter>97.ShaderFiles</Filter>
     </None>
@@ -4232,6 +4273,30 @@
       <Filter>97.ShaderFiles</Filter>
     </None>
     <None Include="..\Bin\ShaderFiles\Shader_SourceCharacterLightGroup084.hlsli">
+      <Filter>97.ShaderFiles</Filter>
+    </None>
+    <None Include="..\Bin\ShaderFiles\Shader_SourceCharacterLightGroup160.hlsli">
+      <Filter>97.ShaderFiles</Filter>
+    </None>
+    <None Include="..\Bin\ShaderFiles\Shader_SourceCharacterLightGroup176.hlsli">
+      <Filter>97.ShaderFiles</Filter>
+    </None>
+    <None Include="..\Bin\ShaderFiles\Shader_SourceCharacterLightGroup192.hlsli">
+      <Filter>97.ShaderFiles</Filter>
+    </None>
+    <None Include="..\Bin\ShaderFiles\Shader_SourceCharacterLightGroup208.hlsli">
+      <Filter>97.ShaderFiles</Filter>
+    </None>
+    <None Include="..\Bin\ShaderFiles\Shader_SourceCharacterLightGroup235.hlsli">
+      <Filter>97.ShaderFiles</Filter>
+    </None>
+    <None Include="..\Bin\ShaderFiles\Shader_SourceCharacterLightGroup214.hlsli">
+      <Filter>97.ShaderFiles</Filter>
+    </None>
+    <None Include="..\Bin\ShaderFiles\Shader_SourceCharacterLightGroup224.hlsli">
+      <Filter>97.ShaderFiles</Filter>
+    </None>
+    <None Include="..\Bin\ShaderFiles\Shader_SourceCharacterLightGroup237.hlsli">
       <Filter>97.ShaderFiles</Filter>
     </None>
     <None Include="..\Bin\ShaderFiles\Shader_Deferred_SourceGroup001.hlsl">
@@ -4252,6 +4317,30 @@
     <None Include="..\Bin\ShaderFiles\Shader_Deferred_SourceGroup084.hlsl">
       <Filter>97.ShaderFiles</Filter>
     </None>
+    <None Include="..\Bin\ShaderFiles\Shader_Deferred_SourceGroup160.hlsl">
+      <Filter>97.ShaderFiles</Filter>
+    </None>
+    <None Include="..\Bin\ShaderFiles\Shader_Deferred_SourceGroup176.hlsl">
+      <Filter>97.ShaderFiles</Filter>
+    </None>
+    <None Include="..\Bin\ShaderFiles\Shader_Deferred_SourceGroup192.hlsl">
+      <Filter>97.ShaderFiles</Filter>
+    </None>
+    <None Include="..\Bin\ShaderFiles\Shader_Deferred_SourceGroup208.hlsl">
+      <Filter>97.ShaderFiles</Filter>
+    </None>
+    <None Include="..\Bin\ShaderFiles\Shader_Deferred_SourceGroup235.hlsl">
+      <Filter>97.ShaderFiles</Filter>
+    </None>
+    <None Include="..\Bin\ShaderFiles\Shader_Deferred_SourceGroup214.hlsl">
+      <Filter>97.ShaderFiles</Filter>
+    </None>
+    <None Include="..\Bin\ShaderFiles\Shader_Deferred_SourceGroup224.hlsl">
+      <Filter>97.ShaderFiles</Filter>
+    </None>
+    <None Include="..\Bin\ShaderFiles\Shader_Deferred_SourceGroup237.hlsl">
+      <Filter>97.ShaderFiles</Filter>
+    </None>
     <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxAnimMeshBinary_SourceGroup001.hlsl">
       <Filter>97.ShaderFiles</Filter>
     </FxCompile>
@@ -4270,6 +4359,30 @@
     <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxAnimMeshBinary_SourceGroup084.hlsl">
       <Filter>97.ShaderFiles</Filter>
     </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxAnimMeshBinary_SourceGroup160.hlsl">
+      <Filter>97.ShaderFiles</Filter>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxAnimMeshBinary_SourceGroup176.hlsl">
+      <Filter>97.ShaderFiles</Filter>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxAnimMeshBinary_SourceGroup192.hlsl">
+      <Filter>97.ShaderFiles</Filter>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxAnimMeshBinary_SourceGroup208.hlsl">
+      <Filter>97.ShaderFiles</Filter>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxAnimMeshBinary_SourceGroup235.hlsl">
+      <Filter>97.ShaderFiles</Filter>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxAnimMeshBinary_SourceGroup214.hlsl">
+      <Filter>97.ShaderFiles</Filter>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxAnimMeshBinary_SourceGroup224.hlsl">
+      <Filter>97.ShaderFiles</Filter>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxAnimMeshBinary_SourceGroup237.hlsl">
+      <Filter>97.ShaderFiles</Filter>
+    </FxCompile>
     <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxMeshBinary_SourceGroup001.hlsl">
       <Filter>97.ShaderFiles</Filter>
     </FxCompile>
@@ -4286,6 +4399,30 @@
       <Filter>97.ShaderFiles</Filter>
     </FxCompile>
     <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxMeshBinary_SourceGroup084.hlsl">
+      <Filter>97.ShaderFiles</Filter>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxMeshBinary_SourceGroup160.hlsl">
+      <Filter>97.ShaderFiles</Filter>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxMeshBinary_SourceGroup176.hlsl">
+      <Filter>97.ShaderFiles</Filter>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxMeshBinary_SourceGroup192.hlsl">
+      <Filter>97.ShaderFiles</Filter>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxMeshBinary_SourceGroup208.hlsl">
+      <Filter>97.ShaderFiles</Filter>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxMeshBinary_SourceGroup235.hlsl">
+      <Filter>97.ShaderFiles</Filter>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxMeshBinary_SourceGroup214.hlsl">
+      <Filter>97.ShaderFiles</Filter>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxMeshBinary_SourceGroup224.hlsl">
+      <Filter>97.ShaderFiles</Filter>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxMeshBinary_SourceGroup237.hlsl">
       <Filter>97.ShaderFiles</Filter>
     </FxCompile>
     <None Include="..\Bin\ShaderFiles\Shader_EffectSceneColorInput.hlsli">
@@ -5346,5 +5483,26 @@
     <None Include="..\Bin\ShaderFiles\Shader_EffectArtistNativeSelectedGroup4544.hlsli"><Filter>97.ShaderFiles</Filter></None>
     <None Include="..\..\Data\Effects\Authored\effect.guardianknight.skill.49220.source.49290.clip.0.full.restore.effect.json"><Filter>96.DataFiles</Filter></None>
     <None Include="..\..\Data\Effects\Authored\effect.guardianknight.skill.49220.source.49290.clip.1.full.restore.effect.json"><Filter>96.DataFiles</Filter></None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate2.fanfare.circle.six-rays.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate2.fanfare.front.music.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate2.fanfare.rectangle.warning.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate2.juggling.three.balls.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate2.entrance.rope.trail.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate2.entrance.drop.ball.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate2.safezone.blue.full.restore.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate2.bigsaydon.yellow-eye-warning.full.restore.effect.json"><Filter>96.DataFiles</Filter></None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\Data\Camera\ClassSelection.cinematics.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Maps\Authoring\LV_LOBBY_CLASSSELECT_SL00\LV_LOBBY_CLASSSELECT_SL00.worldsequences.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Maps\Imported\LV_LOBBY_CLASSSELECT_SL10\LV_LOBBY_CLASSSELECT_SL10.mapassets"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Maps\Authoring\LV_LOBBY_CLASSSELECT_SL10\LV_LOBBY_CLASSSELECT_SL10.mapplacements"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Maps\Authoring\LV_LOBBY_CLASSSELECT_SL10\LV_LOBBY_CLASSSELECT_SL10.mapmaterials.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.classselect.guardianknight.fx_pc_ddk_04.par_m_ddk_guillotinespin_trail_01.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.classselect.guardianknight.fx_post.fx_par.par_c_zoomblur_01.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.classselect.guardianknight.fx_q_w_03.fx_par_01.par_q_pcselect_floatingember_01.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.classselect.guardianknight.fx_q_w_03.fx_par_01.par_q_watersplash_01.effect.json"><Filter>96.DataFiles</Filter></None>
   </ItemGroup>
 </Project>

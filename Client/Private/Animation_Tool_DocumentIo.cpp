@@ -36,6 +36,74 @@
 
 
 
+std::unordered_map<std::string, std::string> Client::Read_CompositionAnimationDisplayNames(
+    const std::string& assetName)
+{
+    std::unordered_map<std::string, std::string> names;
+    // This is a display projection of existing authoring/reference documents.
+    // Missing labels never remove a real installed clip from the inventory.
+    const auto reference = CProjectDataRoot::Resolve(std::filesystem::path("Animation/Reference") /
+        assetName / (assetName + ".clipmap"));
+    std::ifstream input(reference, std::ios::binary);
+    std::string line;
+    while (std::getline(input, line))
+    {
+        if (line.empty() || line.front() != '"') continue;
+        std::istringstream row(line);
+        std::string clip, label;
+        if (!(row >> std::quoted(clip))) continue;
+        const auto name = line.find("name=", static_cast<std::size_t>(row.tellg()));
+        if (name == std::string::npos) continue;
+        std::istringstream value(line.substr(name + 5u));
+        if (value >> std::quoted(label); !label.empty()) names[clip] = std::move(label);
+    }
+    for (const auto& profile : KOUKU_SAYDON_ACTION_PROFILES)
+    {
+        if (assetName != profile.pPreviewAssetName) continue;
+        std::string bytes, status;
+        KOUKU_SAYDON_ANIMATION_ACTION_REFERENCE_DOCUMENT referenceActions;
+        if (!Read_BoundedFile(CKoukuSaydonAnimationActionDocument::Resolve_ReferencePath(profile.pProfileId),
+            16u * 1024u * 1024u, bytes, status) ||
+            !CKoukuSaydonAnimationActionDocument::Parse_ReferenceText(bytes, referenceActions, status, true) ||
+            referenceActions.strProfileId != profile.pProfileId || referenceActions.strModelAssetId != profile.pModelAssetId)
+            continue;
+        for (const auto& action : referenceActions.Actions)
+        {
+            if (action.strDisplayName.empty()) continue;
+            for (const auto& stage : action.Stages) for (const auto& slot : stage.Slots)
+            {
+                if (slot.strRuntimeClip.empty()) continue;
+                auto [entry, inserted] = names.emplace(slot.strRuntimeClip, action.strDisplayName);
+                if (!inserted && entry->second.find(action.strDisplayName) == std::string::npos)
+                    entry->second += " / " + action.strDisplayName;
+            }
+        }
+    }
+    const auto bindingPath = CAnimationSkillBindingDocument::Resolve_Path(assetName);
+    std::error_code error;
+    const auto size = std::filesystem::file_size(bindingPath, error);
+    if (error || size > 16u * 1024u * 1024u) return names;
+    std::ifstream bindingSource(bindingPath, std::ios::binary);
+    const std::string bytes((std::istreambuf_iterator<char>(bindingSource)), {});
+    ANIMATION_SKILL_BINDING_DOCUMENT bindings; std::string status;
+    if (!bindingSource || bindingSource.bad() || !CAnimationSkillBindingDocument::Parse_Text(bytes, bindings, status) ||
+        bindings.strAnimationAssetId != assetName) return names;
+    std::unordered_map<std::string, std::string> authoredNames;
+    for (const auto& binding : bindings.Bindings)
+    {
+        const auto* skill = CPlayerSkillCatalog::Find_ById(binding.iSkillId);
+        if (!skill || skill->eCharacterClass != bindings.eCharacterClass) continue;
+        const std::string label = skill->strInputSlot + " | " + skill->strDisplayName;
+        for (const auto& stage : binding.Stages) for (const auto& clip : stage.Clips)
+        {
+            auto [entry, inserted] = authoredNames.emplace(clip.strClipName, label);
+            if (!inserted && entry->second.find(label) == std::string::npos) entry->second += " / " + label;
+        }
+    }
+    for (auto& [clip, label] : authoredNames) names[clip] = std::move(label);
+    return names;
+}
+
 bool_t Client::CAnimation_Tool::Read_CompositionAnimationResources(
 	std::vector<COMPOSITION_ANIMATION_RESOURCE>& outResources,
 	std::string& outStatus) const
@@ -58,6 +126,7 @@ bool_t Client::CAnimation_Tool::Read_CompositionAnimationResources(
 				if (previous.strTargetAssetName == targetName) resources.push_back(previous);
 			continue;
 		}
+		const auto displayNames = Read_CompositionAnimationDisplayNames(targetName);
 		for (const char* source : { asset->pModelAssetId, asset->pAnimationSetAssetId })
 		{
 			if (nullptr == source) continue;
@@ -83,6 +152,8 @@ bool_t Client::CAnimation_Tool::Read_CompositionAnimationResources(
 				resource.strSourceAssetId = source;
 				resource.strProfileId = targetName;
 				resource.strRuntimeClip = clip.name;
+				const auto display = displayNames.find(clip.name);
+				resource.strDisplayName = display == displayNames.end() ? clip.name : display->second + " | " + clip.name;
 				resource.fDurationTicks = clip.durationTicks;
 				// Match CAnimation's cooked clock, not the package import rate.
 				resource.fTicksPerSecond = Engine::CAnimation::COOKED_TICK_RATE;
