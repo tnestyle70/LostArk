@@ -60,6 +60,7 @@ public:
 	void Use_ExplicitRenderSubmission() { m_bExplicitRenderSubmission = true; }
 	HRESULT Submit_RenderGroups();
 	virtual HRESULT Render() override;
+	virtual HRESULT Render_Shadow() override;
 	HRESULT Render_NonBlendModelCues();
 	HRESULT Render_WorldMarks();
 	virtual void Begin_PresentationSubmission() override;

@@ -277,47 +277,51 @@ void CCharacterActionWorkbench::Render_WorkbenchPane(const COMPOSITION_WORKBENCH
 
 void CCharacterActionWorkbench::Render_Actions()
 {
-    ImGui::SeparatorText("Character Actions");
-    if (!m_CatalogLoaded) { ImGui::TextWrapped("%s", m_Status.c_str()); return; }
-    ImGui::InputTextWithHint("##CharacterActionSearch", "Slot, skill ID or name", m_Search, sizeof(m_Search));
-    for (std::size_t i = 0u; i < CLASSES.size(); ++i)
+    if (ImGui::CollapsingHeader("Character Actions", ImGuiTreeNodeFlags_DefaultOpen))
     {
-        ImGui::PushID(static_cast<int>(i));
-        if (ImGui::TreeNodeEx(CLASSES[i].label, ImGuiTreeNodeFlags_DefaultOpen))
+        if (!m_CatalogLoaded) ImGui::TextWrapped("%s", m_Status.c_str());
+        ImGui::InputTextWithHint("##CharacterActionSearch", "Slot, skill ID or name", m_Search, sizeof(m_Search));
+        for (std::size_t i = 0u; i < CLASSES.size(); ++i)
         {
-            std::vector<const PLAYER_SKILL_DEFINITION*> skills;
-            for (const auto& skill : CPlayerSkillCatalog::Get_Skills())
-                if (skill.eCharacterClass == CLASSES[i].id) skills.push_back(&skill);
-            std::stable_sort(skills.begin(), skills.end(), [](const auto* a, const auto* b) {
-                return Slot_Order(a->strInputSlot) < Slot_Order(b->strInputSlot); });
-            for (const auto* skill : skills)
+            ImGui::PushID(static_cast<int>(i));
+            if (ImGui::TreeNodeEx(CLASSES[i].label, ImGuiTreeNodeFlags_DefaultOpen))
             {
-                const std::string label = skill->strInputSlot + " | " + skill->strDisplayName + " | " + std::to_string(skill->iSkillId);
-                if (m_Search[0] && label.find(m_Search) == std::string::npos) continue;
-                ImGui::PushID(static_cast<int>(skill->iSkillId));
-                const bool selected = m_ClassIndex == static_cast<int>(i) && m_SkillId == skill->iSkillId;
-                const bool staged = skill->iComboStageCount > 1u;
-                ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_SpanAvailWidth;
-                if (selected && !m_Stage) flags |= ImGuiTreeNodeFlags_Selected;
-                if (!staged) flags |= ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
-                const bool open = ImGui::TreeNodeEx("Action", flags, "%s", label.c_str());
-                if (ImGui::IsItemClicked() && !ImGui::IsItemToggledOpen()) Select_Action(static_cast<int>(i), skill->iSkillId, {});
-                if (staged && open)
+                std::vector<const PLAYER_SKILL_DEFINITION*> skills;
+                for (const auto& skill : CPlayerSkillCatalog::Get_Skills())
+                    if (skill.eCharacterClass == CLASSES[i].id) skills.push_back(&skill);
+                std::stable_sort(skills.begin(), skills.end(), [](const auto* a, const auto* b) {
+                    return Slot_Order(a->strInputSlot) < Slot_Order(b->strInputSlot); });
+                for (const auto* skill : skills)
                 {
-                    for (std::uint32_t stage = 0u; stage < skill->iComboStageCount; ++stage)
+                    const std::string label = skill->strInputSlot + " | " + skill->strDisplayName + " | " + std::to_string(skill->iSkillId);
+                    if (m_Search[0] && label.find(m_Search) == std::string::npos) continue;
+                    ImGui::PushID(static_cast<int>(skill->iSkillId));
+                    const bool selected = m_ClassIndex == static_cast<int>(i) && m_SkillId == skill->iSkillId;
+                    const bool staged = skill->iComboStageCount > 1u;
+                    ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_SpanAvailWidth;
+                    if (selected && !m_Stage) flags |= ImGuiTreeNodeFlags_Selected;
+                    if (!staged) flags |= ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
+                    const bool open = ImGui::TreeNodeEx("Action", flags, "%s", label.c_str());
+                    if (ImGui::IsItemClicked() && !ImGui::IsItemToggledOpen()) Select_Action(static_cast<int>(i), skill->iSkillId, {});
+                    if (staged && open)
                     {
-                        const std::string stageLabel = "Stage " + std::to_string(stage + 1u);
-                        if (ImGui::Selectable(stageLabel.c_str(), selected && m_Stage == stage)) Select_Action(static_cast<int>(i), skill->iSkillId, stage);
+                        for (std::uint32_t stage = 0u; stage < skill->iComboStageCount; ++stage)
+                        {
+                            const std::string stageLabel = "Stage " + std::to_string(stage + 1u);
+                            if (ImGui::Selectable(stageLabel.c_str(), selected && m_Stage == stage)) Select_Action(static_cast<int>(i), skill->iSkillId, stage);
+                        }
+                        ImGui::TreePop();
                     }
-                    ImGui::TreePop();
+                    ImGui::PopID();
                 }
-                ImGui::PopID();
+                ImGui::TreePop();
             }
-            ImGui::TreePop();
+            ImGui::PopID();
         }
-        ImGui::PopID();
     }
     if (m_ModelEditor->Render_Actions(Has_Draft()))
+    { On_WorkbenchDeactivated(); m_ModelMode = true; }
+    if (m_ModelEditor->Render_MonsterActions(Has_Draft()))
     { On_WorkbenchDeactivated(); m_ModelMode = true; }
     ImGui::TextWrapped("%s", m_Status.c_str());
 }

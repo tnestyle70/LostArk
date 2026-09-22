@@ -78,8 +78,9 @@ public:
 
 public:
 	void Set_Visible(bool_t isVisible) { m_isVisible = isVisible; }
-	bool_t Is_Visible() const { return m_isVisible && !m_isPresentationSuppressed; }
+	bool_t Is_Visible() const { return (m_isVisible || m_isPresentationVisible) && !m_isPresentationSuppressed; }
     void Set_PresentationSuppressed(bool_t value) { m_isPresentationSuppressed = value; }
+    void Set_PresentationVisible(bool_t value) { m_isPresentationVisible = m_isIdentityPart && value; }
     bool_t Is_WeaponPart() const { return m_isWeaponPart; }
     bool_t Is_IdentityPart() const { return m_isIdentityPart; }
     bool Is_Socketed() const { return !m_strSocketBoneName.empty(); }
@@ -88,6 +89,7 @@ public:
 private:
 	bool_t m_isVisible = true;
     bool_t m_isPresentationSuppressed = false;
+    bool_t m_isPresentationVisible = false;
     bool_t m_isWeaponPart = false, m_isIdentityPart = false;
 	uint32_t m_iHiddenMeshMask = {};
 	shared_ptr<CShader> m_pShaderCom = { nullptr };

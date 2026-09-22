@@ -696,6 +696,24 @@ SCENE_COLOR_BLOOM_OUT PS_MAIN_SOURCE_CHARACTER_TRANSLUCENT(VS_OUT input, bool fr
 }
 
 
+// Opt-in Effect model casters share the exact visible native coverage/dissolve.
+uint g_EffectModelCueShadowAlphaClip = 1u;
+float4x4 g_EffectModelCueShadowLightViewMatrix, g_EffectModelCueShadowLightProjMatrix;
+VS_OUT VS_MAIN_EFFECT_MODEL_CUE_SHADOW(VS_IN input)
+{
+    // Native coverage keeps the real scene camera/projection; only raster depth
+    // uses the shadow light. Reusing its matrices as a camera changes view masks.
+    VS_OUT output = VS_MAIN(input);
+    output.vPosition = mul(output.vWorldPos,
+        mul(g_EffectModelCueShadowLightViewMatrix, g_EffectModelCueShadowLightProjMatrix));
+    return output;
+}
+void PS_MAIN_EFFECT_MODEL_CUE_SHADOW(VS_OUT input, bool frontFace : SV_IsFrontFace)
+{
+    clip(g_EffectModelCueOpacity * g_EffectModelCueColorMultiply.a - .001f);
+    Evaluate_Material(input, g_EffectModelCueShadowAlphaClip != 0u, .3f, frontFace);
+}
+
 void PS_MAIN_SHADOW(VS_OUT input)
 {
     float4 diffuse = g_DiffuseTexture.Sample(MaterialAnisotropicSampler, input.vTexcoord);
@@ -960,6 +978,17 @@ technique11 DefaultTechnique
         VertexShader = EffectSourceModelVS;
         GeometryShader = NULL;
         PixelShader = ChargeAfterimagePS;
+    }
+
+    // Appended index15: same skeletal pose and native mask as the visible cue.
+    pass EffectModelCueShadow
+    {
+        SetRasterizerState(RS_Default);
+        SetDepthStencilState(DSS_Default, 0);
+        SetBlendState(BS_Default, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
+        VertexShader = compile vs_5_0 VS_MAIN_EFFECT_MODEL_CUE_SHADOW();
+        GeometryShader = NULL;
+        PixelShader = compile ps_5_0 PS_MAIN_EFFECT_MODEL_CUE_SHADOW();
     }
 
 }

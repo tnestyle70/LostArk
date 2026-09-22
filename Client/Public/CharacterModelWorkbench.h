@@ -17,6 +17,7 @@ public:
     CCharacterModelWorkbench(std::shared_ptr<CCharacterPreviewPanel> panel,
         std::shared_ptr<CEffectAuthoringSequencer> sequencer);
     bool Render_Actions(bool locked);
+    bool Render_MonsterActions(bool locked);
     void Render(COMPOSITION_WORKBENCH_PANE pane);
     bool Is_Dirty() const;
 private:
@@ -25,19 +26,25 @@ private:
         std::string id, category, label, asset, mode;
         uint32_t vehicleId = 0u, skillId = 0u, modeSlot = 0u;
         bool locomotion = false, sourceAction = false, lifetime = false;
+        std::string monsterArchetype, monsterClip;
+        float monsterRate = 1.f;
+        bool monsterAttack = false;
     };
     bool Refresh();
     bool Select(const ACTION& action);
+    bool Refresh_Monsters();
+    bool Select_Monster(const ACTION& action);
     bool Save_Product();
     const DATA_JSON_VALUE* Find_Action(const DATA_JSON_VALUE& root, const ACTION& action) const;
     bool Replace_Action(DATA_JSON_VALUE& root, const ACTION& action, DATA_JSON_VALUE replacement) const;
     std::filesystem::path Owner_Path(const ACTION& action) const;
     std::shared_ptr<CCharacterPreviewPanel> m_Panel;
     std::shared_ptr<CEffectAuthoringSequencer> m_Sequencer;
-    std::vector<ACTION> m_Actions;
+    std::vector<ACTION> m_Actions, m_MonsterActions;
     ACTION m_Selected;
     DATA_JSON_VALUE m_BaselineAction;
     std::string m_Status;
-    bool m_Loaded = false;
+    bool m_Loaded = false, m_MonstersLoaded = false;
+    std::string m_MonsterStatus;
 };
 }

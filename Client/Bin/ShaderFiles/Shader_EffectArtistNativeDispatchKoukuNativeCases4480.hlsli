@@ -280,3 +280,95 @@
 #if (!defined(EFFECT_NATIVE_PROFILE_GROUP) || EFFECT_NATIVE_PROFILE_GROUP == 4480) && !defined(EFFECT_NATIVE_PARTICLE_CARRIER) && !defined(EFFECT_NATIVE_DECAL_CARRIER) && !defined(EFFECT_NATIVE_TRAIL_CARRIER) && !defined(EFFECT_NATIVE_SCREEN_POST_CARRIER)
     case 4531u: nativeColor=ArtistNative4531(input); opaqueCoverage=true; break;
 #endif
+#if (!defined(EFFECT_NATIVE_PROFILE_GROUP) || EFFECT_NATIVE_PROFILE_GROUP == 4480) && !defined(EFFECT_NATIVE_MESH_CARRIER) && !defined(EFFECT_NATIVE_DECAL_CARRIER) && !defined(EFFECT_NATIVE_TRAIL_CARRIER) && !defined(EFFECT_NATIVE_SCREEN_POST_CARRIER)
+    case 4532u:
+    {
+        nativeColor=ArtistNative4532(input);
+        const float4 accumulated=ArtistNative4532Distortion(input);
+        output.SceneColor=float4(nativeColor.rgb*g_EmissiveIntensity,1.f);
+        output.Distortion=float4(accumulated.xy-accumulated.zw,0.f,0.f);
+        return output;
+    }
+#endif
+#if (!defined(EFFECT_NATIVE_PROFILE_GROUP) || EFFECT_NATIVE_PROFILE_GROUP == 4480) && !defined(EFFECT_NATIVE_MESH_CARRIER) && !defined(EFFECT_NATIVE_DECAL_CARRIER) && !defined(EFFECT_NATIVE_TRAIL_CARRIER) && !defined(EFFECT_NATIVE_SCREEN_POST_CARRIER)
+    case 4533u: nativeColor=ArtistNative4533(input); opaqueCoverage=false; break;
+#endif
+#if (!defined(EFFECT_NATIVE_PROFILE_GROUP) || EFFECT_NATIVE_PROFILE_GROUP == 4480) && !defined(EFFECT_NATIVE_MESH_CARRIER) && !defined(EFFECT_NATIVE_DECAL_CARRIER) && !defined(EFFECT_NATIVE_TRAIL_CARRIER) && !defined(EFFECT_NATIVE_SCREEN_POST_CARRIER)
+    case 4534u:
+    {
+        nativeColor=ArtistNative4534(input);
+        const float4 accumulated=ArtistNative4534Distortion(input);
+        output.SceneColor=float4(nativeColor.rgb*g_EmissiveIntensity,1.f);
+        output.Distortion=float4(accumulated.xy-accumulated.zw,0.f,0.f);
+        return output;
+    }
+#endif
+#if (!defined(EFFECT_NATIVE_PROFILE_GROUP) || EFFECT_NATIVE_PROFILE_GROUP == 4480) && !defined(EFFECT_NATIVE_MESH_CARRIER) && !defined(EFFECT_NATIVE_DECAL_CARRIER) && !defined(EFFECT_NATIVE_TRAIL_CARRIER) && !defined(EFFECT_NATIVE_SCREEN_POST_CARRIER)
+    case 4535u: nativeColor=ArtistNative4535(input); opaqueCoverage=false; break;
+#endif
+#if (!defined(EFFECT_NATIVE_PROFILE_GROUP) || EFFECT_NATIVE_PROFILE_GROUP == 4480) && !defined(EFFECT_NATIVE_MESH_CARRIER) && !defined(EFFECT_NATIVE_DECAL_CARRIER) && !defined(EFFECT_NATIVE_TRAIL_CARRIER) && !defined(EFFECT_NATIVE_SCREEN_POST_CARRIER)
+    case 4536u: nativeColor=ArtistNative4536(input); opaqueCoverage=false; break;
+#endif
+#if (!defined(EFFECT_NATIVE_PROFILE_GROUP) || EFFECT_NATIVE_PROFILE_GROUP == 4480) && !defined(EFFECT_NATIVE_MESH_CARRIER) && !defined(EFFECT_NATIVE_DECAL_CARRIER) && !defined(EFFECT_NATIVE_TRAIL_CARRIER) && !defined(EFFECT_NATIVE_SCREEN_POST_CARRIER)
+    case 4537u:
+    {
+        nativeColor=ArtistNative4537(input);
+        const float4 accumulated=ArtistNative4537Distortion(input);
+        output.SceneColor=float4(nativeColor.rgb*g_EmissiveIntensity,1.f);
+        output.Distortion=float4(accumulated.xy-accumulated.zw,0.f,0.f);
+        return output;
+    }
+#endif
+#if (!defined(EFFECT_NATIVE_PROFILE_GROUP) || EFFECT_NATIVE_PROFILE_GROUP == 4480) && !defined(EFFECT_NATIVE_MESH_CARRIER) && !defined(EFFECT_NATIVE_DECAL_CARRIER) && !defined(EFFECT_NATIVE_TRAIL_CARRIER) && !defined(EFFECT_NATIVE_SCREEN_POST_CARRIER)
+    case 4538u:
+    {
+        nativeColor=ArtistNative4538(input);
+        const float4 accumulated=ArtistNative4538Distortion(input);
+        output.SceneColor=float4(nativeColor.rgb*g_EmissiveIntensity,nativeColor.a);
+        output.Distortion=float4(accumulated.xy-accumulated.zw,0.f,0.f);
+        return output;
+    }
+#endif
+#if (!defined(EFFECT_NATIVE_PROFILE_GROUP) || EFFECT_NATIVE_PROFILE_GROUP == 4480) && !defined(EFFECT_NATIVE_MESH_CARRIER) && !defined(EFFECT_NATIVE_DECAL_CARRIER) && !defined(EFFECT_NATIVE_TRAIL_CARRIER) && !defined(EFFECT_NATIVE_SCREEN_POST_CARRIER)
+    case 4539u:
+    {
+        nativeColor=ArtistNative4539(input);
+        const float4 accumulated=ArtistNative4539Distortion(input);
+        output.SceneColor=float4(nativeColor.rgb*g_EmissiveIntensity,1.f);
+        output.Distortion=float4(accumulated.xy-accumulated.zw,0.f,0.f);
+        return output;
+    }
+#endif
+#if (!defined(EFFECT_NATIVE_PROFILE_GROUP) || EFFECT_NATIVE_PROFILE_GROUP == 4480) && !defined(EFFECT_NATIVE_PARTICLE_CARRIER) && !defined(EFFECT_NATIVE_DECAL_CARRIER) && !defined(EFFECT_NATIVE_TRAIL_CARRIER) && !defined(EFFECT_NATIVE_SCREEN_POST_CARRIER)
+    case 4540u:
+    {
+        nativeColor=ArtistNative4540(input);
+        const float4 accumulated=ArtistNative4540Distortion(input);
+        output.SceneColor=float4(nativeColor.rgb*g_EmissiveIntensity,nativeColor.a);
+        output.Distortion=float4(accumulated.xy-accumulated.zw,0.f,0.f);
+        return output;
+    }
+#endif
+#if (!defined(EFFECT_NATIVE_PROFILE_GROUP) || EFFECT_NATIVE_PROFILE_GROUP == 4480) && !defined(EFFECT_NATIVE_MESH_CARRIER) && !defined(EFFECT_NATIVE_DECAL_CARRIER) && !defined(EFFECT_NATIVE_TRAIL_CARRIER) && !defined(EFFECT_NATIVE_SCREEN_POST_CARRIER)
+    case 4541u:
+    {
+        nativeColor=ArtistNative4541(input);
+        const float4 accumulated=ArtistNative4541Distortion(input);
+        output.SceneColor=float4(nativeColor.rgb*g_EmissiveIntensity,nativeColor.a);
+        output.Distortion=float4(accumulated.xy-accumulated.zw,0.f,0.f);
+        return output;
+    }
+#endif
+#if (!defined(EFFECT_NATIVE_PROFILE_GROUP) || EFFECT_NATIVE_PROFILE_GROUP == 4480 || defined(EFFECT_NATIVE_TRAIL_CARRIER)) && !defined(EFFECT_NATIVE_MESH_CARRIER) && !defined(EFFECT_NATIVE_PARTICLE_CARRIER) && !defined(EFFECT_NATIVE_DECAL_CARRIER) && !defined(EFFECT_NATIVE_SCREEN_POST_CARRIER)
+    case 4542u:
+    {
+        nativeColor=ArtistNative4542(input);
+        const float4 accumulated=ArtistNative4542Distortion(input);
+        output.SceneColor=float4(nativeColor.rgb*g_EmissiveIntensity,nativeColor.a);
+        output.Distortion=float4(accumulated.xy-accumulated.zw,0.f,0.f);
+        return output;
+    }
+#endif
+#if (!defined(EFFECT_NATIVE_PROFILE_GROUP) || EFFECT_NATIVE_PROFILE_GROUP == 4480 || defined(EFFECT_NATIVE_DECAL_CARRIER)) && !defined(EFFECT_NATIVE_MESH_CARRIER) && !defined(EFFECT_NATIVE_PARTICLE_CARRIER) && !defined(EFFECT_NATIVE_TRAIL_CARRIER) && !defined(EFFECT_NATIVE_SCREEN_POST_CARRIER)
+    case 4543u: nativeColor=ArtistNative4543(input); opaqueCoverage=false; break;
+#endif

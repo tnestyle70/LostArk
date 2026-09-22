@@ -4253,6 +4253,10 @@ bool Client::CClientReplication::Apply_PlayerSnapshot(
 		(record->eCharacterClass != player.eCharacterClass ||
 		 record->eMadnessForm != player.eMadnessForm))
 	{
+		OBJECT_HANDLE previousHandle{};
+		if (m_Registry.Find_Handle(player.iNetEntityId, previousHandle))
+			if (const auto previousCharacter = m_Registry.Resolve(previousHandle))
+				previousCharacter->Cancel_PendingInteractionEffectAdmission();
 		if (isLocallyControlled &&
 			m_Desc.bDeferLocalCharacterClassReplacement)
 		{

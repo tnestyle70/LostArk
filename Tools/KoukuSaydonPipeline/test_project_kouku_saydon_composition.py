@@ -873,6 +873,54 @@ class KoukuSaydonCompositionProjectionTests(unittest.TestCase):
             bad = copy.deepcopy(document); bad["logics"][0][field] = value
             with self.subTest(field=field), self.assertRaises(subject.CompositionError): self.validate(bad)
 
+    def test_cardrain_random_sound_uses_each_spawn_clock_and_keeps_effect_anchor(self):
+        document = self.random_volley_document()
+        pattern = self.first_product(document)
+        logic = document["logics"][0]
+        logic.update(fixedSelectionGroupId="", trackingPresentationOccurrenceId="")
+        resource = dict(resourceId="sound.cardrain.impact", displayName="Card rain impact",
+                        kind="SOUND", assetId="Sound/KoukuSaton/Events/cardrain.wav",
+                        durationMs=2400, defaultAnchorKind="MAP")
+        document["presentationResources"].append(resource)
+        sound = dict(occurrenceId=FIRST_PRODUCT_ID + ".presentation.8", resourceId=resource["resourceId"],
+                     startMs=1850, durationMs=2400, anchorKind="MAP", followBoss=False,
+                     positionOffset=[999, 0, 999], volume=.7)
+        pattern["presentationOccurrences"].append(sound)
+        pattern["nextPresentationOccurrenceOrdinal"] = 9
+        logic["randomVolleyOccurrenceSets"][0].append(sound["occurrenceId"])
+        before = copy.deepcopy(document)
+        self.validate(document)
+        rows, templates, controlled = subject._project_showtime_targets(document, pattern)
+        template = templates[rows[0]["randomVolleys"][0]["clientVisualId"]]
+        cue, = [row for row in template["occurrences"] if row["kind"] == "SOUND"]
+        self.assertEqual((1350, 2400, .7), (cue["startMs"], cue["durationMs"], cue["volume"]))
+        # SOUND is an owned cue, never a competing navigation pivot or a static extra playback.
+        self.assertIn(sound["occurrenceId"], controlled)
+        self.assertNotIn(sound["occurrenceId"], [row["occurrenceId"] for row in
+            self.first_product(subject.project_presentation(document))["presentationOccurrences"]])
+        effect, = [row for row in template["occurrences"] if row["kind"] == "EFFECT" and row["startMs"] == 500]
+        self.assertEqual([0, -.2, 0], effect["positionOffset"])
+        self.assertEqual(before, document)
+        sound["startMs"] += 1
+        changed = subject._project_showtime_targets(document, pattern)[0][0]["randomVolleys"][0]["clientVisualId"]
+        self.assertNotEqual(template["clientVisualId"], changed)
+
+    def test_cardrain_random_sound_requires_ground_effect_and_cannot_loop_or_follow_boss(self):
+        document = self.random_volley_document()
+        pattern = self.first_product(document)
+        resource = dict(resourceId="sound.cardrain.impact", displayName="Impact", kind="SOUND",
+                        assetId="Sound/KoukuSaton/Events/cardrain.wav", durationMs=2000, defaultAnchorKind="MAP")
+        document["presentationResources"].append(resource)
+        sound = dict(occurrenceId=FIRST_PRODUCT_ID + ".presentation.8", resourceId=resource["resourceId"],
+                     startMs=1850, durationMs=2000, anchorKind="MAP", followBoss=False)
+        with self.assertRaises(subject.CompositionError):
+            subject._showtime_visual_template(document, pattern, [sound], "fixed", random_mixed=True)
+        with self.assertRaises(subject.CompositionError):
+            subject._showtime_visual_template(document, pattern, [sound], "tracking")
+        sound.update(anchorKind="BOSS", followBoss=True)
+        with self.assertRaises(subject.CompositionError):
+            subject._showtime_visual_template(document, pattern, [pattern["presentationOccurrences"][0], sound], "fixed", random_mixed=True)
+
     def test_showtime_random_parent_copy_remaps_every_member_and_rejects_truncation(self):
         document = self.random_volley_document()
         child = self.first_product(document)

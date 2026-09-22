@@ -35,10 +35,23 @@ struct COMPOSITION_ANIMATION_SEQUENCE_RESOURCE final
 	std::vector<COMPOSITION_ANIMATION_RESOURCE> Clips;
 };
 
-inline constexpr std::array<const char*, 8u>
+inline constexpr std::array<const char*, 21u>
 	COMPOSITION_ANIMATION_TARGET_ASSET_NAMES = {
 		"Valtan", "Valtan_Ghost_MN_RPBF_02",
-		"MN_RPCT_00", "MN_RPCT_03", "MN_RPCT_05", "MN_RPCT_06", "MN_RPCZ_00", "MN_RPCZ_00-1" };
+		"MN_RPCT_00", "MN_RPCT_03", "MN_RPCT_05", "MN_RPCT_06", "MN_RPCZ_00", "MN_RPCZ_00-1",
+		"Monster_480001_MN_PADD_01",
+		"Monster_480002_MN_SJFC_00_4",
+		"Monster_480003_MN_0019_05",
+		"Monster_480005_Lugaru_MN_RPRS_02",
+		"Monster_Valtan_SJFC_Elite",
+		"Monster_Kouku_CMDUP_02",
+		"Monster_Kouku_REUP_04",
+		"Monster_Kouku_RHKP_06",
+		"Monster_Kouku_CMDGR_03",
+		"Monster_Card_Heart",
+		"Monster_Card_Diamond",
+		"Monster_Card_Club",
+		"Monster_Card_Spade" };
 
 inline bool Is_CompositionAnimationTargetAsset(const std::string_view name)
 {

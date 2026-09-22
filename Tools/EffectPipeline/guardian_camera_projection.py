@@ -31,7 +31,11 @@ def axes(euler):
     return [[cp*cy,cp*sy,sp],[sr*sp*cy-cr*sy,sr*sp*sy+cr*cy,-sr*cp],[-cr*sp*cy-sr*sy,-cr*sp*sy+sr*cy,cr*cp]]
 
 def transform(vector,basis):return [sum(vector[i]*basis[i][j] for i in range(3)) for j in range(3)]
-def convert(vector,scale=1.):return [vector[0]*scale,vector[2]*scale,-vector[1]*scale]
+def convert(vector,scale=1.):
+    # Match PlaySkeletalMeshActor source_actor: UE forward X -> runtime Z,
+    # UE right Y -> runtime X and UE up Z -> runtime Y. Applying the import
+    # camera basis [X,Z,-Y] here would turn only the camera 90 degrees.
+    return [vector[1]*scale,vector[2]*scale,vector[0]*scale]
 
 def native_pose(graph,seconds):
     rows=graph['rows'];parent=rows['100']['p'];camera=rows['102']['p']
@@ -55,11 +59,23 @@ def project_camera(graph,effect_id,duration_ms=12000):
     times={0,duration,*[round(i*1000/120) for i in range(457)]}
     for track,name in [('100','postrack'),('100','eulertrack'),('102','postrack'),('102','eulertrack'),('81','floattrack')]:
         times.update(round(p['inval']*1000) for p in rows[track]['p'][name]['points'] if 0<=p['inval']*1000<=duration)
+    zoom_out=round(rows['102']['p']['postrack']['points'][1]['inval']*1000)
+    if not 0 < zoom_out < duration:raise ValueError('Missing source zoom-out interval')
+    times.add(zoom_out)
     keys=[dict(keyId=f'camera.guardianknight.native.{i:04}',timeMs=t,**native_pose(graph,t*.001)) for i,t in enumerate(sorted(times))]
+    source=('STANDARD_SKILLCAM_DRAGONKNIGHT: RemoteEvent123 -> Attach110 -> SetCameraTarget116 -> Matinee26/Data31; '
+        'active parent Move100 + CM02 Move102 + FOV81. Hermite tangents sampled at 120 Hz and source key times; '
+        'disabled Move99 excluded. UE forward/right/up mapped to model actor +Z/+X/+Y. Source horizontal FOV '
+        'and up retained. Source AttachToActor class-zero offset/rotation applied through live MODEL_ROOT; '
+        'original action PLAY0/STOP3800ms. Split at the source 1500ms zoom-out key without changing its curve.')
+    cameras=[]
+    for suffix,label,begin,end in [('closeup','Close-up',0,zoom_out),('zoomout','Zoom out',zoom_out,duration)]:
+        local_keys=[dict(key, timeMs=key['timeMs']-begin) for key in keys if begin<=key['timeMs']<=end]
+        cameras.append(dict(cameraId='camera.guardianknight.skillcam_dragonknight_02.'+suffix,
+            displayName='Sanctum of Embereth | '+label,source=source,space='MODEL_ROOT',fovAxis='HORIZONTAL',
+            startMs=begin,durationMs=end-begin,muted=False,interpolation='LINEAR',easing='LINEAR',keys=local_keys))
     return dict(schema='lostark.effect-authoring-sequence',formatVersion=3,sequenceId=effect_id,
         model=dict(kind='MODEL_SEQUENCE',assetName='GuardianKnight',sequenceId='skill.49420',anchorMemberId=''),
         anchorMode='MODEL_ROOT',worldPosition=[0,0,0],effects=[dict(occurrenceId='guardian.altv.source.effect',owner='V1_DOCUMENT',
         effectId=effect_id,anchorSlotId='root',startMs=0,durationMs=max(duration,duration_ms),offset=[0,0,0],muted=False)],
-        cameras=[dict(cameraId='camera.guardianknight.skillcam_dragonknight_02',displayName='성역의 엠버레스 원본 카메라',
-        source='STANDARD_SKILLCAM_DRAGONKNIGHT: RemoteEvent123 -> Attach110 -> SetCameraTarget116 -> Matinee26/Data31; active parent Move100 + CM02 Move102 + FOV81. Stored Hermite tangents sampled at 120 Hz and source key times; disabled Move99 excluded. Source horizontal FOV and up retained. Source AttachToActor class-zero offset/rotation applied through live MODEL_ROOT; original action PLAY0/STOP3800ms.',
-        space='MODEL_ROOT',fovAxis='HORIZONTAL',startMs=0,durationMs=duration,muted=False,interpolation='LINEAR',easing='LINEAR',keys=keys)])
+        cameras=cameras)

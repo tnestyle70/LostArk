@@ -3437,6 +3437,7 @@ namespace EffectDocumentRendererDetail
 				A.strClipName != B.strClipName ||
 				A.strSuppressHorizontalRootMotionBone != B.strSuppressHorizontalRootMotionBone ||
 				A.eAlphaMode != B.eAlphaMode ||
+				A.bCastsShadow != B.bCastsShadow ||
 				A.Material.has_value() != B.Material.has_value() ||
 				(A.Material && (A.Material->strTemplateId != B.Material->strTemplateId ||
 				 A.Material->strSourceMaterialPath != B.Material->strSourceMaterialPath ||

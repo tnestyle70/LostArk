@@ -2006,6 +2006,8 @@ struct EFFECT_MODEL_CUE_DESC final
 	// Repeat the source clip within this cue window; mutually exclusive with hold-last.
 	bool_t bLoop = false;
 	bool_t bVisible = true;
+	// Opt-in live CModel shadow; absent on legacy documents keeps their draw contract.
+	bool_t bCastsShadow = false;
 	// Absent preserves the cooked CMaterial; present owns the recovered skeletal material.
 	std::optional<EFFECT_MATERIAL_DESC> Material;
     // Reuse CModel/CMaterial source input for a recovered masked skeletal surface.

@@ -303,6 +303,12 @@ bool_t Client::CEffectDocumentCodec::Validate(
                 Cue.vColorMultiply.w < 0.f || Cue.vColorMultiply.w > 1.f)
             { strOutError = "Model Cue afterimage timing, appearance, or bounds are invalid: " + Cue.strCueId; return false; }
         }
+		if (Cue.bCastsShadow && (Cue.Afterimage || Cue.Material ||
+			Cue.eAlphaMode == EFFECT_MODEL_CUE_ALPHA_MODE::TRANSLUCENT_SURFACE))
+		{
+			strOutError = "Model Cue shadow requires an opaque or masked CModel surface: " + Cue.strCueId;
+			return false;
+		}
 		if (Cue.bLoop && Cue.bHoldLastFrame)
 		{
 			strOutError = "Effect Model Cue cannot loop and hold its last frame: " +

@@ -108574,92 +108574,97 @@
     ]
   },
   "ownerControls": [
-  {
-    "controlId": "action-49260.stage-002.notify-011.material_vector",
-    "kind": "MATERIAL_VECTOR",
-    "parameter": "transcolor",
-    "mappingBasis": "PROJECT_ADAPTER",
-    "sourceTargetType": 4,
-    "onlyLocalPlayer": false,
-    "startSeconds": 0.4000000059604645,
-    "keys": [
-      {
-        "seconds": 0.0,
-        "value": [
-          0.0,
-          0.0,
-          0.0,
-          1.0
-        ]
-      },
-      {
-        "seconds": 0.20000000298023224,
-        "value": [
-          3.0,
-          0.19171300530433655,
-          0.062313999980688095,
-          1.0
-        ]
-      },
-      {
-        "seconds": 0.4000000059604645,
-        "value": [
-          1.0,
-          0.06390400230884552,
-          0.020771000534296036,
-          1.0
-        ]
-      },
-      {
-        "seconds": 1.0000000298023224,
-        "value": [
-          0.0,
-          0.0,
-          0.0,
-          1.0
-        ]
-      }
-    ],
-    "sourceValues": [
-      0,
-      0,
-      0,
-      1,
-      1,
-      1,
-      4,
-      0.20000000298023224,
-      0.0
-    ]
-  },
-  {
-    "controlId": "action-49260.stage-002.notify-006.visibility",
-    "kind": "IDENTITY_VISIBILITY",
-    "parameter": "identity",
-    "mappingBasis": "PROJECT_ADAPTER",
-    "sourceTargetType": 12,
-    "onlyLocalPlayer": false,
-    "startSeconds": 0.0,
-    "keys": [
-      {
-        "seconds": 0,
-        "value": [
-          0,
-          0,
-          0,
-          0
-        ]
-      },
-      {
-        "seconds": 0.4000000059604645,
-        "value": [
-          0,
-          0,
-          0,
-          0
-        ]
-      }
-    ]
-  }
-]
+    {
+      "controlId": "action-49260.stage-002.notify-011.material_vector",
+      "kind": "MATERIAL_VECTOR",
+      "parameter": "transcolor",
+      "mappingBasis": "PROJECT_ADAPTER",
+      "sourceTargetType": 4,
+      "onlyLocalPlayer": false,
+      "startSeconds": 0.4000000059604645,
+      "keys": [
+        {
+          "seconds": 0.0,
+          "value": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        },
+        {
+          "seconds": 0.20000000298023224,
+          "value": [
+            3.0,
+            0.19171300530433655,
+            0.062313999980688095,
+            1.0
+          ]
+        },
+        {
+          "seconds": 0.4000000059604645,
+          "value": [
+            1.0,
+            0.06390400230884552,
+            0.020771000534296036,
+            1.0
+          ]
+        },
+        {
+          "seconds": 1.0000000298023224,
+          "value": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        }
+      ],
+      "sourceValues": [
+        0,
+        0,
+        0,
+        1,
+        1,
+        1,
+        4,
+        0.20000000298023224,
+        0.0
+      ]
+    },
+    {
+      "controlId": "action-49260.stage-002.notify-006.visibility",
+      "kind": "IDENTITY_VISIBILITY",
+      "parameter": "identity",
+      "mappingBasis": "PROJECT_ADAPTER",
+      "sourceTargetType": 12,
+      "onlyLocalPlayer": false,
+      "startSeconds": 0.0,
+      "keys": [
+        {
+          "seconds": 0,
+          "value": [
+            1,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "seconds": 0.4000000059604645,
+          "value": [
+            1,
+            0,
+            0,
+            0
+          ]
+        }
+      ],
+      "sourceValues": [
+        0,
+        1,
+        1
+      ]
+    }
+  ]
 }

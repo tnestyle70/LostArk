@@ -1077,6 +1077,10 @@ HRESULT Client::CEffectObject::Submit_RenderGroups()
     // lifetime. Player/Effect draws keep their ordinary depth and lighting path.
     if (m_pRenderer->Has_ActiveSceneBackdrop(m_Playback.Get_Frame()))
         CGameInstance::Get().Request_SceneEnvironmentReplacement();
+	// Shadow uses the same evaluated frame/pose as the later surface draw.
+	if (m_pRenderer->Has_ShadowModelCues(m_Playback.Get_Frame()))
+		CGameInstance::Get().Add_RenderObject(
+			RENDERGROUP::SHADOW, static_pointer_cast<CGameObject>(Self));
 	if (m_pRenderer->Has_NonBlendModelCues())
 	{
 		/* CModel opaque/masked cues write their surface before scene lighting.
@@ -1313,6 +1317,22 @@ void Client::CEffectObject::Finalize_PresentationSubmission(
 	if (!m_LastPresentationSubmissionStats.bCompleted)
 		return;
 	m_LastPresentationSubmissionStats.bCommitted = bCommitted;
+}
+
+HRESULT Client::CEffectObject::Render_Shadow()
+{
+	if (m_bRenderFailureIsolated || m_bReconstructedDiagnosticActive || !m_bVisible)
+		return S_FALSE;
+	std::string GateStatus;
+	if (!m_bReconstructedSourceRuntimeActive &&
+		!m_ReconstructedRuntimeBoundary.Admit_Render(GateStatus))
+	{
+		m_strStatus = std::move(GateStatus);
+		return Complete_LocalEffectFailure(E_FAIL, m_strStatus, "shadow", false);
+	}
+	const HRESULT Result = m_pRenderer->Render_ShadowModelCues(m_Playback.Get_Frame());
+	m_strStatus = m_pRenderer->Get_Status();
+	return Complete_RenderResult(Result, m_strStatus);
 }
 
 HRESULT Client::CEffectObject::Render_NonBlendModelCues()

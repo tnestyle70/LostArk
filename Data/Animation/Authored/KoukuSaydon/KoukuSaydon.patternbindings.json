@@ -3,7 +3,7 @@
   "formatVersion": 1,
   "lightResourceRevision": 30,
   "bossArchetypeId": "BOSS_KAKULSAYDON_G1_KOUKU",
-  "sourceRevision": 2194,
+  "sourceRevision": 2195,
   "bindings": [
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_1.stage.43",
@@ -8974,13 +8974,33 @@
       ]
     },
     {
-      "clientVisualId": "kouku.showtime.fixed.a5816d523e48951ddc5247922d8e100cea9672e638472026053515ef665807bc",
+      "clientVisualId": "kouku.showtime.fixed.7aaf67f60352f601d8e37656db1b2cd3159ee4e802bc85c0d328eb76dac46f7f",
       "combatObjectArchetypeId": "combatobject.kouku.showtime.fixed",
       "durationMs": 7200,
       "loop": false,
       "resources": [
         {
           "resourceId": "showtime.resource.1",
+          "resourceKind": "GROUP",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "radiusM": 3.0,
+          "halfAngleDegrees": 45.0,
+          "soundEvent": "s_mob_g_koukusatan1.g_satan1_attack03_projexp1",
+          "subtitleText": "",
+          "subtitlePosition": "NORMAL",
+          "kind": "SOUND",
+          "assetId": "Sound/KoukuSaton/S_MOB_G_KOUKUSATAN1/g_satan1_attack03_projexp1__296208953.wav",
+          "resourceDurationMs": 3117
+        },
+        {
+          "resourceId": "showtime.resource.2",
           "resourceKind": "V1_EFFECT",
           "elementId": "",
           "shape": "BOX",
@@ -9016,7 +9036,7 @@
           "soundEvent": "",
           "subtitleText": "",
           "subtitlePosition": "NORMAL",
-          "resourceId": "showtime.resource.1",
+          "resourceId": "showtime.resource.2",
           "kind": "EFFECT",
           "assetId": "effect.kouku.gate1.cardrain.drop",
           "resourceDurationMs": 7200,
@@ -9056,6 +9076,62 @@
           "durationMs": 7200,
           "worldSequenceInstanceId": "",
           "occurrenceId": "showtime.presentation.1"
+        },
+        {
+          "resourceKind": "GROUP",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "radiusM": 3.0,
+          "halfAngleDegrees": 45.0,
+          "soundEvent": "s_mob_g_koukusatan1.g_satan1_attack03_projexp1",
+          "subtitleText": "",
+          "subtitlePosition": "NORMAL",
+          "resourceId": "showtime.resource.1",
+          "kind": "SOUND",
+          "assetId": "Sound/KoukuSaton/S_MOB_G_KOUKUSATAN1/g_satan1_attack03_projexp1__296208953.wav",
+          "resourceDurationMs": 3117,
+          "positionOffset": [
+            0,
+            0.0,
+            0
+          ],
+          "rotationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1.0,
+          "volume": 1,
+          "soundSourceStartMs": 0,
+          "followBoss": false,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "MAP",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "startMs": 1350,
+          "durationMs": 3117,
+          "worldSequenceInstanceId": "",
+          "occurrenceId": "showtime.presentation.2"
         }
       ]
     },
@@ -84212,9 +84288,9 @@
           "soundEvent": "",
           "subtitleText": "",
           "subtitlePosition": "NORMAL",
-          "resourceId": "kakulsaydon.effect.b0ffd29d236eb76496ef",
+          "resourceId": "kakulsaydon.effect.618e1c2708d6951adabb",
           "kind": "EFFECT",
-          "assetId": "effect.kouku.common.spinning.card.flying",
+          "assetId": "effect.kouku.common.spinning.card.casting",
           "resourceDurationMs": 19990,
           "positionOffset": [
             0,
@@ -84270,9 +84346,9 @@
           "soundEvent": "",
           "subtitleText": "",
           "subtitlePosition": "NORMAL",
-          "resourceId": "kakulsaydon.effect.b0ffd29d236eb76496ef",
+          "resourceId": "kakulsaydon.effect.618e1c2708d6951adabb",
           "kind": "EFFECT",
-          "assetId": "effect.kouku.common.spinning.card.flying",
+          "assetId": "effect.kouku.common.spinning.card.casting",
           "resourceDurationMs": 19990,
           "positionOffset": [
             0,
@@ -84328,9 +84404,9 @@
           "soundEvent": "",
           "subtitleText": "",
           "subtitlePosition": "NORMAL",
-          "resourceId": "kakulsaydon.effect.b0ffd29d236eb76496ef",
+          "resourceId": "kakulsaydon.effect.618e1c2708d6951adabb",
           "kind": "EFFECT",
-          "assetId": "effect.kouku.common.spinning.card.flying",
+          "assetId": "effect.kouku.common.spinning.card.casting",
           "resourceDurationMs": 19990,
           "positionOffset": [
             0,
@@ -84386,9 +84462,9 @@
           "soundEvent": "",
           "subtitleText": "",
           "subtitlePosition": "NORMAL",
-          "resourceId": "kakulsaydon.effect.b0ffd29d236eb76496ef",
+          "resourceId": "kakulsaydon.effect.618e1c2708d6951adabb",
           "kind": "EFFECT",
-          "assetId": "effect.kouku.common.spinning.card.flying",
+          "assetId": "effect.kouku.common.spinning.card.casting",
           "resourceDurationMs": 19990,
           "positionOffset": [
             0,
@@ -84444,9 +84520,9 @@
           "soundEvent": "",
           "subtitleText": "",
           "subtitlePosition": "NORMAL",
-          "resourceId": "kakulsaydon.effect.b0ffd29d236eb76496ef",
+          "resourceId": "kakulsaydon.effect.618e1c2708d6951adabb",
           "kind": "EFFECT",
-          "assetId": "effect.kouku.common.spinning.card.flying",
+          "assetId": "effect.kouku.common.spinning.card.casting",
           "resourceDurationMs": 19990,
           "positionOffset": [
             0,
@@ -84502,9 +84578,9 @@
           "soundEvent": "",
           "subtitleText": "",
           "subtitlePosition": "NORMAL",
-          "resourceId": "kakulsaydon.effect.b0ffd29d236eb76496ef",
+          "resourceId": "kakulsaydon.effect.618e1c2708d6951adabb",
           "kind": "EFFECT",
-          "assetId": "effect.kouku.common.spinning.card.flying",
+          "assetId": "effect.kouku.common.spinning.card.casting",
           "resourceDurationMs": 19990,
           "positionOffset": [
             0,
@@ -87176,7 +87252,7 @@
       "gateId": "GATE1",
       "targetBossPlacementId": "boss.kakulsaydon.g1.saydon",
       "actorProfileId": "MN_RPCT_05",
-      "durationMs": 11566,
+      "durationMs": 15247,
       "stageDurationMs": 11534,
       "animationRootVerticalScale": 0.0,
       "sourceAnchorAnimations": [
@@ -87262,7 +87338,7 @@
           "worldEmissionIndex": 0,
           "occurrenceId": "KAKULSAYDON_G1_PATTERN_58.presentation.1",
           "startMs": 1904,
-          "durationMs": 5352,
+          "durationMs": 9100,
           "brightnessMultiplier": 1,
           "boneTarget": "BODY",
           "worldSequenceInstanceId": ""
@@ -87436,7 +87512,7 @@
           "worldEmissionIndex": 0,
           "occurrenceId": "KAKULSAYDON_G1_PATTERN_58.presentation.5",
           "startMs": 6147,
-          "durationMs": 5352,
+          "durationMs": 9100,
           "brightnessMultiplier": 1,
           "boneTarget": "BODY",
           "worldSequenceInstanceId": ""

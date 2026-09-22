@@ -6,6 +6,7 @@
 #include "Network/PacketMessages.h"
 #include "Network/PacketWriter.h"
 #include "Gameplay/WorldCollisionContract.h"
+#include "Gameplay/KoukuArenaReadyAreas.h"
 
 #include <algorithm>
 #include <array>
@@ -29,7 +30,9 @@ void LostArk::Server::CGameRoom::Handle_Move(
 	const SESSION_ID sessionId,
 	const LostArk::Shared::C2S_MOVE& move)
 {
-	if (Is_KoukuRaidInputBlocked()) return;
+	const bool entryTerraceMove = Is_KoukuRaidRunning() &&
+		m_KoukuRaid.State.ePhase == LostArk::Shared::KOUKUSAYDON_RAID_PHASE::WAIT_ENTRY;
+	if (Is_KoukuRaidInputBlocked() && !entryTerraceMove) return;
 	const auto sessionIter = m_PlayerIdBySessionId.find(sessionId);
 	if (sessionIter == m_PlayerIdBySessionId.end())
 	{
@@ -46,6 +49,9 @@ void LostArk::Server::CGameRoom::Handle_Move(
 	}
 
 	SERVER_PLAYER& player = playerIter->second;
+	if (entryTerraceMove &&
+		(!LostArk::Shared::Is_KoukuGate3EntryTerrace(player.fPositionX, player.fPositionY, player.fPositionZ) ||
+		 !LostArk::Shared::Is_KoukuGate3EntryTerrace(move.fGoalX, player.fPositionY, move.fGoalZ))) return;
 	std::string validationFailure;
 	if (!Is_NewerSequence(move.iClientSequence, player.iLastMoveSequence))
 	{

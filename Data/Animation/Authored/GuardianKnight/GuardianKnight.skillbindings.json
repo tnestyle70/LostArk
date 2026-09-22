@@ -133,8 +133,16 @@
     {
       "skillId": 49220,
       "clips": [
-        "ddk_sk_flame_scale_01",
-        "ddk_sk_flame_scale_02"
+        {
+          "clip": "ddk_sk_dragonicresonance_01",
+          "playRate": 2.888889,
+          "clipOccurrenceId": "skill.49220.source.49290.clip.0"
+        },
+        {
+          "clip": "ddk_sk_dragonicresonance_02",
+          "playRate": 1.333333,
+          "clipOccurrenceId": "skill.49220.source.49290.clip.1"
+        }
       ]
     },
     {

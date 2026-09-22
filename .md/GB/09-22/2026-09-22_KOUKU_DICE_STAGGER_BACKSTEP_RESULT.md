@@ -19,7 +19,7 @@
 
 ## G02. 검증 증거
 
-- `native_result.log`: 현재 Codec 5개 TU를 `out`의 독립 obj로 컴파일하고 실제 제품 Playback을 링크했다. 9개 문서 Stage/Validate/Playback, 총 **66,299** particle/light/trail 검사, Beam **332** point, finite/capacity 실패0. Native3008 sprite 별 선도 통과했다. Source lifetime120초 허용, 120.001초 및 non-source35초 거절을 확인했다. 기존 max particle2048와 finite 검사는 유지했다. 원본 emitter duration600초 경계 및 source preview600초 경계 안에서 실제 속박 document71.1초가 통과한다.
+- `native_result.log`: 현재 Codec 5개 TU를 `out`의 독립 obj로 컴파일하고 실제 제품 Playback을 링크했다. 9개 문서 Stage/Validate/Playback, 총 **66,299** particle/light/trail 검사, Beam **332** point, finite/capacity 실패0. Native3008 sprite 별 선의 CPU 입자 평가도 통과했다. 이 검사는 GPU carrier 허용을 검증하지 않았으며, 이후 G05 재감사에서 실제 shader 누락을 발견·수정했다. Source lifetime120초 허용, 120.001초 및 non-source35초 거절을 확인했다. 기존 max particle2048와 finite 검사는 유지했다. 원본 emitter duration600초 경계 및 source preview600초 경계 안에서 실제 속박 document71.1초가 통과한다.
 - `anchor-evidence.json`: 설치 `MN_RPCT_05.wmodel` SHA `d4d10a7334e1965085a5559173968bafc110ca22e85373c9e03563fa3af3c0f0`, Catalog preScale0.017, 실제 `b_wp_1`/`bip001-l-hand` 총816개 bone sample을 기존 socket TRS에 연결했다. cooked root100배를 정규화하지 않았다.
 - `model_result.log`: 창 없는 D3D WARP/CModel probe. 실제 Backstep 1.6초 clip의 0, 1/60, 2/60, .05, .5초에서 5mesh×840bone, 총4,200 palette 행렬 유한. 설치된 animated shader pass14, diffuse texture와 sourceIntensity1 바인딩 통과. 픽셀 색/화면 방향 판정은 하지 않았다.
 - `card-impact-probe/native-summary.csv`: 기존 카드 충돌 폭발7요소, peak29, 1,120 sample, 실패0.
@@ -41,3 +41,15 @@ P78 새 준비 occurrence는 현재 next ordinal33을 사용하고 counter를34�
 사용자 승인에 따라 `C:/Users/user/Desktop/GBResources`에 이번 리소스24개, **351,616,235바이트**를 추가했다. Clown 적용 manifest의 Resources9개, RaidAudio의 notice01 제외11개 WAV, CardRain의 UI PNG2개, 기존 설치본과 사용자 원본 SHA가 일치하는 Bern/Valtan WAV2개다. 모든 원본 manifest SHA와 전달본 SHA/크기가 일치한다. 기존373개 payload와 기존 폴더를 보존했고 README의 잘못된 Resources 래퍼 설명만 교정하고 이번 전달 설명을 추가했다.
 
 최상위는 기존 Character/Effect/Sound/UI를 유지한다. `Resources/` 래퍼를 생성하지 않았다. 새 `manifest-2026-09-22-kouku.json`은 파일별 상대경로·크기·SHA256·출처를 기록하며 SHA는 `0c245f9d831d1113dca9b0b9ba3edd58dc1fc49802c7ef2142286cbbcc8cf218`이다. 전달 기록은 `out/KoukuPatternRestore20260922/gbresources-package-result.json`에 두었다. 이 복사는 코드·DataFiles 설치나 실행 중 세션 갱신을 뜻하지 않는다.
+
+## G05. 현재 설치본 재감사와 GPU carrier / Tool 잔상 보완
+
+초기 CPU·모델 팔레트 검증만으로 GPU 표시 완료를 판단하지 않고 현재 Composition2195·patternbindings2195·Catalog·Tree·Resources를 다시 읽었다. 주요13개 asset은 Catalog/Tree 각각1개, stable element ID 중복0, 참조 Resources156개 누락0이다. 현재 native function/dispatch/HasProfile carrier guard 검사에서 제외0이다. 자산별 정확한 displayName·ID·현재 timing·attachment·PASS/UNVERIFIED는 `out/Gate1EffectReaudit20260922/flame-dice-stagger-backstep-review.md`와 `installed-audit-inventory.json`에 기록했다.
+
+무력화 별선5sprite의 native3008은 C++가 허용했지만 실제 particle shader 세 guard에서 제외되어 clip(-1)했다. 정본 installer의 exact material/PS 및 ribbon/sprite VF·VS 검증을 추가하고 세 생성 guard만 교정했다. 원본 PS 본문 SHA와 기존 ribbon 허용은 동일하다. 실제 ParticleKouku3008 shader/instanced layout/pass를 D3D11 WARP로 그려 수정 전0pixel, 수정 후 white4096pixel(원본 RGB 식 최대오차9.54e-7), 설치6DDS2212pixel, opacity0 control0pixel을 확인했다. D3D11 error0. 이는 전체 무력화 화면 확인과 구분한다.
+
+Backstep Product는 실제 CNpc/CModel의 CSkeletalAfterimage를 사용하나 Tool bundle preview 활성 연결이 빠져 있었다. 기존 Charge_AfterimageActive 판정을 preview에 연결하고 CNpc에 optional preview clock을 추가했다. Product 호출의 기본값은 기존 wallclock을 보존한다. preview pause에서는 delta0, rewind에서 history clear, stop/release에서 enabledfalse+Reset을 수행한다. 실제 현재 setter/Reset/Late_Update clock 부분을 verbatim 추출한 console 검사에서 Product/첫프레임/60frame pause/advance/tail/rewind/stop/mode복귀 PASS다. 실제 Tool 조작과 잔상 픽셀 결과는 사용자 확인 전이다.
+
+P78 emit4회 duration2635/2635/2635/1255ms 및 P1 별선10694ms는 사용자가 저장한 값이므로 보존한다. 원본 요소의 시작은 window 안이지만 P78 마지막 emit의 일부 Sk08_2 tail1.5~2.8초와 P1 긴 tail을 모두 보존하는지는 UNVERIFIED다. conservative document 상한20.15s/16s로 자동 확대하지 않았다. 카드 출력의 원본19element와 기존 카드 충돌/만료 폭발7element의 현재 targeted registration은 연결돼 있다. source 전체 요소 복원과 사용자window의 잔여 전체 표현은 별도 판정이다.
+
+root가 Product receipt `out/BuildPipeline/runs/20260922T045116788Z-debug-product.json` PASS를 보고했다(105OBJ,5CSO,1binary). 본인 generator 최종 변경04:51:14 UTC는 해당 build 시작04:51:16.788 이전이다. 이후 통합 Tool 회전 보완의 최종 증분 빌드·publish는 통합 담당 기록을 따른다. Client/UI는 실행하지 않았다.

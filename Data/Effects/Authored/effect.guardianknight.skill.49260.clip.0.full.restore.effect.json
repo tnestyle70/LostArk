@@ -21785,34 +21785,39 @@
     }
   ],
   "ownerControls": [
-  {
-    "controlId": "action-49260.stage-000.notify-011.visibility",
-    "kind": "IDENTITY_VISIBILITY",
-    "parameter": "identity",
-    "mappingBasis": "PROJECT_ADAPTER",
-    "sourceTargetType": 12,
-    "onlyLocalPlayer": false,
-    "startSeconds": 0.10000000149011612,
-    "keys": [
-      {
-        "seconds": 0,
-        "value": [
-          0,
-          0,
-          0,
-          0
-        ]
-      },
-      {
-        "seconds": 0.4000000059604645,
-        "value": [
-          0,
-          0,
-          0,
-          0
-        ]
-      }
-    ]
-  }
-]
+    {
+      "controlId": "action-49260.stage-000.notify-011.visibility",
+      "kind": "IDENTITY_VISIBILITY",
+      "parameter": "identity",
+      "mappingBasis": "PROJECT_ADAPTER",
+      "sourceTargetType": 12,
+      "onlyLocalPlayer": false,
+      "startSeconds": 0.10000000149011612,
+      "keys": [
+        {
+          "seconds": 0,
+          "value": [
+            1,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "seconds": 0.4000000059604645,
+          "value": [
+            1,
+            0,
+            0,
+            0
+          ]
+        }
+      ],
+      "sourceValues": [
+        0,
+        1,
+        1
+      ]
+    }
+  ]
 }

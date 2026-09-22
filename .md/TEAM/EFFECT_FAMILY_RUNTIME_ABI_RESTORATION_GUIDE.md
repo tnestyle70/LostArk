@@ -705,6 +705,12 @@ descriptor의 차이는 데이터와 translated HLSL로 보존하는 방향이�
 
 `screen.scene-capture.cube.v1`은 live scene 위에서 고정 이미지를 축소하며 `captureTargetModelCueId`가 필수다. target은 같은 문서의 visible ModelCue이고 ScreenPost 끝은 그 cue 시작과 일치해야 한다. 현재 endpoint는 실제 설치 CModel의 첫 pose bounds만 지원한다. 다른 profile의 target ID, 잘못된 끝 시간과 잘못된 수축 구간은 Codec이 거절한다. Tool profile 전환은 이전 target과 별도 수축 시간을 정리하며 저장·재로드가 같은 계약을 사용한다. 원본 SourceMaterial ID와 renderer carrier는 새 profile ID로 위장하지 않는다.
 
+### ModelCue의 선택적 skeletal shadow
+
+`modelCues[].castsShadow`는 optional bool이며 누락 시 false다. opaque/masked CModel surface만 허용하고 afterimage와 별도 Effect material/translucent carrier는 거부한다. codec 저장·재로드와 prepared-resource 비교가 이 값을 보존한다. visible cue의 유효 시간에만 기존 SHADOW group으로 제출하며, surface와 shadow는 동일 `Sample_ModelCuePose`, occurrence RootWorld, source material parameter track, CModel 본/재질을 소비한다. ModelCue 전용 animated pass15는 기존0..14를 이동하지 않고 마지막에 추가되며 기존 캐릭터 shadow pass1은 바꾸지 않는다.
+
+shadow raster 위치는 별도 light View/Proj로 계산하지만 native coverage의 View/Proj와 camera position은 실제 scene camera를 사용한다. source mask/dead dissolve를 diffuse alpha 임계값으로 대체하지 않는다. 현재 opt-in 대상은 Guardian ALT V 원본49420 notify024의 용 모델5개 material-part cue다. 원본 EF skeletal component의 generic CDO가 shadow=true를 상속한다는 데이터와 override 필드 부재를 근거로 선택했으며, 원본 native actor 생성 코드 전체를 확인한 것으로 주장하지 않는다. 후속 projectile의 DragonDecal은 별도 source occurrence다.
+
 ### Presentation provider의 실패 격리와 texture coverage
 
 `Submit_FrameProviders`에서 provider가 `LOCAL_PROVIDER_CONTRACT`와 isolated failure를

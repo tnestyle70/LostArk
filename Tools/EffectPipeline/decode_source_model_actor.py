@@ -48,7 +48,10 @@ def source_actor(notifies, index):
     last = children[-1]; event = material_event(last); assert event
     tail = base64.b64decode(last['serializedPayload']['data'], validate=True)
     at = event['endOffset']
-    assert struct.unpack_from('<4i', tail, at) == (1, 0, 0, 1), notify['notifyId']
+    loop_count,start_time,first_only,local_rotation=struct.unpack_from('<ifii',tail,at)
+    # EFSkelMeshActorAnimSeq: LoopCount, StartAnimTime, StartAnimTimeUseOnlyFirst;
+    # the fourth field is the enclosing actor's bApplyLocalRotation.
+    assert loop_count==1 and start_time==0 and first_only in (0,1) and local_rotation==1,notify['notifyId']
     location = list(struct.unpack_from('<3f', tail, at + 16))
     rotator = list(struct.unpack_from('<3i', tail, at + 28))
     scale = list(struct.unpack_from('<3f', tail, at + 40))

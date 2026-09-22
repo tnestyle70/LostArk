@@ -145,15 +145,15 @@ void LostArk::Server::CServerGameplayContractRunner::Run_SpawnGroups(TESTS& test
 			"Read monster target hysteresis, turn, acceleration, deceleration, and arrival slowdown from bootstrap v4");
 		tests.Require(
 			nullptr != monsterProfile && nullptr != minibossProfile &&
-			std::fabs(monsterProfile->fAttackPushRangeM - 0.5f) < 0.0001f &&
-			150u == monsterProfile->iAttackPushMs &&
+			0.f == monsterProfile->fAttackPushRangeM &&
+			0u == monsterProfile->iAttackPushMs &&
 			!monsterProfile->bAttackKnockdown &&
 			0u == monsterProfile->iAttackDownMs &&
-			std::fabs(minibossProfile->fAttackPushRangeM - 2.f) < 0.0001f &&
-			250u == minibossProfile->iAttackPushMs &&
-			minibossProfile->bAttackKnockdown &&
-			2000u == minibossProfile->iAttackDownMs,
-			"Read the published attack push and knockdown for the monster and the miniboss");
+			0.f == minibossProfile->fAttackPushRangeM &&
+			0u == minibossProfile->iAttackPushMs &&
+			!minibossProfile->bAttackKnockdown &&
+			0u == minibossProfile->iAttackDownMs,
+			"Read damage-only attacks for the monster and the miniboss");
 
 		const auto hasImmediateEntry = [](
 			const SPAWN_GROUP_DEFINITION& group,

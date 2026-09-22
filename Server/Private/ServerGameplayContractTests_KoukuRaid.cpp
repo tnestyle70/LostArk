@@ -17,6 +17,11 @@ using namespace LostArk::Shared;
 void CServerGameplayContractRunner::Run_KoukuGate3Entry(TESTS& tests)
 {
 #ifdef _DEBUG
+    tests.Require(Is_KoukuGate3EntryAura(-22.20617676f, 25.59f, 954.5942993f) &&
+        !Is_KoukuGate3EntryAura(-11.9999292f, 25.59f, 964.54328125f) &&
+        !Is_KoukuGate3EntryAura(-22.20617676f, 1.32f, 954.5942993f) &&
+        !Is_KoukuGate3EntryAura(std::numeric_limits<float>::quiet_NaN(), 25.59f, 954.5942993f),
+        "Gate 3 entry aura admits its source square and excludes the respawn aura, lower floor and nonfinite input");
     tests.Require(Is_KoukuGate3EntryTerrace(-17.509552f, 25.6f, 960.53015f) &&
         !Is_KoukuGate3EntryTerrace(-17.509552f, 1.32f, 960.53015f) &&
         !Is_KoukuGate3EntryTerrace(-31.f, 25.6f, 960.53015f) &&

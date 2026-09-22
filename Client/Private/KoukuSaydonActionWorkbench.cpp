@@ -13847,12 +13847,14 @@ void Client::CKoukuSaydonActionWorkbench::Render_LogicDefinitionValues(
 				ImGui::PushID(static_cast<int>(set));
 				auto& ids = draft.RandomVolleyOccurrenceSets[set];
 				const auto label = "Set " + std::to_string(set + 1u) + " (" + std::to_string(ids.size()) + " rows)";
-				if (ImGui::BeginCombo("Effect occurrences", label.c_str()))
+				if (ImGui::BeginCombo("Effect / Sound occurrences", label.c_str()))
 				{
 					if (pattern) for (const auto& row : pattern->PresentationOccurrences)
 					{
 						const auto* resource = Find_PresentationResource(m_Draft, row.strResourceId);
-						if (!resource || resource->eKind != KOUKU_SAYDON_PRESENTATION_KIND::EFFECT ||
+						if (!resource || (resource->eKind != KOUKU_SAYDON_PRESENTATION_KIND::EFFECT &&
+                            !(resource->eKind == KOUKU_SAYDON_PRESENTATION_KIND::SOUND &&
+                              row.strAnchorKind == "MAP" && !row.bFollowBoss)) ||
 							!row.strBone.empty() || row.strBoneTarget != "BODY" || !row.strWorldId.empty() ||
 							!row.strWorldOccurrenceId.empty() || row.iWorldEmissionIndex || !row.strLogicOccurrenceId.empty() ||
 							!((row.strAnchorKind == "MAP" && !row.bFollowBoss) || (row.strAnchorKind == "BOSS" && row.bFollowBoss))) continue;

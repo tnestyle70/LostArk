@@ -73,13 +73,21 @@ def project_visibility_controls(rows):
             if not value['hidePawn'] or any(value[n] for n in ('weaponTypeIgnoresGadget','hideBaseMeshWithFX','hideHeadStatusUI','excludeHideWeapon','hidePawnByRideVehicle')):raise ValueError('New pawn visibility policy requires review')
             if value['parts'] not in ([],[{'type':9,'subtype':-1}]):raise ValueError('Unmapped source visibility parts')
             target=9 if value['parts'] else 0;runtime_kind='PAWN_VISIBILITY';parameter='visibility'
+        # EurosLoof destroys its temporary identity parts at notify end. The
+        # interval therefore owns the existing Wing presentation; it does not
+        # switch gameplay stance. Other source policies retain their mapping.
+        temporary_parts=(kind=='IdentityParts' and row['skillId']==49260 and
+                         row['sourceStageIndex'] in (0,1,2))
+        visible=1 if temporary_parts else 0
         start=float(notify['localTimeSeconds']);duration=float(notify['durationSeconds'])
         if not math.isfinite(start) or not math.isfinite(duration) or start<0 or not 0<duration<=60:raise ValueError('Visibility clock bounds')
         control=dict(controlId=notify['notifyId'].replace('/','.')+'.visibility',kind=runtime_kind,parameter=parameter,
             mappingBasis='PROJECT_ADAPTER',sourceTargetType=target,onlyLocalPlayer=False,startSeconds=start,
-            keys=[dict(seconds=0,value=[0,0,0,0]),dict(seconds=duration,value=[0,0,0,0])])
+            keys=[dict(seconds=0,value=[visible,0,0,0]),dict(seconds=duration,value=[visible,0,0,0])])
+        if temporary_parts:control['sourceValues']=[int(value[k]) for k in ('makeParts','failCompleteCancel','executeNotifyEnd')]
         by_stage.setdefault((row['skillId'],row['sourceStageIndex']),[]).append(control)
         receipt.append(dict(notifyId=notify['notifyId'],decoded=value,control=control,
-            mapping='Temporary presentation suppression; removal restores current approved stance and authored/user visibility',
+            mapping=('Temporary identity visibility until source end-removal; removal restores current approved stance and authored/user visibility' if temporary_parts else
+                     'Temporary presentation suppression; removal restores current approved stance and authored/user visibility'),
             statusFxBoundary='No independently rendered status/buff FX owner exists in the current Guardian runtime; source flag retained, skill FX are not suppressed' if value.get('hideStatusEffectFX') else 'not requested'))
     return by_stage,receipt

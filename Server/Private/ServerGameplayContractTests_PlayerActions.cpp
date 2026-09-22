@@ -257,7 +257,7 @@ void LostArk::Server::CServerGameplayContractRunner::Run_PlayerActions(TESTS& te
 
 		/* Guardian Knight ember: the orb gauge starts empty, a human-form
 		expression skill spends orbs and locks a socket, a refill skill tops the
-		pool up to the open sockets, the dragon form opens only on a full gauge,
+		pool up to the open sockets, the dragon form opens from an empty gauge,
 		reopens every socket, and runs the gauge out over the profile duration. */
 		const PLAYER_SKILL_DEFINITION* emberCleave = catalog.Find_Skill(49100u);
 		const PLAYER_SKILL_DEFINITION* emberFlash = catalog.Find_Skill(49220u);
@@ -286,7 +286,18 @@ void LostArk::Server::CServerGameplayContractRunner::Run_PlayerActions(TESTS& te
 				skills.Update(knight, noTargets, catalog, nullptr, nullptr, 1.f / 30.f, tick++, events);
 			return tick;
 		};
-		const bool flashStarted = skills.Try_Start(knight, press(1u, 49220u), catalog, 100u);
+		SERVER_NAV_POINT flashTarget{};
+		const bool flashTargetSampled = navigation.Sample_Position(
+			151.f, -129.f, flashTarget);
+		knight.fPositionX = flashTarget.x;
+		knight.fPositionY = flashTarget.y;
+		knight.fPositionZ = flashTarget.z;
+		C2S_USE_SKILL flashCommand = press(1u, 49220u);
+		flashCommand.eTargetIntent = SKILL_TARGET_INTENT_KIND::GROUND_POINT;
+		flashCommand.fAimX = flashTarget.x;
+		flashCommand.fAimZ = flashTarget.z;
+		const bool flashStarted = flashTargetSampled && skills.Try_Start(
+			knight, flashCommand, catalog, 100u, &navigation);
 		const bool spentAndLocked = 6u == knight.iEmberOrbs &&
 			1u == knight.iEmberLockedSockets && 4u == knight.iEmberSpentOnAction;
 		std::uint32_t emberTick = runOut(101u);
@@ -294,10 +305,10 @@ void LostArk::Server::CServerGameplayContractRunner::Run_PlayerActions(TESTS& te
 		const bool cleaveStarted = skills.Try_Start(knight, press(2u, 49100u), catalog, emberTick);
 		const bool refilledToOpenSockets = 9u == knight.iEmberOrbs;
 		emberTick = runOut(emberTick + 1u);
-		const bool transformRefused = !skills.Try_Start(knight, press(3u, 49040u), catalog, emberTick);
-		knight.iCurrentIdentity = 100u;
-		const bool transformAdmitted = skills.Try_Start(knight, press(4u, 49040u), catalog, emberTick + 1u);
-		emberTick = runOut(emberTick + 2u);
+		knight.iCurrentIdentity = 0u;
+		const bool transformAdmitted = skills.Try_Start(knight, press(3u, 49040u), catalog, emberTick);
+		const bool gaugeUntouchedBeforeCommit = 0u == knight.iCurrentIdentity;
+		emberTick = runOut(emberTick + 1u);
 		const bool dragonEntered = PLAYER_STANCE_ID::GUARDIANKNIGHT_DRAGON == knight.eStance &&
 			10u == knight.iEmberOrbs && 0u == knight.iEmberLockedSockets &&
 			100u == knight.iCurrentIdentity;
@@ -310,8 +321,8 @@ void LostArk::Server::CServerGameplayContractRunner::Run_PlayerActions(TESTS& te
 			"Spend ember orbs and lock a socket on a human-form expression skill");
 		tests.Require(cleaveStarted && refilledToOpenSockets,
 			"Refill ember orbs up to the open sockets on a refill skill");
-		tests.Require(transformRefused && transformAdmitted && dragonEntered,
-			"Open the dragon form only on a full orb gauge and reopen every socket on entry");
+		tests.Require(transformAdmitted && gaugeUntouchedBeforeCommit && dragonEntered,
+			"Admit dragon form at empty gauge and refill its duration gauge and sockets on Server commit");
 		tests.Require(drainedOut,
 			"Run the orb gauge from full to empty over the dragon duration and drop the form at zero");
 	}

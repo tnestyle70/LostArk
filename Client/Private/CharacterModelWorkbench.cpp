@@ -1,6 +1,10 @@
 #include "imgui.h"
 #include "CharacterModelWorkbench.h"
 #include "ActorCatalog.h"
+#include "Animation.h"
+#include "AnimationPreviewAssets.h"
+#include "BinaryAsset/WModelDecoder.h"
+#include "RuntimeAssetRoot.h"
 #include "AnimationEffectCueDocument.h"
 #include "AnimationTargetService.h"
 #include "CharacterPreviewPanel.h"
@@ -92,6 +96,15 @@ bool Commit(const std::filesystem::path& path, const std::string& baseline, cons
         !MoveFileExW(temp.c_str(), path.c_str(), MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH))
     { std::filesystem::remove(temp, error); status = "Product atomic save/freshness check failed; prior document preserved"; return false; }
     return true;
+}
+std::string MonsterClipKey(const std::string& clip)
+{
+    // Keep the source clip identity stable across refreshes and below the
+    // existing 80-byte sequence ID limit, including truncated-name suffixes.
+    uint64_t hash = 14695981039346656037ull;
+    for (const unsigned char value : clip) { hash ^= value; hash *= 1099511628211ull; }
+    std::ostringstream text; text << std::hex << hash;
+    return text.str();
 }
 bool IdentityTransform(const ANIMATION_EFFECT_CUE& cue)
 {
@@ -234,7 +247,7 @@ bool CCharacterModelWorkbench::Refresh()
 bool CCharacterModelWorkbench::Render_Actions(const bool locked)
 {
     if (!m_Loaded) Refresh();
-    ImGui::SeparatorText("Clown / interaction / mount actions");
+    if (!ImGui::CollapsingHeader("Clown / interaction / mount actions", ImGuiTreeNodeFlags_DefaultOpen)) return false;
     ImGui::BeginDisabled(locked);
     if (ImGui::SmallButton("Refresh interaction catalogs")) Refresh();
     bool selected = false; std::set<std::string> categories;
@@ -250,6 +263,140 @@ bool CCharacterModelWorkbench::Render_Actions(const bool locked)
     ImGui::EndDisabled();
     if (!m_Status.empty()) ImGui::TextWrapped("%s", m_Status.c_str());
     return selected;
+}
+bool CCharacterModelWorkbench::Refresh_Monsters()
+{
+    std::vector<ACTION> actions;
+    std::string diagnostics;
+    for (const auto& monster : CActorCatalog::Get_Monsters())
+    {
+        const auto& id = monster.archetypeId;
+        const bool valtan = id.starts_with("MONSTER_VALTAN_") || id == "MINIBOSS_LUGARU";
+        const bool cards = id.starts_with("MONSTER_KOUKU_CARD_");
+        const bool entrance = id == "MONSTER_KOUKU_CMDUP_02" || id == "MONSTER_KOUKU_REUP_04" ||
+            id == "MONSTER_KOUKU_RHKP_06" || id == "MONSTER_KOUKU_CMDGR_03";
+        if (monster.runtimeStatus != "supported" || (!valtan && !cards && !entrance)) continue;
+        const auto descriptor = std::find_if(ANIMATION_PREVIEW_ASSETS.begin(), ANIMATION_PREVIEW_ASSETS.end(),
+            [&](const auto& row) { return row.pModelAssetId && monster.modelAssetId == row.pModelAssetId &&
+                std::abs(row.fPreviewScale - monster.modelScale) < .000001f &&
+                std::abs(row.fPreviewYawDegrees - monster.modelYawDegrees) < .000001f; });
+        std::vector<Engine::MODEL_ANIMATION_CATALOG_ENTRY> clips;
+        std::string status;
+        if (descriptor == ANIMATION_PREVIEW_ASSETS.end() ||
+            !Engine::CWModelDecoder::Read_AnimationCatalog(CRuntimeAssetRoot::Resolve(monster.modelAssetId), clips, status))
+        {
+            diagnostics += id + ": " + (descriptor == ANIMATION_PREVIEW_ASSETS.end() ? "preview descriptor missing" : status) + ". ";
+            // An unavailable package cannot erase another monster's clip inventory.
+            for (const auto& previous : m_MonsterActions) if (previous.monsterArchetype == id) actions.push_back(previous);
+            continue;
+        }
+        for (const auto& clip : clips)
+        {
+            ACTION action;
+            action.id = "monster." + id + "." + MonsterClipKey(clip.name);
+            action.category = std::string(valtan ? "Valtan / " : cards ? "Card maze / " : "Kouku entrance / ") + id;
+            action.label = clip.name; action.asset = descriptor->pAssetName;
+            action.monsterArchetype = id; action.monsterClip = clip.name;
+            const auto attack = std::find_if(monster.attackPresentations.begin(), monster.attackPresentations.end(),
+                [&](const auto& entry) { return entry.clip == clip.name; });
+            if (attack != monster.attackPresentations.end())
+            {
+                action.monsterRate = attack->playbackRate; action.monsterAttack = !cards;
+                action.label = std::string(cards ? "Reference attack | " : "Attack | ") + clip.name;
+            }
+            actions.push_back(std::move(action));
+        }
+    }
+    m_MonsterActions = std::move(actions); m_MonstersLoaded = true;
+    m_MonsterStatus = std::to_string(m_MonsterActions.size()) + " model clips. " + diagnostics;
+    return diagnostics.empty();
+}
+bool CCharacterModelWorkbench::Render_MonsterActions(const bool locked)
+{
+    if (!ImGui::CollapsingHeader("Monster", ImGuiTreeNodeFlags_DefaultOpen)) return false;
+    if (!m_MonstersLoaded) Refresh_Monsters();
+    ImGui::BeginDisabled(locked);
+    if (ImGui::SmallButton("Refresh monster clips / colliders")) Refresh_Monsters();
+    bool selected = false;
+    std::set<std::string> categories;
+    for (const auto& action : m_MonsterActions) categories.insert(action.category);
+    for (const auto& category : categories)
+        if (ImGui::TreeNode(category.c_str()))
+        {
+            for (const auto& action : m_MonsterActions)
+                if (action.category == category && ImGui::Selectable((action.label + "##" + action.id).c_str(), m_Selected.id == action.id))
+                    selected = Select_Monster(action);
+            ImGui::TreePop();
+        }
+    ImGui::EndDisabled();
+    ImGui::TextWrapped("%s", m_MonsterStatus.c_str());
+    return selected;
+}
+bool CCharacterModelWorkbench::Select_Monster(const ACTION& action)
+{
+    try
+    {
+        if (Is_Dirty()) { m_MonsterStatus = "Save the current preview sequence before changing its monster."; return false; }
+        const auto* monster = CActorCatalog::Find_Monster(action.monsterArchetype);
+        if (!monster) throw std::runtime_error("Monster catalog owner is unavailable");
+        Json root; std::string bytes;
+        if (!Read(CProjectDataRoot::Resolve("Balance/MonsterProfiles.json"), bytes, root, m_MonsterStatus)) return false;
+        const Json* profile = nullptr;
+        for (const auto& value : Array(root, "profiles")) if (Text(value, "archetypeId") == action.monsterArchetype) profile = &value;
+        if (!profile) throw std::runtime_error("Monster combat profile is unavailable");
+        const auto metric = [&](const char* key) {
+            const auto* value = profile->Find(key);
+            if (!value || !value->Is_Number() || !std::isfinite(value->Get_Number()) || value->Get_Number() < 0.0)
+                throw std::runtime_error(std::string("Invalid monster metric: ") + key);
+            return value->Get_Number();
+        };
+        const auto radius = metric("collisionRadius"), range = metric("attackRange");
+        const auto windup = Number(*profile, "attackWindupMs");
+        const auto active = Number(*profile, "attackActiveMs");
+        const auto recovery = Number(*profile, "attackRecoveryMs");
+        if (radius <= 0.0 || radius > 100.0 || range > 100.0 || uint64_t(windup) + active + recovery > 599980u)
+            throw std::runtime_error("Monster combat profile exceeds preview limits");
+        std::vector<Engine::MODEL_ANIMATION_CATALOG_ENTRY> clips;
+        if (!Engine::CWModelDecoder::Read_AnimationCatalog(CRuntimeAssetRoot::Resolve(monster->modelAssetId), clips, m_MonsterStatus)) return false;
+        const auto source = std::find_if(clips.begin(), clips.end(), [&](const auto& clip) { return clip.name == action.monsterClip; });
+        if (source == clips.end() || !std::isfinite(action.monsterRate) || action.monsterRate <= 0.f)
+            throw std::runtime_error("The selected monster clip or rate is unavailable");
+        const auto clipMs = std::ceil(source->durationTicks / Engine::CAnimation::COOKED_TICK_RATE / action.monsterRate * 1000.0);
+        if (!std::isfinite(clipMs) || clipMs <= 0.0 || clipMs > 599980.0)
+            throw std::runtime_error("The selected monster clip duration is invalid");
+        const auto duration = static_cast<uint32_t>((std::max)(clipMs, action.monsterAttack ? double(windup + active + recovery) : 1.0));
+        ANIMATION_SKILL_BINDING binding; binding.Stages.push_back({});
+        binding.Stages.front().Clips.push_back({action.monsterClip, 0u, action.monsterRate, 0u, "monster.preview.clip"});
+        ANIMATION_EFFECT_CUE_DOCUMENT cues; cues.strAnimationAssetId = action.asset;
+        std::vector<CHARACTER_ACTION_COMBAT_ROW> combat;
+        CHARACTER_ACTION_COMBAT_ROW body;
+        body.strColliderId = "monster.preview.body"; body.strResultKind = "Body | Server collisionRadius";
+        body.fRange = radius; body.iRepeatMs = 34u; body.iRepeatCount = (duration + 33u) / 34u;
+        combat.push_back(body);
+        if (action.monsterAttack)
+        {
+            CHARACTER_ACTION_COMBAT_ROW hit;
+            hit.strColliderId = "monster.preview.attack"; hit.strResultKind = "Damage | attackRange + collisionRadius";
+            hit.fRange = radius + range; hit.iTimeMs = windup;
+            // Ordinary MonsterBrain applies exactly one overlap on its first active tick.
+            combat.push_back(hit);
+        }
+        if (!m_Panel || !m_Sequencer || !m_Panel->Select_TargetAsset(action.asset))
+        { m_MonsterStatus = m_Panel ? m_Panel->Get_Status() : "Preview is unavailable"; return false; }
+        if (!m_Sequencer->Stage_CharacterAction(action.asset, binding, cues, combat, {}, "KoukuSaydon"))
+        { m_MonsterStatus = m_Sequencer->Status(); return false; }
+        m_Selected = action;
+        if (!m_Sequencer->Open_CharacterModelSequence("action." + action.id))
+        { m_Status = m_MonsterStatus = m_Sequencer->Status(); return true; }
+        m_Status = "Monster clips and Server collider dimensions loaded. Body radius=" + std::to_string(radius) +
+            " m; attack radius=" + std::to_string(radius + range) + " m; windup=" + std::to_string(windup) + " ms. ";
+        if (action.monsterArchetype.starts_with("MONSTER_KOUKU_CARD_"))
+            m_Status += "Card maze soldiers use the maze contact controller; reference attack clips do not create a MonsterBrain hit.";
+        else m_Status += "Attack overlap occurs once on the first active tick. Saved preview sequences do not change MonsterProfiles.";
+        m_MonsterStatus = m_Status;
+        return true;
+    }
+    catch (const std::exception& error) { m_MonsterStatus = error.what(); return false; }
 }
 bool CCharacterModelWorkbench::Select(const ACTION& action)
 {
@@ -440,14 +587,16 @@ bool CCharacterModelWorkbench::Save_Product()
 }
 void CCharacterModelWorkbench::Render(const COMPOSITION_WORKBENCH_PANE pane)
 {
-    if (!m_Sequencer || m_Selected.id.empty()) { ImGui::TextDisabled("Select a clown or mount action."); return; }
+    if (!m_Sequencer || m_Selected.id.empty()) { ImGui::TextDisabled("Select a clown, mount or monster action."); return; }
     switch (pane)
     {
     case COMPOSITION_WORKBENCH_PANE::SEQUENCER: m_Sequencer->Render_Sequencer("Character model sequence", false, true); break;
     case COMPOSITION_WORKBENCH_PANE::RESOURCES: m_Sequencer->Render_WorkbenchResources(); break;
     case COMPOSITION_WORKBENCH_PANE::DETAILS:
         ImGui::TextWrapped("%s / %s", m_Selected.category.c_str(), m_Selected.label.c_str());
-        if (ImGui::Button(m_Selected.sourceAction ? "Save Source Action" : "Save Product Binding")) Save_Product();
+        if (m_Selected.monsterArchetype.empty())
+        { if (ImGui::Button(m_Selected.sourceAction ? "Save Source Action" : "Save Product Binding")) Save_Product(); }
+        else ImGui::TextWrapped("MonsterProfiles owns gameplay dimensions and timing. Save Effect Sequence stores only this preview arrangement.");
         if (m_Selected.locomotion) ImGui::TextWrapped("Ambient rows preview the mount lifetime owner. Save Product Binding changes this animation only; edit Ambient / while mounted to save its Effects.");
         if (m_Selected.lifetime) ImGui::TextWrapped("Ambient ends with riding; Mount spawn plays once. This view uses the idle pose and ends ambient with the preview. Save Product Binding stores the lifetime cues.");
         ImGui::TextWrapped("%s", m_Status.c_str());
