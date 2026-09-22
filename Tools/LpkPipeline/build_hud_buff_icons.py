@@ -45,6 +45,8 @@ BUFF_ICONS = [
     ("artist_dream_shield", 319302, 31930, "buff"),
     ("lancemaster_short_spear", 345003, 34510, "buff"),
     ("guardianknight_dragon_mark", 490407, 49040, "debuff"),
+    ("artist_dream_deny", 319303, 31930, "buff"),
+    ("warlord_stun", 171705, 17170, "debuff"),
 ]
 
 

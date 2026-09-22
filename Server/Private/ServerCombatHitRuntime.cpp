@@ -181,8 +181,18 @@ void LostArk::Server::CServerBuffRuntime::Apply_SkillBuffs(
 		case CGameplayCatalog::SKILL_BUFF_TARGET::ENEMY:
 			for (SERVER_WORLD_ENTITY* enemy : enemies)
 			{
-				if (nullptr != enemy && 0u != enemy->iCurrentHp)
-					GrantBuff(enemy->ActiveBuffs, definition.iBuffId, endTick);
+				if (nullptr == enemy || 0u == enemy->iCurrentHp)
+					continue;
+				GrantBuff(enemy->ActiveBuffs, definition.iBuffId, endTick);
+				/* A boss keeps its own pattern clock, so it takes the mark but
+				never the stun, which is how the original treats commanders. */
+				if (0u != definition.iStunMs &&
+					WORLD_BOOTSTRAP_KIND::MONSTER == enemy->eKind)
+				{
+					const std::uint32_t stunEnd = serverTick +
+						(definition.iStunMs * BUFF_TICK_HZ + 999u) / 1000u;
+					enemy->iStunEndTick = (std::max)(enemy->iStunEndTick, stunEnd);
+				}
 			}
 			break;
 		}
@@ -200,6 +210,39 @@ void LostArk::Server::CServerBuffRuntime::Expire(
 				return buff.iEndTick <= serverTick;
 			}),
 		buffs.end());
+}
+
+namespace
+{
+	std::uint32_t Death_DenyInvulnerableMs(
+		const LostArk::Server::CGameplayCatalog& catalog,
+		const LostArk::Server::SERVER_PLAYER& player)
+	{
+		for (const LostArk::Shared::ACTIVE_BUFF& buff : player.ActiveBuffs)
+		{
+			const LostArk::Server::CGameplayCatalog::SKILL_BUFF_DEFINITION*
+				definition = catalog.Find_SkillBuff(buff.iBuffId);
+			if (nullptr != definition && 0u != definition->iDeathDenyInvulnerableMs)
+				return definition->iDeathDenyInvulnerableMs;
+		}
+		return 0u;
+	}
+
+	void Consume_DeathDeny(
+		const LostArk::Server::CGameplayCatalog& catalog,
+		LostArk::Server::SERVER_PLAYER& player)
+	{
+		player.ActiveBuffs.erase(
+			std::remove_if(player.ActiveBuffs.begin(), player.ActiveBuffs.end(),
+				[&catalog](const LostArk::Shared::ACTIVE_BUFF& buff)
+				{
+					const LostArk::Server::CGameplayCatalog::SKILL_BUFF_DEFINITION*
+						definition = catalog.Find_SkillBuff(buff.iBuffId);
+					return nullptr != definition &&
+						0u != definition->iDeathDenyInvulnerableMs;
+				}),
+			player.ActiveBuffs.end());
+	}
 }
 
 void LostArk::Server::CServerBuffRuntime::Settle_Shield(
@@ -436,6 +479,8 @@ LostArk::Server::CServerCombatHitRuntime::Apply_WorldToPlayer(
 	{
 		return SERVER_COMBAT_HIT_RESULT::NOT_ADMITTED;
 	}
+	if (hit.iServerTick < target.iInvulnerableEndTick)
+		return SERVER_COMBAT_HIT_RESULT::ABSORBED;
 	if (!hit.bIgnoreCounter &&
 		CPlayerSkillSystem::Try_Counter(target, catalog, hit.iServerTick))
 		return SERVER_COMBAT_HIT_RESULT::ABSORBED;
@@ -456,6 +501,18 @@ LostArk::Server::CServerCombatHitRuntime::Apply_WorldToPlayer(
 		const std::uint32_t absorbed = (std::min)(target.iShield, throughShield);
 		target.iShield -= absorbed;
 		throughShield -= absorbed;
+	}
+	if (throughShield >= target.iCurrentHp &&
+		0u != Death_DenyInvulnerableMs(catalog, target))
+	{
+		/* The original leaves the holder alive and untouchable for a moment
+		instead of killing it; the buff is spent by clearing what armed it. */
+		const std::uint32_t invulnerableMs =
+			Death_DenyInvulnerableMs(catalog, target);
+		throughShield = target.iCurrentHp - 1u;
+		target.iInvulnerableEndTick = hit.iServerTick +
+			(invulnerableMs * BUFF_TICK_HZ + 999u) / 1000u;
+		Consume_DeathDeny(catalog, target);
 	}
 	target.iCurrentHp = throughShield >= target.iCurrentHp ?
 		0u : target.iCurrentHp - throughShield;

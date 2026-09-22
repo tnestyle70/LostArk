@@ -1270,6 +1270,36 @@
       "durationMs": 12000,
       "iconAsset": "UI/HUD/Buff/buff_artist_dream_shield.png",
       "shieldPercentOfMaxHp": 100
+    },
+    {
+      "skillId": 31930,
+      "buffId": 319303,
+      "displayName": "몽중백화원",
+      "target": "ALLY",
+      "kind": "BUFF",
+      "durationMs": 30000,
+      "iconAsset": "UI/HUD/Buff/buff_artist_dream_deny.png",
+      "deathDenyInvulnerableMs": 3000
+    },
+    {
+      "skillId": 17170,
+      "buffId": 171705,
+      "displayName": "기절",
+      "target": "ENEMY",
+      "kind": "DEBUFF",
+      "durationMs": 4000,
+      "iconAsset": "UI/HUD/Buff/buff_warlord_stun.png",
+      "stunMs": 4000
+    },
+    {
+      "skillId": 17250,
+      "buffId": 172501,
+      "displayName": "기절",
+      "target": "ENEMY",
+      "kind": "DEBUFF",
+      "durationMs": 4000,
+      "iconAsset": "UI/HUD/Buff/buff_warlord_stun.png",
+      "stunMs": 4000
     }
   ],
   "bosses": [

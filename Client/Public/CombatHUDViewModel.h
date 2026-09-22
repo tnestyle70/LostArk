@@ -107,6 +107,11 @@ namespace Client
 		std::uint32_t iCurrentHp = 0;
 		std::uint32_t iMaximumHp = 0;
 		std::uint32_t iMaximumHealthBars = 0;
+		/* Debuffs a player skill marked this boss with, drawn in the HUD's own
+		debuff row. */
+		std::uint8_t iActiveBuffCount = 0;
+		LostArk::Shared::ACTIVE_BUFF ActiveBuffs[
+			LostArk::Shared::MAX_ACTIVE_BUFFS]{};
 		std::uint8_t iPhase = 1;
 		std::uint32_t iBossCombatStateRevision = 0;
 		std::uint32_t iAlivePartMask = 0;

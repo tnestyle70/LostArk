@@ -90,7 +90,15 @@ SKILL_BUFFS = [
     (49040, 490407, "guardianknight_dragon_mark"),
     (31910, 319100, "artist_shield"),
     (31930, 319302, "artist_dream_shield"),
+    (31930, 319303, "artist_dream_deny"),
+    (17170, 171705, "warlord_stun"),
+    (17250, 172501, "warlord_stun"),
 ]
+# Archetype Faint is the stun the Gunlancer awakenings put on what they hit, and
+# FlowerGarden_YinYangshi arms a death deny whose ValueC names the invulnerability
+# buff that replaces the killing blow.  Both carry their length as Duration.
+STUN_ARCHETYPE = "Faint"
+DEATH_DENY_ARCHETYPE = "FlowerGarden_YinYangshi"
 # EFTable_SkillBuff.PassiveOptionKeyStat names the stat a buff drives, resolved through
 # the stattype enum: 144 physical_inc_sub_rate_2, 146 magical_inc_sub_rate_2 (both the
 # damage the holder takes) and 148 skill_damage_sub_rate_2 (the damage it deals).
@@ -413,6 +421,7 @@ def build_skill_buffs(
         # up to four slots; the damage-amplify archetype names no stat and puts the same
         # hundredths in ValueH, because it only raises the damage its holder takes.
         # Two slots of the same stat family (physical and magical) are one field.
+        duration = int(buff["Duration"])
         fields: dict[str, int] = {}
         for slot in range(4):
             if int(buff[f"PassiveOptionType{slot}"] or 0) == 0:
@@ -425,16 +434,25 @@ def build_skill_buffs(
             if field in fields and fields[field] != percent:
                 raise ValueError(f"Buff {buff_id} sets {field} twice with different values")
             fields[field] = percent
+        archetype = str(buff["Archetype"])
         if not fields:
             # The shield archetype absorbs a share of the caster's maximum HP, held
             # in ValueC in the same hundredths of a percent; damage amplify uses ValueH.
-            if str(buff["Archetype"]).startswith("Shield"):
+            if archetype.startswith("Shield"):
                 fields["shieldPercentOfMaxHp"] = round(int(buff["ValueC"] or 0) / 100)
+            elif archetype == STUN_ARCHETYPE:
+                fields["stunMs"] = duration
+            elif archetype == DEATH_DENY_ARCHETYPE:
+                granted = buffs.execute(
+                    "SELECT Duration FROM SkillBuff WHERE PrimaryKey = ?",
+                    (int(buff["ValueC"] or 0),)).fetchone()
+                if granted is None:
+                    raise ValueError(f"Buff {buff_id} names no invulnerability buff")
+                fields["deathDenyInvulnerableMs"] = int(granted["Duration"])
             else:
                 fields["damageTakenPercent"] = round(int(buff["ValueH"] or 0) / 100)
         if not any(fields.values()):
-            raise ValueError(f"Buff {buff_id} has no percent to apply")
-        duration = int(buff["Duration"])
+            raise ValueError(f"Buff {buff_id} has no effect to apply")
         name = messages.execute(
             "SELECT MSG FROM GameMsg WHERE KEY = ?", (str(buff["Name"]),)).fetchone()
         rows.append({

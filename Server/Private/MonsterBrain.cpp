@@ -268,6 +268,13 @@ void LostArk::Server::CMonsterBrain::Update(
 		return;
 	}
 
+	/* A stunned monster holds its ground: no chase, no attack, no facing. */
+	if (serverTick < monster.iStunEndTick)
+	{
+		monster.fActionElapsedSeconds += fixedDeltaSeconds;
+		return;
+	}
+
 	if (monster.iMarioPatrolStage != 0u)
 	{
 		UpdateMarioPatrol(monster, players, catalog, navigation, collision, fixedDeltaSeconds, serverTick, outDamageEvents);

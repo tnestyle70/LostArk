@@ -130,6 +130,38 @@
     "primaryKey": 490407,
     "icon": "Buff_26"
    }
+  },
+  {
+   "name": "artist_dream_deny",
+   "kind": "buff",
+   "skillId": 31930,
+   "buffId": 319303,
+   "iconAsset": "UI/HUD/Buff/buff_artist_dream_deny.png",
+   "size": [
+    64,
+    64
+   ],
+   "iconSource": {
+    "table": "EFTable_SkillBuff",
+    "primaryKey": 319303,
+    "icon": "YY_Skill_01_25"
+   }
+  },
+  {
+   "name": "warlord_stun",
+   "kind": "debuff",
+   "skillId": 17170,
+   "buffId": 171705,
+   "iconAsset": "UI/HUD/Buff/buff_warlord_stun.png",
+   "size": [
+    64,
+    64
+   ],
+   "iconSource": {
+    "table": "EFTable_SkillBuff",
+    "primaryKey": 171705,
+    "icon": "Buff_39"
+   }
   }
  ],
  "shieldBar": {

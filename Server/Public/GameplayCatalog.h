@@ -1520,6 +1520,12 @@ namespace LostArk::Server
 			std::int32_t iAttackSpeedPercent = 0;
 			/* Absorbs this share of the caster's maximum HP before its HP moves. */
 			std::uint32_t iShieldPercentOfMaxHp = 0;
+			/* Holds an ordinary monster still. A boss is immune, as it is in the
+			original, because its pattern owns its own clock. */
+			std::uint32_t iStunMs = 0;
+			/* While armed, one lethal hit leaves the holder at 1 HP and grants this
+			many milliseconds of invulnerability instead of killing it. */
+			std::uint32_t iDeathDenyInvulnerableMs = 0;
 		};
 		[[nodiscard]] const std::vector<SKILL_BUFF_DEFINITION>* Find_SkillBuffs(
 			std::uint32_t skillId) const;

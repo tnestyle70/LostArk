@@ -637,6 +637,9 @@ private:
 	vector<pair<string, string>> m_HudSkillMarkAssets;
 	struct HUD_BUFF_SOURCE { string strSource; string strStance; bool_t bDebuff = false; string strIconAsset; };
 	vector<HUD_BUFF_SOURCE> m_HudBuffSources;
+	/* SkillBuff id -> the icon HudBuffIcons.json cut for it. A buff the snapshot
+	carries without an entry here simply draws no slot. */
+	unordered_map<uint32_t, string> m_HudSkillBuffIcons;
 	/* Per-frame text requests from the HUD update pass, drawn after CImGuiLayer::EndFrame
 	by RenderSkillCooldownText: cooldown seconds over a slot, remaining seconds under a buff. */
 	struct HUD_TIMED_TEXT { string strSlotId; uint32_t iEndTick = 0u; bool_t bDebuff = false; bool_t bUnderSlot = false; };

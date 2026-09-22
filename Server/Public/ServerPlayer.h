@@ -307,6 +307,8 @@ namespace LostArk::Server
 		std::vector<LostArk::Shared::ACTIVE_BUFF> ActiveBuffs;
 		/* Absorbs incoming damage before HP moves, and ends with its buff. */
 		std::uint32_t iShield = 0;
+		/* Set while a death-deny buff has already spent itself on a lethal hit. */
+		std::uint32_t iInvulnerableEndTick = 0;
 		std::uint32_t iCurrentMadness = 0;
 		std::uint32_t iMaximumMadness = MADNESS_GAUGE_MAXIMUM;
 		LostArk::Shared::PLAYER_MADNESS_FORM eMadnessForm =

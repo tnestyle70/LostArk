@@ -4978,6 +4978,37 @@ void CMainApp::Update_BuffBar()
 			List.push_back(Draw);
 	}
 
+	/* The buffs a skill granted arrive on the snapshot as ids; HudBuffIcons.json is
+	the only thing that says which icon each id draws with. A boss carries the same
+	structure for what a player skill marked it with. */
+	const auto AppendSkillBuffs = [&](
+		const LostArk::Shared::ACTIVE_BUFF* pBuffs,
+		const size_t iCount,
+		const uint32_t iServerTick,
+		std::vector<BUFF_DRAW>& List)
+	{
+		for (size_t i = 0; i < iCount && List.size() < BUFF_SLOTS; ++i)
+		{
+			const auto Found = m_HudSkillBuffIcons.find(pBuffs[i].iBuffId);
+			if (m_HudSkillBuffIcons.end() == Found || Found->second.empty())
+				continue;
+			if (!Is_ServerDeadlinePending(iServerTick, pBuffs[i].iEndTick))
+				continue;
+			List.push_back({ &Found->second, pBuffs[i].iEndTick, 0.f });
+		}
+	};
+	if (player.isValid)
+	{
+		AppendSkillBuffs(player.ActiveBuffs, player.iActiveBuffCount,
+			player.iServerTick, Buffs);
+	}
+	const HUD_BOSS_STATE& boss = CCombatHUDViewModel::Get().Get_Boss();
+	if (boss.isValid)
+	{
+		AppendSkillBuffs(boss.ActiveBuffs, boss.iActiveBuffCount,
+			player.iServerTick, Debuffs);
+	}
+
 	const auto Apply = [&](const char* pPrefix, const std::vector<BUFF_DRAW>& List, const bool_t bDebuff)
 	{
 		for (size_t i = 0; i < BUFF_SLOTS; ++i)
@@ -5071,6 +5102,7 @@ void CMainApp::Load_HudQuickSlotData()
 	m_HudSkillMarks.clear();
 	m_HudSkillMarkAssets.clear();
 	m_HudBuffSources.clear();
+	m_HudSkillBuffIcons.clear();
 	const auto ReadObject = [](const wchar_t* pRelative, DATA_JSON_VALUE& Root) -> bool_t
 	{
 		ifstream Stream(CProjectDataRoot::Resolve(pRelative), ios::binary);
@@ -5158,6 +5190,35 @@ void CMainApp::Load_HudQuickSlotData()
 			m_HudBuffSources = std::move(Staged);
 		else
 			OutputDebugStringA("[HUD] HudBuffSources.json is invalid -- no buff bar.\n");
+	}
+
+	DATA_JSON_VALUE BuffIcons;
+	if (ReadObject(L"UI/HUD/HudBuffIcons.json", BuffIcons))
+	{
+		unordered_map<uint32_t, string> Staged;
+		bool_t bValid = true;
+		const DATA_JSON_VALUE* pIcons = BuffIcons.Find("icons");
+		if (nullptr == pIcons || !pIcons->Is_Array())
+			bValid = false;
+		else
+		{
+			for (const DATA_JSON_VALUE& Value : pIcons->Get_Array())
+			{
+				const DATA_JSON_VALUE* pBuffId = Value.Is_Object() ? Value.Find("buffId") : nullptr;
+				const DATA_JSON_VALUE* pAsset = Value.Is_Object() ? Value.Find("iconAsset") : nullptr;
+				if (nullptr == pBuffId || !pBuffId->Is_Number() ||
+					nullptr == pAsset || !pAsset->Is_String() || pAsset->Get_String().empty())
+				{
+					bValid = false;
+					break;
+				}
+				Staged.emplace(static_cast<uint32_t>(pBuffId->Get_Number()), pAsset->Get_String());
+			}
+		}
+		if (bValid)
+			m_HudSkillBuffIcons = std::move(Staged);
+		else
+			OutputDebugStringA("[HUD] HudBuffIcons.json is invalid -- no skill buff icons.\n");
 	}
 }
 

@@ -1782,7 +1782,7 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 		{
 			SKILL_BUFF_DEFINITION buff{};
 			std::string target;
-			if (9u != fields.size() ||
+			if (11u != fields.size() ||
 				!ParseNumber(fields[1], buff.iSkillId) ||
 				!ParseNumber(fields[2], buff.iBuffId) ||
 				!ParseNumber(fields[4], buff.iDurationMs) ||
@@ -1791,7 +1791,10 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 				!ParseNumber(fields[6], buff.iDamageTakenPercent) ||
 				!ParseNumber(fields[7], buff.iAttackSpeedPercent) ||
 				!ParseNumber(fields[8], buff.iShieldPercentOfMaxHp) ||
-				buff.iShieldPercentOfMaxHp > 1000u)
+				buff.iShieldPercentOfMaxHp > 1000u ||
+				!ParseNumber(fields[9], buff.iStunMs) || buff.iStunMs > 60000u ||
+				!ParseNumber(fields[10], buff.iDeathDenyInvulnerableMs) ||
+				buff.iDeathDenyInvulnerableMs > 60000u)
 			{
 				m_strStatus = "Skill buff row is invalid";
 				return false;

@@ -1022,7 +1022,14 @@ if (-not [string]::IsNullOrWhiteSpace($BalanceProfile)) {
             (& $percentOf $entry.damageDealtPercent),
             (& $percentOf $entry.damageTakenPercent),
             (& $percentOf $entry.attackSpeedPercent),
-            (& $percentOf $entry.shieldPercentOfMaxHp)) -join "`t"))
+            (& $percentOf $entry.shieldPercentOfMaxHp),
+            $(if ($null -eq $entry.stunMs) { 0 } else {
+                Assert-JsonInteger $entry.stunMs 'balance profile stunMs' 0 60000
+                [uint32]$entry.stunMs }),
+            $(if ($null -eq $entry.deathDenyInvulnerableMs) { 0 } else {
+                Assert-JsonInteger $entry.deathDenyInvulnerableMs `
+                    'balance profile deathDenyInvulnerableMs' 0 60000
+                [uint32]$entry.deathDenyInvulnerableMs })) -join "`t"))
     }
     foreach ($entry in @($balanceProfileDocument.damageProfiles)) {
         Assert-StableId $entry.damageProfileId 'balance profile damageProfileId'
