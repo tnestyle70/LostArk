@@ -222,15 +222,17 @@ def build_slots() -> list:
         sx, sy = bx + off, by + SOCKET_Y
         out.append(slot("GK_Embereth_Socket%d" % i, owner, hx(sx), hy(sy),
                         ew * SCALE, eh * SCALE, eb + "Socket_Empty.png"))
-        # The lit gem is bigger than the empty tile, so it hangs off the tile's own centre.
-        out.append(slot("GK_Embereth_Fill%d" % i, owner,
-                        hx(sx + (ew - lw) * 0.5), hy(sy + (eh - lh) * 0.5),
-                        lw * SCALE, lh * SCALE, eb + "Socket_Full.png"))
-        # A socket past the unlocked count wears the padlock (the "lock" label range).
-        kw, kh = EMBERETH_CROPS["Socket_Lock"][2:]
-        out.append(slot("GK_Embereth_Lock%d" % i, owner,
-                        hx(sx + (ew - kw) * 0.5), hy(sy + (eh - kh) * 0.5),
-                        kw * SCALE, kh * SCALE, eb + "Socket_Lock.png"))
+        # Lit, empty and locked are the three label ranges of the socket's own sprite, so one
+        # keyframe slot at the socket origin carries all of them -- gem, the pop that leaves it,
+        # the ember rising away, and the padlock. build_guardianknight_socket_animation.py bakes
+        # the document; its coordinates are the sprite's own, so the HUD's 2/3 rides on
+        # keyframeAnimationScale rather than being folded into the keyframes.
+        state = slot("GK_Embereth_State%d" % i, owner, hx(sx), hy(sy), 1.0, 1.0, None,
+                     type_id=9)
+        state["keyframeAnimationPath"] = \
+            "UI/HUD/IdentityAnimation/GuardianKnight/EmberSocket.json"
+        state["keyframeAnimationScale"] = round(SCALE, 6)
+        out.append(state)
     return out
 
 

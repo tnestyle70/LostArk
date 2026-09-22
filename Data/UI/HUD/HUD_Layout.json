@@ -10085,51 +10085,6 @@
       }
     },
     {
-      "id": "GK_Embereth_Fill0",
-      "ownerClass": "GuardianKnight",
-      "type": 0,
-      "rect": {
-        "x": 738.1667,
-        "y": 626.0333,
-        "width": 18.6667,
-        "height": 20.6667
-      },
-      "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
-      "layers": [
-        {
-          "path": "UI/HUD/GuardianKnight/Embereth/Socket_Full.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
-      ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1.0,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [],
-        "loop": true,
-        "additive": false
-      }
-    },
-    {
       "id": "GK_Embereth_Socket1",
       "ownerClass": "GuardianKnight",
       "type": 0,
@@ -10147,51 +10102,6 @@
       "layers": [
         {
           "path": "UI/HUD/GuardianKnight/Embereth/Socket_Empty.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
-      ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1.0,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [],
-        "loop": true,
-        "additive": false
-      }
-    },
-    {
-      "id": "GK_Embereth_Fill1",
-      "ownerClass": "GuardianKnight",
-      "type": 0,
-      "rect": {
-        "x": 752.8333,
-        "y": 626.0333,
-        "width": 18.6667,
-        "height": 20.6667
-      },
-      "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
-      "layers": [
-        {
-          "path": "UI/HUD/GuardianKnight/Embereth/Socket_Full.png",
           "hoverPath": null,
           "tint": [
             1,
@@ -10265,51 +10175,6 @@
       }
     },
     {
-      "id": "GK_Embereth_Fill2",
-      "ownerClass": "GuardianKnight",
-      "type": 0,
-      "rect": {
-        "x": 767.5,
-        "y": 626.0333,
-        "width": 18.6667,
-        "height": 20.6667
-      },
-      "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
-      "layers": [
-        {
-          "path": "UI/HUD/GuardianKnight/Embereth/Socket_Full.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
-      ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1.0,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [],
-        "loop": true,
-        "additive": false
-      }
-    },
-    {
       "id": "GK_Embereth_Socket3",
       "ownerClass": "GuardianKnight",
       "type": 0,
@@ -10327,51 +10192,6 @@
       "layers": [
         {
           "path": "UI/HUD/GuardianKnight/Embereth/Socket_Empty.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
-      ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1.0,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [],
-        "loop": true,
-        "additive": false
-      }
-    },
-    {
-      "id": "GK_Embereth_Fill3",
-      "ownerClass": "GuardianKnight",
-      "type": 0,
-      "rect": {
-        "x": 782.1667,
-        "y": 626.0333,
-        "width": 18.6667,
-        "height": 20.6667
-      },
-      "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
-      "layers": [
-        {
-          "path": "UI/HUD/GuardianKnight/Embereth/Socket_Full.png",
           "hoverPath": null,
           "tint": [
             1,
@@ -10445,51 +10265,6 @@
       }
     },
     {
-      "id": "GK_Embereth_Fill4",
-      "ownerClass": "GuardianKnight",
-      "type": 0,
-      "rect": {
-        "x": 796.8333,
-        "y": 626.0333,
-        "width": 18.6667,
-        "height": 20.6667
-      },
-      "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
-      "layers": [
-        {
-          "path": "UI/HUD/GuardianKnight/Embereth/Socket_Full.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
-      ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1.0,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [],
-        "loop": true,
-        "additive": false
-      }
-    },
-    {
       "id": "GK_Embereth_Socket5",
       "ownerClass": "GuardianKnight",
       "type": 0,
@@ -10507,51 +10282,6 @@
       "layers": [
         {
           "path": "UI/HUD/GuardianKnight/Embereth/Socket_Empty.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
-      ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1.0,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [],
-        "loop": true,
-        "additive": false
-      }
-    },
-    {
-      "id": "GK_Embereth_Fill5",
-      "ownerClass": "GuardianKnight",
-      "type": 0,
-      "rect": {
-        "x": 813.5,
-        "y": 626.0333,
-        "width": 18.6667,
-        "height": 20.6667
-      },
-      "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
-      "layers": [
-        {
-          "path": "UI/HUD/GuardianKnight/Embereth/Socket_Full.png",
           "hoverPath": null,
           "tint": [
             1,
@@ -10625,51 +10355,6 @@
       }
     },
     {
-      "id": "GK_Embereth_Fill6",
-      "ownerClass": "GuardianKnight",
-      "type": 0,
-      "rect": {
-        "x": 828.1667,
-        "y": 626.0333,
-        "width": 18.6667,
-        "height": 20.6667
-      },
-      "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
-      "layers": [
-        {
-          "path": "UI/HUD/GuardianKnight/Embereth/Socket_Full.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
-      ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1.0,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [],
-        "loop": true,
-        "additive": false
-      }
-    },
-    {
       "id": "GK_Embereth_Socket7",
       "ownerClass": "GuardianKnight",
       "type": 0,
@@ -10687,51 +10372,6 @@
       "layers": [
         {
           "path": "UI/HUD/GuardianKnight/Embereth/Socket_Empty.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
-      ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1.0,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [],
-        "loop": true,
-        "additive": false
-      }
-    },
-    {
-      "id": "GK_Embereth_Fill7",
-      "ownerClass": "GuardianKnight",
-      "type": 0,
-      "rect": {
-        "x": 842.8333,
-        "y": 626.0333,
-        "width": 18.6667,
-        "height": 20.6667
-      },
-      "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
-      "layers": [
-        {
-          "path": "UI/HUD/GuardianKnight/Embereth/Socket_Full.png",
           "hoverPath": null,
           "tint": [
             1,
@@ -10805,51 +10445,6 @@
       }
     },
     {
-      "id": "GK_Embereth_Fill8",
-      "ownerClass": "GuardianKnight",
-      "type": 0,
-      "rect": {
-        "x": 857.5,
-        "y": 626.0333,
-        "width": 18.6667,
-        "height": 20.6667
-      },
-      "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
-      "layers": [
-        {
-          "path": "UI/HUD/GuardianKnight/Embereth/Socket_Full.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
-      ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1.0,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [],
-        "loop": true,
-        "additive": false
-      }
-    },
-    {
       "id": "GK_Embereth_Socket9",
       "ownerClass": "GuardianKnight",
       "type": 0,
@@ -10895,34 +10490,21 @@
       }
     },
     {
-      "id": "GK_Embereth_Fill9",
+      "id": "GK_Embereth_State0",
       "ownerClass": "GuardianKnight",
-      "type": 0,
+      "type": 9,
       "rect": {
-        "x": 872.1667,
-        "y": 626.0333,
-        "width": 18.6667,
-        "height": 20.6667
+        "x": 740.1667,
+        "y": 628.0333,
+        "width": 1.0,
+        "height": 1.0
       },
       "rotation": 0,
       "stages": {
         "baseFrom": 0,
         "shineFrom": 1
       },
-      "layers": [
-        {
-          "path": "UI/HUD/GuardianKnight/Embereth/Socket_Full.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
-      ],
+      "layers": [],
       "shine": {
         "texture": null,
         "additive": false
@@ -10937,37 +10519,26 @@
         "frames": [],
         "loop": true,
         "additive": false
-      }
+      },
+      "keyframeAnimationPath": "UI/HUD/IdentityAnimation/GuardianKnight/EmberSocket.json",
+      "keyframeAnimationScale": 0.666667
     },
     {
-      "id": "GK_Embereth_Lock0",
+      "id": "GK_Embereth_State1",
       "ownerClass": "GuardianKnight",
-      "type": 0,
+      "type": 9,
       "rect": {
-        "x": 741.5,
-        "y": 628.7,
-        "width": 12.0,
-        "height": 15.3333
+        "x": 754.8333,
+        "y": 628.0333,
+        "width": 1.0,
+        "height": 1.0
       },
       "rotation": 0,
       "stages": {
         "baseFrom": 0,
         "shineFrom": 1
       },
-      "layers": [
-        {
-          "path": "UI/HUD/GuardianKnight/Embereth/Socket_Lock.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
-      ],
+      "layers": [],
       "shine": {
         "texture": null,
         "additive": false
@@ -10982,37 +10553,26 @@
         "frames": [],
         "loop": true,
         "additive": false
-      }
+      },
+      "keyframeAnimationPath": "UI/HUD/IdentityAnimation/GuardianKnight/EmberSocket.json",
+      "keyframeAnimationScale": 0.666667
     },
     {
-      "id": "GK_Embereth_Lock1",
+      "id": "GK_Embereth_State2",
       "ownerClass": "GuardianKnight",
-      "type": 0,
+      "type": 9,
       "rect": {
-        "x": 756.1667,
-        "y": 628.7,
-        "width": 12.0,
-        "height": 15.3333
+        "x": 769.5,
+        "y": 628.0333,
+        "width": 1.0,
+        "height": 1.0
       },
       "rotation": 0,
       "stages": {
         "baseFrom": 0,
         "shineFrom": 1
       },
-      "layers": [
-        {
-          "path": "UI/HUD/GuardianKnight/Embereth/Socket_Lock.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
-      ],
+      "layers": [],
       "shine": {
         "texture": null,
         "additive": false
@@ -11027,37 +10587,26 @@
         "frames": [],
         "loop": true,
         "additive": false
-      }
+      },
+      "keyframeAnimationPath": "UI/HUD/IdentityAnimation/GuardianKnight/EmberSocket.json",
+      "keyframeAnimationScale": 0.666667
     },
     {
-      "id": "GK_Embereth_Lock2",
+      "id": "GK_Embereth_State3",
       "ownerClass": "GuardianKnight",
-      "type": 0,
+      "type": 9,
       "rect": {
-        "x": 770.8333,
-        "y": 628.7,
-        "width": 12.0,
-        "height": 15.3333
+        "x": 784.1667,
+        "y": 628.0333,
+        "width": 1.0,
+        "height": 1.0
       },
       "rotation": 0,
       "stages": {
         "baseFrom": 0,
         "shineFrom": 1
       },
-      "layers": [
-        {
-          "path": "UI/HUD/GuardianKnight/Embereth/Socket_Lock.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
-      ],
+      "layers": [],
       "shine": {
         "texture": null,
         "additive": false
@@ -11072,37 +10621,26 @@
         "frames": [],
         "loop": true,
         "additive": false
-      }
+      },
+      "keyframeAnimationPath": "UI/HUD/IdentityAnimation/GuardianKnight/EmberSocket.json",
+      "keyframeAnimationScale": 0.666667
     },
     {
-      "id": "GK_Embereth_Lock3",
+      "id": "GK_Embereth_State4",
       "ownerClass": "GuardianKnight",
-      "type": 0,
+      "type": 9,
       "rect": {
-        "x": 785.5,
-        "y": 628.7,
-        "width": 12.0,
-        "height": 15.3333
+        "x": 798.8333,
+        "y": 628.0333,
+        "width": 1.0,
+        "height": 1.0
       },
       "rotation": 0,
       "stages": {
         "baseFrom": 0,
         "shineFrom": 1
       },
-      "layers": [
-        {
-          "path": "UI/HUD/GuardianKnight/Embereth/Socket_Lock.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
-      ],
+      "layers": [],
       "shine": {
         "texture": null,
         "additive": false
@@ -11117,37 +10655,26 @@
         "frames": [],
         "loop": true,
         "additive": false
-      }
+      },
+      "keyframeAnimationPath": "UI/HUD/IdentityAnimation/GuardianKnight/EmberSocket.json",
+      "keyframeAnimationScale": 0.666667
     },
     {
-      "id": "GK_Embereth_Lock4",
+      "id": "GK_Embereth_State5",
       "ownerClass": "GuardianKnight",
-      "type": 0,
+      "type": 9,
       "rect": {
-        "x": 800.1667,
-        "y": 628.7,
-        "width": 12.0,
-        "height": 15.3333
+        "x": 815.5,
+        "y": 628.0333,
+        "width": 1.0,
+        "height": 1.0
       },
       "rotation": 0,
       "stages": {
         "baseFrom": 0,
         "shineFrom": 1
       },
-      "layers": [
-        {
-          "path": "UI/HUD/GuardianKnight/Embereth/Socket_Lock.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
-      ],
+      "layers": [],
       "shine": {
         "texture": null,
         "additive": false
@@ -11162,37 +10689,26 @@
         "frames": [],
         "loop": true,
         "additive": false
-      }
+      },
+      "keyframeAnimationPath": "UI/HUD/IdentityAnimation/GuardianKnight/EmberSocket.json",
+      "keyframeAnimationScale": 0.666667
     },
     {
-      "id": "GK_Embereth_Lock5",
+      "id": "GK_Embereth_State6",
       "ownerClass": "GuardianKnight",
-      "type": 0,
+      "type": 9,
       "rect": {
-        "x": 816.8333,
-        "y": 628.7,
-        "width": 12.0,
-        "height": 15.3333
+        "x": 830.1667,
+        "y": 628.0333,
+        "width": 1.0,
+        "height": 1.0
       },
       "rotation": 0,
       "stages": {
         "baseFrom": 0,
         "shineFrom": 1
       },
-      "layers": [
-        {
-          "path": "UI/HUD/GuardianKnight/Embereth/Socket_Lock.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
-      ],
+      "layers": [],
       "shine": {
         "texture": null,
         "additive": false
@@ -11207,37 +10723,26 @@
         "frames": [],
         "loop": true,
         "additive": false
-      }
+      },
+      "keyframeAnimationPath": "UI/HUD/IdentityAnimation/GuardianKnight/EmberSocket.json",
+      "keyframeAnimationScale": 0.666667
     },
     {
-      "id": "GK_Embereth_Lock6",
+      "id": "GK_Embereth_State7",
       "ownerClass": "GuardianKnight",
-      "type": 0,
+      "type": 9,
       "rect": {
-        "x": 831.5,
-        "y": 628.7,
-        "width": 12.0,
-        "height": 15.3333
+        "x": 844.8333,
+        "y": 628.0333,
+        "width": 1.0,
+        "height": 1.0
       },
       "rotation": 0,
       "stages": {
         "baseFrom": 0,
         "shineFrom": 1
       },
-      "layers": [
-        {
-          "path": "UI/HUD/GuardianKnight/Embereth/Socket_Lock.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
-      ],
+      "layers": [],
       "shine": {
         "texture": null,
         "additive": false
@@ -11252,37 +10757,26 @@
         "frames": [],
         "loop": true,
         "additive": false
-      }
+      },
+      "keyframeAnimationPath": "UI/HUD/IdentityAnimation/GuardianKnight/EmberSocket.json",
+      "keyframeAnimationScale": 0.666667
     },
     {
-      "id": "GK_Embereth_Lock7",
+      "id": "GK_Embereth_State8",
       "ownerClass": "GuardianKnight",
-      "type": 0,
+      "type": 9,
       "rect": {
-        "x": 846.1667,
-        "y": 628.7,
-        "width": 12.0,
-        "height": 15.3333
+        "x": 859.5,
+        "y": 628.0333,
+        "width": 1.0,
+        "height": 1.0
       },
       "rotation": 0,
       "stages": {
         "baseFrom": 0,
         "shineFrom": 1
       },
-      "layers": [
-        {
-          "path": "UI/HUD/GuardianKnight/Embereth/Socket_Lock.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
-      ],
+      "layers": [],
       "shine": {
         "texture": null,
         "additive": false
@@ -11297,37 +10791,26 @@
         "frames": [],
         "loop": true,
         "additive": false
-      }
+      },
+      "keyframeAnimationPath": "UI/HUD/IdentityAnimation/GuardianKnight/EmberSocket.json",
+      "keyframeAnimationScale": 0.666667
     },
     {
-      "id": "GK_Embereth_Lock8",
+      "id": "GK_Embereth_State9",
       "ownerClass": "GuardianKnight",
-      "type": 0,
+      "type": 9,
       "rect": {
-        "x": 860.8333,
-        "y": 628.7,
-        "width": 12.0,
-        "height": 15.3333
+        "x": 874.1667,
+        "y": 628.0333,
+        "width": 1.0,
+        "height": 1.0
       },
       "rotation": 0,
       "stages": {
         "baseFrom": 0,
         "shineFrom": 1
       },
-      "layers": [
-        {
-          "path": "UI/HUD/GuardianKnight/Embereth/Socket_Lock.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
-      ],
+      "layers": [],
       "shine": {
         "texture": null,
         "additive": false
@@ -11342,52 +10825,9 @@
         "frames": [],
         "loop": true,
         "additive": false
-      }
-    },
-    {
-      "id": "GK_Embereth_Lock9",
-      "ownerClass": "GuardianKnight",
-      "type": 0,
-      "rect": {
-        "x": 875.5,
-        "y": 628.7,
-        "width": 12.0,
-        "height": 15.3333
       },
-      "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
-      "layers": [
-        {
-          "path": "UI/HUD/GuardianKnight/Embereth/Socket_Lock.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
-      ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1.0,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [],
-        "loop": true,
-        "additive": false
-      }
+      "keyframeAnimationPath": "UI/HUD/IdentityAnimation/GuardianKnight/EmberSocket.json",
+      "keyframeAnimationScale": 0.666667
     }
   ]
 }

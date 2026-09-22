@@ -6951,24 +6951,40 @@ void CMainApp::Update_GuardianKnightIdentity()
 		f32_t fMarkX = 0.f, fMarkY = 0.f, fMarkWidth = 0.f, fMarkHeight = 0.f;
 		if (m_pHUDRuntimeView->Get_SlotRect("GK_Id_OrbMark", fMarkX, fMarkY, fMarkWidth, fMarkHeight))
 		{
+			/* Centred on the level line, but kept inside the orb: at the very top the line is
+			the orb's own rim, and a mark centred there would hang half of itself above the
+			sphere. */
+			const f32_t fLevelY = fOrbY + fOrbHeight - fFillHeight - fMarkHeight * 0.5f;
 			m_pHUDRuntimeView->Set_SlotPosition("GK_Id_OrbMark",
 				fOrbX + fOrbWidth * 0.5f - fMarkWidth * 0.5f,
-				fOrbY + fOrbHeight - fFillHeight - fMarkHeight * 0.5f);
+				std::clamp(fLevelY, fOrbY, fOrbY + fOrbHeight - fMarkHeight));
 		}
 	}
+	/* useAutoHideMark hides it at the two ends. The ratio is a float division, so "full" is
+	tested with a tolerance rather than an exact 1 -- otherwise a gauge sitting at its maximum
+	leaves the mark drawn on the rim. */
+	constexpr f32_t MARK_END_EPSILON = 0.001f;
 	m_pHUDRuntimeView->Set_SlotVisible("GK_Id_OrbMark",
-		fIdentityRatio > 0.f && fIdentityRatio < 1.f);
+		fIdentityRatio > MARK_END_EPSILON && fIdentityRatio < 1.f - MARK_END_EPSILON);
 
 	/* skillKey_bg carries the Z label drawn in the text pass; the label's own colour rule lives
 	there (DragonKnightSkinFrame.draw(): white while full or transformed, 0x686C20 otherwise). */
 	m_pHUDRuntimeView->Set_SlotVisible("GK_Id_SkillKeyBg", true);
 
 	/* skillStatusList is visible in both stances this project has (its own visibility rule is
-	_localStance < NORMAL_AP13). There is no per-skill "used" state on the snapshot yet, so the
-	8 dots stay in their unused look instead of being driven off an invented value. */
+	_localStance < NORMAL_AP13). The 8 dots are the class's skill slots, and a red one marks a
+	slot carrying an awakening skill -- DragonKnightSkillStatusList just does
+	_useList[i].visible = isUse over a plain dark plate, so a slot without one shows the plate
+	through. Which slots those are has no source in this project's data, so the set is the
+	user's own call: the bottom row's 1st, 2nd and 4th. Index 0..3 is the top row. */
+	constexpr bool_t AWAKENING_SLOT_DOTS[8] =
+		{ false, false, false, false, true, true, false, true };
 	m_pHUDRuntimeView->Set_SlotVisible("GK_Id_StatusPlate", true);
 	for (int32_t i = 0; i < 8; ++i)
-		m_pHUDRuntimeView->Set_SlotVisible(string("GK_Id_StatusDot") + std::to_string(i), true);
+	{
+		m_pHUDRuntimeView->Set_SlotVisible(
+			string("GK_Id_StatusDot") + std::to_string(i), AWAKENING_SLOT_DOTS[i]);
+	}
 
 	/* invokeDragonKnightBloodGauge(filled, unlocked) walks all 10 sockets: those below `unlocked`
 	are lit or empty by the filled count, and the rest wear the padlock. `unlocked` is the very
@@ -6985,12 +7001,25 @@ void CMainApp::Update_GuardianKnightIdentity()
 	for (int32_t i = 0; i < SOCKET_COUNT; ++i)
 	{
 		const string strIndex = std::to_string(i);
-		const bool_t bLocked = i >= iUnlockedSockets;
 		m_pHUDRuntimeView->Set_SlotVisible("GK_Embereth_Socket" + strIndex, bHasEmberPool);
-		m_pHUDRuntimeView->Set_SlotVisible("GK_Embereth_Fill" + strIndex,
-			bHasEmberPool && !bLocked && i < iFilledSockets);
-		m_pHUDRuntimeView->Set_SlotVisible("GK_Embereth_Lock" + strIndex,
-			bHasEmberPool && bLocked);
+
+		const string strStateSlot = "GK_Embereth_State" + strIndex;
+		m_pHUDRuntimeView->Set_SlotVisible(strStateSlot, bHasEmberPool);
+		if (!bHasEmberPool)
+		{
+			m_EmberSocketStates[i].clear();
+			continue;
+		}
+		/* invokeDragonKnightBloodGauge's own branch: a socket whose state changed plays that
+		label's transition -- the gem's pop, the ember rising away, the padlock settling -- and
+		one that did not change holds the label's end frame instead of replaying it. */
+		const string strState = i >= iUnlockedSockets ? "lock" :
+			(i < iFilledSockets ? "show" : "hide");
+		if (m_EmberSocketStates[i] != strState)
+		{
+			m_pHUDRuntimeView->Play_KeyframeAnimation(strStateSlot, strState);
+			m_EmberSocketStates[i] = strState;
+		}
 	}
 }
 
@@ -8309,16 +8338,43 @@ void CMainApp::Update_SkillIcons()
 		stripped from the base slot) draws over both -- the same border-above-icon stacking the
 		old redraw achieved. */
 		const char* pIconPath = nullptr;
+		bool_t bUsableInStance = true;
 		if (const PLAYER_SKILL_DEFINITION* pSkill = CPlayerSkillCatalog::Find_BySlot(
 			player.eCharacterClass, pInputSlot, player.eStance))
 		{
 			pIconPath = Find_HudSkillIcon(pSkill->iSkillId);
+		}
+		else
+		{
+			/* A slot the class fills only in its other stance (GuardianKnight's T, which is
+			the dragon-form breath) keeps showing that skill greyed out rather than going
+			blank, so the row does not change shape when the stance flips. Searching the
+			catalog rather than naming the pair keeps this true for any stance class. */
+			for (const PLAYER_SKILL_DEFINITION& Skill : CPlayerSkillCatalog::Get_Skills())
+			{
+				if (Skill.eCharacterClass != player.eCharacterClass ||
+					Skill.strInputSlot != pInputSlot ||
+					LostArk::Shared::PLAYER_STANCE_ID::NONE == Skill.eRequiredStance)
+				{
+					continue;
+				}
+				pIconPath = Find_HudSkillIcon(Skill.iSkillId);
+				if (nullptr != pIconPath)
+				{
+					bUsableInStance = false;
+					break;
+				}
+			}
 		}
 
 		const string strIconSlot = string("Skill_") + pInputSlot + "_Icon";
 		if (nullptr != pIconPath)
 		{
 			m_pHUDRuntimeView->Set_SlotTexture(strIconSlot, pIconPath);
+			/* Retail greys an out-of-stance icon instead of hiding it; a flat multiply keeps
+			the art readable while reading as unavailable at a glance. */
+			m_pHUDRuntimeView->Set_SlotTint(strIconSlot, bUsableInStance ?
+				float4_t(1.f, 1.f, 1.f, 1.f) : float4_t(0.32f, 0.32f, 0.36f, 1.f));
 			m_pHUDRuntimeView->Set_SlotVisible(strIconSlot, true);
 		}
 		else
