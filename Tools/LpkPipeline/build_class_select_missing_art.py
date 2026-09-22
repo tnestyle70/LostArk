@@ -43,6 +43,16 @@ COMPONENTS = EXTRACTED / "SweepXml/componentsv2.xml"
 MISSING = [(112, "Slayer", 32), (512, "Gunslinger", 30), (702, "GuardianKnight", 38)]
 # The class list still draws these two rows without a crest.
 CATEGORY_CRESTS = [("HunterFemale", 30), ("DragonKnight", 38)]
+# EFTable_PC PrimaryKey -> folder, for the classes IconInfo puts on ClassSelectImg_once_0
+# (512 Devilhunter_Female, 612 DimensionMaster, 702 DragonKnight).
+ONCE_FOLDERS = {512: "Gunslinger", 612: "DimensionMaster", 702: "GuardianKnight"}
+# Folder -> the componentsv2 class_<n> frame whose identity export is that class's emblem.
+# The four older folders were cut at 0.71x..1.23x of their export instead of 1.00x, which is
+# why their emblems did not line up with each other and why the two that were scaled the
+# furthest (Artist down, DimensionMaster up) read as blurry. Re-cut at native size here; which
+# export each frame carries is read from componentsv2, not written down.
+IDENTITY_FRAMES = {"Warlord": 9, "Artist": 23, "LanceMaster": 25, "Gunslinger": 30,
+                   "Slayer": 32, "GuardianKnight": 38, "DimensionMaster": 41}
 
 BIG_CELL = (396, 374)
 BIG_COLUMNS = 2
@@ -116,8 +126,45 @@ def cut_measured(page_name, cell, target):
     if crop.getchannel("A").getbbox() is None:
         print("   빈 칸: %s cell %d" % (page_name, cell))
         return False
+    crop = narrow_to_slot(crop)
     crop.save(target)
     return True
+
+
+def standard_slot():
+    """The list thumbnail's own geometry, measured off ClassSelectImg_0 rather than written
+    down: the opaque span of its first column by the opaque span of its rows."""
+    path = ICON_PAGES / "ClassSelectImg_0.png"
+    image = Image.open(path).convert("RGBA")
+    left, right = icon_columns(image)[0]
+    box = image.crop((left, 0, right, SMALL_HEIGHT)).getchannel("A").getbbox()
+    return right - left, box[3] - box[1]
+
+
+def narrow_to_slot(crop):
+    """The three newest classes (512/612/702) have no 136-wide thumbnail at all -- IconInfo
+    gives them only ClassSelectImg_once_<PK>, a 318-wide banner. Both kinds carry the SAME
+    trapezoid: the shear is an absolute 15 px across the 78 px height on either width, not a
+    proportion of it. So a slot-wide cut keeps retail's exact shape as long as it carries the
+    banner's own slanted ends -- what is ours to choose is only which window of the banner
+    shows, and that is its centre, the same rule for all three. A cell already at or under the
+    slot width is returned untouched. A cell that only overshoots in height -- the page row is
+    80 tall but the art inside it is 78 -- is trimmed the same way."""
+    width, height = standard_slot()
+    if crop.width <= width and crop.height <= height:
+        return crop
+    width = min(width, crop.width)
+    top = max(0, (crop.height - height) // 2)
+    narrowed = crop.crop(((crop.width - width) // 2, top,
+                          (crop.width - width) // 2 + width, top + height)).copy()
+    # Carry enough of each end to include the whole slant plus its soft edge.
+    edge = 24
+    alpha = Image.new("L", (width, height), 255)
+    alpha.paste(crop.crop((0, top, edge, top + height)).getchannel("A"), (0, 0))
+    alpha.paste(crop.crop((crop.width - edge, top, crop.width, top + height)).getchannel("A"),
+                (width - edge, 0))
+    narrowed.putalpha(alpha)
+    return narrowed
 
 
 def cut(page_name, cell, size, columns, target):
@@ -255,6 +302,33 @@ def main() -> int:
             if source.exists():
                 shutil.copyfile(source, folder / shared)
         print("   파일 %d개" % len(list(folder.iterdir())))
+
+    # Every class whose thumbnail comes off the _once page is re-cut here, folder already
+    # present or not: DimensionMaster shipped from that page before this narrowing existed and
+    # so carries a 316-wide image in a 134-wide slot, which is what made it overflow its
+    # hover frame. Which classes those are is read from IconInfo, not listed by hand.
+    for key, (page, cell) in sorted(icon_cells("ClassSelectImg_once").items()):
+        name = ONCE_FOLDERS.get(key)
+        if not name:
+            print("_once 칸의 폴더 이름을 모름: PrimaryKey %d" % key)
+            continue
+        folder = panel / name
+        if not folder.is_dir():
+            continue
+        if cut_measured(page, cell, folder / "IllustrationSmall.png"):
+            print("작은 초상화 재단: %s" % name)
+
+    # Every class's identity emblem at its export's own size, so the seven sit at one scale.
+    for name, frame in sorted(IDENTITY_FRAMES.items()):
+        folder = panel / name
+        if not folder.is_dir():
+            continue
+        export = emblems.get(frame)
+        if not export:
+            print("class_%d 에 emblem 바인딩 없음: %s" % (frame, name))
+            continue
+        if share.save(export, folder / "NameID.png"):
+            print("아이덴티티 문양 원본 크기로 재단: %-16s %s" % (name, export))
 
     for label, frame in CATEGORY_CRESTS:
         crest = crests.get(frame)
