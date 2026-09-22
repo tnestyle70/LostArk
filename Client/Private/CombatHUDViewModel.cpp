@@ -209,6 +209,13 @@ void Client::CCombatHUDViewModel::Apply_LocalPlayer(
 	m_Player.iServerTick = serverTick;
 	m_Player.iCurrentHp = snapshot.iCurrentHp;
 	m_Player.iMaximumHp = snapshot.iMaximumHp;
+	m_Player.iShield = snapshot.iShield;
+	m_Player.iActiveBuffCount = snapshot.iActiveBuffCount;
+	for (std::size_t buffIndex = 0;
+		buffIndex < LostArk::Shared::MAX_ACTIVE_BUFFS; ++buffIndex)
+	{
+		m_Player.ActiveBuffs[buffIndex] = snapshot.ActiveBuffs[buffIndex];
+	}
 	m_Player.iCurrentResource = snapshot.iCurrentResource;
 	m_Player.iMaximumResource = snapshot.iMaximumResource;
 	m_Player.iCurrentIdentity = snapshot.iCurrentIdentity;

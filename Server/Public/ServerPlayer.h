@@ -302,6 +302,11 @@ namespace LostArk::Server
 		current value yet. The form is Server truth the Client presents; the
 		Debug F1 toggle and authored Mario entry change it. */
 		static constexpr std::uint32_t MADNESS_GAUGE_MAXIMUM = 10000u;
+		/* Buffs the player holds. Expired entries are dropped each tick, and the
+		newest cast of the same buff replaces the older one. */
+		std::vector<LostArk::Shared::ACTIVE_BUFF> ActiveBuffs;
+		/* Absorbs incoming damage before HP moves, and ends with its buff. */
+		std::uint32_t iShield = 0;
 		std::uint32_t iCurrentMadness = 0;
 		std::uint32_t iMaximumMadness = MADNESS_GAUGE_MAXIMUM;
 		LostArk::Shared::PLAYER_MADNESS_FORM eMadnessForm =

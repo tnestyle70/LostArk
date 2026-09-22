@@ -749,6 +749,15 @@ namespace LostArk::Shared
 
 	/* Which body a player presents. NORMAL is the class body; CLOWN is the
 	colourless KoukuSaydon body a full madness gauge turns the player into. */
+	/* One buff or debuff a holder carries, replicated so the HUD can draw its icon
+	and count the remaining time down. */
+	inline constexpr std::size_t MAX_ACTIVE_BUFFS = 4u;
+	struct ACTIVE_BUFF final
+	{
+		std::uint32_t iBuffId = 0u;
+		std::uint32_t iEndTick = 0u;
+	};
+
 	enum class PLAYER_MADNESS_FORM : std::uint8_t
 	{
 		NORMAL,
@@ -1581,6 +1590,11 @@ namespace LostArk::Shared
 		float fSkillTargetZ = 0.f;
 		std::uint32_t iCurrentHp = 1;
 		std::uint32_t iMaximumHp = 1;
+		/* Absorbs damage before HP moves. The HUD prints it as "(+n)" after the
+		HP readout and draws it as its own track over the health bar. */
+		std::uint32_t iShield = 0;
+		std::uint8_t iActiveBuffCount = 0;
+		ACTIVE_BUFF ActiveBuffs[MAX_ACTIVE_BUFFS]{};
 		std::uint32_t iCurrentResource = 0;
 		std::uint32_t iMaximumResource = 1;
 		// The class identity gauge. A maximum of 0 says the class has none, and
@@ -1737,6 +1751,8 @@ namespace LostArk::Shared
 		std::uint32_t iActionStartTick = 0;
 		std::uint32_t iCurrentHp = 1;
 		std::uint32_t iMaximumHp = 1;
+		std::uint8_t iActiveBuffCount = 0;
+		ACTIVE_BUFF ActiveBuffs[MAX_ACTIVE_BUFFS]{};
 		std::uint8_t iPhase = 1;
 		/* Bit i is set once authored armour plate i has been destroyed. The
 		server owns the durability that breaks it; presentation only hides the

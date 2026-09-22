@@ -29,6 +29,11 @@ EXTRACTED = Path(r"D:/ClaudeWork/Extracted")
 SKILLBUFF = EXTRACTED / "LpkTables/EFGame_Extra/ClientData/TableData/EFTable_SkillBuff.db"
 ICONINFO = EXTRACTED / "Data3/EFGame_Extra/ClientData/XmlData/IconInfo.loa"
 ICON_PAGES = EXTRACTED / "Vehicle/icons"
+# ark.controls:Progress draws its shield over the health track with this plain white
+# bar; quickslot.gfx sprite 1279 places it from QuickSlot_I1 at [320, 536, 250, 16].
+QUICKSLOT_PAGES = EXTRACTED / "HudGfx_quickslot/tex/EFUI_QUICKSLOT/Texture2D"
+QUICKSLOT_SHIELD_PAGE = "quickslot_i1_nopack"
+SHIELD_BAR_RECT = (320, 536, 250, 16)
 
 # (asset name, SkillBuff.PrimaryKey, the skill that applies it, buff or debuff)
 BUFF_ICONS = [
@@ -100,11 +105,26 @@ def main() -> int:
         })
         print(f"{asset}  <- {icon_name}  {image.size[0]}x{image.size[1]}")
 
+    shield_asset = "UI/HUD/Common/Shield Bar.png"
+    left, top, width, height = SHIELD_BAR_RECT
+    page_hits = [hit for hit in glob.glob(
+        str(QUICKSLOT_PAGES / (QUICKSLOT_SHIELD_PAGE + ".*")))
+        if hit.lower().endswith((".dds", ".tga", ".png"))]
+    if not page_hits:
+        raise SystemExit(f"quickslot page {QUICKSLOT_SHIELD_PAGE} is not extracted")
+    Image.open(page_hits[0]).convert("RGBA").crop(
+        (left, top, left + width, top + height)).save(
+        repo / "Client/Bin/Resources" / shield_asset)
+    print(f"{shield_asset}  <- QuickSlot_I1 {SHIELD_BAR_RECT}")
+
     document = {
         "schema": "lostark.hud-buff-icons",
         "formatVersion": 1,
         "note": "Slot art and silence/fetter/fear icons come from build_quickslot_hud_ui.py.",
         "icons": records,
+        "shieldBar": {"asset": shield_asset, "page": "QuickSlot_I1",
+                      "rect": list(SHIELD_BAR_RECT),
+                      "source": "quickslot.gfx sprite 1279, ark.controls:Progress shieldTrack"},
     }
     path = repo / "Data/UI/HUD/HudBuffIcons.json"
     path.write_text(json.dumps(document, ensure_ascii=False, indent=1) + "\n",

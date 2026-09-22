@@ -586,6 +586,11 @@ void LostArk::Server::CGameRoom::Broadcast_WorldSnapshot()
 		}
 		snapshot.iCurrentHp = player.iCurrentHp;
 		snapshot.iMaximumHp = player.iMaximumHp;
+		snapshot.iShield = player.iShield;
+		snapshot.iActiveBuffCount = static_cast<std::uint8_t>((std::min)(
+			player.ActiveBuffs.size(), LostArk::Shared::MAX_ACTIVE_BUFFS));
+		for (std::size_t buffIndex = 0; buffIndex < snapshot.iActiveBuffCount; ++buffIndex)
+			snapshot.ActiveBuffs[buffIndex] = player.ActiveBuffs[buffIndex];
 		snapshot.iCurrentResource = player.iCurrentResource;
 		snapshot.iMaximumResource = player.iMaximumResource;
 		snapshot.iCurrentIdentity = player.iCurrentIdentity;
@@ -696,6 +701,10 @@ void LostArk::Server::CGameRoom::Broadcast_WorldSnapshot()
 		}
 		snapshot.iCurrentHp = entity.iCurrentHp;
 		snapshot.iMaximumHp = entity.iMaximumHp;
+		snapshot.iActiveBuffCount = static_cast<std::uint8_t>((std::min)(
+			entity.ActiveBuffs.size(), LostArk::Shared::MAX_ACTIVE_BUFFS));
+		for (std::size_t buffIndex = 0; buffIndex < snapshot.iActiveBuffCount; ++buffIndex)
+			snapshot.ActiveBuffs[buffIndex] = entity.ActiveBuffs[buffIndex];
 		snapshot.iPhase = entity.iPhase;
 		snapshot.PinnedDefinitionRevision =
 			entity.PinnedDefinitionRevision;

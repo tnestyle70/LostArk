@@ -782,6 +782,8 @@ void LostArk::Server::CGameRoom::Update_Players(const float fixedDeltaSeconds)
 			player.fActionElapsedSeconds = 0.f;
 			player.PendingCommand.Clear();
 		}
+		CServerBuffRuntime::Expire(player.ActiveBuffs, updateTick);
+		CServerBuffRuntime::Settle_Shield(m_GameplayCatalog.Active(), player);
 		Update_VehicleSkill(player, fixedDeltaSeconds);
 		m_PlayerSkillSystem.Update(
 			player,

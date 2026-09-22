@@ -88,6 +88,8 @@ SKILL_BUFFS = [
     (31950, 319503, "artist_mir"),
     (34510, 345003, "lancemaster_short_spear"),
     (49040, 490407, "guardianknight_dragon_mark"),
+    (31910, 319100, "artist_shield"),
+    (31930, 319302, "artist_dream_shield"),
 ]
 # EFTable_SkillBuff.PassiveOptionKeyStat names the stat a buff drives, resolved through
 # the stattype enum: 144 physical_inc_sub_rate_2, 146 magical_inc_sub_rate_2 (both the
@@ -424,7 +426,12 @@ def build_skill_buffs(
                 raise ValueError(f"Buff {buff_id} sets {field} twice with different values")
             fields[field] = percent
         if not fields:
-            fields["damageTakenPercent"] = round(int(buff["ValueH"] or 0) / 100)
+            # The shield archetype absorbs a share of the caster's maximum HP, held
+            # in ValueC in the same hundredths of a percent; damage amplify uses ValueH.
+            if str(buff["Archetype"]).startswith("Shield"):
+                fields["shieldPercentOfMaxHp"] = round(int(buff["ValueC"] or 0) / 100)
+            else:
+                fields["damageTakenPercent"] = round(int(buff["ValueH"] or 0) / 100)
         if not any(fields.values()):
             raise ValueError(f"Buff {buff_id} has no percent to apply")
         duration = int(buff["Duration"])

@@ -6875,8 +6875,32 @@ void CMainApp::Update_PlayerHealthManaBar()
 	const float manaRatio = (std::clamp)(
 		static_cast<float>(player.iCurrentResource) / static_cast<float>(player.iMaximumResource), 0.f, 1.f);
 
-	m_pHUDRuntimeView->Set_SlotFillRatio("HealthBar_Fill", healthRatio);
-	m_pHUDRuntimeView->Set_SlotVisible("HealthBar_Fill", healthRatio > 0.f);
+	/* ark.controls:Progress.updateShieldTargetSize. Below the maximum the shield is
+	its own share of the maximum and sits past the health fill; at or over it the
+	original grows the track "from the right" by shield / (shield + hp), which is why
+	the red share climbs back as the shield drains. */
+	const double shield = static_cast<double>(player.iShield);
+	const double currentHp = static_cast<double>(player.iCurrentHp);
+	const double maximumHp = static_cast<double>(player.iMaximumHp);
+	float shieldRatio = 0.f;
+	float healthTrackRatio = healthRatio;
+	if (shield > 0.0 && maximumHp > 0.0)
+	{
+		if (shield + currentHp < maximumHp)
+		{
+			shieldRatio = static_cast<float>(shield / maximumHp);
+		}
+		else
+		{
+			shieldRatio = static_cast<float>(shield / (shield + currentHp));
+			healthTrackRatio = 1.f - shieldRatio;
+		}
+	}
+
+	m_pHUDRuntimeView->Set_SlotFillRatio("HealthBar_Fill", healthTrackRatio);
+	m_pHUDRuntimeView->Set_SlotVisible("HealthBar_Fill", healthTrackRatio > 0.f);
+	m_pHUDRuntimeView->Set_SlotFillRatio("HealthBar_Shield_Fill", shieldRatio);
+	m_pHUDRuntimeView->Set_SlotVisible("HealthBar_Shield_Fill", shieldRatio > 0.f);
 	m_pHUDRuntimeView->Set_SlotFillRatio("ManaBar_Fill", manaRatio);
 	/* A class with an ember pool runs on ember, not mana: the mana fill stays
 	hidden and the readout below the bar shows the orb gauge instead. */
@@ -8499,8 +8523,12 @@ void CMainApp::RenderCombatHUDText()
 	const HUD_PLAYER_STATE& player = CCombatHUDViewModel::Get().Get_Player();
 	if (player.isValid && player.iMaximumHp > 0u && player.iMaximumResource > 0u)
 	{
+		/* ark.controls:Progress.updateText appends the shield straight after the
+		readout as "(+n)", and writes nothing at all while there is no shield. */
 		const wstring hp = std::to_wstring(player.iCurrentHp) +
-			L" / " + std::to_wstring(player.iMaximumHp);
+			L" / " + std::to_wstring(player.iMaximumHp) +
+			(0u == player.iShield ? wstring() :
+				L"(+" + std::to_wstring(player.iShield) + L")");
 		/* A class with an ember pool draws its own gauge art over this strip -- the orb and the
 		10 sockets (Update_GuardianKnightIdentity) -- so the numeric stand-in that stood here
 		until that art existed would now just sit on top of the sockets. */

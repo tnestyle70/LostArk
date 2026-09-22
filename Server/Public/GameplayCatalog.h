@@ -1505,6 +1505,26 @@ namespace LostArk::Server
 		};
 		[[nodiscard]] const DAMAGE_PROFILE* Find_DamageProfile(
 			const std::string& damageProfileId) const;
+
+		/* A buff one skill grants. EFTable_SkillBuff owns the duration and the
+		percent; the add_status_effect row owns who receives it. */
+		enum class SKILL_BUFF_TARGET : std::uint8_t { SELF, ALLY, ENEMY };
+		struct SKILL_BUFF_DEFINITION final
+		{
+			std::uint32_t iSkillId = 0;
+			std::uint32_t iBuffId = 0;
+			SKILL_BUFF_TARGET eTarget = SKILL_BUFF_TARGET::SELF;
+			std::uint32_t iDurationMs = 0;
+			std::int32_t iDamageDealtPercent = 0;
+			std::int32_t iDamageTakenPercent = 0;
+			std::int32_t iAttackSpeedPercent = 0;
+			/* Absorbs this share of the caster's maximum HP before its HP moves. */
+			std::uint32_t iShieldPercentOfMaxHp = 0;
+		};
+		[[nodiscard]] const std::vector<SKILL_BUFF_DEFINITION>* Find_SkillBuffs(
+			std::uint32_t skillId) const;
+		[[nodiscard]] const SKILL_BUFF_DEFINITION* Find_SkillBuff(
+			std::uint32_t buffId) const;
 		static std::uint32_t Resolve_Damage(
 			std::uint32_t attackPower, const DAMAGE_PROFILE& profile);
 
@@ -1603,6 +1623,9 @@ namespace LostArk::Server
 		std::unordered_map<std::string, std::uint32_t>
 			m_DamageRatePercentByProfileId;
 		std::unordered_map<std::string, DAMAGE_PROFILE> m_DamageProfileById;
+		std::unordered_map<std::uint32_t, std::vector<SKILL_BUFF_DEFINITION>>
+			m_SkillBuffsBySkillId;
+		std::unordered_map<std::uint32_t, SKILL_BUFF_DEFINITION> m_SkillBuffById;
 		LostArk::Shared::GameplayDataRevision m_ActiveRevision{};
 		LostArk::Shared::GameplayDataRevision m_NonKoukuGameplayRevision{};
 		LostArk::Shared::GameplayDataRevision

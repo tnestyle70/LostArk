@@ -1633,6 +1633,10 @@ namespace LostArk::Server
 
 		std::unordered_map<SESSION_ID, std::weak_ptr<CClientSession>> m_Sessions;
 		std::map<LostArk::Shared::PLAYER_ID, SERVER_PLAYER> m_Players;
+		/* Grants what a started skill buffs, to the caster, the party in this room
+		or the entities it targets. */
+		void Apply_SkillBuffs(SERVER_PLAYER& caster, std::uint32_t skillId,
+			std::uint32_t serverTick);
 		std::unordered_map<SESSION_ID, LostArk::Shared::PLAYER_ID>
 			m_PlayerIdBySessionId;
 		std::unordered_map<LostArk::Shared::NET_ENTITY_ID, LostArk::Shared::PLAYER_ID>

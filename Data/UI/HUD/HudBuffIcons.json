@@ -131,5 +131,16 @@
     "icon": "Buff_26"
    }
   }
- ]
+ ],
+ "shieldBar": {
+  "asset": "UI/HUD/Common/Shield Bar.png",
+  "page": "QuickSlot_I1",
+  "rect": [
+   320,
+   536,
+   250,
+   16
+  ],
+  "source": "quickslot.gfx sprite 1279, ark.controls:Progress shieldTrack"
+ }
 }

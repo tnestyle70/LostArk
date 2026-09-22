@@ -1250,6 +1250,26 @@
       "durationMs": 10000,
       "iconAsset": "UI/HUD/Buff/buff_guardianknight_dragon_mark.png",
       "damageTakenPercent": 6
+    },
+    {
+      "skillId": 31910,
+      "buffId": 319100,
+      "displayName": "절기 : 몽유도원",
+      "target": "ALLY",
+      "kind": "BUFF",
+      "durationMs": 12000,
+      "iconAsset": "UI/HUD/Buff/buff_artist_shield.png",
+      "shieldPercentOfMaxHp": 100
+    },
+    {
+      "skillId": 31930,
+      "buffId": 319302,
+      "displayName": "몽중백화원",
+      "target": "ALLY",
+      "kind": "BUFF",
+      "durationMs": 12000,
+      "iconAsset": "UI/HUD/Buff/buff_artist_dream_shield.png",
+      "shieldPercentOfMaxHp": 100
     }
   ],
   "bosses": [

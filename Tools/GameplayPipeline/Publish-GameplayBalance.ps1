@@ -961,6 +961,92 @@ function Assert-BalanceProvenance(
 # supplies the rate, and the caster's attack power is what turns it into damage.
 # The 34010 basic attack is rate 100, so 100 is exactly one attack power.
 $maximumDamageRatePercent = 100000
+# A balance profile overrides existing fields of the authored documents only; it
+# never introduces a property, so every Assert-ExactProperties below still holds.
+$balanceProfilePlayers = @{}
+$balanceProfileSkills = @{}
+$balanceProfileBosses = @{}
+$balanceProfileStaggerScale = 0
+$balanceProfileMadnessAddPercent = -1
+$balanceProfileDamage = @{}
+$balanceProfileBuffRows = [Collections.Generic.List[string]]::new()
+$balanceProfileBuffKeys = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+if (-not [string]::IsNullOrWhiteSpace($BalanceProfile)) {
+    $profileRelativePath = "Data/Balance/Profiles/$BalanceProfile.balanceprofile.json"
+    $balanceProfileDocument = Read-JsonDocument $profileRelativePath
+    Assert-ExactProperties $balanceProfileDocument @(
+        'schema','formatVersion','profileId','displayName','staggerGaugeScale',
+        'players','skills','bosses','monsters',
+        'madnessGaugeAddPercent','damageProfiles','skillBuffs') 'balance profile document'
+    Assert-JsonString $balanceProfileDocument.schema 'balance profile schema'
+    Assert-JsonInteger $balanceProfileDocument.formatVersion 'balance profile formatVersion' 1 1
+    if ($balanceProfileDocument.schema -ne 'lostark.balance-profile' -or
+        $balanceProfileDocument.profileId -cne $BalanceProfile) {
+        throw "Balance profile header is invalid: $profileRelativePath"
+    }
+    Assert-JsonInteger $balanceProfileDocument.staggerGaugeScale `
+        'balance profile staggerGaugeScale' 1 100000
+    $balanceProfileStaggerScale = [uint32]$balanceProfileDocument.staggerGaugeScale
+    Assert-JsonInteger $balanceProfileDocument.madnessGaugeAddPercent `
+        'balance profile madnessGaugeAddPercent' 0 100
+    $balanceProfileMadnessAddPercent =
+        [int]$balanceProfileDocument.madnessGaugeAddPercent
+    foreach ($entry in @($balanceProfileDocument.players)) {
+        Assert-StableId $entry.characterClass 'balance profile player characterClass'
+        if ($balanceProfilePlayers.ContainsKey([string]$entry.characterClass)) {
+            throw "Duplicate balance profile player: $($entry.characterClass)"
+        }
+        $balanceProfilePlayers[[string]$entry.characterClass] = $entry
+    }
+    foreach ($entry in @($balanceProfileDocument.skillBuffs)) {
+        Assert-JsonInteger $entry.skillId 'balance profile buff skillId' 1 ([uint32]::MaxValue)
+        Assert-JsonInteger $entry.buffId 'balance profile buffId' 1 ([uint32]::MaxValue)
+        Assert-JsonInteger $entry.durationMs 'balance profile buff durationMs' 1 600000
+        if ($entry.target -cnotin @('SELF','ALLY','ENEMY')) {
+            throw "Balance profile buff target is invalid: $($entry.target)"
+        }
+        $buffKey = "$($entry.skillId)/$($entry.buffId)"
+        if ($balanceProfileBuffKeys.Contains($buffKey)) {
+            throw "Duplicate balance profile buff: $buffKey"
+        }
+        [void]$balanceProfileBuffKeys.Add($buffKey)
+        $percentOf = {
+            param([object]$Value)
+            if ($null -eq $Value) { return 0 }
+            Assert-JsonInteger $Value 'balance profile buff percent' -100 1000
+            return [int]$Value
+        }
+        $balanceProfileBuffRows.Add((@(
+            'SKILLBUFF', [uint32]$entry.skillId, [uint32]$entry.buffId, $entry.target,
+            [uint32]$entry.durationMs,
+            (& $percentOf $entry.damageDealtPercent),
+            (& $percentOf $entry.damageTakenPercent),
+            (& $percentOf $entry.attackSpeedPercent),
+            (& $percentOf $entry.shieldPercentOfMaxHp)) -join "`t"))
+    }
+    foreach ($entry in @($balanceProfileDocument.damageProfiles)) {
+        Assert-StableId $entry.damageProfileId 'balance profile damageProfileId'
+        if ($balanceProfileDamage.ContainsKey([string]$entry.damageProfileId)) {
+            throw "Duplicate balance profile damage profile: $($entry.damageProfileId)"
+        }
+        $balanceProfileDamage[[string]$entry.damageProfileId] = $entry
+    }
+    foreach ($entry in @($balanceProfileDocument.skills)) {
+        Assert-JsonInteger $entry.skillId 'balance profile skillId' 1 ([uint32]::MaxValue)
+        if ($balanceProfileSkills.ContainsKey([uint32]$entry.skillId)) {
+            throw "Duplicate balance profile skill: $($entry.skillId)"
+        }
+        $balanceProfileSkills[[uint32]$entry.skillId] = $entry
+    }
+    foreach ($entry in @($balanceProfileDocument.bosses)) {
+        Assert-StableId $entry.archetypeId 'balance profile boss archetypeId'
+        if ($balanceProfileBosses.ContainsKey([string]$entry.archetypeId)) {
+            throw "Duplicate balance profile boss: $($entry.archetypeId)"
+        }
+        $balanceProfileBosses[[string]$entry.archetypeId] = $entry
+    }
+}
+
 $damageDocument = Read-JsonDocument 'Data/Balance/DamageProfiles.json'
 Assert-ExactProperties $damageDocument @('schema','formatVersion','profiles') 'damage document'
 Assert-JsonString $damageDocument.schema 'damage document schema'
@@ -997,63 +1083,6 @@ foreach ($profile in @($damageDocument.profiles)) {
         "DAMAGE`t$($profile.damageProfileId)`t$ratePercent`t$damageCoefficientBp`t$damageAddend")
 }
 
-# A balance profile overrides existing fields of the authored documents only; it
-# never introduces a property, so every Assert-ExactProperties below still holds.
-$balanceProfilePlayers = @{}
-$balanceProfileSkills = @{}
-$balanceProfileBosses = @{}
-$balanceProfileStaggerScale = 0
-$balanceProfileMadnessAddPercent = -1
-$balanceProfileDamage = @{}
-if (-not [string]::IsNullOrWhiteSpace($BalanceProfile)) {
-    $profileRelativePath = "Data/Balance/Profiles/$BalanceProfile.balanceprofile.json"
-    $balanceProfileDocument = Read-JsonDocument $profileRelativePath
-    Assert-ExactProperties $balanceProfileDocument @(
-        'schema','formatVersion','profileId','displayName','staggerGaugeScale',
-        'players','skills','bosses','monsters',
-        'madnessGaugeAddPercent','damageProfiles') 'balance profile document'
-    Assert-JsonString $balanceProfileDocument.schema 'balance profile schema'
-    Assert-JsonInteger $balanceProfileDocument.formatVersion 'balance profile formatVersion' 1 1
-    if ($balanceProfileDocument.schema -ne 'lostark.balance-profile' -or
-        $balanceProfileDocument.profileId -cne $BalanceProfile) {
-        throw "Balance profile header is invalid: $profileRelativePath"
-    }
-    Assert-JsonInteger $balanceProfileDocument.staggerGaugeScale `
-        'balance profile staggerGaugeScale' 1 100000
-    $balanceProfileStaggerScale = [uint32]$balanceProfileDocument.staggerGaugeScale
-    Assert-JsonInteger $balanceProfileDocument.madnessGaugeAddPercent `
-        'balance profile madnessGaugeAddPercent' 0 100
-    $balanceProfileMadnessAddPercent =
-        [int]$balanceProfileDocument.madnessGaugeAddPercent
-    foreach ($entry in @($balanceProfileDocument.players)) {
-        Assert-StableId $entry.characterClass 'balance profile player characterClass'
-        if ($balanceProfilePlayers.ContainsKey([string]$entry.characterClass)) {
-            throw "Duplicate balance profile player: $($entry.characterClass)"
-        }
-        $balanceProfilePlayers[[string]$entry.characterClass] = $entry
-    }
-    foreach ($entry in @($balanceProfileDocument.damageProfiles)) {
-        Assert-StableId $entry.damageProfileId 'balance profile damageProfileId'
-        if ($balanceProfileDamage.ContainsKey([string]$entry.damageProfileId)) {
-            throw "Duplicate balance profile damage profile: $($entry.damageProfileId)"
-        }
-        $balanceProfileDamage[[string]$entry.damageProfileId] = $entry
-    }
-    foreach ($entry in @($balanceProfileDocument.skills)) {
-        Assert-JsonInteger $entry.skillId 'balance profile skillId' 1 ([uint32]::MaxValue)
-        if ($balanceProfileSkills.ContainsKey([uint32]$entry.skillId)) {
-            throw "Duplicate balance profile skill: $($entry.skillId)"
-        }
-        $balanceProfileSkills[[uint32]$entry.skillId] = $entry
-    }
-    foreach ($entry in @($balanceProfileDocument.bosses)) {
-        Assert-StableId $entry.archetypeId 'balance profile boss archetypeId'
-        if ($balanceProfileBosses.ContainsKey([string]$entry.archetypeId)) {
-            throw "Duplicate balance profile boss: $($entry.archetypeId)"
-        }
-        $balanceProfileBosses[[string]$entry.archetypeId] = $entry
-    }
-}
 
 $skillDocument = Read-JsonDocument 'Data/Balance/PlayerSkills.json'
 Assert-ExactProperties $skillDocument @('schema','formatVersion','skills') 'skill document'
@@ -7451,7 +7480,7 @@ $presentationGenerationRow = @(
     [string]$presentationGeneration.generationId
 ) -join "`t"
 
-$rows = @($damageRows + $skillRows + $playerRows + $bossRows +
+$rows = @($damageRows + $skillRows + $balanceProfileBuffRows + $playerRows + $bossRows +
 	$bossPartRows + $combatObjectRows + $rootMotionRows + $hitShapeRows +
 	$patternRows + @($presentationGenerationRow) | Sort-Object -Property @{
 		Expression = { Get-BootstrapRowSortKey -Row $_ } })

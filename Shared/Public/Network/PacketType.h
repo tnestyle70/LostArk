@@ -104,7 +104,7 @@ namespace LostArk::Shared
 	// 105 combines vehicle-flight move/snapshot fields with the Debug Esther request.
 	// The flight branch and main each used 104 for incompatible wire contracts.
 	// Both peers must use 105; all existing packet identities are preserved.
-	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 105;
+	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 106;
 
 	enum class WORLD_ID : std::uint16_t
 	{

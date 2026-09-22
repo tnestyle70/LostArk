@@ -319,6 +319,7 @@ void LostArk::Server::CGameRoom::Commit_PendingPlayerCommand(
 				&m_ServerNavigation))
 		{
 			player.isCombatReady = true;
+			Apply_SkillBuffs(player, command.iSkillId, actionStartTick);
 		}
 	}
 }
@@ -404,7 +405,32 @@ void LostArk::Server::CGameRoom::Handle_UseSkill(
 		&m_ServerNavigation))
 	{
 		playerIter->second.isCombatReady = true;
+		Apply_SkillBuffs(playerIter->second, useSkill.iSkillId, actionStartTick);
 	}
+
+}
+
+void LostArk::Server::CGameRoom::Apply_SkillBuffs(
+	SERVER_PLAYER& caster,
+	const std::uint32_t skillId,
+	const std::uint32_t serverTick)
+{
+	const CGameplayCatalog& catalog = m_GameplayCatalog.Active();
+	if (nullptr == catalog.Find_SkillBuffs(skillId))
+		return;
+	std::vector<SERVER_PLAYER*> allies;
+	allies.reserve(m_Players.size());
+	for (auto& entry : m_Players)
+		allies.push_back(&entry.second);
+	/* A debuff marks what the caster is fighting: every live boss of this room. */
+	std::vector<SERVER_WORLD_ENTITY*> enemies;
+	for (SERVER_WORLD_ENTITY& entity : m_WorldEntities)
+	{
+		if (WORLD_BOOTSTRAP_KIND::BOSS == entity.eKind && 0u != entity.iCurrentHp)
+			enemies.push_back(&entity);
+	}
+	CServerBuffRuntime::Apply_SkillBuffs(
+		catalog, skillId, caster, allies, enemies, serverTick);
 }
 
 void LostArk::Server::CGameRoom::Handle_RevivePlayer(

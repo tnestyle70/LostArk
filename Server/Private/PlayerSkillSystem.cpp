@@ -91,6 +91,8 @@ namespace
 		const std::uint32_t partDamage,
 		const std::uint32_t counterPower,
 		const std::uint32_t rawDamage,
+		const LostArk::Server::CGameplayCatalog& catalog,
+		const std::vector<LostArk::Shared::ACTIVE_BUFF>& casterBuffs,
 		const LostArk::Server::PLAYER_RUNTIME_PROFILE* pCasterProfile,
 		const LostArk::Server::PLAYER_SKILL_HIT* pHit,
 		const float sourceX,
@@ -106,6 +108,14 @@ namespace
 		incoming.iSourcePlayerId = sourcePlayerId;
 		incoming.iSkillId = skillId;
 		incoming.iRawDamage = kind <= 1u ? rawDamage : 0u;
+		/* What the caster's buffs add, and what the target's debuffs amplify. */
+		if (0u != incoming.iRawDamage)
+		{
+			incoming.iRawDamage = CServerBuffRuntime::Scale_Damage(
+				incoming.iRawDamage,
+				CServerBuffRuntime::Damage_DealtPercent(catalog, casterBuffs) +
+				CServerBuffRuntime::Damage_TakenPercent(catalog, target.ActiveBuffs));
+		}
 		/* Rolled per landed hit, as the original does: one skill can crit on
 		one target and stay ordinary on the next. */
 		if (0u != incoming.iRawDamage && nullptr != pCasterProfile &&
@@ -861,6 +871,7 @@ void LostArk::Server::CPlayerSkillSystem::Update_Projectiles(
 						skill->iCounterPower,
 						ownsDamage ? DamageOfSubHit(projectile.iTotalDamage, projectile.iSubHitTotal,
 							subHitIndex + mark->iAppliedCount) : 0u,
+						catalog, player.ActiveBuffs,
 						catalog.Find_Player(player.eCharacterClass),
 						&hit.Hit, projectile.fPositionX, projectile.fPositionZ,
 						projectile.fDirectionX, projectile.fDirectionZ,
@@ -915,6 +926,7 @@ void LostArk::Server::CPlayerSkillSystem::Update_Projectiles(
 						skill->iCounterPower,
 						ownsDamage ? DamageOfSubHit(projectile.iTotalDamage, projectile.iSubHitTotal,
 							subHitIndex) : 0u,
+						catalog, player.ActiveBuffs,
 						catalog.Find_Player(player.eCharacterClass),
 						&hit.Hit, projectile.fPositionX, projectile.fPositionZ,
 						projectile.fDirectionX, projectile.fDirectionZ,
@@ -1241,7 +1253,8 @@ void LostArk::Server::CPlayerSkillSystem::Update(
 		ApplyPlayerHitDamage(target,
 			player.iPlayerId, skill->iSkillId,
 			skill->iStaggerDamage, skill->iPartDamage, skill->iCounterPower,
-			rawDamage, catalog.Find_Player(player.eCharacterClass), pHit,
+			rawDamage, catalog, player.ActiveBuffs,
+			catalog.Find_Player(player.eCharacterClass), pHit,
 			player.fPositionX, player.fPositionZ,
 			player.fSkillAimDirectionX, player.fSkillAimDirectionZ,
 			serverTick, outDamageEvents);

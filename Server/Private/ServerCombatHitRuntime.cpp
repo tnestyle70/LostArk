@@ -5,6 +5,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <limits>
 
 namespace
 {
@@ -97,6 +98,169 @@ namespace
 			event.eHitFlag = LostArk::Shared::DAMAGE_HIT_FLAG::CRITICAL;
 		events.push_back(event);
 	}
+}
+
+namespace
+{
+	/* The room's fixed rate; a duration in milliseconds becomes whole ticks. */
+	constexpr std::uint32_t BUFF_TICK_HZ = 30u;
+
+	void GrantBuff(
+		std::vector<LostArk::Shared::ACTIVE_BUFF>& buffs,
+		const std::uint32_t buffId,
+		const std::uint32_t endTick)
+	{
+		for (LostArk::Shared::ACTIVE_BUFF& existing : buffs)
+		{
+			if (existing.iBuffId == buffId)
+			{
+				/* A recast refreshes rather than stacks, as the original does. */
+				existing.iEndTick = (std::max)(existing.iEndTick, endTick);
+				return;
+			}
+		}
+		if (buffs.size() >= LostArk::Shared::MAX_ACTIVE_BUFFS)
+			return;
+		LostArk::Shared::ACTIVE_BUFF granted{};
+		granted.iBuffId = buffId;
+		granted.iEndTick = endTick;
+		buffs.push_back(granted);
+	}
+}
+
+void LostArk::Server::CServerBuffRuntime::Apply_SkillBuffs(
+	const CGameplayCatalog& catalog,
+	const std::uint32_t skillId,
+	SERVER_PLAYER& caster,
+	std::vector<SERVER_PLAYER*>& allies,
+	std::vector<SERVER_WORLD_ENTITY*>& enemies,
+	const std::uint32_t serverTick)
+{
+	const std::vector<CGameplayCatalog::SKILL_BUFF_DEFINITION>* definitions =
+		catalog.Find_SkillBuffs(skillId);
+	if (nullptr == definitions)
+		return;
+	/* A shield is worth a share of the caster's maximum HP, as the original reads
+	it off the buff's caster rather than off whoever receives it. */
+	const PLAYER_RUNTIME_PROFILE* casterProfile =
+		catalog.Find_Player(caster.eCharacterClass);
+	const std::uint32_t casterMaximumHp =
+		nullptr == casterProfile ? 0u : casterProfile->iMaximumHp;
+	const auto grantShield = [&](SERVER_PLAYER& holder, const std::uint32_t percent)
+	{
+		if (0u == percent || 0u == casterMaximumHp)
+			return;
+		const std::uint64_t shield =
+			static_cast<std::uint64_t>(casterMaximumHp) * percent / 100ull;
+		holder.iShield = static_cast<std::uint32_t>((std::max<std::uint64_t>)(
+			holder.iShield, (std::min<std::uint64_t>)(
+				shield, (std::numeric_limits<std::uint32_t>::max)())));
+	};
+	for (const CGameplayCatalog::SKILL_BUFF_DEFINITION& definition : *definitions)
+	{
+		const std::uint32_t endTick = serverTick +
+			(definition.iDurationMs * BUFF_TICK_HZ + 999u) / 1000u;
+		switch (definition.eTarget)
+		{
+		case CGameplayCatalog::SKILL_BUFF_TARGET::SELF:
+			GrantBuff(caster.ActiveBuffs, definition.iBuffId, endTick);
+			grantShield(caster, definition.iShieldPercentOfMaxHp);
+			break;
+		case CGameplayCatalog::SKILL_BUFF_TARGET::ALLY:
+			/* The original counts the caster among the party it protects. */
+			GrantBuff(caster.ActiveBuffs, definition.iBuffId, endTick);
+			grantShield(caster, definition.iShieldPercentOfMaxHp);
+			for (SERVER_PLAYER* ally : allies)
+			{
+				if (nullptr == ally || ally == &caster || 0u == ally->iCurrentHp)
+					continue;
+				GrantBuff(ally->ActiveBuffs, definition.iBuffId, endTick);
+				grantShield(*ally, definition.iShieldPercentOfMaxHp);
+			}
+			break;
+		case CGameplayCatalog::SKILL_BUFF_TARGET::ENEMY:
+			for (SERVER_WORLD_ENTITY* enemy : enemies)
+			{
+				if (nullptr != enemy && 0u != enemy->iCurrentHp)
+					GrantBuff(enemy->ActiveBuffs, definition.iBuffId, endTick);
+			}
+			break;
+		}
+	}
+}
+
+void LostArk::Server::CServerBuffRuntime::Expire(
+	std::vector<LostArk::Shared::ACTIVE_BUFF>& buffs,
+	const std::uint32_t serverTick)
+{
+	buffs.erase(
+		std::remove_if(buffs.begin(), buffs.end(),
+			[serverTick](const LostArk::Shared::ACTIVE_BUFF& buff)
+			{
+				return buff.iEndTick <= serverTick;
+			}),
+		buffs.end());
+}
+
+void LostArk::Server::CServerBuffRuntime::Settle_Shield(
+	const CGameplayCatalog& catalog,
+	SERVER_PLAYER& player)
+{
+	if (0u == player.iShield)
+		return;
+	for (const LostArk::Shared::ACTIVE_BUFF& buff : player.ActiveBuffs)
+	{
+		const CGameplayCatalog::SKILL_BUFF_DEFINITION* definition =
+			catalog.Find_SkillBuff(buff.iBuffId);
+		if (nullptr != definition && 0u != definition->iShieldPercentOfMaxHp)
+			return;
+	}
+	player.iShield = 0u;
+}
+
+std::int32_t LostArk::Server::CServerBuffRuntime::Damage_DealtPercent(
+	const CGameplayCatalog& catalog,
+	const std::vector<LostArk::Shared::ACTIVE_BUFF>& buffs)
+{
+	std::int32_t percent = 0;
+	for (const LostArk::Shared::ACTIVE_BUFF& buff : buffs)
+	{
+		const CGameplayCatalog::SKILL_BUFF_DEFINITION* definition =
+			catalog.Find_SkillBuff(buff.iBuffId);
+		if (nullptr != definition)
+			percent += definition->iDamageDealtPercent;
+	}
+	return percent;
+}
+
+std::int32_t LostArk::Server::CServerBuffRuntime::Damage_TakenPercent(
+	const CGameplayCatalog& catalog,
+	const std::vector<LostArk::Shared::ACTIVE_BUFF>& buffs)
+{
+	std::int32_t percent = 0;
+	for (const LostArk::Shared::ACTIVE_BUFF& buff : buffs)
+	{
+		const CGameplayCatalog::SKILL_BUFF_DEFINITION* definition =
+			catalog.Find_SkillBuff(buff.iBuffId);
+		if (nullptr != definition)
+			percent += definition->iDamageTakenPercent;
+	}
+	return percent;
+}
+
+std::uint32_t LostArk::Server::CServerBuffRuntime::Scale_Damage(
+	const std::uint32_t damage,
+	const std::int32_t percent)
+{
+	if (0u == damage || 0 == percent)
+		return damage;
+	/* A stack of mitigation can never make a hit heal, so the floor is 1. */
+	const std::int64_t scaled =
+		static_cast<std::int64_t>(damage) * (100 + percent) / 100;
+	if (scaled < 1)
+		return 1u;
+	return static_cast<std::uint32_t>((std::min<std::int64_t>)(
+		scaled, static_cast<std::int64_t>((std::numeric_limits<std::uint32_t>::max)())));
 }
 
 LostArk::Server::SERVER_MVP_LEDGER_ROW& LostArk::Server::Find_Or_Add_MvpLedgerRow(
@@ -278,11 +442,23 @@ LostArk::Server::CServerCombatHitRuntime::Apply_WorldToPlayer(
 
 	const PLAYER_RUNTIME_PROFILE* playerProfile =
 		catalog.Find_Player(target.eCharacterClass);
-	const std::uint32_t damage = hit.bIgnoreDefense ? hit.iRawDamage :
+	const std::uint32_t mitigated = hit.bIgnoreDefense ? hit.iRawDamage :
 		CGameplayCatalog::Apply_Defense(
 			hit.iRawDamage, nullptr == playerProfile ? 0u : playerProfile->iDefense);
-	target.iCurrentHp = damage >= target.iCurrentHp ?
-		0u : target.iCurrentHp - damage;
+	/* A guardian's protection reduces what the hit finally takes off. */
+	const std::uint32_t damage = CServerBuffRuntime::Scale_Damage(
+		mitigated,
+		CServerBuffRuntime::Damage_TakenPercent(catalog, target.ActiveBuffs));
+	/* The shield takes the hit first and only what it cannot hold reaches HP. */
+	std::uint32_t throughShield = damage;
+	if (0u != target.iShield && 0u != throughShield)
+	{
+		const std::uint32_t absorbed = (std::min)(target.iShield, throughShield);
+		target.iShield -= absorbed;
+		throughShield -= absorbed;
+	}
+	target.iCurrentHp = throughShield >= target.iCurrentHp ?
+		0u : target.iCurrentHp - throughShield;
 	/* The original madness gauge has no passive fill: it only moves through a
 	skill effect or accumulate_damage_ratio, so the share of a player's maximum
 	HP a hit took is the share of the gauge it charges. A world without a

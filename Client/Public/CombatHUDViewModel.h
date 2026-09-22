@@ -35,6 +35,12 @@ namespace Client
 		std::uint32_t iServerTick = 0;
 		std::uint32_t iCurrentHp = 0;
 		std::uint32_t iMaximumHp = 0;
+		/* Absorbs damage before HP moves; drawn as its own track over the health
+		bar and printed as "(+n)" after the HP readout. */
+		std::uint32_t iShield = 0;
+		std::uint8_t iActiveBuffCount = 0;
+		LostArk::Shared::ACTIVE_BUFF ActiveBuffs[
+			LostArk::Shared::MAX_ACTIVE_BUFFS]{};
 		std::uint32_t iCurrentResource = 0;
 		std::uint32_t iMaximumResource = 0;
 		/* Class identity gauge. A maximum of 0 means the class has none and the
