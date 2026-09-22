@@ -1759,15 +1759,20 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 		else if (!fields.empty() && "DAMAGE" == fields[0])
 		{
 			std::uint32_t ratePercent = 0;
-			if (3u != fields.size() || !IsStableId(fields[1]) ||
+			DAMAGE_PROFILE profile{};
+			if (5u != fields.size() || !IsStableId(fields[1]) ||
 				!ParseNumber(fields[2], ratePercent) || 0u == ratePercent ||
 				ratePercent > MAXIMUM_DAMAGE_RATE_PERCENT ||
+				!ParseNumber(fields[3], profile.iAttackCoefficientBp) ||
+				!ParseNumber(fields[4], profile.iDamageAddend) ||
 				!m_DamageRatePercentByProfileId.emplace(
 					std::string(fields[1]), ratePercent).second)
 			{
 				m_strStatus = "Damage profile row is invalid";
 				return false;
 			}
+			profile.iRatePercent = ratePercent;
+			m_DamageProfileById.emplace(std::string(fields[1]), profile);
 		}
 		else if (!fields.empty() && "SKILL" == fields[0])
 		{
@@ -7945,6 +7950,29 @@ std::uint32_t LostArk::Server::CGameplayCatalog::Find_DamageRatePercent(
 {
 	const auto iter = m_DamageRatePercentByProfileId.find(damageProfileId);
 	return m_DamageRatePercentByProfileId.end() == iter ? 0u : iter->second;
+}
+
+const LostArk::Server::CGameplayCatalog::DAMAGE_PROFILE*
+LostArk::Server::CGameplayCatalog::Find_DamageProfile(
+	const std::string& damageProfileId) const
+{
+	const auto iter = m_DamageProfileById.find(damageProfileId);
+	return m_DamageProfileById.end() == iter ? nullptr : &iter->second;
+}
+
+std::uint32_t LostArk::Server::CGameplayCatalog::Resolve_Damage(
+	const std::uint32_t attackPower,
+	const DAMAGE_PROFILE& profile)
+{
+	if (0u == profile.iAttackCoefficientBp && 0u == profile.iDamageAddend)
+		return Resolve_Damage(attackPower, profile.iRatePercent);
+	const std::uint64_t scaled =
+		static_cast<std::uint64_t>(attackPower) *
+		static_cast<std::uint64_t>(profile.iAttackCoefficientBp) / 10000ull +
+		static_cast<std::uint64_t>(profile.iDamageAddend);
+	return scaled < 1ull ? 1u :
+		static_cast<std::uint32_t>((std::min<std::uint64_t>)(
+			scaled, (std::numeric_limits<std::uint32_t>::max)()));
 }
 
 std::uint32_t LostArk::Server::CGameplayCatalog::Resolve_Damage(

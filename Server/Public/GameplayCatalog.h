@@ -1492,6 +1492,22 @@ namespace LostArk::Server
 		std::uint32_t Find_DamageRatePercent(
 			const std::string& damageProfileId) const;
 
+		/* The original damage formula, read from the client's own tooltip macro:
+		   (attackPower * ValueF / 10000) + (ValueA + ValueB) / 2
+		so a skill carries an attack-power coefficient and a flat addend, summed
+		over the hits the tooltip shows. A profile published without the pair
+		keeps the older flat percent instead. */
+		struct DAMAGE_PROFILE final
+		{
+			std::uint32_t iRatePercent = 0;
+			std::uint32_t iAttackCoefficientBp = 0;
+			std::uint32_t iDamageAddend = 0;
+		};
+		[[nodiscard]] const DAMAGE_PROFILE* Find_DamageProfile(
+			const std::string& damageProfileId) const;
+		static std::uint32_t Resolve_Damage(
+			std::uint32_t attackPower, const DAMAGE_PROFILE& profile);
+
 		/* The one place a rate becomes a number, so player skills and boss
 		patterns cannot drift apart. Always at least 1 for a known profile: a hit
 		that connects should never read as a miss. */
@@ -1586,6 +1602,7 @@ namespace LostArk::Server
 			GUARDIAN_EMBER_PROFILE> m_EmberProfiles;
 		std::unordered_map<std::string, std::uint32_t>
 			m_DamageRatePercentByProfileId;
+		std::unordered_map<std::string, DAMAGE_PROFILE> m_DamageProfileById;
 		LostArk::Shared::GameplayDataRevision m_ActiveRevision{};
 		LostArk::Shared::GameplayDataRevision m_NonKoukuGameplayRevision{};
 		LostArk::Shared::GameplayDataRevision

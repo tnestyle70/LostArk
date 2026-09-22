@@ -980,7 +980,21 @@ foreach ($profile in @($damageDocument.profiles)) {
         $ratePercent -gt $maximumDamageRatePercent) {
         throw "Duplicate, zero, or out-of-range damage profile: $($profile.damageProfileId)"
     }
-    $damageRows.Add("DAMAGE`t$($profile.damageProfileId)`t$ratePercent")
+    # The original formula is attackPower * coefficient/10000 + a flat addend; a
+    # profile that supplies neither keeps the flat percent alone.
+    $damageCoefficientBp = 0
+    $damageAddend = 0
+    $damageOverride = $balanceProfileDamage[[string]$profile.damageProfileId]
+    if ($null -ne $damageOverride) {
+        Assert-JsonInteger $damageOverride.attackCoefficientBp `
+            'balance profile attackCoefficientBp' 0 2000000000
+        Assert-JsonInteger $damageOverride.damageAddend `
+            'balance profile damageAddend' 0 2000000000
+        $damageCoefficientBp = [uint32]$damageOverride.attackCoefficientBp
+        $damageAddend = [uint32]$damageOverride.damageAddend
+    }
+    $damageRows.Add(
+        "DAMAGE`t$($profile.damageProfileId)`t$ratePercent`t$damageCoefficientBp`t$damageAddend")
 }
 
 # A balance profile overrides existing fields of the authored documents only; it
@@ -990,13 +1004,14 @@ $balanceProfileSkills = @{}
 $balanceProfileBosses = @{}
 $balanceProfileStaggerScale = 0
 $balanceProfileMadnessAddPercent = -1
+$balanceProfileDamage = @{}
 if (-not [string]::IsNullOrWhiteSpace($BalanceProfile)) {
     $profileRelativePath = "Data/Balance/Profiles/$BalanceProfile.balanceprofile.json"
     $balanceProfileDocument = Read-JsonDocument $profileRelativePath
     Assert-ExactProperties $balanceProfileDocument @(
         'schema','formatVersion','profileId','displayName','staggerGaugeScale',
         'players','skills','bosses','monsters',
-        'madnessGaugeAddPercent') 'balance profile document'
+        'madnessGaugeAddPercent','damageProfiles') 'balance profile document'
     Assert-JsonString $balanceProfileDocument.schema 'balance profile schema'
     Assert-JsonInteger $balanceProfileDocument.formatVersion 'balance profile formatVersion' 1 1
     if ($balanceProfileDocument.schema -ne 'lostark.balance-profile' -or
@@ -1016,6 +1031,13 @@ if (-not [string]::IsNullOrWhiteSpace($BalanceProfile)) {
             throw "Duplicate balance profile player: $($entry.characterClass)"
         }
         $balanceProfilePlayers[[string]$entry.characterClass] = $entry
+    }
+    foreach ($entry in @($balanceProfileDocument.damageProfiles)) {
+        Assert-StableId $entry.damageProfileId 'balance profile damageProfileId'
+        if ($balanceProfileDamage.ContainsKey([string]$entry.damageProfileId)) {
+            throw "Duplicate balance profile damage profile: $($entry.damageProfileId)"
+        }
+        $balanceProfileDamage[[string]$entry.damageProfileId] = $entry
     }
     foreach ($entry in @($balanceProfileDocument.skills)) {
         Assert-JsonInteger $entry.skillId 'balance profile skillId' 1 ([uint32]::MaxValue)
@@ -7445,7 +7467,7 @@ $maximumGameplayBootstrapRows = [uint32]::Parse($maximumGameplayBootstrapRowsMat
 if ($rows.Count -eq 0 -or $rows.Count -gt $maximumGameplayBootstrapRows) {
     throw "Gameplay bootstrap row count must be in 1..$maximumGameplayBootstrapRows (got $($rows.Count))"
 }
-$gameplayBootstrapVersion = if ($rotationFormatVersion -eq 4) { 35 } elseif (
+$gameplayBootstrapVersion = if ($rotationFormatVersion -eq 4) { 36 } elseif (
 	$rotationFormatVersion -eq 3) { 21 } else { 18 }
 $lines = @("LOSTARK_GAMEPLAY_BOOTSTRAP`t$gameplayBootstrapVersion`t$($rows.Count)") + $rows
 

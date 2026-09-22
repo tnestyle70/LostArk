@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sqlite3
 from pathlib import Path
 from typing import Any
@@ -31,6 +32,12 @@ PROFILE_ID = "Retail"
 REFERENCE_SKILL_LEVEL = 10
 
 # EFTable_PC.PrimaryKey of the original class each playable class is built from.
+# Gunslinger and Slayer were never built out in this project, so their rows keep the
+# authored values and only these five take the original damage rates.
+DAMAGE_RATE_CLASSES = (
+    "LANCE_MASTER", "ARTIST", "DIMENSIONMASTER", "WARLORD", "GUARDIANKNIGHT",
+)
+
 CLASS_PC_KEY = {
     "LANCE_MASTER": 305,        # LanceMaster
     "GUNSLINGER": 512,          # Devilhunter_Female
@@ -59,13 +66,19 @@ EXTRA_MONSTER_NPC_KEY = {
     "MONSTER_KOUKU_CLOWN_BOX": 480720,
 }
 
+# A tooltip names the exact damage rows it shows and how many times each repeats, e.g.
+#   "창을 <FONT>2</FONT>회 휘둘러 <$MACRO physic_ch305 @1:340400/>, <$MACRO ... @1:340401/>"
+# so it is the oracle for a skill's total rate, not the raw row list (which also holds
+# tripod variants).  Only physic/magic macros are damage.
+TOOLTIP_MACRO = re.compile(r"<\$MACRO\s+(\w+)\s+@1:(\d+)")
+TOOLTIP_REPEAT = re.compile(r"<FONT[^>]*>(\d+)</FONT>\s*회")
+TOOLTIP_DAMAGE_MACRO = re.compile(r"^(physic|magic)", re.IGNORECASE)
+
 PROJECT_POLICY = {
     # The client tables ship no final player attack power: EFTable_PCStat is published
-    # with its payload columns removed.  The reference spec is the item level 1500
-    # weapon attack power cell, EFTable_ItemLevelOption.MaxDam at SecondaryKey 1500
-    # (LevelOptionId 23110000 / 24110000), which also lands mid-range of the attack
-    # power each class needs to clear Valtan gate 1 with four players in eight minutes.
-    "attackPower": 57048,
+    # with its payload columns removed, so this is a project number, not an official
+    # cell.  It is the one dial the original rates are balanced against.
+    "attackPower": 23000,
     # Player HP is MaxHpCon x the constitution stat.  The stat is server-side, so the
     # baseline is chosen to put a 250% Valtan pattern at ~43% of a Lance Master's bar.
     "constitutionBaseline": 60000,
@@ -206,7 +219,104 @@ def stagger_by_grade() -> dict[int, int]:
     }
 
 
-def build_skills(skills: sqlite3.Connection, authored: list[dict]) -> list[dict]:
+def tooltip_damage(
+    messages: sqlite3.Connection,
+    effects: sqlite3.Connection,
+    skill_id: int,
+    level: int,
+) -> tuple[int, int]:
+    """(attack coefficient in 1/10000, flat addend) summed over the tooltip's hits."""
+    row = messages.execute(
+        "SELECT MSG FROM GameMsg WHERE KEY = ?", (f"tip.desc.skill_{skill_id}",)
+    ).fetchone()
+    if row is None:
+        return 0, 0
+    text = str(row["MSG"])
+    coefficient = addend = 0
+    for match in TOOLTIP_MACRO.finditer(text):
+        if not TOOLTIP_DAMAGE_MACRO.match(match.group(1)):
+            continue
+        hit = damage_terms(effects, int(match.group(2)), level)
+        if hit is None:
+            continue
+        tail = text[match.end(): match.end() + 140]
+        repeat = TOOLTIP_REPEAT.search(tail)
+        times = int(repeat.group(1)) if (
+            repeat is not None and "<$MACRO" not in tail[:repeat.start()]) else 1
+        coefficient += hit[0] * times
+        addend += hit[1] * times
+    return coefficient, addend
+
+
+def damage_terms(
+    effects: sqlite3.Connection,
+    effect_pk: int,
+    level: int,
+) -> tuple[int, int] | None:
+    """One hit's (ValueF, (ValueA + ValueB) / 2), only for a real damage row."""
+    row = effects.execute(
+        "SELECT ValueA, ValueB, ValueF FROM SkillEffect WHERE PrimaryKey = ? "
+        "AND SecondaryKey = ? AND Key IN (1,2,3)", (effect_pk, level)).fetchone()
+    if row is None:
+        row = effects.execute(
+            "SELECT ValueA, ValueB, ValueF FROM SkillEffect WHERE PrimaryKey = ? "
+            "AND Key IN (1,2,3) ORDER BY SecondaryKey DESC LIMIT 1", (effect_pk,)).fetchone()
+    if row is None:
+        return None
+    return int(row["ValueF"]), (int(row["ValueA"]) + int(row["ValueB"])) // 2
+
+
+def tooltip_damage_rate(
+    messages: sqlite3.Connection,
+    effects: sqlite3.Connection,
+    skill_id: int,
+    level: int,
+) -> int:
+    """The skill's total rate as its own tooltip adds it up, or 0 when it shows none."""
+    row = messages.execute(
+        "SELECT MSG FROM GameMsg WHERE KEY = ?", (f"tip.desc.skill_{skill_id}",)
+    ).fetchone()
+    if row is None:
+        return 0
+    text = str(row["MSG"])
+    total = 0
+    for match in TOOLTIP_MACRO.finditer(text):
+        if not TOOLTIP_DAMAGE_MACRO.match(match.group(1)):
+            continue
+        value = damage_value(effects, int(match.group(2)), level)
+        if value is None:
+            continue
+        tail = text[match.end(): match.end() + 140]
+        repeat = TOOLTIP_REPEAT.search(tail)
+        # A repeat count belongs to the macro right before it, with no macro in between.
+        times = int(repeat.group(1)) if (
+            repeat is not None and "<$MACRO" not in tail[:repeat.start()]) else 1
+        total += value * times
+    return total
+
+
+def damage_value(
+    effects: sqlite3.Connection,
+    effect_pk: int,
+    level: int,
+) -> int | None:
+    """ValueA of one effect row, only when that row really is a damage effect."""
+    row = effects.execute(
+        "SELECT ValueA FROM SkillEffect WHERE PrimaryKey = ? AND SecondaryKey = ? "
+        "AND Key IN (1,2,3)", (effect_pk, level)).fetchone()
+    if row is None:
+        row = effects.execute(
+            "SELECT ValueA FROM SkillEffect WHERE PrimaryKey = ? AND Key IN (1,2,3) "
+            "ORDER BY SecondaryKey DESC LIMIT 1", (effect_pk,)).fetchone()
+    return None if row is None else int(row["ValueA"])
+
+
+def build_skills(
+    skills: sqlite3.Connection,
+    effects: sqlite3.Connection,
+    messages: sqlite3.Connection,
+    authored: list[dict],
+) -> list[dict]:
     stagger = stagger_by_grade()
     part_damage_by_level = PROJECT_POLICY["partDamageByLevel"]
     rows = []
@@ -219,13 +329,30 @@ def build_skills(skills: sqlite3.Connection, authored: list[dict]) -> list[dict]
         part_level = int(official["PartsAttackLevelTooltip"])
         if part_level not in part_damage_by_level:
             raise ValueError(f"Skill {skill_id} has unknown part level {part_level}")
-        rows.append({
+        row = {
             "skillId": skill_id,
             "cooldownMs": int(official["Cooltime"]),
             "resourceCost": int(official["CostMp"]),
             "staggerDamage": stagger[grade],
             "partDamage": part_damage_by_level[part_level],
-        })
+        }
+        # The basic attack is a combo whose stages divide their own damage, so it is not
+        # a quick-slot skill and keeps the authored rate.  A skill whose tooltip shows no
+        # damage keeps its authored rate too rather than dropping to zero.
+        if (entry["characterClass"] in DAMAGE_RATE_CLASSES
+                and entry["inputSlot"] != "LMB"
+                and entry["serverDamageProfileId"]):
+            level = REFERENCE_SKILL_LEVEL
+            levels = {int(r["SecondaryKey"]) for r in skills.execute(
+                "SELECT SecondaryKey FROM Skill WHERE PrimaryKey = ?", (skill_id,))}
+            if REFERENCE_SKILL_LEVEL not in levels and levels:
+                level = max(levels)
+            coefficient, addend = tooltip_damage(messages, effects, skill_id, level)
+            if coefficient > 0 or addend > 0:
+                row["damageProfileId"] = entry["serverDamageProfileId"]
+                row["attackCoefficientBp"] = coefficient
+                row["damageAddend"] = addend
+        rows.append(row)
     return rows
 
 
@@ -290,11 +417,15 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--table-root", type=Path, required=True,
                         help="Directory holding the unpacked EFTable_*.db files")
+    parser.add_argument("--message-root", type=Path, default=None,
+                        help="Directory holding EFTable_GameMsg.db (defaults to --table-root)")
     parser.add_argument("--project-root", type=Path,
                         default=Path(__file__).resolve().parents[2])
     parser.add_argument("--output", type=Path, default=None)
     args = parser.parse_args()
 
+    if args.message_root is None:
+        args.message_root = args.table_root
     balance_dir = args.project_root / "Data/Balance"
     output = args.output or balance_dir / "Profiles/Retail.balanceprofile.json"
 
@@ -306,6 +437,8 @@ def main() -> int:
 
     pcs = connect(args.table_root, "PC")
     skills = connect(args.table_root, "Skill")
+    effects = connect(args.table_root, "SkillEffect")
+    messages = connect(args.message_root, "GameMsg")
     balances = connect(args.table_root, "NpcBalance")
     stats = connect(args.table_root, "NpcStat")
 
@@ -317,7 +450,8 @@ def main() -> int:
         "staggerGaugeScale": PROJECT_POLICY["staggerGaugeScale"],
         "madnessGaugeAddPercent": PROJECT_POLICY["madnessGaugeAddPercent"],
         "players": build_players(pcs, players_document["players"]),
-        "skills": build_skills(skills, skills_document["skills"]),
+        "skills": build_skills(skills, effects, messages, skills_document["skills"]),
+        "damageProfiles": [],
         "bosses": build_bosses(balances, stats, bosses_document["bosses"]),
         "monsters": build_monsters(
             balances, stats, monsters_document["profiles"],
@@ -328,6 +462,17 @@ def main() -> int:
         ),
     }
 
+    # The Server reads the formula off the damage profile the skill points at.
+    profile["damageProfiles"] = [
+        {"damageProfileId": row["damageProfileId"],
+         "attackCoefficientBp": row["attackCoefficientBp"],
+         "damageAddend": row["damageAddend"]}
+        for row in profile["skills"] if "damageProfileId" in row
+    ]
+    for row in profile["skills"]:
+        row.pop("damageProfileId", None)
+        row.pop("attackCoefficientBp", None)
+        row.pop("damageAddend", None)
     output.parent.mkdir(parents=True, exist_ok=True)
     # core.autocrlf is true in this repository, so write what Git checks out and a
     # regenerated profile stays byte-identical instead of showing up as a change.
