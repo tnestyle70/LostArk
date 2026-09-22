@@ -4188,6 +4188,7 @@ bool_t Client::CEffectPresentationService::Requires_SourceBoneImportScaleNormali
 		strEffectAssetId.starts_with("effect.guardianknight.") ||
 		strEffectAssetId.starts_with("effect.esther.silian.") ||
 		strEffectAssetId.starts_with("effect.esther.inanna.") ||
+		strEffectAssetId.starts_with("effect.esther.ninave.") ||
 		(strEffectAssetId.starts_with("effect.valtan.action.") &&
 		strEffectAssetId.ends_with(".full.restore")) ||
 		strEffectAssetId == WARLORD_Q_SOURCE_BONE_SCALE.strEffectAssetId ||

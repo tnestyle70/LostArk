@@ -458,6 +458,10 @@ for ordinal, selection in enumerate(selections):
             'a60e035ff9e41d4099cdebe220d8e302': ('70a7b0749eb5904898747857eecc9da2', 4, 'opacity', [0, 4, 5, 6]),
             # Guardian ALT_V snow-rock StaticMesh: source LocalVF tangent-up and sky rows 7..9.
             'e5fe14836f42f94aad7d43d0499acdb7': ('0c1413bd3ee54d449ce7fdac8c7f1542', 7, 'none', [7, 8, 9]),
+            # Ninave Esther arrow body (fx_l_me_transition_05_8_ma, masked LocalVF): row 0 is
+            # particle RGBA (W is the mask threshold, XYZ tints the fresnel), TEXCOORD6 view,
+            # TEXCOORD7 up, sky rows 7..9; row 6.z only feeds the archived secondary MRT.
+            '77a224a19f03dd4683b192b1134b4832': ('0c1413bd3ee54d449ce7fdac8c7f1542', 7, 'color', [0, 6, 7, 8, 9]),
         }.get(sid) if arguments.profile_domain=='kouku' and not model else None
         # Valtan phase-two dust uses the same source tangent-up/sky carrier
         # with dynamic-parameter and sub-UV sprite VS permutations. Their
@@ -792,7 +796,10 @@ for ordinal, selection in enumerate(selections):
                 '63b3600fc7b02a43999ea2a77bb81937',
                 '52f3a078c5510e46a8de35cbed7fda61', 'fb6f0054b2bc094ab3b058418968b930',
                 # Terpeion wing ghost skin: CB2[3]/CB2[4] diffuse/specular overrides only.
-                '5f33bef7c823444d8983ab12adf5b7bb')), ('Unreviewed source pass constants', sid, pass_count)
+                '5f33bef7c823444d8983ab12adf5b7bb',
+                # Ninave Esther arrow mesh fx_l_me_transition_05_8_ma: CB2[3]/CB2[4]
+                # are colour scale/offset (mad) overrides only, same shape as the wing.
+                '77a224a19f03dd4683b192b1134b4832')), ('Unreviewed source pass constants', sid, pass_count)
         lines += [f'    float4 passValues[{pass_count}]; [unroll] for(uint passIndex=0u;passIndex<{pass_count}u;++passIndex) passValues[passIndex]=0.f;',
                   '    passValues[0]=float4(.5f,-.5f,.5f,.5f);']
         if decal or kouku_lit or model:

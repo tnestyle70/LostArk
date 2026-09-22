@@ -6575,6 +6575,11 @@
       "effectAssetId": "effect.esther.inanna.cameo.npc_sk_magicshield.full.restore",
       "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
       "authoringPath": "Effects/Authored/effect.esther.inanna.cameo.npc_sk_magicshield.full.restore.effect.json"
+    },
+    {
+      "effectAssetId": "effect.esther.ninave.cameo.npc_sk_parkunas.full.restore",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.esther.ninave.cameo.npc_sk_parkunas.full.restore.effect.json"
     }
   ]
 }

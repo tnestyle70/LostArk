@@ -380,11 +380,23 @@ def exact_texture_reuse(pattern, out):
     tables.install = install
 
 
-def native_occurrence_excluded(occurrence):
+def emitter_render_mode(module_inputs, occurrence):
+    record = module_inputs.get(occurrence['sourceEmitter'], {})
+    return (record.get('properties', {}).get('emitterrendermode') or {}).get('value', 'erm_normal')
+
+
+def native_occurrence_excluded(occurrence, module_inputs=None):
     if occurrence['rendererShape'] == 'animationTrail':
         return 'SOURCE_TRAILS_NOT_PROJECTED'
     if not occurrence['sourceMaterial'] and occurrence['rendererShape'] != 'mesh':
         return 'SOURCE_NULL_MATERIAL_NON_MESH_EMITTER'
+    # A drawing emitter on the engine default material has no native program
+    # and would project as a disabled sourceProfile. An ERM_None/Point emitter
+    # on that material is a no-draw simulation provider (Ninave esther_sk_01
+    # emitter_16 "111" feeds the arrow mesh) and stays for provider binding.
+    if occurrence['rendererShape'] != 'light' and (occurrence['sourceMaterial'] or '').rsplit('.', 1)[-1] == 'defaultparticle' \
+            and emitter_render_mode(module_inputs or {}, occurrence) not in ('erm_none', 'erm_point'):
+        return 'SOURCE_ENGINE_DEFAULT_MATERIAL_EMITTER'
     return None
 
 
@@ -397,8 +409,9 @@ def native(evidence, first, last):
     excluded, occurrences, records, defaults = [], [], {}, {}
     for clip in CLIPS:
         folder = evidence / 'stages' / clip
+        module_inputs = source.read(folder / 'source_module_inputs.json')['records']
         for occurrence in source.read(folder / 'source_occurrences.json'):
-            reason = native_occurrence_excluded(occurrence)
+            reason = native_occurrence_excluded(occurrence, module_inputs)
             if reason:
                 excluded.append(dict(elementId=occurrence['elementId'], sourceEmitter=occurrence['sourceEmitter'],
                     rendererShape=occurrence['rendererShape'], reason=reason))
@@ -459,8 +472,9 @@ def project_clip(evidence, clip, installed, deferred_programs):
     projection = evidence / 'projection' / clip
     reviewed = evidence / 'material' / 'reviewed'
     deferred = dict(deferred_programs)
-    deferred.update({o['elementId']: dict(reason=native_occurrence_excluded(o))
-                     for o in occurrences if native_occurrence_excluded(o)})
+    module_inputs = source.read(folder / 'source_module_inputs.json')['records']
+    deferred.update({o['elementId']: dict(reason=native_occurrence_excluded(o, module_inputs))
+                     for o in occurrences if native_occurrence_excluded(o, module_inputs)})
 
     # A deferred program whose exact source material and renderer shape already
     # has an installed native program reuses that installed material.
@@ -475,7 +489,6 @@ def project_clip(evidence, clip, installed, deferred_programs):
     # An emitter without a Lifetime module (teleport_01 emitter_5: UE3 infinite
     # lifetime) fails the portable carrier cardinality and would fail-close the
     # whole document; it is left out and recorded.
-    module_inputs = source.read(folder / 'source_module_inputs.json')['records']
     for o in occurrences:
         if not any(
                 module_inputs.get(m, {}).get('className') == 'particlemodulelifetime' for m in o['moduleOrder']):
@@ -519,11 +532,16 @@ def project_clip(evidence, clip, installed, deferred_programs):
         if PROFILE == 'cameo':
             notify = next(n for n in notifies if n['notifyId'] == element['sourcePresentation']['sourceEventId'])
             if notify.get('synthetic', {}).get('recentred'):
-                element['detail']['transform']['position'] = [0.0, 0.0, 0.0]
+                # +x is forward in the snapshot-root frame (Silian Exp_01 at 1/7.5/14 m).
+                position = notify['synthetic'].get('positionMeters') or [float(notify['synthetic'].get('forwardMeters', 0.0)), 0.0, 0.0]
+                element['detail']['transform']['position'] = [float(v) for v in position]
         for resource in element['resources']:
             if resource['slotId'] == 'meshModel':
                 resource['assetId'] = mesh_asset(occurrence['sourceMesh'])
     source.write(projection / 'dropped_duplicate_modules.json', duplicates)
+    bind_providers(document, index, by_id)
+    clamp_trail_budget(document)
+    audit_document(document)
     duration = math.ceil(max([e['detail']['timing']['startDelaySeconds'] + e['detail']['timing']['lifeTimeSeconds'] +
         max(e['detail']['particle']['lifeTimeSeconds']) for e in document['elements']] or [0]) * 1000)
     source.write(projection / 'candidate' / (asset_id(clip) + '.effect.json'), document)
@@ -534,6 +552,85 @@ def project_clip(evidence, clip, installed, deferred_programs):
             else 'snapshot-root' if e['actionCueAttachment'].get('enabled') else 'none' for e in document['elements'])),
         nativePrograms=sorted({e['material']['sourceProfile']['runtimeShaderProfileId'] for e in document['elements']
             if e['material'].get('sourceProfile', {}).get('enabled')}))
+
+
+LOCATION_EMITTER_CLASSES = ('particlemodulelocationemitter', 'efparticlemodulelocationemitter',
+                            'particlemodulelocationemitterdirect', 'efparticlemodulelocationemitterdirect')
+
+
+def bind_providers(document, index, by_id):
+    """Bind LocationEmitter modules to their provider element inside the same
+    original ParticleSystem occurrence (the Client requires the provider to
+    share particleSystemOccurrenceId), and mark ERM_None/Point emitters as
+    simulation-only providers. Anchor copies (<occurrence>.<anchor>) map back
+    to their occurrence."""
+    groups = collections.defaultdict(list)
+    for element in document['elements']:
+        occurrence_id = element['id'] if element['id'] in by_id else element['id'].rsplit('.', 1)[0]
+        groups[by_id[occurrence_id]['sourceNotify']].append((element, dict(by_id[occurrence_id], elementId=element['id'])))
+    for rows in groups.values():
+        library.bind_source_providers(dict(elements=[e for e, _ in rows]), index, [o for _, o in rows])
+
+
+MAX_DOCUMENT_PARTICLES = 8192
+MAX_DOCUMENT_TRAIL_POINTS = 2048
+
+
+def clamp_trail_budget(document):
+    """The codec caps the sum of trail maxPoints per document at 2048. Source
+    ribbons carry MaxParticleInTrailCount=500 each, far above the points a
+    sub-second point lifetime at 60 Hz can keep alive, so share the budget."""
+    trails = [e for e in document['elements'] if e['kind'] == 'trail']
+    if sum(e['detail']['trail']['maxPoints'] for e in trails) <= MAX_DOCUMENT_TRAIL_POINTS:
+        return
+    share = MAX_DOCUMENT_TRAIL_POINTS // len(trails)
+    for element in trails:
+        trail = element['detail']['trail']
+        alive = math.ceil(trail['pointLifeTimeSeconds'] / trail['sampleIntervalSeconds']) + 2
+        assert alive <= share, ('trail budget cannot hold a live trail', element['id'], alive, share)
+        trail['maxPoints'] = min(trail['maxPoints'], share)
+
+
+def audit_document(document):
+    """Refuse to install what the Client codec refuses without a message:
+    a drawing element whose sourceProfile is disabled, a source recipe
+    without exactly one Required/Lifetime/Spawn module, and a LocationEmitter
+    module without recipe identity or provider binding
+    (CEffectPlayback::Validate_SourceParticleProviders returns false silently)."""
+    problems = []
+    elements = {e['id']: e for e in document['elements']}
+    for element in document['elements']:
+        recipe = element['sourceRecipe']
+        if element['kind'] != 'light' and not recipe.get('simulationOnly') \
+                and not element['material'].get('sourceProfile', {}).get('enabled'):
+            problems.append(('disabled sourceProfile on drawing element', element['id']))
+        counts = collections.Counter(m['className'] for m in recipe['modules'])
+        for name in ('particlemodulerequired', 'particlemodulelifetime', 'particlemodulespawn'):
+            if counts[name] != 1:
+                problems.append((f'{name} count {counts[name]}', element['id']))
+        identity = (recipe.get('particleSystemOccurrenceId'), recipe.get('emitterName'))
+        for module in recipe['modules']:
+            if module['className'] not in LOCATION_EMITTER_CLASSES:
+                continue
+            literals = {v['propertyPath']: v['value'] for v in module['literals']}
+            if not literals.get('benabled', True):
+                continue
+            if not any(identity):
+                problems.append(('LocationEmitter module on a recipe without identity', element['id']))
+            provider = elements.get(literals.get('runtime.providerelementid', ''))
+            if literals.get('runtime.sourceprovidermissing'):
+                continue
+            if provider is None:
+                problems.append(('LocationEmitter provider is missing', element['id'], literals.get('emittername')))
+            elif (provider['sourceRecipe'].get('particleSystemOccurrenceId'), provider['sourceRecipe'].get('emitterName')) \
+                    != (identity[0], literals.get('emittername')):
+                problems.append(('LocationEmitter provider identity differs', element['id'], provider['id']))
+    particles = sum(round(e['detail']['particle']['maxParticles'] * e['detail']['particle'].get('sourceScale', {}).get('count', 1.0))
+                    for e in document['elements'] if e['kind'] == 'particle' or e['sourceRecipe'].get('rendererShape') in ('mesh', 'sprite', 'decal'))
+    trail_points = sum(e['detail']['trail']['maxPoints'] for e in document['elements'] if e['kind'] == 'trail')
+    if particles > MAX_DOCUMENT_PARTICLES or trail_points > MAX_DOCUMENT_TRAIL_POINTS:
+        problems.append(('document budget', dict(particles=particles, trailPoints=trail_points)))
+    assert not problems, ('document would be refused by the Client codec', problems[:8])
 
 
 def project(evidence, install):
