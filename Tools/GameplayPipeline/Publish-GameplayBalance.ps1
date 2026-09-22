@@ -1041,6 +1041,7 @@ if ($balanceProfileSkills.Count -gt 0) {
         $skill.cooldownMs = [uint32]$override.cooldownMs
         $skill.resourceCost = [uint32]$override.resourceCost
         $skill.staggerDamage = [uint32]$override.staggerDamage
+        $skill.partDamage = [uint32]$override.partDamage
     }
 }
 

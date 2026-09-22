@@ -87,6 +87,11 @@ PROJECT_POLICY = {
     # Authored SET_STAGGER_GAUGE values are 30 and 100; x400 makes the large window the
     # original 40000 of NpcBalance.ParalyzationPointMax.
     "staggerGaugeScale": 400,
+    # Skill.PartsAttackLevelTooltip is the original part-break level 1..3 and 0 for a
+    # skill that cannot break a part at all.  The Server subtracts partDamage straight
+    # from a plate's durability, so the level is the amount and the authored plate
+    # durability stays the project's own threshold.
+    "partDamageByLevel": {0: 0, 1: 1, 2: 2, 3: 3},
 }
 
 
@@ -186,6 +191,7 @@ def build_players(pcs: sqlite3.Connection, authored: list[dict]) -> list[dict]:
 
 def build_skills(skills: sqlite3.Connection, authored: list[dict]) -> list[dict]:
     stagger_by_grade = PROJECT_POLICY["staggerByGrade"]
+    part_damage_by_level = PROJECT_POLICY["partDamageByLevel"]
     rows = []
     for entry in authored:
         skill_id = int(entry["skillId"])
@@ -193,11 +199,15 @@ def build_skills(skills: sqlite3.Connection, authored: list[dict]) -> list[dict]
         grade = int(official["StiffnessTooltipType"])
         if grade not in stagger_by_grade:
             raise ValueError(f"Skill {skill_id} has unknown stagger grade {grade}")
+        part_level = int(official["PartsAttackLevelTooltip"])
+        if part_level not in part_damage_by_level:
+            raise ValueError(f"Skill {skill_id} has unknown part level {part_level}")
         rows.append({
             "skillId": skill_id,
             "cooldownMs": int(official["Cooltime"]),
             "resourceCost": int(official["CostMp"]),
             "staggerDamage": stagger_by_grade[grade],
+            "partDamage": part_damage_by_level[part_level],
         })
     return rows
 
