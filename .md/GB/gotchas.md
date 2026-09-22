@@ -1,5 +1,15 @@
 # LostArk merge 회귀 방지 정본
 
+### 발탄 원본 연출은 MapTool 개방 전에 배우 Prototype이 필요하다
+
+- WorldSequence 문서와 모델 파일이 있어도 `CWorldSequenceObject::PROTOTYPE_TAG`를
+  해당 Level에 등록하지 않으면 Prewarm Clone이 실패한다. Valtan Loader가 등록하고
+  MapTool은 이를 재사용한다. MapTool에서 성공했다는 사실은 Boss 경로의 생성 성공
+  증거가 아니다. 원본 배우 준비 실패 시 Camera만 계속 표시하지 않는다.
+- Workbench 후반 샘플링은 자신의 Effect world-root를 같은 프레임 commit하고
+  원본 사운드에 Timeline pause도 전달한다. pending Effect seek 자체는 허용되므로
+  commit 시점 차이를 영구 사운드 누락 원인으로 단정하지 않는다.
+
 ### 보스 연출 클립의 Character 계약과 로딩 초기화 rollback
 
 - BossCatalog의 bodyModel·animationSetId는 Client ActorCatalog가 허용하는 `Character/.../*.wmodel`이어야 한다. 같은 골격의 Map 전용 연출 모델을 직접 열 수 있다는 이유로 catalog ID에 넣으면 전체 catalog 초기화가 실패해 다른 Level 입장도 막힌다. publisher의 donor 지원도 같은 경로 계약으로 검증한다.
@@ -3044,6 +3054,27 @@ particle transform을 actor transform으로 쓰지 않는다. 신규 source nati
 
 Element rotation이 shader 좌표에 전달돼도 fixed-axis sprite의 최종 quad가 같은 emitter basis를 소비하는지 확인한다. 명시적 회전 편집은 공통 pivot helper와 기존 followEmitterAxisRotation을 함께 사용하며, camera/velocity billboard의 정책은 유지한다. 단일 선택을 unrelated animated sibling이 막지 않게 하되 서로 다른 부모 공간의 raw 위치 평균을 Group center로 쓰지 않는다. camera-relative offset은 pivot 회전 기대값에 포함하지 않는다. paused preview는 새 문서·birth history를 현재 cursor까지 재생성하는지도 확인한다. 실제 팡파레·fog와 source mesh 검증은09-22 EFFECT_ROTATION_PIVOT_IMPLEMENTATION_RESULT를 따른다.
 
+### 컷신 패턴 연결은 실제 Stage 입력과 최종 카메라 pose까지 검사한다
+
+Map Tool actor clip과 기존 패턴 occurrence를 먼저 대조한다. 이름이나 source player 선택문이
+존재하는 것만으로 연결 성공을 판단하지 않는다. 선택 조건에 사용하는 Stage ID가 실제 Server
+snapshot index에서 채워지는지 확인한다. source 배우/FX/WAV 수명은 카메라의 마지막 cut과
+다를 수 있으므로 카메라 반환이 source 정리 조건이 되어서는 안 된다. invocation-local camera
+age에는 offset을 더해 action age를 복원한다. camera smoothing에서 snapshot age로 전환할 때
+같은 occurrence의 시간이 역행하면 WAV까지 다시 seek될 수 있다. 기존 player elapsed로 경계를
+보호하되 사용자 Local Timeline rewind는 허용한다. 절대월드 camera projection은 tracking/blend
+적용 뒤에도 비교한다. BOSS_XZ가 남으면 raw key 검사가 통과해도 다른 구도가 된다.
+09-22 `VALTAN_MAPTOOL_CUTSCENE_PATTERN_LINK_RESULT.md`의 G17을 따른다.
+
 ### Effect 모델 그림자의 native coverage와 카메라
 
 skeletal ModelCue를 SHADOW group에 추가할 때 surface와 다른 animation clock이나 model clone을 만들지 않는다. 동일 evaluated frame의 pose/root/material track을 다시 사용한다. Shadow light의 View/Proj를 source material의 camera 입력으로 넘기면 view-dependent mask가 달라질 수 있으므로 raster light 행렬과 실제 scene camera 행렬을 분리한다. generic CDO CastShadow=true는 notify별 native override를 증명하지 않으며 별도 projectile/decal의 존재와 시점을 함께 조사한다. optional castsShadow 누락은 false로 유지해 다른 Effect의 표시를 바꾸지 않는다.
+# Flow 저장과 공용 Balance loader의 선택 스킬 필드
+
+Boss Tool의 Save Flow는 BalanceTool이 소유한 canonical writer를 사용한다.
+발탄 source-manifest가 통과해도 BalanceTool::Reload의 PlayerSkills 파싱 실패로
+writer admission이 거부될 수 있다. `invalid skill definition`이면 publisher의
+선택 필드와 UI의 strict 객체 검사를 함께 대조한다. rootMotionScale은 optional로
+읽기/범위 검증/직렬화까지 보존하며 unknown-field 검사를 제거하거나 스킬 필드를
+삭제하지 않는다. 미저장 Flow를 확보하기 전에 Load Flow/종료를 안내하지 않는다.
+09-22 VALTAN_FLOW_SAVE_SKILL_COMPAT_RESULT에 실제 복구와 빌드 증거를 기록했다.

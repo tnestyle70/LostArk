@@ -295,6 +295,8 @@ namespace Client
 			const CWorldDestructionProjectionDocument*
 				pWorldDestructionProjection = nullptr;
 			bool_t bDeferLocalCharacterClassReplacement = false;
+			/* Retire editor-only wall overrides before authoritative projection. */
+			std::function<bool_t(std::string&)> beforeWorldDestructionProjection;
 			/* Optional main-thread presentation edge. The reliable Server
 			despawn remains authoritative; Levels may attach non-gameplay
 			presentation such as a BGM transition without parsing packets. */

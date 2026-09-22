@@ -4,10 +4,74 @@
 from __future__ import annotations
 
 import json
+import subprocess
 from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[2]
+
+# Execute the actual publisher loop, not a reimplementation of its predicate.
+subprocess.run([
+    'powershell', '-NoProfile', '-Command', r'''
+$ErrorActionPreference = 'Stop'
+$tokens = $null; $errors = $null
+$ast = [System.Management.Automation.Language.Parser]::ParseFile(
+    (Join-Path (Get-Location) 'Tools/GameplayPipeline/Publish-GameplayBalance.ps1'),
+    [ref]$tokens, [ref]$errors)
+if ($errors.Count) { throw 'Publisher syntax error' }
+$loops = @($ast.FindAll({param($node)
+    $node -is [System.Management.Automation.Language.ForEachStatementAst] -and
+    $node.Variable.VariablePath.UserPath -eq 'keyframe' -and
+    $node.Extent.Text.Contains('Cinematic cue does not look at its pattern landing anchor')
+}, $true))
+if ($loops.Count -ne 1) { throw 'Expected one landing-frame validation loop' }
+$validate = [scriptblock]::Create($loops[0].Extent.Text)
+$ownsMotion = $true
+foreach ($mode in @('WORLD','BOSS_XZ')) {
+    $tracking = @{Mode=$mode}
+    foreach ($kind in @('LEAP_TO_ANCHOR','LEAP_TO_TARGET')) {
+        $anchor = @{Kind=$kind; X=1; Z=2; AnchorId='test.anchor'}
+        foreach ($aligned in @($true,$false)) {
+            $x = if ($aligned) { 1 } else { 10 }
+            $cue = @{cueId='test.cue'; keyframes=@(@{lookAt=@($x,5,2)})}
+            $rejected = $false
+            try { & $validate } catch {
+                if (-not $_.Exception.Message.StartsWith('Cinematic cue does not look')) { throw }
+                $rejected = $true
+            }
+            $expected = $kind -eq 'LEAP_TO_TARGET' -and -not $aligned
+            if ($rejected -ne $expected) { throw "Wrong framing admission: $mode/$kind/$aligned" }
+        }
+    }
+    $anchor.Kind = 'LEAP_TO_ANCHOR'
+    $cue.keyframes = @(@{lookAt=@(1,2)})
+    $rejected = $false
+    try { & $validate } catch {
+        if (-not $_.Exception.Message.StartsWith('Cinematic keyframe lookAt is malformed')) { throw }
+        $rejected = $true
+    }
+    if (-not $rejected) { throw 'Malformed source lookAt was admitted' }
+}
+Write-Output 'ok: publisher landing-frame contract (10 cases)'
+'''], cwd=ROOT, check=True)
+
+# The source player cannot clone an actor merely because its resource is
+# present. The raid must register the factory before Level activation, without
+# requiring the user to open Map Tool first.
+loader_source = (ROOT / "Client/Private/Loader.cpp").read_text(encoding="utf-8-sig")
+valtan_loader = loader_source.split("HRESULT CLoader::Ready_For_ValtanArena()", 1)[1].split(
+    "HRESULT CLoader::Ready_For_KakulSaydonArena()", 1
+)[0]
+assert 'CWorldSequenceObject::PROTOTYPE_TAG' in valtan_loader
+assert valtan_loader.index('CWorldSequenceObject::PROTOTYPE_TAG') < valtan_loader.index(
+    'CWorldSequencePlayer::Prepare_AreaLoad'
+)
+assert 'CWorldSequenceObject::Create(m_pDevice, m_pContext)' in valtan_loader
+maptool_source = (ROOT / "Client/Private/MapTool_Cutscenes.cpp").read_text(encoding="utf-8-sig")
+factory = maptool_source.split('bool_t Client::CMapTool::Ensure_WorldObjectPrototype()', 1)[1].split(
+    'const Client::CMapTool::EDITOR_CUTSCENE*', 1
+)[0]
+assert 'ETOUI(LEVEL::VALTAN_ARENA) == m_iAuthoringLevelIndex' in factory
 
 
 def load(relative: str) -> dict:
@@ -82,7 +146,7 @@ LINKS = (
         "roar",
         (
             ("STEP_04", 2800, "camera.valtan.source.wall-break.step-04", 0, 2800),
-            ("STEP_05", 5000, "camera.valtan.source.wall-break.step-05", 0, 3924),
+            ("STEP_05", 5000, "camera.valtan.source.wall-break.step-05", 0, 2200),
         ),
     ),
     (
@@ -268,7 +332,114 @@ assert "primary replicated Valtan / camera-right fallback" not in level_source
 assert "XMMatrixRotationY(XMConvertToRadians(previewYawDegrees))" in preview_panel_source
 
 print(
-    "ok: 5 Map Tool Valtan cutscenes link their source actor tracks and camera "
-    "cues to the same Action Workbench clock; Server-exact Play and canonical "
-    "arena local placement are wired"
+    "ok: 5 cutscene source-player paths and camera invocation IDs are wired; "
+    "this structural test does not prove camera geometry or visual fidelity"
 )
+
+# Unlike the wiring assertions above, inspect actual source animation chains
+# and every millisecond of the two projected roar camera cues.
+from sync_valtan_roar_pattern_camera import candidates
+expected, evidence = candidates(ROOT)
+assert expected["Data/Encounters/Valtan/ValtanCinematicCamera.json"] == cameras
+assert expected["Data/Valtan/Valtan.presentation.json"] == presentation
+assert len(evidence["animationMatches"]) == 5
+assert "sourceStartMs + sequence->durationMs" in level_source
+assert "timeMs >= static_cast<f32_t>(sourceSequence->durationMs)" in level_source
+assert "input.strStageId = pattern->stages[input.iStageIndex].stageId;" in level_source
+source_update = level_source.index("if (!Update_SourceCinematic(input))")
+camera_return = level_source.index("if (!hasCameraPose)")
+assert source_update < camera_return, "source actor/FX must outlive the last camera cut"
+assert "sourceOffsetMs + stageAgeSeconds * 1000.f" in level_source
+assert "!changed && m_SourceCinematicPlayer.Try_GetElapsedMs(prefix + selected, previousSourceMs)" in level_source
+assert "timeMs = (std::max)(timeMs, previousSourceMs)" in level_source
+assert '(input.strStageId == "IMPACT_HOLD" && stageAgeSeconds >= 0.6f)' in level_source
+for cue in cameras["cues"]:
+    if cue.get("patternId") == "VALTAN_SIX_PIZZA_106" or (
+        cue.get("patternId") == "VALTAN_ARENA_BREAK_109" and
+        cue.get("stageId") in ("IMPACT_HOLD", "WIDE_REVEAL", "RECOVERY")
+    ):
+        assert cue.get("trackingMode", "WORLD") == "WORLD"
+        assert cue.get("transitionInMs", 0) == cue.get("transitionOutMs", 0) == 0
+print("ok: 5 unique animation-chain matches; roar camera geometry <= 2mm / 0.002deg at 1ms; source lifetime bounded")
+
+local_source = level_source.split('bool_t CLevel_ValtanArena::Debug_SampleActionWorkbenchCinematic(', 1)[1].split(
+    'void CLevel_ValtanArena::Debug_StopActionWorkbenchCinematic()', 1
+)[0]
+assert 'const bool_t paused' in local_source
+assert 'm_ActionWorkbenchCinematicPlayer.Set_Paused(paused)' in local_source
+assert local_source.index('Set_Paused(paused)') < local_source.index('m_ActionWorkbenchCinematicPlayer.Play(')
+assert 'targets.bCommitWorldRootEffectsAfterSpawn = true' in local_source
+assert 'valtanPreview.iPositionMs, valtanPreview.bPaused' in main_app_source
+assert 'activeValtanSession && valtanCinematicSampleReady && local != currentValtanSamples.end()' in main_app_source
+assert 'Set_CinematicPreviewStatus(cinematicStatus)' in main_app_source
+assert workbench_source.count('m_strCinematicPreviewStatus.c_str()') == 2
+runtime_world = load('Client/Bin/DataFiles/Map/LV_LUT_HEARTRB_ED.worldsequences.json')
+runtime_instances = {row['instanceId']: row for row in runtime_world['instances']}
+runtime_templates = {row['sequenceId']: row for row in runtime_world['templates']}
+runtime_objects = {row['objectId']: row for row in runtime_world['objectResources']}
+objects = {row['objectId']: row for row in world['objectResources']}
+for cutscene_id, _, _, _ in LINKS:
+    for instance_id in authoring_cutscenes[cutscene_id]['worldInstanceIds']:
+        instance = world_instances[instance_id]
+        assert runtime_instances[instance_id] == instance, instance_id
+        assert runtime_templates[instance['templateId']] == world_templates[instance['templateId']], instance_id
+        for binding in instance['bindings']:
+            if binding['targetKind'] == 'OBJECT_RESOURCE':
+                assert runtime_objects[binding['targetId']] == objects[binding['targetId']], binding['targetId']
+print('ok: Valtan Loader actor factory, Map Tool reuse, pause, same-frame FX, failure camera gate and source payload parity (structural; visual/audio not run)')
+
+# Local Play must resolve the SAME stage bindings and published emitter membership,
+# without sending a pretend Server event or moving the authoritative impact time.
+wall_events = load('Data/Encounters/Valtan/ValtanWorldEvents.json')
+wall_profiles = {p['groupId']: p for p in load(
+    'Client/Bin/DataFiles/World/LV_LUT_HEARTRB_ED.worlddestructionpresentation.json')['profiles']}
+wall_groups = {g['groupId']: g for g in wall_events['groups']}
+wall_projection = {g['groupId']: g for g in load(
+    'Client/Bin/DataFiles/World/LV_LUT_HEARTRB_ED.worlddestruction.json')['groups']}
+wall_mutations = {m['mutationId']: m for m in wall_events['mutations']}
+gameplay = load('Data/Valtan/Valtan.gameplay.json')
+wall_pattern = next(p for p in gameplay['patterns'] if p['patternId'] == 'VALTAN_ARENA_BREAK_109')
+offsets = {}
+duration = 0
+for stage in wall_pattern['stages']:
+    offsets[stage['stageId']] = duration
+    duration += stage['durationMs']
+projected = set()
+wall_count = 0
+for binding in wall_events['bindings']:
+    if not (binding['enabled'] and binding['patternId'] == 'VALTAN_ARENA_BREAK_109'
+            and binding['triggerKind'] == 'STAGE_ENTER'):
+        continue
+    mutation = wall_mutations[binding['mutationId']]
+    group = wall_groups[mutation['groupId']]
+    profile = wall_profiles[group['groupId']]
+    assert profile['mutationId'] == mutation['mutationId']
+    projection = wall_projection[group['groupId']]
+    assert projection['mutationId'] == mutation['mutationId'] and not projection['removesGround']
+    assert set(projection['memberPlacementIds'] + projection['suppressionAliasPlacementIds']) == set(group['memberPlacementIds'])
+    members = set()
+    for emitter in profile['emitters']:
+        ids = [emitter['sourceRuntimePlacementId'], *emitter['suppressionAliasPlacementIds']]
+        assert not projected.intersection(ids), binding['bindingId']
+        projected.update(ids)
+        members.update(ids)
+        assert offsets[binding['stageId']] + binding['offsetMs'] == 1600
+        assert 1600 + emitter['lifetimeSeconds'] * 1000 <= duration
+        wall_count += 1
+    assert members == set(group['memberPlacementIds']), binding['bindingId']
+assert 0 < wall_count <= 256 and len(projected) <= 256
+assert 'Debug_PrepareActionWorkbenchDestruction(Pattern, status)' in workbench_source
+assert main_app_source.index('Debug_SampleActionWorkbenchDestruction(') < main_app_source.index('Debug_SampleActionWorkbenchCinematic(')
+replication = (ROOT / 'Client/Private/ClientReplication.cpp').read_text(encoding='utf-8-sig')
+for start, end, apply_name in [
+    ('bool Client::CClientReplication::Apply_WorldDestructionFullSync(', 'bool Client::CClientReplication::Apply_EncounterPropSync(', 'Apply_Full('),
+    ('bool Client::CClientReplication::Apply_WorldDestructionDelta(', 'm_WorldDestructionDiagnostics = delta.Diagnostics;', 'Apply_Delta('),
+]:
+    block = replication.split(start, 1)[1].split(end, 1)[0]
+    assert block.index('beforeWorldDestructionProjection(status)') < block.index(apply_name)
+controller = (ROOT / 'Client/Private/DestructionSimulationController.cpp').read_text(encoding='utf-8-sig')
+external = controller.split('::Sample_ExternalTime(', 1)[1].split('::Step_Once()', 1)[0]
+assert 'targetStep < currentStep' in external and 'currentStep < targetStep' in external
+physics = (ROOT / 'Client/Private/DestructionSimulationRuntime.cpp').read_text(encoding='utf-8-sig')
+assert 's_pClockOwner != this' in physics and 's_pClockOwner = nullptr' in physics
+print(f'ok: local wall bindings resolve {wall_count} emitters / {len(projected)} source+alias placements at 1600ms; cleanup precedes Server projection (structural, not visual)')

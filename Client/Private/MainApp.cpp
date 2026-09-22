@@ -3129,19 +3129,38 @@ void CMainApp::Update(const f32_t fTimeDelta)
 	const bool activeValtanSession = m_pSequencerTool && m_pSequencerTool->Uses_ValtanSession() &&
 		m_bDeveloperToolsVisible && IsDebugToolVisible(DEBUG_TOOL::SEQUENCER) &&
 		m_pAnimationTool && valtanPreview.bPlaying;
+	bool valtanCinematicSampleReady = true;
+	std::string cinematicStatus;
 	if (auto* arena = CLevel_ValtanArena::Get_Active())
 	{
 		if (activeValtanSession)
 		{
-			std::string cinematicStatus;
-			if (!arena->Debug_SampleActionWorkbenchCinematic(
-				valtanPreview.strPatternId, valtanPreview.iPositionMs,
-				CAnimationTargetService::Resolve_Boss(), cinematicStatus) &&
-				!cinematicStatus.empty())
-				m_strToolStatus = std::move(cinematicStatus);
+			std::string wallStatus;
+			const bool wallReady = arena->Debug_SampleActionWorkbenchDestruction(
+				valtanPreview.strPatternId, valtanPreview.iPositionMs, wallStatus);
+			valtanCinematicSampleReady = arena->Debug_SampleActionWorkbenchCinematic(
+				valtanPreview.strPatternId, valtanPreview.iPositionMs, valtanPreview.bPaused,
+				CAnimationTargetService::Resolve_Boss(), cinematicStatus);
+			if (!wallReady)
+			{
+				cinematicStatus += " | " + wallStatus;
+				m_strToolStatus = wallStatus;
+			}
+			else if (valtanPreview.strPatternId == "VALTAN_ARENA_BREAK_109")
+				cinematicStatus += " | " + wallStatus;
+			if (!valtanCinematicSampleReady && !cinematicStatus.empty())
+				m_strToolStatus = cinematicStatus;
 		}
-		else arena->Debug_StopActionWorkbenchCinematic();
+		else
+		{
+			std::string wallStatus;
+			if (!arena->Debug_StopActionWorkbenchDestruction(wallStatus))
+				m_strToolStatus = wallStatus;
+			arena->Debug_StopActionWorkbenchCinematic();
+		}
 	}
+	if (m_pValtanActionWorkbench)
+		m_pValtanActionWorkbench->Set_CinematicPreviewStatus(cinematicStatus);
 	std::vector<BOSS_STAGE_ENVIRONMENT_SAMPLE> currentValtanSamples;
 	CValtan::Collect_StageEnvironmentSamples(currentValtanSamples);
 	if (m_pKoukuPresentationPlayer)
@@ -3156,7 +3175,7 @@ void CMainApp::Update(const f32_t fTimeDelta)
 	{
 		const auto local = std::find_if(currentValtanSamples.begin(), currentValtanSamples.end(),
 			[](const auto& sample) { return sample.bPreview; });
-		if (activeValtanSession && local != currentValtanSamples.end())
+		if (activeValtanSession && valtanCinematicSampleReady && local != currentValtanSamples.end())
 		{
 			std::string cameraStatus;
 			if (!m_pCameraTool->Sample_CompositionPreview(*local, cameraStatus) && !cameraStatus.empty())

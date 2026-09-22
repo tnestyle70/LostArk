@@ -489,6 +489,13 @@ bool Client::CClientReplication::Apply_WorldDestructionFullSync(
 		return false;
 	}
 	std::string status;
+	if (m_Desc.beforeWorldDestructionProjection &&
+		!m_Desc.beforeWorldDestructionProjection(status))
+	{
+		m_strPendingPresentationFailure = "World preview cleanup failed: " + status;
+		m_hasFatalWorldDestructionFailure = true;
+		return false;
+	}
 	if (!m_WorldDestructionProjectionRuntime.Apply_Full(
 		*m_Desc.pWorldDestructionProjection, fullSync,
 		*m_Desc.pDeployPropRuntime, status))
@@ -638,6 +645,13 @@ bool Client::CClientReplication::Apply_WorldDestructionDelta(
 	}
 	std::string status;
 	std::vector<LostArk::Shared::WORLD_DESTRUCTION_EVENT_WIRE> liveEvents;
+	if (m_Desc.beforeWorldDestructionProjection &&
+		!m_Desc.beforeWorldDestructionProjection(status))
+	{
+		m_strPendingPresentationFailure = "World preview cleanup failed: " + status;
+		m_hasFatalWorldDestructionFailure = true;
+		return false;
+	}
 	if (!m_WorldDestructionProjectionRuntime.Apply_Delta(
 		*m_Desc.pWorldDestructionProjection, delta,
 		*m_Desc.pDeployPropRuntime, status, &liveEvents))

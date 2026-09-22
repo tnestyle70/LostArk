@@ -6330,10 +6330,10 @@ function Assert-CinematicCameraKeyframes(
 }
 
 # A pattern that owns a landing anchor also owns every cinematic camera cue
-# bound to it. WORLD cues frame the anchor directly. BOSS_XZ follows the
-# replicated boss horizontally. Target-locked leap cameras retain their strict
-# landing-anchor framing; source Matinee cameras on anchor leaps use their own
-# authored source origin and look-at curve, translated by the existing consumer.
+# bound to it. BOSS_XZ follows the replicated boss horizontally; WORLD retains
+# absolute authored coordinates. Target-locked leap cameras retain their strict
+# landing-anchor framing. Fixed-anchor leaps may use source Matinee look-at
+# curves in either basis; the anchor owns boss movement, not cinematic framing.
 # BOSS_FACING and PLAYER_BOSS_FRAME are presentation-relative coordinate bases,
 # so their authored points are not compared with an absolute gameplay anchor.
 if ($serverMotionByPatternId.Count -ne 0) {
@@ -6450,7 +6450,7 @@ if ($serverMotionByPatternId.Count -ne 0) {
 				throw "Cinematic keyframe lookAt is malformed: $($cue.cueId)"
 			}
 			if ($ownsMotion -and $tracking.Mode -in @('WORLD','BOSS_XZ') -and
-				-not ($tracking.Mode -ceq 'BOSS_XZ' -and $anchor.Kind -ceq 'LEAP_TO_ANCHOR') -and
+				$anchor.Kind -cne 'LEAP_TO_ANCHOR' -and
 				([Math]::Abs([double]$keyframe.lookAt[0] - $anchor.X) -gt 0.05 -or
 				[Math]::Abs([double]$keyframe.lookAt[2] - $anchor.Z) -gt 0.05)) {
 				throw "Cinematic cue does not look at its pattern landing anchor $($anchor.AnchorId): $($cue.cueId)"

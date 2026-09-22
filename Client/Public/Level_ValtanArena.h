@@ -21,6 +21,9 @@
 #include "WorldDestructionProjectionDocument.h"
 #include "WorldPlayerNameplateView.h"
 #include "WorldSequencePlayer.h"
+#ifdef _DEBUG
+#include "DestructionSimulationController.h"
+#endif
 
 #include <array>
 
@@ -80,9 +83,15 @@ public:
     bool_t Debug_SampleActionWorkbenchCinematic(
         std::string_view patternId,
         uint32_t patternClockMs,
+        bool_t paused,
         const shared_ptr<CValtan>& previewBoss,
         std::string& status);
     void Debug_StopActionWorkbenchCinematic();
+	bool_t Debug_PrepareActionWorkbenchDestruction(
+		const VALTAN_PATTERN_VIEW& pattern, std::string& status);
+	bool_t Debug_SampleActionWorkbenchDestruction(
+		std::string_view patternId, uint32_t clockMs, std::string& status);
+	bool_t Debug_StopActionWorkbenchDestruction(std::string& status);
     bool_t Has_DebugValtanBoss() const;
     bool_t Is_DebugValtanBossCommandPending() const { return m_bDebugValtanDespawnPending || m_iDebugValtanSpawnToken != 0u; }
     const std::string& Get_DebugValtanBossCommandStatus() const { return m_strDebugValtanBossCommandStatus; }
@@ -335,6 +344,11 @@ private:
     weak_ptr<CValtan> m_pSourceCinematicBoss;
 #ifdef _DEBUG
     CWorldSequencePlayer m_ActionWorkbenchCinematicPlayer;
+	CDestructionSimulationController m_ActionWorkbenchDestruction;
+	CWorldDestructionDocument m_ActionWorkbenchDestructionGroup;
+	std::optional<DESTRUCTION_SIMULATION_PROFILE> m_PendingWorkbenchDestruction;
+	std::string m_strWorkbenchDestructionPattern;
+	std::string m_strWorkbenchDestructionFailure;
     std::string m_strActionWorkbenchCinematicPatternId;
     weak_ptr<CValtan> m_pActionWorkbenchCinematicBoss;
     float4x4_t m_ActionWorkbenchCinematicRestoreWorld{};

@@ -204,6 +204,10 @@ public:
 		CAMERA_TOOL_OPEN_REQUEST& OutRequest);
 	bool_t Consume_AnimationToolOpenRequest();
 	bool_t Consume_PreviewOwnerClaimRequest();
+	void Set_CinematicPreviewStatus(const std::string& status)
+	{
+		m_strCinematicPreviewStatus = status;
+	}
 	void Set_PreviewOwnerActive(bool_t bActive)
 	{
 		m_bPreviewOwnerActive = bActive;
@@ -595,6 +599,7 @@ private:
 	std::uint64_t m_iPreviewDraftGeneration = 0u;
 	bool_t m_bPreviewOwnerClaimRequested = false;
 	bool_t m_bPreviewOwnerActive = false;
+	std::string m_strCinematicPreviewStatus;
 	/* After a fully reloaded Save: publish the candidate/apply it to the live
 	   Server (Valtan Boss Tool Flow Save path) and refresh the on-disk runtime set. */
 	bool_t m_bAutoPublishAfterSave = false;

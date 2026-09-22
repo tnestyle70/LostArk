@@ -6,6 +6,14 @@ Product를 보게 만드는 실행 순서의 정본이다. `git pull` 성공과 
 
 ## 정본과 생성물
 
+### 카메라와 이동 anchor 검증
+
+고정 지점 도약 `LEAP_TO_ANCHOR`의 camera lookAt은 WORLD/BOSS_XZ 모두 원본
+연출 곡선을 사용할 수 있다. 이동 anchor는 보스 착지점을 소유하며 카메라의
+시선까지 고정하지 않는다. 추적 도약 `LEAP_TO_TARGET`의 착지점 시선 검사는
+계속 적용된다. 원본 카메라를 게시하기 위해 tracking을 BOSS_XZ로 바꾸면
+runtime에서 보스 변위가 추가되므로 원본 WORLD 좌표 계약을 유지한다.
+
 - 저작 정본: `Data/Valtan/Valtan.gameplay.json`, `Valtan.presentation.json`,
   `Valtan.combatobjects.json` 및 같은 폴더의 split 문서
 - Effect 정본: `Data/Effects/V2/Bindings/BOSS_VALTAN.effectv2bindings.json`과 reachable

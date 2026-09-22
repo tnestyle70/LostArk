@@ -27,6 +27,7 @@
 #include "MapPlacementRuntime.h"
 #include "MapStaticBatchObject.h"
 #include "WorldSequencePlayer.h"
+#include "WorldSequenceObject.h"
 #include "Navigation.h"
 #include "NetworkManager.h"
 #include "MonsterPresentationAssetService.h"
@@ -717,6 +718,16 @@ HRESULT CLoader::Ready_For_ValtanArena()
 	}
 
     Set_Status(TEXT("VALTAN: source cinematic world sequences"));
+    // Source actors are used by Server presentation and Workbench before Map
+    // Tool is ever opened. Register their clone factory in the Level load,
+    // under the same rollback scope as the other Valtan prototypes.
+    if (FAILED(CGameInstance::Get().Add_Prototype(
+        ETOUI(LEVEL::VALTAN_ARENA), CWorldSequenceObject::PROTOTYPE_TAG,
+        CWorldSequenceObject::Create(m_pDevice, m_pContext))))
+    {
+        Set_Status(TEXT("VALTAN: source cinematic object prototype failed"));
+        return E_FAIL;
+    }
     std::string worldSequenceStatus;
     if (!CWorldSequencePlayer::Prepare_AreaLoad(ETOUI(LEVEL::VALTAN_ARENA),
         pEntry->pMapAreaId, pEntry->MapLoadScope, worldSequenceStatus,
