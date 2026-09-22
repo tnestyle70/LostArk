@@ -17,6 +17,9 @@
 
 namespace
 {
+	constexpr std::chrono::seconds LOCAL_DEBUG_SERVER_STARTUP_TIMEOUT{ 30 };
+	constexpr std::chrono::milliseconds LOCAL_DEBUG_SERVER_RETRY_INTERVAL{ 250 };
+
 #ifdef _DEBUG
 	const char_t* Get_CharacterClassName(
 		const LostArk::Shared::CHARACTER_CLASS_ID characterClass)
@@ -105,26 +108,33 @@ void CLevel_Lobby::Update(const f32_t fTimeDelta)
 		CCharacterSelectionState::Cancel_PendingCreation();
 	}
 
-	Consume_EnterRejected();
-	Consume_EnterAccepted();
-
-	if (ENTRY_STATE::WAITING_FOR_APPROVAL == m_eEntryState)
+	if (ENTRY_STATE::WAITING_FOR_LOCAL_SERVER == m_eEntryState)
 	{
-		if (!CNetworkManager::Get().Is_Connected())
+		Update_LocalServerStartupWait();
+	}
+	else
+	{
+		Consume_EnterRejected();
+		Consume_EnterAccepted();
+
+		if (ENTRY_STATE::WAITING_FOR_APPROVAL == m_eEntryState)
 		{
-			Cancel_PendingEntry(
-				"Server disconnected before approving entry. Lobby remains active.",
-				LostArk::Shared::SESSION_DIAGNOSTIC_REASON::
-					CLIENT_CONNECTION_LOST,
-				"lobby.entry-approval-disconnected");
-		}
-		else if (std::chrono::steady_clock::now() >= m_ApprovalDeadline)
-		{
-			Cancel_PendingEntry(
-				"Server entry approval timed out after 5 seconds. Lobby remains active.",
-				LostArk::Shared::SESSION_DIAGNOSTIC_REASON::
-					CLIENT_APPROVAL_TIMEOUT,
-				"lobby.entry-approval-timeout");
+			if (!CNetworkManager::Get().Is_Connected())
+			{
+				Cancel_PendingEntry(
+					"Server disconnected before approving entry. Lobby remains active.",
+					LostArk::Shared::SESSION_DIAGNOSTIC_REASON::
+						CLIENT_CONNECTION_LOST,
+					"lobby.entry-approval-disconnected");
+			}
+			else if (std::chrono::steady_clock::now() >= m_ApprovalDeadline)
+			{
+				Cancel_PendingEntry(
+					"Server entry approval timed out after 5 seconds. Lobby remains active.",
+					LostArk::Shared::SESSION_DIAGNOSTIC_REASON::
+						CLIENT_APPROVAL_TIMEOUT,
+					"lobby.entry-approval-timeout");
+			}
 		}
 	}
 
@@ -258,55 +268,159 @@ bool_t CLevel_Lobby::Begin_NetworkEntry(
 		CHARACTER_ENTRY_IDENTITY_SOURCE::PENDING_CREATION ==
 		identity.eSource;
 
-	CNetworkManager& networkManager = CNetworkManager::Get();
-	networkManager.Close_ServerConnection();
-	const string serverHost =
-		LOBBY_COMMAND_PURPOSE::MAP_EDITOR_WORKSPACE == purpose ?
-		CNetworkManager::Resolve_MapEditorServerHost() :
-		CNetworkManager::Resolve_ServerHost();
-	if (!networkManager.Connect_To_Server(
-		serverHost,
-		CNetworkManager::DEFAULT_SERVER_PORT))
+	m_ePendingWorldId = eWorldId;
+	m_ePendingLevel = eTargetLevel;
+	m_ePendingPurpose = purpose;
+	m_ePendingCharacterClass = identity.eCharacterClass;
+	m_strPendingNickname = identity.strNickname;
+	m_hasPendingCharacterCreationEntry = usesPendingCreation;
+
+	switch (Submit_PendingNetworkEntry())
 	{
-		if (usesPendingCreation)
-			CCharacterSelectionState::Cancel_PendingCreation();
+	case ENTRY_REQUEST_RESULT::SENT:
+		return true;
+	case ENTRY_REQUEST_RESULT::CONNECTION_UNAVAILABLE:
+	{
+		if ("127.0.0.1" == m_strPendingServerHost)
+		{
+			Begin_LocalServerStartupWait();
+			return true;
+		}
 		const string diagnosticDetail = "Server connection failed for " +
-			serverHost + ":" +
+			m_strPendingServerHost + ":" +
 			to_string(CNetworkManager::DEFAULT_SERVER_PORT) + " (WSA " +
-			to_string(networkManager.Get_LastErrorCode()) + ").";
+			to_string(CNetworkManager::Get().Get_LastErrorCode()) + ").";
 		m_strStatus =
 			"Could not connect to Server. Check that Server is running, then try again.";
 		CLevelTransitionService::Report_NetworkRecovery(
 			"lobby.connect-failed", diagnosticDetail);
+		if (m_hasPendingCharacterCreationEntry)
+			CCharacterSelectionState::Cancel_PendingCreation();
+		Reset_PendingEntryState();
 		return false;
 	}
-
-	if (!networkManager.Send_EnterWorld(
-		eWorldId,
-		identity.eCharacterClass,
-		identity.strNickname))
+	case ENTRY_REQUEST_RESULT::SEND_FAILED:
 	{
-		if (usesPendingCreation)
-			CCharacterSelectionState::Cancel_PendingCreation();
 		const string diagnosticDetail = "C2S_ENTER_WORLD send failed (WSA " +
-			to_string(networkManager.Get_LastErrorCode()) + ").";
+			to_string(CNetworkManager::Get().Get_LastErrorCode()) + ").";
 		m_strStatus =
 			"Could not send the entry request. Check the Server connection, then try again.";
 		CLevelTransitionService::Report_NetworkRecovery(
 			"lobby.enter-send-failed", diagnosticDetail);
-		networkManager.Close_ServerConnection();
+		CNetworkManager::Get().Close_ServerConnection();
+		if (m_hasPendingCharacterCreationEntry)
+			CCharacterSelectionState::Cancel_PendingCreation();
+		Reset_PendingEntryState();
 		return false;
+	}
+	default:
+		Reset_PendingEntryState();
+		return false;
+	}
+}
+
+CLevel_Lobby::ENTRY_REQUEST_RESULT CLevel_Lobby::Submit_PendingNetworkEntry()
+{
+	CNetworkManager& networkManager = CNetworkManager::Get();
+	networkManager.Close_ServerConnection();
+	m_strPendingServerHost =
+		LOBBY_COMMAND_PURPOSE::MAP_EDITOR_WORKSPACE == m_ePendingPurpose ?
+		CNetworkManager::Resolve_MapEditorServerHost() :
+		CNetworkManager::Resolve_ServerHost();
+	if (!networkManager.Connect_To_Server(
+		m_strPendingServerHost,
+		CNetworkManager::DEFAULT_SERVER_PORT))
+	{
+		return ENTRY_REQUEST_RESULT::CONNECTION_UNAVAILABLE;
+	}
+
+	if (!networkManager.Send_EnterWorld(
+		m_ePendingWorldId,
+		m_ePendingCharacterClass,
+		m_strPendingNickname))
+	{
+		return ENTRY_REQUEST_RESULT::SEND_FAILED;
 	}
 
 	m_eEntryState = ENTRY_STATE::WAITING_FOR_APPROVAL;
-	m_ePendingWorldId = eWorldId;
-	m_ePendingLevel = eTargetLevel;
-	m_ePendingPurpose = purpose;
-	m_hasPendingCharacterCreationEntry = usesPendingCreation;
 	m_ApprovalDeadline =
 		std::chrono::steady_clock::now() + std::chrono::seconds(5);
+	m_LocalServerStartupDeadline = {};
+	m_NextLocalServerConnectAttempt = {};
+	m_iLocalServerConnectAttemptCount = 0u;
 	m_strStatus = "Entry request sent. Waiting for Server approval.";
-	return true;
+	return ENTRY_REQUEST_RESULT::SENT;
+}
+
+void CLevel_Lobby::Begin_LocalServerStartupWait()
+{
+	const auto now = std::chrono::steady_clock::now();
+	m_eEntryState = ENTRY_STATE::WAITING_FOR_LOCAL_SERVER;
+	m_LocalServerStartupDeadline = now + LOCAL_DEBUG_SERVER_STARTUP_TIMEOUT;
+	m_NextLocalServerConnectAttempt = now + LOCAL_DEBUG_SERVER_RETRY_INTERVAL;
+	m_iLocalServerConnectAttemptCount = 1u;
+	m_strStatus =
+		"Local Debug Server is starting. Waiting for 127.0.0.1:7777.";
+}
+
+void CLevel_Lobby::Update_LocalServerStartupWait()
+{
+	const auto now = std::chrono::steady_clock::now();
+	if (now >= m_LocalServerStartupDeadline)
+	{
+		Cancel_PendingEntry(
+			"Local Debug Server did not open 127.0.0.1:7777 within 30 seconds.",
+			LostArk::Shared::SESSION_DIAGNOSTIC_REASON::CLIENT_CONNECT_FAILED,
+			"lobby.local-debug-server-startup-timeout");
+		return;
+	}
+	if (now < m_NextLocalServerConnectAttempt)
+		return;
+
+	++m_iLocalServerConnectAttemptCount;
+	switch (Submit_PendingNetworkEntry())
+	{
+	case ENTRY_REQUEST_RESULT::SENT:
+		return;
+	case ENTRY_REQUEST_RESULT::CONNECTION_UNAVAILABLE:
+		if ("127.0.0.1" == m_strPendingServerHost)
+		{
+			m_NextLocalServerConnectAttempt =
+				now + LOCAL_DEBUG_SERVER_RETRY_INTERVAL;
+			m_strStatus = "Waiting for local Debug Server at 127.0.0.1:7777 (retry " +
+				to_string(m_iLocalServerConnectAttemptCount) + ").";
+			return;
+		}
+		Cancel_PendingEntry(
+			"The local Debug Server endpoint changed while waiting for startup.",
+			LostArk::Shared::SESSION_DIAGNOSTIC_REASON::CLIENT_CONNECT_FAILED,
+			"lobby.local-debug-server-endpoint-changed");
+		return;
+	case ENTRY_REQUEST_RESULT::SEND_FAILED:
+		Cancel_PendingEntry(
+			"Could not send the entry request. Check the Server connection, then try again.",
+			LostArk::Shared::SESSION_DIAGNOSTIC_REASON::CLIENT_ENTER_SEND_FAILED,
+			"lobby.local-debug-server-send-failed");
+		return;
+	default:
+		return;
+	}
+}
+
+void CLevel_Lobby::Reset_PendingEntryState()
+{
+	m_eEntryState = ENTRY_STATE::IDLE;
+	m_ePendingWorldId = LostArk::Shared::WORLD_ID::END;
+	m_ePendingLevel = LEVEL::END;
+	m_ePendingPurpose = LOBBY_COMMAND_PURPOSE::GAMEPLAY;
+	m_ePendingCharacterClass = LostArk::Shared::CHARACTER_CLASS_ID::END;
+	m_strPendingNickname.clear();
+	m_strPendingServerHost.clear();
+	m_hasPendingCharacterCreationEntry = false;
+	m_ApprovalDeadline = {};
+	m_LocalServerStartupDeadline = {};
+	m_NextLocalServerConnectAttempt = {};
+	m_iLocalServerConnectAttemptCount = 0u;
 }
 
 bool_t CLevel_Lobby::Resolve_Stage(
@@ -423,12 +537,7 @@ void CLevel_Lobby::Consume_EnterAccepted()
 		networkManager.Close_ServerConnection();
 #endif
 
-	m_eEntryState = ENTRY_STATE::IDLE;
-	m_ePendingWorldId = LostArk::Shared::WORLD_ID::END;
-	m_ePendingLevel = LEVEL::END;
-	m_ePendingPurpose = LOBBY_COMMAND_PURPOSE::GAMEPLAY;
-	m_hasPendingCharacterCreationEntry = false;
-	m_ApprovalDeadline = {};
+	Reset_PendingEntryState();
 	m_strStatus = "Server approved the world. Loading the stage.";
 }
 
@@ -445,12 +554,7 @@ void CLevel_Lobby::Cancel_PendingEntry(
 	CNetworkManager::Get().Close_ServerConnection();
 	if (m_hasPendingCharacterCreationEntry)
 		CCharacterSelectionState::Cancel_PendingCreation();
-	m_eEntryState = ENTRY_STATE::IDLE;
-	m_ePendingWorldId = LostArk::Shared::WORLD_ID::END;
-	m_ePendingLevel = LEVEL::END;
-	m_ePendingPurpose = LOBBY_COMMAND_PURPOSE::GAMEPLAY;
-	m_hasPendingCharacterCreationEntry = false;
-	m_ApprovalDeadline = {};
+	Reset_PendingEntryState();
 	m_strStatus = reason;
 }
 

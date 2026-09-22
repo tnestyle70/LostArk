@@ -445,15 +445,48 @@ void Client::CPlayerController::Update(
 			const f32_t groundY = XMVectorGetY(position);
 
 			float3_t goal{};
+			bool_t hasExactClickSurface = false;
+			bool_t hasMoveGoal = false;
+			float4_t pickedSurface{};
 
-			if (Try_PickGroundPlane(groundY, goal) &&
-				Should_SendMoveGoal(
+			/* The renderer's pick target contains the first visible,
+			   depth-tested triangle under the cursor.  Preserve that exact
+			   world point for both the command's XZ and the cosmetic marker.
+			   Do not gate the cosmetic hit through the Character's local
+			   Navigation component: Bern's Server owns the complete regional
+			   navigation set, while the Client Character currently owns only
+			   the Area base grid.  The typed move command remains subject to
+			   Server navigation validation. */
+			if (CGameInstance::Get().Picking(pickedSurface) &&
+				std::isfinite(pickedSurface.x) &&
+				std::isfinite(pickedSurface.y) &&
+				std::isfinite(pickedSurface.z))
+			{
+				goal = float3_t(
+					pickedSurface.x,
+					pickedSurface.y,
+					pickedSurface.z);
+				hasExactClickSurface = true;
+				hasMoveGoal = true;
+			}
+			else
+			{
+				hasMoveGoal = Try_PickGroundPlane(groundY, goal);
+			}
+
+			if (hasMoveGoal && Should_SendMoveGoal(
 					m_wasRightMouseDown,
 					XMVectorGetX(position),
 					XMVectorGetZ(position),
 					goal))
 			{
-				Request_MoveToPoint(goal, isRightMousePressed);
+				/* A raw plane fallback is retained for compatibility, but never
+				   paints an indicator at a point known not to be the visible
+				   surface. */
+				(void)Request_MoveToPointResolved(
+					goal,
+					isRightMousePressed && hasExactClickSurface,
+					hasExactClickSurface ? &goal : nullptr);
 			}
 		}
 	}
@@ -1917,6 +1950,14 @@ bool_t Client::CPlayerController::Try_PickGroundPlane(
 bool_t Client::CPlayerController::Request_MoveToPoint(
 	const float3_t& goal, const bool_t playClickEffect)
 {
+	return Request_MoveToPointResolved(goal, playClickEffect, nullptr);
+}
+
+bool_t Client::CPlayerController::Request_MoveToPointResolved(
+	const float3_t& goal,
+	const bool_t playClickEffect,
+	const float3_t* const pExactClickSurface)
+{
 	if (Is_PlayerControlCaptured(
 			CCombatHUDViewModel::Get().Get_Player()))
 	{
@@ -1930,13 +1971,33 @@ bool_t Client::CPlayerController::Request_MoveToPoint(
 
 	// This is a local presentation prediction after a successful typed send.
 	// The Server still validates the goal; its processed sequence ends prediction.
-	if (const auto character = m_pLocalCharacter.lock())
+	const shared_ptr<CCharacter> character = m_pLocalCharacter.lock();
+	if (nullptr != character)
 		(void)character->Predict_NetworkMoveGoal(m_iNextMoveSequence, goal);
 
 	m_LastMoveGoalSentAt = std::chrono::steady_clock::now();
 	m_LastSentMoveGoal = goal;
-	if (playClickEffect && nullptr != m_pClickMoveEffect)
-		m_pClickMoveEffect->Play(goal, m_pLocalCharacter.lock());
+	if (playClickEffect && nullptr != m_pClickMoveEffect && nullptr != character)
+	{
+		if (nullptr != pExactClickSurface)
+		{
+			/* This is the rendered surface position, rather than a quantized
+			   nav-cell height.  Keeping it intact prevents the depth-tested
+			   effect from being buried by a stair or shifted across a slope. */
+			m_pClickMoveEffect->Play(*pExactClickSurface, character);
+		}
+		else
+		{
+			/* Existing non-cursor callers (for example NPC interaction) only
+			   provide a navigation goal, so retain their former marker path. */
+			float3_t effectPosition{};
+			if (character->Try_SampleTargetGround(
+				goal.x, goal.z, effectPosition))
+			{
+				m_pClickMoveEffect->Play(effectPosition, character);
+			}
+		}
+	}
 	m_BasicAttackResendGate.Suppress_UntilRelease();
 	++m_iNextMoveSequence;
 	if (0 == m_iNextMoveSequence)
