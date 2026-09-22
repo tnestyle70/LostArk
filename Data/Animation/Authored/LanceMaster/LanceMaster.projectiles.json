@@ -3,5 +3,142 @@
   "formatVersion": 1,
   "animationAssetId": "LanceMaster",
   "characterClass": "LANCE_MASTER",
-  "projectiles": []
+  "projectiles": [
+    {
+      "skillId": 34140,
+      "sourcePk": 341405,
+      "clip": "flm_sk_chestdestruction_01",
+      "startMs": 478,
+      "kind": "MISSILE",
+      "origin": "AIM",
+      "offsetForward": 0.5,
+      "offsetRight": 0.0,
+      "speed": 6.0,
+      "minDistance": 3.0,
+      "maxDistance": 14.0,
+      "lifeMs": 3000,
+      "radius": 1.5,
+      "hits": [
+        {
+          "sourcePk": 341406,
+          "trigger": "CONTACT",
+          "atMs": 0,
+          "count": 1,
+          "everyMs": 0,
+          "areaType": 1,
+          "range": 1.25,
+          "angle": 0,
+          "width": 0.0,
+          "height": 1.5,
+          "offset": 0.5,
+          "inner": 0.0,
+          "maxTargets": 0,
+          "pushMs": 110,
+          "pushRange": 0.5
+        }
+      ]
+    },
+    {
+      "skillId": 34140,
+      "sourcePk": 341409,
+      "clip": "flm_sk_chestdestruction_04",
+      "startMs": 600,
+      "kind": "MISSILE",
+      "origin": "AIM",
+      "offsetForward": 0.5,
+      "offsetRight": 0.0,
+      "speed": 6.0,
+      "minDistance": 4.0,
+      "maxDistance": 14.0,
+      "lifeMs": 3000,
+      "radius": 1.5,
+      "hits": [
+        {
+          "sourcePk": 341410,
+          "trigger": "CONTACT",
+          "atMs": 0,
+          "count": 1,
+          "everyMs": 0,
+          "areaType": 1,
+          "range": 1.25,
+          "angle": 0,
+          "width": 0.0,
+          "height": 1.5,
+          "offset": 0.5,
+          "inner": 0.0,
+          "maxTargets": 0,
+          "pushMs": 110,
+          "pushRange": 0.5
+        }
+      ]
+    },
+    {
+      "skillId": 34650,
+      "sourcePk": 346500,
+      "clip": "flm_sk_dragoncleave_01",
+      "startMs": 270,
+      "kind": "MISSILE",
+      "origin": "AIM",
+      "offsetForward": 0.0,
+      "offsetRight": 0.0,
+      "speed": 7.0,
+      "minDistance": 16.0,
+      "maxDistance": 16.0,
+      "lifeMs": 1000,
+      "radius": 1.0,
+      "hits": [
+        {
+          "sourcePk": 346501,
+          "trigger": "CONTACT",
+          "atMs": 0,
+          "count": 1,
+          "everyMs": 0,
+          "areaType": 2,
+          "range": 2.0,
+          "angle": 0,
+          "width": 2.0,
+          "height": 1.5,
+          "offset": 0.0,
+          "inner": 0.0,
+          "maxTargets": 0,
+          "pushMs": 110,
+          "pushRange": 0.5
+        }
+      ]
+    },
+    {
+      "skillId": 34650,
+      "sourcePk": 346502,
+      "clip": "flm_sk_dragoncleave_01",
+      "startMs": 550,
+      "kind": "MISSILE",
+      "origin": "AIM",
+      "offsetForward": 0.0,
+      "offsetRight": 0.0,
+      "speed": 7.0,
+      "minDistance": 16.0,
+      "maxDistance": 16.0,
+      "lifeMs": 1000,
+      "radius": 1.0,
+      "hits": [
+        {
+          "sourcePk": 346503,
+          "trigger": "CONTACT",
+          "atMs": 0,
+          "count": 1,
+          "everyMs": 0,
+          "areaType": 2,
+          "range": 6.0,
+          "angle": 0,
+          "width": 1.6,
+          "height": 1.5,
+          "offset": 0.0,
+          "inner": 0.0,
+          "maxTargets": 0,
+          "pushMs": 110,
+          "pushRange": 0.5
+        }
+      ]
+    }
+  ]
 }

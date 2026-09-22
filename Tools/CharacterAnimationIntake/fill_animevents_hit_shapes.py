@@ -201,18 +201,22 @@ def load_projectile_shapes(asset):
     return out
 
 
-def reference_shape(row, projectile_shapes):
+def reference_shapes(row, projectile_shapes):
+    """Every caster-keyed shape the skill applies at that one moment. The source
+    stacks boxes of different reach on a single hit time - a lunge carries both a
+    short box around the caster and a long one along the travel - so returning
+    only the first shape drops the reach that covers the movement."""
     hits = [h for h in row['hits'] if h['area'] > 0 and h['key'] in CASTER_HIT_KEYS and
             shape_identity(h) not in projectile_shapes]
     if not hits:
-        return None, 'no caster-keyed shaped skilltiming row' + (
+        return [], 'no caster-keyed shaped skilltiming row' + (
             ' (projectile applies the shape)' if projectile_shapes else '')
     timed = [h for h in hits if h['timed']]
     if len(set(h['t'] for h in timed)) > 1:
-        return None, 'timed rows form a %d-step timeline' % len(set(h['t'] for h in timed))
+        return [], 'timed rows form a %d-step timeline' % len(set(h['t'] for h in timed))
     pool = timed or hits
     base = [h for h in pool if h['g'] == 0]
-    return (base or pool)[0], None
+    return list(base or pool), None
 
 
 def locate_clip(entries, clip_ticks, time_ms, label):
@@ -258,9 +262,9 @@ def synthesize_timed_rows(asset, notify, timing):
         if any(notify.get(n) for n in names):
             continue
         ref = find_reference_row(timing, skill_id)
-        shape, reason = (reference_shape(ref, projectile_shapes.get(skill_id, set()))
-                         if ref else (None, 'no skilltiming row'))
-        if shape is None:
+        shapes, reason = (reference_shapes(ref, projectile_shapes.get(skill_id, set()))
+                          if ref else ([], 'no skilltiming row'))
+        if not shapes:
             print('%s %d: no HIT notify, left as range circle: %s' % (asset, skill_id, reason))
             continue
         if skill['skillKind'] in ('COMBO', 'HOLD', 'COUNTER'):
@@ -270,11 +274,12 @@ def synthesize_timed_rows(asset, notify, timing):
             targets = [(stages[0], int(skill['hitTimeMs']), '%s %d' % (asset, skill_id))]
         for group, hit_ms, label in targets:
             clip, start = locate_clip(group, clip_ticks, hit_ms, label)
-            row = hit_row(clip, start, start + shape['w'], shape)
             rows = generated.setdefault(clip, [])
-            if row not in rows:
-                rows.append(row)
-                stamped += 1
+            for shape in shapes:
+                row = hit_row(clip, start, start + shape['w'], shape)
+                if row not in rows:
+                    rows.append(row)
+                    stamped += 1
     return generated, stamped
 
 
