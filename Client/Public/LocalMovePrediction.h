@@ -227,8 +227,13 @@ namespace Client
 		{
 			if (!m_hasSnapshot)
 				return false;
-			const double elapsed = (std::min)(TIMEOUT_SECONDS,
-				static_cast<double>(snapshot.serverTick - m_snapshot.serverTick) / 30.0);
+			// ApplySnapshot admits only a forward tick distance below half the
+			// uint32 range, including wrap. Server motion spans that whole interval
+			// even when a stalled Client coalesces snapshots. The local freshness
+			// timeout limits prediction; it must not turn legal Server travel into
+			// an authoritative teleport.
+			const double elapsed =
+				static_cast<double>(snapshot.serverTick - m_snapshot.serverTick) / 30.0;
 			const double allowed = 0.75 + elapsed *
 				(std::max)(snapshot.moveSpeed, m_snapshot.moveSpeed);
 			return DistanceSquared(snapshot.position, m_snapshot.position) > allowed * allowed;

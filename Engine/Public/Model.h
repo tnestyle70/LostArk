@@ -331,6 +331,8 @@ public:
 	}
 	uint32_t Get_MeshVertexCount(uint32_t iMeshIndex) const;
 	bool_t Has_MorphBaseVertices(uint32_t iMeshIndex) const;
+	// True only when the existing immutable mesh can consume screen-space LOD.
+	bool_t Has_StaticMeshLod(uint32_t iMeshIndex) const;
 	bool_t Get_MorphBaseVertex(uint32_t iMeshIndex, uint32_t iVertexIndex,
 		float3_t& OutPosition, float3_t& OutNormal) const;
 	/* Must be called once (per CModel instance, i.e. per clone) before Update_Mesh_Vertices()

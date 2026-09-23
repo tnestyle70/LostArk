@@ -145,6 +145,8 @@ private:
 	bool_t m_bMirrored = false;
     bool_t m_bBatchBoundsDirty = true;
     bool_t m_bHasBatchBounds = false;
+    // Map batch geometry is immutable after its model component is cloned.
+    bool_t m_bHasStaticMeshLod = false;
     float4_t m_BatchBounds = {};
     MAP_FRUSTUM_RUNTIME_STATE m_BatchFrustumState{};
     float4_t m_VisibleLodBounds = {};

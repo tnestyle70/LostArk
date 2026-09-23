@@ -651,10 +651,13 @@ table이 참조하는 body/parts TGA 12개와 weapon DDS 8개도 같은 Drive �
 Character는 cue/anchor/HIT metadata를 먼저 commit하고 Product ID만 revision별 queue에 등록한다.
 등록 frame에는 resource 작업을 하지 않으며 다음 frame부터 main thread가 target 하나씩 parse,
 drawable validation, budget 산정과 GPU 준비를 수행한다. 성공한 target만 prepared로 commit하고 실패한
-target 하나만 같은 revision에서 격리한다. Character Select Loading은 worker 시작과 함께 선택 class target을
-priority queue에 놓아 map/model loading과 준비를 겹친다. activation은 선택 target의 현재 revision 상태만
-확인하고 unrelated background pending을 기다리지 않는다. prepared Product attach는 catalog
-revision/document identity와 shared immutable document를 재사용한다.
+target 하나만 같은 revision에서 격리한다. Character Select Loading은 worker 시작과 함께 class target을
+priority queue에 놓아 map/model loading과 준비를 겹친다. Debug는 승인된 선택 class를 준비하고,
+Release는 선택 화면과 같은 전체 roster의 model/part/shader와 skill Effect를 입장에서 준비한다.
+Release class 변경 시 첫 model/Effect 준비 대기를 줄이는 대신 입장 시간과 상주 메모리가 늘어난다.
+activation은 이 진입에서 등록한 target의 현재 revision 상태만 확인하고 unrelated background pending을
+기다리지 않는다. prepared Product attach는 catalog revision/document identity와 shared immutable
+document를 재사용한다.
 
 Source Trim `rotation`은 source module이 만든 initial sprite/source-mesh rotation과 source rotation-rate에 정확히 한 번 적용한다. authoring/codec/source validator 범위는 finite `[-360, 360]`이며 authored billboard roll lane은 별도 값으로 유지한다.
 

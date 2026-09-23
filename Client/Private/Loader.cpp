@@ -9,6 +9,7 @@
 #include "Camera_Free.h"
 #include "Body_Valtan.h"
 #include "Character.h"
+#include "CharacterCatalog.h"
 #include "CharacterSelectionState.h"
 #include "ClassSelectionPresentation.h"
 #include "Collider.h"
@@ -232,10 +233,20 @@ HRESULT CLoader::Initialize(
 			return reject(E_INVALIDARG, "loader.initialize.character-class",
 				"Server admission has no supported character class.");
 		}
-		m_pCharacterAuthoringInput = CPlayableCharacterAssetService::Capture_AuthoringInput(m_ePreparedCharacterClass);
-		if (!m_pCharacterAuthoringInput)
-			return reject(E_FAIL, "loader.initialize.character-authoring",
-				"Character authoring snapshot could not be captured; player skills are unavailable.");
+		const std::array selectedClass = { m_ePreparedCharacterClass };
+		std::span<const LostArk::Shared::CHARACTER_CLASS_ID> preparationClasses = selectedClass;
+#ifndef _DEBUG
+		if (eNextLevelID == LEVEL::CHARACTER_SELECT)
+			preparationClasses = CCharacterCatalog::CHARACTER_SELECT_CLASSES;
+#endif
+		for (const auto characterClass : preparationClasses)
+		{
+			auto input = CPlayableCharacterAssetService::Capture_AuthoringInput(characterClass);
+			if (!input)
+				return reject(E_FAIL, "loader.initialize.character-authoring",
+					"Character authoring snapshot could not be captured; player skills are unavailable.");
+			m_CharacterAuthoringInputs.emplace(characterClass, std::move(input));
+		}
 	}
 	m_eNextLevelID = eNextLevelID;
 	m_iResult.store(S_FALSE, std::memory_order_release);
@@ -506,7 +517,12 @@ HRESULT CLoader::Ready_For_CharacterSelect()
 		OutputDebugStringA(("[Loader][NpcPresentation] " +
 			CNpcPlacementPresentationService::Get_Status() + "\n").c_str());
 	}
+#ifdef _DEBUG
 	const std::array characterClasses = { m_ePreparedCharacterClass };
+#else
+	// Move first-use class model preparation into the entry Loading phase.
+	constexpr auto characterClasses = CCharacterCatalog::CHARACTER_SELECT_CLASSES;
+#endif
 
 	CLevelResourceRollbackScope rollback(
 		ETOUI(LEVEL::CHARACTER_SELECT));
@@ -1402,7 +1418,8 @@ HRESULT CLoader::Ready_Character_Rendering(
 		++classIndex)
 	{
 		const auto characterClass = characterClasses[classIndex];
-		if (characterClass != m_ePreparedCharacterClass || !m_pCharacterAuthoringInput) return E_INVALIDARG;
+		const auto authoring = m_CharacterAuthoringInputs.find(characterClass);
+		if (authoring == m_CharacterAuthoringInputs.end() || !authoring->second) return E_INVALIDARG;
 		const auto progress = [
 			this,
 			classIndex,
@@ -1431,7 +1448,7 @@ HRESULT CLoader::Ready_Character_Rendering(
 			characterClass,
 			&m_isCancellationRequested,
 			progress,
-			m_pCharacterAuthoringInput,
+			authoring->second,
 			&m_AssetPreparationBatch)))
 		{
 			return E_FAIL;

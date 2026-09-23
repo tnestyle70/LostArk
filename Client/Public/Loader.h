@@ -13,6 +13,7 @@
 #include <mutex>
 #include <span>
 #include <string>
+#include <unordered_map>
 
 NS_BEGIN(Client)
 
@@ -131,7 +132,8 @@ private:
 	ComPtr<ID3D11DeviceContext> m_pContext = { nullptr };
 	LEVEL m_eNextLevelID = LEVEL::END;
 	LostArk::Shared::CHARACTER_CLASS_ID m_ePreparedCharacterClass = LostArk::Shared::CHARACTER_CLASS_ID::END;
-	std::shared_ptr<const CPlayableCharacterAssetService::AUTHORING_INPUT> m_pCharacterAuthoringInput;
+	std::unordered_map<LostArk::Shared::CHARACTER_CLASS_ID,
+		std::shared_ptr<const CPlayableCharacterAssetService::AUTHORING_INPUT>> m_CharacterAuthoringInputs;
 	HANDLE m_hThread = {};
 	HANDLE m_hEffectThread = {};
 	CAssetPreparationBatch m_AssetPreparationBatch;

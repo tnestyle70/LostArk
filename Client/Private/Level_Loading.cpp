@@ -37,6 +37,8 @@
 #include "ValtanPatternTree.h"
 
 #include <algorithm>
+#include <array>
+#include <span>
 #include <atomic>
 #include <cmath>
 #include <fstream>
@@ -706,24 +708,35 @@ bool_t CLevel_Loading::Advance_TargetEffectPreparation()
 		{
 			return IsolateFailure("Server admission has no supported Effect preparation class.");
 		}
-		const CHARACTER_SPEC* pSpec =
-			CCharacterCatalog::Find_Spec(SelectedClass);
-		if (nullptr == pSpec || nullptr == pSpec->pAssetName)
+		const std::array selectedClass = { SelectedClass };
+		std::span<const CHARACTER_CLASS_ID> preparationClasses = selectedClass;
+#ifndef _DEBUG
+		if (bCharacterSelect)
+			preparationClasses = CCharacterCatalog::CHARACTER_SELECT_CLASSES;
+#endif
+		for (const auto characterClass : preparationClasses)
 		{
-			return IsolateFailure(
-				"selected class has no animation asset spec.");
+			const CHARACTER_SPEC* pSpec = CCharacterCatalog::Find_Spec(characterClass);
+			if (nullptr == pSpec || nullptr == pSpec->pAssetName)
+				return IsolateFailure("playable class has no animation asset spec.");
+			ANIMATION_EFFECT_CUE_DOCUMENT PlayerCueDocument;
+			std::vector<std::string> PlayerEffectAssetIds;
+			if (!CAnimationEffectCueDocument::Load_ForProductPrewarm(
+					pSpec->pAssetName, PlayerCueDocument, Status) ||
+				!CEffectPresentationService::Queue_ProductCues_Priority(
+					PlayerCueDocument.Cues, PlayerEffectAssetIds, Status))
+			{
+				// Optional action data isolates this class's affected presentation;
+				// it must not leave every later roster member cold at entry.
+				if (preparationClasses.size() == 1u)
+					return IsolateFailure(Status);
+				OutputDebugStringA(("[Level_Loading][ClassEffects] " +
+					std::string(pSpec->pAssetName) + ": " + Status + "\n").c_str());
+				continue;
+			}
+			m_EffectPreparationTargets.insert(m_EffectPreparationTargets.end(),
+				PlayerEffectAssetIds.begin(), PlayerEffectAssetIds.end());
 		}
-		ANIMATION_EFFECT_CUE_DOCUMENT PlayerCueDocument;
-		std::vector<std::string> PlayerEffectAssetIds;
-		if (!CAnimationEffectCueDocument::Load_ForProductPrewarm(
-				pSpec->pAssetName, PlayerCueDocument, Status) ||
-			!CEffectPresentationService::Queue_ProductCues_Priority(
-				PlayerCueDocument.Cues, PlayerEffectAssetIds, Status))
-		{
-			return IsolateFailure(Status);
-		}
-		m_EffectPreparationTargets.insert(m_EffectPreparationTargets.end(),
-			PlayerEffectAssetIds.begin(), PlayerEffectAssetIds.end());
 
 		/* The Loader readies the Esther summon roster for these arenas; their
 		   restored action Effect documents join the same worker so a summon

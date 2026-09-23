@@ -1662,6 +1662,12 @@ uint32_t CModel::Get_MeshVertexCount(uint32_t iMeshIndex) const
 	return m_Meshes[iMeshIndex]->Get_NumVertices();
 }
 
+bool_t CModel::Has_StaticMeshLod(uint32_t iMeshIndex) const
+{
+	return iMeshIndex < m_Meshes.size() && m_Meshes[iMeshIndex] &&
+		m_Meshes[iMeshIndex]->m_StaticLod && !m_Meshes[iMeshIndex]->Has_MorphBaseVertices();
+}
+
 bool_t CModel::Has_MorphBaseVertices(uint32_t iMeshIndex) const
 {
 	if (iMeshIndex >= m_Meshes.size())

@@ -561,6 +561,17 @@ HRESULT CMapStaticBatchObject::Ready_Components(
 		return E_FAIL;
 	}
 
+	// Small or unsimplifiable meshes never consume tight LOD bounds. Keep the
+	// ordinary world envelope/culling and profiler draw denominators unchanged.
+	m_bHasStaticMeshLod = false;
+	for (uint32_t meshIndex = 0u; meshIndex < m_pModelCom->Get_NumMeshes(); ++meshIndex)
+	{
+		if (m_pModelCom->Has_StaticMeshLod(meshIndex))
+		{
+			m_bHasStaticMeshLod = true;
+			break;
+		}
+	}
 	return S_OK;
 }
 
@@ -693,7 +704,7 @@ HRESULT CMapStaticBatchObject::Upload_VisibleInstances(
 	m_CandidateVisibleInstances.clear();
 	bool_t requiresNextCameraTick = false;
     INSTANCE_ENVELOPE visibleEnvelope;
-    VIEW_LOD_ENVELOPE visibleViewEnvelope(cameraSnapshot);
+    VIEW_LOD_ENVELOPE visibleViewEnvelope(m_bHasStaticMeshLod ? cameraSnapshot : nullptr);
     uint64_t cullingCandidates = 0u;
     if (m_bBatchBoundsDirty) Rebuild_BatchCullBounds();
     bool_t rejectBatch = false;
@@ -746,7 +757,7 @@ HRESULT CMapStaticBatchObject::Upload_VisibleInstances(
 		}
 
         visibleEnvelope.Add(instance, m_InstanceLinearScaleBounds[index]);
-        visibleViewEnvelope.Add(instance);
+        if (m_bHasStaticMeshLod) visibleViewEnvelope.Add(instance);
 		VTXMESHINSTANCE gpuInstance{};
 		gpuInstance.World =
 			instance.World;

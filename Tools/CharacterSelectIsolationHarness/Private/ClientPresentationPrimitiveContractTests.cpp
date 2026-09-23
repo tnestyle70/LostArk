@@ -521,6 +521,64 @@ namespace
 		return true;
 	}
 
+	bool VerifyDelayedSnapshotsPreserveNormalMotion()
+	{
+		for (const std::uint32_t initialTick : { 100u, 0xfffffff0u })
+		{
+			for (const std::uint32_t gapTicks : { 30u, 53u, 57u })
+			{
+				MovePrediction prediction;
+				auto snapshot = MakeMoveSnapshot(initialTick);
+				snapshot.moveSpeed = 2.95f;
+				snapshot.hasMoveGoal = true;
+				snapshot.nextWaypoint.x = 100.f;
+				(void)prediction.ApplySnapshot(snapshot, 0.0, {});
+				if (!Require(prediction.SubmitMove(1u, 0.01, {}) &&
+					prediction.SubmitMove(2u, 0.02, {}),
+					"delayed snapshot fixture did not admit two quick clicks")) return false;
+				const MovePrediction::Pose visual{ { 0.295f, 0.f, 0.f }, 90.f, true };
+				(void)prediction.Update(0.12, 0.1f, visual);
+				// The Server continues at its legal speed while the main thread stalls.
+				const double elapsed = static_cast<double>(gapTicks) / 30.0;
+				snapshot.serverTick += gapTicks;
+				snapshot.processedMoveSequence = 2u;
+				snapshot.position.x = snapshot.moveSpeed * static_cast<float>(elapsed);
+				if (!Require(prediction.ApplySnapshot(snapshot, elapsed, visual) ==
+					MoveDisposition::RECONCILE && !prediction.HasPendingMove(),
+					"normal Server travel across a delayed snapshot was classified as teleport") ||
+					!Require(NearMove(prediction.Update(elapsed, 0.f, {}).pose.position.x, visual.position.x),
+						"delayed normal ACK snapped the first resumed visual frame")) return false;
+			}
+		}
+
+		MovePrediction prediction;
+		auto snapshot = MakeMoveSnapshot(100u);
+		snapshot.moveSpeed = 2.95f;
+		(void)prediction.ApplySnapshot(snapshot, 0.0, {});
+		auto invalid = snapshot;
+		invalid.serverTick += 0x80000000u;
+		invalid.position.x = 20.f;
+		if (!Require(prediction.ApplySnapshot(invalid, 1.0, {}) == MoveDisposition::IGNORED,
+			"ambiguous half-range Server tick was admitted as elapsed motion")) return false;
+		invalid.serverTick = 99u;
+		if (!Require(prediction.ApplySnapshot(invalid, 1.0, {}) == MoveDisposition::IGNORED,
+			"backward Server tick was admitted as elapsed motion")) return false;
+		invalid.serverTick = 101u;
+		invalid.position.x = (std::numeric_limits<float>::infinity)();
+		if (!Require(prediction.ApplySnapshot(invalid, 1.0, {}) == MoveDisposition::IGNORED,
+			"non-finite delayed snapshot was admitted")) return false;
+		snapshot.serverTick = 101u;
+		snapshot.position.x = 20.f;
+		if (!Require(prediction.ApplySnapshot(snapshot, 1.0, {}) == MoveDisposition::RESET &&
+			NearMove(prediction.Update(1.0, 0.f, {}).pose.position.x, 20.f),
+			"actual one-tick Server teleport was smoothed after removing the time cap")) return false;
+		// Even a large forward tick gap cannot hide an excessive visual disagreement.
+		snapshot.serverTick += 300u;
+		snapshot.position.x = 40.f;
+		return Require(prediction.ApplySnapshot(snapshot, 11.0, { { 20.f, 0.f, 0.f }, 0.f, false }) ==
+			MoveDisposition::RESET, "large delayed visual disagreement lost its hard reset");
+	}
+
 	bool VerifyMovePredictionTimeout()
 	{
 		MovePrediction prediction;
@@ -576,7 +634,8 @@ int Run_ClientPresentationPrimitiveContractTests()
 		!VerifyImmediateMovePrediction() || !VerifyAcknowledgedMoveCorrection() ||
 		!VerifyMoveSequenceOrdering() || !VerifyMoveRejectionAndForcedState() ||
 		!VerifyMovePredictionTimeout() || !VerifyMoveCorrectionSpeedAndContinuousSnapshots() ||
-		!VerifyLatestOppositeHeadingAndGroundHeight() || !VerifyAcknowledgedBearingHasOneSmoothingOwner())
+		!VerifyLatestOppositeHeadingAndGroundHeight() || !VerifyAcknowledgedBearingHasOneSmoothingOwner() ||
+		!VerifyDelayedSnapshotsPreserveNormalMotion())
 	{
 		return 1;
 	}

@@ -3,6 +3,7 @@
 #include "Client_Defines.h"
 #include "ArenaCameraProfile.h"
 #include "ClientReplication.h"
+#include "CharacterCatalog.h"
 #include "ClassSelectionPresentation.h"
 #include "DeployPropRuntime.h"
 #include "Level.h"
@@ -338,17 +339,7 @@ public:
 #endif
 
 private:
-	static constexpr std::array<
-		LostArk::Shared::CHARACTER_CLASS_ID, 7> SUPPORTED_CLASSES =
-	{
-		LostArk::Shared::CHARACTER_CLASS_ID::LANCE_MASTER,
-		LostArk::Shared::CHARACTER_CLASS_ID::GUNSLINGER,
-		LostArk::Shared::CHARACTER_CLASS_ID::SLAYER,
-		LostArk::Shared::CHARACTER_CLASS_ID::ARTIST,
-		LostArk::Shared::CHARACTER_CLASS_ID::DIMENSIONMASTER,
-		LostArk::Shared::CHARACTER_CLASS_ID::WARLORD,
-		LostArk::Shared::CHARACTER_CLASS_ID::GUARDIANKNIGHT
-	};
+	static constexpr auto SUPPORTED_CLASSES = CCharacterCatalog::CHARACTER_SELECT_CLASSES;
 
 	/* The try-on costumes: which visual set each of the five stands for, the catalog that owns
 	their parts, and the service that swaps them onto the model. */
