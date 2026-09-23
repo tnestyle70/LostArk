@@ -10,7 +10,7 @@ LOSTARK_ANIM_NOTIFY 1 "GuardianKnight" 127
   n t=0.3000 d=0.4500 kind=CANCEL src=InputTiming asset="" label="[선콤]" win=COMBO_PRE
   n t=0.4400 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_DDK_00.Par_J_DDK_BaseAtk_MeshTrail_01" label="" win=NONE
   n t=0.4400 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
-  n t=0.4400 d=0.0949 kind=HIT src=Effect asset="490000" label="" win=NONE
+  n t=0.4400 d=0.0949 kind=HIT src=Effect asset="490000" label="" win=NONE area=3 ar=260 aa=140 ah=180 ax=-10 arem=0 maxt=0 rep=0 repms=0 push=100 pushr=40 fz=600 fzin=150 fzout=250 hittype=4
   n t=0.4500 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.2;in=0;out=0.1;x=3,50;y=4,50;z=0,40;fov=0,0" label="" win=NONE
   n t=0.5000 d=0.9000 kind=CANCEL src=InputTiming asset="" label="회피기캔슬(테스트)" win=DODGE_CANCEL
   n t=0.5000 d=0.9000 kind=CANCEL src=InputTiming asset="" label="" win=NONE
@@ -31,7 +31,7 @@ LOSTARK_ANIM_NOTIFY 1 "GuardianKnight" 127
   n t=0.5500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_J_ZoomBlur_01" label="" win=NONE
   n t=0.5500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.5500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_DDK_00.Par_J_DDK_BaseAtk_Exp_01" label="" win=NONE
-  n t=0.5500 d=0.0949 kind=HIT src=Effect asset="490001" label="" win=NONE
+  n t=0.5500 d=0.0949 kind=HIT src=Effect asset="490001" label="" win=NONE area=2 ar=220 aa=150 ah=180 ax=10 arem=0 maxt=0 rep=0 repms=0 push=100 pushr=40 fz=600 fzin=150 fzout=250 hittype=4
   n t=0.5600 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.25;in=0;out=0.1;x=2,50;y=2,50;z=7,40;fov=0,0" label="" win=NONE
   n t=0.6000 d=1.6000 kind=CANCEL src=InputTiming asset="" label="" win=NONE
   n t=0.6000 d=0.3000 kind=CANCEL src=InputTiming asset="" label="" win=NONE
@@ -47,7 +47,7 @@ LOSTARK_ANIM_NOTIFY 1 "GuardianKnight" 127
   n t=0.5500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_DDK_00.Par_J_DDK_BaseAtk_Wind_01" label="" win=NONE
   n t=0.5500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_DDK_00.Par_J_DDK_BaseAtk_MeshTrail_01" label="" win=NONE
   n t=0.5600 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
-  n t=0.5600 d=0.0949 kind=HIT src=Effect asset="490002" label="" win=NONE
+  n t=0.5600 d=0.0949 kind=HIT src=Effect asset="490002" label="" win=NONE area=3 ar=270 aa=210 ah=180 ax=-10 arem=0 maxt=0 rep=0 repms=0 push=140 pushr=60 fz=600 fzin=150 fzout=250 hittype=4
   n t=0.5700 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_DDK_00.Par_J_DDK_Atk_Dust_01" label="" win=NONE
   n t=0.5700 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.25;in=0;out=0.05;x=3,50;y=5,50;z=0,40;fov=0,0" label="" win=NONE
   n t=0.6600 d=1.4067 kind=CANCEL src=InputTiming asset="" label="회피기캔슬(테스트)" win=DODGE_CANCEL
@@ -93,7 +93,7 @@ LOSTARK_ANIM_NOTIFY 1 "GuardianKnight" 127
   n t=0.0000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_Confront_00.Par_J_GuardHolding_03" label="" win=NONE
   n t=0.0000 d=0.4005 kind=SHAKE src=ViewShake asset="dur=0.4;in=0;out=0.2;x=8,60;y=8,60;z=10,70;fov=0,0" label="" win=NONE
   n t=0.0000 d=1.1667 kind=SOUND src=AKEvent asset="PC_COMMON_PERFECTGUARD.PC_Common_PerfectGuard1_Success1_1" label="" win=NONE
-  n t=0.0515 d=0.1002 kind=HIT src=Effect asset="530200" label="" win=NONE
+  n t=0.0515 d=0.1002 kind=HIT src=Effect asset="530200" label="" win=NONE area=2 ar=500 aa=300 ah=180 ax=0 arem=0 maxt=0 rep=0 repms=0 push=120 pushr=50 fz=1200 fzin=400 fzout=500 hittype=4
   n t=0.4943 d=1.5057 kind=CANCEL src=InputTiming asset="" label="입력캔슬" win=ANY_CANCEL
   n t=0.6972 d=1.3028 kind=CANCEL src=InputTiming asset="" label="이동캔슬" win=MOVE_CANCEL
 "ddk_att_battle_guide_1_start" skill=49910 len=1.0000 name="저스트 가드 일반 상태"
@@ -127,7 +127,7 @@ LOSTARK_ANIM_NOTIFY 1 "GuardianKnight" 127
   n t=0.2844 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_J_RGBNoise_01" label="" win=NONE
   n t=0.2844 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_J_ZoomBlur_01" label="" win=NONE
   n t=0.2944 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.3;in=0;out=0.1;x=3,50;y=4,50;z=0,40;fov=0,0" label="" win=NONE
-  n t=0.3000 d=0.1000 kind=HIT src=Effect asset="490003" label="" win=NONE
+  n t=0.3000 d=0.1000 kind=HIT src=Effect asset="490003" label="" win=NONE area=3 ar=260 aa=150 ah=180 ax=-10 arem=0 maxt=0 rep=0 repms=0 push=100 pushr=35 fz=450 fzin=150 fzout=250 hittype=4
   n t=0.3500 d=1.2167 kind=CANCEL src=InputTiming asset="" label="" win=NONE
   n t=0.4000 d=1.1667 kind=CANCEL src=InputTiming asset="" label="회피기캔슬(테스트)" win=DODGE_CANCEL
   n t=0.4500 d=1.1167 kind=CANCEL src=InputTiming asset="" label="" win=NONE
@@ -145,7 +145,7 @@ LOSTARK_ANIM_NOTIFY 1 "GuardianKnight" 127
   n t=0.2923 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_J_ZoomBlur_01" label="" win=NONE
   n t=0.2923 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_DDK_00.Par_J_DDK_BaseAtk2_MeshTrail_01" label="" win=NONE
   n t=0.2923 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_DDK_00.Par_J_DDK_BaseAtk2_Exp_01" label="" win=NONE
-  n t=0.2923 d=0.0951 kind=HIT src=Effect asset="490004" label="" win=NONE
+  n t=0.2923 d=0.0951 kind=HIT src=Effect asset="490004" label="" win=NONE area=2 ar=260 aa=165 ah=180 ax=10 arem=0 maxt=0 rep=0 repms=0 push=100 pushr=35 fz=450 fzin=150 fzout=250 hittype=4
   n t=0.2923 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.25;in=0;out=0.1;x=2,50;y=2,50;z=7,40;fov=0,0" label="" win=NONE
   n t=0.3500 d=1.3500 kind=CANCEL src=InputTiming asset="" label="" win=NONE
   n t=0.4300 d=1.2700 kind=CANCEL src=InputTiming asset="" label="" win=NONE
@@ -165,7 +165,7 @@ LOSTARK_ANIM_NOTIFY 1 "GuardianKnight" 127
   n t=0.3149 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_J_ZoomBlur_01" label="" win=NONE
   n t=0.3149 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_DDK_00.Par_J_DDK_BaseAtk_Wind_01" label="" win=NONE
   n t=0.3149 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_DDK_00.Par_J_DDK_BaseAtk2_MeshTrail_01_2" label="" win=NONE
-  n t=0.3149 d=0.0951 kind=HIT src=Effect asset="490005" label="" win=NONE
+  n t=0.3149 d=0.0951 kind=HIT src=Effect asset="490005" label="" win=NONE area=1 ar=255 aa=0 ah=180 ax=-10 arem=0 maxt=0 rep=0 repms=0 push=100 pushr=45 fz=550 fzin=150 fzout=250 hittype=4
   n t=0.3550 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.3;in=0;out=0.1;x=3,50;y=4,50;z=0,40;fov=0,0" label="" win=NONE
   n t=0.3857 d=1.7143 kind=CANCEL src=InputTiming asset="" label="회피기캔슬(테스트)" win=DODGE_CANCEL
   n t=0.5000 d=1.6000 kind=CANCEL src=InputTiming asset="" label="" win=NONE
@@ -173,7 +173,7 @@ LOSTARK_ANIM_NOTIFY 1 "GuardianKnight" 127
   n t=0.6965 d=0.4099 kind=HIT src=ParticleHit asset="" label="" win=NONE
   n t=0.7906 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.7906 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_DDK_00.Par_J_DDK_BaseAtk2_Exp_01_2" label="" win=NONE
-  n t=0.7906 d=0.0951 kind=HIT src=Effect asset="490006" label="" win=NONE
+  n t=0.7906 d=0.0951 kind=HIT src=Effect asset="490006" label="" win=NONE area=3 ar=270 aa=140 ah=180 ax=-10 arem=0 maxt=0 rep=0 repms=0 push=100 pushr=35 fz=450 fzin=150 fzout=250 hittype=4
   n t=0.7926 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_J_ZoomBlur_01" label="" win=NONE
   n t=0.7926 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_J_RGBNoise_01" label="" win=NONE
   n t=0.7993 d=0.3774 kind=SHAKE src=ViewShake asset="dur=0.3;in=0;out=0.1;x=4,50;y=4,50;z=5,40;fov=0,0" label="" win=NONE
@@ -185,7 +185,7 @@ LOSTARK_ANIM_NOTIFY 1 "GuardianKnight" 127
   n t=0.0000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_04.SYS.Teleport.Par_L_Teleport_Off_03" label="" win=NONE
   n t=0.0000 d=5.0000 kind=SUPERARMOR src=SuperArmor asset="" label="" win=NONE
   n t=0.0010 d=3.2271 kind=SOUND src=AKEvent asset="PC_COMMON_DUAL.PC_Common_Dual1_7" label="" win=NONE
-  n t=0.0100 d=0.1000 kind=EFFECT src=Effect asset="" label="에스더 PP 제거" win=NONE
+  n t=0.0100 d=0.1000 kind=EFFECT src=Effect asset="530100" label="에스더 PP 제거" win=NONE
 "ddk_sk_abaddonflame_01" skill=49230 len=1.2000 name="아바돈 플레임"
   n t=0.0010 d=0.7990 kind=SOUND src=AKEvent asset="PC_DRAGONKNIGHT_F.PC_DragonKnight_F_SK_AbaddonFlame1_FX000_1" label="" win=NONE
   n t=0.0010 d=0.7990 kind=SOUND src=AKEvent asset="PC_DRAGONKNIGHT_F.PC_DragonKnight_F_SK_AbaddonFlame1_Vox1_1" label="" win=NONE
@@ -198,9 +198,9 @@ LOSTARK_ANIM_NOTIFY 1 "GuardianKnight" 127
   n t=0.4388 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_DDK_02.Par_W_DDK_AbaddonFlame_Fire_S_00" label="" win=NONE
   n t=0.4388 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_DDK_02.Par_W_DDK_AbaddonFlame_Fire_S_00_07" label="" win=NONE
   n t=0.4388 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_DDK_02.Par_W_DDK_AbaddonFlame_Fire_S_00" label="" win=NONE
-  n t=0.4500 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
-  n t=0.4500 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
-  n t=0.4500 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.4500 d=0.1000 kind=EFFECT src=Effect asset="492300" label="" win=NONE
+  n t=0.4500 d=0.1000 kind=EFFECT src=Effect asset="492370" label="" win=NONE
+  n t=0.4500 d=0.1000 kind=EFFECT src=Effect asset="492380" label="" win=NONE
   n t=0.5100 d=0.6900 kind=CANCEL src=InputTiming asset="" label="회피캔슬" win=DODGE_CANCEL
 "ddk_sk_abaddonflame_02" skill=49230 len=1.4000 name="아바돈 플레임"
   n t=0.0000 d=1.4000 kind=CANCEL src=InputTiming asset="" label="회피캔슬" win=DODGE_CANCEL
@@ -251,8 +251,8 @@ LOSTARK_ANIM_NOTIFY 1 "GuardianKnight" 127
   n t=0.0000 d=2.0000 kind=SHAKE src=ViewShake asset="dur=2;in=0;out=0;x=3,60;y=3,60;z=0,0;fov=0,0" label="" win=NONE
   n t=0.0010 d=0.6657 kind=SOUND src=AKEvent asset="PC_DRAGONKNIGHT_F.PC_DragonKnight_F_SK_BrutalMarch1_FX000_2" label="" win=NONE
   n t=0.0010 d=0.6657 kind=SOUND src=AKEvent asset="PC_DRAGONKNIGHT_F.PC_DragonKnight_F_SK_BrutalMarch1_Vox1_2" label="" win=NONE
-  n t=0.1000 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
-  n t=0.1000 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.1000 d=0.1000 kind=HIT src=Effect asset="492100" label="" win=NONE area=2 ar=280 aa=190 ah=180 ax=0 arem=0 maxt=0 rep=0 repms=0 push=80 pushr=10 fz=375 fzin=125 fzout=200 hittype=4
+  n t=0.1000 d=0.1000 kind=HIT src=Effect asset="492140" label="" win=NONE area=2 ar=392 aa=228 ah=180 ax=0 arem=0 maxt=0 rep=0 repms=0 push=80 pushr=10 fz=375 fzin=125 fzout=200 hittype=4
   n t=0.2000 d=1.8000 kind=CANCEL src=InputTiming asset="" label="" win=NONE
   n t=0.2000 d=1.8000 kind=CANCEL src=InputTiming asset="" label="" win=NONE
   n t=0.3000 d=0.1000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_DDK_01.Par_R_DDK_BrutalMarch_00_01-2" label="" win=NONE
@@ -285,8 +285,8 @@ LOSTARK_ANIM_NOTIFY 1 "GuardianKnight" 127
   n t=0.6300 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_DDK_01.Par_R_DDK_BrutalMarch_05_01" label="" win=NONE
   n t=0.6300 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_DDK_01.Par_R_DDK_BrutalMarch_04_03" label="" win=NONE
   n t=0.6300 d=0.2562 kind=SHAKE src=ViewShake asset="dur=0.3;in=0;out=0.1;x=5,50;y=5,50;z=5,50;fov=0,0" label="" win=NONE
-  n t=0.6500 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
-  n t=0.6500 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.6500 d=0.1000 kind=HIT src=Effect asset="492101" label="" win=NONE area=2 ar=350 aa=250 ah=180 ax=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 fz=450 fzin=150 fzout=250 hittype=5
+  n t=0.6500 d=0.1000 kind=HIT src=Effect asset="492141" label="" win=NONE area=2 ar=490 aa=300 ah=180 ax=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 fz=450 fzin=150 fzout=250 hittype=5
   n t=0.7500 d=1.5167 kind=CANCEL src=InputTiming asset="" label="[회피캔슬]" win=DODGE_CANCEL
   n t=0.9000 d=1.3667 kind=CANCEL src=InputTiming asset="" label="" win=NONE
   n t=1.0000 d=1.2667 kind=CANCEL src=InputTiming asset="" label="" win=NONE
@@ -372,7 +372,7 @@ LOSTARK_ANIM_NOTIFY 1 "GuardianKnight" 127
   n t=0.1500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_07" label="" win=NONE
   n t=0.1500 d=0.4000 kind=SHAKE src=ViewShake asset="dur=0.4;in=0;out=0.3;x=4,30;y=4,30;z=3,50;fov=0,0" label="" win=NONE
   n t=0.1600 d=0.1000 kind=HIT src=ParticleHit asset="" label="" win=NONE
-  n t=0.1700 d=0.1000 kind=HIT src=Effect asset="491700" label="" win=NONE
+  n t=0.1700 d=0.1000 kind=HIT src=Effect asset="491700" label="" win=NONE area=3 ar=335 aa=140 ah=180 ax=-10 arem=0 maxt=0 rep=0 repms=0 push=80 pushr=10 fz=650 fzin=150 fzout=250 hittype=4
   n t=0.1800 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_DDK_05.Par_K_DDK_CatchingFire_Dust_02" label="" win=NONE
   n t=0.1800 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_DDK_05.Par_K_DDK_CatchingFire_Dust_06_02" label="" win=NONE
   n t=0.1800 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_DDK_05.Par_K_DDK_CatchingFire_Dust_06_02" label="" win=NONE
@@ -397,7 +397,7 @@ LOSTARK_ANIM_NOTIFY 1 "GuardianKnight" 127
   n t=0.5800 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_DDK_05.Par_K_DDK_CatchingFire_Atk_06_01" label="" win=NONE
   n t=0.5800 d=0.4000 kind=SHAKE src=ViewShake asset="dur=0.4;in=0;out=0.3;x=4,30;y=4,30;z=3,50;fov=0,0" label="" win=NONE
   n t=0.6100 d=0.1000 kind=HIT src=ParticleHit asset="" label="" win=NONE
-  n t=0.6200 d=0.1000 kind=HIT src=Effect asset="491701" label="" win=NONE
+  n t=0.6200 d=0.1000 kind=HIT src=Effect asset="491701" label="" win=NONE area=3 ar=335 aa=140 ah=180 ax=-10 arem=0 maxt=0 rep=0 repms=0 push=80 pushr=10 fz=650 fzin=150 fzout=250 hittype=4
   n t=0.6500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_DDK_05.Par_K_DDK_CatchingFire_Dust_02" label="" win=NONE
   n t=0.6500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_DDK_05.Par_K_DDK_CatchingFire_Dust_06_02" label="" win=NONE
   n t=0.6500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_DDK_05.Par_K_DDK_CatchingFire_Dust_06_02" label="" win=NONE
@@ -426,7 +426,7 @@ LOSTARK_ANIM_NOTIFY 1 "GuardianKnight" 127
   n t=1.0000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_DDK_05.Par_K_DDK_CatchingFire_Dust_06_01" label="" win=NONE
   n t=1.0000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_DDK_05.Par_K_DDK_CatchingFire_Dust_06_01" label="" win=NONE
   n t=1.0000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_DDK_05.Par_K_DDK_CatchingFire_Dust_06_01" label="" win=NONE
-  n t=1.0000 d=0.1000 kind=HIT src=Effect asset="491702" label="" win=NONE
+  n t=1.0000 d=0.1000 kind=HIT src=Effect asset="491702" label="" win=NONE area=3 ar=335 aa=140 ah=180 ax=-10 arem=0 maxt=0 rep=0 repms=0 push=80 pushr=10 fz=650 fzin=150 fzout=250 hittype=4
   n t=1.2000 d=0.2667 kind=SOUND src=AKEvent asset="PC_DRAGONKNIGHT_F.PC_DragonKnight_F_SK_CatchingFire1_FX000_4" label="" win=NONE
   n t=1.2000 d=0.2667 kind=SOUND src=AKEvent asset="PC_DRAGONKNIGHT_F.PC_DragonKnight_F_SK_CatchingFire1_FX006_4" label="" win=NONE
   n t=1.2000 d=0.2667 kind=SOUND src=AKEvent asset="PC_DRAGONKNIGHT_F.PC_DragonKnight_F_SK_CatchingFire1_FX006_4" label="" win=NONE
@@ -447,7 +447,7 @@ LOSTARK_ANIM_NOTIFY 1 "GuardianKnight" 127
   n t=1.2900 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_DDK_05.Par_K_DDK_CatchingFire_Wind_06_02" label="" win=NONE
   n t=1.2900 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.4;in=0;out=0.3;x=4,30;y=4,30;z=3,50;fov=0,0" label="" win=NONE
   n t=1.3200 d=0.1000 kind=HIT src=ParticleHit asset="" label="" win=NONE
-  n t=1.3300 d=0.1000 kind=HIT src=Effect asset="491703" label="" win=NONE
+  n t=1.3300 d=0.1000 kind=HIT src=Effect asset="491703" label="" win=NONE area=3 ar=335 aa=140 ah=180 ax=-10 arem=0 maxt=0 rep=0 repms=0 push=80 pushr=10 fz=650 fzin=150 fzout=250 hittype=4
   n t=1.3400 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_DDK_05.Par_K_DDK_CatchingFire_Dust_02" label="" win=NONE
   n t=1.3400 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_DDK_05.Par_K_DDK_CatchingFire_Dust_06_02" label="" win=NONE
   n t=1.3400 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_DDK_05.Par_K_DDK_CatchingFire_Dust_06_02" label="" win=NONE
@@ -480,10 +480,8 @@ LOSTARK_ANIM_NOTIFY 1 "GuardianKnight" 127
   n t=0.5000 d=1.9000 kind=SOUND src=AKEvent asset="PC_DRAGONKNIGHT_F.PC_DragonKnight_F_SK_CatchingFire1_FX006_5" label="" win=NONE
   n t=0.5000 d=1.9000 kind=SOUND src=AKEvent asset="PC_DRAGONKNIGHT_F.PC_DragonKnight_F_SK_CatchingFire1_FX006_5" label="" win=NONE
   n t=0.5000 d=1.9000 kind=SOUND src=AKEvent asset="PC_DRAGONKNIGHT_F.PC_DragonKnight_F_SK_CatchingFire1_FX000_5" label="" win=NONE
-  n t=0.6800 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
-  n t=0.6800 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
-  n t=0.6800 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
-  n t=0.6800 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.6800 d=0.1000 kind=EFFECT src=Effect asset="491774" label="" win=NONE
+  n t=0.6800 d=0.1000 kind=EFFECT src=Effect asset="491784" label="" win=NONE
   n t=0.6800 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_J_ZoomBlur_01" label="" win=NONE
   n t=0.6800 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_07" label="" win=NONE
   n t=0.6800 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_FilmNoise_01" label="" win=NONE
@@ -504,6 +502,8 @@ LOSTARK_ANIM_NOTIFY 1 "GuardianKnight" 127
   n t=0.6800 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_FilmNoise_01" label="" win=NONE
   n t=0.6800 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_DDK_05.Par_K_DDK_CatchingFire_Exp_06_01" label="" win=NONE
   n t=0.6800 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_DDK_05.Par_K_DDK_CatchingFire_Wind_00_01" label="" win=NONE
+  n t=0.6800 d=0.1000 kind=HIT src=Effect asset="491704" label="" win=NONE area=1 ar=275 aa=0 ah=180 ax=160 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 fz=450 fzin=150 fzout=250 hittype=5
+  n t=0.6800 d=0.1000 kind=HIT src=Effect asset="491705" label="" win=NONE area=1 ar=275 aa=0 ah=180 ax=160 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 fz=450 fzin=150 fzout=250 hittype=8
   n t=0.6800 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.45;in=0;out=0.3;x=6,55;y=6,55;z=10,70;fov=0,0" label="" win=NONE
   n t=0.6800 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.45;in=0;out=0.4;x=7,55;y=7,55;z=10,60;fov=0,0" label="" win=NONE
   n t=0.6800 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.45;in=0;out=0.4;x=7,55;y=7,55;z=10,60;fov=0,0" label="" win=NONE
@@ -535,7 +535,7 @@ LOSTARK_ANIM_NOTIFY 1 "GuardianKnight" 127
   n t=0.1700 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_DDK_05.Par_K_DDK_CatchingFire_atk_04_01" label="" win=NONE
   n t=0.1700 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_DDK_05.Par_K_DDK_CatchingFire_Wind_02" label="" win=NONE
   n t=0.1700 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_07" label="" win=NONE
-  n t=0.1700 d=0.1000 kind=HIT src=Effect asset="491740" label="" win=NONE
+  n t=0.1700 d=0.1000 kind=HIT src=Effect asset="491740" label="" win=NONE area=3 ar=335 aa=140 ah=180 ax=-10 arem=0 maxt=0 rep=0 repms=0 push=80 pushr=10 fz=650 fzin=150 fzout=250 hittype=4
   n t=0.1700 d=0.3000 kind=SHAKE src=ViewShake asset="dur=0.3;in=0;out=0.25;x=4,30;y=4,30;z=3,50;fov=0,0" label="" win=NONE
   n t=0.2200 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_DDK_05.Par_K_DDK_CatchingFire_Dust_02" label="" win=NONE
   n t=0.2200 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_DDK_05.Par_K_DDK_CatchingFire_Dust_02" label="" win=NONE
@@ -552,7 +552,7 @@ LOSTARK_ANIM_NOTIFY 1 "GuardianKnight" 127
   n t=0.4500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_07" label="" win=NONE
   n t=0.4500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_DDK_05.Par_K_DDK_CatchingFire_Wind_02" label="" win=NONE
   n t=0.4500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_DDK_05.Par_K_DDK_CatchingFire_atk_04_01" label="" win=NONE
-  n t=0.4500 d=0.1000 kind=HIT src=Effect asset="491741" label="" win=NONE
+  n t=0.4500 d=0.1000 kind=HIT src=Effect asset="491741" label="" win=NONE area=3 ar=335 aa=140 ah=180 ax=-10 arem=0 maxt=0 rep=0 repms=0 push=80 pushr=10 fz=650 fzin=150 fzout=250 hittype=4
   n t=0.4500 d=0.3000 kind=SHAKE src=ViewShake asset="dur=0.3;in=0;out=0.25;x=4,30;y=4,30;z=3,50;fov=0,0" label="" win=NONE
   n t=0.4500 d=1.3500 kind=SOUND src=AKEvent asset="PC_DRAGONKNIGHT_F.PC_DragonKnight_F_SK_CatchingFire1_FX000_4" label="" win=NONE
   n t=0.5000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_DDK_05.Par_K_DDK_CatchingFire_Dust_02" label="" win=NONE
@@ -570,7 +570,7 @@ LOSTARK_ANIM_NOTIFY 1 "GuardianKnight" 127
   n t=0.7500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_07" label="" win=NONE
   n t=0.7500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_DDK_05.Par_K_DDK_CatchingFire_Wind_01" label="" win=NONE
   n t=0.7500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_DDK_05.Par_K_DDK_CatchingFire_atk_04_01" label="" win=NONE
-  n t=0.7500 d=0.1000 kind=HIT src=Effect asset="491741" label="" win=NONE
+  n t=0.7500 d=0.1000 kind=HIT src=Effect asset="491741" label="" win=NONE area=3 ar=335 aa=140 ah=180 ax=-10 arem=0 maxt=0 rep=0 repms=0 push=80 pushr=10 fz=650 fzin=150 fzout=250 hittype=4
   n t=0.7500 d=0.3000 kind=SHAKE src=ViewShake asset="dur=0.3;in=0;out=0.25;x=4,30;y=4,30;z=3,50;fov=0,0" label="" win=NONE
   n t=0.7500 d=0.9500 kind=SOUND src=AKEvent asset="PC_DRAGONKNIGHT_F.PC_DragonKnight_F_SK_CatchingFire1_FX004_3" label="" win=NONE
   n t=0.8000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_DDK_05.Par_K_DDK_CatchingFire_Dust_01" label="" win=NONE
@@ -588,7 +588,7 @@ LOSTARK_ANIM_NOTIFY 1 "GuardianKnight" 127
   n t=1.0000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_DDK_05.Par_K_DDK_CatchingFire_atk_04_01" label="" win=NONE
   n t=1.0000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_DDK_05.Par_K_DDK_CatchingFire_Wind_01" label="" win=NONE
   n t=1.0000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_07" label="" win=NONE
-  n t=1.0000 d=0.1000 kind=HIT src=Effect asset="491741" label="" win=NONE
+  n t=1.0000 d=0.1000 kind=HIT src=Effect asset="491741" label="" win=NONE area=3 ar=335 aa=140 ah=180 ax=-10 arem=0 maxt=0 rep=0 repms=0 push=80 pushr=10 fz=650 fzin=150 fzout=250 hittype=4
   n t=1.0000 d=0.3000 kind=SHAKE src=ViewShake asset="dur=0.3;in=0;out=0.25;x=4,30;y=4,30;z=3,50;fov=0,0" label="" win=NONE
   n t=1.0500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_DDK_05.Par_K_DDK_CatchingFire_Dust_01" label="" win=NONE
   n t=1.0500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_DDK_05.Par_K_DDK_CatchingFire_Dust_01" label="" win=NONE
@@ -605,7 +605,7 @@ LOSTARK_ANIM_NOTIFY 1 "GuardianKnight" 127
   n t=1.3000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_07" label="" win=NONE
   n t=1.3000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_DDK_05.Par_K_DDK_CatchingFire_Wind_01" label="" win=NONE
   n t=1.3000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_DDK_05.Par_K_DDK_CatchingFire_atk_04_01" label="" win=NONE
-  n t=1.3000 d=0.1000 kind=HIT src=Effect asset="491741" label="" win=NONE
+  n t=1.3000 d=0.1000 kind=HIT src=Effect asset="491741" label="" win=NONE area=3 ar=335 aa=140 ah=180 ax=-10 arem=0 maxt=0 rep=0 repms=0 push=80 pushr=10 fz=650 fzin=150 fzout=250 hittype=4
   n t=1.3000 d=0.3000 kind=SHAKE src=ViewShake asset="dur=0.3;in=0;out=0.25;x=4,30;y=4,30;z=3,50;fov=0,0" label="" win=NONE
   n t=1.3500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_DDK_05.Par_K_DDK_CatchingFire_Dust_01" label="" win=NONE
   n t=1.3500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_DDK_05.Par_K_DDK_CatchingFire_Dust_01" label="" win=NONE
@@ -623,7 +623,7 @@ LOSTARK_ANIM_NOTIFY 1 "GuardianKnight" 127
   n t=1.6000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_DDK_05.Par_K_DDK_CatchingFire_atk_04_01" label="" win=NONE
   n t=1.6000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_07" label="" win=NONE
   n t=1.6000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_DDK_05.Par_K_DDK_CatchingFire_Wind_02" label="" win=NONE
-  n t=1.6000 d=0.1000 kind=HIT src=Effect asset="491741" label="" win=NONE
+  n t=1.6000 d=0.1000 kind=HIT src=Effect asset="491741" label="" win=NONE area=3 ar=335 aa=140 ah=180 ax=-10 arem=0 maxt=0 rep=0 repms=0 push=80 pushr=10 fz=650 fzin=150 fzout=250 hittype=4
   n t=1.6000 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.3;in=0;out=0.25;x=4,30;y=4,30;z=3,50;fov=0,0" label="" win=NONE
   n t=1.6500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_DDK_05.Par_K_DDK_CatchingFire_Dust_02" label="" win=NONE
   n t=1.6500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_DDK_05.Par_K_DDK_CatchingFire_Dust_02" label="" win=NONE
@@ -654,7 +654,7 @@ LOSTARK_ANIM_NOTIFY 1 "GuardianKnight" 127
   n t=0.1500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_J_RGBNoise_01" label="" win=NONE
   n t=0.1500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_ZoomBlur_03" label="" win=NONE
   n t=0.1500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_ZoomBlur_03" label="" win=NONE
-  n t=0.1500 d=0.1000 kind=HIT src=Effect asset="491750" label="" win=NONE
+  n t=0.1500 d=0.1000 kind=HIT src=Effect asset="491750" label="" win=NONE area=3 ar=335 aa=140 ah=180 ax=-10 arem=0 maxt=0 rep=0 repms=0 push=100 pushr=40 fz=650 fzin=150 fzout=250 hittype=4
   n t=0.1500 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.35;in=0.05;out=0.2;x=4,30;y=4,30;z=6,50;fov=0,0" label="" win=NONE
   n t=0.1500 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.35;in=0.05;out=0.2;x=4,30;y=4,30;z=6,50;fov=0,0" label="" win=NONE
   n t=0.1500 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.35;in=0.05;out=0.2;x=4,30;y=4,30;z=6,50;fov=0,0" label="" win=NONE
@@ -671,10 +671,8 @@ LOSTARK_ANIM_NOTIFY 1 "GuardianKnight" 127
   n t=0.5000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_DDK_05.Par_K_DDK_CatchingFire_Flare_05_01" label="" win=NONE
   n t=0.5000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_07" label="" win=NONE
   n t=0.8500 d=1.8167 kind=SOUND src=AKEvent asset="PC_DRAGONKNIGHT_F.PC_DragonKnight_F_SK_CatchingFire1_FX005_4" label="" win=NONE
-  n t=0.9000 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
-  n t=0.9000 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
-  n t=0.9000 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
-  n t=0.9000 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.9000 d=0.1000 kind=EFFECT src=Effect asset="491772" label="" win=NONE
+  n t=0.9000 d=0.1000 kind=EFFECT src=Effect asset="491782" label="" win=NONE
   n t=0.9000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_J_ZoomBlur_01" label="" win=NONE
   n t=0.9000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_07" label="" win=NONE
   n t=0.9000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_FilmNoise_01" label="" win=NONE
@@ -690,6 +688,8 @@ LOSTARK_ANIM_NOTIFY 1 "GuardianKnight" 127
   n t=0.9000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_FilmNoise_01" label="" win=NONE
   n t=0.9000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_DDK_05.Par_K_DDK_CatchingFire_Wind_00_01" label="" win=NONE
   n t=0.9000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_DDK_05.Par_K_DDK_CatchingFire_Exp_05_01" label="" win=NONE
+  n t=0.9000 d=0.1000 kind=HIT src=Effect asset="491751" label="" win=NONE area=1 ar=275 aa=0 ah=180 ax=160 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 fz=450 fzin=150 fzout=250 hittype=5
+  n t=0.9000 d=0.1000 kind=HIT src=Effect asset="491752" label="" win=NONE area=1 ar=275 aa=0 ah=180 ax=160 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 fz=450 fzin=150 fzout=250 hittype=8
   n t=0.9000 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.45;in=0;out=0.3;x=6,55;y=6,55;z=12,70;fov=0,0" label="" win=NONE
   n t=0.9000 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.45;in=0;out=0.3;x=6,55;y=6,55;z=12,70;fov=0,0" label="" win=NONE
   n t=0.9000 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.45;in=0;out=0.3;x=6,55;y=6,55;z=12,70;fov=0,0" label="" win=NONE
@@ -725,9 +725,9 @@ LOSTARK_ANIM_NOTIFY 1 "GuardianKnight" 127
   n t=0.5753 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_DDK_00.Par_J_DDK_Cleave_Dust_01" label="" win=NONE
   n t=0.5753 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_DDK_00.Par_J_DDK_Cleave_Dust_01" label="" win=NONE
   n t=0.5792 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.4;in=0;out=0.2;x=8,40;y=8,40;z=8,40;fov=0,0" label="" win=NONE
-  n t=0.5800 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
-  n t=0.5800 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
-  n t=0.5800 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.5800 d=0.1000 kind=HIT src=Effect asset="491000" label="" win=NONE area=1 ar=280 aa=0 ah=180 ax=0 arem=0 maxt=0 rep=0 repms=0 push=100 pushr=25 fz=450 fzin=150 fzout=250 hittype=4
+  n t=0.5800 d=0.1000 kind=HIT src=Effect asset="491070" label="" win=NONE area=1 ar=280 aa=0 ah=180 ax=0 arem=0 maxt=0 rep=0 repms=0 push=100 pushr=25 fz=450 fzin=150 fzout=250 hittype=4
+  n t=0.5800 d=0.1000 kind=HIT src=Effect asset="491080" label="" win=NONE area=1 ar=364 aa=0 ah=180 ax=0 arem=0 maxt=0 rep=0 repms=0 push=100 pushr=25 fz=450 fzin=150 fzout=250 hittype=4
   n t=0.7000 d=1.3667 kind=CANCEL src=InputTiming asset="" label="" win=NONE
   n t=0.7061 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.9000 d=1.1667 kind=CANCEL src=InputTiming asset="" label="" win=NONE
@@ -762,9 +762,9 @@ LOSTARK_ANIM_NOTIFY 1 "GuardianKnight" 127
   n t=0.5753 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_DDK_00.Par_J_DDK_Cleave_Dust_01" label="" win=NONE
   n t=0.5753 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_DDK_00.Par_J_DDK_Cleave_Dust_01" label="" win=NONE
   n t=0.5792 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.4;in=0;out=0.2;x=8,40;y=8,40;z=8,40;fov=0,0" label="" win=NONE
-  n t=0.5800 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
-  n t=0.5800 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
-  n t=0.5800 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.5800 d=0.1000 kind=HIT src=Effect asset="491000" label="" win=NONE area=1 ar=280 aa=0 ah=180 ax=0 arem=0 maxt=0 rep=0 repms=0 push=100 pushr=25 fz=450 fzin=150 fzout=250 hittype=4
+  n t=0.5800 d=0.1000 kind=HIT src=Effect asset="491070" label="" win=NONE area=1 ar=280 aa=0 ah=180 ax=0 arem=0 maxt=0 rep=0 repms=0 push=100 pushr=25 fz=450 fzin=150 fzout=250 hittype=4
+  n t=0.5800 d=0.1000 kind=HIT src=Effect asset="491080" label="" win=NONE area=1 ar=364 aa=0 ah=180 ax=0 arem=0 maxt=0 rep=0 repms=0 push=100 pushr=25 fz=450 fzin=150 fzout=250 hittype=4
   n t=0.7000 d=1.3667 kind=CANCEL src=InputTiming asset="" label="" win=NONE
   n t=0.7061 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.9000 d=1.1667 kind=CANCEL src=InputTiming asset="" label="" win=NONE
@@ -831,9 +831,9 @@ LOSTARK_ANIM_NOTIFY 1 "GuardianKnight" 127
   n t=0.9000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_DDK_03.Par_S_DDK_CrimsonRend_Decal_01" label="" win=NONE
   n t=0.9000 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.5;in=0;out=0.2;x=6,60;y=6,60;z=6,60;fov=0,0" label="" win=NONE
   n t=0.9000 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.5;in=0;out=0.2;x=8,80;y=8,80;z=8,80;fov=0,0" label="" win=NONE
-  n t=0.9300 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
-  n t=0.9300 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
-  n t=0.9300 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.9300 d=0.1000 kind=EFFECT src=Effect asset="492881" label="" win=NONE
+  n t=0.9300 d=0.1000 kind=HIT src=Effect asset="492800" label="" win=NONE area=2 ar=380 aa=500 ah=180 ax=0 arem=0 maxt=0 rep=0 repms=0 push=260 pushr=180 fz=600 fzin=200 fzout=300 hittype=4
+  n t=0.9300 d=0.1000 kind=HIT src=Effect asset="492880" label="" win=NONE area=2 ar=400 aa=540 ah=180 ax=0 arem=0 maxt=0 rep=0 repms=0 push=260 pushr=180 fz=600 fzin=200 fzout=300 hittype=4
   n t=0.9500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_DDK_03.Par_S_DDK_CrimsonRend_Hand_01" label="" win=NONE
   n t=0.9500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_DDK_03.Par_S_DDK_CrimsonRend_Hand_01" label="" win=NONE
   n t=0.9550 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_DDK_03.Par_S_DDK_CrimsonRend_Wp_Hide_01" label="" win=NONE
@@ -932,7 +932,7 @@ LOSTARK_ANIM_NOTIFY 1 "GuardianKnight" 127
   n t=0.3000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_DDK_04.Par_M_DDK_DeadlockPierce_Charge_Ground_01" label="" win=NONE
   n t=0.3000 d=0.4000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_DDK_04.Par_M_DDK_DeadlockPierce_Charge_Core_01" label="" win=NONE
   n t=0.3000 d=0.4000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_02_sine" label="" win=NONE
-  n t=0.3000 d=0.1000 kind=HIT src=Effect asset="491600" label="" win=NONE
+  n t=0.3000 d=0.1000 kind=HIT src=Effect asset="491600" label="" win=NONE area=2 ar=270 aa=150 ah=180 ax=20 arem=0 maxt=0 rep=0 repms=0 push=140 pushr=80 fz=325 fzin=125 fzout=200 hittype=4
   n t=0.3000 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.4;in=0;out=0.4;x=2,50;y=2,50;z=5,50;fov=0,0" label="" win=NONE
   n t=0.4000 d=0.3000 kind=CANCEL src=InputTiming asset="" label="회피캔슬" win=DODGE_CANCEL
   n t=0.5000 d=0.2000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_DDK_04.Par_M_DDK_DeadlockPierce_CoreLoop_01" label="" win=NONE
@@ -949,7 +949,7 @@ LOSTARK_ANIM_NOTIFY 1 "GuardianKnight" 127
   n t=0.0000 d=0.7500 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_04" label="" win=NONE
   n t=0.0000 d=0.7500 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_04" label="" win=NONE
   n t=0.0000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_J_RGBNoise_01" label="" win=NONE
-  n t=0.0000 d=0.1000 kind=HIT src=Effect asset="491602" label="" win=NONE
+  n t=0.0000 d=0.1000 kind=HIT src=Effect asset="491602" label="" win=NONE area=1 ar=250 aa=0 ah=200 ax=190 arem=0 maxt=0 rep=0 repms=0 push=100 pushr=-40 fz=450 fzin=150 fzout=250 hittype=4
   n t=0.0000 d=1.0200 kind=SUPERARMOR src=SuperArmorPVP asset="" label="" win=NONE
   n t=0.0000 d=1.0200 kind=SUPERARMOR src=SuperArmor asset="" label="" win=NONE
   n t=0.0010 d=1.1667 kind=SOUND src=AKEvent asset="PC_DRAGONKNIGHT_F.PC_DragonKnight_F_Stop1" label="" win=NONE
@@ -974,8 +974,8 @@ LOSTARK_ANIM_NOTIFY 1 "GuardianKnight" 127
   n t=0.7500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_DDK_04.Par_M_DDK_DeadlockPierce_Exp_Line_08" label="" win=NONE
   n t=0.7500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_07" label="" win=NONE
   n t=0.7500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_DDK_04.Par_M_DDK_EtherDivide_WindEmber_01" label="" win=NONE
-  n t=0.7500 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
-  n t=0.7500 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.7500 d=0.1000 kind=HIT src=Effect asset="491601" label="" win=NONE area=1 ar=250 aa=0 ah=200 ax=190 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 fz=450 fzin=150 fzout=250 hittype=6
+  n t=0.7500 d=0.1000 kind=HIT src=Effect asset="491680" label="" win=NONE area=2 ar=700 aa=270 ah=200 ax=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 fz=450 fzin=150 fzout=250 hittype=6
   n t=0.7500 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.5;in=0;out=0.5;x=3,50;y=3,50;z=8,50;fov=0,0" label="" win=NONE
   n t=0.8500 d=1.4167 kind=CANCEL src=InputTiming asset="" label="" win=NONE
   n t=1.0000 d=1.2667 kind=CANCEL src=InputTiming asset="" label="" win=NONE
@@ -1085,8 +1085,8 @@ LOSTARK_ANIM_NOTIFY 1 "GuardianKnight" 127
   n t=0.1500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_07" label="" win=NONE
   n t=0.1500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_DDK_04.Par_M_DDK_EtherDivide_WindEmber_01" label="" win=NONE
   n t=0.1500 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.5;in=0;out=0.5;x=3,50;y=3,50;z=8,50;fov=0,0" label="" win=NONE
-  n t=0.2000 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
-  n t=0.2000 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.2000 d=0.1000 kind=HIT src=Effect asset="491645" label="" win=NONE area=1 ar=250 aa=0 ah=200 ax=190 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 fz=450 fzin=150 fzout=250 hittype=6
+  n t=0.2000 d=0.1000 kind=HIT src=Effect asset="491683" label="" win=NONE area=2 ar=700 aa=270 ah=200 ax=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 fz=450 fzin=150 fzout=250 hittype=6
   n t=0.3000 d=1.5667 kind=CANCEL src=InputTiming asset="" label="회피캔슬" win=DODGE_CANCEL
   n t=0.3000 d=1.5667 kind=CANCEL src=InputTiming asset="" label="" win=NONE
   n t=0.6000 d=1.2667 kind=CANCEL src=InputTiming asset="" label="" win=NONE
@@ -1118,8 +1118,8 @@ LOSTARK_ANIM_NOTIFY 1 "GuardianKnight" 127
   n t=0.3000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_DDK_04.Par_M_DDK_DeadlockPierce_Exp_Line_08" label="" win=NONE
   n t=0.3000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_07" label="" win=NONE
   n t=0.3000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_DDK_04.Par_M_DDK_EtherDivide_WindEmber_01" label="" win=NONE
-  n t=0.3000 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
-  n t=0.3000 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.3000 d=0.1000 kind=HIT src=Effect asset="491650" label="" win=NONE area=1 ar=250 aa=0 ah=200 ax=190 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 fz=450 fzin=150 fzout=250 hittype=6
+  n t=0.3000 d=0.1000 kind=HIT src=Effect asset="491684" label="" win=NONE area=2 ar=700 aa=270 ah=200 ax=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 fz=450 fzin=150 fzout=250 hittype=6
   n t=0.3000 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.5;in=0;out=0.5;x=3,50;y=3,50;z=8,50;fov=0,0" label="" win=NONE
   n t=0.4000 d=1.6333 kind=CANCEL src=InputTiming asset="" label="[회피캔슬]" win=DODGE_CANCEL
   n t=0.4000 d=1.6333 kind=CANCEL src=InputTiming asset="" label="" win=NONE
@@ -1158,14 +1158,14 @@ LOSTARK_ANIM_NOTIFY 1 "GuardianKnight" 127
   n t=0.1000 d=0.6200 kind=CANCEL src=InputTiming asset="" label="[선이]" win=MOVE_PRE
   n t=0.1000 d=0.6200 kind=CANCEL src=InputTiming asset="" label="[선스]" win=SKILL_PRE
   n t=0.2000 d=0.6657 kind=SOUND src=AKEvent asset="PC_DRAGONKNIGHT_F.PC_DragonKnight_F_SK_DeepImpact1_FX000_3" label="" win=NONE
-  n t=0.2500 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
-  n t=0.2500 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
   n t=0.2500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_DDK_00.Par_J_DDK_DeepImpact_01_3" label="" win=NONE
   n t=0.2500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_DDK_00.Par_J_DDK_DeepImpact_02_2" label="" win=NONE
   n t=0.2500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_DDK_00.Par_J_DDK_DeepImpact_01_1" label="" win=NONE
   n t=0.2500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_J_RGBNoise_01" label="" win=NONE
   n t=0.2500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_ZoomBlur_01" label="" win=NONE
   n t=0.2500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
+  n t=0.2500 d=0.1000 kind=HIT src=Effect asset="493303" label="" win=NONE area=1 ar=200 aa=0 ah=180 ax=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 fz=600 fzin=200 fzout=300 hittype=8
+  n t=0.2500 d=0.1000 kind=HIT src=Effect asset="493304" label="" win=NONE area=1 ar=400 aa=0 ah=180 ax=0 arem=200 maxt=0 rep=0 repms=0 push=0 pushr=0 fz=600 fzin=200 fzout=300 hittype=8
   n t=0.2500 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.8;in=0;out=0.5;x=7,55;y=7,55;z=14,55;fov=5,-1" label="" win=NONE
   n t=0.3500 d=1.5167 kind=CANCEL src=InputTiming asset="" label="회피캔슬" win=DODGE_CANCEL
   n t=0.7000 d=1.1667 kind=CANCEL src=InputTiming asset="" label="" win=NONE
@@ -1263,19 +1263,19 @@ LOSTARK_ANIM_NOTIFY 1 "GuardianKnight" 127
   n t=0.1352 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_DDK_02.Par_W_DDK_DecentStrike_Atk_02" label="" win=NONE
   n t=0.1500 d=0.3200 kind=CANCEL src=InputTiming asset="" label="[선스]" win=SKILL_PRE
   n t=0.1500 d=0.3200 kind=CANCEL src=InputTiming asset="" label="[선이]" win=MOVE_PRE
-  n t=0.1700 d=0.1004 kind=EFFECT src=Effect asset="" label="" win=NONE
-  n t=0.1700 d=0.1004 kind=EFFECT src=Effect asset="" label="" win=NONE
-  n t=0.1700 d=0.1004 kind=EFFECT src=Effect asset="" label="" win=NONE
-  n t=0.1700 d=0.1004 kind=EFFECT src=Effect asset="" label="" win=NONE
-  n t=0.1700 d=0.1004 kind=EFFECT src=Effect asset="" label="" win=NONE
-  n t=0.1700 d=0.1004 kind=EFFECT src=Effect asset="" label="" win=NONE
-  n t=0.1700 d=0.1004 kind=EFFECT src=Effect asset="" label="" win=NONE
-  n t=0.1700 d=0.1004 kind=EFFECT src=Effect asset="" label="" win=NONE
-  n t=0.1700 d=0.1004 kind=EFFECT src=Effect asset="" label="" win=NONE
-  n t=0.1700 d=0.1004 kind=EFFECT src=Effect asset="" label="" win=NONE
-  n t=0.1700 d=0.1004 kind=EFFECT src=Effect asset="" label="" win=NONE
-  n t=0.1700 d=0.1004 kind=EFFECT src=Effect asset="" label="" win=NONE
-  n t=0.1700 d=0.1004 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.1700 d=0.1004 kind=EFFECT src=Effect asset="491441" label="" win=NONE
+  n t=0.1700 d=0.1004 kind=EFFECT src=Effect asset="491451" label="" win=NONE
+  n t=0.1700 d=0.1004 kind=EFFECT src=Effect asset="491461" label="" win=NONE
+  n t=0.1700 d=0.1004 kind=EFFECT src=Effect asset="491471" label="" win=NONE
+  n t=0.1700 d=0.1004 kind=EFFECT src=Effect asset="491474" label="" win=NONE
+  n t=0.1700 d=0.1004 kind=EFFECT src=Effect asset="491477" label="" win=NONE
+  n t=0.1700 d=0.1004 kind=HIT src=Effect asset="491400" label="" win=NONE area=1 ar=200 aa=0 ah=180 ax=20 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 fz=450 fzin=150 fzout=250 hittype=8
+  n t=0.1700 d=0.1004 kind=HIT src=Effect asset="491440" label="" win=NONE area=1 ar=200 aa=0 ah=180 ax=20 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 fz=450 fzin=150 fzout=250 hittype=8
+  n t=0.1700 d=0.1004 kind=HIT src=Effect asset="491450" label="" win=NONE area=1 ar=200 aa=0 ah=180 ax=20 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 fz=450 fzin=150 fzout=250 hittype=8
+  n t=0.1700 d=0.1004 kind=HIT src=Effect asset="491460" label="" win=NONE area=1 ar=200 aa=0 ah=180 ax=20 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 fz=450 fzin=150 fzout=250 hittype=8
+  n t=0.1700 d=0.1004 kind=HIT src=Effect asset="491470" label="" win=NONE area=1 ar=300 aa=0 ah=180 ax=20 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 fz=450 fzin=150 fzout=250 hittype=8
+  n t=0.1700 d=0.1004 kind=HIT src=Effect asset="491473" label="" win=NONE area=1 ar=300 aa=0 ah=180 ax=20 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 fz=450 fzin=150 fzout=250 hittype=8
+  n t=0.1700 d=0.1004 kind=HIT src=Effect asset="491476" label="" win=NONE area=1 ar=300 aa=0 ah=180 ax=20 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 fz=450 fzin=150 fzout=250 hittype=8
   n t=0.3000 d=1.4333 kind=CANCEL src=InputTiming asset="" label="회피캔슬" win=DODGE_CANCEL
   n t=0.4500 d=1.2833 kind=CANCEL src=InputTiming asset="" label="" win=NONE
   n t=0.4500 d=1.2833 kind=CANCEL src=InputTiming asset="" label="" win=NONE
@@ -1333,8 +1333,8 @@ LOSTARK_ANIM_NOTIFY 1 "GuardianKnight" 127
   n t=0.5600 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_DDK_03.Par_S_DDK_DResonance_LocalDust_01" label="" win=NONE
   n t=0.5600 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.6;in=0;out=0.2;x=7,70;y=7,70;z=8,90;fov=0,0" label="" win=NONE
   n t=0.5600 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.6;in=0;out=0.2;x=7,70;y=7,70;z=8,90;fov=0,0" label="" win=NONE
-  n t=0.5800 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
-  n t=0.5800 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.5800 d=0.1000 kind=EFFECT src=Effect asset="492970" label="" win=NONE
+  n t=0.5800 d=0.1000 kind=HIT src=Effect asset="492940" label="" win=NONE area=1 ar=280 aa=0 ah=180 ax=200 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 fz=600 fzin=200 fzout=300 hittype=6
   n t=1.0000 d=1.2666 kind=CANCEL src=InputTiming asset="" label="" win=NONE
   n t=1.2000 d=1.0666 kind=CANCEL src=InputTiming asset="" label="" win=NONE
 "ddk_sk_dragonicresonance_custom_4_01" skill=49290 len=0.6000 name="익스플로전 피니셔 (구) 드래고닉 레조넌스"
@@ -1427,17 +1427,17 @@ LOSTARK_ANIM_NOTIFY 1 "GuardianKnight" 127
   n t=0.5600 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_DDK_03.Par_S_DDK_DResonance_LocalDust_01_Over" label="" win=NONE
   n t=0.5600 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.6;in=0;out=0.2;x=7,70;y=7,70;z=8,90;fov=0,0" label="" win=NONE
   n t=0.5600 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.6;in=0;out=0.2;x=7,70;y=7,70;z=8,90;fov=0,0" label="" win=NONE
-  n t=0.5800 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
-  n t=0.5800 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.5800 d=0.1000 kind=EFFECT src=Effect asset="492970" label="" win=NONE
+  n t=0.5800 d=0.1000 kind=HIT src=Effect asset="492941" label="" win=NONE area=1 ar=280 aa=0 ah=180 ax=200 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 fz=600 fzin=200 fzout=300 hittype=6
   n t=1.0000 d=1.2666 kind=CANCEL src=InputTiming asset="" label="" win=NONE
   n t=1.2000 d=1.0666 kind=CANCEL src=InputTiming asset="" label="" win=NONE
 "ddk_sk_dragonroar" skill=49350 len=1.6667 name="가디언 피어[깨달음 4-3]"
   n t=0.0000 d=1.6667 kind=CANCEL src=InputTiming asset="" label="비늘 갑옷" win=OTHER
   n t=0.0000 d=0.7000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_MSM_10.Par_M_MSM_MP_Light_04" label="" win=NONE
   n t=0.0000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_DDK_04.Par_M_DDk_DragonRoar_Cast_01" label="" win=NONE
-  n t=0.0000 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
-  n t=0.0000 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
-  n t=0.0000 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.0000 d=0.1000 kind=EFFECT src=Effect asset="2490600" label="" win=NONE
+  n t=0.0000 d=0.1000 kind=EFFECT src=Effect asset="2490700" label="" win=NONE
+  n t=0.0000 d=0.1000 kind=EFFECT src=Effect asset="493400" label="" win=NONE
   n t=0.0000 d=0.9200 kind=SUPERARMOR src=SuperArmorPVP asset="" label="" win=NONE
   n t=0.0000 d=0.9200 kind=SUPERARMOR src=SuperArmor asset="" label="" win=NONE
   n t=0.0010 d=1.3200 kind=SOUND src=AKEvent asset="PC_DRAGONKNIGHT_F.PC_DragonKnight_F_SK_GuardianPeer2_FX000_1" label="" win=NONE
@@ -1450,7 +1450,7 @@ LOSTARK_ANIM_NOTIFY 1 "GuardianKnight" 127
   n t=0.6000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_DDK_04.Par_M_DDK_DragonRoar_Shot_01" label="" win=NONE
   n t=0.6000 d=0.0000 kind=EFFECT src=TrailGhostEffect asset="" label="" win=NONE
   n t=0.6000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_DDK_04.Par_M_DDK_DragonRoar_Local_01" label="" win=NONE
-  n t=0.6000 d=0.1000 kind=HIT src=Effect asset="493100" label="" win=NONE
+  n t=0.6000 d=0.1000 kind=HIT src=Effect asset="493100" label="" win=NONE area=1 ar=400 aa=0 ah=225 ax=0 arem=0 maxt=0 rep=0 repms=0 push=80 pushr=10 fz=450 fzin=150 fzout=250 hittype=4
   n t=0.6000 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.5;in=0;out=0.5;x=0,60;y=0,60;z=0,60;fov=-15,1" label="" win=NONE
   n t=0.6000 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.2;in=0;out=0.2;x=3,50;y=3,50;z=8,50;fov=0,0" label="" win=NONE
   n t=0.6500 d=1.0167 kind=SOUND src=AKEvent asset="PC_DRAGONKNIGHT_F.PC_DragonKnight_F_SK_GuardianPeer1_Vox1_1" label="" win=NONE
@@ -1489,7 +1489,7 @@ LOSTARK_ANIM_NOTIFY 1 "GuardianKnight" 127
   n t=0.1500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_DDK_04.Par_M_DDK_EtherDivide_Trail_01_AP" label="" win=NONE
   n t=0.1500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_07" label="" win=NONE
   n t=0.1500 d=0.2000 kind=HIT src=ParticleHit asset="" label="" win=NONE
-  n t=0.2000 d=0.1000 kind=HIT src=Effect asset="493200" label="" win=NONE
+  n t=0.2000 d=0.1000 kind=HIT src=Effect asset="493200" label="" win=NONE area=3 ar=270 aa=140 ah=170 ax=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 fz=450 fzin=150 fzout=250 hittype=5
   n t=0.2000 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.3;in=0;out=0.2;x=0,50;y=12,25;z=0,50;fov=0,0" label="" win=NONE
   n t=0.3498 d=0.2502 kind=CANCEL src=InputTiming asset="" label="회피캔슬" win=DODGE_CANCEL
   n t=0.4000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_DDK_04.Par_M_DDK_EtherDivide_WP_Cast_01" label="" win=NONE
@@ -1509,7 +1509,7 @@ LOSTARK_ANIM_NOTIFY 1 "GuardianKnight" 127
   n t=0.2000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_J_RGBNoise_01" label="" win=NONE
   n t=0.2000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_ZoomBlur_02" label="" win=NONE
   n t=0.2000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_07" label="" win=NONE
-  n t=0.2000 d=0.1000 kind=HIT src=Effect asset="493203" label="" win=NONE
+  n t=0.2000 d=0.1000 kind=HIT src=Effect asset="493203" label="" win=NONE area=2 ar=550 aa=230 ah=225 ax=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 fz=600 fzin=200 fzout=300 hittype=6
   n t=0.2000 d=0.4000 kind=SHAKE src=ViewShake asset="dur=0.7;in=0;out=0.7;x=0,60;y=0,60;z=0,60;fov=-15,1" label="" win=NONE
   n t=0.2000 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.6;in=0;out=0.6;x=3,50;y=3,50;z=8,50;fov=0,0" label="" win=NONE
   n t=0.2000 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.3;in=0;out=0.3;x=0,0;y=0,0;z=-20,30;fov=0,0" label="" win=NONE
@@ -1588,9 +1588,9 @@ LOSTARK_ANIM_NOTIFY 1 "GuardianKnight" 127
   n t=0.2000 d=0.2003 kind=HIT src=ParticleHit asset="" label="" win=NONE
   n t=0.2000 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.25;in=0;out=0.25;x=0,0;y=0,0;z=-20,30;fov=0,0" label="" win=NONE
   n t=0.2000 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.3;in=0;out=0.3;x=3,50;y=3,50;z=8,50;fov=0,0" label="" win=NONE
-  n t=0.2500 d=0.1006 kind=EFFECT src=Effect asset="" label="" win=NONE
   n t=0.2500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_DDK_04.Par_M_DDK_EurosFlash_Trail_Deco_01" label="" win=NONE
   n t=0.2500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_DDK_04.Par_M_DDK_EurosFlash_Trail_Deco_01" label="" win=NONE
+  n t=0.2500 d=0.1006 kind=HIT src=Effect asset="492700" label="" win=NONE area=2 ar=220 aa=240 ah=250 ax=-30 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 fz=450 fzin=150 fzout=250 hittype=5
   n t=0.3500 d=0.3500 kind=CANCEL src=InputTiming asset="" label="[선콤]" win=COMBO_PRE
   n t=0.3500 d=0.6700 kind=CANCEL src=InputTiming asset="" label="[선이]" win=MOVE_PRE
   n t=0.3500 d=0.6700 kind=CANCEL src=InputTiming asset="" label="[선스]" win=SKILL_PRE
@@ -1611,7 +1611,7 @@ LOSTARK_ANIM_NOTIFY 1 "GuardianKnight" 127
   n t=0.0200 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_DDK_04.Par_M_DDK_EurosFlash_Dash_Trail_02" label="" win=NONE
   n t=0.0500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_J_RGBNoise_01" label="" win=NONE
   n t=0.0500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_ZoomBlur_02" label="" win=NONE
-  n t=0.0700 d=0.1006 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.0700 d=0.1006 kind=HIT src=Effect asset="492701" label="" win=NONE area=2 ar=260 aa=320 ah=250 ax=-30 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 fz=450 fzin=150 fzout=250 hittype=6
   n t=0.1000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_07" label="" win=NONE
   n t=0.1000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_07" label="" win=NONE
   n t=0.1000 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.5;in=0;out=0.5;x=3,50;y=3,50;z=8,50;fov=0,0" label="" win=NONE
@@ -1659,10 +1659,10 @@ LOSTARK_ANIM_NOTIFY 1 "GuardianKnight" 127
   n t=0.3800 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.5;in=0;out=0.5;x=3,50;y=3,50;z=8,50;fov=0,0" label="" win=NONE
   n t=0.3800 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.35;in=0;out=0.35;x=0,0;y=0,0;z=-20,30;fov=0,0" label="" win=NONE
   n t=0.4000 d=0.2000 kind=HIT src=ParticleHit asset="" label="" win=NONE
-  n t=0.4300 d=0.1009 kind=EFFECT src=Effect asset="" label="" win=NONE
   n t=0.4300 d=0.8833 kind=EFFECT src=PlayParticleEffect asset="FX_PC_DDK_04.Par_M_DDK_EurosFlash_Trail_Deco_02_07" label="" win=NONE
   n t=0.4300 d=0.1500 kind=EFFECT src=PlayParticleEffect asset="FX_PC_DDK_04.Par_M_DDK_EurosFlash_Trail_Deco_07" label="" win=NONE
   n t=0.4300 d=0.1500 kind=EFFECT src=PlayParticleEffect asset="FX_PC_DDK_04.Par_M_DDK_EurosFlash_Trail_04" label="" win=NONE
+  n t=0.4300 d=0.1009 kind=HIT src=Effect asset="492770" label="" win=NONE area=1 ar=300 aa=0 ah=250 ax=20 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 fz=450 fzin=150 fzout=250 hittype=6
   n t=0.4500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_07" label="" win=NONE
   n t=0.4800 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_ZoomBlur_02" label="" win=NONE
   n t=0.4800 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_J_RGBNoise_01" label="" win=NONE
@@ -1700,7 +1700,7 @@ LOSTARK_ANIM_NOTIFY 1 "GuardianKnight" 127
   n t=0.0000 d=0.5000 kind=SUPERARMOR src=SuperArmor asset="" label="" win=NONE
   n t=0.0500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_J_RGBNoise_01" label="" win=NONE
   n t=0.0500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_ZoomBlur_02" label="" win=NONE
-  n t=0.0500 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.0500 d=0.1000 kind=HIT src=Effect asset="492600" label="" win=NONE area=2 ar=220 aa=150 ah=180 ax=0 arem=0 maxt=0 rep=0 repms=0 push=100 pushr=40 fz=325 fzin=125 fzout=200 hittype=4
   n t=0.1700 d=0.3300 kind=CANCEL src=InputTiming asset="" label="회피캔슬" win=DODGE_CANCEL
 "ddk_sk_eurosloof_03" skill=49260 len=1.5000 name="블레이즈 스윕 (구) 에우로스 루프"
   n t=0.0000 d=1.5000 kind=CANCEL src=InputTiming asset="" label="회피캔슬" win=DODGE_CANCEL
@@ -1723,7 +1723,7 @@ LOSTARK_ANIM_NOTIFY 1 "GuardianKnight" 127
   n t=0.4500 d=1.0500 kind=EFFECT src=PlayParticleEffect asset="FX_PC_DDK_04.Par_M_DDK_EurosLoop_Trail_01" label="" win=NONE
   n t=0.4500 d=0.2000 kind=HIT src=ParticleHit asset="" label="" win=NONE
   n t=0.5000 d=1.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_DDK_04.Par_M_DDK_EurosLoop_Trail_01" label="" win=NONE
-  n t=0.5000 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.5000 d=0.1000 kind=HIT src=Effect asset="492670" label="" win=NONE area=1 ar=300 aa=0 ah=180 ax=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=-15 fz=450 fzin=150 fzout=250 hittype=6
   n t=0.6000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_DDK_04.Par_M_DDK_EurosLoop_Decal_Circle_07" label="" win=NONE
   n t=0.6000 d=0.9000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_DDK_04.Par_M_DDK_EurosLoop_Trail_01" label="" win=NONE
   n t=0.8000 d=0.7000 kind=CANCEL src=InputTiming asset="" label="" win=NONE
@@ -1745,10 +1745,10 @@ LOSTARK_ANIM_NOTIFY 1 "GuardianKnight" 127
   n t=0.1000 d=0.3500 kind=CANCEL src=InputTiming asset="" label="[선스]" win=SKILL_PRE
   n t=0.1500 d=1.0500 kind=SOUND src=AKEvent asset="PC_DRAGONKNIGHT_F.PC_DragonKnight_F_SK_FlameScale1_FX000_2" label="" win=NONE
   n t=0.2035 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.25;in=0;out=0.05;x=4,50;y=4,50;z=4,50;fov=0,0" label="" win=NONE
-  n t=0.3000 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
-  n t=0.3000 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
-  n t=0.3000 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
-  n t=0.3000 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.3000 d=0.1000 kind=EFFECT src=Effect asset="492200" label="" win=NONE
+  n t=0.3000 d=0.1000 kind=EFFECT src=Effect asset="492240" label="" win=NONE
+  n t=0.3000 d=0.1000 kind=EFFECT src=Effect asset="492270" label="" win=NONE
+  n t=0.3000 d=0.1000 kind=EFFECT src=Effect asset="492250" label="" win=NONE
   n t=0.4500 d=0.7500 kind=CANCEL src=InputTiming asset="" label="" win=NONE
   n t=0.4500 d=0.7500 kind=CANCEL src=InputTiming asset="" label="" win=NONE
 "ddk_sk_flying_01" skill=49021 len=1.8667 name="[화신 상태] 회피기"
@@ -1857,7 +1857,7 @@ LOSTARK_ANIM_NOTIFY 1 "GuardianKnight" 127
   n t=0.1442 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.1442 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.1442 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.6;in=0;out=0.2;x=7,50;y=7,50;z=10,40;fov=0,0" label="" win=NONE
-  n t=0.1500 d=0.1000 kind=HIT src=Effect asset="491501" label="" win=NONE
+  n t=0.1500 d=0.1000 kind=HIT src=Effect asset="491501" label="" win=NONE area=2 ar=350 aa=280 ah=180 ax=20 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 fz=450 fzin=150 fzout=250 hittype=6
   n t=0.2500 d=2.1167 kind=CANCEL src=InputTiming asset="" label="회피캔슬" win=DODGE_CANCEL
   n t=0.5000 d=1.8667 kind=CANCEL src=InputTiming asset="" label="" win=NONE
   n t=0.5000 d=1.8667 kind=CANCEL src=InputTiming asset="" label="" win=NONE
@@ -1886,7 +1886,7 @@ LOSTARK_ANIM_NOTIFY 1 "GuardianKnight" 127
   n t=0.4500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.4500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_DDK_00.Par_J_DDK_GrandFinale_Ex_07_1" label="" win=NONE
   n t=0.4500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
-  n t=0.4500 d=0.1000 kind=HIT src=Effect asset="491552" label="" win=NONE
+  n t=0.4500 d=0.1000 kind=HIT src=Effect asset="491552" label="" win=NONE area=2 ar=470 aa=280 ah=180 ax=20 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 fz=450 fzin=150 fzout=250 hittype=6
   n t=0.4500 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.7;in=0;out=0.3;x=9,60;y=9,60;z=10,40;fov=0,0" label="" win=NONE
   n t=0.5500 d=2.1167 kind=CANCEL src=InputTiming asset="" label="" win=NONE
   n t=0.5500 d=2.1167 kind=CANCEL src=InputTiming asset="" label="회피캔슬" win=DODGE_CANCEL
@@ -2024,8 +2024,8 @@ LOSTARK_ANIM_NOTIFY 1 "GuardianKnight" 127
   n t=0.2000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_DDK_04.Par_M_DDK_GuillotineSpin_Trail_01_08" label="" win=NONE
   n t=0.2000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_07" label="" win=NONE
   n t=0.2000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_DDK_04.Par_M_DDK_GuillotineSpin_Wind_01_08" label="" win=NONE
-  n t=0.2000 d=0.1002 kind=EFFECT src=Effect asset="" label="" win=NONE
-  n t=0.2000 d=0.1002 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.2000 d=0.1002 kind=HIT src=Effect asset="491300" label="" win=NONE area=1 ar=260 aa=0 ah=180 ax=20 arem=0 maxt=0 rep=0 repms=0 push=100 pushr=40 fz=650 fzin=150 fzout=250 hittype=4
+  n t=0.2000 d=0.1002 kind=HIT src=Effect asset="491370" label="" win=NONE area=1 ar=340 aa=0 ah=180 ax=20 arem=0 maxt=0 rep=0 repms=0 push=100 pushr=-40 fz=650 fzin=150 fzout=250 hittype=4
   n t=0.2000 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.6;in=0;out=0.6;x=0,50;y=12,17.5;z=0,50;fov=0,0" label="" win=NONE
   n t=0.3800 d=1.4200 kind=CANCEL src=InputTiming asset="" label="회피캔슬" win=DODGE_CANCEL
   n t=0.5000 d=1.0631 kind=SOUND src=AKEvent asset="PC_DRAGONKNIGHT_F.PC_DragonKnight_F_SK_GuillotineSpin1_FX000_2" label="" win=NONE
@@ -2042,8 +2042,8 @@ LOSTARK_ANIM_NOTIFY 1 "GuardianKnight" 127
   n t=0.7600 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_07" label="" win=NONE
   n t=0.7600 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_DDK_04.Par_M_DDK_GuillotineSpin_Trail_01_08" label="" win=NONE
   n t=0.7600 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_DDK_04.Par_M_DDK_GuillotineSpin_Wind_01_08" label="" win=NONE
-  n t=0.7600 d=0.1002 kind=EFFECT src=Effect asset="" label="" win=NONE
-  n t=0.7600 d=0.1002 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.7600 d=0.1002 kind=HIT src=Effect asset="491301" label="" win=NONE area=1 ar=260 aa=0 ah=180 ax=20 arem=0 maxt=0 rep=0 repms=0 push=100 pushr=40 fz=650 fzin=150 fzout=250 hittype=4
+  n t=0.7600 d=0.1002 kind=HIT src=Effect asset="491371" label="" win=NONE area=1 ar=340 aa=0 ah=180 ax=20 arem=0 maxt=0 rep=0 repms=0 push=100 pushr=-40 fz=650 fzin=150 fzout=250 hittype=4
   n t=0.7600 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.4;in=0;out=0.4;x=1,50;y=10,20;z=1,50;fov=0,0" label="" win=NONE
   n t=1.1000 d=0.6000 kind=SOUND src=AKEvent asset="PC_DRAGONKNIGHT_F.PC_DragonKnight_F_SK_GuillotineSpin1_FX000_3" label="" win=NONE
   n t=1.1000 d=0.6000 kind=SOUND src=AKEvent asset="PC_DRAGONKNIGHT_F.PC_DragonKnight_F_SK_GuillotineSpin1_FX008_3" label="" win=NONE
@@ -2060,8 +2060,8 @@ LOSTARK_ANIM_NOTIFY 1 "GuardianKnight" 127
   n t=1.3500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_07" label="" win=NONE
   n t=1.3500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_DDK_04.Par_M_DDK_GuillotineSpin_Trail_01_08" label="" win=NONE
   n t=1.3500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_DDK_04.Par_M_DDK_GuillotineSpin_Wind_02_08" label="" win=NONE
-  n t=1.3500 d=0.1002 kind=EFFECT src=Effect asset="" label="" win=NONE
-  n t=1.3500 d=0.1002 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=1.3500 d=0.1002 kind=HIT src=Effect asset="491302" label="" win=NONE area=1 ar=260 aa=0 ah=180 ax=20 arem=0 maxt=0 rep=0 repms=0 push=100 pushr=40 fz=650 fzin=150 fzout=250 hittype=4
+  n t=1.3500 d=0.1002 kind=HIT src=Effect asset="491372" label="" win=NONE area=1 ar=340 aa=0 ah=180 ax=20 arem=0 maxt=0 rep=0 repms=0 push=100 pushr=-40 fz=650 fzin=150 fzout=250 hittype=4
   n t=1.3500 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.4;in=0;out=0.4;x=1,50;y=10,20;z=1,50;fov=0,0" label="" win=NONE
   n t=1.3500 d=0.4500 kind=SOUND src=AKEvent asset="PC_DRAGONKNIGHT_F.PC_DragonKnight_F_SK_GuillotineSpin1_FX000_4" label="" win=NONE
   n t=1.3500 d=0.4500 kind=SOUND src=AKEvent asset="PC_DRAGONKNIGHT_F.PC_DragonKnight_F_SK_GuillotineSpin1_FX008_4" label="" win=NONE
@@ -2077,8 +2077,8 @@ LOSTARK_ANIM_NOTIFY 1 "GuardianKnight" 127
   n t=1.7400 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_07" label="" win=NONE
   n t=1.7400 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_DDK_04.Par_M_DDK_GuillotineSpin_Trail_01_08" label="" win=NONE
   n t=1.7400 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_DDK_04.Par_M_DDK_GuillotineSpin_Wind_02_08" label="" win=NONE
-  n t=1.7400 d=0.0600 kind=EFFECT src=Effect asset="" label="" win=NONE
-  n t=1.7400 d=0.0600 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=1.7400 d=0.0600 kind=HIT src=Effect asset="491303" label="" win=NONE area=1 ar=260 aa=0 ah=180 ax=20 arem=0 maxt=0 rep=0 repms=0 push=100 pushr=40 fz=650 fzin=150 fzout=250 hittype=4
+  n t=1.7400 d=0.0600 kind=HIT src=Effect asset="491373" label="" win=NONE area=1 ar=340 aa=0 ah=180 ax=20 arem=0 maxt=0 rep=0 repms=0 push=100 pushr=-40 fz=650 fzin=150 fzout=250 hittype=4
   n t=1.7400 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.6;in=0;out=0.6;x=2,50;y=12,20;z=2,50;fov=0,0" label="" win=NONE
 "ddk_sk_guillotinespin_03" skill=49130 len=3.4000 name="길로틴 스핀"
   n t=0.0000 d=3.4000 kind=CANCEL src=InputTiming asset="" label="비늘 갑옷" win=OTHER
@@ -2108,8 +2108,8 @@ LOSTARK_ANIM_NOTIFY 1 "GuardianKnight" 127
   n t=0.7400 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_07" label="" win=NONE
   n t=0.7400 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_DDK_04.Par_M_DDK_GuillotineSpin_Exp_01_08" label="" win=NONE
   n t=0.7400 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_07" label="" win=NONE
-  n t=0.7400 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
-  n t=0.7400 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.7400 d=0.1000 kind=HIT src=Effect asset="491304" label="" win=NONE area=3 ar=400 aa=100 ah=180 ax=-10 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 fz=450 fzin=150 fzout=250 hittype=6
+  n t=0.7400 d=0.1000 kind=HIT src=Effect asset="491374" label="" win=NONE area=3 ar=520 aa=100 ah=180 ax=-10 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 fz=450 fzin=150 fzout=250 hittype=6
   n t=0.7400 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.5;in=0;out=0.5;x=3,50;y=3,50;z=8,50;fov=0,0" label="" win=NONE
   n t=0.8500 d=2.5500 kind=CANCEL src=InputTiming asset="" label="" win=NONE
   n t=0.8500 d=2.5500 kind=CANCEL src=InputTiming asset="" label="회피캔슬" win=DODGE_CANCEL
@@ -2143,8 +2143,8 @@ LOSTARK_ANIM_NOTIFY 1 "GuardianKnight" 127
   n t=0.2000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_DDK_04.Par_M_DDK_GuillotineSpin_Trail_01_08" label="" win=NONE
   n t=0.2000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_07" label="" win=NONE
   n t=0.2000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_DDK_04.Par_M_DDK_GuillotineSpin_Wind_01_08" label="" win=NONE
-  n t=0.2000 d=0.1002 kind=EFFECT src=Effect asset="" label="" win=NONE
-  n t=0.2000 d=0.1002 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.2000 d=0.1002 kind=HIT src=Effect asset="491300" label="" win=NONE area=1 ar=260 aa=0 ah=180 ax=20 arem=0 maxt=0 rep=0 repms=0 push=100 pushr=40 fz=650 fzin=150 fzout=250 hittype=4
+  n t=0.2000 d=0.1002 kind=HIT src=Effect asset="491370" label="" win=NONE area=1 ar=340 aa=0 ah=180 ax=20 arem=0 maxt=0 rep=0 repms=0 push=100 pushr=-40 fz=650 fzin=150 fzout=250 hittype=4
   n t=0.2000 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.6;in=0;out=0.6;x=0,50;y=12,17.5;z=0,50;fov=0,0" label="" win=NONE
   n t=0.3800 d=1.4200 kind=CANCEL src=InputTiming asset="" label="회피캔슬" win=DODGE_CANCEL
   n t=0.6000 d=1.0631 kind=SOUND src=AKEvent asset="PC_DRAGONKNIGHT_F.PC_DragonKnight_F_SK_GuillotineSpin1_FX000_2" label="" win=NONE
@@ -2161,8 +2161,8 @@ LOSTARK_ANIM_NOTIFY 1 "GuardianKnight" 127
   n t=0.7600 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_07" label="" win=NONE
   n t=0.7600 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_DDK_04.Par_M_DDK_GuillotineSpin_Trail_01_08" label="" win=NONE
   n t=0.7600 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_DDK_04.Par_M_DDK_GuillotineSpin_Wind_01_08" label="" win=NONE
-  n t=0.7600 d=0.1002 kind=EFFECT src=Effect asset="" label="" win=NONE
-  n t=0.7600 d=0.1002 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.7600 d=0.1002 kind=HIT src=Effect asset="491301" label="" win=NONE area=1 ar=260 aa=0 ah=180 ax=20 arem=0 maxt=0 rep=0 repms=0 push=100 pushr=40 fz=650 fzin=150 fzout=250 hittype=4
+  n t=0.7600 d=0.1002 kind=HIT src=Effect asset="491371" label="" win=NONE area=1 ar=340 aa=0 ah=180 ax=20 arem=0 maxt=0 rep=0 repms=0 push=100 pushr=-40 fz=650 fzin=150 fzout=250 hittype=4
   n t=0.7600 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.4;in=0;out=0.4;x=1,50;y=10,20;z=1,50;fov=0,0" label="" win=NONE
   n t=1.2500 d=0.5500 kind=SOUND src=AKEvent asset="PC_DRAGONKNIGHT_F.PC_DragonKnight_F_SK_GuillotineSpin1_FX000_3" label="" win=NONE
   n t=1.2500 d=0.5500 kind=SOUND src=AKEvent asset="PC_DRAGONKNIGHT_F.PC_DragonKnight_F_SK_GuillotineSpin1_FX000_3" label="" win=NONE
@@ -2179,8 +2179,8 @@ LOSTARK_ANIM_NOTIFY 1 "GuardianKnight" 127
   n t=1.3500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_07" label="" win=NONE
   n t=1.3500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_DDK_04.Par_M_DDK_GuillotineSpin_Trail_01_08" label="" win=NONE
   n t=1.3500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_DDK_04.Par_M_DDK_GuillotineSpin_Wind_02_08" label="" win=NONE
-  n t=1.3500 d=0.1002 kind=EFFECT src=Effect asset="" label="" win=NONE
-  n t=1.3500 d=0.1002 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=1.3500 d=0.1002 kind=HIT src=Effect asset="491302" label="" win=NONE area=1 ar=260 aa=0 ah=180 ax=20 arem=0 maxt=0 rep=0 repms=0 push=100 pushr=40 fz=650 fzin=150 fzout=250 hittype=4
+  n t=1.3500 d=0.1002 kind=HIT src=Effect asset="491372" label="" win=NONE area=1 ar=340 aa=0 ah=180 ax=20 arem=0 maxt=0 rep=0 repms=0 push=100 pushr=-40 fz=650 fzin=150 fzout=250 hittype=4
   n t=1.3500 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.4;in=0;out=0.4;x=1,50;y=10,20;z=1,50;fov=0,0" label="" win=NONE
   n t=1.6000 d=0.2000 kind=SOUND src=AKEvent asset="PC_DRAGONKNIGHT_F.PC_DragonKnight_F_SK_GuillotineSpin1_FX000_4" label="" win=NONE
   n t=1.6000 d=0.2000 kind=SOUND src=AKEvent asset="PC_DRAGONKNIGHT_F.PC_DragonKnight_F_SK_GuillotineSpin1_FX000_4" label="" win=NONE
@@ -2196,8 +2196,8 @@ LOSTARK_ANIM_NOTIFY 1 "GuardianKnight" 127
   n t=1.7400 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_07" label="" win=NONE
   n t=1.7400 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_DDK_04.Par_M_DDK_GuillotineSpin_Trail_01_08" label="" win=NONE
   n t=1.7400 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_DDK_04.Par_M_DDK_GuillotineSpin_Wind_02_08" label="" win=NONE
-  n t=1.7400 d=0.0600 kind=EFFECT src=Effect asset="" label="" win=NONE
-  n t=1.7400 d=0.0600 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=1.7400 d=0.0600 kind=HIT src=Effect asset="491303" label="" win=NONE area=1 ar=260 aa=0 ah=180 ax=20 arem=0 maxt=0 rep=0 repms=0 push=100 pushr=40 fz=650 fzin=150 fzout=250 hittype=4
+  n t=1.7400 d=0.0600 kind=HIT src=Effect asset="491373" label="" win=NONE area=1 ar=340 aa=0 ah=180 ax=20 arem=0 maxt=0 rep=0 repms=0 push=100 pushr=-40 fz=650 fzin=150 fzout=250 hittype=4
   n t=1.7400 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.6;in=0;out=0.6;x=2,50;y=12,20;z=2,50;fov=0,0" label="" win=NONE
 "ddk_sk_guillotinespin_custom_4_03" skill=49130 len=0.6667 name="길로틴 스핀"
   n t=0.0000 d=0.6667 kind=CANCEL src=InputTiming asset="" label="" win=NONE
@@ -2232,8 +2232,8 @@ LOSTARK_ANIM_NOTIFY 1 "GuardianKnight" 127
   n t=0.0500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_07" label="" win=NONE
   n t=0.0500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_DDK_04.Par_M_DDK_GuillotineSpin_Exp_04_07" label="" win=NONE
   n t=0.0500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_07" label="" win=NONE
-  n t=0.0500 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
-  n t=0.0500 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.0500 d=0.1000 kind=HIT src=Effect asset="491340" label="" win=NONE area=1 ar=275 aa=0 ah=180 ax=100 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 fz=450 fzin=150 fzout=250 hittype=6
+  n t=0.0500 d=0.1000 kind=HIT src=Effect asset="491379" label="" win=NONE area=1 ar=357 aa=0 ah=180 ax=100 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 fz=450 fzin=150 fzout=250 hittype=6
   n t=0.0500 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.5;in=0;out=0.5;x=3,50;y=3,50;z=8,50;fov=0,0" label="" win=NONE
   n t=0.1500 d=1.9166 kind=CANCEL src=InputTiming asset="" label="회피캔슬" win=DODGE_CANCEL
   n t=0.1500 d=1.9166 kind=CANCEL src=InputTiming asset="" label="" win=NONE
@@ -2259,8 +2259,8 @@ LOSTARK_ANIM_NOTIFY 1 "GuardianKnight" 127
   n t=0.2000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_DDK_04.Par_M_DDK_GuillotineSpin_Trail_01_04" label="" win=NONE
   n t=0.2000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_DDK_04.Par_M_DDK_GuillotineSpin_Trail_01_04" label="" win=NONE
   n t=0.2000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_DDK_04.Par_M_DDK_GuillotineSpin_Trail_01_04_08" label="" win=NONE
-  n t=0.2000 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
-  n t=0.2000 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.2000 d=0.1000 kind=HIT src=Effect asset="491360" label="" win=NONE area=1 ar=260 aa=0 ah=180 ax=20 arem=0 maxt=0 rep=0 repms=0 push=100 pushr=40 fz=650 fzin=150 fzout=250 hittype=4
+  n t=0.2000 d=0.1000 kind=HIT src=Effect asset="491375" label="" win=NONE area=1 ar=340 aa=0 ah=180 ax=20 arem=0 maxt=0 rep=0 repms=0 push=100 pushr=-40 fz=650 fzin=150 fzout=250 hittype=4
   n t=0.3000 d=0.5000 kind=CANCEL src=InputTiming asset="" label="회피캔슬" win=DODGE_CANCEL
   n t=0.3000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_DDK_04.Par_M_DDK_GuillotineSpin_Trail_01_04-2" label="" win=NONE
   n t=0.3000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_DDK_04.Par_M_DDK_GuillotineSpin_Trail_01_04-2" label="" win=NONE
@@ -2269,8 +2269,8 @@ LOSTARK_ANIM_NOTIFY 1 "GuardianKnight" 127
   n t=0.5500 d=0.0000 kind=SOUND src=AKEvent asset="PC_DRAGONKNIGHT_F.PC_DragonKnight_F_SK_GuillotineSpin1_FX000_3" label="" win=NONE
   n t=0.5500 d=0.0000 kind=SOUND src=AKEvent asset="PC_DRAGONKNIGHT_F.PC_DragonKnight_F_SK_GuillotineSpin1_FX000_3" label="" win=NONE
   n t=0.5500 d=0.0000 kind=SOUND src=AKEvent asset="PC_DRAGONKNIGHT_F.PC_DragonKnight_F_SK_GuillotineSpin1_FX008_3" label="" win=NONE
-  n t=0.6300 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
-  n t=0.6300 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.6300 d=0.1000 kind=HIT src=Effect asset="491376" label="" win=NONE area=1 ar=340 aa=0 ah=180 ax=20 arem=0 maxt=0 rep=0 repms=0 push=100 pushr=-40 fz=650 fzin=150 fzout=250 hittype=4
+  n t=0.6300 d=0.1000 kind=HIT src=Effect asset="491361" label="" win=NONE area=1 ar=260 aa=0 ah=180 ax=20 arem=0 maxt=0 rep=0 repms=0 push=100 pushr=40 fz=650 fzin=150 fzout=250 hittype=4
   n t=0.7000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_DDK_04.Par_M_DDK_GuillotineSpin_Trail_01_04" label="" win=NONE
   n t=0.7000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_DDK_04.Par_M_DDK_GuillotineSpin_Trail_01_04" label="" win=NONE
   n t=0.7000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_DDK_04.Par_M_DDK_GuillotineSpin_Trail_01_04_08" label="" win=NONE
@@ -2301,8 +2301,8 @@ LOSTARK_ANIM_NOTIFY 1 "GuardianKnight" 127
   n t=0.4500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_DDK_04.Par_M_DDK_GuillotineSpin_Wind_02_08" label="" win=NONE
   n t=0.4500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_07" label="" win=NONE
   n t=0.4500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_DDK_04.Par_M_DDK_GuillotineSpin_Trail_01_04_08" label="" win=NONE
-  n t=0.4500 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
-  n t=0.4500 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.4500 d=0.1000 kind=HIT src=Effect asset="491378" label="" win=NONE area=1 ar=390 aa=0 ah=180 ax=20 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 fz=450 fzin=150 fzout=250 hittype=6
+  n t=0.4500 d=0.1000 kind=HIT src=Effect asset="491363" label="" win=NONE area=1 ar=300 aa=0 ah=180 ax=20 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 fz=450 fzin=150 fzout=250 hittype=6
   n t=0.4500 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.6;in=0;out=0.6;x=2,50;y=12,17.5;z=2,50;fov=0,0" label="" win=NONE
   n t=0.5500 d=2.0500 kind=CANCEL src=InputTiming asset="" label="" win=NONE
   n t=0.8000 d=1.8000 kind=CANCEL src=InputTiming asset="" label="" win=NONE
@@ -2402,7 +2402,7 @@ LOSTARK_ANIM_NOTIFY 1 "GuardianKnight" 127
   n t=0.4700 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_DDK_03.Par_S_DDK_NotosCrash_03" label="" win=NONE
   n t=0.4700 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.4700 d=0.3008 kind=SHAKE src=ViewShake asset="dur=0.5;in=0;out=0.2;x=8,80;y=8,80;z=9,90;fov=0,0" label="" win=NONE
-  n t=0.4900 d=0.1000 kind=HIT src=Effect asset="494100" label="" win=NONE
+  n t=0.4900 d=0.1000 kind=HIT src=Effect asset="494100" label="" win=NONE area=1 ar=330 aa=0 ah=225 ax=135 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 fz=600 fzin=200 fzout=300 hittype=6
   n t=0.6000 d=1.3333 kind=CANCEL src=InputTiming asset="" label="회피캔슬" win=DODGE_CANCEL
   n t=1.2000 d=0.7333 kind=CANCEL src=InputTiming asset="" label="" win=NONE
   n t=1.2000 d=0.7333 kind=CANCEL src=InputTiming asset="" label="" win=NONE
@@ -2435,13 +2435,13 @@ LOSTARK_ANIM_NOTIFY 1 "GuardianKnight" 127
   n t=0.0000 d=0.4000 kind=SHAKE src=ViewShake asset="dur=0.4;in=0.05;out=0.25;x=6,30;y=6,30;z=10,40;fov=0,0" label="" win=NONE
   n t=0.0000 d=1.5333 kind=SUPERARMOR src=SuperArmor asset="" label="" win=NONE
   n t=0.0000 d=1.5333 kind=SUPERARMOR src=SuperArmorPVP asset="" label="" win=NONE
-  n t=0.2000 d=0.1000 kind=HIT src=Effect asset="494000" label="" win=NONE
+  n t=0.2000 d=0.1000 kind=HIT src=Effect asset="494000" label="" win=NONE area=2 ar=500 aa=350 ah=225 ax=-300 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 fz=450 fzin=150 fzout=250 hittype=5
   n t=0.2000 d=0.3000 kind=SHAKE src=ViewShake asset="dur=0.3;in=0;out=0.2;x=3,40;y=3,40;z=6,60;fov=0,0" label="" win=NONE
   n t=0.2000 d=0.5990 kind=SOUND src=AKEvent asset="PC_DRAGONKNIGHT_F.PC_DragonKnight_F_SK_PrayForEmbereth1_FX000_2" label="" win=NONE
   n t=0.3000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.3000 d=1.2333 kind=EFFECT src=PlayParticleEffect asset="FX_PC_DDK_05.Par_K_DDK_Embereth_Ground_01" label="" win=NONE
   n t=0.3000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_DDK_05.Par_K_DDK_Embereth_Rock_01" label="" win=NONE
-  n t=0.5000 d=0.1000 kind=HIT src=Effect asset="494001" label="" win=NONE
+  n t=0.5000 d=0.1000 kind=HIT src=Effect asset="494001" label="" win=NONE area=2 ar=375 aa=350 ah=225 ax=-100 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 fz=450 fzin=150 fzout=250 hittype=5
   n t=0.5500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_DDK_05.Par_K_DDK_Embereth_Rock_01" label="" win=NONE
   n t=0.8000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_DDK_05.Par_K_DDK_Embereth_Rock_01" label="" win=NONE
   n t=1.0500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_DDK_05.Par_K_DDK_Embereth_Rock_01" label="" win=NONE
@@ -2463,7 +2463,7 @@ LOSTARK_ANIM_NOTIFY 1 "GuardianKnight" 127
   n t=0.5700 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_DDK_05.Par_K_DDK_Embereth_Exp_02" label="" win=NONE
   n t=0.5700 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.5700 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_ZoomBlur_02" label="" win=NONE
-  n t=0.5700 d=0.1000 kind=HIT src=Effect asset="494002" label="" win=NONE
+  n t=0.5700 d=0.1000 kind=HIT src=Effect asset="494002" label="" win=NONE area=1 ar=300 aa=0 ah=225 ax=20 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 fz=600 fzin=200 fzout=300 hittype=5
   n t=0.5700 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.6;in=0;out=0.4;x=7,55;y=7,55;z=14,55;fov=0,0" label="" win=NONE
   n t=0.6300 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_DDK_05.Par_K_DDK_Embereth_Wind_01" label="" win=NONE
   n t=0.7000 d=0.4000 kind=CANCEL src=InputTiming asset="" label="[선이]" win=MOVE_PRE
@@ -2500,8 +2500,8 @@ LOSTARK_ANIM_NOTIFY 1 "GuardianKnight" 127
   n t=0.4007 d=0.2500 kind=SHAKE src=ViewShake asset="dur=0.3;in=0;out=0.1;x=5,50;y=5,50;z=5,50;fov=0,0" label="" win=NONE
   n t=0.4014 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_DDK_01.Par_R_DDK_Revenge_00_02" label="" win=NONE
   n t=0.4109 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_J_RGBNoise_01" label="" win=NONE
-  n t=0.4400 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
-  n t=0.4400 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.4400 d=0.1000 kind=HIT src=Effect asset="492000" label="" win=NONE area=2 ar=350 aa=250 ah=180 ax=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 fz=450 fzin=150 fzout=250 hittype=5
+  n t=0.4400 d=0.1000 kind=HIT src=Effect asset="492020" label="" win=NONE area=2 ar=350 aa=250 ah=180 ax=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 fz=450 fzin=150 fzout=250 hittype=5
   n t=0.8000 d=0.5666 kind=CANCEL src=InputTiming asset="" label="" win=NONE
   n t=0.9000 d=0.4666 kind=CANCEL src=InputTiming asset="" label="" win=NONE
 "ddk_sk_revenge_04" skill=49200 len=1.4000 name="리벤지 블로우 (구)리벤지"
@@ -2531,8 +2531,8 @@ LOSTARK_ANIM_NOTIFY 1 "GuardianKnight" 127
   n t=0.0000 d=0.9000 kind=SUPERARMOR src=SuperArmorPVP asset="" label="" win=NONE
   n t=0.0010 d=0.4667 kind=SOUND src=AKEvent asset="PC_DRAGONKNIGHT_F.PC_DragonKnight_F_SK_Revenge1_Vox2_1" label="" win=NONE
   n t=0.4400 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_ZoomBlur_01" label="" win=NONE
-  n t=0.4400 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
-  n t=0.4400 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.4400 d=0.1000 kind=HIT src=Effect asset="492080" label="" win=NONE area=2 ar=350 aa=250 ah=180 ax=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 fz=450 fzin=150 fzout=250 hittype=5
+  n t=0.4400 d=0.1000 kind=HIT src=Effect asset="492081" label="" win=NONE area=2 ar=350 aa=250 ah=180 ax=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 fz=450 fzin=150 fzout=250 hittype=5
   n t=0.4500 d=0.4692 kind=EFFECT src=PlayParticleEffect asset="FX_PC_DDK_01.Par_R_DDK_Revenge_05_07" label="" win=NONE
   n t=0.4500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_DDK_01.Par_R_DDK_Revenge_05_02" label="" win=NONE
   n t=0.4500 d=0.2500 kind=SHAKE src=ViewShake asset="dur=0.3;in=0;out=0.1;x=5,50;y=5,50;z=5,50;fov=0,0" label="" win=NONE
@@ -2591,7 +2591,7 @@ LOSTARK_ANIM_NOTIFY 1 "GuardianKnight" 127
   n t=0.5500 d=0.7500 kind=CANCEL src=InputTiming asset="" label="" win=NONE
 "ddk_sk_super_sanctumofembereth" skill=49420 len=4.8333 name="브레스 오브 엠버레스 (구) 생텀 오브 엠버레스"
   n t=0.0000 d=4.8333 kind=CANCEL src=InputTiming asset="" label="비늘 갑옷" win=OTHER
-  n t=0.0000 d=0.1000 kind=EFFECT src=Effect asset="" label="피해면역" win=NONE
+  n t=0.0000 d=0.1000 kind=EFFECT src=Effect asset="578300" label="피해면역" win=NONE
   n t=0.0000 d=4.3000 kind=SUPERARMOR src=SuperArmor asset="" label="" win=NONE
   n t=0.0000 d=4.3000 kind=SUPERARMOR src=SuperArmorPVP asset="" label="" win=NONE
   n t=0.0010 d=0.6657 kind=SOUND src=AKEvent asset="PC_DRAGONKNIGHT_F.PC_DragonKnight_F_SK_SanctumOfEmbereth1_Vox1_1" label="" win=NONE
@@ -2617,7 +2617,7 @@ LOSTARK_ANIM_NOTIFY 1 "GuardianKnight" 127
   n t=4.3000 d=0.5333 kind=CANCEL src=InputTiming asset="" label="[선이Test]" win=MOVE_PRE
 "ddk_sk_super_worddistort_01" skill=49430 len=5.8000 name="어웨이큰 (구) 워드 디스토트"
   n t=0.0000 d=5.8000 kind=CANCEL src=InputTiming asset="" label="비늘 갑옷" win=OTHER
-  n t=0.0000 d=0.1000 kind=EFFECT src=Effect asset="" label="피해면역" win=NONE
+  n t=0.0000 d=0.1000 kind=EFFECT src=Effect asset="578300" label="피해면역" win=NONE
   n t=0.0000 d=3.7000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_DDK_01.Par_R_DDK_WordDistort_light_01" label="" win=NONE
   n t=0.0000 d=5.0000 kind=SUPERARMOR src=SuperArmorPVP asset="" label="" win=NONE
   n t=0.0000 d=5.0000 kind=SUPERARMOR src=SuperArmor asset="" label="" win=NONE
@@ -2696,7 +2696,7 @@ LOSTARK_ANIM_NOTIFY 1 "GuardianKnight" 127
   n t=0.1500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.1500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.1500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
-  n t=0.1500 d=0.1000 kind=HIT src=Effect asset="491200" label="" win=NONE
+  n t=0.1500 d=0.1000 kind=HIT src=Effect asset="491200" label="" win=NONE area=2 ar=350 aa=200 ah=180 ax=-25 arem=0 maxt=0 rep=0 repms=0 push=140 pushr=80 fz=450 fzin=150 fzout=250 hittype=4
   n t=0.1500 d=0.0377 kind=SHAKE src=ViewShake asset="dur=0.2;in=0;out=0;x=5,45;y=5,45;z=4,60;fov=0,0" label="" win=NONE
   n t=0.2500 d=1.5833 kind=CANCEL src=InputTiming asset="" label="회피캔슬" win=DODGE_CANCEL
   n t=0.2500 d=1.5833 kind=CANCEL src=InputTiming asset="" label="" win=NONE
@@ -2733,7 +2733,7 @@ LOSTARK_ANIM_NOTIFY 1 "GuardianKnight" 127
   n t=0.0000 d=0.0000 kind=EFFECT src=TrailGhostEffect asset="" label="" win=NONE
   n t=0.0000 d=0.4000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_DDK_05.Par_K_DDK_Thrust_08_01" label="" win=NONE
   n t=0.0000 d=1.5000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_DDK_05.Par_K_DDK_Thrust_atk_67_02" label="" win=NONE
-  n t=0.0000 d=0.2000 kind=HIT src=Effect asset="491260" label="" win=NONE
+  n t=0.0000 d=0.2000 kind=HIT src=Effect asset="491260" label="" win=NONE area=2 ar=250 aa=400 ah=180 ax=0 arem=0 maxt=0 rep=0 repms=0 push=140 pushr=100 fz=450 fzin=150 fzout=250 hittype=4
   n t=0.0000 d=0.4000 kind=HIT src=ParticleHit asset="" label="" win=NONE
   n t=0.0000 d=0.1000 kind=SHAKE src=ViewShake asset="dur=0.1;in=0;out=0;x=5,45;y=5,45;z=4,60;fov=0,0" label="" win=NONE
   n t=0.0000 d=0.9200 kind=SUPERARMOR src=SuperArmor asset="" label="" win=NONE
@@ -2764,7 +2764,7 @@ LOSTARK_ANIM_NOTIFY 1 "GuardianKnight" 127
   n t=0.4000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_J_ZoomBlur_01" label="" win=NONE
   n t=0.4000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_J_RGBNoise_01" label="" win=NONE
   n t=0.4000 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.5;in=0.1;out=0.2;x=4,40;y=4,40;z=5,50;fov=0,0" label="" win=NONE
-  n t=0.4500 d=0.1000 kind=HIT src=Effect asset="490402" label="" win=NONE
+  n t=0.4500 d=0.1000 kind=HIT src=Effect asset="490402" label="" win=NONE area=1 ar=300 aa=0 ah=180 ax=0 arem=0 maxt=0 rep=0 repms=0 push=100 pushr=40 fz=450 fzin=150 fzout=250 hittype=4
   n t=0.5000 d=1.1333 kind=CANCEL src=InputTiming asset="" label="회피캔슬" win=DODGE_CANCEL
   n t=0.8000 d=0.8333 kind=CANCEL src=InputTiming asset="" label="" win=NONE
   n t=0.9000 d=0.7333 kind=CANCEL src=InputTiming asset="" label="" win=NONE
@@ -2807,7 +2807,7 @@ LOSTARK_ANIM_NOTIFY 1 "GuardianKnight" 127
   n t=0.1230 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_DDK_03.Par_S_DDK_Wildupper_00_01" label="" win=NONE
   n t=0.1230 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_DDK_03.Par_S_DDK_Wildupper_67_01" label="" win=NONE
   n t=0.1230 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_DDK_03.Par_S_DDK_Wildupper_00_01" label="" win=NONE
-  n t=0.1500 d=0.1000 kind=HIT src=Effect asset="491100" label="" win=NONE
+  n t=0.1500 d=0.1000 kind=HIT src=Effect asset="491100" label="" win=NONE area=2 ar=250 aa=150 ah=180 ax=-20 arem=0 maxt=0 rep=0 repms=0 push=100 pushr=40 fz=550 fzin=150 fzout=250 hittype=4
   n t=0.2000 d=0.4000 kind=CANCEL src=InputTiming asset="" label="" win=NONE
   n t=0.2500 d=1.1833 kind=CANCEL src=InputTiming asset="" label="회피캔슬" win=DODGE_CANCEL
   n t=0.2500 d=0.4000 kind=CANCEL src=InputTiming asset="" label="" win=NONE
@@ -2825,8 +2825,6 @@ LOSTARK_ANIM_NOTIFY 1 "GuardianKnight" 127
   n t=0.2500 d=1.6833 kind=SOUND src=AKEvent asset="PC_DRAGONKNIGHT_F.PC_DragonKnight_F_SK_WildUpper1_FX000_2" label="" win=NONE
   n t=0.2500 d=1.6833 kind=SOUND src=AKEvent asset="PC_DRAGONKNIGHT_F.PC_DragonKnight_F_SK_WildUpper1_Vox1_2" label="" win=NONE
   n t=0.3933 d=0.2014 kind=HIT src=ParticleHit asset="" label="" win=NONE
-  n t=0.4500 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
-  n t=0.4500 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
   n t=0.4500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_DDK_03.Par_S_DDK_WildUpper_00_03" label="" win=NONE
   n t=0.4500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_ZoomBlur_02" label="" win=NONE
   n t=0.4500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_J_RGBNoise_01" label="" win=NONE
@@ -2840,6 +2838,8 @@ LOSTARK_ANIM_NOTIFY 1 "GuardianKnight" 127
   n t=0.4500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_DDK_03.Par_S_DDK_WildUpper_06_Dust_01" label="" win=NONE
   n t=0.4500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_DDK_03.Par_S_DDK_WildUpper_06_04" label="" win=NONE
   n t=0.4500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
+  n t=0.4500 d=0.1000 kind=HIT src=Effect asset="491101" label="" win=NONE area=2 ar=280 aa=180 ah=180 ax=20 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 fz=450 fzin=150 fzout=250 hittype=5
+  n t=0.4500 d=0.1000 kind=HIT src=Effect asset="491160" label="" win=NONE area=2 ar=380 aa=200 ah=180 ax=20 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 fz=450 fzin=150 fzout=250 hittype=5
   n t=0.4500 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.4;in=0;out=0.05;x=2,50;y=2,50;z=7,50;fov=0,0" label="" win=NONE
   n t=0.6000 d=1.3333 kind=CANCEL src=InputTiming asset="" label="회피캔슬" win=DODGE_CANCEL
   n t=0.6000 d=1.3333 kind=CANCEL src=InputTiming asset="" label="" win=NONE
@@ -2869,7 +2869,7 @@ LOSTARK_ANIM_NOTIFY 1 "GuardianKnight" 127
   n t=0.1200 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.2;in=0;out=0.1;x=6,90;y=6,90;z=0,0;fov=0,0" label="" win=NONE
   n t=0.1230 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_DDK_03.Par_S_DDK_Wildupper_00_01" label="" win=NONE
   n t=0.1230 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_DDK_03.Par_S_DDK_Wildupper_00_01" label="" win=NONE
-  n t=0.1500 d=0.1000 kind=HIT src=Effect asset="491100" label="" win=NONE
+  n t=0.1500 d=0.1000 kind=HIT src=Effect asset="491100" label="" win=NONE area=2 ar=250 aa=150 ah=180 ax=-20 arem=0 maxt=0 rep=0 repms=0 push=100 pushr=40 fz=550 fzin=150 fzout=250 hittype=4
   n t=0.2000 d=0.4000 kind=CANCEL src=InputTiming asset="" label="" win=NONE
   n t=0.2500 d=1.1833 kind=CANCEL src=InputTiming asset="" label="" win=NONE
   n t=0.2500 d=1.1833 kind=CANCEL src=InputTiming asset="" label="회피캔슬" win=DODGE_CANCEL
@@ -2905,7 +2905,7 @@ LOSTARK_ANIM_NOTIFY 1 "GuardianKnight" 127
   n t=0.2500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_DDK_03.Par_S_DDK_WildUpper_06_Dust_01" label="" win=NONE
   n t=0.2500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.2500 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.4;in=0;out=0.05;x=2,50;y=2,50;z=7,50;fov=0,0" label="" win=NONE
-  n t=0.2528 d=0.1002 kind=HIT src=Effect asset="491150" label="" win=NONE
+  n t=0.2528 d=0.1002 kind=HIT src=Effect asset="491150" label="" win=NONE area=2 ar=250 aa=200 ah=180 ax=20 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 fz=450 fzin=150 fzout=250 hittype=5
   n t=0.2700 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_DDK_03.Par_S_DDK_WildUpper_Dust_05" label="" win=NONE
   n t=0.2700 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_DDK_03.Par_S_DDK_WildUpper_Dust_057" label="" win=NONE
   n t=0.2722 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_DDK_03.Par_S_DDK_WildUpper_Ground_05_01" label="" win=NONE
@@ -2936,9 +2936,9 @@ LOSTARK_ANIM_NOTIFY 1 "GuardianKnight" 127
   n t=0.2748 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_ZoomBlur_02" label="" win=NONE
   n t=0.2748 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_ZoomBlur_02" label="" win=NONE
   n t=0.2800 d=0.4667 kind=SOUND src=AKEvent asset="PC_DRAGONKNIGHT_F.PC_DragonKnight_F_SK_WingLash1_FX000_2" label="" win=NONE
-  n t=0.3000 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
-  n t=0.3000 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
-  n t=0.3000 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.3000 d=0.1000 kind=EFFECT src=Effect asset="492572" label="" win=NONE
+  n t=0.3000 d=0.1000 kind=HIT src=Effect asset="492500" label="" win=NONE area=2 ar=350 aa=475 ah=180 ax=0 arem=0 maxt=0 rep=0 repms=0 push=140 pushr=100 fz=400 fzin=150 fzout=250 hittype=4
+  n t=0.3000 d=0.1000 kind=HIT src=Effect asset="492550" label="" win=NONE area=2 ar=350 aa=475 ah=180 ax=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 fz=450 fzin=150 fzout=250 hittype=5
   n t=0.3039 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_DDK_02.Par_W_DDK_Winglash_swing_01" label="" win=NONE
   n t=0.3039 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_DDK_02.Par_W_DDK_Winglash_swing_01" label="" win=NONE
   n t=0.3039 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_DDK_02.Par_W_DDK_Winglash_swing_01_04" label="" win=NONE
@@ -2974,7 +2974,7 @@ LOSTARK_ANIM_NOTIFY 1 "GuardianKnight" 127
   n t=0.2787 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_DDK_02.Par_W_DDK_Winglash_Dust_01" label="" win=NONE
   n t=0.2795 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.2840 d=0.1717 kind=SHAKE src=ViewShake asset="dur=0.6;in=0;out=0.3;x=5,60;y=5,60;z=5,50;fov=0,0" label="" win=NONE
-  n t=0.3000 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.3000 d=0.1000 kind=HIT src=Effect asset="492582" label="" win=NONE area=2 ar=350 aa=475 ah=180 ax=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 fz=450 fzin=150 fzout=250 hittype=5
   n t=0.3243 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_ZoomBlur_02" label="" win=NONE
   n t=0.3946 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_DDK_02.Par_W_DDK_Winglash_wp_00" label="" win=NONE
   n t=0.4000 d=0.5333 kind=CANCEL src=InputTiming asset="" label="회피캔슬" win=DODGE_CANCEL
@@ -2995,7 +2995,7 @@ LOSTARK_ANIM_NOTIFY 1 "GuardianKnight" 127
   n t=0.1102 d=0.4840 kind=SHAKE src=ViewShake asset="dur=0.4;in=0.1;out=0.2;x=11,70;y=11,70;z=11,70;fov=0,0" label="" win=NONE
   n t=0.2000 d=0.8200 kind=CANCEL src=InputTiming asset="" label="[선스]" win=SKILL_PRE
   n t=0.2000 d=0.8200 kind=CANCEL src=InputTiming asset="" label="[선이]" win=MOVE_PRE
-  n t=0.2000 d=0.1003 kind=HIT src=Effect asset="2490000" label="" win=NONE
+  n t=0.2000 d=0.1003 kind=HIT src=Effect asset="2490000" label="" win=NONE area=1 ar=400 aa=0 ah=180 ax=0 arem=0 maxt=0 rep=0 repms=0 push=140 pushr=80 fz=450 fzin=150 fzout=250 hittype=4
   n t=0.3500 d=1.7167 kind=CANCEL src=InputTiming asset="" label="회피캔슬" win=DODGE_CANCEL
   n t=0.6000 d=1.4667 kind=CANCEL src=InputTiming asset="" label="" win=NONE
   n t=0.9200 d=1.1467 kind=CANCEL src=InputTiming asset="" label="" win=NONE
@@ -3042,9 +3042,9 @@ LOSTARK_ANIM_NOTIFY 1 "GuardianKnight" 127
   n t=0.2723 d=0.0378 kind=SHAKE src=ViewShake asset="dur=0.2;in=0;out=0;x=5,45;y=5,45;z=4,60;fov=0,0" label="" win=NONE
   n t=0.2723 d=0.0378 kind=SHAKE src=ViewShake asset="dur=0.2;in=0;out=0;x=5,45;y=5,45;z=4,60;fov=0,0" label="" win=NONE
   n t=0.2723 d=0.0378 kind=SHAKE src=ViewShake asset="dur=0.2;in=0;out=0;x=5,45;y=5,45;z=4,60;fov=0,0" label="" win=NONE
-  n t=0.2800 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
-  n t=0.2800 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
-  n t=0.2800 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.2800 d=0.1000 kind=HIT src=Effect asset="492400" label="" win=NONE area=2 ar=355 aa=250 ah=180 ax=0 arem=0 maxt=0 rep=0 repms=0 push=140 pushr=80 fz=450 fzin=150 fzout=250 hittype=4
+  n t=0.2800 d=0.1000 kind=HIT src=Effect asset="492440" label="" win=NONE area=2 ar=355 aa=250 ah=180 ax=0 arem=0 maxt=0 rep=0 repms=0 push=140 pushr=80 fz=450 fzin=150 fzout=250 hittype=4
+  n t=0.2800 d=0.1000 kind=HIT src=Effect asset="492470" label="" win=NONE area=2 ar=505 aa=250 ah=180 ax=0 arem=0 maxt=0 rep=0 repms=0 push=140 pushr=80 fz=450 fzin=150 fzout=250 hittype=4
   n t=0.5000 d=0.8000 kind=CANCEL src=InputTiming asset="" label="" win=NONE
   n t=0.6000 d=0.7000 kind=CANCEL src=InputTiming asset="" label="" win=NONE
 "ddk_sk_wingstinger_custom_5_01" skill=49240 len=0.5000 name="윙 스팅어"

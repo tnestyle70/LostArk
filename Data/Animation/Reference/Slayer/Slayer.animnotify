@@ -9,8 +9,8 @@ LOSTARK_ANIM_NOTIFY 1 "Slayer" 148
   n t=0.3043 d=0.3050 kind=EFFECT src=Trails asset="FX_PC_WBKF_01.Par_N_Trail_034" label="" win=NONE
   n t=0.3600 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.3664 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_01.Par_N_WBKF_Crack_01" label="" win=NONE
-  n t=0.3934 d=0.1006 kind=SHAKE src=ViewShake asset="" label="" win=NONE
-  n t=0.4174 d=0.1002 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.3934 d=0.1006 kind=SHAKE src=ViewShake asset="dur=0.15;in=0;out=0.1;x=2,50;y=2,50;z=2,50;fov=0,0" label="" win=NONE
+  n t=0.4174 d=0.1002 kind=HIT src=Effect asset="450000" label="" win=NONE area=2 ar=240 aa=180 ah=150 ax=0 arem=0 maxt=0 rep=0 repms=0 push=70 pushr=20 fz=480 fzin=150 fzout=250 hittype=4
   n t=0.4500 d=1.3500 kind=CANCEL src=InputTiming asset="" label="콤보입력중" win=COMBO_INPUT
   n t=0.4500 d=1.3500 kind=CANCEL src=InputTiming asset="" label="콤보입력" win=COMBO_INPUT
   n t=0.5000 d=1.3000 kind=CANCEL src=InputTiming asset="" label="[회피캔슬]" win=DODGE_CANCEL
@@ -25,8 +25,8 @@ LOSTARK_ANIM_NOTIFY 1 "Slayer" 148
   n t=0.2000 d=0.2200 kind=CANCEL src=InputTiming asset="" label="콤보선입력" win=COMBO_PRE
   n t=0.2430 d=0.3357 kind=EFFECT src=Trails asset="FX_PC_WBKF_01.Par_N_Trail_034" label="" win=NONE
   n t=0.2658 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_01.Par_N_WBKF_Crack_02" label="" win=NONE
-  n t=0.2720 d=0.1006 kind=SHAKE src=ViewShake asset="" label="" win=NONE
-  n t=0.2748 d=0.1002 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.2720 d=0.1006 kind=SHAKE src=ViewShake asset="dur=0.15;in=0;out=0.1;x=3,50;y=3,50;z=3,50;fov=0,0" label="" win=NONE
+  n t=0.2748 d=0.1002 kind=HIT src=Effect asset="450001" label="" win=NONE area=2 ar=240 aa=180 ah=150 ax=0 arem=0 maxt=0 rep=0 repms=0 push=70 pushr=35 fz=480 fzin=150 fzout=250 hittype=4
   n t=0.2776 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.4007 d=1.1993 kind=CANCEL src=InputTiming asset="" label="콤보입력중" win=COMBO_INPUT
   n t=0.4007 d=1.1993 kind=CANCEL src=InputTiming asset="" label="콤보입력" win=COMBO_INPUT
@@ -40,8 +40,8 @@ LOSTARK_ANIM_NOTIFY 1 "Slayer" 148
   n t=0.2000 d=0.4000 kind=CANCEL src=InputTiming asset="" label="콤보선입력" win=COMBO_PRE
   n t=0.4128 d=0.2871 kind=EFFECT src=Trails asset="FX_PC_WBKF_01.Par_N_Trail_034" label="" win=NONE
   n t=0.4293 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
-  n t=0.4293 d=0.1009 kind=SHAKE src=ViewShake asset="" label="" win=NONE
-  n t=0.4400 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.4293 d=0.1009 kind=SHAKE src=ViewShake asset="dur=0.15;in=0;out=0.1;x=2,50;y=2,50;z=2,50;fov=0,0" label="" win=NONE
+  n t=0.4400 d=0.1000 kind=HIT src=Effect asset="450002" label="" win=NONE area=3 ar=240 aa=120 ah=150 ax=0 arem=0 maxt=0 rep=0 repms=0 push=70 pushr=50 fz=480 fzin=150 fzout=250 hittype=4
   n t=0.5500 d=1.0167 kind=CANCEL src=InputTiming asset="" label="[회피캔슬]" win=DODGE_CANCEL
   n t=0.5500 d=1.0167 kind=CANCEL src=InputTiming asset="" label="콤보입력" win=COMBO_INPUT
   n t=0.5500 d=1.0167 kind=CANCEL src=InputTiming asset="" label="콤보입력중" win=COMBO_INPUT
@@ -54,9 +54,9 @@ LOSTARK_ANIM_NOTIFY 1 "Slayer" 148
   n t=0.3000 d=0.9417 kind=SOUND src=AKEvent asset="PC_BERSERKER_F.PC_Berserker_F_Att_Battle2_Vox1_3" label="" win=NONE
   n t=0.4704 d=0.3093 kind=EFFECT src=Trails asset="FX_PC_WBKF_01.Par_N_Trail_034" label="" win=NONE
   n t=0.4996 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_01.Par_N_WBKF_Swing_08" label="" win=NONE
-  n t=0.5000 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.5000 d=0.1000 kind=HIT src=Effect asset="450003" label="" win=NONE area=3 ar=270 aa=120 ah=150 ax=-30 arem=0 maxt=0 rep=0 repms=0 push=70 pushr=80 fz=480 fzin=150 fzout=250 hittype=4
   n t=0.5005 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
-  n t=0.5005 d=0.1011 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.5005 d=0.1011 kind=SHAKE src=ViewShake asset="dur=0.15;in=0;out=0.1;x=2,50;y=2,50;z=2,50;fov=0,0" label="" win=NONE
   n t=0.6000 d=1.2667 kind=CANCEL src=InputTiming asset="" label="[회피캔슬]" win=DODGE_CANCEL
   n t=0.7000 d=1.1667 kind=CANCEL src=InputTiming asset="" label="스킬캔슬" win=SKILL_CANCEL
   n t=0.9500 d=0.9167 kind=CANCEL src=InputTiming asset="" label="이동캔슬" win=MOVE_CANCEL
@@ -70,15 +70,15 @@ LOSTARK_ANIM_NOTIFY 1 "Slayer" 148
   n t=0.0000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_Confront_00.Par_O_JustGuard_01" label="" win=NONE
   n t=0.0000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_Confront_00.Par_O_JustGuard_03" label="" win=NONE
   n t=0.0000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_ZoomBlur_01" label="" win=NONE
-  n t=0.0000 d=0.5000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.0000 d=0.5000 kind=SHAKE src=ViewShake asset="dur=0.5;in=0;out=0.2;x=5,60;y=5,60;z=5,60;fov=0,0" label="" win=NONE
   n t=0.4000 d=0.1000 kind=SOUND src=AKEvent asset="PC_COMMON_PERFECTGUARD.PC_Common_PerfectGuard2_Male_Jump1_1" label="" win=NONE
-  n t=0.5000 d=4.5000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.5000 d=4.5000 kind=SHAKE src=ViewShake asset="dur=4.5;in=0;out=0.2;x=1,70;y=1,70;z=1.5,80;fov=0,0" label="" win=NONE
 "wbk_att_battle_compete_1_start" skill=45900 len=1.0000 name="격돌(맞대결) 스킬"
   n t=0.0000 d=1.0000 kind=SUPERARMOR src=SuperArmor asset="" label="" win=NONE
   n t=0.0010 d=0.0000 kind=SOUND src=AKEvent asset="PC_COMMON_DUAL.PC_Common_Dual1_1" label="" win=NONE
   n t=0.0010 d=0.9990 kind=SOUND src=AKEvent asset="PC_COMMON_DUAL.PC_Common_Dual1_Warrior_F_Vox1_1" label="" win=NONE
   n t=0.6693 d=0.3307 kind=EFFECT src=PlayParticleEffect asset="FX_PC_Confront_00.Par_L_WGL_CF_Shield_01_S" label="" win=NONE
-  n t=0.6693 d=0.2151 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.6693 d=0.2151 kind=SHAKE src=ViewShake asset="dur=0.1;in=0;out=0.1;x=7,60;y=7,60;z=8,70;fov=0,0" label="" win=NONE
   n t=0.6737 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_Confront_00.Par_L_WGL_CF_Shield_Dust_01" label="" win=NONE
   n t=0.6737 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_Confront_00.Par_L_WGL_CF_Shield_01_1_S" label="" win=NONE
   n t=0.6743 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
@@ -96,9 +96,9 @@ LOSTARK_ANIM_NOTIFY 1 "Slayer" 148
   n t=0.0000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_Confront_00.Par_J_GuardHolding_02" label="" win=NONE
   n t=0.0000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_J_RGBNoise_01" label="" win=NONE
   n t=0.0000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_Confront_00.Par_J_GuardHolding_03" label="" win=NONE
-  n t=0.0000 d=0.4005 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.0000 d=0.4005 kind=SHAKE src=ViewShake asset="dur=0.4;in=0;out=0.2;x=8,60;y=8,60;z=10,70;fov=0,0" label="" win=NONE
   n t=0.0000 d=1.1667 kind=SOUND src=AKEvent asset="PC_COMMON_PERFECTGUARD.PC_Common_PerfectGuard1_Success1_1" label="" win=NONE
-  n t=0.0515 d=0.1002 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.0515 d=0.1002 kind=HIT src=Effect asset="530200" label="" win=NONE area=2 ar=500 aa=300 ah=180 ax=0 arem=0 maxt=0 rep=0 repms=0 push=120 pushr=50 fz=1200 fzin=400 fzout=500 hittype=4
   n t=0.4943 d=1.5057 kind=CANCEL src=InputTiming asset="" label="입력캔슬" win=ANY_CANCEL
   n t=0.6972 d=1.3028 kind=CANCEL src=InputTiming asset="" label="이동캔슬" win=MOVE_CANCEL
 "wbk_att_battle_guide_1_start" skill=45910 len=1.0000 name="저스트 가드"
@@ -113,7 +113,7 @@ LOSTARK_ANIM_NOTIFY 1 "Slayer" 148
   n t=0.0000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_Confront_00.Par_O_JustGuard_01" label="" win=NONE
   n t=0.0000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_Confront_00.Par_O_JustGuard_03" label="" win=NONE
   n t=0.0000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_ZoomBlur_01" label="" win=NONE
-  n t=0.0000 d=0.5000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.0000 d=0.5000 kind=SHAKE src=ViewShake asset="dur=0.5;in=0;out=0.2;x=5,60;y=5,60;z=5,60;fov=0,0" label="" win=NONE
   n t=0.0000 d=2.0000 kind=SOUND src=AKEvent asset="PC_COMMON_PERFECTGUARD.PC_Common_PerfectGuard1_Success1_1" label="" win=NONE
   n t=0.0000 d=1.8417 kind=SOUND src=AKEvent asset="PC_COMMON_PERFECTGUARD.PC_Berserker_F_PerfectGuard1_Vox1_1" label="" win=NONE
   n t=0.1800 d=1.8200 kind=CANCEL src=InputTiming asset="" label="[회피캔슬]" win=DODGE_CANCEL
@@ -128,11 +128,11 @@ LOSTARK_ANIM_NOTIFY 1 "Slayer" 148
   n t=0.2686 d=0.2240 kind=EFFECT src=Trails asset="FX_PC_WBKF_01.Par_N_FireTrail_001" label="" win=NONE
   n t=0.2833 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.3000 d=0.7200 kind=CANCEL src=InputTiming asset="" label="[선콤]" win=COMBO_PRE
-  n t=0.3300 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.3300 d=0.1000 kind=HIT src=Effect asset="450200" label="" win=NONE area=3 ar=190 aa=160 ah=150 ax=0 arem=0 maxt=0 rep=0 repms=0 push=80 pushr=50 fz=480 fzin=150 fzout=250 hittype=4
   n t=0.5000 d=1.3667 kind=CANCEL src=InputTiming asset="" label="[회피캔슬]" win=DODGE_CANCEL
   n t=0.6241 d=0.3088 kind=EFFECT src=Trails asset="FX_PC_WBKF_01.Par_N_FireTrail_001" label="" win=NONE
   n t=0.6947 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
-  n t=0.7200 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.7200 d=0.1000 kind=HIT src=Effect asset="450200" label="" win=NONE area=3 ar=190 aa=160 ah=150 ax=0 arem=0 maxt=0 rep=0 repms=0 push=80 pushr=50 fz=480 fzin=150 fzout=250 hittype=4
   n t=0.9976 d=0.8691 kind=CANCEL src=InputTiming asset="" label="[입력시작]" win=OTHER
   n t=1.0000 d=0.8667 kind=CANCEL src=InputTiming asset="" label="[입력중]" win=OTHER
   n t=1.0000 d=0.8667 kind=CANCEL src=InputTiming asset="" label="[입력캔슬]" win=ANY_CANCEL
@@ -146,7 +146,7 @@ LOSTARK_ANIM_NOTIFY 1 "Slayer" 148
   n t=0.2000 d=0.5200 kind=CANCEL src=InputTiming asset="" label="[선이]" win=MOVE_PRE
   n t=0.2000 d=0.2200 kind=CANCEL src=InputTiming asset="" label="[선콤]" win=COMBO_PRE
   n t=0.2058 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
-  n t=0.2500 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.2500 d=0.1000 kind=HIT src=Effect asset="450201" label="" win=NONE area=3 ar=210 aa=160 ah=150 ax=0 arem=0 maxt=0 rep=0 repms=0 push=80 pushr=60 fz=480 fzin=150 fzout=250 hittype=4
   n t=0.4000 d=1.2667 kind=CANCEL src=InputTiming asset="" label="[입력중]" win=OTHER
   n t=0.4000 d=1.2667 kind=CANCEL src=InputTiming asset="" label="[입력시작]" win=OTHER
   n t=0.5000 d=1.1667 kind=CANCEL src=InputTiming asset="" label="[회피캔슬]" win=DODGE_CANCEL
@@ -161,8 +161,8 @@ LOSTARK_ANIM_NOTIFY 1 "Slayer" 148
   n t=0.2000 d=0.2200 kind=CANCEL src=InputTiming asset="" label="[선콤]" win=COMBO_PRE
   n t=0.2261 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.2267 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_01.Par_N_WBKF_Swing_08_01" label="" win=NONE
-  n t=0.2500 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
-  n t=0.3878 d=0.0402 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.2500 d=0.1000 kind=HIT src=Effect asset="450202" label="" win=NONE area=3 ar=210 aa=160 ah=150 ax=0 arem=0 maxt=0 rep=0 repms=0 push=80 pushr=70 fz=480 fzin=150 fzout=250 hittype=4
+  n t=0.3878 d=0.0402 kind=SHAKE src=ViewShake asset="dur=0.1;in=0;out=0;x=5,200;y=5,200;z=5,200;fov=0,0" label="" win=NONE
   n t=0.4000 d=1.2000 kind=CANCEL src=InputTiming asset="" label="[입력시작]" win=OTHER
   n t=0.4000 d=1.2000 kind=CANCEL src=InputTiming asset="" label="[입력중]" win=OTHER
   n t=0.5000 d=1.1000 kind=CANCEL src=InputTiming asset="" label="[회피캔슬]" win=DODGE_CANCEL
@@ -175,8 +175,8 @@ LOSTARK_ANIM_NOTIFY 1 "Slayer" 148
   n t=0.2000 d=0.5200 kind=CANCEL src=InputTiming asset="" label="[선스]" win=SKILL_PRE
   n t=0.2000 d=0.6200 kind=CANCEL src=InputTiming asset="" label="[선이]" win=MOVE_PRE
   n t=0.2849 d=0.5260 kind=EFFECT src=Trails asset="FX_PC_WBKF_01.Par_N_FireTrail_001" label="" win=NONE
-  n t=0.3191 d=0.1803 kind=SHAKE src=ViewShake asset="" label="" win=NONE
-  n t=0.3500 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.3191 d=0.1803 kind=SHAKE src=ViewShake asset="dur=0.2;in=0;out=0;x=5,30;y=5,30;z=0,0;fov=0,0" label="" win=NONE
+  n t=0.3500 d=0.1000 kind=HIT src=Effect asset="450203" label="" win=NONE area=3 ar=210 aa=160 ah=150 ax=50 arem=0 maxt=0 rep=0 repms=0 push=80 pushr=120 fz=480 fzin=150 fzout=250 hittype=4
   n t=0.3559 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.3567 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_01.Par_N_WBKF_Swing_08_01" label="" win=NONE
   n t=0.3575 d=0.1382 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_MotionBlur_V_02" label="" win=NONE
@@ -190,11 +190,11 @@ LOSTARK_ANIM_NOTIFY 1 "Slayer" 148
   n t=0.0000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_04.SYS.Teleport.Par_L_Teleport_Off_03" label="" win=NONE
   n t=0.0000 d=5.0000 kind=SUPERARMOR src=SuperArmor asset="" label="" win=NONE
   n t=0.0010 d=3.2271 kind=SOUND src=AKEvent asset="PC_COMMON_DUAL.PC_Common_Dual1_7" label="" win=NONE
-  n t=0.0100 d=0.1000 kind=EFFECT src=Effect asset="" label="에스더 PP 제거" win=NONE
+  n t=0.0100 d=0.1000 kind=EFFECT src=Effect asset="530100" label="에스더 PP 제거" win=NONE
 "wbk_mode_identity1" skill=45003 len=1.0667 name="폭주"
-  n t=0.0000 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
-  n t=0.0000 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
-  n t=0.0000 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.0000 d=0.1000 kind=EFFECT src=Effect asset="451300" label="" win=NONE
+  n t=0.0000 d=0.1000 kind=HIT src=Effect asset="451302" label="" win=NONE area=1 ar=220 aa=360 ah=150 ax=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 fz=0 fzin=0 fzout=0 hittype=1
+  n t=0.0000 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.5;in=0;out=0.3;x=0,0;y=0,0;z=0,0;fov=-30,1" label="" win=NONE
   n t=0.0000 d=0.6008 kind=SUPERARMOR src=SuperArmor asset="" label="" win=NONE
   n t=0.0000 d=0.6048 kind=SUPERARMOR src=SuperArmorPVP asset="" label="" win=NONE
   n t=0.0010 d=0.8867 kind=SOUND src=AKEvent asset="PC_BERSERKER_F.PC_Berserker_F_SK_Mode1_Vox1_1" label="" win=NONE
@@ -202,12 +202,12 @@ LOSTARK_ANIM_NOTIFY 1 "Slayer" 148
   n t=0.1880 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.2009 d=0.2998 kind=CANCEL src=InputTiming asset="" label="[선스]" win=SKILL_PRE
   n t=0.2018 d=0.4006 kind=CANCEL src=InputTiming asset="" label="[선이]" win=MOVE_PRE
-  n t=0.2516 d=0.1003 kind=EFFECT src=Effect asset="" label="" win=NONE
-  n t=0.2516 d=0.1003 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.2516 d=0.1003 kind=HIT src=Effect asset="451301" label="" win=NONE area=1 ar=220 aa=360 ah=150 ax=0 arem=0 maxt=0 rep=0 repms=0 push=20 pushr=20 fz=520 fzin=200 fzout=300 hittype=5
+  n t=0.2516 d=0.1003 kind=HIT src=Effect asset="2450085" label="" win=NONE area=1 ar=400 aa=360 ah=150 ax=0 arem=0 maxt=0 rep=0 repms=0 push=20 pushr=20 fz=520 fzin=200 fzout=300 hittype=5
   n t=0.2872 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_01.Par_N_WBK_explo_01" label="" win=NONE
   n t=0.2882 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_01.Par_N_BerModeStart_01" label="" win=NONE
   n t=0.2984 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_ZoomBlur_01" label="" win=NONE
-  n t=0.3018 d=0.5000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.3018 d=0.5000 kind=SHAKE src=ViewShake asset="dur=0.5;in=0;out=0.3;x=7,50;y=7,50;z=7,50;fov=0,0" label="" win=NONE
   n t=0.3028 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="fx_cm_03.SpreadEnergy.Par_E_Shouting_03" label="" win=NONE
   n t=0.3043 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_00.Dust.Par_MP_Dust_High_01" label="" win=NONE
   n t=0.3242 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_11.Par_X_WBKF_Arkpassive_ShockWave_04_01_1" label="" win=NONE
@@ -226,13 +226,13 @@ LOSTARK_ANIM_NOTIFY 1 "Slayer" 148
   n t=0.1500 d=0.0000 kind=SOUND src=AKEvent asset="PC_BERSERKER_F.PC_Berserker_F_SK_BladeWave1_Vox1_1" label="" win=NONE
   n t=0.2000 d=0.7000 kind=CANCEL src=InputTiming asset="" label="[선이]" win=MOVE_PRE
   n t=0.2000 d=0.3200 kind=CANCEL src=InputTiming asset="" label="[선스]" win=SKILL_PRE
-  n t=0.2338 d=0.4000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.2338 d=0.4000 kind=SHAKE src=ViewShake asset="dur=0.4;in=0;out=0.2;x=7,60;y=7,60;z=7,60;fov=0,0" label="" win=NONE
   n t=0.2359 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_ZoomBlur_03" label="" win=NONE
   n t=0.2936 d=0.1588 kind=CANCEL src=InputTiming asset="" label="콤보선입력" win=COMBO_PRE
-  n t=0.3000 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
   n t=0.3000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.3000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.3000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
+  n t=0.3000 d=0.1000 kind=HIT src=Effect asset="451106" label="" win=NONE area=3 ar=240 aa=80 ah=150 ax=-30 arem=0 maxt=0 rep=3 repms=300 push=10 pushr=10 fz=500 fzin=150 fzout=250 hittype=4
   n t=0.3200 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBK_05.Par_T_WBK_BladeWave_Smoke_01" label="" win=NONE
   n t=0.3200 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBK_05.Par_T_WBK_BladeWave_Spark_01" label="" win=NONE
   n t=0.3200 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBK_05.Par_T_WBK_BladeWave_Smoke_01" label="" win=NONE
@@ -258,14 +258,14 @@ LOSTARK_ANIM_NOTIFY 1 "Slayer" 148
   n t=0.5000 d=0.2000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBK_05.Par_T_WBK_BladeWave_01_02" label="" win=NONE
   n t=0.5500 d=0.2000 kind=HIT src=ParticleHit asset="" label="" win=NONE
   n t=0.5547 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_ZoomBlur_03" label="" win=NONE
-  n t=0.5610 d=0.4000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.5610 d=0.4000 kind=SHAKE src=ViewShake asset="dur=0.4;in=0;out=0.1;x=7,60;y=7,60;z=7,60;fov=0,0" label="" win=NONE
   n t=0.6000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.6000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBK_05.Par_T_WBK_BladeWave_Spark_08" label="" win=NONE
   n t=0.6000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.6000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBK_05.Par_T_WBK_BladeWave_Spark_08" label="" win=NONE
   n t=0.6000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.6000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBK_05.Par_T_WBK_BladeWave_Spark_08" label="" win=NONE
-  n t=0.6015 d=0.1986 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.6015 d=0.1986 kind=HIT src=Effect asset="451107" label="" win=NONE area=3 ar=240 aa=80 ah=150 ax=-30 arem=0 maxt=0 rep=3 repms=300 push=20 pushr=20 fz=500 fzin=150 fzout=250 hittype=4
   n t=0.6200 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBK_00.Par_O_RoundUp_Dust_01" label="" win=NONE
   n t=0.6200 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBK_00.Par_O_RoundUp_Dust_01" label="" win=NONE
   n t=0.6200 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBK_00.Par_O_RoundUp_Dust_01" label="" win=NONE
@@ -277,23 +277,23 @@ LOSTARK_ANIM_NOTIFY 1 "Slayer" 148
   n t=0.0000 d=2.8478 kind=SUPERARMOR src=SuperArmor asset="" label="" win=NONE
   n t=0.0000 d=2.8533 kind=SUPERARMOR src=SuperArmorPVP asset="" label="" win=NONE
   n t=0.0100 d=0.0000 kind=SOUND src=AKEvent asset="PC_BERSERKER_F.PC_Berserker_F_SK_BloodyRush1_FX000_1" label="" win=NONE
-  n t=0.2989 d=0.3283 kind=EFFECT src=Effect asset="" label="피웅덩이" win=NONE
+  n t=0.2989 d=0.3283 kind=HIT src=Effect asset="451400" label="피웅덩이" win=NONE area=1 ar=170 aa=0 ah=150 ax=150 arem=0 maxt=0 rep=0 repms=0 push=10 pushr=-10 fz=520 fzin=200 fzout=300 hittype=4
   n t=0.3200 d=0.4000 kind=EFFECT src=Trails asset="FX_PC_WBKF_01.Par_N_BloodTrail_010" label="" win=NONE
   n t=0.4000 d=2.7250 kind=SOUND src=AKEvent asset="PC_BERSERKER_F.PC_Berserker_F_SK_BloodyRush1_Vox1_1" label="" win=NONE
   n t=0.5000 d=3.0667 kind=CANCEL src=InputTiming asset="" label="[회피캔슬]" win=DODGE_CANCEL
   n t=0.6000 d=0.0000 kind=SOUND src=AKEvent asset="PC_BERSERKER_F.PC_Berserker_F_SK_BloodyRush1_FX000_2" label="" win=NONE
-  n t=0.7778 d=1.0555 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.7778 d=1.0555 kind=SHAKE src=ViewShake asset="dur=1.3;in=0;out=0.3;x=1.2,80;y=1.2,80;z=1.2,80;fov=0,0" label="" win=NONE
   n t=0.7816 d=1.3263 kind=EFFECT src=Trails asset="FX_PC_WBKF_05.Par_D_BloodTrail_001" label="" win=NONE
   n t=0.8200 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBK_00.Par_D_RevengeRush_12" label="" win=NONE
   n t=0.8223 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBK_00.Par_D_RevengeRush_13_LOC_INT" label="" win=NONE
   n t=0.8500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.8500 d=0.1500 kind=HIT src=ParticleHit asset="" label="" win=NONE
-  n t=0.8773 d=0.2474 kind=EFFECT src=Effect asset="" label="난무 1~2타" win=NONE
+  n t=0.8773 d=0.2474 kind=HIT src=Effect asset="451401" label="난무 1~2타" win=NONE area=3 ar=350 aa=120 ah=150 ax=-20 arem=0 maxt=0 rep=2 repms=150 push=5 pushr=5 fz=400 fzin=100 fzout=150 hittype=4
   n t=0.9700 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBK_00.Par_D_RevengeRush_12" label="" win=NONE
   n t=0.9717 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBK_00.Par_D_RevengeRush_13_LOC_INT" label="" win=NONE
   n t=1.1700 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBK_00.Par_D_RevengeRush_12" label="" win=NONE
   n t=1.1758 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBK_00.Par_D_RevengeRush_13_LOC_INT" label="" win=NONE
-  n t=1.1794 d=0.2206 kind=EFFECT src=Effect asset="" label="난무 3~6타" win=NONE
+  n t=1.1794 d=0.2206 kind=HIT src=Effect asset="451401" label="난무 3~6타" win=NONE area=3 ar=350 aa=120 ah=150 ax=-20 arem=0 maxt=0 rep=2 repms=150 push=5 pushr=5 fz=400 fzin=100 fzout=150 hittype=4
   n t=1.2236 d=0.1506 kind=HIT src=ParticleHit asset="" label="" win=NONE
   n t=1.3100 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBK_00.Par_D_RevengeRush_12" label="" win=NONE
   n t=1.3184 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBK_00.Par_D_RevengeRush_13_LOC_INT" label="" win=NONE
@@ -309,9 +309,9 @@ LOSTARK_ANIM_NOTIFY 1 "Slayer" 148
   n t=2.1000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=2.1477 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="fx_cm_01.Distortion.Par_MP_ConcaveDis_Bill_01" label="" win=NONE
   n t=2.1500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBK_00.Par_D_RevengeRush_11_LOC_INT" label="" win=NONE
-  n t=2.2000 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
-  n t=2.3055 d=0.2127 kind=EFFECT src=Effect asset="" label="빔 다단히트" win=NONE
-  n t=2.5087 d=0.2122 kind=EFFECT src=Effect asset="" label="막타" win=NONE
+  n t=2.2000 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.4;in=0;out=0.3;x=4.5,40;y=4.5,40;z=4.5,40;fov=0,0" label="" win=NONE
+  n t=2.3055 d=0.2127 kind=HIT src=Effect asset="451402" label="빔 다단히트" win=NONE area=2 ar=550 aa=200 ah=150 ax=-35 arem=0 maxt=0 rep=3 repms=300 push=5 pushr=5 fz=400 fzin=100 fzout=150 hittype=4
+  n t=2.5087 d=0.2122 kind=HIT src=Effect asset="451403" label="막타" win=NONE area=2 ar=550 aa=200 ah=150 ax=-35 arem=0 maxt=0 rep=0 repms=0 push=30 pushr=30 fz=530 fzin=200 fzout=300 hittype=5
   n t=2.6326 d=0.4793 kind=EFFECT src=Trails asset="FX_PC_WBKF_05.Par_D_BloodTrail_001" label="" win=NONE
   n t=2.7000 d=0.0000 kind=SOUND src=AKEvent asset="PC_BERSERKER_F.PC_Berserker_F_SK_BloodyRush1_FX000_4" label="" win=NONE
   n t=2.8054 d=0.7613 kind=CANCEL src=InputTiming asset="" label="" win=NONE
@@ -362,7 +362,7 @@ LOSTARK_ANIM_NOTIFY 1 "Slayer" 148
   n t=0.0000 d=1.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_06.BrutalImpact.Par_Y_WBKF_BrutalImpact_Cast_03_3" label="" win=NONE
   n t=0.0000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_06.BrutalImpact.Par_Y_WBKF_BrutalImpact_Charged_02_3" label="" win=NONE
   n t=0.0000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_06.BrutalImpact.Par_Y_WBKF_BrutalImpact_wp_04_3" label="" win=NONE
-  n t=0.0000 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.0000 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.3;in=0.05;out=0.2;x=0,0;y=0,0;z=3,70;fov=0,0" label="" win=NONE
   n t=0.0000 d=1.0000 kind=SUPERARMOR src=SuperArmorPVP asset="" label="" win=NONE
   n t=0.0000 d=1.0000 kind=SUPERARMOR src=SuperArmor asset="" label="" win=NONE
   n t=0.0010 d=0.9990 kind=SOUND src=AKEvent asset="PC_BERSERKER_F.PC_Berserker_F_SK_BrutalImpact1_FX050_3" label="" win=NONE
@@ -382,7 +382,7 @@ LOSTARK_ANIM_NOTIFY 1 "Slayer" 148
   n t=0.6000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_06.BrutalImpact.Par_Y_WBKF_BrutalImpact_02_4" label="" win=NONE
   n t=0.6000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_06.BrutalImpact.Par_Y_WBKF_BrutalImpact_02_5" label="" win=NONE
   n t=0.6000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_06.BrutalImpact.Par_Y_WBKF_BrutalImpact_02_6" label="" win=NONE
-  n t=0.7500 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.7500 d=0.1000 kind=HIT src=Effect asset="457323" label="" win=NONE area=2 ar=400 aa=250 ah=250 ax=-20 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 fz=0 fzin=0 fzout=0 hittype=5
   n t=0.7600 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_06.BrutalImpact.Par_Y_WBKF_Brutalimpact_dust_01_2" label="" win=NONE
   n t=0.7600 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_06.BrutalImpact.Par_Y_WBKF_BrutalImpact_Dust_02" label="" win=NONE
   n t=0.7600 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_06.BrutalImpact.Par_Y_WBKF_BrutalImpact_3exp_01_4" label="" win=NONE
@@ -424,7 +424,7 @@ LOSTARK_ANIM_NOTIFY 1 "Slayer" 148
   n t=0.7600 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_06.BrutalImpact.Par_Y_WBKF_BrutalImpact_4exp_01_1" label="" win=NONE
   n t=0.7600 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_06.BrutalImpact.Par_Y_WBKF_BrutalImpact_3exp_01_6" label="" win=NONE
   n t=0.7600 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_06.BrutalImpact.Par_Y_WBKF_BrutalImpact_3exp_01_6" label="" win=NONE
-  n t=0.7850 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.7850 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.5;in=0.05;out=0.2;x=4,60;y=4,60;z=6,80;fov=0,0" label="" win=NONE
   n t=0.8000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_06.BrutalImpact.Par_Y_WBKF_BrutalImpact_03_4" label="" win=NONE
   n t=0.8000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_06.BrutalImpact.Par_Y_WBKF_BrutalImpact_03_4" label="" win=NONE
   n t=0.8000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_06.BrutalImpact.Par_Y_WBKF_BrutalImpact_03_4" label="" win=NONE
@@ -478,9 +478,9 @@ LOSTARK_ANIM_NOTIFY 1 "Slayer" 148
   n t=0.1300 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_06.BrutalImpact.Par_Y_WBKF_BrutalImpact_02_5" label="" win=NONE
   n t=0.1300 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_06.BrutalImpact.Par_Y_WBKF_BrutalImpact_02_6" label="" win=NONE
   n t=0.2000 d=0.5333 kind=CANCEL src=InputTiming asset="" label="[회피캔슬]" win=DODGE_CANCEL
-  n t=0.2800 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
   n t=0.2800 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_06.BrutalImpact.Par_Y_WBKF_Brutalimpact_dust_01_2" label="" win=NONE
   n t=0.2800 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_06.BrutalImpact.Par_Y_WBKF_BrutalImpact_Dust_02" label="" win=NONE
+  n t=0.2800 d=0.1000 kind=HIT src=Effect asset="457310" label="" win=NONE area=2 ar=400 aa=250 ah=250 ax=-20 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 fz=0 fzin=0 fzout=0 hittype=5
   n t=0.2836 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_06.BrutalImpact.Par_Y_WBKF_BrutalImpact_2exp_01_4" label="" win=NONE
   n t=0.2836 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_06.BrutalImpact.Par_Y_WBKF_BrutalImpact_2exp_01_4" label="" win=NONE
   n t=0.2836 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_06.BrutalImpact.Par_Y_WBKF_BrutalImpact_2exp_01_4" label="" win=NONE
@@ -512,7 +512,7 @@ LOSTARK_ANIM_NOTIFY 1 "Slayer" 148
   n t=0.2848 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_06.BrutalImpact.Par_Y_WBKF_BrutalImpact_04_2" label="" win=NONE
   n t=0.2848 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_06.BrutalImpact.Par_Y_WBKF_BrutalImpact_04_3" label="" win=NONE
   n t=0.2997 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_ZoomBlur_03" label="" win=NONE
-  n t=0.2997 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.2997 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.5;in=0.05;out=0.2;x=4,60;y=4,60;z=6,80;fov=0,0" label="" win=NONE
   n t=0.3035 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_06.BrutalImpact.Par_Y_WBKF_BrutalImpact_03_4" label="" win=NONE
   n t=0.3035 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_06.BrutalImpact.Par_Y_WBKF_BrutalImpact_03_4" label="" win=NONE
   n t=0.3035 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_06.BrutalImpact.Par_Y_WBKF_BrutalImpact_03_4" label="" win=NONE
@@ -562,7 +562,7 @@ LOSTARK_ANIM_NOTIFY 1 "Slayer" 148
   n t=0.0000 d=0.4333 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_06.BrutalImpact.Par_Y_WBKF_BrutalImpact_wp_02_3" label="" win=NONE
   n t=0.0000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_06.BrutalImpact.Par_Y_WBKF_BrutalImpact_Charged_02_3" label="" win=NONE
   n t=0.0000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_06.BrutalImpact.Par_Y_WBKF_BrutalImpact_wp_04_3" label="" win=NONE
-  n t=0.0000 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.0000 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.3;in=0.05;out=0.2;x=0,0;y=0,0;z=3,70;fov=0,0" label="" win=NONE
   n t=0.0000 d=0.4333 kind=SUPERARMOR src=SuperArmorPVP asset="" label="" win=NONE
   n t=0.0000 d=0.4333 kind=SUPERARMOR src=SuperArmor asset="" label="" win=NONE
   n t=0.0010 d=0.4323 kind=SOUND src=AKEvent asset="PC_BERSERKER_F.PC_Berserker_F_SK_BrutalImpact1_FX060_1" label="" win=NONE
@@ -599,7 +599,7 @@ LOSTARK_ANIM_NOTIFY 1 "Slayer" 148
   n t=0.0000 d=1.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_06.BrutalImpact.Par_Y_WBKF_BrutalImpact_Cast_03_3" label="" win=NONE
   n t=0.0000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_06.BrutalImpact.Par_Y_WBKF_BrutalImpact_Charged_02_3" label="" win=NONE
   n t=0.0000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_06.BrutalImpact.Par_Y_WBKF_BrutalImpact_wp_04_3" label="" win=NONE
-  n t=0.0000 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.0000 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.3;in=0.05;out=0.2;x=0,0;y=0,0;z=3,70;fov=0,0" label="" win=NONE
   n t=0.0000 d=1.0000 kind=SUPERARMOR src=SuperArmorPVP asset="" label="" win=NONE
   n t=0.0000 d=1.0000 kind=SUPERARMOR src=SuperArmor asset="" label="" win=NONE
   n t=0.0010 d=0.9990 kind=SOUND src=AKEvent asset="PC_BERSERKER_F.PC_Berserker_F_SK_BrutalImpact1_FX060_2" label="" win=NONE
@@ -617,7 +617,7 @@ LOSTARK_ANIM_NOTIFY 1 "Slayer" 148
   n t=0.6000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_06.BrutalImpact.Par_Y_WBKF_BrutalImpact_02_4" label="" win=NONE
   n t=0.6000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_06.BrutalImpact.Par_Y_WBKF_BrutalImpact_02_5" label="" win=NONE
   n t=0.6000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_06.BrutalImpact.Par_Y_WBKF_BrutalImpact_02_6" label="" win=NONE
-  n t=0.7500 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.7500 d=0.1000 kind=HIT src=Effect asset="457330" label="" win=NONE area=2 ar=400 aa=250 ah=250 ax=-20 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 fz=0 fzin=0 fzout=0 hittype=5
   n t=0.7600 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_06.BrutalImpact.Par_Y_WBKF_Brutalimpact_dust_01_2" label="" win=NONE
   n t=0.7600 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_06.BrutalImpact.Par_Y_WBKF_BrutalImpact_Dust_02" label="" win=NONE
   n t=0.7600 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_06.BrutalImpact.Par_Y_WBKF_BrutalImpact_2exp_01_4" label="" win=NONE
@@ -656,7 +656,7 @@ LOSTARK_ANIM_NOTIFY 1 "Slayer" 148
   n t=0.7600 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_06.BrutalImpact.Par_Y_WBKF_BrutalImpact_04_3" label="" win=NONE
   n t=0.7600 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_06.BrutalImpact.Par_Y_WBKF_BrutalImpact_2exp_01_6" label="" win=NONE
   n t=0.7600 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_06.BrutalImpact.Par_Y_WBKF_BrutalImpact_2exp_01_6" label="" win=NONE
-  n t=0.7850 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.7850 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.5;in=0.05;out=0.2;x=4,60;y=4,60;z=6,80;fov=0,0" label="" win=NONE
   n t=0.8000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_06.BrutalImpact.Par_Y_WBKF_BrutalImpact_03_4" label="" win=NONE
   n t=0.8000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_06.BrutalImpact.Par_Y_WBKF_BrutalImpact_03_4" label="" win=NONE
   n t=0.8000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_06.BrutalImpact.Par_Y_WBKF_BrutalImpact_03_4" label="" win=NONE
@@ -683,7 +683,7 @@ LOSTARK_ANIM_NOTIFY 1 "Slayer" 148
   n t=0.0010 d=0.5990 kind=SOUND src=AKEvent asset="PC_BERSERKER_F.PC_Berserker_F_SK_ChainBlade1_FX000_1" label="" win=NONE
   n t=0.0010 d=0.5990 kind=SOUND src=AKEvent asset="PC_BERSERKER_F.PC_Berserker_F_SK_ChainBlade1_Vox1_1" label="" win=NONE
   n t=0.1500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
-  n t=0.1500 d=0.4500 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.1500 d=0.4500 kind=SHAKE src=ViewShake asset="dur=0.5;in=0.01;out=0.01;x=1,60;y=1,60;z=1,60;fov=0,0" label="" win=NONE
   n t=0.3000 d=0.3000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_10.Par_T_WBKF_ChainBlade_00_Cast_01" label="" win=NONE
   n t=0.3000 d=0.3000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_10.Par_T_WBKF_ChainBlade_00_Cast_04" label="" win=NONE
   n t=0.3000 d=0.3000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_10.Par_T_WBKF_ChainBlade_00_Cast_03" label="" win=NONE
@@ -695,7 +695,7 @@ LOSTARK_ANIM_NOTIFY 1 "Slayer" 148
   n t=0.0000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.0000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_10.Par_T_WBKF_ChainBlade_01_Cast_04" label="" win=NONE
   n t=0.0000 d=0.5000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_10.Par_T_WBKF_ChainBlade_00_Cast_04_L" label="" win=NONE
-  n t=0.0000 d=0.5000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.0000 d=0.5000 kind=SHAKE src=ViewShake asset="dur=0.5;in=0.01;out=0.01;x=1,60;y=1,60;z=1,60;fov=0,0" label="" win=NONE
   n t=0.0000 d=0.5000 kind=SUPERARMOR src=SuperArmorPVP asset="" label="" win=NONE
   n t=0.0000 d=0.5000 kind=SUPERARMOR src=SuperArmor asset="" label="" win=NONE
   n t=0.0978 d=0.3566 kind=CANCEL src=InputTiming asset="" label="입력없음" win=OTHER
@@ -708,7 +708,7 @@ LOSTARK_ANIM_NOTIFY 1 "Slayer" 148
   n t=0.0000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_07.Par_S_SuperAwake_ExMove_01" label="" win=NONE
   n t=0.0000 d=0.3000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_FilmNoise_01" label="" win=NONE
   n t=0.0000 d=0.2000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_10.Par_T_WBKF_ChainBlade_02_Cast_04" label="" win=NONE
-  n t=0.0000 d=0.5000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.0000 d=0.5000 kind=SHAKE src=ViewShake asset="dur=0.5;in=0.01;out=0.01;x=1,60;y=1,60;z=1,60;fov=0,0" label="" win=NONE
   n t=0.0000 d=1.1200 kind=SUPERARMOR src=SuperArmorPVP asset="" label="" win=NONE
   n t=0.0000 d=1.1200 kind=SUPERARMOR src=SuperArmor asset="" label="" win=NONE
   n t=0.0010 d=0.5990 kind=SOUND src=AKEvent asset="PC_BERSERKER_F.PC_Berserker_F_SK_ChainBlade1_FX000_1" label="" win=NONE
@@ -716,11 +716,10 @@ LOSTARK_ANIM_NOTIFY 1 "Slayer" 148
   n t=0.2000 d=0.7200 kind=CANCEL src=InputTiming asset="" label="[선스]" win=SKILL_PRE
   n t=0.2000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_10.Par_T_WBKF_ChainBlade_00_Cast_02" label="" win=NONE
   n t=0.2000 d=1.6333 kind=SOUND src=AKEvent asset="PC_BERSERKER_F.PC_Berserker_F_SK_ChainBlade1_FX000_2" label="" win=NONE
-  n t=0.3000 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
   n t=0.3000 d=0.6000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_10.Par_T_WBKF_ChainBlade_00_03" label="" win=NONE
+  n t=0.3000 d=0.1000 kind=HIT src=Effect asset="457502" label="" win=NONE area=2 ar=300 aa=300 ah=250 ax=-20 arem=0 maxt=0 rep=0 repms=0 push=100 pushr=50 fz=550 fzin=150 fzout=250 hittype=4
   n t=0.3500 d=0.0000 kind=EFFECT src=TrailGhostEffect asset="" label="" win=NONE
   n t=0.3500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_ZoomBlur_03" label="" win=NONE
-  n t=0.5000 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
   n t=0.5000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_10.Par_T_WBKF_ChainBlade_00_04" label="" win=NONE
   n t=0.5000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_10.Par_T_WBKF_ChainBlade_00_01" label="" win=NONE
   n t=0.5000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
@@ -728,10 +727,11 @@ LOSTARK_ANIM_NOTIFY 1 "Slayer" 148
   n t=0.5000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_10.Par_T_WBKF_ChainBlade_00_Dust_01" label="" win=NONE
   n t=0.5000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_10.Par_T_WBKF_ChainBlade_00_Dust_02" label="" win=NONE
   n t=0.5000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_10.Par_T_WBKF_ChainBlade_00_02" label="" win=NONE
-  n t=0.5000 d=0.5000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.5000 d=0.1000 kind=HIT src=Effect asset="457500" label="" win=NONE area=2 ar=550 aa=300 ah=250 ax=-20 arem=0 maxt=0 rep=0 repms=0 push=100 pushr=100 fz=550 fzin=150 fzout=250 hittype=4
+  n t=0.5000 d=0.5000 kind=SHAKE src=ViewShake asset="dur=0.5;in=0;out=0;x=7,70;y=7,70;z=7,70;fov=0,0" label="" win=NONE
   n t=0.5500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.6000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
-  n t=0.7000 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.7000 d=0.1000 kind=HIT src=Effect asset="457501" label="" win=NONE area=2 ar=550 aa=300 ah=250 ax=-20 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 fz=0 fzin=0 fzout=0 hittype=6
   n t=0.9000 d=0.9333 kind=CANCEL src=InputTiming asset="" label="입력캔슬" win=ANY_CANCEL
   n t=1.1000 d=0.7333 kind=CANCEL src=InputTiming asset="" label="이동캔슬" win=MOVE_CANCEL
 "wbk_sk_cruelpierce_01" skill=45740 len=0.5333 name="크루얼 피어스"
@@ -752,7 +752,7 @@ LOSTARK_ANIM_NOTIFY 1 "Slayer" 148
   n t=0.0000 d=0.0000 kind=EFFECT src=TrailGhostEffect asset="" label="" win=NONE
   n t=0.0000 d=0.8000 kind=SUPERARMOR src=SuperArmorPVP asset="" label="" win=NONE
   n t=0.0000 d=0.8000 kind=SUPERARMOR src=SuperArmor asset="" label="" win=NONE
-  n t=0.1000 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.1000 d=0.1000 kind=HIT src=Effect asset="457440" label="" win=NONE area=2 ar=250 aa=230 ah=250 ax=0 arem=0 maxt=0 rep=0 repms=0 push=160 pushr=200 fz=810 fzin=210 fzout=400 hittype=4
   n t=0.1137 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.1137 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_08.Par_W_WBKF_CruelPierce_000_smoke" label="" win=NONE
   n t=0.1137 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_08.Par_W_WBKF_CruelPierce_000_47" label="" win=NONE
@@ -767,7 +767,7 @@ LOSTARK_ANIM_NOTIFY 1 "Slayer" 148
   n t=0.1154 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_08.Par_W_WBKF_CruelPierce_Dust_00" label="" win=NONE
   n t=0.1900 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.1900 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
-  n t=0.1900 d=0.0369 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.1900 d=0.0369 kind=SHAKE src=ViewShake asset="dur=0.2;in=0;out=0;x=7,45;y=7,45;z=0,0;fov=0,0" label="" win=NONE
   n t=0.1930 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_FilmNoise_01" label="" win=NONE
   n t=0.3000 d=0.5000 kind=CANCEL src=InputTiming asset="" label="콤보입력중" win=COMBO_INPUT
   n t=0.3000 d=0.5000 kind=CANCEL src=InputTiming asset="" label="콤보입력" win=COMBO_INPUT
@@ -790,9 +790,9 @@ LOSTARK_ANIM_NOTIFY 1 "Slayer" 148
   n t=0.1946 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_ZoomBlur_02" label="" win=NONE
   n t=0.2000 d=0.5323 kind=SOUND src=AKEvent asset="PC_BERSERKER_F.PC_Berserker_F_SK_CruelPierce1_FX048_3" label="" win=NONE
   n t=0.2035 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_08.Par_W_WBKF_CruelPierce_002_08" label="" win=NONE
-  n t=0.2334 d=0.3379 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.2334 d=0.3379 kind=SHAKE src=ViewShake asset="dur=0.4;in=0;out=0.05;x=0,50;y=0,50;z=7,50;fov=0,0" label="" win=NONE
   n t=0.2356 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_FilmNoise_01" label="" win=NONE
-  n t=0.2500 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.2500 d=0.1000 kind=HIT src=Effect asset="457482" label="" win=NONE area=2 ar=250 aa=230 ah=250 ax=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 fz=0 fzin=0 fzout=0 hittype=5
   n t=0.6000 d=0.7667 kind=CANCEL src=InputTiming asset="" label="입력캔슬" win=ANY_CANCEL
   n t=0.8000 d=0.5667 kind=CANCEL src=InputTiming asset="" label="이동캔슬" win=MOVE_CANCEL
 "wbk_sk_cruelpierce_custom_4_01" skill=45740 len=1.5000 name="크루얼 피어스"
@@ -807,9 +807,9 @@ LOSTARK_ANIM_NOTIFY 1 "Slayer" 148
   n t=0.2000 d=1.3000 kind=SOUND src=AKEvent asset="PC_BERSERKER_F.PC_Berserker_F_SK_CruelPierce1_Vox2_2" label="" win=NONE
   n t=0.2035 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_08.Par_W_WBKF_CruelPierce_002" label="" win=NONE
   n t=0.2035 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_08.Par_W_WBKF_CruelPierce_002_07" label="" win=NONE
-  n t=0.2334 d=0.3379 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.2334 d=0.3379 kind=SHAKE src=ViewShake asset="dur=0.4;in=0;out=0.05;x=0,50;y=0,50;z=7,50;fov=0,0" label="" win=NONE
   n t=0.2356 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_FilmNoise_01" label="" win=NONE
-  n t=0.2500 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.2500 d=0.1000 kind=HIT src=Effect asset="457442" label="" win=NONE area=2 ar=250 aa=230 ah=250 ax=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 fz=0 fzin=0 fzout=0 hittype=5
   n t=0.6000 d=0.9000 kind=CANCEL src=InputTiming asset="" label="입력캔슬" win=ANY_CANCEL
   n t=0.8000 d=0.7000 kind=CANCEL src=InputTiming asset="" label="이동캔슬" win=MOVE_CANCEL
 "wbk_sk_cruelpierce_custom_58_01" skill=45740 len=1.4000 name="크루얼 피어스"
@@ -821,7 +821,7 @@ LOSTARK_ANIM_NOTIFY 1 "Slayer" 148
   n t=0.0010 d=0.5323 kind=SOUND src=AKEvent asset="PC_BERSERKER_F.PC_Berserker_F_SK_CruelPierce1_FX058_3" label="" win=NONE
   n t=0.1682 d=0.5343 kind=EFFECT src=Trails asset="FX_PC_WBKF_08.Par_W_WBKF_CruelPierceTrail_05_07" label="" win=NONE
   n t=0.1800 d=0.5323 kind=SOUND src=AKEvent asset="PC_BERSERKER_F.PC_Berserker_F_SK_CruelPierce1_Vox2_2" label="" win=NONE
-  n t=0.4100 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.4100 d=0.1000 kind=HIT src=Effect asset="457485" label="" win=NONE area=1 ar=300 aa=0 ah=250 ax=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 fz=0 fzin=0 fzout=0 hittype=5
   n t=0.4104 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.4104 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_08.Par_W_WBKF_CruelPierce_003_08" label="" win=NONE
   n t=0.4111 d=0.0000 kind=EFFECT src=TrailGhostEffect asset="" label="" win=NONE
@@ -838,7 +838,7 @@ LOSTARK_ANIM_NOTIFY 1 "Slayer" 148
   n t=0.1682 d=0.5343 kind=EFFECT src=Trails asset="FX_PC_WBKF_08.Par_W_WBKF_CruelPierceTrail_05_01" label="" win=NONE
   n t=0.1682 d=0.5343 kind=EFFECT src=Trails asset="FX_PC_WBKF_08.Par_W_WBKF_CruelPierceTrail_05_07" label="" win=NONE
   n t=0.2000 d=1.3333 kind=SOUND src=AKEvent asset="PC_BERSERKER_F.PC_Berserker_F_SK_CruelPierce1_Vox2_2" label="" win=NONE
-  n t=0.3500 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.3500 d=0.1000 kind=HIT src=Effect asset="457451" label="" win=NONE area=1 ar=300 aa=0 ah=250 ax=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 fz=0 fzin=0 fzout=0 hittype=5
   n t=0.3581 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.3581 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.3584 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_08.Par_W_WBKF_CruelPierce_003" label="" win=NONE
@@ -857,9 +857,9 @@ LOSTARK_ANIM_NOTIFY 1 "Slayer" 148
   n t=0.3960 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_08.Par_W_WBKF_CruelPierce_004_Impact_08" label="" win=NONE
   n t=0.3960 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_08.Par_W_WBKF_CruelPierce_004_08" label="" win=NONE
   n t=0.3960 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
-  n t=0.4000 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.4000 d=0.1000 kind=HIT src=Effect asset="457487" label="" win=NONE area=3 ar=500 aa=70 ah=250 ax=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 fz=0 fzin=0 fzout=0 hittype=5
   n t=0.4000 d=0.5323 kind=SOUND src=AKEvent asset="PC_BERSERKER_F.PC_Berserker_F_SK_CruelPierce1_FX068_3" label="" win=NONE
-  n t=0.4019 d=0.2080 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.4019 d=0.2080 kind=SHAKE src=ViewShake asset="dur=0.4;in=0;out=0.05;x=0,70;y=0,70;z=7,70;fov=0,0" label="" win=NONE
   n t=0.4062 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_ZoomBlur_02" label="" win=NONE
   n t=0.4101 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_FilmNoise_01" label="" win=NONE
   n t=0.7019 d=1.1648 kind=CANCEL src=InputTiming asset="" label="입력캔슬" win=ANY_CANCEL
@@ -876,10 +876,10 @@ LOSTARK_ANIM_NOTIFY 1 "Slayer" 148
   n t=0.3960 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_08.Par_W_WBKF_CruelPierce_004" label="" win=NONE
   n t=0.3960 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_08.Par_W_WBKF_CruelPierce_004_Impact_07" label="" win=NONE
   n t=0.3960 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_08.Par_W_WBKF_CruelPierce_004_07" label="" win=NONE
-  n t=0.4000 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.4000 d=0.1000 kind=HIT src=Effect asset="457461" label="" win=NONE area=3 ar=500 aa=70 ah=250 ax=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 fz=0 fzin=0 fzout=0 hittype=5
   n t=0.4000 d=0.5323 kind=SOUND src=AKEvent asset="PC_BERSERKER_F.PC_Berserker_F_SK_CruelPierce1_FX067_3" label="" win=NONE
   n t=0.4000 d=0.5323 kind=SOUND src=AKEvent asset="PC_BERSERKER_F.PC_Berserker_F_SK_CruelPierce1_FX060_3" label="" win=NONE
-  n t=0.4019 d=0.2080 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.4019 d=0.2080 kind=SHAKE src=ViewShake asset="dur=0.4;in=0;out=0.05;x=0,50;y=0,50;z=7,50;fov=0,0" label="" win=NONE
   n t=0.4062 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_ZoomBlur_02" label="" win=NONE
   n t=0.4101 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_FilmNoise_01" label="" win=NONE
   n t=0.7019 d=1.2981 kind=CANCEL src=InputTiming asset="" label="입력캔슬" win=ANY_CANCEL
@@ -914,8 +914,8 @@ LOSTARK_ANIM_NOTIFY 1 "Slayer" 148
   n t=0.0793 d=0.1142 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.0908 d=0.2531 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBK_08.Par_W_WBK_VitalSlash_00" label="" win=NONE
   n t=0.0908 d=0.2531 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBK_08.Par_W_WBK_VitalSlash_00" label="" win=NONE
-  n t=0.0993 d=0.2059 kind=SHAKE src=ViewShake asset="" label="" win=NONE
-  n t=0.1000 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.0993 d=0.2059 kind=SHAKE src=ViewShake asset="dur=0.2;in=0;out=0.3;x=6,40;y=6,40;z=6,40;fov=0,0" label="" win=NONE
+  n t=0.1000 d=0.1000 kind=HIT src=Effect asset="451071" label="" win=NONE area=2 ar=250 aa=250 ah=150 ax=0 arem=0 maxt=0 rep=0 repms=0 push=10 pushr=10 fz=410 fzin=150 fzout=250 hittype=4
   n t=0.1000 d=0.4000 kind=SOUND src=AKEvent asset="PC_BERSERKER_F.PC_Berserker_F_SK_DoubleSlash1_FX007_1" label="" win=NONE
   n t=0.2700 d=0.4000 kind=SOUND src=AKEvent asset="PC_BERSERKER_F.PC_Berserker_F_SK_DoubleSlash1_FX007_2" label="" win=NONE
   n t=0.3604 d=0.2531 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBK_08.Par_W_WBK_VitalSlash_00" label="" win=NONE
@@ -962,27 +962,27 @@ LOSTARK_ANIM_NOTIFY 1 "Slayer" 148
   n t=0.2000 d=0.2667 kind=CANCEL src=InputTiming asset="" label="이동캔슬" win=MOVE_CANCEL
 "wbk_sk_dbslash_custom_2" skill=45100 len=0.6667 name="크로스 블레이드 (구)더블 슬래쉬"
   n t=0.2500 d=0.2000 kind=SOUND src=AKEvent asset="PC_BERSERKER_F.PC_Berserker_F_SK_DoubleSlash1_FX200_1" label="" win=NONE
-  n t=0.2936 d=0.1064 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.2936 d=0.1064 kind=SHAKE src=ViewShake asset="dur=0.2;in=0;out=0.1;x=1.3,100;y=1.3,100;z=1.3,100;fov=0,0" label="" win=NONE
   n t=0.2997 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_00.Dust.Par_E_UnderDust_13_3" label="" win=NONE
-  n t=0.3000 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.3000 d=0.1000 kind=HIT src=Effect asset="451021" label="" win=NONE area=2 ar=200 aa=150 ah=150 ax=0 arem=0 maxt=0 rep=0 repms=0 push=40 pushr=40 fz=440 fzin=150 fzout=250 hittype=4
   n t=0.3013 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBK_08.Par_W_DoubleSlash_02" label="" win=NONE
 "wbk_sk_dbslash_custom_5" skill=45100 len=1.0667 name="크로스 블레이드 (구)더블 슬래쉬"
   n t=0.0000 d=0.8010 kind=CANCEL src=InputTiming asset="" label="스킬선입력" win=SKILL_PRE
   n t=0.0000 d=0.8024 kind=CANCEL src=InputTiming asset="" label="이동선입력" win=MOVE_PRE
   n t=0.1000 d=0.7667 kind=SOUND src=AKEvent asset="PC_BERSERKER_F.PC_Berserker_F_SK_DoubleSlash1_FX050_1" label="" win=NONE
-  n t=0.3863 d=0.2358 kind=SHAKE src=ViewShake asset="" label="" win=NONE
-  n t=0.3863 d=0.2358 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.3863 d=0.2358 kind=SHAKE src=ViewShake asset="dur=0.4;in=0;out=0.3;x=8,40;y=8,40;z=8,40;fov=0,0" label="" win=NONE
+  n t=0.3863 d=0.2358 kind=SHAKE src=ViewShake asset="dur=0.4;in=0;out=0.3;x=8,40;y=8,40;z=8,40;fov=0,0" label="" win=NONE
   n t=0.3868 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBK_08.Par_W_WBK_DoubleSlash_00_01_Exp" label="" win=NONE
   n t=0.3868 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBK_08.Par_W_WBK_DoubleSlash_00_08_Exp" label="" win=NONE
   n t=0.3933 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBK_08.Par_W_DoubleSlash_00_01" label="" win=NONE
   n t=0.3933 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBK_08.Par_W_DoubleSlash_00_08" label="" win=NONE
   n t=0.3957 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.3957 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
-  n t=0.4000 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.4000 d=0.1000 kind=HIT src=Effect asset="451051" label="" win=NONE area=2 ar=350 aa=150 ah=150 ax=0 arem=0 maxt=0 rep=0 repms=0 push=40 pushr=40 fz=440 fzin=150 fzout=250 hittype=4
   n t=0.4217 d=0.2004 kind=HIT src=ParticleHit asset="" label="" win=NONE
   n t=0.4217 d=0.2004 kind=HIT src=ParticleHit asset="" label="" win=NONE
   n t=0.4965 d=0.5701 kind=CANCEL src=InputTiming asset="" label="회피캔슬" win=DODGE_CANCEL
-  n t=0.7000 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.7000 d=0.1000 kind=HIT src=Effect asset="451081" label="" win=NONE area=2 ar=350 aa=150 ah=150 ax=20 arem=0 maxt=0 rep=0 repms=0 push=150 pushr=5 fz=300 fzin=50 fzout=100 hittype=4
   n t=0.8010 d=0.2656 kind=CANCEL src=InputTiming asset="" label="이동캔슬" win=MOVE_CANCEL
   n t=0.8024 d=0.2643 kind=CANCEL src=InputTiming asset="" label="스킬캔슬" win=SKILL_CANCEL
 "wbk_sk_dbslash_custom_6" skill=45100 len=0.6667 name="크로스 블레이드 (구)더블 슬래쉬"
@@ -992,8 +992,8 @@ LOSTARK_ANIM_NOTIFY 1 "Slayer" 148
   n t=0.0610 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_00.Dust.Par_D_Dust_002_pr" label="" win=NONE
   n t=0.0793 d=0.1142 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.0908 d=0.2531 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBK_08.Par_W_WBK_VitalSlash_00" label="" win=NONE
-  n t=0.0993 d=0.2059 kind=SHAKE src=ViewShake asset="" label="" win=NONE
-  n t=0.1000 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.0993 d=0.2059 kind=SHAKE src=ViewShake asset="dur=0.2;in=0;out=0.3;x=6,40;y=6,40;z=6,40;fov=0,0" label="" win=NONE
+  n t=0.1000 d=0.1000 kind=HIT src=Effect asset="451071" label="" win=NONE area=2 ar=250 aa=250 ah=150 ax=0 arem=0 maxt=0 rep=0 repms=0 push=10 pushr=10 fz=410 fzin=150 fzout=250 hittype=4
   n t=0.1000 d=0.4000 kind=SOUND src=AKEvent asset="PC_BERSERKER_F.PC_Berserker_F_SK_DoubleSlash1_FX007_1" label="" win=NONE
   n t=0.2700 d=0.4000 kind=SOUND src=AKEvent asset="PC_BERSERKER_F.PC_Berserker_F_SK_DoubleSlash1_FX007_2" label="" win=NONE
   n t=0.3604 d=0.2531 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBK_08.Par_W_WBK_VitalSlash_00" label="" win=NONE
@@ -1030,9 +1030,9 @@ LOSTARK_ANIM_NOTIFY 1 "Slayer" 148
   n t=0.0000 d=0.6100 kind=SUPERARMOR src=SuperArmorPVP asset="" label="" win=NONE
   n t=0.0000 d=0.6103 kind=SUPERARMOR src=SuperArmor asset="" label="" win=NONE
   n t=0.0010 d=0.8233 kind=SOUND src=AKEvent asset="PC_BERSERKER_F.PC_Berserker_F_SK_DivingSlash1_Vox1_2" label="" win=NONE
-  n t=0.0389 d=0.1205 kind=EFFECT src=Effect asset="" label="" win=NONE
-  n t=0.0389 d=0.1205 kind=EFFECT src=Effect asset="" label="" win=NONE
-  n t=0.0389 d=0.1205 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.0389 d=0.1205 kind=HIT src=Effect asset="452100" label="" win=NONE area=2 ar=260 aa=160 ah=150 ax=25 arem=0 maxt=0 rep=0 repms=0 push=20 pushr=20 fz=420 fzin=150 fzout=250 hittype=8
+  n t=0.0389 d=0.1205 kind=HIT src=Effect asset="452110" label="" win=NONE area=1 ar=225 aa=0 ah=150 ax=175 arem=0 maxt=0 rep=0 repms=0 push=200 pushr=-120 fz=600 fzin=150 fzout=250 hittype=4
+  n t=0.0389 d=0.1205 kind=HIT src=Effect asset="452101" label="" win=NONE area=3 ar=250 aa=90 ah=120 ax=130 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 fz=0 fzin=0 fzout=0 hittype=1
   n t=0.0497 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_ZoomBlur_03" label="" win=NONE
   n t=0.0500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBK_04.Par_V_WBK_DownAtt_01" label="" win=NONE
   n t=0.0500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
@@ -1040,7 +1040,7 @@ LOSTARK_ANIM_NOTIFY 1 "Slayer" 148
   n t=0.0500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBK_04.Par_V_WBK_DivingSlash_c5_01" label="" win=NONE
   n t=0.0500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBK_04.Par_V_WBK_DivingSlash_08_05" label="" win=NONE
   n t=0.0500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBK_04.Par_V_WBK_DivingSlash_c5_01" label="" win=NONE
-  n t=0.0507 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.0507 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.2;in=0;out=0.05;x=9,80;y=9,80;z=12,80;fov=0,0" label="" win=NONE
   n t=0.1945 d=1.1721 kind=CANCEL src=InputTiming asset="" label="[회피캔슬]" win=DODGE_CANCEL
   n t=0.3967 d=0.9700 kind=CANCEL src=InputTiming asset="" label="" win=NONE
   n t=0.5975 d=0.7692 kind=CANCEL src=InputTiming asset="" label="" win=NONE
@@ -1073,8 +1073,8 @@ LOSTARK_ANIM_NOTIFY 1 "Slayer" 148
   n t=0.6000 d=2.0667 kind=SOUND src=AKEvent asset="PC_BERSERKER_F.PC_Berserker_F_SK_FinishStrike1_FX300_2" label="" win=NONE
   n t=0.9000 d=1.0200 kind=CANCEL src=InputTiming asset="" label="[선이]" win=MOVE_PRE
   n t=1.0830 d=0.8020 kind=HIT src=ParticleHit asset="" label="" win=NONE
-  n t=1.0830 d=0.4010 kind=SHAKE src=ViewShake asset="" label="" win=NONE
-  n t=1.1000 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=1.0830 d=0.4010 kind=SHAKE src=ViewShake asset="dur=0.4;in=0;out=0;x=4,80;y=4,80;z=4,80;fov=0,0" label="" win=NONE
+  n t=1.1000 d=0.1000 kind=HIT src=Effect asset="453000" label="" win=NONE area=1 ar=200 aa=0 ah=200 ax=200 arem=0 maxt=0 rep=0 repms=0 push=20 pushr=20 fz=420 fzin=150 fzout=250 hittype=8
   n t=1.1164 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBK_07.Par_U_WBK_MailStorm_Fire_Exp_Blood_03" label="" win=NONE
   n t=1.1164 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBK_07.Par_U_WBK_FinishStrike_Decal_01" label="" win=NONE
   n t=1.1164 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
@@ -1099,8 +1099,8 @@ LOSTARK_ANIM_NOTIFY 1 "Slayer" 148
   n t=1.1000 d=2.0667 kind=SOUND src=AKEvent asset="PC_BERSERKER_F.PC_Berserker_F_SK_FinishStrike1_FX300_2" label="" win=NONE
   n t=1.4000 d=1.0200 kind=CANCEL src=InputTiming asset="" label="[선이]" win=MOVE_PRE
   n t=1.6000 d=0.8000 kind=HIT src=ParticleHit asset="" label="" win=NONE
-  n t=1.6000 d=0.4000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
-  n t=1.6200 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=1.6000 d=0.4000 kind=SHAKE src=ViewShake asset="dur=0.4;in=0;out=0;x=4,80;y=4,80;z=4,80;fov=0,0" label="" win=NONE
+  n t=1.6200 d=0.1000 kind=HIT src=Effect asset="453000" label="" win=NONE area=1 ar=200 aa=0 ah=200 ax=200 arem=0 maxt=0 rep=0 repms=0 push=20 pushr=20 fz=420 fzin=150 fzout=250 hittype=8
   n t=1.6333 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBK_07.Par_U_WBK_MailStorm_Fire_Exp_Blood_03" label="" win=NONE
   n t=1.6333 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBK_07.Par_U_WBK_FinishStrike_Decal_01" label="" win=NONE
   n t=1.6333 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
@@ -1123,8 +1123,8 @@ LOSTARK_ANIM_NOTIFY 1 "Slayer" 148
   n t=0.5000 d=1.0167 kind=SOUND src=AKEvent asset="PC_BERSERKER_F.PC_Berserker_F_SK_FinishStrike1_Vox2_2" label="" win=NONE
   n t=0.6000 d=1.7333 kind=SOUND src=AKEvent asset="PC_BERSERKER_F.PC_Berserker_F_SK_FinishStrike1_FX008_3" label="" win=NONE
   n t=0.7000 d=0.8000 kind=HIT src=ParticleHit asset="" label="" win=NONE
-  n t=0.7000 d=0.4000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
-  n t=0.7044 d=0.1024 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.7000 d=0.4000 kind=SHAKE src=ViewShake asset="dur=0.4;in=0;out=0;x=4,80;y=4,80;z=6,80;fov=0,0" label="" win=NONE
+  n t=0.7044 d=0.1024 kind=HIT src=Effect asset="453020" label="" win=NONE area=1 ar=200 aa=0 ah=200 ax=80 arem=0 maxt=0 rep=0 repms=0 push=20 pushr=20 fz=420 fzin=150 fzout=250 hittype=8
   n t=0.7315 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_ZoomBlur_02" label="" win=NONE
   n t=0.7333 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.7359 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBK_07.Par_U_WBK_FinishStrike_Decal_02" label="" win=NONE
@@ -1161,12 +1161,12 @@ LOSTARK_ANIM_NOTIFY 1 "Slayer" 148
   n t=0.0700 d=0.8667 kind=SOUND src=AKEvent asset="PC_BERSERKER_F.PC_Berserker_F_SK_FuriousClaw1_FX000_2" label="" win=NONE
   n t=0.0700 d=0.8667 kind=SOUND src=AKEvent asset="PC_BERSERKER_F.PC_Berserker_F_SK_FuriousClaw1_FX000_2" label="" win=NONE
   n t=0.1376 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_06.FuriouseClaw.Par_Y_WBKF_FuriousClaw_dust_01_1" label="" win=NONE
-  n t=0.1400 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
   n t=0.1400 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_06.FuriouseClaw.Par_Y_WBKF_FuriousClaw_02_1" label="" win=NONE
   n t=0.1400 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_ZoomBlur_02" label="" win=NONE
   n t=0.1400 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_06.FuriouseClaw.Par_Y_WBKF_FuriousClaw_02_3" label="" win=NONE
   n t=0.1400 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_06.FuriouseClaw.Par_Y_WBKF_FuriousClaw_02_1" label="" win=NONE
-  n t=0.1400 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.1400 d=0.1000 kind=HIT src=Effect asset="457100" label="" win=NONE area=2 ar=270 aa=230 ah=200 ax=0 arem=0 maxt=0 rep=0 repms=0 push=70 pushr=20 fz=410 fzin=150 fzout=250 hittype=4
+  n t=0.1400 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.25;in=0.1;out=0;x=3,70;y=3,70;z=3,50;fov=0,0" label="" win=NONE
   n t=0.1414 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.1414 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.1414 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
@@ -1179,8 +1179,8 @@ LOSTARK_ANIM_NOTIFY 1 "Slayer" 148
   n t=0.3200 d=0.6167 kind=SOUND src=AKEvent asset="PC_BERSERKER_F.PC_Berserker_F_SK_FuriousClaw1_FX000_3" label="" win=NONE
   n t=0.3700 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_06.FuriouseClaw.Par_Y_WBKF_FuriousClaw_dust_01_1" label="" win=NONE
   n t=0.3700 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_ZoomBlur_02" label="" win=NONE
-  n t=0.3705 d=0.1002 kind=EFFECT src=Effect asset="" label="" win=NONE
-  n t=0.3724 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.3705 d=0.1002 kind=HIT src=Effect asset="457110" label="" win=NONE area=2 ar=270 aa=230 ah=200 ax=0 arem=0 maxt=0 rep=0 repms=0 push=70 pushr=20 fz=410 fzin=150 fzout=250 hittype=4
+  n t=0.3724 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.25;in=0.1;out=0;x=3,70;y=3,70;z=3,50;fov=0,0" label="" win=NONE
   n t=0.3800 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_06.FuriouseClaw.Par_Y_WBKF_FuriousClaw_02_1" label="" win=NONE
   n t=0.3800 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_06.FuriouseClaw.Par_Y_WBKF_FuriousClaw_02_3" label="" win=NONE
   n t=0.3800 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_06.FuriouseClaw.Par_Y_WBKF_FuriousClaw_02_2" label="" win=NONE
@@ -1191,8 +1191,8 @@ LOSTARK_ANIM_NOTIFY 1 "Slayer" 148
   n t=0.5000 d=0.4167 kind=SOUND src=AKEvent asset="PC_BERSERKER_F.PC_Berserker_F_SK_FuriousClaw1_FX000_4" label="" win=NONE
   n t=0.5200 d=0.4217 kind=SOUND src=AKEvent asset="PC_BERSERKER_F.PC_Berserker_F_SK_FuriousClaw1_FX060_3" label="" win=NONE
   n t=0.5737 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_ZoomBlur_02" label="" win=NONE
-  n t=0.5744 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
-  n t=0.5784 d=0.1002 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.5744 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.2;in=0.1;out=0;x=5,50;y=5,50;z=5,30;fov=0,0" label="" win=NONE
+  n t=0.5784 d=0.1002 kind=HIT src=Effect asset="457120" label="" win=NONE area=3 ar=270 aa=150 ah=200 ax=40 arem=0 maxt=0 rep=0 repms=0 push=70 pushr=20 fz=410 fzin=150 fzout=250 hittype=4
   n t=0.5800 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_06.FuriouseClaw.Par_Y_WBKF_FuriousClaw_dust_02_1" label="" win=NONE
   n t=0.6000 d=0.3667 kind=CANCEL src=InputTiming asset="" label="[선이]" win=MOVE_PRE
   n t=0.6000 d=0.3667 kind=CANCEL src=InputTiming asset="" label="[선스]" win=SKILL_PRE
@@ -1216,11 +1216,11 @@ LOSTARK_ANIM_NOTIFY 1 "Slayer" 148
   n t=0.0567 d=0.0000 kind=EFFECT src=TrailGhostEffect asset="" label="" win=NONE
   n t=0.1177 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_ZoomBlur_02" label="" win=NONE
   n t=0.1188 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_06.FuriouseClaw.Par_Y_WBKF_FuriousClaw_dust_01_1" label="" win=NONE
-  n t=0.1200 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
   n t=0.1200 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_06.FuriouseClaw.Par_Y_WBKF_FuriousClaw_02_1" label="" win=NONE
   n t=0.1200 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_06.FuriouseClaw.Par_Y_WBKF_FuriousClaw_02_2" label="" win=NONE
   n t=0.1200 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_06.FuriouseClaw.Par_Y_WBKF_FuriousClaw_02_3" label="" win=NONE
-  n t=0.1200 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.1200 d=0.1000 kind=HIT src=Effect asset="457130" label="" win=NONE area=2 ar=280 aa=250 ah=200 ax=0 arem=0 maxt=0 rep=0 repms=0 push=100 pushr=100 fz=550 fzin=150 fzout=250 hittype=4
+  n t=0.1200 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.25;in=0.1;out=0;x=3,70;y=3,70;z=3,60;fov=0,0" label="" win=NONE
   n t=0.1400 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.1400 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.1400 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
@@ -1252,7 +1252,7 @@ LOSTARK_ANIM_NOTIFY 1 "Slayer" 148
   n t=0.0465 d=0.0000 kind=EFFECT src=TrailGhostEffect asset="" label="" win=NONE
   n t=0.0465 d=0.0000 kind=EFFECT src=TrailGhostEffect asset="" label="" win=NONE
   n t=0.0465 d=0.0000 kind=EFFECT src=TrailGhostEffect asset="" label="" win=NONE
-  n t=0.0800 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.0800 d=0.1000 kind=HIT src=Effect asset="457170" label="" win=NONE area=1 ar=250 aa=230 ah=200 ax=0 arem=0 maxt=0 rep=0 repms=0 push=70 pushr=10 fz=410 fzin=150 fzout=250 hittype=4
   n t=0.0878 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_06.FuriouseClaw.Par_Y_WBKF_FuriousClaw_01_4" label="" win=NONE
   n t=0.0878 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_06.FuriouseClaw.Par_Y_WBKF_FuriousClaw_01_5" label="" win=NONE
   n t=0.0878 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_06.FuriouseClaw.Par_Y_WBKF_FuriousClaw_01_6" label="" win=NONE
@@ -1275,35 +1275,35 @@ LOSTARK_ANIM_NOTIFY 1 "Slayer" 148
   n t=0.1961 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_06.FuriouseClaw.Par_Y_WBKF_FuriousClaw_01_6" label="" win=NONE
   n t=0.2000 d=0.6200 kind=CANCEL src=InputTiming asset="" label="[선스]" win=SKILL_PRE
   n t=0.2000 d=0.6200 kind=CANCEL src=InputTiming asset="" label="[선이]" win=MOVE_PRE
-  n t=0.2000 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.2000 d=0.1000 kind=HIT src=Effect asset="457171" label="" win=NONE area=1 ar=250 aa=230 ah=200 ax=0 arem=0 maxt=0 rep=0 repms=0 push=70 pushr=10 fz=410 fzin=150 fzout=250 hittype=4
   n t=0.2145 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_06.FuriouseClaw.Par_Y_WBKF_FuriousClaw_02_1" label="" win=NONE
   n t=0.2145 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_06.FuriouseClaw.Par_Y_WBKF_FuriousClaw_02_2" label="" win=NONE
   n t=0.2145 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_06.FuriouseClaw.Par_Y_WBKF_FuriousClaw_02_3" label="" win=NONE
   n t=0.2344 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_ZoomBlur_02" label="" win=NONE
-  n t=0.2344 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.2344 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.5;in=0.05;out=0.1;x=5,50;y=5,50;z=4,50;fov=0,0" label="" win=NONE
   n t=0.2363 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_06.FuriouseClaw.Par_Y_WBKF_FuriousClaw_dust_02_1" label="" win=NONE
   n t=0.2363 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_06.FuriouseClaw.Par_Y_WBKF_FuriousClaw_dust_01_1" label="" win=NONE
   n t=0.2774 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_06.FuriouseClaw.Par_Y_WBKF_FuriousClaw_02_1" label="" win=NONE
   n t=0.2774 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_06.FuriouseClaw.Par_Y_WBKF_FuriousClaw_02_2" label="" win=NONE
   n t=0.2774 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_06.FuriouseClaw.Par_Y_WBKF_FuriousClaw_02_3" label="" win=NONE
-  n t=0.3000 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.3000 d=0.1000 kind=HIT src=Effect asset="457172" label="" win=NONE area=1 ar=250 aa=230 ah=200 ax=0 arem=0 maxt=0 rep=0 repms=0 push=70 pushr=10 fz=410 fzin=150 fzout=250 hittype=4
   n t=0.3952 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_06.FuriouseClaw.Par_Y_WBKF_FuriousClaw_01_4" label="" win=NONE
   n t=0.3960 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_06.FuriouseClaw.Par_Y_WBKF_FuriousClaw_01_5" label="" win=NONE
   n t=0.3978 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_06.FuriouseClaw.Par_Y_WBKF_FuriousClaw_01_6" label="" win=NONE
-  n t=0.4000 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.4000 d=0.1000 kind=HIT src=Effect asset="457173" label="" win=NONE area=1 ar=250 aa=230 ah=200 ax=0 arem=0 maxt=0 rep=0 repms=0 push=70 pushr=10 fz=410 fzin=150 fzout=250 hittype=4
   n t=0.4721 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_06.FuriouseClaw.Par_Y_WBKF_FuriousClaw_02_1" label="" win=NONE
   n t=0.4727 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_06.FuriouseClaw.Par_Y_WBKF_FuriousClaw_02_2" label="" win=NONE
   n t=0.4744 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_06.FuriouseClaw.Par_Y_WBKF_FuriousClaw_02_3" label="" win=NONE
   n t=0.5000 d=0.9333 kind=CANCEL src=InputTiming asset="" label="[회피캔슬]" win=DODGE_CANCEL
-  n t=0.5000 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.5000 d=0.1000 kind=HIT src=Effect asset="457174" label="" win=NONE area=1 ar=250 aa=230 ah=200 ax=0 arem=0 maxt=0 rep=0 repms=0 push=70 pushr=10 fz=410 fzin=150 fzout=250 hittype=4
   n t=0.5007 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_06.FuriouseClaw.Par_Y_WBKF_FuriousClaw_01_4" label="" win=NONE
   n t=0.5007 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_06.FuriouseClaw.Par_Y_WBKF_FuriousClaw_01_5" label="" win=NONE
   n t=0.5007 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_06.FuriouseClaw.Par_Y_WBKF_FuriousClaw_01_6" label="" win=NONE
   n t=0.5472 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_06.FuriouseClaw.Par_Y_WBKF_FuriousClaw_01_4" label="" win=NONE
   n t=0.5472 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_06.FuriouseClaw.Par_Y_WBKF_FuriousClaw_01_5" label="" win=NONE
   n t=0.5472 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_06.FuriouseClaw.Par_Y_WBKF_FuriousClaw_01_6" label="" win=NONE
-  n t=0.6000 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
-  n t=0.7000 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.6000 d=0.1000 kind=HIT src=Effect asset="457175" label="" win=NONE area=1 ar=250 aa=230 ah=200 ax=0 arem=0 maxt=0 rep=0 repms=0 push=70 pushr=10 fz=410 fzin=150 fzout=250 hittype=4
+  n t=0.7000 d=0.1000 kind=HIT src=Effect asset="457176" label="" win=NONE area=1 ar=250 aa=230 ah=200 ax=0 arem=0 maxt=0 rep=0 repms=0 push=70 pushr=10 fz=410 fzin=150 fzout=250 hittype=4
   n t=0.8000 d=0.6333 kind=CANCEL src=InputTiming asset="" label="입력캔슬" win=ANY_CANCEL
   n t=0.8000 d=0.6333 kind=CANCEL src=InputTiming asset="" label="이동캔슬" win=MOVE_CANCEL
 "wbk_sk_furiousclaw_custom8_01" skill=45710 len=1.7667 name="퓨리어스 클로"
@@ -1322,7 +1322,7 @@ LOSTARK_ANIM_NOTIFY 1 "Slayer" 148
   n t=0.0567 d=0.0000 kind=EFFECT src=TrailGhostEffect asset="" label="" win=NONE
   n t=0.0601 d=0.0000 kind=EFFECT src=TrailGhostEffect asset="" label="" win=NONE
   n t=0.0601 d=0.0000 kind=EFFECT src=TrailGhostEffect asset="" label="" win=NONE
-  n t=0.1200 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.1200 d=0.1000 kind=HIT src=Effect asset="457180" label="" win=NONE area=2 ar=280 aa=250 ah=200 ax=0 arem=0 maxt=0 rep=0 repms=0 push=70 pushr=20 fz=410 fzin=150 fzout=250 hittype=4
   n t=0.1500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.1500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_06.FuriouseClaw.Par_Y_WBKF_FuriousClaw_02_1" label="" win=NONE
   n t=0.1500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_06.FuriouseClaw.Par_Y_WBKF_FuriousClaw_02_3" label="" win=NONE
@@ -1330,7 +1330,7 @@ LOSTARK_ANIM_NOTIFY 1 "Slayer" 148
   n t=0.1540 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.1540 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.1567 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_ZoomBlur_02" label="" win=NONE
-  n t=0.1571 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.1571 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.25;in=0.1;out=0;x=3,70;y=3,70;z=3,60;fov=0,0" label="" win=NONE
   n t=0.1601 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_06.FuriouseClaw.Par_Y_WBKF_FuriousClaw_dust_01_1" label="" win=NONE
   n t=0.2000 d=0.8200 kind=CANCEL src=InputTiming asset="" label="[선이]" win=MOVE_PRE
   n t=0.2002 d=0.6046 kind=CANCEL src=InputTiming asset="" label="[선스]" win=SKILL_PRE
@@ -1343,13 +1343,13 @@ LOSTARK_ANIM_NOTIFY 1 "Slayer" 148
   n t=0.4448 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_06.FuriouseClaw.Par_Y_WBKF_FuriousClaw_01_1" label="" win=NONE
   n t=0.4448 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_06.FuriouseClaw.Par_Y_WBKF_FuriousClaw_01_3" label="" win=NONE
   n t=0.4448 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_06.FuriouseClaw.Par_Y_WBKF_FuriousClaw_01_2" label="" win=NONE
-  n t=0.5000 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.5000 d=0.1000 kind=HIT src=Effect asset="457181" label="" win=NONE area=2 ar=280 aa=250 ah=200 ax=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 fz=0 fzin=0 fzout=0 hittype=7
   n t=0.5222 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_06.FuriouseClaw.Par_Y_WBKF_FuriousClaw_05_1" label="" win=NONE
   n t=0.5222 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_06.FuriouseClaw.Par_Y_WBKF_FuriousClaw_05_1" label="" win=NONE
   n t=0.5222 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_06.FuriouseClaw.Par_Y_WBKF_FuriousClaw_05_1" label="" win=NONE
   n t=0.5277 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_ZoomBlur_02" label="" win=NONE
   n t=0.5277 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_06.FuriouseClaw.Par_Y_WBKF_FuriousClaw_dust_01_1" label="" win=NONE
-  n t=0.5277 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.5277 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.2;in=0.1;out=0;x=5,50;y=5,50;z=5,70;fov=0,0" label="" win=NONE
   n t=0.8000 d=0.9667 kind=CANCEL src=InputTiming asset="" label="입력캔슬" win=ANY_CANCEL
   n t=1.0000 d=0.7667 kind=CANCEL src=InputTiming asset="" label="이동캔슬" win=MOVE_CANCEL
 "wbk_sk_gatebreak_01" skill=45760 len=1.1667 name="플레임 블레이드"
@@ -1373,7 +1373,7 @@ LOSTARK_ANIM_NOTIFY 1 "Slayer" 148
   n t=0.0000 d=0.5000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_09.Par_K_WBKF_GateBreak_Cast_01_01" label="" win=NONE
   n t=0.0000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.0000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_ZoomBlur_02" label="" win=NONE
-  n t=0.0000 d=0.3000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.0000 d=0.3000 kind=SHAKE src=ViewShake asset="dur=0.3;in=0;out=0.07;x=0,0;y=0,0;z=2,70;fov=0,0" label="" win=NONE
   n t=0.0000 d=0.5000 kind=SUPERARMOR src=SuperArmorPVP asset="" label="" win=NONE
   n t=0.0000 d=0.5000 kind=SUPERARMOR src=SuperArmor asset="" label="" win=NONE
   n t=0.0001 d=0.4999 kind=SOUND src=AKEvent asset="PC_BERSERKER_F.PC_Berserker_F_SK_Flame_Blade1_FX000_6" label="" win=NONE
@@ -1390,8 +1390,8 @@ LOSTARK_ANIM_NOTIFY 1 "Slayer" 148
   n t=0.0000 d=0.5000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_09.Par_K_WBKF_GateBreak_aura_02" label="" win=NONE
   n t=0.0000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_ZoomBlur_02" label="" win=NONE
   n t=0.0000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_09.Par_K_WBKF_GateBreak_wp_02_01" label="" win=NONE
-  n t=0.0000 d=0.3000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
-  n t=0.0000 d=0.5000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.0000 d=0.3000 kind=SHAKE src=ViewShake asset="dur=0.3;in=0;out=0.07;x=0,0;y=0,0;z=2,70;fov=0,0" label="" win=NONE
+  n t=0.0000 d=0.5000 kind=SHAKE src=ViewShake asset="dur=0.5;in=0;out=0;x=1,100;y=1,100;z=1,100;fov=0,0" label="" win=NONE
   n t=0.0000 d=0.5000 kind=SUPERARMOR src=SuperArmorPVP asset="" label="" win=NONE
   n t=0.0000 d=0.5000 kind=SUPERARMOR src=SuperArmor asset="" label="" win=NONE
   n t=0.0001 d=0.4999 kind=SOUND src=AKEvent asset="PC_BERSERKER_F.PC_Berserker_F_SK_Flame_Blade1_FX000_2" label="" win=NONE
@@ -1409,14 +1409,14 @@ LOSTARK_ANIM_NOTIFY 1 "Slayer" 148
   n t=0.3200 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.3200 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.3200 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WDR_06.Par_M_ChainSTK_FilmNoise_Zaxis_03" label="" win=NONE
-  n t=0.3200 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
-  n t=0.3200 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.3200 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.3;in=0.05;out=0.1;x=10,50;y=10,50;z=15,80;fov=0,0" label="" win=NONE
+  n t=0.3200 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.7;in=0.1;out=0.6;x=3.5,40;y=3.5,40;z=8,40;fov=0,0" label="" win=NONE
   n t=0.3213 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_09.Par_K_WBKF_GateBreak_Dust_01" label="" win=NONE
   n t=0.3400 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_13.Par_M_WBKF_FlameBlade_EXP_01" label="" win=NONE
-  n t=0.3500 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
   n t=0.3500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_13.Par_M_WBKF_FlameBlade_Decal_01" label="" win=NONE
   n t=0.3500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_13.Par_M_WBKF_FlameBlade_Line_01" label="" win=NONE
   n t=0.3500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_13.Par_M_WBKF_FlameBlade_Trail_01" label="" win=NONE
+  n t=0.3500 d=0.1000 kind=HIT src=Effect asset="457602" label="" win=NONE area=2 ar=900 aa=400 ah=250 ax=-20 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 fz=0 fzin=0 fzout=0 hittype=5
   n t=0.4200 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WDR_06.Par_M_ChainSTK_FilmNoise_Zaxis_03" label="" win=NONE
   n t=0.4200 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.4200 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
@@ -1447,7 +1447,7 @@ LOSTARK_ANIM_NOTIFY 1 "Slayer" 148
   n t=0.1510 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_FilmNoise_03" label="" win=NONE
   n t=0.1548 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_ZoomBlur_03" label="" win=NONE
   n t=0.1565 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_02.Par_U_WBKF_Guillotine_att_07_01" label="" win=NONE
-  n t=0.1631 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.1631 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.4;in=0;out=0.3;x=7,50;y=10,160;z=12,200;fov=0,0" label="" win=NONE
   n t=0.1642 d=0.0000 kind=EFFECT src=TrailGhostEffect asset="" label="" win=NONE
   n t=0.1689 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_02.Par_U_WBKF_Guilotine_Swing_02" label="" win=NONE
   n t=0.1689 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_02.Par_U_WBKF_Guillotine_Dust_01_2" label="" win=NONE
@@ -1458,7 +1458,7 @@ LOSTARK_ANIM_NOTIFY 1 "Slayer" 148
   n t=0.1829 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_02.Par_U_WBKF_Guilotine_Swing_03_3" label="" win=NONE
   n t=0.1835 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_02.Par_U_WBKF_Guilotine_Swing_01_Elec_01" label="" win=NONE
   n t=0.1857 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
-  n t=0.2000 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.2000 d=0.1000 kind=HIT src=Effect asset="457231" label="" win=NONE area=2 ar=400 aa=250 ah=250 ax=-50 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 fz=0 fzin=0 fzout=0 hittype=6
   n t=0.4000 d=0.4000 kind=CANCEL src=InputTiming asset="" label="입력캔슬" win=ANY_CANCEL
 "wbk_sk_guillotine_03" skill=45720 len=1.0667 name="길로틴"
   n t=0.0000 d=1.0667 kind=CANCEL src=InputTiming asset="" label="[회피캔슬]" win=DODGE_CANCEL
@@ -1480,13 +1480,13 @@ LOSTARK_ANIM_NOTIFY 1 "Slayer" 148
   n t=0.4215 d=0.3291 kind=EFFECT src=Trails asset="FX_PC_WBK_03.Par_O_WBK_TempestTrail_01_01" label="" win=NONE
   n t=0.4260 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_ZoomBlur_02" label="" win=NONE
   n t=0.4280 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
-  n t=0.4290 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.4290 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.5;in=0;out=0.25;x=4,80;y=4,80;z=12,160;fov=0,0" label="" win=NONE
   n t=0.4327 d=0.3490 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_02.Par_U_WBKF_Guilotine_Trail_01" label="" win=NONE
   n t=0.4567 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_02.Par_U_WBKF_Gillotine_Stragger_02" label="" win=NONE
   n t=0.4575 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_02.Par_U_WBKF_Guilotine_Swing_03_1" label="" win=NONE
   n t=0.4575 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_02.Par_U_WBKF_Guillotine_Dust_01" label="" win=NONE
   n t=0.4575 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_02.Par_U_WBKF_Guilotine_Swing_03" label="" win=NONE
-  n t=0.4600 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.4600 d=0.1000 kind=HIT src=Effect asset="457242" label="" win=NONE area=1 ar=350 aa=0 ah=250 ax=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 fz=0 fzin=0 fzout=0 hittype=6
   n t=0.4605 d=0.0000 kind=EFFECT src=TrailGhostEffect asset="" label="" win=NONE
   n t=0.4617 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_ZoomBlur_Zaxis_01" label="" win=NONE
   n t=0.7600 d=0.4400 kind=CANCEL src=InputTiming asset="" label="" win=NONE
@@ -1511,14 +1511,14 @@ LOSTARK_ANIM_NOTIFY 1 "Slayer" 148
   n t=0.3000 d=0.8333 kind=CANCEL src=InputTiming asset="" label="[선이예약]" win=MOVE_PRE
   n t=0.3810 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_ZoomBlur_02" label="" win=NONE
   n t=0.3830 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
-  n t=0.3840 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.3840 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.5;in=0;out=0.25;x=3,50;y=3,50;z=5,100;fov=0,0" label="" win=NONE
   n t=0.3936 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_02.Par_U_WBKF_Gillotine_Stragger_02" label="" win=NONE
   n t=0.3936 d=0.3490 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_02.Par_U_WBKF_Guilotine_Trail_01" label="" win=NONE
   n t=0.3962 d=0.3291 kind=EFFECT src=Trails asset="FX_PC_WBK_03.Par_O_WBK_TempestTrail_01_01" label="" win=NONE
   n t=0.3982 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_02.Par_U_WBKF_Guillotine_Dust_01" label="" win=NONE
   n t=0.3982 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_02.Par_U_WBKF_Guilotine_Swing_03" label="" win=NONE
   n t=0.3982 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_02.Par_U_WBKF_Guilotine_Swing_03_1" label="" win=NONE
-  n t=0.4000 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.4000 d=0.1000 kind=HIT src=Effect asset="457240" label="" win=NONE area=1 ar=350 aa=0 ah=250 ax=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 fz=0 fzin=0 fzout=0 hittype=6
 "wbk_sk_guillotine_custom48_04" skill=45720 len=0.8000 name="길로틴"
   n t=0.0000 d=0.8000 kind=CANCEL src=InputTiming asset="" label="[회피캔슬]" win=DODGE_CANCEL
   n t=0.0000 d=0.2200 kind=CANCEL src=InputTiming asset="" label="[선스]" win=SKILL_PRE
@@ -1552,7 +1552,7 @@ LOSTARK_ANIM_NOTIFY 1 "Slayer" 148
   n t=0.0000 d=1.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_02_sine" label="" win=NONE
   n t=0.0000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_02.Par_U_WBKF_Guilotine_Cast_Deco_01" label="" win=NONE
   n t=0.0000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_02.Par_U_WBKF_Guilotine_Cast_Deco_01" label="" win=NONE
-  n t=0.0000 d=1.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.0000 d=1.0000 kind=SHAKE src=ViewShake asset="dur=5;in=0;out=0;x=0.8,100;y=0.8,100;z=0.8,100;fov=0,0" label="" win=NONE
   n t=0.0000 d=1.0000 kind=SUPERARMOR src=SuperArmorPVP asset="" label="" win=NONE
   n t=0.0000 d=1.0000 kind=SUPERARMOR src=SuperArmor asset="" label="" win=NONE
   n t=0.1338 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_02.Par_U_WBKF_Guillotine_Stagger_Wp_01" label="" win=NONE
@@ -1571,7 +1571,7 @@ LOSTARK_ANIM_NOTIFY 1 "Slayer" 148
   n t=0.0000 d=1.3333 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_02.Par_U_WBKF_Guillotine_Cast_02_1" label="" win=NONE
   n t=0.0000 d=1.3333 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_02.Par_U_WBKF_Guillotine_Cast_01" label="" win=NONE
   n t=0.0000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_02.Par_U_WBKF_Guillotine_Fire_cast_Wp_01" label="" win=NONE
-  n t=0.0000 d=1.3333 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.0000 d=1.3333 kind=SHAKE src=ViewShake asset="dur=5;in=0;out=0;x=0.8,100;y=0.8,100;z=0.8,100;fov=0,0" label="" win=NONE
   n t=0.0000 d=1.3333 kind=SUPERARMOR src=SuperArmorPVP asset="" label="" win=NONE
   n t=0.0000 d=1.3333 kind=SUPERARMOR src=SuperArmor asset="" label="" win=NONE
   n t=0.0010 d=0.7500 kind=SOUND src=AKEvent asset="PC_BERSERKER_F.PC_Berserker_F_SK_Guillotine1_FX060_3" label="" win=NONE
@@ -1594,12 +1594,12 @@ LOSTARK_ANIM_NOTIFY 1 "Slayer" 148
   n t=0.4296 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_02.Par_U_WBKF_Guillotine_att_07_01" label="" win=NONE
   n t=0.4296 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_02.Par_U_WBKF_Gillotine_Stragger_03" label="" win=NONE
   n t=0.4305 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_02.Par_U_WBKF_Guilotine_Swing_01_Elec_01" label="" win=NONE
-  n t=0.4314 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.4314 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.4;in=0;out=0.3;x=7,50;y=10,160;z=12,200;fov=0,0" label="" win=NONE
   n t=0.4324 d=0.0000 kind=EFFECT src=TrailGhostEffect asset="" label="" win=NONE
   n t=0.4327 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_02.Par_U_WBKF_Guilotine_Swing_03_3" label="" win=NONE
   n t=0.4371 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_02.Par_U_WBKF_Guilotine_Swing_02" label="" win=NONE
   n t=0.4371 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_02.Par_U_WBKF_Guillotine_Dust_01_2" label="" win=NONE
-  n t=0.4400 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.4400 d=0.1000 kind=HIT src=Effect asset="457212" label="" win=NONE area=2 ar=400 aa=250 ah=250 ax=-50 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 fz=0 fzin=0 fzout=0 hittype=6
   n t=0.4445 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_02.Par_U_WBKF_Gillotine_Stragger_02_1" label="" win=NONE
   n t=0.4777 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.7400 d=0.2933 kind=CANCEL src=InputTiming asset="" label="" win=NONE
@@ -1622,7 +1622,7 @@ LOSTARK_ANIM_NOTIFY 1 "Slayer" 148
   n t=0.3000 d=0.7000 kind=SOUND src=AKEvent asset="PC_BERSERKER_F.PC_Berserker_F_SK_Guillotine1_Vox2_2" label="" win=NONE
   n t=0.3929 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_02.Par_U_WBKF_Guillotine_att_07_03" label="" win=NONE
   n t=0.3929 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_02.Par_U_WBKF_Guillotine_att_07_03" label="" win=NONE
-  n t=0.5000 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.5000 d=0.1000 kind=HIT src=Effect asset="457210" label="" win=NONE area=2 ar=400 aa=250 ah=250 ax=-50 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 fz=0 fzin=0 fzout=0 hittype=6
   n t=0.5044 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_02.Par_U_WBKF_Guilotine_Swing_01_Elec_01" label="" win=NONE
   n t=0.5065 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_ZoomBlur_03" label="" win=NONE
   n t=0.5065 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_ZoomBlur_03" label="" win=NONE
@@ -1647,7 +1647,7 @@ LOSTARK_ANIM_NOTIFY 1 "Slayer" 148
   n t=0.1000 d=0.9000 kind=CANCEL src=InputTiming asset="" label="" win=NONE
   n t=0.1000 d=0.5000 kind=CANCEL src=InputTiming asset="" label="" win=NONE
   n t=0.1280 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_ZoomBlur_03" label="" win=NONE
-  n t=0.1290 d=0.8710 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.1290 d=0.8710 kind=SHAKE src=ViewShake asset="dur=5;in=0;out=0;x=0.8,100;y=0.8,100;z=0.8,100;fov=0,0" label="" win=NONE
   n t=0.1338 d=0.8662 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_02.Par_U_WBKF_Cast_Guillotine_02_1" label="" win=NONE
   n t=0.1338 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_02.Par_U_WBKF_Guillotine_stagger_01" label="" win=NONE
   n t=0.1338 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_02.Par_U_WBKF_Guillotine_Stagger_Wp_01" label="" win=NONE
@@ -1666,7 +1666,7 @@ LOSTARK_ANIM_NOTIFY 1 "Slayer" 148
   n t=0.1823 d=0.3476 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_02.Par_U_WBKF_Guilotine_Trail_01" label="" win=NONE
   n t=0.1945 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_ZoomBlur_02" label="" win=NONE
   n t=0.1965 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
-  n t=0.1975 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.1975 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.5;in=0;out=0.25;x=4,80;y=4,80;z=10,160;fov=0,0" label="" win=NONE
   n t=0.2259 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_02.Par_U_WBKF_Guilotine_Swing_03_1" label="" win=NONE
   n t=0.2259 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_02.Par_U_WBKF_Guillotine_Dust_01" label="" win=NONE
   n t=0.2259 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_02.Par_U_WBKF_Guilotine_Swing_03" label="" win=NONE
@@ -1675,7 +1675,7 @@ LOSTARK_ANIM_NOTIFY 1 "Slayer" 148
   n t=0.2301 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_ZoomBlur_Zaxis_01" label="" win=NONE
   n t=0.3000 d=0.7667 kind=CANCEL src=InputTiming asset="" label="[선이예약]" win=MOVE_PRE
   n t=0.3000 d=0.7667 kind=CANCEL src=InputTiming asset="" label="[선스예약]" win=SKILL_PRE
-  n t=0.3400 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.3400 d=0.1000 kind=HIT src=Effect asset="457251" label="" win=NONE area=1 ar=350 aa=0 ah=250 ax=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 fz=0 fzin=0 fzout=0 hittype=6
 "wbk_sk_guillotine_custom58_04" skill=45720 len=0.8000 name="길로틴"
   n t=0.0000 d=0.8000 kind=CANCEL src=InputTiming asset="" label="[회피캔슬]" win=DODGE_CANCEL
   n t=0.0000 d=0.2200 kind=CANCEL src=InputTiming asset="" label="[선스]" win=SKILL_PRE
@@ -1693,7 +1693,7 @@ LOSTARK_ANIM_NOTIFY 1 "Slayer" 148
   n t=0.1000 d=0.9000 kind=CANCEL src=InputTiming asset="" label="" win=NONE
   n t=0.1000 d=0.5000 kind=CANCEL src=InputTiming asset="" label="" win=NONE
   n t=0.1280 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_ZoomBlur_03" label="" win=NONE
-  n t=0.1290 d=0.8710 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.1290 d=0.8710 kind=SHAKE src=ViewShake asset="dur=5;in=0;out=0;x=0.8,100;y=0.8,100;z=0.8,100;fov=0,0" label="" win=NONE
   n t=0.1338 d=0.8662 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_02.Par_U_WBKF_Cast_Guillotine_02_1" label="" win=NONE
   n t=0.1338 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_02.Par_U_WBKF_Guillotine_Stagger_Wp_01" label="" win=NONE
   n t=0.1338 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_02.Par_U_WBKF_Guillotine_Stagger_Wp_01" label="" win=NONE
@@ -1716,7 +1716,7 @@ LOSTARK_ANIM_NOTIFY 1 "Slayer" 148
   n t=0.1510 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_FilmNoise_03" label="" win=NONE
   n t=0.1548 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_ZoomBlur_03" label="" win=NONE
   n t=0.1565 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_02.Par_U_WBKF_Guillotine_att_07_01" label="" win=NONE
-  n t=0.1631 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.1631 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.4;in=0;out=0.3;x=7,50;y=10,160;z=12,200;fov=0,0" label="" win=NONE
   n t=0.1642 d=0.0000 kind=EFFECT src=TrailGhostEffect asset="" label="" win=NONE
   n t=0.1689 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_02.Par_U_WBKF_Guilotine_Swing_02" label="" win=NONE
   n t=0.1689 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_02.Par_U_WBKF_Guillotine_Dust_01_2" label="" win=NONE
@@ -1726,7 +1726,7 @@ LOSTARK_ANIM_NOTIFY 1 "Slayer" 148
   n t=0.1829 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_02.Par_U_WBKF_Guilotine_Swing_03_3" label="" win=NONE
   n t=0.1835 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_02.Par_U_WBKF_Guilotine_Swing_01_Elec_01" label="" win=NONE
   n t=0.1857 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
-  n t=0.2000 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.2000 d=0.1000 kind=HIT src=Effect asset="457221" label="" win=NONE area=2 ar=400 aa=250 ah=250 ax=-50 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 fz=0 fzin=0 fzout=0 hittype=6
 "wbk_sk_guillotine_custom5_04" skill=45720 len=1.0667 name="길로틴"
   n t=0.0000 d=1.0667 kind=CANCEL src=InputTiming asset="" label="[회피캔슬]" win=DODGE_CANCEL
   n t=0.0000 d=0.2200 kind=CANCEL src=InputTiming asset="" label="[선스]" win=SKILL_PRE
@@ -1754,9 +1754,9 @@ LOSTARK_ANIM_NOTIFY 1 "Slayer" 148
   n t=0.1823 d=0.3476 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_02.Par_U_WBKF_Guilotine_Trail_01" label="" win=NONE
   n t=0.1945 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_ZoomBlur_02" label="" win=NONE
   n t=0.1965 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
-  n t=0.1975 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.1975 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.5;in=0;out=0.25;x=4,80;y=4,80;z=8,160;fov=0,0" label="" win=NONE
   n t=0.2000 d=0.7333 kind=CANCEL src=InputTiming asset="" label="[선이예약]" win=MOVE_PRE
-  n t=0.2000 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.2000 d=0.1000 kind=HIT src=Effect asset="457261" label="" win=NONE area=1 ar=350 aa=0 ah=250 ax=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 fz=0 fzin=0 fzout=0 hittype=6
   n t=0.2259 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_02.Par_U_WBKF_Guilotine_Swing_03_1" label="" win=NONE
   n t=0.2259 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_02.Par_U_WBKF_Guillotine_Dust_01" label="" win=NONE
   n t=0.2259 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_02.Par_U_WBKF_Guilotine_Swing_03" label="" win=NONE
@@ -1779,7 +1779,7 @@ LOSTARK_ANIM_NOTIFY 1 "Slayer" 148
   n t=0.0000 d=1.5200 kind=SUPERARMOR src=SuperArmor asset="" label="" win=NONE
   n t=0.0000 d=1.5200 kind=SUPERARMOR src=SuperArmorPVP asset="" label="" win=NONE
   n t=0.0141 d=0.0022 kind=SOUND src=AKEvent asset="PC_BERSERKER_F.PC_Berserker_F_SK_HellBlade1_FX000_3" label="" win=NONE
-  n t=0.4618 d=0.7399 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.4618 d=0.7399 kind=SHAKE src=ViewShake asset="dur=0.5;in=0;out=0.1;x=9,50;y=9,50;z=9,50;fov=1.5,0" label="" win=NONE
   n t=0.4870 d=0.0022 kind=SOUND src=AKEvent asset="PC_BERSERKER_F.PC_Berserker_F_SK_HellBlade1_FX000_5" label="" win=NONE
   n t=0.4870 d=0.0022 kind=SOUND src=AKEvent asset="PC_BERSERKER_F.PC_Berserker_F_SK_HellBlade1_FX000_6" label="" win=NONE
   n t=0.4894 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_ZoomBlur_03" label="" win=NONE
@@ -1791,11 +1791,11 @@ LOSTARK_ANIM_NOTIFY 1 "Slayer" 148
   n t=0.4894 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBK_01.Par_O_HBlzeExp_01_02" label="" win=NONE
   n t=0.4894 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBK_01.Par_HBlzeSuc_Decal_01_01" label="" win=NONE
   n t=0.4894 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBK_01.Par_O_HBlzeExp_01_02" label="" win=NONE
-  n t=0.4939 d=0.1002 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.4939 d=0.1002 kind=HIT src=Effect asset="450802" label="" win=NONE area=1 ar=240 aa=0 ah=200 ax=40 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 fz=500 fzin=150 fzout=250 hittype=6
   n t=0.5000 d=1.0200 kind=CANCEL src=InputTiming asset="" label="스킬선입력" win=SKILL_PRE
   n t=0.5000 d=1.0200 kind=CANCEL src=InputTiming asset="" label="이동선입력" win=MOVE_PRE
   n t=0.5000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_05_L" label="" win=NONE
-  n t=1.1412 d=0.7411 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=1.1412 d=0.7411 kind=SHAKE src=ViewShake asset="dur=0.4;in=0;out=0.1;x=12,60;y=12,60;z=12,60;fov=1.5,0" label="" win=NONE
   n t=1.1700 d=1.3667 kind=SOUND src=AKEvent asset="PC_BERSERKER_F.PC_Berserker_F_SK_HellBlade1_FX007_3" label="" win=NONE
   n t=1.1900 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_05_L" label="" win=NONE
   n t=1.1900 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBK_07.Par_U_WBK_HellBlade_Exp_02_01" label="" win=NONE
@@ -1812,9 +1812,9 @@ LOSTARK_ANIM_NOTIFY 1 "Slayer" 148
   n t=1.1900 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBK_07.Par_U_WBK_HellBlade_Exp_02_01" label="" win=NONE
   n t=1.1900 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBK_07.Par_U_HBlzeWallDecal_01_01" label="" win=NONE
   n t=1.1900 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBK_07.Par_U_HellBlade_Exp_01" label="" win=NONE
-  n t=1.2000 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
-  n t=1.2000 d=0.1002 kind=EFFECT src=Effect asset="" label="" win=NONE
-  n t=1.2000 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=1.2000 d=0.1000 kind=EFFECT src=Effect asset="450811" label="" win=NONE
+  n t=1.2000 d=0.1002 kind=EFFECT src=Effect asset="450810" label="" win=NONE
+  n t=1.2000 d=0.1000 kind=HIT src=Effect asset="450809" label="" win=NONE area=1 ar=240 aa=0 ah=240 ax=40 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 fz=500 fzin=150 fzout=250 hittype=6
   n t=1.5000 d=1.3667 kind=CANCEL src=InputTiming asset="" label="스킬캔슬" win=SKILL_CANCEL
   n t=1.5000 d=1.3667 kind=CANCEL src=InputTiming asset="" label="이동캔슬" win=MOVE_CANCEL
 "wbk_sk_hell_blades_fail" skill=45080 len=1.8333 name="볼케이노 이럽션 (구)헬 블레이드"
@@ -1831,7 +1831,7 @@ LOSTARK_ANIM_NOTIFY 1 "Slayer" 148
   n t=1.1014 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="fx_cm_03.Spark.Par_C_HBlzeFail_001" label="" win=NONE
 "wbk_sk_hell_blades_loop" skill=45080 len=6.0333 name="볼케이노 이럽션 (구)헬 블레이드"
   n t=0.0000 d=1.5000 kind=CANCEL src=InputTiming asset="" label="회피캔슬" win=DODGE_CANCEL
-  n t=0.0000 d=1.5000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.0000 d=1.5000 kind=SHAKE src=ViewShake asset="dur=2.2;in=1.5;out=0.3;x=2,150;y=2,150;z=2,150;fov=-1,0.8" label="" win=NONE
   n t=0.0000 d=1.5000 kind=SUPERARMOR src=SuperArmor asset="" label="" win=NONE
   n t=0.0000 d=1.5000 kind=SUPERARMOR src=SuperArmorPVP asset="" label="" win=NONE
   n t=0.0100 d=1.4900 kind=SOUND src=AKEvent asset="PC_BERSERKER_M.PC_Berserker_M_SK_HellBlade1_FX000_2" label="" win=NONE
@@ -1842,7 +1842,7 @@ LOSTARK_ANIM_NOTIFY 1 "Slayer" 148
   n t=0.0245 d=1.4755 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBK_07.Par_U_HellBlade_Loop_02" label="" win=NONE
   n t=0.0245 d=1.4755 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBK_07.Par_U_HellBlade_Loop_02" label="" win=NONE
   n t=0.0247 d=1.4753 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_04" label="" win=NONE
-  n t=0.1070 d=0.0789 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.1070 d=0.0789 kind=HIT src=Effect asset="450801" label="" win=NONE area=1 ar=200 aa=0 ah=150 ax=40 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 fz=400 fzin=150 fzout=200 hittype=4
   n t=0.2000 d=0.9000 kind=CANCEL src=InputTiming asset="" label="입력끝" win=OTHER
   n t=0.2000 d=0.9000 kind=CANCEL src=InputTiming asset="" label="입력없음" win=OTHER
   n t=1.1000 d=0.3000 kind=CANCEL src=InputTiming asset="" label="성공" win=OTHER
@@ -1856,7 +1856,7 @@ LOSTARK_ANIM_NOTIFY 1 "Slayer" 148
   n t=0.0000 d=1.3333 kind=SUPERARMOR src=SuperArmorPVP asset="" label="" win=NONE
   n t=0.2130 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_00.Dust.Par_D_Dust_001_pr" label="" win=NONE
   n t=0.6000 d=0.7333 kind=SOUND src=AKEvent asset="PC_BERSERKER_F.PC_Berserker_F_SK_HellBlade1_FX300_1" label="" win=NONE
-  n t=1.0267 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=1.0267 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.25;in=0.05;out=0.15;x=10,70;y=10,70;z=10,70;fov=1.5,0" label="" win=NONE
   n t=1.0398 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBK_01.Par_O_HBlzeGather_01_01" label="" win=NONE
   n t=1.0401 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBK_07.Par_U_HellBlade_Start_02_01" label="" win=NONE
   n t=1.0401 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBK_01.Par_O_HBlzeStart_01_01" label="" win=NONE
@@ -1869,8 +1869,8 @@ LOSTARK_ANIM_NOTIFY 1 "Slayer" 148
   n t=1.0403 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_05_L" label="" win=NONE
   n t=1.0403 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_05_L" label="" win=NONE
   n t=1.0403 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_05_L" label="" win=NONE
-  n t=1.1000 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
-  n t=1.1000 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=1.1000 d=0.1000 kind=HIT src=Effect asset="450808" label="" win=NONE area=1 ar=250 aa=0 ah=150 ax=40 arem=0 maxt=0 rep=0 repms=0 push=150 pushr=-150 fz=500 fzin=100 fzout=150 hittype=4
+  n t=1.1000 d=0.1000 kind=HIT src=Effect asset="450800" label="" win=NONE area=1 ar=160 aa=0 ah=150 ax=40 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 fz=500 fzin=150 fzout=250 hittype=4
   n t=1.2000 d=0.1333 kind=CANCEL src=InputTiming asset="" label="회피캔슬" win=DODGE_CANCEL
 "wbk_sk_hell_blades_start_custom_1" skill=45080 len=0.2667 name="볼케이노 이럽션 (구)헬 블레이드"
   n t=0.0000 d=0.0000 kind=SOUND src=AKEvent asset="PC_BERSERKER_F.PC_Berserker_F_SK_HellBlade1_Vox1_1" label="" win=NONE
@@ -1887,9 +1887,9 @@ LOSTARK_ANIM_NOTIFY 1 "Slayer" 148
   n t=0.0000 d=0.5333 kind=SUPERARMOR src=SuperArmorPVP asset="" label="" win=NONE
   n t=0.2500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBK_01.Par_O_HBlzeStart_01_01" label="" win=NONE
   n t=0.2500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_00.Dust.Par_D_Dust_001_pr" label="" win=NONE
-  n t=0.2500 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.2500 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.25;in=0.05;out=0.15;x=10,70;y=10,70;z=10,70;fov=1.5,0" label="" win=NONE
   n t=0.2506 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBK_07.Par_U_HellBlade_Start_02_01" label="" win=NONE
-  n t=0.2506 d=0.1069 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.2506 d=0.1069 kind=HIT src=Effect asset="450800" label="" win=NONE area=1 ar=160 aa=0 ah=150 ax=40 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 fz=500 fzin=150 fzout=250 hittype=4
   n t=0.4000 d=0.1333 kind=CANCEL src=InputTiming asset="" label="회피캔슬" win=DODGE_CANCEL
 "wbk_sk_hell_blades_success" skill=45080 len=2.3333 name="볼케이노 이럽션 (구)헬 블레이드"
   n t=0.0000 d=2.3333 kind=CANCEL src=InputTiming asset="" label="회피캔슬" win=DODGE_CANCEL
@@ -1899,9 +1899,9 @@ LOSTARK_ANIM_NOTIFY 1 "Slayer" 148
   n t=0.2000 d=0.8200 kind=CANCEL src=InputTiming asset="" label="이동선입력" win=MOVE_PRE
   n t=0.2000 d=0.8200 kind=CANCEL src=InputTiming asset="" label="스킬선입력" win=SKILL_PRE
   n t=0.4650 d=0.0022 kind=SOUND src=AKEvent asset="PC_BERSERKER_F.PC_Berserker_F_SK_HellBlade1_FX000_5" label="" win=NONE
-  n t=0.6650 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
-  n t=0.6650 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
-  n t=0.6650 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.6650 d=0.1000 kind=EFFECT src=Effect asset="450806" label="" win=NONE
+  n t=0.6650 d=0.1000 kind=EFFECT src=Effect asset="450805" label="" win=NONE
+  n t=0.6650 d=0.1000 kind=HIT src=Effect asset="450802" label="" win=NONE area=1 ar=240 aa=0 ah=200 ax=40 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 fz=500 fzin=150 fzout=250 hittype=6
   n t=0.6652 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="fx_cm_01.Distortion.Par_MP_ConcaveDis_Z_01" label="" win=NONE
   n t=0.6652 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBK_07.Par_U_hellBlzeSuc_Decal_01_02" label="" win=NONE
   n t=0.6652 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBK_01.Par_O_HBlzeExp_01_03" label="" win=NONE
@@ -1917,7 +1917,7 @@ LOSTARK_ANIM_NOTIFY 1 "Slayer" 148
   n t=0.6700 d=0.0022 kind=SOUND src=AKEvent asset="PC_BERSERKER_F.PC_Berserker_F_SK_HellBlade1_FX000_6" label="" win=NONE
   n t=0.6744 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_ZoomBlur_01" label="" win=NONE
   n t=0.6788 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBK_07.Par_U_HBlzeWallDecal_01_02" label="" win=NONE
-  n t=0.6791 d=0.7388 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.6791 d=0.7388 kind=SHAKE src=ViewShake asset="dur=0.5;in=0;out=0.1;x=9,50;y=9,50;z=9,50;fov=1.5,0" label="" win=NONE
   n t=0.6943 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBK_07.Par_U_HellBlade_Exp_02" label="" win=NONE
   n t=0.6943 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBK_07.Par_U_HellBlade_Exp_02" label="" win=NONE
   n t=0.6943 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBK_07.Par_U_HellBlade_Exp_02" label="" win=NONE
@@ -1945,10 +1945,10 @@ LOSTARK_ANIM_NOTIFY 1 "Slayer" 148
   n t=0.7044 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.7044 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBK_07.Par_U_WBK_MailStorm_Extra_Exp_01" label="" win=NONE
   n t=0.7044 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBK_07.Par_U_WBK_MailStorm_Exp_01" label="" win=NONE
-  n t=0.7044 d=0.3543 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.7044 d=0.3543 kind=SHAKE src=ViewShake asset="dur=0.2;in=0;out=0.05;x=5,80;y=5,80;z=5,80;fov=0,0" label="" win=NONE
   n t=0.7094 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_ZoomBlur_03" label="" win=NONE
   n t=0.7130 d=0.2005 kind=HIT src=ParticleHit asset="" label="" win=NONE
-  n t=0.7319 d=0.1205 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.7319 d=0.1205 kind=HIT src=Effect asset="456200" label="" win=NONE area=1 ar=170 aa=0 ah=200 ax=190 arem=0 maxt=0 rep=0 repms=0 push=15 pushr=15 fz=420 fzin=150 fzout=250 hittype=4
   n t=0.7381 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.7381 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.9000 d=0.3000 kind=CANCEL src=InputTiming asset="" label="" win=NONE
@@ -1965,13 +1965,13 @@ LOSTARK_ANIM_NOTIFY 1 "Slayer" 148
   n t=0.3349 d=0.4705 kind=EFFECT src=Trails asset="FX_PC_WBK_03.Par_O_WBK_TempestTrail_01_01" label="" win=NONE
   n t=0.3458 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBK_07.Par_U_WBK_MailStorm_Exp_02_2" label="" win=NONE
   n t=0.3458 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBK_07.Par_U_WBK_MailStorm_Exp_02_1" label="" win=NONE
-  n t=0.3500 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.3500 d=0.1000 kind=HIT src=Effect asset="456210" label="" win=NONE area=3 ar=190 aa=360 ah=200 ax=250 arem=0 maxt=0 rep=0 repms=0 push=130 pushr=200 fz=500 fzin=150 fzout=250 hittype=4
   n t=0.4024 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_ZoomBlur_Zaxis_01" label="" win=NONE
   n t=0.4032 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_03" label="" win=NONE
   n t=0.4099 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_ZoomBlur_03" label="" win=NONE
   n t=0.4105 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBK_07.Par_U_WBK_MailStorm_Exp_03" label="" win=NONE
   n t=0.4105 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBK_07.Par_U_WBK_MailStorm_Exp_02" label="" win=NONE
-  n t=0.4105 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.4105 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.2;in=0;out=0.05;x=5,80;y=5,80;z=5,80;fov=0,0" label="" win=NONE
   n t=0.4500 d=1.2167 kind=CANCEL src=InputTiming asset="" label="[회피캔슬]" win=DODGE_CANCEL
   n t=0.6000 d=1.0667 kind=CANCEL src=InputTiming asset="" label="" win=NONE
   n t=0.8000 d=0.8667 kind=CANCEL src=InputTiming asset="" label="" win=NONE
@@ -1988,11 +1988,11 @@ LOSTARK_ANIM_NOTIFY 1 "Slayer" 148
   n t=0.4000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.4000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBK_10.Par_R_WBK_MountainCrash_Sk_07_02" label="" win=NONE
   n t=0.4000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="fx_cm_01.Distortion_oneLayer.Par_MP_ConcaveDisOL_WBK_MC_01" label="" win=NONE
-  n t=0.4000 d=0.3000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
-  n t=0.4300 d=0.1013 kind=EFFECT src=Effect asset="" label="" win=NONE
-  n t=0.4300 d=0.1958 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.4000 d=0.3000 kind=SHAKE src=ViewShake asset="dur=0.6;in=0;out=0.4;x=5,40;y=5,40;z=6,40;fov=0,0" label="" win=NONE
   n t=0.4300 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBK_10.Par_R_WBK_MountainCrash_Sk_47_01" label="" win=NONE
   n t=0.4300 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBK_10.Par_R_WBK_MountainCrash_Sk_07_01" label="" win=NONE
+  n t=0.4300 d=0.1013 kind=HIT src=Effect asset="452200" label="" win=NONE area=1 ar=200 aa=0 ah=150 ax=30 arem=0 maxt=0 rep=0 repms=0 push=50 pushr=50 fz=530 fzin=150 fzout=250 hittype=4
+  n t=0.4300 d=0.1958 kind=HIT src=Effect asset="452210" label="" win=NONE area=2 ar=400 aa=190 ah=150 ax=30 arem=0 maxt=0 rep=0 repms=0 push=80 pushr=80 fz=480 fzin=150 fzout=250 hittype=4
   n t=0.5332 d=0.7001 kind=CANCEL src=InputTiming asset="" label="[회피캔슬]" win=DODGE_CANCEL
   n t=0.6246 d=0.6087 kind=CANCEL src=InputTiming asset="" label="" win=NONE
   n t=0.7443 d=0.4890 kind=CANCEL src=InputTiming asset="" label="" win=NONE
@@ -2021,11 +2021,11 @@ LOSTARK_ANIM_NOTIFY 1 "Slayer" 148
   n t=0.4660 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.4866 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_04.Par_R_WBKF_RageStrike_00_01_02_02" label="" win=NONE
   n t=0.4866 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_04.Par_R_WBKF_RageStrike_Dust_01" label="" win=NONE
-  n t=0.4915 d=0.5085 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.4915 d=0.5085 kind=SHAKE src=ViewShake asset="dur=0.4;in=0;out=0.2;x=17,30;y=17,30;z=17,30;fov=0,0" label="" win=NONE
 "wbk_sk_ragestrike_02" skill=45800 len=3.2000 name="[각성기] 익스큐션"
   n t=0.0000 d=3.2000 kind=SUPERARMOR src=SuperArmor asset="" label="" win=NONE
   n t=0.0000 d=3.2000 kind=SUPERARMOR src=SuperArmorPVP asset="" label="" win=NONE
-  n t=0.1000 d=2.3900 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.1000 d=2.3900 kind=SHAKE src=ViewShake asset="dur=3;in=0;out=0;x=0,0;y=0,0;z=0,0;fov=0,0" label="" win=NONE
   n t=0.1500 d=2.0667 kind=SOUND src=AKEvent asset="PC_BERSERKER_F.PC_Berserker_F_SK_RageStrike1_Vox1_1" label="" win=NONE
   n t=0.1800 d=2.0667 kind=SOUND src=AKEvent asset="PC_BERSERKER_F.PC_Berserker_F_SK_RageStrike1_FX000_2" label="" win=NONE
   n t=0.3430 d=0.1865 kind=EFFECT src=Trails asset="FX_PC_WBKF_04.Par_R_WBKF_RageStrike_Trail_00_01" label="" win=NONE
@@ -2034,18 +2034,18 @@ LOSTARK_ANIM_NOTIFY 1 "Slayer" 148
   n t=0.3501 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_04.Par_R_WBKF_RageStrike_00_decal_01" label="" win=NONE
   n t=0.3501 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.3501 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_04.Par_R_WBKF_RageStrike_area_01" label="" win=NONE
-  n t=0.3501 d=0.1540 kind=SHAKE src=ViewShake asset="" label="" win=NONE
-  n t=0.4500 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.3501 d=0.1540 kind=SHAKE src=ViewShake asset="dur=0.15;in=0;out=0;x=9,50;y=9,50;z=9,50;fov=0,0" label="" win=NONE
+  n t=0.4500 d=0.1000 kind=HIT src=Effect asset="458000" label="" win=NONE area=1 ar=300 aa=0 ah=450 ax=270 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 fz=0 fzin=0 fzout=0 hittype=5
   n t=0.7800 d=1.7667 kind=SOUND src=AKEvent asset="PC_BERSERKER_F.PC_Berserker_F_SK_RageStrike1_FX000_2" label="" win=NONE
   n t=0.9593 d=0.1650 kind=EFFECT src=Trails asset="FX_PC_WBKF_04.Par_R_WBKF_RageStrike_Trail_00_01" label="" win=NONE
   n t=0.9700 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_04.Par_R_WBKF_RageStrike_area_01" label="" win=NONE
   n t=0.9700 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_04.Par_R_WBKF_RageStrike_00_05" label="" win=NONE
   n t=0.9700 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_04.Par_R_WBKF_RageStrike_00_04" label="" win=NONE
   n t=0.9700 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_04.Par_R_WBKF_RageStrike_00_decal_02" label="" win=NONE
-  n t=0.9700 d=0.1548 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.9700 d=0.1548 kind=SHAKE src=ViewShake asset="dur=0.15;in=0;out=0;x=7,70;y=7,70;z=7,70;fov=0,0" label="" win=NONE
   n t=0.9751 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.9787 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_04.Par_R_WBKF_RageStrike_00_01_02_06" label="" win=NONE
-  n t=1.0000 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=1.0000 d=0.1000 kind=HIT src=Effect asset="458010" label="" win=NONE area=1 ar=300 aa=0 ah=450 ax=270 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 fz=0 fzin=0 fzout=0 hittype=10
   n t=1.1100 d=1.4467 kind=SOUND src=AKEvent asset="PC_BERSERKER_F.PC_Berserker_F_SK_RageStrike1_FX000_2" label="" win=NONE
   n t=1.2251 d=0.1671 kind=EFFECT src=Trails asset="FX_PC_WBKF_04.Par_R_WBKF_RageStrike_Trail_00_01" label="" win=NONE
   n t=1.2266 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_04.Par_R_WBKF_RageStrike_area_01" label="" win=NONE
@@ -2054,8 +2054,8 @@ LOSTARK_ANIM_NOTIFY 1 "Slayer" 148
   n t=1.2266 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_04.Par_R_WBKF_RageStrike_00_06" label="" win=NONE
   n t=1.2266 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_04.Par_R_WBKF_RageStrike_00_03" label="" win=NONE
   n t=1.2266 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_04.Par_R_WBKF_RageStrike_00_decal_03" label="" win=NONE
-  n t=1.2266 d=0.1548 kind=SHAKE src=ViewShake asset="" label="" win=NONE
-  n t=1.3000 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=1.2266 d=0.1548 kind=SHAKE src=ViewShake asset="dur=0.15;in=0;out=0;x=7,70;y=7,70;z=7,70;fov=0,0" label="" win=NONE
+  n t=1.3000 d=0.1000 kind=HIT src=Effect asset="458010" label="" win=NONE area=1 ar=300 aa=0 ah=450 ax=270 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 fz=0 fzin=0 fzout=0 hittype=10
   n t=1.3700 d=1.1867 kind=SOUND src=AKEvent asset="PC_BERSERKER_F.PC_Berserker_F_SK_RageStrike1_FX000_2" label="" win=NONE
   n t=1.5420 d=0.1671 kind=EFFECT src=Trails asset="FX_PC_WBKF_04.Par_R_WBKF_RageStrike_Trail_00_01" label="" win=NONE
   n t=1.5449 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_04.Par_R_WBKF_RageStrike_area_01" label="" win=NONE
@@ -2064,8 +2064,8 @@ LOSTARK_ANIM_NOTIFY 1 "Slayer" 148
   n t=1.5449 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_04.Par_R_WBKF_RageStrike_00_05" label="" win=NONE
   n t=1.5449 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_04.Par_R_WBKF_RageStrike_00_04" label="" win=NONE
   n t=1.5449 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_04.Par_R_WBKF_RageStrike_00_decal_04" label="" win=NONE
-  n t=1.5449 d=0.1548 kind=SHAKE src=ViewShake asset="" label="" win=NONE
-  n t=1.6000 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=1.5449 d=0.1548 kind=SHAKE src=ViewShake asset="dur=0.15;in=0;out=0;x=7,70;y=7,70;z=7,70;fov=0,0" label="" win=NONE
+  n t=1.6000 d=0.1000 kind=HIT src=Effect asset="458010" label="" win=NONE area=1 ar=300 aa=0 ah=450 ax=270 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 fz=0 fzin=0 fzout=0 hittype=10
   n t=1.7300 d=1.4700 kind=SOUND src=AKEvent asset="PC_BERSERKER_F.PC_Berserker_F_SK_RageStrike1_FX000_2" label="" win=NONE
   n t=1.8000 d=0.8167 kind=SOUND src=AKEvent asset="PC_BERSERKER_F.PC_Berserker_F_SK_RageStrike1_FX000_3" label="" win=NONE
   n t=1.8118 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_04.Par_R_WBKF_RageStrike_area_01" label="" win=NONE
@@ -2074,17 +2074,17 @@ LOSTARK_ANIM_NOTIFY 1 "Slayer" 148
   n t=1.8118 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_04.Par_R_WBKF_RageStrike_00_06" label="" win=NONE
   n t=1.8118 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_04.Par_R_WBKF_RageStrike_00_03" label="" win=NONE
   n t=1.8118 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_04.Par_R_WBKF_RageStrike_00_decal_05" label="" win=NONE
-  n t=1.8118 d=0.1548 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=1.8118 d=0.1548 kind=SHAKE src=ViewShake asset="dur=0.15;in=0;out=0;x=7,70;y=7,70;z=7,70;fov=0,0" label="" win=NONE
   n t=1.8499 d=0.0940 kind=EFFECT src=Trails asset="FX_PC_WBKF_04.Par_R_WBKF_RageStrike_Trail_00_01" label="" win=NONE
-  n t=1.8600 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=1.8600 d=0.1000 kind=HIT src=Effect asset="458010" label="" win=NONE area=1 ar=300 aa=0 ah=450 ax=270 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 fz=0 fzin=0 fzout=0 hittype=10
   n t=2.2000 d=0.5667 kind=SOUND src=AKEvent asset="PC_BERSERKER_F.PC_Berserker_F_SK_RageStrike1_Vox1_2" label="" win=NONE
   n t=2.3000 d=0.0667 kind=SOUND src=AKEvent asset="PC_BERSERKER_F.PC_Berserker_F_SK_RageStrike1_FX000_4" label="" win=NONE
-  n t=2.3500 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=2.3500 d=0.1000 kind=HIT src=Effect asset="458020" label="" win=NONE area=1 ar=350 aa=0 ah=450 ax=270 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 fz=0 fzin=0 fzout=0 hittype=6
   n t=2.3587 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_ZoomBlur_02" label="" win=NONE
   n t=2.3837 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="fx_cm_01.Distortion_oneLayer.Par_MP_ConcaveDisOL_WBK_MC_01" label="" win=NONE
   n t=2.3919 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_04.Par_R_WBKF_RageStrike_00_ex_06" label="" win=NONE
   n t=2.3919 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_04.Par_R_WBKF_RageStrike_00_ex_07" label="" win=NONE
-  n t=2.3975 d=0.2218 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=2.3975 d=0.2218 kind=SHAKE src=ViewShake asset="dur=0.2;in=0;out=0;x=10,70;y=10,70;z=10,70;fov=0,0" label="" win=NONE
   n t=2.4378 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=2.4500 d=0.7500 kind=CANCEL src=InputTiming asset="" label="[회피캔슬]" win=DODGE_CANCEL
   n t=2.6000 d=0.6000 kind=CANCEL src=InputTiming asset="" label="[선스예약]" win=SKILL_PRE
@@ -2105,21 +2105,21 @@ LOSTARK_ANIM_NOTIFY 1 "Slayer" 148
   n t=0.0001 d=2.0667 kind=SOUND src=AKEvent asset="PC_BERSERKER_F.PC_Berserker_F_SK_Ragnorok1_FX000_1" label="" win=NONE
   n t=0.0001 d=3.9999 kind=SOUND src=AKEvent asset="PC_BERSERKER_F.PC_Berserker_F_SK_Ragnorok1_FX000_2" label="" win=NONE
   n t=0.0001 d=0.7999 kind=SOUND src=AKEvent asset="PC_BERSERKER_F.PC_Berserker_F_SK_RageStrike1_FX000_5" label="" win=NONE
-  n t=0.0859 d=0.6014 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.0859 d=0.6014 kind=SHAKE src=ViewShake asset="dur=0.3;in=0.001;out=0.3;x=0,0;y=0,0;z=0,0;fov=-40,1" label="" win=NONE
   n t=0.1605 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.1605 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.2064 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBK_00.Par_J_WBK_explo_01" label="" win=NONE
   n t=0.2081 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_01.Par_N_WBKF_EXP_06" label="" win=NONE
   n t=0.2081 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_01.Par_N_WBKF_Area_01" label="" win=NONE
   n t=0.2081 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_01.Par_N_WBKF_Decal_03_04" label="" win=NONE
-  n t=0.2095 d=0.3701 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.2095 d=0.3701 kind=SHAKE src=ViewShake asset="dur=0.3;in=0;out=0.1;x=7,50;y=7,50;z=7,50;fov=0,0" label="" win=NONE
   n t=0.2172 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_ZoomBlur_01" label="" win=NONE
-  n t=0.2199 d=0.3672 kind=SHAKE src=ViewShake asset="" label="" win=NONE
-  n t=0.2927 d=3.2772 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.2199 d=0.3672 kind=SHAKE src=ViewShake asset="dur=0.5;in=0;out=0.3;x=7,50;y=7,50;z=7,50;fov=0,0" label="" win=NONE
+  n t=0.2927 d=3.2772 kind=SHAKE src=ViewShake asset="dur=1;in=0;out=0;x=0,0;y=0,0;z=0,0;fov=0,0" label="" win=NONE
   n t=0.3013 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_01.Par_N_WBKF_Wave_01" label="" win=NONE
   n t=2.1000 d=1.9000 kind=SOUND src=AKEvent asset="PC_BERSERKER_F.PC_Berserker_F_SK_Ragnorok1_FX000_3" label="" win=NONE
   n t=2.1000 d=1.0000 kind=SOUND src=AKEvent asset="PC_BERSERKER_F.PC_Berserker_F_SK_Ragnorok1_FX000_4" label="" win=NONE
-  n t=2.3500 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=2.3500 d=0.1000 kind=HIT src=Effect asset="458100" label="" win=NONE area=2 ar=900 aa=550 ah=450 ax=-50 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 fz=0 fzin=0 fzout=0 hittype=7
   n t=2.3711 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="fx_cm_01.Distortion_oneLayer.Par_MP_ConcaveDisOL_WBK_MC_01" label="" win=NONE
   n t=2.3802 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_01.Par_N_WBKF_Decal_04" label="" win=NONE
   n t=2.3806 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_01.Par_N_WBKF_Exp_03" label="" win=NONE
@@ -2127,7 +2127,7 @@ LOSTARK_ANIM_NOTIFY 1 "Slayer" 148
   n t=2.3817 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_ZoomBlur_01" label="" win=NONE
   n t=2.3859 d=1.3130 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_01.Par_N_WBK_Ultra_10_01" label="" win=NONE
   n t=2.3983 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_01.Par_N_WBKF_offsetPM_01" label="" win=NONE
-  n t=2.4214 d=0.7564 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=2.4214 d=0.7564 kind=SHAKE src=ViewShake asset="dur=0.4;in=0;out=0.1;x=8,60;y=8,60;z=10,60;fov=0,0" label="" win=NONE
   n t=2.4500 d=1.5500 kind=CANCEL src=InputTiming asset="" label="[회피캔슬]" win=DODGE_CANCEL
   n t=2.5757 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_01.Par_N_WBKF_Despawn_01" label="" win=NONE
   n t=2.6000 d=1.0200 kind=CANCEL src=InputTiming asset="" label="[선스]" win=SKILL_PRE
@@ -2149,7 +2149,7 @@ LOSTARK_ANIM_NOTIFY 1 "Slayer" 148
   n t=0.8016 d=0.4650 kind=CANCEL src=InputTiming asset="" label="" win=NONE
 "wbk_sk_super_ragestrike_01" skill=45820 len=0.9333 name="[초각성기] 레이지 슬래셔"
   n t=0.0000 d=0.5000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_FilmNoise_01" label="" win=NONE
-  n t=0.0000 d=0.1000 kind=EFFECT src=Effect asset="" label="피해면역" win=NONE
+  n t=0.0000 d=0.1000 kind=EFFECT src=Effect asset="578300" label="피해면역" win=NONE
   n t=0.0000 d=0.9333 kind=SUPERARMOR src=SuperArmorPVP asset="" label="" win=NONE
   n t=0.0000 d=0.9333 kind=SUPERARMOR src=SuperArmor asset="" label="" win=NONE
   n t=0.0001 d=0.7999 kind=SOUND src=AKEvent asset="PC_BERSERKER_F.PC_Berserker_F_SK_Rage_Slasher1_FX000_1" label="" win=NONE
@@ -2157,26 +2157,26 @@ LOSTARK_ANIM_NOTIFY 1 "Slayer" 148
   n t=0.0010 d=0.0000 kind=SOUND src=AKEvent asset="PC_COMMON.PC_Common_FX_Ultimate1" label="" win=NONE
   n t=0.0100 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WHK_02.Par_O_WHK_ExMove_02" label="" win=NONE
   n t=0.0100 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WHK_02.Par_O_WHK_ExMove_03" label="" win=NONE
-  n t=0.3500 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
   n t=0.3500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_10.Par_T_WBKF_SuperRageStrike_01_Dust_01" label="" win=NONE
   n t=0.3500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.3500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_12.Par_S_WBKF_RageStrike_Localdust_01_b" label="" win=NONE
   n t=0.3500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_10.Par_T_WBKF_SuperRageStrike_01_Cast_01_S" label="" win=NONE
   n t=0.3500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_10.Par_T_WBKF_SuperRageStrike_01_WpCast_01_S" label="" win=NONE
   n t=0.3500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_10.Par_T_WBKF_SuperRageStrike_01_01" label="" win=NONE
-  n t=0.3500 d=0.5833 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.3500 d=0.1000 kind=HIT src=Effect asset="458210" label="" win=NONE area=2 ar=500 aa=300 ah=450 ax=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 fz=0 fzin=0 fzout=0 hittype=5
+  n t=0.3500 d=0.5833 kind=SHAKE src=ViewShake asset="dur=0.4;in=0;out=0.2;x=17,30;y=17,30;z=17,30;fov=0,0" label="" win=NONE
   n t=0.3530 d=0.5803 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_10.Par_T_WBKF_SuperRageStrike_01_Cast_01_L" label="" win=NONE
 "wbk_sk_super_ragestrike_02" skill=45820 len=3.7000 name="[초각성기] 레이지 슬래셔"
   n t=0.0000 d=3.7000 kind=EFFECT src=TrailGhostEffect asset="" label="" win=NONE
   n t=0.0000 d=3.7000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_12.Par_S_WBKF_SuperRageStrike_00_Cast_01_L" label="" win=NONE
   n t=0.0000 d=3.7000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
-  n t=0.0000 d=3.7000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.0000 d=3.7000 kind=SHAKE src=ViewShake asset="dur=4.5;in=4;out=0.2;x=0,0;y=0,0;z=0,0;fov=15,0.5" label="" win=NONE
   n t=0.0000 d=3.7000 kind=SUPERARMOR src=SuperArmorPVP asset="" label="" win=NONE
   n t=0.0000 d=3.7000 kind=SUPERARMOR src=SuperArmor asset="" label="" win=NONE
   n t=0.1000 d=0.7999 kind=SOUND src=AKEvent asset="PC_BERSERKER_F.PC_Berserker_F_SK_Rage_Slasher1_Vox2_1" label="" win=NONE
   n t=0.2000 d=0.7999 kind=SOUND src=AKEvent asset="PC_BERSERKER_F.PC_Berserker_F_SK_Rage_Slasher1_FX000_2" label="" win=NONE
   n t=0.5000 d=3.2000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_12.Par_S_WBKF_SuperRageStrike_00_Cast_02_L" label="" win=NONE
-  n t=0.5960 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.5960 d=0.1000 kind=HIT src=Effect asset="458201" label="" win=NONE area=3 ar=400 aa=360 ah=800 ax=180 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 fz=0 fzin=0 fzout=0 hittype=7
   n t=0.6500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.6500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_10.Par_T_WBKF_SuperRageStrike_00_Exp_02" label="" win=NONE
   n t=0.6500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_10.Par_T_WBKF_SuperRageStrike_00_DecExp_01" label="" win=NONE
@@ -2185,10 +2185,9 @@ LOSTARK_ANIM_NOTIFY 1 "Slayer" 148
   n t=0.6500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_10.Par_T_WBKF_SuperRageStrike_01_Decal_03" label="" win=NONE
   n t=0.6500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_12.Par_S_WBKF_SuperRageStrike_00_03" label="" win=NONE
   n t=0.6500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_12.Par_S_WBKF_SuperRageStrike_00_02" label="" win=NONE
-  n t=0.6500 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.6500 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.3;in=0;out=0;x=9,70;y=9,70;z=9,70;fov=0,0" label="" win=NONE
   n t=0.8000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_12.Par_S_WBKF_SuperRageStrike_00_03" label="" win=NONE
   n t=0.9500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_12.Par_S_WBKF_SuperRageStrike_00_03" label="" win=NONE
-  n t=1.4500 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
   n t=1.4500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=1.4500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_10.Par_T_WBKF_SuperRageStrike_00_DecExp_02" label="" win=NONE
   n t=1.4500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_10.Par_T_WBKF_SuperRageStrike_00_DeRay_02" label="" win=NONE
@@ -2197,10 +2196,10 @@ LOSTARK_ANIM_NOTIFY 1 "Slayer" 148
   n t=1.4500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_12.Par_S_WBKF_SuperRageStrike_00_01" label="" win=NONE
   n t=1.4500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_10.Par_T_WBKF_SuperRageStrike_01_Decal_03" label="" win=NONE
   n t=1.4500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_12.Par_S_WBKF_SuperRageStrike_00_03" label="" win=NONE
-  n t=1.4500 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=1.4500 d=0.1000 kind=HIT src=Effect asset="458201" label="" win=NONE area=3 ar=400 aa=360 ah=800 ax=180 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 fz=0 fzin=0 fzout=0 hittype=7
+  n t=1.4500 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.3;in=0;out=0;x=9,70;y=9,70;z=9,70;fov=0,0" label="" win=NONE
   n t=1.6000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_12.Par_S_WBKF_SuperRageStrike_00_03" label="" win=NONE
   n t=1.7500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_12.Par_S_WBKF_SuperRageStrike_00_03" label="" win=NONE
-  n t=2.4500 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
   n t=2.4500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=2.4500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_10.Par_T_WBKF_SuperRageStrike_00_DecExp_01" label="" win=NONE
   n t=2.4500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_10.Par_T_WBKF_SuperRageStrike_00_DeRay_01" label="" win=NONE
@@ -2209,10 +2208,11 @@ LOSTARK_ANIM_NOTIFY 1 "Slayer" 148
   n t=2.4500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_12.Par_S_WBKF_SuperRageStrike_00_02" label="" win=NONE
   n t=2.4500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_10.Par_T_WBKF_SuperRageStrike_01_Decal_03" label="" win=NONE
   n t=2.4500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_12.Par_S_WBKF_SuperRageStrike_00_03" label="" win=NONE
-  n t=2.4500 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=2.4500 d=0.1000 kind=HIT src=Effect asset="458201" label="" win=NONE area=3 ar=400 aa=360 ah=800 ax=180 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 fz=0 fzin=0 fzout=0 hittype=7
+  n t=2.4500 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.3;in=0;out=0;x=9,70;y=9,70;z=9,70;fov=0,0" label="" win=NONE
   n t=2.6000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_12.Par_S_WBKF_SuperRageStrike_00_03" label="" win=NONE
   n t=2.7500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_12.Par_S_WBKF_SuperRageStrike_00_03" label="" win=NONE
-  n t=3.3000 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=3.3000 d=0.1000 kind=HIT src=Effect asset="458201" label="" win=NONE area=3 ar=400 aa=360 ah=800 ax=180 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 fz=0 fzin=0 fzout=0 hittype=7
   n t=3.3500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=3.3500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_12.Par_S_WBKF_SuperRageStrike_00_03" label="" win=NONE
   n t=3.3500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_10.Par_T_WBKF_SuperRageStrike_00_DecExp_01" label="" win=NONE
@@ -2221,7 +2221,7 @@ LOSTARK_ANIM_NOTIFY 1 "Slayer" 148
   n t=3.3500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_10.Par_T_WBKF_SuperRageStrike_00_Exp_02" label="" win=NONE
   n t=3.3500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_12.Par_S_WBKF_SuperRageStrike_00_02" label="" win=NONE
   n t=3.3500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_10.Par_T_WBKF_SuperRageStrike_01_Decal_03" label="" win=NONE
-  n t=3.3500 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=3.3500 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.3;in=0;out=0;x=9,70;y=9,70;z=9,70;fov=0,0" label="" win=NONE
   n t=3.5000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_12.Par_S_WBKF_SuperRageStrike_00_03" label="" win=NONE
   n t=3.5065 d=0.1935 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_10.Par_T_WBKF_SuperRageStrike_00_WpCast_02_L" label="" win=NONE
   n t=3.6500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_12.Par_S_WBKF_SuperRageStrike_00_03" label="" win=NONE
@@ -2238,20 +2238,20 @@ LOSTARK_ANIM_NOTIFY 1 "Slayer" 148
   n t=0.3000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_12.Par_S_WBKF_SuperRageStrike_Local_01" label="" win=NONE
   n t=0.4500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="fx_cm_01.Distortion_oneLayer.Par_MP_ConcaveDisOL_WBK_MC_01" label="" win=NONE
   n t=0.4800 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_10.Par_T_WBKF_SuperRageStrike_00_06" label="" win=NONE
-  n t=0.4900 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.4900 d=0.1000 kind=HIT src=Effect asset="458202" label="" win=NONE area=3 ar=500 aa=360 ah=800 ax=180 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 fz=0 fzin=0 fzout=0 hittype=6
   n t=0.5000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_12.Par_S_WBKF_RageStrike_Localdust_02" label="" win=NONE
   n t=0.5000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_ZoomBlur_02" label="" win=NONE
   n t=0.5000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.5000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_12.Par_S_WBKF_RageStrike_Localdust_02_2" label="" win=NONE
   n t=0.5000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_12.Par_S_WBKF_SuperRageStrike_00_Exp_03" label="" win=NONE
   n t=0.5000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_12.Par_S_WBKF_SuperRageStrike_00_03" label="" win=NONE
-  n t=0.5000 d=0.8000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.5000 d=0.8000 kind=SHAKE src=ViewShake asset="dur=0.6;in=0;out=0;x=12,70;y=12,70;z=12,70;fov=0,0" label="" win=NONE
   n t=0.7000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_12.Par_S_WBKF_SuperRageStrike_00_03" label="" win=NONE
   n t=0.9000 d=0.9667 kind=CANCEL src=InputTiming asset="" label="[회피캔슬]" win=DODGE_CANCEL
   n t=1.0000 d=0.8667 kind=CANCEL src=InputTiming asset="" label="입력캔슬" win=ANY_CANCEL
   n t=1.3000 d=0.5667 kind=CANCEL src=InputTiming asset="" label="이동캔슬" win=MOVE_CANCEL
 "wbk_sk_super_ragnarok_00" skill=45830 len=7.0000 name="[초각성기] 라그나 블레이드"
-  n t=0.0000 d=0.1000 kind=EFFECT src=Effect asset="" label="피해면역" win=NONE
+  n t=0.0000 d=0.1000 kind=EFFECT src=Effect asset="578300" label="피해면역" win=NONE
   n t=0.0000 d=6.2200 kind=SUPERARMOR src=SuperArmorPVP asset="" label="" win=NONE
   n t=0.0000 d=6.2200 kind=SUPERARMOR src=SuperArmor asset="" label="" win=NONE
   n t=0.0010 d=2.1333 kind=SOUND src=AKEvent asset="PC_BERSERKER_F.PC_Berserker_F_SK_SuperRagnarok1_FX000_1" label="" win=NONE
@@ -2264,18 +2264,18 @@ LOSTARK_ANIM_NOTIFY 1 "Slayer" 148
   n t=0.8300 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_04.Par_R_WBKF_Doom_15_01" label="" win=NONE
   n t=0.8438 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_04.Par_R_WBKF_Doom_02_02" label="" win=NONE
   n t=0.8438 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_04.Par_R_WBKF_Doom_02_01" label="" win=NONE
-  n t=0.8500 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
-  n t=0.9000 d=0.4015 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.8500 d=0.1000 kind=HIT src=Effect asset="458302" label="" win=NONE area=3 ar=300 aa=360 ah=450 ax=0 arem=0 maxt=0 rep=0 repms=0 push=100 pushr=5 fz=550 fzin=150 fzout=250 hittype=4
+  n t=0.9000 d=0.4015 kind=SHAKE src=ViewShake asset="dur=0.4;in=0;out=0.3;x=3,60;y=3,60;z=3,60;fov=0,0" label="" win=NONE
   n t=0.9000 d=2.5010 kind=SOUND src=AKEvent asset="PC_BERSERKER_F.PC_Berserker_F_SK_SuperRagnarok1_FX000_2" label="" win=NONE
   n t=0.9545 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_04.Par_R_WBKF_Doom_03_02" label="" win=NONE
   n t=1.4000 d=3.2175 kind=SOUND src=AKEvent asset="PC_BERSERKER_F.PC_Berserker_F_SK_SuperRagnarok1_FX000_3" label="" win=NONE
   n t=1.4500 d=1.6000 kind=SOUND src=AKEvent asset="PC_BERSERKER_F.PC_Berserker_F_SK_SuperRagnarok1_FX000_6" label="" win=NONE
-  n t=1.9000 d=1.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=1.9000 d=1.0000 kind=SHAKE src=ViewShake asset="dur=0.7;in=0;out=0.3;x=3,40;y=3,40;z=3,40;fov=0,0" label="" win=NONE
   n t=2.5601 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=2.7000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_04.Par_R_WBKF_Doom_16_01" label="" win=NONE
   n t=3.6000 d=2.9393 kind=SOUND src=AKEvent asset="PC_BERSERKER_F.PC_Berserker_F_SK_SuperRagnarok1_FX000_4" label="" win=NONE
-  n t=3.9000 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
-  n t=3.9500 d=0.9000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=3.9000 d=0.1000 kind=HIT src=Effect asset="458300" label="" win=NONE area=3 ar=300 aa=360 ah=450 ax=300 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 fz=0 fzin=0 fzout=0 hittype=5
+  n t=3.9500 d=0.9000 kind=SHAKE src=ViewShake asset="dur=0.5;in=0;out=0.4;x=8,30;y=8,30;z=8,30;fov=0,0" label="" win=NONE
   n t=3.9663 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=3.9663 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_ZoomBlur_03" label="" win=NONE
   n t=3.9663 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_04.Par_R_WBKF_Doom_09_01" label="" win=NONE
@@ -2283,7 +2283,7 @@ LOSTARK_ANIM_NOTIFY 1 "Slayer" 148
   n t=4.0741 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_04.Par_R_WBKF_Doom_13_01" label="" win=NONE
   n t=5.1978 d=1.0225 kind=CANCEL src=InputTiming asset="" label="[선스]" win=SKILL_PRE
   n t=5.1978 d=1.0225 kind=CANCEL src=InputTiming asset="" label="[선이]" win=MOVE_PRE
-  n t=5.3000 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=5.3000 d=0.1000 kind=HIT src=Effect asset="458301" label="" win=NONE area=3 ar=500 aa=360 ah=450 ax=300 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 fz=0 fzin=0 fzout=0 hittype=6
   n t=5.3208 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_04.Par_R_WBKF_Doom_13_02" label="" win=NONE
   n t=5.3208 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=5.3208 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_04.Par_R_WBKF_Doom_08_01" label="" win=NONE
@@ -2293,7 +2293,7 @@ LOSTARK_ANIM_NOTIFY 1 "Slayer" 148
   n t=5.3517 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_04.Par_R_WBKF_Doom_12_01" label="" win=NONE
   n t=5.3608 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_04.Par_R_WBKF_Doom_10_02" label="" win=NONE
   n t=5.3608 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_04.Par_R_WBKF_Doom_10_02" label="" win=NONE
-  n t=5.3610 d=1.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=5.3610 d=1.0000 kind=SHAKE src=ViewShake asset="dur=0.6;in=0;out=0.4;x=9,30;y=9,30;z=9,30;fov=0,0" label="" win=NONE
   n t=5.4000 d=1.0000 kind=SOUND src=AKEvent asset="PC_BERSERKER_F.PC_Berserker_F_SK_SuperRagnarok1_FX000_5" label="" win=NONE
   n t=5.5000 d=1.5000 kind=CANCEL src=InputTiming asset="" label="[회피캔슬]" win=DODGE_CANCEL
   n t=5.8249 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_04.Par_R_WBKF_Despawn_01" label="" win=NONE
@@ -2309,9 +2309,9 @@ LOSTARK_ANIM_NOTIFY 1 "Slayer" 148
   n t=0.0000 d=0.6200 kind=SUPERARMOR src=SuperArmor asset="" label="" win=NONE
   n t=0.0000 d=0.6200 kind=SUPERARMOR src=SuperArmor asset="" label="" win=NONE
   n t=0.0000 d=0.6200 kind=SUPERARMOR src=SuperArmorPVP asset="" label="" win=NONE
-  n t=0.0220 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
-  n t=0.0220 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
-  n t=0.0220 d=0.0830 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.0220 d=0.1000 kind=EFFECT src=Effect asset="456006" label="" win=NONE
+  n t=0.0220 d=0.1000 kind=HIT src=Effect asset="456020" label="" win=NONE area=3 ar=500 aa=90 ah=150 ax=0 arem=0 maxt=0 rep=0 repms=0 push=40 pushr=40 fz=440 fzin=150 fzout=250 hittype=4
+  n t=0.0220 d=0.0830 kind=SHAKE src=ViewShake asset="dur=0.5;in=0.05;out=0.25;x=4,80;y=4,80;z=8,60;fov=0,0" label="" win=NONE
   n t=0.0500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBK_12.Par_M_WBK_SS_Rock_01" label="" win=NONE
   n t=0.0500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBK_12.Par_M_WBK_SS_Rock_02" label="" win=NONE
   n t=0.0500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBK_12.Par_M_WBK_SS_Rock_02" label="" win=NONE
@@ -2360,11 +2360,11 @@ LOSTARK_ANIM_NOTIFY 1 "Slayer" 148
   n t=0.2004 d=0.7000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBK_15.Par_J_WBK_Tempest_00_01" label="" win=NONE
   n t=0.2004 d=0.7000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBK_15.Par_J_WBK_Tempest_00_01" label="" win=NONE
   n t=0.2004 d=0.7000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBK_03.Par_O_WBK_TempestRTrail_01_02" label="" win=NONE
-  n t=0.2500 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
-  n t=0.4500 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.2500 d=0.1000 kind=HIT src=Effect asset="451900" label="" win=NONE area=3 ar=180 aa=360 ah=300 ax=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 fz=0 fzin=0 fzout=0 hittype=5
+  n t=0.4500 d=0.1000 kind=HIT src=Effect asset="451900" label="" win=NONE area=3 ar=180 aa=360 ah=300 ax=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 fz=0 fzin=0 fzout=0 hittype=5
   n t=0.6003 d=1.0095 kind=CANCEL src=InputTiming asset="" label="[선이]" win=MOVE_PRE
   n t=0.6024 d=1.0043 kind=CANCEL src=InputTiming asset="" label="[선스]" win=SKILL_PRE
-  n t=0.6500 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.6500 d=0.1000 kind=HIT src=Effect asset="451900" label="" win=NONE area=3 ar=180 aa=360 ah=300 ax=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 fz=0 fzin=0 fzout=0 hittype=5
   n t=1.0000 d=1.1333 kind=SOUND src=AKEvent asset="PC_BERSERKER_F.PC_Berserker_F_SK_TempestSlash1_FX000_3" label="" win=NONE
   n t=1.0000 d=1.1333 kind=SOUND src=AKEvent asset="PC_BERSERKER_F.PC_Berserker_F_SK_TempestSlash1_Vox1_3" label="" win=NONE
   n t=1.1235 d=0.0983 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBK_15.Par_J_WBK_Tempest_00_02" label="" win=NONE
@@ -2383,8 +2383,8 @@ LOSTARK_ANIM_NOTIFY 1 "Slayer" 148
   n t=1.1979 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBK_15.Par_J_WBK_Tempest_00_04" label="" win=NONE
   n t=1.1979 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBK_15.Par_J_WBK_Tempest_04_04" label="" win=NONE
   n t=1.1979 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBK_15.Par_J_WBK_Tempest_05_04" label="" win=NONE
-  n t=1.1995 d=0.3006 kind=SHAKE src=ViewShake asset="" label="" win=NONE
-  n t=1.2000 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=1.1995 d=0.3006 kind=SHAKE src=ViewShake asset="dur=0.35;in=0;out=0.05;x=5,50;y=5,50;z=7,60;fov=0,0" label="" win=NONE
+  n t=1.2000 d=0.1000 kind=HIT src=Effect asset="451901" label="" win=NONE area=1 ar=150 aa=0 ah=300 ax=130 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 fz=0 fzin=0 fzout=0 hittype=10
   n t=1.2821 d=1.1370 kind=CANCEL src=InputTiming asset="" label="[회피캔슬]" win=DODGE_CANCEL
   n t=1.5936 d=0.8398 kind=CANCEL src=InputTiming asset="" label="" win=NONE
   n t=1.5952 d=0.8381 kind=CANCEL src=InputTiming asset="" label="" win=NONE
@@ -2421,11 +2421,11 @@ LOSTARK_ANIM_NOTIFY 1 "Slayer" 148
   n t=0.6000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBK_15.Par_J_WBK_Tempest_05_04" label="" win=NONE
   n t=0.6000 d=0.1000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBK_15.Par_J_WBK_Tempest_00_02" label="" win=NONE
   n t=0.6000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_07" label="" win=NONE
-  n t=0.6000 d=0.3011 kind=SHAKE src=ViewShake asset="" label="" win=NONE
-  n t=0.6200 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
-  n t=0.6200 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
-  n t=0.6200 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
-  n t=0.6200 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.6000 d=0.3011 kind=SHAKE src=ViewShake asset="dur=0.35;in=0;out=0.05;x=5,50;y=5,50;z=7,60;fov=0,0" label="" win=NONE
+  n t=0.6200 d=0.1000 kind=EFFECT src=Effect asset="451971" label="" win=NONE
+  n t=0.6200 d=0.1000 kind=EFFECT src=Effect asset="451973" label="" win=NONE
+  n t=0.6200 d=0.1000 kind=EFFECT src=Effect asset="451975" label="" win=NONE
+  n t=0.6200 d=0.1000 kind=HIT src=Effect asset="451970" label="" win=NONE area=1 ar=150 aa=0 ah=300 ax=130 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 fz=0 fzin=0 fzout=0 hittype=10
   n t=0.7200 d=1.5133 kind=CANCEL src=InputTiming asset="" label="[회피캔슬]" win=DODGE_CANCEL
   n t=1.0000 d=1.2333 kind=CANCEL src=InputTiming asset="" label="" win=NONE
   n t=1.0000 d=1.2333 kind=CANCEL src=InputTiming asset="" label="" win=NONE
@@ -2452,8 +2452,8 @@ LOSTARK_ANIM_NOTIFY 1 "Slayer" 148
   n t=0.0750 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBK_10.Par_R_WBK_ShoulderCharge_00_06_03" label="" win=NONE
   n t=0.0950 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBK_10.Par_R_WBK_ShoulderCharge_00_06_02" label="" win=NONE
   n t=0.0950 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBK_10.Par_R_WBK_ShoulderCharge_00_06_03" label="" win=NONE
-  n t=0.1000 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
   n t=0.1000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBK_10.Par_R_WBK_ShoulderCharge_00_06_04" label="" win=NONE
+  n t=0.1000 d=0.1000 kind=HIT src=Effect asset="450600" label="" win=NONE area=2 ar=250 aa=140 ah=150 ax=-40 arem=0 maxt=0 rep=0 repms=0 push=20 pushr=20 fz=270 fzin=100 fzout=150 hittype=4
   n t=0.1006 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBK_10.Par_R_WBK_ShoulderCharge_00_01" label="" win=NONE
   n t=0.1150 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBK_10.Par_R_WBK_ShoulderCharge_00_06_02" label="" win=NONE
   n t=0.1150 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBK_10.Par_R_WBK_ShoulderCharge_00_06_03" label="" win=NONE
@@ -2469,17 +2469,17 @@ LOSTARK_ANIM_NOTIFY 1 "Slayer" 148
   n t=0.1800 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBK_10.Par_R_WBK_ShoulderCharge_00_03" label="" win=NONE
   n t=0.2000 d=0.2200 kind=CANCEL src=InputTiming asset="" label="스킬선입력" win=SKILL_PRE
   n t=0.2000 d=0.4000 kind=CANCEL src=InputTiming asset="" label="이동선입력" win=MOVE_PRE
-  n t=0.2000 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
   n t=0.2000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBK_10.Par_R_WBK_ShoulderCharge_00_06_04" label="" win=NONE
-  n t=0.2014 d=0.1185 kind=SHAKE src=ViewShake asset="" label="" win=NONE
-  n t=0.3000 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
-  n t=0.3000 d=0.1002 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.2000 d=0.1000 kind=HIT src=Effect asset="450601" label="" win=NONE area=2 ar=250 aa=140 ah=150 ax=-70 arem=0 maxt=0 rep=0 repms=0 push=20 pushr=20 fz=270 fzin=100 fzout=150 hittype=4
+  n t=0.2014 d=0.1185 kind=SHAKE src=ViewShake asset="dur=0.11;in=0;out=0.11;x=4,80;y=4,80;z=4,80;fov=0,0" label="" win=NONE
+  n t=0.3000 d=0.1002 kind=EFFECT src=Effect asset="450605" label="" win=NONE
+  n t=0.3000 d=0.1000 kind=HIT src=Effect asset="450602" label="" win=NONE area=2 ar=250 aa=140 ah=150 ax=-100 arem=0 maxt=0 rep=0 repms=0 push=20 pushr=20 fz=400 fzin=100 fzout=150 hittype=4
   n t=0.3500 d=0.5833 kind=CANCEL src=InputTiming asset="" label="" win=NONE
   n t=0.4000 d=0.5333 kind=CANCEL src=InputTiming asset="" label="입력캔슬" win=ANY_CANCEL
   n t=0.4000 d=0.5333 kind=CANCEL src=InputTiming asset="" label="회피캔슬" win=DODGE_CANCEL
   n t=0.6000 d=0.3333 kind=CANCEL src=InputTiming asset="" label="이동캔슬" win=MOVE_CANCEL
 "wbk_sk_thrust_custom_1" skill=45060 len=1.0000 name="와일드 러시 (구)숄더 차지"
-  n t=0.0000 d=0.0996 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.0000 d=0.0996 kind=EFFECT src=Effect asset="450604" label="" win=NONE
   n t=0.0000 d=0.6000 kind=SUPERARMOR src=SuperArmor asset="" label="" win=NONE
   n t=0.0000 d=0.6000 kind=SUPERARMOR src=SuperArmorPVP asset="" label="" win=NONE
   n t=0.1000 d=0.0000 kind=SOUND src=AKEvent asset="PC_BERSERKER_F.PC_Berserker_F_SK_ShoulderCharge1_Vox1_1" label="" win=NONE
@@ -2493,8 +2493,8 @@ LOSTARK_ANIM_NOTIFY 1 "Slayer" 148
   n t=0.1000 d=1.0667 kind=SOUND src=AKEvent asset="PC_BERSERKER_F.PC_Berserker_F_SK_ShoulderCharge1_FX000_3" label="" win=NONE
   n t=0.1500 d=0.4000 kind=HIT src=ParticleHit asset="" label="" win=NONE
   n t=0.2462 d=0.1600 kind=EFFECT src=Trails asset="FX_PC_WBKF_01.Par_N_Trail_034" label="" win=NONE
-  n t=0.3500 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
-  n t=0.3997 d=0.1196 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.3500 d=0.1000 kind=HIT src=Effect asset="450606" label="" win=NONE area=2 ar=250 aa=180 ah=200 ax=50 arem=0 maxt=0 rep=0 repms=0 push=20 pushr=20 fz=420 fzin=150 fzout=250 hittype=8
+  n t=0.3997 d=0.1196 kind=SHAKE src=ViewShake asset="dur=0.3;in=0;out=0.1;x=0,80;y=0,80;z=7,50;fov=0,0" label="" win=NONE
   n t=0.4021 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBK_10.Par_R_WBK_ShoulderCharge_05_01" label="" win=NONE
   n t=0.4034 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.4976 d=0.6691 kind=CANCEL src=InputTiming asset="" label="회피캔슬" win=DODGE_CANCEL
@@ -2521,11 +2521,11 @@ LOSTARK_ANIM_NOTIFY 1 "Slayer" 148
   n t=0.0550 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBK_10.Par_R_WBK_ShoulderCharge_00_06_02" label="" win=NONE
   n t=0.0550 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBK_10.Par_R_WBK_ShoulderCharge_00_06_03" label="" win=NONE
   n t=0.0748 d=0.2324 kind=EFFECT src=Trails asset="FX_PC_WBK_10.Par_R_WBK_ShoulderCharge_06_03" label="" win=NONE
-  n t=0.0969 d=0.1003 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.0969 d=0.1003 kind=HIT src=Effect asset="450607" label="" win=NONE area=2 ar=500 aa=200 ah=150 ax=-300 arem=0 maxt=0 rep=0 repms=0 push=20 pushr=20 fz=800 fzin=50 fzout=300 hittype=4
   n t=0.1500 d=0.4000 kind=HIT src=ParticleHit asset="" label="" win=NONE
   n t=0.2005 d=0.4998 kind=CANCEL src=InputTiming asset="" label="스킬선입력" win=SKILL_PRE
   n t=0.2005 d=0.5014 kind=CANCEL src=InputTiming asset="" label="이동선입력" win=MOVE_PRE
-  n t=0.2972 d=0.1005 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.2972 d=0.1005 kind=EFFECT src=Effect asset="450605" label="" win=NONE
   n t=0.3971 d=0.8696 kind=CANCEL src=InputTiming asset="" label="회피캔슬" win=DODGE_CANCEL
   n t=0.6955 d=0.5711 kind=CANCEL src=InputTiming asset="" label="이동캔슬" win=MOVE_CANCEL
   n t=0.6955 d=0.5711 kind=CANCEL src=InputTiming asset="" label="입력캔슬" win=ANY_CANCEL
@@ -2536,11 +2536,11 @@ LOSTARK_ANIM_NOTIFY 1 "Slayer" 148
   n t=0.0000 d=0.8100 kind=SUPERARMOR src=SuperArmorPVP asset="" label="" win=NONE
   n t=0.1500 d=0.4000 kind=HIT src=ParticleHit asset="" label="" win=NONE
   n t=0.3500 d=1.0667 kind=SOUND src=AKEvent asset="PC_BERSERKER_F.PC_Berserker_F_SK_ShoulderCharge1_FX007_2" label="" win=NONE
-  n t=0.4642 d=0.1190 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.4642 d=0.1190 kind=SHAKE src=ViewShake asset="dur=0.3;in=0;out=0.1;x=0,80;y=0,80;z=7,80;fov=0,0" label="" win=NONE
   n t=0.4654 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="fx_cm_01.Distortion_oneLayer.Par_MP_ConcaveDisOL_WBK_SC_01" label="" win=NONE
   n t=0.4654 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBK_10.Par_R_WBK_ShoulderCharge_07_01" label="" win=NONE
   n t=0.4670 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_ZoomBlur_02" label="" win=NONE
-  n t=0.4706 d=0.1002 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.4706 d=0.1002 kind=HIT src=Effect asset="450608" label="" win=NONE area=1 ar=180 aa=0 ah=150 ax=50 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 fz=400 fzin=100 fzout=150 hittype=4
   n t=0.5811 d=0.7856 kind=CANCEL src=InputTiming asset="" label="회피캔슬" win=DODGE_CANCEL
   n t=0.6537 d=0.7129 kind=CANCEL src=InputTiming asset="" label="" win=NONE
   n t=0.8000 d=0.5667 kind=CANCEL src=InputTiming asset="" label="이동캔슬" win=MOVE_CANCEL
@@ -2552,13 +2552,13 @@ LOSTARK_ANIM_NOTIFY 1 "Slayer" 148
   n t=0.0000 d=1.1100 kind=SUPERARMOR src=SuperArmorPVP asset="" label="" win=NONE
   n t=0.2000 d=1.6000 kind=SOUND src=AKEvent asset="PC_BERSERKER_F.PC_Berserker_F_SK_ShoulderCharge1_Vox1_2" label="" win=NONE
   n t=0.2000 d=1.6000 kind=SOUND src=AKEvent asset="PC_BERSERKER_F.PC_Berserker_F_SK_ShoulderCharge1_FX008_2" label="" win=NONE
-  n t=0.2033 d=0.1187 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.2033 d=0.1187 kind=SHAKE src=ViewShake asset="dur=0.11;in=0;out=0.11;x=4,80;y=4,80;z=4,80;fov=0,0" label="" win=NONE
   n t=0.2829 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_ZoomBlur_02" label="" win=NONE
   n t=0.2834 d=0.4019 kind=HIT src=ParticleHit asset="" label="" win=NONE
-  n t=0.2897 d=0.1224 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.2897 d=0.1224 kind=SHAKE src=ViewShake asset="dur=0.3;in=0;out=0.1;x=0,80;y=0,80;z=7,80;fov=0,0" label="" win=NONE
   n t=0.3058 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBK_10.Par_R_WBK_ShoulderCharge_08_03" label="" win=NONE
   n t=0.3063 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
-  n t=0.3411 d=0.2122 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.3411 d=0.2122 kind=HIT src=Effect asset="450610" label="" win=NONE area=1 ar=200 aa=0 ah=150 ax=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 fz=400 fzin=100 fzout=150 hittype=7
   n t=0.4946 d=1.3054 kind=CANCEL src=InputTiming asset="" label="회피캔슬" win=DODGE_CANCEL
   n t=0.9543 d=0.8457 kind=CANCEL src=InputTiming asset="" label="" win=NONE
   n t=1.0971 d=0.7029 kind=CANCEL src=InputTiming asset="" label="이동캔슬" win=MOVE_CANCEL
@@ -2570,11 +2570,11 @@ LOSTARK_ANIM_NOTIFY 1 "Slayer" 148
   n t=0.1000 d=0.0000 kind=SOUND src=AKEvent asset="PC_BERSERKER_F.PC_Berserker_F_SK_CryHazard1_FX000_1" label="" win=NONE
   n t=0.2500 d=0.2000 kind=HIT src=ParticleHit asset="" label="" win=NONE
   n t=0.2730 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBK_11.Par_X_WBK_Spike_00_02" label="" win=NONE
-  n t=0.2789 d=0.3426 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.2789 d=0.3426 kind=SHAKE src=ViewShake asset="dur=0.2;in=0;out=0.2;x=8,80;y=8,80;z=8,80;fov=0,0" label="" win=NONE
   n t=0.2853 d=2.2147 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBK_11.Par_X_WBK_CastWP_03_01" label="" win=NONE
   n t=0.2867 d=2.2133 kind=EFFECT src=Trails asset="FX_PC_WBK_11.Par_X_WBK_Trail_00_01" label="" win=NONE
   n t=0.3065 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
-  n t=0.3073 d=0.1872 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.3073 d=0.1872 kind=HIT src=Effect asset="450500" label="" win=NONE area=3 ar=180 aa=150 ah=250 ax=0 arem=0 maxt=0 rep=0 repms=0 push=40 pushr=40 fz=420 fzin=150 fzout=250 hittype=7
   n t=0.6451 d=1.8549 kind=CANCEL src=InputTiming asset="" label="" win=NONE
 "wbk_sk_updownslash_02" skill=45050 len=2.0333 name="퓨리 블레이드 (구)크라임해저드"
   n t=0.0000 d=0.8200 kind=CANCEL src=InputTiming asset="" label="[선스]" win=SKILL_PRE
@@ -2586,10 +2586,10 @@ LOSTARK_ANIM_NOTIFY 1 "Slayer" 148
   n t=0.0000 d=0.8200 kind=SUPERARMOR src=SuperArmor asset="" label="" win=NONE
   n t=0.0000 d=0.8200 kind=SUPERARMOR src=SuperArmorPVP asset="" label="" win=NONE
   n t=0.1183 d=0.2005 kind=HIT src=ParticleHit asset="" label="" win=NONE
-  n t=0.1749 d=0.1336 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.1749 d=0.1336 kind=HIT src=Effect asset="450501" label="" win=NONE area=1 ar=150 aa=0 ah=300 ax=130 arem=0 maxt=0 rep=0 repms=0 push=20 pushr=20 fz=420 fzin=150 fzout=250 hittype=10
   n t=0.1906 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBK_11.Par_X_WBK_Spike_00_01" label="" win=NONE
   n t=0.1910 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBK_11.Par_X_WBK_Lightning_03_01" label="" win=NONE
-  n t=0.1942 d=0.3960 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.1942 d=0.3960 kind=SHAKE src=ViewShake asset="dur=0.2;in=0;out=0.05;x=8,80;y=8,80;z=8,80;fov=0,0" label="" win=NONE
   n t=0.2001 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_ZoomBlur_02" label="" win=NONE
   n t=0.2034 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.6000 d=1.4333 kind=CANCEL src=InputTiming asset="" label="[회피캔슬]" win=DODGE_CANCEL
@@ -2607,26 +2607,26 @@ LOSTARK_ANIM_NOTIFY 1 "Slayer" 148
   n t=0.2349 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_ZoomBlur_02" label="" win=NONE
   n t=0.2351 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBK_11.Par_X_WBK_Spike_07_02" label="" win=NONE
   n t=0.2355 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBK_11.Par_X_WBK_Lightning_03_01" label="" win=NONE
-  n t=0.2615 d=0.1982 kind=EFFECT src=Effect asset="" label="" win=NONE
-  n t=0.2633 d=0.2800 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.2615 d=0.1982 kind=HIT src=Effect asset="450503" label="" win=NONE area=1 ar=150 aa=0 ah=300 ax=130 arem=0 maxt=0 rep=0 repms=0 push=20 pushr=20 fz=420 fzin=150 fzout=250 hittype=10
+  n t=0.2633 d=0.2800 kind=SHAKE src=ViewShake asset="dur=0.28;in=0;out=0.28;x=8,70;y=8,70;z=8,70;fov=0,0" label="" win=NONE
   n t=0.4803 d=0.7653 kind=EFFECT src=Trails asset="FX_PC_WBK_11.Par_X_WBK_Trail_07_01" label="" win=NONE
-  n t=0.5426 d=0.1652 kind=EFFECT src=Effect asset="" label="" win=NONE
-  n t=0.5555 d=0.2005 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.5426 d=0.1652 kind=HIT src=Effect asset="450502" label="" win=NONE area=1 ar=150 aa=0 ah=300 ax=130 arem=0 maxt=0 rep=0 repms=0 push=10 pushr=10 fz=410 fzin=150 fzout=250 hittype=10
+  n t=0.5555 d=0.2005 kind=SHAKE src=ViewShake asset="dur=0.2;in=0;out=0.2;x=8,70;y=8,70;z=8,70;fov=0,0" label="" win=NONE
   n t=0.5662 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBK_11.Par_X_WBK_Spike_07_01" label="" win=NONE
   n t=0.5670 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.5670 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_ZoomBlur_02" label="" win=NONE
   n t=0.5875 d=1.0122 kind=CANCEL src=InputTiming asset="" label="[선스]" win=SKILL_PRE
   n t=0.5981 d=1.0142 kind=CANCEL src=InputTiming asset="" label="[선이]" win=MOVE_PRE
   n t=0.7592 d=0.2066 kind=HIT src=ParticleHit asset="" label="" win=NONE
-  n t=0.8155 d=0.2005 kind=SHAKE src=ViewShake asset="" label="" win=NONE
-  n t=0.8176 d=0.1688 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.8155 d=0.2005 kind=SHAKE src=ViewShake asset="dur=0.2;in=0;out=0.2;x=8,70;y=8,70;z=8,70;fov=0,0" label="" win=NONE
   n t=0.8176 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBK_11.Par_X_WBK_Spike_07_01" label="" win=NONE
+  n t=0.8176 d=0.1688 kind=HIT src=Effect asset="450502" label="" win=NONE area=1 ar=150 aa=0 ah=300 ax=130 arem=0 maxt=0 rep=0 repms=0 push=10 pushr=10 fz=410 fzin=150 fzout=250 hittype=10
   n t=0.8236 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_ZoomBlur_02" label="" win=NONE
   n t=0.8337 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
-  n t=1.0448 d=0.2199 kind=EFFECT src=Effect asset="" label="" win=NONE
   n t=1.0448 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBK_11.Par_X_WBK_Spike_07_01" label="" win=NONE
+  n t=1.0448 d=0.2199 kind=HIT src=Effect asset="450502" label="" win=NONE area=1 ar=150 aa=0 ah=300 ax=130 arem=0 maxt=0 rep=0 repms=0 push=10 pushr=10 fz=410 fzin=150 fzout=250 hittype=10
   n t=1.0450 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_ZoomBlur_02" label="" win=NONE
-  n t=1.0503 d=0.2009 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=1.0503 d=0.2009 kind=SHAKE src=ViewShake asset="dur=0.2;in=0;out=0.2;x=8,70;y=8,70;z=8,70;fov=0,0" label="" win=NONE
   n t=1.0551 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=1.3909 d=1.5091 kind=CANCEL src=InputTiming asset="" label="[회피캔슬]" win=DODGE_CANCEL
   n t=1.5958 d=1.3042 kind=CANCEL src=InputTiming asset="" label="" win=NONE
@@ -2638,8 +2638,8 @@ LOSTARK_ANIM_NOTIFY 1 "Slayer" 148
   n t=0.2500 d=0.0000 kind=SOUND src=AKEvent asset="PC_BERSERKER_F.PC_Berserker_F_SK_CryHazard1_FX008_1" label="" win=NONE
   n t=0.5000 d=0.0000 kind=SOUND src=AKEvent asset="PC_BERSERKER_F.PC_Berserker_F_SK_CryHazard1_Vox1_1" label="" win=NONE
   n t=0.6000 d=0.4000 kind=HIT src=ParticleHit asset="" label="" win=NONE
-  n t=0.6600 d=0.4000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
-  n t=0.6724 d=0.3306 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.6600 d=0.4000 kind=SHAKE src=ViewShake asset="dur=0.4;in=0.15;out=0.4;x=3,70;y=3,70;z=3,70;fov=0,0" label="" win=NONE
+  n t=0.6724 d=0.3306 kind=HIT src=Effect asset="450505" label="" win=NONE area=1 ar=180 aa=0 ah=250 ax=0 arem=0 maxt=0 rep=0 repms=0 push=40 pushr=40 fz=420 fzin=150 fzout=250 hittype=7
   n t=0.6916 d=1.1675 kind=EFFECT src=Trails asset="FX_PC_WBK_11.Par_X_WBK_Trail_08_01" label="" win=NONE
   n t=0.6946 d=1.1722 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBK_11.Par_X_WBK_CastWP_03_01" label="" win=NONE
   n t=0.7020 d=0.2265 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBK_11.Par_X_WBK_Spark_08_01" label="" win=NONE
@@ -2649,16 +2649,16 @@ LOSTARK_ANIM_NOTIFY 1 "Slayer" 148
   n t=1.0000 d=1.0200 kind=CANCEL src=InputTiming asset="" label="[선이]" win=MOVE_PRE
   n t=1.0500 d=0.2500 kind=HIT src=ParticleHit asset="" label="" win=NONE
   n t=1.0585 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBK_11.Par_X_WBK_Spike_08_02" label="" win=NONE
-  n t=1.0703 d=0.2265 kind=SHAKE src=ViewShake asset="" label="" win=NONE
-  n t=1.0866 d=0.2025 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=1.0703 d=0.2265 kind=SHAKE src=ViewShake asset="dur=0.3;in=0;out=0.3;x=10,60;y=10,60;z=10,60;fov=0,0" label="" win=NONE
+  n t=1.0866 d=0.2025 kind=HIT src=Effect asset="450500" label="" win=NONE area=3 ar=180 aa=150 ah=250 ax=0 arem=0 maxt=0 rep=0 repms=0 push=40 pushr=40 fz=420 fzin=150 fzout=250 hittype=7
   n t=1.5000 d=1.5000 kind=SOUND src=AKEvent asset="PC_BERSERKER_F.PC_Berserker_F_SK_CryHazard1_FX300_1" label="" win=NONE
   n t=1.5000 d=0.0000 kind=SOUND src=AKEvent asset="PC_BERSERKER_F.PC_Berserker_F_SK_CryHazard1_FX008_2" label="" win=NONE
-  n t=1.7525 d=0.2665 kind=EFFECT src=Effect asset="" label="" win=NONE
   n t=1.7525 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=1.7525 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_ZoomBlur_02" label="" win=NONE
   n t=1.7525 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBK_11.Par_X_WBK_Spike_08_01" label="" win=NONE
+  n t=1.7525 d=0.2665 kind=HIT src=Effect asset="450506" label="" win=NONE area=1 ar=150 aa=0 ah=300 ax=130 arem=0 maxt=0 rep=0 repms=0 push=20 pushr=20 fz=420 fzin=150 fzout=250 hittype=10
   n t=1.7595 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBK_11.Par_X_WBK_Lightning_03_01" label="" win=NONE
-  n t=1.7631 d=0.2260 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=1.7631 d=0.2260 kind=SHAKE src=ViewShake asset="dur=0.3;in=0;out=0.3;x=10,60;y=10,60;z=10,60;fov=0,0" label="" win=NONE
   n t=1.8285 d=1.1715 kind=CANCEL src=InputTiming asset="" label="[회피캔슬]" win=DODGE_CANCEL
   n t=2.0000 d=1.0000 kind=CANCEL src=InputTiming asset="" label="" win=NONE
   n t=2.0000 d=1.0000 kind=CANCEL src=InputTiming asset="" label="" win=NONE
@@ -2680,7 +2680,7 @@ LOSTARK_ANIM_NOTIFY 1 "Slayer" 148
   n t=0.0000 d=0.9200 kind=CANCEL src=InputTiming asset="" label="[선이]" win=MOVE_PRE
   n t=0.0000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_04.Par_R_WBKF_UpperSlash_00_03" label="" win=NONE
   n t=0.0000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_04.Par_R_WBKF_UpperSlash_06_03" label="" win=NONE
-  n t=0.0000 d=0.2514 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.0000 d=0.2514 kind=SHAKE src=ViewShake asset="dur=0.2;in=0.01;out=0.01;x=0,0;y=0,0;z=2,100;fov=0,0" label="" win=NONE
   n t=0.0000 d=0.9200 kind=SUPERARMOR src=SuperArmorPVP asset="" label="" win=NONE
   n t=0.0000 d=0.9200 kind=SUPERARMOR src=SuperArmor asset="" label="" win=NONE
   n t=0.0010 d=0.5990 kind=SOUND src=AKEvent asset="PC_BERSERKER_F.PC_Berserker_F_SK_UpperSlash1_FX007_3" label="" win=NONE
@@ -2692,8 +2692,8 @@ LOSTARK_ANIM_NOTIFY 1 "Slayer" 148
   n t=0.1682 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_04.Par_R_WBKF_UpperSlash_00_03" label="" win=NONE
   n t=0.1682 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_04.Par_R_WBKF_UpperSlash_06_03_07" label="" win=NONE
   n t=0.1830 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_04.Par_R_WBKF_UpperSlash_06_03_02" label="" win=NONE
-  n t=0.2000 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
-  n t=0.2050 d=0.3038 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.2000 d=0.1000 kind=HIT src=Effect asset="457010" label="" win=NONE area=2 ar=380 aa=180 ah=250 ax=-100 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 fz=0 fzin=0 fzout=0 hittype=7
+  n t=0.2050 d=0.3038 kind=SHAKE src=ViewShake asset="dur=0.275;in=0;out=0.05;x=4,50;y=4,50;z=5,60;fov=0,0" label="" win=NONE
   n t=0.2196 d=0.2473 kind=EFFECT src=Trails asset="FX_PC_WBKF_04.Par_R_WBKF_UpperSlash_Trail_07_01" label="" win=NONE
   n t=0.2250 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.2250 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
@@ -2722,7 +2722,7 @@ LOSTARK_ANIM_NOTIFY 1 "Slayer" 148
   n t=0.0000 d=0.5000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_04.Par_R_WBKF_UpperSlash_67_wp_03" label="" win=NONE
   n t=0.0000 d=0.5000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_04.Par_R_WBKF_UpperSlash_07_Cast_01_01" label="" win=NONE
   n t=0.0000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_04.Par_R_WBKF_UpperSlash_67_Charge_02_01" label="" win=NONE
-  n t=0.0000 d=0.5000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.0000 d=0.5000 kind=SHAKE src=ViewShake asset="dur=1;in=0;out=0;x=1,50;y=1,50;z=1,50;fov=0,0" label="" win=NONE
   n t=0.0000 d=1.0000 kind=SUPERARMOR src=SuperArmor asset="" label="" win=NONE
   n t=0.0000 d=1.0000 kind=SUPERARMOR src=SuperArmorPVP asset="" label="" win=NONE
   n t=0.0010 d=0.1233 kind=SOUND src=AKEvent asset="PC_BERSERKER_F.PC_Berserker_F_SK_UpperSlash1_FX000_1" label="" win=NONE
@@ -2735,7 +2735,7 @@ LOSTARK_ANIM_NOTIFY 1 "Slayer" 148
   n t=0.0000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_04.Par_R_WBKF_UpperSlash_06_03_05" label="" win=NONE
   n t=0.0000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_04.Par_R_WBKF_UpperSlash_00_03" label="" win=NONE
   n t=0.0000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_04.Par_R_WBKF_UpperSlash_00_03" label="" win=NONE
-  n t=0.0000 d=0.3259 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.0000 d=0.3259 kind=SHAKE src=ViewShake asset="dur=0.15;in=0.01;out=0.01;x=0,0;y=0,0;z=2,100;fov=0,0" label="" win=NONE
   n t=0.0000 d=1.0200 kind=SUPERARMOR src=SuperArmorPVP asset="" label="" win=NONE
   n t=0.0000 d=1.0200 kind=SUPERARMOR src=SuperArmor asset="" label="" win=NONE
   n t=0.0357 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_04.Par_R_WBKF_UpperSlash_06_03_06" label="" win=NONE
@@ -2750,9 +2750,9 @@ LOSTARK_ANIM_NOTIFY 1 "Slayer" 148
   n t=0.0832 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.0884 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_04.Par_R_WBKF_UpperSlash_08_02" label="" win=NONE
   n t=0.0884 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_04.Par_R_WBKF_UpperSlash_08_02" label="" win=NONE
-  n t=0.1000 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.1000 d=0.1000 kind=HIT src=Effect asset="457050" label="" win=NONE area=2 ar=380 aa=180 ah=250 ax=-100 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 fz=0 fzin=0 fzout=0 hittype=7
   n t=0.1054 d=0.2473 kind=EFFECT src=Trails asset="FX_PC_WBKF_04.Par_R_WBKF_UpperSlash_08_01" label="" win=NONE
-  n t=0.1061 d=0.3192 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.1061 d=0.3192 kind=SHAKE src=ViewShake asset="dur=0.25;in=0;out=0.05;x=5,60;y=5,60;z=5,60;fov=0,0" label="" win=NONE
   n t=0.1239 d=0.1354 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_04.Par_R_WBKF_UpperSlash_00_02" label="" win=NONE
   n t=0.1353 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_04.Par_R_WBKF_UpperSlash_06_02_03" label="" win=NONE
   n t=0.1592 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_04.Par_R_WBKF_UpperSlash_67_01" label="" win=NONE
@@ -2769,14 +2769,14 @@ LOSTARK_ANIM_NOTIFY 1 "Slayer" 148
   n t=0.5098 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_04.Par_R_WBKF_UpperSlash_00_03_02" label="" win=NONE
   n t=0.5098 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_04.Par_R_WBKF_UpperSlash_06_03_02" label="" win=NONE
   n t=0.5168 d=0.2494 kind=EFFECT src=Trails asset="FX_PC_WBKF_04.Par_R_WBKF_UpperSlash_08_01" label="" win=NONE
-  n t=0.5196 d=0.3738 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.5196 d=0.3738 kind=SHAKE src=ViewShake asset="dur=0.25;in=0;out=0.05;x=5,60;y=5,60;z=5,60;fov=0,0" label="" win=NONE
   n t=0.5298 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_04.Par_R_WBKF_UpperSlash_00_04" label="" win=NONE
   n t=0.5298 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.5298 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_04.Par_R_WBKF_UpperSlash_00_04" label="" win=NONE
   n t=0.5298 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.5298 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_04.Par_R_WBKF_UpperSlash_00_04_02" label="" win=NONE
   n t=0.5432 d=0.1156 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_04.Par_R_WBKF_UpperSlash_00_02" label="" win=NONE
-  n t=0.5500 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.5500 d=0.1000 kind=HIT src=Effect asset="457060" label="" win=NONE area=2 ar=380 aa=180 ah=250 ax=-100 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 fz=0 fzin=0 fzout=0 hittype=7
   n t=0.5903 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_04.Par_R_WBKF_UpperSlash_06_02_03" label="" win=NONE
   n t=0.6146 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBKF_04.Par_R_WBKF_UpperSlash_68_01" label="" win=NONE
   n t=0.6500 d=1.4167 kind=CANCEL src=InputTiming asset="" label="[회피캔슬]" win=DODGE_CANCEL
@@ -2790,7 +2790,7 @@ LOSTARK_ANIM_NOTIFY 1 "Slayer" 148
   n t=0.1000 d=0.3667 kind=SOUND src=AKEvent asset="PC_BERSERKER_F.PC_Berserker_F_Att_Identity1_3" label="" win=NONE
   n t=0.3000 d=0.0500 kind=HIT src=ParticleHit asset="" label="" win=NONE
   n t=0.3504 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_00.Dust.Par_D_Dust_001_pr" label="" win=NONE
-  n t=0.3986 d=0.0680 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.3986 d=0.0680 kind=HIT src=Effect asset="450704" label="" win=NONE area=1 ar=190 aa=0 ah=150 ax=50 arem=0 maxt=0 rep=0 repms=0 push=20 pushr=20 fz=300 fzin=100 fzout=150 hittype=4
 "wbk_sk_whirlwind_fail" skill=45070 len=0.8667 name="허리케인 소드 (구)휠윈드"
   n t=0.0000 d=0.3000 kind=CANCEL src=InputTiming asset="" label="이동선입력" win=MOVE_PRE
   n t=0.0000 d=0.3000 kind=CANCEL src=InputTiming asset="" label="스킬선입력" win=SKILL_PRE
@@ -2826,10 +2826,10 @@ LOSTARK_ANIM_NOTIFY 1 "Slayer" 148
   n t=0.1500 d=0.2500 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBK_03.Par_O_WBK_Whirlwind_03_01" label="" win=NONE
   n t=0.2000 d=3.7000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBK_03.Par_O_WBK_Whirlwind_04_01" label="" win=NONE
   n t=0.2000 d=3.7000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBK_03.Par_O_WBK_Whirlwind_02_01" label="" win=NONE
-  n t=0.2334 d=0.2585 kind=EFFECT src=Effect asset="" label="" win=NONE
-  n t=0.2334 d=0.2585 kind=EFFECT src=Effect asset="" label="" win=NONE
-  n t=0.2334 d=0.2585 kind=EFFECT src=Effect asset="" label="" win=NONE
-  n t=0.2334 d=0.2585 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.2334 d=0.2585 kind=HIT src=Effect asset="450700" label="" win=NONE area=1 ar=200 aa=0 ah=150 ax=0 arem=0 maxt=0 rep=0 repms=0 push=5 pushr=5 fz=255 fzin=100 fzout=150 hittype=4
+  n t=0.2334 d=0.2585 kind=HIT src=Effect asset="450702" label="" win=NONE area=1 ar=280 aa=0 ah=150 ax=0 arem=200 maxt=0 rep=0 repms=0 push=5 pushr=5 fz=255 fzin=100 fzout=150 hittype=4
+  n t=0.2334 d=0.2585 kind=HIT src=Effect asset="450706" label="" win=NONE area=1 ar=200 aa=0 ah=150 ax=0 arem=0 maxt=0 rep=2 repms=150 push=5 pushr=5 fz=500 fzin=100 fzout=150 hittype=4
+  n t=0.2334 d=0.2585 kind=HIT src=Effect asset="450708" label="" win=NONE area=1 ar=280 aa=0 ah=150 ax=0 arem=200 maxt=0 rep=2 repms=150 push=5 pushr=5 fz=500 fzin=100 fzout=150 hittype=4
   n t=0.4000 d=0.3000 kind=HIT src=ParticleHit asset="" label="" win=NONE
   n t=0.4000 d=0.3000 kind=HIT src=ParticleHit asset="" label="" win=NONE
   n t=0.4000 d=0.3000 kind=HIT src=ParticleHit asset="" label="" win=NONE
@@ -2885,14 +2885,14 @@ LOSTARK_ANIM_NOTIFY 1 "Slayer" 148
   n t=0.0010 d=0.8567 kind=SOUND src=AKEvent asset="PC_BERSERKER_F.PC_Berserker_F_SK_WhirlWind1_FX000_4" label="" win=NONE
   n t=0.0010 d=2.1323 kind=SOUND src=AKEvent asset="PC_BERSERKER_F.PC_Berserker_F_SK_WhirlWind1_FX000_5" label="" win=NONE
   n t=0.0934 d=0.4968 kind=HIT src=ParticleHit asset="" label="" win=NONE
-  n t=0.2800 d=0.5000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
-  n t=0.3000 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
-  n t=0.3000 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.2800 d=0.5000 kind=SHAKE src=ViewShake asset="dur=0.4;in=0;out=0.1;x=4,70;y=4,70;z=4,70;fov=0,0" label="" win=NONE
+  n t=0.3000 d=0.1000 kind=EFFECT src=Effect asset="450710" label="" win=NONE
+  n t=0.3000 d=0.1000 kind=EFFECT src=Effect asset="450720" label="" win=NONE
   n t=0.3000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_04" label="" win=NONE
   n t=0.3000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_ZoomBlur_01" label="" win=NONE
   n t=0.3000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBK_03.Par_O_WBK_Whirlwind_08_01" label="" win=NONE
   n t=0.4000 d=1.7333 kind=CANCEL src=InputTiming asset="" label="회피캔슬" win=DODGE_CANCEL
-  n t=0.4291 d=0.2349 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.4291 d=0.2349 kind=SHAKE src=ViewShake asset="dur=0.1;in=0;out=0;x=5,200;y=5,200;z=5,200;fov=0,0" label="" win=NONE
   n t=1.0000 d=1.1333 kind=CANCEL src=InputTiming asset="" label="스킬캔슬" win=SKILL_CANCEL
   n t=1.0000 d=1.1333 kind=CANCEL src=InputTiming asset="" label="이동캔슬" win=MOVE_CANCEL
 "wbk_sk_windblade_01_r1" skill=45610 len=0.3000 name="스피닝 소드 (구)윈드 블레이드"
@@ -2907,7 +2907,7 @@ LOSTARK_ANIM_NOTIFY 1 "Slayer" 148
   n t=0.0000 d=0.5200 kind=SUPERARMOR src=SuperArmor asset="" label="" win=NONE
   n t=0.0000 d=0.5200 kind=SUPERARMOR src=SuperArmorPVP asset="" label="" win=NONE
   n t=0.0010 d=1.5000 kind=SOUND src=AKEvent asset="PC_BERSERKER_F.PC_Berserker_F_SK_WindBlade1_FX000_3" label="" win=NONE
-  n t=0.0958 d=0.4022 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.0958 d=0.4022 kind=SHAKE src=ViewShake asset="dur=0.5;in=0.2;out=0;x=3,60;y=3,60;z=7,60;fov=0,0" label="" win=NONE
   n t=0.0970 d=0.2008 kind=HIT src=ParticleHit asset="" label="" win=NONE
   n t=0.1350 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBK_14.Par_S_WBK_WindBlade_01_1" label="" win=NONE
   n t=0.1350 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBK_14.Par_S_WBK_WindBlade_01_2" label="" win=NONE
@@ -2915,7 +2915,7 @@ LOSTARK_ANIM_NOTIFY 1 "Slayer" 148
   n t=0.1371 d=0.3457 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBK_14.Par_S_WBK_WindBlade_02_1" label="" win=NONE
   n t=0.1371 d=0.3457 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBK_14.Par_S_WBK_WindBlade_02_3" label="" win=NONE
   n t=0.1371 d=0.3457 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBK_14.Par_S_WBK_WindBlade_02_1" label="" win=NONE
-  n t=0.1500 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.1500 d=0.1000 kind=HIT src=Effect asset="456100" label="" win=NONE area=3 ar=180 aa=360 ah=180 ax=80 arem=0 maxt=0 rep=2 repms=250 push=120 pushr=50 fz=510 fzin=200 fzout=300 hittype=4
   n t=0.2150 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBK_09.WindBlade.Par_Y_WBK_WindBlade_03_01" label="" win=NONE
   n t=0.2150 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBK_14.Par_S_WBK_glow_01_2" label="" win=NONE
   n t=0.2150 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBK_09.WindBlade.Par_Y_WBK_WindBlade_03_02" label="" win=NONE
@@ -2945,11 +2945,11 @@ LOSTARK_ANIM_NOTIFY 1 "Slayer" 148
   n t=0.6100 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBK_09.WindBlade.Par_Y_WBK_WindBlade_04_02" label="" win=NONE
   n t=0.6100 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBK_09.WindBlade.Par_Y_WBK_WindBlade_04_03" label="" win=NONE
   n t=0.6278 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_ZoomBlur_03" label="" win=NONE
-  n t=0.6286 d=0.1057 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.6286 d=0.1057 kind=HIT src=Effect asset="456112" label="" win=NONE area=2 ar=280 aa=200 ah=150 ax=20 arem=0 maxt=0 rep=0 repms=0 push=120 pushr=80 fz=880 fzin=200 fzout=300 hittype=4
   n t=0.6300 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.6300 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.6300 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
-  n t=0.6300 d=0.2000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.6300 d=0.2000 kind=SHAKE src=ViewShake asset="dur=0.2;in=0;out=0.05;x=6,80;y=6,80;z=6,80;fov=0,0" label="" win=NONE
   n t=0.8000 d=1.2000 kind=CANCEL src=InputTiming asset="" label="" win=NONE
   n t=0.9000 d=1.1000 kind=CANCEL src=InputTiming asset="" label="" win=NONE
 "wbk_sk_windblade_custom_2_01" skill=45610 len=0.6000 name="스피닝 소드 (구)윈드 블레이드"
@@ -2959,13 +2959,13 @@ LOSTARK_ANIM_NOTIFY 1 "Slayer" 148
 "wbk_sk_windblade_custom_2_02" skill=45610 len=0.5333 name="스피닝 소드 (구)윈드 블레이드"
   n t=0.0000 d=0.5333 kind=CANCEL src=InputTiming asset="" label="[선스]" win=SKILL_PRE
   n t=0.0000 d=0.5333 kind=CANCEL src=InputTiming asset="" label="[선이]" win=MOVE_PRE
-  n t=0.0000 d=0.0991 kind=EFFECT src=Effect asset="" label="" win=NONE
   n t=0.0000 d=0.5333 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.0000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBK_14.Par_S_WBK_WindBlade_01_1" label="" win=NONE
   n t=0.0000 d=0.5333 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.0000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBK_14.Par_S_WBK_WindBlade_01_2" label="" win=NONE
   n t=0.0000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBK_14.Par_S_WBK_WindBlade_01_3" label="" win=NONE
   n t=0.0000 d=0.5333 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
+  n t=0.0000 d=0.0991 kind=HIT src=Effect asset="456120" label="" win=NONE area=3 ar=180 aa=360 ah=180 ax=80 arem=0 maxt=0 rep=3 repms=300 push=120 pushr=50 fz=510 fzin=200 fzout=300 hittype=4
   n t=0.0000 d=0.1500 kind=HIT src=ParticleHit asset="" label="" win=NONE
   n t=0.0000 d=0.5333 kind=SUPERARMOR src=SuperArmor asset="" label="" win=NONE
   n t=0.0000 d=0.5333 kind=SUPERARMOR src=SuperArmorPVP asset="" label="" win=NONE
@@ -2973,7 +2973,7 @@ LOSTARK_ANIM_NOTIFY 1 "Slayer" 148
   n t=0.0501 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBK_09.WindBlade.Par_Y_WBK_WindBlade_03_01" label="" win=NONE
   n t=0.0501 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBK_09.WindBlade.Par_Y_WBK_WindBlade_03_02" label="" win=NONE
   n t=0.0501 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBK_09.WindBlade.Par_Y_WBK_WindBlade_03_03" label="" win=NONE
-  n t=0.0798 d=0.4535 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.0798 d=0.4535 kind=SHAKE src=ViewShake asset="dur=0.5;in=0.1;out=0.2;x=3,60;y=3,60;z=7,60;fov=0,0" label="" win=NONE
   n t=0.0812 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_00.Dust.Par_D_Dust_001_pr" label="" win=NONE
   n t=0.0973 d=0.4023 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBK_14.Par_S_WBK_WindBlade_02_2" label="" win=NONE
   n t=0.0973 d=0.4023 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBK_14.Par_S_WBK_WindBlade_02_2" label="" win=NONE
@@ -3009,13 +3009,13 @@ LOSTARK_ANIM_NOTIFY 1 "Slayer" 148
   n t=0.0000 d=0.2200 kind=SUPERARMOR src=SuperArmor asset="" label="" win=NONE
   n t=0.0000 d=0.2200 kind=SUPERARMOR src=SuperArmorPVP asset="" label="" win=NONE
   n t=0.0500 d=0.2000 kind=HIT src=ParticleHit asset="" label="" win=NONE
-  n t=0.0700 d=0.0959 kind=EFFECT src=Effect asset="" label="" win=NONE
   n t=0.0700 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBK_14.Par_S_WBK_glow_01_2" label="" win=NONE
   n t=0.0700 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBK_14.Par_S_WBK_WindBlade_01_1" label="" win=NONE
   n t=0.0700 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBK_14.Par_S_WBK_glow_01_2" label="" win=NONE
   n t=0.0700 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBK_14.Par_S_WBK_WindBlade_01_2" label="" win=NONE
   n t=0.0700 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBK_09.Par_Y_WBK_glow_01_2" label="" win=NONE
   n t=0.0700 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBK_14.Par_S_WBK_WindBlade_01_3" label="" win=NONE
+  n t=0.0700 d=0.0959 kind=HIT src=Effect asset="456120" label="" win=NONE area=3 ar=180 aa=360 ah=180 ax=80 arem=0 maxt=0 rep=3 repms=300 push=120 pushr=50 fz=510 fzin=200 fzout=300 hittype=4
   n t=0.0827 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_00.Dust.Par_D_Dust_001_pr" label="" win=NONE
   n t=0.2000 d=1.0333 kind=CANCEL src=InputTiming asset="" label="" win=NONE
   n t=0.2000 d=1.0333 kind=CANCEL src=InputTiming asset="" label="" win=NONE
@@ -3028,7 +3028,6 @@ LOSTARK_ANIM_NOTIFY 1 "Slayer" 148
   n t=0.0500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBK_09.WindBlade.Par_Y_WBK_WindBlade_01_4" label="" win=NONE
   n t=0.0500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBK_09.WindBlade.Par_Y_WBK_WindBlade_01_5" label="" win=NONE
   n t=0.0500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBK_09.WindBlade.Par_Y_WBK_WindBlade_01_6" label="" win=NONE
-  n t=0.1500 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
   n t=0.1500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.1500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBK_09.WindBlade.Par_Y_WBK_WindBlade_04_01" label="" win=NONE
   n t=0.1500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_ZoomBlur_03" label="" win=NONE
@@ -3036,8 +3035,9 @@ LOSTARK_ANIM_NOTIFY 1 "Slayer" 148
   n t=0.1500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBK_09.WindBlade.Par_Y_WBK_WindBlade_04_02" label="" win=NONE
   n t=0.1500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBK_09.WindBlade.Par_Y_WBK_WindBlade_04_03" label="" win=NONE
   n t=0.1500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
+  n t=0.1500 d=0.1000 kind=HIT src=Effect asset="456110" label="" win=NONE area=2 ar=250 aa=200 ah=150 ax=20 arem=0 maxt=0 rep=0 repms=0 push=120 pushr=60 fz=650 fzin=200 fzout=300 hittype=4
   n t=0.1500 d=0.2000 kind=HIT src=ParticleHit asset="" label="" win=NONE
-  n t=0.1500 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.1500 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.2;in=0;out=0.05;x=5,80;y=5,80;z=5,80;fov=0,0" label="" win=NONE
   n t=0.1500 d=1.1833 kind=SOUND src=AKEvent asset="PC_BERSERKER_F.PC_Berserker_F_SK_WindBlade1_FX007_3" label="" win=NONE
   n t=0.2000 d=1.5000 kind=EFFECT src=TrailGhostEffect asset="" label="" win=NONE
   n t=0.2000 d=1.5000 kind=EFFECT src=TrailGhostEffect asset="" label="" win=NONE
@@ -3046,7 +3046,6 @@ LOSTARK_ANIM_NOTIFY 1 "Slayer" 148
   n t=0.4500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBK_09.WindBlade.Par_Y_WBK_WindBlade_01_4" label="" win=NONE
   n t=0.4500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBK_09.WindBlade.Par_Y_WBK_WindBlade_01_5" label="" win=NONE
   n t=0.4500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBK_09.WindBlade.Par_Y_WBK_WindBlade_01_6" label="" win=NONE
-  n t=0.5200 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
   n t=0.5200 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_ZoomBlur_03" label="" win=NONE
   n t=0.5200 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.5200 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBK_09.WindBlade.Par_Y_WBK_WindBlade_04_01" label="" win=NONE
@@ -3054,8 +3053,9 @@ LOSTARK_ANIM_NOTIFY 1 "Slayer" 148
   n t=0.5200 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBK_09.WindBlade.Par_Y_WBK_WindBlade_04_02" label="" win=NONE
   n t=0.5200 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.5200 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WBK_09.WindBlade.Par_Y_WBK_WindBlade_04_03" label="" win=NONE
+  n t=0.5200 d=0.1000 kind=HIT src=Effect asset="456111" label="" win=NONE area=2 ar=250 aa=200 ah=150 ax=20 arem=0 maxt=0 rep=0 repms=0 push=120 pushr=60 fz=650 fzin=200 fzout=300 hittype=4
   n t=0.5200 d=0.2000 kind=HIT src=ParticleHit asset="" label="" win=NONE
-  n t=0.5200 d=0.2000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.5200 d=0.2000 kind=SHAKE src=ViewShake asset="dur=0.2;in=0;out=0.05;x=5,80;y=5,80;z=5,80;fov=0,0" label="" win=NONE
   n t=0.5500 d=1.1500 kind=CANCEL src=InputTiming asset="" label="" win=NONE
   n t=0.5500 d=1.0500 kind=SOUND src=AKEvent asset="PC_BERSERKER_F.PC_Berserker_F_SK_WindBlade1_FX007_3" label="" win=NONE
   n t=0.9000 d=0.8000 kind=SOUND src=AKEvent asset="PC_BERSERKER_F.PC_Berserker_F_SK_WindBlade1_FX007_2" label="" win=NONE

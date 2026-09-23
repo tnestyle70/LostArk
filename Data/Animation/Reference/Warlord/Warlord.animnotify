@@ -11,7 +11,7 @@ LOSTARK_ANIM_NOTIFY 1 "Warlord" 114
   n t=0.3260 d=0.1503 kind=SHAKE src=ViewShake asset="dur=0.15;in=0;out=0;x=2,50;y=2,50;z=2,50;fov=0,0" label="" win=NONE
   n t=0.3300 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.3300 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_06.Par_O_WGL_NormalAtk_01_01" label="" win=NONE
-  n t=0.3400 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.3400 d=0.1000 kind=HIT src=Effect asset="170000" label="" win=NONE area=2 ar=280 aa=150 ah=150 ax=20 arem=0 maxt=0 rep=0 repms=0 push=100 pushr=10 fz=425 fzin=125 fzout=200 hittype=4
   n t=0.4500 d=0.5500 kind=CANCEL src=InputTiming asset="" label="[입력캔슬]" win=ANY_CANCEL
   n t=0.6000 d=0.4000 kind=CANCEL src=InputTiming asset="" label="" win=NONE
   n t=0.7000 d=0.3000 kind=CANCEL src=InputTiming asset="" label="" win=NONE
@@ -28,7 +28,7 @@ LOSTARK_ANIM_NOTIFY 1 "Warlord" 114
   n t=0.2367 d=0.1507 kind=SHAKE src=ViewShake asset="dur=0.15;in=0;out=0;x=2,50;y=2,50;z=2,50;fov=0,0" label="" win=NONE
   n t=0.2400 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_06.Par_O_WGL_NormalAtk_01_01" label="" win=NONE
   n t=0.2400 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
-  n t=0.2500 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.2500 d=0.1000 kind=HIT src=Effect asset="170001" label="" win=NONE area=2 ar=280 aa=150 ah=150 ax=20 arem=0 maxt=0 rep=0 repms=0 push=100 pushr=10 fz=425 fzin=125 fzout=200 hittype=4
   n t=0.3600 d=0.5733 kind=CANCEL src=InputTiming asset="" label="[입력캔슬]" win=ANY_CANCEL
   n t=0.5500 d=0.3833 kind=CANCEL src=InputTiming asset="" label="" win=NONE
   n t=0.6000 d=0.3333 kind=CANCEL src=InputTiming asset="" label="" win=NONE
@@ -44,7 +44,7 @@ LOSTARK_ANIM_NOTIFY 1 "Warlord" 114
   n t=0.3311 d=0.2000 kind=SHAKE src=ViewShake asset="dur=0.2;in=0;out=0;x=2,50;y=2,50;z=2,50;fov=0,0" label="" win=NONE
   n t=0.3400 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.3400 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_06.Par_O_WGL_NormalAtk_02_01" label="" win=NONE
-  n t=0.3500 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.3500 d=0.1000 kind=HIT src=Effect asset="170002" label="" win=NONE area=2 ar=300 aa=180 ah=150 ax=20 arem=0 maxt=0 rep=3 repms=200 push=150 pushr=30 fz=475 fzin=125 fzout=200 hittype=4
   n t=0.4600 d=0.8733 kind=CANCEL src=InputTiming asset="" label="[입력캔슬]" win=ANY_CANCEL
   n t=1.0000 d=0.3333 kind=CANCEL src=InputTiming asset="" label="이동캔슬" win=MOVE_CANCEL
   n t=1.1000 d=0.2333 kind=CANCEL src=InputTiming asset="" label="평타연결 개선" win=OTHER
@@ -85,7 +85,7 @@ LOSTARK_ANIM_NOTIFY 1 "Warlord" 114
   n t=0.0000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_Confront_00.Par_J_GuardHolding_03" label="" win=NONE
   n t=0.0000 d=0.4005 kind=SHAKE src=ViewShake asset="dur=0.4;in=0;out=0.2;x=8,60;y=8,60;z=10,70;fov=0,0" label="" win=NONE
   n t=0.0000 d=1.1667 kind=SOUND src=AKEvent asset="PC_COMMON_PERFECTGUARD.PC_Common_PerfectGuard1_Success1_1" label="" win=NONE
-  n t=0.0515 d=0.1002 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.0515 d=0.1002 kind=HIT src=Effect asset="530200" label="" win=NONE area=2 ar=500 aa=300 ah=180 ax=0 arem=0 maxt=0 rep=0 repms=0 push=120 pushr=50 fz=1200 fzin=400 fzout=500 hittype=4
   n t=0.4943 d=1.5057 kind=CANCEL src=InputTiming asset="" label="입력캔슬" win=ANY_CANCEL
   n t=0.6972 d=1.3028 kind=CANCEL src=InputTiming asset="" label="이동캔슬" win=MOVE_CANCEL
 "wgl_att_battle_guide_1_start" skill=17910 len=1.0000 name="저스트 가드"
@@ -110,7 +110,7 @@ LOSTARK_ANIM_NOTIFY 1 "Warlord" 114
   n t=0.0000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_04.SYS.Teleport.Par_L_Teleport_Off_03" label="" win=NONE
   n t=0.0000 d=5.0000 kind=SUPERARMOR src=SuperArmor asset="" label="" win=NONE
   n t=0.0010 d=3.2271 kind=SOUND src=AKEvent asset="PC_COMMON_DUAL.PC_Common_Dual1_7" label="" win=NONE
-  n t=0.0100 d=0.1000 kind=EFFECT src=Effect asset="" label="에스더 PP 제거" win=NONE
+  n t=0.0100 d=0.1000 kind=EFFECT src=Effect asset="530100" label="에스더 PP 제거" win=NONE
 "wgl_sk_bash" skill=17040 len=1.0000 name="배쉬"
   n t=0.0000 d=1.0000 kind=CANCEL src=InputTiming asset="" label="방어태세해제" win=OTHER
   n t=0.0000 d=0.7200 kind=SUPERARMOR src=SuperArmor asset="" label="" win=NONE
@@ -128,8 +128,8 @@ LOSTARK_ANIM_NOTIFY 1 "Warlord" 114
   n t=0.3140 d=0.2196 kind=SHAKE src=ViewShake asset="dur=0.15;in=0;out=0.05;x=5,40;y=5,40;z=5,50;fov=0,0" label="" win=NONE
   n t=0.3193 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="fx_pc_wgl_02.Par_N_Bash_04_LOC_INT" label="" win=NONE
   n t=0.3200 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
-  n t=0.3200 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
-  n t=0.3200 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.3200 d=0.1000 kind=HIT src=Effect asset="170400" label="" win=NONE area=3 ar=200 aa=120 ah=150 ax=30 arem=0 maxt=0 rep=0 repms=0 push=70 pushr=70 fz=470 fzin=150 fzout=250 hittype=4
+  n t=0.3200 d=0.1000 kind=HIT src=Effect asset="170405" label="" win=NONE area=3 ar=200 aa=120 ah=150 ax=30 arem=0 maxt=0 rep=0 repms=0 push=70 pushr=70 fz=470 fzin=150 fzout=250 hittype=4
   n t=0.3201 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_02.Par_N_ShieldAtk_02" label="" win=NONE
   n t=0.3201 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_02.Par_N_Bash_01" label="" win=NONE
   n t=0.3201 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_02.Par_N_ShieldAtk_02" label="" win=NONE
@@ -248,7 +248,7 @@ LOSTARK_ANIM_NOTIFY 1 "Warlord" 114
   n t=0.0380 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_ZoomBlur_03" label="" win=NONE
   n t=0.0380 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.0397 d=0.3985 kind=SHAKE src=ViewShake asset="dur=0.3;in=0;out=0.2;x=6,50;y=6,50;z=15,50;fov=0,0" label="" win=NONE
-  n t=0.0500 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.0500 d=0.1000 kind=HIT src=Effect asset="172140" label="" win=NONE area=2 ar=350 aa=170 ah=150 ax=30 arem=0 maxt=0 rep=0 repms=0 push=150 pushr=150 fz=550 fzin=150 fzout=250 hittype=4
   n t=0.0655 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_00.Dust.Par_L_SideDust_01" label="" win=NONE
   n t=0.1099 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_01.Par_L_WGL_Stinger_05_2" label="" win=NONE
   n t=0.1500 d=1.1500 kind=CANCEL src=InputTiming asset="" label="[회피캔슬]" win=DODGE_CANCEL
@@ -284,7 +284,7 @@ LOSTARK_ANIM_NOTIFY 1 "Warlord" 114
   n t=0.0380 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_ZoomBlur_03" label="" win=NONE
   n t=0.0380 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.0397 d=0.2000 kind=SHAKE src=ViewShake asset="dur=0.2;in=0;out=0.1;x=6,50;y=6,50;z=20,50;fov=0,0" label="" win=NONE
-  n t=0.0500 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.0500 d=0.1000 kind=HIT src=Effect asset="172150" label="" win=NONE area=2 ar=350 aa=170 ah=150 ax=30 arem=0 maxt=0 rep=0 repms=0 push=150 pushr=100 fz=550 fzin=150 fzout=250 hittype=4
   n t=0.0655 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_00.Dust.Par_L_SideDust_01" label="" win=NONE
   n t=0.2650 d=1.2017 kind=SOUND src=AKEvent asset="PC_GUNLANCER_M.PC_GunLancer_M_SK_ChargeStinger1_FX008_5" label="" win=NONE
   n t=0.2864 d=0.3949 kind=SHAKE src=ViewShake asset="dur=0.3;in=0;out=0;x=5,60;y=5,60;z=5,60;fov=0,0" label="" win=NONE
@@ -293,7 +293,7 @@ LOSTARK_ANIM_NOTIFY 1 "Warlord" 114
   n t=0.2950 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="fx_pc_wgl_10.Par_K_WGL_ChargeStingerExp_01_01" label="" win=NONE
   n t=0.2950 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_ZoomBlur_01" label="" win=NONE
   n t=0.2950 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_06.Par_O_WGL_ChargeStingerDust_01_01" label="" win=NONE
-  n t=0.3000 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.3000 d=0.1000 kind=HIT src=Effect asset="172160" label="" win=NONE area=2 ar=500 aa=250 ah=150 ax=-20 arem=0 maxt=0 rep=0 repms=0 push=120 pushr=120 fz=520 fzin=150 fzout=250 hittype=5
   n t=0.4500 d=1.0167 kind=CANCEL src=InputTiming asset="" label="[회피캔슬]" win=DODGE_CANCEL
   n t=0.7965 d=0.6702 kind=CANCEL src=InputTiming asset="" label="입력캔슬" win=ANY_CANCEL
   n t=0.9961 d=0.4706 kind=CANCEL src=InputTiming asset="" label="이동캔슬" win=MOVE_CANCEL
@@ -308,7 +308,7 @@ LOSTARK_ANIM_NOTIFY 1 "Warlord" 114
   n t=0.0000 d=1.3333 kind=SOUND src=AKEvent asset="PC_GUNLANCER_M.PC_GunLancer_M_SK_CounterSpear1_FX008_2" label="" win=NONE
   n t=0.0000 d=1.0000 kind=SUPERARMOR src=SuperArmor asset="" label="" win=NONE
   n t=0.0000 d=1.0046 kind=SUPERARMOR src=SuperArmorPVP asset="" label="" win=NONE
-  n t=0.1000 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.1000 d=0.1000 kind=EFFECT src=Effect asset="171931" label="" win=NONE
   n t=0.2500 d=1.0333 kind=SOUND src=AKEvent asset="PC_GUNLANCER_M.PC_GunLancer_M_SK_CounterSpear1_FX000_3" label="" win=NONE
   n t=0.3000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.3000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
@@ -319,8 +319,8 @@ LOSTARK_ANIM_NOTIFY 1 "Warlord" 114
   n t=0.3400 d=0.2000 kind=EFFECT src=PlayParticleEffect asset="fx_pc_wgl_00.Par_D_CounterSpear_06_LOC_INT" label="" win=NONE
   n t=0.3400 d=0.4000 kind=EFFECT src=PlayParticleEffect asset="fx_pc_wgl_00.Par_D_CounterSpear_55_LOC_INT" label="" win=NONE
   n t=0.3426 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_00.Dust.Par_D_Dust_002_pr" label="" win=NONE
-  n t=0.3500 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
-  n t=0.3500 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.3500 d=0.1000 kind=HIT src=Effect asset="171910" label="" win=NONE area=2 ar=320 aa=200 ah=150 ax=0 arem=0 maxt=0 rep=0 repms=0 push=120 pushr=120 fz=520 fzin=150 fzout=250 hittype=5
+  n t=0.3500 d=0.1000 kind=HIT src=Effect asset="171930" label="" win=NONE area=2 ar=320 aa=200 ah=150 ax=0 arem=0 maxt=0 rep=0 repms=0 push=80 pushr=80 fz=0 fzin=0 fzout=0 hittype=4
   n t=0.5000 d=0.8333 kind=CANCEL src=InputTiming asset="" label="[회피캔슬]" win=DODGE_CANCEL
   n t=0.7971 d=0.5362 kind=CANCEL src=InputTiming asset="" label="입력캔슬" win=ANY_CANCEL
   n t=1.0000 d=0.3333 kind=CANCEL src=InputTiming asset="" label="이동캔슬" win=MOVE_CANCEL
@@ -335,15 +335,15 @@ LOSTARK_ANIM_NOTIFY 1 "Warlord" 114
   n t=0.0000 d=1.8000 kind=SOUND src=AKEvent asset="PC_GUNLANCER_M.PC_GunLancer_M_SK_CounterSpear1_FX008_2" label="" win=NONE
   n t=0.0000 d=1.2000 kind=SUPERARMOR src=SuperArmor asset="" label="" win=NONE
   n t=0.0000 d=1.2092 kind=SUPERARMOR src=SuperArmorPVP asset="" label="" win=NONE
-  n t=0.1000 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.1000 d=0.1000 kind=EFFECT src=Effect asset="171931" label="" win=NONE
   n t=0.2500 d=1.4000 kind=SOUND src=AKEvent asset="PC_GUNLANCER_M.PC_GunLancer_M_SK_CounterSpear1_FX007_3" label="" win=NONE
   n t=0.3400 d=0.2000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_01.Par_N_ConterSpear_02_LOC_INT" label="" win=NONE
   n t=0.3400 d=0.2000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_01.Par_N_ConterSpear_01" label="" win=NONE
   n t=0.3400 d=0.2000 kind=EFFECT src=PlayParticleEffect asset="fx_cm_01.Distortion_oneLayer.Par_MP_ConcaveDisOL_WGL_CS_01" label="" win=NONE
   n t=0.3426 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_00.Dust.Par_D_Dust_002_pr" label="" win=NONE
-  n t=0.3500 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
   n t=0.3500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.3500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
+  n t=0.3500 d=0.1000 kind=HIT src=Effect asset="171920" label="" win=NONE area=2 ar=320 aa=200 ah=150 ax=0 arem=0 maxt=0 rep=0 repms=0 push=120 pushr=120 fz=520 fzin=150 fzout=250 hittype=5
   n t=0.3500 d=0.4000 kind=SHAKE src=ViewShake asset="dur=0.3;in=0;out=0.2;x=9,50;y=9,50;z=9,50;fov=0,0" label="" win=NONE
   n t=0.3501 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_ZoomBlur_01" label="" win=NONE
   n t=0.4500 d=1.3500 kind=CANCEL src=InputTiming asset="" label="[회피캔슬]" win=DODGE_CANCEL
@@ -386,7 +386,7 @@ LOSTARK_ANIM_NOTIFY 1 "Warlord" 114
   n t=0.2000 d=0.3000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_07" label="" win=NONE
   n t=0.2000 d=0.3000 kind=SHAKE src=ViewShake asset="dur=0.2;in=0.1;out=0.2;x=2,50;y=2,50;z=2,50;fov=0,0" label="" win=NONE
   n t=0.2500 d=0.2000 kind=HIT src=ParticleHit asset="" label="" win=NONE
-  n t=0.2700 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.2700 d=0.1000 kind=HIT src=Effect asset="170820" label="" win=NONE area=2 ar=300 aa=140 ah=150 ax=0 arem=0 maxt=0 rep=0 repms=0 push=10 pushr=10 fz=335 fzin=125 fzout=200 hittype=7
   n t=0.2900 d=0.1700 kind=EFFECT src=Trails asset="FX_BS_01.Trail.Par_O_WGL_DUFTrail_01_01" label="" win=NONE
   n t=0.2900 d=0.1700 kind=EFFECT src=Trails asset="FX_BS_01.Trail.Par_O_WGL_DUFTrail_01_01" label="" win=NONE
   n t=0.2900 d=0.1700 kind=EFFECT src=Trails asset="FX_BS_01.Trail.Par_O_WGL_DUFTrail_01_01" label="" win=NONE
@@ -411,7 +411,7 @@ LOSTARK_ANIM_NOTIFY 1 "Warlord" 114
   n t=0.1200 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_06.Par_O_WGL_DUF_01_02" label="" win=NONE
   n t=0.1263 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_ZoomBlur_01" label="" win=NONE
   n t=0.1372 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_06.Par_O_WGL_DUF_03_01" label="" win=NONE
-  n t=0.1400 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.1400 d=0.1000 kind=HIT src=Effect asset="170810" label="" win=NONE area=1 ar=120 aa=0 ah=300 ax=180 arem=0 maxt=0 rep=0 repms=0 push=20 pushr=20 fz=420 fzin=150 fzout=250 hittype=5
   n t=0.1400 d=0.3941 kind=SHAKE src=ViewShake asset="dur=0.3;in=0;out=0.1;x=5,60;y=5,60;z=5,60;fov=0,0" label="" win=NONE
   n t=0.2400 d=1.4600 kind=CANCEL src=InputTiming asset="" label="[회피캔슬]" win=DODGE_CANCEL
   n t=0.2930 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_01.Par_E_Reload_01" label="" win=NONE
@@ -434,7 +434,7 @@ LOSTARK_ANIM_NOTIFY 1 "Warlord" 114
   n t=0.2000 d=0.3000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_07" label="" win=NONE
   n t=0.2000 d=0.3000 kind=SHAKE src=ViewShake asset="dur=0.2;in=0.1;out=0.2;x=2,50;y=2,50;z=2,50;fov=0,0" label="" win=NONE
   n t=0.2500 d=0.2000 kind=HIT src=ParticleHit asset="" label="" win=NONE
-  n t=0.2700 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.2700 d=0.1000 kind=HIT src=Effect asset="170820" label="" win=NONE area=2 ar=300 aa=140 ah=150 ax=0 arem=0 maxt=0 rep=0 repms=0 push=10 pushr=10 fz=335 fzin=125 fzout=200 hittype=7
   n t=0.2900 d=0.1700 kind=EFFECT src=Trails asset="FX_BS_01.Trail.Par_O_WGL_DUFTrail_01_01" label="" win=NONE
   n t=0.3000 d=0.1600 kind=EFFECT src=Trails asset="FX_BS_01.Trail.Par_O_WGL_DUFTrail_01_01" label="" win=NONE
   n t=0.3000 d=0.1600 kind=EFFECT src=Trails asset="FX_BS_01.Trail.Par_O_WGL_DUFTrail_01_01" label="" win=NONE
@@ -453,10 +453,10 @@ LOSTARK_ANIM_NOTIFY 1 "Warlord" 114
   n t=0.3000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_06.Par_O_WGL_DUF_04_01" label="" win=NONE
   n t=0.3000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_06.Par_O_WGL_DUF_04_02_LOC_INT" label="" win=NONE
   n t=0.3000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_06.Par_O_WGL_DUF_04_01" label="" win=NONE
-  n t=0.3500 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
   n t=0.3500 d=0.3500 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_07" label="" win=NONE
   n t=0.3500 d=0.3500 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_07" label="" win=NONE
   n t=0.3500 d=0.3500 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_07" label="" win=NONE
+  n t=0.3500 d=0.1000 kind=HIT src=Effect asset="170821" label="" win=NONE area=2 ar=300 aa=140 ah=300 ax=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 fz=0 fzin=0 fzout=0 hittype=8
   n t=0.3518 d=0.4000 kind=SHAKE src=ViewShake asset="dur=0.35;in=0;out=0.1;x=0,50;y=0,50;z=8,50;fov=0,0" label="" win=NONE
   n t=0.3612 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_06.Par_O_WGL_DUF_06_01_LOC_INT" label="" win=NONE
   n t=0.3612 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_06.Par_O_WGL_DUF_05_01" label="" win=NONE
@@ -484,7 +484,7 @@ LOSTARK_ANIM_NOTIFY 1 "Warlord" 114
   n t=0.1200 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_06.Par_O_WGL_DUF_01_02" label="" win=NONE
   n t=0.1263 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_ZoomBlur_01" label="" win=NONE
   n t=0.1372 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_06.Par_O_WGL_DUF_03_01" label="" win=NONE
-  n t=0.1400 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.1400 d=0.1000 kind=HIT src=Effect asset="170830" label="" win=NONE area=1 ar=120 aa=0 ah=300 ax=180 arem=0 maxt=0 rep=0 repms=0 push=20 pushr=20 fz=420 fzin=150 fzout=250 hittype=5
   n t=0.1400 d=0.3941 kind=SHAKE src=ViewShake asset="dur=0.3;in=0;out=0.1;x=5,60;y=5,60;z=5,60;fov=0,0" label="" win=NONE
   n t=0.2000 d=0.8200 kind=CANCEL src=InputTiming asset="" label="[선이]" win=MOVE_PRE
   n t=0.2500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_01.Par_E_Reload_01" label="" win=NONE
@@ -500,7 +500,7 @@ LOSTARK_ANIM_NOTIFY 1 "Warlord" 114
   n t=0.4346 d=0.3507 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_07" label="" win=NONE
   n t=0.4381 d=0.3949 kind=SHAKE src=ViewShake asset="dur=0.3;in=0;out=0.1;x=5,60;y=5,60;z=5,60;fov=0,0" label="" win=NONE
   n t=0.4400 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_06.Par_O_WGL_DUF_03_01" label="" win=NONE
-  n t=0.4400 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.4400 d=0.1000 kind=HIT src=Effect asset="170840" label="" win=NONE area=1 ar=120 aa=0 ah=300 ax=180 arem=0 maxt=0 rep=0 repms=0 push=20 pushr=20 fz=420 fzin=150 fzout=250 hittype=5
   n t=0.5400 d=0.6600 kind=CANCEL src=InputTiming asset="" label="[회피캔슬]" win=DODGE_CANCEL
   n t=0.6000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_01.Par_E_Reload_01" label="" win=NONE
   n t=0.8000 d=0.4000 kind=CANCEL src=InputTiming asset="" label="입력캔슬" win=ANY_CANCEL
@@ -508,7 +508,7 @@ LOSTARK_ANIM_NOTIFY 1 "Warlord" 114
 "wgl_sk_defence_end" skill=17810 len=0.5667 name="# 방어태세 해제"
   n t=0.0000 d=0.1027 kind=CANCEL src=InputTiming asset="" label="[선스]" win=SKILL_PRE
   n t=0.0000 d=0.2016 kind=CANCEL src=InputTiming asset="" label="[선이]" win=MOVE_PRE
-  n t=0.0000 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.0000 d=0.1000 kind=EFFECT src=Effect asset="178100" label="" win=NONE
   n t=0.0000 d=0.2016 kind=SUPERARMOR src=SuperArmorPVP asset="" label="" win=NONE
   n t=0.0000 d=0.2001 kind=SUPERARMOR src=SuperArmor asset="" label="" win=NONE
   n t=0.0985 d=0.4682 kind=CANCEL src=InputTiming asset="" label="입력캔슬" win=ANY_CANCEL
@@ -523,7 +523,7 @@ LOSTARK_ANIM_NOTIFY 1 "Warlord" 114
   n t=0.2000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_FilmNoise_01" label="" win=NONE
   n t=0.2968 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_06.Par_O_WGL_ApShield_03_02" label="" win=NONE
   n t=0.2987 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_06.Par_O_WGL_ApShield_03_01" label="" win=NONE
-  n t=0.3000 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.3000 d=0.1000 kind=EFFECT src=Effect asset="178000" label="" win=NONE
   n t=0.3985 d=0.1682 kind=CANCEL src=InputTiming asset="" label="입력캔슬" win=ANY_CANCEL
   n t=0.4995 d=0.0672 kind=CANCEL src=InputTiming asset="" label="이동캔슬" win=MOVE_CANCEL
 "wgl_sk_eternalcyclone_01" skill=17240 len=1.0000 name="풀배럴 캐넌"
@@ -605,7 +605,6 @@ LOSTARK_ANIM_NOTIFY 1 "Warlord" 114
   n t=0.0000 d=0.8200 kind=SUPERARMOR src=SuperArmor asset="" label="" win=NONE
   n t=0.0000 d=0.8200 kind=SUPERARMOR src=SuperArmorPVP asset="" label="" win=NONE
   n t=0.0010 d=1.0990 kind=SOUND src=AKEvent asset="PC_GUNLANCER_M.PC_GunLancer_M_SK_EternalCyclone1_FX001_3" label="" win=NONE
-  n t=0.1200 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
   n t=0.1200 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_01.Par_E_Reload_01" label="" win=NONE
   n t=0.1200 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_ZoomBlur_01" label="" win=NONE
   n t=0.1200 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_07" label="" win=NONE
@@ -616,6 +615,7 @@ LOSTARK_ANIM_NOTIFY 1 "Warlord" 114
   n t=0.1200 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_07.Par_S_WGL_Cyclone_Shot_01" label="" win=NONE
   n t=0.1200 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_07.Par_S_WGL_Cyclone_Side_01" label="" win=NONE
   n t=0.1200 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_07.Par_S_WGL_Cyclone_Wind_01" label="" win=NONE
+  n t=0.1200 d=0.1000 kind=HIT src=Effect asset="172701" label="" win=NONE area=2 ar=1000 aa=500 ah=200 ax=-20 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 fz=780 fzin=200 fzout=450 hittype=5
   n t=0.1200 d=0.1512 kind=SHAKE src=ViewShake asset="dur=0.4;in=0;out=0.2;x=11,55;y=11,55;z=11,55;fov=0,0" label="" win=NONE
   n t=0.2000 d=0.9000 kind=CANCEL src=InputTiming asset="" label="[회피캔슬]" win=DODGE_CANCEL
   n t=0.4000 d=0.7000 kind=CANCEL src=InputTiming asset="" label="" win=NONE
@@ -627,7 +627,6 @@ LOSTARK_ANIM_NOTIFY 1 "Warlord" 114
   n t=0.0000 d=0.8200 kind=SUPERARMOR src=SuperArmor asset="" label="" win=NONE
   n t=0.0000 d=0.8200 kind=SUPERARMOR src=SuperArmorPVP asset="" label="" win=NONE
   n t=0.0010 d=1.0990 kind=SOUND src=AKEvent asset="PC_GUNLANCER_M.PC_GunLancer_M_SK_EternalCyclone1_FX000_3" label="" win=NONE
-  n t=0.1200 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
   n t=0.1200 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_01.Par_E_Reload_01" label="" win=NONE
   n t=0.1200 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_ZoomBlur_01" label="" win=NONE
   n t=0.1200 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_07" label="" win=NONE
@@ -638,6 +637,7 @@ LOSTARK_ANIM_NOTIFY 1 "Warlord" 114
   n t=0.1200 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_07.Par_S_WGL_Cyclone_Shot_01" label="" win=NONE
   n t=0.1200 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_07.Par_S_WGL_Cyclone_Side_01_Fail" label="" win=NONE
   n t=0.1200 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_07.Par_S_WGL_Cyclone_Wind_01_Fail" label="" win=NONE
+  n t=0.1200 d=0.1000 kind=HIT src=Effect asset="172702" label="" win=NONE area=2 ar=1000 aa=500 ah=200 ax=-20 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 fz=780 fzin=200 fzout=450 hittype=5
   n t=0.1200 d=0.1512 kind=SHAKE src=ViewShake asset="dur=0.4;in=0;out=0.2;x=11,55;y=11,55;z=11,55;fov=0,0" label="" win=NONE
   n t=0.2000 d=0.9000 kind=CANCEL src=InputTiming asset="" label="[회피캔슬]" win=DODGE_CANCEL
   n t=0.4000 d=0.7000 kind=CANCEL src=InputTiming asset="" label="" win=NONE
@@ -652,7 +652,7 @@ LOSTARK_ANIM_NOTIFY 1 "Warlord" 114
   n t=0.0704 d=0.1177 kind=SHAKE src=ViewShake asset="dur=0.4;in=0;out=0.2;x=9,35;y=9,35;z=9,35;fov=0,0" label="" win=NONE
   n t=0.0779 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_01.Par_E_Reload_01" label="" win=NONE
   n t=0.0779 d=0.1006 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
-  n t=0.0800 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.0800 d=0.1000 kind=HIT src=Effect asset="172000" label="" win=NONE area=2 ar=380 aa=250 ah=150 ax=-30 arem=0 maxt=0 rep=0 repms=0 push=30 pushr=30 fz=280 fzin=100 fzout=150 hittype=4
   n t=0.1800 d=0.9200 kind=CANCEL src=InputTiming asset="" label="[회피캔슬]" win=DODGE_CANCEL
   n t=0.5000 d=0.6000 kind=CANCEL src=InputTiming asset="" label="입력캔슬" win=ANY_CANCEL
   n t=0.7000 d=0.4000 kind=CANCEL src=InputTiming asset="" label="이동캔슬" win=MOVE_CANCEL
@@ -672,10 +672,10 @@ LOSTARK_ANIM_NOTIFY 1 "Warlord" 114
   n t=0.0440 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_ZoomBlur_01" label="" win=NONE
   n t=0.0440 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_01.Par_E_Reload_01" label="" win=NONE
   n t=0.0440 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_07" label="" win=NONE
-  n t=0.0500 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
-  n t=0.0500 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
-  n t=0.0500 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
-  n t=0.0500 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.0500 d=0.1000 kind=HIT src=Effect asset="172010" label="" win=NONE area=2 ar=500 aa=250 ah=150 ax=-30 arem=0 maxt=0 rep=0 repms=0 push=100 pushr=100 fz=500 fzin=150 fzout=250 hittype=5
+  n t=0.0500 d=0.1000 kind=HIT src=Effect asset="172012" label="" win=NONE area=3 ar=600 aa=80 ah=150 ax=-30 arem=0 maxt=0 rep=3 repms=200 push=150 pushr=70 fz=700 fzin=150 fzout=250 hittype=4
+  n t=0.0500 d=0.1000 kind=HIT src=Effect asset="172013" label="" win=NONE area=2 ar=500 aa=250 ah=150 ax=-30 arem=0 maxt=0 rep=0 repms=0 push=150 pushr=70 fz=550 fzin=150 fzout=250 hittype=4
+  n t=0.0500 d=0.1000 kind=HIT src=Effect asset="172011" label="" win=NONE area=2 ar=500 aa=250 ah=150 ax=-30 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 fz=0 fzin=0 fzout=0 hittype=5
   n t=0.0704 d=0.1512 kind=SHAKE src=ViewShake asset="dur=0.4;in=0;out=0.2;x=11,55;y=11,55;z=11,55;fov=0,0" label="" win=NONE
   n t=0.0724 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_06.Par_O_WGL_BustCannon_Dust_01" label="" win=NONE
   n t=0.1500 d=0.9500 kind=CANCEL src=InputTiming asset="" label="[회피캔슬]" win=DODGE_CANCEL
@@ -715,10 +715,10 @@ LOSTARK_ANIM_NOTIFY 1 "Warlord" 114
   n t=0.0169 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_06.Par_O_WGL_BustCannon_01_03" label="" win=NONE
   n t=0.0169 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_09.Par_M_BustCannon_Muzzle_01_07" label="" win=NONE
   n t=0.0271 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_07" label="" win=NONE
-  n t=0.0400 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
-  n t=0.0400 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
-  n t=0.0400 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
-  n t=0.0400 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.0400 d=0.1000 kind=HIT src=Effect asset="172020" label="" win=NONE area=3 ar=350 aa=90 ah=150 ax=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 fz=0 fzin=0 fzout=0 hittype=6
+  n t=0.0400 d=0.1000 kind=HIT src=Effect asset="172021" label="" win=NONE area=3 ar=350 aa=90 ah=150 ax=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 fz=0 fzin=0 fzout=0 hittype=6
+  n t=0.0400 d=0.1000 kind=HIT src=Effect asset="172022" label="" win=NONE area=3 ar=420 aa=90 ah=150 ax=0 arem=0 maxt=0 rep=3 repms=200 push=150 pushr=70 fz=700 fzin=150 fzout=250 hittype=4
+  n t=0.0400 d=0.1000 kind=HIT src=Effect asset="172023" label="" win=NONE area=3 ar=350 aa=90 ah=150 ax=0 arem=0 maxt=0 rep=0 repms=0 push=150 pushr=70 fz=550 fzin=150 fzout=250 hittype=4
   n t=0.0444 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_01.Par_E_Reload_01" label="" win=NONE
   n t=0.1400 d=1.7267 kind=CANCEL src=InputTiming asset="" label="[회피캔슬]" win=DODGE_CANCEL
   n t=0.1665 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_06.Par_O_WGL_BustCannon_01_02" label="" win=NONE
@@ -736,10 +736,10 @@ LOSTARK_ANIM_NOTIFY 1 "Warlord" 114
   n t=0.3180 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_06.Par_O_WGL_BustCannon_01_03" label="" win=NONE
   n t=0.3180 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_06.Par_O_WGL_BustCannon_01_03" label="" win=NONE
   n t=0.3180 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_09.Par_M_BustCannon_Muzzle_01_07" label="" win=NONE
-  n t=0.3200 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
-  n t=0.3200 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
-  n t=0.3200 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
-  n t=0.3200 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.3200 d=0.1000 kind=HIT src=Effect asset="172020" label="" win=NONE area=3 ar=350 aa=90 ah=150 ax=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 fz=0 fzin=0 fzout=0 hittype=6
+  n t=0.3200 d=0.1000 kind=HIT src=Effect asset="172021" label="" win=NONE area=3 ar=350 aa=90 ah=150 ax=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 fz=0 fzin=0 fzout=0 hittype=6
+  n t=0.3200 d=0.1000 kind=HIT src=Effect asset="172022" label="" win=NONE area=3 ar=420 aa=90 ah=150 ax=0 arem=0 maxt=0 rep=3 repms=200 push=150 pushr=70 fz=700 fzin=150 fzout=250 hittype=4
+  n t=0.3200 d=0.1000 kind=HIT src=Effect asset="172023" label="" win=NONE area=3 ar=350 aa=90 ah=150 ax=0 arem=0 maxt=0 rep=0 repms=0 push=150 pushr=70 fz=550 fzin=150 fzout=250 hittype=4
   n t=0.3288 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_07" label="" win=NONE
   n t=0.4647 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_06.Par_O_WGL_BustCannon_01_02" label="" win=NONE
   n t=0.4647 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_06.Par_O_WGL_BustCannon_01_01" label="" win=NONE
@@ -750,10 +750,10 @@ LOSTARK_ANIM_NOTIFY 1 "Warlord" 114
   n t=0.4735 d=0.0000 kind=SOUND src=AKEvent asset="PC_GUNLANCER_M.PC_GunLancer_M_SK_BurstConnon1_FX000_3" label="" win=NONE
   n t=0.4759 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_07" label="" win=NONE
   n t=0.5493 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_01.Par_E_Reload_01" label="" win=NONE
-  n t=0.5700 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
-  n t=0.5700 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
-  n t=0.5700 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
-  n t=0.5700 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.5700 d=0.1000 kind=HIT src=Effect asset="172020" label="" win=NONE area=3 ar=350 aa=90 ah=150 ax=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 fz=0 fzin=0 fzout=0 hittype=6
+  n t=0.5700 d=0.1000 kind=HIT src=Effect asset="172021" label="" win=NONE area=3 ar=350 aa=90 ah=150 ax=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 fz=0 fzin=0 fzout=0 hittype=6
+  n t=0.5700 d=0.1000 kind=HIT src=Effect asset="172022" label="" win=NONE area=3 ar=420 aa=90 ah=150 ax=0 arem=0 maxt=0 rep=3 repms=200 push=150 pushr=70 fz=700 fzin=150 fzout=250 hittype=4
+  n t=0.5700 d=0.1000 kind=HIT src=Effect asset="172023" label="" win=NONE area=3 ar=350 aa=90 ah=150 ax=0 arem=0 maxt=0 rep=0 repms=0 push=150 pushr=70 fz=550 fzin=150 fzout=250 hittype=4
   n t=0.6240 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_06.Par_O_WGL_BustCannon_01_01" label="" win=NONE
   n t=0.6240 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_06.Par_O_WGL_BustCannon_01_02" label="" win=NONE
   n t=0.6240 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_06.Par_O_WGL_BustCannon_01_01" label="" win=NONE
@@ -770,10 +770,10 @@ LOSTARK_ANIM_NOTIFY 1 "Warlord" 114
   n t=0.7719 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_09.Par_M_BustCannon_Muzzle_01_07" label="" win=NONE
   n t=0.7790 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_01.Par_E_Reload_01" label="" win=NONE
   n t=0.7837 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_07" label="" win=NONE
-  n t=0.8300 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
-  n t=0.8300 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
-  n t=0.8300 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
-  n t=0.8300 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.8300 d=0.1000 kind=HIT src=Effect asset="172020" label="" win=NONE area=3 ar=350 aa=90 ah=150 ax=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 fz=0 fzin=0 fzout=0 hittype=6
+  n t=0.8300 d=0.1000 kind=HIT src=Effect asset="172021" label="" win=NONE area=3 ar=350 aa=90 ah=150 ax=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 fz=0 fzin=0 fzout=0 hittype=6
+  n t=0.8300 d=0.1000 kind=HIT src=Effect asset="172022" label="" win=NONE area=3 ar=420 aa=90 ah=150 ax=0 arem=0 maxt=0 rep=3 repms=200 push=150 pushr=70 fz=700 fzin=150 fzout=250 hittype=4
+  n t=0.8300 d=0.1000 kind=HIT src=Effect asset="172023" label="" win=NONE area=3 ar=350 aa=90 ah=150 ax=0 arem=0 maxt=0 rep=0 repms=0 push=150 pushr=70 fz=550 fzin=150 fzout=250 hittype=4
   n t=1.1000 d=0.7667 kind=CANCEL src=InputTiming asset="" label="입력캔슬" win=ANY_CANCEL
   n t=1.3000 d=0.5667 kind=CANCEL src=InputTiming asset="" label="이동캔슬" win=MOVE_CANCEL
 "wgl_sk_firebullet" skill=17060 len=1.3667 name="파이어블렛"
@@ -786,7 +786,7 @@ LOSTARK_ANIM_NOTIFY 1 "Warlord" 114
   n t=0.3246 d=0.3949 kind=SHAKE src=ViewShake asset="dur=0.3;in=0;out=0.1;x=5,60;y=5,60;z=5,60;fov=0,0" label="" win=NONE
   n t=0.3284 d=0.3515 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_07" label="" win=NONE
   n t=0.3284 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_06.Par_O_WGL_FireBullet_01_01" label="" win=NONE
-  n t=0.3300 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.3300 d=0.1000 kind=HIT src=Effect asset="170600" label="" win=NONE area=3 ar=380 aa=60 ah=150 ax=-20 arem=0 maxt=0 rep=0 repms=0 push=120 pushr=50 fz=550 fzin=150 fzout=250 hittype=4
   n t=0.3300 d=0.0000 kind=SOUND src=AKEvent asset="PC_GUNLANCER_M.PC_GunLancer_M_Sk_FireBullet1_FX000_2" label="" win=NONE
   n t=0.3957 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_01.Par_E_Reload_01" label="" win=NONE
   n t=0.4300 d=0.9366 kind=CANCEL src=InputTiming asset="" label="[회피캔슬]" win=DODGE_CANCEL
@@ -801,7 +801,7 @@ LOSTARK_ANIM_NOTIFY 1 "Warlord" 114
   n t=0.3500 d=0.0000 kind=SOUND src=AKEvent asset="PC_GUNLANCER_M.PC_GunLancer_M_Sk_FireBullet1_FX040_2" label="" win=NONE
   n t=0.3570 d=0.3000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_07" label="" win=NONE
   n t=0.3570 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_06.Par_O_WGL_FireBullet_01_01" label="" win=NONE
-  n t=0.3600 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.3600 d=0.1000 kind=HIT src=Effect asset="170610" label="" win=NONE area=3 ar=350 aa=60 ah=150 ax=-20 arem=0 maxt=0 rep=0 repms=0 push=100 pushr=20 fz=500 fzin=150 fzout=250 hittype=4
   n t=0.3609 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_ZoomBlur_01" label="" win=NONE
   n t=0.3609 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_06.Par_O_WGL_DUF_03_01" label="" win=NONE
   n t=0.3800 d=0.0000 kind=SOUND src=AKEvent asset="PC_GUNLANCER_M.PC_GunLancer_M_Sk_FireBullet1_Vox1_2" label="" win=NONE
@@ -809,7 +809,7 @@ LOSTARK_ANIM_NOTIFY 1 "Warlord" 114
   n t=0.6000 d=0.1000 kind=SHAKE src=ViewShake asset="dur=0.3;in=0;out=0.1;x=6,50;y=6,50;z=8,50;fov=0,0" label="" win=NONE
   n t=0.6289 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_06.Par_O_WGL_DUF_03_01" label="" win=NONE
   n t=0.6289 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_ZoomBlur_01" label="" win=NONE
-  n t=0.6300 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.6300 d=0.1000 kind=HIT src=Effect asset="170620" label="" win=NONE area=3 ar=400 aa=70 ah=150 ax=-20 arem=0 maxt=0 rep=0 repms=0 push=120 pushr=40 fz=550 fzin=150 fzout=250 hittype=4
   n t=0.6350 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_06.Par_O_WGL_FireBullet_01_01" label="" win=NONE
   n t=0.6350 d=0.4511 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_07" label="" win=NONE
   n t=0.7003 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_01.Par_E_Reload_01" label="" win=NONE
@@ -834,7 +834,7 @@ LOSTARK_ANIM_NOTIFY 1 "Warlord" 114
   n t=0.7690 d=0.3007 kind=SHAKE src=ViewShake asset="dur=0.3;in=0;out=0.1;x=6,50;y=6,50;z=8,50;fov=0,0" label="" win=NONE
   n t=0.7895 d=0.0000 kind=SOUND src=AKEvent asset="PC_GUNLANCER_M.PC_GunLancer_M_Sk_FireBullet1_FX000_2" label="" win=NONE
   n t=0.7900 d=0.0000 kind=SOUND src=AKEvent asset="PC_GUNLANCER_M.PC_GunLancer_M_Sk_FireBullet1_Vox2_2" label="" win=NONE
-  n t=0.8000 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.8000 d=0.1000 kind=HIT src=Effect asset="170630" label="" win=NONE area=3 ar=500 aa=80 ah=150 ax=-20 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 fz=0 fzin=0 fzout=0 hittype=5
   n t=0.8391 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_01.Par_E_Reload_01" label="" win=NONE
   n t=1.2950 d=0.6717 kind=CANCEL src=InputTiming asset="" label="입력캔슬" win=ANY_CANCEL
   n t=1.4957 d=0.4710 kind=CANCEL src=InputTiming asset="" label="이동캔슬" win=MOVE_CANCEL
@@ -861,8 +861,8 @@ LOSTARK_ANIM_NOTIFY 1 "Warlord" 114
   n t=0.0000 d=0.9167 kind=SUPERARMOR src=SuperArmorPVP asset="" label="" win=NONE
   n t=0.0500 d=0.0000 kind=SOUND src=AKEvent asset="PC_GUNLANCER_M.PC_GunLancer_M_SK_GuardianOfProtection1_FX000_2" label="" win=NONE
   n t=0.1000 d=0.0000 kind=SOUND src=AKEvent asset="PC_GUNLANCER_M.PC_GunLancer_M_SK_GuardianOfProtection1_Vox1_2" label="" win=NONE
-  n t=0.1300 d=0.0500 kind=EFFECT src=Effect asset="" label="" win=NONE
-  n t=0.1300 d=0.0500 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.1300 d=0.0500 kind=EFFECT src=Effect asset="171700" label="" win=NONE
+  n t=0.1300 d=0.0500 kind=HIT src=Effect asset="171704" label="" win=NONE area=1 ar=500 aa=0 ah=300 ax=0 arem=0 maxt=0 rep=0 repms=0 push=200 pushr=5 fz=800 fzin=200 fzout=300 hittype=4
   n t=0.1600 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.1600 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.1600 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
@@ -902,9 +902,9 @@ LOSTARK_ANIM_NOTIFY 1 "Warlord" 114
   n t=0.3668 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="fx_pc_wgl_00.Par_D_Chain_Attraction_31" label="" win=NONE
   n t=0.3668 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="fx_cm_03.Spark.Par_D_Spark_03" label="" win=NONE
   n t=0.4000 d=0.2000 kind=HIT src=ParticleHit asset="" label="" win=NONE
-  n t=0.4200 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.4200 d=0.1000 kind=HIT src=Effect asset="170900" label="" win=NONE area=3 ar=450 aa=60 ah=150 ax=-10 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 fz=430 fzin=180 fzout=250 hittype=4
   n t=0.7000 d=0.0000 kind=SOUND src=AKEvent asset="PC_GUNLANCER_M.PC_GunLancer_M_SK_HookChain1_FX000_2" label="" win=NONE
-  n t=0.8500 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.8500 d=0.1000 kind=HIT src=Effect asset="170910" label="" win=NONE area=3 ar=450 aa=60 ah=150 ax=-10 arem=0 maxt=0 rep=0 repms=0 push=150 pushr=-450 fz=550 fzin=150 fzout=250 hittype=4
   n t=0.9500 d=0.7167 kind=CANCEL src=InputTiming asset="" label="[회피캔슬]" win=DODGE_CANCEL
   n t=1.0986 d=0.5681 kind=CANCEL src=InputTiming asset="" label="입력캔슬" win=ANY_CANCEL
   n t=1.1987 d=0.4680 kind=CANCEL src=InputTiming asset="" label="이동캔슬" win=MOVE_CANCEL
@@ -936,7 +936,7 @@ LOSTARK_ANIM_NOTIFY 1 "Warlord" 114
   n t=0.4000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="fx_pc_wgl_00.Par_K_WGL_JudgmentSpear_Cast_02" label="" win=NONE
   n t=0.4000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.4500 d=1.0000 kind=EFFECT src=PlayParticleEffect asset="fx_pc_wgl_00.Par_K_JudgmentSpear_Cast_01" label="" win=NONE
-  n t=1.1500 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=1.1500 d=0.1000 kind=EFFECT src=Effect asset="172201" label="" win=NONE
   n t=1.3500 d=0.0000 kind=SOUND src=AKEvent asset="PC_GUNLANCER_M.PC_GunLancer_M_SK_JudgementOfSpear1_FX000_2" label="" win=NONE
   n t=1.4700 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=1.4700 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="fx_pc_wgl_00.Par_K_WGL_JudgmentSpear_Exp_02" label="" win=NONE
@@ -952,7 +952,7 @@ LOSTARK_ANIM_NOTIFY 1 "Warlord" 114
   n t=0.2968 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_03.Par_Y_WGL_Ap42_01_1" label="" win=NONE
   n t=0.2987 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_06.Par_O_WGL_ApShield_01_01" label="" win=NONE
   n t=0.3970 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
-  n t=0.4000 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.4000 d=0.1000 kind=EFFECT src=Effect asset="178000" label="" win=NONE
   n t=0.6000 d=0.2333 kind=CANCEL src=InputTiming asset="" label="입력캔슬" win=ANY_CANCEL
   n t=0.7000 d=0.1333 kind=CANCEL src=InputTiming asset="" label="이동캔슬" win=MOVE_CANCEL
 "wgl_sk_leap_attack_01" skill=17110 len=0.9667 name="리프 어택"
@@ -993,13 +993,13 @@ LOSTARK_ANIM_NOTIFY 1 "Warlord" 114
   n t=0.0001 d=0.0000 kind=SOUND src=AKEvent asset="PC_GUNLANCER_M.PC_GunLancer_M_SK_LeapAttack1_FX040_2" label="" win=NONE
   n t=0.0001 d=0.0000 kind=SOUND src=AKEvent asset="PC_GUNLANCER_M.PC_GunLancer_M_SK_LeapAttack1_FX050_2" label="" win=NONE
   n t=0.0001 d=0.0000 kind=SOUND src=AKEvent asset="PC_GUNLANCER_M.PC_GunLancer_M_SK_LeapAttack1_FX060_2" label="" win=NONE
-  n t=0.0300 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
-  n t=0.0300 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
-  n t=0.0300 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
-  n t=0.0300 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
-  n t=0.0300 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
-  n t=0.0300 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
-  n t=0.0300 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.0300 d=0.1000 kind=EFFECT src=Effect asset="171110" label="" win=NONE
+  n t=0.0300 d=0.1000 kind=EFFECT src=Effect asset="171120" label="" win=NONE
+  n t=0.0300 d=0.1000 kind=EFFECT src=Effect asset="171130" label="" win=NONE
+  n t=0.0300 d=0.1000 kind=HIT src=Effect asset="171100" label="" win=NONE area=1 ar=300 aa=0 ah=150 ax=0 arem=0 maxt=0 rep=0 repms=0 push=120 pushr=30 fz=620 fzin=200 fzout=300 hittype=4
+  n t=0.0300 d=0.1000 kind=HIT src=Effect asset="171100" label="" win=NONE area=1 ar=300 aa=0 ah=150 ax=0 arem=0 maxt=0 rep=0 repms=0 push=120 pushr=30 fz=620 fzin=200 fzout=300 hittype=4
+  n t=0.0300 d=0.1000 kind=HIT src=Effect asset="171100" label="" win=NONE area=1 ar=300 aa=0 ah=150 ax=0 arem=0 maxt=0 rep=0 repms=0 push=120 pushr=30 fz=620 fzin=200 fzout=300 hittype=4
+  n t=0.0300 d=0.1000 kind=HIT src=Effect asset="171104" label="" win=NONE area=1 ar=300 aa=0 ah=150 ax=0 arem=0 maxt=0 rep=0 repms=0 push=120 pushr=30 fz=620 fzin=200 fzout=300 hittype=4
   n t=0.0327 d=0.3927 kind=SHAKE src=ViewShake asset="dur=0.3;in=0;out=0.2;x=5,50;y=5,50;z=7,50;fov=0,0" label="" win=NONE
   n t=0.1300 d=0.8367 kind=CANCEL src=InputTiming asset="" label="[회피캔슬]" win=DODGE_CANCEL
   n t=0.5000 d=0.4667 kind=CANCEL src=InputTiming asset="" label="" win=NONE
@@ -1071,11 +1071,11 @@ LOSTARK_ANIM_NOTIFY 1 "Warlord" 114
   n t=0.0300 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
   n t=0.0300 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
   n t=0.0300 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
-  n t=0.0300 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
-  n t=0.0300 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
-  n t=0.0300 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
-  n t=0.0300 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
-  n t=0.0300 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.0300 d=0.1000 kind=EFFECT src=Effect asset="171110" label="" win=NONE
+  n t=0.0300 d=0.1000 kind=EFFECT src=Effect asset="171120" label="" win=NONE
+  n t=0.0300 d=0.1000 kind=EFFECT src=Effect asset="171130" label="" win=NONE
+  n t=0.0300 d=0.1000 kind=HIT src=Effect asset="171100" label="" win=NONE area=1 ar=300 aa=0 ah=150 ax=0 arem=0 maxt=0 rep=0 repms=0 push=120 pushr=30 fz=620 fzin=200 fzout=300 hittype=4
+  n t=0.0300 d=0.1000 kind=HIT src=Effect asset="171160" label="" win=NONE area=1 ar=450 aa=0 ah=150 ax=0 arem=0 maxt=0 rep=0 repms=0 push=120 pushr=30 fz=620 fzin=200 fzout=300 hittype=4
   n t=0.0327 d=0.3927 kind=SHAKE src=ViewShake asset="dur=0.3;in=0;out=0.2;x=4,50;y=4,50;z=7,50;fov=0,0" label="" win=NONE
   n t=0.1300 d=0.6033 kind=CANCEL src=InputTiming asset="" label="[회피캔슬]" win=DODGE_CANCEL
   n t=0.4000 d=0.3333 kind=CANCEL src=InputTiming asset="" label="입력캔슬" win=ANY_CANCEL
@@ -1117,13 +1117,9 @@ LOSTARK_ANIM_NOTIFY 1 "Warlord" 114
   n t=0.0001 d=0.0000 kind=SOUND src=AKEvent asset="PC_GUNLANCER_M.PC_GunLancer_M_SK_LeapAttack1_FX058_3" label="" win=NONE
   n t=0.0001 d=0.0000 kind=SOUND src=AKEvent asset="PC_GUNLANCER_M.PC_GunLancer_M_SK_LeapAttack1_FX048_3" label="" win=NONE
   n t=0.0001 d=0.0000 kind=SOUND src=AKEvent asset="PC_GUNLANCER_M.PC_GunLancer_M_SK_LeapAttack1_FX048_3" label="" win=NONE
-  n t=0.1000 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
-  n t=0.1000 d=0.1003 kind=EFFECT src=Effect asset="" label="" win=NONE
-  n t=0.1000 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
-  n t=0.1000 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
-  n t=0.1000 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
-  n t=0.1000 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
-  n t=0.1000 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.1000 d=0.1003 kind=EFFECT src=Effect asset="171170" label="" win=NONE
+  n t=0.1000 d=0.1000 kind=EFFECT src=Effect asset="171180" label="" win=NONE
+  n t=0.1000 d=0.1000 kind=EFFECT src=Effect asset="171190" label="" win=NONE
   n t=0.1000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_ZoomBlur_02" label="" win=NONE
   n t=0.1000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_J_RGBNoise_01" label="" win=NONE
   n t=0.1000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_09.Par_M_LeapAttack_Exp_Custom_04" label="" win=NONE
@@ -1131,6 +1127,10 @@ LOSTARK_ANIM_NOTIFY 1 "Warlord" 114
   n t=0.1000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_09.Par_M_LeapAttack_Exp_00" label="" win=NONE
   n t=0.1000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_09.Par_M_LeapAttack_Exp_Custom_04" label="" win=NONE
   n t=0.1000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_09.Par_M_LeapAttack_Exp_Custom_05" label="" win=NONE
+  n t=0.1000 d=0.1000 kind=HIT src=Effect asset="171160" label="" win=NONE area=1 ar=450 aa=0 ah=150 ax=0 arem=0 maxt=0 rep=0 repms=0 push=120 pushr=30 fz=620 fzin=200 fzout=300 hittype=4
+  n t=0.1000 d=0.1000 kind=HIT src=Effect asset="171162" label="" win=NONE area=1 ar=450 aa=0 ah=150 ax=0 arem=0 maxt=0 rep=0 repms=0 push=120 pushr=30 fz=620 fzin=200 fzout=300 hittype=4
+  n t=0.1000 d=0.1000 kind=HIT src=Effect asset="171161" label="" win=NONE area=1 ar=450 aa=0 ah=150 ax=0 arem=0 maxt=0 rep=0 repms=0 push=120 pushr=30 fz=620 fzin=200 fzout=300 hittype=4
+  n t=0.1000 d=0.1000 kind=HIT src=Effect asset="171160" label="" win=NONE area=1 ar=450 aa=0 ah=150 ax=0 arem=0 maxt=0 rep=0 repms=0 push=120 pushr=30 fz=620 fzin=200 fzout=300 hittype=4
   n t=0.1000 d=0.2000 kind=HIT src=ParticleHit asset="" label="" win=NONE
   n t=0.1000 d=0.4000 kind=SHAKE src=ViewShake asset="dur=0.6;in=0.1;out=0.2;x=1,50;y=1,50;z=10,50;fov=0,0" label="" win=NONE
   n t=0.1003 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
@@ -1183,12 +1183,12 @@ LOSTARK_ANIM_NOTIFY 1 "Warlord" 114
   n t=0.3363 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_03.Par_Y_WGL_Nelasia_02_3" label="" win=NONE
   n t=0.3363 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_03.Par_Y_WGL_Nelasia_01_3" label="" win=NONE
   n t=0.3658 d=0.3956 kind=SHAKE src=ViewShake asset="dur=0.3;in=0;out=0.2;x=5,50;y=5,50;z=5,50;fov=0,0" label="" win=NONE
-  n t=0.3700 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
-  n t=0.3700 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
-  n t=0.3700 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
-  n t=0.3700 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
-  n t=0.3700 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
-  n t=0.3700 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.3700 d=0.1000 kind=EFFECT src=Effect asset="171301" label="" win=NONE
+  n t=0.3700 d=0.1000 kind=HIT src=Effect asset="171300" label="" win=NONE area=1 ar=1200 aa=0 ah=700 ax=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 fz=0 fzin=0 fzout=0 hittype=1
+  n t=0.3700 d=0.1000 kind=HIT src=Effect asset="171305" label="" win=NONE area=1 ar=1200 aa=0 ah=700 ax=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 fz=0 fzin=0 fzout=0 hittype=1
+  n t=0.3700 d=0.1000 kind=HIT src=Effect asset="171304" label="" win=NONE area=1 ar=1200 aa=0 ah=700 ax=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 fz=0 fzin=0 fzout=0 hittype=1
+  n t=0.3700 d=0.1000 kind=HIT src=Effect asset="171306" label="" win=NONE area=1 ar=1200 aa=0 ah=700 ax=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 fz=0 fzin=0 fzout=0 hittype=1
+  n t=0.3700 d=0.1000 kind=HIT src=Effect asset="171307" label="" win=NONE area=1 ar=1200 aa=0 ah=700 ax=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 fz=0 fzin=0 fzout=0 hittype=1
   n t=0.4700 d=1.0300 kind=CANCEL src=InputTiming asset="" label="[회피캔슬]" win=DODGE_CANCEL
   n t=0.5200 d=0.0000 kind=SOUND src=AKEvent asset="PC_GUNLANCER_M.PC_GunLancer_M_SK_Nellasia1_FX100_1" label="" win=NONE
   n t=0.5200 d=0.0000 kind=SOUND src=AKEvent asset="PC_GUNLANCER_M.PC_GunLancer_M_SK_Nellasia1_Vox1_1" label="" win=NONE
@@ -1208,8 +1208,8 @@ LOSTARK_ANIM_NOTIFY 1 "Warlord" 114
   n t=0.2005 d=0.9059 kind=CANCEL src=InputTiming asset="" label="[선이]" win=MOVE_PRE
   n t=0.5000 d=0.1861 kind=HIT src=ParticleHit asset="" label="" win=NONE
   n t=0.5000 d=1.2733 kind=SOUND src=AKEvent asset="PC_GUNLANCER_M.PC_GunLancer_M_SK_PierceSpear1_FX000_2" label="" win=NONE
-  n t=0.5400 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
-  n t=0.5400 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.5400 d=0.1000 kind=HIT src=Effect asset="170320" label="" win=NONE area=2 ar=500 aa=120 ah=150 ax=30 arem=0 maxt=0 rep=3 repms=200 push=120 pushr=50 fz=630 fzin=200 fzout=300 hittype=4
+  n t=0.5400 d=0.1000 kind=HIT src=Effect asset="170300" label="" win=NONE area=2 ar=350 aa=170 ah=150 ax=30 arem=0 maxt=0 rep=3 repms=200 push=120 pushr=50 fz=630 fzin=200 fzout=300 hittype=4
   n t=0.5486 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.5486 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.5486 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
@@ -1244,7 +1244,7 @@ LOSTARK_ANIM_NOTIFY 1 "Warlord" 114
   n t=0.6991 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_06.Par_O_WGL_PiercingSpear_01_05_LOC_INT" label="" win=NONE
   n t=0.6991 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_06.Par_O_WGL_PiercingSpear_01_05_LOC_INT" label="" win=NONE
   n t=0.6991 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_06.Par_O_WGL_PiercingSpear_01_05_LOC_INT" label="" win=NONE
-  n t=0.7000 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.7000 d=0.1000 kind=HIT src=Effect asset="170310" label="" win=NONE area=3 ar=300 aa=90 ah=150 ax=30 arem=0 maxt=0 rep=3 repms=200 push=120 pushr=50 fz=630 fzin=200 fzout=300 hittype=4
   n t=0.7159 d=0.3965 kind=SHAKE src=ViewShake asset="dur=0.3;in=0;out=0.2;x=5,50;y=5,50;z=5,50;fov=0,0" label="" win=NONE
   n t=0.7197 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_06.Par_O_WGL_PiercingSpear_Dust_04" label="" win=NONE
   n t=1.0000 d=0.6667 kind=CANCEL src=InputTiming asset="" label="입력캔슬" win=ANY_CANCEL
@@ -1269,10 +1269,10 @@ LOSTARK_ANIM_NOTIFY 1 "Warlord" 114
   n t=0.6200 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_06.Par_O_WGL_PiercingSpear_02_01_LOC_INT" label="" win=NONE
   n t=0.6200 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_06.Par_O_WGL_PiercingSpear_02_02_LOC_INT" label="" win=NONE
   n t=0.6446 d=0.5021 kind=SHAKE src=ViewShake asset="dur=0.4;in=0;out=0.1;x=6,40;y=6,40;z=0,0;fov=0,0" label="" win=NONE
-  n t=0.6500 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
   n t=0.6500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_06.Par_O_WGL_PiercingSpear_Dust_03" label="" win=NONE
   n t=0.6500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_06.Par_O_WGL_PiercingSpear_Dust_03" label="" win=NONE
-  n t=0.7000 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.6500 d=0.1000 kind=HIT src=Effect asset="170330" label="" win=NONE area=1 ar=300 aa=0 ah=150 ax=30 arem=0 maxt=0 rep=0 repms=0 push=120 pushr=50 fz=630 fzin=200 fzout=300 hittype=4
+  n t=0.7000 d=0.1000 kind=HIT src=Effect asset="170330" label="" win=NONE area=1 ar=300 aa=0 ah=150 ax=30 arem=0 maxt=0 rep=0 repms=0 push=120 pushr=50 fz=630 fzin=200 fzout=300 hittype=4
   n t=0.9928 d=0.9072 kind=CANCEL src=InputTiming asset="" label="입력캔슬" win=ANY_CANCEL
   n t=1.1960 d=0.7040 kind=CANCEL src=InputTiming asset="" label="이동캔슬" win=MOVE_CANCEL
 "wgl_sk_pierceingspear_custom_37" skill=17030 len=1.4000 name="날카로운 창"
@@ -1287,8 +1287,8 @@ LOSTARK_ANIM_NOTIFY 1 "Warlord" 114
   n t=0.2606 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_06.Par_O_WGL_PiercingSpear_02_01_LOC_INT" label="" win=NONE
   n t=0.2763 d=0.5032 kind=SHAKE src=ViewShake asset="dur=0.4;in=0;out=0.1;x=6,40;y=6,40;z=0,0;fov=0,0" label="" win=NONE
   n t=0.2906 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_06.Par_O_WGL_PiercingSpear_Dust_03" label="" win=NONE
-  n t=0.3000 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
-  n t=0.3500 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.3000 d=0.1000 kind=HIT src=Effect asset="170331" label="" win=NONE area=1 ar=300 aa=0 ah=150 ax=30 arem=0 maxt=0 rep=0 repms=0 push=120 pushr=50 fz=630 fzin=200 fzout=300 hittype=4
+  n t=0.3500 d=0.1000 kind=HIT src=Effect asset="170331" label="" win=NONE area=1 ar=300 aa=0 ah=150 ax=30 arem=0 maxt=0 rep=0 repms=0 push=120 pushr=50 fz=630 fzin=200 fzout=300 hittype=4
   n t=0.5000 d=0.9000 kind=CANCEL src=InputTiming asset="" label="[회피캔슬]" win=DODGE_CANCEL
   n t=0.7000 d=0.7000 kind=CANCEL src=InputTiming asset="" label="입력캔슬" win=ANY_CANCEL
   n t=0.8993 d=0.5007 kind=CANCEL src=InputTiming asset="" label="이동캔슬" win=MOVE_CANCEL
@@ -1302,7 +1302,7 @@ LOSTARK_ANIM_NOTIFY 1 "Warlord" 114
   n t=0.4393 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_06.Par_O_WGL_PiercingSpear_01_03_LOC_INT" label="" win=NONE
   n t=0.4393 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_06.Par_O_WGL_PiercingSpear_01_03_LOC_INT" label="" win=NONE
   n t=0.4393 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_06.Par_O_WGL_PiercingSpear_01_03_LOC_INT" label="" win=NONE
-  n t=0.4400 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.4400 d=0.1000 kind=HIT src=Effect asset="170311" label="" win=NONE area=3 ar=300 aa=90 ah=150 ax=30 arem=0 maxt=0 rep=3 repms=200 push=120 pushr=50 fz=630 fzin=200 fzout=300 hittype=4
   n t=0.4562 d=0.3974 kind=SHAKE src=ViewShake asset="dur=0.3;in=0;out=0.2;x=5,50;y=5,50;z=5,50;fov=0,0" label="" win=NONE
   n t=0.4599 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_06.Par_O_WGL_PiercingSpear_Dust_04" label="" win=NONE
   n t=0.5400 d=0.8600 kind=CANCEL src=InputTiming asset="" label="[회피캔슬]" win=DODGE_CANCEL
@@ -1319,7 +1319,6 @@ LOSTARK_ANIM_NOTIFY 1 "Warlord" 114
   n t=0.2800 d=0.0667 kind=SOUND src=AKEvent asset="PC_GUNLANCER_M.PC_GunLancer_M_SK_RisingSpear1_FX040_2" label="" win=NONE
   n t=0.2979 d=0.3687 kind=CANCEL src=InputTiming asset="" label="[선이]" win=MOVE_PRE
   n t=0.4000 d=0.2667 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_06.Par_O_WGL_RisingSpear_01_05_LOC_INT" label="" win=NONE
-  n t=0.5000 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
   n t=0.5000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.5000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_06.Par_O_WGL_RisingSpear_01_01_LOC_INT" label="" win=NONE
   n t=0.5000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_06.Par_O_WGL_RisingSpear_01_02_LOC_INT" label="" win=NONE
@@ -1328,6 +1327,7 @@ LOSTARK_ANIM_NOTIFY 1 "Warlord" 114
   n t=0.5000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_06.Par_O_WGL_RisingSpear_01_03_LOC_INT" label="" win=NONE
   n t=0.5000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_06.Par_O_WGL_RisingSpear_01_04_LOC_INT" label="" win=NONE
   n t=0.5000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
+  n t=0.5000 d=0.1000 kind=HIT src=Effect asset="170700" label="" win=NONE area=2 ar=300 aa=200 ah=150 ax=30 arem=0 maxt=0 rep=0 repms=0 push=100 pushr=20 fz=520 fzin=150 fzout=250 hittype=4
   n t=0.5000 d=0.1000 kind=SHAKE src=ViewShake asset="dur=0.1;in=0;out=0;x=5,50;y=5,50;z=5,50;fov=0,0" label="" win=NONE
   n t=0.6000 d=0.0667 kind=CANCEL src=InputTiming asset="" label="[회피캔슬]" win=DODGE_CANCEL
 "wgl_sk_risingspear_02" skill=17070 len=1.4333 name="라이징 스피어"
@@ -1349,10 +1349,10 @@ LOSTARK_ANIM_NOTIFY 1 "Warlord" 114
   n t=0.0900 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_06.Par_O_WGL_RisingSpear_02_04_LOC_INT" label="" win=NONE
   n t=0.0900 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_ZoomBlur_03" label="" win=NONE
   n t=0.0900 d=0.4000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_07" label="" win=NONE
-  n t=0.1000 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
-  n t=0.1000 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
-  n t=0.1000 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
   n t=0.1000 d=0.5000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_FilmNoise_01" label="" win=NONE
+  n t=0.1000 d=0.1000 kind=HIT src=Effect asset="170720" label="" win=NONE area=2 ar=300 aa=250 ah=300 ax=30 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 fz=0 fzin=0 fzout=0 hittype=7
+  n t=0.1000 d=0.1000 kind=HIT src=Effect asset="170701" label="" win=NONE area=2 ar=300 aa=250 ah=500 ax=30 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 fz=0 fzin=0 fzout=0 hittype=7
+  n t=0.1000 d=0.1000 kind=HIT src=Effect asset="170730" label="" win=NONE area=2 ar=300 aa=250 ah=300 ax=50 arem=0 maxt=0 rep=0 repms=0 push=100 pushr=20 fz=520 fzin=150 fzout=250 hittype=4
   n t=0.1000 d=0.3000 kind=SHAKE src=ViewShake asset="dur=0.3;in=0;out=0.1;x=6,50;y=6,50;z=8,50;fov=0,0" label="" win=NONE
   n t=0.1001 d=1.1533 kind=SOUND src=AKEvent asset="PC_GUNLANCER_M.PC_GunLancer_M_SK_RisingSpear1_FX040_3" label="" win=NONE
   n t=0.1001 d=1.1533 kind=SOUND src=AKEvent asset="PC_GUNLANCER_M.PC_GunLancer_M_SK_RisingSpear1_FX050_3" label="" win=NONE
@@ -1368,7 +1368,7 @@ LOSTARK_ANIM_NOTIFY 1 "Warlord" 114
   n t=0.0000 d=0.5000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_06.Par_O_WGL_RisingSpear_03_01" label="" win=NONE
   n t=0.0000 d=0.8667 kind=SOUND src=AKEvent asset="PC_GUNLANCER_M.PC_GunLancer_M_SK_RisingSpear1_FX200_1" label="" win=NONE
   n t=0.0100 d=0.9233 kind=SOUND src=AKEvent asset="PC_GUNLANCER_M.PC_GunLancer_M_SK_RisingSpear1_Vox3_1" label="" win=NONE
-  n t=0.2000 d=0.0500 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.2000 d=0.0500 kind=HIT src=Effect asset="170710" label="" win=NONE area=2 ar=220 aa=200 ah=150 ax=30 arem=0 maxt=0 rep=2 repms=100 push=100 pushr=50 fz=520 fzin=150 fzout=200 hittype=4
   n t=0.5000 d=0.4333 kind=CANCEL src=InputTiming asset="" label="[회피캔슬]" win=DODGE_CANCEL
   n t=0.5000 d=0.3333 kind=SOUND src=AKEvent asset="PC_GUNLANCER_M.PC_GunLancer_M_SK_RisingSpear1_FX000_2" label="" win=NONE
   n t=0.5000 d=0.3333 kind=SOUND src=AKEvent asset="PC_GUNLANCER_M.PC_GunLancer_M_SK_RisingSpear1_FX040_2" label="" win=NONE
@@ -1377,7 +1377,6 @@ LOSTARK_ANIM_NOTIFY 1 "Warlord" 114
   n t=0.5233 d=0.4101 kind=CANCEL src=InputTiming asset="" label="[선스]" win=SKILL_PRE
   n t=0.6000 d=0.3333 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_06.Par_O_WGL_RisingSpear_01_05_LOC_INT" label="" win=NONE
   n t=0.6288 d=0.3045 kind=CANCEL src=InputTiming asset="" label="[선이]" win=MOVE_PRE
-  n t=0.7000 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
   n t=0.7000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_06.Par_O_WGL_RisingSpear_01_02_LOC_INT" label="" win=NONE
   n t=0.7000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.7000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_06.Par_O_WGL_RisingSpear_01_03_LOC_INT" label="" win=NONE
@@ -1386,6 +1385,7 @@ LOSTARK_ANIM_NOTIFY 1 "Warlord" 114
   n t=0.7000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_06.Par_O_WGL_RisingSpear_01_04_LOC_INT" label="" win=NONE
   n t=0.7000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_06.Par_O_WGL_RisingSpear_01_01_LOC_INT" label="" win=NONE
   n t=0.7000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
+  n t=0.7000 d=0.1000 kind=HIT src=Effect asset="170700" label="" win=NONE area=2 ar=300 aa=200 ah=150 ax=30 arem=0 maxt=0 rep=0 repms=0 push=100 pushr=20 fz=520 fzin=150 fzout=250 hittype=4
   n t=0.7000 d=0.1000 kind=SHAKE src=ViewShake asset="dur=0.1;in=0;out=0;x=5,50;y=5,50;z=5,50;fov=0,0" label="" win=NONE
 "wgl_sk_risingspear_custom_1_02" skill=17070 len=1.2333 name="라이징 스피어"
   n t=0.0000 d=0.6045 kind=CANCEL src=InputTiming asset="" label="[선이]" win=MOVE_PRE
@@ -1406,10 +1406,10 @@ LOSTARK_ANIM_NOTIFY 1 "Warlord" 114
   n t=0.0900 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_06.Par_O_WGL_RisingSpear_02_04_LOC_INT" label="" win=NONE
   n t=0.0900 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_ZoomBlur_03" label="" win=NONE
   n t=0.0900 d=0.4000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_07" label="" win=NONE
-  n t=0.1000 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
-  n t=0.1000 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
-  n t=0.1000 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
   n t=0.1000 d=0.5000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_FilmNoise_01" label="" win=NONE
+  n t=0.1000 d=0.1000 kind=HIT src=Effect asset="170720" label="" win=NONE area=2 ar=300 aa=250 ah=300 ax=30 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 fz=0 fzin=0 fzout=0 hittype=7
+  n t=0.1000 d=0.1000 kind=HIT src=Effect asset="170701" label="" win=NONE area=2 ar=300 aa=250 ah=500 ax=30 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 fz=0 fzin=0 fzout=0 hittype=7
+  n t=0.1000 d=0.1000 kind=HIT src=Effect asset="170730" label="" win=NONE area=2 ar=300 aa=250 ah=300 ax=50 arem=0 maxt=0 rep=0 repms=0 push=100 pushr=20 fz=520 fzin=150 fzout=250 hittype=4
   n t=0.1000 d=0.3000 kind=SHAKE src=ViewShake asset="dur=0.3;in=0;out=0.1;x=6,50;y=6,50;z=8,50;fov=0,0" label="" win=NONE
   n t=0.1001 d=1.1333 kind=SOUND src=AKEvent asset="PC_GUNLANCER_M.PC_GunLancer_M_SK_RisingSpear1_FX040_3" label="" win=NONE
   n t=0.1001 d=1.1333 kind=SOUND src=AKEvent asset="PC_GUNLANCER_M.PC_GunLancer_M_SK_RisingSpear1_FX050_3" label="" win=NONE
@@ -1428,17 +1428,17 @@ LOSTARK_ANIM_NOTIFY 1 "Warlord" 114
   n t=0.2500 d=0.3167 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_06.Par_O_WGL_RisingSpear_01_05_LOC_INT" label="" win=NONE
   n t=0.3500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_06.Par_O_WGL_RisingSpear_04_03_LOC_INT" label="" win=NONE
   n t=0.3500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_06.Par_O_WGL_RisingSpear_04_02_LOC_INT" label="" win=NONE
-  n t=0.3500 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
   n t=0.3500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_06.Par_O_WGL_RisingSpear_01_02_LOC_INT" label="" win=NONE
   n t=0.3500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.3500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.3500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_06.Par_O_WGL_RisingSpear_01_03_LOC_INT" label="" win=NONE
   n t=0.3500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_06.Par_O_WGL_RisingSpear_01_04_LOC_INT" label="" win=NONE
   n t=0.3500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
-  n t=0.3500 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
-  n t=0.3500 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
-  n t=0.3500 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
   n t=0.3500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_06.Par_O_WGL_RisingSpear_04_01_LOC_INT" label="" win=NONE
+  n t=0.3500 d=0.1000 kind=HIT src=Effect asset="170700" label="" win=NONE area=2 ar=300 aa=200 ah=150 ax=30 arem=0 maxt=0 rep=0 repms=0 push=100 pushr=20 fz=520 fzin=150 fzout=250 hittype=4
+  n t=0.3500 d=0.1000 kind=HIT src=Effect asset="170740" label="" win=NONE area=3 ar=200 aa=120 ah=150 ax=30 arem=0 maxt=0 rep=0 repms=0 push=100 pushr=20 fz=520 fzin=150 fzout=250 hittype=7
+  n t=0.3500 d=0.1000 kind=HIT src=Effect asset="170742" label="" win=NONE area=3 ar=200 aa=120 ah=150 ax=30 arem=0 maxt=0 rep=0 repms=0 push=100 pushr=20 fz=520 fzin=150 fzout=250 hittype=7
+  n t=0.3500 d=0.1000 kind=HIT src=Effect asset="170744" label="" win=NONE area=3 ar=200 aa=120 ah=150 ax=30 arem=0 maxt=0 rep=0 repms=0 push=120 pushr=-100 fz=520 fzin=150 fzout=250 hittype=4
   n t=0.3500 d=0.1000 kind=SHAKE src=ViewShake asset="dur=0.1;in=0;out=0;x=5,50;y=5,50;z=5,50;fov=0,0" label="" win=NONE
   n t=0.3500 d=0.2167 kind=SOUND src=AKEvent asset="PC_GUNLANCER_M.PC_GunLancer_M_SK_RisingSpear1_FX067_3" label="" win=NONE
   n t=0.3500 d=0.2167 kind=SOUND src=AKEvent asset="PC_GUNLANCER_M.PC_GunLancer_M_SK_RisingSpear1_FX057_3" label="" win=NONE
@@ -1452,9 +1452,9 @@ LOSTARK_ANIM_NOTIFY 1 "Warlord" 114
   n t=0.1989 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_06.Par_O_WGL_RisingSpear_04_01_LOC_INT" label="" win=NONE
   n t=0.1989 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_06.Par_O_WGL_RisingSpear_04_02_LOC_INT" label="" win=NONE
   n t=0.1989 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_06.Par_O_WGL_RisingSpear_04_03_LOC_INT" label="" win=NONE
-  n t=0.1992 d=0.1002 kind=EFFECT src=Effect asset="" label="" win=NONE
-  n t=0.1992 d=0.1002 kind=EFFECT src=Effect asset="" label="" win=NONE
-  n t=0.1992 d=0.1002 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.1992 d=0.1002 kind=HIT src=Effect asset="170740" label="" win=NONE area=3 ar=200 aa=120 ah=150 ax=30 arem=0 maxt=0 rep=0 repms=0 push=100 pushr=20 fz=520 fzin=150 fzout=250 hittype=7
+  n t=0.1992 d=0.1002 kind=HIT src=Effect asset="170742" label="" win=NONE area=3 ar=200 aa=120 ah=150 ax=30 arem=0 maxt=0 rep=0 repms=0 push=100 pushr=20 fz=520 fzin=150 fzout=250 hittype=7
+  n t=0.1992 d=0.1002 kind=HIT src=Effect asset="170744" label="" win=NONE area=3 ar=200 aa=120 ah=150 ax=30 arem=0 maxt=0 rep=0 repms=0 push=120 pushr=-100 fz=520 fzin=150 fzout=250 hittype=4
   n t=0.2000 d=0.4667 kind=SOUND src=AKEvent asset="PC_GUNLANCER_M.PC_GunLancer_M_SK_RisingSpear1_FX007_3" label="" win=NONE
   n t=0.2000 d=0.4667 kind=SOUND src=AKEvent asset="PC_GUNLANCER_M.PC_GunLancer_M_SK_RisingSpear1_FX057_3" label="" win=NONE
   n t=0.2000 d=0.4667 kind=SOUND src=AKEvent asset="PC_GUNLANCER_M.PC_GunLancer_M_SK_RisingSpear1_FX067_3" label="" win=NONE
@@ -1464,9 +1464,9 @@ LOSTARK_ANIM_NOTIFY 1 "Warlord" 114
   n t=0.0000 d=0.6019 kind=CANCEL src=InputTiming asset="" label="[선스]" win=SKILL_PRE
   n t=0.0000 d=0.7018 kind=CANCEL src=InputTiming asset="" label="[선이]" win=MOVE_PRE
   n t=0.0000 d=1.1333 kind=CANCEL src=InputTiming asset="" label="진격태세" win=OTHER
-  n t=0.1000 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
-  n t=0.1000 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
-  n t=0.1000 d=0.1002 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.1000 d=0.1000 kind=EFFECT src=Effect asset="170771" label="" win=NONE
+  n t=0.1000 d=0.1000 kind=EFFECT src=Effect asset="170761" label="" win=NONE
+  n t=0.1000 d=0.1002 kind=EFFECT src=Effect asset="170781" label="" win=NONE
   n t=0.1001 d=0.0667 kind=SOUND src=AKEvent asset="PC_GUNLANCER_M.PC_GunLancer_M_SK_RisingSpear1_FX000_3" label="" win=NONE
   n t=0.2000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_01.Par_E_Reload_01" label="" win=NONE
   n t=0.4500 d=0.6833 kind=CANCEL src=InputTiming asset="" label="[회피캔슬]" win=DODGE_CANCEL
@@ -1483,10 +1483,10 @@ LOSTARK_ANIM_NOTIFY 1 "Warlord" 114
   n t=0.3447 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_04.Par_R_WGL_Roar_00_01" label="" win=NONE
   n t=0.3447 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_04.Par_R_WGL_Roar_00_01" label="" win=NONE
   n t=0.3521 d=0.3019 kind=SHAKE src=ViewShake asset="dur=0.25;in=0;out=0.1;x=0,80;y=0,80;z=7,80;fov=0,0" label="" win=NONE
-  n t=0.4000 d=0.0500 kind=EFFECT src=Effect asset="" label="" win=NONE
-  n t=0.4000 d=0.0500 kind=EFFECT src=Effect asset="" label="" win=NONE
-  n t=0.4000 d=0.0500 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.4000 d=0.0500 kind=EFFECT src=Effect asset="171805" label="" win=NONE
+  n t=0.4000 d=0.0500 kind=EFFECT src=Effect asset="171802" label="" win=NONE
   n t=0.4000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
+  n t=0.4000 d=0.0500 kind=HIT src=Effect asset="171800" label="" win=NONE area=1 ar=400 aa=0 ah=150 ax=0 arem=0 maxt=0 rep=0 repms=0 push=30 pushr=30 fz=430 fzin=150 fzout=250 hittype=4
   n t=0.5000 d=0.7333 kind=CANCEL src=InputTiming asset="" label="[회피캔슬]" win=DODGE_CANCEL
   n t=0.7949 d=0.4384 kind=CANCEL src=InputTiming asset="" label="입력캔슬" win=ANY_CANCEL
   n t=1.0000 d=0.2333 kind=CANCEL src=InputTiming asset="" label="이동캔슬" win=MOVE_CANCEL
@@ -1499,7 +1499,7 @@ LOSTARK_ANIM_NOTIFY 1 "Warlord" 114
   n t=0.2005 d=0.4033 kind=CANCEL src=InputTiming asset="" label="[선스]" win=SKILL_PRE
   n t=0.2112 d=0.3008 kind=SHAKE src=ViewShake asset="dur=0.2;in=0;out=0;x=5,50;y=5,50;z=5,50;fov=0,0" label="" win=NONE
   n t=0.2239 d=0.6693 kind=SOUND src=AKEvent asset="PC_GUNLANCER_M.PC_GunLancer_M_SK_ShieldDash1_Vox2_2" label="" win=NONE
-  n t=0.2500 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.2500 d=0.1000 kind=HIT src=Effect asset="170510" label="" win=NONE area=2 ar=280 aa=200 ah=250 ax=20 arem=0 maxt=0 rep=0 repms=0 push=60 pushr=60 fz=460 fzin=150 fzout=250 hittype=5
   n t=0.3008 d=0.5057 kind=CANCEL src=InputTiming asset="" label="[선이]" win=MOVE_PRE
   n t=0.3135 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_ZoomBlur_02" label="" win=NONE
   n t=0.3277 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_05.Par_U_WGL_ShieldDash_Swing_01" label="" win=NONE
@@ -1512,12 +1512,12 @@ LOSTARK_ANIM_NOTIFY 1 "Warlord" 114
   n t=0.0000 d=0.5000 kind=CANCEL src=InputTiming asset="" label="방어태세해제" win=OTHER
   n t=0.0000 d=0.5000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_07.Par_S_WGL_QakeShield_Dust_01" label="" win=NONE
   n t=0.0000 d=0.5000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_07.Par_S_WGL_QakeShield_Atk_02" label="" win=NONE
-  n t=0.0000 d=0.0987 kind=EFFECT src=Effect asset="" label="" win=NONE
   n t=0.0000 d=0.0000 kind=EFFECT src=TrailGhostEffect asset="" label="" win=NONE
+  n t=0.0000 d=0.0987 kind=HIT src=Effect asset="2175600" label="" win=NONE area=2 ar=200 aa=400 ah=150 ax=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 fz=0 fzin=0 fzout=0 hittype=5
   n t=0.0000 d=0.5000 kind=SUPERARMOR src=SuperArmor asset="" label="" win=NONE
   n t=0.0000 d=0.5000 kind=SUPERARMOR src=SuperArmorPVP asset="" label="" win=NONE
   n t=0.0008 d=0.4992 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_07.Par_S_WGL_QakeShield_Wp_02" label="" win=NONE
-  n t=0.1000 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.1000 d=0.1000 kind=HIT src=Effect asset="172300" label="" win=NONE area=2 ar=250 aa=400 ah=150 ax=-50 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 fz=0 fzin=0 fzout=0 hittype=5
   n t=0.1000 d=0.0328 kind=SHAKE src=ViewShake asset="dur=0.4;in=0;out=0;x=7,60;y=7,60;z=7,60;fov=0,0" label="" win=NONE
   n t=0.2000 d=0.3000 kind=CANCEL src=InputTiming asset="" label="[선스]" win=SKILL_PRE
   n t=0.2000 d=0.3000 kind=CANCEL src=InputTiming asset="" label="[선이]" win=MOVE_PRE
@@ -1546,7 +1546,7 @@ LOSTARK_ANIM_NOTIFY 1 "Warlord" 114
   n t=0.0000 d=1.6000 kind=SUPERARMOR src=SuperArmor asset="" label="" win=NONE
   n t=0.0000 d=1.6000 kind=SUPERARMOR src=SuperArmorPVP asset="" label="" win=NONE
   n t=0.0100 d=1.5900 kind=SOUND src=AKEvent asset="PC_GUNLANCER_M.PC_GunLancer_M_SK_ShieldDash1_FX000_2" label="" win=NONE
-  n t=0.0400 d=0.0300 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.0400 d=0.0300 kind=HIT src=Effect asset="170500" label="" win=NONE area=2 ar=160 aa=150 ah=150 ax=50 arem=0 maxt=0 rep=0 repms=0 push=300 pushr=150 fz=700 fzin=150 fzout=250 hittype=5
   n t=0.1927 d=1.4073 kind=CANCEL src=InputTiming asset="" label="" win=NONE
   n t=0.1967 d=1.4033 kind=CANCEL src=InputTiming asset="" label="" win=NONE
   n t=0.2000 d=0.1000 kind=HIT src=ParticleHit asset="" label="" win=NONE
@@ -1577,7 +1577,7 @@ LOSTARK_ANIM_NOTIFY 1 "Warlord" 114
   n t=0.0010 d=0.0000 kind=SOUND src=AKEvent asset="PC_GUNLANCER_M.PC_GunLancer_M_SK_ShieldDash1_Vox1_1" label="" win=NONE
   n t=0.0010 d=0.0133 kind=SOUND src=AKEvent asset="PC_GUNLANCER_M.PC_GunLancer_M_SK_ShieldDash1_FX000_1" label="" win=NONE
   n t=0.0100 d=0.9233 kind=SOUND src=AKEvent asset="PC_GUNLANCER_M.PC_GunLancer_M_SK_ShieldDash1_FX000_2" label="" win=NONE
-  n t=0.0400 d=0.0300 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.0400 d=0.0300 kind=HIT src=Effect asset="170520" label="" win=NONE area=2 ar=160 aa=150 ah=150 ax=50 arem=0 maxt=0 rep=0 repms=0 push=150 pushr=120 fz=80 fzin=30 fzout=50 hittype=5
   n t=0.1000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_03.Par_Y_WGL_ShieldDash_01_2" label="" win=NONE
   n t=0.1000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_03.Par_Y_WGL_ShieldDash_01_2" label="" win=NONE
   n t=0.1000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_03.Par_Y_WGL_ShieldDash_01_2" label="" win=NONE
@@ -1595,18 +1595,18 @@ LOSTARK_ANIM_NOTIFY 1 "Warlord" 114
   n t=0.0000 d=0.6000 kind=SUPERARMOR src=SuperArmor asset="" label="" win=NONE
   n t=0.0010 d=0.5898 kind=SOUND src=AKEvent asset="PC_GUNLANCER_M.PC_GunLancer_M_SK_QuakeShield1_Vox1_1" label="" win=NONE
   n t=0.0010 d=0.2400 kind=SOUND src=AKEvent asset="PC_GUNLANCER_M.PC_GunLancer_M_SK_QuakeShield1_FX000_1" label="" win=NONE
-  n t=0.2500 d=0.0989 kind=EFFECT src=Effect asset="" label="" win=NONE
   n t=0.2500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_07.Par_S_WGL_QakeShield_Wp_01" label="" win=NONE
   n t=0.2500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_ZoomBlur_01" label="" win=NONE
   n t=0.2500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_07.Par_S_WGL_QakeShield_Body_02" label="" win=NONE
   n t=0.2500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
+  n t=0.2500 d=0.0989 kind=HIT src=Effect asset="2175700" label="" win=NONE area=1 ar=1200 aa=0 ah=700 ax=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 fz=0 fzin=0 fzout=0 hittype=1
   n t=0.2500 d=0.0328 kind=SHAKE src=ViewShake asset="dur=0.4;in=0;out=0;x=7,60;y=7,60;z=7,60;fov=0,0" label="" win=NONE
   n t=0.2500 d=0.3500 kind=SOUND src=AKEvent asset="PC_GUNLANCER_M.PC_GunLancer_M_SK_QuakeShield1_FX000_2" label="" win=NONE
   n t=0.3000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_07.Par_S_WGL_QakeShield_Atk_01" label="" win=NONE
   n t=0.5000 d=0.1000 kind=SOUND src=AKEvent asset="PC_GUNLANCER_M.PC_GunLancer_M_SK_QuakeShield1_Vox2_1" label="" win=NONE
   n t=0.5001 d=0.0999 kind=CANCEL src=InputTiming asset="" label="" win=NONE
 "wgl_sk_shieldofbattlefield_01" skill=17820 len=0.3000 name="# 전장의 방패 ON"
-  n t=0.0000 d=0.0000 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.0000 d=0.0000 kind=EFFECT src=Effect asset="178405" label="" win=NONE
   n t=0.0000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="fx_pc_wgl_00.Par_H_LeapAttack_JumpDust_01_01" label="" win=NONE
   n t=0.0000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_00.Dust.Par_MP_Dust_High_01" label="" win=NONE
   n t=0.0000 d=0.3000 kind=EFFECT src=PlayParticleEffect asset="fx_pc_wgl_00.Par_J_WGL_JumpTrail_01" label="" win=NONE
@@ -1641,13 +1641,13 @@ LOSTARK_ANIM_NOTIFY 1 "Warlord" 114
   n t=0.0000 d=0.7667 kind=SUPERARMOR src=SuperArmor asset="" label="" win=NONE
   n t=0.0010 d=0.3000 kind=SOUND src=AKEvent asset="PC_GUNLANCER_M.PC_GunLancer_M_SK_ShieldOfBattleField1_FX000_2" label="" win=NONE
   n t=0.0010 d=0.1000 kind=SOUND src=AKEvent asset="PC_GUNLANCER_M.PC_GunLancer_M_SK_ShieldOfBattleField1_Vox1_2" label="" win=NONE
-  n t=0.1000 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
   n t=0.1000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_ZoomBlur_01" label="" win=NONE
   n t=0.1000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_01.Par_O_WGL_Protect_01" label="" win=NONE
+  n t=0.1000 d=0.1000 kind=HIT src=Effect asset="178401" label="" win=NONE area=1 ar=150 aa=0 ah=150 ax=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 fz=0 fzin=0 fzout=0 hittype=8
   n t=0.1500 d=0.6167 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_03.Par_Y_WGL_ProtectShield_03" label="" win=NONE
   n t=0.1500 d=0.6167 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_03.Par_Y_WGL_ProtectShield_01" label="" win=NONE
   n t=0.1500 d=0.6167 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_03.Par_Y_WGL_ProtectShield_02" label="" win=NONE
-  n t=0.1500 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.1500 d=0.1000 kind=EFFECT src=Effect asset="178200" label="" win=NONE
   n t=0.2000 d=0.5667 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_03.Par_Y_WGL_ProtectGather_01" label="" win=NONE
   n t=0.3500 d=0.3000 kind=SOUND src=AKEvent asset="PC_GUNLANCER_M.PC_GunLancer_M_SK_ShieldOfBattleField1_FX000_3" label="" win=NONE
   n t=0.4882 d=0.2784 kind=SHAKE src=ViewShake asset="dur=4.4;in=0;out=0;x=1,80;y=1,80;z=1,80;fov=0,0" label="" win=NONE
@@ -1655,7 +1655,7 @@ LOSTARK_ANIM_NOTIFY 1 "Warlord" 114
   n t=0.0000 d=1.0000 kind=CANCEL src=InputTiming asset="" label="[회피캔슬]" win=DODGE_CANCEL
   n t=0.0000 d=1.0000 kind=CANCEL src=InputTiming asset="" label="입력캔슬" win=ANY_CANCEL
   n t=0.0000 d=1.0000 kind=CANCEL src=InputTiming asset="" label="이동캔슬" win=MOVE_CANCEL
-  n t=0.0000 d=0.0000 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.0000 d=0.0000 kind=EFFECT src=Effect asset="178406" label="" win=NONE
 "wgl_sk_shieldofbattlefield_04_2" skill=17820 len=1.6000 name="# 전장의 방패 ON"
   n t=0.0000 d=0.5066 kind=CANCEL src=InputTiming asset="" label="[선이]" win=MOVE_PRE
   n t=0.0000 d=0.2991 kind=CANCEL src=InputTiming asset="" label="[선스]" win=SKILL_PRE
@@ -1667,7 +1667,7 @@ LOSTARK_ANIM_NOTIFY 1 "Warlord" 114
   n t=0.4986 d=1.1014 kind=CANCEL src=InputTiming asset="" label="이동캔슬" win=MOVE_CANCEL
   n t=0.6000 d=0.3000 kind=SOUND src=AKEvent asset="PC_GUNLANCER_M.PC_GunLancer_M_SK_ShieldOfBattleField1_FX000_4" label="" win=NONE
 "wgl_sk_shieldofbattlefield_04_3" skill=17820 len=1.7000 name="# 전장의 방패 ON"
-  n t=0.0000 d=0.0000 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.0000 d=0.0000 kind=EFFECT src=Effect asset="178406" label="" win=NONE
   n t=0.0000 d=0.5941 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_01.Par_O_WGL_ProtectGather_02" label="" win=NONE
   n t=0.0000 d=0.5054 kind=SUPERARMOR src=SuperArmorPVP asset="" label="" win=NONE
   n t=0.0000 d=0.5054 kind=SUPERARMOR src=SuperArmor asset="" label="" win=NONE
@@ -1678,8 +1678,8 @@ LOSTARK_ANIM_NOTIFY 1 "Warlord" 114
   n t=0.5000 d=1.2000 kind=SOUND src=AKEvent asset="PC_GUNLANCER_M.PC_GunLancer_M_SK_ShieldOfBattleField1_FX000_6" label="" win=NONE
   n t=0.5277 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_07" label="" win=NONE
   n t=0.5323 d=0.5167 kind=SHAKE src=ViewShake asset="dur=0.5;in=0;out=0.2;x=7,50;y=7,50;z=7,50;fov=0,0" label="" win=NONE
-  n t=0.5500 d=0.0000 kind=EFFECT src=Effect asset="" label="" win=NONE
   n t=0.5500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_01.Par_O_WGL_Protect_02" label="" win=NONE
+  n t=0.5500 d=0.0000 kind=HIT src=Effect asset="178404" label="" win=NONE area=1 ar=500 aa=0 ah=150 ax=0 arem=0 maxt=0 rep=0 repms=0 push=120 pushr=30 fz=510 fzin=200 fzout=300 hittype=7
   n t=0.5518 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_ZoomBlur_01" label="" win=NONE
   n t=0.9000 d=0.8000 kind=CANCEL src=InputTiming asset="" label="[회피캔슬]" win=DODGE_CANCEL
   n t=0.9000 d=0.8000 kind=CANCEL src=InputTiming asset="" label="입력캔슬" win=ANY_CANCEL
@@ -1716,7 +1716,7 @@ LOSTARK_ANIM_NOTIFY 1 "Warlord" 114
   n t=0.2983 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_05.Par_U_WGL_ShieldPush_att_01_1" label="" win=NONE
   n t=0.2986 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.2986 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
-  n t=0.3000 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.3000 d=0.1000 kind=HIT src=Effect asset="171500" label="" win=NONE area=2 ar=230 aa=200 ah=150 ax=0 arem=0 maxt=0 rep=0 repms=0 push=120 pushr=50 fz=520 fzin=150 fzout=250 hittype=4
   n t=0.4000 d=0.9667 kind=CANCEL src=InputTiming asset="" label="[회피캔슬]" win=DODGE_CANCEL
   n t=0.5476 d=0.8191 kind=CANCEL src=InputTiming asset="" label="" win=NONE
   n t=0.5988 d=0.2055 kind=CANCEL src=InputTiming asset="" label="" win=NONE
@@ -1742,7 +1742,7 @@ LOSTARK_ANIM_NOTIFY 1 "Warlord" 114
   n t=0.2995 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.2998 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="fx_pc_wgl_00.Par_J_ShockDust_1" label="" win=NONE
   n t=0.2998 d=0.2698 kind=SHAKE src=ViewShake asset="dur=0.15;in=0;out=0;x=5,50;y=5,50;z=5,50;fov=0,0" label="" win=NONE
-  n t=0.3000 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.3000 d=0.1000 kind=HIT src=Effect asset="171510" label="" win=NONE area=2 ar=230 aa=200 ah=150 ax=0 arem=0 maxt=0 rep=0 repms=0 push=120 pushr=70 fz=550 fzin=150 fzout=250 hittype=4
   n t=0.3004 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_05.Par_U_WGL_Hit_ShieldPush_HIt_01" label="" win=NONE
   n t=0.3004 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_05.Par_U_WGL_ShieldPush_att_01_1" label="" win=NONE
   n t=0.3059 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_05.Par_U_WGL_Hit_ShieldPush_HIt_01" label="" win=NONE
@@ -1759,7 +1759,7 @@ LOSTARK_ANIM_NOTIFY 1 "Warlord" 114
   n t=0.6060 d=0.9933 kind=CANCEL src=InputTiming asset="" label="[선이]" win=MOVE_PRE
   n t=0.6718 d=0.2698 kind=SHAKE src=ViewShake asset="dur=0.3;in=0;out=0.2;x=3,50;y=3,50;z=3,50;fov=0,0" label="" win=NONE
   n t=0.6841 d=0.0637 kind=HIT src=ParticleHit asset="" label="" win=NONE
-  n t=0.6977 d=0.2977 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.6977 d=0.2977 kind=HIT src=Effect asset="171520" label="" win=NONE area=2 ar=230 aa=200 ah=150 ax=0 arem=0 maxt=0 rep=2 repms=200 push=120 pushr=50 fz=520 fzin=150 fzout=250 hittype=4
   n t=0.6989 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="fx_pc_wgl_00.Par_J_shieldAtk_03" label="" win=NONE
   n t=0.7030 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_01.Par_E_SpearAura_06" label="" win=NONE
   n t=0.7117 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_00.Dust.Par_E_UnderDust_03_2" label="" win=NONE
@@ -1777,7 +1777,7 @@ LOSTARK_ANIM_NOTIFY 1 "Warlord" 114
   n t=0.8704 d=0.4015 kind=SHAKE src=ViewShake asset="dur=0.3;in=0;out=0;x=6,40;y=6,40;z=8,80;fov=0,0" label="" win=NONE
   n t=0.8950 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.8950 d=0.0000 kind=SOUND src=AKEvent asset="PC_GUNLANCER_M.PC_GunLancer_M_SK_ShieldShove1_FX000_4" label="" win=NONE
-  n t=0.9000 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.9000 d=0.1000 kind=HIT src=Effect asset="171540" label="" win=NONE area=2 ar=320 aa=300 ah=150 ax=-20 arem=0 maxt=0 rep=0 repms=0 push=150 pushr=50 fz=620 fzin=200 fzout=300 hittype=4
   n t=0.9004 d=0.0000 kind=EFFECT src=TrailGhostEffect asset="" label="" win=NONE
   n t=0.9044 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_ZoomBlur_03" label="" win=NONE
   n t=0.9063 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_FilmNoise_01" label="" win=NONE
@@ -1801,7 +1801,7 @@ LOSTARK_ANIM_NOTIFY 1 "Warlord" 114
   n t=0.5900 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="fx_cm_01.Distortion.Par_MP_ConcaveDis_Z_01" label="" win=NONE
   n t=0.5900 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.5900 d=0.3941 kind=SHAKE src=ViewShake asset="dur=0.3;in=0;out=0.2;x=4,40;y=4,40;z=4,40;fov=0,0" label="" win=NONE
-  n t=0.6000 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.6000 d=0.1000 kind=HIT src=Effect asset="171000" label="" win=NONE area=1 ar=230 aa=0 ah=150 ax=80 arem=0 maxt=0 rep=0 repms=0 push=30 pushr=30 fz=430 fzin=150 fzout=250 hittype=4
   n t=0.7000 d=0.7333 kind=CANCEL src=InputTiming asset="" label="[회피캔슬]" win=DODGE_CANCEL
   n t=0.9450 d=0.4883 kind=CANCEL src=InputTiming asset="" label="" win=NONE
   n t=0.9953 d=0.1125 kind=CANCEL src=InputTiming asset="" label="" win=NONE
@@ -1813,7 +1813,7 @@ LOSTARK_ANIM_NOTIFY 1 "Warlord" 114
   n t=0.0000 d=0.8667 kind=CANCEL src=InputTiming asset="" label="방어태세해제" win=OTHER
   n t=0.0000 d=0.0000 kind=SOUND src=AKEvent asset="PC_GUNLANCER_M.PC_GunLancer_M_SK_ShieldStamp1_FX000_2" label="" win=NONE
   n t=0.0000 d=0.6106 kind=SUPERARMOR src=SuperArmor asset="" label="" win=NONE
-  n t=0.0300 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.0300 d=0.1000 kind=HIT src=Effect asset="171000" label="" win=NONE area=1 ar=230 aa=0 ah=150 ax=80 arem=0 maxt=0 rep=0 repms=0 push=30 pushr=30 fz=430 fzin=150 fzout=250 hittype=4
   n t=0.0302 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="fx_pc_wgl_11.Par_J_WGL_ShieldShock_08_01" label="" win=NONE
   n t=0.0302 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="fx_cm_01.Distortion.Par_MP_ConcaveDis_Z_01" label="" win=NONE
   n t=0.0302 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="fx_cm_01.Distortion.Par_MP_ConcaveDis_Z_01" label="" win=NONE
@@ -1848,7 +1848,7 @@ LOSTARK_ANIM_NOTIFY 1 "Warlord" 114
   n t=0.4250 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_01.Par_K_WGL_SpearShot_Atk_01" label="" win=NONE
   n t=0.4250 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_01.Par_K_WGL_SpearShot_Atk_04_01" label="" win=NONE
   n t=0.4250 d=0.4000 kind=SHAKE src=ViewShake asset="dur=0.3;in=0;out=0.2;x=3,55;y=3,55;z=3,55;fov=0,0" label="" win=NONE
-  n t=0.4500 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.4500 d=0.1000 kind=HIT src=Effect asset="171600" label="" win=NONE area=2 ar=400 aa=170 ah=150 ax=-20 arem=0 maxt=0 rep=0 repms=0 push=150 pushr=70 fz=550 fzin=150 fzout=250 hittype=4
   n t=0.4600 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_03.Par_Y_WGL_Spearshot_02_01" label="" win=NONE
   n t=0.5500 d=1.8500 kind=CANCEL src=InputTiming asset="" label="[회피캔슬]" win=DODGE_CANCEL
   n t=0.7000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
@@ -1856,7 +1856,7 @@ LOSTARK_ANIM_NOTIFY 1 "Warlord" 114
   n t=0.7000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.7000 d=1.7000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_01.Par_K_WGL_SpearShot_Cast_04_01" label="" win=NONE
   n t=0.7046 d=1.6954 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_08.Par_W_WGL_SpearShot_Cast_02" label="" win=NONE
-  n t=0.8000 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.8000 d=0.1000 kind=HIT src=Effect asset="171601" label="" win=NONE area=1 ar=150 aa=0 ah=150 ax=250 arem=0 maxt=0 rep=2 repms=150 push=200 pushr=-50 fz=550 fzin=150 fzout=200 hittype=4
   n t=0.8999 d=1.5001 kind=CANCEL src=InputTiming asset="" label="[선스]" win=SKILL_PRE
   n t=1.0944 d=1.3056 kind=CANCEL src=InputTiming asset="" label="[선이]" win=MOVE_PRE
   n t=1.4000 d=1.0000 kind=CANCEL src=InputTiming asset="" label="스테이지전환" win=OTHER
@@ -1865,7 +1865,6 @@ LOSTARK_ANIM_NOTIFY 1 "Warlord" 114
   n t=0.0000 d=0.5008 kind=CANCEL src=InputTiming asset="" label="[선스]" win=SKILL_PRE
   n t=0.0000 d=0.9333 kind=CANCEL src=InputTiming asset="" label="[회피캔슬]" win=DODGE_CANCEL
   n t=0.0000 d=0.9333 kind=CANCEL src=InputTiming asset="" label="진격태세" win=OTHER
-  n t=0.0000 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
   n t=0.0000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_00.Dust.Par_H_FireBulletDust_01_01" label="" win=NONE
   n t=0.0000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_03.Par_Y_WGL_SpearShot_01_1" label="" win=NONE
   n t=0.0000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
@@ -1874,6 +1873,7 @@ LOSTARK_ANIM_NOTIFY 1 "Warlord" 114
   n t=0.0000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_03.Par_Y_WGL_SpearShot_wp_01_1" label="" win=NONE
   n t=0.0000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_01.Par_E_Reload_01" label="" win=NONE
   n t=0.0000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
+  n t=0.0000 d=0.1000 kind=HIT src=Effect asset="171610" label="" win=NONE area=2 ar=500 aa=250 ah=150 ax=-20 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 fz=0 fzin=0 fzout=0 hittype=5
   n t=0.0000 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.4;in=0;out=0.2;x=4,55;y=4,55;z=5,55;fov=0,0" label="" win=NONE
   n t=0.0000 d=0.0000 kind=SOUND src=AKEvent asset="PC_GUNLANCER_M.PC_GunLancer_M_SK_SpearShot1_FX000_4" label="" win=NONE
   n t=0.0000 d=0.7053 kind=SUPERARMOR src=SuperArmor asset="" label="" win=NONE
@@ -1906,14 +1906,13 @@ LOSTARK_ANIM_NOTIFY 1 "Warlord" 114
   n t=0.0000 d=0.2667 kind=SUPERARMOR src=SuperArmorPVP asset="" label="" win=NONE
   n t=0.0000 d=0.2667 kind=SUPERARMOR src=SuperArmor asset="" label="" win=NONE
   n t=0.0325 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_03.Par_Y_WGL_Spearshot_02_01" label="" win=NONE
-  n t=0.0500 d=0.2167 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.0500 d=0.2167 kind=HIT src=Effect asset="171600" label="" win=NONE area=2 ar=400 aa=170 ah=150 ax=-20 arem=0 maxt=0 rep=0 repms=0 push=150 pushr=70 fz=550 fzin=150 fzout=250 hittype=4
   n t=0.0500 d=0.2167 kind=SHAKE src=ViewShake asset="dur=0.3;in=0;out=0.2;x=3,55;y=3,55;z=3,55;fov=0,0" label="" win=NONE
 "wgl_sk_spearshot_custom_1_3" skill=17160 len=1.1667 name="스피어 샷"
   n t=0.0000 d=0.6037 kind=CANCEL src=InputTiming asset="" label="[선이]" win=MOVE_PRE
   n t=0.0000 d=0.4017 kind=CANCEL src=InputTiming asset="" label="[선스]" win=SKILL_PRE
   n t=0.0000 d=1.1667 kind=CANCEL src=InputTiming asset="" label="[회피캔슬]" win=DODGE_CANCEL
   n t=0.0000 d=1.1667 kind=CANCEL src=InputTiming asset="" label="진격태세" win=OTHER
-  n t=0.0000 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
   n t=0.0000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_00.Dust.Par_MP_Dust_-X_High_01" label="" win=NONE
   n t=0.0000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.0000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_03.Par_Y_WGL_SpearShot_01_1" label="" win=NONE
@@ -1922,6 +1921,7 @@ LOSTARK_ANIM_NOTIFY 1 "Warlord" 114
   n t=0.0000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_00.Dust.Par_H_FireBulletDust_01_01" label="" win=NONE
   n t=0.0000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_03.Par_Y_WGL_SpearShot_wp_01_1" label="" win=NONE
   n t=0.0000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_01.Par_E_Reload_01" label="" win=NONE
+  n t=0.0000 d=0.1000 kind=HIT src=Effect asset="171620" label="" win=NONE area=2 ar=500 aa=250 ah=150 ax=-20 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 fz=0 fzin=0 fzout=0 hittype=5
   n t=0.0000 d=0.4000 kind=SHAKE src=ViewShake asset="dur=0.4;in=0;out=0.2;x=4,55;y=4,55;z=5,55;fov=0,0" label="" win=NONE
   n t=0.0000 d=1.1667 kind=SOUND src=AKEvent asset="PC_GUNLANCER_M.PC_GunLancer_M_SK_SpearShot1_FX007_2" label="" win=NONE
   n t=0.0000 d=0.6024 kind=SUPERARMOR src=SuperArmor asset="" label="" win=NONE
@@ -1939,9 +1939,9 @@ LOSTARK_ANIM_NOTIFY 1 "Warlord" 114
   n t=0.3000 d=0.3333 kind=SOUND src=AKEvent asset="PC_GUNLANCER_M.PC_GunLancer_M_SK_SpearShot1_Vox1_1" label="" win=NONE
   n t=0.4000 d=0.0000 kind=SOUND src=AKEvent asset="PC_GUNLANCER_M.PC_GunLancer_M_SK_SpearShot1_FX000_5" label="" win=NONE
   n t=0.5000 d=0.1333 kind=HIT src=ParticleHit asset="" label="" win=NONE
-  n t=0.6000 d=0.0333 kind=EFFECT src=Effect asset="" label="" win=NONE
   n t=0.6000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_01.Par_K_WGL_SpearShot_Atk_01" label="" win=NONE
   n t=0.6000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_01.Par_K_WGL_SpearShot_Atk_04_01" label="" win=NONE
+  n t=0.6000 d=0.0333 kind=HIT src=Effect asset="171600" label="" win=NONE area=2 ar=400 aa=170 ah=150 ax=-20 arem=0 maxt=0 rep=0 repms=0 push=150 pushr=70 fz=550 fzin=150 fzout=250 hittype=4
   n t=0.6000 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.3;in=0;out=0.2;x=3,55;y=3,55;z=3,55;fov=0,0" label="" win=NONE
   n t=0.6300 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_03.Par_Y_WGL_Spearshot_02_01" label="" win=NONE
 "wgl_sk_spearshot_custom_2_2" skill=17160 len=0.5000 name="스피어 샷"
@@ -1957,13 +1957,12 @@ LOSTARK_ANIM_NOTIFY 1 "Warlord" 114
   n t=0.0000 d=0.5000 kind=SUPERARMOR src=SuperArmor asset="" label="" win=NONE
   n t=0.0000 d=0.5000 kind=SUPERARMOR src=SuperArmorPVP asset="" label="" win=NONE
   n t=0.0000 d=0.5000 kind=SUPERARMOR src=SuperArmor asset="" label="" win=NONE
-  n t=0.1000 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.1000 d=0.1000 kind=HIT src=Effect asset="171601" label="" win=NONE area=1 ar=150 aa=0 ah=150 ax=250 arem=0 maxt=0 rep=2 repms=150 push=200 pushr=-50 fz=550 fzin=150 fzout=200 hittype=4
   n t=0.1500 d=0.3000 kind=CANCEL src=InputTiming asset="" label="" win=NONE
 "wgl_sk_spearshot_custom_2_3" skill=17160 len=1.3000 name="스피어 샷"
   n t=0.0000 d=0.7063 kind=CANCEL src=InputTiming asset="" label="[선이]" win=MOVE_PRE
   n t=0.0000 d=0.5020 kind=CANCEL src=InputTiming asset="" label="[선스]" win=SKILL_PRE
   n t=0.0000 d=1.3000 kind=CANCEL src=InputTiming asset="" label="진격태세" win=OTHER
-  n t=0.0000 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
   n t=0.0000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.0000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_01.Par_K_WGL_SpearShot_Exp_08_04" label="" win=NONE
   n t=0.0000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_00.Dust.Par_H_FireBulletDust_01_01" label="" win=NONE
@@ -1972,6 +1971,7 @@ LOSTARK_ANIM_NOTIFY 1 "Warlord" 114
   n t=0.0000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_01.Par_E_Reload_01" label="" win=NONE
   n t=0.0000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.0000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_08.Par_W_WGL_SpearShot_01_2" label="" win=NONE
+  n t=0.0000 d=0.1000 kind=HIT src=Effect asset="171630" label="" win=NONE area=2 ar=500 aa=250 ah=150 ax=-20 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 fz=0 fzin=0 fzout=0 hittype=5
   n t=0.0000 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.4;in=0;out=0.2;x=4,55;y=4,55;z=5,55;fov=0,0" label="" win=NONE
   n t=0.0000 d=0.0000 kind=SOUND src=AKEvent asset="PC_GUNLANCER_M.PC_GunLancer_M_SK_SpearShot1_FX008_5" label="" win=NONE
   n t=0.0000 d=0.7071 kind=SUPERARMOR src=SuperArmor asset="" label="" win=NONE
@@ -1993,7 +1993,7 @@ LOSTARK_ANIM_NOTIFY 1 "Warlord" 114
   n t=0.9000 d=0.3666 kind=CANCEL src=InputTiming asset="" label="입력캔슬" win=ANY_CANCEL
   n t=0.9000 d=0.3666 kind=CANCEL src=InputTiming asset="" label="이동캔슬" win=MOVE_CANCEL
 "wgl_sk_super_guardianofprotection_01" skill=17250 len=2.4000 name="수호의 맹세"
-  n t=0.0000 d=0.1000 kind=EFFECT src=Effect asset="" label="피해면역" win=NONE
+  n t=0.0000 d=0.1000 kind=EFFECT src=Effect asset="578300" label="피해면역" win=NONE
   n t=0.0000 d=2.4000 kind=SUPERARMOR src=SuperArmor asset="" label="" win=NONE
   n t=0.0000 d=2.4000 kind=SUPERARMOR src=SuperArmorPVP asset="" label="" win=NONE
   n t=0.0010 d=0.6657 kind=SOUND src=AKEvent asset="PC_GUNLANCER_M.PC_GunLancer_M_SK_SpearDash1_Vox1_1" label="" win=NONE
@@ -2016,7 +2016,7 @@ LOSTARK_ANIM_NOTIFY 1 "Warlord" 114
   n t=0.5246 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_ZoomBlur_03" label="" win=NONE
   n t=0.6972 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_08.Par_W_WGL_SuperGProtection_SD_00" label="" win=NONE
   n t=0.7901 d=0.1141 kind=SHAKE src=ViewShake asset="dur=0.25;in=0;out=0.12;x=0,80;y=0,80;z=5,70;fov=0,0" label="" win=NONE
-  n t=0.8000 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.8000 d=0.1000 kind=HIT src=Effect asset="172505" label="" win=NONE area=1 ar=350 aa=0 ah=300 ax=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 fz=0 fzin=0 fzout=0 hittype=8
   n t=0.8728 d=1.5272 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_08.Par_W_WGL_SuperGProtection_SD_01" label="" win=NONE
   n t=0.8972 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_08.Par_W_WGL_SuperGProtection_SD_00" label="" win=NONE
   n t=1.0734 d=1.3266 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_08.Par_W_WGL_SuperGProtection_SD_01" label="" win=NONE
@@ -2050,8 +2050,8 @@ LOSTARK_ANIM_NOTIFY 1 "Warlord" 114
   n t=1.0262 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_08.Par_W_WGL_SuperGProtection_explo_de" label="" win=NONE
   n t=1.0262 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_08.Par_W_WGL_SuperGProtection_explo_de" label="" win=NONE
   n t=1.0267 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_ZoomBlur_01" label="" win=NONE
-  n t=1.0500 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
-  n t=1.0500 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=1.0500 d=0.1000 kind=EFFECT src=Effect asset="172500" label="" win=NONE
+  n t=1.0500 d=0.1000 kind=HIT src=Effect asset="172502" label="" win=NONE area=1 ar=700 aa=0 ah=300 ax=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 fz=0 fzin=0 fzout=0 hittype=5
   n t=1.0641 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_08.Par_W_WGL_SuperGProtection_HitG_Cam" label="" win=NONE
   n t=1.0694 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=1.0904 d=0.0960 kind=SHAKE src=ViewShake asset="dur=0.7;in=0;out=0.4;x=6,60;y=6,60;z=5,75;fov=0,0" label="" win=NONE
@@ -2059,7 +2059,7 @@ LOSTARK_ANIM_NOTIFY 1 "Warlord" 114
   n t=1.6000 d=0.8333 kind=CANCEL src=InputTiming asset="" label="입력캔슬" win=ANY_CANCEL
   n t=1.6000 d=0.8333 kind=CANCEL src=InputTiming asset="" label="이동캔슬" win=MOVE_CANCEL
 "wgl_sk_super_judgmentspear_01" skill=17260 len=3.6667 name="정의 실현"
-  n t=0.0000 d=0.1000 kind=EFFECT src=Effect asset="" label="피해면역" win=NONE
+  n t=0.0000 d=0.1000 kind=EFFECT src=Effect asset="578300" label="피해면역" win=NONE
   n t=0.0000 d=3.6667 kind=SUPERARMOR src=SuperArmorPVP asset="" label="" win=NONE
   n t=0.0000 d=3.6667 kind=SUPERARMOR src=SuperArmor asset="" label="" win=NONE
   n t=0.0010 d=0.5000 kind=SOUND src=AKEvent asset="PC_GUNLANCER_M.PC_GunLancer_M_SK_KayangelSpear1_Vox1_1" label="" win=NONE
@@ -2093,7 +2093,7 @@ LOSTARK_ANIM_NOTIFY 1 "Warlord" 114
   n t=0.2000 d=0.5200 kind=CANCEL src=InputTiming asset="" label="[선스]" win=SKILL_PRE
   n t=0.2000 d=0.5200 kind=CANCEL src=InputTiming asset="" label="[선이]" win=MOVE_PRE
   n t=0.2000 d=1.4000 kind=SOUND src=AKEvent asset="PC_GUNLANCER_M.PC_GunLancer_M_SK_KayangelSpear1_FX000_3" label="" win=NONE
-  n t=0.3000 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.3000 d=0.1000 kind=EFFECT src=Effect asset="172600" label="" win=NONE
   n t=0.4000 d=1.2000 kind=CANCEL src=InputTiming asset="" label="[회피캔슬]" win=DODGE_CANCEL
   n t=0.6996 d=0.9004 kind=CANCEL src=InputTiming asset="" label="이동캔슬" win=MOVE_CANCEL
   n t=0.7022 d=0.8978 kind=CANCEL src=InputTiming asset="" label="입력캔슬" win=ANY_CANCEL
@@ -2124,7 +2124,6 @@ LOSTARK_ANIM_NOTIFY 1 "Warlord" 114
   n t=0.7000 d=1.0000 kind=CANCEL src=InputTiming asset="" label="[선스]" win=SKILL_PRE
   n t=0.9000 d=1.0000 kind=CANCEL src=InputTiming asset="" label="[선이]" win=MOVE_PRE
   n t=1.1500 d=0.0000 kind=SOUND src=AKEvent asset="PC_GUNLANCER_M.PC_GunLancer_M_SK_ThunderBolt1_FX000_2" label="" win=NONE
-  n t=1.2000 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
   n t=1.2000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_C_Light_004" label="" win=NONE
   n t=1.2000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_07.Par_S_WGL_GuardianLightning_01" label="" win=NONE
   n t=1.2000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_FilmNoise_01" label="" win=NONE
@@ -2134,6 +2133,7 @@ LOSTARK_ANIM_NOTIFY 1 "Warlord" 114
   n t=1.2000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_07.Par_S_WGL_GuardianLightning_02" label="" win=NONE
   n t=1.2000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_C_Light_004" label="" win=NONE
   n t=1.2000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_07.Par_S_WGL_GuardianLightning_01" label="" win=NONE
+  n t=1.2000 d=0.1000 kind=HIT src=Effect asset="171400" label="" win=NONE area=1 ar=300 aa=0 ah=250 ax=0 arem=0 maxt=0 rep=0 repms=0 push=5 pushr=5 fz=255 fzin=100 fzout=150 hittype=4
   n t=1.2000 d=0.4039 kind=SHAKE src=ViewShake asset="dur=0.4;in=0;out=0.2;x=4,60;y=4,60;z=6,80;fov=0,0" label="" win=NONE
   n t=1.2020 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_07.Par_S_WGL_GuardianLightning_Cross_01" label="" win=NONE
   n t=1.2020 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_07.Par_S_WGL_GuardianLightning_Cross_01" label="" win=NONE
@@ -2142,16 +2142,16 @@ LOSTARK_ANIM_NOTIFY 1 "Warlord" 114
   n t=1.3000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_01.Par_O_WGL_LOG_Item_02_01" label="" win=NONE
   n t=1.3000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_01.Par_O_WGL_LOG_Item_02_01" label="" win=NONE
   n t=1.3000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_01.Par_O_WGL_LOG_Item_02_02" label="" win=NONE
-  n t=1.4000 d=0.1477 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=1.4000 d=0.1477 kind=HIT src=Effect asset="171410" label="" win=NONE area=2 ar=800 aa=100 ah=250 ax=0 arem=0 maxt=0 rep=0 repms=0 push=5 pushr=5 fz=255 fzin=100 fzout=150 hittype=4
   n t=1.7000 d=0.4333 kind=CANCEL src=InputTiming asset="" label="입력캔슬" win=ANY_CANCEL
   n t=1.9000 d=0.2333 kind=CANCEL src=InputTiming asset="" label="이동캔슬" win=MOVE_CANCEL
 "wgl_sk_warspear" skill=17840 len=1.0000 name="# 고독한 기사_전장의 창"
   n t=0.0000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="fx_pc_wgl_10.Par_K_WGL_Flare_01" label="" win=NONE
   n t=0.0000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_ZoomBlur_03" label="" win=NONE
-  n t=0.0000 d=0.0000 kind=EFFECT src=Effect asset="" label="" win=NONE
-  n t=0.0000 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
-  n t=0.0000 d=0.0000 kind=EFFECT src=Effect asset="" label="" win=NONE
-  n t=0.0000 d=0.0000 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.0000 d=0.0000 kind=EFFECT src=Effect asset="2170000" label="" win=NONE
+  n t=0.0000 d=0.1000 kind=EFFECT src=Effect asset="178000" label="" win=NONE
+  n t=0.0000 d=0.0000 kind=EFFECT src=Effect asset="2170002" label="" win=NONE
+  n t=0.0000 d=0.0000 kind=EFFECT src=Effect asset="2170003" label="" win=NONE
   n t=0.0000 d=0.7200 kind=SUPERARMOR src=SuperArmor asset="" label="" win=NONE
   n t=0.0000 d=0.7200 kind=SUPERARMOR src=SuperArmorPVP asset="" label="" win=NONE
   n t=0.0010 d=0.3000 kind=SOUND src=AKEvent asset="PC_GUNLANCER_M.PC_GunLancer_M_SK_WarSpear1_FX000_1" label="" win=NONE
@@ -2163,9 +2163,9 @@ LOSTARK_ANIM_NOTIFY 1 "Warlord" 114
   n t=0.6000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_ZoomBlur_02" label="" win=NONE
   n t=0.6000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="fx_pc_wgl_10.Par_K_WGL_Flare_02" label="" win=NONE
   n t=0.6000 d=0.3035 kind=SHAKE src=ViewShake asset="dur=0.25;in=0;out=0.1;x=0,80;y=0,80;z=7,80;fov=0,0" label="" win=NONE
-  n t=0.6500 d=0.0500 kind=EFFECT src=Effect asset="" label="" win=NONE
-  n t=0.6500 d=0.0500 kind=EFFECT src=Effect asset="" label="" win=NONE
+  n t=0.6500 d=0.0500 kind=EFFECT src=Effect asset="2170096" label="" win=NONE
   n t=0.6500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="fx_pc_wgl_10.Par_R_WGL_Warspear_Roar_01" label="" win=NONE
+  n t=0.6500 d=0.0500 kind=HIT src=Effect asset="178500" label="" win=NONE area=1 ar=500 aa=0 ah=150 ax=0 arem=0 maxt=0 rep=0 repms=0 push=30 pushr=30 fz=430 fzin=150 fzout=250 hittype=4
   n t=0.7000 d=0.3000 kind=CANCEL src=InputTiming asset="" label="입력캔슬" win=ANY_CANCEL
   n t=0.7000 d=0.3000 kind=CANCEL src=InputTiming asset="" label="이동캔슬" win=MOVE_CANCEL
   n t=0.7000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE

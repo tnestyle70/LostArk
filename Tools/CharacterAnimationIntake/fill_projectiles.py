@@ -5,12 +5,20 @@
 Promotes the reference <Asset>.projectiles (objects a skill spawns: missiles,
 fixed areas, grenades, traces, with the SkillEffect hits the object itself
 applies) into Data/Animation/Authored/<Asset>/<Asset>.projectiles.json for the
-damage skills of the class. Only the clips of the authored skillbindings chain are
-kept, only the skill's lowest clipseq group (the tripod-free chain) counts, the lowest
-PK of a same-time spawn is the base object, and an
-object without a damaging shaped hit (dmg > 0 against enemies, area > 0) is skipped.
+damage skills of the class. A spawn counts when it belongs to the skill's lowest
+clipseq group (the tripod-free chain) or when its effect PK names the base variant
+(pk // 10 == skillId), which is how an awakening skill owns its objects outright
+while its clipseq groups only describe alternate presentations. A base-variant
+object authored on a clip the roster does not play keeps its action-local time and
+moves to the bound clip that covers it, but only from its own base group: a spawn
+carried by a higher group belongs to that tripod's presentation, not the base
+chain, even when its PK names the base variant. The lowest PK of a same-time spawn is the
+base object, and an object without a damaging shaped hit (dmg > 0 against enemies,
+area > 0) is skipped.
 """
 import io, json, os, re, sys
+
+from build_hitshapes import read_clip_ticks, TICK_RATE
 
 REPO = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
 REF = os.path.join(REPO, 'Data', 'Animation', 'Reference')
@@ -43,6 +51,54 @@ def load_base_seq(asset):
             skill, seq = int(m.group(1)), int(m.group(2))
             base[skill] = min(base.get(skill, seq), seq)
     return base
+
+
+def load_seq_chains(asset):
+    """Clips of each (skill, clipseq group). A spawn time is local to its own clip,
+    so the group's clip order is what turns it into an action-local time."""
+    chains = {}
+    for line in read_lines(os.path.join(REF, asset, asset + '.clipseq'))[1:]:
+        m = re.match(r'^(\d+) "[^"]*" seq=(\d+)(.*)$', line.rstrip('\r'))
+        if m:
+            clips = [c for c in parse_pairs(m.group(3)).get('clips', '').split(',') if c]
+            if clips:
+                chains[(int(m.group(1)), int(m.group(2)))] = clips
+    return chains
+
+
+def clip_source_ms(clip_ticks, name):
+    return clip_ticks[name] / TICK_RATE * 1000.0
+
+
+def action_time_ms(chain, clip_ticks, clip, local_ms):
+    """Spawn time measured from the start of the action instead of its own clip."""
+    elapsed = 0.0
+    for name in chain:
+        if name == clip:
+            return elapsed + local_ms
+        if name not in clip_ticks:
+            return None
+        elapsed += clip_source_ms(clip_ticks, name)
+    return None
+
+
+def locate_in_chain(entries, clip_ticks, time_ms):
+    """The bound clip covering an action-local time, and the offset inside it."""
+    elapsed = 0.0
+    for entry in entries:
+        name = entry if isinstance(entry, str) else entry['clip']
+        play_ms = 0 if isinstance(entry, str) else int(entry.get('playMs', 0))
+        rate = 1.0 if isinstance(entry, str) else float(entry.get('playRate', 1.0))
+        if name not in clip_ticks:
+            return None
+        source_ms = clip_source_ms(clip_ticks, name)
+        if play_ms:
+            source_ms = min(source_ms, float(play_ms))
+        duration = source_ms / rate
+        if elapsed <= time_ms < elapsed + duration:
+            return name, (time_ms - elapsed) * rate
+        elapsed += duration
+    return None
 
 
 def load_reference(asset):
@@ -99,6 +155,10 @@ def build(asset):
     skills = {int(s['skillId']): s for s in balance['skills'] if s['characterClass'] == bindings['characterClass']}
     reference = load_reference(asset)
     base_seq = load_base_seq(asset)
+    seq_chains = load_seq_chains(asset)
+    catalog = json.load(io.open(os.path.join(REPO, 'Data', 'Actors', 'CharacterCatalog.json'), encoding='utf-8'))
+    body = next(c for c in catalog['characters'] if c['assetId'] == asset)['bodyModel']
+    clip_ticks = read_clip_ticks(os.path.join(REPO, 'Client', 'Bin', 'Resources', *body.split('/')))
     out = []
     skipped = 0
     for binding in sorted(bindings['bindings'], key=lambda b: int(b['skillId'])):
@@ -109,9 +169,38 @@ def build(asset):
         entries = binding['clips']
         stages = [list(e) for e in entries] if entries and isinstance(entries[0], list) else [list(entries)]
         chain = {e if isinstance(e, str) else e['clip'] for stage in stages for e in stage}
-        candidates = [r for r in reference if r['skill'] == skill_id and r['clip'] in chain
-                      and r['kind'] in KINDS and r['layout'] != 'none'
-                      and r['seq'] == base_seq.get(skill_id, r['seq'])]
+        candidates = []
+        for row in reference:
+            if row['skill'] != skill_id or row['kind'] not in KINDS or row['layout'] == 'none':
+                continue
+            base_owned = row['pk'] // 10 == skill_id
+            if not base_owned and row['seq'] != base_seq.get(skill_id, row['seq']):
+                continue
+            if row['clip'] in chain:
+                candidates.append(row)
+                continue
+            if not base_owned or row['seq'] != base_seq.get(skill_id, row['seq']):
+                continue
+            if len(stages) != 1:
+                print('%s %d: base object %d sits on unbound clip %s of a staged skill, left out' % (
+                    asset, skill_id, row['pk'], row['clip']))
+                skipped += 1
+                continue
+            source_chain = seq_chains.get((skill_id, row['seq']))
+            absolute = (action_time_ms(source_chain, clip_ticks, row['clip'], row['t'] * 1000.0)
+                        if source_chain else None)
+            located = locate_in_chain(stages[0], clip_ticks, absolute) if absolute is not None else None
+            if located is None:
+                print('%s %d: base object %d on unbound clip %s has no place in the bound chain, left out' % (
+                    asset, skill_id, row['pk'], row['clip']))
+                skipped += 1
+                continue
+            moved = dict(row)
+            moved['clip'], moved['t'] = located[0], located[1] / 1000.0
+            print('%s %d: base object %d moved from %s %dms to %s %dms' % (
+                asset, skill_id, row['pk'], row['clip'], int(round(row['t'] * 1000.0)),
+                moved['clip'], int(round(located[1]))))
+            candidates.append(moved)
         groups = {}
         for row in candidates:
             key = (row['clip'], round(row['t'], 3), row['kind'])
