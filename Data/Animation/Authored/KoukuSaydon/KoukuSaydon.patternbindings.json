@@ -3,7 +3,7 @@
   "formatVersion": 1,
   "lightResourceRevision": 30,
   "bossArchetypeId": "BOSS_KAKULSAYDON_G1_KOUKU",
-  "sourceRevision": 2235,
+  "sourceRevision": 2236,
   "bindings": [
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_1.stage.43",
@@ -5719,7 +5719,7 @@
       "clip": "rpct00_idle_battle_1",
       "startOffsetMs": 0,
       "sourceStartMs": 0,
-      "playMs": 23333,
+      "playMs": 18333,
       "playRate": 1.0,
       "endPolicy": "LOOP_TO_WINDOW"
     },
@@ -21720,7 +21720,7 @@
           "resourceDurationMs": 7400,
           "positionOffset": [
             0,
-            0,
+            90,
             0
           ],
           "rotationDegrees": [
@@ -21729,9 +21729,9 @@
             0
           ],
           "scale": [
-            1,
-            1,
-            1
+            2,
+            2,
+            2
           ],
           "fadeInMs": 0,
           "fadeOutMs": 0,
@@ -95893,7 +95893,7 @@
           "resourceDurationMs": 6300,
           "positionOffset": [
             0,
-            0,
+            90,
             0
           ],
           "rotationDegrees": [
@@ -95902,9 +95902,9 @@
             0
           ],
           "scale": [
-            1,
-            1,
-            1
+            2,
+            2,
+            2
           ],
           "fadeInMs": 0,
           "fadeOutMs": 0,
@@ -95951,7 +95951,7 @@
           "resourceDurationMs": 4300,
           "positionOffset": [
             0,
-            0,
+            90,
             0
           ],
           "rotationDegrees": [
@@ -95960,9 +95960,9 @@
             0
           ],
           "scale": [
-            1,
-            1,
-            1
+            2,
+            2,
+            2
           ],
           "fadeInMs": 0,
           "fadeOutMs": 0,
@@ -97421,7 +97421,7 @@
           "resourceDurationMs": 1700,
           "positionOffset": [
             0,
-            0,
+            90,
             0
           ],
           "rotationDegrees": [
@@ -97430,9 +97430,9 @@
             0
           ],
           "scale": [
-            1,
-            1,
-            1
+            2,
+            2,
+            2
           ],
           "fadeInMs": 0,
           "fadeOutMs": 0,
@@ -97479,7 +97479,7 @@
           "resourceDurationMs": 1500,
           "positionOffset": [
             0,
-            0,
+            90,
             0
           ],
           "rotationDegrees": [
@@ -97488,9 +97488,9 @@
             0
           ],
           "scale": [
-            1,
-            1,
-            1
+            2,
+            2,
+            2
           ],
           "fadeInMs": 0,
           "fadeOutMs": 0,
@@ -97537,7 +97537,7 @@
           "resourceDurationMs": 3000,
           "positionOffset": [
             0,
-            0,
+            90,
             0
           ],
           "rotationDegrees": [
@@ -97546,9 +97546,9 @@
             0
           ],
           "scale": [
-            1,
-            1,
-            1
+            2,
+            2,
+            2
           ],
           "fadeInMs": 0,
           "fadeOutMs": 0,
@@ -97595,7 +97595,7 @@
           "resourceDurationMs": 3200,
           "positionOffset": [
             0,
-            0,
+            90,
             0
           ],
           "rotationDegrees": [
@@ -97604,9 +97604,9 @@
             0
           ],
           "scale": [
-            1,
-            1,
-            1
+            2,
+            2,
+            2
           ],
           "fadeInMs": 0,
           "fadeOutMs": 0,
@@ -97653,7 +97653,7 @@
           "resourceDurationMs": 3000,
           "positionOffset": [
             0,
-            0,
+            90,
             0
           ],
           "rotationDegrees": [
@@ -97662,9 +97662,9 @@
             0
           ],
           "scale": [
-            1,
-            1,
-            1
+            2,
+            2,
+            2
           ],
           "fadeInMs": 0,
           "fadeOutMs": 0,
@@ -97711,7 +97711,7 @@
           "resourceDurationMs": 4000,
           "positionOffset": [
             0,
-            0,
+            90,
             0
           ],
           "rotationDegrees": [
@@ -97720,9 +97720,9 @@
             0
           ],
           "scale": [
-            1,
-            1,
-            1
+            2,
+            2,
+            2
           ],
           "fadeInMs": 0,
           "fadeOutMs": 0,
@@ -98602,7 +98602,7 @@
           "resourceDurationMs": 3176,
           "positionOffset": [
             0,
-            0,
+            90,
             0
           ],
           "rotationDegrees": [
@@ -98611,9 +98611,9 @@
             0
           ],
           "scale": [
-            1,
-            1,
-            1
+            2,
+            2,
+            2
           ],
           "fadeInMs": 0,
           "fadeOutMs": 0,
@@ -98660,7 +98660,7 @@
           "resourceDurationMs": 3182,
           "positionOffset": [
             0,
-            0,
+            90,
             0
           ],
           "rotationDegrees": [
@@ -98669,9 +98669,9 @@
             0
           ],
           "scale": [
-            1,
-            1,
-            1
+            2,
+            2,
+            2
           ],
           "fadeInMs": 0,
           "fadeOutMs": 0,
@@ -98718,7 +98718,7 @@
           "resourceDurationMs": 2970,
           "positionOffset": [
             0,
-            0,
+            90,
             0
           ],
           "rotationDegrees": [
@@ -98727,9 +98727,9 @@
             0
           ],
           "scale": [
-            1,
-            1,
-            1
+            2,
+            2,
+            2
           ],
           "fadeInMs": 0,
           "fadeOutMs": 0,
@@ -98776,7 +98776,7 @@
           "resourceDurationMs": 5250,
           "positionOffset": [
             0,
-            0,
+            90,
             0
           ],
           "rotationDegrees": [
@@ -98785,9 +98785,9 @@
             0
           ],
           "scale": [
-            1,
-            1,
-            1
+            2,
+            2,
+            2
           ],
           "fadeInMs": 0,
           "fadeOutMs": 0,
@@ -98834,7 +98834,7 @@
           "resourceDurationMs": 5056,
           "positionOffset": [
             0,
-            0,
+            90,
             0
           ],
           "rotationDegrees": [
@@ -98843,9 +98843,9 @@
             0
           ],
           "scale": [
-            1,
-            1,
-            1
+            2,
+            2,
+            2
           ],
           "fadeInMs": 0,
           "fadeOutMs": 0,
@@ -99271,7 +99271,7 @@
           "resourceDurationMs": 2300,
           "positionOffset": [
             0,
-            0,
+            90,
             0
           ],
           "rotationDegrees": [
@@ -99280,9 +99280,9 @@
             0
           ],
           "scale": [
-            1,
-            1,
-            1
+            2,
+            2,
+            2
           ],
           "fadeInMs": 0,
           "fadeOutMs": 0,
@@ -117772,13 +117772,13 @@
       "gateId": "BINGO",
       "targetBossPlacementId": "boss.kakulsaydon.bingo.saydon",
       "actorProfileId": "MN_RPCT_05",
-      "durationMs": 26322,
-      "stageDurationMs": 23333,
+      "durationMs": 21322,
+      "stageDurationMs": 18333,
       "sourceAnchorAnimations": [
         {
           "runtimeClip": "rpct00_idle_battle_1",
           "sourceStartMs": 0,
-          "playMs": 23333,
+          "playMs": 18333,
           "playRate": 1.0,
           "endPolicy": "LOOP_TO_WINDOW",
           "startOffsetMs": 0,
@@ -117804,7 +117804,7 @@
           "resourceId": "presentation.kouku.bingo.encore.camera.1",
           "kind": "CAMERA",
           "assetId": "kouku.bingo.encore.camera.1",
-          "resourceDurationMs": 23333,
+          "resourceDurationMs": 18333,
           "positionOffset": [
             0,
             0,
@@ -117839,7 +117839,7 @@
           "worldEmissionIndex": 0,
           "occurrenceId": "KAKULSAYDON_G1_PATTERN_97.presentation.1",
           "startMs": 0,
-          "durationMs": 23333,
+          "durationMs": 18333,
           "brightnessMultiplier": 1,
           "boneTarget": "BODY",
           "worldSequenceInstanceId": ""
@@ -117862,7 +117862,7 @@
           "resourceId": "presentation.kouku.bingo.encore.fade.black",
           "kind": "EFFECT",
           "assetId": "kouku.bingo.encore.fade.black",
-          "resourceDurationMs": 23333,
+          "resourceDurationMs": 18333,
           "positionOffset": [
             0,
             0,
@@ -117897,65 +117897,7 @@
           "worldEmissionIndex": 0,
           "occurrenceId": "KAKULSAYDON_G1_PATTERN_97.presentation.2",
           "startMs": 0,
-          "durationMs": 23333,
-          "brightnessMultiplier": 1,
-          "boneTarget": "BODY",
-          "worldSequenceInstanceId": ""
-        },
-        {
-          "resourceKind": "",
-          "elementId": "",
-          "shape": "BOX",
-          "colliderKind": "GEOMETRY",
-          "halfExtents": [
-            1,
-            1,
-            1
-          ],
-          "radiusM": 3,
-          "halfAngleDegrees": 45,
-          "soundEvent": "s_scene_ocean3_3.scene_midnightc_ed_popup1",
-          "subtitleText": "",
-          "subtitlePosition": "NORMAL",
-          "resourceId": "sound.kouku.696b5ad453c3fd2116d7",
-          "kind": "SOUND",
-          "assetId": "Sound/KoukuSaton/Events/scene_midnightc_ed_popup1.source.1.wav",
-          "resourceDurationMs": 2367,
-          "positionOffset": [
-            0,
-            0,
-            0
-          ],
-          "rotationDegrees": [
-            0,
-            0,
-            0
-          ],
-          "scale": [
-            1,
-            1,
-            1
-          ],
-          "fadeInMs": 0,
-          "fadeOutMs": 0,
-          "dissolveStart": 0.95,
-          "dissolveEnd": 1,
-          "volume": 1,
-          "soundSourceStartMs": 0,
-          "followBoss": false,
-          "bone": "",
-          "regionId": "",
-          "cardSymbol": "NONE",
-          "cardColor": "NONE",
-          "anchorKind": "MAP",
-          "worldId": "",
-          "logicOccurrenceId": "",
-          "debugRender": false,
-          "worldOccurrenceId": "",
-          "worldEmissionIndex": 0,
-          "occurrenceId": "KAKULSAYDON_G1_PATTERN_97.presentation.3",
-          "startMs": 0,
-          "durationMs": 2367,
+          "durationMs": 18333,
           "brightnessMultiplier": 1,
           "boneTarget": "BODY",
           "worldSequenceInstanceId": ""
@@ -117999,7 +117941,7 @@
           "dissolveStart": 0.95,
           "dissolveEnd": 1,
           "volume": 1,
-          "soundSourceStartMs": 0,
+          "soundSourceStartMs": 2900,
           "followBoss": false,
           "bone": "",
           "regionId": "",
@@ -118012,8 +117954,8 @@
           "worldOccurrenceId": "",
           "worldEmissionIndex": 0,
           "occurrenceId": "KAKULSAYDON_G1_PATTERN_97.presentation.4",
-          "startMs": 2100,
-          "durationMs": 23793,
+          "startMs": 0,
+          "durationMs": 20893,
           "brightnessMultiplier": 1,
           "boneTarget": "BODY",
           "worldSequenceInstanceId": ""
@@ -118057,7 +117999,7 @@
           "dissolveStart": 0.95,
           "dissolveEnd": 1,
           "volume": 1,
-          "soundSourceStartMs": 0,
+          "soundSourceStartMs": 5000,
           "followBoss": false,
           "bone": "",
           "regionId": "",
@@ -118071,7 +118013,7 @@
           "worldEmissionIndex": 0,
           "occurrenceId": "KAKULSAYDON_G1_PATTERN_97.presentation.5",
           "startMs": 0,
-          "durationMs": 26322,
+          "durationMs": 21322,
           "brightnessMultiplier": 1,
           "boneTarget": "BODY",
           "worldSequenceInstanceId": ""
@@ -118097,7 +118039,7 @@
           "resourceDurationMs": 1700,
           "positionOffset": [
             0,
-            0,
+            90,
             0
           ],
           "rotationDegrees": [
@@ -118106,9 +118048,9 @@
             0
           ],
           "scale": [
-            1,
-            1,
-            1
+            2,
+            2,
+            2
           ],
           "fadeInMs": 0,
           "fadeOutMs": 0,
@@ -118128,7 +118070,7 @@
           "worldOccurrenceId": "",
           "worldEmissionIndex": 0,
           "occurrenceId": "KAKULSAYDON_G1_PATTERN_97.presentation.6",
-          "startMs": 10233,
+          "startMs": 5233,
           "durationMs": 1700,
           "brightnessMultiplier": 1,
           "boneTarget": "BODY",
@@ -118155,7 +118097,7 @@
           "resourceDurationMs": 3600,
           "positionOffset": [
             0,
-            0,
+            90,
             0
           ],
           "rotationDegrees": [
@@ -118164,9 +118106,9 @@
             0
           ],
           "scale": [
-            1,
-            1,
-            1
+            2,
+            2,
+            2
           ],
           "fadeInMs": 0,
           "fadeOutMs": 0,
@@ -118186,7 +118128,7 @@
           "worldOccurrenceId": "",
           "worldEmissionIndex": 0,
           "occurrenceId": "KAKULSAYDON_G1_PATTERN_97.presentation.7",
-          "startMs": 12367,
+          "startMs": 7367,
           "durationMs": 3600,
           "brightnessMultiplier": 1,
           "boneTarget": "BODY",
@@ -118213,7 +118155,7 @@
           "resourceDurationMs": 3050,
           "positionOffset": [
             0,
-            0,
+            90,
             0
           ],
           "rotationDegrees": [
@@ -118222,9 +118164,9 @@
             0
           ],
           "scale": [
-            1,
-            1,
-            1
+            2,
+            2,
+            2
           ],
           "fadeInMs": 0,
           "fadeOutMs": 0,
@@ -118244,7 +118186,7 @@
           "worldOccurrenceId": "",
           "worldEmissionIndex": 0,
           "occurrenceId": "KAKULSAYDON_G1_PATTERN_97.presentation.8",
-          "startMs": 16700,
+          "startMs": 11700,
           "durationMs": 3050,
           "brightnessMultiplier": 1,
           "boneTarget": "BODY",
@@ -118268,7 +118210,7 @@
           "resourceId": "kakulsaydon.effect.c29e7983e307d422c560",
           "kind": "EFFECT",
           "assetId": "effect.kouku.bingo.encore.glass.screen",
-          "resourceDurationMs": 23333,
+          "resourceDurationMs": 18333,
           "positionOffset": [
             0,
             0,
@@ -118303,7 +118245,7 @@
           "worldEmissionIndex": 0,
           "occurrenceId": "KAKULSAYDON_G1_PATTERN_97.presentation.9",
           "startMs": 0,
-          "durationMs": 23333,
+          "durationMs": 18333,
           "brightnessMultiplier": 1,
           "boneTarget": "BODY",
           "worldSequenceInstanceId": ""

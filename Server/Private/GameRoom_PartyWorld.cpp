@@ -30,9 +30,7 @@ void LostArk::Server::CGameRoom::Handle_ReturnToBern(
 	const LostArk::Shared::C2S_RETURN_TO_BERN& request)
 {
 	using namespace LostArk::Shared;
-	// Same guide NPC placement Handle_ConfirmNpcEntry's own
-	// VALTAN_ENTRY_GUIDE_NPCS[0] leads out from -- either would do (both lead to
-	// the same target), this just needs to be a real BERN placement id.
+	// Direct Lobby/debug entries have no source NPC; retain their established exit.
 	constexpr const char* BERN_RETURN_PLACEMENT_ID = "npc.bern.beda.guide";
 
 	/* Valtan after its clear; KoukuSaydon after its last gate cleared (the gate progress
@@ -82,7 +80,8 @@ void LostArk::Server::CGameRoom::Handle_ReturnToBern(
 	transfer.strNickName = player.strNickName;
 	transfer.iHonorTitleId = player.iHonorTitleId;
 	transfer.iPartyRequestSequence = request.iRequestSequence;
-	transfer.strSpawnPlacementOverrideId = BERN_RETURN_PLACEMENT_ID;
+	transfer.strSpawnPlacementOverrideId = player.strRaidReturnNpcPlacementId.empty() ?
+		BERN_RETURN_PLACEMENT_ID : player.strRaidReturnNpcPlacementId;
 	// Carries Valtan clear rewards (and anything else still held) across the
 	// trip -- without this, Stage_PlayerEntry's default fresh-entry grant would
 	// silently reset the player back to just 3 starting potions.
@@ -688,7 +687,7 @@ bool LostArk::Server::CGameRoom::Is_PlayerNearValtanEntryNpc(
 bool LostArk::Server::CGameRoom::Stage_PartyWorldTransfer(
 	const std::vector<LostArk::Shared::PLAYER_ID>& batchMemberIds,
 	const LostArk::Shared::WORLD_ID targetWorldId,
-	const std::uint32_t requestSequence)
+	const std::uint32_t requestSequence, const std::string& raidReturnNpcPlacementId)
 {
 	using namespace LostArk::Shared;
 	if (batchMemberIds.empty())
@@ -714,6 +713,7 @@ bool LostArk::Server::CGameRoom::Stage_PartyWorldTransfer(
 	SERVER_WORLD_TRANSFER_REQUEST transfer{};
 	transfer.iSessionId = leader.iSessionId;
 	transfer.eTargetWorldId = targetWorldId;
+	transfer.strRaidReturnNpcPlacementId = raidReturnNpcPlacementId;
 	transfer.eCharacterClass = leader.eCharacterClass;
 	transfer.strNickName = leader.strNickName;
 	transfer.iHonorTitleId = leader.iHonorTitleId;
@@ -914,7 +914,8 @@ void LostArk::Server::CGameRoom::Close_RaidEntryVote(
 		// 수락 완료와 실제 stage 사이에 멤버가 unavailable해졌으면 전송하지 않고
 		// CANCELLED로 낮춰 전원이 Bern에 남게 한다(부분 이동 금지).
 		if (!Stage_PartyWorldTransfer(
-				proposal.Voters, targetWorld, proposal.iRequestSequence))
+				proposal.Voters, targetWorld, proposal.iRequestSequence,
+				proposal.strNpcPlacementId))
 		{
 			finalResult = RAID_ENTRY_VOTE_RESULT::CANCELLED;
 		}
@@ -972,7 +973,8 @@ void LostArk::Server::CGameRoom::Cancel_RaidEntryProposalsInvolving(
 
 bool LostArk::Server::CGameRoom::Transfer_PartyTo(
 	CGameRoom& target, const std::vector<SESSION_ID>& leaderFirstSessionIds,
-	LostArk::Shared::PARTY_TRANSFER_RESULT& outResult, std::string& status)
+	LostArk::Shared::PARTY_TRANSFER_RESULT& outResult, std::string& status,
+	const std::string& raidReturnNpcPlacementId)
 {
 	using namespace LostArk::Shared;
 	outResult = PARTY_TRANSFER_RESULT::REJECTED_MEMBER_UNAVAILABLE;
@@ -1023,7 +1025,8 @@ bool LostArk::Server::CGameRoom::Transfer_PartyTo(
 		enter.strNickName = member->second.strNickName;
 		STAGED_PLAYER_ENTRY entry{};
 		SESSION_DIAGNOSTIC_REASON reason{};
-		if (!target.Stage_PlayerEntry(session, enter, entries, entry, reason, status))
+		if (!target.Stage_PlayerEntry(session, enter, entries, entry, reason, status,
+			{}, {}, INVALID_HONOR_TITLE_ID, raidReturnNpcPlacementId))
 		{
 			outResult = SESSION_DIAGNOSTIC_REASON::SERVER_EXPECTED_ROOM_FULL == reason ?
 				PARTY_TRANSFER_RESULT::REJECTED_ROOM_FULL : PARTY_TRANSFER_RESULT::REJECTED_ADMISSION_FAILED;

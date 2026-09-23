@@ -1,6 +1,10 @@
 {
  "schema": "lostark.ui-layout",
  "formatVersion": 1,
+ "encorePresentation": {
+  "sourceStartMs": 5000,
+  "sourceHideMs": 15433
+ },
  "resolution": {
   "width": 1280,
   "height": 720

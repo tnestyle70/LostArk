@@ -918,6 +918,12 @@ HRESULT CRenderer::Draw()
 		if (SUCCEEDED(hSceneResult))
 			hSceneResult = Render_Blend();
 
+		// Opt-in cinematic UI participates in scene post effects (e.g. glass).
+		// Ordinary HUD/UI stays in display space after the final composite.
+		for (const auto& object : m_RenderObjects[ETOUI(RENDERGROUP::SCENE_UI)])
+			if (object && SUCCEEDED(hSceneResult)) hSceneResult = object->Render_Group(RENDERGROUP::SCENE_UI);
+		m_RenderObjects[ETOUI(RENDERGROUP::SCENE_UI)].clear();
+
 		/* Always restore the back-buffer/DSV pair after entering the HDR MRT. */
 		hEndSceneResult = CGameInstance::Get().End_MRT();
 	}

@@ -432,6 +432,9 @@ void LostArk::Server::CGameRoom::Handle_RevivePlayer(
 	player.iLastReviveSequence = revivePlayer.iClientSequence;
 	if (0u != player.iCurrentHp || PLAYER_ACTION_STATE::DEAD != player.eAction)
 		return;
+	// A failed destination admission keeps the Mario corpse/pin for retry;
+	// revival must not bypass that mandatory return and revive inside Mario.
+	if (player.iMarioStage || player.MarioReturnPosition) return;
 
 	const PLAYER_RUNTIME_PROFILE* profile =
 		m_GameplayCatalog.Find_Player(player.eCharacterClass);
@@ -443,6 +446,14 @@ void LostArk::Server::CGameRoom::Handle_RevivePlayer(
 	float reviveY = player.fPositionY;
 	float reviveZ = player.fPositionZ;
 	float reviveYaw = player.fYawDegrees;
+	const bool unadmittedCasinoFall = WORLD_ID::KAKULSAYDON_ARENA == m_eWorldId &&
+		!Resolve_CurrentKoukuGate() && player.bKoukuFallDeath && player.KoukuFallRevivePosition;
+	if (unadmittedCasinoFall)
+	{
+		reviveX = (*player.KoukuFallRevivePosition)[0];
+		reviveY = (*player.KoukuFallRevivePosition)[1];
+		reviveZ = (*player.KoukuFallRevivePosition)[2];
+	}
 	if (WORLD_ID::VALTAN_ARENA == m_eWorldId)
 	{
 		const WORLD_BOOTSTRAP_PLACEMENT* arenaCenter = Find_Placement("boss.valtan.center");
@@ -453,7 +464,7 @@ void LostArk::Server::CGameRoom::Handle_RevivePlayer(
 		reviveZ = arenaCenter->fPositionZ;
 		reviveYaw = arenaCenter->fYawDegrees;
 	}
-	else
+	else if (!unadmittedCasinoFall)
 	{
 		SERVER_NAV_POINT start{};
 		if (!Resolve_KoukuRevivePosition(player, start, reviveYaw)) return;
@@ -474,6 +485,8 @@ void LostArk::Server::CGameRoom::Handle_RevivePlayer(
 	player.fPositionY = reviveY;
 	player.fPositionZ = reviveZ;
 	player.fYawDegrees = reviveYaw;
+	player.KoukuFallRevivePosition.reset();
+	player.bKoukuFallDeath = false;
 	player.iCurrentHp = player.iMaximumHp;
 	player.iCurrentResource = player.iMaximumResource;
 	player.iResourceAccumulator = 0u;

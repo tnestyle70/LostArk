@@ -1,7 +1,7 @@
 {
   "schema": "lostark.kouku-saydon-composition",
   "formatVersion": 3,
-  "revision": 2235,
+  "revision": 2236,
   "compositionId": "boss.composition.kakulsaydon.gate1",
   "encounterId": "ENCOUNTER_KAKULSAYDON_G1",
   "bossArchetypeId": "BOSS_KAKULSAYDON_G1_KOUKU",
@@ -24068,46 +24068,8 @@
       "radiusM": 3,
       "halfAngleDegrees": 45
     },
-    {
-      "resourceId": "presentation.kouku.bingo.encore.camera.1",
-      "displayName": "앵콜컷신 카메라 / cam",
-      "defaultAnchorKind": "WORLD",
-      "kind": "CAMERA",
-      "assetId": "kouku.bingo.encore.camera.1",
-      "soundEvent": "",
-      "resourceKind": "",
-      "elementId": "",
-      "durationMs": 23333,
-      "shape": "BOX",
-      "colliderKind": "GEOMETRY",
-      "halfExtents": [
-        1,
-        1,
-        1
-      ],
-      "radiusM": 3,
-      "halfAngleDegrees": 45
-    },
-    {
-      "resourceId": "presentation.kouku.bingo.encore.fade.black",
-      "displayName": "앵콜컷신 / 원본 암전",
-      "defaultAnchorKind": "WORLD",
-      "kind": "EFFECT",
-      "assetId": "kouku.bingo.encore.fade.black",
-      "soundEvent": "",
-      "resourceKind": "LEAF",
-      "elementId": "",
-      "durationMs": 23333,
-      "shape": "BOX",
-      "colliderKind": "GEOMETRY",
-      "halfExtents": [
-        1,
-        1,
-        1
-      ],
-      "radiusM": 3,
-      "halfAngleDegrees": 45
-    },
+    {"resourceId":"presentation.kouku.bingo.encore.camera.1","displayName":"앵콜컷신 카메라 / cam","defaultAnchorKind":"WORLD","kind":"CAMERA","assetId":"kouku.bingo.encore.camera.1","soundEvent":"","resourceKind":"","elementId":"","durationMs":18333,"shape":"BOX","colliderKind":"GEOMETRY","halfExtents":[1,1,1],"radiusM":3,"halfAngleDegrees":45},
+    {"resourceId":"presentation.kouku.bingo.encore.fade.black","displayName":"앵콜컷신 / 원본 암전","defaultAnchorKind":"WORLD","kind":"EFFECT","assetId":"kouku.bingo.encore.fade.black","soundEvent":"","resourceKind":"LEAF","elementId":"","durationMs":18333,"shape":"BOX","colliderKind":"GEOMETRY","halfExtents":[1,1,1],"radiusM":3,"halfAngleDegrees":45},
     {
       "resourceId": "kakulsaydon.g1.presentation.322",
       "displayName": "Sound/KoukuSaton/S_MOB_G_KOUKU1/g_kouku1_attack09_shotvox1__657030640.wav",
@@ -24268,26 +24230,7 @@
       "radiusM": 3,
       "halfAngleDegrees": 45
     },
-    {
-      "resourceId": "kakulsaydon.effect.c29e7983e307d422c560",
-      "displayName": "빙고 앵콜 / 원본 화면 유리 균열",
-      "defaultAnchorKind": "MAP",
-      "kind": "EFFECT",
-      "assetId": "effect.kouku.bingo.encore.glass.screen",
-      "soundEvent": "",
-      "resourceKind": "V1_EFFECT",
-      "elementId": "",
-      "durationMs": 23333,
-      "shape": "BOX",
-      "colliderKind": "GEOMETRY",
-      "halfExtents": [
-        1,
-        1,
-        1
-      ],
-      "radiusM": 3,
-      "halfAngleDegrees": 45
-    },
+    {"resourceId":"kakulsaydon.effect.c29e7983e307d422c560","displayName":"빙고 앵콜 / 원본 화면 유리 균열","defaultAnchorKind":"MAP","kind":"EFFECT","assetId":"effect.kouku.bingo.encore.glass.screen","soundEvent":"","resourceKind":"V1_EFFECT","elementId":"","durationMs":18333,"shape":"BOX","colliderKind":"GEOMETRY","halfExtents":[1,1,1],"radiusM":3,"halfAngleDegrees":45},
     {
       "resourceId": "presentation.effect.kouku.sequence.lv_lut_midnightc_ed_scene01b.efseqact_matinee_0.1",
       "displayName": "마지막 연출",
@@ -35297,21 +35240,13 @@
           "resourceId": "subtitle.kouku.gate2.saydon.appear",
           "startMs": 0,
           "durationMs": 7400,
-          "positionOffset": [
-            0,
-            0,
-            0
-          ],
+          "positionOffset": [0, 90, 0],
           "rotationDegrees": [
             0,
             0,
             0
           ],
-          "scale": [
-            1,
-            1,
-            1
-          ],
+          "scale": [2, 2, 2],
           "fadeInMs": 0,
           "fadeOutMs": 0,
           "dissolveStart": 0.85,
@@ -97009,21 +96944,13 @@
           "resourceId": "subtitle.kouku.cin.37081_25_01",
           "startMs": 3080,
           "durationMs": 6300,
-          "positionOffset": [
-            0,
-            0,
-            0
-          ],
+          "positionOffset": [0, 90, 0],
           "rotationDegrees": [
             0,
             0,
             0
           ],
-          "scale": [
-            1,
-            1,
-            1
-          ],
+          "scale": [2, 2, 2],
           "fadeInMs": 0,
           "fadeOutMs": 0,
           "dissolveStart": 0.85,
@@ -97048,21 +96975,13 @@
           "resourceId": "subtitle.kouku.cin.37081_25_02",
           "startMs": 20000,
           "durationMs": 4300,
-          "positionOffset": [
-            0,
-            0,
-            0
-          ],
+          "positionOffset": [0, 90, 0],
           "rotationDegrees": [
             0,
             0,
             0
           ],
-          "scale": [
-            1,
-            1,
-            1
-          ],
+          "scale": [2, 2, 2],
           "fadeInMs": 0,
           "fadeOutMs": 0,
           "dissolveStart": 0.85,
@@ -98078,21 +97997,13 @@
           "resourceId": "subtitle.kouku.cin.37081_31_01",
           "startMs": 1343,
           "durationMs": 1700,
-          "positionOffset": [
-            0,
-            0,
-            0
-          ],
+          "positionOffset": [0, 90, 0],
           "rotationDegrees": [
             0,
             0,
             0
           ],
-          "scale": [
-            1,
-            1,
-            1
-          ],
+          "scale": [2, 2, 2],
           "fadeInMs": 0,
           "fadeOutMs": 0,
           "dissolveStart": 0.85,
@@ -98117,21 +98028,13 @@
           "resourceId": "subtitle.kouku.cin.37081_31_03",
           "startMs": 8942,
           "durationMs": 1500,
-          "positionOffset": [
-            0,
-            0,
-            0
-          ],
+          "positionOffset": [0, 90, 0],
           "rotationDegrees": [
             0,
             0,
             0
           ],
-          "scale": [
-            1,
-            1,
-            1
-          ],
+          "scale": [2, 2, 2],
           "fadeInMs": 0,
           "fadeOutMs": 0,
           "dissolveStart": 0.85,
@@ -98156,21 +98059,13 @@
           "resourceId": "subtitle.kouku.cin.37081_31_04",
           "startMs": 10991,
           "durationMs": 3000,
-          "positionOffset": [
-            0,
-            0,
-            0
-          ],
+          "positionOffset": [0, 90, 0],
           "rotationDegrees": [
             0,
             0,
             0
           ],
-          "scale": [
-            1,
-            1,
-            1
-          ],
+          "scale": [2, 2, 2],
           "fadeInMs": 0,
           "fadeOutMs": 0,
           "dissolveStart": 0.85,
@@ -98195,21 +98090,13 @@
           "resourceId": "subtitle.kouku.cin.37081_31_05",
           "startMs": 14568,
           "durationMs": 3200,
-          "positionOffset": [
-            0,
-            0,
-            0
-          ],
+          "positionOffset": [0, 90, 0],
           "rotationDegrees": [
             0,
             0,
             0
           ],
-          "scale": [
-            1,
-            1,
-            1
-          ],
+          "scale": [2, 2, 2],
           "fadeInMs": 0,
           "fadeOutMs": 0,
           "dissolveStart": 0.85,
@@ -98234,21 +98121,13 @@
           "resourceId": "subtitle.kouku.cin.37081_31_02",
           "startMs": 3576,
           "durationMs": 3000,
-          "positionOffset": [
-            0,
-            0,
-            0
-          ],
+          "positionOffset": [0, 90, 0],
           "rotationDegrees": [
             0,
             0,
             0
           ],
-          "scale": [
-            1,
-            1,
-            1
-          ],
+          "scale": [2, 2, 2],
           "fadeInMs": 0,
           "fadeOutMs": 0,
           "dissolveStart": 0.85,
@@ -98273,21 +98152,13 @@
           "resourceId": "subtitle.kouku.cin.37081_31_06",
           "startMs": 26445,
           "durationMs": 4000,
-          "positionOffset": [
-            0,
-            0,
-            0
-          ],
+          "positionOffset": [0, 90, 0],
           "rotationDegrees": [
             0,
             0,
             0
           ],
-          "scale": [
-            1,
-            1,
-            1
-          ],
+          "scale": [2, 2, 2],
           "fadeInMs": 0,
           "fadeOutMs": 0,
           "dissolveStart": 0.85,
@@ -98927,21 +98798,13 @@
           "resourceId": "subtitle.kouku.cin.37081_33_01",
           "startMs": 14467,
           "durationMs": 3175,
-          "positionOffset": [
-            0,
-            0,
-            0
-          ],
+          "positionOffset": [0, 90, 0],
           "rotationDegrees": [
             0,
             0,
             0
           ],
-          "scale": [
-            1,
-            1,
-            1
-          ],
+          "scale": [2, 2, 2],
           "fadeInMs": 0,
           "fadeOutMs": 0,
           "dissolveStart": 0.85,
@@ -98966,21 +98829,13 @@
           "resourceId": "subtitle.kouku.cin.37081_33_02",
           "startMs": 19633,
           "durationMs": 3183,
-          "positionOffset": [
-            0,
-            0,
-            0
-          ],
+          "positionOffset": [0, 90, 0],
           "rotationDegrees": [
             0,
             0,
             0
           ],
-          "scale": [
-            1,
-            1,
-            1
-          ],
+          "scale": [2, 2, 2],
           "fadeInMs": 0,
           "fadeOutMs": 0,
           "dissolveStart": 0.85,
@@ -99005,21 +98860,13 @@
           "resourceId": "subtitle.kouku.cin.37081_33_03",
           "startMs": 27267,
           "durationMs": 2970,
-          "positionOffset": [
-            0,
-            0,
-            0
-          ],
+          "positionOffset": [0, 90, 0],
           "rotationDegrees": [
             0,
             0,
             0
           ],
-          "scale": [
-            1,
-            1,
-            1
-          ],
+          "scale": [2, 2, 2],
           "fadeInMs": 0,
           "fadeOutMs": 0,
           "dissolveStart": 0.85,
@@ -99044,21 +98891,13 @@
           "resourceId": "subtitle.kouku.cin.37081_33_04",
           "startMs": 31208,
           "durationMs": 5250,
-          "positionOffset": [
-            0,
-            0,
-            0
-          ],
+          "positionOffset": [0, 90, 0],
           "rotationDegrees": [
             0,
             0,
             0
           ],
-          "scale": [
-            1,
-            1,
-            1
-          ],
+          "scale": [2, 2, 2],
           "fadeInMs": 0,
           "fadeOutMs": 0,
           "dissolveStart": 0.85,
@@ -99083,21 +98922,13 @@
           "resourceId": "subtitle.kouku.cin.37081_33_05",
           "startMs": 38367,
           "durationMs": 5056,
-          "positionOffset": [
-            0,
-            0,
-            0
-          ],
+          "positionOffset": [0, 90, 0],
           "rotationDegrees": [
             0,
             0,
             0
           ],
-          "scale": [
-            1,
-            1,
-            1
-          ],
+          "scale": [2, 2, 2],
           "fadeInMs": 0,
           "fadeOutMs": 0,
           "dissolveStart": 0.85,
@@ -99502,21 +99333,13 @@
           "resourceId": "subtitle.kouku.cin.37081_32_01",
           "startMs": 689,
           "durationMs": 2300,
-          "positionOffset": [
-            0,
-            0,
-            0
-          ],
+          "positionOffset": [0, 90, 0],
           "rotationDegrees": [
             0,
             0,
             0
           ],
-          "scale": [
-            1,
-            1,
-            1
-          ],
+          "scale": [2, 2, 2],
           "fadeInMs": 0,
           "fadeOutMs": 0,
           "dissolveStart": 0.85,
@@ -116439,398 +116262,7 @@
       "nextPresentationOccurrenceOrdinal": 1,
       "presentationOccurrences": []
     },
-    {
-      "patternId": "KAKULSAYDON_G1_PATTERN_97",
-      "actorProfileId": "MN_RPCT_05",
-      "gateId": "BINGO",
-      "targetBossPlacementId": "boss.kakulsaydon.bingo.saydon",
-      "durationMs": 26322,
-      "displayName": "앵콜컷신",
-      "authoringStatus": "DRAFT",
-      "category": "MECHANIC",
-      "nextStageOrdinal": 2,
-      "nextAnimationOrdinal": 1,
-      "nextLogicOccurrenceOrdinal": 1,
-      "nextSummonOccurrenceOrdinal": 1,
-      "nextWorldOccurrenceOrdinal": 2,
-      "nextSceneProfileOccurrenceOrdinal": 1,
-      "stages": [
-        {
-          "stageId": "STAGE_1",
-          "actionId": "KAKULSAYDON_G1_PATTERN_97.stage.1",
-          "stageKind": "ACTIVE",
-          "durationMs": 23333,
-          "animationOccurrences": []
-        }
-      ],
-      "logicOccurrences": [],
-      "summonOccurrences": [],
-      "worldOccurrences": [
-        {
-          "occurrenceId": "KAKULSAYDON_G1_PATTERN_97.world.1",
-          "worldId": "kakulsaydon.g1.world.41",
-          "startMs": 0,
-          "durationMs": 23333,
-          "playbackSpeed": 1
-        }
-      ],
-      "sceneProfileOccurrences": [],
-      "resetBossToSpawn": false,
-      "nextPresentationOccurrenceOrdinal": 10,
-      "presentationOccurrences": [
-        {
-          "occurrenceId": "KAKULSAYDON_G1_PATTERN_97.presentation.1",
-          "resourceId": "presentation.kouku.bingo.encore.camera.1",
-          "startMs": 0,
-          "durationMs": 23333,
-          "positionOffset": [
-            0,
-            0,
-            0
-          ],
-          "rotationDegrees": [
-            0,
-            0,
-            0
-          ],
-          "scale": [
-            1,
-            1,
-            1
-          ],
-          "fadeInMs": 0,
-          "fadeOutMs": 0,
-          "dissolveStart": 0.95,
-          "dissolveEnd": 1,
-          "brightnessMultiplier": 1,
-          "volume": 1,
-          "soundSourceStartMs": 0,
-          "followBoss": false,
-          "debugRender": false,
-          "bone": "",
-          "boneTarget": "BODY",
-          "regionId": "",
-          "cardSymbol": "NONE",
-          "cardColor": "NONE",
-          "anchorKind": "WORLD",
-          "worldId": "",
-          "logicOccurrenceId": "",
-          "worldOccurrenceId": ""
-        },
-        {
-          "occurrenceId": "KAKULSAYDON_G1_PATTERN_97.presentation.2",
-          "resourceId": "presentation.kouku.bingo.encore.fade.black",
-          "startMs": 0,
-          "durationMs": 23333,
-          "positionOffset": [
-            0,
-            0,
-            0
-          ],
-          "rotationDegrees": [
-            0,
-            0,
-            0
-          ],
-          "scale": [
-            1,
-            1,
-            1
-          ],
-          "fadeInMs": 0,
-          "fadeOutMs": 0,
-          "dissolveStart": 0.95,
-          "dissolveEnd": 1,
-          "brightnessMultiplier": 1,
-          "volume": 1,
-          "soundSourceStartMs": 0,
-          "followBoss": false,
-          "debugRender": false,
-          "bone": "",
-          "boneTarget": "BODY",
-          "regionId": "",
-          "cardSymbol": "NONE",
-          "cardColor": "NONE",
-          "anchorKind": "MAP",
-          "worldId": "",
-          "logicOccurrenceId": "",
-          "worldOccurrenceId": ""
-        },
-        {
-          "occurrenceId": "KAKULSAYDON_G1_PATTERN_97.presentation.3",
-          "resourceId": "sound.kouku.696b5ad453c3fd2116d7",
-          "startMs": 0,
-          "durationMs": 2367,
-          "positionOffset": [
-            0,
-            0,
-            0
-          ],
-          "rotationDegrees": [
-            0,
-            0,
-            0
-          ],
-          "scale": [
-            1,
-            1,
-            1
-          ],
-          "fadeInMs": 0,
-          "fadeOutMs": 0,
-          "dissolveStart": 0.95,
-          "dissolveEnd": 1,
-          "brightnessMultiplier": 1,
-          "volume": 1,
-          "soundSourceStartMs": 0,
-          "followBoss": false,
-          "debugRender": false,
-          "bone": "",
-          "boneTarget": "BODY",
-          "regionId": "",
-          "cardSymbol": "NONE",
-          "cardColor": "NONE",
-          "anchorKind": "MAP",
-          "worldId": "",
-          "logicOccurrenceId": "",
-          "worldOccurrenceId": ""
-        },
-        {
-          "occurrenceId": "KAKULSAYDON_G1_PATTERN_97.presentation.4",
-          "resourceId": "sound.kouku.140ac8e3578ea5f47409",
-          "startMs": 2100,
-          "durationMs": 23793,
-          "positionOffset": [
-            0,
-            0,
-            0
-          ],
-          "rotationDegrees": [
-            0,
-            0,
-            0
-          ],
-          "scale": [
-            1,
-            1,
-            1
-          ],
-          "fadeInMs": 0,
-          "fadeOutMs": 0,
-          "dissolveStart": 0.95,
-          "dissolveEnd": 1,
-          "brightnessMultiplier": 1,
-          "volume": 1,
-          "soundSourceStartMs": 0,
-          "followBoss": false,
-          "debugRender": false,
-          "bone": "",
-          "boneTarget": "BODY",
-          "regionId": "",
-          "cardSymbol": "NONE",
-          "cardColor": "NONE",
-          "anchorKind": "MAP",
-          "worldId": "",
-          "logicOccurrenceId": "",
-          "worldOccurrenceId": ""
-        },
-        {
-          "occurrenceId": "KAKULSAYDON_G1_PATTERN_97.presentation.5",
-          "resourceId": "sound.kouku.7fccf417eb9300dcdbdf",
-          "startMs": 0,
-          "durationMs": 26322,
-          "positionOffset": [
-            0,
-            0,
-            0
-          ],
-          "rotationDegrees": [
-            0,
-            0,
-            0
-          ],
-          "scale": [
-            1,
-            1,
-            1
-          ],
-          "fadeInMs": 0,
-          "fadeOutMs": 0,
-          "dissolveStart": 0.95,
-          "dissolveEnd": 1,
-          "brightnessMultiplier": 1,
-          "volume": 1,
-          "soundSourceStartMs": 0,
-          "followBoss": false,
-          "debugRender": false,
-          "bone": "",
-          "boneTarget": "BODY",
-          "regionId": "",
-          "cardSymbol": "NONE",
-          "cardColor": "NONE",
-          "anchorKind": "MAP",
-          "worldId": "",
-          "logicOccurrenceId": "",
-          "worldOccurrenceId": ""
-        },
-        {
-          "occurrenceId": "KAKULSAYDON_G1_PATTERN_97.presentation.6",
-          "resourceId": "subtitle.kouku.cin.37081_12_01",
-          "startMs": 10233,
-          "durationMs": 1700,
-          "positionOffset": [
-            0,
-            0,
-            0
-          ],
-          "rotationDegrees": [
-            0,
-            0,
-            0
-          ],
-          "scale": [
-            1,
-            1,
-            1
-          ],
-          "fadeInMs": 0,
-          "fadeOutMs": 0,
-          "dissolveStart": 0.95,
-          "dissolveEnd": 1,
-          "brightnessMultiplier": 1,
-          "volume": 1,
-          "soundSourceStartMs": 0,
-          "followBoss": false,
-          "debugRender": false,
-          "bone": "",
-          "boneTarget": "BODY",
-          "regionId": "",
-          "cardSymbol": "NONE",
-          "cardColor": "NONE",
-          "anchorKind": "MAP",
-          "worldId": "",
-          "logicOccurrenceId": "",
-          "worldOccurrenceId": ""
-        },
-        {
-          "occurrenceId": "KAKULSAYDON_G1_PATTERN_97.presentation.7",
-          "resourceId": "subtitle.kouku.cin.37081_12_02",
-          "startMs": 12367,
-          "durationMs": 3600,
-          "positionOffset": [
-            0,
-            0,
-            0
-          ],
-          "rotationDegrees": [
-            0,
-            0,
-            0
-          ],
-          "scale": [
-            1,
-            1,
-            1
-          ],
-          "fadeInMs": 0,
-          "fadeOutMs": 0,
-          "dissolveStart": 0.95,
-          "dissolveEnd": 1,
-          "brightnessMultiplier": 1,
-          "volume": 1,
-          "soundSourceStartMs": 0,
-          "followBoss": false,
-          "debugRender": false,
-          "bone": "",
-          "boneTarget": "BODY",
-          "regionId": "",
-          "cardSymbol": "NONE",
-          "cardColor": "NONE",
-          "anchorKind": "MAP",
-          "worldId": "",
-          "logicOccurrenceId": "",
-          "worldOccurrenceId": ""
-        },
-        {
-          "occurrenceId": "KAKULSAYDON_G1_PATTERN_97.presentation.8",
-          "resourceId": "subtitle.kouku.cin.37081_12_03",
-          "startMs": 16700,
-          "durationMs": 3050,
-          "positionOffset": [
-            0,
-            0,
-            0
-          ],
-          "rotationDegrees": [
-            0,
-            0,
-            0
-          ],
-          "scale": [
-            1,
-            1,
-            1
-          ],
-          "fadeInMs": 0,
-          "fadeOutMs": 0,
-          "dissolveStart": 0.95,
-          "dissolveEnd": 1,
-          "brightnessMultiplier": 1,
-          "volume": 1,
-          "soundSourceStartMs": 0,
-          "followBoss": false,
-          "debugRender": false,
-          "bone": "",
-          "boneTarget": "BODY",
-          "regionId": "",
-          "cardSymbol": "NONE",
-          "cardColor": "NONE",
-          "anchorKind": "MAP",
-          "worldId": "",
-          "logicOccurrenceId": "",
-          "worldOccurrenceId": ""
-        },
-        {
-          "occurrenceId": "KAKULSAYDON_G1_PATTERN_97.presentation.9",
-          "resourceId": "kakulsaydon.effect.c29e7983e307d422c560",
-          "startMs": 0,
-          "durationMs": 23333,
-          "positionOffset": [
-            0,
-            0,
-            0
-          ],
-          "rotationDegrees": [
-            0,
-            0,
-            0
-          ],
-          "scale": [
-            1,
-            1,
-            1
-          ],
-          "fadeInMs": 0,
-          "fadeOutMs": 0,
-          "dissolveStart": 0.95,
-          "dissolveEnd": 1,
-          "brightnessMultiplier": 1,
-          "volume": 1,
-          "soundSourceStartMs": 0,
-          "followBoss": false,
-          "debugRender": false,
-          "bone": "",
-          "boneTarget": "BODY",
-          "regionId": "",
-          "cardSymbol": "NONE",
-          "cardColor": "NONE",
-          "anchorKind": "MAP",
-          "worldId": "",
-          "logicOccurrenceId": "",
-          "worldOccurrenceId": ""
-        }
-      ]
-    },
+    {"patternId":"KAKULSAYDON_G1_PATTERN_97","actorProfileId":"MN_RPCT_05","gateId":"BINGO","targetBossPlacementId":"boss.kakulsaydon.bingo.saydon","durationMs":21322,"displayName":"앵콜컷신","authoringStatus":"DRAFT","category":"MECHANIC","nextStageOrdinal":2,"nextAnimationOrdinal":1,"nextLogicOccurrenceOrdinal":1,"nextSummonOccurrenceOrdinal":1,"nextWorldOccurrenceOrdinal":2,"nextSceneProfileOccurrenceOrdinal":1,"stages":[{"stageId":"STAGE_1","actionId":"KAKULSAYDON_G1_PATTERN_97.stage.1","stageKind":"ACTIVE","durationMs":18333,"animationOccurrences":[]}],"logicOccurrences":[],"summonOccurrences":[],"worldOccurrences":[{"occurrenceId":"KAKULSAYDON_G1_PATTERN_97.world.1","worldId":"kakulsaydon.g1.world.41","startMs":0,"durationMs":18333,"playbackSpeed":1}],"sceneProfileOccurrences":[],"resetBossToSpawn":false,"nextPresentationOccurrenceOrdinal":10,"presentationOccurrences":[{"occurrenceId":"KAKULSAYDON_G1_PATTERN_97.presentation.1","resourceId":"presentation.kouku.bingo.encore.camera.1","startMs":0,"durationMs":18333,"positionOffset":[0,0,0],"rotationDegrees":[0,0,0],"scale":[1,1,1],"fadeInMs":0,"fadeOutMs":0,"dissolveStart":0.95,"dissolveEnd":1,"brightnessMultiplier":1,"volume":1,"soundSourceStartMs":0,"followBoss":false,"debugRender":false,"bone":"","boneTarget":"BODY","regionId":"","cardSymbol":"NONE","cardColor":"NONE","anchorKind":"WORLD","worldId":"","logicOccurrenceId":"","worldOccurrenceId":""},{"occurrenceId":"KAKULSAYDON_G1_PATTERN_97.presentation.2","resourceId":"presentation.kouku.bingo.encore.fade.black","startMs":0,"durationMs":18333,"positionOffset":[0,0,0],"rotationDegrees":[0,0,0],"scale":[1,1,1],"fadeInMs":0,"fadeOutMs":0,"dissolveStart":0.95,"dissolveEnd":1,"brightnessMultiplier":1,"volume":1,"soundSourceStartMs":0,"followBoss":false,"debugRender":false,"bone":"","boneTarget":"BODY","regionId":"","cardSymbol":"NONE","cardColor":"NONE","anchorKind":"MAP","worldId":"","logicOccurrenceId":"","worldOccurrenceId":""},{"occurrenceId":"KAKULSAYDON_G1_PATTERN_97.presentation.4","resourceId":"sound.kouku.140ac8e3578ea5f47409","startMs":0,"durationMs":20893,"positionOffset":[0,0,0],"rotationDegrees":[0,0,0],"scale":[1,1,1],"fadeInMs":0,"fadeOutMs":0,"dissolveStart":0.95,"dissolveEnd":1,"brightnessMultiplier":1,"volume":1,"soundSourceStartMs":2900,"followBoss":false,"debugRender":false,"bone":"","boneTarget":"BODY","regionId":"","cardSymbol":"NONE","cardColor":"NONE","anchorKind":"MAP","worldId":"","logicOccurrenceId":"","worldOccurrenceId":""},{"occurrenceId":"KAKULSAYDON_G1_PATTERN_97.presentation.5","resourceId":"sound.kouku.7fccf417eb9300dcdbdf","startMs":0,"durationMs":21322,"positionOffset":[0,0,0],"rotationDegrees":[0,0,0],"scale":[1,1,1],"fadeInMs":0,"fadeOutMs":0,"dissolveStart":0.95,"dissolveEnd":1,"brightnessMultiplier":1,"volume":1,"soundSourceStartMs":5000,"followBoss":false,"debugRender":false,"bone":"","boneTarget":"BODY","regionId":"","cardSymbol":"NONE","cardColor":"NONE","anchorKind":"MAP","worldId":"","logicOccurrenceId":"","worldOccurrenceId":""},{"occurrenceId":"KAKULSAYDON_G1_PATTERN_97.presentation.6","resourceId":"subtitle.kouku.cin.37081_12_01","startMs":5233,"durationMs":1700,"positionOffset":[0,90,0],"rotationDegrees":[0,0,0],"scale":[2,2,2],"fadeInMs":0,"fadeOutMs":0,"dissolveStart":0.95,"dissolveEnd":1,"brightnessMultiplier":1,"volume":1,"soundSourceStartMs":0,"followBoss":false,"debugRender":false,"bone":"","boneTarget":"BODY","regionId":"","cardSymbol":"NONE","cardColor":"NONE","anchorKind":"MAP","worldId":"","logicOccurrenceId":"","worldOccurrenceId":""},{"occurrenceId":"KAKULSAYDON_G1_PATTERN_97.presentation.7","resourceId":"subtitle.kouku.cin.37081_12_02","startMs":7367,"durationMs":3600,"positionOffset":[0,90,0],"rotationDegrees":[0,0,0],"scale":[2,2,2],"fadeInMs":0,"fadeOutMs":0,"dissolveStart":0.95,"dissolveEnd":1,"brightnessMultiplier":1,"volume":1,"soundSourceStartMs":0,"followBoss":false,"debugRender":false,"bone":"","boneTarget":"BODY","regionId":"","cardSymbol":"NONE","cardColor":"NONE","anchorKind":"MAP","worldId":"","logicOccurrenceId":"","worldOccurrenceId":""},{"occurrenceId":"KAKULSAYDON_G1_PATTERN_97.presentation.8","resourceId":"subtitle.kouku.cin.37081_12_03","startMs":11700,"durationMs":3050,"positionOffset":[0,90,0],"rotationDegrees":[0,0,0],"scale":[2,2,2],"fadeInMs":0,"fadeOutMs":0,"dissolveStart":0.95,"dissolveEnd":1,"brightnessMultiplier":1,"volume":1,"soundSourceStartMs":0,"followBoss":false,"debugRender":false,"bone":"","boneTarget":"BODY","regionId":"","cardSymbol":"NONE","cardColor":"NONE","anchorKind":"MAP","worldId":"","logicOccurrenceId":"","worldOccurrenceId":""},{"occurrenceId":"KAKULSAYDON_G1_PATTERN_97.presentation.9","resourceId":"kakulsaydon.effect.c29e7983e307d422c560","startMs":0,"durationMs":18333,"positionOffset":[0,0,0],"rotationDegrees":[0,0,0],"scale":[1,1,1],"fadeInMs":0,"fadeOutMs":0,"dissolveStart":0.95,"dissolveEnd":1,"brightnessMultiplier":1,"volume":1,"soundSourceStartMs":0,"followBoss":false,"debugRender":false,"bone":"","boneTarget":"BODY","regionId":"","cardSymbol":"NONE","cardColor":"NONE","anchorKind":"MAP","worldId":"","logicOccurrenceId":"","worldOccurrenceId":""}]},
     {
       "patternId": "KAKULSAYDON_G1_PATTERN_99",
       "actorProfileId": "MN_RPCT_06",

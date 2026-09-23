@@ -29,6 +29,8 @@ int main(const int argumentCount, char** arguments)
 		return LostArk::Server::CServerGameplayContractRunner::Run_KoukuDiceDamageContracts();
 	if (2 == argumentCount && std::string_view(arguments[1]) == "--kouku-raid-contract-test")
 		return LostArk::Server::CServerGameplayContractRunner::Run_KoukuRaid();
+	if (2 == argumentCount && std::string_view(arguments[1]) == "--npc-raid-return-contract-test")
+		return LostArk::Server::CServerGameplayContractRunner::Run_NpcRaidReturn();
 	if (2 == argumentCount && std::string_view(arguments[1]) == "--kouku-bundle-contract-test")
 		return LostArk::Server::Run_ServerGameplayContractTests(false, false, true);
 	if (2 == argumentCount && std::string_view(arguments[1]) == "--card-maze-contract-test")

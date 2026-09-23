@@ -41,7 +41,8 @@ bool LostArk::Server::CGameRoom::Stage_PlayerEntry(
 	LostArk::Shared::SESSION_DIAGNOSTIC_REASON& outReason, std::string& status,
 	const std::string& spawnPlacementOverrideId,
 	const std::vector<LostArk::Shared::INVENTORY_ITEM_SNAPSHOT>& carriedInventory,
-	const LostArk::Shared::HONOR_TITLE_ID carriedHonorTitleId)
+	const LostArk::Shared::HONOR_TITLE_ID carriedHonorTitleId,
+	const std::string& raidReturnNpcPlacementId)
 {
 	using namespace LostArk::Shared;
 	outReason = SESSION_DIAGNOSTIC_REASON::SERVER_JOIN_VALIDATION_FAILED;
@@ -54,6 +55,11 @@ bool LostArk::Server::CGameRoom::Stage_PlayerEntry(
 		return false;
 	};
 	const std::size_t offset = precedingEntries.size();
+	if (!raidReturnNpcPlacementId.empty() &&
+		((WORLD_ID::VALTAN_ARENA != m_eWorldId && WORLD_ID::KAKULSAYDON_ARENA != m_eWorldId) ||
+		 (raidReturnNpcPlacementId != "npc.bern.beda.guide" && raidReturnNpcPlacementId != "npc.bern.aylara")))
+		return reject(SESSION_DIAGNOSTIC_REASON::SERVER_JOIN_VALIDATION_FAILED,
+			"invalid raid return guide or destination world");
 	if (!m_isReady || nullptr == session || session->Is_Closing() ||
 		INVALID_SESSION_ID == session->Get_SessionId() ||
 		!Is_Valid_EnterWorld(enterWorld) || enterWorld.eWorldId != m_eWorldId ||
@@ -75,7 +81,7 @@ bool LostArk::Server::CGameRoom::Stage_PlayerEntry(
 		players landing at the same NPC concurrently is fine (unlike normal
 		PLAYER_SPAWN slots, which are one-player-at-a-time). */
 		spawn = Find_Placement(spawnPlacementOverrideId);
-		if (nullptr == spawn)
+		if (nullptr == spawn || !spawn->isEnabled)
 			return reject(SESSION_DIAGNOSTIC_REASON::SERVER_JOIN_VALIDATION_FAILED,
 				"spawn placement override id does not exist in this world's bootstrap");
 	}
@@ -110,6 +116,7 @@ bool LostArk::Server::CGameRoom::Stage_PlayerEntry(
 	player.iHonorTitleId = m_HonorTitleCatalog.Has_Title(carriedHonorTitleId) ?
 		carriedHonorTitleId : INVALID_HONOR_TITLE_ID;
 	player.strSpawnPlacementId = spawn->strPlacementId;
+	player.strRaidReturnNpcPlacementId = raidReturnNpcPlacementId;
 	player.fPositionY = spawn->fPositionY;
 	if (!spawnPlacementOverrideId.empty())
 	{
@@ -150,7 +157,8 @@ bool LostArk::Server::CGameRoom::Stage_PlayerEntry(
 	if (m_ServerNavigation.Is_Loaded())
 	{
 		SERVER_NAV_POINT projected{};
-		if (!m_ServerNavigation.Project_Point(player.fPositionX, player.fPositionZ, projected))
+		if (!m_ServerNavigation.Project_Point(player.fPositionX, player.fPositionZ, projected,
+			spawnPlacementOverrideId.empty() ? NAVIGATION_HEIGHT_UNKNOWN : player.fPositionY))
 			return reject(SESSION_DIAGNOSTIC_REASON::SERVER_NAVIGATION_FAILED,
 				"player spawn could not project onto Server navigation");
 		player.fPositionX = projected.x;
@@ -366,7 +374,8 @@ bool LostArk::Server::CGameRoom::Join(
 	const LostArk::Shared::C2S_ENTER_WORLD& enterWorld,
 	const std::string& spawnPlacementOverrideId,
 	const std::vector<LostArk::Shared::INVENTORY_ITEM_SNAPSHOT>& carriedInventory,
-	const LostArk::Shared::HONOR_TITLE_ID carriedHonorTitleId)
+	const LostArk::Shared::HONOR_TITLE_ID carriedHonorTitleId,
+	const std::string& raidReturnNpcPlacementId)
 {
 	using namespace LostArk::Shared;
 
@@ -483,7 +492,8 @@ bool LostArk::Server::CGameRoom::Join(
 	SESSION_DIAGNOSTIC_REASON reason{};
 	std::string status;
 	if (!Stage_PlayerEntry(session, enterWorld, {}, entry, reason, status,
-			spawnPlacementOverrideId, carriedInventory, carriedHonorTitleId))
+			spawnPlacementOverrideId, carriedInventory, carriedHonorTitleId,
+			raidReturnNpcPlacementId))
 	{
 		session->Request_Close(reason, WSAEINVAL, status);
 		return false;

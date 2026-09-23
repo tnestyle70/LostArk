@@ -35,6 +35,7 @@
 #include "RuntimeAssetRoot.h"
 #include "SoundCueCatalog.h"
 #include "Transform.h"
+#include "UILayoutRuntime.h"
 
 #include <algorithm>
 #include <chrono>
@@ -2319,6 +2320,7 @@ void Client::CKoukuSaydonPresentationPlayer::Update_ProductTails(const float dt,
 
 void Client::CKoukuSaydonPresentationPlayer::Stop_Session(SESSION& session)
 {
+    if (session.encoreClearView) session.encoreClearView->Set_AllSlotsVisible(false);
     for (auto& [id, row] : session.rows)
     {
         if (row.effectHandle) CEffectV2Runtime::Stop_Group(row.effectHandle);
@@ -2954,6 +2956,61 @@ void Client::CKoukuSaydonPresentationPlayer::Sample(SESSION& session,
         if (row->second.v1EffectHandle) CEffectPresentationService::Stop_WorldRoot({row->second.v1EffectHandle});
         if (row->second.soundHandle) CGameInstance::Get().Stop_SoundCue(row->second.soundHandle);
         row = session.rows.erase(row);
+    }
+    // This is a presentation-only fake clear, not the Server gate reward/MVP.
+    // Bind it to the same authored camera occurrence in both Sequence and Boss playback.
+    const auto encoreCamera = std::find_if(pattern.PresentationOccurrences.begin(),
+        pattern.PresentationOccurrences.end(), [&](const auto& box) {
+            const auto resource = std::find_if(document.PresentationResources.begin(),
+                document.PresentationResources.end(), [&](const auto& value) {
+                    return value.strResourceId == box.strResourceId && value.eKind == KIND::CAMERA &&
+                        value.strAssetId == "kouku.bingo.encore.camera.1";
+                });
+            return resource != document.PresentationResources.end() &&
+                clockMs >= box.iStartMs && clockMs < double(box.iStartMs) + box.iDurationMs;
+        });
+    if (encoreCamera != pattern.PresentationOccurrences.end() && !session.encoreClearAttempted)
+    {
+        session.encoreClearAttempted = true;
+        try
+        {
+            std::ifstream input(CProjectDataRoot::Resolve(L"UI/RaidClear/RaidClear_Kouku_Layout.json"), std::ios::binary);
+            const std::string text((std::istreambuf_iterator<char>(input)), std::istreambuf_iterator<char>());
+            DATA_JSON_VALUE root; std::string error;
+            if (!CDataJson::Parse(text, root, error)) throw std::runtime_error(error);
+            const auto& timing = Field(root, "encorePresentation");
+            const float sourceStart = static_cast<float>(Number(timing, "sourceStartMs", 0, 15000));
+            const float hide = static_cast<float>(Number(timing, "sourceHideMs", sourceStart + 1, 23333));
+            auto view = std::make_shared<CUILayoutRuntime>(m_Device, m_Context,
+                CGameInstance::Get().Get_CurrentLevelID(), L"Layer_UI", L"UI/RaidClear/RaidClear_Kouku_Layout.json");
+            view->Set_AllSlotsVisible(false);
+            if (!view->Sample_KeyframeAnimation("RaidClear_Kouku_Frame", "intro", 0.f) ||
+                !view->Set_SlotCaption("RaidClear_Kouku_TitleTextBox", L"\xB358\xC804 \xD074\xB9AC\xC5B4", L"Font_YoonGasiIIM"))
+                throw std::runtime_error("Clear layout/frame/caption unavailable");
+            for (const auto& slot : view->Get_SlotIds())
+            {
+                view->Set_SlotCinematicOverlay(slot, true);
+                view->Set_SlotScenePresentation(slot, true);
+            }
+            session.encoreSourceStartMs = sourceStart;
+            session.encoreClearHideMs = hide;
+            session.encoreClearView = std::move(view);
+        }
+        catch (const std::exception& error)
+        {
+            m_strStatus = std::string("Encore clear presentation unavailable: ") + error.what();
+            OutputDebugStringA((m_strStatus + "\n").c_str());
+        }
+    }
+    if (session.encoreClearView)
+    {
+        const float sourceMs = encoreCamera == pattern.PresentationOccurrences.end() ? -1.f :
+            clockMs - encoreCamera->iStartMs + session.encoreSourceStartMs;
+        const bool visible = sourceMs >= 0.f && sourceMs < session.encoreClearHideMs;
+        session.encoreClearView->Set_SlotVisible("RaidClear_Kouku_Frame", visible);
+        session.encoreClearView->Set_SlotVisible("RaidClear_Kouku_TitleTextBox", visible && sourceMs >= 3150.f);
+        if (visible) session.encoreClearView->Sample_KeyframeAnimation("RaidClear_Kouku_Frame",
+            "intro", (std::min)(sourceMs * .001f, 7.f));
     }
     session.lastClockMs = clockMs;
     Sample_LogicPreview(session, document, pattern, clockMs, paused);

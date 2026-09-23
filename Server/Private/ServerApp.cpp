@@ -5036,7 +5036,8 @@ bool LostArk::Server::CServerApp::Transfer_SessionWorld(
 		}
 		std::string status;
 		if (!sourceSimulation->Transfer_PartyTo(*targetSimulation,
-			transfer.PartyBatchSessionIds, outFailure.ePartyResult, status))
+			transfer.PartyBatchSessionIds, outFailure.ePartyResult, status,
+			transfer.strRaidReturnNpcPlacementId))
 		{
 			setFailure(SESSION_DIAGNOSTIC_REASON::SERVER_JOIN_PREFLIGHT_FAILED,
 				WSAEINVAL, status);
@@ -5085,6 +5086,7 @@ bool LostArk::Server::CServerApp::Transfer_SessionWorld(
 	enterCommand.iSessionId = transfer.iSessionId;
 	enterCommand.EnterWorld = std::move(enterWorld);
 	enterCommand.strSpawnPlacementOverrideId = transfer.strSpawnPlacementOverrideId;
+	enterCommand.strRaidReturnNpcPlacementId = transfer.strRaidReturnNpcPlacementId;
 	enterCommand.CarriedInventory = transfer.CarriedInventory;
 	enterCommand.iCarriedHonorTitleId = transfer.iHonorTitleId;
 	const ROOM_COMMAND_ENQUEUE_RESULT targetEnterResult =

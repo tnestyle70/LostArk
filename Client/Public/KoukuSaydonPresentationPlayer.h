@@ -21,6 +21,7 @@ namespace Client
 {
 class CNpc;
 class CWorldSequencePlayer;
+class CUILayoutRuntime;
 class CWorldSequenceDocument;
 class CCharacter;
 class CRenderingProfileService;
@@ -225,6 +226,10 @@ private:
         // Pattern time, recorded before each following bone/WORLD cue starts.
         std::map<std::string, EFFECT_ANCHOR_HISTORY> effectAnchorHistories;
         std::map<std::string, std::shared_ptr<CWorldSequencePlayer>> previewWorlds;
+        std::shared_ptr<CUILayoutRuntime> encoreClearView;
+        bool encoreClearAttempted = false;
+        float encoreSourceStartMs = 0.f;
+        float encoreClearHideMs = 0.f;
     };
     struct EXTERNAL_STAGE_ENVIRONMENT final
     {

@@ -81,6 +81,7 @@ namespace LostArk::Server
 		CServerApp::Transfer_SessionWorld builds this ENTER_WORLD command itself
 		(a real Client-sent C2S_ENTER_WORLD never populates it). */
 		std::string strSpawnPlacementOverrideId;
+		std::string strRaidReturnNpcPlacementId;
 		/* Server-internal only, never part of the wire message -- see
 		SERVER_WORLD_TRANSFER_REQUEST::CarriedInventory. Empty means grant the
 		default fresh-entry loadout. */

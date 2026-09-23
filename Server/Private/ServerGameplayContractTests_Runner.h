@@ -24,6 +24,7 @@ public:
     static int Run_KoukuDiceDamageContracts();
     static int Run_KoukuDraft();
     static int Run_ValtanArenaSupport();
+    static int Run_NpcRaidReturn();
     static void Run_RuntimeSupportPrediction(TESTS& tests, const CServerNavigation& navigation);
     static void Run_KoukuPushContracts(TESTS& tests, const CGameplayCatalog& catalog);
 

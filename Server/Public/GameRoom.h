@@ -274,7 +274,8 @@ namespace LostArk::Server
 		// Room-thread only, while ServerApp holds its session-binding mutex.
 		bool Transfer_PartyTo(CGameRoom& target,
 			const std::vector<SESSION_ID>& leaderFirstSessionIds,
-			LostArk::Shared::PARTY_TRANSFER_RESULT& outResult, std::string& status);
+			LostArk::Shared::PARTY_TRANSFER_RESULT& outResult, std::string& status,
+			const std::string& raidReturnNpcPlacementId = {});
 		void Notify_PartyTransferFailure(SESSION_ID sessionId,
 			std::uint32_t requestSequence, LostArk::Shared::WORLD_ID targetWorldId,
 			LostArk::Shared::PARTY_TRANSFER_RESULT result);
@@ -296,7 +297,8 @@ namespace LostArk::Server
 			const std::vector<LostArk::Shared::INVENTORY_ITEM_SNAPSHOT>&
 				carriedInventory = {},
 			LostArk::Shared::HONOR_TITLE_ID carriedHonorTitleId =
-				LostArk::Shared::INVALID_HONOR_TITLE_ID);
+				LostArk::Shared::INVALID_HONOR_TITLE_ID,
+			const std::string& raidReturnNpcPlacementId = {});
 		bool Build_PlayerEntryFrames(STAGED_PLAYER_ENTRY& entry,
 			std::span<const STAGED_PLAYER_ENTRY> batch, std::string& status);
 		void Commit_PlayerEntry(const STAGED_PLAYER_ENTRY& entry);
@@ -309,7 +311,8 @@ namespace LostArk::Server
 			const std::vector<LostArk::Shared::INVENTORY_ITEM_SNAPSHOT>&
 				carriedInventory = {},
 			LostArk::Shared::HONOR_TITLE_ID carriedHonorTitleId =
-				LostArk::Shared::INVALID_HONOR_TITLE_ID);
+				LostArk::Shared::INVALID_HONOR_TITLE_ID,
+			const std::string& raidReturnNpcPlacementId = {});
 		void Leave(
 			SESSION_ID sessionId,
 			LostArk::Shared::PLAYER_DESPAWN_REASON reason, bool publishDeparture = true);
@@ -1095,9 +1098,8 @@ namespace LostArk::Server
 			const LostArk::Shared::C2S_INTERACT_TRIGGER& request);
 		// Raid Clear screen's "돌아가기" button -- the reverse trip. No proximity
 		// or party-leader gating (unlike Handle_ConfirmNpcEntry): any player in
-		// a cleared VALTAN_ARENA can return to BERN independently. Lands next to Bern's own
-		// Valtan-entry guide NPC via SERVER_WORLD_TRANSFER_REQUEST's
-		// strSpawnPlacementOverrideId. VALTAN_ARENA only; no-op for anything else.
+		// a cleared Valtan/Kouku raid can return independently to its recorded entry guide.
+		// Direct Lobby entries retain the default guide; NPC entries keep their source ID.
 		void Handle_ReturnToBern(
 			SESSION_ID sessionId,
 			const LostArk::Shared::C2S_RETURN_TO_BERN& request);
@@ -1207,7 +1209,7 @@ namespace LostArk::Server
 		bool Stage_PartyWorldTransfer(
 			const std::vector<LostArk::Shared::PLAYER_ID>& batchMemberIds,
 			LostArk::Shared::WORLD_ID targetWorldId,
-			std::uint32_t requestSequence);
+			std::uint32_t requestSequence, const std::string& raidReturnNpcPlacementId);
 		// player가 알려진 Valtan 입장 guide NPC 근처(proximity)인지 검증한다.
 		bool Is_PlayerNearValtanEntryNpc(
 			const SERVER_PLAYER& player, const std::string& npcPlacementId) const;
@@ -1542,6 +1544,9 @@ namespace LostArk::Server
 		/* Hands the living monster and boss bodies to the collision system so this
 		tick's player walks and root motion stop at them. */
 		void Refresh_PlayerBlockingBodies();
+		bool Try_KoukuWalkOffFloor(SERVER_PLAYER& player, float x, float z,
+			float fixedDeltaSeconds, std::uint32_t updateTick);
+		const WORLD_BOOTSTRAP_PLACEMENT* Resolve_KoukuFallCenter(const SERVER_PLAYER& player) const;
 		bool Update_PlayerFall(
 			SERVER_PLAYER& player,
 			float fixedDeltaSeconds,

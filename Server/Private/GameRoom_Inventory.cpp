@@ -618,6 +618,7 @@ void LostArk::Server::CGameRoom::Handle_ConfirmNpcEntry(
 	SERVER_WORLD_TRANSFER_REQUEST transfer{};
 	transfer.iSessionId = player.iSessionId;
 	transfer.eTargetWorldId = guideIter->eTargetWorldId;
+	transfer.strRaidReturnNpcPlacementId = request.strNpcPlacementId;
 	transfer.eCharacterClass = player.eCharacterClass;
 	transfer.strNickName = player.strNickName;
 	transfer.iHonorTitleId = player.iHonorTitleId;

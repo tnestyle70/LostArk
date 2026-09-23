@@ -154,6 +154,7 @@ void LostArk::Server::CGameRoom::Begin_PlayerFall(
 	using namespace LostArk::Shared;
 	player.fFallDeathPlaneY = (player.bKnockbackBallistic ? player.fKnockbackSupportY : player.fPositionY) - KOUKU_FALL_DEPTH_M;
 	player.eAction = PLAYER_ACTION_STATE::FALLING;
+	player.bKoukuFallDeath = m_eWorldId == WORLD_ID::KAKULSAYDON_ARENA && !player.iMarioStage;
 	player.iActionStartTick = 0u == updateTick ? 1u : updateTick;
 	player.iFallDeathTick = Add_ServerTicksSkippingReservedZero(
 		player.iActionStartTick, FALL_DEATH_TICKS);
@@ -611,6 +612,64 @@ bool LostArk::Server::CGameRoom::Restore_PatternBoundPlayer(
 	return true;
 }
 
+const LostArk::Server::WORLD_BOOTSTRAP_PLACEMENT*
+LostArk::Server::CGameRoom::Resolve_KoukuFallCenter(const SERVER_PLAYER& player) const
+{
+	if (m_eWorldId != LostArk::Shared::WORLD_ID::KAKULSAYDON_ARENA || player.iMarioStage ||
+		player.eKoukuAreaHudMode == LostArk::Shared::KOUKU_HUD_MODE::MAZE) return nullptr;
+	// Refinement grid rectangles are only bake coverage, not arena bounds.
+	// The casino continues onto the base grid. Classify the separated authored
+	// stages by their spawn anchors, not by Gate2Fine's small rectangle.
+	const WORLD_BOOTSTRAP_PLACEMENT* nearest = nullptr;
+	float distance = (std::numeric_limits<float>::max)();
+	for (const char* id : { "stage.kakul.sl01", "stage.kakul.sl02", "stage.kakul.sl03",
+		"stage.kakul.sl04", "stage.kakul.sl05" })
+	{
+		const auto* marker = Find_Placement(id);
+		if (!marker || marker->eKind != WORLD_BOOTSTRAP_KIND::PLAYER_SPAWN) continue;
+		const float dx = player.fPositionX - marker->fPositionX;
+		const float dz = player.fPositionZ - marker->fPositionZ;
+		const float candidate = dx * dx + dz * dz;
+		if (candidate < distance) { nearest = marker; distance = candidate; }
+	}
+	return nearest && nearest->strPlacementId == "stage.kakul.sl03" ? nearest : nullptr;
+}
+
+bool LostArk::Server::CGameRoom::Try_KoukuWalkOffFloor(
+	SERVER_PLAYER& player, const float x, const float z,
+	const float fixedDeltaSeconds, const std::uint32_t updateTick)
+{
+	using namespace LostArk::Shared;
+	if (m_eWorldId != WORLD_ID::KAKULSAYDON_ARENA || !m_ServerNavigation.Is_Loaded() ||
+		!player.iCurrentHp || player.TriggerMove.isActive || player.bArenaEjectionActive) return false;
+	const auto* gate2 = Resolve_KoukuFallCenter(player);
+	const bool casino = nullptr != gate2;
+	if (!player.iMarioStage && !casino) return false;
+	SERVER_NAV_POINT surface{};
+	// Obstacles keep their physical support. A blocked walking cell alone
+	// must never be interpreted as a hole.
+	const auto supported = [&](const float px, const float pz) {
+		return m_ServerNavigation.Sample_SurfacePosition(px, pz, surface) &&
+			surface.y >= player.fPositionY - m_ServerNavigation.Get_MaximumTraversalStepHeight();
+	};
+	if (supported(x, z)) return false;
+	float resolvedX{}, resolvedY{}, resolvedZ{};
+	bool blocked = false;
+	if (!m_ServerCollisionSystem.Resolve_PlayerMove(player, x, player.fPositionY, z,
+		resolvedX, resolvedY, resolvedZ, blocked) || blocked ||
+		supported(resolvedX, resolvedZ)) return false;
+	if (casino && !player.iMarioStage)
+	{
+		SERVER_NAV_POINT center{};
+		if (!m_ServerNavigation.Project_Point(gate2->fPositionX, gate2->fPositionZ, center, gate2->fPositionY)) return false;
+		player.KoukuFallRevivePosition = std::array<float, 3u>{ center.x, center.y, center.z };
+	}
+	player.fPositionX = resolvedX;
+	player.fPositionZ = resolvedZ;
+	Begin_PlayerFall(player, fixedDeltaSeconds, updateTick);
+	return true;
+}
+
 bool LostArk::Server::CGameRoom::Update_PlayerFall(
 	SERVER_PLAYER& player,
 	const float fixedDeltaSeconds,
@@ -621,7 +680,7 @@ bool LostArk::Server::CGameRoom::Update_PlayerFall(
 		(player.bKnockbackBallistic && player.fKnockbackRemainingSeconds > 0.f)) && 0u != player.iCurrentHp)
 		return false;
 	const auto gate = Resolve_CurrentKoukuGate();
-	const bool gateFence = gate == 1u || gate == 3u;
+	const bool gateFence = !player.iMarioStage && (gate == 1u || gate == 3u);
 	if (gateFence && player.iCurrentHp && player.eAction == PLAYER_ACTION_STATE::FALLING)
 	{
 		SERVER_NAV_POINT start{}, ground{}; float yaw = 0.f;
@@ -655,9 +714,12 @@ bool LostArk::Server::CGameRoom::Update_PlayerFall(
 			player.iActionStartTick = 0u == updateTick ? 1u : updateTick;
 			player.fFallVelocityY = 0.f;
 			player.iFallDeathTick = 0u;
+			Update_MarioControlState(player);
 		}
 		return true;
 	}
+	// Authored jumps and entry/exit transfers own their airborne trajectory.
+	if (player.TriggerMove.isActive) return false;
 	if (gateFence || !m_ServerNavigation.Is_Loaded() ||
 		0u == player.iCurrentHp ||
 		PLAYER_ACTION_STATE::DEAD == player.eAction ||
@@ -697,6 +759,20 @@ void LostArk::Server::CGameRoom::Update_Players(const float fixedDeltaSeconds)
 			};
         (void)CKoukuSaydonLogicRuntime::Update_PlayerFear(player, updateTick);
 		Update_MarioControlState(player);
+		if (m_eWorldId == LostArk::Shared::WORLD_ID::KAKULSAYDON_ARENA && player.iCurrentHp &&
+			!player.iMarioStage && !player.TriggerMove.isActive &&
+			player.eAction != LostArk::Shared::PLAYER_ACTION_STATE::FALLING)
+		{
+			const auto* center = Resolve_KoukuFallCenter(player);
+			if (center)
+			{
+				SERVER_NAV_POINT ground{};
+				if (m_ServerNavigation.Project_Point(center->fPositionX, center->fPositionZ, ground, center->fPositionY))
+					player.KoukuFallRevivePosition = std::array<float, 3u>{ground.x, ground.y, ground.z};
+			}
+			else if (player.eAction == LostArk::Shared::PLAYER_ACTION_STATE::NONE)
+				player.KoukuFallRevivePosition.reset();
+		}
 		/* A song that ended any way but its own timeout (a hit, a bind, death) never
 		lands the player later. */
 		if (0u != player.iSquareHoleId &&
@@ -957,6 +1033,8 @@ void LostArk::Server::CGameRoom::Update_Players(const float fixedDeltaSeconds)
 			proposedZ = player.fPositionZ + stepZ;
 		}
 		Project_MarioRailPoint(player, proposedX, proposedZ);
+		if (Try_KoukuWalkOffFloor(player, proposedX, proposedZ, fixedDeltaSeconds, updateTick))
+			continue;
 		/* A smoothed path can skip many authored cells. Never interpolate Y toward
 		the distant waypoint: doing so raises the player while XZ is still on the
 		lower deck and lets a later height check see an already-raised player.
@@ -1185,7 +1263,7 @@ void LostArk::Server::CGameRoom::Advance_PlayerKnockback(
 	float desiredZ = player.fPositionZ +
 		player.fKnockbackDirectionZ * player.fKnockbackSpeed * step;
 	const auto gate = Resolve_CurrentKoukuGate();
-	const bool gateFence = gate == 1u || gate == 3u;
+	const bool gateFence = !player.iMarioStage && (gate == 1u || gate == 3u);
 	if (gateFence) player.bKnockbackCanLeaveArena = false;
 	if (player.bKnockbackBallistic)
 	{
@@ -1275,6 +1353,8 @@ void LostArk::Server::CGameRoom::Advance_PlayerKnockback(
 		return;
 	}
 	Project_MarioRailPoint(player, desiredX, desiredZ);
+	if (Try_KoukuWalkOffFloor(player, desiredX, desiredZ, fixedDeltaSeconds,
+		Add_ServerTicksSkippingReservedZero(m_iServerTick, 1u))) return;
 	if (player.bArenaEjectionActive)
 	{
 		player.fPositionX = desiredX;

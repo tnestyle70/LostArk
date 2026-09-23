@@ -49,6 +49,8 @@ namespace
 	   once on entry. The validation mirrors the pattern-free death-cue rules of
 	   the Valtan cinematic camera document so both consume the same sampler. */
 	constexpr uint64_t BERN_ENTRANCE_CINEMATIC_OWNER_ID = 0x4245524E43494E45ull;
+	// Main-thread presentation state outlives Level instances, not the Client process.
+	bool_t s_hasPresentedBernEntranceThisSession = false;
 	constexpr const char_t* BERN_ENTRANCE_CAMERA_SCHEMA =
 		"lostark.level-entrance-camera";
 	constexpr uint32_t BERN_ENTRANCE_CAMERA_FORMAT_VERSION = 1u;
@@ -606,6 +608,11 @@ void CLevel_Bern::Update(f32_t fTimeDelta)
 
 bool_t CLevel_Bern::Ready_EntranceCinematic()
 {
+	if (s_hasPresentedBernEntranceThisSession)
+	{
+		m_bEntranceCinematicDone = true;
+		return true;
+	}
 	const std::filesystem::path path = CProjectDataRoot::Resolve(
 		L"Encounters/Bern/BernEntranceCamera.json");
 	std::error_code fileError;
@@ -667,6 +674,7 @@ void CLevel_Bern::Update_EntranceCinematic(const f32_t fTimeDelta)
 	m_wasEscapeDownForEntranceSkip = isEscapeDown;
 	if (wasEscapePressed)
 	{
+		s_hasPresentedBernEntranceThisSession = true;
 		End_EntranceCinematic();
 		return;
 	}
@@ -682,6 +690,8 @@ void CLevel_Bern::Update_EntranceCinematic(const f32_t fTimeDelta)
 		End_EntranceCinematic();
 		return;
 	}
+	// Failed loading, ownership or pose application must not consume the first visit.
+	s_hasPresentedBernEntranceThisSession = true;
 	if (m_fEntranceCinematicSeconds >=
 		static_cast<f32_t>(m_EntranceCameraCue.iDurationMs) * 0.001f)
 	{
