@@ -434,6 +434,31 @@ namespace LostArk::Shared
 		SKILL_ID iSkillId = INVALID_SKILL_ID;
 	};
 
+	// Debug intent only. The observed archetype is a stale-view guard; the Server
+	// resolves the current gate and every target from its own room state.
+	struct C2S_DEBUG_KILL_GATE_BOSSES
+	{
+		std::uint32_t iRequestSequence = 0;
+		WORLD_ID eWorldId = WORLD_ID::END;
+		std::string strExpectedBossArchetypeId;
+	};
+	enum class DEBUG_KILL_GATE_BOSSES_RESULT : std::uint8_t
+	{
+		ACCEPTED, DISABLED, WRONG_WORLD, INVALID_PLAYER, STALE_REQUEST,
+		NO_CURRENT_BOSS, STALE_BOSS, BUSY, END
+	};
+	struct S2C_DEBUG_KILL_GATE_BOSSES_RESULT
+	{
+		std::uint32_t iRequestSequence = 0;
+		WORLD_ID eWorldId = WORLD_ID::END;
+		DEBUG_KILL_GATE_BOSSES_RESULT eResult = DEBUG_KILL_GATE_BOSSES_RESULT::DISABLED;
+		std::uint8_t iKilledCount = 0;
+	};
+	bool Write_Message(CPacketWriter&, const C2S_DEBUG_KILL_GATE_BOSSES&);
+	bool Read_Message(CPacketReader&, C2S_DEBUG_KILL_GATE_BOSSES&);
+	bool Write_Message(CPacketWriter&, const S2C_DEBUG_KILL_GATE_BOSSES_RESULT&);
+	bool Read_Message(CPacketReader&, S2C_DEBUG_KILL_GATE_BOSSES_RESULT&);
+
 	// Development Balance Tool intent. The authenticated session identifies the
 	// player; no position or HP is trusted from the client.
 	struct C2S_REVIVE_PLAYER

@@ -327,6 +327,9 @@
     <ClCompile Include="..\Private\BalanceTool.cpp">
       <Filter>03. Tools\07. Balance</Filter>
     </ClCompile>
+    <ClCompile Include="..\Private\BalanceTestPanel.cpp">
+      <Filter>03. Tools\07. Balance</Filter>
+    </ClCompile>
     <ClCompile Include="..\Private\ValtanBossTool.cpp">
       <Filter>03. Tools\01. Boss</Filter>
     </ClCompile>
@@ -1313,6 +1316,9 @@
       <Filter>03. Tools\04. Animation</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\BalanceTool.h">
+      <Filter>03. Tools\07. Balance</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\BalanceTestPanel.h">
       <Filter>03. Tools\07. Balance</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\ValtanBossTool.h">

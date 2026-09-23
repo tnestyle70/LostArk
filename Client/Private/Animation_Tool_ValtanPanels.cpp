@@ -130,8 +130,8 @@ void Client::CAnimation_Tool::Render_ValtanPatternMasterUnavailableShell(
 		ImGui::BulletText(
 			"Camera/World | Data/Encounters/Valtan typed owner documents");
 		ImGui::BeginDisabled(nullptr == m_pBalanceTool);
-		if (ImGui::SmallButton("Open Valtan Balance / Gameplay##RejectedDataFiles"))
-			m_pBalanceTool->Open_Valtan();
+		if (ImGui::SmallButton("Open Shared Balance Test##RejectedDataFiles"))
+			m_pBalanceTool->Open();
 		ImGui::EndDisabled();
 	}
 	ImGui::EndChild();
@@ -158,7 +158,7 @@ void Client::CAnimation_Tool::Render_ValtanPatternMaster(
 	ImGui::BulletText(
 		"EDIT + SAVE: Data/Valtan/Valtan.gameplay.json | Server stage clock, collider, hit schedule and player reaction");
 	ImGui::BulletText(
-		"EDIT + SAVE: Data/Balance/BossProfiles.json and DamageProfiles.json | Valtan gameplay values through the typed Balance transaction");
+		"SHARED BALANCE TEST: Data/Balance/BossProfiles.json and DamageProfiles.json | numeric Save + Validate, then Publish and restart");
 	ImGui::BulletText(
 		"AUTHORING OWNER: Data/Valtan/Valtan.presentation.json | animation occurrences and managed Effect invocations save only through the immutable joined revision pipeline");
 	ImGui::BulletText(
@@ -177,8 +177,8 @@ void Client::CAnimation_Tool::Render_ValtanPatternMaster(
 			ValtanPatternMasterAdmissionLabel());
 	}
 	ImGui::BeginDisabled(nullptr == m_pBalanceTool);
-	if (ImGui::SmallButton("Open Valtan Balance / Gameplay"))
-		m_pBalanceTool->Open_Valtan();
+	if (ImGui::SmallButton("Open Shared Balance Test"))
+		m_pBalanceTool->Open();
 	ImGui::EndDisabled();
 
 	if (ImGui::CollapsingHeader("Server Arena Environment"))
@@ -1134,8 +1134,8 @@ void Client::CAnimation_Tool::Render_ValtanPatternMaster(
 		Render_ValtanSelectedResourceUsage(*pSelected, pSelectedStage);
 
 		ImGui::BeginDisabled(nullptr == m_pBalanceTool);
-		if (ImGui::SmallButton("Open Valtan Balance / Gameplay##DataFiles"))
-			m_pBalanceTool->Open_Valtan();
+		if (ImGui::SmallButton("Open Shared Balance Test##DataFiles"))
+			m_pBalanceTool->Open();
 		ImGui::EndDisabled();
 		ImGui::SameLine();
 		ImGui::BeginDisabled(!bHasPreviewModel);

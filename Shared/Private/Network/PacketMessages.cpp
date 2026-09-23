@@ -7071,3 +7071,39 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader, S2C_KOUKUSAYDON_RAID_S
     m.eWorldId = static_cast<WORLD_ID>(world); m.ePhase = static_cast<KOUKUSAYDON_RAID_PHASE>(phase);
 	CPacketWriter validation; if (!Write_Message(validation, m)) return false; message = std::move(m); return true;
 }
+
+
+bool LostArk::Shared::Write_Message(CPacketWriter& writer, const C2S_DEBUG_KILL_GATE_BOSSES& message)
+{
+ if (!message.iRequestSequence || !Is_Known_World_Id(message.eWorldId) ||
+     message.strExpectedBossArchetypeId.empty() || message.strExpectedBossArchetypeId.size() > 128u) return false;
+ writer.Write_U32(message.iRequestSequence);
+ writer.Write_U16(static_cast<std::uint16_t>(message.eWorldId));
+ return writer.Write_String(message.strExpectedBossArchetypeId, 128u);
+}
+bool LostArk::Shared::Read_Message(CPacketReader& reader, C2S_DEBUG_KILL_GATE_BOSSES& message)
+{
+ C2S_DEBUG_KILL_GATE_BOSSES staged{}; std::uint16_t world{};
+ if (!reader.Read_U32(staged.iRequestSequence) || !reader.Read_U16(world) ||
+     !reader.Read_String(staged.strExpectedBossArchetypeId, 128u)) return false;
+ staged.eWorldId = static_cast<WORLD_ID>(world); CPacketWriter validation;
+ if (!Write_Message(validation, staged)) return false;
+ message = std::move(staged); return true;
+}
+bool LostArk::Shared::Write_Message(CPacketWriter& writer, const S2C_DEBUG_KILL_GATE_BOSSES_RESULT& message)
+{
+ if (!message.iRequestSequence || !Is_Known_World_Id(message.eWorldId) ||
+     message.eResult >= DEBUG_KILL_GATE_BOSSES_RESULT::END || message.iKilledCount > 2u ||
+     (message.eResult == DEBUG_KILL_GATE_BOSSES_RESULT::ACCEPTED ? !message.iKilledCount : message.iKilledCount != 0u)) return false;
+ writer.Write_U32(message.iRequestSequence); writer.Write_U16(static_cast<std::uint16_t>(message.eWorldId));
+ writer.Write_U8(static_cast<std::uint8_t>(message.eResult)); writer.Write_U8(message.iKilledCount); return true;
+}
+bool LostArk::Shared::Read_Message(CPacketReader& reader, S2C_DEBUG_KILL_GATE_BOSSES_RESULT& message)
+{
+ S2C_DEBUG_KILL_GATE_BOSSES_RESULT staged{}; std::uint16_t world{}; std::uint8_t result{};
+ if (!reader.Read_U32(staged.iRequestSequence) || !reader.Read_U16(world) ||
+     !reader.Read_U8(result) || !reader.Read_U8(staged.iKilledCount)) return false;
+ staged.eWorldId = static_cast<WORLD_ID>(world); staged.eResult = static_cast<DEBUG_KILL_GATE_BOSSES_RESULT>(result);
+ CPacketWriter validation; if (!Write_Message(validation, staged)) return false;
+ message = staged; return true;
+}

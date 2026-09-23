@@ -15,6 +15,8 @@ class IPlayerCommandSink
 {
 public:
 	virtual ~IPlayerCommandSink() = default;
+	virtual bool Request_DebugKillGateBosses(const LostArk::Shared::C2S_DEBUG_KILL_GATE_BOSSES&) { return false; }
+	virtual bool Consume_DebugKillGateBossesResult(LostArk::Shared::S2C_DEBUG_KILL_GATE_BOSSES_RESULT&) { return false; }
 	virtual bool Request_KoukuRaid(const LostArk::Shared::C2S_DEBUG_KOUKUSAYDON_RAID_REQUEST&) { return false; }
 	virtual bool Request_DebugWorldPlayback(const LostArk::Shared::C2S_DEBUG_WORLD_PLAYBACK&) { return false; }
 	virtual bool Consume_DebugWorldPlaybackResult(LostArk::Shared::S2C_DEBUG_WORLD_PLAYBACK_RESULT&) { return false; }

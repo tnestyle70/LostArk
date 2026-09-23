@@ -2906,6 +2906,14 @@ void LostArk::Server::CServerApp::On_SessionFrame(
 		command.eType = ROOM_COMMAND_TYPE::REVIVE_PLAYER;
 		command.RevivePlayer = revivePlayer;
 	}
+	else if (frame.ePacketType == PACKET_TYPE::C2S_DEBUG_KILL_GATE_BOSSES)
+	{
+		C2S_DEBUG_KILL_GATE_BOSSES request{};
+		if (!Read_Message(reader, request) || reader.Get_RemainingSize())
+		{ closeMalformedPayload("C2S_DEBUG_KILL_GATE_BOSSES"); return; }
+		command.eType = ROOM_COMMAND_TYPE::DEBUG_KILL_GATE_BOSSES;
+		command.DebugKillGateBosses = request;
+	}
 	else if (frame.ePacketType == PACKET_TYPE::C2S_DEBUG_KILL_SELF)
 	{
 		C2S_DEBUG_KILL_SELF debugKillSelf{};

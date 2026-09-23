@@ -438,7 +438,8 @@ Profiler 체크박스는 별도의 CPU/GPU 상세 overlay와 capture를 활성�
 Debug의 F1 → `Open Composition Profiler`와 Debug/Release 공통 F7은 같은 Engine profiler의 CPU 구간, GPU pass, 작업량과 긴 작업을
 보여준다. `Capture`로 수집하고 `Save JSON`으로 `Client/Bin/ProfilerCaptures`에 v3 캡처를 비동기
 저장한다. `Save name`은 한글을 포함한 선택 이름이며 같은 이름으로 다시 저장해도 timestamp/frame/process/sequence가 다른 새 파일을 만든다.
-F7 첫 열기는 수집을 시작하며 창을 닫아도 수집은 계속된다. Capture/Reset과 상세 CPU 모드는 다음 프레임 경계에서 반영한다.
+F7은 창만 열고 닫으며 수집은 창의 Capture에서 명시적으로 시작한다. 창을 닫아도 이미 시작한 수집은 계속된다. Capture/Reset과 상세 CPU 모드는 다음 프레임 경계에서 반영한다.
+Release FPS는 기존 엔진 폰트로 항상 표시하며 컷씬·로딩·HUD 숨김과 무관하다. 일반 저작 ImGui는 Debug 전용이고 Release의 docking/외부 viewport는 비활성이다.
 기본은 pass 시간과 작업량을 수집하고 `Detailed per-draw CPU scopes`를 켜면 map draw별 상세 scope도 기록한다.
 각 JSON은 기본으로 Frames 선택 구간(120프레임)만 복사·저장하고 선택을 해제하면 최근 최대 1200프레임을 저장한다.
 세션 전체를 무제한 누적하지 않는다. v3 additive metadata는 저장 시점의 build/adapter/viewport/camera/render 설정이며
@@ -467,10 +468,12 @@ Debug x64는 외부 ImGui core/backend 여섯 소스와 `Profiler.cpp`, `Shader.
 해당 파일은 명령 재배치·local 변수 생략 때문에 stepping이 제한되고 `/RTC`와 Just My Code를
 사용하지 않는다. `_DEBUG`, Debug CRT, ImGui assert, D3D debug layer와 다른 소스의 Debug 설정은 유지한다.
 
-F1의 `Balance Tool`은 five-class/boss selector, stats·movement·skill/combo·pattern authoring과 Server
-snapshot/damage-event 진단을 제공한다. Save는 `Data/Balance`/`Data/Encounters` 원본만 교체하고 변경
-field의 provenance를 `PROJECT_TUNED`로 동기화한 뒤 Validate한다. `Publish Server Data` 뒤 Server를
-재시작해야 적용된다. Tool이 실행 중 Server 구조체나 Client HUD 값만 덮어쓰는 hot reload는 없다.
+F1의 `Balance Test`는 공용 Players/Skills/Damage/Bosses 숫자 scalar 편집과 Server HP/tick 진단을
+제공한다. `Save + Validate`는 stable ID/field의 이전값으로 최신 `Data/Balance` 저장본에 병합하고,
+candidate provenance/gameplay 검증 뒤 freshness 확인과 원자 교체를 수행한다. `Publish Server Data`
+뒤 Server와 Client를 재시작해야 적용된다. Valtan의 typed 패턴 저작 backend와 draft는 별도로 유지한다.
+`Kill Current Gate Boss`는 공용 panel 및 F1 Valtan/KoukuSaydon Arena에서 같은 Server 명령을 사용하며
+현재 관문 primary boss의 정상 사망·clear·Encore 경로를 실행한다. Release Server는 이 Debug 명령을 거부한다.
 
 발탄 Pattern 저작 정본은 `Data/Valtan/Valtan.gameplay.json`과
 `Data/Valtan/Valtan.presentation.json`의 strict stable-ID join이다. gameplay source는 Server stage,

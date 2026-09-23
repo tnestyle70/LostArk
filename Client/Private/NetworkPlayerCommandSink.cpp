@@ -14,6 +14,18 @@ bool Client::CNetworkPlayerCommandSink::Consume_DebugWorldPlaybackResult(
 	return CNetworkManager::Get().Try_Consume_DebugWorldPlaybackResult(result);
 }
 
+bool Client::CNetworkPlayerCommandSink::Request_DebugKillGateBosses(
+	const LostArk::Shared::C2S_DEBUG_KILL_GATE_BOSSES& request)
+{
+	return CNetworkManager::Get().Send_DebugKillGateBosses(request);
+}
+
+bool Client::CNetworkPlayerCommandSink::Consume_DebugKillGateBossesResult(
+	LostArk::Shared::S2C_DEBUG_KILL_GATE_BOSSES_RESULT& result)
+{
+	return CNetworkManager::Get().Try_Consume_DebugKillGateBossesResult(result);
+}
+
 std::atomic_uint32_t
 	Client::CNetworkPlayerCommandSink::s_iLiveInstanceCount = 0u;
 

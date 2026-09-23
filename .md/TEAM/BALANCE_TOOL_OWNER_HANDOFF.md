@@ -1,32 +1,48 @@
-# F1 Balance Tool · 공식 데이터 provenance 인수인계
+# F1 Balance Test · 공식 데이터 provenance 인수인계
 
 작성일: 2026-08-05
 대상: Gameplay/Balance, UI, Boss, Animation/Effect, Server 담당자
 
 ## 1. 지금 바로 기억할 결론
 
-Debug Client에서 `F1 -> Balance Tool`을 열면 왼쪽에서 여섯 character 또는 Valtan을 고르고,
-가운데에서 수치를 편집하고, 오른쪽에서 실제 Server snapshot과 최근 damage event를 확인할 수 있다.
+Debug Client에서 `F1 -> Balance Test`를 열면 `Players / Skills / Damage / Bosses`에서
+공용 수치를 편집하고 아래에서 실제 Server HP와 tick을 확인한다. 일반 수치 panel은 Valtan
+pattern source를 로드하지 않는다. Valtan Boss/Animation/Effect Tool이 소비하는 기존 typed
+authoring backend는 유지하며, `Valtan Authoring`의 패턴 편집과 공용 수치 draft는 서로 분리한다.
 스킬 기준은 level 10이다. 단, 원본 table이 SecondaryKey 1만 가진 fixed basic/awakening definition은
 명시적으로 level 1 row를 사용하며 Tool에서 source level을 바꾸지 않는다.
 
 저장 흐름은 다음 한 방향이다.
 
 ```text
-F1 Balance Tool draft
--> Data/Balance + Data/Encounters authoring JSON atomic staging
+F1 Balance Test numeric draft
+-> Save + Validate
+-> stable ID + field 이전값으로 최신 Data/Balance 저장본과 병합
+-> candidate overlay에서 provenance + gameplay 검증
 -> Update-BalanceProvenanceReceipt.ps1
 -> 바뀐 field만 PROJECT_TUNED로 분류
--> Publish-BalanceRuntimeSet.ps1 -Mode Validate
+-> 입력 bytes 재확인 + 원자 교체 / 실패 시 자기 변경 rollback
 -> Publish Server Data
 -> gameplay bootstrap + world bootstrap 4종 + item bootstrap 1종을 한 rollback set으로 promotion
--> Server.exe 재시작
+-> Server와 Client 재시작
 -> Server snapshot / damage event로 실측
 ```
 
 player/base balance는 `Publish Server Data` 뒤 Server를 재시작해야 적용된다. Valtan split gameplay candidate의
 typed hot reload는 별도 revision/2PC 계약을 사용하므로 아래 일반 balance publish와 섞지 않는다. 어느 경로에서도
 Client만 JSON을 다시 읽어 Server와 다른 수치를 보여 주지 않는다.
+
+`Save + Validate`는 `Save-BalanceTestDraft.ps1`을 비동기로 실행한다. 같은 field가 저장 후
+변경됐으면 충돌로 거부하고, 다른 field 변경과 미지원 schema field는 보존한다. 저장 중
+외부 파일 변경도 교체 직전 확인하며 실패하면 자기 변경만 되돌린다. 검증/저장과 게시를
+구분하고, 다른 도구의 미저장 draft나 실행 중 Server를 자동 갱신하지 않는다. 일반 수치의
+저장은 Valtan pattern Hot Reload 요청을 보내지 않는다.
+
+`Kill Current Gate Boss`는 Balance Test와 F1의 Valtan/KoukuSaydon Arena 영역에 같은
+typed 명령으로 표시한다. Server가 현재 관문 primary boss만 결정하고 정상 사망 처리로
+넘긴다. G2는 두 primary actor, G3는 G3 actor만 대상이며 다음 Bingo boss를 함께 지우지
+않는다. 기존 clear/Encore/보상 흐름을 사용하고 최종 클리어 flag를 직접 설정하지 않는다.
+Release Server는 이 Debug 명령을 거부한다. 표시된 boss가 이미 바뀐 요청과 재전송은 거부한다.
 
 ## 2. 정본 파일
 
@@ -46,6 +62,7 @@ Client만 JSON을 다시 읽어 Server와 다른 수치를 보여 주지 않는�
 | Tool 편집 후 receipt 동기화 | `Tools/GameplayPipeline/Update-BalanceProvenanceReceipt.ps1` |
 | domain 검증·cook | `Tools/GameplayPipeline/Publish-GameplayBalance.ps1`, `Tools/WorldPipeline/Publish-WorldGameplay.ps1` |
 | Balance/World/Items 통합 promotion | `Tools/GameplayPipeline/Publish-BalanceRuntimeSet.ps1` |
+| 공용 숫자 field 병합·검증·원자 저장 | `Tools/GameplayPipeline/Save-BalanceTestDraft.ps1` |
 
 `Data/Valtan/Valtan.pattern.json`은 migration fixture다. `Data/Encounters/Valtan/ValtanEncounter.json`, rotations,
 combat objects, world events, pattern bindings/cues와 `Server/Bin/DataFiles/Gameplay/Gameplay.bootstrap`은 생성물이다.
@@ -94,12 +111,13 @@ level 10이 없을 때 후보 전체의 SecondaryKey가 `{1}`인 fixed definitio
 
 ## 5. Character 튜닝 방법
 
-왼쪽 `Players`에서 class를 고른다.
+`Players`에서 class를, `Skills`에서 stable skill ID와 slot 행을 고른다. 일반 panel은
+scalar 수치를 편집한다. combo stage 배열, stance/identity 정책과 패턴 구조를 재작성하지 않는다.
 
 - `Basic stats`: HP, 공격력, 방어력, resource pool/regen
 - `Movement`: 이동 속도
 - `Skills`: input slot별 cooldown, resource cost, damage rate, action/hit time, range, skill movement
-- `Staged action timing`: COMBO/HOLD/COUNTER 단계별 duration/hit/`comboAdvanceMs`/input open/input close
+- COMBO/HOLD/COUNTER의 단계별 timing 구조는 기존 전용 authoring 계약에서 편집하며 공용 panel은 보존한다.
 
 COMBO의 `hitTimeMs`는 damage 시점이다. non-final stage의 input window가 non-zero인 manual COMBO에서 `comboAdvanceMs`는 필수 caster hit와 projectile spawn이 끝난 뒤 buffered BA가 다음 stage로 갈 수 있는 가장 이른 시점이고, pending MOVE/SKILL은 이 전진을 막아 현재 `actionDurationMs` 종료 뒤 commit된다. non-final stage가 `inputOpenMs/inputCloseMs == 0/0`이면 automatic COMBO이며 `comboAdvanceMs == actionDurationMs`를 반드시 만족해야 한다. automatic chain은 추가 입력 없이 full-motion 경계마다 전진하고 pending MOVE/SKILL은 마지막 stage 종료 뒤 commit된다. 마지막 stage도 `comboAdvanceMs == actionDurationMs`와 닫힌 input window를 유지한다. 차원술사 `2050010`은 `1500/1067/1700ms` automatic 3-stage다. Balance Tool은 현행 94개 skill의 `ACTIVE/COMBO/HOLD/COUNTER/STANDUP`, player identity 필드, skill `identityCost`, Valtan `introPatternId/serverMotion`을 함께 무손실로 보존해야 한다.
 
@@ -110,7 +128,9 @@ damage 정답을 Client notify에서 만들지 않는다.
 
 ## 6. Valtan 튜닝 방법
 
-왼쪽 `Bosses -> Valtan`은 한 화면에서 joined 결과를 보여 주지만 저장 소유권은 분리한다.
+공용 `Bosses`는 BossProfiles의 HP/AP/health bars/collision/detection/move scalar만 저장한다.
+Valtan 패턴 편집은 owning Boss/Animation/Effect Tool이 여는 `Valtan Authoring`을 사용하며
+joined source, immutable revision과 Hot Reload 계약은 기존대로 유지한다.
 
 - `Base stats`: `BossProfiles.json`의 HP, attack power, collision radius, detection/movement를 편집한다.
 - `Decision / Pattern / Stage`: `Valtan.gameplay.json`의 selection window/set, weight, eligibility, duration,
@@ -138,9 +158,10 @@ applied = max(1, raw * 100 / (100 + playerDefense))
 현재 발탄 raw 350은 창술사 defense 105에서 170으로 적용된다. outgoing player damage에는 아직 boss
 defense가 없으므로 Tool이 boss 방어력을 표시하거나 가정하지 않는다.
 
-## 7. 오른쪽 Live Verification
+## 7. Live Verification
 
-오른쪽은 JSON 예상값이 아니라 `CCombatHUDViewModel`의 Server snapshot을 읽는다.
+공용 Balance Test 아래의 HP/tick과 Valtan authoring 오른쪽 진단은 JSON 예상값이 아니라
+`CCombatHUDViewModel`의 Server snapshot을 읽는다. 최근 damage event 상세는 기존 Valtan 진단에 남는다.
 
 - player HP/resource/server tick
 - boss HP/phase/action
@@ -173,5 +194,5 @@ powershell -NoProfile -ExecutionPolicy Bypass -File Tools/GameplayPipeline/Publi
 Server/Bin/Debug/Server.exe --contract-test
 ```
 
-완료 보고에서는 자동 검증과 수동 F1 smoke를 분리한다. Client를 실행하지 않았다면 Balance Tool의
+완료 보고에서는 자동 검증과 수동 F1 smoke를 분리한다. Client를 실행하지 않았다면 Balance Test의
 시각/입력/저장 smoke를 PASS라고 쓰지 않는다.

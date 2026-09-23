@@ -53,7 +53,7 @@ Client project를 사용자가 `Ctrl+F5`로 시작할 대상으로 안내한다.
 4. 현재 작업의 대응 PLAN/RESULT
 5. 통합 데이터 수명·stable ID·publish 구조: `UNIFIED_DATA_MANAGEMENT_ARCHITECTURE.md`
 6. 담당별 입력·출력 계약: `TEAM_GAMEPLAY_INTERFACE_HANDBOOK.md`
-7. F1 Balance Tool과 공식 provenance 작업법: `BALANCE_TOOL_OWNER_HANDOFF.md`
+7. F1 Balance Test와 공식 provenance 작업법: `BALANCE_TOOL_OWNER_HANDOFF.md`
 8. Animation/Effect/Character Preview Tool 경계: `ANIMATION_TOOL_OWNER_HANDOFF.md`
 9. 발탄 gameplay/presentation split 정본과 joined revision: `발탄인수인계서.md`
 10. 발탄 정본 publish와 다른 PC pull/build 순서: `VALTAN_PUBLISH_PULL_BUILD_GUIDE.md`
@@ -80,7 +80,7 @@ Client project를 사용자가 `Ctrl+F5`로 시작할 대상으로 안내한다.
 | `AGENTS.md` | 팀 전체 금지 규칙이나 완료 조건이 바뀔 때 |
 | `CLAUDE.md` | 경로, 빌드, 최초 세팅, 런타임 사용법이 바뀔 때 |
 | `UNIFIED_DATA_MANAGEMENT_ARCHITECTURE.md` | 데이터 domain 소유권, stable ID graph, authoring/publish/runtime 수명이나 확장 순서가 바뀔 때 |
-| `BALANCE_TOOL_OWNER_HANDOFF.md` | 공식 receipt, F1 Balance Tool, Server 적용·검증 절차가 바뀔 때 |
+| `BALANCE_TOOL_OWNER_HANDOFF.md` | 공식 receipt, F1 Balance Test, Server 적용·검증 절차가 바뀔 때 |
 | `TEAM_GAMEPLAY_INTERFACE_HANDBOOK.md` | 담당자가 소비하는 C++/데이터 public 계약이 바뀔 때 |
 | `ANIMATION_TOOL_OWNER_HANDOFF.md` | Animation/Effect/Character Preview Tool의 authoring 소유권이 바뀔 때 |
 | `발탄인수인계서.md` | 발탄 gameplay/presentation split, joined revision, animation/Effect invocation 또는 담당별 튜닝 경계가 바뀔 때 |

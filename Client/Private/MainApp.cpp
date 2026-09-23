@@ -91,6 +91,7 @@
 #include "KoukuSaydonBossTool.h"
 #include "ValtanActionWorkbench.h"
 #include "BalanceTool.h"
+#include "BalanceTestPanel.h"
 #include "ValtanBossTool.h"
 #include "CameraTool.h"
 #include "Camera_Free.h"
@@ -3902,10 +3903,6 @@ HRESULT CMainApp::Render()
 			RenderMinimapText();
 	}
 	{
-		CUITextLayerScope TopText(UI_TEXT_LAYER::PAGE);
-		RenderFpsText();
-	}
-	{
 		CUITextLayerScope WindowText(UI_TEXT_LAYER::WINDOW_ITEM_UPGRADE);
 		RenderItemUpgradeButtonText();
 		RenderItemUpgradeLevelText();
@@ -4010,6 +4007,10 @@ HRESULT CMainApp::Render()
 	}
 	// Cinematic subtitles remain visible while ordinary combat UI is suppressed.
 	RenderCinematicSubtitles();
+	{
+		CUITextLayerScope TopText(UI_TEXT_LAYER::PAGE);
+		RenderFpsText();
+	}
 	// Advance the event cursor even while cinematic UI is hidden; never replay old hits.
 	if (CUIInputRouter::Get().Is_CinematicSuppressed()) RenderDamageNumbers();
 	/* Every CUIInputRouter-based screen's click-edge check has run by this point (both this
@@ -8904,11 +8905,13 @@ void CMainApp::RenderFpsText()
 {
 	/* combobox_fps: 0 always, 1 in combat only (a hit within the last few seconds), 2 never.
 	Small YG760 line in the top-left corner; the retail placement was not traced. */
+	if (m_fSmoothedFps <= 0.f)
+		return;
+#ifdef _DEBUG
 	const int32_t iMode = CUserSettings::Get().Get_FpsDisplayMode();
-	if (2 == iMode || m_fSmoothedFps <= 0.f)
+	if (2 == iMode || (1 == iMode && Product_Now_Seconds() - m_dLastDamageSeconds > 6.0))
 		return;
-	if (1 == iMode && Product_Now_Seconds() - m_dLastDamageSeconds > 6.0)
-		return;
+#endif
 	const float2_t viewportSize = CGameInstance::Get().Get_ViewportSize();
 	if (viewportSize.x <= 0.f || viewportSize.y <= 0.f)
 		return;
@@ -9498,12 +9501,18 @@ HRESULT CMainApp::ReadyImGuiRuntime()
 	{
 		return E_FAIL;
 	}
+
+#ifndef _DEBUG
+	// Release uses the main-window profiler only, without detached authoring windows.
+	ImGui::GetIO().ConfigFlags &= ~(ImGuiConfigFlags_DockingEnable | ImGuiConfigFlags_ViewportsEnable);
+	ImGui::GetIO().IniFilename = nullptr;
+#endif
 	return S_OK;
 }
 
 void CMainApp::UpdateProfilerRuntime()
 {
-    // F7 owns only the profiler. Hiding it leaves collection active for measuring UI overhead.
+    // F7 only shows the profiler; Capture is an explicit action inside the window.
     if (m_pProfilerTool) m_pProfilerTool->Update_SaveState();
     const bool_t down = IsWindowOwnedByCurrentProcess(GetForegroundWindow()) &&
         0 != (GetAsyncKeyState(VK_F7) & 0x8000);
@@ -9520,8 +9529,6 @@ void CMainApp::UpdateProfilerRuntime()
             if (!m_pProfilerTool)
             {
                 m_pProfilerTool = make_unique<CProfilerTool>(m_pDevice.Get());
-                if (auto* profiler = CGameInstance::Get().Get_Profiler())
-                    m_pProfilerTool->Begin_Capture(*profiler);
             }
             m_pProfilerTool->Open();
         }
@@ -10029,7 +10036,7 @@ HRESULT CMainApp::EnsureDebugTool(const DEBUG_TOOL eTool)
 		break;
 	case DEBUG_TOOL::BALANCE:
 		if (nullptr == m_pBalanceTool)
-			m_pBalanceTool = make_unique<CBalanceTool>();
+			m_pBalanceTool = make_unique<CBalanceTool>(false);
 		m_pBalanceTool->Open();
 		break;
 	case DEBUG_TOOL::VALTAN_BOSS:
@@ -11565,6 +11572,7 @@ void CMainApp::RenderValtanArenaControls()
 		ImGui::TextDisabled("Valtan Arena Level instance is unavailable.");
 		return;
 	}
+    CBalanceTestPanel::Render_KillBossControl();
     auto& controller = pArena->Get_DebugPlayerController();
     ImGui::BeginDisabled(controller.Is_DebugPlayerPlacementPending() || pArena->Is_DebugValtanBossCommandPending());
     if (ImGui::Button("Start Position"))
@@ -11616,6 +11624,7 @@ void CMainApp::RenderKoukuSaydonArenaControls()
 		ImGui::TextDisabled("KoukuSaydon Arena Level instance is unavailable.");
 		return;
 	}
+	CBalanceTestPanel::Render_KillBossControl();
 #ifdef _DEBUG
 	/* Raid-clear MVP award page. Presentation only: this shows a sample page so
 	the layout and the intro timing can be looked at. Nothing decides an MVP yet --
@@ -12773,7 +12782,7 @@ void CMainApp::RenderDeveloperTools()
 		toolCell("Rendering Workbench", DEBUG_TOOL::RENDERING);
 		toolCell("Composition Profiler", DEBUG_TOOL::PROFILER);
 		toolCell("HUD Layout Tool", DEBUG_TOOL::UI);
-		toolCell("Balance Tool", DEBUG_TOOL::BALANCE);
+		toolCell("Balance Test", DEBUG_TOOL::BALANCE);
 		toolCell("Equipment Authoring Tool", DEBUG_TOOL::EQUIPMENT);
 		ImGui::EndTable();
 	}
@@ -12792,7 +12801,7 @@ void CMainApp::RenderDeveloperTools()
 			{ DEBUG_TOOL::RENDERING, "Rendering Workbench" },
 			{ DEBUG_TOOL::PROFILER, "Composition Profiler" },
 			{ DEBUG_TOOL::UI, "HUD Layout Tool" },
-			{ DEBUG_TOOL::BALANCE, "Balance Tool" },
+			{ DEBUG_TOOL::BALANCE, "Balance Test" },
 			{ DEBUG_TOOL::VALTAN_BOSS, "Valtan Boss Tool" },
 			{ DEBUG_TOOL::KOUKU_SAYDON_BOSS, "KoukuSaydon Boss Tool" },
 			{ DEBUG_TOOL::CAMERA, "Camera Tool" },

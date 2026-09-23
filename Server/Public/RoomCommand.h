@@ -24,6 +24,7 @@ namespace LostArk::Server
 		USE_SQUAREHOLE,
 		REVIVE_PLAYER,
 		DEBUG_KILL_SELF,
+		DEBUG_KILL_GATE_BOSSES,
 		DEBUG_ENTER_KAKULSAYDON_ARENA,
 		DEBUG_TELEPORT_TO_PLACEMENT,
 		DEBUG_TELEPORT_TO_POSITION,
@@ -100,6 +101,7 @@ namespace LostArk::Server
 		LostArk::Shared::C2S_USE_SQUAREHOLE UseSquareHole;
 		LostArk::Shared::C2S_REVIVE_PLAYER RevivePlayer;
 		LostArk::Shared::C2S_DEBUG_KILL_SELF DebugKillSelf;
+		LostArk::Shared::C2S_DEBUG_KILL_GATE_BOSSES DebugKillGateBosses;
 		LostArk::Shared::C2S_DEBUG_ENTER_KAKULSAYDON_ARENA
 			DebugEnterKakulSaydonArena;
 		LostArk::Shared::C2S_DEBUG_TELEPORT_TO_PLACEMENT

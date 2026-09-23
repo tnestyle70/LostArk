@@ -40,6 +40,51 @@ int LostArk::Server::CServerGameplayContractRunner::Run_DebugTeleport(TESTS& tes
 {
 	Run_KoukuMarioEntryContact(tests);
 	Run_KoukuRaidIntegration(tests);
+    {
+        auto room = std::make_unique<CGameRoom>(WORLD_ID::KAKULSAYDON_ARENA);
+        room->m_WorldEntities.clear();
+        SERVER_PLAYER player{}; player.iPlayerId = 91u; player.iSessionId = 92u;
+        room->m_Players.emplace(player.iPlayerId, player);
+        room->m_PlayerIdBySessionId.emplace(player.iSessionId, player.iPlayerId);
+        room->m_GateProgress.iCurrentGate = 2u;
+        const auto add = [&](const char* placement, const char* archetype, std::uint32_t entityId, bool dependent = false) {
+            SERVER_WORLD_ENTITY boss{}; boss.eKind = WORLD_BOOTSTRAP_KIND::BOSS;
+            boss.strPlacementId = placement; boss.strArchetypeId = archetype;
+            boss.iCurrentHp = 100u; boss.iNetEntityId = entityId;
+            boss.iOwnerBossNetEntityId = dependent ? 41u : INVALID_NET_ENTITY_ID;
+            room->m_WorldEntities.push_back(std::move(boss));
+        };
+        add("boss.kakulsaydon.g2.big-saydon", "BOSS_KAKULSAYDON_G2_BIG_SAYDON", 41u);
+        add("boss.kakulsaydon.g2.kouku", "BOSS_KAKULSAYDON_G2_KOUKU", 42u);
+        add("boss.kakulsaydon.g3.saydon", "BOSS_KAKULSAYDON_G3_SAYDON", 43u);
+        add("summon.test", "BOSS_KAKULSAYDON_G2_KOUKU", 44u, true);
+        C2S_DEBUG_KILL_GATE_BOSSES request{1u, WORLD_ID::KAKULSAYDON_ARENA, "BOSS_KAKULSAYDON_G2_KOUKU"};
+        std::uint8_t count = 99u;
+#ifndef _DEBUG
+        tests.Require(room->Apply_DebugKillGateBosses(92u, request, count) == DEBUG_KILL_GATE_BOSSES_RESULT::DISABLED &&
+            !count && room->m_WorldEntities[0].iCurrentHp == 100u, "Release rejects Kill Gate Boss and preserves gameplay");
+#else
+        tests.Require(room->Apply_DebugKillGateBosses(999u, request, count) == DEBUG_KILL_GATE_BOSSES_RESULT::INVALID_PLAYER && !count,
+            "Kill Gate Boss rejects an unauthenticated room player");
+        request.eWorldId = WORLD_ID::VALTAN_ARENA;
+        tests.Require(room->Apply_DebugKillGateBosses(92u, request, count) == DEBUG_KILL_GATE_BOSSES_RESULT::WRONG_WORLD,
+            "Kill Gate Boss rejects another world");
+        request.eWorldId = WORLD_ID::KAKULSAYDON_ARENA;
+        tests.Require(room->Apply_DebugKillGateBosses(92u, request, count) == DEBUG_KILL_GATE_BOSSES_RESULT::ACCEPTED && count == 2u &&
+            !room->m_WorldEntities[0].iCurrentHp && !room->m_WorldEntities[1].iCurrentHp &&
+            room->m_WorldEntities[0].eAction == SERVER_ENTITY_ACTION::DEAD &&
+            room->m_WorldEntities[2].iCurrentHp == 100u && room->m_WorldEntities[3].iCurrentHp == 100u,
+            "Kill Gate Boss kills both G2 primaries and preserves another gate and dependent summons");
+        tests.Require(room->m_GateProgress.iCurrentGate == 2u && !room->m_GateProgress.iClearedMask,
+            "Kill Gate Boss does not grant a clear before the normal death consumer");
+        room->m_GateProgress.iCurrentGate = 3u;
+        tests.Require(room->Apply_DebugKillGateBosses(92u, request, count) == DEBUG_KILL_GATE_BOSSES_RESULT::STALE_REQUEST &&
+            room->m_WorldEntities[2].iCurrentHp == 100u, "Replayed Kill Gate Boss cannot kill the next gate");
+        request.iRequestSequence = 2u;
+        tests.Require(room->Apply_DebugKillGateBosses(92u, request, count) == DEBUG_KILL_GATE_BOSSES_RESULT::STALE_BOSS &&
+            room->m_WorldEntities[2].iCurrentHp == 100u, "A queued stale HUD request cannot kill a new gate");
+#endif
+    }
 	{
 		/* Bern square holes: the song lock is the song plus the Client's black hold, and the
 		   Server lands the player on the world's authored squarehole.<id> row inside that hold.
@@ -382,7 +427,8 @@ int LostArk::Server::CServerGameplayContractRunner::Run_DebugTeleport(TESTS& tes
 				}
 				tests.Require(fell && player.KoukuFallRevivePosition && player.bKoukuFallDeath,
 					"Casino edge starts gravity and retains the center before the death pose drops below the floor");
-				room->Update_PlayerFall(player, 1.f / 30.f, 200u);
+				for (std::uint32_t tick = 101u; tick <= 200u && player.iCurrentHp; ++tick)
+					room->Update_PlayerFall(player, 1.f / 30.f, tick);
 				tests.Require(!player.iCurrentHp && player.eAction == PLAYER_ACTION_STATE::DEAD,
 					"Casino descent ends in authoritative death");
 				C2S_REVIVE_PLAYER revive{}; revive.iClientSequence = 1u;
@@ -431,11 +477,13 @@ int LostArk::Server::CServerGameplayContractRunner::Run_DebugTeleport(TESTS& tes
 			const auto original = player;
 			// Death in any of the four Mario stages returns a corpse, never a success or revive.
 			player.MarioReturnPosition = std::array<float, 3u>{ landing.x, landing.y, landing.z };
+			room->m_GateProgress.iCurrentGate = 3u; // The arena fence must not suppress Mario descent.
 			room->Begin_PlayerFall(player, 1.f / 30.f, 100u);
 			room->Update_MarioControlState(player);
 			tests.Require(player.iMarioStage == stage && player.MarioReturnPosition.has_value(),
 				"Mario descent preserves its stage and arena return pin");
-			room->Update_PlayerFall(player, 1.f / 30.f, 200u);
+			for (std::uint32_t tick = 101u; tick <= 200u && player.iCurrentHp; ++tick)
+				room->Update_PlayerFall(player, 1.f / 30.f, tick);
 			tests.Require(!player.iCurrentHp && player.eAction == PLAYER_ACTION_STATE::DEAD &&
 				!player.iMarioStage && !player.isCombatReady && !player.TriggerMove.isActive &&
 				player.fPositionX == landing.x && player.fPositionY == landing.y && player.fPositionZ == landing.z &&

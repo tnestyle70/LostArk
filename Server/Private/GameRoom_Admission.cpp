@@ -598,6 +598,7 @@ void LostArk::Server::CGameRoom::Leave(
 	m_KoukuSaydonPatternAuditionReceiptBySessionId.erase(sessionId);
 	m_KoukuDraftUploads.erase(sessionId);
 	m_ValtanAuditionSequenceBySessionId.erase(sessionId);
+	m_KillGateBossesRequestSequences.erase(sessionId);
 	m_WorldPlaybackRequestSequences.erase(sessionId);
 	m_RoomPlayerArrivalRuns.erase(sessionId);
 	m_ValtanPatternIdAuditionSequenceBySessionId.erase(sessionId);

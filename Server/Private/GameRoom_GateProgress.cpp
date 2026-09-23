@@ -701,3 +701,69 @@ void LostArk::Server::CGameRoom::Broadcast_GateProgressState(
 		}
 	}
 }
+
+
+LostArk::Shared::DEBUG_KILL_GATE_BOSSES_RESULT LostArk::Server::CGameRoom::Apply_DebugKillGateBosses(
+ const SESSION_ID sessionId, const LostArk::Shared::C2S_DEBUG_KILL_GATE_BOSSES& request, std::uint8_t& killedCount)
+{
+ using namespace LostArk::Shared;
+ using Result = DEBUG_KILL_GATE_BOSSES_RESULT;
+ killedCount = 0u;
+#ifndef _DEBUG
+ (void)sessionId; (void)request;
+ return Result::DISABLED;
+#else
+ if (request.eWorldId != m_eWorldId || (m_eWorldId != WORLD_ID::VALTAN_ARENA && m_eWorldId != WORLD_ID::KAKULSAYDON_ARENA))
+  return Result::WRONG_WORLD;
+ const auto owner = m_PlayerIdBySessionId.find(sessionId);
+ if (owner == m_PlayerIdBySessionId.end() || !m_Players.contains(owner->second)) return Result::INVALID_PLAYER;
+ auto& last = m_KillGateBossesRequestSequences[sessionId];
+ if (!request.iRequestSequence || request.iRequestSequence <= last) return Result::STALE_REQUEST;
+ last = request.iRequestSequence;
+ // A cinematic or prepare boundary is not a live combat gate to finish.
+ if (Is_KoukuRaidRunning() && m_KoukuRaid.State.ePhase != KOUKUSAYDON_RAID_PHASE::COMBAT)
+  return Result::BUSY;
+ const auto gate = Resolve_CurrentKoukuGate();
+ std::vector<SERVER_WORLD_ENTITY*> targets;
+ bool observedBossMatches = false;
+ for (auto& boss : m_WorldEntities)
+ {
+  if (boss.eKind != WORLD_BOOTSTRAP_KIND::BOSS || !boss.iCurrentHp || boss.eAction == SERVER_ENTITY_ACTION::DEAD ||
+      boss.iOwnerBossNetEntityId != INVALID_NET_ENTITY_ID) continue;
+  const bool current = m_eWorldId == WORLD_ID::VALTAN_ARENA ?
+   (boss.strPlacementId == "boss.valtan.center" && boss.strArchetypeId == "BOSS_VALTAN") :
+   (gate && Gate_IndexOfPlacement(boss.strPlacementId) == static_cast<int>(gate - 1u));
+  if (!current) continue;
+  targets.push_back(&boss);
+  observedBossMatches |= boss.strArchetypeId == request.strExpectedBossArchetypeId;
+ }
+ if (targets.empty()) return Result::NO_CURRENT_BOSS;
+ if (!observedBossMatches) return Result::STALE_BOSS;
+ if (targets.size() > 2u) return Result::BUSY;
+ // Only the death input changes. Update_WorldEntities owns phase progression,
+ // Encore, attached-player release, combat-object cancellation, MVP and loot.
+ for (auto* boss : targets)
+ {
+  boss->iCurrentHp = 0u;
+  boss->eAction = SERVER_ENTITY_ACTION::DEAD;
+  boss->iActionStartTick = m_iServerTick ? m_iServerTick : 1u;
+  boss->fActionElapsedSeconds = 0.f;
+  boss->MovePath.clear();
+ }
+ killedCount = static_cast<std::uint8_t>(targets.size());
+ return Result::ACCEPTED;
+#endif
+}
+
+void LostArk::Server::CGameRoom::Handle_DebugKillGateBosses(
+ const SESSION_ID sessionId, const LostArk::Shared::C2S_DEBUG_KILL_GATE_BOSSES& request)
+{
+ using namespace LostArk::Shared;
+ S2C_DEBUG_KILL_GATE_BOSSES_RESULT result{};
+ result.iRequestSequence = request.iRequestSequence;
+ result.eWorldId = m_eWorldId;
+ result.eResult = Apply_DebugKillGateBosses(sessionId, request, result.iKilledCount);
+ const auto session = Find_Session(sessionId); CPacketWriter writer;
+ if (session && Write_Message(writer, result) &&
+     !session->Send_Frame(PACKET_TYPE::S2C_DEBUG_KILL_GATE_BOSSES_RESULT, writer.Get_Buffer())) session->Request_Close();
+}

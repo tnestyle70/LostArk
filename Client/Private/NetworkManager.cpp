@@ -892,6 +892,8 @@ bool CNetworkManager::Has_DispatchCapacity(
 		return m_MarioReturnResults.size() < MAX_REVISION_CONTROL_QUEUE;
 	case PACKET_TYPE::S2C_DEBUG_MARIO_JUMP_RESULT:
 		return m_DebugMarioJumpResults.size() < MAX_REVISION_CONTROL_QUEUE;
+	case PACKET_TYPE::S2C_DEBUG_KILL_GATE_BOSSES_RESULT:
+		return m_DebugKillGateBossesResults.size() < MAX_REVISION_CONTROL_QUEUE;
 	case PACKET_TYPE::S2C_DEBUG_WORLD_PLAYBACK_RESULT:
 		return m_DebugWorldPlaybackResults.size() < MAX_REVISION_CONTROL_QUEUE;
 	case PACKET_TYPE::S2C_DEBUG_SET_KOUKU_HUD_MODE_RESULT:
@@ -2725,6 +2727,7 @@ void CNetworkManager::Reset_WorldInboundState()
 	m_DebugTeleportResults.clear();
 	m_DebugMarioJumpResults.clear();
 	m_MarioReturnResults.clear();
+	m_DebugKillGateBossesResults.clear();
 	m_DebugWorldPlaybackResults.clear();
 	m_DebugMadnessFormResults.clear();
 	m_VehicleRidingResults.clear();
@@ -3973,6 +3976,17 @@ void CNetworkManager::Handle_Frame(const LostArk::Shared::PACKET_FRAME & frame)
 		m_DebugMarioJumpResults.push_back(result);
 		break;
 	}
+	case PACKET_TYPE::S2C_DEBUG_KILL_GATE_BOSSES_RESULT:
+	{
+		S2C_DEBUG_KILL_GATE_BOSSES_RESULT result{};
+		if (!Read_Message(reader, result) || reader.Get_RemainingSize())
+		{ Fail_Protocol(WSAEINVAL); return; }
+		if (result.eWorldId != m_eWorldId) break;
+		if (m_DebugKillGateBossesResults.size() >= MAX_REVISION_CONTROL_QUEUE)
+		{ Fail_Protocol(WSAENOBUFS); return; }
+		m_DebugKillGateBossesResults.push_back(result);
+		break;
+	}
 	case PACKET_TYPE::S2C_DEBUG_WORLD_PLAYBACK_RESULT:
 	{
 		S2C_DEBUG_WORLD_PLAYBACK_RESULT result{};
@@ -4860,4 +4874,19 @@ bool CNetworkManager::Send_All(
 	}
 
 	return true;
+}
+
+
+bool CNetworkManager::Send_DebugKillGateBosses(const LostArk::Shared::C2S_DEBUG_KILL_GATE_BOSSES& request)
+{
+ using namespace LostArk::Shared;
+ if (!Is_Connected()) return false;
+ CPacketWriter writer; std::vector<std::uint8_t> frame;
+ return Write_Message(writer, request) &&
+   Build_Packet_Frame(PACKET_TYPE::C2S_DEBUG_KILL_GATE_BOSSES, writer.Get_Buffer(), frame) && Send_All(frame);
+}
+bool CNetworkManager::Try_Consume_DebugKillGateBossesResult(LostArk::Shared::S2C_DEBUG_KILL_GATE_BOSSES_RESULT& result)
+{
+ if (m_DebugKillGateBossesResults.empty()) return false;
+ result = m_DebugKillGateBossesResults.front(); m_DebugKillGateBossesResults.pop_front(); return true;
 }

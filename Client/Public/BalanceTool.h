@@ -18,6 +18,7 @@
 NS_BEGIN(Client)
 
 class DATA_JSON_VALUE;
+class CBalanceTestPanel;
 
 class CBalanceTool final
 {
@@ -882,6 +883,8 @@ private:
 	const std::uint32_t* FindDamageRate(const std::string& damageProfileId) const;
 	void MarkDirty(bool changed);
 
+	std::shared_ptr<CBalanceTestPanel> m_commonPanel;
+	bool m_commonVisible = false;
 	std::vector<PLAYER_EDIT> m_players;
 	std::vector<SKILL_EDIT> m_skills;
 	std::vector<DAMAGE_EDIT> m_damageProfiles;

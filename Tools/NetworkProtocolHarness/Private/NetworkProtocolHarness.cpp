@@ -2196,7 +2196,25 @@ namespace
 
 	void Test_DebugUseEstherRoundTrip(TEST_RUNNER& testRunner)
 	{
-		testRunner.Require(NETWORK_PROTOCOL_VERSION == 105u &&
+        C2S_DEBUG_KILL_GATE_BOSSES kill{ 42u, WORLD_ID::KAKULSAYDON_ARENA, "BOSS_KAKULSAYDON_G3_SAYDON" };
+        CPacketWriter killWriter;
+        testRunner.Require(Write_Message(killWriter, kill) && Is_Known_Packet_Type(PACKET_TYPE::C2S_DEBUG_KILL_GATE_BOSSES), "Gate Kill request is registered and serializes");
+        CPacketReader killReader{ killWriter.Get_Buffer() };
+        C2S_DEBUG_KILL_GATE_BOSSES killDecoded;
+        testRunner.Require(Read_Message(killReader, killDecoded) && !killReader.Get_RemainingSize() &&
+            killDecoded.iRequestSequence == kill.iRequestSequence && killDecoded.eWorldId == kill.eWorldId &&
+            killDecoded.strExpectedBossArchetypeId == kill.strExpectedBossArchetypeId, "Gate Kill request round trip preserves stale-view guard");
+        kill.iRequestSequence = 0; CPacketWriter invalidKill;
+        testRunner.Require(!Write_Message(invalidKill, kill), "Gate Kill rejects zero sequence");
+        S2C_DEBUG_KILL_GATE_BOSSES_RESULT killed{42u, WORLD_ID::KAKULSAYDON_ARENA, DEBUG_KILL_GATE_BOSSES_RESULT::ACCEPTED, 2u};
+        CPacketWriter resultWriter; testRunner.Require(Write_Message(resultWriter, killed), "Gate Kill result serializes");
+        CPacketReader resultReader{resultWriter.Get_Buffer()}; S2C_DEBUG_KILL_GATE_BOSSES_RESULT result;
+        testRunner.Require(Read_Message(resultReader, result) && result.iKilledCount == 2u && result.eResult == killed.eResult,
+            "Gate Kill result round trip preserves kill count");
+        killed.eResult = DEBUG_KILL_GATE_BOSSES_RESULT::DISABLED; CPacketWriter rejectedKill;
+        testRunner.Require(!Write_Message(rejectedKill, killed), "Rejected Gate Kill cannot claim a kill count");
+
+		testRunner.Require(NETWORK_PROTOCOL_VERSION == 108u &&
 			Is_Known_Packet_Type(PACKET_TYPE::C2S_DEBUG_USE_ESTHER) &&
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_DEBUG_USE_ESTHER) ==
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_DEBUG_RESUMMON_WAVE_MONSTERS) + 1u,
@@ -2384,7 +2402,7 @@ namespace
 				unchanged.eDirection == request.eDirection,
 				"Malformed Mario direction or stop preserves output");
 		}
-		testRunner.Require(NETWORK_PROTOCOL_VERSION == 105u && Is_Known_Packet_Type(PACKET_TYPE::C2S_MARIO_MOVE) &&
+		testRunner.Require(NETWORK_PROTOCOL_VERSION == 108u && Is_Known_Packet_Type(PACKET_TYPE::C2S_MARIO_MOVE) &&
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_MARIO_MOVE) ==
 			static_cast<std::uint16_t>(PACKET_TYPE::S2C_DEBUG_MARIO_JUMP_RESULT) + 1u,
 			"Mario direction packet retains its appended identity in protocol 105");
@@ -2785,7 +2803,7 @@ namespace
 				unchanged.eWorldId == WORLD_ID::BERN && unchanged.eResult == MARIO_RETURN_RESULT::REJECTED_DESTINATION,
 				"Invalid Mario return verdict preserves caller output");
 		}
-		testRunner.Require(NETWORK_PROTOCOL_VERSION == 105u &&
+		testRunner.Require(NETWORK_PROTOCOL_VERSION == 108u &&
 			Is_Known_Packet_Type(PACKET_TYPE::C2S_MARIO_RETURN) && Is_Known_Packet_Type(PACKET_TYPE::S2C_MARIO_RETURN_RESULT) &&
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_MARIO_RETURN) == static_cast<std::uint16_t>(PACKET_TYPE::S2C_SET_VEHICLE_RIDING_RESULT) + 1u &&
 			static_cast<std::uint16_t>(PACKET_TYPE::S2C_MARIO_RETURN_RESULT) == static_cast<std::uint16_t>(PACKET_TYPE::C2S_MARIO_RETURN) + 1u,
@@ -2906,7 +2924,7 @@ namespace
 				unchanged.eResult == DEBUG_MARIO_JUMP_RESULT::REJECTED_DISABLED,
 				"Mario invalid or truncated verdict preserves caller output");
 		}
-		testRunner.Require(NETWORK_PROTOCOL_VERSION == 105u &&
+		testRunner.Require(NETWORK_PROTOCOL_VERSION == 108u &&
 			Is_Known_Packet_Type(PACKET_TYPE::C2S_DEBUG_MARIO_JUMP) &&
 			Is_Known_Packet_Type(PACKET_TYPE::S2C_DEBUG_MARIO_JUMP_RESULT) &&
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_DEBUG_MARIO_JUMP) ==
@@ -3091,14 +3109,14 @@ namespace
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_DEBUG_BINGO_HAMMER) + 1u &&
 			static_cast<std::uint16_t>(PACKET_TYPE::S2C_SET_VEHICLE_RIDING_RESULT) ==
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_SET_VEHICLE_RIDING) + 1u &&
-			NETWORK_PROTOCOL_VERSION == 105u,
+			NETWORK_PROTOCOL_VERSION == 108u,
 			"Riding packet identities append without renumbering peers");
 	}
 
 	void Test_WorldObjectMotionProtocol(TEST_RUNNER& testRunner)
 	{
 		using namespace LostArk::Shared;
-		testRunner.Require(NETWORK_PROTOCOL_VERSION == 105u, "World Object owner lifecycle, fear, zone pulse, wave re-summon, wall climb and ember use protocol 105");
+		testRunner.Require(NETWORK_PROTOCOL_VERSION == 108u, "World Object owner lifecycle, fear, zone pulse, wave re-summon, wall climb and ember use protocol 105");
 		testRunner.Require(
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_DEBUG_MARIO_JUMP) == 72u &&
 			static_cast<std::uint16_t>(PACKET_TYPE::S2C_DEBUG_MARIO_JUMP_RESULT) == 73u &&
@@ -3458,7 +3476,7 @@ namespace
 			static_cast<std::uint16_t>(PACKET_TYPE::S2C_INTERACT_PROMPT) + 1u &&
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_INTERACTION_SLOT) ==
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_INTERACT_TRIGGER) + 1u &&
-			NETWORK_PROTOCOL_VERSION == 105u,
+			NETWORK_PROTOCOL_VERSION == 108u,
 			"Protocol 105 preserves main trigger identities with WORLD occurrence placement");
 	}
 
@@ -3575,7 +3593,7 @@ namespace
 	void Test_PartyInviteProtocol(TEST_RUNNER& testRunner)
 	{
 		{
-			testRunner.Require(105u == NETWORK_PROTOCOL_VERSION,
+			testRunner.Require(108u == NETWORK_PROTOCOL_VERSION,
 				"KoukuSaydon Source Pin And Existing Contracts Use Protocol 105");
 			C2S_ENTER_WORLD oldPeer{};
 			oldPeer.iProtocolVersion = 40u;
@@ -6941,7 +6959,7 @@ namespace
 		}
 
 		testRunner.Require(
-			105u == NETWORK_PROTOCOL_VERSION,
+			108u == NETWORK_PROTOCOL_VERSION,
 			"Session Diagnostics Use Current Protocol Version 105");
 		testRunner.Require(
 			allReasonsAreKnown && allValuesAreContiguous,
@@ -6969,7 +6987,7 @@ namespace
 	void Test_DataRevisionHotReloadProtocol(TEST_RUNNER& testRunner)
 	{
 		testRunner.Require(
-			105u == NETWORK_PROTOCOL_VERSION,
+			108u == NETWORK_PROTOCOL_VERSION,
 			"World Spawn Pin Complete Play And Two-Revision Restart CAS Use Protocol 105");
 		const GameplayDataRevision base = Make_GameplayDataRevision(10u);
 		const GameplayDataRevision candidate = Make_GameplayDataRevision(40u);

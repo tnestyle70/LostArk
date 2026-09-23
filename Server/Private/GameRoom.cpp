@@ -859,6 +859,9 @@ void LostArk::Server::CGameRoom::Tick(const float fixedDeltaSeconds,
 		case ROOM_COMMAND_TYPE::REVIVE_PLAYER:
 			Handle_RevivePlayer(command.iSessionId, command.RevivePlayer);
 			break;
+		case ROOM_COMMAND_TYPE::DEBUG_KILL_GATE_BOSSES:
+			Handle_DebugKillGateBosses(command.iSessionId, command.DebugKillGateBosses);
+			break;
 		case ROOM_COMMAND_TYPE::DEBUG_KILL_SELF:
 			Handle_DebugKillSelf(command.iSessionId, command.DebugKillSelf);
 			break;

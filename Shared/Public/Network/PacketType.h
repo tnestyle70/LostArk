@@ -104,7 +104,9 @@ namespace LostArk::Shared
 	// 105 combines vehicle-flight move/snapshot fields with the Debug Esther request.
 	// The flight branch and main each used 104 for incompatible wire contracts.
 	// Both peers must use 105; all existing packet identities are preserved.
-	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 106;
+	// 107 belongs to the unmerged Retail PR #454 snapshot layout. This branch
+	// uses 108 for gate-kill commands and does not carry the Retail fields.
+	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 108;
 
 	enum class WORLD_ID : std::uint16_t
 	{
@@ -402,7 +404,9 @@ namespace LostArk::Shared
 		// Debug F1 Esther summon by name, bypassing the gauge and the world roster
 		// slot order. Release ignores it; the summon rides the world snapshot.
 		C2S_DEBUG_USE_ESTHER,
-		C2S_DEBUG_KOUKUSAYDON_DRAFT_CHUNK
+		C2S_DEBUG_KOUKUSAYDON_DRAFT_CHUNK,
+		C2S_DEBUG_KILL_GATE_BOSSES,
+		S2C_DEBUG_KILL_GATE_BOSSES_RESULT
 	};
 
 	//TCP는 메시지 경계를 보존하지 않기 때문에, payload앞에 header를 둔다.
@@ -436,6 +440,8 @@ namespace LostArk::Shared
 		case PACKET_TYPE::C2S_UPDATE_SKILL_AIM:
 		case PACKET_TYPE::C2S_USE_ESTHER_SKILL:
 		case PACKET_TYPE::C2S_REVIVE_PLAYER:
+		case PACKET_TYPE::C2S_DEBUG_KILL_GATE_BOSSES:
+		case PACKET_TYPE::S2C_DEBUG_KILL_GATE_BOSSES_RESULT:
 		case PACKET_TYPE::C2S_DEBUG_KILL_SELF:
 		case PACKET_TYPE::C2S_CHANGE_CHARACTER_CLASS:
 		case PACKET_TYPE::S2C_CHARACTER_CLASS_CHANGE_RESULT:

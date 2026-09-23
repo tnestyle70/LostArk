@@ -56,6 +56,7 @@
     <ClInclude Include="..\Public\FaceMorphApplier.h" />
     <ClInclude Include="..\Public\FaceSliderDocument.h" />
     <ClInclude Include="..\Public\BalanceTool.h" />
+    <ClInclude Include="..\Public\BalanceTestPanel.h" />
       <ClInclude Include="..\Public\ValtanBossTool.h" />
 	  <ClInclude Include="..\Public\CameraTool.h" />
 	<ClInclude Include="..\Public\ActionCompositionGraphModel.h" />
@@ -347,6 +348,7 @@
     <ClCompile Include="..\Private\FaceMorphApplier.cpp" />
     <ClCompile Include="..\Private\FaceSliderDocument.cpp" />
     <ClCompile Include="..\Private\BalanceTool.cpp" />
+    <ClCompile Include="..\Private\BalanceTestPanel.cpp" />
       <ClCompile Include="..\Private\ValtanBossTool.cpp" />
       <ClCompile Include="..\Private\CameraTool.cpp" />
     <ClCompile Include="..\Private\Character.cpp" />
