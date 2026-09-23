@@ -48,6 +48,29 @@ int LostArk::Server::Run_ServerCardMazeContractTests()
 	const bool ready = bootstrap.Load(WORLD_ID::KAKULSAYDON_ARENA) && navigation.Load("LV_LUT_MIDNIGHTC_ED");
 	tests.Require(ready && bootstrap.Get_CardMazeLanes().size() == 36u, "Load published maze and all 36 authoritative lanes");
 	if (!ready) { std::cout << bootstrap.Get_Status() << '\n'; return 1; }
+	// The maze floor follows the authored entrance height, below the standing cards.
+	const auto& mazePlacements = bootstrap.Get_Placements();
+	const auto mazeEntrance = std::find_if(mazePlacements.begin(), mazePlacements.end(), [](const auto& row) {
+		return row.strPlacementId == "cardmaze.telescope";
+	});
+	tests.Require(mazeEntrance != mazePlacements.end(), "Maze entrance owns the floor reference height");
+	if (mazeEntrance != mazePlacements.end())
+	{
+		const std::array<std::array<float, 2u>, 5u> destinations{{
+			{Maze::CENTER_X, Maze::CENTER_Z}, {10.f, Maze::CENTER_Z},
+			{-10.f, Maze::CENTER_Z}, {Maze::CENTER_X, 1340.f}, {Maze::CENTER_X, 1360.f}}};
+		for (const auto& destination : destinations)
+		{
+			SERVER_NAV_POINT floor{};
+			std::vector<SERVER_NAV_POINT> path;
+			const bool reachable = navigation.Sample_Position(destination[0], destination[1], floor) &&
+				std::abs(floor.y - mazeEntrance->fPositionY) < .001f &&
+				navigation.Find_Path(Maze::CENTER_X, Maze::CENTER_Z, destination[0], destination[1], path);
+			tests.Require(reachable && std::all_of(path.begin(), path.end(), [&](const auto& point) {
+				return std::abs(point.y - mazeEntrance->fPositionY) < .001f;
+			}), "Maze click destinations and path stay on the spawn floor instead of card tops");
+		}
+	}
 	SERVER_NAV_POINT returnGround{};
 	tests.Require(navigation.Sample_Position(3.38f, 323.92f, returnGround) && std::abs(returnGround.y - 10.56f) < 1.f,
 		"Gate 2 default return destination is on published navigation");
