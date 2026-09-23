@@ -7,6 +7,8 @@
 #include "GameInstance.h"
 #include "Model.h"
 #include "Npc.h"
+#include "NetworkManager.h"
+#include "KoukuSaydonPresentationPlayer.h"
 #include "ProjectDataRoot.h"
 #include "RuntimeAssetRoot.h"
 
@@ -65,6 +67,9 @@ namespace
 	using ATTACHMENT_GRIPS = std::unordered_map<std::string, PLAYER_HAND_GRIP_LOCAL_OFFSET>;
 	std::unordered_map<std::string, ATTACHMENT_GRIPS> g_AttachmentGripsByArchetype;
 	std::unordered_map<std::string, std::uint32_t> g_BindingSourceRevisions;
+    std::shared_ptr<const KOUKU_SAYDON_DRAFT_PRODUCT> g_PreparedDraft, g_AdmittedDraft;
+    std::uint32_t g_AdmittedRunEpoch = 0u, g_AdmittedSourceRevision = 0u, g_PreparedAuthorizedEpoch = 0u;
+    bool g_RunAdmissionFailed = false;
 	std::string g_Status = "KoukuSaydon presentation has not been loaded.";
 
 	const DATA_JSON_VALUE* Required(
@@ -164,27 +169,28 @@ namespace
 		const Engine::CModel& model,
 		std::unordered_map<std::string, KOUKU_SAYDON_ACTION_PRESENTATION>& out,
 		std::string& outStatus, std::uint32_t& outRevision, ATTACHMENT_GRIPS& outGrips,
-		const std::uint32_t expectedRevision = 0u)
+		const std::uint32_t expectedRevision = 0u, const std::string* supplied = nullptr, const bool canonical = false)
 	{
-		const std::filesystem::path path = CProjectDataRoot::Resolve(
-			std::filesystem::path(L"Animation/Authored/KoukuSaydon") /
-			L"KoukuSaydon.patternbindings.json");
-		std::error_code fileError;
-		const std::uintmax_t fileBytes = std::filesystem::file_size(path, fileError);
-		if (path.empty() || fileError || fileBytes > MAX_BINDING_BYTES)
-		{
-			outStatus = "KoukuSaydon Product animation binding is missing or oversized.";
-			return false;
-		}
-		std::ifstream input(path, std::ios::binary);
-		const std::string text{
-			std::istreambuf_iterator<char>(input),
-			std::istreambuf_iterator<char>() };
-		if (!input || input.bad() || text.size() != fileBytes)
-		{
-			outStatus = "KoukuSaydon Product animation binding could not be read.";
-			return false;
-		}
+        if (!supplied && !canonical && g_AdmittedDraft) supplied = &g_AdmittedDraft->PresentationJson;
+        std::string text;
+        if (supplied)
+        {
+            if (supplied->empty() || supplied->size() > MAX_BINDING_BYTES)
+            { outStatus = "Draft animation binding is empty or oversized."; return false; }
+            text = *supplied;
+        }
+        else
+        {
+            const auto path = CProjectDataRoot::Resolve(std::filesystem::path(L"Animation/Authored/KoukuSaydon") / L"KoukuSaydon.patternbindings.json");
+            std::error_code fileError;
+            const auto fileBytes = std::filesystem::file_size(path, fileError);
+            if (path.empty() || fileError || fileBytes > MAX_BINDING_BYTES)
+            { outStatus = "KoukuSaydon Product animation binding is missing or oversized."; return false; }
+            std::ifstream input(path, std::ios::binary);
+            text.assign(std::istreambuf_iterator<char>(input), std::istreambuf_iterator<char>());
+            if (!input || input.bad() || text.size() != fileBytes)
+            { outStatus = "KoukuSaydon Product animation binding could not be read."; return false; }
+        }
 
 		DATA_JSON_VALUE root;
 		std::string parseError;
@@ -425,6 +431,8 @@ void Client::CKoukuSaydonPresentationAssetService::Begin_LevelLoad(
 	g_ActionPresentationsByArchetype.clear();
 	g_AttachmentGripsByArchetype.clear();
 	g_BindingSourceRevisions.clear();
+    g_PreparedDraft.reset(); g_AdmittedDraft.reset();
+    g_AdmittedRunEpoch = g_AdmittedSourceRevision = g_PreparedAuthorizedEpoch = 0u; g_RunAdmissionFailed = false;
 	g_Status = "KoukuSaydon presentation is waiting for Product admission.";
 }
 
@@ -722,6 +730,7 @@ bool_t Client::CKoukuSaydonPresentationAssetService::Try_Resolve_Action(
 	KOUKU_SAYDON_ACTION_PRESENTATION& outPresentation, const std::uint32_t expectedSourceRevision)
 {
 	std::scoped_lock lock{ g_KoukuAssetMutex };
+	if (g_RunAdmissionFailed) return false;
 	if (expectedSourceRevision && g_BindingSourceRevisions[std::string(archetypeId)] != expectedSourceRevision) return false;
 	const auto owner = g_ActionPresentationsByArchetype.find(std::string(archetypeId));
 	if (owner == g_ActionPresentationsByArchetype.end())
@@ -740,6 +749,7 @@ bool_t Client::CKoukuSaydonPresentationAssetService::Try_Resolve_AttachmentGrip(
 {
     if (slot != LostArk::Shared::PLAYER_ATTACHMENT_SLOT::BOSS_LEFT_HAND) return false;
     std::scoped_lock lock{ g_KoukuAssetMutex };
+    if (g_RunAdmissionFailed) return false;
     const auto revision = g_BindingSourceRevisions.find(std::string(archetypeId));
     if (revision == g_BindingSourceRevisions.end() || !revision->second ||
         (expectedSourceRevision && revision->second != expectedSourceRevision)) return false;
@@ -761,46 +771,135 @@ Client::CKoukuSaydonPresentationAssetService::Get_Status()
 bool_t Client::CKoukuSaydonPresentationAssetService::Reload_ProductBindings(
     std::uint32_t levelIndex, std::uint32_t expectedSourceRevision, std::string& status)
 {
-    if (!expectedSourceRevision) { status = "Expected Product source revision is missing."; return false; }
-    std::scoped_lock lock{ g_KoukuAssetMutex };
+    return Admit_RunProduct(levelIndex, expectedSourceRevision, {}, 0u, status);
+}
+
+std::shared_ptr<const Client::KOUKU_SAYDON_DRAFT_PRODUCT>
+Client::CKoukuSaydonPresentationAssetService::Prepare_DraftProduct(
+    const std::string& presentationJson, const std::string& encounterJson, const std::string& gameplayRows,
+    const std::uint32_t sourceRevision, std::string& status)
+{
+    auto candidate = std::make_shared<KOUKU_SAYDON_DRAFT_PRODUCT>();
+    candidate->PresentationJson = presentationJson; candidate->EncounterJson = encounterJson;
+    candidate->iSourceRevision = sourceRevision;
+    if (!sourceRevision || !CNetworkManager::Compute_KoukuDraftRowsRevision(gameplayRows, candidate->RowsRevision) ||
+        !CKoukuSaydonPresentationPlayer::Validate_DraftProductJson(presentationJson, sourceRevision, status))
+    { if (status.empty()) status = "Draft gameplay/presentation identity is invalid."; return {}; }
+    DATA_JSON_VALUE root; std::string error;
+    if (encounterJson.empty() || encounterJson.size() > 16u * 1024u * 1024u || !CDataJson::Parse(encounterJson, root, error))
+    { status = "Draft encounter is invalid: " + error; return {}; }
+    const auto* patterns = Required(root, "patterns", DATA_JSON_TYPE::ARRAY);
+    if (!patterns || patterns->Get_Array().empty() || patterns->Get_Array().size() > 4096u)
+    { status = "Draft encounter has no bounded pattern closure."; return {}; }
+    std::vector<std::string> identities;
+    for (const auto& pattern : patterns->Get_Array())
+    {
+        const auto* identity = Required(pattern, "patternId", DATA_JSON_TYPE::STRING);
+        if (!identity) { status = "Draft encounter pattern identity is missing."; return {}; }
+        identities.push_back(identity->Get_String());
+    }
+    KOUKU_SAYDON_PLAY_RESOURCES resources;
+    if (!Collect_CompletePlayResources(identities, {}, sourceRevision, resources, status, candidate)) return {};
+    status = "Immutable draft Product parsed; canonical files are unchanged.";
+    return candidate;
+}
+
+bool Client::CKoukuSaydonPresentationAssetService::Stage_DraftProduct(
+    std::shared_ptr<const KOUKU_SAYDON_DRAFT_PRODUCT> draft, std::string& status)
+{
+    if (!draft || !draft->iSourceRevision || !draft->RowsRevision.Is_Valid())
+    { status = "Draft Product is not prepared."; return false; }
+    std::scoped_lock lock{g_KoukuAssetMutex};
+    g_PreparedDraft = std::move(draft); g_PreparedAuthorizedEpoch = 0u;
+    status = "Draft Product staged for exact Server hash admission."; return true;
+}
+
+bool Client::CKoukuSaydonPresentationAssetService::Authorize_DraftProduct(
+    const LostArk::Shared::GameplayDataRevision& rowsRevision, const std::uint32_t runEpoch, std::string& status)
+{
+    std::scoped_lock lock{g_KoukuAssetMutex};
+    if (g_AdmittedDraft && rowsRevision == g_AdmittedDraft->RowsRevision && runEpoch == g_AdmittedRunEpoch) return true;
+    if (!rowsRevision.Is_Valid() || !runEpoch || runEpoch <= g_AdmittedRunEpoch ||
+        !g_PreparedDraft || rowsRevision != g_PreparedDraft->RowsRevision)
+    { status = "Own accepted draft hash/epoch does not match the staged Product."; return false; }
+    g_PreparedAuthorizedEpoch = runEpoch; status.clear(); return true;
+}
+
+bool Client::CKoukuSaydonPresentationAssetService::Validate_DraftBindings(
+    const std::uint32_t levelIndex, const std::shared_ptr<const KOUKU_SAYDON_DRAFT_PRODUCT>& draft, std::string& status)
+{
+    if (!draft) { status = "Draft Product is missing."; return false; }
+    std::scoped_lock lock{g_KoukuAssetMutex};
+    const auto ready = g_ReadyByLevel.find(levelIndex);
+    if (ready == g_ReadyByLevel.end()) { status = "Draft boss models are not prepared."; return false; }
+    for (const auto& archetype : ready->second)
+    {
+        if (!archetype.starts_with(KOUKU_FAMILY_ARCHETYPE_PREFIX)) continue;
+        const auto model = std::dynamic_pointer_cast<Engine::CModel>(CGameInstance::Get().Clone_Prototype(levelIndex, Get_ModelPrototypeTag(archetype)));
+        std::uint32_t revision = 0u; std::unordered_map<std::string, KOUKU_SAYDON_ACTION_PRESENTATION> rows; ATTACHMENT_GRIPS grips;
+        if (!model || !Load_PresentationBindings(*model, rows, status, revision, grips, draft->iSourceRevision, &draft->PresentationJson)) return false;
+    }
+    return true;
+}
+
+bool Client::CKoukuSaydonPresentationAssetService::Admit_RunProduct(
+    const std::uint32_t levelIndex, const std::uint32_t sourceRevision,
+    const LostArk::Shared::GameplayDataRevision& rowsRevision, const std::uint32_t runEpoch, std::string& status)
+{
+    std::scoped_lock lock{g_KoukuAssetMutex};
+    const auto fail = [&](const std::string& reason) { g_RunAdmissionFailed = true; status = reason; return false; };
+    if (!sourceRevision) return fail("Admitted Product source revision is missing.");
+    std::shared_ptr<const KOUKU_SAYDON_DRAFT_PRODUCT> candidate;
+    if (rowsRevision.Is_Valid())
+    {
+        if (g_AdmittedDraft && runEpoch == g_AdmittedRunEpoch && rowsRevision == g_AdmittedDraft->RowsRevision &&
+            sourceRevision == g_AdmittedDraft->iSourceRevision) candidate = g_AdmittedDraft;
+        else if (g_PreparedDraft && runEpoch == g_PreparedAuthorizedEpoch && runEpoch > g_AdmittedRunEpoch &&
+            rowsRevision == g_PreparedDraft->RowsRevision && sourceRevision == g_PreparedDraft->iSourceRevision) candidate = g_PreparedDraft;
+        else return fail("Admitted draft hash/source is unavailable locally; previous caches are preserved.");
+        if (!runEpoch) return fail("Draft admission requires the Server run epoch.");
+    }
     auto staged = g_ActionPresentationsByArchetype;
     auto stagedGrips = g_AttachmentGripsByArchetype;
     auto revisions = g_BindingSourceRevisions;
     const auto ready = g_ReadyByLevel.find(levelIndex);
-    // A new run epoch can restart the same pinned Product after disk publication.
-    if (ready != g_ReadyByLevel.end() && !ready->second.empty() &&
-        std::all_of(ready->second.begin(), ready->second.end(), [&](const auto& archetype) {
-            const auto revision = revisions.find(archetype);
-            return !archetype.starts_with(KOUKU_FAMILY_ARCHETYPE_PREFIX) ||
-                (revision != revisions.end() && revision->second == expectedSourceRevision);
-        }))
-    { status = "Product animation bindings already match the admitted source revision."; return true; }
-    if (ready != g_ReadyByLevel.end())
+    const bool retained = !g_RunAdmissionFailed && sourceRevision == g_AdmittedSourceRevision && candidate == g_AdmittedDraft &&
+        (!candidate || runEpoch == g_AdmittedRunEpoch);
+    if (!retained && ready != g_ReadyByLevel.end())
         for (const auto& archetype : ready->second)
         {
             if (!archetype.starts_with(KOUKU_FAMILY_ARCHETYPE_PREFIX)) continue;
-            const auto model = std::dynamic_pointer_cast<Engine::CModel>(
-                CGameInstance::Get().Clone_Prototype(levelIndex, Get_ModelPrototypeTag(archetype)));
-            std::uint32_t revision = 0u;
-            std::unordered_map<std::string, KOUKU_SAYDON_ACTION_PRESENTATION> rows;
-            ATTACHMENT_GRIPS grips;
-            if (!model || !Load_PresentationBindings(*model, rows, status, revision, grips, expectedSourceRevision))
-            { g_Status = "Product animation reload preserved the previous cache: " + status; return false; }
-            staged[archetype] = std::move(rows);
-            stagedGrips[archetype] = std::move(grips);
-            revisions[archetype] = revision;
+            const auto model = std::dynamic_pointer_cast<Engine::CModel>(CGameInstance::Get().Clone_Prototype(levelIndex, Get_ModelPrototypeTag(archetype)));
+            std::uint32_t revision = 0u; std::unordered_map<std::string, KOUKU_SAYDON_ACTION_PRESENTATION> rows; ATTACHMENT_GRIPS grips;
+            if (!model || !Load_PresentationBindings(*model, rows, status, revision, grips, sourceRevision,
+                candidate ? &candidate->PresentationJson : nullptr, !candidate)) return fail("Product animation admission preserved the previous cache: " + status);
+            staged[archetype] = std::move(rows); stagedGrips[archetype] = std::move(grips); revisions[archetype] = revision;
         }
-    g_ActionPresentationsByArchetype = std::move(staged);
-    g_AttachmentGripsByArchetype = std::move(stagedGrips);
-    g_BindingSourceRevisions = std::move(revisions);
-    status = g_Status = "Product animation bindings admitted for source revision " + std::to_string(expectedSourceRevision);
-    return true;
+    g_ActionPresentationsByArchetype = std::move(staged); g_AttachmentGripsByArchetype = std::move(stagedGrips);
+    g_BindingSourceRevisions = std::move(revisions); g_AdmittedDraft = std::move(candidate);
+    g_AdmittedRunEpoch = runEpoch; g_AdmittedSourceRevision = sourceRevision; g_RunAdmissionFailed = false;
+    status = g_Status = "Product animation bindings admitted for the exact run."; return true;
+}
+
+bool Client::CKoukuSaydonPresentationAssetService::Matches_AdmittedRun(
+    const std::uint32_t sourceRevision, const LostArk::Shared::GameplayDataRevision& rowsRevision, const std::uint32_t runEpoch)
+{
+    std::scoped_lock lock{g_KoukuAssetMutex};
+    return !g_RunAdmissionFailed && sourceRevision == g_AdmittedSourceRevision && runEpoch == g_AdmittedRunEpoch &&
+        rowsRevision == (g_AdmittedDraft ? g_AdmittedDraft->RowsRevision : LostArk::Shared::GameplayDataRevision{});
+}
+
+std::shared_ptr<const Client::KOUKU_SAYDON_DRAFT_PRODUCT>
+Client::CKoukuSaydonPresentationAssetService::Get_AdmittedDraftProduct()
+{
+    std::scoped_lock lock{g_KoukuAssetMutex}; return g_AdmittedDraft;
 }
 
 
 bool Client::CKoukuSaydonPresentationAssetService::Collect_CompletePlayResources(
     const std::vector<std::string>& patternIds, const std::vector<std::string>& bundleIds,
-    const std::uint32_t sourceRevision, KOUKU_SAYDON_PLAY_RESOURCES& output, std::string& status)
+    const std::uint32_t sourceRevision, KOUKU_SAYDON_PLAY_RESOURCES& output, std::string& status,
+    std::shared_ptr<const KOUKU_SAYDON_DRAFT_PRODUCT> draft)
 {
     try
     {
@@ -818,16 +917,27 @@ bool Client::CKoukuSaydonPresentationAssetService::Collect_CompletePlayResources
             return value->Get_Array();
         };
         const auto read = [&](const wchar_t* relative, const char* schema, uint32_t version) {
+            std::string data;
             const auto path = CProjectDataRoot::Resolve(relative);
-            std::error_code error;
-            const auto bytes = std::filesystem::file_size(path, error);
-            if (error || !bytes || bytes > 64u * 1024u * 1024u)
-                throw std::runtime_error("Missing/oversized Complete Play dependency document: " + path.string());
-            std::ifstream input(path, std::ios::binary);
-            std::string data(size_t(bytes), '\0');
-            input.read(data.data(), std::streamsize(bytes));
-            if (!input || input.peek() != std::char_traits<char>::eof())
-                throw std::runtime_error("Complete Play dependency document changed during read: " + path.string());
+            if (draft)
+            {
+                if (draft->iSourceRevision != sourceRevision || !draft->RowsRevision.Is_Valid())
+                    throw std::runtime_error("Draft dependency identity does not match its selected run.");
+                data = std::string_view(schema) == "lostark.encounter-profile" ? draft->EncounterJson : draft->PresentationJson;
+                if (data.empty() || data.size() > 16u * 1024u * 1024u)
+                    throw std::runtime_error("Draft dependency document is empty or oversized.");
+            }
+            else
+            {
+                std::error_code error;
+                const auto bytes = std::filesystem::file_size(path, error);
+                if (error || !bytes || bytes > 64u * 1024u * 1024u)
+                    throw std::runtime_error("Missing/oversized Complete Play dependency document: " + path.string());
+                std::ifstream input(path, std::ios::binary);
+                data.resize(size_t(bytes)); input.read(data.data(), std::streamsize(bytes));
+                if (!input || input.peek() != std::char_traits<char>::eof())
+                    throw std::runtime_error("Complete Play dependency document changed during read: " + path.string());
+            }
             DATA_JSON_VALUE root; DATA_JSON_PARSE_LIMITS limits; std::string errorText;
             limits.iMaximumBytes = 64u * 1024u * 1024u; limits.iMaximumValues = 4'000'000u;
             uint32_t revision = 0u, parsedVersion = 0u;

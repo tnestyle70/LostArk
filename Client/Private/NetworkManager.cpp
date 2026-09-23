@@ -232,6 +232,8 @@ namespace
 		return succeeded;
 	}
 
+#endif
+
 	bool HashBytesSha256(
 		const std::string_view bytes,
 		std::string& sha256)
@@ -287,6 +289,7 @@ namespace
 		return succeeded;
 	}
 
+#ifdef _DEBUG
 	bool JsonValuesEqual(
 		const Client::DATA_JSON_VALUE& left,
 		const Client::DATA_JSON_VALUE& right)
@@ -2341,6 +2344,43 @@ bool CNetworkManager::Send_KoukuSaydonPatternAudition(
 	return Build_Packet_Frame(
 		PACKET_TYPE::C2S_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_REQUEST,
 		payloadWriter.Get_Buffer(), frameBytes) && Send_All(frameBytes);
+}
+
+bool CNetworkManager::Compute_KoukuDraftRowsRevision(const std::string& rows,
+	LostArk::Shared::GameplayDataRevision& outRevision)
+{
+	if (rows.empty() || rows.size() > LostArk::Shared::MAX_KOUKUSAYDON_DRAFT_BYTES) return false;
+	std::string hash;
+	return HashBytesSha256(rows, hash) && LostArk::Shared::Try_Parse_GameplayDataRevision(hash, outRevision);
+}
+
+bool CNetworkManager::Send_KoukuSaydonPatternAuditionDraft(
+	LostArk::Shared::C2S_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_REQUEST& message,
+	const std::string_view rows)
+{
+	using namespace LostArk::Shared;
+	if (!Is_Connected() || rows.empty() || rows.size() > MAX_KOUKUSAYDON_DRAFT_BYTES ||
+		(message.eOperation != KOUKUSAYDON_PATTERN_AUDITION_OPERATION::PLAY_SELECTED &&
+		 message.eOperation != KOUKUSAYDON_PATTERN_AUDITION_OPERATION::PLAY_BUNDLE)) return false;
+	std::string hash;
+	if (!HashBytesSha256(rows, hash) || !Try_Parse_GameplayDataRevision(hash, message.Scope.DraftRowsRevision)) return false;
+	CPacketWriter requestShape;
+	if (!Write_Message(requestShape, message)) return false;
+	for (std::size_t offset = 0u; offset < rows.size(); offset += MAX_KOUKUSAYDON_DRAFT_CHUNK_BYTES)
+	{
+		C2S_DEBUG_KOUKUSAYDON_DRAFT_CHUNK chunk;
+		chunk.iRequestSequence = message.iRequestSequence;
+		chunk.iOffsetBytes = static_cast<std::uint32_t>(offset);
+		chunk.iTotalBytes = static_cast<std::uint32_t>(rows.size());
+		chunk.RowsRevision = message.Scope.DraftRowsRevision;
+		chunk.strBytes = rows.substr(offset, MAX_KOUKUSAYDON_DRAFT_CHUNK_BYTES);
+		CPacketWriter writer;
+		std::vector<std::uint8_t> frame;
+		if (!Write_Message(writer, chunk) ||
+			!Build_Packet_Frame(PACKET_TYPE::C2S_DEBUG_KOUKUSAYDON_DRAFT_CHUNK, writer.Get_Buffer(), frame) ||
+			!Send_All(frame, PACKET_TYPE::C2S_DEBUG_KOUKUSAYDON_DRAFT_CHUNK)) return false;
+	}
+	return Send_KoukuSaydonPatternAudition(message);
 }
 
 bool CNetworkManager::Send_ValtanPatternFlowStart(

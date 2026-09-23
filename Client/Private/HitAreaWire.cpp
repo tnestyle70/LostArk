@@ -92,6 +92,22 @@ void Client::CHitAreaWire::Draw(const float4x4_t& Root, const HIT_AREA_SHAPE& Sh
 	width in cm, 3 fan whose AreaAngle is the sweep in degrees. */
 	switch (Shape.iAreaType)
 	{
+	case 4:
+	{
+		if (!(Shape.fCylinderHalfHeightM > 0.f) || !(fRange > 0.f)) break;
+		// Cylinder is upright in gameplay; both discs and vertical rails expose its finite Y extent.
+		const auto point = [&](float degrees, float height) {
+			return XMVectorSetY(At(fOffset, fRange, degrees), XMVectorGetY(vPosition) + height);
+		};
+		for (int32_t segment = 0; segment < ARC_SEGMENTS; ++segment)
+		{
+			const float a = 360.f * segment / ARC_SEGMENTS, b = 360.f * (segment + 1) / ARC_SEGMENTS;
+			Draw_Segment(point(a, -Shape.fCylinderHalfHeightM), point(b, -Shape.fCylinderHalfHeightM));
+			Draw_Segment(point(a, Shape.fCylinderHalfHeightM), point(b, Shape.fCylinderHalfHeightM));
+			if (segment % 6 == 0) Draw_Segment(point(a, -Shape.fCylinderHalfHeightM), point(a, Shape.fCylinderHalfHeightM));
+		}
+		break;
+	}
 	case 2:
 	{
 		const f32_t fHalfWidth = Shape.iAreaAngle * UNITS_TO_METERS * 0.5f;

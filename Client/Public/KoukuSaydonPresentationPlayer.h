@@ -73,6 +73,7 @@ public:
         ComPtr<ID3D11DeviceContext> context, CRenderingProfileService& profiles);
     ~CKoukuSaydonPresentationPlayer();
     bool Reload_Product(std::string& status, std::uint32_t expectedSourceRevision = 0u);
+    static bool Validate_DraftProductJson(const std::string& text, std::uint32_t sourceRevision, std::string& status);
     // Loading owns collection/prewarm; playback borrows these immutable V2 snapshots.
     // The pair is (LEAF/GROUP, stable asset ID), never a prototype or vector index.
     static bool Collect_ProductEffectTargets(std::vector<std::string>& v1Targets,
@@ -218,6 +219,7 @@ private:
         std::uint32_t runEpoch = 0;
         std::string memberId;
         std::shared_ptr<EFFECT_V2_PIVOT_HISTORY> rootHistory;
+        std::map<std::string, float4x4_t> fixedPresentationAnchors;
         float rootRecordedSeconds = -1.f;
         float4x4_t rootRecordedPivot{};
         // Pattern time, recorded before each following bone/WORLD cue starts.
@@ -341,6 +343,15 @@ private:
     std::map<std::uint64_t, CONTACT_COMBAT_EFFECT> m_ContactCombatEffects;
     using TARGETED_COMBAT_VISUALS = std::map<std::string, std::shared_ptr<const TARGETED_COMBAT_VISUAL>>;
     static TARGETED_COMBAT_VISUALS Read_TargetedCombatVisuals(const DATA_JSON_VALUE& root);
+    struct PRODUCT_REPLACEMENT final
+    {
+        std::map<std::string, PRODUCT_PATTERN> patterns, fears;
+        std::map<std::string, PRODUCT_BUNDLE> bundles;
+        TARGETED_COMBAT_VISUALS targeted;
+        std::size_t isolatedLights = 0u, isolatedSceneProfiles = 0u;
+        std::string isolatedSceneStatus;
+    };
+    static PRODUCT_REPLACEMENT Parse_ProductRoot(const DATA_JSON_VALUE& root);
     bool Sample_TargetedCombatVisual(TARGETED_COMBAT_SESSION& session,
         const KOUKU_BOSS_PRESENTATION_VIEW* sourceBoss = nullptr);
     void Update_TargetedCombatVisuals(float dt,
@@ -466,6 +477,7 @@ private:
     std::map<std::string, PRODUCT_BUNDLE> m_ProductBundles;
     SESSION m_ProductBundleSession;
     std::uint32_t m_iProductSourceRevision = 0u;
+    LostArk::Shared::GameplayDataRevision m_ProductDraftRowsRevision{};
     std::uint32_t m_iProductReloadRunEpoch = 0u;
     std::set<std::string> m_MissingProductPatterns;
     std::map<std::uint32_t, std::weak_ptr<CNpc>> m_CounterAfterimageOwners;

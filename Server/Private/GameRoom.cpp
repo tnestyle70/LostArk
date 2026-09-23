@@ -942,6 +942,9 @@ void LostArk::Server::CGameRoom::Tick(const float fixedDeltaSeconds,
 		case ROOM_COMMAND_TYPE::KOUKUSAYDON_RAID:
 			Handle_KoukuRaidRequest(command.iSessionId, command.KoukuSaydonRaid);
 			break;
+		case ROOM_COMMAND_TYPE::KOUKUSAYDON_DRAFT_CHUNK:
+			Handle_KoukuSaydonDraftChunk(command.iSessionId, command.KoukuSaydonDraftChunk);
+			break;
 		case ROOM_COMMAND_TYPE::KOUKUSAYDON_PATTERN_AUDITION:
 			Handle_KoukuSaydonPatternAudition(
 				command.iSessionId, command.KoukuSaydonPatternAudition);

@@ -3136,6 +3136,14 @@ void LostArk::Server::CServerApp::On_SessionFrame(
 		{ closeMalformedPayload("C2S_DEBUG_KOUKUSAYDON_RAID_REQUEST"); return; }
 		command.eType = ROOM_COMMAND_TYPE::KOUKUSAYDON_RAID; command.KoukuSaydonRaid = std::move(request);
 	}
+	else if (frame.ePacketType == PACKET_TYPE::C2S_DEBUG_KOUKUSAYDON_DRAFT_CHUNK)
+	{
+		C2S_DEBUG_KOUKUSAYDON_DRAFT_CHUNK chunk;
+		if (!Read_Message(reader, chunk) || reader.Get_RemainingSize() != 0u)
+		{ closeMalformedPayload("C2S_DEBUG_KOUKUSAYDON_DRAFT_CHUNK"); return; }
+		command.eType = ROOM_COMMAND_TYPE::KOUKUSAYDON_DRAFT_CHUNK;
+		command.KoukuSaydonDraftChunk = std::move(chunk);
+	}
 	else if (frame.ePacketType ==
 		PACKET_TYPE::C2S_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_REQUEST)
 	{

@@ -1472,6 +1472,8 @@ Gameplay bootstrap v26은 `PORTAL_CROSS_ARENA`, `RETURN_TO_ARENA_CENTER`, `ARENA
 Six Pizza의 정적 sector처럼 root를 계속 따라야 하는 particle만 authored local-space를 명시한다. element 자체의
 scale curve는 계속 진행한다. 세부 ID와 실패 경계는 `발탄인수인계서.md` 11.9~11.10을 따른다.
 
+발탄 일반 피격의 강제 변위는 보행용 walkable clamp 대신 Server 벽/몸체 sweep 뒤 물리 지면 지지를 검사한다. 붕괴 void·지지면 부재·1m를 넘는 하강은 기존 FALLING으로 전환하고, 큰 상승은 이동을 끝낸다. 뒤잡기 ARENA_EJECTION의 별도 강제 발사 계약은 유지한다. 발탄 navpolicy의 보행 최대 단차는 1m이며 추적 이동은 매 tick 지면 높이를 검증한다. 보행 불가 지지면에서의 복귀와 대각선 모서리 등 남은 경계는 `.md/GB/09-23/2026-09-23_VALTAN_FORCED_MOVEMENT_SUPPORT_RESULT.md`를 따른다.
+
 Valtan Boss Tool의 Next는 live Product, 같은 owner의 Flow/isolated 또는 idle에서 선택하는 Server 권위 예약 한 칸이다.
 현재 패턴의 최종 world/prop/hit commit 뒤 다음 fixed tick에서 시작하며 맵·플레이어·HP·cooldown을 reset하지 않는다.
 Flow 중에는 현재 occurrence 뒤 남은 재생만 종료하며 저장 배열을 수정하지 않는다. 공용
@@ -1882,15 +1884,15 @@ Protocol 99의 `SNAPSHOT_PLAYER.iInvulnerabilityZonePulseTick`은 서버가 정�
 
 ### 쿠크 Result의 강제 밀림과 아레나 경계 이탈
 
-`MAX_HP_PERCENT_DAMAGE` Result의 양수 `pushRangeM`/`pushMs`는 기존 밀림 시간과 거리를 사용한다. optional `forcePush`와 `pushCanLeaveArena`의 기본값은 false이며, true일 때 양수 밀림이 필수다. `pushYawOffsetDegrees`는 기본0, 범위−360~360이고 0이 아닌 값은 양수 `BOSS_FORWARD` 밀림에만 허용한다. 방향은 body local+Z에 yaw offset을 적용하므로 collider의 실제 축이+X라면+90도를 사용한다. 사선 collider는 각자의 저작 축을 소비한다.
+`MAX_HP_PERCENT_DAMAGE` Result의 양수 `pushRangeM`/`pushMs`는 기존 밀림 시간과 거리를 사용한다. optional `forcePush`와 `pushCanLeaveArena`의 기본값은 false이며, true일 때 양수 거리 또는 상승 높이가 필수다. `pushYawOffsetDegrees`는 기본0, 범위−360~360이고 0이 아닌 값은 `BOSS_FORWARD` 밀림에만 허용한다. 방향은 body local+Z에 yaw offset을 적용하므로 collider의 실제 축이+X라면+90도를 사용한다. 사선 collider는 각자의 저작 축을 소비한다.
 
 `forcePush`는 공포·다운·기상 보호·진행 중 밀림을 새 밀림으로 교체한다. 사망·낙하·잡힘·패턴 부착·맵 이동 등 제외 상태는 유지한다. 안전존이 같은 Pattern의 피해 Result를 막으면 그 Result의 밀림도 발생하지 않는다. `pushCanLeaveArena`는 Kouku 본 아레나의 명시된 밀림에서 외곽 통과가 확인됐을 때 기존 서버 FALLING→DEAD 경로를 사용하며 Mario와 일반 밀림의 navigation 제한은 유지한다. 거리만으로 사망을 예약하거나 Client가 낙사를 판정하지 않는다.
 
-Gameplay bootstrap의 `PATTERNLOGICPUSH`는 기존8/9필드를 계속 읽는다. 새 flag가 필요하면 direction·force·leave의11필드, yaw까지 필요하면12필드를 쓴다. Client codec, projector, Gameplay publisher와 Server catalog가 같은 조건을 검증한다.
+Gameplay bootstrap의 `PATTERNLOGICPUSH`는 기존8/9필드를 계속 읽는다. 새 flag가 필요하면 direction·force·leave의11필드, yaw까지 필요하면12필드, ballistic은13필드, 상승 높이는14필드를 쓴다. Client codec, projector, Gameplay publisher와 Server catalog가 같은 조건을 검증한다.
 
 ### 쿠크 포물선 넉백과 크기 프로필 보완
 
-Composition Result의 optional pushBallistic은 기존 직선 push 기본값을 유지한다. 활성화 시 pushRangeM은0초과100m이하, pushMs는100~5000, pushCanLeaveArena=true가 필수다. AWAY_FROM_CONTACT는 실제 판정에 쓰인 장판 중심→플레이어 방향이며 BOSS_FORWARD만 yaw offset을 허용한다. Client 편집→projector→publisher→Server parser가 동일 정책을 보존한다. Server 비행은 gravity와 원본 navigation surface를 소비하여 착지와 낙사를 구분한다.
+Composition Result의 optional `pushBallistic`은 기존 직선 push 기본값을 유지한다. 활성화 시 `pushRangeM`은0~100m, `pushMs`는100~5000이며, optional `pushHeightM`은0~100m다. 거리0은 양수 높이를 가진 수직 상승에만 허용한다. 높이0은 기존 gravity를 사용하고 양수는 지정 수명 중간에 해당 높이를 지나는 상승·하강 호를 만든다. `pushCanLeaveArena=false`는 비행 중 XZ를 navigation·collision 경계 안으로 제한한다. Gate1은 항상 이 펜스를 적용한다. 다른 관문의 명시 허용 비행만 물리 바닥 이탈 시 FALLING으로 연결한다. AWAY_FROM_CONTACT는 실제 판정 장판 중심 기준이고 BOSS_FORWARD만 yaw offset을 사용한다. Client 편집→projector→publisher→Server parser가 같은 값을 소비한다.
 
 Character Size Save/Reload는 계속 선택 맵별 camera JSON을 소유한다. 카메라 컷신 재생 여부가 크기 적용을 막지 않는다. Test/Training/Maharaka 공용 Development는 CharacterSelect의 저장된 크기만 읽고 기존 카메라 포즈를 유지한다. 현재 맵들의 Artist/DimensionMaster 배율을 동일하게 맞춘 값은 각 Data/Camera 문서가 정본이며 모델 자체 catalog scale은 별개다.
 
@@ -1900,7 +1902,7 @@ Character Size Save/Reload는 계속 선택 맵별 camera JSON을 소유한다. 
 
 `TRIGGER / PURSUIT_PROJECTILES`는 각 Logic Box의 `startMs`에 한 번 생성하며 `spawnIntervalMs=0`이다. 박스 길이는 이미 생성한 카드의 수명이 아니다. `lifetimeMs=0`, homing과 거리 제한0은 기존 room-owned 추적으로 접촉 전까지 유지하며 명시 Stop·대상 무효·방 정리는 기존 소유권 경로로 종료한다. `DURATION`의 기존 순차 생성은 계속 지원한다. 두 종류 모두 설치된 세이튼 +X 전방을 body yaw+90도로 해석한다. 영구 추적의 전체 수명 CONTACT는 임시 최대시간을 실제 만료로 사용하지 않으며 명시한 짧은 판정 창은 보존한다.
 
-피해 Result의 양수 밀림 또는 추적 카드를 가진 Pattern의 `Play Preview`도 기존 Server audition을 사용한다. Parent와 Bundle은 포함된 Pattern을 확인한다. 저장·Publish 뒤 실행하며 Server가 접촉·상승/하강·navigation을 무시하는 ballistic XZ 이동·바닥 이탈의 FALLING/DEAD를 소유한다. Client에 별도 피해·낙사 판정을 만들지 않는다.
+Composition의 `Play Preview`와 `Play Pattern`은 현재 Apply된 메모리 draft를 기존 Server audition으로 실행한다. Parent와 Bundle도 필요한 패턴 연결을 함께 준비한다. 저장·Publish 없이 request sequence와 SHA-256으로 고정한 임시 Kouku rows를 승인하며, Server가 접촉·피해·상승/하강과 비행 경계를 소유한다. 선택 실행은 0ms부터 시작하고 정지 스크럽·단일 자산 검토는 로컬 표현 기능으로 유지한다. 정식 Publish generation은 임시 실행으로 바뀌지 않는다. 낙사 허용 비행만 바닥 이탈 시 FALLING/DEAD로 진행하며 Client에는 별도 피해·낙사 판정을 만들지 않는다.
 
 자연 완료된 audition의 영구 추적은 계속 유지한다. 남아 있는 같은 epoch의 `Stop`은 sequencer와 F1에서 제출할 수 있으며 기존 Server 소유권 검증 후 잔여 카드를 정리한다. 자연 완료 자체를 Stop으로 바꾸거나 Client가 카드를 임의 삭제하지 않는다.
 
@@ -1960,3 +1962,57 @@ clip 길이와 함께 Vehicle publisher가 Server phase duration으로 변환한
 Save Flight Logic은 해당 subtree만 최신 저장본에 병합하며 다른 effect/sound draft를 버리지 않는다.
 `Data/Vehicles/VehicleProfiles.json`의 `flight`는 hoverHeight/maximumHeight/speed/verticalSpeed 물리 입력을 소유한다.
 기존 Server authority와 CModel animation/IK, follow camera를 사용하며 두 번째 이동 runtime은 없다.
+
+
+### 쿠크 Collider의 수명·이동·접촉 계약
+
+Collider Box Detail은 `1. Lifetime / 2. Motion / shape / 3. Trigger / 4. Logic` 추가 설정을 선택한다. Start/Lifetime, position/rotation/scale, anchor/bone과 종료 위치·크기는 항상 표시한다.
+Pattern 이름·부모 분류는 Collider 선택 시 표시하지 않는다. Shape 변경은 선택 박스의 resource를
+분리하므로 다른 박스의 모양을 바꾸지 않는다. `CYLINDER`는 `radiusM`과
+`halfExtents[1]`의 반높이를 가진 수직 원통이다. `CIRCLE`의 기존 평면 범위와 구분한다.
+
+occurrence의 `colliderMotion=LINEAR`는 `positionOffset`/`scale`에서
+`colliderEndPositionOffset`/`colliderEndScale`까지 `durationMs` 동안 선형 보간한다.
+생략 또는 `STATIC`은 기존 정적 동작이다. 원형 LINEAR는 시작·끝 각각 X/Z scale이 같아야 한다.
+`Keep bottom fixed while growing`은 높이 증가의 절반만 중심 Y를 이동시킨다. 단순 상승은
+시작·끝 크기를 같게 두고 종료 Y를 높인다. BOSS의 `Follow anchor`를 끄면
+`BOSS_START`가 Logic 창 시작 위치·방향을 고정한다. 플레이어를 향하는 보스 회전은 기존
+BOSS_TRACK_TARGET/회전 Logic으로 먼저 설정하고, Collider는 그 순간의 방향을 보존한다.
+본 Collider는 기존 Follow=true 조건을 유지한다. 서버 판정은 원통과 이동 Collider의 수직 범위와
+플레이어 몸체 높이를 검사하며, 자체 선형 이동 원통·박스는 고정 tick 사이도 sweep한다.
+
+`ENTER_AREA.repeatIntervalMs`는 플레이어별 접촉 반복 간격이며0은 기존 정책이다.
+단발, 재진입, 넉백 종료 후 반복, 일정 간격 반복 중 하나를 선택한다. 마지막 정책은
+접촉 중 수명 종료 전까지만 Success를 반복한다. 결과는 기존 `MAX_HP_PERCENT_DAMAGE`
+등의 Result 슬롯을 사용한다. 저장은 저작 JSON, Publish는 런타임 snapshot, Server 재시작이나
+재생 승인에 따른 catalog 갱신은 각각 별도 단계다.
+
+같은 Server 접촉 경로의 추가 입력 계약은 다음과 같다.
+
+- Result `FIXED_DAMAGE`는 정수 `damageAmount`(1~1,000,000,000 HP)를 받으며 `percent`와 `durationMs`는0이다. 기존 안전존·피해 및 밀림 경로를 함께 사용한다.
+- Attack template의 optional `riseHeightM`/`pushMs`는 생략·0/0이면 기존 반응이다. 양수 높이(최대100m)는100~5000ms 비행 시간과 짝을 이루며 기존 TIMED/CONTACT 피해에 수평0의 상승·하강을 연결한다. `PATTERNATTACKHIT`는 기존25열과 높이·시간을 덧붙인27열을 모두 받는다.
+- `PURSUIT_PROJECTILES.cardSymbols`는 `visualIds`와 같은 개수의 HEART/SPADE/CLUB/DIAMOND를 순서대로 지정한다. 각 카드와 같은 문양인 플레이어는 그 카드의 접촉 피해에서 제외하며 색상은 비교하지 않는다. 생략하면 기존 접촉 규칙을 유지한다.
+- `BOSS_CURRENT` bone track은 `OBJECT_CONTACT`와 플레이어 `ENTER_AREA`에 허용한다. 두 소비자 모두 정확한 Trigger 시작·수명·양 끝 key와 identity baseline, 고정 회전·크기 검증을 요구한다.
+- GATE1·GATE3는 `pushCanLeaveArena`와 관계없이 지지면 경계를 막아 낙사를 금지한다. GATE2·BINGO는 지지면을 이탈한 뒤 최초 지지 높이보다5m 아래로 내려가면 Server가 사망을 확정한다. 공중 재피격은 기준 높이를 바꾸지 않으며, 부활은 현재 관문의 검증된 시작 위치로 복귀한다.
+
+카드 비로 생성한 병정은 생성 Pattern 종료와30초 제한으로 제거하지 않는다. 기존 Server
+몬스터 AI가 플레이어 추적·공격을 계속하며 자기 사망·소환자 소멸·방 정리에서 제거한다.
+반복 소환의 방 상한은48마리다. 뿅망치는 타격 구간의 Collider를 실제 BODY/WEAPON bone에
+연결하고, 플레이어 타격은 ENTER_AREA, 카드 반응은 기존 OBJECT_CONTACT와 Result를 사용한다.
+
+Collider 상세의 Duplicate는 현재 상세값을 Apply한 뒤 같은 시각에 복제한다. 연결 Logic 창과
+그 창을 공유하는 Collider도 기존 소유 연결대로 함께 복제하며 복제본만 선택한다. Ctrl/Shift로
+동일 BOSS 기준 Collider 2개 이상을 선택하면 Set Group/Ungroup과 동일 시각 그룹 복제를
+사용할 수 있다. 시작·종료 geometry와 타이밍은 유지하고 그룹 ID·occurrence 연결은 독립된다.
+
+
+Collider의 `anchorPresentationOccurrenceId`는 같은 Pattern의 fixed BOSS Effect 시작 프레임을
+참조한다. Server는 `captureStartMs`를 30Hz 올림 틱으로 평가해 고정 basis를 저장하고,
+Client는 Effect와 Collider에 같은 프레임을 사용한다. 그룹의 Edit member/Back to Group은
+group ID를 보존한다. 같은 Logic 창을 공유하는 행은 Once 이력과 Damage/Horizontal 값을 공유한다.
+
+Protocol 106의 Debug draft audition은 최대16MiB를 48KiB chunk로 받고 순서·만료·world·checksum을
+검증한 뒤 기존 catalog parser로 현재 non-Kouku 수치와 합친 후보를 검증한다. 승인된 hash와
+run epoch에 해당하는 Client 메모리 presentation·animation bindings만 활성화한다. 다른 클라이언트에
+임시 presentation JSON을 배포하는 기능은 없으며 해당 실행본을 모르는 클라이언트는 표현을 거부한다.
+정식 F1/Complete Play는 기존 게시 Product 계약을 유지한다. Client·Server를 함께 갱신한다.

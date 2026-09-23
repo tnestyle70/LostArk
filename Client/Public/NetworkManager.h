@@ -355,6 +355,11 @@ public:
 	bool Send_KoukuSaydonPatternAudition(
 		const LostArk::Shared::
 			C2S_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_REQUEST& message);
+	static bool Compute_KoukuDraftRowsRevision(const std::string& rows,
+		LostArk::Shared::GameplayDataRevision& outRevision);
+	bool Send_KoukuSaydonPatternAuditionDraft(
+		LostArk::Shared::C2S_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_REQUEST& message,
+		std::string_view rows);
 	/* Debug Valtan Boss Tool ordered Flow. The UI supplies one admitted saved
 	   revision; the Server preflights the full slot list and owns every
 	   occurrence after the single reset. */

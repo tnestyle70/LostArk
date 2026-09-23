@@ -240,7 +240,7 @@
         "Data/Encounters/KoukuSaydon/**",
         "Data/Maps/Authoring/**/*.deployplacements"
       ],
-      "tools": ["Tools/WorldPipeline/Publish-WorldGameplay.ps1"],
+      "tools": ["Tools/WorldPipeline/Publish-WorldGameplay.ps1", "Tools/KoukuSaydonPipeline/KoukuParentSequenceContract.ps1"],
       "outputs": [
         "Server/Bin/DataFiles/World/*.worldbootstrap",
         "Server/Bin/DataFiles/World/*.spawngroupsbootstrap",
@@ -379,6 +379,8 @@
       ],
       "tools": [
         "Tools/GameplayPipeline/Publish-GameplayBalance.ps1",
+        "Tools/KoukuSaydonPipeline/KoukuBootstrapRows.ps1",
+        "Tools/KoukuSaydonPipeline/KoukuParentSequenceContract.ps1",
         "Tools/GameplayPipeline/valtan_presentation_generation.py",
         "Tools/KoukuSaydonPipeline/build_kouku_saydon_animation_reference.py",
         "Tools/KoukuSaydonPipeline/project_kouku_saydon_composition.py",

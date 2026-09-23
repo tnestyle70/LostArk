@@ -258,7 +258,9 @@ namespace LostArk::Server
 		bool bKnockbackBallistic = false;
 		float fKnockbackVelocityY = 0.f;
 		float fKnockbackLaunchY = 0.f;
+		float fKnockbackSupportY = 0.f;
 		static constexpr float KNOCKBACK_GRAVITY_MPS2 = 9.8f;
+		float fKnockbackGravityMps2 = KNOCKBACK_GRAVITY_MPS2;
 		/* Typed release policy for the existing knockback integrator. Only arena
 		ejection ignores nav/collision and ends in the ordinary FALLING state. */
 		bool bArenaEjectionActive = false;
@@ -471,6 +473,8 @@ namespace LostArk::Server
 		deadline that same tick scheduled. Neither is replicated: the client
 		reads the descent from the position the snapshot already carries. */
 		float fFallVelocityY = 0.f;
+		// Kouku uses a plane five metres below the support/flight launch height.
+		float fFallDeathPlaneY = 0.f;
 		std::uint32_t iFallDeathTick = 0u;
 		SERVER_TRIGGER_MOVE TriggerMove;
 		std::uint32_t iLastSkillSequence = 0;

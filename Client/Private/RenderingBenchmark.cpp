@@ -48,6 +48,7 @@ namespace
         scalar(static_cast<uint32_t>(material.eDebugView));
         scalar(material.MapPBR.bEnabled); scalar(material.MapPBR.iLevel);
         vector(material.MapPBR.vContributionScale); vector(material.MapPBR.vSurfaceParameters);
+        scalar(material.MapPBR.fCubeDiffuseScale);
         const auto q = game.Get_RenderQualitySettings();
         scalar(q.bSSAOEnabled); scalar(q.fSSAORadius); scalar(q.fSSAOBias);
         scalar(q.fSSAOIntensity); scalar(q.fSSAOPower); scalar(q.fSSAODistanceFade);
@@ -80,6 +81,8 @@ namespace
         scalar(environment.strCubePath.size());
         for (const auto character : environment.strCubePath) scalar(static_cast<uint32_t>(character));
         vector(environment.vColor); vector(environment.vRotationIntensity);
+        scalar(environment.fDiffuseIntensity);
+        for (const auto& row : environment.vDiffuseSH) vector(row);
         const auto& shadow = game.Get_ShadowLightDesc(); vector(shadow.vEye); vector(shadow.vAt);
         const auto& s = shadow.Settings; scalar(s.bEnabled); scalar(s.fOrthographicWidth);
         scalar(s.fOrthographicHeight); scalar(s.fNear); scalar(s.fFar); scalar(s.fDepthBias);
@@ -474,15 +477,28 @@ bool_t Client::CRenderingBenchmark::Render_RestorationSection(CRenderingProfileS
 	{
 		const bool beforeAvailable = Profiles.Has_Profile(beforeId);
 		const bool restoredAvailable = Profiles.Has_Profile(restoredId);
-		ImGui::BeginDisabled(m_bCapturing || !beforeAvailable);
-		if (ImGui::Button("Before"))
-			changed = Activate_RestorationProfile(Profiles, beforeId);
+		const bool beforeActive = Profiles.Get_ActiveProfileId() == beforeId;
+		const bool restoredActive = Profiles.Get_ActiveProfileId() == restoredId;
+		const bool canReturnFromBefore = beforeActive && !m_strRestorationEntryProfileId.empty();
+		ImGui::BeginDisabled(m_bCapturing || (canReturnFromBefore ? false : !beforeAvailable || beforeActive));
+		if (ImGui::Button(canReturnFromBefore ? "Return from before-restoration.v1" : "before-restoration.v1"))
+			changed = (canReturnFromBefore ? Return_ToEntryProfile(Profiles) :
+				Activate_RestorationProfile(Profiles, beforeId)) || changed;
 		ImGui::EndDisabled();
+		if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+			ImGui::SetTooltip("%s", canReturnFromBefore ? m_strRestorationEntryProfileId.c_str() : beforeId);
 		ImGui::SameLine();
-		ImGui::BeginDisabled(m_bCapturing || !restoredAvailable);
-		if (ImGui::Button("Restored source profile"))
+		ImGui::BeginDisabled(m_bCapturing || !restoredAvailable || restoredActive);
+		if (ImGui::Button(restoredActive ? "Restored source profile (active)" : "Restored source profile"))
 			changed = Activate_RestorationProfile(Profiles, restoredId) || changed;
 		ImGui::EndDisabled();
+		if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+			ImGui::SetTooltip("%s", restoredId);
+		ImGui::TextWrapped("Baseline%s: %s", beforeActive ? " (active)" : "", beforeId);
+		ImGui::TextWrapped("Restored profile: %s", restoredId);
+		ImGui::TextWrapped("Switches saved scene lighting, environment, shadow, fog and post-process settings. Material equations and render passes keep the current code; map-light placements and Effect data keep their current assets.");
+		if (Profiles.Get_ComparisonOptions().bActive)
+			ImGui::TextWrapped("Live rendering comparison is still active. Use Reset comparison below to view this profile without those overrides.");
 		if (!beforeAvailable || !restoredAvailable)
 			ImGui::TextWrapped("A comparison profile is unavailable. Source applicability and published inputs must be confirmed for this map.");
 	}
@@ -553,7 +569,7 @@ bool_t Client::CRenderingBenchmark::Render_PixelInputs()
         "Reflection texture delta", "PBR roughness", "PBR metallic", "PBR material AO",
         "PBR baked diffuse (RNM)", "PBR environment specular", "PBR diffuse light (direct + unbaked ambient)",
         "Whole scene: HDR before final tone", "Whole scene: tone before grading",
-        "Whole scene: grading before FXAA"
+        "Whole scene: grading before FXAA", "PBR cube diffuse sky (project approximation)"
     };
     static_assert(std::size(views) == static_cast<size_t>(Engine::MATERIAL_DEBUG_VIEW::END));
     ImGui::BeginDisabled(m_bCapturing);
@@ -561,7 +577,7 @@ bool_t Client::CRenderingBenchmark::Render_PixelInputs()
     bool changed = ImGui::Combo("Pipeline view", &view, views, static_cast<int>(std::size(views)));
     settings.eDebugView = static_cast<Engine::MATERIAL_DEBUG_VIEW>(view);
     changed |= ImGui::Checkbox("Recovered material equations", &settings.bUseSourceMaterials);
-    if (view >= 11)
+    if (view >= 11 && view <= 13)
         ImGui::TextWrapped("Whole-scene views include characters and background. HDR uses one RGB scale for display; tone and grading views use the current scene settings. These are stage comparisons, not color-corrected presets.");
     else if (view >= 8)
         ImGui::TextWrapped("PBR contribution only. Other material families appear black. RNM and environment views precede screen AO and moving-caster shadow modulation.");
@@ -577,6 +593,7 @@ bool_t Client::CRenderingBenchmark::Render_PixelInputs()
         changed |= ImGui::SliderFloat("Direct specular contribution", &gains.y, 0.f, 4.f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
         changed |= ImGui::SliderFloat("Baked diffuse contribution (RNM)", &gains.z, 0.f, 4.f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
         changed |= ImGui::SliderFloat("Environment specular contribution", &gains.w, 0.f, 4.f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
+        changed |= ImGui::SliderFloat("Cube diffuse sky contribution", &settings.MapPBR.fCubeDiffuseScale, 0.f, 4.f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
         changed |= ImGui::SliderFloat("Normal strength multiplier", &surface.x, 0.f, 4.f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
         changed |= ImGui::SliderFloat("Roughness offset", &surface.y, -1.f, 1.f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
         bool legacy = surface.z != 0.f;
@@ -592,6 +609,9 @@ bool_t Client::CRenderingBenchmark::Render_PixelInputs()
             changed = true;
         }
         ImGui::TextWrapped("These controls affect PBR map receivers. Source character shaders keep their own equations. Defaults use the recovered metallic/BRDF energy split; source SH and hemisphere inputs remain unresolved.");
+        const auto sky = game.Get_RenderEnvironment();
+        ImGui::Text("Cube diffuse sky profile intensity: %.3f", sky.fDiffuseIntensity);
+        ImGui::TextWrapped("Cube diffuse uses the scene RGBM cube projection, once before fog, with material and screen AO. It is a project approximation; native SH packing and hemisphere ownership remain unresolved. Set its contribution to zero to compare the previous lighting.");
         ImGui::TextDisabled("Diffuse lighting also includes the ambient fallback on surfaces without baked lighting.");
         ImGui::TextDisabled("Session only. Closing the workbench or changing Level clears this comparison. No Save or Publish.");
     }
@@ -766,6 +786,18 @@ bool_t Client::CRenderingBenchmark::Render_PixelInputs()
                 number("RNM UV offset U", l.scaleBias.z, placement); number("RNM UV offset V", l.scaleBias.w, placement);
                 number("RNM sRGB decode", s.bakedLightingSRGB);
                 number("Environment cube / BRDF lookup bound", s.hasEnvironmentCube);
+                number("Native PBR indirect inputs available", s.hasSourceIndirect);
+                number("Native PBR indirect profile enabled", CGameInstance::Get().Get_RenderEnvironment().bUseSourcePBRIndirect);
+                if (s.hasSourceIndirect)
+                {
+                    vec("Native environment color", s.sourceIndirectColor);
+                    number("Native rotation sine", s.sourceIndirectRotation.x);
+                    number("Native rotation cosine", s.sourceIndirectRotation.y);
+                    vec("Native ambient / sky factor", s.sourceAmbientAndSkyFactor);
+                    number("Native upper sky R", s.sourceUpperSkyColor.x); number("Native upper sky G", s.sourceUpperSkyColor.y);
+                    number("Native upper sky B", s.sourceUpperSkyColor.z); number("Native lower sky R", s.sourceLowerSkyColor.x);
+                    number("Native lower sky G", s.sourceLowerSkyColor.y); number("Native lower sky B", s.sourceLowerSkyColor.z);
+                }
                 vec("Material environment RGB", s.environmentColor); number("Material environment floor", s.environmentColor.w);
                 number("Environment rotation A", s.environmentRotation.x); number("Environment rotation B", s.environmentRotation.y);
                 number("RGBM decode range", 6., "source shader constant"); number("Reflection mip scale", 5., "roughness AA * scale");

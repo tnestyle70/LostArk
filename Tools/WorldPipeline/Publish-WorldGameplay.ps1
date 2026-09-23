@@ -16,6 +16,7 @@ $ErrorActionPreference = 'Stop'
 $repoRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\..'))
 $stableIdPattern = '^[A-Za-z0-9_.-]{1,128}$'
 $valtanRaidPlayerCapacity = 8
+. (Join-Path $repoRoot 'Tools/KoukuSaydonPipeline/KoukuParentSequenceContract.ps1')
 
 # Parsed inputs are read-only and belong to this invocation, including repeated
 # sequence references from different triggers. A new invocation always starts cold.
@@ -291,6 +292,10 @@ function Get-EncounterProfiles {
 				if ($pattern.showtimeTargets -isnot [Array] -or @($pattern.showtimeTargets).Count -gt 64) {
 					throw 'KoukuSaydon showtimeTargets must be a bounded array.'
 				}
+			}
+			if ($isKoukuSaydon -and $null -ne $pattern.PSObject.Properties['parentPatternSequence']) {
+				$patternProperties += 'parentPatternSequence'
+				Assert-KoukuParentPatternSequence $pattern $patterns
 			}
 			if ($isKoukuSaydon -and $null -ne $pattern.PSObject.Properties['bossMotion']) { $patternProperties += 'bossMotion' }
 			if ($isKoukuSaydon -and $null -ne $pattern.PSObject.Properties['resetBossYawDegrees']) { $patternProperties += 'resetBossYawDegrees' }

@@ -935,12 +935,48 @@ bool_t CRenderingProfileService::Parse_Catalog(
 		if (const DATA_JSON_VALUE* environment = value.Find("environment"))
 		{
 			const auto* cube = Required(*environment, "cubeTexture", DATA_JSON_TYPE::STRING);
-			if (!Has_ExactFields(*environment, { "cubeTexture", "color", "rotationIntensity" }) ||
+			if (!Has_ExactFields(*environment, { "cubeTexture", "color", "rotationIntensity" }, { "cubeDiffuse", "useSourcePBRIndirect" }) ||
 				!cube || !Is_EnvironmentAssetId(cube->Get_String()) ||
 				!Read_Float4(*environment, "color", profile.vEnvironmentColor) ||
 				!Read_Float4(*environment, "rotationIntensity", profile.vEnvironmentRotationIntensity))
 			{ strOutStatus = "Scene environment requires a relative DDS cube, color and rotationIntensity."; return false; }
 			profile.strEnvironmentCubeAssetId = cube->Get_String();
+            if (environment->Find("useSourcePBRIndirect"))
+            {
+                const auto* sourceIndirect = Required(*environment, "useSourcePBRIndirect", DATA_JSON_TYPE::BOOLEAN);
+                if (!sourceIndirect)
+                { strOutStatus = "useSourcePBRIndirect must be a boolean."; return false; }
+                profile.bHasSourcePBRIndirect = true;
+                profile.bUseSourcePBRIndirect = sourceIndirect->Get_Boolean();
+            }
+			if (const auto* diffuse = environment->Find("cubeDiffuse"))
+			{
+				const auto* model = Required(*diffuse, "model", DATA_JSON_TYPE::STRING);
+				const auto* rows = Required(*diffuse, "packedSH", DATA_JSON_TYPE::ARRAY);
+				if (!Has_ExactFields(*diffuse, { "model", "intensity", "packedSH" }) ||
+					!model || model->Get_String() != "RGBM6_LAMBERT_SH3" || !rows ||
+					rows->Get_Array().size() != profile.EnvironmentDiffuseSH.size() ||
+					!Read_Float(*diffuse, "intensity", 0.f, 4.f, profile.fEnvironmentDiffuseIntensity))
+				{ strOutStatus = "cubeDiffuse requires RGBM6_LAMBERT_SH3, finite intensity [0,4] and seven packed SH rows."; return false; }
+				for (size_t rowIndex = 0u; rowIndex < profile.EnvironmentDiffuseSH.size(); ++rowIndex)
+				{
+					const auto& row = rows->Get_Array()[rowIndex];
+					if (!row.Is_Array() || row.Get_Array().size() != 4u)
+					{ strOutStatus = "cubeDiffuse packedSH requires seven float4 rows."; return false; }
+					f32_t components[4]{};
+					for (size_t component = 0u; component < size(components); ++component)
+					{
+						const auto& number = row.Get_Array()[component];
+						if (!number.Is_Number() || !isfinite(number.Get_Number()) ||
+							number.Get_Number() < -64.0 || number.Get_Number() > 64.0 ||
+							(rowIndex == 6u && component == 3u && number.Get_Number() != 0.0))
+						{ strOutStatus = "cubeDiffuse packedSH must be finite in [-64,64] with final reserved w=0."; return false; }
+						components[component] = static_cast<f32_t>(number.Get_Number());
+					}
+					profile.EnvironmentDiffuseSH[rowIndex] = float4_t(components[0], components[1], components[2], components[3]);
+				}
+				profile.bHasEnvironmentDiffuse = true;
+			}
 		}
 		if (value.Find("mapLightIntensityMultiplier") &&
 			!Read_Float(value, "mapLightIntensityMultiplier", 0.f, 4.f,
@@ -1369,6 +1405,10 @@ bool_t CRenderingProfileService::Validate_Profile(
                 abs(plane.x*plane.x+plane.y*plane.y+plane.z*plane.z-1.f) > .001f)
             { strOutStatus = "Invalid source environment plane."; return false; }
     }
+    if (Profile.bHasSourcePBRIndirect && Profile.strEnvironmentCubeAssetId.empty())
+    { strOutStatus = "Source PBR indirect requires an environment cube."; return false; }
+    if (Profile.bUseSourcePBRIndirect && !Profile.bHasSourcePBRIndirect)
+    { strOutStatus = "Source PBR indirect requires its presence flag."; return false; }
 	const auto& color = Profile.vEnvironmentColor;
 	const auto& rotation = Profile.vEnvironmentRotationIntensity;
 	if ((!Profile.strEnvironmentCubeAssetId.empty() && !Is_EnvironmentAssetId(Profile.strEnvironmentCubeAssetId)) ||
@@ -1378,6 +1418,19 @@ bool_t CRenderingProfileService::Validate_Profile(
 		!Is_FiniteRange(rotation.z, 0.f, 64.f) || !Is_FiniteRange(rotation.w, 0.f, 0.f) ||
 		abs(rotation.x * rotation.x + rotation.y * rotation.y - 1.f) > .001f)
 	{ strOutStatus = "Scene environment color/rotation/intensity is invalid."; return false; }
+	if (!Is_FiniteRange(Profile.fEnvironmentDiffuseIntensity, 0.f, 4.f) ||
+		(Profile.bHasEnvironmentDiffuse && Profile.strEnvironmentCubeAssetId.empty()) ||
+		(!Profile.bHasEnvironmentDiffuse && Profile.fEnvironmentDiffuseIntensity != 0.f))
+	{ strOutStatus = "cubeDiffuse requires an environment cube and finite intensity [0,4]."; return false; }
+	for (size_t rowIndex = 0u; rowIndex < Profile.EnvironmentDiffuseSH.size(); ++rowIndex)
+	{
+		const auto& row = Profile.EnvironmentDiffuseSH[rowIndex];
+		if (!Is_FiniteRange(row.x, -64.f, 64.f) || !Is_FiniteRange(row.y, -64.f, 64.f) ||
+			!Is_FiniteRange(row.z, -64.f, 64.f) || !Is_FiniteRange(row.w, -64.f, 64.f) ||
+			(rowIndex == 6u && row.w != 0.f) ||
+			(!Profile.bHasEnvironmentDiffuse && (row.x != 0.f || row.y != 0.f || row.z != 0.f || row.w != 0.f)))
+		{ strOutStatus = "cubeDiffuse packedSH is invalid or lacks its presence flag."; return false; }
+	}
 	const float4_t& direction = Profile.Light.vDirection;
 	const SHADOW_SETTINGS& shadow = Profile.ShadowSettings;
 	const bool_t valid = Is_StableId(Profile.strProfileId) && Is_DisplayName(Profile.strDisplayName) &&
@@ -1459,6 +1512,9 @@ bool_t CRenderingProfileService::Commit_Resolved(
 	if (FAILED(CGameInstance::Get().Stage_RenderEnvironment(cubePath.wstring(),
 		Profile.vEnvironmentColor, Profile.vEnvironmentRotationIntensity, stagedEnvironment, forceReloadEnvironment)))
 	{ strOutStatus = "Scene environment RGBM DDS cube rejected: " + Profile.strEnvironmentCubeAssetId + "; active state preserved."; return false; }
+	stagedEnvironment.vDiffuseSH = Profile.EnvironmentDiffuseSH;
+	stagedEnvironment.fDiffuseIntensity = Profile.fEnvironmentDiffuseIntensity;
+	stagedEnvironment.bUseSourcePBRIndirect = Profile.bUseSourcePBRIndirect;
 	const RENDER_QUALITY_SETTINGS previous =
 		CGameInstance::Get().Get_RenderQualitySettings();
 	const SHADOW_LIGHT_DESC previousShadow =
@@ -1564,6 +1620,19 @@ string CRenderingProfileService::Serialize_Catalog(const CATALOG& Catalog)
 			Write_Float4(output, profile.vEnvironmentColor);
 			output << ",\n        \"rotationIntensity\": ";
 			Write_Float4(output, profile.vEnvironmentRotationIntensity);
+            if (profile.bHasSourcePBRIndirect)
+                output << ",\n        \"useSourcePBRIndirect\": " << (profile.bUseSourcePBRIndirect ? "true" : "false");
+			if (profile.bHasEnvironmentDiffuse)
+			{
+				output << ",\n        \"cubeDiffuse\": {\"model\": \"RGBM6_LAMBERT_SH3\", \"intensity\": "
+					<< profile.fEnvironmentDiffuseIntensity << ", \"packedSH\": [";
+				for (size_t rowIndex = 0u; rowIndex < profile.EnvironmentDiffuseSH.size(); ++rowIndex)
+				{
+					if (rowIndex != 0u) output << ", ";
+					Write_Float4(output, profile.EnvironmentDiffuseSH[rowIndex]);
+				}
+				output << "]}";
+			}
 			output << "\n      },\n";
 		}
 		if (!profile.strDisplayName.empty())

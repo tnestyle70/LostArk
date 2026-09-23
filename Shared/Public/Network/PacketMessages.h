@@ -3285,6 +3285,21 @@ namespace LostArk::Shared
 	inline constexpr std::size_t
 		MAX_KOUKUSAYDON_PATTERN_AUDITION_REASON_BYTES = 192u;
 
+	inline constexpr std::size_t MAX_KOUKUSAYDON_DRAFT_BYTES = 16u * 1024u * 1024u;
+	inline constexpr std::size_t MAX_KOUKUSAYDON_DRAFT_CHUNK_BYTES = 48u * 1024u;
+	// One contiguous, bounded upload precedes the existing audition request.
+	// Its request sequence and SHA-256 bind the run to the exact memory draft.
+	struct C2S_DEBUG_KOUKUSAYDON_DRAFT_CHUNK final
+	{
+		std::uint32_t iRequestSequence = 0u;
+		std::uint32_t iOffsetBytes = 0u;
+		std::uint32_t iTotalBytes = 0u;
+		GameplayDataRevision RowsRevision{};
+		std::string strBytes;
+	};
+	bool Write_Message(CPacketWriter& writer, const C2S_DEBUG_KOUKUSAYDON_DRAFT_CHUNK& message);
+	bool Read_Message(CPacketReader& reader, C2S_DEBUG_KOUKUSAYDON_DRAFT_CHUNK& message);
+
 	struct KOUKUSAYDON_PATTERN_AUDITION_SCOPE final
 	{
 		WORLD_ID eWorldId = WORLD_ID::END;
@@ -3294,6 +3309,8 @@ namespace LostArk::Shared
 		std::string strBossArchetypeId;
 		GameplayDataRevision ExpectedGameplayRevision{};
 		std::uint32_t iExpectedSourceRevision = 0u;
+		// Empty for published playback; echoed by every draft result/lifecycle.
+		GameplayDataRevision DraftRowsRevision{};
 	};
 
 	struct C2S_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_REQUEST final
@@ -3347,6 +3364,7 @@ namespace LostArk::Shared
 		KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE_STATE eState = KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE_STATE::PENDING;
 		GameplayDataRevision PinnedGameplayRevision{};
 		std::uint32_t iPinnedSourceRevision = 0u;
+		GameplayDataRevision DraftRowsRevision{};
 		std::vector<KOUKUSAYDON_BUNDLE_MEMBER_STATE> Members;
 	};
 	bool Write_Message(CPacketWriter& writer, const S2C_KOUKUSAYDON_BUNDLE_STATE& message);

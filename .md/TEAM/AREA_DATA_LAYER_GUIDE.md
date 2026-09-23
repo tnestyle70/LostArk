@@ -573,6 +573,16 @@ PBR map(marker3)의 RNM/IBL을 실제 emissive와 분리하고 SSAO 및 이 강�
 기존 RNM 정적 그림자를 다시 적용하지 않으며 cache가 없으면 해당 추가 차폐만 끈다.
 캐릭터 재질·실제 발광·기존 marker의 조명 계약은 유지한다. profile 저장·publisher·benchmark hash는 이 값을 보존한다.
 
+Scene environment의 optional `cubeDiffuse`는 `model="RGBM6_LAMBERT_SH3"`, `intensity`(0~4),
+`packedSH`(7×float4, 유한한−64~64, 마지막w=0)를 갖는다. 기존 RGBM6 cube의 선형 색을
+Lambert 적분한 E/pi 프로젝트 근사이며 원본 serialized SH9나 dynamic hemisphere 복원이 아니다.
+cubeTexture 없는 block은 거절한다. 생략은 비활성이고 명시0은 Save/Publish에서 보존한다.
+현재 소비자는 PBR map marker3의 combine이며 diffuse를 광원 개수와 무관하게 한 번 더한다.
+직접광·dynamic baked shadow는 추가 sky 항을 감쇠하지 않고 materialAO/SSAO와 fog를 적용한다.
+원본 RNM에 포함된 하늘 기여와 중복될 수 있으므로 Workbench의 cube diffuse 단독 보기와
+session gain0 비교를 사용한다. `before-restoration.v1`은 저장 scene profile 전환이며 과거
+material shader/pass 코드로 되돌리는 기능은 아니다. [구현·적용 상태](../GB/09-22/2026-09-22_CHARACTER_SELECT_MATERIAL_RESTORE_IMPLEMENTATION_RESULT.md).
+
 map light의 optional `receiver`는 `ALL`, `SOURCE_CHARACTER`, `UNBAKED`다. `UNBAKED`는
 구운 조명이 없는 캐릭터·움직이는 맵 표면에 원본 광원을 적용하며, RNM이나 native baked 표식이
 있는 정적 맵 pixel에는 중복 조명을 더하지 않는다. Deferred와 forward map이 같은 수광 계약을
@@ -856,3 +866,9 @@ Object Tool의 `Loop Animation + Effects`는 instance의 optional `loopFullPrese
 V1 World Effect track의 optional `loopEffectToDuration=true`는 원본 속도로 박스 끝까지 재생하며 `fitEffectToDuration`과 함께 켤 수 없다. native `EmitterLoops=0`가 있는 source는 기존 bounded emission end를 전달한다. 전부 finite인 source는 prepared Effect의 전체 수명(입자 tail 포함)마다 새 occurrence로 반복하며, Object follow 시계에는 각 반복의 시작 나이를 더한다. 따라서 Effect 반복 때 Object 위치가 처음으로 되돌아가지 않는다. 원본 Effect JSON, emitter loop count와 prepared document는 바꾸지 않으며 박스 끝에서 handle을 정리한다. Composition V1 occurrence도 finite/native 분기를 사용하며, finite 반복 중 root/bone/source-anchor는 전체 occurrence 시계를 유지한다.
 
 Pattern의 WORLD 박스는 생존 Object의 생성 시점·배치를 소유한다. Server Play에서 박스/Pattern 정상 종료는 생성된 개체를 제거하지 않으며 HP0·명시 취소·새 run·보스 제거/사망·session 퇴장·room reset이 정확한 cue를 종료한다. 현재 wire는 protocol88이고 Client와 Server를 함께 빌드·재시작해야 한다. Object Tool의 로컬 Preview는 저작 재생이며 Server HP 판정이 아니다.
+
+### PBR map의 선택적 원본 간접광
+
+mapmaterials의 PBR environment는 optional sourceIndirect를 지원한다. model은 UE3_NATIVE_PBR이며 cubeTexture, brdfTexture, color(float4), rotation(unit float2), packedSH(7×float4, finite ±64, 마지막w=1), upperSkyColor/lowerSkyColor(float3,0~64), ambientAndSkyFactor(float4,RGB0~64,w0~4)를 요구한다. texture는 Resources-relative DDS이며 CMaterial은 원본 cube와 RG16_UNORM 2D BRDF를 별도 보존한다. parse/validate/stage/commit 및 publisher가 잘못된 입력을 거절한다.
+
+optional environment.legacyEnabled는 기본true다. false는 sourceIndirect가 있을 때만 유효하며, 원본 모드를 끄면 이 재질의 환경 경로를 사용하지 않는다. 따라서 과거에 환경이 없었던 재질에도 이전 비교 동작을 유지할 수 있다. Scene RenderingProfiles environment.useSourcePBRIndirect는 optional bool이며 생략/false는 기존 식과 리소스다. true는 sourceIndirect가 있는 PBR에서만 원본 입력을 선택하고 기존 cubeDiffuse 추가 합성을 억제한다. 이 선택은 profile transaction과 Save/Publish roundtrip을 따른다. before-restoration은 과거 전체 shader/pass로 되돌리는 기능은 아니지만 이 선택적 간접광 경로는 이전 값으로 비교한다.

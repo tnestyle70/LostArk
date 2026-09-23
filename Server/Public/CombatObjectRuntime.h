@@ -55,6 +55,7 @@ namespace LostArk::Server
 		std::uint32_t iPartDamage = 0u;
 		std::uint32_t iCounterPower = 0u;
 		float fPushRangeM = 0.f;
+		float fRiseHeightM = 0.f;
 		std::uint32_t iPushMs = 0u;
 		bool bKnockdown = false;
 		std::uint32_t iDownMs = 0u;
@@ -136,6 +137,7 @@ namespace LostArk::Server
 		// The room stages movement for its typed pursuit/Showtime occurrence.
 		bool bPersistentLifetime = false, bHoming = false;
 		bool bRoomOwnedTracking = false, bHasExternalPoseStep = false;
+		LostArk::Shared::MECHANIC_CARD_SYMBOL eDamageImmuneCardSymbol = LostArk::Shared::MECHANIC_CARD_SYMBOL::NONE;
 		float fContactPresentationRadiusM = 0.f;
 		std::string strContactPresentationId;
 		/* A radial volley tracks the same locked player without collapsing every

@@ -26,6 +26,10 @@ uint g_LightReceiver = 0u; // ALL=0, SOURCE_CHARACTER=1, UNBAKED=2.
 
 uint g_MaterialDebugView = 0;
 float4 g_MapPBRContributionScale = float4(1.f, 1.f, 1.f, 1.f);
+float4 g_CubeDiffuseSH[7];
+float g_CubeDiffuseIntensity = 0.f;
+float4 g_CubeDiffuseColor = float4(1.f, 1.f, 1.f, 0.f);
+float4 g_CubeDiffuseRotation = float4(0.f, 1.f, 1.f, 0.f);
 texture2D   g_EmissiveTexture;
 texture2D   g_LightDepthTexture;
 texture2D   g_StaticLightDepthTexture;
@@ -1048,6 +1052,35 @@ float Resolve_DynamicBakedShadow(float3 position, float3 normal)
     return 1.f - (occluded / 9.f) * saturate(g_fDynamicBakedShadowStrength);
 }
 
+// Project diffuse sky adapter. Coefficients already contain Lambert E/pi;
+// neither native SH9 packing nor the dynamic native hemisphere is inferred.
+// Apply once in combine, independently of light count and directional shadows.
+float3 Evaluate_CubeDiffuseIrradiance(float3 worldNormal)
+{
+    const float3 n = worldNormal * rsqrt(max(dot(worldNormal, worldNormal), 1e-12f));
+    const float a = g_CubeDiffuseRotation.x, b = g_CubeDiffuseRotation.y;
+    const float4 q = float4(b * n.x + a * n.z, n.y, a * n.x - b * n.z, 1.f);
+    const float4 products = q.yzzx * q.xyzz;
+    const float3 firstOrder = float3(dot(g_CubeDiffuseSH[0], q),
+        dot(g_CubeDiffuseSH[1], q), dot(g_CubeDiffuseSH[2], q));
+    const float3 quadratic = float3(dot(g_CubeDiffuseSH[3], products),
+        dot(g_CubeDiffuseSH[4], products), dot(g_CubeDiffuseSH[5], products));
+    return max(firstOrder + quadratic + g_CubeDiffuseSH[6].rgb *
+        (q.x * q.x - q.y * q.y), 0.f) * g_CubeDiffuseColor.rgb * g_CubeDiffuseIntensity;
+}
+
+float3 Resolve_MapCubeDiffuse(int3 pixel)
+{
+    if (g_CubeDiffuseIntensity <= 0.f || g_DepthTexture.Load(pixel).w != 3.f) return 0.f;
+    const float3 albedo = g_DiffuseTexture.Load(pixel).rgb;
+    const float4 material = g_MaterialSpecularTexture.Load(pixel);
+    const float ao = saturate(g_DepthTexture.Load(pixel).z);
+    // A bounded F0 diffuse energy split belongs to this explicit approximation;
+    // keep source RNM/reflection-BRDF and emissive calculations unchanged.
+    return albedo * (1.f - saturate(material.a)) * (1.f - saturate(material.rgb)) * ao *
+        Evaluate_CubeDiffuseIrradiance(g_NormalTexture.Load(pixel).xyz * 2.f - 1.f);
+}
+
 PS_OUT_BACKBUFFER PS_MAIN_COMBINED(PS_IN In)
 {
     PS_OUT_BACKBUFFER Out = (PS_OUT_BACKBUFFER)0;
@@ -1069,8 +1102,9 @@ PS_OUT_BACKBUFFER PS_MAIN_COMBINED(PS_IN In)
         const float3 indirect = g_CharacterGeometryTexture.Load(pixel).rgb;
         const float3 position = g_GeometricNormalTexture.Load(pixel).xyz;
         const float3 normal = Decode_MapPBRGeometricNormal(pixel);
-        vLitColor.rgb += indirect * Resolve_AmbientOcclusion(In.vTexcoord) *
-            Resolve_DynamicBakedShadow(position, normal);
+        const float screenAO = Resolve_AmbientOcclusion(In.vTexcoord);
+        vLitColor.rgb += (indirect * Resolve_DynamicBakedShadow(position, normal) +
+            Resolve_MapCubeDiffuse(pixel)) * screenAO;
     }
     vLitColor.rgb = Resolve_HeightFog(vLitColor.rgb, In.vTexcoord);
     /* Emissive and Effect HDR energy are light sources, not receivers.  They
@@ -1741,7 +1775,9 @@ PS_OUT_BACKBUFFER PS_MAIN_FINAL(PS_IN In)
                 // Do not display those values as a recovered PBR diagnostic.
                 if (marker == 3.f)
                 {
-                    if (g_MaterialDebugView == 5u)
+                    if (g_MaterialDebugView == 14u)
+                        color = Compress_MaterialDiagnosticHDR(Resolve_MapCubeDiffuse(pixel));
+                    else if (g_MaterialDebugView == 5u)
                         color = g_NormalTexture.Load(pixel).aaa;
                     else if (g_MaterialDebugView == 6u)
                         color = g_MaterialSpecularTexture.Load(pixel).aaa;

@@ -4,7 +4,7 @@
   "sourceManifest": {
     "schema": "lostark.composition-source-manifest",
     "formatVersion": 1,
-    "sourceManifestId": "97ab8c8a1a752c5831659d0f27ff497fc9e0eebbe725c6c1c5aba64f0808f26f",
+    "sourceManifestId": "8211f7a019b1a2f048336aaa4f48e42c5baff3c1d44f540c21eee2255831792b",
     "files": [
       {
         "path": "Data/Animation/Authored/KoukuSaydon/MN_RPCT_05.actionbindings.json",
@@ -2083,8 +2083,8 @@
       },
       {
         "path": "Data/Rendering/Authored/RenderingProfiles.json",
-        "sha256": "7e009baea1d15984dc7c862050351f7e01e6dbc8a92cd1a4d4f65cc236bb186a",
-        "bytes": 120357
+        "sha256": "a429a81865d3214aaf97a6d21b061cf8301392a08fbaf1bf51af9ee338b8ef46",
+        "bytes": 121019
       },
       {
         "path": "Data/Sound/CharacterSoundCatalog.json",
@@ -2131,7 +2131,7 @@
     },
     {
       "path": "Sequences/KoukuSaydonArena.sequencer.json",
-      "sha256": "9af804025383b21ee6961a392080756b1d95a3b6d38faa9ce9787099b0f8c019",
+      "sha256": "9a3116d8722b39328519fc4b6cbe55b5cb31be21f74c49145fc7a164214d57f7",
       "bytes": 2152
     },
     {

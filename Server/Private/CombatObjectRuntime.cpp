@@ -718,6 +718,8 @@ bool LostArk::Server::CCombatObjectRuntime::Stage_BossCombatObject(
 			hit.bInstantDeath = authored.strDamageKind == "INSTANT_DEATH";
 			hit.bIgnoreDefense = authored.strDamageKind != "PROFILE";
 			hit.iDamagePercent = authored.iDamagePercent;
+			hit.fRiseHeightM = static_cast<float>(authored.fRiseHeightM);
+			hit.iPushMs = authored.iPushMs;
 			const auto rate = authored.strDamageKind == "PROFILE" ? catalog.Find_DamageRatePercent(authored.strDamageProfileId) : 1u;
 			if (!rate || !CServerCombatGeometry::Is_Valid(hit.Shape))
 			{ status = "Boss attack damage profile or primitive is unresolved"; return false; }
@@ -1038,7 +1040,9 @@ void LostArk::Server::CCombatObjectRuntime::Update(
 					for (auto& [playerId, target] : players)
 					{
 						(void)playerId;
-						if (!IsDamageable(target) || !ContactOverlaps(
+						if (!IsDamageable(target) ||
+                            (object.eDamageImmuneCardSymbol != LostArk::Shared::MECHANIC_CARD_SYMBOL::NONE &&
+                             target.eMechanicCardSymbol == object.eDamageImmuneCardSymbol) || !ContactOverlaps(
 							object, hit, BodyOf(target)))
 							continue;
 						auto* mark = FindContactMark(
@@ -1057,6 +1061,8 @@ void LostArk::Server::CCombatObjectRuntime::Update(
 							object.LiveState.CurrentPose.fPositionZ;
 						incoming.fPushRangeM = hit.fPushRangeM;
 						incoming.iPushMs = hit.iPushMs;
+						incoming.fPushHeightM = hit.fRiseHeightM;
+						incoming.bPushBallistic = incoming.bForcePush = hit.fRiseHeightM > 0.f;
 						incoming.bKnockdown = hit.bKnockdown;
 						incoming.iDownMs = hit.iDownMs;
 						incoming.iServerTick = serverTick;
@@ -1142,6 +1148,8 @@ void LostArk::Server::CCombatObjectRuntime::Update(
 					{
 						(void)playerId;
 						if (!IsDamageable(target) ||
+                            (object.eDamageImmuneCardSymbol != LostArk::Shared::MECHANIC_CARD_SYMBOL::NONE &&
+                             target.eMechanicCardSymbol == object.eDamageImmuneCardSymbol) ||
 							!CServerCombatGeometry::Overlaps_Pose(
 								hit.Shape,
 								attackPose.fPositionX,
@@ -1160,6 +1168,8 @@ void LostArk::Server::CCombatObjectRuntime::Update(
 							object.LiveState.CurrentPose.fPositionZ;
 						incoming.fPushRangeM = hit.fPushRangeM;
 						incoming.iPushMs = hit.iPushMs;
+						incoming.fPushHeightM = hit.fRiseHeightM;
+						incoming.bPushBallistic = incoming.bForcePush = hit.fRiseHeightM > 0.f;
 						incoming.bKnockdown = hit.bKnockdown;
 						incoming.iDownMs = hit.iDownMs;
 						incoming.iServerTick = serverTick;

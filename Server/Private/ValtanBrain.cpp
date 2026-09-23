@@ -2316,8 +2316,69 @@ namespace
 
 	bool MoveAlongPath(
 		SERVER_WORLD_ENTITY& boss,
+		const CServerNavigation& navigation,
 		const float fixedDeltaSeconds)
 	{
+		/* Path nodes can outlive a floor collapse. Validate the live segment and
+		ground each actual step instead of snapping Y to a distant cached node.
+		A boss already over a collapsed sector keeps its former deck while walking
+		to the same-level recovery point; only players enter the fall lifecycle. */
+		const auto commitStep = [&boss, &navigation](
+			const float x, const float z, const float detachedY)
+			{
+				if (!navigation.Is_Loaded())
+				{
+					boss.fPositionX = x;
+					boss.fPositionY = detachedY;
+					boss.fPositionZ = z;
+					return true;
+				}
+				SERVER_NAV_POINT previous{
+					boss.fPositionX, boss.fPositionY, boss.fPositionZ };
+				bool recovering = navigation.Is_PointInVoidRegion(
+					previous.x, previous.z);
+				SERVER_NAV_POINT source{};
+				if (!(recovering ? navigation.Sample_Position(previous.x, previous.z, source, previous.y) :
+					navigation.Sample_SurfacePosition(previous.x, previous.z, source)) ||
+					!navigation.Is_HeightTransitionAllowed(previous.y, source.y))
+					return false;
+				const float dx = x - previous.x, dz = z - previous.z;
+				const float distance = std::hypot(dx, dz);
+				const float sampleStep = (std::max)(0.01f, navigation.Get_CellSize() * 0.5f);
+				if (!std::isfinite(distance) || !std::isfinite(sampleStep))
+					return false;
+				const auto count = static_cast<std::uint32_t>((std::max)(1.f, std::ceil(distance / sampleStep)));
+				for (std::uint32_t sample = 1u; sample <= count; ++sample)
+				{
+					const float fraction = static_cast<float>(sample) / count;
+					const float nextX = boss.fPositionX + dx * fraction;
+					const float nextZ = boss.fPositionZ + dz * fraction;
+					const bool overVoid = navigation.Is_PointInVoidRegion(nextX, nextZ);
+					const bool walkable = navigation.Is_PointWalkableExact(nextX, nextZ, previous.y);
+					SERVER_NAV_POINT next{};
+					if (!walkable && !(recovering && overVoid))
+						return false;
+					if (recovering)
+					{
+						if (!navigation.Sample_Position(nextX, nextZ, next, previous.y) ||
+							std::abs(next.y - previous.y) > 1.f)
+							return false;
+						if (overVoid)
+							next.y = previous.y;
+						else
+							recovering = false;
+					}
+					else if (!navigation.Sample_SurfacePosition(nextX, nextZ, next) ||
+						!navigation.Is_HeightTransitionAllowed(previous.y, next.y) ||
+						!navigation.Resolve_TraversalStep(previous.x, previous.z, nextX, nextZ, next, previous.y))
+						return false;
+					previous = next;
+				}
+				boss.fPositionX = previous.x;
+				boss.fPositionY = previous.y;
+				boss.fPositionZ = previous.z;
+				return true;
+			};
 		while (boss.iMovePathIndex < boss.MovePath.size())
 		{
 			const SERVER_NAV_POINT& point = boss.MovePath[boss.iMovePathIndex];
@@ -2326,17 +2387,17 @@ namespace
 			const float distance = std::sqrt(deltaX * deltaX + deltaZ * deltaZ);
 			if (distance <= PATH_POINT_STOP_DISTANCE)
 			{
-				boss.fPositionX = point.x;
-				boss.fPositionY = point.y;
-				boss.fPositionZ = point.z;
+				if (!commitStep(point.x, point.z, point.y))
+					break;
 				++boss.iMovePathIndex;
 				continue;
 			}
-			boss.fYawDegrees = std::atan2(deltaX, deltaZ) * RADIANS_TO_DEGREES;
 			const float step =
 				(std::min)(boss.fMoveSpeed * fixedDeltaSeconds, distance);
-			boss.fPositionX += deltaX / distance * step;
-			boss.fPositionZ += deltaZ / distance * step;
+			if (!commitStep(boss.fPositionX + deltaX / distance * step,
+				boss.fPositionZ + deltaZ / distance * step, boss.fPositionY))
+				break;
+			boss.fYawDegrees = std::atan2(deltaX, deltaZ) * RADIANS_TO_DEGREES;
 			return true;
 		}
 		boss.MovePath.clear();
@@ -2973,9 +3034,20 @@ void LostArk::Server::CValtanBrain::Update(
 				pathDeltaX * pathDeltaX + pathDeltaZ * pathDeltaZ > 1.f)
 			{
 				std::vector<SERVER_NAV_POINT> path;
-				if (navigation.Find_Path(
-					boss.fPositionX, boss.fPositionZ,
-					target->fPositionX, target->fPositionZ, path))
+				SERVER_NAV_POINT start{ boss.fPositionX, boss.fPositionY, boss.fPositionZ };
+				const bool recovering = navigation.Is_Loaded() &&
+					navigation.Is_PointInVoidRegion(start.x, start.z);
+				const bool admittedStart = !recovering ||
+					(navigation.Project_PointOnSameLevel(start.x, start.z, start, boss.fPositionY) &&
+					 std::abs(start.y - boss.fPositionY) <= 1.f);
+				const bool found = admittedStart && navigation.Find_Path(
+					start.x, start.z, target->fPositionX, target->fPositionZ, path, start.y);
+				/* Find_Path projects its source and omits that first cell. A boss
+				   standing over removed ground must walk to it before consuming the
+				   route, even when the player's own destination is unreachable. */
+				if (admittedStart && recovering)
+					path.insert(path.begin(), start);
+				if (found || (admittedStart && recovering))
 				{
 					boss.MovePath = std::move(path);
 					boss.iMovePathIndex = 0;
@@ -2983,7 +3055,7 @@ void LostArk::Server::CValtanBrain::Update(
 					boss.fLastPathGoalZ = target->fPositionZ;
 				}
 			}
-			MoveAlongPath(boss, fixedDeltaSeconds);
+			MoveAlongPath(boss, navigation, fixedDeltaSeconds);
 			return;
 		}
 		boss.MovePath.clear();

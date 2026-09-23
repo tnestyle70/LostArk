@@ -50,6 +50,30 @@ def next_positive_float32(value: float) -> float:
 
 
 class RenderingProfilePublisherTest(unittest.TestCase):
+    def test_source_pbr_indirect_optional_boolean_and_publish_rollback(self) -> None:
+        document = copy.deepcopy(self.source_document)
+        environment = {"cubeTexture": "Map/Lighting/CharacterSelect/lv_lut_valhatrond_04_hdr01.rgbm.cube.dds",
+                       "color": [1, 1, 1, 0], "rotationIntensity": [0, 1, 1, 0]}
+        document["profiles"][0]["environment"] = environment
+        with tempfile.TemporaryDirectory() as directory:
+            source = Path(directory) / "source.json"
+            destination = Path(directory) / "runtime.json"
+            for value in (None, False, True):
+                if value is not None:
+                    environment["useSourcePBRIndirect"] = value
+                self.write_document(source, document)
+                result = self.run_publisher(source, "Publish", destination)
+                self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+                self.assertEqual(document, json.loads(destination.read_bytes()))
+            previous = destination.read_bytes()
+            for value in (0, 1, "true", None, [], {}):
+                with self.subTest(value=value):
+                    environment["useSourcePBRIndirect"] = value
+                    self.write_document(source, document)
+                    result = self.run_publisher(source, "Publish", destination)
+                    self.assertNotEqual(0, result.returncode)
+                    self.assertEqual(previous, destination.read_bytes())
+
     def test_dynamic_baked_shadow_round_trip_and_rollback(self) -> None:
         document = copy.deepcopy(self.source_document)
         document["profiles"][0]["shadow"]["dynamicBakedStrength"] = 0.7
@@ -97,6 +121,95 @@ class RenderingProfilePublisherTest(unittest.TestCase):
                     result = self.run_publisher(source, "Publish", destination)
                     self.assertNotEqual(0, result.returncode)
                     self.assertEqual(previous, destination.read_bytes())
+
+    def test_cube_diffuse_round_trip_preserves_optional_and_explicit_zero(self) -> None:
+        document = copy.deepcopy(self.source_document)
+        environment = {
+            "cubeTexture": "Map/Lighting/CharacterSelect/lv_lut_valhatrond_04_hdr01.rgbm.cube.dds",
+            "color": [1, 1, 1, 0],
+            "rotationIntensity": [0, 1, 1, 0],
+        }
+        document["profiles"][0]["environment"] = environment
+        with tempfile.TemporaryDirectory() as directory:
+            source = Path(directory) / "source.json"
+            destination = Path(directory) / "runtime.json"
+            for intensity in (None, 0, 1, 4):
+                with self.subTest(intensity=intensity):
+                    if intensity is not None:
+                        environment["cubeDiffuse"] = {
+                            "model": "RGBM6_LAMBERT_SH3",
+                            "intensity": intensity,
+                            "packedSH": [[0, 0, 0, 0] for _ in range(7)],
+                        }
+                        if intensity:
+                            environment["cubeDiffuse"]["packedSH"][0] = [-64, 64, -0.25, 0.5]
+                            environment["cubeDiffuse"]["packedSH"][6] = [0.1, -0.2, 0.3, 0]
+                    self.write_document(source, document)
+                    source_bytes = source.read_bytes()
+                    result = self.run_publisher(source, "Publish", destination)
+                    self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+                    self.assertEqual(source_bytes, source.read_bytes())
+                    self.assertEqual(document, json.loads(destination.read_bytes()))
+
+    def test_invalid_cube_diffuse_preserves_published_runtime(self) -> None:
+        document = copy.deepcopy(self.source_document)
+        diffuse = {
+            "model": "RGBM6_LAMBERT_SH3",
+            "intensity": 1,
+            "packedSH": [[0.1, -0.2, 0.3, 0] for _ in range(7)],
+        }
+        environment = {
+            "cubeTexture": "Map/Lighting/CharacterSelect/lv_lut_valhatrond_04_hdr01.rgbm.cube.dds",
+            "color": [1, 1, 1, 0],
+            "rotationIntensity": [0, 1, 1, 0],
+            "cubeDiffuse": diffuse,
+        }
+        document["profiles"][0]["environment"] = environment
+        invalid_blocks = [("null", None), ("array", []), ("empty", {})]
+        for field in diffuse:
+            missing = copy.deepcopy(diffuse)
+            del missing[field]
+            invalid_blocks.append(("missing " + field, missing))
+        for field, value in (
+            ("model", "NATIVE_SH9"), ("model", "rgbm6_lambert_sh3"),
+            ("model", True), ("intensity", -0.01), ("intensity", 4.01),
+            ("intensity", "1"), ("intensity", True),
+            ("intensity", float("nan")), ("intensity", float("inf")),
+            ("packedSH", [[0, 0, 0, 0]] * 6),
+            ("packedSH", [[0, 0, 0, 0]] * 8),
+            ("packedSH", [0] * 7),
+            ("unexpected", 0),
+        ):
+            block = copy.deepcopy(diffuse)
+            block[field] = value
+            invalid_blocks.append((field + "=" + repr(value), block))
+        for name, row_index, row in (
+            ("short row", 0, [0, 0, 0]),
+            ("large coefficient", 0, [64.0000001, 0, 0, 0]),
+            ("small coefficient", 0, [-64.0000001, 0, 0, 0]),
+            ("boolean coefficient", 0, [True, 0, 0, 0]),
+            ("string coefficient", 0, ["1", 0, 0, 0]),
+            ("nonfinite coefficient", 0, [float("inf"), 0, 0, 0]),
+            ("reserved w", 6, [0, 0, 0, 1e-50]),
+        ):
+            block = copy.deepcopy(diffuse)
+            block["packedSH"][row_index] = row
+            invalid_blocks.append((name, block))
+        with tempfile.TemporaryDirectory() as directory:
+            source = Path(directory) / "source.json"
+            destination = Path(directory) / "runtime.json"
+            self.write_document(source, document)
+            result = self.run_publisher(source, "Publish", destination)
+            self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+            previous = destination.read_bytes()
+            for name, block in invalid_blocks:
+                with self.subTest(name=name):
+                    invalid = copy.deepcopy(document)
+                    invalid["profiles"][0]["environment"]["cubeDiffuse"] = block
+                    self.write_document(source, invalid)
+                    result = self.run_publisher(source, "Publish", destination)
+                    self.assertNotEqual(0, result.returncode, name)
+                    self.assertEqual(previous, destination.read_bytes(), name)
 
     def setUp(self) -> None:
         if POWERSHELL is None:

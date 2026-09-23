@@ -600,6 +600,56 @@ SCENE_COLOR_BLOOM_OUT PS_MAIN_EFFECT_MODEL_CUE_NATIVE(VS_OUT input, bool frontFa
 
 #include "Shader_SourceCharacterForward.hlsli"
 
+// Project opaque ghost policy is animated-only. Compile native84 here directly:
+// a runtime discard cannot remove the other programs from the native dispatchers.
+SCENE_COLOR_BLOOM_OUT PS_MAIN_SOURCE_CHARACTER_GHOST_OPAQUE(VS_OUT input, bool frontFace : SV_IsFrontFace)
+{
+#if SOURCE_CHARACTER_PROGRAM_GROUP == 84
+    if (g_SourceCharacterProgram != 84u) discard;
+    const float3 camera = -mul((float3x3)g_ViewMatrix, g_ViewMatrix[3].xyz);
+    float3 ambient = 0.f;
+    [loop] for (uint ambientIndex = 0u; ambientIndex < g_SourceMapForwardLightCount; ++ambientIndex)
+    {
+        float3 unusedDirection;
+        const float attenuation = SourceCharacterForwardLightAttenuation(ambientIndex,
+            input.vWorldPos.xyz, input.vNormal.xyz, unusedDirection);
+        if (attenuation > 0.f)
+            ambient += g_SourceMapForwardLightColorExponent[ambientIndex].rgb *
+                g_SourceMapForwardLightAmbient[ambientIndex].rgb * attenuation;
+    }
+    // Preserve the shipped ghost base input and ambient-light accumulation.
+    const SOURCE_CHARACTER_NATIVE_INPUT baseInput = MakeSourceCharacterInput(input.vTexcoord,
+        input.vSourceExtraUV, input.vWorldPos.xyz, input.vTangent.xyz, input.vBinormal.xyz,
+        input.vNormal.xyz, camera, input.vProjPos, mul(g_ViewMatrix, g_ProjMatrix),
+        float3(0.f, 1.f, 0.f), ambient, 1.f, frontFace);
+    const SOURCE_CHARACTER_NATIVE_OUTPUT base = SourceCharacterBase84(baseInput, true);
+    if (base.discarded) discard;
+
+    float3 direct = 0.f;
+    [loop] for (uint index = 0u; index < g_SourceMapForwardLightCount; ++index)
+    {
+        const float4 colorExponent = g_SourceMapForwardLightColorExponent[index];
+        float3 direction;
+        const float attenuation = SourceCharacterForwardLightAttenuation(index,
+            input.vWorldPos.xyz, input.vNormal.xyz, direction);
+        if (attenuation <= 0.f) continue;
+        const SOURCE_CHARACTER_NATIVE_INPUT lightInput =
+            MakeSourceCharacterForwardLightInput(input, camera, direction, colorExponent.rgb, frontFace);
+        const SOURCE_CHARACTER_NATIVE_OUTPUT lit = SourceCharacterLight84(lightInput);
+        if (!lit.discarded) direct += lit.targets[0].rgb * attenuation;
+    }
+
+    float3 color = base.targets[3].rgb * ambient + direct;
+    const float4 fog = EvaluateSceneFog(input.vWorldPos.xyz, camera);
+    color = color * fog.w + fog.rgb + base.targets[0].rgb;
+    return Write_SceneColorAndBloom(float4(color, 1.f));
+#else
+    // Base FX dispatches program84 to its cohort. Other cohorts cannot draw it.
+    discard;
+    return (SCENE_COLOR_BLOOM_OUT)0;
+#endif
+}
+
 // Opt-in Effect model casters share the exact visible native coverage/dissolve.
 uint g_EffectModelCueShadowAlphaClip = 1u;
 float4x4 g_EffectModelCueShadowLightViewMatrix, g_EffectModelCueShadowLightProjMatrix;
@@ -715,6 +765,7 @@ PixelShader ChargeAfterimagePS = NULL;
 // Identical entry/profile/arguments compile once; pass states and indices stay unchanged.
 PixelShader BinaryAnimatedSurfacePS = compile ps_5_0 PS_MAIN();
 PixelShader BinaryAnimatedTranslucentPS = compile ps_5_0 PS_MAIN_SOURCE_CHARACTER_TRANSLUCENT();
+PixelShader BinaryAnimatedGhostOpaquePS = compile ps_5_0 PS_MAIN_SOURCE_CHARACTER_GHOST_OPAQUE();
 // END SHARED MODEL PASS PROGRAMS
 
 technique11 DefaultTechnique
@@ -893,6 +944,28 @@ technique11 DefaultTechnique
         VertexShader = compile vs_5_0 VS_MAIN_EFFECT_MODEL_CUE_SHADOW();
         GeometryShader = NULL;
         PixelShader = compile ps_5_0 PS_MAIN_EFFECT_MODEL_CUE_SHADOW();
+    }
+
+    // Appended index16: project opaque ghost, forward RGB after deferred lighting.
+    pass SourceCharacterGhostOpaque
+    {
+        SetRasterizerState(RS_Default);
+        SetDepthStencilState(DSS_Default, 0);
+        SetBlendState(BS_Default, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
+        VertexShader = EffectSourceModelVS;
+        GeometryShader = NULL;
+        PixelShader = BinaryAnimatedGhostOpaquePS;
+    }
+    // Appended index17: same solid silhouette; packed diffuse alpha is not a mask.
+    pass SourceCharacterGhostOpaqueShadow
+    < int ProgramVariantPass = BINARY_ANIMATED_NATIVE_PASS_POLICY; >
+    {
+        SetRasterizerState(RS_Default);
+        SetDepthStencilState(DSS_Default, 0);
+        SetBlendState(BS_Default, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
+        VertexShader = EffectSourceModelVS;
+        GeometryShader = NULL;
+        PixelShader = NULL;
     }
 
 }

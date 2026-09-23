@@ -47,6 +47,56 @@ std::uint8_t LostArk::Server::CGameRoom::Gate_Count() const
 	return LostArk::Shared::WORLD_ID::KAKULSAYDON_ARENA == m_eWorldId ? KOUKU_GATE_COUNT : 0u;
 }
 
+std::uint8_t LostArk::Server::CGameRoom::Resolve_CurrentKoukuGate() const
+{
+	if (!Gate_Count()) return 0u;
+	const auto index = [](const std::string& id) -> std::uint8_t {
+		if (id == "GATE1") return 1u;
+		if (id == "GATE2") return 2u;
+		if (id == "GATE3") return 3u;
+		return id == "BINGO" ? 4u : 0u;
+	};
+	if (Is_KoukuRaidRunning())
+		if (const auto gate = index(m_KoukuRaid.State.strGateId)) return gate;
+	const auto& run = m_KoukuSaydonPatternAudition;
+	if (run.iRoomAuditionEpoch)
+	{
+		if (const auto gate = index(run.Request.Scope.strGateId)) return gate;
+		const auto* catalog = Resolve_KoukuProductCatalog();
+		const auto* patterns = catalog ? catalog->Find_BossPatterns(run.Request.Scope.strEncounterId) : nullptr;
+		if (patterns) for (const auto& member : run.Members)
+		{
+			if (member.PatternIds.empty()) continue;
+			const auto ordinal = (std::min)(member.iPatternIndex, member.PatternIds.size() - 1u);
+			const auto pattern = std::find_if(patterns->begin(), patterns->end(), [&](const auto& row) {
+				return row.strPatternId == member.PatternIds[ordinal];
+			});
+			if (pattern != patterns->end()) if (const auto gate = index(pattern->strGateId)) return gate;
+		}
+		const int placementGate = Gate_IndexOfPlacement(run.Request.Scope.strBossPlacementId);
+		if (placementGate >= 0) return static_cast<std::uint8_t>(placementGate + 1);
+	}
+	return m_GateProgress.iCurrentGate <= Gate_Count() ? m_GateProgress.iCurrentGate : 0u;
+}
+
+bool LostArk::Server::CGameRoom::Resolve_KoukuRevivePosition(
+	const SERVER_PLAYER& player, SERVER_NAV_POINT& position, float& yaw) const
+{
+	if (const auto index = Resolve_CurrentKoukuGate())
+	{
+		// Reuse the same start as Advance_Gate/Enter_KoukuRaidCombat.
+		const auto& gate = KOUKU_GATES[index - 1u];
+		position = {gate.fX, gate.fY, gate.fZ};
+		yaw = 0.f;
+		return true;
+	}
+	const auto* spawn = Find_Placement(player.strSpawnPlacementId);
+	if (!spawn || spawn->eKind != WORLD_BOOTSTRAP_KIND::PLAYER_SPAWN) return false;
+	position = {spawn->fPositionX, spawn->fPositionY, spawn->fPositionZ};
+	yaw = spawn->fYawDegrees;
+	return true;
+}
+
 int LostArk::Server::CGameRoom::Gate_IndexOfPlacement(const std::string& placementId) const
 {
 	if (0u == Gate_Count() || placementId.empty())
@@ -509,6 +559,30 @@ bool LostArk::Server::CGameRoom::Advance_Gate(const std::uint8_t nextGate,
 		return false;
     if (Is_KoukuRaidRunning())
         return Advance_KoukuRaidGate(nextGate, m_GateProgress.eKind == GATE_PROGRESS_KIND::RESTART);
+    if (nextGate == 4u)
+    {
+        // Release gate UI must enter the same pinned intro/Flow/Parent owner as
+        // automatic Encore; spawning only its boss leaves an idle arena.
+        const auto proposer = m_Players.find(m_GateProgress.iProposerId);
+        if (proposer == m_Players.end()) return false;
+        auto product = m_GameplayCatalog.Get_ActiveGeneration();
+        if (m_pKoukuPublishedProductGeneration && m_pKoukuPublishedProductGeneration->Has_SameNonKoukuGameplay(m_GameplayCatalog.Active()))
+            product = m_pKoukuPublishedProductGeneration;
+        const auto* definition = product ? product->Find_KoukuRaidGate("BINGO") : nullptr;
+        const auto old = m_KoukuRaidReceipts.find(proposer->second.iSessionId);
+        const auto prior = old == m_KoukuRaidReceipts.end() ? 0u : old->second.first.iRequestSequence;
+        if (!definition || definition->strIntroPatternId.empty() || prior == UINT32_MAX) return false;
+        C2S_DEBUG_KOUKUSAYDON_RAID_REQUEST request;
+        request.eWorldId = m_eWorldId; request.eOperation = KOUKUSAYDON_RAID_OPERATION::START;
+        request.iRequestSequence = prior + 1u; request.strStartGateId = "BINGO";
+        request.ExpectedGameplayRevision = m_GameplayCatalog.Get_ActiveRevision();
+        request.iActionSourceRevision = CKoukuSaydonBrain::Resolve_ProductSourceRevision(*product);
+        request.iSequenceSourceRevision = definition->iSequenceRevision;
+        std::string reason;
+        if (!Begin_KoukuRaidPreparation(proposer->second.iSessionId, request, reason, false, true))
+        { m_strStatus = "Bingo gate entry rejected: " + reason; return false; }
+        return true;
+    }
 	const KOUKU_GATE& gate = KOUKU_GATES[nextGate - 1u];
 	C2S_DEBUG_TELEPORT_TO_POSITION move{};
 	move.iRequestSequence = 1u; move.eWorldId = m_eWorldId;

@@ -57,3 +57,28 @@ Engine·Shared·Server·Client를 Release로 증분 빌드하고 실제 Release 
 실행기 ZIP을 생성한다. Data는 `ChangedData/Data`에, 실행 파일·DataFiles·셰이더는 실행기의
 런타임 폴더에 둔다. 기본 접속 주소는 `192.168.0.22:7777`이며 추가 리소스가 필요한 경우
 `C:\Users\user\Desktop\GRResources2`의 기존 Resources 상대 경로를 유지한다.
+
+## G05. 쿠크 입장 복귀와 Resources 전달 재점검
+
+배포 후 호스트는 쿠크에 입장하지만 다른 세 PC는 `Server entry failed`와 함께 Lobby로
+복귀한다고 보고했다. 이 문구는 서버 거절뿐 아니라 필수 리소스 로딩 실패에도 표시된다.
+원격 로그 없이 단일 원인을 확정하지 않고 Server 종료 사유, ZIP/현재 데이터 차이,
+Release 입장의 실제 Effect/World 소비 경로를 대조한다.
+
+기존 새 이펙트3개의 로컬 리소스 존재 검사만으로 전체 배포의 추가 리소스를0개라고 판단한
+범위를 교정한다. 지정된9월19일 ZIP과 현재 쿠크 Pattern/Sequence/V1/V2/World 정의의 의존성을
+대조하고, 실제 전달 폴더 `Desktop/GBResources`의 동일 상대 경로와 SHA256을 확인한다.
+신규 참조와 기존 이름의 변경 파일을 구분하고, GBResources가 전체 Resources가 아닌 추가분이라는
+경계를 유지한다. 누락·다른 파일은 최신 설치본에서 `Desktop/GRResources2`로 모은다.
+동일 파일은 재복사하지 않고 기존에 다른 파일이 있으면 보존 후 원자 교체한다.
+
+쿠크 입장에 필요한 전달 차이와 오늘 구현한 패턴·이펙트·사운드·게시·빌드 작업 목록을 RESULT와
+리소스 감사 목록에 기록한다. 게임 실행·화면 재현·사용자 프로세스 종료는 수행하지 않는다.
+
+## G06. 9월23일 추가: 5초 전환과 Release 실제 UI 진입
+
+G3 false-clear의 두 소비자(정식 raid와 기존 boss 단독 kill)의 고정 대기를 30Hz 150tick, 5초로 맞춘다. 리소스 준비가 늦으면 READY 이전에는 재생하지 않고 원래 clear tick을 보존한다. 기존 비-raid `Advance_Gate(4)`의 단순 spawn/teleport를 승인된 기존 투표 → pinned raid 준비 → Bingo intro → `Start_KoukuRaidCombat`/Parent 실행으로 연결한다. Debug 외부 START를 Release에 허용하지 않는다.
+
+G1 입구에서 한 명이 도착했을 때 동료가 G 이동 중이면 `Begin_KoukuRaidPreparation`가 일시 거절하지만 PLAY_SEQUENCE entry edge를 소비하는 결함을 수정한다. 쿠크의 실패한 auto sequence action은 같은 volume 안에서 다시 시도하고, 성공한 action은 기존 entry edge를 유지한다. 실제 두 참가자와 설치된 entry trigger를 사용하는 Server 계약 검증으로 첫 거절, 이동 종료 후 재시도, 두 READY 이전 재생 없음, 동일한 cinematic epoch를 확인한다.
+
+수정 범위는 `GameRoom_KoukuRaidFlow.cpp`, `GameRoom_GateProgress.cpp`, `GameRoom.h`, `ServerTriggerSystem.cpp`, 기존 `ServerGameplayContractTests_KoukuRaid.cpp`다. GameRoom의 다른 담당자가 추가한 현재 관문/부활 helpers는 보존한다. Debug/Release Server 빌드와 `--kouku-raid-contract-test`는 통합 담당과 순서를 맞춰 실행한다.

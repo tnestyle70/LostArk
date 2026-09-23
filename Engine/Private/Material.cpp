@@ -713,6 +713,20 @@ HRESULT CMaterial::Initialize(const MODEL_MATERIAL_DATA& material)
             m_EnvironmentBRDF->GetDesc(&brdf);
             if (cube.ViewDimension != D3D11_SRV_DIMENSION_TEXTURECUBE ||
                 brdf.ViewDimension != D3D11_SRV_DIMENSION_TEXTURE2D) return E_INVALIDARG;
+            if (m_Surface.hasSourceIndirect)
+            {
+                if (FAILED(LoadSharedTexture(m_pDevice, m_SharedTextureViews, material.sourceIndirectBRDFPath,
+                    false, m_SourceIndirectBRDF, true)) ||
+                    FAILED(LoadSharedTexture(m_pDevice, m_SharedTextureViews, material.sourceIndirectCubePath,
+                        false, m_SourceIndirectCube, true))) return E_FAIL;
+                D3D11_SHADER_RESOURCE_VIEW_DESC sourceCube{};
+                m_SourceIndirectCube->GetDesc(&sourceCube);
+                if (sourceCube.ViewDimension != D3D11_SRV_DIMENSION_TEXTURECUBE) return E_INVALIDARG;
+                D3D11_SHADER_RESOURCE_VIEW_DESC sourceBRDF{};
+                m_SourceIndirectBRDF->GetDesc(&sourceBRDF);
+                if (sourceBRDF.ViewDimension != D3D11_SRV_DIMENSION_TEXTURE2D ||
+                    sourceBRDF.Format != DXGI_FORMAT_R16G16_UNORM) return E_INVALIDARG;
+            }
         }
 		if (MODEL_SURFACE_FAMILY::SPECULAR_TEXTURE_REFLECTION == m_Surface.family &&
 			FAILED(LoadSharedTexture(m_pDevice, m_SharedTextureViews, material.specularPath,
@@ -1021,9 +1035,13 @@ HRESULT CMaterial::Bind_SurfaceLighting(shared_ptr<CShader> shader)
     if (m_Surface.hasBakedLighting &&
         (FAILED(shader->Bind_Texture("g_BakedAverageTexture", m_BakedAverage)) ||
          FAILED(shader->Bind_Texture("g_BakedDirectionalTexture", m_BakedDirectional)))) return E_FAIL;
-    if (m_Surface.hasEnvironmentCube &&
-        (FAILED(shader->Bind_Texture("g_EnvironmentCubeTexture", m_EnvironmentCube)) ||
-         FAILED(shader->Bind_Texture("g_EnvironmentBRDFLookupTexture", m_EnvironmentBRDF)))) return E_FAIL;
+    const bool sourceIndirect = m_Surface.hasSourceIndirect &&
+        CGameInstance::Get().Get_RenderEnvironment().bUseSourcePBRIndirect;
+    const auto& lookup = sourceIndirect ? m_SourceIndirectBRDF : m_EnvironmentBRDF;
+    const auto& cube = sourceIndirect ? m_SourceIndirectCube : m_EnvironmentCube;
+    if (m_Surface.hasEnvironmentCube && (m_Surface.environmentLegacyEnabled || sourceIndirect) &&
+        (FAILED(shader->Bind_Texture("g_EnvironmentCubeTexture", cube)) ||
+         FAILED(shader->Bind_Texture("g_EnvironmentBRDFLookupTexture", lookup)))) return E_FAIL;
     return S_OK;
 }
 

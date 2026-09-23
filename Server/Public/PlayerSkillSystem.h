@@ -72,7 +72,8 @@ namespace LostArk::Server
 			bool knockdown,
 			std::uint32_t downMs,
 			std::uint32_t serverTick,
-			bool forcePush = false, bool pushCanLeaveArena = false, bool pushBallistic = false);
+			bool forcePush = false, bool pushCanLeaveArena = false, bool pushBallistic = false,
+			float pushHeightM = 0.f);
 
 		/* A stance-setting skill's authored cancel windows open after the swap has
 		already happened on screen, so every exit from its action commits the

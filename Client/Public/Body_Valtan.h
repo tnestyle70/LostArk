@@ -46,9 +46,9 @@ public:
 private:
 	shared_ptr<CShader> m_pShaderCom = { nullptr };
 	shared_ptr<CModel> m_pModelCom = { nullptr };
-	bool_t m_hasTranslucentMeshes = { false };
-    uint32_t m_iTranslucentDrawCount = 0u;
-    std::string m_strTranslucentRenderFailure;
+	bool_t m_hasOpaqueGhostMeshes = { false };
+    uint32_t m_iOpaqueGhostDrawCount = 0u;
+    std::string m_strOpaqueGhostRenderFailure;
     const bool* m_pChargeAfterimageEnabled = nullptr;
     CSkeletalAfterimage m_ChargeAfterimage;
 	const uint32_t* m_pParentState = { nullptr };
@@ -59,7 +59,7 @@ private:
 private:
 	HRESULT Ready_Components();
 	HRESULT Bind_ShaderResources();
-	HRESULT Render_Translucent();
+	HRESULT Render_OpaqueGhost();
 	HRESULT Bind_ShadowShaderResources();
 
 public:

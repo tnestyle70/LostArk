@@ -82,15 +82,18 @@ namespace
             L"Sound/KoukuSaton/Raid/mario3.wav", L"Sound/KoukuSaton/Raid/mario4.wav" };
         if (marioStage >= 1u && marioStage <= 4u) return mario[marioStage - 1u];
         if (maze) return L"Sound/KoukuSaton/Raid/maze.wav";
-        if (phase == PHASE::COMBAT)
+        // A G3 entry terrace remains preparation even while the previous gate drains.
+        if (readyArea) return KOUKU_READY_TERRACE_BGM_ASSET_ID;
+        if (phase == PHASE::COMBAT || phase == PHASE::WAIT_MINIGAME || phase == PHASE::WAIT_GATE)
         {
-            if (gate == "GATE1") return L"Sound/KoukuSaton/S_BGM_COMMANDERRAID/midnightc_ed__398225682.wav";
-            if (gate == "GATE2") return L"Sound/KoukuSaton/Raid/gate2.wav";
-            if (gate == "GATE3") return L"Sound/KoukuSaton/Raid/gate3.wav";
-            if (gate == "BINGO") return L"Sound/KoukuSaton/Raid/bingo.wav";
+            if (gate == "GATE1" || gate == "GATE2" || gate == "BINGO")
+                return L"Sound/KoukuSaton/S_BGM_COMMANDERRAID/midnightc_ed__398225682.wav";
+            if (gate == "GATE3") return L"Sound/KoukuSaton/S_BGM_COMMANDERRAID/midnightc_ed__1053752270.wav";
             return nullptr;
         }
-        return readyArea ? KOUKU_READY_TERRACE_BGM_ASSET_ID : nullptr;
+        // The approach spans several G-key jumps below the initial terrace. Its music
+        // belongs to the preparation phase, not the small initial spawn volume.
+        return KOUKU_READY_TERRACE_BGM_ASSET_ID;
     }
 
 	std::optional<CWorldSequencePlayer::OBJECT_PLACEMENT> WorldPlacementFromCue(
@@ -1689,14 +1692,31 @@ void Client::CLevel_KakulSaydonArena::Update_RaidBgm()
                 Is_SequenceCameraAudience(shot.strSequenceInstanceId, player.iMarioStage) &&
                 m_SequencePlayer.Is_Playing(shot.strSequenceInstanceId);
         });
+    const bool_t compositionCameraPlaying = m_pCamera && m_CompositionCamera.cinematicTrack &&
+        !m_CompositionCamera.ownerKey.empty() &&
+        m_pCamera->Is_PresentationOverrideOwnedBy(0x4b4f554b55434f4dull);
     float3_t position{};
     const bool_t inReadyArea = Try_GetReplicatedLocalPlayerPosition(position) &&
         (LostArk::Shared::Is_KoukuArenaStartArea(position.x, position.y, position.z) ||
          LostArk::Shared::Is_KoukuGate3EntryTerrace(position.x, position.y, position.z));
+    auto musicPhase = state.ePhase;
+    std::string_view musicGate = state.strGateId;
+    if (musicPhase == PHASE::INACTIVE && m_iActiveDebugGate < Get_DebugGates().size())
+    {
+        // F1 and the Release entry UI commit the same Server-approved gate scene.
+        // A room without a raid epoch still uses that admitted gate's battle music.
+        const auto* id = Get_DebugGates()[m_iActiveDebugGate].pAuditionPlacementId;
+        const std::string_view placement = id ? id : "";
+        musicGate = placement == "boss.kakulsaydon.g1.saydon" ? "GATE1" :
+            placement == "boss.kakulsaydon.g2.kouku" ? "GATE2" :
+            placement == "boss.kakulsaydon.g3.saydon" ? "GATE3" :
+            placement == "boss.kakulsaydon.bingo.saydon" ? "BINGO" : "";
+        if (!musicGate.empty()) musicPhase = PHASE::COMBAT;
+    }
     const wchar_t* assetId = Resolve_KoukuRaidBgmAsset(
         !localPlayer || m_bLocalSequencePlaybackActive || m_bSequenceCombatPending || cameraPlaying ||
-        state.ePhase == PHASE::CINEMATIC,
-        inReadyArea, state.ePhase, state.strGateId,
+        compositionCameraPlaying || state.ePhase == PHASE::CINEMATIC,
+        inReadyArea, musicPhase, musicGate,
         localPlayer ? player.iMarioStage : 0u,
         localPlayer && player.eKoukuHudMode == LostArk::Shared::KOUKU_HUD_MODE::MAZE);
     const std::wstring wanted = assetId ? assetId : L"";
@@ -5942,7 +5962,8 @@ bool_t Client::CLevel_KakulSaydonArena::Can_StartCompositionWorld(
 #ifdef _DEBUG
 bool Client::CLevel_KakulSaydonArena::Debug_PrepareCompletePlayResources(
     const std::vector<std::string>& patternIds, const std::vector<std::string>& bundleIds,
-    const uint32_t sourceRevision, bool& ready, std::string& status, const bool wholeRaid)
+    const uint32_t sourceRevision, bool& ready, std::string& status, const bool wholeRaid,
+    std::shared_ptr<const KOUKU_SAYDON_DRAFT_PRODUCT> draft)
 {
     ready = false;
     const auto& document = m_SequencePlayer.Get_Document();
@@ -5950,7 +5971,7 @@ bool Client::CLevel_KakulSaydonArena::Debug_PrepareCompletePlayResources(
     const auto v2Generation = CEffectV2Runtime::Cache_Generation();
     if (!m_CompletePlayPreparation || m_CompletePlayPreparation->selectedPatterns != patternIds ||
         m_CompletePlayPreparation->selectedBundles != bundleIds || m_CompletePlayPreparation->sourceRevision != sourceRevision ||
-        m_CompletePlayPreparation->wholeRaid != wholeRaid)
+        m_CompletePlayPreparation->wholeRaid != wholeRaid || m_CompletePlayPreparation->draft != draft)
     {
         // A publish can finish after arena entry. Refresh the idle runtime base once
         // per new request; active cues and editor drafts retain their own snapshots.
@@ -5960,7 +5981,8 @@ bool Client::CLevel_KakulSaydonArena::Debug_PrepareCompletePlayResources(
         COMPLETE_PLAY_PREPARATION staged;
         staged.selectedPatterns = patternIds; staged.selectedBundles = bundleIds; staged.sourceRevision = sourceRevision;
         if (!CKoukuSaydonPresentationAssetService::Collect_CompletePlayResources(patternIds, bundleIds,
-            sourceRevision, staged.resources, status)) return false;
+            sourceRevision, staged.resources, status, draft)) return false;
+        staged.draft = draft;
         staged.wholeRaid = wholeRaid;
         if (wholeRaid)
         {
@@ -6068,6 +6090,8 @@ bool Client::CLevel_KakulSaydonArena::Debug_PrepareCompletePlayResources(
         { status = "Complete Play WORLD preparation failed: " + id + "; " + m_SequencePlayer.Get_Status(); return false; }
         ++pending.worldIndex; return true;
     }
+    if (pending.draft && !CKoukuSaydonPresentationAssetService::Validate_DraftBindings(
+        ETOUI(LEVEL::KAKULSAYDON_ARENA), pending.draft, status)) return false;
     ready = true;
     status = "Complete Play dependencies are fully prepared.";
     return true;

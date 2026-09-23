@@ -47,7 +47,7 @@ HRESULT CBody_Valtan::Initialize(void* pArg)
 		return E_FAIL;
 
 	for (uint32_t i = 0; i < m_pModelCom->Get_NumMeshes(); ++i)
-		m_hasTranslucentMeshes |= Is_SourceGhostSurface(m_pModelCom->Get_MaterialSurface(i));
+		m_hasOpaqueGhostMeshes |= Is_SourceGhostSurface(m_pModelCom->Get_MaterialSurface(i));
 
 	/* 발탄 원본 모델의 전방축을 Engine의 LOOK(+Z) 기준에 맞춘다. */
 	m_pTransformCom->Rotation(0.f, -90.f, 0.f);
@@ -78,7 +78,11 @@ void CBody_Valtan::Late_Update(f32_t fTimeDelta)
 	CGameInstance::Get().Add_RenderObject(
 		RENDERGROUP::NONBLEND,
 		static_pointer_cast<CGameObject>(shared_from_this()));
-	if (m_hasTranslucentMeshes || m_ChargeAfterimage.Has_Samples())
+	// Forward opaque color belongs in SceneHDR before the sorted translucent queue.
+    if (m_hasOpaqueGhostMeshes)
+        CGameInstance::Get().Add_RenderObject(RENDERGROUP::NONLIGHT,
+            static_pointer_cast<CGameObject>(shared_from_this()));
+	if (m_ChargeAfterimage.Has_Samples())
 	{
 		CGameInstance::Get().Add_RenderObject(
 			RENDERGROUP::BLEND,
@@ -119,15 +123,16 @@ HRESULT CBody_Valtan::Render()
 
 HRESULT CBody_Valtan::Render_Group(RENDERGROUP group)
 {
+    if (RENDERGROUP::NONLIGHT == group) return Render_OpaqueGhost();
     if (RENDERGROUP::BLEND != group) return Render();
     m_ChargeAfterimage.Render(m_pModelCom, m_pShaderCom, m_CombinedWorldMatrix);
-    return m_hasTranslucentMeshes ? Render_Translucent() : S_OK;
+    return S_OK;
 }
 
 std::string CBody_Valtan::Get_RenderDiagnostic() const
 {
-    std::string status = m_hasTranslucentMeshes ? "BLEND pass 10" : "NONBLEND pass 0";
-    status += " | submitted translucent meshes=" + std::to_string(m_iTranslucentDrawCount);
+    std::string status = m_hasOpaqueGhostMeshes ? "NONLIGHT opaque pass 16" : "NONBLEND pass 0";
+    status += " | submitted opaque ghost meshes=" + std::to_string(m_iOpaqueGhostDrawCount);
     if (m_pModelCom)
         for (uint32_t mesh = 0u; mesh < m_pModelCom->Get_NumMeshes(); ++mesh)
         {
@@ -135,18 +140,18 @@ std::string CBody_Valtan::Get_RenderDiagnostic() const
             status += " | " + m_pModelCom->Get_MaterialName(mesh) + ":program=" +
                 std::to_string(surface ? surface->sourceCharacter.program : 0u);
         }
-    if (!m_strTranslucentRenderFailure.empty()) status += " | " + m_strTranslucentRenderFailure;
+    if (!m_strOpaqueGhostRenderFailure.empty()) status += " | " + m_strOpaqueGhostRenderFailure;
     return status;
 }
 
-HRESULT CBody_Valtan::Render_Translucent()
+HRESULT CBody_Valtan::Render_OpaqueGhost()
 {
-    constexpr uint32_t SOURCE_TRANSLUCENT_ONE_SIDED_PASS = 10u;
-    m_iTranslucentDrawCount = 0u;
+    constexpr uint32_t SOURCE_GHOST_OPAQUE_PASS = 16u;
+    m_iOpaqueGhostDrawCount = 0u;
     const auto checked = [this](HRESULT result, const std::string& stage)
     {
         if (FAILED(result))
-            m_strTranslucentRenderFailure = stage + " failed, HRESULT=" +
+            m_strOpaqueGhostRenderFailure = stage + " failed, HRESULT=" +
                 std::to_string(static_cast<int32_t>(result));
         return result;
     };
@@ -171,14 +176,14 @@ HRESULT CBody_Valtan::Render_Translucent()
         result = checked(m_pModelCom->Bind_BoneMatrices(m_pShaderCom, "g_BoneMatrices", i),
             "bone palette" + label);
         if (FAILED(result)) return result;
-        result = checked(m_pShaderCom->Begin(SOURCE_TRANSLUCENT_ONE_SIDED_PASS),
-            "native84 variant/pass10" + label);
+        result = checked(m_pShaderCom->Begin(SOURCE_GHOST_OPAQUE_PASS),
+            "native84 opaque variant/pass16" + label);
         if (FAILED(result)) return result;
         result = checked(m_pModelCom->Render(i), "mesh submission" + label);
         if (FAILED(result)) return result;
-        ++m_iTranslucentDrawCount;
+        ++m_iOpaqueGhostDrawCount;
     }
-    m_strTranslucentRenderFailure.clear();
+    m_strOpaqueGhostRenderFailure.clear();
     return S_OK;
 }
 
@@ -198,7 +203,8 @@ HRESULT CBody_Valtan::Render_Shadow()
 				*m_pModelCom, m_pShaderCom, i, Profile)) ||
 			FAILED(m_pModelCom->Bind_BoneMatrices(
 				m_pShaderCom, "g_BoneMatrices", i)) ||
-			FAILED(m_pShaderCom->Begin(ANIMATED_SHADOW_PASS)) ||
+			FAILED(m_pShaderCom->Begin(Is_SourceGhostSurface(m_pModelCom->Get_MaterialSurface(i)) ?
+                17u : ANIMATED_SHADOW_PASS)) ||
 			FAILED(m_pModelCom->Render(i)))
 		{
 			return E_FAIL;

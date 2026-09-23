@@ -931,6 +931,9 @@ void LostArk::Server::CGameRoom::Update_KoukuPursuitProjectiles(
 		object.fSpeedMps = trigger.fProjectileSpeedMps;
 		object.fContactPresentationRadiusM = trigger.fProjectileContactRadiusM;
 		object.strContactPresentationId = trigger.strContactVisualId;
+        if (trigger.ProjectileCardSymbols.size() == trigger.ProjectileVisualIds.size())
+            object.eDamageImmuneCardSymbol = trigger.ProjectileCardSymbols[
+                (window.iRandomWaveOrdinal * trigger.iProjectileCountPerWave + ordinal) % trigger.ProjectileVisualIds.size()];
 		/* Saydon faces model +X: slot zero is one quarter turn from the yaw basis,
 		180 degrees opposite the old back-facing spawn. Keep this in step with the Tool preview
 		copy in Client/Private/KoukuSaydonPresentationPlayer_LogicPreview.cpp. */

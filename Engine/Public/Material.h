@@ -136,6 +136,8 @@ private:
     ComPtr<ID3D11ShaderResourceView> m_StaticShadow;
     ComPtr<ID3D11ShaderResourceView> m_EnvironmentCube;
     ComPtr<ID3D11ShaderResourceView> m_EnvironmentBRDF;
+    ComPtr<ID3D11ShaderResourceView> m_SourceIndirectBRDF;
+    ComPtr<ID3D11ShaderResourceView> m_SourceIndirectCube;
 
 public:
 	static shared_ptr<CMaterial> Create(ComPtr<ID3D11Device> pDevice, ComPtr<ID3D11DeviceContext> pContext, const aiMaterial* pAIMaterial, const char_t* pModelFilePath);

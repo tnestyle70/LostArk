@@ -69,8 +69,8 @@ namespace Client
 	   only a name keeps the kind empty and stays DRAFT-only. */
 	inline constexpr std::array<const char_t*, 17u> KOUKU_SAYDON_JUDGEMENT_KINDS = {
 		"CARD_DICE_BIND", "ROULETTE_CARD_MATCH", "GAZE_REAL_BOSS", "POSE_INPUT", "STAGGER_WINDOW", "COUNTER_WINDOW", "AREA_OVERLAP", "OBJECT_OVERLAP", "EXTERNAL_SIGNAL", "ATTACHMENT_HOLD", "PATTERN_COMPLETION_COUNT", "SHOWTIME_PLAYER_TARGETS", "BOSS_TRACK_TARGET", "CROSS_DIRECTION_CLONES", "PURSUIT_PROJECTILES", "BINGO_BOARD", "INVULNERABILITY_ZONE" };
-	inline constexpr std::array<const char_t*, 12u> KOUKU_SAYDON_OUTCOME_KINDS = {
-		"INSTANT_DEATH", "MAX_HP_PERCENT_DAMAGE", "MADNESS_GAUGE_ADD_PERCENT",
+	inline constexpr std::array<const char_t*, 13u> KOUKU_SAYDON_OUTCOME_KINDS = {
+		"INSTANT_DEATH", "MAX_HP_PERCENT_DAMAGE", "FIXED_DAMAGE", "MADNESS_GAUGE_ADD_PERCENT",
 		"CLOWN_TRANSFORM", "FEAR", "FOLLOWUP_PATTERN", "PLAY_WORLD_OBJECT_MOTION",
 		"PLAY_CONTACT_WORLD_OBJECT_MOTION", "COMPLETE_LOGIC_WINDOW", "CAPTURE_PLAYER", "GRAB_TO_WORLD_OBJECT", "MARIO_ENTER" };
 	inline constexpr std::array<const char_t*, 4u> KOUKU_SAYDON_CARD_SYMBOLS = {
@@ -133,6 +133,7 @@ namespace Client
 		std::vector<std::vector<LostArk::Shared::ATTACK_HIT_TEMPLATE>> RandomVolleyHits;
         // Effect resource IDs; the Server owns travel, contact and object lifetime.
         std::vector<std::string> PursuitVisualIds;
+        std::vector<std::string> PursuitCardSymbols; // Optional visual-slot symbol; matching players take no card damage.
         std::string strContactVisualId;
         double fPursuitMaxDistanceM = 0.0; // Zero leaves travel bounded by lifetime/contact.
         double fPursuitSpeedMps = 0.0, fContactRadiusM = 0.0, fSpawnRadiusM = 0.0;
@@ -169,8 +170,10 @@ namespace Client
 		/* RESULT values. */
 		std::string strOutcomeKind;
 		std::uint32_t iPercent = 0u;
+		std::uint32_t iDamageAmount = 0u; // FIXED_DAMAGE: HP, independent of max HP.
 		std::uint32_t iDurationMs = 0u;
 		double fPushRangeM = 0.0;
+		double fPushHeightM = 0.0;
 		std::string strPushDirection = "AWAY_FROM_BOSS";
 		std::uint32_t iPushMs = 0u;
 		bool_t bForcePush = false;
@@ -204,6 +207,7 @@ namespace Client
 		bool_t bRandomPlayerOnly = false;
 		bool_t bRearmOnExit = false;
 		bool_t bRepeatAfterKnockback = false;
+		std::uint32_t iRepeatIntervalMs = 0u;
 		double fBossChargeDistanceM = 0.0;
         double fChargeYawOffsetDegrees = 0.0;
 		std::string strHudMode;
@@ -441,6 +445,11 @@ namespace Client
 		std::array<double, 3u> PositionOffset{};
 		std::array<double, 3u> RotationDegrees{};
 		std::array<double, 3u> Scale{ 1.0, 1.0, 1.0 };
+		// LINEAR interpolates position and size for this occurrence lifetime.
+		std::string strColliderMotion = "STATIC";
+        std::string strAnchorPresentationOccurrenceId;
+		std::array<double, 3u> ColliderEndPositionOffset{};
+		std::array<double, 3u> ColliderEndScale{ 1.0, 1.0, 1.0 };
 		std::uint32_t iFadeInMs = 0u;
 		std::uint32_t iFadeOutMs = 0u;
 		double fDissolveStart = 0.85;

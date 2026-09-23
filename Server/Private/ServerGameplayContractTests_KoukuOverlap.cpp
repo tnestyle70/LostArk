@@ -2,6 +2,8 @@
 #include "KoukuSaydonLogicRuntime.h"
 #include "ServerGameplayContractTests.h"
 #include "GameplayCatalog.h"
+#include "KoukuSaydonBrain.h"
+#include "ServerApp.h"
 #include "GameRoom.h"
 #include "ServerNavigation.h"
 #include "WorldBootstrap.h"
@@ -35,6 +37,126 @@ using namespace LostArk::Server;
 using namespace LostArk::Shared;
 
 
+
+namespace
+{
+    void Run_ColliderMotionAndTickContracts(TESTS& tests, const CGameplayCatalog& catalog)
+    {
+        auto boss = std::make_unique<SERVER_WORLD_ENTITY>();
+        boss->iPatternSequence = 1u; boss->iCurrentHp = 100u;
+        BOSS_PATTERN_DEFINITION pattern{}; pattern.strPatternId = "collider.motion.contract";
+        BOSS_PATTERN_LOGIC_WINDOW window{}; window.strWindowId = "column.contact";
+        window.eKind = BOSS_PATTERN_LOGIC_KIND::ENTER_AREA;
+        window.iStartMs = 100u; window.iDurationMs = 1000u;
+        BOSS_PATTERN_LOGIC_RESULT damage{};
+        damage.eKind = BOSS_PATTERN_LOGIC_RESULT_KIND::MAX_HP_PERCENT_DAMAGE; damage.iPercent = 10u;
+        window.OnSuccess = {damage};
+        BOSS_LOGIC_REGION column{}; column.strRegionId = "column";
+        column.bCylinder = true; column.fRadiusM = 1.f; column.fHalfY = .2f;
+        column.fCenterY = -3.f; column.bLinearMotion = true;
+        column.iMotionStartMs = 100u; column.iMotionDurationMs = 1000u;
+        column.EndPositionOffset = {0.f, 8.f, 0.f}; column.EndScale = {1.f, 1.f, 1.f};
+        window.CardRegions = {column}; pattern.LogicWindows = {window};
+        std::map<PLAYER_ID, SERVER_PLAYER> players;
+        const auto resetPlayer = [&](PLAYER_ID id, float x, float y) {
+            auto& player = players[id]; player = {};
+            player.iPlayerId = id; player.iNetEntityId = 100u + id;
+            player.iCurrentHp = player.iMaximumHp = 100u; player.isCombatReady = true;
+            player.fPositionX = x; player.fPositionY = y;
+        };
+        KOUKUSAYDON_LOGIC_LEDGER ledger; KOUKUSAYDON_LOGIC_OUTPUT output;
+        std::vector<DAMAGE_EVENT> events;
+        const auto build = [&] {
+            events.clear(); output = {};
+            CKoukuSaydonLogicRuntime::Build(pattern, *boss, 100u, ledger);
+        };
+        const auto update = [&](unsigned tick) {
+            CKoukuSaydonLogicRuntime::Update(*boss, pattern, ledger, players, catalog, nullptr, tick, events, output);
+        };
+        resetPlayer(1u, 0.f, 0.f); resetPlayer(2u, 3.f, 0.f); resetPlayer(3u, 0.f, 20.f);
+        build(); update(102u); update(103u); update(108u);
+        tests.Require(events.empty(), "A rising cylinder has no contact before birth or while its top remains below the player's body");
+        update(118u); update(119u); update(132u); update(133u);
+        tests.Require(players.at(1u).iCurrentHp == 90u && players.at(2u).iCurrentHp == 100u &&
+            players.at(3u).iCurrentHp == 100u && events.size() == 1u,
+            "A rising cylinder intersects the player's body once at its interpolated height and rejects radial and vertical misses");
+
+        auto& region = pattern.LogicWindows.front().CardRegions.front();
+        region.fCenterY = 5.f; region.EndPositionOffset = {0.f, -8.f, 0.f};
+        resetPlayer(1u, 0.f, 0.f); build(); update(103u);
+        tests.Require(events.empty(), "A descending cylinder starts above the player instead of becoming an infinite-height circle");
+        update(118u); update(132u);
+        tests.Require(players.at(1u).iCurrentHp == 90u && events.size() == 1u,
+            "A descending cylinder uses the same lifetime interpolation and once-per-player trigger");
+
+        region.fCenterY = -5.f; region.fHalfY = .05f; region.iMotionDurationMs = 33u;
+        pattern.LogicWindows.front().iDurationMs = 33u;
+        region.EndPositionOffset = {0.f, 10.f, 0.f};
+        resetPlayer(1u, 0.f, 0.f); build(); update(103u); update(104u);
+        tests.Require(players.at(1u).iCurrentHp == 90u && events.size() == 1u,
+            "A thin cylinder crossing the entire player body between two Server ticks still hits through its bounded sweep");
+        region.iMotionDurationMs = 1000u; pattern.LogicWindows.front().iDurationMs = 1000u;
+
+        region.fCenterY = .5f; region.fHalfY = .5f; region.fRadiusM = .1f;
+        region.EndPositionOffset = {0.f, 3.5f, 0.f}; region.EndScale = {30.f, 8.f, 30.f};
+        players.clear(); resetPlayer(1u, 2.f, 5.f); build(); update(103u); update(108u);
+        tests.Require(events.empty(), "Growing column keeps a narrow and low start volume");
+        update(128u); update(132u);
+        tests.Require(players.at(1u).iCurrentHp == 90u && events.size() == 1u,
+            "Independent end size and end position grow a column upward from its fixed floor and expand its radius");
+
+        region.bLinearMotion = false; region.fCenterY = 1.f; region.fHalfY = 1.f; region.fRadiusM = 2.f;
+        auto& contact = pattern.LogicWindows.front(); contact.iRepeatIntervalMs = 200u;
+        players.clear(); resetPlayer(1u, 0.f, 0.f); resetPlayer(2u, 20.f, 0.f);
+        build(); update(103u); update(103u); update(108u);
+        tests.Require(players.at(1u).iCurrentHp == 90u && events.size() == 1u,
+            "Tick contact damages immediately on entry and does not repeat on a duplicate or premature Server tick");
+        update(109u); players.at(2u).fPositionX = 0.f; update(110u); update(114u);
+        tests.Require(players.at(1u).iCurrentHp == 80u && players.at(2u).iCurrentHp == 90u && events.size() == 3u,
+            "Tick contact owns an independent authored interval for each player");
+        players.at(1u).fPositionX = 20.f; update(115u); update(116u);
+        tests.Require(players.at(1u).iCurrentHp == 80u && players.at(2u).iCurrentHp == 80u && events.size() == 4u,
+            "A contact tick damages only players still inside and does not punish an exited player");
+        update(133u); update(140u);
+        tests.Require(events.size() == 4u, "Collider lifetime closes periodic contact without a final out-of-window damage tick");
+
+        contact.iRepeatIntervalMs = 0u; region.fRadiusM = 1.f;
+        region.eAnchor = BOSS_LOGIC_REGION_ANCHOR::BOSS_CURRENT; region.fCenterX = 0.f;
+        region.fCenterZ = 3.f; region.fCenterY = 1.f; boss->fPositionX = 10.f;
+        boss->fPositionY = 7.f; boss->fPositionZ = 20.f; boss->fYawDegrees = 90.f;
+        players.clear(); resetPlayer(1u, 13.f, 7.f); players.at(1u).fPositionZ = 20.f;
+        resetPlayer(2u, 13.f, 0.f); players.at(2u).fPositionZ = 20.f;
+        build(); update(103u);
+        tests.Require(players.at(1u).iCurrentHp == 90u && players.at(2u).iCurrentHp == 100u,
+            "Boss-follow cylinder combines authoritative root yaw and height exactly once");
+        region.eAnchor = BOSS_LOGIC_REGION_ANCHOR::BOSS_START;
+        resetPlayer(1u, 1000.f, 7.f); players.at(1u).fPositionZ = 20.f;
+        build(); update(103u);
+        boss->fPositionX = 100.f; boss->fPositionY = 50.f; boss->fPositionZ = 200.f; boss->fYawDegrees = 0.f;
+        players.at(1u).fPositionX = 13.f; update(104u); update(105u);
+        tests.Require(players.at(1u).iCurrentHp == 90u && players.at(2u).iCurrentHp == 100u && events.size() == 1u,
+            "A fixed boss-anchored cylinder freezes birth position, yaw and height while the boss moves to another location");
+        region.iAnchorCaptureStartMs = 0u;
+        boss->fPositionX = 10.f; boss->fPositionY = 7.f; boss->fPositionZ = 20.f; boss->fYawDegrees = 90.f;
+        resetPlayer(1u, 13.f, 7.f); players.at(1u).fPositionZ = 20.f;
+        build(); update(100u);
+        tests.Require(events.empty() && !ledger.Windows.front().bOpened && !ledger.Windows.front().FrozenRegions.empty(),
+            "A fixed Effect captures its authoritative basis before the later Collider window opens");
+        boss->fPositionX = 100.f; boss->fPositionY = 50.f; boss->fPositionZ = 200.f; boss->fYawDegrees = 0.f;
+        update(103u);
+        tests.Require(players.at(1u).iCurrentHp == 90u && events.size() == 1u,
+            "The later Collider uses its linked Effect birth basis after the boss has moved and turned");
+        contact.OnSuccess.front().eKind = BOSS_PATTERN_LOGIC_RESULT_KIND::MARIO_ENTER;
+        contact.OnSuccess.front().iMarioEntryStage = 1u;
+        resetPlayer(1u, boss->fPositionX, boss->fPositionY);
+        players.at(1u).fPositionZ = boss->fPositionZ + 3.f;
+        tests.Require(CKoukuSaydonLogicRuntime::Is_InsideMarioEntry(pattern, *boss, players.at(1u), 3u),
+            "A fixed boss-anchored Mario entry resolves against its room-owned frozen entry anchor");
+        players.at(1u).fPositionY -= 10.f;
+        tests.Require(!CKoukuSaydonLogicRuntime::Is_InsideMarioEntry(pattern, *boss, players.at(1u), 3u),
+            "Cylinder Mario entry preserves finite-height exclusion through its specialized admission consumer");
+    }
+}
 
 void CServerGameplayContractRunner::Run_KoukuPushContracts(TESTS& tests, const CGameplayCatalog& catalog)
 {
@@ -71,6 +193,114 @@ void CServerGameplayContractRunner::Run_KoukuPushContracts(TESTS& tests, const C
     const auto arenaNavigation = room->m_ServerNavigation;
     room->m_ServerNavigation = CServerNavigation{};
     std::string status; room->m_ServerCollisionSystem.Initialize({}, status); room->m_ServerCollisionSystem.Set_BlockingBodies({});
+    {
+        namespace fs = std::filesystem;
+        std::vector<wchar_t> buffer(32768u); fs::path dataRoot;
+        const DWORD configured = GetEnvironmentVariableW(L"LOSTARK_SERVER_DATA_ROOT", buffer.data(), DWORD(buffer.size()));
+        if (configured && configured < buffer.size()) dataRoot = buffer.data();
+        else { GetModuleFileNameW(nullptr, buffer.data(), DWORD(buffer.size())); dataRoot = fs::path(buffer.data()).parent_path().parent_path() / L"DataFiles"; }
+        std::ifstream input(dataRoot / L"Gameplay/Gameplay.bootstrap", std::ios::binary);
+        std::string bytes((std::istreambuf_iterator<char>(input)), std::istreambuf_iterator<char>());
+        if (!bytes.empty() && bytes.back() != '\n') bytes += '\n';
+        const std::string encounter = "ENCOUNTER_KAKULSAYDON_G1", id = "KAKULSAYDON_G1_COLLIDER_CONTRACT";
+        const std::string prefix = encounter + "\t" + id;
+        bytes += "PATTERN\t" + prefix + "\t" + id + ".action\tAUDITION_ONLY\t0\t0\t0\t0\t0\t0\t0\t1\t1\tANY\tANY\t0\n";
+        bytes += "PATTERNBOSS\t" + prefix + "\tBOSS_KAKULSAYDON_G1_SAYDON\n";
+        bytes += "PATTERNPOLICY\t" + prefix + "\tNORMAL\t1\t1\tNONE\tNONE\n";
+        bytes += "PATTERNSOURCE\t" + prefix + "\t1\t0\t0\t0\t0\t0\t0\n";
+        bytes += "PATTERNSTAGE\t" + prefix + "\t0\tSTAGE_1\t" + id + ".stage.1\tACTIVE\t5000\tNONE\t0\t0\t0\t0\t0\t0\t0\t0\t-\t0\t0\t0\t0\n";
+        bytes += "PATTERNSTAGEBRANCH\t" + prefix + "\t" + id + ".stage.1\tTIMEOUT\t-\n";
+        bytes += "PATTERNTARGET\t" + id + "\tGATE1\tboss.kakulsaydon.g1.saydon\n";
+        bytes += "PATTERNLOGIC\t" + prefix + "\t0\tcolumn.hit\tENTER_AREA\t100\t1000\t0\t0\t0\t0\t0\t0\t0\t0\t0\t0\t0\t-\t0\t0\n";
+        bytes += "PATTERNLOGICTICK\t" + prefix + "\tcolumn.hit\t200\n";
+        bytes += "PATTERNLOGICREGION\t" + prefix + "\tcolumn.hit\t0\tcolumn.body\tBOSS_START\tCYLINDER\t1\t0.25\t3\t0\t2\t0.25\t2\t4\t45\tNONE\tNONE\n";
+        bytes += "PATTERNLOGICREGIONCAPTURE\t" + prefix + "\tcolumn.hit\t0\t0\n";
+        bytes += "PATTERNLOGICREGIONMOTION\t" + prefix + "\tcolumn.hit\t0\t0\t3.75\t4\t1.5\t16\t1.5\n";
+        bytes += "PATTERNLOGICOUTCOME\t" + prefix + "\tcolumn.hit\tSUCCESS\t0\tMAX_HP_PERCENT_DAMAGE\t10\t0\t-\n";
+        bytes += "PATTERNLOGICPUSH\t" + prefix + "\tcolumn.hit\tSUCCESS\t0\t0\t1500\tAWAY_FROM_BOSS\t0\t0\t0\t1\t4\n";
+        const auto headerEnd = bytes.find('\n'), headerCount = bytes.rfind('\t', headerEnd);
+        bytes.replace(headerCount + 1u, headerEnd - headerCount - 1u, std::to_string(std::count(bytes.begin(), bytes.end(), '\n') - 1u));
+        const auto directory = fs::temp_directory_path() / (L"LostArkColliderContract-" + std::to_wstring(GetCurrentProcessId()));
+        std::error_code error; fs::create_directories(directory, error); const auto path = directory / L"Gameplay.bootstrap";
+        auto generation = std::make_shared<CGameplayCatalog>(); GameplayDataRevision revision;
+        const auto load = [&](const std::string& content) {
+            { std::ofstream output(path, std::ios::binary | std::ios::trunc); output.write(content.data(), content.size()); }
+            GameplayDataRevision hash;
+            return !error && CServerApp::Hash_GameplayFileForAdmission(path, hash, status) &&
+                generation->Load_FromBootstrap(fs::canonical(path), hash, hash);
+        };
+        const bool loaded = load(bytes);
+        if (!loaded) std::cout << "[ColliderCatalog] " << generation->Get_Status() << '\n';
+        const auto* parsed = loaded ? CKoukuSaydonBrain::Find_AnimationOnlyPattern(*generation, id, status) : nullptr;
+        bool fields = parsed && parsed->LogicWindows.size() == 1u &&
+            parsed->LogicWindows.front().CardRegions.size() == 1u && parsed->LogicWindows.front().OnSuccess.size() == 1u;
+        if (fields) {
+            const auto& w = parsed->LogicWindows.front(); const auto& r = w.CardRegions.front(); const auto& hit = w.OnSuccess.front();
+            fields = w.iRepeatIntervalMs == 200u && r.bCylinder && r.bLinearMotion &&
+                r.eAnchor == BOSS_LOGIC_REGION_ANCHOR::BOSS_START && r.iAnchorCaptureStartMs == 0u && r.iMotionStartMs == 100u && r.iMotionDurationMs == 1000u &&
+                r.EndPositionOffset == std::array<float, 3u>{0.f, 3.75f, 4.f} && r.EndScale == std::array<float, 3u>{1.5f, 16.f, 1.5f} &&
+                hit.fPushRangeM == 0.f && hit.fPushHeightM == 4.f && hit.bPushBallistic && !hit.bPushCanLeaveArena;
+        }
+        tests.Require(fields, "Actual hashed bootstrap admission consumes cylinder, birth anchor, motion, contact tick and pure vertical launch fields");
+        if (fields) {
+            std::string rising = bytes;
+            const auto start = rising.find("PATTERNATTACKHIT\tENCOUNTER_KAKULSAYDON_G1\tKAKULSAYDON_G1_PATTERN_39\t");
+            auto end = start == std::string::npos ? start : rising.find('\n', start);
+            if (end != std::string::npos && end > start && rising[end - 1u] == '\r') --end;
+            bool admitsRise = end != std::string::npos;
+            if (admitsRise) {
+                const auto line = rising.substr(start, end - start);
+                const auto columns = std::count(line.begin(), line.end(), '\t') + 1;
+                if (columns == 25) rising.insert(end, "\t3\t1200");
+                else if (columns == 27) {
+                    const auto last = rising.rfind('\t', end);
+                    const auto previous = rising.rfind('\t', last - 1u);
+                    rising.replace(previous, end - previous, "\t3\t1200");
+                } else admitsRise = false;
+            }
+            admitsRise = admitsRise && load(rising);
+            const auto* albion = admitsRise ? CKoukuSaydonBrain::Find_AnimationOnlyPattern(*generation, "KAKULSAYDON_G1_PATTERN_39", status) : nullptr;
+            bool foundRise = false;
+            if (albion) for (const auto& trigger : albion->MechanicTriggers)
+                for (const auto& hit : trigger.FixedHits)
+                    foundRise |= hit.fRiseHeightM == 3.0 && hit.iPushMs == 1200u;
+            tests.Require(foundRise, "Native bootstrap admits optional Albion rise height and flight duration on the existing attack template");
+            tests.Require(load(bytes), "Legacy attack rows still admit with no rise reaction and preserve other Collider fields");
+            revision = generation->Get_ActiveRevision();
+            std::string invalid = bytes; const auto motion = invalid.rfind("\t1.5\t16\t1.5\n");
+            invalid.replace(motion, std::string("\t1.5\t16\t1.5\n").size(), "\t1.5\t0\t1.5\n");
+            tests.Require(!load(invalid) && generation->Get_ActiveRevision() == revision,
+                "Malformed end-size supplement preserves the previously admitted gameplay generation");
+            invalid = bytes;
+            const std::string circleTail = "\t4\t45\tNONE\tNONE\n";
+            invalid.replace(invalid.rfind(circleTail), circleTail.size(), "\t4\t45\tNONE\tNONE\t1\n");
+            tests.Require(!load(invalid) && generation->Get_ActiveRevision() == revision,
+                "Native cylinder admission rejects unsupported hollow geometry and preserves its previous catalog");
+            room->m_KoukuSaydonPatternAudition.iRoomAuditionEpoch = 1u;
+            room->m_KoukuSaydonPatternAudition.Request.Scope.strEncounterId = encounter;
+            room->m_KoukuSaydonPatternAudition.Request.Scope.eWorldId = WORLD_ID::KAKULSAYDON_ARENA;
+            room->m_KoukuSaydonPatternAudition.pProductGeneration = generation;
+            room->m_KoukuSaydonPatternAudition.iPinnedSourceRevision = CKoukuSaydonBrain::Resolve_ProductSourceRevision(*generation);
+            room->m_KoukuSaydonPatternAudition.PinnedGameplayRevision = revision;
+            tests.Require(room->Resolve_KoukuProductCatalog() == generation.get(), "Gate 1 fixture retains its exact admitted Product generation and revision");
+            auto member = std::make_unique<CGameRoom::KOUKUSAYDON_PATTERN_AUDITION_MEMBER>(); member->PatternIds = {id};
+            room->m_KoukuSaydonPatternAudition.Members.push_back(std::move(*member));
+            WORLD_BOOTSTRAP_PLACEMENT fence{}; fence.strPlacementId = "gate1.flight.fence";
+            fence.eKind = WORLD_BOOTSTRAP_KIND::COLLISION_BOX; fence.fPositionX = 3.f;
+            fence.fHalfExtentX = .1f; fence.fHalfExtentY = fence.fHalfExtentZ = 10.f;
+            room->m_ServerCollisionSystem.Initialize({fence}, status);
+            auto p = player(); auto flight = push; flight.fPushRangeM = 6.f; flight.iPushMs = 1000u;
+            flight.bPushBallistic = flight.bPushCanLeaveArena = true; flight.fPushHeightM = 4.f;
+            CKoukuSaydonLogicRuntime::Apply_Result(p, flight, *boss, catalog, nullptr, 100u, events);
+            for (unsigned tick = 0u; tick < 31u; ++tick) room->Advance_PlayerKnockback(p, 1.f / 30.f);
+            tests.Require(p.fPositionX > 1.f && p.fPositionX < 2.9f && std::abs(p.fPositionY) < .001f &&
+                !p.bKnockbackBallistic && p.eAction != PLAYER_ACTION_STATE::FALLING,
+                "Single-pattern Gate 1 audition resolves its pinned member gate and fences a legacy arena-exit launch with empty request scope");
+            room->m_KoukuSaydonPatternAudition = {};
+            room->m_ServerCollisionSystem.Initialize({}, status);
+        }
+        fs::remove(path, error); fs::remove(directory, error);
+    }
     for (const float distance : {6.f, 16.f})
     {
         auto p = player(); auto effect = push; effect.fPushRangeM = distance;
@@ -99,6 +329,32 @@ void CServerGameplayContractRunner::Run_KoukuPushContracts(TESTS& tests, const C
         tests.Require(std::abs(p.fPositionX - 31.f) < .0001f && std::abs(p.fPositionY) < .0001f &&
             !p.bKnockbackBallistic && p.fKnockbackRemainingSeconds == 0.f && p.eAction != PLAYER_ACTION_STATE::FALLING,
             "Ballistic movement lands after its authored distance without a navigation system");
+        for (const float height : {.5f, 4.f}) for (const float distance : {0.f, 6.f})
+        {
+            p = player(); auto bounded = effect;
+            bounded.fPushRangeM = distance; bounded.iPushMs = 1000u;
+            bounded.fPushHeightM = height; bounded.bPushCanLeaveArena = false;
+            CKoukuSaydonLogicRuntime::Apply_Result(p, bounded, *boss, catalog, nullptr, 100u, events, &contactCenter);
+            room->Advance_PlayerKnockback(p, .5f);
+            tests.Require(std::abs(p.fPositionY - height) < .0001f && std::abs(p.fPositionX - (1.f + distance * .5f)) < .0001f,
+                "Authored launch height reaches its apex halfway through the authored flight duration");
+            room->Advance_PlayerKnockback(p, .5f);
+            tests.Require(std::abs(p.fPositionY) < .0001f && std::abs(p.fPositionX - (1.f + distance)) < .0001f &&
+                !p.bKnockbackBallistic && p.eAction != PLAYER_ACTION_STATE::FALLING,
+                "Bounded ballistic launch returns to its floor after independent distance/height/time tuning");
+        }
+        WORLD_BOOTSTRAP_PLACEMENT fence{}; fence.strPlacementId = "ballistic.fence";
+        fence.eKind = WORLD_BOOTSTRAP_KIND::COLLISION_BOX; fence.fPositionX = 3.f;
+        fence.fHalfExtentX = .1f; fence.fHalfExtentY = fence.fHalfExtentZ = 10.f;
+        const bool fenceReady = room->m_ServerCollisionSystem.Initialize({fence}, status);
+        p = player(); auto fenced = effect; fenced.fPushRangeM = 6.f; fenced.iPushMs = 1000u;
+        fenced.fPushHeightM = 4.f; fenced.bPushCanLeaveArena = false;
+        CKoukuSaydonLogicRuntime::Apply_Result(p, fenced, *boss, catalog, nullptr, 100u, events, &contactCenter);
+        for (unsigned tick = 0u; tick < 31u; ++tick) room->Advance_PlayerKnockback(p, 1.f / 30.f);
+        tests.Require(fenceReady && p.fPositionX > 1.f && p.fPositionX < 2.9f && std::abs(p.fPositionY) < .001f &&
+            p.fKnockbackRemainingSeconds == 0.f && p.eAction != PLAYER_ACTION_STATE::FALLING,
+            "A bounded ballistic launch is fenced in XZ while completing its rise and fall");
+        room->m_ServerCollisionSystem.Initialize({}, status);
         p = player(); const auto beforeEvents = events.size();
         CKoukuSaydonLogicRuntime::Apply_Result(p, effect, *boss, catalog, nullptr, 100u, events);
         tests.Require(p.iCurrentHp == 100u && events.size() == beforeEvents,
@@ -198,7 +454,7 @@ void CServerGameplayContractRunner::Run_KoukuPushContracts(TESTS& tests, const C
         {
             auto p = player(); p.fPositionX = center.x; p.fPositionY = center.y; p.fPositionZ = center.z;
             boss->fPositionX = p.fPositionX; boss->fPositionZ = p.fPositionZ - 1.f;
-            auto effect = push; effect.fPushRangeM = distance;
+            auto effect = push; effect.fPushRangeM = distance; effect.bPushCanLeaveArena = false;
             CKoukuSaydonLogicRuntime::Apply_Result(p, effect, *boss, catalog, nullptr, 100u, events);
             for (unsigned tick = 0u; tick < 8u; ++tick) room->Advance_PlayerKnockback(p, 1.f / 30.f);
             tests.Require(p.eAction != PLAYER_ACTION_STATE::FALLING && p.iCurrentHp == 90u &&
@@ -217,10 +473,30 @@ void CServerGameplayContractRunner::Run_KoukuPushContracts(TESTS& tests, const C
                 "Only authored arena-exit push crosses the actual deck edge and begins ordinary falling");
             if (mayExit)
             {
-                room->Update_PlayerFall(p, 1.f / 30.f, p.iFallDeathTick);
-                tests.Require(p.iCurrentHp == 0u && p.eAction == PLAYER_ACTION_STATE::DEAD, "Arena-exit push completes existing falling death lifecycle");
+                for (unsigned tick = 0u; tick < 60u && p.iCurrentHp; ++tick)
+                    room->Update_PlayerFall(p, 1.f / 30.f, 102u + tick);
+                tests.Require(p.iCurrentHp == 0u && p.eAction == PLAYER_ACTION_STATE::DEAD &&
+                    p.fPositionY <= p.fFallDeathPlaneY, "Arena-exit push dies only after crossing the five-metre fall plane");
             }
         }
+        for (const std::uint8_t gate : {std::uint8_t(1u), std::uint8_t(3u)})
+        {
+            room->m_GateProgress.iCurrentGate = gate;
+            for (const bool ballistic : {false, true})
+            {
+                auto p = player(); p.fPositionX = lastGroundX; p.fPositionY = edgeGround.y; p.fPositionZ = 322.94f;
+                boss->fPositionX = p.fPositionX - 1.f; boss->fPositionZ = p.fPositionZ;
+                auto effect = push; effect.fPushRangeM = 6.f; effect.iPushMs = 1000u;
+                effect.bPushBallistic = ballistic; effect.fPushHeightM = ballistic ? 3.f : 0.f;
+                CKoukuSaydonLogicRuntime::Apply_Result(p, effect, *boss, catalog, nullptr, 100u, events);
+                for (unsigned tick = 0u; tick < 31u; ++tick) room->Advance_PlayerKnockback(p, 1.f / 30.f);
+                tests.Require(p.iCurrentHp == 90u && p.eAction != PLAYER_ACTION_STATE::FALLING &&
+                    p.fKnockbackRemainingSeconds == 0.f && arenaNavigation.Is_PointWalkableExact(p.fPositionX, p.fPositionZ) &&
+                    std::abs(p.fPositionY - edgeGround.y) <= 1.f,
+                    "Gate 1 and Gate 3 fence both ordinary and ballistic authored arena-exit pushes at the supported deck");
+            }
+        }
+        room->m_GateProgress.iCurrentGate = 0u;
         WORLD_BOOTSTRAP_PLACEMENT wall{}; wall.strPlacementId = "push.wall"; wall.eKind = WORLD_BOOTSTRAP_KIND::COLLISION_BOX;
         wall.fPositionX = lastGroundX + .5f; wall.fPositionY = edgeGround.y; wall.fPositionZ = 322.94f;
         wall.fHalfExtentX = .1f; wall.fHalfExtentY = wall.fHalfExtentZ = 10.f; room->m_ServerCollisionSystem.Initialize({wall}, status);
@@ -251,6 +527,120 @@ void CServerGameplayContractRunner::Run_KoukuPushContracts(TESTS& tests, const C
             tests.Require(p.eAction != PLAYER_ACTION_STATE::FALLING, "Interior navigation/height seam with further same-deck ground is not an arena exit");
         }
     }
+    {
+        auto p = player(); p.fPositionY = 20.f;
+        room->Begin_PlayerFall(p, 0.f, 100u);
+        p.fPositionY = 15.01f;
+        room->Update_PlayerFall(p, 0.f, 1000u);
+        tests.Require(p.iCurrentHp == 100u && p.eAction == PLAYER_ACTION_STATE::FALLING &&
+            std::abs(p.fFallDeathPlaneY - 15.f) < .0001f,
+            "Kouku stays alive above its five-metre death plane even after the old timer deadline");
+        p.fPositionY = 15.f;
+        room->Update_PlayerFall(p, 0.f, 1001u);
+        tests.Require(p.iCurrentHp == 0u && p.eAction == PLAYER_ACTION_STATE::DEAD,
+            "Kouku dies exactly when its feet reach the support height minus five metres");
+        p = player(); p.fPositionY = 17.f; p.bKnockbackBallistic = true; p.fKnockbackLaunchY = p.fKnockbackSupportY = 20.f;
+        room->Begin_PlayerFall(p, 0.f, 100u);
+        tests.Require(std::abs(p.fFallDeathPlaneY - 15.f) < .0001f,
+            "Ballistic handoff retains its original launch floor instead of lowering the death plane again");
+        p = player(); p.fPositionY = 20.f;
+        CPlayerSkillSystem::Arm_PlayerHitReaction(p, 0.f, 0.f, 0.f, 1500u, false, 0u, 100u, true, true, true, 3.f);
+        p.fPositionY = 23.f;
+        CPlayerSkillSystem::Arm_PlayerHitReaction(p, 0.f, 0.f, 0.f, 1500u, false, 0u, 120u, true, true, true, 3.f);
+        room->Begin_PlayerFall(p, 0.f, 140u);
+        tests.Require(std::abs(p.fFallDeathPlaneY - 15.f) < .0001f,
+            "Repeated airborne force pushes keep the first support floor instead of raising the death plane");
+        const auto nav = room->m_ServerNavigation;
+        room->m_ServerNavigation = CServerNavigation{};
+        p = player(); p.fPositionY = 15.01f; p.fKnockbackLaunchY = p.fKnockbackSupportY = 20.f;
+        p.bKnockbackBallistic = p.bKnockbackCanLeaveArena = true;
+        p.fKnockbackRemainingSeconds = 1.f; p.fKnockbackVelocityY = -1.f;
+        room->Advance_PlayerKnockback(p, 1.f / 30.f);
+        tests.Require(p.iCurrentHp == 0u && p.eAction == PLAYER_ACTION_STATE::DEAD && !p.bKnockbackBallistic,
+            "A ballistic descent crosses the same death plane before considering a lower landing floor");
+        room->m_ServerNavigation = nav;
+    }
+    {
+        constexpr SESSION_ID session = 80771u;
+        constexpr PLAYER_ID id = 80772u;
+        room->m_PlayerIdBySessionId[session] = id;
+        for (std::uint8_t gate = 1u; gate <= 4u; ++gate)
+        {
+            room->m_GateProgress.iCurrentGate = gate;
+            auto p = player(); p.iPlayerId = id; p.iSessionId = session;
+            p.eCharacterClass = CHARACTER_CLASS_ID::LANCE_MASTER;
+            p.iCurrentHp = 0u; p.eAction = PLAYER_ACTION_STATE::DEAD;
+            p.fPositionX = 10000.f; p.fPositionY = -100.f; p.fPositionZ = 10000.f;
+            p.bKnockbackBallistic = p.bKnockbackCanLeaveArena = true;
+            p.fKnockbackRemainingSeconds = 1.f; p.fKnockbackVelocityY = -10.f;
+            SERVER_NAV_POINT entry{}, expected{}; float yaw = 0.f;
+            const bool resolves = room->Resolve_KoukuRevivePosition(p, entry, yaw) &&
+                room->m_ServerNavigation.Project_Point(entry.x, entry.z, expected, entry.y);
+            room->m_Players[id] = p;
+            C2S_REVIVE_PLAYER revive{}; revive.iClientSequence = gate;
+            room->Handle_RevivePlayer(session, revive);
+            const auto& revived = room->m_Players.at(id);
+            tests.Require(resolves && revived.iCurrentHp == revived.iMaximumHp && revived.isCombatReady &&
+                revived.eAction == PLAYER_ACTION_STATE::NONE && !revived.bKnockbackBallistic &&
+                !revived.bKnockbackCanLeaveArena && revived.fKnockbackRemainingSeconds == 0.f &&
+                std::abs(revived.fPositionX - expected.x) < .01f &&
+                std::abs(revived.fPositionY - expected.y) < .01f && std::abs(revived.fPositionZ - expected.z) < .01f,
+                "Revive returns to the actual current Gate 1/2/3/Bingo start and clears all flight state");
+        }
+        room->m_GateProgress.iCurrentGate = 0u;
+        auto p = player(); p.iPlayerId = id; p.eCharacterClass = CHARACTER_CLASS_ID::LANCE_MASTER;
+        p.iCurrentHp = 0u; p.eAction = PLAYER_ACTION_STATE::DEAD; p.fPositionY = -100.f;
+        p.strSpawnPlacementId = "missing.spawn"; room->m_Players[id] = p;
+        C2S_REVIVE_PLAYER revive{}; revive.iClientSequence = 10u;
+        room->Handle_RevivePlayer(session, revive);
+        tests.Require(room->m_Players.at(id).iCurrentHp == 0u && room->m_Players.at(id).fPositionY == -100.f &&
+            room->m_Players.at(id).eAction == PLAYER_ACTION_STATE::DEAD,
+            "An unresolved Kouku revive destination preserves the dead player without partial healing");
+        room->m_Players.erase(id); room->m_PlayerIdBySessionId.erase(session);
+    }
+
+    {
+        ATTACK_HIT_TEMPLATE hit{}; hit.strHitId = "albion.rise";
+        hit.fRadiusM = 2.0; hit.fRiseHeightM = 3.0; hit.iPushMs = 1200u;
+        auto invalid = hit; invalid.iPushMs = 0u;
+        tests.Require(!Validate_AttackHitTemplates({invalid}), "A rise height without a bounded flight duration is rejected");
+        invalid = hit; invalid.fRiseHeightM = 0.0;
+        tests.Require(!Validate_AttackHitTemplates({invalid}), "A flight duration without a rise height is rejected");
+        const auto savedNav = room->m_ServerNavigation;
+        room->m_ServerNavigation = CServerNavigation{};
+        for (const bool contact : {false, true})
+        {
+            hit.strTrigger = contact ? "CONTACT" : "TIMED"; hit.iEndMs = contact ? 2000u : 0u;
+            BOSS_COMBAT_OBJECT_DEFINITION definition{}; definition.strEncounterId = "albion.encounter";
+            definition.strOwnerPatternId = "albion.pattern"; definition.strOwnerStageActionId = "albion.trigger";
+            definition.strCombatObjectArchetypeId = "combatobject.kouku.albion.bluecircle";
+            definition.strClientVisualId = "combatvisual.kouku.albion.bluecircle";
+            definition.iLifeMs = 3000u; definition.AttackTemplates = {hit};
+            SERVER_WORLD_ENTITY owner{}; owner.strEncounterId = definition.strEncounterId;
+            owner.iNetEntityId = 998u; owner.iPatternSequence = 1u; owner.iCurrentHp = 100u;
+            (void)Try_Parse_GameplayDataRevision(std::string(64u, 'a'), owner.PinnedDefinitionRevision);
+            CCombatObjectRuntime runtime; auto transaction = runtime.Begin_Transaction();
+            const bool staged = runtime.Stage_BossCombatObject(transaction, owner, nullptr, definition, nullptr, catalog, 1u, 100u, status);
+            tests.Require(staged && runtime.Commit(std::move(transaction)), "Existing combat object staging admits a rising Albion timed/contact hit");
+            auto p = player(); p.fPositionX = 0.f;
+            std::map<PLAYER_ID, SERVER_PLAYER> targets{{1u, p}};
+            std::vector<SERVER_WORLD_ENTITY> owners{owner}; std::vector<DAMAGE_EVENT> damage;
+            runtime.Update(targets, owners, catalog, 1.f / 30.f, 101u, damage);
+            runtime.Update(targets, owners, catalog, 1.f / 30.f, 102u, damage);
+            auto& caught = targets.at(1u);
+            tests.Require(caught.iCurrentHp == 90u && damage.size() == 1u && caught.bKnockbackBallistic &&
+                !caught.bKnockbackCanLeaveArena && caught.fKnockbackSpeed == 0.f,
+                "Albion timed/contact damage launches once vertically through the shared world-hit consumer");
+            for (unsigned tick = 0u; tick < 18u; ++tick) room->Advance_PlayerKnockback(caught, 1.f / 30.f);
+            tests.Require(std::abs(caught.fPositionY - 3.f) < .001f && caught.fPositionX == 0.f,
+                "Authored Albion rise reaches three metres halfway through its 1.2-second flight");
+            for (unsigned tick = 0u; tick < 19u; ++tick) room->Advance_PlayerKnockback(caught, 1.f / 30.f);
+            tests.Require(std::abs(caught.fPositionY) < .001f && caught.fKnockbackRemainingSeconds == 0.f &&
+                caught.iCurrentHp == 90u, "Authored Albion rise lands on its start floor without a second damage tick");
+        }
+        room->m_ServerNavigation = savedNav;
+    }
+
 }
 
 int LostArk::Server::Run_ServerKoukuObjectOverlapContractTests()
@@ -258,6 +648,7 @@ int LostArk::Server::Run_ServerKoukuObjectOverlapContractTests()
 	TESTS tests;
 	const CGameplayCatalog catalog;
 	CServerGameplayContractRunner::Run_KoukuPushContracts(tests, catalog);
+	Run_ColliderMotionAndTickContracts(tests, catalog);
 	Run_KoukuObjectOverlapContracts(tests, catalog);
 	Run_KoukuObjectContactContracts(tests, catalog);
 	Run_KoukuFearAndCounterContracts(tests, catalog);

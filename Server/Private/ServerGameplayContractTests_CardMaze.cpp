@@ -412,20 +412,23 @@ int LostArk::Server::Run_ServerCardMazeContractTests()
 				tests.Require(room->Spawn_KoukuCardRainSoldiers(owner.iNetEntityId, 101u) && room->m_WorldEntities.size() == base + 3u,
 					"Replaying the same pattern trigger does not duplicate soldiers");
 				const auto expiry = 100u + CKoukuSaydonLogicRuntime::Ticks_FromMs(30000u);
-				room->Update_KoukuCardRainSoldiers(expiry - 1u);
-				tests.Require(room->m_KoukuCardRainSoldiers.size() == 3u, "Soldiers stay alive before their bounded deadline");
-				room->Update_KoukuCardRainSoldiers(expiry);
-				tests.Require(room->m_KoukuCardRainSoldiers.empty() && room->m_WorldEntities.size() == base,
-					"The 30-second deadline removes only the summoned soldiers");
+				room->Update_KoukuCardRainSoldiers(expiry + 1u);
+				tests.Require(room->m_KoukuCardRainSoldiers.size() == 3u && room->m_WorldEntities.size() == base + 3u,
+					"Card soldiers remain authoritative monsters after the former 30-second deadline");
 				auto boss = std::find_if(room->m_WorldEntities.begin(), room->m_WorldEntities.end(),
 					[&](const auto& row) { return row.iNetEntityId == owner.iNetEntityId; });
 				boss->iPatternSequence = 2u;
-				tests.Require(room->Spawn_KoukuCardRainSoldiers(owner.iNetEntityId, expiry + 1u), "A new pattern can summon a fresh batch");
+				tests.Require(room->Spawn_KoukuCardRainSoldiers(owner.iNetEntityId, expiry + 1u) &&
+					room->m_KoukuCardRainSoldiers.size() == 6u && room->m_WorldEntities.size() == base + 6u,
+					"A new pattern adds a fresh batch while preserving existing chasing soldiers");
 				boss = std::find_if(room->m_WorldEntities.begin(), room->m_WorldEntities.end(),
 					[&](const auto& row) { return row.iNetEntityId == owner.iNetEntityId; });
 				boss->strPatternId.clear(); room->Update_KoukuCardRainSoldiers(expiry + 2u);
+				tests.Require(room->m_KoukuCardRainSoldiers.size() == 6u && room->m_WorldEntities.size() == base + 6u,
+					"Finishing the owning pattern preserves soldiers and their normal monster combat lifecycle");
+				boss->iCurrentHp = 0u; room->Update_KoukuCardRainSoldiers(expiry + 3u);
 				tests.Require(room->m_KoukuCardRainSoldiers.empty() && room->m_WorldEntities.size() == base,
-					"Finishing the owning pattern cleans its soldiers without waiting for timeout");
+					"Owner death cleans persistent soldiers without removing unrelated room entities");
 			}
 		}
 	}

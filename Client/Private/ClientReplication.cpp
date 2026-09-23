@@ -442,11 +442,14 @@ bool Client::CClientReplication::Update()
                 event.KoukuBundleState.eWorldId == LostArk::Shared::WORLD_ID::KAKULSAYDON_ARENA &&
                 event.KoukuBundleState.iRunEpoch >= m_KoukuBundleState.iRunEpoch)
             {
-                if (event.KoukuBundleState.iRunEpoch != m_KoukuBundleState.iRunEpoch)
+                if (event.KoukuBundleState.iRunEpoch != m_KoukuBundleState.iRunEpoch ||
+                    !CKoukuSaydonPresentationAssetService::Matches_AdmittedRun(event.KoukuBundleState.iPinnedSourceRevision,
+                        event.KoukuBundleState.DraftRowsRevision, event.KoukuBundleState.iRunEpoch))
                 {
                     std::string status;
-                    if (!CKoukuSaydonPresentationAssetService::Reload_ProductBindings(
-                        m_Desc.iLayerLevelIndex, event.KoukuBundleState.iPinnedSourceRevision, status))
+                    if (!CKoukuSaydonPresentationAssetService::Admit_RunProduct(
+                        m_Desc.iLayerLevelIndex, event.KoukuBundleState.iPinnedSourceRevision,
+                        event.KoukuBundleState.DraftRowsRevision, event.KoukuBundleState.iRunEpoch, status))
                     {
                         m_strPendingPresentationFailure = status;
                         OutputDebugStringA(("[KoukuSaydonAnimation] " + status + "\n").c_str());

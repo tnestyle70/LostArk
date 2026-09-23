@@ -198,6 +198,15 @@ struct MODEL_SURFACE_PARAMETERS
     bool_t hasEnvironmentCube = false;
     float4_t environmentColor = { 1.f, 1.f, 1.f, 0.f };
     float2_t environmentRotation = { 0.f, 1.f };
+    bool_t environmentLegacyEnabled = true; // False requires sourceIndirect and keeps the historical path cube-free.
+    // Native UE3 PBR indirect inputs; packedSH[6].w is the native reserved 1.
+    bool_t hasSourceIndirect = false;
+    std::array<float4_t, 7> sourceIndirectSH{};
+    float4_t sourceIndirectColor = { 1.f, 1.f, 1.f, 0.f };
+    float2_t sourceIndirectRotation = { 0.f, 1.f };
+    float3_t sourceUpperSkyColor = { 0.f, 0.f, 0.f };
+    float3_t sourceLowerSkyColor = { 0.f, 0.f, 0.f };
+    float4_t sourceAmbientAndSkyFactor = { 0.f, 0.f, 0.f, 1.f };
 };
 
 struct MODEL_MATERIAL_OVERRIDE
@@ -227,6 +236,8 @@ struct MODEL_MATERIAL_OVERRIDE
     filesystem::path staticShadowPath;
     filesystem::path environmentCubePath;
     filesystem::path environmentBRDFPath;
+    filesystem::path sourceIndirectCubePath;
+    filesystem::path sourceIndirectBRDFPath;
 };
 
 struct MODEL_MATERIAL_DATA
@@ -267,6 +278,8 @@ struct MODEL_MATERIAL_DATA
     filesystem::path staticShadowPath;
     filesystem::path environmentCubePath;
     filesystem::path environmentBRDFPath;
+    filesystem::path sourceIndirectCubePath;
+    filesystem::path sourceIndirectBRDFPath;
 };
 
 enum class MODEL_VERTEX_KIND : uint8_t

@@ -5,6 +5,7 @@
 #include "Engine_Defines.h"
 #include "DataJson.h"
 
+#include <array>
 #include <filesystem>
 #include <map>
 #include <string_view>
@@ -65,6 +66,13 @@ struct SCENE_RENDERING_PROFILE final
 	string strEnvironmentCubeAssetId;
 	float4_t vEnvironmentColor{ 1.f, 1.f, 1.f, 0.f };
 	float4_t vEnvironmentRotationIntensity{ 0.f, 1.f, 1.f, 0.f };
+	// Project Lambert SH3 integrated from the cooked RGBM6 cube, not native SH9 packing.
+	// Presence preserves an explicitly disabled block through authored Save.
+	bool_t bHasEnvironmentDiffuse = false;
+	std::array<float4_t, 7> EnvironmentDiffuseSH{};
+	f32_t fEnvironmentDiffuseIntensity = 0.f;
+	bool_t bHasSourcePBRIndirect = false;
+	bool_t bUseSourcePBRIndirect = false;
 };
 
 struct RENDERING_COMPARISON_OPTIONS final

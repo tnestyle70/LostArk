@@ -5,6 +5,8 @@
 #include "DataJson.h"
 #include "KoukuSaydonPatternAuditionService.h"
 #include "KoukuSaydonCompositionDocument.h"
+#include "KoukuSaydonActionWorkbench.h"
+#include "KoukuSaydonPresentationAssetService.h"
 #include "Level_KakulSaydonArena.h"
 #include "NetworkManager.h"
 #include "ProjectDataRoot.h"
@@ -456,7 +458,8 @@ void Client::CKoukuSaydonBossTool::Open()
 
 bool Client::CKoukuSaydonBossTool::Prepare_ServerPlay(const std::string_view gateId,
 	std::vector<std::string> targets, std::vector<std::string> patternIds,
-    std::vector<std::string> bundleIds, std::function<bool(std::string&)> submit, std::string& status)
+    std::vector<std::string> bundleIds, std::function<bool(std::string&)> submit, std::string& status,
+    std::shared_ptr<const KOUKU_SAYDON_DRAFT_PRODUCT> draft)
 {
 #ifndef _DEBUG
 	(void)gateId; (void)targets; (void)patternIds; (void)bundleIds; (void)submit;
@@ -485,14 +488,15 @@ bool Client::CKoukuSaydonBossTool::Prepare_ServerPlay(const std::string_view gat
 	// Gate preparation reuses the Level's typed spawn/teleport approvals and
 	// map/light commit. Pattern selection alone never creates a local boss.
 	CKoukuSaydonCompositionDocument saved;
-	if (!saved.Reload(status) || saved.Get_LastGood().iRevision != m_iSourceRevision)
+	if (!draft && (!saved.Reload(status) || saved.Get_LastGood().iRevision != m_iSourceRevision))
 	{ status = m_strStatus = "Save and publish the selected Composition before preparing its Gate. " + status; return false; }
 	PLAY_PREPARATION pending;
 	pending.TargetPlacementIds = std::move(targets);
     pending.PatternIds = std::move(patternIds); pending.BundleIds = std::move(bundleIds);
     arena->Debug_ResetCompletePlayPreparation();
 	pending.GameplayRevision = revision;
-	pending.iSourceRevision = m_iSourceRevision;
+	pending.iSourceRevision = draft ? draft->iSourceRevision : m_iSourceRevision;
+    pending.Draft = std::move(draft);
 	pending.iWorldGeneration = network.Get_WorldInboundGeneration();
 	pending.iPreviousRequestSequence = service.Get_Snapshot().iRequestSequence;
 	pending.iGateIndex = gateIndex;
@@ -508,6 +512,41 @@ bool Client::CKoukuSaydonBossTool::Prepare_ServerPlay(const std::string_view gat
 	status = m_strStatus = "Preparing " + std::string(gateId) +
 		" on the Server; playback waits for approved placement and the complete Effect/WORLD dependency closure.";
 	return true;
+#endif
+}
+
+bool Client::CKoukuSaydonBossTool::Play_Draft(KOUKU_DRAFT_PLAY_REQUEST request, std::string& status)
+{
+#ifndef _DEBUG
+    status = m_strStatus = "Draft Server Play is available only in Debug builds.";
+    return false;
+#else
+    const auto& network = CNetworkManager::Get();
+    if (!network.Is_Connected() || network.Get_WorldInboundGeneration() != request.iWorldGeneration)
+    { status = m_strStatus = "The connected world changed. Start draft playback again."; return false; }
+    if (request.TargetPlacementIds.empty() || request.strTargetId.empty() || !request.iSourceRevision)
+    { status = m_strStatus = "Draft playback has no validated selection."; return false; }
+    auto draft = CKoukuSaydonPresentationAssetService::Prepare_DraftProduct(
+        request.PresentationJson, request.EncounterJson, request.GameplayRows, request.iSourceRevision, status);
+    if (!draft) { m_strStatus = status; return false; }
+    const auto revision = network.Get_GameplayRevisionState().ServerActiveRevision;
+    const auto target = request.TargetPlacementIds.front();
+    const auto id = request.strTargetId, gate = request.strGateId;
+    const auto sourceRevision = request.iSourceRevision;
+    const bool bundle = request.bBundle;
+    const auto marioStage = CKoukuSaydonPatternAuditionService::Get().Get_MarioTestStage();
+    const auto marioSeed = CKoukuSaydonPatternAuditionService::Get().Get_MarioTestSeed();
+    return Prepare_ServerPlay(gate, std::move(request.TargetPlacementIds),
+        std::move(request.PatternIds), std::move(request.BundleIds),
+        [id, gate, target, revision, sourceRevision, bundle, marioStage, marioSeed,
+            rows = std::move(request.GameplayRows), draft](std::string& reason) {
+            if (!CKoukuSaydonPresentationAssetService::Stage_DraftProduct(draft, reason)) return false;
+            auto& service = CKoukuSaydonPatternAuditionService::Get();
+            service.Set_TargetBoss(target, CKoukuSaydonCompositionDocument::Resolve_BossArchetypeId(target));
+            service.Set_MarioTest(marioStage, marioSeed);
+            return bundle ? service.Play_DraftBundle(id, gate, revision, sourceRevision, rows, reason) :
+                service.Play_DraftSelected(id, revision, sourceRevision, rows, reason);
+        }, status, draft);
 #endif
 }
 
@@ -563,7 +602,7 @@ void Client::CKoukuSaydonBossTool::Update()
     bool resourcesReady = false;
     std::string preparationStatus;
     if (!arena->Debug_PrepareCompletePlayResources(pending.PatternIds, pending.BundleIds,
-        pending.iSourceRevision, resourcesReady, preparationStatus))
+        pending.iSourceRevision, resourcesReady, preparationStatus, false, pending.Draft))
     { fail(preparationStatus); return; }
     m_strStatus = std::move(preparationStatus);
     if (!resourcesReady) return;
@@ -572,10 +611,13 @@ void Client::CKoukuSaydonBossTool::Update()
 	CKoukuSaydonCompositionDocument saved;
 	CKoukuSaydonBossTool published;
 	std::string status;
-	if (!saved.Reload(status) || !published.Reload(status))
-	{ fail("saved or published data could not be rechecked. " + status); return; }
-	if (saved.Get_LastGood().iRevision != pending.iSourceRevision || published.Get_SourceRevision() != pending.iSourceRevision)
-	{ fail("the saved or published Composition changed. Start the updated Pattern explicitly."); return; }
+    if (!pending.Draft)
+    {
+        if (!saved.Reload(status) || !published.Reload(status))
+        { fail("saved or published data could not be rechecked. " + status); return; }
+        if (saved.Get_LastGood().iRevision != pending.iSourceRevision || published.Get_SourceRevision() != pending.iSourceRevision)
+        { fail("the saved or published Composition changed. Start the updated Pattern explicitly."); return; }
+    }
 	auto submit = std::move(m_PlayPreparation->Submit);
 	m_PlayPreparation.reset();
 	(void)submit(status);

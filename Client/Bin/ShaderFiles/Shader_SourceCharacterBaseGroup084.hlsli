@@ -1,4 +1,4 @@
-SOURCE_CHARACTER_NATIVE_OUTPUT SourceCharacterBase84(SOURCE_CHARACTER_NATIVE_INPUT input)
+SOURCE_CHARACTER_NATIVE_OUTPUT SourceCharacterBase84(SOURCE_CHARACTER_NATIVE_INPUT input, bool opaqueGhost = false)
 {
     SOURCE_CHARACTER_NATIVE_OUTPUT output = (SOURCE_CHARACTER_NATIVE_OUTPUT)0;
     float4 source[64];
@@ -295,7 +295,8 @@ SOURCE_CHARACTER_NATIVE_OUTPUT SourceCharacterBase84(SOURCE_CHARACTER_NATIVE_INP
     // 139: and r1.z, r1.w, r1.z
     r1.z = (asfloat(asuint(r1.wwww) & asuint(r1.zzzz))).z;
     // 140: discard_nz r1.z
-    if ((asuint(r1.zzzz)).x != 0u) { output.discarded = true; return output; }
+    // Only the project opaque ghost pass bypasses this source opacity discard.
+    if (!opaqueGhost && (asuint(r1.zzzz)).x != 0u) { output.discarded = true; return output; }
     // 141: dp3 r1.z, v1.xyzx, v1.xyzx
     r1.z = (dot((v1.xyzx).xyz,(v1.xyzx).xyz).xxxx).z;
     // 142: rsq r1.z, r1.z

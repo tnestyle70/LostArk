@@ -48,7 +48,8 @@ namespace
 			left.strBossPlacementId == right.strBossPlacementId &&
 			left.strBossArchetypeId == right.strBossArchetypeId &&
 			left.ExpectedGameplayRevision == right.ExpectedGameplayRevision &&
-			left.iExpectedSourceRevision == right.iExpectedSourceRevision;
+			left.iExpectedSourceRevision == right.iExpectedSourceRevision &&
+			left.DraftRowsRevision == right.DraftRowsRevision;
 	}
 
 	std::string Describe_Rejection(const KOUKUSAYDON_PATTERN_AUDITION_RESULT result)
@@ -271,12 +272,34 @@ bool Client::CKoukuSaydonPatternAuditionService::Restart_Bundle(std::string& sta
 		snapshot.iExpectedSourceRevision, status, snapshot.strBundleId, snapshot.strGateId, snapshot.iRoomAuditionEpoch);
 }
 
+bool Client::CKoukuSaydonPatternAuditionService::Play_DraftSelected(
+	const std::string_view patternId, const LostArk::Shared::GameplayDataRevision& revision,
+	const std::uint32_t sourceRevision, const std::string_view rows, std::string& status)
+{
+	if (rows.empty()) { status = "The projected memory draft is empty."; return false; }
+	if (m_FlowSnapshot.bActive) Cancel_Flow("Pattern Flow cancelled by memory draft playback.");
+	return Submit(LostArk::Shared::KOUKUSAYDON_PATTERN_AUDITION_OPERATION::PLAY_SELECTED,
+		patternId, revision, sourceRevision, status, {}, {}, 0u, rows);
+}
+
+bool Client::CKoukuSaydonPatternAuditionService::Play_DraftBundle(
+	const std::string_view bundleId, const std::string_view gateId,
+	const LostArk::Shared::GameplayDataRevision& revision,
+	const std::uint32_t sourceRevision, const std::string_view rows, std::string& status)
+{
+	if (rows.empty()) { status = "The projected memory draft is empty."; return false; }
+	if (m_FlowSnapshot.bActive) Cancel_Flow("Pattern Flow cancelled by memory draft playback.");
+	return Submit(LostArk::Shared::KOUKUSAYDON_PATTERN_AUDITION_OPERATION::PLAY_BUNDLE,
+		{}, revision, sourceRevision, status, bundleId, gateId, 0u, rows);
+}
+
 bool Client::CKoukuSaydonPatternAuditionService::Submit(
 	const LostArk::Shared::KOUKUSAYDON_PATTERN_AUDITION_OPERATION operation,
 	const std::string_view patternId,
 	const LostArk::Shared::GameplayDataRevision& expectedGameplayRevision,
 	const std::uint32_t expectedSourceRevision,
-	std::string& outStatus, const std::string_view bundleId, const std::string_view gateId, const std::uint32_t expectedEpoch)
+	std::string& outStatus, const std::string_view bundleId, const std::string_view gateId, const std::uint32_t expectedEpoch,
+	const std::string_view draftRows)
 {
 	using namespace LostArk::Shared;
 	Update();
@@ -335,7 +358,8 @@ bool Client::CKoukuSaydonPatternAuditionService::Submit(
 	request.iExpectedRunEpoch = expectedEpoch;
 	request.Scope.strGateId = gateId;
 	if (control) request.Scope = m_RequestScope;
-	if (!network.Send_KoukuSaydonPatternAudition(request))
+	if (draftRows.empty() ? !network.Send_KoukuSaydonPatternAudition(request) :
+		!network.Send_KoukuSaydonPatternAuditionDraft(request, draftRows))
 	{
 		outStatus = "Could not send KoukuSaydon Server Play.";
 		return false;
@@ -362,6 +386,7 @@ bool Client::CKoukuSaydonPatternAuditionService::Submit(
 	m_Snapshot.iWorldInboundGeneration = network.Get_WorldInboundGeneration();
 	m_Snapshot.ExpectedGameplayRevision = expectedGameplayRevision;
 	m_Snapshot.iExpectedSourceRevision = expectedSourceRevision;
+	m_Snapshot.DraftRowsRevision = request.Scope.DraftRowsRevision;
 	m_Snapshot.strRequestedPatternId = patternId;
 	m_Snapshot.strStatus =
 		KOUKUSAYDON_PATTERN_AUDITION_OPERATION::PLAY_ALL == operation ?

@@ -19,6 +19,7 @@
 
 ```powershell
 python -B Tools/KoukuSaydonPipeline/project_kouku_saydon_composition.py --repository-root . --mode publish
+powershell -NoProfile -ExecutionPolicy Bypass -File Tools/GameplayPipeline/Update-BalanceProvenanceReceipt.ps1
 powershell -NoProfile -ExecutionPolicy Bypass -File Tools/GameplayPipeline/Publish-GameplayBalance.ps1 -Mode Validate
 powershell -NoProfile -ExecutionPolicy Bypass -File Tools/GameplayPipeline/Publish-GameplayBalance.ps1 -Mode Publish
 ```
@@ -52,5 +53,10 @@ Desktop에는 수정 코드와 테스트를 기존 미커밋 변경 위에 병�
 최신 Composition revision2222의 저작119개·실행113개를 그대로 유지한 생성 JSON을 재게시했다.
 main 기준96개 패턴 및 임시 튜닝27/350을 사용한 격리 게시본은 검증용이므로 Desktop에 복사하지
 않는다. 이후 다른 세션에서 원본을 더 바꾸면 그 최종 저장본으로 G02 순서를 다시 실행한다.
-실제 게시·바이너리 호환 검사 결과는 같은 주제 RESULT를 기준으로 한다. 이번 세션에서 빌드,
-셰이더 컴파일, Client/UI 실행, 커밋·푸시는 하지 않았다.
+표준 Debug EXE에는 최신 패턴 소비 코드가 빠져 있어 Engine/Shared/Server/Client의 일반 증분
+Build로 갱신했다. 네 프로젝트 모두 성공했고 실제 셰이더 컴파일은 Engine0/16·Client0/174개였다.
+기존 Release 게임은 그대로 유지했다. 실행 중인 메모리는 파일 교체로 자동 갱신되지 않는다.
+최신113개 게시본은 새 Debug Server에서1,178개, 기존 Release Server에서904개 raid contract
+검사를 통과했다. 별도 격리 환경의 무력화27·부위 파괴350도 전체 게시와 실제 Server 로드에 성공했다.
+실제 게시·바이너리 호환 검사의 상세 결과는 같은 주제 RESULT를 기준으로 한다.
+Client/UI 실행·조작과 커밋·푸시·PR은 하지 않았다.

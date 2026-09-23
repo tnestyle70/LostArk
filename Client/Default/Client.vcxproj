@@ -424,7 +424,9 @@
 	<ClCompile Include="..\Private\VehiclePresentationAssetService.cpp" />
 	<ClCompile Include="..\Private\MonsterPresentationAssetService.cpp" />
 	<ClCompile Include="..\Private\KoukuSaydonPresentationAssetService.cpp" />
-	<ClCompile Include="..\Private\KoukuSaydonPresentationPlayer.cpp" />
+	<ClCompile Include="..\Private\KoukuSaydonPresentationPlayer.cpp">
+      <AdditionalOptions>/bigobj %(AdditionalOptions)</AdditionalOptions>
+    </ClCompile>
 	<ClCompile Include="..\Private\KoukuSaydonPresentationPlayer_LogicPreview.cpp" />
 	<ClCompile Include="..\Private\KoukuCinematicAnimationCatalog.cpp" />
 	<ClCompile Include="..\Private\KoukuSaydonPreviewRootMotion.cpp" />

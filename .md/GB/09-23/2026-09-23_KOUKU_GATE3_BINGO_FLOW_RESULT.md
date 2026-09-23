@@ -19,8 +19,9 @@ element를 분리하고 기존 native material/carrier를 사용한다. P94는 �
 두 패턴의 원본 사운드를 연결하고 다른 패턴에는 기존 사용자 사운드를 보존하며 누락27개만 추가했다.
 P119/P122/P114/P120의 필요한 MAP 배치, 바람방구 방향, 추적의 중복 root XZ 이동을 보정했다.
 
-새 Resources 파일은 0개다. 설치 리소스162개를 재사용하며 `GRResources2`에 추가할 이미지·모델·음원은
-없다. 새 이펙트 정의3개는 `Data/Effects/Authored`, Catalog, ResourceTree와 프로젝트에 등록했다.
+새 이펙트 정의3개 자체는 설치 리소스162개를 재사용하며 `Data/Effects/Authored`, Catalog,
+ResourceTree와 프로젝트에 등록했다. 이 제한된 검사만으로 전체 배포의 추가 Resources를0개라고
+판단한 것은 잘못이었다. 배포 후 GBResources 감사에서 이전 작업의 전달 누락31개를 확인했다.
 
 ## 게시와 검증
 
@@ -62,3 +63,30 @@ Data1914개와 runtime487개를 포함한다. 바깥 ZIP과 안쪽 runtime ZIP�
 설치하거나 Client를 실행하지 않았다.
 
 Client 화면과 다른 PC의 실제 접속·실청은 사용자가 직접 확인한다. 자동 검증으로 해당 확인을 대체하지 않는다.
+
+## 배포 후 쿠크 입장과 Resources 보완
+
+호스트의 Release 쿠크 로딩은 V1 214개·V2 33개·World339개 준비에 성공했다. 다른 세 PC는
+쿠크 월드에서 클라이언트 쪽 연결 종료 뒤 Lobby로 복귀했다. 상대 상세 로그가 없어 첫 실패 파일은
+확정하지 않았다. `Server entry failed`는 리소스 로딩 복구에서도 표시되는 공통 문구다.
+
+기존 GBResources4,065개는 현재 설치본과 전부 SHA256이 같지만,9월19일 이후 갱신된 쿠크 참조
+리소스31개가 추가팩에 없었다. 사용자 최종 지정 `C:/Users/user/Desktop/GBResources2`에
+모델4개·Effect18개·Sound9개, 합계407,790,972bytes를 복사하고 전체 SHA256을 확인했다.
+오늘 생성한 물리 리소스31개가 아니라 오늘 배포에 반영된 이전 작업의 누락분이다.
+기존 ZIP과 GBResources, 실행 중 게임 파일·프로세스는 변경하지 않았다.
+
+전체 목록·오늘 작업 정리·publisher 차이와 미확인 경계는
+[Resources 감사](2026-09-23_KOUKU_RESOURCE_DELIVERY_AUDIT.md)에 기록한다.
+
+## G06. 9월23일 추가 수정: 5초 전환·Release UI·입구 재시도
+
+이 절은 위의 이전 배포 증거와 구분한다. 현재 추가 코드는 `GameRoom_KoukuRaidFlow.cpp`의 G3 false-clear 대기를 5000ms/150tick로 변경한다. 준비 완료된 정식 raid는 deadline의 같은 tick에 Bingo intro를 시작하며 별도 +1tick을 추가하지 않는다. 단독 G3 kill의 리소스 준비도 원래 clear tick을 보존한다. READY가 늦으면 미준비 리소스로 시퀀스를 시작하지 않는다.
+
+비-raid의 Release 관문 UI는 기존 `Advance_Gate(4)`가 보스 생성·이동만 하여 Parent owner가 없던 경로였다. 현재는 기존 만장일치 투표가 확인된 경우에만 `Begin_KoukuRaidPreparation`의 `bBingoGateVoteEntry`로 들어간다. 저장된 Action/Sequence pin과 참가자 READY가 완료되면 Bingo intro, 연출 완료 시 `Enter_KoukuRaidCombat`과 첫 Flow/Parent 실행을 사용한다. 외부 Debug START의 Release 거절은 유지한다.
+
+G1 입구의 재현 가능한 별도 결함도 수정했다. 한 참가자가 `1Stage_Final`에 들어오고 동료가 G 이동 중이면 준비가 거절되는데, 기존 `Evaluate_Entries`가 실패한 PLAY_SEQUENCE의 PlayersInside를 기록하여 다음 시도까지 막았다. 쿠크의 실패한 sequence entry는 접촉 edge를 소비하지 않고 같은 volume에서 재시도한다. 임시 player-state 검사는 무거운 Product preflight 전에 실행하며 실패로 raid epoch를 소비하지 않는다. 입구의 live trigger/데이터는 교체하지 않았다.
+
+기존 `ServerGameplayContractTests_KoukuRaid.cpp`에 실제 설치된 입구를 이용하는 2·3·4인 이동 중 거절→그 자리 재시도, 부분 READY 대기, 같은 cinematic epoch와 2·3·4인 Bingo UI의 부분 투표 대기를 추가했다. 4인 Bingo UI는 실제 scheduler로 Parent prefix와 반복 tail을 돌며 같은 epoch·보드 유지까지 검사한다. 기존 1~4인 정식 raid·무한 Parent 검증과 deadline 직전/같은 tick 검증도 유지한다.
+
+추가 소스의 `git diff --check`는 PASS다. 통합 담당이 새로 링크한 `Server/Bin/Release/Server.exe`로 `--kouku-raid-contract-test`를 직접 실행하여 **974 PASS, failures 0, exit 0**을 확인했다(약9초). 위 2·3·4인 입구/READY, 4인 UI Bingo 반복, 1~4인 5초 전환이 실제 새 테스트 로그에서 PASS다. 증거는 `out/KoukuCollider20260923/bugfix-bgm/release-raid-contract.log`와 `validation-receipt.json`이다. 실행 당시 게시본과 EXE SHA256을 고정했으며 이후 최종 데이터 publish/ZIP 검증은 통합 기록을 따른다. Client/UI와 실제 4PC/4Client 화면은 실행하지 않았다.

@@ -359,7 +359,11 @@ bool LostArk::Server::CGameRoom::Spawn_KoukuCardRainSoldiers(
         [&](const auto& entry) { return entry.second.ownerId == ownerId && entry.second.patternSequence == sequence; }))
         return true;
     // Source summons use the same three PPCH model families as the maze.
-    // Count/radius/30-second bound are PROJECT_TUNED; no maze membership is added.
+    // Encounter-lived soldiers keep their normal Server monster brain across patterns.
+    // A room cap bounds repeated summons; no maze membership is added.
+    constexpr std::size_t maximumSoldiers = 48u;
+    if (m_KoukuCardRainSoldiers.size() + 3u > maximumSoldiers)
+    { m_strStatus = "Card rain soldier capacity reached; existing soldiers preserved"; return false; }
     constexpr std::array archetypes{ "MONSTER_KOUKU_CARD_CLUB", "MONSTER_KOUKU_CARD_HEART", "MONSTER_KOUKU_CARD_DIAMOND" };
     std::array<const MONSTER_RUNTIME_PROFILE*, 3u> profiles{};
     std::array<SPAWN_GROUP_ANCHOR, 3u> anchors{};
@@ -417,7 +421,7 @@ bool LostArk::Server::CGameRoom::Spawn_KoukuCardRainSoldiers(
             return false;
         }
         m_KoukuCardRainSoldiers.emplace(id, KOUKU_CARD_RAIN_SOLDIER_STATE{
-            ownerId, sequence, CKoukuSaydonLogicRuntime::Add_Ticks(tick, CKoukuSaydonLogicRuntime::Ticks_FromMs(30000u)) });
+            ownerId, sequence, 0u });
     }
     m_strStatus = "Card rain spawned three authoritative card soldiers";
     return true;
@@ -425,15 +429,15 @@ bool LostArk::Server::CGameRoom::Spawn_KoukuCardRainSoldiers(
 
 void LostArk::Server::CGameRoom::Update_KoukuCardRainSoldiers(std::uint32_t tick)
 {
+    (void)tick;
     for (auto state = m_KoukuCardRainSoldiers.begin(); state != m_KoukuCardRainSoldiers.end();)
     {
         auto entity = std::find_if(m_WorldEntities.begin(), m_WorldEntities.end(),
             [&](const auto& row) { return row.iNetEntityId == state->first; });
         const auto owner = std::find_if(m_WorldEntities.begin(), m_WorldEntities.end(),
             [&](const auto& row) { return row.iNetEntityId == state->second.ownerId; });
-        const bool expired = owner == m_WorldEntities.end() || !owner->iCurrentHp || owner->strPatternId.empty() ||
-            owner->iPatternSequence != state->second.patternSequence ||
-            CKoukuSaydonLogicRuntime::Has_ReachedTick(tick, state->second.expiresAt);
+        const bool expired = owner == m_WorldEntities.end() || !owner->iCurrentHp ||
+            (entity != m_WorldEntities.end() && !entity->iCurrentHp);
         if (entity == m_WorldEntities.end()) { state = m_KoukuCardRainSoldiers.erase(state); continue; }
         if (!expired) { ++state; continue; }
         m_CombatObjectRuntime.Cancel_Source(entity->iNetEntityId);

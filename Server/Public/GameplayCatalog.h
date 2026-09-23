@@ -665,7 +665,8 @@ namespace LostArk::Server
 		it. Only an ENTER_AREA window whose regions ride a World Object world
 		track can offer this, because only that region keeps moving. */
 		GRAB_TO_WORLD_OBJECT,
-		MARIO_ENTER
+		MARIO_ENTER,
+		FIXED_DAMAGE
 	};
 
 	struct BOSS_LOGIC_CONTACT_MOTION final
@@ -692,18 +693,20 @@ namespace LostArk::Server
         LostArk::Shared::PLAYER_ATTACHMENT_SLOT eAttachmentSlot = LostArk::Shared::PLAYER_ATTACHMENT_SLOT::NONE;
         std::array<float, 3u> GripLocalOffset{}; // forwardM, upM, rightM; presentation only.
 		float fPushRangeM = 0.f;
+		float fPushHeightM = 0.f;
 		std::uint32_t iPushMs = 0u;
 		BOSS_LOGIC_PUSH_DIRECTION ePushDirection = BOSS_LOGIC_PUSH_DIRECTION::AWAY_FROM_BOSS;
 		bool bForcePush = false;
 		bool bPushCanLeaveArena = false;
 		bool bPushBallistic = false;
 		float fPushYawOffsetDegrees = 0.f;
+		std::uint32_t iDamageAmount = 0u; // Appended to preserve legacy aggregate initialization.
 	};
 
 	/* One authored judgement window of a KoukuSaydon pattern, pattern-relative
 	like the Workbench box it came from. Which value fields are meaningful is
 	decided by eKind; the rest stay at their zero defaults. */
-	enum class BOSS_LOGIC_REGION_ANCHOR : std::uint8_t { WORLD, BOSS_CURRENT, BOSS_SPAWN };
+	enum class BOSS_LOGIC_REGION_ANCHOR : std::uint8_t { WORLD, BOSS_CURRENT, BOSS_SPAWN, BOSS_START };
 	struct BOSS_LOGIC_WORLD_TRANSFORM_KEY final
 	{
 		std::uint32_t iTimeMs = 0u;
@@ -732,6 +735,12 @@ namespace LostArk::Server
 		bool bSector = false;
 		bool bReverseSector = false;
 		bool bCircle = false;
+		bool bCylinder = false;
+		bool bLinearMotion = false;
+		std::uint32_t iMotionStartMs = 0u, iMotionDurationMs = 0u;
+		std::uint32_t iAnchorCaptureStartMs = 0xffffffffu; // Unset uses the region window start.
+		std::array<float, 3u> EndPositionOffset{};
+		std::array<float, 3u> EndScale{ 1.f, 1.f, 1.f };
 		BOSS_LOGIC_WORLD_TRANSFORM_TRACK WorldTrack;
 		float fCenterX = 0.f, fCenterY = 0.f, fCenterZ = 0.f;
 		float fYawDegrees = 0.f;
@@ -773,6 +782,7 @@ namespace LostArk::Server
 		bool bInsideIsFail = false;
 		bool bRearmOnExit = false;
 		bool bRepeatAfterKnockback = false;
+		std::uint32_t iRepeatIntervalMs = 0u;
 		bool bEndsPatternOnSuccess = false;
 		// A scheduled Parent cut this child window short; close without a verdict.
 		bool bCancelAtEnd = false;
@@ -883,6 +893,7 @@ namespace LostArk::Server
 		std::vector<std::string> DirectionPatternIds;
 		std::string strCloneEndStageId;
 		std::vector<std::string> ProjectileVisualIds;
+		std::vector<LostArk::Shared::MECHANIC_CARD_SYMBOL> ProjectileCardSymbols;
 		std::string strContactVisualId;
 		float fProjectileMaxDistanceM = 0.f; // Zero keeps the lifetime-only travel bound.
 		float fProjectileSpeedMps = 0.f, fProjectileContactRadiusM = 0.f, fProjectileSpawnRadiusM = 0.f;
@@ -1428,6 +1439,9 @@ namespace LostArk::Server
 	public:
 		bool Load();
 		bool Load_PublishedKoukuProduct(const CGameplayCatalog& activeGameplay);
+		// Validated in memory and pinned only by one Debug audition; never published.
+		bool Load_DraftKoukuProduct(const CGameplayCatalog& activeGameplay,
+			const std::string& rows, const LostArk::Shared::GameplayDataRevision& expectedRowsRevision);
 		/* Load one immutable candidate artifact by its exact canonical path. The
 		content hash is checked before parsing/commit; a successful load exposes
 		the verified parent manifest revision, not the child bootstrap hash. */

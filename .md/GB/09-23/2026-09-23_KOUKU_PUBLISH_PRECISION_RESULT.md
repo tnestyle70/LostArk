@@ -52,8 +52,12 @@ main의 96개 게시본으로 덮어쓰지 않았다. 생성물 교체 전에 �
 | 격리 skill34010의27/350 전체 Gameplay Publish | 성공 |
 | 격리27/350의 실제 Server catalog/bundle contract | 94개 통과, failures0 |
 | Desktop 최신113개 전체 Gameplay Publish | 성공 |
-| 기존 Release Server로 최신 게시본 raid contract 실행 | failures0 |
+| 기존 Release Server로 최신 게시본 raid contract 실행 | 904개 통과, failures0 |
 | 기존 Debug Server로 최신 게시본 catalog 실행 | Unknown gameplay bootstrap row kind로 실패 |
+| 표준 Debug 증분 Build | Engine/Shared/Server/Client 모두 exit0, 합계 약92.6초 |
+| Debug Product의 빌드 후 기존 런타임 입력 검사 | SkipBuild=True, exit0 |
+| 새 Debug Server로 최신 게시본 raid contract 실행 | 1,178개 통과, failures0, exit0, 약102초 |
+| 최신 생성 JSON3개·Client 프로젝트 XML2개 parse / git diff --check | 통과 |
 
 Debug 실패는 최신 다른 세션의 PATTERNPARENTCHILD 소비 코드가 기존 Debug EXE에 없기 때문이다.
 다른 세션의 `out/KoukuGate3Bingo20260923/final-build-evidence.json`은 전체 Release 빌드다.
@@ -61,14 +65,29 @@ Debug 실패는 최신 다른 세션의 PATTERNPARENTCHILD 소비 코드가 기�
 Python 정밀도 수정 때문에 C++ 재빌드가 필요한 것은 아니다.
 
 Debug Product 증분 빌드를 시도했으나 실행 중인 Release Client/Server도 일괄 차단하는
-ProductOutputGuard에서 컴파일 전에 중단됐다. 실제 Debug 출력 잠금과 배포 경로를 확인 중이며
-후속 확인에서 실행 중인 모든 게임 모듈은 Release 경로임을 확인했다. 표준 Debug 출력은 별개이고
+ProductOutputGuard에서 컴파일 전에 중단됐다. 후속 확인에서 실행 중인 모든 게임 모듈은
+Release 경로임을 확인했다. 표준 Debug 출력은 별개이고
 LostArkPublishRuntimeData=false이면 공유 Resources/DataFiles를 게시하지 않는다. 같은 도구와
-표준 경로에서 일반 MSBuild Build를 진행 중이다. 사용자 프로세스 종료와 Client/UI 조작은 하지 않았다.
+표준 경로에서 일반 MSBuild Build를 실행해 네 프로젝트 모두 성공했다. Engine0.66초,
+Shared0.38초, Server27.48초, Client64.05초였다. Clean/Rebuild와 경로·셰이더 설정 변경은 없었다.
+실제 FXC 실행은 Engine16개 중0개, Client174개 중0개로 기존 셰이더를 재사용했다.
+Client에는 C4819/C4828 등 기존 소스 인코딩 경고가 남아 있으며 경고2380개·오류0개였다.
+이 작업에서 C++ 인코딩을 변경하지 않았다. 사용자 프로세스 종료와 Client/UI 조작도 하지 않았다.
+
+빌드 후 공식 Product runner의 SkipBuild 검증이 exit0으로 끝났다. 이는 파일 존재·Navigation
+참조·Item/Valtan reward 게시 내용 검사이며, Gameplay/쿠크 실행 검사는 별도로 기록한다.
+첫 Debug raid contract 실행은 60초 제한에 도달해 완료 전에 종료됐으므로 성공으로 세지 않았다.
+240초 제한으로 동일한 검사를 다시 실행해 약102초 만에 1,178개 통과·failures0·exit0을 확인했다.
+실제 최신 catalog 로드도 통과했다. 검사한 Gameplay.bootstrap의 SHA-256은
+`d714fb327ebe8efff8e6f32053a77d6723dba90310aa2094efc3fe6985e4207b`다.
+새 Debug Server EXE의 SHA-256은
+`36a8445eea8839189c990500dd81f73de4cc70234f865f9c1bb3dde2d08f33f4`다.
 
 검증 로그와 비교 결과는 `out/KoukuPublishPrecision20260923/`에 있다. 주요 파일은
 `current-projection-publish.json`, `current-gameplay-publish.log`, `current-release-raid.log`,
-`current-debug-catalog.log`이다. 수치 튜닝 증거는 같은 폴더의 `stagger-tuning-evidence/`에,
+`current-debug-raid-evidence.json`, `current-debug-raid-complete.log`이다.
+`current-debug-catalog.log`는 수정 전 Debug 바이너리의 실패 증거로 보존했다.
+수치 튜닝 증거는 같은 폴더의 `stagger-tuning-evidence/`에,
 Debug 빌드 증거는 `debug-build/`에 있다.
 
 ## G05. 전달 범위

@@ -570,6 +570,7 @@ namespace LostArk::Server
 			std::uint32_t iAuditionRequestSequence = 0u, iAuditionEpoch = 0u, iNextEntryTick = 0u;
 			bool bClearCinematic = false, bEntryRunning = false, bGate3CombatEntered = false;
             bool bClearedGate3Preparation = false;
+            bool bBingoGateVoteEntry = false;
             std::uint32_t iGate3ClearTick = 0u;
 		};
 		KOUKU_RAID_RUN m_KoukuRaid;
@@ -581,7 +582,7 @@ namespace LostArk::Server
 		void Update_KoukuRaid(std::uint32_t tick);
 		void Notify_KoukuRaidBossDeath(const SERVER_WORLD_ENTITY& boss, std::uint32_t tick);
 		void Stop_KoukuRaid(std::string reason, bool completed = false);
-		bool Begin_KoukuRaidPreparation(SESSION_ID sessionId, const LostArk::Shared::C2S_DEBUG_KOUKUSAYDON_RAID_REQUEST& request, std::string& reason, bool clearedGate3 = false);
+		bool Begin_KoukuRaidPreparation(SESSION_ID sessionId, const LostArk::Shared::C2S_DEBUG_KOUKUSAYDON_RAID_REQUEST& request, std::string& reason, bool clearedGate3 = false, bool bingoGateVoteEntry = false);
 		bool Apply_KoukuRaidReadiness(SESSION_ID sessionId, const LostArk::Shared::C2S_DEBUG_KOUKUSAYDON_RAID_REQUEST& request, std::string& reason);
 		bool Begin_KoukuRaidCinematic(const std::string& gateId, bool clear, std::uint32_t tick);
 		bool Advance_KoukuRaidGate(std::uint8_t nextGate, bool restart);
@@ -590,6 +591,8 @@ namespace LostArk::Server
             LostArk::Shared::C2S_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_REQUEST& request);
 		bool Enter_KoukuRaidCombat(std::uint8_t gate);
 		bool Start_KoukuRaidEntry(std::uint32_t tick);
+		void Handle_KoukuSaydonDraftChunk(SESSION_ID sessionId,
+			const LostArk::Shared::C2S_DEBUG_KOUKUSAYDON_DRAFT_CHUNK& chunk);
 		void Handle_KoukuSaydonPatternAudition(
 			SESSION_ID sessionId,
 			const LostArk::Shared::
@@ -1155,6 +1158,8 @@ namespace LostArk::Server
 		void Broadcast_GateProgressState(
 			bool bClosed, LostArk::Shared::GATE_PROGRESS_VOTE_RESULT result);
 		std::uint8_t Gate_Count() const;
+		std::uint8_t Resolve_CurrentKoukuGate() const;
+		bool Resolve_KoukuRevivePosition(const SERVER_PLAYER& player, SERVER_NAV_POINT& position, float& yaw) const;
 		int Gate_IndexOfPlacement(const std::string& placementId) const;
 		/* Raid-clear award input. Every fought primary boss advances its players' fight
 		   clock each tick; a dying gate boss hands its ledger to the room, and the clear
@@ -1812,6 +1817,14 @@ namespace LostArk::Server
 				S2C_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE Message;
 		};
 		std::uint32_t m_iNextKoukuSaydonPatternAuditionEpoch = 1u;
+		struct KOUKU_DRAFT_UPLOAD final
+		{
+			std::uint32_t iRequestSequence = 0u, iTotalBytes = 0u;
+			std::uint64_t iStartedAtMs = 0u;
+			LostArk::Shared::GameplayDataRevision RowsRevision{};
+			std::string Rows;
+		};
+		std::unordered_map<SESSION_ID, KOUKU_DRAFT_UPLOAD> m_KoukuDraftUploads;
 		KOUKUSAYDON_PATTERN_AUDITION_STATE m_KoukuSaydonPatternAudition;
 		std::shared_ptr<const CGameplayCatalog> m_pKoukuPublishedProductGeneration;
 		std::unordered_map<SESSION_ID, KOUKUSAYDON_PATTERN_AUDITION_RECEIPT>

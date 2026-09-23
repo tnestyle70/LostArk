@@ -276,7 +276,8 @@ public:
 	std::uint32_t Get_DebugGateGeneration() const { return m_iNextDebugGateRequestSequence; }
     bool Debug_PrepareCompletePlayResources(const std::vector<std::string>& patternIds,
         const std::vector<std::string>& bundleIds, uint32_t sourceRevision,
-        bool& ready, std::string& status, bool wholeRaid = false);
+        bool& ready, std::string& status, bool wholeRaid = false,
+        std::shared_ptr<const KOUKU_SAYDON_DRAFT_PRODUCT> draft = {});
     void Debug_ResetCompletePlayPreparation() { m_CompletePlayPreparation.reset(); }
 
 	bool_t Is_DebugGatePending() const { return m_bDebugStartPending || NO_ACTIVE_DEBUG_GATE != m_iPendingDebugGate; }
@@ -521,6 +522,7 @@ private:
     {
         std::vector<std::string> selectedPatterns, selectedBundles;
         KOUKU_SAYDON_PLAY_RESOURCES resources;
+        std::shared_ptr<const KOUKU_SAYDON_DRAFT_PRODUCT> draft;
         uint32_t sourceRevision = 0u;
         bool wholeRaid = false;
         uint64_t v1Revision = 0u, v2Generation = 0u, worldRevision = 0u;

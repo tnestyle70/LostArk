@@ -214,6 +214,13 @@ void LostArk::Server::CKoukuSaydonLogicRuntime::Build(
 
 namespace
 {
+	const LostArk::Server::BOSS_LOGIC_REGION& Window_Region(
+		const LostArk::Server::BOSS_LOGIC_REGION& region, const LostArk::Server::KOUKUSAYDON_LOGIC_WINDOW_STATE& state)
+	{
+		const auto found = state.FrozenRegions.find(region.strRegionId);
+		return found == state.FrozenRegions.end() ? region : found->second;
+	}
+
 	struct LOGIC_REGION_TRANSFORM final
 	{
 		float centerX = 0.f, centerZ = 0.f, yaw = 0.f;
@@ -228,11 +235,29 @@ namespace
 		const double patternElapsedTicks, LOGIC_REGION_TRANSFORM& outTransform, const bool requireVisible = true) noexcept
 	{
 		using namespace LostArk::Server;
+		// BOSS_START is resolved transactionally when its owning window opens.
+		if (region.eAnchor == BOSS_LOGIC_REGION_ANCHOR::BOSS_START) return false;
 		float centerX = region.fCenterX, centerZ = region.fCenterZ, yaw = region.fYawDegrees;
 		float halfX = region.fHalfX, halfZ = region.fHalfZ, radius = region.fRadiusM;
 		float radiusX = region.fRadiusXM > 0.f ? region.fRadiusXM : radius;
 		float radiusZ = region.fRadiusZM > 0.f ? region.fRadiusZM : radius;
 		float centerY = region.fCenterY, halfY = region.fHalfY;
+		if (region.bLinearMotion)
+		{
+			if (region.iMotionDurationMs == 0u) return false;
+			const double elapsedMs = patternElapsedTicks * (1000.0 / 30.0);
+			const float alpha = static_cast<float>(std::clamp(
+				(elapsedMs - region.iMotionStartMs) / region.iMotionDurationMs, 0.0, 1.0));
+			centerX += region.EndPositionOffset[0] * alpha;
+			centerY += region.EndPositionOffset[1] * alpha;
+			centerZ += region.EndPositionOffset[2] * alpha;
+			const float sx = 1.f + (region.EndScale[0] - 1.f) * alpha;
+			const float sy = 1.f + (region.EndScale[1] - 1.f) * alpha;
+			const float sz = 1.f + (region.EndScale[2] - 1.f) * alpha;
+			halfX *= sx; halfY *= sy; halfZ *= sz;
+			radius *= (std::max)(sx, sz); radiusX *= sx; radiusZ *= sz;
+			if (region.bCircle || region.bCylinder) radius = (std::max)(radiusX, radiusZ);
+		}
 		bool hasGrip = false; std::array<float, 3u> grip{};
 		if (region.WorldTrack.bEnabled)
 		{
@@ -280,12 +305,14 @@ namespace
 			const float worldYaw = track.fBaselineYawDegrees +
 				std::atan2(2.f * qw * qy, 1.f - 2.f * qy * qy) * 57.29577951308232f;
 			const float worldRadians = worldYaw * 0.017453292519943295f;
+			const float localCenterX = centerX, localCenterY = centerY, localCenterZ = centerZ;
 			centerX = track.fBaselineX + std::cos(baselineRadians) * ox + std::sin(baselineRadians) * oz +
-				std::cos(worldRadians) * region.fCenterX * sx + std::sin(worldRadians) * region.fCenterZ * sz;
+				std::cos(worldRadians) * localCenterX * sx + std::sin(worldRadians) * localCenterZ * sz;
 			centerZ = track.fBaselineZ - std::sin(baselineRadians) * ox + std::cos(baselineRadians) * oz -
-				std::sin(worldRadians) * region.fCenterX * sx + std::cos(worldRadians) * region.fCenterZ * sz;
+				std::sin(worldRadians) * localCenterX * sx + std::cos(worldRadians) * localCenterZ * sz;
 			yaw += worldYaw; halfX *= sx; halfZ *= sz; radius *= sx; radiusX *= sx; radiusZ *= sz;
-			centerY = track.fBaselineY + mix(left.fOffsetY, right.fOffsetY) + region.fCenterY * sy;
+			if (region.bCircle || region.bCylinder) radius = (std::max)(radiusX, radiusZ);
+			centerY = track.fBaselineY + mix(left.fOffsetY, right.fOffsetY) + localCenterY * sy;
 			halfY *= sy;
 			hasGrip = left.bHasGripPosition && right.bHasGripPosition;
 			if (hasGrip) for (size_t axis = 0; axis < 3u; ++axis) grip[axis] = mix(left.GripPosition[axis], right.GripPosition[axis]);
@@ -299,11 +326,13 @@ namespace
 			centerX = boss.fPositionX + std::cos(radians) * localX + std::sin(radians) * localZ;
 			centerZ = boss.fPositionZ - std::sin(radians) * localX + std::cos(radians) * localZ;
 			yaw += boss.fYawDegrees;
+			if (region.bCylinder || region.bLinearMotion) centerY += boss.fPositionY;
 		}
 		if (BOSS_LOGIC_REGION_ANCHOR::BOSS_SPAWN == region.eAnchor)
 		{
 			centerX += boss.fSpawnPositionX;
 			centerZ += boss.fSpawnPositionZ;
+			if (region.bCylinder || region.bLinearMotion) centerY += boss.fSpawnPositionY;
 		}
 		outTransform = { centerX, centerZ, yaw, halfX, halfZ, radius, radiusX, radiusZ, centerY, halfY, hasGrip, grip };
 		return true;
@@ -316,6 +345,23 @@ namespace
 		LOGIC_REGION_TRANSFORM transform;
 		if (!Resolve_LogicRegionTransform(region, boss, patternElapsedTicks, transform)) return false;
 		const auto [centerX, centerZ, yaw, halfX, halfZ, radius, radiusX, radiusZ, centerY, halfY, hasGrip, grip] = transform;
+		if (region.bCylinder || region.bLinearMotion)
+		{
+			using namespace LostArk::Shared::WorldCollision;
+			using namespace LostArk::Shared::CombatCollision;
+			if (!std::isfinite(player.fPositionY) || !std::isfinite(centerY) || !(halfY > 0.f) ||
+				std::abs(player.fPositionY + PLAYER_CENTER_OFFSET_Y - centerY) >
+					halfY + PLAYER_HALF_EXTENT_Y + CONTACT_MARGIN) return false;
+			const BODY_CIRCLE_XZ body{player.fPositionX, player.fPositionZ, PLAYER_HALF_EXTENT_X + CONTACT_MARGIN};
+			const float inner = region.fInnerRadiusM * radius / region.fRadiusM;
+			if (inner > 0.f && !Circle_IntersectsRing(body, centerX, centerZ, inner, radius)) return false;
+			if (region.bCircle || region.bCylinder) return Circles_Overlap(CIRCLE_XZ{centerX, centerZ, radius}, body);
+			const float radians = yaw * 0.017453292519943295f;
+			const float fx = std::sin(radians), fz = std::cos(radians);
+			if (region.bSector) return Circle_IntersectsEllipticSector(body, centerX, centerZ, fx, fz,
+				radiusX, radiusZ, region.fHalfAngleDegrees * 2.f, region.bReverseSector);
+			return Circle_IntersectsForwardBox(body, centerX - fx * halfZ, centerZ - fz * halfZ, fx, fz, 2.f * halfZ, halfX);
+		}
 		if (hasGrip && !region.bSector && !region.bCircle)
 		{
 			using namespace LostArk::Shared::WorldCollision;
@@ -353,6 +399,78 @@ namespace
 		return region.bReverseSector ? !inside : inside;
 	}
 
+	// Clip the fixed-tick interval against vertical slabs, then the horizontal
+	// swept volume. A thin rising pillar must still hit between two sampled poses.
+	bool Swept_LinearColliderContainsPlayer(const LostArk::Server::BOSS_LOGIC_REGION& region,
+		const LostArk::Server::SERVER_WORLD_ENTITY& boss, const LostArk::Server::SERVER_PLAYER& player,
+		const std::uint32_t elapsedTicks, const std::uint32_t windowStartTicks, const std::uint32_t windowEndTicks) noexcept
+	{
+		using namespace LostArk::Shared::WorldCollision;
+		if (!region.bLinearMotion || region.WorldTrack.bEnabled || region.bSector || elapsedTicks <= windowStartTicks) return false;
+		const double begin = (std::max)(double(elapsedTicks) - 1.0, double(windowStartTicks));
+		const double end = (std::min)(double(elapsedTicks), double(windowEndTicks));
+		LOGIC_REGION_TRANSFORM a, b;
+		if (end <= begin || !Resolve_LogicRegionTransform(region, boss, begin, a) ||
+			!Resolve_LogicRegionTransform(region, boss, end, b)) return false;
+		double low = 0.0, high = 1.0;
+		const auto bound = [&](double first, double last) {
+			if (!std::isfinite(first) || !std::isfinite(last)) return false;
+			const double delta = last - first;
+			if (std::abs(delta) < 1e-12) return first <= 0.0;
+			const double crossing = -first / delta;
+			if (delta > 0.0) high = (std::min)(high, crossing); else low = (std::max)(low, crossing);
+			return low <= high;
+		};
+		const auto slab = [&](double first, double last, double firstHalf, double lastHalf) {
+			return bound(first - firstHalf, last - lastHalf) && bound(-first - firstHalf, -last - lastHalf);
+		};
+		const double bodyY = player.fPositionY + PLAYER_CENTER_OFFSET_Y;
+		if (!slab(bodyY - a.centerY, bodyY - b.centerY,
+			a.halfY + PLAYER_HALF_EXTENT_Y + CONTACT_MARGIN, b.halfY + PLAYER_HALF_EXTENT_Y + CONTACT_MARGIN)) return false;
+		const double bodyRadius = PLAYER_HALF_EXTENT_X + CONTACT_MARGIN;
+		const double ax = player.fPositionX - a.centerX, az = player.fPositionZ - a.centerZ;
+		const double bx = player.fPositionX - b.centerX, bz = player.fPositionZ - b.centerZ;
+		if (region.bCylinder || region.bCircle)
+		{
+			// Hollow circles keep the sampled test: sweeping only the outer disc would fill the hole.
+			if (region.fInnerRadiusM > 0.f) return false;
+			const double r = a.radius + bodyRadius, dr = b.radius - a.radius, dx = bx - ax, dz = bz - az;
+			const double q2 = dx * dx + dz * dz - dr * dr;
+			const double q1 = 2.0 * (ax * dx + az * dz - r * dr), q0 = ax * ax + az * az - r * r;
+			const auto q = [&](double t) { return (q2 * t + q1) * t + q0; };
+			double nearest = (std::min)(q(low), q(high));
+			if (q2 > 1e-12) nearest = (std::min)(nearest, q(std::clamp(-q1 / (2.0 * q2), low, high)));
+			return nearest <= 0.0;
+		}
+		const double yaw = a.yaw * .017453292519943295;
+		const double x0 = std::cos(yaw) * ax - std::sin(yaw) * az, x1 = std::cos(yaw) * bx - std::sin(yaw) * bz;
+		const double z0 = std::sin(yaw) * ax + std::cos(yaw) * az, z1 = std::sin(yaw) * bx + std::cos(yaw) * bz;
+		// Split where the nearest box edge changes; within each interval distance is quadratic.
+		std::array<double, 6u> cuts{low, high}; size_t count = 2u;
+		const auto split = [&](double first, double last) {
+			const double delta = last - first;
+			if (std::abs(delta) < 1e-12) return;
+			const double t = -first / delta;
+			if (t > low && t < high) cuts[count++] = t;
+		};
+		split(x0 - a.halfX, x1 - b.halfX); split(-x0 - a.halfX, -x1 - b.halfX);
+		split(z0 - a.halfZ, z1 - b.halfZ); split(-z0 - a.halfZ, -z1 - b.halfZ);
+		std::sort(cuts.begin(), cuts.begin() + count);
+		const auto gap = [](double first, double last, double halfFirst, double halfLast, double t) {
+			return (std::max)(0.0, std::abs(first + (last - first) * t) - (halfFirst + (halfLast - halfFirst) * t));
+		};
+		for (size_t piece = 1u; piece < count; ++piece)
+		{
+			const double begin = cuts[piece - 1u], end = cuts[piece];
+			const double x = gap(x0, x1, a.halfX, b.halfX, begin), z = gap(z0, z1, a.halfZ, b.halfZ, begin);
+			const double dx = gap(x0, x1, a.halfX, b.halfX, end) - x, dz = gap(z0, z1, a.halfZ, b.halfZ, end) - z;
+			const double length = dx * dx + dz * dz;
+			const double t = length > 1e-18 ? std::clamp(-(x * dx + z * dz) / length, 0.0, 1.0) : 0.0;
+			if ((x + dx * t) * (x + dx * t) + (z + dz * t) * (z + dz * t) <= bodyRadius * bodyRadius) return true;
+		}
+		return false;
+	}
+
 	// Sweep only the existing centered WORLD circle contract. Each visible
 	// key interval is independent, so a hidden gap, delayed birth or expired
 	// lifetime cannot become a phantom segment between two visible samples.
@@ -363,7 +481,7 @@ namespace
 	{
 		using namespace LostArk::Server;
 		using namespace LostArk::Shared::CombatCollision;
-		if (!region.bCircle || region.fInnerRadiusM > 0.f || !region.WorldTrack.bEnabled || region.fCenterX != 0.f || region.fCenterZ != 0.f ||
+		if (region.bCylinder || region.bLinearMotion || !region.bCircle || region.fInnerRadiusM > 0.f || !region.WorldTrack.bEnabled || region.fCenterX != 0.f || region.fCenterZ != 0.f ||
 			region.eAnchor == BOSS_LOGIC_REGION_ANCHOR::BOSS_CURRENT || elapsedTicks <= windowStartTicks ||
 			!std::isfinite(player.fPositionX) || !std::isfinite(player.fPositionZ)) return false;
 		const auto& track = region.WorldTrack;
@@ -403,7 +521,7 @@ namespace
         const uint32_t elapsedTicks, const uint32_t windowStartTicks, const uint32_t windowEndTicks) noexcept
     {
         using namespace LostArk::Server;
-        if (region.bCircle || region.bSector || !region.WorldTrack.bEnabled ||
+        if (region.bCylinder || region.bLinearMotion || region.bCircle || region.bSector || !region.WorldTrack.bEnabled ||
             region.eAnchor == BOSS_LOGIC_REGION_ANCHOR::BOSS_CURRENT || elapsedTicks <= windowStartTicks) return false;
         const auto& track = region.WorldTrack;
         if (track.Keys.size() < 2u || track.bSmoothStep || !(track.fPlaybackSpeed > 0.f)) return false;
@@ -502,7 +620,7 @@ namespace
 		const auto [centerX, centerZ, yaw, halfX, halfZ, radius, radiusX, radiusZ, centerY, halfY, hasGrip, grip] = transform;
 		const float inner = region.fInnerRadiusM * radius / region.fRadiusM;
 		if (inner > 0.f && !Circle_IntersectsRing(target, centerX, centerZ, inner, radius)) return false;
-		if (region.bCircle) return Circles_Overlap(CIRCLE_XZ{ centerX, centerZ, radius }, target);
+		if (region.bCircle || region.bCylinder) return Circles_Overlap(CIRCLE_XZ{ centerX, centerZ, radius }, target);
 		const float radians = yaw * 0.017453292519943295f;
 		const float forwardX = std::sin(radians), forwardZ = std::cos(radians);
 		if (region.bSector && inner > 0.f)
@@ -823,6 +941,37 @@ bool LostArk::Server::CKoukuSaydonLogicRuntime::Enter_CardMaze(
 	return true;
 }
 
+void LostArk::Server::CKoukuSaydonLogicRuntime::Capture_StartRegions(
+	const SERVER_WORLD_ENTITY& boss, const BOSS_PATTERN_LOGIC_WINDOW& window,
+	KOUKUSAYDON_LOGIC_WINDOW_STATE& state, const std::uint32_t patternElapsedTicks)
+{
+	for (const auto& region : window.CardRegions)
+	{
+		if (region.eAnchor != BOSS_LOGIC_REGION_ANCHOR::BOSS_START ||
+			state.FrozenRegions.contains(region.strRegionId)) continue;
+		const auto captureStartMs = region.iAnchorCaptureStartMs == 0xffffffffu ? window.iStartMs : region.iAnchorCaptureStartMs;
+		if (patternElapsedTicks < Ticks_FromMs(captureStartMs)) continue;
+		auto source = region;
+		source.eAnchor = BOSS_LOGIC_REGION_ANCHOR::BOSS_CURRENT;
+		source.bLinearMotion = false;
+		LOGIC_REGION_TRANSFORM transform;
+		if (!Resolve_LogicRegionTransform(source, boss, double(captureStartMs) * .03, transform)) continue;
+		auto frozen = region;
+		frozen.eAnchor = BOSS_LOGIC_REGION_ANCHOR::WORLD;
+		frozen.WorldTrack = {};
+		frozen.fCenterX = transform.centerX; frozen.fCenterZ = transform.centerZ;
+		frozen.fCenterY = transform.centerY + ((source.bCylinder || source.bLinearMotion) ? 0.f : boss.fPositionY);
+		frozen.fYawDegrees = transform.yaw;
+		frozen.fHalfX = transform.halfX; frozen.fHalfY = transform.halfY; frozen.fHalfZ = transform.halfZ;
+		frozen.fRadiusM = transform.radius; frozen.fRadiusXM = transform.radiusX; frozen.fRadiusZM = transform.radiusZ;
+		const float yaw = (transform.yaw - region.fYawDegrees) * .017453292519943295f;
+		const float x = region.EndPositionOffset[0], z = region.EndPositionOffset[2];
+		frozen.EndPositionOffset[0] = std::cos(yaw) * x + std::sin(yaw) * z;
+		frozen.EndPositionOffset[2] = -std::sin(yaw) * x + std::cos(yaw) * z;
+		state.FrozenRegions.emplace(region.strRegionId, std::move(frozen));
+	}
+}
+
 void LostArk::Server::CKoukuSaydonLogicRuntime::Open_Window(
 	SERVER_WORLD_ENTITY& boss,
 	const BOSS_PATTERN_LOGIC_WINDOW& window,
@@ -837,6 +986,7 @@ void LostArk::Server::CKoukuSaydonLogicRuntime::Open_Window(
 	state.InsidePlayers.clear();
 	state.NextContactHitTicks.clear();
 	state.iBossHpAtOpen = boss.iCurrentHp;
+	Capture_StartRegions(boss, window, state, Ticks_FromMs(window.iStartMs));
 	switch (window.eKind)
 	{
 	case BOSS_PATTERN_LOGIC_KIND::CARD_DICE_BIND:
@@ -1109,11 +1259,14 @@ void LostArk::Server::CKoukuSaydonLogicRuntime::Apply_Result(
 	{
 	case BOSS_PATTERN_LOGIC_RESULT_KIND::INSTANT_DEATH:
 	case BOSS_PATTERN_LOGIC_RESULT_KIND::MAX_HP_PERCENT_DAMAGE:
+	case BOSS_PATTERN_LOGIC_RESULT_KIND::FIXED_DAMAGE:
 	{
+		if (result.eKind == BOSS_PATTERN_LOGIC_RESULT_KIND::FIXED_DAMAGE && !result.iDamageAmount) break;
 		SERVER_WORLD_TO_PLAYER_HIT hit{};
 		hit.iRawDamage =
 			BOSS_PATTERN_LOGIC_RESULT_KIND::INSTANT_DEATH == result.eKind ?
 				(std::max)(1u, player.iCurrentHp) :
+			BOSS_PATTERN_LOGIC_RESULT_KIND::FIXED_DAMAGE == result.eKind ? result.iDamageAmount :
 				(std::max)(1u, Percent_Of(player.iMaximumHp, result.iPercent));
 		hit.fSourceX = boss.fPositionX;
 		hit.fSourceZ = boss.fPositionZ;
@@ -1122,6 +1275,7 @@ void LostArk::Server::CKoukuSaydonLogicRuntime::Apply_Result(
 		hit.bForcePush = result.bForcePush;
 		hit.bPushCanLeaveArena = result.bPushCanLeaveArena;
 		hit.bPushBallistic = result.bPushBallistic;
+		hit.fPushHeightM = result.fPushHeightM;
 		if (result.ePushDirection == BOSS_LOGIC_PUSH_DIRECTION::AWAY_FROM_CONTACT)
 		{
 			if (!pContactCenter) break;
@@ -1239,11 +1393,17 @@ bool LostArk::Server::CKoukuSaydonLogicRuntime::Is_InsideMarioEntry(
 			window.OnSuccess.size() != 1u || window.OnSuccess.front().eKind != BOSS_PATTERN_LOGIC_RESULT_KIND::MARIO_ENTER) continue;
 		for (const auto& region : window.CardRegions)
 		{
+			// Mario admission outlives the pattern ledger; the room already owns
+			// its frozen birth root in MarioEntryAnchor and passes it as anchor.
+			auto sampled = region;
+			if (sampled.eAnchor == BOSS_LOGIC_REGION_ANCHOR::BOSS_START)
+				sampled.eAnchor = BOSS_LOGIC_REGION_ANCHOR::BOSS_CURRENT;
 			LOGIC_REGION_TRANSFORM transform;
-			if (!Resolve_LogicRegionTransform(region, anchor, elapsedTicks, transform) ||
-				(transform.hasGrip && std::abs(player.fPositionY + PLAYER_CENTER_OFFSET_Y - transform.centerY) >
+			if (!Resolve_LogicRegionTransform(sampled, anchor, elapsedTicks, transform) ||
+				((transform.hasGrip || sampled.bCylinder || sampled.bLinearMotion) &&
+				 std::abs(player.fPositionY + PLAYER_CENTER_OFFSET_Y - transform.centerY) >
 					transform.halfY + PLAYER_HALF_EXTENT_Y + CONTACT_MARGIN)) continue;
-			if (Intersects_LogicRegion(region, anchor, body, elapsedTicks))
+			if (Intersects_LogicRegion(sampled, anchor, body, elapsedTicks))
 			{
 				if (matchedStage) *matchedStage = window.OnSuccess.front().iMarioEntryStage;
 				return true;
@@ -1301,6 +1461,7 @@ void LostArk::Server::CKoukuSaydonLogicRuntime::Apply_Results(
 			if (invulnerablePlayers.contains(player.iPlayerId) &&
 				(result.eKind == BOSS_PATTERN_LOGIC_RESULT_KIND::INSTANT_DEATH ||
 				 result.eKind == BOSS_PATTERN_LOGIC_RESULT_KIND::MAX_HP_PERCENT_DAMAGE ||
+				 result.eKind == BOSS_PATTERN_LOGIC_RESULT_KIND::FIXED_DAMAGE ||
 				 result.eKind == BOSS_PATTERN_LOGIC_RESULT_KIND::FEAR)) return;
 			Apply_Result(player, result, boss, catalog, pMadnessPolicy, serverTick, outDamageEvents, pContactCenter);
 		};
@@ -1510,6 +1671,12 @@ void LostArk::Server::CKoukuSaydonLogicRuntime::Update(
         if (navigationBlocked) outOutput.strStatus = "boss charge stopped at navigation boundary";
         else if (blocked) outOutput.strStatus = "boss charge stopped at collision boundary";
     }
+	// Fixed Effect anchors can be born before their colliders. Capture on the
+	// same Server clock before the later window opens, retaining one immutable basis.
+	for (auto& state : ledger.Windows)
+		if (!state.bClosed && state.iWindowIndex < pattern.LogicWindows.size())
+			Capture_StartRegions(boss, pattern.LogicWindows[state.iWindowIndex], state,
+				serverTick - ledger.iPatternStartTick);
 	// Gather protection before any result, independently of authored window order.
 	// Protection belongs to this pattern execution; only presentation pulses form a room-wide union.
 	std::set<LostArk::Shared::PLAYER_ID> invulnerablePlayers;
@@ -1524,7 +1691,7 @@ void LostArk::Server::CKoukuSaydonLogicRuntime::Update(
 			const auto& window = pattern.LogicWindows[state.iWindowIndex];
 			return window.eKind == BOSS_PATTERN_LOGIC_KIND::INVULNERABILITY_ZONE &&
 				std::any_of(window.CardRegions.begin(), window.CardRegions.end(), [&](const auto& region) {
-					return Contains_LogicRegion(region, boss, player, serverTick - ledger.iPatternStartTick);
+					return Contains_LogicRegion(Window_Region(region, state), boss, player, serverTick - ledger.iPatternStartTick);
 				});
 		});
 		if (!inside) continue;
@@ -1556,7 +1723,7 @@ void LostArk::Server::CKoukuSaydonLogicRuntime::Update(
 					motionPriority->second > window.iContactPriority) continue;
 				const LostArk::Shared::CombatCollision::BODY_CIRCLE_XZ circle{ target.fWorldX, target.fWorldZ, target.fRadiusM };
 				if (!std::any_of(window.CardRegions.begin(), window.CardRegions.end(), [&](const auto& region) {
-					return Intersects_LogicRegion(region, boss, circle, serverTick - ledger.iPatternStartTick);
+					return Intersects_LogicRegion(Window_Region(region, state), boss, circle, serverTick - ledger.iPatternStartTick);
 				})) continue;
 				state.ContactedWorldOccurrences.insert(target.strWorldOccurrenceId);
 				if (!window.strContactGroupId.empty() && !ledger.ConsumedContactGroups.emplace(
@@ -1744,7 +1911,7 @@ void LostArk::Server::CKoukuSaydonLogicRuntime::Update(
 			const bool inside = !window.strTargetWorldInstanceId.empty() &&
 				std::any_of(window.CardRegions.begin(), window.CardRegions.end(),
 					[&](const BOSS_LOGIC_REGION& region) {
-						return Intersects_LogicRegion(region, boss, target, serverTick - ledger.iPatternStartTick);
+						return Intersects_LogicRegion(Window_Region(region, state), boss, target, serverTick - ledger.iPatternStartTick);
 					});
 			if (inside)
 			{
@@ -1766,6 +1933,9 @@ void LostArk::Server::CKoukuSaydonLogicRuntime::Update(
 		case BOSS_PATTERN_LOGIC_KIND::ENTER_AREA:
 		{
 			const bool enter = BOSS_PATTERN_LOGIC_KIND::ENTER_AREA == window.eKind;
+			// Repeating contact emits only inside [birth, expiry), matching the visible Collider lifetime.
+			if (enter && window.iRepeatIntervalMs && reachedEnd)
+			{ Close_Window(boss, window, state, players); break; }
 			// Mario admission and its party-wide failure are committed by the room.
 			// Other participants must not time out merely because one player entered.
 			if (enter && window.OnSuccess.size() == 1u &&
@@ -1777,22 +1947,35 @@ void LostArk::Server::CKoukuSaydonLogicRuntime::Update(
 			if (!enter && !reachedEnd) break;
 			for (auto& [playerId, player] : players)
 			{
-				if (!Is_Judgeable(player) || (enter && !window.bRearmOnExit && !window.bRepeatAfterKnockback &&
+				if (!Is_Judgeable(player) || (enter && !window.bRearmOnExit && !window.bRepeatAfterKnockback && !window.iRepeatIntervalMs &&
 					KOUKUSAYDON_LOGIC_ANSWER::SUCCESS == state.Answers[playerId]))
 					continue;
 				const auto caught = std::find_if(window.CardRegions.begin(), window.CardRegions.end(),
 					[&](const BOSS_LOGIC_REGION& region) {
 						const auto elapsed = serverTick - ledger.iPatternStartTick;
-						return Contains_LogicRegion(region, boss, player, elapsed) ||
-							(enter && (Swept_CenteredWorldCircleContainsPlayer(region, boss, player, elapsed,
+						const auto& sampledRegion = Window_Region(region, state);
+						return Contains_LogicRegion(sampledRegion, boss, player, elapsed) ||
+							(enter && (Swept_LinearColliderContainsPlayer(sampledRegion, boss, player, elapsed,
 								state.iStartTick - ledger.iPatternStartTick, state.iEndTick - ledger.iPatternStartTick) ||
-                                Swept_WorldBoxContainsPlayer(region, boss, player, elapsed,
+								Swept_CenteredWorldCircleContainsPlayer(sampledRegion, boss, player, elapsed,
+								state.iStartTick - ledger.iPatternStartTick, state.iEndTick - ledger.iPatternStartTick) ||
+                                Swept_WorldBoxContainsPlayer(sampledRegion, boss, player, elapsed,
                                     state.iStartTick - ledger.iPatternStartTick, state.iEndTick - ledger.iPatternStartTick)));
 					});
 				const bool inside = window.CardRegions.end() != caught;
 				const bool captureCandidate = inside && enter && !window.OnSuccess.empty() &&
 					(window.OnSuccess.front().eKind == BOSS_PATTERN_LOGIC_RESULT_KIND::CAPTURE_PLAYER ||
 					 window.OnSuccess.front().eKind == BOSS_PATTERN_LOGIC_RESULT_KIND::GRAB_TO_WORLD_OBJECT);
+				if (enter && window.iRepeatIntervalMs)
+				{
+					if (inside)
+					{
+						const auto next = state.NextContactHitTicks.find(playerId);
+						if (next != state.NextContactHitTicks.end() && !Has_ReachedTick(serverTick, next->second)) continue;
+					}
+					else if (const auto previous = state.Answers.find(playerId); previous != state.Answers.end() &&
+						previous->second != KOUKUSAYDON_LOGIC_ANSWER::NONE) continue;
+				}
 				if (enter && window.bRepeatAfterKnockback)
 				{
 					if (inside)
@@ -1834,12 +2017,14 @@ void LostArk::Server::CKoukuSaydonLogicRuntime::Update(
 					(window.bInsideIsFail ? window.OnFail : window.OnSuccess) : window.OnTimeout;
 				LOGIC_REGION_TRANSFORM contactTransform{};
 				std::array<float, 2u> contactCenter{};
-				const bool hasContactCenter = inside && Resolve_LogicRegionTransform(*caught, boss,
+				const bool hasContactCenter = inside && Resolve_LogicRegionTransform(Window_Region(*caught, state), boss,
 					serverTick - ledger.iPatternStartTick, contactTransform, false);
 				if (hasContactCenter) contactCenter = { contactTransform.centerX, contactTransform.centerZ };
 				Apply_Results(answered, state, &player, players,
 					boss, catalog, pMadnessPolicy, serverTick, outDamageEvents, outOutput, invulnerablePlayers,
 					hasContactCenter ? &contactCenter : nullptr);
+				if (inside && enter && window.iRepeatIntervalMs)
+					state.NextContactHitTicks[playerId] = Add_Ticks(serverTick, Ticks_FromMs(window.iRepeatIntervalMs));
 				if (inside && enter && window.bRepeatAfterKnockback && !answered.empty())
 					state.NextContactHitTicks[playerId] = Add_Ticks(serverTick, Ticks_FromMs(answered.front().iPushMs));
 				/* Only this seam knows which region caught this player, and that

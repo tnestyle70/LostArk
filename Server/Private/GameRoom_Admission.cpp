@@ -586,6 +586,7 @@ void LostArk::Server::CGameRoom::Leave(
 			return edge.iSessionId == sessionId;
 		});
 	m_KoukuSaydonPatternAuditionReceiptBySessionId.erase(sessionId);
+	m_KoukuDraftUploads.erase(sessionId);
 	m_ValtanAuditionSequenceBySessionId.erase(sessionId);
 	m_WorldPlaybackRequestSequences.erase(sessionId);
 	m_RoomPlayerArrivalRuns.erase(sessionId);

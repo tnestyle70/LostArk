@@ -437,8 +437,8 @@ void LostArk::Server::CGameRoom::Handle_RevivePlayer(
 		m_GameplayCatalog.Find_Player(player.eCharacterClass);
 	if (nullptr == profile)
 		return;
-	/* Kouku revives at the death position. Valtan retains its authored safe
-	center. Navigation admission is staged before any player state changes. */
+	/* Both destinations are staged before any player state changes: Kouku
+	returns to its current gate start; Valtan retains its authored safe center. */
 	float reviveX = player.fPositionX;
 	float reviveY = player.fPositionY;
 	float reviveZ = player.fPositionZ;
@@ -453,19 +453,21 @@ void LostArk::Server::CGameRoom::Handle_RevivePlayer(
 		reviveZ = arenaCenter->fPositionZ;
 		reviveYaw = arenaCenter->fYawDegrees;
 	}
+	else
+	{
+		SERVER_NAV_POINT start{};
+		if (!Resolve_KoukuRevivePosition(player, start, reviveYaw)) return;
+		reviveX = start.x; reviveY = start.y; reviveZ = start.z;
+	}
 	if (m_ServerNavigation.Is_Loaded())
 	{
 		SERVER_NAV_POINT projected{};
 		if (!m_ServerNavigation.Project_Point(
 			reviveX, reviveZ, projected, reviveY))
 			return;
-		// Project_Point provides a safe floor if the death location is unwalkable.
-		if (WORLD_ID::VALTAN_ARENA == m_eWorldId ||
-			!m_ServerNavigation.Is_PointWalkableExact(reviveX, reviveZ, reviveY))
-		{
-			reviveX = projected.x;
-			reviveZ = projected.z;
-		}
+		// Commit the navigation-admitted gate start, never the old death location.
+		reviveX = projected.x;
+		reviveZ = projected.z;
 		reviveY = projected.y;
 	}
 	player.fPositionX = reviveX;
@@ -492,6 +494,7 @@ void LostArk::Server::CGameRoom::Handle_RevivePlayer(
 	player.Clear_SilenceStatus();
 	player.fFallVelocityY = 0.f;
 	player.iFallDeathTick = 0u;
+	player.fFallDeathPlaneY = 0.f;
 	player.fActionElapsedSeconds = 0.f;
 	player.fSkillAimDirectionX = 0.f;
 	player.fSkillAimDirectionZ = 1.f;
@@ -510,6 +513,9 @@ void LostArk::Server::CGameRoom::Handle_RevivePlayer(
 	player.TriggerMove = {};
 	player.fKnockbackRemainingSeconds = 0.f;
 	player.fKnockbackSpeed = 0.f;
+	player.bKnockbackBallistic = player.bKnockbackCanLeaveArena = player.bArenaEjectionActive = false;
+	player.fKnockbackVelocityY = player.fKnockbackLaunchY = player.fKnockbackSupportY = 0.f;
+	player.iEjectionOwnerNetEntityId = INVALID_NET_ENTITY_ID;
 	player.iKnockdownEndTick = 0u;
 	player.iHitReactionGraceEndTick = 0u;
 	// A successful authoritative revive immediately makes the player a valid

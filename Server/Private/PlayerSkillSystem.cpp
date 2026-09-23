@@ -1579,11 +1579,13 @@ void LostArk::Server::CPlayerSkillSystem::Arm_PlayerHitReaction(
 	const std::uint32_t pushMs,
 	const bool knockdown,
 	const std::uint32_t downMs,
-	const std::uint32_t serverTick, const bool forcePush, const bool pushCanLeaveArena, const bool pushBallistic)
+	const std::uint32_t serverTick, const bool forcePush, const bool pushCanLeaveArena, const bool pushBallistic,
+	const float pushHeightM)
 {
 	using namespace LostArk::Shared;
 	const bool hasPush =
-		0.f != pushRangeM && 0u != pushMs && std::isfinite(pushRangeM);
+		(0.f != pushRangeM || (pushBallistic && pushHeightM > 0.f)) && 0u != pushMs &&
+		std::isfinite(pushRangeM) && std::isfinite(pushHeightM) && pushHeightM >= 0.f;
 	if (!Can_ArmPlayerHitReaction(player, serverTick, forcePush && hasPush)) return;
 	if (!hasPush && !knockdown)
 		return;
@@ -1633,12 +1635,17 @@ void LostArk::Server::CPlayerSkillSystem::Arm_PlayerHitReaction(
 		player.fKnockbackDirectionX = directionX;
 		player.fKnockbackDirectionZ = directionZ;
 		player.fKnockbackSpeed = std::fabs(pushRangeM) / windowSeconds;
+		// Consecutive forced launches may start in the air, but share the first support floor.
+		if (!player.bKnockbackBallistic || player.fKnockbackRemainingSeconds <= 0.f)
+			player.fKnockbackSupportY = player.fPositionY;
 		player.fKnockbackRemainingSeconds = windowSeconds;
 		player.bKnockbackCanLeaveArena = pushCanLeaveArena;
 		player.bKnockbackBallistic = pushBallistic;
 		player.fKnockbackLaunchY = player.fPositionY;
+		player.fKnockbackGravityMps2 = pushBallistic && pushHeightM > 0.f ?
+			8.f * pushHeightM / (windowSeconds * windowSeconds) : SERVER_PLAYER::KNOCKBACK_GRAVITY_MPS2;
 		player.fKnockbackVelocityY = pushBallistic ?
-			0.5f * SERVER_PLAYER::KNOCKBACK_GRAVITY_MPS2 * windowSeconds : 0.f;
+			0.5f * player.fKnockbackGravityMps2 * windowSeconds : 0.f;
 	}
 	if ((knockdown && 0u != downMs) || (hasPush && pushBallistic))
 	{

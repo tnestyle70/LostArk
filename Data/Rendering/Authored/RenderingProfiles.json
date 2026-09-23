@@ -1,7 +1,7 @@
 {
   "schema": "lostark.rendering-profiles",
   "formatVersion": 1,
-  "revision": 77,
+  "revision": 80,
   "globalQuality": {
     "ssaoEnabled": true,
     "ssaoRadius": 0.0399999991,
@@ -48,7 +48,8 @@
         "far": 250,
         "depthBias": 0.00150000001,
         "normalBias": 0.0299999993,
-        "strength": 0.699999988
+        "strength": 0.699999988,
+        "dynamicBakedStrength": 0
       },
       "fog": {
         "enabled": true,
@@ -100,7 +101,8 @@
         "far": 250,
         "depthBias": 0.00150000001,
         "normalBias": 0.0299999993,
-        "strength": 0.699999988
+        "strength": 0.699999988,
+        "dynamicBakedStrength": 0
       },
       "fog": {
         "enabled": true,
@@ -153,7 +155,8 @@
         "far": 250,
         "depthBias": 0.00150000001,
         "normalBias": 0.0299999993,
-        "strength": 0.699999988
+        "strength": 0.699999988,
+        "dynamicBakedStrength": 0
       },
       "fog": {
         "enabled": true,
@@ -211,7 +214,8 @@
         "far": 80,
         "depthBias": 0.00150000001,
         "normalBias": 0.0250000004,
-        "strength": 0.75
+        "strength": 0.75,
+        "dynamicBakedStrength": 0
       },
       "fog": {
         "enabled": false,
@@ -259,7 +263,8 @@
         "far": 80,
         "depthBias": 0.00150000001,
         "normalBias": 0.0250000004,
-        "strength": 0.75
+        "strength": 0.75,
+        "dynamicBakedStrength": 0
       },
       "fog": {
         "enabled": false,
@@ -281,11 +286,13 @@
       }
     },
     {
-      "qualityOverride": {"ssaoEnabled": true, "ssaoRadius": 0.7, "ssaoBias": 0.025, "ssaoIntensity": 1.0, "ssaoPower": 1.4, "ssaoDistanceFade": 132.5, "bloomEnabled": true, "bloomThreshold": 0.699999988, "bloomSoftKnee": 1, "bloomIntensity": 0.899999976, "bloomScatter": 1, "exposure": 1, "whitePoint": 1, "gamma": 2.20000005, "fxaaEnabled": true, "fxaaSubpixel": 0.25, "fxaaEdgeThreshold": 0.0311999992, "fxaaEdgeThresholdMin": 0.0183000006, "colorAdjustment": {"bloomTint": [1, 1, 1, 1], "desaturation": 0}, "sourcePostProcess": {"enabled": true, "toneCurve": "UE3_CUSTOMIZABLE", "toneScale": 1, "toneRange": 8, "toneToe": 0.5, "highlights": [1, 1, 1], "midtones": [1, 1, 1], "shadows": [0, 0, 0], "colorize": [1, 1, 1], "desaturation": 0, "colorGradingLut": ""}},
+      "qualityOverride": {"ssaoEnabled": true, "ssaoRadius": 0.699999988, "ssaoBias": 0.0250000004, "ssaoIntensity": 1, "ssaoPower": 1.39999998, "ssaoDistanceFade": 132.5, "bloomEnabled": true, "bloomThreshold": 0.699999988, "bloomSoftKnee": 1, "bloomIntensity": 0.899999976, "bloomScatter": 1, "exposure": 1, "whitePoint": 1, "gamma": 2.20000005, "fxaaEnabled": true, "fxaaSubpixel": 0.25, "fxaaEdgeThreshold": 0.0311999992, "fxaaEdgeThresholdMin": 0.0183000006, "colorAdjustment": {"bloomTint": [1, 1, 1, 1], "desaturation": 0}, "sourcePostProcess": {"enabled": true, "toneCurve": "UE3_CUSTOMIZABLE", "toneScale": 1, "toneRange": 8, "toneToe": 0.5, "highlights": [1, 1, 1], "midtones": [1, 1, 1], "shadows": [0, 0, 0], "colorize": [1, 1, 1], "desaturation": 0, "colorGradingLut": ""}},
       "environment": {
         "cubeTexture": "Map/Lighting/CharacterSelect/lv_lut_valhatrond_04_hdr01.rgbm.cube.dds",
         "color": [1, 1, 1, 0],
-        "rotationIntensity": [0, 1, 1, 0]
+        "rotationIntensity": [0, 1, 1, 0],
+        "cubeDiffuse": {"model": "RGBM6_LAMBERT_SH3", "intensity": 0, "packedSH": [[-0.0430580042, 0.0486787856, 0.056253776, 0.298149079], [-0.046214737, 0.0527504496, 0.0592655651, 0.331207544], [-0.0531027131, 0.0593599454, 0.0666070133, 0.386223108], [0.021966273, -0.0106696701, -0.0110182418, -0.0345678926], [0.0237612035, -0.0126812607, -0.0118477084, -0.0373316109], [0.0263588745, -0.014791985, -0.014638707, -0.0422291942], [0.00513588078, 0.00658471091, 0.00731680216, 0]]},
+        "useSourcePBRIndirect": true
       },
       "displayName": "character-select: source tone and grading",
       "profileId": "scene.character-select.source-rendering.v1",
@@ -307,10 +314,10 @@
         "orthographicHeight": 24,
         "near": 0.100000001,
         "far": 80,
-        "depthBias": 0.00025,
-        "normalBias": 0.005,
-        "strength": 1.0,
-        "dynamicBakedStrength": 0.7
+        "depthBias": 0.000250000012,
+        "normalBias": 0.00499999989,
+        "strength": 1,
+        "dynamicBakedStrength": 0.699999988
       },
       "fog": {
         "enabled": false,
@@ -332,11 +339,13 @@
       }
     },
     {
-      "qualityOverride": {"ssaoEnabled": true, "ssaoRadius": 0.7, "ssaoBias": 0.025, "ssaoIntensity": 1.0, "ssaoPower": 1.4, "ssaoDistanceFade": 132.5, "bloomEnabled": false, "bloomThreshold": 0.699999988, "bloomSoftKnee": 1, "bloomIntensity": 0.899999976, "bloomScatter": 1, "exposure": 1, "whitePoint": 1, "gamma": 2.20000005, "fxaaEnabled": true, "fxaaSubpixel": 0.25, "fxaaEdgeThreshold": 0.0311999992, "fxaaEdgeThresholdMin": 0.0183000006, "colorAdjustment": {"bloomTint": [1, 1, 1, 1], "desaturation": 0}, "sourcePostProcess": {"enabled": true, "toneCurve": "UE3_CUSTOMIZABLE", "toneScale": 1, "toneRange": 8, "toneToe": 0.5, "highlights": [1, 1, 1], "midtones": [1, 1, 1], "shadows": [0, 0, 0], "colorize": [1, 1, 1], "desaturation": 0, "colorGradingLut": ""}},
+      "qualityOverride": {"ssaoEnabled": true, "ssaoRadius": 0.699999988, "ssaoBias": 0.0250000004, "ssaoIntensity": 1, "ssaoPower": 1.39999998, "ssaoDistanceFade": 132.5, "bloomEnabled": false, "bloomThreshold": 0.699999988, "bloomSoftKnee": 1, "bloomIntensity": 0.899999976, "bloomScatter": 1, "exposure": 1, "whitePoint": 1, "gamma": 2.20000005, "fxaaEnabled": true, "fxaaSubpixel": 0.25, "fxaaEdgeThreshold": 0.0311999992, "fxaaEdgeThresholdMin": 0.0183000006, "colorAdjustment": {"bloomTint": [1, 1, 1, 1], "desaturation": 0}, "sourcePostProcess": {"enabled": true, "toneCurve": "UE3_CUSTOMIZABLE", "toneScale": 1, "toneRange": 8, "toneToe": 0.5, "highlights": [1, 1, 1], "midtones": [1, 1, 1], "shadows": [0, 0, 0], "colorize": [1, 1, 1], "desaturation": 0, "colorGradingLut": ""}},
       "environment": {
         "cubeTexture": "Map/Lighting/CharacterSelect/lv_lut_valhatrond_04_hdr01.rgbm.cube.dds",
         "color": [1, 1, 1, 0],
-        "rotationIntensity": [0, 1, 1, 0]
+        "rotationIntensity": [0, 1, 1, 0],
+        "cubeDiffuse": {"model": "RGBM6_LAMBERT_SH3", "intensity": 0, "packedSH": [[-0.0430580042, 0.0486787856, 0.056253776, 0.298149079], [-0.046214737, 0.0527504496, 0.0592655651, 0.331207544], [-0.0531027131, 0.0593599454, 0.0666070133, 0.386223108], [0.021966273, -0.0106696701, -0.0110182418, -0.0345678926], [0.0237612035, -0.0126812607, -0.0118477084, -0.0373316109], [0.0263588745, -0.014791985, -0.014638707, -0.0422291942], [0.00513588078, 0.00658471091, 0.00731680216, 0]]},
+        "useSourcePBRIndirect": true
       },
       "profileId": "scene.character-select.warm-high-key.v1",
       "exposureMultiplier": 1,
@@ -357,10 +366,10 @@
         "orthographicHeight": 24,
         "near": 0.100000001,
         "far": 80,
-        "depthBias": 0.00025,
-        "normalBias": 0.005,
-        "strength": 1.0,
-        "dynamicBakedStrength": 0.7
+        "depthBias": 0.000250000012,
+        "normalBias": 0.00499999989,
+        "strength": 1,
+        "dynamicBakedStrength": 0.699999988
       },
       "fog": {
         "enabled": false,
@@ -403,7 +412,8 @@
         "far": 180,
         "depthBias": 0.00150000001,
         "normalBias": 0.0250000004,
-        "strength": 0.699999988
+        "strength": 0.699999988,
+        "dynamicBakedStrength": 0
       },
       "fog": {
         "enabled": false,
@@ -448,7 +458,8 @@
         "far": 180,
         "depthBias": 0.00150000001,
         "normalBias": 0.0250000004,
-        "strength": 0.699999988
+        "strength": 0.699999988,
+        "dynamicBakedStrength": 0
       },
       "fog": {
         "enabled": true,
@@ -507,7 +518,8 @@
         "far": 180,
         "depthBias": 0.00150000001,
         "normalBias": 0.0250000004,
-        "strength": 0.699999988
+        "strength": 0.699999988,
+        "dynamicBakedStrength": 0
       },
       "fog": {
         "enabled": true,
@@ -553,7 +565,8 @@
         "far": 180,
         "depthBias": 0.00150000001,
         "normalBias": 0.0250000004,
-        "strength": 0.699999988
+        "strength": 0.699999988,
+        "dynamicBakedStrength": 0
       },
       "fog": {
         "enabled": true,
@@ -599,7 +612,8 @@
         "far": 180,
         "depthBias": 0.00150000001,
         "normalBias": 0.0250000004,
-        "strength": 0.699999988
+        "strength": 0.699999988,
+        "dynamicBakedStrength": 0
       },
       "fog": {
         "enabled": true,
@@ -645,7 +659,8 @@
         "far": 180,
         "depthBias": 0.00150000001,
         "normalBias": 0.0250000004,
-        "strength": 0.699999988
+        "strength": 0.699999988,
+        "dynamicBakedStrength": 0
       },
       "fog": {
         "enabled": true,
@@ -691,7 +706,8 @@
         "far": 180,
         "depthBias": 0.00150000001,
         "normalBias": 0.0250000004,
-        "strength": 0.699999988
+        "strength": 0.699999988,
+        "dynamicBakedStrength": 0
       },
       "fog": {
         "enabled": true,
@@ -736,7 +752,8 @@
         "far": 180,
         "depthBias": 0.00150000001,
         "normalBias": 0.0250000004,
-        "strength": 0.699999988
+        "strength": 0.699999988,
+        "dynamicBakedStrength": 0
       },
       "fog": {
         "enabled": false,
@@ -781,7 +798,8 @@
         "far": 180,
         "depthBias": 0.00150000001,
         "normalBias": 0.0250000004,
-        "strength": 0.699999988
+        "strength": 0.699999988,
+        "dynamicBakedStrength": 0
       },
       "fog": {
         "enabled": true,
@@ -840,7 +858,8 @@
         "far": 180,
         "depthBias": 0.00150000001,
         "normalBias": 0.0250000004,
-        "strength": 0.699999988
+        "strength": 0.699999988,
+        "dynamicBakedStrength": 0
       },
       "fog": {
         "enabled": true,
@@ -889,7 +908,8 @@
         "far": 180,
         "depthBias": 0.00150000001,
         "normalBias": 0.0250000004,
-        "strength": 0.699999988
+        "strength": 0.699999988,
+        "dynamicBakedStrength": 0
       },
       "fog": {
         "enabled": true,
@@ -937,7 +957,8 @@
         "far": 180,
         "depthBias": 0.00150000001,
         "normalBias": 0.0250000004,
-        "strength": 0.699999988
+        "strength": 0.699999988,
+        "dynamicBakedStrength": 0
       },
       "fog": {
         "enabled": false,
@@ -982,7 +1003,8 @@
         "far": 180,
         "depthBias": 0.00150000001,
         "normalBias": 0.0250000004,
-        "strength": 0.699999988
+        "strength": 0.699999988,
+        "dynamicBakedStrength": 0
       },
       "fog": {
         "enabled": true,
@@ -1032,7 +1054,8 @@
         "far": 180,
         "depthBias": 0.00150000001,
         "normalBias": 0.0250000004,
-        "strength": 0.699999988
+        "strength": 0.699999988,
+        "dynamicBakedStrength": 0
       },
       "fog": {
         "enabled": true,
@@ -1090,7 +1113,8 @@
         "far": 180,
         "depthBias": 0.00150000001,
         "normalBias": 0.0250000004,
-        "strength": 0.699999988
+        "strength": 0.699999988,
+        "dynamicBakedStrength": 0
       },
       "fog": {
         "enabled": true,
@@ -1133,7 +1157,8 @@
         "far": 150,
         "depthBias": 0.00150000001,
         "normalBias": 0.0199999996,
-        "strength": 0.699999988
+        "strength": 0.699999988,
+        "dynamicBakedStrength": 0
       },
       "fog": {
         "enabled": false,
@@ -1176,7 +1201,8 @@
         "far": 150,
         "depthBias": 0.00150000001,
         "normalBias": 0.0199999996,
-        "strength": 0.699999988
+        "strength": 0.699999988,
+        "dynamicBakedStrength": 0
       },
       "fog": {
         "enabled": false,
@@ -1221,7 +1247,8 @@
         "far": 520,
         "depthBias": 0.00260000001,
         "normalBias": 0.0340000018,
-        "strength": 0.860000014
+        "strength": 0.860000014,
+        "dynamicBakedStrength": 0
       },
       "fog": {
         "enabled": false,
@@ -1265,7 +1292,8 @@
         "far": 520,
         "depthBias": 0.00260000001,
         "normalBias": 0.0340000018,
-        "strength": 0.860000014
+        "strength": 0.860000014,
+        "dynamicBakedStrength": 0
       },
       "fog": {
         "enabled": true,
@@ -1315,7 +1343,8 @@
         "far": 520,
         "depthBias": 0.00260000001,
         "normalBias": 0.0340000018,
-        "strength": 0.860000014
+        "strength": 0.860000014,
+        "dynamicBakedStrength": 0
       },
       "fog": {
         "enabled": true,

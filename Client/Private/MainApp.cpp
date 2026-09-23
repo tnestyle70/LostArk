@@ -1885,20 +1885,39 @@ void CMainApp::Update(const f32_t fTimeDelta)
 	// Release raids also emit owner lifecycle events; drain the shared queues every frame.
 	CKoukuSaydonPatternAuditionService::Get().Update();
 #ifdef _DEBUG
+    {
+        const auto& admitted = CKoukuSaydonPatternAuditionService::Get().Get_Snapshot();
+        using STATE = KOUKU_SAYDON_PATTERN_AUDITION_STATE;
+        if (CLevel_KakulSaydonArena::Get_Active() && CNetworkManager::Get().Is_Connected() &&
+            admitted.iWorldInboundGeneration == CNetworkManager::Get().Get_WorldInboundGeneration() &&
+            admitted.DraftRowsRevision.Is_Valid() &&
+            admitted.iRoomAuditionEpoch && admitted.iPinnedSourceRevision &&
+            (admitted.eState == STATE::QUEUED || admitted.eState == STATE::ACTIVE || admitted.eState == STATE::COMPLETED) &&
+            !CKoukuSaydonPresentationAssetService::Matches_AdmittedRun(admitted.iPinnedSourceRevision,
+                admitted.DraftRowsRevision, admitted.iRoomAuditionEpoch))
+        {
+            std::string status;
+            if (CKoukuSaydonPresentationAssetService::Authorize_DraftProduct(
+                admitted.DraftRowsRevision, admitted.iRoomAuditionEpoch, status))
+                (void)CKoukuSaydonPresentationAssetService::Admit_RunProduct(ETOUI(LEVEL::KAKULSAYDON_ARENA),
+                    admitted.iPinnedSourceRevision, admitted.DraftRowsRevision, admitted.iRoomAuditionEpoch, status);
+        }
+    }
 	/* PLAY_PATTERN_ID has one process-wide verdict/lifecycle queue shared by
 	   Balance, Effect, and Valtan Boss Tools. Drain it once per frame here, independent
 	   of which panel is visible or which tree row is expanded. */
 	CValtanPatternAuditionService::Get().Update();
 	CValtanPatternFlowService::Get().Update();
 	CValtanTuningCommandService::Get().Update();
+    if (m_pKoukuSaydonActionWorkbench && m_pKoukuSaydonActionWorkbench->Consume_ServerPlayCancelRequest())
+    {
+        m_pKoukuSaydonActionWorkbench->Cancel_DraftPlayPreparation();
+        if (m_pKoukuSaydonBossTool)
+            (void)m_pKoukuSaydonBossTool->Cancel_PlayPreparation(m_strKoukuCompletePlayStatus);
+    }
 	if (m_pKoukuSaydonBossTool)
 	{
 		const bool preparing = m_pKoukuSaydonBossTool->Is_PlayPreparationPending();
-		if (m_pKoukuSaydonActionWorkbench &&
-			(m_pKoukuSaydonActionWorkbench->Consume_ServerPlayCancelRequest() ||
-				(preparing && (m_pKoukuSaydonActionWorkbench->Is_Dirty() ||
-					m_pKoukuSaydonActionWorkbench->Is_PublishRunning()))))
-			(void)m_pKoukuSaydonBossTool->Cancel_PlayPreparation(m_strKoukuCompletePlayStatus);
 		m_pKoukuSaydonBossTool->Update();
 		if (preparing) m_strKoukuCompletePlayStatus = m_pKoukuSaydonBossTool->Get_Status();
 		if (m_pKoukuSaydonActionWorkbench)
@@ -2811,6 +2830,19 @@ void CMainApp::Update(const f32_t fTimeDelta)
 			}
 		}
 
+        KOUKU_DRAFT_PLAY_REQUEST draftPlay;
+        if (workbench->Consume_DraftServerPlayRequest(draftPlay) && route.owner == DEBUG_TOOL::SEQUENCER)
+        {
+            if (auto* arena = CLevel_KakulSaydonArena::Get_Active()) arena->Debug_StopCompositionWorldPreview();
+            if (m_pKoukuPresentationPlayer) m_pKoukuPresentationPlayer->Stop_Preview();
+            ClaimCompositionPreviewOwner(DEBUG_TOOL::NONE);
+            if (SUCCEEDED(EnsureDebugTool(DEBUG_TOOL::KOUKU_SAYDON_BOSS)) && m_pKoukuSaydonBossTool)
+            {
+                (void)m_pKoukuSaydonBossTool->Play_Draft(std::move(draftPlay), m_strToolStatus);
+                workbench->Set_ServerPlayPreparationPending(m_pKoukuSaydonBossTool->Is_PlayPreparationPending(), m_strToolStatus);
+            }
+            else workbench->Set_ServerPlayPreparationPending(false, "KoukuSaydon Boss Tool could not prepare draft playback.");
+        }
 		std::string serverPatternId;
 		std::uint32_t sourceRevision = 0u;
 		// Only the Server-admitted run epoch may replace Product presentation.

@@ -453,8 +453,12 @@ def emit_function(document, family, number, stage):
     texture_map, lookup, _mask = texture_map_of(document, program)
     constants = 'g_SourceCharacterBaseConstants' if stage == 'base' else 'g_SourceCharacterLightConstants'
     name = ('SourceCharacterBase' if stage == 'base' else 'SourceCharacterLight') + str(number)
+    # Program84 retains its recovered default; the explicit project opaque pass
+    # alone bypasses native opacity coverage without changing RGB instructions.
+    opaque_ghost = number == 84 and stage == 'base'
+    parameters = 'SOURCE_CHARACTER_NATIVE_INPUT input' + (', bool opaqueGhost = false' if opaque_ghost else '')
     lines = [f'// {family} / source program {program["shaderId"]}',
-             f'SOURCE_CHARACTER_NATIVE_OUTPUT {name}(SOURCE_CHARACTER_NATIVE_INPUT input)', '{',
+             f'SOURCE_CHARACTER_NATIVE_OUTPUT {name}({parameters})', '{',
              '    SOURCE_CHARACTER_NATIVE_OUTPUT output = (SOURCE_CHARACTER_NATIVE_OUTPUT)0;',
              '    float4 source[64];',
              f'    [unroll] for (uint i=0u;i<64u;++i) source[i]={constants}[i];']
@@ -499,6 +503,8 @@ def emit_function(document, family, number, stage):
     for index, instruction in enumerate(program['disassembly']['instructions'], 1):
         lines.append(f'    // {index}: {instruction}')
         translated = translate(instruction, texture_map, lookup, stage)
+        if opaque_ghost and instruction.startswith('discard_'):
+            translated = translated.replace('if (', 'if (!opaqueGhost && ', 1)
         if (stage == 'base' and program['shaderId'] == 'e56633f592e0154eb0794435cf3c2717' and
                 instruction == 'div r0.w, l(1.000000, 1.000000, 1.000000, 1.000000), r13.w'):
             # This native engine BRDF lookup is not a material texture and its payload is
