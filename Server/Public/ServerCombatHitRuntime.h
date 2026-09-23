@@ -26,6 +26,9 @@ namespace LostArk::Server
 		std::uint32_t iStaggerDamage = 0u;
 		std::uint32_t iPartDamage = 0u;
 		std::uint32_t iCounterPower = 0u;
+		/* The caster rolled a critical hit for this one hit. iRawDamage already
+		carries the critical multiplier; this only colours the damage event. */
+		bool bCritical = false;
 		float fSourceX = 0.f;
 		float fSourceZ = 0.f;
 		float fFallbackDirectionX = 0.f;
@@ -56,6 +59,40 @@ namespace LostArk::Server
 		them. Ordinary boss hits leave both false. */
 		bool bIgnoreDefense = false;
 		bool bIgnoreCounter = false;
+	};
+
+	/* Buffs live next to the two damage directions because that is where they are
+	read: a holder's buffs scale the damage it deals and the damage it takes. */
+	class CServerBuffRuntime final
+	{
+	public:
+		/* Grants every buff the skill authors, to the caster, its allies or the
+		entity it hit, and replaces an older cast of the same buff. */
+		static void Apply_SkillBuffs(
+			const CGameplayCatalog& catalog,
+			std::uint32_t skillId,
+			SERVER_PLAYER& caster,
+			std::vector<SERVER_PLAYER*>& allies,
+			std::vector<SERVER_WORLD_ENTITY*>& enemies,
+			std::uint32_t serverTick);
+		/* Drops what has run out. Called once per tick for every holder. */
+		static void Expire(
+			std::vector<LostArk::Shared::ACTIVE_BUFF>& buffs,
+			std::uint32_t serverTick);
+		/* Percent the holder's outgoing damage is raised by, summed over buffs. */
+		[[nodiscard]] static std::int32_t Damage_DealtPercent(
+			const CGameplayCatalog& catalog,
+			const std::vector<LostArk::Shared::ACTIVE_BUFF>& buffs);
+		/* Percent the holder's incoming damage changes by: negative mitigates. */
+		[[nodiscard]] static std::int32_t Damage_TakenPercent(
+			const CGameplayCatalog& catalog,
+			const std::vector<LostArk::Shared::ACTIVE_BUFF>& buffs);
+		/* Applies a summed percent to one damage amount, never below 1. */
+		[[nodiscard]] static std::uint32_t Scale_Damage(
+			std::uint32_t damage, std::int32_t percent);
+		/* Drops the shield pool once no buff grants one any more. */
+		static void Settle_Shield(
+			const CGameplayCatalog& catalog, SERVER_PLAYER& player);
 	};
 
 	/* The two combat directions share event/death/reaction ownership here.

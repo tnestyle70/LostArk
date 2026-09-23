@@ -101,6 +101,44 @@ namespace
 		return true;
 	}
 
+	/* Only the buffs the count claims are on the wire, so a player with none costs
+	one byte and the reader never walks past what the writer sent. */
+	bool Read_ActiveBuffs(
+		LostArk::Shared::CPacketReader& reader,
+		LostArk::Shared::PLAYER_SNAPSHOT& snapshot)
+	{
+		for (LostArk::Shared::ACTIVE_BUFF& slot : snapshot.ActiveBuffs)
+			slot = {};
+		for (std::uint8_t buffIndex = 0; buffIndex < snapshot.iActiveBuffCount;
+			++buffIndex)
+		{
+			if (!reader.Read_U32(snapshot.ActiveBuffs[buffIndex].iBuffId) ||
+				!reader.Read_U32(snapshot.ActiveBuffs[buffIndex].iEndTick))
+			{
+				return false;
+			}
+		}
+		return true;
+	}
+
+	bool Read_ActiveBuffs(
+		LostArk::Shared::CPacketReader& reader,
+		LostArk::Shared::WORLD_ENTITY_SNAPSHOT& entity)
+	{
+		for (LostArk::Shared::ACTIVE_BUFF& slot : entity.ActiveBuffs)
+			slot = {};
+		for (std::uint8_t buffIndex = 0; buffIndex < entity.iActiveBuffCount;
+			++buffIndex)
+		{
+			if (!reader.Read_U32(entity.ActiveBuffs[buffIndex].iBuffId) ||
+				!reader.Read_U32(entity.ActiveBuffs[buffIndex].iEndTick))
+			{
+				return false;
+			}
+		}
+		return true;
+	}
+
 	bool Read_KoukuHudSlots(
 		LostArk::Shared::CPacketReader& reader,
 		LostArk::Shared::PLAYER_SNAPSHOT& snapshot)
@@ -3125,6 +3163,14 @@ bool LostArk::Shared::Write_Message(CPacketWriter& writer, const S2C_WORLD_SNAPS
 		writer.Write_F32(player.fSkillTargetZ);
 		writer.Write_U32(player.iCurrentHp);
 		writer.Write_U32(player.iMaximumHp);
+		writer.Write_U32(player.iShield);
+		writer.Write_U8(player.iActiveBuffCount);
+		for (std::uint8_t buffIndex = 0; buffIndex < player.iActiveBuffCount;
+			++buffIndex)
+		{
+			writer.Write_U32(player.ActiveBuffs[buffIndex].iBuffId);
+			writer.Write_U32(player.ActiveBuffs[buffIndex].iEndTick);
+		}
 		writer.Write_U32(player.iCurrentResource);
 		writer.Write_U32(player.iMaximumResource);
 		writer.Write_U32(player.iCurrentIdentity);
@@ -3227,6 +3273,13 @@ bool LostArk::Shared::Write_Message(CPacketWriter& writer, const S2C_WORLD_SNAPS
 		}
 		writer.Write_U32(entity.iCurrentHp);
 		writer.Write_U32(entity.iMaximumHp);
+		writer.Write_U8(entity.iActiveBuffCount);
+		for (std::uint8_t buffIndex = 0; buffIndex < entity.iActiveBuffCount;
+			++buffIndex)
+		{
+			writer.Write_U32(entity.ActiveBuffs[buffIndex].iBuffId);
+			writer.Write_U32(entity.ActiveBuffs[buffIndex].iEndTick);
+		}
 		writer.Write_U8(entity.iPhase);
 		writer.Write_U8(entity.iBrokenArmorMask);
 		writer.Write_U8(entity.hasBossCombatState ? 1u : 0u);
@@ -3400,6 +3453,10 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader, S2C_WORLD_SNAPSHOT& me
 			!reader.Read_F32(player.fSkillTargetZ) ||
 			!reader.Read_U32(player.iCurrentHp) ||
 			!reader.Read_U32(player.iMaximumHp) ||
+			!reader.Read_U32(player.iShield) ||
+			!reader.Read_U8(player.iActiveBuffCount) ||
+			player.iActiveBuffCount > MAX_ACTIVE_BUFFS ||
+			!Read_ActiveBuffs(reader, player) ||
 			!reader.Read_U32(player.iCurrentResource) ||
 			!reader.Read_U32(player.iMaximumResource) ||
 			!reader.Read_U32(player.iCurrentIdentity) ||
@@ -3567,6 +3624,9 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader, S2C_WORLD_SNAPSHOT& me
 		if (
 			!reader.Read_U32(entity.iCurrentHp) ||
 			!reader.Read_U32(entity.iMaximumHp) ||
+			!reader.Read_U8(entity.iActiveBuffCount) ||
+			entity.iActiveBuffCount > MAX_ACTIVE_BUFFS ||
+			!Read_ActiveBuffs(reader, entity) ||
 			!reader.Read_U8(entity.iPhase) ||
 			!reader.Read_U8(entity.iBrokenArmorMask) ||
 			!reader.Read_U8(rawHasBossCombatState) ||

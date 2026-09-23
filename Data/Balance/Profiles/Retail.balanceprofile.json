@@ -1,0 +1,1883 @@
+{
+  "schema": "lostark.balance-profile",
+  "formatVersion": 1,
+  "profileId": "Retail",
+  "displayName": "원작 수치 (발탄 1415 / 쿠크세이튼 1475, 기준 스펙 아이템 레벨 1500)",
+  "staggerGaugeScale": 400,
+  "madnessGaugeAddPercent": 0,
+  "players": [
+    {
+      "characterClass": "LANCE_MASTER",
+      "maximumHp": 132000,
+      "maximumResource": 10000,
+      "resourceRegenPerSecond": 5000,
+      "attackPower": 23000,
+      "defense": 105,
+      "criticalChancePercent": 70,
+      "criticalDamagePercent": 200
+    },
+    {
+      "characterClass": "GUNSLINGER",
+      "maximumHp": 120000,
+      "maximumResource": 10000,
+      "resourceRegenPerSecond": 5000,
+      "attackPower": 23000,
+      "defense": 95,
+      "criticalChancePercent": 70,
+      "criticalDamagePercent": 200
+    },
+    {
+      "characterClass": "SLAYER",
+      "maximumHp": 132000,
+      "maximumResource": 10000,
+      "resourceRegenPerSecond": 5000,
+      "attackPower": 23000,
+      "defense": 110,
+      "criticalChancePercent": 70,
+      "criticalDamagePercent": 200
+    },
+    {
+      "characterClass": "ARTIST",
+      "maximumHp": 120000,
+      "maximumResource": 10000,
+      "resourceRegenPerSecond": 5000,
+      "attackPower": 23000,
+      "defense": 90,
+      "criticalChancePercent": 70,
+      "criticalDamagePercent": 200
+    },
+    {
+      "characterClass": "DIMENSIONMASTER",
+      "maximumHp": 126000,
+      "maximumResource": 10000,
+      "resourceRegenPerSecond": 5000,
+      "attackPower": 23000,
+      "defense": 100,
+      "criticalChancePercent": 70,
+      "criticalDamagePercent": 200
+    },
+    {
+      "characterClass": "WARLORD",
+      "maximumHp": 150000,
+      "maximumResource": 10000,
+      "resourceRegenPerSecond": 5000,
+      "attackPower": 23000,
+      "defense": 120,
+      "criticalChancePercent": 70,
+      "criticalDamagePercent": 200
+    },
+    {
+      "characterClass": "GUARDIANKNIGHT",
+      "maximumHp": 132000,
+      "maximumResource": 10000,
+      "resourceRegenPerSecond": 5000,
+      "attackPower": 23000,
+      "defense": 110,
+      "criticalChancePercent": 70,
+      "criticalDamagePercent": 200
+    }
+  ],
+  "skills": [
+    {
+      "skillId": 34040,
+      "cooldownMs": 6000,
+      "resourceCost": 206,
+      "staggerDamage": 0,
+      "partDamage": 0
+    },
+    {
+      "skillId": 34090,
+      "cooldownMs": 10000,
+      "resourceCost": 276,
+      "staggerDamage": 1800,
+      "partDamage": 0
+    },
+    {
+      "skillId": 34100,
+      "cooldownMs": 20000,
+      "resourceCost": 410,
+      "staggerDamage": 0,
+      "partDamage": 0
+    },
+    {
+      "skillId": 34160,
+      "cooldownMs": 16000,
+      "resourceCost": 361,
+      "staggerDamage": 0,
+      "partDamage": 0
+    },
+    {
+      "skillId": 34140,
+      "cooldownMs": 15000,
+      "resourceCost": 347,
+      "staggerDamage": 1800,
+      "partDamage": 0
+    },
+    {
+      "skillId": 34120,
+      "cooldownMs": 10000,
+      "resourceCost": 276,
+      "staggerDamage": 1800,
+      "partDamage": 1
+    },
+    {
+      "skillId": 34110,
+      "cooldownMs": 18000,
+      "resourceCost": 386,
+      "staggerDamage": 2520,
+      "partDamage": 2
+    },
+    {
+      "skillId": 34150,
+      "cooldownMs": 24000,
+      "resourceCost": 456,
+      "staggerDamage": 3528,
+      "partDamage": 0
+    },
+    {
+      "skillId": 34650,
+      "cooldownMs": 55000,
+      "resourceCost": 734,
+      "staggerDamage": 4939,
+      "partDamage": 0
+    },
+    {
+      "skillId": 34610,
+      "cooldownMs": 300000,
+      "resourceCost": 0,
+      "staggerDamage": 4939,
+      "partDamage": 0
+    },
+    {
+      "skillId": 34630,
+      "cooldownMs": 300000,
+      "resourceCost": 0,
+      "staggerDamage": 6915,
+      "partDamage": 0
+    },
+    {
+      "skillId": 34020,
+      "cooldownMs": 6000,
+      "resourceCost": 0,
+      "staggerDamage": 0,
+      "partDamage": 0
+    },
+    {
+      "skillId": 34030,
+      "cooldownMs": 30000,
+      "resourceCost": 0,
+      "staggerDamage": 0,
+      "partDamage": 0
+    },
+    {
+      "skillId": 38020,
+      "cooldownMs": 10000,
+      "resourceCost": 276,
+      "staggerDamage": 0,
+      "partDamage": 0
+    },
+    {
+      "skillId": 38050,
+      "cooldownMs": 30000,
+      "resourceCost": 518,
+      "staggerDamage": 1800,
+      "partDamage": 0
+    },
+    {
+      "skillId": 45050,
+      "cooldownMs": 12000,
+      "resourceCost": 349,
+      "staggerDamage": 2520,
+      "partDamage": 0
+    },
+    {
+      "skillId": 45060,
+      "cooldownMs": 14000,
+      "resourceCost": 382,
+      "staggerDamage": 0,
+      "partDamage": 0
+    },
+    {
+      "skillId": 34010,
+      "cooldownMs": 0,
+      "resourceCost": 0,
+      "staggerDamage": 0,
+      "partDamage": 0
+    },
+    {
+      "skillId": 38120,
+      "cooldownMs": 6000,
+      "resourceCost": 206,
+      "staggerDamage": 0,
+      "partDamage": 0
+    },
+    {
+      "skillId": 38200,
+      "cooldownMs": 6000,
+      "resourceCost": 206,
+      "staggerDamage": 0,
+      "partDamage": 0
+    },
+    {
+      "skillId": 38140,
+      "cooldownMs": 8000,
+      "resourceCost": 242,
+      "staggerDamage": 0,
+      "partDamage": 0
+    },
+    {
+      "skillId": 38180,
+      "cooldownMs": 8000,
+      "resourceCost": 242,
+      "staggerDamage": 0,
+      "partDamage": 0
+    },
+    {
+      "skillId": 38210,
+      "cooldownMs": 9000,
+      "resourceCost": 259,
+      "staggerDamage": 0,
+      "partDamage": 0
+    },
+    {
+      "skillId": 38260,
+      "cooldownMs": 12000,
+      "resourceCost": 305,
+      "staggerDamage": 0,
+      "partDamage": 0
+    },
+    {
+      "skillId": 38290,
+      "cooldownMs": 50000,
+      "resourceCost": 695,
+      "staggerDamage": 3528,
+      "partDamage": 0
+    },
+    {
+      "skillId": 38250,
+      "cooldownMs": 300000,
+      "resourceCost": 0,
+      "staggerDamage": 3528,
+      "partDamage": 2
+    },
+    {
+      "skillId": 38320,
+      "cooldownMs": 300000,
+      "resourceCost": 0,
+      "staggerDamage": 4939,
+      "partDamage": 2
+    },
+    {
+      "skillId": 38000,
+      "cooldownMs": 0,
+      "resourceCost": 0,
+      "staggerDamage": 0,
+      "partDamage": 0
+    },
+    {
+      "skillId": 45620,
+      "cooldownMs": 15000,
+      "resourceCost": 397,
+      "staggerDamage": 2520,
+      "partDamage": 0
+    },
+    {
+      "skillId": 45210,
+      "cooldownMs": 16000,
+      "resourceCost": 412,
+      "staggerDamage": 2520,
+      "partDamage": 0
+    },
+    {
+      "skillId": 45300,
+      "cooldownMs": 22000,
+      "resourceCost": 495,
+      "staggerDamage": 4939,
+      "partDamage": 2
+    },
+    {
+      "skillId": 45070,
+      "cooldownMs": 24000,
+      "resourceCost": 521,
+      "staggerDamage": 2520,
+      "partDamage": 0
+    },
+    {
+      "skillId": 45190,
+      "cooldownMs": 24000,
+      "resourceCost": 521,
+      "staggerDamage": 2520,
+      "partDamage": 0
+    },
+    {
+      "skillId": 45600,
+      "cooldownMs": 27000,
+      "resourceCost": 557,
+      "staggerDamage": 3528,
+      "partDamage": 0
+    },
+    {
+      "skillId": 45810,
+      "cooldownMs": 300000,
+      "resourceCost": 0,
+      "staggerDamage": 6915,
+      "partDamage": 0
+    },
+    {
+      "skillId": 45820,
+      "cooldownMs": 300000,
+      "resourceCost": 0,
+      "staggerDamage": 4939,
+      "partDamage": 3
+    },
+    {
+      "skillId": 45000,
+      "cooldownMs": 0,
+      "resourceCost": 0,
+      "staggerDamage": 0,
+      "partDamage": 0
+    },
+    {
+      "skillId": 34000,
+      "cooldownMs": 1000,
+      "resourceCost": 0,
+      "staggerDamage": 0,
+      "partDamage": 0
+    },
+    {
+      "skillId": 34500,
+      "cooldownMs": 1000,
+      "resourceCost": 0,
+      "staggerDamage": 0,
+      "partDamage": 0
+    },
+    {
+      "skillId": 34510,
+      "cooldownMs": 0,
+      "resourceCost": 0,
+      "staggerDamage": 0,
+      "partDamage": 0
+    },
+    {
+      "skillId": 34520,
+      "cooldownMs": 6000,
+      "resourceCost": 0,
+      "staggerDamage": 0,
+      "partDamage": 0
+    },
+    {
+      "skillId": 34540,
+      "cooldownMs": 5000,
+      "resourceCost": 185,
+      "staggerDamage": 0,
+      "partDamage": 1
+    },
+    {
+      "skillId": 34550,
+      "cooldownMs": 16000,
+      "resourceCost": 361,
+      "staggerDamage": 1800,
+      "partDamage": 0
+    },
+    {
+      "skillId": 34560,
+      "cooldownMs": 24000,
+      "resourceCost": 456,
+      "staggerDamage": 4939,
+      "partDamage": 0
+    },
+    {
+      "skillId": 34570,
+      "cooldownMs": 24000,
+      "resourceCost": 456,
+      "staggerDamage": 2520,
+      "partDamage": 0
+    },
+    {
+      "skillId": 34580,
+      "cooldownMs": 20000,
+      "resourceCost": 410,
+      "staggerDamage": 2520,
+      "partDamage": 0
+    },
+    {
+      "skillId": 34590,
+      "cooldownMs": 24000,
+      "resourceCost": 456,
+      "staggerDamage": 2520,
+      "partDamage": 0
+    },
+    {
+      "skillId": 17000,
+      "cooldownMs": 0,
+      "resourceCost": 0,
+      "staggerDamage": 0,
+      "partDamage": 0
+    },
+    {
+      "skillId": 17020,
+      "cooldownMs": 6000,
+      "resourceCost": 0,
+      "staggerDamage": 0,
+      "partDamage": 0
+    },
+    {
+      "skillId": 17025,
+      "cooldownMs": 30000,
+      "resourceCost": 0,
+      "staggerDamage": 0,
+      "partDamage": 0
+    },
+    {
+      "skillId": 17030,
+      "cooldownMs": 5000,
+      "resourceCost": 211,
+      "staggerDamage": 1800,
+      "partDamage": 0
+    },
+    {
+      "skillId": 17040,
+      "cooldownMs": 10000,
+      "resourceCost": 315,
+      "staggerDamage": 4939,
+      "partDamage": 1
+    },
+    {
+      "skillId": 17060,
+      "cooldownMs": 7000,
+      "resourceCost": 256,
+      "staggerDamage": 2520,
+      "partDamage": 1
+    },
+    {
+      "skillId": 17080,
+      "cooldownMs": 16000,
+      "resourceCost": 412,
+      "staggerDamage": 3528,
+      "partDamage": 1
+    },
+    {
+      "skillId": 17090,
+      "cooldownMs": 24000,
+      "resourceCost": 521,
+      "staggerDamage": 1800,
+      "partDamage": 0
+    },
+    {
+      "skillId": 17100,
+      "cooldownMs": 12000,
+      "resourceCost": 349,
+      "staggerDamage": 3528,
+      "partDamage": 1
+    },
+    {
+      "skillId": 17110,
+      "cooldownMs": 16000,
+      "resourceCost": 412,
+      "staggerDamage": 2520,
+      "partDamage": 0
+    },
+    {
+      "skillId": 17140,
+      "cooldownMs": 20000,
+      "resourceCost": 469,
+      "staggerDamage": 3528,
+      "partDamage": 0
+    },
+    {
+      "skillId": 17170,
+      "cooldownMs": 300000,
+      "resourceCost": 0,
+      "staggerDamage": 4939,
+      "partDamage": 0
+    },
+    {
+      "skillId": 17240,
+      "cooldownMs": 75000,
+      "resourceCost": 907,
+      "staggerDamage": 4939,
+      "partDamage": 2
+    },
+    {
+      "skillId": 17250,
+      "cooldownMs": 300000,
+      "resourceCost": 0,
+      "staggerDamage": 4939,
+      "partDamage": 0
+    },
+    {
+      "skillId": 17800,
+      "cooldownMs": 2000,
+      "resourceCost": 0,
+      "staggerDamage": 0,
+      "partDamage": 0
+    },
+    {
+      "skillId": 17810,
+      "cooldownMs": 3000,
+      "resourceCost": 0,
+      "staggerDamage": 0,
+      "partDamage": 0
+    },
+    {
+      "skillId": 17820,
+      "cooldownMs": 90000,
+      "resourceCost": 0,
+      "staggerDamage": 3528,
+      "partDamage": 0
+    },
+    {
+      "skillId": 31000,
+      "cooldownMs": 0,
+      "resourceCost": 0,
+      "staggerDamage": 0,
+      "partDamage": 0
+    },
+    {
+      "skillId": 31200,
+      "cooldownMs": 8000,
+      "resourceCost": 277,
+      "staggerDamage": 2520,
+      "partDamage": 0
+    },
+    {
+      "skillId": 31430,
+      "cooldownMs": 14000,
+      "resourceCost": 382,
+      "staggerDamage": 3528,
+      "partDamage": 1
+    },
+    {
+      "skillId": 31480,
+      "cooldownMs": 24000,
+      "resourceCost": 521,
+      "staggerDamage": 3528,
+      "partDamage": 0
+    },
+    {
+      "skillId": 31210,
+      "cooldownMs": 16000,
+      "resourceCost": 412,
+      "staggerDamage": 2520,
+      "partDamage": 0
+    },
+    {
+      "skillId": 31460,
+      "cooldownMs": 16000,
+      "resourceCost": 412,
+      "staggerDamage": 1800,
+      "partDamage": 0
+    },
+    {
+      "skillId": 31420,
+      "cooldownMs": 24000,
+      "resourceCost": 521,
+      "staggerDamage": 2520,
+      "partDamage": 1
+    },
+    {
+      "skillId": 31490,
+      "cooldownMs": 30000,
+      "resourceCost": 592,
+      "staggerDamage": 3528,
+      "partDamage": 1
+    },
+    {
+      "skillId": 31470,
+      "cooldownMs": 25000,
+      "resourceCost": 533,
+      "staggerDamage": 3528,
+      "partDamage": 0
+    },
+    {
+      "skillId": 31950,
+      "cooldownMs": 72000,
+      "resourceCost": 903,
+      "staggerDamage": 2520,
+      "partDamage": 0
+    },
+    {
+      "skillId": 31910,
+      "cooldownMs": 300000,
+      "resourceCost": 0,
+      "staggerDamage": 3528,
+      "partDamage": 0
+    },
+    {
+      "skillId": 31930,
+      "cooldownMs": 300000,
+      "resourceCost": 0,
+      "staggerDamage": 3528,
+      "partDamage": 0
+    },
+    {
+      "skillId": 31110,
+      "cooldownMs": 1000,
+      "resourceCost": 0,
+      "staggerDamage": 0,
+      "partDamage": 0
+    },
+    {
+      "skillId": 31050,
+      "cooldownMs": 2000,
+      "resourceCost": 0,
+      "staggerDamage": 0,
+      "partDamage": 0
+    },
+    {
+      "skillId": 31020,
+      "cooldownMs": 7000,
+      "resourceCost": 0,
+      "staggerDamage": 0,
+      "partDamage": 0
+    },
+    {
+      "skillId": 31030,
+      "cooldownMs": 30000,
+      "resourceCost": 0,
+      "staggerDamage": 0,
+      "partDamage": 0
+    },
+    {
+      "skillId": 2050010,
+      "cooldownMs": 0,
+      "resourceCost": 0,
+      "staggerDamage": 0,
+      "partDamage": 0
+    },
+    {
+      "skillId": 2050100,
+      "cooldownMs": 14000,
+      "resourceCost": 382,
+      "staggerDamage": 0,
+      "partDamage": 0
+    },
+    {
+      "skillId": 2050120,
+      "cooldownMs": 18000,
+      "resourceCost": 441,
+      "staggerDamage": 2520,
+      "partDamage": 0
+    },
+    {
+      "skillId": 2050160,
+      "cooldownMs": 28000,
+      "resourceCost": 569,
+      "staggerDamage": 1800,
+      "partDamage": 0
+    },
+    {
+      "skillId": 2050180,
+      "cooldownMs": 40000,
+      "resourceCost": 698,
+      "staggerDamage": 2520,
+      "partDamage": 0
+    },
+    {
+      "skillId": 2050210,
+      "cooldownMs": 55000,
+      "resourceCost": 839,
+      "staggerDamage": 3528,
+      "partDamage": 0
+    },
+    {
+      "skillId": 2050220,
+      "cooldownMs": 40000,
+      "resourceCost": 698,
+      "staggerDamage": 2520,
+      "partDamage": 1
+    },
+    {
+      "skillId": 2050230,
+      "cooldownMs": 55000,
+      "resourceCost": 839,
+      "staggerDamage": 3528,
+      "partDamage": 0
+    },
+    {
+      "skillId": 2050240,
+      "cooldownMs": 50000,
+      "resourceCost": 794,
+      "staggerDamage": 1800,
+      "partDamage": 1
+    },
+    {
+      "skillId": 2050500,
+      "cooldownMs": 120000,
+      "resourceCost": 938,
+      "staggerDamage": 4939,
+      "partDamage": 1
+    },
+    {
+      "skillId": 2050520,
+      "cooldownMs": 300000,
+      "resourceCost": 0,
+      "staggerDamage": 6915,
+      "partDamage": 1
+    },
+    {
+      "skillId": 2050540,
+      "cooldownMs": 300000,
+      "resourceCost": 0,
+      "staggerDamage": 6915,
+      "partDamage": 0
+    },
+    {
+      "skillId": 2050020,
+      "cooldownMs": 8000,
+      "resourceCost": 0,
+      "staggerDamage": 0,
+      "partDamage": 0
+    },
+    {
+      "skillId": 2050030,
+      "cooldownMs": 30000,
+      "resourceCost": 0,
+      "staggerDamage": 0,
+      "partDamage": 0
+    },
+    {
+      "skillId": 49000,
+      "cooldownMs": 0,
+      "resourceCost": 0,
+      "staggerDamage": 0,
+      "partDamage": 0
+    },
+    {
+      "skillId": 49001,
+      "cooldownMs": 0,
+      "resourceCost": 0,
+      "staggerDamage": 0,
+      "partDamage": 0
+    },
+    {
+      "skillId": 49020,
+      "cooldownMs": 6000,
+      "resourceCost": 0,
+      "staggerDamage": 0,
+      "partDamage": 0
+    },
+    {
+      "skillId": 49021,
+      "cooldownMs": 6000,
+      "resourceCost": 0,
+      "staggerDamage": 0,
+      "partDamage": 0
+    },
+    {
+      "skillId": 49040,
+      "cooldownMs": 2000,
+      "resourceCost": 0,
+      "staggerDamage": 0,
+      "partDamage": 0
+    },
+    {
+      "skillId": 49041,
+      "cooldownMs": 2000,
+      "resourceCost": 0,
+      "staggerDamage": 0,
+      "partDamage": 0
+    },
+    {
+      "skillId": 49100,
+      "cooldownMs": 6000,
+      "resourceCost": 0,
+      "staggerDamage": 0,
+      "partDamage": 0
+    },
+    {
+      "skillId": 49110,
+      "cooldownMs": 8000,
+      "resourceCost": 0,
+      "staggerDamage": 1800,
+      "partDamage": 1
+    },
+    {
+      "skillId": 49120,
+      "cooldownMs": 8000,
+      "resourceCost": 0,
+      "staggerDamage": 1800,
+      "partDamage": 0
+    },
+    {
+      "skillId": 49130,
+      "cooldownMs": 24000,
+      "resourceCost": 0,
+      "staggerDamage": 3528,
+      "partDamage": 1
+    },
+    {
+      "skillId": 49200,
+      "cooldownMs": 15000,
+      "resourceCost": 0,
+      "staggerDamage": 2520,
+      "partDamage": 0
+    },
+    {
+      "skillId": 49210,
+      "cooldownMs": 21000,
+      "resourceCost": 0,
+      "staggerDamage": 2520,
+      "partDamage": 0
+    },
+    {
+      "skillId": 49220,
+      "cooldownMs": 10000,
+      "resourceCost": 0,
+      "staggerDamage": 1800,
+      "partDamage": 0
+    },
+    {
+      "skillId": 49230,
+      "cooldownMs": 18000,
+      "resourceCost": 0,
+      "staggerDamage": 2520,
+      "partDamage": 0
+    },
+    {
+      "skillId": 49150,
+      "cooldownMs": 40000,
+      "resourceCost": 0,
+      "staggerDamage": 6915,
+      "partDamage": 2
+    },
+    {
+      "skillId": 49260,
+      "cooldownMs": 24000,
+      "resourceCost": 0,
+      "staggerDamage": 3528,
+      "partDamage": 0
+    },
+    {
+      "skillId": 49270,
+      "cooldownMs": 24000,
+      "resourceCost": 0,
+      "staggerDamage": 3528,
+      "partDamage": 0
+    },
+    {
+      "skillId": 49330,
+      "cooldownMs": 90000,
+      "resourceCost": 0,
+      "staggerDamage": 6915,
+      "partDamage": 1
+    },
+    {
+      "skillId": 49400,
+      "cooldownMs": 300000,
+      "resourceCost": 0,
+      "staggerDamage": 6915,
+      "partDamage": 0
+    },
+    {
+      "skillId": 49420,
+      "cooldownMs": 300000,
+      "resourceCost": 0,
+      "staggerDamage": 6915,
+      "partDamage": 0
+    }
+  ],
+  "damageProfiles": [
+    {
+      "damageProfileId": "damage.player.31200",
+      "attackCoefficientBp": 58490,
+      "damageAddend": 1986,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.31420",
+      "attackCoefficientBp": 205600,
+      "damageAddend": 6967,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.31430",
+      "attackCoefficientBp": 107050,
+      "damageAddend": 3630,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.31460",
+      "attackCoefficientBp": 37400,
+      "damageAddend": 1265,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.31480",
+      "attackCoefficientBp": 228930,
+      "damageAddend": 7756,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.31910",
+      "attackCoefficientBp": 2943289,
+      "damageAddend": 25161,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.31930",
+      "attackCoefficientBp": 14962143,
+      "damageAddend": 127933,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.31950",
+      "attackCoefficientBp": 1004452,
+      "damageAddend": 8586,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.31210",
+      "attackCoefficientBp": 42700,
+      "damageAddend": 1445,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.17000",
+      "attackCoefficientBp": 0,
+      "damageAddend": 0,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.17030",
+      "attackCoefficientBp": 52260,
+      "damageAddend": 958,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.17040",
+      "attackCoefficientBp": 35500,
+      "damageAddend": 652,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.17060",
+      "attackCoefficientBp": 76230,
+      "damageAddend": 1394,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.17080",
+      "attackCoefficientBp": 107060,
+      "damageAddend": 1960,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.17090",
+      "attackCoefficientBp": 51090,
+      "damageAddend": 941,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.17100",
+      "attackCoefficientBp": 43890,
+      "damageAddend": 805,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.17110",
+      "attackCoefficientBp": 95750,
+      "damageAddend": 1755,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.17140",
+      "attackCoefficientBp": 125970,
+      "damageAddend": 2308,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.17240",
+      "attackCoefficientBp": 145000,
+      "damageAddend": 870,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.17170",
+      "attackCoefficientBp": 2230509,
+      "damageAddend": 10303,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.17250",
+      "attackCoefficientBp": 11338743,
+      "damageAddend": 52384,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.17820",
+      "attackCoefficientBp": 761203,
+      "damageAddend": 3516,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.34010",
+      "attackCoefficientBp": 0,
+      "damageAddend": 0,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.34040",
+      "attackCoefficientBp": 45630,
+      "damageAddend": 836,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.34090",
+      "attackCoefficientBp": 63770,
+      "damageAddend": 1166,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.34100",
+      "attackCoefficientBp": 180180,
+      "damageAddend": 3283,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.34110",
+      "attackCoefficientBp": 172760,
+      "damageAddend": 3157,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.34120",
+      "attackCoefficientBp": 105540,
+      "damageAddend": 1928,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.34140",
+      "attackCoefficientBp": 177450,
+      "damageAddend": 3248,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.34150",
+      "attackCoefficientBp": 233030,
+      "damageAddend": 4265,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.34160",
+      "attackCoefficientBp": 97860,
+      "damageAddend": 1784,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.34610",
+      "attackCoefficientBp": 3203840,
+      "damageAddend": 14784,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.34630",
+      "attackCoefficientBp": 16286651,
+      "damageAddend": 75170,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.34650",
+      "attackCoefficientBp": 1093370,
+      "damageAddend": 5045,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.38020",
+      "attackCoefficientBp": 0,
+      "damageAddend": 0,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.38050",
+      "attackCoefficientBp": 0,
+      "damageAddend": 0,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.45050",
+      "attackCoefficientBp": 0,
+      "damageAddend": 0,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.45060",
+      "attackCoefficientBp": 0,
+      "damageAddend": 0,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.valtan.dash-charge",
+      "attackCoefficientBp": 0,
+      "damageAddend": 0,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.valtan.four-direction-walls",
+      "attackCoefficientBp": 0,
+      "damageAddend": 0,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.valtan.jump-axe-throw",
+      "attackCoefficientBp": 0,
+      "damageAddend": 0,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.valtan.circular-spin",
+      "attackCoefficientBp": 0,
+      "damageAddend": 0,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.valtan.triple-attack",
+      "attackCoefficientBp": 0,
+      "damageAddend": 0,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.valtan.six-direction-130",
+      "attackCoefficientBp": 0,
+      "damageAddend": 0,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.valtan.omnidirectional-wipe-130",
+      "attackCoefficientBp": 0,
+      "damageAddend": 0,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.valtan.arena-destroy-109",
+      "attackCoefficientBp": 0,
+      "damageAddend": 0,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.valtan.arena-destroy-33",
+      "attackCoefficientBp": 0,
+      "damageAddend": 0,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.valtan.swing",
+      "attackCoefficientBp": 0,
+      "damageAddend": 0,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.valtan.down-smash",
+      "attackCoefficientBp": 0,
+      "damageAddend": 0,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.valtan.imprison-roar",
+      "attackCoefficientBp": 0,
+      "damageAddend": 0,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.valtan.earthquake-smash",
+      "attackCoefficientBp": 0,
+      "damageAddend": 0,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.valtan.parry",
+      "attackCoefficientBp": 0,
+      "damageAddend": 0,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.valtan.magic-choice",
+      "attackCoefficientBp": 0,
+      "damageAddend": 0,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.valtan.four-slash",
+      "attackCoefficientBp": 0,
+      "damageAddend": 0,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.valtan.high-jump",
+      "attackCoefficientBp": 0,
+      "damageAddend": 0,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.valtan.stomp",
+      "attackCoefficientBp": 0,
+      "damageAddend": 0,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.valtan.bind-charge-smash",
+      "attackCoefficientBp": 0,
+      "damageAddend": 0,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.valtan.ground-wave-smash",
+      "attackCoefficientBp": 0,
+      "damageAddend": 0,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.valtan.super-smash",
+      "attackCoefficientBp": 0,
+      "damageAddend": 0,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.valtan.jump-spin",
+      "attackCoefficientBp": 0,
+      "damageAddend": 0,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.valtan.portal-rush",
+      "attackCoefficientBp": 0,
+      "damageAddend": 0,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.valtan.charge-grab-roar",
+      "attackCoefficientBp": 0,
+      "damageAddend": 0,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.valtan.backstep",
+      "attackCoefficientBp": 0,
+      "damageAddend": 0,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.valtan.red-blade-wave",
+      "attackCoefficientBp": 0,
+      "damageAddend": 0,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.valtan.fist-in-out",
+      "attackCoefficientBp": 0,
+      "damageAddend": 0,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.valtan.ledge-roar",
+      "attackCoefficientBp": 0,
+      "damageAddend": 0,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.valtan.triple-counter",
+      "attackCoefficientBp": 0,
+      "damageAddend": 0,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.valtan.four-pillars-105",
+      "attackCoefficientBp": 0,
+      "damageAddend": 0,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.valtan.four-pillars-105-pierce",
+      "attackCoefficientBp": 0,
+      "damageAddend": 0,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.valtan.center-grab-64",
+      "attackCoefficientBp": 0,
+      "damageAddend": 0,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.valtan.ghost-transition-15",
+      "attackCoefficientBp": 0,
+      "damageAddend": 0,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.38120",
+      "attackCoefficientBp": 0,
+      "damageAddend": 0,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.38200",
+      "attackCoefficientBp": 0,
+      "damageAddend": 0,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.38140",
+      "attackCoefficientBp": 0,
+      "damageAddend": 0,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.38180",
+      "attackCoefficientBp": 0,
+      "damageAddend": 0,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.38210",
+      "attackCoefficientBp": 0,
+      "damageAddend": 0,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.38260",
+      "attackCoefficientBp": 0,
+      "damageAddend": 0,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.38290",
+      "attackCoefficientBp": 0,
+      "damageAddend": 0,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.38250",
+      "attackCoefficientBp": 0,
+      "damageAddend": 0,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.38320",
+      "attackCoefficientBp": 0,
+      "damageAddend": 0,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.38000",
+      "attackCoefficientBp": 0,
+      "damageAddend": 0,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.45620",
+      "attackCoefficientBp": 0,
+      "damageAddend": 0,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.45210",
+      "attackCoefficientBp": 0,
+      "damageAddend": 0,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.45300",
+      "attackCoefficientBp": 0,
+      "damageAddend": 0,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.45070",
+      "attackCoefficientBp": 0,
+      "damageAddend": 0,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.45190",
+      "attackCoefficientBp": 0,
+      "damageAddend": 0,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.45600",
+      "attackCoefficientBp": 0,
+      "damageAddend": 0,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.45810",
+      "attackCoefficientBp": 0,
+      "damageAddend": 0,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.45820",
+      "attackCoefficientBp": 0,
+      "damageAddend": 0,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.45000",
+      "attackCoefficientBp": 0,
+      "damageAddend": 0,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.31470",
+      "attackCoefficientBp": 228730,
+      "damageAddend": 7750,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.31490",
+      "attackCoefficientBp": 197750,
+      "damageAddend": 6699,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.31000",
+      "attackCoefficientBp": 0,
+      "damageAddend": 0,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.2050220",
+      "attackCoefficientBp": 185450,
+      "damageAddend": 3395,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.2050240",
+      "attackCoefficientBp": 286450,
+      "damageAddend": 5246,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.2050100",
+      "attackCoefficientBp": 45050,
+      "damageAddend": 822,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.2050120",
+      "attackCoefficientBp": 18190,
+      "damageAddend": 333,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.2050160",
+      "attackCoefficientBp": 86310,
+      "damageAddend": 1575,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.2050180",
+      "attackCoefficientBp": 277140,
+      "damageAddend": 5068,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.2050230",
+      "attackCoefficientBp": 298360,
+      "damageAddend": 5464,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.2050520",
+      "attackCoefficientBp": 2872731,
+      "damageAddend": 13242,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.2050210",
+      "attackCoefficientBp": 433280,
+      "damageAddend": 7944,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.2050500",
+      "attackCoefficientBp": 980373,
+      "damageAddend": 4519,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.2050540",
+      "attackCoefficientBp": 14603465,
+      "damageAddend": 67330,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.2050010",
+      "attackCoefficientBp": 0,
+      "damageAddend": 0,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.34510",
+      "attackCoefficientBp": 0,
+      "damageAddend": 0,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.34540",
+      "attackCoefficientBp": 23790,
+      "damageAddend": 440,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.34550",
+      "attackCoefficientBp": 31060,
+      "damageAddend": 566,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.34560",
+      "attackCoefficientBp": 212170,
+      "damageAddend": 3877,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.34570",
+      "attackCoefficientBp": 208850,
+      "damageAddend": 3823,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.34580",
+      "attackCoefficientBp": 228540,
+      "damageAddend": 4182,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.34590",
+      "attackCoefficientBp": 389320,
+      "damageAddend": 7122,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.49000",
+      "attackCoefficientBp": 0,
+      "damageAddend": 0,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.49001",
+      "attackCoefficientBp": 0,
+      "damageAddend": 0,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.49100",
+      "attackCoefficientBp": 63560,
+      "damageAddend": 1165,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.49110",
+      "attackCoefficientBp": 76440,
+      "damageAddend": 1396,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.49120",
+      "attackCoefficientBp": 80520,
+      "damageAddend": 1475,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.49130",
+      "attackCoefficientBp": 131200,
+      "damageAddend": 2399,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.49200",
+      "attackCoefficientBp": 187990,
+      "damageAddend": 3442,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.49210",
+      "attackCoefficientBp": 46910,
+      "damageAddend": 854,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.49220",
+      "attackCoefficientBp": 39310,
+      "damageAddend": 716,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.49230",
+      "attackCoefficientBp": 20830,
+      "damageAddend": 382,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.49150",
+      "attackCoefficientBp": 375960,
+      "damageAddend": 6886,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.49260",
+      "attackCoefficientBp": 136670,
+      "damageAddend": 2505,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.49270",
+      "attackCoefficientBp": 164020,
+      "damageAddend": 3003,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.49330",
+      "attackCoefficientBp": 808120,
+      "damageAddend": 3729,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.49400",
+      "attackCoefficientBp": 2367988,
+      "damageAddend": 10928,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.49420",
+      "attackCoefficientBp": 12037617,
+      "damageAddend": 55561,
+      "damageSpreadPercent": 10
+    }
+  ],
+  "skillBuffs": [
+    {
+      "skillId": 17170,
+      "buffId": 171702,
+      "displayName": "가디언의 수호",
+      "target": "ALLY",
+      "kind": "BUFF",
+      "durationMs": 10000,
+      "iconAsset": "UI/HUD/Buff/buff_warlord_guardian.png",
+      "damageTakenPercent": -40
+    },
+    {
+      "skillId": 17250,
+      "buffId": 172500,
+      "displayName": "수호의 맹세",
+      "target": "ALLY",
+      "kind": "BUFF",
+      "durationMs": 10000,
+      "iconAsset": "UI/HUD/Buff/buff_warlord_oath.png",
+      "damageTakenPercent": -40
+    },
+    {
+      "skillId": 31050,
+      "buffId": 310501,
+      "displayName": "저무는 달",
+      "target": "ALLY",
+      "kind": "BUFF",
+      "durationMs": 10000,
+      "iconAsset": "UI/HUD/Buff/buff_artist_setting_moon.png",
+      "damageDealtPercent": 10
+    },
+    {
+      "skillId": 31950,
+      "buffId": 319503,
+      "displayName": "미르 새김",
+      "target": "ALLY",
+      "kind": "BUFF",
+      "durationMs": 12000,
+      "iconAsset": "UI/HUD/Buff/buff_artist_mir.png",
+      "damageDealtPercent": 10
+    },
+    {
+      "skillId": 34510,
+      "buffId": 345003,
+      "displayName": "난무 2단계",
+      "target": "SELF",
+      "kind": "BUFF",
+      "durationMs": 20000,
+      "iconAsset": "UI/HUD/Buff/buff_lancemaster_short_spear.png",
+      "attackSpeedPercent": 10,
+      "damageDealtPercent": 10
+    },
+    {
+      "skillId": 49040,
+      "buffId": 490407,
+      "displayName": "파티 : 피해 증폭",
+      "target": "ENEMY",
+      "kind": "DEBUFF",
+      "durationMs": 10000,
+      "iconAsset": "UI/HUD/Buff/buff_guardianknight_dragon_mark.png",
+      "damageTakenPercent": 6
+    },
+    {
+      "skillId": 31910,
+      "buffId": 319100,
+      "displayName": "절기 : 몽유도원",
+      "target": "ALLY",
+      "kind": "BUFF",
+      "durationMs": 12000,
+      "iconAsset": "UI/HUD/Buff/buff_artist_shield.png",
+      "shieldPercentOfMaxHp": 100
+    },
+    {
+      "skillId": 31930,
+      "buffId": 319302,
+      "displayName": "몽중백화원",
+      "target": "ALLY",
+      "kind": "BUFF",
+      "durationMs": 12000,
+      "iconAsset": "UI/HUD/Buff/buff_artist_dream_shield.png",
+      "shieldPercentOfMaxHp": 100
+    },
+    {
+      "skillId": 31930,
+      "buffId": 319303,
+      "displayName": "몽중백화원",
+      "target": "ALLY",
+      "kind": "BUFF",
+      "durationMs": 30000,
+      "iconAsset": "UI/HUD/Buff/buff_artist_dream_deny.png",
+      "deathDenyInvulnerableMs": 3000
+    },
+    {
+      "skillId": 17170,
+      "buffId": 171705,
+      "displayName": "기절",
+      "target": "ENEMY",
+      "kind": "DEBUFF",
+      "durationMs": 4000,
+      "iconAsset": "UI/HUD/Buff/buff_warlord_stun.png",
+      "stunMs": 4000
+    },
+    {
+      "skillId": 17250,
+      "buffId": 172501,
+      "displayName": "기절",
+      "target": "ENEMY",
+      "kind": "DEBUFF",
+      "durationMs": 4000,
+      "iconAsset": "UI/HUD/Buff/buff_warlord_stun.png",
+      "stunMs": 4000
+    }
+  ],
+  "bosses": [
+    {
+      "archetypeId": "BOSS_VALTAN",
+      "sourceNpcId": 480007,
+      "maximumHp": 741285439,
+      "attackPower": 2285,
+      "maximumHealthBars": 160,
+      "staggerGaugeMaximum": 40000
+    },
+    {
+      "archetypeId": "BOSS_VALTAN_GHOST",
+      "sourceNpcId": 480008,
+      "maximumHp": 197222731,
+      "attackPower": 2285,
+      "maximumHealthBars": 40,
+      "staggerGaugeMaximum": 40000
+    },
+    {
+      "archetypeId": "BOSS_KAKULSAYDON_G1_SAYDON",
+      "sourceNpcId": 480601,
+      "maximumHp": 1699175467,
+      "attackPower": 6067,
+      "maximumHealthBars": 160,
+      "staggerGaugeMaximum": 30000
+    },
+    {
+      "archetypeId": "BOSS_KAKULSAYDON_G2_BIG_SAYDON",
+      "sourceNpcId": 480621,
+      "maximumHp": 191997228,
+      "attackPower": 6259,
+      "maximumHealthBars": 140,
+      "staggerGaugeMaximum": 10000
+    },
+    {
+      "archetypeId": "BOSS_KAKULSAYDON_G2_KOUKU",
+      "sourceNpcId": 480611,
+      "maximumHp": 1393899875,
+      "attackPower": 6259,
+      "maximumHealthBars": 140,
+      "staggerGaugeMaximum": 25000
+    },
+    {
+      "archetypeId": "BOSS_KAKULSAYDON_G3_SAYDON",
+      "sourceNpcId": 480631,
+      "maximumHp": 1280621510,
+      "attackPower": 5145,
+      "maximumHealthBars": 180,
+      "staggerGaugeMaximum": 25000
+    },
+    {
+      "archetypeId": "BOSS_KAKULSAYDON_BINGO_SAYDON",
+      "sourceNpcId": 480635,
+      "maximumHp": 1868133028,
+      "attackPower": 6067,
+      "maximumHealthBars": 77,
+      "staggerGaugeMaximum": 25000
+    }
+  ],
+  "monsters": [
+    {
+      "archetypeId": "MONSTER_VALTAN_PADD_01",
+      "sourceNpcId": 480001,
+      "maxHp": 428450,
+      "attackPower": 914
+    },
+    {
+      "archetypeId": "MONSTER_VALTAN_SJFC_00_4",
+      "sourceNpcId": 480002,
+      "maxHp": 476056,
+      "attackPower": 1044
+    },
+    {
+      "archetypeId": "MONSTER_VALTAN_0019_05",
+      "sourceNpcId": 480003,
+      "maxHp": 476056,
+      "attackPower": 1305
+    },
+    {
+      "archetypeId": "MINIBOSS_LUGARU",
+      "sourceNpcId": 480005,
+      "maxHp": 703201050,
+      "attackPower": 1958
+    },
+    {
+      "archetypeId": "MONSTER_VALTAN_SJFC_ELITE",
+      "sourceNpcId": 480002,
+      "maxHp": 476056,
+      "attackPower": 1044
+    },
+    {
+      "archetypeId": "MONSTER_KOUKU_CLOWN_BOX",
+      "sourceNpcId": 480720,
+      "maxHp": 587993,
+      "attackPower": 1843
+    },
+    {
+      "archetypeId": "MONSTER_KOUKU_CMDUP_02",
+      "sourceNpcId": 480702,
+      "maxHp": 2906365,
+      "attackPower": 1105
+    },
+    {
+      "archetypeId": "MONSTER_KOUKU_REUP_04",
+      "sourceNpcId": 480701,
+      "maxHp": 2906365,
+      "attackPower": 460
+    },
+    {
+      "archetypeId": "MONSTER_KOUKU_RHKP_06",
+      "sourceNpcId": 480703,
+      "maxHp": 2906365,
+      "attackPower": 1105
+    },
+    {
+      "archetypeId": "MONSTER_KOUKU_CMDGR_03",
+      "sourceNpcId": 480704,
+      "maxHp": 46439333,
+      "attackPower": 1152
+    }
+  ]
+}

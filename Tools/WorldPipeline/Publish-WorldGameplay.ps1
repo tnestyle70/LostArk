@@ -9,7 +9,10 @@ param(
     [ValidateSet('ALL', 'BERN', 'KAKULSAYDON_ARENA', 'VALTAN_ARENA')]
     [string]$WorldId = 'ALL',
 	[ValidateRange(0, 12)]
-	[int]$FailureAfterPromote = 0
+	[int]$FailureAfterPromote = 0,
+    # Applies Data/Balance/Profiles/<name>.balanceprofile.json over the authored
+    # monster values at publish time. Empty publishes them unchanged.
+    [string]$BalanceProfile = ''
 )
 
 $ErrorActionPreference = 'Stop'
@@ -417,6 +420,28 @@ function Get-EncounterProfiles {
     return $profiles
 }
 
+# A balance profile replaces values of existing monster fields only, so every
+# Assert-ExactProperties in Get-MonsterProfiles still holds.
+function Get-BalanceProfileMonsters {
+    $overrides = @{}
+    if ([string]::IsNullOrWhiteSpace($BalanceProfile)) { return $overrides }
+    $document = Read-ProjectJson "Data/Balance/Profiles/$BalanceProfile.balanceprofile.json"
+    if ($document.schema -ne 'lostark.balance-profile' -or
+        $document.formatVersion -ne 1 -or $document.profileId -cne $BalanceProfile) {
+        throw "Balance profile header is invalid: $BalanceProfile"
+    }
+    foreach ($entry in @($document.monsters)) {
+        Assert-StableId $entry.archetypeId 'balance profile monster archetypeId'
+        if ($overrides.ContainsKey([string]$entry.archetypeId)) {
+            throw "Duplicate balance profile monster: $($entry.archetypeId)"
+        }
+        Assert-JsonInteger $entry.maxHp "$($entry.archetypeId) profile maxHp" 1 2000000000
+        Assert-JsonInteger $entry.attackPower "$($entry.archetypeId) profile attackPower" 1 2000000000
+        $overrides[[string]$entry.archetypeId] = $entry
+    }
+    return $overrides
+}
+
 function Get-MonsterProfiles {
     $document = Read-ProjectJson 'Data/Balance/MonsterProfiles.json'
     Assert-ExactProperties $document @('schema','formatVersion','basis','profiles') 'monster profiles'
@@ -425,7 +450,13 @@ function Get-MonsterProfiles {
         throw 'Monster profile header is invalid.'
     }
     $profiles = @{}
+    $monsterOverrides = Get-BalanceProfileMonsters
     foreach ($profile in @($document.profiles)) {
+        $monsterOverride = $monsterOverrides[[string]$profile.archetypeId]
+        if ($null -ne $monsterOverride) {
+            $profile.maxHp = [uint32]$monsterOverride.maxHp
+            $profile.attackPower = [uint32]$monsterOverride.attackPower
+        }
         $profileProperties = @(
             'archetypeId','maxHp','attackPower','defense','collisionRadius',
             'engageRange','targetReleaseRange','moveSpeed',

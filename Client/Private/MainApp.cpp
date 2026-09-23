@@ -5011,6 +5011,37 @@ void CMainApp::Update_BuffBar()
 			List.push_back(Draw);
 	}
 
+	/* The buffs a skill granted arrive on the snapshot as ids; HudBuffIcons.json is
+	the only thing that says which icon each id draws with. A boss carries the same
+	structure for what a player skill marked it with. */
+	const auto AppendSkillBuffs = [&](
+		const LostArk::Shared::ACTIVE_BUFF* pBuffs,
+		const size_t iCount,
+		const uint32_t iServerTick,
+		std::vector<BUFF_DRAW>& List)
+	{
+		for (size_t i = 0; i < iCount && List.size() < BUFF_SLOTS; ++i)
+		{
+			const auto Found = m_HudSkillBuffIcons.find(pBuffs[i].iBuffId);
+			if (m_HudSkillBuffIcons.end() == Found || Found->second.empty())
+				continue;
+			if (!Is_ServerDeadlinePending(iServerTick, pBuffs[i].iEndTick))
+				continue;
+			List.push_back({ &Found->second, pBuffs[i].iEndTick, 0.f });
+		}
+	};
+	if (player.isValid)
+	{
+		AppendSkillBuffs(player.ActiveBuffs, player.iActiveBuffCount,
+			player.iServerTick, Buffs);
+	}
+	const HUD_BOSS_STATE& boss = CCombatHUDViewModel::Get().Get_Boss();
+	if (boss.isValid)
+	{
+		AppendSkillBuffs(boss.ActiveBuffs, boss.iActiveBuffCount,
+			player.iServerTick, Debuffs);
+	}
+
 	const auto Apply = [&](const char* pPrefix, const std::vector<BUFF_DRAW>& List, const bool_t bDebuff)
 	{
 		for (size_t i = 0; i < BUFF_SLOTS; ++i)
@@ -5104,6 +5135,7 @@ void CMainApp::Load_HudQuickSlotData()
 	m_HudSkillMarks.clear();
 	m_HudSkillMarkAssets.clear();
 	m_HudBuffSources.clear();
+	m_HudSkillBuffIcons.clear();
 	const auto ReadObject = [](const wchar_t* pRelative, DATA_JSON_VALUE& Root) -> bool_t
 	{
 		ifstream Stream(CProjectDataRoot::Resolve(pRelative), ios::binary);
@@ -5191,6 +5223,35 @@ void CMainApp::Load_HudQuickSlotData()
 			m_HudBuffSources = std::move(Staged);
 		else
 			OutputDebugStringA("[HUD] HudBuffSources.json is invalid -- no buff bar.\n");
+	}
+
+	DATA_JSON_VALUE BuffIcons;
+	if (ReadObject(L"UI/HUD/HudBuffIcons.json", BuffIcons))
+	{
+		unordered_map<uint32_t, string> Staged;
+		bool_t bValid = true;
+		const DATA_JSON_VALUE* pIcons = BuffIcons.Find("icons");
+		if (nullptr == pIcons || !pIcons->Is_Array())
+			bValid = false;
+		else
+		{
+			for (const DATA_JSON_VALUE& Value : pIcons->Get_Array())
+			{
+				const DATA_JSON_VALUE* pBuffId = Value.Is_Object() ? Value.Find("buffId") : nullptr;
+				const DATA_JSON_VALUE* pAsset = Value.Is_Object() ? Value.Find("iconAsset") : nullptr;
+				if (nullptr == pBuffId || !pBuffId->Is_Number() ||
+					nullptr == pAsset || !pAsset->Is_String() || pAsset->Get_String().empty())
+				{
+					bValid = false;
+					break;
+				}
+				Staged.emplace(static_cast<uint32_t>(pBuffId->Get_Number()), pAsset->Get_String());
+			}
+		}
+		if (bValid)
+			m_HudSkillBuffIcons = std::move(Staged);
+		else
+			OutputDebugStringA("[HUD] HudBuffIcons.json is invalid -- no skill buff icons.\n");
 	}
 }
 
@@ -6908,8 +6969,32 @@ void CMainApp::Update_PlayerHealthManaBar()
 	const float manaRatio = (std::clamp)(
 		static_cast<float>(player.iCurrentResource) / static_cast<float>(player.iMaximumResource), 0.f, 1.f);
 
-	m_pHUDRuntimeView->Set_SlotFillRatio("HealthBar_Fill", healthRatio);
-	m_pHUDRuntimeView->Set_SlotVisible("HealthBar_Fill", healthRatio > 0.f);
+	/* ark.controls:Progress.updateShieldTargetSize. Below the maximum the shield is
+	its own share of the maximum and sits past the health fill; at or over it the
+	original grows the track "from the right" by shield / (shield + hp), which is why
+	the red share climbs back as the shield drains. */
+	const double shield = static_cast<double>(player.iShield);
+	const double currentHp = static_cast<double>(player.iCurrentHp);
+	const double maximumHp = static_cast<double>(player.iMaximumHp);
+	float shieldRatio = 0.f;
+	float healthTrackRatio = healthRatio;
+	if (shield > 0.0 && maximumHp > 0.0)
+	{
+		if (shield + currentHp < maximumHp)
+		{
+			shieldRatio = static_cast<float>(shield / maximumHp);
+		}
+		else
+		{
+			shieldRatio = static_cast<float>(shield / (shield + currentHp));
+			healthTrackRatio = 1.f - shieldRatio;
+		}
+	}
+
+	m_pHUDRuntimeView->Set_SlotFillRatio("HealthBar_Fill", healthTrackRatio);
+	m_pHUDRuntimeView->Set_SlotVisible("HealthBar_Fill", healthTrackRatio > 0.f);
+	m_pHUDRuntimeView->Set_SlotFillRatio("HealthBar_Shield_Fill", shieldRatio);
+	m_pHUDRuntimeView->Set_SlotVisible("HealthBar_Shield_Fill", shieldRatio > 0.f);
 	m_pHUDRuntimeView->Set_SlotFillRatio("ManaBar_Fill", manaRatio);
 	/* A class with an ember pool runs on ember, not mana: the mana fill stays
 	hidden and the readout below the bar shows the orb gauge instead. */
@@ -8532,8 +8617,12 @@ void CMainApp::RenderCombatHUDText()
 	const HUD_PLAYER_STATE& player = CCombatHUDViewModel::Get().Get_Player();
 	if (player.isValid && player.iMaximumHp > 0u && player.iMaximumResource > 0u)
 	{
+		/* ark.controls:Progress.updateText appends the shield straight after the
+		readout as "(+n)", and writes nothing at all while there is no shield. */
 		const wstring hp = std::to_wstring(player.iCurrentHp) +
-			L" / " + std::to_wstring(player.iMaximumHp);
+			L" / " + std::to_wstring(player.iMaximumHp) +
+			(0u == player.iShield ? wstring() :
+				L"(+" + std::to_wstring(player.iShield) + L")");
 		/* A class with an ember pool draws its own gauge art over this strip -- the orb and the
 		10 sockets (Update_GuardianKnightIdentity) -- so the numeric stand-in that stood here
 		until that art existed would now just sit on top of the sockets. */
@@ -8588,9 +8677,6 @@ void CMainApp::RenderDamageNumbers()
 	constexpr f32_t DAMAGE_SCALE_NORMAL[] = {
 		1.00f, 1.25f, 2.00f, 2.33f, 2.65f, 2.60f, 2.55f, 2.50f, 2.17f,
 		1.83f, 1.50f, 1.37f, 1.26f, 1.16f, 1.09f, 1.04f, 1.01f, 1.00f };
-	/* "critical": a bigger punch to 4.0 that settles on 3.0 and stays there. */
-	constexpr f32_t DAMAGE_SCALE_CRITICAL[] = {
-		1.01f, 1.19f, 1.75f, 2.69f, 4.00f, 3.50f, 3.00f };
 	/* "heal" holds 1.5 for its whole run. */
 	constexpr f32_t DAMAGE_SCALE_HEAL = 1.5f;
 	constexpr f32_t DAMAGE_FONT_PX_START = 32.f;
@@ -8713,12 +8799,11 @@ void CMainApp::RenderDamageNumbers()
 	{
 		const f64_t dAge = dNow - number.dSpawnSeconds;
 		/* Walk the element's own frames: hold the last key once the timeline has run out. */
-		const bool_t isCritical =
-			LostArk::Shared::DAMAGE_HIT_FLAG::CRITICAL == number.eHitFlag;
 		const bool_t isHeal = LostArk::Shared::DAMAGE_HIT_FLAG::HEAL == number.eHitFlag;
-		const f32_t* pCurve = isCritical ? DAMAGE_SCALE_CRITICAL : DAMAGE_SCALE_NORMAL;
-		const size_t iCurveKeys = isCritical ?
-			std::size(DAMAGE_SCALE_CRITICAL) : std::size(DAMAGE_SCALE_NORMAL);
+		/* A critical reads as a colour, not as a bigger number, so it walks the same
+		curve as an ordinary hit. */
+		const f32_t* pCurve = DAMAGE_SCALE_NORMAL;
+		const size_t iCurveKeys = std::size(DAMAGE_SCALE_NORMAL);
 		const f32_t fFrame = static_cast<f32_t>(dAge) * DAMAGE_TIMELINE_FPS;
 		f32_t fTimelineScale = DAMAGE_SCALE_HEAL;
 		if (!isHeal)
@@ -12868,6 +12953,23 @@ void CMainApp::RenderDeveloperTools()
 			if (m_bProfilerVisible)
 				pProfiler->Reset_History();
 			pProfiler->Set_Enabled(m_bProfilerVisible);
+		}
+	}
+	ImGui::SeparatorText("Replicated Buffs");
+	{
+		const HUD_PLAYER_STATE& buffPlayer = CCombatHUDViewModel::Get().Get_Player();
+		ImGui::Text("valid=%d  tick=%u  shield=%u  buffs=%u  icons=%u",
+			buffPlayer.isValid ? 1 : 0, buffPlayer.iServerTick,
+			buffPlayer.iShield, static_cast<uint32_t>(buffPlayer.iActiveBuffCount),
+			static_cast<uint32_t>(m_HudSkillBuffIcons.size()));
+		for (size_t i = 0; i < buffPlayer.iActiveBuffCount &&
+			i < LostArk::Shared::MAX_ACTIVE_BUFFS; ++i)
+		{
+			const auto Found =
+				m_HudSkillBuffIcons.find(buffPlayer.ActiveBuffs[i].iBuffId);
+			ImGui::Text("  buff %u  end=%u  icon=%s", buffPlayer.ActiveBuffs[i].iBuffId,
+				buffPlayer.ActiveBuffs[i].iEndTick,
+				m_HudSkillBuffIcons.end() == Found ? "none" : Found->second.c_str());
 		}
 	}
 	ImGui::SeparatorText("Live Combat Geometry");

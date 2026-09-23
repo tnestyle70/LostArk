@@ -1394,6 +1394,11 @@ namespace LostArk::Server
 		std::uint32_t iResourceRegenPerSecond = 0;
 		std::uint32_t iAttackPower = 0;
 		std::uint32_t iDefense = 0;
+		/* Chance in percent that a hit rolls critical, and what that hit is
+		worth against an ordinary one. A 0 chance never rolls, which is what a
+		bootstrap published without a balance profile carries. */
+		std::uint32_t iCriticalChancePercent = 0;
+		std::uint32_t iCriticalDamagePercent = 200;
 		float fMoveSpeed = 0.f;
 		/* Multiplies fMoveSpeed while the player holds a defensive stance. 1
 		leaves the class unchanged, which is what every class without one uses. */
@@ -1501,6 +1506,53 @@ namespace LostArk::Server
 		std::uint32_t Find_DamageRatePercent(
 			const std::string& damageProfileId) const;
 
+		/* The original damage formula, read from the client's own tooltip macro:
+		   (attackPower * ValueF / 10000) + (ValueA + ValueB) / 2
+		so a skill carries an attack-power coefficient and a flat addend, summed
+		over the hits the tooltip shows. A profile published without the pair
+		keeps the older flat percent instead. */
+		struct DAMAGE_PROFILE final
+		{
+			std::uint32_t iRatePercent = 0;
+			std::uint32_t iAttackCoefficientBp = 0;
+			std::uint32_t iDamageAddend = 0;
+			/* ValueA and ValueB are the low and high end of one hit's range and the
+			formula above averages them, so a landed hit rolls inside that range
+			instead of always dealing the mean. Published as a whole percent of the
+			mean; 0 keeps the deterministic value. */
+			std::uint32_t iDamageSpreadPercent = 0;
+		};
+		[[nodiscard]] const DAMAGE_PROFILE* Find_DamageProfile(
+			const std::string& damageProfileId) const;
+
+		/* A buff one skill grants. EFTable_SkillBuff owns the duration and the
+		percent; the add_status_effect row owns who receives it. */
+		enum class SKILL_BUFF_TARGET : std::uint8_t { SELF, ALLY, ENEMY };
+		struct SKILL_BUFF_DEFINITION final
+		{
+			std::uint32_t iSkillId = 0;
+			std::uint32_t iBuffId = 0;
+			SKILL_BUFF_TARGET eTarget = SKILL_BUFF_TARGET::SELF;
+			std::uint32_t iDurationMs = 0;
+			std::int32_t iDamageDealtPercent = 0;
+			std::int32_t iDamageTakenPercent = 0;
+			std::int32_t iAttackSpeedPercent = 0;
+			/* Absorbs this share of the caster's maximum HP before its HP moves. */
+			std::uint32_t iShieldPercentOfMaxHp = 0;
+			/* Holds an ordinary monster still. A boss is immune, as it is in the
+			original, because its pattern owns its own clock. */
+			std::uint32_t iStunMs = 0;
+			/* While armed, one lethal hit leaves the holder at 1 HP and grants this
+			many milliseconds of invulnerability instead of killing it. */
+			std::uint32_t iDeathDenyInvulnerableMs = 0;
+		};
+		[[nodiscard]] const std::vector<SKILL_BUFF_DEFINITION>* Find_SkillBuffs(
+			std::uint32_t skillId) const;
+		[[nodiscard]] const SKILL_BUFF_DEFINITION* Find_SkillBuff(
+			std::uint32_t buffId) const;
+		static std::uint32_t Resolve_Damage(
+			std::uint32_t attackPower, const DAMAGE_PROFILE& profile);
+
 		/* The one place a rate becomes a number, so player skills and boss
 		patterns cannot drift apart. Always at least 1 for a known profile: a hit
 		that connects should never read as a miss. */
@@ -1595,6 +1647,10 @@ namespace LostArk::Server
 			GUARDIAN_EMBER_PROFILE> m_EmberProfiles;
 		std::unordered_map<std::string, std::uint32_t>
 			m_DamageRatePercentByProfileId;
+		std::unordered_map<std::string, DAMAGE_PROFILE> m_DamageProfileById;
+		std::unordered_map<std::uint32_t, std::vector<SKILL_BUFF_DEFINITION>>
+			m_SkillBuffsBySkillId;
+		std::unordered_map<std::uint32_t, SKILL_BUFF_DEFINITION> m_SkillBuffById;
 		LostArk::Shared::GameplayDataRevision m_ActiveRevision{};
 		LostArk::Shared::GameplayDataRevision m_NonKoukuGameplayRevision{};
 		LostArk::Shared::GameplayDataRevision

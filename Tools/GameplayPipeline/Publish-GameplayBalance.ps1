@@ -4,6 +4,9 @@ param(
     [string]$Mode = 'Validate',
     [string]$OutputRoot = 'Server/Bin/DataFiles/Gameplay',
     [string]$InputOverlayRoot = '',
+    # Applies Data/Balance/Profiles/<name>.balanceprofile.json over the authored
+    # documents at publish time. Empty publishes the authored values unchanged.
+    [string]$BalanceProfile = '',
     [switch]$SkipValtanSplitProjection,
     [int]$ExternalCanonicalWriterPid = 0,
     [string]$ExternalCanonicalWriterNonce = '',
@@ -627,6 +630,99 @@ function Assert-BalanceProvenance(
 # supplies the rate, and the caster's attack power is what turns it into damage.
 # The 34010 basic attack is rate 100, so 100 is exactly one attack power.
 $maximumDamageRatePercent = 100000
+# A balance profile overrides existing fields of the authored documents only; it
+# never introduces a property, so every Assert-ExactProperties below still holds.
+$balanceProfilePlayers = @{}
+$balanceProfileSkills = @{}
+$balanceProfileBosses = @{}
+$balanceProfileStaggerScale = 0
+$balanceProfileMadnessAddPercent = -1
+$balanceProfileDamage = @{}
+$balanceProfileBuffRows = [Collections.Generic.List[string]]::new()
+$balanceProfileBuffKeys = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+if (-not [string]::IsNullOrWhiteSpace($BalanceProfile)) {
+    $profileRelativePath = "Data/Balance/Profiles/$BalanceProfile.balanceprofile.json"
+    $balanceProfileDocument = Read-JsonDocument $profileRelativePath
+    Assert-ExactProperties $balanceProfileDocument @(
+        'schema','formatVersion','profileId','displayName','staggerGaugeScale',
+        'players','skills','bosses','monsters',
+        'madnessGaugeAddPercent','damageProfiles','skillBuffs') 'balance profile document'
+    Assert-JsonString $balanceProfileDocument.schema 'balance profile schema'
+    Assert-JsonInteger $balanceProfileDocument.formatVersion 'balance profile formatVersion' 1 1
+    if ($balanceProfileDocument.schema -ne 'lostark.balance-profile' -or
+        $balanceProfileDocument.profileId -cne $BalanceProfile) {
+        throw "Balance profile header is invalid: $profileRelativePath"
+    }
+    Assert-JsonInteger $balanceProfileDocument.staggerGaugeScale `
+        'balance profile staggerGaugeScale' 1 100000
+    $balanceProfileStaggerScale = [uint32]$balanceProfileDocument.staggerGaugeScale
+    Assert-JsonInteger $balanceProfileDocument.madnessGaugeAddPercent `
+        'balance profile madnessGaugeAddPercent' 0 100
+    $balanceProfileMadnessAddPercent =
+        [int]$balanceProfileDocument.madnessGaugeAddPercent
+    foreach ($entry in @($balanceProfileDocument.players)) {
+        Assert-StableId $entry.characterClass 'balance profile player characterClass'
+        if ($balanceProfilePlayers.ContainsKey([string]$entry.characterClass)) {
+            throw "Duplicate balance profile player: $($entry.characterClass)"
+        }
+        $balanceProfilePlayers[[string]$entry.characterClass] = $entry
+    }
+    foreach ($entry in @($balanceProfileDocument.skillBuffs)) {
+        Assert-JsonInteger $entry.skillId 'balance profile buff skillId' 1 ([uint32]::MaxValue)
+        Assert-JsonInteger $entry.buffId 'balance profile buffId' 1 ([uint32]::MaxValue)
+        Assert-JsonInteger $entry.durationMs 'balance profile buff durationMs' 1 600000
+        if ($entry.target -cnotin @('SELF','ALLY','ENEMY')) {
+            throw "Balance profile buff target is invalid: $($entry.target)"
+        }
+        $buffKey = "$($entry.skillId)/$($entry.buffId)"
+        if ($balanceProfileBuffKeys.Contains($buffKey)) {
+            throw "Duplicate balance profile buff: $buffKey"
+        }
+        [void]$balanceProfileBuffKeys.Add($buffKey)
+        $percentOf = {
+            param([object]$Value)
+            if ($null -eq $Value) { return 0 }
+            Assert-JsonInteger $Value 'balance profile buff percent' -100 1000
+            return [int]$Value
+        }
+        $balanceProfileBuffRows.Add((@(
+            'SKILLBUFF', [uint32]$entry.skillId, [uint32]$entry.buffId, $entry.target,
+            [uint32]$entry.durationMs,
+            (& $percentOf $entry.damageDealtPercent),
+            (& $percentOf $entry.damageTakenPercent),
+            (& $percentOf $entry.attackSpeedPercent),
+            (& $percentOf $entry.shieldPercentOfMaxHp),
+            $(if ($null -eq $entry.stunMs) { 0 } else {
+                Assert-JsonInteger $entry.stunMs 'balance profile stunMs' 0 60000
+                [uint32]$entry.stunMs }),
+            $(if ($null -eq $entry.deathDenyInvulnerableMs) { 0 } else {
+                Assert-JsonInteger $entry.deathDenyInvulnerableMs `
+                    'balance profile deathDenyInvulnerableMs' 0 60000
+                [uint32]$entry.deathDenyInvulnerableMs })) -join "`t"))
+    }
+    foreach ($entry in @($balanceProfileDocument.damageProfiles)) {
+        Assert-StableId $entry.damageProfileId 'balance profile damageProfileId'
+        if ($balanceProfileDamage.ContainsKey([string]$entry.damageProfileId)) {
+            throw "Duplicate balance profile damage profile: $($entry.damageProfileId)"
+        }
+        $balanceProfileDamage[[string]$entry.damageProfileId] = $entry
+    }
+    foreach ($entry in @($balanceProfileDocument.skills)) {
+        Assert-JsonInteger $entry.skillId 'balance profile skillId' 1 ([uint32]::MaxValue)
+        if ($balanceProfileSkills.ContainsKey([uint32]$entry.skillId)) {
+            throw "Duplicate balance profile skill: $($entry.skillId)"
+        }
+        $balanceProfileSkills[[uint32]$entry.skillId] = $entry
+    }
+    foreach ($entry in @($balanceProfileDocument.bosses)) {
+        Assert-StableId $entry.archetypeId 'balance profile boss archetypeId'
+        if ($balanceProfileBosses.ContainsKey([string]$entry.archetypeId)) {
+            throw "Duplicate balance profile boss: $($entry.archetypeId)"
+        }
+        $balanceProfileBosses[[string]$entry.archetypeId] = $entry
+    }
+}
+
 $damageDocument = Read-JsonDocument 'Data/Balance/DamageProfiles.json'
 Assert-ExactProperties $damageDocument @('schema','formatVersion','profiles') 'damage document'
 Assert-JsonString $damageDocument.schema 'damage document schema'
@@ -646,8 +742,30 @@ foreach ($profile in @($damageDocument.profiles)) {
         $ratePercent -gt $maximumDamageRatePercent) {
         throw "Duplicate, zero, or out-of-range damage profile: $($profile.damageProfileId)"
     }
-    $damageRows.Add("DAMAGE`t$($profile.damageProfileId)`t$ratePercent")
+    # The original formula is attackPower * coefficient/10000 + a flat addend; a
+    # profile that supplies neither keeps the flat percent alone.
+    $damageCoefficientBp = 0
+    $damageAddend = 0
+    # ValueA and ValueB bracket one hit and the addend above is their mean, so this is
+    # how far a landed hit rolls either side of it. Zero stays deterministic.
+    $damageSpreadPercent = 0
+    $damageOverride = $balanceProfileDamage[[string]$profile.damageProfileId]
+    if ($null -ne $damageOverride) {
+        Assert-JsonInteger $damageOverride.attackCoefficientBp `
+            'balance profile attackCoefficientBp' 0 2000000000
+        Assert-JsonInteger $damageOverride.damageAddend `
+            'balance profile damageAddend' 0 2000000000
+        Assert-JsonInteger $damageOverride.damageSpreadPercent `
+            'balance profile damageSpreadPercent' 0 99
+        $damageCoefficientBp = [uint32]$damageOverride.attackCoefficientBp
+        $damageAddend = [uint32]$damageOverride.damageAddend
+        $damageSpreadPercent = [uint32]$damageOverride.damageSpreadPercent
+    }
+    $damageRows.Add(
+        ("DAMAGE`t$($profile.damageProfileId)`t$ratePercent`t$damageCoefficientBp" +
+         "`t$damageAddend`t$damageSpreadPercent"))
 }
+
 
 $skillDocument = Read-JsonDocument 'Data/Balance/PlayerSkills.json'
 Assert-ExactProperties $skillDocument @('schema','formatVersion','skills') 'skill document'
@@ -656,6 +774,16 @@ Assert-JsonInteger $skillDocument.formatVersion 'skill document formatVersion' 3
 if ($skillDocument.schema -ne 'lostark.player-skills' -or $skillDocument.formatVersion -ne 3) {
     throw 'Player skill header is invalid.'
 }
+if ($balanceProfileSkills.Count -gt 0) {
+    foreach ($skill in @($skillDocument.skills)) {
+        $override = $balanceProfileSkills[[uint32]$skill.skillId]
+        if ($null -eq $override) { continue }
+        $skill.cooldownMs = [uint32]$override.cooldownMs
+        $skill.resourceCost = [uint32]$override.resourceCost
+        $skill.staggerDamage = [uint32]$override.staggerDamage
+        $skill.partDamage = [uint32]$override.partDamage
+    }
+}
 
 $playerDocument = Read-JsonDocument 'Data/Balance/PlayerProfiles.json'
 Assert-ExactProperties $playerDocument @('schema','formatVersion','players') 'player profile document'
@@ -663,6 +791,17 @@ Assert-JsonString $playerDocument.schema 'player profile schema'
 Assert-JsonInteger $playerDocument.formatVersion 'player profile formatVersion' 2 2
 if ($playerDocument.schema -ne 'lostark.player-profiles' -or $playerDocument.formatVersion -ne 2) {
 	throw 'Player profile header is invalid.'
+}
+if ($balanceProfilePlayers.Count -gt 0) {
+    foreach ($player in @($playerDocument.players)) {
+        $override = $balanceProfilePlayers[[string]$player.characterClass]
+        if ($null -eq $override) { continue }
+        $player.maximumHp = [uint32]$override.maximumHp
+        $player.maximumResource = [uint32]$override.maximumResource
+        $player.resourceRegenPerSecond = [uint32]$override.resourceRegenPerSecond
+        $player.attackPower = [uint32]$override.attackPower
+        $player.defense = [uint32]$override.defense
+    }
 }
 $playerClasses = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
 $playerRows = [Collections.Generic.List[string]]::new()
@@ -749,6 +888,19 @@ foreach ($player in @($playerDocument.players)) {
 		[double]$player.moveSpeed -le 0.0) {
 		throw "Player profile is invalid: $($player.characterClass)"
 	}
+	# Without a profile the class rolls no critical hit, which is how the
+	# authored fast-combat documents have always published.
+	$playerCriticalChancePercent = 0
+	$playerCriticalDamagePercent = 200
+	$playerCriticalOverride = $balanceProfilePlayers[[string]$player.characterClass]
+	if ($null -ne $playerCriticalOverride) {
+		Assert-JsonInteger $playerCriticalOverride.criticalChancePercent `
+			'balance profile criticalChancePercent' 0 100
+		Assert-JsonInteger $playerCriticalOverride.criticalDamagePercent `
+			'balance profile criticalDamagePercent' 100 10000
+		$playerCriticalChancePercent = [uint32]$playerCriticalOverride.criticalChancePercent
+		$playerCriticalDamagePercent = [uint32]$playerCriticalOverride.criticalDamagePercent
+	}
 	$playerRows.Add((@(
 		'PLAYER', $player.characterClass, [uint32]$player.maximumHp,
 		[uint32]$player.maximumResource, [uint32]$player.resourceRegenPerSecond,
@@ -758,7 +910,8 @@ foreach ($player in @($playerDocument.players)) {
 		[uint32]$player.maximumIdentity, [uint32]$player.identityRegenPerSecond,
 		[uint32]$player.identityDrainPerSecond, [uint32]$player.identityStanceSwitchCost,
 		[uint32]$player.identityCyclic,
-		$player.defaultStance) -join "`t"))
+		$player.defaultStance,
+		$playerCriticalChancePercent, $playerCriticalDamagePercent) -join "`t"))
 }
 if ($playerClasses.Count -ne $supportedPlayerClasses.Count) {
 	$missingClasses = @($supportedPlayerClasses | Where-Object { -not $playerClasses.Contains($_) })
@@ -1247,6 +1400,15 @@ Assert-JsonString $bossDocument.schema 'boss document schema'
 Assert-JsonInteger $bossDocument.formatVersion 'boss document formatVersion' 4 4
 if ($bossDocument.schema -ne 'lostark.boss-profiles' -or $bossDocument.formatVersion -ne 4) {
     throw 'Boss profile header is invalid.'
+}
+if ($balanceProfileBosses.Count -gt 0) {
+    foreach ($boss in @($bossDocument.bosses)) {
+        $override = $balanceProfileBosses[[string]$boss.archetypeId]
+        if ($null -eq $override) { continue }
+        $boss.maximumHp = [uint32]$override.maximumHp
+        $boss.attackPower = [uint32]$override.attackPower
+        $boss.maximumHealthBars = [uint32]$override.maximumHealthBars
+    }
 }
 $bossIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
 $bossRows = [Collections.Generic.List[string]]::new()
@@ -2795,6 +2957,12 @@ foreach ($pattern in @($encounterDocument.patterns)) {
 					Assert-JsonInteger $stageAction.durationMs `
 						'pattern stage action durationMs' 0 $maximumActionDurationMs
 					$actionValue = [uint32]$stageAction.value
+					if ($actionKind -ceq 'SET_STAGGER_GAUGE' -and
+						$balanceProfileStaggerScale -gt 0 -and $actionValue -gt 0) {
+						# The authored gauge is a window size, not a boss field, so the
+						# profile scales it onto NpcBalance.ParalyzationPointMax.
+						$actionValue = [uint32]($actionValue * $balanceProfileStaggerScale)
+					}
 				}
 				foreach ($field in @('trigger','targetId')) {
 					Assert-JsonString $stageAction.$field `
@@ -3173,7 +3341,7 @@ $koukuTargetBindings = $null
 if (@($koukuEncounterDocument.patterns | Where-Object { $null -ne $_.PSObject.Properties['showtimeTargets'] -or $null -ne $_.PSObject.Properties['pursuitProjectiles'] }).Count -gt 0) {
     $koukuTargetBindings = Read-JsonDocument 'Data/Animation/Authored/KoukuSaydon/KoukuSaydon.patternbindings.json'
 }
-Add-KoukuBootstrapRows -Encounter $koukuEncounterDocument -Presentation $koukuTargetBindings -BossProfiles $bossDocument -Rows $patternRows
+Add-KoukuBootstrapRows -Encounter $koukuEncounterDocument -Presentation $koukuTargetBindings -BossProfiles $bossDocument -Rows $patternRows -MadnessGaugeAddPercent $balanceProfileMadnessAddPercent
 
 # Pattern/action/branch rows are projected directly from the current Source.
 # Specific historical rows are not an admission contract: adding a Stage or
@@ -4618,8 +4786,14 @@ foreach ($requiredActionId in $expectedNormalActionIds) {
 	}
 }
 
-Assert-BalanceProvenance $playerDocument $skillDocument $damageDocument `
-	$bossDocument $bossPartDocument $combatObjectDocument
+# A balance profile overlays the player, skill, damage and boss documents in memory
+# above. The receipt attests the authored files, not a publish-time overlay, so these
+# four are read again here; the other two are never overlaid.
+Assert-BalanceProvenance (Read-JsonDocument 'Data/Balance/PlayerProfiles.json') `
+	(Read-JsonDocument 'Data/Balance/PlayerSkills.json') `
+	(Read-JsonDocument 'Data/Balance/DamageProfiles.json') `
+	(Read-JsonDocument 'Data/Balance/BossProfiles.json') `
+	$bossPartDocument $combatObjectDocument
 
 $skillDurationById = @{}
 $skillStageDurationsById = @{}
@@ -5314,7 +5488,7 @@ $presentationGenerationRow = @(
     [string]$presentationGeneration.generationId
 ) -join "`t"
 
-$rows = @($damageRows + $skillRows + $playerRows + $bossRows +
+$rows = @($damageRows + $skillRows + $balanceProfileBuffRows + $playerRows + $bossRows +
 	$bossPartRows + $combatObjectRows + $rootMotionRows + $hitShapeRows +
 	$patternRows + @($presentationGenerationRow) | Sort-Object -Property @{
 		Expression = { Get-BootstrapRowSortKey -Row $_ } })
@@ -5330,7 +5504,7 @@ $maximumGameplayBootstrapRows = [uint32]::Parse($maximumGameplayBootstrapRowsMat
 if ($rows.Count -eq 0 -or $rows.Count -gt $maximumGameplayBootstrapRows) {
     throw "Gameplay bootstrap row count must be in 1..$maximumGameplayBootstrapRows (got $($rows.Count))"
 }
-$gameplayBootstrapVersion = if ($rotationFormatVersion -eq 4) { 34 } elseif (
+$gameplayBootstrapVersion = if ($rotationFormatVersion -eq 4) { 36 } elseif (
 	$rotationFormatVersion -eq 3) { 21 } else { 18 }
 $lines = @("LOSTARK_GAMEPLAY_BOOTSTRAP`t$gameplayBootstrapVersion`t$($rows.Count)") + $rows
 

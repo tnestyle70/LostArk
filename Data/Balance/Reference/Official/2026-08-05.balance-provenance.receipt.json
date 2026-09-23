@@ -1,54 +1,11 @@
 {
-    "schema":  "lostark.balance-provenance-receipt",
-    "formatVersion":  1,
-    "sourceBuildId":  "data2-206dee2e007d73a0_data3-52fbca9b982f8394",
-    "referenceSkillLevel":  10,
-    "extractorSha256":  "46384b8a39eda33ad0e110f0cfdff4ba0c62707f3ca5025261f568cc6c097ce5",
-    "sourceFiles":  [
-                        {
-                            "id":  "data2.lpk",
-                            "sha256":  "206dee2e007d73a0e3b1cd37a26cf54d697722665bf8bb29cf2369a68bc40744"
-                        },
-                        {
-                            "id":  "data3.lpk",
-                            "sha256":  "52fbca9b982f8394a6fe492de122715c4dc8b0f07442f8e9d864b406141e2ff5"
-                        },
-                        {
-                            "id":  "MN_RPBF_01-1.loa",
-                            "sha256":  "6fea6fb228d95a019fa9c6d42e2a298ca334be20ed186a84c98027015846fc2a"
-                        },
-                        {
-                            "id":  "EFTable_Npc.db",
-                            "sha256":  "fc7d662558c6d386cffcdfefd2118bd8e36524100dcb1866a8b3243bc59cd032"
-                        },
-                        {
-                            "id":  "EFTable_NpcBalance.db",
-                            "sha256":  "2599af945245dd9f47d1f0e17bcd0a30bbf5872893a00882e8dce25ba844c4db"
-                        },
-                        {
-                            "id":  "EFTable_NpcStat.db",
-                            "sha256":  "d8857a1f8763fb6ae08e553f0f3057e40aa7ee4cb98cc7070d2723564a06cf37"
-                        },
-                        {
-                            "id":  "EFTable_PC.db",
-                            "sha256":  "13af0f1f52a6afd512a8d6201a510ac6f3e2f526492278aa3233450d950407a2"
-                        },
-                        {
-                            "id":  "EFTable_Skill.db",
-                            "sha256":  "8691edbd4fbef268dc709f3d2e240288f3d294c5648c3f8916939598c68723f3"
-                        },
-                        {
-                            "id":  "EFTable_SkillEffect.db",
-                            "sha256":  "25cad4759a6474d8932e857a7a045d325dc85159011f855c6a924e41881a1113"
-                        }
-                    ],
     "coverage":  {
                      "playerProfileCount":  7,
                      "skillDefinitionCount":  114,
-                     "damageProfileCount":  125,
+                     "damageProfileCount":  128,
                      "bossProfileCount":  8,
                      "encounterPatternCount":  34,
-                     "fieldEntryCount":  4077,
+                     "fieldEntryCount":  4083,
                      "bossPartCount":  2,
                      "bossCombatObjectCount":  9
                  },
@@ -1652,6 +1609,32 @@
                     },
                     {
                         "targetDocument":  "Data/Balance/DamageProfiles.json",
+                        "targetId":  "damage:damage.player.17170",
+                        "targetField":  "damageProfileId",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "stable-damage-profile-id-v1"
+                                   },
+                        "sourceValue":  "damage.player.17170",
+                        "transform":  "identity",
+                        "resultValue":  "damage.player.17170"
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/DamageProfiles.json",
+                        "targetId":  "damage:damage.player.17170",
+                        "targetField":  "damageRatePercent",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "warlord-unshipped-slot-rate-v1"
+                                   },
+                        "sourceValue":  1012,
+                        "transform":  "Warlord Q/W/E/R average rate x Lance Master slot ratio",
+                        "resultValue":  2134
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/DamageProfiles.json",
                         "targetId":  "damage:damage.player.17240",
                         "targetField":  "damageProfileId",
                         "basis":  "PROJECT_TUNED",
@@ -1680,6 +1663,58 @@
                         "sourceValue":  392,
                         "transform":  "ValueA x overcharge 2",
                         "resultValue":  784
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/DamageProfiles.json",
+                        "targetId":  "damage:damage.player.17250",
+                        "targetField":  "damageProfileId",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "stable-damage-profile-id-v1"
+                                   },
+                        "sourceValue":  "damage.player.17250",
+                        "transform":  "identity",
+                        "resultValue":  "damage.player.17250"
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/DamageProfiles.json",
+                        "targetId":  "damage:damage.player.17250",
+                        "targetField":  "damageRatePercent",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "warlord-unshipped-slot-rate-v1"
+                                   },
+                        "sourceValue":  1012,
+                        "transform":  "Warlord Q/W/E/R average rate x Lance Master slot ratio",
+                        "resultValue":  5471
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/DamageProfiles.json",
+                        "targetId":  "damage:damage.player.17820",
+                        "targetField":  "damageProfileId",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "stable-damage-profile-id-v1"
+                                   },
+                        "sourceValue":  "damage.player.17820",
+                        "transform":  "identity",
+                        "resultValue":  "damage.player.17820"
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/DamageProfiles.json",
+                        "targetId":  "damage:damage.player.17820",
+                        "targetField":  "damageRatePercent",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "warlord-unshipped-slot-rate-v1"
+                                   },
+                        "sourceValue":  1012,
+                        "transform":  "Warlord Q/W/E/R average rate x Lance Master slot ratio",
+                        "resultValue":  3672
                     },
                     {
                         "targetDocument":  "Data/Balance/DamageProfiles.json",
@@ -10155,9 +10190,9 @@
                                        "type":  "project-policy",
                                        "policyId":  "animation-reference-hit-timing-v1"
                                    },
-                        "sourceValue":  0,
-                        "transform":  "identity",
-                        "resultValue":  0
+                        "sourceValue":  130,
+                        "transform":  "projectile t 0.13s in wgl_sk_guardianofprotection_attack + 2500ms of preceding clips",
+                        "resultValue":  2630
                     },
                     {
                         "targetDocument":  "Data/Balance/PlayerSkills.json",
@@ -10191,17 +10226,12 @@
                         "targetField":  "maximumRange",
                         "basis":  "PROJECT_TUNED",
                         "source":  {
-                                       "type":  "official-table-cell",
-                                       "database":  "EFTable_Skill.db",
-                                       "databaseSha256":  "8691edbd4fbef268dc709f3d2e240288f3d294c5648c3f8916939598c68723f3",
-                                       "table":  "Skill",
-                                       "primaryKey":  17170,
-                                       "secondaryKey":  1,
-                                       "column":  "MaxRange"
+                                       "type":  "project-policy",
+                                       "policyId":  "warlord-area-skill-radius-v1"
                                    },
-                        "sourceValue":  0,
-                        "transform":  "project server hit range override",
-                        "resultValue":  0.0
+                        "sourceValue":  1000,
+                        "transform":  "tooltip guardian shield area radius 10m",
+                        "resultValue":  10.0
                     },
                     {
                         "targetDocument":  "Data/Balance/PlayerSkills.json",
@@ -10270,9 +10300,9 @@
                                        "type":  "project-policy",
                                        "policyId":  "project-damage-profile-link-v1"
                                    },
-                        "sourceValue":  "",
+                        "sourceValue":  "damage.player.17170",
                         "transform":  "identity",
-                        "resultValue":  ""
+                        "resultValue":  "damage.player.17170"
                     },
                     {
                         "targetDocument":  "Data/Balance/PlayerSkills.json",
@@ -10937,9 +10967,9 @@
                                        "type":  "project-policy",
                                        "policyId":  "animation-reference-hit-timing-v1"
                                    },
-                        "sourceValue":  0,
-                        "transform":  "identity",
-                        "resultValue":  0
+                        "sourceValue":  1050,
+                        "transform":  "projectile t 1.05s in wgl_sk_super_guardianofprotection_02 + 2400ms of preceding clips",
+                        "resultValue":  3450
                     },
                     {
                         "targetDocument":  "Data/Balance/PlayerSkills.json",
@@ -10973,17 +11003,12 @@
                         "targetField":  "maximumRange",
                         "basis":  "PROJECT_TUNED",
                         "source":  {
-                                       "type":  "official-table-cell",
-                                       "database":  "EFTable_Skill.db",
-                                       "databaseSha256":  "8691edbd4fbef268dc709f3d2e240288f3d294c5648c3f8916939598c68723f3",
-                                       "table":  "Skill",
-                                       "primaryKey":  17250,
-                                       "secondaryKey":  1,
-                                       "column":  "MaxRange"
+                                       "type":  "project-policy",
+                                       "policyId":  "warlord-area-skill-radius-v1"
                                    },
-                        "sourceValue":  0,
-                        "transform":  "project server hit range override",
-                        "resultValue":  0.0
+                        "sourceValue":  700,
+                        "transform":  "projectile reference radius 700 -\u003e m",
+                        "resultValue":  7.0
                     },
                     {
                         "targetDocument":  "Data/Balance/PlayerSkills.json",
@@ -11052,9 +11077,9 @@
                                        "type":  "project-policy",
                                        "policyId":  "project-damage-profile-link-v1"
                                    },
-                        "sourceValue":  "",
+                        "sourceValue":  "damage.player.17250",
                         "transform":  "identity",
-                        "resultValue":  ""
+                        "resultValue":  "damage.player.17250"
                     },
                     {
                         "targetDocument":  "Data/Balance/PlayerSkills.json",
@@ -11814,8 +11839,8 @@
                                        "policyId":  "animation-reference-hit-timing-v1"
                                    },
                         "sourceValue":  0,
-                        "transform":  "identity",
-                        "resultValue":  0
+                        "transform":  "HIT notify at the start of wgl_sk_shieldofbattlefield_03 + 1300ms of preceding clips",
+                        "resultValue":  1300
                     },
                     {
                         "targetDocument":  "Data/Balance/PlayerSkills.json",
@@ -11849,17 +11874,12 @@
                         "targetField":  "maximumRange",
                         "basis":  "PROJECT_TUNED",
                         "source":  {
-                                       "type":  "official-table-cell",
-                                       "database":  "EFTable_Skill.db",
-                                       "databaseSha256":  "8691edbd4fbef268dc709f3d2e240288f3d294c5648c3f8916939598c68723f3",
-                                       "table":  "Skill",
-                                       "primaryKey":  17820,
-                                       "secondaryKey":  1,
-                                       "column":  "MaxRange"
+                                       "type":  "project-policy",
+                                       "policyId":  "warlord-area-skill-radius-v1"
                                    },
-                        "sourceValue":  800,
-                        "transform":  "project server hit range override",
-                        "resultValue":  0.0
+                        "sourceValue":  1000,
+                        "transform":  "tooltip landing area radius 10m; MaxRange 800 is the cast range",
+                        "resultValue":  10.0
                     },
                     {
                         "targetDocument":  "Data/Balance/PlayerSkills.json",
@@ -11928,9 +11948,9 @@
                                        "type":  "project-policy",
                                        "policyId":  "project-damage-profile-link-v1"
                                    },
-                        "sourceValue":  "",
+                        "sourceValue":  "damage.player.17820",
                         "transform":  "identity",
-                        "resultValue":  ""
+                        "resultValue":  "damage.player.17820"
                     },
                     {
                         "targetDocument":  "Data/Balance/PlayerSkills.json",
@@ -63647,5 +63667,48 @@
                         "resultValue":  0,
                         "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
                     }
-                ]
+                ],
+    "extractorSha256":  "46384b8a39eda33ad0e110f0cfdff4ba0c62707f3ca5025261f568cc6c097ce5",
+    "formatVersion":  1,
+    "referenceSkillLevel":  10,
+    "schema":  "lostark.balance-provenance-receipt",
+    "sourceBuildId":  "data2-206dee2e007d73a0_data3-52fbca9b982f8394",
+    "sourceFiles":  [
+                        {
+                            "id":  "data2.lpk",
+                            "sha256":  "206dee2e007d73a0e3b1cd37a26cf54d697722665bf8bb29cf2369a68bc40744"
+                        },
+                        {
+                            "id":  "data3.lpk",
+                            "sha256":  "52fbca9b982f8394a6fe492de122715c4dc8b0f07442f8e9d864b406141e2ff5"
+                        },
+                        {
+                            "id":  "MN_RPBF_01-1.loa",
+                            "sha256":  "6fea6fb228d95a019fa9c6d42e2a298ca334be20ed186a84c98027015846fc2a"
+                        },
+                        {
+                            "id":  "EFTable_Npc.db",
+                            "sha256":  "fc7d662558c6d386cffcdfefd2118bd8e36524100dcb1866a8b3243bc59cd032"
+                        },
+                        {
+                            "id":  "EFTable_NpcBalance.db",
+                            "sha256":  "2599af945245dd9f47d1f0e17bcd0a30bbf5872893a00882e8dce25ba844c4db"
+                        },
+                        {
+                            "id":  "EFTable_NpcStat.db",
+                            "sha256":  "d8857a1f8763fb6ae08e553f0f3057e40aa7ee4cb98cc7070d2723564a06cf37"
+                        },
+                        {
+                            "id":  "EFTable_PC.db",
+                            "sha256":  "13af0f1f52a6afd512a8d6201a510ac6f3e2f526492278aa3233450d950407a2"
+                        },
+                        {
+                            "id":  "EFTable_Skill.db",
+                            "sha256":  "8691edbd4fbef268dc709f3d2e240288f3d294c5648c3f8916939598c68723f3"
+                        },
+                        {
+                            "id":  "EFTable_SkillEffect.db",
+                            "sha256":  "25cad4759a6474d8932e857a7a045d325dc85159011f855c6a924e41881a1113"
+                        }
+                    ]
 }

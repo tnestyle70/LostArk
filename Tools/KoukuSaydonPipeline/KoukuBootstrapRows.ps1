@@ -503,7 +503,8 @@ function Add-KoukuBootstrapRows {
         [Parameter(Mandatory=$true)][object]$Encounter,
         [object]$Presentation,
         [Parameter(Mandatory=$true)][object]$BossProfiles,
-        [Parameter(Mandatory=$true)][AllowEmptyCollection()][Collections.Generic.List[string]]$Rows
+        [Parameter(Mandatory=$true)][AllowEmptyCollection()][Collections.Generic.List[string]]$Rows,
+        [ValidateRange(-1,100)][int]$MadnessGaugeAddPercent = -1
     )
     $koukuEncounterDocument = $Encounter
     $koukuTargetBindings = $Presentation
@@ -1512,10 +1513,14 @@ foreach ($koukuPattern in @($koukuEncounterDocument.patterns)) {
 					$koukuCaptureGrip = $gripKey
 				}
 				$followupText = if ($hasFollowup) { $followup } else { '-' }
+				$outcomePercent = [uint32]$outcome.percent
+				if ($outcomeKind -ceq 'MADNESS_GAUGE_ADD_PERCENT' -and $MadnessGaugeAddPercent -ge 0) {
+					$outcomePercent = [uint32]$MadnessGaugeAddPercent
+				}
 				$patternRows.Add((@(
 					'PATTERNLOGICOUTCOME', $koukuEncounterDocument.encounterId,
 					$koukuPattern.patternId, $window.windowId, $slotName, $ordinal,
-					$outcomeKind, [uint32]$outcome.percent, [uint32]$outcome.durationMs,
+					$outcomeKind, $outcomePercent, [uint32]$outcome.durationMs,
 					$followupText) + $motionIds -join "`t"))
 				if ($outcomePushRangeM -gt 0 -or $outcomePushHeightM -gt 0) {
 					$patternRows.Add((@('PATTERNLOGICPUSH', $koukuEncounterDocument.encounterId,

@@ -1,0 +1,178 @@
+{
+ "schema": "lostark.hud-buff-icons",
+ "formatVersion": 1,
+ "note": "Slot art and silence/fetter/fear icons come from build_quickslot_hud_ui.py.",
+ "icons": [
+  {
+   "name": "warlord_guardian",
+   "kind": "buff",
+   "skillId": 17170,
+   "buffId": 171702,
+   "iconAsset": "UI/HUD/Buff/buff_warlord_guardian.png",
+   "size": [
+    64,
+    64
+   ],
+   "iconSource": {
+    "table": "EFTable_SkillBuff",
+    "primaryKey": 171702,
+    "icon": "GL_Skill_01_28"
+   }
+  },
+  {
+   "name": "warlord_oath",
+   "kind": "buff",
+   "skillId": 17250,
+   "buffId": 172500,
+   "iconAsset": "UI/HUD/Buff/buff_warlord_oath.png",
+   "size": [
+    64,
+    64
+   ],
+   "iconSource": {
+    "table": "EFTable_SkillBuff",
+    "primaryKey": 172500,
+    "icon": "GL_Skill_01_28"
+   }
+  },
+  {
+   "name": "artist_setting_moon",
+   "kind": "buff",
+   "skillId": 31050,
+   "buffId": 310501,
+   "iconAsset": "UI/HUD/Buff/buff_artist_setting_moon.png",
+   "size": [
+    64,
+    64
+   ],
+   "iconSource": {
+    "table": "EFTable_SkillBuff",
+    "primaryKey": 310501,
+    "icon": "Buff_838"
+   }
+  },
+  {
+   "name": "artist_mir",
+   "kind": "buff",
+   "skillId": 31950,
+   "buffId": 319503,
+   "iconAsset": "UI/HUD/Buff/buff_artist_mir.png",
+   "size": [
+    64,
+    64
+   ],
+   "iconSource": {
+    "table": "EFTable_SkillBuff",
+    "primaryKey": 319503,
+    "icon": "Buff_839"
+   }
+  },
+  {
+   "name": "artist_shield",
+   "kind": "buff",
+   "skillId": 31910,
+   "buffId": 319100,
+   "iconAsset": "UI/HUD/Buff/buff_artist_shield.png",
+   "size": [
+    64,
+    64
+   ],
+   "iconSource": {
+    "table": "EFTable_SkillBuff",
+    "primaryKey": 319100,
+    "icon": "YY_Skill_01_22"
+   }
+  },
+  {
+   "name": "artist_dream_shield",
+   "kind": "buff",
+   "skillId": 31930,
+   "buffId": 319302,
+   "iconAsset": "UI/HUD/Buff/buff_artist_dream_shield.png",
+   "size": [
+    64,
+    64
+   ],
+   "iconSource": {
+    "table": "EFTable_SkillBuff",
+    "primaryKey": 319302,
+    "icon": "YY_Skill_01_25"
+   }
+  },
+  {
+   "name": "lancemaster_short_spear",
+   "kind": "buff",
+   "skillId": 34510,
+   "buffId": 345003,
+   "iconAsset": "UI/HUD/Buff/buff_lancemaster_short_spear.png",
+   "size": [
+    64,
+    64
+   ],
+   "iconSource": {
+    "table": "EFTable_SkillBuff",
+    "primaryKey": 345003,
+    "icon": "LM_Skill_01_43"
+   }
+  },
+  {
+   "name": "guardianknight_dragon_mark",
+   "kind": "debuff",
+   "skillId": 49040,
+   "buffId": 490407,
+   "iconAsset": "UI/HUD/Buff/buff_guardianknight_dragon_mark.png",
+   "size": [
+    64,
+    64
+   ],
+   "iconSource": {
+    "table": "EFTable_SkillBuff",
+    "primaryKey": 490407,
+    "icon": "Buff_26"
+   }
+  },
+  {
+   "name": "artist_dream_deny",
+   "kind": "buff",
+   "skillId": 31930,
+   "buffId": 319303,
+   "iconAsset": "UI/HUD/Buff/buff_artist_dream_deny.png",
+   "size": [
+    64,
+    64
+   ],
+   "iconSource": {
+    "table": "EFTable_SkillBuff",
+    "primaryKey": 319303,
+    "icon": "YY_Skill_01_25"
+   }
+  },
+  {
+   "name": "warlord_stun",
+   "kind": "debuff",
+   "skillId": 17170,
+   "buffId": 171705,
+   "iconAsset": "UI/HUD/Buff/buff_warlord_stun.png",
+   "size": [
+    64,
+    64
+   ],
+   "iconSource": {
+    "table": "EFTable_SkillBuff",
+    "primaryKey": 171705,
+    "icon": "Buff_39"
+   }
+  }
+ ],
+ "shieldBar": {
+  "asset": "UI/HUD/Common/Shield Bar.png",
+  "page": "QuickSlot_I1",
+  "rect": [
+   320,
+   536,
+   250,
+   16
+  ],
+  "source": "quickslot.gfx sprite 1279, ark.controls:Progress shieldTrack"
+ }
+}

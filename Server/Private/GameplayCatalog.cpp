@@ -1805,15 +1805,71 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 		else if (!fields.empty() && "DAMAGE" == fields[0])
 		{
 			std::uint32_t ratePercent = 0;
-			if (3u != fields.size() || !IsStableId(fields[1]) ||
+			DAMAGE_PROFILE profile{};
+			/* A row published before the original formula shipped carries the flat
+			percent alone; the coefficient/addend pair is appended after it. */
+			const bool hasFormula = 5u == fields.size() || 6u == fields.size();
+			const bool hasSpread = 6u == fields.size();
+			if ((3u != fields.size() && !hasFormula) || !IsStableId(fields[1]) ||
 				!ParseNumber(fields[2], ratePercent) || 0u == ratePercent ||
 				ratePercent > MAXIMUM_DAMAGE_RATE_PERCENT ||
+				(hasFormula &&
+					(!ParseNumber(fields[3], profile.iAttackCoefficientBp) ||
+					 !ParseNumber(fields[4], profile.iDamageAddend))) ||
+				(hasSpread &&
+					(!ParseNumber(fields[5], profile.iDamageSpreadPercent) ||
+					 profile.iDamageSpreadPercent >= 100u)) ||
 				!m_DamageRatePercentByProfileId.emplace(
 					std::string(fields[1]), ratePercent).second)
 			{
 				m_strStatus = "Damage profile row is invalid";
 				return false;
 			}
+			profile.iRatePercent = ratePercent;
+			m_DamageProfileById.emplace(std::string(fields[1]), profile);
+		}
+		else if (!fields.empty() && "SKILLBUFF" == fields[0])
+		{
+			SKILL_BUFF_DEFINITION buff{};
+			std::string target;
+			if (11u != fields.size() ||
+				!ParseNumber(fields[1], buff.iSkillId) ||
+				!ParseNumber(fields[2], buff.iBuffId) ||
+				!ParseNumber(fields[4], buff.iDurationMs) ||
+				0u == buff.iDurationMs || buff.iDurationMs > 600000u ||
+				!ParseNumber(fields[5], buff.iDamageDealtPercent) ||
+				!ParseNumber(fields[6], buff.iDamageTakenPercent) ||
+				!ParseNumber(fields[7], buff.iAttackSpeedPercent) ||
+				!ParseNumber(fields[8], buff.iShieldPercentOfMaxHp) ||
+				buff.iShieldPercentOfMaxHp > 1000u ||
+				!ParseNumber(fields[9], buff.iStunMs) || buff.iStunMs > 60000u ||
+				!ParseNumber(fields[10], buff.iDeathDenyInvulnerableMs) ||
+				buff.iDeathDenyInvulnerableMs > 60000u)
+			{
+				m_strStatus = "Skill buff row is invalid";
+				return false;
+			}
+			target = fields[3];
+			if ("SELF" == target) buff.eTarget = SKILL_BUFF_TARGET::SELF;
+			else if ("ALLY" == target) buff.eTarget = SKILL_BUFF_TARGET::ALLY;
+			else if ("ENEMY" == target) buff.eTarget = SKILL_BUFF_TARGET::ENEMY;
+			else
+			{
+				m_strStatus = "Skill buff target is invalid";
+				return false;
+			}
+			std::vector<SKILL_BUFF_DEFINITION>& list =
+				m_SkillBuffsBySkillId[buff.iSkillId];
+			for (const SKILL_BUFF_DEFINITION& existing : list)
+			{
+				if (existing.iBuffId == buff.iBuffId)
+				{
+					m_strStatus = "Skill buff row is duplicated";
+					return false;
+				}
+			}
+			list.push_back(buff);
+			m_SkillBuffById.emplace(buff.iBuffId, buff);
 		}
 		else if (!fields.empty() && "SKILL" == fields[0])
 		{
@@ -5967,7 +6023,10 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 		else if (!fields.empty() && "PLAYER" == fields[0])
 		{
 			PLAYER_RUNTIME_PROFILE player{};
-			if (15u != fields.size() ||
+			/* The critical pair is appended after the published fifteen; without it
+			the class rolls no critical hit, which is the older behaviour. */
+			const bool hasCritical = 17u == fields.size();
+			if ((15u != fields.size() && !hasCritical) ||
 				!ParseCharacterClass(fields[1], player.eCharacterClass) ||
 				!ParseNumber(fields[2], player.iMaximumHp) ||
 				!ParseNumber(fields[3], player.iMaximumResource) ||
@@ -5982,6 +6041,11 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 				!ParseNumber(fields[12], player.iIdentityStanceSwitchCost) ||
 				!ParseNumber(fields[13], player.iIdentityCyclic) ||
 				!ParseStance(fields[14], player.eDefaultStance) ||
+				(hasCritical &&
+					(!ParseNumber(fields[15], player.iCriticalChancePercent) ||
+					 !ParseNumber(fields[16], player.iCriticalDamagePercent) ||
+					 player.iCriticalChancePercent > 100u ||
+					 player.iCriticalDamagePercent < 100u)) ||
 				0u == player.iMaximumHp || 0u == player.iMaximumResource ||
 				0u == player.iResourceRegenPerSecond ||
 				player.iResourceRegenPerSecond > player.iMaximumResource ||
@@ -8087,6 +8151,45 @@ std::uint32_t LostArk::Server::CGameplayCatalog::Find_DamageRatePercent(
 {
 	const auto iter = m_DamageRatePercentByProfileId.find(damageProfileId);
 	return m_DamageRatePercentByProfileId.end() == iter ? 0u : iter->second;
+}
+
+const LostArk::Server::CGameplayCatalog::SKILL_BUFF_DEFINITION*
+LostArk::Server::CGameplayCatalog::Find_SkillBuff(
+	const std::uint32_t buffId) const
+{
+	const auto iter = m_SkillBuffById.find(buffId);
+	return m_SkillBuffById.end() == iter ? nullptr : &iter->second;
+}
+
+const std::vector<LostArk::Server::CGameplayCatalog::SKILL_BUFF_DEFINITION>*
+LostArk::Server::CGameplayCatalog::Find_SkillBuffs(
+	const std::uint32_t skillId) const
+{
+	const auto iter = m_SkillBuffsBySkillId.find(skillId);
+	return m_SkillBuffsBySkillId.end() == iter ? nullptr : &iter->second;
+}
+
+const LostArk::Server::CGameplayCatalog::DAMAGE_PROFILE*
+LostArk::Server::CGameplayCatalog::Find_DamageProfile(
+	const std::string& damageProfileId) const
+{
+	const auto iter = m_DamageProfileById.find(damageProfileId);
+	return m_DamageProfileById.end() == iter ? nullptr : &iter->second;
+}
+
+std::uint32_t LostArk::Server::CGameplayCatalog::Resolve_Damage(
+	const std::uint32_t attackPower,
+	const DAMAGE_PROFILE& profile)
+{
+	if (0u == profile.iAttackCoefficientBp && 0u == profile.iDamageAddend)
+		return Resolve_Damage(attackPower, profile.iRatePercent);
+	const std::uint64_t scaled =
+		static_cast<std::uint64_t>(attackPower) *
+		static_cast<std::uint64_t>(profile.iAttackCoefficientBp) / 10000ull +
+		static_cast<std::uint64_t>(profile.iDamageAddend);
+	return scaled < 1ull ? 1u :
+		static_cast<std::uint32_t>((std::min<std::uint64_t>)(
+			scaled, (std::numeric_limits<std::uint32_t>::max)()));
 }
 
 std::uint32_t LostArk::Server::CGameplayCatalog::Resolve_Damage(
