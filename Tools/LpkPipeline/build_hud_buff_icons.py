@@ -29,10 +29,12 @@ EXTRACTED = Path(r"D:/ClaudeWork/Extracted")
 SKILLBUFF = EXTRACTED / "LpkTables/EFGame_Extra/ClientData/TableData/EFTable_SkillBuff.db"
 ICONINFO = EXTRACTED / "Data3/EFGame_Extra/ClientData/XmlData/IconInfo.loa"
 ICON_PAGES = EXTRACTED / "Vehicle/icons"
-# ark.controls:Progress draws its shield over the health track with this plain white
-# bar; quickslot.gfx sprite 1279 places it from QuickSlot_I1 at [320, 536, 250, 16].
+# quickslot.gfx: shieldTarget (1276) is only the clip mask; the visible bar is
+# shieldTrack (1279) -> shape 1278 -> bitmap 1277, a DefineSubImage at
+# [320, 536]-[570, 552] of imageID 1.  DefineExternalImage2 resolves that id to the
+# packed 1024x1024 atlas QuickSlot_I3F, not to the 68x68 QuickSlot_I1.nopack page.
 QUICKSLOT_PAGES = EXTRACTED / "HudGfx_quickslot/tex/EFUI_QUICKSLOT/Texture2D"
-QUICKSLOT_SHIELD_PAGE = "quickslot_i1_nopack"
+QUICKSLOT_SHIELD_PAGE = "quickslot_i3f"
 SHIELD_BAR_RECT = (320, 536, 250, 16)
 
 # (asset name, SkillBuff.PrimaryKey, the skill that applies it, buff or debuff)
@@ -114,10 +116,18 @@ def main() -> int:
         if hit.lower().endswith((".dds", ".tga", ".png"))]
     if not page_hits:
         raise SystemExit(f"quickslot page {QUICKSLOT_SHIELD_PAGE} is not extracted")
-    Image.open(page_hits[0]).convert("RGBA").crop(
-        (left, top, left + width, top + height)).save(
-        repo / "Client/Bin/Resources" / shield_asset)
-    print(f"{shield_asset}  <- QuickSlot_I1 {SHIELD_BAR_RECT}")
+    page = Image.open(page_hits[0]).convert("RGBA")
+    if page.width < left + width or page.height < top + height:
+        raise SystemExit(
+            f"{QUICKSLOT_SHIELD_PAGE} is {page.size}; the shield rect "
+            f"{SHIELD_BAR_RECT} does not fit, so the crop would be empty")
+    crop = page.crop((left, top, left + width, top + height))
+    if not any(pixel[3] for pixel in crop.getdata()):
+        raise SystemExit(
+            f"the shield rect {SHIELD_BAR_RECT} of {QUICKSLOT_SHIELD_PAGE} is "
+            "fully transparent; the page or the rect is wrong")
+    crop.save(repo / "Client/Bin/Resources" / shield_asset)
+    print(f"{shield_asset}  <- {QUICKSLOT_SHIELD_PAGE} {SHIELD_BAR_RECT}")
 
     document = {
         "schema": "lostark.hud-buff-icons",

@@ -8644,9 +8644,6 @@ void CMainApp::RenderDamageNumbers()
 	constexpr f32_t DAMAGE_SCALE_NORMAL[] = {
 		1.00f, 1.25f, 2.00f, 2.33f, 2.65f, 2.60f, 2.55f, 2.50f, 2.17f,
 		1.83f, 1.50f, 1.37f, 1.26f, 1.16f, 1.09f, 1.04f, 1.01f, 1.00f };
-	/* "critical": a bigger punch to 4.0 that settles on 3.0 and stays there. */
-	constexpr f32_t DAMAGE_SCALE_CRITICAL[] = {
-		1.01f, 1.19f, 1.75f, 2.69f, 4.00f, 3.50f, 3.00f };
 	/* "heal" holds 1.5 for its whole run. */
 	constexpr f32_t DAMAGE_SCALE_HEAL = 1.5f;
 	constexpr f32_t DAMAGE_FONT_PX_START = 32.f;
@@ -8769,12 +8766,11 @@ void CMainApp::RenderDamageNumbers()
 	{
 		const f64_t dAge = dNow - number.dSpawnSeconds;
 		/* Walk the element's own frames: hold the last key once the timeline has run out. */
-		const bool_t isCritical =
-			LostArk::Shared::DAMAGE_HIT_FLAG::CRITICAL == number.eHitFlag;
 		const bool_t isHeal = LostArk::Shared::DAMAGE_HIT_FLAG::HEAL == number.eHitFlag;
-		const f32_t* pCurve = isCritical ? DAMAGE_SCALE_CRITICAL : DAMAGE_SCALE_NORMAL;
-		const size_t iCurveKeys = isCritical ?
-			std::size(DAMAGE_SCALE_CRITICAL) : std::size(DAMAGE_SCALE_NORMAL);
+		/* A critical reads as a colour, not as a bigger number, so it walks the same
+		curve as an ordinary hit. */
+		const f32_t* pCurve = DAMAGE_SCALE_NORMAL;
+		const size_t iCurveKeys = std::size(DAMAGE_SCALE_NORMAL);
 		const f32_t fFrame = static_cast<f32_t>(dAge) * DAMAGE_TIMELINE_FPS;
 		f32_t fTimelineScale = DAMAGE_SCALE_HEAL;
 		if (!isHeal)
@@ -12914,6 +12910,23 @@ void CMainApp::RenderDeveloperTools()
 			if (m_bProfilerVisible)
 				pProfiler->Reset_History();
 			pProfiler->Set_Enabled(m_bProfilerVisible);
+		}
+	}
+	ImGui::SeparatorText("Replicated Buffs");
+	{
+		const HUD_PLAYER_STATE& buffPlayer = CCombatHUDViewModel::Get().Get_Player();
+		ImGui::Text("valid=%d  tick=%u  shield=%u  buffs=%u  icons=%u",
+			buffPlayer.isValid ? 1 : 0, buffPlayer.iServerTick,
+			buffPlayer.iShield, static_cast<uint32_t>(buffPlayer.iActiveBuffCount),
+			static_cast<uint32_t>(m_HudSkillBuffIcons.size()));
+		for (size_t i = 0; i < buffPlayer.iActiveBuffCount &&
+			i < LostArk::Shared::MAX_ACTIVE_BUFFS; ++i)
+		{
+			const auto Found =
+				m_HudSkillBuffIcons.find(buffPlayer.ActiveBuffs[i].iBuffId);
+			ImGui::Text("  buff %u  end=%u  icon=%s", buffPlayer.ActiveBuffs[i].iBuffId,
+				buffPlayer.ActiveBuffs[i].iEndTick,
+				m_HudSkillBuffIcons.end() == Found ? "none" : Found->second.c_str());
 		}
 	}
 	ImGui::SeparatorText("Live Combat Geometry");
