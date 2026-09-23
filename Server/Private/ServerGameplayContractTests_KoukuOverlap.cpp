@@ -423,6 +423,133 @@ void CServerGameplayContractRunner::Run_KoukuPushContracts(TESTS& tests, const C
         tests.Require(!capture(.55f, 1.3f, 0.f, false, false, false), "Legacy point regions retain their prior footprint");
         tests.Require(capture(0.f, 1.3f, 0.f, false, false, false), "Legacy point capture still works at its centre");
     }
+    {
+        // These are the installed baked source tracks, including P33's split carrier.
+        // The synthetic result tests use an empty catalog; the room owns the
+        // admitted Product generation containing these installed hook tracks.
+        const auto& sourceCatalog = room->m_GameplayCatalog.Active();
+        const auto* patterns = sourceCatalog.Find_BossPatterns("ENCOUNTER_KAKULSAYDON_G1");
+        tests.Require(patterns != nullptr, "Hook source regression reads the room's admitted Product catalog");
+        std::size_t checked = 0u, ascents = 0u;
+        if (patterns) for (const auto& source : *patterns)
+        {
+            if (source.strPatternId != "KAKULSAYDON_G1_PATTERN_18" &&
+                source.strPatternId != "KAKULSAYDON_G1_PATTERN_19" &&
+                source.strPatternId != "KAKULSAYDON_G1_PATTERN_33") continue;
+            for (const auto& window : source.LogicWindows) for (const auto& region : window.CardRegions)
+            {
+                const auto& track = region.WorldTrack;
+                if (!track.bEnabled || track.Keys.empty() || !track.Keys.front().bHasGripPosition) continue;
+                const bool rises = track.Keys.back().GripPosition[1] > 10.f;
+                auto last = track.Keys.size() - 1u;
+                while (last && !track.Keys[last].bVisible) --last;
+                // P18/P19's staggered starts shift the baked 30 Hz samples. These
+                // measured times are independent expectations, not a copy of the resolver.
+                const auto phase = track.iStartMs % 1000u;
+                const auto ascentMs = source.strPatternId == "KAKULSAYDON_G1_PATTERN_33" ? 1701u :
+                    (phase == 175u || phase == 875u ? 6542u : phase == 350u ? 6550u : phase == 525u ? 6558u : 6567u);
+                const auto releaseMs = rises ? ascentMs : track.Keys[last].iTimeMs;
+                tests.Require(region.eAnchor == BOSS_LOGIC_REGION_ANCHOR::WORLD,
+                    "Installed hook grip tracks are baked in world space");
+                const auto boundary = std::find_if(track.Keys.begin(), track.Keys.end(),
+                    [releaseMs](const auto& key) { return key.iTimeMs == releaseMs; });
+                tests.Require(boundary != track.Keys.end(), "Installed hook retains the measured source ascent boundary");
+                if (boundary == track.Keys.end()) continue;
+                SERVER_NAV_POINT floor{};
+                // Independent expected floor uses the ordinary spawn projection.
+                // Some baked grip endpoints lie over unbaked cells whose height
+                // cannot be used as a same-level reference.
+                const bool grounded = arenaNavigation.Project_Point(boundary->GripPosition[0],
+                    boundary->GripPosition[2], floor, boundary->GripPosition[1]);
+                tests.Require(grounded && std::abs(floor.y - boundary->GripPosition[1]) <= 1.8f &&
+                    std::hypot(floor.x - boundary->GripPosition[0], floor.z - boundary->GripPosition[2]) <= 1.8f &&
+                    arenaNavigation.Is_InSameNavigationGrid(boundary->GripPosition[0], boundary->GripPosition[2], floor.x, floor.z),
+                    "Every installed hook release boundary admits the nearby arena floor, never its final airborne height");
+                if (!grounded) continue;
+                BOSS_PATTERN_DEFINITION definition{}; definition.strPatternId = "hook.release.source";
+                auto carrier = window; carrier.OnSuccess.clear(); carrier.OnFail.clear(); carrier.CardRegions = {region};
+                definition.LogicWindows = {carrier};
+                auto owner = std::make_unique<SERVER_WORLD_ENTITY>(); owner->iNetEntityId = 201u; owner->iPatternSequence = 3u;
+                auto hanging = player(); hanging.eAction = PLAYER_ACTION_STATE::GRABBED;
+                hanging.eAttachmentSlot = PLAYER_ATTACHMENT_SLOT::WORLD_HOOK_TIP;
+                hanging.iAttachmentOwnerNetEntityId = owner->iNetEntityId;
+                hanging.iAttachmentPatternSequence = owner->iPatternSequence;
+                hanging.iAttachmentWindowIndex = hanging.iAttachmentRegionIndex = 0u;
+                hanging.fPositionX = boundary->GripPosition[0]; hanging.fPositionY = boundary->GripPosition[1];
+                hanging.fPositionZ = boundary->GripPosition[2]; hanging.iAttachmentReleaseTick = 100000u;
+                std::map<PLAYER_ID, SERVER_PLAYER> players{{1u, hanging}};
+                KOUKUSAYDON_LOGIC_LEDGER sourceLedger{}; KOUKUSAYDON_LOGIC_OUTPUT sourceOutput{};
+                std::vector<DAMAGE_EVENT> sourceDamage;
+                CKoukuSaydonLogicRuntime::Build(definition, *owner, 100u, sourceLedger);
+                const auto releaseTick = 100u + CKoukuSaydonLogicRuntime::Ticks_FromMs(track.iStartMs) +
+                    static_cast<std::uint32_t>(std::ceil((releaseMs / double(track.fPlaybackSpeed) + track.iStartDelayMs) * .03));
+                const auto update = [&](std::uint32_t tick, const CServerNavigation* nav) {
+                    CKoukuSaydonLogicRuntime::Update(*owner, definition, sourceLedger, players, sourceCatalog,
+                        nullptr, tick, sourceDamage, sourceOutput, nav);
+                };
+                update(releaseTick - 1u, &arenaNavigation);
+                tests.Require(players.at(1u).iAttachmentReleaseTick > releaseTick,
+                    "Hook still carries its player on the tick before the source release boundary");
+                update(releaseTick, &arenaNavigation);
+                auto& dropped = players.at(1u);
+                tests.Require(dropped.iAttachmentReleaseTick == releaseTick && dropped.fPositionX == floor.x &&
+                    dropped.fPositionY == floor.y && dropped.fPositionZ == floor.z,
+                    "Hook source boundary stages a ground position and releases before its final ascent");
+                tests.Require(room->Release_PlayerAttachment(dropped, owner->iNetEntityId, 0.f, 0u, false, 0u, releaseTick) &&
+                    dropped.eAction == PLAYER_ACTION_STATE::NONE && dropped.eAttachmentSlot == PLAYER_ATTACHMENT_SLOT::NONE &&
+                    dropped.isCombatReady && dropped.fPositionY == floor.y,
+                    "Existing room release restores movement/combat on the admitted hook endpoint floor");
+                update(releaseTick + 15u, &arenaNavigation);
+                tests.Require(dropped.fPositionY == floor.y, "Released player no longer follows the upward hook");
+                if (rises && ascents == 0u)
+                {
+                    dropped = hanging;
+                    CServerNavigation unavailable;
+                    update(releaseTick, &unavailable);
+                    tests.Require(!CKoukuSaydonLogicRuntime::Has_ReachedTick(releaseTick + 1u, dropped.iAttachmentReleaseTick) &&
+                        dropped.eAction == PLAYER_ACTION_STATE::GRABBED && dropped.fPositionY == boundary->GripPosition[1],
+                        "Missing floor retains the boundary through the next room pre-logic attachment update");
+                    update(releaseTick + 1u, &arenaNavigation);
+                    tests.Require(dropped.iAttachmentReleaseTick == releaseTick + 1u && dropped.fPositionY == floor.y,
+                        "Restored floor admission releases the pinned hook endpoint on retry");
+
+                    // Level horizontal travel must finish before the final vertical exit.
+                    auto& flatWindow = definition.LogicWindows.front();
+                    flatWindow.iStartMs = 0u; flatWindow.iDurationMs = 3000u;
+                    auto& flatTrack = flatWindow.CardRegions.front().WorldTrack;
+                    flatTrack.iStartMs = flatTrack.iStartDelayMs = 0u;
+                    flatTrack.iDurationMs = 3000u; flatTrack.fPlaybackSpeed = 1.f;
+                    flatTrack.Keys.assign(4u, *boundary);
+                    for (std::size_t index = 0u; index < flatTrack.Keys.size(); ++index)
+                        flatTrack.Keys[index].iTimeMs = static_cast<std::uint32_t>(index) * 1000u;
+                    flatTrack.Keys[0].GripPosition[0] += 5.f;
+                    flatTrack.Keys[1].GripPosition[0] += 2.f;
+                    flatTrack.Keys[3].GripPosition[1] += 5.f;
+                    dropped = hanging;
+                    owner->fPositionX = 500.f; owner->fPositionY = 50.f;
+                    owner->fPositionZ = -300.f; owner->fYawDegrees = 90.f;
+                    CKoukuSaydonLogicRuntime::Build(definition, *owner, 100u, sourceLedger);
+                    update(159u, &arenaNavigation);
+                    tests.Require(dropped.iAttachmentReleaseTick > 160u,
+                        "A flat horizontal hook approach does not release before its last level key");
+                    update(160u, &arenaNavigation);
+                    tests.Require(dropped.iAttachmentReleaseTick == 160u && dropped.fPositionX == floor.x &&
+                        dropped.fPositionY == floor.y && dropped.fPositionZ == floor.z,
+                        "Vertical exit releases at the level approach endpoint without applying the moving boss basis");
+                    for (auto& key : flatTrack.Keys) key.GripPosition[1] += 10.f;
+                    dropped = hanging;
+                    CKoukuSaydonLogicRuntime::Build(definition, *owner, 100u, sourceLedger);
+                    update(160u, &arenaNavigation);
+                    tests.Require(!CKoukuSaydonLogicRuntime::Has_ReachedTick(161u, dropped.iAttachmentReleaseTick) &&
+                        dropped.fPositionY == boundary->GripPosition[1] + 10.f,
+                        "A nearby XZ projection onto a different-height deck cannot release the hook player");
+                }
+                ++checked; if (rises) ++ascents;
+            }
+        }
+        tests.Require(checked == 66u && ascents == 51u,
+            "All 66 installed P18/P19/P33 carriers include 51 terminal-ascent releases and 15 split-track endings");
+    }
     // Protection intercepts the complete result before either damage or forced movement.
     BOSS_PATTERN_DEFINITION pattern{}; pattern.strPatternId = "push.protected";
     BOSS_PATTERN_LOGIC_WINDOW contact{}, zone{}; contact.strWindowId = "push.contact";

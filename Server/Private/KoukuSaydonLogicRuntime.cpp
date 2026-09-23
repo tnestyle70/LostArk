@@ -634,6 +634,55 @@ namespace
 			centerZ - forwardZ * halfZ, forwardX, forwardZ, halfZ * 2.f, halfX);
 	}
 
+    const LostArk::Server::BOSS_LOGIC_WORLD_TRANSFORM_KEY* Resolve_HookReleaseKey(
+        const LostArk::Server::BOSS_LOGIC_REGION& region) noexcept
+    {
+        using namespace LostArk::Server;
+        const auto& track = region.WorldTrack;
+        if (!track.bEnabled || track.Keys.size() < 2u) return nullptr;
+        auto last = track.Keys.size() - 1u;
+        while (last && !track.Keys[last].bVisible) --last;
+        if (!track.Keys[last].bVisible) return nullptr;
+        const auto position = [](const BOSS_LOGIC_WORLD_TRANSFORM_KEY& key) {
+            return key.bHasGripPosition ? key.GripPosition :
+                std::array<float, 3u>{key.fOffsetX, key.fOffsetY, key.fOffsetZ};
+        };
+        const auto end = position(track.Keys[last]);
+        auto arrived = last;
+        while (arrived)
+        {
+            const auto previous = position(track.Keys[arrived - 1u]);
+            if (!track.Keys[arrived - 1u].bVisible || std::abs(previous[0] - end[0]) > .001f ||
+                std::abs(previous[1] - end[1]) > .001f || std::abs(previous[2] - end[2]) > .001f) break;
+            --arrived;
+        }
+        // A stationary carrier retains its authored deadline. A baked hook's final
+        // upward exit carries only the hook: release at the beginning of that ascent.
+        auto ascent = arrived;
+        // Strict rise stops at the end of a level approach/hold; allowing equal
+        // heights would rewind through that approach and drop the player early.
+        while (region.eAnchor == BOSS_LOGIC_REGION_ANCHOR::WORLD && ascent &&
+            track.Keys[ascent].bHasGripPosition && track.Keys[ascent - 1u].bVisible &&
+            track.Keys[ascent - 1u].bHasGripPosition &&
+            track.Keys[ascent - 1u].GripPosition[1] < track.Keys[ascent].GripPosition[1])
+            --ascent;
+        if (ascent < arrived && end[1] - track.Keys[ascent].GripPosition[1] >
+            2.f * LostArk::Shared::WorldCollision::PLAYER_HALF_EXTENT_Y)
+            return &track.Keys[ascent];
+        return arrived ? &track.Keys[arrived] : nullptr;
+    }
+
+    double Hook_TrackTimeMs(const LostArk::Server::BOSS_LOGIC_REGION& region,
+        const std::uint32_t patternElapsedTicks) noexcept
+    {
+        const auto& track = region.WorldTrack;
+        const auto startTicks = LostArk::Server::CKoukuSaydonLogicRuntime::Ticks_FromMs(track.iStartMs);
+        const double elapsed = region.eAnchor == LostArk::Server::BOSS_LOGIC_REGION_ANCHOR::BOSS_CURRENT ?
+            double(patternElapsedTicks) * (1000.0 / 30.0) - track.iStartMs :
+            double(patternElapsedTicks - (std::min)(patternElapsedTicks, startTicks)) * (1000.0 / 30.0);
+        return (elapsed - track.iStartDelayMs) * track.fPlaybackSpeed;
+    }
+
 	/* Puts the player on the region that just caught them. The region rides a
 	World Object's transform track, so this is what "hanging from the hook"
 	means on the Server: one attachment naming that region, and a deadline the
@@ -647,6 +696,12 @@ namespace
 		const LostArk::Server::CServerNavigation* navigation) noexcept
 	{
 		using namespace LostArk::Shared;
+        const auto* release = Resolve_HookReleaseKey(region);
+        if (release && release->bHasGripPosition && !region.WorldTrack.Keys.empty() &&
+            region.WorldTrack.Keys.back().bHasGripPosition &&
+            region.WorldTrack.Keys.back().GripPosition[1] - release->GripPosition[1] >
+                2.f * LostArk::Shared::WorldCollision::PLAYER_HALF_EXTENT_Y &&
+            Hook_TrackTimeMs(region, patternElapsedTicks) >= release->iTimeMs) return false;
 		LOGIC_REGION_TRANSFORM transform;
 		if (0u == releaseTick || 0u == player.iCurrentHp ||
 			PLAYER_ACTION_STATE::DEAD == player.eAction || PLAYER_ACTION_STATE::FEAR == player.eAction ||
@@ -693,64 +748,73 @@ namespace
 		return true;
 	}
 
-	/* One tick of being dragged. False means the hook is no longer there - its
-	track ran out or hid it - which is the Server's cue to let the player go. */
-	bool Drag_HookedPlayer(LostArk::Server::SERVER_PLAYER& player,
-		const LostArk::Server::BOSS_LOGIC_REGION& region,
-		const LostArk::Server::SERVER_WORLD_ENTITY& boss,
-		const std::uint32_t patternElapsedTicks,
-		const LostArk::Server::CServerNavigation* navigation) noexcept
-	{
+    bool Resolve_HookReleaseGround(const LostArk::Server::CServerNavigation* navigation,
+        const std::array<float, 3u>& grip, LostArk::Server::SERVER_NAV_POINT& ground) noexcept
+    {
+        if (!navigation) return false;
+        // Grip height is above the deck. An unbaked cell under it has no valid
+        // same-level reference, so admit the ordinary spawn projection only
+        // within one player body of the endpoint, on this exact navigation grid.
+        constexpr float maximumDistance = 2.f * LostArk::Shared::WorldCollision::PLAYER_HALF_EXTENT_Y;
+        const auto nearbyFloor = [&] {
+            return std::isfinite(ground.x) && std::isfinite(ground.y) && std::isfinite(ground.z) &&
+                std::abs(ground.y - grip[1]) <= maximumDistance &&
+                std::hypot(ground.x - grip[0], ground.z - grip[2]) <= maximumDistance &&
+                navigation->Is_InSameNavigationGrid(grip[0], grip[2], ground.x, ground.z) &&
+                navigation->Is_PointWalkableExact(ground.x, ground.z, ground.y);
+        };
+        if (navigation->Project_PointOnSameLevel(grip[0], grip[2], ground, grip[1]) && nearbyFloor()) return true;
+        return navigation->Project_Point(grip[0], grip[2], ground, grip[1]) && nearbyFloor();
+    }
+
+    /* The grip carries the player until its terminal ascent, not until its
+    airborne final key. The room still owns the actual attachment release. */
+    bool Drag_HookedPlayer(LostArk::Server::SERVER_PLAYER& player,
+        const LostArk::Server::BOSS_LOGIC_REGION& region,
+        const LostArk::Server::SERVER_WORLD_ENTITY& boss,
+        const std::uint32_t patternElapsedTicks, const std::uint32_t serverTick,
+        const LostArk::Server::CServerNavigation* navigation) noexcept
+    {
         using namespace LostArk::Server;
-		LOGIC_REGION_TRANSFORM transform;
+        const auto* release = Resolve_HookReleaseKey(region);
+        if (region.eAnchor == BOSS_LOGIC_REGION_ANCHOR::WORLD && release && release->bHasGripPosition &&
+            Hook_TrackTimeMs(region, patternElapsedTicks) >= release->iTimeMs)
+        {
+            // Baked grip XYZ is already in world metres, just as in
+            // Resolve_LogicRegionTransform; never apply the boss basis again.
+            const auto& position = release->GripPosition;
+            SERVER_NAV_POINT ground{};
+            if (Resolve_HookReleaseGround(navigation, position, ground))
+            {
+                player.fPositionX = ground.x; player.fPositionY = ground.y; player.fPositionZ = ground.z;
+                player.hasMoveGoal = false;
+                return false;
+            }
+            // A failed floor admission must not resume the upward carrier or release
+            // an airborne body. Retry this same boundary while the carrier owns it.
+            player.fPositionX = position[0]; player.fPositionY = position[1]; player.fPositionZ = position[2];
+            // Player attachment deadlines run before Kouku logic on the next
+            // room tick, so keep ownership through that pre-logic update.
+            player.iAttachmentReleaseTick = CKoukuSaydonLogicRuntime::Add_Ticks(serverTick, 2u);
+            return true;
+        }
+        LOGIC_REGION_TRANSFORM transform;
         const bool visible = Resolve_LogicRegionTransform(region, boss, patternElapsedTicks, transform);
         if ((!visible && !Resolve_LogicRegionTransform(region, boss, patternElapsedTicks, transform, false)) ||
-            !std::isfinite(transform.centerX) || !std::isfinite(transform.centerZ) ||
-			!std::isfinite(transform.yaw))
-			return false;
-		/* The caught body rides the hook, so it follows the authored path even
-		where the grid has no walkable cell to offer. The path already ends
-		inside the arena and its last key is invisible, which is what ends the
-		drag above; a missing cell must not strand the player behind the hook. */
-		LostArk::Server::SERVER_NAV_POINT ground{};
-		const bool hasGround = nullptr != navigation &&
-			navigation->Resolve_TraversalStep(player.fPositionX, player.fPositionZ,
-				transform.centerX, transform.centerZ, ground);
-		player.fPositionX = transform.hasGrip ? transform.grip[0] : transform.centerX;
-		if (transform.hasGrip) player.fPositionY = transform.grip[1];
-		else if (hasGround) player.fPositionY = ground.y;
-		player.fPositionZ = transform.hasGrip ? transform.grip[2] : transform.centerZ;
-		player.fYawDegrees = Wrap180(transform.yaw + player.fAttachmentYawOffsetDegrees);
-		player.hasMoveGoal = false;
-		player.isCombatReady = false;
+            !std::isfinite(transform.centerX) || !std::isfinite(transform.centerZ) || !std::isfinite(transform.yaw))
+            return false;
+        SERVER_NAV_POINT ground{};
+        const bool hasGround = navigation && navigation->Resolve_TraversalStep(player.fPositionX,
+            player.fPositionZ, transform.centerX, transform.centerZ, ground);
+        player.fPositionX = transform.hasGrip ? transform.grip[0] : transform.centerX;
+        if (transform.hasGrip) player.fPositionY = transform.grip[1];
+        else if (hasGround) player.fPositionY = ground.y;
+        player.fPositionZ = transform.hasGrip ? transform.grip[2] : transform.centerZ;
+        player.fYawDegrees = Wrap180(transform.yaw + player.fAttachmentYawOffsetDegrees);
+        player.hasMoveGoal = false;
+        player.isCombatReady = false;
         if (!visible) return false;
-        const auto& track = region.WorldTrack;
-        if (track.bEnabled && track.Keys.size() > 1u)
-        {
-            auto last = track.Keys.size() - 1u;
-            while (last && !track.Keys[last].bVisible) --last;
-            const auto position = [](const BOSS_LOGIC_WORLD_TRANSFORM_KEY& key) {
-                return key.bHasGripPosition ? key.GripPosition : std::array<float, 3u>{key.fOffsetX, key.fOffsetY, key.fOffsetZ};
-            };
-            const auto end = position(track.Keys[last]);
-            const auto atEnd = [&](const BOSS_LOGIC_WORLD_TRANSFORM_KEY& key) {
-                const auto p = position(key);
-                return std::abs(p[0] - end[0]) <= .001f && std::abs(p[1] - end[1]) <= .001f && std::abs(p[2] - end[2]) <= .001f;
-            };
-            // Ignore the terminal hold/tail once the authored grip has reached its
-            // final position. A stationary hook still owns its explicit deadline.
-            auto arrived = last;
-            while (arrived && atEnd(track.Keys[arrived - 1u])) --arrived;
-            if (arrived)
-            {
-                const auto startTicks = CKoukuSaydonLogicRuntime::Ticks_FromMs(track.iStartMs);
-                const double elapsed = region.eAnchor == BOSS_LOGIC_REGION_ANCHOR::BOSS_CURRENT ?
-                    double(patternElapsedTicks) * (1000.0 / 30.0) - track.iStartMs :
-                    double(patternElapsedTicks - (std::min)(patternElapsedTicks, startTicks)) * (1000.0 / 30.0);
-                if ((elapsed - track.iStartDelayMs) * track.fPlaybackSpeed >= track.Keys[arrived].iTimeMs) return false;
-            }
-        }
-        return true;
+        return !release || Hook_TrackTimeMs(region, patternElapsedTicks) < release->iTimeMs;
     }
 }
 
@@ -1522,7 +1586,7 @@ void LostArk::Server::CKoukuSaydonLogicRuntime::Update(
 		if (hanging.iAttachmentRegionIndex >= carrier.CardRegions.size())
 			continue;
 		if (!Drag_HookedPlayer(hanging, carrier.CardRegions[hanging.iAttachmentRegionIndex],
-			boss, serverTick - ledger.iPatternStartTick, navigation))
+			boss, serverTick - ledger.iPatternStartTick, serverTick, navigation))
 			hanging.iAttachmentReleaseTick = serverTick;
 	}
 	for (KOUKUSAYDON_LOGIC_CUE_STATE& cue : ledger.MechanicTriggers)

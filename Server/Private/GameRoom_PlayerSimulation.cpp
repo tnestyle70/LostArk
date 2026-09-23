@@ -1353,8 +1353,11 @@ void LostArk::Server::CGameRoom::Advance_PlayerKnockback(
 		return;
 	}
 	Project_MarioRailPoint(player, desiredX, desiredZ);
-	if (Try_KoukuWalkOffFloor(player, desiredX, desiredZ, fixedDeltaSeconds,
-		Add_ServerTicksSkippingReservedZero(m_iServerTick, 1u))) return;
+	// Ordinary/arena pushes must reach their existing bounded or swept-surface
+	// mover. Only an authored Mario exit uses the rail's walking-floor check.
+	if (player.iMarioStage && player.bKnockbackCanLeaveArena &&
+		Try_KoukuWalkOffFloor(player, desiredX, desiredZ, fixedDeltaSeconds,
+			Add_ServerTicksSkippingReservedZero(m_iServerTick, 1u))) return;
 	if (player.bArenaEjectionActive)
 	{
 		player.fPositionX = desiredX;

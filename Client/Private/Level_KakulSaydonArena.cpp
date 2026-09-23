@@ -2616,7 +2616,8 @@ namespace
 	   Document-to-document sequencing lives in the client's C++ and is not in the .gfx, so
 	   this one number is measured rather than extracted. */
 	constexpr f32_t CLEAR_END_FRAME = 243.f;
-	// Gate 3 runs the complete clear mark, then the Server starts the encore at 8s.
+	// Keep a visual tail while admission waits. At the Server's 5s handoff,
+	// cinematic suppression yields this UI to the encore's source-5s sample.
 	constexpr f32_t ENCORE_CLEAR_END_FRAME = 320.f;
 
 	/* Layer entry, position, size, alpha and tint all live in the keyframe document now,

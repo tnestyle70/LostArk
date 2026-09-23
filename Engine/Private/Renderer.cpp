@@ -921,7 +921,12 @@ HRESULT CRenderer::Draw()
 		// Opt-in cinematic UI participates in scene post effects (e.g. glass).
 		// Ordinary HUD/UI stays in display space after the final composite.
 		for (const auto& object : m_RenderObjects[ETOUI(RENDERGROUP::SCENE_UI)])
-			if (object && SUCCEEDED(hSceneResult)) hSceneResult = object->Render_Group(RENDERGROUP::SCENE_UI);
+            if (object && SUCCEEDED(hSceneResult))
+            {
+                // Presentation UI is optional; a failed sprite cannot discard the world frame.
+                const HRESULT uiResult = object->Render_Group(RENDERGROUP::SCENE_UI);
+                if (FAILED(uiResult)) WriteRendererFailure("Render_SceneUI_Isolated", uiResult);
+            }
 		m_RenderObjects[ETOUI(RENDERGROUP::SCENE_UI)].clear();
 
 		/* Always restore the back-buffer/DSV pair after entering the HDR MRT. */

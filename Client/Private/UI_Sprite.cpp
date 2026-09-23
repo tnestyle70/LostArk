@@ -43,6 +43,19 @@ void Client::CUI_Sprite::Late_Update(f32_t fTimeDelta)
 		static_pointer_cast<CGameObject>(shared_from_this()));
 }
 
+HRESULT Client::CUI_Sprite::Render_Group(const RENDERGROUP group)
+{
+    const HRESULT result = Render();
+    if (FAILED(result) && group == RENDERGROUP::SCENE_UI)
+    {
+        m_bScenePresentationFailed = true;
+        m_bVisible = false;
+        OutputDebugStringA("Scene presentation UI sprite failed; isolated until the view is recreated.\n");
+        return S_OK;
+    }
+    return result;
+}
+
 HRESULT Client::CUI_Sprite::Render()
 {
 	// Render-time gating also covers sprites queued before this frame's cutscene starts.
@@ -133,7 +146,7 @@ void Client::CUI_Sprite::Set_Rotation(f32_t fDegrees)
 
 void Client::CUI_Sprite::Set_Visible(bool_t bVisible)
 {
-	m_bVisible = bVisible;
+	m_bVisible = bVisible && !m_bScenePresentationFailed;
 }
 
 void Client::CUI_Sprite::Set_Texture(ComPtr<ID3D11ShaderResourceView> pOverrideSRV)

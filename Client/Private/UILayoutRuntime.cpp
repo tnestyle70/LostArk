@@ -543,6 +543,9 @@ bool_t Client::CUILayoutRuntime::Set_SlotCaption(const string& strId,
 {
     auto* slot = Find_Slot(strId);
     if (!slot || slot->pSprite || !slot->KeyframeSprites.empty() || caption.empty() || font.empty()) return false;
+    const auto measured = CGameInstance::Get().Measure_Text(font, caption.c_str());
+    if (!std::isfinite(measured.y) || measured.y <= 0.f ||
+        m_fResolutionWidth <= 0.f || m_fResolutionHeight <= 0.f) return false;
     CUI_Sprite::UI_SPRITE_DESC desc{};
     desc.fX = slot->fX + slot->fSizeX * 0.5f;
     desc.fY = slot->fY + slot->fSizeY * 0.5f;

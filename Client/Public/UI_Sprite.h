@@ -34,6 +34,7 @@ public:
 	virtual HRESULT Initialize(void* pArg) override;
 	virtual void Late_Update(f32_t fTimeDelta) override;
 	virtual HRESULT Render() override;
+	virtual HRESULT Render_Group(RENDERGROUP group) override;
 
 public:
 	/* Repositions/resizes in place, e.g. a progress bar fill growing toward one edge each frame. */
@@ -106,6 +107,7 @@ private:
 	bool_t							m_bVisible = true;
 	bool_t m_bCinematicOverlay = false;
 	bool_t m_bScenePresentation = false;
+	bool_t m_bScenePresentationFailed = false;
     wstring_t m_Caption, m_CaptionFont;
 	ComPtr<ID3D11ShaderResourceView>	m_pOverrideTextureSRV;
 

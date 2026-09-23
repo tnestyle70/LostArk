@@ -3426,3 +3426,32 @@ Lobby의 `Server entry failed`는 로딩 복구에도 표시된다. 원격 상�
 - 아래 배경 nav면이 존재해도5m 낙사면보다 아래의 착지 후보로 사망 판정을 늦추지 않는다.
 - 부활 위치는 사망 좌표 근처 투영이 아니라 현재 승인 관문의 기존 시작점에서 검증한다.
   후보 검증 전에 HP·위치를 바꾸지 않고, 성공 시 남은 비행 플래그를 함께 정리한다.
+
+### 앵콜 clear UI와 낙사 변경을 통합할 때 (2026-09-24)
+
+- Server의 G3 clear 대기와 Presentation Sequence의 lead-in은 서로 다른 시계다. 시간을 줄일 때 P10/P97, World/Camera, animation/sound source offset, 유리 source clock을 함께 이동하고, fake clear UI는 Debug 도구가 아닌 공통 Sample 경로에서 SceneHDR 후처리 전에 유지한다.
+- 일시적인 CUILayoutRuntime는 숨김만으로 해제되지 않는다. Layer가 sprite를 소유하므로 Stop/실패/교체에서 기존 Release_Sprites를 호출한다. 선택적 scene UI의 font/draw 실패를 전체 world 프레임 실패로 전파하지 않는다.
+- 일반1/3관문 낙사 금지와 Mario 내부 낙사는 적용 범위가 다르다. 실제 GATE3 상태의 Mario에서 중력→5m 낙사면→DEAD 복귀를 검사하고, timer deadline 한 번 호출을 물리 낙하 성공으로 간주하지 않는다.
+
+### WORLD hook의 마지막 상승과 attachment 해제
+
+- Baked grip이 있는 carrier는 마지막 XYZ 도착이 실제 하차점이라는 보장이 없다. 마지막
+  연속 상승의 시작과 실제 Server navigation 바닥을 대조한 뒤 기존 attachment release를
+  호출한다. 엄격한 상승 판정으로 같은 높이 수평 접근/대기를 해제점까지 되감지 않는다.
+- Staggered bake의 sampling phase가 다르면 같은 clip도 local key 시간이 달라진다. 첫
+  occurrence의 시간 하나를 전체 track의 기대값으로 복제하지 않고 실제 float32 소비값을
+  확인한다. WORLD grip에 boss/root basis를 다시 적용하지 않는다.
+- 반복 회귀 검증과 현재 수치는
+  [09-24 hook 결과](09-24/2026-09-24_KOUKU_HOOK_ASCENT_RELEASE_IMPLEMENTATION_RESULT.md)에 둔다.
+
+### 보행 이탈과 강제 이동의 바닥 판정 순서
+
+- 보행용 바닥 이탈 helper를 넉백 시작에 무조건 호출하면 bounded push와 gate fence를
+  건너뛰어 먼저 FALLING을commit할수있다. 명시적arena-exit의여부를먼저보존하고일반
+  강제이동은기존swept collision/forced surface, bounded이동은기존clamp를사용한다.
+- 실제게시source회귀는synthetic용빈catalog가아니라room이admit한Product generation을
+  읽는다. source수치audit의PASS는native소비자가실제track을순회한PASS를대신하지않는다.
+
+- Hook grip의XZ에물리바닥셀이없으면`Project_PointOnSameLevel`의기준Y도바닥근거가
+  아니다. 기존player-spawn projection을fallback으로사용할때는동일navgrid/정확한
+  walkable/수평거리/높이차를함께검증한다. 높이만0m나보스spawnY로대체하지않는다.

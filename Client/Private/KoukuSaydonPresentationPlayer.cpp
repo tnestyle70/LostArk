@@ -2320,7 +2320,9 @@ void Client::CKoukuSaydonPresentationPlayer::Update_ProductTails(const float dt,
 
 void Client::CKoukuSaydonPresentationPlayer::Stop_Session(SESSION& session)
 {
-    if (session.encoreClearView) session.encoreClearView->Set_AllSlotsVisible(false);
+    // The session owns Layer_UI membership as well as the CUILayoutRuntime object.
+    session.encoreClearView.reset();
+    session.encoreClearAttempted = false;
     for (auto& [id, row] : session.rows)
     {
         if (row.effectHandle) CEffectV2Runtime::Stop_Group(row.effectHandle);
@@ -2981,8 +2983,10 @@ void Client::CKoukuSaydonPresentationPlayer::Sample(SESSION& session,
             const auto& timing = Field(root, "encorePresentation");
             const float sourceStart = static_cast<float>(Number(timing, "sourceStartMs", 0, 15000));
             const float hide = static_cast<float>(Number(timing, "sourceHideMs", sourceStart + 1, 23333));
-            auto view = std::make_shared<CUILayoutRuntime>(m_Device, m_Context,
-                CGameInstance::Get().Get_CurrentLevelID(), L"Layer_UI", L"UI/RaidClear/RaidClear_Kouku_Layout.json");
+            // Release layer sprites on failed staging, Stop, and session replacement alike.
+            auto view = std::shared_ptr<CUILayoutRuntime>(new CUILayoutRuntime(m_Device, m_Context,
+                CGameInstance::Get().Get_CurrentLevelID(), L"Layer_UI", L"UI/RaidClear/RaidClear_Kouku_Layout.json"),
+                [](CUILayoutRuntime* value) { value->Release_Sprites(); delete value; });
             view->Set_AllSlotsVisible(false);
             if (!view->Sample_KeyframeAnimation("RaidClear_Kouku_Frame", "intro", 0.f) ||
                 !view->Set_SlotCaption("RaidClear_Kouku_TitleTextBox", L"\xB358\xC804 \xD074\xB9AC\xC5B4", L"Font_YoonGasiIIM"))
