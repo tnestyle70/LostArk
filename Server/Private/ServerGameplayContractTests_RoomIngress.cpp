@@ -35,6 +35,67 @@
 using namespace LostArk::Server;
 using namespace LostArk::Shared;
 
+int LostArk::Server::CServerGameplayContractRunner::Run_NpcRaidReturn()
+{
+	TESTS tests;
+	for (const auto world : { WORLD_ID::VALTAN_ARENA, WORLD_ID::KAKULSAYDON_ARENA })
+	{
+		auto raid = std::make_unique<CGameRoom>(world);
+		auto bern = std::make_unique<CGameRoom>(WORLD_ID::BERN);
+		tests.Require(raid->Is_Ready() && bern->Is_Ready(), "Load real raid and Bern navigation/catalogs");
+		SESSION_ID sid = 88000u;
+		for (const char* guideId : { "npc.bern.beda.guide", "npc.bern.aylara" })
+		{
+			auto session = std::make_shared<CClientSession>(++sid, INVALID_SOCKET,
+				CClientSession::FRAME_HANDLER{}, CClientSession::CLOSED_HANDLER{});
+			C2S_ENTER_WORLD enter{};
+			enter.iProtocolVersion = NETWORK_PROTOCOL_VERSION;
+			enter.eWorldId = world;
+			enter.eCharacterClass = CHARACTER_CLASS_ID::ARTIST;
+			enter.strNickName = "NpcRaidReturn";
+			CGameRoom::STAGED_PLAYER_ENTRY entry{};
+			SESSION_DIAGNOSTIC_REASON reason{};
+			std::string status;
+			const bool admitted = raid->Stage_PlayerEntry(session, enter, {}, entry, reason, status,
+				{}, {}, INVALID_HONOR_TITLE_ID, guideId);
+			tests.Require(admitted && entry.Player.strRaidReturnNpcPlacementId == guideId,
+				"Raid admission retains the exact source NPC for each player");
+			if (!admitted) continue;
+			raid->m_Players.emplace(entry.Player.iPlayerId, entry.Player);
+			raid->m_PlayerIdBySessionId.emplace(sid, entry.Player.iPlayerId);
+			raid->m_bValtanRaidCleared = true;
+			raid->m_GateProgress.iClearedMask = 0xffu;
+			raid->m_PendingWorldTransfers.clear();
+			C2S_RETURN_TO_BERN request{};
+			request.iRequestSequence = 1u;
+			raid->Handle_ReturnToBern(sid, request);
+			const bool routed = raid->m_PendingWorldTransfers.size() == 1u &&
+				raid->m_PendingWorldTransfers.front().strSpawnPlacementOverrideId == guideId;
+			tests.Require(routed, "Valtan and Kouku completion return to the recorded guide, not a fixed guide");
+			enter.eWorldId = WORLD_ID::BERN;
+			CGameRoom::STAGED_PLAYER_ENTRY landing{};
+			const bool landed = routed && bern->Stage_PlayerEntry(session, enter, {}, landing, reason, status,
+				raid->m_PendingWorldTransfers.front().strSpawnPlacementOverrideId);
+			const auto* guide = bern->Find_Placement(guideId);
+			const float dx = guide ? landing.Player.fPositionX - guide->fPositionX : 1000.f;
+			const float dz = guide ? landing.Player.fPositionZ - guide->fPositionZ : 1000.f;
+			tests.Require(landed && dx * dx + dz * dz < 16.f &&
+				std::abs(landing.Player.fPositionY - guide->fPositionY) < 3.f &&
+				landing.Player.strRaidReturnNpcPlacementId.empty(),
+				"Return resolves navigable ground near the correct NPC and clears raid visit state");
+			if (landed) std::cout << guideId << " landing " << landing.Player.fPositionX << ','
+				<< landing.Player.fPositionY << ',' << landing.Player.fPositionZ << '\n';
+			raid->m_Players.clear();
+			raid->m_PlayerIdBySessionId.clear();
+			enter.eWorldId = world;
+			tests.Require(!raid->Stage_PlayerEntry(session, enter, {}, entry, reason, status,
+				{}, {}, INVALID_HONOR_TITLE_ID, "npc.invalid"), "Reject unknown return NPC without partial admission");
+		}
+	}
+	std::cout << "failures : " << tests.failures << '\n';
+	return tests.failures ? 1 : 0;
+}
+
 void LostArk::Server::CServerGameplayContractRunner::Run_RoomIngress(TESTS& tests)
 {
 

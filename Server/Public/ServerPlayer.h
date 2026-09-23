@@ -152,6 +152,8 @@ namespace LostArk::Server
 
 		std::string strNickName;
 		std::string strSpawnPlacementId;
+		// Server-validated Bern entry guide; retained until this raid visit ends.
+		std::string strRaidReturnNpcPlacementId;
 
 		float fPositionX = 0.f;
 		float fPositionY = 0.f;
@@ -187,6 +189,9 @@ namespace LostArk::Server
 		std::uint8_t iMarioLayoutVariant = 0u;
 		// Pinned by the entry pattern; survives the arena phase and terminal move start.
 		std::optional<std::array<float, 3u>> MarioReturnPosition;
+		// Safe arena revive point retained through the fall's below-floor death pose.
+		std::optional<std::array<float, 3u>> KoukuFallRevivePosition;
+		bool bKoukuFallDeath = false;
 		LostArk::Shared::PLAYER_MADNESS_FORM ePreMarioForm =
 			LostArk::Shared::PLAYER_MADNESS_FORM::NORMAL;
 		std::uint32_t iLastMarioMoveSequence = 0u;

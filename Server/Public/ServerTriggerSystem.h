@@ -36,6 +36,7 @@ namespace LostArk::Server
 		return trip lands the player next to Bern's Valtan-entry guide NPC
 		rather than a generic spawn point. */
 		std::string strSpawnPlacementOverrideId;
+		std::string strRaidReturnNpcPlacementId;
 		/* Empty means "grant the default fresh-entry loadout" (Stage_PlayerEntry's
 		3 starting potions), same as any other world entry. Non-empty replaces
 		that grant with these exact items -- Handle_ReturnToBern populates this

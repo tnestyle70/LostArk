@@ -432,17 +432,26 @@ void LostArk::Server::CGameRoom::Handle_RevivePlayer(
 	player.iLastReviveSequence = revivePlayer.iClientSequence;
 	if (0u != player.iCurrentHp || PLAYER_ACTION_STATE::DEAD != player.eAction)
 		return;
+	// A failed destination admission keeps the Mario corpse/pin for retry;
+	// revival must not bypass that mandatory return and revive inside Mario.
+	if (player.iMarioStage || player.MarioReturnPosition) return;
 
 	const PLAYER_RUNTIME_PROFILE* profile =
 		m_GameplayCatalog.Find_Player(player.eCharacterClass);
 	if (nullptr == profile)
 		return;
-	/* Kouku revives at the death position. Valtan retains its authored safe
-	center. Navigation admission is staged before any player state changes. */
+	/* A casino fall retains its safe center before descending below navigation.
+	Mario deaths have already returned, still dead, to the Gate 3 arena. */
 	float reviveX = player.fPositionX;
 	float reviveY = player.fPositionY;
 	float reviveZ = player.fPositionZ;
 	float reviveYaw = player.fYawDegrees;
+	if (WORLD_ID::KAKULSAYDON_ARENA == m_eWorldId && player.bKoukuFallDeath && player.KoukuFallRevivePosition)
+	{
+		reviveX = (*player.KoukuFallRevivePosition)[0];
+		reviveY = (*player.KoukuFallRevivePosition)[1];
+		reviveZ = (*player.KoukuFallRevivePosition)[2];
+	}
 	if (WORLD_ID::VALTAN_ARENA == m_eWorldId)
 	{
 		const WORLD_BOOTSTRAP_PLACEMENT* arenaCenter = Find_Placement("boss.valtan.center");
@@ -472,6 +481,8 @@ void LostArk::Server::CGameRoom::Handle_RevivePlayer(
 	player.fPositionY = reviveY;
 	player.fPositionZ = reviveZ;
 	player.fYawDegrees = reviveYaw;
+	player.KoukuFallRevivePosition.reset();
+	player.bKoukuFallDeath = false;
 	player.iCurrentHp = player.iMaximumHp;
 	player.iCurrentResource = player.iMaximumResource;
 	player.iResourceAccumulator = 0u;

@@ -836,7 +836,7 @@ void LostArk::Server::CGameRoom::Tick(const float fixedDeltaSeconds,
 		case ROOM_COMMAND_TYPE::ENTER_WORLD:
 			Join(command.iSessionId, command.EnterWorld,
 				command.strSpawnPlacementOverrideId, command.CarriedInventory,
-				command.iCarriedHonorTitleId);
+				command.iCarriedHonorTitleId, command.strRaidReturnNpcPlacementId);
 			break;
 		case ROOM_COMMAND_TYPE::MOVE:
 			Handle_Move(command.iSessionId, command.Move);

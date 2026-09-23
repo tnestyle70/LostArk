@@ -1187,6 +1187,38 @@ bool LostArk::Server::CGameRoom::Enter_MarioFromPattern(SERVER_PLAYER& player, c
 void LostArk::Server::CGameRoom::Update_MarioControlState(SERVER_PLAYER& player)
 {
 	using namespace LostArk::Shared;
+	// Keep the stage and return pin during descent; death, not fall start,
+	// releases Mario. A dead return never completes the minigame successfully.
+	if (WORLD_ID::KAKULSAYDON_ARENA == m_eWorldId && player.iMarioStage <= 4u &&
+		(player.iMarioStage > 0u || player.MarioReturnPosition.has_value()))
+	{
+		if (PLAYER_ACTION_STATE::FALLING == player.eAction && player.iCurrentHp) return;
+		if (!player.iCurrentHp || PLAYER_ACTION_STATE::DEAD == player.eAction)
+		{
+			SERVER_NAV_POINT destination{};
+			if (!Resolve_MarioReturnDestination(player, destination)) return;
+			player.fPositionX = destination.x;
+			player.fPositionY = destination.y;
+			player.fPositionZ = destination.z;
+			player.Clear_MarioControl();
+			player.KoukuFallRevivePosition.reset();
+			player.bKoukuFallDeath = false;
+			player.Clear_KoukuInteractionState();
+			player.eMadnessForm = PLAYER_MADNESS_FORM::NORMAL;
+			player.TriggerMove = {};
+			player.PendingCommand.Clear();
+			player.Clear_Attachment();
+			player.Clear_PatternBindStatus();
+			player.fKnockbackRemainingSeconds = player.fKnockbackSpeed = 0.f;
+			player.bArenaEjectionActive = player.bKnockbackBallistic = false;
+			player.iCurrentHp = 0u;
+			player.eAction = PLAYER_ACTION_STATE::DEAD;
+			player.isCombatReady = false;
+			m_CombatObjectRuntime.Cancel_Source(player.iNetEntityId);
+			m_ServerTriggerSystem.Remove_Player(player.iPlayerId);
+			return;
+		}
+	}
 	if (WORLD_ID::KAKULSAYDON_ARENA != m_eWorldId || player.iMarioStage > 4u ||
 		0u == player.iCurrentHp || PLAYER_ACTION_STATE::DEAD == player.eAction ||
 		PLAYER_ACTION_STATE::FALLING == player.eAction)
@@ -1279,8 +1311,8 @@ bool LostArk::Server::CGameRoom::Resolve_MarioReturnDestination(
 		position = { gate3->fPositionX, gate3->fPositionY, gate3->fPositionZ };
 	}
 	return std::all_of(position.begin(), position.end(), [](const float value) { return std::isfinite(value); }) &&
-		m_ServerNavigation.Is_PointWalkableExact(position[0], position[2]) &&
-		m_ServerNavigation.Sample_Position(position[0], position[2], outPoint) &&
+		m_ServerNavigation.Is_PointWalkableExact(position[0], position[2], position[1]) &&
+		m_ServerNavigation.Sample_Position(position[0], position[2], outPoint, position[1]) &&
 		std::abs(position[1] - outPoint.y) <= .25f;
 }
 

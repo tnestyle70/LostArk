@@ -352,6 +352,46 @@ int LostArk::Server::CServerGameplayContractRunner::Run_DebugTeleport(TESTS& tes
 			}
 		}
 #endif
+		{
+			auto room = std::make_unique<CGameRoom>(WORLD_ID::KAKULSAYDON_ARENA);
+			const auto* center = room->Find_Placement("stage.kakul.sl03");
+			SERVER_NAV_POINT ground{};
+			const bool ready = room->Is_Ready() && center && room->m_ServerNavigation.Project_Point(
+				center->fPositionX, center->fPositionZ, ground, center->fPositionY);
+			tests.Require(ready, "Casino fall loads its published Gate 2 safe center");
+			if (ready)
+			{
+				auto& player = room->m_Players[123u];
+				player.iPlayerId = 123u; player.iNetEntityId = 456u; player.iSessionId = 789u;
+				room->m_PlayerIdBySessionId[789u] = 123u;
+				player.eCharacterClass = CHARACTER_CLASS_ID::LANCE_MASTER;
+				player.iCurrentHp = player.iMaximumHp = 100u;
+				bool fell = false;
+				for (const float sign : {-1.f, 1.f})
+				{
+					SERVER_NAV_POINT previous = ground;
+					for (float d = .1f; d < 60.f && !fell; d += .1f)
+					{
+						SERVER_NAV_POINT next{};
+						const float x = ground.x + sign * d;
+						if (room->m_ServerNavigation.Sample_SurfacePosition(x, ground.z, next)) { previous = next; continue; }
+						player.fPositionX = previous.x; player.fPositionY = previous.y; player.fPositionZ = previous.z;
+						fell = room->Try_KoukuWalkOffFloor(player, x, ground.z, 1.f / 30.f, 100u);
+						break;
+					}
+				}
+				tests.Require(fell && player.KoukuFallRevivePosition && player.bKoukuFallDeath,
+					"Casino edge starts gravity and retains the center before the death pose drops below the floor");
+				room->Update_PlayerFall(player, 1.f / 30.f, 200u);
+				tests.Require(!player.iCurrentHp && player.eAction == PLAYER_ACTION_STATE::DEAD,
+					"Casino descent ends in authoritative death");
+				C2S_REVIVE_PLAYER revive{}; revive.iClientSequence = 1u;
+				room->Handle_RevivePlayer(789u, revive);
+				tests.Require(player.iCurrentHp == 100u && player.eAction == PLAYER_ACTION_STATE::NONE &&
+					player.fPositionX == ground.x && player.fPositionY == ground.y && player.fPositionZ == ground.z,
+					"Casino uses the existing revive command and reappears at the safe center");
+			}
+		}
 		/* Product Return uses the same authored terminal move in Debug and Release.
 		   A packet carries no destination, and acceptance cannot skip its flight. */
 		for (std::uint8_t stage = 1u; stage <= 4u; ++stage)
@@ -389,6 +429,49 @@ int LostArk::Server::CServerGameplayContractRunner::Run_DebugTeleport(TESTS& tes
 				"Return starts inside the actual Intro box to guard against automatic re-entry");
 			player.hasMoveGoal = true; player.MovePath.push_back(origin);
 			const auto original = player;
+			// Death in any of the four Mario stages returns a corpse, never a success or revive.
+			player.MarioReturnPosition = std::array<float, 3u>{ landing.x, landing.y, landing.z };
+			room->Begin_PlayerFall(player, 1.f / 30.f, 100u);
+			room->Update_MarioControlState(player);
+			tests.Require(player.iMarioStage == stage && player.MarioReturnPosition.has_value(),
+				"Mario descent preserves its stage and arena return pin");
+			room->Update_PlayerFall(player, 1.f / 30.f, 200u);
+			tests.Require(!player.iCurrentHp && player.eAction == PLAYER_ACTION_STATE::DEAD &&
+				!player.iMarioStage && !player.isCombatReady && !player.TriggerMove.isActive &&
+				player.fPositionX == landing.x && player.fPositionY == landing.y && player.fPositionZ == landing.z &&
+				player.eMadnessForm == PLAYER_MADNESS_FORM::NORMAL && player.eKoukuHudMode == KOUKU_HUD_MODE::NONE,
+				"Mario fall returns dead to Gate 3 and clears Mario presentation/control");
+			player = original;
+			player.iCurrentHp = 0u; player.eAction = PLAYER_ACTION_STATE::DEAD;
+			room->Update_MarioControlState(player);
+			tests.Require(!player.iMarioStage && !player.iCurrentHp && player.fPositionX == landing.x &&
+				player.fPositionZ == landing.z, "Lethal Mario damage also ejects a dead player to the arena");
+			player = original;
+			player.TriggerMove.isActive = true;
+			tests.Require(!room->Update_PlayerFall(player, 1.f / 30.f, 201u),
+				"Authored Mario jump/transfer is protected from floor-entry fall checks");
+			player = original;
+			tests.Require(!room->Try_KoukuWalkOffFloor(player, origin.x, origin.z, 1.f / 30.f, 202u),
+				"Supported Mario floor does not trigger falling");
+			bool foundEdge = false;
+			for (const float direction : { -1.f, 1.f })
+			{
+				SERVER_NAV_POINT previous = origin;
+				for (float distance = .1f; distance < 80.f && !foundEdge; distance += .1f)
+				{
+					const float x = origin.x + original.fMarioRailRightX * distance * direction;
+					const float z = origin.z + original.fMarioRailRightZ * distance * direction;
+					SERVER_NAV_POINT surface{};
+					if (room->m_ServerNavigation.Sample_SurfacePosition(x, z, surface)) { previous = surface; continue; }
+					player = original;
+					player.fPositionX = previous.x; player.fPositionY = previous.y; player.fPositionZ = previous.z;
+					foundEdge = room->Try_KoukuWalkOffFloor(player, x, z, 1.f / 30.f, 203u);
+					break;
+				}
+			}
+			tests.Require(foundEdge && player.eAction == PLAYER_ACTION_STATE::FALLING && player.iMarioStage == stage,
+				"Each published Mario rail has a walk-off floor edge that starts descent instead of nav clamping");
+			player = original;
 			const auto sameState = [](const SERVER_PLAYER& a, const SERVER_PLAYER& b) {
 				return a.fPositionX == b.fPositionX && a.fPositionY == b.fPositionY && a.fPositionZ == b.fPositionZ &&
 					a.fYawDegrees == b.fYawDegrees && a.iCurrentHp == b.iCurrentHp && a.iMaximumHp == b.iMaximumHp &&
