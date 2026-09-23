@@ -684,8 +684,9 @@ void CServerGameplayContractRunner::Run_KoukuRaidIntegration(TESTS& tests)
             "One to four participants can clear every gate with explicit UI approvals");
         if (const auto* bingo = run.pCatalog->Find_KoukuRaidGate("BINGO"))
         {
-            tests.Require(bingo->strIntroPatternId == "KAKULSAYDON_G1_PATTERN_10" && bingo->iIntroDurationMs >= 23333u && bingo->Entries.size() == 1u,
-                "Published Bingo pins the complete original encore before its repeating parent");
+            // The saved encore removes 5000 ms of lead-in while retaining its audio tail.
+            tests.Require(bingo->strIntroPatternId == "KAKULSAYDON_G1_PATTERN_10" && bingo->iIntroDurationMs == 21322u && bingo->Entries.size() == 1u,
+                "Published Bingo pins the trimmed 21322 ms encore before its repeating parent");
             if (bingo->Entries.size() != 1u) continue;
             const auto encoreStartTick = run.State.iEndTick;
             room->m_iServerTick = encoreStartTick - 1u; room->Update_KoukuRaid(room->m_iServerTick);

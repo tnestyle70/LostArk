@@ -4,7 +4,7 @@
   "sourceManifest": {
     "schema": "lostark.composition-source-manifest",
     "formatVersion": 1,
-    "sourceManifestId": "97ab8c8a1a752c5831659d0f27ff497fc9e0eebbe725c6c1c5aba64f0808f26f",
+    "sourceManifestId": "0ffd4caf6d3af19f294a0621fb6c9dcb46b74a1926a09841669c81002deba753",
     "files": [
       {
         "path": "Data/Animation/Authored/KoukuSaydon/MN_RPCT_05.actionbindings.json",
@@ -1708,8 +1708,8 @@
       },
       {
         "path": "Data/Effects/V2/Authored/kouku.bingo.encore.fade.black.effectv2.json",
-        "sha256": "dfda2ad8ce1e7282c7fd754c241faf27c7cc9a70338a627a1431fd30e3247095",
-        "bytes": 2692
+        "sha256": "2f13b391980e37f0cde3a768cddffe858cb9234c3040fb1baf249ba7710a143f",
+        "bytes": 2571
       },
       {
         "path": "Data/Effects/V2/Authored/kouku.gate1.authored.fade.black.effectv2.json",
@@ -2073,13 +2073,13 @@
       },
       {
         "path": "Data/Maps/Authoring/LV_LUT_MIDNIGHTC_ED/LV_LUT_MIDNIGHTC_ED.camerashots.json",
-        "sha256": "e8b859dc1180533aaa8dc0f096857f3af1174413c2143ac2c4802fd06e29bef8",
-        "bytes": 1770266
+        "sha256": "6f6299638728ce050383c428663b5669b9db21a022dee5eafbe052bb543a52f4",
+        "bytes": 1762063
       },
       {
         "path": "Data/Maps/Authoring/LV_LUT_MIDNIGHTC_ED/LV_LUT_MIDNIGHTC_ED.worldsequences.json",
-        "sha256": "f68024daa091792230b55a7f02bd84f055148ec8f78df08bc413d641ac2f0555",
-        "bytes": 13539602
+        "sha256": "b0cd390828d1e269add15a7c224c4e0589f8ab5446c61d6ced26cb302c1b726d",
+        "bytes": 13505276
       },
       {
         "path": "Data/Rendering/Authored/RenderingProfiles.json",
@@ -2126,12 +2126,12 @@
     },
     {
       "path": "Bosses/Valtan.bosscomposition.json",
-      "sha256": "f94e87520a48f72f3c752d19e88087a4ef77304f2e3bdcf27b104a5e5ecdd2e1",
+      "sha256": "145f7140ab904812e9529ec720053df832895cd4fbb375a1b0b5f2aebfbc732e",
       "bytes": 3807536
     },
     {
       "path": "Sequences/KoukuSaydonArena.sequencer.json",
-      "sha256": "9af804025383b21ee6961a392080756b1d95a3b6d38faa9ce9787099b0f8c019",
+      "sha256": "b640b3f4e346158208c0ebf40b2d0b643bdb18aaa6c67bee420f799a0faa732a",
       "bytes": 2152
     },
     {

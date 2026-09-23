@@ -3,7 +3,7 @@
   "formatVersion": 1,
   "compositionId": "boss.composition.valtan",
   "sourceRevision": 1,
-  "compositionRevision": "0a836dc75be64427cfecb7eb064e0a8782162152b2ef9e8ed95e430946677c3c",
+  "compositionRevision": "83b2032d329fe830625173ba4f89551a9e4ad552afceac84ac2ae0d32c7c2390",
   "status": "SHADOW",
   "runtimeEligible": false,
   "displayName": "Valtan Boss Composition",
@@ -13,7 +13,7 @@
   "sourceManifest": {
     "schema": "lostark.composition-source-manifest",
     "formatVersion": 1,
-    "sourceManifestId": "0a836dc75be64427cfecb7eb064e0a8782162152b2ef9e8ed95e430946677c3c",
+    "sourceManifestId": "83b2032d329fe830625173ba4f89551a9e4ad552afceac84ac2ae0d32c7c2390",
     "files": [
       {
         "path": "Data/Animation/Authored/Valtan/Valtan.combatobjectsoundcues.json",
@@ -1642,8 +1642,8 @@
       },
       {
         "path": "Data/Effects/V2/Authored/kouku.bingo.encore.fade.black.effectv2.json",
-        "sha256": "dfda2ad8ce1e7282c7fd754c241faf27c7cc9a70338a627a1431fd30e3247095",
-        "bytes": 2692
+        "sha256": "2f13b391980e37f0cde3a768cddffe858cb9234c3040fb1baf249ba7710a143f",
+        "bytes": 2571
       },
       {
         "path": "Data/Effects/V2/Authored/kouku.gate1.authored.fade.black.effectv2.json",

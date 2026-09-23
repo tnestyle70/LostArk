@@ -8815,7 +8815,9 @@ void CMainApp::RenderCinematicSubtitles()
     {
         if (!seen.emplace(subtitle.instanceId, subtitle.subtitleTrackId).second) continue;
         if (subtitle.position == "BALLOON") balloons.push_back(subtitle);
-        else appendLines(subtitle.text, subtitle.position == "UPPER");
+        // Match the authored Kouku Gate 2 clear subtitle layout (1080p units).
+        // Balloon text stays world-anchored and retains its separate layout.
+        else appendLines(subtitle.text, subtitle.position == "UPPER", float2_t(0.f, 90.f), 2.f);
     }
     if (lines[0].empty() && lines[1].empty() && balloons.empty()) return;
     const CUITextLayerScope subtitleLayer(UI_TEXT_LAYER::PAGE);
