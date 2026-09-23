@@ -73,6 +73,9 @@ EXTRA_MONSTER_NPC_KEY = {
 TOOLTIP_MACRO = re.compile(r"<\$MACRO\s+(\w+)\s+@1:(\d+)")
 TOOLTIP_REPEAT = re.compile(r"<FONT[^>]*>(\d+)</FONT>\s*회")
 TOOLTIP_DAMAGE_MACRO = re.compile(r"^(physic|magic)", re.IGNORECASE)
+# 3,951 of the 4,013 damage rows the playable skills reach ship
+# ValueB / ValueA = 1.1 / 0.9, so a hit runs 10% either side of its mean.
+DEFAULT_DAMAGE_SPREAD_PERCENT = 10
 
 # The buffs the Server applies, and what each one modifies.  Duration, percent and the
 # target come from the original tables: EFTable_SkillBuff.Duration and
@@ -123,10 +126,10 @@ PROJECT_POLICY = {
     # Player HP is MaxHpCon x the constitution stat.  The stat is server-side, so the
     # baseline is chosen to put a 250% Valtan pattern at ~43% of a Lance Master's bar.
     "constitutionBaseline": 60000,
-    # criticalChance = critical stat x PCLevel.CriticalHitCoefficient(0.2794) / 10.
-    # The stat itself is not in the tables; 1500 is the reference spec's value.
-    "criticalStat": 1500,
-    "criticalHitCoefficient": 0.2794,
+    # Retail derives it as critical stat x PCLevel.CriticalHitCoefficient(0.2794) / 10, so
+    # the reference spec's 1500 stat would give 41%.  The project plays at 70%, which that
+    # path cannot reach: it needs stat 2505 and PCStatMinMax caps the critical stat at 2214.
+    "criticalChancePercent": 70,
     # Retail's base critical multiplier.  No table cell carries it.
     "criticalDamagePercent": 200,
     # Skill.CostMp is 185..938, so the pool moves from 1000 to 10000 and the regen with
@@ -154,7 +157,21 @@ PROJECT_POLICY = {
     # from a plate's durability, so the level is the amount and the authored plate
     # durability stays the project's own threshold.
     "partDamageByLevel": {0: 0, 1: 1, 2: 2, 3: 3},
+    # ALT_V is the Ultimate upgrade of the V awakening (Skill.UltimateSkill = 1,
+    # CostUltimatePoint = 10000) and is learned at item level 1640, above this
+    # profile's 1500 reference spec, so its retail coefficient is scaled down.
+    "ultimateSlotScale": 0.1,
+    # The 33 boss pattern damage rates are project values tuned against the old
+    # attack power of 100, so the retail figure lands them far past a full bar.
+    # Scale the retail attack power until those rates are retuned.
+    "bossAttackPowerScalePercent": 10,
 }
+
+
+def scaled_attack_power(attackPower: int) -> int:
+    """Retail attack power brought down to the scale the authored pattern rates expect."""
+    scaled = attackPower * PROJECT_POLICY["bossAttackPowerScalePercent"] // 100
+    return max(1, scaled)
 
 
 def read_json(path: Path) -> dict[str, Any]:
@@ -226,9 +243,7 @@ def resolve_npc(
 
 def build_players(pcs: sqlite3.Connection, authored: list[dict]) -> list[dict]:
     policy = PROJECT_POLICY
-    critical_chance = int(
-        policy["criticalStat"] * policy["criticalHitCoefficient"] / 10.0
-    )
+    critical_chance = policy["criticalChancePercent"]
     players = []
     for entry in authored:
         character_class = entry["characterClass"]
@@ -258,6 +273,52 @@ def stagger_by_grade() -> dict[int, int]:
     return {0: 0} | {
         grade: int(round(base * step ** (grade - 1))) for grade in range(1, 6)
     }
+
+
+def tooltip_spread_percent(
+    messages: sqlite3.Connection,
+    effects: sqlite3.Connection,
+    skill_id: int,
+    level: int,
+) -> int:
+    """How far a hit reaches either side of its mean, as a whole percent."""
+    row = messages.execute(
+        "SELECT MSG FROM GameMsg WHERE KEY = ?", (f"tip.desc.skill_{skill_id}",)
+    ).fetchone()
+    if row is None:
+        return DEFAULT_DAMAGE_SPREAD_PERCENT
+    text = str(row["MSG"])
+    low = high = 0
+    for match in TOOLTIP_MACRO.finditer(text):
+        if not TOOLTIP_DAMAGE_MACRO.match(match.group(1)):
+            continue
+        bounds = damage_bounds(effects, int(match.group(2)), level)
+        if bounds is None:
+            continue
+        low += bounds[0]
+        high += bounds[1]
+    total = low + high
+    if total <= 0 or high <= low:
+        return DEFAULT_DAMAGE_SPREAD_PERCENT
+    return round((high - low) * 100 / total)
+
+
+def damage_bounds(
+    effects: sqlite3.Connection,
+    effect_pk: int,
+    level: int,
+) -> tuple[int, int] | None:
+    """One hit's (ValueA, ValueB) low and high end, only for a real damage row."""
+    row = effects.execute(
+        "SELECT ValueA, ValueB FROM SkillEffect WHERE PrimaryKey = ? "
+        "AND SecondaryKey = ? AND Key IN (1,2,3)", (effect_pk, level)).fetchone()
+    if row is None:
+        row = effects.execute(
+            "SELECT ValueA, ValueB FROM SkillEffect WHERE PrimaryKey = ? "
+            "AND Key IN (1,2,3) ORDER BY SecondaryKey DESC LIMIT 1", (effect_pk,)).fetchone()
+    if row is None:
+        return None
+    return int(row["ValueA"]), int(row["ValueB"])
 
 
 def tooltip_damage(
@@ -370,12 +431,20 @@ def build_skills(
         part_level = int(official["PartsAttackLevelTooltip"])
         if part_level not in part_damage_by_level:
             raise ValueError(f"Skill {skill_id} has unknown part level {part_level}")
+        # A skill with no server damage profile never resolves a hit, so the publisher
+        # requires zero combat traits on it no matter what grade the tooltip shows.
+        resolves_hit = bool(entry["serverDamageProfileId"])
+        # Retail Cooltime 0 marks a stance toggle with no cooldown, but the publisher
+        # requires every ACTIVE skill to carry one, so those keep the authored value.
+        cooldown = int(official["Cooltime"])
+        if cooldown == 0 and entry["skillKind"] == "ACTIVE":
+            cooldown = int(entry["cooldownMs"])
         row = {
             "skillId": skill_id,
-            "cooldownMs": int(official["Cooltime"]),
+            "cooldownMs": cooldown,
             "resourceCost": int(official["CostMp"]),
-            "staggerDamage": stagger[grade],
-            "partDamage": part_damage_by_level[part_level],
+            "staggerDamage": stagger[grade] if resolves_hit else 0,
+            "partDamage": part_damage_by_level[part_level] if resolves_hit else 0,
         }
         # The basic attack is a combo whose stages divide their own damage, so it is not
         # a quick-slot skill and keeps the authored rate.  A skill whose tooltip shows no
@@ -393,8 +462,81 @@ def build_skills(
                 row["damageProfileId"] = entry["serverDamageProfileId"]
                 row["attackCoefficientBp"] = coefficient
                 row["damageAddend"] = addend
+                row["damageSpreadPercent"] = tooltip_spread_percent(
+                    messages, effects, skill_id, level)
         rows.append(row)
     return rows
+
+
+# Retail ships no usable coefficient for a few T/V/ALT_V rows: every damage cell those
+# skills reach in EFTable_SkillEffect is the unpopulated (100, 122, 100) triple, and the
+# awakening macros multiply by ULTIMATESKILLCOEFFICIENT, a runtime PLAYER_INFO value that
+# is not in the client tables.  Lance Master is the one class whose T, V and ALT_V are all
+# populated, so derive the missing rows from its slot-to-core ratios.
+SENTINEL_COEFFICIENT_BP = 200
+BASIS_CLASS = "LANCE_MASTER"
+CORE_SLOTS = ("Q", "W", "E", "R")
+DERIVED_SLOTS = ("T", "V", "ALT_V", "X")
+# Lance Master has no X, and Warlord's 전장의 방패 sits on the same 90s tier as its T.
+BASIS_SLOT = {"T": "T", "V": "V", "ALT_V": "ALT_V", "X": "T"}
+
+
+def fill_missing_slot_coefficients(rows: list[dict], authored: list[dict]) -> list[tuple]:
+    """Derive the coefficients retail leaves unpopulated, and report what was filled."""
+    by_id = {row["skillId"]: row for row in rows}
+    slots: dict[str, dict[str, dict]] = {}
+    for entry in authored:
+        row = by_id.get(int(entry["skillId"]))
+        if row is not None and "attackCoefficientBp" in row:
+            slots.setdefault(entry["characterClass"], {})[entry["inputSlot"]] = row
+
+    def core_average(class_slots: dict[str, dict], field: str) -> float:
+        values = [class_slots[slot][field] for slot in CORE_SLOTS
+                  if slot in class_slots
+                  and class_slots[slot]["attackCoefficientBp"] > SENTINEL_COEFFICIENT_BP]
+        return sum(values) / len(values) if values else 0.0
+
+    basis = slots[BASIS_CLASS]
+    basis_core = core_average(basis, "attackCoefficientBp")
+    basis_core_addend = core_average(basis, "damageAddend")
+    if basis_core <= 0:
+        raise ValueError(f"{BASIS_CLASS} has no populated Q/W/E/R coefficient")
+    ratio = {}
+    for slot in dict.fromkeys(BASIS_SLOT.values()):
+        row = basis.get(slot)
+        if row is None or row["attackCoefficientBp"] <= SENTINEL_COEFFICIENT_BP:
+            raise ValueError(f"{BASIS_CLASS} {slot} carries no coefficient to derive from")
+        ratio[slot] = (row["attackCoefficientBp"] / basis_core,
+                       row["damageAddend"] / basis_core_addend if basis_core_addend else 0.0)
+
+    scale = PROJECT_POLICY["ultimateSlotScale"]
+    filled = []
+    # The basis class owns the Ultimate tier value, so it takes the same reduction.
+    ultimate = basis["ALT_V"]
+    ultimate["attackCoefficientBp"] = round(ultimate["attackCoefficientBp"] * scale)
+    ultimate["damageAddend"] = round(ultimate["damageAddend"] * scale)
+    filled.append((BASIS_CLASS, "ALT_V", ultimate["skillId"],
+                   ultimate["attackCoefficientBp"], "1640 티어 축소"))
+
+    for character_class, class_slots in slots.items():
+        class_core = core_average(class_slots, "attackCoefficientBp")
+        class_core_addend = core_average(class_slots, "damageAddend")
+        if class_core <= 0:
+            continue
+        for slot in DERIVED_SLOTS:
+            row = class_slots.get(slot)
+            if row is None or row["attackCoefficientBp"] > SENTINEL_COEFFICIENT_BP:
+                continue
+            coefficient_ratio, addend_ratio = ratio[BASIS_SLOT[slot]]
+            if slot == "ALT_V":
+                coefficient_ratio *= scale
+                addend_ratio *= scale
+            row["attackCoefficientBp"] = round(class_core * coefficient_ratio)
+            row["damageAddend"] = round(class_core_addend * addend_ratio)
+            row["damageSpreadPercent"] = DEFAULT_DAMAGE_SPREAD_PERCENT
+            filled.append((character_class, slot, row["skillId"],
+                           row["attackCoefficientBp"], f"창술사 {slot} 비율"))
+    return filled
 
 
 def build_skill_buffs(
@@ -484,7 +626,7 @@ def build_bosses(
             "archetypeId": archetype,
             "sourceNpcId": resolved["npcId"],
             "maximumHp": resolved["maximumHp"],
-            "attackPower": resolved["attackPower"],
+            "attackPower": scaled_attack_power(resolved["attackPower"]),
             "maximumHealthBars": resolved["maximumHealthBars"],
             "staggerGaugeMaximum": resolved["staggerGaugeMaximum"],
         })
@@ -520,7 +662,7 @@ def build_monsters(
             "archetypeId": archetype,
             "sourceNpcId": resolved["npcId"],
             "maxHp": resolved["maximumHp"],
-            "attackPower": resolved["attackPower"],
+            "attackPower": scaled_attack_power(resolved["attackPower"]),
         })
     return rows
 
@@ -576,17 +718,31 @@ def main() -> int:
         ),
     }
 
-    # The Server reads the formula off the damage profile the skill points at.
-    profile["damageProfiles"] = [
-        {"damageProfileId": row["damageProfileId"],
-         "attackCoefficientBp": row["attackCoefficientBp"],
-         "damageAddend": row["damageAddend"]}
-        for row in profile["skills"] if "damageProfileId" in row
-    ]
+    filled = fill_missing_slot_coefficients(profile["skills"], skills_document["skills"])
+    for character_class, slot, skill_id, coefficient, reason in filled:
+        print(f"  fill {character_class} {slot} {skill_id}: {coefficient}bp  ({reason})")
+
+    # The Server reads the formula off the damage profile the skill points at. Every
+    # authored profile gets a row: the ones a skill resolved carry the formula, and the
+    # rest carry the spread alone so a hit still rolls inside its range instead of
+    # landing on the same number every time.
+    formula = {row["damageProfileId"]: row
+               for row in profile["skills"] if "damageProfileId" in row}
+    profile["damageProfiles"] = []
+    for authored in read_json(balance_dir / "DamageProfiles.json")["profiles"]:
+        row = formula.get(authored["damageProfileId"])
+        profile["damageProfiles"].append({
+            "damageProfileId": authored["damageProfileId"],
+            "attackCoefficientBp": 0 if row is None else row["attackCoefficientBp"],
+            "damageAddend": 0 if row is None else row["damageAddend"],
+            "damageSpreadPercent": DEFAULT_DAMAGE_SPREAD_PERCENT if row is None
+                else row["damageSpreadPercent"],
+        })
     for row in profile["skills"]:
         row.pop("damageProfileId", None)
         row.pop("attackCoefficientBp", None)
         row.pop("damageAddend", None)
+        row.pop("damageSpreadPercent", None)
     output.parent.mkdir(parents=True, exist_ok=True)
     # core.autocrlf is true in this repository, so write what Git checks out and a
     # regenerated profile stays byte-identical instead of showing up as a change.

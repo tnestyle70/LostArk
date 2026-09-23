@@ -1077,17 +1077,24 @@ foreach ($profile in @($damageDocument.profiles)) {
     # profile that supplies neither keeps the flat percent alone.
     $damageCoefficientBp = 0
     $damageAddend = 0
+    # ValueA and ValueB bracket one hit and the addend above is their mean, so this is
+    # how far a landed hit rolls either side of it. Zero stays deterministic.
+    $damageSpreadPercent = 0
     $damageOverride = $balanceProfileDamage[[string]$profile.damageProfileId]
     if ($null -ne $damageOverride) {
         Assert-JsonInteger $damageOverride.attackCoefficientBp `
             'balance profile attackCoefficientBp' 0 2000000000
         Assert-JsonInteger $damageOverride.damageAddend `
             'balance profile damageAddend' 0 2000000000
+        Assert-JsonInteger $damageOverride.damageSpreadPercent `
+            'balance profile damageSpreadPercent' 0 99
         $damageCoefficientBp = [uint32]$damageOverride.attackCoefficientBp
         $damageAddend = [uint32]$damageOverride.damageAddend
+        $damageSpreadPercent = [uint32]$damageOverride.damageSpreadPercent
     }
     $damageRows.Add(
-        "DAMAGE`t$($profile.damageProfileId)`t$ratePercent`t$damageCoefficientBp`t$damageAddend")
+        ("DAMAGE`t$($profile.damageProfileId)`t$ratePercent`t$damageCoefficientBp" +
+         "`t$damageAddend`t$damageSpreadPercent"))
 }
 
 
@@ -6699,8 +6706,14 @@ foreach ($requiredActionId in $expectedNormalActionIds) {
 	}
 }
 
-Assert-BalanceProvenance $playerDocument $skillDocument $damageDocument `
-	$bossDocument $bossPartDocument $combatObjectDocument
+# A balance profile overlays the player, skill, damage and boss documents in memory
+# above. The receipt attests the authored files, not a publish-time overlay, so these
+# four are read again here; the other two are never overlaid.
+Assert-BalanceProvenance (Read-JsonDocument 'Data/Balance/PlayerProfiles.json') `
+	(Read-JsonDocument 'Data/Balance/PlayerSkills.json') `
+	(Read-JsonDocument 'Data/Balance/DamageProfiles.json') `
+	(Read-JsonDocument 'Data/Balance/BossProfiles.json') `
+	$bossPartDocument $combatObjectDocument
 
 $skillDurationById = @{}
 $skillStageDurationsById = @{}

@@ -45,10 +45,10 @@
   "coverage": {
     "playerProfileCount": 7,
     "skillDefinitionCount": 114,
-    "damageProfileCount": 125,
+    "damageProfileCount": 128,
     "bossProfileCount": 8,
     "encounterPatternCount": 34,
-    "fieldEntryCount": 4077,
+    "fieldEntryCount": 4083,
     "bossPartCount": 2,
     "bossCombatObjectCount": 9
   },
@@ -1652,6 +1652,84 @@
       "sourceValue": 392,
       "transform": "ValueA x overcharge 2",
       "resultValue": 784
+    },
+    {
+      "targetDocument": "Data/Balance/DamageProfiles.json",
+      "targetId": "damage:damage.player.17170",
+      "targetField": "damageProfileId",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "stable-damage-profile-id-v1"
+      },
+      "sourceValue": "damage.player.17170",
+      "transform": "identity",
+      "resultValue": "damage.player.17170"
+    },
+    {
+      "targetDocument": "Data/Balance/DamageProfiles.json",
+      "targetId": "damage:damage.player.17170",
+      "targetField": "damageRatePercent",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "warlord-unshipped-slot-rate-v1"
+      },
+      "sourceValue": 1012,
+      "transform": "Warlord Q/W/E/R average rate x Lance Master slot ratio",
+      "resultValue": 2134
+    },
+    {
+      "targetDocument": "Data/Balance/DamageProfiles.json",
+      "targetId": "damage:damage.player.17250",
+      "targetField": "damageProfileId",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "stable-damage-profile-id-v1"
+      },
+      "sourceValue": "damage.player.17250",
+      "transform": "identity",
+      "resultValue": "damage.player.17250"
+    },
+    {
+      "targetDocument": "Data/Balance/DamageProfiles.json",
+      "targetId": "damage:damage.player.17250",
+      "targetField": "damageRatePercent",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "warlord-unshipped-slot-rate-v1"
+      },
+      "sourceValue": 1012,
+      "transform": "Warlord Q/W/E/R average rate x Lance Master slot ratio",
+      "resultValue": 5471
+    },
+    {
+      "targetDocument": "Data/Balance/DamageProfiles.json",
+      "targetId": "damage:damage.player.17820",
+      "targetField": "damageProfileId",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "stable-damage-profile-id-v1"
+      },
+      "sourceValue": "damage.player.17820",
+      "transform": "identity",
+      "resultValue": "damage.player.17820"
+    },
+    {
+      "targetDocument": "Data/Balance/DamageProfiles.json",
+      "targetId": "damage:damage.player.17820",
+      "targetField": "damageRatePercent",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "warlord-unshipped-slot-rate-v1"
+      },
+      "sourceValue": 1012,
+      "transform": "Warlord Q/W/E/R average rate x Lance Master slot ratio",
+      "resultValue": 3672
     },
     {
       "targetDocument": "Data/Balance/DamageProfiles.json",
@@ -9430,9 +9508,9 @@
         "type": "project-policy",
         "policyId": "animation-reference-hit-timing-v1"
       },
-      "sourceValue": 0,
-      "transform": "identity",
-      "resultValue": 0
+      "sourceValue": 130,
+      "transform": "projectile t 0.13s in wgl_sk_guardianofprotection_attack + 2500ms of preceding clips",
+      "resultValue": 2630
     },
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
@@ -9466,17 +9544,12 @@
       "targetField": "maximumRange",
       "basis": "PROJECT_TUNED",
       "source": {
-        "type": "official-table-cell",
-        "database": "EFTable_Skill.db",
-        "databaseSha256": "8691edbd4fbef268dc709f3d2e240288f3d294c5648c3f8916939598c68723f3",
-        "table": "Skill",
-        "primaryKey": 17170,
-        "secondaryKey": 1,
-        "column": "MaxRange"
+        "type": "project-policy",
+        "policyId": "warlord-area-skill-radius-v1"
       },
-      "sourceValue": 0,
-      "transform": "project server hit range override",
-      "resultValue": 0.0
+      "sourceValue": 1000,
+      "transform": "tooltip guardian shield area radius 10m",
+      "resultValue": 10.0
     },
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
@@ -9545,9 +9618,9 @@
         "type": "project-policy",
         "policyId": "project-damage-profile-link-v1"
       },
-      "sourceValue": "",
+      "sourceValue": "damage.player.17170",
       "transform": "identity",
-      "resultValue": ""
+      "resultValue": "damage.player.17170"
     },
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
@@ -10212,9 +10285,9 @@
         "type": "project-policy",
         "policyId": "animation-reference-hit-timing-v1"
       },
-      "sourceValue": 0,
-      "transform": "identity",
-      "resultValue": 0
+      "sourceValue": 1050,
+      "transform": "projectile t 1.05s in wgl_sk_super_guardianofprotection_02 + 2400ms of preceding clips",
+      "resultValue": 3450
     },
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
@@ -10248,17 +10321,12 @@
       "targetField": "maximumRange",
       "basis": "PROJECT_TUNED",
       "source": {
-        "type": "official-table-cell",
-        "database": "EFTable_Skill.db",
-        "databaseSha256": "8691edbd4fbef268dc709f3d2e240288f3d294c5648c3f8916939598c68723f3",
-        "table": "Skill",
-        "primaryKey": 17250,
-        "secondaryKey": 1,
-        "column": "MaxRange"
+        "type": "project-policy",
+        "policyId": "warlord-area-skill-radius-v1"
       },
-      "sourceValue": 0,
-      "transform": "project server hit range override",
-      "resultValue": 0.0
+      "sourceValue": 700,
+      "transform": "projectile reference radius 700 -> m",
+      "resultValue": 7.0
     },
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
@@ -10327,9 +10395,9 @@
         "type": "project-policy",
         "policyId": "project-damage-profile-link-v1"
       },
-      "sourceValue": "",
+      "sourceValue": "damage.player.17250",
       "transform": "identity",
-      "resultValue": ""
+      "resultValue": "damage.player.17250"
     },
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
@@ -11089,8 +11157,8 @@
         "policyId": "animation-reference-hit-timing-v1"
       },
       "sourceValue": 0,
-      "transform": "identity",
-      "resultValue": 0
+      "transform": "HIT notify at the start of wgl_sk_shieldofbattlefield_03 + 1300ms of preceding clips",
+      "resultValue": 1300
     },
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
@@ -11124,17 +11192,12 @@
       "targetField": "maximumRange",
       "basis": "PROJECT_TUNED",
       "source": {
-        "type": "official-table-cell",
-        "database": "EFTable_Skill.db",
-        "databaseSha256": "8691edbd4fbef268dc709f3d2e240288f3d294c5648c3f8916939598c68723f3",
-        "table": "Skill",
-        "primaryKey": 17820,
-        "secondaryKey": 1,
-        "column": "MaxRange"
+        "type": "project-policy",
+        "policyId": "warlord-area-skill-radius-v1"
       },
-      "sourceValue": 800,
-      "transform": "project server hit range override",
-      "resultValue": 0.0
+      "sourceValue": 1000,
+      "transform": "tooltip landing area radius 10m; MaxRange 800 is the cast range",
+      "resultValue": 10.0
     },
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
@@ -11203,9 +11266,9 @@
         "type": "project-policy",
         "policyId": "project-damage-profile-link-v1"
       },
-      "sourceValue": "",
+      "sourceValue": "damage.player.17820",
       "transform": "identity",
-      "resultValue": ""
+      "resultValue": "damage.player.17820"
     },
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",

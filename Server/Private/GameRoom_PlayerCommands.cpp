@@ -416,7 +416,15 @@ void LostArk::Server::CGameRoom::Apply_SkillBuffs(
 	const std::uint32_t serverTick)
 {
 	const CGameplayCatalog& catalog = m_GameplayCatalog.Active();
-	if (nullptr == catalog.Find_SkillBuffs(skillId))
+	const std::vector<CGameplayCatalog::SKILL_BUFF_DEFINITION>* found =
+		catalog.Find_SkillBuffs(skillId);
+#ifdef _DEBUG
+	/* Which skill asked for a buff and whether the catalog had one, so a buff that
+	never reaches a HUD can be placed on this side or the other. */
+	std::cout << "[SkillBuff] skill=" << skillId << " tick=" << serverTick
+		<< " definitions=" << (nullptr == found ? 0u : found->size()) << '\n';
+#endif
+	if (nullptr == found)
 		return;
 	std::vector<SERVER_PLAYER*> allies;
 	allies.reserve(m_Players.size());

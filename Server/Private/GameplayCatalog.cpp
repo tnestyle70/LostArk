@@ -1762,13 +1762,17 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 			DAMAGE_PROFILE profile{};
 			/* A row published before the original formula shipped carries the flat
 			percent alone; the coefficient/addend pair is appended after it. */
-			const bool hasFormula = 5u == fields.size();
+			const bool hasFormula = 5u == fields.size() || 6u == fields.size();
+			const bool hasSpread = 6u == fields.size();
 			if ((3u != fields.size() && !hasFormula) || !IsStableId(fields[1]) ||
 				!ParseNumber(fields[2], ratePercent) || 0u == ratePercent ||
 				ratePercent > MAXIMUM_DAMAGE_RATE_PERCENT ||
 				(hasFormula &&
 					(!ParseNumber(fields[3], profile.iAttackCoefficientBp) ||
 					 !ParseNumber(fields[4], profile.iDamageAddend))) ||
+				(hasSpread &&
+					(!ParseNumber(fields[5], profile.iDamageSpreadPercent) ||
+					 profile.iDamageSpreadPercent >= 100u)) ||
 				!m_DamageRatePercentByProfileId.emplace(
 					std::string(fields[1]), ratePercent).second)
 			{

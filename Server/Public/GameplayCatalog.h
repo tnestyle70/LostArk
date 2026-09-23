@@ -1502,6 +1502,11 @@ namespace LostArk::Server
 			std::uint32_t iRatePercent = 0;
 			std::uint32_t iAttackCoefficientBp = 0;
 			std::uint32_t iDamageAddend = 0;
+			/* ValueA and ValueB are the low and high end of one hit's range and the
+			formula above averages them, so a landed hit rolls inside that range
+			instead of always dealing the mean. Published as a whole percent of the
+			mean; 0 keeps the deterministic value. */
+			std::uint32_t iDamageSpreadPercent = 0;
 		};
 		[[nodiscard]] const DAMAGE_PROFILE* Find_DamageProfile(
 			const std::string& damageProfileId) const;

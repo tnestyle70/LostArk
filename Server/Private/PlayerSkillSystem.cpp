@@ -33,6 +33,35 @@ namespace
 		return roll(generator) <= chancePercent;
 	}
 
+	/* One landed hit's spread inside the authored range. ValueA and ValueB are the
+	low and high end of a hit in the original tables and the published damage is
+	their mean, so the roll walks the same distance either side of it. A profile
+	published without a spread carries 0 and stays deterministic. */
+	std::uint32_t DamageSpreadOf(
+		const LostArk::Server::CGameplayCatalog& catalog,
+		const std::string& damageProfileId)
+	{
+		const LostArk::Server::CGameplayCatalog::DAMAGE_PROFILE* profile =
+			catalog.Find_DamageProfile(damageProfileId);
+		return nullptr == profile ? 0u : profile->iDamageSpreadPercent;
+	}
+
+	std::uint32_t RollDamageSpread(
+		const std::uint32_t damage,
+		const std::uint32_t spreadPercent)
+	{
+		if (0u == damage || 0u == spreadPercent || spreadPercent >= 100u)
+			return damage;
+		static thread_local std::mt19937 generator{ std::random_device{}() };
+		std::uniform_int_distribution<std::uint32_t> roll(
+			100u - spreadPercent, 100u + spreadPercent);
+		const std::uint64_t scaled = static_cast<std::uint64_t>(damage) *
+			static_cast<std::uint64_t>(roll(generator)) / 100ull;
+		return scaled < 1ull ? 1u :
+			static_cast<std::uint32_t>((std::min<std::uint64_t>)(
+				scaled, (std::numeric_limits<std::uint32_t>::max)()));
+	}
+
 	std::uint32_t ScaleCriticalDamage(
 		const std::uint32_t rawDamage,
 		const std::uint32_t criticalDamagePercent)
@@ -95,6 +124,7 @@ namespace
 		const std::vector<LostArk::Shared::ACTIVE_BUFF>& casterBuffs,
 		const LostArk::Server::PLAYER_RUNTIME_PROFILE* pCasterProfile,
 		const LostArk::Server::PLAYER_SKILL_HIT* pHit,
+		const std::uint32_t damageSpreadPercent,
 		const float sourceX,
 		const float sourceZ,
 		const float fallbackDirectionX,
@@ -116,6 +146,10 @@ namespace
 				CServerBuffRuntime::Damage_DealtPercent(catalog, casterBuffs) +
 				CServerBuffRuntime::Damage_TakenPercent(catalog, target.ActiveBuffs));
 		}
+		/* Rolled per landed hit, so a multi-hit skill reads 483 / 502 / 513 the way
+		the original does instead of the same number three times. */
+		incoming.iRawDamage =
+			RollDamageSpread(incoming.iRawDamage, damageSpreadPercent);
 		/* Rolled per landed hit, as the original does: one skill can crit on
 		one target and stay ordinary on the next. */
 		if (0u != incoming.iRawDamage && nullptr != pCasterProfile &&
@@ -873,7 +907,8 @@ void LostArk::Server::CPlayerSkillSystem::Update_Projectiles(
 							subHitIndex + mark->iAppliedCount) : 0u,
 						catalog, player.ActiveBuffs,
 						catalog.Find_Player(player.eCharacterClass),
-						&hit.Hit, projectile.fPositionX, projectile.fPositionZ,
+						&hit.Hit, DamageSpreadOf(catalog, skill->strDamageProfileId),
+						projectile.fPositionX, projectile.fPositionZ,
 						projectile.fDirectionX, projectile.fDirectionZ,
 						serverTick, outDamageEvents);
 					++mark->iAppliedCount;
@@ -928,7 +963,8 @@ void LostArk::Server::CPlayerSkillSystem::Update_Projectiles(
 							subHitIndex) : 0u,
 						catalog, player.ActiveBuffs,
 						catalog.Find_Player(player.eCharacterClass),
-						&hit.Hit, projectile.fPositionX, projectile.fPositionZ,
+						&hit.Hit, DamageSpreadOf(catalog, skill->strDamageProfileId),
+						projectile.fPositionX, projectile.fPositionZ,
 						projectile.fDirectionX, projectile.fDirectionZ,
 						serverTick, outDamageEvents);
 				}
@@ -1255,6 +1291,7 @@ void LostArk::Server::CPlayerSkillSystem::Update(
 			skill->iStaggerDamage, skill->iPartDamage, skill->iCounterPower,
 			rawDamage, catalog, player.ActiveBuffs,
 			catalog.Find_Player(player.eCharacterClass), pHit,
+			DamageSpreadOf(catalog, skill->strDamageProfileId),
 			player.fPositionX, player.fPositionZ,
 			player.fSkillAimDirectionX, player.fSkillAimDirectionZ,
 			serverTick, outDamageEvents);
@@ -1263,9 +1300,14 @@ void LostArk::Server::CPlayerSkillSystem::Update(
 	{
 		const PLAYER_RUNTIME_PROFILE* playerProfile =
 			catalog.Find_Player(player.eCharacterClass);
-		const std::uint32_t base = CGameplayCatalog::Resolve_Damage(
-			nullptr == playerProfile ? 0u : playerProfile->iAttackPower,
-			catalog.Find_DamageRatePercent(skill->strDamageProfileId));
+		const std::uint32_t attackPower =
+			nullptr == playerProfile ? 0u : playerProfile->iAttackPower;
+		const CGameplayCatalog::DAMAGE_PROFILE* damageProfile =
+			catalog.Find_DamageProfile(skill->strDamageProfileId);
+		const std::uint32_t base = nullptr == damageProfile ?
+			CGameplayCatalog::Resolve_Damage(
+				attackPower, catalog.Find_DamageRatePercent(skill->strDamageProfileId)) :
+			CGameplayCatalog::Resolve_Damage(attackPower, *damageProfile);
 		/* Each ember orb the action spent adds the profile percent. */
 		const GUARDIAN_EMBER_PROFILE* ember =
 			catalog.Find_EmberProfile(player.eCharacterClass);

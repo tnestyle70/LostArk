@@ -13,7 +13,7 @@
       "resourceRegenPerSecond": 5000,
       "attackPower": 23000,
       "defense": 105,
-      "criticalChancePercent": 41,
+      "criticalChancePercent": 70,
       "criticalDamagePercent": 200
     },
     {
@@ -23,7 +23,7 @@
       "resourceRegenPerSecond": 5000,
       "attackPower": 23000,
       "defense": 95,
-      "criticalChancePercent": 41,
+      "criticalChancePercent": 70,
       "criticalDamagePercent": 200
     },
     {
@@ -33,7 +33,7 @@
       "resourceRegenPerSecond": 5000,
       "attackPower": 23000,
       "defense": 110,
-      "criticalChancePercent": 41,
+      "criticalChancePercent": 70,
       "criticalDamagePercent": 200
     },
     {
@@ -43,7 +43,7 @@
       "resourceRegenPerSecond": 5000,
       "attackPower": 23000,
       "defense": 90,
-      "criticalChancePercent": 41,
+      "criticalChancePercent": 70,
       "criticalDamagePercent": 200
     },
     {
@@ -53,7 +53,7 @@
       "resourceRegenPerSecond": 5000,
       "attackPower": 23000,
       "defense": 100,
-      "criticalChancePercent": 41,
+      "criticalChancePercent": 70,
       "criticalDamagePercent": 200
     },
     {
@@ -63,7 +63,7 @@
       "resourceRegenPerSecond": 5000,
       "attackPower": 23000,
       "defense": 120,
-      "criticalChancePercent": 41,
+      "criticalChancePercent": 70,
       "criticalDamagePercent": 200
     },
     {
@@ -73,7 +73,7 @@
       "resourceRegenPerSecond": 5000,
       "attackPower": 23000,
       "defense": 110,
-      "criticalChancePercent": 41,
+      "criticalChancePercent": 70,
       "criticalDamagePercent": 200
     }
   ],
@@ -514,7 +514,7 @@
     },
     {
       "skillId": 17810,
-      "cooldownMs": 0,
+      "cooldownMs": 3000,
       "resourceCost": 0,
       "staggerDamage": 0,
       "partDamage": 0
@@ -879,314 +879,772 @@
   ],
   "damageProfiles": [
     {
-      "damageProfileId": "damage.player.34040",
-      "attackCoefficientBp": 45630,
-      "damageAddend": 836
-    },
-    {
-      "damageProfileId": "damage.player.34090",
-      "attackCoefficientBp": 63770,
-      "damageAddend": 1166
-    },
-    {
-      "damageProfileId": "damage.player.34100",
-      "attackCoefficientBp": 180180,
-      "damageAddend": 3283
-    },
-    {
-      "damageProfileId": "damage.player.34160",
-      "attackCoefficientBp": 97860,
-      "damageAddend": 1784
-    },
-    {
-      "damageProfileId": "damage.player.34140",
-      "attackCoefficientBp": 177450,
-      "damageAddend": 3248
-    },
-    {
-      "damageProfileId": "damage.player.34120",
-      "attackCoefficientBp": 105540,
-      "damageAddend": 1928
-    },
-    {
-      "damageProfileId": "damage.player.34110",
-      "attackCoefficientBp": 172760,
-      "damageAddend": 3157
-    },
-    {
-      "damageProfileId": "damage.player.34150",
-      "attackCoefficientBp": 233030,
-      "damageAddend": 4265
-    },
-    {
-      "damageProfileId": "damage.player.34650",
-      "attackCoefficientBp": 1093370,
-      "damageAddend": 5045
-    },
-    {
-      "damageProfileId": "damage.player.34610",
-      "attackCoefficientBp": 3203840,
-      "damageAddend": 14784
-    },
-    {
-      "damageProfileId": "damage.player.34630",
-      "attackCoefficientBp": 162866510,
-      "damageAddend": 751695
-    },
-    {
-      "damageProfileId": "damage.player.34540",
-      "attackCoefficientBp": 23790,
-      "damageAddend": 440
-    },
-    {
-      "damageProfileId": "damage.player.34550",
-      "attackCoefficientBp": 31060,
-      "damageAddend": 566
-    },
-    {
-      "damageProfileId": "damage.player.34560",
-      "attackCoefficientBp": 212170,
-      "damageAddend": 3877
-    },
-    {
-      "damageProfileId": "damage.player.34570",
-      "attackCoefficientBp": 208850,
-      "damageAddend": 3823
-    },
-    {
-      "damageProfileId": "damage.player.34580",
-      "attackCoefficientBp": 228540,
-      "damageAddend": 4182
-    },
-    {
-      "damageProfileId": "damage.player.34590",
-      "attackCoefficientBp": 389320,
-      "damageAddend": 7122
-    },
-    {
-      "damageProfileId": "damage.player.17030",
-      "attackCoefficientBp": 52260,
-      "damageAddend": 958
-    },
-    {
-      "damageProfileId": "damage.player.17040",
-      "attackCoefficientBp": 35500,
-      "damageAddend": 652
-    },
-    {
-      "damageProfileId": "damage.player.17060",
-      "attackCoefficientBp": 76230,
-      "damageAddend": 1394
-    },
-    {
-      "damageProfileId": "damage.player.17080",
-      "attackCoefficientBp": 107060,
-      "damageAddend": 1960
-    },
-    {
-      "damageProfileId": "damage.player.17090",
-      "attackCoefficientBp": 51090,
-      "damageAddend": 941
-    },
-    {
-      "damageProfileId": "damage.player.17100",
-      "attackCoefficientBp": 43890,
-      "damageAddend": 805
-    },
-    {
-      "damageProfileId": "damage.player.17110",
-      "attackCoefficientBp": 95750,
-      "damageAddend": 1755
-    },
-    {
-      "damageProfileId": "damage.player.17140",
-      "attackCoefficientBp": 125970,
-      "damageAddend": 2308
-    },
-    {
-      "damageProfileId": "damage.player.17240",
-      "attackCoefficientBp": 145000,
-      "damageAddend": 870
-    },
-    {
       "damageProfileId": "damage.player.31200",
       "attackCoefficientBp": 58490,
-      "damageAddend": 1986
-    },
-    {
-      "damageProfileId": "damage.player.31430",
-      "attackCoefficientBp": 107050,
-      "damageAddend": 3630
-    },
-    {
-      "damageProfileId": "damage.player.31480",
-      "attackCoefficientBp": 228930,
-      "damageAddend": 7756
-    },
-    {
-      "damageProfileId": "damage.player.31210",
-      "attackCoefficientBp": 42700,
-      "damageAddend": 1445
-    },
-    {
-      "damageProfileId": "damage.player.31460",
-      "attackCoefficientBp": 37400,
-      "damageAddend": 1265
+      "damageAddend": 1986,
+      "damageSpreadPercent": 10
     },
     {
       "damageProfileId": "damage.player.31420",
       "attackCoefficientBp": 205600,
-      "damageAddend": 6967
+      "damageAddend": 6967,
+      "damageSpreadPercent": 10
     },
     {
-      "damageProfileId": "damage.player.31490",
-      "attackCoefficientBp": 197750,
-      "damageAddend": 6699
+      "damageProfileId": "damage.player.31430",
+      "attackCoefficientBp": 107050,
+      "damageAddend": 3630,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.31460",
+      "attackCoefficientBp": 37400,
+      "damageAddend": 1265,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.31480",
+      "attackCoefficientBp": 228930,
+      "damageAddend": 7756,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.31910",
+      "attackCoefficientBp": 2943289,
+      "damageAddend": 25161,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.31930",
+      "attackCoefficientBp": 14962143,
+      "damageAddend": 127933,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.31950",
+      "attackCoefficientBp": 1004452,
+      "damageAddend": 8586,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.31210",
+      "attackCoefficientBp": 42700,
+      "damageAddend": 1445,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.17000",
+      "attackCoefficientBp": 0,
+      "damageAddend": 0,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.17030",
+      "attackCoefficientBp": 52260,
+      "damageAddend": 958,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.17040",
+      "attackCoefficientBp": 35500,
+      "damageAddend": 652,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.17060",
+      "attackCoefficientBp": 76230,
+      "damageAddend": 1394,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.17080",
+      "attackCoefficientBp": 107060,
+      "damageAddend": 1960,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.17090",
+      "attackCoefficientBp": 51090,
+      "damageAddend": 941,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.17100",
+      "attackCoefficientBp": 43890,
+      "damageAddend": 805,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.17110",
+      "attackCoefficientBp": 95750,
+      "damageAddend": 1755,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.17140",
+      "attackCoefficientBp": 125970,
+      "damageAddend": 2308,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.17240",
+      "attackCoefficientBp": 145000,
+      "damageAddend": 870,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.17170",
+      "attackCoefficientBp": 2230509,
+      "damageAddend": 10303,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.17250",
+      "attackCoefficientBp": 11338743,
+      "damageAddend": 52384,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.17820",
+      "attackCoefficientBp": 761203,
+      "damageAddend": 3516,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.34010",
+      "attackCoefficientBp": 0,
+      "damageAddend": 0,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.34040",
+      "attackCoefficientBp": 45630,
+      "damageAddend": 836,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.34090",
+      "attackCoefficientBp": 63770,
+      "damageAddend": 1166,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.34100",
+      "attackCoefficientBp": 180180,
+      "damageAddend": 3283,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.34110",
+      "attackCoefficientBp": 172760,
+      "damageAddend": 3157,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.34120",
+      "attackCoefficientBp": 105540,
+      "damageAddend": 1928,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.34140",
+      "attackCoefficientBp": 177450,
+      "damageAddend": 3248,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.34150",
+      "attackCoefficientBp": 233030,
+      "damageAddend": 4265,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.34160",
+      "attackCoefficientBp": 97860,
+      "damageAddend": 1784,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.34610",
+      "attackCoefficientBp": 3203840,
+      "damageAddend": 14784,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.34630",
+      "attackCoefficientBp": 16286651,
+      "damageAddend": 75170,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.34650",
+      "attackCoefficientBp": 1093370,
+      "damageAddend": 5045,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.38020",
+      "attackCoefficientBp": 0,
+      "damageAddend": 0,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.38050",
+      "attackCoefficientBp": 0,
+      "damageAddend": 0,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.45050",
+      "attackCoefficientBp": 0,
+      "damageAddend": 0,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.45060",
+      "attackCoefficientBp": 0,
+      "damageAddend": 0,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.valtan.dash-charge",
+      "attackCoefficientBp": 0,
+      "damageAddend": 0,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.valtan.four-direction-walls",
+      "attackCoefficientBp": 0,
+      "damageAddend": 0,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.valtan.jump-axe-throw",
+      "attackCoefficientBp": 0,
+      "damageAddend": 0,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.valtan.circular-spin",
+      "attackCoefficientBp": 0,
+      "damageAddend": 0,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.valtan.triple-attack",
+      "attackCoefficientBp": 0,
+      "damageAddend": 0,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.valtan.six-direction-130",
+      "attackCoefficientBp": 0,
+      "damageAddend": 0,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.valtan.omnidirectional-wipe-130",
+      "attackCoefficientBp": 0,
+      "damageAddend": 0,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.valtan.arena-destroy-109",
+      "attackCoefficientBp": 0,
+      "damageAddend": 0,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.valtan.arena-destroy-33",
+      "attackCoefficientBp": 0,
+      "damageAddend": 0,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.valtan.swing",
+      "attackCoefficientBp": 0,
+      "damageAddend": 0,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.valtan.down-smash",
+      "attackCoefficientBp": 0,
+      "damageAddend": 0,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.valtan.imprison-roar",
+      "attackCoefficientBp": 0,
+      "damageAddend": 0,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.valtan.earthquake-smash",
+      "attackCoefficientBp": 0,
+      "damageAddend": 0,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.valtan.parry",
+      "attackCoefficientBp": 0,
+      "damageAddend": 0,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.valtan.magic-choice",
+      "attackCoefficientBp": 0,
+      "damageAddend": 0,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.valtan.four-slash",
+      "attackCoefficientBp": 0,
+      "damageAddend": 0,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.valtan.high-jump",
+      "attackCoefficientBp": 0,
+      "damageAddend": 0,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.valtan.stomp",
+      "attackCoefficientBp": 0,
+      "damageAddend": 0,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.valtan.bind-charge-smash",
+      "attackCoefficientBp": 0,
+      "damageAddend": 0,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.valtan.ground-wave-smash",
+      "attackCoefficientBp": 0,
+      "damageAddend": 0,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.valtan.super-smash",
+      "attackCoefficientBp": 0,
+      "damageAddend": 0,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.valtan.jump-spin",
+      "attackCoefficientBp": 0,
+      "damageAddend": 0,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.valtan.portal-rush",
+      "attackCoefficientBp": 0,
+      "damageAddend": 0,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.valtan.charge-grab-roar",
+      "attackCoefficientBp": 0,
+      "damageAddend": 0,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.valtan.backstep",
+      "attackCoefficientBp": 0,
+      "damageAddend": 0,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.valtan.red-blade-wave",
+      "attackCoefficientBp": 0,
+      "damageAddend": 0,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.valtan.fist-in-out",
+      "attackCoefficientBp": 0,
+      "damageAddend": 0,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.valtan.ledge-roar",
+      "attackCoefficientBp": 0,
+      "damageAddend": 0,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.valtan.triple-counter",
+      "attackCoefficientBp": 0,
+      "damageAddend": 0,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.valtan.four-pillars-105",
+      "attackCoefficientBp": 0,
+      "damageAddend": 0,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.valtan.four-pillars-105-pierce",
+      "attackCoefficientBp": 0,
+      "damageAddend": 0,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.valtan.center-grab-64",
+      "attackCoefficientBp": 0,
+      "damageAddend": 0,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.valtan.ghost-transition-15",
+      "attackCoefficientBp": 0,
+      "damageAddend": 0,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.38120",
+      "attackCoefficientBp": 0,
+      "damageAddend": 0,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.38200",
+      "attackCoefficientBp": 0,
+      "damageAddend": 0,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.38140",
+      "attackCoefficientBp": 0,
+      "damageAddend": 0,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.38180",
+      "attackCoefficientBp": 0,
+      "damageAddend": 0,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.38210",
+      "attackCoefficientBp": 0,
+      "damageAddend": 0,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.38260",
+      "attackCoefficientBp": 0,
+      "damageAddend": 0,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.38290",
+      "attackCoefficientBp": 0,
+      "damageAddend": 0,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.38250",
+      "attackCoefficientBp": 0,
+      "damageAddend": 0,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.38320",
+      "attackCoefficientBp": 0,
+      "damageAddend": 0,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.38000",
+      "attackCoefficientBp": 0,
+      "damageAddend": 0,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.45620",
+      "attackCoefficientBp": 0,
+      "damageAddend": 0,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.45210",
+      "attackCoefficientBp": 0,
+      "damageAddend": 0,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.45300",
+      "attackCoefficientBp": 0,
+      "damageAddend": 0,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.45070",
+      "attackCoefficientBp": 0,
+      "damageAddend": 0,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.45190",
+      "attackCoefficientBp": 0,
+      "damageAddend": 0,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.45600",
+      "attackCoefficientBp": 0,
+      "damageAddend": 0,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.45810",
+      "attackCoefficientBp": 0,
+      "damageAddend": 0,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.45820",
+      "attackCoefficientBp": 0,
+      "damageAddend": 0,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.45000",
+      "attackCoefficientBp": 0,
+      "damageAddend": 0,
+      "damageSpreadPercent": 10
     },
     {
       "damageProfileId": "damage.player.31470",
       "attackCoefficientBp": 228730,
-      "damageAddend": 7750
+      "damageAddend": 7750,
+      "damageSpreadPercent": 10
     },
     {
-      "damageProfileId": "damage.player.31950",
-      "attackCoefficientBp": 100,
-      "damageAddend": 111
+      "damageProfileId": "damage.player.31490",
+      "attackCoefficientBp": 197750,
+      "damageAddend": 6699,
+      "damageSpreadPercent": 10
     },
     {
-      "damageProfileId": "damage.player.31910",
-      "attackCoefficientBp": 100,
-      "damageAddend": 111
-    },
-    {
-      "damageProfileId": "damage.player.31930",
-      "attackCoefficientBp": 100,
-      "damageAddend": 111
-    },
-    {
-      "damageProfileId": "damage.player.2050100",
-      "attackCoefficientBp": 45050,
-      "damageAddend": 822
-    },
-    {
-      "damageProfileId": "damage.player.2050120",
-      "attackCoefficientBp": 18190,
-      "damageAddend": 333
-    },
-    {
-      "damageProfileId": "damage.player.2050160",
-      "attackCoefficientBp": 86310,
-      "damageAddend": 1575
-    },
-    {
-      "damageProfileId": "damage.player.2050180",
-      "attackCoefficientBp": 277140,
-      "damageAddend": 5068
-    },
-    {
-      "damageProfileId": "damage.player.2050210",
-      "attackCoefficientBp": 433280,
-      "damageAddend": 7944
+      "damageProfileId": "damage.player.31000",
+      "attackCoefficientBp": 0,
+      "damageAddend": 0,
+      "damageSpreadPercent": 10
     },
     {
       "damageProfileId": "damage.player.2050220",
       "attackCoefficientBp": 185450,
-      "damageAddend": 3395
-    },
-    {
-      "damageProfileId": "damage.player.2050230",
-      "attackCoefficientBp": 298360,
-      "damageAddend": 5464
+      "damageAddend": 3395,
+      "damageSpreadPercent": 10
     },
     {
       "damageProfileId": "damage.player.2050240",
       "attackCoefficientBp": 286450,
-      "damageAddend": 5246
+      "damageAddend": 5246,
+      "damageSpreadPercent": 10
     },
     {
-      "damageProfileId": "damage.player.2050500",
-      "attackCoefficientBp": 100,
-      "damageAddend": 111
+      "damageProfileId": "damage.player.2050100",
+      "attackCoefficientBp": 45050,
+      "damageAddend": 822,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.2050120",
+      "attackCoefficientBp": 18190,
+      "damageAddend": 333,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.2050160",
+      "attackCoefficientBp": 86310,
+      "damageAddend": 1575,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.2050180",
+      "attackCoefficientBp": 277140,
+      "damageAddend": 5068,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.2050230",
+      "attackCoefficientBp": 298360,
+      "damageAddend": 5464,
+      "damageSpreadPercent": 10
     },
     {
       "damageProfileId": "damage.player.2050520",
-      "attackCoefficientBp": 200,
-      "damageAddend": 222
+      "attackCoefficientBp": 2872731,
+      "damageAddend": 13242,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.2050210",
+      "attackCoefficientBp": 433280,
+      "damageAddend": 7944,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.2050500",
+      "attackCoefficientBp": 980373,
+      "damageAddend": 4519,
+      "damageSpreadPercent": 10
     },
     {
       "damageProfileId": "damage.player.2050540",
-      "attackCoefficientBp": 100,
-      "damageAddend": 111
+      "attackCoefficientBp": 14603465,
+      "damageAddend": 67330,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.2050010",
+      "attackCoefficientBp": 0,
+      "damageAddend": 0,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.34510",
+      "attackCoefficientBp": 0,
+      "damageAddend": 0,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.34540",
+      "attackCoefficientBp": 23790,
+      "damageAddend": 440,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.34550",
+      "attackCoefficientBp": 31060,
+      "damageAddend": 566,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.34560",
+      "attackCoefficientBp": 212170,
+      "damageAddend": 3877,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.34570",
+      "attackCoefficientBp": 208850,
+      "damageAddend": 3823,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.34580",
+      "attackCoefficientBp": 228540,
+      "damageAddend": 4182,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.34590",
+      "attackCoefficientBp": 389320,
+      "damageAddend": 7122,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.49000",
+      "attackCoefficientBp": 0,
+      "damageAddend": 0,
+      "damageSpreadPercent": 10
+    },
+    {
+      "damageProfileId": "damage.player.49001",
+      "attackCoefficientBp": 0,
+      "damageAddend": 0,
+      "damageSpreadPercent": 10
     },
     {
       "damageProfileId": "damage.player.49100",
       "attackCoefficientBp": 63560,
-      "damageAddend": 1165
+      "damageAddend": 1165,
+      "damageSpreadPercent": 10
     },
     {
       "damageProfileId": "damage.player.49110",
       "attackCoefficientBp": 76440,
-      "damageAddend": 1396
+      "damageAddend": 1396,
+      "damageSpreadPercent": 10
     },
     {
       "damageProfileId": "damage.player.49120",
       "attackCoefficientBp": 80520,
-      "damageAddend": 1475
+      "damageAddend": 1475,
+      "damageSpreadPercent": 10
     },
     {
       "damageProfileId": "damage.player.49130",
       "attackCoefficientBp": 131200,
-      "damageAddend": 2399
+      "damageAddend": 2399,
+      "damageSpreadPercent": 10
     },
     {
       "damageProfileId": "damage.player.49200",
       "attackCoefficientBp": 187990,
-      "damageAddend": 3442
+      "damageAddend": 3442,
+      "damageSpreadPercent": 10
     },
     {
       "damageProfileId": "damage.player.49210",
       "attackCoefficientBp": 46910,
-      "damageAddend": 854
+      "damageAddend": 854,
+      "damageSpreadPercent": 10
     },
     {
       "damageProfileId": "damage.player.49220",
       "attackCoefficientBp": 39310,
-      "damageAddend": 716
+      "damageAddend": 716,
+      "damageSpreadPercent": 10
     },
     {
       "damageProfileId": "damage.player.49230",
       "attackCoefficientBp": 20830,
-      "damageAddend": 382
+      "damageAddend": 382,
+      "damageSpreadPercent": 10
     },
     {
       "damageProfileId": "damage.player.49150",
       "attackCoefficientBp": 375960,
-      "damageAddend": 6886
+      "damageAddend": 6886,
+      "damageSpreadPercent": 10
     },
     {
       "damageProfileId": "damage.player.49260",
       "attackCoefficientBp": 136670,
-      "damageAddend": 2505
+      "damageAddend": 2505,
+      "damageSpreadPercent": 10
     },
     {
       "damageProfileId": "damage.player.49270",
       "attackCoefficientBp": 164020,
-      "damageAddend": 3003
+      "damageAddend": 3003,
+      "damageSpreadPercent": 10
     },
     {
       "damageProfileId": "damage.player.49330",
-      "attackCoefficientBp": 200,
-      "damageAddend": 222
+      "attackCoefficientBp": 808120,
+      "damageAddend": 3729,
+      "damageSpreadPercent": 10
     },
     {
       "damageProfileId": "damage.player.49400",
-      "attackCoefficientBp": 200,
-      "damageAddend": 222
+      "attackCoefficientBp": 2367988,
+      "damageAddend": 10928,
+      "damageSpreadPercent": 10
     },
     {
       "damageProfileId": "damage.player.49420",
-      "attackCoefficientBp": 100,
-      "damageAddend": 111
+      "attackCoefficientBp": 12037617,
+      "damageAddend": 55561,
+      "damageSpreadPercent": 10
     }
   ],
   "skillBuffs": [
@@ -1307,7 +1765,7 @@
       "archetypeId": "BOSS_VALTAN",
       "sourceNpcId": 480007,
       "maximumHp": 741285439,
-      "attackPower": 22851,
+      "attackPower": 2285,
       "maximumHealthBars": 160,
       "staggerGaugeMaximum": 40000
     },
@@ -1315,7 +1773,7 @@
       "archetypeId": "BOSS_VALTAN_GHOST",
       "sourceNpcId": 480008,
       "maximumHp": 197222731,
-      "attackPower": 22851,
+      "attackPower": 2285,
       "maximumHealthBars": 40,
       "staggerGaugeMaximum": 40000
     },
@@ -1323,7 +1781,7 @@
       "archetypeId": "BOSS_KAKULSAYDON_G1_SAYDON",
       "sourceNpcId": 480601,
       "maximumHp": 1699175467,
-      "attackPower": 60672,
+      "attackPower": 6067,
       "maximumHealthBars": 160,
       "staggerGaugeMaximum": 30000
     },
@@ -1331,7 +1789,7 @@
       "archetypeId": "BOSS_KAKULSAYDON_G2_BIG_SAYDON",
       "sourceNpcId": 480621,
       "maximumHp": 191997228,
-      "attackPower": 62592,
+      "attackPower": 6259,
       "maximumHealthBars": 140,
       "staggerGaugeMaximum": 10000
     },
@@ -1339,7 +1797,7 @@
       "archetypeId": "BOSS_KAKULSAYDON_G2_KOUKU",
       "sourceNpcId": 480611,
       "maximumHp": 1393899875,
-      "attackPower": 62592,
+      "attackPower": 6259,
       "maximumHealthBars": 140,
       "staggerGaugeMaximum": 25000
     },
@@ -1347,7 +1805,7 @@
       "archetypeId": "BOSS_KAKULSAYDON_G3_SAYDON",
       "sourceNpcId": 480631,
       "maximumHp": 1280621510,
-      "attackPower": 51456,
+      "attackPower": 5145,
       "maximumHealthBars": 180,
       "staggerGaugeMaximum": 25000
     },
@@ -1355,7 +1813,7 @@
       "archetypeId": "BOSS_KAKULSAYDON_BINGO_SAYDON",
       "sourceNpcId": 480635,
       "maximumHp": 1868133028,
-      "attackPower": 60672,
+      "attackPower": 6067,
       "maximumHealthBars": 77,
       "staggerGaugeMaximum": 25000
     }
@@ -1365,61 +1823,61 @@
       "archetypeId": "MONSTER_VALTAN_PADD_01",
       "sourceNpcId": 480001,
       "maxHp": 428450,
-      "attackPower": 9140
+      "attackPower": 914
     },
     {
       "archetypeId": "MONSTER_VALTAN_SJFC_00_4",
       "sourceNpcId": 480002,
       "maxHp": 476056,
-      "attackPower": 10446
+      "attackPower": 1044
     },
     {
       "archetypeId": "MONSTER_VALTAN_0019_05",
       "sourceNpcId": 480003,
       "maxHp": 476056,
-      "attackPower": 13058
+      "attackPower": 1305
     },
     {
       "archetypeId": "MINIBOSS_LUGARU",
       "sourceNpcId": 480005,
       "maxHp": 703201050,
-      "attackPower": 19586
+      "attackPower": 1958
     },
     {
       "archetypeId": "MONSTER_VALTAN_SJFC_ELITE",
       "sourceNpcId": 480002,
       "maxHp": 476056,
-      "attackPower": 10446
+      "attackPower": 1044
     },
     {
       "archetypeId": "MONSTER_KOUKU_CLOWN_BOX",
       "sourceNpcId": 480720,
       "maxHp": 587993,
-      "attackPower": 18432
+      "attackPower": 1843
     },
     {
       "archetypeId": "MONSTER_KOUKU_CMDUP_02",
       "sourceNpcId": 480702,
       "maxHp": 2906365,
-      "attackPower": 11059
+      "attackPower": 1105
     },
     {
       "archetypeId": "MONSTER_KOUKU_REUP_04",
       "sourceNpcId": 480701,
       "maxHp": 2906365,
-      "attackPower": 4608
+      "attackPower": 460
     },
     {
       "archetypeId": "MONSTER_KOUKU_RHKP_06",
       "sourceNpcId": 480703,
       "maxHp": 2906365,
-      "attackPower": 11059
+      "attackPower": 1105
     },
     {
       "archetypeId": "MONSTER_KOUKU_CMDGR_03",
       "sourceNpcId": 480704,
       "maxHp": 46439333,
-      "attackPower": 11520
+      "attackPower": 1152
     }
   ]
 }
