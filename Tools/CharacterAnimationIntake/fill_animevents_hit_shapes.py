@@ -32,7 +32,7 @@ def parse_pairs(text):
     return out
 
 
-def load_notify(asset):
+def load_notify(asset, clipmap):
     clips = {}
     order = []
     cur = None
@@ -48,7 +48,24 @@ def load_notify(asset):
         p = parse_pairs(line[4:])
         if p.get('kind') != 'HIT':
             continue
-        clips[cur].append((float(p['t']), float(p['d']), p.get('label', '')))
+        clips[cur].append((float(p['t']), float(p['d']), p.get('label', ''),
+                           p.get('src', ''), p.get('asset', ''),
+                           {k: int(p[k]) for k in SHAPE_KEYS if k in p}))
+    # A CEFActionNotify_Effect row carries the SkillEffect PK the clip applies:
+    # that is the judgement. ParticleHit marks the visual impact and runs a few
+    # tens of ms earlier, so keeping both would stamp every hit twice and split
+    # the skill's damage rate across the doubled sub-hits.
+    for clip, rows in clips.items():
+        effect = [r for r in rows if r[3] == 'Effect']
+        if not effect:
+            continue
+        # A clip carries a judgement for the base skill and one for every
+        # tripod that reuses it; only the base variant is the product hit.
+        owner = clipmap.get(clip, 0)
+        base = [r for r in effect
+                if r[4].isdigit() and int(r[4]) // 10 == owner]
+        clips[clip] = base or effect
+    clips = {k: [r[:3] + (r[5],) for r in v] for k, v in clips.items()}
     return clips, order
 
 
@@ -284,8 +301,8 @@ def synthesize_timed_rows(asset, notify, timing):
 
 
 def build_rows(asset):
-    notify, order = load_notify(asset)
     clipmap = load_clipmap(asset)
+    notify, order = load_notify(asset, clipmap)
     chains = load_clipseq(asset)
     timing = load_skilltiming(asset)
     generated = {}
@@ -298,7 +315,7 @@ def build_rows(asset):
         ordinal = preceding_chain_hits(chains, notify, clip) if ref else 0
         added = []
         out = []
-        for t, d, label in rows:
+        for t, d, label, own in rows:
             start = to_ms(t)
             end = start + to_ms(d)
             key = (start, end, label)
@@ -306,7 +323,15 @@ def build_rows(asset):
                 continue
             added.append(key)
             s = zero_shape()
-            if ref:
+            if own.get('area', 0) > 0:
+                # The notify names its own effect row, so no positional guess.
+                s = zero_shape()
+                s.update({k: v for k, v in own.items() if k in s})
+                # MultiHitCount 0 means the hit fires once, not never; the
+                # Client wire and the Server schedule both count ticks.
+                s['rep'] = max(1, s['rep'])
+                shaped += 1
+            elif ref:
                 src = ref['hits'][min(ordinal, len(ref['hits']) - 1)]
                 ordinal += 1
                 if src['area'] > 0:
