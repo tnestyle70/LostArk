@@ -242,6 +242,40 @@ int LostArk::Server::CServerGameplayContractRunner::Run_KoukuDraft()
 void LostArk::Server::CServerGameplayContractRunner::Run_KoukuDraftContracts(TESTS& tests, CGameplayCatalog& catalog)
 {
     {
+        KOUKU_RAID_GATE_DEFINITION flow;
+        flow.Entries.resize(6u);
+        flow.EntryGroups.push_back({"normal", 0u, 2u, 130u, false});
+        flow.EntryGroups.push_back({"mechanic", 3u, 3u, std::nullopt, false});
+        flow.EntryGroups.push_back({"final", 4u, 5u, 0u, false});
+        tests.Require(flow.Resolve_NextCompletedEntry(0u, 600000u, 600000u, 160u) == 1u &&
+            flow.Resolve_NextCompletedEntry(2u, 487501u, 600000u, 160u) == 0u,
+            "HP normal group advances and repeats above its exact threshold");
+        tests.Require(flow.Resolve_NextCompletedEntry(0u, 487500u, 600000u, 160u) == 3u &&
+            flow.Resolve_NextCompletedEntry(3u, 100000u, 600000u, 160u) == 4u,
+            "HP threshold enters its mechanic once after a completed pattern");
+        flow.EntryGroups[0].bTransitionAtGroupEnd = true;
+        tests.Require(flow.Resolve_NextCompletedEntry(0u, 1u, 600000u, 160u) == 1u &&
+            flow.Resolve_NextCompletedEntry(2u, 1u, 600000u, 160u) == 3u,
+            "Authored group-end boundary finishes the remaining normal patterns");
+        tests.Require(flow.Resolve_NextCompletedEntry(5u, 1u, 600000u, 160u) == 4u &&
+            flow.Resolve_NextCompletedEntry(5u, 0u, 600000u, 160u) == 6u &&
+            flow.Resolve_NextCompletedEntry(9u, 0u, 0u, 0u) == 6u,
+            "Final HP group repeats until death and bounds invalid cursors");
+        flow.Entries.resize(10u);
+        flow.EntryGroups = {{"normal130", 0u, 1u, 130u, false}, {"mechanic130", 2u, 2u, std::nullopt, false},
+            {"normal110", 3u, 4u, 110u, true}, {"mechanic110", 5u, 5u, std::nullopt, false},
+            {"normal85", 6u, 7u, 85u, false}, {"mechanic85", 8u, 8u, std::nullopt, false}, {"final", 9u, 9u, 0u, false}};
+        tests.Require(flow.Resolve_ReadyEntry(0u, 375000u, 600000u, 160u) == 2u &&
+            flow.Resolve_NextCompletedEntry(2u, 375000u, 600000u, 160u) == 5u &&
+            flow.Resolve_NextCompletedEntry(2u, 262500u, 600000u, 160u) == 5u &&
+            flow.Resolve_NextCompletedEntry(5u, 262500u, 600000u, 160u) == 8u &&
+            flow.Resolve_NextCompletedEntry(8u, 262500u, 600000u, 160u) == 9u,
+            "Crossing multiple HP thresholds skips unstarted normal groups and preserves each mechanic in order");
+        tests.Require(flow.Resolve_NextCompletedEntry(3u, 262500u, 600000u, 160u) == 4u &&
+            flow.Resolve_NextCompletedEntry(4u, 262500u, 600000u, 160u) == 5u,
+            "Already running group-end repeats finish their remaining patterns before the mechanic");
+    }
+    {
         namespace fs = std::filesystem;
         std::vector<wchar_t> buffer(32768u); fs::path dataRoot;
         const DWORD configured = GetEnvironmentVariableW(L"LOSTARK_SERVER_DATA_ROOT", buffer.data(), static_cast<DWORD>(buffer.size()));
@@ -257,7 +291,7 @@ void LostArk::Server::CServerGameplayContractRunner::Run_KoukuDraftContracts(TES
             const auto kind = line.substr(0u, tab), owner = line.substr(tab + 1u, next - tab - 1u);
             bool keep = owner == "ENCOUNTER_KAKULSAYDON_G1" &&
                 (kind.starts_with("PATTERN") || kind == "KOUKUMADNESS" || kind == "KOUKUSAYDONPRODUCTREVISION" || kind == "ENCOUNTERINTRO");
-            if (kind == "RAIDGATE" || kind == "RAIDFLOWSTEP" || kind == "RAIDARRIVAL") keep = true;
+            if (kind == "RAIDGATE" || kind == "RAIDFLOWSTEP" || kind == "RAIDFLOWGROUP" || kind == "RAIDARRIVAL") keep = true;
             if (kind == "PATTERNTARGET" && patterns) keep = std::any_of(patterns->begin(), patterns->end(), [&](const auto& p) { return p.strPatternId == owner; });
             if (kind == "PATTERNBUNDLE" || kind == "PATTERNBUNDLEMEMBER") {
                 const auto* bundle = catalog.Find_BossPatternBundle(owner);
@@ -292,6 +326,25 @@ void LostArk::Server::CServerGameplayContractRunner::Run_KoukuDraftContracts(TES
             const bool rejectedDomain = hashRows(wrongDomain, wrongDomainHash) && !draft.Load_DraftKoukuProduct(catalog, wrongDomain, wrongDomainHash);
             tests.Require(rejectedChecksum && rejectedDomain && CKoukuSaydonBrain::Resolve_ProductSourceRevision(draft) == originalSource && draft.Has_SameNonKoukuGameplay(catalog),
                 "Incorrect checksum and out-of-domain rows reject transactionally and preserve the previous draft generation");
+            if (const auto* gate = draft.Find_KoukuRaidGate("GATE1"); gate && !gate->Entries.empty() && gate->strLoopStartEntryId.empty())
+            {
+                std::istringstream inputGroups(rows); std::string baseRows, row;
+                while (std::getline(inputGroups, row))
+                    if (!row.starts_with("RAIDFLOWGROUP\tGATE1\t")) baseRows += row + "\n";
+                const std::string prefix = "RAIDFLOWGROUP\tGATE1\t0\tcontract.hp.group\t" + gate->Entries.front().strEntryId + "\t";
+                const std::string validRows = baseRows + prefix + gate->Entries.back().strEntryId + "\t130\tPATTERN_END\n";
+                GameplayDataRevision groupHash; CGameplayCatalog grouped;
+                const bool groupsAdmitted = hashRows(validRows, groupHash) && grouped.Load_DraftKoukuProduct(catalog, validRows, groupHash);
+                const auto* loaded = groupsAdmitted ? grouped.Find_KoukuRaidGate("GATE1") : nullptr;
+                tests.Require(loaded && loaded->EntryGroups.size() == 1u && loaded->EntryGroups.front().iFirstEntry == 0u &&
+                    loaded->EntryGroups.front().iLastEntry + 1u == loaded->Entries.size() && loaded->EntryGroups.front().RepeatUntilHealthBars == 130u,
+                    "Native catalog resolves HP group stable endpoints against saved flow rows");
+                const std::string invalidRows = baseRows + prefix + "missing.entry\t130\tPATTERN_END\n";
+                const bool groupsRejected = hashRows(invalidRows, groupHash) && !grouped.Load_DraftKoukuProduct(catalog, invalidRows, groupHash);
+                loaded = grouped.Find_KoukuRaidGate("GATE1");
+                tests.Require(groupsAdmitted && groupsRejected && loaded && loaded->EntryGroups.size() == 1u &&
+                    grouped.Has_SameNonKoukuGameplay(catalog), "Invalid HP group reference preserves the last admitted catalog");
+            }
             C2S_DEBUG_KOUKUSAYDON_DRAFT_CHUNK chunk;
             chunk.iRequestSequence = 1u; chunk.iTotalBytes = static_cast<std::uint32_t>(rows.size()); chunk.RowsRevision = rowsHash;
             chunk.strBytes = rows.substr(0u, (std::min)(MAX_KOUKUSAYDON_DRAFT_CHUNK_BYTES, (std::max)(std::size_t{1u}, rows.size() / 2u)));

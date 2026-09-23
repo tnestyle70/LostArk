@@ -3,6 +3,8 @@ param(
     [ValidateSet('Validate', 'Publish')]
     [string]$Mode = 'Validate',
     [string]$OutputRoot = 'Server/Bin/DataFiles',
+    [ValidateSet('Retail')]
+    [string]$BalanceProfile = 'Retail',
     [ValidateRange(0, 7)]
     [int]$FailureAfterPromote = 0,
     [ValidatePattern('^(?:[0-9a-f]{64})?$')]
@@ -47,8 +49,8 @@ function Assert-ValtanSourceRevision(
     }
 }
 
-& $gameplayPublisher -Mode Validate
-& $worldPublisher -Mode Validate
+& $gameplayPublisher -Mode Validate -BalanceProfile $BalanceProfile
+& $worldPublisher -Mode Validate -BalanceProfile $BalanceProfile
 & $itemPublisher -Mode Validate
 if ($Mode -eq 'Validate') {
     Write-Output 'Balance runtime set Validate succeeded.'
@@ -84,11 +86,11 @@ try {
     [IO.Directory]::CreateDirectory($stagedGameplayRoot) | Out-Null
     [IO.Directory]::CreateDirectory($stagedWorldRoot) | Out-Null
     [IO.Directory]::CreateDirectory($stagedItemsRoot) | Out-Null
-    & $gameplayPublisher -Mode Publish `
+    & $gameplayPublisher -Mode Publish -BalanceProfile $BalanceProfile `
         -OutputRoot (Join-Path $stagingRelative 'Gameplay') `
         -ExternalCanonicalWriterPid ([int]$canonicalWriterAdmission.OwnerPid) `
         -ExternalCanonicalWriterNonce ([string]$canonicalWriterAdmission.OwnerNonce)
-    & $worldPublisher -Mode Publish -OutputRoot (Join-Path $stagingRelative 'World')
+    & $worldPublisher -Mode Publish -BalanceProfile $BalanceProfile -OutputRoot (Join-Path $stagingRelative 'World')
     & $itemPublisher -Mode Publish -OutputRoot (Join-Path $stagingRelative 'Items')
 
     $generationRoot = Join-Path $stagedGameplayRoot `

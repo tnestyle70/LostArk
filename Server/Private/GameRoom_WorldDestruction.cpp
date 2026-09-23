@@ -62,7 +62,6 @@ void LostArk::Server::CGameRoom::Resolve_NavigableStep(
 	outZ = reachedZ;
 }
 
-#ifdef _DEBUG
 bool LostArk::Server::CGameRoom::Break_EveryWallForAudition(
 	const SERVER_WORLD_ENTITY& boss,
 	const std::uint32_t resetTick,
@@ -143,7 +142,6 @@ bool LostArk::Server::CGameRoom::Break_EveryWallForAudition(
 	return Commit_WorldDestructionTransaction(
 		wallTransaction, {}, resetTick, status);
 }
-#endif
 
 bool LostArk::Server::CGameRoom::Apply_WorldDestructionStageEntry(
 	const SERVER_WORLD_ENTITY& boss,

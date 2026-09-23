@@ -1234,12 +1234,8 @@ void LostArk::Server::CGameRoom::Handle_SpawnWorldEntity(
 {
 	using namespace LostArk::Shared;
 	const std::shared_ptr<CClientSession> session = Find_Session(sessionId);
-	/* Character Select owns the monster/mini-boss/Valtan audition buttons; the
-	KoukuSaydon arena owns the Debug gate buttons that raise its disabled gate
-	bosses. The gate buttons share the Debug-only boundary of the Debug
-	teleport they pair with, so a Release Server refuses them the same way.
-	Product worlds never accept a client-chosen spawn. */
-#ifdef _DEBUG
+	/* Arena F1 controls share the same disabled boss placement allowlist in
+	Debug and Release. Character Select keeps its private-room admission. */
 	if (Is_KoukuRaidRunning())
 	{
 		Send_WorldEntitySpawnResult(session, request.strPlacementId, WORLD_ENTITY_SPAWN_RESULT::REJECTED, INVALID_NET_ENTITY_ID);
@@ -1247,10 +1243,6 @@ void LostArk::Server::CGameRoom::Handle_SpawnWorldEntity(
 	}
 	const bool koukuGateWorld = WORLD_ID::KAKULSAYDON_ARENA == m_eWorldId;
     const bool valtanWorld = WORLD_ID::VALTAN_ARENA == m_eWorldId;
-#else
-	const bool koukuGateWorld = false;
-    const bool valtanWorld = false;
-#endif
 	const bool debugSpawnWorld =
 		WORLD_ID::CHARACTER_SELECT_ARENA == m_eWorldId || koukuGateWorld || valtanWorld;
 	if (!debugSpawnWorld ||

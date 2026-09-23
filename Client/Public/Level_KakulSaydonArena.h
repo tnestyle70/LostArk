@@ -260,6 +260,7 @@ public:
 	// Applies immediately and remembers this arena's value until process exit.
 	bool_t Set_DebugCameraSpeed(f32_t metersPerSecond);
 
+#endif
 	/* Despawns the previous gate bosses, requests this gate's placements,
 	   submits the player teleport, points the HUD and the pattern audition at
 	   the gate boss. Every step is a typed Server command; nothing local is
@@ -282,12 +283,11 @@ public:
 
 	bool_t Is_DebugGatePending() const { return m_bDebugStartPending || NO_ACTIVE_DEBUG_GATE != m_iPendingDebugGate; }
 	const std::string& Get_DebugGateStatus() const { return m_strDebugGateStatus; }
-	/* Debug tuning only: the live body of one arena boss archetype. */
+	/* Read-only replicated boss presence used by F1 play preparation. */
 	std::shared_ptr<CNpc> Debug_FindArenaBossNpc(std::string_view archetypeId) const
 	{
 		return m_Replication.Find_ArenaBossNpc(archetypeId);
 	}
-#endif
 
 	// The level owns the replicated player anchor used by local authoring previews.
 	bool_t Try_Get_AuthoringPreviewPlacement(
@@ -517,7 +517,6 @@ private:
 	void Debug_InvalidateCompositionMapLights();
 #endif
 	CWorldSequencePlayer m_SequencePlayer;
-#ifdef _DEBUG
     struct COMPLETE_PLAY_PREPARATION final
     {
         std::vector<std::string> selectedPatterns, selectedBundles;
@@ -529,7 +528,6 @@ private:
         size_t actorIndex = 0u, v2Index = 0u, worldIndex = 0u;
     };
     std::optional<COMPLETE_PLAY_PREPARATION> m_CompletePlayPreparation;
-#endif
 
 	bool_t m_bWorldObjectReloadPending = false;
 	struct OWNED_WORLD_CUE final
@@ -703,7 +701,6 @@ private:
 	bool_t m_bSequenceCombatFadeHeld = false;
 	std::string m_strDebugGateStatus =
 		"Choose a gate. The Server raises its bosses and moves only your player.";
-#ifdef _DEBUG
 	/* Debug gate command sequence and the accumulated Server replies shown in
 	   the F1 arena panel. Session state only; never persisted. */
 	bool m_bDebugGazeView = false;
@@ -725,7 +722,6 @@ private:
 	f32_t m_fDebugGatePendingSeconds = 0.f;
 	/* Last F1 status-word preview serial already turned into a word. */
 	std::uint32_t m_iStatusEffectTextPreviewSerial = 0u;
-#endif
 	/* One full-screen slot, black, whose alpha is the whole effect. Built
 	   hidden so the first rendered frame after activation cannot flash it. */
 	unique_ptr<CUILayoutRuntime> m_pTriggerMoveFadeView;

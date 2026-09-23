@@ -806,7 +806,6 @@ void LostArk::Server::CGameRoom::Update_Players(const float fixedDeltaSeconds)
 				player.Clear_SilenceStatus();
 			}
 		}
-#ifdef _DEBUG
 		if (LostArk::Shared::WORLD_ID::VALTAN_ARENA == m_eWorldId &&
 			VALTAN_TIMELINE_AUDITION_PHASE::INACTIVE !=
 				m_ValtanTimelineAudition.ePhase)
@@ -822,7 +821,6 @@ void LostArk::Server::CGameRoom::Update_Players(const float fixedDeltaSeconds)
 				continue;
 			}
 		}
-#endif
 		if (player.bPatternBound)
 		{
 			player.eAction = LostArk::Shared::PLAYER_ACTION_STATE::NONE;

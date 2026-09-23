@@ -709,10 +709,6 @@ LostArk::Shared::DEBUG_KILL_GATE_BOSSES_RESULT LostArk::Server::CGameRoom::Apply
  using namespace LostArk::Shared;
  using Result = DEBUG_KILL_GATE_BOSSES_RESULT;
  killedCount = 0u;
-#ifndef _DEBUG
- (void)sessionId; (void)request;
- return Result::DISABLED;
-#else
  if (request.eWorldId != m_eWorldId || (m_eWorldId != WORLD_ID::VALTAN_ARENA && m_eWorldId != WORLD_ID::KAKULSAYDON_ARENA))
   return Result::WRONG_WORLD;
  const auto owner = m_PlayerIdBySessionId.find(sessionId);
@@ -752,7 +748,6 @@ LostArk::Shared::DEBUG_KILL_GATE_BOSSES_RESULT LostArk::Server::CGameRoom::Apply
  }
  killedCount = static_cast<std::uint8_t>(targets.size());
  return Result::ACCEPTED;
-#endif
 }
 
 void LostArk::Server::CGameRoom::Handle_DebugKillGateBosses(

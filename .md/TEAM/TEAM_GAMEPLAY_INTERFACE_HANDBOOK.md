@@ -323,7 +323,7 @@ walkable nav cell 경계와 별개로, 투사체·지연 장판·보스 이동 �
 
 ### 4.1 F1 아레나 카메라와 플레이어 위치 작업
 
-발탄 F1 `Valtan Arena`의 Start Position / Before Entrance / Arena Start는 기존 typed player teleport를 사용한다. `Despawn Valtan Boss`는 Debug Server에서 ENCOUNTER_VALTAN primary와 owner 종속체만 제거하고 일반 NPC/웨이브 몬스터를 보존한다. 이후 Boss Play Pattern은 disabled placement `boss.valtan.center`를 Server에 준비 요청하고 replicated primary 도착 후 기존 revision/sound/presentation admission을 다시 통과해야 실행된다. spawn 대기는 local boss 생성으로 우회하지 않는다.
+발탄 F1 `Valtan Arena`의 Start Position / Before Entrance / Arena Start는 기존 typed player teleport를 사용한다. `Despawn Valtan Boss`는 Debug/Release Server에서 ENCOUNTER_VALTAN primary와 owner 종속체만 제거하고 일반 NPC/웨이브 몬스터를 보존한다. 이후 Boss Play Pattern은 disabled placement `boss.valtan.center`를 Server에 준비 요청하고 replicated primary 도착 후 기존 revision/sound/presentation admission을 다시 통과해야 실행된다. spawn 대기는 local boss 생성으로 우회하지 않는다.
 
 발탄·쿠크 아레나에서 F1 `Arena Camera / Player`는 현재 아레나의 자유 카메라 속도를 조절한다.
 기본은 모두 20m/s이며 범위는 0.1~400m/s다. Shift는 30배 이동이다. 설정은 아레나별로 이번
@@ -690,7 +690,7 @@ UI가 바로 사용할 읽기 경계는 `CCombatHUDViewModel`이다.
 
 `Get_DamageEvents()`는 최근 128개 Server `DAMAGE_EVENT`를 server tick과 함께 보관한다. 실제 적용
 damage, target NetEntityId, world anchor, incoming/outgoing을 제공하며 UI가 HP 차이로 damage를
-재계산하지 않는다. F1 Balance Tool은 이 경계로 최근 16개 event를 표시한다.
+재계산하지 않는다. F1 Balance Test는 이 경계로 최근 16개 event를 표시한다.
 
 쿨타임 남은 tick은 `max(0, cooldownEndTick - serverTick)`이며 UI가 별도 timer를 정답으로 만들지 않는다. 표시 damage는 데이터 정의를 읽은 값이고 실제 피해 적용은 Server만 한다.
 
@@ -966,6 +966,18 @@ Server가 저장 Action·Sequence revision과 Flow를 검증하고 실행 epoch�
 Stop은 실행 owner와 epoch가 일치할 때만 처리한다. `Play Saved Pattern Flow`는 전투 순서만 실행하고 `Composition Play All`은 선택 관문의
 게시 목록에서 Bundle을 하나의 동시 실행 항목으로 유지하며 해당 child의 중복 단독 재생을 제외한다.
 Flow는 정확한 Server COMPLETED를 받은 뒤 대기 시간을 거쳐 다음 typed Pattern/Bundle 요청을 보낸다.
+`patternFlows.entryGroups`는 기존 entry의 stable `startEntryId`/`endEntryId`로 순서가 겹치지 않는 구간을 묶는다.
+`groupId`와 `displayName`은 묶음의 저장 식별자와 표시 이름이고, 기존 동시 실행 Bundle과 별개다.
+optional `repeatUntilHealthBars`와 `transitionAt`(`PATTERN_END`/`GROUP_END`)는 Server가 실제 보스 HP로 판정하는 반복 조건이다.
+Server는 현재 패턴과 카운터 성공 후속의 완료를 기다린 뒤, 임계 미도달이면 구간 끝에서 처음으로 돌아가고
+도달하면 지정 완료 경계에서 구간 다음으로 이동한다. 이미 넘긴 임계의 아직 시작하지 않은 일반 구간은
+건너뛰고 다음 기믹에서 멈추므로, 여러 임계를 한 번에 넘겨도 기믹은 순서대로 한 번씩 실행한다. 0줄 구간은 보스 사망 전까지 반복한다.
+HP 그룹은 `loopStartEntryId`와 혼용하지 않으며, 누락 참조·겹침·역전·범위를 벗어난 임계는 저장/게시/입장에서 거절한다.
+Boss Tool의 Flow Groups에서 구간·HP 조건을 편집하고 F1 Saved Pattern Flow에서 묶음별로 표시한다.
+HP 반복이 있는 `Play Saved Pattern Flow`는 typed Server Complete Play로 전달하며 Client가 HP 또는 다음 기믹을 결정하지 않는다.
+게시된 Pattern/Bundle과 Complete Play의 typed 명령은 Debug/Release에서 같은 scope·revision·owner 검증을 사용한다.
+memory draft와 Mario test override는 계속 Debug 전용이다. 실제 HP 구간별 패턴 순서는 Composition authoring이 소유한다.
+
 `patternFlows.loopStartEntryId`는 같은 Flow의 stable entry ID를 가리키는 optional 반복 기점이다.
 지정하면 최초 시작부터 마지막 항목까지 한 번 실행한 뒤, 마지막 wait를 지키고 해당 entry부터 끝까지 반복한다.
 순서 변경에도 ID로 기점을 유지하며, 비어 있지 않은 잘못된 ID·누락된 참조는 저장/게시에서 거부한다. Tool에서 기점

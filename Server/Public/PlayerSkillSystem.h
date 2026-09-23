@@ -19,7 +19,8 @@ namespace LostArk::Server
 			const LostArk::Shared::C2S_USE_SKILL& command,
 			const CGameplayCatalog& catalog,
 			std::uint32_t actionStartTick,
-			const CServerNavigation* navigation = nullptr) const;
+			const CServerNavigation* navigation = nullptr,
+			LostArk::Shared::COOLDOWN_MODE cooldownMode = LostArk::Shared::COOLDOWN_MODE::RELEASE_AUTHORED) const;
 
 		/* A different skill pressed during a COMBO consumes its sequence and is
 		copied as the one pending explicit intent. Costs/cooldown are rechecked only
@@ -35,7 +36,13 @@ namespace LostArk::Server
 			const LostArk::Shared::C2S_USE_SKILL& command,
 			const CGameplayCatalog& catalog,
 			std::uint32_t actionStartTick,
-			const CServerNavigation* navigation = nullptr) const;
+			const CServerNavigation* navigation = nullptr,
+			LostArk::Shared::COOLDOWN_MODE cooldownMode = LostArk::Shared::COOLDOWN_MODE::RELEASE_AUTHORED) const;
+
+		static std::uint32_t Resolve_CooldownTicks(const PLAYER_SKILL_DEFINITION& skill,
+			LostArk::Shared::COOLDOWN_MODE mode);
+		static void Recalculate_Cooldowns(SERVER_PLAYER& player, const CGameplayCatalog& catalog,
+			std::uint32_t serverTick, LostArk::Shared::COOLDOWN_MODE mode);
 
 		void Release(
 			SERVER_PLAYER& player,
@@ -174,6 +181,7 @@ namespace LostArk::Server
 			const CGameplayCatalog& catalog,
 			std::uint32_t actionStartTick,
 			bool sequenceAlreadyConsumed,
-			const CServerNavigation* navigation) const;
+			const CServerNavigation* navigation,
+			LostArk::Shared::COOLDOWN_MODE cooldownMode) const;
 	};
 }

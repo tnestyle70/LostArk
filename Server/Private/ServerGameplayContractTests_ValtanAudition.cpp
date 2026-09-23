@@ -96,44 +96,6 @@ void LostArk::Server::CServerGameplayContractRunner::Run_ValtanAudition(TESTS& t
 		}
 		room.m_Players.emplace(AUDITION_PLAYER, auditionPlayer);
 
-#ifndef _DEBUG
-		/* A Release Server never auditions. It still answers, because the packet
-		type stays known so a Debug Client gets a verdict instead of a closed
-		socket, but the boss must not move even for an otherwise valid request. */
-		room.m_PlayerIdBySessionId.emplace(AUDITION_SESSION, AUDITION_PLAYER);
-		room.m_Players.at(AUDITION_PLAYER).isCombatReady = true;
-		const std::uint32_t releaseHpBefore =
-			nullptr == auditionBoss ? 0u : auditionBoss->iCurrentHp;
-		reportedBar = 12345u;
-		tests.Require(
-			VALTAN_AUDITION_RESULT::REJECTED_RELEASE_BUILD ==
-				room.Evaluate_ValtanAudition(
-					AUDITION_SESSION, arm, reportedBar) &&
-			0u == reportedBar &&
-			nullptr != auditionBoss &&
-			releaseHpBefore ==
-				(nullptr == auditionBoss ? 1u : auditionBoss->iCurrentHp),
-			"Reject every Valtan audition in a Release Server without moving the boss");
-		for (const auto operation : { VALTAN_AUDITION_OPERATION::QUEUE_NEXT_PATTERN_ID,
-			VALTAN_AUDITION_OPERATION::CLEAR_NEXT_PATTERN_ID,
-			VALTAN_AUDITION_OPERATION::QUEUE_NEXT_LIVE_PATTERN_ID })
-		{
-			C2S_VALTAN_AUDITION_REQUEST next{};
-			next.iRequestSequence = 2u;
-			next.eOperation = operation;
-			next.strBossPlacementId = "boss.valtan.center";
-			next.strPatternId = "VALTAN_FIST_IN_OUT";
-			const bool live = VALTAN_AUDITION_OPERATION::QUEUE_NEXT_LIVE_PATTERN_ID == operation;
-			next.iPredecessorRoomAuditionEpoch = live ? 0u : 1u;
-			next.iPredecessorPatternSequence = live ? 0u : 1u;
-			next.iExpectedNextRequestSequence = live ? 0u : 1u;
-			tests.Require(VALTAN_AUDITION_RESULT::REJECTED_RELEASE_BUILD ==
-				room.Evaluate_ValtanAudition(AUDITION_SESSION, next, reportedBar) &&
-				0u == reportedBar && nullptr != auditionBoss &&
-				releaseHpBefore == auditionBoss->iCurrentHp && auditionBoss->PendingPatternIds.empty(),
-				"Release rejects Next queue and clear without touching gameplay");
-		}
-#else
 		tests.Require(
 			VALTAN_AUDITION_RESULT::REJECTED_PATTERN_UNAVAILABLE ==
 				room.Evaluate_ValtanAudition(AUDITION_SESSION, arm, reportedBar),
@@ -1093,7 +1055,6 @@ void LostArk::Server::CServerGameplayContractRunner::Run_ValtanAudition(TESTS& t
 			pillarCycleBeforeStaleCompletePlay ==
 				room.m_bPillarAuditionCycleArmed,
 			"Reject stale Complete Play revision before mutating boss, player, arena, or lifecycle state");
-#endif
 
 		room.m_Players.clear();
 		room.m_PlayerIdBySessionId.clear();

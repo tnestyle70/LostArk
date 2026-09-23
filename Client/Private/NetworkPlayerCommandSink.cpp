@@ -375,3 +375,15 @@ bool Client::CNetworkPlayerCommandSink::Request_SendChat(
 
 bool Client::CNetworkPlayerCommandSink::Request_KoukuRaid(const LostArk::Shared::C2S_DEBUG_KOUKUSAYDON_RAID_REQUEST& request)
 { return CNetworkManager::Get().Send_KoukuRaid(request); }
+
+bool Client::CNetworkPlayerCommandSink::Request_SetCooldownMode(
+	const LostArk::Shared::C2S_SET_COOLDOWN_MODE& request)
+{
+	return CNetworkManager::Get().Send_SetCooldownMode(request);
+}
+
+bool Client::CNetworkPlayerCommandSink::Consume_SetCooldownModeResult(
+	LostArk::Shared::S2C_SET_COOLDOWN_MODE_RESULT& result)
+{
+	return CNetworkManager::Get().Try_Consume_SetCooldownModeResult(result);
+}

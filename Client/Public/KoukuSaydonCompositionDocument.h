@@ -628,6 +628,14 @@ namespace Client
 		bool operator==(const KOUKU_SAYDON_COMPOSITION_FLOW_ENTRY&) const = default;
 	};
 
+	struct KOUKU_SAYDON_COMPOSITION_FLOW_GROUP final
+	{
+		std::string strGroupId, strDisplayName, strStartEntryId, strEndEntryId;
+		std::optional<std::uint32_t> RepeatUntilHealthBars;
+		bool bTransitionAtGroupEnd = false;
+		bool operator==(const KOUKU_SAYDON_COMPOSITION_FLOW_GROUP&) const = default;
+	};
+
 	struct KOUKU_SAYDON_COMPOSITION_PATTERN_FLOW final
 	{
 		std::string strFlowId;
@@ -635,6 +643,7 @@ namespace Client
 		std::string strDisplayName;
 		std::string strLoopStartEntryId;
 		std::vector<KOUKU_SAYDON_COMPOSITION_FLOW_ENTRY> Entries;
+		std::vector<KOUKU_SAYDON_COMPOSITION_FLOW_GROUP> EntryGroups;
 		bool operator==(const KOUKU_SAYDON_COMPOSITION_PATTERN_FLOW&) const = default;
 	};
 

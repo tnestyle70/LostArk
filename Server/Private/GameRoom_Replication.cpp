@@ -533,7 +533,6 @@ void LostArk::Server::CGameRoom::Broadcast_WorldSnapshot()
 			player.CardMaze.transferStartTick == 0u &&
 			(!(player.CardMaze.flags & 1u) ||
 			 m_KoukuCardMaze.Is_SoloHunter(player.iPlayerId));
-#ifdef _DEBUG
 		if (WORLD_ID::VALTAN_ARENA == m_eWorldId &&
 			VALTAN_TIMELINE_AUDITION_PHASE::INACTIVE != m_ValtanTimelineAudition.ePhase &&
 			!(VALTAN_TIMELINE_AUDITION_PHASE::WAITING_PATTERN_FINISH ==
@@ -542,7 +541,6 @@ void LostArk::Server::CGameRoom::Broadcast_WorldSnapshot()
 		{
 			snapshot.canPredictMove = false;
 		}
-#endif
 		snapshot.hasMoveGoal = snapshot.canPredictMove && player.hasMoveGoal;
 		if (snapshot.hasMoveGoal)
 		{
@@ -649,6 +647,7 @@ void LostArk::Server::CGameRoom::Broadcast_WorldSnapshot()
 		snapshot.iSilenceEndTick = player.iSilenceEndTick;
 		snapshot.iSilenceDurationTicks = player.iSilenceDurationTicks;
 		snapshot.iComboStage = player.iComboStage;
+		snapshot.eCooldownMode = m_eCooldownMode;
 		/* Collect, sort, then truncate: cutting during unordered_map iteration
 		made the surviving cooldowns depend on hash order. Signed difference keeps
 		ordering across a wrapped tick counter. */
@@ -656,7 +655,11 @@ void LostArk::Server::CGameRoom::Broadcast_WorldSnapshot()
 			player.CooldownEndTickBySkillId)
 		{
 			if (static_cast<std::int32_t>(cooldownEndTick - m_iServerTick) > 0)
-				snapshot.Cooldowns.push_back({ skillId, cooldownEndTick });
+			{
+				const auto duration = player.CooldownDurationTicksBySkillId.find(skillId);
+				snapshot.Cooldowns.push_back({ skillId, cooldownEndTick,
+					duration != player.CooldownDurationTicksBySkillId.end() ? duration->second : 0u });
+			}
 		}
 		std::sort(snapshot.Cooldowns.begin(), snapshot.Cooldowns.end(),
 			[](const SKILL_COOLDOWN_SNAPSHOT& left,

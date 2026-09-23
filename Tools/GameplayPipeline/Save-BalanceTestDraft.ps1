@@ -20,6 +20,13 @@ $domains = @{
     'Data/Balance/BossProfiles.json' = @('bosses', 'archetypeId', @(
         'maximumHp','maximumHealthBars','attackPower','collisionRadius','engageDistance','moveSpeed'))
 }
+$profilePath = 'Data/Balance/Profiles/Retail.balanceprofile.json'
+$profileDomains = @{
+    'players' = @('players', 'characterClass', @('maximumHp','maximumResource','resourceRegenPerSecond','attackPower','defense','criticalChancePercent','criticalDamagePercent'))
+    'skills' = @('skills', 'skillId', @('cooldownMs','resourceCost','staggerDamage','partDamage'))
+    'damageProfiles' = @('damageProfiles', 'damageProfileId', @('attackCoefficientBp','damageAddend','damageSpreadPercent'))
+    'bosses' = @('bosses', 'archetypeId', @('maximumHp','maximumHealthBars','attackPower'))
+}
 $draft = Get-Content -LiteralPath $DraftPath -Raw -Encoding UTF8 | ConvertFrom-Json
 if ($draft.schema -cne 'lostark.balance-test-draft' -or $draft.formatVersion -ne 1 -or
     @($draft.changes).Count -eq 0 -or @($draft.changes).Count -gt 4096) {
@@ -43,8 +50,14 @@ try {
     }
     foreach ($change in @($draft.changes)) {
         $path = [string]$change.document
-        if (-not $domains.ContainsKey($path)) { throw "Unsupported balance document: $path" }
-        $domain = $domains[$path]
+        if ($path -ceq $profilePath) {
+            if (-not $profileDomains.ContainsKey([string]$change.domain)) { throw 'Unsupported Retail profile domain.' }
+            $domain = $profileDomains[[string]$change.domain]
+        }
+        else {
+            if (-not $domains.ContainsKey($path)) { throw "Unsupported balance document: $path" }
+            $domain = $domains[$path]
+        }
         if ([string]$change.field -cnotin $domain[2] -or
             $null -eq $change.before -or $null -eq $change.value -or
             $change.before -is [string] -or $change.value -is [string] -or
@@ -52,11 +65,26 @@ try {
             [double]::IsNaN([double]$change.value) -or [double]::IsInfinity([double]$change.value)) {
             throw "Unsupported numeric field: $path/$($change.field)"
         }
-        if (-not $fields.Add("$path#$($change.id).$($change.field)")) { throw 'Duplicate draft field.' }
+        if ([string]$change.field -cnotin @('moveSpeed','defenseStanceMoveSpeedScale','movementDistance','maximumRange','collisionRadius','engageDistance') -and
+            [math]::Floor([double]$change.value) -ne [double]$change.value) { throw 'A whole number is required.' }
+        if ([double]$change.value -lt 0) { throw 'Negative balance values are not supported.' }
+        if (-not $fields.Add("$path#$($domain[0])/$($change.id).$($change.field)")) { throw 'Duplicate draft field.' }
         if (-not $documents.ContainsKey($path)) {
             $documents[$path] = Read-PublishJsonSnapshot (Join-Path $repoRoot $path) $sources
         }
         $document = $documents[$path]
+        # A stale base draft must not silently save a field now owned by Retail.
+        if ($path -cne $profilePath -and (Test-Path -LiteralPath (Join-Path $repoRoot $profilePath))) {
+            if (-not $documents.ContainsKey($profilePath)) {
+                $documents[$profilePath] = Read-PublishJsonSnapshot (Join-Path $repoRoot $profilePath) $sources
+            }
+            $profileArray = if ($domain[0] -ceq 'profiles') { 'damageProfiles' } else { $domain[0] }
+            if ($profileDomains.ContainsKey($profileArray) -and [string]$change.field -cin $profileDomains[$profileArray][2]) {
+                $owners = @($documents[$profilePath].($profileArray) | Where-Object {
+                    [string]$_.($domain[1]) -ceq [string]$change.id -and $_.PSObject.Properties.Name -ccontains [string]$change.field })
+                if ($owners.Count -gt 0) { throw "CONFLICT: Retail now owns $path/$($change.id).$($change.field). Reload the effective field." }
+            }
+        }
         $rows = @($document.($domain[0]) | Where-Object { [string]$_.($domain[1]) -ceq [string]$change.id })
         if ($rows.Count -ne 1 -or $rows[0].PSObject.Properties.Name -cnotcontains [string]$change.field) {
             throw "Missing or ambiguous stable row: $path/$($change.id)"
@@ -73,7 +101,7 @@ try {
         [IO.File]::WriteAllText($candidate, ($documents[$path] | ConvertTo-Json -Depth 64) + "`n", [Text.UTF8Encoding]::new($false))
     }
     & (Join-Path $PSScriptRoot 'Update-BalanceProvenanceReceipt.ps1') -InputOverlayRoot $stage
-    & (Join-Path $PSScriptRoot 'Publish-GameplayBalance.ps1') -Mode Validate -InputOverlayRoot $stage
+    & (Join-Path $PSScriptRoot 'Publish-GameplayBalance.ps1') -Mode Validate -InputOverlayRoot $stage -BalanceProfile Retail
     $receipt = 'Data/Balance/Reference/Official/2026-08-05.balance-provenance.receipt.json'
     [void]$changed.Add($receipt)
     foreach ($path in @($changed | Sort-Object)) {

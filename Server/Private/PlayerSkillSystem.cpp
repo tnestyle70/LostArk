@@ -380,10 +380,11 @@ bool LostArk::Server::CPlayerSkillSystem::Try_Start(
 	const LostArk::Shared::C2S_USE_SKILL& command,
 	const CGameplayCatalog& catalog,
 	const std::uint32_t actionStartTick,
-	const CServerNavigation* navigation) const
+	const CServerNavigation* navigation,
+	const LostArk::Shared::COOLDOWN_MODE cooldownMode) const
 {
 	return Try_StartInternal(
-		player, command, catalog, actionStartTick, false, navigation);
+		player, command, catalog, actionStartTick, false, navigation, cooldownMode);
 }
 
 bool LostArk::Server::CPlayerSkillSystem::Try_StartPending(
@@ -391,10 +392,11 @@ bool LostArk::Server::CPlayerSkillSystem::Try_StartPending(
 	const LostArk::Shared::C2S_USE_SKILL& command,
 	const CGameplayCatalog& catalog,
 	const std::uint32_t actionStartTick,
-	const CServerNavigation* navigation) const
+	const CServerNavigation* navigation,
+	const LostArk::Shared::COOLDOWN_MODE cooldownMode) const
 {
 	return Try_StartInternal(
-		player, command, catalog, actionStartTick, true, navigation);
+		player, command, catalog, actionStartTick, true, navigation, cooldownMode);
 }
 
 bool LostArk::Server::CPlayerSkillSystem::Try_StagePendingSkill(
@@ -433,7 +435,8 @@ bool LostArk::Server::CPlayerSkillSystem::Try_StartInternal(
 	const CGameplayCatalog& catalog,
 	const std::uint32_t actionStartTick,
 	const bool sequenceAlreadyConsumed,
-	const CServerNavigation* navigation) const
+	const CServerNavigation* navigation,
+	const LostArk::Shared::COOLDOWN_MODE cooldownMode) const
 {
 	using namespace LostArk::Shared;
 	const PLAYER_SKILL_DEFINITION* skill = catalog.Find_Skill(command.iSkillId);
@@ -584,13 +587,15 @@ bool LostArk::Server::CPlayerSkillSystem::Try_StartInternal(
 	player.iCurrentResource -= skill->iResourceCost;
 	player.iCurrentIdentity -= skill->iIdentityCost;
 	Apply_EmberOnStart(player, *skill, catalog);
+	const auto cooldownTicks = Resolve_CooldownTicks(*skill, cooldownMode);
+	player.CooldownDurationTicksBySkillId.insert_or_assign(command.iSkillId, cooldownTicks);
 	player.CooldownEndTickBySkillId.insert_or_assign(
 		command.iSkillId,
-		player.iActionStartTick + MillisecondsToTicks(skill->iCooldownMs));
+		player.iActionStartTick + cooldownTicks);
 	if (PLAYER_STANCE_ID::NONE != skill->eSetsStance)
 	{
 		player.iStanceSwitchCooldownEndTick =
-			player.iActionStartTick + MillisecondsToTicks(skill->iCooldownMs);
+			player.iActionStartTick + cooldownTicks;
 	}
 	player.hasMoveGoal = false;
 	player.MovePath.clear();
@@ -1806,4 +1811,34 @@ void LostArk::Server::CPlayerSkillSystem::Update_Aim(
 	player.fSkillAimDistance = AimDistance(player, command.fAimX, command.fAimZ);
 	player.fYawDegrees =
 		std::atan2(directionX, directionZ) * RADIANS_TO_DEGREES;
+}
+
+
+std::uint32_t LostArk::Server::CPlayerSkillSystem::Resolve_CooldownTicks(
+    const PLAYER_SKILL_DEFINITION& skill, const LostArk::Shared::COOLDOWN_MODE mode)
+{
+    // Zero-cooldown attacks remain available; the room policy changes timers, not combo structure.
+    const auto milliseconds = mode == LostArk::Shared::COOLDOWN_MODE::DEBUG_THREE_SECONDS && skill.iCooldownMs != 0u ?
+        3000u : skill.iCooldownMs;
+    return MillisecondsToTicks(milliseconds);
+}
+
+void LostArk::Server::CPlayerSkillSystem::Recalculate_Cooldowns(
+    SERVER_PLAYER& player, const CGameplayCatalog& catalog, const std::uint32_t serverTick,
+    const LostArk::Shared::COOLDOWN_MODE mode)
+{
+    for (auto& [id, end] : player.CooldownEndTickBySkillId)
+    {
+        const auto duration = player.CooldownDurationTicksBySkillId.find(id);
+        const auto* skill = catalog.Find_Skill(id);
+        if (!skill || duration == player.CooldownDurationTicksBySkillId.end() ||
+            static_cast<std::int32_t>(end - serverTick) <= 0) continue;
+        const auto start = end - duration->second;
+        const auto updatedDuration = Resolve_CooldownTicks(*skill, mode);
+        const auto updatedEnd = start + updatedDuration;
+        if (skill->eSetsStance != LostArk::Shared::PLAYER_STANCE_ID::NONE && player.iStanceSwitchCooldownEndTick == end)
+            player.iStanceSwitchCooldownEndTick = updatedEnd;
+        end = updatedEnd;
+        duration->second = updatedDuration;
+    }
 }

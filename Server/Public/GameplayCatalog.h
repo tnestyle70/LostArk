@@ -1206,6 +1206,13 @@ namespace LostArk::Server
 		std::uint32_t iSlot = 0u, iStartMs = 0u;
 		std::array<float, 3u> Position{};
 	};
+	struct KOUKU_RAID_FLOW_GROUP final
+	{
+		std::string strGroupId;
+		std::uint32_t iFirstEntry = 0u, iLastEntry = 0u;
+		std::optional<std::uint32_t> RepeatUntilHealthBars;
+		bool bTransitionAtGroupEnd = false;
+	};
 	struct KOUKU_RAID_GATE_DEFINITION final
 	{
 		std::string strEncounterId, strGateId, strFlowId, strSequenceCompositionId;
@@ -1214,7 +1221,36 @@ namespace LostArk::Server
 		std::string strLoopStartEntryId;
 		std::uint32_t iSequenceRevision = 0u, iIntroDurationMs = 0u, iClearDurationMs = 0u, iExpectedEntryCount = 0u;
 		std::vector<KOUKU_RAID_FLOW_ENTRY> Entries;
+		std::vector<KOUKU_RAID_FLOW_GROUP> EntryGroups;
 		std::vector<KOUKU_RAID_ARRIVAL> Arrivals;
+		std::uint32_t Resolve_ReadyEntry(std::uint32_t current, std::uint32_t hp,
+			std::uint32_t maximumHp, std::uint32_t maximumBars) const noexcept
+		{
+			// A burst can cross several thresholds during one mechanic. Skip only
+			// unstarted normal ranges, stopping at each intervening mechanic.
+			for (const auto& group : EntryGroups)
+				if (group.RepeatUntilHealthBars && current == group.iFirstEntry && maximumHp && maximumBars &&
+					static_cast<std::uint64_t>(hp) * maximumBars <= static_cast<std::uint64_t>(*group.RepeatUntilHealthBars) * maximumHp)
+					current = group.iLastEntry + 1u;
+			return current < Entries.size() ? current : static_cast<std::uint32_t>(Entries.size());
+		}
+		// Called only after the current occurrence (including dynamic followups) completes.
+		std::uint32_t Resolve_NextCompletedEntry(std::uint32_t current, std::uint32_t hp,
+			std::uint32_t maximumHp, std::uint32_t maximumBars) const noexcept
+		{
+			if (current >= Entries.size()) return static_cast<std::uint32_t>(Entries.size());
+			for (const auto& group : EntryGroups)
+			{
+				if (!group.RepeatUntilHealthBars || current < group.iFirstEntry || current > group.iLastEntry) continue;
+				const bool reached = maximumHp && maximumBars &&
+					static_cast<std::uint64_t>(hp) * maximumBars <= static_cast<std::uint64_t>(*group.RepeatUntilHealthBars) * maximumHp;
+				if (reached && (!group.bTransitionAtGroupEnd || current == group.iLastEntry))
+					return Resolve_ReadyEntry(group.iLastEntry + 1u, hp, maximumHp, maximumBars);
+				if (current == group.iLastEntry) return group.iFirstEntry;
+				break;
+			}
+			return Resolve_ReadyEntry(current + 1u, hp, maximumHp, maximumBars);
+		}
 	};
 
 	struct BOSS_PATTERN_BOSS_MOTION_KEY

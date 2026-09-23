@@ -14,6 +14,7 @@ import unittest
 ROOT = Path(__file__).resolve().parents[2]
 SOURCE = "Data/Balance/PlayerProfiles.json"
 RECEIPT = "Data/Balance/Reference/Official/2026-08-05.balance-provenance.receipt.json"
+PROFILE = "Data/Balance/Profiles/Retail.balanceprofile.json"
 
 
 class BalanceTestTransaction(unittest.TestCase):
@@ -30,8 +31,10 @@ class BalanceTestTransaction(unittest.TestCase):
             destination.parent.mkdir(parents=True, exist_ok=True)
             shutil.copyfile(ROOT / relative, destination)
         self.write(SOURCE, {"players": [{"characterClass": "LANCE_MASTER", "attackPower": 1000,
-                                        "maximumHp": 50000, "futureField": {"untouched": True}}]})
+                                        "maximumHp": 50000, "moveSpeed": 8.0, "futureField": {"untouched": True}}]})
         self.write(RECEIPT, {"generation": "original"})
+        self.write(PROFILE, {"schema": "lostark.balance-profile", "formatVersion": 1, "profileId": "Retail",
+            "players": [], "skills": [], "damageProfiles": [], "bosses": [], "futureSection": {"preserve": 1}})
         (self.root / "Tools/GameplayPipeline/Update-BalanceProvenanceReceipt.ps1").write_text(
             "param([string]$InputOverlayRoot)\n"
             "$p = Join-Path $InputOverlayRoot '" + RECEIPT + "'\n"
@@ -46,8 +49,11 @@ class BalanceTestTransaction(unittest.TestCase):
 
     def validator(self, behavior):
         (self.root / "Tools/GameplayPipeline/Publish-GameplayBalance.ps1").write_text(
-            "param([string]$Mode,[string]$InputOverlayRoot)\n"
-            "$d = Get-Content -Raw (Join-Path $InputOverlayRoot '" + SOURCE + "') | ConvertFrom-Json\n"
+            "param([string]$Mode,[string]$InputOverlayRoot,[string]$BalanceProfile)\n"
+            "if ($BalanceProfile -cne 'Retail') { throw 'Retail profile forwarding is required' }\n"
+            "$source = Join-Path $InputOverlayRoot '" + SOURCE + "'\n"
+            "if (-not (Test-Path $source)) { $source = Join-Path ([IO.Path]::GetFullPath((Join-Path $PSScriptRoot '../..'))) '" + SOURCE + "' }\n"
+            "$d = Get-Content -Raw $source | ConvertFrom-Json\n"
             + behavior + "\n", encoding="utf-8")
 
     def run_draft(self, changes=None):
@@ -101,6 +107,51 @@ class BalanceTestTransaction(unittest.TestCase):
         result = self.run_draft([{"document": SOURCE, "id": "LANCE_MASTER", "field": "futureField", "before": 0, "value": 1}])
         self.assertNotEqual(result.returncode, 0)
         self.assertTrue(json.loads((self.root / SOURCE).read_text())["players"][0]["futureField"]["untouched"])
+
+    def retail_player(self, attack=23000):
+        profile = json.loads((self.root / PROFILE).read_text())
+        profile["players"] = [{"characterClass": "LANCE_MASTER", "attackPower": attack, "criticalChancePercent": 70, "futureField": 17}]
+        self.write(PROFILE, profile)
+
+    def test_retail_and_base_fields_save_together_without_erasing_unknown_fields(self):
+        self.retail_player()
+        result = self.run_draft([
+            {"document": PROFILE, "domain": "players", "id": "LANCE_MASTER", "field": "attackPower", "before": 23000, "value": 24000},
+            {"document": SOURCE, "id": "LANCE_MASTER", "field": "moveSpeed", "before": 8.0, "value": 9.5}])
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        profile = json.loads((self.root / PROFILE).read_text())
+        self.assertEqual(profile["players"][0]["attackPower"], 24000)
+        self.assertEqual(profile["players"][0]["futureField"], 17)
+        self.assertEqual(profile["futureSection"], {"preserve": 1})
+        base = json.loads((self.root / SOURCE).read_text())["players"][0]
+        self.assertEqual((base["attackPower"], base["moveSpeed"]), (1000, 9.5))
+
+    def test_retail_same_field_conflict_preserves_profile_and_base(self):
+        self.retail_player(25000)
+        before = [(self.root / name).read_bytes() for name in (SOURCE, PROFILE, RECEIPT)]
+        result = self.run_draft([{"document": PROFILE, "domain": "players", "id": "LANCE_MASTER", "field": "attackPower", "before": 23000, "value": 24000}])
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("CONFLICT", result.stderr)
+        self.assertEqual(before, [(self.root / name).read_bytes() for name in (SOURCE, PROFILE, RECEIPT)])
+
+    def test_shadowed_base_draft_is_rejected(self):
+        self.retail_player()
+        before = [(self.root / name).read_bytes() for name in (SOURCE, PROFILE, RECEIPT)]
+        result = self.run_draft()
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("Retail now owns", result.stderr)
+        self.assertEqual(before, [(self.root / name).read_bytes() for name in (SOURCE, PROFILE, RECEIPT)])
+
+    def test_profile_change_during_validation_preserves_external_edit(self):
+        self.validator("$root = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '../..'))\n"
+                       "$p = Join-Path $root '" + PROFILE + "'\n"
+                       "$fresh = Get-Content -Raw $p | ConvertFrom-Json\n"
+                       "$fresh.futureSection.preserve = 99\n"
+                       "[IO.File]::WriteAllText($p, ($fresh | ConvertTo-Json -Depth 16))")
+        result = self.run_draft()
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(json.loads((self.root / PROFILE).read_text())["futureSection"]["preserve"], 99)
+        self.assertEqual(json.loads((self.root / SOURCE).read_text())["players"][0]["attackPower"], 1000)
 
     def test_late_promotion_failure_rolls_back_own_first_write(self):
         self.validator("$root = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '../..'))\n"

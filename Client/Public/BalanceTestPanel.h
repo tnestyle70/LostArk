@@ -16,9 +16,10 @@ public:
     ~CBalanceTestPanel();
     void Render(bool& open);
     static void Render_KillBossControl();
+    static void Render_CooldownControl();
 
 private:
-    struct FIELD { std::string name; double original = 0, value = 0; bool integral = true; };
+    struct FIELD { std::string name; double original = 0, value = 0; bool integral = true; std::string sourcePath, sourceArray; };
     struct ROW { std::string id, label; std::vector<FIELD> fields; };
     struct DOCUMENT { std::string path, label; std::vector<ROW> rows; };
     struct JOB;

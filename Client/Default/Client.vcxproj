@@ -769,6 +769,7 @@
     <None Include="..\..\Data\Balance\BossProfiles.json" />
     <None Include="..\..\Data\Balance\DamageProfiles.json" />
     <None Include="..\..\Data\Balance\PlayerProfiles.json" />
+    <None Include="..\..\Data\Balance\Profiles\Retail.balanceprofile.json" />
     <None Include="..\..\Data\Balance\MonsterProfiles.json" />
     <None Include="..\..\Data\Balance\PlayerSkills.json" />
 	<None Include="..\..\Data\Balance\PlayerSkillTargeting.json" />

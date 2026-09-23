@@ -389,9 +389,7 @@ HRESULT CLevel_ValtanArena::Initialize()
 	}
 
 	m_pPlayerCommandSink = make_shared<CNetworkPlayerCommandSink>();
-#ifdef _DEBUG
     m_pWorldEntityCommandSink = make_shared<CNetworkWorldEntityCommandSink>();
-#endif
 	m_PlayerController.Set_CommandSink(m_pPlayerCommandSink);
 	if (!m_PlayerController.Initialize_TargetingPreview(
 			ETOUI(LEVEL::VALTAN_ARENA)))
@@ -509,7 +507,6 @@ void CLevel_ValtanArena::Handle_WorldEntityDespawned(
 	const std::string_view placementId,
 	const std::string_view archetypeId)
 {
-#ifdef _DEBUG
     if (placementId == "boss.valtan.center" && m_bDebugValtanDespawnPending)
     {
         End_CinematicCamera();
@@ -521,7 +518,6 @@ void CLevel_ValtanArena::Handle_WorldEntityDespawned(
         m_bSourceDeathFinished = true;
         m_strDebugValtanBossCommandStatus = "Server despawned Valtan; Play Pattern can prepare it again.";
     }
-#endif
 	if (RAID_PRELUDE_BGM_STATE::M01_PROGRESS !=
 			m_eRaidPreludeBgmState ||
 		VALTAN_STAGE_TWO_ARCHETYPE_ID != archetypeId ||
@@ -638,10 +634,8 @@ void CLevel_ValtanArena::Update(f32_t fTimeDelta)
 		return;
 	}
 
-#ifdef _DEBUG
 	Update_AuditionTransaction();
     Update_DebugValtanBossCommand();
-#endif
 	Update_WorldDestructionPresentation(fTimeDelta);
 	Bind_CameraToLocalCharacter();
 #ifdef _DEBUG
@@ -1278,11 +1272,11 @@ bool_t CLevel_ValtanArena::Get_PrimaryValtanPatternSoundSourceReceipt(
 		OutReceipt, strOutStatus);
 }
 
-#ifdef _DEBUG
 namespace
 {
 	constexpr uint64_t AUDITION_RETRY_INTERVAL_MILLISECONDS = 750u;
 	constexpr uint32_t AUDITION_MAX_RETRY_COUNT = 3u;
+#ifdef _DEBUG
 	/* This owner is outside the uint32 Server entity range, so a Debug reference
 	view can never impersonate the owner of an authoritative cinematic cue. */
 	constexpr uint64_t VALTAN_REFERENCE_CAMERA_OWNER_ID =
@@ -1309,6 +1303,7 @@ namespace
 		float3_t(156.03f, 23.f, -122.06f),
 		54.f };
 
+#endif
 	uint64_t Get_AuditionMonotonicMilliseconds()
 	{
 		return static_cast<uint64_t>(GetTickCount64());
@@ -1348,6 +1343,7 @@ namespace
 	}
 }
 
+#ifdef _DEBUG
 bool_t CLevel_ValtanArena::Begin_ReferenceCamera(
 	const REFERENCE_CAMERA_VIEW view)
 {
@@ -1498,6 +1494,8 @@ const char_t* CLevel_ValtanArena::Get_ReferenceCameraViewName() const
 		return "none";
 	}
 }
+
+#endif
 
 bool_t CLevel_ValtanArena::Has_DebugValtanBoss() const
 {
@@ -1778,8 +1776,6 @@ CLevel_ValtanArena::Get_ArenaActiveState() const
 	snapshot.iNavigationRevision = diagnostics.iNavigationRevision;
 	return snapshot;
 }
-
-#endif
 
 void CLevel_ValtanArena::Update_WorldDestructionPresentation(
 	const f32_t fTimeDelta)

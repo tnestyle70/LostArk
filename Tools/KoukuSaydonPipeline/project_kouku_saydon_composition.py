@@ -2559,7 +2559,7 @@ def validate_pattern_flows(document: dict[str, Any]) -> None:
     patterns = {row.get("patternId"): row for row in document.get("patterns", []) if isinstance(row, dict)}
     bundles = {row.get("bundleId"): row for row in document.get("bundles", []) if isinstance(row, dict)}
     for flow in flows:
-        _exact_keys(flow, {"flowId", "gateId", "displayName", "entries"} | ({"loopStartEntryId"} if "loopStartEntryId" in flow else set()), "Pattern Flow")
+        _exact_keys(flow, {"flowId", "gateId", "displayName", "entries"} | ({"loopStartEntryId"} if "loopStartEntryId" in flow else set()) | ({"entryGroups"} if "entryGroups" in flow else set()), "Pattern Flow")
         identity = _stable_id(flow["flowId"], "flowId")
         gate = _stable_id(flow["gateId"], "Flow gateId")
         _display_name(flow["displayName"], "Flow displayName")
@@ -2583,6 +2583,30 @@ def validate_pattern_flows(document: dict[str, Any]) -> None:
             loop_start = flow["loopStartEntryId"]
             if not isinstance(loop_start, str) or (loop_start and _stable_id(loop_start, "Flow loopStartEntryId") not in entry_ids):
                 raise CompositionError("Pattern Flow loop start must reference an entry in this flow")
+        validate_flow_groups(flow)
+
+
+def validate_flow_groups(flow: dict[str, Any]) -> None:
+    """Groups reference disjoint saved ranges; HP belongs to the Server scheduler."""
+    entries = {row["entryId"]: index for index, row in enumerate(flow["entries"])}
+    identities: set[str] = set()
+    next_start = 0
+    for group in _array(flow.get("entryGroups", []), "Flow entryGroups", 64):
+        repeat = "repeatUntilHealthBars" in group
+        _exact_keys(group, {"groupId", "displayName", "startEntryId", "endEntryId"} |
+                    ({"repeatUntilHealthBars", "transitionAt"} if repeat else set()), "Flow group")
+        identity = _stable_id(group["groupId"], "Flow groupId")
+        _display_name(group["displayName"], "Flow group displayName")
+        start = entries.get(_stable_id(group["startEntryId"], "Flow group startEntryId"), -1)
+        end = entries.get(_stable_id(group["endEntryId"], "Flow group endEntryId"), -1)
+        if identity in identities or start < next_start or end < start:
+            raise CompositionError("Flow group ranges must be ordered, disjoint saved entries")
+        identities.add(identity)
+        next_start = end + 1
+        if repeat:
+            _integer(group["repeatUntilHealthBars"], "Flow repeatUntilHealthBars", 0, 1000)
+            if group["transitionAt"] not in {"PATTERN_END", "GROUP_END"} or flow.get("loopStartEntryId"):
+                raise CompositionError("Flow HP repeat needs a completion boundary and cannot mix with a legacy loop")
 
 
 def _publication_candidate(source: dict[str, Any], pattern_ids: set[str],

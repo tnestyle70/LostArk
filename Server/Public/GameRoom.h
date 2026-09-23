@@ -805,7 +805,6 @@ namespace LostArk::Server
 			SERVER_WORLD_ENTITY& boss,
 			std::uint32_t resetTick,
 			std::string& status);
-#ifdef _DEBUG
 		enum class VALTAN_PATTERN_ID_AUDITION_PHASE : std::uint8_t
 		{
 			INACTIVE,
@@ -1030,7 +1029,6 @@ namespace LostArk::Server
 		bool Prepare_ValtanFightPageBeforeBrain(
 			SERVER_WORLD_ENTITY& boss,
 			std::uint32_t updateTick);
-#endif
 		struct VALTAN_DECISION_TRACE_REVISION_STATE final
 		{
 			LostArk::Shared::NET_ENTITY_ID iBossEntityId =
@@ -1226,6 +1224,11 @@ namespace LostArk::Server
 		LostArk::Shared::DEBUG_KILL_GATE_BOSSES_RESULT Apply_DebugKillGateBosses(
 			SESSION_ID sessionId, const LostArk::Shared::C2S_DEBUG_KILL_GATE_BOSSES& request, std::uint8_t& killedCount);
 		std::unordered_map<SESSION_ID, std::uint32_t> m_KillGateBossesRequestSequences;
+		void Handle_SetCooldownMode(SESSION_ID sessionId, const LostArk::Shared::C2S_SET_COOLDOWN_MODE& request);
+		LostArk::Shared::SET_COOLDOWN_MODE_RESULT Apply_SetCooldownMode(
+			SESSION_ID sessionId, const LostArk::Shared::C2S_SET_COOLDOWN_MODE& request);
+		LostArk::Shared::COOLDOWN_MODE m_eCooldownMode = LostArk::Shared::COOLDOWN_MODE::DEBUG_THREE_SECONDS;
+		std::unordered_map<SESSION_ID, std::uint32_t> m_CooldownModeRequestSequences;
 		void Handle_DebugWorldPlayback(SESSION_ID sessionId, const LostArk::Shared::C2S_DEBUG_WORLD_PLAYBACK& request);
 		std::unordered_map<SESSION_ID, std::uint32_t> m_WorldPlaybackRequestSequences;
 		LostArk::Shared::DEBUG_WORLD_PLAYBACK_RESULT Apply_DebugRoomPlayerArrival(
@@ -1439,7 +1442,6 @@ namespace LostArk::Server
 		bool Apply_WorldDestructionStageEntry(
 			const SERVER_WORLD_ENTITY& boss,
 			std::uint32_t serverTick);
-#ifdef _DEBUG
 		/* Commit the 69 ordinary contact walls and the 30 outer ring walls in one
 		transaction, leaving every floor sector INTACT. A floor-collapse bar only
 		arrives after the fight has already taken those walls down, so the
@@ -1449,7 +1451,6 @@ namespace LostArk::Server
 			const SERVER_WORLD_ENTITY& boss,
 			std::uint32_t resetTick,
 			std::string& status);
-#endif
 		/* The navigation grid is the ground a boss pattern stride may cross.
 		The collision sweep owns wall contact, while the furthest sample the grid
 		still owns is what any stride is allowed to reach, so a charge cannot
@@ -1844,7 +1845,6 @@ namespace LostArk::Server
 			m_KoukuSaydonPatternAuditionReceiptBySessionId;
 		std::vector<TARGETED_KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE>
 			m_PendingKoukuSaydonPatternAuditionLifecycle;
-#ifdef _DEBUG
 		struct TARGETED_VALTAN_AUDITION_LIFECYCLE final
 		{
 			SESSION_ID iSessionId = INVALID_SESSION_ID;
@@ -1868,6 +1868,5 @@ namespace LostArk::Server
 		VALTAN_PATTERN_FLOW_AUDITION_STATE m_ValtanPatternFlowAudition;
 		VALTAN_TIMELINE_AUDITION_STATE m_ValtanTimelineAudition;
 		VALTAN_FIGHT_PAGE_START_STATE m_ValtanFightPageStart;
-#endif
 	};
 }

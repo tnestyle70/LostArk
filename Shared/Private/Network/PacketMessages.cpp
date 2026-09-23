@@ -3214,11 +3214,14 @@ bool LostArk::Shared::Write_Message(CPacketWriter& writer, const S2C_WORLD_SNAPS
 		writer.Write_U32(player.iSilenceEndTick);
 		writer.Write_U32(player.iSilenceDurationTicks);
 		writer.Write_U8(player.iComboStage);
+		if (player.eCooldownMode >= COOLDOWN_MODE::END) return false;
+		writer.Write_U8(static_cast<std::uint8_t>(player.eCooldownMode));
 		writer.Write_U8(static_cast<std::uint8_t>(player.Cooldowns.size()));
 		for (const SKILL_COOLDOWN_SNAPSHOT& cooldown : player.Cooldowns)
 		{
 			writer.Write_U32(cooldown.iSkillId);
 			writer.Write_U32(cooldown.iCooldownEndTick);
+			writer.Write_U32(cooldown.iCooldownDurationTicks);
 		}
 		writer.Write_U32(player.iLastProcessedMoveSequence);
 		writer.Write_F32(player.fMoveSpeed);
@@ -3427,6 +3430,7 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader, S2C_WORLD_SNAPSHOT& me
 		std::uint8_t rawHudMode = 0;
 		std::uint8_t rawCardMazeRole = 0;
 		std::uint8_t rawCardMazeSuit = 0;
+		std::uint8_t rawCooldownMode = 0;
 		std::uint8_t cooldownCount = 0;
 
         if (!reader.Read_U32(player.iNetEntityId) ||
@@ -3516,6 +3520,7 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader, S2C_WORLD_SNAPSHOT& me
 			!reader.Read_U32(player.iSilenceDurationTicks) ||
 			!reader.Read_U8(player.iComboStage) ||
 			player.iComboStage > MAX_COMBO_STAGES ||
+			!reader.Read_U8(rawCooldownMode) || rawCooldownMode >= static_cast<std::uint8_t>(COOLDOWN_MODE::END) ||
 			!reader.Read_U8(cooldownCount) ||
 			cooldownCount > MAX_PLAYER_COOLDOWNS)
         {
@@ -3539,6 +3544,7 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader, S2C_WORLD_SNAPSHOT& me
 		player.eKoukuHudMode = static_cast<KOUKU_HUD_MODE>(rawHudMode);
 		player.eCardMazeRole = static_cast<CARD_MAZE_ROLE>(rawCardMazeRole);
 		player.eCardMazeSuit = static_cast<MECHANIC_CARD_SYMBOL>(rawCardMazeSuit);
+		player.eCooldownMode = static_cast<COOLDOWN_MODE>(rawCooldownMode);
 		player.Cooldowns.reserve(cooldownCount);
 		for (std::uint8_t cooldownIndex = 0;
 			cooldownIndex < cooldownCount;
@@ -3546,7 +3552,8 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader, S2C_WORLD_SNAPSHOT& me
 		{
 			SKILL_COOLDOWN_SNAPSHOT cooldown{};
 			if (!reader.Read_U32(cooldown.iSkillId) ||
-				!reader.Read_U32(cooldown.iCooldownEndTick))
+				!reader.Read_U32(cooldown.iCooldownEndTick) ||
+				!reader.Read_U32(cooldown.iCooldownDurationTicks))
 			{
 				return false;
 			}
@@ -7166,4 +7173,34 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader, S2C_DEBUG_KILL_GATE_BO
  staged.eWorldId = static_cast<WORLD_ID>(world); staged.eResult = static_cast<DEBUG_KILL_GATE_BOSSES_RESULT>(result);
  CPacketWriter validation; if (!Write_Message(validation, staged)) return false;
  message = staged; return true;
+}
+
+
+bool LostArk::Shared::Write_Message(CPacketWriter& writer, const C2S_SET_COOLDOWN_MODE& message)
+{
+    if (!message.iRequestSequence || !Is_Known_World_Id(message.eWorldId) || message.eMode >= COOLDOWN_MODE::END) return false;
+    writer.Write_U32(message.iRequestSequence); writer.Write_U16(static_cast<std::uint16_t>(message.eWorldId));
+    writer.Write_U8(static_cast<std::uint8_t>(message.eMode)); return true;
+}
+bool LostArk::Shared::Read_Message(CPacketReader& reader, C2S_SET_COOLDOWN_MODE& message)
+{
+    C2S_SET_COOLDOWN_MODE staged; std::uint16_t world{}; std::uint8_t mode{};
+    if (!reader.Read_U32(staged.iRequestSequence) || !reader.Read_U16(world) || !reader.Read_U8(mode)) return false;
+    staged.eWorldId = static_cast<WORLD_ID>(world); staged.eMode = static_cast<COOLDOWN_MODE>(mode);
+    CPacketWriter validation; if (!Write_Message(validation, staged)) return false; message = staged; return true;
+}
+bool LostArk::Shared::Write_Message(CPacketWriter& writer, const S2C_SET_COOLDOWN_MODE_RESULT& message)
+{
+    if (!message.iRequestSequence || !Is_Known_World_Id(message.eWorldId) || message.eMode >= COOLDOWN_MODE::END ||
+        message.eResult >= SET_COOLDOWN_MODE_RESULT::END) return false;
+    writer.Write_U32(message.iRequestSequence); writer.Write_U16(static_cast<std::uint16_t>(message.eWorldId));
+    writer.Write_U8(static_cast<std::uint8_t>(message.eMode)); writer.Write_U8(static_cast<std::uint8_t>(message.eResult)); return true;
+}
+bool LostArk::Shared::Read_Message(CPacketReader& reader, S2C_SET_COOLDOWN_MODE_RESULT& message)
+{
+    S2C_SET_COOLDOWN_MODE_RESULT staged; std::uint16_t world{}; std::uint8_t mode{}, result{};
+    if (!reader.Read_U32(staged.iRequestSequence) || !reader.Read_U16(world) || !reader.Read_U8(mode) || !reader.Read_U8(result)) return false;
+    staged.eWorldId = static_cast<WORLD_ID>(world); staged.eMode = static_cast<COOLDOWN_MODE>(mode);
+    staged.eResult = static_cast<SET_COOLDOWN_MODE_RESULT>(result);
+    CPacketWriter validation; if (!Write_Message(validation, staged)) return false; message = staged; return true;
 }

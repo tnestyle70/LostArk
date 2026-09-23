@@ -5,7 +5,7 @@
 
 ## 1. 지금 바로 기억할 결론
 
-Debug Client에서 `F1 -> Balance Test`를 열면 `Players / Skills / Damage / Bosses`에서
+Debug/Release Client에서 `F1 -> Balance Test`를 열면 `Players / Skills / Damage / Bosses`에서
 공용 수치를 편집하고 아래에서 실제 Server HP와 tick을 확인한다. 일반 수치 panel은 Valtan
 pattern source를 로드하지 않는다. Valtan Boss/Animation/Effect Tool이 소비하는 기존 typed
 authoring backend는 유지하며, `Valtan Authoring`의 패턴 편집과 공용 수치 draft는 서로 분리한다.
@@ -17,7 +17,7 @@ authoring backend는 유지하며, `Valtan Authoring`의 패턴 편집과 공용
 ```text
 F1 Balance Test numeric draft
 -> Save + Validate
--> stable ID + field 이전값으로 최신 Data/Balance 저장본과 병합
+-> stable ID + field 이전값으로 최신 base JSON / Retail profile 저장본과 병합
 -> candidate overlay에서 provenance + gameplay 검증
 -> Update-BalanceProvenanceReceipt.ps1
 -> 바뀐 field만 PROJECT_TUNED로 분류
@@ -42,12 +42,31 @@ Client만 JSON을 다시 읽어 Server와 다른 수치를 보여 주지 않는�
 typed 명령으로 표시한다. Server가 현재 관문 primary boss만 결정하고 정상 사망 처리로
 넘긴다. G2는 두 primary actor, G3는 G3 actor만 대상이며 다음 Bingo boss를 함께 지우지
 않는다. 기존 clear/Encore/보상 흐름을 사용하고 최종 클리어 flag를 직접 설정하지 않는다.
-Release Server는 이 Debug 명령을 거부한다. 표시된 boss가 이미 바뀐 요청과 재전송은 거부한다.
+Debug/Release Server가 같은 검증과 정상 사망 경로를 사용한다. 표시된 boss가 이미 바뀐 요청과 재전송은 거부한다.
+
+`Debug (3s)` / `Release (Retail)`은 실행 중 현재 room 전체의 쿨타임 정책을 선택한다.
+빌드 구성과 무관하게 새 room은 3초 모드로 시작하며 원래 0초인 평타/스킬은 0초를 유지한다.
+Release 모드는 게시된 Retail 쿨타임(ALT_V 300초)을 사용한다. 아직 진행 중인 cooldown은
+최초 사용 시점을 유지해 재계산하고 이미 끝난 cooldown과 기믹/차량 타이머는 재개하지 않는다.
+같은 방의 모든 플레이어와 늦게 입장한 플레이어가 Server snapshot의 모드와 실제 duration을
+받는다. 파일 Save/Publish 및 Server 재시작과 별개의 즉시 정책이다.
+
+공용 숫자 editor는 Retail이 덮는 field를 profile에서 읽고 같은 profile row로 저장한다.
+덮지 않는 이동/충돌/timing field는 base JSON에 저장한다. 현재 플레이어 치명타,
+damage coefficient/addend/spread도 편집한다. 프로필 계수가 쓰이는 damage의 base rate는 숨긴다.
+Retail이 새로 소유한 field에 대한 오래된 base draft는 저장을 거부한다. 통합 게시의 기본 및
+F1 게시 프로필은 Retail이며 Gameplay와 World에 같은 값을 전달한다.
+
+`Retail.balanceprofile.json`의 boss별 `staggerGaugeMaximum`은 현재 미소비 field다.
+실제 무력화는 저작 `SET_STAGGER_GAUGE`와 Retail 전역 배율을 사용하며 공용 panel은
+미소비 boss gauge field를 편집 항목으로 노출하지 않는다. `attackSpeedPercent`도 아직
+행동시간/animation에 반영하지 않는다.
 
 ## 2. 정본 파일
 
 | 역할 | 정본 |
 |---|---|
+| 실제 전투 수치 override | `Data/Balance/Profiles/Retail.balanceprofile.json` |
 | player HP/resource/AP/defense/move | `Data/Balance/PlayerProfiles.json` |
 | class/slot/skill/timing/range/combo | `Data/Balance/PlayerSkills.json` |
 | attack power에 곱하는 damage rate | `Data/Balance/DamageProfiles.json` |
@@ -128,7 +147,7 @@ damage 정답을 Client notify에서 만들지 않는다.
 
 ## 6. Valtan 튜닝 방법
 
-공용 `Bosses`는 BossProfiles의 HP/AP/health bars/collision/detection/move scalar만 저장한다.
+공용 `Bosses`는 Retail HP/AP/health bars 및 base BossProfiles의 collision/detection/move scalar를 소유 문서에 저장한다.
 Valtan 패턴 편집은 owning Boss/Animation/Effect Tool이 여는 `Valtan Authoring`을 사용하며
 joined source, immutable revision과 Hot Reload 계약은 기존대로 유지한다.
 

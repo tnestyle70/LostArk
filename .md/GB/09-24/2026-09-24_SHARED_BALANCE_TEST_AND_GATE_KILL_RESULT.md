@@ -1,5 +1,7 @@
 # 공용 Balance Test와 현재 관문 보스 처치 결과
 
+> 후속 변경: PR #454는 이후 `d9361f98f`로 통합했고 Release F1/Kill Boss 및 protocol 109로 확장했다. 아래 기록은 최초 통합 시점의 증거다. 현재 상태는 [Release F1 통합 결과](2026-09-24_RELEASE_F1_RAID_TEST_RESULT.md)와 [Retail/쿨타임 결과](2026-09-24_RETAIL_BALANCE_RUNTIME_COOLDOWN_RESULT.md)를 따른다.
+
 ## G01. 공용 수치 UI와 실제 저장
 
 `F1 -> Balance Test`는 Players/Skills/Damage/Bosses의 숫자 scalar를 편집한다. 새 panel은

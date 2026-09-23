@@ -96,6 +96,7 @@ namespace Client
 		std::vector<HUD_SKILL_STATE> Skills;
 		/* The raw replicated cooldown list. Skills above covers the class quick slots;
 		the mounted HUD looks the ridden vehicle's SPACE/Q/W/E skill ids up here. */
+		LostArk::Shared::COOLDOWN_MODE eCooldownMode = LostArk::Shared::COOLDOWN_MODE::DEBUG_THREE_SECONDS;
 		std::vector<LostArk::Shared::SKILL_COOLDOWN_SNAPSHOT> Cooldowns;
 	};
 

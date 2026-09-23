@@ -18,12 +18,12 @@
 using namespace Client;
 namespace
 {
-    struct BALANCE_DOMAIN { const char* file; const char* array; const char* key; const char* label; const char* fields; };
+    struct BALANCE_DOMAIN { const char* file; const char* array; const char* key; const char* label; const char* fields; const char* profileArray; const char* profileFields; };
     constexpr BALANCE_DOMAIN DOMAINS[] = {
-        { "PlayerProfiles.json", "players", "characterClass", "Players", "|maximumHp|maximumResource|resourceRegenPerSecond|attackPower|defense|moveSpeed|defenseStanceMoveSpeedScale|maximumIdentity|identityRegenPerSecond|identityDrainPerSecond|identityStanceSwitchCost|" },
-        { "PlayerSkills.json", "skills", "skillId", "Skills", "|cooldownMs|resourceCost|identityCost|staggerDamage|partDamage|actionDurationMs|hitTimeMs|movementDistance|maximumRange|" },
-        { "DamageProfiles.json", "profiles", "damageProfileId", "Damage", "|damageRatePercent|" },
-        { "BossProfiles.json", "bosses", "archetypeId", "Bosses", "|maximumHp|maximumHealthBars|attackPower|collisionRadius|engageDistance|moveSpeed|" }
+        { "PlayerProfiles.json", "players", "characterClass", "Players", "|maximumHp|maximumResource|resourceRegenPerSecond|attackPower|defense|moveSpeed|defenseStanceMoveSpeedScale|maximumIdentity|identityRegenPerSecond|identityDrainPerSecond|identityStanceSwitchCost|", "players", "|maximumHp|maximumResource|resourceRegenPerSecond|attackPower|defense|criticalChancePercent|criticalDamagePercent|" },
+        { "PlayerSkills.json", "skills", "skillId", "Skills", "|cooldownMs|resourceCost|identityCost|staggerDamage|partDamage|actionDurationMs|hitTimeMs|movementDistance|maximumRange|", "skills", "|cooldownMs|resourceCost|staggerDamage|partDamage|" },
+        { "DamageProfiles.json", "profiles", "damageProfileId", "Damage", "|damageRatePercent|", "damageProfiles", "|attackCoefficientBp|damageAddend|damageSpreadPercent|" },
+        { "BossProfiles.json", "bosses", "archetypeId", "Bosses", "|maximumHp|maximumHealthBars|attackPower|collisionRadius|engageDistance|moveSpeed|", "bosses", "|maximumHp|maximumHealthBars|attackPower|" }
     };
     std::string ReadText(const std::filesystem::path& path)
     {
@@ -57,6 +57,11 @@ bool CBalanceTestPanel::Is_Dirty() const
 bool CBalanceTestPanel::Reload()
 {
     std::vector<DOCUMENT> staged;
+    constexpr const char* profilePath = "Data/Balance/Profiles/Retail.balanceprofile.json";
+    DATA_JSON_VALUE profile;
+    std::string profileError;
+    if (!CDataJson::Parse(ReadText(CProjectDataRoot::Resolve("Balance/Profiles/Retail.balanceprofile.json")), profile, profileError))
+    { m_status = "Retail profile load failed: " + profileError; return false; }
     for (const auto& domain : DOMAINS)
     {
         DOCUMENT document;
@@ -81,13 +86,38 @@ bool CBalanceTestPanel::Reload()
             if (const auto* slot = source.Find("inputSlot"); slot && slot->Is_String()) row.label += " [" + slot->Get_String() + "]";
             if (const auto* owner = source.Find("characterClass"); owner && owner->Is_String() && std::string_view(domain.key) != "characterClass")
                 row.label = owner->Get_String() + " | " + row.label;
+            const DATA_JSON_VALUE* overrideRow = nullptr;
+            if (const auto* overrides = profile.Find(domain.profileArray); overrides && overrides->Is_Array())
+                for (const auto& candidate : overrides->Get_Array())
+                {
+                    const auto* id = candidate.Find(domain.key);
+                    if (!id || (!id->Is_String() && !id->Is_Number())) continue;
+                    const auto identity = id->Is_String() ? id->Get_String() : std::to_string(static_cast<std::uint32_t>(id->Get_Number()));
+                    if (identity == row.id) { overrideRow = &candidate; break; }
+                }
             for (const auto& [name, value] : source.Get_Object())
             {
                 if (!value.Is_Number() || std::string_view(domain.fields).find("|" + name + "|") == std::string_view::npos) continue;
                 const bool integral = name != "moveSpeed" && name != "defenseStanceMoveSpeedScale" && name != "movementDistance" &&
                     name != "maximumRange" && name != "collisionRadius" && name != "engageDistance";
-                row.fields.push_back({ name, value.Get_Number(), value.Get_Number(), integral });
+                const auto* effective = overrideRow && std::string_view(domain.profileFields).find("|" + name + "|") != std::string_view::npos ? overrideRow->Find(name) : nullptr;
+                if (name == "damageRatePercent" && overrideRow)
+                {
+                    const auto* coefficient = overrideRow->Find("attackCoefficientBp");
+                    const auto* addend = overrideRow->Find("damageAddend");
+                    if ((coefficient && coefficient->Get_Number() > 0) || (addend && addend->Get_Number() > 0)) continue;
+                }
+                const auto number = effective && effective->Is_Number() ? effective->Get_Number() : value.Get_Number();
+                row.fields.push_back({ name, number, number, integral,
+                    effective ? profilePath : document.path, effective ? domain.profileArray : domain.array });
             }
+            if (overrideRow)
+                for (const auto& [name, value] : overrideRow->Get_Object())
+                {
+                    if (!value.Is_Number() || std::string_view(domain.profileFields).find("|" + name + "|") == std::string_view::npos ||
+                        std::any_of(row.fields.begin(), row.fields.end(), [&](const FIELD& field) { return field.name == name; })) continue;
+                    row.fields.push_back({ name, value.Get_Number(), value.Get_Number(), true, profilePath, domain.profileArray });
+                }
             document.rows.push_back(std::move(row));
         }
         staged.push_back(std::move(document));
@@ -122,7 +152,7 @@ void CBalanceTestPanel::Start_Job(const bool publish)
                     { m_status = "A whole finite number is required for " + field.name; return; }
                     if (!first) output << ',';
                     first = false;
-                    output << "{\"document\":" << JsonString(document.path) << ",\"id\":" << JsonString(row.id)
+                    output << "{\"document\":" << JsonString(field.sourcePath) << ",\"domain\":" << JsonString(field.sourceArray) << ",\"id\":" << JsonString(row.id)
                         << ",\"field\":" << JsonString(field.name) << ",\"before\":" << field.original << ",\"value\":" << field.value << '}';
                 }
         output << "]}\n";
@@ -135,7 +165,7 @@ void CBalanceTestPanel::Start_Job(const bool publish)
     const auto script = repository / "Tools" / "GameplayPipeline" /
         (publish ? "Publish-BalanceRuntimeSet.ps1" : "Save-BalanceTestDraft.ps1");
     std::wstring command = L"powershell.exe -NoProfile -ExecutionPolicy Bypass -File \"" + script.wstring() + L"\"";
-    command += publish ? L" -Mode Publish" : L" -DraftPath \"" + draft.wstring() + L"\"";
+    command += publish ? L" -Mode Publish -BalanceProfile Retail" : L" -DraftPath \"" + draft.wstring() + L"\"";
     SECURITY_ATTRIBUTES security{ sizeof(SECURITY_ATTRIBUTES), nullptr, TRUE };
     const HANDLE output = CreateFileW(job->log.c_str(), GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_DELETE,
         &security, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
@@ -189,7 +219,6 @@ void CBalanceTestPanel::Poll_Job()
 
 void CBalanceTestPanel::Render_KillBossControl()
 {
-#ifdef _DEBUG
     using namespace LostArk::Shared;
     static CNetworkPlayerCommandSink sink;
     static std::uint32_t sequence = 0, pending = 0;
@@ -204,7 +233,7 @@ void CBalanceTestPanel::Render_KillBossControl()
     {
         if (result.iRequestSequence != pending) continue;
         pending = 0;
-        constexpr const char* messages[] = { "Accepted; normal gate death/clear progression continues.", "Release Server rejects debug Kill Boss.",
+        constexpr const char* messages[] = { "Accepted; normal gate death/clear progression continues.", "Kill Boss is unavailable.",
             "Wrong world.", "Player is not in this room.", "Stale request ignored.", "No live boss in the current gate.",
             "The displayed boss changed; wait for the current snapshot.", "Wait until the gate is in combat." };
         const auto index = static_cast<std::size_t>(result.eResult);
@@ -223,7 +252,6 @@ void CBalanceTestPanel::Render_KillBossControl()
     }
     ImGui::EndDisabled();
     if (!status.empty()) ImGui::TextWrapped("%s", status.c_str());
-#endif
 }
 
 void CBalanceTestPanel::Render(bool& open)
@@ -231,7 +259,7 @@ void CBalanceTestPanel::Render(bool& open)
     Poll_Job();
     ImGui::SetNextWindowSize(ImVec2(1040.f, 720.f), ImGuiCond_FirstUseEver);
     if (!ImGui::Begin("Balance Test", &open)) { ImGui::End(); return; }
-    ImGui::TextWrapped("Shared player, skill, damage and boss numbers. Save validates authoring; Publish Server Data prepares the next Server start.");
+    ImGui::TextWrapped("Retail player, skill, damage and boss numbers. Source fields show their effective profile values; Save and Publish prepare the next Server start.");
     ImGui::BeginDisabled(m_job != nullptr);
     if (ImGui::Button("Reload Saved")) { if (Is_Dirty()) m_confirmReload = true; else Reload(); }
     ImGui::SameLine(); ImGui::BeginDisabled(!Is_Dirty());
@@ -272,6 +300,7 @@ void CBalanceTestPanel::Render(bool& open)
                 ImGui::InputDouble(field.name.c_str(), &field.value, field.integral ? 1.0 : 0.1, field.integral ? 100.0 : 1.0,
                     field.integral ? "%.0f" : "%.4f");
                 if (field.value != field.original) ImGui::TextDisabled("Saved: %.6g", field.original);
+                if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", field.sourcePath.c_str());
             }
         }
         ImGui::EndChild();
@@ -282,6 +311,54 @@ void CBalanceTestPanel::Render(bool& open)
     const auto& boss = CCombatHUDViewModel::Get().Get_Boss();
     ImGui::Text("Player HP %u / %u | Boss HP %u / %u | Server tick %u", player.iCurrentHp, player.iMaximumHp,
         boss.iCurrentHp, boss.iMaximumHp, player.iServerTick);
+    Render_CooldownControl();
     Render_KillBossControl();
     ImGui::End();
+}
+
+
+void CBalanceTestPanel::Render_CooldownControl()
+{
+    using namespace LostArk::Shared;
+    static CNetworkPlayerCommandSink sink;
+    static std::uint32_t sequence = 0, pending = 0;
+    static ULONGLONG submittedAt = 0;
+    static std::string status;
+    const auto& player = CCombatHUDViewModel::Get().Get_Player();
+    WORLD_ID world = WORLD_ID::END;
+    switch (static_cast<LEVEL>(CGameInstance::Get().Get_CurrentLevelID()))
+    {
+    case LEVEL::BERN: world = WORLD_ID::BERN; break;
+    case LEVEL::VALTAN_ARENA: world = WORLD_ID::VALTAN_ARENA; break;
+    case LEVEL::KAKULSAYDON_ARENA: world = WORLD_ID::KAKULSAYDON_ARENA; break;
+    case LEVEL::CHARACTER_SELECT: world = WORLD_ID::CHARACTER_SELECT_ARENA; break;
+    case LEVEL::DEVELOPMENT: world = WORLD_ID::TRAINING_GROUND; break;
+    case LEVEL::MAHARAKA: world = WORLD_ID::MAHARAKA; break;
+    default: break;
+    }
+    S2C_SET_COOLDOWN_MODE_RESULT result;
+    while (sink.Consume_SetCooldownModeResult(result))
+    {
+        if (result.iRequestSequence != pending) continue;
+        pending = 0;
+        status = result.eResult == SET_COOLDOWN_MODE_RESULT::ACCEPTED ?
+            "Server accepted the room cooldown policy for every player." : "Server rejected the policy request; room state was preserved.";
+    }
+    if (pending && GetTickCount64() - submittedAt > 5000u)
+    { pending = 0; status = "No policy response received. Check the current Server connection."; }
+    ImGui::Text("Room cooldown: %s", !player.isValid ? "Waiting for Server" :
+        (player.eCooldownMode == COOLDOWN_MODE::DEBUG_THREE_SECONDS ? "Debug (3s)" : "Release (Retail)"));
+    ImGui::BeginDisabled(!player.isValid || world == WORLD_ID::END || pending);
+    const auto submit = [&](const COOLDOWN_MODE mode) {
+        if (++sequence == 0u) ++sequence;
+        if (sink.Request_SetCooldownMode({ sequence, world, mode }))
+        { pending = sequence; submittedAt = GetTickCount64(); status = "Requesting room policy..."; }
+        else status = "Could not submit policy to the Server.";
+    };
+    if (ImGui::Button("Debug (3s)")) submit(COOLDOWN_MODE::DEBUG_THREE_SECONDS);
+    ImGui::SameLine();
+    if (ImGui::Button("Release (Retail)")) submit(COOLDOWN_MODE::RELEASE_AUTHORED);
+    ImGui::EndDisabled();
+    ImGui::TextDisabled("Runtime policy only; zero-cooldown attacks stay at zero. Retail ALT_V: 300s.");
+    if (!status.empty()) ImGui::TextWrapped("%s", status.c_str());
 }

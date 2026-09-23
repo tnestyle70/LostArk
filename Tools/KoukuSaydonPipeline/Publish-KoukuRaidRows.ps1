@@ -11,6 +11,7 @@ function Add-KoukuRaidRows([object]$Encounter, [object]$Rows) {
             'entries','arrivals')
         if ($null -ne $gate.PSObject.Properties['entrySequenceInstanceId']) { $gateProperties += 'entrySequenceInstanceId' }
         if ($null -ne $gate.PSObject.Properties['loopStartEntryId']) { $gateProperties += 'loopStartEntryId' }
+        if ($null -ne $gate.PSObject.Properties['entryGroups']) { $gateProperties += 'entryGroups' }
         Assert-ExactProperties $gate $gateProperties 'Kouku raid gate'
         if ($gate.gateId -cnotin @('GATE1','GATE2','GATE3','BINGO') -or $seenGates.ContainsKey($gate.gateId)) {
             throw 'Kouku raid gate is unknown or duplicated.'
@@ -79,6 +80,39 @@ function Add-KoukuRaidRows([object]$Encounter, [object]$Rows) {
             }
             if (@($targets).Count -ne 1) { throw "Kouku raid flow target must exact-join its published gate: $($gate.gateId) / $($entry.targetId), matches=$(@($targets).Count)." }
             $Rows.Add((@('RAIDFLOWSTEP',$gate.gateId,$index,$entry.entryId,$entry.kind,$entry.targetId,$entry.waitAfterMs) -join "`t"))
+        }
+        if ($null -ne $gate.PSObject.Properties['entryGroups']) {
+            if ($gate.entryGroups -isnot [Array] -or @($gate.entryGroups).Count -gt 64) { throw 'Kouku raid supports at most 64 flow groups.' }
+            $groupIds = @{}
+            $entryIndices = @{}
+            for ($index = 0; $index -lt @($gate.entries).Count; ++$index) { $entryIndices[$gate.entries[$index].entryId] = $index }
+            $nextStart = 0
+            $groupIndex = 0
+            foreach ($group in $gate.entryGroups) {
+                $properties = @('groupId','displayName','startEntryId','endEntryId')
+                $repeat = $null -ne $group.PSObject.Properties['repeatUntilHealthBars']
+                if ($repeat) { $properties += @('repeatUntilHealthBars','transitionAt') }
+                Assert-ExactProperties $group $properties 'Kouku raid flow group'
+                foreach ($field in @('groupId','startEntryId','endEntryId')) { Assert-StableId $group.$field "Kouku raid group $field" }
+                if ($group.displayName -isnot [string] -or [string]::IsNullOrWhiteSpace($group.displayName) -or
+                    $groupIds.ContainsKey($group.groupId) -or -not $entryIndices.ContainsKey($group.startEntryId) -or
+                    -not $entryIndices.ContainsKey($group.endEntryId)) { throw 'Kouku raid group identity, name or entry reference is invalid.' }
+                $first = $entryIndices[$group.startEntryId]
+                $last = $entryIndices[$group.endEntryId]
+                if ($first -lt $nextStart -or $last -lt $first) { throw 'Kouku raid group ranges must be ordered and disjoint.' }
+                $nextStart = $last + 1
+                $groupIds[$group.groupId] = $true
+                $threshold = 'NONE'
+                $boundary = 'PATTERN_END'
+                if ($repeat) {
+                    Assert-JsonInteger $group.repeatUntilHealthBars 'Kouku raid HP repeat threshold' 0 1000
+                    if ($loopStart -or $group.transitionAt -cnotin @('PATTERN_END','GROUP_END')) { throw 'Kouku raid HP repeat cannot mix with legacy loops and requires a completion boundary.' }
+                    $threshold = $group.repeatUntilHealthBars
+                    $boundary = $group.transitionAt
+                }
+                $Rows.Add((@('RAIDFLOWGROUP',$gate.gateId,$groupIndex,$group.groupId,$group.startEntryId,$group.endEntryId,$threshold,$boundary) -join "`t"))
+                ++$groupIndex
+            }
         }
         if ($gate.arrivals -isnot [Array] -or @($gate.arrivals).Count -gt 8) { throw 'Kouku raid arrivals exceed four slots per segment.' }
         $arrivalSlots = @{}

@@ -1481,7 +1481,7 @@ bool LostArk::Server::CGameplayCatalog::Load_DraftKoukuProduct(
 			 kind == "KOUKUSAYDONPRODUCTREVISION" || kind == "ENCOUNTERINTRO");
 		const bool joinedRow = kind == "PATTERNTARGET" || kind == "PATTERNBUNDLE" ||
 			kind == "PATTERNBUNDLEMEMBER" || kind == "RAIDGATE" ||
-			kind == "RAIDFLOWSTEP" || kind == "RAIDARRIVAL";
+			kind == "RAIDFLOWSTEP" || kind == "RAIDFLOWGROUP" || kind == "RAIDARRIVAL";
 		if (!encounterRow && !joinedRow)
 		{ m_strStatus = "Kouku draft contains a row outside its encounter"; return false; }
 	}
@@ -1702,6 +1702,34 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 		bool& committed;
 		~RAID_ROLLBACK() { if (!committed) target = std::move(previous); }
 	} raidRollback{m_KoukuRaidGates, std::move(m_KoukuRaidGates), rollback.committed};
+	// Supplemental profiles must replace the previous generation together with
+	// its skills. A failed reload restores all lookup views, never partial rows.
+	struct PROFILE_ROLLBACK final
+	{
+		decltype(m_EmberProfiles)& embers;
+		decltype(m_EmberProfiles) previousEmbers;
+		decltype(m_DamageProfileById)& damages;
+		decltype(m_DamageProfileById) previousDamages;
+		decltype(m_SkillBuffsBySkillId)& buffsBySkill;
+		decltype(m_SkillBuffsBySkillId) previousBuffsBySkill;
+		decltype(m_SkillBuffById)& buffsById;
+		decltype(m_SkillBuffById) previousBuffsById;
+		bool& committed;
+		~PROFILE_ROLLBACK()
+		{
+			if (committed) return;
+			embers = std::move(previousEmbers);
+			damages = std::move(previousDamages);
+			buffsBySkill = std::move(previousBuffsBySkill);
+			buffsById = std::move(previousBuffsById);
+		}
+	} profileRollback{m_EmberProfiles, std::move(m_EmberProfiles),
+		m_DamageProfileById, std::move(m_DamageProfileById),
+		m_SkillBuffsBySkillId, std::move(m_SkillBuffsBySkillId),
+		m_SkillBuffById, std::move(m_SkillBuffById), rollback.committed};
+	m_DamageProfileById.clear();
+	m_SkillBuffsBySkillId.clear();
+	m_SkillBuffById.clear();
 	m_KoukuRaidGates.clear();
 	m_Skills.clear();
 	m_Bosses.clear();
@@ -5162,6 +5190,32 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 			{ m_strStatus = "Kouku raid flow order or identity is invalid"; return false; }
 			gate->second.Entries.push_back({std::string(fields[3]), std::string(fields[5]), fields[4] == "BUNDLE", wait});
 		}
+		else if (!fields.empty() && "RAIDFLOWGROUP" == fields[0])
+		{
+			KOUKU_RAID_FLOW_GROUP group;
+			std::uint32_t index = 0u, threshold = 0u;
+			if (fields.size() != 8u || !ParseNumber(fields[2], index) || !IsStableId(fields[3]) ||
+				!IsStableId(fields[4]) || !IsStableId(fields[5]) ||
+				(fields[6] != "NONE" && (!ParseNumber(fields[6], threshold) || threshold > 1000u)) ||
+				(fields[7] != "PATTERN_END" && fields[7] != "GROUP_END") || (fields[6] == "NONE" && fields[7] != "PATTERN_END"))
+			{ m_strStatus = "Kouku raid flow group properties are invalid"; return false; }
+			auto gate = m_KoukuRaidGates.find(std::string(fields[1]));
+			if (gate == m_KoukuRaidGates.end() || index != gate->second.EntryGroups.size() || index >= 64u)
+			{ m_strStatus = "Kouku raid flow group owner or order is invalid"; return false; }
+			const auto& entries = gate->second.Entries;
+			const auto first = std::find_if(entries.begin(), entries.end(), [&](const auto& row) { return row.strEntryId == fields[4]; });
+			const auto last = std::find_if(entries.begin(), entries.end(), [&](const auto& row) { return row.strEntryId == fields[5]; });
+			if (first == entries.end() || last == entries.end() || first > last ||
+				(!gate->second.EntryGroups.empty() && static_cast<std::uint32_t>(first - entries.begin()) <= gate->second.EntryGroups.back().iLastEntry) ||
+				std::any_of(gate->second.EntryGroups.begin(), gate->second.EntryGroups.end(), [&](const auto& row) { return row.strGroupId == fields[3]; }) ||
+				(fields[6] != "NONE" && !gate->second.strLoopStartEntryId.empty()))
+			{ m_strStatus = "Kouku raid flow group ranges must be ordered and disjoint saved entries"; return false; }
+			group.strGroupId = fields[3]; group.iFirstEntry = static_cast<std::uint32_t>(first - entries.begin());
+			group.iLastEntry = static_cast<std::uint32_t>(last - entries.begin());
+			if (fields[6] != "NONE") group.RepeatUntilHealthBars = threshold;
+			group.bTransitionAtGroupEnd = fields[7] == "GROUP_END";
+			gate->second.EntryGroups.push_back(std::move(group));
+		}
 		else if (!fields.empty() && "RAIDARRIVAL" == fields[0])
 		{
 			KOUKU_RAID_ARRIVAL arrival;
@@ -7936,7 +7990,7 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 			koukuOwned = fields[1] == "ENCOUNTER_KAKULSAYDON_G1" &&
 				(kind.starts_with("PATTERN") || kind == "KOUKUMADNESS" ||
 				 kind == "KOUKUSAYDONPRODUCTREVISION" || kind == "ENCOUNTERINTRO");
-			if (kind == "RAIDGATE" || kind == "RAIDFLOWSTEP" || kind == "RAIDARRIVAL") koukuOwned = true;
+			if (kind == "RAIDGATE" || kind == "RAIDFLOWSTEP" || kind == "RAIDFLOWGROUP" || kind == "RAIDARRIVAL") koukuOwned = true;
 			if (kind == "PATTERNTARGET" && nullptr != koukuPatterns)
 				koukuOwned = std::any_of(koukuPatterns->begin(), koukuPatterns->end(),
 					[&fields](const auto& pattern) { return pattern.strPatternId == fields[1]; });

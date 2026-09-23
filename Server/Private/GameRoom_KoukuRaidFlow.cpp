@@ -39,10 +39,6 @@ void LostArk::Server::CGameRoom::Handle_KoukuRaidRequest(const SESSION_ID sessio
     rejection.PinnedGameplayRevision = request.ExpectedGameplayRevision;
     rejection.iActionSourceRevision = request.iActionSourceRevision; rejection.iSequenceSourceRevision = request.iSequenceSourceRevision;
     rejection.iServerTick = m_iServerTick;
-#ifndef _DEBUG
-    if (request.eOperation != KOUKUSAYDON_RAID_OPERATION::READY && request.eOperation != KOUKUSAYDON_RAID_OPERATION::FAILED)
-    { rejection.strReason = "Release raids start from their world entry collider"; send(rejection); return; }
-#endif
     const auto reject = [&](const char* reason) { rejection.strReason = reason; send(rejection); };
     CPacketWriter shape;
     if (m_eWorldId != WORLD_ID::KAKULSAYDON_ARENA || !Write_Message(shape, request)) { reject("Invalid raid request scope"); return; }
@@ -123,6 +119,10 @@ bool LostArk::Server::CGameRoom::Begin_KoukuRaidPreparation(const SESSION_ID ses
         if (!gate && std::string(gateId) == "BINGO" && request.strStartGateId != "BINGO") continue;
         if (!gate || gate->iSequenceRevision != request.iSequenceSourceRevision || gate->Entries.empty() || !Find_Placement(gate->strPrimaryBossPlacementId))
         { reason = "Published raid flow or Sequence revision is missing or stale"; return false; }
+        const auto* primaryProfile = product->Find_Boss(Find_Placement(gate->strPrimaryBossPlacementId)->strArchetypeId);
+        if (!primaryProfile || std::any_of(gate->EntryGroups.begin(), gate->EntryGroups.end(), [&](const auto& group) {
+            return group.RepeatUntilHealthBars && *group.RepeatUntilHealthBars > primaryProfile->iMaximumHealthBars; }))
+        { reason = "Published HP repeat exceeds the primary boss health bars"; return false; }
         if (gate->strGateId != "BINGO" && std::count_if(gate->Arrivals.begin(), gate->Arrivals.end(), [](const auto& arrival) { return !arrival.bClear; }) != 4)
         { reason = "Published gate intro must define all four room arrival slots"; return false; }
         for (const auto& arrival : gate->Arrivals)
@@ -174,13 +174,8 @@ bool LostArk::Server::CGameRoom::Begin_KoukuRaidPreparation(const SESSION_ID ses
     state.ePhase = KOUKUSAYDON_RAID_PHASE::PREPARING;
     state.strSequenceCompositionId = gate->strSequenceCompositionId; state.strSequencePatternId = request.strStartGateId == "BINGO" && !bingoGateVoteEntry ? "" : gate->strIntroPatternId;
     state.ParticipantPlayerIds = m_KoukuRaid.PlayerIds;
-    // Only Debug raid admission waits for on-demand GPU/resource preparation.
-    // Release entry retains its preloaded-document deadline; combat clocks are unchanged.
-#ifdef _DEBUG
+    // F1 Complete Play and world entry share bounded resource readiness in both builds.
     constexpr uint32_t preparationTicks = 20u * 60u * 30u;
-#else
-    constexpr uint32_t preparationTicks = 300u;
-#endif
     state.iStartTick = 0u; state.iEndTick = Add_ServerTicksSkippingReservedZero(m_iServerTick, preparationTicks); state.iServerTick = m_iServerTick;
     m_KoukuRaidReceipts[sessionId] = {request, state};
     Broadcast_KoukuRaidState(); return true;
@@ -356,11 +351,17 @@ bool LostArk::Server::CGameRoom::Start_KoukuRaidEntry(const std::uint32_t tick)
 {
     auto& run = m_KoukuRaid; const auto* gate = run.pCatalog->Find_KoukuRaidGate(run.State.strGateId);
     if (!gate || run.State.iFlowEntryIndex >= gate->Entries.size()) return true;
+    const auto primary = std::find_if(m_WorldEntities.begin(), m_WorldEntities.end(), [&](const auto& boss) { return boss.iNetEntityId == run.iPrimaryBossId; });
+    if (primary == m_WorldEntities.end()) { m_strStatus = "Flow primary boss is missing"; return false; }
+    run.State.iFlowEntryIndex = gate->Resolve_ReadyEntry(run.State.iFlowEntryIndex,
+        primary->iCurrentHp, primary->iMaximumHp, primary->iMaximumHealthBars);
+    if (run.State.iFlowEntryIndex >= gate->Entries.size()) return true;
     C2S_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_REQUEST request;
     if (!Build_KoukuRaidEntryRequest(*gate, run.State.iFlowEntryIndex, request)) return false;
     const auto published = m_pKoukuPublishedProductGeneration; m_pKoukuPublishedProductGeneration = run.pCatalog;
     S2C_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_RESULT result;
-    const bool continueLoop = (run.State.strGateId == "GATE1" || !gate->strLoopStartEntryId.empty()) && run.iAuditionEpoch != 0u &&
+    const bool continueLoop = (run.State.strGateId == "GATE1" || !gate->strLoopStartEntryId.empty() ||
+        std::any_of(gate->EntryGroups.begin(), gate->EntryGroups.end(), [](const auto& group) { return group.RepeatUntilHealthBars.has_value(); })) && run.iAuditionEpoch != 0u &&
         m_KoukuSaydonPatternAudition.iRoomAuditionEpoch == run.iAuditionEpoch &&
         m_KoukuSaydonPatternAudition.Request.Scope.strGateId == run.State.strGateId;
     const auto verdict = Evaluate_KoukuSaydonPatternAudition(run.iOwnerSessionId, request, result,
@@ -584,7 +585,8 @@ void LostArk::Server::CGameRoom::Update_KoukuRaid(const std::uint32_t tick)
     }
     else
     {
-        if (std::none_of(m_WorldEntities.begin(), m_WorldEntities.end(), [&](const auto& boss) { return boss.iNetEntityId == run.iPrimaryBossId; }))
+        const auto primary = std::find_if(m_WorldEntities.begin(), m_WorldEntities.end(), [&](const auto& boss) { return boss.iNetEntityId == run.iPrimaryBossId; });
+        if (primary == m_WorldEntities.end())
         { Stop_KoukuRaid("Gate boss was removed without a death event"); return; }
         const bool mazeActive = m_KoukuCardMaze.Get_Phase() != CKoukuCardMazeRuntime::PHASE::INACTIVE ||
             std::any_of(m_Players.begin(), m_Players.end(), [](const auto& pair) {
@@ -605,7 +607,8 @@ void LostArk::Server::CGameRoom::Update_KoukuRaid(const std::uint32_t tick)
             { Stop_KoukuRaid("Flow occurrence aborted before completion"); return; }
             run.bEntryRunning = false;
             run.iNextEntryTick = Add_ServerTicksSkippingReservedZero(tick, CKoukuSaydonLogicRuntime::Ticks_FromMs(gate->Entries[run.State.iFlowEntryIndex].iWaitAfterMs));
-            ++run.State.iFlowEntryIndex;
+            run.State.iFlowEntryIndex = gate->Resolve_NextCompletedEntry(run.State.iFlowEntryIndex,
+                primary->iCurrentHp, primary->iMaximumHp, primary->iMaximumHealthBars);
             if (run.State.iFlowEntryIndex == gate->Entries.size())
             {
                 if (!gate->strLoopStartEntryId.empty())
@@ -615,7 +618,8 @@ void LostArk::Server::CGameRoom::Update_KoukuRaid(const std::uint32_t tick)
                     if (loopStart == gate->Entries.end()) { Stop_KoukuRaid("Published flow loop start is missing"); return; }
                     run.State.iFlowEntryIndex = static_cast<std::uint32_t>(loopStart - gate->Entries.begin());
                 }
-                else if (run.State.strGateId == "BINGO" || run.State.strGateId == "GATE1")
+                else if ((run.State.strGateId == "BINGO" || run.State.strGateId == "GATE1") &&
+                    std::none_of(gate->EntryGroups.begin(), gate->EntryGroups.end(), [](const auto& group) { return group.RepeatUntilHealthBars.has_value(); }))
                     run.State.iFlowEntryIndex = 0u;
             }
         }

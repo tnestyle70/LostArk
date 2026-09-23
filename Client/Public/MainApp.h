@@ -70,7 +70,6 @@ class CEstherCutinPresentationService;
 
 class CMainApp final
 {
-#ifdef _DEBUG
 private:
 		enum class DEBUG_TOOL
 	{
@@ -108,7 +107,6 @@ private:
 		DEBUG_TOOL eTool = DEBUG_TOOL::NONE;
 	};
 
-#endif
 
 private:
 	CMainApp();
@@ -141,7 +139,6 @@ public:
 	toggles (open when closed, close when open). */
 	void Open_ItemUpgradeWindow();
 
-#ifdef _DEBUG
 	static void Update_DebugWindowTitleWithFps(const wchar_t* pBaseTitle);
 	/* Every domain tool writes one stable Pattern ID into this process-wide
 	   workspace selection before Complete Play.  The tools retain their local
@@ -155,7 +152,6 @@ public:
 	/* Opens the one canonical Valtan Boss Tool Flow owner from the integrated
 	   composition shell. */
 	bool_t Debug_OpenValtanPatternFlow(std::string& strOutStatus);
-#endif
 
 private:
 	void UpdateKoukuGateCompletePlay();
@@ -166,7 +162,6 @@ private:
 	std::string m_strKoukuRaidPresentationKey, m_strKoukuRaidFailedKey;
 	std::chrono::steady_clock::time_point m_KoukuRaidReplyDeadline{};
 	std::string m_strKoukuRaidReplyStatus; // Latest unresolved/rejected request, independent of broadcast raid presentation.
-#ifdef _DEBUG
     struct KOUKU_RAID_RESOURCE_PREPARATION final
     {
         LostArk::Shared::C2S_DEBUG_KOUKUSAYDON_RAID_REQUEST request;
@@ -177,7 +172,6 @@ private:
     std::optional<KOUKU_RAID_RESOURCE_PREPARATION> m_KoukuRaidResourcePreparation;
     uint32_t m_iKoukuRaidResourceEpoch = 0u;
     std::vector<std::string> m_KoukuRaidResourcePatternIds;
-#endif
 
 	bool_t m_bKoukuRaidStopAfterAdmission = false;
 	bool_t m_bKoukuLocalPreviewStopRequested = false;
@@ -485,7 +479,6 @@ private:
 	void Update_QuickSlotFlash();
 	void RenderCombatHUDText();
 
-#ifdef _DEBUG
 	HRESULT ReadyDebugTools();
 	HRESULT EnsureDebugTool(DEBUG_TOOL eTool);
 	HRESULT EnsureAnimationPreviewBackend();
@@ -590,7 +583,6 @@ private:
 	void UpdateLightingPreview();
 	void RenderProfilerOverlay();
 	void RenderProfilerSettings();
-#endif
 
 private:
 	ComPtr<ID3D11Device> m_pDevice = { nullptr };
@@ -920,7 +912,6 @@ private:
 	combat HUD. UI-only placeholder roster until a party Shared protocol exists. */
 	unique_ptr<CPartyWindowView> m_pPartyWindowView = { nullptr };
 
-#ifdef _DEBUG
 	unique_ptr<CMapTool> m_pMapTool = { nullptr };
 	unique_ptr<CEffect_Tool> m_pEffectTool = { nullptr };
 	unique_ptr<CEffect_Tool_V2> m_pEffectToolV2 = { nullptr };
@@ -936,9 +927,11 @@ private:
 	unique_ptr<CValtanBossTool> m_pValtanBossTool = { nullptr };
 	unique_ptr<CKoukuSaydonBossTool> m_pKoukuSaydonBossTool = { nullptr };
 	unique_ptr<CCameraTool> m_pCameraTool = { nullptr };
+#ifdef _DEBUG
 	unique_ptr<CWorldObjectTool> m_pWorldObjectTool;
 	unique_ptr<CWorldLevelTool> m_pWorldLevelTool;
 	unique_ptr<WORLD_LEVEL_TOOL_REQUEST> m_pWorldLevelPendingMapRequest;
+#endif
 	std::chrono::steady_clock::time_point m_WorldLevelMapDeadline{};
 	/* One armed viewport pick for the World Level Tool's map edit session. */
 	bool m_bWorldLevelPickArmed = false;
@@ -1064,7 +1057,6 @@ private:
 	int32_t m_iSelectedDebugItemIndex = 0;
 	uint32_t m_iNextDebugGiveItemSequence = 1;
 	string m_strDebugItemStatus;
-#endif
 
 private:
 	static CMainApp* s_pActiveInstance;

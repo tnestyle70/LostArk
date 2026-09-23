@@ -306,14 +306,9 @@ void LostArk::Server::CGameRoom::Handle_DespawnAllWorldEntities(
 	// Same room gating as Handle_SpawnWorldEntity -- this debug revert only makes
 	// sense for the Character Select Arena's own spawn buttons and the
 	// KoukuSaydon arena's Debug gate buttons.
-#ifdef _DEBUG
 	if (Is_KoukuRaidRunning()) return;
 	const bool koukuGateWorld = WORLD_ID::KAKULSAYDON_ARENA == m_eWorldId;
     const bool valtanWorld = WORLD_ID::VALTAN_ARENA == m_eWorldId;
-#else
-	const bool koukuGateWorld = false;
-    const bool valtanWorld = false;
-#endif
 	if ((WORLD_ID::CHARACTER_SELECT_ARENA != m_eWorldId && !koukuGateWorld && !valtanWorld) ||
 		!m_PlayerIdBySessionId.contains(sessionId))
 	{
@@ -329,7 +324,6 @@ void LostArk::Server::CGameRoom::Handle_DespawnAllWorldEntities(
 		return;
 	}
 
-#ifdef _DEBUG
     if (valtanWorld)
     {
         std::vector<NET_ENTITY_ID> removed;
@@ -379,7 +373,6 @@ void LostArk::Server::CGameRoom::Handle_DespawnAllWorldEntities(
         m_strStatus = "Valtan and its dependents despawned: " + std::to_string(removed.size());
         return;
     }
-#endif
 
 	// Character Select Arena's own placements have no statically-enabled
 	// MONSTER/BOSS entries (confirmed: only 4 disabled playerSpawn + one disabled

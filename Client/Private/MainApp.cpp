@@ -84,7 +84,6 @@
 #include "UIInputRouter.h"
 #include "UILayoutRuntime.h"
 
-#ifdef _DEBUG
 #include "ActorCatalog.h"
 #include "Animation_Tool.h"
 #include "KoukuSaydonActionWorkbench.h"
@@ -115,7 +114,6 @@
 #include "ValtanPatternAuditionService.h"
 #include "ValtanPatternFlowService.h"
 #include "ValtanTuningCommandService.h"
-#endif
 
 #include <algorithm>
 #include <cctype>
@@ -1252,11 +1250,9 @@ void CMainApp::UpdateKoukuGateCompletePlay()
             Record_KoukuRaidRequestEvent("kouku.raid.request.reset", m_KoukuRaidRequest,
                 m_iKoukuCompletePlayWorldGeneration, 0u, m_strKoukuCompletePlayStatus);
         }
-#ifdef _DEBUG
         if (arena) arena->Debug_ResetCompletePlayPreparation();
         m_KoukuRaidResourcePreparation.reset();
         m_iKoukuRaidResourceEpoch = 0u; m_KoukuRaidResourcePatternIds.clear();
-#endif
         if (m_pKoukuPresentationPlayer && m_pKoukuPresentationPlayer->Preview_IsServerClock()) m_pKoukuPresentationPlayer->Stop_Preview();
         m_pKoukuRaidSequenceDocument.reset(); m_iKoukuRaidDocumentEpoch = m_iKoukuRaidAcknowledgedEpoch = 0u;
         m_strKoukuRaidPresentationKey.clear(); m_strKoukuRaidFailedKey.clear(); m_strKoukuCompletePlayFlowGate.clear();
@@ -1265,7 +1261,6 @@ void CMainApp::UpdateKoukuGateCompletePlay()
         m_iKoukuCompletePlayWorldGeneration = 0u;
         return;
     }
-#ifdef _DEBUG
     if (m_KoukuRaidResourcePreparation)
     {
         const auto& pending = *m_KoukuRaidResourcePreparation;
@@ -1311,7 +1306,6 @@ void CMainApp::UpdateKoukuGateCompletePlay()
         Record_KoukuRaidRequestEvent("kouku.raid.request.sent", request,
             m_iKoukuCompletePlayWorldGeneration, request.iExpectedRunEpoch, {});
     }
-#endif
     const auto reply = arena->Get_KoukuRaidReply();
     if (m_iKoukuRaidPendingRequest && reply.iRequestSequence == m_iKoukuRaidPendingRequest &&
         (!reply.iRunEpoch || reply.iOwnerPlayerId == CNetworkManager::Get().Get_LocalPlayerId()))
@@ -1345,14 +1339,12 @@ void CMainApp::UpdateKoukuGateCompletePlay()
         state.ePhase == KOUKUSAYDON_RAID_PHASE::WAIT_GATE || state.ePhase == KOUKUSAYDON_RAID_PHASE::WAIT_MINIGAME || state.ePhase == KOUKUSAYDON_RAID_PHASE::WAIT_ENTRY;
     m_iKoukuCompletePlayWorldGeneration = CNetworkManager::Get().Get_WorldInboundGeneration();
     m_strKoukuCompletePlayFlowGate = active ? state.strGateId : std::string{};
-#ifdef _DEBUG
     if (m_bKoukuRaidStopAfterAdmission && !m_iKoukuRaidPendingRequest)
     {
         m_bKoukuRaidStopAfterAdmission = false;
         if (active && state.iRunEpoch == reply.iRunEpoch && state.iOwnerPlayerId == reply.iOwnerPlayerId)
         { CancelKoukuGateCompletePlay("Queued Complete Play stop."); return; }
     }
-#endif
     if (state.ePhase == KOUKUSAYDON_RAID_PHASE::PREPARING)
     {
         m_strKoukuCompletePlayStatus = "Preparing the shared raid documents; waiting for every participant.";
@@ -1396,7 +1388,6 @@ void CMainApp::UpdateKoukuGateCompletePlay()
         }
         else if (preparationError.empty()) preparationError = "Raid document preparation failed";
         }
-#ifdef _DEBUG
         if (ready)
         {
             preparationStage = "resources.prepare";
@@ -1429,7 +1420,6 @@ void CMainApp::UpdateKoukuGateCompletePlay()
                 if (!ready && preparationError.empty()) preparationError = "Saved or published data changed during resource preparation";
             }
         }
-#endif
         if (ready)
         {
             preparationStage = "gate.prepare";
@@ -1610,9 +1600,7 @@ void CMainApp::Update(const f32_t fTimeDelta)
 	Sync_KoukuCinematicUI();
 	UpdateProfilerRuntime();
 
-#ifdef _DEBUG
 	UpdateDebugToolShortcut();
-#endif
 
 	/* System option rows read every frame: the cursor lock follows focus and window moves,
 	the FPS readout is a smoothed frame rate. */
@@ -1885,7 +1873,6 @@ void CMainApp::Update(const f32_t fTimeDelta)
 	}
 	// Release raids also emit owner lifecycle events; drain the shared queues every frame.
 	CKoukuSaydonPatternAuditionService::Get().Update();
-#ifdef _DEBUG
     {
         const auto& admitted = CKoukuSaydonPatternAuditionService::Get().Get_Snapshot();
         using STATE = KOUKU_SAYDON_PATTERN_AUDITION_STATE;
@@ -1926,7 +1913,6 @@ void CMainApp::Update(const f32_t fTimeDelta)
 				m_pKoukuSaydonBossTool->Is_PlayPreparationPending(),
 				preparing ? std::string_view(m_pKoukuSaydonBossTool->Get_Status()) : std::string_view{});
 	}
-#endif
 	{
 		Engine::CProfilerScope cpuPhaseScope(CGameInstance::Get().Get_Profiler(), "MainApp.Engine.Update");
 	CGameInstance::Get().Update_Engine(fTimeDelta);
@@ -1936,14 +1922,14 @@ void CMainApp::Update(const f32_t fTimeDelta)
 	// Debug reset handling follows the common raid consumer.
 #endif
 	if (!CLevel_KakulSaydonArena::Get_Active()) UpdateKoukuGateCompletePlay();
-#ifdef _DEBUG
 	// Consume the Server reset before a finished entry preview can queue its next gate.
 	if (auto* startArena = CLevel_KakulSaydonArena::Get_Active(); startArena && startArena->Consume_DebugReturnToStartSucceeded())
 	{
 		CancelKoukuGateCompletePlay("Returned to arena start after Server reset.");
+#ifdef _DEBUG
 		StopCompositionPreview(DEBUG_TOOL::SEQUENCER);
-	}
 #endif
+	}
 	{
 		Engine::CProfilerScope cpuPhaseScope(CGameInstance::Get().Get_Profiler(), "MainApp.Presentation.Prepare");
 	std::vector<BOSS_STAGE_ENVIRONMENT_SAMPLE> valtanEnvironmentSamples;
@@ -2012,6 +1998,66 @@ void CMainApp::Update(const f32_t fTimeDelta)
 	CEffectV2Runtime::Advance_ProductGroups(fTimeDelta, m_pDevice, m_pContext);
 	}
 
+	/* Save and publish jobs are process owners, not window owners. Poll the
+	   immutable Save receipt first, let a hidden Composition caller accept and
+	   reopen its exact local owners, then poll the optional Full DataOnly job. */
+	if (nullptr != m_pBalanceTool)
+		{
+			Engine::CProfilerScope toolScope(CGameInstance::Get().Get_Profiler(), "ImGui.Tool.Balance.Update_ValtanSaveJob");
+			m_pBalanceTool->Update_ValtanSaveJob();
+		}
+	if (nullptr != m_pValtanActionWorkbench)
+		{
+			Engine::CProfilerScope toolScope(CGameInstance::Get().Get_Profiler(), "ImGui.Tool.ValtanComposition.Update_SaveState");
+			m_pValtanActionWorkbench->Update_SaveState();
+		}
+	if (nullptr != m_pBalanceTool)
+		{
+			Engine::CProfilerScope toolScope(CGameInstance::Get().Get_Profiler(), "ImGui.Tool.Balance.Update_ServerRuntimeSetPublishJob");
+			m_pBalanceTool->Update_ServerRuntimeSetPublishJob();
+		}
+	if (nullptr != m_pValtanBossTool)
+	{
+		{
+			Engine::CProfilerScope toolScope(CGameInstance::Get().Get_Profiler(), "ImGui.Tool.ValtanBoss.Update");
+			m_pValtanBossTool->Update(
+			m_bDeveloperToolsVisible &&
+				IsDebugToolVisible(DEBUG_TOOL::VALTAN_BOSS),
+			m_bDeveloperToolsVisible &&
+				IsDebugToolVisible(DEBUG_TOOL::VALTAN_LOGIC_PATTERN));
+		}
+	}
+
+	if (m_pKoukuSaydonBossTool && m_pKoukuSaydonBossTool->Consume_PublishRequest())
+	{
+#ifdef _DEBUG
+		const bool available = SUCCEEDED(EnsureDebugTool(DEBUG_TOOL::SEQUENCER)) && m_pKoukuSaydonActionWorkbench;
+#else
+		if (!m_pKoukuSaydonActionWorkbench)
+			m_pKoukuSaydonActionWorkbench = make_unique<CKoukuSaydonActionWorkbench>();
+		const bool available = true;
+#endif
+		if (!available)
+			m_strKoukuCompletePlayStatus = "The Composition publisher workspace could not initialize.";
+		else if (m_pKoukuSaydonActionWorkbench->Is_Dirty() || m_pKoukuSaydonActionWorkbench->Is_PublishRunning())
+			m_strKoukuCompletePlayStatus = "Save Composition edits and wait for the current publish before publishing Pattern Flow.";
+		else if (m_pKoukuSaydonActionWorkbench->Reload(m_strKoukuCompletePlayStatus))
+			m_bKoukuFlowPublishPending = m_pKoukuSaydonActionWorkbench->Publish_AllPatterns(m_strKoukuCompletePlayStatus);
+		m_pKoukuSaydonBossTool->Set_Status(m_strKoukuCompletePlayStatus);
+	}
+	if (m_pKoukuSaydonActionWorkbench)
+	{
+		m_pKoukuSaydonActionWorkbench->Tick_Background();
+		if (m_bKoukuFlowPublishPending && !m_pKoukuSaydonActionWorkbench->Is_PublishRunning())
+		{
+			m_bKoukuFlowPublishPending = false;
+			m_strKoukuCompletePlayStatus = m_pKoukuSaydonActionWorkbench->Get_Status();
+			if (m_pKoukuSaydonBossTool) m_pKoukuSaydonBossTool->Set_Status(m_strKoukuCompletePlayStatus);
+		}
+		if (m_pKoukuSaydonActionWorkbench->Consume_ProductInventoryRefreshRequest() && m_pKoukuSaydonBossTool)
+			(void)m_pKoukuSaydonBossTool->Reload(m_strKoukuCompletePlayStatus);
+	}
+
 	#ifdef _DEBUG
 	{
 		Engine::CProfilerScope cpuPhaseScope(CGameInstance::Get().Get_Profiler(), "MainApp.DebugTools.Update");
@@ -2070,24 +2116,6 @@ void CMainApp::Update(const f32_t fTimeDelta)
 			m_bDeveloperToolsVisible && bAnimationPreviewOwned);
 		}
 	}
-	/* Save and publish jobs are process owners, not window owners. Poll the
-	   immutable Save receipt first, let a hidden Composition caller accept and
-	   reopen its exact local owners, then poll the optional Full DataOnly job. */
-	if (nullptr != m_pBalanceTool)
-		{
-			Engine::CProfilerScope toolScope(CGameInstance::Get().Get_Profiler(), "ImGui.Tool.Balance.Update_ValtanSaveJob");
-			m_pBalanceTool->Update_ValtanSaveJob();
-		}
-	if (nullptr != m_pValtanActionWorkbench)
-		{
-			Engine::CProfilerScope toolScope(CGameInstance::Get().Get_Profiler(), "ImGui.Tool.ValtanComposition.Update_SaveState");
-			m_pValtanActionWorkbench->Update_SaveState();
-		}
-	if (nullptr != m_pBalanceTool)
-		{
-			Engine::CProfilerScope toolScope(CGameInstance::Get().Get_Profiler(), "ImGui.Tool.Balance.Update_ServerRuntimeSetPublishJob");
-			m_pBalanceTool->Update_ServerRuntimeSetPublishJob();
-		}
 	/* Composition Save receipts are delivered independently of both Developer
 	   Tools visibility and the Composition window's Render call. If Effect Tool
 	   does not exist yet, leave the request pending in the Workbench. */
@@ -2147,14 +2175,6 @@ void CMainApp::Update(const f32_t fTimeDelta)
     }
 	if (nullptr != m_pValtanBossTool)
 	{
-		{
-			Engine::CProfilerScope toolScope(CGameInstance::Get().Get_Profiler(), "ImGui.Tool.ValtanBoss.Update");
-			m_pValtanBossTool->Update(
-			m_bDeveloperToolsVisible &&
-				IsDebugToolVisible(DEBUG_TOOL::VALTAN_BOSS),
-			m_bDeveloperToolsVisible &&
-				IsDebugToolVisible(DEBUG_TOOL::VALTAN_LOGIC_PATTERN));
-		}
 		if (m_pValtanBossTool->Consume_LogicPatternOpenRequest())
 		{
 			(void)EnsureDebugTool(DEBUG_TOOL::VALTAN_LOGIC_PATTERN);
@@ -2181,16 +2201,6 @@ void CMainApp::Update(const f32_t fTimeDelta)
 					"Effect Tool opened, but the exact Product occurrence needs attention.";
 			}
 		}
-	}
-	if (m_pKoukuSaydonBossTool && m_pKoukuSaydonBossTool->Consume_PublishRequest())
-	{
-		if (FAILED(EnsureDebugTool(DEBUG_TOOL::SEQUENCER)) || !m_pKoukuSaydonActionWorkbench)
-			m_strKoukuCompletePlayStatus = "The Composition publisher workspace could not initialize.";
-		else if (m_pKoukuSaydonActionWorkbench->Is_Dirty() || m_pKoukuSaydonActionWorkbench->Is_PublishRunning())
-			m_strKoukuCompletePlayStatus = "Save Composition edits and wait for the current publish before publishing Pattern Flow.";
-		else if (m_pKoukuSaydonActionWorkbench->Reload(m_strKoukuCompletePlayStatus))
-			m_bKoukuFlowPublishPending = m_pKoukuSaydonActionWorkbench->Publish_AllPatterns(m_strKoukuCompletePlayStatus);
-		m_pKoukuSaydonBossTool->Set_Status(m_strKoukuCompletePlayStatus);
 	}
 	/* Workbench links use the same stable Product requests as the domain
 	   owners. Each one-shot is drained here; the Workbench never creates a
@@ -2389,17 +2399,8 @@ void CMainApp::Update(const f32_t fTimeDelta)
 		auto* workbench = route.workbench;
 		auto* shell = route.shell;
 		if (!workbench) continue;
-		// Observe publisher completion even while the Server raid owns playback.
-		workbench->Tick_Background();
-		if (route.owner == DEBUG_TOOL::SEQUENCER && m_bKoukuFlowPublishPending && !workbench->Is_PublishRunning())
-		{
-			m_bKoukuFlowPublishPending = false;
-			m_strKoukuCompletePlayStatus = workbench->Get_Status();
-			if (m_pKoukuSaydonBossTool) m_pKoukuSaydonBossTool->Set_Status(m_strKoukuCompletePlayStatus);
-		}
-		if (workbench->Consume_ProductInventoryRefreshRequest() &&
-			route.owner == DEBUG_TOOL::SEQUENCER && m_pKoukuSaydonBossTool)
-			(void)m_pKoukuSaydonBossTool->Reload(m_strKoukuCompletePlayStatus);
+		// The shared action publisher is polled above in both build configurations.
+		if (route.owner != DEBUG_TOOL::SEQUENCER) workbench->Tick_Background();
         if (!m_strKoukuCompletePlayFlowGate.empty())
         {
             // Reset/Play must not disappear behind the active raid guard. Stop
@@ -2535,6 +2536,8 @@ void CMainApp::Update(const f32_t fTimeDelta)
 			if (auto* arena = CLevel_KakulSaydonArena::Get_Active()) arena->Debug_StopCompositionWorldPreview();
 			ClaimCompositionPreviewOwner(DEBUG_TOOL::NONE);
 			if (!m_pKoukuSaydonBossTool) m_pKoukuSaydonBossTool = make_unique<CKoukuSaydonBossTool>();
+			m_pKoukuSaydonBossTool->Set_CompletePlayAdmission(
+			    [this](std::string_view gate, std::string& status) { return StartKoukuGateCompletePlay(gate, status); });
 			(void)m_pKoukuSaydonBossTool->Play_BundleById(serverBundleId, bundleRevision, m_strToolStatus);
 			workbench->Set_ServerPlayPreparationPending(m_pKoukuSaydonBossTool->Is_PlayPreparationPending(), m_strToolStatus);
 		}
@@ -3578,14 +3581,12 @@ HRESULT CMainApp::Render()
 		if (m_pKoukuPresentationPlayer) m_pKoukuPresentationPlayer->Render_Debug();
 		if (nullptr != m_pRenderingBenchmark)
 			m_pRenderingBenchmark->Update(CGameInstance::Get().Get_Profiler());
+#endif
 		if (m_bDeveloperToolsVisible)
 		{
 			Engine::CProfilerScope developerToolsScope(
 				CGameInstance::Get().Get_Profiler(), "ImGui.DeveloperTools");
 			RenderDeveloperTools();
-			RenderWorldLevelTool();
-			/* The Workbench shell renders one selected boss session. Other domain
-			   tools remain independent windows; every owner retains its own draft. */
 			const auto focusNextWindow = [this](const DEBUG_TOOL eTool)
 			{
 				if (m_eDebugWindowFocusPending != eTool)
@@ -3593,6 +3594,10 @@ HRESULT CMainApp::Render()
 				ImGui::SetNextWindowFocus();
 				m_eDebugWindowFocusPending = DEBUG_TOOL::NONE;
 			};
+#ifdef _DEBUG
+			RenderWorldLevelTool();
+			/* The Workbench shell renders one selected boss session. Other domain
+			   tools remain independent windows; every owner retains its own draft. */
 			if (IsDebugToolVisible(DEBUG_TOOL::MAP) && nullptr != m_pMapTool)
 			{
 				focusNextWindow(DEBUG_TOOL::MAP);
@@ -3734,6 +3739,7 @@ HRESULT CMainApp::Render()
 					m_pHUDLayoutTool->Render();
 				}
 			}
+#endif
 			if (IsDebugToolVisible(DEBUG_TOOL::BALANCE) && nullptr != m_pBalanceTool)
 			{
 				focusNextWindow(DEBUG_TOOL::BALANCE);
@@ -3763,6 +3769,7 @@ HRESULT CMainApp::Render()
 				if (!m_pKoukuSaydonBossTool->Is_Open())
 					SetDebugToolVisible(DEBUG_TOOL::KOUKU_SAYDON_BOSS, false);
 			}
+#ifdef _DEBUG
 			if (IsDebugToolVisible(DEBUG_TOOL::VALTAN_LOGIC_PATTERN) && nullptr != m_pValtanBossTool)
 			{
 				focusNextWindow(DEBUG_TOOL::VALTAN_LOGIC_PATTERN);
@@ -3797,17 +3804,15 @@ HRESULT CMainApp::Render()
 				RenderProfilerOverlay();
 				RenderProfilerSettings();
 			}
-		}
 #endif
+		}
         bool_t profilerWindowVisible = m_bRuntimeProfilerVisible;
-#ifdef _DEBUG
         profilerWindowVisible |= m_bDeveloperToolsVisible && IsDebugToolVisible(DEBUG_TOOL::PROFILER);
         if (profilerWindowVisible && DEBUG_TOOL::PROFILER == m_eDebugWindowFocusPending)
         {
             ImGui::SetNextWindowFocus();
             m_eDebugWindowFocusPending = DEBUG_TOOL::NONE;
         }
-#endif
         if (profilerWindowVisible && m_pProfilerTool)
         {
             Engine::CProfilerScope toolScope(CGameInstance::Get().Get_Profiler(), "ImGui.Tool.CompositionProfiler.Build");
@@ -3815,9 +3820,7 @@ HRESULT CMainApp::Render()
             if (!m_pProfilerTool->Is_Open())
             {
                 m_bRuntimeProfilerVisible = false;
-#ifdef _DEBUG
                 SetDebugToolVisible(DEBUG_TOOL::PROFILER, false);
-#endif
             }
         }
 		{
@@ -4892,7 +4895,9 @@ f32_t CMainApp::Resolve_HudCooldownRatio(const HUD_PLAYER_STATE& player, const u
 		if (Cooldown.iSkillId != iSkillId || Cooldown.iCooldownEndTick <= player.iServerTick)
 			continue;
 		const f32_t fRemaining = static_cast<f32_t>(Cooldown.iCooldownEndTick - player.iServerTick) / SERVER_TICK_HZ;
-		const f32_t fTotal = iCooldownMs > 0u ? static_cast<f32_t>(iCooldownMs) / 1000.f : fRemaining;
+		const f32_t fTotal = Cooldown.iCooldownDurationTicks > 0u ?
+			static_cast<f32_t>(Cooldown.iCooldownDurationTicks) / SERVER_TICK_HZ :
+			(iCooldownMs > 0u ? static_cast<f32_t>(iCooldownMs) / 1000.f : fRemaining);
 		if (!strTextSlotId.empty())
 			m_HudTimedTexts.push_back({ strTextSlotId, Cooldown.iCooldownEndTick, false, false });
 		return fTotal > 0.f ? std::clamp(fRemaining / fTotal, 0.f, 1.f) : 0.f;
@@ -9588,7 +9593,7 @@ HRESULT CMainApp::ReadyImGuiRuntime()
 	}
 
 #ifndef _DEBUG
-	// Release uses the main-window profiler only, without detached authoring windows.
+	// Release F1 and F7 stay in the main window; tools start closed and load on request.
 	ImGui::GetIO().ConfigFlags &= ~(ImGuiConfigFlags_DockingEnable | ImGuiConfigFlags_ViewportsEnable);
 	ImGui::GetIO().IniFilename = nullptr;
 #endif
@@ -9605,9 +9610,7 @@ void CMainApp::UpdateProfilerRuntime()
         !CUIInputRouter::Get().Is_TextInputActive())
     {
         bool_t visible = m_bRuntimeProfilerVisible;
-#ifdef _DEBUG
         visible |= m_bDeveloperToolsVisible && IsDebugToolVisible(DEBUG_TOOL::PROFILER);
-#endif
         m_bRuntimeProfilerVisible = !visible;
         if (m_bRuntimeProfilerVisible)
         {
@@ -9617,9 +9620,7 @@ void CMainApp::UpdateProfilerRuntime()
             }
             m_pProfilerTool->Open();
         }
-#ifdef _DEBUG
         else SetDebugToolVisible(DEBUG_TOOL::PROFILER, false);
-#endif
     }
     m_bF7Down = down;
 }
@@ -9637,6 +9638,8 @@ HRESULT CMainApp::ReadyDebugTools()
 		make_unique<CHUDLayoutTool>(m_pDevice, m_pContext);
 	return S_OK;
 }
+
+#endif
 
 bool_t CMainApp::IsDebugToolVisible(const DEBUG_TOOL eTool) const
 {
@@ -9690,6 +9693,7 @@ void CMainApp::SetDebugToolVisible(
 	}
 	if (!bVisible)
 	{
+#ifdef _DEBUG
 		if (eCanonicalTool == DEBUG_TOOL::SEQUENCER)
 		{
 			if (m_pSequencerTool) m_pSequencerTool->Deactivate();
@@ -9699,10 +9703,12 @@ void CMainApp::SetDebugToolVisible(
 		}
 		if (eCanonicalTool == DEBUG_TOOL::SEQUENCER || eCanonicalTool == DEBUG_TOOL::SEQUENCER_BENCHMARK)
 			StopCompositionPreview(eCanonicalTool);
+#endif
 		if (m_eDebugInputOwner == eCanonicalTool)
 			m_eDebugInputOwner = DEBUG_TOOL::NONE;
 		if (m_eDebugWindowFocusPending == eCanonicalTool)
 			m_eDebugWindowFocusPending = DEBUG_TOOL::NONE;
+#ifdef _DEBUG
 		if (DEBUG_TOOL::MAP == eCanonicalTool && nullptr != m_pMapTool)
 			m_pMapTool->SetOpen(false);
 		else if (DEBUG_TOOL::WORLD_OBJECT == eCanonicalTool && m_pWorldObjectTool)
@@ -9713,9 +9719,11 @@ void CMainApp::SetDebugToolVisible(
             m_pEffectTool->Deactivate_AuthoringWorkspace();
         else if (DEBUG_TOOL::EFFECT_V2 == eCanonicalTool && m_pEffectToolV2)
             m_pEffectToolV2->Deactivate();
+#endif
 	}
 }
 
+#ifdef _DEBUG
 void CMainApp::ClaimCompositionPreviewOwner(const DEBUG_TOOL owner)
 {
 	if (m_eCompositionPreviewOwner == owner) return;
@@ -9758,6 +9766,8 @@ void CMainApp::StopCompositionPreview(const DEBUG_TOOL owner)
 	ClaimCompositionPreviewOwner(DEBUG_TOOL::NONE);
 }
 
+#endif
+
 void CMainApp::CloseAllDebugTools()
 {
 	for (size_t iTool = static_cast<size_t>(DEBUG_TOOL::NONE) + 1u;
@@ -9769,6 +9779,7 @@ void CMainApp::CloseAllDebugTools()
 	m_strToolStatus = "All authoring windows hidden; domain drafts remain owned by their tools.";
 }
 
+#ifdef _DEBUG
 HRESULT CMainApp::EnsureAnimationPreviewBackend()
 {
 	// Resource clicks need the shared CModel owner, without showing or focusing
@@ -9788,9 +9799,12 @@ HRESULT CMainApp::EnsureAnimationPreviewBackend()
 	return S_OK;
 }
 
+#endif
+
 HRESULT CMainApp::EnsureDebugTool(const DEBUG_TOOL eTool)
 {
 	Engine::CProfilerScope panelScope(CGameInstance::Get().Get_Profiler(), "ImGui.Tool.Open");
+#ifdef _DEBUG
 	/* Keep the old enum value as an internal compatibility route only. */
 	if (DEBUG_TOOL::EFFECT_COMPOSITION == eTool)
 		return EnsureDebugTool(DEBUG_TOOL::EFFECT);
@@ -9812,8 +9826,10 @@ HRESULT CMainApp::EnsureDebugTool(const DEBUG_TOOL eTool)
 		return S_OK;
 	}
 
+#endif
 	switch (eTool)
 	{
+#ifdef _DEBUG
 	case DEBUG_TOOL::WORLD_LEVEL:
 		if (!m_pWorldLevelTool) m_pWorldLevelTool = make_unique<CWorldLevelTool>();
 		m_pWorldLevelTool->Open(GetWorldLevelAreaId());
@@ -9891,13 +9907,6 @@ HRESULT CMainApp::EnsureDebugTool(const DEBUG_TOOL eTool)
 		m_bRenderQualityDraftInitialized = false;
 		if (nullptr == m_pRenderingBenchmark)
 			m_pRenderingBenchmark = make_unique<CRenderingBenchmark>();
-		break;
-	case DEBUG_TOOL::PROFILER:
-		if (nullptr == m_pProfilerTool)
-			m_pProfilerTool = make_unique<CProfilerTool>(m_pDevice.Get());
-		m_pProfilerTool->Open();
-		if (Engine::CProfiler* pProfiler = CGameInstance::Get().Get_Profiler())
-			pProfiler->Set_Enabled(true);
 		break;
 	case DEBUG_TOOL::SEQUENCER:
 		if (FAILED(EnsureAnimationPreviewBackend())) return E_FAIL;
@@ -10119,6 +10128,12 @@ HRESULT CMainApp::EnsureDebugTool(const DEBUG_TOOL eTool)
 			m_pHUDLayoutTool =
 				make_unique<CHUDLayoutTool>(m_pDevice, m_pContext);
 		break;
+#endif
+	case DEBUG_TOOL::PROFILER:
+		if (nullptr == m_pProfilerTool)
+			m_pProfilerTool = make_unique<CProfilerTool>(m_pDevice.Get());
+		m_pProfilerTool->Open();
+		break;
 	case DEBUG_TOOL::BALANCE:
 		if (nullptr == m_pBalanceTool)
 			m_pBalanceTool = make_unique<CBalanceTool>(false);
@@ -10137,8 +10152,11 @@ HRESULT CMainApp::EnsureDebugTool(const DEBUG_TOOL eTool)
 	case DEBUG_TOOL::KOUKU_SAYDON_BOSS:
 		if (nullptr == m_pKoukuSaydonBossTool)
 			m_pKoukuSaydonBossTool = make_unique<CKoukuSaydonBossTool>();
+		m_pKoukuSaydonBossTool->Set_CompletePlayAdmission(
+		    [this](std::string_view gate, std::string& status) { return StartKoukuGateCompletePlay(gate, status); });
 		m_pKoukuSaydonBossTool->Open();
 		break;
+#ifdef _DEBUG
 	case DEBUG_TOOL::VALTAN_LOGIC_PATTERN:
 		if (nullptr == m_pBalanceTool)
 			m_pBalanceTool = make_unique<CBalanceTool>();
@@ -10163,6 +10181,7 @@ HRESULT CMainApp::EnsureDebugTool(const DEBUG_TOOL eTool)
 				make_unique<CEquipmentAuthoringTool>(
 					m_pDevice, m_pContext, m_pCharacterPreviewPanel);
 		break;
+#endif
 	default:
 		return E_INVALIDARG;
 	}
@@ -10176,6 +10195,7 @@ HRESULT CMainApp::EnsureDebugTool(const DEBUG_TOOL eTool)
 	return S_OK;
 }
 
+#ifdef _DEBUG
 bool_t CMainApp::RequestDebugLevelNavigation(const LEVEL eTargetLevel)
 {
 	const LEVEL currentLevel = static_cast<LEVEL>(
@@ -11644,6 +11664,8 @@ namespace
 	}
 }
 
+#endif
+
 void CMainApp::RenderValtanArenaControls()
 {
 	/* Hidden outside the arena so the hub does not carry an empty header there. */
@@ -11682,10 +11704,12 @@ void CMainApp::RenderValtanArenaControls()
         ImGui::TextWrapped("%s", pArena->Get_SourceCinematicPreparationStatus().c_str());
         ImGui::TreePop();
     }
+#ifdef _DEBUG
 	ImGui::SeparatorText("Wave Monsters");
 	ImGui::TextDisabled(
 		"Debug builds no longer raise the Stage_1 / Stage_2 corridor waves when you step into their trigger; these buttons summon them again.");
 	Render_DebugWaveMonsterButtons(pArena->Get_DebugPlayerController(), VALTAN_WAVE_MONSTER_BUTTONS);
+#endif
 }
 
 void CMainApp::RenderKoukuSaydonArenaControls()
@@ -11870,6 +11894,7 @@ void CMainApp::RenderKoukuSaydonArenaControls()
 	const std::string& focus = CCombatHUDViewModel::Get().Get_BossFocusArchetype();
 	ImGui::TextDisabled("HUD focus: %s",
 		focus.empty() ? "(last primary boss)" : focus.c_str());
+#ifdef _DEBUG
 	ImGui::BeginDisabled(placementPending);
 	if (ImGui::SmallButton("Despawn Fire Object"))
 	{
@@ -11879,6 +11904,7 @@ void CMainApp::RenderKoukuSaydonArenaControls()
 	ImGui::EndDisabled();
 	if (ImGui::IsItemHovered())
 		ImGui::SetTooltip("Remove the gate-entry outer fire. Activate Gate 3 again to restore it.");
+#endif
 	ImGui::TextDisabled("Pattern audition target: %s (%s)",
 		CKoukuSaydonPatternAuditionService::Get().Get_TargetBossPlacementId().c_str(),
 		CKoukuSaydonPatternAuditionService::Get().Get_TargetBossArchetypeId().c_str());
@@ -11887,6 +11913,7 @@ void CMainApp::RenderKoukuSaydonArenaControls()
 	ImGui::TextWrapped("%s", pArena->Get_DebugGateStatus().c_str());
 	ImGui::TextWrapped("%s",
 		pArena->Get_DebugPlayerController().Get_DebugPlayerPlacementStatus().c_str());
+#ifdef _DEBUG
 	if (ImGui::CollapsingHeader("Mario Controls (Debug Jump)", ImGuiTreeNodeFlags_DefaultOpen))
 	{
 		ImGui::TextWrapped("Mario 1/2/3/4: auto Clown. Left / Right: move along the fixed course line (release to stop). Camera / mouse cannot steer the player. Up: use an offered crossing, otherwise jump along the same line (up to 4 m / 0.6 s). Down / Shift jump: disabled. F6 free camera keeps Shift acceleration.");
@@ -11960,6 +11987,7 @@ void CMainApp::RenderKoukuSaydonArenaControls()
 		if (!controller.Get_DebugMadnessFormStatus().empty())
 			ImGui::TextWrapped("%s", controller.Get_DebugMadnessFormStatus().c_str());
 	}
+#endif
 }
 
 bool_t CMainApp::PrepareKoukuGateCompletePlay(const std::string_view gateId, std::string& status)
@@ -11976,6 +12004,8 @@ bool_t CMainApp::PrepareKoukuGateCompletePlay(const std::string_view gateId, std
         (m_pSequenceActionWorkbench && m_pSequenceActionWorkbench->Is_Dirty()))
     { status = "Save the Action and Sequence documents and publish before Complete Play."; return false; }
     if (!m_pKoukuSaydonBossTool) m_pKoukuSaydonBossTool = make_unique<CKoukuSaydonBossTool>();
+    m_pKoukuSaydonBossTool->Set_CompletePlayAdmission(
+        [this](std::string_view gate, std::string& status) { return StartKoukuGateCompletePlay(gate, status); });
     if (!m_pKoukuSaydonBossTool->Reload(status) || !m_pKoukuSaydonBossTool->Validate_PatternFlow(gateId, status)) return false;
     CKoukuSaydonCompositionDocument actions;
     if (!actions.Reload(status)) return false;
@@ -12077,6 +12107,8 @@ void CMainApp::RenderKoukuSaydonCompletePlayControls()
 	Engine::CProfilerScope panelScope(CGameInstance::Get().Get_Profiler(), "ImGui.Hub.KoukuCompletePlay");
 	if (!ImGui::CollapsingHeader("KoukuSaydon Complete Play (Server Boss Replay)")) return;
 	if (!m_pKoukuSaydonBossTool) m_pKoukuSaydonBossTool = make_unique<CKoukuSaydonBossTool>();
+	m_pKoukuSaydonBossTool->Set_CompletePlayAdmission(
+	    [this](std::string_view gate, std::string& status) { return StartKoukuGateCompletePlay(gate, status); });
 	ImGui::TextWrapped("Complete Play runs the selected Gate and its Saved Pattern Flow. Bingo begins its repeating flow after Server preparation.");
 	if (ImGui::SmallButton(m_bKoukuCompletePlayLoadAttempted ? "Reload KoukuSaydon Inventory" : "Load KoukuSaydon Inventory"))
 	{ (void)m_pKoukuSaydonBossTool->Reload(m_strKoukuCompletePlayStatus); m_bKoukuCompletePlayLoadAttempted = true; }
@@ -12309,9 +12341,11 @@ bool_t CMainApp::Debug_CompletePlaySelected(std::string& strOutStatus)
 	m_strCompletePlayStatus = strOutStatus;
 	if (submitted)
 	{
+#ifdef _DEBUG
 		if (nullptr != m_pAnimationTool)
 			m_pAnimationTool->Release_ValtanCompositionPreviewForServerPlayback();
 		ClaimCompositionPreviewOwner(DEBUG_TOOL::NONE);
+#endif
 		m_bCompletePlayStatusTracking = true;
 		m_strCompletePlayTrackedPatternId = m_strCompletePlayPatternId;
 	}
@@ -12426,6 +12460,7 @@ void CMainApp::RenderCompletePlayControls()
 	ImGui::TextWrapped("%s", m_strCompletePlayStatus.c_str());
 }
 
+#ifdef _DEBUG
 void CMainApp::RenderServerArenaActiveControls()
 {
 	Engine::CProfilerScope panelScope(CGameInstance::Get().Get_Profiler(), "ImGui.Hub.ServerArena");
@@ -12770,6 +12805,8 @@ void CMainApp::RefreshWorldObjectResources()
 	if (m_pSequenceActionWorkbench) m_pSequenceActionWorkbench->Set_WorldSequenceResources(std::move(resources), status);
 }
 
+#endif
+
 void CMainApp::RenderDeveloperTools()
 {
 	Engine::CProfilerScope panelScope(CGameInstance::Get().Get_Profiler(), "ImGui.Hub.Build");
@@ -12806,11 +12843,13 @@ void CMainApp::RenderDeveloperTools()
 		ETOUI(LEVEL::DEVELOPMENT) == currentLevelId &&
 		CMapEditorWorkspaceService::Is_Active();
 	ImGui::Text("Current level id: %u", currentLevelId);
+#ifdef _DEBUG
 	ImGui::TextDisabled(isMapEditorWorkspace ?
 		"Map Editor is active. Open Map Tool to author the selected Area." :
 		(currentLevelId == ETOUI(LEVEL::KAKULSAYDON_ARENA) ?
 			"Kouku runtime supports Map, Object, Camera and Sequence authoring through F1." :
 			"F1 opens tools. Map authoring is available in Lobby Test or the Kouku runtime."));
+#endif
 	ImGui::SeparatorText("Tools");
 
 	const auto toolButton = [this](
@@ -12856,6 +12895,7 @@ void CMainApp::RenderDeveloperTools()
 		};
 		toolCell("Valtan Boss Tool", DEBUG_TOOL::VALTAN_BOSS);
 		toolCell("KoukuSaydon Boss Tool", DEBUG_TOOL::KOUKU_SAYDON_BOSS);
+#ifdef _DEBUG
 		toolCell("Valtan Logic Pattern", DEBUG_TOOL::VALTAN_LOGIC_PATTERN);
 		toolCell("Camera Tool", DEBUG_TOOL::CAMERA);
 		toolCell("Action Workbench", DEBUG_TOOL::SEQUENCER);
@@ -12865,14 +12905,20 @@ void CMainApp::RenderDeveloperTools()
 		toolCell("World Level Tool", DEBUG_TOOL::WORLD_LEVEL);
 		toolCell("Map Tool", DEBUG_TOOL::MAP);
 		toolCell("Rendering Workbench", DEBUG_TOOL::RENDERING);
+#endif
 		toolCell("Composition Profiler", DEBUG_TOOL::PROFILER);
+#ifdef _DEBUG
 		toolCell("HUD Layout Tool", DEBUG_TOOL::UI);
+#endif
 		toolCell("Balance Test", DEBUG_TOOL::BALANCE);
+#ifdef _DEBUG
 		toolCell("Equipment Authoring Tool", DEBUG_TOOL::EQUIPMENT);
+#endif
 		ImGui::EndTable();
 	}
 	if (ImGui::Button("Close All Tools"))
 		CloseAllDebugTools();
+#ifdef _DEBUG
 	constexpr std::array<std::pair<DEBUG_TOOL, const char_t*>, 16>
 		TOOL_FOCUS_OPTIONS = {{
 			{ DEBUG_TOOL::MAP, "Map Tool" },
@@ -12919,7 +12965,6 @@ void CMainApp::RenderDeveloperTools()
 		}
 		ImGui::EndCombo();
 	}
-	ImGui::TextWrapped("%s", m_strToolStatus.c_str());
 	if (!isMapEditorWorkspace && currentLevelId != ETOUI(LEVEL::KAKULSAYDON_ARENA) &&
 		IsDebugToolVisible(DEBUG_TOOL::MAP))
 	{
@@ -12929,10 +12974,13 @@ void CMainApp::RenderDeveloperTools()
 
 	RenderDebugLevelNavigation();
 	RenderArenaCameraAndPlayerControls();
+#endif
+	ImGui::TextWrapped("%s", m_strToolStatus.c_str());
 	RenderKoukuSaydonArenaControls();
 	RenderValtanArenaControls();
 	RenderCompletePlayControls();
 	RenderKoukuSaydonCompletePlayControls();
+#ifdef _DEBUG
 	RenderServerArenaActiveControls();
 
 	ImGui::SeparatorText("Diagnostics");
@@ -13205,10 +13253,12 @@ void CMainApp::RenderDeveloperTools()
 			showcaseTuning.fRectHeight);
 	}
 
+#endif
 	ImGui::TextDisabled("F1: Developer Tools  |  F6: Follow/Free Camera  |  F7: Profiler");
 	ImGui::End();
 }
 
+#ifdef _DEBUG
 void CMainApp::RenderRenderingWorkbench()
 {
 	Engine::CProfilerScope panelScope(CGameInstance::Get().Get_Profiler(), "ImGui.Tool.Rendering.Build");
@@ -13652,17 +13702,19 @@ void CMainApp::RenderProfilerSettings()
 	ImGui::End();
 }
 
+#endif
+
 void CMainApp::UpdateDebugToolShortcut()
 {
 	const bool_t windowFocused =
 		IsWindowOwnedByCurrentProcess(GetForegroundWindow());
 	const bool_t f1Down = windowFocused &&
 		0 != (GetAsyncKeyState(VK_F1) & 0x8000);
-	if (f1Down && !m_bF1Down)
+	if (f1Down && !m_bF1Down && !ImGui::GetIO().WantTextInput &&
+		!CUIInputRouter::Get().Is_TextInputActive())
 		m_bDeveloperToolsVisible = !m_bDeveloperToolsVisible;
 	m_bF1Down = f1Down;
 }
-#endif
 
 unique_ptr<CMainApp> CMainApp::Create()
 {
@@ -13703,7 +13755,6 @@ void CMainApp::Free()
 	m_pSequencerTool.reset();
 	m_pSequenceActionWorkbench.reset();
 	m_pRenderingBenchmark.reset();
-	m_pKoukuSaydonActionWorkbench.reset();
 	m_pValtanActionWorkbench.reset();
 	m_pAnimationTool.reset();
 	m_pCharacterActionWorkbench.reset();
@@ -13714,13 +13765,14 @@ void CMainApp::Free()
 		m_pCharacterPreviewPanel->Release(true);
 	m_pCharacterPreviewPanel.reset();
 	m_pHUDLayoutTool.reset();
-	m_pBalanceTool.reset();
-	m_pKoukuSaydonBossTool.reset();
-	m_pValtanBossTool.reset();
 	m_pCameraTool.reset();
 	m_pMapTool.reset();
 #endif
 
+	m_pKoukuSaydonActionWorkbench.reset();
+	m_pBalanceTool.reset();
+	m_pKoukuSaydonBossTool.reset();
+	m_pValtanBossTool.reset();
 	if (auto* profiler = CGameInstance::Get().Get_Profiler()) profiler->Set_Enabled(false);
 	m_pProfilerTool.reset();
 	if (nullptr != m_pImGuiLayer)

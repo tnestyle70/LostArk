@@ -530,6 +530,8 @@ namespace LostArk::Server
 		bool hasReleasedHold = false;
 		std::unordered_map<LostArk::Shared::SKILL_ID, std::uint32_t>
 			CooldownEndTickBySkillId;
+		// Only playable casts own a duration; vehicle and encounter timers stay separate.
+		std::unordered_map<LostArk::Shared::SKILL_ID, std::uint32_t> CooldownDurationTicksBySkillId;
 		// Debug-only inventory slice. Small owned list, stacked per itemId and
 		// capped at the catalog's maxStack; the Shared snapshot struct is
 		// reused directly since the wire shape and the server truth are the

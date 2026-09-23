@@ -79,6 +79,8 @@ namespace Client
 		bool Play_All(std::string& outStatus);
 		bool Play_CompositionAll(std::string_view gateId, std::string& status);
 		bool Validate_PatternFlow(std::string_view gateId, std::string& status);
+		void Set_CompletePlayAdmission(std::function<bool(std::string_view, std::string&)> callback)
+		{ m_CompletePlayAdmission = std::move(callback); }
         // Complete Play pins the admission revision; ordinary F1 playback uses the current saved revision.
         bool Play_PatternFlow(std::string_view gateId, std::string& status,
             std::uint32_t expectedSourceRevision = 0u);
@@ -132,6 +134,7 @@ namespace Client
 			std::function<bool(std::string&)> submit, std::string& status,
             std::shared_ptr<const KOUKU_SAYDON_DRAFT_PRODUCT> draft = {});
 		std::optional<PLAY_PREPARATION> m_PlayPreparation;
+		std::function<bool(std::string_view, std::string&)> m_CompletePlayAdmission;
 
 		bool Play_Selected(std::string& outStatus);
 		bool Play_LoadedPatternById(std::string_view patternId, std::string& status);

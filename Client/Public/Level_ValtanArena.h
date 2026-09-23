@@ -74,9 +74,9 @@ public:
 	// Product UI and editor commands share the level-owned typed controller.
 	CPlayerController& Get_DebugPlayerController() { return m_PlayerController; }
 
-#ifdef _DEBUG
     bool_t Debug_DespawnValtanBoss(std::string& status);
     bool_t Debug_EnsureValtanBossForPlay(bool_t& ready, std::string& status, bool_t retryFailed = false);
+#ifdef _DEBUG
     /* Source-cinematic patterns replace the canonical-center local editing
        clone with their authored actor track so the original world-space camera
        remains editable against the moving subject. */
@@ -92,10 +92,12 @@ public:
 	bool_t Debug_SampleActionWorkbenchDestruction(
 		std::string_view patternId, uint32_t clockMs, std::string& status);
 	bool_t Debug_StopActionWorkbenchDestruction(std::string& status);
+#endif
     bool_t Has_DebugValtanBoss() const;
     bool_t Is_DebugValtanBossCommandPending() const { return m_bDebugValtanDespawnPending || m_iDebugValtanSpawnToken != 0u; }
     const std::string& Get_DebugValtanBossCommandStatus() const { return m_strDebugValtanBossCommandStatus; }
     std::string Get_DebugValtanPresentationDiagnostic() const;
+#ifdef _DEBUG
     /* Map Tool borrows this arena's live map the same way the Kouku arena lends
 	   it. The level keeps ownership; the tool only edits placements in place. */
 	CMapPlacementRuntime& Get_MapAuthoringRuntime() { return m_MapRuntime; }
@@ -188,7 +190,6 @@ public:
 	bool_t Get_PrimaryValtanPatternSoundSourceReceipt(
 		VALTAN_PATTERN_SOUND_SOURCE_RECEIPT& OutReceipt,
 		std::string& strOutStatus) const;
-#ifdef _DEBUG
 	struct ARENA_ACTIVE_STATE final
 	{
 		bool_t bSynchronized = false;
@@ -218,7 +219,6 @@ public:
 	}
 	bool_t Is_ArenaPresetRequestPending() const;
 	ARENA_ACTIVE_STATE Get_ArenaActiveState() const;
-#endif
 
 private:
 	HRESULT Ready_Layer_Camera(const wstring_t& strLayerTag);
@@ -295,6 +295,7 @@ private:
 	void Update_ReferenceCamera();
 	void End_ReferenceCamera(bool_t toggleFollowRequested);
 	const char_t* Get_ReferenceCameraViewName() const;
+#endif
 	void Update_AuditionTransaction();
     void Update_DebugValtanBossCommand();
 	bool_t Submit_Audition(
@@ -314,7 +315,6 @@ private:
 			return 0u != iSequence;
 		}
 	};
-#endif
 
 private:
 	CMapPlacementRuntime m_MapRuntime;
@@ -463,6 +463,7 @@ private:
 	bool_t m_bReferenceSpaceHoleVisible = false;
 	REFERENCE_CAMERA_VIEW m_eReferenceCameraView =
 		REFERENCE_CAMERA_VIEW::NONE;
+#endif
     shared_ptr<IWorldEntityCommandSink> m_pWorldEntityCommandSink;
     uint32_t m_iNextDebugValtanRequestSequence = 1u;
     uint64_t m_iDebugValtanSpawnToken = 0u;
@@ -473,7 +474,6 @@ private:
 	uint32_t m_iNextAuditionRequestSequence = 1u;
 	AUDITION_PENDING_REQUEST m_PendingAuditionRequest;
 	std::string m_strAuditionStatus;
-#endif
 
 	static CLevel_ValtanArena* s_pActiveInstance;
 

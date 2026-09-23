@@ -2,7 +2,15 @@
 
 ## 1. 일반 밸런스 기준선
 
-Player, skill, damage, boss 기본 수치 정본은 `Data/Balance/*.json`이다. Visual Studio Client 프로젝트의
+Player, skill, damage, boss 기본 수치 정본은 `Data/Balance/*.json`이며 실제 전투 override는
+`Data/Balance/Profiles/Retail.balanceprofile.json`이다. 공용 editor는 field의 실제 소유 문서에
+저장하고 `Publish-BalanceRuntimeSet.ps1`은 기본 Retail을 Gameplay/World 양쪽에 전달한다.
+공식 Gameplay/World 개별 publisher도 Retail이 기본이며 명시적인 빈 프로필만 원본 비교에 사용한다.
+실행 중 room 쿨타임 선택은 별도 typed Server 정책이다. 새 room 기본 3초, 원래 0초 유지,
+Release 선택은 Retail 원값을 사용하며 현재 cooldown duration과 mode가 snapshot으로 복제된다.
+서버 전체 catalog나 다른 room의 정책은 변경하지 않는다.
+
+Visual Studio Client 프로젝트의
 `96.DataFiles/Balance` 필터는 이 원본을 직접 보여 줄 뿐 복사본을 만들지 않는다. Server 생성물인
 `Server/Bin/DataFiles/Gameplay/Gameplay.bootstrap`은 직접 편집하지 않는다.
 

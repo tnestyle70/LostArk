@@ -25,7 +25,6 @@
 
 using namespace GameRoomDetail;
 
-#ifdef _DEBUG
 void LostArk::Server::CGameRoom::Queue_ValtanPatternFlowLifecycle(
 	const LostArk::Shared::VALTAN_PATTERN_FLOW_LIFECYCLE_STATE state,
 	const SERVER_WORLD_ENTITY* boss,
@@ -102,9 +101,7 @@ void LostArk::Server::CGameRoom::Queue_ValtanPatternFlowLifecycle(
 	m_PendingValtanPatternFlowLifecycle.push_back({
 		flow.iOwnerSessionId, std::move(message) });
 }
-#endif
 
-#ifdef _DEBUG
 bool LostArk::Server::CGameRoom::Flush_ValtanPatternFlowLifecycle()
 {
 	using namespace LostArk::Shared;
@@ -128,9 +125,7 @@ bool LostArk::Server::CGameRoom::Flush_ValtanPatternFlowLifecycle()
 	}
 	return true;
 }
-#endif
 
-#ifdef _DEBUG
 void LostArk::Server::CGameRoom::Finish_ValtanPatternFlow(
 	SERVER_WORLD_ENTITY& boss,
 	const LostArk::Shared::VALTAN_PATTERN_FLOW_LIFECYCLE_STATE terminalState,
@@ -159,9 +154,7 @@ void LostArk::Server::CGameRoom::Finish_ValtanPatternFlow(
 	boss.PinnedDefinitionRevision = m_GameplayCatalog.Get_ActiveRevision();
 	m_ValtanPatternFlowAudition = {};
 }
-#endif
 
-#ifdef _DEBUG
 void LostArk::Server::CGameRoom::Refresh_ValtanPatternFlowState(
 	SERVER_WORLD_ENTITY& boss)
 {
@@ -270,9 +263,7 @@ void LostArk::Server::CGameRoom::Refresh_ValtanPatternFlowState(
 			VALTAN_PATTERN_FLOW_LIFECYCLE_STATE::PENDING, &boss);
 	}
 }
-#endif
 
-#ifdef _DEBUG
 void LostArk::Server::CGameRoom::Abort_ValtanPatternFlowForOwner(
 	const SESSION_ID sessionId,
 	std::string reason)
@@ -297,7 +288,6 @@ void LostArk::Server::CGameRoom::Abort_ValtanPatternFlowForOwner(
 	}
 	m_ValtanPatternFlowAudition = {};
 }
-#endif
 
 bool LostArk::Server::CGameRoom::Build_ValtanBossOnlyAuditionReset(
 	const SERVER_WORLD_ENTITY& boss,
@@ -362,11 +352,9 @@ bool LostArk::Server::CGameRoom::Reset_ValtanBossOnlyAuditionState(
 		return false;
 	}
 
-	#ifdef _DEBUG
 	Queue_ValtanPatternFlowLifecycle(
 		LostArk::Shared::VALTAN_PATTERN_FLOW_LIFECYCLE_STATE::ABORTED,
 		&boss, "Flow replaced by an authoritative audition restart");
-	#endif
 	Clear_ValtanGhostRelocationState(boss);
 	boss = std::move(stagedBoss);
 	/* A boss-only restart preserves the arena and props, but no Debug pillar
@@ -381,13 +369,11 @@ bool LostArk::Server::CGameRoom::Reset_ValtanBossOnlyAuditionState(
 	m_CombatObjectRuntime.Cancel_Source(boss.iNetEntityId);
 	m_TickBossCombatEvents.clear();
 	m_iValtanAuditionArmedHealthBar = 0u;
-#ifdef _DEBUG
 	Cancel_ValtanPatternIdAudition("authoritative audition reset");
 	// Keep session receipts so an epoch-zero live request cannot replay after reset.
 	m_ValtanPatternFlowAudition = {};
 	m_ValtanTimelineAudition = {};
 	m_ValtanFightPageStart = {};
-#endif
 	status = "Valtan boss-only audition reset completed";
 	return true;
 }
@@ -420,11 +406,9 @@ bool LostArk::Server::CGameRoom::Reset_ValtanAuditionState(
 		return false;
 	}
 
-	#ifdef _DEBUG
 	Queue_ValtanPatternFlowLifecycle(
 		LostArk::Shared::VALTAN_PATTERN_FLOW_LIFECYCLE_STATE::ABORTED,
 		&boss, "Flow replaced by an authoritative audition restart");
-	#endif
 	Clear_ValtanGhostRelocationState(boss);
 	boss = std::move(stagedBoss);
 	m_WorldDestructionRuntime = std::move(stagedDestruction);
@@ -445,13 +429,11 @@ bool LostArk::Server::CGameRoom::Reset_ValtanAuditionState(
 	despawns for the players who are still observing the audition. */
 	m_CombatObjectRuntime.Reset();
 	m_iValtanAuditionArmedHealthBar = 0u;
-#ifdef _DEBUG
 	Cancel_ValtanPatternIdAudition("authoritative audition reset");
 	// Keep session receipts so an epoch-zero live request cannot replay after reset.
 	m_ValtanPatternFlowAudition = {};
 	m_ValtanTimelineAudition = {};
 	m_ValtanFightPageStart = {};
-#endif
 	/* The reset put every floor sector back, so a body that was still falling
 	has solid ground under its own XZ again. */
 	for (auto& [playerId, player] : m_Players)
@@ -488,7 +470,6 @@ bool LostArk::Server::CGameRoom::Reset_ValtanAuditionState(
 	return true;
 }
 
-#ifdef _DEBUG
 bool LostArk::Server::CGameRoom::Prepare_ValtanTimelineArenaState(
 	const CWorldDestructionRuntime& runtime,
 	const SERVER_WORLD_ENTITY& boss,
@@ -647,9 +628,7 @@ bool LostArk::Server::CGameRoom::Prepare_ValtanTimelineArenaState(
 	status = "Valtan timeline arena precondition staged";
 	return true;
 }
-#endif
 
-#ifdef _DEBUG
 bool LostArk::Server::CGameRoom::Stage_ValtanTimelineRowStart(
 	const SESSION_ID sessionId,
 	const SERVER_WORLD_ENTITY& boss,
@@ -772,9 +751,7 @@ bool LostArk::Server::CGameRoom::Stage_ValtanTimelineRowStart(
 	status = "Valtan timeline row preflight completed";
 	return true;
 }
-#endif
 
-#ifdef _DEBUG
 bool LostArk::Server::CGameRoom::Start_ValtanTimelineRow(
 	const SESSION_ID sessionId,
 	SERVER_WORLD_ENTITY& boss,
@@ -887,9 +864,7 @@ bool LostArk::Server::CGameRoom::Start_ValtanTimelineRow(
 	status = "Valtan timeline row " + std::to_string(row.iOrdinal) + " queued";
 	return true;
 }
-#endif
 
-#ifdef _DEBUG
 bool LostArk::Server::CGameRoom::Start_ValtanFightPage(
 	const SESSION_ID sessionId,
 	SERVER_WORLD_ENTITY& boss,
@@ -1076,9 +1051,7 @@ bool LostArk::Server::CGameRoom::Start_ValtanFightPage(
 	status = "Valtan fight page queued from " + row.strRowId;
 	return true;
 }
-#endif
 
-#ifdef _DEBUG
 bool LostArk::Server::CGameRoom::Prepare_ValtanFightPageBeforeBrain(
 	SERVER_WORLD_ENTITY& boss,
 	const std::uint32_t updateTick)
@@ -1122,9 +1095,7 @@ bool LostArk::Server::CGameRoom::Prepare_ValtanFightPageBeforeBrain(
 		std::to_string(commandId);
 	return true;
 }
-#endif
 
-#ifdef _DEBUG
 bool LostArk::Server::CGameRoom::Stop_ValtanTimelineRow(
 	const bool resetEncounter)
 {
@@ -1166,9 +1137,7 @@ bool LostArk::Server::CGameRoom::Stop_ValtanTimelineRow(
 		"Valtan timeline row stopped";
 	return true;
 }
-#endif
 
-#ifdef _DEBUG
 bool LostArk::Server::CGameRoom::Prepare_ValtanTimelineRowBeforeBrain(
 	SERVER_WORLD_ENTITY& boss,
 	const std::uint32_t updateTick)
@@ -1371,9 +1340,7 @@ bool LostArk::Server::CGameRoom::Prepare_ValtanTimelineRowBeforeBrain(
 		}
 	}
 }
-#endif
 
-#ifdef _DEBUG
 void LostArk::Server::CGameRoom::Restore_ValtanTimelineRowAfterBrain(
 	SERVER_WORLD_ENTITY& boss,
 	const std::uint32_t updateTick)
@@ -1489,7 +1456,6 @@ void LostArk::Server::CGameRoom::Restore_ValtanTimelineRowAfterBrain(
 	m_strStatus = "Valtan timeline row " +
 		std::to_string(row.iOrdinal) + " completed";
 }
-#endif
 
 LostArk::Shared::VALTAN_PATTERN_FLOW_RESULT
 LostArk::Server::CGameRoom::Evaluate_ValtanPatternFlowStart(
@@ -1503,12 +1469,6 @@ LostArk::Server::CGameRoom::Evaluate_ValtanPatternFlowStart(
 	outRoomFlowEpoch = 0u;
 	outPinnedRevision = {};
 	outReason.clear();
-#ifndef _DEBUG
-	(void)sessionId;
-	(void)request;
-	outReason = "Valtan pattern flow is unavailable in a Release Server";
-	return VALTAN_PATTERN_FLOW_RESULT::REJECTED_RELEASE_BUILD;
-#else
 	static constexpr std::string_view CANONICAL_BOSS_TOOL_FLOW_ID =
 		"flow.valtan.boss-tool.default";
 	if (WORLD_ID::VALTAN_ARENA != m_eWorldId ||
@@ -1829,7 +1789,6 @@ LostArk::Server::CGameRoom::Evaluate_ValtanPatternFlowStart(
 		VALTAN_PATTERN_FLOW_LIFECYCLE_STATE::PENDING, boss);
 	m_strStatus = "Valtan pattern flow queued: " + request.strFlowId;
 	return VALTAN_PATTERN_FLOW_RESULT::QUEUED;
-#endif
 }
 
 LostArk::Shared::VALTAN_PATTERN_FLOW_RESULT
@@ -1845,12 +1804,6 @@ LostArk::Server::CGameRoom::Evaluate_ValtanPatternFlowStopAfterCurrent(
 	outRoomFlowEpoch = 0u;
 	outPinnedRevision = {};
 	outReason.clear();
-#ifndef _DEBUG
-	(void)sessionId;
-	(void)request;
-	outReason = "Valtan pattern flow is unavailable in a Release Server";
-	return VALTAN_PATTERN_FLOW_RESULT::REJECTED_RELEASE_BUILD;
-#else
 	if (WORLD_ID::VALTAN_ARENA != m_eWorldId ||
 		!m_PlayerIdBySessionId.contains(sessionId))
 	{
@@ -1920,7 +1873,6 @@ LostArk::Server::CGameRoom::Evaluate_ValtanPatternFlowStopAfterCurrent(
 			request.iControlSequence, outRoomFlowEpoch,
 			request.strFlowId, flowRevision, {}, outPinnedRevision });
 	return VALTAN_PATTERN_FLOW_RESULT::QUEUED;
-#endif
 }
 
 LostArk::Shared::VALTAN_AUDITION_RESULT
@@ -1933,13 +1885,9 @@ LostArk::Server::CGameRoom::Evaluate_ValtanAudition(
 	outCurrentHealthBar = 0u;
 
 #ifndef _DEBUG
-	/* A Release Server keeps the packet type known so this answers an explicit
-	rejection instead of closing the session on an unrecognised frame, but it
-	never moves a boss. */
-	(void)sessionId;
-	(void)request;
-	return VALTAN_AUDITION_RESULT::REJECTED_RELEASE_BUILD;
-#else
+	if (WORLD_ID::VALTAN_ARENA != m_eWorldId)
+		return VALTAN_AUDITION_RESULT::REJECTED_WRONG_WORLD;
+#endif
 	if (VALTAN_AUDITION_OPERATION::QUEUE_NEXT_PATTERN_ID == request.eOperation ||
 		VALTAN_AUDITION_OPERATION::CLEAR_NEXT_PATTERN_ID == request.eOperation ||
 		VALTAN_AUDITION_OPERATION::QUEUE_NEXT_LIVE_PATTERN_ID == request.eOperation)
@@ -2511,7 +2459,6 @@ LostArk::Server::CGameRoom::Evaluate_ValtanAudition(
 			sessionId, std::move(receipt));
 	}
 	return verdict;
-#endif
 }
 
 void LostArk::Server::CGameRoom::Handle_ValtanAudition(
@@ -2571,7 +2518,6 @@ void LostArk::Server::CGameRoom::Handle_ValtanPatternFlowStopAfterCurrent(
 		Evaluate_ValtanPatternFlowStopAfterCurrent(
 			sessionId, request, roomFlowEpoch, pinnedRevision, reason);
 	std::string flowRevision;
-#ifdef _DEBUG
 	if (VALTAN_PATTERN_FLOW_RESULT::QUEUED == result ||
 		VALTAN_PATTERN_FLOW_RESULT::DUPLICATE_IGNORED == result)
 	{
@@ -2580,7 +2526,6 @@ void LostArk::Server::CGameRoom::Handle_ValtanPatternFlowStopAfterCurrent(
 		if (m_ValtanPatternFlowControlSequenceBySessionId.end() != receipt)
 			flowRevision = receipt->second.strFlowRevision;
 	}
-#endif
 	if (!Send_ValtanPatternFlowResult(
 			session, request.iControlSequence,
 			VALTAN_PATTERN_FLOW_COMMAND::STOP_AFTER_CURRENT, result,
@@ -2660,7 +2605,6 @@ bool LostArk::Server::CGameRoom::Build_RequiredPinnedGameplayRevisions(
 		outRevisions.clear();
 		return false;
 	}
-#ifdef _DEBUG
 	if (Is_ValtanPatternFlowRunning() &&
 		!append(m_ValtanPatternFlowAudition.PinnedDefinitionRevision))
 	{
@@ -2686,7 +2630,6 @@ bool LostArk::Server::CGameRoom::Build_RequiredPinnedGameplayRevisions(
 		outRevisions.clear();
 		return false;
 	}
-#endif
 	std::sort(outRevisions.begin(), outRevisions.end(),
 		[](const GameplayDataRevision& left,
 			const GameplayDataRevision& right)
@@ -2705,7 +2648,6 @@ LostArk::Server::CGameRoom::Resolve_ValtanGameplayCatalog(
 	/* Explicit auditions own their existing pins. Product keeps one catalog
 	   across every step and terminal idle; only a new encounter/reset selects
 	   from process-active again. Unsequenced bosses still pin each occurrence. */
-	#ifdef _DEBUG
 	if (Is_ValtanPatternFlowRunning() &&
 		boss.iNetEntityId == m_ValtanPatternFlowAudition.iBossEntityId)
 	{
@@ -2726,7 +2668,6 @@ LostArk::Server::CGameRoom::Resolve_ValtanGameplayCatalog(
 		return m_GameplayCatalog.Resolve(
 			m_ValtanPatternIdAudition.PinnedDefinitionRevision);
 	}
-	#endif
 	if (boss.PendingPatternFollowup.Is_Pending())
 	{
 		return m_GameplayCatalog.Resolve(

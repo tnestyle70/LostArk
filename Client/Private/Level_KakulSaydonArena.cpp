@@ -1805,7 +1805,6 @@ void Client::CLevel_KakulSaydonArena::Update(const f32_t fTimeDelta)
 	}
 	Update_GateProgress(fTimeDelta);
 
-#ifdef _DEBUG
 	/* Gate spawn replies arrive one per requested placement. They are Debug
 	   status only; the presentation itself follows the reliable spawn stream. */
 	LostArk::Shared::S2C_WORLD_ENTITY_SPAWN_RESULT spawnResult{};
@@ -1908,12 +1907,16 @@ void Client::CLevel_KakulSaydonArena::Update(const f32_t fTimeDelta)
 			CCombatHUDViewModel::Get().Clear_BossFocus();
 			CCombatHUDViewModel::Get().Set_BossHidden(true);
 			CKoukuSaydonPatternAuditionService::Get().Set_TargetBoss("", "");
+#ifdef _DEBUG
 			Debug_StopCompositionWorldPreview();
+#endif
 			auto startTargets = Make_WorldSequenceTargets();
 			m_SequencePlayer.Stop_All(startTargets, true);
 			for (auto& [id, cue] : m_OwnedWorldCues) cue.player->Stop_All(startTargets, true);
 			m_OwnedWorldCues.clear(); m_PendingOwnedWorldCues.clear();
+#ifdef _DEBUG
 			Debug_StopWorldObjectPreview();
+#endif
 			m_bCutsceneBossVisible = true;
 			Update_CutsceneBossRetire(startTargets);
 			(void)Load_EntranceTriggerMarkers();
@@ -1925,7 +1928,6 @@ void Client::CLevel_KakulSaydonArena::Update(const f32_t fTimeDelta)
 		else m_strDebugGateStatus = "Arena start rejected; previous scene retained. " + m_PlayerController.Get_DebugPlayerPlacementStatus();
 		CKoukuSaydonPatternAuditionService::Get().Set_TargetTransitionPending(false);
 	}
-#endif
 
 	auto targets = Make_WorldSequenceTargets();
 	const auto& pendingRun = m_Replication.Get_KoukuBundleState();
@@ -3312,6 +3314,8 @@ bool_t Client::CLevel_KakulSaydonArena::Set_DebugCameraSpeed(const f32_t metersP
 	return true;
 }
 
+#endif
+
 bool_t Client::CLevel_KakulSaydonArena::Debug_ReturnToStart(std::string& outStatus)
 {
 	if (Is_DebugGatePending() || m_PlayerController.Is_DebugPlayerPlacementPending())
@@ -3495,7 +3499,6 @@ bool_t Client::CLevel_KakulSaydonArena::Debug_DespawnArenaBosses(std::string& ou
 		"Despawn of Debug-activated arena bosses submitted; HUD focus and audition target reset.";
 	return true;
 }
-#endif
 
 const std::array<Client::CLevel_KakulSaydonArena::KAKUL_DEBUG_GATE, 9>&
 Client::CLevel_KakulSaydonArena::Get_DebugGates()
@@ -3567,10 +3570,8 @@ void Client::CLevel_KakulSaydonArena::Debug_SetSequenceCombatPending(const bool_
 	m_bSequenceCombatPending = pending;
 	if (!pending) m_bSequenceCombatFadeHeld = false;
 	CCombatHUDViewModel::Get().Set_BossHidden(pending || m_iActiveDebugGate == NO_ACTIVE_DEBUG_GATE);
-#ifdef _DEBUG
 	if (!Is_DebugGatePending())
 		CKoukuSaydonPatternAuditionService::Get().Set_TargetTransitionPending(pending);
-#endif
 }
 
 bool_t Client::CLevel_KakulSaydonArena::Prepare_ServerRaidGatePresentation(const std::string& gateId, std::string& status)
@@ -3643,9 +3644,7 @@ bool_t Client::CLevel_KakulSaydonArena::Commit_GatePresentation(const size_t ind
     CCombatHUDViewModel::Get().Set_BossFocusArchetype(gate.pHudFocusArchetypeId);
     CCombatHUDViewModel::Get().Reset_CombatAnalysis();
     CCombatHUDViewModel::Get().Set_BossHidden(false);
-#ifdef _DEBUG
     CKoukuSaydonPatternAuditionService::Get().Set_TargetBoss(gate.pAuditionPlacementId, gate.pHudFocusArchetypeId);
-#endif
     m_strDebugGateStatus = "Server gate committed: " + std::string(gate.pAuditionPlacementId ? gate.pAuditionPlacementId : "unknown");
     return true;
 }
@@ -5960,7 +5959,6 @@ bool_t Client::CLevel_KakulSaydonArena::Can_StartCompositionWorld(
 }
 
 
-#ifdef _DEBUG
 bool Client::CLevel_KakulSaydonArena::Debug_PrepareCompletePlayResources(
     const std::vector<std::string>& patternIds, const std::vector<std::string>& bundleIds,
     const uint32_t sourceRevision, bool& ready, std::string& status, const bool wholeRaid,
@@ -6097,4 +6095,3 @@ bool Client::CLevel_KakulSaydonArena::Debug_PrepareCompletePlayResources(
     status = "Complete Play dependencies are fully prepared.";
     return true;
 }
-#endif

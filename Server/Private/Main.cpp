@@ -23,6 +23,8 @@ int main(const int argumentCount, char** arguments)
 	{
 		return LostArk::Server::Run_ServerGameplayContractTests();
 	}
+	if (2 == argumentCount && std::string_view(arguments[1]) == "--valtan-pattern-control-contract-test")
+		return LostArk::Server::CServerGameplayContractRunner::Run_ValtanPatternControl();
 	if (2 == argumentCount && std::string_view(arguments[1]) == "--kouku-draft-contract-test")
 		return LostArk::Server::CServerGameplayContractRunner::Run_KoukuDraft();
 	if (2 == argumentCount && std::string_view(arguments[1]) == "--kouku-dice-hit-contract-test")

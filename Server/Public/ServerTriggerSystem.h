@@ -183,11 +183,9 @@ namespace LostArk::Server
 			SERVER_PLAYER& player,
 			const WORLD_TRIGGER_ACTION& action,
 			std::uint32_t actionStartTick);
-#ifdef _DEBUG
 		bool Place_PlayerAtValtanAuditionBait(
 			SERVER_PLAYER& player,
 			std::uint32_t actionStartTick) const;
-#endif
 
 		[[nodiscard]] std::size_t Get_TriggerCount() const
 		{
@@ -206,11 +204,9 @@ namespace LostArk::Server
 		static bool Contains(
 			const RUNTIME_TRIGGER& trigger,
 			const SERVER_PLAYER& player);
-#ifdef _DEBUG
 		static bool Build_ValtanStageBypassMove(
 			const std::string& triggerPlacementId,
 			WORLD_TRIGGER_ACTION& outAction);
-#endif
 		/* The one place an authored action turns into Server state, shared by
 		   entry and by an interact request so the two cannot drift. */
 		bool Run_Action(

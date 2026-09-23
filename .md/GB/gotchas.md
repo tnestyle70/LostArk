@@ -3455,3 +3455,17 @@ Lobby의 `Server entry failed`는 로딩 복구에도 표시된다. 원격 상�
 - Hook grip의XZ에물리바닥셀이없으면`Project_PointOnSameLevel`의기준Y도바닥근거가
   아니다. 기존player-spawn projection을fallback으로사용할때는동일navgrid/정확한
   walkable/수평거리/높이차를함께검증한다. 높이만0m나보스spawnY로대체하지않는다.
+
+
+### Release F1의 서버 재생과 수치 profile
+
+- Release F1을 열 때 ImGui 표시 guard만 제거하면 패턴이 시작되지 않는다. 같은 typed audition/flow의 Server 평가·fixed tick·lifecycle 송신과 Client preparation/응답 drain을 함께 연결한다. Map authoring이나 Debug 전용 로컬 preview의 guard까지 일괄 제거하지 않는다.
+- Retail override가 있는 필드는 base 숫자만 저장해도 런타임이 바뀌지 않는다. 공용 Balance Test는 유효한 Retail 소유 field를 편집하고, 공식 Gameplay/World 및 조합 publisher는 기본 Retail을 유지한다. 저장 성공, publish 성공, 실행 중 Server 반영은 서로 다른 단계다.
+- 공굴리기 counter window의 `endsPatternOnSuccess`만으로 무력화가 자동 삽입되지 않는다. occurrence의 성공 Logic → 같은 관문 groggy Pattern 결과 연결과 실제 published counter fixture를 함께 확인한다.
+
+
+### Gameplay catalog의 새 profile lookup과 재로드
+
+- 새 lookup map을 parser에 추가할 때 기존 Load rollback과 clear 대상도 함께 갱신한다. 첫 Load 성공만 확인하면 같은 객체의 두 번째 Load에서 duplicate buff나 이전 damage formula 잔존을 놓친다. profile별 lookup 두 개가 있으면 두 경로 모두 변경값을 소비하는지 확인한다.
+- optional profile을 clear만 하고 rollback에서 빠뜨리면 malformed 후보가 이전 정상 profile을 지운다. 실제 published bootstrap의 반복 Load, 변경값 교체, 뒤쪽 invalid row 실패 후 이전 revision/값 보존까지 같은 검증에 둔다.
+- 후속 fixture는 admission 실패 뒤 이전 catalog의 다른 종류 row를 예상 타입으로 접근하지 않는다. row 종류·필수 배열 개수를 확인한 뒤 front/back을 사용하여 첫 실패를 후속 assert가 가리지 않게 한다.

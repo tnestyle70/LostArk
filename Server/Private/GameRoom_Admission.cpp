@@ -533,7 +533,6 @@ void LostArk::Server::CGameRoom::Leave(
 			Stop_KoukuRaid("A raid participant left the room");
 	}
 	m_KoukuRaidReceipts.erase(sessionId);
-#ifdef _DEBUG
 	if (sessionId == m_ValtanPatternIdAudition.iOwnerSessionId)
 	{
 		Cancel_ValtanNextPatternReservation("owner left the room");
@@ -569,7 +568,6 @@ void LostArk::Server::CGameRoom::Leave(
 	{
 		Stop_ValtanTimelineRow();
 	}
-#endif
 	Cancel_KoukuWorldBodies({}, sessionId);
 	const bool koukuOwnerLeft = sessionId == m_KoukuSaydonPatternAudition.iOwnerSessionId;
 	const auto soloMarioDeparture = std::find_if(
@@ -599,6 +597,7 @@ void LostArk::Server::CGameRoom::Leave(
 	m_KoukuDraftUploads.erase(sessionId);
 	m_ValtanAuditionSequenceBySessionId.erase(sessionId);
 	m_KillGateBossesRequestSequences.erase(sessionId);
+	m_CooldownModeRequestSequences.erase(sessionId);
 	m_WorldPlaybackRequestSequences.erase(sessionId);
 	m_RoomPlayerArrivalRuns.erase(sessionId);
 	m_ValtanPatternIdAuditionSequenceBySessionId.erase(sessionId);

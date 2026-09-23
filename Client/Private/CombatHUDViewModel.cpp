@@ -275,6 +275,7 @@ void Client::CCombatHUDViewModel::Apply_LocalPlayer(
 	m_Player.iComboStage = snapshot.iComboStage;
 	m_Player.iActionStartTick = snapshot.iActionStartTick;
 	m_Player.Cooldowns = snapshot.Cooldowns;
+	m_Player.eCooldownMode = snapshot.eCooldownMode;
 	Build_PlayerSkills(characterClass, serverTick, &snapshot.Cooldowns);
 }
 
@@ -332,7 +333,10 @@ void Client::CCombatHUDViewModel::Build_PlayerSkills(
 				[skillId](const LostArk::Shared::SKILL_COOLDOWN_SNAPSHOT& value)
 				{ return value.iSkillId == skillId; });
 			if (pCooldowns->end() != cooldown)
+			{
 				state.iCooldownEndTick = cooldown->iCooldownEndTick;
+				state.iCooldownDurationTicks = cooldown->iCooldownDurationTicks;
+			}
 		}
 		m_Player.Skills.push_back(std::move(state));
 	}

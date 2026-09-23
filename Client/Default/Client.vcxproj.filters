@@ -2167,6 +2167,9 @@
     <None Include="..\..\Data\Balance\DamageProfiles.json">
       <Filter>96.DataFiles\Balance</Filter>
     </None>
+    <None Include="..\..\Data\Balance\Profiles\Retail.balanceprofile.json">
+      <Filter>96.DataFiles\Balance</Filter>
+    </None>
     <None Include="..\..\Data\Balance\PlayerProfiles.json">
       <Filter>96.DataFiles\Balance</Filter>
     </None>

@@ -505,6 +505,7 @@ namespace Client
 		void Update(bool_t gameplayCommandsEnabled, bool_t debugPlacementEnabled = false);
 #ifdef _DEBUG
 		bool_t Begin_DebugPlayerPlacement(LostArk::Shared::WORLD_ID worldId);
+#endif
 		void Cancel_DebugPlayerPlacement();
 		void Retire_DebugPlayerPlacementRequest(const std::string& reason);
 		/* F1 gate buttons: submits one fixed arena position without a ground
@@ -512,9 +513,11 @@ namespace Client
 		bool_t Request_DebugTeleportToPosition(
 			LostArk::Shared::WORLD_ID worldId, f32_t x, f32_t y, f32_t z);
 		bool_t Request_DebugReturnToKoukuStart();
+#ifdef _DEBUG
 		bool_t Request_KoukuRoomPlayerArrival(std::uint32_t requestSequence, std::uint32_t runEpoch,
 			const std::string& rootPatternId, const std::string& occurrenceId, std::uint32_t playerSlot,
 			f32_t x, f32_t y, f32_t z, std::string& outStatus);
+#endif
 		bool_t Is_DebugPlayerPlacementArmed() const { return m_debugPlacementArmed; }
 		bool_t Is_DebugPlayerPlacementPending() const { return 0u != m_pendingDebugPlacementSequence; }
 		bool_t Did_DebugPlayerPlacementSucceed() const { return m_debugPlacementSucceeded; }
@@ -523,6 +526,7 @@ namespace Client
 		madness form of this player. The snapshot swaps the body; the typed
 		result only reports the verdict here. */
 		bool_t Request_DebugKoukuHudMode(LostArk::Shared::KOUKU_HUD_MODE mode);
+#ifdef _DEBUG
 		/* Debug bingo board fill; the board replicates on the world snapshot. */
 		bool_t Request_DebugBingoFill(std::uint32_t cellMask, bool_t reset);
 		/* Debug bingo bomb; the Server marks this session's own player. */
@@ -643,9 +647,7 @@ namespace Client
 			bool_t isKeyboardBlocked,
 			bool_t useRawKeyboard);
 		void Cancel_GroundTargeting();
-#ifdef _DEBUG
 		void Update_DebugPlayerPlacement(bool_t enabled);
-#endif
 		bool_t Update_DebugMarioJump(bool_t gameplayCommandsEnabled);
 
 	private:
@@ -717,7 +719,6 @@ namespace Client
 		shared_ptr<CClickMoveEffect> m_pClickMoveEffect;
 		bool_t m_wasTargetingLeftMouseDown = false;
 		bool_t m_wasTargetingRightMouseDown = false;
-#ifdef _DEBUG
 		// This controller owns one pick and its correlated reply, never player position.
 		bool_t m_debugPlacementEnabled = false;
 		bool_t m_debugPlacementArmed = false;
@@ -729,10 +730,11 @@ namespace Client
 		LostArk::Shared::WORLD_ID m_debugPlacementWorld = LostArk::Shared::WORLD_ID::END;
 		std::chrono::steady_clock::time_point m_debugPlacementSentAt{};
 		std::string m_debugPlacementStatus;
+#ifdef _DEBUG
 		std::uint32_t m_nextDebugMadnessFormSequence = 1u;
 		std::uint32_t m_pendingDebugMadnessFormSequence = 0u;
-		std::string m_debugMadnessFormStatus;
 #endif
+		std::string m_debugMadnessFormStatus;
 		bool_t m_debugMarioJumpEnabled = false;
 		bool_t m_wasDebugMarioUpDown = false;
 		std::uint32_t m_nextDebugMarioJumpSequence = 1u;

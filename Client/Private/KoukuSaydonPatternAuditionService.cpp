@@ -57,7 +57,7 @@ namespace
 		switch (result)
 		{
 		case KOUKUSAYDON_PATTERN_AUDITION_RESULT::REJECTED_RELEASE_BUILD:
-			return "Server Play is Debug-only; start the Debug Server.";
+			return "The Server rejected a playback option unavailable in this build.";
 		case KOUKUSAYDON_PATTERN_AUDITION_RESULT::REJECTED_SCOPE_MISMATCH:
 			return "The Server room does not match the KoukuSaydon arena boss scope.";
 		case KOUKUSAYDON_PATTERN_AUDITION_RESULT::REJECTED_NO_BOSS:
@@ -333,7 +333,7 @@ bool Client::CKoukuSaydonPatternAuditionService::Submit(
 	CNetworkManager& network = CNetworkManager::Get();
 	if (!network.Is_Connected())
 	{
-		outStatus = "Start and connect the Debug Server first.";
+		outStatus = "Start and connect the Server first.";
 		return false;
 	}
 	if (0u == m_iNextRequestSequence)

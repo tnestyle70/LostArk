@@ -2196,6 +2196,26 @@ namespace
 
 	void Test_DebugUseEstherRoundTrip(TEST_RUNNER& testRunner)
 	{
+        {
+            C2S_SET_COOLDOWN_MODE request{ 9u, WORLD_ID::VALTAN_ARENA, COOLDOWN_MODE::RELEASE_AUTHORED };
+            CPacketWriter writer;
+            testRunner.Require(Write_Message(writer, request) && Is_Known_Packet_Type(PACKET_TYPE::C2S_SET_COOLDOWN_MODE), "Room cooldown request serializes");
+            CPacketReader reader(writer.Get_Buffer()); C2S_SET_COOLDOWN_MODE decoded;
+            testRunner.Require(Read_Message(reader, decoded) && !reader.Get_RemainingSize() && decoded.eMode == request.eMode,
+                "Room cooldown policy request round trip");
+            auto invalid = writer.Get_Buffer(); invalid.back() = 255u;
+            CPacketReader badReader(invalid); decoded.iRequestSequence = 77u;
+            testRunner.Require(!Read_Message(badReader, decoded) && decoded.iRequestSequence == 77u, "Invalid cooldown mode preserves the decoded request");
+            request.eMode = COOLDOWN_MODE::END; CPacketWriter invalidWriter;
+            testRunner.Require(!Write_Message(invalidWriter, request), "Cooldown mode sentinel is rejected");
+            S2C_SET_COOLDOWN_MODE_RESULT result{ 9u, WORLD_ID::VALTAN_ARENA, COOLDOWN_MODE::RELEASE_AUTHORED, SET_COOLDOWN_MODE_RESULT::ACCEPTED };
+            CPacketWriter resultWriter; testRunner.Require(Write_Message(resultWriter, result), "Room policy result serializes");
+            CPacketReader resultReader(resultWriter.Get_Buffer()); S2C_SET_COOLDOWN_MODE_RESULT resultDecoded;
+            testRunner.Require(Read_Message(resultReader, resultDecoded) && !resultReader.Get_RemainingSize() &&
+                resultDecoded.eResult == SET_COOLDOWN_MODE_RESULT::ACCEPTED && resultDecoded.eMode == result.eMode,
+                "Room policy result round trip");
+        }
+
         C2S_DEBUG_KILL_GATE_BOSSES kill{ 42u, WORLD_ID::KAKULSAYDON_ARENA, "BOSS_KAKULSAYDON_G3_SAYDON" };
         CPacketWriter killWriter;
         testRunner.Require(Write_Message(killWriter, kill) && Is_Known_Packet_Type(PACKET_TYPE::C2S_DEBUG_KILL_GATE_BOSSES), "Gate Kill request is registered and serializes");
@@ -2214,7 +2234,7 @@ namespace
         killed.eResult = DEBUG_KILL_GATE_BOSSES_RESULT::DISABLED; CPacketWriter rejectedKill;
         testRunner.Require(!Write_Message(rejectedKill, killed), "Rejected Gate Kill cannot claim a kill count");
 
-		testRunner.Require(NETWORK_PROTOCOL_VERSION == 108u &&
+		testRunner.Require(NETWORK_PROTOCOL_VERSION == 109u &&
 			Is_Known_Packet_Type(PACKET_TYPE::C2S_DEBUG_USE_ESTHER) &&
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_DEBUG_USE_ESTHER) ==
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_DEBUG_RESUMMON_WAVE_MONSTERS) + 1u,
@@ -2402,7 +2422,7 @@ namespace
 				unchanged.eDirection == request.eDirection,
 				"Malformed Mario direction or stop preserves output");
 		}
-		testRunner.Require(NETWORK_PROTOCOL_VERSION == 108u && Is_Known_Packet_Type(PACKET_TYPE::C2S_MARIO_MOVE) &&
+		testRunner.Require(NETWORK_PROTOCOL_VERSION == 109u && Is_Known_Packet_Type(PACKET_TYPE::C2S_MARIO_MOVE) &&
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_MARIO_MOVE) ==
 			static_cast<std::uint16_t>(PACKET_TYPE::S2C_DEBUG_MARIO_JUMP_RESULT) + 1u,
 			"Mario direction packet retains its appended identity in protocol 105");
@@ -2803,7 +2823,7 @@ namespace
 				unchanged.eWorldId == WORLD_ID::BERN && unchanged.eResult == MARIO_RETURN_RESULT::REJECTED_DESTINATION,
 				"Invalid Mario return verdict preserves caller output");
 		}
-		testRunner.Require(NETWORK_PROTOCOL_VERSION == 108u &&
+		testRunner.Require(NETWORK_PROTOCOL_VERSION == 109u &&
 			Is_Known_Packet_Type(PACKET_TYPE::C2S_MARIO_RETURN) && Is_Known_Packet_Type(PACKET_TYPE::S2C_MARIO_RETURN_RESULT) &&
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_MARIO_RETURN) == static_cast<std::uint16_t>(PACKET_TYPE::S2C_SET_VEHICLE_RIDING_RESULT) + 1u &&
 			static_cast<std::uint16_t>(PACKET_TYPE::S2C_MARIO_RETURN_RESULT) == static_cast<std::uint16_t>(PACKET_TYPE::C2S_MARIO_RETURN) + 1u,
@@ -2924,7 +2944,7 @@ namespace
 				unchanged.eResult == DEBUG_MARIO_JUMP_RESULT::REJECTED_DISABLED,
 				"Mario invalid or truncated verdict preserves caller output");
 		}
-		testRunner.Require(NETWORK_PROTOCOL_VERSION == 108u &&
+		testRunner.Require(NETWORK_PROTOCOL_VERSION == 109u &&
 			Is_Known_Packet_Type(PACKET_TYPE::C2S_DEBUG_MARIO_JUMP) &&
 			Is_Known_Packet_Type(PACKET_TYPE::S2C_DEBUG_MARIO_JUMP_RESULT) &&
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_DEBUG_MARIO_JUMP) ==
@@ -3109,14 +3129,14 @@ namespace
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_DEBUG_BINGO_HAMMER) + 1u &&
 			static_cast<std::uint16_t>(PACKET_TYPE::S2C_SET_VEHICLE_RIDING_RESULT) ==
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_SET_VEHICLE_RIDING) + 1u &&
-			NETWORK_PROTOCOL_VERSION == 108u,
+			NETWORK_PROTOCOL_VERSION == 109u,
 			"Riding packet identities append without renumbering peers");
 	}
 
 	void Test_WorldObjectMotionProtocol(TEST_RUNNER& testRunner)
 	{
 		using namespace LostArk::Shared;
-		testRunner.Require(NETWORK_PROTOCOL_VERSION == 108u, "World Object owner lifecycle, fear, zone pulse, wave re-summon, wall climb and ember use protocol 105");
+		testRunner.Require(NETWORK_PROTOCOL_VERSION == 109u, "World Object owner lifecycle, fear, zone pulse, wave re-summon, wall climb and ember use protocol 105");
 		testRunner.Require(
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_DEBUG_MARIO_JUMP) == 72u &&
 			static_cast<std::uint16_t>(PACKET_TYPE::S2C_DEBUG_MARIO_JUMP_RESULT) == 73u &&
@@ -3476,7 +3496,7 @@ namespace
 			static_cast<std::uint16_t>(PACKET_TYPE::S2C_INTERACT_PROMPT) + 1u &&
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_INTERACTION_SLOT) ==
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_INTERACT_TRIGGER) + 1u &&
-			NETWORK_PROTOCOL_VERSION == 108u,
+			NETWORK_PROTOCOL_VERSION == 109u,
 			"Protocol 105 preserves main trigger identities with WORLD occurrence placement");
 	}
 
@@ -3593,7 +3613,7 @@ namespace
 	void Test_PartyInviteProtocol(TEST_RUNNER& testRunner)
 	{
 		{
-			testRunner.Require(108u == NETWORK_PROTOCOL_VERSION,
+			testRunner.Require(109u == NETWORK_PROTOCOL_VERSION,
 				"KoukuSaydon Source Pin And Existing Contracts Use Protocol 105");
 			C2S_ENTER_WORLD oldPeer{};
 			oldPeer.iProtocolVersion = 40u;
@@ -4009,7 +4029,8 @@ namespace
 		first.iSilenceEndTick = 180u;
 		first.iSilenceDurationTicks = 150u;
 		first.iComboStage = 3;
-		first.Cooldowns.push_back({ 34060, 330 });
+		first.eCooldownMode = COOLDOWN_MODE::RELEASE_AUTHORED;
+		first.Cooldowns.push_back({ 34060, 330, 720 });
 
 		PLAYER_SNAPSHOT second{};
 		second.iNetEntityId = 101;
@@ -4120,8 +4141,8 @@ namespace
 			4 + 1 + (4 * 4) + 1 + 1 + 1 + (4 * 8) + 1 + (4 * 3) + 3 +
 			1 + 1 + 1 + playerAttachmentBytes + playerPatternStatusBytes +
 			playerMadnessBytes + playerInteractionBytes + playerMarioStageBytes + playerCardMazeBytes + playerFearBytes + playerZonePulseBytes + playerPredictionBytes +
-			playerVehicleBytes + playerHonorTitleBytes;
-		constexpr std::size_t cooldownBytes = 4 + 4;
+			playerVehicleBytes + playerHonorTitleBytes + 5 + 1; // shield, buff count, room mode
+		constexpr std::size_t cooldownBytes = 4 + 4 + 4;
 		/* The first trailing 1 is the optional Portal rush route flag.
 		   The final 1 + 1 + 1 is iPhase, iBrokenArmorMask and the
 		   hasBossCombatState flag. The block after it is the boss combat
@@ -4132,7 +4153,7 @@ namespace
 		const std::size_t entityBytes =
 			4 + 1 + 2 + entity.strPatternId.size() + 2 +
 			entity.strActionId.size() + (4 * 4) + 1 + (4 * 7) + 1 + 1 + 1 +
-			4 + 4 + 2 + (4 * 6) + 1 + GAMEPLAY_DATA_REVISION_BYTES + entityPresentationBytes;
+			4 + 4 + 2 + (4 * 6) + 1 + GAMEPLAY_DATA_REVISION_BYTES + entityPresentationBytes + 1; // boss buff count
 		constexpr std::size_t bossCombatEventBytes =
 			8 + 4 + 4 + 1 + 4;
 		constexpr std::size_t combatObjectBytes =
@@ -4260,6 +4281,8 @@ namespace
 			decoded.Players[0].iSilenceDurationTicks == 150u &&
 			decoded.Players[0].Cooldowns.size() == 1 &&
 			decoded.Players[0].Cooldowns[0].iCooldownEndTick == 330 &&
+			decoded.Players[0].Cooldowns[0].iCooldownDurationTicks == 720 &&
+			decoded.Players[0].eCooldownMode == COOLDOWN_MODE::RELEASE_AUTHORED &&
 			decoded.Players[0].iComboStage == 3 &&
 			decoded.Players[1].iComboStage == 0 &&
 			decoded.Players[1].iNetEntityId == 101 &&
@@ -6959,7 +6982,7 @@ namespace
 		}
 
 		testRunner.Require(
-			108u == NETWORK_PROTOCOL_VERSION,
+			109u == NETWORK_PROTOCOL_VERSION,
 			"Session Diagnostics Use Current Protocol Version 105");
 		testRunner.Require(
 			allReasonsAreKnown && allValuesAreContiguous,
@@ -6987,7 +7010,7 @@ namespace
 	void Test_DataRevisionHotReloadProtocol(TEST_RUNNER& testRunner)
 	{
 		testRunner.Require(
-			108u == NETWORK_PROTOCOL_VERSION,
+			109u == NETWORK_PROTOCOL_VERSION,
 			"World Spawn Pin Complete Play And Two-Revision Restart CAS Use Protocol 105");
 		const GameplayDataRevision base = Make_GameplayDataRevision(10u);
 		const GameplayDataRevision candidate = Make_GameplayDataRevision(40u);

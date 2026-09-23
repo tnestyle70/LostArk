@@ -116,6 +116,196 @@ REGION "blocked" "closed" 0 1
 	tests.Require(!nav.Set_RuntimeSupportSurfaces({ floor }, status) && nav.Get_Revision() == revision &&
 		nav.Get_RuntimeSupportSurfaceCount() == 2u, "Invalid surface replacement preserves the previous committed list");
 	nav.Set_RuntimeSupportSurfaces({}, status);
+	{
+		// This common fixture exercises the published counter in Debug and Release.
+		auto room = std::make_unique<CGameRoom>(WORLD_ID::KAKULSAYDON_ARENA);
+		room->m_KoukuSaydonPatternAudition.iRoomAuditionEpoch = 1u;
+		room->m_ServerNavigation = nav;
+		room->m_ServerCollisionSystem.Initialize({}, status);
+		room->m_WorldEntities.clear();
+		SERVER_WORLD_ENTITY boss{};
+		boss.iNetEntityId = 700u; boss.eKind = WORLD_BOOTSTRAP_KIND::BOSS;
+		boss.strEncounterId = "ENCOUNTER_KAKULSAYDON_G1";
+		boss.strArchetypeId = "BOSS_KAKULSAYDON_G1_SAYDON";
+		boss.iCurrentHp = 100u; boss.fPositionX = boss.fPositionZ = 6.f;
+		room->m_WorldEntities.push_back(std::move(boss));
+	for (const unsigned scenario : {0u, 1u, 2u, 3u})
+	{
+		const bool withFollowup = scenario != 0u, savedSource = scenario >= 2u;
+		const std::string sourceId = scenario == 3u ? "KAKULSAYDON_G1_PATTERN_118" : "KAKULSAYDON_G1_PATTERN_81";
+		const std::string groggyId = scenario == 3u ? "KAKULSAYDON_G1_PATTERN_42" : "KAKULSAYDON_G1_PATTERN_4";
+		const std::string pursuitId = scenario == 3u ? "KAKULSAYDON_G1_PATTERN_124" : "KAKULSAYDON_G1_PATTERN_101";
+		const auto& sourceCatalog = room->m_GameplayCatalog.Active();
+		const auto* source = savedSource ? CKoukuSaydonBrain::Find_AnimationOnlyPattern(sourceCatalog, sourceId, status) : nullptr;
+		const auto* groggy = savedSource ? CKoukuSaydonBrain::Find_AnimationOnlyPattern(sourceCatalog, groggyId, status) : nullptr;
+		if (savedSource)
+		{
+			tests.Require(source && groggy && source->strGateId == groggy->strGateId &&
+				source->strTargetBossPlacementId == groggy->strTargetBossPlacementId && groggy->Stages.size() == 3u,
+				"Published rolling counter and its existing groggy retain the same gate and boss");
+			if (!source || !groggy) continue;
+		}
+		// Counter success closes the WORLD owner with or without a followup outcome.
+		auto& counterBoss = room->m_WorldEntities.front();
+		const auto counterBossBefore = std::make_unique<SERVER_WORLD_ENTITY>(counterBoss);
+		const auto counterTickBefore = room->m_iServerTick;
+		const auto counterStatusBefore = room->m_strStatus;
+		counterBoss.strPatternId = savedSource ? sourceId : "KAKULSAYDON_COUNTER_LANDING"; counterBoss.strActionId = "counter.action";
+		if (savedSource)
+		{
+			counterBoss.strArchetypeId = "BOSS_KAKULSAYDON_" + std::string(scenario == 2u ? "G1" : "G3") + "_SAYDON"; counterBoss.strEncounterId = source->strEncounterId;
+			counterBoss.strPlacementId = source->strTargetBossPlacementId; counterBoss.iCurrentHp = 100u;
+		}
+		counterBoss.iPatternSequence = 91u; counterBoss.fPositionY = 3.9f; counterBoss.fCollisionRadius = .5f;
+		counterBoss.fSpawnPositionX = counterBoss.fPositionX; counterBoss.fSpawnPositionZ = counterBoss.fPositionZ;
+		counterBoss.fSpawnPositionY = 1.25f;
+		counterBoss.PatternStageRootMotion = {{0u, 0.f, 0.f, 0.f}, {3000u, 0.f, 0.f, 2.6f}};
+		counterBoss.bPatternStageRootOriginCaptured = true;
+		CGameRoom::KOUKUSAYDON_PATTERN_AUDITION_MEMBER counterMember;
+		counterMember.strMemberId = "counter.member"; counterMember.iBossEntityId = counterBoss.iNetEntityId;
+		counterMember.PatternIds = {counterBoss.strPatternId}; counterMember.iPatternSequence = counterBoss.iPatternSequence;
+		if (savedSource) { counterMember.PatternIds.push_back(pursuitId); counterMember.TransitionTicks = {0u}; }
+		counterMember.WorldCueByInstance["rolling.ball"] = "ball.cue";
+		counterMember.WorldCueByOccurrence["counter.world.1"] = "ball.cue";
+		room->m_KoukuSaydonPatternAudition.Members = {counterMember};
+		S2C_WORLD_SEQUENCE_PLAY ball; ball.iRunEpoch = 1u; ball.strMemberId = counterMember.strMemberId;
+		ball.strCueId = "ball.cue"; ball.strOccurrenceId = "counter.world.1"; ball.strSequenceInstanceId = "rolling.ball";
+		ball.iBossNetEntityId = counterBoss.iNetEntityId; ball.iPatternSequence = counterBoss.iPatternSequence;
+		auto otherBall = ball; otherBall.strMemberId = "other.member"; otherBall.strCueId = "other.cue";
+		room->m_KoukuSaydonPatternAudition.WorldPlays = {ball, otherBall};
+		room->m_PendingKoukuMechanicTriggers = {{counterBoss.iNetEntityId, counterBoss.iPatternSequence, {}}, {701u, 1u, {}}};
+		BOSS_PATTERN_DEFINITION counterPattern; counterPattern.strPatternId = counterBoss.strPatternId;
+		BOSS_PATTERN_LOGIC_WINDOW counterWindow; counterWindow.strWindowId = "counter.window";
+		counterWindow.eKind = BOSS_PATTERN_LOGIC_KIND::COUNTER_WINDOW; counterWindow.iDurationMs = 2837u;
+		counterWindow.bEndsPatternOnSuccess = true;
+		if (savedSource)
+		{
+			const auto window = std::find_if(source->LogicWindows.begin(), source->LogicWindows.end(), [](const auto& value)
+				{ return value.eKind == BOSS_PATTERN_LOGIC_KIND::COUNTER_WINDOW; });
+			tests.Require(window != source->LogicWindows.end(), "Published rolling pattern retains its real counter window");
+			if (window != source->LogicWindows.end()) counterWindow = *window;
+		}
+		else if (withFollowup)
+			counterWindow.OnSuccess.push_back({BOSS_PATTERN_LOGIC_RESULT_KIND::FOLLOWUP_PATTERN, 0u, 0u, groggyId});
+		counterPattern.LogicWindows = {counterWindow};
+		auto& counterLedger = room->m_KoukuSaydonPatternAudition.Members.front().LogicLedger;
+		KOUKUSAYDON_LOGIC_OUTPUT counterOutput; std::vector<DAMAGE_EVENT> counterDamage;
+		CKoukuSaydonLogicRuntime::Build(counterPattern, counterBoss, 120u, counterLedger);
+		CKoukuSaydonLogicRuntime::Update(counterBoss, counterPattern, counterLedger, room->m_Players,
+			room->m_GameplayCatalog, nullptr, 120u, counterDamage, counterOutput, &room->m_ServerNavigation, &room->m_ServerCollisionSystem);
+		const bool counterHit = CBossCombatRuntime::Try_TriggerCounter(counterBoss, 121u);
+		CKoukuSaydonLogicRuntime::Update(counterBoss, counterPattern, counterLedger, room->m_Players,
+			room->m_GameplayCatalog, nullptr, 121u, counterDamage, counterOutput, &room->m_ServerNavigation, &room->m_ServerCollisionSystem);
+		room->m_iServerTick = 121u;
+		const bool completed = counterHit && room->Apply_KoukuLogicOutput(counterOutput, counterBoss, 121u);
+		const auto& committed = room->m_KoukuSaydonPatternAudition.Members.front();
+		tests.Require(completed && counterOutput.bCounterSuccessLanded && std::abs(counterBoss.fPositionY - 1.25f) < .0001f &&
+			counterBoss.strPatternId.empty() && counterBoss.PatternStageRootMotion.empty() && !counterBoss.bPatternStageRootOriginCaptured &&
+			(savedSource ? (committed.PatternIds == std::vector<std::string>{sourceId, groggyId, pursuitId} &&
+				committed.TransitionTicks == std::vector<std::uint32_t>{1u, 0u}) :
+				(withFollowup ? (committed.PatternIds.size() == 2u && committed.PatternIds.back() == groggyId &&
+					committed.TransitionTicks == std::vector<std::uint32_t>{1u}) :
+					(committed.PatternIds.size() == 1u && committed.TransitionTicks.empty()))),
+			savedSource ? "Saved rolling counter schedules exactly one same-gate groggy before its next player-pursuit pattern" :
+			withFollowup ? "Actual counter verdict lands, clears source root motion and schedules existing groggy one tick later" :
+				"A counter with no outcomes lands and ends the Pattern without inventing a followup");
+		tests.Require(room->m_KoukuSaydonPatternAudition.WorldPlays.size() == 1u &&
+			room->m_KoukuSaydonPatternAudition.WorldPlays.front().strMemberId == "other.member" &&
+			committed.WorldCueByInstance.empty() && committed.WorldCueByOccurrence.empty() &&
+			room->m_PendingKoukuMechanicTriggers.size() == 1u && room->m_PendingKoukuMechanicTriggers.front().iBossEntityId == 701u,
+			"Counter interruption stops only its active ball WORLD owner and pending mechanics, preserving another member");
+		if (savedSource)
+		{
+			const bool started = room->m_KoukuSaydonBrain.Begin_Pattern(counterBoss, *groggy,
+				room->m_GameplayCatalog.Get_ActiveRevision(), 122u, status);
+			unsigned changes = 0u, completedAt = 0u;
+			for (std::uint32_t tick = 123u; started && tick <= 260u; ++tick)
+			{
+				const auto result = room->m_KoukuSaydonBrain.Update(counterBoss, sourceCatalog, tick, status);
+				if (result == KOUKUSAYDON_BRAIN_UPDATE_RESULT::STAGE_CHANGED) ++changes;
+				if (result == KOUKUSAYDON_BRAIN_UPDATE_RESULT::PATTERN_COMPLETED) { completedAt = tick; break; }
+			}
+			tests.Require(started && changes == 2u && completedAt >= 247u && completedAt <= 250u,
+				"Saved groggy runs its start, hold and recovery for the full 4167 ms before completion");
+		}
+		room->m_KoukuSaydonPatternAudition.Members.clear(); room->m_KoukuSaydonPatternAudition.WorldPlays.clear();
+		room->m_PendingKoukuMechanicTriggers.clear();
+		counterBoss = *counterBossBefore; room->m_iServerTick = counterTickBefore; room->m_strStatus = counterStatusBefore;
+	}
+
+	}
+	{
+		// Reuse one admitted catalog: resetless reload must replace every profile,
+		// while a late failure restores both buff indexes, formula and ember data.
+		std::vector<wchar_t> root(32768u);
+		const DWORD length = GetEnvironmentVariableW(L"LOSTARK_SERVER_DATA_ROOT", root.data(), DWORD(root.size()));
+		fs::path dataRoot;
+		if (length && length < root.size()) dataRoot = root.data();
+		else { GetModuleFileNameW(nullptr, root.data(), DWORD(root.size())); dataRoot = fs::path(root.data()).parent_path().parent_path() / L"DataFiles"; }
+		std::ifstream input(dataRoot / L"Gameplay/Gameplay.bootstrap", std::ios::binary);
+		std::string baseline((std::istreambuf_iterator<char>(input)), std::istreambuf_iterator<char>());
+		if (!baseline.empty() && baseline.back() != '\n') baseline += '\n';
+		fs::create_directories(fixture / L"Gameplay");
+		CGameplayCatalog profiles;
+		const auto load = [&](std::string bytes) {
+			const auto end = bytes.find('\n'), count = bytes.rfind('\t', end);
+			if (end == std::string::npos || count == std::string::npos) return false;
+			bytes.replace(count + 1u, end - count - 1u, std::to_string(std::count(bytes.begin(), bytes.end(), '\n') - 1u));
+			{ std::ofstream output(fixture / L"Gameplay/Gameplay.bootstrap", std::ios::binary | std::ios::trunc); output.write(bytes.data(), bytes.size()); }
+			SetEnvironmentVariableW(L"LOSTARK_SERVER_DATA_ROOT", fixture.c_str());
+			const bool result = profiles.Load();
+			SetEnvironmentVariableW(L"LOSTARK_SERVER_DATA_ROOT", length ? root.data() : nullptr);
+			return result;
+		};
+		const bool ready = load(baseline);
+		const auto* damage = profiles.Find_DamageProfile("damage.player.17030");
+		const auto* buff = profiles.Find_SkillBuff(171702u);
+		const auto* ember = profiles.Find_EmberProfile(CHARACTER_CLASS_ID::GUARDIANKNIGHT);
+		tests.Require(ready && damage && buff && ember, "Load actual Retail damage, skill buff and Guardian ember profiles for reload regression");
+		if (ready && damage && buff && ember)
+		{
+			const auto beforeDamage = *damage;
+			const auto beforeBuff = *buff;
+			const auto beforeEmber = *ember;
+			const auto firstRevision = profiles.Get_ActiveRevision();
+			tests.Require(load(baseline) && profiles.Get_ActiveRevision() == firstRevision,
+				"The same complete Retail bootstrap reloads twice without accumulating duplicate skill buffs");
+			const auto replaceField = [](std::string& bytes, const std::string& prefix, const unsigned field, const std::string& value) {
+				auto at = bytes.find(prefix); if (at == std::string::npos) return false;
+				const auto rowEnd = bytes.find('\n', at);
+				for (unsigned i = 0u; i < field; ++i) { at = bytes.find('\t', at); if (at == std::string::npos || at >= rowEnd) return false; ++at; }
+				auto end = bytes.find('\t', at); if (end == std::string::npos || end > rowEnd) end = rowEnd;
+				if (end > at && bytes[end - 1u] == '\r') --end;
+				bytes.replace(at, end - at, value); return true;
+			};
+			std::string changed = baseline;
+			const bool fieldsChanged = replaceField(changed, "DAMAGE\tdamage.player.17030\t", 4u, std::to_string(beforeDamage.iDamageAddend + 7u)) &&
+				replaceField(changed, "SKILLBUFF\t17170\t171702\t", 4u, std::to_string(beforeBuff.iDurationMs + 1u)) &&
+				replaceField(changed, "PLAYEREMBER\tGUARDIANKNIGHT\t", 2u, std::to_string(beforeEmber.iGaugeGainPerHit + 1u));
+			const auto matches = [&](const unsigned addend, const unsigned duration, const unsigned gain) {
+				const auto* d = profiles.Find_DamageProfile("damage.player.17030");
+				const auto* b = profiles.Find_SkillBuff(171702u);
+				const auto* list = profiles.Find_SkillBuffs(17170u);
+				const auto* e = profiles.Find_EmberProfile(CHARACTER_CLASS_ID::GUARDIANKNIGHT);
+				return d && d->iDamageAddend == addend && b && b->iDurationMs == duration && e && e->iGaugeGainPerHit == gain && list &&
+					std::count_if(list->begin(), list->end(), [&](const auto& row) { return row.iBuffId == 171702u && row.iDurationMs == duration; }) == 1;
+			};
+			tests.Require(fieldsChanged && load(changed) && matches(beforeDamage.iDamageAddend + 7u, beforeBuff.iDurationMs + 1u, beforeEmber.iGaugeGainPerHit + 1u),
+				"A valid reload replaces damage formula, both buff lookup views and ember values together");
+			const auto committedRevision = profiles.Get_ActiveRevision();
+			tests.Require(!load(baseline + "INVALID_PROFILE_RELOAD_ROW\n") && profiles.Get_ActiveRevision() == committedRevision &&
+				matches(beforeDamage.iDamageAddend + 7u, beforeBuff.iDurationMs + 1u, beforeEmber.iGaugeGainPerHit + 1u),
+				"A late malformed row restores the complete prior profile generation and revision");
+			const auto buffStart = baseline.find("SKILLBUFF\t17170\t171702\t");
+			const auto buffEnd = baseline.find('\n', buffStart);
+			const auto duplicate = baseline.substr(buffStart, buffEnd - buffStart + 1u);
+			tests.Require(!load(baseline + duplicate) && profiles.Get_ActiveRevision() == committedRevision &&
+				matches(beforeDamage.iDamageAddend + 7u, beforeBuff.iDurationMs + 1u, beforeEmber.iGaugeGainPerHit + 1u),
+				"A real duplicate buff row remains rejected and cannot replace the previous generation");
+			tests.Require(load(baseline) && matches(beforeDamage.iDamageAddend, beforeBuff.iDurationMs, beforeEmber.iGaugeGainPerHit),
+				"A valid reload after rejection restores the authored baseline without leaked candidate profiles");
+		}
+	}
 #ifdef _DEBUG
 	CServerGameplayContractRunner::Run_RuntimeSupportPrediction(tests, nav);
 	// The same owned schedule methods used before walking also cover stationary players and cleanup.
@@ -250,65 +440,6 @@ REGION "blocked" "closed" 0 1
 		tests.Require(chargeBoss->fPositionX == stoppedX, "Stopped Whirlwind cannot resume beyond navigation on later ticks");
 	}
 
-	for (const bool withFollowup : { false, true })
-	{
-		// Counter success closes the WORLD owner with or without a followup outcome.
-		auto& counterBoss = room->m_WorldEntities.front();
-		const auto counterBossBefore = std::make_unique<SERVER_WORLD_ENTITY>(counterBoss);
-		const auto counterTickBefore = room->m_iServerTick;
-		const auto counterStatusBefore = room->m_strStatus;
-		counterBoss.strPatternId = "KAKULSAYDON_COUNTER_LANDING"; counterBoss.strActionId = "counter.action";
-		counterBoss.iPatternSequence = 91u; counterBoss.fPositionY = 3.9f; counterBoss.fCollisionRadius = .5f;
-		counterBoss.fSpawnPositionX = counterBoss.fPositionX; counterBoss.fSpawnPositionZ = counterBoss.fPositionZ;
-		counterBoss.fSpawnPositionY = 1.25f;
-		counterBoss.PatternStageRootMotion = {{0u, 0.f, 0.f, 0.f}, {3000u, 0.f, 0.f, 2.6f}};
-		counterBoss.bPatternStageRootOriginCaptured = true;
-		CGameRoom::KOUKUSAYDON_PATTERN_AUDITION_MEMBER counterMember;
-		counterMember.strMemberId = "counter.member"; counterMember.iBossEntityId = counterBoss.iNetEntityId;
-		counterMember.PatternIds = {counterBoss.strPatternId}; counterMember.iPatternSequence = counterBoss.iPatternSequence;
-		counterMember.WorldCueByInstance["rolling.ball"] = "ball.cue";
-		counterMember.WorldCueByOccurrence["counter.world.1"] = "ball.cue";
-		room->m_KoukuSaydonPatternAudition.Members = {counterMember};
-		S2C_WORLD_SEQUENCE_PLAY ball; ball.iRunEpoch = 1u; ball.strMemberId = counterMember.strMemberId;
-		ball.strCueId = "ball.cue"; ball.strOccurrenceId = "counter.world.1"; ball.strSequenceInstanceId = "rolling.ball";
-		ball.iBossNetEntityId = counterBoss.iNetEntityId; ball.iPatternSequence = counterBoss.iPatternSequence;
-		auto otherBall = ball; otherBall.strMemberId = "other.member"; otherBall.strCueId = "other.cue";
-		room->m_KoukuSaydonPatternAudition.WorldPlays = {ball, otherBall};
-		room->m_PendingKoukuMechanicTriggers = {{counterBoss.iNetEntityId, counterBoss.iPatternSequence, {}}, {701u, 1u, {}}};
-		BOSS_PATTERN_DEFINITION counterPattern; counterPattern.strPatternId = counterBoss.strPatternId;
-		BOSS_PATTERN_LOGIC_WINDOW counterWindow; counterWindow.strWindowId = "counter.window";
-		counterWindow.eKind = BOSS_PATTERN_LOGIC_KIND::COUNTER_WINDOW; counterWindow.iDurationMs = 2837u;
-		counterWindow.bEndsPatternOnSuccess = true;
-		if (withFollowup)
-			counterWindow.OnSuccess.push_back({BOSS_PATTERN_LOGIC_RESULT_KIND::FOLLOWUP_PATTERN, 0u, 0u, "KAKULSAYDON_G1_PATTERN_4"});
-		counterPattern.LogicWindows = {counterWindow};
-		auto& counterLedger = room->m_KoukuSaydonPatternAudition.Members.front().LogicLedger;
-		KOUKUSAYDON_LOGIC_OUTPUT counterOutput; std::vector<DAMAGE_EVENT> counterDamage;
-		CKoukuSaydonLogicRuntime::Build(counterPattern, counterBoss, 120u, counterLedger);
-		CKoukuSaydonLogicRuntime::Update(counterBoss, counterPattern, counterLedger, room->m_Players,
-			room->m_GameplayCatalog, nullptr, 120u, counterDamage, counterOutput, &room->m_ServerNavigation, &room->m_ServerCollisionSystem);
-		const bool counterHit = CBossCombatRuntime::Try_TriggerCounter(counterBoss, 121u);
-		CKoukuSaydonLogicRuntime::Update(counterBoss, counterPattern, counterLedger, room->m_Players,
-			room->m_GameplayCatalog, nullptr, 121u, counterDamage, counterOutput, &room->m_ServerNavigation, &room->m_ServerCollisionSystem);
-		room->m_iServerTick = 121u;
-		const bool completed = counterHit && room->Apply_KoukuLogicOutput(counterOutput, counterBoss, 121u);
-		const auto& committed = room->m_KoukuSaydonPatternAudition.Members.front();
-		tests.Require(completed && counterOutput.bCounterSuccessLanded && std::abs(counterBoss.fPositionY - 1.25f) < .0001f &&
-			counterBoss.strPatternId.empty() && counterBoss.PatternStageRootMotion.empty() && !counterBoss.bPatternStageRootOriginCaptured &&
-			(withFollowup ? (committed.PatternIds.size() == 2u && committed.PatternIds.back() == "KAKULSAYDON_G1_PATTERN_4" &&
-				committed.TransitionTicks == std::vector<std::uint32_t>{1u}) :
-				(committed.PatternIds.size() == 1u && committed.TransitionTicks.empty())),
-			withFollowup ? "Actual counter verdict lands, clears source root motion and schedules existing groggy one tick later" :
-				"A counter with no outcomes lands and ends the Pattern without inventing a followup");
-		tests.Require(room->m_KoukuSaydonPatternAudition.WorldPlays.size() == 1u &&
-			room->m_KoukuSaydonPatternAudition.WorldPlays.front().strMemberId == "other.member" &&
-			committed.WorldCueByInstance.empty() && committed.WorldCueByOccurrence.empty() &&
-			room->m_PendingKoukuMechanicTriggers.size() == 1u && room->m_PendingKoukuMechanicTriggers.front().iBossEntityId == 701u,
-			"Counter interruption stops only its active ball WORLD owner and pending mechanics, preserving another member");
-		room->m_KoukuSaydonPatternAudition.Members.clear(); room->m_KoukuSaydonPatternAudition.WorldPlays.clear();
-		room->m_PendingKoukuMechanicTriggers.clear();
-		counterBoss = *counterBossBefore; room->m_iServerTick = counterTickBefore; room->m_strStatus = counterStatusBefore;
-	}
 
 	// Albion uses this same ground authority and the existing combat-object transaction.
 	room->m_CombatObjectRuntime.Reset();
@@ -1735,7 +1866,9 @@ REGION "blocked" "closed" 0 1
 			placement.strArchetypeId = "BOSS_KAKULSAYDON_G3_SAYDON"; placement.strEncounterId = encounter;
 			placement.fPositionX = placement.fPositionZ = 8.f; placement.fPositionY = 1.f; placement.fYawDegrees = 120.f;
 			SERVER_WORLD_ENTITY primary;
-			const bool ready = parent && !parent->MechanicTriggers.empty() && summonRoom->Build_WorldEntity(placement, 900u, primary) &&
+			const bool ready = parent && parent->MechanicTriggers.size() == 1u &&
+				parent->MechanicTriggers.front().eKind == BOSS_PATTERN_MECHANIC_TRIGGER_KIND::SUMMON_PATTERNS &&
+				parent->MechanicTriggers.front().PatternSpawns.size() == 10u && summonRoom->Build_WorldEntity(placement, 900u, primary) &&
 				summonRoom->m_KoukuSaydonBrain.Begin_Pattern(primary, *parent, run.PinnedGameplayRevision, 13000u, status);
 			tests.Require(ready, "The real primary boss admits the Summon parent in its pinned Product");
 			if (ready)

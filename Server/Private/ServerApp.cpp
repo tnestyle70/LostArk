@@ -2914,6 +2914,14 @@ void LostArk::Server::CServerApp::On_SessionFrame(
 		command.eType = ROOM_COMMAND_TYPE::DEBUG_KILL_GATE_BOSSES;
 		command.DebugKillGateBosses = request;
 	}
+	else if (frame.ePacketType == PACKET_TYPE::C2S_SET_COOLDOWN_MODE)
+	{
+		C2S_SET_COOLDOWN_MODE request{};
+		if (!Read_Message(reader, request) || reader.Get_RemainingSize())
+		{ closeMalformedPayload("C2S_SET_COOLDOWN_MODE"); return; }
+		command.eType = ROOM_COMMAND_TYPE::SET_COOLDOWN_MODE;
+		command.SetCooldownMode = request;
+	}
 	else if (frame.ePacketType == PACKET_TYPE::C2S_DEBUG_KILL_SELF)
 	{
 		C2S_DEBUG_KILL_SELF debugKillSelf{};

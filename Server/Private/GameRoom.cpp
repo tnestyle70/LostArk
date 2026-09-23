@@ -862,6 +862,9 @@ void LostArk::Server::CGameRoom::Tick(const float fixedDeltaSeconds,
 		case ROOM_COMMAND_TYPE::DEBUG_KILL_GATE_BOSSES:
 			Handle_DebugKillGateBosses(command.iSessionId, command.DebugKillGateBosses);
 			break;
+		case ROOM_COMMAND_TYPE::SET_COOLDOWN_MODE:
+			Handle_SetCooldownMode(command.iSessionId, command.SetCooldownMode);
+			break;
 		case ROOM_COMMAND_TYPE::DEBUG_KILL_SELF:
 			Handle_DebugKillSelf(command.iSessionId, command.DebugKillSelf);
 			break;
@@ -1050,11 +1053,9 @@ void LostArk::Server::CGameRoom::Tick(const float fixedDeltaSeconds,
 	std::vector<SERVER_WORLD_TRANSFER_REQUEST> transfers;
 	std::vector<SERVER_INTERACT_PROMPT_EDGE> promptEdges;
 	bool evaluatePlayerTriggers = true;
-#ifdef _DEBUG
 	evaluatePlayerTriggers = WORLD_ID::VALTAN_ARENA != m_eWorldId ||
 		VALTAN_TIMELINE_AUDITION_PHASE::INACTIVE ==
 			m_ValtanTimelineAudition.ePhase;
-#endif
 	if (evaluatePlayerTriggers)
 	{
 		m_ServerTriggerSystem.Evaluate_Entries(
@@ -1148,7 +1149,6 @@ void LostArk::Server::CGameRoom::Tick(const float fixedDeltaSeconds,
 		recordTickDuration();
 		return;
 	}
-#ifdef _DEBUG
 	// Current completion and Next promotion observe the final committed tick.
 	// A promoted ID cannot reach BeginPattern until the next world update.
 	(void)Refresh_ValtanPatternIdAuditionState();
@@ -1166,7 +1166,6 @@ void LostArk::Server::CGameRoom::Tick(const float fixedDeltaSeconds,
 		recordTickDuration();
 		return;
 	}
-#endif
 	if (!Broadcast_CombatObjectLifecycle())
 	{
 		Mark_RuntimeFailure("fixed-tick.combat-object-lifecycle");

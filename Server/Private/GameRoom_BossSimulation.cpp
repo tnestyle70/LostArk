@@ -2080,11 +2080,9 @@ void LostArk::Server::CGameRoom::Update_WorldEntities(
 					updateValtanBrain = false;
 				}
 			}
-#ifdef _DEBUG
 			if (updateValtanBrain &&
 				!Prepare_ValtanPatternIdAuditionBeforeBrain(entity))
 				continue;
-#endif
 			const std::uint32_t previousPatternSequence =
 				entity.iPatternSequence;
 			const std::uint32_t previousStageIndex =
@@ -2109,7 +2107,6 @@ void LostArk::Server::CGameRoom::Update_WorldEntities(
 			const float contactStartX = entity.fPositionX;
 			const float contactStartY = entity.fPositionY;
 			const float contactStartZ = entity.fPositionZ;
-#ifdef _DEBUG
 			if (updateValtanBrain)
 			{
 				updateValtanBrain = Prepare_ValtanFightPageBeforeBrain(
@@ -2120,16 +2117,13 @@ void LostArk::Server::CGameRoom::Update_WorldEntities(
 				updateValtanBrain = Prepare_ValtanTimelineRowBeforeBrain(
 					entity, updateTick);
 			}
-#endif
 			if (updateValtanBrain)
 			{
 				std::vector<SERVER_PLAYER_CAPTURE_REQUEST> captureRequests;
 				const BOSS_PATTERN_SEQUENCE_DEFINITION* patternFlowSequence =
 					nullptr;
-#ifdef _DEBUG
 				patternFlowSequence =
 					Resolve_ValtanPatternFlowSequence(entity);
-#endif
 				if (LostArk::Shared::INVALID_NET_ENTITY_ID != entity.iOwnerBossNetEntityId)
 					patternFlowSequence = &entity.DependentPatternSequence;
 				else if (nullptr == patternFlowSequence &&
@@ -2280,14 +2274,12 @@ void LostArk::Server::CGameRoom::Update_WorldEntities(
 						return found == definitions->end() ? nullptr : &*found;
 					}();
 				bool stopRequested = entity.bAutomaticPatternSequenceAuditionHold;
-#ifdef _DEBUG
 				stopRequested = stopRequested ||
 					(m_ValtanNextPattern &&
 						m_ValtanNextPattern->iBossEntityId == entity.iNetEntityId) ||
 					(Is_ValtanPatternFlowRunning() &&
 						m_ValtanPatternFlowAudition.iBossEntityId == entity.iNetEntityId &&
 						m_ValtanPatternFlowAudition.bStopAfterCurrent);
-#endif
 				if (!stopRequested && nullptr != finale &&
 					BOSS_PATTERN_FINALE_KIND::GHOST_PORTAL_LOOP == finale->Finale.eKind)
 				{
@@ -2703,7 +2695,6 @@ void LostArk::Server::CGameRoom::Update_WorldEntities(
 					}
 				}
 			}
-#ifdef _DEBUG
 			if (finaleCycleRestarted &&
 				m_ValtanPatternIdAudition.iBossEntityId == entity.iNetEntityId &&
 				VALTAN_PATTERN_ID_AUDITION_PHASE::ACTIVE ==
@@ -2718,7 +2709,6 @@ void LostArk::Server::CGameRoom::Update_WorldEntities(
 				Restore_ValtanTimelineRowAfterBrain(entity, updateTick);
 			if (updateValtanBrain)
 				Refresh_ValtanPatternFlowState(entity);
-#endif
 			/* Debug controllers consume the root-group receipt above. Product has no
 			   controller, so retire the leaf-only bookkeeping at the same post-brain
 			   seam; the terminal receipt keeps the immutable root identity. */

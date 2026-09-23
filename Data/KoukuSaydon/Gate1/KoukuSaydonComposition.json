@@ -1,7 +1,7 @@
 {
   "schema": "lostark.kouku-saydon-composition",
   "formatVersion": 3,
-  "revision": 2236,
+  "revision": 2237,
   "compositionId": "boss.composition.kakulsaydon.gate1",
   "encounterId": "ENCOUNTER_KAKULSAYDON_G1",
   "bossArchetypeId": "BOSS_KAKULSAYDON_G1_KOUKU",
@@ -105539,7 +105539,7 @@
           "startMs": 0,
           "durationMs": 2837,
           "enabled": true,
-          "onSuccessLogicIds": [],
+          "onSuccessLogicIds": ["kakulsaydon.g1.logic.7"],
           "onFailLogicIds": [],
           "onTimeoutLogicIds": []
         },
@@ -125327,7 +125327,7 @@
           "startMs": 0,
           "durationMs": 2837,
           "enabled": true,
-          "onSuccessLogicIds": [],
+          "onSuccessLogicIds": ["kakulsaydon.g1.logic.57"],
           "onFailLogicIds": [],
           "onTimeoutLogicIds": []
         },

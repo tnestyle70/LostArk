@@ -189,11 +189,7 @@ void Client::CPlayerController::Update(
 	// Cancel local targeting/held intent and suppress new commands when this Client loses focus.
 	const bool_t gameplayCommandsEnabled = requestedGameplayCommandsEnabled &&
 		GetForegroundWindow() == g_hWnd;
-#ifdef _DEBUG
 	Update_DebugPlayerPlacement(debugPlacementEnabled && !gameplayCommandsEnabled);
-#else
-	(void)debugPlacementEnabled;
-#endif
 	const bool_t marioControlsActive = Update_MarioControls(gameplayCommandsEnabled);
 	{
 		const bool_t useRawVehicleKeyboard =
@@ -1339,17 +1335,17 @@ void Client::CPlayerController::Set_CommandSink(
 		m_pendingDebugMarioJumpSequence = 0u;
 		m_debugMarioJumpStatus.clear();
 	}
-#ifdef _DEBUG
 	if (m_pCommandSink != commandSink)
 	{
 		Cancel_DebugPlayerPlacement();
 		m_pendingDebugPlacementSequence = 0u;
 		m_debugPlacementSucceeded = false;
 		m_debugPlacementStatus.clear();
+#ifdef _DEBUG
 		m_pendingDebugMadnessFormSequence = 0u;
+#endif
 		m_debugMadnessFormStatus.clear();
 	}
-#endif
 	m_pCommandSink = commandSink;
 }
 
@@ -1408,6 +1404,8 @@ bool_t Client::CPlayerController::Begin_DebugPlayerPlacement(
 	return true;
 }
 
+#endif
+
 void Client::CPlayerController::Cancel_DebugPlayerPlacement()
 {
 	if (m_debugPlacementArmed)
@@ -1429,6 +1427,10 @@ bool_t Client::CPlayerController::Request_DebugTeleportToPosition(
 	const f32_t x, const f32_t y, const f32_t z)
 {
 	using LostArk::Shared::WORLD_ID;
+#ifndef _DEBUG
+	if (WORLD_ID::VALTAN_ARENA != worldId && WORLD_ID::KAKULSAYDON_ARENA != worldId)
+		return false;
+#endif
 	if (Is_DebugPlayerPlacementPending() || m_pLocalCharacter.expired() ||
 		nullptr == m_pCommandSink ||
 		(WORLD_ID::VALTAN_ARENA != worldId && WORLD_ID::KAKULSAYDON_ARENA != worldId &&
@@ -1458,6 +1460,7 @@ bool_t Client::CPlayerController::Request_DebugTeleportToPosition(
 	return true;
 }
 
+#ifdef _DEBUG
 bool_t Client::CPlayerController::Request_KoukuRoomPlayerArrival(
 	const std::uint32_t requestSequence, const std::uint32_t runEpoch,
 	const std::string& rootPatternId, const std::string& occurrenceId, const std::uint32_t playerSlot,
@@ -1478,6 +1481,8 @@ bool_t Client::CPlayerController::Request_KoukuRoomPlayerArrival(
 	outStatus = "Waiting for Server room player arrival approval.";
 	return true;
 }
+
+#endif
 
 bool_t Client::CPlayerController::Request_DebugReturnToKoukuStart()
 {
@@ -1502,6 +1507,7 @@ bool_t Client::CPlayerController::Request_DebugReturnToKoukuStart()
 	return true;
 }
 
+#ifdef _DEBUG
 bool_t Client::CPlayerController::Request_DebugBingoFill(
  const std::uint32_t cellMask, const bool_t reset)
 {
@@ -1540,6 +1546,8 @@ bool_t Client::CPlayerController::Request_DebugResummonWaveMonsters(
  return true;
 }
 
+#endif
+
 bool_t Client::CPlayerController::Request_DebugKoukuHudMode(
  const LostArk::Shared::KOUKU_HUD_MODE mode)
 {
@@ -1551,6 +1559,7 @@ bool_t Client::CPlayerController::Request_DebugKoukuHudMode(
  return true;
 }
 
+#ifdef _DEBUG
 bool_t Client::CPlayerController::Request_DebugMadnessForm(
 	const LostArk::Shared::PLAYER_MADNESS_FORM form)
 {
@@ -1689,7 +1698,6 @@ bool_t Client::CPlayerController::Update_DebugMarioJump(const bool_t gameplayCom
 	return true;
 }
 
-#ifdef _DEBUG
 void Client::CPlayerController::Update_DebugPlayerPlacement(const bool_t enabled)
 {
 	using namespace LostArk::Shared;
@@ -1755,6 +1763,7 @@ void Client::CPlayerController::Update_DebugPlayerPlacement(const bool_t enabled
 				"Server accepted HUD mode; avatar and skills follow the snapshot." :
 				"Server rejected HUD mode (code " + std::to_string(static_cast<unsigned>(modeResult.eResult)) + ").";
 		}
+#ifdef _DEBUG
 		S2C_DEBUG_SET_MADNESS_FORM_RESULT formResult{};
 		while (nullptr != m_pCommandSink &&
 			m_pCommandSink->Consume_DebugMadnessFormResult(formResult))
@@ -1786,6 +1795,7 @@ void Client::CPlayerController::Update_DebugPlayerPlacement(const bool_t enabled
 				m_debugMadnessFormStatus = "Server returned an unsupported avatar result."; break;
 			}
 		}
+#endif
 	}
 	if (Is_DebugPlayerPlacementPending() && !m_debugPlacementReplyDelayed &&
 		std::chrono::steady_clock::now() - m_debugPlacementSentAt > std::chrono::seconds(5))
@@ -1801,6 +1811,7 @@ void Client::CPlayerController::Update_DebugPlayerPlacement(const bool_t enabled
 		m_pendingDebugPlacementSequence = 0u;
 		return;
 	}
+#ifdef _DEBUG
 	if (!enabled || Is_PlayerControlCaptured(CCombatHUDViewModel::Get().Get_Player()))
 	{
 		Cancel_DebugPlayerPlacement();
@@ -1846,8 +1857,10 @@ void Client::CPlayerController::Update_DebugPlayerPlacement(const bool_t enabled
 	m_debugPlacementReplyDelayed = false;
 	m_debugPlacementArmed = false;
 	m_debugPlacementStatus = "Waiting for Server placement approval...";
-}
+#else
+	(void)enabled;
 #endif
+}
 
 bool_t Client::CPlayerController::Initialize_TargetingPreview(
 	const uint32_t levelIndex)

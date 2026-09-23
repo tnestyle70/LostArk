@@ -11,8 +11,8 @@ param(
 	[ValidateRange(0, 12)]
 	[int]$FailureAfterPromote = 0,
     # Applies Data/Balance/Profiles/<name>.balanceprofile.json over the authored
-    # monster values at publish time. Empty publishes them unchanged.
-    [string]$BalanceProfile = ''
+    # monster values at publish time. Retail is the product default; explicit empty keeps base values.
+    [string]$BalanceProfile = 'Retail'
 )
 
 $ErrorActionPreference = 'Stop'

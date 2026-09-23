@@ -406,10 +406,10 @@ function Get-BootstrapRowSortKey {
 	param([Parameter(Mandatory = $true)][string]$Row)
 
 	$fields = @($Row.Split("`t"))
-    if ($fields[0] -cin @('RAIDGATE','RAIDFLOWSTEP','RAIDARRIVAL')) {
+    if ($fields[0] -cin @('RAIDGATE','RAIDFLOWSTEP','RAIDFLOWGROUP','RAIDARRIVAL')) {
         # Gate definitions must precede their dense flow steps and arrival slots.
         $gateKey = if ($fields[0] -ceq 'RAIDGATE') { $fields[2] } else { $fields[1] }
-        $rank = if ($fields[0] -ceq 'RAIDGATE') { 0 } elseif ($fields[0] -ceq 'RAIDFLOWSTEP') { 1 } else { 2 }
+        $rank = if ($fields[0] -ceq 'RAIDGATE') { 0 } elseif ($fields[0] -ceq 'RAIDFLOWSTEP') { 1 } elseif ($fields[0] -ceq 'RAIDFLOWGROUP') { 2 } else { 3 }
         $Row = (@('RAIDGATE',$gateKey,$rank) + @($fields[2..($fields.Count - 1)])) -join "`t"
     }
     if ($fields.Count -ge 5 -and $fields[0] -ceq 'PATTERNATTACKHIT') {

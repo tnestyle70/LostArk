@@ -2694,6 +2694,22 @@ namespace
             if (!flow.strLoopStartEntryId.empty() &&
                 (!Is_StableId(flow.strLoopStartEntryId) || !entries.contains(flow.strLoopStartEntryId)))
             { outStatus = "Pattern Flow loop start must reference an entry in this flow."; return false; }
+            std::unordered_set<std::string> groupIds;
+            std::size_t nextGroupStart = 0u;
+            if (flow.EntryGroups.size() > 64u)
+            { outStatus = "Pattern Flow supports at most 64 entry groups."; return false; }
+            for (const auto& group : flow.EntryGroups)
+            {
+                const auto first = std::find_if(flow.Entries.begin(), flow.Entries.end(), [&](const auto& row) { return row.strEntryId == group.strStartEntryId; });
+                const auto last = std::find_if(flow.Entries.begin(), flow.Entries.end(), [&](const auto& row) { return row.strEntryId == group.strEndEntryId; });
+                if (!Is_StableId(group.strGroupId) || !groupIds.insert(group.strGroupId).second || !Is_DisplayName(group.strDisplayName) ||
+                    first == flow.Entries.end() || last == flow.Entries.end() || first > last ||
+                    static_cast<std::size_t>(first - flow.Entries.begin()) < nextGroupStart ||
+                    (group.RepeatUntilHealthBars && (*group.RepeatUntilHealthBars > 1000u || !flow.strLoopStartEntryId.empty())) ||
+                    (!group.RepeatUntilHealthBars && group.bTransitionAtGroupEnd))
+                { outStatus = "Pattern Flow groups require ordered, disjoint saved entry ranges and a valid HP repeat condition."; return false; }
+                nextGroupStart = static_cast<std::size_t>(last - flow.Entries.begin()) + 1u;
+            }
         }
         outStatus = "Validated KoukuSaydon composition structure.";
 		return true;
@@ -4459,7 +4475,7 @@ bool_t Client::CKoukuSaydonCompositionDocument::Parse_Text(
 		{
 			KOUKU_SAYDON_COMPOSITION_PATTERN_FLOW flow;
 			const auto* entries = Required(value, "entries", DATA_JSON_TYPE::ARRAY);
-			if (!Has_Properties(value, {"flowId", "gateId", "displayName", "entries"}, {"loopStartEntryId"}) ||
+			if (!Has_Properties(value, {"flowId", "gateId", "displayName", "entries"}, {"loopStartEntryId", "entryGroups"}) ||
 				!readText(value, "flowId", flow.strFlowId) || !readText(value, "gateId", flow.strGateId) ||
 				!readText(value, "displayName", flow.strDisplayName) || !entries || entries->Get_Array().size() > 256u)
 			{ outStatus = "Pattern Flow properties are invalid."; return false; }
@@ -4475,6 +4491,30 @@ bool_t Client::CKoukuSaydonCompositionDocument::Parse_Text(
 					!Try_ParseUnsigned(*wait, MAX_TIME_MS, entry.iWaitAfterMs))
 				{ outStatus = "Pattern Flow entry properties are invalid."; return false; }
 				flow.Entries.push_back(std::move(entry));
+			}
+			if (const auto* groups = value.Find("entryGroups"))
+			{
+				if (!groups->Is_Array() || groups->Get_Array().size() > 64u)
+				{ outStatus = "Pattern Flow groups must be a bounded array."; return false; }
+				for (const auto& row : groups->Get_Array())
+				{
+					KOUKU_SAYDON_COMPOSITION_FLOW_GROUP group;
+					if (!Has_Properties(row, {"groupId", "displayName", "startEntryId", "endEntryId"}, {"repeatUntilHealthBars", "transitionAt"}) ||
+						!readText(row, "groupId", group.strGroupId) || !readText(row, "displayName", group.strDisplayName) ||
+						!readText(row, "startEntryId", group.strStartEntryId) || !readText(row, "endEntryId", group.strEndEntryId))
+					{ outStatus = "Pattern Flow group properties are invalid."; return false; }
+					if (const auto* threshold = row.Find("repeatUntilHealthBars"))
+					{
+						std::uint32_t bars = 0u; std::string transition;
+						if (!Try_ParseUnsigned(*threshold, 1000u, bars) || !readText(row, "transitionAt", transition) ||
+							(transition != "PATTERN_END" && transition != "GROUP_END"))
+						{ outStatus = "HP repeat requires a bounded threshold and explicit completion boundary."; return false; }
+						group.RepeatUntilHealthBars = bars; group.bTransitionAtGroupEnd = transition == "GROUP_END";
+					}
+					else if (row.Find("transitionAt"))
+					{ outStatus = "A completion boundary requires an HP repeat condition."; return false; }
+					flow.EntryGroups.push_back(std::move(group));
+				}
 			}
 			staged.PatternFlows.push_back(std::move(flow));
 		}
@@ -5276,7 +5316,25 @@ std::string Client::CKoukuSaydonCompositionDocument::Serialize(
                 << "\", \"targetId\": \"" << CDataJson::Escape(entry.strTargetId)
                 << "\", \"waitAfterMs\": " << entry.iWaitAfterMs << '}';
         }
-        output << "]}" << (i + 1 < document.PatternFlows.size() ? "," : "") << '\n';
+        output << "]";
+        if (!flow.EntryGroups.empty())
+        {
+            output << ", \"entryGroups\": [";
+            for (size_t j = 0; j < flow.EntryGroups.size(); ++j)
+            {
+                const auto& group = flow.EntryGroups[j];
+                output << (j ? "," : "") << "{\"groupId\": \"" << CDataJson::Escape(group.strGroupId)
+                    << "\", \"displayName\": \"" << CDataJson::Escape(group.strDisplayName)
+                    << "\", \"startEntryId\": \"" << CDataJson::Escape(group.strStartEntryId)
+                    << "\", \"endEntryId\": \"" << CDataJson::Escape(group.strEndEntryId) << "\"";
+                if (group.RepeatUntilHealthBars)
+                    output << ", \"repeatUntilHealthBars\": " << *group.RepeatUntilHealthBars
+                        << ", \"transitionAt\": \"" << (group.bTransitionAtGroupEnd ? "GROUP_END" : "PATTERN_END") << "\"";
+                output << '}';
+            }
+            output << ']';
+        }
+        output << "}" << (i + 1 < document.PatternFlows.size() ? "," : "") << '\n';
     }
     output << "  ]\n}\n";
 

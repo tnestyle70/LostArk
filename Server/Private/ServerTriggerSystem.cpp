@@ -742,7 +742,6 @@ void LostArk::Server::CServerTriggerSystem::Evaluate_Entries(
 	}
 }
 
-#ifdef _DEBUG
 bool LostArk::Server::CServerTriggerSystem::Place_PlayerAtValtanAuditionBait(
 	SERVER_PLAYER& player,
 	const std::uint32_t actionStartTick) const
@@ -804,7 +803,6 @@ bool LostArk::Server::CServerTriggerSystem::Build_ValtanStageBypassMove(
 	outAction = staged;
 	return true;
 }
-#endif
 
 void LostArk::Server::CServerTriggerSystem::Remove_Player(
 	const LostArk::Shared::PLAYER_ID playerId)

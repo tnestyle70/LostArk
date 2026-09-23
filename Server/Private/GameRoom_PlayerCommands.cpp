@@ -89,7 +89,6 @@ void LostArk::Server::CGameRoom::Handle_Move(
 	player.iLastMoveSequence = move.iClientSequence;
 	if (((player.CardMaze.flags & 1u) && !m_KoukuCardMaze.Is_SoloHunter(player.iPlayerId)) ||
 		player.CardMaze.transferStartTick) return;
-#ifdef _DEBUG
 	if (LostArk::Shared::WORLD_ID::VALTAN_ARENA == m_eWorldId &&
 		VALTAN_TIMELINE_AUDITION_PHASE::INACTIVE !=
 			m_ValtanTimelineAudition.ePhase &&
@@ -99,7 +98,6 @@ void LostArk::Server::CGameRoom::Handle_Move(
 	{
 		return;
 	}
-#endif
 	if (move.eIntent == LostArk::Shared::PLAYER_MOVE_INTENT::VEHICLE_FLIGHT)
 	{
 		if (player.iVehicleId == LostArk::Shared::ANCIENT_SEA_VEHICLE_ID && Can_RideVehicle(player) &&
@@ -316,7 +314,7 @@ void LostArk::Server::CGameRoom::Commit_PendingPlayerCommand(
 		command.fAimZ = pending.fZ;
 		if (m_PlayerSkillSystem.Try_StartPending(
 				player, command, m_GameplayCatalog, actionStartTick,
-				&m_ServerNavigation))
+				&m_ServerNavigation, m_eCooldownMode))
 		{
 			player.isCombatReady = true;
 			Apply_SkillBuffs(player, command.iSkillId, actionStartTick);
@@ -359,7 +357,6 @@ void LostArk::Server::CGameRoom::Handle_UseSkill(
 		 !Has_ReachedServerTick(m_iServerTick, playerIter->second.iSilenceEndTick)))
 		return;
 
-#ifdef _DEBUG
 	if (LostArk::Shared::WORLD_ID::VALTAN_ARENA == m_eWorldId &&
 		VALTAN_TIMELINE_AUDITION_PHASE::INACTIVE !=
 			m_ValtanTimelineAudition.ePhase &&
@@ -370,7 +367,6 @@ void LostArk::Server::CGameRoom::Handle_UseSkill(
 	{
 		return;
 	}
-#endif
 
 	const std::uint32_t actionStartTick =
 		(std::numeric_limits<std::uint32_t>::max)() == m_iServerTick ?
@@ -402,7 +398,7 @@ void LostArk::Server::CGameRoom::Handle_UseSkill(
 		useSkill,
 		m_GameplayCatalog,
 		actionStartTick,
-		&m_ServerNavigation))
+		&m_ServerNavigation, m_eCooldownMode))
 	{
 		playerIter->second.isCombatReady = true;
 		Apply_SkillBuffs(playerIter->second, useSkill.iSkillId, actionStartTick);
@@ -430,11 +426,11 @@ void LostArk::Server::CGameRoom::Apply_SkillBuffs(
 	allies.reserve(m_Players.size());
 	for (auto& entry : m_Players)
 		allies.push_back(&entry.second);
-	/* A debuff marks what the caster is fighting: every live boss of this room. */
+	/* Existing buff runtime owns boss debuffs and monster stun admission. */
 	std::vector<SERVER_WORLD_ENTITY*> enemies;
 	for (SERVER_WORLD_ENTITY& entity : m_WorldEntities)
 	{
-		if (WORLD_BOOTSTRAP_KIND::BOSS == entity.eKind && 0u != entity.iCurrentHp)
+		if ((WORLD_BOOTSTRAP_KIND::BOSS == entity.eKind || WORLD_BOOTSTRAP_KIND::MONSTER == entity.eKind) && 0u != entity.iCurrentHp)
 			enemies.push_back(&entity);
 	}
 	CServerBuffRuntime::Apply_SkillBuffs(
@@ -1190,4 +1186,37 @@ void LostArk::Server::CGameRoom::Handle_ChangeCharacterClass(
 	{
 		session->Request_Close();
 	}
+}
+
+
+LostArk::Shared::SET_COOLDOWN_MODE_RESULT LostArk::Server::CGameRoom::Apply_SetCooldownMode(
+    const SESSION_ID sessionId, const LostArk::Shared::C2S_SET_COOLDOWN_MODE& request)
+{
+    using namespace LostArk::Shared;
+    if (request.eWorldId != m_eWorldId || request.eMode >= COOLDOWN_MODE::END) return SET_COOLDOWN_MODE_RESULT::WRONG_WORLD;
+    const auto owner = m_PlayerIdBySessionId.find(sessionId);
+    if (owner == m_PlayerIdBySessionId.end() || !m_Players.contains(owner->second)) return SET_COOLDOWN_MODE_RESULT::INVALID_PLAYER;
+    auto& last = m_CooldownModeRequestSequences[sessionId];
+    if (!request.iRequestSequence || static_cast<std::int32_t>(request.iRequestSequence - last) <= 0)
+        return SET_COOLDOWN_MODE_RESULT::STALE_REQUEST;
+    last = request.iRequestSequence;
+    if (m_eCooldownMode != request.eMode)
+    {
+        for (auto& [id, player] : m_Players)
+            CPlayerSkillSystem::Recalculate_Cooldowns(player, m_GameplayCatalog.Active(), m_iServerTick, request.eMode);
+        m_eCooldownMode = request.eMode;
+    }
+    return SET_COOLDOWN_MODE_RESULT::ACCEPTED;
+}
+
+void LostArk::Server::CGameRoom::Handle_SetCooldownMode(
+    const SESSION_ID sessionId, const LostArk::Shared::C2S_SET_COOLDOWN_MODE& request)
+{
+    using namespace LostArk::Shared;
+    S2C_SET_COOLDOWN_MODE_RESULT result{};
+    result.iRequestSequence = request.iRequestSequence; result.eWorldId = m_eWorldId;
+    result.eResult = Apply_SetCooldownMode(sessionId, request); result.eMode = m_eCooldownMode;
+    const auto session = Find_Session(sessionId); CPacketWriter writer;
+    if (session && Write_Message(writer, result) &&
+        !session->Send_Frame(PACKET_TYPE::S2C_SET_COOLDOWN_MODE_RESULT, writer.Get_Buffer())) session->Request_Close();
 }

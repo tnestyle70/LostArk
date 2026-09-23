@@ -432,7 +432,6 @@ void Cancel_PlayerActionForPatternStatus(SERVER_PLAYER& player)
 		player.isCombatReady = false;
 	}
 
-#ifdef _DEBUG
 bool Is_CharacterSelectEnvironmentDependentPattern(
 		const std::string& patternId)
 	{
@@ -444,9 +443,7 @@ bool Is_CharacterSelectEnvironmentDependentPattern(
 				return patternId == blockedPatternId;
 			});
 	}
-#endif
 
-#ifdef _DEBUG
 bool Is_ValtanOutcomeFollowupInFlight(
 		const LostArk::Server::SERVER_WORLD_ENTITY& boss,
 		const std::uint32_t rootPatternSequence,
@@ -466,9 +463,7 @@ bool Is_ValtanOutcomeFollowupInFlight(
 			boss.iPatternFollowupRootSequence == rootPatternSequence &&
 			boss.PinnedDefinitionRevision == definitionRevision;
 	}
-#endif
 
-#ifdef _DEBUG
 bool Has_ValtanOutcomeGroupCompleted(
 		const LostArk::Server::SERVER_WORLD_ENTITY& boss,
 		const std::uint32_t rootPatternSequence,
@@ -483,9 +478,7 @@ bool Has_ValtanOutcomeGroupCompleted(
 				boss.PatternTerminalReceipt.eResult &&
 			boss.PinnedDefinitionRevision == definitionRevision;
 	}
-#endif
 
-#ifdef _DEBUG
 bool Resolve_ValtanArenaPreset(
 		const std::uint32_t rawPreset,
 		LostArk::Server::VALTAN_TIMELINE_ARENA_STATE& outState,
@@ -520,9 +513,7 @@ bool Resolve_ValtanArenaPreset(
 			return false;
 		}
 	}
-#endif
 
-#ifdef _DEBUG
 const VALTAN_FIGHT_PAGE_POLICY* Find_ValtanFightPagePolicy(
 		const std::string& rowId)
 	{
@@ -535,9 +526,7 @@ const VALTAN_FIGHT_PAGE_POLICY* Find_ValtanFightPagePolicy(
 			});
 		return VALTAN_FIGHT_PAGE_POLICIES.end() == found ? nullptr : &*found;
 	}
-#endif
 
-#ifdef _DEBUG
 void Freeze_TimelineAuditionPlayer(SERVER_PLAYER& player)
 	{
 		player.eAction = 0u == player.iCurrentHp ?
@@ -571,9 +560,7 @@ void Freeze_TimelineAuditionPlayer(SERVER_PLAYER& player)
 		player.iMovePathIndex = 0u;
 		player.isCombatReady = false;
 	}
-#endif
 
-#ifdef _DEBUG
 void Prepare_TimelineAuditionPlayer(
 		SERVER_PLAYER& player,
 		const std::uint32_t actionTick)
@@ -592,7 +579,6 @@ void Prepare_TimelineAuditionPlayer(
 		player.iActionStartTick = actionTick;
 		player.isCombatReady = true;
 	}
-#endif
 
 bool Is_Valid_EnterWorld(const C2S_ENTER_WORLD& message)
 	{

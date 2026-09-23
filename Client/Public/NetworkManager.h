@@ -264,7 +264,9 @@ public:
 	/* Answers the prompt the Server last offered. Carries only the box's own
 	   id -- the Server re-tests that this player is still inside it. */
 	bool Send_DebugKillGateBosses(const LostArk::Shared::C2S_DEBUG_KILL_GATE_BOSSES& request);
+	bool Send_SetCooldownMode(const LostArk::Shared::C2S_SET_COOLDOWN_MODE& request);
 	bool Try_Consume_DebugKillGateBossesResult(LostArk::Shared::S2C_DEBUG_KILL_GATE_BOSSES_RESULT& result);
+	bool Try_Consume_SetCooldownModeResult(LostArk::Shared::S2C_SET_COOLDOWN_MODE_RESULT& result);
 	bool Send_DebugWorldPlayback(const LostArk::Shared::C2S_DEBUG_WORLD_PLAYBACK& request);
 	bool Try_Consume_DebugWorldPlaybackResult(LostArk::Shared::S2C_DEBUG_WORLD_PLAYBACK_RESULT& result);
 	bool Send_InteractTrigger(
@@ -577,6 +579,7 @@ private:
 	std::deque<LostArk::Shared::S2C_DEBUG_MARIO_JUMP_RESULT> m_DebugMarioJumpResults;
 	std::deque<LostArk::Shared::S2C_MARIO_RETURN_RESULT> m_MarioReturnResults;
 	std::deque<LostArk::Shared::S2C_DEBUG_KILL_GATE_BOSSES_RESULT> m_DebugKillGateBossesResults;
+	std::deque<LostArk::Shared::S2C_SET_COOLDOWN_MODE_RESULT> m_SetCooldownModeResults;
 	std::deque<LostArk::Shared::S2C_DEBUG_WORLD_PLAYBACK_RESULT> m_DebugWorldPlaybackResults;
 	std::deque<LostArk::Shared::S2C_DEBUG_SET_MADNESS_FORM_RESULT>
 		m_DebugMadnessFormResults;

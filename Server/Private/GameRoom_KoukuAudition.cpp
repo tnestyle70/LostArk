@@ -120,9 +120,9 @@ LostArk::Server::CGameRoom::Evaluate_KoukuSaydonPatternAudition(
 	};
 
 #ifndef _DEBUG
-	if (!Is_KoukuRaidRunning() || m_KoukuRaid.iOwnerSessionId != sessionId)
+	if (request.Scope.DraftRowsRevision.Is_Valid() || request.iMarioTestStartStage || request.iMarioTestSeed)
 		return reject(KOUKUSAYDON_PATTERN_AUDITION_RESULT::REJECTED_RELEASE_BUILD,
-			"Release pattern playback requires the active raid owner");
+			"Release playback accepts published patterns without draft or Mario test overrides");
 #endif
 	const auto sameRequest = [](const auto& left, const auto& right)
 	{
@@ -465,14 +465,6 @@ void LostArk::Server::CGameRoom::Handle_KoukuSaydonPatternAudition(
 	if (nullptr == session)
 		return;
 	LostArk::Shared::S2C_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_RESULT result{};
-#ifndef _DEBUG
-	result.iRequestSequence = request.iRequestSequence; result.eOperation = request.eOperation; result.Scope = request.Scope;
-	result.strRequestedPatternId = request.strPatternId; result.strBundleId = request.strBundleId; result.iExpectedRunEpoch = request.iExpectedRunEpoch;
-	result.PinnedGameplayRevision = m_GameplayCatalog.Get_ActiveRevision();
-	result.iPinnedSourceRevision = CKoukuSaydonBrain::Resolve_ProductSourceRevision(m_GameplayCatalog.Active());
-	result.eResult = LostArk::Shared::KOUKUSAYDON_PATTERN_AUDITION_RESULT::REJECTED_RELEASE_BUILD;
-	result.strReason = "External pattern audition commands are available only in Debug builds";
-#else
 	if (Is_KoukuRaidRunning())
 	{
 		result.iRequestSequence = request.iRequestSequence; result.eOperation = request.eOperation; result.Scope = request.Scope;
@@ -483,7 +475,6 @@ void LostArk::Server::CGameRoom::Handle_KoukuSaydonPatternAudition(
 	}
 	else
 		(void)Evaluate_KoukuSaydonPatternAudition(sessionId, request, result);
-#endif
 	if (!Send_KoukuSaydonPatternAuditionResult(session, result))
 		session->Request_Close();
 }
@@ -1645,7 +1636,6 @@ bool LostArk::Server::CGameRoom::Has_EngagedAuditionPlayer(
 	return false;
 }
 
-#ifdef _DEBUG
 void LostArk::Server::CGameRoom::Queue_ValtanAuditionLifecycle(
 	const SESSION_ID ownerSessionId,
 	const std::uint32_t requestSequence,
@@ -1668,9 +1658,7 @@ void LostArk::Server::CGameRoom::Queue_ValtanAuditionLifecycle(
 	message.strReason = std::move(reason);
 	m_PendingValtanAuditionLifecycle.push_back({ ownerSessionId, std::move(message) });
 }
-#endif
 
-#ifdef _DEBUG
 void LostArk::Server::CGameRoom::Queue_ValtanPatternIdAuditionLifecycle(
 	const LostArk::Shared::VALTAN_AUDITION_LIFECYCLE_STATE state,
 	std::string reason)
@@ -1701,9 +1689,7 @@ void LostArk::Server::CGameRoom::Queue_ValtanPatternIdAuditionLifecycle(
 			m_PendingValtanAuditionLifecycle.back().Message;
 	}
 }
-#endif
 
-#ifdef _DEBUG
 void LostArk::Server::CGameRoom::Queue_ValtanNextPatternLifecycle(
 	const VALTAN_NEXT_PATTERN_RESERVATION& reservation,
 	const LostArk::Shared::VALTAN_AUDITION_LIFECYCLE_STATE state,
@@ -1715,18 +1701,14 @@ void LostArk::Server::CGameRoom::Queue_ValtanNextPatternLifecycle(
 		reservation.strPatternId, reservation.PinnedDefinitionRevision,
 		state, std::move(reason));
 }
-#endif
 
-#ifdef _DEBUG
 bool LostArk::Server::CGameRoom::Is_ValtanPatternIdAuditionRunning() const noexcept
 {
 	return VALTAN_PATTERN_ID_AUDITION_PHASE::PENDING == m_ValtanPatternIdAudition.ePhase ||
 		VALTAN_PATTERN_ID_AUDITION_PHASE::ACTIVE == m_ValtanPatternIdAudition.ePhase ||
 		m_ValtanNextPattern.has_value();
 }
-#endif
 
-#ifdef _DEBUG
 void LostArk::Server::CGameRoom::Cancel_ValtanNextPatternReservation(std::string reason)
 {
 	if (!m_ValtanNextPattern)
@@ -1735,9 +1717,7 @@ void LostArk::Server::CGameRoom::Cancel_ValtanNextPatternReservation(std::string
 		LostArk::Shared::VALTAN_AUDITION_LIFECYCLE_STATE::ABORTED, std::move(reason));
 	m_ValtanNextPattern.reset();
 }
-#endif
 
-#ifdef _DEBUG
 void LostArk::Server::CGameRoom::Cancel_ValtanPatternIdAudition(std::string reason)
 {
 	Cancel_ValtanNextPatternReservation(reason);
@@ -1751,9 +1731,7 @@ void LostArk::Server::CGameRoom::Cancel_ValtanPatternIdAudition(std::string reas
 	}
 	m_ValtanPatternIdAudition = {};
 }
-#endif
 
-#ifdef _DEBUG
 bool LostArk::Server::CGameRoom::Flush_ValtanPatternIdAuditionLifecycle()
 {
 	using namespace LostArk::Shared;
@@ -1777,9 +1755,7 @@ bool LostArk::Server::CGameRoom::Flush_ValtanPatternIdAuditionLifecycle()
 	}
 	return true;
 }
-#endif
 
-#ifdef _DEBUG
 LostArk::Shared::VALTAN_AUDITION_RESULT
 LostArk::Server::CGameRoom::Evaluate_ValtanNextPatternControl(
 	const SESSION_ID sessionId,
@@ -1966,9 +1942,7 @@ LostArk::Server::CGameRoom::Evaluate_ValtanNextPatternControl(
 		VALTAN_NEXT_PATTERN_COMMAND_RECEIPT{ request, verdict, outCurrentHealthBar });
 	return verdict;
 }
-#endif
 
-#ifdef _DEBUG
 LostArk::Shared::VALTAN_AUDITION_RESULT
 LostArk::Server::CGameRoom::Adopt_ValtanLiveNextPattern(
 	const SESSION_ID sessionId,
@@ -2098,9 +2072,7 @@ LostArk::Server::CGameRoom::Adopt_ValtanLiveNextPattern(
 		VALTAN_AUDITION_LIFECYCLE_STATE::NEXT_RESERVED);
 	return VALTAN_AUDITION_RESULT::QUEUED;
 }
-#endif
 
-#ifdef _DEBUG
 void LostArk::Server::CGameRoom::Try_PromoteValtanNextPattern(SERVER_WORLD_ENTITY& boss)
 {
 	using namespace LostArk::Shared;
@@ -2172,9 +2144,7 @@ void LostArk::Server::CGameRoom::Try_PromoteValtanNextPattern(SERVER_WORLD_ENTIT
 	m_ValtanNextPattern.reset();
 	Queue_ValtanPatternIdAuditionLifecycle(VALTAN_AUDITION_LIFECYCLE_STATE::PENDING);
 }
-#endif
 
-#ifdef _DEBUG
 bool LostArk::Server::CGameRoom::Prepare_ValtanPatternIdAuditionBeforeBrain(
 	SERVER_WORLD_ENTITY& boss)
 {
@@ -2239,9 +2209,7 @@ bool LostArk::Server::CGameRoom::Prepare_ValtanPatternIdAuditionBeforeBrain(
 	m_ValtanPatternIdAudition.bReportedWaitingForPlayer = false;
 	return true;
 }
-#endif
 
-#ifdef _DEBUG
 bool LostArk::Server::CGameRoom::Refresh_ValtanPatternIdAuditionState()
 {
 	if (VALTAN_PATTERN_ID_AUDITION_PHASE::INACTIVE ==
@@ -2350,17 +2318,13 @@ bool LostArk::Server::CGameRoom::Refresh_ValtanPatternIdAuditionState()
 	Cancel_ValtanPatternIdAudition("Valtan audition occurrence aborted, discarded or replaced");
 	return false;
 }
-#endif
 
-#ifdef _DEBUG
 bool LostArk::Server::CGameRoom::Is_ValtanPatternFlowRunning() const noexcept
 {
 	return VALTAN_PATTERN_FLOW_AUDITION_PHASE::INACTIVE !=
 		m_ValtanPatternFlowAudition.ePhase;
 }
-#endif
 
-#ifdef _DEBUG
 const LostArk::Server::BOSS_PATTERN_SEQUENCE_DEFINITION*
 LostArk::Server::CGameRoom::Resolve_ValtanPatternFlowSequence(
 	const SERVER_WORLD_ENTITY& boss) const noexcept
@@ -2379,4 +2343,3 @@ LostArk::Server::CGameRoom::Resolve_ValtanPatternFlowSequence(
 	}
 	return &m_ValtanPatternFlowAudition.Sequence;
 }
-#endif

@@ -5,8 +5,8 @@ param(
     [string]$OutputRoot = 'Server/Bin/DataFiles/Gameplay',
     [string]$InputOverlayRoot = '',
     # Applies Data/Balance/Profiles/<name>.balanceprofile.json over the authored
-    # documents at publish time. Empty publishes the authored values unchanged.
-    [string]$BalanceProfile = '',
+    # documents at publish time. Retail is the product default; explicit empty is an offline base comparison.
+    [string]$BalanceProfile = 'Retail',
     [switch]$SkipValtanSplitProjection,
     [int]$ExternalCanonicalWriterPid = 0,
     [string]$ExternalCanonicalWriterNonce = '',

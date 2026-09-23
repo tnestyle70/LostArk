@@ -617,10 +617,6 @@ void Client::CValtanBossTool::Refresh_PresentationFreshness(const bool_t bForce)
 
 bool_t Client::CValtanBossTool::Submit_SelectedPattern()
 {
-#ifndef _DEBUG
-    m_strStatus = "Valtan authoring playback requires a Debug build.";
-    return false;
-#else
 	m_bReviveFeedbackPending = false;
 	m_strActionFeedback.clear();
 	if (Is_RuntimePublishMutationBlocked(
@@ -670,7 +666,6 @@ bool_t Client::CValtanBossTool::Submit_SelectedPattern()
     m_strPreparationPatternId = m_strSelectedPatternId;
     m_strPreparationStatus = m_strStatus = "Preparing selected Valtan pattern resources; Server playback has not started.";
     return true;
-#endif
 }
 
 void Client::CValtanBossTool::Cancel_PlayPreparation(const std::string& reason)
@@ -685,9 +680,6 @@ void Client::CValtanBossTool::Cancel_PlayPreparation(const std::string& reason)
 
 void Client::CValtanBossTool::Update_PlayPreparation()
 {
-#ifndef _DEBUG
-    return;
-#else
     if (!m_PlayPreparation) return;
     const auto pending = *m_PlayPreparation;
     auto* arena = CLevel_ValtanArena::Get_Active();
@@ -731,7 +723,6 @@ void Client::CValtanBossTool::Update_PlayPreparation()
     }
     m_strRepeatPatternId = m_bRepeat ? pending.patternId : std::string{};
     m_bFollowLive = true; m_strStatus = std::move(reason);
-#endif
 }
 
 
@@ -892,10 +883,6 @@ bool_t Client::CValtanBossTool::Queue_NextServerPattern(
 bool_t Client::CValtanBossTool::Can_Play_ServerPattern(
 	std::string& strOutStatus) const
 {
-#ifndef _DEBUG
-    strOutStatus = "Valtan authoring playback requires a Debug build.";
-    return false;
-#else
 	if (Is_RuntimePublishMutationBlocked(
 			m_pBalanceTool, "Pattern Play", strOutStatus))
 	{
@@ -918,7 +905,6 @@ bool_t Client::CValtanBossTool::Can_Play_ServerPattern(
 	CValtanPatternSoundSourceReadAdmission SoundAdmission;
 	return Acquire_ServerPlaybackAdmission(
 		Revision, SoundReceipt, SoundAdmission, strOutStatus);
-#endif
 }
 
 bool_t Client::CValtanBossTool::Get_ServerActivePatternRevision(
@@ -1200,7 +1186,6 @@ bool_t Client::CValtanBossTool::Set_ServerArenaPreset(
 	const LostArk::Shared::VALTAN_ARENA_PRESET preset,
 	std::string& strOutStatus)
 {
-#ifdef _DEBUG
 	if (Is_RuntimePublishMutationBlocked(
 			m_pBalanceTool, "Arena Preset", strOutStatus))
 	{
@@ -1216,11 +1201,6 @@ bool_t Client::CValtanBossTool::Set_ServerArenaPreset(
 		return false;
 	}
 	return arena->Set_ArenaPreset(preset, strOutStatus);
-#else
-	(void)preset;
-	strOutStatus = "Arena presets are available only in Debug Developer Tools.";
-	return false;
-#endif
 }
 
 bool_t Client::CValtanBossTool::Get_ServerArenaActiveState(
@@ -1228,7 +1208,6 @@ bool_t Client::CValtanBossTool::Get_ServerArenaActiveState(
 	std::string& strOutStatus) const
 {
 	outState = {};
-#ifdef _DEBUG
 	const CLevel_ValtanArena* const arena = CLevel_ValtanArena::Get_Active();
 	if (nullptr == arena)
 	{
@@ -1253,32 +1232,20 @@ bool_t Client::CValtanBossTool::Get_ServerArenaActiveState(
 		"Server destruction, collision and navigation state synchronized." :
 		"Waiting for the Server destruction full-sync.";
 	return source.bSynchronized;
-#else
-	strOutStatus = "Arena Active is available only in Debug Developer Tools.";
-	return false;
-#endif
 }
 
 std::string Client::CValtanBossTool::Get_ServerArenaPresetStatus() const
 {
-#ifdef _DEBUG
 	const CLevel_ValtanArena* const arena = CLevel_ValtanArena::Get_Active();
 	return nullptr == arena ?
 		std::string("Enter Valtan Arena to stage a Server environment preset.") :
 		arena->Get_ArenaAuditionStatus();
-#else
-	return "Arena presets are available only in Debug Developer Tools.";
-#endif
 }
 
 bool_t Client::CValtanBossTool::Is_ServerArenaPresetPending() const
 {
-#ifdef _DEBUG
 	const CLevel_ValtanArena* const arena = CLevel_ValtanArena::Get_Active();
 	return nullptr != arena && arena->Is_ArenaPresetRequestPending();
-#else
-	return false;
-#endif
 }
 
 bool_t Client::CValtanBossTool::Preview_SelectedFlowSlotIsolated()
@@ -3951,7 +3918,6 @@ void Client::CValtanBossTool::Render_ActionBar()
 	ImGui::BeginDisabled(!bCanPlay);
 	if (ImGui::Button("Play Selected Pattern (Keep Arena)"))
 	{
-#ifdef _DEBUG
 		if (CMainApp* const pApp = CMainApp::Get_Active())
 		{
 			if (pApp->Debug_SelectCompletePlayPattern(
@@ -3967,10 +3933,6 @@ void Client::CValtanBossTool::Render_ActionBar()
 		}
 		else
 			m_strStatus = "Complete Play workspace is unavailable.";
-#else
-		m_strStatus =
-			"Complete Play is available only in a Debug authoring build.";
-#endif
 	}
 	ImGui::EndDisabled();
 	if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
@@ -4136,10 +4098,8 @@ void Client::CValtanBossTool::Select_Pattern(const VALTAN_PATTERN_VIEW& Pattern)
 		m_strActionFeedback.clear();
 	}
 	m_strSelectedPatternId = Pattern.strPatternId;
-#ifdef _DEBUG
 	if (CMainApp* const pApp = CMainApp::Get_Active())
 		(void)pApp->Debug_SelectCompletePlayPattern(m_strSelectedPatternId);
-#endif
 	m_strSelectedStageId = Pattern.Stages.empty() ?
 		std::string{} : Pattern.Stages.front().strStageId;
 	m_bFollowLive = false;
@@ -4435,7 +4395,6 @@ void Client::CValtanBossTool::Render_PatternList()
 	/* Selection made in Effect/Workbench/F1 is reflected here before the list
 	   renders.  Repeat is a Boss-only lifecycle and must not silently continue
 	   against a different shared selection. */
-#ifdef _DEBUG
 	if (CMainApp* const pApp = CMainApp::Get_Active())
 	{
 		const std::string& strSharedPatternId =
@@ -4458,7 +4417,6 @@ void Client::CValtanBossTool::Render_PatternList()
 			}
 		}
 	}
-#endif
 	ImGui::TextUnformatted("Patterns");
 	ImGui::SetNextItemWidth(-1.f);
 	ImGui::InputTextWithHint(

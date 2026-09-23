@@ -434,7 +434,28 @@ namespace LostArk::Shared
 		SKILL_ID iSkillId = INVALID_SKILL_ID;
 	};
 
-	// Debug intent only. The observed archetype is a stale-view guard; the Server
+	// Runtime policy names are independent of the executable build configuration.
+	enum class COOLDOWN_MODE : std::uint8_t { DEBUG_THREE_SECONDS, RELEASE_AUTHORED, END };
+	struct C2S_SET_COOLDOWN_MODE
+	{
+		std::uint32_t iRequestSequence = 0;
+		WORLD_ID eWorldId = WORLD_ID::END;
+		COOLDOWN_MODE eMode = COOLDOWN_MODE::DEBUG_THREE_SECONDS;
+	};
+	enum class SET_COOLDOWN_MODE_RESULT : std::uint8_t { ACCEPTED, WRONG_WORLD, INVALID_PLAYER, STALE_REQUEST, END };
+	struct S2C_SET_COOLDOWN_MODE_RESULT
+	{
+		std::uint32_t iRequestSequence = 0;
+		WORLD_ID eWorldId = WORLD_ID::END;
+		COOLDOWN_MODE eMode = COOLDOWN_MODE::DEBUG_THREE_SECONDS;
+		SET_COOLDOWN_MODE_RESULT eResult = SET_COOLDOWN_MODE_RESULT::INVALID_PLAYER;
+	};
+	bool Write_Message(CPacketWriter&, const C2S_SET_COOLDOWN_MODE&);
+	bool Read_Message(CPacketReader&, C2S_SET_COOLDOWN_MODE&);
+	bool Write_Message(CPacketWriter&, const S2C_SET_COOLDOWN_MODE_RESULT&);
+	bool Read_Message(CPacketReader&, S2C_SET_COOLDOWN_MODE_RESULT&);
+
+	// Test intent. The observed archetype is a stale-view guard; the Server
 	// resolves the current gate and every target from its own room state.
 	struct C2S_DEBUG_KILL_GATE_BOSSES
 	{
@@ -1553,6 +1574,7 @@ namespace LostArk::Shared
 	{
 		SKILL_ID iSkillId = INVALID_SKILL_ID;
 		std::uint32_t iCooldownEndTick = 0;
+		std::uint32_t iCooldownDurationTicks = 0;
 	};
 
 	//player
@@ -1689,6 +1711,7 @@ namespace LostArk::Shared
 		// stages, and start/loop/end for a HOLD skill. The server owns it; the
 		// client must not count stages itself.
 		std::uint8_t iComboStage = 0;
+		COOLDOWN_MODE eCooldownMode = COOLDOWN_MODE::DEBUG_THREE_SECONDS;
 		std::vector<SKILL_COOLDOWN_SNAPSHOT> Cooldowns;
 	};
 

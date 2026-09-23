@@ -406,7 +406,7 @@ void CServerGameplayContractRunner::Run_KoukuRaidIntegration(TESTS& tests)
         room->Handle_GateProgressPropose(501u, bypass);
         tests.Require(!room->m_GateProgress.iProposalId && !room->Enter_KoukuRaidCombat(4u),
             "Manual advance and direct Bingo entry cannot bypass a standalone clear's resource preparation");
-        // Release preparation expires after ten seconds; exercise timer-first before that deadline.
+        // Exercise timer-first while the shared bounded resource preparation is pending.
         const auto readyTick = count % 2u ? 120u : 390u;
         room->m_iServerTick = readyTick; room->Update_KoukuRaid(readyTick);
         tests.Require(run.State.ePhase == KOUKUSAYDON_RAID_PHASE::PREPARING,
@@ -609,14 +609,10 @@ void CServerGameplayContractRunner::Run_KoukuRaidIntegration(TESTS& tests)
         room->m_iServerTick = 10u;
         const auto originalEntityCount = room->m_WorldEntities.size();
         begin(*room, 501u, start);
-#ifdef _DEBUG
         constexpr unsigned preparationTicks = 20u * 60u * 30u;
-#else
-        constexpr unsigned preparationTicks = 300u;
-#endif
         tests.Require(run.State.ePhase == KOUKUSAYDON_RAID_PHASE::PREPARING && run.State.iStartTick == 0u &&
             run.State.iEndTick == 10u + preparationTicks && run.State.ParticipantPlayerIds.size() == count,
-            "Real START command pins the roster and enters bounded Debug resource preparation without starting the cinematic");
+            "Real START command pins the roster and enters bounded resource preparation without starting the cinematic");
         if (run.State.ePhase != KOUKUSAYDON_RAID_PHASE::PREPARING)
         { std::cout << "[RAID START] " << room->m_strStatus << '\n'; continue; }
         auto ack = start; ack.iRequestSequence = 2u; ack.iExpectedRunEpoch = run.State.iRunEpoch;
