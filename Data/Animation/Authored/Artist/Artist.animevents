@@ -1,4 +1,4 @@
-LOSTARK_ANIM_EVENTS 5 "Artist" 1049
+LOSTARK_ANIM_EVENTS 5 "Artist" 1079
 "sdm_att_battle_1_01" CANCEL startms=100 endms=920 payload="스킬선입력" src=orig
 "sdm_att_battle_1_01" CANCEL startms=100 endms=1020 payload="이동선입력" src=orig
 "sdm_att_battle_1_01" SOUND startms=250 payload="PC_YINYANGSHI_F.PC_YinYangShi_F_Att_Battle1_3" src=orig
@@ -346,7 +346,7 @@ LOSTARK_ANIM_EVENTS 5 "Artist" 1049
 "sdm_sk_flyinheaven_custom_8" EFFECT startms=1000 payload="" src=orig
 "sdm_sk_flyinheaven_custom_8" CANCEL startms=1350 endms=1767 payload="이동캔슬" src=orig
 "sdm_sk_flyinheaven_custom_8" CANCEL startms=1450 endms=1767 payload="스킬캔슬" src=orig
-"sdm_sk_fourgentlemen" HIT startms=0 endms=1500 rep=1 repms=0 fz=70 fzin=0 fzout=0 push=0 pushr=0 area=2 ar=700 aa=300 ah=150 ax=0 arem=0 maxt=0 src=orig
+"sdm_sk_fourgentlemen" HIT startms=695 endms=796 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=2 ar=700 aa=300 ah=0 ax=0 arem=0 maxt=0 src=orig
 "sdm_sk_fourgentlemen" SUPERARMOR startms=0 endms=1320 payload="" src=orig
 "sdm_sk_fourgentlemen" SOUND startms=1 payload="PC_YINYANGSHI_F.PC_Yinyangshi_F_SK_FourGentlemen1_Vox1_1" src=orig
 "sdm_sk_fourgentlemen" SOUND startms=1 payload="PC_YINYANGSHI_F.PC_Yinyangshi_F_SK_FourGentlemen1_FX000_1" src=orig
@@ -1033,18 +1033,48 @@ LOSTARK_ANIM_EVENTS 5 "Artist" 1049
 "sdm_sk_harmonyofyin_01" EFFECT startms=0 payload="effect.artist.skill.31050.clip1.full.restore" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
 "sdm_sk_harmonyofyin_02" EFFECT startms=0 payload="effect.artist.skill.31050.clip2.full.restore" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
 "sdm_sk_super_pungnyudo_01" EFFECT startms=0 endms=6000 payload="effect.artist.skill.31930.full.restore" effectref=asset anchor="root" follow=follow stop=cue_end px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
-"sdm_att_battle_1_03" HIT startms=276 endms=349 rep=1 repms=0 fz=450 fzin=200 fzout=250 push=0 pushr=0 area=2 ar=320 aa=250 ah=150 ax=0 arem=0 maxt=0 src=orig
-"sdm_att_battle_1_02" HIT startms=269 endms=342 rep=1 repms=0 fz=450 fzin=200 fzout=250 push=0 pushr=0 area=2 ar=320 aa=250 ah=150 ax=0 arem=0 maxt=0 src=orig
-"sdm_att_battle_1_01" HIT startms=494 endms=567 rep=1 repms=0 fz=450 fzin=200 fzout=250 push=0 pushr=0 area=2 ar=320 aa=250 ah=150 ax=0 arem=0 maxt=0 src=orig
-"sdm_att_battle_1_04" HIT startms=193 endms=266 rep=1 repms=0 fz=450 fzin=200 fzout=250 push=0 pushr=0 area=2 ar=320 aa=250 ah=150 ax=0 arem=0 maxt=0 src=orig
-"sdm_sk_inkpaddle" HIT startms=625 endms=625 rep=1 repms=0 fz=500 fzin=200 fzout=250 push=100 pushr=80 area=2 ar=500 aa=180 ah=150 ax=30 arem=0 maxt=0 src=orig
-"sdm_sk_inkpaddle" HIT startms=625 endms=625 rep=1 repms=0 fz=325 fzin=200 fzout=200 push=80 pushr=10 area=2 ar=500 aa=180 ah=150 ax=30 arem=0 maxt=0 src=orig
-"sdm_sk_inkpaddle" HIT startms=625 endms=625 rep=1 repms=0 fz=500 fzin=150 fzout=250 push=100 pushr=80 area=2 ar=380 aa=180 ah=150 ax=0 arem=0 maxt=0 src=orig
-"sdm_sk_skykongkong_01" HIT startms=600 endms=676 rep=1 repms=0 fz=325 fzin=200 fzout=200 push=0 pushr=0 area=1 ar=200 aa=0 ah=150 ax=0 arem=0 maxt=0 src=orig
-"sdm_sk_skykongkong_02" HIT startms=533 endms=609 rep=1 repms=0 fz=325 fzin=200 fzout=200 push=0 pushr=0 area=1 ar=200 aa=0 ah=150 ax=0 arem=0 maxt=0 src=orig
-"sdm_sk_butterflydream" HIT startms=540 endms=540 rep=1 repms=0 fz=450 fzin=200 fzout=250 push=100 pushr=40 area=2 ar=400 aa=250 ah=150 ax=0 arem=0 maxt=0 src=orig
-"sdm_sk_onestroke" HIT startms=1451 endms=1538 rep=1 repms=0 fz=325 fzin=200 fzout=200 push=0 pushr=0 area=2 ar=600 aa=300 ah=250 ax=0 arem=0 maxt=0 src=orig
-"sdm_sk_cloudtiger" HIT startms=1000 endms=1000 rep=1 repms=0 fz=325 fzin=200 fzout=200 push=80 pushr=10 area=1 ar=150 aa=0 ah=150 ax=0 arem=0 maxt=1 src=orig
-"sdm_sk_pungnyudo" HIT startms=3400 endms=3400 rep=1 repms=0 fz=325 fzin=125 fzout=200 push=80 pushr=10 area=1 ar=400 aa=0 ah=150 ax=0 arem=0 maxt=0 src=orig
-"sdm_sk_inkshot" HIT startms=562 endms=562 rep=1 repms=0 fz=450 fzin=200 fzout=250 push=210 pushr=130 area=3 ar=450 aa=110 ah=150 ax=0 arem=0 maxt=0 src=orig
-"sdm_sk_super_pungnyudo_02" HIT startms=2900 endms=2975 rep=1 repms=0 fz=600 fzin=200 fzout=300 push=0 pushr=0 area=1 ar=500 aa=0 ah=150 ax=0 arem=0 maxt=0 src=orig
+"sdm_att_battle_1_03" HIT startms=250 endms=323 rep=1 repms=0 fz=325 fzin=200 fzout=200 push=100 pushr=35 area=3 ar=210 aa=150 ah=150 ax=0 arem=0 maxt=0 src=orig
+"sdm_att_battle_1_02" HIT startms=348 endms=401 rep=1 repms=0 fz=450 fzin=200 fzout=250 push=100 pushr=30 area=3 ar=230 aa=160 ah=150 ax=0 arem=0 maxt=0 src=orig
+"sdm_att_battle_1_01" HIT startms=572 endms=651 rep=1 repms=0 fz=500 fzin=200 fzout=250 push=120 pushr=55 area=3 ar=245 aa=160 ah=150 ax=0 arem=0 maxt=0 src=orig
+"sdm_att_battle_1_04" HIT startms=266 endms=307 rep=1 repms=0 fz=450 fzin=200 fzout=250 push=0 pushr=0 area=2 ar=320 aa=250 ah=150 ax=0 arem=0 maxt=0 src=orig
+"sdm_sk_inkpaddle" HIT startms=520 endms=570 rep=1 repms=0 fz=325 fzin=200 fzout=200 push=80 pushr=10 area=2 ar=500 aa=180 ah=150 ax=30 arem=0 maxt=0 src=orig
+"sdm_sk_inkpaddle" HIT startms=669 endms=719 rep=1 repms=0 fz=500 fzin=200 fzout=250 push=100 pushr=80 area=2 ar=500 aa=180 ah=150 ax=30 arem=0 maxt=0 src=orig
+"sdm_sk_skykongkong_01" HIT startms=600 endms=630 rep=1 repms=0 fz=325 fzin=200 fzout=200 push=0 pushr=0 area=1 ar=200 aa=0 ah=150 ax=0 arem=0 maxt=0 src=orig
+"sdm_sk_skykongkong_02" HIT startms=500 endms=533 rep=1 repms=0 fz=325 fzin=200 fzout=200 push=0 pushr=0 area=1 ar=200 aa=0 ah=150 ax=0 arem=0 maxt=0 src=orig
+"sdm_sk_butterflydream" HIT startms=543 endms=643 rep=1 repms=0 fz=450 fzin=200 fzout=250 push=100 pushr=40 area=2 ar=400 aa=250 ah=150 ax=0 arem=0 maxt=0 src=orig
+"sdm_sk_butterflydream" HIT startms=1150 endms=1251 rep=1 repms=0 fz=450 fzin=200 fzout=250 push=100 pushr=40 area=2 ar=400 aa=250 ah=150 ax=0 arem=0 maxt=0 src=orig
+"sdm_sk_onestroke" HIT startms=1460 endms=1561 rep=1 repms=0 fz=325 fzin=200 fzout=200 push=0 pushr=0 area=2 ar=600 aa=300 ah=250 ax=0 arem=0 maxt=0 src=orig
+"sdm_sk_cloudtiger" HIT startms=1147 endms=1248 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=1 ar=250 aa=0 ah=150 ax=0 arem=0 maxt=0 src=orig
+"sdm_sk_pungnyudo" HIT startms=3408 endms=3515 rep=1 repms=0 fz=325 fzin=125 fzout=200 push=80 pushr=10 area=1 ar=1200 aa=0 ah=700 ax=0 arem=0 maxt=0 src=orig
+"sdm_sk_inkshot" HIT startms=562 endms=662 rep=1 repms=0 fz=450 fzin=200 fzout=250 push=210 pushr=130 area=3 ar=450 aa=110 ah=150 ax=0 arem=0 maxt=0 src=orig
+"sdm_sk_super_pungnyudo_02" HIT startms=2920 endms=3120 rep=1 repms=0 fz=600 fzin=200 fzout=300 push=0 pushr=0 area=1 ar=500 aa=0 ah=150 ax=0 arem=0 maxt=0 src=orig
+"sdm_sk_bullherding_03" HIT startms=100 endms=170 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"sdm_sk_dragonrising_01" HIT startms=600 endms=670 rep=1 repms=0 fz=700 fzin=200 fzout=300 push=100 pushr=40 area=1 ar=300 aa=0 ah=200 ax=0 arem=0 maxt=0 src=orig
+"sdm_sk_harmonyofyang" HIT startms=553 endms=688 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=1 ar=1200 aa=0 ah=700 ax=0 arem=0 maxt=1 src=orig
+"sdm_sk_landscapepainting" HIT startms=923 endms=1030 rep=1 repms=0 fz=600 fzin=200 fzout=300 push=0 pushr=0 area=1 ar=400 aa=0 ah=150 ax=0 arem=0 maxt=0 src=orig
+"sdm_sk_landscapepainting" HIT startms=3765 endms=3873 rep=1 repms=0 fz=600 fzin=200 fzout=300 push=0 pushr=0 area=1 ar=400 aa=0 ah=150 ax=0 arem=0 maxt=0 src=orig
+"sdm_sk_moondrawing_01" HIT startms=433 endms=506 rep=1 repms=0 fz=325 fzin=200 fzout=200 push=0 pushr=0 area=2 ar=250 aa=200 ah=150 ax=0 arem=0 maxt=0 src=orig
+"sdm_sk_moondrawing_02" HIT startms=346 endms=419 rep=1 repms=0 fz=450 fzin=200 fzout=250 push=0 pushr=0 area=2 ar=270 aa=220 ah=150 ax=30 arem=0 maxt=0 src=orig
+"sdm_sk_moondrawing_custom_7" HIT startms=340 endms=414 rep=1 repms=0 fz=450 fzin=200 fzout=250 push=100 pushr=80 area=1 ar=180 aa=0 ah=150 ax=0 arem=0 maxt=0 src=orig
+"sdm_sk_moondrawing_custom_7" HIT startms=1057 endms=1130 rep=1 repms=0 fz=450 fzin=200 fzout=250 push=0 pushr=40 area=1 ar=180 aa=0 ah=150 ax=0 arem=0 maxt=0 src=orig
+"sdm_sk_moondrawing_custom_8" HIT startms=327 endms=400 rep=1 repms=0 fz=450 fzin=200 fzout=250 push=100 pushr=80 area=2 ar=330 aa=150 ah=300 ax=-160 arem=0 maxt=0 src=orig
+"sdm_sk_onestroke_custom_5" HIT startms=1460 endms=1560 rep=1 repms=0 fz=325 fzin=200 fzout=200 push=80 pushr=10 area=2 ar=600 aa=300 ah=250 ax=0 arem=0 maxt=0 src=orig
+"sdm_sk_onestroke_custom_5" HIT startms=2200 endms=2301 rep=1 repms=0 fz=325 fzin=200 fzout=200 push=0 pushr=0 area=2 ar=600 aa=300 ah=250 ax=0 arem=0 maxt=0 src=orig
+"sdm_sk_onestroke_custom_6_04" HIT startms=700 endms=801 rep=1 repms=0 fz=325 fzin=200 fzout=200 push=0 pushr=0 area=2 ar=600 aa=300 ah=250 ax=0 arem=0 maxt=0 src=orig
+"sdm_sk_pondofyin" HIT startms=595 endms=632 rep=1 repms=0 fz=395 fzin=200 fzout=200 push=50 pushr=15 area=1 ar=180 aa=0 ah=150 ax=100 arem=0 maxt=0 src=orig
+"sdm_sk_pondofyin" HIT startms=600 endms=695 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=1 ar=180 aa=0 ah=150 ax=100 arem=0 maxt=0 src=orig
+"sdm_sk_skykongkong_custom_8" HIT startms=770 endms=803 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=1 ar=200 aa=0 ah=150 ax=0 arem=0 maxt=0 src=orig
+"sdm_sk_skymap_02" HIT startms=100 endms=207 rep=1 repms=0 fz=395 fzin=200 fzout=200 push=0 pushr=0 area=1 ar=300 aa=0 ah=150 ax=0 arem=0 maxt=0 src=orig
+"sdm_sk_skymap_custom_8_02" HIT startms=100 endms=207 rep=1 repms=0 fz=395 fzin=200 fzout=200 push=0 pushr=0 area=1 ar=300 aa=0 ah=150 ax=0 arem=0 maxt=0 src=orig
+"sdm_sk_super_landscapepainting" HIT startms=4650 endms=4850 rep=1 repms=0 fz=600 fzin=200 fzout=300 push=0 pushr=0 area=1 ar=500 aa=0 ah=200 ax=350 arem=0 maxt=0 src=orig
+"sdm_sk_bullherding_send" HIT startms=1600 endms=1701 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"sdm_sk_butterflydream_custom_8" HIT startms=476 endms=577 rep=1 repms=0 fz=450 fzin=200 fzout=250 push=100 pushr=40 area=2 ar=400 aa=250 ah=150 ax=0 arem=0 maxt=0 src=orig
+"sdm_sk_congenitalenergy" HIT startms=1000 endms=1100 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=1 ar=1200 aa=0 ah=700 ax=0 arem=0 maxt=0 src=orig
+"sdm_sk_dimensionalshift" HIT startms=566 endms=644 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=1 ar=80 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"sdm_sk_doodle_03" HIT startms=400 endms=500 rep=1 repms=0 fz=325 fzin=200 fzout=200 push=0 pushr=0 area=1 ar=250 aa=0 ah=200 ax=0 arem=0 maxt=0 src=orig
+"sdm_sk_harmonyofyin_01" HIT startms=0 endms=0 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=1 ar=1200 aa=0 ah=700 ax=0 arem=0 maxt=0 src=orig
+"sdm_sk_harmonyofyin_02" HIT startms=36 endms=36 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=1 ar=1200 aa=0 ah=700 ax=0 arem=0 maxt=0 src=orig
+"sdm_sk_pondofyin_custom" HIT startms=600 endms=695 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=2 ar=650 aa=364 ah=150 ax=0 arem=0 maxt=0 src=orig
+"sdm_sk_spiritofharmony" HIT startms=1254 endms=1354 rep=1 repms=0 fz=450 fzin=200 fzout=250 push=100 pushr=60 area=1 ar=400 aa=0 ah=150 ax=0 arem=0 maxt=0 src=orig
+"sdm_sk_spiritofharmony_custom_7" HIT startms=530 endms=630 rep=1 repms=0 fz=450 fzin=200 fzout=250 push=100 pushr=60 area=1 ar=400 aa=0 ah=150 ax=0 arem=0 maxt=0 src=orig
+"sdm_sk_swampofbondage" HIT startms=643 endms=738 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=2 ar=650 aa=364 ah=150 ax=0 arem=0 maxt=0 src=orig

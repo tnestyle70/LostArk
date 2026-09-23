@@ -448,22 +448,22 @@
       "comboStages": [
         {
           "actionDurationMs": 1633,
-          "hitTimeMs": 470,
-          "comboAdvanceMs": 470,
+          "hitTimeMs": 547,
+          "comboAdvanceMs": 547,
           "inputOpenMs": 329,
           "inputCloseMs": 658
         },
         {
           "actionDurationMs": 1367,
-          "hitTimeMs": 356,
-          "comboAdvanceMs": 356,
+          "hitTimeMs": 450,
+          "comboAdvanceMs": 450,
           "inputOpenMs": 330,
           "inputCloseMs": 554
         },
         {
           "actionDurationMs": 1533,
-          "hitTimeMs": 451,
-          "comboAdvanceMs": 451,
+          "hitTimeMs": 550,
+          "comboAdvanceMs": 550,
           "inputOpenMs": 396,
           "inputCloseMs": 752
         },
@@ -708,14 +708,14 @@
         {
           "actionDurationMs": 1000,
           "hitTimeMs": 121,
-          "comboAdvanceMs": 421,
+          "comboAdvanceMs": 427,
           "inputOpenMs": 75,
           "inputCloseMs": 360
         },
         {
           "actionDurationMs": 1600,
-          "hitTimeMs": 260,
-          "comboAdvanceMs": 260,
+          "hitTimeMs": 272,
+          "comboAdvanceMs": 1112,
           "inputOpenMs": 371,
           "inputCloseMs": 718
         },
@@ -936,8 +936,8 @@
       "comboStages": [
         {
           "actionDurationMs": 1800,
-          "hitTimeMs": 360,
-          "comboAdvanceMs": 360,
+          "hitTimeMs": 417,
+          "comboAdvanceMs": 417,
           "inputOpenMs": 200,
           "inputCloseMs": 470
         },
@@ -950,8 +950,8 @@
         },
         {
           "actionDurationMs": 1567,
-          "hitTimeMs": 429,
-          "comboAdvanceMs": 429,
+          "hitTimeMs": 440,
+          "comboAdvanceMs": 440,
           "inputOpenMs": 200,
           "inputCloseMs": 600
         },
@@ -1034,15 +1034,15 @@
       "comboStages": [
         {
           "actionDurationMs": 634,
-          "hitTimeMs": 0,
-          "comboAdvanceMs": 0,
+          "hitTimeMs": 120,
+          "comboAdvanceMs": 120,
           "inputOpenMs": 160,
           "inputCloseMs": 320
         },
         {
           "actionDurationMs": 634,
-          "hitTimeMs": 0,
-          "comboAdvanceMs": 0,
+          "hitTimeMs": 120,
+          "comboAdvanceMs": 120,
           "inputOpenMs": 160,
           "inputCloseMs": 320
         },
@@ -1278,8 +1278,8 @@
       "comboStages": [
         {
           "actionDurationMs": 1000,
-          "hitTimeMs": 300,
-          "comboAdvanceMs": 300,
+          "hitTimeMs": 340,
+          "comboAdvanceMs": 340,
           "inputOpenMs": 200,
           "inputCloseMs": 700
         },
@@ -1439,8 +1439,8 @@
       "comboStages": [
         {
           "actionDurationMs": 1800,
-          "hitTimeMs": 250,
-          "comboAdvanceMs": 250,
+          "hitTimeMs": 270,
+          "comboAdvanceMs": 270,
           "inputOpenMs": 200,
           "inputCloseMs": 1800
         },
@@ -1736,15 +1736,15 @@
         },
         {
           "actionDurationMs": 1233,
-          "hitTimeMs": 269,
-          "comboAdvanceMs": 269,
+          "hitTimeMs": 348,
+          "comboAdvanceMs": 348,
           "inputOpenMs": 200,
           "inputCloseMs": 540
         },
         {
           "actionDurationMs": 1333,
-          "hitTimeMs": 494,
-          "comboAdvanceMs": 494,
+          "hitTimeMs": 572,
+          "comboAdvanceMs": 572,
           "inputOpenMs": 100,
           "inputCloseMs": 920
         },
