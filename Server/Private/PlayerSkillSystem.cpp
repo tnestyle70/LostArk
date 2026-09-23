@@ -8,6 +8,7 @@
 #include <algorithm>
 #include <cmath>
 #include <limits>
+#include <random>
 
 namespace
 {
@@ -18,6 +19,57 @@ namespace
 	bool OwnsHealthDamage(const LostArk::Server::PLAYER_SKILL_HIT& hit)
 	{
 		return hit.iResultKind == 0u || hit.iResultKind == 1u;
+	}
+
+	/* Rolls one landed hit's critical outcome. The chance is a whole percent
+	from the published player profile, so a bootstrap published without a
+	balance profile carries 0 and never rolls. */
+	bool RollCriticalHit(const std::uint32_t chancePercent)
+	{
+		if (0u == chancePercent) return false;
+		if (chancePercent >= 100u) return true;
+		static thread_local std::mt19937 generator{ std::random_device{}() };
+		std::uniform_int_distribution<std::uint32_t> roll(1u, 100u);
+		return roll(generator) <= chancePercent;
+	}
+
+	/* One landed hit's spread inside the authored range. ValueA and ValueB are the
+	low and high end of a hit in the original tables and the published damage is
+	their mean, so the roll walks the same distance either side of it. A profile
+	published without a spread carries 0 and stays deterministic. */
+	std::uint32_t DamageSpreadOf(
+		const LostArk::Server::CGameplayCatalog& catalog,
+		const std::string& damageProfileId)
+	{
+		const LostArk::Server::CGameplayCatalog::DAMAGE_PROFILE* profile =
+			catalog.Find_DamageProfile(damageProfileId);
+		return nullptr == profile ? 0u : profile->iDamageSpreadPercent;
+	}
+
+	std::uint32_t RollDamageSpread(
+		const std::uint32_t damage,
+		const std::uint32_t spreadPercent)
+	{
+		if (0u == damage || 0u == spreadPercent || spreadPercent >= 100u)
+			return damage;
+		static thread_local std::mt19937 generator{ std::random_device{}() };
+		std::uniform_int_distribution<std::uint32_t> roll(
+			100u - spreadPercent, 100u + spreadPercent);
+		const std::uint64_t scaled = static_cast<std::uint64_t>(damage) *
+			static_cast<std::uint64_t>(roll(generator)) / 100ull;
+		return scaled < 1ull ? 1u :
+			static_cast<std::uint32_t>((std::min<std::uint64_t>)(
+				scaled, (std::numeric_limits<std::uint32_t>::max)()));
+	}
+
+	std::uint32_t ScaleCriticalDamage(
+		const std::uint32_t rawDamage,
+		const std::uint32_t criticalDamagePercent)
+	{
+		const std::uint64_t scaled = static_cast<std::uint64_t>(rawDamage) *
+			static_cast<std::uint64_t>(criticalDamagePercent) / 100ull;
+		return static_cast<std::uint32_t>((std::min<std::uint64_t>)(
+			scaled, (std::numeric_limits<std::uint32_t>::max)()));
 	}
 
 	void Sample_RootMotion(
@@ -68,7 +120,11 @@ namespace
 		const std::uint32_t partDamage,
 		const std::uint32_t counterPower,
 		const std::uint32_t rawDamage,
+		const LostArk::Server::CGameplayCatalog& catalog,
+		const std::vector<LostArk::Shared::ACTIVE_BUFF>& casterBuffs,
+		const LostArk::Server::PLAYER_RUNTIME_PROFILE* pCasterProfile,
 		const LostArk::Server::PLAYER_SKILL_HIT* pHit,
+		const std::uint32_t damageSpreadPercent,
 		const float sourceX,
 		const float sourceZ,
 		const float fallbackDirectionX,
@@ -82,6 +138,27 @@ namespace
 		incoming.iSourcePlayerId = sourcePlayerId;
 		incoming.iSkillId = skillId;
 		incoming.iRawDamage = kind <= 1u ? rawDamage : 0u;
+		/* What the caster's buffs add, and what the target's debuffs amplify. */
+		if (0u != incoming.iRawDamage)
+		{
+			incoming.iRawDamage = CServerBuffRuntime::Scale_Damage(
+				incoming.iRawDamage,
+				CServerBuffRuntime::Damage_DealtPercent(catalog, casterBuffs) +
+				CServerBuffRuntime::Damage_TakenPercent(catalog, target.ActiveBuffs));
+		}
+		/* Rolled per landed hit, so a multi-hit skill reads 483 / 502 / 513 the way
+		the original does instead of the same number three times. */
+		incoming.iRawDamage =
+			RollDamageSpread(incoming.iRawDamage, damageSpreadPercent);
+		/* Rolled per landed hit, as the original does: one skill can crit on
+		one target and stay ordinary on the next. */
+		if (0u != incoming.iRawDamage && nullptr != pCasterProfile &&
+			RollCriticalHit(pCasterProfile->iCriticalChancePercent))
+		{
+			incoming.bCritical = true;
+			incoming.iRawDamage = ScaleCriticalDamage(
+				incoming.iRawDamage, pCasterProfile->iCriticalDamagePercent);
+		}
 		incoming.iStaggerDamage = kind == 0u || kind == 2u ? staggerDamage : 0u;
 		incoming.iPartDamage = kind <= 1u ? partDamage : 0u;
 		incoming.iCounterPower = kind == 0u || kind == 3u ? counterPower : 0u;
@@ -303,10 +380,11 @@ bool LostArk::Server::CPlayerSkillSystem::Try_Start(
 	const LostArk::Shared::C2S_USE_SKILL& command,
 	const CGameplayCatalog& catalog,
 	const std::uint32_t actionStartTick,
-	const CServerNavigation* navigation) const
+	const CServerNavigation* navigation,
+	const LostArk::Shared::COOLDOWN_MODE cooldownMode) const
 {
 	return Try_StartInternal(
-		player, command, catalog, actionStartTick, false, navigation);
+		player, command, catalog, actionStartTick, false, navigation, cooldownMode);
 }
 
 bool LostArk::Server::CPlayerSkillSystem::Try_StartPending(
@@ -314,10 +392,11 @@ bool LostArk::Server::CPlayerSkillSystem::Try_StartPending(
 	const LostArk::Shared::C2S_USE_SKILL& command,
 	const CGameplayCatalog& catalog,
 	const std::uint32_t actionStartTick,
-	const CServerNavigation* navigation) const
+	const CServerNavigation* navigation,
+	const LostArk::Shared::COOLDOWN_MODE cooldownMode) const
 {
 	return Try_StartInternal(
-		player, command, catalog, actionStartTick, true, navigation);
+		player, command, catalog, actionStartTick, true, navigation, cooldownMode);
 }
 
 bool LostArk::Server::CPlayerSkillSystem::Try_StagePendingSkill(
@@ -356,7 +435,8 @@ bool LostArk::Server::CPlayerSkillSystem::Try_StartInternal(
 	const CGameplayCatalog& catalog,
 	const std::uint32_t actionStartTick,
 	const bool sequenceAlreadyConsumed,
-	const CServerNavigation* navigation) const
+	const CServerNavigation* navigation,
+	const LostArk::Shared::COOLDOWN_MODE cooldownMode) const
 {
 	using namespace LostArk::Shared;
 	const PLAYER_SKILL_DEFINITION* skill = catalog.Find_Skill(command.iSkillId);
@@ -507,13 +587,15 @@ bool LostArk::Server::CPlayerSkillSystem::Try_StartInternal(
 	player.iCurrentResource -= skill->iResourceCost;
 	player.iCurrentIdentity -= skill->iIdentityCost;
 	Apply_EmberOnStart(player, *skill, catalog);
+	const auto cooldownTicks = Resolve_CooldownTicks(*skill, cooldownMode);
+	player.CooldownDurationTicksBySkillId.insert_or_assign(command.iSkillId, cooldownTicks);
 	player.CooldownEndTickBySkillId.insert_or_assign(
 		command.iSkillId,
-		player.iActionStartTick + MillisecondsToTicks(skill->iCooldownMs));
+		player.iActionStartTick + cooldownTicks);
 	if (PLAYER_STANCE_ID::NONE != skill->eSetsStance)
 	{
 		player.iStanceSwitchCooldownEndTick =
-			player.iActionStartTick + MillisecondsToTicks(skill->iCooldownMs);
+			player.iActionStartTick + cooldownTicks;
 	}
 	player.hasMoveGoal = false;
 	player.MovePath.clear();
@@ -828,7 +910,10 @@ void LostArk::Server::CPlayerSkillSystem::Update_Projectiles(
 						skill->iCounterPower,
 						ownsDamage ? DamageOfSubHit(projectile.iTotalDamage, projectile.iSubHitTotal,
 							subHitIndex + mark->iAppliedCount) : 0u,
-						&hit.Hit, projectile.fPositionX, projectile.fPositionZ,
+						catalog, player.ActiveBuffs,
+						catalog.Find_Player(player.eCharacterClass),
+						&hit.Hit, DamageSpreadOf(catalog, skill->strDamageProfileId),
+						projectile.fPositionX, projectile.fPositionZ,
 						projectile.fDirectionX, projectile.fDirectionZ,
 						serverTick, outDamageEvents);
 					++mark->iAppliedCount;
@@ -881,7 +966,10 @@ void LostArk::Server::CPlayerSkillSystem::Update_Projectiles(
 						skill->iCounterPower,
 						ownsDamage ? DamageOfSubHit(projectile.iTotalDamage, projectile.iSubHitTotal,
 							subHitIndex) : 0u,
-						&hit.Hit, projectile.fPositionX, projectile.fPositionZ,
+						catalog, player.ActiveBuffs,
+						catalog.Find_Player(player.eCharacterClass),
+						&hit.Hit, DamageSpreadOf(catalog, skill->strDamageProfileId),
+						projectile.fPositionX, projectile.fPositionZ,
 						projectile.fDirectionX, projectile.fDirectionZ,
 						serverTick, outDamageEvents);
 				}
@@ -1206,7 +1294,9 @@ void LostArk::Server::CPlayerSkillSystem::Update(
 		ApplyPlayerHitDamage(target,
 			player.iPlayerId, skill->iSkillId,
 			skill->iStaggerDamage, skill->iPartDamage, skill->iCounterPower,
-			rawDamage, pHit,
+			rawDamage, catalog, player.ActiveBuffs,
+			catalog.Find_Player(player.eCharacterClass), pHit,
+			DamageSpreadOf(catalog, skill->strDamageProfileId),
 			player.fPositionX, player.fPositionZ,
 			player.fSkillAimDirectionX, player.fSkillAimDirectionZ,
 			serverTick, outDamageEvents);
@@ -1215,9 +1305,14 @@ void LostArk::Server::CPlayerSkillSystem::Update(
 	{
 		const PLAYER_RUNTIME_PROFILE* playerProfile =
 			catalog.Find_Player(player.eCharacterClass);
-		const std::uint32_t base = CGameplayCatalog::Resolve_Damage(
-			nullptr == playerProfile ? 0u : playerProfile->iAttackPower,
-			catalog.Find_DamageRatePercent(skill->strDamageProfileId));
+		const std::uint32_t attackPower =
+			nullptr == playerProfile ? 0u : playerProfile->iAttackPower;
+		const CGameplayCatalog::DAMAGE_PROFILE* damageProfile =
+			catalog.Find_DamageProfile(skill->strDamageProfileId);
+		const std::uint32_t base = nullptr == damageProfile ?
+			CGameplayCatalog::Resolve_Damage(
+				attackPower, catalog.Find_DamageRatePercent(skill->strDamageProfileId)) :
+			CGameplayCatalog::Resolve_Damage(attackPower, *damageProfile);
 		/* Each ember orb the action spent adds the profile percent. */
 		const GUARDIAN_EMBER_PROFILE* ember =
 			catalog.Find_EmberProfile(player.eCharacterClass);
@@ -1579,11 +1674,13 @@ void LostArk::Server::CPlayerSkillSystem::Arm_PlayerHitReaction(
 	const std::uint32_t pushMs,
 	const bool knockdown,
 	const std::uint32_t downMs,
-	const std::uint32_t serverTick, const bool forcePush, const bool pushCanLeaveArena, const bool pushBallistic)
+	const std::uint32_t serverTick, const bool forcePush, const bool pushCanLeaveArena, const bool pushBallistic,
+	const float pushHeightM)
 {
 	using namespace LostArk::Shared;
 	const bool hasPush =
-		0.f != pushRangeM && 0u != pushMs && std::isfinite(pushRangeM);
+		(0.f != pushRangeM || (pushBallistic && pushHeightM > 0.f)) && 0u != pushMs &&
+		std::isfinite(pushRangeM) && std::isfinite(pushHeightM) && pushHeightM >= 0.f;
 	if (!Can_ArmPlayerHitReaction(player, serverTick, forcePush && hasPush)) return;
 	if (!hasPush && !knockdown)
 		return;
@@ -1633,12 +1730,17 @@ void LostArk::Server::CPlayerSkillSystem::Arm_PlayerHitReaction(
 		player.fKnockbackDirectionX = directionX;
 		player.fKnockbackDirectionZ = directionZ;
 		player.fKnockbackSpeed = std::fabs(pushRangeM) / windowSeconds;
+		// Consecutive forced launches may start in the air, but share the first support floor.
+		if (!player.bKnockbackBallistic || player.fKnockbackRemainingSeconds <= 0.f)
+			player.fKnockbackSupportY = player.fPositionY;
 		player.fKnockbackRemainingSeconds = windowSeconds;
 		player.bKnockbackCanLeaveArena = pushCanLeaveArena;
 		player.bKnockbackBallistic = pushBallistic;
 		player.fKnockbackLaunchY = player.fPositionY;
+		player.fKnockbackGravityMps2 = pushBallistic && pushHeightM > 0.f ?
+			8.f * pushHeightM / (windowSeconds * windowSeconds) : SERVER_PLAYER::KNOCKBACK_GRAVITY_MPS2;
 		player.fKnockbackVelocityY = pushBallistic ?
-			0.5f * SERVER_PLAYER::KNOCKBACK_GRAVITY_MPS2 * windowSeconds : 0.f;
+			0.5f * player.fKnockbackGravityMps2 * windowSeconds : 0.f;
 	}
 	if ((knockdown && 0u != downMs) || (hasPush && pushBallistic))
 	{
@@ -1709,4 +1811,34 @@ void LostArk::Server::CPlayerSkillSystem::Update_Aim(
 	player.fSkillAimDistance = AimDistance(player, command.fAimX, command.fAimZ);
 	player.fYawDegrees =
 		std::atan2(directionX, directionZ) * RADIANS_TO_DEGREES;
+}
+
+
+std::uint32_t LostArk::Server::CPlayerSkillSystem::Resolve_CooldownTicks(
+    const PLAYER_SKILL_DEFINITION& skill, const LostArk::Shared::COOLDOWN_MODE mode)
+{
+    // Zero-cooldown attacks remain available; the room policy changes timers, not combo structure.
+    const auto milliseconds = mode == LostArk::Shared::COOLDOWN_MODE::DEBUG_THREE_SECONDS && skill.iCooldownMs != 0u ?
+        3000u : skill.iCooldownMs;
+    return MillisecondsToTicks(milliseconds);
+}
+
+void LostArk::Server::CPlayerSkillSystem::Recalculate_Cooldowns(
+    SERVER_PLAYER& player, const CGameplayCatalog& catalog, const std::uint32_t serverTick,
+    const LostArk::Shared::COOLDOWN_MODE mode)
+{
+    for (auto& [id, end] : player.CooldownEndTickBySkillId)
+    {
+        const auto duration = player.CooldownDurationTicksBySkillId.find(id);
+        const auto* skill = catalog.Find_Skill(id);
+        if (!skill || duration == player.CooldownDurationTicksBySkillId.end() ||
+            static_cast<std::int32_t>(end - serverTick) <= 0) continue;
+        const auto start = end - duration->second;
+        const auto updatedDuration = Resolve_CooldownTicks(*skill, mode);
+        const auto updatedEnd = start + updatedDuration;
+        if (skill->eSetsStance != LostArk::Shared::PLAYER_STANCE_ID::NONE && player.iStanceSwitchCooldownEndTick == end)
+            player.iStanceSwitchCooldownEndTick = updatedEnd;
+        end = updatedEnd;
+        duration->second = updatedDuration;
+    }
 }

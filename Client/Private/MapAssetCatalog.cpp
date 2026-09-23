@@ -1524,7 +1524,10 @@ bool_t CMapAssetCatalog::Parse_MaterialOverrides(const DATA_JSON_VALUE& root)
             }
             if (const auto* environment = row.Find("environment"))
             {
-                if (!exactFields(*environment, { "cubeTexture", "brdfTexture", "color", "rotation" }) ||
+                std::unordered_set<std::string> environmentFields = { "cubeTexture", "brdfTexture", "color", "rotation" };
+                if (environment->Find("sourceIndirect")) environmentFields.insert("sourceIndirect");
+                if (environment->Find("legacyEnabled")) environmentFields.insert("legacyEnabled");
+                if (!exactFields(*environment, environmentFields) ||
                     !lightingTexture(*environment, "cubeTexture", material.environmentCubePath) ||
                     !lightingTexture(*environment, "brdfTexture", material.environmentBRDFPath) ||
                     !readColor(*environment, "color", pbr.environmentColor))
@@ -1544,6 +1547,63 @@ bool_t CMapAssetCatalog::Parse_MaterialOverrides(const DATA_JSON_VALUE& root)
                     return reject("environment rotation must be unit length");
                 pbr.environmentRotation = float2_t(components[0],components[1]);
                 pbr.hasEnvironmentCube = true;
+                if (const auto* legacy = environment->Find("legacyEnabled"))
+                {
+                    if (!legacy->Is_Boolean()) return reject("invalid environment legacyEnabled");
+                    pbr.environmentLegacyEnabled = legacy->Get_Boolean();
+                    if (!pbr.environmentLegacyEnabled && !environment->Find("sourceIndirect"))
+                        return reject("disabled legacy environment requires source indirect inputs");
+                }
+                if (const auto* indirect = environment->Find("sourceIndirect"))
+                {
+                    std::string model;
+                    if (!exactFields(*indirect, { "model", "cubeTexture", "brdfTexture", "color", "rotation", "packedSH", "upperSkyColor", "lowerSkyColor", "ambientAndSkyFactor" }) ||
+                        !readString(*indirect, "model", model) || model != "UE3_NATIVE_PBR" ||
+                        !lightingTexture(*indirect, "cubeTexture", material.sourceIndirectCubePath) ||
+                        !lightingTexture(*indirect, "brdfTexture", material.sourceIndirectBRDFPath) ||
+                        !readColor(*indirect, "color", pbr.sourceIndirectColor))
+                        return reject("invalid source indirect model, textures, color or fields");
+                    const auto readComponents = [](const DATA_JSON_VALUE* value, size_t count,
+                        double minimum, double maximum, float* result)
+                    {
+                        if (!value || !value->Is_Array() || value->Get_Array().size() != count) return false;
+                        for (size_t i = 0u; i < count; ++i)
+                        {
+                            const auto& component = value->Get_Array()[i];
+                            if (!component.Is_Number() || !std::isfinite(component.Get_Number()) ||
+                                component.Get_Number() < minimum || component.Get_Number() > maximum) return false;
+                            result[i] = static_cast<float>(component.Get_Number());
+                        }
+                        return true;
+                    };
+                    float nativeRotation[2]{};
+                    if (!readComponents(indirect->Find("rotation"), 2u, -1.0, 1.0, nativeRotation) ||
+                        std::abs(nativeRotation[0]*nativeRotation[0]+nativeRotation[1]*nativeRotation[1]-1.f) > 0.0001f)
+                        return reject("invalid source indirect rotation");
+                    pbr.sourceIndirectRotation = float2_t(nativeRotation[0], nativeRotation[1]);
+                    const auto* packedSH = indirect->Find("packedSH");
+                    if (!packedSH || !packedSH->Is_Array() || packedSH->Get_Array().size() != pbr.sourceIndirectSH.size())
+                        return reject("invalid source indirect SH row count");
+                    for (size_t rowIndex = 0u; rowIndex < pbr.sourceIndirectSH.size(); ++rowIndex)
+                    {
+                        float values[4]{};
+                        if (!readComponents(&packedSH->Get_Array()[rowIndex], 4u, -64.0, 64.0, values))
+                            return reject("invalid source indirect SH component");
+                        pbr.sourceIndirectSH[rowIndex] = float4_t(values[0], values[1], values[2], values[3]);
+                    }
+                    if (packedSH->Get_Array()[6].Get_Array()[3].Get_Number() != 1.0)
+                        return reject("source indirect SH reserved w must be one");
+                    float upper[3]{}, lower[3]{}, ambient[4]{};
+                    if (!readComponents(indirect->Find("upperSkyColor"), 3u, 0.0, 64.0, upper) ||
+                        !readComponents(indirect->Find("lowerSkyColor"), 3u, 0.0, 64.0, lower) ||
+                        !readComponents(indirect->Find("ambientAndSkyFactor"), 4u, 0.0, 64.0, ambient) ||
+                        indirect->Find("ambientAndSkyFactor")->Get_Array()[3].Get_Number() > 4.0)
+                        return reject("invalid source indirect sky or ambient factor");
+                    pbr.sourceUpperSkyColor = float3_t(upper[0], upper[1], upper[2]);
+                    pbr.sourceLowerSkyColor = float3_t(lower[0], lower[1], lower[2]);
+                    pbr.sourceAmbientAndSkyFactor = float4_t(ambient[0], ambient[1], ambient[2], ambient[3]);
+                    pbr.hasSourceIndirect = true;
+                }
             }
 			staged[assetId].push_back(std::move(material));
 			continue;

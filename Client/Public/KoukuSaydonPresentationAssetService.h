@@ -5,6 +5,8 @@
 #include "PlayerHandGripTransform.h"
 #include "KoukuSaydonCompositionDocument.h"
 
+#include "GameplayDataRevision.h"
+#include <memory>
 #include <cstdint>
 #include <string>
 #include <string_view>
@@ -60,12 +62,33 @@ struct KOUKU_SAYDON_PLAY_RESOURCES final
     std::vector<std::pair<std::string, std::string>> V2Effects;
 };
 
+struct KOUKU_SAYDON_DRAFT_PRODUCT final
+{
+    std::string PresentationJson, EncounterJson;
+    std::uint32_t iSourceRevision = 0u;
+    LostArk::Shared::GameplayDataRevision RowsRevision{};
+};
+
 class CKoukuSaydonPresentationAssetService final
 {
 public:
+    static std::shared_ptr<const KOUKU_SAYDON_DRAFT_PRODUCT> Prepare_DraftProduct(
+        const std::string& presentationJson, const std::string& encounterJson, const std::string& gameplayRows,
+        std::uint32_t sourceRevision, std::string& status);
+    static bool Stage_DraftProduct(std::shared_ptr<const KOUKU_SAYDON_DRAFT_PRODUCT> draft, std::string& status);
+    static bool Authorize_DraftProduct(const LostArk::Shared::GameplayDataRevision& rowsRevision,
+        std::uint32_t runEpoch, std::string& status);
+    static bool Validate_DraftBindings(std::uint32_t levelIndex,
+        const std::shared_ptr<const KOUKU_SAYDON_DRAFT_PRODUCT>& draft, std::string& status);
+    static bool Admit_RunProduct(std::uint32_t levelIndex, std::uint32_t sourceRevision,
+        const LostArk::Shared::GameplayDataRevision& rowsRevision, std::uint32_t runEpoch, std::string& status);
+    static bool Matches_AdmittedRun(std::uint32_t sourceRevision,
+        const LostArk::Shared::GameplayDataRevision& rowsRevision, std::uint32_t runEpoch);
+    static std::shared_ptr<const KOUKU_SAYDON_DRAFT_PRODUCT> Get_AdmittedDraftProduct();
     static bool Collect_CompletePlayResources(const std::vector<std::string>& patternIds,
         const std::vector<std::string>& bundleIds, std::uint32_t sourceRevision,
-        KOUKU_SAYDON_PLAY_RESOURCES& output, std::string& status);
+        KOUKU_SAYDON_PLAY_RESOURCES& output, std::string& status,
+        std::shared_ptr<const KOUKU_SAYDON_DRAFT_PRODUCT> draft = {});
 	static void Begin_LevelLoad(std::uint32_t iLevelIndex);
 	static HRESULT Ensure_MazeHammerPrototype(ComPtr<ID3D11Device> pDevice,
 		ComPtr<ID3D11DeviceContext> pContext, std::uint32_t iLevelIndex);

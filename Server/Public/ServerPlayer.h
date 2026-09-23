@@ -152,6 +152,8 @@ namespace LostArk::Server
 
 		std::string strNickName;
 		std::string strSpawnPlacementId;
+		// Server-validated Bern entry guide; retained until this raid visit ends.
+		std::string strRaidReturnNpcPlacementId;
 
 		float fPositionX = 0.f;
 		float fPositionY = 0.f;
@@ -187,6 +189,9 @@ namespace LostArk::Server
 		std::uint8_t iMarioLayoutVariant = 0u;
 		// Pinned by the entry pattern; survives the arena phase and terminal move start.
 		std::optional<std::array<float, 3u>> MarioReturnPosition;
+		// Safe arena revive point retained through the fall's below-floor death pose.
+		std::optional<std::array<float, 3u>> KoukuFallRevivePosition;
+		bool bKoukuFallDeath = false;
 		LostArk::Shared::PLAYER_MADNESS_FORM ePreMarioForm =
 			LostArk::Shared::PLAYER_MADNESS_FORM::NORMAL;
 		std::uint32_t iLastMarioMoveSequence = 0u;
@@ -258,7 +263,9 @@ namespace LostArk::Server
 		bool bKnockbackBallistic = false;
 		float fKnockbackVelocityY = 0.f;
 		float fKnockbackLaunchY = 0.f;
+		float fKnockbackSupportY = 0.f;
 		static constexpr float KNOCKBACK_GRAVITY_MPS2 = 9.8f;
+		float fKnockbackGravityMps2 = KNOCKBACK_GRAVITY_MPS2;
 		/* Typed release policy for the existing knockback integrator. Only arena
 		ejection ignores nav/collision and ends in the ordinary FALLING state. */
 		bool bArenaEjectionActive = false;
@@ -302,6 +309,13 @@ namespace LostArk::Server
 		current value yet. The form is Server truth the Client presents; the
 		Debug F1 toggle and authored Mario entry change it. */
 		static constexpr std::uint32_t MADNESS_GAUGE_MAXIMUM = 10000u;
+		/* Buffs the player holds. Expired entries are dropped each tick, and the
+		newest cast of the same buff replaces the older one. */
+		std::vector<LostArk::Shared::ACTIVE_BUFF> ActiveBuffs;
+		/* Absorbs incoming damage before HP moves, and ends with its buff. */
+		std::uint32_t iShield = 0;
+		/* Set while a death-deny buff has already spent itself on a lethal hit. */
+		std::uint32_t iInvulnerableEndTick = 0;
 		std::uint32_t iCurrentMadness = 0;
 		std::uint32_t iMaximumMadness = MADNESS_GAUGE_MAXIMUM;
 		LostArk::Shared::PLAYER_MADNESS_FORM eMadnessForm =
@@ -471,6 +485,8 @@ namespace LostArk::Server
 		deadline that same tick scheduled. Neither is replicated: the client
 		reads the descent from the position the snapshot already carries. */
 		float fFallVelocityY = 0.f;
+		// Kouku uses a plane five metres below the support/flight launch height.
+		float fFallDeathPlaneY = 0.f;
 		std::uint32_t iFallDeathTick = 0u;
 		SERVER_TRIGGER_MOVE TriggerMove;
 		std::uint32_t iLastSkillSequence = 0;
@@ -514,6 +530,8 @@ namespace LostArk::Server
 		bool hasReleasedHold = false;
 		std::unordered_map<LostArk::Shared::SKILL_ID, std::uint32_t>
 			CooldownEndTickBySkillId;
+		// Only playable casts own a duration; vehicle and encounter timers stay separate.
+		std::unordered_map<LostArk::Shared::SKILL_ID, std::uint32_t> CooldownDurationTicksBySkillId;
 		// Debug-only inventory slice. Small owned list, stacked per itemId and
 		// capped at the catalog's maxStack; the Shared snapshot struct is
 		// reused directly since the wire shape and the server truth are the

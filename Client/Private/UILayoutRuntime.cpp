@@ -11,6 +11,7 @@
 
 #include <fstream>
 #include <algorithm>
+#include <cmath>
 
 Client::CUILayoutRuntime::CUILayoutRuntime(
 	ComPtr<ID3D11Device> pDevice, ComPtr<ID3D11DeviceContext> pContext,
@@ -535,6 +536,47 @@ void Client::CUILayoutRuntime::Set_SlotVisible(const string& strId, bool_t bVisi
 			if (nullptr != pKeySprite)
 				pKeySprite->Set_Visible(false);
 	}
+}
+
+bool_t Client::CUILayoutRuntime::Set_SlotCaption(const string& strId,
+    const wstring_t& caption, const wstring_t& font)
+{
+    auto* slot = Find_Slot(strId);
+    if (!slot || slot->pSprite || !slot->KeyframeSprites.empty() || caption.empty() || font.empty()) return false;
+    const auto measured = CGameInstance::Get().Measure_Text(font, caption.c_str());
+    if (!std::isfinite(measured.y) || measured.y <= 0.f ||
+        m_fResolutionWidth <= 0.f || m_fResolutionHeight <= 0.f) return false;
+    CUI_Sprite::UI_SPRITE_DESC desc{};
+    desc.fX = slot->fX + slot->fSizeX * 0.5f;
+    desc.fY = slot->fY + slot->fSizeY * 0.5f;
+    desc.fSizeX = slot->fSizeX; desc.fSizeY = slot->fSizeY;
+    desc.referenceResolution = {m_fResolutionWidth, m_fResolutionHeight};
+    desc.caption = caption; desc.captionFont = font;
+    shared_ptr<CGameObject> object;
+    if (FAILED(CGameInstance::Get().Add_GameObject_to_Layer(ETOUI(LEVEL::STATIC),
+        TEXT("Prototype_GameObject_UI_Sprite"), m_iGameObjectLevelIndex, m_strLayerTag, &desc, &object))) return false;
+    slot->pSprite = static_pointer_cast<CUI_Sprite>(object);
+    slot->pSprite->Set_UISortLayer(m_iUISortLayer);
+    slot->pSprite->Set_Visible(slot->bVisible);
+    return true;
+}
+
+void Client::CUILayoutRuntime::Set_SlotScenePresentation(const string& strId, const bool_t enabled)
+{
+	RUNTIME_SLOT* slot = Find_Slot(strId);
+	if (!slot) return;
+	if (slot->pSprite) slot->pSprite->Set_ScenePresentation(enabled);
+	for (const auto& sprite : slot->ExtraLayerSprites) if (sprite) sprite->Set_ScenePresentation(enabled);
+	for (const auto& sprite : slot->KeyframeSprites) if (sprite) sprite->Set_ScenePresentation(enabled);
+}
+
+bool_t Client::CUILayoutRuntime::Sample_KeyframeAnimation(const string& strId, const string& label, const f32_t seconds)
+{
+	if (!std::isfinite(seconds) || seconds < 0.f || !Play_KeyframeAnimation(strId, label)) return false;
+	auto* slot = Find_Slot(strId);
+	slot->fKeyframeElapsedSeconds = seconds;
+	Update_KeyframeSlot(*slot, 0.f);
+	return true;
 }
 
 void Client::CUILayoutRuntime::Set_SlotCinematicOverlay(const string& strId, const bool_t overlay)

@@ -147,7 +147,7 @@ def check_finite(value, context):
         for child in value:
             check_finite(child, context)
     elif isinstance(value, float):
-        require(math.isfinite(value) and abs(value) <= 3.402823466e38,
+        require(math.isfinite(value) and abs(value) <= 3.4028234663852886e38,
                 f'non-finite or out-of-float-range material input: {context}')
 
 
@@ -181,12 +181,54 @@ def validate_surface(row, resources):
             for key in ('averageTexture', 'directionalTexture')), 'RNM texture color space mismatch')
     if 'environment' in row:
         env = row['environment']
-        require(set(env) == {'cubeTexture', 'brdfTexture', 'color', 'rotation'}, 'invalid environment fields')
+        fields = {'cubeTexture', 'brdfTexture', 'color', 'rotation'}
+        require(isinstance(env, dict), 'invalid environment fields')
+        if 'sourceIndirect' in env:
+            fields.add('sourceIndirect')
+        if 'legacyEnabled' in env:
+            fields.add('legacyEnabled')
+        require(set(env) == fields, 'invalid environment fields')
+        if 'legacyEnabled' in env:
+            require(type(env['legacyEnabled']) is bool and (env['legacyEnabled'] or 'sourceIndirect' in env),
+                    'invalid environment legacyEnabled or missing source indirect inputs')
         require(len(env['color']) == 4 and all(type(x) in (int, float) and x >= 0 for x in env['color']) and
                 len(env['rotation']) == 2 and all(type(x) in (int, float) for x in env['rotation']) and
                 abs(sum(x*x for x in env['rotation']) - 1) < 0.001, 'invalid environment color/rotation')
         require(resources[env['cubeTexture']]['faces'] == 6 and resources[env['brdfTexture']]['faces'] == 1,
                 'environment needs a cube and a 2D BRDF texture')
+        if 'sourceIndirect' in env:
+            require(row['family'] in ('bg_base_pbr_opa', 'bg_base_pbr_seamless_opa', 'bg_base_pbr_msk'),
+                    'source indirect requires a PBR environment')
+            indirect = env['sourceIndirect']
+            require(isinstance(indirect, dict) and set(indirect) == {
+                'model', 'cubeTexture', 'brdfTexture', 'color', 'rotation', 'packedSH', 'upperSkyColor', 'lowerSkyColor', 'ambientAndSkyFactor'},
+                'invalid source indirect fields')
+            require(indirect['model'] == 'UE3_NATIVE_PBR', 'invalid source indirect model')
+            cube = indirect['cubeTexture']
+            require(isinstance(cube, str) and cube in resources and resources[cube]['faces'] == 6 and
+                    resources[cube]['colorSpace'] == 'linear', 'source indirect needs a verified linear cube texture')
+            brdf = indirect['brdfTexture']
+            require(isinstance(brdf, str) and brdf in resources and resources[brdf]['faces'] == 1 and
+                    resources[brdf]['colorSpace'] == 'linear', 'source indirect needs a verified linear 2D BRDF texture')
+            color, rotation = indirect['color'], indirect['rotation']
+            require(isinstance(color, list) and len(color) == 4 and all(
+                type(value) in (int, float) and math.isfinite(value) and 0 <= value <= 3.4028234663852886e38
+                for value in color), 'invalid source indirect color')
+            require(isinstance(rotation, list) and len(rotation) == 2 and all(
+                type(value) in (int, float) and math.isfinite(value) and -1 <= value <= 1 for value in rotation) and
+                abs(sum(value*value for value in rotation)-1) <= 0.0001, 'invalid source indirect rotation')
+            packed = indirect['packedSH']
+            require(isinstance(packed, list) and len(packed) == 7 and all(
+                isinstance(sh_row, list) and len(sh_row) == 4 and all(
+                    type(value) in (int, float) and math.isfinite(value) and -64 <= value <= 64
+                    for value in sh_row) for sh_row in packed), 'invalid source indirect SH')
+            require(packed[6][3] == 1, 'source indirect SH reserved w must be one')
+            for key, count in (('upperSkyColor', 3), ('lowerSkyColor', 3), ('ambientAndSkyFactor', 4)):
+                values = indirect[key]
+                require(isinstance(values, list) and len(values) == count and all(
+                    type(value) in (int, float) and math.isfinite(value) and
+                    0 <= value <= (4 if key == 'ambientAndSkyFactor' and index == 3 else 64)
+                    for index, value in enumerate(values)), f'invalid source indirect vector: {key}')
     if 'emissive' in row:
         e = row['emissive']
         require(e['intensity'] >= 0 and len(e['color']) == 4 and all(x >= 0 for x in e['color']) and
@@ -345,6 +387,9 @@ def compile_materials(manifest_path, resources_root):
             approximations.append(dict(assetId=asset, materialName=name,
                 note='Carrier defaults: vertexAlpha=1, reflectionOriginOffset=[0,0]; minimumRoughness requires component evidence. Scene SH, native BRDF and dynamic MIC values are separate inputs.'))
         validate_surface(row, resources)
+        if 'sourceIndirect' in row.get('environment', {}):
+            used_resources.add(row['environment']['sourceIndirect']['cubeTexture'])
+            used_resources.add(row['environment']['sourceIndirect']['brdfTexture'])
         rows.append(row)
         binding = bindings.setdefault(asset, dict(assetId=asset, materialNames=[], sourceMaterials=[],
             materialCoverage=[]))

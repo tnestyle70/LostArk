@@ -4,6 +4,7 @@
 #include "Gameplay/CombatCollisionContract.h"
 #include "GameplayCatalog.h"
 #include "GameRoom.h"
+#include "PlayerSkillSystem.h"
 #include "ServerNavigation.h"
 #include "ValtanBrain.h"
 #include "WorldBootstrap.h"
@@ -35,6 +36,254 @@
 
 using namespace LostArk::Server;
 using namespace LostArk::Shared;
+
+int LostArk::Server::CServerGameplayContractRunner::Run_ValtanArenaSupport()
+{
+	TESTS tests;
+	auto storage = std::make_unique<CGameRoom>(WORLD_ID::VALTAN_ARENA);
+	CGameRoom& room = *storage;
+	std::string status;
+	/* Keep the published arena ground and destruction conditions. This fixture
+	isolates ground support after the walls have gone; the dedicated wall case
+	below restores an actual authoritative collision box on that same ground. */
+	const bool ready = room.Is_Ready() &&
+		room.m_ServerCollisionSystem.Initialize({}, status);
+	tests.Require(ready, "Load the published Valtan arena for forced-movement support contracts");
+	if (!ready)
+		return 1;
+
+	constexpr float delta = 1.f / 30.f;
+	constexpr PLAYER_ID firstPlayer = 29200u;
+	SERVER_NAV_POINT core{};
+	const bool coreSupported = room.m_ServerNavigation.Sample_SurfacePosition(
+		154.296f, -125.219f, core);
+	tests.Require(coreSupported, "Find physical support under the Valtan raid core");
+	if (!coreSupported)
+		return 1;
+	const auto playerAt = [&](const PLAYER_ID id, const SERVER_NAV_POINT& position)
+	{
+		SERVER_PLAYER player{};
+		player.iPlayerId = id;
+		player.iNetEntityId = id + 100u;
+		player.eCharacterClass = CHARACTER_CLASS_ID::LANCE_MASTER;
+		player.iCurrentHp = player.iMaximumHp = 5000u;
+		player.isCombatReady = true;
+		player.fPositionX = position.x;
+		player.fPositionY = position.y;
+		player.fPositionZ = position.z;
+		return player;
+	};
+	const auto push = [&](SERVER_PLAYER& player, const float directionX,
+		const float directionZ, const float distance, const std::uint32_t tick)
+	{
+		CPlayerSkillSystem::Arm_PlayerHitReaction(player,
+			player.fPositionX - directionX, player.fPositionZ - directionZ,
+			distance, 100u, true, 1000u, tick);
+	};
+	for (PLAYER_ID id = firstPlayer; id != firstPlayer + 4u; ++id)
+	{
+		SERVER_PLAYER player = playerAt(id, core);
+		room.m_PlayerIdByEntityId.emplace(player.iNetEntityId, id);
+		room.m_Players.emplace(id, std::move(player));
+	}
+
+	SERVER_NAVIGATION_CONDITION_STAGE collapse{};
+	const bool prepared = room.m_ServerNavigation.Prepare_ConditionChanges(
+		{ { "condition.valtan.floor30.rail.7000000000000000001.collapsed", true } },
+		collapse, status);
+	if (prepared)
+		room.m_ServerNavigation.Commit_ConditionChanges(std::move(collapse));
+	/* Discover a supported-to-void cell edge in the actual destroyed sector,
+	so this tests a hit moving into a hole rather than a player placed in one. */
+	SERVER_NAV_POINT edgeStart{};
+	float directionX = 0.f, directionZ = 0.f;
+	bool foundVoidEdge = false;
+	constexpr std::array<std::pair<float, float>, 4> directions = {
+		std::pair{ 1.f, 0.f }, { -1.f, 0.f }, { 0.f, 1.f }, { 0.f, -1.f } };
+	const float cell = room.m_ServerNavigation.Get_CellSize();
+	for (float x = 147.25f; x <= 163.25f && !foundVoidEdge; x += cell)
+	{
+		for (float z = -115.25f; z <= -99.25f && !foundVoidEdge; z += cell)
+		{
+			SERVER_NAV_POINT support{};
+			if (!room.m_ServerNavigation.Sample_SurfacePosition(x, z, support) ||
+				std::abs(support.y - core.y) > 1.f)
+				continue;
+			for (const auto& [dx, dz] : directions)
+			{
+				if (room.m_ServerNavigation.Is_PointInVoidRegion(x + dx * cell, z + dz * cell))
+				{
+					edgeStart = support;
+					directionX = dx;
+					directionZ = dz;
+					foundVoidEdge = true;
+					break;
+				}
+			}
+		}
+	}
+	tests.Require(prepared && foundVoidEdge,
+		"Find a real supported-to-collapsed-floor boundary in the published Valtan arena");
+	if (prepared && foundVoidEdge)
+	{
+		SERVER_PLAYER& struck = room.m_Players.at(firstPlayer);
+		struck = playerAt(firstPlayer, edgeStart);
+		push(struck, directionX, directionZ, cell * 4.f, 100u);
+		const bool ordinaryHit = !struck.bKnockbackCanLeaveArena &&
+			!struck.bArenaEjectionActive && !struck.bKnockbackBallistic;
+		room.m_iServerTick = 99u;
+		room.Advance_PlayerKnockback(struck, delta);
+		const float travel = std::hypot(struck.fPositionX - edgeStart.x,
+			struck.fPositionZ - edgeStart.z);
+		tests.Require(ordinaryHit && PLAYER_ACTION_STATE::FALLING == struck.eAction &&
+			travel > 0.f && travel < cell * 2.f &&
+			std::abs(struck.fPositionY - edgeStart.y) < 0.1f &&
+			struck.iFallDeathTick > struck.iActionStartTick &&
+			0.f == struck.fKnockbackRemainingSeconds && !struck.isCombatReady,
+			"An ordinary Valtan hit crosses the actual void edge and begins falling without a launch flag or lower-floor snap");
+		const std::uint32_t deadline = struck.iFallDeathTick;
+		if (PLAYER_ACTION_STATE::FALLING == struck.eAction)
+		{
+			for (std::uint32_t tick = struck.iActionStartTick + 1u; tick <= deadline; ++tick)
+			{
+				for (auto& [id, player] : room.m_Players)
+					room.Update_PlayerFall(player, delta, tick);
+			}
+		}
+		const bool teammatesUntouched = std::all_of(std::next(room.m_Players.begin()),
+			room.m_Players.end(), [&](const auto& entry)
+			{
+				const auto& player = entry.second;
+				return PLAYER_ACTION_STATE::NONE == player.eAction && player.iCurrentHp == 5000u &&
+					player.isCombatReady && player.fPositionX == core.x &&
+					player.fPositionY == core.y && player.fPositionZ == core.z;
+			});
+		tests.Require(PLAYER_ACTION_STATE::DEAD == struck.eAction && struck.iCurrentHp == 0u &&
+			teammatesUntouched && room.m_Players.size() == 4u,
+			"In a four-player room only the player pushed over the collapsed edge dies at the fall deadline");
+	}
+
+	/* These adjacent published cells exposed the original lower-deck route.
+	Their surface survives even when a walking blocker covers the upper cell. */
+	SERVER_NAVIGATION_CONDITION_STAGE restore{};
+	const bool restored = room.m_ServerNavigation.Prepare_ConditionChanges(
+		{ { "condition.valtan.floor30.rail.7000000000000000001.collapsed", false } },
+		restore, status);
+	if (restored)
+		room.m_ServerNavigation.Commit_ConditionChanges(std::move(restore));
+	SERVER_NAV_POINT upper{}, lower{};
+	const bool measuredDrop = restored && room.m_ServerNavigation.Sample_SurfacePosition(
+		142.25f, -114.25f, upper) && room.m_ServerNavigation.Sample_SurfacePosition(
+		141.75f, -114.25f, lower) && upper.y - lower.y > 10.f;
+	tests.Require(measuredDrop, "Measure the published twelve-metre Valtan deck discontinuity");
+	if (measuredDrop)
+	{
+		SERVER_PLAYER player = playerAt(firstPlayer, upper);
+		push(player, -1.f, 0.f, 2.f, 200u);
+		room.m_iServerTick = 199u;
+		room.Advance_PlayerKnockback(player, delta);
+		tests.Require(PLAYER_ACTION_STATE::FALLING == player.eAction &&
+			player.fPositionX < upper.x && player.fPositionY > upper.y - 0.1f &&
+			player.fPositionY > lower.y + 10.f,
+			"A real Valtan hit over the lower deck falls from its former height instead of snapping to lower navigation");
+
+		SERVER_PLAYER rising = playerAt(firstPlayer, lower);
+		push(rising, 1.f, 0.f, 2.f, 201u);
+		room.m_iServerTick = 200u;
+		room.Advance_PlayerKnockback(rising, delta);
+		tests.Require(PLAYER_ACTION_STATE::FALLING != rising.eAction &&
+			std::abs(rising.fPositionY - lower.y) < 0.1f &&
+			rising.fPositionX < upper.x && 0.f == rising.fKnockbackRemainingSeconds,
+			"A forced move toward the upper deck stops below it without teleporting upward");
+
+		SERVER_PLAYER supported = playerAt(firstPlayer, upper);
+		push(supported, 1.f, 0.f, 0.3f, 202u);
+		room.m_iServerTick = 201u;
+		room.Advance_PlayerKnockback(supported, delta);
+		tests.Require(!room.m_ServerNavigation.Is_PointWalkableExact(upper.x, upper.z) &&
+			supported.fPositionX > upper.x + 0.05f &&
+			PLAYER_ACTION_STATE::FALLING != supported.eAction &&
+			std::abs(supported.fPositionY - upper.y) < 0.1f,
+			"Physical floor supports forced movement even when its walking cell is blocked");
+
+		SERVER_NAV_POINT beforeWall{};
+		WORLD_BOOTSTRAP_PLACEMENT edgeWall{};
+		edgeWall.strPlacementId = "collision.contract.valtan-edge-wall";
+		edgeWall.eKind = WORLD_BOOTSTRAP_KIND::COLLISION_BOX;
+		edgeWall.fPositionX = upper.x + 0.25f;
+		edgeWall.fPositionY = upper.y + 1.f;
+		edgeWall.fPositionZ = upper.z;
+		edgeWall.fHalfExtentX = 0.1f;
+		edgeWall.fHalfExtentY = 2.f;
+		edgeWall.fHalfExtentZ = 2.f;
+		const bool edgeWallReady = room.m_ServerNavigation.Sample_SurfacePosition(
+			upper.x + 1.f, upper.z, beforeWall) &&
+			std::abs(beforeWall.y - upper.y) < 0.1f &&
+			room.m_ServerCollisionSystem.Initialize({ edgeWall }, status);
+		SERVER_PLAYER protectedPlayer = playerAt(firstPlayer, beforeWall);
+		push(protectedPlayer, -1.f, 0.f, 6.f, 203u);
+		room.m_iServerTick = 202u;
+		room.Advance_PlayerKnockback(protectedPlayer, delta);
+		tests.Require(edgeWallReady && PLAYER_ACTION_STATE::FALLING != protectedPlayer.eAction &&
+			protectedPlayer.fPositionX > edgeWall.fPositionX &&
+			std::abs(protectedPlayer.fPositionY - beforeWall.y) < 0.1f &&
+			0.f == protectedPlayer.fKnockbackRemainingSeconds,
+			"A wall before the real lower-deck edge prevents falling even when the requested push ends beyond that edge");
+	}
+
+	WORLD_BOOTSTRAP_PLACEMENT wall{};
+	wall.strPlacementId = "collision.contract.valtan-support-wall";
+	wall.eKind = WORLD_BOOTSTRAP_KIND::COLLISION_BOX;
+	wall.isEnabled = true;
+	wall.fPositionX = core.x + 1.f;
+	wall.fPositionY = core.y + 1.f;
+	wall.fPositionZ = core.z;
+	wall.fHalfExtentX = 0.1f;
+	wall.fHalfExtentY = 2.f;
+	wall.fHalfExtentZ = 2.f;
+	const bool wallReady = room.m_ServerCollisionSystem.Initialize({ wall }, status);
+	SERVER_PLAYER walled = playerAt(firstPlayer, core);
+	push(walled, 1.f, 0.f, 6.f, 300u);
+	room.m_iServerTick = 299u;
+	room.Advance_PlayerKnockback(walled, delta);
+	tests.Require(wallReady && walled.fPositionX < wall.fPositionX - wall.fHalfExtentX &&
+		PLAYER_ACTION_STATE::FALLING != walled.eAction &&
+		std::abs(walled.fPositionY - core.y) < 0.1f &&
+		0.f == walled.fKnockbackRemainingSeconds,
+		"An authoritative wall still stops an ordinary Valtan hit before support is tested past the wall");
+
+	room.m_WorldEntities.clear();
+	SERVER_WORLD_ENTITY boss{};
+	boss.iNetEntityId = 29900u;
+	boss.eKind = WORLD_BOOTSTRAP_KIND::BOSS;
+	boss.iCurrentHp = boss.iMaximumHp = 1000u;
+	boss.iPatternSequence = 1u;
+	boss.fPositionX = boss.fSpawnPositionX = core.x;
+	boss.fPositionY = boss.fSpawnPositionY = core.y;
+	boss.fPositionZ = boss.fSpawnPositionZ = core.z;
+	boss.fYawDegrees = -90.f;
+	room.m_WorldEntities.push_back(boss);
+	SERVER_PLAYER& thrown = room.m_Players.at(firstPlayer);
+	thrown = playerAt(firstPlayer, core);
+	BOSS_PATTERN_STAGE_ACTION release{};
+	release.eReleaseMode = BOSS_GRABBED_RELEASE_MODE::ARENA_EJECTION;
+	release.fReleaseSpeedMps = 24.f;
+	release.iDurationMs = 500u;
+	const bool ejectionReady = room.Capture_PlayerAttachment(thrown.iNetEntityId, boss.iNetEntityId,
+		PLAYER_ATTACHMENT_SLOT::BOSS_LEFT_HAND, 400u) &&
+		room.Prepare_ArenaEjection(thrown, room.m_WorldEntities.front(), release, 401u);
+	for (std::uint32_t step = 0u; step != 200u && thrown.bArenaEjectionActive; ++step)
+	{
+		room.m_iServerTick = 400u + step;
+		room.Advance_PlayerKnockback(thrown, delta);
+	}
+	tests.Require(ejectionReady && PLAYER_ACTION_STATE::FALLING == thrown.eAction &&
+		!thrown.bArenaEjectionActive && thrown.fPositionX > wall.fPositionX + 2.f &&
+		thrown.iFallDeathTick > thrown.iActionStartTick,
+		"Rear-grab ARENA_EJECTION still crosses the wall and ends in the existing finite falling state");
+	std::cout << "Valtan arena support failures : " << tests.failures << '\n';
+	return tests.failures == 0 ? 0 : 1;
+}
 
 void LostArk::Server::CServerGameplayContractRunner::Run_WorldDestruction(TESTS& tests, CGameplayCatalog& catalog, CServerNavigation& navigation)
 {

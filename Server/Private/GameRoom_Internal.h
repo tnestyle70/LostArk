@@ -292,17 +292,12 @@ std::uint32_t DurationMillisecondsToServerTicks(
 
 void Cancel_PlayerActionForPatternStatus(SERVER_PLAYER& player);
 
-#ifdef _DEBUG
 constexpr const char* VALTAN_ARENA_AUDITION_PLACEMENT_ID =
 		"boss.valtan.center";
-#endif
 
-#ifdef _DEBUG
 constexpr const char* CHARACTER_SELECT_AUDITION_PLACEMENT_ID =
 		"boss.valtan.character-select.lazy";
-#endif
 
-#ifdef _DEBUG
 constexpr std::array<const char*, 8u>
 		CHARACTER_SELECT_ENVIRONMENT_DEPENDENT_PATTERNS{
 			"VALTAN_ARMOR_BREAK_OPENING",
@@ -313,100 +308,64 @@ constexpr std::array<const char*, 8u>
 			"VALTAN_FOUR_PILLARS_105",
 			"VALTAN_SIX_PIZZA_106",
 			"VALTAN_GHOST_PORTAL_ONCE" };
-#endif
 
-#ifdef _DEBUG
 bool Is_CharacterSelectEnvironmentDependentPattern(
 		const std::string& patternId);
-#endif
 
-#ifdef _DEBUG
 bool Is_ValtanOutcomeFollowupInFlight(
 		const LostArk::Server::SERVER_WORLD_ENTITY& boss,
 		const std::uint32_t rootPatternSequence,
 		const LostArk::Shared::GameplayDataRevision& definitionRevision);
-#endif
 
-#ifdef _DEBUG
 bool Has_ValtanOutcomeGroupCompleted(
 		const LostArk::Server::SERVER_WORLD_ENTITY& boss,
 		const std::uint32_t rootPatternSequence,
 		const LostArk::Shared::GameplayDataRevision& definitionRevision);
-#endif
 
-#ifdef _DEBUG
 constexpr const char* WALL_ATTACK_PATTERN_ID = "VALTAN_DOWN_SMASH";
-#endif
 
-#ifdef _DEBUG
 constexpr const char* FINAL_ARENA_PATTERN_ID = "VALTAN_ARENA_BREAK_109";
-#endif
 
-#ifdef _DEBUG
 constexpr const char* FINAL_ARENA_STAGE_ID = "IMPACT";
-#endif
 
-#ifdef _DEBUG
 constexpr const char* FINAL_ARENA_ACTION_ID =
 		"valtan.mechanic.arena-break-109.impact";
-#endif
 
-#ifdef _DEBUG
 /* The final arena is the arena after the whole shrink chain, so the Debug
 	   view also stages the two floor collapses. Stage A drops the outer rail at
 	   84 bars and stage B drops the brick ring at the 30-bar landing. */
 	constexpr const char* FINAL_ARENA_FLOOR_A_PATTERN_ID =
 		"VALTAN_TERRAIN_DESTRUCTION_3_OCLOCK";
-#endif
 
-#ifdef _DEBUG
 constexpr const char* FINAL_ARENA_FLOOR_A_STAGE_ID = "IMPACT";
-#endif
 
-#ifdef _DEBUG
 constexpr const char* FINAL_ARENA_FLOOR_A_ACTION_ID =
 		"valtan.mechanic.terrain-destruction-3.impact";
-#endif
 
-#ifdef _DEBUG
 constexpr std::uint32_t FINAL_ARENA_FLOOR_A_STAGE_INDEX = 3u;
-#endif
 
-#ifdef _DEBUG
 constexpr const char* FINAL_ARENA_FLOOR_B_PATTERN_ID =
 		"VALTAN_TERRAIN_DESTRUCTION_9_OCLOCK";
-#endif
 
-#ifdef _DEBUG
 constexpr const char* FINAL_ARENA_FLOOR_B_STAGE_ID = "IMPACT";
-#endif
 
-#ifdef _DEBUG
 constexpr const char* FINAL_ARENA_FLOOR_B_ACTION_ID =
 		"valtan.mechanic.terrain-destruction-9.impact";
-#endif
 
-#ifdef _DEBUG
 constexpr std::uint32_t FINAL_ARENA_FLOOR_B_STAGE_INDEX = 3u;
-#endif
 
-#ifdef _DEBUG
 bool Resolve_ValtanArenaPreset(
 		const std::uint32_t rawPreset,
 		LostArk::Server::VALTAN_TIMELINE_ARENA_STATE& outState,
 		const char*& outLabel);
-#endif
 
-#ifdef _DEBUG
 struct VALTAN_FIGHT_PAGE_POLICY final
 	{
 		const char* pTimelineRowId;
 		std::uint8_t iInitialGameplayPhase;
 		bool bPlayEntrance;
 	};
-#endif
 
-#ifdef _DEBUG
 /* Each key is an authored mechanic row, not a mutable list ordinal. The
 	boundary mechanic is allowed to cross normally; all earlier mechanics are
 	installed as completed ledger entries by Start_ValtanFightPage. */
@@ -420,45 +379,28 @@ struct VALTAN_FIGHT_PAGE_POLICY final
 				"valtan.timeline.62-center-grab-counter", 2u, false },
 			VALTAN_FIGHT_PAGE_POLICY{
 				"valtan.timeline.14-ghost-transition", 2u, false } };
-#endif
 
-#ifdef _DEBUG
 const VALTAN_FIGHT_PAGE_POLICY* Find_ValtanFightPagePolicy(
 		const std::string& rowId);
-#endif
 
-#ifdef _DEBUG
 /* A known ordinary wall used only by the Debug attack audition. The boss is
 	   kept six metres outside its centre so body contact cannot pre-empt the
 	   DOWN_SMASH hit pulse, while the player is projected onto the inner side. */
 	constexpr float WALL_ATTACK_CENTER_X = 161.402061f;
-#endif
 
-#ifdef _DEBUG
 constexpr float WALL_ATTACK_CENTER_Y = 23.04f;
-#endif
 
-#ifdef _DEBUG
 constexpr float WALL_ATTACK_CENTER_Z = -133.312236f;
-#endif
 
-#ifdef _DEBUG
 constexpr float WALL_ATTACK_BOSS_OFFSET_Z = -6.f;
-#endif
 
-#ifdef _DEBUG
 constexpr float WALL_ATTACK_PLAYER_OFFSET_Z = 8.f;
-#endif
 
-#ifdef _DEBUG
 void Freeze_TimelineAuditionPlayer(SERVER_PLAYER& player);
-#endif
 
-#ifdef _DEBUG
 void Prepare_TimelineAuditionPlayer(
 		SERVER_PLAYER& player,
 		const std::uint32_t actionTick);
-#endif
 
 bool Is_Valid_EnterWorld(const C2S_ENTER_WORLD& message);
 

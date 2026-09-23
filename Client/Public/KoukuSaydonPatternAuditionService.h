@@ -39,6 +39,7 @@ namespace Client
 		LostArk::Shared::GameplayDataRevision ExpectedGameplayRevision{};
 		LostArk::Shared::GameplayDataRevision PinnedGameplayRevision{};
 		std::uint32_t iExpectedSourceRevision = 0u;
+		LostArk::Shared::GameplayDataRevision DraftRowsRevision{};
 		std::uint32_t iPinnedSourceRevision = 0u;
 		std::string strBundleId;
 		std::string strGateId;
@@ -114,6 +115,12 @@ namespace Client
 			const LostArk::Shared::GameplayDataRevision& expectedGameplayRevision,
 			std::uint32_t expectedSourceRevision,
 			std::string& outStatus);
+		bool Play_DraftSelected(std::string_view patternId,
+			const LostArk::Shared::GameplayDataRevision& expectedGameplayRevision,
+			std::uint32_t sourceRevision, std::string_view rows, std::string& status);
+		bool Play_DraftBundle(std::string_view bundleId, std::string_view gateId,
+			const LostArk::Shared::GameplayDataRevision& expectedGameplayRevision,
+			std::uint32_t sourceRevision, std::string_view rows, std::string& status);
 		bool Play_All(
 			const LostArk::Shared::GameplayDataRevision& expectedGameplayRevision,
 			std::uint32_t expectedSourceRevision,
@@ -165,7 +172,7 @@ namespace Client
 			std::string_view patternId,
 			const LostArk::Shared::GameplayDataRevision& expectedGameplayRevision,
 			std::uint32_t expectedSourceRevision,
-			std::string& outStatus, std::string_view bundleId = {}, std::string_view gateId = {}, std::uint32_t expectedEpoch = 0);
+			std::string& outStatus, std::string_view bundleId = {}, std::string_view gateId = {}, std::uint32_t expectedEpoch = 0, std::string_view draftRows = {});
 		void Apply_Result(
 			const LostArk::Shared::
 				S2C_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_RESULT& result);

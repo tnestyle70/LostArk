@@ -41,6 +41,46 @@ LostArk::Server::CGameRoom::Find_KoukuSaydonArenaBoss(
 	return m_WorldEntities.end() == found ? nullptr : &*found;
 }
 
+void LostArk::Server::CGameRoom::Handle_KoukuSaydonDraftChunk(
+	const SESSION_ID sessionId, const LostArk::Shared::C2S_DEBUG_KOUKUSAYDON_DRAFT_CHUNK& chunk)
+{
+#ifdef _DEBUG
+	using namespace LostArk::Shared;
+	if (m_eWorldId != WORLD_ID::KAKULSAYDON_ARENA ||
+		!m_PlayerIdBySessionId.contains(sessionId) || Is_KoukuRaidRunning()) return;
+	CPacketWriter shape;
+	if (!Write_Message(shape, chunk)) { m_KoukuDraftUploads.erase(sessionId); return; }
+	const auto now = static_cast<std::uint64_t>(std::chrono::duration_cast<std::chrono::milliseconds>(
+		std::chrono::steady_clock::now().time_since_epoch()).count());
+	std::erase_if(m_KoukuDraftUploads, [now](const auto& entry) {
+		return now - entry.second.iStartedAtMs > 30000u;
+	});
+	const auto receipt = m_KoukuSaydonPatternAuditionReceiptBySessionId.find(sessionId);
+	if (receipt != m_KoukuSaydonPatternAuditionReceiptBySessionId.end() &&
+		chunk.iRequestSequence <= receipt->second.Request.iRequestSequence) return;
+	if (!chunk.iOffsetBytes)
+	{
+		auto& upload = m_KoukuDraftUploads[sessionId];
+		if (upload.iRequestSequence > chunk.iRequestSequence) return;
+		upload = {};
+		upload.iRequestSequence = chunk.iRequestSequence;
+		upload.iTotalBytes = chunk.iTotalBytes;
+		upload.RowsRevision = chunk.RowsRevision;
+		upload.iStartedAtMs = now;
+	}
+	const auto found = m_KoukuDraftUploads.find(sessionId);
+	if (found == m_KoukuDraftUploads.end()) return;
+	auto& upload = found->second;
+	if (upload.iRequestSequence > chunk.iRequestSequence) return;
+	if (upload.iRequestSequence != chunk.iRequestSequence || upload.iTotalBytes != chunk.iTotalBytes ||
+		upload.RowsRevision != chunk.RowsRevision || upload.Rows.size() != chunk.iOffsetBytes)
+	{ m_KoukuDraftUploads.erase(found); return; }
+	upload.Rows.append(chunk.strBytes);
+#else
+	(void)sessionId; (void)chunk;
+#endif
+}
+
 LostArk::Shared::KOUKUSAYDON_PATTERN_AUDITION_RESULT
 LostArk::Server::CGameRoom::Evaluate_KoukuSaydonPatternAudition(
 	const SESSION_ID sessionId,
@@ -80,9 +120,9 @@ LostArk::Server::CGameRoom::Evaluate_KoukuSaydonPatternAudition(
 	};
 
 #ifndef _DEBUG
-	if (!Is_KoukuRaidRunning() || m_KoukuRaid.iOwnerSessionId != sessionId)
+	if (request.Scope.DraftRowsRevision.Is_Valid() || request.iMarioTestStartStage || request.iMarioTestSeed)
 		return reject(KOUKUSAYDON_PATTERN_AUDITION_RESULT::REJECTED_RELEASE_BUILD,
-			"Release pattern playback requires the active raid owner");
+			"Release playback accepts published patterns without draft or Mario test overrides");
 #endif
 	const auto sameRequest = [](const auto& left, const auto& right)
 	{
@@ -96,6 +136,7 @@ LostArk::Server::CGameRoom::Evaluate_KoukuSaydonPatternAudition(
 				right.Scope.ExpectedGameplayRevision &&
 			left.Scope.iExpectedSourceRevision ==
 				right.Scope.iExpectedSourceRevision &&
+			left.Scope.DraftRowsRevision == right.Scope.DraftRowsRevision &&
 			left.strPatternId == right.strPatternId && left.strBundleId == right.strBundleId &&
 			left.iExpectedRunEpoch == right.iExpectedRunEpoch && left.Scope.strGateId == right.Scope.strGateId &&
 			left.iMarioTestStartStage == right.iMarioTestStartStage && left.iMarioTestSeed == right.iMarioTestSeed;
@@ -151,6 +192,10 @@ LostArk::Server::CGameRoom::Evaluate_KoukuSaydonPatternAudition(
 		m_KoukuSaydonPatternAudition.iPinnedSourceRevision != request.Scope.iExpectedSourceRevision))
 		return reject(RESULT::REJECTED_STALE_REQUEST, "Automatic continuation lost its completed raid occurrence");
 	const bool controlsRun = request.eOperation == OP::STOP || restart;
+	const bool draftRequest = request.Scope.DraftRowsRevision.Is_Valid();
+	if (draftRequest && (continueRaid || stagedBosses ||
+		(!controlsRun && request.eOperation != OP::PLAY_SELECTED && request.eOperation != OP::PLAY_BUNDLE)))
+		return reject(RESULT::REJECTED_SCOPE_MISMATCH, "Memory draft playback requires a selected pattern or bundle");
     if (stagedBosses && (continueRaid || (request.eOperation != OP::PLAY_SELECTED && request.eOperation != OP::PLAY_BUNDLE) ||
         !Is_KoukuRaidRunning() || m_KoukuRaid.iOwnerSessionId != sessionId))
         return reject(RESULT::REJECTED_SCOPE_MISMATCH, "Staged admission requires the active raid owner");
@@ -163,7 +208,8 @@ LostArk::Server::CGameRoom::Evaluate_KoukuSaydonPatternAudition(
 		if (!ownsRun || m_KoukuSaydonPatternAudition.iOwnerSessionId != sessionId ||
 			request.iExpectedRunEpoch != m_KoukuSaydonPatternAudition.iRoomAuditionEpoch ||
 			request.strBundleId != m_KoukuSaydonPatternAudition.Request.strBundleId ||
-			request.Scope.strGateId != m_KoukuSaydonPatternAudition.Request.Scope.strGateId)
+			request.Scope.strGateId != m_KoukuSaydonPatternAudition.Request.Scope.strGateId ||
+			request.Scope.DraftRowsRevision != m_KoukuSaydonPatternAudition.Request.Scope.DraftRowsRevision)
 			return reject(RESULT::REJECTED_STALE_REQUEST, "Stop/restart does not own the exact active run epoch");
 		outResult.PinnedGameplayRevision = m_KoukuSaydonPatternAudition.PinnedGameplayRevision;
 		outResult.iPinnedSourceRevision = m_KoukuSaydonPatternAudition.iPinnedSourceRevision;
@@ -188,11 +234,31 @@ LostArk::Server::CGameRoom::Evaluate_KoukuSaydonPatternAudition(
 
 	std::shared_ptr<const CGameplayCatalog> productGeneration = (restart || continueRaid) ?
 		m_KoukuSaydonPatternAudition.pProductGeneration : m_GameplayCatalog.Get_ActiveGeneration();
-	if (!restart && !continueRaid && m_pKoukuPublishedProductGeneration &&
+	if (!draftRequest && !restart && !continueRaid && m_pKoukuPublishedProductGeneration &&
 		m_pKoukuPublishedProductGeneration->Has_SameNonKoukuGameplay(m_GameplayCatalog.Active()))
 		productGeneration = m_pKoukuPublishedProductGeneration;
 	if (!productGeneration) productGeneration = m_GameplayCatalog.Get_ActiveGeneration();
-	if (!restart && request.Scope.iExpectedSourceRevision !=
+	if (draftRequest && !controlsRun)
+	{
+		const auto found = m_KoukuDraftUploads.find(sessionId);
+		const auto now = static_cast<std::uint64_t>(std::chrono::duration_cast<std::chrono::milliseconds>(
+			std::chrono::steady_clock::now().time_since_epoch()).count());
+		if (found == m_KoukuDraftUploads.end() || found->second.iRequestSequence != request.iRequestSequence ||
+			found->second.RowsRevision != request.Scope.DraftRowsRevision ||
+			found->second.Rows.size() != found->second.iTotalBytes || now - found->second.iStartedAtMs > 30000u)
+		{
+			m_KoukuDraftUploads.erase(sessionId);
+			return reject(RESULT::REJECTED_SOURCE_REVISION_MISMATCH, "Memory draft upload is incomplete, expired or belongs to another request");
+		}
+		std::string rows = std::move(found->second.Rows);
+		m_KoukuDraftUploads.erase(found);
+		auto candidate = std::make_shared<CGameplayCatalog>();
+		if (!candidate->Load_DraftKoukuProduct(m_GameplayCatalog.Active(), rows, request.Scope.DraftRowsRevision))
+			return reject(RESULT::REJECTED_UNSUPPORTED_PATTERN,
+				("Memory draft rejected: " + candidate->Get_Status()).substr(0u, MAX_KOUKUSAYDON_PATTERN_AUDITION_REASON_BYTES));
+		productGeneration = std::move(candidate);
+	}
+	if (!draftRequest && !restart && request.Scope.iExpectedSourceRevision !=
 		CKoukuSaydonBrain::Resolve_ProductSourceRevision(*productGeneration))
 	{
 		auto candidate = std::make_shared<CGameplayCatalog>();
@@ -375,7 +441,7 @@ LostArk::Server::CGameRoom::Evaluate_KoukuSaydonPatternAudition(
 	}
 	if (request.iMarioTestStartStage) m_iNextMarioEntryStage = request.iMarioTestStartStage;
 	m_KoukuSaydonPatternAudition = std::move(staged);
-	m_pKoukuPublishedProductGeneration = m_KoukuSaydonPatternAudition.pProductGeneration;
+	if (!draftRequest) m_pKoukuPublishedProductGeneration = m_KoukuSaydonPatternAudition.pProductGeneration;
 	if (!continueRaid) m_iNextKoukuSaydonPatternAuditionEpoch = Add_ServerTicksSkippingReservedZero(m_iNextKoukuSaydonPatternAuditionEpoch, 1u);
 	const auto& first = m_KoukuSaydonPatternAudition.Members.front();
 	outResult.eResult = RESULT::QUEUED; outResult.iRoomAuditionEpoch = m_KoukuSaydonPatternAudition.iRoomAuditionEpoch;
@@ -399,14 +465,6 @@ void LostArk::Server::CGameRoom::Handle_KoukuSaydonPatternAudition(
 	if (nullptr == session)
 		return;
 	LostArk::Shared::S2C_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_RESULT result{};
-#ifndef _DEBUG
-	result.iRequestSequence = request.iRequestSequence; result.eOperation = request.eOperation; result.Scope = request.Scope;
-	result.strRequestedPatternId = request.strPatternId; result.strBundleId = request.strBundleId; result.iExpectedRunEpoch = request.iExpectedRunEpoch;
-	result.PinnedGameplayRevision = m_GameplayCatalog.Get_ActiveRevision();
-	result.iPinnedSourceRevision = CKoukuSaydonBrain::Resolve_ProductSourceRevision(m_GameplayCatalog.Active());
-	result.eResult = LostArk::Shared::KOUKUSAYDON_PATTERN_AUDITION_RESULT::REJECTED_RELEASE_BUILD;
-	result.strReason = "External pattern audition commands are available only in Debug builds";
-#else
 	if (Is_KoukuRaidRunning())
 	{
 		result.iRequestSequence = request.iRequestSequence; result.eOperation = request.eOperation; result.Scope = request.Scope;
@@ -417,7 +475,6 @@ void LostArk::Server::CGameRoom::Handle_KoukuSaydonPatternAudition(
 	}
 	else
 		(void)Evaluate_KoukuSaydonPatternAudition(sessionId, request, result);
-#endif
 	if (!Send_KoukuSaydonPatternAuditionResult(session, result))
 		session->Request_Close();
 }
@@ -621,6 +678,7 @@ bool LostArk::Server::CGameRoom::Build_KoukuBundleState(LostArk::Shared::S2C_KOU
 	message.eWorldId = m_eWorldId; message.strEncounterId = run.Request.Scope.strEncounterId; message.strBundleId = run.Request.strBundleId;
 	message.iRunEpoch = run.iRoomAuditionEpoch; message.iCommonStartTick = run.iCommonStartTick; message.iServerTick = m_iServerTick;
 	message.PinnedGameplayRevision = run.PinnedGameplayRevision; message.iPinnedSourceRevision = run.iPinnedSourceRevision;
+	message.DraftRowsRevision = run.Request.Scope.DraftRowsRevision;
 	message.eState = run.ePhase == KOUKUSAYDON_PATTERN_AUDITION_PHASE::PENDING ? KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE_STATE::PENDING : KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE_STATE::ACTIVE;
 	for (const auto& member : run.Members)
 	{
@@ -1578,7 +1636,6 @@ bool LostArk::Server::CGameRoom::Has_EngagedAuditionPlayer(
 	return false;
 }
 
-#ifdef _DEBUG
 void LostArk::Server::CGameRoom::Queue_ValtanAuditionLifecycle(
 	const SESSION_ID ownerSessionId,
 	const std::uint32_t requestSequence,
@@ -1601,9 +1658,7 @@ void LostArk::Server::CGameRoom::Queue_ValtanAuditionLifecycle(
 	message.strReason = std::move(reason);
 	m_PendingValtanAuditionLifecycle.push_back({ ownerSessionId, std::move(message) });
 }
-#endif
 
-#ifdef _DEBUG
 void LostArk::Server::CGameRoom::Queue_ValtanPatternIdAuditionLifecycle(
 	const LostArk::Shared::VALTAN_AUDITION_LIFECYCLE_STATE state,
 	std::string reason)
@@ -1634,9 +1689,7 @@ void LostArk::Server::CGameRoom::Queue_ValtanPatternIdAuditionLifecycle(
 			m_PendingValtanAuditionLifecycle.back().Message;
 	}
 }
-#endif
 
-#ifdef _DEBUG
 void LostArk::Server::CGameRoom::Queue_ValtanNextPatternLifecycle(
 	const VALTAN_NEXT_PATTERN_RESERVATION& reservation,
 	const LostArk::Shared::VALTAN_AUDITION_LIFECYCLE_STATE state,
@@ -1648,18 +1701,14 @@ void LostArk::Server::CGameRoom::Queue_ValtanNextPatternLifecycle(
 		reservation.strPatternId, reservation.PinnedDefinitionRevision,
 		state, std::move(reason));
 }
-#endif
 
-#ifdef _DEBUG
 bool LostArk::Server::CGameRoom::Is_ValtanPatternIdAuditionRunning() const noexcept
 {
 	return VALTAN_PATTERN_ID_AUDITION_PHASE::PENDING == m_ValtanPatternIdAudition.ePhase ||
 		VALTAN_PATTERN_ID_AUDITION_PHASE::ACTIVE == m_ValtanPatternIdAudition.ePhase ||
 		m_ValtanNextPattern.has_value();
 }
-#endif
 
-#ifdef _DEBUG
 void LostArk::Server::CGameRoom::Cancel_ValtanNextPatternReservation(std::string reason)
 {
 	if (!m_ValtanNextPattern)
@@ -1668,9 +1717,7 @@ void LostArk::Server::CGameRoom::Cancel_ValtanNextPatternReservation(std::string
 		LostArk::Shared::VALTAN_AUDITION_LIFECYCLE_STATE::ABORTED, std::move(reason));
 	m_ValtanNextPattern.reset();
 }
-#endif
 
-#ifdef _DEBUG
 void LostArk::Server::CGameRoom::Cancel_ValtanPatternIdAudition(std::string reason)
 {
 	Cancel_ValtanNextPatternReservation(reason);
@@ -1684,9 +1731,7 @@ void LostArk::Server::CGameRoom::Cancel_ValtanPatternIdAudition(std::string reas
 	}
 	m_ValtanPatternIdAudition = {};
 }
-#endif
 
-#ifdef _DEBUG
 bool LostArk::Server::CGameRoom::Flush_ValtanPatternIdAuditionLifecycle()
 {
 	using namespace LostArk::Shared;
@@ -1710,9 +1755,7 @@ bool LostArk::Server::CGameRoom::Flush_ValtanPatternIdAuditionLifecycle()
 	}
 	return true;
 }
-#endif
 
-#ifdef _DEBUG
 LostArk::Shared::VALTAN_AUDITION_RESULT
 LostArk::Server::CGameRoom::Evaluate_ValtanNextPatternControl(
 	const SESSION_ID sessionId,
@@ -1899,9 +1942,7 @@ LostArk::Server::CGameRoom::Evaluate_ValtanNextPatternControl(
 		VALTAN_NEXT_PATTERN_COMMAND_RECEIPT{ request, verdict, outCurrentHealthBar });
 	return verdict;
 }
-#endif
 
-#ifdef _DEBUG
 LostArk::Shared::VALTAN_AUDITION_RESULT
 LostArk::Server::CGameRoom::Adopt_ValtanLiveNextPattern(
 	const SESSION_ID sessionId,
@@ -2031,9 +2072,7 @@ LostArk::Server::CGameRoom::Adopt_ValtanLiveNextPattern(
 		VALTAN_AUDITION_LIFECYCLE_STATE::NEXT_RESERVED);
 	return VALTAN_AUDITION_RESULT::QUEUED;
 }
-#endif
 
-#ifdef _DEBUG
 void LostArk::Server::CGameRoom::Try_PromoteValtanNextPattern(SERVER_WORLD_ENTITY& boss)
 {
 	using namespace LostArk::Shared;
@@ -2105,9 +2144,7 @@ void LostArk::Server::CGameRoom::Try_PromoteValtanNextPattern(SERVER_WORLD_ENTIT
 	m_ValtanNextPattern.reset();
 	Queue_ValtanPatternIdAuditionLifecycle(VALTAN_AUDITION_LIFECYCLE_STATE::PENDING);
 }
-#endif
 
-#ifdef _DEBUG
 bool LostArk::Server::CGameRoom::Prepare_ValtanPatternIdAuditionBeforeBrain(
 	SERVER_WORLD_ENTITY& boss)
 {
@@ -2172,9 +2209,7 @@ bool LostArk::Server::CGameRoom::Prepare_ValtanPatternIdAuditionBeforeBrain(
 	m_ValtanPatternIdAudition.bReportedWaitingForPlayer = false;
 	return true;
 }
-#endif
 
-#ifdef _DEBUG
 bool LostArk::Server::CGameRoom::Refresh_ValtanPatternIdAuditionState()
 {
 	if (VALTAN_PATTERN_ID_AUDITION_PHASE::INACTIVE ==
@@ -2283,17 +2318,13 @@ bool LostArk::Server::CGameRoom::Refresh_ValtanPatternIdAuditionState()
 	Cancel_ValtanPatternIdAudition("Valtan audition occurrence aborted, discarded or replaced");
 	return false;
 }
-#endif
 
-#ifdef _DEBUG
 bool LostArk::Server::CGameRoom::Is_ValtanPatternFlowRunning() const noexcept
 {
 	return VALTAN_PATTERN_FLOW_AUDITION_PHASE::INACTIVE !=
 		m_ValtanPatternFlowAudition.ePhase;
 }
-#endif
 
-#ifdef _DEBUG
 const LostArk::Server::BOSS_PATTERN_SEQUENCE_DEFINITION*
 LostArk::Server::CGameRoom::Resolve_ValtanPatternFlowSequence(
 	const SERVER_WORLD_ENTITY& boss) const noexcept
@@ -2312,4 +2343,3 @@ LostArk::Server::CGameRoom::Resolve_ValtanPatternFlowSequence(
 	}
 	return &m_ValtanPatternFlowAudition.Sequence;
 }
-#endif

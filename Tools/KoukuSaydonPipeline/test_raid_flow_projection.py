@@ -33,6 +33,47 @@ def documents():
 
 
 class RaidProjectionTests(unittest.TestCase):
+    def test_hp_groups_preserve_saved_identity_and_completion_boundary(self):
+        action, sequence = documents()
+        flow = action["patternFlows"][0]
+        flow["entryGroups"] = [{"groupId": "group.normal", "displayName": "Normal attacks",
+            "startEntryId": "entry.GATE1", "endEntryId": "entry.GATE1",
+            "repeatUntilHealthBars": 130, "transitionAt": "PATTERN_END"}]
+        before = copy.deepcopy(action)
+        projected = subject.project_raid_gates(action, sequence)[0]
+        self.assertEqual(flow["entryGroups"], projected["entryGroups"])
+        self.assertEqual(before, action)
+        projected["entryGroups"][0]["repeatUntilHealthBars"] = 60
+        self.assertEqual(130, flow["entryGroups"][0]["repeatUntilHealthBars"])
+        for threshold in (0, 1000):
+            flow["entryGroups"][0]["repeatUntilHealthBars"] = threshold
+            flow["entryGroups"][0]["transitionAt"] = "GROUP_END"
+            composition.validate_flow_groups(flow)
+
+    def test_hp_groups_reject_missing_overlap_reversed_or_ambiguous_ranges(self):
+        action, _ = documents()
+        flow = action["patternFlows"][0]
+        flow["entries"].append(dict(flow["entries"][0], entryId="entry.second"))
+        group = {"groupId": "group.normal", "displayName": "Normal attacks",
+            "startEntryId": "entry.GATE1", "endEntryId": "entry.second",
+            "repeatUntilHealthBars": 130, "transitionAt": "PATTERN_END"}
+        mutations = [dict(startEntryId="missing"), dict(endEntryId="missing"),
+            dict(startEntryId="entry.second", endEntryId="entry.GATE1"),
+            *[dict(repeatUntilHealthBars=v) for v in (-1, 1001, True, 3.5, None)],
+            dict(transitionAt="IMMEDIATE"), dict(transitionAt=None)]
+        for mutation in mutations:
+            with self.subTest(mutation=mutation):
+                flow["entryGroups"] = [dict(group, **mutation)]
+                with self.assertRaises(composition.CompositionError): composition.validate_flow_groups(flow)
+        flow["entryGroups"] = [group, dict(group, groupId="group.overlap")]
+        with self.assertRaises(composition.CompositionError): composition.validate_flow_groups(flow)
+        flow["entryGroups"] = [group]
+        flow["loopStartEntryId"] = "entry.GATE1"
+        with self.assertRaises(composition.CompositionError): composition.validate_flow_groups(flow)
+        del flow["loopStartEntryId"]
+        del flow["entryGroups"][0]["transitionAt"]
+        with self.assertRaises(composition.CompositionError): composition.validate_flow_groups(flow)
+
     def test_authoring_validator_rejects_a_loop_boundary_outside_its_flow(self):
         action, _ = documents()
         for flow in action["patternFlows"]:
@@ -161,6 +202,19 @@ class RaidProjectionTests(unittest.TestCase):
         first = valid["raidGates"][0]
         first["entries"] = [dict(first["entries"][0], entryId=f"entry.{i}") for i in range(12)]
         cases = [{"name": "valid", "accepted": True, "document": valid}]
+        grouped = copy.deepcopy(valid)
+        grouped["raidGates"][0]["entryGroups"] = [{"groupId": "normal.first", "displayName": "First normal group",
+            "startEntryId": "entry.0", "endEntryId": "entry.10", "repeatUntilHealthBars": 130, "transitionAt": "PATTERN_END"},
+            {"groupId": "mechanic.first", "displayName": "First mechanic", "startEntryId": "entry.11", "endEntryId": "entry.11"}]
+        cases.append({"name": "hp_groups", "accepted": True, "document": grouped})
+        for mutation in ({"startEntryId": "missing"}, {"endEntryId": "missing"}, {"repeatUntilHealthBars": -1},
+                         {"repeatUntilHealthBars": True}, {"transitionAt": "IMMEDIATE"}):
+            invalid = copy.deepcopy(grouped)
+            invalid["raidGates"][0]["entryGroups"][0].update(mutation)
+            cases.append({"name": "invalid_hp_group", "accepted": False, "document": invalid})
+        invalid = copy.deepcopy(grouped)
+        invalid["raidGates"][0]["entryGroups"][1]["startEntryId"] = "entry.10"
+        cases.append({"name": "overlapping_hp_group", "accepted": False, "document": invalid})
         repeating = copy.deepcopy(valid)
         repeating["raidGates"][1]["loopStartEntryId"] = repeating["raidGates"][1]["entries"][0]["entryId"]
         cases.append({"name": "repeat_boundary", "accepted": True, "document": repeating})
@@ -193,6 +247,7 @@ foreach ($node in $ast.FindAll({param($n) $n -is [Management.Automation.Language
     if ($node.Name -cin $names) { Invoke-Expression $node.Extent.Text }
 }
 . (Join-Path $Root 'Tools/KoukuSaydonPipeline/Publish-KoukuRaidRows.ps1')
+. (Join-Path $Root 'Tools/KoukuSaydonPipeline/KoukuBootstrapRows.ps1')
 foreach ($case in (Get-Content -LiteralPath $Cases -Raw | ConvertFrom-Json)) {
     $rows = [Collections.Generic.List[string]]::new()
     $accepted = $true
@@ -210,6 +265,16 @@ foreach ($case in (Get-Content -LiteralPath $Cases -Raw | ConvertFrom-Json)) {
             }
             $index = 0
             foreach ($row in $gateRows) { if ($row.StartsWith("RAIDFLOWSTEP`t")) { if ([int]$row.Split("`t")[2] -ne $index) { throw 'Flow order was not dense' }; ++$index } }
+            $groups = @($gateRows | Where-Object { $_.StartsWith("RAIDFLOWGROUP`t") })
+            if ($null -ne $gate.PSObject.Properties['entryGroups']) {
+                if ($groups.Count -ne @($gate.entryGroups).Count) { throw 'Flow groups were lost' }
+                for ($i = 0; $i -lt $groups.Count; ++$i) {
+                    $fields = $groups[$i].Split("`t")
+                    if ([int]$fields[2] -ne $i -or $fields[3] -cne $gate.entryGroups[$i].groupId -or
+                        $fields[4] -cne $gate.entryGroups[$i].startEntryId -or $fields[5] -cne $gate.entryGroups[$i].endEntryId) { throw 'Flow group identity or order changed' }
+                    if ([Array]::IndexOf($gateRows, $groups[$i]) -le $index) { throw 'Group preceded its entry rows' }
+                }
+            }
         }
     }
 }

@@ -23,7 +23,7 @@ def validate_hits(rows, lifetime_ms=600000):
         raise ValueError("Attack templates require a bounded array of at most 32 hits")
     result, ids = [], set()
     for row in rows:
-        if not isinstance(row, dict) or set(row) - HIT_DEFAULTS.keys():
+        if not isinstance(row, dict) or set(row) - (HIT_DEFAULTS.keys() | {"riseHeightM", "pushMs"}):
             raise ValueError("Attack hit has unknown fields")
         hit = {**HIT_DEFAULTS, **copy.deepcopy(row)}
         identity = hit["hitId"]
@@ -71,6 +71,12 @@ def validate_hits(rows, lifetime_ms=600000):
             valid = hit["damageProfileId"] == "" and ((kind == "MAX_HP_PERCENT" and 1 <= hit["damagePercent"] <= 100) or (kind == "INSTANT_DEATH" and hit["damagePercent"] == 0))
         if not valid:
             raise ValueError("Attack damage policy is invalid")
+        height, duration = hit.get("riseHeightM", 0), hit.get("pushMs", 0)
+        if (type(height) not in (int, float) or not math.isfinite(height) or not 0 <= height <= 100
+                or type(duration) is not int or (duration != 0 if height == 0 else not 100 <= duration <= 5000)):
+            raise ValueError("Attack rise height and flight time must form a bounded pair")
+        if "riseHeightM" in row or "pushMs" in row:
+            hit["riseHeightM"], hit["pushMs"] = height, duration
         result.append(hit)
     return result
 

@@ -587,6 +587,8 @@ namespace
 			output = BOSS_PATTERN_LOGIC_RESULT_KIND::NONE;
 		else if ("INSTANT_DEATH" == value)
 			output = BOSS_PATTERN_LOGIC_RESULT_KIND::INSTANT_DEATH;
+		else if ("FIXED_DAMAGE" == value)
+			output = BOSS_PATTERN_LOGIC_RESULT_KIND::FIXED_DAMAGE;
 		else if ("MAX_HP_PERCENT_DAMAGE" == value)
 			output = BOSS_PATTERN_LOGIC_RESULT_KIND::MAX_HP_PERCENT_DAMAGE;
 		else if ("MADNESS_GAUGE_ADD_PERCENT" == value)
@@ -1453,6 +1455,50 @@ bool LostArk::Server::CGameplayCatalog::Load_PublishedKoukuProduct(
 	return Load_BootstrapBytes(joined, nullptr, nullptr);
 }
 
+bool LostArk::Server::CGameplayCatalog::Load_DraftKoukuProduct(
+	const CGameplayCatalog& activeGameplay, const std::string& rows,
+	const LostArk::Shared::GameplayDataRevision& expectedRowsRevision)
+{
+	LostArk::Shared::GameplayDataRevision actualRevision;
+	if (rows.empty() || rows.size() > LostArk::Shared::MAX_KOUKUSAYDON_DRAFT_BYTES ||
+		rows.back() != '\n' || rows.find('\0') != std::string::npos ||
+		!expectedRowsRevision.Is_Valid() || !Calculate_GameplayDataRevision(rows, actualRevision) ||
+		actualRevision != expectedRowsRevision || activeGameplay.m_NonKoukuBootstrapRows.empty())
+	{ m_strStatus = "Kouku draft size, checksum, rows or active baseline is invalid"; return false; }
+	// The Client supplies only the encounter domain. Even otherwise valid player,
+	// balance or other-encounter rows may never cross this Debug admission boundary.
+	std::istringstream input(rows);
+	std::string line;
+	while (std::getline(input, line))
+	{
+		StripCarriageReturn(line);
+		const auto fields = SplitTabs(line);
+		if (fields.size() < 2u)
+		{ m_strStatus = "Kouku draft contains an empty or malformed row"; return false; }
+		const auto kind = fields[0];
+		const bool encounterRow = fields[1] == "ENCOUNTER_KAKULSAYDON_G1" &&
+			(kind.starts_with("PATTERN") || kind == "KOUKUMADNESS" ||
+			 kind == "KOUKUSAYDONPRODUCTREVISION" || kind == "ENCOUNTERINTRO");
+		const bool joinedRow = kind == "PATTERNTARGET" || kind == "PATTERNBUNDLE" ||
+			kind == "PATTERNBUNDLEMEMBER" || kind == "RAIDGATE" ||
+			kind == "RAIDFLOWSTEP" || kind == "RAIDFLOWGROUP" || kind == "RAIDARRIVAL";
+		if (!encounterRow && !joinedRow)
+		{ m_strStatus = "Kouku draft contains a row outside its encounter"; return false; }
+	}
+	const std::string joinedRows = activeGameplay.m_NonKoukuBootstrapRows + rows;
+	const std::string bootstrap = "LOSTARK_GAMEPLAY_BOOTSTRAP\t" +
+		std::to_string(GAMEPLAY_BOOTSTRAP_VERSION) + "\t" +
+		std::to_string(std::count(joinedRows.begin(), joinedRows.end(), '\n')) + "\n" + joinedRows;
+	CGameplayCatalog staged;
+	if (!staged.Load_BootstrapBytes(bootstrap, nullptr, &activeGameplay.m_ActiveRevision))
+	{ m_strStatus = staged.Get_Status(); return false; }
+	if (!staged.Has_SameNonKoukuGameplay(activeGameplay))
+	{ m_strStatus = "Kouku draft cannot replace player/boss balance or another encounter"; return false; }
+	*this = std::move(staged);
+	m_strStatus = "Kouku memory draft admitted for one audition";
+	return true;
+}
+
 bool LostArk::Server::CGameplayCatalog::Load_FromBootstrap(
 	const std::filesystem::path& bootstrapPath,
 	const LostArk::Shared::GameplayDataRevision& expectedBootstrapRevision,
@@ -1656,6 +1702,34 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 		bool& committed;
 		~RAID_ROLLBACK() { if (!committed) target = std::move(previous); }
 	} raidRollback{m_KoukuRaidGates, std::move(m_KoukuRaidGates), rollback.committed};
+	// Supplemental profiles must replace the previous generation together with
+	// its skills. A failed reload restores all lookup views, never partial rows.
+	struct PROFILE_ROLLBACK final
+	{
+		decltype(m_EmberProfiles)& embers;
+		decltype(m_EmberProfiles) previousEmbers;
+		decltype(m_DamageProfileById)& damages;
+		decltype(m_DamageProfileById) previousDamages;
+		decltype(m_SkillBuffsBySkillId)& buffsBySkill;
+		decltype(m_SkillBuffsBySkillId) previousBuffsBySkill;
+		decltype(m_SkillBuffById)& buffsById;
+		decltype(m_SkillBuffById) previousBuffsById;
+		bool& committed;
+		~PROFILE_ROLLBACK()
+		{
+			if (committed) return;
+			embers = std::move(previousEmbers);
+			damages = std::move(previousDamages);
+			buffsBySkill = std::move(previousBuffsBySkill);
+			buffsById = std::move(previousBuffsById);
+		}
+	} profileRollback{m_EmberProfiles, std::move(m_EmberProfiles),
+		m_DamageProfileById, std::move(m_DamageProfileById),
+		m_SkillBuffsBySkillId, std::move(m_SkillBuffsBySkillId),
+		m_SkillBuffById, std::move(m_SkillBuffById), rollback.committed};
+	m_DamageProfileById.clear();
+	m_SkillBuffsBySkillId.clear();
+	m_SkillBuffById.clear();
 	m_KoukuRaidGates.clear();
 	m_Skills.clear();
 	m_Bosses.clear();
@@ -1759,15 +1833,71 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 		else if (!fields.empty() && "DAMAGE" == fields[0])
 		{
 			std::uint32_t ratePercent = 0;
-			if (3u != fields.size() || !IsStableId(fields[1]) ||
+			DAMAGE_PROFILE profile{};
+			/* A row published before the original formula shipped carries the flat
+			percent alone; the coefficient/addend pair is appended after it. */
+			const bool hasFormula = 5u == fields.size() || 6u == fields.size();
+			const bool hasSpread = 6u == fields.size();
+			if ((3u != fields.size() && !hasFormula) || !IsStableId(fields[1]) ||
 				!ParseNumber(fields[2], ratePercent) || 0u == ratePercent ||
 				ratePercent > MAXIMUM_DAMAGE_RATE_PERCENT ||
+				(hasFormula &&
+					(!ParseNumber(fields[3], profile.iAttackCoefficientBp) ||
+					 !ParseNumber(fields[4], profile.iDamageAddend))) ||
+				(hasSpread &&
+					(!ParseNumber(fields[5], profile.iDamageSpreadPercent) ||
+					 profile.iDamageSpreadPercent >= 100u)) ||
 				!m_DamageRatePercentByProfileId.emplace(
 					std::string(fields[1]), ratePercent).second)
 			{
 				m_strStatus = "Damage profile row is invalid";
 				return false;
 			}
+			profile.iRatePercent = ratePercent;
+			m_DamageProfileById.emplace(std::string(fields[1]), profile);
+		}
+		else if (!fields.empty() && "SKILLBUFF" == fields[0])
+		{
+			SKILL_BUFF_DEFINITION buff{};
+			std::string target;
+			if (11u != fields.size() ||
+				!ParseNumber(fields[1], buff.iSkillId) ||
+				!ParseNumber(fields[2], buff.iBuffId) ||
+				!ParseNumber(fields[4], buff.iDurationMs) ||
+				0u == buff.iDurationMs || buff.iDurationMs > 600000u ||
+				!ParseNumber(fields[5], buff.iDamageDealtPercent) ||
+				!ParseNumber(fields[6], buff.iDamageTakenPercent) ||
+				!ParseNumber(fields[7], buff.iAttackSpeedPercent) ||
+				!ParseNumber(fields[8], buff.iShieldPercentOfMaxHp) ||
+				buff.iShieldPercentOfMaxHp > 1000u ||
+				!ParseNumber(fields[9], buff.iStunMs) || buff.iStunMs > 60000u ||
+				!ParseNumber(fields[10], buff.iDeathDenyInvulnerableMs) ||
+				buff.iDeathDenyInvulnerableMs > 60000u)
+			{
+				m_strStatus = "Skill buff row is invalid";
+				return false;
+			}
+			target = fields[3];
+			if ("SELF" == target) buff.eTarget = SKILL_BUFF_TARGET::SELF;
+			else if ("ALLY" == target) buff.eTarget = SKILL_BUFF_TARGET::ALLY;
+			else if ("ENEMY" == target) buff.eTarget = SKILL_BUFF_TARGET::ENEMY;
+			else
+			{
+				m_strStatus = "Skill buff target is invalid";
+				return false;
+			}
+			std::vector<SKILL_BUFF_DEFINITION>& list =
+				m_SkillBuffsBySkillId[buff.iSkillId];
+			for (const SKILL_BUFF_DEFINITION& existing : list)
+			{
+				if (existing.iBuffId == buff.iBuffId)
+				{
+					m_strStatus = "Skill buff row is duplicated";
+					return false;
+				}
+			}
+			list.push_back(buff);
+			m_SkillBuffById.emplace(buff.iBuffId, buff);
 		}
 		else if (!fields.empty() && "SKILL" == fields[0])
 		{
@@ -2844,6 +2974,24 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 			{ m_strStatus = "Boss logic cancellation window is missing or duplicated"; return false; }
 			window->bCancelAtEnd = true;
 		}
+        else if (!fields.empty() && "PATTERNLOGICTICK" == fields[0])
+        {
+            std::uint32_t interval = 0u;
+            if (fields.size() != 5u || !IsStableId(fields[1]) || !IsStableId(fields[2]) ||
+                !IsStableId(fields[3]) || !ParseNumber(fields[4], interval) || !interval || interval > 600000u)
+            { m_strStatus = "Collider tick interval is invalid"; return false; }
+            const auto owners = m_BossPatterns.find(std::string(fields[1]));
+            if (owners == m_BossPatterns.end()) { m_strStatus = "Collider tick encounter is missing"; return false; }
+            const auto pattern = std::find_if(owners->second.begin(), owners->second.end(),
+                [&](const auto& row) { return row.strPatternId == fields[2]; });
+            if (pattern == owners->second.end()) { m_strStatus = "Collider tick pattern is missing"; return false; }
+            const auto window = std::find_if(pattern->LogicWindows.begin(), pattern->LogicWindows.end(),
+                [&](const auto& row) { return row.strWindowId == fields[3]; });
+            if (window == pattern->LogicWindows.end() || window->eKind != BOSS_PATTERN_LOGIC_KIND::ENTER_AREA ||
+                window->iRepeatIntervalMs || window->bRearmOnExit || window->bRepeatAfterKnockback)
+            { m_strStatus = "Collider tick requires one ENTER_AREA repeat policy"; return false; }
+            window->iRepeatIntervalMs = interval;
+        }
 		else if (!fields.empty() && "PATTERNLOGICREARM" == fields[0])
 		{
 			if (fields.size() != 5u || !IsStableId(fields[1]) || !IsStableId(fields[2]) ||
@@ -2858,7 +3006,7 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 			{ m_strStatus = "Boss logic rearm pattern is missing"; return false; }
 			const auto window = std::find_if(pattern->LogicWindows.begin(), pattern->LogicWindows.end(),
 				[&](const auto& row) { return row.strWindowId == fields[3]; });
-			if (window == pattern->LogicWindows.end() || window->eKind != BOSS_PATTERN_LOGIC_KIND::ENTER_AREA || window->bRearmOnExit || window->bRepeatAfterKnockback)
+			if (window == pattern->LogicWindows.end() || window->eKind != BOSS_PATTERN_LOGIC_KIND::ENTER_AREA || window->bRearmOnExit || window->bRepeatAfterKnockback || window->iRepeatIntervalMs)
 			{ m_strStatus = "Boss logic rearm needs one ENTER_AREA owner"; return false; }
 			window->bRearmOnExit = fields[4] == "ON_REENTER";
 			window->bRepeatAfterKnockback = fields[4] == "AFTER_KNOCKBACK";
@@ -2919,11 +3067,13 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 			{ m_strStatus = "Boss Logic region identity is invalid"; return false; }
 			region.strRegionId = std::string(fields[5]);
 			if ("BOSS_CURRENT" == fields[6]) region.eAnchor = BOSS_LOGIC_REGION_ANCHOR::BOSS_CURRENT;
+			else if ("BOSS_START" == fields[6]) region.eAnchor = BOSS_LOGIC_REGION_ANCHOR::BOSS_START;
 			else if ("BOSS_SPAWN" == fields[6]) region.eAnchor = BOSS_LOGIC_REGION_ANCHOR::BOSS_SPAWN;
 			else if ("WORLD" != fields[6]) { m_strStatus = "Boss Logic region anchor is invalid"; return false; }
 			region.bReverseSector = "REVERSE_SECTOR" == fields[7];
 			region.bSector = "SECTOR" == fields[7] || region.bReverseSector;
-			region.bCircle = "CIRCLE" == fields[7];
+			region.bCylinder = "CYLINDER" == fields[7];
+			region.bCircle = "CIRCLE" == fields[7] || region.bCylinder;
 			if (!region.bSector && !region.bCircle && "BOX" != fields[7]) { m_strStatus = "Boss Logic region shape is invalid"; return false; }
 			float* numbers[] = { &region.fCenterX, &region.fCenterY, &region.fCenterZ, &region.fYawDegrees,
 				&region.fHalfX, &region.fHalfY, &region.fHalfZ, &region.fRadiusM, &region.fHalfAngleDegrees };
@@ -2941,7 +3091,7 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 			if ((fields.size() == 20u || fields.size() == 22u) &&
 				(!ParseNumber(fields.back(), region.fInnerRadiusM) || !std::isfinite(region.fInnerRadiusM) ||
 				 region.fInnerRadiusM < 0.f || region.fInnerRadiusM >= region.fRadiusM ||
-				 (region.fInnerRadiusM > 0.f && ((!region.bCircle && !region.bSector) || region.bReverseSector ||
+				 (region.fInnerRadiusM > 0.f && (region.bCylinder || (!region.bCircle && !region.bSector) || region.bReverseSector ||
 				  (region.fRadiusXM > 0.f && (std::abs(region.fRadiusXM - region.fRadiusM) > .0001f || std::abs(region.fRadiusZM - region.fRadiusM) > .0001f))))))
 			{ m_strStatus = "Boss Logic inner radius requires an exact circular ring or annular sector"; return false; }
 			if ("NONE" != fields[17])
@@ -2971,8 +3121,61 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 				(!region.bSector || region.bReverseSector || region.eAnchor != BOSS_LOGIC_REGION_ANCHOR::BOSS_CURRENT ||
 				 region.eCardSymbol != LostArk::Shared::MECHANIC_CARD_SYMBOL::NONE))
 			{ m_strStatus = "Shield reflection requires boss-pivot sector regions without card mapping"; return false; }
+			region.iMotionStartMs = window->iStartMs;
+			region.iMotionDurationMs = window->iDurationMs;
 			window->CardRegions.push_back(std::move(region));
 		}
+		else if (!fields.empty() && "PATTERNLOGICREGIONCAPTURE" == fields[0])
+		{
+			std::uint32_t ordinal = 0u, captureStartMs = 0u;
+			if (fields.size() != 6u || !IsStableId(fields[1]) || !IsStableId(fields[2]) ||
+				!IsStableId(fields[3]) || !ParseNumber(fields[4], ordinal) || !ParseNumber(fields[5], captureStartMs))
+			{ m_strStatus = "Collider anchor capture identity or time is invalid"; return false; }
+			const auto owners = m_BossPatterns.find(std::string(fields[1]));
+			if (owners == m_BossPatterns.end()) { m_strStatus = "Collider capture encounter is missing"; return false; }
+			const auto pattern = std::find_if(owners->second.begin(), owners->second.end(),
+				[&](const auto& row) { return row.strPatternId == fields[2]; });
+			if (pattern == owners->second.end()) { m_strStatus = "Collider capture pattern is missing"; return false; }
+			const auto window = std::find_if(pattern->LogicWindows.begin(), pattern->LogicWindows.end(),
+				[&](const auto& row) { return row.strWindowId == fields[3]; });
+			if (window == pattern->LogicWindows.end() || ordinal >= window->CardRegions.size() || captureStartMs > window->iStartMs)
+			{ m_strStatus = "Collider capture must precede its owning window"; return false; }
+			auto& region = window->CardRegions[ordinal];
+			if (region.eAnchor != BOSS_LOGIC_REGION_ANCHOR::BOSS_START || region.iAnchorCaptureStartMs != 0xffffffffu)
+			{ m_strStatus = "Collider capture requires one fixed boss anchor"; return false; }
+			region.iAnchorCaptureStartMs = captureStartMs;
+		}
+        else if (!fields.empty() && "PATTERNLOGICREGIONMOTION" == fields[0])
+        {
+            std::uint32_t ordinal = 0u;
+            if (fields.size() != 11u || !IsStableId(fields[1]) || !IsStableId(fields[2]) ||
+                !IsStableId(fields[3]) || !ParseNumber(fields[4], ordinal))
+            { m_strStatus = "Collider motion identity is invalid"; return false; }
+            const auto owners = m_BossPatterns.find(std::string(fields[1]));
+            if (owners == m_BossPatterns.end()) { m_strStatus = "Collider motion encounter is missing"; return false; }
+            const auto pattern = std::find_if(owners->second.begin(), owners->second.end(),
+                [&](const auto& row) { return row.strPatternId == fields[2]; });
+            if (pattern == owners->second.end()) { m_strStatus = "Collider motion pattern is missing"; return false; }
+            const auto window = std::find_if(pattern->LogicWindows.begin(), pattern->LogicWindows.end(),
+                [&](const auto& row) { return row.strWindowId == fields[3]; });
+            if (window == pattern->LogicWindows.end() || ordinal >= window->CardRegions.size() ||
+                (window->eKind != BOSS_PATTERN_LOGIC_KIND::ENTER_AREA && window->eKind != BOSS_PATTERN_LOGIC_KIND::AREA_OVERLAP &&
+                 window->eKind != BOSS_PATTERN_LOGIC_KIND::OBJECT_CONTACT && window->eKind != BOSS_PATTERN_LOGIC_KIND::OBJECT_OVERLAP))
+            { m_strStatus = "Collider motion requires an overlap region"; return false; }
+            auto& region = window->CardRegions[ordinal];
+            if (region.bLinearMotion) { m_strStatus = "Collider motion is duplicated"; return false; }
+            for (std::size_t axis = 0; axis < 3u; ++axis)
+                if (!ParseNumber(fields[5u + axis], region.EndPositionOffset[axis]) ||
+                    !std::isfinite(region.EndPositionOffset[axis]) || std::abs(region.EndPositionOffset[axis]) > 200000.f ||
+                    !ParseNumber(fields[8u + axis], region.EndScale[axis]) ||
+                    !std::isfinite(region.EndScale[axis]) || region.EndScale[axis] <= 0.f || region.EndScale[axis] > 10000000.f)
+                { m_strStatus = "Collider end position or size is invalid"; return false; }
+            if ((region.bCircle || region.fInnerRadiusM > 0.f) && std::abs(region.EndScale[0] - region.EndScale[2]) > .0001f)
+            { m_strStatus = "Hollow Collider motion needs equal X/Z scale"; return false; }
+            region.bLinearMotion = true;
+            region.iMotionStartMs = window->iStartMs;
+            region.iMotionDurationMs = window->iDurationMs;
+        }
 		else if (!fields.empty() && ("PATTERNLOGICREGIONWORLD" == fields[0] || "PATTERNLOGICREGIONWORLDKEY" == fields[0]))
 		{
 			const bool isKey = "PATTERNLOGICREGIONWORLDKEY" == fields[0];
@@ -2991,8 +3194,8 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 			const auto region = std::find_if(window->CardRegions.begin(),window->CardRegions.end(),
 				[&](const BOSS_LOGIC_REGION& row) { return row.strRegionId == fields[4]; });
 			if (region == window->CardRegions.end() || (BOSS_LOGIC_REGION_ANCHOR::BOSS_CURRENT == region->eAnchor &&
-				window->eKind != BOSS_PATTERN_LOGIC_KIND::OBJECT_CONTACT))
-			{ m_strStatus = "Boss Logic WORLD region is missing or uses a bone track outside Object Contact"; return false; }
+				window->eKind != BOSS_PATTERN_LOGIC_KIND::OBJECT_CONTACT && window->eKind != BOSS_PATTERN_LOGIC_KIND::ENTER_AREA))
+			{ m_strStatus = "Boss Logic WORLD region is missing or uses a bone track outside Object Contact / Enter Area"; return false; }
 			auto& track = region->WorldTrack;
 			if (!isKey)
 			{
@@ -3091,7 +3294,13 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
             }
             else if (fields.size() == 14u)
             { m_strStatus = "Only capture results carry an attachment slot and grip"; return false; }
-            if (result.eKind == BOSS_PATTERN_LOGIC_RESULT_KIND::FEAR)
+            if (result.eKind == BOSS_PATTERN_LOGIC_RESULT_KIND::FIXED_DAMAGE)
+            {
+                if (fields.size() != 11u || result.iPercent || result.iDurationMs || fields[9] != "-" ||
+                    !ParseNumber(fields[10], result.iDamageAmount) || !result.iDamageAmount || result.iDamageAmount > 1000000000u)
+                { m_strStatus = "Fixed damage requires 1..1000000000 HP and no percent/duration/target"; return false; }
+            }
+            else if (result.eKind == BOSS_PATTERN_LOGIC_RESULT_KIND::FEAR)
             {
                 if (fields.size() != 11u || !IsStableId(fields[10]) || result.iDurationMs == 0u ||
                     result.iDurationMs > 600000u || result.iPercent != 0u)
@@ -3179,17 +3388,19 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 		else if (!fields.empty() && "PATTERNLOGICPUSH" == fields[0])
 		{
 			std::uint32_t ordinal = 0u, pushMs = 0u;
-			float rangeM = 0.f;
-			const bool ballistic = fields.size() == 13u && fields[12] == "1";
-			if ((fields.size() != 8u && fields.size() != 9u && fields.size() != 11u && fields.size() != 12u && fields.size() != 13u) || !IsStableId(fields[1]) || !IsStableId(fields[2]) || !IsStableId(fields[3]) ||
+			float rangeM = 0.f, heightM = 0.f;
+			if (fields.size() == 14u && (!ParseNumber(fields[13], heightM) || !std::isfinite(heightM) || heightM < 0.f || heightM > 100.f))
+			{ m_strStatus = "Ballistic height is invalid"; return false; }
+			const bool ballistic = fields.size() >= 13u && fields[12] == "1";
+			if ((fields.size() != 8u && fields.size() != 9u && fields.size() != 11u && fields.size() != 12u && fields.size() != 13u && fields.size() != 14u) || !IsStableId(fields[1]) || !IsStableId(fields[2]) || !IsStableId(fields[3]) ||
 				(fields.size() >= 9u && fields[8] != "AWAY_FROM_BOSS" && fields[8] != "BOSS_FORWARD" && fields[8] != "AWAY_FROM_CONTACT") ||
 				(fields.size() >= 11u && ((fields[9] != "0" && fields[9] != "1") || (fields[10] != "0" && fields[10] != "1"))) ||
 				(fields[4] != "SUCCESS" && fields[4] != "FAIL" && fields[4] != "TIMEOUT") ||
 				!ParseNumber(fields[5], ordinal) || ordinal > 3u ||
-				!ParseNumber(fields[6], rangeM) || !std::isfinite(rangeM) || rangeM <= 0.f || rangeM > (ballistic ? 100.f : 20.f) ||
+				!ParseNumber(fields[6], rangeM) || !std::isfinite(rangeM) || rangeM < 0.f || (rangeM == 0.f && heightM == 0.f) || rangeM > (ballistic ? 100.f : 20.f) ||
 				!ParseNumber(fields[7], pushMs) || pushMs == 0u || pushMs > (ballistic ? 5000u : 600000u) ||
-				(fields.size() == 13u && fields[12] != "0" && fields[12] != "1") ||
-				(ballistic && (pushMs < 100u || fields[10] != "1")))
+				(fields.size() >= 13u && fields[12] != "0" && fields[12] != "1") ||
+				(heightM > 0.f && !ballistic) || (ballistic && pushMs < 100u))
 			{ m_strStatus = "Boss logic push requires paired bounded range and duration"; return false; }
 			const auto owners = m_BossPatterns.find(std::string(fields[1]));
 			if (owners == m_BossPatterns.end())
@@ -3204,12 +3415,13 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 			{ m_strStatus = "Boss logic push window is missing"; return false; }
 			auto& outcomes = fields[4] == "SUCCESS" ? window->OnSuccess :
 				(fields[4] == "FAIL" ? window->OnFail : window->OnTimeout);
-			if (ordinal >= outcomes.size() || outcomes[ordinal].eKind != BOSS_PATTERN_LOGIC_RESULT_KIND::MAX_HP_PERCENT_DAMAGE ||
+			if (ordinal >= outcomes.size() || (outcomes[ordinal].eKind != BOSS_PATTERN_LOGIC_RESULT_KIND::MAX_HP_PERCENT_DAMAGE && outcomes[ordinal].eKind != BOSS_PATTERN_LOGIC_RESULT_KIND::FIXED_DAMAGE) ||
 				outcomes[ordinal].fPushRangeM != 0.f || outcomes[ordinal].iPushMs != 0u)
 			{ m_strStatus = "Boss logic push needs one max-HP damage outcome"; return false; }
 			outcomes[ordinal].fPushRangeM = rangeM;
 			outcomes[ordinal].iPushMs = pushMs;
 			outcomes[ordinal].bPushBallistic = ballistic;
+			outcomes[ordinal].fPushHeightM = heightM;
 			if (fields.size() >= 9u && fields[8] == "AWAY_FROM_CONTACT")
 				outcomes[ordinal].ePushDirection = BOSS_LOGIC_PUSH_DIRECTION::AWAY_FROM_CONTACT;
 			if (fields.size() >= 9u && fields[8] == "BOSS_FORWARD")
@@ -3555,6 +3767,22 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 			{ m_strStatus = "Pursuit occurrence owner is invalid"; return false; }
 			owner->MechanicTriggers.push_back(std::move(trigger));
 		}
+        else if (!fields.empty() && "PATTERNPURSUITCARDS" == fields[0])
+        {
+            std::vector<LostArk::Shared::MECHANIC_CARD_SYMBOL> symbols;
+            if (fields.size() != 5u || !IsStableId(fields[1]) || !IsStableId(fields[2]) || !IsStableId(fields[3]) ||
+                !ParseMechanicCardSymbols(fields[4], symbols) || symbols.empty() || symbols.size() > 4u)
+            { m_strStatus = "Pursuit card symbols are invalid"; return false; }
+            const auto owners = m_BossPatterns.find(std::string(fields[1]));
+            if (owners == m_BossPatterns.end()) { m_strStatus = "Pursuit card encounter is missing"; return false; }
+            const auto owner = std::find_if(owners->second.begin(), owners->second.end(), [&](const auto& pattern) { return pattern.strPatternId == fields[2]; });
+            if (owner == owners->second.end()) { m_strStatus = "Pursuit card pattern is missing"; return false; }
+            const auto trigger = std::find_if(owner->MechanicTriggers.begin(), owner->MechanicTriggers.end(), [&](const auto& row) { return row.strTriggerId == fields[3]; });
+            if (trigger == owner->MechanicTriggers.end() || trigger->eKind != BOSS_PATTERN_MECHANIC_TRIGGER_KIND::PURSUIT_PROJECTILES ||
+                !trigger->ProjectileCardSymbols.empty() || symbols.size() != trigger->ProjectileVisualIds.size())
+            { m_strStatus = "Pursuit card symbols must match the visual pool exactly once"; return false; }
+            trigger->ProjectileCardSymbols = std::move(symbols);
+        }
 		else if (!fields.empty() && "PATTERNSHOWTIMETARGETS" == fields[0])
 		{
 			BOSS_PATTERN_MECHANIC_TRIGGER trigger{};
@@ -3625,7 +3853,7 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 		{
 			LostArk::Shared::ATTACK_HIT_TEMPLATE hit;
 			std::uint32_t set = 0u, ordinal = 0u;
-			if (fields.size() != 25u || !IsStableId(fields[1]) || !IsStableId(fields[2]) || !IsStableId(fields[3]) ||
+			if ((fields.size() != 25u && fields.size() != 27u) || !IsStableId(fields[1]) || !IsStableId(fields[2]) || !IsStableId(fields[3]) ||
 				!ParseNumber(fields[5], set) || !ParseNumber(fields[6], ordinal) || set >= 32u || ordinal >= 32u)
 			{ m_strStatus = "Attack template header is invalid"; return false; }
 			hit.strHitId = fields[7]; hit.strTrigger = fields[8]; hit.strShape = fields[13];
@@ -3644,6 +3872,8 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 				!ParseNumber(fields[21], hit.fYawOffsetDegrees) ||
 				!ParseNumber(fields[23], hit.iDamagePercent))
 			{ m_strStatus = "Attack template number is invalid"; return false; }
+			if (fields.size() == 27u && (!ParseNumber(fields[25], hit.fRiseHeightM) || !ParseNumber(fields[26], hit.iPushMs)))
+			{ m_strStatus = "Attack template rise height or duration is invalid"; return false; }
 			const auto owners = m_BossPatterns.find(std::string(fields[1]));
 			if (owners == m_BossPatterns.end()) { m_strStatus = "Attack encounter is missing"; return false; }
 			const auto pattern = std::find_if(owners->second.begin(), owners->second.end(), [&](const auto& row) { return row.strPatternId == fields[2]; });
@@ -4960,6 +5190,32 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 			{ m_strStatus = "Kouku raid flow order or identity is invalid"; return false; }
 			gate->second.Entries.push_back({std::string(fields[3]), std::string(fields[5]), fields[4] == "BUNDLE", wait});
 		}
+		else if (!fields.empty() && "RAIDFLOWGROUP" == fields[0])
+		{
+			KOUKU_RAID_FLOW_GROUP group;
+			std::uint32_t index = 0u, threshold = 0u;
+			if (fields.size() != 8u || !ParseNumber(fields[2], index) || !IsStableId(fields[3]) ||
+				!IsStableId(fields[4]) || !IsStableId(fields[5]) ||
+				(fields[6] != "NONE" && (!ParseNumber(fields[6], threshold) || threshold > 1000u)) ||
+				(fields[7] != "PATTERN_END" && fields[7] != "GROUP_END") || (fields[6] == "NONE" && fields[7] != "PATTERN_END"))
+			{ m_strStatus = "Kouku raid flow group properties are invalid"; return false; }
+			auto gate = m_KoukuRaidGates.find(std::string(fields[1]));
+			if (gate == m_KoukuRaidGates.end() || index != gate->second.EntryGroups.size() || index >= 64u)
+			{ m_strStatus = "Kouku raid flow group owner or order is invalid"; return false; }
+			const auto& entries = gate->second.Entries;
+			const auto first = std::find_if(entries.begin(), entries.end(), [&](const auto& row) { return row.strEntryId == fields[4]; });
+			const auto last = std::find_if(entries.begin(), entries.end(), [&](const auto& row) { return row.strEntryId == fields[5]; });
+			if (first == entries.end() || last == entries.end() || first > last ||
+				(!gate->second.EntryGroups.empty() && static_cast<std::uint32_t>(first - entries.begin()) <= gate->second.EntryGroups.back().iLastEntry) ||
+				std::any_of(gate->second.EntryGroups.begin(), gate->second.EntryGroups.end(), [&](const auto& row) { return row.strGroupId == fields[3]; }) ||
+				(fields[6] != "NONE" && !gate->second.strLoopStartEntryId.empty()))
+			{ m_strStatus = "Kouku raid flow group ranges must be ordered and disjoint saved entries"; return false; }
+			group.strGroupId = fields[3]; group.iFirstEntry = static_cast<std::uint32_t>(first - entries.begin());
+			group.iLastEntry = static_cast<std::uint32_t>(last - entries.begin());
+			if (fields[6] != "NONE") group.RepeatUntilHealthBars = threshold;
+			group.bTransitionAtGroupEnd = fields[7] == "GROUP_END";
+			gate->second.EntryGroups.push_back(std::move(group));
+		}
 		else if (!fields.empty() && "RAIDARRIVAL" == fields[0])
 		{
 			KOUKU_RAID_ARRIVAL arrival;
@@ -5821,7 +6077,10 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 		else if (!fields.empty() && "PLAYER" == fields[0])
 		{
 			PLAYER_RUNTIME_PROFILE player{};
-			if (15u != fields.size() ||
+			/* The critical pair is appended after the published fifteen; without it
+			the class rolls no critical hit, which is the older behaviour. */
+			const bool hasCritical = 17u == fields.size();
+			if ((15u != fields.size() && !hasCritical) ||
 				!ParseCharacterClass(fields[1], player.eCharacterClass) ||
 				!ParseNumber(fields[2], player.iMaximumHp) ||
 				!ParseNumber(fields[3], player.iMaximumResource) ||
@@ -5836,6 +6095,11 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 				!ParseNumber(fields[12], player.iIdentityStanceSwitchCost) ||
 				!ParseNumber(fields[13], player.iIdentityCyclic) ||
 				!ParseStance(fields[14], player.eDefaultStance) ||
+				(hasCritical &&
+					(!ParseNumber(fields[15], player.iCriticalChancePercent) ||
+					 !ParseNumber(fields[16], player.iCriticalDamagePercent) ||
+					 player.iCriticalChancePercent > 100u ||
+					 player.iCriticalDamagePercent < 100u)) ||
 				0u == player.iMaximumHp || 0u == player.iMaximumResource ||
 				0u == player.iResourceRegenPerSecond ||
 				player.iResourceRegenPerSecond > player.iMaximumResource ||
@@ -7339,19 +7603,6 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 					if (window.bInsideIsFail || !window.OnFail.empty() || !window.CardRegions.empty()) return fail("External signal accepts Success/Timeout and no Collider regions or inside Fail");
 					continue;
 				}
-				if (window.eKind != BOSS_PATTERN_LOGIC_KIND::OBJECT_CONTACT) continue;
-				if (!window.bHasContactGroup || window.ContactTargets.empty() || window.CardRegions.empty() ||
-					window.OnSuccess.empty() || !window.OnFail.empty() || !window.OnTimeout.empty() || window.bEndsPatternOnSuccess || window.bInsideIsFail)
-					return fail("Object contact requires targets, regions and Success only");
-				const std::uint64_t endMs = std::uint64_t(window.iStartMs) + window.iDurationMs;
-				for (const auto& target : window.ContactTargets)
-				{
-					const auto world = std::find_if(pattern.WorldSequences.begin(), pattern.WorldSequences.end(),
-						[&](const auto& row) { return row.strOccurrenceId == target.strWorldOccurrenceId; });
-					if (world == pattern.WorldSequences.end() || world->strInstanceId != target.strWorldInstanceId ||
-						world->iStartMs > window.iStartMs || std::uint64_t(world->iStartMs) + world->iDurationMs < endMs)
-						return fail("Contact target WORLD occurrence identity or lifetime differs");
-				}
 				for (const auto& region : window.CardRegions)
 				{
 					const auto& track = region.WorldTrack;
@@ -7368,6 +7619,19 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 						if (!key.bVisible || key.fRotationY != 0.f || key.fRotationW != 1.f ||
 							key.fScaleX != 1.f || key.fScaleY != 1.f || key.fScaleZ != 1.f)
 							return fail("Contact bone track moves the tip while keeping authored TARGET_YAW geometry");
+				}
+				if (window.eKind != BOSS_PATTERN_LOGIC_KIND::OBJECT_CONTACT) continue;
+				if (!window.bHasContactGroup || window.ContactTargets.empty() || window.CardRegions.empty() ||
+					window.OnSuccess.empty() || !window.OnFail.empty() || !window.OnTimeout.empty() || window.bEndsPatternOnSuccess || window.bInsideIsFail)
+					return fail("Object contact requires targets, regions and Success only");
+				const std::uint64_t endMs = std::uint64_t(window.iStartMs) + window.iDurationMs;
+				for (const auto& target : window.ContactTargets)
+				{
+					const auto world = std::find_if(pattern.WorldSequences.begin(), pattern.WorldSequences.end(),
+						[&](const auto& row) { return row.strOccurrenceId == target.strWorldOccurrenceId; });
+					if (world == pattern.WorldSequences.end() || world->strInstanceId != target.strWorldInstanceId ||
+						world->iStartMs > window.iStartMs || std::uint64_t(world->iStartMs) + world->iDurationMs < endMs)
+						return fail("Contact target WORLD occurrence identity or lifetime differs");
 				}
 				std::size_t motionCount = 0u;
 				for (const auto& result : window.OnSuccess)
@@ -7726,7 +7990,7 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 			koukuOwned = fields[1] == "ENCOUNTER_KAKULSAYDON_G1" &&
 				(kind.starts_with("PATTERN") || kind == "KOUKUMADNESS" ||
 				 kind == "KOUKUSAYDONPRODUCTREVISION" || kind == "ENCOUNTERINTRO");
-			if (kind == "RAIDGATE" || kind == "RAIDFLOWSTEP" || kind == "RAIDARRIVAL") koukuOwned = true;
+			if (kind == "RAIDGATE" || kind == "RAIDFLOWSTEP" || kind == "RAIDFLOWGROUP" || kind == "RAIDARRIVAL") koukuOwned = true;
 			if (kind == "PATTERNTARGET" && nullptr != koukuPatterns)
 				koukuOwned = std::any_of(koukuPatterns->begin(), koukuPatterns->end(),
 					[&fields](const auto& pattern) { return pattern.strPatternId == fields[1]; });
@@ -7941,6 +8205,45 @@ std::uint32_t LostArk::Server::CGameplayCatalog::Find_DamageRatePercent(
 {
 	const auto iter = m_DamageRatePercentByProfileId.find(damageProfileId);
 	return m_DamageRatePercentByProfileId.end() == iter ? 0u : iter->second;
+}
+
+const LostArk::Server::CGameplayCatalog::SKILL_BUFF_DEFINITION*
+LostArk::Server::CGameplayCatalog::Find_SkillBuff(
+	const std::uint32_t buffId) const
+{
+	const auto iter = m_SkillBuffById.find(buffId);
+	return m_SkillBuffById.end() == iter ? nullptr : &iter->second;
+}
+
+const std::vector<LostArk::Server::CGameplayCatalog::SKILL_BUFF_DEFINITION>*
+LostArk::Server::CGameplayCatalog::Find_SkillBuffs(
+	const std::uint32_t skillId) const
+{
+	const auto iter = m_SkillBuffsBySkillId.find(skillId);
+	return m_SkillBuffsBySkillId.end() == iter ? nullptr : &iter->second;
+}
+
+const LostArk::Server::CGameplayCatalog::DAMAGE_PROFILE*
+LostArk::Server::CGameplayCatalog::Find_DamageProfile(
+	const std::string& damageProfileId) const
+{
+	const auto iter = m_DamageProfileById.find(damageProfileId);
+	return m_DamageProfileById.end() == iter ? nullptr : &iter->second;
+}
+
+std::uint32_t LostArk::Server::CGameplayCatalog::Resolve_Damage(
+	const std::uint32_t attackPower,
+	const DAMAGE_PROFILE& profile)
+{
+	if (0u == profile.iAttackCoefficientBp && 0u == profile.iDamageAddend)
+		return Resolve_Damage(attackPower, profile.iRatePercent);
+	const std::uint64_t scaled =
+		static_cast<std::uint64_t>(attackPower) *
+		static_cast<std::uint64_t>(profile.iAttackCoefficientBp) / 10000ull +
+		static_cast<std::uint64_t>(profile.iDamageAddend);
+	return scaled < 1ull ? 1u :
+		static_cast<std::uint32_t>((std::min<std::uint64_t>)(
+			scaled, (std::numeric_limits<std::uint32_t>::max)()));
 }
 
 std::uint32_t LostArk::Server::CGameplayCatalog::Resolve_Damage(

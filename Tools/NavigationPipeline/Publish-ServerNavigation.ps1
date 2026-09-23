@@ -1324,7 +1324,8 @@ if ($Mode -eq 'ContractTest') {
 $gridFactories = [ordered]@{
     'LV_LUT_HEARTRB_ED' = { Convert-NavigationAuthoringGrid `
         -RelativeSourcePath 'Data/Navigation/LV_LUT_HEARTRB_ED.navsource' `
-        -RelativePaintPath 'Data/Navigation/LV_LUT_HEARTRB_ED.navpaint' }
+        -RelativePaintPath 'Data/Navigation/LV_LUT_HEARTRB_ED.navpaint' `
+        -RuntimeMaximumStepHeight 1.0 }
     # The recovered Kakul geometry contains five intentionally disconnected
     # source-level islands.  Do not require a single component or infer Mario
     # semantics; StageMarkers names the exact source-level identities instead.

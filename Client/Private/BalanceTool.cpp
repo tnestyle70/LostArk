@@ -3,6 +3,7 @@
 #endif
 
 #include "BalanceTool.h"
+#include "BalanceTestPanel.h"
 
 #include "DataJson.h"
 #include "Effect_Catalog.h"
@@ -2117,14 +2118,22 @@ Client::CBalanceTool::~CBalanceTool()
 
 void Client::CBalanceTool::Open()
 {
+#if !defined(LOSTARK_BALANCE_TOOL_CONTRACT_TEST)
+	if (!m_commonPanel) m_commonPanel = std::make_shared<CBalanceTestPanel>();
+	m_commonVisible = true;
+#else
 	(void)Ensure_Initialized();
+#endif
 	m_open = true;
 	m_focusPending = true;
 }
 
 void Client::CBalanceTool::Open_Valtan()
 {
-	Open();
+	(void)Ensure_Initialized();
+	m_commonVisible = false;
+	m_open = true;
+	m_focusPending = true;
 	m_showPlayers = false;
 	const auto found = std::find_if(
 		m_bosses.begin(), m_bosses.end(),
@@ -8353,21 +8362,8 @@ void Client::CBalanceTool::RenderBossEditor()
 	BOSS_EDIT& boss = m_bosses[m_selectedBoss];
 	const std::string target = "boss:" + boss.archetypeId;
 	ImGui::Text("%s (%s)", boss.displayName.c_str(), boss.archetypeId.c_str());
-	ImGui::SeparatorText("Base stats");
-	MarkDirty(EditU32("Maximum HP", boss.maximumHp, 1u, 4000000000u));
-	RenderBasis("Data/Balance/BossProfiles.json", target, "maximumHp");
-	MarkDirty(EditU32("Maximum health bars", boss.maximumHealthBars, 1u, 1000u));
-	RenderBasis("Data/Balance/BossProfiles.json", target, "maximumHealthBars");
-	MarkDirty(EditU32("Attack power", boss.attackPower, 1u, 1000000u));
-	RenderBasis("Data/Balance/BossProfiles.json", target, "attackPower");
-	MarkDirty(EditDouble("Collision radius", boss.collisionRadius,
-		0.1f, 0.1, 100.0));
-	ImGui::SeparatorText("Detection and movement");
-	MarkDirty(EditDouble("Engage distance", boss.engageDistance,
-		0.1f, 0.1, 1000.0));
-	RenderBasis("Data/Balance/BossProfiles.json", target, "engageDistance");
-	MarkDirty(EditDouble("Move speed", boss.moveSpeed, 0.01f, 0.01, 100.0));
-	RenderBasis("Data/Balance/BossProfiles.json", target, "moveSpeed");
+	ImGui::TextDisabled("Base HP %u | Attack power %u | Health bars %u", boss.maximumHp, boss.attackPower, boss.maximumHealthBars);
+	ImGui::TextWrapped("Edit shared base values in F1 > Balance Test. Encounter patterns below retain their typed authoring owner.");
 	ImGui::SeparatorText("Phase");
 	ImGui::TextWrapped(
 		"Valtan phase 2 is committed by the authored 109 IMPACT/ENTER event. "
@@ -12885,6 +12881,11 @@ void Client::CBalanceTool::Render()
 {
 	if (!m_open)
 		return;
+	if (m_commonVisible && m_commonPanel)
+	{
+		m_commonPanel->Render(m_open);
+		return;
+	}
 	if (m_focusPending)
 	{
 		ImGui::SetNextWindowCollapsed(false, ImGuiCond_Always);
@@ -12892,14 +12893,15 @@ void Client::CBalanceTool::Render()
 		m_focusPending = false;
 	}
 	ImGui::SetNextWindowSize(ImVec2(1180.f, 760.f), ImGuiCond_FirstUseEver);
-	if (!ImGui::Begin("LostArk Balance Tool", &m_open))
+	if (!ImGui::Begin("Valtan Authoring", &m_open))
 	{
 		ImGui::End();
 		return;
 	}
-	if (ImGui::Button("Players")) m_showPlayers = true;
+	m_showPlayers = false;
+	ImGui::TextUnformatted("Valtan encounter authoring");
 	ImGui::SameLine();
-	if (ImGui::Button("Bosses")) m_showPlayers = false;
+	if (ImGui::Button("Open Shared Balance Test")) Open();
 	ImGui::SameLine();
 	ImGui::TextDisabled("skill L10 / fixed L1 | %s", m_dirty ? "UNSAVED" : "saved");
 	ImGui::SameLine();
@@ -13137,26 +13139,10 @@ void Client::CBalanceTool::Render()
 		}
 	}
 
-	const float listWidth = 210.f;
 	const float liveWidth = 300.f;
-	ImGui::BeginChild("##BalanceTargets", ImVec2(listWidth, 0.f), true);
-	ImGui::SeparatorText(m_showPlayers ? "Characters" : "Bosses");
-	if (m_showPlayers)
-	{
-		for (std::size_t i = 0; i < m_players.size(); ++i)
-			if (ImGui::Selectable(m_players[i].characterClass.c_str(), i == m_selectedPlayer))
-				m_selectedPlayer = i;
-	}
-	else
-	{
-		for (std::size_t i = 0; i < m_bosses.size(); ++i)
-			if (ImGui::Selectable(m_bosses[i].displayName.c_str(), i == m_selectedBoss))
-				m_selectedBoss = i;
-	}
-	ImGui::EndChild();
-	ImGui::SameLine();
-	ImGui::BeginChild("##BalanceEditor", ImVec2(-liveWidth - 8.f, 0.f), true);
-	if (m_showPlayers) RenderPlayerEditor(); else RenderBossEditor();
+	ImGui::BeginChild("##ValtanEncounterEditor", ImVec2(-liveWidth - 8.f, 0.f), true);
+	if (!m_bosses.empty() && m_selectedBoss < m_bosses.size() && m_bosses[m_selectedBoss].archetypeId == "BOSS_VALTAN")
+		RenderBossEditor();
 	ImGui::EndChild();
 	ImGui::SameLine();
 	ImGui::BeginChild("##BalanceLive", ImVec2(0.f, 0.f), true);

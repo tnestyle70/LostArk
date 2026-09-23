@@ -5,6 +5,7 @@
 #include "KoukuSaydonPresentationPlayer.h"
 #include <random>
 #include "KoukuSaydonAnimationBlend.h"
+#include "KoukuSaydonPresentationAssetService.h"
 #include "Gameplay/KoukuTargetTracking.h"
 
 #include "ActionPresentationTimeline.h"
@@ -34,6 +35,7 @@
 #include "RuntimeAssetRoot.h"
 #include "SoundCueCatalog.h"
 #include "Transform.h"
+#include "UILayoutRuntime.h"
 
 #include <algorithm>
 #include <chrono>
@@ -280,7 +282,7 @@ RESOURCE Read_Resource(const DATA_JSON_VALUE& row)
     resource.fHalfAngleDegrees = Number(row, "halfAngleDegrees", resource.strShape == "REVERSE_SECTOR" ? 0.0 : 0.001, 180.0);
     const bool v1 = resource.strResourceKind == "V1_EFFECT" || resource.strResourceKind == "V1_ELEMENT";
     if ((resource.eKind == KIND::EFFECT && resource.strResourceKind != "GROUP" && resource.strResourceKind != "LEAF" && !v1) ||
-        (resource.strShape != "BOX" && resource.strShape != "SECTOR" && resource.strShape != "REVERSE_SECTOR" && resource.strShape != "CIRCLE"))
+        (resource.strShape != "BOX" && resource.strShape != "SECTOR" && resource.strShape != "REVERSE_SECTOR" && resource.strShape != "CIRCLE" && resource.strShape != "CYLINDER"))
         throw std::runtime_error("Invalid presentation resource type: " + resource.strResourceId);
     if (resource.eKind == KIND::EFFECT &&
         !CEffectV2Document::Is_ValidEffectId(resource.strAssetId))
@@ -328,6 +330,17 @@ OCCURRENCE Read_Occurrence(const DATA_JSON_VALUE& row, std::uint32_t durationMs,
     box.PositionOffset = Vector(row, "positionOffset", -100000.0, 100000.0);
     box.RotationDegrees = Vector(row, "rotationDegrees", -100000.0, 100000.0);
     box.Scale = Vector(row, "scale", 0.001, 100000.0);
+    box.ColliderEndPositionOffset = box.PositionOffset;
+    box.ColliderEndScale = box.Scale;
+    if (row.Find("anchorPresentationOccurrenceId")) box.strAnchorPresentationOccurrenceId = Text(row, "anchorPresentationOccurrenceId");
+    if (!box.strAnchorPresentationOccurrenceId.empty() && kind != KIND::COLLIDER)
+        throw std::runtime_error("Only Collider can reference an Effect birth anchor.");
+    if (row.Find("colliderMotion")) box.strColliderMotion = Text(row, "colliderMotion");
+    if (row.Find("colliderEndPositionOffset")) box.ColliderEndPositionOffset = Vector(row, "colliderEndPositionOffset", -100000.0, 100000.0);
+    if (row.Find("colliderEndScale")) box.ColliderEndScale = Vector(row, "colliderEndScale", 0.001, 100000.0);
+    if ((box.strColliderMotion != "STATIC" && box.strColliderMotion != "LINEAR") ||
+        (box.strColliderMotion != "STATIC" && kind != KIND::COLLIDER))
+        throw std::runtime_error("Collider motion requires a Collider occurrence and STATIC/LINEAR type.");
     // SCENE_PROFILE projects its reserved blendMs metadata into fadeInMs.
     // Its authoring range is the whole timeline, independent of this box's
     // lifetime; applying Effect envelope bounds here rejects every Product.
@@ -407,18 +420,29 @@ OCCURRENCE Read_Occurrence(const DATA_JSON_VALUE& row, std::uint32_t durationMs,
     return box;
 }
 
-DATA_JSON_VALUE Read_ProductPresentationRoot()
+DATA_JSON_VALUE Read_ProductPresentationRoot(const std::string* supplied = nullptr)
 {
-        const auto path = CProjectDataRoot::Resolve(
-            "Animation/Authored/KoukuSaydon/KoukuSaydon.patternbindings.json");
+    const auto admitted = CKoukuSaydonPresentationAssetService::Get_AdmittedDraftProduct();
+    if (!supplied && admitted) supplied = &admitted->PresentationJson;
+    std::string text;
+    if (supplied)
+    {
+        if (supplied->empty() || supplied->size() > 16u * 1024u * 1024u)
+            throw std::runtime_error("Draft Product presentation is empty or oversized.");
+        text = *supplied;
+    }
+    else
+    {
+        const auto path = CProjectDataRoot::Resolve("Animation/Authored/KoukuSaydon/KoukuSaydon.patternbindings.json");
         std::error_code error;
         const auto bytes = std::filesystem::file_size(path, error);
         if (error || bytes > 16u * 1024u * 1024u)
             throw std::runtime_error("KoukuSaydon Product presentation is missing or oversized.");
         std::ifstream input(path, std::ios::binary);
-        const std::string text{ std::istreambuf_iterator<char>(input), std::istreambuf_iterator<char>() };
+        text.assign(std::istreambuf_iterator<char>(input), std::istreambuf_iterator<char>());
         if (!input || input.bad() || text.size() != bytes)
             throw std::runtime_error("KoukuSaydon Product presentation read failed.");
+    }
         DATA_JSON_VALUE root;
         std::string parseStatus;
         if (!CDataJson::Parse(text, root, parseStatus) || !root.Is_Object())
@@ -879,6 +903,21 @@ void Flatten_CenteredWorldCircle(const RESOURCE& resource, const OCCURRENCE& box
     XMStoreFloat4x4(&anchor, upright);
 }
 
+OCCURRENCE Sample_ColliderGeometry(const OCCURRENCE& box, const double clockMs)
+{
+    auto sampled = box;
+    if (box.strColliderMotion == "LINEAR" && box.iDurationMs)
+    {
+        const double alpha = std::clamp((clockMs - box.iStartMs) / box.iDurationMs, 0.0, 1.0);
+        for (size_t axis = 0u; axis < 3u; ++axis)
+        {
+            sampled.PositionOffset[axis] += (box.ColliderEndPositionOffset[axis] - box.PositionOffset[axis]) * alpha;
+            sampled.Scale[axis] += (box.ColliderEndScale[axis] - box.Scale[axis]) * alpha;
+        }
+    }
+    return sampled;
+}
+
 HIT_AREA_SHAPE Collider_Wire(const RESOURCE& resource, const OCCURRENCE& box)
 {
     HIT_AREA_SHAPE shape;
@@ -894,7 +933,9 @@ HIT_AREA_SHAPE Collider_Wire(const RESOURCE& resource, const OCCURRENCE& box)
     }
     else
     {
-        shape.iAreaType = resource.strShape == "CIRCLE" ? 1 : 3;
+        shape.iAreaType = resource.strShape == "CYLINDER" ? 4 : resource.strShape == "CIRCLE" ? 1 : 3;
+        if (resource.strShape == "CYLINDER")
+            shape.fCylinderHalfHeightM = static_cast<float>(resource.HalfExtents[1] * box.Scale[1]);
         shape.iAreaRange = static_cast<int32_t>((std::min)(
             resource.fRadiusM * (std::max)(box.Scale[0], box.Scale[2]) * 100.0, 1000000000.0));
         shape.iAreaAngle = static_cast<int32_t>(resource.fHalfAngleDegrees * 2.0);
@@ -1545,24 +1586,10 @@ void Client::CKoukuSaydonPresentationPlayer::Stop_TargetedCombatVisual(
     m_TargetedCombatSessions.erase(found);
 }
 
-bool Client::CKoukuSaydonPresentationPlayer::Reload_Product(
-    std::string& status, const std::uint32_t expectedSourceRevision)
+Client::CKoukuSaydonPresentationPlayer::PRODUCT_REPLACEMENT
+Client::CKoukuSaydonPresentationPlayer::Parse_ProductRoot(const DATA_JSON_VALUE& root)
 {
-    // Restart keeps its admitted in-memory Product even after another publish.
-    if (expectedSourceRevision && m_bProductLoaded && expectedSourceRevision == m_iProductSourceRevision)
-    { status = "KoukuSaydon presentation already matches the admitted source revision."; return true; }
-    m_bProductAttempted = true;
-    std::string soundStatus;
-    CSoundCueCatalog::Load_ClassSnapshot("KoukuSaydon", m_SoundEventVariants, soundStatus);
-    try
-    {
-        const auto root = Read_ProductPresentationRoot();
-        std::string parseStatus;
-        const auto sourceRevision = UInt(root, "sourceRevision", 1u, UINT32_MAX);
-        if (expectedSourceRevision && sourceRevision != expectedSourceRevision)
-            throw std::runtime_error("KoukuSaydon presentation source revision mismatch: requested " +
-                std::to_string(expectedSourceRevision) + ", published " + std::to_string(sourceRevision) +
-                ". Previous presentation is preserved; publish the matching Product on this Client.");
+    std::string parseStatus;
         const auto& patterns = Field(root, "patterns");
         if (!patterns.Is_Array() || patterns.Get_Array().size() > 4096u)
             throw std::runtime_error("Product patterns must be a bounded array.");
@@ -1732,6 +1759,20 @@ bool Client::CKoukuSaydonPresentationPlayer::Reload_Product(
                     else throw;
                 }
             }
+            for (const auto& occurrence : item.pattern.PresentationOccurrences)
+            {
+                if (occurrence.strAnchorPresentationOccurrenceId.empty()) continue;
+                const auto source = std::find_if(item.pattern.PresentationOccurrences.begin(), item.pattern.PresentationOccurrences.end(),
+                    [&](const auto& other) { return other.strOccurrenceId == occurrence.strAnchorPresentationOccurrenceId; });
+                const auto resource = source == item.pattern.PresentationOccurrences.end() ? item.document.PresentationResources.end() :
+                    std::find_if(item.document.PresentationResources.begin(), item.document.PresentationResources.end(),
+                        [&](const auto& value) { return value.strResourceId == source->strResourceId; });
+                if (source == item.pattern.PresentationOccurrences.end() || resource == item.document.PresentationResources.end() ||
+                    resource->eKind != KIND::EFFECT || source->strAnchorKind != "BOSS" || source->bFollowBoss ||
+                    !source->strBone.empty() || source->strBoneTarget != "BODY" || source->iStartMs > occurrence.iStartMs ||
+                    occurrence.strAnchorKind != "BOSS" || occurrence.bFollowBoss || !occurrence.strBone.empty() || occurrence.strBoneTarget != "BODY")
+                    throw std::runtime_error("Product Collider has an invalid fixed Effect birth anchor.");
+            }
             const std::string key = item.pattern.strPatternId;
             if (!staged.emplace(key, std::move(item)).second)
                 throw std::runtime_error("Duplicate Product pattern identity.");
@@ -1874,6 +1915,55 @@ bool Client::CKoukuSaydonPresentationPlayer::Reload_Product(
 
         auto stagedTargeted = Read_TargetedCombatVisuals(root);
 
+    return {std::move(staged), std::move(stagedFear), std::move(stagedBundles), std::move(stagedTargeted),
+        isolatedLights, isolatedSceneProfiles, std::move(isolatedSceneStatus)};
+}
+
+bool Client::CKoukuSaydonPresentationPlayer::Validate_DraftProductJson(
+    const std::string& text, const std::uint32_t sourceRevision, std::string& status)
+{
+    try
+    {
+        const auto root = Read_ProductPresentationRoot(&text);
+        if (!sourceRevision || UInt(root, "sourceRevision", 1u, UINT32_MAX) != sourceRevision)
+            throw std::runtime_error("Draft presentation source revision mismatch.");
+        const auto staged = Parse_ProductRoot(root);
+        if (staged.isolatedLights || staged.isolatedSceneProfiles)
+            throw std::runtime_error("Draft presentation contains invalid isolated resource rows.");
+        status.clear(); return true;
+    }
+    catch (const std::exception& error) { status = error.what(); return false; }
+}
+
+bool Client::CKoukuSaydonPresentationPlayer::Reload_Product(
+    std::string& status, const std::uint32_t expectedSourceRevision)
+{
+    const auto admittedDraft = CKoukuSaydonPresentationAssetService::Get_AdmittedDraftProduct();
+    const auto draftRevision = admittedDraft ? admittedDraft->RowsRevision : LostArk::Shared::GameplayDataRevision{};
+    // Content identity distinguishes unsaved drafts with the same source revision.
+    if (expectedSourceRevision && m_bProductLoaded && expectedSourceRevision == m_iProductSourceRevision && draftRevision == m_ProductDraftRowsRevision && !draftRevision.Is_Valid())
+    { status = "KoukuSaydon presentation already matches the admitted source revision."; return true; }
+    m_bProductAttempted = true;
+    std::string soundStatus;
+    CSoundCueCatalog::Load_ClassSnapshot("KoukuSaydon", m_SoundEventVariants, soundStatus);
+    try
+    {
+        const auto root = Read_ProductPresentationRoot();
+        std::string parseStatus;
+        const auto sourceRevision = UInt(root, "sourceRevision", 1u, UINT32_MAX);
+        if (expectedSourceRevision && sourceRevision != expectedSourceRevision)
+            throw std::runtime_error("KoukuSaydon presentation source revision mismatch: requested " +
+                std::to_string(expectedSourceRevision) + ", published " + std::to_string(sourceRevision) +
+                ". Previous presentation is preserved; publish the matching Product on this Client.");
+        auto replacement = Parse_ProductRoot(root);
+        auto& staged = replacement.patterns;
+        auto& stagedFear = replacement.fears;
+        auto& stagedBundles = replacement.bundles;
+        auto& stagedTargeted = replacement.targeted;
+        const auto isolatedLights = replacement.isolatedLights;
+        const auto isolatedSceneProfiles = replacement.isolatedSceneProfiles;
+        const auto& isolatedSceneStatus = replacement.isolatedSceneStatus;
+
         // Only a fully staged replacement may stop the old running presentation.
         for (auto& [id, session] : m_BossSessions) Stop_Session(session);
         for (auto& [id, session] : m_ChildBossSessions) Stop_Session(session);
@@ -1891,6 +1981,7 @@ bool Client::CKoukuSaydonPresentationPlayer::Reload_Product(
         Stop_Session(m_ProductBundleSession);
         m_ProductBundles = std::move(stagedBundles);
         m_iProductSourceRevision = sourceRevision;
+        m_ProductDraftRowsRevision = draftRevision;
         m_MissingProductPatterns.clear();
         m_bProductLoaded = true;
         Refresh_SharedPresentation();
@@ -2229,6 +2320,9 @@ void Client::CKoukuSaydonPresentationPlayer::Update_ProductTails(const float dt,
 
 void Client::CKoukuSaydonPresentationPlayer::Stop_Session(SESSION& session)
 {
+    // The session owns Layer_UI membership as well as the CUILayoutRuntime object.
+    session.encoreClearView.reset();
+    session.encoreClearAttempted = false;
     for (auto& [id, row] : session.rows)
     {
         if (row.effectHandle) CEffectV2Runtime::Stop_Group(row.effectHandle);
@@ -2237,6 +2331,7 @@ void Client::CKoukuSaydonPresentationPlayer::Stop_Session(SESSION& session)
     }
     session.rows.clear();
     session.rootHistory.reset();
+    session.fixedPresentationAnchors.clear();
     session.effectAnchorHistories.clear();
     session.rootRecordedSeconds = -1.f;
     session.lastClockMs = -1.f;
@@ -2350,11 +2445,13 @@ void Client::CKoukuSaydonPresentationPlayer::Sample(SESSION& session,
         // calls Stop_Session separately and never borrows the previous run.
         auto history = session.rootHistory;
         auto anchorHistories = std::move(session.effectAnchorHistories);
+        auto fixedAnchors = std::move(session.fixedPresentationAnchors);
         const auto recordedSeconds = session.rootRecordedSeconds;
         const auto recordedPivot = session.rootRecordedPivot;
         Stop_Session(session);
         session.rootHistory = std::move(history);
         session.effectAnchorHistories = std::move(anchorHistories);
+        session.fixedPresentationAnchors = std::move(fixedAnchors);
         session.rootRecordedSeconds = recordedSeconds;
         session.rootRecordedPivot = recordedPivot;
     }
@@ -2381,6 +2478,31 @@ void Client::CKoukuSaydonPresentationPlayer::Sample(SESSION& session,
         if (session.rootHistory->Record(rootSeconds, pivot, jump, historyStatus))
         { session.rootRecordedSeconds = rootSeconds; session.rootRecordedPivot = pivot; }
         else m_strStatus = std::move(historyStatus);
+    }
+    // Shared births use the same ceiling-to-30-Hz boundary as Server capture.
+    // Delay initial Effect placement until that frame exists, retaining authored age.
+    std::set<std::string> sharedBirthSources;
+    for (const auto& box : pattern.PresentationOccurrences)
+        if (!box.strAnchorPresentationOccurrenceId.empty()) sharedBirthSources.insert(box.strAnchorPresentationOccurrenceId);
+    // Keep the shared frame beyond the Effect lifetime for delayed Collider rows.
+    for (const auto& box : pattern.PresentationOccurrences)
+    {
+        if (box.strAnchorPresentationOccurrenceId.empty() || session.fixedPresentationAnchors.contains(box.strAnchorPresentationOccurrenceId)) continue;
+        const auto source = std::find_if(pattern.PresentationOccurrences.begin(), pattern.PresentationOccurrences.end(),
+            [&](const auto& other) { return other.strOccurrenceId == box.strAnchorPresentationOccurrenceId; });
+        const auto resource = source == pattern.PresentationOccurrences.end() ? document.PresentationResources.end() :
+            std::find_if(document.PresentationResources.begin(), document.PresentationResources.end(),
+                [&](const auto& value) { return value.strResourceId == source->strResourceId; });
+        if (source == pattern.PresentationOccurrences.end() || resource == document.PresentationResources.end() || resource->eKind != KIND::EFFECT ||
+            source->strAnchorKind != "BOSS" || source->bFollowBoss || !source->strBone.empty() || source->strBoneTarget != "BODY" ||
+            box.strAnchorKind != "BOSS" || box.bFollowBoss || !box.strBone.empty() || source->iStartMs > box.iStartMs)
+        { m_strStatus = "Collider Effect birth anchor is invalid: " + box.strOccurrenceId; return; }
+        const auto captureTick = (std::uint64_t(source->iStartMs) * 30u + 999u) / 1000u;
+        const float seconds = float(captureTick) / 30.f;
+        if (clockMs + .001f < seconds * 1000.f) continue;
+        float4x4_t birth;
+        if (!(exactRoot ? exactRoot(seconds, birth, m_strStatus) : session.rootHistory->Sample(seconds, birth, m_strStatus))) return;
+        session.fixedPresentationAnchors.emplace(source->strOccurrenceId, birth);
     }
     const auto resolveWorldPivot = [&](const OCCURRENCE& box, float4x4_t& anchor) {
         const auto world = std::find_if(document.Worlds.begin(), document.Worlds.end(),
@@ -2460,6 +2582,8 @@ void Client::CKoukuSaydonPresentationPlayer::Sample(SESSION& session,
     const auto sampleOne = [&](const RESOURCE& resource, const OCCURRENCE& box)
     {
         if (clockMs < box.iStartMs || clockMs >= double(box.iStartMs) + box.iDurationMs) return;
+        const auto& birthSource = box.strAnchorPresentationOccurrenceId.empty() ? box.strOccurrenceId : box.strAnchorPresentationOccurrenceId;
+        if (sharedBirthSources.contains(birthSource) && !session.fixedPresentationAnchors.contains(birthSource)) return;
         active.insert(box.strOccurrenceId);
         auto [found, inserted] = session.rows.try_emplace(box.strOccurrenceId);
         PLAYING_ROW& row = found->second;
@@ -2511,18 +2635,34 @@ void Client::CKoukuSaydonPresentationPlayer::Sample(SESSION& session,
             if (box.iFadeOutMs) row.lightWeight *= (std::min)(1.f, (box.iStartMs + box.iDurationMs - clockMs) / box.iFadeOutMs);
         }
         if ((resource.eKind == KIND::EFFECT || resource.eKind == KIND::LIGHT || resource.eKind == KIND::COLLIDER) &&
-            (inserted || box.bFollowBoss || row.waitingForAnchor) &&
+            (inserted || box.bFollowBoss || row.waitingForAnchor ||
+                (resource.eKind == KIND::COLLIDER && box.strColliderMotion == "LINEAR")) &&
             !(resource.eKind == KIND::LIGHT && box.strAnchorKind == "PLAYER"))
         {
-            OCCURRENCE placedBox = box;
-            float4x4_t anchor = pivot;
-            if (exactRoot && !box.bFollowBoss && box.strAnchorKind == "BOSS" && box.strBone.empty() &&
+            const auto sampledBox = resource.eKind == KIND::COLLIDER ? Sample_ColliderGeometry(box, clockMs) : box;
+            OCCURRENCE placedBox = sampledBox;
+            const bool frozenAnchor = resource.eKind == KIND::COLLIDER && !box.bFollowBoss && row.hasPlacementAnchor;
+            float4x4_t anchor = frozenAnchor ? row.placementAnchor : pivot;
+            const auto sharedBirth = session.fixedPresentationAnchors.find(box.strAnchorPresentationOccurrenceId.empty() ?
+                box.strOccurrenceId : box.strAnchorPresentationOccurrenceId);
+            if (!frozenAnchor && sharedBirth != session.fixedPresentationAnchors.end()) anchor = sharedBirth->second;
+            else if (!frozenAnchor && exactRoot && !box.bFollowBoss && box.strAnchorKind == "BOSS" && box.strBone.empty() &&
                 !exactRoot(box.iStartMs / 1000.f, anchor, m_strStatus))
             { row.failed = true; return; }
             auto anchorModel = model;
-            if ((resource.eKind == KIND::LIGHT || resource.eKind == KIND::EFFECT || resource.eKind == KIND::COLLIDER) && box.strAnchorKind == "MAP")
+            if (frozenAnchor)
+            {
+                for (size_t axis = 0u; axis < 3u; ++axis)
+                {
+                    placedBox.Scale[axis] *= row.placementAnchorScale[axis];
+                    placedBox.PositionOffset[axis] *= row.placementAnchorScale[axis];
+                }
+                placedBox.strBone.clear();
+                anchorModel.reset();
+            }
+            if (!frozenAnchor && (resource.eKind == KIND::LIGHT || resource.eKind == KIND::EFFECT || resource.eKind == KIND::COLLIDER) && box.strAnchorKind == "MAP")
             { XMStoreFloat4x4(&anchor, XMMatrixIdentity()); anchorModel.reset(); }
-            if (box.strAnchorKind == "WORLD")
+            if (!frozenAnchor && box.strAnchorKind == "WORLD")
             {
                 if (!resolveWorldPivot(box, anchor))
                 {
@@ -2561,7 +2701,7 @@ void Client::CKoukuSaydonPresentationPlayer::Sample(SESSION& session,
             if (resource.eKind == KIND::COLLIDER || resource.eKind == KIND::EFFECT)
             {
                 for (size_t axis = 0u; axis < 3u; ++axis)
-                    row.placementAnchorScale[axis] = placedBox.Scale[axis] / box.Scale[axis];
+                    row.placementAnchorScale[axis] = placedBox.Scale[axis] / sampledBox.Scale[axis];
                 row.hasPlacementAnchor = true;
             }
         }
@@ -2818,6 +2958,63 @@ void Client::CKoukuSaydonPresentationPlayer::Sample(SESSION& session,
         if (row->second.v1EffectHandle) CEffectPresentationService::Stop_WorldRoot({row->second.v1EffectHandle});
         if (row->second.soundHandle) CGameInstance::Get().Stop_SoundCue(row->second.soundHandle);
         row = session.rows.erase(row);
+    }
+    // This is a presentation-only fake clear, not the Server gate reward/MVP.
+    // Bind it to the same authored camera occurrence in both Sequence and Boss playback.
+    const auto encoreCamera = std::find_if(pattern.PresentationOccurrences.begin(),
+        pattern.PresentationOccurrences.end(), [&](const auto& box) {
+            const auto resource = std::find_if(document.PresentationResources.begin(),
+                document.PresentationResources.end(), [&](const auto& value) {
+                    return value.strResourceId == box.strResourceId && value.eKind == KIND::CAMERA &&
+                        value.strAssetId == "kouku.bingo.encore.camera.1";
+                });
+            return resource != document.PresentationResources.end() &&
+                clockMs >= box.iStartMs && clockMs < double(box.iStartMs) + box.iDurationMs;
+        });
+    if (encoreCamera != pattern.PresentationOccurrences.end() && !session.encoreClearAttempted)
+    {
+        session.encoreClearAttempted = true;
+        try
+        {
+            std::ifstream input(CProjectDataRoot::Resolve(L"UI/RaidClear/RaidClear_Kouku_Layout.json"), std::ios::binary);
+            const std::string text((std::istreambuf_iterator<char>(input)), std::istreambuf_iterator<char>());
+            DATA_JSON_VALUE root; std::string error;
+            if (!CDataJson::Parse(text, root, error)) throw std::runtime_error(error);
+            const auto& timing = Field(root, "encorePresentation");
+            const float sourceStart = static_cast<float>(Number(timing, "sourceStartMs", 0, 15000));
+            const float hide = static_cast<float>(Number(timing, "sourceHideMs", sourceStart + 1, 23333));
+            // Release layer sprites on failed staging, Stop, and session replacement alike.
+            auto view = std::shared_ptr<CUILayoutRuntime>(new CUILayoutRuntime(m_Device, m_Context,
+                CGameInstance::Get().Get_CurrentLevelID(), L"Layer_UI", L"UI/RaidClear/RaidClear_Kouku_Layout.json"),
+                [](CUILayoutRuntime* value) { value->Release_Sprites(); delete value; });
+            view->Set_AllSlotsVisible(false);
+            if (!view->Sample_KeyframeAnimation("RaidClear_Kouku_Frame", "intro", 0.f) ||
+                !view->Set_SlotCaption("RaidClear_Kouku_TitleTextBox", L"\xB358\xC804 \xD074\xB9AC\xC5B4", L"Font_YoonGasiIIM"))
+                throw std::runtime_error("Clear layout/frame/caption unavailable");
+            for (const auto& slot : view->Get_SlotIds())
+            {
+                view->Set_SlotCinematicOverlay(slot, true);
+                view->Set_SlotScenePresentation(slot, true);
+            }
+            session.encoreSourceStartMs = sourceStart;
+            session.encoreClearHideMs = hide;
+            session.encoreClearView = std::move(view);
+        }
+        catch (const std::exception& error)
+        {
+            m_strStatus = std::string("Encore clear presentation unavailable: ") + error.what();
+            OutputDebugStringA((m_strStatus + "\n").c_str());
+        }
+    }
+    if (session.encoreClearView)
+    {
+        const float sourceMs = encoreCamera == pattern.PresentationOccurrences.end() ? -1.f :
+            clockMs - encoreCamera->iStartMs + session.encoreSourceStartMs;
+        const bool visible = sourceMs >= 0.f && sourceMs < session.encoreClearHideMs;
+        session.encoreClearView->Set_SlotVisible("RaidClear_Kouku_Frame", visible);
+        session.encoreClearView->Set_SlotVisible("RaidClear_Kouku_TitleTextBox", visible && sourceMs >= 3150.f);
+        if (visible) session.encoreClearView->Sample_KeyframeAnimation("RaidClear_Kouku_Frame",
+            "intro", (std::min)(sourceMs * .001f, 7.f));
     }
     session.lastClockMs = clockMs;
     Sample_LogicPreview(session, document, pattern, clockMs, paused);
@@ -3086,12 +3283,16 @@ void Client::CKoukuSaydonPresentationPlayer::Update(float dt,
         (runLive || run->eState == RUN_STATE::COMPLETED);
     if (runLive && m_iProductReloadRunEpoch != run->iRunEpoch)
     {
-        m_iProductReloadRunEpoch = run->iRunEpoch;
         if (auto* level = CLevel_KakulSaydonArena::Get_Active())
         { std::string cameraStatus; if (!level->Reload_PublishedCameraShots(cameraStatus)) m_strStatus = cameraStatus; }
-        if (run->iPinnedSourceRevision != m_iProductSourceRevision)
-        { std::string status; (void)Reload_Product(status, run->iPinnedSourceRevision); }
+        if (!CKoukuSaydonPresentationAssetService::Matches_AdmittedRun(run->iPinnedSourceRevision, run->DraftRowsRevision, run->iRunEpoch))
+        { m_strStatus = "Presentation draft hash/epoch is unavailable for the admitted run."; return; }
+        if (run->DraftRowsRevision.Is_Valid() || run->iPinnedSourceRevision != m_iProductSourceRevision || run->DraftRowsRevision != m_ProductDraftRowsRevision)
+        { std::string status; if (!Reload_Product(status, run->iPinnedSourceRevision)) return; }
+        m_iProductReloadRunEpoch = run->iRunEpoch;
     }
+    if (runPresentationLive && (!CKoukuSaydonPresentationAssetService::Matches_AdmittedRun(
+        run->iPinnedSourceRevision, run->DraftRowsRevision, run->iRunEpoch) || run->DraftRowsRevision != m_ProductDraftRowsRevision)) return;
     if (runPresentationLive && !run->strBundleId.empty())
     {
         const auto product = m_ProductBundles.find(run->strBundleId);
@@ -5641,6 +5842,13 @@ bool Client::CKoukuSaydonPresentationPlayer::Preview_PresentationGeometry(
         edited.PositionOffset = occurrence.PositionOffset;
         edited.RotationDegrees = occurrence.RotationDegrees;
         edited.Scale = occurrence.Scale;
+        if (resource->eKind == KIND::COLLIDER)
+        {
+            edited.strAnchorPresentationOccurrenceId = occurrence.strAnchorPresentationOccurrenceId;
+            edited.strColliderMotion = occurrence.strColliderMotion;
+            edited.ColliderEndPositionOffset = occurrence.ColliderEndPositionOffset;
+            edited.ColliderEndScale = occurrence.ColliderEndScale;
+        }
         if (resource->eKind == KIND::SUBTITLE)
         {
             // Screen layout edits do not restart audio, animation or the subtitle clock.
@@ -5652,7 +5860,8 @@ bool Client::CKoukuSaydonPresentationPlayer::Preview_PresentationGeometry(
             *box = std::move(edited);
             return true;
         }
-        bool anchorChanged = Is_CenteredWorldCircle(*resource, edited) != Is_CenteredWorldCircle(*resource, *box);
+        bool anchorChanged = edited.strAnchorPresentationOccurrenceId != box->strAnchorPresentationOccurrenceId ||
+            Is_CenteredWorldCircle(*resource, edited) != Is_CenteredWorldCircle(*resource, *box);
         if (resource->eKind == KIND::EFFECT)
         {
             edited.strAnchorKind = occurrence.strAnchorKind;
@@ -5690,7 +5899,7 @@ bool Client::CKoukuSaydonPresentationPlayer::Preview_PresentationGeometry(
         {
             // Frozen rows retain their first anchor; following rows retain the
             // current sampled anchor and all prior particle birth transforms.
-            auto placed = edited;
+            auto placed = resource->eKind == KIND::COLLIDER ? Sample_ColliderGeometry(edited, session.lastClockMs) : edited;
             placed.strBone.clear();
             for (size_t axis = 0u; axis < 3u; ++axis)
             {
@@ -5731,9 +5940,7 @@ bool Client::CKoukuSaydonPresentationPlayer::Preview_PresentationGeometry(
             if (active->second.v1EffectHandle) CEffectPresentationService::Stop_WorldRoot({active->second.v1EffectHandle});
             session.rows.erase(active);
         }
-        box->PositionOffset = occurrence.PositionOffset;
-        box->RotationDegrees = occurrence.RotationDegrees;
-        box->Scale = occurrence.Scale;
+        *box = std::move(edited);
         return true;
     };
     for (auto& member : m_BundlePreviewMembers)

@@ -20,6 +20,8 @@ int Run_KoukuPatternDeleteContractTests();
 int Run_KoukuSequenceDocumentContractTests();
 int Run_KoukuPreviewTransportContractTests();
 int Run_KoukuColliderGroupContractTests();
+int Run_KoukuFixedDamageContractTests();
+int Run_KoukuColliderDuplicateContractTests();
 int Run_ActionCompositionGraphModelContractTests();
 int Run_BossLogicFlowViewModelContractTests();
 int Run_ValtanPatternSoundCueDocumentContractTests();
@@ -1382,6 +1384,10 @@ int main(const int argc, const char* const argv[])
 		return Run_ValtanPresentationContractTests();
 	if (argc == 2 && std::string(argv[1]) == "--kouku-pattern-delete-contract")
 		return Run_KoukuPatternDeleteContractTests();
+	if (argc == 2 && std::string(argv[1]) == "--kouku-collider-duplicate-contract")
+		return Run_KoukuColliderDuplicateContractTests();
+	if (argc == 2 && std::string(argv[1]) == "--kouku-fixed-damage-contract")
+        return Run_KoukuFixedDamageContractTests();
 	if (argc == 2 && std::string(argv[1]) == "--kouku-collider-group-contract")
 		return Run_KoukuColliderGroupContractTests();
 	if (argc == 2 && std::string(argv[1]) == "--presentation-generation-admission-contract")
@@ -1397,7 +1403,7 @@ int main(const int argc, const char* const argv[])
 	if (argc != 1)
 	{
 		std::cerr << "Usage: ValtanPatternAuditionServiceHarness "
-			"[--valtan-presentation-contract | --kouku-pattern-delete-contract | --presentation-generation-admission-contract | --kouku-composition-editor-contract | --kouku-preview-transport-contract | --kouku-sequence-document-contract | --kouku-collider-group-contract | --kouku-independent-row-clock-contract]\n";
+			"[--valtan-presentation-contract | --kouku-pattern-delete-contract | --presentation-generation-admission-contract | --kouku-composition-editor-contract | --kouku-preview-transport-contract | --kouku-sequence-document-contract | --kouku-collider-group-contract | --kouku-collider-duplicate-contract | --kouku-fixed-damage-contract | --kouku-independent-row-clock-contract]\n";
 		return 2;
 	}
 	const std::vector<std::pair<const char*, std::function<void()>>> Tests{

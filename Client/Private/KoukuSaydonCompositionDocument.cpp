@@ -320,7 +320,7 @@ namespace
 		for (const auto& row : value->Get_Array())
 		{
 			LostArk::Shared::ATTACK_HIT_TEMPLATE hit;
-			if (!Has_Properties(row, { "hitId" }, { "trigger", "shape", "damageKind", "damageProfileId", "atMs", "endMs", "repeatCount", "repeatIntervalMs", "damagePercent", "radiusM", "innerRadiusM", "lengthM", "halfWidthM", "angleDegrees", "offsetForwardM", "offsetRightM", "yawOffsetDegrees" })) return false;
+			if (!Has_Properties(row, { "hitId" }, { "trigger", "shape", "damageKind", "damageProfileId", "atMs", "endMs", "repeatCount", "repeatIntervalMs", "damagePercent", "radiusM", "innerRadiusM", "lengthM", "halfWidthM", "angleDegrees", "offsetForwardM", "offsetRightM", "yawOffsetDegrees", "riseHeightM", "pushMs" })) return false;
 			if (const auto* item = row.Find("hitId")) { if (!item->Is_String()) return false; hit.strHitId = item->Get_String(); }
 			if (const auto* item = row.Find("trigger")) { if (!item->Is_String()) return false; hit.strTrigger = item->Get_String(); }
 			if (const auto* item = row.Find("shape")) { if (!item->Is_String()) return false; hit.strShape = item->Get_String(); }
@@ -339,6 +339,8 @@ namespace
 			if (const auto* item = row.Find("offsetForwardM")) if (!Try_ParseFinite(*item, -1000., 1000., hit.fOffsetForwardM)) return false;
 			if (const auto* item = row.Find("offsetRightM")) if (!Try_ParseFinite(*item, -1000., 1000., hit.fOffsetRightM)) return false;
 			if (const auto* item = row.Find("yawOffsetDegrees")) if (!Try_ParseFinite(*item, -1000., 1000., hit.fYawOffsetDegrees)) return false;
+			if (const auto* item = row.Find("riseHeightM")) if (!Try_ParseFinite(*item, 0., 100., hit.fRiseHeightM)) return false;
+			if (const auto* item = row.Find("pushMs")) if (!Try_ParseUnsigned(*item, 5000u, hit.iPushMs)) return false;
 			hits.push_back(std::move(hit));
 		}
 		return LostArk::Shared::Validate_AttackHitTemplates(hits);
@@ -368,6 +370,7 @@ namespace
 			output << ", \"offsetForwardM\": " << hit.fOffsetForwardM;
 			output << ", \"offsetRightM\": " << hit.fOffsetRightM;
 			output << ", \"yawOffsetDegrees\": " << hit.fYawOffsetDegrees;
+			if (hit.fRiseHeightM > 0.0 || hit.iPushMs != 0u) output << ", \"riseHeightM\": " << hit.fRiseHeightM << ", \"pushMs\": " << hit.iPushMs;
 			output << "}";
 		}
 		output << "]";
@@ -425,12 +428,15 @@ namespace
 		}
         const bool pursuit = ((logic.strLogicType == "DURATION" && logic.strJudgementKind == "PURSUIT_PROJECTILES") ||
             (logic.strLogicType == "TRIGGER" && logic.strTriggerKind == "PURSUIT_PROJECTILES"));
-        const bool hasPursuitValues = !logic.PursuitVisualIds.empty() || !logic.strContactVisualId.empty() ||
+        const bool hasPursuitValues = !logic.PursuitVisualIds.empty() || !logic.PursuitCardSymbols.empty() || !logic.strContactVisualId.empty() ||
             logic.fPursuitSpeedMps != 0.0 || logic.fPursuitMaxDistanceM != 0.0 || logic.fContactRadiusM != 0.0 || logic.fSpawnRadiusM != 0.0 ||
             logic.iPursuitLifetimeMs != 0u || logic.iCountPerWave != 0u || logic.bPursuitHoming;
         std::unordered_set<std::string> pursuitIds;
         if ((!pursuit && hasPursuitValues) || (pursuit &&
             (logic.PursuitVisualIds.empty() || logic.PursuitVisualIds.size() > 4u ||
+             (!logic.PursuitCardSymbols.empty() && (logic.PursuitCardSymbols.size() != logic.PursuitVisualIds.size() ||
+              !std::all_of(logic.PursuitCardSymbols.begin(), logic.PursuitCardSymbols.end(), [](const auto& symbol) {
+                  return symbol == "HEART" || symbol == "SPADE" || symbol == "CLUB" || symbol == "DIAMOND"; }))) ||
              !std::all_of(logic.PursuitVisualIds.begin(), logic.PursuitVisualIds.end(),
                  [&](const auto& id) { return Is_StableId(id) && pursuitIds.insert(id).second; }) ||
              !Is_StableId(logic.strContactVisualId) ||
@@ -474,7 +480,7 @@ namespace
 			(logic.strInsideOutcome != "SUCCESS" && (logic.strLogicType != "DURATION" || (logic.strJudgementKind != "AREA_OVERLAP" && logic.strJudgementKind != "OBJECT_OVERLAP" && logic.strJudgementKind != "GAZE_REAL_BOSS"))))
 		{ outStatus = "Only AREA_OVERLAP/OBJECT_OVERLAP/GAZE_REAL_BOSS takes an inside outcome of SUCCESS or FAIL: " + logic.strLogicId; return false; }
 		const bool_t hasResultValues = !logic.strOutcomeKind.empty() ||
-			0u != logic.iPercent || 0u != logic.iDurationMs || logic.fPushRangeM != 0.0 || logic.iPushMs != 0u || logic.bForcePush || logic.bPushCanLeaveArena || logic.bPushBallistic || logic.fPushYawOffsetDegrees != 0.0 || !logic.strFollowupPatternId.empty() ||
+			0u != logic.iDamageAmount || 0u != logic.iPercent || 0u != logic.iDurationMs || logic.fPushRangeM != 0.0 || logic.fPushHeightM != 0.0 || logic.iPushMs != 0u || logic.bForcePush || logic.bPushCanLeaveArena || logic.bPushBallistic || logic.fPushYawOffsetDegrees != 0.0 || !logic.strFollowupPatternId.empty() ||
 			(!logic.strTargetWorldInstanceId.empty() && logic.strJudgementKind != "OBJECT_OVERLAP") || !logic.strMotionInstanceId.empty() ||
 			!logic.strSceneProfileId.empty() || !logic.strEffectResourceId.empty() || !logic.strLightResourceId.empty() || !logic.strSoundResourceId.empty() || logic.iEffectDelayMs != 0u ||
 			!logic.strAttachmentSlot.empty() || logic.GripLocalOffset != std::array<double, 3u>{} ||
@@ -487,21 +493,23 @@ namespace
             (logic.fChargeYawOffsetDegrees != 0.0 && logic.fBossChargeDistanceM <= 0.0) ||
             (logic.fBossChargeDistanceM != 0.0 && (logic.strLogicType != "TRIGGER" || logic.strTriggerKind != "ENTER_AREA")))
         { outStatus = "Only ENTER_AREA accepts a boss charge distance of 0..1000 m and charge yaw of -360..360 degrees; nonzero yaw requires positive distance."; return false; }
-		if (((logic.bRearmOnExit || logic.bRepeatAfterKnockback) && (logic.strLogicType != "TRIGGER" || logic.strTriggerKind != "ENTER_AREA")) ||
-			(logic.bRearmOnExit && logic.bRepeatAfterKnockback))
+		if (((logic.bRearmOnExit || logic.bRepeatAfterKnockback || logic.iRepeatIntervalMs != 0u) && (logic.strLogicType != "TRIGGER" || logic.strTriggerKind != "ENTER_AREA")) ||
+			(logic.bRearmOnExit && logic.bRepeatAfterKnockback) ||
+			(logic.iRepeatIntervalMs && (logic.bRearmOnExit || logic.bRepeatAfterKnockback || logic.iRepeatIntervalMs > MAX_TIME_MS)))
 		{ outStatus = "ENTER_AREA accepts one contact repeat policy."; return false; }
-		if (!std::isfinite(logic.fPushRangeM) || logic.fPushRangeM < 0.0 ||
+		if (!std::isfinite(logic.fPushHeightM) || logic.fPushHeightM < 0.0 || logic.fPushHeightM > 100.0 ||
+			(logic.fPushHeightM > 0.0 && !logic.bPushBallistic) || !std::isfinite(logic.fPushRangeM) || logic.fPushRangeM < 0.0 ||
 			logic.fPushRangeM > (logic.bPushBallistic ? 100.0 : 20.0) ||
 			(logic.strPushDirection != "AWAY_FROM_BOSS" && logic.strPushDirection != "BOSS_FORWARD" && logic.strPushDirection != "AWAY_FROM_CONTACT") ||
-			(logic.strPushDirection != "AWAY_FROM_BOSS" && logic.fPushRangeM <= 0.0) ||
-			(logic.bPushBallistic && (logic.fPushRangeM <= 0.0 || logic.iPushMs < 100u || logic.iPushMs > 5000u || !logic.bPushCanLeaveArena)) ||
+			(logic.strPushDirection != "AWAY_FROM_BOSS" && (logic.fPushRangeM <= 0.0 && logic.fPushHeightM <= 0.0)) ||
+			(logic.bPushBallistic && ((logic.fPushRangeM <= 0.0 && logic.fPushHeightM <= 0.0) || logic.iPushMs < 100u || logic.iPushMs > 5000u)) ||
 			!std::isfinite(logic.fPushYawOffsetDegrees) || std::abs(logic.fPushYawOffsetDegrees) > 360.0 ||
-			(logic.fPushYawOffsetDegrees != 0.0 && (logic.strPushDirection != "BOSS_FORWARD" || logic.fPushRangeM <= 0.0)) ||
-			((logic.bForcePush || logic.bPushCanLeaveArena) && logic.fPushRangeM <= 0.0) ||
-			logic.iPushMs > MAX_TIME_MS || ((logic.fPushRangeM == 0.0) != (logic.iPushMs == 0u)) ||
-			((logic.fPushRangeM != 0.0 || logic.iPushMs != 0u) &&
-			 (logic.strLogicType != "RESULT" || logic.strOutcomeKind != "MAX_HP_PERCENT_DAMAGE")))
-		{ outStatus = "Damage knockback needs paired distance/time: ordinary 0..20 m and 0..600000 ms; ballistic >0..100 m and 100..5000 ms with arena exit allowed. Only BOSS_FORWARD accepts yaw."; return false; }
+			(logic.fPushYawOffsetDegrees != 0.0 && (logic.strPushDirection != "BOSS_FORWARD" || (logic.fPushRangeM <= 0.0 && logic.fPushHeightM <= 0.0))) ||
+			((logic.bForcePush || logic.bPushCanLeaveArena) && (logic.fPushRangeM <= 0.0 && logic.fPushHeightM <= 0.0)) ||
+			logic.iPushMs > MAX_TIME_MS || ((logic.fPushRangeM == 0.0 && logic.fPushHeightM == 0.0) != (logic.iPushMs == 0u)) ||
+			((logic.fPushRangeM != 0.0 || logic.fPushHeightM != 0.0 || logic.iPushMs != 0u) &&
+			 (logic.strLogicType != "RESULT" || (logic.strOutcomeKind != "MAX_HP_PERCENT_DAMAGE" && logic.strOutcomeKind != "FIXED_DAMAGE"))))
+		{ outStatus = "Damage knockback needs paired distance/time: ordinary 0..20 m and 0..600000 ms; ballistic >0..100 m and 100..5000 ms with optional arena exit. Only BOSS_FORWARD accepts yaw."; return false; }
 		const bool_t hasPlayerEffectValues = logic.iCountPerPlayer != 0u || logic.fPlayerEffectRadiusM != 0.0 || logic.iEffectLifetimeMs != 0u ||
 			logic.iArenaRandomCount != 0u || logic.fArenaRandomRadiusM != 0.0 || logic.fArenaHeightToleranceM != 0.0 ||
 			logic.fArenaMinimumSpacingM != 0.0 || logic.bRandomPlayerOnly;
@@ -510,7 +518,7 @@ namespace
 		const bool stagePlayers = logic.strLogicType == "TRIGGER" && logic.strTriggerKind == "CARD_MAZE_STAGE_PLAYERS";
 		if (!stagePlayers && !logic.PlayerEntryEffectOccurrenceIds.empty())
 		{ outStatus = "Player entry Effect references belong to CARD_MAZE_STAGE_PLAYERS."; return false; }
-		const bool_t hasTriggerValues = !logic.PlayerEntryEffectOccurrenceIds.empty() || hasPlayerEffectValues || logic.bRearmOnExit || logic.bRepeatAfterKnockback || logic.fBossChargeDistanceM != 0.0 || hasContactValues || !logic.strTriggerKind.empty() || !logic.strHudMode.empty() ||
+		const bool_t hasTriggerValues = !logic.PlayerEntryEffectOccurrenceIds.empty() || hasPlayerEffectValues || logic.bRearmOnExit || logic.bRepeatAfterKnockback || logic.iRepeatIntervalMs != 0u || logic.fBossChargeDistanceM != 0.0 || hasContactValues || !logic.strTriggerKind.empty() || !logic.strHudMode.empty() ||
 			!logic.strClonePatternId.empty() || !logic.ClockHours.empty() || logic.fFaceCenterYawOffsetDegrees != 0.0 ||
 			std::any_of(logic.TeleportPosition.begin(), logic.TeleportPosition.end(), [](double x) { return x != 0.0; });
 		if (!std::isfinite(logic.fNormalYawOffsetDegrees) || std::abs(logic.fNormalYawOffsetDegrees) > 360.0 ||
@@ -636,6 +644,9 @@ namespace
 			{ outStatus = "CAPTURE_PLAYER owns BOSS_LEFT_HAND and finite grip offsets of -10..10 m."; return false; }
 			const bool_t percentKind = "MAX_HP_PERCENT_DAMAGE" == kind ||
 				"MADNESS_GAUGE_ADD_PERCENT" == kind;
+			if ((kind == "FIXED_DAMAGE" && (logic.iDamageAmount == 0u || logic.iDamageAmount > 1000000000u)) ||
+				(kind != "FIXED_DAMAGE" && logic.iDamageAmount != 0u))
+			{ outStatus = "Only FIXED_DAMAGE takes damageAmount, in 1..1000000000 HP."; return false; }
 			const bool_t followup = "FOLLOWUP_PATTERN" == kind;
 			const bool_t worldMotion = "PLAY_WORLD_OBJECT_MOTION" == kind;
 			if ((worldMotion && (!Is_StableId(logic.strTargetWorldInstanceId) || !Is_StableId(logic.strMotionInstanceId))) ||
@@ -702,7 +713,7 @@ namespace
 		else if (logic.strTriggerKind == "PURSUIT_PROJECTILES")
         {
             if (logic.iSpawnIntervalMs != 0u || hasPlayerEffectValues || hasContactValues ||
-                logic.bRearmOnExit || logic.bRepeatAfterKnockback || logic.fBossChargeDistanceM != 0.0 ||
+                logic.bRearmOnExit || logic.bRepeatAfterKnockback || logic.iRepeatIntervalMs != 0u || logic.fBossChargeDistanceM != 0.0 ||
                 !logic.strHudMode.empty() || !logic.strClonePatternId.empty() || !logic.ClockHours.empty() ||
                 logic.fFaceCenterYawOffsetDegrees != 0.0 || logic.TeleportPosition != std::array<double, 3>{})
             { outStatus = "PURSUIT_PROJECTILES Trigger spawns once and carries only projectile values."; return false; }
@@ -713,7 +724,7 @@ namespace
 			if (logic.PlayerEntryEffectOccurrenceIds.empty() || logic.PlayerEntryEffectOccurrenceIds.size() > 4u ||
 				!std::all_of(logic.PlayerEntryEffectOccurrenceIds.begin(), logic.PlayerEntryEffectOccurrenceIds.end(),
 					[&](const auto& id) { return Is_StableId(id) && ids.insert(id).second; }) ||
-				hasPlayerEffectValues || hasContactValues || logic.bRearmOnExit || logic.bRepeatAfterKnockback ||
+				hasPlayerEffectValues || hasContactValues || logic.bRearmOnExit || logic.bRepeatAfterKnockback || logic.iRepeatIntervalMs != 0u ||
 				logic.fBossChargeDistanceM != 0.0 || !logic.strHudMode.empty() || !logic.strClonePatternId.empty() ||
 				!logic.ClockHours.empty() || logic.fFaceCenterYawOffsetDegrees != 0.0 ||
 				logic.TeleportPosition != std::array<double, 3>{})
@@ -721,7 +732,7 @@ namespace
 		}
 		else if (logic.strTriggerKind == "ANIMATION_BLEND" || logic.strTriggerKind == "ROOM_PLAYER_ARRIVAL")
 		{
-			if (hasPlayerEffectValues || hasContactValues || logic.bRearmOnExit || logic.bRepeatAfterKnockback ||
+			if (hasPlayerEffectValues || hasContactValues || logic.bRearmOnExit || logic.bRepeatAfterKnockback || logic.iRepeatIntervalMs != 0u ||
 				logic.fBossChargeDistanceM != 0.0 || !logic.strHudMode.empty() || !logic.strClonePatternId.empty() ||
 				!logic.ClockHours.empty() || logic.fFaceCenterYawOffsetDegrees != 0.0 ||
 				logic.TeleportPosition != std::array<double, 3>{})
@@ -743,7 +754,7 @@ namespace
 				(phase != "JUMP" && phase != "APPEAR_PLAYER" && logic.fAirborneHeightM != 0.0) ||
 				!std::all_of(logic.TeleportPosition.begin(), logic.TeleportPosition.end(), [](double v) { return std::isfinite(v) && std::abs(v) <= 100000.0; }) ||
 				(phase != "CENTER" && logic.TeleportPosition != std::array<double, 3>{}) ||
-				hasPlayerEffectValues || hasContactValues || logic.bRearmOnExit || logic.bRepeatAfterKnockback ||
+				hasPlayerEffectValues || hasContactValues || logic.bRearmOnExit || logic.bRepeatAfterKnockback || logic.iRepeatIntervalMs != 0u ||
 				logic.fBossChargeDistanceM != 0.0 || !logic.strHudMode.empty() || !logic.strClonePatternId.empty() ||
 				!logic.ClockHours.empty() || logic.fFaceCenterYawOffsetDegrees != 0.0)
 			{ outStatus = "ALBION_AIRBORNE needs a valid phase, phase-specific height/duration, and CENTER-only finite XYZ."; return false; }
@@ -983,7 +994,9 @@ namespace
 			  "dissolveStart", "dissolveEnd", "volume", "soundSourceStartMs", "followBoss", "bone", "boneTarget",
 			  "regionId", "cardSymbol", "cardColor", "anchorKind", "worldId", "logicOccurrenceId", "debugRender", "worldOccurrenceId", "brightnessMultiplier",
 			  "worldEmissionIndex", "selectionGroupId", "fitEffectToDuration", "loopEffectToDuration",
-			  "boneRotation" })) return false;
+			  "boneRotation", "colliderMotion", "colliderEndPositionOffset", "colliderEndScale", "anchorPresentationOccurrenceId" })) return false;
+        if (const auto* motion = value.Find("colliderMotion"); motion && motion->Is_String() && motion->Get_String() == "LINEAR" &&
+            (!value.Find("colliderEndPositionOffset") || !value.Find("colliderEndScale"))) return false;
 		if (const auto* fit = value.Find("fitEffectToDuration"))
 		{
 			if (!fit->Is_Boolean()) return false;
@@ -1012,6 +1025,10 @@ namespace
 			Read_PresentationText(value, "bone", row.strBone) &&
 			Read_PresentationText(value, "boneTarget", row.strBoneTarget) &&
 			Read_PresentationText(value, "boneRotation", row.strBoneRotation) &&
+			Read_PresentationText(value, "colliderMotion", row.strColliderMotion) &&
+            Read_PresentationText(value, "anchorPresentationOccurrenceId", row.strAnchorPresentationOccurrenceId) &&
+			Read_PresentationVector(value, "colliderEndPositionOffset", row.ColliderEndPositionOffset, -100000.0, 100000.0) &&
+			Read_PresentationVector(value, "colliderEndScale", row.ColliderEndScale, 0.001, 10000.0) &&
 			Read_PresentationText(value, "regionId", row.strRegionId) &&
 			Read_PresentationText(value, "cardSymbol", row.strCardSymbol) &&
 			Read_PresentationText(value, "cardColor", row.strCardColor) &&
@@ -1543,7 +1560,7 @@ namespace
                 !std::isfinite(row.fDissolveStart) || !std::isfinite(row.fDissolveEnd) ||
                 row.fDissolveStart < 0. || row.fDissolveEnd > 1. || row.fDissolveStart > row.fDissolveEnd ||
                 row.fBrightnessMultiplier != 1. || row.strAnchorKind != "BOSS" || !row.strBone.empty() || row.strBoneTarget != "BODY" ||
-                row.strBoneRotation != "TARGET_YAW" ||
+                row.strBoneRotation != "TARGET_YAW" || !row.strAnchorPresentationOccurrenceId.empty() ||
                 !row.strWorldId.empty() || !row.strRegionId.empty() || !row.strLogicOccurrenceId.empty() ||
                 !row.strWorldOccurrenceId.empty() || !row.strSelectionGroupId.empty() || row.strCardSymbol != "NONE" || row.strCardColor != "NONE")
                 return fail("common presentation supports unbound Camera only: " + row.strOccurrenceId);
@@ -1743,7 +1760,7 @@ namespace
 				validAsset = Is_StableId(row.strAssetId) && row.strResourceKind.empty() &&
 					row.strElementId.empty() && row.strDefaultAnchorKind == "MAP"; break;
 			case KOUKU_SAYDON_PRESENTATION_KIND::COLLIDER:
-				validAsset = row.strAssetId.empty() && (row.strShape == "BOX" || row.strShape == "SECTOR" || row.strShape == "REVERSE_SECTOR" || row.strShape == "CIRCLE"); break;
+				validAsset = row.strAssetId.empty() && (row.strShape == "BOX" || row.strShape == "SECTOR" || row.strShape == "REVERSE_SECTOR" || row.strShape == "CIRCLE" || row.strShape == "CYLINDER"); break;
 			default: break;
 			}
 			if (!Is_StableId(row.strResourceId) || (!expandedIds && !Try_ParseGeneratedOrdinal(row.strResourceId,
@@ -2044,6 +2061,26 @@ namespace
 					(row.strAnchorKind != "WORLD" && !row.strWorldId.empty()))
 				{ outStatus = "Invalid region identity, card or anchor: " + row.strOccurrenceId; return false; }
                 const auto* resource = presentationResources.at(row.strResourceId);
+                if (!row.strAnchorPresentationOccurrenceId.empty())
+                {
+                    const auto source = std::find_if(pattern.PresentationOccurrences.begin(), pattern.PresentationOccurrences.end(),
+                        [&](const auto& other) { return other.strOccurrenceId == row.strAnchorPresentationOccurrenceId; });
+                    if (!Is_StableId(row.strAnchorPresentationOccurrenceId) || resource->eKind != KOUKU_SAYDON_PRESENTATION_KIND::COLLIDER ||
+                        row.strAnchorKind != "BOSS" || row.bFollowBoss || !row.strBone.empty() || row.strBoneTarget != "BODY" ||
+                        source == pattern.PresentationOccurrences.end() || !presentationResources.contains(source->strResourceId) ||
+                        presentationResources.at(source->strResourceId)->eKind != KOUKU_SAYDON_PRESENTATION_KIND::EFFECT ||
+                        source->strAnchorKind != "BOSS" || source->bFollowBoss || !source->strBone.empty() || source->strBoneTarget != "BODY" ||
+                        source->iStartMs > row.iStartMs)
+                    { outStatus = "Collider anchor source requires an earlier fixed BOSS Effect in the same Pattern: " + row.strOccurrenceId; return false; }
+                }
+                if ((row.strColliderMotion != "STATIC" && row.strColliderMotion != "LINEAR") ||
+                    (row.strColliderMotion == "LINEAR" && (resource->eKind != KOUKU_SAYDON_PRESENTATION_KIND::COLLIDER ||
+                    !Valid_PresentationVector(row.ColliderEndPositionOffset, -100000.0, 100000.0) ||
+                    !Valid_PresentationVector(row.ColliderEndScale, 0.001, 10000.0) ||
+                    ((resource->strShape == "CIRCLE" || resource->strShape == "CYLINDER") &&
+                     (std::abs(row.Scale[0] - row.Scale[2]) > .0001 || std::abs(row.ColliderEndScale[0] - row.ColliderEndScale[2]) > .0001)) ||
+                    (resource->fInnerRadiusM > 0.0 && std::abs(row.ColliderEndScale[0] - row.ColliderEndScale[2]) > .0001))))
+                { outStatus = "Collider motion requires valid end position and positive end size."; return false; }
                 if (resource->fInnerRadiusM > 0.0 && std::abs(row.Scale[0] - row.Scale[2]) > .0001)
                 { outStatus = "Hollow Collider requires equal X/Z scale: " + row.strOccurrenceId; return false; }
                 // Camera shots own their world coordinates; Sound does not bind an Object.
@@ -2078,7 +2115,7 @@ namespace
 					if (resource->eKind == KOUKU_SAYDON_PRESENTATION_KIND::COLLIDER && (row.strAnchorKind != first.strAnchorKind || row.bFollowBoss != first.bFollowBoss ||
 						row.strBone != first.strBone || row.strBoneTarget != first.strBoneTarget ||
 						row.strWorldId != first.strWorldId || row.strWorldOccurrenceId != first.strWorldOccurrenceId ||
-						row.iWorldEmissionIndex != first.iWorldEmissionIndex ||
+						row.iWorldEmissionIndex != first.iWorldEmissionIndex || row.strAnchorPresentationOccurrenceId != first.strAnchorPresentationOccurrenceId ||
 						(!row.bFollowBoss && row.iStartMs != first.iStartMs)))
 					{ outStatus = "Selection Group Colliders must share an anchor frame: " + row.strSelectionGroupId; return false; }
 					++group.second;
@@ -2657,6 +2694,22 @@ namespace
             if (!flow.strLoopStartEntryId.empty() &&
                 (!Is_StableId(flow.strLoopStartEntryId) || !entries.contains(flow.strLoopStartEntryId)))
             { outStatus = "Pattern Flow loop start must reference an entry in this flow."; return false; }
+            std::unordered_set<std::string> groupIds;
+            std::size_t nextGroupStart = 0u;
+            if (flow.EntryGroups.size() > 64u)
+            { outStatus = "Pattern Flow supports at most 64 entry groups."; return false; }
+            for (const auto& group : flow.EntryGroups)
+            {
+                const auto first = std::find_if(flow.Entries.begin(), flow.Entries.end(), [&](const auto& row) { return row.strEntryId == group.strStartEntryId; });
+                const auto last = std::find_if(flow.Entries.begin(), flow.Entries.end(), [&](const auto& row) { return row.strEntryId == group.strEndEntryId; });
+                if (!Is_StableId(group.strGroupId) || !groupIds.insert(group.strGroupId).second || !Is_DisplayName(group.strDisplayName) ||
+                    first == flow.Entries.end() || last == flow.Entries.end() || first > last ||
+                    static_cast<std::size_t>(first - flow.Entries.begin()) < nextGroupStart ||
+                    (group.RepeatUntilHealthBars && (*group.RepeatUntilHealthBars > 1000u || !flow.strLoopStartEntryId.empty())) ||
+                    (!group.RepeatUntilHealthBars && group.bTransitionAtGroupEnd))
+                { outStatus = "Pattern Flow groups require ordered, disjoint saved entry ranges and a valid HP repeat condition."; return false; }
+                nextGroupStart = static_cast<std::size_t>(last - flow.Entries.begin()) + 1u;
+            }
         }
         outStatus = "Validated KoukuSaydon composition structure.";
 		return true;
@@ -3159,14 +3212,14 @@ bool_t Client::CKoukuSaydonCompositionDocument::Parse_Text(
 		{
 			if (!Has_Properties(logicValue, { "logicId", "displayName", "logicType" },
 					{ "judgementKind", "fixedHits", "trackingHits", "projectileHits", "randomVolleyHits", "fixedSelectionGroupId", "trackingPresentationOccurrenceId", "spawnIntervalMs", "followSpeedScale",
-                      "visualIds", "contactVisualId", "speedMps", "contactRadiusM", "spawnRadiusM", "lifetimeMs", "homing", "countPerWave",
+                      "visualIds", "cardSymbols", "contactVisualId", "speedMps", "contactRadiusM", "spawnRadiusM", "lifetimeMs", "homing", "countPerWave",
 					  "randomVolleyOccurrenceSets", "randomSpawnIntervalMs", "randomArenaRadiusM", "randomArenaHeightToleranceM", "randomAnchorKind", "randomScaleMin", "randomScaleMax", "insideOutcome", "sectorCount", "sectorSymbols", "regionIds", "centerX", "centerZ",
 					  "outerRadiusM", "worldSequenceInstanceId", "halfAngleDegrees",
 					  "maxDistanceM", "poseIndex", "threshold", "shieldArcDegrees",
-					  "endsPatternOnSuccess", "normalYawOffsetDegrees", "faceCenterYawOffsetDegrees", "outcomeKind", "percent", "durationMs", "pushRangeM", "pushMs", "pushDirection", "forcePush", "pushCanLeaveArena", "pushBallistic", "pushYawOffsetDegrees", "targetWorldInstanceId", "motionInstanceId", "targetRadiusM",
+					  "endsPatternOnSuccess", "normalYawOffsetDegrees", "faceCenterYawOffsetDegrees", "outcomeKind", "percent", "damageAmount", "durationMs", "pushRangeM", "pushMs", "pushDirection", "forcePush", "pushCanLeaveArena", "pushBallistic", "pushHeightM", "pushYawOffsetDegrees", "targetWorldInstanceId", "motionInstanceId", "targetRadiusM",
 					  "directionPatternIds", "cloneEndStageId", "summonOccurrenceId", "airbornePhase", "airborneHeightM", "airborneDurationMs", "airborneTargetPositionPolicy", "selectedEffectGroupId", "patternIds", "completionCount", "followupPatternId", "marioStage", "triggerKind", "playerEntryEffectOccurrenceIds", "countPerPlayer", "radiusM", "effectLifetimeMs",
 					  "arenaRandomCount", "arenaRandomRadiusM", "arenaHeightToleranceM", "arenaMinimumSpacingM", "randomPlayerOnly",
-					  "rearmOnExit", "repeatAfterKnockback", "bossChargeDistanceM", "chargeYawOffsetDegrees", "hudMode", "teleportPosition", "clonePatternId", "clockHours",
+					  "rearmOnExit", "repeatAfterKnockback", "repeatIntervalMs", "bossChargeDistanceM", "chargeYawOffsetDegrees", "hudMode", "teleportPosition", "clonePatternId", "clockHours",
 					  "targetWorldOccurrenceIds", "contactGroupId", "contactPriority", "contactMotions", "targetLogicOccurrenceId", "contactTargetWorldOccurrenceId", "sceneProfileId", "effectResourceId", "lightResourceId", "soundResourceId", "effectDelayMs", "attachmentSlot", "gripLocalOffset" }))
 			{
 				outStatus = "KoukuSaydon Logic definition has unexpected properties.";
@@ -3257,6 +3310,7 @@ bool_t Client::CKoukuSaydonCompositionDocument::Parse_Text(
 				!optionalUnsigned("spawnIntervalMs", MAX_TIME_MS, stagedLogic.iSpawnIntervalMs) ||
 				!optionalFinite("followSpeedScale", .01, 10.0, stagedLogic.fFollowSpeedScale) ||
                 !Try_ParseTextList(logicValue.Find("visualIds"), 4u, stagedLogic.PursuitVisualIds) ||
+                !Try_ParseTextList(logicValue.Find("cardSymbols"), 4u, stagedLogic.PursuitCardSymbols) ||
                 !optionalText("contactVisualId", stagedLogic.strContactVisualId) ||
                 !optionalFinite("speedMps", .01, 100.0, stagedLogic.fPursuitSpeedMps) ||
                 !optionalFinite("contactRadiusM", .01, 10.0, stagedLogic.fContactRadiusM) ||
@@ -3297,10 +3351,13 @@ bool_t Client::CKoukuSaydonCompositionDocument::Parse_Text(
 				!optionalText("targetWorldInstanceId", stagedLogic.strTargetWorldInstanceId) ||
 				!optionalText("motionInstanceId", stagedLogic.strMotionInstanceId) ||
 				!optionalUnsigned("percent", 100u, stagedLogic.iPercent) ||
+				!optionalUnsigned("damageAmount", 1000000000u, stagedLogic.iDamageAmount) ||
 				!optionalUnsigned("marioStage", 4u, stagedLogic.iMarioEntryStage) ||
 				!optionalUnsigned("durationMs", MAX_TIME_MS, stagedLogic.iDurationMs) ||
 				!optionalText("pushDirection", stagedLogic.strPushDirection) ||
 				!optionalFinite("pushRangeM", 0.0, 100.0, stagedLogic.fPushRangeM) ||
+				!optionalFinite("pushHeightM", 0.0, 100.0, stagedLogic.fPushHeightM) ||
+				!optionalUnsigned("repeatIntervalMs", MAX_TIME_MS, stagedLogic.iRepeatIntervalMs) ||
 				!optionalUnsigned("pushMs", MAX_TIME_MS, stagedLogic.iPushMs) ||
 				!optionalFinite("pushYawOffsetDegrees", -360.0, 360.0, stagedLogic.fPushYawOffsetDegrees) ||
 				(nullptr != forcePush && !forcePush->Is_Boolean()) ||
@@ -3360,6 +3417,9 @@ bool_t Client::CKoukuSaydonCompositionDocument::Parse_Text(
             { outStatus = "Only FEAR owns soundResourceId."; return false; }
             const bool pursuit = ((stagedLogic.strLogicType == "DURATION" && stagedLogic.strJudgementKind == "PURSUIT_PROJECTILES") ||
                 (stagedLogic.strLogicType == "TRIGGER" && stagedLogic.strTriggerKind == "PURSUIT_PROJECTILES"));
+            if (logicValue.Find("cardSymbols") && (!pursuit || stagedLogic.PursuitCardSymbols.empty() ||
+                logicValue.Find("cardSymbols")->Get_Array().size() != stagedLogic.PursuitCardSymbols.size()))
+            { outStatus = "cardSymbols requires one symbol per PURSUIT_PROJECTILES visual."; return false; }
             for (const char* key : { "visualIds", "contactVisualId", "speedMps", "contactRadiusM", "spawnRadiusM", "lifetimeMs", "homing" })
                 if (pursuit != (logicValue.Find(key) != nullptr))
                 { outStatus = "PURSUIT_PROJECTILES fields must be supplied together on that judgement kind."; return false; }
@@ -3387,10 +3447,10 @@ bool_t Client::CKoukuSaydonCompositionDocument::Parse_Text(
 				logicValue.Find("arenaHeightToleranceM") || logicValue.Find("arenaMinimumSpacingM") || randomPlayerOnly) &&
 				(stagedLogic.strLogicType != "TRIGGER" || stagedLogic.strTriggerKind != "ALBION_BLUE_CIRCLE"))
 			{ outStatus = "Arena circle placement and randomPlayerOnly belong to ALBION_BLUE_CIRCLE."; return false; }
-			if (((logicValue.Find("pushDirection") || forcePush || pushCanLeaveArena || pushBallistic || logicValue.Find("pushYawOffsetDegrees")) && stagedLogic.strOutcomeKind != "MAX_HP_PERCENT_DAMAGE") ||
+			if (((logicValue.Find("pushDirection") || forcePush || pushCanLeaveArena || pushBallistic || logicValue.Find("pushHeightM") || logicValue.Find("pushYawOffsetDegrees")) && (stagedLogic.strOutcomeKind != "MAX_HP_PERCENT_DAMAGE" && stagedLogic.strOutcomeKind != "FIXED_DAMAGE")) ||
 				(logicValue.Find("pushRangeM") != nullptr) != (logicValue.Find("pushMs") != nullptr) ||
-				((logicValue.Find("pushRangeM") || logicValue.Find("pushMs")) && stagedLogic.strOutcomeKind != "MAX_HP_PERCENT_DAMAGE") ||
-				((rearmOnExit || repeatAfterKnockback) && (stagedLogic.strLogicType != "TRIGGER" || stagedLogic.strTriggerKind != "ENTER_AREA")))
+				((logicValue.Find("pushRangeM") || logicValue.Find("pushMs")) && (stagedLogic.strOutcomeKind != "MAX_HP_PERCENT_DAMAGE" && stagedLogic.strOutcomeKind != "FIXED_DAMAGE")) ||
+				((rearmOnExit || repeatAfterKnockback || logicValue.Find("repeatIntervalMs")) && (stagedLogic.strLogicType != "TRIGGER" || stagedLogic.strTriggerKind != "ENTER_AREA")))
 			{ outStatus = "Knockback fields belong together on a damage Result; rearmOnExit belongs to ENTER_AREA."; return false; }
 			const auto* grip = logicValue.Find("gripLocalOffset");
 			if ((stagedLogic.strOutcomeKind == "CAPTURE_PLAYER") != (grip != nullptr) ||
@@ -4415,7 +4475,7 @@ bool_t Client::CKoukuSaydonCompositionDocument::Parse_Text(
 		{
 			KOUKU_SAYDON_COMPOSITION_PATTERN_FLOW flow;
 			const auto* entries = Required(value, "entries", DATA_JSON_TYPE::ARRAY);
-			if (!Has_Properties(value, {"flowId", "gateId", "displayName", "entries"}, {"loopStartEntryId"}) ||
+			if (!Has_Properties(value, {"flowId", "gateId", "displayName", "entries"}, {"loopStartEntryId", "entryGroups"}) ||
 				!readText(value, "flowId", flow.strFlowId) || !readText(value, "gateId", flow.strGateId) ||
 				!readText(value, "displayName", flow.strDisplayName) || !entries || entries->Get_Array().size() > 256u)
 			{ outStatus = "Pattern Flow properties are invalid."; return false; }
@@ -4431,6 +4491,30 @@ bool_t Client::CKoukuSaydonCompositionDocument::Parse_Text(
 					!Try_ParseUnsigned(*wait, MAX_TIME_MS, entry.iWaitAfterMs))
 				{ outStatus = "Pattern Flow entry properties are invalid."; return false; }
 				flow.Entries.push_back(std::move(entry));
+			}
+			if (const auto* groups = value.Find("entryGroups"))
+			{
+				if (!groups->Is_Array() || groups->Get_Array().size() > 64u)
+				{ outStatus = "Pattern Flow groups must be a bounded array."; return false; }
+				for (const auto& row : groups->Get_Array())
+				{
+					KOUKU_SAYDON_COMPOSITION_FLOW_GROUP group;
+					if (!Has_Properties(row, {"groupId", "displayName", "startEntryId", "endEntryId"}, {"repeatUntilHealthBars", "transitionAt"}) ||
+						!readText(row, "groupId", group.strGroupId) || !readText(row, "displayName", group.strDisplayName) ||
+						!readText(row, "startEntryId", group.strStartEntryId) || !readText(row, "endEntryId", group.strEndEntryId))
+					{ outStatus = "Pattern Flow group properties are invalid."; return false; }
+					if (const auto* threshold = row.Find("repeatUntilHealthBars"))
+					{
+						std::uint32_t bars = 0u; std::string transition;
+						if (!Try_ParseUnsigned(*threshold, 1000u, bars) || !readText(row, "transitionAt", transition) ||
+							(transition != "PATTERN_END" && transition != "GROUP_END"))
+						{ outStatus = "HP repeat requires a bounded threshold and explicit completion boundary."; return false; }
+						group.RepeatUntilHealthBars = bars; group.bTransitionAtGroupEnd = transition == "GROUP_END";
+					}
+					else if (row.Find("transitionAt"))
+					{ outStatus = "A completion boundary requires an HP repeat condition."; return false; }
+					flow.EntryGroups.push_back(std::move(group));
+				}
 			}
 			staged.PatternFlows.push_back(std::move(flow));
 		}
@@ -4701,16 +4785,18 @@ std::string Client::CKoukuSaydonCompositionDocument::Serialize(
 				<< ",\n      \"percent\": " << logic.iPercent
 				<< ",\n      \"durationMs\": " << logic.iDurationMs
 				<< ",\n      \"followupPatternId\": \"" << CDataJson::Escape(logic.strFollowupPatternId) << "\"";
+			if (logic.strOutcomeKind == "FIXED_DAMAGE") output << ",\n      \"damageAmount\": " << logic.iDamageAmount;
 			// Omitted at 0 so existing MARIO_ENTER rows re-save byte-identical.
 			if (logic.strOutcomeKind == "MARIO_ENTER" && logic.iMarioEntryStage != 0u)
 				output << ",\n      \"marioStage\": " << logic.iMarioEntryStage;
-			if (logic.strOutcomeKind == "MAX_HP_PERCENT_DAMAGE" && (logic.fPushRangeM != 0.0 || logic.iPushMs != 0u))
+			if ((logic.strOutcomeKind == "MAX_HP_PERCENT_DAMAGE" || logic.strOutcomeKind == "FIXED_DAMAGE") && (logic.fPushRangeM != 0.0 || logic.fPushHeightM != 0.0 || logic.iPushMs != 0u))
 				output << ",\n      \"pushRangeM\": " << logic.fPushRangeM
 					<< ",\n      \"pushMs\": " << logic.iPushMs;
 			if (logic.strPushDirection != "AWAY_FROM_BOSS")
 				output << ",\n      \"pushDirection\": \"" << logic.strPushDirection << "\"";
 			if (logic.bForcePush) output << ",\n      \"forcePush\": true";
 			if (logic.bPushCanLeaveArena) output << ",\n      \"pushCanLeaveArena\": true";
+			if (logic.fPushHeightM > 0.0) output << ",\n      \"pushHeightM\": " << logic.fPushHeightM;
 			if (logic.bPushBallistic) output << ",\n      \"pushBallistic\": true";
 			if (logic.fPushYawOffsetDegrees != 0.0) output << ",\n      \"pushYawOffsetDegrees\": " << logic.fPushYawOffsetDegrees;
 			if (logic.strOutcomeKind == "FEAR")
@@ -4747,6 +4833,7 @@ std::string Client::CKoukuSaydonCompositionDocument::Serialize(
 			output << ",\n      \"triggerKind\": \"" << logic.strTriggerKind << "\"";
 			if (logic.strTriggerKind == "ENTER_AREA" && logic.bRearmOnExit)
 				output << ",\n      \"rearmOnExit\": true";
+			if (logic.iRepeatIntervalMs) output << ",\n      \"repeatIntervalMs\": " << logic.iRepeatIntervalMs;
 			if (logic.strTriggerKind == "ENTER_AREA" && logic.bRepeatAfterKnockback)
 				output << ",\n      \"repeatAfterKnockback\": true";
             if (logic.strTriggerKind == "ENTER_AREA" && logic.fBossChargeDistanceM != 0.0)
@@ -4810,7 +4897,15 @@ std::string Client::CKoukuSaydonCompositionDocument::Serialize(
                 output << ",\n      \"visualIds\": [";
                 for (std::size_t i = 0; i < logic.PursuitVisualIds.size(); ++i)
                     output << (i ? ", \"" : "\"") << CDataJson::Escape(logic.PursuitVisualIds[i]) << "\"";
-                output << "],\n      \"contactVisualId\": \"" << CDataJson::Escape(logic.strContactVisualId)
+                output << "]";
+                if (!logic.PursuitCardSymbols.empty())
+                {
+                    output << ",\n      \"cardSymbols\": [";
+                    for (std::size_t i = 0; i < logic.PursuitCardSymbols.size(); ++i)
+                        output << (i ? ", \"" : "\"") << CDataJson::Escape(logic.PursuitCardSymbols[i]) << "\"";
+                    output << "]";
+                }
+                output << ",\n      \"contactVisualId\": \"" << CDataJson::Escape(logic.strContactVisualId)
                     << "\",\n      \"speedMps\": " << logic.fPursuitSpeedMps
                     << ",\n      \"contactRadiusM\": " << logic.fContactRadiusM
                     << ",\n      \"spawnRadiusM\": " << logic.fSpawnRadiusM
@@ -5092,6 +5187,14 @@ std::string Client::CKoukuSaydonCompositionDocument::Serialize(
 			Write_PresentationVector(output, row.PositionOffset);
 			output << ", \"rotationDegrees\": "; Write_PresentationVector(output, row.RotationDegrees);
 			output << ", \"scale\": "; Write_PresentationVector(output, row.Scale);
+                if (row.strColliderMotion == "LINEAR" || row.ColliderEndPositionOffset != std::array<double, 3u>{} ||
+                    row.ColliderEndScale != std::array<double, 3u>{ 1.0, 1.0, 1.0 })
+                {
+                    output << ", \"colliderMotion\": \"" << row.strColliderMotion << "\", \"colliderEndPositionOffset\": ";
+                    Write_PresentationVector(output, row.ColliderEndPositionOffset);
+                    output << ", \"colliderEndScale\": "; Write_PresentationVector(output, row.ColliderEndScale);
+                }
+			if (!row.strAnchorPresentationOccurrenceId.empty()) output << ", \"anchorPresentationOccurrenceId\": \"" << CDataJson::Escape(row.strAnchorPresentationOccurrenceId) << "\"";
 			if (row.bFitEffectToDuration) output << ", \"fitEffectToDuration\": true";
 			if (row.bLoopEffectToDuration) output << ", \"loopEffectToDuration\": true";
 			output << ", \"fadeInMs\": " << row.iFadeInMs << ", \"fadeOutMs\": " << row.iFadeOutMs
@@ -5168,6 +5271,13 @@ std::string Client::CKoukuSaydonCompositionDocument::Serialize(
                     << ", \"durationMs\": " << row.iDurationMs << ", \"positionOffset\": "; Write_PresentationVector(output, row.PositionOffset);
                 output << ", \"rotationDegrees\": "; Write_PresentationVector(output, row.RotationDegrees);
                 output << ", \"scale\": "; Write_PresentationVector(output, row.Scale);
+                if (row.strColliderMotion == "LINEAR" || row.ColliderEndPositionOffset != std::array<double, 3u>{} ||
+                    row.ColliderEndScale != std::array<double, 3u>{ 1.0, 1.0, 1.0 })
+                {
+                    output << ", \"colliderMotion\": \"" << row.strColliderMotion << "\", \"colliderEndPositionOffset\": ";
+                    Write_PresentationVector(output, row.ColliderEndPositionOffset);
+                    output << ", \"colliderEndScale\": "; Write_PresentationVector(output, row.ColliderEndScale);
+                }
                 if (row.bFitEffectToDuration) output << ", \"fitEffectToDuration\": true";
                 if (row.bLoopEffectToDuration) output << ", \"loopEffectToDuration\": true";
                 output << ", \"fadeInMs\": " << row.iFadeInMs << ", \"fadeOutMs\": " << row.iFadeOutMs
@@ -5206,7 +5316,25 @@ std::string Client::CKoukuSaydonCompositionDocument::Serialize(
                 << "\", \"targetId\": \"" << CDataJson::Escape(entry.strTargetId)
                 << "\", \"waitAfterMs\": " << entry.iWaitAfterMs << '}';
         }
-        output << "]}" << (i + 1 < document.PatternFlows.size() ? "," : "") << '\n';
+        output << "]";
+        if (!flow.EntryGroups.empty())
+        {
+            output << ", \"entryGroups\": [";
+            for (size_t j = 0; j < flow.EntryGroups.size(); ++j)
+            {
+                const auto& group = flow.EntryGroups[j];
+                output << (j ? "," : "") << "{\"groupId\": \"" << CDataJson::Escape(group.strGroupId)
+                    << "\", \"displayName\": \"" << CDataJson::Escape(group.strDisplayName)
+                    << "\", \"startEntryId\": \"" << CDataJson::Escape(group.strStartEntryId)
+                    << "\", \"endEntryId\": \"" << CDataJson::Escape(group.strEndEntryId) << "\"";
+                if (group.RepeatUntilHealthBars)
+                    output << ", \"repeatUntilHealthBars\": " << *group.RepeatUntilHealthBars
+                        << ", \"transitionAt\": \"" << (group.bTransitionAtGroupEnd ? "GROUP_END" : "PATTERN_END") << "\"";
+                output << '}';
+            }
+            output << ']';
+        }
+        output << "}" << (i + 1 < document.PatternFlows.size() ? "," : "") << '\n';
     }
     output << "  ]\n}\n";
 
@@ -5821,7 +5949,7 @@ bool_t Client::CKoukuSaydonCompositionDocument::Try_ExpandPatternDocument(
                 remap(row.strRegionId);
                 row.iFadeInMs = (std::min)(row.iFadeInMs, row.iDurationMs);
                 row.iFadeOutMs = (std::min)(row.iFadeOutMs, row.iDurationMs - row.iFadeInMs);
-                return remapRequired(row.strLogicOccurrenceId) && remapRequired(row.strWorldOccurrenceId);
+                return remapRequired(row.strLogicOccurrenceId) && remapRequired(row.strWorldOccurrenceId) && remapRequired(row.strAnchorPresentationOccurrenceId);
             })) return false;
             if (result.LogicOccurrences.size() > MAX_LOGIC_OCCURRENCES_PER_PATTERN ||
                 result.SummonOccurrences.size() > MAX_SUMMON_OCCURRENCES_PER_PATTERN ||

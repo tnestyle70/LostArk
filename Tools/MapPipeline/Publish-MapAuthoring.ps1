@@ -3199,7 +3199,16 @@ function Read-MapMaterialDocument {
         }
         if ($null -ne $row.PSObject.Properties['environment']) {
             $environment = $row.environment
-            Assert-ExactJsonProperties $environment @('cubeTexture','brdfTexture','color','rotation') 'Environment lighting'
+            $environmentFields = @('cubeTexture','brdfTexture','color','rotation')
+            if ($null -ne $environment.PSObject.Properties['sourceIndirect']) { $environmentFields += 'sourceIndirect' }
+            if ($null -ne $environment.PSObject.Properties['legacyEnabled']) { $environmentFields += 'legacyEnabled' }
+            Assert-ExactJsonProperties $environment $environmentFields 'Environment lighting'
+            if ($null -ne $environment.PSObject.Properties['legacyEnabled']) {
+                if ($environment.legacyEnabled -isnot [bool] -or
+                    (-not $environment.legacyEnabled -and $null -eq $environment.PSObject.Properties['sourceIndirect'])) {
+                    throw 'Invalid environment legacyEnabled or missing source indirect inputs'
+                }
+            }
             & $validateLightingTexture $environment.cubeTexture
             & $validateLightingTexture $environment.brdfTexture
             if ($environment.color -isnot [array] -or $environment.color.Count -ne 4 -or
@@ -3214,6 +3223,56 @@ function Read-MapMaterialDocument {
             }
             if ([Math]::Abs($environment.rotation[0]*$environment.rotation[0]+$environment.rotation[1]*$environment.rotation[1]-1) -gt 0.0001) {
                 throw 'Environment rotation must have unit length'
+            }
+            if ($null -ne $environment.PSObject.Properties['sourceIndirect']) {
+                if (-not $isPBR) { throw 'Source indirect requires a PBR environment' }
+                $indirect = $environment.sourceIndirect
+                Assert-ExactJsonProperties $indirect @('model','cubeTexture','brdfTexture','color','rotation','packedSH','upperSkyColor','lowerSkyColor','ambientAndSkyFactor') 'Source indirect'
+                & $validateLightingTexture $indirect.cubeTexture
+                & $validateLightingTexture $indirect.brdfTexture
+                if ($indirect.color -isnot [array] -or $indirect.color.Count -ne 4 -or
+                    $indirect.rotation -isnot [array] -or $indirect.rotation.Count -ne 2) {
+                    throw 'Invalid source indirect color or rotation'
+                }
+                foreach ($value in $indirect.color) {
+                    if (-not (Test-JsonNumber $value) -or $value -lt 0 -or $value -gt [single]::MaxValue) {
+                        throw 'Invalid source indirect color component'
+                    }
+                }
+                foreach ($value in $indirect.rotation) {
+                    if (-not (Test-JsonNumber $value) -or [Math]::Abs([double]$value) -gt 1) {
+                        throw 'Invalid source indirect rotation component'
+                    }
+                }
+                if ([Math]::Abs($indirect.rotation[0]*$indirect.rotation[0]+$indirect.rotation[1]*$indirect.rotation[1]-1) -gt 0.0001) {
+                    throw 'Source indirect rotation must have unit length'
+                }
+                if ($indirect.model -isnot [string] -or $indirect.model -cne 'UE3_NATIVE_PBR' -or
+                    $indirect.packedSH -isnot [array] -or $indirect.packedSH.Count -ne 7) {
+                    throw 'Invalid source indirect model or SH row count'
+                }
+                foreach ($shRow in $indirect.packedSH) {
+                    if ($shRow -isnot [array] -or $shRow.Count -ne 4) { throw 'Invalid source indirect SH row' }
+                    foreach ($value in $shRow) {
+                        if (-not (Test-JsonNumber $value) -or [Math]::Abs([double]$value) -gt 64) {
+                            throw 'Invalid source indirect SH component'
+                        }
+                    }
+                }
+                if ($indirect.packedSH[6][3] -ne 1) { throw 'Source indirect SH reserved w must be one' }
+                foreach ($key in @('upperSkyColor','lowerSkyColor','ambientAndSkyFactor')) {
+                    $count = if ($key -ceq 'ambientAndSkyFactor') { 4 } else { 3 }
+                    if ($indirect.$key -isnot [array] -or $indirect.$key.Count -ne $count) {
+                        throw "Invalid source indirect vector: $key"
+                    }
+                    for ($index = 0; $index -lt $count; ++$index) {
+                        $value = $indirect.$key[$index]
+                        $maximum = if ($key -ceq 'ambientAndSkyFactor' -and $index -eq 3) { 4 } else { 64 }
+                        if (-not (Test-JsonNumber $value) -or $value -lt 0 -or $value -gt $maximum) {
+                            throw "Invalid source indirect vector component: $key"
+                        }
+                    }
+                }
             }
         }
         $modelPath = [string]$script:mapMaterialModels[$row.assetId]

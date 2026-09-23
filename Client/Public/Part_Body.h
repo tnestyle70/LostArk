@@ -76,12 +76,13 @@ private:
 	std::weak_ptr<CModel> m_WeaponReplacementBody;
 	const DEFERRED_EMISSIVE_OVERRIDE* m_pEmissiveOverride = { nullptr };
 	bool_t m_hasTranslucentMeshes = { false };
+    bool_t m_hasOpaqueGhostMeshes = { false };
 
 private:
 	HRESULT Ready_Components(const PART_BODY_DESC* pDesc);
 	HRESULT Bind_ShaderResources();
 	HRESULT Bind_ShadowShaderResources();
-	HRESULT Render_Translucent();
+	HRESULT Render_ForwardSource(bool opaqueGhost);
 
 public:
 	static unique_ptr<CPart_Body> Create(ComPtr<ID3D11Device> pDevice,

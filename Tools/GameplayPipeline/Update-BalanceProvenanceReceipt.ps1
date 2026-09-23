@@ -1,12 +1,26 @@
 [CmdletBinding()]
-param()
+param([string]$InputOverlayRoot = '')
 
 $ErrorActionPreference = 'Stop'
 $repoRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\..'))
-$receiptPath = Join-Path $repoRoot 'Data\Balance\Reference\Official\2026-08-05.balance-provenance.receipt.json'
+function Resolve-BalanceInput([string]$relativePath) {
+    if (-not [string]::IsNullOrWhiteSpace($InputOverlayRoot)) {
+        $candidate = Join-Path $InputOverlayRoot $relativePath
+        if ([IO.File]::Exists($candidate)) { return $candidate }
+    }
+    return Join-Path $repoRoot $relativePath
+}
+$receiptRelative = 'Data\Balance\Reference\Official\2026-08-05.balance-provenance.receipt.json'
+$receiptPath = Resolve-BalanceInput $receiptRelative
+if (-not [string]::IsNullOrWhiteSpace($InputOverlayRoot)) {
+    $receiptOutput = Join-Path $InputOverlayRoot $receiptRelative
+    [IO.Directory]::CreateDirectory([IO.Path]::GetDirectoryName($receiptOutput)) | Out-Null
+    if (-not [IO.File]::Exists($receiptOutput)) { [IO.File]::Copy($receiptPath, $receiptOutput) }
+    $receiptPath = $receiptOutput
+}
 
 function Read-Json([string]$relativePath) {
-    $path = Join-Path $repoRoot $relativePath
+    $path = Resolve-BalanceInput $relativePath
     if (-not [IO.File]::Exists($path)) { throw "Missing authoring document: $relativePath" }
     return Get-Content -LiteralPath $path -Raw -Encoding UTF8 | ConvertFrom-Json
 }

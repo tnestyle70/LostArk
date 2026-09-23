@@ -89,7 +89,6 @@ void LostArk::Server::CGameRoom::Handle_Move(
 	player.iLastMoveSequence = move.iClientSequence;
 	if (((player.CardMaze.flags & 1u) && !m_KoukuCardMaze.Is_SoloHunter(player.iPlayerId)) ||
 		player.CardMaze.transferStartTick) return;
-#ifdef _DEBUG
 	if (LostArk::Shared::WORLD_ID::VALTAN_ARENA == m_eWorldId &&
 		VALTAN_TIMELINE_AUDITION_PHASE::INACTIVE !=
 			m_ValtanTimelineAudition.ePhase &&
@@ -99,7 +98,6 @@ void LostArk::Server::CGameRoom::Handle_Move(
 	{
 		return;
 	}
-#endif
 	if (move.eIntent == LostArk::Shared::PLAYER_MOVE_INTENT::VEHICLE_FLIGHT)
 	{
 		if (player.iVehicleId == LostArk::Shared::ANCIENT_SEA_VEHICLE_ID && Can_RideVehicle(player) &&
@@ -316,9 +314,10 @@ void LostArk::Server::CGameRoom::Commit_PendingPlayerCommand(
 		command.fAimZ = pending.fZ;
 		if (m_PlayerSkillSystem.Try_StartPending(
 				player, command, m_GameplayCatalog, actionStartTick,
-				&m_ServerNavigation))
+				&m_ServerNavigation, m_eCooldownMode))
 		{
 			player.isCombatReady = true;
+			Apply_SkillBuffs(player, command.iSkillId, actionStartTick);
 		}
 	}
 }
@@ -358,7 +357,6 @@ void LostArk::Server::CGameRoom::Handle_UseSkill(
 		 !Has_ReachedServerTick(m_iServerTick, playerIter->second.iSilenceEndTick)))
 		return;
 
-#ifdef _DEBUG
 	if (LostArk::Shared::WORLD_ID::VALTAN_ARENA == m_eWorldId &&
 		VALTAN_TIMELINE_AUDITION_PHASE::INACTIVE !=
 			m_ValtanTimelineAudition.ePhase &&
@@ -369,7 +367,6 @@ void LostArk::Server::CGameRoom::Handle_UseSkill(
 	{
 		return;
 	}
-#endif
 
 	const std::uint32_t actionStartTick =
 		(std::numeric_limits<std::uint32_t>::max)() == m_iServerTick ?
@@ -401,10 +398,43 @@ void LostArk::Server::CGameRoom::Handle_UseSkill(
 		useSkill,
 		m_GameplayCatalog,
 		actionStartTick,
-		&m_ServerNavigation))
+		&m_ServerNavigation, m_eCooldownMode))
 	{
 		playerIter->second.isCombatReady = true;
+		Apply_SkillBuffs(playerIter->second, useSkill.iSkillId, actionStartTick);
 	}
+
+}
+
+void LostArk::Server::CGameRoom::Apply_SkillBuffs(
+	SERVER_PLAYER& caster,
+	const std::uint32_t skillId,
+	const std::uint32_t serverTick)
+{
+	const CGameplayCatalog& catalog = m_GameplayCatalog.Active();
+	const std::vector<CGameplayCatalog::SKILL_BUFF_DEFINITION>* found =
+		catalog.Find_SkillBuffs(skillId);
+#ifdef _DEBUG
+	/* Which skill asked for a buff and whether the catalog had one, so a buff that
+	never reaches a HUD can be placed on this side or the other. */
+	std::cout << "[SkillBuff] skill=" << skillId << " tick=" << serverTick
+		<< " definitions=" << (nullptr == found ? 0u : found->size()) << '\n';
+#endif
+	if (nullptr == found)
+		return;
+	std::vector<SERVER_PLAYER*> allies;
+	allies.reserve(m_Players.size());
+	for (auto& entry : m_Players)
+		allies.push_back(&entry.second);
+	/* Existing buff runtime owns boss debuffs and monster stun admission. */
+	std::vector<SERVER_WORLD_ENTITY*> enemies;
+	for (SERVER_WORLD_ENTITY& entity : m_WorldEntities)
+	{
+		if ((WORLD_BOOTSTRAP_KIND::BOSS == entity.eKind || WORLD_BOOTSTRAP_KIND::MONSTER == entity.eKind) && 0u != entity.iCurrentHp)
+			enemies.push_back(&entity);
+	}
+	CServerBuffRuntime::Apply_SkillBuffs(
+		catalog, skillId, caster, allies, enemies, serverTick);
 }
 
 void LostArk::Server::CGameRoom::Handle_RevivePlayer(
@@ -432,17 +462,28 @@ void LostArk::Server::CGameRoom::Handle_RevivePlayer(
 	player.iLastReviveSequence = revivePlayer.iClientSequence;
 	if (0u != player.iCurrentHp || PLAYER_ACTION_STATE::DEAD != player.eAction)
 		return;
+	// A failed destination admission keeps the Mario corpse/pin for retry;
+	// revival must not bypass that mandatory return and revive inside Mario.
+	if (player.iMarioStage || player.MarioReturnPosition) return;
 
 	const PLAYER_RUNTIME_PROFILE* profile =
 		m_GameplayCatalog.Find_Player(player.eCharacterClass);
 	if (nullptr == profile)
 		return;
-	/* Kouku revives at the death position. Valtan retains its authored safe
-	center. Navigation admission is staged before any player state changes. */
+	/* Both destinations are staged before any player state changes: Kouku
+	returns to its current gate start; Valtan retains its authored safe center. */
 	float reviveX = player.fPositionX;
 	float reviveY = player.fPositionY;
 	float reviveZ = player.fPositionZ;
 	float reviveYaw = player.fYawDegrees;
+	const bool unadmittedCasinoFall = WORLD_ID::KAKULSAYDON_ARENA == m_eWorldId &&
+		!Resolve_CurrentKoukuGate() && player.bKoukuFallDeath && player.KoukuFallRevivePosition;
+	if (unadmittedCasinoFall)
+	{
+		reviveX = (*player.KoukuFallRevivePosition)[0];
+		reviveY = (*player.KoukuFallRevivePosition)[1];
+		reviveZ = (*player.KoukuFallRevivePosition)[2];
+	}
 	if (WORLD_ID::VALTAN_ARENA == m_eWorldId)
 	{
 		const WORLD_BOOTSTRAP_PLACEMENT* arenaCenter = Find_Placement("boss.valtan.center");
@@ -453,25 +494,29 @@ void LostArk::Server::CGameRoom::Handle_RevivePlayer(
 		reviveZ = arenaCenter->fPositionZ;
 		reviveYaw = arenaCenter->fYawDegrees;
 	}
+	else if (!unadmittedCasinoFall)
+	{
+		SERVER_NAV_POINT start{};
+		if (!Resolve_KoukuRevivePosition(player, start, reviveYaw)) return;
+		reviveX = start.x; reviveY = start.y; reviveZ = start.z;
+	}
 	if (m_ServerNavigation.Is_Loaded())
 	{
 		SERVER_NAV_POINT projected{};
 		if (!m_ServerNavigation.Project_Point(
 			reviveX, reviveZ, projected, reviveY))
 			return;
-		// Project_Point provides a safe floor if the death location is unwalkable.
-		if (WORLD_ID::VALTAN_ARENA == m_eWorldId ||
-			!m_ServerNavigation.Is_PointWalkableExact(reviveX, reviveZ, reviveY))
-		{
-			reviveX = projected.x;
-			reviveZ = projected.z;
-		}
+		// Commit the navigation-admitted gate start, never the old death location.
+		reviveX = projected.x;
+		reviveZ = projected.z;
 		reviveY = projected.y;
 	}
 	player.fPositionX = reviveX;
 	player.fPositionY = reviveY;
 	player.fPositionZ = reviveZ;
 	player.fYawDegrees = reviveYaw;
+	player.KoukuFallRevivePosition.reset();
+	player.bKoukuFallDeath = false;
 	player.iCurrentHp = player.iMaximumHp;
 	player.iCurrentResource = player.iMaximumResource;
 	player.iResourceAccumulator = 0u;
@@ -492,6 +537,7 @@ void LostArk::Server::CGameRoom::Handle_RevivePlayer(
 	player.Clear_SilenceStatus();
 	player.fFallVelocityY = 0.f;
 	player.iFallDeathTick = 0u;
+	player.fFallDeathPlaneY = 0.f;
 	player.fActionElapsedSeconds = 0.f;
 	player.fSkillAimDirectionX = 0.f;
 	player.fSkillAimDirectionZ = 1.f;
@@ -510,6 +556,9 @@ void LostArk::Server::CGameRoom::Handle_RevivePlayer(
 	player.TriggerMove = {};
 	player.fKnockbackRemainingSeconds = 0.f;
 	player.fKnockbackSpeed = 0.f;
+	player.bKnockbackBallistic = player.bKnockbackCanLeaveArena = player.bArenaEjectionActive = false;
+	player.fKnockbackVelocityY = player.fKnockbackLaunchY = player.fKnockbackSupportY = 0.f;
+	player.iEjectionOwnerNetEntityId = INVALID_NET_ENTITY_ID;
 	player.iKnockdownEndTick = 0u;
 	player.iHitReactionGraceEndTick = 0u;
 	// A successful authoritative revive immediately makes the player a valid
@@ -1137,4 +1186,37 @@ void LostArk::Server::CGameRoom::Handle_ChangeCharacterClass(
 	{
 		session->Request_Close();
 	}
+}
+
+
+LostArk::Shared::SET_COOLDOWN_MODE_RESULT LostArk::Server::CGameRoom::Apply_SetCooldownMode(
+    const SESSION_ID sessionId, const LostArk::Shared::C2S_SET_COOLDOWN_MODE& request)
+{
+    using namespace LostArk::Shared;
+    if (request.eWorldId != m_eWorldId || request.eMode >= COOLDOWN_MODE::END) return SET_COOLDOWN_MODE_RESULT::WRONG_WORLD;
+    const auto owner = m_PlayerIdBySessionId.find(sessionId);
+    if (owner == m_PlayerIdBySessionId.end() || !m_Players.contains(owner->second)) return SET_COOLDOWN_MODE_RESULT::INVALID_PLAYER;
+    auto& last = m_CooldownModeRequestSequences[sessionId];
+    if (!request.iRequestSequence || static_cast<std::int32_t>(request.iRequestSequence - last) <= 0)
+        return SET_COOLDOWN_MODE_RESULT::STALE_REQUEST;
+    last = request.iRequestSequence;
+    if (m_eCooldownMode != request.eMode)
+    {
+        for (auto& [id, player] : m_Players)
+            CPlayerSkillSystem::Recalculate_Cooldowns(player, m_GameplayCatalog.Active(), m_iServerTick, request.eMode);
+        m_eCooldownMode = request.eMode;
+    }
+    return SET_COOLDOWN_MODE_RESULT::ACCEPTED;
+}
+
+void LostArk::Server::CGameRoom::Handle_SetCooldownMode(
+    const SESSION_ID sessionId, const LostArk::Shared::C2S_SET_COOLDOWN_MODE& request)
+{
+    using namespace LostArk::Shared;
+    S2C_SET_COOLDOWN_MODE_RESULT result{};
+    result.iRequestSequence = request.iRequestSequence; result.eWorldId = m_eWorldId;
+    result.eResult = Apply_SetCooldownMode(sessionId, request); result.eMode = m_eCooldownMode;
+    const auto session = Find_Session(sessionId); CPacketWriter writer;
+    if (session && Write_Message(writer, result) &&
+        !session->Send_Frame(PACKET_TYPE::S2C_SET_COOLDOWN_MODE_RESULT, writer.Get_Buffer())) session->Request_Close();
 }

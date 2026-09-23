@@ -13,7 +13,7 @@
     "dissolve": ""
   },
   "params": {
-    "lifetime": 23.333,
+    "lifetime": 18.333,
     "loop": false,
     "playRate": 1.0,
     "alphaInEnd": 0.0,
@@ -26,67 +26,67 @@
       "intensitySmoothstep": false,
       "intensityKeys": [
         {
-          "timeSeconds": 0.0,
+          "timeSeconds": 0,
           "intensity": 0.0
         },
         {
-          "timeSeconds": 22.5000019,
+          "timeSeconds": 17.5000019,
           "intensity": 0.0
         },
         {
-          "timeSeconds": 22.54,
+          "timeSeconds": 17.54,
           "intensity": 0.006690208554572978
         },
         {
-          "timeSeconds": 22.58,
+          "timeSeconds": 17.58,
           "intensity": 0.025877412487547016
         },
         {
-          "timeSeconds": 22.62,
+          "timeSeconds": 17.62,
           "intensity": 0.05623450173962293
         },
         {
-          "timeSeconds": 22.68,
+          "timeSeconds": 17.68,
           "intensity": 0.11981061730194055
         },
         {
-          "timeSeconds": 22.72,
+          "timeSeconds": 17.72,
           "intensity": 0.17228631327355504
         },
         {
-          "timeSeconds": 22.78,
+          "timeSeconds": 17.78,
           "intensity": 0.2628195104385406
         },
         {
-          "timeSeconds": 22.84,
+          "timeSeconds": 17.84,
           "intensity": 0.3635549612275351
         },
         {
-          "timeSeconds": 23.02,
+          "timeSeconds": 18.02,
           "intensity": 0.6821848703067362
         },
         {
-          "timeSeconds": 23.08,
+          "timeSeconds": 18.08,
           "intensity": 0.7789393705599135
         },
         {
-          "timeSeconds": 23.12,
+          "timeSeconds": 18.12,
           "intensity": 0.8369451137210416
         },
         {
-          "timeSeconds": 23.18,
+          "timeSeconds": 18.18,
           "intensity": 0.9108900677636873
         },
         {
-          "timeSeconds": 23.24,
+          "timeSeconds": 18.24,
           "intensity": 0.965177298742431
         },
         {
-          "timeSeconds": 23.28,
+          "timeSeconds": 18.28,
           "intensity": 0.988235978678841
         },
         {
-          "timeSeconds": 23.333,
+          "timeSeconds": 18.333,
           "intensity": 0.9999995182944628
         }
       ],

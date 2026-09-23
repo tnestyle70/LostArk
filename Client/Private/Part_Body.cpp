@@ -10,20 +10,20 @@
 namespace
 {
 	constexpr uint32_t SOURCE_TRANSLUCENT_TWO_SIDED_PASS = 9u;
-	constexpr uint32_t SOURCE_TRANSLUCENT_ONE_SIDED_PASS = 10u;
+	constexpr uint32_t SOURCE_GHOST_OPAQUE_PASS = 16u;
 
 	/* Programs 7 and 18 are the source two-sided translucent hair and program 6
 	the eyelash/eye-AO shell. The deferred two-sided pass resolves their coverage
 	as a dither, so they read as stipple dots; the forward pass blends them after
 	scene lighting instead. */
-	uint32_t Resolve_TranslucentSourcePass(const Engine::MODEL_SURFACE_PARAMETERS* surface)
+	uint32_t Resolve_ForwardSourcePass(const Engine::MODEL_SURFACE_PARAMETERS* surface)
 	{
 		if (nullptr == surface || surface->family != Engine::MODEL_SURFACE_FAMILY::SOURCE_CHARACTER)
 			return 0u;
 		const uint32_t program = surface->sourceCharacter.program;
-		// The generic ghost preview uses the same forward material pass as CBody_Valtan.
+		// Generic ghost preview shares the project opaque pass with CBody_Valtan.
 		if (84u == program)
-			return SOURCE_TRANSLUCENT_ONE_SIDED_PASS;
+			return SOURCE_GHOST_OPAQUE_PASS;
 		return 6u == program || 7u == program || 18u == program || 99u == program || SourceEquipmentMaterial::Is_Translucent(program) ?
 			SOURCE_TRANSLUCENT_TWO_SIDED_PASS : 0u;
 	}
@@ -65,7 +65,11 @@ HRESULT CPart_Body::Initialize(void* pArg)
 		m_pModelCom->Set_Animation(0u, true);
 
 	for (uint32_t i = 0; i < m_pModelCom->Get_NumMeshes(); ++i)
-		m_hasTranslucentMeshes |= 0u != Resolve_TranslucentSourcePass(m_pModelCom->Get_MaterialSurface(i));
+    {
+        const uint32_t pass = Resolve_ForwardSourcePass(m_pModelCom->Get_MaterialSurface(i));
+        m_hasOpaqueGhostMeshes |= pass == SOURCE_GHOST_OPAQUE_PASS;
+        m_hasTranslucentMeshes |= pass != 0u && pass != SOURCE_GHOST_OPAQUE_PASS;
+    }
 
 	return S_OK;
 }
@@ -105,6 +109,9 @@ void CPart_Body::Late_Update(f32_t fTimeDelta)
 	CGameInstance::Get().Add_RenderObject(
 		RENDERGROUP::NONBLEND,
 		static_pointer_cast<CGameObject>(shared_from_this()));
+    if (m_hasOpaqueGhostMeshes)
+        CGameInstance::Get().Add_RenderObject(RENDERGROUP::NONLIGHT,
+            static_pointer_cast<CGameObject>(shared_from_this()));
 	if (m_hasTranslucentMeshes)
 	{
 		CGameInstance::Get().Add_RenderObject(
@@ -126,10 +133,11 @@ HRESULT CPart_Body::Render()
 
 HRESULT CPart_Body::Render_Group(RENDERGROUP group)
 {
-	return RENDERGROUP::BLEND == group ? Render_Translucent() : Render();
+	if (RENDERGROUP::NONLIGHT == group) return Render_ForwardSource(true);
+    return RENDERGROUP::BLEND == group ? Render_ForwardSource(false) : Render();
 }
 
-HRESULT CPart_Body::Render_Translucent()
+HRESULT CPart_Body::Render_ForwardSource(bool opaqueGhost)
 {
 	if (Client::CNpcPresentationAssetService::Is_SaydonHammerSuppressed(m_WeaponReplacementBody.lock())) return S_OK;
 	if (FAILED(Bind_ShaderResources()) ||
@@ -140,8 +148,8 @@ HRESULT CPart_Body::Render_Translucent()
 	{
 		if (0 != (m_iHiddenMeshMask & (1u << i)))
 			continue;
-		const uint32_t pass = Resolve_TranslucentSourcePass(m_pModelCom->Get_MaterialSurface(i));
-		if (0u == pass)
+		const uint32_t pass = Resolve_ForwardSourcePass(m_pModelCom->Get_MaterialSurface(i));
+		if (0u == pass || (pass == SOURCE_GHOST_OPAQUE_PASS) != opaqueGhost)
 			continue;
 		if (FAILED(Bind_DeferredMaterialInputs(
 				*m_pModelCom, m_pShaderCom, i, {},
@@ -169,9 +177,9 @@ HRESULT CPart_Body::Render_Pass(uint32_t iPassIndex)
 
         uint32_t materialPass = iPassIndex;
         const auto* surface = m_pModelCom->Get_MaterialSurface(i);
-        /* The BLEND group draws these forward; the portrait's explicit passes
+        /* The NONLIGHT/BLEND groups draw these forward; the portrait's explicit passes
         still take every mesh so the second draw keeps its own look. */
-        if (iPassIndex == 0u && 0u != Resolve_TranslucentSourcePass(surface))
+        if (iPassIndex == 0u && 0u != Resolve_ForwardSourcePass(surface))
             continue;
         if (iPassIndex == 0u && surface &&
             surface->family == Engine::MODEL_SURFACE_FAMILY::SOURCE_CHARACTER &&
@@ -206,12 +214,13 @@ HRESULT CPart_Body::Render_Shadow()
 		if (0 != (m_iHiddenMeshMask & (1u << i)))
 			continue;
 
-		// Animated shadow consumes diffuse alpha only; keep the exact material override path.
+		// Ghost has a solid silhouette; other animated shadows retain diffuse-alpha coverage.
 		if (FAILED(m_pModelCom->Bind_Material(
 				m_pShaderCom, "g_DiffuseTexture", i, aiTextureType_DIFFUSE, 0)) ||
 			FAILED(m_pModelCom->Bind_BoneMatrices(
 				m_pShaderCom, "g_BoneMatrices", i)) ||
-			FAILED(m_pShaderCom->Begin(ANIMATED_SHADOW_PASS)) ||
+			FAILED(m_pShaderCom->Begin(Resolve_ForwardSourcePass(m_pModelCom->Get_MaterialSurface(i)) ==
+                SOURCE_GHOST_OPAQUE_PASS ? 17u : ANIMATED_SHADOW_PASS)) ||
 			FAILED(m_pModelCom->Render(i)))
 		{
 			return E_FAIL;

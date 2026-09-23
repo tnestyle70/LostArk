@@ -64,6 +64,26 @@ class BernEntranceCameraContractTests(unittest.TestCase):
         self.assertEqual(1, filters.count(entry))
         self.assertIn("96.DataFiles\\Encounters", filters)
 
+    def test_session_latch_survives_level_recreation_and_preserves_failure_retry(self) -> None:
+        source = read("Client/Private/Level_Bern.cpp")
+        latch = "s_hasPresentedBernEntranceThisSession"
+        self.assertEqual(1, source.count(f"bool_t {latch} = false;"))
+        ready = source.split("bool_t CLevel_Bern::Ready_EntranceCinematic()", 1)[1].split(
+            "void CLevel_Bern::Update_EntranceCinematic", 1)[0]
+        self.assertLess(ready.index(f"if ({latch})"), ready.index("CProjectDataRoot::Resolve"))
+        self.assertIn("m_bEntranceCinematicDone = true;", ready)
+        update = source.split("void CLevel_Bern::Update_EntranceCinematic", 1)[1].split(
+            "void CLevel_Bern::End_EntranceCinematic", 1)[0]
+        skip = update.split("if (wasEscapePressed)", 1)[1].split("return;", 1)[0]
+        self.assertIn(f"{latch} = true;", skip)
+        # The other write follows the sample/apply rejection path, never just Begin.
+        self.assertEqual(2, update.count(f"{latch} = true;"))
+        self.assertGreater(update.rindex(f"{latch} = true;"),
+                           update.index("Apply_PresentationPose"))
+        cleanup = source.split("void CLevel_Bern::End_EntranceCinematic()", 1)[1].split(
+            "HRESULT CLevel_Bern::Render()", 1)[0]
+        self.assertNotIn(latch, cleanup)
+
 
 if __name__ == "__main__":
     unittest.main()

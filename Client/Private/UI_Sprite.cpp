@@ -23,11 +23,13 @@ HRESULT Client::CUI_Sprite::Initialize(void* pArg)
 
 	m_strTextureTag = pDesc->strTextureTag;
 	m_vReferenceResolution = pDesc->referenceResolution;
+    m_Caption = pDesc->caption;
+    m_CaptionFont = pDesc->captionFont;
 
 	if (FAILED(__super::Initialize(pDesc)))
 		return E_FAIL;
 
-	if (FAILED(Ready_Components()))
+	if (m_Caption.empty() && FAILED(Ready_Components()))
 		return E_FAIL;
 
 	return S_OK;
@@ -37,7 +39,21 @@ void Client::CUI_Sprite::Late_Update(f32_t fTimeDelta)
 {
 	if (!m_bVisible)
 		return;
-	CGameInstance::Get().Add_RenderObject(RENDERGROUP::UI, static_pointer_cast<CGameObject>(shared_from_this()));
+	CGameInstance::Get().Add_RenderObject(m_bScenePresentation ? RENDERGROUP::SCENE_UI : RENDERGROUP::UI,
+		static_pointer_cast<CGameObject>(shared_from_this()));
+}
+
+HRESULT Client::CUI_Sprite::Render_Group(const RENDERGROUP group)
+{
+    const HRESULT result = Render();
+    if (FAILED(result) && group == RENDERGROUP::SCENE_UI)
+    {
+        m_bScenePresentationFailed = true;
+        m_bVisible = false;
+        OutputDebugStringA("Scene presentation UI sprite failed; isolated until the view is recreated.\n");
+        return S_OK;
+    }
+    return result;
 }
 
 HRESULT Client::CUI_Sprite::Render()
@@ -46,6 +62,16 @@ HRESULT Client::CUI_Sprite::Render()
 	if (!m_bVisible || (!m_bCinematicOverlay && CUIInputRouter::Get().Is_CinematicSuppressed()))
 		return S_OK;
 	const auto viewport = CGameInstance::Get().Get_ViewportSize();
+	if (!m_Caption.empty())
+	{
+		const auto measured = CGameInstance::Get().Measure_Text(m_CaptionFont, m_Caption.c_str());
+		if (measured.y <= 0.f) return E_FAIL;
+		const float sx = viewport.x / m_vReferenceResolution.x;
+		const float sy = viewport.y / m_vReferenceResolution.y;
+		CGameInstance::Get().Draw_Text(m_CaptionFont, m_Caption.c_str(), {m_fX * sx, m_fY * sy},
+			Colors::White, 0.f, {0.5f, 0.5f}, m_fSizeY * 0.6f / measured.y * (std::min)(sx, sy));
+		return S_OK;
+	}
 	if (viewport.x != m_vAppliedViewport.x || viewport.y != m_vAppliedViewport.y)
 		Apply_Transform();
 	if (FAILED(Bind_ShaderResources()))
@@ -120,7 +146,7 @@ void Client::CUI_Sprite::Set_Rotation(f32_t fDegrees)
 
 void Client::CUI_Sprite::Set_Visible(bool_t bVisible)
 {
-	m_bVisible = bVisible;
+	m_bVisible = bVisible && !m_bScenePresentationFailed;
 }
 
 void Client::CUI_Sprite::Set_Texture(ComPtr<ID3D11ShaderResourceView> pOverrideSRV)

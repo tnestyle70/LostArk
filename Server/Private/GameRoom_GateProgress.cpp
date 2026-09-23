@@ -47,6 +47,56 @@ std::uint8_t LostArk::Server::CGameRoom::Gate_Count() const
 	return LostArk::Shared::WORLD_ID::KAKULSAYDON_ARENA == m_eWorldId ? KOUKU_GATE_COUNT : 0u;
 }
 
+std::uint8_t LostArk::Server::CGameRoom::Resolve_CurrentKoukuGate() const
+{
+	if (!Gate_Count()) return 0u;
+	const auto index = [](const std::string& id) -> std::uint8_t {
+		if (id == "GATE1") return 1u;
+		if (id == "GATE2") return 2u;
+		if (id == "GATE3") return 3u;
+		return id == "BINGO" ? 4u : 0u;
+	};
+	if (Is_KoukuRaidRunning())
+		if (const auto gate = index(m_KoukuRaid.State.strGateId)) return gate;
+	const auto& run = m_KoukuSaydonPatternAudition;
+	if (run.iRoomAuditionEpoch)
+	{
+		if (const auto gate = index(run.Request.Scope.strGateId)) return gate;
+		const auto* catalog = Resolve_KoukuProductCatalog();
+		const auto* patterns = catalog ? catalog->Find_BossPatterns(run.Request.Scope.strEncounterId) : nullptr;
+		if (patterns) for (const auto& member : run.Members)
+		{
+			if (member.PatternIds.empty()) continue;
+			const auto ordinal = (std::min)(member.iPatternIndex, member.PatternIds.size() - 1u);
+			const auto pattern = std::find_if(patterns->begin(), patterns->end(), [&](const auto& row) {
+				return row.strPatternId == member.PatternIds[ordinal];
+			});
+			if (pattern != patterns->end()) if (const auto gate = index(pattern->strGateId)) return gate;
+		}
+		const int placementGate = Gate_IndexOfPlacement(run.Request.Scope.strBossPlacementId);
+		if (placementGate >= 0) return static_cast<std::uint8_t>(placementGate + 1);
+	}
+	return m_GateProgress.iCurrentGate <= Gate_Count() ? m_GateProgress.iCurrentGate : 0u;
+}
+
+bool LostArk::Server::CGameRoom::Resolve_KoukuRevivePosition(
+	const SERVER_PLAYER& player, SERVER_NAV_POINT& position, float& yaw) const
+{
+	if (const auto index = Resolve_CurrentKoukuGate())
+	{
+		// Reuse the same start as Advance_Gate/Enter_KoukuRaidCombat.
+		const auto& gate = KOUKU_GATES[index - 1u];
+		position = {gate.fX, gate.fY, gate.fZ};
+		yaw = 0.f;
+		return true;
+	}
+	const auto* spawn = Find_Placement(player.strSpawnPlacementId);
+	if (!spawn || spawn->eKind != WORLD_BOOTSTRAP_KIND::PLAYER_SPAWN) return false;
+	position = {spawn->fPositionX, spawn->fPositionY, spawn->fPositionZ};
+	yaw = spawn->fYawDegrees;
+	return true;
+}
+
 int LostArk::Server::CGameRoom::Gate_IndexOfPlacement(const std::string& placementId) const
 {
 	if (0u == Gate_Count() || placementId.empty())
@@ -509,6 +559,30 @@ bool LostArk::Server::CGameRoom::Advance_Gate(const std::uint8_t nextGate,
 		return false;
     if (Is_KoukuRaidRunning())
         return Advance_KoukuRaidGate(nextGate, m_GateProgress.eKind == GATE_PROGRESS_KIND::RESTART);
+    if (nextGate == 4u)
+    {
+        // Release gate UI must enter the same pinned intro/Flow/Parent owner as
+        // automatic Encore; spawning only its boss leaves an idle arena.
+        const auto proposer = m_Players.find(m_GateProgress.iProposerId);
+        if (proposer == m_Players.end()) return false;
+        auto product = m_GameplayCatalog.Get_ActiveGeneration();
+        if (m_pKoukuPublishedProductGeneration && m_pKoukuPublishedProductGeneration->Has_SameNonKoukuGameplay(m_GameplayCatalog.Active()))
+            product = m_pKoukuPublishedProductGeneration;
+        const auto* definition = product ? product->Find_KoukuRaidGate("BINGO") : nullptr;
+        const auto old = m_KoukuRaidReceipts.find(proposer->second.iSessionId);
+        const auto prior = old == m_KoukuRaidReceipts.end() ? 0u : old->second.first.iRequestSequence;
+        if (!definition || definition->strIntroPatternId.empty() || prior == UINT32_MAX) return false;
+        C2S_DEBUG_KOUKUSAYDON_RAID_REQUEST request;
+        request.eWorldId = m_eWorldId; request.eOperation = KOUKUSAYDON_RAID_OPERATION::START;
+        request.iRequestSequence = prior + 1u; request.strStartGateId = "BINGO";
+        request.ExpectedGameplayRevision = m_GameplayCatalog.Get_ActiveRevision();
+        request.iActionSourceRevision = CKoukuSaydonBrain::Resolve_ProductSourceRevision(*product);
+        request.iSequenceSourceRevision = definition->iSequenceRevision;
+        std::string reason;
+        if (!Begin_KoukuRaidPreparation(proposer->second.iSessionId, request, reason, false, true))
+        { m_strStatus = "Bingo gate entry rejected: " + reason; return false; }
+        return true;
+    }
 	const KOUKU_GATE& gate = KOUKU_GATES[nextGate - 1u];
 	C2S_DEBUG_TELEPORT_TO_POSITION move{};
 	move.iRequestSequence = 1u; move.eWorldId = m_eWorldId;
@@ -626,4 +700,65 @@ void LostArk::Server::CGameRoom::Broadcast_GateProgressState(
 			session->Request_Close();
 		}
 	}
+}
+
+
+LostArk::Shared::DEBUG_KILL_GATE_BOSSES_RESULT LostArk::Server::CGameRoom::Apply_DebugKillGateBosses(
+ const SESSION_ID sessionId, const LostArk::Shared::C2S_DEBUG_KILL_GATE_BOSSES& request, std::uint8_t& killedCount)
+{
+ using namespace LostArk::Shared;
+ using Result = DEBUG_KILL_GATE_BOSSES_RESULT;
+ killedCount = 0u;
+ if (request.eWorldId != m_eWorldId || (m_eWorldId != WORLD_ID::VALTAN_ARENA && m_eWorldId != WORLD_ID::KAKULSAYDON_ARENA))
+  return Result::WRONG_WORLD;
+ const auto owner = m_PlayerIdBySessionId.find(sessionId);
+ if (owner == m_PlayerIdBySessionId.end() || !m_Players.contains(owner->second)) return Result::INVALID_PLAYER;
+ auto& last = m_KillGateBossesRequestSequences[sessionId];
+ if (!request.iRequestSequence || request.iRequestSequence <= last) return Result::STALE_REQUEST;
+ last = request.iRequestSequence;
+ // A cinematic or prepare boundary is not a live combat gate to finish.
+ if (Is_KoukuRaidRunning() && m_KoukuRaid.State.ePhase != KOUKUSAYDON_RAID_PHASE::COMBAT)
+  return Result::BUSY;
+ const auto gate = Resolve_CurrentKoukuGate();
+ std::vector<SERVER_WORLD_ENTITY*> targets;
+ bool observedBossMatches = false;
+ for (auto& boss : m_WorldEntities)
+ {
+  if (boss.eKind != WORLD_BOOTSTRAP_KIND::BOSS || !boss.iCurrentHp || boss.eAction == SERVER_ENTITY_ACTION::DEAD ||
+      boss.iOwnerBossNetEntityId != INVALID_NET_ENTITY_ID) continue;
+  const bool current = m_eWorldId == WORLD_ID::VALTAN_ARENA ?
+   (boss.strPlacementId == "boss.valtan.center" && boss.strArchetypeId == "BOSS_VALTAN") :
+   (gate && Gate_IndexOfPlacement(boss.strPlacementId) == static_cast<int>(gate - 1u));
+  if (!current) continue;
+  targets.push_back(&boss);
+  observedBossMatches |= boss.strArchetypeId == request.strExpectedBossArchetypeId;
+ }
+ if (targets.empty()) return Result::NO_CURRENT_BOSS;
+ if (!observedBossMatches) return Result::STALE_BOSS;
+ if (targets.size() > 2u) return Result::BUSY;
+ // Only the death input changes. Update_WorldEntities owns phase progression,
+ // Encore, attached-player release, combat-object cancellation, MVP and loot.
+ for (auto* boss : targets)
+ {
+  boss->iCurrentHp = 0u;
+  boss->eAction = SERVER_ENTITY_ACTION::DEAD;
+  boss->iActionStartTick = m_iServerTick ? m_iServerTick : 1u;
+  boss->fActionElapsedSeconds = 0.f;
+  boss->MovePath.clear();
+ }
+ killedCount = static_cast<std::uint8_t>(targets.size());
+ return Result::ACCEPTED;
+}
+
+void LostArk::Server::CGameRoom::Handle_DebugKillGateBosses(
+ const SESSION_ID sessionId, const LostArk::Shared::C2S_DEBUG_KILL_GATE_BOSSES& request)
+{
+ using namespace LostArk::Shared;
+ S2C_DEBUG_KILL_GATE_BOSSES_RESULT result{};
+ result.iRequestSequence = request.iRequestSequence;
+ result.eWorldId = m_eWorldId;
+ result.eResult = Apply_DebugKillGateBosses(sessionId, request, result.iKilledCount);
+ const auto session = Find_Session(sessionId); CPacketWriter writer;
+ if (session && Write_Message(writer, result) &&
+     !session->Send_Frame(PACKET_TYPE::S2C_DEBUG_KILL_GATE_BOSSES_RESULT, writer.Get_Buffer())) session->Request_Close();
 }

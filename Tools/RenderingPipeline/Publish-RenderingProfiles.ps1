@@ -296,7 +296,32 @@ function Assert-RenderingProfileDocument([object]$Document) {
         if ($null -ne $profile.PSObject.Properties['environment']) {
             $profileFields += 'environment'
             $environment = $profile.environment
-            Assert-ExactProperties $environment @('cubeTexture', 'color', 'rotationIntensity') 'profile.environment'
+            $environmentFields = @('cubeTexture', 'color', 'rotationIntensity')
+            if ($null -ne $environment.PSObject.Properties['useSourcePBRIndirect']) {
+                $environmentFields += 'useSourcePBRIndirect'
+                if ($environment.useSourcePBRIndirect -isnot [bool]) {
+                    throw 'profile.environment.useSourcePBRIndirect must be a boolean.'
+                }
+            }
+            if ($null -ne $environment.PSObject.Properties['cubeDiffuse']) {
+                $environmentFields += 'cubeDiffuse'
+                $diffuse = $environment.cubeDiffuse
+                Assert-ExactProperties $diffuse @('model', 'intensity', 'packedSH') 'profile.environment.cubeDiffuse'
+                if ($diffuse.model -isnot [string] -or $diffuse.model -cne 'RGBM6_LAMBERT_SH3') {
+                    throw 'profile.environment.cubeDiffuse.model must be RGBM6_LAMBERT_SH3.'
+                }
+                Assert-FiniteFloatRange $diffuse.intensity 0.0 4.0 'profile.environment.cubeDiffuse.intensity'
+                if ($diffuse.packedSH -isnot [Array] -or $diffuse.packedSH.Count -ne 7) {
+                    throw 'profile.environment.cubeDiffuse.packedSH requires seven float4 rows.'
+                }
+                for ($rowIndex = 0; $rowIndex -lt 7; ++$rowIndex) {
+                    $row = $diffuse.packedSH[$rowIndex]
+                    if ($row -isnot [Array]) { throw 'profile.environment.cubeDiffuse.packedSH row must be an array.' }
+                    Assert-Vector4 $row -64.0 64.0 "profile.environment.cubeDiffuse.packedSH[$rowIndex]"
+                }
+                Assert-FiniteRange $diffuse.packedSH[6][3] 0.0 0.0 'profile.environment.cubeDiffuse.packedSH[6][3]'
+            }
+            Assert-ExactProperties $environment $environmentFields 'profile.environment'
             $assetId = $environment.cubeTexture
             if ($assetId -isnot [string] -or [string]::IsNullOrEmpty($assetId) -or
                 $assetId.Length -gt 1024 -or $assetId -match '[\\\x00-\x1f:]' -or

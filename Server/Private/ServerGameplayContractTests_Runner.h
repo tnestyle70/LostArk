@@ -21,6 +21,11 @@ class CServerGameplayContractRunner final
 public:
     static int Run(ServerGameplayContractDetail::CONTRACT_TEST_RUN_CONTEXT& context);
     static int Run_KoukuRaid();
+    static int Run_KoukuDiceDamageContracts();
+    static int Run_KoukuDraft();
+    static int Run_ValtanArenaSupport();
+    static int Run_ValtanPatternControl();
+    static int Run_NpcRaidReturn();
     static void Run_RuntimeSupportPrediction(TESTS& tests, const CServerNavigation& navigation);
     static void Run_KoukuPushContracts(TESTS& tests, const CGameplayCatalog& catalog);
 
@@ -32,6 +37,7 @@ private:
     static void Run_KoukuGate3Entry(TESTS& tests);
     static void Run_KoukuMarioEntryContact(TESTS& tests);
     static void Run_KoukuProduct(TESTS& tests, CGameplayCatalog& catalog);
+    static void Run_KoukuDraftContracts(TESTS& tests, CGameplayCatalog& catalog);
     static void Run_ValtanLifecycle(TESTS& tests, CGameplayCatalog& catalog);
     static void Run_ValtanPinnedGeneration(TESTS& tests, CGameplayCatalog& catalog);
     static void Run_ValtanRevision(TESTS& tests, CGameplayCatalog& catalog);

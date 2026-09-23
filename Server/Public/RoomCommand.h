@@ -24,6 +24,8 @@ namespace LostArk::Server
 		USE_SQUAREHOLE,
 		REVIVE_PLAYER,
 		DEBUG_KILL_SELF,
+		DEBUG_KILL_GATE_BOSSES,
+		SET_COOLDOWN_MODE,
 		DEBUG_ENTER_KAKULSAYDON_ARENA,
 		DEBUG_TELEPORT_TO_PLACEMENT,
 		DEBUG_TELEPORT_TO_POSITION,
@@ -46,6 +48,7 @@ namespace LostArk::Server
 		VALTAN_PATTERN_FLOW_START,
 		VALTAN_PATTERN_FLOW_STOP_AFTER_CURRENT,
 		KOUKUSAYDON_PATTERN_AUDITION,
+		KOUKUSAYDON_DRAFT_CHUNK,
 		KOUKUSAYDON_RAID,
 		DEBUG_GIVE_ITEM,
 		USE_ITEM,
@@ -80,6 +83,7 @@ namespace LostArk::Server
 		CServerApp::Transfer_SessionWorld builds this ENTER_WORLD command itself
 		(a real Client-sent C2S_ENTER_WORLD never populates it). */
 		std::string strSpawnPlacementOverrideId;
+		std::string strRaidReturnNpcPlacementId;
 		/* Server-internal only, never part of the wire message -- see
 		SERVER_WORLD_TRANSFER_REQUEST::CarriedInventory. Empty means grant the
 		default fresh-entry loadout. */
@@ -98,6 +102,8 @@ namespace LostArk::Server
 		LostArk::Shared::C2S_USE_SQUAREHOLE UseSquareHole;
 		LostArk::Shared::C2S_REVIVE_PLAYER RevivePlayer;
 		LostArk::Shared::C2S_DEBUG_KILL_SELF DebugKillSelf;
+		LostArk::Shared::C2S_DEBUG_KILL_GATE_BOSSES DebugKillGateBosses;
+		LostArk::Shared::C2S_SET_COOLDOWN_MODE SetCooldownMode;
 		LostArk::Shared::C2S_DEBUG_ENTER_KAKULSAYDON_ARENA
 			DebugEnterKakulSaydonArena;
 		LostArk::Shared::C2S_DEBUG_TELEPORT_TO_PLACEMENT
@@ -128,6 +134,7 @@ namespace LostArk::Server
 		LostArk::Shared::C2S_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_REQUEST
 			KoukuSaydonPatternAudition;
 		LostArk::Shared::C2S_DEBUG_KOUKUSAYDON_RAID_REQUEST KoukuSaydonRaid;
+		LostArk::Shared::C2S_DEBUG_KOUKUSAYDON_DRAFT_CHUNK KoukuSaydonDraftChunk;
 
 		LostArk::Shared::C2S_DEBUG_GIVE_ITEM DebugGiveItem;
 		LostArk::Shared::C2S_USE_ITEM UseItem;

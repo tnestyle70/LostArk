@@ -274,7 +274,8 @@ namespace LostArk::Server
 		// Room-thread only, while ServerApp holds its session-binding mutex.
 		bool Transfer_PartyTo(CGameRoom& target,
 			const std::vector<SESSION_ID>& leaderFirstSessionIds,
-			LostArk::Shared::PARTY_TRANSFER_RESULT& outResult, std::string& status);
+			LostArk::Shared::PARTY_TRANSFER_RESULT& outResult, std::string& status,
+			const std::string& raidReturnNpcPlacementId = {});
 		void Notify_PartyTransferFailure(SESSION_ID sessionId,
 			std::uint32_t requestSequence, LostArk::Shared::WORLD_ID targetWorldId,
 			LostArk::Shared::PARTY_TRANSFER_RESULT result);
@@ -296,7 +297,8 @@ namespace LostArk::Server
 			const std::vector<LostArk::Shared::INVENTORY_ITEM_SNAPSHOT>&
 				carriedInventory = {},
 			LostArk::Shared::HONOR_TITLE_ID carriedHonorTitleId =
-				LostArk::Shared::INVALID_HONOR_TITLE_ID);
+				LostArk::Shared::INVALID_HONOR_TITLE_ID,
+			const std::string& raidReturnNpcPlacementId = {});
 		bool Build_PlayerEntryFrames(STAGED_PLAYER_ENTRY& entry,
 			std::span<const STAGED_PLAYER_ENTRY> batch, std::string& status);
 		void Commit_PlayerEntry(const STAGED_PLAYER_ENTRY& entry);
@@ -309,7 +311,8 @@ namespace LostArk::Server
 			const std::vector<LostArk::Shared::INVENTORY_ITEM_SNAPSHOT>&
 				carriedInventory = {},
 			LostArk::Shared::HONOR_TITLE_ID carriedHonorTitleId =
-				LostArk::Shared::INVALID_HONOR_TITLE_ID);
+				LostArk::Shared::INVALID_HONOR_TITLE_ID,
+			const std::string& raidReturnNpcPlacementId = {});
 		void Leave(
 			SESSION_ID sessionId,
 			LostArk::Shared::PLAYER_DESPAWN_REASON reason, bool publishDeparture = true);
@@ -570,6 +573,7 @@ namespace LostArk::Server
 			std::uint32_t iAuditionRequestSequence = 0u, iAuditionEpoch = 0u, iNextEntryTick = 0u;
 			bool bClearCinematic = false, bEntryRunning = false, bGate3CombatEntered = false;
             bool bClearedGate3Preparation = false;
+            bool bBingoGateVoteEntry = false;
             std::uint32_t iGate3ClearTick = 0u;
 		};
 		KOUKU_RAID_RUN m_KoukuRaid;
@@ -581,7 +585,7 @@ namespace LostArk::Server
 		void Update_KoukuRaid(std::uint32_t tick);
 		void Notify_KoukuRaidBossDeath(const SERVER_WORLD_ENTITY& boss, std::uint32_t tick);
 		void Stop_KoukuRaid(std::string reason, bool completed = false);
-		bool Begin_KoukuRaidPreparation(SESSION_ID sessionId, const LostArk::Shared::C2S_DEBUG_KOUKUSAYDON_RAID_REQUEST& request, std::string& reason, bool clearedGate3 = false);
+		bool Begin_KoukuRaidPreparation(SESSION_ID sessionId, const LostArk::Shared::C2S_DEBUG_KOUKUSAYDON_RAID_REQUEST& request, std::string& reason, bool clearedGate3 = false, bool bingoGateVoteEntry = false);
 		bool Apply_KoukuRaidReadiness(SESSION_ID sessionId, const LostArk::Shared::C2S_DEBUG_KOUKUSAYDON_RAID_REQUEST& request, std::string& reason);
 		bool Begin_KoukuRaidCinematic(const std::string& gateId, bool clear, std::uint32_t tick);
 		bool Advance_KoukuRaidGate(std::uint8_t nextGate, bool restart);
@@ -590,6 +594,8 @@ namespace LostArk::Server
             LostArk::Shared::C2S_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_REQUEST& request);
 		bool Enter_KoukuRaidCombat(std::uint8_t gate);
 		bool Start_KoukuRaidEntry(std::uint32_t tick);
+		void Handle_KoukuSaydonDraftChunk(SESSION_ID sessionId,
+			const LostArk::Shared::C2S_DEBUG_KOUKUSAYDON_DRAFT_CHUNK& chunk);
 		void Handle_KoukuSaydonPatternAudition(
 			SESSION_ID sessionId,
 			const LostArk::Shared::
@@ -799,7 +805,6 @@ namespace LostArk::Server
 			SERVER_WORLD_ENTITY& boss,
 			std::uint32_t resetTick,
 			std::string& status);
-#ifdef _DEBUG
 		enum class VALTAN_PATTERN_ID_AUDITION_PHASE : std::uint8_t
 		{
 			INACTIVE,
@@ -1024,7 +1029,6 @@ namespace LostArk::Server
 		bool Prepare_ValtanFightPageBeforeBrain(
 			SERVER_WORLD_ENTITY& boss,
 			std::uint32_t updateTick);
-#endif
 		struct VALTAN_DECISION_TRACE_REVISION_STATE final
 		{
 			LostArk::Shared::NET_ENTITY_ID iBossEntityId =
@@ -1092,9 +1096,8 @@ namespace LostArk::Server
 			const LostArk::Shared::C2S_INTERACT_TRIGGER& request);
 		// Raid Clear screen's "돌아가기" button -- the reverse trip. No proximity
 		// or party-leader gating (unlike Handle_ConfirmNpcEntry): any player in
-		// a cleared VALTAN_ARENA can return to BERN independently. Lands next to Bern's own
-		// Valtan-entry guide NPC via SERVER_WORLD_TRANSFER_REQUEST's
-		// strSpawnPlacementOverrideId. VALTAN_ARENA only; no-op for anything else.
+		// a cleared Valtan/Kouku raid can return independently to its recorded entry guide.
+		// Direct Lobby entries retain the default guide; NPC entries keep their source ID.
 		void Handle_ReturnToBern(
 			SESSION_ID sessionId,
 			const LostArk::Shared::C2S_RETURN_TO_BERN& request);
@@ -1155,6 +1158,8 @@ namespace LostArk::Server
 		void Broadcast_GateProgressState(
 			bool bClosed, LostArk::Shared::GATE_PROGRESS_VOTE_RESULT result);
 		std::uint8_t Gate_Count() const;
+		std::uint8_t Resolve_CurrentKoukuGate() const;
+		bool Resolve_KoukuRevivePosition(const SERVER_PLAYER& player, SERVER_NAV_POINT& position, float& yaw) const;
 		int Gate_IndexOfPlacement(const std::string& placementId) const;
 		/* Raid-clear award input. Every fought primary boss advances its players' fight
 		   clock each tick; a dying gate boss hands its ledger to the room, and the clear
@@ -1202,7 +1207,7 @@ namespace LostArk::Server
 		bool Stage_PartyWorldTransfer(
 			const std::vector<LostArk::Shared::PLAYER_ID>& batchMemberIds,
 			LostArk::Shared::WORLD_ID targetWorldId,
-			std::uint32_t requestSequence);
+			std::uint32_t requestSequence, const std::string& raidReturnNpcPlacementId);
 		// player가 알려진 Valtan 입장 guide NPC 근처(proximity)인지 검증한다.
 		bool Is_PlayerNearValtanEntryNpc(
 			const SERVER_PLAYER& player, const std::string& npcPlacementId) const;
@@ -1215,6 +1220,15 @@ namespace LostArk::Server
 			float positionOffsetX = 0.f, float positionOffsetY = 0.f, float positionOffsetZ = 0.f,
 			std::uint32_t durationMs = 0u, const std::string& targetSequenceInstanceId = {},
 			LostArk::Shared::WORLD_SEQUENCE_OPERATION operation = LostArk::Shared::WORLD_SEQUENCE_OPERATION::PLAY);
+		void Handle_DebugKillGateBosses(SESSION_ID sessionId, const LostArk::Shared::C2S_DEBUG_KILL_GATE_BOSSES& request);
+		LostArk::Shared::DEBUG_KILL_GATE_BOSSES_RESULT Apply_DebugKillGateBosses(
+			SESSION_ID sessionId, const LostArk::Shared::C2S_DEBUG_KILL_GATE_BOSSES& request, std::uint8_t& killedCount);
+		std::unordered_map<SESSION_ID, std::uint32_t> m_KillGateBossesRequestSequences;
+		void Handle_SetCooldownMode(SESSION_ID sessionId, const LostArk::Shared::C2S_SET_COOLDOWN_MODE& request);
+		LostArk::Shared::SET_COOLDOWN_MODE_RESULT Apply_SetCooldownMode(
+			SESSION_ID sessionId, const LostArk::Shared::C2S_SET_COOLDOWN_MODE& request);
+		LostArk::Shared::COOLDOWN_MODE m_eCooldownMode = LostArk::Shared::COOLDOWN_MODE::DEBUG_THREE_SECONDS;
+		std::unordered_map<SESSION_ID, std::uint32_t> m_CooldownModeRequestSequences;
 		void Handle_DebugWorldPlayback(SESSION_ID sessionId, const LostArk::Shared::C2S_DEBUG_WORLD_PLAYBACK& request);
 		std::unordered_map<SESSION_ID, std::uint32_t> m_WorldPlaybackRequestSequences;
 		LostArk::Shared::DEBUG_WORLD_PLAYBACK_RESULT Apply_DebugRoomPlayerArrival(
@@ -1428,7 +1442,6 @@ namespace LostArk::Server
 		bool Apply_WorldDestructionStageEntry(
 			const SERVER_WORLD_ENTITY& boss,
 			std::uint32_t serverTick);
-#ifdef _DEBUG
 		/* Commit the 69 ordinary contact walls and the 30 outer ring walls in one
 		transaction, leaving every floor sector INTACT. A floor-collapse bar only
 		arrives after the fight has already taken those walls down, so the
@@ -1438,7 +1451,6 @@ namespace LostArk::Server
 			const SERVER_WORLD_ENTITY& boss,
 			std::uint32_t resetTick,
 			std::string& status);
-#endif
 		/* The navigation grid is the ground a boss pattern stride may cross.
 		The collision sweep owns wall contact, while the furthest sample the grid
 		still owns is what any stride is allowed to reach, so a charge cannot
@@ -1537,6 +1549,9 @@ namespace LostArk::Server
 		/* Hands the living monster and boss bodies to the collision system so this
 		tick's player walks and root motion stop at them. */
 		void Refresh_PlayerBlockingBodies();
+		bool Try_KoukuWalkOffFloor(SERVER_PLAYER& player, float x, float z,
+			float fixedDeltaSeconds, std::uint32_t updateTick);
+		const WORLD_BOOTSTRAP_PLACEMENT* Resolve_KoukuFallCenter(const SERVER_PLAYER& player) const;
 		bool Update_PlayerFall(
 			SERVER_PLAYER& player,
 			float fixedDeltaSeconds,
@@ -1633,6 +1648,10 @@ namespace LostArk::Server
 
 		std::unordered_map<SESSION_ID, std::weak_ptr<CClientSession>> m_Sessions;
 		std::map<LostArk::Shared::PLAYER_ID, SERVER_PLAYER> m_Players;
+		/* Grants what a started skill buffs, to the caster, the party in this room
+		or the entities it targets. */
+		void Apply_SkillBuffs(SERVER_PLAYER& caster, std::uint32_t skillId,
+			std::uint32_t serverTick);
 		std::unordered_map<SESSION_ID, LostArk::Shared::PLAYER_ID>
 			m_PlayerIdBySessionId;
 		std::unordered_map<LostArk::Shared::NET_ENTITY_ID, LostArk::Shared::PLAYER_ID>
@@ -1812,13 +1831,20 @@ namespace LostArk::Server
 				S2C_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE Message;
 		};
 		std::uint32_t m_iNextKoukuSaydonPatternAuditionEpoch = 1u;
+		struct KOUKU_DRAFT_UPLOAD final
+		{
+			std::uint32_t iRequestSequence = 0u, iTotalBytes = 0u;
+			std::uint64_t iStartedAtMs = 0u;
+			LostArk::Shared::GameplayDataRevision RowsRevision{};
+			std::string Rows;
+		};
+		std::unordered_map<SESSION_ID, KOUKU_DRAFT_UPLOAD> m_KoukuDraftUploads;
 		KOUKUSAYDON_PATTERN_AUDITION_STATE m_KoukuSaydonPatternAudition;
 		std::shared_ptr<const CGameplayCatalog> m_pKoukuPublishedProductGeneration;
 		std::unordered_map<SESSION_ID, KOUKUSAYDON_PATTERN_AUDITION_RECEIPT>
 			m_KoukuSaydonPatternAuditionReceiptBySessionId;
 		std::vector<TARGETED_KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE>
 			m_PendingKoukuSaydonPatternAuditionLifecycle;
-#ifdef _DEBUG
 		struct TARGETED_VALTAN_AUDITION_LIFECYCLE final
 		{
 			SESSION_ID iSessionId = INVALID_SESSION_ID;
@@ -1842,6 +1868,5 @@ namespace LostArk::Server
 		VALTAN_PATTERN_FLOW_AUDITION_STATE m_ValtanPatternFlowAudition;
 		VALTAN_TIMELINE_AUDITION_STATE m_ValtanTimelineAudition;
 		VALTAN_FIGHT_PAGE_START_STATE m_ValtanFightPageStart;
-#endif
 	};
 }

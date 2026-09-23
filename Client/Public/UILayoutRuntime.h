@@ -50,6 +50,9 @@ public:
 	void Set_UISortLayer(int32_t iLayer);
 	void Set_SlotVisible(const string& strId, bool_t bVisible);
 	void Set_SlotCinematicOverlay(const string& strId, bool_t overlay);
+	void Set_SlotScenePresentation(const string& strId, bool_t enabled);
+	bool_t Sample_KeyframeAnimation(const string& strId, const string& label, f32_t seconds);
+    bool_t Set_SlotCaption(const string& strId, const wstring_t& caption, const wstring_t& font);
 	/* Runtime tint override (0..1 RGBA) on every authored static layer sprite. */
 	void Set_SlotTint(const string& strId, const float4_t& vTint);
 	/* Multiplies every static and keyframe layer's own tint without replacing authored RGB or

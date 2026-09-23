@@ -101,6 +101,44 @@ namespace
 		return true;
 	}
 
+	/* Only the buffs the count claims are on the wire, so a player with none costs
+	one byte and the reader never walks past what the writer sent. */
+	bool Read_ActiveBuffs(
+		LostArk::Shared::CPacketReader& reader,
+		LostArk::Shared::PLAYER_SNAPSHOT& snapshot)
+	{
+		for (LostArk::Shared::ACTIVE_BUFF& slot : snapshot.ActiveBuffs)
+			slot = {};
+		for (std::uint8_t buffIndex = 0; buffIndex < snapshot.iActiveBuffCount;
+			++buffIndex)
+		{
+			if (!reader.Read_U32(snapshot.ActiveBuffs[buffIndex].iBuffId) ||
+				!reader.Read_U32(snapshot.ActiveBuffs[buffIndex].iEndTick))
+			{
+				return false;
+			}
+		}
+		return true;
+	}
+
+	bool Read_ActiveBuffs(
+		LostArk::Shared::CPacketReader& reader,
+		LostArk::Shared::WORLD_ENTITY_SNAPSHOT& entity)
+	{
+		for (LostArk::Shared::ACTIVE_BUFF& slot : entity.ActiveBuffs)
+			slot = {};
+		for (std::uint8_t buffIndex = 0; buffIndex < entity.iActiveBuffCount;
+			++buffIndex)
+		{
+			if (!reader.Read_U32(entity.ActiveBuffs[buffIndex].iBuffId) ||
+				!reader.Read_U32(entity.ActiveBuffs[buffIndex].iEndTick))
+			{
+				return false;
+			}
+		}
+		return true;
+	}
+
 	bool Read_KoukuHudSlots(
 		LostArk::Shared::CPacketReader& reader,
 		LostArk::Shared::PLAYER_SNAPSHOT& snapshot)
@@ -3125,6 +3163,14 @@ bool LostArk::Shared::Write_Message(CPacketWriter& writer, const S2C_WORLD_SNAPS
 		writer.Write_F32(player.fSkillTargetZ);
 		writer.Write_U32(player.iCurrentHp);
 		writer.Write_U32(player.iMaximumHp);
+		writer.Write_U32(player.iShield);
+		writer.Write_U8(player.iActiveBuffCount);
+		for (std::uint8_t buffIndex = 0; buffIndex < player.iActiveBuffCount;
+			++buffIndex)
+		{
+			writer.Write_U32(player.ActiveBuffs[buffIndex].iBuffId);
+			writer.Write_U32(player.ActiveBuffs[buffIndex].iEndTick);
+		}
 		writer.Write_U32(player.iCurrentResource);
 		writer.Write_U32(player.iMaximumResource);
 		writer.Write_U32(player.iCurrentIdentity);
@@ -3168,11 +3214,14 @@ bool LostArk::Shared::Write_Message(CPacketWriter& writer, const S2C_WORLD_SNAPS
 		writer.Write_U32(player.iSilenceEndTick);
 		writer.Write_U32(player.iSilenceDurationTicks);
 		writer.Write_U8(player.iComboStage);
+		if (player.eCooldownMode >= COOLDOWN_MODE::END) return false;
+		writer.Write_U8(static_cast<std::uint8_t>(player.eCooldownMode));
 		writer.Write_U8(static_cast<std::uint8_t>(player.Cooldowns.size()));
 		for (const SKILL_COOLDOWN_SNAPSHOT& cooldown : player.Cooldowns)
 		{
 			writer.Write_U32(cooldown.iSkillId);
 			writer.Write_U32(cooldown.iCooldownEndTick);
+			writer.Write_U32(cooldown.iCooldownDurationTicks);
 		}
 		writer.Write_U32(player.iLastProcessedMoveSequence);
 		writer.Write_F32(player.fMoveSpeed);
@@ -3227,6 +3276,13 @@ bool LostArk::Shared::Write_Message(CPacketWriter& writer, const S2C_WORLD_SNAPS
 		}
 		writer.Write_U32(entity.iCurrentHp);
 		writer.Write_U32(entity.iMaximumHp);
+		writer.Write_U8(entity.iActiveBuffCount);
+		for (std::uint8_t buffIndex = 0; buffIndex < entity.iActiveBuffCount;
+			++buffIndex)
+		{
+			writer.Write_U32(entity.ActiveBuffs[buffIndex].iBuffId);
+			writer.Write_U32(entity.ActiveBuffs[buffIndex].iEndTick);
+		}
 		writer.Write_U8(entity.iPhase);
 		writer.Write_U8(entity.iBrokenArmorMask);
 		writer.Write_U8(entity.hasBossCombatState ? 1u : 0u);
@@ -3374,6 +3430,7 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader, S2C_WORLD_SNAPSHOT& me
 		std::uint8_t rawHudMode = 0;
 		std::uint8_t rawCardMazeRole = 0;
 		std::uint8_t rawCardMazeSuit = 0;
+		std::uint8_t rawCooldownMode = 0;
 		std::uint8_t cooldownCount = 0;
 
         if (!reader.Read_U32(player.iNetEntityId) ||
@@ -3400,6 +3457,10 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader, S2C_WORLD_SNAPSHOT& me
 			!reader.Read_F32(player.fSkillTargetZ) ||
 			!reader.Read_U32(player.iCurrentHp) ||
 			!reader.Read_U32(player.iMaximumHp) ||
+			!reader.Read_U32(player.iShield) ||
+			!reader.Read_U8(player.iActiveBuffCount) ||
+			player.iActiveBuffCount > MAX_ACTIVE_BUFFS ||
+			!Read_ActiveBuffs(reader, player) ||
 			!reader.Read_U32(player.iCurrentResource) ||
 			!reader.Read_U32(player.iMaximumResource) ||
 			!reader.Read_U32(player.iCurrentIdentity) ||
@@ -3459,6 +3520,7 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader, S2C_WORLD_SNAPSHOT& me
 			!reader.Read_U32(player.iSilenceDurationTicks) ||
 			!reader.Read_U8(player.iComboStage) ||
 			player.iComboStage > MAX_COMBO_STAGES ||
+			!reader.Read_U8(rawCooldownMode) || rawCooldownMode >= static_cast<std::uint8_t>(COOLDOWN_MODE::END) ||
 			!reader.Read_U8(cooldownCount) ||
 			cooldownCount > MAX_PLAYER_COOLDOWNS)
         {
@@ -3482,6 +3544,7 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader, S2C_WORLD_SNAPSHOT& me
 		player.eKoukuHudMode = static_cast<KOUKU_HUD_MODE>(rawHudMode);
 		player.eCardMazeRole = static_cast<CARD_MAZE_ROLE>(rawCardMazeRole);
 		player.eCardMazeSuit = static_cast<MECHANIC_CARD_SYMBOL>(rawCardMazeSuit);
+		player.eCooldownMode = static_cast<COOLDOWN_MODE>(rawCooldownMode);
 		player.Cooldowns.reserve(cooldownCount);
 		for (std::uint8_t cooldownIndex = 0;
 			cooldownIndex < cooldownCount;
@@ -3489,7 +3552,8 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader, S2C_WORLD_SNAPSHOT& me
 		{
 			SKILL_COOLDOWN_SNAPSHOT cooldown{};
 			if (!reader.Read_U32(cooldown.iSkillId) ||
-				!reader.Read_U32(cooldown.iCooldownEndTick))
+				!reader.Read_U32(cooldown.iCooldownEndTick) ||
+				!reader.Read_U32(cooldown.iCooldownDurationTicks))
 			{
 				return false;
 			}
@@ -3567,6 +3631,9 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader, S2C_WORLD_SNAPSHOT& me
 		if (
 			!reader.Read_U32(entity.iCurrentHp) ||
 			!reader.Read_U32(entity.iMaximumHp) ||
+			!reader.Read_U8(entity.iActiveBuffCount) ||
+			entity.iActiveBuffCount > MAX_ACTIVE_BUFFS ||
+			!Read_ActiveBuffs(reader, entity) ||
 			!reader.Read_U8(entity.iPhase) ||
 			!reader.Read_U8(entity.iBrokenArmorMask) ||
 			!reader.Read_U8(rawHasBossCombatState) ||
@@ -6419,6 +6486,9 @@ namespace
 			return false;
 		}
 		writer.Write_U32(scope.iExpectedSourceRevision);
+		writer.Write_U8(scope.DraftRowsRevision.Is_Valid() ? 1u : 0u);
+		if (scope.DraftRowsRevision.Is_Valid() &&
+			!LostArk::Shared::Write_GameplayDataRevision(writer, scope.DraftRowsRevision)) return false;
 		return writer.Write_String(scope.strGateId, LostArk::Shared::MAX_STABLE_NETWORK_ID_BYTES);
 	}
 
@@ -6428,6 +6498,7 @@ namespace
 	{
 		LostArk::Shared::KOUKUSAYDON_PATTERN_AUDITION_SCOPE decoded{};
 		std::uint16_t rawWorld = 0u;
+		std::uint8_t hasDraft = 0u;
 		if (!reader.Read_U16(rawWorld) ||
 			!reader.Read_String(decoded.strEncounterId,
 				LostArk::Shared::MAX_STABLE_NETWORK_ID_BYTES) ||
@@ -6438,6 +6509,8 @@ namespace
 			!LostArk::Shared::Read_GameplayDataRevision(
 				reader, decoded.ExpectedGameplayRevision) ||
 			!reader.Read_U32(decoded.iExpectedSourceRevision) ||
+			!reader.Read_U8(hasDraft) || hasDraft > 1u ||
+			(hasDraft && !LostArk::Shared::Read_GameplayDataRevision(reader, decoded.DraftRowsRevision)) ||
 			!reader.Read_String(decoded.strGateId, LostArk::Shared::MAX_STABLE_NETWORK_ID_BYTES))
 		{
 			return false;
@@ -6448,6 +6521,35 @@ namespace
 		scope = std::move(decoded);
 		return true;
 	}
+}
+
+bool LostArk::Shared::Write_Message(CPacketWriter& writer,
+	const C2S_DEBUG_KOUKUSAYDON_DRAFT_CHUNK& message)
+{
+	if (!message.iRequestSequence || !message.iTotalBytes ||
+		message.iTotalBytes > MAX_KOUKUSAYDON_DRAFT_BYTES ||
+		message.iOffsetBytes >= message.iTotalBytes || message.strBytes.empty() ||
+		message.strBytes.size() > MAX_KOUKUSAYDON_DRAFT_CHUNK_BYTES ||
+		message.strBytes.size() > message.iTotalBytes - message.iOffsetBytes ||
+		!message.RowsRevision.Is_Valid()) return false;
+	writer.Write_U32(message.iRequestSequence);
+	writer.Write_U32(message.iOffsetBytes);
+	writer.Write_U32(message.iTotalBytes);
+	return Write_GameplayDataRevision(writer, message.RowsRevision) &&
+		writer.Write_String(message.strBytes, MAX_KOUKUSAYDON_DRAFT_CHUNK_BYTES);
+}
+
+bool LostArk::Shared::Read_Message(CPacketReader& reader,
+	C2S_DEBUG_KOUKUSAYDON_DRAFT_CHUNK& message)
+{
+	C2S_DEBUG_KOUKUSAYDON_DRAFT_CHUNK decoded;
+	if (!reader.Read_U32(decoded.iRequestSequence) || !reader.Read_U32(decoded.iOffsetBytes) ||
+		!reader.Read_U32(decoded.iTotalBytes) || !Read_GameplayDataRevision(reader, decoded.RowsRevision) ||
+		!reader.Read_String(decoded.strBytes, MAX_KOUKUSAYDON_DRAFT_CHUNK_BYTES)) return false;
+	CPacketWriter validation;
+	if (!Write_Message(validation, decoded)) return false;
+	message = std::move(decoded);
+	return true;
 }
 
 bool LostArk::Shared::Write_Message(
@@ -6720,7 +6822,10 @@ bool LostArk::Shared::Write_Message(CPacketWriter& writer, const S2C_KOUKUSAYDON
 	writer.Write_U32(message.iRunEpoch); writer.Write_U32(message.iCommonStartTick); writer.Write_U32(message.iServerTick);
 	writer.Write_U8(static_cast<std::uint8_t>(message.eState));
 	if (!Write_GameplayDataRevision(writer, message.PinnedGameplayRevision)) return false;
-	writer.Write_U32(message.iPinnedSourceRevision); writer.Write_U8(static_cast<std::uint8_t>(message.Members.size()));
+	writer.Write_U32(message.iPinnedSourceRevision);
+	writer.Write_U8(message.DraftRowsRevision.Is_Valid() ? 1u : 0u);
+	if (message.DraftRowsRevision.Is_Valid() && !Write_GameplayDataRevision(writer, message.DraftRowsRevision)) return false;
+	writer.Write_U8(static_cast<std::uint8_t>(message.Members.size()));
 	for (const auto& member : message.Members)
 	{
 		if (!writer.Write_String(member.strMemberId, MAX_STABLE_NETWORK_ID_BYTES) ||
@@ -6736,11 +6841,13 @@ bool LostArk::Shared::Write_Message(CPacketWriter& writer, const S2C_KOUKUSAYDON
 
 bool LostArk::Shared::Read_Message(CPacketReader& reader, S2C_KOUKUSAYDON_BUNDLE_STATE& message)
 {
-	S2C_KOUKUSAYDON_BUNDLE_STATE decoded; std::uint16_t world = 0; std::uint8_t state = 0, count = 0;
+	S2C_KOUKUSAYDON_BUNDLE_STATE decoded; std::uint16_t world = 0; std::uint8_t state = 0, count = 0, hasDraft = 0;
 	if (!reader.Read_U16(world) || !reader.Read_String(decoded.strEncounterId, MAX_STABLE_NETWORK_ID_BYTES) ||
 		!reader.Read_String(decoded.strBundleId, MAX_STABLE_NETWORK_ID_BYTES) || !reader.Read_U32(decoded.iRunEpoch) ||
 		!reader.Read_U32(decoded.iCommonStartTick) || !reader.Read_U32(decoded.iServerTick) || !reader.Read_U8(state) ||
 		!Read_GameplayDataRevision(reader, decoded.PinnedGameplayRevision) || !reader.Read_U32(decoded.iPinnedSourceRevision) ||
+		!reader.Read_U8(hasDraft) || hasDraft > 1u ||
+		(hasDraft && !Read_GameplayDataRevision(reader, decoded.DraftRowsRevision)) ||
 		!reader.Read_U8(count) || count == 0 || count > MAX_KOUKUSAYDON_BUNDLE_MEMBERS) return false;
 	decoded.eWorldId = static_cast<WORLD_ID>(world); decoded.eState = static_cast<KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE_STATE>(state);
 	for (std::uint8_t i = 0; i < count; ++i)
@@ -7030,4 +7137,70 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader, S2C_KOUKUSAYDON_RAID_S
     if (!reader.Read_U8(m.iReadyMask)) return false;
     m.eWorldId = static_cast<WORLD_ID>(world); m.ePhase = static_cast<KOUKUSAYDON_RAID_PHASE>(phase);
 	CPacketWriter validation; if (!Write_Message(validation, m)) return false; message = std::move(m); return true;
+}
+
+
+bool LostArk::Shared::Write_Message(CPacketWriter& writer, const C2S_DEBUG_KILL_GATE_BOSSES& message)
+{
+ if (!message.iRequestSequence || !Is_Known_World_Id(message.eWorldId) ||
+     message.strExpectedBossArchetypeId.empty() || message.strExpectedBossArchetypeId.size() > 128u) return false;
+ writer.Write_U32(message.iRequestSequence);
+ writer.Write_U16(static_cast<std::uint16_t>(message.eWorldId));
+ return writer.Write_String(message.strExpectedBossArchetypeId, 128u);
+}
+bool LostArk::Shared::Read_Message(CPacketReader& reader, C2S_DEBUG_KILL_GATE_BOSSES& message)
+{
+ C2S_DEBUG_KILL_GATE_BOSSES staged{}; std::uint16_t world{};
+ if (!reader.Read_U32(staged.iRequestSequence) || !reader.Read_U16(world) ||
+     !reader.Read_String(staged.strExpectedBossArchetypeId, 128u)) return false;
+ staged.eWorldId = static_cast<WORLD_ID>(world); CPacketWriter validation;
+ if (!Write_Message(validation, staged)) return false;
+ message = std::move(staged); return true;
+}
+bool LostArk::Shared::Write_Message(CPacketWriter& writer, const S2C_DEBUG_KILL_GATE_BOSSES_RESULT& message)
+{
+ if (!message.iRequestSequence || !Is_Known_World_Id(message.eWorldId) ||
+     message.eResult >= DEBUG_KILL_GATE_BOSSES_RESULT::END || message.iKilledCount > 2u ||
+     (message.eResult == DEBUG_KILL_GATE_BOSSES_RESULT::ACCEPTED ? !message.iKilledCount : message.iKilledCount != 0u)) return false;
+ writer.Write_U32(message.iRequestSequence); writer.Write_U16(static_cast<std::uint16_t>(message.eWorldId));
+ writer.Write_U8(static_cast<std::uint8_t>(message.eResult)); writer.Write_U8(message.iKilledCount); return true;
+}
+bool LostArk::Shared::Read_Message(CPacketReader& reader, S2C_DEBUG_KILL_GATE_BOSSES_RESULT& message)
+{
+ S2C_DEBUG_KILL_GATE_BOSSES_RESULT staged{}; std::uint16_t world{}; std::uint8_t result{};
+ if (!reader.Read_U32(staged.iRequestSequence) || !reader.Read_U16(world) ||
+     !reader.Read_U8(result) || !reader.Read_U8(staged.iKilledCount)) return false;
+ staged.eWorldId = static_cast<WORLD_ID>(world); staged.eResult = static_cast<DEBUG_KILL_GATE_BOSSES_RESULT>(result);
+ CPacketWriter validation; if (!Write_Message(validation, staged)) return false;
+ message = staged; return true;
+}
+
+
+bool LostArk::Shared::Write_Message(CPacketWriter& writer, const C2S_SET_COOLDOWN_MODE& message)
+{
+    if (!message.iRequestSequence || !Is_Known_World_Id(message.eWorldId) || message.eMode >= COOLDOWN_MODE::END) return false;
+    writer.Write_U32(message.iRequestSequence); writer.Write_U16(static_cast<std::uint16_t>(message.eWorldId));
+    writer.Write_U8(static_cast<std::uint8_t>(message.eMode)); return true;
+}
+bool LostArk::Shared::Read_Message(CPacketReader& reader, C2S_SET_COOLDOWN_MODE& message)
+{
+    C2S_SET_COOLDOWN_MODE staged; std::uint16_t world{}; std::uint8_t mode{};
+    if (!reader.Read_U32(staged.iRequestSequence) || !reader.Read_U16(world) || !reader.Read_U8(mode)) return false;
+    staged.eWorldId = static_cast<WORLD_ID>(world); staged.eMode = static_cast<COOLDOWN_MODE>(mode);
+    CPacketWriter validation; if (!Write_Message(validation, staged)) return false; message = staged; return true;
+}
+bool LostArk::Shared::Write_Message(CPacketWriter& writer, const S2C_SET_COOLDOWN_MODE_RESULT& message)
+{
+    if (!message.iRequestSequence || !Is_Known_World_Id(message.eWorldId) || message.eMode >= COOLDOWN_MODE::END ||
+        message.eResult >= SET_COOLDOWN_MODE_RESULT::END) return false;
+    writer.Write_U32(message.iRequestSequence); writer.Write_U16(static_cast<std::uint16_t>(message.eWorldId));
+    writer.Write_U8(static_cast<std::uint8_t>(message.eMode)); writer.Write_U8(static_cast<std::uint8_t>(message.eResult)); return true;
+}
+bool LostArk::Shared::Read_Message(CPacketReader& reader, S2C_SET_COOLDOWN_MODE_RESULT& message)
+{
+    S2C_SET_COOLDOWN_MODE_RESULT staged; std::uint16_t world{}; std::uint8_t mode{}, result{};
+    if (!reader.Read_U32(staged.iRequestSequence) || !reader.Read_U16(world) || !reader.Read_U8(mode) || !reader.Read_U8(result)) return false;
+    staged.eWorldId = static_cast<WORLD_ID>(world); staged.eMode = static_cast<COOLDOWN_MODE>(mode);
+    staged.eResult = static_cast<SET_COOLDOWN_MODE_RESULT>(result);
+    CPacketWriter validation; if (!Write_Message(validation, staged)) return false; message = staged; return true;
 }

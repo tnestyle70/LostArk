@@ -48,6 +48,7 @@ namespace LostArk::Server
 		std::map<LostArk::Shared::PLAYER_ID, KOUKUSAYDON_LOGIC_ANSWER> Answers;
 		std::set<LostArk::Shared::PLAYER_ID> InsidePlayers;
 		std::map<LostArk::Shared::PLAYER_ID, std::uint32_t> NextContactHitTicks;
+		std::map<std::string, BOSS_LOGIC_REGION> FrozenRegions;
 		LostArk::Shared::NET_ENTITY_ID iFreePlayerNetEntityId = LostArk::Shared::INVALID_NET_ENTITY_ID;
 		std::map<LostArk::Shared::PLAYER_ID, LostArk::Shared::NET_ENTITY_ID> BoundPlayers;
 	};
@@ -238,6 +239,9 @@ namespace LostArk::Server
 		static bool Enter_CardMaze(const BOSS_PATTERN_MECHANIC_TRIGGER& trigger,
 			KOUKUSAYDON_LOGIC_LEDGER& ledger, std::map<LostArk::Shared::PLAYER_ID, SERVER_PLAYER>& players,
 			const CServerNavigation* navigation, const CServerCollisionSystem* collision, std::string& outStatus);
+		static void Capture_StartRegions(const SERVER_WORLD_ENTITY& boss,
+			const BOSS_PATTERN_LOGIC_WINDOW& window, KOUKUSAYDON_LOGIC_WINDOW_STATE& state,
+			std::uint32_t patternElapsedTicks);
 		static void Open_Window(
 			SERVER_WORLD_ENTITY& boss,
 			const BOSS_PATTERN_LOGIC_WINDOW& window,

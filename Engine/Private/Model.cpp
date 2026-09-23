@@ -1662,6 +1662,12 @@ uint32_t CModel::Get_MeshVertexCount(uint32_t iMeshIndex) const
 	return m_Meshes[iMeshIndex]->Get_NumVertices();
 }
 
+bool_t CModel::Has_StaticMeshLod(uint32_t iMeshIndex) const
+{
+	return iMeshIndex < m_Meshes.size() && m_Meshes[iMeshIndex] &&
+		m_Meshes[iMeshIndex]->m_StaticLod && !m_Meshes[iMeshIndex]->Has_MorphBaseVertices();
+}
+
 bool_t CModel::Has_MorphBaseVertices(uint32_t iMeshIndex) const
 {
 	if (iMeshIndex >= m_Meshes.size())
@@ -1829,6 +1835,42 @@ HRESULT CModel::Apply_MaterialOverrides(MODEL_MATERIAL_SOURCE& materialSource, c
         if (replacement.surface.renderMode > MODEL_SURFACE_RENDER_MODE::WATER ||
             replacement.surface.cullMode > MODEL_SURFACE_CULL_MODE::TWO_SIDED)
             return failOverride("invalid material render or cull mode");
+        if (!replacement.surface.environmentLegacyEnabled && !replacement.surface.hasSourceIndirect)
+            return failOverride("disabled legacy environment requires source indirect inputs");
+        if (replacement.surface.hasSourceIndirect)
+        {
+            const auto& source = replacement.surface;
+            if ((source.family != MODEL_SURFACE_FAMILY::PBR_OPAQUE &&
+                 source.family != MODEL_SURFACE_FAMILY::PBR_SEAMLESS_OPAQUE) ||
+                !source.hasEnvironmentCube || replacement.environmentCubePath.empty() ||
+                replacement.environmentBRDFPath.empty() || replacement.sourceIndirectCubePath.empty() ||
+                replacement.sourceIndirectBRDFPath.empty())
+                return failOverride("source indirect requires PBR environment inputs");
+            for (const float value : { source.sourceIndirectColor.x, source.sourceIndirectColor.y,
+                source.sourceIndirectColor.z, source.sourceIndirectColor.w })
+                if (!std::isfinite(value) || value < 0.f)
+                    return failOverride("invalid source indirect environment color");
+            const auto& rotation = source.sourceIndirectRotation;
+            if (!std::isfinite(rotation.x) || !std::isfinite(rotation.y) ||
+                std::abs(rotation.x) > 1.f || std::abs(rotation.y) > 1.f ||
+                std::abs(rotation.x*rotation.x+rotation.y*rotation.y-1.f) > 0.0001f)
+                return failOverride("invalid source indirect rotation");
+            for (const auto& row : source.sourceIndirectSH)
+                for (const float value : { row.x, row.y, row.z, row.w })
+                    if (!std::isfinite(value) || std::abs(value) > 64.f)
+                        return failOverride("invalid source indirect SH component");
+            if (source.sourceIndirectSH[6].w != 1.f)
+                return failOverride("source indirect SH reserved w must be one");
+            const float nonnegative[] = { source.sourceUpperSkyColor.x, source.sourceUpperSkyColor.y,
+                source.sourceUpperSkyColor.z, source.sourceLowerSkyColor.x, source.sourceLowerSkyColor.y,
+                source.sourceLowerSkyColor.z, source.sourceAmbientAndSkyFactor.x,
+                source.sourceAmbientAndSkyFactor.y, source.sourceAmbientAndSkyFactor.z };
+            if (any_of(begin(nonnegative), end(nonnegative), [](float value) {
+                    return !std::isfinite(value) || value < 0.f || value > 64.f;
+                }) || !std::isfinite(source.sourceAmbientAndSkyFactor.w) ||
+                source.sourceAmbientAndSkyFactor.w < 0.f || source.sourceAmbientAndSkyFactor.w > 4.f)
+                return failOverride("invalid source indirect sky or ambient factor");
+        }
 		if (replacement.materialName.empty() ||
 			find(overriddenNames.begin(), overriddenNames.end(), replacement.materialName) != overriddenNames.end())
 			return failOverride("empty or duplicate material name");
@@ -2238,7 +2280,9 @@ HRESULT CModel::Apply_MaterialOverrides(MODEL_MATERIAL_SOURCE& materialSource, c
             { &replacement.bakedDirectionalPath, &match->bakedDirectionalPath },
             { &replacement.staticShadowPath, &match->staticShadowPath },
             { &replacement.environmentCubePath, &match->environmentCubePath },
-            { &replacement.environmentBRDFPath, &match->environmentBRDFPath }
+            { &replacement.environmentBRDFPath, &match->environmentBRDFPath },
+            { &replacement.sourceIndirectCubePath, &match->sourceIndirectCubePath },
+            { &replacement.sourceIndirectBRDFPath, &match->sourceIndirectBRDFPath }
         };
         if ((surface.hasBakedLighting && (replacement.bakedAveragePath.empty() || replacement.bakedDirectionalPath.empty())) ||
             (surface.hasEnvironmentCube && (replacement.environmentCubePath.empty() || replacement.environmentBRDFPath.empty())))

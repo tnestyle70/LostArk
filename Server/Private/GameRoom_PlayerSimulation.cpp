@@ -25,6 +25,61 @@
 
 using namespace GameRoomDetail;
 
+namespace
+{
+	constexpr float KOUKU_FALL_DEPTH_M = 5.f;
+
+	enum class FORCED_SURFACE_RESULT
+	{
+		SUPPORTED,
+		BLOCKED,
+		FALL
+	};
+
+	/* Forced motion follows physical support, not the walking graph. A
+	   non-walkable surface can support a pushed body, while a lower deck must
+	   never become an instantaneous landing. Collision has already resolved
+	   this straight segment; no nearest-cell projection is permitted here. */
+	FORCED_SURFACE_RESULT Trace_ForcedSurface(
+		const LostArk::Server::CServerNavigation& navigation,
+		const LostArk::Server::SERVER_NAV_POINT& from,
+		const float toX, const float toZ,
+		LostArk::Server::SERVER_NAV_POINT& outPoint)
+	{
+		outPoint = from;
+		const float distance = std::hypot(toX - from.x, toZ - from.z);
+		const float sampleStep = std::clamp(navigation.Get_CellSize() * 0.5f, 0.01f, 0.25f);
+		if (!std::isfinite(distance) || !std::isfinite(from.y) ||
+			!std::isfinite(sampleStep) || distance / sampleStep > 4096.f)
+		{
+			return FORCED_SURFACE_RESULT::BLOCKED;
+		}
+		/* Keep forced support bounded even if an older navigation policy uses
+		   zero to permit arbitrary walking height changes. */
+		const float authoredStep = navigation.Get_MaximumTraversalStepHeight();
+		const float maximumStep = authoredStep > 0.f ? (std::min)(authoredStep, 1.f) : 1.f;
+		const auto count = static_cast<std::uint32_t>((std::max)(1.f, std::ceil(distance / sampleStep)));
+		for (std::uint32_t sample = 0u; sample <= count; ++sample)
+		{
+			const float ratio = static_cast<float>(sample) / static_cast<float>(count);
+			const float x = from.x + (toX - from.x) * ratio;
+			const float z = from.z + (toZ - from.z) * ratio;
+			LostArk::Server::SERVER_NAV_POINT ground{};
+			if (!navigation.Sample_SurfacePosition(x, z, ground) ||
+				!std::isfinite(ground.y) || ground.y < outPoint.y - maximumStep)
+			{
+				outPoint.x = x;
+				outPoint.z = z;
+				return FORCED_SURFACE_RESULT::FALL;
+			}
+			if (ground.y > outPoint.y + maximumStep)
+				return FORCED_SURFACE_RESULT::BLOCKED;
+			outPoint = ground;
+		}
+		return FORCED_SURFACE_RESULT::SUPPORTED;
+	}
+}
+
 float LostArk::Server::CGameRoom::Resolve_StanceMoveSpeedScale(
 	const SERVER_PLAYER& player) const
 {
@@ -97,7 +152,9 @@ void LostArk::Server::CGameRoom::Begin_PlayerFall(
 	const std::uint32_t updateTick)
 {
 	using namespace LostArk::Shared;
+	player.fFallDeathPlaneY = (player.bKnockbackBallistic ? player.fKnockbackSupportY : player.fPositionY) - KOUKU_FALL_DEPTH_M;
 	player.eAction = PLAYER_ACTION_STATE::FALLING;
+	player.bKoukuFallDeath = m_eWorldId == WORLD_ID::KAKULSAYDON_ARENA && !player.iMarioStage;
 	player.iActionStartTick = 0u == updateTick ? 1u : updateTick;
 	player.iFallDeathTick = Add_ServerTicksSkippingReservedZero(
 		player.iActionStartTick, FALL_DEATH_TICKS);
@@ -555,6 +612,64 @@ bool LostArk::Server::CGameRoom::Restore_PatternBoundPlayer(
 	return true;
 }
 
+const LostArk::Server::WORLD_BOOTSTRAP_PLACEMENT*
+LostArk::Server::CGameRoom::Resolve_KoukuFallCenter(const SERVER_PLAYER& player) const
+{
+	if (m_eWorldId != LostArk::Shared::WORLD_ID::KAKULSAYDON_ARENA || player.iMarioStage ||
+		player.eKoukuAreaHudMode == LostArk::Shared::KOUKU_HUD_MODE::MAZE) return nullptr;
+	// Refinement grid rectangles are only bake coverage, not arena bounds.
+	// The casino continues onto the base grid. Classify the separated authored
+	// stages by their spawn anchors, not by Gate2Fine's small rectangle.
+	const WORLD_BOOTSTRAP_PLACEMENT* nearest = nullptr;
+	float distance = (std::numeric_limits<float>::max)();
+	for (const char* id : { "stage.kakul.sl01", "stage.kakul.sl02", "stage.kakul.sl03",
+		"stage.kakul.sl04", "stage.kakul.sl05" })
+	{
+		const auto* marker = Find_Placement(id);
+		if (!marker || marker->eKind != WORLD_BOOTSTRAP_KIND::PLAYER_SPAWN) continue;
+		const float dx = player.fPositionX - marker->fPositionX;
+		const float dz = player.fPositionZ - marker->fPositionZ;
+		const float candidate = dx * dx + dz * dz;
+		if (candidate < distance) { nearest = marker; distance = candidate; }
+	}
+	return nearest && nearest->strPlacementId == "stage.kakul.sl03" ? nearest : nullptr;
+}
+
+bool LostArk::Server::CGameRoom::Try_KoukuWalkOffFloor(
+	SERVER_PLAYER& player, const float x, const float z,
+	const float fixedDeltaSeconds, const std::uint32_t updateTick)
+{
+	using namespace LostArk::Shared;
+	if (m_eWorldId != WORLD_ID::KAKULSAYDON_ARENA || !m_ServerNavigation.Is_Loaded() ||
+		!player.iCurrentHp || player.TriggerMove.isActive || player.bArenaEjectionActive) return false;
+	const auto* gate2 = Resolve_KoukuFallCenter(player);
+	const bool casino = nullptr != gate2;
+	if (!player.iMarioStage && !casino) return false;
+	SERVER_NAV_POINT surface{};
+	// Obstacles keep their physical support. A blocked walking cell alone
+	// must never be interpreted as a hole.
+	const auto supported = [&](const float px, const float pz) {
+		return m_ServerNavigation.Sample_SurfacePosition(px, pz, surface) &&
+			surface.y >= player.fPositionY - m_ServerNavigation.Get_MaximumTraversalStepHeight();
+	};
+	if (supported(x, z)) return false;
+	float resolvedX{}, resolvedY{}, resolvedZ{};
+	bool blocked = false;
+	if (!m_ServerCollisionSystem.Resolve_PlayerMove(player, x, player.fPositionY, z,
+		resolvedX, resolvedY, resolvedZ, blocked) || blocked ||
+		supported(resolvedX, resolvedZ)) return false;
+	if (casino && !player.iMarioStage)
+	{
+		SERVER_NAV_POINT center{};
+		if (!m_ServerNavigation.Project_Point(gate2->fPositionX, gate2->fPositionZ, center, gate2->fPositionY)) return false;
+		player.KoukuFallRevivePosition = std::array<float, 3u>{ center.x, center.y, center.z };
+	}
+	player.fPositionX = resolvedX;
+	player.fPositionZ = resolvedZ;
+	Begin_PlayerFall(player, fixedDeltaSeconds, updateTick);
+	return true;
+}
+
 bool LostArk::Server::CGameRoom::Update_PlayerFall(
 	SERVER_PLAYER& player,
 	const float fixedDeltaSeconds,
@@ -564,6 +679,21 @@ bool LostArk::Server::CGameRoom::Update_PlayerFall(
 	if ((player.bArenaEjectionActive ||
 		(player.bKnockbackBallistic && player.fKnockbackRemainingSeconds > 0.f)) && 0u != player.iCurrentHp)
 		return false;
+	const auto gate = Resolve_CurrentKoukuGate();
+	const bool gateFence = !player.iMarioStage && (gate == 1u || gate == 3u);
+	if (gateFence && player.iCurrentHp && player.eAction == PLAYER_ACTION_STATE::FALLING)
+	{
+		SERVER_NAV_POINT start{}, ground{}; float yaw = 0.f;
+		if (Resolve_KoukuRevivePosition(player, start, yaw) &&
+			(!m_ServerNavigation.Is_Loaded() || m_ServerNavigation.Project_Point(start.x, start.z, ground, start.y)))
+		{
+			if (!m_ServerNavigation.Is_Loaded()) ground = start;
+			player.fPositionX = ground.x; player.fPositionY = ground.y; player.fPositionZ = ground.z;
+			player.fFallVelocityY = 0.f; player.iFallDeathTick = 0u;
+			player.eAction = PLAYER_ACTION_STATE::NONE; player.isCombatReady = true;
+		}
+		return true;
+	}
 	if (PLAYER_ACTION_STATE::FALLING == player.eAction)
 	{
 		player.fFallVelocityY -=
@@ -573,7 +703,9 @@ bool LostArk::Server::CGameRoom::Update_PlayerFall(
 		rule the cooldown deadlines use. */
 		const std::int32_t sinceDeadline = static_cast<std::int32_t>(
 			updateTick - player.iFallDeathTick);
-		if (!std::isfinite(player.fPositionY) || sinceDeadline >= 0)
+		const bool reachedDeath = m_eWorldId == WORLD_ID::KAKULSAYDON_ARENA ?
+			(!std::isfinite(player.fFallDeathPlaneY) || player.fPositionY <= player.fFallDeathPlaneY) : sinceDeadline >= 0;
+		if (!std::isfinite(player.fPositionY) || reachedDeath)
 		{
 			player.iCurrentHp = 0u;
 			player.eAction = PLAYER_ACTION_STATE::DEAD;
@@ -582,10 +714,13 @@ bool LostArk::Server::CGameRoom::Update_PlayerFall(
 			player.iActionStartTick = 0u == updateTick ? 1u : updateTick;
 			player.fFallVelocityY = 0.f;
 			player.iFallDeathTick = 0u;
+			Update_MarioControlState(player);
 		}
 		return true;
 	}
-	if (!m_ServerNavigation.Is_Loaded() ||
+	// Authored jumps and entry/exit transfers own their airborne trajectory.
+	if (player.TriggerMove.isActive) return false;
+	if (gateFence || !m_ServerNavigation.Is_Loaded() ||
 		0u == player.iCurrentHp ||
 		PLAYER_ACTION_STATE::DEAD == player.eAction ||
 		!m_ServerNavigation.Is_PointInVoidRegion(
@@ -624,6 +759,20 @@ void LostArk::Server::CGameRoom::Update_Players(const float fixedDeltaSeconds)
 			};
         (void)CKoukuSaydonLogicRuntime::Update_PlayerFear(player, updateTick);
 		Update_MarioControlState(player);
+		if (m_eWorldId == LostArk::Shared::WORLD_ID::KAKULSAYDON_ARENA && player.iCurrentHp &&
+			!player.iMarioStage && !player.TriggerMove.isActive &&
+			player.eAction != LostArk::Shared::PLAYER_ACTION_STATE::FALLING)
+		{
+			const auto* center = Resolve_KoukuFallCenter(player);
+			if (center)
+			{
+				SERVER_NAV_POINT ground{};
+				if (m_ServerNavigation.Project_Point(center->fPositionX, center->fPositionZ, ground, center->fPositionY))
+					player.KoukuFallRevivePosition = std::array<float, 3u>{ground.x, ground.y, ground.z};
+			}
+			else if (player.eAction == LostArk::Shared::PLAYER_ACTION_STATE::NONE)
+				player.KoukuFallRevivePosition.reset();
+		}
 		/* A song that ended any way but its own timeout (a hit, a bind, death) never
 		lands the player later. */
 		if (0u != player.iSquareHoleId &&
@@ -657,7 +806,6 @@ void LostArk::Server::CGameRoom::Update_Players(const float fixedDeltaSeconds)
 				player.Clear_SilenceStatus();
 			}
 		}
-#ifdef _DEBUG
 		if (LostArk::Shared::WORLD_ID::VALTAN_ARENA == m_eWorldId &&
 			VALTAN_TIMELINE_AUDITION_PHASE::INACTIVE !=
 				m_ValtanTimelineAudition.ePhase)
@@ -673,7 +821,6 @@ void LostArk::Server::CGameRoom::Update_Players(const float fixedDeltaSeconds)
 				continue;
 			}
 		}
-#endif
 		if (player.bPatternBound)
 		{
 			player.eAction = LostArk::Shared::PLAYER_ACTION_STATE::NONE;
@@ -782,6 +929,8 @@ void LostArk::Server::CGameRoom::Update_Players(const float fixedDeltaSeconds)
 			player.fActionElapsedSeconds = 0.f;
 			player.PendingCommand.Clear();
 		}
+		CServerBuffRuntime::Expire(player.ActiveBuffs, updateTick);
+		CServerBuffRuntime::Settle_Shield(m_GameplayCatalog.Active(), player);
 		Update_VehicleSkill(player, fixedDeltaSeconds);
 		m_PlayerSkillSystem.Update(
 			player,
@@ -884,6 +1033,8 @@ void LostArk::Server::CGameRoom::Update_Players(const float fixedDeltaSeconds)
 			proposedZ = player.fPositionZ + stepZ;
 		}
 		Project_MarioRailPoint(player, proposedX, proposedZ);
+		if (Try_KoukuWalkOffFloor(player, proposedX, proposedZ, fixedDeltaSeconds, updateTick))
+			continue;
 		/* A smoothed path can skip many authored cells. Never interpolate Y toward
 		the distant waypoint: doing so raises the player while XZ is still on the
 		lower deck and lets a later height check see an already-raised player.
@@ -1111,16 +1262,54 @@ void LostArk::Server::CGameRoom::Advance_PlayerKnockback(
 		player.fKnockbackDirectionX * player.fKnockbackSpeed * step;
 	float desiredZ = player.fPositionZ +
 		player.fKnockbackDirectionZ * player.fKnockbackSpeed * step;
+	const auto gate = Resolve_CurrentKoukuGate();
+	const bool gateFence = !player.iMarioStage && (gate == 1u || gate == 3u);
+	if (gateFence) player.bKnockbackCanLeaveArena = false;
 	if (player.bKnockbackBallistic)
 	{
-		// XZ is deliberately unconstrained during this authored flight. Its Y uses
-		// the same gravity as FALLING and tests physical floor, never walkability.
+		// A bounded launch keeps the authored Y arc while its ground footprint
+		// obeys the same navigation and fence collision as ordinary movement.
+		const bool bounded = !player.bKnockbackCanLeaveArena;
+		if (bounded)
+		{
+			SERVER_NAV_POINT reachable{desiredX, player.fKnockbackSupportY, desiredZ};
+			bool clamped = false;
+			if (m_ServerNavigation.Is_Loaded())
+				CPlayerSkillSystem::Clamp_StepToWalkable(m_ServerNavigation, player.fPositionX, player.fPositionZ,
+					desiredX, desiredZ, reachable, clamped, player.fKnockbackSupportY);
+			SERVER_PLAYER groundBody = player;
+			groundBody.fPositionY = player.fKnockbackSupportY;
+			float x = player.fPositionX, y = player.fKnockbackSupportY, z = player.fPositionZ;
+			bool blocked = false;
+			if (!m_ServerCollisionSystem.Resolve_PlayerMove(groundBody, reachable.x, reachable.y, reachable.z, x, y, z, blocked))
+			{ x = player.fPositionX; z = player.fPositionZ; blocked = true; }
+			SERVER_NAV_POINT valid{};
+			if (m_ServerNavigation.Is_Loaded() &&
+				(!m_ServerNavigation.Has_LineOfSight(player.fPositionX, player.fPositionZ, x, z) ||
+				 !m_ServerNavigation.Resolve_TraversalStep(player.fPositionX, player.fPositionZ, x, z, valid)))
+			{ x = player.fPositionX; z = player.fPositionZ; blocked = true; }
+			SERVER_NAV_POINT support{};
+			if (m_ServerNavigation.Is_Loaded() &&
+				(!m_ServerNavigation.Sample_SurfacePosition(x, z, support) ||
+				 std::abs(support.y - player.fKnockbackSupportY) > 1.f))
+			{ x = player.fPositionX; z = player.fPositionZ; blocked = true; }
+			desiredX = x; desiredZ = z;
+			if (clamped || blocked) player.fKnockbackSpeed = 0.f;
+		}
 		player.fPositionX = desiredX;
 		player.fPositionZ = desiredZ;
 		player.fPositionY += player.fKnockbackVelocityY * step -
-			0.5f * SERVER_PLAYER::KNOCKBACK_GRAVITY_MPS2 * step * step;
-		player.fKnockbackVelocityY -= SERVER_PLAYER::KNOCKBACK_GRAVITY_MPS2 * step;
+			0.5f * player.fKnockbackGravityMps2 * step * step;
+		player.fKnockbackVelocityY -= player.fKnockbackGravityMps2 * step;
 		player.fKnockbackRemainingSeconds = (std::max)(0.f, player.fKnockbackRemainingSeconds - step);
+		if (!bounded && m_eWorldId == LostArk::Shared::WORLD_ID::KAKULSAYDON_ARENA &&
+			player.fPositionY <= player.fKnockbackSupportY - KOUKU_FALL_DEPTH_M)
+		{
+			const std::uint32_t tick = (std::numeric_limits<std::uint32_t>::max)() == m_iServerTick ? 1u : m_iServerTick + 1u;
+			Begin_PlayerFall(player, 0.f, tick);
+			(void)Update_PlayerFall(player, 0.f, tick);
+			return;
+		}
 		SERVER_NAV_POINT floor{ desiredX, player.fKnockbackLaunchY, desiredZ };
 		bool hasFloor = !m_ServerNavigation.Is_Loaded() ||
 			m_ServerNavigation.Sample_SurfacePosition(desiredX, desiredZ, floor);
@@ -1133,6 +1322,11 @@ void LostArk::Server::CGameRoom::Advance_PlayerKnockback(
 		if (hasFloor && std::isfinite(floor.y) &&
 			floor.y > player.fKnockbackLaunchY + maximumLandingRiseM)
 			hasFloor = false;
+		if (bounded && (!hasFloor || std::abs(floor.y - player.fKnockbackSupportY) > 1.f))
+		{
+			floor = {desiredX, player.fKnockbackSupportY, desiredZ};
+			hasFloor = true;
+		}
 		if (player.fKnockbackVelocityY <= 0.f && hasFloor && player.fPositionY <= floor.y + 0.0001f)
 		{
 			player.fPositionY = floor.y;
@@ -1159,6 +1353,11 @@ void LostArk::Server::CGameRoom::Advance_PlayerKnockback(
 		return;
 	}
 	Project_MarioRailPoint(player, desiredX, desiredZ);
+	// Ordinary/arena pushes must reach their existing bounded or swept-surface
+	// mover. Only an authored Mario exit uses the rail's walking-floor check.
+	if (player.iMarioStage && player.bKnockbackCanLeaveArena &&
+		Try_KoukuWalkOffFloor(player, desiredX, desiredZ, fixedDeltaSeconds,
+			Add_ServerTicksSkippingReservedZero(m_iServerTick, 1u))) return;
 	if (player.bArenaEjectionActive)
 	{
 		player.fPositionX = desiredX;
@@ -1179,53 +1378,57 @@ void LostArk::Server::CGameRoom::Advance_PlayerKnockback(
 		}
 		return;
 	}
-	bool arenaExitStep = false;
-	const float sampleStep = std::clamp(m_ServerNavigation.Get_CellSize() * .5f, .05f, .25f);
-	const auto outsideArena = [&](const float x, const float z) {
-		if (m_ServerNavigation.Is_PointInVoidRegion(x, z)) return true;
-		if (m_ServerNavigation.Is_PointWalkableExact(x, z)) return false;
-		SERVER_NAV_POINT ground{};
-		// A runtime obstacle still has authored ground. Height changes, in either
-		// direction, never establish an edge: navigation keeps its usual step guard.
-		if (m_ServerNavigation.Sample_Position(x, z, ground)) return false;
-		// A base-grid gap with further ground is an interior obstruction. Only the
-		// outward boundary of the published walkable footprint permits a fall.
-		for (float ahead = sampleStep; ; ahead += sampleStep)
-		{
-			const float probeX = x + player.fKnockbackDirectionX * ahead;
-			const float probeZ = z + player.fKnockbackDirectionZ * ahead;
-			if (m_ServerNavigation.Sample_Position(probeX, probeZ, ground)) return false;
-			if (!m_ServerNavigation.Is_InSameNavigationGrid(x, z, probeX, probeZ)) return true;
-		}
-	};
-	if (player.bKnockbackCanLeaveArena && m_eWorldId == LostArk::Shared::WORLD_ID::KAKULSAYDON_ARENA &&
-		player.iMarioStage == 0u && m_ServerNavigation.Is_Loaded())
+	if (m_ServerNavigation.Is_Loaded() &&
+		(m_eWorldId == LostArk::Shared::WORLD_ID::VALTAN_ARENA ||
+		 (m_eWorldId == LostArk::Shared::WORLD_ID::KAKULSAYDON_ARENA &&
+		  player.bKnockbackCanLeaveArena && !player.iMarioStage)))
 	{
-		const float distance = player.fKnockbackSpeed * step;
-		const auto count = static_cast<std::uint32_t>((std::max)(1.f, std::ceil(distance / sampleStep)));
-		float previousX = player.fPositionX, previousZ = player.fPositionZ;
-		for (std::uint32_t sample = 1u; sample <= count; ++sample)
+		/* Valtan hits and authored Kouku arena-exit hits cross walking boundaries. Keep actual walls
+		   and bodies authoritative, but do not route or clamp the displacement
+		   to walkable cells. A push is a straight sweep, not walking avoidance
+		   around another body; this also gives support one exact segment. */
+		using namespace LostArk::Shared::WorldCollision;
+		float resolvedX = player.fPositionX;
+		float resolvedY = player.fPositionY;
+		float resolvedZ = player.fPositionZ;
+		bool wasBlocked = false;
+		if (!m_ServerCollisionSystem.Resolve_CircleMove(
+			player.fPositionX, player.fPositionY, player.fPositionZ,
+			desiredX, player.fPositionY, desiredZ,
+			PLAYER_HALF_EXTENT_X, PLAYER_HALF_EXTENT_Y, PLAYER_CENTER_OFFSET_Y,
+			resolvedX, resolvedY, resolvedZ, wasBlocked,
+			player.iNetEntityId, false))
 		{
-			const float fraction = static_cast<float>(sample) / count;
-			const float x = player.fPositionX + (desiredX - player.fPositionX) * fraction;
-			const float z = player.fPositionZ + (desiredZ - player.fPositionZ) * fraction;
-			SERVER_NAV_POINT ground{};
-			if (!m_ServerNavigation.Is_PointWalkableExact(x, z))
-			{
-				if (outsideArena(x, z))
-				{
-					arenaExitStep = true;
-					desiredX = x; desiredZ = z;
-				}
-				break;
-			}
-			if (!m_ServerNavigation.Resolve_TraversalStep(previousX, previousZ, x, z, ground)) break;
-			previousX = x; previousZ = z;
+			player.fKnockbackRemainingSeconds = player.fKnockbackSpeed = 0.f;
+			return;
 		}
+		SERVER_NAV_POINT supported{};
+		const FORCED_SURFACE_RESULT support = Trace_ForcedSurface(
+			m_ServerNavigation,
+			{player.fPositionX, player.fPositionY, player.fPositionZ},
+			resolvedX, resolvedZ, supported);
+		player.fPositionX = supported.x;
+		player.fPositionY = supported.y;
+		player.fPositionZ = supported.z;
+		if (FORCED_SURFACE_RESULT::FALL == support)
+		{
+			const std::uint32_t updateTick =
+				(std::numeric_limits<std::uint32_t>::max)() == m_iServerTick ? 1u : m_iServerTick + 1u;
+			Begin_PlayerFall(player, fixedDeltaSeconds, updateTick);
+			return;
+		}
+		player.fKnockbackRemainingSeconds = wasBlocked || FORCED_SURFACE_RESULT::BLOCKED == support ?
+			0.f : (std::max)(0.f, player.fKnockbackRemainingSeconds - step);
+		if (player.fKnockbackRemainingSeconds <= 0.f)
+		{
+			player.fKnockbackSpeed = 0.f;
+			player.bKnockbackCanLeaveArena = false;
+		}
+		return;
 	}
 	SERVER_NAV_POINT reachable{ desiredX, player.fPositionY, desiredZ };
 	bool wasClamped = false;
-	if (m_ServerNavigation.Is_Loaded() && !arenaExitStep)
+	if (m_ServerNavigation.Is_Loaded())
 	{
 		CPlayerSkillSystem::Clamp_StepToWalkable(
 			m_ServerNavigation,
@@ -1279,31 +1482,21 @@ void LostArk::Server::CGameRoom::Advance_PlayerKnockback(
 		}
 		resolvedY = railGround.y;
 	}
-	const bool resolvedArenaExit = arenaExitStep && !wasBlocked && outsideArena(resolvedX, resolvedZ);
-	if (arenaExitStep && !resolvedArenaExit)
+	if (gateFence && m_ServerNavigation.Is_Loaded())
 	{
-		SERVER_NAV_POINT slideGround{};
-		// A body tangent may return this attempted exit to ground, or deflect it
-		// into an obstruction. Admit the final ground position before committing it.
-		if (!m_ServerNavigation.Is_PointWalkableExact(resolvedX, resolvedZ) ||
-			!m_ServerNavigation.Has_LineOfSight(player.fPositionX, player.fPositionZ, resolvedX, resolvedZ) ||
-			!m_ServerNavigation.Resolve_TraversalStep(player.fPositionX, player.fPositionZ, resolvedX, resolvedZ, slideGround))
+		SERVER_NAV_POINT supported{};
+		const auto support = Trace_ForcedSurface(m_ServerNavigation,
+			{player.fPositionX, player.fPositionY, player.fPositionZ}, resolvedX, resolvedZ, supported);
+		if (support != FORCED_SURFACE_RESULT::SUPPORTED)
 		{
 			player.fKnockbackRemainingSeconds = player.fKnockbackSpeed = 0.f;
-			player.bKnockbackCanLeaveArena = false;
 			return;
 		}
-		resolvedY = slideGround.y;
+		resolvedY = supported.y;
 	}
 	player.fPositionX = resolvedX;
 	player.fPositionY = resolvedY;
 	player.fPositionZ = resolvedZ;
-	if (resolvedArenaExit)
-	{
-		const std::uint32_t updateTick = (std::numeric_limits<std::uint32_t>::max)() == m_iServerTick ? 1u : m_iServerTick + 1u;
-		Begin_PlayerFall(player, fixedDeltaSeconds, updateTick);
-		return;
-	}
 	player.fKnockbackRemainingSeconds = (wasClamped || wasBlocked) ?
 		0.f : player.fKnockbackRemainingSeconds - step;
 	if (player.fKnockbackRemainingSeconds <= 0.f)

@@ -379,12 +379,10 @@ bool LostArk::Server::CGameRoom::Reset_ReplayableArenaWhenEmpty()
 	m_ValtanPatternFlowControlSequenceBySessionId.clear();
 	m_KoukuSaydonPatternAuditionReceiptBySessionId.clear();
 	m_PendingKoukuSaydonPatternAuditionLifecycle.clear();
-#ifdef _DEBUG
 	Cancel_ValtanPatternIdAudition("room reset after the last player left");
 	m_ValtanNextPatternReceiptBySessionId.clear();
 	m_ValtanPatternFlowAudition = {};
 	m_ValtanFightPageStart = {};
-#endif
 	m_strStatus = "Replayable arena reset after the room became empty";
 	return true;
 }
@@ -405,10 +403,8 @@ bool LostArk::Server::CGameRoom::Reset_ValtanArenaWhenEmpty()
 	}
 	m_iPillarAuditionBreakTick = 0u;
 	m_bPillarAuditionCycleArmed = false;
-#ifdef _DEBUG
 	m_ValtanTimelineAudition = {};
 	m_ValtanFightPageStart = {};
-#endif
 	if (m_EncounterPropRuntime.Is_Initialized() &&
 		!m_EncounterPropRuntime.Reset(resetStatus, resetTick))
 	{
@@ -481,13 +477,11 @@ bool LostArk::Server::CGameRoom::Apply_EncounterPropStageEntry(
 				propBreakPattern->Stages[boss.iPatternStageIndex];
 			const auto& propSlots = m_EncounterPropRuntime.Get_SlotStates();
 			bool allowScriptedPropBreak = false;
-#ifdef _DEBUG
 			allowScriptedPropBreak = boss.bScriptedPatternPlayback &&
 				VALTAN_TIMELINE_AUDITION_PHASE::INACTIVE !=
 					m_ValtanTimelineAudition.ePhase &&
 				boss.iNetEntityId == m_ValtanTimelineAudition.iBossEntityId &&
 				m_ValtanTimelineAudition.bAllowProductPropBreak;
-#endif
 			/* Only a raised pair can shatter. The wave is an ordinary rotation
 			   pattern that also runs when no stele stands, and asking to break a
 			   hidden slot is a rejection, not a no-op. */

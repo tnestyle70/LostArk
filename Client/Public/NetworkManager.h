@@ -263,6 +263,10 @@ public:
 	changeLevel trigger used -- no separate result message. */
 	/* Answers the prompt the Server last offered. Carries only the box's own
 	   id -- the Server re-tests that this player is still inside it. */
+	bool Send_DebugKillGateBosses(const LostArk::Shared::C2S_DEBUG_KILL_GATE_BOSSES& request);
+	bool Send_SetCooldownMode(const LostArk::Shared::C2S_SET_COOLDOWN_MODE& request);
+	bool Try_Consume_DebugKillGateBossesResult(LostArk::Shared::S2C_DEBUG_KILL_GATE_BOSSES_RESULT& result);
+	bool Try_Consume_SetCooldownModeResult(LostArk::Shared::S2C_SET_COOLDOWN_MODE_RESULT& result);
 	bool Send_DebugWorldPlayback(const LostArk::Shared::C2S_DEBUG_WORLD_PLAYBACK& request);
 	bool Try_Consume_DebugWorldPlaybackResult(LostArk::Shared::S2C_DEBUG_WORLD_PLAYBACK_RESULT& result);
 	bool Send_InteractTrigger(
@@ -355,6 +359,11 @@ public:
 	bool Send_KoukuSaydonPatternAudition(
 		const LostArk::Shared::
 			C2S_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_REQUEST& message);
+	static bool Compute_KoukuDraftRowsRevision(const std::string& rows,
+		LostArk::Shared::GameplayDataRevision& outRevision);
+	bool Send_KoukuSaydonPatternAuditionDraft(
+		LostArk::Shared::C2S_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_REQUEST& message,
+		std::string_view rows);
 	/* Debug Valtan Boss Tool ordered Flow. The UI supplies one admitted saved
 	   revision; the Server preflights the full slot list and owns every
 	   occurrence after the single reset. */
@@ -569,6 +578,8 @@ private:
 		m_DebugTeleportResults;
 	std::deque<LostArk::Shared::S2C_DEBUG_MARIO_JUMP_RESULT> m_DebugMarioJumpResults;
 	std::deque<LostArk::Shared::S2C_MARIO_RETURN_RESULT> m_MarioReturnResults;
+	std::deque<LostArk::Shared::S2C_DEBUG_KILL_GATE_BOSSES_RESULT> m_DebugKillGateBossesResults;
+	std::deque<LostArk::Shared::S2C_SET_COOLDOWN_MODE_RESULT> m_SetCooldownModeResults;
 	std::deque<LostArk::Shared::S2C_DEBUG_WORLD_PLAYBACK_RESULT> m_DebugWorldPlaybackResults;
 	std::deque<LostArk::Shared::S2C_DEBUG_SET_MADNESS_FORM_RESULT>
 		m_DebugMadnessFormResults;

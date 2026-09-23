@@ -2906,6 +2906,22 @@ void LostArk::Server::CServerApp::On_SessionFrame(
 		command.eType = ROOM_COMMAND_TYPE::REVIVE_PLAYER;
 		command.RevivePlayer = revivePlayer;
 	}
+	else if (frame.ePacketType == PACKET_TYPE::C2S_DEBUG_KILL_GATE_BOSSES)
+	{
+		C2S_DEBUG_KILL_GATE_BOSSES request{};
+		if (!Read_Message(reader, request) || reader.Get_RemainingSize())
+		{ closeMalformedPayload("C2S_DEBUG_KILL_GATE_BOSSES"); return; }
+		command.eType = ROOM_COMMAND_TYPE::DEBUG_KILL_GATE_BOSSES;
+		command.DebugKillGateBosses = request;
+	}
+	else if (frame.ePacketType == PACKET_TYPE::C2S_SET_COOLDOWN_MODE)
+	{
+		C2S_SET_COOLDOWN_MODE request{};
+		if (!Read_Message(reader, request) || reader.Get_RemainingSize())
+		{ closeMalformedPayload("C2S_SET_COOLDOWN_MODE"); return; }
+		command.eType = ROOM_COMMAND_TYPE::SET_COOLDOWN_MODE;
+		command.SetCooldownMode = request;
+	}
 	else if (frame.ePacketType == PACKET_TYPE::C2S_DEBUG_KILL_SELF)
 	{
 		C2S_DEBUG_KILL_SELF debugKillSelf{};
@@ -3135,6 +3151,14 @@ void LostArk::Server::CServerApp::On_SessionFrame(
 		if (!Read_Message(reader, request) || reader.Get_RemainingSize() != 0u)
 		{ closeMalformedPayload("C2S_DEBUG_KOUKUSAYDON_RAID_REQUEST"); return; }
 		command.eType = ROOM_COMMAND_TYPE::KOUKUSAYDON_RAID; command.KoukuSaydonRaid = std::move(request);
+	}
+	else if (frame.ePacketType == PACKET_TYPE::C2S_DEBUG_KOUKUSAYDON_DRAFT_CHUNK)
+	{
+		C2S_DEBUG_KOUKUSAYDON_DRAFT_CHUNK chunk;
+		if (!Read_Message(reader, chunk) || reader.Get_RemainingSize() != 0u)
+		{ closeMalformedPayload("C2S_DEBUG_KOUKUSAYDON_DRAFT_CHUNK"); return; }
+		command.eType = ROOM_COMMAND_TYPE::KOUKUSAYDON_DRAFT_CHUNK;
+		command.KoukuSaydonDraftChunk = std::move(chunk);
 	}
 	else if (frame.ePacketType ==
 		PACKET_TYPE::C2S_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_REQUEST)
@@ -5028,7 +5052,8 @@ bool LostArk::Server::CServerApp::Transfer_SessionWorld(
 		}
 		std::string status;
 		if (!sourceSimulation->Transfer_PartyTo(*targetSimulation,
-			transfer.PartyBatchSessionIds, outFailure.ePartyResult, status))
+			transfer.PartyBatchSessionIds, outFailure.ePartyResult, status,
+			transfer.strRaidReturnNpcPlacementId))
 		{
 			setFailure(SESSION_DIAGNOSTIC_REASON::SERVER_JOIN_PREFLIGHT_FAILED,
 				WSAEINVAL, status);
@@ -5077,6 +5102,7 @@ bool LostArk::Server::CServerApp::Transfer_SessionWorld(
 	enterCommand.iSessionId = transfer.iSessionId;
 	enterCommand.EnterWorld = std::move(enterWorld);
 	enterCommand.strSpawnPlacementOverrideId = transfer.strSpawnPlacementOverrideId;
+	enterCommand.strRaidReturnNpcPlacementId = transfer.strRaidReturnNpcPlacementId;
 	enterCommand.CarriedInventory = transfer.CarriedInventory;
 	enterCommand.iCarriedHonorTitleId = transfer.iHonorTitleId;
 	const ROOM_COMMAND_ENQUEUE_RESULT targetEnterResult =

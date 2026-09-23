@@ -3216,10 +3216,13 @@ pre-rotation을 구분하고 기존 좌표 변환을 한 번만 적용한다.
 indices/weights를 세고 중앙 `b_cube_1_02`를 이름으로 resolve한다. 전체 출력색이나 alpha를
 마스킹하면 주변 aura/edge까지 사라지므로 frozen Color/Bloom의 capture RGB항만 한정한다.
 
-공용 skinned shader에 uniform을 추가하면 base와 모든 SourceGroup의 FX 변수 계약을 함께
+공용 static/skinned shader에 uniform을 추가하면 base와 모든 SourceGroup의 FX 변수 계약을 함께
 확인한다. FXC 실행 중 source가 바뀌면 이전 입력으로 만든 CSO의 수정 시각이 source보다
 늦을 수 있다. mtime만으로 최신이라고 판단하지 않고 입력·출력 기록과 실제 FX reflection을
-대조한다. 실행 중 compiler의 대상이 아닌 것으로 확인한 stale 생성물만 백업 후 재생성한다.
+대조한다. 파일 존재·개별 FX 생성과 일반 shader closure PASS도 전체 base/variant ABI 일치를
+보증하지 않는다. 실제 제품 CShader의 전체 group 생성을 검사하고, 실행 중 compiler의 대상이
+아닌 것으로 확인한 stale 생성물만 백업 후 재생성한다. Loader의 Effect already-cancelled는
+앞선 맵 shader 실패의 후속 취소일 수 있으므로 최초 Shader stage/HRESULT부터 확인한다.
 
 ### 선택 장비 source 재질과 native UV
 
@@ -3338,3 +3341,131 @@ Git clean 여부와 물리 Resources 준비는 다르므로 후보 patternInvent
 통합 후 최신 저장본으로 projector와 Gameplay publisher를 다시 실행하며, 이전 main 기준
 검증용 생성물로 진행 중인 쿠크 저작·게시 데이터를 덮어쓰지 않는다. 근거와 인계는
 09-23/2026-09-23_KOUKU_PUBLISH_PRECISION_RESULT.md와 같은 주제 HANDOFF에 둔다.
+
+### Release 쿠크 전체 준비와 추가 Resources 전달
+
+새 Effect가 로컬의 기존 이미지·모델을 재사용한다는 사실만으로 배포 추가분을0개라고 판단하지
+않는다. 이전 배포 Data와 현재 Pattern/Sequence/V1/V2/World의 참조를 비교하고 실제 전달 폴더의
+상대 경로·SHA256, WModel 재질의 하위 texture까지 대조한다. 추가팩에 없는 오래된 기본 파일과
+새 경로·갱신 파일을 구분한다. mtime만으로 파일 내용 변경이나 상대 PC 설치 상태를 확정하지 않는다.
+Release 쿠크는 후반 관문 연출도 입장 전에 준비하므로 후반 Effect 누락으로 첫 입장이 실패할 수 있다.
+Lobby의 `Server entry failed`는 로딩 복구에도 표시된다. 원격 상세 로그 없이 publisher hash 차이나
+특정 파일을 첫 실패 원인으로 단정하지 않는다. 관련 범위와 보완 목록은09-23 Resources 감사에 둔다.
+
+
+### Collider의 시작·종료 geometry와 실제 Server 소비
+
+- Collider의 end position/size는 문서 필드 추가만으로 움직이지 않는다. Workbench의
+  preview 복사·동등성·그룹 이동, 실제 preview 시간 평가, projector의 region motion과
+  Server 높이·tick 사이 sweep을 같은 변경에서 연결한다. CYLINDER와 기존 평면 CIRCLE을
+  구분하고 정적 저작본의 기본값을 보존한다.
+- 반복 접촉은 Collider가 연결한 ENTER_AREA의 플레이어별 이력으로 처리한다. 일정 간격은
+  창 끝에서 추가 타격하지 않으며, 기존 Logic 선택만으로 그 반복 정책을 덮지 않는다.
+- 포물선과 낙사 허용은 별도 값이다. 상승 높이·수명으로 호를 만들고 낙사 비허용은 지상
+  footprint의 navigation·collision을 유지한다. Gate1은 단독 Pattern과 Raid 모두 확인한다.
+- BOSS에서 Follow를 끈 Collider는 생성 틱의 위치·방향을 Server도 고정해야 한다.
+  평범한 overlap뿐 아니라 Mario entry 같은 특수 소비자도 새 anchor를 처리하는지 확인한다.
+- 근거: [Collider 상세 결과](09-23/2026-09-23_KOUKU_COLLIDER_DETAIL_RESULT.md).
+
+- Collider 상세의 Start/Lifetime·transform·anchor·종료값은 상단 설정 선택과 무관하게 유지한다.
+  preset 항목 추가 시 label/shape만 추가하지 말고 실제 열거 개수도 확인한다. 비슷한 다른
+  반복문을 전역 치환하지 않는다. 동일 시각 복제는 연결 Logic도 새 ID로 복제하고, 화면에서는
+  복제된 Collider만 선택해 혼합 선택으로 인해 상세 편집이 사라지지 않게 한다.
+
+### 유령 발탄의 coverage와 캐릭터 선택의 diffuse 환경 입력
+
+- native84 유령 발탄은 원본 opacity0/discard, 공통 dither, forward alpha blend를 각각 확인한다.
+  사용자 요청의 opaque 경로는 native84 전용이며 일반 발탄과 다른 반투명 재질에 전파하지 않는다.
+  불투명 forward는 sorted BLEND 앞에서 depth-write하고 shadow silhouette도 같은 정책을 쓴다.
+- animated FX에 base 전용 pass를 추가할 때 variant에는 UNAVAILABLE 정책을 선언한다.
+  모든 파일에 BASE 정책을 넣으면 직접 shard 검사는 통과해도 전체 CShader variant admission이
+  실패한다. 최종 제품 base FX로 전체 cohort 등록과 해당 pass의 dispatch를 확인한다.
+- 하늘 mesh가 보인다는 사실과 cube의 specular/diffuse 기여를 구분한다. 캐릭터 선택은 원본
+  확인된 정적 LUT owner가 비어 있고 원본 FLOOR12도 albedo를 saturate하므로 LUT 부재·clamp 자체를 오류로 단정하지 않는다.
+- cubeDiffuse는 원본 cooked cube의 E/pi 적분 근사다. source SH9→native packed7 복원으로
+  기록하지 않는다. 후속 native owner 복원과 구분하고 원본 RNM의 sky 기여 중복 가능성을
+  남기고 단독 보기/gain0 및 before-restoration 프로필로 비교한다. GPU 수치와 사용자 화면 승인은 구분한다.
+- 중성 albedo fixture에서 sky의 B>R이 나와도 실제 갈색 재질에 곱한 결과가 중립이라는 뜻은
+  아니다. 실제 DDS와 material 값을 검증한다. 한 정적 owner의 LUT가 비어 있다는 사실을
+  전체 camera/UI/volume 후처리 체인의 neutral 확정으로 확대하지 않는다.
+
+
+### Collider의 Effect 기준 프레임과 임시 Server 재생
+
+- 지연 생성 Collider가 fixed Effect를 따라야 하면 각 Collider 생성 시 boss 위치를 잡지 않는다.
+  같은 Effect occurrence의 시작을 참조하고 Server/Client 모두 같은30Hz 시작 틱의 basis를 고정한다.
+- 미저장 draft는 source revision이 같아도 내용이 다르다. 요청 sequence·gameplay rows SHA·승인 epoch로
+  실행을 구분하고 시각 표현만 바뀐 동일 SHA도 새 실행에서 다시 읽는다. 이전 COMPLETED 응답을
+  새 world의 승인으로 쓰지 않도록 world generation을 검사한다.
+- Play Preview의 서버 분기를 수평 밀림 거리>0에만 걸면 수직 상승과 피해 전용 Collider가 누락된다.
+  Composition 전체 Play는 같은 Server 경로를 사용하고 paused scrub만 로컬 표현으로 남긴다.
+- Publish 실패로 receipt가 rollback되면 변경 없는 Map도 다음에 cold 게시될 수 있다. 단계별
+  action 시간과 fingerprint 시간을 분리하고, 없는 성공 receipt를 만들어 검사를 우회하지 않는다.
+
+### 원본 PBR 간접광의 입력 owner와 이전 모드 보존
+
+- 원본 SH9는 채널별48byte stride이며 native packer의7개 float4를 그대로 검증한다. cooked cube를 적분한 추가광과 원본 SH 색의 곱은 서로 다른 계산이다.
+- 추가 hemisphere는 source SkyLight brightness만 보고 주입하지 않는다. 실제 primitive의 baked GUID와 lighting channel을 join한다. 이미 RNM에 구워진 하늘광은 다시 더하지 않는다.
+- 재질별 cube override와 scene/view의 global fallback을 구분한다. 기존 연결이 없는 행에 현재 scene cube를 복사하는 것은 원본 선택의 증거가 아니다.
+- sourceIndirect는 별도 cube/color/rotation/BRDF를 보존한다. native 모드를 끄면 이전 리소스와 식을 사용하며, 새 환경 연결의 legacyEnabled=false는 이전의 환경 없음 상태를 유지한다.
+- native BRDF lookup과 color-grading LUT를 혼동하지 않는다. 실제 warm albedo와 원본 SH 곱이 덜 붉어져도 밝기는 낮아질 수 있다. 수식/owner 복원과 화면의 하얀색 복원 성공은 구분한다.
+- 특정 native group의 전용 pass를 shared forward include에 추가하면 모든 static/animated cohort의 셰이더 컴파일이 늘어난다. 전용 animated carrier에서 compile-time group 분기를 사용하고 base/shard pass admission과 실제 GPU 출력을 함께 확인한다.
+
+
+### 강제 이동의 보행 마스크와 물리 지지면 분리
+
+- 보행용 walkable clamp를 피격 변위에 그대로 재사용하면 붕괴 구간에 도달하기 전에 멈춰 낙사를 차단한다. 실제 벽/몸체 sweep 결과와 물리 바닥의 지지 여부를 따로 평가한다.
+- navigation 최대 단차 0은 무제한이다. 인접 셀에 낮은 배경 지형이 있으면 경로점 Y를 그대로 적용하지 말고 현재 높이에서 실제 이동 구간의 지지를 검증한다.
+- surface=1, walkable=0 착지는 낙사가 아니어도 이후 보행 시작점 검사에서 끼일 수 있다. 강제 이동 수정에는 해당 착지에서 정상 보행으로 복귀하는 검증이 필요하다.
+- 셀 절반 간격의 표본도 모서리를 짧게 통과하는 대각선 셀은 건너뛸 수 있다. 경계 전수 검증에는 셀 교차 추적이 필요하며 축 방향 테스트 성공을 전체 경계 성공으로 기록하지 않는다.
+
+### 쿠크 낙사면과 연속 공중 피격의 기준 높이
+
+- 강제 재피격의 새 포물선 launchY를 바닥 기준으로 사용하면 공중 연타마다 낙사면이 올라간다.
+  개별 포물선 시작점과 연속 비행의 최초 지지 높이를 따로 유지한다.
+- 아래 배경 nav면이 존재해도5m 낙사면보다 아래의 착지 후보로 사망 판정을 늦추지 않는다.
+- 부활 위치는 사망 좌표 근처 투영이 아니라 현재 승인 관문의 기존 시작점에서 검증한다.
+  후보 검증 전에 HP·위치를 바꾸지 않고, 성공 시 남은 비행 플래그를 함께 정리한다.
+
+### 앵콜 clear UI와 낙사 변경을 통합할 때 (2026-09-24)
+
+- Server의 G3 clear 대기와 Presentation Sequence의 lead-in은 서로 다른 시계다. 시간을 줄일 때 P10/P97, World/Camera, animation/sound source offset, 유리 source clock을 함께 이동하고, fake clear UI는 Debug 도구가 아닌 공통 Sample 경로에서 SceneHDR 후처리 전에 유지한다.
+- 일시적인 CUILayoutRuntime는 숨김만으로 해제되지 않는다. Layer가 sprite를 소유하므로 Stop/실패/교체에서 기존 Release_Sprites를 호출한다. 선택적 scene UI의 font/draw 실패를 전체 world 프레임 실패로 전파하지 않는다.
+- 일반1/3관문 낙사 금지와 Mario 내부 낙사는 적용 범위가 다르다. 실제 GATE3 상태의 Mario에서 중력→5m 낙사면→DEAD 복귀를 검사하고, timer deadline 한 번 호출을 물리 낙하 성공으로 간주하지 않는다.
+
+### WORLD hook의 마지막 상승과 attachment 해제
+
+- Baked grip이 있는 carrier는 마지막 XYZ 도착이 실제 하차점이라는 보장이 없다. 마지막
+  연속 상승의 시작과 실제 Server navigation 바닥을 대조한 뒤 기존 attachment release를
+  호출한다. 엄격한 상승 판정으로 같은 높이 수평 접근/대기를 해제점까지 되감지 않는다.
+- Staggered bake의 sampling phase가 다르면 같은 clip도 local key 시간이 달라진다. 첫
+  occurrence의 시간 하나를 전체 track의 기대값으로 복제하지 않고 실제 float32 소비값을
+  확인한다. WORLD grip에 boss/root basis를 다시 적용하지 않는다.
+- 반복 회귀 검증과 현재 수치는
+  [09-24 hook 결과](09-24/2026-09-24_KOUKU_HOOK_ASCENT_RELEASE_IMPLEMENTATION_RESULT.md)에 둔다.
+
+### 보행 이탈과 강제 이동의 바닥 판정 순서
+
+- 보행용 바닥 이탈 helper를 넉백 시작에 무조건 호출하면 bounded push와 gate fence를
+  건너뛰어 먼저 FALLING을commit할수있다. 명시적arena-exit의여부를먼저보존하고일반
+  강제이동은기존swept collision/forced surface, bounded이동은기존clamp를사용한다.
+- 실제게시source회귀는synthetic용빈catalog가아니라room이admit한Product generation을
+  읽는다. source수치audit의PASS는native소비자가실제track을순회한PASS를대신하지않는다.
+
+- Hook grip의XZ에물리바닥셀이없으면`Project_PointOnSameLevel`의기준Y도바닥근거가
+  아니다. 기존player-spawn projection을fallback으로사용할때는동일navgrid/정확한
+  walkable/수평거리/높이차를함께검증한다. 높이만0m나보스spawnY로대체하지않는다.
+
+
+### Release F1의 서버 재생과 수치 profile
+
+- Release F1을 열 때 ImGui 표시 guard만 제거하면 패턴이 시작되지 않는다. 같은 typed audition/flow의 Server 평가·fixed tick·lifecycle 송신과 Client preparation/응답 drain을 함께 연결한다. Map authoring이나 Debug 전용 로컬 preview의 guard까지 일괄 제거하지 않는다.
+- Retail override가 있는 필드는 base 숫자만 저장해도 런타임이 바뀌지 않는다. 공용 Balance Test는 유효한 Retail 소유 field를 편집하고, 공식 Gameplay/World 및 조합 publisher는 기본 Retail을 유지한다. 저장 성공, publish 성공, 실행 중 Server 반영은 서로 다른 단계다.
+- 공굴리기 counter window의 `endsPatternOnSuccess`만으로 무력화가 자동 삽입되지 않는다. occurrence의 성공 Logic → 같은 관문 groggy Pattern 결과 연결과 실제 published counter fixture를 함께 확인한다.
+
+
+### Gameplay catalog의 새 profile lookup과 재로드
+
+- 새 lookup map을 parser에 추가할 때 기존 Load rollback과 clear 대상도 함께 갱신한다. 첫 Load 성공만 확인하면 같은 객체의 두 번째 Load에서 duplicate buff나 이전 damage formula 잔존을 놓친다. profile별 lookup 두 개가 있으면 두 경로 모두 변경값을 소비하는지 확인한다.
+- optional profile을 clear만 하고 rollback에서 빠뜨리면 malformed 후보가 이전 정상 profile을 지운다. 실제 published bootstrap의 반복 Load, 변경값 교체, 뒤쪽 invalid row 실패 후 이전 revision/값 보존까지 같은 검증에 둔다.
+- 후속 fixture는 admission 실패 뒤 이전 catalog의 다른 종류 row를 예상 타입으로 접근하지 않는다. row 종류·필수 배열 개수를 확인한 뒤 front/back을 사용하여 첫 실패를 후속 assert가 가리지 않게 한다.

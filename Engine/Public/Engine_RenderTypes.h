@@ -21,6 +21,11 @@ namespace Engine
 		wstring_t strCubePath;
 		float4_t vColor = { 1.f, 1.f, 1.f, 0.f };
 		float4_t vRotationIntensity = { 0.f, 1.f, 1.f, 0.f };
+        // Optional RGBM cube projection: Lambert E/pi in cube coordinates.
+        // This project approximation is separate from native incident SH packing.
+        std::array<float4_t, 7> vDiffuseSH{};
+        f32_t fDiffuseIntensity = 0.f;
+        bool_t bUseSourcePBRIndirect = false;
 	};
 
 	typedef struct tagLightDesc
@@ -137,6 +142,7 @@ namespace Engine
 		SCENE_HDR,
 		SCENE_TONE,
 		SCENE_GRADED,
+        CUBE_DIFFUSE,
 		END,
 	};
 
@@ -148,6 +154,7 @@ namespace Engine
 		float4_t vContributionScale = { 1.f, 1.f, 1.f, 1.f };
 		// Normal multiplier, roughness offset, legacy RNM equation (0/1), reserved.
 		float4_t vSurfaceParameters = { 1.f, 0.f, 0.f, 0.f };
+        f32_t fCubeDiffuseScale = 1.f;
 		bool_t Is_Active(uint32_t level) const noexcept { return bEnabled && iLevel == level; }
 	};
 

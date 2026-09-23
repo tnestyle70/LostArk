@@ -23,8 +23,16 @@ int main(const int argumentCount, char** arguments)
 	{
 		return LostArk::Server::Run_ServerGameplayContractTests();
 	}
+	if (2 == argumentCount && std::string_view(arguments[1]) == "--valtan-pattern-control-contract-test")
+		return LostArk::Server::CServerGameplayContractRunner::Run_ValtanPatternControl();
+	if (2 == argumentCount && std::string_view(arguments[1]) == "--kouku-draft-contract-test")
+		return LostArk::Server::CServerGameplayContractRunner::Run_KoukuDraft();
+	if (2 == argumentCount && std::string_view(arguments[1]) == "--kouku-dice-hit-contract-test")
+		return LostArk::Server::CServerGameplayContractRunner::Run_KoukuDiceDamageContracts();
 	if (2 == argumentCount && std::string_view(arguments[1]) == "--kouku-raid-contract-test")
 		return LostArk::Server::CServerGameplayContractRunner::Run_KoukuRaid();
+	if (2 == argumentCount && std::string_view(arguments[1]) == "--npc-raid-return-contract-test")
+		return LostArk::Server::CServerGameplayContractRunner::Run_NpcRaidReturn();
 	if (2 == argumentCount && std::string_view(arguments[1]) == "--kouku-bundle-contract-test")
 		return LostArk::Server::Run_ServerGameplayContractTests(false, false, true);
 	if (2 == argumentCount && std::string_view(arguments[1]) == "--card-maze-contract-test")
@@ -49,6 +57,11 @@ int main(const int argumentCount, char** arguments)
 	}
 	if (2 == argumentCount && std::string_view(arguments[1]) == "--kouku-support-surface-contract-test")
 		return LostArk::Server::Run_ServerKoukuSupportSurfaceContractTests();
+	if (2 == argumentCount &&
+		std::string_view(arguments[1]) == "--valtan-arena-support-contract-test")
+	{
+		return LostArk::Server::CServerGameplayContractRunner::Run_ValtanArenaSupport();
+	}
 	if (2 == argumentCount &&
 		std::string_view(arguments[1]) == "--navigation-contract-test")
 	{
@@ -148,9 +161,10 @@ int main(const int argumentCount, char** arguments)
 		std::cerr << "Usage: Server [--contract-test | "
 			"--kouku-object-overlap-contract-test | --kouku-support-surface-contract-test | "
 			"--kouku-bundle-contract-test | --card-maze-contract-test | "
-			"--kouku-raid-contract-test | "
+			"--kouku-raid-contract-test | --kouku-dice-hit-contract-test | --kouku-draft-contract-test | "
 			"--bingo-contract-test | --vehicle-riding-contract-test | "
-			"--navigation-contract-test | --debug-teleport-contract-test | "
+			"--navigation-contract-test | --valtan-arena-support-contract-test | "
+			"--debug-teleport-contract-test | "
 			"--dimensionmaster-ground-target-contract | "
 			"--reset-valtan-runtime-to-packaged | "
 			"--bind-address IPv4] [--port 1..65535] "

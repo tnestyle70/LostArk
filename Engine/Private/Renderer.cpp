@@ -546,6 +546,7 @@ HRESULT CRenderer::Apply_MaterialRenderSettings(const MATERIAL_RENDER_SETTINGS& 
 		if (!IsFiniteInRange(value, 0.f, 4.f)) return E_INVALIDARG;
 	if (!IsFiniteInRange(pbr.vSurfaceParameters.x, 0.f, 4.f) ||
 		!IsFiniteInRange(pbr.vSurfaceParameters.y, -1.f, 1.f) ||
+        !IsFiniteInRange(pbr.fCubeDiffuseScale, 0.f, 4.f) ||
 		(pbr.vSurfaceParameters.z != 0.f && pbr.vSurfaceParameters.z != 1.f) ||
 		pbr.vSurfaceParameters.w != 0.f) return E_INVALIDARG;
 	m_MaterialRenderSettings = settings;
@@ -916,6 +917,17 @@ HRESULT CRenderer::Draw()
 		}
 		if (SUCCEEDED(hSceneResult))
 			hSceneResult = Render_Blend();
+
+		// Opt-in cinematic UI participates in scene post effects (e.g. glass).
+		// Ordinary HUD/UI stays in display space after the final composite.
+		for (const auto& object : m_RenderObjects[ETOUI(RENDERGROUP::SCENE_UI)])
+            if (object && SUCCEEDED(hSceneResult))
+            {
+                // Presentation UI is optional; a failed sprite cannot discard the world frame.
+                const HRESULT uiResult = object->Render_Group(RENDERGROUP::SCENE_UI);
+                if (FAILED(uiResult)) WriteRendererFailure("Render_SceneUI_Isolated", uiResult);
+            }
+		m_RenderObjects[ETOUI(RENDERGROUP::SCENE_UI)].clear();
 
 		/* Always restore the back-buffer/DSV pair after entering the HDR MRT. */
 		hEndSceneResult = CGameInstance::Get().End_MRT();
@@ -1398,6 +1410,19 @@ HRESULT CRenderer::Render_Combined()
     CProfilerGpuScope gpuScope(profiler, "Render.Combined");
     const uint32_t dynamicBakedShadow = CGameInstance::Get().Is_ShadowLightEnabled() &&
         m_bStaticShadowCacheValid && m_pStaticShadowSRV ? 1u : 0u;
+    const auto& comparison = m_MaterialRenderSettings.MapPBR;
+    const float diffuseScale = comparison.Is_Active(CGameInstance::Get().Get_CurrentLevelID()) ?
+        comparison.fCubeDiffuseScale : 1.f;
+    const float cubeDiffuseIntensity = m_RenderEnvironment.pCube && !m_RenderEnvironment.bUseSourcePBRIndirect ?
+        m_RenderEnvironment.fDiffuseIntensity * m_RenderEnvironment.vRotationIntensity.z * diffuseScale : 0.f;
+    if (FAILED(m_pShader->Bind_RawValue("g_CubeDiffuseSH", m_RenderEnvironment.vDiffuseSH.data(),
+            sizeof(m_RenderEnvironment.vDiffuseSH))) ||
+        FAILED(m_pShader->Bind_RawValue("g_CubeDiffuseIntensity", &cubeDiffuseIntensity, sizeof(cubeDiffuseIntensity))) ||
+        FAILED(m_pShader->Bind_RawValue("g_CubeDiffuseColor", &m_RenderEnvironment.vColor, sizeof(float4_t))) ||
+        FAILED(m_pShader->Bind_RawValue("g_CubeDiffuseRotation", &m_RenderEnvironment.vRotationIntensity, sizeof(float4_t))) ||
+        FAILED(CGameInstance::Get().Bind_RT_SRV(TEXT("Target_Normal"), m_pShader, "g_NormalTexture")) ||
+        FAILED(CGameInstance::Get().Bind_RT_SRV(TEXT("Target_MaterialSpecular"), m_pShader, "g_MaterialSpecularTexture")))
+        return E_FAIL;
     if (FAILED(m_pShader->Bind_RawValue("g_iDynamicBakedShadowEnabled",
             &dynamicBakedShadow, sizeof(dynamicBakedShadow))) ||
         FAILED(m_pShader->Bind_Texture("g_StaticLightDepthTexture",

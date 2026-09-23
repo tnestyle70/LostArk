@@ -702,6 +702,13 @@ void LostArk::Server::CServerTriggerSystem::Evaluate_Entries(
 					trigger.hasFired = true;
 				}
 			}
+            else if (LostArk::Shared::WORLD_ID::KAKULSAYDON_ARENA == m_eWorldId &&
+                WORLD_TRIGGER_ACTION_KIND::PLAY_SEQUENCE == trigger.Definition.TriggerActions.front().eKind)
+            {
+                // Raid admission may wait for another player's G-key transfer. A
+                // rejected sequence must not consume this player's only entry edge.
+                currentInside.erase(playerId);
+            }
 			else if (LostArk::Shared::PLAYER_ACTION_STATE::NONE != player.eAction &&
 				LostArk::Shared::PLAYER_ACTION_STATE::TRIGGER_MOVE != player.eAction &&
 				LostArk::Shared::PLAYER_ACTION_STATE::WALL_CLIMB != player.eAction &&
@@ -735,7 +742,6 @@ void LostArk::Server::CServerTriggerSystem::Evaluate_Entries(
 	}
 }
 
-#ifdef _DEBUG
 bool LostArk::Server::CServerTriggerSystem::Place_PlayerAtValtanAuditionBait(
 	SERVER_PLAYER& player,
 	const std::uint32_t actionStartTick) const
@@ -797,7 +803,6 @@ bool LostArk::Server::CServerTriggerSystem::Build_ValtanStageBypassMove(
 	outAction = staged;
 	return true;
 }
-#endif
 
 void LostArk::Server::CServerTriggerSystem::Remove_Player(
 	const LostArk::Shared::PLAYER_ID playerId)

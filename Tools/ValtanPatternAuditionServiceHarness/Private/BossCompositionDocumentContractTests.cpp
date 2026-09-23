@@ -8,6 +8,7 @@
 #include "WorldGameplayDocument.h"
 #include "KoukuCinematicAnimationCatalog.h"
 #include "KoukuSaydonPatternAuditionService.h"
+#include "NetworkManager.h"
 #include "KoukuSaydonBossTool.h"
 #include "Effect_Catalog.h"
 #include "Effect_Playback.h"
@@ -36,6 +37,10 @@ struct CKoukuSaydonWorkbenchTestAccess
     static bool Append(CKoukuSaydonActionWorkbench& workbench,
         const KOUKU_SAYDON_COMPOSITION_PRESENTATION_RESOURCE& source, std::string& status)
     { return workbench.Append_PresentationSource(source, status); }
+    static const std::vector<std::string>& SelectedBoxes(const CKoukuSaydonActionWorkbench& workbench)
+    { return workbench.m_TimelineSelectedOccurrenceIds; }
+    static void PrimeDamageDirty(CKoukuSaydonActionWorkbench& workbench) { workbench.m_bColliderDamageDirty = true; }
+    static bool DamageDirty(const CKoukuSaydonActionWorkbench& workbench) { return workbench.m_bColliderDamageDirty; }
 };
 }
 namespace
@@ -53,6 +58,10 @@ Client::EFFECT_TOOL_KOUKU_EFFECT_TREE Client::Build_KoukuSavedEffectTree(std::ve
 void Client::Render_KoukuSavedEffectTree(const EFFECT_TOOL_KOUKU_EFFECT_TREE&, const std::function<void(std::size_t)>&,
     bool, std::string_view, const std::function<bool(std::size_t)>&)
 { throw std::runtime_error("CPU editor contracts unexpectedly rendered the live Effect tree."); }
+CNetworkManager& CNetworkManager::Get()
+{ throw std::runtime_error("CPU editor contracts unexpectedly requested a live Network manager."); }
+bool CNetworkManager::Is_Connected() const
+{ throw std::runtime_error("CPU editor contracts unexpectedly inspected a live connection."); }
 Client::CKoukuSaydonPatternAuditionService& Client::CKoukuSaydonPatternAuditionService::Get()
 { throw std::runtime_error("CPU editor contracts unexpectedly requested live Server audition."); }
 bool Client::CKoukuSaydonPatternAuditionService::Stop(std::string&)
@@ -2480,7 +2489,7 @@ namespace
 		RequireEditorRoundtrip(workbench);
 	}
 
-	void VerifyKoukuColliderSelectionGroups()
+	void VerifyKoukuColliderSelectionGroups(const bool duplicateOnly = false)
 	{
 		using namespace Client;
 		const auto sourceRoot = CProjectDataRoot::Get();
@@ -2532,77 +2541,240 @@ namespace
 		Require(environment.Set(dataRoot), "could not select Collider group scratch root");
 		CKoukuSaydonActionWorkbench workbench;
 		RequireEditorStep(workbench.Reload(status), status, "load Collider group fixture");
-		const auto before = workbench.Get_Composition();
-		Require(!workbench.Set_ColliderSelectionGroup(patternId, {ids.front()}, true, status) &&
-			workbench.Get_Composition() == before, "singleton Set Group did not preserve draft");
-		Require(!workbench.Set_ColliderSelectionGroup(patternId, {ids.front(), "missing.collider"}, true, status) &&
-			workbench.Get_Composition() == before, "missing member Set Group did not preserve draft");
-		RequireEditorStep(workbench.Set_ColliderSelectionGroup(patternId, ids, true, status), status, "Set Group five Colliders");
-		const auto grouped = EditorPattern(workbench, patternId).PresentationOccurrences;
-		const auto groupId = grouped.front().strSelectionGroupId;
-		Require(!groupId.empty(), "Set Group did not assign a stable group ID");
-		for (std::size_t i = 0u; i < grouped.size(); ++i)
+		if (!duplicateOnly)
 		{
-			auto expected = pattern.PresentationOccurrences[i]; expected.strSelectionGroupId = groupId;
-			Require(grouped[i] == expected, "Set Group changed geometry, timing, scale or Logic");
-		}
-		RequireEditorRoundtrip(workbench);
-		RequireEditorStep(workbench.Select_PresentationBoxById(patternId, ids[2], status), status, "click one saved group member");
-		RequireEditorStep(workbench.Transform_SelectedColliders({10.0, 2.0, -5.0}, 90.0, status), status, "rotate group at its center");
-		Require(workbench.Is_Dirty(), "group geometry preview was not dirty");
-		Require(EditorPattern(workbench, patternId).PresentationOccurrences == grouped,
-			"group drag bypassed staged geometry and mutated the saved draft");
-		RequireEditorRoundtrip(workbench);
-		const auto rotated = EditorPattern(workbench, patternId).PresentationOccurrences;
-		const auto almostEqual = [](double a, double b) { return std::abs(a - b) < 1e-8; };
-		for (std::size_t i = 0u; i < rotated.size(); ++i)
-		{
-			auto expected = grouped[i];
-			expected.PositionOffset = {10.0, 3.0, -2.0 - grouped[i].PositionOffset[0]};
-			expected.RotationDegrees[1] = 120.0;
-			Require(almostEqual(rotated[i].PositionOffset[0], expected.PositionOffset[0]) &&
-				almostEqual(rotated[i].PositionOffset[1], expected.PositionOffset[1]) &&
-				almostEqual(rotated[i].PositionOffset[2], expected.PositionOffset[2]) &&
-				almostEqual(rotated[i].RotationDegrees[1], expected.RotationDegrees[1]),
-				"common pivot rotation/translation moved the wrong center or used the wrong yaw sign");
-			expected.PositionOffset = rotated[i].PositionOffset; expected.RotationDegrees = rotated[i].RotationDegrees;
-			Require(rotated[i] == expected, "group rotation changed timing, scale, anchor or Logic");
-		}
-		RequireEditorStep(workbench.Select_PresentationBoxById(patternId, ids.front(), status), status, "reselect saved group");
-		const auto stable = workbench.Get_Composition();
-		Require(!workbench.Transform_SelectedColliders({0.0, 0.0, 0.0}, std::numeric_limits<double>::quiet_NaN(), status) &&
-			workbench.Get_Composition() == stable && !workbench.Is_Dirty(), "invalid group rotation partially changed state");
-		RequireEditorStep(workbench.Duplicate_TimelineSelection(patternId, {}, ids, status), status, "duplicate group");
-		const auto duplicated = EditorPattern(workbench, patternId).PresentationOccurrences;
-		Require(duplicated.size() == 10u, "group duplicate count is wrong");
-		std::vector<std::string> duplicateIds;
-		std::string duplicateGroup;
-		for (const auto& box : duplicated)
-			if (std::find(ids.begin(), ids.end(), box.strOccurrenceId) == ids.end())
+			const auto before = workbench.Get_Composition();
+			Require(!workbench.Set_ColliderSelectionGroup(patternId, {ids.front()}, true, status) &&
+				workbench.Get_Composition() == before, "singleton Set Group did not preserve draft");
+			Require(!workbench.Set_ColliderSelectionGroup(patternId, {ids.front(), "missing.collider"}, true, status) &&
+				workbench.Get_Composition() == before, "missing member Set Group did not preserve draft");
+			RequireEditorStep(workbench.Set_ColliderSelectionGroup(patternId, ids, true, status), status, "Set Group five Colliders");
+			const auto grouped = EditorPattern(workbench, patternId).PresentationOccurrences;
+			const auto groupId = grouped.front().strSelectionGroupId;
+			Require(!groupId.empty(), "Set Group did not assign a stable group ID");
+			for (std::size_t i = 0u; i < grouped.size(); ++i)
 			{
-				duplicateIds.push_back(box.strOccurrenceId);
-				if (duplicateGroup.empty()) duplicateGroup = box.strSelectionGroupId;
-				Require(!duplicateGroup.empty() && duplicateGroup != groupId && box.strSelectionGroupId == duplicateGroup,
-					"duplicate group still selects the original or split its new members");
+				auto expected = pattern.PresentationOccurrences[i]; expected.strSelectionGroupId = groupId;
+				Require(grouped[i] == expected, "Set Group changed geometry, timing, scale or Logic");
 			}
-		RequireEditorRoundtrip(workbench);
-		RequireEditorStep(workbench.Set_ColliderSelectionGroup(patternId, {duplicateIds.front()}, false, status), status, "Ungroup copied set");
-		for (const auto& box : EditorPattern(workbench, patternId).PresentationOccurrences)
-			Require(std::find(ids.begin(), ids.end(), box.strOccurrenceId) != ids.end() ? box.strSelectionGroupId == groupId : box.strSelectionGroupId.empty(),
-				"Ungroup changed the original group or left some copied members grouped");
-		RequireEditorStep(workbench.Delete_TimelineSelection(patternId, {}, {ids[0], ids[1], ids[2], ids[3]}, status), status, "delete four group members");
-		for (const auto& box : EditorPattern(workbench, patternId).PresentationOccurrences)
-			Require(box.strSelectionGroupId.empty(), "deletion left an orphan singleton group");
-		RequireEditorRoundtrip(workbench);
-		RequireEditorStep(workbench.Set_ColliderSelectionGroup(patternId, duplicateIds, true, status), status, "regroup copied rows");
-		RequireEditorStep(workbench.Transform_SelectedColliders({1.0, 0.0, 0.0}, 15.0, status), status, "stage before Save conflict");
-		const auto pending = workbench.Get_Composition();
-		auto external = pending; external.iRevision += 100u; external.Patterns.front().strDisplayName += " external";
-		const auto externalBytes = CKoukuSaydonCompositionDocument::Serialize(external);
-		Require(WriteText(sourcePath, externalBytes), "could not write external conflict fixture");
-		Require(!workbench.Save(status) && !status.empty() && workbench.Is_Dirty() &&
-			workbench.Get_Composition() == pending && ReadText(sourcePath) == externalBytes,
-			"Save conflict lost group geometry, draft or external source");
+			RequireEditorRoundtrip(workbench);
+			RequireEditorStep(workbench.Select_PresentationBoxById(patternId, ids[2], status), status, "click one saved group member");
+			RequireEditorStep(workbench.Transform_SelectedColliders({10.0, 2.0, -5.0}, 90.0, status), status, "rotate group at its center");
+			Require(workbench.Is_Dirty(), "group geometry preview was not dirty");
+			Require(EditorPattern(workbench, patternId).PresentationOccurrences == grouped,
+				"group drag bypassed staged geometry and mutated the saved draft");
+			RequireEditorRoundtrip(workbench);
+			const auto rotated = EditorPattern(workbench, patternId).PresentationOccurrences;
+			const auto almostEqual = [](double a, double b) { return std::abs(a - b) < 1e-8; };
+			for (std::size_t i = 0u; i < rotated.size(); ++i)
+			{
+				auto expected = grouped[i];
+				expected.PositionOffset = {10.0, 3.0, -2.0 - grouped[i].PositionOffset[0]};
+				expected.RotationDegrees[1] = 120.0;
+				Require(almostEqual(rotated[i].PositionOffset[0], expected.PositionOffset[0]) &&
+					almostEqual(rotated[i].PositionOffset[1], expected.PositionOffset[1]) &&
+					almostEqual(rotated[i].PositionOffset[2], expected.PositionOffset[2]) &&
+					almostEqual(rotated[i].RotationDegrees[1], expected.RotationDegrees[1]),
+					"common pivot rotation/translation moved the wrong center or used the wrong yaw sign");
+				expected.PositionOffset = rotated[i].PositionOffset; expected.RotationDegrees = rotated[i].RotationDegrees;
+				Require(rotated[i] == expected, "group rotation changed timing, scale, anchor or Logic");
+			}
+			RequireEditorStep(workbench.Select_PresentationBoxById(patternId, ids.front(), status), status, "reselect saved group");
+			const auto stable = workbench.Get_Composition();
+			Require(!workbench.Transform_SelectedColliders({0.0, 0.0, 0.0}, std::numeric_limits<double>::quiet_NaN(), status) &&
+				workbench.Get_Composition() == stable && !workbench.Is_Dirty(), "invalid group rotation partially changed state");
+			RequireEditorStep(workbench.Duplicate_TimelineSelection(patternId, {}, ids, status), status, "duplicate group");
+			const auto duplicated = EditorPattern(workbench, patternId).PresentationOccurrences;
+			Require(duplicated.size() == 10u, "group duplicate count is wrong");
+			std::vector<std::string> duplicateIds;
+			std::string duplicateGroup;
+			for (const auto& box : duplicated)
+				if (std::find(ids.begin(), ids.end(), box.strOccurrenceId) == ids.end())
+				{
+					duplicateIds.push_back(box.strOccurrenceId);
+					if (duplicateGroup.empty()) duplicateGroup = box.strSelectionGroupId;
+					Require(!duplicateGroup.empty() && duplicateGroup != groupId && box.strSelectionGroupId == duplicateGroup,
+						"duplicate group still selects the original or split its new members");
+				}
+			RequireEditorRoundtrip(workbench);
+			RequireEditorStep(workbench.Set_ColliderSelectionGroup(patternId, {duplicateIds.front()}, false, status), status, "Ungroup copied set");
+			for (const auto& box : EditorPattern(workbench, patternId).PresentationOccurrences)
+				Require(std::find(ids.begin(), ids.end(), box.strOccurrenceId) != ids.end() ? box.strSelectionGroupId == groupId : box.strSelectionGroupId.empty(),
+					"Ungroup changed the original group or left some copied members grouped");
+			RequireEditorStep(workbench.Delete_TimelineSelection(patternId, {}, {ids[0], ids[1], ids[2], ids[3]}, status), status, "delete four group members");
+			for (const auto& box : EditorPattern(workbench, patternId).PresentationOccurrences)
+				Require(box.strSelectionGroupId.empty(), "deletion left an orphan singleton group");
+			RequireEditorRoundtrip(workbench);
+			RequireEditorStep(workbench.Set_ColliderSelectionGroup(patternId, duplicateIds, true, status), status, "regroup copied rows");
+			RequireEditorStep(workbench.Transform_SelectedColliders({1.0, 0.0, 0.0}, 15.0, status), status, "stage before Save conflict");
+			const auto pending = workbench.Get_Composition();
+			auto external = pending; external.iRevision += 100u; external.Patterns.front().strDisplayName += " external";
+			const auto externalBytes = CKoukuSaydonCompositionDocument::Serialize(external);
+			Require(WriteText(sourcePath, externalBytes), "could not write external conflict fixture");
+			Require(!workbench.Save(status) && !status.empty() && workbench.Is_Dirty() &&
+				workbench.Get_Composition() == pending && ReadText(sourcePath) == externalBytes,
+				"Save conflict lost group geometry, draft or external source");
+
+		}
+
+		// Same-time Collider copies own new contact windows while retaining the
+		// authored flame-column motion and the original reusable definitions.
+		auto colliderSource = source;
+		auto& colliderPattern = colliderSource.Patterns.front();
+		colliderPattern.PresentationOccurrences.clear();
+		auto& cylinder = colliderSource.PresentationResources.front();
+		cylinder.strShape = "CYLINDER"; cylinder.fRadiusM = 2.25; cylinder.HalfExtents = {1.0, 0.75, 1.0};
+		KOUKU_SAYDON_COMPOSITION_LOGIC_DEFINITION contact;
+		contact.strLogicId = "kakulsaydon.g1.logic." + std::to_string(colliderSource.iNextLogicOrdinal++);
+		contact.strDisplayName = "Flame column tick"; contact.strLogicType = "TRIGGER";
+		contact.strTriggerKind = "ENTER_AREA"; contact.iRepeatIntervalMs = 200u;
+		KOUKU_SAYDON_COMPOSITION_LOGIC_DEFINITION damage;
+		damage.strLogicId = "kakulsaydon.g1.logic." + std::to_string(colliderSource.iNextLogicOrdinal++);
+		damage.strDisplayName = "Flame column rise"; damage.strLogicType = "RESULT";
+		damage.strOutcomeKind = "MAX_HP_PERCENT_DAMAGE"; damage.iPercent = 7u;
+		damage.fPushHeightM = 4.0; damage.iPushMs = 800u; damage.bPushBallistic = true;
+		colliderSource.Logics = {contact, damage};
+		KOUKU_SAYDON_COMPOSITION_LOGIC_OCCURRENCE contactBox;
+		contactBox.strOccurrenceId = patternId + ".logic." + std::to_string(colliderPattern.iNextLogicOccurrenceOrdinal++);
+		contactBox.strLogicId = contact.strLogicId; contactBox.iStartMs = 333u; contactBox.iDurationMs = 875u;
+		contactBox.OnSuccessLogicIds = {damage.strLogicId}; colliderPattern.LogicOccurrences = {contactBox};
+		std::vector<std::string> cylinderIds;
+		for (unsigned i = 0u; i < 3u; ++i)
+		{
+			auto box = pattern.PresentationOccurrences[i];
+			box.iStartMs = i == 2u ? 777u : contactBox.iStartMs; box.iDurationMs = i == 2u ? 1250u : contactBox.iDurationMs;
+			box.Scale = {1.25, .75, 1.25}; box.strColliderMotion = "LINEAR";
+			box.ColliderEndPositionOffset = {box.PositionOffset[0] + 2.0, 8.5, box.PositionOffset[2] - 1.0};
+			box.ColliderEndScale = {1.5, 4.0, 1.5}; box.bFollowBoss = false;
+			box.strRegionId = box.strOccurrenceId + ".region";
+			if (i != 2u) box.strLogicOccurrenceId = contactBox.strOccurrenceId;
+			cylinderIds.push_back(box.strOccurrenceId); colliderPattern.PresentationOccurrences.push_back(box);
+		}
+		Require(WriteText(sourcePath, CKoukuSaydonCompositionDocument::Serialize(colliderSource)), "write same-time Cylinder fixture");
+		CKoukuSaydonActionWorkbench cylinderEditor;
+		RequireEditorStep(cylinderEditor.Reload(status), status, "load same-time Cylinder fixture");
+		RequireEditorStep(EditorPattern(cylinderEditor, patternId).strLoadError.empty(),
+			EditorPattern(cylinderEditor, patternId).strLoadError, "admit same-time Cylinder fixture");
+		RequireEditorStep(cylinderEditor.Set_ColliderSelectionGroup(patternId, {cylinderIds[0], cylinderIds[1]}, true, status),
+			status, "group two moving Cylinders");
+		RequireEditorRoundtrip(cylinderEditor);
+		const auto cylinderBefore = cylinderEditor.Get_Composition();
+		const auto cylinderPatternBefore = EditorPattern(cylinderEditor, patternId);
+		const auto sourceBytesBefore = ReadText(sourcePath);
+		RequireEditorStep(cylinderEditor.Duplicate_TimelineSelection(patternId, {}, {cylinderIds[0]}, status, true),
+			status, "duplicate one selected Cylinder group at its original times");
+		const auto cylinderCopied = EditorPattern(cylinderEditor, patternId);
+		Require(cylinderCopied.PresentationOccurrences.size() == 5u && cylinderCopied.LogicOccurrences.size() == 2u &&
+			cylinderCopied.iDurationMs == cylinderPatternBefore.iDurationMs && cylinderCopied.Stages == cylinderPatternBefore.Stages,
+			"same-time Collider duplicate lost its group/Logic closure or extended the Pattern clock");
+		Require(cylinderEditor.Get_Composition().PresentationResources == cylinderBefore.PresentationResources &&
+			cylinderEditor.Get_Composition().Logics == cylinderBefore.Logics && ReadText(sourcePath) == sourceBytesBefore,
+			"same-time Collider duplicate changed Cylinder dimensions, shared damage/tick definitions or the saved source");
+		Require(std::equal(cylinderPatternBefore.PresentationOccurrences.begin(), cylinderPatternBefore.PresentationOccurrences.end(),
+			cylinderCopied.PresentationOccurrences.begin()) && cylinderCopied.LogicOccurrences.front() == contactBox,
+			"same-time Collider duplicate changed an original box or contact window");
+		const auto& copiedContact = cylinderCopied.LogicOccurrences.back();
+		auto expectedContact = contactBox; expectedContact.strOccurrenceId = copiedContact.strOccurrenceId;
+		Require(copiedContact == expectedContact && copiedContact.strOccurrenceId != contactBox.strOccurrenceId,
+			"same-time Collider duplicate shared its original contact ledger or lost damage outcomes/timing");
+		const auto newGroup = cylinderCopied.PresentationOccurrences[3].strSelectionGroupId;
+		Require(!newGroup.empty() && newGroup != cylinderPatternBefore.PresentationOccurrences.front().strSelectionGroupId,
+			"same-time Collider duplicate reused the original selection group");
+		std::vector<std::string> copiedCylinderIds;
+		for (unsigned i = 0u; i < 2u; ++i)
+		{
+			const auto& copy = cylinderCopied.PresentationOccurrences[i + 3u];
+			auto expected = cylinderPatternBefore.PresentationOccurrences[i];
+			Require(std::find(cylinderIds.begin(), cylinderIds.end(), copy.strOccurrenceId) == cylinderIds.end() &&
+				!copy.strRegionId.empty() && copy.strRegionId != expected.strRegionId,
+				"same-time Collider duplicate reused an occurrence or region identity");
+			expected.strOccurrenceId = copy.strOccurrenceId; expected.strRegionId = copy.strRegionId;
+			expected.strLogicOccurrenceId = copiedContact.strOccurrenceId; expected.strSelectionGroupId = newGroup;
+			Require(copy == expected, "same-time Collider duplicate lost timing, anchor, start/end transform or its owned Logic remap");
+			copiedCylinderIds.push_back(copy.strOccurrenceId);
+		}
+		Require(copiedCylinderIds[0] != copiedCylinderIds[1] &&
+			cylinderCopied.PresentationOccurrences[3].strRegionId != cylinderCopied.PresentationOccurrences[4].strRegionId &&
+			CKoukuSaydonWorkbenchTestAccess::SelectedBoxes(cylinderEditor) == copiedCylinderIds &&
+			std::find(copiedCylinderIds.begin(), copiedCylinderIds.end(), cylinderEditor.Get_SelectedPresentationOccurrenceId()) != copiedCylinderIds.end(),
+			"same-time Collider duplicate retained source/Logic selection or lost copied Collider detail focus");
+		RequireEditorRoundtrip(cylinderEditor);
+		const auto singletonBefore = EditorPattern(cylinderEditor, patternId);
+		RequireEditorStep(cylinderEditor.Duplicate_TimelineSelection(patternId, {}, {cylinderIds[2]}, status, true),
+			status, "duplicate one ungrouped moving Cylinder at its original time");
+		const auto& singletonAfter = EditorPattern(cylinderEditor, patternId);
+		Require(singletonAfter.PresentationOccurrences.size() == singletonBefore.PresentationOccurrences.size() + 1u &&
+			singletonAfter.LogicOccurrences == singletonBefore.LogicOccurrences &&
+			std::equal(singletonBefore.PresentationOccurrences.begin(), singletonBefore.PresentationOccurrences.end(), singletonAfter.PresentationOccurrences.begin()),
+			"single Collider duplicate changed another box or copied an unrelated Logic");
+		auto expectedSingleton = singletonBefore.PresentationOccurrences[2];
+		const auto& singletonCopy = singletonAfter.PresentationOccurrences.back();
+		expectedSingleton.strOccurrenceId = singletonCopy.strOccurrenceId; expectedSingleton.strRegionId = singletonCopy.strRegionId;
+		Require(singletonCopy == expectedSingleton && singletonCopy.strOccurrenceId != cylinderIds[2] &&
+			singletonCopy.strRegionId != singletonBefore.PresentationOccurrences[2].strRegionId &&
+			CKoukuSaydonWorkbenchTestAccess::SelectedBoxes(cylinderEditor) == std::vector<std::string>{singletonCopy.strOccurrenceId} &&
+			cylinderEditor.Get_SelectedPresentationOccurrenceId() == singletonCopy.strOccurrenceId,
+			"single Collider duplicate shifted motion/timing or failed to focus its copy");
+		RequireEditorRoundtrip(cylinderEditor);
+
+		// A member can expose its own damage knobs without deleting group metadata.
+		// Independent contact windows retain independent Horizontal distance values.
+		auto memberSource = cylinderBefore;
+		auto& memberPattern = memberSource.Patterns.front();
+		auto independentContact = contactBox;
+		independentContact.strOccurrenceId = patternId + ".logic." + std::to_string(memberPattern.iNextLogicOccurrenceOrdinal++);
+		memberPattern.LogicOccurrences.push_back(independentContact);
+		memberPattern.PresentationOccurrences[1].strLogicOccurrenceId = independentContact.strOccurrenceId;
+		Require(WriteText(sourcePath, CKoukuSaydonCompositionDocument::Serialize(memberSource)), "write group-member editing fixture");
+		CKoukuSaydonActionWorkbench memberEditor;
+		RequireEditorStep(memberEditor.Reload(status), status, "load group-member editing fixture");
+		RequireEditorStep(memberEditor.Select_PresentationBoxById(patternId, cylinderIds[0], status), status, "select saved Collider group");
+		const auto memberBefore = memberEditor.Get_Composition();
+		const auto memberBytes = ReadText(sourcePath);
+		const auto memberGeneration = memberEditor.Get_DraftGeneration();
+		const std::vector<std::string> originalMemberSelection = {cylinderIds[0], cylinderIds[1]};
+		Require(CKoukuSaydonWorkbenchTestAccess::SelectedBoxes(memberEditor) == originalMemberSelection,
+			"normal Collider selection did not expand its saved group");
+		Require(!memberEditor.Select_ColliderGroupMemberById(patternId, "missing.collider", status) &&
+			!memberEditor.Select_ColliderGroupMemberById(patternId, cylinderIds[2], status) &&
+			memberEditor.Get_Composition() == memberBefore && CKoukuSaydonWorkbenchTestAccess::SelectedBoxes(memberEditor) == originalMemberSelection,
+			"invalid or ungrouped member focus changed the draft or selection");
+		RequireEditorStep(memberEditor.Select_ColliderGroupMemberById(patternId, cylinderIds[0], status), status, "focus one Collider without Ungroup");
+		Require(memberEditor.Get_SelectedPresentationOccurrenceId() == cylinderIds[0] &&
+			CKoukuSaydonWorkbenchTestAccess::SelectedBoxes(memberEditor) == std::vector<std::string>{cylinderIds[0]} &&
+			memberEditor.Get_Composition() == memberBefore && !memberEditor.Is_Dirty() &&
+			memberEditor.Get_DraftGeneration() == memberGeneration && ReadText(sourcePath) == memberBytes,
+			"individual Collider focus removed its group, dirtied data or kept the whole group selected");
+		KOUKU_COLLIDER_DAMAGE_SETTINGS memberDamage;
+		memberDamage.iPercent = 7; memberDamage.fPushRangeM = 6.5; memberDamage.fPushHeightM = 4.0;
+		memberDamage.iPushMs = 800u; memberDamage.bPushBallistic = true; memberDamage.iRepeatIntervalMs = 200u;
+		RequireEditorStep(memberEditor.Set_ColliderTriggerDamage(patternId, memberPattern.PresentationOccurrences[0], memberDamage, status),
+			status, "tune one grouped Collider Horizontal distance");
+		const auto memberAfter = EditorPattern(memberEditor, patternId);
+		Require(memberAfter.PresentationOccurrences == memberPattern.PresentationOccurrences &&
+			memberAfter.LogicOccurrences[1] == independentContact &&
+			memberAfter.LogicOccurrences[0].OnSuccessLogicIds.front() != damage.strLogicId,
+			"member damage tuning changed its group, another Collider or another contact window");
+		const auto& memberLogics = memberEditor.Get_Composition().Logics;
+		const auto changedDamage = std::find_if(memberLogics.begin(), memberLogics.end(), [&](const auto& row) {
+			return row.strLogicId == memberAfter.LogicOccurrences[0].OnSuccessLogicIds.front(); });
+		const auto originalDamage = std::find_if(memberLogics.begin(), memberLogics.end(), [&](const auto& row) {
+			return row.strLogicId == damage.strLogicId; });
+		Require(changedDamage != memberLogics.end() && changedDamage->fPushRangeM == 6.5 &&
+			changedDamage->fPushHeightM == damage.fPushHeightM && originalDamage != memberLogics.end() && *originalDamage == damage &&
+			ReadText(sourcePath) == memberBytes && memberEditor.Is_Dirty(),
+			"individual Horizontal distance tuning rewrote a shared Result or saved source");
+		const auto tunedMemberDraft = memberEditor.Get_Composition();
+		RequireEditorStep(memberEditor.Select_PresentationBoxById(patternId, cylinderIds[0], status), status, "Back to Group");
+		Require(CKoukuSaydonWorkbenchTestAccess::SelectedBoxes(memberEditor) == originalMemberSelection &&
+			memberEditor.Get_Composition() == tunedMemberDraft, "Back to Group discarded member tuning or changed group membership");
+		RequireEditorStep(memberEditor.Select_ColliderGroupMemberById(patternId, cylinderIds[1], status), status, "focus the other Collider member");
+		Require(CKoukuSaydonWorkbenchTestAccess::SelectedBoxes(memberEditor) == std::vector<std::string>{cylinderIds[1]} &&
+			memberEditor.Get_SelectedPresentationOccurrenceId() == cylinderIds[1] && memberEditor.Get_Composition() == tunedMemberDraft,
+			"switching group members changed data or retained the wrong detail focus");
+		RequireEditorRoundtrip(memberEditor);
+
+		if (duplicateOnly) return;
 
 		// Effect groups retain independent gun frames and duplicate their own boxes only.
 		source.Patterns.front() = pattern;
@@ -3975,6 +4147,21 @@ int Run_KoukuCompositionEditorContractTests()
 	}
 }
 
+int Run_KoukuColliderDuplicateContractTests()
+{
+	try
+	{
+		VerifyKoukuColliderSelectionGroups(true);
+		std::cout << "KoukuColliderDuplicateContractTests: same-time-Cylinder/group-expansion/owned-Logic-remap/motion-and-clock-preservation/fresh-identities/copied-selection/singleton-focus/member-focus/independent-horizontal-distance/Back-to-Group/Save-Reopen/source-preservation passed\n";
+		return 0;
+	}
+	catch (const std::exception& error)
+	{
+		std::cerr << "KoukuColliderDuplicateContractTests: FAIL: " << error.what() << '\n';
+		return 1;
+	}
+}
+
 int Run_KoukuColliderGroupContractTests()
 {
 	try
@@ -4083,4 +4270,131 @@ int Run_KoukuIndependentRowClockContractTests()
     }
     catch (const std::exception& error)
     { std::cerr << "KoukuIndependentRowClockContractTests: FAIL: " << error.what() << '\n'; return 1; }
+}
+
+
+int Run_KoukuFixedDamageContractTests()
+{
+    try
+    {
+        using namespace Client;
+        const auto sourceRoot = CProjectDataRoot::Get();
+        const auto scratchRoot = std::filesystem::temp_directory_path() /
+            ("LostArkKoukuFixedDamage-" + std::to_string(GetCurrentProcessId()) + "-" + std::to_string(GetTickCount64()));
+        SCOPED_TEST_DIRECTORY cleanup(scratchRoot);
+        const auto dataRoot = scratchRoot / "Data";
+        const auto relative = std::filesystem::path("KoukuSaydon/Gate1/KoukuSaydonComposition.json");
+        const auto sourcePath = dataRoot / relative;
+        const auto originalSource = ReadText(sourceRoot / relative);
+        for (const char* profile : {"MN_RPCT_05", "MN_RPCT_06", "MN_RPCT_07", "MN_RPCZ_00"})
+        {
+            const auto reference = std::filesystem::path("Animation/Reference/KoukuSaydon") /
+                (std::string(profile) + ".actionreference.json");
+            Require(CopyFixture(sourceRoot / reference, dataRoot / reference), "copy fixed damage source Action reference");
+        }
+        KOUKU_SAYDON_COMPOSITION_DOCUMENT source; std::string status;
+        RequireEditorStep(CKoukuSaydonCompositionDocument::Parse_Text(originalSource, source, status), status, "parse fixed damage source");
+        const auto found = std::find_if(source.Patterns.begin(), source.Patterns.end(), [](const auto& p) { return p.strLoadError.empty(); });
+        Require(found != source.Patterns.end(), "fixed damage needs an admitted actor fixture");
+        KOUKU_SAYDON_COMPOSITION_PATTERN pattern;
+        pattern.strPatternId = found->strPatternId; pattern.strActorProfileId = found->strActorProfileId;
+        pattern.strGateId = found->strGateId; pattern.strTargetBossPlacementId = found->strTargetBossPlacementId;
+        pattern.strDisplayName = "Fixed damage roundtrip"; pattern.strAuthoringStatus = "DRAFT";
+        pattern.strCategory = "NORMAL"; pattern.iDurationMs = 10000u;
+        const auto patternId = pattern.strPatternId;
+        source.Patterns.clear(); source.Folders.clear(); source.Bundles.clear(); source.PlayAllPatternIds.clear();
+        source.PatternFlows.clear(); source.Logics.clear(); source.Summons.clear(); source.Worlds.clear();
+        source.SceneProfiles.clear(); source.PresentationResources.clear();
+        KOUKU_SAYDON_COMPOSITION_PRESENTATION_RESOURCE resource;
+        resource.strResourceId = "kakulsaydon.g1.presentation." + std::to_string(source.iNextPresentationResourceOrdinal++);
+        resource.strDisplayName = "Fixed damage cylinder"; resource.eKind = KOUKU_SAYDON_PRESENTATION_KIND::COLLIDER;
+        resource.strShape = "CYLINDER"; resource.fRadiusM = 2.0; resource.HalfExtents = {2.0, 3.0, 2.0};
+        source.PresentationResources.push_back(resource);
+        for (unsigned i = 0u; i < 2u; ++i)
+        {
+            KOUKU_SAYDON_COMPOSITION_PRESENTATION_OCCURRENCE box;
+            box.strOccurrenceId = patternId + ".presentation." + std::to_string(pattern.iNextPresentationOccurrenceOrdinal++);
+            box.strResourceId = resource.strResourceId; box.iStartMs = 100u + i * 1000u; box.iDurationMs = 700u;
+            pattern.PresentationOccurrences.push_back(box);
+        }
+        const auto firstId = pattern.PresentationOccurrences[0].strOccurrenceId;
+        const auto secondId = pattern.PresentationOccurrences[1].strOccurrenceId;
+        source.Patterns.push_back(pattern);
+        KOUKU_SAYDON_COMPOSITION_LOGIC_DEFINITION attack;
+        attack.strLogicId = "kakulsaydon.g1.logic." + std::to_string(source.iNextLogicOrdinal++);
+        attack.strDisplayName = "Airborne hit codec"; attack.strLogicType = "TRIGGER";
+        attack.strTriggerKind = "ALBION_BLUE_CIRCLE"; attack.iCountPerPlayer = 1u; attack.iEffectLifetimeMs = 7000u;
+        LostArk::Shared::ATTACK_HIT_TEMPLATE hit;
+        hit.strHitId = "contract.rise"; hit.iAtMs = 500u; hit.fRiseHeightM = 3.25; hit.iPushMs = 1200u;
+        attack.FixedHits = {hit}; source.Logics.push_back(attack);
+        Require(WriteText(sourcePath, CKoukuSaydonCompositionDocument::Serialize(source)), "write isolated fixed damage fixture");
+        SCOPED_ENVIRONMENT_VARIABLE environment(L"LOSTARK_PROJECT_DATA_ROOT");
+        Require(environment.Set(dataRoot), "select isolated fixed damage root");
+        CKoukuSaydonActionWorkbench workbench;
+        RequireEditorStep(workbench.Reload(status), status, "load fixed damage fixture");
+        const auto box = [&](const std::string& id) {
+            const auto& owner = EditorPattern(workbench, patternId);
+            return *std::find_if(owner.PresentationOccurrences.begin(), owner.PresentationOccurrences.end(), [&](const auto& row) { return row.strOccurrenceId == id; });
+        };
+        const auto result = [&](const std::string& id) {
+            const auto placed = box(id); const auto& owner = EditorPattern(workbench, patternId);
+            const auto window = std::find_if(owner.LogicOccurrences.begin(), owner.LogicOccurrences.end(), [&](const auto& row) { return row.strOccurrenceId == placed.strLogicOccurrenceId; });
+            Require(window != owner.LogicOccurrences.end() && window->OnSuccessLogicIds.size() == 1u, "Collider has no unique damage Result");
+            const auto& logics = workbench.Get_Composition().Logics;
+            return *std::find_if(logics.begin(), logics.end(), [&](const auto& row) { return row.strLogicId == window->OnSuccessLogicIds.front(); });
+        };
+        RequireEditorStep(workbench.Set_ColliderTriggerDamage(patternId, box(firstId), 10u, status), status, "seed first percent Collider");
+        RequireEditorStep(workbench.Set_ColliderTriggerDamage(patternId, box(secondId), 10u, status), status, "seed shared percent Result");
+        const auto shared = result(secondId);
+        Require(result(firstId).strLogicId == shared.strLogicId, "same percent damage should reuse a Result before editing");
+        RequireEditorRoundtrip(workbench);
+        const auto generation = workbench.Get_DraftGeneration();
+        KOUKU_COLLIDER_DAMAGE_SETTINGS fixed;
+        fixed.bFixedDamage = true; fixed.iDamageAmount = 500; fixed.fPushHeightM = 4.0;
+        fixed.iPushMs = 1500u; fixed.bPushBallistic = true; fixed.bForcePush = true;
+        CKoukuSaydonWorkbenchTestAccess::PrimeDamageDirty(workbench);
+        RequireEditorStep(workbench.Set_ColliderTriggerDamage(patternId, box(firstId), fixed, status), status, "set fixed500 with vertical launch");
+        const auto exact = result(firstId);
+        Require(exact.strOutcomeKind == "FIXED_DAMAGE" && exact.iDamageAmount == 500u && exact.iPercent == 0u &&
+            exact.fPushHeightM == 4.0 && exact.fPushRangeM == 0.0 && exact.iPushMs == 1500u &&
+            exact.bPushBallistic && exact.bForcePush && !exact.bPushCanLeaveArena,
+            "fixed damage lost amount, pure vertical flight or bounded landing");
+        Require(result(secondId) == shared, "fixed damage mutated the other Collider's shared percent Result");
+        Require(workbench.Is_Dirty() && workbench.Get_DraftGeneration() == generation + 1u &&
+            !CKoukuSaydonWorkbenchTestAccess::DamageDirty(workbench), "SetDamage lost document Dirty/generation or left pending UI values after commit");
+        const auto ordinal = workbench.Get_Composition().iNextLogicOrdinal;
+        RequireEditorStep(workbench.Set_ColliderTriggerDamage(patternId, box(firstId), fixed, status), status, "reapply exact fixed damage");
+        Require(workbench.Get_Composition().iNextLogicOrdinal == ordinal, "exact fixed damage reapply duplicated definitions");
+        RequireEditorRoundtrip(workbench);
+        Require(result(firstId) == exact, "fixed damage Save/Reopen changed its authoritative values");
+        const auto valid = workbench.Get_Composition(); const auto disk = ReadText(sourcePath);
+        auto invalid = fixed; invalid.iDamageAmount = 0;
+        Require(!workbench.Set_ColliderTriggerDamage(patternId, box(firstId), invalid, status) &&
+            workbench.Get_Composition() == valid && ReadText(sourcePath) == disk, "zero fixed damage partially committed");
+        invalid = fixed; invalid.iPushMs = 0;
+        Require(!workbench.Set_ColliderTriggerDamage(patternId, box(firstId), invalid, status) && workbench.Get_Composition() == valid,
+            "unpaired flight values partially committed");
+        auto invalidAttack = attack; invalidAttack.FixedHits[0].fRiseHeightM = 0.0;
+        Require(!workbench.Set_LogicDefinitionValues(attack.strLogicId, invalidAttack, status) && workbench.Get_Composition() == valid,
+            "attack push time without rise height partially committed");
+        attack.FixedHits[0].fRiseHeightM = 4.75; attack.FixedHits[0].iPushMs = 1345u;
+        RequireEditorStep(workbench.Set_LogicDefinitionValues(attack.strLogicId, attack, status), status, "edit attack rise and flight time");
+        RequireEditorRoundtrip(workbench);
+        const auto& values = workbench.Get_Composition().Logics;
+        const auto reopenedAttack = std::find_if(values.begin(), values.end(), [&](const auto& row) { return row.strLogicId == attack.strLogicId; });
+        Require(reopenedAttack != values.end() && reopenedAttack->FixedHits == attack.FixedHits,
+            "AttackHits riseHeightM/pushMs Save/Reopen lost exact values");
+        fixed.bFixedDamage = false; fixed.iPercent = 17;
+        RequireEditorStep(workbench.Set_ColliderTriggerDamage(patternId, box(firstId), fixed, status), status, "switch fixed damage back to percent");
+        Require(result(firstId).strOutcomeKind == "MAX_HP_PERCENT_DAMAGE" && result(firstId).iPercent == 17u &&
+            result(firstId).iDamageAmount == 0u, "percent switch retained forbidden fixed HP amount");
+        RequireEditorRoundtrip(workbench);
+        Require(ReadText(sourceRoot / relative) == originalSource, "focused test changed live authoring source");
+        std::cout << "KoukuFixedDamageContractTests: fixed500/pure-vertical-flight/shared-Result-COW/Dirty-generation/commit-reset/invalid-rollback/AttackHits-rise-time/Save-Reopen/percent-switch/live-source-preservation passed\n";
+        return 0;
+    }
+    catch (const std::exception& error)
+    {
+        std::cerr << "KoukuFixedDamageContractTests: FAIL: " << error.what() << '\n'; return 1;
+    }
 }

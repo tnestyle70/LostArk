@@ -434,6 +434,52 @@ namespace LostArk::Shared
 		SKILL_ID iSkillId = INVALID_SKILL_ID;
 	};
 
+	// Runtime policy names are independent of the executable build configuration.
+	enum class COOLDOWN_MODE : std::uint8_t { DEBUG_THREE_SECONDS, RELEASE_AUTHORED, END };
+	struct C2S_SET_COOLDOWN_MODE
+	{
+		std::uint32_t iRequestSequence = 0;
+		WORLD_ID eWorldId = WORLD_ID::END;
+		COOLDOWN_MODE eMode = COOLDOWN_MODE::DEBUG_THREE_SECONDS;
+	};
+	enum class SET_COOLDOWN_MODE_RESULT : std::uint8_t { ACCEPTED, WRONG_WORLD, INVALID_PLAYER, STALE_REQUEST, END };
+	struct S2C_SET_COOLDOWN_MODE_RESULT
+	{
+		std::uint32_t iRequestSequence = 0;
+		WORLD_ID eWorldId = WORLD_ID::END;
+		COOLDOWN_MODE eMode = COOLDOWN_MODE::DEBUG_THREE_SECONDS;
+		SET_COOLDOWN_MODE_RESULT eResult = SET_COOLDOWN_MODE_RESULT::INVALID_PLAYER;
+	};
+	bool Write_Message(CPacketWriter&, const C2S_SET_COOLDOWN_MODE&);
+	bool Read_Message(CPacketReader&, C2S_SET_COOLDOWN_MODE&);
+	bool Write_Message(CPacketWriter&, const S2C_SET_COOLDOWN_MODE_RESULT&);
+	bool Read_Message(CPacketReader&, S2C_SET_COOLDOWN_MODE_RESULT&);
+
+	// Test intent. The observed archetype is a stale-view guard; the Server
+	// resolves the current gate and every target from its own room state.
+	struct C2S_DEBUG_KILL_GATE_BOSSES
+	{
+		std::uint32_t iRequestSequence = 0;
+		WORLD_ID eWorldId = WORLD_ID::END;
+		std::string strExpectedBossArchetypeId;
+	};
+	enum class DEBUG_KILL_GATE_BOSSES_RESULT : std::uint8_t
+	{
+		ACCEPTED, DISABLED, WRONG_WORLD, INVALID_PLAYER, STALE_REQUEST,
+		NO_CURRENT_BOSS, STALE_BOSS, BUSY, END
+	};
+	struct S2C_DEBUG_KILL_GATE_BOSSES_RESULT
+	{
+		std::uint32_t iRequestSequence = 0;
+		WORLD_ID eWorldId = WORLD_ID::END;
+		DEBUG_KILL_GATE_BOSSES_RESULT eResult = DEBUG_KILL_GATE_BOSSES_RESULT::DISABLED;
+		std::uint8_t iKilledCount = 0;
+	};
+	bool Write_Message(CPacketWriter&, const C2S_DEBUG_KILL_GATE_BOSSES&);
+	bool Read_Message(CPacketReader&, C2S_DEBUG_KILL_GATE_BOSSES&);
+	bool Write_Message(CPacketWriter&, const S2C_DEBUG_KILL_GATE_BOSSES_RESULT&);
+	bool Read_Message(CPacketReader&, S2C_DEBUG_KILL_GATE_BOSSES_RESULT&);
+
 	// Development Balance Tool intent. The authenticated session identifies the
 	// player; no position or HP is trusted from the client.
 	struct C2S_REVIVE_PLAYER
@@ -749,6 +795,15 @@ namespace LostArk::Shared
 
 	/* Which body a player presents. NORMAL is the class body; CLOWN is the
 	colourless KoukuSaydon body a full madness gauge turns the player into. */
+	/* One buff or debuff a holder carries, replicated so the HUD can draw its icon
+	and count the remaining time down. */
+	inline constexpr std::size_t MAX_ACTIVE_BUFFS = 4u;
+	struct ACTIVE_BUFF final
+	{
+		std::uint32_t iBuffId = 0u;
+		std::uint32_t iEndTick = 0u;
+	};
+
 	enum class PLAYER_MADNESS_FORM : std::uint8_t
 	{
 		NORMAL,
@@ -1519,6 +1574,7 @@ namespace LostArk::Shared
 	{
 		SKILL_ID iSkillId = INVALID_SKILL_ID;
 		std::uint32_t iCooldownEndTick = 0;
+		std::uint32_t iCooldownDurationTicks = 0;
 	};
 
 	//player
@@ -1581,6 +1637,11 @@ namespace LostArk::Shared
 		float fSkillTargetZ = 0.f;
 		std::uint32_t iCurrentHp = 1;
 		std::uint32_t iMaximumHp = 1;
+		/* Absorbs damage before HP moves. The HUD prints it as "(+n)" after the
+		HP readout and draws it as its own track over the health bar. */
+		std::uint32_t iShield = 0;
+		std::uint8_t iActiveBuffCount = 0;
+		ACTIVE_BUFF ActiveBuffs[MAX_ACTIVE_BUFFS]{};
 		std::uint32_t iCurrentResource = 0;
 		std::uint32_t iMaximumResource = 1;
 		// The class identity gauge. A maximum of 0 says the class has none, and
@@ -1650,6 +1711,7 @@ namespace LostArk::Shared
 		// stages, and start/loop/end for a HOLD skill. The server owns it; the
 		// client must not count stages itself.
 		std::uint8_t iComboStage = 0;
+		COOLDOWN_MODE eCooldownMode = COOLDOWN_MODE::DEBUG_THREE_SECONDS;
 		std::vector<SKILL_COOLDOWN_SNAPSHOT> Cooldowns;
 	};
 
@@ -1737,6 +1799,8 @@ namespace LostArk::Shared
 		std::uint32_t iActionStartTick = 0;
 		std::uint32_t iCurrentHp = 1;
 		std::uint32_t iMaximumHp = 1;
+		std::uint8_t iActiveBuffCount = 0;
+		ACTIVE_BUFF ActiveBuffs[MAX_ACTIVE_BUFFS]{};
 		std::uint8_t iPhase = 1;
 		/* Bit i is set once authored armour plate i has been destroyed. The
 		server owns the durability that breaks it; presentation only hides the
@@ -3285,6 +3349,21 @@ namespace LostArk::Shared
 	inline constexpr std::size_t
 		MAX_KOUKUSAYDON_PATTERN_AUDITION_REASON_BYTES = 192u;
 
+	inline constexpr std::size_t MAX_KOUKUSAYDON_DRAFT_BYTES = 16u * 1024u * 1024u;
+	inline constexpr std::size_t MAX_KOUKUSAYDON_DRAFT_CHUNK_BYTES = 48u * 1024u;
+	// One contiguous, bounded upload precedes the existing audition request.
+	// Its request sequence and SHA-256 bind the run to the exact memory draft.
+	struct C2S_DEBUG_KOUKUSAYDON_DRAFT_CHUNK final
+	{
+		std::uint32_t iRequestSequence = 0u;
+		std::uint32_t iOffsetBytes = 0u;
+		std::uint32_t iTotalBytes = 0u;
+		GameplayDataRevision RowsRevision{};
+		std::string strBytes;
+	};
+	bool Write_Message(CPacketWriter& writer, const C2S_DEBUG_KOUKUSAYDON_DRAFT_CHUNK& message);
+	bool Read_Message(CPacketReader& reader, C2S_DEBUG_KOUKUSAYDON_DRAFT_CHUNK& message);
+
 	struct KOUKUSAYDON_PATTERN_AUDITION_SCOPE final
 	{
 		WORLD_ID eWorldId = WORLD_ID::END;
@@ -3294,6 +3373,8 @@ namespace LostArk::Shared
 		std::string strBossArchetypeId;
 		GameplayDataRevision ExpectedGameplayRevision{};
 		std::uint32_t iExpectedSourceRevision = 0u;
+		// Empty for published playback; echoed by every draft result/lifecycle.
+		GameplayDataRevision DraftRowsRevision{};
 	};
 
 	struct C2S_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_REQUEST final
@@ -3347,6 +3428,7 @@ namespace LostArk::Shared
 		KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE_STATE eState = KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE_STATE::PENDING;
 		GameplayDataRevision PinnedGameplayRevision{};
 		std::uint32_t iPinnedSourceRevision = 0u;
+		GameplayDataRevision DraftRowsRevision{};
 		std::vector<KOUKUSAYDON_BUNDLE_MEMBER_STATE> Members;
 	};
 	bool Write_Message(CPacketWriter& writer, const S2C_KOUKUSAYDON_BUNDLE_STATE& message);

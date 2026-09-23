@@ -331,6 +331,9 @@ bool LostArk::Server::CKoukuSaydonBrain::Validate_AnimationOnlyPattern(
 		{
 			const auto count = trigger.ProjectileVisualIds.size();
 			if (!count || count > 4u || trigger.strContactVisualId.empty() ||
+                (!trigger.ProjectileCardSymbols.empty() && (trigger.ProjectileCardSymbols.size() != count ||
+                 std::any_of(trigger.ProjectileCardSymbols.begin(), trigger.ProjectileCardSymbols.end(), [](const auto symbol) {
+                     return symbol <= LostArk::Shared::MECHANIC_CARD_SYMBOL::NONE || symbol >= LostArk::Shared::MECHANIC_CARD_SYMBOL::END; }))) ||
 				std::any_of(trigger.ProjectileVisualIds.begin(), trigger.ProjectileVisualIds.end(), [](const auto& id) { return id.empty(); }) ||
 				!std::isfinite(trigger.fProjectileSpeedMps) || trigger.fProjectileSpeedMps < .01f || trigger.fProjectileSpeedMps > 100.f ||
 				!std::isfinite(trigger.fProjectileContactRadiusM) || trigger.fProjectileContactRadiusM < .01f || trigger.fProjectileContactRadiusM > 10.f ||
@@ -341,7 +344,7 @@ bool LostArk::Server::CKoukuSaydonBrain::Validate_AnimationOnlyPattern(
 				(trigger.iProjectileLifetimeMs == 0u && (!trigger.bProjectileHoming || trigger.iSpawnIntervalMs != 0u || trigger.fProjectileMaxDistanceM != 0.f)))
 			{ status = "Pursuit projectile visual, motion or lifetime contract is invalid"; return false; }
 		}
-		else if (!trigger.ProjectileVisualIds.empty() || !trigger.strContactVisualId.empty() ||
+		else if (!trigger.ProjectileVisualIds.empty() || !trigger.ProjectileCardSymbols.empty() || !trigger.strContactVisualId.empty() ||
 			trigger.fProjectileSpeedMps != 0.f || trigger.fProjectileMaxDistanceM != 0.f || trigger.fProjectileContactRadiusM != 0.f || trigger.fProjectileSpawnRadiusM != 0.f ||
 			trigger.iProjectileLifetimeMs != 0u || trigger.iProjectileCountPerWave != 0u || trigger.bProjectileHoming)
 		{ status = "Only pursuit projectiles own projectile values"; return false; }
@@ -420,8 +423,9 @@ bool LostArk::Server::CKoukuSaydonBrain::Validate_AnimationOnlyPattern(
 		const bool endTickKind =
 			BOSS_PATTERN_LOGIC_KIND::GAZE_REAL_BOSS == window.eKind;
 		bool valuesValid = true;
-		if (((window.bRearmOnExit || window.bRepeatAfterKnockback) && window.eKind != BOSS_PATTERN_LOGIC_KIND::ENTER_AREA) ||
-			(window.bRearmOnExit && window.bRepeatAfterKnockback))
+		if (((window.bRearmOnExit || window.bRepeatAfterKnockback || window.iRepeatIntervalMs) && window.eKind != BOSS_PATTERN_LOGIC_KIND::ENTER_AREA) ||
+			(window.bRearmOnExit && window.bRepeatAfterKnockback) || window.iRepeatIntervalMs > 600000u ||
+			(window.iRepeatIntervalMs && (window.bRearmOnExit || window.bRepeatAfterKnockback)))
 		{ status = "ENTER_AREA accepts one contact repeat policy"; return false; }
 		if (window.bRepeatAfterKnockback && (window.OnSuccess.size() != 1u ||
 			window.OnSuccess.front().eKind != BOSS_PATTERN_LOGIC_RESULT_KIND::MAX_HP_PERCENT_DAMAGE ||
@@ -526,16 +530,21 @@ bool LostArk::Server::CKoukuSaydonBrain::Validate_AnimationOnlyPattern(
 			{
 				if (!std::isfinite(result.fPushRangeM) || result.fPushRangeM < 0.f || result.fPushRangeM > (result.bPushBallistic ? 100.f : 20.f) ||
 					(result.ePushDirection != BOSS_LOGIC_PUSH_DIRECTION::AWAY_FROM_BOSS && result.ePushDirection != BOSS_LOGIC_PUSH_DIRECTION::BOSS_FORWARD && result.ePushDirection != BOSS_LOGIC_PUSH_DIRECTION::AWAY_FROM_CONTACT) ||
-					(result.ePushDirection == BOSS_LOGIC_PUSH_DIRECTION::BOSS_FORWARD && result.fPushRangeM <= 0.f) ||
+					(result.ePushDirection == BOSS_LOGIC_PUSH_DIRECTION::BOSS_FORWARD && result.fPushRangeM <= 0.f && result.fPushHeightM <= 0.f) ||
 					result.iPushMs > (result.bPushBallistic ? 5000u : 600000u) ||
-					(result.bPushBallistic && (result.iPushMs < 100u || !result.bPushCanLeaveArena)) ||
+					(result.bPushBallistic && result.iPushMs < 100u) ||
+					!std::isfinite(result.fPushHeightM) || result.fPushHeightM < 0.f || result.fPushHeightM > 100.f ||
+					(result.fPushHeightM > 0.f && !result.bPushBallistic) ||
 					(result.ePushDirection == BOSS_LOGIC_PUSH_DIRECTION::AWAY_FROM_CONTACT &&
-						(result.fPushRangeM <= 0.f || &results == &window.OnTimeout || window.CardRegions.empty() ||
-						 (window.eKind != BOSS_PATTERN_LOGIC_KIND::ENTER_AREA && window.eKind != BOSS_PATTERN_LOGIC_KIND::AREA_OVERLAP))) || ((result.fPushRangeM > 0.f) != (result.iPushMs > 0u)) ||
-					(result.fPushRangeM > 0.f && result.eKind != BOSS_PATTERN_LOGIC_RESULT_KIND::MAX_HP_PERCENT_DAMAGE) ||
-					((result.bForcePush || result.bPushCanLeaveArena) && result.fPushRangeM <= 0.f) ||
+						((result.fPushRangeM <= 0.f && result.fPushHeightM <= 0.f) || &results == &window.OnTimeout || window.CardRegions.empty() ||
+						 (window.eKind != BOSS_PATTERN_LOGIC_KIND::ENTER_AREA && window.eKind != BOSS_PATTERN_LOGIC_KIND::AREA_OVERLAP))) || ((result.fPushRangeM > 0.f || result.fPushHeightM > 0.f) != (result.iPushMs > 0u)) ||
+					((result.fPushRangeM > 0.f || result.fPushHeightM > 0.f) && (result.eKind != BOSS_PATTERN_LOGIC_RESULT_KIND::MAX_HP_PERCENT_DAMAGE && result.eKind != BOSS_PATTERN_LOGIC_RESULT_KIND::FIXED_DAMAGE)) ||
+					((result.bForcePush || result.bPushCanLeaveArena) && result.fPushRangeM <= 0.f && result.fPushHeightM <= 0.f) ||
 					!std::isfinite(result.fPushYawOffsetDegrees) || std::abs(result.fPushYawOffsetDegrees) > 360.f ||
-					(result.fPushYawOffsetDegrees != 0.f && (result.ePushDirection != BOSS_LOGIC_PUSH_DIRECTION::BOSS_FORWARD || result.fPushRangeM <= 0.f)))
+					(result.fPushYawOffsetDegrees != 0.f && (result.ePushDirection != BOSS_LOGIC_PUSH_DIRECTION::BOSS_FORWARD || (result.fPushRangeM <= 0.f && result.fPushHeightM <= 0.f))))
+					return false;
+				if (result.eKind == BOSS_PATTERN_LOGIC_RESULT_KIND::FIXED_DAMAGE ?
+					(result.iDamageAmount == 0u || result.iDamageAmount > 1000000000u || result.iPercent != 0u || result.iDurationMs != 0u || !result.strPatternId.empty()) : result.iDamageAmount != 0u)
 					return false;
 				const bool worldMotion = BOSS_PATTERN_LOGIC_RESULT_KIND::PLAY_WORLD_OBJECT_MOTION == result.eKind;
 				if ((worldMotion && (result.strTargetWorldInstanceId.empty() || result.strMotionInstanceId.empty() ||

@@ -18,6 +18,10 @@ public:
 		const CNetworkPlayerCommandSink&) = delete;
 
 	static std::uint32_t Get_LiveInstanceCount();
+	bool Request_DebugKillGateBosses(const LostArk::Shared::C2S_DEBUG_KILL_GATE_BOSSES&) override;
+	bool Request_SetCooldownMode(const LostArk::Shared::C2S_SET_COOLDOWN_MODE&) override;
+	bool Consume_DebugKillGateBossesResult(LostArk::Shared::S2C_DEBUG_KILL_GATE_BOSSES_RESULT&) override;
+	bool Consume_SetCooldownModeResult(LostArk::Shared::S2C_SET_COOLDOWN_MODE_RESULT&) override;
 	bool Request_KoukuRaid(const LostArk::Shared::C2S_DEBUG_KOUKUSAYDON_RAID_REQUEST& request) override;
 	bool Request_DebugWorldPlayback(const LostArk::Shared::C2S_DEBUG_WORLD_PLAYBACK& request) override;
 	bool Consume_DebugWorldPlaybackResult(LostArk::Shared::S2C_DEBUG_WORLD_PLAYBACK_RESULT& result) override;

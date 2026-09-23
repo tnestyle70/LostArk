@@ -1106,7 +1106,10 @@ HRESULT Client::CMapAssetRenderUtils::Bind_Material(
 		FAILED(shader->Bind_RawValue("g_SurfaceDebugView", &debugView, sizeof(debugView))))
 		return E_FAIL;
     const uint32_t hasBaked = (program == 3u || program == 4u || program == 5u || program == 7u || program == 8u || program == 9u || program == 10u || (program >= 11u && program <= 13u)) && surface->hasBakedLighting ? 1u : 0u;
-    const uint32_t hasEnvironment = (program == 3u || program == 4u) && surface->hasEnvironmentCube ? 1u : 0u;
+    const auto environmentState = Engine::CGameInstance::Get().Get_RenderEnvironment();
+    const bool sourceIndirectEnabled = surface && surface->hasSourceIndirect && environmentState.bUseSourcePBRIndirect;
+    const uint32_t hasEnvironment = (program == 3u || program == 4u) && surface->hasEnvironmentCube &&
+        (surface->environmentLegacyEnabled || sourceIndirectEnabled) ? 1u : 0u;
     const Engine::MODEL_BAKED_LIGHTING_INSTANCE emptyLighting{};
     const auto& lighting = bakedLighting ? *bakedLighting : emptyLighting;
     if (FAILED(shader->Bind_RawValue("g_HasBakedLighting", &hasBaked, sizeof(hasBaked))) ||
@@ -1122,9 +1125,20 @@ HRESULT Client::CMapAssetRenderUtils::Bind_Material(
     {
         if (FAILED(model->Bind_SurfaceLighting(shader, meshIndex))) return E_FAIL;
     }
-    if (hasEnvironment &&
-        (FAILED(shader->Bind_RawValue("g_EnvironmentColor", &surface->environmentColor, sizeof(surface->environmentColor))) ||
-         FAILED(shader->Bind_RawValue("g_EnvironmentRotation", &surface->environmentRotation, sizeof(surface->environmentRotation))))) return E_FAIL;
+    if (hasEnvironment)
+    {
+        const auto& environmentColor = sourceIndirectEnabled ? surface->sourceIndirectColor : surface->environmentColor;
+        const auto& environmentRotation = sourceIndirectEnabled ? surface->sourceIndirectRotation : surface->environmentRotation;
+        if (FAILED(shader->Bind_RawValue("g_EnvironmentColor", &environmentColor, sizeof(environmentColor))) ||
+            FAILED(shader->Bind_RawValue("g_EnvironmentRotation", &environmentRotation, sizeof(environmentRotation)))) return E_FAIL;
+    }
+    const uint32_t useSourceIndirect = hasEnvironment && sourceIndirectEnabled ? 1u : 0u;
+    if (FAILED(shader->Bind_RawValue("g_UseSourcePBRIndirect", &useSourceIndirect, sizeof(useSourceIndirect)))) return E_FAIL;
+    if (useSourceIndirect &&
+        (FAILED(shader->Bind_RawValue("g_SourcePBRPackedSH", surface->sourceIndirectSH.data(), sizeof(surface->sourceIndirectSH))) ||
+         FAILED(shader->Bind_RawValue("g_SourcePBRUpperSky", &surface->sourceUpperSkyColor, sizeof(surface->sourceUpperSkyColor))) ||
+         FAILED(shader->Bind_RawValue("g_SourcePBRLowerSky", &surface->sourceLowerSkyColor, sizeof(surface->sourceLowerSkyColor))) ||
+         FAILED(shader->Bind_RawValue("g_SourcePBRAmbientAndSkyFactor", &surface->sourceAmbientAndSkyFactor, sizeof(surface->sourceAmbientAndSkyFactor))))) return E_FAIL;
 	const auto recordBinding = [&]()
 	{
 		if (hasDefinition && !diagnosticAssetId.empty())

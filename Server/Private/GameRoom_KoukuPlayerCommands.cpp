@@ -612,15 +612,20 @@ LostArk::Server::CGameRoom::Apply_DebugKoukuHudMode(
 	result.iRequestSequence = request.iRequestSequence;
 	result.eWorldId = m_eWorldId;
 	result.eActiveOverride = player.eDebugKoukuHudModeOverride;
-#ifndef _DEBUG
-	result.eResult = DEBUG_KOUKU_HUD_MODE_RESULT::REJECTED_DISABLED;
-	return result;
-#else
 	if (request.eWorldId != m_eWorldId)
 	{
 		result.eResult = DEBUG_KOUKU_HUD_MODE_RESULT::REJECTED_WRONG_WORLD;
 		return result;
 	}
+#ifndef _DEBUG
+	if (m_eWorldId != WORLD_ID::KAKULSAYDON_ARENA ||
+		(KOUKU_HUD_MODE::NONE != request.eMode && KOUKU_HUD_MODE::MARIO != request.eMode &&
+		 KOUKU_HUD_MODE::MAZE != request.eMode))
+	{
+		result.eResult = DEBUG_KOUKU_HUD_MODE_RESULT::REJECTED_UNSUPPORTED_MODE;
+		return result;
+	}
+#endif
 	const auto& previous = player.LastDebugKoukuHudModeResult;
 	if (0u != request.iRequestSequence &&
 		request.iRequestSequence == previous.iRequestSequence)
@@ -672,7 +677,6 @@ LostArk::Server::CGameRoom::Apply_DebugKoukuHudMode(
 	result.eActiveOverride = player.eDebugKoukuHudModeOverride;
 	player.LastDebugKoukuHudModeResult = result;
 	return result;
-#endif
 }
 
 void LostArk::Server::CGameRoom::Update_KoukuPlayerModes(
@@ -838,10 +842,6 @@ LostArk::Server::CGameRoom::Apply_DebugReturnToKoukuStart(SERVER_PLAYER& player,
 	using namespace LostArk::Shared;
 	S2C_DEBUG_TELEPORT_TO_POSITION_RESULT result{};
 	result.iRequestSequence = requestSequence; result.eWorldId = m_eWorldId;
-#ifndef _DEBUG
-	result.eResult = DEBUG_TELEPORT_RESULT::REJECTED_DISABLED;
-	return result;
-#else
 	if (m_eWorldId != WORLD_ID::KAKULSAYDON_ARENA)
 	{ result.eResult = DEBUG_TELEPORT_RESULT::REJECTED_WRONG_WORLD; return result; }
 	if (requestSequence != 0u && requestSequence == player.LastDebugTeleportResult.iRequestSequence)
@@ -851,8 +851,16 @@ LostArk::Server::CGameRoom::Apply_DebugReturnToKoukuStart(SERVER_PLAYER& player,
 	const auto* spawn = Find_Placement("player.spawn.kakul.party01");
 	if (!spawn || spawn->eKind != WORLD_BOOTSTRAP_KIND::PLAYER_SPAWN || !spawn->isEnabled)
 	{ result.eResult = DEBUG_TELEPORT_RESULT::REJECTED_INVALID_POSITION; return result; }
-	// Stage fresh once/inside trigger state before changing any live state.
-	CServerTriggerSystem triggers;
+	// Keep this room's world, ground sampler, log and build-specific wave policy.
+	// Initialize replaces trigger latches; clear per-player entry/debounce state
+	// in the staged copy before committing any live player or entity changes.
+	CServerTriggerSystem triggers = m_ServerTriggerSystem;
+	for (const auto& [playerId, current] : m_Players)
+	{
+		(void)current;
+		triggers.Remove_Player(playerId);
+	}
+	triggers.Set_HonourTriggerOnce(false);
 	std::string status;
 	if (!triggers.Initialize(m_WorldBootstrap.Get_Placements(), status))
 	{ m_strStatus = status; result.eResult = DEBUG_TELEPORT_RESULT::REJECTED_DISABLED; return result; }
@@ -885,7 +893,6 @@ LostArk::Server::CGameRoom::Apply_DebugReturnToKoukuStart(SERVER_PLAYER& player,
 	player.Clear_KoukuAssignedCard();
 	m_strStatus = "KoukuSaydon arena bosses and entry triggers reset; requesting player returned to authored start.";
 	return result;
-#endif
 }
 
 void LostArk::Server::CGameRoom::Reset_PlayerForDebugTeleport(SERVER_PLAYER& player)
@@ -959,10 +966,12 @@ LostArk::Server::CGameRoom::Apply_DebugTeleportToPosition(
 	result.iRequestSequence = request.iRequestSequence;
 	result.eWorldId = m_eWorldId;
 #ifndef _DEBUG
-	(void)player;
-	result.eResult = DEBUG_TELEPORT_RESULT::REJECTED_DISABLED;
-	return result;
-#else
+	if (m_eWorldId != WORLD_ID::VALTAN_ARENA && m_eWorldId != WORLD_ID::KAKULSAYDON_ARENA)
+	{
+		result.eResult = DEBUG_TELEPORT_RESULT::REJECTED_DISABLED;
+		return result;
+	}
+#endif
 	if (request.eWorldId != m_eWorldId)
 	{
 		result.eResult = DEBUG_TELEPORT_RESULT::REJECTED_WRONG_WORLD;
@@ -999,7 +1008,6 @@ LostArk::Server::CGameRoom::Apply_DebugTeleportToPosition(
 	result.fPositionZ = ground.z;
 	player.LastDebugTeleportResult = result;
 	return result;
-#endif
 }
 
 LostArk::Shared::DEBUG_TELEPORT_RESULT LostArk::Server::CGameRoom::Validate_DebugTeleportDestination(
@@ -1187,6 +1195,38 @@ bool LostArk::Server::CGameRoom::Enter_MarioFromPattern(SERVER_PLAYER& player, c
 void LostArk::Server::CGameRoom::Update_MarioControlState(SERVER_PLAYER& player)
 {
 	using namespace LostArk::Shared;
+	// Keep the stage and return pin during descent; death, not fall start,
+	// releases Mario. A dead return never completes the minigame successfully.
+	if (WORLD_ID::KAKULSAYDON_ARENA == m_eWorldId && player.iMarioStage <= 4u &&
+		(player.iMarioStage > 0u || player.MarioReturnPosition.has_value()))
+	{
+		if (PLAYER_ACTION_STATE::FALLING == player.eAction && player.iCurrentHp) return;
+		if (!player.iCurrentHp || PLAYER_ACTION_STATE::DEAD == player.eAction)
+		{
+			SERVER_NAV_POINT destination{};
+			if (!Resolve_MarioReturnDestination(player, destination)) return;
+			player.fPositionX = destination.x;
+			player.fPositionY = destination.y;
+			player.fPositionZ = destination.z;
+			player.Clear_MarioControl();
+			player.KoukuFallRevivePosition.reset();
+			player.bKoukuFallDeath = false;
+			player.Clear_KoukuInteractionState();
+			player.eMadnessForm = PLAYER_MADNESS_FORM::NORMAL;
+			player.TriggerMove = {};
+			player.PendingCommand.Clear();
+			player.Clear_Attachment();
+			player.Clear_PatternBindStatus();
+			player.fKnockbackRemainingSeconds = player.fKnockbackSpeed = 0.f;
+			player.bArenaEjectionActive = player.bKnockbackBallistic = false;
+			player.iCurrentHp = 0u;
+			player.eAction = PLAYER_ACTION_STATE::DEAD;
+			player.isCombatReady = false;
+			m_CombatObjectRuntime.Cancel_Source(player.iNetEntityId);
+			m_ServerTriggerSystem.Remove_Player(player.iPlayerId);
+			return;
+		}
+	}
 	if (WORLD_ID::KAKULSAYDON_ARENA != m_eWorldId || player.iMarioStage > 4u ||
 		0u == player.iCurrentHp || PLAYER_ACTION_STATE::DEAD == player.eAction ||
 		PLAYER_ACTION_STATE::FALLING == player.eAction)
@@ -1279,8 +1319,8 @@ bool LostArk::Server::CGameRoom::Resolve_MarioReturnDestination(
 		position = { gate3->fPositionX, gate3->fPositionY, gate3->fPositionZ };
 	}
 	return std::all_of(position.begin(), position.end(), [](const float value) { return std::isfinite(value); }) &&
-		m_ServerNavigation.Is_PointWalkableExact(position[0], position[2]) &&
-		m_ServerNavigation.Sample_Position(position[0], position[2], outPoint) &&
+		m_ServerNavigation.Is_PointWalkableExact(position[0], position[2], position[1]) &&
+		m_ServerNavigation.Sample_Position(position[0], position[2], outPoint, position[1]) &&
 		std::abs(position[1] - outPoint.y) <= .25f;
 }
 

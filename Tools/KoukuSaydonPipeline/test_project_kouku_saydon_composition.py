@@ -450,7 +450,8 @@ class KoukuSaydonCompositionProjectionTests(unittest.TestCase):
         document = self.pursuit_document()
         encounter = self.first_product(subject.project_encounter(document))
         bindings = subject.project_presentation(document)
-        publisher = (ROOT / "Tools/GameplayPipeline/Publish-GameplayBalance.ps1").read_text(encoding="utf-8-sig")
+        publisher = ((ROOT / "Tools/GameplayPipeline/Publish-GameplayBalance.ps1").read_text(encoding="utf-8-sig") + "\n" +
+                     (ROOT / "Tools/KoukuSaydonPipeline/KoukuBootstrapRows.ps1").read_text(encoding="utf-8-sig"))
         definitions = [re.search(r"(?ms)^function " + name + r"\b.*?^\}", publisher).group(0)
                        for name in ("Assert-ExactProperties", "Assert-StableId", "Assert-JsonString", "Assert-JsonInteger",
                                     "Assert-JsonNumber", "Format-InvariantFloat", "Get-KoukuTargetedVisualIndex", "New-KoukuAttackHitRows", "New-KoukuPursuitProjectileRows")]
@@ -1169,7 +1170,8 @@ class KoukuSaydonCompositionProjectionTests(unittest.TestCase):
         document = self.showtime_document()
         encounter = self.first_product(subject.project_encounter(document))
         bindings = subject.project_presentation(document)
-        publisher = (ROOT / "Tools/GameplayPipeline/Publish-GameplayBalance.ps1").read_text(encoding="utf-8-sig")
+        publisher = ((ROOT / "Tools/GameplayPipeline/Publish-GameplayBalance.ps1").read_text(encoding="utf-8-sig") + "\n" +
+                     (ROOT / "Tools/KoukuSaydonPipeline/KoukuBootstrapRows.ps1").read_text(encoding="utf-8-sig"))
         definitions = [re.search(r"(?ms)^function " + name + r"\b.*?^\}", publisher).group(0)
                        for name in ("Assert-ExactProperties", "Assert-StableId", "Assert-JsonString", "Assert-JsonInteger",
                                     "Assert-JsonNumber", "Format-InvariantFloat", "Get-KoukuTargetedVisualIndex", "New-KoukuAttackHitRows", "New-KoukuShowtimeTargetRows")]
@@ -1991,7 +1993,8 @@ class KoukuSaydonCompositionProjectionTests(unittest.TestCase):
                    positionOffset=world["positionOffset"], anchorKind=world["anchorKind"],
                    anchorPosition=world["anchorPosition"])
         cue.update(subject._project_walkable_surface(ROOT, subject.AREA_ID, sequences, world, box))
-        publisher = (ROOT / "Tools/GameplayPipeline/Publish-GameplayBalance.ps1").read_text(encoding="utf-8-sig")
+        publisher = ((ROOT / "Tools/GameplayPipeline/Publish-GameplayBalance.ps1").read_text(encoding="utf-8-sig") + "\n" +
+                     (ROOT / "Tools/KoukuSaydonPipeline/KoukuBootstrapRows.ps1").read_text(encoding="utf-8-sig"))
         functions = []
         for name in ("Assert-ExactProperties", "Assert-StableId", "Assert-JsonString", "Assert-JsonInteger",
                      "Assert-JsonNumber", "Format-InvariantFloat", "Format-InvariantSignedFloat"):
@@ -2457,7 +2460,8 @@ class KoukuSaydonCompositionProjectionTests(unittest.TestCase):
 
     def test_world_placement_bootstrap_sidecar_and_canonical_legacy_fields(self):
         projected = self.first_product(subject.project_encounter(self.placed_contact_document()))
-        publisher = (ROOT / "Tools/GameplayPipeline/Publish-GameplayBalance.ps1").read_text(encoding="utf-8-sig")
+        publisher = ((ROOT / "Tools/GameplayPipeline/Publish-GameplayBalance.ps1").read_text(encoding="utf-8-sig") + "\n" +
+                     (ROOT / "Tools/KoukuSaydonPipeline/KoukuBootstrapRows.ps1").read_text(encoding="utf-8-sig"))
         functions = [re.search(r"(?ms)^function " + name + r"\b.*?^\}", publisher).group(0)
                      for name in ("Assert-ExactProperties", "Assert-StableId", "Assert-JsonString", "Assert-JsonInteger", "Assert-JsonNumber", "Format-InvariantFloat", "Format-InvariantSignedFloat")]
         start = publisher.index("\tforeach ($worldSequence in @($koukuPattern.worldSequences))")
@@ -2591,7 +2595,8 @@ class KoukuSaydonCompositionProjectionTests(unittest.TestCase):
 
     def test_object_contact_bootstrap_owns_targets_motions_and_signal(self):
         projected = self.first_product(subject.project_encounter(self.object_contact_document()))
-        publisher = (ROOT / "Tools/GameplayPipeline/Publish-GameplayBalance.ps1").read_text(encoding="utf-8-sig")
+        publisher = ((ROOT / "Tools/GameplayPipeline/Publish-GameplayBalance.ps1").read_text(encoding="utf-8-sig") + "\n" +
+                     (ROOT / "Tools/KoukuSaydonPipeline/KoukuBootstrapRows.ps1").read_text(encoding="utf-8-sig"))
         definitions = [re.search(r"(?ms)^function " + name + r"\b.*?^\}", publisher).group(0)
                        for name in ("Assert-ExactProperties", "Assert-StableId", "Assert-JsonString", "Assert-JsonInteger",
                                     "Assert-JsonNumber", "Format-InvariantFloat", "Format-InvariantSignedFloat")]
@@ -2741,7 +2746,8 @@ class KoukuSaydonCompositionProjectionTests(unittest.TestCase):
         window = projected["logicWindows"][0]
         self.assertEqual("FAIL", window["insideOutcome"])
         self.assertEqual("PLAY_WORLD_OBJECT_MOTION", window["onFail"][0]["kind"])
-        publisher = (ROOT / "Tools/GameplayPipeline/Publish-GameplayBalance.ps1").read_text(encoding="utf-8-sig")
+        publisher = ((ROOT / "Tools/GameplayPipeline/Publish-GameplayBalance.ps1").read_text(encoding="utf-8-sig") + "\n" +
+                     (ROOT / "Tools/KoukuSaydonPipeline/KoukuBootstrapRows.ps1").read_text(encoding="utf-8-sig"))
         definitions = []
         for name in ("Assert-ExactProperties", "Assert-StableId", "Assert-JsonString", "Assert-JsonInteger", "Assert-JsonNumber", "Format-InvariantFloat", "Format-InvariantSignedFloat"):
             definitions.append(re.search(r"(?ms)^function " + name + r"\b.*?^\}", publisher).group(0))
@@ -3073,7 +3079,8 @@ class KoukuSaydonCompositionProjectionTests(unittest.TestCase):
                 subject.validate_publishable(candidate)
 
     def test_product_header_capacity_matches_existing_server_sequence_slots(self):
-        publisher = (ROOT / "Tools/GameplayPipeline/Publish-GameplayBalance.ps1").read_text(encoding="utf-8-sig")
+        publisher = ((ROOT / "Tools/GameplayPipeline/Publish-GameplayBalance.ps1").read_text(encoding="utf-8-sig") + "\n" +
+                     (ROOT / "Tools/KoukuSaydonPipeline/KoukuBootstrapRows.ps1").read_text(encoding="utf-8-sig"))
         header = publisher[publisher.index("if ([string]$koukuEncounterDocument.schema"):
                            publisher.index("$koukuEncounterBosses =")]
         fixture = dict(schema="lostark.encounter-profile", encounterId="ENCOUNTER_KAKULSAYDON_G1",
@@ -4781,6 +4788,60 @@ class KoukuSaydonCompositionProjectionTests(unittest.TestCase):
                 self.validate(invalid)
                 subject.project_encounter(invalid)
 
+    def test_moving_cylinder_projects_authored_delta_and_independent_end_dimensions(self):
+        document = self.reenter_damage_document()
+        pattern = self.first_product(document)
+        resource = document["presentationResources"][-1]
+        resource.update(shape="CYLINDER", radiusM=2, halfExtents=[1, .5, 1])
+        box = pattern["presentationOccurrences"][0]
+        box.update(positionOffset=[1, .25, 3], scale=[2, .5, 2],
+                   colliderMotion="LINEAR", colliderEndPositionOffset=[1, 4, 7],
+                   colliderEndScale=[3, 8, 3])
+        trigger = document["logics"][-2]
+        trigger.pop("rearmOnExit")
+        trigger["repeatIntervalMs"] = 200
+        self.validate(document)
+        projected = self.first_product(subject.project_encounter(document))
+        window, = projected["logicWindows"]
+        region, = window["cardRegions"]
+        self.assertEqual("CYLINDER", region["shape"])
+        self.assertEqual([1, .25, 3], region["center"])
+        self.assertEqual(4, region["radiusM"])
+        self.assertEqual(.25, region["halfExtents"][1])
+        self.assertEqual({"endPositionOffset": [0, 3.75, 4], "endScale": [1.5, 16, 1.5]}, region["linearMotion"])
+        self.assertEqual(200, window["repeatIntervalMs"])
+        occurrence, = self.first_product(subject.project_presentation(document))["presentationOccurrences"]
+        for key in ("colliderMotion", "colliderEndPositionOffset", "colliderEndScale"):
+            self.assertEqual(box[key], occurrence[key])
+
+    def test_cylinder_rejects_ambiguous_dimensions_and_invalid_movement_without_mutation(self):
+        for changes in ({"colliderMotion": "BOUNCE"}, {"colliderEndScale": [1, 0, 1]},
+                        {"colliderEndPositionOffset": [0, float("inf"), 0]},
+                        {"scale": [1, 2, 3]}, {"colliderEndScale": [1, 2, 3]}):
+            document = self.reenter_damage_document()
+            resource = document["presentationResources"][-1]
+            resource.update(shape="CYLINDER", radiusM=1, halfExtents=[1, .5, 1])
+            box = self.first_product(document)["presentationOccurrences"][0]
+            box.update(colliderMotion="LINEAR", colliderEndPositionOffset=[0, 4, 0], colliderEndScale=[1, 8, 1])
+            box.update(changes)
+            before = copy.deepcopy(document)
+            with self.subTest(changes=changes), self.assertRaises(subject.CompositionError):
+                self.validate(document)
+                subject.project_encounter(document)
+            self.assertEqual(before, document)
+
+    def test_tick_contact_rejects_competing_repeat_policies(self):
+        document = self.reenter_damage_document()
+        trigger = document["logics"][-2]
+        trigger.pop("rearmOnExit")
+        trigger["repeatIntervalMs"] = 200
+        subject._validate_logic_definition(trigger, "Tick contact", document["nextLogicOrdinal"])
+        for changes in ({"repeatIntervalMs": -1}, {"repeatIntervalMs": True},
+                        {"repeatIntervalMs": 600001}, {"rearmOnExit": True},
+                        {"repeatAfterKnockback": True}, {"triggerKind": "HUD_ENTER", "hudMode": "NONE"}):
+            with self.subTest(changes=changes), self.assertRaises(subject.CompositionError):
+                subject._validate_logic_definition(dict(trigger, **changes), "Tick contact", document["nextLogicOrdinal"])
+
     def test_linked_map_collider_projects_absolute_world_anchor(self):
         pattern_id = "KAKULSAYDON_G1_PATTERN_34"
         logic_box = dict(occurrenceId=pattern_id + ".logic.3", startMs=2998, durationMs=21160)
@@ -4806,6 +4867,11 @@ class KoukuSaydonCompositionProjectionTests(unittest.TestCase):
             {"triggerKind": "ENTER_AREA"}, {}, ROOT)[0]
         self.assertEqual("BOSS_CURRENT", relative["anchorKind"])
         self.assertEqual(region["center"], relative["center"])
+        row["followBoss"] = False
+        fixed = subject._project_collider_regions(document, pattern, logic_box,
+            {"triggerKind": "ENTER_AREA"}, {}, ROOT)[0]
+        self.assertEqual("BOSS_START", fixed["anchorKind"])
+        self.assertEqual(region["center"], fixed["center"])
         row.update(anchorKind="MAP", followBoss=False)
         for invalid in ({"followBoss": True}, {"bone": "b_root"}, {"worldId": "world.portal"}):
             before = copy.deepcopy(row)
@@ -5069,7 +5135,7 @@ class KoukuSaydonCompositionProjectionTests(unittest.TestCase):
         self.assertEqual((30, 1500, "AWAY_FROM_CONTACT", True), tuple(projected[key]
             for key in ("pushRangeM", "pushMs", "pushDirection", "pushBallistic")))
         for field, value in (("pushBallistic", 1), ("pushBallistic", False),
-                             ("pushCanLeaveArena", False), ("pushRangeM", 100.01),
+                             ("pushRangeM", 100.01),
                              ("pushRangeM", 0), ("pushMs", 99), ("pushMs", 5001),
                              ("pushYawOffsetDegrees", 90), ("outcomeKind", "INSTANT_DEATH")):
             invalid = dict(result, **{field: value})
@@ -5078,6 +5144,19 @@ class KoukuSaydonCompositionProjectionTests(unittest.TestCase):
         for duration in (100, 5000):
             subject._validate_logic_definition(dict(result, pushRangeM=100, pushMs=duration),
                                                "Ballistic bounds", document["nextLogicOrdinal"])
+        result.update(pushCanLeaveArena=False, pushHeightM=4)
+        self.validate(document)
+        bounded = subject._project_outcomes({result["logicId"]: result}, [result["logicId"]])[0]
+        self.assertFalse(bounded.get("pushCanLeaveArena", False))
+        self.assertEqual(4, bounded["pushHeightM"])
+        result["pushRangeM"] = 0
+        self.validate(document)
+        vertical = subject._project_outcomes({result["logicId"]: result}, [result["logicId"]])[0]
+        self.assertEqual((0, 4, 1500), (vertical["pushRangeM"], vertical["pushHeightM"], vertical["pushMs"]))
+        for changes in ({"pushHeightM": -1}, {"pushHeightM": float("nan")},
+                        {"pushHeightM": True}, {"pushBallistic": False, "pushRangeM": 2}):
+            with self.subTest(changes=changes), self.assertRaises(subject.CompositionError):
+                subject._validate_logic_definition(dict(result, **changes), "Ballistic height", document["nextLogicOrdinal"])
 
     def test_contact_repeats_after_knockback_with_one_positive_push_result(self):
         document = self.reenter_damage_document()
@@ -5119,7 +5198,8 @@ class KoukuSaydonCompositionProjectionTests(unittest.TestCase):
 
     def test_rearm_and_push_bootstrap_sidecars_keep_existing_main_row_contract(self):
         projected = self.first_product(subject.project_encounter(self.reenter_damage_document()))
-        publisher = (ROOT / "Tools/GameplayPipeline/Publish-GameplayBalance.ps1").read_text(encoding="utf-8-sig")
+        publisher = ((ROOT / "Tools/GameplayPipeline/Publish-GameplayBalance.ps1").read_text(encoding="utf-8-sig") + "\n" +
+                     (ROOT / "Tools/KoukuSaydonPipeline/KoukuBootstrapRows.ps1").read_text(encoding="utf-8-sig"))
         definitions = [re.search(r"(?ms)^function " + name + r"\b.*?^\}", publisher).group(0)
                        for name in ("Assert-ExactProperties", "Assert-StableId", "Assert-JsonString", "Assert-JsonInteger",
                                     "Assert-JsonNumber", "Format-InvariantFloat", "Format-InvariantSignedFloat")]
@@ -5171,7 +5251,7 @@ class KoukuSaydonCompositionProjectionTests(unittest.TestCase):
             push = next(row for row in ballistic_rows if row[0] == "PATTERNLOGICPUSH")
             self.assertEqual(13, len(push))
             self.assertEqual(["30", "1500", "AWAY_FROM_CONTACT", "1", "1", "0", "1"], push[-7:])
-            for field, value in (("pushBallistic", 1), ("pushCanLeaveArena", False),
+            for field, value in (("pushBallistic", 1),
                                  ("pushRangeM", 100.01), ("pushMs", 99), ("pushMs", 5001),
                                  ("pushYawOffsetDegrees", 90)):
                 invalid = copy.deepcopy(ballistic)
@@ -5468,7 +5548,8 @@ class KoukuSaydonCompositionProjectionTests(unittest.TestCase):
 
 
     def test_gameplay_publisher_admits_only_exact_kouku_albion_visual(self):
-        publisher = (ROOT / "Tools/GameplayPipeline/Publish-GameplayBalance.ps1").read_text(encoding="utf-8-sig")
+        publisher = ((ROOT / "Tools/GameplayPipeline/Publish-GameplayBalance.ps1").read_text(encoding="utf-8-sig") + "\n" +
+                     (ROOT / "Tools/KoukuSaydonPipeline/KoukuBootstrapRows.ps1").read_text(encoding="utf-8-sig"))
         functions = [re.search(r"(?ms)^function " + name + r"\b.*?^\}", publisher).group(0)
                      for name in ("Assert-ExactProperties", "Assert-StableId", "Assert-JsonString", "Assert-JsonNumber")]
         start = publisher.index("foreach ($presentationBoss in @($bossCatalogDocument.bosses))")
@@ -5961,7 +6042,8 @@ class KoukuSaydonCompositionProjectionTests(unittest.TestCase):
         parent_pattern = self.find(document, document["bundles"][0]["members"][0]["patternId"])
         parent_pattern["folderId"] = document["bundles"][0]["folderId"]
         encounter = subject.project_encounter(document)
-        publisher = (ROOT / "Tools/GameplayPipeline/Publish-GameplayBalance.ps1").read_text(encoding="utf-8-sig")
+        publisher = ((ROOT / "Tools/GameplayPipeline/Publish-GameplayBalance.ps1").read_text(encoding="utf-8-sig") + "\n" +
+                     (ROOT / "Tools/KoukuSaydonPipeline/KoukuBootstrapRows.ps1").read_text(encoding="utf-8-sig"))
         definitions = []
         for name in ("Assert-ExactProperties", "Assert-StableId", "Assert-JsonString", "Assert-JsonInteger"):
             definitions.append(re.search(r"(?ms)^function " + name + r"\b.*?^\}", publisher).group(0))
@@ -6177,6 +6259,29 @@ class KoukuPublishAllInventoryTests(unittest.TestCase):
             uncached_outputs = subject.projected_outputs(uncached, ROOT, uncached_inventory)
         self.assertEqual((uncached, uncached_inventory, uncached_outputs),
                          (cached, cached_inventory, cached_outputs))
+
+    def test_native_input_hash_is_pinned_once_and_rechecked_before_commit(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "model.wmodel"
+            path.write_bytes(b"unchanged native input")
+            with mock.patch.object(subject.hashlib, "file_digest", wraps=subject.hashlib.file_digest) as digest:
+                with subject._publication_session() as inputs:
+                    for _ in range(8):
+                        inputs.observe_binary(path)
+                    self.assertEqual(1, digest.call_count)
+                self.assertEqual(2, digest.call_count)
+
+    def test_document_validation_memo_uses_value_and_never_caches_failure(self):
+        source = self.source()
+        with subject._publication_session(), mock.patch.object(subject, "_validate_document", wraps=subject._validate_document) as validate:
+            subject.validate_document(source)
+            subject.validate_document(copy.deepcopy(source))
+            self.assertEqual(1, validate.call_count)
+            source["revision"] = 0
+            for _ in range(2):
+                with self.assertRaises(subject.CompositionError):
+                    subject.validate_document(source)
+            self.assertEqual(3, validate.call_count)
 
     def test_json_cache_is_one_run_only_and_invalid_json_is_never_cached(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -6553,7 +6658,8 @@ class KoukuAnimationRootMotionTests(unittest.TestCase):
                 {"1": self.curve([(0, 0, 0, 0), (1000, 0, 0, -100001)])})
 
     def test_publisher_emits_xyz_stage_rows_preserves_legacy_pack_and_rejects_invalid_samples(self):
-        publisher = (ROOT / "Tools/GameplayPipeline/Publish-GameplayBalance.ps1").read_text(encoding="utf-8-sig")
+        publisher = ((ROOT / "Tools/GameplayPipeline/Publish-GameplayBalance.ps1").read_text(encoding="utf-8-sig") + "\n" +
+                     (ROOT / "Tools/KoukuSaydonPipeline/KoukuBootstrapRows.ps1").read_text(encoding="utf-8-sig"))
         functions = [re.search(r"(?ms)^function " + name + r"\b.*?^\}", publisher).group(0) for name in
             ("Assert-ExactProperties", "Assert-StableId", "Assert-JsonString", "Assert-JsonInteger",
              "Assert-JsonNumber", "Format-InvariantSignedFloat", "Format-RootMotionSamples")]

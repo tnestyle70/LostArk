@@ -15,6 +15,7 @@ struct HIT_AREA_SHAPE
 	int32_t iAreaInner = {};
 	// Presentation-only BOX volume. Existing skill wires keep their flat footprint.
 	f32_t fBoxHalfHeightM = {};
+	f32_t fCylinderHalfHeightM = {};
 	// Authored elliptic sector; zero axes keep legacy skill geometry.
 	f32_t fSectorRadiusXM = {}, fSectorRadiusZM = {}, fSectorAngleDegrees = {};
 	bool_t bReverseSector = false;

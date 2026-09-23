@@ -162,17 +162,17 @@ LOGIC_KIND_VALUE_KEYS = {
     "ATTACHMENT_HOLD": set(),
     "BOSS_TRACK_TARGET": {"followSpeedScale"},
     "BINGO_BOARD": set(),
-    "PURSUIT_PROJECTILES": {"projectileHits", "visualIds", "contactVisualId", "speedMps", "contactRadiusM", "spawnRadiusM", "lifetimeMs", "spawnIntervalMs", "homing", "countPerWave", "maxDistanceM"},
+    "PURSUIT_PROJECTILES": {"projectileHits", "visualIds", "cardSymbols", "contactVisualId", "speedMps", "contactRadiusM", "spawnRadiusM", "lifetimeMs", "spawnIntervalMs", "homing", "countPerWave", "maxDistanceM"},
     "CROSS_DIRECTION_CLONES": {"directionPatternIds", "cloneEndStageId", "summonOccurrenceId"},
     "PATTERN_COMPLETION_COUNT": {"patternIds", "completionCount"},
     "SHOWTIME_PLAYER_TARGETS": {"fixedHits", "trackingHits", "randomVolleyHits", "fixedSelectionGroupId", "trackingPresentationOccurrenceId", "spawnIntervalMs", "followSpeedScale",
                                "randomVolleyOccurrenceSets", "randomSpawnIntervalMs", "randomArenaRadiusM", "randomArenaHeightToleranceM", "randomAnchorKind", "randomScaleMin", "randomScaleMax"},
 }
 LOGIC_DURATION_VALUE_KEYS = {"judgementKind"} | set().union(*LOGIC_KIND_VALUE_KEYS.values())
-LOGIC_RESULT_VALUE_KEYS = {"outcomeKind", "percent", "durationMs", "followupPatternId", "targetWorldInstanceId", "motionInstanceId",
-                           "contactMotions", "targetLogicOccurrenceId", "contactTargetWorldOccurrenceId", "sceneProfileId", "effectResourceId", "lightResourceId", "soundResourceId", "effectDelayMs", "attachmentSlot", "gripLocalOffset", "pushRangeM", "pushMs", "pushDirection", "forcePush", "pushCanLeaveArena", "pushBallistic", "pushYawOffsetDegrees", "marioStage"}
+LOGIC_RESULT_VALUE_KEYS = {"outcomeKind", "percent", "damageAmount", "durationMs", "followupPatternId", "targetWorldInstanceId", "motionInstanceId",
+                           "contactMotions", "targetLogicOccurrenceId", "contactTargetWorldOccurrenceId", "sceneProfileId", "effectResourceId", "lightResourceId", "soundResourceId", "effectDelayMs", "attachmentSlot", "gripLocalOffset", "pushRangeM", "pushMs", "pushDirection", "forcePush", "pushCanLeaveArena", "pushBallistic", "pushHeightM", "pushYawOffsetDegrees", "marioStage"}
 LOGIC_TRIGGER_VALUE_KEYS = {"fixedHits", "countPerPlayer", "radiusM", "effectLifetimeMs", "arenaRandomCount", "arenaRandomRadiusM", "arenaHeightToleranceM", "arenaMinimumSpacingM", "randomPlayerOnly", "triggerKind", "hudMode", "teleportPosition", "clonePatternId", "clockHours", "faceCenterYawOffsetDegrees",
-                            "targetWorldOccurrenceIds", "targetRadiusM", "contactGroupId", "contactPriority", "bossChargeDistanceM", "chargeYawOffsetDegrees", "rearmOnExit", "repeatAfterKnockback",
+                            "targetWorldOccurrenceIds", "targetRadiusM", "contactGroupId", "contactPriority", "bossChargeDistanceM", "chargeYawOffsetDegrees", "rearmOnExit", "repeatAfterKnockback", "repeatIntervalMs",
                             "airbornePhase", "airborneHeightM", "airborneDurationMs", "airborneTargetPositionPolicy", "selectedEffectGroupId", "playerEntryEffectOccurrenceIds"}
 LOGIC_OPTIONAL_KEYS = LOGIC_DURATION_VALUE_KEYS | LOGIC_RESULT_VALUE_KEYS | LOGIC_TRIGGER_VALUE_KEYS
 JUDGEMENT_KINDS = set(LOGIC_KIND_VALUE_KEYS)
@@ -180,7 +180,7 @@ JUDGEMENT_KINDS = set(LOGIC_KIND_VALUE_KEYS)
 # Timeout. The boss-level stagger window has no wrong answer, so no Fail.
 END_TICK_KINDS = {"GAZE_REAL_BOSS"}
 OUTCOME_KINDS = {
-    "INSTANT_DEATH", "MAX_HP_PERCENT_DAMAGE", "MADNESS_GAUGE_ADD_PERCENT",
+    "INSTANT_DEATH", "MAX_HP_PERCENT_DAMAGE", "FIXED_DAMAGE", "MADNESS_GAUGE_ADD_PERCENT",
     "CLOWN_TRANSFORM", "FEAR", "FOLLOWUP_PATTERN", "PLAY_WORLD_OBJECT_MOTION",
     "PLAY_CONTACT_WORLD_OBJECT_MOTION", "COMPLETE_LOGIC_WINDOW", "CAPTURE_PLAYER",
     # Hangs the player on the region that judged them and drags them with it.
@@ -283,6 +283,7 @@ class _PublicationInputs:
         self.actors = {}
         self.memo = {}
         self.root_motion_diagnostics = {}
+        self.validated_outputs = {}
 
     def observe(self, path):
         path = Path(path).resolve()
@@ -307,8 +308,13 @@ class _PublicationInputs:
             raise CompositionError(f"Publication input changed during validation: {path}")
         return content
 
-    def observe_binary(self, path):
+    def observe_binary(self, path, *, recheck=False):
         path = self.observe(path)
+        # Pin exact bytes once. Selective clip reads revisit the same WModel many
+        # times; the final transaction guard hashes it again even if stat metadata
+        # was forged or restored. No derived Product is committed before that guard.
+        if not recheck and path in self.binary_digests:
+            return
         with path.open("rb") as stream:
             digest = hashlib.file_digest(stream, "sha256").digest()
         self.observe(path)
@@ -323,7 +329,7 @@ class _PublicationInputs:
             for path in tuple(self.contents):
                 self.read_content(path)
             for path in tuple(self.binary_digests):
-                self.observe_binary(path)
+                self.observe_binary(path, recheck=True)
         except OSError as error:
             raise CompositionError(f"Cannot recheck publication input: {error}") from error
 
@@ -404,6 +410,13 @@ def _read_input_text(path: Path) -> str:
     text = _publication_memo("text", path, lambda: session.read_content(path).decode("utf-8").replace("\r\n", "\n").replace("\r", "\n"))
     session.observe(path)
     return text
+
+
+def _input_exists(path: Path) -> bool:
+    session = _PUBLICATION_INPUTS.get()
+    if session is not None:
+        path = session.observe(path)
+    return path.is_file()
 
 
 def _exact_keys(value: Any, expected: set[str], context: str) -> None:
@@ -756,7 +769,7 @@ def _validate_logic_definition(
             for hour in hours:
                 _integer(hour, f"{context} clockHours", 2, 12)
         elif kind == "ENTER_AREA":
-            if extra - {"bossChargeDistanceM", "chargeYawOffsetDegrees", "rearmOnExit", "repeatAfterKnockback"} != {"triggerKind"}:
+            if extra - {"bossChargeDistanceM", "chargeYawOffsetDegrees", "rearmOnExit", "repeatAfterKnockback", "repeatIntervalMs"} != {"triggerKind"}:
                 raise CompositionError(f"{context} ENTER_AREA carries unrelated values")
             definition["bossChargeDistanceM"] = _number(logic.get("bossChargeDistanceM", 0), f"{context} bossChargeDistanceM", 0, 1000)
             definition["chargeYawOffsetDegrees"] = _number(logic.get("chargeYawOffsetDegrees", 0), f"{context} chargeYawOffsetDegrees", -360, 360)
@@ -764,7 +777,8 @@ def _validate_logic_definition(
                 raise CompositionError(f"{context} charge yaw requires positive charge distance")
             definition["rearmOnExit"] = _boolean(logic.get("rearmOnExit", False), f"{context} rearmOnExit")
             definition["repeatAfterKnockback"] = _boolean(logic.get("repeatAfterKnockback", False), f"{context} repeatAfterKnockback")
-            if definition["rearmOnExit"] and definition["repeatAfterKnockback"]:
+            definition["repeatIntervalMs"] = _integer(logic.get("repeatIntervalMs", 0), f"{context} repeatIntervalMs", 0, MAX_TIMELINE_MS)
+            if sum(bool(definition[name]) for name in ("rearmOnExit", "repeatAfterKnockback", "repeatIntervalMs")) > 1:
                 raise CompositionError(f"{context} choose one contact repeat policy")
         elif kind == "OBJECT_CONTACT":
             required = {"triggerKind", "targetWorldOccurrenceIds", "targetRadiusM"}
@@ -794,6 +808,9 @@ def _validate_logic_definition(
         if kind not in OUTCOME_KINDS:
             raise CompositionError(f"{context} outcomeKind is invalid: {kind!r}")
         definition["kind"] = kind
+        amount = _integer(logic.get("damageAmount", 0), f"{context} damageAmount", 0, 1000000000)
+        if (kind == "FIXED_DAMAGE") != (amount > 0):
+            raise CompositionError(f"{context} only FIXED_DAMAGE requires positive damageAmount")
         percent = _integer(logic.get("percent", 0), f"{context} percent", 0, 100)
         duration_ms = _integer(logic.get("durationMs", 0), f"{context} durationMs", 0, MAX_TIMELINE_MS)
         followup = logic.get("followupPatternId", "")
@@ -805,33 +822,37 @@ def _validate_logic_definition(
             raise CompositionError(f"{context} {kind} does not take a percent")
         if kind not in {"CLOWN_TRANSFORM", "FEAR"} and duration_ms != 0:
             raise CompositionError(f"{context} {kind} does not take a durationMs")
-        if extra & {"pushRangeM", "pushMs", "pushDirection", "forcePush", "pushCanLeaveArena", "pushBallistic", "pushYawOffsetDegrees"}:
-            if kind != "MAX_HP_PERCENT_DAMAGE":
-                raise CompositionError(f"{context} only MAX_HP_PERCENT_DAMAGE owns push values")
+        if extra & {"pushRangeM", "pushMs", "pushDirection", "forcePush", "pushCanLeaveArena", "pushBallistic", "pushHeightM", "pushYawOffsetDegrees"}:
+            if kind not in {"MAX_HP_PERCENT_DAMAGE", "FIXED_DAMAGE"}:
+                raise CompositionError(f"{context} only damage outcomes own push values")
             if ("pushRangeM" in logic) != ("pushMs" in logic):
                 raise CompositionError(f"{context} pushRangeM and pushMs must be supplied together")
             ballistic = logic.get("pushBallistic", False)
             if not isinstance(ballistic, bool):
                 raise CompositionError(f"{context} pushBallistic must be boolean")
+            push_height = _number(logic.get("pushHeightM", 0), f"{context} pushHeightM", 0, 100)
+            if push_height and not ballistic:
+                raise CompositionError(f"{context} pushHeightM requires ballistic push")
+            definition["pushHeightM"] = push_height
             push_range = _number(logic.get("pushRangeM", 0), f"{context} pushRangeM", 0, 100 if ballistic else 20)
             push_ms = _integer(logic.get("pushMs", 0), f"{context} pushMs", 0, MAX_TIMELINE_MS)
-            if (push_range == 0) != (push_ms == 0):
+            if (push_range == 0 and push_height == 0) != (push_ms == 0):
                 raise CompositionError(f"{context} pushRangeM and pushMs must both be zero or positive")
             definition["pushRangeM"] = push_range
             definition["pushMs"] = push_ms
             direction = logic.get("pushDirection", "AWAY_FROM_BOSS")
-            if direction not in {"AWAY_FROM_BOSS", "BOSS_FORWARD", "AWAY_FROM_CONTACT"} or (direction != "AWAY_FROM_BOSS" and push_range == 0):
+            if direction not in {"AWAY_FROM_BOSS", "BOSS_FORWARD", "AWAY_FROM_CONTACT"} or (direction != "AWAY_FROM_BOSS" and push_range == 0 and push_height == 0):
                 raise CompositionError(f"{context} pushDirection requires a supported direction and positive push")
             definition["pushDirection"] = direction
             for field in ("forcePush", "pushCanLeaveArena", "pushBallistic"):
                 flag = logic.get(field, False)
-                if not isinstance(flag, bool) or (flag and push_range == 0):
+                if not isinstance(flag, bool) or (flag and push_range == 0 and push_height == 0):
                     raise CompositionError(f"{context} {field} must be boolean and requires positive push")
                 definition[field] = flag
-            if ballistic and (not definition["pushCanLeaveArena"] or not 100 <= push_ms <= 5000):
-                raise CompositionError(f"{context} ballistic push requires pushCanLeaveArena and pushMs 100..5000")
+            if ballistic and not 100 <= push_ms <= 5000:
+                raise CompositionError(f"{context} ballistic push requires pushMs 100..5000")
             yaw = _number(logic.get("pushYawOffsetDegrees", 0), f"{context} pushYawOffsetDegrees", -360, 360)
-            if yaw != 0 and (direction != "BOSS_FORWARD" or push_range == 0):
+            if yaw != 0 and (direction != "BOSS_FORWARD" or (push_range == 0 and push_height == 0)):
                 raise CompositionError(f"{context} pushYawOffsetDegrees requires BOSS_FORWARD and positive push")
             definition["pushYawOffsetDegrees"] = yaw
         if kind == "FEAR":
@@ -1642,7 +1663,7 @@ def _bundle_duration(document: dict[str, Any], bundle: dict[str, Any]) -> int:
 
 def load_camera_shots(root: Path) -> dict[str, Any]:
     path = root / "Data/Maps/Authoring/LV_LUT_MIDNIGHTC_ED/LV_LUT_MIDNIGHTC_ED.camerashots.json"
-    if not path.is_file():
+    if not _input_exists(path):
         return {}
     document = load_json(path)
     if document.get("schema") != "lostark.camera-shots" or document.get("formatVersion") != 1 or document.get("areaId") != "LV_LUT_MIDNIGHTC_ED":
@@ -1910,6 +1931,14 @@ def _validate_contact_links(document, pattern):
 
 
 def validate_document(document: dict[str, Any], root: Path = REPOSITORY_ROOT) -> None:
+    # Admission, publishability and projection revisit identical immutable
+    # candidates. A value digest still invalidates after an in-memory edit; the
+    # invocation-pinned external inputs retain their exact final freshness guard.
+    return _publication_memo("document-validation", (str(root.resolve()), _memo_digest(document)),
+        lambda: _validate_document(document, root))
+
+
+def _validate_document(document: dict[str, Any], root: Path = REPOSITORY_ROOT) -> None:
     """Check persisted identities and timing; reference/oracle metadata is advisory."""
 
     _keys(document, ROOT_KEYS, ROOT_OPTIONAL_KEYS, "composition")
@@ -2193,7 +2222,7 @@ def validate_document(document: dict[str, Any], root: Path = REPOSITORY_ROOT) ->
                 raise CompositionError(f"Logic box exceeds 600 seconds: {box_id}")
             if enabled and status == "PRODUCT" and owner.get("repeatAfterKnockback", False):
                 hits = [logic_defs[target] for target in outcomes["Success"]]
-                if len(hits) != 1 or hits[0].get("kind") != "MAX_HP_PERCENT_DAMAGE" or hits[0].get("pushRangeM", 0) <= 0 or hits[0].get("pushMs", 0) <= 0:
+                if len(hits) != 1 or hits[0].get("kind") not in {"MAX_HP_PERCENT_DAMAGE", "FIXED_DAMAGE"} or (hits[0].get("pushRangeM", 0) <= 0 and hits[0].get("pushHeightM", 0) <= 0) or hits[0].get("pushMs", 0) <= 0:
                     raise CompositionError(f"{box_context} repeat after knockback requires one damage Success with positive knockback")
             if enabled and status == "PRODUCT" and (owner["type"] == "DURATION" or kind in {"ENTER_AREA", "OBJECT_CONTACT"}):
                 if kind is None:
@@ -2530,7 +2559,7 @@ def validate_pattern_flows(document: dict[str, Any]) -> None:
     patterns = {row.get("patternId"): row for row in document.get("patterns", []) if isinstance(row, dict)}
     bundles = {row.get("bundleId"): row for row in document.get("bundles", []) if isinstance(row, dict)}
     for flow in flows:
-        _exact_keys(flow, {"flowId", "gateId", "displayName", "entries"} | ({"loopStartEntryId"} if "loopStartEntryId" in flow else set()), "Pattern Flow")
+        _exact_keys(flow, {"flowId", "gateId", "displayName", "entries"} | ({"loopStartEntryId"} if "loopStartEntryId" in flow else set()) | ({"entryGroups"} if "entryGroups" in flow else set()), "Pattern Flow")
         identity = _stable_id(flow["flowId"], "flowId")
         gate = _stable_id(flow["gateId"], "Flow gateId")
         _display_name(flow["displayName"], "Flow displayName")
@@ -2554,6 +2583,30 @@ def validate_pattern_flows(document: dict[str, Any]) -> None:
             loop_start = flow["loopStartEntryId"]
             if not isinstance(loop_start, str) or (loop_start and _stable_id(loop_start, "Flow loopStartEntryId") not in entry_ids):
                 raise CompositionError("Pattern Flow loop start must reference an entry in this flow")
+        validate_flow_groups(flow)
+
+
+def validate_flow_groups(flow: dict[str, Any]) -> None:
+    """Groups reference disjoint saved ranges; HP belongs to the Server scheduler."""
+    entries = {row["entryId"]: index for index, row in enumerate(flow["entries"])}
+    identities: set[str] = set()
+    next_start = 0
+    for group in _array(flow.get("entryGroups", []), "Flow entryGroups", 64):
+        repeat = "repeatUntilHealthBars" in group
+        _exact_keys(group, {"groupId", "displayName", "startEntryId", "endEntryId"} |
+                    ({"repeatUntilHealthBars", "transitionAt"} if repeat else set()), "Flow group")
+        identity = _stable_id(group["groupId"], "Flow groupId")
+        _display_name(group["displayName"], "Flow group displayName")
+        start = entries.get(_stable_id(group["startEntryId"], "Flow group startEntryId"), -1)
+        end = entries.get(_stable_id(group["endEntryId"], "Flow group endEntryId"), -1)
+        if identity in identities or start < next_start or end < start:
+            raise CompositionError("Flow group ranges must be ordered, disjoint saved entries")
+        identities.add(identity)
+        next_start = end + 1
+        if repeat:
+            _integer(group["repeatUntilHealthBars"], "Flow repeatUntilHealthBars", 0, 1000)
+            if group["transitionAt"] not in {"PATTERN_END", "GROUP_END"} or flow.get("loopStartEntryId"):
+                raise CompositionError("Flow HP repeat needs a completion boundary and cannot mix with a legacy loop")
 
 
 def _publication_candidate(source: dict[str, Any], pattern_ids: set[str],
@@ -4351,7 +4404,7 @@ def _project_collider_regions(document, pattern, logic_box, logic, sequences, ro
         position, yaw, scale = list(row["positionOffset"]), row["rotationDegrees"][1], list(row["scale"])
         if resource["innerRadiusM"] and abs(scale[0] - scale[2]) > .0001:
             raise CompositionError("Annular Collider needs equal X/Z scale; hollow ellipses are unsupported")
-        anchor = "WORLD" if row["anchorKind"] == "MAP" else "BOSS_CURRENT"
+        anchor = "WORLD" if row["anchorKind"] == "MAP" else ("BOSS_START" if not row["followBoss"] and kind in {"ENTER_AREA", "OBJECT_OVERLAP", "AREA_OVERLAP"} else "BOSS_CURRENT")
         world_track = None
         if kind in {"ENTER_AREA", "OBJECT_OVERLAP", "OBJECT_CONTACT"} and row["bone"]:
             try:
@@ -4385,7 +4438,7 @@ def _project_collider_regions(document, pattern, logic_box, logic, sequences, ro
             raise CompositionError("Gameplay collider scale must be positive")
         result.append({"regionId":row["regionId"] or row["occurrenceId"],"shape":resource["shape"],"anchorKind":anchor,
                        "center":position,"yawDegrees":yaw,"halfExtents":[a*b for a,b in zip(resource["halfExtents"],scale)],
-                       "radiusM":resource["radiusM"]*(max(scale[0],scale[2]) if resource["shape"] == "CIRCLE" else scale[0]),"halfAngleDegrees":resource["halfAngleDegrees"],
+                       "radiusM":resource["radiusM"]*(max(scale[0],scale[2]) if resource["shape"] in {"CIRCLE", "CYLINDER"} else scale[0]),"halfAngleDegrees":resource["halfAngleDegrees"],
                        "cardSymbol":row["cardSymbol"] if kind == "ROULETTE_CARD_MATCH" else "NONE",
                        "cardColor":row["cardColor"] if kind == "ROULETTE_CARD_MATCH" else "NONE"})
         if resource["innerRadiusM"]:
@@ -4393,6 +4446,19 @@ def _project_collider_regions(document, pattern, logic_box, logic, sequences, ro
         if resource["shape"] in {"SECTOR", "REVERSE_SECTOR"}:
             result[-1]["radiusXM"] = resource["radiusM"] * scale[0]
             result[-1]["radiusZM"] = resource["radiusM"] * scale[2]
+        if row["anchorPresentationOccurrenceId"]:
+            if anchor != "BOSS_START" or kind not in {"ENTER_AREA", "OBJECT_OVERLAP", "AREA_OVERLAP"}:
+                raise CompositionError("Shared Effect birth anchor requires fixed BOSS overlap Collider")
+            source = next(member for member in pattern["presentationOccurrences"] if member["occurrenceId"] == row["anchorPresentationOccurrenceId"])
+            result[-1]["captureStartMs"] = source["startMs"]
+        if row["colliderMotion"] == "LINEAR":
+            if kind not in {"ENTER_AREA", "OBJECT_OVERLAP", "OBJECT_CONTACT", "AREA_OVERLAP"}:
+                raise CompositionError("Moving Collider requires overlap/contact Logic")
+            delta = [end - start for end, start in zip(row["colliderEndPositionOffset"], row["positionOffset"])]
+            ratios = [end / start for end, start in zip(row["colliderEndScale"], row["scale"])]
+            if row["anchorKind"] == "WORLD" and world_track is None:
+                delta = _rotate_y([a*b for a,b in zip(delta,world_scale)],world_yaw)
+            result[-1]["linearMotion"] = {"endPositionOffset": delta, "endScale": ratios}
         if world_track is not None:
             result[-1]["worldTrack"] = world_track
     return result
@@ -4408,14 +4474,16 @@ def _project_outcomes(logics: dict[str, dict[str, Any]], targets: list[str]) -> 
             "durationMs": int(logic.get("durationMs", 0)),
             "patternId": logic.get("followupPatternId", ""),
         })
+        if logic["outcomeKind"] == "FIXED_DAMAGE":
+            projected[-1]["damageAmount"] = int(logic["damageAmount"])
         if logic["outcomeKind"] == "FEAR":
             projected[-1]["presentationId"] = logic["logicId"]
-        elif logic["outcomeKind"] == "MAX_HP_PERCENT_DAMAGE" and logic.get("pushRangeM", 0):
+        elif logic["outcomeKind"] in {"MAX_HP_PERCENT_DAMAGE", "FIXED_DAMAGE"} and (logic.get("pushRangeM", 0) or logic.get("pushHeightM", 0)):
             projected[-1]["pushRangeM"] = float(logic["pushRangeM"])
             projected[-1]["pushMs"] = int(logic["pushMs"])
             if logic.get("pushDirection", "AWAY_FROM_BOSS") != "AWAY_FROM_BOSS":
                 projected[-1]["pushDirection"] = logic["pushDirection"]
-            for field in ("forcePush", "pushCanLeaveArena", "pushBallistic", "pushYawOffsetDegrees"):
+            for field in ("forcePush", "pushCanLeaveArena", "pushBallistic", "pushHeightM", "pushYawOffsetDegrees"):
                 if logic.get(field):
                     projected[-1][field] = logic[field]
         elif logic["outcomeKind"] == "CAPTURE_PLAYER":
@@ -4451,6 +4519,7 @@ def _project_logic_window(
         **({"chargeYawOffsetDegrees": logic["chargeYawOffsetDegrees"]} if logic.get("chargeYawOffsetDegrees", 0) else {}),
         **({"rearmOnExit": True} if logic.get("rearmOnExit", False) else {}),
         **({"repeatAfterKnockback": True} if logic.get("repeatAfterKnockback", False) else {}),
+        **({"repeatIntervalMs": logic["repeatIntervalMs"]} if logic.get("repeatIntervalMs", 0) else {}),
         "kind": kind,
         "startMs": box["startMs"],
         "durationMs": box["durationMs"],
@@ -4803,6 +4872,7 @@ PRESENTATION_OCCURRENCE_DEFAULTS = {
     "regionId": "", "cardSymbol": "NONE", "cardColor": "NONE",
     "anchorKind": "BOSS", "worldId": "", "logicOccurrenceId": "", "debugRender": True, "worldOccurrenceId": "",
     "worldEmissionIndex": 0, "boneRotation": "TARGET_YAW",
+    "anchorPresentationOccurrenceId": "", "colliderMotion": "STATIC", "colliderEndPositionOffset": [0.0, 0.0, 0.0], "colliderEndScale": [1.0, 1.0, 1.0],
 }
 
 
@@ -4872,7 +4942,7 @@ def _validate_presentation_resources(document: dict[str, Any]) -> dict[str, dict
             raise CompositionError("Only V1_ELEMENT owns elementId")
         if normalized["colliderKind"] not in {"GEOMETRY", "ROULETTE_CARD_REGION"}:
             raise CompositionError("presentation colliderKind is unsupported")
-        if normalized["shape"] not in {"BOX", "SECTOR", "REVERSE_SECTOR", "CIRCLE"}:
+        if normalized["shape"] not in {"BOX", "SECTOR", "REVERSE_SECTOR", "CIRCLE", "CYLINDER"}:
             raise CompositionError("presentation collider shape is unsupported")
         _integer(normalized["durationMs"], "presentation durationMs", 1, MAX_TIMELINE_MS)
         _vector3(normalized["halfExtents"], "collider halfExtents", 0.001, 100000)
@@ -4927,7 +4997,7 @@ def _validate_presentation_selection_groups(pattern: dict[str, Any], resources: 
             if normalized["anchorKind"] != "BOSS":
                 raise CompositionError("Selection Group requires BOSS anchors; WORLD, MAP and PLAYER are unsupported")
             frame += tuple(normalized[key] for key in (
-                "anchorKind", "followBoss", "bone", "boneTarget", "worldId", "worldOccurrenceId", "worldEmissionIndex"))
+                "anchorKind", "followBoss", "bone", "boneTarget", "worldId", "worldOccurrenceId", "worldEmissionIndex", "anchorPresentationOccurrenceId"))
             if not normalized["followBoss"]:
                 frame += (normalized["startMs"],)
         group = selection_groups.setdefault(group_id, [frame, 0])
@@ -4991,6 +5061,29 @@ def _validate_presentation_occurrences(pattern: dict[str, Any], resources: dict[
         light = resources[box["resourceId"]]["kind"] == "LIGHT"
         effect = resources[box["resourceId"]]["kind"] == "EFFECT"
         collider = resources[box["resourceId"]]["kind"] == "COLLIDER"
+        capture_source = normalized["anchorPresentationOccurrenceId"]
+        if capture_source:
+            _stable_id(capture_source, "Collider anchorPresentationOccurrenceId")
+            source = next((member for member in boxes if member["occurrenceId"] == capture_source), None)
+            if (not collider or normalized["anchorKind"] != "BOSS" or normalized["followBoss"] or normalized["bone"] or normalized["boneTarget"] != "BODY" or
+                    source is None or resources.get(source["resourceId"], {}).get("kind") != "EFFECT" or
+                    source.get("anchorKind", "BOSS") != "BOSS" or source.get("followBoss", True) or source.get("bone", "") or source.get("boneTarget", "BODY") != "BODY" or
+                    source["startMs"] > normalized["startMs"]):
+                raise CompositionError("Collider anchor source requires an earlier fixed BOSS Effect in the same Pattern")
+        if normalized["colliderMotion"] not in {"STATIC", "LINEAR"}:
+            raise CompositionError("colliderMotion must be STATIC or LINEAR")
+        if normalized["colliderMotion"] == "LINEAR":
+            if not collider or "colliderEndPositionOffset" not in box or "colliderEndScale" not in box:
+                raise CompositionError("LINEAR Collider requires explicit end position and end size")
+            _vector3(normalized["colliderEndPositionOffset"], "Collider end position", -100000, 100000)
+            _vector3(normalized["colliderEndScale"], "Collider end size", .001, 10000)
+            _vector3(normalized["scale"], "Collider start size", .001, 10000)
+            if resources[box["resourceId"]].get("shape") in {"CIRCLE", "CYLINDER"} and (
+                    abs(normalized["scale"][0] - normalized["scale"][2]) > .0001 or
+                    abs(normalized["colliderEndScale"][0] - normalized["colliderEndScale"][2]) > .0001):
+                raise CompositionError("Moving circular Collider requires equal X/Z start and end size")
+            if resources[box["resourceId"]].get("innerRadiusM", 0) and abs(normalized["colliderEndScale"][0] - normalized["colliderEndScale"][2]) > .0001:
+                raise CompositionError("Annular Collider needs equal end X/Z scale")
         subtitle = resources[box["resourceId"]]["kind"] == "SUBTITLE"
         sound = resources[box["resourceId"]]["kind"] == "SOUND"
         allowed_anchors = {"MAP"} if subtitle else ({"BOSS", "PLAYER", "MAP", "WORLD"} if light else ({"BOSS", "WORLD", "MAP"} if effect or collider or sound else {"BOSS", "WORLD"}))
@@ -5075,6 +5168,11 @@ def _pursuit_fields(logic: dict[str, Any], context: str) -> dict[str, Any]:
         "countPerWave": _integer(logic.get("countPerWave", len(visuals)), f"{context} countPerWave", 1, 16),
         "homing": logic.get("homing", True),
     }
+    if "cardSymbols" in logic:
+        symbols = _array(logic["cardSymbols"], f"{context} cardSymbols", 4)
+        if len(symbols) != len(visuals) or any(not isinstance(symbol, str) or symbol not in {"HEART", "SPADE", "CLUB", "DIAMOND"} for symbol in symbols):
+            raise CompositionError(f"{context} cardSymbols requires one valid symbol per visual")
+        fields["cardSymbols"] = list(symbols)
     if not isinstance(fields["homing"], bool) or (fields["lifetimeMs"] == 0 and
             (not fields["homing"] or fields["spawnIntervalMs"] != 0 or fields["maxDistanceM"] != 0)):
         raise CompositionError(f"{context} infinite lifetime requires one homing volley without a travel limit")
@@ -5185,7 +5283,7 @@ def _project_presentation_resource(resource: dict[str, Any]) -> dict[str, Any]:
 def _project_presentation_occurrence(document: dict[str, Any], pattern: dict[str, Any], box: dict[str, Any], resource: dict[str, Any]) -> dict[str, Any]:
     return {
         **_project_presentation_resource(resource),
-        **{key: value for key, value in PRESENTATION_OCCURRENCE_DEFAULTS.items() if key not in {"brightnessMultiplier", "boneTarget", "fitEffectToDuration", "loopEffectToDuration", "boneRotation"}},
+        **{key: value for key, value in PRESENTATION_OCCURRENCE_DEFAULTS.items() if key not in {"brightnessMultiplier", "boneTarget", "fitEffectToDuration", "loopEffectToDuration", "boneRotation", "colliderMotion", "colliderEndPositionOffset", "colliderEndScale", "anchorPresentationOccurrenceId"}},
         **{key: value for key, value in box.items() if key not in PRESENTATION_OCCURRENCE_EDITOR_KEYS},
         **({"brightnessMultiplier": box.get("brightnessMultiplier", 1.0)} if resource["kind"] == "LIGHT" else {}),
         "worldSequenceInstanceId": next((w["sequenceInstanceId"] for w in document.get("worlds", []) if w["worldId"] == box.get("worldId", "")), ""),
@@ -5349,7 +5447,7 @@ def _project_pattern_presentation(document: dict[str, Any], pattern: dict[str, A
     for box in pattern.get("sceneProfileOccurrences", []):
         occurrences.append({
             **{key: value for key, value in PRESENTATION_RESOURCE_DEFAULTS.items() if key not in {"durationMs", "defaultAnchorKind"}},
-            **{key: value for key, value in PRESENTATION_OCCURRENCE_DEFAULTS.items() if key not in {"brightnessMultiplier", "boneTarget", "fitEffectToDuration", "loopEffectToDuration", "boneRotation"}},
+            **{key: value for key, value in PRESENTATION_OCCURRENCE_DEFAULTS.items() if key not in {"brightnessMultiplier", "boneTarget", "fitEffectToDuration", "loopEffectToDuration", "boneRotation", "colliderMotion", "colliderEndPositionOffset", "colliderEndScale", "anchorPresentationOccurrenceId"}},
             "occurrenceId": box["occurrenceId"], "resourceId": box["sceneProfileId"],
             "kind": "SCENE_PROFILE", "worldSequenceInstanceId": "", "assetId": profiles[box["sceneProfileId"]]["renderingProfileId"],
             "resourceDurationMs": box["durationMs"], "startMs": box["startMs"], "durationMs": box["durationMs"],
@@ -5411,7 +5509,7 @@ def _join_light_resources(document: dict[str, Any], root: Path) -> int | None:
     revision = catalog["revision"]
     ids = {light["lightResourceId"] for light in catalog["lights"]}
     map_catalog_path = root / "Data/Maps/MapCatalog.json"
-    if map_catalog_path.is_file():
+    if _input_exists(map_catalog_path):
         map_catalog = load_json(map_catalog_path)
         area = next((row for row in map_catalog.get("areas", []) if row.get("id") == document["areaId"]), {})
         source = area.get("sourceLights", "")
@@ -5593,7 +5691,7 @@ def projected_outputs(document: dict[str, Any], root: Path = REPOSITORY_ROOT,
     if pattern_inventory is not None:
         encounter = {**encounter, "patternInventory": pattern_inventory}
     sequence_path = root / "Data/Compositions/Sequences/KoukuSaydonSequenceComposition.json"
-    if sequence_path.exists():
+    if _input_exists(sequence_path):
         from raid_flow_projection import project_raid_gates
         try:
             sequence = load_json(sequence_path)
@@ -5711,10 +5809,150 @@ def publish_outputs(root: Path, outputs: dict[Path, bytes]) -> None:
                 backup.unlink(missing_ok=True)
 
 
+_VALIDATION_CERTIFICATE = Path("out/KoukuSaydon/composition-validation.receipt.json")
+_PROJECTION_TOOLS = (
+    "Tools/KoukuSaydonPipeline/project_kouku_saydon_composition.py",
+    "Tools/KoukuSaydonPipeline/world_object_collider.py",
+    "Tools/KoukuSaydonPipeline/combat_hit_templates.py",
+    "Tools/KoukuSaydonPipeline/raid_flow_projection.py",
+    "Tools/ModelAssetConverter/verify_dimensionmaster_summon_bind_pose.py",
+    "Tools/RenderingPipeline/light_resources_pipeline.py",
+)
+
+
+def _projection_tools(inputs: _PublicationInputs) -> list[dict[str, str]]:
+    return [{"path": relative, "sha256": hashlib.sha256(
+        inputs.read_content(REPOSITORY_ROOT / relative)).hexdigest()} for relative in _PROJECTION_TOOLS]
+
+
+def _certificate_checksum(document: dict[str, Any]) -> str:
+    return hashlib.sha256(json.dumps(document, ensure_ascii=False, sort_keys=True,
+        separators=(",", ":"), allow_nan=False).encode("utf-8")).hexdigest()
+
+
+def _certificate_path(root: Path, relative: str) -> Path:
+    if not isinstance(relative, str) or not relative or "\\" in relative or ":" in relative:
+        raise ValueError("Invalid certificate path")
+    path = (root / relative).resolve()
+    if not path.is_relative_to(root) or path == root or ".." in Path(relative).parts:
+        raise ValueError("Certificate path escapes repository")
+    return path
+
+
+def _try_validation_certificate(root: Path) -> dict[str, Any] | None:
+    """Exact input/output proof; a missing, stale or corrupt cache is only a miss."""
+    try:
+        path = root / _VALIDATION_CERTIFICATE
+        if not path.is_file() or path.stat().st_size > 8 * 1024 * 1024:
+            return None
+        certificate = json.loads(path.read_text(encoding="utf-8"), object_pairs_hook=_reject_duplicate_pairs)
+        checksum = certificate.pop("checksum")
+        if checksum != _certificate_checksum(certificate) or set(certificate) != {
+                "schema", "formatVersion", "repositoryRoot", "python", "tools", "inputs", "outputs", "summary"}:
+            return None
+        if (certificate["schema"] != "lostark.kouku-projection-validation" or
+                certificate["formatVersion"] != 1 or certificate["repositoryRoot"] != str(root) or
+                certificate["python"] != sys.version):
+            return None
+        probe = _PublicationInputs()
+        if certificate["tools"] != _projection_tools(probe):
+            return None
+        inputs, outputs = certificate["inputs"], certificate["outputs"]
+        if not isinstance(inputs, list) or not 1 <= len(inputs) <= 16384 or not isinstance(outputs, list):
+            return None
+        if {row["path"] for row in outputs} != {str(ENCOUNTER_PATH).replace("\\", "/"), str(PRESENTATION_PATH).replace("\\", "/")} or len(outputs) != 2:
+            return None
+        if str(SOURCE_PATH).replace("\\", "/") not in {row["path"] for row in inputs}:
+            return None
+        seen = set()
+        for row in [*inputs, *outputs]:
+            if not isinstance(row, dict) or set(row) != {"path", "sha256"} or row["path"] in seen:
+                return None
+            seen.add(row["path"])
+            candidate = _certificate_path(root, row["path"])
+            probe.observe(candidate)
+            if row["sha256"] is None:
+                if candidate.exists():
+                    return None
+            else:
+                if not isinstance(row["sha256"], str) or not SHA256_RE.fullmatch(row["sha256"]):
+                    return None
+                probe.observe_binary(candidate)
+                if probe.binary_digests[candidate].hex() != row["sha256"]:
+                    return None
+        # Recheck exact bytes, including native models, after the entire read set.
+        # A same-size edit with restored mtime cannot authorize cache reuse.
+        probe.assert_unchanged()
+        summary = certificate["summary"]
+        if not isinstance(summary, dict) or summary.get("compositionId") != COMPOSITION_ID:
+            return None
+        return summary
+    except (OSError, ValueError, KeyError, TypeError, AttributeError):
+        return None
+
+
+def _write_validation_certificate(root: Path, summary: dict[str, Any]) -> None:
+    inputs = _PUBLICATION_INPUTS.get()
+    if inputs is None:
+        return
+    records = []
+    for path, signature in inputs.signatures.items():
+        if not path.is_relative_to(root):
+            continue  # Tool sources may live outside an isolated fixture root.
+        relative = path.relative_to(root).as_posix()
+        if relative.startswith("Tools/"):
+            continue  # Covered by the exact, fixed tool list below.
+        if signature is None:
+            digest = None
+        elif path in inputs.contents:
+            digest = hashlib.sha256(inputs.contents[path]).hexdigest()
+        elif path in inputs.binary_digests:
+            digest = inputs.binary_digests[path].hex()
+        else:
+            inputs.observe_binary(path)
+            digest = inputs.binary_digests[path].hex()
+        records.append({"path": relative, "sha256": digest})
+    output_records = [{"path": relative.as_posix(), "sha256": hashlib.sha256(content).hexdigest()}
+                      for relative, content in inputs.validated_outputs.items()]
+    if set(inputs.validated_outputs) != {ENCOUNTER_PATH, PRESENTATION_PATH}:
+        return
+    tool_records = [{"path": relative, "sha256": hashlib.sha256(
+        inputs.contents[(REPOSITORY_ROOT / relative).resolve()]).hexdigest()} for relative in _PROJECTION_TOOLS]
+    certificate = {"schema": "lostark.kouku-projection-validation", "formatVersion": 1,
+        "repositoryRoot": str(root), "python": sys.version, "tools": tool_records,
+        "inputs": sorted(records, key=lambda row: row["path"]), "outputs": output_records, "summary": summary}
+    certificate["checksum"] = _certificate_checksum(certificate)
+    destination = root / _VALIDATION_CERTIFICATE
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    descriptor, name = tempfile.mkstemp(prefix=".composition-validation.", dir=destination.parent)
+    temporary = Path(name)
+    try:
+        with os.fdopen(descriptor, "wb") as stream:
+            stream.write(serialize_json(certificate))
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.replace(temporary, destination)
+    finally:
+        temporary.unlink(missing_ok=True)
+
+
 def run(root: Path, mode: str) -> dict[str, Any]:
+    root = root.resolve()
+    if mode == "validate":
+        cached = _try_validation_certificate(root)
+        if cached is not None:
+            return cached
     # Publish performs its final guard inside the existing rollback transaction.
-    with _publication_session(final_check=False):
-        return _run(root, mode)
+    with _publication_session(final_check=False) as inputs:
+        _projection_tools(inputs)
+        summary = _run(root, mode)
+        try:
+            _write_validation_certificate(root, summary)
+        except OSError:
+            # A disposable optimization cannot turn a successful publication
+            # into a failure after its existing atomic transaction has committed.
+            pass
+        return summary
 
 
 def _run(root: Path, mode: str) -> dict[str, Any]:
@@ -5728,6 +5966,8 @@ def _run(root: Path, mode: str) -> dict[str, Any]:
         validate_outputs(root, outputs)
         if session is not None:
             session.assert_unchanged()
+    if session is not None:
+        session.validated_outputs = outputs
     root_diagnostics = list(session.root_motion_diagnostics.values()) if session is not None else []
     return {
         "compositionId": COMPOSITION_ID,

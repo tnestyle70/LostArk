@@ -20,6 +20,7 @@ public:
 	typedef struct tagUISpriteDesc : public CUIObject::UIOBJECT_DESC
 	{
 		wstring_t	strTextureTag;
+        wstring_t caption, captionFont;
         float2_t referenceResolution = {0.f, 0.f};
 	}UI_SPRITE_DESC;
 
@@ -33,6 +34,7 @@ public:
 	virtual HRESULT Initialize(void* pArg) override;
 	virtual void Late_Update(f32_t fTimeDelta) override;
 	virtual HRESULT Render() override;
+	virtual HRESULT Render_Group(RENDERGROUP group) override;
 
 public:
 	/* Repositions/resizes in place, e.g. a progress bar fill growing toward one edge each frame. */
@@ -75,6 +77,7 @@ public:
 	void Set_Visible(bool_t bVisible);
 	// Authored cinematic fades may cover the scene while product HUD/windows are suppressed.
 	void Set_CinematicOverlay(bool_t overlay) { m_bCinematicOverlay = overlay; }
+	void Set_ScenePresentation(bool_t enabled) { m_bScenePresentation = enabled; }
 	/* Takes an already-resolved SRV (the caller owns loading/caching -- CUI_Sprite stays a thin
 	render primitive, not a second texture cache) and takes over from the prototype-tag texture
 	bound at construction for as long as it's set. Pass nullptr to fall back to that original
@@ -103,6 +106,9 @@ private:
 	f32_t							m_fRotationDeg = 0.f;
 	bool_t							m_bVisible = true;
 	bool_t m_bCinematicOverlay = false;
+	bool_t m_bScenePresentation = false;
+	bool_t m_bScenePresentationFailed = false;
+    wstring_t m_Caption, m_CaptionFont;
 	ComPtr<ID3D11ShaderResourceView>	m_pOverrideTextureSRV;
 
 private:

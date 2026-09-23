@@ -2,9 +2,23 @@
 
 ## 1. 일반 밸런스 기준선
 
-Player, skill, damage, boss 기본 수치 정본은 `Data/Balance/*.json`이다. Visual Studio Client 프로젝트의
+Player, skill, damage, boss 기본 수치 정본은 `Data/Balance/*.json`이며 실제 전투 override는
+`Data/Balance/Profiles/Retail.balanceprofile.json`이다. 공용 editor는 field의 실제 소유 문서에
+저장하고 `Publish-BalanceRuntimeSet.ps1`은 기본 Retail을 Gameplay/World 양쪽에 전달한다.
+공식 Gameplay/World 개별 publisher도 Retail이 기본이며 명시적인 빈 프로필만 원본 비교에 사용한다.
+실행 중 room 쿨타임 선택은 별도 typed Server 정책이다. 새 room 기본 3초, 원래 0초 유지,
+Release 선택은 Retail 원값을 사용하며 현재 cooldown duration과 mode가 snapshot으로 복제된다.
+서버 전체 catalog나 다른 room의 정책은 변경하지 않는다.
+
+Visual Studio Client 프로젝트의
 `96.DataFiles/Balance` 필터는 이 원본을 직접 보여 줄 뿐 복사본을 만들지 않는다. Server 생성물인
 `Server/Bin/DataFiles/Gameplay/Gameplay.bootstrap`은 직접 편집하지 않는다.
+
+공용 숫자 편집은 `F1 -> Balance Test`의 `Save + Validate`를 사용한다. 변경 scalar만 stable
+row ID와 원래 값으로 최신 저장본에 병합하고, candidate provenance/gameplay 검증 뒤 bytes를
+재확인해 원자 저장한다. 이 경로는 Valtan pattern draft를 Reload하거나 live Apply하지 않는다.
+`Publish Server Data` 뒤 Server와 Client를 재시작해야 일반 수치 판정과 Client catalog 표시가
+같은 세대로 적용된다. Valtan 전용 typed authoring backend와 아래 Hot Reload 계약은 유지된다.
 
 ```text
 Data/Balance JSON
@@ -49,7 +63,7 @@ formatVersion 21이 후보 ordinal 그대로 소비한다. post-109 legacy rotat
 
 ## 3. 현재 활성화한 Hot Reload 범위
 
-Debug F1 Balance Tool의 Valtan candidate와 Valtan Boss Tool의 canonical sequence Save/Restart는 같은
+Debug Valtan authoring backend의 candidate와 Valtan Boss Tool의 canonical sequence Save/Restart는 같은
 `CValtanTuningCommandService`와 Server-authoritative Hot Reload 경로를 사용한다. 허용 범위는
 **모든 required Client presentation artifact가 해당 Client가 world entry 때 고정한 immutable presentation
 baseline과 byte-identical인 gameplay-only diff**다. PREPARE 중 repository disk를 다시 읽어 이미 로드된
@@ -135,8 +149,8 @@ escape hatch일 뿐, 손상되거나 모호한 pointer/journal을 추측해 덮�
 명시적으로 거부한다. canonical Product는 rotation v3/bootstrap v21이며, v18은 offline migration fixture일 뿐
 v21 Server의 live admission 대상이 아니다.
 
-실제 사용은 Server와 Debug Client를 사용자가 직접 시작한 뒤
-`Valtan Arena -> F1 -> Balance Tool -> Bosses -> Valtan`에서
+실제 사용은 Server와 Debug Client를 사용자가 직접 시작한 뒤 Valtan owning Tool의
+typed authoring 경로에서
 `Validate Draft -> Save Authoring -> Publish Candidate` 뒤 `Apply class: HOT_RELOAD`를 확인하고
 `Apply Hot Reload -> Play Server Pattern` 순서다. reset/restart class는 Apply 성공으로 기록하지 않는다.
 자동 검증과 animation/Effect의 사용자 육안 판정은 RESULT에서 분리한다.

@@ -414,7 +414,7 @@ Area Loader는 여섯 class binary를 전부 선로드하지 않는다. `CPlayab
 
 ### 디버그 툴 (ImGui / MapTool)
 
-`_DEBUG`에서 `CMainApp`이 전역 Developer Tools 허브를 소유하고 F1로 토글한다. F6는 gameplay camera의 follow/free mode를 전환한다. Free camera는 WASD 이동, Tab mouse-look 전환을 사용하며 그동안 `CPlayerController`는 물리 key/mouse edge만 동기화하고 gameplay command는 제출하지 않는다. follow 복귀 뒤 새 press부터 제출한다. F7은 Debug/Release 공통 Profiler 창만 열고 닫는다. F2~F5와 F8~F12를 레벨/도구 전환에 사용하지 않는다. ImGui가 입력을 가져갈 때는 `CGameInstance::SetInputBlocked()`로 DirectInput 폴링을 막되 Character Select Server gameplay는 text input이 아닐 때만 명시적 keyboard passthrough를 사용한다. Client 실행 인자와 `CMainApp` 내부 runtime harness를 검증 경로로 다시 만들지 않는다.
+`CMainApp`이 Debug/Release 공통 Developer Tools 허브를 소유하고 F1로 토글한다. Release 허브는 Balance Test, Profiler, Valtan/Kouku Boss Tool과 아레나 Load/Complete Play/Kill Boss를 제공하며 기본은 닫힘이다. F6는 gameplay camera의 follow/free mode를 전환한다. Free camera는 WASD 이동, Tab mouse-look 전환을 사용하며 그동안 `CPlayerController`는 물리 key/mouse edge만 동기화하고 gameplay command는 제출하지 않는다. follow 복귀 뒤 새 press부터 제출한다. F7은 Debug/Release 공통 Profiler 창만 열고 닫는다. F2~F5와 F8~F12를 레벨/도구 전환에 사용하지 않는다. ImGui가 입력을 가져갈 때는 `CGameInstance::SetInputBlocked()`로 DirectInput 폴링을 막되 Character Select Server gameplay는 text input이 아닐 때만 명시적 keyboard passthrough를 사용한다. Client 실행 인자와 `CMainApp` 내부 runtime harness를 검증 경로로 다시 만들지 않는다.
 발탄·쿠크 자유 카메라의 기본 속도는 20m/s다. F1 `Arena Camera / Player`에서 현재 아레나 속도를
 0.1~400m/s로 조절하며 값은 아레나별 process-session에서 유지한다. Shift는 현재 속도의 30배다.
 F6 자유 카메라에서 `Move Player`를 누르면 mouse-look을 끄고 지면 한 번 선택을 대기한다.
@@ -435,10 +435,11 @@ Client 메인 루프는 대기 중 Windows 메시지를 처리한 뒤 실제 fra
 Server fixed tick은 Client FPS와 독립이며, Profiler CPU frame time과 실제 프레임 간격은 구분한다.
 F1 허브의 Diagnostics는 profiler 활성화와 무관하게 smoothed FPS와 최근 frame time을 항상 표시하며,
 Profiler 체크박스는 별도의 CPU/GPU 상세 overlay와 capture를 활성화한다.
-Debug의 F1 → `Open Composition Profiler`와 Debug/Release 공통 F7은 같은 Engine profiler의 CPU 구간, GPU pass, 작업량과 긴 작업을
+Debug/Release의 F1 → `Open Composition Profiler`와 F7은 같은 Engine profiler의 CPU 구간, GPU pass, 작업량과 긴 작업을
 보여준다. `Capture`로 수집하고 `Save JSON`으로 `Client/Bin/ProfilerCaptures`에 v3 캡처를 비동기
 저장한다. `Save name`은 한글을 포함한 선택 이름이며 같은 이름으로 다시 저장해도 timestamp/frame/process/sequence가 다른 새 파일을 만든다.
-F7 첫 열기는 수집을 시작하며 창을 닫아도 수집은 계속된다. Capture/Reset과 상세 CPU 모드는 다음 프레임 경계에서 반영한다.
+F7은 창만 열고 닫으며 수집은 창의 Capture에서 명시적으로 시작한다. 창을 닫아도 이미 시작한 수집은 계속된다. Capture/Reset과 상세 CPU 모드는 다음 프레임 경계에서 반영한다.
+Release FPS는 기존 엔진 폰트로 항상 표시하며 컷씬·로딩·HUD 숨김과 무관하다. Map/Animation/Effect/Sequence 저작 창은 Debug 전용이고 Release의 docking/외부 viewport는 비활성이다. F1의 공용 테스트 도구는 명시적으로 열 때만 표시한다.
 기본은 pass 시간과 작업량을 수집하고 `Detailed per-draw CPU scopes`를 켜면 map draw별 상세 scope도 기록한다.
 각 JSON은 기본으로 Frames 선택 구간(120프레임)만 복사·저장하고 선택을 해제하면 최근 최대 1200프레임을 저장한다.
 세션 전체를 무제한 누적하지 않는다. v3 additive metadata는 저장 시점의 build/adapter/viewport/camera/render 설정이며
@@ -467,10 +468,24 @@ Debug x64는 외부 ImGui core/backend 여섯 소스와 `Profiler.cpp`, `Shader.
 해당 파일은 명령 재배치·local 변수 생략 때문에 stepping이 제한되고 `/RTC`와 Just My Code를
 사용하지 않는다. `_DEBUG`, Debug CRT, ImGui assert, D3D debug layer와 다른 소스의 Debug 설정은 유지한다.
 
-F1의 `Balance Tool`은 five-class/boss selector, stats·movement·skill/combo·pattern authoring과 Server
-snapshot/damage-event 진단을 제공한다. Save는 `Data/Balance`/`Data/Encounters` 원본만 교체하고 변경
-field의 provenance를 `PROJECT_TUNED`로 동기화한 뒤 Validate한다. `Publish Server Data` 뒤 Server를
-재시작해야 적용된다. Tool이 실행 중 Server 구조체나 Client HUD 값만 덮어쓰는 hot reload는 없다.
+F1의 `Balance Test`는 공용 Players/Skills/Damage/Bosses 숫자 scalar 편집과 Server HP/tick 진단을
+제공한다. `Save + Validate`는 stable ID/field의 이전값으로 최신 `Data/Balance` 저장본에 병합하고,
+candidate provenance/gameplay 검증 뒤 freshness 확인과 원자 교체를 수행한다. `Publish Server Data`
+뒤 Server와 Client를 재시작해야 적용된다. Valtan의 typed 패턴 저작 backend와 draft는 별도로 유지한다.
+`Data/Balance/Profiles/Retail.balanceprofile.json`이 가진 필드는 Retail 값으로 표시·저장하고 나머지는
+기존 Players/Skills/Damage/Bosses 원본의 해당 stable ID/field를 편집한다. 공식 Gameplay/World
+publisher와 `Publish-BalanceRuntimeSet.ps1`의 기본 profile은 Retail이다. 같은 서버 카탈로그를
+소비하는 모든 플레이어·레이드와 Debug/Release에 적용된다.
+`Debug (3s)`와 `Release (Retail)`는 현재 방의 서버 정책을 즉시 바꾸며
+새 방은 3초로 시작한다. 기존 0초 평타·콤보는 유지하고 일반 캐릭터 스킬의 양수 쿨타임만 3초로
+맞춘다. Release 버튼은 ALT_V 300초 등 게시된 Retail 정의를 사용한다. 진행 중 쿨타임은 원래
+시작 tick을 기준으로 다시 계산하며 이미 끝난 쿨타임은 되살리지 않는다. 다른 방과 특수 기믹
+스킬은 바꾸지 않는다. 버튼의 Debug/Release는 빌드 구성이 아니라 선택할 정책 이름이다.
+이 선택은 JSON 저장·Publish 없이 방 snapshot으로 전파되고, 숫자 편집·게시와 별도이다.
+현재 protocol 109는 Retail buff/shield, 방 cooldown 정책과 실제 duration tick, Kill Boss를 포함하므로
+Server와 Client를 함께 빌드·재시작한다.
+`Kill Current Gate Boss`는 공용 panel 및 F1 Valtan/KoukuSaydon Arena에서 같은 Server 명령을 사용하며
+현재 관문 primary boss의 HP를 0으로 만들고 정상 사망·clear·Encore 경로를 Debug/Release 모두 실행한다. 명령이 컷씬 대기시간이나 클리어 연출을 건너뛰지는 않는다.
 
 발탄 Pattern 저작 정본은 `Data/Valtan/Valtan.gameplay.json`과
 `Data/Valtan/Valtan.presentation.json`의 strict stable-ID join이다. gameplay source는 Server stage,

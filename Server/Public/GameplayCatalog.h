@@ -665,7 +665,8 @@ namespace LostArk::Server
 		it. Only an ENTER_AREA window whose regions ride a World Object world
 		track can offer this, because only that region keeps moving. */
 		GRAB_TO_WORLD_OBJECT,
-		MARIO_ENTER
+		MARIO_ENTER,
+		FIXED_DAMAGE
 	};
 
 	struct BOSS_LOGIC_CONTACT_MOTION final
@@ -692,18 +693,20 @@ namespace LostArk::Server
         LostArk::Shared::PLAYER_ATTACHMENT_SLOT eAttachmentSlot = LostArk::Shared::PLAYER_ATTACHMENT_SLOT::NONE;
         std::array<float, 3u> GripLocalOffset{}; // forwardM, upM, rightM; presentation only.
 		float fPushRangeM = 0.f;
+		float fPushHeightM = 0.f;
 		std::uint32_t iPushMs = 0u;
 		BOSS_LOGIC_PUSH_DIRECTION ePushDirection = BOSS_LOGIC_PUSH_DIRECTION::AWAY_FROM_BOSS;
 		bool bForcePush = false;
 		bool bPushCanLeaveArena = false;
 		bool bPushBallistic = false;
 		float fPushYawOffsetDegrees = 0.f;
+		std::uint32_t iDamageAmount = 0u; // Appended to preserve legacy aggregate initialization.
 	};
 
 	/* One authored judgement window of a KoukuSaydon pattern, pattern-relative
 	like the Workbench box it came from. Which value fields are meaningful is
 	decided by eKind; the rest stay at their zero defaults. */
-	enum class BOSS_LOGIC_REGION_ANCHOR : std::uint8_t { WORLD, BOSS_CURRENT, BOSS_SPAWN };
+	enum class BOSS_LOGIC_REGION_ANCHOR : std::uint8_t { WORLD, BOSS_CURRENT, BOSS_SPAWN, BOSS_START };
 	struct BOSS_LOGIC_WORLD_TRANSFORM_KEY final
 	{
 		std::uint32_t iTimeMs = 0u;
@@ -732,6 +735,12 @@ namespace LostArk::Server
 		bool bSector = false;
 		bool bReverseSector = false;
 		bool bCircle = false;
+		bool bCylinder = false;
+		bool bLinearMotion = false;
+		std::uint32_t iMotionStartMs = 0u, iMotionDurationMs = 0u;
+		std::uint32_t iAnchorCaptureStartMs = 0xffffffffu; // Unset uses the region window start.
+		std::array<float, 3u> EndPositionOffset{};
+		std::array<float, 3u> EndScale{ 1.f, 1.f, 1.f };
 		BOSS_LOGIC_WORLD_TRANSFORM_TRACK WorldTrack;
 		float fCenterX = 0.f, fCenterY = 0.f, fCenterZ = 0.f;
 		float fYawDegrees = 0.f;
@@ -773,6 +782,7 @@ namespace LostArk::Server
 		bool bInsideIsFail = false;
 		bool bRearmOnExit = false;
 		bool bRepeatAfterKnockback = false;
+		std::uint32_t iRepeatIntervalMs = 0u;
 		bool bEndsPatternOnSuccess = false;
 		// A scheduled Parent cut this child window short; close without a verdict.
 		bool bCancelAtEnd = false;
@@ -883,6 +893,7 @@ namespace LostArk::Server
 		std::vector<std::string> DirectionPatternIds;
 		std::string strCloneEndStageId;
 		std::vector<std::string> ProjectileVisualIds;
+		std::vector<LostArk::Shared::MECHANIC_CARD_SYMBOL> ProjectileCardSymbols;
 		std::string strContactVisualId;
 		float fProjectileMaxDistanceM = 0.f; // Zero keeps the lifetime-only travel bound.
 		float fProjectileSpeedMps = 0.f, fProjectileContactRadiusM = 0.f, fProjectileSpawnRadiusM = 0.f;
@@ -1195,6 +1206,13 @@ namespace LostArk::Server
 		std::uint32_t iSlot = 0u, iStartMs = 0u;
 		std::array<float, 3u> Position{};
 	};
+	struct KOUKU_RAID_FLOW_GROUP final
+	{
+		std::string strGroupId;
+		std::uint32_t iFirstEntry = 0u, iLastEntry = 0u;
+		std::optional<std::uint32_t> RepeatUntilHealthBars;
+		bool bTransitionAtGroupEnd = false;
+	};
 	struct KOUKU_RAID_GATE_DEFINITION final
 	{
 		std::string strEncounterId, strGateId, strFlowId, strSequenceCompositionId;
@@ -1203,7 +1221,36 @@ namespace LostArk::Server
 		std::string strLoopStartEntryId;
 		std::uint32_t iSequenceRevision = 0u, iIntroDurationMs = 0u, iClearDurationMs = 0u, iExpectedEntryCount = 0u;
 		std::vector<KOUKU_RAID_FLOW_ENTRY> Entries;
+		std::vector<KOUKU_RAID_FLOW_GROUP> EntryGroups;
 		std::vector<KOUKU_RAID_ARRIVAL> Arrivals;
+		std::uint32_t Resolve_ReadyEntry(std::uint32_t current, std::uint32_t hp,
+			std::uint32_t maximumHp, std::uint32_t maximumBars) const noexcept
+		{
+			// A burst can cross several thresholds during one mechanic. Skip only
+			// unstarted normal ranges, stopping at each intervening mechanic.
+			for (const auto& group : EntryGroups)
+				if (group.RepeatUntilHealthBars && current == group.iFirstEntry && maximumHp && maximumBars &&
+					static_cast<std::uint64_t>(hp) * maximumBars <= static_cast<std::uint64_t>(*group.RepeatUntilHealthBars) * maximumHp)
+					current = group.iLastEntry + 1u;
+			return current < Entries.size() ? current : static_cast<std::uint32_t>(Entries.size());
+		}
+		// Called only after the current occurrence (including dynamic followups) completes.
+		std::uint32_t Resolve_NextCompletedEntry(std::uint32_t current, std::uint32_t hp,
+			std::uint32_t maximumHp, std::uint32_t maximumBars) const noexcept
+		{
+			if (current >= Entries.size()) return static_cast<std::uint32_t>(Entries.size());
+			for (const auto& group : EntryGroups)
+			{
+				if (!group.RepeatUntilHealthBars || current < group.iFirstEntry || current > group.iLastEntry) continue;
+				const bool reached = maximumHp && maximumBars &&
+					static_cast<std::uint64_t>(hp) * maximumBars <= static_cast<std::uint64_t>(*group.RepeatUntilHealthBars) * maximumHp;
+				if (reached && (!group.bTransitionAtGroupEnd || current == group.iLastEntry))
+					return Resolve_ReadyEntry(group.iLastEntry + 1u, hp, maximumHp, maximumBars);
+				if (current == group.iLastEntry) return group.iFirstEntry;
+				break;
+			}
+			return Resolve_ReadyEntry(current + 1u, hp, maximumHp, maximumBars);
+		}
 	};
 
 	struct BOSS_PATTERN_BOSS_MOTION_KEY
@@ -1383,6 +1430,11 @@ namespace LostArk::Server
 		std::uint32_t iResourceRegenPerSecond = 0;
 		std::uint32_t iAttackPower = 0;
 		std::uint32_t iDefense = 0;
+		/* Chance in percent that a hit rolls critical, and what that hit is
+		worth against an ordinary one. A 0 chance never rolls, which is what a
+		bootstrap published without a balance profile carries. */
+		std::uint32_t iCriticalChancePercent = 0;
+		std::uint32_t iCriticalDamagePercent = 200;
 		float fMoveSpeed = 0.f;
 		/* Multiplies fMoveSpeed while the player holds a defensive stance. 1
 		leaves the class unchanged, which is what every class without one uses. */
@@ -1428,6 +1480,9 @@ namespace LostArk::Server
 	public:
 		bool Load();
 		bool Load_PublishedKoukuProduct(const CGameplayCatalog& activeGameplay);
+		// Validated in memory and pinned only by one Debug audition; never published.
+		bool Load_DraftKoukuProduct(const CGameplayCatalog& activeGameplay,
+			const std::string& rows, const LostArk::Shared::GameplayDataRevision& expectedRowsRevision);
 		/* Load one immutable candidate artifact by its exact canonical path. The
 		content hash is checked before parsing/commit; a successful load exposes
 		the verified parent manifest revision, not the child bootstrap hash. */
@@ -1486,6 +1541,53 @@ namespace LostArk::Server
 		EFTable_SkillEffect rate. Zero means the profile is unknown. */
 		std::uint32_t Find_DamageRatePercent(
 			const std::string& damageProfileId) const;
+
+		/* The original damage formula, read from the client's own tooltip macro:
+		   (attackPower * ValueF / 10000) + (ValueA + ValueB) / 2
+		so a skill carries an attack-power coefficient and a flat addend, summed
+		over the hits the tooltip shows. A profile published without the pair
+		keeps the older flat percent instead. */
+		struct DAMAGE_PROFILE final
+		{
+			std::uint32_t iRatePercent = 0;
+			std::uint32_t iAttackCoefficientBp = 0;
+			std::uint32_t iDamageAddend = 0;
+			/* ValueA and ValueB are the low and high end of one hit's range and the
+			formula above averages them, so a landed hit rolls inside that range
+			instead of always dealing the mean. Published as a whole percent of the
+			mean; 0 keeps the deterministic value. */
+			std::uint32_t iDamageSpreadPercent = 0;
+		};
+		[[nodiscard]] const DAMAGE_PROFILE* Find_DamageProfile(
+			const std::string& damageProfileId) const;
+
+		/* A buff one skill grants. EFTable_SkillBuff owns the duration and the
+		percent; the add_status_effect row owns who receives it. */
+		enum class SKILL_BUFF_TARGET : std::uint8_t { SELF, ALLY, ENEMY };
+		struct SKILL_BUFF_DEFINITION final
+		{
+			std::uint32_t iSkillId = 0;
+			std::uint32_t iBuffId = 0;
+			SKILL_BUFF_TARGET eTarget = SKILL_BUFF_TARGET::SELF;
+			std::uint32_t iDurationMs = 0;
+			std::int32_t iDamageDealtPercent = 0;
+			std::int32_t iDamageTakenPercent = 0;
+			std::int32_t iAttackSpeedPercent = 0;
+			/* Absorbs this share of the caster's maximum HP before its HP moves. */
+			std::uint32_t iShieldPercentOfMaxHp = 0;
+			/* Holds an ordinary monster still. A boss is immune, as it is in the
+			original, because its pattern owns its own clock. */
+			std::uint32_t iStunMs = 0;
+			/* While armed, one lethal hit leaves the holder at 1 HP and grants this
+			many milliseconds of invulnerability instead of killing it. */
+			std::uint32_t iDeathDenyInvulnerableMs = 0;
+		};
+		[[nodiscard]] const std::vector<SKILL_BUFF_DEFINITION>* Find_SkillBuffs(
+			std::uint32_t skillId) const;
+		[[nodiscard]] const SKILL_BUFF_DEFINITION* Find_SkillBuff(
+			std::uint32_t buffId) const;
+		static std::uint32_t Resolve_Damage(
+			std::uint32_t attackPower, const DAMAGE_PROFILE& profile);
 
 		/* The one place a rate becomes a number, so player skills and boss
 		patterns cannot drift apart. Always at least 1 for a known profile: a hit
@@ -1581,6 +1683,10 @@ namespace LostArk::Server
 			GUARDIAN_EMBER_PROFILE> m_EmberProfiles;
 		std::unordered_map<std::string, std::uint32_t>
 			m_DamageRatePercentByProfileId;
+		std::unordered_map<std::string, DAMAGE_PROFILE> m_DamageProfileById;
+		std::unordered_map<std::uint32_t, std::vector<SKILL_BUFF_DEFINITION>>
+			m_SkillBuffsBySkillId;
+		std::unordered_map<std::uint32_t, SKILL_BUFF_DEFINITION> m_SkillBuffById;
 		LostArk::Shared::GameplayDataRevision m_ActiveRevision{};
 		LostArk::Shared::GameplayDataRevision m_NonKoukuGameplayRevision{};
 		LostArk::Shared::GameplayDataRevision

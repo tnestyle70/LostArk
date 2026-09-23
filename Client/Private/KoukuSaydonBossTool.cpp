@@ -5,6 +5,8 @@
 #include "DataJson.h"
 #include "KoukuSaydonPatternAuditionService.h"
 #include "KoukuSaydonCompositionDocument.h"
+#include "KoukuSaydonActionWorkbench.h"
+#include "KoukuSaydonPresentationAssetService.h"
 #include "Level_KakulSaydonArena.h"
 #include "NetworkManager.h"
 #include "ProjectDataRoot.h"
@@ -456,13 +458,12 @@ void Client::CKoukuSaydonBossTool::Open()
 
 bool Client::CKoukuSaydonBossTool::Prepare_ServerPlay(const std::string_view gateId,
 	std::vector<std::string> targets, std::vector<std::string> patternIds,
-    std::vector<std::string> bundleIds, std::function<bool(std::string&)> submit, std::string& status)
+    std::vector<std::string> bundleIds, std::function<bool(std::string&)> submit, std::string& status,
+    std::shared_ptr<const KOUKU_SAYDON_DRAFT_PRODUCT> draft)
 {
 #ifndef _DEBUG
-	(void)gateId; (void)targets; (void)patternIds; (void)bundleIds; (void)submit;
-	status = m_strStatus = "KoukuSaydon Server Play is available only in Debug builds.";
-	return false;
-#else
+	if (draft) { status = m_strStatus = "Draft Server Play is available only in Debug builds."; return false; }
+#endif
 	auto& service = CKoukuSaydonPatternAuditionService::Get();
 	service.Update();
 	auto* arena = CLevel_KakulSaydonArena::Get_Active();
@@ -485,20 +486,21 @@ bool Client::CKoukuSaydonBossTool::Prepare_ServerPlay(const std::string_view gat
 	// Gate preparation reuses the Level's typed spawn/teleport approvals and
 	// map/light commit. Pattern selection alone never creates a local boss.
 	CKoukuSaydonCompositionDocument saved;
-	if (!saved.Reload(status) || saved.Get_LastGood().iRevision != m_iSourceRevision)
+	if (!draft && (!saved.Reload(status) || saved.Get_LastGood().iRevision != m_iSourceRevision))
 	{ status = m_strStatus = "Save and publish the selected Composition before preparing its Gate. " + status; return false; }
 	PLAY_PREPARATION pending;
 	pending.TargetPlacementIds = std::move(targets);
     pending.PatternIds = std::move(patternIds); pending.BundleIds = std::move(bundleIds);
     arena->Debug_ResetCompletePlayPreparation();
 	pending.GameplayRevision = revision;
-	pending.iSourceRevision = m_iSourceRevision;
+	pending.iSourceRevision = draft ? draft->iSourceRevision : m_iSourceRevision;
+    pending.Draft = std::move(draft);
 	pending.iWorldGeneration = network.Get_WorldInboundGeneration();
 	pending.iPreviousRequestSequence = service.Get_Snapshot().iRequestSequence;
 	pending.iGateIndex = gateIndex;
 	pending.iDeadlineMilliseconds = GetTickCount64() + 20000u;
 	pending.Submit = std::move(submit);
-	// Only a Debug approval from this world and raid epoch can be reused.
+	// Only a typed gate approval from this world and raid epoch can be reused.
 	// Full-raid Stop keeps the scene but removes its bosses; slow NPC
 	// construction after a real Debug approval still waits without respawning.
 	if (!arena->Is_DebugGateApprovedForServerPlay(gateIndex) && !arena->Debug_ActivateGate(gateIndex, status))
@@ -508,15 +510,47 @@ bool Client::CKoukuSaydonBossTool::Prepare_ServerPlay(const std::string_view gat
 	status = m_strStatus = "Preparing " + std::string(gateId) +
 		" on the Server; playback waits for approved placement and the complete Effect/WORLD dependency closure.";
 	return true;
+}
+
+bool Client::CKoukuSaydonBossTool::Play_Draft(KOUKU_DRAFT_PLAY_REQUEST request, std::string& status)
+{
+#ifndef _DEBUG
+    status = m_strStatus = "Draft Server Play is available only in Debug builds.";
+    return false;
+#else
+    const auto& network = CNetworkManager::Get();
+    if (!network.Is_Connected() || network.Get_WorldInboundGeneration() != request.iWorldGeneration)
+    { status = m_strStatus = "The connected world changed. Start draft playback again."; return false; }
+    if (request.TargetPlacementIds.empty() || request.strTargetId.empty() || !request.iSourceRevision)
+    { status = m_strStatus = "Draft playback has no validated selection."; return false; }
+    auto draft = CKoukuSaydonPresentationAssetService::Prepare_DraftProduct(
+        request.PresentationJson, request.EncounterJson, request.GameplayRows, request.iSourceRevision, status);
+    if (!draft) { m_strStatus = status; return false; }
+    const auto revision = network.Get_GameplayRevisionState().ServerActiveRevision;
+    const auto target = request.TargetPlacementIds.front();
+    const auto id = request.strTargetId, gate = request.strGateId;
+    const auto sourceRevision = request.iSourceRevision;
+    const bool bundle = request.bBundle;
+    const auto marioStage = CKoukuSaydonPatternAuditionService::Get().Get_MarioTestStage();
+    const auto marioSeed = CKoukuSaydonPatternAuditionService::Get().Get_MarioTestSeed();
+    return Prepare_ServerPlay(gate, std::move(request.TargetPlacementIds),
+        std::move(request.PatternIds), std::move(request.BundleIds),
+        [id, gate, target, revision, sourceRevision, bundle, marioStage, marioSeed,
+            rows = std::move(request.GameplayRows), draft](std::string& reason) {
+            if (!CKoukuSaydonPresentationAssetService::Stage_DraftProduct(draft, reason)) return false;
+            auto& service = CKoukuSaydonPatternAuditionService::Get();
+            service.Set_TargetBoss(target, CKoukuSaydonCompositionDocument::Resolve_BossArchetypeId(target));
+            service.Set_MarioTest(marioStage, marioSeed);
+            return bundle ? service.Play_DraftBundle(id, gate, revision, sourceRevision, rows, reason) :
+                service.Play_DraftSelected(id, revision, sourceRevision, rows, reason);
+        }, status, draft);
 #endif
 }
 
 bool Client::CKoukuSaydonBossTool::Cancel_PlayPreparation(std::string& status)
 {
 	if (!m_PlayPreparation) return false;
-#ifdef _DEBUG
     if (auto* arena = CLevel_KakulSaydonArena::Get_Active()) arena->Debug_ResetCompletePlayPreparation();
-#endif
 	m_PlayPreparation.reset();
 	status = m_strStatus = "Pending Server Play cancelled; the submitted gate placement may still finish.";
 	return true;
@@ -524,7 +558,6 @@ bool Client::CKoukuSaydonBossTool::Cancel_PlayPreparation(std::string& status)
 
 void Client::CKoukuSaydonBossTool::Update()
 {
-#ifdef _DEBUG
 	if (!m_PlayPreparation) return;
 	const auto fail = [&](const std::string& reason) {
         if (auto* arena = CLevel_KakulSaydonArena::Get_Active()) arena->Debug_ResetCompletePlayPreparation();
@@ -563,7 +596,7 @@ void Client::CKoukuSaydonBossTool::Update()
     bool resourcesReady = false;
     std::string preparationStatus;
     if (!arena->Debug_PrepareCompletePlayResources(pending.PatternIds, pending.BundleIds,
-        pending.iSourceRevision, resourcesReady, preparationStatus))
+        pending.iSourceRevision, resourcesReady, preparationStatus, false, pending.Draft))
     { fail(preparationStatus); return; }
     m_strStatus = std::move(preparationStatus);
     if (!resourcesReady) return;
@@ -572,15 +605,17 @@ void Client::CKoukuSaydonBossTool::Update()
 	CKoukuSaydonCompositionDocument saved;
 	CKoukuSaydonBossTool published;
 	std::string status;
-	if (!saved.Reload(status) || !published.Reload(status))
-	{ fail("saved or published data could not be rechecked. " + status); return; }
-	if (saved.Get_LastGood().iRevision != pending.iSourceRevision || published.Get_SourceRevision() != pending.iSourceRevision)
-	{ fail("the saved or published Composition changed. Start the updated Pattern explicitly."); return; }
+    if (!pending.Draft)
+    {
+        if (!saved.Reload(status) || !published.Reload(status))
+        { fail("saved or published data could not be rechecked. " + status); return; }
+        if (saved.Get_LastGood().iRevision != pending.iSourceRevision || published.Get_SourceRevision() != pending.iSourceRevision)
+        { fail("the saved or published Composition changed. Start the updated Pattern explicitly."); return; }
+    }
 	auto submit = std::move(m_PlayPreparation->Submit);
 	m_PlayPreparation.reset();
 	(void)submit(status);
 	m_strStatus = status;
-#endif
 }
 
 bool Client::CKoukuSaydonBossTool::Reload(std::string& outStatus)
@@ -844,7 +879,12 @@ bool Client::CKoukuSaydonBossTool::Play_PatternFlow(const std::string_view gateI
         status = m_strStatus = "Saved Pattern Flow changed after entry admission. Start the updated Pattern Flow explicitly.";
         return false;
     }
-	std::vector<KOUKU_SAYDON_PATTERN_FLOW_ENTRY> entries;
+    if (std::any_of(flow.EntryGroups.begin(), flow.EntryGroups.end(), [](const auto& group) { return group.RepeatUntilHealthBars.has_value(); }))
+    {
+        if (!m_CompletePlayAdmission) { status = m_strStatus = "HP Pattern Flow requires Server Complete Play admission."; return false; }
+        return m_CompletePlayAdmission(gateId, status);
+    }
+    std::vector<KOUKU_SAYDON_PATTERN_FLOW_ENTRY> entries;
 	for (const auto& source : flow.Entries)
 	{
 		KOUKU_SAYDON_PATTERN_FLOW_ENTRY entry;
@@ -950,8 +990,7 @@ bool Client::CKoukuSaydonBossTool::Render_SavedPatternFlow(const std::string_vie
 		return false;
 	}
 	ImGui::TextUnformatted(flow->strDisplayName.c_str());
-	for (std::size_t i = 0u; i < flow->Entries.size(); ++i)
-	{
+	const auto drawEntry = [&](const std::size_t i) {
 		const auto& entry = flow->Entries[i];
 		std::string error;
 		const std::string name = Describe_FlowEntry(entry, gateId, error);
@@ -961,6 +1000,25 @@ bool Client::CKoukuSaydonBossTool::Render_SavedPatternFlow(const std::string_vie
 		if (ImGui::Selectable(label.c_str(), selectionKind == kind && selectedId == entry.strTargetId))
 		{ selectionKind = kind; selectedId = entry.strTargetId; }
 		if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s\nWait after: %u ms\n%s", entry.strTargetId.c_str(), entry.iWaitAfterMs, error.c_str());
+	};
+	for (std::size_t i = 0u; i < flow->Entries.size();)
+	{
+		const auto group = std::find_if(flow->EntryGroups.begin(), flow->EntryGroups.end(),
+			[&](const auto& row) { return row.strStartEntryId == flow->Entries[i].strEntryId; });
+		if (group == flow->EntryGroups.end()) { drawEntry(i++); continue; }
+		const auto last = std::find_if(flow->Entries.begin() + i, flow->Entries.end(),
+			[&](const auto& row) { return row.strEntryId == group->strEndEntryId; });
+		if (last == flow->Entries.end()) { drawEntry(i++); continue; }
+		const std::size_t end = static_cast<std::size_t>(last - flow->Entries.begin()) + 1u;
+		const std::string label = group->strDisplayName + (group->RepeatUntilHealthBars ?
+			" [Repeat until " + std::to_string(*group->RepeatUntilHealthBars) + " HP bars]" : "") + "##" + group->strGroupId;
+		if (ImGui::TreeNodeEx(label.c_str(), ImGuiTreeNodeFlags_DefaultOpen))
+		{
+			if (group->RepeatUntilHealthBars) ImGui::TextDisabled("Transition after %s completes", group->bTransitionAtGroupEnd ? "the group" : "the current pattern");
+			while (i < end) drawEntry(i++);
+			ImGui::TreePop();
+		}
+		else i = end;
 	}
 	return true;
 }
@@ -1224,6 +1282,65 @@ void Client::CKoukuSaydonBossTool::Render_PatternFlowEditor(const std::string_vi
 		[&](const auto& entry) { return entry.strEntryId == m_strSelectedFlowEntryId; });
 	const std::size_t index = static_cast<std::size_t>(selected - flow->Entries.begin());
 	const bool hasSelection = index < flow->Entries.size();
+	if (ImGui::CollapsingHeader("Flow Groups / HP Repeats"))
+	{
+		ImGui::TextWrapped("Groups reference the saved rows below. HP repeats run through Server Complete Play and wait for the selected completion boundary.");
+		ImGui::BeginDisabled(!hasSelection || flow->EntryGroups.size() >= 64u);
+		if (ImGui::Button("Group Selected Row"))
+		{
+			KOUKU_SAYDON_COMPOSITION_FLOW_GROUP group;
+			std::uint32_t ordinal = 1u;
+			do { group.strGroupId = flow->strFlowId + ".group." + std::to_string(ordinal++); }
+			while (std::any_of(flow->EntryGroups.begin(), flow->EntryGroups.end(), [&](const auto& row) { return row.strGroupId == group.strGroupId; }));
+			group.strDisplayName = "Pattern Group";
+			group.strStartEntryId = group.strEndEntryId = flow->Entries[index].strEntryId;
+			flow->EntryGroups.push_back(std::move(group));
+			m_bFlowDirty = true;
+		}
+		ImGui::EndDisabled();
+		for (std::size_t groupIndex = 0u; groupIndex < flow->EntryGroups.size();)
+		{
+			auto& group = flow->EntryGroups[groupIndex];
+			ImGui::PushID(group.strGroupId.c_str());
+			bool remove = false;
+			if (ImGui::TreeNodeEx(group.strDisplayName.c_str(), ImGuiTreeNodeFlags_DefaultOpen))
+			{
+				char name[512]{};
+				std::copy_n(group.strDisplayName.begin(), (std::min)(group.strDisplayName.size(), sizeof(name) - 1u), name);
+				if (ImGui::InputText("Name", name, sizeof(name))) { group.strDisplayName = name; m_bFlowDirty = true; }
+				const auto chooseEntry = [&](const char* label, std::string& selectedId) {
+					if (!ImGui::BeginCombo(label, selectedId.c_str())) return;
+					for (const auto& entry : flow->Entries)
+					{
+						std::string error;
+						const auto title = Describe_FlowEntry(entry, gateId, error) + "##" + entry.strEntryId;
+						if (ImGui::Selectable(title.c_str(), entry.strEntryId == selectedId)) { selectedId = entry.strEntryId; m_bFlowDirty = true; }
+					}
+					ImGui::EndCombo();
+				};
+				chooseEntry("First row", group.strStartEntryId); chooseEntry("Last row", group.strEndEntryId);
+				bool repeat = group.RepeatUntilHealthBars.has_value();
+				if (ImGui::Checkbox("Repeat until HP bars", &repeat))
+				{ group.RepeatUntilHealthBars = repeat ? std::optional<std::uint32_t>(0u) : std::nullopt; group.bTransitionAtGroupEnd = false; m_bFlowDirty = true; }
+				if (repeat)
+				{
+					int bars = static_cast<int>(*group.RepeatUntilHealthBars);
+					if (ImGui::InputInt("HP bars", &bars)) { group.RepeatUntilHealthBars = static_cast<std::uint32_t>((std::clamp)(bars, 0, 1000)); m_bFlowDirty = true; }
+					if (ImGui::Checkbox("Finish entire group before transition", &group.bTransitionAtGroupEnd)) m_bFlowDirty = true;
+				}
+				remove = ImGui::Button("Remove Group");
+				ImGui::TreePop();
+			}
+			ImGui::PopID();
+			if (remove) { flow->EntryGroups.erase(flow->EntryGroups.begin() + groupIndex); m_bFlowDirty = true; }
+			else ++groupIndex;
+		}
+		// Store ranges in their visible entry order; validation still rejects overlap or reversed endpoints.
+		std::stable_sort(flow->EntryGroups.begin(), flow->EntryGroups.end(), [&](const auto& a, const auto& b) {
+			const auto position = [&](const auto& id) { return std::find_if(flow->Entries.begin(), flow->Entries.end(), [&](const auto& row) { return row.strEntryId == id; }); };
+			return position(a.strStartEntryId) < position(b.strStartEntryId);
+		});
+	}
 	ImGui::BeginDisabled(!hasSelection || index == 0u);
 	if (ImGui::Button("Up")) { std::swap(flow->Entries[index], flow->Entries[index - 1u]); m_bFlowDirty = true; }
 	ImGui::EndDisabled();

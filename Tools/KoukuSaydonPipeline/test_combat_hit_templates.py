@@ -3,6 +3,12 @@ from pathlib import Path
 from Tools.KoukuSaydonPipeline.combat_hit_templates import validate_hits,validate_logic_hits
 from Tools.KoukuSaydonPipeline import project_kouku_saydon_composition as p
 class AttackTemplateTests(unittest.TestCase):
+ def test_optional_flight_preserves_legacy_and_bounds_pair(self):
+  self.assertNotIn('riseHeightM',validate_hits([{'hitId':'legacy'}])[0])
+  row={'hitId':'rise','riseHeightM':3,'pushMs':1200}
+  self.assertEqual(validate_hits([row])[0]['pushMs'],1200)
+  for fields in ({'riseHeightM':3},{'pushMs':1200},{'riseHeightM':101,'pushMs':1200},{'riseHeightM':3,'pushMs':99},{'riseHeightM':True,'pushMs':1200}):
+   with self.subTest(fields=fields),self.assertRaises(ValueError):validate_hits([{'hitId':'bad',**fields}])
  def test_defaults_and_no_input_mutation(self):
   row={'hitId':'attack.1'}; before=copy.deepcopy(row); self.assertEqual(validate_hits([row])[0]['damagePercent'],10);self.assertEqual(row,before)
  def test_primitive_and_damage_policies(self):
@@ -53,4 +59,3 @@ class HollowColliderTests(unittest.TestCase):
   doc,*_=self.fixture();r=doc['presentationResources'][0];r.pop('innerRadiusM')
   self.assertNotIn('innerRadiusM',p._project_presentation_resource(r))
 if __name__=='__main__':unittest.main()
-

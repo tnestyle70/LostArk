@@ -19,12 +19,26 @@ namespace Client
 {
 	enum class ANIMATION_BONE_TARGET : uint8_t;
 	struct ANIMATION_MODEL_TARGET_VIEW;
+    // One immutable click snapshot. Outputs are temporary; neither Save nor Publish is performed.
+    struct KOUKU_DRAFT_PLAY_REQUEST final
+    {
+        std::string strTargetId, strGateId;
+        bool bBundle = false;
+        std::uint32_t iSourceRevision = 0u;
+        std::uint64_t iDraftGeneration = 0u, iWorldGeneration = 0u;
+        std::vector<std::string> TargetPlacementIds, PatternIds, BundleIds;
+        std::string GameplayRows, PresentationJson, EncounterJson;
+    };
 	/* One-shot transport command for the local composition preview. MainApp
 	   consumes it and forwards it to the real-CModel preview owner. */
 	struct KOUKU_COLLIDER_DAMAGE_SETTINGS final
 	{
 		int32_t iPercent = 10;
+		bool_t bFixedDamage = false;
+		int32_t iDamageAmount = 500;
 		bool_t bRearmOnExit = false, bRepeatAfterKnockback = false;
+		std::uint32_t iRepeatIntervalMs = 0u;
+		double fPushHeightM = 0.0;
 		double fPushRangeM = 0.0;
 		std::uint32_t iPushMs = 0u;
 		std::string strPushDirection = "AWAY_FROM_BOSS";
@@ -165,7 +179,7 @@ namespace Client
 		void Render_WorkbenchPane(COMPOSITION_WORKBENCH_PANE pane) override;
 		void End_WorkbenchFrame() override;
 		COMPOSITION_WORKBENCH_VIEW_REQUEST Consume_WorkbenchViewRequest() override;
-		void Tick_Background() { Poll_PublishProcess(); }
+		void Tick_Background() { Poll_PublishProcess(); Poll_DraftPlayProcess(); }
 		bool_t Consume_ProductInventoryRefreshRequest() {
 			const bool_t requested = m_bProductInventoryRefreshRequested;
 			m_bProductInventoryRefreshRequested = false;
@@ -275,6 +289,9 @@ namespace Client
 			std::string_view occurrenceId, std::string& outStatus);
 		bool_t Select_PresentationBoxById(std::string_view patternId,
 			std::string_view occurrenceId, std::string& outStatus);
+		// Focus one Collider for tuning while retaining its saved group membership.
+		bool_t Select_ColliderGroupMemberById(std::string_view patternId,
+			std::string_view occurrenceId, std::string& outStatus);
 		bool_t Consume_AnimationPreviewRequest(
 			KOUKU_SAYDON_COMPOSITION_ANIMATION_OCCURRENCE& outRequest);
 		// Play restarts at the end; paused scrubbing keeps the exact endpoint pose.
@@ -313,13 +330,15 @@ namespace Client
 		bool_t Consume_BundlePreviewRequest(std::string& bundleId, std::uint32_t& clockMs, bool_t& paused);
 		bool_t Consume_BundleServerPlayRequest(std::string& bundleId, std::uint32_t& revision);
 		bool_t Request_SelectedServerPlay(std::string& outStatus);
+        bool_t Consume_DraftServerPlayRequest(KOUKU_DRAFT_PLAY_REQUEST& request);
+        void Cancel_DraftPlayPreparation();
 		bool_t Select_BundleById(std::string_view bundleId, std::string& status);
 		bool_t Consume_ServerPlayRequest(
 			std::string& outPatternId,
 			std::uint32_t& outSourceRevision);
 		void Set_ServerPlayPreparationPending(bool_t pending, std::string_view status = {})
 		{
-			m_bServerPlayPreparationPending = pending;
+			m_bServerPlayPreparationPending = pending || m_hDraftPlayProcess != nullptr || m_bDraftPlayReady;
 			if (!status.empty()) m_strStatus = status;
 		}
 		bool_t Consume_ServerPlayCancelRequest()
@@ -814,6 +833,7 @@ namespace Client
 			bool_t grouped, std::string& outStatus);
 		bool_t Render_EffectGroupDetails(const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern);
 		bool_t Render_ColliderGroupDetails(const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern);
+		void Render_ColliderBoxDetails(const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern);
 		void Render_PresentationBoxDetails(const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern);
 		bool_t Create_PresentationResource(const KOUKU_SAYDON_COMPOSITION_PRESENTATION_RESOURCE& source,
 			std::string_view displayName, std::string& outStatus);
@@ -848,6 +868,9 @@ namespace Client
 		void Render_Details();
 		void Render_ReloadConfirmation();
 		void Poll_PublishProcess();
+        bool_t Start_DraftPlayPreparation(KOUKU_DRAFT_PLAY_REQUEST request,
+            const KOUKU_SAYDON_COMPOSITION_DOCUMENT& snapshot, std::string& status);
+        void Poll_DraftPlayProcess();
 
 	private:
 		const bool m_bSequenceWorkspace;
@@ -977,6 +1000,7 @@ namespace Client
 		std::string m_strColliderExecutionType = "DURATION";
 		std::string m_strColliderExecutionEditId;
 		std::string m_strColliderLogicDefinitionId;
+		int m_iColliderDetailSection = 0;
 		KOUKU_COLLIDER_DAMAGE_SETTINGS m_ColliderDamageSettings;
 		bool_t m_bColliderDamageMode = false;
 		bool_t m_bColliderDetachDamage = false;
@@ -1101,6 +1125,11 @@ namespace Client
 		std::string m_strStatus;
 		std::filesystem::path m_PublishDiagnosticPath;
 		void* m_hPublishProcess = nullptr;
+        void* m_hDraftPlayProcess = nullptr;
+        std::filesystem::path m_DraftPlayDirectory;
+        KOUKU_DRAFT_PLAY_REQUEST m_DraftPlayRequest;
+        bool_t m_bDraftPlayReady = false, m_bDraftPlayCancelled = false;
+        std::uint64_t m_iServerFollowDraftGeneration = 0u;
 		std::uint64_t m_iPublishStartedAtMilliseconds = 0u;
 		std::string m_strPendingServerPlayPatternId;
 		std::uint32_t m_iPendingServerPlaySourceRevision = 0u;

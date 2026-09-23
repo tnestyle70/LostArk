@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import math
+import copy
 from typing import Any
 
 
@@ -38,6 +39,9 @@ def project_raid_gates(action: dict[str, Any], sequence: dict[str, Any]) -> list
         loop_start = flow.get("loopStartEntryId", "")
         if not isinstance(loop_start, str) or (loop_start and loop_start not in {row["entryId"] for row in entries}):
             raise ValueError(f"{gate} flow loop start is not a saved entry")
+        if "entryGroups" in flow:
+            from project_kouku_saydon_composition import validate_flow_groups
+            validate_flow_groups(flow)
         arrivals = []
         intro_ready = gate == "BINGO"
         durations = {}
@@ -79,5 +83,6 @@ def project_raid_gates(action: dict[str, Any], sequence: dict[str, Any]) -> list
                        "clearPatternId": clear["patternId"] if clear else "", "clearDurationMs": durations["CLEAR"],
                        "primaryBossPlacementId": primary, "entries": entries, "arrivals": arrivals,
                        "entrySequenceInstanceId": next(iter(entry_sequences), ""),
-                       **({"loopStartEntryId": loop_start} if loop_start else {})})
+                       **({"loopStartEntryId": loop_start} if loop_start else {}),
+                       **({"entryGroups": copy.deepcopy(flow["entryGroups"])} if "entryGroups" in flow else {})})
     return result

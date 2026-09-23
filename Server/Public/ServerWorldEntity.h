@@ -456,6 +456,11 @@ namespace LostArk::Server
 		PART_BREAK stage; the damage path never moves the boss itself. */
 		bool bPendingArmorBreakReaction = false;
 		std::uint32_t iActionStartTick = 0;
+		/* Debuffs a player skill put on this entity, such as the damage amplify
+		the Guardian Knight's dragon form marks a boss with. */
+		std::vector<LostArk::Shared::ACTIVE_BUFF> ActiveBuffs;
+		/* An ordinary monster holds still until this tick. Bosses never carry it. */
+		std::uint32_t iStunEndTick = 0;
 		std::uint32_t iCurrentHp = 1;
 		std::uint32_t iMaximumHp = 1;
 		std::uint32_t iMaximumHealthBars = 1;

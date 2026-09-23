@@ -6,6 +6,7 @@
 #include "ServerCollisionSystem.h"
 #include "ServerCombatHitRuntime.h"
 #include "ServerTriggerSystem.h"
+#include "Gameplay/WorldCollisionContract.h"
 #include "WorldBootstrap.h"
 #include "WorldDestructionBootstrapContractTests.h"
 #include <Windows.h>
@@ -40,6 +41,98 @@ int LostArk::Server::CServerGameplayContractRunner::Run_DebugTeleport(TESTS& tes
 {
 	Run_KoukuMarioEntryContact(tests);
 	Run_KoukuRaidIntegration(tests);
+    {
+        auto room = std::make_unique<CGameRoom>(WORLD_ID::KAKULSAYDON_ARENA);
+        room->m_Players.clear(); room->m_PlayerIdBySessionId.clear(); room->m_iServerTick = 120u;
+        tests.Require(room->m_eCooldownMode == COOLDOWN_MODE::DEBUG_THREE_SECONDS,
+            "Every room starts with the 3s policy in Debug and Release builds");
+        const auto* awakening = room->m_GameplayCatalog.Active().Find_Skill(34630u);
+        const auto* basic = room->m_GameplayCatalog.Active().Find_Skill(34010u);
+        tests.Require(awakening && basic && awakening->iCooldownMs == 300000u && basic->iCooldownMs == 0u,
+            "Published Retail awakening and basic attack timers are admitted");
+        if (awakening && basic)
+        {
+            tests.Require(CPlayerSkillSystem::Resolve_CooldownTicks(*awakening, COOLDOWN_MODE::DEBUG_THREE_SECONDS) == 90u &&
+                CPlayerSkillSystem::Resolve_CooldownTicks(*awakening, COOLDOWN_MODE::RELEASE_AUTHORED) == 9000u &&
+                CPlayerSkillSystem::Resolve_CooldownTicks(*basic, COOLDOWN_MODE::DEBUG_THREE_SECONDS) == 0u,
+                "Room policy selects 3s or Retail 300s without adding a basic-attack cooldown");
+            for (std::uint32_t id = 1u; id <= 4u; ++id)
+            {
+                SERVER_PLAYER player{}; player.iPlayerId = id; player.iSessionId = 90u + id;
+                player.CooldownEndTickBySkillId[34630u] = 190u;
+                player.CooldownDurationTicksBySkillId[34630u] = 90u;
+                player.CooldownEndTickBySkillId[34060u] = 110u;
+                player.CooldownDurationTicksBySkillId[34060u] = 90u;
+                player.CooldownEndTickBySkillId[999999u] = 999u;
+                room->m_PlayerIdBySessionId.emplace(player.iSessionId, id);
+                room->m_Players.emplace(id, std::move(player));
+            }
+            C2S_SET_COOLDOWN_MODE request{ 1u, WORLD_ID::KAKULSAYDON_ARENA, COOLDOWN_MODE::RELEASE_AUTHORED };
+            tests.Require(room->Apply_SetCooldownMode(999u, request) == SET_COOLDOWN_MODE_RESULT::INVALID_PLAYER,
+                "Cooldown policy rejects a session outside the room");
+            request.eWorldId = WORLD_ID::BERN;
+            tests.Require(room->Apply_SetCooldownMode(91u, request) == SET_COOLDOWN_MODE_RESULT::WRONG_WORLD,
+                "Cooldown policy rejects stale world requests");
+            request.eWorldId = WORLD_ID::KAKULSAYDON_ARENA;
+            tests.Require(room->Apply_SetCooldownMode(91u, request) == SET_COOLDOWN_MODE_RESULT::ACCEPTED &&
+                room->m_eCooldownMode == COOLDOWN_MODE::RELEASE_AUTHORED,
+                "Any admitted party member can select the shared room policy");
+            bool allCorrect = true;
+            for (const auto& [id, player] : room->m_Players)
+                allCorrect &= player.CooldownEndTickBySkillId.at(34630u) == 9100u &&
+                    player.CooldownDurationTicksBySkillId.at(34630u) == 9000u &&
+                    player.CooldownEndTickBySkillId.at(34060u) == 110u && player.CooldownEndTickBySkillId.at(999999u) == 999u;
+            tests.Require(allCorrect, "Policy updates four active cooldowns from their cast start and preserves expired and gimmick timers");
+            request.eMode = COOLDOWN_MODE::DEBUG_THREE_SECONDS;
+            tests.Require(room->Apply_SetCooldownMode(91u, request) == SET_COOLDOWN_MODE_RESULT::STALE_REQUEST &&
+                room->m_eCooldownMode == COOLDOWN_MODE::RELEASE_AUTHORED, "Replay cannot change a room cooldown policy");
+            request.iRequestSequence = 2u;
+            tests.Require(room->Apply_SetCooldownMode(91u, request) == SET_COOLDOWN_MODE_RESULT::ACCEPTED &&
+                room->m_Players.at(1u).CooldownEndTickBySkillId.at(34630u) == 190u,
+                "Returning to 3s preserves the original cast clock");
+        }
+    }
+
+    {
+        auto room = std::make_unique<CGameRoom>(WORLD_ID::KAKULSAYDON_ARENA);
+        room->m_WorldEntities.clear();
+        SERVER_PLAYER player{}; player.iPlayerId = 91u; player.iSessionId = 92u;
+        room->m_Players.emplace(player.iPlayerId, player);
+        room->m_PlayerIdBySessionId.emplace(player.iSessionId, player.iPlayerId);
+        room->m_GateProgress.iCurrentGate = 2u;
+        const auto add = [&](const char* placement, const char* archetype, std::uint32_t entityId, bool dependent = false) {
+            SERVER_WORLD_ENTITY boss{}; boss.eKind = WORLD_BOOTSTRAP_KIND::BOSS;
+            boss.strPlacementId = placement; boss.strArchetypeId = archetype;
+            boss.iCurrentHp = 100u; boss.iNetEntityId = entityId;
+            boss.iOwnerBossNetEntityId = dependent ? 41u : INVALID_NET_ENTITY_ID;
+            room->m_WorldEntities.push_back(std::move(boss));
+        };
+        add("boss.kakulsaydon.g2.big-saydon", "BOSS_KAKULSAYDON_G2_BIG_SAYDON", 41u);
+        add("boss.kakulsaydon.g2.kouku", "BOSS_KAKULSAYDON_G2_KOUKU", 42u);
+        add("boss.kakulsaydon.g3.saydon", "BOSS_KAKULSAYDON_G3_SAYDON", 43u);
+        add("summon.test", "BOSS_KAKULSAYDON_G2_KOUKU", 44u, true);
+        C2S_DEBUG_KILL_GATE_BOSSES request{1u, WORLD_ID::KAKULSAYDON_ARENA, "BOSS_KAKULSAYDON_G2_KOUKU"};
+        std::uint8_t count = 99u;
+        tests.Require(room->Apply_DebugKillGateBosses(999u, request, count) == DEBUG_KILL_GATE_BOSSES_RESULT::INVALID_PLAYER && !count,
+            "Kill Gate Boss rejects an unauthenticated room player");
+        request.eWorldId = WORLD_ID::VALTAN_ARENA;
+        tests.Require(room->Apply_DebugKillGateBosses(92u, request, count) == DEBUG_KILL_GATE_BOSSES_RESULT::WRONG_WORLD,
+            "Kill Gate Boss rejects another world");
+        request.eWorldId = WORLD_ID::KAKULSAYDON_ARENA;
+        tests.Require(room->Apply_DebugKillGateBosses(92u, request, count) == DEBUG_KILL_GATE_BOSSES_RESULT::ACCEPTED && count == 2u &&
+            !room->m_WorldEntities[0].iCurrentHp && !room->m_WorldEntities[1].iCurrentHp &&
+            room->m_WorldEntities[0].eAction == SERVER_ENTITY_ACTION::DEAD &&
+            room->m_WorldEntities[2].iCurrentHp == 100u && room->m_WorldEntities[3].iCurrentHp == 100u,
+            "Kill Gate Boss kills both G2 primaries and preserves another gate and dependent summons");
+        tests.Require(room->m_GateProgress.iCurrentGate == 2u && !room->m_GateProgress.iClearedMask,
+            "Kill Gate Boss does not grant a clear before the normal death consumer");
+        room->m_GateProgress.iCurrentGate = 3u;
+        tests.Require(room->Apply_DebugKillGateBosses(92u, request, count) == DEBUG_KILL_GATE_BOSSES_RESULT::STALE_REQUEST &&
+            room->m_WorldEntities[2].iCurrentHp == 100u, "Replayed Kill Gate Boss cannot kill the next gate");
+        request.iRequestSequence = 2u;
+        tests.Require(room->Apply_DebugKillGateBosses(92u, request, count) == DEBUG_KILL_GATE_BOSSES_RESULT::STALE_BOSS &&
+            room->m_WorldEntities[2].iCurrentHp == 100u, "A queued stale HUD request cannot kill a new gate");
+    }
 	{
 		/* Bern square holes: the song lock is the song plus the Client's black hold, and the
 		   Server lands the player on the world's authored squarehole.<id> row inside that hold.
@@ -174,10 +267,14 @@ int LostArk::Server::CServerGameplayContractRunner::Run_DebugTeleport(TESTS& tes
 			request.fPositionZ = ground.z;
 			auto verdict = room->Apply_DebugTeleportToPosition(player, request);
 #ifndef _DEBUG
-			tests.Require(verdict.eResult == DEBUG_TELEPORT_RESULT::REJECTED_DISABLED &&
-				player.hasMoveGoal && player.iCurrentSkillId == 34010u,
-				"Release refuses teleport without changing player actions");
-#else
+			if (world == WORLD_ID::BERN)
+			{
+				tests.Require(verdict.eResult == DEBUG_TELEPORT_RESULT::REJECTED_DISABLED &&
+					player.hasMoveGoal && player.iCurrentSkillId == 34010u,
+					"Release keeps non-arena teleport disabled without changing player actions");
+				continue;
+			}
+#endif
 			tests.Require(verdict.eResult == DEBUG_TELEPORT_RESULT::REJECTED_HEIGHT &&
 				player.hasMoveGoal && player.MovePath.size() == 1u &&
 				player.iCurrentSkillId == 34010u && player.fPositionX == ground.x + 10.f,
@@ -248,9 +345,7 @@ int LostArk::Server::CServerGameplayContractRunner::Run_DebugTeleport(TESTS& tes
 				tests.Require(verdict.eResult == DEBUG_TELEPORT_RESULT::REJECTED_WRONG_WORLD && room->m_WorldEntities.size() == previousEntityCount &&
 					player.fPositionX == ground.x + 2.f, "Kouku arena start cannot reset another world");
 			}
-#endif
 		}
-#ifdef _DEBUG
 		{
 			auto room = std::make_unique<CGameRoom>(WORLD_ID::KAKULSAYDON_ARENA);
 			const auto* spawn = room->Find_Placement("player.spawn.kakul.party01");
@@ -299,11 +394,30 @@ int LostArk::Server::CServerGameplayContractRunner::Run_DebugTeleport(TESTS& tes
 				room->m_WorldEntities.push_back(esther);
 				const auto& placements = room->m_WorldBootstrap.Get_Placements();
 				const auto once = std::find_if(placements.begin(), placements.end(), [](const auto& value) {
-					return value.isEnabled && value.isTriggerOnce && value.TriggerActions.size() == 1u &&
+					return value.isEnabled && value.isTriggerOnce && !value.requiresInteract && value.TriggerActions.size() == 1u &&
 						value.TriggerActions.front().eKind == WORLD_TRIGGER_ACTION_KIND::PLAY_SEQUENCE; });
 				tests.Require(once != placements.end(), "Arena start fixture has an authored once-only sequence trigger");
 				std::vector<SERVER_WORLD_TRANSFER_REQUEST> transfers;
-				const auto acceptSequence = [](WORLD_TRIGGER_ACTION_KIND, const std::string&) { return true; };
+				// Drive the same overlap admission that Product uses. Generic WORLD
+				// Debug_Activate is deliberately unavailable in a Release server.
+				const auto enterTrigger = [&](const WORLD_BOOTSTRAP_PLACEMENT& target, const std::uint32_t tick) {
+					std::map<PLAYER_ID, SERVER_PLAYER> probes;
+					SERVER_PLAYER probe{}; probe.iPlayerId = 123u; probe.iNetEntityId = 456u; probe.iCurrentHp = 100u;
+					probe.fPositionX = target.fPositionX;
+					probe.fPositionY = target.fPositionY - WorldCollision::PLAYER_CENTER_OFFSET_Y;
+					probe.fPositionZ = target.fPositionZ;
+					probes.emplace(probe.iPlayerId, probe);
+					// Leaving removes only the contact edge, never a consumed once latch.
+					room->m_ServerTriggerSystem.Remove_Player(probe.iPlayerId);
+					std::vector<SERVER_INTERACT_PROMPT_EDGE> prompts;
+					std::uint32_t activations = 0u;
+					room->m_ServerTriggerSystem.Evaluate_Entries(probes, tick, transfers,
+						[&](const WORLD_TRIGGER_ACTION_KIND kind, const std::string& targetId) {
+							if (kind != target.TriggerActions.front().eKind || targetId != target.TriggerActions.front().strTargetId) return false;
+							++activations; return true;
+						}, prompts);
+					return activations;
+				};
 				/* Product rooms fire every trigger again for everyone, so this fixture opts
 				   back into the authored latch to keep verifying that arena start rearms it. */
 				room->m_ServerTriggerSystem.Set_HonourTriggerOnce(true);
@@ -312,9 +426,9 @@ int LostArk::Server::CServerGameplayContractRunner::Run_DebugTeleport(TESTS& tes
 					"Arena start fixture reinitializes its triggers with the authored latch");
 				if (once != placements.end())
 				{
-					tests.Require(room->m_ServerTriggerSystem.Debug_Activate(123u, once->strPlacementId, false, room->m_Players, 1u, transfers, acceptSequence) == DEBUG_WORLD_PLAYBACK_RESULT::ACCEPTED,
+					tests.Require(enterTrigger(*once, 1u) == 1u,
 						"Authored entry trigger fires before reset");
-					tests.Require(room->m_ServerTriggerSystem.Debug_Activate(123u, once->strPlacementId, false, room->m_Players, 2u, transfers, acceptSequence) == DEBUG_WORLD_PLAYBACK_RESULT::ALREADY_USED,
+					tests.Require(enterTrigger(*once, 2u) == 0u,
 						"Once trigger is spent before arena reset");
 				}
 				player.iCurrentHp = 0u;
@@ -334,24 +448,80 @@ int LostArk::Server::CServerGameplayContractRunner::Run_DebugTeleport(TESTS& tes
 				tests.Require(std::any_of(room->m_WorldEntities.begin(), room->m_WorldEntities.end(), [](const auto& entity) { return entity.iNetEntityId == 987651u; }) &&
 					std::any_of(room->m_WorldEntities.begin(), room->m_WorldEntities.end(), [](const auto& entity) { return entity.iNetEntityId == 987652u; }),
 					"Arena start preserves unrelated NPC and Esther entities");
+				if (once != placements.end())
+					tests.Require(enterTrigger(*once, 3u) == 1u,
+						"Arena reset rearms the consumed sequence through Product overlap before fixture reinitialization");
+				const auto* book = room->Find_Placement("Book1_Monsters");
+				tests.Require(book && book->isEnabled && !book->requiresInteract && book->TriggerActions.size() == 1u,
+					"Arena reset fixture resolves the actual Book1 overlap trigger");
+				if (book && book->TriggerActions.size() == 1u)
+				{
+#ifdef _DEBUG
+					tests.Require(enterTrigger(*book, 3u) == 0u,
+						"Arena reset preserves Debug F1 wave suppression");
+#else
+					tests.Require(enterTrigger(*book, 3u) == 1u,
+						"Arena reset preserves the Release Kouku Book auto-entry world rule");
+#endif
+				}
 				// The product reset restores repeatable triggers; this duplicate-request fixture
 				// reloads its deliberate once-only policy before consuming the fresh latch.
 				room->m_ServerTriggerSystem.Set_HonourTriggerOnce(true);
 				tests.Require(room->m_ServerTriggerSystem.Initialize(placements, latchStatus),
 					"Duplicate reset fixture explicitly restores its authored once-only policy");
 				if (once != placements.end())
-					tests.Require(room->m_ServerTriggerSystem.Debug_Activate(123u, once->strPlacementId, false, room->m_Players, 3u, transfers, acceptSequence) == DEBUG_WORLD_PLAYBACK_RESULT::ACCEPTED,
+					tests.Require(enterTrigger(*once, 3u) == 1u,
 						"Arena start rearms the actual once-only entry sequence trigger");
 				player.fPositionX += 2.f;
 				verdict = room->Apply_DebugReturnToKoukuStart(player, 2u);
 				tests.Require(verdict.eResult == DEBUG_TELEPORT_RESULT::ACCEPTED && player.fPositionX == start.x + 2.f,
 					"Duplicate arena-start request replays approval without a second reset");
 				if (once != placements.end())
-					tests.Require(room->m_ServerTriggerSystem.Debug_Activate(123u, once->strPlacementId, false, room->m_Players, 4u, transfers, acceptSequence) == DEBUG_WORLD_PLAYBACK_RESULT::ALREADY_USED,
+					tests.Require(enterTrigger(*once, 4u) == 0u,
 						"Duplicate arena-start request does not rearm a newly consumed trigger");
 			}
 		}
-#endif
+		{
+			auto room = std::make_unique<CGameRoom>(WORLD_ID::KAKULSAYDON_ARENA);
+			const auto* center = room->Find_Placement("stage.kakul.sl03");
+			SERVER_NAV_POINT ground{};
+			const bool ready = room->Is_Ready() && center && room->m_ServerNavigation.Project_Point(
+				center->fPositionX, center->fPositionZ, ground, center->fPositionY);
+			tests.Require(ready, "Casino fall loads its published Gate 2 safe center");
+			if (ready)
+			{
+				auto& player = room->m_Players[123u];
+				player.iPlayerId = 123u; player.iNetEntityId = 456u; player.iSessionId = 789u;
+				room->m_PlayerIdBySessionId[789u] = 123u;
+				player.eCharacterClass = CHARACTER_CLASS_ID::LANCE_MASTER;
+				player.iCurrentHp = player.iMaximumHp = 100u;
+				bool fell = false;
+				for (const float sign : {-1.f, 1.f})
+				{
+					SERVER_NAV_POINT previous = ground;
+					for (float d = .1f; d < 60.f && !fell; d += .1f)
+					{
+						SERVER_NAV_POINT next{};
+						const float x = ground.x + sign * d;
+						if (room->m_ServerNavigation.Sample_SurfacePosition(x, ground.z, next)) { previous = next; continue; }
+						player.fPositionX = previous.x; player.fPositionY = previous.y; player.fPositionZ = previous.z;
+						fell = room->Try_KoukuWalkOffFloor(player, x, ground.z, 1.f / 30.f, 100u);
+						break;
+					}
+				}
+				tests.Require(fell && player.KoukuFallRevivePosition && player.bKoukuFallDeath,
+					"Casino edge starts gravity and retains the center before the death pose drops below the floor");
+				for (std::uint32_t tick = 101u; tick <= 200u && player.iCurrentHp; ++tick)
+					room->Update_PlayerFall(player, 1.f / 30.f, tick);
+				tests.Require(!player.iCurrentHp && player.eAction == PLAYER_ACTION_STATE::DEAD,
+					"Casino descent ends in authoritative death");
+				C2S_REVIVE_PLAYER revive{}; revive.iClientSequence = 1u;
+				room->Handle_RevivePlayer(789u, revive);
+				tests.Require(player.iCurrentHp == 100u && player.eAction == PLAYER_ACTION_STATE::NONE &&
+					player.fPositionX == ground.x && player.fPositionY == ground.y && player.fPositionZ == ground.z,
+					"Casino uses the existing revive command and reappears at the safe center");
+			}
+		}
 		/* Product Return uses the same authored terminal move in Debug and Release.
 		   A packet carries no destination, and acceptance cannot skip its flight. */
 		for (std::uint8_t stage = 1u; stage <= 4u; ++stage)
@@ -389,6 +559,51 @@ int LostArk::Server::CServerGameplayContractRunner::Run_DebugTeleport(TESTS& tes
 				"Return starts inside the actual Intro box to guard against automatic re-entry");
 			player.hasMoveGoal = true; player.MovePath.push_back(origin);
 			const auto original = player;
+			// Death in any of the four Mario stages returns a corpse, never a success or revive.
+			player.MarioReturnPosition = std::array<float, 3u>{ landing.x, landing.y, landing.z };
+			room->m_GateProgress.iCurrentGate = 3u; // The arena fence must not suppress Mario descent.
+			room->Begin_PlayerFall(player, 1.f / 30.f, 100u);
+			room->Update_MarioControlState(player);
+			tests.Require(player.iMarioStage == stage && player.MarioReturnPosition.has_value(),
+				"Mario descent preserves its stage and arena return pin");
+			for (std::uint32_t tick = 101u; tick <= 200u && player.iCurrentHp; ++tick)
+				room->Update_PlayerFall(player, 1.f / 30.f, tick);
+			tests.Require(!player.iCurrentHp && player.eAction == PLAYER_ACTION_STATE::DEAD &&
+				!player.iMarioStage && !player.isCombatReady && !player.TriggerMove.isActive &&
+				player.fPositionX == landing.x && player.fPositionY == landing.y && player.fPositionZ == landing.z &&
+				player.eMadnessForm == PLAYER_MADNESS_FORM::NORMAL && player.eKoukuHudMode == KOUKU_HUD_MODE::NONE,
+				"Mario fall returns dead to Gate 3 and clears Mario presentation/control");
+			player = original;
+			player.iCurrentHp = 0u; player.eAction = PLAYER_ACTION_STATE::DEAD;
+			room->Update_MarioControlState(player);
+			tests.Require(!player.iMarioStage && !player.iCurrentHp && player.fPositionX == landing.x &&
+				player.fPositionZ == landing.z, "Lethal Mario damage also ejects a dead player to the arena");
+			player = original;
+			player.TriggerMove.isActive = true;
+			tests.Require(!room->Update_PlayerFall(player, 1.f / 30.f, 201u),
+				"Authored Mario jump/transfer is protected from floor-entry fall checks");
+			player = original;
+			tests.Require(!room->Try_KoukuWalkOffFloor(player, origin.x, origin.z, 1.f / 30.f, 202u),
+				"Supported Mario floor does not trigger falling");
+			bool foundEdge = false;
+			for (const float direction : { -1.f, 1.f })
+			{
+				SERVER_NAV_POINT previous = origin;
+				for (float distance = .1f; distance < 80.f && !foundEdge; distance += .1f)
+				{
+					const float x = origin.x + original.fMarioRailRightX * distance * direction;
+					const float z = origin.z + original.fMarioRailRightZ * distance * direction;
+					SERVER_NAV_POINT surface{};
+					if (room->m_ServerNavigation.Sample_SurfacePosition(x, z, surface)) { previous = surface; continue; }
+					player = original;
+					player.fPositionX = previous.x; player.fPositionY = previous.y; player.fPositionZ = previous.z;
+					foundEdge = room->Try_KoukuWalkOffFloor(player, x, z, 1.f / 30.f, 203u);
+					break;
+				}
+			}
+			tests.Require(foundEdge && player.eAction == PLAYER_ACTION_STATE::FALLING && player.iMarioStage == stage,
+				"Each published Mario rail has a walk-off floor edge that starts descent instead of nav clamping");
+			player = original;
 			const auto sameState = [](const SERVER_PLAYER& a, const SERVER_PLAYER& b) {
 				return a.fPositionX == b.fPositionX && a.fPositionY == b.fPositionY && a.fPositionZ == b.fPositionZ &&
 					a.fYawDegrees == b.fYawDegrees && a.iCurrentHp == b.iCurrentHp && a.iMaximumHp == b.iMaximumHp &&

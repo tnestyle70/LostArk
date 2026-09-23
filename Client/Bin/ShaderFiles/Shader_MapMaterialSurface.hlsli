@@ -82,8 +82,8 @@ float g_SurfaceAOPower = 1.f;
 float g_SurfaceSpecularPBRIntensity = 0.5f;
 float g_SurfaceNonmetallicBrightness = 1.f;
 float g_SurfaceMetallicBrightness = 1.f;
-// The original engine-owned minimum and world-reflection origin have not been
-// identified. Explicit material inputs retain these approximation boundaries.
+// The legacy minimum and unresolved world-reflection origin stay available.
+// Native PBR uses the engine binder constant 0.045 at EFEngine RVA 0x1578afc.
 float g_SurfaceMinimumRoughness = 0.04f;
 float2 g_SurfaceReflectionOriginOffset = 0.f;
 float g_SurfaceVertexAlpha = 1.f;
@@ -112,6 +112,11 @@ TextureCube g_EnvironmentCubeTexture;
 Texture2D g_EnvironmentBRDFLookupTexture;
 float4 g_EnvironmentColor = float4(1.f, 1.f, 1.f, 0.f);
 float2 g_EnvironmentRotation = float2(0.f, 1.f); // source CB13 (a,b)
+uint g_UseSourcePBRIndirect = 0u;
+float4 g_SourcePBRPackedSH[7];
+float3 g_SourcePBRUpperSky = 0.f;
+float3 g_SourcePBRLowerSky = 0.f;
+float4 g_SourcePBRAmbientAndSkyFactor = float4(0.f, 0.f, 0.f, 1.f);
 
 sampler SurfaceLightmapSampler = sampler_state
 {
@@ -484,7 +489,8 @@ MAP_SURFACE_SAMPLE EvaluateMapPBRSurface(float2 meshUV, float3 worldPosition,
     const float3 orm = g_SurfaceORMTexture.Sample(SurfaceAnisotropicSampler, tiledUV).rgb;
     result.metallic = saturate(MapSurfaceSafePow(orm.b * g_SurfaceMetallicIntensity,
         g_SurfaceMetallicPower));
-    result.roughness = saturate(max(g_SurfaceMinimumRoughness,
+    const float minimumRoughness = g_UseSourcePBRIndirect != 0u ? 0.045f : g_SurfaceMinimumRoughness;
+    result.roughness = saturate(max(minimumRoughness,
         MapSurfaceSafePow(orm.g * clamp(g_SurfaceRoughnessIntensity, 0.f, 100.f),
             g_SurfaceRoughnessPower)) + g_MapPBRDiagnosticParameters.y);
     result.ambientOcclusion = saturate(MapSurfaceSafePow(orm.r * g_SurfaceAOIntensity,
@@ -541,6 +547,29 @@ float3 EvaluateMapSourceBGIndirectLighting(MAP_SURFACE_SAMPLE surface, float2 li
     return radiance + surface.subspecularRadiance;
 }
 
+// EFEngine native packer 0x5f0c30 and the exact FLOOR12_01 BasePass.
+float3 MapSourcePBRSHColor(float3 worldNormal)
+{
+    const float a = g_EnvironmentRotation.x, b = g_EnvironmentRotation.y;
+    const float4 q = float4(b * worldNormal.x + a * worldNormal.z,
+        worldNormal.y, a * worldNormal.x - b * worldNormal.z, 1.f);
+    const float4 products = q.yzzx * q.xyzz;
+    const float3 first = float3(dot(g_SourcePBRPackedSH[0], q),
+        dot(g_SourcePBRPackedSH[1], q), dot(g_SourcePBRPackedSH[2], q));
+    const float3 second = float3(dot(g_SourcePBRPackedSH[3], products),
+        dot(g_SourcePBRPackedSH[4], products), dot(g_SourcePBRPackedSH[5], products));
+    return max(first + second + g_SourcePBRPackedSH[6].rgb * (q.x*q.x-q.y*q.y), 0.f) *
+        g_EnvironmentColor.rgb * 3.14159265358979323846f + g_EnvironmentColor.w;
+}
+
+float3 MapSourcePBRHemisphere(float3 tangentDirection, float3 tangentUp)
+{
+    const float d = dot(MapGeometryNormalizeOrZero(tangentUp), tangentDirection);
+    const float2 weight = float2(0.5f + 0.5f*d, 0.5f - 0.5f*d);
+    return (weight.x*weight.x*g_SourcePBRUpperSky + weight.y*weight.y*g_SourcePBRLowerSky) *
+        g_SourcePBRAmbientAndSkyFactor.w;
+}
+
 float3 EvaluateMapSourceIndirectLighting(MAP_SURFACE_SAMPLE surface, float2 lightmapUV,
     float4 averageScale, float4 directionalScale, float3 worldPosition,
     float3 tangent, float3 binormal, float3 normal, out float3 environmentSpecular)
@@ -589,29 +618,36 @@ float3 EvaluateMapSourceIndirectLighting(MAP_SURFACE_SAMPLE surface, float2 ligh
         // inactive identities; PBR AO/cube/lookup do not belong to this family.
         return indirect;
     }
-    if (!IsMapSurfacePBR() || g_HasBakedLighting == 0u || averageScale.w == 0.f)
-        return 0.f;
-    const float3 average = g_BakedAverageTexture.Sample(SurfaceLightmapSampler,
-        lightmapUV).rgb * averageScale.rgb;
-    const float3 direction = g_BakedDirectionalTexture.Sample(SurfaceLightmapSampler,
-        lightmapUV).rgb * directionalScale.rgb;
+    if (!IsMapSurfacePBR()) return 0.f;
+    const bool nativeIndirect = g_UseSourcePBRIndirect != 0u;
+    const bool hasLightmap = g_HasBakedLighting != 0u && averageScale.w != 0.f;
+    if (!hasLightmap && !nativeIndirect) return 0.f;
+    float3 average = 0.f, direction = 0.f;
+    if (hasLightmap)
+    {
+        average = g_BakedAverageTexture.Sample(SurfaceLightmapSampler, lightmapUV).rgb * averageScale.rgb;
+        direction = g_BakedDirectionalTexture.Sample(SurfaceLightmapSampler, lightmapUV).rgb * directionalScale.rgb;
+    }
+    const float3x3 tangentToWorld = float3x3(MapGeometryNormalizeOrZero(tangent),
+        MapGeometryNormalizeOrZero(binormal), MapGeometryNormalizeOrZero(normal));
+    const float3 tangentUp = mul(tangentToWorld, float3(0.f, 1.f, 0.f));
+    const float3 normalHemisphere = nativeIndirect ? MapSourcePBRHemisphere(surface.tangentNormal, tangentUp) : 0.f;
+    const float3 ambient = nativeIndirect ? surface.diffuse.rgb * g_SourcePBRAmbientAndSkyFactor.rgb : 0.f;
     const float3 n = surface.tangentNormal;
     const float normalIrradiance = MapSourceDirectionalLightmapWeight(n, direction);
     // Native directional-lightmap PBR diffuse contains both the metallic
     // mask and reflection-BRDF energy weight. The old partial reconstruction
     // omitted both. Keep an explicit comparison of that previous equation.
     const bool legacyUnbalancedRNM = g_MapPBRDiagnosticParameters.z > 0.5f;
-    float3 indirect = surface.diffuse.rgb * average * normalIrradiance *
+    float3 indirect = surface.diffuse.rgb * (average * normalIrradiance + normalHemisphere) *
         MapSourceAOMultiBounce(surface.ambientOcclusion, surface.diffuse.rgb);
+    if (nativeIndirect) indirect *= MapSourcePBRSHColor(surface.worldNormal);
     if (!legacyUnbalancedRNM)
         indirect *= 1.f - surface.metallic;
     // Rows without a recovered/bound lookup retain that unresolved input;
     // do not synthesize a Fresnel value or an environment texture.
     if (g_HasEnvironmentCube == 0u || g_HasEnvironmentBRDFLookup == 0u)
-        return indirect * g_MapPBRContributionScale.z;
-
-    const float3x3 tangentToWorld = float3x3(MapGeometryNormalizeOrZero(tangent),
-        MapGeometryNormalizeOrZero(binormal), MapGeometryNormalizeOrZero(normal));
+        return (indirect + ambient) * g_MapPBRContributionScale.z;
     const float3 worldView = normalize(g_vCamPosition.xyz - worldPosition);
     const float3 tangentView = normalize(mul(tangentToWorld, worldView));
     const float normalView = dot(n, tangentView);
@@ -619,8 +655,8 @@ float3 EvaluateMapSourceIndirectLighting(MAP_SURFACE_SAMPLE surface, float2 ligh
     const float lookupView = saturate(normalView + 1.f - min(reflection.z + 1.f, 1.f));
     const float2 normalViewGradient = float2(ddx_coarse(normalView), ddy_coarse(normalView));
     const float roughnessAA = saturate(surface.roughness + 0.3f * length(normalViewGradient));
-    // The SRV currently contains a numerically integrated PROJECT approximation
-    // of the unresolved native t5 lookup, in the same R=Fresnel/G=base contract.
+    // Source lookup stores R=Fresnel and G=base. Its payload is material-owned
+    // so legacy comparison assets can retain their original project lookup.
     const float2 lookup = g_EnvironmentBRDFLookupTexture.Sample(SurfaceLightmapSampler,
         float2(lookupView, roughnessAA)).rg;
     const float3 fresnelDelta = saturate(50.f * surface.specular.g) *
@@ -632,7 +668,7 @@ float3 EvaluateMapSourceIndirectLighting(MAP_SURFACE_SAMPLE surface, float2 ligh
 
     const float3 worldReflection = mul(reflection, tangentToWorld);
     // UE->runtime is (x,z,-y). Source CB13 rotates UE XY before the cube's XZY
-    // sampling permutation. (0,1) remains an explicit project interpretation.
+    // sampling permutation. CPU binder stores (sin(angle),cos(angle)).
     const float a = g_EnvironmentRotation.x, b = g_EnvironmentRotation.y;
     const float3 cubeDirection = float3(b * worldReflection.x + a * worldReflection.z,
         worldReflection.y, a * worldReflection.x - b * worldReflection.z);
@@ -641,18 +677,15 @@ float3 EvaluateMapSourceIndirectLighting(MAP_SURFACE_SAMPLE surface, float2 ligh
     const float3 environment = encodedEnvironment.rgb * encodedEnvironment.a *
         g_EnvironmentColor.rgb * 6.f + g_EnvironmentColor.w;
     const float reflectedIrradiance = MapSourceDirectionalLightmapWeight(reflection, direction);
-    const float3 specularIrradiance = average * lerp(reflectedIrradiance,
-        normalIrradiance, surface.roughness);
+    const float3 specularIrradiance = hasLightmap ? normalHemisphere +
+        average * lerp(reflectedIrradiance, normalIrradiance, surface.roughness) :
+        MapSourcePBRHemisphere(reflection, tangentUp);
     const float specularAO = saturate(MapSurfaceSafePow(surface.ambientOcclusion + lookupView,
         roughnessAA * roughnessAA) + surface.ambientOcclusion - 1.f);
     const float f0Luminance = dot(surface.specular, float3(0.3f, 0.59f, 0.11f));
     environmentSpecular = environment * specularIrradiance * reflectionBRDF *
         MapSourceAOMultiBounce(specularAO, f0Luminance.xxx) * g_MapPBRContributionScale.w;
-    // Native hemisphere CB22/23/24 and SH9->CB packing are unresolved. They are
-    // not replaced by a synthetic ambient tint. Native diffuse also multiplies
-    // packed SH color and adds hemisphere irradiance; those owner inputs remain
-    // unresolved, so this is still a partial reconstruction after energy repair.
-    return indirect * g_MapPBRContributionScale.z + environmentSpecular;
+    return (indirect + ambient) * g_MapPBRContributionScale.z + environmentSpecular;
 }
 
 struct MAP_STONE_GBUFFER

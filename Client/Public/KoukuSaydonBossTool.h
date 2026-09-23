@@ -7,6 +7,7 @@
 #include <cstdint>
 #include <functional>
 #include <optional>
+#include <memory>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -14,6 +15,8 @@
 namespace Client
 {
 	struct KOUKU_SAYDON_PATTERN_FLOW_ENTRY;
+    struct KOUKU_DRAFT_PLAY_REQUEST;
+    struct KOUKU_SAYDON_DRAFT_PRODUCT;
 	/* K-only Server playback and ordered Pattern Flow authoring. Pattern/Bundle
 	   definitions stay in Composition; Flow stores stable references to them. */
 	class CKoukuSaydonBossTool final
@@ -52,6 +55,7 @@ namespace Client
 		};
 		const std::vector<PRODUCT_FOLDER>& Get_ProductFolders() const { return m_ProductFolders; }
 		const std::vector<PRODUCT_BUNDLE>& Get_ProductBundles() const { return m_ProductBundles; }
+		bool Play_Draft(KOUKU_DRAFT_PLAY_REQUEST request, std::string& status);
 		bool Play_BundleById(std::string_view bundleId, std::uint32_t expectedSourceRevision, std::string& status);
 		// F1 inventory selection resolves the latest published revision at the click.
 		bool Play_SavedPatternById(std::string_view patternId, std::string& status);
@@ -75,6 +79,8 @@ namespace Client
 		bool Play_All(std::string& outStatus);
 		bool Play_CompositionAll(std::string_view gateId, std::string& status);
 		bool Validate_PatternFlow(std::string_view gateId, std::string& status);
+		void Set_CompletePlayAdmission(std::function<bool(std::string_view, std::string&)> callback)
+		{ m_CompletePlayAdmission = std::move(callback); }
         // Complete Play pins the admission revision; ordinary F1 playback uses the current saved revision.
         bool Play_PatternFlow(std::string_view gateId, std::string& status,
             std::uint32_t expectedSourceRevision = 0u);
@@ -113,6 +119,7 @@ namespace Client
 		{
 			std::vector<std::string> TargetPlacementIds, PatternIds, BundleIds;
 			bool bPreparingResources = false;
+            std::shared_ptr<const KOUKU_SAYDON_DRAFT_PRODUCT> Draft;
 			LostArk::Shared::GameplayDataRevision GameplayRevision;
 			std::uint32_t iSourceRevision = 0u;
 			std::uint64_t iWorldGeneration = 0u;
@@ -124,8 +131,10 @@ namespace Client
 		};
 		bool Prepare_ServerPlay(std::string_view gateId, std::vector<std::string> targets,
             std::vector<std::string> patternIds, std::vector<std::string> bundleIds,
-			std::function<bool(std::string&)> submit, std::string& status);
+			std::function<bool(std::string&)> submit, std::string& status,
+            std::shared_ptr<const KOUKU_SAYDON_DRAFT_PRODUCT> draft = {});
 		std::optional<PLAY_PREPARATION> m_PlayPreparation;
+		std::function<bool(std::string_view, std::string&)> m_CompletePlayAdmission;
 
 		bool Play_Selected(std::string& outStatus);
 		bool Play_LoadedPatternById(std::string_view patternId, std::string& status);
