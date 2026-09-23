@@ -10,7 +10,9 @@ clipseq group (the tripod-free chain) or when its effect PK names the base varia
 (pk // 10 == skillId), which is how an awakening skill owns its objects outright
 while its clipseq groups only describe alternate presentations. A base-variant
 object authored on a clip the roster does not play keeps its action-local time and
-moves to the bound clip that covers it. The lowest PK of a same-time spawn is the
+moves to the bound clip that covers it, but only from its own base group: a spawn
+carried by a higher group belongs to that tripod's presentation, not the base
+chain, even when its PK names the base variant. The lowest PK of a same-time spawn is the
 base object, and an object without a damaging shaped hit (dmg > 0 against enemies,
 area > 0) is skipped.
 """
@@ -177,7 +179,7 @@ def build(asset):
             if row['clip'] in chain:
                 candidates.append(row)
                 continue
-            if not base_owned:
+            if not base_owned or row['seq'] != base_seq.get(skill_id, row['seq']):
                 continue
             if len(stages) != 1:
                 print('%s %d: base object %d sits on unbound clip %s of a staged skill, left out' % (
