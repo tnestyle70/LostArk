@@ -1,7 +1,7 @@
 {
   "schema": "lostark.kouku-saydon-composition",
   "formatVersion": 3,
-  "revision": 2237,
+  "revision": 2238,
   "compositionId": "boss.composition.kakulsaydon.gate1",
   "encounterId": "ENCOUNTER_KAKULSAYDON_G1",
   "bossArchetypeId": "BOSS_KAKULSAYDON_G1_KOUKU",
@@ -132496,6 +132496,12 @@
           "waitAfterMs": 0
         },
         {
+          "entryId": "kakulsaydon.flow.gate1.hp.160-130.entry.21",
+          "kind": "PATTERN",
+          "targetId": "KAKULSAYDON_G1_PATTERN_83",
+          "waitAfterMs": 0
+        },
+        {
           "entryId": "kakulsaydon.flow.gate1.restored.21",
           "kind": "PATTERN",
           "targetId": "KAKULSAYDON_G1_PATTERN_1",
@@ -132505,6 +132511,132 @@
           "entryId": "kakulsaydon.flow.gate1.restored.22",
           "kind": "PATTERN",
           "targetId": "KAKULSAYDON_G1_PATTERN_104",
+          "waitAfterMs": 0
+        },
+        {
+          "entryId": "kakulsaydon.flow.gate1.hp.130-110.entry.01",
+          "kind": "PATTERN",
+          "targetId": "KAKULSAYDON_G1_PATTERN_58",
+          "waitAfterMs": 0
+        },
+        {
+          "entryId": "kakulsaydon.flow.gate1.hp.130-110.entry.02",
+          "kind": "PATTERN",
+          "targetId": "KAKULSAYDON_G1_PATTERN_101",
+          "waitAfterMs": 0
+        },
+        {
+          "entryId": "kakulsaydon.flow.gate1.hp.130-110.entry.03",
+          "kind": "PATTERN",
+          "targetId": "KAKULSAYDON_G1_PATTERN_102",
+          "waitAfterMs": 0
+        },
+        {
+          "entryId": "kakulsaydon.flow.gate1.hp.130-110.entry.04",
+          "kind": "PATTERN",
+          "targetId": "KAKULSAYDON_G1_PATTERN_101",
+          "waitAfterMs": 0
+        },
+        {
+          "entryId": "kakulsaydon.flow.gate1.hp.130-110.entry.05",
+          "kind": "PATTERN",
+          "targetId": "KAKULSAYDON_G1_PATTERN_81",
+          "waitAfterMs": 0
+        },
+        {
+          "entryId": "kakulsaydon.flow.gate1.hp.130-110.entry.06",
+          "kind": "PATTERN",
+          "targetId": "KAKULSAYDON_G1_PATTERN_101",
+          "waitAfterMs": 0
+        },
+        {
+          "entryId": "kakulsaydon.flow.gate1.hp.130-110.entry.07",
+          "kind": "PATTERN",
+          "targetId": "KAKULSAYDON_G1_PATTERN_82",
+          "waitAfterMs": 0
+        },
+        {
+          "entryId": "kakulsaydon.flow.gate1.hp.130-110.entry.08",
+          "kind": "PATTERN",
+          "targetId": "KAKULSAYDON_G1_PATTERN_101",
+          "waitAfterMs": 0
+        },
+        {
+          "entryId": "kakulsaydon.flow.gate1.hp.130-110.entry.09",
+          "kind": "PATTERN",
+          "targetId": "KAKULSAYDON_G1_PATTERN_47",
+          "waitAfterMs": 0
+        },
+        {
+          "entryId": "kakulsaydon.flow.gate1.hp.130-110.entry.10",
+          "kind": "PATTERN",
+          "targetId": "KAKULSAYDON_G1_PATTERN_101",
+          "waitAfterMs": 0
+        },
+        {
+          "entryId": "kakulsaydon.flow.gate1.hp.130-110.entry.11",
+          "kind": "PATTERN",
+          "targetId": "KAKULSAYDON_G1_PATTERN_100",
+          "waitAfterMs": 0
+        },
+        {
+          "entryId": "kakulsaydon.flow.gate1.hp.130-110.entry.12",
+          "kind": "PATTERN",
+          "targetId": "KAKULSAYDON_G1_PATTERN_101",
+          "waitAfterMs": 0
+        },
+        {
+          "entryId": "kakulsaydon.flow.gate1.hp.130-110.entry.13",
+          "kind": "PATTERN",
+          "targetId": "KAKULSAYDON_G1_PATTERN_80",
+          "waitAfterMs": 0
+        },
+        {
+          "entryId": "kakulsaydon.flow.gate1.hp.130-110.entry.14",
+          "kind": "PATTERN",
+          "targetId": "KAKULSAYDON_G1_PATTERN_103",
+          "waitAfterMs": 0
+        },
+        {
+          "entryId": "kakulsaydon.flow.gate1.hp.130-110.entry.15",
+          "kind": "PATTERN",
+          "targetId": "KAKULSAYDON_G1_PATTERN_101",
+          "waitAfterMs": 0
+        },
+        {
+          "entryId": "kakulsaydon.flow.gate1.hp.130-110.entry.16",
+          "kind": "PATTERN",
+          "targetId": "KAKULSAYDON_G1_PATTERN_48",
+          "waitAfterMs": 0
+        },
+        {
+          "entryId": "kakulsaydon.flow.gate1.hp.130-110.entry.17",
+          "kind": "PATTERN",
+          "targetId": "KAKULSAYDON_G1_PATTERN_101",
+          "waitAfterMs": 0
+        },
+        {
+          "entryId": "kakulsaydon.flow.gate1.hp.130-110.entry.18",
+          "kind": "PATTERN",
+          "targetId": "KAKULSAYDON_G1_PATTERN_79",
+          "waitAfterMs": 0
+        },
+        {
+          "entryId": "kakulsaydon.flow.gate1.hp.130-110.entry.19",
+          "kind": "PATTERN",
+          "targetId": "KAKULSAYDON_G1_PATTERN_78",
+          "waitAfterMs": 0
+        },
+        {
+          "entryId": "kakulsaydon.flow.gate1.hp.130-110.entry.20",
+          "kind": "PATTERN",
+          "targetId": "KAKULSAYDON_G1_PATTERN_104",
+          "waitAfterMs": 0
+        },
+        {
+          "entryId": "kakulsaydon.flow.gate1.hp.130-110.entry.21",
+          "kind": "PATTERN",
+          "targetId": "KAKULSAYDON_G1_PATTERN_83",
           "waitAfterMs": 0
         },
         {
@@ -132520,6 +132652,132 @@
           "waitAfterMs": 0
         },
         {
+          "entryId": "kakulsaydon.flow.gate1.hp.110-85.entry.01",
+          "kind": "PATTERN",
+          "targetId": "KAKULSAYDON_G1_PATTERN_58",
+          "waitAfterMs": 0
+        },
+        {
+          "entryId": "kakulsaydon.flow.gate1.hp.110-85.entry.02",
+          "kind": "PATTERN",
+          "targetId": "KAKULSAYDON_G1_PATTERN_101",
+          "waitAfterMs": 0
+        },
+        {
+          "entryId": "kakulsaydon.flow.gate1.hp.110-85.entry.03",
+          "kind": "PATTERN",
+          "targetId": "KAKULSAYDON_G1_PATTERN_102",
+          "waitAfterMs": 0
+        },
+        {
+          "entryId": "kakulsaydon.flow.gate1.hp.110-85.entry.04",
+          "kind": "PATTERN",
+          "targetId": "KAKULSAYDON_G1_PATTERN_101",
+          "waitAfterMs": 0
+        },
+        {
+          "entryId": "kakulsaydon.flow.gate1.hp.110-85.entry.05",
+          "kind": "PATTERN",
+          "targetId": "KAKULSAYDON_G1_PATTERN_81",
+          "waitAfterMs": 0
+        },
+        {
+          "entryId": "kakulsaydon.flow.gate1.hp.110-85.entry.06",
+          "kind": "PATTERN",
+          "targetId": "KAKULSAYDON_G1_PATTERN_101",
+          "waitAfterMs": 0
+        },
+        {
+          "entryId": "kakulsaydon.flow.gate1.hp.110-85.entry.07",
+          "kind": "PATTERN",
+          "targetId": "KAKULSAYDON_G1_PATTERN_82",
+          "waitAfterMs": 0
+        },
+        {
+          "entryId": "kakulsaydon.flow.gate1.hp.110-85.entry.08",
+          "kind": "PATTERN",
+          "targetId": "KAKULSAYDON_G1_PATTERN_101",
+          "waitAfterMs": 0
+        },
+        {
+          "entryId": "kakulsaydon.flow.gate1.hp.110-85.entry.09",
+          "kind": "PATTERN",
+          "targetId": "KAKULSAYDON_G1_PATTERN_47",
+          "waitAfterMs": 0
+        },
+        {
+          "entryId": "kakulsaydon.flow.gate1.hp.110-85.entry.10",
+          "kind": "PATTERN",
+          "targetId": "KAKULSAYDON_G1_PATTERN_101",
+          "waitAfterMs": 0
+        },
+        {
+          "entryId": "kakulsaydon.flow.gate1.hp.110-85.entry.11",
+          "kind": "PATTERN",
+          "targetId": "KAKULSAYDON_G1_PATTERN_100",
+          "waitAfterMs": 0
+        },
+        {
+          "entryId": "kakulsaydon.flow.gate1.hp.110-85.entry.12",
+          "kind": "PATTERN",
+          "targetId": "KAKULSAYDON_G1_PATTERN_101",
+          "waitAfterMs": 0
+        },
+        {
+          "entryId": "kakulsaydon.flow.gate1.hp.110-85.entry.13",
+          "kind": "PATTERN",
+          "targetId": "KAKULSAYDON_G1_PATTERN_80",
+          "waitAfterMs": 0
+        },
+        {
+          "entryId": "kakulsaydon.flow.gate1.hp.110-85.entry.14",
+          "kind": "PATTERN",
+          "targetId": "KAKULSAYDON_G1_PATTERN_103",
+          "waitAfterMs": 0
+        },
+        {
+          "entryId": "kakulsaydon.flow.gate1.hp.110-85.entry.15",
+          "kind": "PATTERN",
+          "targetId": "KAKULSAYDON_G1_PATTERN_101",
+          "waitAfterMs": 0
+        },
+        {
+          "entryId": "kakulsaydon.flow.gate1.hp.110-85.entry.16",
+          "kind": "PATTERN",
+          "targetId": "KAKULSAYDON_G1_PATTERN_48",
+          "waitAfterMs": 0
+        },
+        {
+          "entryId": "kakulsaydon.flow.gate1.hp.110-85.entry.17",
+          "kind": "PATTERN",
+          "targetId": "KAKULSAYDON_G1_PATTERN_101",
+          "waitAfterMs": 0
+        },
+        {
+          "entryId": "kakulsaydon.flow.gate1.hp.110-85.entry.18",
+          "kind": "PATTERN",
+          "targetId": "KAKULSAYDON_G1_PATTERN_79",
+          "waitAfterMs": 0
+        },
+        {
+          "entryId": "kakulsaydon.flow.gate1.hp.110-85.entry.19",
+          "kind": "PATTERN",
+          "targetId": "KAKULSAYDON_G1_PATTERN_78",
+          "waitAfterMs": 0
+        },
+        {
+          "entryId": "kakulsaydon.flow.gate1.hp.110-85.entry.20",
+          "kind": "PATTERN",
+          "targetId": "KAKULSAYDON_G1_PATTERN_104",
+          "waitAfterMs": 0
+        },
+        {
+          "entryId": "kakulsaydon.flow.gate1.hp.110-85.entry.21",
+          "kind": "PATTERN",
+          "targetId": "KAKULSAYDON_G1_PATTERN_83",
+          "waitAfterMs": 0
+        },
+        {
           "entryId": "kakulsaydon.flow.gate1.restored.25",
           "kind": "PATTERN",
           "targetId": "KAKULSAYDON_G1_PATTERN_6",
@@ -132529,6 +132787,270 @@
           "entryId": "kakulsaydon.flow.gate1.restored.26",
           "kind": "PATTERN",
           "targetId": "KAKULSAYDON_G1_PATTERN_104",
+          "waitAfterMs": 0
+        },
+        {
+          "entryId": "kakulsaydon.flow.gate1.hp.85-60.entry.01",
+          "kind": "PATTERN",
+          "targetId": "KAKULSAYDON_G1_PATTERN_58",
+          "waitAfterMs": 0
+        },
+        {
+          "entryId": "kakulsaydon.flow.gate1.hp.85-60.entry.02",
+          "kind": "PATTERN",
+          "targetId": "KAKULSAYDON_G1_PATTERN_101",
+          "waitAfterMs": 0
+        },
+        {
+          "entryId": "kakulsaydon.flow.gate1.hp.85-60.entry.03",
+          "kind": "PATTERN",
+          "targetId": "KAKULSAYDON_G1_PATTERN_102",
+          "waitAfterMs": 0
+        },
+        {
+          "entryId": "kakulsaydon.flow.gate1.hp.85-60.entry.04",
+          "kind": "PATTERN",
+          "targetId": "KAKULSAYDON_G1_PATTERN_101",
+          "waitAfterMs": 0
+        },
+        {
+          "entryId": "kakulsaydon.flow.gate1.hp.85-60.entry.05",
+          "kind": "PATTERN",
+          "targetId": "KAKULSAYDON_G1_PATTERN_81",
+          "waitAfterMs": 0
+        },
+        {
+          "entryId": "kakulsaydon.flow.gate1.hp.85-60.entry.06",
+          "kind": "PATTERN",
+          "targetId": "KAKULSAYDON_G1_PATTERN_101",
+          "waitAfterMs": 0
+        },
+        {
+          "entryId": "kakulsaydon.flow.gate1.hp.85-60.entry.07",
+          "kind": "PATTERN",
+          "targetId": "KAKULSAYDON_G1_PATTERN_82",
+          "waitAfterMs": 0
+        },
+        {
+          "entryId": "kakulsaydon.flow.gate1.hp.85-60.entry.08",
+          "kind": "PATTERN",
+          "targetId": "KAKULSAYDON_G1_PATTERN_101",
+          "waitAfterMs": 0
+        },
+        {
+          "entryId": "kakulsaydon.flow.gate1.hp.85-60.entry.09",
+          "kind": "PATTERN",
+          "targetId": "KAKULSAYDON_G1_PATTERN_47",
+          "waitAfterMs": 0
+        },
+        {
+          "entryId": "kakulsaydon.flow.gate1.hp.85-60.entry.10",
+          "kind": "PATTERN",
+          "targetId": "KAKULSAYDON_G1_PATTERN_101",
+          "waitAfterMs": 0
+        },
+        {
+          "entryId": "kakulsaydon.flow.gate1.hp.85-60.entry.11",
+          "kind": "PATTERN",
+          "targetId": "KAKULSAYDON_G1_PATTERN_100",
+          "waitAfterMs": 0
+        },
+        {
+          "entryId": "kakulsaydon.flow.gate1.hp.85-60.entry.12",
+          "kind": "PATTERN",
+          "targetId": "KAKULSAYDON_G1_PATTERN_101",
+          "waitAfterMs": 0
+        },
+        {
+          "entryId": "kakulsaydon.flow.gate1.hp.85-60.entry.13",
+          "kind": "PATTERN",
+          "targetId": "KAKULSAYDON_G1_PATTERN_80",
+          "waitAfterMs": 0
+        },
+        {
+          "entryId": "kakulsaydon.flow.gate1.hp.85-60.entry.14",
+          "kind": "PATTERN",
+          "targetId": "KAKULSAYDON_G1_PATTERN_103",
+          "waitAfterMs": 0
+        },
+        {
+          "entryId": "kakulsaydon.flow.gate1.hp.85-60.entry.15",
+          "kind": "PATTERN",
+          "targetId": "KAKULSAYDON_G1_PATTERN_101",
+          "waitAfterMs": 0
+        },
+        {
+          "entryId": "kakulsaydon.flow.gate1.hp.85-60.entry.16",
+          "kind": "PATTERN",
+          "targetId": "KAKULSAYDON_G1_PATTERN_48",
+          "waitAfterMs": 0
+        },
+        {
+          "entryId": "kakulsaydon.flow.gate1.hp.85-60.entry.17",
+          "kind": "PATTERN",
+          "targetId": "KAKULSAYDON_G1_PATTERN_101",
+          "waitAfterMs": 0
+        },
+        {
+          "entryId": "kakulsaydon.flow.gate1.hp.85-60.entry.18",
+          "kind": "PATTERN",
+          "targetId": "KAKULSAYDON_G1_PATTERN_79",
+          "waitAfterMs": 0
+        },
+        {
+          "entryId": "kakulsaydon.flow.gate1.hp.85-60.entry.19",
+          "kind": "PATTERN",
+          "targetId": "KAKULSAYDON_G1_PATTERN_78",
+          "waitAfterMs": 0
+        },
+        {
+          "entryId": "kakulsaydon.flow.gate1.hp.85-60.entry.20",
+          "kind": "PATTERN",
+          "targetId": "KAKULSAYDON_G1_PATTERN_104",
+          "waitAfterMs": 0
+        },
+        {
+          "entryId": "kakulsaydon.flow.gate1.hp.85-60.entry.21",
+          "kind": "PATTERN",
+          "targetId": "KAKULSAYDON_G1_PATTERN_83",
+          "waitAfterMs": 0
+        },
+        {
+          "entryId": "kakulsaydon.flow.gate1.mechanic.hp60.entry.01",
+          "kind": "PATTERN",
+          "targetId": "KAKULSAYDON_G1_PATTERN_1",
+          "waitAfterMs": 0
+        },
+        {
+          "entryId": "kakulsaydon.flow.gate1.mechanic.hp60.entry.02",
+          "kind": "PATTERN",
+          "targetId": "KAKULSAYDON_G1_PATTERN_104",
+          "waitAfterMs": 0
+        },
+        {
+          "entryId": "kakulsaydon.flow.gate1.hp.60-50.entry.01",
+          "kind": "PATTERN",
+          "targetId": "KAKULSAYDON_G1_PATTERN_58",
+          "waitAfterMs": 0
+        },
+        {
+          "entryId": "kakulsaydon.flow.gate1.hp.60-50.entry.02",
+          "kind": "PATTERN",
+          "targetId": "KAKULSAYDON_G1_PATTERN_101",
+          "waitAfterMs": 0
+        },
+        {
+          "entryId": "kakulsaydon.flow.gate1.hp.60-50.entry.03",
+          "kind": "PATTERN",
+          "targetId": "KAKULSAYDON_G1_PATTERN_102",
+          "waitAfterMs": 0
+        },
+        {
+          "entryId": "kakulsaydon.flow.gate1.hp.60-50.entry.04",
+          "kind": "PATTERN",
+          "targetId": "KAKULSAYDON_G1_PATTERN_101",
+          "waitAfterMs": 0
+        },
+        {
+          "entryId": "kakulsaydon.flow.gate1.hp.60-50.entry.05",
+          "kind": "PATTERN",
+          "targetId": "KAKULSAYDON_G1_PATTERN_81",
+          "waitAfterMs": 0
+        },
+        {
+          "entryId": "kakulsaydon.flow.gate1.hp.60-50.entry.06",
+          "kind": "PATTERN",
+          "targetId": "KAKULSAYDON_G1_PATTERN_101",
+          "waitAfterMs": 0
+        },
+        {
+          "entryId": "kakulsaydon.flow.gate1.hp.60-50.entry.07",
+          "kind": "PATTERN",
+          "targetId": "KAKULSAYDON_G1_PATTERN_82",
+          "waitAfterMs": 0
+        },
+        {
+          "entryId": "kakulsaydon.flow.gate1.hp.60-50.entry.08",
+          "kind": "PATTERN",
+          "targetId": "KAKULSAYDON_G1_PATTERN_101",
+          "waitAfterMs": 0
+        },
+        {
+          "entryId": "kakulsaydon.flow.gate1.hp.60-50.entry.09",
+          "kind": "PATTERN",
+          "targetId": "KAKULSAYDON_G1_PATTERN_47",
+          "waitAfterMs": 0
+        },
+        {
+          "entryId": "kakulsaydon.flow.gate1.hp.60-50.entry.10",
+          "kind": "PATTERN",
+          "targetId": "KAKULSAYDON_G1_PATTERN_101",
+          "waitAfterMs": 0
+        },
+        {
+          "entryId": "kakulsaydon.flow.gate1.hp.60-50.entry.11",
+          "kind": "PATTERN",
+          "targetId": "KAKULSAYDON_G1_PATTERN_100",
+          "waitAfterMs": 0
+        },
+        {
+          "entryId": "kakulsaydon.flow.gate1.hp.60-50.entry.12",
+          "kind": "PATTERN",
+          "targetId": "KAKULSAYDON_G1_PATTERN_101",
+          "waitAfterMs": 0
+        },
+        {
+          "entryId": "kakulsaydon.flow.gate1.hp.60-50.entry.13",
+          "kind": "PATTERN",
+          "targetId": "KAKULSAYDON_G1_PATTERN_80",
+          "waitAfterMs": 0
+        },
+        {
+          "entryId": "kakulsaydon.flow.gate1.hp.60-50.entry.14",
+          "kind": "PATTERN",
+          "targetId": "KAKULSAYDON_G1_PATTERN_103",
+          "waitAfterMs": 0
+        },
+        {
+          "entryId": "kakulsaydon.flow.gate1.hp.60-50.entry.15",
+          "kind": "PATTERN",
+          "targetId": "KAKULSAYDON_G1_PATTERN_101",
+          "waitAfterMs": 0
+        },
+        {
+          "entryId": "kakulsaydon.flow.gate1.hp.60-50.entry.16",
+          "kind": "PATTERN",
+          "targetId": "KAKULSAYDON_G1_PATTERN_48",
+          "waitAfterMs": 0
+        },
+        {
+          "entryId": "kakulsaydon.flow.gate1.hp.60-50.entry.17",
+          "kind": "PATTERN",
+          "targetId": "KAKULSAYDON_G1_PATTERN_101",
+          "waitAfterMs": 0
+        },
+        {
+          "entryId": "kakulsaydon.flow.gate1.hp.60-50.entry.18",
+          "kind": "PATTERN",
+          "targetId": "KAKULSAYDON_G1_PATTERN_79",
+          "waitAfterMs": 0
+        },
+        {
+          "entryId": "kakulsaydon.flow.gate1.hp.60-50.entry.19",
+          "kind": "PATTERN",
+          "targetId": "KAKULSAYDON_G1_PATTERN_78",
+          "waitAfterMs": 0
+        },
+        {
+          "entryId": "kakulsaydon.flow.gate1.hp.60-50.entry.20",
+          "kind": "PATTERN",
+          "targetId": "KAKULSAYDON_G1_PATTERN_104",
+          "waitAfterMs": 0
+        },
+        {
+          "entryId": "kakulsaydon.flow.gate1.hp.60-50.entry.21",
+          "kind": "PATTERN",
+          "targetId": "KAKULSAYDON_G1_PATTERN_83",
           "waitAfterMs": 0
         },
         {
@@ -132542,6 +133064,364 @@
           "kind": "PATTERN",
           "targetId": "KAKULSAYDON_G1_PATTERN_104",
           "waitAfterMs": 0
+        },
+        {
+          "entryId": "kakulsaydon.flow.gate1.hp.50-30.entry.01",
+          "kind": "PATTERN",
+          "targetId": "KAKULSAYDON_G1_PATTERN_58",
+          "waitAfterMs": 0
+        },
+        {
+          "entryId": "kakulsaydon.flow.gate1.hp.50-30.entry.02",
+          "kind": "PATTERN",
+          "targetId": "KAKULSAYDON_G1_PATTERN_101",
+          "waitAfterMs": 0
+        },
+        {
+          "entryId": "kakulsaydon.flow.gate1.hp.50-30.entry.03",
+          "kind": "PATTERN",
+          "targetId": "KAKULSAYDON_G1_PATTERN_102",
+          "waitAfterMs": 0
+        },
+        {
+          "entryId": "kakulsaydon.flow.gate1.hp.50-30.entry.04",
+          "kind": "PATTERN",
+          "targetId": "KAKULSAYDON_G1_PATTERN_101",
+          "waitAfterMs": 0
+        },
+        {
+          "entryId": "kakulsaydon.flow.gate1.hp.50-30.entry.05",
+          "kind": "PATTERN",
+          "targetId": "KAKULSAYDON_G1_PATTERN_81",
+          "waitAfterMs": 0
+        },
+        {
+          "entryId": "kakulsaydon.flow.gate1.hp.50-30.entry.06",
+          "kind": "PATTERN",
+          "targetId": "KAKULSAYDON_G1_PATTERN_101",
+          "waitAfterMs": 0
+        },
+        {
+          "entryId": "kakulsaydon.flow.gate1.hp.50-30.entry.07",
+          "kind": "PATTERN",
+          "targetId": "KAKULSAYDON_G1_PATTERN_82",
+          "waitAfterMs": 0
+        },
+        {
+          "entryId": "kakulsaydon.flow.gate1.hp.50-30.entry.08",
+          "kind": "PATTERN",
+          "targetId": "KAKULSAYDON_G1_PATTERN_101",
+          "waitAfterMs": 0
+        },
+        {
+          "entryId": "kakulsaydon.flow.gate1.hp.50-30.entry.09",
+          "kind": "PATTERN",
+          "targetId": "KAKULSAYDON_G1_PATTERN_47",
+          "waitAfterMs": 0
+        },
+        {
+          "entryId": "kakulsaydon.flow.gate1.hp.50-30.entry.10",
+          "kind": "PATTERN",
+          "targetId": "KAKULSAYDON_G1_PATTERN_101",
+          "waitAfterMs": 0
+        },
+        {
+          "entryId": "kakulsaydon.flow.gate1.hp.50-30.entry.11",
+          "kind": "PATTERN",
+          "targetId": "KAKULSAYDON_G1_PATTERN_100",
+          "waitAfterMs": 0
+        },
+        {
+          "entryId": "kakulsaydon.flow.gate1.hp.50-30.entry.12",
+          "kind": "PATTERN",
+          "targetId": "KAKULSAYDON_G1_PATTERN_101",
+          "waitAfterMs": 0
+        },
+        {
+          "entryId": "kakulsaydon.flow.gate1.hp.50-30.entry.13",
+          "kind": "PATTERN",
+          "targetId": "KAKULSAYDON_G1_PATTERN_80",
+          "waitAfterMs": 0
+        },
+        {
+          "entryId": "kakulsaydon.flow.gate1.hp.50-30.entry.14",
+          "kind": "PATTERN",
+          "targetId": "KAKULSAYDON_G1_PATTERN_103",
+          "waitAfterMs": 0
+        },
+        {
+          "entryId": "kakulsaydon.flow.gate1.hp.50-30.entry.15",
+          "kind": "PATTERN",
+          "targetId": "KAKULSAYDON_G1_PATTERN_101",
+          "waitAfterMs": 0
+        },
+        {
+          "entryId": "kakulsaydon.flow.gate1.hp.50-30.entry.16",
+          "kind": "PATTERN",
+          "targetId": "KAKULSAYDON_G1_PATTERN_48",
+          "waitAfterMs": 0
+        },
+        {
+          "entryId": "kakulsaydon.flow.gate1.hp.50-30.entry.17",
+          "kind": "PATTERN",
+          "targetId": "KAKULSAYDON_G1_PATTERN_101",
+          "waitAfterMs": 0
+        },
+        {
+          "entryId": "kakulsaydon.flow.gate1.hp.50-30.entry.18",
+          "kind": "PATTERN",
+          "targetId": "KAKULSAYDON_G1_PATTERN_79",
+          "waitAfterMs": 0
+        },
+        {
+          "entryId": "kakulsaydon.flow.gate1.hp.50-30.entry.19",
+          "kind": "PATTERN",
+          "targetId": "KAKULSAYDON_G1_PATTERN_78",
+          "waitAfterMs": 0
+        },
+        {
+          "entryId": "kakulsaydon.flow.gate1.hp.50-30.entry.20",
+          "kind": "PATTERN",
+          "targetId": "KAKULSAYDON_G1_PATTERN_104",
+          "waitAfterMs": 0
+        },
+        {
+          "entryId": "kakulsaydon.flow.gate1.hp.50-30.entry.21",
+          "kind": "PATTERN",
+          "targetId": "KAKULSAYDON_G1_PATTERN_83",
+          "waitAfterMs": 0
+        },
+        {
+          "entryId": "kakulsaydon.flow.gate1.mechanic.hp30.entry.01",
+          "kind": "PATTERN",
+          "targetId": "KAKULSAYDON_G1_PATTERN_2",
+          "waitAfterMs": 0
+        },
+        {
+          "entryId": "kakulsaydon.flow.gate1.mechanic.hp30.entry.02",
+          "kind": "PATTERN",
+          "targetId": "KAKULSAYDON_G1_PATTERN_104",
+          "waitAfterMs": 0
+        },
+        {
+          "entryId": "kakulsaydon.flow.gate1.hp.30-0.entry.01",
+          "kind": "PATTERN",
+          "targetId": "KAKULSAYDON_G1_PATTERN_58",
+          "waitAfterMs": 0
+        },
+        {
+          "entryId": "kakulsaydon.flow.gate1.hp.30-0.entry.02",
+          "kind": "PATTERN",
+          "targetId": "KAKULSAYDON_G1_PATTERN_101",
+          "waitAfterMs": 0
+        },
+        {
+          "entryId": "kakulsaydon.flow.gate1.hp.30-0.entry.03",
+          "kind": "PATTERN",
+          "targetId": "KAKULSAYDON_G1_PATTERN_102",
+          "waitAfterMs": 0
+        },
+        {
+          "entryId": "kakulsaydon.flow.gate1.hp.30-0.entry.04",
+          "kind": "PATTERN",
+          "targetId": "KAKULSAYDON_G1_PATTERN_101",
+          "waitAfterMs": 0
+        },
+        {
+          "entryId": "kakulsaydon.flow.gate1.hp.30-0.entry.05",
+          "kind": "PATTERN",
+          "targetId": "KAKULSAYDON_G1_PATTERN_81",
+          "waitAfterMs": 0
+        },
+        {
+          "entryId": "kakulsaydon.flow.gate1.hp.30-0.entry.06",
+          "kind": "PATTERN",
+          "targetId": "KAKULSAYDON_G1_PATTERN_101",
+          "waitAfterMs": 0
+        },
+        {
+          "entryId": "kakulsaydon.flow.gate1.hp.30-0.entry.07",
+          "kind": "PATTERN",
+          "targetId": "KAKULSAYDON_G1_PATTERN_82",
+          "waitAfterMs": 0
+        },
+        {
+          "entryId": "kakulsaydon.flow.gate1.hp.30-0.entry.08",
+          "kind": "PATTERN",
+          "targetId": "KAKULSAYDON_G1_PATTERN_101",
+          "waitAfterMs": 0
+        },
+        {
+          "entryId": "kakulsaydon.flow.gate1.hp.30-0.entry.09",
+          "kind": "PATTERN",
+          "targetId": "KAKULSAYDON_G1_PATTERN_47",
+          "waitAfterMs": 0
+        },
+        {
+          "entryId": "kakulsaydon.flow.gate1.hp.30-0.entry.10",
+          "kind": "PATTERN",
+          "targetId": "KAKULSAYDON_G1_PATTERN_101",
+          "waitAfterMs": 0
+        },
+        {
+          "entryId": "kakulsaydon.flow.gate1.hp.30-0.entry.11",
+          "kind": "PATTERN",
+          "targetId": "KAKULSAYDON_G1_PATTERN_100",
+          "waitAfterMs": 0
+        },
+        {
+          "entryId": "kakulsaydon.flow.gate1.hp.30-0.entry.12",
+          "kind": "PATTERN",
+          "targetId": "KAKULSAYDON_G1_PATTERN_101",
+          "waitAfterMs": 0
+        },
+        {
+          "entryId": "kakulsaydon.flow.gate1.hp.30-0.entry.13",
+          "kind": "PATTERN",
+          "targetId": "KAKULSAYDON_G1_PATTERN_80",
+          "waitAfterMs": 0
+        },
+        {
+          "entryId": "kakulsaydon.flow.gate1.hp.30-0.entry.14",
+          "kind": "PATTERN",
+          "targetId": "KAKULSAYDON_G1_PATTERN_103",
+          "waitAfterMs": 0
+        },
+        {
+          "entryId": "kakulsaydon.flow.gate1.hp.30-0.entry.15",
+          "kind": "PATTERN",
+          "targetId": "KAKULSAYDON_G1_PATTERN_101",
+          "waitAfterMs": 0
+        },
+        {
+          "entryId": "kakulsaydon.flow.gate1.hp.30-0.entry.16",
+          "kind": "PATTERN",
+          "targetId": "KAKULSAYDON_G1_PATTERN_48",
+          "waitAfterMs": 0
+        },
+        {
+          "entryId": "kakulsaydon.flow.gate1.hp.30-0.entry.17",
+          "kind": "PATTERN",
+          "targetId": "KAKULSAYDON_G1_PATTERN_101",
+          "waitAfterMs": 0
+        },
+        {
+          "entryId": "kakulsaydon.flow.gate1.hp.30-0.entry.18",
+          "kind": "PATTERN",
+          "targetId": "KAKULSAYDON_G1_PATTERN_79",
+          "waitAfterMs": 0
+        },
+        {
+          "entryId": "kakulsaydon.flow.gate1.hp.30-0.entry.19",
+          "kind": "PATTERN",
+          "targetId": "KAKULSAYDON_G1_PATTERN_78",
+          "waitAfterMs": 0
+        },
+        {
+          "entryId": "kakulsaydon.flow.gate1.hp.30-0.entry.20",
+          "kind": "PATTERN",
+          "targetId": "KAKULSAYDON_G1_PATTERN_104",
+          "waitAfterMs": 0
+        },
+        {
+          "entryId": "kakulsaydon.flow.gate1.hp.30-0.entry.21",
+          "kind": "PATTERN",
+          "targetId": "KAKULSAYDON_G1_PATTERN_83",
+          "waitAfterMs": 0
+        }
+      ],
+      "entryGroups": [
+        {
+          "groupId": "kakulsaydon.flow.gate1.group.hp.160-130",
+          "displayName": "일반 패턴 반복 160→130줄",
+          "startEntryId": "kakulsaydon.flow.gate1.restored.1",
+          "endEntryId": "kakulsaydon.flow.gate1.hp.160-130.entry.21",
+          "repeatUntilHealthBars": 130,
+          "transitionAt": "PATTERN_END"
+        },
+        {
+          "groupId": "kakulsaydon.flow.gate1.group.mechanic.hp130",
+          "displayName": "130줄 세이튼_무력화 시작",
+          "startEntryId": "kakulsaydon.flow.gate1.restored.21",
+          "endEntryId": "kakulsaydon.flow.gate1.restored.22"
+        },
+        {
+          "groupId": "kakulsaydon.flow.gate1.group.hp.130-110",
+          "displayName": "일반 패턴 반복 130→110줄",
+          "startEntryId": "kakulsaydon.flow.gate1.hp.130-110.entry.01",
+          "endEntryId": "kakulsaydon.flow.gate1.hp.130-110.entry.21",
+          "repeatUntilHealthBars": 110,
+          "transitionAt": "PATTERN_END"
+        },
+        {
+          "groupId": "kakulsaydon.flow.gate1.group.mechanic.hp110",
+          "displayName": "110줄 세이튼_진짜세이튼찾기",
+          "startEntryId": "kakulsaydon.flow.gate1.restored.23",
+          "endEntryId": "kakulsaydon.flow.gate1.restored.24"
+        },
+        {
+          "groupId": "kakulsaydon.flow.gate1.group.hp.110-85",
+          "displayName": "일반 패턴 반복 110→85줄",
+          "startEntryId": "kakulsaydon.flow.gate1.hp.110-85.entry.01",
+          "endEntryId": "kakulsaydon.flow.gate1.hp.110-85.entry.21",
+          "repeatUntilHealthBars": 85,
+          "transitionAt": "PATTERN_END"
+        },
+        {
+          "groupId": "kakulsaydon.flow.gate1.group.mechanic.hp85",
+          "displayName": "85줄 세이튼_댄스타임",
+          "startEntryId": "kakulsaydon.flow.gate1.restored.25",
+          "endEntryId": "kakulsaydon.flow.gate1.restored.26"
+        },
+        {
+          "groupId": "kakulsaydon.flow.gate1.group.hp.85-60",
+          "displayName": "일반 패턴 반복 85→60줄",
+          "startEntryId": "kakulsaydon.flow.gate1.hp.85-60.entry.01",
+          "endEntryId": "kakulsaydon.flow.gate1.hp.85-60.entry.21",
+          "repeatUntilHealthBars": 60,
+          "transitionAt": "PATTERN_END"
+        },
+        {
+          "groupId": "kakulsaydon.flow.gate1.group.mechanic.hp60",
+          "displayName": "60줄 세이튼_무력화 시작",
+          "startEntryId": "kakulsaydon.flow.gate1.mechanic.hp60.entry.01",
+          "endEntryId": "kakulsaydon.flow.gate1.mechanic.hp60.entry.02"
+        },
+        {
+          "groupId": "kakulsaydon.flow.gate1.group.hp.60-50",
+          "displayName": "일반 패턴 반복 60→50줄",
+          "startEntryId": "kakulsaydon.flow.gate1.hp.60-50.entry.01",
+          "endEntryId": "kakulsaydon.flow.gate1.hp.60-50.entry.21",
+          "repeatUntilHealthBars": 50,
+          "transitionAt": "PATTERN_END"
+        },
+        {
+          "groupId": "kakulsaydon.flow.gate1.group.mechanic.hp50",
+          "displayName": "50줄 세이튼_룰렛",
+          "startEntryId": "kakulsaydon.flow.gate1.restored.27",
+          "endEntryId": "kakulsaydon.flow.gate1.restored.28"
+        },
+        {
+          "groupId": "kakulsaydon.flow.gate1.group.hp.50-30",
+          "displayName": "일반 패턴 반복 50→30줄",
+          "startEntryId": "kakulsaydon.flow.gate1.hp.50-30.entry.01",
+          "endEntryId": "kakulsaydon.flow.gate1.hp.50-30.entry.21",
+          "repeatUntilHealthBars": 30,
+          "transitionAt": "PATTERN_END"
+        },
+        {
+          "groupId": "kakulsaydon.flow.gate1.group.mechanic.hp30",
+          "displayName": "30줄 세이튼_진짜세이튼찾기",
+          "startEntryId": "kakulsaydon.flow.gate1.mechanic.hp30.entry.01",
+          "endEntryId": "kakulsaydon.flow.gate1.mechanic.hp30.entry.02"
+        },
+        {
+          "groupId": "kakulsaydon.flow.gate1.group.hp.30-0",
+          "displayName": "일반 패턴 반복 30→0줄",
+          "startEntryId": "kakulsaydon.flow.gate1.hp.30-0.entry.01",
+          "endEntryId": "kakulsaydon.flow.gate1.hp.30-0.entry.21",
+          "repeatUntilHealthBars": 0,
+          "transitionAt": "PATTERN_END"
         }
       ]
     },

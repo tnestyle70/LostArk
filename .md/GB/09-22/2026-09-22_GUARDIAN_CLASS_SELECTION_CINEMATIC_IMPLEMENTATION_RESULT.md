@@ -241,3 +241,15 @@ SL10 배치1,356개 생성이 통과했다.400개 batch 객체에1,054개 배치
 
 수정 파일의 최소 컴파일은 통과했다. 후보 EXE 빌드와 실제 ClassSelectionPresentation
 Initialize/Play 연결 검사는 진행 중이며, 이 시점에는 사용자 재생 성공을 기록하지 않는다.
+
+## G11. 2026-09-24 F1 Character Select Movie 진입
+
+F1의 `Character Select Movie` 구역에서 Guardian Knight를 기본 선택하고 기존 7 class를 선택할 수 있도록 `CLevel_CharacterSelect::Render_ClassSelectMovieControls`를 추가했다. 현재 Level의 동일 presentation owner에 Play/Restart Intro·Stop을 전달하고 Intro/Loop, 일시정지 여부, 현재 시간/길이와 기존 준비 실패 상태를 표시한다. MainApp 공통 F1의 DefaultOpen `Character Select Movie` 섹션에서 이 함수를 호출하는 연결도 확인했다.
+
+Character Select 밖에서는 `Enter Character Select to preview this movie`를 표시하고 player나 리소스를 생성하지 않는다. 기존 Server 승인·customizing·create character·raid-entry preview·Level 전환 조건을 그대로 검사한다. class combo는 movie 대상 선택일 뿐 Server class-change를 요청하지 않는다. 다른 UI가 시작한 현재 연출도 명시적인 Stop으로 동일 owner에서 종료할 수 있으며 기존 camera·배우·FX 정리를 사용한다. 기존 음향·미복원 영역을 이번 UI 추가로 복원했다고 기록하지 않는다.
+
+현재 설치 manifest에는 GUARDIANKNIGHT 한 scene만 있다. 나머지 class는 준비된 movie가 없다고 표시하고 Play를 비활성화한다. Guardian intro는 wall 31,735.171ms/source31,505ms, loop는23,003ms이며 각 phase22개 instance와 intro5/loop4 camera cut을 사용한다. 신규 미디어나 Resources·Data·게시 파일 변경은 없다.
+
+읽기 전용 설치 참조 검사는 PASS다. manifest, source/runtime WorldSequence, EffectCatalog,4개 effect문서, SL10 material문서의9개 JSON을 중복 key·비유한 값 거부 파서로 읽었다.44개 instance의 enabled·template duration·binding을 대조하고22 actor resource,25 model/donor 경로,54 FX 참조,679 배경 참조의 합집합758파일이 모두 존재하며 비어 있지 않음을 확인했다. source/runtime WorldSequence JSON 객체도 일치한다. 증거는 `out/CharacterSelectMovie20260924/installed-resource-check.json`이다. 이 검사는 현재 파일 존재·참조 정합성 검사이며 CModel·GPU·영상 재생 성공을 의미하지 않는다.
+
+Level cpp/header의 UTF-8 BOM 없음과 CRLF를 유지했고 담당 `git diff --check`는 PASS다. 기존 두 파일만 확장하여 project/filter 추가는 없다. root가 수행한 최종 Debug/Release Product 빌드는 모두 PASS이며 두 receipt의 skippedBuild=false도 확인했다. 증거는 `out/BuildPipeline/runs/20260923T234847724Z-debug-product.json`, `20260923T234951599Z-release-product.json`다. Client·영상·UI 실행과 프로세스 종료는 수행하지 않았다.

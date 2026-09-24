@@ -189,6 +189,8 @@ public:
 		const std::string& expectedRepositoryRevision,
 		std::string& status) const;
 	void Render();
+	// Collect numeric Save/Publish completion even while its window is hidden.
+	void Update_EmbeddedPanel();
 	/* Action Presentation Workbench consumes this narrow stable-ID boundary
 	   instead of reaching into Balance Tool widgets or constructing a second
 	   Valtan draft.  Both windows therefore edit and publish one in-memory

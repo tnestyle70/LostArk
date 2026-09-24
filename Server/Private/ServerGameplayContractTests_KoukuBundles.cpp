@@ -843,17 +843,49 @@ void LostArk::Server::CServerGameplayContractRunner::Run_KoukuBundles(TESTS& tes
 				"Unpublished requested source cannot borrow a different published revision");
 			auto foreign = changeSource(published, oldSource + 2u);
 			const auto damageAt = foreign.find("\nDAMAGE\t");
+			std::string damageId;
+			const CGameplayCatalog::DAMAGE_PROFILE* activeDamage = nullptr;
+			std::uint32_t foreignRate = 0u;
 			if (damageAt != std::string::npos)
 			{
-				const auto damageEnd = foreign.find('\n', damageAt + 1u);
-				const auto valueAt = foreign.rfind('\t', damageEnd) + 1u;
-				foreign.replace(valueAt, damageEnd - valueAt, "99999");
+				const auto idAt = damageAt + std::string_view("\nDAMAGE\t").size();
+				const auto idEnd = foreign.find('\t', idAt);
+				const auto valueAt = idEnd + 1u;
+				const auto valueEnd = foreign.find_first_of("\t\r\n", valueAt);
+				if (idEnd != std::string::npos && valueEnd != std::string::npos)
+				{
+					damageId = foreign.substr(idAt, idEnd - idAt);
+					activeDamage = generation->Find_DamageProfile(damageId);
+					if (activeDamage)
+					{
+						// The rate is field 2; Retail appends coefficient, addend and spread.
+						foreignRate = activeDamage->iRatePercent == 99999u ? 99998u : 99999u;
+						foreign.replace(valueAt, valueEnd - valueAt, std::to_string(foreignRate));
+					}
+				}
 			}
 			publish(foreign); play.iRequestSequence = 9u;
-			tests.Require(reloadRoom->Evaluate_KoukuSaydonPatternAudition(950u, play, result) ==
-				KOUKUSAYDON_PATTERN_AUDITION_RESULT::QUEUED &&
+			CGameplayCatalog foreignCatalog;
+			const bool foreignLoaded = foreignCatalog.Load();
+			const auto* diskDamage = foreignLoaded ? foreignCatalog.Find_DamageProfile(damageId) : nullptr;
+			tests.Require(activeDamage && diskDamage && diskDamage->iRatePercent == foreignRate &&
+				diskDamage->iRatePercent != activeDamage->iRatePercent &&
+				diskDamage->iAttackCoefficientBp == activeDamage->iAttackCoefficientBp &&
+				diskDamage->iDamageAddend == activeDamage->iDamageAddend &&
+				diskDamage->iDamageSpreadPercent == activeDamage->iDamageSpreadPercent,
+				"Unrelated disk damage edit changes only the valid rate field while preserving Retail formula and spread");
+			const bool foreignAdmitted = reloadRoom->Evaluate_KoukuSaydonPatternAudition(950u, play, result) ==
+				KOUKUSAYDON_PATTERN_AUDITION_RESULT::QUEUED;
+			const auto foreignPin = reloadRoom->m_KoukuSaydonPatternAudition.pProductGeneration;
+			const auto* pinnedDamage = foreignPin ? foreignPin->Find_DamageProfile(damageId) : nullptr;
+			if (!foreignAdmitted) std::cout << "[STATUS] Kouku unrelated damage reload: " << result.strReason << '\n';
+			tests.Require(foreignAdmitted && activeDamage && pinnedDamage &&
+				pinnedDamage->iRatePercent == activeDamage->iRatePercent &&
+				pinnedDamage->iAttackCoefficientBp == activeDamage->iAttackCoefficientBp &&
+				pinnedDamage->iDamageAddend == activeDamage->iDamageAddend &&
+				pinnedDamage->iDamageSpreadPercent == activeDamage->iDamageSpreadPercent &&
 				result.iPinnedSourceRevision == oldSource + 2u &&
-				reloadRoom->m_KoukuSaydonPatternAudition.pProductGeneration->Has_SameNonKoukuGameplay(*generation) &&
+				foreignPin->Has_SameNonKoukuGameplay(*generation) &&
 				reloadRoom->Get_ActiveGameplayGeneration() == generation,
 				"Kouku reload admits only encounter edits and retains active damage despite unrelated disk changes");
 			stop = play; stop.eOperation = KOUKUSAYDON_PATTERN_AUDITION_OPERATION::STOP;

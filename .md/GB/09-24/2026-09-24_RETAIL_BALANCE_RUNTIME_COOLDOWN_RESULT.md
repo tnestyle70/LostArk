@@ -118,3 +118,23 @@ wave suppression`으로 확인한다. 양 구성에서 fixture를 다시 초기�
 변경 파일은 `GameRoom_KoukuPlayerCommands.cpp`, `ServerGameplayContractTests_DebugTeleport.cpp`다.
 source diff 검사와 이 후속 수정을 포함한 최종 Product 빌드 및 native 재실행은 양 구성 모두
 PASS다. 최종 실패 수와 실행 증거는 G03에 기록했다.
+
+## G06. 공용 Balance 게시의 World promotion 누락 보정
+
+G1 HP flow의 공식 Kouku 게시 과정에서 spawn-group 다섯 몬스터가 base 수치에서 Retail로 바뀌었다. 기존 main의 프로필 값은 정상이나 `Publish-BalanceRuntimeSet.ps1`의 최종 교체 목록에는 네 worldbootstrap만 있었고, staging에 생성한 Kouku world와 모든 spawn-group 출력이 빠져 있었다. 이전 통합 게시 성공을 모든 몬스터 Retail 적용으로 기록한 범위가 넓었으며, 실제 누락과 Kouku 복구값은 [G1 Flow 결과 G08](2026-09-24_KOUKU_GATE1_HEALTH_FLOW_RESULT.md)에 기록한다.
+
+공용 publisher는 기존 네 world와 Kouku world의 필수 파일 존재를 먼저 확인한다. 이어서 World publisher가 실제 staging에 생성한 모든 `.worldbootstrap`과 `.spawngroupsbootstrap`을 정렬하여 기존 generation/Gameplay/Items와 같은 promotion 목록에 넣는다. 기존 writer admission, source revision 재확인, destination mutex, 원자 교체와 역순 rollback을 유지했다. 실패 주입의 상한도 전체 promotion을 검사할 수 있도록 확장했고 완료 로그는 실제 출력 수를 표시한다. 다른 확장자나 Client 출력의 새 배포 경로는 만들지 않았다.
+
+기존 `test_balance_test_transaction.py`에 격리된 publisher fixture 네 검사를 추가했다. 제품 transaction 스크립트와 writer admission은 실제 파일을 복사하여 실행하고 domain producer만 작은 fixture를 사용했다. 실제 저장소의 authoring·runtime이나 실행 중 프로세스는 변경하지 않았다.
+
+- 기존 저장/CAS 검사 10개 + 게시 검사 4개: 총 14 tests PASS. 로그는 `out/KoukuHealthFlow20260924/applied/balance-runtime-promotion-tests.log`다.
+- 성공 시 여섯 world와 세 spawn-group을 포함한 12개 출력에 같은 source generation을 게시한다.
+- 기존 네 world 또는 Kouku world가 빠진 다섯 subcase는 첫 promotion 전에 실패하고 모든 기존 bytes를 보존한다.
+- 모든 파일을 교체한 후 실패를 주입하거나 최종 source revision을 바꾸면 기존 bytes와 원래 없던 Kouku spawn-group 파일의 부재를 복원한다. 외부 source revision 변경은 보존한다.
+- PowerShell AST parse와 변경 파일 `git diff --check`: PASS. C++/프로젝트 등록 변경은 없다.
+
+통합 담당자의 승인으로 수정한 `Publish-BalanceRuntimeSet.ps1 -Mode Publish`를 실제 실행했고 exit 0 / PASS로 완료했다. 로그는 `out/KoukuHealthFlow20260924/applied/balance-final-publish.log`다. generation·Gameplay·여섯 world·세 spawn-group·Items의 12개 파일을 기존 transaction으로 게시했으며 최종 revision은 `d21992b07d3b9118cf9b1ba88c858538eaec54b1f63c6762338c184a91299d6b`다.
+
+08:47:54 KST 최종 대조에서 Character Select 3개, Kouku 5개, Valtan 4개의 Retail 대상 PROFILE HP/AP가 모두 원본 프로필과 일치했다. Gameplay의 player/skill/boss/damage 568개 필드도 모두 일치했다. G1 source/runtime은 2238 / 159 entry / 13 group을 유지하며 Gameplay SHA-256도 직전 G1 게시와 동일한 `c15859d1a74147f3551783152a6aa10217dbd4e556a9b0bd1aea04d8ee359358`다. 증거는 같은 디렉터리의 `balance-final-validation.json`이다.
+
+이번 전체 작업에서 실제 내용이 변경된 설치 데이터는 `Gameplay.bootstrap`과 `CHARACTER_SELECT_ARENA`, `KAKULSAYDON_ARENA`, `VALTAN_ARENA`의 세 `spawngroupsbootstrap`이다. 다른 World 출력은 다시 게시되어도 내용은 유지됐다. Client/Server를 새로 실행하거나 Reload하지 않았으며, 설치 데이터 확인을 실행 중 메모리 검증으로 기록하지 않는다. 데이터는 이 결과에서 freeze하고 제품 빌드는 통합 담당자가 이어서 수행한다.

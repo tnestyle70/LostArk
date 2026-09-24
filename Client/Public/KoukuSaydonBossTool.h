@@ -85,6 +85,7 @@ namespace Client
         bool Play_PatternFlow(std::string_view gateId, std::string& status,
             std::uint32_t expectedSourceRevision = 0u);
 		const KOUKU_SAYDON_COMPOSITION_PATTERN_FLOW* Get_SavedFlow(std::string_view gateId) const;
+		// Saved HP groups are display-only headers; only Pattern/Bundle rows change the playable selection.
 		bool Render_SavedPatternFlow(std::string_view gateId, int& selectionKind, std::string& selectedId) const;
 		bool Request_PublishSavedPatterns(std::string& status);
 		bool Consume_PublishRequest() { const bool requested = m_bPublishRequested; m_bPublishRequested = false; return requested; }

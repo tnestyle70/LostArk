@@ -25,3 +25,9 @@ Kill 처리 후 기존 Update_WorldEntities가 사망 event, attachment/combat o
 작성 에이전트는 source/diff/JSON/XML/PowerShell parse와 focused contract를 검증한다. build, publisher 실행, commit은 root 에이전트가 통합 후 수행한다. Shared packet round-trip, Server wrong-world/Release/replay/다른 관문 보존 및 G3 progression을 검증한다. Client/UI 실행과 최종 4인 화면 확인은 사용자 경계로 남긴다.
 
 #454는 이번 구현에 병합하지 않는다. Retail의 수치 범위와 Client 표시/publisher 전달/monster 게시/버프 stun 연결 문제는 대응 RESULT의 별도 리뷰 항목으로 남긴다.
+
+## G04. 2026-09-24 F1 Balance Test 진입 위치 조정
+
+사용자는 F1에서 Balance Test 버튼을 눌러 기존 별도 창을 여는 방식을 유지하고, 그 버튼을 기존 Player Follow Camera가 있던 위치에 배치하도록 확정했다. F1에 수치 editor를 직접 삽입하지 않는다. MainApp의 버튼 위치와 기존 별도 창 Render/Ensure 연결은 통합 담당자가 수정한다. 숫자 editor의 Reload/Save/Publish/쿨타임/Kill Boss와 기존 창 크기·본문은 유지한다.
+
+`CBalanceTool::Update_EmbeddedPanel`과 panel의 `Update`를 제공해 MainApp이 F1 표시 여부와 Debug/Release에 관계없이 진행 중 저장·게시 결과를 수거한다. 닫기는 실행 중 writer를 취소하지 않는다. 새 파일과 project/filter 등록은 없으며 기존 인코딩·개행을 유지한다. 검증은 해당 diff와 호출 경계 점검 후 통합 담당자의 Debug/Release 컴파일로 구분하고, Client 화면은 사용자가 확인한다.

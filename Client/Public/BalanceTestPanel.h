@@ -14,6 +14,7 @@ class CBalanceTestPanel final
 public:
     CBalanceTestPanel();
     ~CBalanceTestPanel();
+    void Update();
     void Render(bool& open);
     static void Render_KillBossControl();
     static void Render_CooldownControl();

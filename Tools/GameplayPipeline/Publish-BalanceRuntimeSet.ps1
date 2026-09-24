@@ -5,7 +5,7 @@ param(
     [string]$OutputRoot = 'Server/Bin/DataFiles',
     [ValidateSet('Retail')]
     [string]$BalanceProfile = 'Retail',
-    [ValidateRange(0, 7)]
+    [ValidateRange(0, 2147483647)]
     [int]$FailureAfterPromote = 0,
     [ValidatePattern('^(?:[0-9a-f]{64})?$')]
     [string]$ExpectedValtanSourceRevision = ''
@@ -104,13 +104,24 @@ try {
         ('Gameplay\ValtanPresentationGenerations\' + $generationFiles[0].Name)
     $targets = @(
         @{ Staged = $generationFiles[0].FullName; Destination = $generationDestination },
-        @{ Staged = Join-Path $stagedGameplayRoot 'Gameplay.bootstrap'; Destination = Join-Path $runtimeRoot 'Gameplay\Gameplay.bootstrap' },
-        @{ Staged = Join-Path $stagedWorldRoot 'BERN.worldbootstrap'; Destination = Join-Path $runtimeRoot 'World\BERN.worldbootstrap' },
-        @{ Staged = Join-Path $stagedWorldRoot 'VALTAN_ARENA.worldbootstrap'; Destination = Join-Path $runtimeRoot 'World\VALTAN_ARENA.worldbootstrap' },
-        @{ Staged = Join-Path $stagedWorldRoot 'TRAINING_GROUND.worldbootstrap'; Destination = Join-Path $runtimeRoot 'World\TRAINING_GROUND.worldbootstrap' },
-        @{ Staged = Join-Path $stagedWorldRoot 'CHARACTER_SELECT_ARENA.worldbootstrap'; Destination = Join-Path $runtimeRoot 'World\CHARACTER_SELECT_ARENA.worldbootstrap' },
-        @{ Staged = Join-Path $stagedItemsRoot 'Items.bootstrap'; Destination = Join-Path $runtimeRoot 'Items\Items.bootstrap' }
+        @{ Staged = Join-Path $stagedGameplayRoot 'Gameplay.bootstrap'; Destination = Join-Path $runtimeRoot 'Gameplay\Gameplay.bootstrap' }
     )
+    # The World publisher owns its complete output inventory. Include optional
+    # spawn groups too: their PROFILE rows carry Retail monster HP and damage.
+    foreach ($requiredWorld in @('BERN', 'VALTAN_ARENA', 'TRAINING_GROUND',
+        'CHARACTER_SELECT_ARENA', 'KAKULSAYDON_ARENA')) {
+        $requiredPath = Join-Path $stagedWorldRoot "$requiredWorld.worldbootstrap"
+        if (-not [IO.File]::Exists($requiredPath)) {
+            throw "Balance runtime staged output is missing: $requiredPath"
+        }
+    }
+    $worldFiles = @(Get-ChildItem -LiteralPath $stagedWorldRoot -File |
+        Where-Object { $_.Extension -in @('.worldbootstrap', '.spawngroupsbootstrap') } |
+        Sort-Object Name)
+    foreach ($worldFile in $worldFiles) {
+        $targets += @{ Staged = $worldFile.FullName; Destination = Join-Path (Join-Path $runtimeRoot 'World') $worldFile.Name }
+    }
+    $targets += @{ Staged = Join-Path $stagedItemsRoot 'Items.bootstrap'; Destination = Join-Path $runtimeRoot 'Items\Items.bootstrap' }
     foreach ($target in $targets) {
         if (-not [IO.File]::Exists($target.Staged)) {
             throw "Balance runtime staged output is missing: $($target.Staged)"
@@ -162,7 +173,7 @@ try {
         }
     }
 	Write-Output "BALANCE_RUNTIME_SET_REVISION`t$publishSourceRevision"
-    Write-Output 'Balance runtime set Publish succeeded: gameplay + 4 worlds + items.'
+    Write-Output "Balance runtime set Publish succeeded: gameplay + $($worldFiles.Count) world/spawn-group outputs + items."
 }
 catch {
     $publishFailure = $_

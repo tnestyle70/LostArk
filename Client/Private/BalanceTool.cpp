@@ -12877,20 +12877,25 @@ bool Client::CBalanceTool::Run_ReadOnlyRoundTripContractTest(
 #endif
 
 #if !defined(LOSTARK_BALANCE_TOOL_CONTRACT_TEST)
+void Client::CBalanceTool::Update_EmbeddedPanel()
+{
+	if (m_commonPanel) m_commonPanel->Update();
+}
+
 void Client::CBalanceTool::Render()
 {
 	if (!m_open)
 		return;
-	if (m_commonVisible && m_commonPanel)
-	{
-		m_commonPanel->Render(m_open);
-		return;
-	}
 	if (m_focusPending)
 	{
 		ImGui::SetNextWindowCollapsed(false, ImGuiCond_Always);
 		ImGui::SetNextWindowFocus();
 		m_focusPending = false;
+	}
+	if (m_commonVisible && m_commonPanel)
+	{
+		m_commonPanel->Render(m_open);
+		return;
 	}
 	ImGui::SetNextWindowSize(ImVec2(1180.f, 760.f), ImGuiCond_FirstUseEver);
 	if (!ImGui::Begin("Valtan Authoring", &m_open))

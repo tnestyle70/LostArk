@@ -192,6 +192,39 @@ void CServerGameplayContractRunner::Run_KoukuRaidIntegration(TESTS& tests)
             sessions.push_back(std::move(connection));
         }
         auto& run = room->m_KoukuRaid;
+        if (participantCount == 2u && scenario == 0u)
+        {
+            const auto* publishedGate = catalog.Find_KoukuRaidGate("GATE1");
+            tests.Require(publishedGate != nullptr, "Revision rejection fixture uses the actual published G1 raid");
+            if (publishedGate)
+            {
+                const auto source = CKoukuSaydonBrain::Resolve_ProductSourceRevision(catalog);
+                C2S_DEBUG_KOUKUSAYDON_RAID_REQUEST stale;
+                stale.iRequestSequence = 1u; stale.eWorldId = WORLD_ID::KAKULSAYDON_ARENA;
+                stale.eOperation = KOUKUSAYDON_RAID_OPERATION::START; stale.strStartGateId = "GATE1";
+                stale.ExpectedGameplayRevision = room->m_GameplayCatalog.Get_ActiveRevision();
+                stale.iActionSourceRevision = source + 1u; stale.iSequenceSourceRevision = publishedGate->iSequenceRevision;
+                const auto nextEpoch = room->m_iNextKoukuRaidEpoch;
+                const auto priorProduct = room->m_pKoukuPublishedProductGeneration;
+                const auto priorBossCount = room->m_WorldEntities.size();
+                std::string reason;
+                tests.Require(!room->Begin_KoukuRaidPreparation(501u, stale, reason) &&
+                    reason.find("Action revision mismatch") != std::string::npos &&
+                    reason.find("requested " + std::to_string(source + 1u)) != std::string::npos &&
+                    reason.find("published " + std::to_string(source)) != std::string::npos,
+                    "Raid rejects an unpublished Action revision with its exact requested and published values");
+                stale.iActionSourceRevision = source; ++stale.iSequenceSourceRevision;
+                tests.Require(!room->Begin_KoukuRaidPreparation(501u, stale, reason) &&
+                    reason.find("Sequence revision mismatch") != std::string::npos &&
+                    reason.find("requested " + std::to_string(stale.iSequenceSourceRevision)) != std::string::npos &&
+                    reason.find("published " + std::to_string(publishedGate->iSequenceRevision)) != std::string::npos,
+                    "Raid rejects an unpublished Sequence revision with its exact requested and published values");
+                tests.Require(!run.State.iRunEpoch && room->m_iNextKoukuRaidEpoch == nextEpoch &&
+                    room->m_pKoukuPublishedProductGeneration == priorProduct && room->m_WorldEntities.size() == priorBossCount &&
+                    room->m_Players.at(1u).fPositionX == 27.8f && room->m_Players.at(1u).iCurrentHp == 100u,
+                    "Revision rejection preserves the party, bosses, catalog and next epoch for the following exact-source retry");
+            }
+        }
         if (scenario == 0u)
         {
             std::vector<SERVER_WORLD_TRANSFER_REQUEST> transfers;

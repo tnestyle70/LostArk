@@ -39,7 +39,16 @@ void LostArk::Server::CGameRoom::Handle_KoukuRaidRequest(const SESSION_ID sessio
     rejection.PinnedGameplayRevision = request.ExpectedGameplayRevision;
     rejection.iActionSourceRevision = request.iActionSourceRevision; rejection.iSequenceSourceRevision = request.iSequenceSourceRevision;
     rejection.iServerTick = m_iServerTick;
-    const auto reject = [&](const char* reason) { rejection.strReason = reason; send(rejection); };
+    const auto reject = [&](const char* reason) {
+        rejection.strReason = reason;
+        if (rejection.strReason.size() > MAX_KOUKUSAYDON_PATTERN_AUDITION_REASON_BYTES)
+        {
+            auto cut = MAX_KOUKUSAYDON_PATTERN_AUDITION_REASON_BYTES;
+            while (cut && (static_cast<unsigned char>(rejection.strReason[cut]) & 0xc0u) == 0x80u) --cut;
+            rejection.strReason.resize(cut);
+        }
+        send(rejection);
+    };
     CPacketWriter shape;
     if (m_eWorldId != WORLD_ID::KAKULSAYDON_ARENA || !Write_Message(shape, request)) { reject("Invalid raid request scope"); return; }
     const auto previous = m_KoukuRaidReceipts.find(sessionId);
@@ -104,11 +113,17 @@ bool LostArk::Server::CGameRoom::Begin_KoukuRaidPreparation(const SESSION_ID ses
         currentGate->iSequenceRevision != request.iSequenceSourceRevision)
     {
         auto candidate = std::make_shared<CGameplayCatalog>();
-        if (!candidate->Load_PublishedKoukuProduct(m_GameplayCatalog.Active()) ||
-            !candidate->Has_SameNonKoukuGameplay(m_GameplayCatalog.Active()) ||
-            CKoukuSaydonBrain::Resolve_ProductSourceRevision(*candidate) != request.iActionSourceRevision ||
-            request.iActionSourceRevision < currentSource)
-        { reason = "Exact published raid Product could not be admitted; publish saved Action and Sequence data"; return false; }
+        if (!candidate->Load_PublishedKoukuProduct(m_GameplayCatalog.Active()))
+        { reason = "Published raid Product load failed: " + candidate->Get_Status(); return false; }
+        if (!candidate->Has_SameNonKoukuGameplay(m_GameplayCatalog.Active()))
+        { reason = "Published raid Product differs from the active gameplay baseline; restart Server to apply balance changes"; return false; }
+        const auto publishedSource = CKoukuSaydonBrain::Resolve_ProductSourceRevision(*candidate);
+        if (publishedSource != request.iActionSourceRevision)
+        { reason = "Published raid Action revision mismatch: requested " + std::to_string(request.iActionSourceRevision) +
+            ", published " + std::to_string(publishedSource) + ". Wait for Publish to finish, then retry Complete Play."; return false; }
+        if (request.iActionSourceRevision < currentSource)
+        { reason = "Raid Action revision cannot go backwards: requested " + std::to_string(request.iActionSourceRevision) +
+            ", current " + std::to_string(currentSource); return false; }
         product = std::move(candidate);
     }
     for (const auto* gateId : {"GATE1", "GATE2", "GATE3", "BINGO"})
@@ -117,8 +132,11 @@ bool LostArk::Server::CGameRoom::Begin_KoukuRaidPreparation(const SESSION_ID ses
             (std::string(gateId) != "BINGO" && std::string(gateId) < request.strStartGateId)) continue;
         const auto* gate = product->Find_KoukuRaidGate(gateId);
         if (!gate && std::string(gateId) == "BINGO" && request.strStartGateId != "BINGO") continue;
-        if (!gate || gate->iSequenceRevision != request.iSequenceSourceRevision || gate->Entries.empty() || !Find_Placement(gate->strPrimaryBossPlacementId))
-        { reason = "Published raid flow or Sequence revision is missing or stale"; return false; }
+        if (!gate || gate->Entries.empty() || !Find_Placement(gate->strPrimaryBossPlacementId))
+        { reason = "Published raid flow or primary boss placement is missing for " + std::string(gateId); return false; }
+        if (gate->iSequenceRevision != request.iSequenceSourceRevision)
+        { reason = "Published raid Sequence revision mismatch for " + std::string(gateId) + ": requested " +
+            std::to_string(request.iSequenceSourceRevision) + ", published " + std::to_string(gate->iSequenceRevision); return false; }
         const auto* primaryProfile = product->Find_Boss(Find_Placement(gate->strPrimaryBossPlacementId)->strArchetypeId);
         if (!primaryProfile || std::any_of(gate->EntryGroups.begin(), gate->EntryGroups.end(), [&](const auto& group) {
             return group.RepeatUntilHealthBars && *group.RepeatUntilHealthBars > primaryProfile->iMaximumHealthBars; }))
