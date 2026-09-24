@@ -1072,6 +1072,7 @@
     },
     {
       "damageProfileId": "damage.player.34630",
+      "bossHealthBarDamage": 35,
       "attackCoefficientBp": 16286651,
       "damageAddend": 75170,
       "damageSpreadPercent": 10

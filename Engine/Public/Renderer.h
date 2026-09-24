@@ -57,9 +57,7 @@ public:
 	   has to feed a time value into every screen pass. */
 	void Advance_PresentationClock(f32_t fTimeDelta);
 
-#ifdef _DEBUG
 	HRESULT Add_DebugComponent(shared_ptr<CComponent> pDebugComponent);
-#endif
 
 private:
 	ComPtr<ID3D11Device>					m_pDevice = { nullptr };
@@ -125,9 +123,7 @@ private:
     bool_t m_bSceneEnvironmentReplaced = false;
 	f32_t							m_fPresentationClock = 0.f;
 
-#ifdef _DEBUG
 	list<shared_ptr<CComponent>>			m_DebugComponent;
-#endif
 
 private:
 	HRESULT Render_Priority();
@@ -167,10 +163,8 @@ private:
 	HRESULT Ready_ScenePostTargets(uint32_t iWidth, uint32_t iHeight);
 	void SetUp_ViewportDesc(uint32_t iWidth, uint32_t iHeight);
 
-#ifdef _DEBUG
 private:
 	HRESULT Render_Debug();
-#endif
 
 
 

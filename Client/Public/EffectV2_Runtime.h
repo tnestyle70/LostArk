@@ -36,6 +36,9 @@ struct EFFECT_V2_GROUP_PLAYBACK_DESC final
 	   the authored group clock with fPlaybackRate, including late snapshots. */
 	f32_t fInitialAgeSeconds = 0.f;
 	f32_t fPlaybackRate = 1.f;
+	/* Optional trimmed occurrence envelope; source simulation keeps its own age. */
+	f32_t fEnvelopeSourceStartSeconds = 0.f;
+	f32_t fEnvelopeDurationSeconds = 0.f;
 	/* -1 preserves authored lifetime. Zero repeats until Stop_Group; positive
 	   values stretch each child through this occurrence's real duration. */
 	f32_t fDurationSeconds = -1.f;

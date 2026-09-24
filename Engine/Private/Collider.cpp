@@ -21,7 +21,6 @@ HRESULT CCollider::Initialize_Prototype(COLLIDER eType)
 {
 	m_eType = eType;
 
-#ifdef _DEBUG
 	m_pBatch = make_shared<PrimitiveBatch<VertexPositionColor>>(m_pContext.Get());
 	m_pEffect = make_shared<BasicEffect>(m_pDevice.Get());
 	m_pEffect->SetVertexColorEnabled(true);
@@ -34,7 +33,6 @@ HRESULT CCollider::Initialize_Prototype(COLLIDER eType)
 	if (FAILED(m_pDevice->CreateInputLayout(VertexPositionColor::InputElements, VertexPositionColor::InputElementCount, pVertexShaderByteCode, iLength, &m_pInputLayout)))
 		return E_FAIL;
 	
-#endif
 
     return S_OK;
 }
@@ -71,7 +69,6 @@ bool_t CCollider::Intersect(shared_ptr<CCollider> pTargetCollider)
 	return m_isColl = m_pBounding->Intersect(pTargetCollider->m_eType, pTargetCollider->m_pBounding);
 }
 
-#ifdef _DEBUG
 
 HRESULT CCollider::Render()
 {
@@ -91,7 +88,6 @@ HRESULT CCollider::Render()
 	return S_OK;
 }
 
-#endif
 
 unique_ptr<CCollider> CCollider::Create(ComPtr<ID3D11Device> pDevice, ComPtr<ID3D11DeviceContext> pContext, COLLIDER eType)
 {

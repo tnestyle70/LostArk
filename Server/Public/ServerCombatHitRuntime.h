@@ -36,6 +36,8 @@ namespace LostArk::Server
 		float fPushRangeM = 0.f;
 		std::uint32_t iPushMs = 0u;
 		std::uint32_t iServerTick = 0u;
+		// A typed boss health-bar amount bypasses armor, but not shields or immunity.
+		bool bHealthDamagePreResolved = false;
 	};
 
 	struct SERVER_WORLD_TO_PLAYER_HIT final

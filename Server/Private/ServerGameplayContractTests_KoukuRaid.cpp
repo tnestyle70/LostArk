@@ -13,6 +13,7 @@
 #include <algorithm>
 #include <cmath>
 #include <iostream>
+#include <iterator>
 #include <limits>
 #include <memory>
 
@@ -928,16 +929,33 @@ void CServerGameplayContractRunner::Run_KoukuRaidIntegration(TESTS& tests)
                     "Bingo entry revives and moves the complete fixed roster to its authored combat spawn");
             std::string patternStatus;
             const auto* parent = CKoukuSaydonBrain::Find_AnimationOnlyPattern(*run.pCatalog, bingo->Entries.front().strTargetId, patternStatus);
-            tests.Require(parent && parent->ParentChildren.size() == 38u &&
-                parent->strParentLoopStartOccurrenceId == "KAKULSAYDON_G1_PATTERN_96.pattern.30",
-                "Bingo retains one Parent with 24 introduction children and a 14-child loop");
+            if (!parent)
+            {
+                tests.Require(false, "Bingo retains its published Parent");
+                continue;
+            }
+            const auto loopStart = std::find_if(parent->ParentChildren.begin(), parent->ParentChildren.end(),
+                [&](const auto& child) { return child.strOccurrenceId == parent->strParentLoopStartOccurrenceId; });
+            tests.Require(parent->ParentChildren.size() == 40u &&
+                parent->strParentLoopStartOccurrenceId == "KAKULSAYDON_G1_PATTERN_96.pattern.30" &&
+                std::distance(parent->ParentChildren.begin(), loopStart) == 25 &&
+                std::distance(loopStart, parent->ParentChildren.end()) == 15,
+                "Bingo retains one Parent with 25 introduction children and a 15-child loop at its stable occurrence ID");
+            const auto isLaser = [](const auto& child) { return child.strPatternId == "KAKULSAYDON_G1_PATTERN_123"; };
+            tests.Require(std::count_if(parent->ParentChildren.begin(), loopStart, isLaser) == 1,
+                "Bingo introduction contains exactly one published laser child");
+            tests.Require(std::count_if(loopStart, parent->ParentChildren.end(), isLaser) == 1,
+                "Bingo repeated tail contains exactly one published laser child");
+            std::vector<std::string> expected;
+            for (const auto& child : parent->ParentChildren) expected.push_back(child.strPatternId);
+            for (auto child = loopStart; child != parent->ParentChildren.end(); ++child) expected.push_back(child->strPatternId);
             const auto previousRequest = run.iAuditionRequestSequence;
             std::vector<std::string> played;
             unsigned previousSequence = 0u;
             bool boardRetained = true;
             const auto firstTick = room->m_iServerTick + 1u;
             // Exercise two tail cycles using the production actor/Logic scheduler; fixture HP isolates progression.
-            for (unsigned tick = firstTick; tick < firstTick + 24000u && played.size() < 52u; ++tick)
+            for (unsigned tick = firstTick; tick < firstTick + 24000u && played.size() < expected.size(); ++tick)
             {
                 room->m_iServerTick = tick;
                 for (auto& [id, player] : room->m_Players) player.iCurrentHp = player.iMaximumHp = 100000000u;
@@ -951,12 +969,6 @@ void CServerGameplayContractRunner::Run_KoukuRaidIntegration(TESTS& tests)
                 room->Commit_KoukuMechanicTriggers(tick);
                 room->Update_KoukuBingo(tick);
                 if (!played.empty()) boardRetained = boardRetained && room->m_KoukuBingoDuration.iOwnerId != 0u && room->m_KoukuBingoDuration.iEndTick == 0u;
-            }
-            std::vector<std::string> expected;
-            if (parent)
-            {
-                for (const auto& child : parent->ParentChildren) expected.push_back(child.strPatternId);
-                for (std::size_t i = 24u; i < parent->ParentChildren.size(); ++i) expected.push_back(parent->ParentChildren[i].strPatternId);
             }
             tests.Require(played == expected && boardRetained && run.iAuditionRequestSequence == previousRequest,
                 "Actual Bingo scheduler plays its prefix once and repeats the full tail without restarting the board or outer Flow");

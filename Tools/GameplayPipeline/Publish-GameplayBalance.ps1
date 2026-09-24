@@ -749,6 +749,7 @@ foreach ($profile in @($damageDocument.profiles)) {
     # ValueA and ValueB bracket one hit and the addend above is their mean, so this is
     # how far a landed hit rolls either side of it. Zero stays deterministic.
     $damageSpreadPercent = 0
+    $bossHealthBarDamage = 0
     $damageOverride = $balanceProfileDamage[[string]$profile.damageProfileId]
     if ($null -ne $damageOverride) {
         Assert-JsonInteger $damageOverride.attackCoefficientBp `
@@ -760,10 +761,16 @@ foreach ($profile in @($damageDocument.profiles)) {
         $damageCoefficientBp = [uint32]$damageOverride.attackCoefficientBp
         $damageAddend = [uint32]$damageOverride.damageAddend
         $damageSpreadPercent = [uint32]$damageOverride.damageSpreadPercent
+        if ($null -ne $damageOverride.PSObject.Properties['bossHealthBarDamage']) {
+            Assert-JsonInteger $damageOverride.bossHealthBarDamage `
+                'balance profile bossHealthBarDamage' 0 1000
+            $bossHealthBarDamage = [uint32]$damageOverride.bossHealthBarDamage
+        }
     }
-    $damageRows.Add(
-        ("DAMAGE`t$($profile.damageProfileId)`t$ratePercent`t$damageCoefficientBp" +
-         "`t$damageAddend`t$damageSpreadPercent"))
+    $damageRow = "DAMAGE`t$($profile.damageProfileId)`t$ratePercent`t$damageCoefficientBp" +
+        "`t$damageAddend`t$damageSpreadPercent"
+    if ($bossHealthBarDamage -gt 0) { $damageRow += "`t$bossHealthBarDamage" }
+    $damageRows.Add($damageRow)
 }
 
 
@@ -773,6 +780,15 @@ Assert-JsonString $skillDocument.schema 'skill document schema'
 Assert-JsonInteger $skillDocument.formatVersion 'skill document formatVersion' 3 3
 if ($skillDocument.schema -ne 'lostark.player-skills' -or $skillDocument.formatVersion -ne 3) {
     throw 'Player skill header is invalid.'
+}
+# A full-cast amount cannot be restarted by combo/hold/counter stages.
+foreach ($skill in @($skillDocument.skills)) {
+    $damageOverride = $balanceProfileDamage[[string]$skill.serverDamageProfileId]
+    if ($null -ne $damageOverride -and
+        $null -ne $damageOverride.PSObject.Properties['bossHealthBarDamage'] -and
+        $damageOverride.bossHealthBarDamage -gt 0 -and $skill.skillKind -cne 'ACTIVE') {
+        throw "Boss health-bar damage requires a single-stage ACTIVE skill: $($skill.skillId)"
+    }
 }
 if ($balanceProfileSkills.Count -gt 0) {
     foreach ($skill in @($skillDocument.skills)) {

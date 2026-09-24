@@ -696,6 +696,14 @@ private:
     std::optional<CMapLightDocument> m_GateMapLightSource;
     std::shared_ptr<CMapLightPresentationRuntime> m_pPendingGateMapLights;
     std::optional<CMapLightDocument> m_PendingGateMapLightSource;
+    struct SERVER_RAID_ENVIRONMENT_BASELINE final
+    {
+        size_t gateLightingIndex = NO_ACTIVE_DEBUG_GATE;
+        string profileId;
+        std::shared_ptr<CMapLightPresentationRuntime> lights;
+        std::optional<CMapLightDocument> source;
+    };
+    std::optional<SERVER_RAID_ENVIRONMENT_BASELINE> m_ServerRaidEnvironmentBaseline;
 
 	bool_t m_bSequenceCombatPending = false;
 	bool_t m_bSequenceCombatFadeHeld = false;

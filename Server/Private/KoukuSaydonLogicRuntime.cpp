@@ -1923,7 +1923,10 @@ void LostArk::Server::CKoukuSaydonLogicRuntime::Update(
 				Apply_Results(window.OnSuccess, state, nullptr, players, boss, catalog,
 					pMadnessPolicy, serverTick, outDamageEvents, outOutput, invulnerablePlayers);
 				if (window.bEndsPatternOnSuccess)
+				{
 					outOutput.bEndPatternEarly = true;
+					outOutput.bStaggerSuccess = true;
+				}
 				outOutput.strStatus = "stagger window succeeded";
 			}
 			else if (reachedEnd)

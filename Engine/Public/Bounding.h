@@ -24,10 +24,8 @@ public:
 	virtual void Update(fmatrix_t WorldMatrix) = 0;
 	virtual bool_t Intersect(COLLIDER eTargetType, shared_ptr<CBounding> pTargetBounding) = 0;
 
-#ifdef _DEBUG
 public:
 	virtual HRESULT Render(shared_ptr<PrimitiveBatch<VertexPositionColor>> pBatch) = 0;
-#endif
 
 protected:
 	ComPtr<ID3D11Device>				m_pDevice = { nullptr };

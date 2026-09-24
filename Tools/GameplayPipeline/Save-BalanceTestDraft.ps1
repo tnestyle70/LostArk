@@ -24,7 +24,7 @@ $profilePath = 'Data/Balance/Profiles/Retail.balanceprofile.json'
 $profileDomains = @{
     'players' = @('players', 'characterClass', @('maximumHp','maximumResource','resourceRegenPerSecond','attackPower','defense','criticalChancePercent','criticalDamagePercent'))
     'skills' = @('skills', 'skillId', @('cooldownMs','resourceCost','staggerDamage','partDamage'))
-    'damageProfiles' = @('damageProfiles', 'damageProfileId', @('attackCoefficientBp','damageAddend','damageSpreadPercent'))
+    'damageProfiles' = @('damageProfiles', 'damageProfileId', @('attackCoefficientBp','damageAddend','damageSpreadPercent','bossHealthBarDamage'))
     'bosses' = @('bosses', 'archetypeId', @('maximumHp','maximumHealthBars','attackPower'))
 }
 $draft = Get-Content -LiteralPath $DraftPath -Raw -Encoding UTF8 | ConvertFrom-Json

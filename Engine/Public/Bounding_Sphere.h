@@ -24,10 +24,8 @@ public:
 	virtual void Update(fmatrix_t WorldMatrix)  override;
 	virtual bool_t Intersect(COLLIDER eTargetType, shared_ptr<CBounding> pTargetBounding) override;
 
-#ifdef _DEBUG
 public:
 	virtual HRESULT Render(shared_ptr<PrimitiveBatch<VertexPositionColor>> pBatch);
-#endif
 
 private:
 	shared_ptr<BoundingSphere>			m_pOriginalDesc = { nullptr };

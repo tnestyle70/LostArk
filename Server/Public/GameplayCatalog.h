@@ -1557,6 +1557,8 @@ namespace LostArk::Server
 			instead of always dealing the mean. Published as a whole percent of the
 			mean; 0 keeps the deterministic value. */
 			std::uint32_t iDamageSpreadPercent = 0;
+			// Optional ACTIVE full-cast boss damage, in the target's maximum health bars.
+			std::uint32_t iBossHealthBarDamage = 0;
 		};
 		[[nodiscard]] const DAMAGE_PROFILE* Find_DamageProfile(
 			const std::string& damageProfileId) const;

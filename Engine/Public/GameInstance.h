@@ -124,9 +124,7 @@ public: /* Renderer */
 	void Commit_RenderEnvironment(const RENDER_ENVIRONMENT_STATE& state);
 	RENDER_ENVIRONMENT_STATE Get_RenderEnvironment() const;
 
-#ifdef _DEBUG
 	HRESULT Add_DebugComponent(shared_ptr<CComponent> pDebugComponent);
-#endif
 
 public: /* For.PipeLine */
 	void Set_Transform(D3DTS eType, fmatrix_t TransformMatrix);

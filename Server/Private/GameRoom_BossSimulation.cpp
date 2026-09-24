@@ -1907,6 +1907,9 @@ void LostArk::Server::CGameRoom::Update_WorldEntities(
 		CServerBuffRuntime::Expire(entity.ActiveBuffs, updateTick);
 		if (entity.bKoukuGazeClone || entity.eKind == WORLD_BOOTSTRAP_KIND::WORLD_OBJECT)
 			continue;
+		// Maze targets share card-soldier models/profiles, but the maze owns their motion and contact.
+		if (m_KoukuCardMaze.Is_Target(entity.iNetEntityId))
+			continue;
 		if (entity.isEstherSummon)
 		{
 			/* The clip carries its own entrance and exit; the room only clocks

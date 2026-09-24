@@ -613,7 +613,12 @@ namespace
 			}
 			else if (0.f == pPlayback->fDurationSeconds)
 				Params.bLoop = true;
-			const f32_t fWallLifetime = Params.fLifetime / Params.fPlayRate;
+			const f32_t fWallLifetime = pPlayback->fEnvelopeDurationSeconds > 0.f ?
+				pPlayback->fEnvelopeDurationSeconds : Params.fLifetime / Params.fPlayRate;
+			if (pPlayback->fEnvelopeDurationSeconds > 0.f)
+				pObject->Set_OccurrenceFadeClock(
+					(pPlayback->fEnvelopeSourceStartSeconds - Ms_ToSeconds(Pending.Binding.iStartMs)) / fPlaybackRate,
+					pPlayback->fEnvelopeDurationSeconds, pPlayback->fFadeInSeconds >= 0.f, pPlayback->fFadeOutSeconds >= 0.f);
 			if (fWallLifetime > 0.f)
 			{
 				if (pPlayback->fFadeInSeconds >= 0.f)
@@ -1658,6 +1663,8 @@ uint32_t Client::CEffectV2Runtime::Play_Group(
 	const EFFECT_SLOW_SCOPE_DIAGNOSTIC slowDiagnostic{"V2.group.slow", {}, Group.strGroupId};
 	if (!std::isfinite(Playback.fInitialAgeSeconds) ||
 		Playback.fInitialAgeSeconds < 0.f ||
+		!std::isfinite(Playback.fEnvelopeSourceStartSeconds) || Playback.fEnvelopeSourceStartSeconds < 0.f ||
+		!std::isfinite(Playback.fEnvelopeDurationSeconds) || Playback.fEnvelopeDurationSeconds < 0.f ||
 		!std::isfinite(Playback.fPlaybackRate) ||
 		Playback.fPlaybackRate <= 0.f || Playback.fPlaybackRate > 16.f ||
 		!std::isfinite(Playback.fDurationSeconds) ||

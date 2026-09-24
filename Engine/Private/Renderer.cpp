@@ -980,7 +980,6 @@ HRESULT CRenderer::Draw()
 	if (FAILED(hResult))
 		return FailFrame("Render_UI", hResult);
 
-#ifdef _DEBUG
 	{
 		CProfilerScope scope(pProfiler, "Render.Debug");
 		CProfilerGpuScope gpuScope(pProfiler, "Render.Debug");
@@ -988,7 +987,6 @@ HRESULT CRenderer::Draw()
 	}
 	if (FAILED(hResult))
 		return FailFrame("Render_Debug", hResult);
-#endif
 
 	m_bSceneColorSnapshotRequested = false;
     m_bSceneEnvironmentReplaced = false;
@@ -996,7 +994,6 @@ HRESULT CRenderer::Draw()
 	return S_OK;
 }
 
-#ifdef _DEBUG
 
 HRESULT CRenderer::Add_DebugComponent(shared_ptr<CComponent> pDebugComponent)
 {
@@ -1004,7 +1001,6 @@ HRESULT CRenderer::Add_DebugComponent(shared_ptr<CComponent> pDebugComponent)
 	return S_OK;
 }
 
-#endif
 
 HRESULT CRenderer::Render_Priority()
 {
@@ -2495,10 +2491,11 @@ void CRenderer::SetUp_ViewportDesc(uint32_t iWidth, uint32_t iHeight)
 	m_pContext->RSSetViewports(1, &ViewPortDesc);
 }
 
-#ifdef _DEBUG
 
 HRESULT CRenderer::Render_Debug()
 {
+	if (m_DebugComponent.empty())
+		return S_OK;
 	for (auto& pDebugComponent : m_DebugComponent)
 	{
 		if (nullptr != pDebugComponent)
@@ -2523,7 +2520,6 @@ HRESULT CRenderer::Render_Debug()
 	return S_OK;
 }
 
-#endif
 
 unique_ptr<CRenderer> CRenderer::Create(ComPtr<ID3D11Device> pDevice, ComPtr<ID3D11DeviceContext> pContext)
 {

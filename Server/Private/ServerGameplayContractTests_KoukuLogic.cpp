@@ -1214,7 +1214,7 @@ namespace ServerGameplayContractDetail
 			CKoukuSaydonLogicRuntime::Update(staggerBoss, pattern, ledger, players, catalog,
 				&policy, 411u, logicEvents, output);
 			tests.Require(shieldRaised && belowThreshold && ledger.Windows.front().bClosed &&
-				!staggerBoss.bKoukuShieldActive && output.bEndPatternEarly &&
+				!staggerBoss.bKoukuShieldActive && output.bEndPatternEarly && output.bStaggerSuccess &&
 				1u == output.FollowupPatternIds.size() &&
 				"KAKULSAYDON_TEST_GROGGY" == output.FollowupPatternIds.front() &&
 				1000u == players.at(1u).iCurrentHp,
@@ -1228,7 +1228,7 @@ namespace ServerGameplayContractDetail
 				&policy, 500u, logicEvents, timeoutOutput);
 			CKoukuSaydonLogicRuntime::Update(timeoutBoss, pattern, timeoutLedger, players, catalog,
 				&policy, 560u, logicEvents, timeoutOutput);
-			tests.Require(timeoutLedger.Windows.front().bClosed && !timeoutOutput.bEndPatternEarly &&
+			tests.Require(timeoutLedger.Windows.front().bClosed && !timeoutOutput.bEndPatternEarly && !timeoutOutput.bStaggerSuccess &&
 				0u == players.at(1u).iCurrentHp,
 				"Wipe the living raid when the stagger window times out");
 		}

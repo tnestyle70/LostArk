@@ -334,6 +334,45 @@ int LostArk::Server::Run_ServerCardMazeContractTests()
 	maze.Reset(players);
 	tests.Require(maze.Get_Targets().empty() && players[1u].eCardMazeRole == CARD_MAZE_ROLE::NONE &&
 		players[4u].CardMaze.transferStartTick == 0u, "Reset removes run state and presentation clocks");
+    // A tell is visible for two seconds before the same authored lane can reset progress.
+    {
+        auto room = std::make_unique<CGameRoom>(WORLD_ID::KAKULSAYDON_ARENA);
+        for (PLAYER_ID id = 1u; id <= 2u; ++id)
+        {
+            auto participant = players.at(id);
+            participant.iCurrentHp = participant.iMaximumHp = 50000u;
+            participant.isCombatReady = true;
+            participant.fPositionX = Maze::CENTER_X; participant.fPositionY = -.01f; participant.fPositionZ = Maze::CENTER_Z;
+            room->m_Players.emplace(id, participant);
+        }
+        room->m_iServerTick = 100u;
+        const bool began = room->Begin_CardMaze(1u);
+        tests.Require(began, "Two-player room admits the warning/contact timing fixture");
+        if (began)
+        {
+            const auto& lanes = room->m_WorldBootstrap.Get_CardMazeLanes();
+            const auto first = std::min_element(lanes.begin(), lanes.end(),
+                [](const auto& left, const auto& right) { return left.delayMs < right.delayMs; });
+            tests.Require(first != lanes.end() && first->delayMs == 2000u,
+                "Published Seto contact begins after its authored 2000ms warning");
+            if (first != lanes.end() && first->delayMs == 2000u)
+            {
+                auto& hunter = room->m_Players.at(2u);
+                hunter.iCardMazeKills = 1u;
+                hunter.fPositionX = first->startX; hunter.fPositionY = first->startY; hunter.fPositionZ = first->startZ;
+                room->m_iCardMazeMarchStartTick = 100u;
+                for (const auto& lane : lanes)
+                    room->m_iCardMazeCycleMs = (std::max)(room->m_iCardMazeCycleMs, lane.delayMs + lane.durationMs);
+                room->Update_CardMaze(159u);
+                tests.Require(hunter.iCardMazeKills == 1u && !room->m_CardMazeContactTicks.contains(2u),
+                    "Warning at 59 of 60 ticks does not apply Seto contact");
+                room->Update_CardMaze(160u);
+                tests.Require(hunter.iCardMazeKills == 0u && room->m_CardMazeContactTicks.contains(2u) &&
+                    room->m_CardMazeContactTicks.at(2u) == 160u,
+                    "First moving tick applies the actual authoritative Seto contact");
+            }
+        }
+    }
 	// Use the room's actual hammer, portal, blackout and return consumers for 1..4 participants.
 	for (PLAYER_ID count = 1u; count <= 4u; ++count)
 	{
@@ -356,6 +395,17 @@ int LostArk::Server::Run_ServerCardMazeContractTests()
 			"Actual 1..4 player room spawns one matching target per hunter");
 		if (!began) continue;
 		const auto targets = room->m_KoukuCardMaze.Get_Targets();
+        std::map<NET_ENTITY_ID, std::array<float, 3u>> admittedTargets;
+        for (const auto& entity : room->m_WorldEntities)
+            if (targets.contains(entity.iNetEntityId))
+                admittedTargets.emplace(entity.iNetEntityId, std::array{entity.fPositionX, entity.fPositionY, entity.fPositionZ});
+        room->Update_WorldEntities(1.f / 30.f);
+        bool mazeOwned = admittedTargets.size() == targets.size();
+        for (const auto& entity : room->m_WorldEntities)
+            if (const auto saved = admittedTargets.find(entity.iNetEntityId); saved != admittedTargets.end())
+                mazeOwned = mazeOwned && saved->second == std::array{entity.fPositionX, entity.fPositionY, entity.fPositionZ} &&
+                    entity.eAction == SERVER_ENTITY_ACTION::IDLE && entity.iTargetEntityId == INVALID_NET_ENTITY_ID;
+        tests.Require(mazeOwned, "Maze registration excludes shared combat profiles from the very first generic monster tick");
 		bool portals = true, cameras = true;
 		for (const auto& [targetId, suit] : targets)
 		{
@@ -432,6 +482,42 @@ int LostArk::Server::Run_ServerCardMazeContractTests()
 				}
 				tests.Require(grounded && suits == std::set<std::string>{"MONSTER_KOUKU_CARD_CLUB", "MONSTER_KOUKU_CARD_HEART", "MONSTER_KOUKU_CARD_DIAMOND"},
 					"All three source suits use navigation and do not enter the maze kill ledger");
+                SERVER_PLAYER target{}; target.iPlayerId = 77u; target.iNetEntityId = 7777u;
+                target.eCharacterClass = CHARACTER_CLASS_ID::LANCE_MASTER; target.isCombatReady = true;
+                target.iCurrentHp = target.iMaximumHp = 50000u;
+                target.fPositionX = owner.fPositionX; target.fPositionY = owner.fPositionY; target.fPositionZ = owner.fPositionZ;
+                room->m_Players.emplace(target.iPlayerId, target);
+                std::map<NET_ENTITY_ID, std::array<float, 2u>> birthPositions;
+                for (auto& entity : room->m_WorldEntities)
+                {
+                    // Isolate the monster consumer from this synthetic owner's boss definitions.
+                    if (entity.iNetEntityId == owner.iNetEntityId) entity.eKind = WORLD_BOOTSTRAP_KIND::WORLD_OBJECT;
+                    if (room->m_KoukuCardRainSoldiers.contains(entity.iNetEntityId))
+                        birthPositions.emplace(entity.iNetEntityId, std::array{entity.fPositionX, entity.fPositionZ});
+                }
+                std::set<NET_ENTITY_ID> chased, attacked, moved;
+                for (std::uint32_t tick = 101u; tick < 401u; ++tick)
+                {
+                    room->m_iServerTick = tick;
+                    room->Update_WorldEntities(1.f / 30.f);
+                    for (const auto& entity : room->m_WorldEntities)
+                    {
+                        const auto birth = birthPositions.find(entity.iNetEntityId);
+                        if (birth == birthPositions.end()) continue;
+                        if (entity.eAction == SERVER_ENTITY_ACTION::CHASE) chased.insert(entity.iNetEntityId);
+                        if (entity.eAction == SERVER_ENTITY_ACTION::PATTERN_ACTIVE) attacked.insert(entity.iNetEntityId);
+                        if (std::hypot(entity.fPositionX - birth->second[0], entity.fPositionZ - birth->second[1]) > .1f)
+                            moved.insert(entity.iNetEntityId);
+                    }
+                }
+                std::cout << "card-rain combat: chased=" << chased.size() << " moved=" << moved.size() << " attacked=" << attacked.size()
+                    << " hp=" << room->m_Players.at(target.iPlayerId).iCurrentHp << " damage-events=" << room->m_TickDamageEvents.size()
+                    << " status=" << room->Get_Status() << '\n';
+                tests.Require(chased.size() >= 2u && moved.size() >= 2u && attacked.size() == 3u &&
+                    room->m_Players.at(target.iPlayerId).iCurrentHp < target.iMaximumHp && !room->m_TickDamageEvents.empty(),
+                    "Card-rain soldiers outside attack range navigate toward a player and all three enter combat");
+                for (auto& entity : room->m_WorldEntities)
+                    if (entity.iNetEntityId == owner.iNetEntityId) entity.eKind = WORLD_BOOTSTRAP_KIND::BOSS;
 				tests.Require(room->Spawn_KoukuCardRainSoldiers(owner.iNetEntityId, 101u) && room->m_WorldEntities.size() == base + 3u,
 					"Replaying the same pattern trigger does not duplicate soldiers");
 				const auto expiry = 100u + CKoukuSaydonLogicRuntime::Ticks_FromMs(30000u);

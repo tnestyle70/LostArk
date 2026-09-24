@@ -168,12 +168,7 @@
             0.0,
             0.0
           ],
-          "multiply": [
-            1.0,
-            1.0,
-            1.0,
-            1.0
-          ],
+          "multiply": [1.0,1.0,1.0,0.5],
           "clip": 0.0,
           "emissiveIntensity": 1,
           "distortionIntensity": 0.0,
@@ -4661,12 +4656,7 @@
             0.0,
             0.0
           ],
-          "multiply": [
-            1.0,
-            1.0,
-            1.0,
-            1.0
-          ],
+          "multiply": [1.0,1.0,1.0,0.5],
           "clip": 0.0,
           "emissiveIntensity": 1,
           "distortionIntensity": 0.0,
@@ -6208,12 +6198,7 @@
             0.0,
             0.0
           ],
-          "multiply": [
-            1.0,
-            1.0,
-            1.0,
-            1.0
-          ],
+          "multiply": [1.0,1.0,1.0,0.5],
           "clip": 0.0,
           "emissiveIntensity": 1,
           "distortionIntensity": 0.0,
@@ -7940,12 +7925,7 @@
             0.0,
             0.0
           ],
-          "multiply": [
-            1.0,
-            1.0,
-            1.0,
-            1.0
-          ],
+          "multiply": [1.0,1.0,1.0,0.5],
           "clip": 0.0,
           "emissiveIntensity": 1,
           "distortionIntensity": 0.0,
@@ -9393,12 +9373,7 @@
             0.0,
             0.0
           ],
-          "multiply": [
-            1.0,
-            1.0,
-            1.0,
-            1.0
-          ],
+          "multiply": [1.0,1.0,1.0,0.5],
           "clip": 0.0,
           "emissiveIntensity": 1,
           "distortionIntensity": 0.0,
@@ -10703,12 +10678,7 @@
             0.0,
             0.0
           ],
-          "multiply": [
-            1.0,
-            1.0,
-            1.0,
-            1.0
-          ],
+          "multiply": [1.0,1.0,1.0,0.5],
           "clip": 0.0,
           "emissiveIntensity": 1,
           "distortionIntensity": 0.0,
@@ -13207,12 +13177,7 @@
             0.0,
             0.0
           ],
-          "multiply": [
-            1.0,
-            1.0,
-            1.0,
-            1.0
-          ],
+          "multiply": [1.0,1.0,1.0,0.5],
           "clip": 0.0,
           "emissiveIntensity": 1,
           "distortionIntensity": 0.0,

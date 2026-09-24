@@ -129,12 +129,12 @@ REGION "blocked" "closed" 0 1
 		boss.strArchetypeId = "BOSS_KAKULSAYDON_G1_SAYDON";
 		boss.iCurrentHp = 100u; boss.fPositionX = boss.fPositionZ = 6.f;
 		room->m_WorldEntities.push_back(std::move(boss));
-	for (const unsigned scenario : {0u, 1u, 2u, 3u})
+	for (const unsigned scenario : {0u, 1u, 2u, 3u, 4u})
 	{
-		const bool withFollowup = scenario != 0u, savedSource = scenario >= 2u;
-		const std::string sourceId = scenario == 3u ? "KAKULSAYDON_G1_PATTERN_118" : "KAKULSAYDON_G1_PATTERN_81";
-		const std::string groggyId = scenario == 3u ? "KAKULSAYDON_G1_PATTERN_42" : "KAKULSAYDON_G1_PATTERN_4";
-		const std::string pursuitId = scenario == 3u ? "KAKULSAYDON_G1_PATTERN_124" : "KAKULSAYDON_G1_PATTERN_101";
+		const bool withFollowup = scenario != 0u, savedSource = scenario >= 2u, stagger = scenario == 4u;
+		const std::string sourceId = stagger ? "KAKULSAYDON_G1_PATTERN_33" : scenario == 3u ? "KAKULSAYDON_G1_PATTERN_118" : "KAKULSAYDON_G1_PATTERN_81";
+		const std::string groggyId = scenario >= 3u ? "KAKULSAYDON_G1_PATTERN_42" : "KAKULSAYDON_G1_PATTERN_4";
+		const std::string pursuitId = scenario >= 3u ? "KAKULSAYDON_G1_PATTERN_124" : "KAKULSAYDON_G1_PATTERN_101";
 		const auto& sourceCatalog = room->m_GameplayCatalog.Active();
 		const auto* source = savedSource ? CKoukuSaydonBrain::Find_AnimationOnlyPattern(sourceCatalog, sourceId, status) : nullptr;
 		const auto* groggy = savedSource ? CKoukuSaydonBrain::Find_AnimationOnlyPattern(sourceCatalog, groggyId, status) : nullptr;
@@ -154,7 +154,7 @@ REGION "blocked" "closed" 0 1
 		if (savedSource)
 		{
 			counterBoss.strArchetypeId = "BOSS_KAKULSAYDON_" + std::string(scenario == 2u ? "G1" : "G3") + "_SAYDON"; counterBoss.strEncounterId = source->strEncounterId;
-			counterBoss.strPlacementId = source->strTargetBossPlacementId; counterBoss.iCurrentHp = 100u;
+			counterBoss.strPlacementId = source->strTargetBossPlacementId; counterBoss.iCurrentHp = stagger ? 10000u : 100u;
 		}
 		counterBoss.iPatternSequence = 91u; counterBoss.fPositionY = 3.9f; counterBoss.fCollisionRadius = .5f;
 		counterBoss.fSpawnPositionX = counterBoss.fPositionX; counterBoss.fSpawnPositionZ = counterBoss.fPositionZ;
@@ -173,6 +173,11 @@ REGION "blocked" "closed" 0 1
 		ball.iBossNetEntityId = counterBoss.iNetEntityId; ball.iPatternSequence = counterBoss.iPatternSequence;
 		auto otherBall = ball; otherBall.strMemberId = "other.member"; otherBall.strCueId = "other.cue";
 		room->m_KoukuSaydonPatternAudition.WorldPlays = {ball, otherBall};
+		if (stagger)
+		{
+			ball.strCueId = "fatal.blade.cue"; ball.strOccurrenceId = "mario.fatal.blade";
+			room->m_KoukuSaydonPatternAudition.WorldPlays.push_back(ball);
+		}
 		room->m_PendingKoukuMechanicTriggers = {{counterBoss.iNetEntityId, counterBoss.iPatternSequence, {}}, {701u, 1u, {}}};
 		BOSS_PATTERN_DEFINITION counterPattern; counterPattern.strPatternId = counterBoss.strPatternId;
 		BOSS_PATTERN_LOGIC_WINDOW counterWindow; counterWindow.strWindowId = "counter.window";
@@ -180,8 +185,8 @@ REGION "blocked" "closed" 0 1
 		counterWindow.bEndsPatternOnSuccess = true;
 		if (savedSource)
 		{
-			const auto window = std::find_if(source->LogicWindows.begin(), source->LogicWindows.end(), [](const auto& value)
-				{ return value.eKind == BOSS_PATTERN_LOGIC_KIND::COUNTER_WINDOW; });
+			const auto window = std::find_if(source->LogicWindows.begin(), source->LogicWindows.end(), [stagger](const auto& value)
+				{ return value.eKind == (stagger ? BOSS_PATTERN_LOGIC_KIND::STAGGER_WINDOW : BOSS_PATTERN_LOGIC_KIND::COUNTER_WINDOW); });
 			tests.Require(window != source->LogicWindows.end(), "Published rolling pattern retains its real counter window");
 			if (window != source->LogicWindows.end()) counterWindow = *window;
 		}
@@ -193,13 +198,15 @@ REGION "blocked" "closed" 0 1
 		CKoukuSaydonLogicRuntime::Build(counterPattern, counterBoss, 120u, counterLedger);
 		CKoukuSaydonLogicRuntime::Update(counterBoss, counterPattern, counterLedger, room->m_Players,
 			room->m_GameplayCatalog, nullptr, 120u, counterDamage, counterOutput, &room->m_ServerNavigation, &room->m_ServerCollisionSystem);
-		const bool counterHit = CBossCombatRuntime::Try_TriggerCounter(counterBoss, 121u);
+		if (stagger) counterBoss.iCurrentHp -= counterWindow.iThreshold;
+		const bool counterHit = stagger || CBossCombatRuntime::Try_TriggerCounter(counterBoss, 121u);
 		CKoukuSaydonLogicRuntime::Update(counterBoss, counterPattern, counterLedger, room->m_Players,
 			room->m_GameplayCatalog, nullptr, 121u, counterDamage, counterOutput, &room->m_ServerNavigation, &room->m_ServerCollisionSystem);
 		room->m_iServerTick = 121u;
 		const bool completed = counterHit && room->Apply_KoukuLogicOutput(counterOutput, counterBoss, 121u);
 		const auto& committed = room->m_KoukuSaydonPatternAudition.Members.front();
-		tests.Require(completed && counterOutput.bCounterSuccessLanded && std::abs(counterBoss.fPositionY - 1.25f) < .0001f &&
+		tests.Require(completed && (stagger ? counterOutput.bStaggerSuccess :
+			(counterOutput.bCounterSuccessLanded && std::abs(counterBoss.fPositionY - 1.25f) < .0001f)) &&
 			counterBoss.strPatternId.empty() && counterBoss.PatternStageRootMotion.empty() && !counterBoss.bPatternStageRootOriginCaptured &&
 			(savedSource ? (committed.PatternIds == std::vector<std::string>{sourceId, groggyId, pursuitId} &&
 				committed.TransitionTicks == std::vector<std::uint32_t>{1u, 0u}) :
@@ -213,6 +220,7 @@ REGION "blocked" "closed" 0 1
 			room->m_KoukuSaydonPatternAudition.WorldPlays.front().strMemberId == "other.member" &&
 			committed.WorldCueByInstance.empty() && committed.WorldCueByOccurrence.empty() &&
 			room->m_PendingKoukuMechanicTriggers.size() == 1u && room->m_PendingKoukuMechanicTriggers.front().iBossEntityId == 701u,
+			stagger ? "Mario stagger success immediately stops normal and instant blade WORLD cues and pending mechanics, preserving another member" :
 			"Counter interruption stops only its active ball WORLD owner and pending mechanics, preserving another member");
 		if (savedSource)
 		{

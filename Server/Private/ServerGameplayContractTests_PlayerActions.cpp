@@ -39,6 +39,153 @@ using namespace LostArk::Shared;
 
 namespace ServerGameplayContractDetail
 {
+
+    void Run_PlayerBossHealthBarDamageContracts(TESTS& tests, const CGameplayCatalog& source)
+    {
+        const auto* authored = source.Find_Skill(34630u);
+        tests.Require(authored && 6u == std::count_if(authored->Hits.begin(), authored->Hits.end(),
+            [](const PLAYER_SKILL_HIT& hit) { return hit.iResultKind <= 1u; }),
+            "Lance ALT_V owns six health hits independently of counter and stagger Results");
+        if (!authored) return;
+        struct OPTIONS
+        {
+            bool monster = false, miss = false, invulnerable = false, patternInvulnerable = false;
+            bool armor = false, legacyArmor = false, projectile = false, contact = false, fallback = false, ordinary = false;
+            std::uint32_t hp = 1280621510u, bars = 180u, shield = 0u, policy = 35u;
+        };
+        struct OUTCOME { bool started = false; std::vector<SERVER_WORLD_ENTITY> targets; std::vector<DAMAGE_EVENT> events; };
+        const auto run = [&](const OPTIONS& options)
+        {
+            CGameplayCatalog catalog = source;
+            auto* skill = const_cast<PLAYER_SKILL_DEFINITION*>(catalog.Find_Skill(34630u));
+            auto* damage = const_cast<CGameplayCatalog::DAMAGE_PROFILE*>(catalog.Find_DamageProfile(skill->strDamageProfileId));
+            auto* profile = const_cast<PLAYER_RUNTIME_PROFILE*>(catalog.Find_Player(CHARACTER_CLASS_ID::LANCE_MASTER));
+            OUTCOME result;
+            if (!damage || !profile) return result;
+            damage->iBossHealthBarDamage = options.ordinary ? 0u : options.policy;
+            damage->iDamageSpreadPercent = options.monster || options.ordinary ? 0u : 99u;
+            profile->iCriticalChancePercent = options.monster || options.ordinary ? 0u : 100u;
+            profile->iCriticalDamagePercent = 300u;
+            skill->RootMotion.clear(); skill->Projectiles.clear(); skill->iResourceCost = 0u;
+            skill->fMovementDistance = 0.f; skill->iStaggerDamage = 0u;
+            skill->iPartDamage = 0u; skill->iCounterPower = 0u;
+            if (options.miss)
+                for (auto& hit : skill->Hits) hit.fOffset = 100.f;
+            if (options.projectile)
+            {
+                PLAYER_SKILL_PROJECTILE object{};
+                object.eKind = PLAYER_PROJECTILE_KIND::FIXAREA;
+                object.eOrigin = PLAYER_PROJECTILE_ORIGIN::CASTER;
+                object.iLifeMs = 7000u; object.fRadius = 6.f;
+                for (const auto& hit : skill->Hits)
+                {
+                    if (hit.iResultKind > 1u) continue;
+                    PLAYER_PROJECTILE_HIT placed{}; placed.Hit = hit;
+                    placed.isContact = options.contact;
+                    if (options.contact) placed.Hit.iTimeMs = 0u;
+                    object.Hits.push_back(placed);
+                }
+                skill->Projectiles.push_back(object); skill->Hits.clear();
+            }
+            if (options.fallback) skill->Hits.clear();
+            SERVER_WORLD_ENTITY target{};
+            target.eKind = options.monster ? WORLD_BOOTSTRAP_KIND::MONSTER : WORLD_BOOTSTRAP_KIND::BOSS;
+            target.strArchetypeId = "BOSS_VALTAN"; target.iNetEntityId = 99601u;
+            target.iCurrentHp = target.iMaximumHp = options.hp;
+            target.iMaximumHealthBars = options.bars; target.fPositionZ = 1.f;
+            target.fCollisionRadius = 0.5f; target.bPatternInvulnerable = options.patternInvulnerable;
+            std::string status;
+            std::vector<BOSS_PART_DEFINITION> parts;
+            if (options.armor)
+            {
+                BOSS_PART_DEFINITION part{}; part.strPartId = "contract.armor";
+                part.iStateMask = 1u; part.iMaximumDurability = 100u; part.iDamageReductionPercent = 90u;
+                parts.push_back(part);
+            }
+            CBossCombatRuntime::Initialize(target.BossCombat, parts, status);
+            if (options.legacyArmor) target.ArmorPlates.push_back({ 0u, 100u, 900u });
+            target.BossCombat.iShieldCurrent = target.BossCombat.iShieldMaximum = options.shield;
+            CBossCombatRuntime::Set_Flag(target.BossCombat, SERVER_BOSS_COMBAT_FLAG::INVULNERABLE, options.invulnerable);
+            result.targets.push_back(target);
+            if (!options.monster && options.hp == 1280621510u && options.bars == 180u)
+            {
+                target.iNetEntityId = 99602u; target.iCurrentHp = target.iMaximumHp = 741285439u;
+                target.iMaximumHealthBars = 160u; result.targets.push_back(target);
+            }
+            SERVER_PLAYER player{}; player.iPlayerId = 99600u;
+            player.eCharacterClass = CHARACTER_CLASS_ID::LANCE_MASTER;
+            player.eStance = PLAYER_STANCE_ID::LANCE_MASTER_LONG_SPEAR;
+            player.iCurrentHp = player.iMaximumHp = 1000u;
+            player.iCurrentResource = player.iMaximumResource = 1000u;
+            C2S_USE_SKILL command{}; command.iSkillId = 34630u; command.iClientSequence = 1u; command.fAimZ = 2.f;
+            CPlayerSkillSystem runtime;
+            result.started = runtime.Try_Start(player, command, catalog, 1u);
+            if (result.started)
+                for (std::uint32_t tick = 2u; tick < 250u; ++tick)
+                    runtime.Update(player, result.targets, catalog, nullptr, nullptr, 1.f / 30.f, tick, result.events);
+            return result;
+        };
+        const auto exact = run(OPTIONS{});
+        const auto lost = [](const SERVER_WORLD_ENTITY& target) { return target.iMaximumHp - target.iCurrentHp; };
+        const auto expected = [](const std::uint32_t hp, const std::uint32_t bars) {
+            return static_cast<std::uint32_t>((static_cast<std::uint64_t>(hp) * 35u + bars - 1u) / bars); };
+        tests.Require(exact.started && exact.targets.size() == 2u && exact.events.size() == 12u &&
+            lost(exact.targets[0]) == 249009739u && lost(exact.targets[1]) == 162156190u,
+            "One six-hit cast deals exactly 35 health bars to each boss using its own maximum HP and bar count");
+        tests.Require(exact.targets.size() == 2u && CValtanBrain::Calculate_HealthBar(exact.targets[0]) == 145u &&
+            CValtanBrain::Calculate_HealthBar(exact.targets[1]) == 125u,
+            "Integer rounding crosses the next 35-bar threshold without losing per-hit remainders");
+        for (const bool contact : { false, true })
+        {
+            OPTIONS options; options.projectile = true; options.contact = contact;
+            const auto result = run(options);
+            tests.Require(result.started && result.targets.size() == 2u && result.events.size() == 12u &&
+                lost(result.targets[0]) == 249009739u && lost(result.targets[1]) == 162156190u,
+                contact ? "Contact projectile hits share the same per-target boss health-bar budget" :
+                    "Timed projectile hits share the same per-target boss health-bar budget");
+        }
+        for (int blocked = 0; blocked < 3; ++blocked)
+        {
+            OPTIONS options; options.miss = blocked == 0; options.invulnerable = blocked == 1;
+            options.patternInvulnerable = blocked == 2;
+            const auto result = run(options);
+            tests.Require(result.started && lost(result.targets[0]) == 0u,
+                blocked == 0 ? "Boss health-bar damage still requires actual hit-shape overlap" :
+                blocked == 1 ? "Typed boss invulnerability still absorbs health-bar damage" :
+                    "Pattern invulnerability still absorbs health-bar damage");
+        }
+        OPTIONS shield; shield.shield = 12345u;
+        const auto shielded = run(shield);
+        tests.Require(shielded.started && lost(shielded.targets[0]) == 249009739u - shield.shield &&
+            shielded.targets[0].BossCombat.iShieldCurrent == 0u,
+            "Boss shields consume the confirmed amount before any health damage");
+        OPTIONS armor; armor.armor = true;
+        const auto armored = run(armor);
+        tests.Require(armored.started && lost(armored.targets[0]) == 249009739u,
+            "A confirmed boss health-bar amount is not reduced a second time by typed armor");
+        OPTIONS legacyArmor; legacyArmor.legacyArmor = true;
+        const auto legacyArmored = run(legacyArmor);
+        tests.Require(legacyArmored.started && lost(legacyArmored.targets[0]) == 249009739u,
+            "Legacy armor leaves the confirmed health-bar amount unchanged");
+        OPTIONS monster; monster.monster = true; monster.hp = (std::numeric_limits<std::uint32_t>::max)();
+        const auto fixedMonster = run(monster); monster.ordinary = true;
+        const auto ordinaryMonster = run(monster);
+        tests.Require(fixedMonster.started && ordinaryMonster.started &&
+            lost(fixedMonster.targets[0]) == lost(ordinaryMonster.targets[0]) && lost(fixedMonster.targets[0]) > 0u,
+            "The optional boss policy leaves ordinary monster damage unchanged");
+        OPTIONS fallback; fallback.fallback = true;
+        const auto single = run(fallback);
+        tests.Require(single.started && single.events.size() == 1u && lost(single.targets[0]) == expected(fallback.hp, fallback.bars),
+            "Skills without authored sub-hits apply the full boss budget once through the normal fallback hit");
+        OPTIONS tiny; tiny.hp = 1u; tiny.bars = 1000u;
+        const auto tinyOutcome = run(tiny);
+        tests.Require(tinyOutcome.started && lost(tinyOutcome.targets[0]) == 1u && tinyOutcome.events.size() == 1u,
+            "Zero sub-hit shares stay zero until the one-HP total is reached");
+        OPTIONS huge; huge.hp = (std::numeric_limits<std::uint32_t>::max)(); huge.bars = 1u; huge.policy = 1000u;
+        const auto large = run(huge);
+        tests.Require(large.started && large.targets[0].iCurrentHp == 0u && large.events.size() == 6u,
+            "Maximum HP and bar overrides saturate safely without overflow or lost split damage");
+    }
     void Run_CharacterActionColliderResultContracts(TESTS& tests, const CGameplayCatalog& source)
     {
         struct Outcome { std::uint32_t damage, stagger; bool counter; std::size_t events; };
@@ -141,6 +288,7 @@ namespace ServerGameplayContractDetail
 void LostArk::Server::CServerGameplayContractRunner::Run_PlayerActions(TESTS& tests, CGameplayCatalog& catalog, CServerNavigation& navigation, const float& navCellSize, const float& boundaryProbeZ, float& lastWalkableX, float& firstBlockedX, SERVER_WORLD_ENTITY& boss, const PLAYER_SKILL_DEFINITION*& talonStrike, LostArk::Shared::C2S_USE_SKILL& useSkill)
 {
     Run_CharacterActionColliderResultContracts(tests, catalog);
+    Run_PlayerBossHealthBarDamageContracts(tests, catalog);
 
 	{
 		/* A cancel window releases the mid-action hold. The action that replaces
@@ -1431,16 +1579,18 @@ void LostArk::Server::CServerGameplayContractRunner::Run_PlayerActions(TESTS& te
 			std::fabs(victim.fKnockbackDirectionX) < 0.001f &&
 			std::fabs(victim.fKnockbackRemainingSeconds - 0.242f) < 0.0001f &&
 			std::fabs(victim.fKnockbackSpeed - 2.f / 0.242f) < 0.001f &&
-			PLAYER_ACTION_STATE::NONE == victim.eAction,
-			"Arm a player push away from the hit source without a knockdown");
+			PLAYER_ACTION_STATE::KNOCKDOWN == victim.eAction && victim.iKnockdownEndTick > 300u,
+			"Arm a player push with a replicated down pose through movement and recovery");
 		CPlayerSkillSystem::Arm_PlayerHitReaction(
 			victim, 10.f, 7.f, 2.f, 242u, true, 2000u, 301u);
 		tests.Require(
 			victim.fKnockbackDirectionZ > 0.999f &&
-			PLAYER_ACTION_STATE::NONE == victim.eAction,
+			PLAYER_ACTION_STATE::KNOCKDOWN == victim.eAction,
 			"Keep a running push window from being re-armed by a second hit");
 		victim.fKnockbackRemainingSeconds = 0.f;
 		victim.fKnockbackSpeed = 0.f;
+		victim.eAction = PLAYER_ACTION_STATE::NONE;
+		victim.iKnockdownEndTick = 0u;
 		CPlayerSkillSystem::Arm_PlayerHitReaction(
 			victim, 10.f, 3.f, -2.4f, 97u, true, 2000u, 310u);
 		tests.Require(

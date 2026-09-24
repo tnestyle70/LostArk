@@ -866,8 +866,9 @@ void LostArk::Server::CGameRoom::Update_Players(const float fixedDeltaSeconds)
 			player.iActionStartTick = 0u;
 			player.fActionElapsedSeconds = 0.f;
 			player.iKnockdownEndTick = 0u;
-			player.iHitReactionGraceEndTick =
+			player.iHitReactionGraceEndTick = player.bPushOnlyHitReaction ? 0u :
 				updateTick + PLAYER_HIT_REACTION_GRACE_TICKS;
+			player.bPushOnlyHitReaction = false;
 			player.PendingCommand.Clear();
 		}
 		/* The Esther call is a fixed-length lock, not a balance skill: the
@@ -1099,9 +1100,23 @@ void LostArk::Server::CGameRoom::Update_Players(const float fixedDeltaSeconds)
 			}
 			resolvedY = resolvedGround.y;
 		}
+		// Successful tangent slides clear wasBlocked; a deflected step still
+		// reached the body and must finish a goal inside that same body.
+		const bool reachedGoalBody =
+			(wasBlocked || resolvedX != proposedX || resolvedZ != proposedZ) &&
+			m_ServerCollisionSystem.Is_PlayerMoveBlockedAtGoalBody(player,
+				proposedX, proposedY, proposedZ,
+				player.MovePath.empty() ? player.fPositionY : player.MovePath.back().y);
 		player.fPositionX = resolvedX;
 		player.fPositionY = resolvedY;
 		player.fPositionZ = resolvedZ;
+		if (reachedGoalBody)
+		{
+			player.hasMoveGoal = false;
+			player.MovePath.clear();
+			player.iMovePathIndex = 0u;
+			continue;
+		}
 		if (wasBlocked)
 		{
 			/* The body sweep met something the navigation grid does not carry:
@@ -1332,6 +1347,12 @@ void LostArk::Server::CGameRoom::Advance_PlayerKnockback(
 			player.fPositionY = floor.y;
 			player.fKnockbackRemainingSeconds = player.fKnockbackSpeed = player.fKnockbackVelocityY = 0.f;
 			player.bKnockbackBallistic = player.bKnockbackCanLeaveArena = false;
+			const auto landingTick = Add_ServerTicksSkippingReservedZero(m_iServerTick, 1u);
+			const auto recoveryEnd = Add_ServerTicksSkippingReservedZero(landingTick,
+				CKoukuSaydonLogicRuntime::Ticks_FromMs(PLAYER_HIT_LANDING_RECOVERY_MS));
+			if (player.eAction == LostArk::Shared::PLAYER_ACTION_STATE::KNOCKDOWN &&
+				static_cast<std::int32_t>(recoveryEnd - player.iKnockdownEndTick) > 0)
+				player.iKnockdownEndTick = recoveryEnd;
 		}
 		else if (player.fKnockbackRemainingSeconds <= 0.00001f)
 		{

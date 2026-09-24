@@ -15,11 +15,9 @@ public:
 	virtual HRESULT Initialize_Prototype() override;
 	virtual HRESULT Initialize(void* pArg) override;
 
-#ifdef _DEBUG
 public:
 	virtual HRESULT Render() { return S_OK; }
 
-#endif
 
 public:
 	virtual shared_ptr<CPrototype> Clone(void* pArg) = 0;

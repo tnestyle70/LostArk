@@ -51,7 +51,6 @@ bool_t CBounding_Sphere::Intersect(COLLIDER eTargetType, shared_ptr<CBounding> p
 
 	return m_isColl;
 }
-#ifdef _DEBUG
 
 HRESULT CBounding_Sphere::Render(shared_ptr<PrimitiveBatch<VertexPositionColor>> pBatch)
 {
@@ -60,7 +59,6 @@ HRESULT CBounding_Sphere::Render(shared_ptr<PrimitiveBatch<VertexPositionColor>>
 	return S_OK;
 }
 
-#endif
 
 shared_ptr<CBounding_Sphere> CBounding_Sphere::Create(ComPtr<ID3D11Device> pDevice, ComPtr<ID3D11DeviceContext> pContext, const CBounding::BOUNDING_DESC* pArg)
 {

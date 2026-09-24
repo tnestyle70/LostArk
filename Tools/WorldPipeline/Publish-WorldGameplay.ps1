@@ -25,6 +25,46 @@ $valtanRaidPlayerCapacity = 8
 # sequence references from different triggers. A new invocation always starts cold.
 $script:projectJsonSnapshots = @{}
 
+# A hidden hold is presentation lead-in; the contact lane begins only when its
+# second key becomes visible. Client and Server still consume one authored path.
+function ConvertTo-KoukuCardMazeLane([object]$Instance, [object]$Template) {
+    $track = @($Template.tracks | Where-Object { $_.slotId -ceq 'object' })
+    if ($track.Count -ne 1 -or $track[0].keys.Count -notin @(2, 3) -or $Template.interpolation -cne 'LINEAR' -or
+        $Instance.anchorKind -cne 'WORLD' -or $Instance.motionEnd -cne 'STOP' -or $Instance.playbackSpeed -ne 1 -or
+        $Instance.bindings.Count -ne 1 -or $Instance.bindings[0].targetId -cne 'cardmiro.march.seto' -or
+        $Template.objectMotion.count -ne 1) { throw "Unsupported card maze motion: $($Instance.instanceId)" }
+    foreach ($name in @('velocity','acceleration','angularVelocityDegrees','revolutionDegreesPerSecond','revolutionOffset')) {
+        if (@($Template.objectMotion.$name | Where-Object { $_ -ne 0 }).Count) { throw 'Card maze path must use transform keys only.' }
+    }
+    $keys = @($track[0].keys)
+    $leadMs = 0
+    $firstMovingKey = 0
+    if ($keys.Count -eq 3) {
+        $leadMs = [int]$keys[1].timeMs
+        if ($keys[0].visible -ne $false -or $keys[1].visible -ne $true -or $keys[2].visible -ne $true -or
+            $leadMs -le 0 -or $leadMs -ge $Template.durationMs) { throw 'Card maze lead-in must hold hidden before the moving key.' }
+        foreach ($field in @('positionOffset','rotationQuaternion','scaleMultiplier')) {
+            if (($keys[0].$field -join ',') -cne ($keys[1].$field -join ',')) {
+                throw 'Card maze lead-in must keep the exact initial transform.'
+            }
+        }
+        $firstMovingKey = 1
+    }
+    $movementMs = [int]$Template.durationMs - $leadMs
+    $startMs = [int]$Instance.startDelayMs + $leadMs
+    if ($keys[0].timeMs -ne 0 -or $keys[-1].timeMs -ne $Template.durationMs -or $movementMs -le 0 -or
+        $Template.durationMs -gt 120000 -or $Instance.startDelayMs -lt 0 -or $startMs -gt 120000) { throw 'Invalid card maze lane time.' }
+    $fields = @([string]$Instance.instanceId, [string]$startMs, [string]$movementMs)
+    foreach ($key in @($keys[$firstMovingKey], $keys[-1])) {
+        for ($axis = 0; $axis -lt 3; ++$axis) {
+            $value = [double]$Instance.position[$axis] + [double]$key.positionOffset[$axis]
+            if ([double]::IsNaN($value) -or [double]::IsInfinity($value)) { throw 'Invalid card maze coordinate.' }
+            $fields += $value.ToString('R', [Globalization.CultureInfo]::InvariantCulture)
+        }
+    }
+    return ($fields -join "`t")
+}
+
 function Get-ProjectJsonVersion([string]$Path) {
     $file = [IO.FileInfo]::new($Path)
     if (-not $file.Exists) { throw "Required JSON document is missing: $Path" }
@@ -1253,26 +1293,7 @@ function Convert-WorldDocument {
         foreach ($instance in $mazeInstances) {
             if ($instance.instanceId -cnotmatch '^cardmiro\.march\.instance\.from(3|6|9|12)\.lane[1-9]$') { throw 'Invalid card maze lane ID.' }
             $template = @($sequenceDocument.templates | Where-Object { $_.sequenceId -ceq $instance.templateId })[0]
-            $track = @($template.tracks | Where-Object { $_.slotId -ceq 'object' })
-            if ($track.Count -ne 1 -or $track[0].keys.Count -ne 2 -or $template.interpolation -cne 'LINEAR' -or
-                $instance.anchorKind -cne 'WORLD' -or $instance.motionEnd -cne 'STOP' -or $instance.playbackSpeed -ne 1 -or
-                $instance.bindings.Count -ne 1 -or $instance.bindings[0].targetId -cne 'cardmiro.march.seto' -or
-                $template.objectMotion.count -ne 1) { throw "Unsupported card maze motion: $($instance.instanceId)" }
-            foreach ($name in @('velocity','acceleration','angularVelocityDegrees','revolutionDegreesPerSecond','revolutionOffset')) {
-                if (@($template.objectMotion.$name | Where-Object { $_ -ne 0 }).Count) { throw 'Card maze path must use transform keys only.' }
-            }
-            $keys = $track[0].keys
-            if ($keys[0].timeMs -ne 0 -or $keys[1].timeMs -ne $template.durationMs -or $template.durationMs -le 0 -or
-                $template.durationMs -gt 120000 -or $instance.startDelayMs -lt 0 -or $instance.startDelayMs -gt 120000) { throw 'Invalid card maze lane time.' }
-            $fields = @([string]$instance.instanceId, [string]$instance.startDelayMs, [string]$template.durationMs)
-            foreach ($key in $keys) {
-                for ($axis = 0; $axis -lt 3; ++$axis) {
-                    $value = [double]$instance.position[$axis] + [double]$key.positionOffset[$axis]
-                    if ([double]::IsNaN($value) -or [double]::IsInfinity($value)) { throw 'Invalid card maze coordinate.' }
-                    $fields += $value.ToString('R', [Globalization.CultureInfo]::InvariantCulture)
-                }
-            }
-            $mazeLanes.Add(($fields -join "`t"))
+            $mazeLanes.Add((ConvertTo-KoukuCardMazeLane $instance $template))
         }
     }
     # Mario source balls: the same layout bindings the Client plays, in binding

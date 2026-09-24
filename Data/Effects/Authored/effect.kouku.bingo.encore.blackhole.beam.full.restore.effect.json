@@ -29255,9 +29255,7 @@
         "mesh": {
           "useModelMaterial": true
         },
-        "sprite": {
-          "billboard": true
-        },
+        "sprite": {"billboard":true,"followEmitterAxisRotation":true},
         "decal": {
           "size": [
             3.0,
@@ -30532,9 +30530,7 @@
         "mesh": {
           "useModelMaterial": true
         },
-        "sprite": {
-          "billboard": true
-        },
+        "sprite": {"billboard":true,"followEmitterAxisRotation":true},
         "decal": {
           "size": [
             3.0,
@@ -31809,9 +31805,7 @@
         "mesh": {
           "useModelMaterial": true
         },
-        "sprite": {
-          "billboard": true
-        },
+        "sprite": {"billboard":true,"followEmitterAxisRotation":true},
         "decal": {
           "size": [
             9.0,
@@ -33086,9 +33080,7 @@
         "mesh": {
           "useModelMaterial": true
         },
-        "sprite": {
-          "billboard": true
-        },
+        "sprite": {"billboard":true,"followEmitterAxisRotation":true},
         "decal": {
           "size": [
             9.0,

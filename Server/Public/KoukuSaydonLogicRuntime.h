@@ -134,6 +134,7 @@ namespace LostArk::Server
 		bool bEndPatternEarly = false;
 		// Set only after an ending counter hit has committed its validated landing.
 		bool bCounterSuccessLanded = false;
+		bool bStaggerSuccess = false;
 		std::string strStatus;
 	};
 

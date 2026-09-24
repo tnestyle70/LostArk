@@ -382,6 +382,21 @@ namespace
 		const KOUKU_SAYDON_COMPOSITION_LOGIC_DEFINITION& logic,
 		std::string& outStatus)
 	{
+        if (!logic.strColliderDamageContactRole.empty())
+        {
+            KOUKU_SAYDON_COMPOSITION_LOGIC_DEFINITION plain;
+            plain.strLogicId = logic.strLogicId;
+            plain.strDisplayName = logic.strDisplayName;
+            plain.strLogicType = "TRIGGER";
+            plain.strTriggerKind = "ENTER_AREA";
+            plain.strColliderDamageContactRole = logic.strColliderDamageContactRole;
+            plain.bRearmOnExit = logic.bRearmOnExit;
+            plain.bRepeatAfterKnockback = logic.bRepeatAfterKnockback;
+            plain.iRepeatIntervalMs = logic.iRepeatIntervalMs;
+            if ((logic.strColliderDamageContactRole != "DAMAGE" && logic.strColliderDamageContactRole != "KNOCKBACK") ||
+                logic != plain)
+            { outStatus = "Collider contact role requires a plain ENTER_AREA Trigger and DAMAGE/KNOCKBACK role."; return false; }
+        }
 		const bool hitShowtime = logic.strLogicType == "DURATION" && logic.strJudgementKind == "SHOWTIME_PLAYER_TARGETS";
 		const bool hitPursuit = ((logic.strLogicType == "DURATION" && logic.strJudgementKind == "PURSUIT_PROJECTILES") ||
             (logic.strLogicType == "TRIGGER" && logic.strTriggerKind == "PURSUIT_PROJECTILES"));
@@ -991,7 +1006,7 @@ namespace
 	{
 		if (!Has_Properties(value, { "occurrenceId", "resourceId", "startMs", "durationMs" },
 			{ "positionOffset", "rotationDegrees", "scale", "fadeInMs", "fadeOutMs",
-			  "dissolveStart", "dissolveEnd", "volume", "soundSourceStartMs", "followBoss", "bone", "boneTarget",
+			  "dissolveStart", "dissolveEnd", "volume", "soundSourceStartMs", "effectSourceStartMs", "followBoss", "bone", "boneTarget",
 			  "regionId", "cardSymbol", "cardColor", "anchorKind", "worldId", "logicOccurrenceId", "debugRender", "worldOccurrenceId", "brightnessMultiplier",
 			  "worldEmissionIndex", "selectionGroupId", "fitEffectToDuration", "loopEffectToDuration",
 			  "boneRotation", "colliderMotion", "colliderEndPositionOffset", "colliderEndScale", "anchorPresentationOccurrenceId" })) return false;
@@ -1048,6 +1063,7 @@ namespace
 			Read_PresentationNumber(value, "dissolveEnd", row.fDissolveEnd, 0.0, 1.0) &&
 			Read_PresentationNumber(value, "volume", row.fVolume, 0.0, 1.0) &&
 			Read_PresentationTime(value, "soundSourceStartMs", row.iSoundSourceStartMs) &&
+			Read_PresentationTime(value, "effectSourceStartMs", row.iEffectSourceStartMs) &&
 			Read_PresentationNumber(value, "brightnessMultiplier", row.fBrightnessMultiplier, 0.0, 16.0);
 	}
 
@@ -1551,7 +1567,7 @@ namespace
             if (!Is_StableId(row.strOccurrenceId) || !Try_ParseGeneratedOrdinal(row.strOccurrenceId,
                 bundle.strBundleId + ".presentation.", bundle.iNextPresentationOccurrenceOrdinal) ||
                 !occurrenceIds.insert(row.strOccurrenceId).second || resource == document.PresentationResources.end() ||
-                resource->eKind != KOUKU_SAYDON_PRESENTATION_KIND::CAMERA || !row.iDurationMs || end > MAX_TIME_MS ||
+                resource->eKind != KOUKU_SAYDON_PRESENTATION_KIND::CAMERA || row.iEffectSourceStartMs || !row.iDurationMs || end > MAX_TIME_MS ||
                 uint64_t(row.iFadeInMs) + row.iFadeOutMs > row.iDurationMs ||
                 !Valid_PresentationVector(row.PositionOffset, -100000., 100000.) ||
                 !Valid_PresentationVector(row.RotationDegrees, -36000., 36000.) ||
@@ -2061,6 +2077,9 @@ namespace
 					(row.strAnchorKind != "WORLD" && !row.strWorldId.empty()))
 				{ outStatus = "Invalid region identity, card or anchor: " + row.strOccurrenceId; return false; }
                 const auto* resource = presentationResources.at(row.strResourceId);
+                if (row.iEffectSourceStartMs && (resource->eKind != KOUKU_SAYDON_PRESENTATION_KIND::EFFECT ||
+                    row.iEffectSourceStartMs >= resource->iDurationMs || row.iEffectSourceStartMs > MAX_TIME_MS))
+                { outStatus = "Effect Source In must be inside an Effect resource lifetime."; return false; }
                 if (!row.strAnchorPresentationOccurrenceId.empty())
                 {
                     const auto source = std::find_if(pattern.PresentationOccurrences.begin(), pattern.PresentationOccurrences.end(),
@@ -2098,8 +2117,8 @@ namespace
                     const bool fixedSound = resource->eKind == KOUKU_SAYDON_PRESENTATION_KIND::SOUND &&
                         fixedSoundGroups.contains(row.strSelectionGroupId) && row.strAnchorKind == "MAP" && !row.bFollowBoss;
 					if ((resource->eKind != KOUKU_SAYDON_PRESENTATION_KIND::COLLIDER &&
-						resource->eKind != KOUKU_SAYDON_PRESENTATION_KIND::EFFECT && !fixedSound) || !Is_StableId(row.strSelectionGroupId))
-					{ outStatus = "Selection Group requires Effect/Collider, or fixed SHOWTIME MAP Sound: " + row.strOccurrenceId; return false; }
+						resource->eKind != KOUKU_SAYDON_PRESENTATION_KIND::EFFECT && resource->eKind != KOUKU_SAYDON_PRESENTATION_KIND::SOUND) || !Is_StableId(row.strSelectionGroupId))
+					{ outStatus = "Selection Group requires Effect, Collider or Sound: " + row.strOccurrenceId; return false; }
                     if (fixedSound) groupsWithSound.insert(row.strSelectionGroupId);
 					if (resource->eKind == KOUKU_SAYDON_PRESENTATION_KIND::COLLIDER && row.strAnchorKind != "BOSS")
 					{ outStatus = "Selection Group requires BOSS anchors; WORLD, MAP and PLAYER are unsupported."; return false; }
@@ -2111,7 +2130,7 @@ namespace
                         (firstResource->eKind == KOUKU_SAYDON_PRESENTATION_KIND::EFFECT || firstResource->eKind == KOUKU_SAYDON_PRESENTATION_KIND::SOUND) &&
                         (resource->eKind == KOUKU_SAYDON_PRESENTATION_KIND::EFFECT || resource->eKind == KOUKU_SAYDON_PRESENTATION_KIND::SOUND);
 					if (!firstResource || (firstResource->eKind != resource->eKind && !fixedVisualMix))
-					{ outStatus = "Selection Group cannot mix Effect and Collider boxes: " + row.strSelectionGroupId; return false; }
+					{ outStatus = "Selection Group cannot mix resource kinds outside fixed SHOWTIME groups: " + row.strSelectionGroupId; return false; }
 					if (resource->eKind == KOUKU_SAYDON_PRESENTATION_KIND::COLLIDER && (row.strAnchorKind != first.strAnchorKind || row.bFollowBoss != first.bFollowBoss ||
 						row.strBone != first.strBone || row.strBoneTarget != first.strBoneTarget ||
 						row.strWorldId != first.strWorldId || row.strWorldOccurrenceId != first.strWorldOccurrenceId ||
@@ -2191,8 +2210,10 @@ namespace
 			}
 			for (const auto& [groupId, group] : selectionGroups)
             {
-				if (group.second < 2u && presentationResources.at(group.first->strResourceId)->eKind == KOUKU_SAYDON_PRESENTATION_KIND::COLLIDER)
-				{ outStatus = "Collider Selection Group requires at least two boxes in one Pattern: " + groupId; return false; }
+				const auto groupKind = presentationResources.at(group.first->strResourceId)->eKind;
+				if (group.second < 2u && (groupKind == KOUKU_SAYDON_PRESENTATION_KIND::COLLIDER ||
+					groupKind == KOUKU_SAYDON_PRESENTATION_KIND::SOUND))
+				{ outStatus = "Collider/Sound Selection Group requires at least two boxes in one Pattern: " + groupId; return false; }
                 if (groupsWithSound.contains(groupId) && std::none_of(pattern.PresentationOccurrences.begin(), pattern.PresentationOccurrences.end(),
                     [&](const auto& member) { return member.strSelectionGroupId == groupId && member.strAnchorKind == "MAP" && !member.bFollowBoss &&
                         presentationResources.at(member.strResourceId)->eKind == KOUKU_SAYDON_PRESENTATION_KIND::EFFECT; }))
@@ -3211,7 +3232,7 @@ bool_t Client::CKoukuSaydonCompositionDocument::Parse_Text(
 		for (const DATA_JSON_VALUE& logicValue : logics->Get_Array())
 		{
 			if (!Has_Properties(logicValue, { "logicId", "displayName", "logicType" },
-					{ "judgementKind", "fixedHits", "trackingHits", "projectileHits", "randomVolleyHits", "fixedSelectionGroupId", "trackingPresentationOccurrenceId", "spawnIntervalMs", "followSpeedScale",
+					{ "colliderDamageContactRole", "judgementKind", "fixedHits", "trackingHits", "projectileHits", "randomVolleyHits", "fixedSelectionGroupId", "trackingPresentationOccurrenceId", "spawnIntervalMs", "followSpeedScale",
                       "visualIds", "cardSymbols", "contactVisualId", "speedMps", "contactRadiusM", "spawnRadiusM", "lifetimeMs", "homing", "countPerWave",
 					  "randomVolleyOccurrenceSets", "randomSpawnIntervalMs", "randomArenaRadiusM", "randomArenaHeightToleranceM", "randomAnchorKind", "randomScaleMin", "randomScaleMax", "insideOutcome", "sectorCount", "sectorSymbols", "regionIds", "centerX", "centerZ",
 					  "outerRadiusM", "worldSequenceInstanceId", "halfAngleDegrees",
@@ -3305,6 +3326,7 @@ bool_t Client::CKoukuSaydonCompositionDocument::Parse_Text(
 			const DATA_JSON_VALUE* const randomPlayerOnly = logicValue.Find("randomPlayerOnly");
 			if (!optionalText("judgementKind", stagedLogic.strJudgementKind) ||
                 !optionalText("triggerKind", stagedLogic.strTriggerKind) ||
+                !optionalText("colliderDamageContactRole", stagedLogic.strColliderDamageContactRole) ||
 				!optionalText("fixedSelectionGroupId", stagedLogic.strFixedSelectionGroupId) ||
 				!optionalText("trackingPresentationOccurrenceId", stagedLogic.strTrackingPresentationOccurrenceId) ||
 				!optionalUnsigned("spawnIntervalMs", MAX_TIME_MS, stagedLogic.iSpawnIntervalMs) ||
@@ -4831,6 +4853,8 @@ std::string Client::CKoukuSaydonCompositionDocument::Serialize(
 		if (logic.strLogicType == "TRIGGER" && !logic.strTriggerKind.empty())
 		{
 			output << ",\n      \"triggerKind\": \"" << logic.strTriggerKind << "\"";
+			if (!logic.strColliderDamageContactRole.empty())
+				output << ",\n      \"colliderDamageContactRole\": \"" << logic.strColliderDamageContactRole << "\"";
 			if (logic.strTriggerKind == "ENTER_AREA" && logic.bRearmOnExit)
 				output << ",\n      \"rearmOnExit\": true";
 			if (logic.iRepeatIntervalMs) output << ",\n      \"repeatIntervalMs\": " << logic.iRepeatIntervalMs;
@@ -5195,6 +5219,7 @@ std::string Client::CKoukuSaydonCompositionDocument::Serialize(
                     output << ", \"colliderEndScale\": "; Write_PresentationVector(output, row.ColliderEndScale);
                 }
 			if (!row.strAnchorPresentationOccurrenceId.empty()) output << ", \"anchorPresentationOccurrenceId\": \"" << CDataJson::Escape(row.strAnchorPresentationOccurrenceId) << "\"";
+			if (row.iEffectSourceStartMs) output << ", \"effectSourceStartMs\": " << row.iEffectSourceStartMs;
 			if (row.bFitEffectToDuration) output << ", \"fitEffectToDuration\": true";
 			if (row.bLoopEffectToDuration) output << ", \"loopEffectToDuration\": true";
 			output << ", \"fadeInMs\": " << row.iFadeInMs << ", \"fadeOutMs\": " << row.iFadeOutMs
@@ -5278,6 +5303,7 @@ std::string Client::CKoukuSaydonCompositionDocument::Serialize(
                     Write_PresentationVector(output, row.ColliderEndPositionOffset);
                     output << ", \"colliderEndScale\": "; Write_PresentationVector(output, row.ColliderEndScale);
                 }
+                if (row.iEffectSourceStartMs) output << ", \"effectSourceStartMs\": " << row.iEffectSourceStartMs;
                 if (row.bFitEffectToDuration) output << ", \"fitEffectToDuration\": true";
                 if (row.bLoopEffectToDuration) output << ", \"loopEffectToDuration\": true";
                 output << ", \"fadeInMs\": " << row.iFadeInMs << ", \"fadeOutMs\": " << row.iFadeOutMs

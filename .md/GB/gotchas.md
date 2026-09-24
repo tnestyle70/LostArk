@@ -2731,6 +2731,9 @@ lease에 연결한다. 저장된 DURATION은 timing 존재와 PRODUCT 의미의 
 
 - 대형 Sound 목록은 매 프레임 resource 구조체를 복사하거나 화면 밖 Selectable을 모두 제출하지 않는다. source는 Refresh/검색 변경, Created는 draft generation/검색 변경에서만 재구성하고 가시 행만 그린다. 파일 길이는 선택한 WAV만 확인하고 실패도 cache해 반복 I/O를 막는다. physical inventory의 임시3000ms를 실제 WAV 길이로 clamp하면 긴 음원을 편집할 수 없어진다.
 - 사운드 바 왼쪽 trim은 timeline start와 soundSourceStartMs를 같은 양만큼 변경해야 WAV 앞부분이 잘린다. timeline start만 바꾸면 동일한 처음 부분을 늦게 재생한다. 오른쪽은 길이, 가운데 이동은 timeline 위치만 변경한다. Source In/Out 저장·Play 소비자와 별도로 서버/로컬 preview 전환의 이전 문서 재생 문제를 검증한다.
+- Effect의 앞 edge trim도 occurrence `effectSourceStartMs`를 바꾼다. 가운데 이동은 source-in을 보존한다. source asset의 emitter delay를 지워 모든 사용처를 바꾸지 않는다. source clock에 offset을 더했으면 anchor history에는 그 offset을 빼고, 잘린 앞구간의 pre-roll은 occurrence의 생성 basis를 사용한다. 최초 출력은 authored delay와 fixed-step의 실제 생성 sample을 구분한다.
+- Sound 그룹 허용은 UI뿐 아니라 C++ codec·Python projector까지 함께 연결한다. Effect+Sound 일괄 이동은 같은 delta와 각 source-in·fade·volume을 보존하며 Collider의 공유 판정 창은 중복 이동하지 않는다.
+- 피해 Collider의 자동 Trigger는 명시 `colliderDamageContactRole`과 반복 조건으로 선택한다. 표시 이름을 무시한 전체 ENTER_AREA 동등 검색은 무관한 잡기 정의를 재사용한다. 피해 전용 window만 역할을 다시 연결하고 실제 hold·비피해 결과·Fail/Timeout 기믹은 보존한다.
 - 누적 재생 시계에 정수 ms 표시값을 매 프레임 되쓰지 않는다. double로 dt를 더해도 표시값을 다시 대입하면 소수부가 소실되어 60Hz·50초에서 타임라인이 2초 늦어질 수 있다. 내부 clock의 분수부를 보존하고 외부 clock·명시 Seek·capture 경계 이동만 지정 시각을 적용한다. 저장·재로드 성공과 오디오/시각 시계 동기화는 별도로 검증한다.
 - Save의 디스크 성공은 실행 중 Preview snapshot 갱신을 뜻하지 않는다. local snapshot의 draft generation을 추적하고 변경 저장 뒤 이전 재생을 STOP하며 다음 Play는 최신 문서를 사용한다. Scrub/Resume도 stale 문서에 transport만 보내지 않는다. 준비 요청을 최신으로 표시한 뒤 실제 admission이 실패하면 같은 Pattern뿐 아니라 다른 Pattern 교체도 STOP으로 정리한다. pending Play→edit→Save와 실패→Resume를 함께 검사한다. 부모 바 밖의 음원은 자식 Pattern 및 Server/product owner도 구분하고 임의로 모두 mute하지 않는다.
 - **마리오 lane의 `rightSign`은 그 lane을 비추는 follow 카메라의 화면 오른쪽에 손으로 맞춘 값이라, 어긋나면 ←/→가 반대로 움직인다 (2026-09-20 `Mario4_Tigger_2 -> Mario4_Tigger_5`)**: Client는 화면 기준 LEFT/RIGHT만 보내고 Server가 `Configure_MarioRail`에서 `normalize(출구 위치 - 이동을 마친 위치) * MARIO_LANES의 rightSign`(`GameRoom_Internal.h`)을 레일 오른쪽으로 삼는다. 그 자리를 비추는 shot(Client는 박스가 겹치면 우선순위가 가장 높은 것, 동률이면 목록 앞을 고르고 `플레이어 위치 + eyeOffset`을 월드 오프셋으로 적용한다)의 화면 오른쪽과 부호가 반대면 입력이 뒤집힌다. 화면 오른쪽은 왼손 좌표계에서 `(fz, -fx)`이고 `(fx, fz)`는 `lookAtOffset - eyeOffset`의 수평 성분이다. lane을 추가하거나 카메라 shot·트리거 위치를 옮기면 모든 lane에서 (→ 방향 · 화면 오른쪽) 내적이 양수인지 수치로 다시 확인한다(`out/MarioDirectionCheck/mario_direction_check.py`, 방법은 `2026-09-20_KOUKU_MARIO4_DIRECTION_INVERT_RESULT.md` 3절). 서버 계약 테스트의 lane 표(`ServerGameplayContractTests_DebugTeleport.cpp`)는 서버 표의 복사본이라 함께 고쳐야 하며, 이 lane은 17행짜리 테스트 표에 없어 부호가 한 번도 단언되지 않았다.
@@ -3397,8 +3400,9 @@ Lobby의 `Server entry failed`는 로딩 복구에도 표시된다. 원격 상�
 - 미저장 draft는 source revision이 같아도 내용이 다르다. 요청 sequence·gameplay rows SHA·승인 epoch로
   실행을 구분하고 시각 표현만 바뀐 동일 SHA도 새 실행에서 다시 읽는다. 이전 COMPLETED 응답을
   새 world의 승인으로 쓰지 않도록 world generation을 검사한다.
-- Play Preview의 서버 분기를 수평 밀림 거리>0에만 걸면 수직 상승과 피해 전용 Collider가 누락된다.
-  Composition 전체 Play는 같은 Server 경로를 사용하고 paused scrub만 로컬 표현으로 남긴다.
+- 타임라인 Play/Play Preview/Play Bundle은 로컬 표현 시계, Play Pattern은 검증한 draft의 Server 실행을 소유한다.
+  서버 Collider 검사 여부를 수평 밀림 거리로 제한하지 않는다. 수직 상승·피해 전용도 같은 Play Pattern 경로를 쓴다.
+  서버 준비·재생 중 로컬 Play/Resume/scrub는 막고 Stop Pattern 뒤 전환한다. 서버 권위 시계를 ruler로 되감지 않는다.
 - Publish 실패로 receipt가 rollback되면 변경 없는 Map도 다음에 cold 게시될 수 있다. 단계별
   action 시간과 fingerprint 시간을 분리하고, 없는 성공 receipt를 만들어 검사를 우회하지 않는다.
 
@@ -3476,3 +3480,16 @@ Lobby의 `Server entry failed`는 로딩 복구에도 표시된다. 원격 상�
 - Product compile/link PASS만으로 서로 다른 클래스 배치의 OBJ 혼합을 배제할 수 없다. 초기화 성공 직후 string/shared_ptr 접근 위반이 발생하면 정확한 EXE/PDB와 WER를 대조하고, 변경한 public header의 소비자 OBJ 시각 및 `CL.read.*.tlog`에 해당 헤더가 실제로 기록됐는지 확인한다.
 - 강제 포함한 표준 라이브러리 PCH를 사용하는 TU라도 프로젝트 헤더가 PCH 안에 있다는 뜻은 아니다. 소스와 PCH만 기록된 불완전 tracking은 클래스 멤버 삭제·추가 때 재컴파일을 누락할 수 있다. 같은 설정의 정상 TU와 다른 configuration의 기록을 비교한 뒤 원인을 판단한다.
 - 원인이 확인된 이전 OBJ만 보존·격리한 뒤 같은 toolchain의 정상 Product Build로 복구하고, 소비자별 헤더 추적과 현재 OBJ를 다시 확인한다. 출처를 확인하지 않은 전체 Clean/Rebuild나 tlog 삭제, 소스 timestamp 조작으로 정상 상태를 가장하지 않는다. CMainApp의 실제 사례와 실행/수동 확인 경계는 09-24 RELEASE_F1_RAID_TEST_RESULT의 Debug 종료 복구 기록을 따른다.
+
+
+### 쿠크 전투 전환·공유 이펙트·피격 판정
+
+- 연출 종료 프레임에 환경을 새로 붙이지 않는다. 준비한 gate 환경을 Sequence 시작 전에 baseline으로 잡고 성공 시 인계, 실패/세션 종료 시 이전 환경을 복원한다. clone prewarm 여부와 실제 프레임 시간은 별도로 검증한다.
+- 피격 동작은 clip 종료나 지연 locomotion으로 Idle로 덮지 않는다. Server 공중 여부와 착지 edge를 소비하고 push-only 표시 변경이 기존 재접촉 grace까지 늘리지 않는지 확인한다.
+- Resolve_CircleMove의 wasBlocked는 접촉 여부가 아니라 접선 이동도 실패했는지를 뜻한다. 접선 이동에 성공하면 false이므로 몸 내부 목적지 종료를 이것에만 묶으면 계속 몸 주위를 돈다. 실제 닿은 body와 목적지 내부를 함께 검사한다.
+- Debug draw를 Release에서 제공할 때 Collider override, Component virtual, Bounding 파생형, Renderer/GameInstance 소비자까지 같은 ABI를 사용하고 EngineSDK→Client를 함께 Build한다.
+- 투명도는 실제 occurrence가 참조하는 asset/carrier를 확인한다. MODEL 잔상의 brightness/alpha를 reflection으로 대신 조정하지 않는다. fixed-axis sprite의 본/owner 회전 누락은 해당 leaf의 followEmitterAxisRotation opt-in만 복원한다.
+- 폭발 판정에 비행 입자·debris 전체 AABB를 쓰지 않는다. 폭발 source time과 중심, 바닥 mesh/ring을 분리해 측정한다. 같은 폭발의 중첩 primitive는 같은 Trigger창을 공유하여 중복 피해를 막는다.
+- 한 보스 내의 칼날 count만 확인하면 Mario 전용 복제 template의 count를 놓친다. 실제 WORLD occurrence→instance→template을 따라가며 성공 종료는 자연 tail과 구분해 owner 단위로 정리한다.
+
+- Parent child 중간 삽입은 stable occurrence ID 순서와 재생 시각 순서를 다르게 만든다. Product validation이 시간순이어도 bootstrap의 전체 natural-ID sort가 이를 뒤집을 수 있다. PATTERNPARENTCHILD는 parent 내부 startMs 순서를 사용하고 ID는 tie-breaker로만 쓴다. publisher 성공을 Server catalog admission 성공으로 대신하지 않는다.
