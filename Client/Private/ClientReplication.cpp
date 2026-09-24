@@ -89,14 +89,12 @@ namespace
 				archetypeId);
 	}
 
-#ifdef _DEBUG
 	Client::COMBAT_DEBUG_VISIBILITY_SNAPSHOT g_CombatDebugVisibility = []
 	{
 		Client::COMBAT_DEBUG_VISIBILITY_SNAPSHOT Visibility{};
 		Visibility.iRevision = 1u;
 		return Visibility;
 	}();
-#endif
 
 	bool_t Can_ReloadValtanPresentationWithoutResettingLiveSound(
 		std::string& strOutStatus)
@@ -194,7 +192,6 @@ namespace
 	}
 }
 
-#ifdef _DEBUG
 Client::COMBAT_DEBUG_VISIBILITY_SNAPSHOT
 Client::CClientReplication::Get_GlobalCombatDebugVisibility()
 {
@@ -212,7 +209,6 @@ void Client::CClientReplication::Set_GlobalCombatDebugVisibility(
 	g_CombatDebugVisibility = Visibility;
 	g_CombatDebugVisibility.iRevision = iNextRevision;
 }
-#endif
 
 bool Client::CClientReplication::Initialize(const DESC& desc)
 {
@@ -254,9 +250,7 @@ bool Client::CClientReplication::Initialize(const DESC& desc)
 	m_WorldDestructionProjectionRuntime.Reset();
 	Clear_DeferredLocalCharacterClassReplacement();
 	m_iNextDeferredLocalCharacterClassReplacementGeneration = 1u;
-#ifdef _DEBUG
 	Sync_GlobalCombatDebugVisibility();
-#endif
 
 	return true;
 }
@@ -274,12 +268,10 @@ bool Client::CClientReplication::Update()
 		CGameInstance::Get().Get_Profiler(), "Replication.Update");
 	if (!m_isInitialized)
 		return false;
-#ifdef _DEBUG
-	/* This must precede the disconnected early return. A Debug selection is a
+	/* This must precede the disconnected early return. A developer selection is a
 	   process setting, not state owned by whichever Level currently has a live
 	   socket. */
 	Sync_GlobalCombatDebugVisibility();
-#endif
 	//network manager媛 留뚮뱾?대넃? replication event瑜??ㅼ젣 engine 蹂寃쎌쑝濡??곸슜?쒕떎.
 	//baren main thread?먯꽌 留ㅽ봽?덉엫 ?몄텧?쒕떎.
 	//珥덇린???щ? 寃??-> ?꾩옱 network ?곌껐 ?곹깭 ?뺤씤
@@ -1642,7 +1634,7 @@ Client::CClientReplication::Commit_DeferredLocalCharacterClassReplacement()
 			float3_t(
 				Pending.Snapshot.fSkillTargetX,
 				Pending.Snapshot.fSkillTargetY,
-				Pending.Snapshot.fSkillTargetZ), Pending.Snapshot.eKoukuHudMode, Pending.Snapshot.eAttachmentSlot))
+				Pending.Snapshot.fSkillTargetZ), Pending.Snapshot.eKoukuHudMode, Pending.Snapshot.eAttachmentSlot, Pending.Snapshot.isKnockbackAirborne))
 	{
 		Clear_DeferredLocalCharacterClassReplacement();
 		m_strPendingPresentationFailure =
@@ -1797,7 +1789,6 @@ void Client::CClientReplication::Collect_PlayerViews(
 		});
 }
 
-#ifdef _DEBUG
 void Client::CClientReplication::Sync_GlobalCombatDebugVisibility()
 {
 	const COMBAT_DEBUG_VISIBILITY_SNAPSHOT Visibility =
@@ -1815,12 +1806,23 @@ void Client::CClientReplication::Apply_CombatDebugVisibility(
 		m_Registry.Get_LiveObjects())
 	{
 		if (nullptr != character)
+		{
+			character->Set_CombatColliderDebugVisible(Visibility.bPlayerBodyCollider);
+#ifdef _DEBUG
 			character->Set_SkillHitAreaDebugVisible(
 				Visibility.bPlayerSkillHitGeometry);
+#endif
+		}
 	}
 	for (auto& [netEntityId, presentation] : m_WorldEntities)
 	{
 		(void)netEntityId;
+		if (LostArk::Shared::WORLD_ENTITY_KIND::BOSS == presentation.eKind)
+		{
+			if (const std::shared_ptr<CNpc> boss = presentation.pNpc.lock())
+				boss->Set_CombatColliderDebugVisible(Visibility.bBossBodyCollider);
+		}
+#ifdef _DEBUG
 		if (std::shared_ptr<CValtan> valtan = presentation.pValtan.lock())
 		{
 			valtan->Set_CombatDebugVisibility(
@@ -1829,9 +1831,11 @@ void Client::CClientReplication::Apply_CombatDebugVisibility(
 				Visibility.bBossStageGeometry,
 				Visibility.bCounterProxy);
 		}
+#endif
 	}
 }
 
+#ifdef _DEBUG
 bool_t Client::CClientReplication::Load_CombatObjectHitAreaDebug(
 	std::string& strOutStatus)
 {
@@ -2183,6 +2187,7 @@ bool Client::CClientReplication::Create_Character(
 	}
 
 	character->Get_Transform()->Rotation(0.f, yawDegrees, 0.f);
+	character->Set_CombatColliderDebugVisible(m_CombatDebugVisibility.bPlayerBodyCollider);
 #ifdef _DEBUG
 	character->Set_SkillHitAreaDebugVisible(
 		m_CombatDebugVisibility.bPlayerSkillHitGeometry);
@@ -2699,6 +2704,7 @@ bool Client::CClientReplication::Apply_WorldEntitySpawn(
 		presentation.fCollisionRadius = spawned.fCollisionRadius;
 		presentation.PinnedDefinitionRevision =
 			spawned.PinnedDefinitionRevision;
+		boss->Set_CombatColliderDebugVisible(m_CombatDebugVisibility.bBossBodyCollider);
 		presentation.pNpc = boss;
 		const auto [insertedAt, inserted] = m_WorldEntities.emplace(
 			spawned.iNetEntityId, std::move(presentation));
@@ -4353,7 +4359,7 @@ bool Client::CClientReplication::Apply_PlayerSnapshot(
 			float3_t(
 				player.fSkillTargetX,
 				player.fSkillTargetY,
-				player.fSkillTargetZ), player.eKoukuHudMode, player.eAttachmentSlot))
+				player.fSkillTargetZ), player.eKoukuHudMode, player.eAttachmentSlot, player.isKnockbackAirborne))
 	{
 		allSucceeded = false;
 	}

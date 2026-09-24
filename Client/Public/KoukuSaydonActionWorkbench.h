@@ -434,6 +434,9 @@ namespace Client
 		// Effect groups retain each anchor; a shared frame supports translation and rotation around their center.
 		bool_t Set_EffectSelectionGroup(std::string_view patternId,
 			const std::vector<std::string>& occurrenceIds, bool_t grouped, std::string& outStatus);
+		// Sound groups retain each source window and move together on the timeline.
+		bool_t Set_SoundSelectionGroup(std::string_view patternId,
+			const std::vector<std::string>& occurrenceIds, bool_t grouped, std::string& outStatus);
 		bool_t Transform_SelectedEffects(const std::array<double, 3u>& translation,
 			const std::array<double, 4u>& rotationDelta, std::string& outStatus);
 		bool_t Transform_SelectedColliders(const std::array<double, 3u>& translation,
@@ -574,6 +577,10 @@ namespace Client
 		bool_t Set_ColliderLogicValues(std::string_view patternId,
 			const KOUKU_SAYDON_COMPOSITION_PRESENTATION_OCCURRENCE& occurrence,
 			const KOUKU_SAYDON_COMPOSITION_LOGIC_DEFINITION& values, std::string& outStatus);
+		// Edge trims retain the source clock shared by the timeline UI and native contracts.
+		static void Trim_PresentationWindow(KOUKU_SAYDON_COMPOSITION_PRESENTATION_OCCURRENCE& row,
+			std::int64_t deltaMs, bool_t trimStart, std::uint32_t timelineDurationMs,
+			std::uint32_t sourceDurationMs, bool_t effect);
 		bool_t Set_PresentationBox(std::string_view patternId,
 			const KOUKU_SAYDON_COMPOSITION_PRESENTATION_OCCURRENCE& value, std::string& outStatus);
 		bool_t Set_PresentationBoxDebugRender(std::string_view patternId,
@@ -831,6 +838,7 @@ namespace Client
 		bool_t Set_PresentationSelectionGroup(std::string_view patternId,
 			const std::vector<std::string>& occurrenceIds, KOUKU_SAYDON_PRESENTATION_KIND kind,
 			bool_t grouped, std::string& outStatus);
+		bool_t Render_SoundGroupDetails(const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern);
 		bool_t Render_EffectGroupDetails(const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern);
 		bool_t Render_ColliderGroupDetails(const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern);
 		void Render_ColliderBoxDetails(const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern);

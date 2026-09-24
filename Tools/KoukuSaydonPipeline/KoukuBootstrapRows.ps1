@@ -412,6 +412,12 @@ function Get-BootstrapRowSortKey {
         $rank = if ($fields[0] -ceq 'RAIDGATE') { 0 } elseif ($fields[0] -ceq 'RAIDFLOWSTEP') { 1 } elseif ($fields[0] -ceq 'RAIDFLOWGROUP') { 2 } else { 3 }
         $Row = (@('RAIDGATE',$gateKey,$rank) + @($fields[2..($fields.Count - 1)])) -join "`t"
     }
+    if ($fields.Count -eq 8 -and $fields[0] -ceq 'PATTERNPARENTCHILD') {
+        # The Server appends children in timeline order. Stable occurrence IDs
+        # may be allocated after earlier boxes, so they only break time ties.
+        $Row = (@($fields[0], $fields[1], $fields[2], $fields[5], $fields[3],
+            $fields[4], $fields[6], $fields[7])) -join "`t"
+    }
     if ($fields.Count -ge 5 -and $fields[0] -ceq 'PATTERNATTACKHIT') {
         $parent = if ($fields[4] -ceq 'PROJECTILE') { 'PATTERNPURSUITPROJECTILES' } elseif ($fields[4] -ceq 'ALBION') { 'PATTERNMECHANICTRIGGER' } else { 'PATTERNSHOWTIMETARGETS' }
         $Row = (@($parent,$fields[1],$fields[2],$fields[3],2) + @($fields[4..($fields.Count - 1)])) -join "`t"

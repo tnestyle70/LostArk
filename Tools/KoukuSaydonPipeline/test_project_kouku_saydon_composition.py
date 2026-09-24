@@ -1299,7 +1299,7 @@ class KoukuSaydonCompositionProjectionTests(unittest.TestCase):
             with self.subTest(change=change), self.assertRaises(subject.CompositionError):
                 subject._validate_presentation_occurrences(pattern, resources, 8000, {})
             self.assertEqual(before, pattern)
-        for kind in ("SOUND", "CAMERA", "LIGHT"):
+        for kind in ("CAMERA", "LIGHT"):
             resources, pattern = self.collider_selection_group_fixture()
             resources["collider.group.fixture"]["kind"] = kind
             with self.subTest(kind=kind), self.assertRaisesRegex(subject.CompositionError, "Collider"):
@@ -4660,6 +4660,80 @@ class KoukuSaydonCompositionProjectionTests(unittest.TestCase):
         # Omitted policy preserves the legacy finite source clock.
         del row["loopEffectToDuration"]
         validate()
+
+    def test_collider_contact_role_is_authoring_only_and_requires_plain_enter_area(self):
+        base = dict(logicId="kakulsaydon.g1.logic.1", displayName="Renamable contact",
+                    logicType="TRIGGER", triggerKind="ENTER_AREA")
+        _, expected = subject._validate_logic_definition(base, "contact role", 2)
+        for role in ("", "DAMAGE", "KNOCKBACK"):
+            row = dict(base, colliderDamageContactRole=role)
+            before = copy.deepcopy(row)
+            _, projected = subject._validate_logic_definition(row, "contact role", 2)
+            self.assertEqual(expected, projected)
+            self.assertEqual(before, row)
+        for change in (dict(colliderDamageContactRole="OTHER"), dict(colliderDamageContactRole=False),
+                       dict(triggerKind=""), dict(logicType="RESULT"), dict(bossChargeDistanceM=5),
+                       dict(hudMode="GATE1")):
+            row = dict(base, colliderDamageContactRole="DAMAGE")
+            row.update(change)
+            with self.subTest(change=change), self.assertRaises(subject.CompositionError):
+                subject._validate_logic_definition(row, "contact role", 2)
+
+    def test_effect_source_in_validates_and_projects_without_mutation(self):
+        pattern_id = "pattern.source.in"
+        resource = dict(resourceId="effect.trim", kind="EFFECT", resourceKind="V1_EFFECT", durationMs=10000)
+        row = dict(occurrenceId=pattern_id + ".presentation.1", resourceId="effect.trim",
+                   startMs=300, durationMs=5000, effectSourceStartMs=4184)
+        pattern = dict(patternId=pattern_id, nextPresentationOccurrenceOrdinal=2,
+                       presentationOccurrences=[row])
+        def validate():
+            subject._validate_presentation_occurrences(pattern, {"effect.trim": resource}, 5300, {})
+        before = copy.deepcopy(pattern)
+        for fit, loop in ((False, False), (True, False), (False, True)):
+            row.update(fitEffectToDuration=fit, loopEffectToDuration=loop)
+            validate()
+            projected = subject._project_presentation_occurrence({"worlds": []}, pattern, row, resource)
+            self.assertEqual(4184, projected["effectSourceStartMs"])
+            self.assertEqual(5000, projected["durationMs"])
+        row.pop("fitEffectToDuration")
+        row.pop("loopEffectToDuration")
+        self.assertEqual(before, pattern)
+        for invalid in (-1, 10000, 600001, True, 4.184):
+            row["effectSourceStartMs"] = invalid
+            snapshot = copy.deepcopy(pattern)
+            with self.subTest(invalid=invalid), self.assertRaises(subject.CompositionError):
+                validate()
+            self.assertEqual(snapshot, pattern)
+        row["effectSourceStartMs"] = 4184
+        resource["kind"] = "SOUND"
+        with self.assertRaisesRegex(subject.CompositionError, "Effect Source In"):
+            validate()
+        row["effectSourceStartMs"] = 0
+        validate()
+        del row["effectSourceStartMs"]
+        validate()
+        projected = subject._project_presentation_occurrence({"worlds": []}, pattern, row, resource)
+        self.assertNotIn("effectSourceStartMs", projected)
+
+    def test_sound_selection_group_allows_independent_anchors_and_requires_two(self):
+        resources, pattern = self.collider_selection_group_fixture()
+        resources["collider.group.fixture"]["kind"] = "SOUND"
+        for index, row in enumerate(pattern["presentationOccurrences"]):
+            row.update(anchorKind="MAP" if index % 2 else "BOSS", followBoss=not bool(index % 2),
+                       soundSourceStartMs=100 + index, volume=.5)
+        before = copy.deepcopy(pattern)
+        subject._validate_presentation_occurrences(pattern, resources, 8000, {})
+        grouped = subject._project_pattern_presentation({"presentationResources": list(resources.values())}, pattern)
+        self.assertEqual(before, pattern)
+        self.assertNotIn("selectionGroupId", subject.serialize_json(grouped).decode("utf-8"))
+        pattern["presentationOccurrences"] = pattern["presentationOccurrences"][:1]
+        with self.assertRaisesRegex(subject.CompositionError, "at least two"):
+            subject._validate_presentation_occurrences(pattern, resources, 8000, {})
+        pattern["presentationOccurrences"] = before["presentationOccurrences"]
+        resources["effect.mixed"] = dict(kind="EFFECT", resourceKind="V1_EFFECT", durationMs=10000)
+        pattern["presentationOccurrences"][0].update(resourceId="effect.mixed", soundSourceStartMs=0)
+        with self.assertRaisesRegex(subject.CompositionError, "one kind"):
+            subject._validate_presentation_occurrences(pattern, resources, 8000, {})
 
     def test_effect_bone_rotation_requires_a_boss_effect_bone(self):
         pattern_id = "KAKULSAYDON_G1_PATTERN_27"

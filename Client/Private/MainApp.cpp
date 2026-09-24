@@ -1258,6 +1258,13 @@ void CMainApp::UpdateKoukuGateCompletePlay()
         m_KoukuRaidResourcePreparation.reset();
         m_iKoukuRaidResourceEpoch = 0u; m_KoukuRaidResourcePatternIds.clear();
         if (m_pKoukuPresentationPlayer && m_pKoukuPresentationPlayer->Preview_IsServerClock()) m_pKoukuPresentationPlayer->Stop_Preview();
+        if (arena)
+        {
+            std::string restore;
+            if (!arena->End_ServerRaidCinematicPresentation(true, restore))
+                m_strKoukuCompletePlayStatus += " / Previous gate restore: " + restore;
+            arena->Debug_SetSequenceCombatPending(false);
+        }
         m_pKoukuRaidSequenceDocument.reset(); m_iKoukuRaidDocumentEpoch = m_iKoukuRaidAcknowledgedEpoch = 0u;
         m_strKoukuRaidPresentationKey.clear(); m_strKoukuRaidFailedKey.clear(); m_strKoukuCompletePlayFlowGate.clear();
         m_iKoukuRaidPendingRequest = 0u; m_bKoukuRaidStopAfterAdmission = false;
@@ -1483,7 +1490,7 @@ void CMainApp::UpdateKoukuGateCompletePlay()
         return;
     }
     const bool cinematic = active && state.ePhase == KOUKUSAYDON_RAID_PHASE::CINEMATIC;
-    arena->Debug_SetSequenceCombatPending(cinematic);
+    if (cinematic) arena->Debug_SetSequenceCombatPending(true);
     if (!cinematic)
     {
         if (m_pKoukuPresentationPlayer && m_pKoukuPresentationPlayer->Preview_IsServerClock())
@@ -1512,6 +1519,8 @@ void CMainApp::UpdateKoukuGateCompletePlay()
         }
         if (!arena->End_ServerRaidCinematicPresentation(!active, restorationStatus))
         { m_strKoukuCompletePlayStatus = "Previous gate restore failed: " + restorationStatus; return; }
+        // Input and HUD unlock together only after the prepared scene handoff succeeds.
+        arena->Debug_SetSequenceCombatPending(false);
         m_strKoukuRaidPresentationKey.clear(); m_strKoukuRaidFailedKey.clear();
         m_strKoukuCompletePlayStatus = state.strReason.empty() ? "Server " + state.strGateId + " | " +
             (state.ePhase == KOUKUSAYDON_RAID_PHASE::WAIT_ENTRY ? "waiting for Gate 3 entry approval" : state.ePhase == KOUKUSAYDON_RAID_PHASE::WAIT_GATE ? "boss defeated: waiting for the gate entry vote" : state.ePhase == KOUKUSAYDON_RAID_PHASE::WAIT_MINIGAME ? "waiting for every maze hunter to return" :
@@ -1570,6 +1579,8 @@ void CMainApp::UpdateKoukuGateCompletePlay()
         // Later gates and late observers may enter without the initial PREPARING phase.
         if (!arena->Prepare_ServerRaidGatePresentation(state.strGateId, status)) { fail(status); return; }
         if (!arena->Begin_ServerRaidCinematicPresentation(status)) { fail(status); return; }
+        // Sequence scene restoration now returns directly to the prepared combat profile.
+        Update_KoukuGateSceneProfile();
         if (!m_pKoukuPresentationPlayer->Begin_BundlePreview(expanded, bundleId, clockMs, false, status, &arena->Get_WorldSequenceDocument(), true, false))
         { fail(status); return; }
         m_strKoukuRaidPresentationKey = key;
@@ -11843,7 +11854,14 @@ void CMainApp::RenderKoukuSaydonCompletePlayControls()
 	    [this](std::string_view gate, std::string& status) { return StartKoukuGateCompletePlay(gate, status); });
 	ImGui::TextWrapped("Complete Play runs the selected Gate and its Saved Pattern Flow. Bingo begins its repeating flow after Server preparation.");
 	if (ImGui::SmallButton(m_bKoukuCompletePlayLoadAttempted ? "Reload KoukuSaydon Inventory" : "Load KoukuSaydon Inventory"))
-	{ (void)m_pKoukuSaydonBossTool->Reload(m_strKoukuCompletePlayStatus); m_bKoukuCompletePlayLoadAttempted = true; }
+	{
+		(void)m_pKoukuSaydonBossTool->Reload(m_strKoukuCompletePlayStatus);
+		m_bKoukuCompletePlayLoadAttempted = true;
+		auto visibility = CClientReplication::Get_GlobalCombatDebugVisibility();
+		visibility.bPlayerBodyCollider = true;
+		visibility.bBossBodyCollider = true;
+		CClientReplication::Set_GlobalCombatDebugVisibility(visibility);
+	}
 	ImGui::SameLine();
 	ImGui::BeginDisabled(m_pKoukuSaydonActionWorkbench &&
 		(m_pKoukuSaydonActionWorkbench->Is_Dirty() || m_pKoukuSaydonActionWorkbench->Is_PublishRunning()));
@@ -11851,6 +11869,14 @@ void CMainApp::RenderKoukuSaydonCompletePlayControls()
 		(void)m_pKoukuSaydonBossTool->Request_PublishSavedPatterns(m_strKoukuCompletePlayStatus);
 	ImGui::EndDisabled();
 	if (!m_bKoukuCompletePlayLoadAttempted) { ImGui::TextDisabled("Load the published Boss Patterns tree."); return; }
+	auto bodyVisibility = CClientReplication::Get_GlobalCombatDebugVisibility();
+	bool_t showBodyColliders = bodyVisibility.bPlayerBodyCollider && bodyVisibility.bBossBodyCollider;
+	if (ImGui::Checkbox("Player / Boss Body Colliders##KoukuCompletePlay", &showBodyColliders))
+	{
+		bodyVisibility.bPlayerBodyCollider = showBodyColliders;
+		bodyVisibility.bBossBodyCollider = showBodyColliders;
+		CClientReplication::Set_GlobalCombatDebugVisibility(bodyVisibility);
+	}
 	static const char* labels[] = { "\x31\xEA\xB4\x80\xEB\xAC\xB8", "\x32\xEA\xB4\x80\xEB\xAC\xB8", "\x33\xEA\xB4\x80\xEB\xAC\xB8", "\xEB\xB9\x99\xEA\xB3\xA0" };
 	static const char* gates[] = { "GATE1", "GATE2", "GATE3", "BINGO" };
 	m_iKoukuCompletePlayGate = (std::clamp)(m_iKoukuCompletePlayGate, 0, 3);

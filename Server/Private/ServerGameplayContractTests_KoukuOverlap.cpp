@@ -4,6 +4,9 @@
 #include "GameplayCatalog.h"
 #include "KoukuSaydonBrain.h"
 #include "ServerApp.h"
+#include "PlayerSkillSystem.h"
+#include "Network/PacketReader.h"
+#include "Network/PacketWriter.h"
 #include "GameRoom.h"
 #include "ServerNavigation.h"
 #include "WorldBootstrap.h"
@@ -160,6 +163,73 @@ namespace
 
 void CServerGameplayContractRunner::Run_KoukuPushContracts(TESTS& tests, const CGameplayCatalog& catalog)
 {
+    {
+        S2C_WORLD_SNAPSHOT message{}; message.iServerTick = 100u; message.eWorldId = WORLD_ID::KAKULSAYDON_ARENA;
+        (void)Try_Parse_GameplayDataRevision(std::string(64u, 'a'), message.ActiveGameplayRevision);
+        PLAYER_SNAPSHOT state{}; state.iNetEntityId = 101u; state.eCharacterClass = CHARACTER_CLASS_ID::LANCE_MASTER;
+        state.eAction = PLAYER_ACTION_STATE::KNOCKDOWN; state.iActionStartTick = 99u; state.isKnockbackAirborne = true;
+        message.Players.push_back(state);
+        CPacketWriter writer;
+        const bool wrote = Write_Message(writer, message);
+        S2C_WORLD_SNAPSHOT decoded{}; CPacketReader reader(writer.Get_Buffer());
+        tests.Require(wrote && Read_Message(reader, decoded) && decoded.Players.size() == 1u &&
+            decoded.Players.front().isKnockbackAirborne && decoded.Players.front().eAction == PLAYER_ACTION_STATE::KNOCKDOWN,
+            "Protocol 110 round-trips authoritative airborne knockdown without changing the action identity");
+        message.Players.front().eAction = PLAYER_ACTION_STATE::NONE; message.Players.front().iActionStartTick = 0u;
+        CPacketWriter invalidWriter;
+        tests.Require(!Write_Message(invalidWriter, message), "Airborne hit-reaction state is rejected outside KNOCKDOWN");
+        message.Players.front().eAction = PLAYER_ACTION_STATE::KNOCKDOWN; message.Players.front().iActionStartTick = 99u;
+        message.Players.front().isKnockbackAirborne = false;
+        CPacketWriter landedWriter;
+        tests.Require(Write_Message(landedWriter, message), "The same knockdown occurrence accepts a grounded landing phase");
+    }
+    {
+        auto movementRoom = std::make_unique<CGameRoom>(WORLD_ID::TRAINING_GROUND);
+        movementRoom->m_ServerNavigation = CServerNavigation{};
+        movementRoom->m_WorldEntities.clear();
+        std::string movementStatus;
+        movementRoom->m_ServerCollisionSystem.Initialize({}, movementStatus);
+        const SERVER_BLOCKING_BODY body{0.f, 0.f, 1.2f, .9f, .9f, 901u};
+        movementRoom->m_ServerCollisionSystem.Set_BlockingBodies({body});
+        SERVER_PLAYER initial{}; initial.iPlayerId = 1u; initial.iNetEntityId = 101u;
+        initial.eCharacterClass = CHARACTER_CLASS_ID::LANCE_MASTER;
+        initial.iCurrentHp = initial.iMaximumHp = 100u; initial.isCombatReady = true;
+        initial.fPositionX = -5.f;
+        auto& mover = movementRoom->m_Players[1u]; mover = initial;
+        const auto advance = [&](unsigned count) {
+            for (unsigned tick = 0u; tick < count; ++tick) {
+                movementRoom->Update_Players(1.f / 30.f); ++movementRoom->m_iServerTick;
+            }
+        };
+        (void)movementRoom->Commit_MoveGoal(mover, 0.f, 0.f);
+        advance(120u);
+        const auto stopX = mover.fPositionX, stopZ = mover.fPositionZ;
+        const auto stoppedRadius = std::hypot(stopX, stopZ);
+        std::cout << "body-goal stop: hasGoal=" << mover.hasMoveGoal << " x=" << stopX << " z=" << stopZ << " radius=" << stoppedRadius << " hp=" << mover.iCurrentHp << " action=" << unsigned(mover.eAction) << '\n';
+        tests.Require(!mover.hasMoveGoal && mover.MovePath.empty() && stoppedRadius >= 1.649f && stoppedRadius < 2.f,
+            "A click inside the contacted boss body ends the move at its boundary instead of rerouting forever");
+        advance(60u);
+        tests.Require(mover.fPositionX == stopX && mover.fPositionZ == stopZ && !mover.hasMoveGoal,
+            "The released body click stays stopped on subsequent authoritative movement ticks");
+        (void)movementRoom->Commit_MoveGoal(mover, -5.f, 0.f); advance(120u);
+        tests.Require(!mover.hasMoveGoal && std::hypot(mover.fPositionX + 5.f, mover.fPositionZ) < .2f,
+            "A fresh click can move away immediately after a blocked body destination");
+        mover = initial;
+        (void)movementRoom->Commit_MoveGoal(mover, 5.f, 0.f); advance(180u);
+        tests.Require(!mover.hasMoveGoal && std::hypot(mover.fPositionX - 5.f, mover.fPositionZ) < .2f,
+            "A destination beyond the body preserves the existing tangent slide and reaches the other side");
+        mover = initial; mover.hasMoveGoal = true; mover.fMoveGoalX = 0.f; mover.fMoveGoalZ = 0.f;
+        tests.Require(!movementRoom->m_ServerCollisionSystem.Is_PlayerMoveBlockedAtGoalBody(mover, -4.8f, 0.f, 0.f, 0.f),
+            "A body containing the goal does not stop an approach before that body is contacted");
+        mover.fPositionX = -1.7f;
+        tests.Require(movementRoom->m_ServerCollisionSystem.Is_PlayerMoveBlockedAtGoalBody(mover, -1.5f, 0.f, 0.f, 0.f),
+            "The body goal query recognizes the actual sweep into a same-floor occupied destination");
+        tests.Require(!movementRoom->m_ServerCollisionSystem.Is_PlayerMoveBlockedAtGoalBody(mover, -1.5f, 0.f, 0.f, 10.f),
+            "A body on a different destination floor does not end the movement goal");
+        mover.fMoveGoalX = 5.f;
+        tests.Require(!movementRoom->m_ServerCollisionSystem.Is_PlayerMoveBlockedAtGoalBody(mover, -1.5f, 0.f, 0.f, 0.f),
+            "Contact alone cannot discard a walkable destination outside the body");
+    }
     auto boss = std::make_unique<SERVER_WORLD_ENTITY>(); boss->iPatternSequence = 1u;
     const auto player = [] { SERVER_PLAYER p{}; p.iPlayerId = 1u; p.iNetEntityId = 101u;
         p.iCurrentHp = p.iMaximumHp = 100u; p.isCombatReady = true; p.fPositionX = 1.f; return p; };
@@ -176,8 +246,8 @@ void CServerGameplayContractRunner::Run_KoukuPushContracts(TESTS& tests, const C
         auto ordinary = p; auto normal = push; normal.bForcePush = false;
         CKoukuSaydonLogicRuntime::Apply_Result(ordinary, normal, *boss, catalog, nullptr, 100u, events);
         CKoukuSaydonLogicRuntime::Apply_Result(p, push, *boss, catalog, nullptr, 100u, events);
-        tests.Require(ordinary.fKnockbackSpeed <= 1.f && p.iCurrentHp == 90u && p.eAction == PLAYER_ACTION_STATE::NONE &&
-            p.iFearEndTick == 0u && p.iKnockdownEndTick == 0u && p.iHitReactionGraceEndTick == 0u &&
+        tests.Require(ordinary.fKnockbackSpeed <= 1.f && p.iCurrentHp == 90u && p.eAction == PLAYER_ACTION_STATE::KNOCKDOWN &&
+            p.iFearEndTick == 0u && p.iKnockdownEndTick > 100u && p.iHitReactionGraceEndTick == 0u &&
             std::abs(p.fKnockbackSpeed * p.fKnockbackRemainingSeconds - 16.f) < .0001f && p.bKnockbackCanLeaveArena,
             "Explicit force push replaces fear/down/grace/previous reaction; ordinary push preserves resistance");
     }
@@ -758,12 +828,20 @@ void CServerGameplayContractRunner::Run_KoukuPushContracts(TESTS& tests, const C
             tests.Require(caught.iCurrentHp == 90u && damage.size() == 1u && caught.bKnockbackBallistic &&
                 !caught.bKnockbackCanLeaveArena && caught.fKnockbackSpeed == 0.f,
                 "Albion timed/contact damage launches once vertically through the shared world-hit consumer");
+            caught.eCharacterClass = CHARACTER_CLASS_ID::LANCE_MASTER;
+            caught.eStance = PLAYER_STANCE_ID::LANCE_MASTER_LONG_SPEAR;
+            C2S_USE_SKILL standup{}; standup.iClientSequence = 1u; standup.iSkillId = 34030u;
+            standup.fAimX = caught.fPositionX + 1.f;
+            tests.Require(room->m_GameplayCatalog.Find_Skill(34030u) != nullptr &&
+                !CPlayerSkillSystem{}.Try_Start(caught, standup, room->m_GameplayCatalog, 103u),
+                "Stand-up input cannot cancel authoritative ballistic motion while airborne");
             for (unsigned tick = 0u; tick < 18u; ++tick) room->Advance_PlayerKnockback(caught, 1.f / 30.f);
             tests.Require(std::abs(caught.fPositionY - 3.f) < .001f && caught.fPositionX == 0.f,
                 "Authored Albion rise reaches three metres halfway through its 1.2-second flight");
             for (unsigned tick = 0u; tick < 19u; ++tick) room->Advance_PlayerKnockback(caught, 1.f / 30.f);
             tests.Require(std::abs(caught.fPositionY) < .001f && caught.fKnockbackRemainingSeconds == 0.f &&
-                caught.iCurrentHp == 90u, "Authored Albion rise lands on its start floor without a second damage tick");
+                caught.iCurrentHp == 90u && caught.eAction == PLAYER_ACTION_STATE::KNOCKDOWN && !caught.bKnockbackBallistic &&
+                caught.iKnockdownEndTick > 138u, "Authored Albion rise lands in a retained down pose without a second damage tick");
         }
         room->m_ServerNavigation = savedNav;
     }

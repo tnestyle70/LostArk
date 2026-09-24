@@ -566,12 +566,10 @@ HRESULT CGameInstance::Apply_HeightFog(
 	return m_pRenderer->Apply_HeightFog(Settings);
 }
 
-#ifdef _DEBUG
 HRESULT CGameInstance::Add_DebugComponent(shared_ptr<CComponent> pDebugComponent)
 {
 	return m_pRenderer->Add_DebugComponent(pDebugComponent);
 }
-#endif
 
 void CGameInstance::Set_Transform(D3DTS eType, fmatrix_t TransformMatrix)
 {

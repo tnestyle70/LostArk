@@ -195,6 +195,8 @@ namespace Client
 		double fTargetRadiusM = 0.0;
 		/* TRIGGER values are projected to Server mechanic cues. */
 		std::string strTriggerKind;
+		// Authoring-only role for Collider Damage/Knockback contact defaults.
+		std::string strColliderDamageContactRole;
 		// Ordered same-pattern MAP Effect IDs; publishing resolves their positions.
 		std::vector<std::string> PlayerEntryEffectOccurrenceIds;
 		std::uint32_t iCountPerPlayer = 0u;
@@ -456,6 +458,8 @@ namespace Client
 		double fDissolveEnd = 1.0;
 		double fVolume = 1.0;
 		std::uint32_t iSoundSourceStartMs = 0u;
+		// Skips source time without changing the shared Effect asset.
+		std::uint32_t iEffectSourceStartMs = 0u;
 		double fBrightnessMultiplier = 1.0;
 		bool_t bFollowBoss = true;
 		// Retimes the V1 source clock to this occurrence window without adding loops.

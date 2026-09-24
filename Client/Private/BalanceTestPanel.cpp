@@ -22,7 +22,7 @@ namespace
     constexpr BALANCE_DOMAIN DOMAINS[] = {
         { "PlayerProfiles.json", "players", "characterClass", "Players", "|maximumHp|maximumResource|resourceRegenPerSecond|attackPower|defense|moveSpeed|defenseStanceMoveSpeedScale|maximumIdentity|identityRegenPerSecond|identityDrainPerSecond|identityStanceSwitchCost|", "players", "|maximumHp|maximumResource|resourceRegenPerSecond|attackPower|defense|criticalChancePercent|criticalDamagePercent|" },
         { "PlayerSkills.json", "skills", "skillId", "Skills", "|cooldownMs|resourceCost|identityCost|staggerDamage|partDamage|actionDurationMs|hitTimeMs|movementDistance|maximumRange|", "skills", "|cooldownMs|resourceCost|staggerDamage|partDamage|" },
-        { "DamageProfiles.json", "profiles", "damageProfileId", "Damage", "|damageRatePercent|", "damageProfiles", "|attackCoefficientBp|damageAddend|damageSpreadPercent|" },
+        { "DamageProfiles.json", "profiles", "damageProfileId", "Damage", "|damageRatePercent|", "damageProfiles", "|attackCoefficientBp|damageAddend|damageSpreadPercent|bossHealthBarDamage|" },
         { "BossProfiles.json", "bosses", "archetypeId", "Bosses", "|maximumHp|maximumHealthBars|attackPower|collisionRadius|engageDistance|moveSpeed|", "bosses", "|maximumHp|maximumHealthBars|attackPower|" }
     };
     std::string ReadText(const std::filesystem::path& path)

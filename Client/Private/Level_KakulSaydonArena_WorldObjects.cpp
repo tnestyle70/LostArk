@@ -860,6 +860,20 @@ void CLevel_KakulSaydonArena::Debug_StopGateObjects()
 
 bool_t CLevel_KakulSaydonArena::Begin_ServerRaidCinematicPresentation(std::string& status)
 {
+    if (!m_ServerRaidEnvironmentBaseline)
+    {
+        if (!m_pPendingGateObjects || !m_pPendingGateObjects->serverRaidPrepared)
+        { status = "Raid cinematic requires its prepared gate environment."; return false; }
+        // Prime the combat environment before the Sequence captures its scene baseline.
+        // Authored shot profiles still override it; completion returns to this same owner.
+        m_ServerRaidEnvironmentBaseline = SERVER_RAID_ENVIRONMENT_BASELINE{
+            m_iGateLightingIndex, m_strGatePresentationProfileId, m_pGateMapLightPresentation, m_GateMapLightSource};
+        m_iGateLightingIndex = m_pPendingGateObjects->gateIndex;
+        m_strGatePresentationProfileId = m_iGateLightingIndex == 0u ? "scene.kakulsaydon.g1.book-open.v1" :
+            m_iGateLightingIndex == 2u ? "scene.kakulsaydon.g3.dark.v1" : "";
+        m_pGateMapLightPresentation = m_pPendingGateMapLights;
+        m_GateMapLightSource = m_PendingGateMapLightSource;
+    }
     if (m_pServerRaidCinematicBorrowedGateObjects)
     {
         if (m_pServerRaidCinematicBorrowedGateObjects == m_pGateObjects.get()) return true;
@@ -889,6 +903,17 @@ bool_t CLevel_KakulSaydonArena::End_ServerRaidCinematicPresentation(
     {
         Debug_CancelGateObjects();
         m_pPendingGateMapLights.reset(); m_PendingGateMapLightSource.reset();
+    }
+    if (m_ServerRaidEnvironmentBaseline)
+    {
+        if (restorePrevious)
+        {
+            m_iGateLightingIndex = m_ServerRaidEnvironmentBaseline->gateLightingIndex;
+            m_strGatePresentationProfileId = m_ServerRaidEnvironmentBaseline->profileId;
+            m_pGateMapLightPresentation = m_ServerRaidEnvironmentBaseline->lights;
+            m_GateMapLightSource = m_ServerRaidEnvironmentBaseline->source;
+        }
+        m_ServerRaidEnvironmentBaseline.reset();
     }
     if (!m_pServerRaidCinematicBorrowedGateObjects) return true;
     // A successful gate commit replaced this owner. Never resurrect an old gate

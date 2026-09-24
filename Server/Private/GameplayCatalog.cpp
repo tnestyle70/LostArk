@@ -1836,8 +1836,9 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 			DAMAGE_PROFILE profile{};
 			/* A row published before the original formula shipped carries the flat
 			percent alone; the coefficient/addend pair is appended after it. */
-			const bool hasFormula = 5u == fields.size() || 6u == fields.size();
-			const bool hasSpread = 6u == fields.size();
+			const bool hasFormula = 5u == fields.size() || 6u == fields.size() || 7u == fields.size();
+			const bool hasSpread = 6u == fields.size() || 7u == fields.size();
+			const bool hasBossHealthBars = 7u == fields.size();
 			if ((3u != fields.size() && !hasFormula) || !IsStableId(fields[1]) ||
 				!ParseNumber(fields[2], ratePercent) || 0u == ratePercent ||
 				ratePercent > MAXIMUM_DAMAGE_RATE_PERCENT ||
@@ -1847,6 +1848,9 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 				(hasSpread &&
 					(!ParseNumber(fields[5], profile.iDamageSpreadPercent) ||
 					 profile.iDamageSpreadPercent >= 100u)) ||
+				(hasBossHealthBars &&
+					(!ParseNumber(fields[6], profile.iBossHealthBarDamage) ||
+					 profile.iBossHealthBarDamage > 1000u)) ||
 				!m_DamageRatePercentByProfileId.emplace(
 					std::string(fields[1]), ratePercent).second)
 			{
@@ -6209,6 +6213,13 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 	for (const auto& [skillId, skill] : m_Skills)
 	{
 		(void)skillId;
+		const auto* damageProfile = Find_DamageProfile(skill.strDamageProfileId);
+		if (nullptr != damageProfile && 0u != damageProfile->iBossHealthBarDamage &&
+			LostArk::Shared::PLAYER_SKILL_KIND::ACTIVE != skill.eSkillKind)
+		{
+			m_strStatus = "Boss health-bar damage requires a single-stage ACTIVE skill";
+			return false;
+		}
 		const bool isCombo = LostArk::Shared::PLAYER_SKILL_KIND::COMBO ==
 			skill.eSkillKind;
 		const bool validStageCount = isCombo ?

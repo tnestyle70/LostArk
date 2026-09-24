@@ -478,6 +478,11 @@ candidate provenance/gameplay 검증 뒤 freshness 확인과 원자 교체를 �
 기존 Players/Skills/Damage/Bosses 원본의 해당 stable ID/field를 편집한다. 공식 Gameplay/World
 publisher와 `Publish-BalanceRuntimeSet.ps1`의 기본 profile은 Retail이다. 같은 서버 카탈로그를
 소비하는 모든 플레이어·레이드와 Debug/Release에 적용된다.
+Retail Damage의 optional `bossHealthBarDamage`는 기본 0이며, 양수는 ACTIVE 스킬 한 번의
+보스 피해를 대상 최대 HP·전체 체력 줄 수 기준으로 고정하는 기믹 시험값이다. 다단히트에
+총량을 나누고 치명타·피해 편차·버프·방어 배율을 다시 적용하지 않는다. 명중·무적·실드는
+기존 판정을 유지하므로 모든 타격이 유효하게 적중했을 때 지정한 줄 수 분량을 깎는다.
+0으로 저장·게시하고 Server를 재시작하면 기존 피해 공식으로 돌아간다.
 `Debug (3s)`와 `Release (Retail)`는 현재 방의 서버 정책을 즉시 바꾸며
 새 방은 3초로 시작한다. 기존 0초 평타·콤보는 유지하고 일반 캐릭터 스킬의 양수 쿨타임만 3초로
 맞춘다. Release 버튼은 ALT_V 300초 등 게시된 Retail 정의를 사용한다. 진행 중 쿨타임은 원래
@@ -561,7 +566,9 @@ F1 `KoukuSaydon Arena`의 `Change to Clown`/`Return to Player`는 Debug typed �
 live counter, 1..4면 저작 단계이고 요청의 test stage가 우선한다. 0이 아닐 때만 문서·projection·
 `PATTERNLOGICOUTCOME` 11번째 field로 실리므로 기존 행과 bootstrap은 byte 동일하다. chain 없는 입장은
 `startMs+durationMs`와 패턴 완료에서 portal을 닫고 Client hold를 게시하지 않는다. Play Preview와
-Sequencer Play는 chain 또는 Mario 입장 패턴을 Server Play로 보내며 Save와 Publish All Patterns가 먼저다.
+Sequencer Play는 타임라인 cursor에서 로컬 표현을 재생하며 Pause/Resume과 scrub를 지원한다.
+실제 chain·Mario 입장·Collider 판정은 Play Pattern의 draft 검증과 Server 승인 뒤 실행한다.
+이 임시 실행은 Save/Publish와 별개이며, 서버 준비·재생 중 로컬 재생 전환은 Stop Pattern 뒤에 한다.
 protocol 85는 그대로지만 Gameplay bootstrap 행과 Composition 문서 key가 바뀌므로 Server/Client를 함께 빌드·재시작한다.
 마리오에서는 Server가 정한 구간별 고정 진행선으로만 ←/→ 왕복한다. 카메라와 마우스로 깊이 방향을 조종하지 않는다.
 Debug ↑는 기존 건너가기 또는 같은 진행선 점프다. ↓/Shift 점프/마우스 이동/일반 스킬은 차단한다.

@@ -3643,7 +3643,7 @@ bool_t Client::CLevel_KakulSaydonArena::Commit_GatePresentation(const size_t ind
     const auto& gate = Get_DebugGates()[index];
     CCombatHUDViewModel::Get().Set_BossFocusArchetype(gate.pHudFocusArchetypeId);
     CCombatHUDViewModel::Get().Reset_CombatAnalysis();
-    CCombatHUDViewModel::Get().Set_BossHidden(false);
+    CCombatHUDViewModel::Get().Set_BossHidden(m_bSequenceCombatPending || nullptr == gate.pHudFocusArchetypeId);
     CKoukuSaydonPatternAuditionService::Get().Set_TargetBoss(gate.pAuditionPlacementId, gate.pHudFocusArchetypeId);
     m_strDebugGateStatus = "Server gate committed: " + std::string(gate.pAuditionPlacementId ? gate.pAuditionPlacementId : "unknown");
     return true;

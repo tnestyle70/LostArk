@@ -822,10 +822,10 @@ bool LostArk::Server::CGameRoom::Apply_KoukuLogicOutput(
 		m_strStatus = "KoukuSaydon logic: " + output.strStatus;
 	if (!output.bEndPatternEarly)
 		return false;
-	if (output.bCounterSuccessLanded)
+	if (output.bCounterSuccessLanded || output.bStaggerSuccess)
 	{
-		// A successful counter interrupts this member, including the still-live
-		// rolling ball. Natural completion may keep tails; interruption must not.
+		// Counter and stagger success interrupt this member's hazards immediately.
+		// Natural completion may keep tails; interruption must not.
 		Stop_KoukuWorldOwner(member->strMemberId);
 		m_CombatObjectRuntime.Cancel_Source(boss.iNetEntityId);
 		std::erase_if(m_PendingKoukuMechanicTriggers, [&](const auto& trigger) {

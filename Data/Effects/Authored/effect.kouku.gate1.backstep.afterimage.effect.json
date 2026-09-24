@@ -9,68 +9,7 @@
     "directionYawDegrees": 0,
     "initialSpeedMultiplier": 1
   },
-  "modelCues": [
-    {
-      "cueId": "saydon.backstep.source-ghost",
-      "modelAssetId": "Character/KoukuSaton/MN_RPCT_05/MN_RPCT_05.wmodel",
-      "clipName": "rpct00_att_battle_34_04",
-      "startDelaySeconds": 0,
-      "durationSeconds": 0.55,
-      "alphaMode": "TRANSLUCENT",
-      "opacity": 1,
-      "colorMultiply": [
-        1,
-        1,
-        1,
-        0.38
-      ],
-      "holdLastFrame": false,
-      "loop": false,
-      "visible": true,
-      "suppressHorizontalRootMotionBone": "b_root",
-      "rootMotionVerticalAxis": 2,
-      "rootMotionVerticalScale": 0,
-      "localTransform": {
-        "position": [
-          0,
-          0,
-          0
-        ],
-        "rotationDegrees": [
-          0,
-          0,
-          0
-        ],
-        "scale": [
-          1,
-          1,
-          1
-        ]
-      },
-      "assetPreTransform": {
-        "scale": [
-          0.017,
-          0.017,
-          0.017
-        ],
-        "rotationDegrees": [
-          0,
-          0,
-          0
-        ]
-      },
-      "afterimage": {
-        "emissionStartSeconds": 0,
-        "emissionEndSeconds": 0.05000000074505806,
-        "sampleIntervalSeconds": 0.005,
-        "sampleLifetimeSeconds": 0.5,
-        "maxSamples": 64,
-        "appearanceBasis": "PROJECT_AUTHORED",
-        "sourceColorIntensity": 1.0,
-        "captureInitialPose": true
-      }
-    }
-  ],
+  "modelCues": [{"cueId":"saydon.backstep.source-ghost","modelAssetId":"Character/KoukuSaton/MN_RPCT_05/MN_RPCT_05.wmodel","clipName":"rpct00_att_battle_34_04","startDelaySeconds":0,"durationSeconds":0.55,"alphaMode":"TRANSLUCENT","opacity":1,"colorMultiply":[0.5,0.5,0.5,0.19],"holdLastFrame":false,"loop":false,"visible":true,"suppressHorizontalRootMotionBone":"b_root","rootMotionVerticalAxis":2,"rootMotionVerticalScale":0,"localTransform":{"position":[0,0,0],"rotationDegrees":[0,0,0],"scale":[1,1,1]},"assetPreTransform":{"scale":[0.017,0.017,0.017],"rotationDegrees":[0,0,0]},"afterimage":{"emissionStartSeconds":0,"emissionEndSeconds":0.05000000074505806,"sampleIntervalSeconds":0.005,"sampleLifetimeSeconds":0.5,"maxSamples":64,"appearanceBasis":"PROJECT_AUTHORED","sourceColorIntensity":0.5,"captureInitialPose":true,"endColor":[0.5,0.5,0.5,0]}}],
   "elements": [],
   "sourceModelPreview": {
     "gateId": "GATE1",

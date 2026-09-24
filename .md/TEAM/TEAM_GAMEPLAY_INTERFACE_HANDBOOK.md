@@ -107,7 +107,7 @@ Client project만 시작한다. 자동 판정이 예상과 다르면 IP 어댑�
 
 #### pull 후 공유 Server에 들어가는 순서
 
-Server PC와 Client PC는 먼저 같은 commit과 생성 데이터를 맞춘다. 기능 브랜치를 검증할 때도 양쪽이 같은 변경을 사용해야 한다. `pull`만 하고 예전 실행 파일을 쓰면 현재 protocol v99 또는 Debug gameplay revision이 달라 Server가 연결을 종료할 수 있다. Server/Client/Shared는 항상 같은 protocol version으로 다시 빌드한다.
+Server PC와 Client PC는 먼저 같은 commit과 생성 데이터를 맞춘다. 기능 브랜치를 검증할 때도 양쪽이 같은 변경을 사용해야 한다. `pull`만 하고 예전 실행 파일을 쓰면 현재 protocol v110 또는 Debug gameplay revision이 달라 Server가 연결을 종료할 수 있다. Server/Client/Shared는 항상 같은 protocol version으로 다시 빌드한다.
 
 ```powershell
 git switch main
@@ -340,7 +340,7 @@ walkable nav cell 경계와 별개로, 투사체·지연 장판·보스 이동 �
 중복 요청은 이전 응답만 돌려주며 재이동하지 않는다. Release Server는 이 명령을 거절한다.
 UI 위 클릭은 ImGui와 제품 UI의 같은 프레임 mouse claim 모두에서 차단한다.
 
-현재 Shared protocol 99의 Server/Client를 함께 빌드·재시작한다. 새 기능을 이전 실행 파일로 확인하지 않는다.
+현재 Shared protocol 110의 Server/Client를 함께 빌드·재시작한다. 새 기능을 이전 실행 파일로 확인하지 않는다.
 
 F1 Sequence Viewer는 모든 Debug Level에서 쿠크/발탄 목록을 읽고, 아레나 실행은
 `IPlayerCommandSink -> C2S_DEBUG_WORLD_PLAYBACK -> Room command -> ServerTriggerSystem`
@@ -401,7 +401,7 @@ Release Server는 예전처럼 플레이어가 밟으면 그룹을 시작한다.
 결과 메시지는 없고 monster는 world snapshot으로 온다. 거절 사유는 Server 콘솔의 `[WaveMonsters]` 줄에 남는다.
 
 Release Server는 이 명령을 무시한다. `Stage_MiniBoss_Spawn`, `Stage_3`, `Stage_Boss`, 다른 월드의 트리거는 Debug에서도
-예전처럼 동작한다. 다른 protocol의 Server/Client를 섞어 실행하지 않는다. 이 브랜치의 protocol 99는 origin/main의 99(`f291f886`, 무적 구역 연출 펄스)와 다른 wire다. main을 병합할 때 `PacketType.h`의 버전 줄이 충돌하며 병합 결과의 올바른 번호는 100이고, 이 문서의 "protocol 99"와 새 contract test도 그때 함께 맞춘다.
+예전처럼 동작한다. 다른 protocol의 Server/Client를 섞어 실행하지 않는다. 현재 wire 정본은 `PacketType.h`의 `NETWORK_PROTOCOL_VERSION` 110이다. 위 protocol 99 표기는 해당 명령이 도입된 버전이며 현재 실행 파일의 호환 버전으로 사용하지 않는다.
 
 ### 4.2 마리오 변신·방향키 조작·Debug 점프
 
@@ -996,8 +996,8 @@ epoch와 게시 revision을 유지하며 잔여 row를 넘긴다. Stop·중단·
 공통 Camera/Scene Profile은 묶음 시계에서 한 번 실행하며 다른 소유자의 겹치는 전역 연출은 게시 단계에서
 거부한다. Preview는 연출 확인이고 조건부 gameplay 결과는 Server Complete Play에서 확인한다.
 Sequencer의 Reset 오른쪽 `Play Pattern`은 현재 Pattern/Parent/Bundle을 기존 Server audition으로
-요청한다. Save와 Publish 완료 후 사용하며 dirty·게시 진행·저장/게시 revision 불일치·미지원
-대상은 이유를 표시하고 요청하지 않는다. 자동 저장·게시나 local collider 판정은 하지 않는다.
+요청한다. 현재 Apply된 메모리 draft를 고정해 검증하므로 Save와 Publish가 선행 조건은 아니다.
+검증 실패·미지원 대상은 기존 실행을 보존하고 이유를 표시한다. 자동 저장·게시나 local collider 판정은 하지 않는다.
 명시적 Play Pattern은 일반 패턴도 준비 진행·실패와 Server 승인·거절 상태를 같은 Workbench에 표시한다.
 버튼의 준비 안내는 서버 실행 완료를 의미하지 않으며, 실제 재생은 리소스 준비와 Server admission 뒤 시작한다.
 버튼 tooltip의 대상 이름과 stable ID가 실제 실행 단위다. Resources에서 고른 Pattern은 Append할
@@ -1041,10 +1041,12 @@ Client collider가 횟수를 증가시키지 않는다. `MARIO_ENTER`는 Gate 3 
 비어 있으면 마지막 완료로 해당 chain을 종료하고, 연결했으면 기존 후속 패턴을 실행한다.
 Timeout·취소·실패를 성공으로 바꾸지 않는다. 명시적인 lifetime을 가진 Parent Summon은 기존
 확장 Stage를 사용해 후보로 검증하며, 원본의 빈 Stage 배열만으로 배제하지 않는다.
-Sequencer Play와 Play Preview는 활성 completion-count Logic 또는 Mario 입장이 있는 패턴을 기존 typed
-Server Play로 보낸다(Save → Publish All Patterns 먼저).
+Sequencer Play와 Play Preview는 completion-count Logic 또는 Mario 입장 패턴도 로컬 표현으로 확인한다.
+실제 chain·입장·Collider 판정은 Play Pattern으로 현재 draft를 검증한 뒤 기존 typed Server 경로에서 확인한다.
 해당 요청의 Server 패턴 ID·현재 시작 tick으로 선택과 커서를 갱신하고, 편집 입력이 시작되면
-이번 실행의 자동 선택을 멈춰 미적용 입력을 보존한다. Stop은 같은 Server service로 제출한다.
+이번 실행의 자동 선택을 멈춰 미적용 입력을 보존한다. Stop Pattern은 같은 Server service로 제출한다.
+로컬 Play/Pause/Resume/Stop/Reset과 ruler scrub는 별도 preview clock만 조작하며 서버 준비·재생 중에는
+로컬 Play/Resume/scrub를 거절한다. 서버 패턴을 Stop Pattern으로 종료한 뒤 로컬 미리보기를 재생한다.
 마리오 시작 root의 entry collider·anchor·시계는 child 패턴이 바뀌는 동안 Server가 유지하고,
 기존 Bundle member state를 통해 Client의 retained entry presentation에 전달한다. 늦은 입장도
 같은 root 시계를 소비하며, 입장 소비·chain 종료·취소에는 해당 owner의 상태를 정리한다.
@@ -1921,7 +1923,7 @@ Character Size Save/Reload는 계속 선택 맵별 camera JSON을 소유한다. 
 
 `TRIGGER / PURSUIT_PROJECTILES`는 각 Logic Box의 `startMs`에 한 번 생성하며 `spawnIntervalMs=0`이다. 박스 길이는 이미 생성한 카드의 수명이 아니다. `lifetimeMs=0`, homing과 거리 제한0은 기존 room-owned 추적으로 접촉 전까지 유지하며 명시 Stop·대상 무효·방 정리는 기존 소유권 경로로 종료한다. `DURATION`의 기존 순차 생성은 계속 지원한다. 두 종류 모두 설치된 세이튼 +X 전방을 body yaw+90도로 해석한다. 영구 추적의 전체 수명 CONTACT는 임시 최대시간을 실제 만료로 사용하지 않으며 명시한 짧은 판정 창은 보존한다.
 
-Composition의 `Play Preview`와 `Play Pattern`은 현재 Apply된 메모리 draft를 기존 Server audition으로 실행한다. Parent와 Bundle도 필요한 패턴 연결을 함께 준비한다. 저장·Publish 없이 request sequence와 SHA-256으로 고정한 임시 Kouku rows를 승인하며, Server가 접촉·피해·상승/하강과 비행 경계를 소유한다. 선택 실행은 0ms부터 시작하고 정지 스크럽·단일 자산 검토는 로컬 표현 기능으로 유지한다. 정식 Publish generation은 임시 실행으로 바뀌지 않는다. 낙사 허용 비행만 바닥 이탈 시 FALLING/DEAD로 진행하며 Client에는 별도 피해·낙사 판정을 만들지 않는다.
+Composition의 `Play Pattern`은 현재 Apply된 메모리 draft를 기존 Server audition으로 실행한다. Parent와 Bundle도 필요한 패턴 연결을 함께 준비한다. 저장·Publish 없이 request sequence와 SHA-256으로 고정한 임시 Kouku rows를 승인하며, Server가 접촉·피해·상승/하강과 비행 경계를 소유한다. Server 선택 실행은 0ms부터 시작한다. `Play`/`Play Preview`/`Play Bundle`은 cursor에서 로컬 표현을 재생하며 Pause/Resume과 스크럽을 지원한다. 정식 Publish generation은 임시 실행으로 바뀌지 않는다. 낙사 허용 비행만 바닥 이탈 시 FALLING/DEAD로 진행하며 Client에는 별도 피해·낙사 판정을 만들지 않는다.
 
 자연 완료된 audition의 영구 추적은 계속 유지한다. 남아 있는 같은 epoch의 `Stop`은 sequencer와 F1에서 제출할 수 있으며 기존 Server 소유권 검증 후 잔여 카드를 정리한다. 자연 완료 자체를 Stop으로 바꾸거나 Client가 카드를 임의 삭제하지 않는다.
 
@@ -1950,10 +1952,14 @@ SHOWTIME_PLAYER_TARGETS의 random volley는 fixed/tracking template 없이 단�
 
 유한 random volley에는 MAP SOUND occurrence를 함께 포함할 수 있다. 최소 한 개의 MAP EFFECT가 위치 기준을 소유하며 SOUND만 있는 세트, BOSS-follow SOUND 및 looping targeted SOUND는 거부한다. Sound도 같은 content-addressed visual ID와 Server birth clock에 속하므로 각 투하에서 한 번 재생하고 늦은 입장에서는 이미 지난 음원 구간을 다시 시작하지 않는다. 기존 SoundCueCatalog의 variant는 해당 CombatObject ID/spawn tick/occurrence로 고정되며, 원본 Wwise avoid-repeat 메모리 전체를 재구현한 계약은 아니다.
 
-`CARD_RAIN_SOLDIERS`는 추가 매개변수가 없는 typed trigger다. 기존 MonsterCatalog/CardMaze profile의 CLUB·HEART·DIAMOND를 Server Spawn_Monster에서 생성하며 maze 진행 상태에는 등록하지 않는다. owner 패턴/sequence 종료·owner 제거 및30초상한에 정리된다. 원본NPC 모델 대응과 프로젝트 수량·수명 조정은 대응RESULT에 기록한다.
+`CARD_RAIN_SOLDIERS`는 추가 매개변수가 없는 typed trigger다. MonsterCatalog의 CLUB·HEART·DIAMOND를 Server Spawn_Monster에서 생성하며 maze 진행 상태에는 등록하지 않는다. MonsterProfiles의 전투 수치와 기존 MonsterBrain·navigation으로 플레이어를 추적·공격한다. 같은 profile을 쓰는 미로 target은 생성 직후 maze에 등록하고 generic Brain에서 제외해 미로가 위치와 접촉을 계속 소유한다. 카드비 병정은 패턴 종료와 30초 이후에도 유지되며, 병정 사망·owner 사망/제거 때 정리된다.
 
 쿠크 Level의 단일 BGM owner가 Ready Terrace·GATE1/2/3·Mario1~4·Card Maze·Bingo를 승인된 player/raid 상태에서 선택한다. 시퀀스와컷씬/카메라 재생 중에는 BGM을 중지하고 같은 state의 반복 snapshot은 음악을 재시작하지 않는다. 원본 intro/loop 구간은 WAV smpl metadata를 소비한다. cue sound는 기존 pattern presentation 경로를 사용한다.
 
+
+### 플레이어 피격 표현과 공중 착지
+
+Protocol 110의 `PLAYER_SNAPSHOT.isKnockbackAirborne`는 Server ballistic 피격의 공중 상태이며 KNOCKDOWN 이외에는 false다. 기존 Server knockback integrator가 착지를 확정하면 같은 action occurrence에서 false로 바뀐다. Client는 공중 넘어짐 자세를 유지한 뒤 그 edge에서 착지·누운 자세로 진행하며, 지연 locomotion이나 stance 갱신으로 피격 clip을 덮어쓰지 않는다. 실제 push에는 이동 후 최소 1초 회복 자세를 두고 더 긴 authored downMs를 보존한다. push-only 표현은 기존 Collider 재접촉/반복 타격 저항을 바꾸지 않으며 공중 기상은 거절한다. G 이동·teleport·일반 TRIGGER_MOVE는 이 피격 경로를 사용하지 않는다. 이전 protocol의 Client/Server와는 연결되지 않으므로 양쪽을 함께 빌드한다.
 
 ### Guardian 변신·Monster 공격·Gate3 오라 입력
 
@@ -2035,3 +2041,32 @@ Protocol 106의 Debug draft audition은 최대16MiB를 48KiB chunk로 받고 순
 run epoch에 해당하는 Client 메모리 presentation·animation bindings만 활성화한다. 다른 클라이언트에
 임시 presentation JSON을 배포하는 기능은 없으며 해당 실행본을 모르는 클라이언트는 표현을 거부한다.
 정식 F1/Complete Play는 기존 게시 Product 계약을 유지한다. Client·Server를 함께 갱신한다.
+
+Effect occurrence의 optional `effectSourceStartMs`는 원본 재생 시작 위치이며 기본값은0이다.
+앞 edge trim은 source-in·시작·수명을 함께 변경하고 body 이동은 시작만 바꾼다. 상세의
+Source In은 박스 시작을 유지한다. Fit/Loop는 source-in 뒤의 남은 구간을 사용하고
+attachment는 Pattern 시계, explicit fade는 박스 시계를 유지한다. Sound는 같은 kind의
+박스2개 이상을 영구 그룹으로 저장하며 Effect+Sound의 임시 혼합 선택은 동일 delta로 이동한다.
+
+순수 `ENTER_AREA` Trigger의 optional `colliderDamageContactRole`은 `DAMAGE` 또는
+`KNOCKBACK`이다. Collider Apply는 역할·반복 설정이 맞는 정의를 재사용하며, 수평 밀림이나
+상승이 있으면 KNOCKBACK을 선택한다. 표시 이름으로 잡기 Trigger를 재사용하지 않는다.
+실제 hold·기믹 Result가 연결된 window는 자동 재연결 대상이 아니다.
+
+Retail damage override의 optional `bossHealthBarDamage`는 ACTIVE 스킬 한 cast의
+보스 HP 피해 총량을 체력 줄 수로 지정한다. 기본값0은 기존 계산이며 양수는 최대 HP와
+최대 줄 수로 계산해 다단 타격에 분배한다. 이 보스 피해에는 공격 배율·편차·치명타·방어력을
+재적용하지 않지만 적중·무적·실드 판정은 유지한다. Publish와 Server 재시작 후 적용된다.
+
+### F1 몸통 콜라이더와 일반 이동 목적지
+
+Debug/Release 공통 `Load KoukuSaydon Inventory`는 플레이어와 보스 몸통 표시를 켠다.
+`Player / Boss Body Colliders`에서 다시 끌 수 있으며, 기존 process-global visibility가
+현재 객체와 이후 Server snapshot으로 생성되는 객체에 적용된다. `CCollider`의 기존
+Component → GameInstance → Renderer 경로를 공유하며 Client 표시가 Server 충돌 판정을
+변경하지 않는다. Release Engine의 Component/Bounding virtual 및 collider layout도 공통화되므로
+Engine·SDK·Client를 같은 변경으로 빌드한다.
+
+일반 우클릭 목적지가 현재 접촉한 동적 몸통 안이면 Server는 그 몸통 경계에서 이동을
+완료한다. 목적지가 몸통 너머에 있거나 아직 접촉하지 않았거나 다른 층이면 기존 경로·접선
+이동을 유지한다. editor picking, G 이동과 teleport는 이 도착 처리의 대상이 아니다.

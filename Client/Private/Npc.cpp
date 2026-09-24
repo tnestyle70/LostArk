@@ -871,6 +871,10 @@ void CNpc::Late_Update(f32_t fTimeDelta)
     if (m_bNativeBinaryBasePass)
     {
         CSkeletalAfterimage::SETTINGS settings;
+        // Saydon's owner path uses translucent exposure; other model histories
+        // retain their shared defaults and native material reflection inputs.
+        settings.color = { .8f, .8f, .8f, .19f };
+        settings.endColor = { .8f, .8f, .8f, 0.f };
         if (m_BackstepAfterimageStyle)
         {
             // Action 4219951/stage004 TrailGhost: source 5ms samples, 500ms tail.
@@ -878,9 +882,10 @@ void CNpc::Late_Update(f32_t fTimeDelta)
             settings.sampleIntervalSeconds = .005f;
             settings.sampleLifetimeSeconds = .5f;
             settings.maxSamples = 64u;
-            settings.sourceColorIntensity = 1.f;
+            settings.sourceColorIntensity = .5f;
             settings.capturePoseChanges = true;
-            settings.color = { 1.f, 1.f, 1.f, .38f };
+            settings.color = { .5f, .5f, .5f, .19f };
+            settings.endColor = { .5f, .5f, .5f, 0.f };
         }
         if (m_CounterAfterimageEnabled)
         {
@@ -888,7 +893,8 @@ void CNpc::Late_Update(f32_t fTimeDelta)
             settings.sampleIntervalSeconds = .24f;
             settings.sampleLifetimeSeconds = .16f;
             settings.maxSamples = 1u;
-            settings.color = { .12f, .7f, 2.4f, .7f };
+            settings.color = { .05f, .3f, 1.f, .35f };
+            settings.endColor = { .05f, .3f, 1.f, 0.f };
             settings.sourceColorIntensity = 0.f;
         }
         (void)m_BodyAfterimage.Configure(settings);
@@ -939,10 +945,8 @@ void CNpc::Late_Update(f32_t fTimeDelta)
 	CGameInstance::Get().Add_RenderObject(
 		RENDERGROUP::NONBLEND,
 		static_pointer_cast<CGameObject>(shared_from_this()));
-#ifdef _DEBUG
 	if (m_isCombatColliderDebugVisible && nullptr != m_pColliderCom)
 		CGameInstance::Get().Add_DebugComponent(m_pColliderCom);
-#endif
 }
 
 HRESULT CNpc::Render_Group(const RENDERGROUP group)

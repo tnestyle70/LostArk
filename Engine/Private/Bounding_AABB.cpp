@@ -56,7 +56,6 @@ bool_t CBounding_AABB::Intersect(COLLIDER eTargetType, shared_ptr<CBounding> pTa
 
 	return m_isColl;
 }
-#ifdef _DEBUG
 
 HRESULT CBounding_AABB::Render(shared_ptr<PrimitiveBatch<VertexPositionColor>> pBatch)
 {
@@ -65,7 +64,6 @@ HRESULT CBounding_AABB::Render(shared_ptr<PrimitiveBatch<VertexPositionColor>> p
 	return S_OK;
 }
 
-#endif
 
 float3_t CBounding_AABB::Compute_Min()
 {

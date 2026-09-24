@@ -402,6 +402,14 @@ public:
 	f32_t Dissolve_Amount() const;
 	f32_t Alpha_Envelope() const;
 	f32_t Scale_Envelope() const;
+	void Set_OccurrenceFadeClock(f32_t fSourceStartSeconds, f32_t fDurationSeconds,
+		bool_t bOverrideIn, bool_t bOverrideOut)
+	{
+		m_fFadeSourceStartSeconds = fSourceStartSeconds;
+		m_fFadeDurationSeconds = fDurationSeconds;
+		m_bOccurrenceFadeIn = bOverrideIn;
+		m_bOccurrenceFadeOut = bOverrideOut;
+	}
 	bool_t Has_Texture(const TEXTURE_INPUT eInput) const
 	{
 		return nullptr != m_Textures[static_cast<size_t>(eInput)];
@@ -558,6 +566,10 @@ private:
 	bool_t m_bFinished = false;
 	bool_t m_bFirstUpdatePending = true;
 	bool_t m_bPlaybackPaused = false;
+	f32_t m_fFadeSourceStartSeconds = 0.f;
+	f32_t m_fFadeDurationSeconds = 0.f;
+	bool_t m_bOccurrenceFadeIn = false;
+	bool_t m_bOccurrenceFadeOut = false;
 	f32_t m_fOccurrenceDissolveStart = -1.f;
 	f32_t m_fOccurrenceDissolveEnd = -1.f;
 	bool_t m_bEmissionStopped = false;

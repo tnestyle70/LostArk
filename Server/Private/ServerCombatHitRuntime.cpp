@@ -350,7 +350,7 @@ LostArk::Server::CServerCombatHitRuntime::Apply_PlayerToWorld(
 		BOSS_INCOMING_HIT incoming{};
 		incoming.iSourcePlayerId = hit.iSourcePlayerId;
 		incoming.iSkillId = hit.iSkillId;
-		incoming.iRawDamage = hasLegacyArmor ?
+		incoming.iRawDamage = hasLegacyArmor && !hit.bHealthDamagePreResolved ?
 			CGameplayCatalog::Apply_Defense(
 				hit.iRawDamage, SumIntactLegacyArmorDefense(target)) :
 			hit.iRawDamage;
@@ -358,7 +358,7 @@ LostArk::Server::CServerCombatHitRuntime::Apply_PlayerToWorld(
 		incoming.iPartDamage = hasTypedParts ? hit.iPartDamage : 0u;
 		incoming.iCounterPower = hit.iCounterPower;
 		incoming.iServerTick = hit.iServerTick;
-		incoming.bHealthDamagePreResolved = hasLegacyArmor;
+		incoming.bHealthDamagePreResolved = hasLegacyArmor || hit.bHealthDamagePreResolved;
 		incoming.fSourceX = hit.fSourceX;
 		incoming.fSourceZ = hit.fSourceZ;
 		const BOSS_HIT_RESULT bossHit =

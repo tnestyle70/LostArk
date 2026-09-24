@@ -1676,6 +1676,7 @@ void CCharacter::Update_KnockdownPresentation()
 	}
 	if (KNOCKDOWN_STEP::FALLING == m_eKnockdownStep)
 	{
+		if (m_isKnockbackAirborne) return; // Only the Server landing edge releases the airborne pose.
 		if (Set_Animation(CHARACTER_ANIM::KNOCKDOWN_LAND, false))
 			m_eKnockdownStep = KNOCKDOWN_STEP::LANDING;
 		else
@@ -2278,10 +2279,12 @@ bool_t CCharacter::Apply_NetworkAction(
 	const bool_t hasSkillTarget,
 	const float3_t& skillTarget,
 	const LostArk::Shared::KOUKU_HUD_MODE interactionMode,
-	const LostArk::Shared::PLAYER_ATTACHMENT_SLOT grabSlot)
+	const LostArk::Shared::PLAYER_ATTACHMENT_SLOT grabSlot,
+	const bool_t isKnockbackAirborne)
 {
 	using namespace LostArk::Shared;
 	if (0u == serverTick || !std::isfinite(actionFacingYawDegrees) ||
+		(isKnockbackAirborne && action != PLAYER_ACTION_STATE::KNOCKDOWN) ||
 		static_cast<std::uint8_t>(action) >=
 		static_cast<std::uint8_t>(PLAYER_ACTION_STATE::END))
 	{
@@ -2792,9 +2795,22 @@ bool_t CCharacter::Apply_NetworkAction(
 	{
 		if (INVALID_SKILL_ID != skillId || 0u == actionStartTick)
 			return false;
+		const bool_t landed = m_isKnockbackAirborne && !isKnockbackAirborne;
+		m_isKnockbackAirborne = isKnockbackAirborne;
+		m_fPendingIdleSeconds = -1.f;
 		if (m_eNetworkAction == action &&
 			m_iLastNetworkActionStartTick == actionStartTick)
 		{
+			if (landed)
+			{
+				if (Set_Animation(CHARACTER_ANIM::KNOCKDOWN_LAND, false))
+					m_eKnockdownStep = KNOCKDOWN_STEP::LANDING;
+				else
+				{
+					Set_Animation(CHARACTER_ANIM::DOWN_LOOP, true);
+					m_eKnockdownStep = KNOCKDOWN_STEP::DOWN;
+				}
+			}
 			return true;
 		}
 		m_pChain = nullptr;
@@ -2877,6 +2893,7 @@ bool_t CCharacter::Apply_NetworkAction(
 		m_bHasEffectActionFacingYaw = false;
 		m_fEffectActionFacingYawDegrees = 0.f;
 	}
+	if (action != PLAYER_ACTION_STATE::KNOCKDOWN) m_isKnockbackAirborne = false;
 	Update_ActionEmissiveOverride(action, skillId);
 	m_hasNetworkSkillTarget = hasSkillTarget;
 	m_NetworkSkillTarget = hasSkillTarget ? skillTarget : float3_t{};
@@ -2940,7 +2957,9 @@ void CCharacter::Apply_NetworkStance(const LostArk::Shared::PLAYER_STANCE_ID sta
 	/* A stance that owns its own idle and run has to take over the pose the
 	character is already holding; Set_Locomotion only fires on a move edge. A
 	skill keeps its clip and picks the new stance up when it ends. */
-	if (hasChanged && !Is_PlayingSkill())
+	if (hasChanged && !Is_PlayingSkill() &&
+		m_eNetworkAction == LostArk::Shared::PLAYER_ACTION_STATE::NONE &&
+		m_eKnockdownStep == KNOCKDOWN_STEP::NONE)
 	{
 		Set_Animation(
 			m_isMoving ? CHARACTER_ANIM::RUN : CHARACTER_ANIM::IDLE,
@@ -4013,8 +4032,10 @@ void CCharacter::Late_Update(f32_t fTimeDelta)
 #ifdef _DEBUG
 	if (m_isNavigationDebugVisible && nullptr != m_pNavigationCom)
 		CGameInstance::Get().Add_DebugComponent(m_pNavigationCom);
+#endif
 	if (m_isCombatColliderDebugVisible && nullptr != m_pColliderCom)
 		CGameInstance::Get().Add_DebugComponent(m_pColliderCom);
+#ifdef _DEBUG
 	if (m_isSkillHitAreaDebugVisible)
 	{
 		Update_SkillProjectileDebug(fTimeDelta);
@@ -4534,12 +4555,8 @@ void CCharacter::Commit_Locomotion(bool_t isMoving)
 	before the cast must not stomp its clip; the action edge restores
 	locomotion when the Server releases ESTHER_CAST. */
 	if (Is_PlayingSkill() ||
-		LostArk::Shared::PLAYER_ACTION_STATE::INTERACTION == m_eNetworkAction ||
-		LostArk::Shared::PLAYER_ACTION_STATE::ESTHER_CAST == m_eNetworkAction ||
-		LostArk::Shared::PLAYER_ACTION_STATE::SQUAREHOLE_SONG == m_eNetworkAction ||
-		LostArk::Shared::PLAYER_ACTION_STATE::TRIGGER_MOVE == m_eNetworkAction ||
-		LostArk::Shared::PLAYER_ACTION_STATE::WALL_CLIMB == m_eNetworkAction ||
-		LostArk::Shared::PLAYER_ACTION_STATE::VEHICLE_SKILL == m_eNetworkAction)
+		LostArk::Shared::PLAYER_ACTION_STATE::NONE != m_eNetworkAction ||
+		KNOCKDOWN_STEP::NONE != m_eKnockdownStep)
 	{
 		return;
 	}

@@ -58,7 +58,6 @@ bool_t CBounding_OBB::Intersect(COLLIDER eTargetType, shared_ptr<CBounding> pTar
 
 	return m_isColl;
 }
-#ifdef _DEBUG
 
 HRESULT CBounding_OBB::Render(shared_ptr<PrimitiveBatch<VertexPositionColor>> pBatch)
 {
@@ -67,7 +66,6 @@ HRESULT CBounding_OBB::Render(shared_ptr<PrimitiveBatch<VertexPositionColor>> pB
 	return S_OK;
 }
 
-#endif
 
 CBounding_OBB::OBB_DESC CBounding_OBB::Compute_OBBDesc()
 {

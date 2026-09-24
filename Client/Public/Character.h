@@ -199,7 +199,8 @@ public:
 		bool_t hasSkillTarget = false,
 		const float3_t& skillTarget = {},
 		LostArk::Shared::KOUKU_HUD_MODE interactionMode = LostArk::Shared::KOUKU_HUD_MODE::NONE,
-		LostArk::Shared::PLAYER_ATTACHMENT_SLOT grabSlot = LostArk::Shared::PLAYER_ATTACHMENT_SLOT::NONE);
+		LostArk::Shared::PLAYER_ATTACHMENT_SLOT grabSlot = LostArk::Shared::PLAYER_ATTACHMENT_SLOT::NONE,
+		bool_t isKnockbackAirborne = false);
 	bool_t Try_Get_NetworkActionState(
 		LostArk::Shared::PLAYER_ACTION_STATE& outAction) const
 	{
@@ -269,12 +270,12 @@ public:
 		return m_isMoving;
 	}
 
+	void Set_CombatColliderDebugVisible(bool_t isVisible) {
+		m_isCombatColliderDebugVisible = isVisible;
+	}
 #ifdef _DEBUG
 	void Set_NavigationDebugVisible(bool_t isVisible) {
 		m_isNavigationDebugVisible = isVisible;
-	}
-	void Set_CombatColliderDebugVisible(bool_t isVisible) {
-		m_isCombatColliderDebugVisible = isVisible;
 	}
 	void Set_SkillHitAreaDebugVisible(bool_t isVisible) {
 		m_isSkillHitAreaDebugVisible = isVisible;
@@ -448,9 +449,9 @@ private:
 	float4x4_t m_VehicleSeatRotation = { 1.f, 0.f, 0.f, 0.f, 0.f, 1.f, 0.f, 0.f,
 		0.f, 0.f, 1.f, 0.f, 0.f, 0.f, 0.f, 1.f };
 
+	bool_t m_isCombatColliderDebugVisible = { false };
 #ifdef _DEBUG
 	bool_t m_isNavigationDebugVisible = { false };
-	bool_t m_isCombatColliderDebugVisible = { false };
 	bool_t m_isSkillHitAreaDebugVisible = { true };
 	/* A client-side prediction of an object the current clip spawned, drawn
 	as a wire so the Server's projectile judgement can be seen; it moves along
@@ -490,6 +491,7 @@ private:
 	enum class KNOCKDOWN_STEP : std::uint8_t
 	{ NONE, FALLING, LANDING, DOWN, STANDUP };
 	KNOCKDOWN_STEP m_eKnockdownStep = KNOCKDOWN_STEP::NONE;
+	bool_t m_isKnockbackAirborne = false;
 	// Snapshot-owned grab kind, independent of the optional boss hand socket.
 	LostArk::Shared::PLAYER_ATTACHMENT_SLOT m_eNetworkGrabSlot = LostArk::Shared::PLAYER_ATTACHMENT_SLOT::NONE;
 	LostArk::Shared::PLAYER_STANCE_ID m_eStance =

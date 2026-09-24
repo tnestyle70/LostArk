@@ -557,6 +557,8 @@ void LostArk::Server::CGameRoom::Broadcast_WorldSnapshot()
 					player.TriggerMove.fHeldSeconds >= player.TriggerMove.fHoldSeconds)) ?
 			PLAYER_LOCOMOTION_STATE::MOVING : PLAYER_LOCOMOTION_STATE::IDLE;
 		snapshot.eAction = player.eAction;
+		snapshot.isKnockbackAirborne = player.eAction == PLAYER_ACTION_STATE::KNOCKDOWN &&
+			player.bKnockbackBallistic && player.fKnockbackRemainingSeconds > 0.f;
 		snapshot.eStance = player.eStance;
 		snapshot.iSkillId = player.iCurrentSkillId;
 		snapshot.iActionStartTick = player.iActionStartTick;

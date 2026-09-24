@@ -39,6 +39,11 @@ struct CKoukuSaydonWorkbenchTestAccess
     { return workbench.Append_PresentationSource(source, status); }
     static const std::vector<std::string>& SelectedBoxes(const CKoukuSaydonActionWorkbench& workbench)
     { return workbench.m_TimelineSelectedOccurrenceIds; }
+    static void Select(CKoukuSaydonActionWorkbench& workbench, const std::string& id, bool toggle)
+    { workbench.Select_TimelineBox({}, id, toggle); }
+    static bool Move(CKoukuSaydonActionWorkbench& workbench, const std::string& patternId,
+        const std::vector<std::string>& ids, std::int64_t delta, std::uint64_t generation, std::string& status)
+    { return workbench.Move_PresentationTimelineSelection(patternId, ids, delta, generation, status); }
     static void PrimeDamageDirty(CKoukuSaydonActionWorkbench& workbench) { workbench.m_bColliderDamageDirty = true; }
     static bool DamageDirty(const CKoukuSaydonActionWorkbench& workbench) { return workbench.m_bColliderDamageDirty; }
 };
@@ -63,7 +68,7 @@ CNetworkManager& CNetworkManager::Get()
 bool CNetworkManager::Is_Connected() const
 { throw std::runtime_error("CPU editor contracts unexpectedly inspected a live connection."); }
 Client::CKoukuSaydonPatternAuditionService& Client::CKoukuSaydonPatternAuditionService::Get()
-{ throw std::runtime_error("CPU editor contracts unexpectedly requested live Server audition."); }
+{ static CKoukuSaydonPatternAuditionService service; return service; }
 bool Client::CKoukuSaydonPatternAuditionService::Stop(std::string&)
 { throw std::runtime_error("CPU editor contracts unexpectedly stopped live Server audition."); }
 bool Client::CLevel_KakulSaydonArena::Duplicate_CameraShot(std::string_view, std::string_view, std::string&, std::string&)
@@ -3043,6 +3048,20 @@ namespace
 		Require(workbench.Get_Status() == editStatus,
 			"unchanged frame status erased the unrelated edit diagnostic");
 		workbench.Set_PreviewState({});
+		workbench.Set_ServerPlayPreparationPending(true);
+		Require(!workbench.Request_PatternPreview(patternId, 321u, status),
+			"pending Server preparation accepted a cold local Pattern Play");
+		Require(!workbench.Request_PatternScrub(patternId, 321u, status),
+			"pending Server preparation accepted a cold local Pattern scrub");
+		{
+			KOUKU_SAYDON_COMPOSITION_PATTERN pending;
+			std::uint32_t clock = 0u; bool_t paused = false; std::string target;
+			Require(!workbench.Consume_PatternPreviewRequest(pending, clock, paused, target),
+				"rejected cold local transport queued a Pattern preview");
+		}
+		Require(workbench.Get_Composition() == baseline && workbench.Get_DraftGeneration() == generation &&
+			ReadText(sourcePath) == bytes, "pending Server transport rejection changed draft or saved source");
+		workbench.Set_ServerPlayPreparationPending(false);
 		Require(!workbench.Request_PreviewPause(), "inactive preview accepted Pause");
 		RequireEditorStep(workbench.Request_PatternScrub(patternId, 321u, status), status, "cold Pattern ruler seek");
 		expectPattern(321u, true, expected);
@@ -3059,6 +3078,30 @@ namespace
 		KOUKU_PREVIEW_STATE state;
 		state.bPlaying = true; state.strPatternId = patternId; state.iDurationMs = duration; state.iClockMs = 432u;
 		workbench.Set_PreviewState(state);
+		workbench.Set_ServerPlayPreparationPending(true);
+		Require(!workbench.Request_PatternPreview(patternId, 777u, status) &&
+			!workbench.Request_PatternScrub(patternId, 777u, status) &&
+			!workbench.Request_PreviewResume(),
+			"pending Server preparation accepted live local Pattern transport");
+		{
+			KOUKU_PREVIEW_TRANSPORT command = KOUKU_PREVIEW_TRANSPORT::NONE; std::uint32_t clock = 0u;
+			Require(!workbench.Consume_PreviewTransportRequest(command, clock),
+				"rejected live local transport queued a resume or seek");
+		}
+		Require(workbench.Request_PreviewPause(), "pending Server preparation blocked a local pause");
+		expectTransport(KOUKU_PREVIEW_TRANSPORT::PAUSE, 432u);
+		workbench.Set_ServerPlayPreparationPending(false);
+		auto& audition = const_cast<KOUKU_SAYDON_PATTERN_AUDITION_SNAPSHOT&>(
+			CKoukuSaydonPatternAuditionService::Get().Get_Snapshot());
+		for (const auto serverState : {KOUKU_SAYDON_PATTERN_AUDITION_STATE::REQUEST_PENDING,
+			KOUKU_SAYDON_PATTERN_AUDITION_STATE::QUEUED, KOUKU_SAYDON_PATTERN_AUDITION_STATE::ACTIVE})
+		{
+			audition.eState = serverState;
+			Require(!workbench.Request_PatternPreview(patternId, 777u, status) &&
+				!workbench.Request_PatternScrub(patternId, 777u, status) && !workbench.Request_PreviewResume(),
+				"in-flight Server playback accepted local Pattern transport");
+		}
+		audition = {};
 		Require(workbench.Request_PreviewPause(), "running Pattern refused Pause");
 		expectTransport(KOUKU_PREVIEW_TRANSPORT::PAUSE, 432u);
 		for (const bool_t paused : {false, true})
@@ -3094,6 +3137,15 @@ namespace
 				id == bundle.strBundleId && clock == expectedClock && paused, "Bundle scrub lost its identity, endpoint or paused state");
 			Require(!workbench.Consume_BundlePreviewRequest(id, clock, paused), "Bundle scrub request was not one-shot");
 		};
+		workbench.Set_ServerPlayPreparationPending(true);
+		Require(!workbench.Request_BundleScrub(321u),
+			"pending Server preparation accepted a cold local Bundle scrub");
+		{
+			std::string id; std::uint32_t clock = 0u; bool_t paused = false;
+			Require(!workbench.Consume_BundlePreviewRequest(id, clock, paused),
+				"rejected cold local transport queued a Bundle preview");
+		}
+		workbench.Set_ServerPlayPreparationPending(false);
 		for (unsigned retry = 0u; retry < 2u; ++retry)
 		{
 			Require(workbench.Request_BundleScrub(0u), "request Bundle after the same staging failure");
@@ -3108,6 +3160,14 @@ namespace
 		for (const bool_t paused : {false, true})
 		{
 			state.bPlaying = true; state.bPaused = paused; workbench.Set_PreviewState(state);
+			workbench.Set_ServerPlayPreparationPending(true);
+			Require(!workbench.Request_BundleScrub(777u) && !workbench.Request_PreviewResume(),
+				"pending Server preparation accepted live local Bundle transport");
+			workbench.Set_ServerPlayPreparationPending(false);
+			audition.eState = KOUKU_SAYDON_PATTERN_AUDITION_STATE::ACTIVE;
+			Require(!workbench.Request_BundleScrub(777u) && !workbench.Request_PreviewResume(),
+				"active Server playback accepted live local Bundle transport");
+			audition = {};
 			Require(workbench.Request_PreviewPause(), "Bundle refused Pause");
 			expectTransport(KOUKU_PREVIEW_TRANSPORT::PAUSE, 432u);
 			Require(workbench.Request_BundleScrub(543u), "live Bundle ruler seek failed");
@@ -4327,6 +4387,16 @@ int Run_KoukuFixedDamageContractTests()
         LostArk::Shared::ATTACK_HIT_TEMPLATE hit;
         hit.strHitId = "contract.rise"; hit.iAtMs = 500u; hit.fRiseHeightM = 3.25; hit.iPushMs = 1200u;
         attack.FixedHits = {hit}; source.Logics.push_back(attack);
+        KOUKU_SAYDON_COMPOSITION_LOGIC_DEFINITION legacyContact;
+        legacyContact.strLogicId = "kakulsaydon.g1.logic." + std::to_string(source.iNextLogicOrdinal++);
+        legacyContact.strDisplayName = "Legacy grab contact"; legacyContact.strLogicType = "TRIGGER"; legacyContact.strTriggerKind = "ENTER_AREA";
+        auto damageContact = legacyContact;
+        damageContact.strLogicId = "kakulsaydon.g1.logic." + std::to_string(source.iNextLogicOrdinal++);
+        damageContact.strDisplayName = "User-owned damage contact"; damageContact.strColliderDamageContactRole = "DAMAGE";
+        auto knockbackContact = damageContact;
+        knockbackContact.strLogicId = "kakulsaydon.g1.logic." + std::to_string(source.iNextLogicOrdinal++);
+        knockbackContact.strDisplayName = "User-owned knockback contact"; knockbackContact.strColliderDamageContactRole = "KNOCKBACK";
+        source.Logics.insert(source.Logics.end(), {legacyContact, damageContact, knockbackContact});
         Require(WriteText(sourcePath, CKoukuSaydonCompositionDocument::Serialize(source)), "write isolated fixed damage fixture");
         SCOPED_ENVIRONMENT_VARIABLE environment(L"LOSTARK_PROJECT_DATA_ROOT");
         Require(environment.Set(dataRoot), "select isolated fixed damage root");
@@ -4343,7 +4413,19 @@ int Run_KoukuFixedDamageContractTests()
             const auto& logics = workbench.Get_Composition().Logics;
             return *std::find_if(logics.begin(), logics.end(), [&](const auto& row) { return row.strLogicId == window->OnSuccessLogicIds.front(); });
         };
+        const auto window = [&](const std::string& id) {
+            const auto placed = box(id); const auto& owner = EditorPattern(workbench, patternId);
+            const auto found = std::find_if(owner.LogicOccurrences.begin(), owner.LogicOccurrences.end(),
+                [&](const auto& row) { return row.strOccurrenceId == placed.strLogicOccurrenceId; });
+            Require(found != owner.LogicOccurrences.end(), "damage contact window is missing"); return *found;
+        };
+        const auto trigger = [&](const std::string& id) {
+            const auto linked = window(id); const auto& values = workbench.Get_Composition().Logics;
+            const auto found = std::find_if(values.begin(), values.end(), [&](const auto& row) { return row.strLogicId == linked.strLogicId; });
+            Require(found != values.end(), "damage contact definition is missing"); return *found;
+        };
         RequireEditorStep(workbench.Set_ColliderTriggerDamage(patternId, box(firstId), 10u, status), status, "seed first percent Collider");
+        Require(trigger(firstId) == damageContact, "SetDamage reused a role-less grab template instead of the user-owned DAMAGE contact");
         RequireEditorStep(workbench.Set_ColliderTriggerDamage(patternId, box(secondId), 10u, status), status, "seed shared percent Result");
         const auto shared = result(secondId);
         Require(result(firstId).strLogicId == shared.strLogicId, "same percent damage should reuse a Result before editing");
@@ -4355,6 +4437,8 @@ int Run_KoukuFixedDamageContractTests()
         CKoukuSaydonWorkbenchTestAccess::PrimeDamageDirty(workbench);
         RequireEditorStep(workbench.Set_ColliderTriggerDamage(patternId, box(firstId), fixed, status), status, "set fixed500 with vertical launch");
         const auto exact = result(firstId);
+        Require(trigger(firstId) == knockbackContact && trigger(secondId) == damageContact,
+            "vertical launch did not select KNOCKBACK or changed another window's DAMAGE contact");
         Require(exact.strOutcomeKind == "FIXED_DAMAGE" && exact.iDamageAmount == 500u && exact.iPercent == 0u &&
             exact.fPushHeightM == 4.0 && exact.fPushRangeM == 0.0 && exact.iPushMs == 1500u &&
             exact.bPushBallistic && exact.bForcePush && !exact.bPushCanLeaveArena,
@@ -4389,12 +4473,295 @@ int Run_KoukuFixedDamageContractTests()
         Require(result(firstId).strOutcomeKind == "MAX_HP_PERCENT_DAMAGE" && result(firstId).iPercent == 17u &&
             result(firstId).iDamageAmount == 0u, "percent switch retained forbidden fixed HP amount");
         RequireEditorRoundtrip(workbench);
+        // Legacy pure contact windows retain their stable ID while adopting the explicit role.
+        const auto stableWindowId = window(firstId).strOccurrenceId;
+        auto legacyDocument = workbench.Get_Composition();
+        auto& legacyPattern = legacyDocument.Patterns.front();
+        auto legacyWindow = std::find_if(legacyPattern.LogicOccurrences.begin(), legacyPattern.LogicOccurrences.end(),
+            [&](const auto& row) { return row.strOccurrenceId == stableWindowId; });
+        legacyWindow->strLogicId = legacyContact.strLogicId;
+        const auto previousWindowCount = legacyPattern.LogicOccurrences.size();
+        Require(WriteText(sourcePath, CKoukuSaydonCompositionDocument::Serialize(legacyDocument)), "stage legacy contact window");
+        RequireEditorStep(workbench.Reload(status), status, "reload legacy contact window");
+        KOUKU_COLLIDER_DAMAGE_SETTINGS plainDamage; plainDamage.iPercent = 11;
+        RequireEditorStep(workbench.Set_ColliderTriggerDamage(patternId, box(firstId), plainDamage, status), status, "replace pure legacy contact with DAMAGE role");
+        Require(window(firstId).strOccurrenceId == stableWindowId && trigger(firstId) == damageContact &&
+            EditorPattern(workbench, patternId).LogicOccurrences.size() == previousWindowCount,
+            "legacy contact migration changed its window ID or added a second window");
+        plainDamage.bRearmOnExit = true;
+        RequireEditorStep(workbench.Set_ColliderTriggerDamage(patternId, box(firstId), plainDamage, status), status, "create a rearming DAMAGE role");
+        const auto generatedContact = trigger(firstId);
+        Require(generatedContact.strColliderDamageContactRole == "DAMAGE" && generatedContact.bRearmOnExit &&
+            generatedContact.strDisplayName == "\xED\x8A\xB8\xEB\xA6\xAC\xEA\xB1\xB0\x5F\xEB\x8C\x80\xEB\xAF\xB8\xEC\xA7\x80",
+            "generated contact lost its explicit role or default UTF-8 display name");
+        RequireEditorRoundtrip(workbench);
+        Require(trigger(firstId) == generatedContact, "Save/reopen lost the generated damage role");
+
+        // Non-damage Success and Hold ownership must not be silently replaced by an automatic contact.
+        auto protectedDocument = workbench.Get_Composition();
+        auto& protectedPattern = protectedDocument.Patterns.front();
+        auto protectedWindow = std::find_if(protectedPattern.LogicOccurrences.begin(), protectedPattern.LogicOccurrences.end(),
+            [&](const auto& row) { return row.strOccurrenceId == stableWindowId; });
+        protectedWindow->strLogicId = legacyContact.strLogicId;
+        KOUKU_SAYDON_COMPOSITION_LOGIC_DEFINITION wipe;
+        wipe.strLogicId = "kakulsaydon.g1.logic." + std::to_string(protectedDocument.iNextLogicOrdinal++);
+        wipe.strDisplayName = "Independent Success mechanic"; wipe.strLogicType = "RESULT"; wipe.strOutcomeKind = "INSTANT_DEATH";
+        protectedDocument.Logics.push_back(wipe); protectedWindow->OnSuccessLogicIds.push_back(wipe.strLogicId);
+        Require(WriteText(sourcePath, CKoukuSaydonCompositionDocument::Serialize(protectedDocument)), "stage non-damage Success contact");
+        RequireEditorStep(workbench.Reload(status), status, "reload non-damage Success contact");
+        plainDamage.bRearmOnExit = false; plainDamage.iPercent = 12;
+        RequireEditorStep(workbench.Set_ColliderTriggerDamage(patternId, box(firstId), plainDamage, status), status, "edit damage alongside an independent Success");
+        Require(trigger(firstId) == legacyContact && window(firstId).strOccurrenceId == stableWindowId &&
+            window(firstId).OnSuccessLogicIds.size() == 2u && window(firstId).OnSuccessLogicIds.back() == wipe.strLogicId,
+            "SetDamage replaced a contact that owns a non-damage Success");
+        RequireEditorRoundtrip(workbench);
+        protectedDocument = workbench.Get_Composition();
+        auto& holdPattern = protectedDocument.Patterns.front();
+        auto heldWindow = std::find_if(holdPattern.LogicOccurrences.begin(), holdPattern.LogicOccurrences.end(),
+            [&](const auto& row) { return row.strOccurrenceId == stableWindowId; });
+        heldWindow->OnSuccessLogicIds.pop_back();
+        KOUKU_SAYDON_COMPOSITION_LOGIC_DEFINITION hold;
+        hold.strLogicId = "kakulsaydon.g1.logic." + std::to_string(protectedDocument.iNextLogicOrdinal++);
+        hold.strDisplayName = "Capture lifetime"; hold.strLogicType = "DURATION"; hold.strJudgementKind = "ATTACHMENT_HOLD";
+        protectedDocument.Logics.push_back(hold);
+        KOUKU_SAYDON_COMPOSITION_LOGIC_OCCURRENCE holdWindow;
+        holdWindow.strOccurrenceId = patternId + ".logic." + std::to_string(holdPattern.iNextLogicOccurrenceOrdinal++);
+        holdWindow.strLogicId = hold.strLogicId; holdWindow.iDurationMs = 10000u;
+        heldWindow->strHoldLogicOccurrenceId = holdWindow.strOccurrenceId;
+        holdPattern.LogicOccurrences.push_back(holdWindow);
+        Require(WriteText(sourcePath, CKoukuSaydonCompositionDocument::Serialize(protectedDocument)), "stage held contact");
+        RequireEditorStep(workbench.Reload(status), status, "reload held contact");
+        plainDamage.iPercent = 13;
+        RequireEditorStep(workbench.Set_ColliderTriggerDamage(patternId, box(firstId), plainDamage, status), status, "edit damage without replacing Hold contact");
+        Require(trigger(firstId) == legacyContact && window(firstId).strHoldLogicOccurrenceId == holdWindow.strOccurrenceId &&
+            EditorPattern(workbench, patternId).LogicOccurrences.back() == holdWindow,
+            "SetDamage replaced or retimed the existing Hold mechanic");
+        RequireEditorRoundtrip(workbench);
+        protectedDocument = workbench.Get_Composition();
+        KOUKU_SAYDON_COMPOSITION_LOGIC_DEFINITION capture;
+        capture.strLogicId = "kakulsaydon.g1.logic." + std::to_string(protectedDocument.iNextLogicOrdinal++);
+        capture.strDisplayName = "Actual grab"; capture.strLogicType = "RESULT"; capture.strOutcomeKind = "CAPTURE_PLAYER";
+        capture.strAttachmentSlot = "BOSS_LEFT_HAND"; capture.GripLocalOffset = {.1, .2, .3};
+        protectedDocument.Logics.push_back(capture);
+        auto& capturePattern = protectedDocument.Patterns.front();
+        auto captureWindow = std::find_if(capturePattern.LogicOccurrences.begin(), capturePattern.LogicOccurrences.end(),
+            [&](const auto& row) { return row.strOccurrenceId == stableWindowId; });
+        captureWindow->OnSuccessLogicIds = {capture.strLogicId};
+        Require(WriteText(sourcePath, CKoukuSaydonCompositionDocument::Serialize(protectedDocument)), "stage actual capture contact");
+        RequireEditorStep(workbench.Reload(status), status, "reload actual capture contact");
+        const auto captureBefore = workbench.Get_Composition(); const auto captureDisk = ReadText(sourcePath);
+        Require(!workbench.Set_ColliderTriggerDamage(patternId, box(firstId), plainDamage, status) &&
+            workbench.Get_Composition() == captureBefore && ReadText(sourcePath) == captureDisk,
+            "damage Apply changed an actual exclusive capture/hold mechanic");
         Require(ReadText(sourceRoot / relative) == originalSource, "focused test changed live authoring source");
-        std::cout << "KoukuFixedDamageContractTests: fixed500/pure-vertical-flight/shared-Result-COW/Dirty-generation/commit-reset/invalid-rollback/AttackHits-rise-time/Save-Reopen/percent-switch/live-source-preservation passed\n";
+        std::cout << "KoukuFixedDamageContractTests: fixed500/pure-vertical-flight/shared-Result-COW/typed-damage-contact-role/legacy-window-rewire/Hold-capture-Success-preservation/Dirty-generation/commit-reset/invalid-rollback/AttackHits-rise-time/Save-Reopen/percent-switch/live-source-preservation passed\n";
         return 0;
     }
     catch (const std::exception& error)
     {
         std::cerr << "KoukuFixedDamageContractTests: FAIL: " << error.what() << '\n'; return 1;
     }
+}
+
+int Run_KoukuSoundTimelineContractTests()
+{
+    try
+    {
+        using namespace Client;
+        using ACCESS = CKoukuSaydonWorkbenchTestAccess;
+        KOUKU_SAYDON_COMPOSITION_PRESENTATION_OCCURRENCE trim;
+        trim.iStartMs = 100u; trim.iDurationMs = 9000u;
+        const auto untrimmed = trim;
+        CKoukuSaydonActionWorkbench::Trim_PresentationWindow(trim, 3000, true, 12000u, 9000u, true);
+        Require(trim.iStartMs == 3100u && trim.iDurationMs == 6000u && trim.iEffectSourceStartMs == 3000u &&
+            trim.iSoundSourceStartMs == 0u, "Effect front trim restarted the source or changed Sound Source In");
+        const auto trimmed = trim;
+        CKoukuSaydonActionWorkbench::Trim_PresentationWindow(trim, -3000, true, 12000u, 9000u, true);
+        Require(trim == untrimmed, "Effect reverse front trim did not restore the original window");
+        trim = untrimmed; trim.iDurationMs = 4500u; trim.bFitEffectToDuration = true;
+        const auto fitted = trim;
+        CKoukuSaydonActionWorkbench::Trim_PresentationWindow(trim, 1500, true, 12000u, 9000u, true);
+        Require(trim.iStartMs == 1600u && trim.iDurationMs == 3000u && trim.iEffectSourceStartMs == 3000u,
+            "Fitted Effect front trim did not preserve the 2x source clock");
+        CKoukuSaydonActionWorkbench::Trim_PresentationWindow(trim, -1500, true, 12000u, 9000u, true);
+        Require(trim == fitted, "Fitted Effect reverse trim did not restore the source window");
+        trim = untrimmed; trim.iDurationMs = 5000u; trim.iSoundSourceStartMs = 200u;
+        trim.iFadeInMs = 20u; trim.iFadeOutMs = 30u; trim.fVolume = .4;
+        const auto soundBefore = trim;
+        CKoukuSaydonActionWorkbench::Trim_PresentationWindow(trim, 3000, true, 12000u, 9000u, false);
+        Require(trim.iStartMs == 3100u && trim.iDurationMs == 2000u && trim.iSoundSourceStartMs == 3200u &&
+            trim.iEffectSourceStartMs == 0u && trim.iFadeInMs == soundBefore.iFadeInMs &&
+            trim.iFadeOutMs == soundBefore.iFadeOutMs && trim.fVolume == soundBefore.fVolume,
+            "Sound front trim changed source-independent properties");
+        CKoukuSaydonActionWorkbench::Trim_PresentationWindow(trim, 10000, false, 12000u, 9000u, false);
+        Require(trim.iDurationMs == 5800u && trim.iSoundSourceStartMs == 3200u,
+            "Sound end trim escaped its source lifetime");
+
+        const auto sourceRoot = CProjectDataRoot::Get();
+        const auto scratchRoot = std::filesystem::temp_directory_path() /
+            ("LostArkKoukuSoundTimeline-" + std::to_string(GetCurrentProcessId()) + "-" + std::to_string(GetTickCount64()));
+        SCOPED_TEST_DIRECTORY cleanup(scratchRoot);
+        const auto dataRoot = scratchRoot / "Data";
+        const auto relative = std::filesystem::path("KoukuSaydon/Gate1/KoukuSaydonComposition.json");
+        const auto sourcePath = dataRoot / relative;
+        const auto originalSource = ReadText(sourceRoot / relative);
+        for (const char* profile : {"MN_RPCT_05", "MN_RPCT_06", "MN_RPCT_07", "MN_RPCZ_00"})
+        {
+            const auto reference = std::filesystem::path("Animation/Reference/KoukuSaydon") /
+                (std::string(profile) + ".actionreference.json");
+            Require(CopyFixture(sourceRoot / reference, dataRoot / reference), "copy Sound timeline source Action reference");
+        }
+        KOUKU_SAYDON_COMPOSITION_DOCUMENT source; std::string status;
+        RequireEditorStep(CKoukuSaydonCompositionDocument::Parse_Text(originalSource, source, status), status, "parse Sound timeline source");
+        const auto admitted = std::find_if(source.Patterns.begin(), source.Patterns.end(), [](const auto& p) { return p.strLoadError.empty(); });
+        Require(admitted != source.Patterns.end(), "Sound timeline needs an admitted actor fixture");
+        KOUKU_SAYDON_COMPOSITION_PATTERN pattern;
+        pattern.strPatternId = admitted->strPatternId; pattern.strActorProfileId = admitted->strActorProfileId;
+        pattern.strGateId = admitted->strGateId; pattern.strTargetBossPlacementId = admitted->strTargetBossPlacementId;
+        pattern.strDisplayName = "Sound timeline and Effect trim"; pattern.strAuthoringStatus = "DRAFT";
+        pattern.strCategory = "NORMAL"; pattern.iDurationMs = 12000u;
+        const auto patternId = pattern.strPatternId;
+        source.Patterns.clear(); source.Folders.clear(); source.Bundles.clear(); source.PlayAllPatternIds.clear();
+        source.PatternFlows.clear(); source.Logics.clear(); source.Summons.clear(); source.Worlds.clear();
+        source.SceneProfiles.clear(); source.PresentationResources.clear();
+        KOUKU_SAYDON_COMPOSITION_PRESENTATION_RESOURCE sound;
+        sound.strResourceId = "kakulsaydon.g1.presentation." + std::to_string(source.iNextPresentationResourceOrdinal++);
+        sound.strDisplayName = "Sound timeline fixture"; sound.eKind = KOUKU_SAYDON_PRESENTATION_KIND::SOUND;
+        sound.strAssetId = "Sound/fixture.wav"; sound.iDurationMs = 9000u;
+        auto effect = sound;
+        effect.strResourceId = "kakulsaydon.g1.presentation." + std::to_string(source.iNextPresentationResourceOrdinal++);
+        effect.strDisplayName = "Effect trim fixture"; effect.eKind = KOUKU_SAYDON_PRESENTATION_KIND::EFFECT;
+        effect.strAssetId = "effect.timeline.fixture"; effect.strResourceKind = "V1_EFFECT";
+        auto collider = sound;
+        collider.strResourceId = "kakulsaydon.g1.presentation." + std::to_string(source.iNextPresentationResourceOrdinal++);
+        collider.strDisplayName = "Collider move fixture"; collider.eKind = KOUKU_SAYDON_PRESENTATION_KIND::COLLIDER;
+        collider.strAssetId.clear();
+        source.PresentationResources = {sound, effect, collider};
+        std::vector<std::string> soundIds, colliderIds;
+        for (unsigned i = 0u; i < 3u; ++i)
+        {
+            KOUKU_SAYDON_COMPOSITION_PRESENTATION_OCCURRENCE box;
+            box.strOccurrenceId = patternId + ".presentation." + std::to_string(pattern.iNextPresentationOccurrenceOrdinal++);
+            box.strResourceId = sound.strResourceId; box.iStartMs = 1000u + i * 1500u; box.iDurationMs = 500u + i * 100u;
+            box.iSoundSourceStartMs = 100u + i * 200u; box.iFadeInMs = 20u; box.iFadeOutMs = 30u; box.fVolume = .2 + i * .2;
+            if (i == 1u) { box.strAnchorKind = "MAP"; box.bFollowBoss = false; }
+            soundIds.push_back(box.strOccurrenceId); pattern.PresentationOccurrences.push_back(box);
+        }
+        auto effectBox = trimmed;
+        effectBox.strOccurrenceId = patternId + ".presentation." + std::to_string(pattern.iNextPresentationOccurrenceOrdinal++);
+        effectBox.strResourceId = effect.strResourceId;
+        const auto effectId = effectBox.strOccurrenceId;
+        pattern.PresentationOccurrences.push_back(effectBox);
+        KOUKU_SAYDON_COMPOSITION_LOGIC_DEFINITION contact;
+        contact.strLogicId = "kakulsaydon.g1.logic." + std::to_string(source.iNextLogicOrdinal++);
+        contact.strDisplayName = "Collider contact fixture"; contact.strLogicType = "TRIGGER";
+        contact.strTriggerKind = "ENTER_AREA"; contact.iRepeatIntervalMs = 200u;
+        KOUKU_SAYDON_COMPOSITION_LOGIC_DEFINITION damage;
+        damage.strLogicId = "kakulsaydon.g1.logic." + std::to_string(source.iNextLogicOrdinal++);
+        damage.strDisplayName = "Collider damage fixture"; damage.strLogicType = "RESULT";
+        damage.strOutcomeKind = "MAX_HP_PERCENT_DAMAGE"; damage.iPercent = 7u;
+        source.Logics = {contact, damage};
+        KOUKU_SAYDON_COMPOSITION_LOGIC_OCCURRENCE contactBox;
+        contactBox.strOccurrenceId = patternId + ".logic." + std::to_string(pattern.iNextLogicOccurrenceOrdinal++);
+        contactBox.strLogicId = contact.strLogicId; contactBox.iStartMs = 1200u; contactBox.iDurationMs = 400u;
+        contactBox.OnSuccessLogicIds = {damage.strLogicId}; pattern.LogicOccurrences = {contactBox};
+        for (unsigned i = 0u; i < 2u; ++i)
+        {
+            KOUKU_SAYDON_COMPOSITION_PRESENTATION_OCCURRENCE box;
+            box.strOccurrenceId = patternId + ".presentation." + std::to_string(pattern.iNextPresentationOccurrenceOrdinal++);
+            box.strResourceId = collider.strResourceId; box.iStartMs = contactBox.iStartMs; box.iDurationMs = contactBox.iDurationMs;
+            box.strLogicOccurrenceId = contactBox.strOccurrenceId; box.PositionOffset[0] = double(i);
+            colliderIds.push_back(box.strOccurrenceId); pattern.PresentationOccurrences.push_back(box);
+        }
+        source.Patterns.push_back(pattern);
+        Require(WriteText(sourcePath, CKoukuSaydonCompositionDocument::Serialize(source)), "write isolated Sound timeline fixture");
+        SCOPED_ENVIRONMENT_VARIABLE environment(L"LOSTARK_PROJECT_DATA_ROOT");
+        Require(environment.Set(dataRoot), "select isolated Sound timeline root");
+        CKoukuSaydonActionWorkbench workbench;
+        RequireEditorStep(workbench.Reload(status), status, "load Sound timeline fixture");
+        RequireEditorStep(workbench.Select_PatternById(patternId, status), status, "select Sound timeline Pattern");
+        const auto box = [&](const std::string& id) {
+            const auto& owner = EditorPattern(workbench, patternId);
+            const auto found = std::find_if(owner.PresentationOccurrences.begin(), owner.PresentationOccurrences.end(),
+                [&](const auto& row) { return row.strOccurrenceId == id; });
+            Require(found != owner.PresentationOccurrences.end(), "timeline fixture box disappeared");
+            return *found;
+        };
+        const auto verifyMove = [&](const std::int64_t requested, const std::int64_t expected) {
+            const auto before = EditorPattern(workbench, patternId);
+            const auto selected = ACCESS::SelectedBoxes(workbench);
+            RequireEditorStep(ACCESS::Move(workbench, patternId, selected, requested, workbench.Get_DraftGeneration(), status), status, "move native timeline selection");
+            for (auto old : before.PresentationOccurrences)
+            {
+                if (std::find(selected.begin(), selected.end(), old.strOccurrenceId) != selected.end())
+                    old.iStartMs = static_cast<std::uint32_t>(std::int64_t(old.iStartMs) + expected);
+                Require(box(old.strOccurrenceId) == old, "timeline body move changed duration, source-in, fade, volume, anchor or unselected row");
+            }
+        };
+        const auto initial = workbench.Get_Composition();
+        Require(!workbench.Set_SoundSelectionGroup(patternId, {soundIds.front()}, true, status) && workbench.Get_Composition() == initial,
+            "singleton Sound group partially committed");
+        ACCESS::Select(workbench, soundIds[0], false);
+        ACCESS::Select(workbench, soundIds[1], true);
+        ACCESS::Select(workbench, soundIds[2], true);
+        Require(ACCESS::SelectedBoxes(workbench) == soundIds, "Sound Ctrl/Shift selection lost boxes");
+        RequireEditorStep(workbench.Set_SoundSelectionGroup(patternId, soundIds, true, status), status, "group selected Sounds");
+        const auto groupId = box(soundIds.front()).strSelectionGroupId;
+        Require(!groupId.empty(), "Sound selection group ID is missing");
+        for (std::size_t i = 0u; i < soundIds.size(); ++i)
+        {
+            auto expected = pattern.PresentationOccurrences[i]; expected.strSelectionGroupId = groupId;
+            Require(box(soundIds[i]) == expected, "Sound Set Group changed an anchor, clock or source property");
+        }
+        ACCESS::Select(workbench, soundIds.front(), false);
+        Require(ACCESS::SelectedBoxes(workbench).size() == soundIds.size(), "one Sound group click did not expand all members");
+        const auto staleGeneration = workbench.Get_DraftGeneration();
+        verifyMove(400, 400);
+        const auto moved = workbench.Get_Composition();
+        Require(!ACCESS::Move(workbench, patternId, ACCESS::SelectedBoxes(workbench), 10, staleGeneration, status) &&
+            workbench.Get_Composition() == moved, "stale Sound drag generation partially committed");
+        verifyMove(-100000, -1400);
+        verifyMove(100000, 8300);
+        verifyMove(-6000, -6000);
+        ACCESS::Select(workbench, effectId, true);
+        Require(ACCESS::SelectedBoxes(workbench).size() == 4u, "mixed Effect/Sound selection lost the Sound group");
+        const auto mixed = workbench.Get_Composition();
+        Require(!workbench.Set_SoundSelectionGroup(patternId, ACCESS::SelectedBoxes(workbench), true, status) &&
+            workbench.Get_Composition() == mixed, "mixed permanent Sound group partially committed");
+        verifyMove(500, 500);
+        ACCESS::Select(workbench, soundIds[1], true);
+        Require(ACCESS::SelectedBoxes(workbench) == std::vector<std::string>{effectId}, "Ctrl-toggle did not remove the whole Sound group");
+        ACCESS::Select(workbench, soundIds[2], true);
+        Require(ACCESS::SelectedBoxes(workbench).size() == 4u, "Ctrl-toggle did not restore the whole Sound group");
+        RequireEditorRoundtrip(workbench);
+        Require(box(effectId).iEffectSourceStartMs == 3000u && box(effectId).iDurationMs == 6000u,
+            "Effect trimmed source window was lost during Save/reopen");
+        ACCESS::Select(workbench, soundIds.front(), false);
+        Require(ACCESS::SelectedBoxes(workbench).size() == 3u, "reopened Sound group did not expand");
+        RequireEditorStep(workbench.Set_SoundSelectionGroup(patternId, {soundIds.front()}, false, status), status, "ungroup all Sound members");
+        for (const auto& id : soundIds) Require(box(id).strSelectionGroupId.empty(), "Sound Ungroup left a member grouped");
+        ACCESS::Select(workbench, soundIds.front(), false);
+        Require(ACCESS::SelectedBoxes(workbench) == std::vector<std::string>{soundIds.front()}, "ungrouped Sound selection still expands");
+        RequireEditorStep(workbench.Set_ColliderSelectionGroup(patternId, colliderIds, true, status), status, "group linked Collider regression rows");
+        ACCESS::Select(workbench, colliderIds.front(), false);
+        verifyMove(300, 300);
+        Require(EditorPattern(workbench, patternId).LogicOccurrences.front().iStartMs == contactBox.iStartMs + 300u,
+            "Collider group drag did not move its shared Logic window exactly once");
+        ACCESS::Select(workbench, effectId, true);
+        const auto colliderMixed = workbench.Get_Composition();
+        Require(!ACCESS::Move(workbench, patternId, ACCESS::SelectedBoxes(workbench), 100, workbench.Get_DraftGeneration(), status) &&
+            workbench.Get_Composition() == colliderMixed, "mixed Collider/Effect move bypassed Collider closure");
+        auto invalid = box(effectId); invalid.iEffectSourceStartMs = effect.iDurationMs;
+        Require(!workbench.Set_PresentationBox(patternId, invalid, status) && workbench.Get_Composition() == colliderMixed,
+            "Effect Source In at source end partially committed");
+        invalid = box(soundIds.front()); invalid.iEffectSourceStartMs = 1u;
+        Require(!workbench.Set_PresentationBox(patternId, invalid, status) && workbench.Get_Composition() == colliderMixed,
+            "Sound accepted an Effect source clock");
+        RequireEditorRoundtrip(workbench);
+        Require(ReadText(sourceRoot / relative) == originalSource, "Sound timeline fixture changed live authoring source");
+        std::cout << "KoukuSoundTimelineContractTests: Sound group/select/toggle/ungroup, mixed Effect+Sound move, boundary clamps, stale rollback, Collider Logic closure, Effect/Sound trim, fitted source clock and Save/reopen PASS\n";
+        return 0;
+    }
+    catch (const std::exception& error)
+    { std::cerr << "KoukuSoundTimelineContractTests: FAIL: " << error.what() << '\n'; return 1; }
 }

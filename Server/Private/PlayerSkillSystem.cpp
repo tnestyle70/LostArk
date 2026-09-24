@@ -109,6 +109,21 @@ namespace
 		outLateral = samples.back().fLateral;
 	}
 
+	/* The share of a skill's total damage one sub-hit carries: cumulative
+	splits preserve the whole; ordinary attacks keep their one-HP minimum. */
+	std::uint32_t DamageOfSubHit(
+		const std::uint64_t totalDamage,
+		const std::uint32_t subHitTotal,
+		const std::uint32_t index,
+		const bool preserveZero = false)
+	{
+		const std::uint64_t total = (std::max)(1u, subHitTotal);
+		if (index >= total) return 0u;
+		const std::uint64_t share =
+			totalDamage * (index + 1u) / total - totalDamage * index / total;
+		return static_cast<std::uint32_t>(share < 1u && !preserveZero ? 1u : share);
+	}
+
 	/* Lands every caster/projectile hit through the same typed adapter used by
 	combat objects.  HP, damage events, counter/stagger/part power, legacy armour
 	compatibility, death, and knockback are therefore committed once. */
@@ -125,6 +140,8 @@ namespace
 		const LostArk::Server::PLAYER_RUNTIME_PROFILE* pCasterProfile,
 		const LostArk::Server::PLAYER_SKILL_HIT* pHit,
 		const std::uint32_t damageSpreadPercent,
+		const std::uint32_t subHitTotal,
+		const std::uint32_t subHitIndex,
 		const float sourceX,
 		const float sourceZ,
 		const float fallbackDirectionX,
@@ -138,8 +155,27 @@ namespace
 		incoming.iSourcePlayerId = sourcePlayerId;
 		incoming.iSkillId = skillId;
 		incoming.iRawDamage = kind <= 1u ? rawDamage : 0u;
+		const auto* skill = catalog.Find_Skill(skillId);
+		const auto* damageProfile = nullptr == skill ? nullptr :
+			catalog.Find_DamageProfile(skill->strDamageProfileId);
+		const bool bossHealthBars = kind <= 1u &&
+			WORLD_BOOTSTRAP_KIND::BOSS == target.eKind && nullptr != damageProfile &&
+			0u != damageProfile->iBossHealthBarDamage &&
+			0u != target.iMaximumHp && 0u != target.iMaximumHealthBars;
+		if (bossHealthBars)
+		{
+			// Round the whole cast up once so a full bar boundary is crossed,
+			// then share it by cumulative differences, including any zero shares.
+			const std::uint64_t scaled = static_cast<std::uint64_t>(target.iMaximumHp) *
+				damageProfile->iBossHealthBarDamage;
+			const std::uint64_t totalDamage = (std::min)(
+				(scaled + target.iMaximumHealthBars - 1u) / target.iMaximumHealthBars,
+				static_cast<std::uint64_t>((std::numeric_limits<std::uint32_t>::max)()));
+			incoming.iRawDamage = DamageOfSubHit(totalDamage, subHitTotal, subHitIndex, true);
+			incoming.bHealthDamagePreResolved = true;
+		}
 		/* What the caster's buffs add, and what the target's debuffs amplify. */
-		if (0u != incoming.iRawDamage)
+		if (0u != incoming.iRawDamage && !bossHealthBars)
 		{
 			incoming.iRawDamage = CServerBuffRuntime::Scale_Damage(
 				incoming.iRawDamage,
@@ -148,11 +184,11 @@ namespace
 		}
 		/* Rolled per landed hit, so a multi-hit skill reads 483 / 502 / 513 the way
 		the original does instead of the same number three times. */
-		incoming.iRawDamage =
-			RollDamageSpread(incoming.iRawDamage, damageSpreadPercent);
+		if (!bossHealthBars)
+			incoming.iRawDamage = RollDamageSpread(incoming.iRawDamage, damageSpreadPercent);
 		/* Rolled per landed hit, as the original does: one skill can crit on
 		one target and stay ordinary on the next. */
-		if (0u != incoming.iRawDamage && nullptr != pCasterProfile &&
+		if (!bossHealthBars && 0u != incoming.iRawDamage && nullptr != pCasterProfile &&
 			RollCriticalHit(pCasterProfile->iCriticalChancePercent))
 		{
 			incoming.bCritical = true;
@@ -198,19 +234,6 @@ namespace
 			(WORLD_BOOTSTRAP_KIND::MONSTER == entity.eKind || WORLD_BOOTSTRAP_KIND::WORLD_OBJECT == entity.eKind)) &&
 			LostArk::Shared::INVALID_NET_ENTITY_ID == entity.iOwnerBossNetEntityId &&
 			SERVER_ENTITY_ACTION::DEAD != entity.eAction && 0u != entity.iCurrentHp;
-	}
-
-	/* The share of a skill's total damage one sub-hit carries: cumulative
-	splits so the shares always sum to the whole, never below 1. */
-	std::uint32_t DamageOfSubHit(
-		const std::uint64_t totalDamage,
-		const std::uint32_t subHitTotal,
-		const std::uint32_t index)
-	{
-		const std::uint64_t total = (std::max)(1u, subHitTotal);
-		const std::uint64_t share =
-			totalDamage * (index + 1u) / total - totalDamage * index / total;
-		return static_cast<std::uint32_t>(share < 1u ? 1u : share);
 	}
 
 	std::uint32_t ProjectileSubHitCount(
@@ -460,7 +483,8 @@ bool LostArk::Server::CPlayerSkillSystem::Try_StartInternal(
 	/* A STANDUP skill exists only to leave KNOCKDOWN: knocked down is the one
 	state it starts from and the one state it cannot be pressed outside of. */
 	const bool isStandup = PLAYER_SKILL_KIND::STANDUP == skill->eSkillKind;
-	if (isStandup != (PLAYER_ACTION_STATE::KNOCKDOWN == player.eAction))
+	if (isStandup != (PLAYER_ACTION_STATE::KNOCKDOWN == player.eAction) ||
+		(isStandup && player.bKnockbackBallistic && player.fKnockbackRemainingSeconds > 0.f))
 		return false;
 
 	/* A combo continuation, or a running action that has reached one of its own
@@ -913,6 +937,7 @@ void LostArk::Server::CPlayerSkillSystem::Update_Projectiles(
 						catalog, player.ActiveBuffs,
 						catalog.Find_Player(player.eCharacterClass),
 						&hit.Hit, DamageSpreadOf(catalog, skill->strDamageProfileId),
+						projectile.iSubHitTotal, subHitIndex + mark->iAppliedCount,
 						projectile.fPositionX, projectile.fPositionZ,
 						projectile.fDirectionX, projectile.fDirectionZ,
 						serverTick, outDamageEvents);
@@ -969,6 +994,7 @@ void LostArk::Server::CPlayerSkillSystem::Update_Projectiles(
 						catalog, player.ActiveBuffs,
 						catalog.Find_Player(player.eCharacterClass),
 						&hit.Hit, DamageSpreadOf(catalog, skill->strDamageProfileId),
+						projectile.iSubHitTotal, subHitIndex,
 						projectile.fPositionX, projectile.fPositionZ,
 						projectile.fDirectionX, projectile.fDirectionZ,
 						serverTick, outDamageEvents);
@@ -1272,7 +1298,8 @@ void LostArk::Server::CPlayerSkillSystem::Update(
 		return IsDamageable(entity);
 	};
 	const auto applyDamage = [&](SERVER_WORLD_ENTITY& target,
-		const std::uint32_t rawDamage, const PLAYER_SKILL_HIT* pHit)
+		const std::uint32_t rawDamage, const PLAYER_SKILL_HIT* pHit,
+		const std::uint32_t subHitTotal, const std::uint32_t subHitIndex)
 	{
 		/* A raised KoukuSaydon shield turns a frontal hit back on its caster:
 		the boss takes nothing and the stagger window sees no lost health. */
@@ -1297,6 +1324,7 @@ void LostArk::Server::CPlayerSkillSystem::Update(
 			rawDamage, catalog, player.ActiveBuffs,
 			catalog.Find_Player(player.eCharacterClass), pHit,
 			DamageSpreadOf(catalog, skill->strDamageProfileId),
+			subHitTotal, subHitIndex,
 			player.fPositionX, player.fPositionZ,
 			player.fSkillAimDirectionX, player.fSkillAimDirectionZ,
 			serverTick, outDamageEvents);
@@ -1451,7 +1479,8 @@ void LostArk::Server::CPlayerSkillSystem::Update(
 				if (0u != hit.iMaxTargets && targets.size() > hit.iMaxTargets)
 					targets.resize(hit.iMaxTargets);
 				for (auto& [distanceSquared, target] : targets)
-					applyDamage(*target, ownsDamage ? damageOfSubHit(subHitIndex) : 0u, &hit);
+					applyDamage(*target, ownsDamage ? damageOfSubHit(subHitIndex) : 0u, &hit,
+						subHitTotal, subHitIndex);
 				if (!targets.empty())
 					Gain_EmberGauge(player, catalog);
 			}
@@ -1494,7 +1523,7 @@ void LostArk::Server::CPlayerSkillSystem::Update(
 		}
 		if (nullptr != closestBoss)
 		{
-			applyDamage(*closestBoss, resolveRawDamage(), nullptr);
+			applyDamage(*closestBoss, resolveRawDamage(), nullptr, 1u, 0u);
 			Gain_EmberGauge(player, catalog);
 		}
 		player.hasAppliedSkillDamage = true;
@@ -1659,7 +1688,7 @@ bool LostArk::Server::CPlayerSkillSystem::Can_ArmPlayerHitReaction(
 		PLAYER_ACTION_STATE::DEAD == player.eAction ||
 		PLAYER_ACTION_STATE::TRIGGER_MOVE == player.eAction ||
 		PLAYER_ACTION_STATE::WALL_CLIMB == player.eAction ||
-		PLAYER_ACTION_STATE::KNOCKDOWN == player.eAction ||
+		(PLAYER_ACTION_STATE::KNOCKDOWN == player.eAction && !player.bPushOnlyHitReaction) ||
 		PLAYER_ACTION_STATE::FEAR == player.eAction ||
 		player.fKnockbackRemainingSeconds > 0.f ||
 		static_cast<std::int32_t>(
@@ -1742,8 +1771,9 @@ void LostArk::Server::CPlayerSkillSystem::Arm_PlayerHitReaction(
 		player.fKnockbackVelocityY = pushBallistic ?
 			0.5f * player.fKnockbackGravityMps2 * windowSeconds : 0.f;
 	}
-	if ((knockdown && 0u != downMs) || (hasPush && pushBallistic))
+	if ((knockdown && 0u != downMs) || hasPush)
 	{
+		player.bPushOnlyHitReaction = !knockdown && !pushBallistic;
 		player.eAction = PLAYER_ACTION_STATE::KNOCKDOWN;
 		player.iCurrentSkillId = INVALID_SKILL_ID;
 		player.Clear_SkillTarget();
@@ -1753,8 +1783,10 @@ void LostArk::Server::CPlayerSkillSystem::Arm_PlayerHitReaction(
 		player.hasReleasedHold = false;
 		player.fActionElapsedSeconds = 0.f;
 		player.iActionStartTick = 0u == serverTick ? 1u : serverTick;
-		player.iKnockdownEndTick =
-			player.iActionStartTick + MillisecondsToTicks((std::max)(downMs, pushBallistic ? pushMs : 0u));
+		const auto minimumReactionMs = hasPush ? std::uint64_t(pushMs) + PLAYER_HIT_LANDING_RECOVERY_MS : 0u;
+		const auto reactionTicks = (std::max)(std::uint64_t(downMs), minimumReactionMs) * SERVER_TICK_HZ;
+		player.iKnockdownEndTick = player.iActionStartTick +
+			static_cast<std::uint32_t>((reactionTicks + 999u) / 1000u);
 		player.hasMoveGoal = false;
 		player.MovePath.clear();
 		player.iMovePathIndex = 0;

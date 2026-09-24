@@ -1713,6 +1713,8 @@ namespace LostArk::Shared
 		std::uint8_t iComboStage = 0;
 		COOLDOWN_MODE eCooldownMode = COOLDOWN_MODE::DEBUG_THREE_SECONDS;
 		std::vector<SKILL_COOLDOWN_SNAPSHOT> Cooldowns;
+		// Server ballistic hit reaction; false outside KNOCKDOWN, including after landing.
+		bool isKnockbackAirborne = false;
 	};
 
 	enum class BOSS_COMBAT_STATE_FLAG : std::uint16_t

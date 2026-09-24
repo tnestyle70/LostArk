@@ -265,6 +265,14 @@ mode처럼 카메라가 transform을 소유하는 placement는 sequence target�
 baseline이 Save 직전과 다르면 stale editor 저장을 거부한다. sequence JSON은 parse 전에 16 MiB
 한도를 적용하며 저장 후에는 단순 유효성뿐 아니라 의도한 map/sequence 내용과 같은지도 비교한다.
 
+카드미로의 `cardmiro.march.instance.from{3,6,9,12}.lane{1..9}` 36개 경로는 같은
+WorldSequence의 선형 transform을 Server 접촉 경로로 게시한다. 기존 2키 이동 외에
+`0ms hidden → 2000ms visible → 이동 종료`의 3키 경고 선행 구간을 지원한다. 앞의 두 키는
+position/rotation/scale이 완전히 같아야 하며, publisher는 두 번째 키 시각을 lane delay에
+더하고 그 이후 길이만 접촉 duration으로 보낸다. warning Effect는 기존 World Object
+`effectTracks`로 재생하고 Client의 `CardMaze.marchStartTick/marchCycleMs`와 Server 접촉이
+같은 시계를 사용한다. 별도의 로컬 이동·판정 시계는 만들지 않는다.
+
 WorldSequence 문서의 template 상한은 512개, instance 상한은 2048개다. C++ codec과
 World Tool, Effect Composition resolver, Map publisher와 Composition validator가 같은
 상한을 소비한다. template당 모든 lane을 합한 track 64개, track당 key 4096개와 문서 16 MiB 제한은 별도로

@@ -174,7 +174,7 @@ LOGIC_RESULT_VALUE_KEYS = {"outcomeKind", "percent", "damageAmount", "durationMs
 LOGIC_TRIGGER_VALUE_KEYS = {"fixedHits", "countPerPlayer", "radiusM", "effectLifetimeMs", "arenaRandomCount", "arenaRandomRadiusM", "arenaHeightToleranceM", "arenaMinimumSpacingM", "randomPlayerOnly", "triggerKind", "hudMode", "teleportPosition", "clonePatternId", "clockHours", "faceCenterYawOffsetDegrees",
                             "targetWorldOccurrenceIds", "targetRadiusM", "contactGroupId", "contactPriority", "bossChargeDistanceM", "chargeYawOffsetDegrees", "rearmOnExit", "repeatAfterKnockback", "repeatIntervalMs",
                             "airbornePhase", "airborneHeightM", "airborneDurationMs", "airborneTargetPositionPolicy", "selectedEffectGroupId", "playerEntryEffectOccurrenceIds"}
-LOGIC_OPTIONAL_KEYS = LOGIC_DURATION_VALUE_KEYS | LOGIC_RESULT_VALUE_KEYS | LOGIC_TRIGGER_VALUE_KEYS
+LOGIC_OPTIONAL_KEYS = LOGIC_DURATION_VALUE_KEYS | LOGIC_RESULT_VALUE_KEYS | LOGIC_TRIGGER_VALUE_KEYS | {"colliderDamageContactRole"}
 JUDGEMENT_KINDS = set(LOGIC_KIND_VALUE_KEYS)
 # End-tick kinds judge once when the window closes: Success or Fail, never
 # Timeout. The boss-level stagger window has no wrong answer, so no Fail.
@@ -564,7 +564,14 @@ def _validate_logic_definition(
     logic_type = logic["logicType"]
     if logic_type not in LOGIC_TYPES:
         raise CompositionError(f"{context} logicType is invalid: {logic_type!r}")
-    extra = set(logic) - LOGIC_KEYS
+    role = logic.get("colliderDamageContactRole", "")
+    if not isinstance(role, str) or role not in {"", "DAMAGE", "KNOCKBACK"}:
+        raise CompositionError(f"{context} colliderDamageContactRole must be DAMAGE or KNOCKBACK")
+    if role and (logic_type != "TRIGGER" or logic.get("triggerKind") != "ENTER_AREA" or
+                 logic.get("bossChargeDistanceM", 0) != 0 or logic.get("chargeYawOffsetDegrees", 0) != 0):
+        raise CompositionError(f"{context} Collider contact role requires a plain ENTER_AREA Trigger")
+    # The role chooses authoring defaults and is never a Server gameplay field.
+    extra = set(logic) - LOGIC_KEYS - {"colliderDamageContactRole"}
     definition: dict[str, Any] = {"type": logic_type, "kind": None}
     if logic_type == "DURATION":
         if extra - LOGIC_DURATION_VALUE_KEYS:
@@ -4868,7 +4875,7 @@ PRESENTATION_OCCURRENCE_DEFAULTS = {
     "positionOffset": [0.0, 0.0, 0.0], "rotationDegrees": [0.0, 0.0, 0.0], "scale": [1.0, 1.0, 1.0],
     "fadeInMs": 0, "fadeOutMs": 0, "dissolveStart": 0.85, "dissolveEnd": 1.0,
     "fitEffectToDuration": False, "loopEffectToDuration": False,
-    "volume": 1.0, "soundSourceStartMs": 0, "followBoss": True, "bone": "", "boneTarget": "BODY", "brightnessMultiplier": 1.0,
+    "volume": 1.0, "soundSourceStartMs": 0, "effectSourceStartMs": 0, "followBoss": True, "bone": "", "boneTarget": "BODY", "brightnessMultiplier": 1.0,
     "regionId": "", "cardSymbol": "NONE", "cardColor": "NONE",
     "anchorKind": "BOSS", "worldId": "", "logicOccurrenceId": "", "debugRender": True, "worldOccurrenceId": "",
     "worldEmissionIndex": 0, "boneRotation": "TARGET_YAW",
@@ -4985,8 +4992,8 @@ def _validate_presentation_selection_groups(pattern: dict[str, Any], resources: 
         kind = resources.get(box["resourceId"], {}).get("kind")
         fixed_sound = (kind == "SOUND" and group_id in fixed_sound_groups
                        and box.get("anchorKind", "BOSS") == "MAP" and not box.get("followBoss", False))
-        if kind not in {"COLLIDER", "EFFECT"} and not fixed_sound:
-            raise CompositionError("Selection Group requires Effect/Collider, or fixed SHOWTIME MAP Sound")
+        if kind not in {"COLLIDER", "EFFECT", "SOUND"}:
+            raise CompositionError("Selection Group requires Effect, Collider or Sound")
         if fixed_sound:
             sound_groups.add(group_id)
         if kind == "EFFECT" and box.get("anchorKind", "BOSS") == "MAP" and not box.get("followBoss", False):
@@ -5004,8 +5011,8 @@ def _validate_presentation_selection_groups(pattern: dict[str, Any], resources: 
         if group[0] != frame:
             raise CompositionError("Selection Group must use one kind; Colliders must share an anchor frame")
         group[1] += 1
-    if any(count < 2 and frame[0] != "EFFECT" for frame, count in selection_groups.values()):
-        raise CompositionError("Collider Selection Group requires at least two boxes in one Pattern")
+    if any(count < 2 and frame[0] in {"COLLIDER", "SOUND"} for frame, count in selection_groups.values()):
+        raise CompositionError("Collider/Sound Selection Group requires at least two boxes in one Pattern")
     if sound_groups - map_effect_groups:
         raise CompositionError("Fixed SHOWTIME Sound group requires at least one MAP Effect")
 
@@ -5026,6 +5033,10 @@ def _validate_presentation_occurrences(pattern: dict[str, Any], resources: dict[
         if box["resourceId"] not in resources:
             raise CompositionError("presentation occurrence names an unknown resourceId")
         normalized = {**PRESENTATION_OCCURRENCE_DEFAULTS, **box}
+        effect_source = _integer(normalized["effectSourceStartMs"], "Effect Source In", 0, MAX_TIMELINE_MS)
+        if effect_source and (resources[box["resourceId"]]["kind"] != "EFFECT" or
+                effect_source >= resources[box["resourceId"]].get("durationMs", PRESENTATION_RESOURCE_DEFAULTS["durationMs"])):
+            raise CompositionError("Effect Source In must be inside an Effect resource lifetime")
         _integer(normalized["soundSourceStartMs"], "Sound Source In", 0, MAX_TIMELINE_MS)
         if normalized["soundSourceStartMs"] and resources[box["resourceId"]]["kind"] != "SOUND":
             raise CompositionError("Sound Source In belongs only to SOUND occurrences")
@@ -5283,7 +5294,7 @@ def _project_presentation_resource(resource: dict[str, Any]) -> dict[str, Any]:
 def _project_presentation_occurrence(document: dict[str, Any], pattern: dict[str, Any], box: dict[str, Any], resource: dict[str, Any]) -> dict[str, Any]:
     return {
         **_project_presentation_resource(resource),
-        **{key: value for key, value in PRESENTATION_OCCURRENCE_DEFAULTS.items() if key not in {"brightnessMultiplier", "boneTarget", "fitEffectToDuration", "loopEffectToDuration", "boneRotation", "colliderMotion", "colliderEndPositionOffset", "colliderEndScale", "anchorPresentationOccurrenceId"}},
+        **{key: value for key, value in PRESENTATION_OCCURRENCE_DEFAULTS.items() if key not in {"effectSourceStartMs", "brightnessMultiplier", "boneTarget", "fitEffectToDuration", "loopEffectToDuration", "boneRotation", "colliderMotion", "colliderEndPositionOffset", "colliderEndScale", "anchorPresentationOccurrenceId"}},
         **{key: value for key, value in box.items() if key not in PRESENTATION_OCCURRENCE_EDITOR_KEYS},
         **({"brightnessMultiplier": box.get("brightnessMultiplier", 1.0)} if resource["kind"] == "LIGHT" else {}),
         "worldSequenceInstanceId": next((w["sequenceInstanceId"] for w in document.get("worlds", []) if w["worldId"] == box.get("worldId", "")), ""),

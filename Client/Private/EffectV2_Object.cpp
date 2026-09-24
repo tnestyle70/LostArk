@@ -722,16 +722,20 @@ f32_t Client::CEffectV2Object::Dissolve_Amount() const
 	if (m_Params.fLifetime <= 0.f)
 		return 0.f;
 	const f32_t fRatio = Life_Ratio();
+	const f32_t fOccurrenceRatio = m_fFadeDurationSeconds > 0.f ? Saturate(
+		(static_cast<f32_t>(m_dElapsedSeconds) - m_fFadeSourceStartSeconds) / m_fFadeDurationSeconds) : fRatio;
+	const f32_t fInRatio = m_bOccurrenceFadeIn ? fOccurrenceRatio : fRatio;
+	const f32_t fOutRatio = m_bOccurrenceFadeOut ? fOccurrenceRatio : fRatio;
 	const f32_t fInEnd = Saturate(m_Params.fDissolveInEnd);
-	if (0.f < fInEnd && fRatio < fInEnd)
-		return Saturate(1.f - fRatio / fInEnd);
+	if (0.f < fInEnd && fInRatio < fInEnd)
+		return Saturate(1.f - fInRatio / fInEnd);
 	const f32_t fStart = (std::max)(Saturate(m_fOccurrenceDissolveStart >= 0.f ?
-		m_fOccurrenceDissolveStart : m_Params.fDissolveStart), fInEnd);
+		m_fOccurrenceDissolveStart : m_Params.fDissolveStart), m_bOccurrenceFadeIn == m_bOccurrenceFadeOut ? fInEnd : 0.f);
 	const f32_t fEnd = m_fOccurrenceDissolveEnd >= 0.f ?
 		Saturate(m_fOccurrenceDissolveEnd) : 1.f;
 	if (fStart >= fEnd)
-		return fRatio >= fEnd && fEnd < 1.f ? 1.f : 0.f;
-	return Saturate((fRatio - fStart) / (fEnd - fStart));
+		return fOutRatio >= fEnd && fEnd < 1.f ? 1.f : 0.f;
+	return Saturate((fOutRatio - fStart) / (fEnd - fStart));
 }
 
 f32_t Client::CEffectV2Object::Alpha_Envelope() const
@@ -739,13 +743,17 @@ f32_t Client::CEffectV2Object::Alpha_Envelope() const
 	if (m_Params.fLifetime <= 0.f)
 		return 1.f;
 	const f32_t fRatio = Life_Ratio();
+	const f32_t fOccurrenceRatio = m_fFadeDurationSeconds > 0.f ? Saturate(
+		(static_cast<f32_t>(m_dElapsedSeconds) - m_fFadeSourceStartSeconds) / m_fFadeDurationSeconds) : fRatio;
+	const f32_t fInRatio = m_bOccurrenceFadeIn ? fOccurrenceRatio : fRatio;
+	const f32_t fOutRatio = m_bOccurrenceFadeOut ? fOccurrenceRatio : fRatio;
 	f32_t fEnvelope = 1.f;
 	const f32_t fInEnd = Saturate(m_Params.fAlphaInEnd);
-	if (0.f < fInEnd && fRatio < fInEnd)
-		fEnvelope = fRatio / fInEnd;
-	const f32_t fOutStart = (std::max)(Saturate(m_Params.fAlphaOutStart), fInEnd);
-	if (fOutStart < 1.f && fRatio > fOutStart)
-		fEnvelope = (std::min)(fEnvelope, (1.f - fRatio) / (1.f - fOutStart));
+	if (0.f < fInEnd && fInRatio < fInEnd)
+		fEnvelope = fInRatio / fInEnd;
+	const f32_t fOutStart = (std::max)(Saturate(m_Params.fAlphaOutStart), m_bOccurrenceFadeIn == m_bOccurrenceFadeOut ? fInEnd : 0.f);
+	if (fOutStart < 1.f && fOutRatio > fOutStart)
+		fEnvelope = (std::min)(fEnvelope, (1.f - fOutRatio) / (1.f - fOutStart));
 	return Saturate(fEnvelope);
 }
 

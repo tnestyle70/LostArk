@@ -2,7 +2,7 @@
   "schema": "lostark.world-sequences",
   "formatVersion": 3,
   "areaId": "LV_LUT_MIDNIGHTC_ED",
-  "revision": 2213,
+  "revision": 2214,
   "objectResources": [
     {
       "objectId": "world.object.kouku.card",
@@ -125390,162 +125390,10 @@
       ],
       "animationTracks": []
     },
-    {
-      "sequenceId": "cardmiro.march.template.from3",
-      "displayName": "카드미로_행진_세토_3to9",
-      "category": "WorldObject",
-      "durationMs": 12895,
-      "interpolation": "LINEAR",
-      "objectMotion": {
-        "velocity": [0, 0, 0],
-        "acceleration": [0, 0, 0],
-        "angularVelocityDegrees": [0, 0, 0],
-        "revolutionDegreesPerSecond": [0, 0, 0],
-        "revolutionOffset": [0, 0, 0],
-        "count": 1, "intervalMs": 200, "spreadDegrees": 0, "seed": 1
-      },
-      "tracks": [
-        {
-          "slotId": "object",
-          "keys": [
-            {
-              "timeMs": 0,
-              "positionOffset": [0, 0, 0],
-              "rotationQuaternion": [0, -0.707109988, 0, 0.707109988],
-              "scaleMultiplier": [1, 1, 1],
-              "visible": true
-            },
-            {
-              "timeMs": 12895,
-              "positionOffset": [0, 0, 45.132],
-              "rotationQuaternion": [0, -0.707109988, 0, 0.707109988],
-              "scaleMultiplier": [1, 1, 1],
-              "visible": true
-            }
-          ]
-        }
-      ],
-      "animationTracks": [
-        { "slotId": "object", "clipName": "Seto_run_battle_1", "displayName": "카드미로_행진_세토_3to9", "startMs": 0, "playbackRate": 1, "loop": true, "holdLastFrame": true }
-      ]
-    },
-    {
-      "sequenceId": "cardmiro.march.template.from6",
-      "displayName": "카드미로_행진_세토_6to12",
-      "category": "WorldObject",
-      "durationMs": 12966,
-      "interpolation": "LINEAR",
-      "objectMotion": {
-        "velocity": [0, 0, 0],
-        "acceleration": [0, 0, 0],
-        "angularVelocityDegrees": [0, 0, 0],
-        "revolutionDegreesPerSecond": [0, 0, 0],
-        "revolutionOffset": [0, 0, 0],
-        "count": 1, "intervalMs": 200, "spreadDegrees": 0, "seed": 1
-      },
-      "tracks": [
-        {
-          "slotId": "object",
-          "keys": [
-            {
-              "timeMs": 0,
-              "positionOffset": [0, 0, 0],
-              "rotationQuaternion": [0, -1, 0, 0],
-              "scaleMultiplier": [1, 1, 1],
-              "visible": true
-            },
-            {
-              "timeMs": 12966,
-              "positionOffset": [-45.382, 0, 0],
-              "rotationQuaternion": [0, -1, 0, 0],
-              "scaleMultiplier": [1, 1, 1],
-              "visible": true
-            }
-          ]
-        }
-      ],
-      "animationTracks": [
-        { "slotId": "object", "clipName": "Seto_run_battle_1", "displayName": "카드미로_행진_세토_6to12", "startMs": 0, "playbackRate": 1, "loop": true, "holdLastFrame": true }
-      ]
-    },
-    {
-      "sequenceId": "cardmiro.march.template.from9",
-      "displayName": "카드미로_행진_세토_9to3",
-      "category": "WorldObject",
-      "durationMs": 12895,
-      "interpolation": "LINEAR",
-      "objectMotion": {
-        "velocity": [0, 0, 0],
-        "acceleration": [0, 0, 0],
-        "angularVelocityDegrees": [0, 0, 0],
-        "revolutionDegreesPerSecond": [0, 0, 0],
-        "revolutionOffset": [0, 0, 0],
-        "count": 1, "intervalMs": 200, "spreadDegrees": 0, "seed": 1
-      },
-      "tracks": [
-        {
-          "slotId": "object",
-          "keys": [
-            {
-              "timeMs": 0,
-              "positionOffset": [0, 0, 0],
-              "rotationQuaternion": [0, 0.707109988, 0, 0.707109988],
-              "scaleMultiplier": [1, 1, 1],
-              "visible": true
-            },
-            {
-              "timeMs": 12895,
-              "positionOffset": [0, 0, -45.132],
-              "rotationQuaternion": [0, 0.707109988, 0, 0.707109988],
-              "scaleMultiplier": [1, 1, 1],
-              "visible": true
-            }
-          ]
-        }
-      ],
-      "animationTracks": [
-        { "slotId": "object", "clipName": "Seto_run_battle_1", "displayName": "카드미로_행진_세토_9to3", "startMs": 0, "playbackRate": 1, "loop": true, "holdLastFrame": true }
-      ]
-    },
-    {
-      "sequenceId": "cardmiro.march.template.from12",
-      "displayName": "카드미로_행진_세토_12to6",
-      "category": "WorldObject",
-      "durationMs": 12966,
-      "interpolation": "LINEAR",
-      "objectMotion": {
-        "velocity": [0, 0, 0],
-        "acceleration": [0, 0, 0],
-        "angularVelocityDegrees": [0, 0, 0],
-        "revolutionDegreesPerSecond": [0, 0, 0],
-        "revolutionOffset": [0, 0, 0],
-        "count": 1, "intervalMs": 200, "spreadDegrees": 0, "seed": 1
-      },
-      "tracks": [
-        {
-          "slotId": "object",
-          "keys": [
-            {
-              "timeMs": 0,
-              "positionOffset": [0, 0, 0],
-              "rotationQuaternion": [0, 0, 0, 1],
-              "scaleMultiplier": [1, 1, 1],
-              "visible": true
-            },
-            {
-              "timeMs": 12966,
-              "positionOffset": [45.382, 0, 0],
-              "rotationQuaternion": [0, 0, 0, 1],
-              "scaleMultiplier": [1, 1, 1],
-              "visible": true
-            }
-          ]
-        }
-      ],
-      "animationTracks": [
-        { "slotId": "object", "clipName": "Seto_run_battle_1", "displayName": "카드미로_행진_세토_12to6", "startMs": 0, "playbackRate": 1, "loop": true, "holdLastFrame": true }
-      ]
-    },
+    {"sequenceId":"cardmiro.march.template.from3","displayName":"카드미로_행진_세토_3to9","category":"WorldObject","durationMs":14895,"interpolation":"LINEAR","objectMotion":{"velocity":[0,0,0],"acceleration":[0,0,0],"angularVelocityDegrees":[0,0,0],"revolutionDegreesPerSecond":[0,0,0],"revolutionOffset":[0,0,0],"count":1,"intervalMs":200,"spreadDegrees":0,"seed":1},"tracks":[{"slotId":"object","keys":[{"timeMs":0,"positionOffset":[0,0,0],"rotationQuaternion":[0,-0.707109988,0,0.707109988],"scaleMultiplier":[1,1,1],"visible":false},{"timeMs":2000,"positionOffset":[0,0,0],"rotationQuaternion":[0,-0.707109988,0,0.707109988],"scaleMultiplier":[1,1,1],"visible":true},{"timeMs":14895,"positionOffset":[0,0,45.132],"rotationQuaternion":[0,-0.707109988,0,0.707109988],"scaleMultiplier":[1,1,1],"visible":true}]}],"animationTracks":[{"slotId":"object","clipName":"Seto_run_battle_1","displayName":"카드미로_행진_세토_3to9","startMs":0,"playbackRate":1,"loop":true,"holdLastFrame":true},{"slotId":"object","clipName":"Seto_run_battle_1","displayName":"카드미로_행진_세토_3to9","startMs":2000,"playbackRate":1,"loop":true,"holdLastFrame":true}],"effectTracks":[{"effectTrackId":"effect.cardmiro.march.warning.1","slotId":"object","resourceKind":"V1_EFFECT","resourceId":"effect.kouku.bingo.hammer.warning.original","timing":"TIME","followObject":false,"inheritObjectRotation":false,"bone":"","startMs":0,"durationMs":2000,"positionOffset":[0.0,-0.52415000022,5.6415],"rotationDegrees":[0,-180.0,0],"scale":[4.8,11.283,11.283],"loopEffectToDuration":true},{"effectTrackId":"effect.cardmiro.march.warning.2","slotId":"object","resourceKind":"V1_EFFECT","resourceId":"effect.kouku.bingo.hammer.warning.original","timing":"TIME","followObject":false,"inheritObjectRotation":false,"bone":"","startMs":0,"durationMs":2000,"positionOffset":[0.0,-0.52415000022,16.9245],"rotationDegrees":[0,-180.0,0],"scale":[4.8,11.283,11.283],"loopEffectToDuration":true},{"effectTrackId":"effect.cardmiro.march.warning.3","slotId":"object","resourceKind":"V1_EFFECT","resourceId":"effect.kouku.bingo.hammer.warning.original","timing":"TIME","followObject":false,"inheritObjectRotation":false,"bone":"","startMs":0,"durationMs":2000,"positionOffset":[0.0,-0.52415000022,28.2075],"rotationDegrees":[0,-180.0,0],"scale":[4.8,11.283,11.283],"loopEffectToDuration":true},{"effectTrackId":"effect.cardmiro.march.warning.4","slotId":"object","resourceKind":"V1_EFFECT","resourceId":"effect.kouku.bingo.hammer.warning.original","timing":"TIME","followObject":false,"inheritObjectRotation":false,"bone":"","startMs":0,"durationMs":2000,"positionOffset":[0.0,-0.52415000022,39.4905],"rotationDegrees":[0,-180.0,0],"scale":[4.8,11.283,11.283],"loopEffectToDuration":true}]},
+    {"sequenceId":"cardmiro.march.template.from6","displayName":"카드미로_행진_세토_6to12","category":"WorldObject","durationMs":14966,"interpolation":"LINEAR","objectMotion":{"velocity":[0,0,0],"acceleration":[0,0,0],"angularVelocityDegrees":[0,0,0],"revolutionDegreesPerSecond":[0,0,0],"revolutionOffset":[0,0,0],"count":1,"intervalMs":200,"spreadDegrees":0,"seed":1},"tracks":[{"slotId":"object","keys":[{"timeMs":0,"positionOffset":[0,0,0],"rotationQuaternion":[0,-1,0,0],"scaleMultiplier":[1,1,1],"visible":false},{"timeMs":2000,"positionOffset":[0,0,0],"rotationQuaternion":[0,-1,0,0],"scaleMultiplier":[1,1,1],"visible":true},{"timeMs":14966,"positionOffset":[-45.382,0,0],"rotationQuaternion":[0,-1,0,0],"scaleMultiplier":[1,1,1],"visible":true}]}],"animationTracks":[{"slotId":"object","clipName":"Seto_run_battle_1","displayName":"카드미로_행진_세토_6to12","startMs":0,"playbackRate":1,"loop":true,"holdLastFrame":true},{"slotId":"object","clipName":"Seto_run_battle_1","displayName":"카드미로_행진_세토_6to12","startMs":2000,"playbackRate":1,"loop":true,"holdLastFrame":true}],"effectTracks":[{"effectTrackId":"effect.cardmiro.march.warning.1","slotId":"object","resourceKind":"V1_EFFECT","resourceId":"effect.kouku.bingo.hammer.warning.original","timing":"TIME","followObject":false,"inheritObjectRotation":false,"bone":"","startMs":0,"durationMs":2000,"positionOffset":[-5.67275,-0.52727500022,0.0],"rotationDegrees":[0,90.0,0],"scale":[4.8,11.3455,11.3455],"loopEffectToDuration":true},{"effectTrackId":"effect.cardmiro.march.warning.2","slotId":"object","resourceKind":"V1_EFFECT","resourceId":"effect.kouku.bingo.hammer.warning.original","timing":"TIME","followObject":false,"inheritObjectRotation":false,"bone":"","startMs":0,"durationMs":2000,"positionOffset":[-17.01825,-0.52727500022,0.0],"rotationDegrees":[0,90.0,0],"scale":[4.8,11.3455,11.3455],"loopEffectToDuration":true},{"effectTrackId":"effect.cardmiro.march.warning.3","slotId":"object","resourceKind":"V1_EFFECT","resourceId":"effect.kouku.bingo.hammer.warning.original","timing":"TIME","followObject":false,"inheritObjectRotation":false,"bone":"","startMs":0,"durationMs":2000,"positionOffset":[-28.36375,-0.52727500022,0.0],"rotationDegrees":[0,90.0,0],"scale":[4.8,11.3455,11.3455],"loopEffectToDuration":true},{"effectTrackId":"effect.cardmiro.march.warning.4","slotId":"object","resourceKind":"V1_EFFECT","resourceId":"effect.kouku.bingo.hammer.warning.original","timing":"TIME","followObject":false,"inheritObjectRotation":false,"bone":"","startMs":0,"durationMs":2000,"positionOffset":[-39.70925,-0.52727500022,0.0],"rotationDegrees":[0,90.0,0],"scale":[4.8,11.3455,11.3455],"loopEffectToDuration":true}]},
+    {"sequenceId":"cardmiro.march.template.from9","displayName":"카드미로_행진_세토_9to3","category":"WorldObject","durationMs":14895,"interpolation":"LINEAR","objectMotion":{"velocity":[0,0,0],"acceleration":[0,0,0],"angularVelocityDegrees":[0,0,0],"revolutionDegreesPerSecond":[0,0,0],"revolutionOffset":[0,0,0],"count":1,"intervalMs":200,"spreadDegrees":0,"seed":1},"tracks":[{"slotId":"object","keys":[{"timeMs":0,"positionOffset":[0,0,0],"rotationQuaternion":[0,0.707109988,0,0.707109988],"scaleMultiplier":[1,1,1],"visible":false},{"timeMs":2000,"positionOffset":[0,0,0],"rotationQuaternion":[0,0.707109988,0,0.707109988],"scaleMultiplier":[1,1,1],"visible":true},{"timeMs":14895,"positionOffset":[0,0,-45.132],"rotationQuaternion":[0,0.707109988,0,0.707109988],"scaleMultiplier":[1,1,1],"visible":true}]}],"animationTracks":[{"slotId":"object","clipName":"Seto_run_battle_1","displayName":"카드미로_행진_세토_9to3","startMs":0,"playbackRate":1,"loop":true,"holdLastFrame":true},{"slotId":"object","clipName":"Seto_run_battle_1","displayName":"카드미로_행진_세토_9to3","startMs":2000,"playbackRate":1,"loop":true,"holdLastFrame":true}],"effectTracks":[{"effectTrackId":"effect.cardmiro.march.warning.1","slotId":"object","resourceKind":"V1_EFFECT","resourceId":"effect.kouku.bingo.hammer.warning.original","timing":"TIME","followObject":false,"inheritObjectRotation":false,"bone":"","startMs":0,"durationMs":2000,"positionOffset":[0.0,-0.52415000022,-5.6415],"rotationDegrees":[0,-0.0,0],"scale":[4.8,11.283,11.283],"loopEffectToDuration":true},{"effectTrackId":"effect.cardmiro.march.warning.2","slotId":"object","resourceKind":"V1_EFFECT","resourceId":"effect.kouku.bingo.hammer.warning.original","timing":"TIME","followObject":false,"inheritObjectRotation":false,"bone":"","startMs":0,"durationMs":2000,"positionOffset":[0.0,-0.52415000022,-16.9245],"rotationDegrees":[0,-0.0,0],"scale":[4.8,11.283,11.283],"loopEffectToDuration":true},{"effectTrackId":"effect.cardmiro.march.warning.3","slotId":"object","resourceKind":"V1_EFFECT","resourceId":"effect.kouku.bingo.hammer.warning.original","timing":"TIME","followObject":false,"inheritObjectRotation":false,"bone":"","startMs":0,"durationMs":2000,"positionOffset":[0.0,-0.52415000022,-28.2075],"rotationDegrees":[0,-0.0,0],"scale":[4.8,11.283,11.283],"loopEffectToDuration":true},{"effectTrackId":"effect.cardmiro.march.warning.4","slotId":"object","resourceKind":"V1_EFFECT","resourceId":"effect.kouku.bingo.hammer.warning.original","timing":"TIME","followObject":false,"inheritObjectRotation":false,"bone":"","startMs":0,"durationMs":2000,"positionOffset":[0.0,-0.52415000022,-39.4905],"rotationDegrees":[0,-0.0,0],"scale":[4.8,11.283,11.283],"loopEffectToDuration":true}]},
+    {"sequenceId":"cardmiro.march.template.from12","displayName":"카드미로_행진_세토_12to6","category":"WorldObject","durationMs":14966,"interpolation":"LINEAR","objectMotion":{"velocity":[0,0,0],"acceleration":[0,0,0],"angularVelocityDegrees":[0,0,0],"revolutionDegreesPerSecond":[0,0,0],"revolutionOffset":[0,0,0],"count":1,"intervalMs":200,"spreadDegrees":0,"seed":1},"tracks":[{"slotId":"object","keys":[{"timeMs":0,"positionOffset":[0,0,0],"rotationQuaternion":[0,0,0,1],"scaleMultiplier":[1,1,1],"visible":false},{"timeMs":2000,"positionOffset":[0,0,0],"rotationQuaternion":[0,0,0,1],"scaleMultiplier":[1,1,1],"visible":true},{"timeMs":14966,"positionOffset":[45.382,0,0],"rotationQuaternion":[0,0,0,1],"scaleMultiplier":[1,1,1],"visible":true}]}],"animationTracks":[{"slotId":"object","clipName":"Seto_run_battle_1","displayName":"카드미로_행진_세토_12to6","startMs":0,"playbackRate":1,"loop":true,"holdLastFrame":true},{"slotId":"object","clipName":"Seto_run_battle_1","displayName":"카드미로_행진_세토_12to6","startMs":2000,"playbackRate":1,"loop":true,"holdLastFrame":true}],"effectTracks":[{"effectTrackId":"effect.cardmiro.march.warning.1","slotId":"object","resourceKind":"V1_EFFECT","resourceId":"effect.kouku.bingo.hammer.warning.original","timing":"TIME","followObject":false,"inheritObjectRotation":false,"bone":"","startMs":0,"durationMs":2000,"positionOffset":[5.67275,-0.52727500022,0.0],"rotationDegrees":[0,-90.0,0],"scale":[4.8,11.3455,11.3455],"loopEffectToDuration":true},{"effectTrackId":"effect.cardmiro.march.warning.2","slotId":"object","resourceKind":"V1_EFFECT","resourceId":"effect.kouku.bingo.hammer.warning.original","timing":"TIME","followObject":false,"inheritObjectRotation":false,"bone":"","startMs":0,"durationMs":2000,"positionOffset":[17.01825,-0.52727500022,0.0],"rotationDegrees":[0,-90.0,0],"scale":[4.8,11.3455,11.3455],"loopEffectToDuration":true},{"effectTrackId":"effect.cardmiro.march.warning.3","slotId":"object","resourceKind":"V1_EFFECT","resourceId":"effect.kouku.bingo.hammer.warning.original","timing":"TIME","followObject":false,"inheritObjectRotation":false,"bone":"","startMs":0,"durationMs":2000,"positionOffset":[28.36375,-0.52727500022,0.0],"rotationDegrees":[0,-90.0,0],"scale":[4.8,11.3455,11.3455],"loopEffectToDuration":true},{"effectTrackId":"effect.cardmiro.march.warning.4","slotId":"object","resourceKind":"V1_EFFECT","resourceId":"effect.kouku.bingo.hammer.warning.original","timing":"TIME","followObject":false,"inheritObjectRotation":false,"bone":"","startMs":0,"durationMs":2000,"positionOffset":[39.70925,-0.52727500022,0.0],"rotationDegrees":[0,-90.0,0],"scale":[4.8,11.3455,11.3455],"loopEffectToDuration":true}]},
     {
       "sequenceId": "sequence.kouku.odd_doll.walk_normal_1",
       "displayName": "walk_normal_1",
@@ -150909,8 +150757,8 @@
       "animationTracks": [],
       "effectTracks": [
         { "effectTrackId": "effect.bingo.hammer.aura", "slotId": "object", "resourceKind": "V1_EFFECT", "resourceId": "effect.kouku.bingo.hammer.aura", "timing": "TIME", "followObject": true, "bone": "", "startMs": 3000, "durationMs": 3000, "positionOffset": [0, 0, 0], "rotationDegrees": [0, 0, 0], "scale": [1, 1, 1] },
-        { "effectTrackId": "effect.bingo.hammer.warning.original.1", "slotId": "object", "resourceKind": "V1_EFFECT", "resourceId": "effect.kouku.bingo.hammer.warning.original", "timing": "TIME", "followObject": false, "bone": "", "startMs": 0, "durationMs": 3000, "positionOffset": [2.5333333, -5.23666668, 0], "rotationDegrees": [0, 90, 0], "scale": [3.37777781, 5.0666666, 5.0666666], "loopEffectToDuration": true },
-        { "effectTrackId": "effect.bingo.hammer.warning.original.2", "slotId": "object", "resourceKind": "V1_EFFECT", "resourceId": "effect.kouku.bingo.hammer.warning.original", "timing": "TIME", "followObject": false, "bone": "", "startMs": 0, "durationMs": 3000, "positionOffset": [7.5999999, -5.23666668, 0], "rotationDegrees": [0, 90, 0], "scale": [3.37777781, 5.0666666, 5.0666666], "loopEffectToDuration": true }
+        {"effectTrackId":"effect.bingo.hammer.warning.original.1","slotId":"object","resourceKind":"V1_EFFECT","resourceId":"effect.kouku.bingo.hammer.warning.original","timing":"TIME","followObject":false,"inheritObjectRotation":false,"bone":"","startMs":0,"durationMs":4400,"positionOffset":[2.533333375925927,-5.236666809351857,0.0],"rotationDegrees":[0,-90.0,0],"scale":[3.377777871604941,5.066666751851854,5.066666751851854],"loopEffectToDuration":true},
+        {"effectTrackId":"effect.bingo.hammer.warning.original.2","slotId":"object","resourceKind":"V1_EFFECT","resourceId":"effect.kouku.bingo.hammer.warning.original","timing":"TIME","followObject":false,"inheritObjectRotation":false,"bone":"","startMs":0,"durationMs":4400,"positionOffset":[7.600000127777782,-5.236666809351857,0.0],"rotationDegrees":[0,-90.0,0],"scale":[3.377777871604941,5.066666751851854,5.066666751851854],"loopEffectToDuration":true}
       ]
     },
     {
@@ -151189,8 +151037,8 @@
       "animationTracks": [],
       "effectTracks": [
         { "effectTrackId": "effect.bingo.hammer.aura", "slotId": "object", "resourceKind": "V1_EFFECT", "resourceId": "effect.kouku.bingo.hammer.aura", "timing": "TIME", "followObject": true, "bone": "", "startMs": 3000, "durationMs": 3000, "positionOffset": [0, 0, 0], "rotationDegrees": [0, 0, 0], "scale": [1, 1, 1] },
-        { "effectTrackId": "effect.bingo.hammer.warning.original.1", "slotId": "object", "resourceKind": "V1_EFFECT", "resourceId": "effect.kouku.bingo.hammer.warning.original", "timing": "TIME", "followObject": false, "bone": "", "startMs": 0, "durationMs": 3000, "positionOffset": [2.5333333, -5.23666668, 0], "rotationDegrees": [0, 90, 0], "scale": [3.37777781, 5.0666666, 5.0666666], "loopEffectToDuration": true },
-        { "effectTrackId": "effect.bingo.hammer.warning.original.2", "slotId": "object", "resourceKind": "V1_EFFECT", "resourceId": "effect.kouku.bingo.hammer.warning.original", "timing": "TIME", "followObject": false, "bone": "", "startMs": 0, "durationMs": 3000, "positionOffset": [7.5999999, -5.23666668, 0], "rotationDegrees": [0, 90, 0], "scale": [3.37777781, 5.0666666, 5.0666666], "loopEffectToDuration": true }
+        {"effectTrackId":"effect.bingo.hammer.warning.original.1","slotId":"object","resourceKind":"V1_EFFECT","resourceId":"effect.kouku.bingo.hammer.warning.original","timing":"TIME","followObject":false,"inheritObjectRotation":false,"bone":"","startMs":0,"durationMs":4400,"positionOffset":[-2.533333375925927,-5.236666809351857,0.0],"rotationDegrees":[0,90.0,0],"scale":[3.377777871604941,5.066666751851854,5.066666751851854],"loopEffectToDuration":true},
+        {"effectTrackId":"effect.bingo.hammer.warning.original.2","slotId":"object","resourceKind":"V1_EFFECT","resourceId":"effect.kouku.bingo.hammer.warning.original","timing":"TIME","followObject":false,"inheritObjectRotation":false,"bone":"","startMs":0,"durationMs":4400,"positionOffset":[-7.600000127777782,-5.236666809351857,0.0],"rotationDegrees":[0,90.0,0],"scale":[3.377777871604941,5.066666751851854,5.066666751851854],"loopEffectToDuration":true}
       ]
     },
     {
@@ -151469,8 +151317,8 @@
       "animationTracks": [],
       "effectTracks": [
         { "effectTrackId": "effect.bingo.hammer.aura", "slotId": "object", "resourceKind": "V1_EFFECT", "resourceId": "effect.kouku.bingo.hammer.aura", "timing": "TIME", "followObject": true, "bone": "", "startMs": 3000, "durationMs": 3000, "positionOffset": [0, 0, 0], "rotationDegrees": [0, 0, 0], "scale": [1, 1, 1] },
-        { "effectTrackId": "effect.bingo.hammer.warning.original.1", "slotId": "object", "resourceKind": "V1_EFFECT", "resourceId": "effect.kouku.bingo.hammer.warning.original", "timing": "TIME", "followObject": false, "bone": "", "startMs": 0, "durationMs": 3000, "positionOffset": [2.5333333, -5.23666668, 0], "rotationDegrees": [0, 90, 0], "scale": [3.37777781, 5.0666666, 5.0666666], "loopEffectToDuration": true },
-        { "effectTrackId": "effect.bingo.hammer.warning.original.2", "slotId": "object", "resourceKind": "V1_EFFECT", "resourceId": "effect.kouku.bingo.hammer.warning.original", "timing": "TIME", "followObject": false, "bone": "", "startMs": 0, "durationMs": 3000, "positionOffset": [7.5999999, -5.23666668, 0], "rotationDegrees": [0, 90, 0], "scale": [3.37777781, 5.0666666, 5.0666666], "loopEffectToDuration": true }
+        {"effectTrackId":"effect.bingo.hammer.warning.original.1","slotId":"object","resourceKind":"V1_EFFECT","resourceId":"effect.kouku.bingo.hammer.warning.original","timing":"TIME","followObject":false,"inheritObjectRotation":false,"bone":"","startMs":0,"durationMs":4400,"positionOffset":[0.0,-5.236666809351857,2.533333375925927],"rotationDegrees":[0,-180.0,0],"scale":[3.377777871604941,5.066666751851854,5.066666751851854],"loopEffectToDuration":true},
+        {"effectTrackId":"effect.bingo.hammer.warning.original.2","slotId":"object","resourceKind":"V1_EFFECT","resourceId":"effect.kouku.bingo.hammer.warning.original","timing":"TIME","followObject":false,"inheritObjectRotation":false,"bone":"","startMs":0,"durationMs":4400,"positionOffset":[0.0,-5.236666809351857,7.600000127777782],"rotationDegrees":[0,-180.0,0],"scale":[3.377777871604941,5.066666751851854,5.066666751851854],"loopEffectToDuration":true}
       ]
     },
     {
@@ -151749,8 +151597,8 @@
       "animationTracks": [],
       "effectTracks": [
         { "effectTrackId": "effect.bingo.hammer.aura", "slotId": "object", "resourceKind": "V1_EFFECT", "resourceId": "effect.kouku.bingo.hammer.aura", "timing": "TIME", "followObject": true, "bone": "", "startMs": 3000, "durationMs": 3000, "positionOffset": [0, 0, 0], "rotationDegrees": [0, 0, 0], "scale": [1, 1, 1] },
-        { "effectTrackId": "effect.bingo.hammer.warning.original.1", "slotId": "object", "resourceKind": "V1_EFFECT", "resourceId": "effect.kouku.bingo.hammer.warning.original", "timing": "TIME", "followObject": false, "bone": "", "startMs": 0, "durationMs": 3000, "positionOffset": [2.5333333, -5.23666668, 0], "rotationDegrees": [0, 90, 0], "scale": [3.37777781, 5.0666666, 5.0666666], "loopEffectToDuration": true },
-        { "effectTrackId": "effect.bingo.hammer.warning.original.2", "slotId": "object", "resourceKind": "V1_EFFECT", "resourceId": "effect.kouku.bingo.hammer.warning.original", "timing": "TIME", "followObject": false, "bone": "", "startMs": 0, "durationMs": 3000, "positionOffset": [7.5999999, -5.23666668, 0], "rotationDegrees": [0, 90, 0], "scale": [3.37777781, 5.0666666, 5.0666666], "loopEffectToDuration": true }
+        {"effectTrackId":"effect.bingo.hammer.warning.original.1","slotId":"object","resourceKind":"V1_EFFECT","resourceId":"effect.kouku.bingo.hammer.warning.original","timing":"TIME","followObject":false,"inheritObjectRotation":false,"bone":"","startMs":0,"durationMs":4400,"positionOffset":[0.0,-5.236666809351857,-2.533333375925927],"rotationDegrees":[0,-0.0,0],"scale":[3.377777871604941,5.066666751851854,5.066666751851854],"loopEffectToDuration":true},
+        {"effectTrackId":"effect.bingo.hammer.warning.original.2","slotId":"object","resourceKind":"V1_EFFECT","resourceId":"effect.kouku.bingo.hammer.warning.original","timing":"TIME","followObject":false,"inheritObjectRotation":false,"bone":"","startMs":0,"durationMs":4400,"positionOffset":[0.0,-5.236666809351857,-7.600000127777782],"rotationDegrees":[0,-0.0,0],"scale":[3.377777871604941,5.066666751851854,5.066666751851854],"loopEffectToDuration":true}
       ]
     },
     {
@@ -312364,17 +312212,8 @@
         "angularVelocityDegrees": [1440, 0, 0],
         "revolutionDegreesPerSecond": [0, 0, 0],
         "revolutionOffset": [0, 0, 0],
-        "count": 8, "intervalMs": 0, "spreadDegrees": 0, "seed": 1,
-        "emissions": [
-          {"positionOffset": [3.64499331, 1, 11.5199928], "yawDegrees": 222, "startDelayMs": 0},
-          {"positionOffset": [5.13083076, 1, 10.1821394], "yawDegrees": 222, "startDelayMs": 0},
-          {"positionOffset": [6.61699343, 1, 8.84399223], "yawDegrees": 222, "startDelayMs": 0},
-          {"positionOffset": [8.10387993, 1, 7.50519371], "yawDegrees": 222, "startDelayMs": 0},
-          {"positionOffset": [9.59004211, 1, 6.16704702], "yawDegrees": 222, "startDelayMs": 0},
-          {"positionOffset": [11.0758801, 1, 4.82919312], "yawDegrees": 222, "startDelayMs": 0},
-          {"positionOffset": [2.66041589, 1, 12.4065104], "yawDegrees": 222, "startDelayMs": 0},
-          {"positionOffset": [-0.112564072, 1, 14.9033136], "yawDegrees": 222, "startDelayMs": 0}
-        ]
+        "count": 1, "intervalMs": 0, "spreadDegrees": 0, "seed": 1,
+        "emissions": [{"positionOffset":[0,1,0],"yawDegrees":222,"startDelayMs":0}]
       },
       "tracks": [
         {
@@ -317132,7 +316971,7 @@
       "instanceId": "cardmiro.march.instance.from6.lane5",
       "templateId": "cardmiro.march.template.from6",
       "enabled": true,
-      "startDelayMs": 12895,
+      "startDelayMs": 14895,
       "playbackSpeed": 1,
       "anchorKind": "WORLD",
       "position": [22.4410992, -0.00999999978, 1351.66968],
@@ -317146,7 +316985,7 @@
       "instanceId": "cardmiro.march.instance.from9.lane5",
       "templateId": "cardmiro.march.template.from9",
       "enabled": true,
-      "startDelayMs": 25861,
+      "startDelayMs": 29861,
       "playbackSpeed": 1,
       "anchorKind": "WORLD",
       "position": [-0.0104499999, -0.00999999978, 1374.12085],
@@ -317160,7 +316999,7 @@
       "instanceId": "cardmiro.march.instance.from12.lane5",
       "templateId": "cardmiro.march.template.from12",
       "enabled": true,
-      "startDelayMs": 38756,
+      "startDelayMs": 44756,
       "playbackSpeed": 1,
       "anchorKind": "WORLD",
       "position": [-22.9410992, -0.00999999978, 1351.66968],
@@ -317286,7 +317125,7 @@
       "instanceId": "cardmiro.march.instance.from6.lane1",
       "templateId": "cardmiro.march.template.from6",
       "enabled": true,
-      "startDelayMs": 12895,
+      "startDelayMs": 14895,
       "playbackSpeed": 1,
       "anchorKind": "WORLD",
       "position": [22.4409199, -0.00999999978, 1331.18958],
@@ -317300,7 +317139,7 @@
       "instanceId": "cardmiro.march.instance.from6.lane2",
       "templateId": "cardmiro.march.template.from6",
       "enabled": true,
-      "startDelayMs": 12895,
+      "startDelayMs": 14895,
       "playbackSpeed": 1,
       "anchorKind": "WORLD",
       "position": [22.4409199, -0.00999999978, 1336.30981],
@@ -317314,7 +317153,7 @@
       "instanceId": "cardmiro.march.instance.from6.lane3",
       "templateId": "cardmiro.march.template.from6",
       "enabled": true,
-      "startDelayMs": 12895,
+      "startDelayMs": 14895,
       "playbackSpeed": 1,
       "anchorKind": "WORLD",
       "position": [22.4408798, -0.00999999978, 1341.42969],
@@ -317328,7 +317167,7 @@
       "instanceId": "cardmiro.march.instance.from6.lane4",
       "templateId": "cardmiro.march.template.from6",
       "enabled": true,
-      "startDelayMs": 12895,
+      "startDelayMs": 14895,
       "playbackSpeed": 1,
       "anchorKind": "WORLD",
       "position": [22.4407501, -0.00999999978, 1346.54956],
@@ -317342,7 +317181,7 @@
       "instanceId": "cardmiro.march.instance.from6.lane6",
       "templateId": "cardmiro.march.template.from6",
       "enabled": true,
-      "startDelayMs": 12895,
+      "startDelayMs": 14895,
       "playbackSpeed": 1,
       "anchorKind": "WORLD",
       "position": [22.4411793, -0.00999999978, 1356.78967],
@@ -317356,7 +317195,7 @@
       "instanceId": "cardmiro.march.instance.from6.lane7",
       "templateId": "cardmiro.march.template.from6",
       "enabled": true,
-      "startDelayMs": 12895,
+      "startDelayMs": 14895,
       "playbackSpeed": 1,
       "anchorKind": "WORLD",
       "position": [22.4405594, -0.00999999978, 1361.90918],
@@ -317370,7 +317209,7 @@
       "instanceId": "cardmiro.march.instance.from6.lane8",
       "templateId": "cardmiro.march.template.from6",
       "enabled": true,
-      "startDelayMs": 12895,
+      "startDelayMs": 14895,
       "playbackSpeed": 1,
       "anchorKind": "WORLD",
       "position": [22.4408302, -0.00999999978, 1367.02942],
@@ -317384,7 +317223,7 @@
       "instanceId": "cardmiro.march.instance.from6.lane9",
       "templateId": "cardmiro.march.template.from6",
       "enabled": true,
-      "startDelayMs": 12895,
+      "startDelayMs": 14895,
       "playbackSpeed": 1,
       "anchorKind": "WORLD",
       "position": [22.4408894, -0.00999999978, 1372.14954],
@@ -317398,7 +317237,7 @@
       "instanceId": "cardmiro.march.instance.from9.lane1",
       "templateId": "cardmiro.march.template.from9",
       "enabled": true,
-      "startDelayMs": 25861,
+      "startDelayMs": 29861,
       "playbackSpeed": 1,
       "anchorKind": "WORLD",
       "position": [20.4695492, -0.00999999978, 1374.12085],
@@ -317412,7 +317251,7 @@
       "instanceId": "cardmiro.march.instance.from9.lane2",
       "templateId": "cardmiro.march.template.from9",
       "enabled": true,
-      "startDelayMs": 25861,
+      "startDelayMs": 29861,
       "playbackSpeed": 1,
       "anchorKind": "WORLD",
       "position": [15.3495502, -0.00999999978, 1374.12085],
@@ -317426,7 +317265,7 @@
       "instanceId": "cardmiro.march.instance.from9.lane3",
       "templateId": "cardmiro.march.template.from9",
       "enabled": true,
-      "startDelayMs": 25861,
+      "startDelayMs": 29861,
       "playbackSpeed": 1,
       "anchorKind": "WORLD",
       "position": [10.2295504, -0.00999999978, 1374.12085],
@@ -317440,7 +317279,7 @@
       "instanceId": "cardmiro.march.instance.from9.lane4",
       "templateId": "cardmiro.march.template.from9",
       "enabled": true,
-      "startDelayMs": 25861,
+      "startDelayMs": 29861,
       "playbackSpeed": 1,
       "anchorKind": "WORLD",
       "position": [5.10955, -0.00999999978, 1374.12085],
@@ -317454,7 +317293,7 @@
       "instanceId": "cardmiro.march.instance.from9.lane6",
       "templateId": "cardmiro.march.template.from9",
       "enabled": true,
-      "startDelayMs": 25861,
+      "startDelayMs": 29861,
       "playbackSpeed": 1,
       "anchorKind": "WORLD",
       "position": [-5.13044977, -0.00999999978, 1374.12085],
@@ -317468,7 +317307,7 @@
       "instanceId": "cardmiro.march.instance.from9.lane7",
       "templateId": "cardmiro.march.template.from9",
       "enabled": true,
-      "startDelayMs": 25861,
+      "startDelayMs": 29861,
       "playbackSpeed": 1,
       "anchorKind": "WORLD",
       "position": [-10.2504501, -0.00999999978, 1374.12085],
@@ -317482,7 +317321,7 @@
       "instanceId": "cardmiro.march.instance.from9.lane8",
       "templateId": "cardmiro.march.template.from9",
       "enabled": true,
-      "startDelayMs": 25861,
+      "startDelayMs": 29861,
       "playbackSpeed": 1,
       "anchorKind": "WORLD",
       "position": [-15.37045, -0.00999999978, 1374.12085],
@@ -317496,7 +317335,7 @@
       "instanceId": "cardmiro.march.instance.from9.lane9",
       "templateId": "cardmiro.march.template.from9",
       "enabled": true,
-      "startDelayMs": 25861,
+      "startDelayMs": 29861,
       "playbackSpeed": 1,
       "anchorKind": "WORLD",
       "position": [-20.4904499, -0.00999999978, 1374.12085],
@@ -317510,7 +317349,7 @@
       "instanceId": "cardmiro.march.instance.from12.lane1",
       "templateId": "cardmiro.march.template.from12",
       "enabled": true,
-      "startDelayMs": 38756,
+      "startDelayMs": 44756,
       "playbackSpeed": 1,
       "anchorKind": "WORLD",
       "position": [-22.9408894, -0.00999999978, 1372.14954],
@@ -317524,7 +317363,7 @@
       "instanceId": "cardmiro.march.instance.from12.lane2",
       "templateId": "cardmiro.march.template.from12",
       "enabled": true,
-      "startDelayMs": 38756,
+      "startDelayMs": 44756,
       "playbackSpeed": 1,
       "anchorKind": "WORLD",
       "position": [-22.9408302, -0.00999999978, 1367.02942],
@@ -317538,7 +317377,7 @@
       "instanceId": "cardmiro.march.instance.from12.lane3",
       "templateId": "cardmiro.march.template.from12",
       "enabled": true,
-      "startDelayMs": 38756,
+      "startDelayMs": 44756,
       "playbackSpeed": 1,
       "anchorKind": "WORLD",
       "position": [-22.9405594, -0.00999999978, 1361.90918],
@@ -317552,7 +317391,7 @@
       "instanceId": "cardmiro.march.instance.from12.lane4",
       "templateId": "cardmiro.march.template.from12",
       "enabled": true,
-      "startDelayMs": 38756,
+      "startDelayMs": 44756,
       "playbackSpeed": 1,
       "anchorKind": "WORLD",
       "position": [-22.9411793, -0.00999999978, 1356.78967],
@@ -317566,7 +317405,7 @@
       "instanceId": "cardmiro.march.instance.from12.lane6",
       "templateId": "cardmiro.march.template.from12",
       "enabled": true,
-      "startDelayMs": 38756,
+      "startDelayMs": 44756,
       "playbackSpeed": 1,
       "anchorKind": "WORLD",
       "position": [-22.9407501, -0.00999999978, 1346.54956],
@@ -317580,7 +317419,7 @@
       "instanceId": "cardmiro.march.instance.from12.lane7",
       "templateId": "cardmiro.march.template.from12",
       "enabled": true,
-      "startDelayMs": 38756,
+      "startDelayMs": 44756,
       "playbackSpeed": 1,
       "anchorKind": "WORLD",
       "position": [-22.9408798, -0.00999999978, 1341.42969],
@@ -317594,7 +317433,7 @@
       "instanceId": "cardmiro.march.instance.from12.lane8",
       "templateId": "cardmiro.march.template.from12",
       "enabled": true,
-      "startDelayMs": 38756,
+      "startDelayMs": 44756,
       "playbackSpeed": 1,
       "anchorKind": "WORLD",
       "position": [-22.9409199, -0.00999999978, 1336.30981],
@@ -317608,7 +317447,7 @@
       "instanceId": "cardmiro.march.instance.from12.lane9",
       "templateId": "cardmiro.march.template.from12",
       "enabled": true,
-      "startDelayMs": 38756,
+      "startDelayMs": 44756,
       "playbackSpeed": 1,
       "anchorKind": "WORLD",
       "position": [-22.9409199, -0.00999999978, 1331.18958],

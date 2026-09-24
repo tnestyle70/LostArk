@@ -92,6 +92,8 @@ namespace LostArk::Server
 	tick. Long enough to cover the stand-up roll and one step of breathing
 	room, short enough that staying in a boss pattern still punishes. */
 	inline constexpr std::uint32_t PLAYER_HIT_REACTION_GRACE_TICKS = 60;
+	// A launch lands in a down pose before the existing stand-up transition.
+	inline constexpr std::uint32_t PLAYER_HIT_LANDING_RECOVERY_MS = 1000u;
 
 	enum class PLAYER_PENDING_COMMAND_KIND : std::uint8_t
 	{
@@ -274,6 +276,8 @@ namespace LostArk::Server
 		/* KNOCKDOWN holds until this tick; move and skill commands are rejected
 		while it runs and the action returns to NONE when it expires. */
 		std::uint32_t iKnockdownEndTick = 0;
+		// A push-only down pose keeps presentation without adding authored knockdown immunity.
+		bool bPushOnlyHitReaction = false;
 		std::uint32_t iFearEndTick = 0u;
 		std::string strFearPresentationId;
 		// Current-tick zone contact expires presentation on exit; protection stays in the pattern runtime.

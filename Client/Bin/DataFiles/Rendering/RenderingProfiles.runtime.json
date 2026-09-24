@@ -1,7 +1,7 @@
 {
     "schema":  "lostark.rendering-profiles",
     "formatVersion":  1,
-    "revision":  80,
+    "revision":  81,
     "globalQuality":  {
                           "ssaoEnabled":  true,
                           "ssaoRadius":  0.0399999991,
@@ -4495,10 +4495,10 @@
                                                                                             1
                                                                                         ],
                                                                            "desaturation":  0.125,
-                                                                           "colorGradingLut":  "Map/Lighting/KoukuSaydon/lv_lut_midnightc_lut_01.dds"
+                                                                           "colorGradingLut":  ""
                                                                        }
                                              },
-                         "displayName":  "Gate 3 - source LUT01",
+                         "displayName":  "Gate 3 - source tone, LUT off",
                          "profileId":  "scene.kakulsaydon.compare.gate3.v1",
                          "exposureMultiplier":  1,
                          "bloomIntensityMultiplier":  1,
@@ -5202,7 +5202,7 @@
                                                                                                                        1
                                                                                                                    ],
                                                                                                       "desaturation":  0.125,
-                                                                                                      "colorGradingLut":  "Map/Lighting/KoukuSaydon/lv_lut_midnightc_lut_01.dds"
+                                                                                                      "colorGradingLut":  ""
                                                                                                   }
                                                                         },
                                                         "fog":  {
@@ -7240,7 +7240,7 @@
                                                                                                                        1
                                                                                                                    ],
                                                                                                       "desaturation":  0.125,
-                                                                                                      "colorGradingLut":  "Map/Lighting/KoukuSaydon/lv_lut_midnightc_lut_01.dds"
+                                                                                                      "colorGradingLut":  ""
                                                                                                   }
                                                                         },
                                                         "fog":  {
@@ -7669,7 +7669,7 @@
                                                                                                                        1
                                                                                                                    ],
                                                                                                       "desaturation":  0.125,
-                                                                                                      "colorGradingLut":  "Map/Lighting/KoukuSaydon/lv_lut_midnightc_lut_01.dds"
+                                                                                                      "colorGradingLut":  ""
                                                                                                   }
                                                                         },
                                                         "fog":  {
