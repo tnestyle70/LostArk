@@ -468,6 +468,8 @@ Debug x64는 외부 ImGui core/backend 여섯 소스와 `Profiler.cpp`, `Shader.
 해당 파일은 명령 재배치·local 변수 생략 때문에 stepping이 제한되고 `/RTC`와 Just My Code를
 사용하지 않는다. `_DEBUG`, Debug CRT, ImGui assert, D3D debug layer와 다른 소스의 Debug 설정은 유지한다.
 
+F1의 `Character Select Movie`는 Character Select에서 기존 클래스 영화를 재생한다. 기본 선택은 Guardian Knight이며 Play/Restart Intro·Stop을 제공한다. 현재 등록된 영화는 Guardian Knight이고, 미등록 class와 다른 Level에서는 재생을 시작하지 않는다. 영화 선택은 Server 캐릭터 class 변경과 별개다.
+
 F1의 `Balance Test`는 공용 Players/Skills/Damage/Bosses 숫자 scalar 편집과 Server HP/tick 진단을
 제공한다. `Save + Validate`는 stable ID/field의 이전값으로 최신 `Data/Balance` 저장본에 병합하고,
 candidate provenance/gameplay 검증 뒤 freshness 확인과 원자 교체를 수행한다. `Publish Server Data`
@@ -816,26 +818,21 @@ Result `PLAY_WORLD_OBJECT_MOTION`은 Server가 Collider와 저작 target 원의 
 같은 카드 객체에 저장 Motion ID를 적용한다. target WORLD를 먼저 배치하고 판정 창 동안 유지해야 한다.
 저장·수명 제한은 팀 Area 가이드를 따른다. Client/UI 실행과 화면 판정은 사용자가 한다.
 
-F1의 `Player Follow Camera`는 Character Select, Bern, Valtan, KoukuSaydon을 선택한다.
-`FOV X at 16:9 (deg)`의 저장·엔진 입력은 환산된 수직 `fovYDegrees`다.
-바로 아래 `Character size`는 기존 catalog presentation scale에 곱하는 0.25~4배 표현 크기다.
-몸·장비·본 부착의 같은 presentation root에 적용하며 Server 충돌·공격 범위는 변경하지 않는다.
-크기는 같은 맵별 JSON의 optional `characterSizeMultiplier`에 저장하고 생략 시 1을 사용한다.
-`Reset size`는 catalog 기준 1배로 돌아간다. 원작의 최종 actor scale을 자동 추정하는 기능은 아니다.
-위치·회전·focus·응답은 `Advanced camera pose`에 있다. `Source baseline`과 `Before restoration`은
-카메라 전체 설정을 바꾸고 현재 맵에 바로 반영한다. 두 preset은 편집한 Character size를 보존한다.
-연출 중이거나 다른 맵을 선택했으면 live preview는 적용하지 않는다. `Save camera settings`는
-다음 진입을 위해 선택 JSON만 저장하며, 로드 후 외부 변경을 발견하면 draft와 파일을 보존하고 거절한다.
-`Data/Camera/{CharacterSelect,Bern,Valtan,KoukuSaydon}.camera.json`이 별도 publish 없는 정본이다.
-재진입 또는 F1 → Player Follow Camera → 해당 Camera map → `Reload saved`로 읽는다.
-공통 source 기준은 수평50도/16m, Valtan은55도/18m다. Kouku의 `Use source camera regions`는
+F1의 카메라 편집 패널은 제거했다. 해당 위치의 `Open Balance Test` 버튼은 Debug/Release 공통
+`Balance Test` 독립 창을 연다. F6의 follow/free 전환과 실제 카메라 runtime은 유지한다.
+
+맵별 정본은 `Data/Camera/{CharacterSelect,Bern,Valtan,KoukuSaydon}.camera.json`이며 별도 publish 없이
+Level이 저장 profile을 읽는다. JSON과 엔진 입력은 수직 `fovYDegrees`이며 수평각은 16:9 기준으로 환산한다.
+위치·회전·focus·follow 응답도 같은 profile을 소비한다. optional `characterSizeMultiplier`는 기존 catalog
+presentation scale에 곱하는 0.25~4배 표현 크기이며 생략 시 1이다. 몸·장비·본 부착의 같은 root에
+적용하고 Server 충돌·공격 범위는 변경하지 않는다. 저장본 변경은 재입장 때 확인한다.
+
+공통 source 기준은 수평50도/16m, Valtan은55도/18m다. Kouku의 `useSourceCameraRegions=true`는
 공통16m와 원본 entrance volume 내부19m를 구분한다. 1관문 전장은 이19m volume 밖이다.
-`useSourceCameraRegions`를 생략한 기존 JSON은 manual pose를 유지한다. F1의 FOV·거리·pose
-수정은 region 적용을 끄며 Character Size 수정은 그대로 유지한다. 패널의 Effective distance는
-현재 실효값이고 authored JSON을 구역 이동마다 바꾸지 않는다. 이 값은 원본 최종 framing의
-일치 확인과 구분하며 마리오·카드미로·컷신의 별도 카메라를 대체하지 않는다.
-Bern의 현재 저장값은 사용자 비교 결과에 따라55도/16m이며 Source baseline의50도와 구분한다.
-마리오·카드미로·컷신의 기존 개별 카메라와 presentation priority는 유지한다.
+필드가 없는 기존 JSON은 manual pose를 유지하며 구역 이동은 authored JSON을 덮지 않는다.
+Bern의 현재 저장값은 사용자 비교 결과에 따라55도/16m이며 source 기준50도와 구분한다.
+이 계약은 원본 최종 framing 일치 확인과 별도이며 마리오·카드미로·컷신의 개별 카메라와
+기존 presentation priority를 유지한다.
 
 MapCatalog의 optional `sourceLights`/`lights` pair는 Area별 light presentation 계약이다.
 source는 `Data/Maps/Authoring/<AreaId>/<AreaId>.maplights.json`, runtime은

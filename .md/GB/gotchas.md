@@ -3469,3 +3469,10 @@ Lobby의 `Server entry failed`는 로딩 복구에도 표시된다. 원격 상�
 - 새 lookup map을 parser에 추가할 때 기존 Load rollback과 clear 대상도 함께 갱신한다. 첫 Load 성공만 확인하면 같은 객체의 두 번째 Load에서 duplicate buff나 이전 damage formula 잔존을 놓친다. profile별 lookup 두 개가 있으면 두 경로 모두 변경값을 소비하는지 확인한다.
 - optional profile을 clear만 하고 rollback에서 빠뜨리면 malformed 후보가 이전 정상 profile을 지운다. 실제 published bootstrap의 반복 Load, 변경값 교체, 뒤쪽 invalid row 실패 후 이전 revision/값 보존까지 같은 검증에 둔다.
 - 후속 fixture는 admission 실패 뒤 이전 catalog의 다른 종류 row를 예상 타입으로 접근하지 않는다. row 종류·필수 배열 개수를 확인한 뒤 front/back을 사용하여 첫 실패를 후속 assert가 가리지 않게 한다.
+
+
+### 클래스 배치 변경 뒤 Debug OBJ의 헤더 의존성 누락
+
+- Product compile/link PASS만으로 서로 다른 클래스 배치의 OBJ 혼합을 배제할 수 없다. 초기화 성공 직후 string/shared_ptr 접근 위반이 발생하면 정확한 EXE/PDB와 WER를 대조하고, 변경한 public header의 소비자 OBJ 시각 및 `CL.read.*.tlog`에 해당 헤더가 실제로 기록됐는지 확인한다.
+- 강제 포함한 표준 라이브러리 PCH를 사용하는 TU라도 프로젝트 헤더가 PCH 안에 있다는 뜻은 아니다. 소스와 PCH만 기록된 불완전 tracking은 클래스 멤버 삭제·추가 때 재컴파일을 누락할 수 있다. 같은 설정의 정상 TU와 다른 configuration의 기록을 비교한 뒤 원인을 판단한다.
+- 원인이 확인된 이전 OBJ만 보존·격리한 뒤 같은 toolchain의 정상 Product Build로 복구하고, 소비자별 헤더 추적과 현재 OBJ를 다시 확인한다. 출처를 확인하지 않은 전체 Clean/Rebuild나 tlog 삭제, 소스 timestamp 조작으로 정상 상태를 가장하지 않는다. CMainApp의 실제 사례와 실행/수동 확인 경계는 09-24 RELEASE_F1_RAID_TEST_RESULT의 Debug 종료 복구 기록을 따른다.

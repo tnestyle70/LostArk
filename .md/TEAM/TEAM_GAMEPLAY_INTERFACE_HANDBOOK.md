@@ -349,37 +349,35 @@ F1 Sequence Viewer는 모든 Debug Level에서 쿠크/발탄 목록을 읽고, �
 player·오래된 request sequence는 실행하지 않는다. 표시 이름은 실행 ID가 아니다.
 사용법과 저작/배포 경계는 `AREA_DATA_LAYER_GUIDE.md`의 F1 Sequence Viewer 항목을 따른다.
 
-맵별 플레이어 시점은 F1의 `Player Follow Camera`에서 설정한다. `Camera map`은
-Character Select / KoukuSaydon / Bern / Valtan이다. 기본 편집 `FOV X at 16:9 (deg)`는 수평각이며
-JSON과 DirectX 카메라는 환산된 수직 `fovYDegrees`를 소비한다. 실제 viewport의 수평각도 표시한다.
-FOV 아래 `Character size`는 catalog presentation scale에 곱하는 0.25~4배 표현 크기다.
-`Reset size`는 1배로 복귀하며 몸·장비·본 부착이 같은 root를 소비한다. Server Transform,
-충돌·공격 반경은 이 값의 소비자가 아니다. 맵별 optional `characterSizeMultiplier`를 생략하면
-1을 사용하고, 생성·class 교체·재입장 때 저장된 값을 다시 적용한다.
-F1 `Character Size`의 optional `classSizeMultipliers`는 GuardianKnight를 포함한 일곱 stable class 이름으로 저장한다. 이전 여섯 키 문서는 기존 값을 보존하고 GuardianKnight=1로 읽으며 다음 Save에서 일곱 키를 저장한다. 기본값은 Artist 0.7, DimensionMaster 1.0, 나머지 1이며 현재 catalog scale에 곱한다. Character Select·Bern·Valtan·KoukuSaydon 저장본은 이 값으로 정합했고 Development/Training/Maharaka는 Character Select profile을 소비한다. `clownSizeMultiplier` 기본 0.7과 `marioSizeMultiplier` 기본 1은 변신별 추가 배율이다. 로컬·원격 캐릭터가 같은 map profile을 소비한다. 카드미로 플레이어 망치의 `mazeHammerPositionCm`, `mazeHammerRotationDegrees`, `mazeHammerScale`은 손 기준 cm/degree/축별 배율이고 같은 Save/Reload로 저장한다. 쿠크 휠윈드 Object의 Transform과는 별도 필드다.
-`Advanced camera pose`의 Position offset은 플레이어 기준 월드 XYZ(m), Rotation은
-Pitch/Yaw/Roll(deg), Pitch +는 아래, Yaw 0은 +Z다. 응답0은 즉시 follow다.
-슬라이더 변경·`Reload saved`·두 preset은 활성 맵에 즉시 적용하고 follow로 복귀한다.
-다른 맵 선택 또는 연출 override 중에는 preview를 적용하지 않는다.
+F1의 카메라 편집 패널을 제거하고 같은 위치에 `Open Balance Test`를 배치했다.
+버튼은 기존 공용 `Balance Test` 독립 창을 열며 Debug/Release에서 함께 사용한다.
+F6 follow/free 전환과 맵별 카메라 profile 소비는 유지한다.
 
-`Source baseline`은 공통50도/16m, 발탄55도/18m를 적용한다. 쿠크는 optional
-`useSourceCameraRegions=true`에서 원본 entrance volume 내부만19m이며 나머지는16m다.
-1관문 전장은 이 volume 밖이다. 필드 없는 기존 JSON은 manual pose를 유지한다.
-F1의 FOV·거리·pose 편집은 region 적용을 끄고 캐릭터 크기 편집은 유지한다.
-Effective distance가 실효값이며 지역 이동은 authored profile을 덮지 않는다.
-원본 package/CDO와 구역 연결 복구는 원작 최종 화면 일치 확인과 별도다.
-`Before restoration`은 복원 전 네 맵의 실제 카메라 설정으로 되돌린다. 두 버튼은 pose와 lens를
-함께 교체하고 저장은 하지 않으며 Character size 입력을 보존한다. FOV 슬라이더만 움직이면
-나머지 pose와 모든 asset scale을 유지한다. Bern 저장값55도는 사용자의 비교값이며 source50도와 구분한다.
-`Save camera settings`는 선택 JSON만 저장하고 다음 진입 때 자동 적용한다. 로드 이후 디스크가 바뀌면
-저장을 거절하고 draft와 파일을 보존한다. `Read current camera`는 현재 적용된 follow profile을 가져온다.
-
-정본은 `Data/Camera/{CharacterSelect,Bern,Valtan,KoukuSaydon}.camera.json`이다. publisher 없이
+정본은 `Data/Camera/{CharacterSelect,Bern,Valtan,KoukuSaydon}.camera.json`이며 publisher 없이
 직접 읽는다. `CArenaCameraProfile`의 schema/version/areaId·유한 범위 검증을 통과한 profile만
-Level이 생성·class 변경·follow 복귀에 소비한다. Valtan/Kouku 연출 종료도 같은 profile로 돌아온다.
-마리오·카드미로·컷신의 개별 카메라와 기존 presentation priority는 유지한다. Character Select의
-`Move Player`는 계속 비활성이며 Bern 카메라 패널은 플레이어 배치 명령을 추가하지 않는다.
-새 Server command와 Resources 전달물은 없다.
+Level이 생성·class 변경·follow 복귀에 소비한다. JSON과 DirectX 카메라는 수직 `fovYDegrees`를
+사용하고 수평각은 16:9 기준으로 환산한다. Position offset은 플레이어 기준 월드 XYZ(m),
+Rotation은 Pitch/Yaw/Roll(deg), Pitch +는 아래, Yaw 0은 +Z다. 응답0은 즉시 follow다.
+
+optional `characterSizeMultiplier`는 catalog presentation scale에 곱하는 0.25~4배 표현 크기이며
+생략하면 1이다. 몸·장비·본 부착이 같은 root를 소비한다. Server Transform과 충돌·공격 반경은
+이 값의 소비자가 아니다. optional `classSizeMultipliers`는 GuardianKnight를 포함한 일곱 stable class
+이름을 사용한다. 이전 여섯 키 문서는 기존 값을 보존하고 생략된 GuardianKnight를 1로 읽는다.
+기본값은 Artist 0.7, DimensionMaster 1.0, 나머지 1이며 현재 catalog scale에 곱한다.
+Development/Training/Maharaka는 Character Select profile을 소비한다. `clownSizeMultiplier` 기본0.7과
+`marioSizeMultiplier` 기본1은 변신별 추가 배율이다. 로컬·원격 캐릭터가 같은 map profile을 소비한다.
+카드미로 플레이어 망치의 `mazeHammerPositionCm`, `mazeHammerRotationDegrees`, `mazeHammerScale`은
+손 기준 cm/degree/축별 배율이며 쿠크 휠윈드 Object Transform과 별도 필드다.
+
+source 카메라 기준은 공통50도/16m, 발탄55도/18m다. 쿠크는 optional
+`useSourceCameraRegions=true`에서 원본 entrance volume 내부만19m이며 나머지는16m다.
+1관문 전장은 이 volume 밖이다. 필드 없는 기존 JSON은 manual pose를 유지하며 지역 이동은
+저장 profile을 덮지 않는다. Bern 저장값55도는 사용자 비교값이며 source50도와 구분한다.
+원본 package/CDO·구역 연결 복구와 원작 최종 화면 일치 확인은 별도다.
+
+저장본 변경은 재입장 때 확인한다. Valtan/Kouku 연출 종료도 같은 profile로 돌아오며,
+마리오·카드미로·컷신의 개별 카메라와 기존 presentation priority는 유지한다.
+Character Select의 `Move Player`는 계속 비활성이다. 새 Server command와 Resources 전달물은 없다.
 
 ### 4.1.1 Debug 웨이브 몬스터 버튼 (Kouku Book1/Book2, Valtan Stage_1/Stage_2)
 
@@ -708,10 +706,16 @@ damage, target NetEntityId, world anchor, incoming/outgoing을 제공하며 UI�
 
 UI 담당자는 JSON을 매 프레임 읽지 않는다. `CCombatHUDViewModel::Initialize_Definitions()`가 정의를 준비하고 `CClientReplication`이 snapshot마다 runtime 상태를 적용한다. UI 코드에서 packet, socket, Character, boss GameObject를 직접 조회하지 않는다.
 
-Debug F1 `Balance Tool`은 여섯 class와 발탄을 선택해 stats/movement/skill/combo/pattern을 편집하고,
-field provenance와 Server snapshot/damage event를 같은 화면에서 검증한다. Save는 authoring JSON을
-staging한 뒤 변경 field를 `PROJECT_TUNED`로 동기화하고 publisher Validate를 수행한다. Publish 후
-Server 재시작이 필요하며 runtime Hot Reload 버튼은 없다. 세부 작업법은
+Debug/Release F1의 `Open Balance Test`는 공용 수치 편집용 독립 창을 연다. `Players / Skills /
+Damage / Bosses`에서 실제 소비하는 수치를 편집하며 일반 수치 panel은 Valtan pattern source를
+로드하지 않는다. `Retail.balanceprofile.json`이 덮는 field는 그 실효값을 읽고 같은 Retail row에
+저장하며, 덮지 않는 movement/timing 등은 base JSON에 저장한다. 별도 Valtan authoring backend는 유지한다.
+
+`Save + Validate`는 stable ID와 field 이전값으로 최신 저장본에 병합하고, 변경 field를
+`PROJECT_TUNED`로 동기화한 후보를 검증한 뒤 원자 교체한다. 실패하면 기존 저장본을 보존한다.
+`Publish Server Data`는 Gameplay/World/Items를 같은 Retail profile의 runtime set으로 게시한다.
+파일 저장·게시와 실행 반영은 별도이며 Server와 Client를 재시작한 뒤 Server snapshot/damage event로
+확인한다. 일반 수치 panel은 runtime Hot Reload를 수행하지 않는다. 세부 작업법은
 `BALANCE_TOOL_OWNER_HANDOFF.md`가 정본이다.
 
 ### 6.1 ImGui authoring에서 제품 이미지 UI로 전환

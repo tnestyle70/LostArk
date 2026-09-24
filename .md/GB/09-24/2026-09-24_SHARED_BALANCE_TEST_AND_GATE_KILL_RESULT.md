@@ -115,3 +115,20 @@ ALT_V Retail 피해는 `23000 * 16286651 / 10000 + 75170`이며 치명타/편차
    않는다. attackSpeedPercent도 행동 길이에 아직 소비되지 않는다.
 
 이번 변경은 #454를 병합하거나 Retail 수치를 게시하지 않았다.
+
+## G05. 2026-09-24 F1 Balance Test 진입 위치와 작업 결과 처리
+
+현재 Balance Test는 `F1 -> Open Balance Test -> CBalanceTool::Open -> 별도 창`으로 연결되어 있었다. 사용자 최종 요청은 기존 별도 창을 유지하고 F1의 기존 Player Follow Camera 위치에 Balance Test 열기 버튼을 배치하는 것이다. 수치 editor의 F1 인라인 표시 변경은 포함하지 않는다. 숫자 editor와 창 본문·폭·높이는 기존 구조를 유지한다.
+
+### 구현 완료
+
+- `CBalanceTool::Update_EmbeddedPanel -> CBalanceTestPanel::Update`로 창 표시 여부와 무관한 저장·게시 결과 수거를 제공했다. 기존에는 Render에서만 Poll_Job을 호출해 창이 숨겨지면 작업 자체는 계속되지만 결과 처리가 다음 Render까지 지연됐다.
+- 기존 `Render(bool&)`는 Update를 호출한 뒤 동일한 별도 창 본문을 표시한다. 새 렌더 경로나 별도 draft/writer를 만들지 않았다.
+- 변경 파일은 기존 `BalanceTool.cpp/.h`, `BalanceTestPanel.cpp/.h` 네 개다. 프로젝트/filter 항목 추가와 wire·저장 schema 변경은 없다.
+
+### 확인한 검증과 남은 경계
+
+- 담당 diff의 `git diff --check`: PASS. 네 파일 UTF-8/BOM 상태 보존, BalanceTool의 CRLF와 BalanceTestPanel의 LF 원형 유지 확인.
+- MainApp이 F1 표시와 `_DEBUG`에 관계없이 `Update_EmbeddedPanel`을 호출하는 연결을 확인했다. Debug는 기존 Player Follow Camera 위치, Release는 공통 F1 영역에서 launcher를 한 번 표시하며 기존 별도 창을 연다.
+- root는 공용 panel보다 먼저 `m_focusPending`을 처리하도록 수정해 접힌 Balance Test 창도 Open 클릭 시 펼쳐지게 했다. 이 수정을 포함한 최종 Debug/Release Product 빌드는 둘 다 PASS이며 skippedBuild=false다. 증거는 `out/BuildPipeline/runs/20260923T234847724Z-debug-product.json`, `20260923T234951599Z-release-product.json`다.
+- Client/UI를 실행하거나 조작하지 않았다. 기존 숫자 편집·저장·게시 transaction과 별도 창은 유지하며 최종 버튼 위치와 창 표시는 사용자 확인 대상이다.

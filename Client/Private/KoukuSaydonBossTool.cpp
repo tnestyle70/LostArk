@@ -990,6 +990,25 @@ bool Client::CKoukuSaydonBossTool::Render_SavedPatternFlow(const std::string_vie
 		return false;
 	}
 	ImGui::TextUnformatted(flow->strDisplayName.c_str());
+	const bool hasHealthRepeats = std::any_of(flow->EntryGroups.begin(), flow->EntryGroups.end(),
+		[](const auto& group) { return group.RepeatUntilHealthBars.has_value(); });
+	if (hasHealthRepeats)
+	{
+		std::string mechanics;
+		for (const auto& entry : flow->Entries)
+		{
+			const auto group = std::find_if(flow->EntryGroups.begin(), flow->EntryGroups.end(),
+				[&](const auto& row) { return !row.RepeatUntilHealthBars && row.strStartEntryId == entry.strEntryId; });
+			if (group == flow->EntryGroups.end()) continue;
+			if (!mechanics.empty()) mechanics += " -> ";
+			mechanics += group->strDisplayName;
+		}
+		if (!mechanics.empty()) ImGui::TextWrapped("HP mechanics (once): %s", mechanics.c_str());
+		ImGui::TextWrapped("Normal sections repeat between HP mechanics. Complete Play runs the full saved order.");
+	}
+	if (!flow->EntryGroups.empty())
+		ImGui::TextWrapped("Group headers only expand/collapse. Select a Pattern or Bundle row for Load Pattern.");
+	ImGui::PushID(flow->strFlowId.c_str());
 	const auto drawEntry = [&](const std::size_t i) {
 		const auto& entry = flow->Entries[i];
 		std::string error;
@@ -1010,16 +1029,33 @@ bool Client::CKoukuSaydonBossTool::Render_SavedPatternFlow(const std::string_vie
 			[&](const auto& row) { return row.strEntryId == group->strEndEntryId; });
 		if (last == flow->Entries.end()) { drawEntry(i++); continue; }
 		const std::size_t end = static_cast<std::size_t>(last - flow->Entries.begin()) + 1u;
-		const std::string label = group->strDisplayName + (group->RepeatUntilHealthBars ?
-			" [Repeat until " + std::to_string(*group->RepeatUntilHealthBars) + " HP bars]" : "") + "##" + group->strGroupId;
-		if (ImGui::TreeNodeEx(label.c_str(), ImGuiTreeNodeFlags_DefaultOpen))
+		const bool repeat = group->RepeatUntilHealthBars.has_value();
+		std::string label = repeat ? "[Repeat] " : hasHealthRepeats ? "[Once] " : "[Group] ";
+		label += group->strDisplayName;
+		if (repeat)
+			label += " | until " + std::to_string(*group->RepeatUntilHealthBars) + " HP bars" +
+				(*group->RepeatUntilHealthBars == 0u ? " (boss defeated)" : "");
+		label += " | " + std::to_string(end - i) + " rows";
+		ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_Framed | ImGuiTreeNodeFlags_SpanAvailWidth;
+		if (!repeat) flags |= ImGuiTreeNodeFlags_DefaultOpen;
+		ImGui::PushStyleColor(ImGuiCol_Header, repeat ? ImVec4{.12f, .23f, .32f, 1.f} : ImVec4{.34f, .26f, .10f, 1.f});
+		const bool open = ImGui::TreeNodeEx(group->strGroupId.c_str(), flags, "%s", label.c_str());
+		ImGui::PopStyleColor();
+		if (ImGui::IsItemHovered())
+			ImGui::SetTooltip("%s\nRows %zu-%zu; header is not a playable selection.\n%s", label.c_str(), i + 1u, end,
+				repeat ? (group->bTransitionAtGroupEnd ? "Advance after the whole group completes." :
+					"Advance after the running pattern and its follow-up complete.") : "This section runs once in the saved order.");
+		if (open)
 		{
-			if (group->RepeatUntilHealthBars) ImGui::TextDisabled("Transition after %s completes", group->bTransitionAtGroupEnd ? "the group" : "the current pattern");
+			if (repeat) ImGui::TextWrapped("Repeat this section until the boss reaches %u HP bars. Transition after %s completes.",
+				*group->RepeatUntilHealthBars, group->bTransitionAtGroupEnd ? "the whole group" : "the running pattern and its follow-up");
+			else if (hasHealthRepeats) ImGui::TextDisabled("One-time HP mechanic and its saved transition");
 			while (i < end) drawEntry(i++);
 			ImGui::TreePop();
 		}
 		else i = end;
 	}
+	ImGui::PopID();
 	return true;
 }
 

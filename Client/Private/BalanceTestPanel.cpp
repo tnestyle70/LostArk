@@ -254,9 +254,14 @@ void CBalanceTestPanel::Render_KillBossControl()
     if (!status.empty()) ImGui::TextWrapped("%s", status.c_str());
 }
 
-void CBalanceTestPanel::Render(bool& open)
+void CBalanceTestPanel::Update()
 {
     Poll_Job();
+}
+
+void CBalanceTestPanel::Render(bool& open)
+{
+    Update();
     ImGui::SetNextWindowSize(ImVec2(1040.f, 720.f), ImGuiCond_FirstUseEver);
     if (!ImGui::Begin("Balance Test", &open)) { ImGui::End(); return; }
     ImGui::TextWrapped("Retail player, skill, damage and boss numbers. Source fields show their effective profile values; Save and Publish prepare the next Server start.");

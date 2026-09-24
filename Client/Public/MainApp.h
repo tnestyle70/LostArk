@@ -9,7 +9,6 @@
 #include "LightResourceCatalog.h"
 #include "AreaLightAuthoringSession.h"
 #include "CombatHUDViewModel.h"
-#include "ArenaCameraProfile.h"
 
 #include <chrono>
 #include <filesystem>
@@ -488,7 +487,6 @@ private:
 	void RenderDebugLevelNavigation();
 	void RenderArenaCameraAndPlayerControls();
 	void RenderCharacterSelectFloorSwapControls();
-	void RenderArenaFollowCameraSettings();
 	/* F1 "Kouku UI Preview": the only writer of the KoukuSaydon gimmick read model
 	until the Server snapshot carries it. Madness slider, HUD mode combo, dance
 	reroll and sample cooldowns; disabling invalidates the state again. */
@@ -546,6 +544,7 @@ private:
 	void RenderWorldLevelTool();
 	void ClaimCompositionPreviewOwner(DEBUG_TOOL owner);
 	void StopCompositionPreview(DEBUG_TOOL owner);
+	void RenderBalanceTestLauncher();
 	void RenderDeveloperTools();
 	void RenderSequenceViewer();
 	void UpdateSequenceViewer();
@@ -639,12 +638,6 @@ private:
 	bool_t m_bHudSpecialSlotShown = false;
 #ifdef _DEBUG
 	unique_ptr<CLevelNavigationDebug> m_pLevelNavigationDebug;
-	std::array<ARENA_CAMERA_PROFILE, 4> m_ArenaCameraDrafts{};
-	std::array<bool, 4> m_ArenaCameraDraftLoaded{};
-	std::array<std::string, 4> m_ArenaCameraDraftStatus{};
-	std::array<std::string, 4> m_ArenaCameraSourceBaselines{};
-	int m_iArenaCameraSelectedMap = 0;
-	uint32_t m_iArenaCameraLastLevel = UINT32_MAX;
 	// These are unapplied UI drafts; the active Level owns the installed floor.
 	std::string m_strCharacterSelectFloorDraftId;
 	float3_t m_vCharacterSelectFloorOffsetMeters{};

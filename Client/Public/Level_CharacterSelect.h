@@ -216,6 +216,8 @@ public:
 	bool_t Is_CustomizingOpen() const;
 	bool_t Is_ClassCinematicActive() const { return m_ClassSelectionPresentation.Is_Active(); }
 	bool_t Can_PlayClassCinematic() const;
+	// F1 reuses the active Level's cinematic owner in both Debug and Release.
+	static void Render_ClassSelectMovieControls();
 	bool_t Is_ProductPresentationOpen() const
 	{ return Is_CustomizingOpen() || Is_ClassCinematicActive(); }
 	/* Takes the class-list stage down while character creation is open and restores each

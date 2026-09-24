@@ -87,6 +87,8 @@ namespace
 			"BOSS_VALTAN", true }
 	};
 
+	const char* Get_CinematicClassId(size_t index);
+
 	const char_t* Get_CharacterClassName(
 		const LostArk::Shared::CHARACTER_CLASS_ID characterClass)
 	{
@@ -1836,6 +1838,60 @@ bool_t CLevel_CharacterSelect::Can_PlayClassCinematic() const
 	if (Is_DebugRaidEntryPreviewOpen()) return false;
 #endif
 	return true;
+}
+
+void CLevel_CharacterSelect::Render_ClassSelectMovieControls()
+{
+	using LostArk::Shared::CHARACTER_CLASS_ID;
+	static CHARACTER_CLASS_ID selectedClass = CHARACTER_CLASS_ID::GUARDIANKNIGHT;
+	ImGui::PushID("CharacterSelectMovie");
+	if (ImGui::BeginCombo("Class", Get_CharacterClassName(selectedClass)))
+	{
+		for (const auto characterClass : SUPPORTED_CLASSES)
+		{
+			const bool selected = selectedClass == characterClass;
+			if (ImGui::Selectable(Get_CharacterClassName(characterClass), selected))
+				selectedClass = characterClass;
+			if (selected) ImGui::SetItemDefaultFocus();
+		}
+		ImGui::EndCombo();
+	}
+	ImGui::TextDisabled("Movie preview only; your Server character stays unchanged.");
+	auto* const level = Get_Active();
+	if (!level || CGameInstance::Get().Get_CurrentLevelID() != ETOUI(LEVEL::CHARACTER_SELECT))
+	{
+		ImGui::TextDisabled("Enter Character Select to preview this movie");
+		ImGui::PopID();
+		return;
+	}
+	const auto selected = std::find(SUPPORTED_CLASSES.begin(), SUPPORTED_CLASSES.end(), selectedClass);
+	const std::string classId = Get_CinematicClassId(
+		static_cast<size_t>(std::distance(SUPPORTED_CLASSES.begin(), selected)));
+	auto& presentation = level->m_ClassSelectionPresentation;
+	const bool admitted = presentation.Has_Class(classId);
+	const bool canPlay = level->Can_PlayClassCinematic();
+	ImGui::BeginDisabled(!admitted || !canPlay);
+	if (ImGui::Button(presentation.Is_Active() ? "Restart Intro" : "Play"))
+		(void)presentation.Play(classId);
+	ImGui::EndDisabled();
+	ImGui::SameLine();
+	ImGui::BeginDisabled(!presentation.Is_Active());
+	if (ImGui::Button("Stop")) presentation.Stop();
+	ImGui::EndDisabled();
+	if (!admitted)
+		ImGui::TextWrapped("No prepared movie for %s. %s", Get_CharacterClassName(selectedClass),
+			level->Get_ClassCinematicStatus().c_str());
+	else
+	{
+		if (!canPlay)
+			ImGui::TextWrapped("Wait for Server admission and close character creation or raid-entry preview before Play.");
+		ImGui::TextWrapped("%s", level->Get_ClassCinematicStatus().c_str());
+	}
+	if (presentation.Is_Active())
+		ImGui::Text("%s | %s%s | %.2f / %.2f s", presentation.Get_ActiveClass().c_str(),
+			presentation.Is_Looping() ? "Loop" : "Intro", presentation.Is_Paused() ? " (paused)" : "",
+			presentation.Get_ClockMs() / 1000., presentation.Get_DurationMs() / 1000.);
+	ImGui::PopID();
 }
 
 bool_t CLevel_CharacterSelect::Is_CustomizingOpen() const

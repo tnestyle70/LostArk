@@ -1236,6 +1236,10 @@ namespace
 void CMainApp::UpdateKoukuGateCompletePlay()
 {
     using namespace LostArk::Shared;
+    const auto revisionMismatch = [](const char* source, const std::uint32_t expected, const std::uint32_t actual) {
+        return std::string(source) + " revision mismatch: expected " + std::to_string(expected) +
+            ", current " + std::to_string(actual) + ". Wait for Publish to finish, then retry Complete Play.";
+    };
     auto* arena = CLevel_KakulSaydonArena::Get_Active();
     auto& network = CNetworkManager::Get();
     const bool worldChanged = m_iKoukuCompletePlayWorldGeneration != 0u &&
@@ -1288,11 +1292,15 @@ void CMainApp::UpdateKoukuGateCompletePlay()
         CKoukuSaydonCompositionDocument actions;
         CKoukuSaydonCompositionDocument sequences(CKoukuSaydonCompositionDocument::Resolve_SequencePath());
         CKoukuSaydonBossTool product;
-        if (!actions.Reload(reason) || !sequences.Reload(reason) || !product.Reload(reason) ||
-            actions.Get_LastGood().iRevision != pending.request.iActionSourceRevision ||
-            product.Get_SourceRevision() != pending.request.iActionSourceRevision ||
-            sequences.Get_LastGood().iRevision != pending.request.iSequenceSourceRevision)
-        { fail("Saved or published Action/Sequence changed while preparing. " + reason); return; }
+        if (!actions.Reload(reason)) { fail("Saved Action reload failed: " + reason); return; }
+        if (!sequences.Reload(reason)) { fail("Saved Sequence reload failed: " + reason); return; }
+        if (!product.Reload(reason)) { fail("Published Action reload failed: " + reason); return; }
+        if (actions.Get_LastGood().iRevision != pending.request.iActionSourceRevision)
+        { fail(revisionMismatch("Saved Action", pending.request.iActionSourceRevision, actions.Get_LastGood().iRevision)); return; }
+        if (product.Get_SourceRevision() != pending.request.iActionSourceRevision)
+        { fail(revisionMismatch("Published Action", pending.request.iActionSourceRevision, product.Get_SourceRevision())); return; }
+        if (sequences.Get_LastGood().iRevision != pending.request.iSequenceSourceRevision)
+        { fail(revisionMismatch("Saved Sequence", pending.request.iSequenceSourceRevision, sequences.Get_LastGood().iRevision)); return; }
         const auto request = pending.request;
         if (!arena->Get_PlayerCommandSink()->Request_KoukuRaid(request))
         { fail("The prepared raid request could not be submitted."); return; }
@@ -1365,11 +1373,15 @@ void CMainApp::UpdateKoukuGateCompletePlay()
             ready = sequences.Reload(preparationError);
         }
         if (ready) preparationStage = "revision.match";
-        if (ready && (actions.Get_LastGood().iRevision != state.iActionSourceRevision ||
-            sequences.Get_LastGood().iRevision != state.iSequenceSourceRevision ||
-            sequences.Get_LastGood().strCompositionId != state.strSequenceCompositionId ||
-            CNetworkManager::Get().Get_GameplayRevisionState().ServerActiveRevision != state.PinnedGameplayRevision))
-        { ready = false; preparationError = "Saved Action/Sequence or gameplay revision differs from the Server pin"; }
+        if (ready && actions.Get_LastGood().iRevision != state.iActionSourceRevision)
+        { ready = false; preparationError = revisionMismatch("Saved Action", state.iActionSourceRevision, actions.Get_LastGood().iRevision); }
+        if (ready && sequences.Get_LastGood().iRevision != state.iSequenceSourceRevision)
+        { ready = false; preparationError = revisionMismatch("Saved Sequence", state.iSequenceSourceRevision, sequences.Get_LastGood().iRevision); }
+        if (ready && sequences.Get_LastGood().strCompositionId != state.strSequenceCompositionId)
+        { ready = false; preparationError = "Saved Sequence composition mismatch: expected " + state.strSequenceCompositionId + ", current " + sequences.Get_LastGood().strCompositionId; }
+        if (ready && CNetworkManager::Get().Get_GameplayRevisionState().ServerActiveRevision != state.PinnedGameplayRevision)
+        { ready = false; preparationError = "Gameplay revision mismatch: expected " + Format_GameplayDataRevision(state.PinnedGameplayRevision) +
+            ", current " + Format_GameplayDataRevision(CNetworkManager::Get().Get_GameplayRevisionState().ServerActiveRevision); }
         if (ready)
         {
             // Preload and validate immutable documents only. No playback, spawn, camera or teleport occurs here.
@@ -1394,8 +1406,10 @@ void CMainApp::UpdateKoukuGateCompletePlay()
             CKoukuSaydonBossTool published;
             if (m_iKoukuRaidResourceEpoch != state.iRunEpoch)
             {
-                if (!published.Reload(preparationError) || published.Get_SourceRevision() != state.iActionSourceRevision)
+                if (!published.Reload(preparationError))
                     ready = false;
+                else if (published.Get_SourceRevision() != state.iActionSourceRevision)
+                { ready = false; preparationError = revisionMismatch("Published Action", state.iActionSourceRevision, published.Get_SourceRevision()); }
                 else
                 {
                     m_KoukuRaidResourcePatternIds = published.Get_PlayAllPatternIds();
@@ -1413,11 +1427,15 @@ void CMainApp::UpdateKoukuGateCompletePlay()
             if (ready)
             {
                 preparationStage = "resources.final_revision";
-                ready = actions.Reload(preparationError) && sequences.Reload(preparationError) && published.Reload(preparationError) &&
-                    actions.Get_LastGood().iRevision == state.iActionSourceRevision &&
-                    sequences.Get_LastGood().iRevision == state.iSequenceSourceRevision &&
-                    published.Get_SourceRevision() == state.iActionSourceRevision;
-                if (!ready && preparationError.empty()) preparationError = "Saved or published data changed during resource preparation";
+                ready = actions.Reload(preparationError) && sequences.Reload(preparationError) && published.Reload(preparationError);
+                if (ready && actions.Get_LastGood().iRevision != state.iActionSourceRevision)
+                { ready = false; preparationError = revisionMismatch("Saved Action", state.iActionSourceRevision, actions.Get_LastGood().iRevision); }
+                if (ready && sequences.Get_LastGood().iRevision != state.iSequenceSourceRevision)
+                { ready = false; preparationError = revisionMismatch("Saved Sequence", state.iSequenceSourceRevision, sequences.Get_LastGood().iRevision); }
+                if (ready && published.Get_SourceRevision() != state.iActionSourceRevision)
+                { ready = false; preparationError = revisionMismatch("Published Action", state.iActionSourceRevision, published.Get_SourceRevision()); }
+                if (ready) preparationError.clear();
+                else if (preparationError.empty()) preparationError = "Saved or published data changed during resource preparation";
             }
         }
         if (ready)
@@ -2004,6 +2022,7 @@ void CMainApp::Update(const f32_t fTimeDelta)
 	if (nullptr != m_pBalanceTool)
 		{
 			Engine::CProfilerScope toolScope(CGameInstance::Get().Get_Profiler(), "ImGui.Tool.Balance.Update_ValtanSaveJob");
+			m_pBalanceTool->Update_EmbeddedPanel();
 			m_pBalanceTool->Update_ValtanSaveJob();
 		}
 	if (nullptr != m_pValtanActionWorkbench)
@@ -10466,8 +10485,7 @@ void CMainApp::RenderArenaCameraAndPlayerControls()
 	if (m_pLevelNavigationDebug) m_pLevelNavigationDebug->Render_Controls();
 	if (nullptr != characterSelect)
 		RenderCharacterSelectFloorSwapControls();
-	if (characterSelect || kouku || bern || valtan)
-		RenderArenaFollowCameraSettings();
+	RenderBalanceTestLauncher();
 	if (nullptr != kouku)
 		RenderKoukuUiPreviewControls();
 }
@@ -10574,292 +10592,6 @@ void CMainApp::RenderCharacterSelectFloorSwapControls()
 	ImGui::TextDisabled("Close character customization before applying or restoring a floor.");
 	ImGui::TextWrapped("Baked lighting stays with the source floor; it has not been rebaked for the center position.");
 	const auto& status = characterSelect->Debug_GetFloorSwapStatus();
-	if (!status.empty()) ImGui::TextWrapped("%s", status.c_str());
-	ImGui::PopID();
-}
-
-void CMainApp::RenderArenaFollowCameraSettings()
-{
-	Engine::CProfilerScope panelScope(CGameInstance::Get().Get_Profiler(), "ImGui.Hub.FollowCamera");
-	const uint32_t level = CGameInstance::Get().Get_CurrentLevelID();
-	auto* characterSelect = level == ETOUI(LEVEL::CHARACTER_SELECT) ? CLevel_CharacterSelect::Get_Active() : nullptr;
-	auto* kouku = level == ETOUI(LEVEL::KAKULSAYDON_ARENA) ? CLevel_KakulSaydonArena::Get_Active() : nullptr;
-	auto* bern = level == ETOUI(LEVEL::BERN) ? CLevel_Bern::Get_Active() : nullptr;
-	auto* valtan = level == ETOUI(LEVEL::VALTAN_ARENA) ? CLevel_ValtanArena::Get_Active() : nullptr;
-	if (m_iArenaCameraLastLevel != level)
-	{
-		m_iArenaCameraLastLevel = level;
-		if (characterSelect) m_iArenaCameraSelectedMap = 0;
-		else if (kouku) m_iArenaCameraSelectedMap = 1;
-		else if (bern) m_iArenaCameraSelectedMap = 2;
-		else if (valtan) m_iArenaCameraSelectedMap = 3;
-	}
-	if (!ImGui::CollapsingHeader("Player Follow Camera", ImGuiTreeNodeFlags_DefaultOpen))
-		return;
-	ImGui::PushID("ArenaFollowCameraSettings");
-	const char* names[] = { "Character Select", "KoukuSaydon", "Bern", "Valtan" };
-	const ARENA_CAMERA_MAP maps[] = { ARENA_CAMERA_MAP::CHARACTER_SELECT,
-		ARENA_CAMERA_MAP::KOUKU_SAYDON, ARENA_CAMERA_MAP::BERN, ARENA_CAMERA_MAP::VALTAN };
-	ImGui::Combo("Camera map", &m_iArenaCameraSelectedMap, names, IM_ARRAYSIZE(names));
-	const size_t index = static_cast<size_t>(m_iArenaCameraSelectedMap);
-	const ARENA_CAMERA_MAP map = maps[index];
-	auto& draft = m_ArenaCameraDrafts[index];
-	auto& status = m_ArenaCameraDraftStatus[index];
-	auto& baseline = m_ArenaCameraSourceBaselines[index];
-	const bool active = (index == 0u && characterSelect) || (index == 1u && kouku) ||
-		(index == 2u && bern) || (index == 3u && valtan);
-	shared_ptr<CCamera_Free> camera;
-	if (index == 0u && characterSelect) camera = characterSelect->Get_DebugCamera();
-	else if (index == 1u && kouku) camera = kouku->Get_DebugCamera();
-	else if (index == 2u && bern) camera = bern->Get_DebugCamera();
-	else if (index == 3u && valtan) camera = valtan->Get_DebugCamera();
-	const auto useCurrent = [&]()
-	{
-		if (index == 0u && characterSelect)
-		{
-			draft = characterSelect->Get_FollowCameraProfile();
-			status = characterSelect->Get_FollowCameraProfileStatus();
-		}
-		else if (index == 1u && kouku)
-		{
-			draft = kouku->Get_FollowCameraProfile();
-			status = kouku->Get_FollowCameraProfileStatus();
-		}
-		else if (index == 2u && bern)
-		{
-			draft = bern->Get_FollowCameraProfile();
-			status = bern->Get_FollowCameraProfileStatus();
-		}
-		else if (index == 3u && valtan)
-		{
-			draft = valtan->Get_FollowCameraProfile();
-			status = valtan->Get_FollowCameraProfileStatus();
-		}
-	};
-	if (!m_ArenaCameraDraftLoaded[index])
-	{
-		draft = CArenaCameraProfile::Default(map);
-		(void)CArenaCameraProfile::Load(map, draft, status, &baseline);
-		m_ArenaCameraDraftLoaded[index] = true;
-	}
-	const bool canPreview = active && camera && !camera->Is_PresentationOverrideActive();
-	const auto applyProfile = [&]()
-	{
-		if (!active || !camera) return false;
-		if (index == 0u) return characterSelect->Set_FollowCameraProfile(draft, status);
-		if (index == 1u) return kouku->Set_FollowCameraProfile(draft, status);
-		if (index == 2u) return bern->Set_FollowCameraProfile(draft, status);
-		return valtan->Set_FollowCameraProfile(draft, status);
-	};
-	const auto preview = [&]()
-	{
-		if (canPreview && applyProfile()) camera->Set_FollowEnabled(true);
-	};
-	const auto save = [&]()
-	{
-		if (!CArenaCameraProfile::Save(map, draft, status, &baseline)) return;
-		const std::string savedStatus = status;
-		if (!active)
-			status += " Saved for the next entry.";
-		else if (applyProfile())
-			status = savedStatus + " Character sizes applied to the current map.";
-		else
-			status = savedStatus + " Current map could not apply the profile: " + status;
-	};
-	const auto reload = [&]()
-	{
-		if (!CArenaCameraProfile::Load(map, draft, status, &baseline)) return;
-		const std::string loadedStatus = status;
-		if (!active)
-			status += " Loaded for the selected map; enter it to apply these settings.";
-		else if (applyProfile())
-			status = loadedStatus + " Character sizes applied to the current map.";
-		else
-			status = loadedStatus + " Current map could not apply the profile: " + status;
-	};
-	bool edited = false;
-	if (map == ARENA_CAMERA_MAP::KOUKU_SAYDON)
-	{
-		if (ImGui::Checkbox("Use source camera regions", &draft.useSourceCameraRegions))
-		{
-			if (draft.useSourceCameraRegions)
-			{
-				const auto source = CArenaCameraProfile::Default(map);
-				draft.positionOffset = source.positionOffset;
-				draft.rotationDegrees = source.rotationDegrees;
-				draft.focusDistance = source.focusDistance;
-				draft.fovYDegrees = source.fovYDegrees;
-				draft.followResponse = source.followResponse;
-			}
-			edited = true;
-		}
-		if (kouku)
-		{
-			const auto& effective = kouku->Get_EffectiveFollowCameraProfile();
-			ImGui::Text("Effective distance: %.3f m | Source regions: %s",
-				effective.focusDistance, draft.useSourceCameraRegions ? "On" : "Off");
-		}
-	}
-	const auto horizontalFov = [](f32_t vertical, f32_t aspect)
-	{
-		return XMConvertToDegrees(2.f * std::atan(std::tan(XMConvertToRadians(vertical) * 0.5f) * aspect));
-	};
-	const f32_t referenceAspect = 16.f / 9.f;
-	f32_t referenceFov = horizontalFov(draft.fovYDegrees, referenceAspect);
-	ImGui::TextWrapped("Smaller FOV shows a closer view; larger FOV shows more of the scene.");
-	if (ImGui::SliderFloat("FOV X at 16:9 (deg)", &referenceFov,
-		horizontalFov(10.f, referenceAspect), horizontalFov(150.f, referenceAspect),
-		"%.2f", ImGuiSliderFlags_AlwaysClamp))
-	{
-		draft.fovYDegrees = XMConvertToDegrees(2.f * std::atan(
-			std::tan(XMConvertToRadians(referenceFov) * 0.5f) / referenceAspect));
-		draft.fovYDegrees = std::clamp(draft.fovYDegrees, 10.f, 150.f);
-		draft.useSourceCameraRegions = false;
-		edited = true;
-	}
-	f32_t orbitDistance = draft.focusDistance;
-	f32_t orbitPitch = draft.rotationDegrees.x;
-	f32_t orbitYaw = draft.rotationDegrees.y;
-	bool orbitEdited = ImGui::DragFloat("Camera distance (m)", &orbitDistance, 0.1f, 0.1f, 1000.f,
-		"%.2f", ImGuiSliderFlags_AlwaysClamp);
-	orbitEdited |= ImGui::DragFloat("Camera pitch (deg)", &orbitPitch, 0.25f, -89.f, 89.f,
-		"%.2f", ImGuiSliderFlags_AlwaysClamp);
-	orbitEdited |= ImGui::DragFloat("Camera yaw (deg)", &orbitYaw, 0.25f, -180.f, 180.f,
-		"%.2f", ImGuiSliderFlags_AlwaysClamp);
-	if (orbitEdited && CArenaCameraProfile::Set_OrbitAroundFocus(draft, orbitDistance, orbitPitch, orbitYaw, status))
-	{
-		draft.useSourceCameraRegions = false;
-		edited = true;
-	}
-	ImGui::TextDisabled("Distance moves the camera toward or away from the same focus. Pitch changes the ground angle; yaw circles the focus.");
-	if (ImGui::TreeNodeEx("Character Size", ImGuiTreeNodeFlags_DefaultOpen))
-	{
-		bool sizeEdited = false;
-		sizeEdited |= ImGui::SliderFloat("All characters", &draft.characterSizeMultiplier,
-			0.25f, 4.f, "%.3f x", ImGuiSliderFlags_AlwaysClamp);
-		const char* classNames[] = { "Lance Master", "Gunslinger", "Slayer", "Artist", nullptr, "DimensionMaster", "Warlord", "Guardian Knight" };
-		for (size_t i = 0u; i < draft.classSizeMultipliers.size(); ++i)
-			if (classNames[i]) sizeEdited |= ImGui::SliderFloat(classNames[i], &draft.classSizeMultipliers[i],
-				0.25f, 4.f, "%.3f x", ImGuiSliderFlags_AlwaysClamp);
-		sizeEdited |= ImGui::SliderFloat("Madness clown", &draft.clownSizeMultiplier,
-			0.25f, 4.f, "%.3f x", ImGuiSliderFlags_AlwaysClamp);
-		sizeEdited |= ImGui::SliderFloat("Mario clown", &draft.marioSizeMultiplier,
-			0.25f, 4.f, "%.3f x", ImGuiSliderFlags_AlwaysClamp);
-		if (ImGui::Button("Requested size defaults"))
-		{
-			const ARENA_CAMERA_PROFILE defaults;
-			draft.characterSizeMultiplier = defaults.characterSizeMultiplier;
-			draft.classSizeMultipliers = defaults.classSizeMultipliers;
-			draft.clownSizeMultiplier = defaults.clownSizeMultiplier;
-			draft.marioSizeMultiplier = defaults.marioSizeMultiplier;
-			sizeEdited = true;
-		}
-		// Size tuning does not transfer camera ownership or enable F6 follow.
-		if (sizeEdited && applyProfile())
-			status = "Character sizes applied live. Save to keep the selected map's settings.";
-		if (ImGui::Button("Save##CharacterSize")) save();
-		ImGui::SameLine();
-		if (ImGui::Button("Reload saved##CharacterSize")) reload();
-		ImGui::TextWrapped("Class values multiply the current catalog model. Artist 0.7x, DimensionMaster 1.0x and madness clown 0.7x are the requested defaults. Mario 1x keeps its 1.5m admission height.");
-		ImGui::Text("Save / Reload target: %s", names[index]);
-		ImGui::TextDisabled("Sizes apply during camera sequences too. Save keeps this map's settings for local and remote characters.");
-		ImGui::TreePop();
-	}
-	if (ImGui::TreeNodeEx("Card Maze Player Hammer", ImGuiTreeNodeFlags_DefaultOpen))
-	{
-		bool hammerEdited = ImGui::DragFloat3("Hammer position (cm)", &draft.mazeHammerPositionCm.x, .1f, -1000.f, 1000.f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
-		hammerEdited |= ImGui::DragFloat3("Hammer rotation (deg)", &draft.mazeHammerRotationDegrees.x, .25f, -3600.f, 3600.f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
-		hammerEdited |= ImGui::DragFloat3("Hammer size", &draft.mazeHammerScale.x, .01f, .05f, 8.f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
-		if (ImGui::Button("Reset player hammer"))
-		{
-			draft.mazeHammerPositionCm = {}; draft.mazeHammerRotationDegrees = {};
-			draft.mazeHammerScale = { 1.f, 1.f, 1.f }; hammerEdited = true;
-		}
-		// The maze owns an override camera. Its camera preview gate must not
-		// suppress the profile consumed by the player's attached hammer.
-		if (hammerEdited && applyProfile())
-			status = "Player hammer changes applied live. Save to keep this map's settings.";
-		ImGui::SameLine();
-		if (ImGui::Button("Save player hammer")) save();
-		ImGui::TextWrapped("Offsets from each class's right hand. Changes apply live while holding the Card Maze hammer, including during the maze camera. Size 1 keeps the 1.120 m source hammer before character size.");
-		ImGui::TextDisabled("Save keeps these values in the selected map's profile for the next entry.");
-		ImGui::TreePop();
-	}
-	shared_ptr<CCharacter> character;
-	if (index == 0u && characterSelect) character = characterSelect->Get_LocalCharacter();
-	else if (index == 1u && kouku) character = kouku->Get_LocalCharacter();
-	else if (index == 2u && bern) character = bern->Get_LocalCharacter();
-	else if (index == 3u && valtan) character = valtan->Get_LocalCharacter();
-	if (character)
-		ImGui::Text("Catalog scale: %.3f | Current visual scale: %.3f",
-			character->Get_CatalogPresentationScale(), character->Get_PresentationScale());
-	ImGui::TextDisabled("Size 1 uses the admitted class model. Body, equipment and sockets share the visual scale.");
-	const auto viewport = CGameInstance::Get().Get_ViewportSize();
-	const f32_t aspect = viewport.x > 0.f && viewport.y > 0.f ? viewport.x / viewport.y : referenceAspect;
-	ImGui::Text("Vertical: %.3f deg | Horizontal at %.3f: %.3f deg",
-		draft.fovYDegrees, aspect, horizontalFov(draft.fovYDegrees, aspect));
-	ImGui::Text("Eye-to-focus: %.3f m | Pitch: %.2f deg | Yaw: %.2f deg",
-		draft.focusDistance, draft.rotationDegrees.x, draft.rotationDegrees.y);
-	ImGui::TextDisabled("Camera distance and pitch also affect screen size. Character size does not change combat ranges.");
-	if (ImGui::Button("Source baseline"))
-	{
-		const ARENA_CAMERA_PROFILE sizeSettings = draft;
-		draft = CArenaCameraProfile::Default(map);
-		draft.characterSizeMultiplier = sizeSettings.characterSizeMultiplier;
-		draft.classSizeMultipliers = sizeSettings.classSizeMultipliers;
-		draft.clownSizeMultiplier = sizeSettings.clownSizeMultiplier;
-		draft.marioSizeMultiplier = sizeSettings.marioSizeMultiplier;
-		draft.mazeHammerPositionCm = sizeSettings.mazeHammerPositionCm;
-		draft.mazeHammerRotationDegrees = sizeSettings.mazeHammerRotationDegrees;
-		draft.mazeHammerScale = sizeSettings.mazeHammerScale;
-		edited = true;
-	}
-	ImGui::SameLine();
-	if (ImGui::Button("Before restoration"))
-	{
-		const ARENA_CAMERA_PROFILE sizeSettings = draft;
-		draft = CArenaCameraProfile::BeforeRestoration(map);
-		draft.characterSizeMultiplier = sizeSettings.characterSizeMultiplier;
-		draft.classSizeMultipliers = sizeSettings.classSizeMultipliers;
-		draft.clownSizeMultiplier = sizeSettings.clownSizeMultiplier;
-		draft.marioSizeMultiplier = sizeSettings.marioSizeMultiplier;
-		draft.mazeHammerPositionCm = sizeSettings.mazeHammerPositionCm;
-		draft.mazeHammerRotationDegrees = sizeSettings.mazeHammerRotationDegrees;
-		draft.mazeHammerScale = sizeSettings.mazeHammerScale;
-		edited = true;
-	}
-	ImGui::TextDisabled("Presets replace camera pose and lens, preserving character size. Save persists this map's settings.");
-	if (map == ARENA_CAMERA_MAP::KOUKU_SAYDON)
-		ImGui::TextWrapped("Source baseline: 50 deg / 16 m outside the verified entrance volume, 19 m inside it. Gate 1 battle floor is outside that volume. Final retail framing remains unverified. Manual camera edits disable region selection; Mario, maze and cinematic shots retain their cameras.");
-	if (ImGui::TreeNode("Advanced camera pose"))
-	{
-		bool poseEdited = false;
-		ImGui::TextDisabled("World axes relative to player. Pitch +: down; Yaw 0: +Z.");
-		poseEdited |= ImGui::DragFloat3("Position offset XYZ (m)", &draft.positionOffset.x, 0.05f, -1000.f, 1000.f,
-			"%.3f", ImGuiSliderFlags_AlwaysClamp);
-		poseEdited |= ImGui::DragFloat("Pitch (deg)", &draft.rotationDegrees.x, 0.25f, -89.f, 89.f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
-		poseEdited |= ImGui::DragFloat("Yaw (deg)", &draft.rotationDegrees.y, 0.25f, -180.f, 180.f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
-		poseEdited |= ImGui::DragFloat("Roll (deg)", &draft.rotationDegrees.z, 0.25f, -180.f, 180.f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
-		poseEdited |= ImGui::DragFloat("Focus distance (m)", &draft.focusDistance, 0.05f, 0.1f, 1000.f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
-		poseEdited |= ImGui::DragFloat("FOV Y (deg)", &draft.fovYDegrees, 0.25f, 10.f, 150.f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
-		poseEdited |= ImGui::DragFloat("Follow response", &draft.followResponse, 0.1f, 0.f, 60.f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
-		if (poseEdited) { draft.useSourceCameraRegions = false; edited = true; }
-		ImGui::TreePop();
-	}
-	if (edited) preview();
-	ImGui::TextDisabled("Changes preview live. Save keeps them for the next entry. Response 0: immediate follow.");
-	ImGui::BeginDisabled(!canPreview);
-	if (ImGui::Button("Follow current map")) preview();
-	ImGui::SameLine();
-	if (ImGui::Button("Read current camera")) useCurrent();
-	ImGui::EndDisabled();
-	if (!active) ImGui::TextDisabled("Save this map, then enter it to apply its settings.");
-	else if (camera && camera->Is_PresentationOverrideActive())
-		ImGui::TextDisabled("Live follow-camera preview is unavailable during a camera sequence.");
-	if (ImGui::Button("Save camera settings")) save();
-	ImGui::SameLine();
-	if (ImGui::Button("Reload saved")) reload();
-	ImGui::TextWrapped("%s", CArenaCameraProfile::Path(map).generic_string().c_str());
 	if (!status.empty()) ImGui::TextWrapped("%s", status.c_str());
 	ImGui::PopID();
 }
@@ -12807,6 +12539,15 @@ void CMainApp::RefreshWorldObjectResources()
 
 #endif
 
+void CMainApp::RenderBalanceTestLauncher()
+{
+	ImGui::SeparatorText("Balance Test");
+	if (ImGui::Button("Open Balance Test", ImVec2(ImGui::GetContentRegionAvail().x, 0.f)))
+		m_strToolStatus = SUCCEEDED(EnsureDebugTool(DEBUG_TOOL::BALANCE)) ?
+			"Balance Test opened." : "Balance Test initialization failed.";
+	ImGui::TextWrapped("Player / Skill / Damage / Boss tuning and room cooldown: Debug (3s) or Release (Retail).");
+}
+
 void CMainApp::RenderDeveloperTools()
 {
 	Engine::CProfilerScope panelScope(CGameInstance::Get().Get_Profiler(), "ImGui.Hub.Build");
@@ -12910,7 +12651,6 @@ void CMainApp::RenderDeveloperTools()
 #ifdef _DEBUG
 		toolCell("HUD Layout Tool", DEBUG_TOOL::UI);
 #endif
-		toolCell("Balance Test", DEBUG_TOOL::BALANCE);
 #ifdef _DEBUG
 		toolCell("Equipment Authoring Tool", DEBUG_TOOL::EQUIPMENT);
 #endif
@@ -12974,8 +12714,12 @@ void CMainApp::RenderDeveloperTools()
 
 	RenderDebugLevelNavigation();
 	RenderArenaCameraAndPlayerControls();
+#else
+	RenderBalanceTestLauncher();
 #endif
 	ImGui::TextWrapped("%s", m_strToolStatus.c_str());
+	if (ImGui::CollapsingHeader("Character Select Movie", ImGuiTreeNodeFlags_DefaultOpen))
+		CLevel_CharacterSelect::Render_ClassSelectMovieControls();
 	RenderKoukuSaydonArenaControls();
 	RenderValtanArenaControls();
 	RenderCompletePlayControls();

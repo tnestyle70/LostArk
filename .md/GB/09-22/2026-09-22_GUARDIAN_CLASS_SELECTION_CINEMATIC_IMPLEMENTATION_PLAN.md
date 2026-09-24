@@ -134,3 +134,11 @@ Level은 manifest·배경 준비 실패를 보존하고 Workbench와 F1이 같�
 현재 실행 파일을 점유한 Client는 유지한 채 후보 EXE를 별도 출력에 빌드한다. 후보 검사 뒤
 실제 파일 교체가 필요한 시점에만 종료를 안내한다. headless 실제 객체·재생 소비자 검사와
 사용자의 화면 확인을 RESULT에 구분한다.
+
+## G09. 2026-09-24 F1 Character Select Movie
+
+F1에 `Character Select Movie` 구역을 추가하고 기존 7 class 목록에서 Guardian Knight를 기본 선택한다. `CLevel_CharacterSelect::Render_ClassSelectMovieControls`가 현재 Level의 동일 CClassSelectionPresentation에 Play/Restart·Stop을 전달하고 Intro/Loop 시간과 준비 상태를 표시한다. MainApp은 공통 F1 구역에서 이 좁은 UI 진입점만 호출하며 별도 preview player와 새 미디어를 만들지 않는다.
+
+Character Select가 아니면 `Enter Character Select to preview this movie`를 표시하고 객체를 생성하지 않는다. Server 입장 승인·customizing·create character·raid-entry preview 및 Level 전환의 기존 재생 가능 조건을 유지한다. UI의 class 선택은 연출 대상만 바꾸며 Server class-change 명령을 제출하지 않는다. 현재 manifest에 없는 class는 미설정 상태와 비활성 Play를 표시한다. 기존 음향·카메라·배우/FX 수명과 Stop 정리를 그대로 사용한다.
+
+기존 Level_CharacterSelect.cpp/.h만 확장하므로 project/filter 추가는 없다. 설치 manifest·게시 WorldSequence·Resources 참조를 읽기 전용으로 검사하고 Debug/Release 컴파일은 통합 담당자가 수행한다. Client·영상·UI를 실행하지 않으며 기존 리소스 존재 검사를 실제 화면 재생 성공으로 대신하지 않는다.
