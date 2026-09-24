@@ -87,3 +87,22 @@ Debug bundle 최초 검사는 구형 fixture가 DAMAGE 행의 마지막 spread �
 후속 Debug Server 증분 빌드는 PASS이며 `out/F1BalanceGate1-Debug-server-bundle-fix-build.log`에 기록했다. 최종 `--kouku-bundle-contract-test`는 95 PASS / 0 FAIL이다. 실패 이력은 `out/F1BalanceGate1-Debug-bundle-contract.log`, 최종 통과는 `out/F1BalanceGate1-Debug-bundle-contract-final.log`로 구분한다. 검사 뒤 Gameplay 및 세 spawn-group 게시 hash가 최종 Retail 검증 값과 일치했다.
 
 Client/UI는 실행하지 않았다. F1 동작 화면, 4인 모드 변경과 실제 전투 체감, Encore UI 타이밍 및 FPS 비교는 사용자 수동 확인으로 남는다.
+
+## 13시 Debug 흰 창 직후 종료의 빌드 복구
+
+사용자가 Debug Client의 흰 창 직후 종료를 보고했다. 13:06:29 / 13:06:43 / 13:07:29 Windows Application Error는 모두 이 저장소의 `Client/Bin/Debug/Client.exe`에서 발생한 `0xc0000005`다. 각 실행의 `Client/Default/ClientStartup.user.log`는 Engine·렌더링·네트워크 초기화·ImGui·폰트·Effect catalog·UI·Lobby와 최종 `Initialize ready`까지 성공했다. 초기 데이터 누락이나 접속 실패로 종료한 경우가 아니다.
+
+충돌 EXE의 PE timestamp는 WER와 같고 로컬 PDB의 RSDS GUID/age도 일치했다. LLVM으로 첫 RVA `0x19821f0`은 `std::_Ref_count_base::_Decref`, 나머지 `0x199af48`은 문자열 `assign`으로 해석했다. WER 보고서는 남아 있으나 덤프는 삭제돼 실제 native 호출 스택을 확보하지 못했다. 증거는 `out/DebugStartup20260924/crash-evidence.json`, `windows-application-crash-events.json`, `startup-three-crashes.txt`에 보존했다.
+
+실제 빌드 결함은 camera draft 제거 뒤의 CMainApp 클래스 배치와 이전 Debug OBJ의 혼합이다. MainApp.h는 08:33:59에 변경됐지만 직접 소비자 36개 중 28개의 Debug OBJ가 07:29~07:41 상태였다. 이 28개의 `CL.read.1.tlog` 기록에는 소스와 Client.pch만 있고 MainApp.h가 없었다. 최신 MainApp 생성·초기화 뒤 첫 프레임은 이전 `MainApp_RenderingLighting.obj`의 `UpdateLightingPreview → StopLightingPreview`를 호출한다. 이 함수는 이동된 문자열과 shared_ptr 멤버에 접근하므로 기존 offset으로 접근하면 위 오류가 발생할 수 있다. Release의 36개 소비자는 모두 최신 헤더 시각 이후의 OBJ이며 헤더 의존성도 기록돼 있었다.
+
+이전 Product 빌드 PASS는 컴파일러·링커 종료 성공이었으며, 누락된 header tracking 때문에 서로 다른 클래스 배치가 섞인 문제를 잡지 못했다. 이 결과를 실행 정상으로 볼 수 없음을 정정한다. Movie는 기본 닫힌 F1 안에서만 호출되고 Balance Update는 null guard 뒤에 있어 이번 첫 프레임 충돌 우회 대상으로 바꾸지 않았다.
+
+복구 전후 대조는 `mainapp-dependencies-before.json` / `mainapp-dependencies-after.json`이다. 원인이 확인된 Debug OBJ 28개만 `out/DebugStartup20260924/previous-debug-objects`에 격리하고 기존 read/write/command tracking을 진단용으로 복사했다. 원본 tracking, PCH, 소스 timestamp와 다른 산출물은 지우거나 조작하지 않았다. 동일 VS18 Insiders / v143 14.44.35207의 정상 Debug Product Build로 해당 28개를 다시 컴파일했다. 재컴파일 뒤 Debug/Release 모두 36개 직접 소비자가 MainApp.h를 추적하고 해당 헤더보다 최신 OBJ임을 확인했다. 추적 누락을 최초로 만든 명령은 보존된 로그로 확정할 수 없어 PCH 자체나 특정 pull 명령의 문제로 단정하지 않는다.
+
+- Debug Product: PASS, `out/BuildPipeline/runs/20260924T041443638Z-debug-product.json`.
+- Client 실제 변경: OBJ 28개, PCH 0개, CSO 0개, EXE 링크 1개. Client build 17.497초.
+- 설치 Debug EXE: `Client/Bin/Debug/Client.exe`, 2026-09-24 13:14:42 KST.
+- 변경 기능·리소스·runtime DataFiles는 이전 상태를 유지하며 C++ 제품 로직 수정은 없다.
+- Git 추적 밖 debugger endpoint는 초기 자동 동기화 후 사용자가 앞서 지정한 `172.27.160.1`로 복구했다. 이번 AV는 endpoint와 별개다.
+- Client 실행은 사용자가 수행한다. 새 EXE의 실제 로비 표시 확인은 아직 응답 대기다.
