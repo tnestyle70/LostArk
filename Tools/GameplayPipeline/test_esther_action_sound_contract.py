@@ -23,28 +23,35 @@ class EstherActionSoundContractTests(unittest.TestCase):
         self.assertEqual("lostark.esther-action-sound-cues", document["schema"])
         self.assertEqual(1, document["formatVersion"])
         self.assertEqual(30, document["fixedTickHz"])
-        self.assertEqual(2, len(document["cues"]))
+        self.assertEqual(37, len(document["cues"]))
 
-        expected = {
-            ("PLAYER_ACTION", "PLAYER", "ESTHER_CAST", "PC_Common_FX_Active1"),
-            ("NPC_ACTION", "NPC_59030", "esther.strike", "Silian1_Attack9_Cast1"),
-        }
-        self.assertEqual(expected, {
-            (row["ownerKind"], row["ownerId"], row["actionId"], row["soundEvent"])
-            for row in document["cues"]
-        })
+        player = [row for row in document["cues"] if row["ownerKind"] == "PLAYER_ACTION"]
+        self.assertEqual([("PLAYER", "ESTHER_CAST", "PC_Common_FX_Active1", 0, "PROJECT_TUNED_EDGE")], [
+            (row["ownerId"], row["actionId"], row["soundEvent"], row["startMs"], row["timingBasis"])
+            for row in player
+        ])
+        npc = [row for row in document["cues"] if row["ownerKind"] == "NPC_ACTION"]
+        self.assertEqual({"NPC_59030": 6, "NPC_58700": 13, "NPC_59060": 7, "NPC_59504": 6, "NPC_59620": 4},
+                         {owner: sum(row["ownerId"] == owner for row in npc) for owner in {row["ownerId"] for row in npc}})
+        for row in npc:
+            self.assertEqual("esther.strike", row["actionId"])
+            voice = row["soundEvent"].endswith("_Vox1_1_2d")
+            self.assertEqual("PROJECT_TUNED_EDGE" if voice else "SOURCE_SUMMONS_SEQUENCE", row["timingBasis"])
+            self.assertTrue(row["soundEvent"].startswith("Esther_"))
         for row in document["cues"]:
-            self.assertEqual(0, row["startMs"])
-            self.assertEqual("PROJECT_TUNED_EDGE", row["timingBasis"])
             self.assertTrue(row["once"])
 
         events = catalog["classes"]["Esther"]
-        self.assertEqual({
+        self.assertTrue({
             "PC_Common_FX_Active1", "PC_Common_FX_Active2",
             "Silian1_Attack9_Cast1", "Silian1_Attack9_Shot1",
             "Silian1_Attack9_Shot2",
-        }, set(events))
-        self.assertEqual(7, sum(map(len, events.values())))
+        } <= set(events))
+        self.assertEqual({row["soundEvent"] for row in npc}, set(events) - {
+            "PC_Common_FX_Active1", "PC_Common_FX_Active2",
+            "Silian1_Attack9_Cast1", "Silian1_Attack9_Shot1", "Silian1_Attack9_Shot2",
+        })
+        self.assertEqual(69, sum(map(len, events.values())))
         resource_root = Path(os.environ.get(
             "LOSTARK_RESOURCE_ROOT", ROOT / "Client" / "Bin" / "Resources"
         ))
@@ -59,8 +66,8 @@ class EstherActionSoundContractTests(unittest.TestCase):
         # fabricated notify timing may make them fire today.
         bound = {row["soundEvent"] for row in document["cues"]}
         self.assertTrue({
-            "PC_Common_FX_Active2", "Silian1_Attack9_Shot1",
-            "Silian1_Attack9_Shot2",
+            "PC_Common_FX_Active2", "Silian1_Attack9_Cast1",
+            "Silian1_Attack9_Shot1", "Silian1_Attack9_Shot2",
         }.isdisjoint(bound))
 
     def test_runtime_uses_server_occurrence_ticks_and_deduplicates(self) -> None:

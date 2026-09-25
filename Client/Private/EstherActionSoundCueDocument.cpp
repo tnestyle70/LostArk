@@ -169,7 +169,8 @@ bool_t Client::CEstherActionSoundCueDocument::Load(
 			volume->Get_Number() <= 0.0 || volume->Get_Number() > 1.0 ||
 			nullptr == once || !once->Is_Boolean() || !once->Get_Boolean() ||
 			!ReadString(value, "timingBasis", cue.strTimingBasis) ||
-			"PROJECT_TUNED_EDGE" != cue.strTimingBasis ||
+			("PROJECT_TUNED_EDGE" != cue.strTimingBasis &&
+			 "SOURCE_SUMMONS_SEQUENCE" != cue.strTimingBasis) ||
 			cue.iStartMs > 600000u || cue.iLateToleranceMs > 10000u ||
 			!cueIds.insert(cue.strCueId).second)
 		{
