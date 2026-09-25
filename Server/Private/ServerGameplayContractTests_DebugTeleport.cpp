@@ -854,6 +854,7 @@ int LostArk::Server::CServerGameplayContractRunner::Run_DebugTeleport(TESTS& tes
 			player.fPositionX = ground.x;
 			player.fPositionY = ground.y;
 			player.fPositionZ = ground.z;
+			player.eMadnessForm = PLAYER_MADNESS_FORM::CLOWN;
 			const bool entranceWasEnabled = entrance->isEnabled;
 			room->Update_MarioControlState(player);
 			tests.Require(player.iMarioStage == stage && player.eMadnessForm == PLAYER_MADNESS_FORM::CLOWN &&
@@ -1447,6 +1448,7 @@ int LostArk::Server::CServerGameplayContractRunner::Run_DebugTeleport(TESTS& tes
 				player.iCurrentHp = player.iMaximumHp = 100u;
 				player.eCharacterClass = CHARACTER_CLASS_ID::LANCE_MASTER;
 				player.fPositionX = ground.x; player.fPositionY = ground.y; player.fPositionZ = ground.z;
+				player.eMadnessForm = PLAYER_MADNESS_FORM::CLOWN;
 				room->m_PlayerIdBySessionId[player.iSessionId] = player.iPlayerId;
 				room->Update_MarioControlState(player);
 				const float originX = player.fMarioRailOriginX, originZ = player.fMarioRailOriginZ;

@@ -58,6 +58,7 @@ float4 g_WaterDetailNormalTilingPanning = float4(1.f, 1.f, 0.f, 0.f);
 float4 g_WaterReflectionTilingPanning = float4(1.f, 1.f, 0.f, 0.f);
 
 #include "Shader_MapMaterialSurface.hlsli"
+#include "Shader_SourceFoliageWind.hlsli"
 
 struct VS_IN
 {
@@ -118,8 +119,10 @@ VS_OUT VS_MAIN(VS_IN input)
 		input.vWorldInvTranspose2,
 		input.vWorldInvTranspose3);
 
-    const float4 worldPosition =
+    float4 worldPosition =
 		mul(float4(input.vPosition, 1.f), world);
+
+    worldPosition.xyz += SourceFoliageWorldOffset(worldPosition.xyz,input.vColor,world);
 
     output.vPosition =
 		mul(mul(

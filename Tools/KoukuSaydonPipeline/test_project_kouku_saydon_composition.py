@@ -147,8 +147,46 @@ class KoukuSaydonCompositionProjectionTests(unittest.TestCase):
         sequences["instances"][0]["templateId"] = "missing"
         with self.assertRaises(subject.CompositionError): subject._world_group_instances(world, sequences)
 
+    def test_world_group_cylinder_projects_percent_damage_per_overlapping_ball(self):
+        world, sequences = self.world_group_fixture()
+        group, model = sequences["objectResources"]
+        group["motionInstanceIds"] = group["motionInstanceIds"][:1]
+        sequences["instances"] = sequences["instances"][:1]
+        sequences["templates"] = sequences["templates"][:1]
+        sequence = sequences["templates"][0]
+        sequence["objectMotion"] = dict(count=2, emissions=[
+            dict(positionOffset=[0, 0, 0], yawDegrees=0, startDelayMs=0),
+            dict(positionOffset=[0, 0, 0], yawDegrees=0, startDelayMs=0)])
+        sequence["tracks"] = [dict(slotId="object", keys=[dict(timeMs=time,
+            positionOffset=[0, 0, 0], rotationQuaternion=[0, 0, 0, 1],
+            scaleMultiplier=[1, 1, 1], visible=True) for time in (0, 1500)])]
+        sequence["colliderTracks"] = [dict(colliderTrackId="ball.impact", slotId="object",
+            startMs=100, durationMs=34, positionOffset=[0, 0, 0], halfExtents=[2, .5, 2],
+            yawDegrees=0, shape="CYLINDER", behavior="DAMAGE", damagePercent=10,
+            gripLocalOffset=[0, 0, 0])]
+        document = subject._publication_candidate(self.hierarchy_document, {"KAKULSAYDON_G1_PATTERN_81"})
+        pattern = document["patterns"][0]
+        pattern["logicOccurrences"] = []
+        document["worlds"] = [world]
+        pattern["worldOccurrences"] = [dict(occurrenceId=pattern["patternId"] + ".world.1",
+            worldId=world["worldId"], startMs=0, durationMs=1500, playbackSpeed=1)]
+        before = copy.deepcopy((document, sequences))
+        with mock.patch.object(subject, "load_world_sequences", return_value=sequences), \
+             mock.patch.object(subject, "_project_pattern_root_motion", return_value={}):
+            result = subject.project_encounter(document)["patterns"][0]["logicWindows"]
+        self.assertEqual(2, len(result))
+        self.assertEqual(2, len({row["windowId"] for row in result}))
+        for row in result:
+            self.assertEqual([dict(kind="MAX_HP_PERCENT_DAMAGE",
+                percent=10, durationMs=0, patternId="")], row["onSuccess"])
+            region = row["cardRegions"][0]
+            self.assertEqual("CYLINDER", region["shape"])
+            self.assertEqual(2, region["radiusM"])
+            self.assertEqual(.5, region["halfExtents"][1])
+        self.assertEqual(before, (document, sequences))
+
     def test_world_group_rejects_invalid_join_and_unsupported_gameplay_owners(self):
-        for mutation in ("identity", "duplicate", "missing", "disabled", "nested", "template", "anchor", "binding", "next", "body", "collider", "surface", "empty", "overflow"):
+        for mutation in ("identity", "duplicate", "missing", "disabled", "nested", "template", "anchor", "binding", "next", "body", "surface", "empty", "overflow"):
             world, sequences = self.world_group_fixture()
             group, model = sequences["objectResources"]
             instance = sequences["instances"][0]
@@ -163,12 +201,76 @@ class KoukuSaydonCompositionProjectionTests(unittest.TestCase):
             elif mutation == "binding": instance["bindings"][0]["targetKind"] = "MAP_PLACEMENT"
             elif mutation == "next": instance["motionEnd"] = "NEXT"
             elif mutation == "body": model["combatBody"] = {}
-            elif mutation == "collider": sequences["templates"][0]["colliderTracks"] = [{}]
             elif mutation == "surface": instance["walkableSurface"] = {}
             elif mutation == "empty": group["motionInstanceIds"] = []
             elif mutation == "overflow": group["motionInstanceIds"] *= 6
             with self.subTest(mutation=mutation), self.assertRaises(subject.CompositionError):
                 subject._world_group_instances(world, sequences)
+
+    def test_world_group_admits_saved_circus_colliders_and_bakes_each_emission(self):
+        group_id = "world.object.kouku.saydon.circus.split"
+        world = next(row for row in self.hierarchy_document["worlds"]
+                     if row["sequenceInstanceId"] == group_id)
+        pattern = self.find(self.hierarchy_document, "KAKULSAYDON_G1_PATTERN_83")
+        boxes = [row for row in pattern["worldOccurrences"] if row["worldId"] == world["worldId"]]
+        self.assertEqual(1, len(boxes))
+        expected_ids = ["world.object.instance.kouku.saydon.circus.split.g" + str(i) for i in range(4)]
+
+        def no_model(*args):
+            raise AssertionError("Unattached circus colliders must not load a bone model")
+
+        # Exercise both the authoring input and the installed document which
+        # Complete Play reads; collider metadata is projected to Server contacts.
+        for path in (ROOT / WORLD_SEQUENCES,
+                     ROOT / "Client/Bin/DataFiles/Map" / (subject.AREA_ID + ".worldsequences.json")):
+            with self.subTest(document=str(path)):
+                sequences = subject.load_json(path)
+                before = copy.deepcopy((sequences, world, boxes))
+                members = subject._world_group_instances(world, sequences)
+                self.assertEqual(expected_ids, [row["instanceId"] for row in members])
+                subject._validate_world_object_reference(world, sequences)
+                templates = {row["sequenceId"]: row for row in sequences["templates"]}
+                self.assertEqual([2, 1, 1, 1],
+                                 [len(templates[row["templateId"]]["colliderTracks"]) for row in members])
+                windows = subject.bake_object_collider_windows(
+                    sequences, {world["worldId"]: world}, boxes, no_model,
+                    pattern_end_ms=subject._pattern_duration(pattern))
+                self.assertEqual(16, len(windows))
+                self.assertEqual(16, len({row["occurrenceId"] for row in windows}))
+                expected_damage = []
+                for member in members:
+                    template = templates[member["templateId"]]
+                    for collider in template["colliderTracks"]:
+                        expected_damage.extend([(collider["behavior"], collider["damagePercent"])] *
+                            template["objectMotion"]["count"])
+                self.assertEqual(sorted(expected_damage), sorted((row["behavior"], row["damagePercent"])
+                    for row in windows))
+                independent = []
+                for member_id, expected_count in zip(expected_ids, (2, 2, 4, 8)):
+                    selected = copy.deepcopy(sequences)
+                    for member in selected["instances"]:
+                        if member["instanceId"] in expected_ids:
+                            member["enabled"] = member["instanceId"] == member_id
+                    self.assertEqual([member_id], [row["instanceId"] for row in
+                                                  subject._world_group_instances(world, selected)])
+                    rows = subject.bake_object_collider_windows(
+                        selected, {world["worldId"]: world}, boxes, no_model,
+                        pattern_end_ms=subject._pattern_duration(pattern))
+                    self.assertEqual(expected_count, len(rows))
+                    independent.extend(rows)
+                self.assertEqual(sorted(windows, key=lambda row: row["occurrenceId"]),
+                                 sorted(independent, key=lambda row: row["occurrenceId"]))
+                self.assertEqual(before, (sequences, world, boxes))
+
+                # Group admission accepts collider metadata; the real bake still
+                # rejects malformed tracks instead of treating them as visuals.
+                malformed = copy.deepcopy(sequences)
+                template = next(row for row in malformed["templates"]
+                                if row["sequenceId"] == members[0]["templateId"])
+                template["colliderTracks"] = [{}]
+                with self.assertRaises(subject.ColliderBakeError):
+                    subject.bake_object_collider_windows(
+                        malformed, {world["worldId"]: world}, boxes, no_model)
 
     def cross_direction_document(self):
         document, parent, template = self.parent_fixture()

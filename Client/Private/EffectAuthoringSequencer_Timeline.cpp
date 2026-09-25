@@ -158,6 +158,223 @@ bool CEffectAuthoringSequencer::Remove_SelectedRow()
     m_BoxDetailDraft.reset(); m_Dirty = true; m_Status = "Occurrence removed."; return true;
 }
 
+CEffectAuthoringSequencer::EFFECT_ROW CEffectAuthoringSequencer::Authoring_EffectRow(const EFFECT_ROW& source)
+{
+    // Construct from authoring fields; no preview object, catalog snapshot, pivot
+    // history, sampled clock or Product spawn matrix crosses the clipboard.
+    EFFECT_ROW row;
+    row.id = source.id; row.key = source.key; row.anchorSlotId = source.anchorSlotId;
+    row.startMs = source.startMs; row.durationMs = source.durationMs;
+    row.offset = source.offset; row.rotation = source.rotation; row.scale = source.scale;
+    row.worldAnchor = source.worldAnchor; row.muted = source.muted; row.screenPost = source.screenPost;
+    row.productNaturalDuration = source.productNaturalDuration; row.productSnapshot = source.productSnapshot;
+    row.productActionFacing = source.productActionFacing; row.productExternalOwner = source.productExternalOwner;
+    row.productStopDuration = source.productStopDuration; row.bloomIntensityOverride = source.bloomIntensityOverride;
+    return row;
+}
+
+COMPOSITION_TRANSFER CEffectAuthoringSequencer::Capture_CompositionSelection(std::string& status)
+{
+    auto transfer = std::make_shared<ROW_TRANSFER>();
+    transfer->kind = m_SelectedTrack; transfer->asset = m_AssetName;
+    transfer->label = m_SelectedRowId;
+    switch (m_SelectedTrack)
+    {
+    case TRACK_KIND::ANIMATION:
+    {
+        const auto& rows = m_CustomAnimation ? m_AnimationRows :
+            (Selected_Sequence() ? Selected_Sequence()->clips : m_AnimationRows);
+        const auto found = FindRow(rows, m_SelectedRowId);
+        if (found == rows.end() || m_UseKouku) break;
+        transfer->animation = *found; status = "Copied Animation occurrence."; return transfer;
+    }
+    case TRACK_KIND::EFFECT: case TRACK_KIND::SCREEN_POST:
+    {
+        const auto found = FindRow(m_Effects, m_SelectedRowId);
+        if (found == m_Effects.end() || !found->previewElementIds.empty() || found->productExternalOwner) break;
+        transfer->effect = Authoring_EffectRow(*found);
+        // The native snapshot retains all policies. Other owners accept only the
+        // portable subset, so no bone, bloom, mute or snapshot policy is dropped.
+        if (!found->muted && !found->screenPost && !found->productSnapshot && !found->productActionFacing &&
+            !found->bloomIntensityOverride && found->anchorSlotId == "root")
+        {
+            COMPOSITION_EFFECT_ITEM item;
+            item.resourceKind = found->key.eOwnerKind == EFFECT_RESOURCE_OWNER_KIND::V1_DOCUMENT ? "V1_EFFECT" :
+                found->key.eOwnerKind == EFFECT_RESOURCE_OWNER_KIND::V2_LEAF ? "LEAF" : "GROUP";
+            item.resourceId = found->key.strStableId; item.displayName = item.resourceId;
+            item.durationMs = found->productNaturalDuration && !found->productStopDuration ? 0u : found->durationMs;
+            item.position = {found->offset.x, found->offset.y, found->offset.z};
+            item.rotationDegrees = {found->rotation.x, found->rotation.y, found->rotation.z};
+            item.scale = {found->scale.x, found->scale.y, found->scale.z};
+            item.followOwner = item.inheritOwnerRotation = !found->worldAnchor;
+            transfer->items.push_back(std::move(item));
+        }
+        status = "Copied Effect occurrence authoring values."; return transfer;
+    }
+    case TRACK_KIND::SOUND:
+    {
+        const auto found = FindRow(m_Sounds, m_SelectedRowId); if (found == m_Sounds.end()) break;
+        transfer->sound = *found; transfer->sound.handle = 0u; transfer->sound.sampledAge = -1;
+        status = "Copied Sound occurrence."; return transfer;
+    }
+    case TRACK_KIND::COLLIDER:
+    {
+        const auto found = FindRow(m_Colliders, m_SelectedRowId); if (found == m_Colliders.end()) break;
+        transfer->collider = *found; status = "Copied Collider occurrence."; return transfer;
+    }
+    case TRACK_KIND::CAMERA:
+    {
+        const auto found = FindRow(m_CameraRows, m_SelectedRowId); if (found == m_CameraRows.end()) break;
+        transfer->camera = *found; status = "Copied Camera occurrence."; return transfer;
+    }
+    }
+    status = "Select a saved, editable timeline occurrence before Copy."; return {};
+}
+
+bool CEffectAuthoringSequencer::Execute_CompositionEdit(const COMPOSITION_EDIT_COMMAND command, std::string& status)
+{
+    if (Has_PendingBoxEdit())
+    { status = m_Status = "Apply or reset the pending Box Detail edit first."; return false; }
+    if (m_ModelRoot && (m_AssetName != CAnimationTargetService::Resolve_AssetName() ||
+        m_InventoryGeneration != CAnimationTargetService::Resolve_TargetGeneration()))
+    { status = m_Status = "Restore this composition's model before editing occurrences."; return false; }
+    const bool result = Dispatch_CompositionEdit(command,
+        [&](std::string& value) { return Capture_CompositionSelection(value); },
+        [&](const COMPOSITION_TRANSFER& value, std::string& message) { return Insert_CompositionTransfer(value, message); },
+        [&](std::string& message) { const bool changed = Duplicate_SelectedRow(); if (changed) m_Status = "Duplicated occurrence with a new stable ID."; message = m_Status; return changed; }, status);
+    m_Status = status; return result;
+}
+
+bool CEffectAuthoringSequencer::Insert_EffectRows(std::vector<EFFECT_ROW> rows, std::string& status)
+{
+    const auto reject = [&](const std::string& reason) {
+        for (auto& row : rows) Release_Row(row);
+        status = m_Status = reason; return false;
+    };
+    if (rows.empty() || rows.size() > 256u || m_Effects.size() > 256u - rows.size())
+        return reject("This transfer has no compatible Effects, or exceeds the 256 occurrence limit.");
+    const auto generation = CAnimationTargetService::Resolve_TargetGeneration();
+    float4x4_t root = m_WorldRoot;
+    if (m_Active && !Resolve_Root(root)) return reject(m_Status);
+    for (auto& row : rows)
+    {
+        const auto duration = row.durationMs;
+        if (!Stage_Row(row, root)) return reject(m_Status);
+        // V1 preparation reports its natural lifetime; explicit authored windows
+        // remain owned by the occurrence, including copied stop windows.
+        if (!row.productNaturalDuration || row.productStopDuration) row.durationMs = duration;
+        if (!row.durationMs || row.durationMs > LIMIT_MS || row.startMs > LIMIT_MS - row.durationMs)
+            return reject("Transferred Effect timing exceeds the composition range.");
+        if (m_Active && !m_Transient && !Sample_Row(row, root)) return reject(m_Status);
+    }
+    if (m_ModelRoot && generation != CAnimationTargetService::Resolve_TargetGeneration())
+        return reject("The model changed during Effect preparation; the draft is preserved.");
+    const auto lastId = rows.back().id;
+    const auto kind = rows.back().screenPost ? TRACK_KIND::SCREEN_POST : TRACK_KIND::EFFECT;
+    m_Effects.insert(m_Effects.end(), std::make_move_iterator(rows.begin()), std::make_move_iterator(rows.end()));
+    Select_TimelineRow(kind, lastId); m_BoxDetailDraft.reset(); m_Dirty = true; Preserve_ClockDuringAuthoring();
+    status = m_Status = "Pasted Effect occurrences. Save keeps the authoring values."; return true;
+}
+
+bool CEffectAuthoringSequencer::Insert_CompositionTransfer(const COMPOSITION_TRANSFER& transfer, std::string& status)
+{
+    const auto reject = [&](const std::string& reason) { status = m_Status = reason; return false; };
+    if (Has_PendingBoxEdit()) return reject("Apply or reset the pending Box Detail edit first.");
+    if (m_KoukuEffectPreview || m_ValtanEffectPreview || Is_ElementPreview())
+        return reject("Finish the independent resource preview before pasting into the saved composition.");
+    if (m_ModelRoot && (m_AssetName != CAnimationTargetService::Resolve_AssetName() ||
+        m_InventoryGeneration != CAnimationTargetService::Resolve_TargetGeneration()))
+        return reject("Restore this composition's model before inserting resources.");
+    if (const auto animation = std::dynamic_pointer_cast<const COMPOSITION_ANIMATION_TRANSFER>(transfer))
+        return Append_CharacterAnimation(animation->resource, false, status);
+    const auto native = std::dynamic_pointer_cast<const ROW_TRANSFER>(transfer);
+    if (native)
+    {
+        const auto start = ClockMs();
+        switch (native->kind)
+        {
+        case TRACK_KIND::ANIMATION:
+        {
+            if (native->asset != m_AssetName || m_UseKouku || !m_Panel || !m_Panel->Is_PreviewActive())
+                return reject("Animation occurrences require the exact source Character model.");
+            auto row = native->animation; row.id = CEffectEditingSession::New_Id("animation.occurrence."); row.startMs = start;
+            auto candidate = m_CustomAnimation ? m_AnimationRows :
+                (Selected_Sequence() ? Selected_Sequence()->clips : std::vector<CLIP>{});
+            candidate.push_back(row); if (!Validate_AnimationRows(candidate)) return reject(m_Status);
+            auto previous = m_AnimationRows; const bool wasCustom = m_CustomAnimation, wasDirty = m_Dirty;
+            m_AnimationRows = std::move(candidate); m_CustomAnimation = true;
+            if (!Refresh_AnimationTiming())
+            {
+                const auto error = m_Status; m_AnimationRows = std::move(previous); m_CustomAnimation = wasCustom;
+                Refresh_AnimationTiming(); m_Dirty = wasDirty; return reject(error);
+            }
+            Select_TimelineRow(native->kind, row.id); break;
+        }
+        case TRACK_KIND::EFFECT: case TRACK_KIND::SCREEN_POST:
+        {
+            if (native->effect.anchorSlotId != "root" && native->asset != m_AssetName)
+                return reject("Bone-bound Effects require the exact source Character model.");
+            auto row = Authoring_EffectRow(native->effect); row.id = CEffectEditingSession::New_Id("effect.occurrence."); row.startMs = start;
+            return Insert_EffectRows({std::move(row)}, status);
+        }
+        case TRACK_KIND::SOUND:
+        {
+            auto row = native->sound; row.id = CEffectEditingSession::New_Id("sound.occurrence."); row.startMs = start;
+            row.handle = 0u; row.sampledAge = -1;
+            auto candidate = m_Sounds; candidate.push_back(row);
+            if (!Validate_SoundRows(candidate)) return reject(m_Status);
+            m_Sounds = std::move(candidate); Select_TimelineRow(native->kind, row.id); break;
+        }
+        case TRACK_KIND::COLLIDER:
+        {
+            if (native->collider.anchorSlotId != "root" && native->asset != m_AssetName)
+                return reject("Bone-bound Colliders require the exact source Character model.");
+            auto row = native->collider; row.id = CEffectEditingSession::New_Id("collider.occurrence."); row.startMs = start;
+            auto candidate = m_Colliders; candidate.push_back(row);
+            if (!Validate_ColliderRows(candidate) || !Validate_Anchor(row.anchorSlotId, m_ModelRoot, m_UseKouku)) return reject(m_Status);
+            m_Colliders = std::move(candidate); Select_TimelineRow(native->kind, row.id); break;
+        }
+        case TRACK_KIND::CAMERA:
+        {
+            auto row = native->camera; row.id = CEffectEditingSession::New_Id("camera.row."); row.cue.strCueId = row.id; row.startMs = start;
+            auto candidate = m_CameraRows; candidate.push_back(row); if (!Validate_CameraRows(candidate)) return reject(m_Status);
+            m_CameraRows = std::move(candidate); Select_TimelineRow(native->kind, row.id); break;
+        }
+        }
+        m_BoxDetailDraft.reset(); m_Dirty = true; Preserve_ClockDuringAuthoring();
+        status = m_Status = "Pasted occurrence at the cursor with a new stable ID."; return true;
+    }
+    if (const auto effects = std::dynamic_pointer_cast<const COMPOSITION_EFFECT_TRANSFER>(transfer))
+    {
+        if (effects->items.empty()) return reject("This source selection contains owner-specific lanes or Effect policies.");
+        std::vector<EFFECT_ROW> rows;
+        for (const auto& item : effects->items)
+        {
+            if (!item.followOwner)
+                return reject("Cross-owner Effect paste cannot distinguish absolute World placement from an owner snapshot; use a following root Effect.");
+            if (!item.bone.empty() || item.fitToDuration || item.loopToDuration || item.followOwner != item.inheritOwnerRotation)
+                return reject("Character does not support this transferred bone, rotation, fit or loop policy.");
+            EFFECT_ROW row;
+            if (item.resourceKind == "V1_EFFECT") row.key.eOwnerKind = EFFECT_RESOURCE_OWNER_KIND::V1_DOCUMENT;
+            else if (item.resourceKind == "LEAF") row.key.eOwnerKind = EFFECT_RESOURCE_OWNER_KIND::V2_LEAF;
+            else if (item.resourceKind == "GROUP") row.key.eOwnerKind = EFFECT_RESOURCE_OWNER_KIND::V2_GROUP;
+            else return reject("Character accepts complete V1 Effects and V2 leaf/group resources.");
+            if (!item.durationMs && item.resourceKind != "V1_EFFECT") return reject("A V2 Effect transfer needs an explicit duration.");
+            if (item.startMs > LIMIT_MS || ClockMs() > LIMIT_MS - item.startMs)
+                return reject("Transferred Effect starts beyond the composition range.");
+            row.key.strStableId = item.resourceId; row.id = CEffectEditingSession::New_Id("effect.occurrence.");
+            row.startMs = ClockMs() + item.startMs; row.durationMs = item.durationMs ? item.durationMs : 1u;
+            row.productNaturalDuration = item.durationMs == 0u;
+            row.offset = {item.position[0], item.position[1], item.position[2]};
+            row.rotation = {item.rotationDegrees[0], item.rotationDegrees[1], item.rotationDegrees[2]};
+            row.scale = {item.scale[0], item.scale[1], item.scale[2]}; row.worldAnchor = !item.followOwner;
+            rows.push_back(std::move(row));
+        }
+        return Insert_EffectRows(std::move(rows), status);
+    }
+    return reject("This resource belongs to another composition owner and cannot be inserted here.");
+}
+
 bool CEffectAuthoringSequencer::Duplicate_SelectedRow()
 {
     const auto nextStart = [](std::uint32_t start, std::uint32_t duration)
@@ -185,13 +402,10 @@ bool CEffectAuthoringSequencer::Duplicate_SelectedRow()
     case TRACK_KIND::EFFECT: case TRACK_KIND::SCREEN_POST:
     {
         auto found = FindRow(m_Effects, m_SelectedRowId);
-        if (found == m_Effects.end() || m_Effects.size() >= 256u || !nextStart(found->startMs, found->durationMs)) break;
-        auto row = *found; row.id = CEffectEditingSession::New_Id("effect.occurrence."); row.startMs += row.durationMs;
-        row.v1.reset(); row.v2 = 0u; row.history.reset(); row.anchorHistory.reset(); row.sampledAge = row.recordedAge = -1.f;
-        float4x4_t root = m_WorldRoot;
-        if (m_Active && !Resolve_Root(root)) return false;
-        if (!Stage_Row(row, root) || (m_Active && !m_Transient && !Sample_Row(row, root))) { Release_Row(row); return false; }
-        Select_TimelineRow(m_SelectedTrack, row.id); m_Effects.push_back(std::move(row)); m_Dirty = true; return true;
+        if (found == m_Effects.end() || found->productExternalOwner || !found->previewElementIds.empty() ||
+            m_Effects.size() >= 256u || !nextStart(found->startMs, found->durationMs)) break;
+        auto row = Authoring_EffectRow(*found); row.id = CEffectEditingSession::New_Id("effect.occurrence."); row.startMs += row.durationMs;
+        return Insert_EffectRows({std::move(row)}, m_Status);
     }
     case TRACK_KIND::SOUND:
     {
@@ -277,7 +491,9 @@ void CEffectAuthoringSequencer::Render_Sequencer(const char* title, const bool i
         ImGui::SetNextItemWidth(300.f);
         if (ImGui::SliderInt("Time", &clock, 0, static_cast<int>(DurationMs()), "%d ms")) Seek(clock);
         ImGui::SameLine(); ImGui::SetNextItemWidth(130.f); ImGui::SliderFloat("Zoom", &m_Zoom, 10.f, 300.f, "%.0f px/s");
-        ImGui::SameLine(); if (ImGui::Button("Duplicate")) Duplicate_SelectedRow();
+        ImGui::SameLine(); if (ImGui::Button("Copy")) Execute_CompositionEdit(COMPOSITION_EDIT_COMMAND::COPY, m_Status);
+        ImGui::SameLine(); if (ImGui::Button("Paste")) Execute_CompositionEdit(COMPOSITION_EDIT_COMMAND::PASTE, m_Status);
+        ImGui::SameLine(); if (ImGui::Button("Duplicate")) Execute_CompositionEdit(COMPOSITION_EDIT_COMMAND::DUPLICATE_SELECTION, m_Status);
         ImGui::SameLine(); if (ImGui::Button("Remove")) Remove_SelectedRow();
         const auto firstLine = m_Status.substr(0, m_Status.find('\n'));
         ImGui::TextUnformatted(firstLine.c_str());

@@ -95,19 +95,21 @@ bool_t Client::CEffectDocumentCodec::Validate(
 			!Evidence.strGeometryParitySelfSha256.empty();
 		const bool_t bDistributionEvidencePresent = std::any_of(
 			Recipe.Modules.begin(), Recipe.Modules.end(),
-			[](const EFFECT_SOURCE_MODULE_DESC& Module)
+			[&Recipe](const EFFECT_SOURCE_MODULE_DESC& Module)
 			{
 				return std::any_of(Module.Distributions.begin(),
 					Module.Distributions.end(),
-					[](const EFFECT_DISTRIBUTION_DESC& Distribution)
+					[&Recipe](const EFFECT_DISTRIBUTION_DESC& Distribution)
 					{
+						const bool_t bWorldParameter = Recipe.bEnabled && Distribution.eParameterBinding ==
+							EFFECT_DISTRIBUTION_PARAMETER_BINDING::WORLD_SAMPLE;
 						return !Distribution.strReferenceId.empty() ||
 							!Distribution.strOccurrenceId.empty() ||
 							!Distribution.strPayloadStatus.empty() ||
 							!Distribution.strFidelity.empty() ||
-							!Distribution.strParameterName.empty() ||
-							Distribution.eParameterBinding !=
-								EFFECT_DISTRIBUTION_PARAMETER_BINDING::NONE ||
+							(!bWorldParameter && (!Distribution.strParameterName.empty() ||
+							 Distribution.ParameterMapping.has_value() ||
+							 Distribution.eParameterBinding != EFFECT_DISTRIBUTION_PARAMETER_BINDING::NONE)) ||
 							Distribution.ExecutionAdmission.bAllowed ||
 							!Distribution.ExecutionAdmission.Blockers.empty();
 					});

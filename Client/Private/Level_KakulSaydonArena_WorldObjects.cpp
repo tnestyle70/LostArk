@@ -13,9 +13,8 @@
 #include "KakulArenaHiddenPlacements.h"
 #include "Transform.h"
 #include "WorldGameplayDocument.h"
-#ifdef _DEBUG
 #include "GameInstance.h"
-#endif
+#include "Profiler.h"
 #include <cmath>
 #include <algorithm>
 #include <set>
@@ -622,6 +621,7 @@ namespace
 
 bool_t CLevel_KakulSaydonArena::Debug_PrepareGateObjects(const size_t gateIndex, std::string& status)
 {
+    Engine::CProfilerScope scope(Engine::CGameInstance::Get().Get_Profiler(), "Kouku.GateObjects.Prepare");
     auto staged = std::make_unique<GATE_OBJECT_PRESENTATION>();
     staged->gateIndex = gateIndex;
     if (gateIndex != 0u && gateIndex != 2u)
@@ -697,6 +697,10 @@ bool_t CLevel_KakulSaydonArena::Debug_PrepareGateObjects(const size_t gateIndex,
     for (const auto& [objectId, count] : cloneCounts)
         if (!staged->player->Prewarm_ObjectInstances(count.first, count.second, targets))
         { status = "Gate Object clone preparation failed: " + staged->player->Get_Status(); return false; }
+    if (gateIndex == 0u)
+        for (const auto& [id, clock] : staged->instances)
+            if (!staged->player->Prewarm_HiddenObjectPose(id, clock, targets))
+            { status = "Gate Object endpoint preparation failed: " + staged->player->Get_Status(); return false; }
     m_pPendingGateObjects = std::move(staged);
     status.clear();
     return true;
@@ -738,6 +742,7 @@ bool_t CLevel_KakulSaydonArena::Debug_ReleaseGateObjectPresentation(
 bool_t CLevel_KakulSaydonArena::Debug_StartGateObjectPresentation(
     GATE_OBJECT_PRESENTATION& state, std::string& status)
 {
+    Engine::CProfilerScope scope(Engine::CGameInstance::Get().Get_Profiler(), "Kouku.GateObjects.Activate");
     if (!state.suspended) return true;
     auto targets = Make_WorldSequenceTargets();
     targets.objectPreparationOwner = state.player.get();
@@ -764,6 +769,7 @@ bool_t CLevel_KakulSaydonArena::Debug_StartGateObjectPresentation(
 
 bool_t CLevel_KakulSaydonArena::Debug_CommitGateObjects(const size_t gateIndex, std::string& status)
 {
+    Engine::CProfilerScope scope(Engine::CGameInstance::Get().Get_Profiler(), "Kouku.GateObjects.Commit");
     if (!m_pPendingGateObjects || m_pPendingGateObjects->gateIndex != gateIndex)
     { status = "Gate Object activation has no matching prepared stage."; return false; }
 #ifdef _DEBUG
@@ -1138,17 +1144,37 @@ void CLevel_KakulSaydonArena::Debug_DrawWorldObjectColliderPreview() const
             sample.hasGrip ? IM_COL32(70, 225, 255, 240) : IM_COL32(255, 220, 65, 240);
         const auto line = [&](fvector_t a, fvector_t b)
         { ImVec2 pa{}, pb{}; if (project(a, pa) && project(b, pb)) draw->AddLine(pa, pb, color, 1.5f); };
-        const matrix_t rotation = XMMatrixRotationY(XMConvertToRadians(sample.yawDegrees));
         const vector_t center = XMLoadFloat3(&sample.center);
-        vector_t corners[8];
-        for (int corner = 0; corner < 8; ++corner)
-            corners[corner] = center + XMVector3TransformNormal(XMVectorSet(
-                (corner & 1 ? 1.f : -1.f) * sample.halfExtents.x,
-                (corner & 2 ? 1.f : -1.f) * sample.halfExtents.y,
-                (corner & 4 ? 1.f : -1.f) * sample.halfExtents.z, 0.f), rotation);
-        for (int corner = 0; corner < 8; ++corner)
-            for (int axis = 0; axis < 3; ++axis)
-                if (!(corner & (1 << axis))) line(corners[corner], corners[corner | (1 << axis)]);
+        if (sample.shape == "CYLINDER")
+        {
+            constexpr int segments = 32;
+            const vector_t height = XMVectorSet(0.f, sample.halfExtents.y, 0.f, 0.f);
+            for (int segment = 0; segment < segments; ++segment)
+            {
+                const float angle = XM_2PI * static_cast<float>(segment) / segments;
+                const float nextAngle = XM_2PI * static_cast<float>(segment + 1) / segments;
+                const vector_t a = center + XMVectorSet(std::cos(angle) * sample.halfExtents.x, 0.f,
+                    std::sin(angle) * sample.halfExtents.x, 0.f);
+                const vector_t b = center + XMVectorSet(std::cos(nextAngle) * sample.halfExtents.x, 0.f,
+                    std::sin(nextAngle) * sample.halfExtents.x, 0.f);
+                line(a - height, b - height);
+                line(a + height, b + height);
+                if (segment % (segments / 4) == 0) line(a - height, a + height);
+            }
+        }
+        else
+        {
+            const matrix_t rotation = XMMatrixRotationY(XMConvertToRadians(sample.yawDegrees));
+            vector_t corners[8];
+            for (int corner = 0; corner < 8; ++corner)
+                corners[corner] = center + XMVector3TransformNormal(XMVectorSet(
+                    (corner & 1 ? 1.f : -1.f) * sample.halfExtents.x,
+                    (corner & 2 ? 1.f : -1.f) * sample.halfExtents.y,
+                    (corner & 4 ? 1.f : -1.f) * sample.halfExtents.z, 0.f), rotation);
+            for (int corner = 0; corner < 8; ++corner)
+                for (int axis = 0; axis < 3; ++axis)
+                    if (!(corner & (1 << axis))) line(corners[corner], corners[corner | (1 << axis)]);
+        }
         if (sample.hasGrip)
         {
             const vector_t grip = XMLoadFloat3(&sample.gripPosition);

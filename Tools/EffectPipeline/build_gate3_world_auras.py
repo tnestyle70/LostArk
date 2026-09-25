@@ -107,6 +107,15 @@ def acquire():
                 continue
             modules = [index.objects[k] for p, k in lod.references if p in ('requiredmodule', 'modules', 'typedatamodule', 'spawnmodule')]
             kind, _, shape = imported.classify({'sourceSystemId': system}, modules)
+            # Use the same concrete TypeData admission as the action importer.
+            # A Ribbon emitter is still named ParticleSpriteEmitter in UE3;
+            # its owner name cannot select the ordinary sprite vertex factory.
+            if any('typedataanimtrail' in m.class_name for m in modules):
+                kind, shape = 'trail', 'animationTrail'
+            elif any('typedataribbon' in m.class_name for m in modules):
+                kind, shape = 'trail', 'ribbon'
+            elif any('typedatabeam' in m.class_name for m in modules):
+                kind, shape = 'trail', 'beam'
             required = next(m for m in modules if m.class_name == 'particlemodulerequired')
             material = next(path for prop, path in required.reference_paths if prop == 'material')
             mesh = next((path for m in modules for prop, path in m.reference_paths if prop == 'mesh'), '')

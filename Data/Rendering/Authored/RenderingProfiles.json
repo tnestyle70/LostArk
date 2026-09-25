@@ -1,7 +1,7 @@
 {
   "schema": "lostark.rendering-profiles",
   "formatVersion": 1,
-  "revision": 81,
+  "revision": 82,
   "globalQuality": {
     "ssaoEnabled": true,
     "ssaoRadius": 0.0399999991,
@@ -291,8 +291,8 @@
         "cubeTexture": "Map/Lighting/CharacterSelect/lv_lut_valhatrond_04_hdr01.rgbm.cube.dds",
         "color": [1, 1, 1, 0],
         "rotationIntensity": [0, 1, 1, 0],
-        "cubeDiffuse": {"model": "RGBM6_LAMBERT_SH3", "intensity": 0, "packedSH": [[-0.0430580042, 0.0486787856, 0.056253776, 0.298149079], [-0.046214737, 0.0527504496, 0.0592655651, 0.331207544], [-0.0531027131, 0.0593599454, 0.0666070133, 0.386223108], [0.021966273, -0.0106696701, -0.0110182418, -0.0345678926], [0.0237612035, -0.0126812607, -0.0118477084, -0.0373316109], [0.0263588745, -0.014791985, -0.014638707, -0.0422291942], [0.00513588078, 0.00658471091, 0.00731680216, 0]]},
-        "useSourcePBRIndirect": true
+        "useSourcePBRIndirect": true,
+        "cubeDiffuse": {"model": "RGBM6_LAMBERT_SH3", "intensity": 0, "packedSH": [[-0.0430580042, 0.0486787856, 0.056253776, 0.298149079], [-0.046214737, 0.0527504496, 0.0592655651, 0.331207544], [-0.0531027131, 0.0593599454, 0.0666070133, 0.386223108], [0.021966273, -0.0106696701, -0.0110182418, -0.0345678926], [0.0237612035, -0.0126812607, -0.0118477084, -0.0373316109], [0.0263588745, -0.014791985, -0.014638707, -0.0422291942], [0.00513588078, 0.00658471091, 0.00731680216, 0]]}
       },
       "displayName": "character-select: source tone and grading",
       "profileId": "scene.character-select.source-rendering.v1",
@@ -344,8 +344,8 @@
         "cubeTexture": "Map/Lighting/CharacterSelect/lv_lut_valhatrond_04_hdr01.rgbm.cube.dds",
         "color": [1, 1, 1, 0],
         "rotationIntensity": [0, 1, 1, 0],
-        "cubeDiffuse": {"model": "RGBM6_LAMBERT_SH3", "intensity": 0, "packedSH": [[-0.0430580042, 0.0486787856, 0.056253776, 0.298149079], [-0.046214737, 0.0527504496, 0.0592655651, 0.331207544], [-0.0531027131, 0.0593599454, 0.0666070133, 0.386223108], [0.021966273, -0.0106696701, -0.0110182418, -0.0345678926], [0.0237612035, -0.0126812607, -0.0118477084, -0.0373316109], [0.0263588745, -0.014791985, -0.014638707, -0.0422291942], [0.00513588078, 0.00658471091, 0.00731680216, 0]]},
-        "useSourcePBRIndirect": true
+        "useSourcePBRIndirect": true,
+        "cubeDiffuse": {"model": "RGBM6_LAMBERT_SH3", "intensity": 0, "packedSH": [[-0.0430580042, 0.0486787856, 0.056253776, 0.298149079], [-0.046214737, 0.0527504496, 0.0592655651, 0.331207544], [-0.0531027131, 0.0593599454, 0.0666070133, 0.386223108], [0.021966273, -0.0106696701, -0.0110182418, -0.0345678926], [0.0237612035, -0.0126812607, -0.0118477084, -0.0373316109], [0.0263588745, -0.014791985, -0.014638707, -0.0422291942], [0.00513588078, 0.00658471091, 0.00731680216, 0]]}
       },
       "profileId": "scene.character-select.warm-high-key.v1",
       "exposureMultiplier": 1,
@@ -775,7 +775,7 @@
       }
     },
     {
-      "qualityOverride": {"ssaoEnabled": false, "ssaoRadius": 0.75, "ssaoBias": 0.0250000004, "ssaoIntensity": 1, "ssaoPower": 1.25, "ssaoDistanceFade": 60, "bloomEnabled": true, "bloomThreshold": 1, "bloomSoftKnee": 0.5, "bloomIntensity": 0.800000012, "bloomScatter": 1, "exposure": 2, "whitePoint": 11.1999998, "gamma": 2.20000005, "fxaaEnabled": false, "fxaaSubpixel": 0.75, "fxaaEdgeThreshold": 0.165999994, "fxaaEdgeThresholdMin": 0.0833000019, "colorAdjustment": {"bloomTint": [1, 1, 1, 1], "desaturation": 0}, "sourcePostProcess": {"enabled": true, "toneCurve": "UE3_CUSTOMIZABLE", "toneScale": 0.850000024, "toneRange": 8, "toneToe": 1, "highlights": [1, 1, 1], "midtones": [1.10000002, 1, 1], "shadows": [0, 0, 0], "colorize": [1, 1, 1], "desaturation": 0.150000006, "colorGradingLut": ""}},
+      "qualityOverride": {"ssaoEnabled": false, "ssaoRadius": 0.75, "ssaoBias": 0.0250000004, "ssaoIntensity": 1, "ssaoPower": 1.25, "ssaoDistanceFade": 60, "bloomEnabled": false, "bloomThreshold": 1, "bloomSoftKnee": 0.5, "bloomIntensity": 0.800000012, "bloomScatter": 1, "exposure": 2, "whitePoint": 11.1999998, "gamma": 2.20000005, "fxaaEnabled": false, "fxaaSubpixel": 0.75, "fxaaEdgeThreshold": 0.165999994, "fxaaEdgeThresholdMin": 0.0833000019, "colorAdjustment": {"bloomTint": [1, 1, 1, 1], "desaturation": 0}, "sourcePostProcess": {"enabled": true, "toneCurve": "UE3_CUSTOMIZABLE", "toneScale": 0.850000024, "toneRange": 8, "toneToe": 1, "highlights": [1, 1, 1], "midtones": [1.10000002, 1, 1], "shadows": [0, 0, 0], "colorize": [1, 1, 1], "desaturation": 0.150000006, "colorGradingLut": ""}},
       "profileId": "scene.kakulsaydon.g1.base.v1",
       "exposureMultiplier": 0.5,
       "bloomIntensityMultiplier": 0,

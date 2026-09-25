@@ -958,6 +958,12 @@ def preserve_cooked_geometry(
     receipt, original_gltf = validate_geometry_source(source_receipt_path, source_object)
     package = resolve_geometry_package(receipt, package_root)
     try:
+        native_parallel = "nativeParallelBasisProof" in receipt
+        if native_parallel:
+            sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "CharacterSelectPipeline"))
+            from prove_native_static_parallel_basis import verify_and_stage
+            original_gltf, source_gltf = verify_and_stage(
+                source_receipt_path, source_gltf, model.parent / "native-parallel-proof")
         original, original_hash, original_buffers = geometry.parse_source_gltf(original_gltf)
         staged, staged_hash, staged_buffers = geometry.parse_source_gltf(source_gltf)
         if original != staged:
@@ -992,6 +998,7 @@ def preserve_cooked_geometry(
             source_export_receipt_sha256=bytes.fromhex(receipt_hash),
             legacy_cook_receipt_sha256=bytes.fromhex(sha256(cook_receipt_path)),
             source_manifest_hash_role="OBSERVED_GENERATED_COOK_INPUTS_CANONICAL_LF",
+            native_parallel_basis_preserved=native_parallel,
         )
         payload, contract = geometry.cook_wmodel_geometry_contract(
             source_gltf, model, provenance, expected_source_gltf_sha256=staged_hash,

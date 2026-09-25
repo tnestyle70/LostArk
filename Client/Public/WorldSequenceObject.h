@@ -57,10 +57,13 @@ public:
 private:
     CWorldSequenceObject(ComPtr<ID3D11Device>, ComPtr<ID3D11DeviceContext>);
     HRESULT Render_Translucent();
+    HRESULT Render_Mesh(uint32_t mesh);
     shared_ptr<Engine::CModel> m_Model;
     shared_ptr<Engine::CModel> m_SaydonHatModel;
     shared_ptr<Engine::CShader> m_Shader;
     ComPtr<ID3D11ShaderResourceView> m_Diffuse;
+    ComPtr<ID3D11RasterizerState> m_SourceRasterState;
+    ComPtr<ID3D11RasterizerState> m_ReflectedRasterState;
     std::vector<shared_ptr<CPart_Equipment>> m_Parts;
     std::string m_MaterialProfileId;
     float4x4_t m_World{};

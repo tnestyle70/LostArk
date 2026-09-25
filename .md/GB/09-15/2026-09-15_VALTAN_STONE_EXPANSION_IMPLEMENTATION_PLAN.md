@@ -170,3 +170,23 @@ staging SHA를 재검사하고 변경이 있으면 설치를 중단한다. 과�
 실제 새 리소스의 존재, 전체 배치 보존과 JSON parse, diff 검사를 RESULT에 기록한다.
 최종 Product 통합 빌드는 root가 수행한다. 하늘 program90, LightFunction, 환경 기본값과
 FX product cue는 이 설치에 포함하지 않으며 화면 판정은 사용자가 한다.
+
+## G12. 3시·9시 파괴 바닥의 저작 모델 재질 전달
+
+2026-09-25 사용자 지정 대상은 `VALTAN_FLOOR_BRICK_A/B`와 `VALTAN_FLOOR_RAIL`의
+3시·9시 여섯 Deploy 배치다. 중앙·작은 원형 아레나를 대상으로 바꾸지 않는다.
+현재 제품 경로에는 G04/G06의 원본 모델과 BossCatalog 재질이 연결돼 있지만,
+`MapTool_Area.cpp::Ensure_DeployAuthoringPrototypes`는 raw model path overload로
+생성하므로 같은 모델의 원본 재질 override를 누락한다.
+
+수정 파일은 기존 `Client/Private/MapTool_Area.cpp` 하나다. `ActorCatalog.h`를 포함하고
+내부 `admitModel`에 Resources-relative model ID를 전달한다. intact/fractured 양쪽이
+`CActorCatalog::Build_ModelLoadDescription`으로 검증한 descriptor를 기존 `CModel::Create`에
+넣는다. descriptor 실패는 상태 메시지를 남기고 해당 prototype을 추가하지 않는다.
+기존 prototype/path 일치 검사, 모델 종류·사전 배율·배치·파괴 동작을 유지한다.
+새 H/CPP·프로젝트 등록·데이터 게시·리소스 교체는 필요 없다.
+
+기존 제품 경로와 호출 인수·실패 경계를 독립 대조하고 정규 Debug Build 및 diff 검사를
+수행한다. 이 수정의 완료 범위는 MapTool의 원본 재질 전달이며, 제품 화면의 색 차이
+해결이나 원작 조명 복원 완료로 확대하지 않는다. 제품 파괴 바닥은 원본 실제 생성자의
+재질 override와 조명 입력 근거를 별도로 조사한다. 공통 렌더링 옵션은 변경하지 않는다.

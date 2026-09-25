@@ -10,9 +10,64 @@
 
 #include <algorithm>
 #include <fstream>
+#include <cmath>
+#include <iomanip>
+#include <locale>
+#include <sstream>
 
 namespace
 {
+	bool ReadText(const filesystem::path& path, string& text)
+	{
+		ifstream stream(path, ios::binary);
+		if (!stream.is_open()) return false;
+		text.assign(istreambuf_iterator<char>(stream), istreambuf_iterator<char>());
+		return !stream.bad();
+	}
+
+	bool ReadPosition(const Client::DATA_JSON_VALUE& root, float2_t& offset, f32_t& head)
+	{
+		const auto* madness = root.Find("madness");
+		if (!madness || !madness->Is_Object()) return false;
+		const auto read = [madness](const char* key, const f32_t fallback, f32_t& out)
+		{
+			const auto* value = madness->Find(key);
+			if (!value) { out = fallback; return true; }
+			if (!value->Is_Number() || !std::isfinite(value->Get_Number())) return false;
+			out = static_cast<f32_t>(value->Get_Number()); return std::isfinite(out);
+		};
+		return read("headOffsetMeters", 2.2f, head) && read("screenOffsetX", 0.f, offset.x) &&
+			read("screenOffsetY", 0.f, offset.y) && std::abs(head) <= 10.f &&
+			std::abs(offset.x) <= 1280.f && std::abs(offset.y) <= 1280.f;
+	}
+
+	void WriteJson(std::ostream& out, const Client::DATA_JSON_VALUE& value, const size_t depth = 0u)
+	{
+		using Client::DATA_JSON_TYPE;
+		switch (value.Get_Type())
+		{
+		case DATA_JSON_TYPE::NULL_VALUE: out << "null"; break;
+		case DATA_JSON_TYPE::BOOLEAN: out << (value.Get_Boolean() ? "true" : "false"); break;
+		case DATA_JSON_TYPE::NUMBER: out << std::setprecision(17) << value.Get_Number(); break;
+		case DATA_JSON_TYPE::STRING: out << '"' << Client::CDataJson::Escape(value.Get_String()) << '"'; break;
+		case DATA_JSON_TYPE::ARRAY:
+			out << '[';
+			for (size_t i = 0u; i < value.Get_Array().size(); ++i)
+			{ if (i) out << ", "; WriteJson(out, value.Get_Array()[i], depth + 1u); }
+			out << ']'; break;
+		case DATA_JSON_TYPE::OBJECT:
+			out << '{';
+			{ bool first = true;
+			for (const auto& [key, item] : value.Get_Object())
+			{
+				out << (first ? "\n" : ",\n") << string((depth + 1u) * 2u, ' ') << '"'
+					<< Client::CDataJson::Escape(key) << "\": ";
+				WriteJson(out, item, depth + 1u); first = false;
+			} }
+			out << '\n' << string(depth * 2u, ' ') << '}'; break;
+		}
+	}
+
 	constexpr f32_t REF_WIDTH = 1280.f;
 	constexpr f32_t REF_HEIGHT = 720.f;
 	constexpr f32_t FLASH_DECAY_PER_SECOND = 2.5f;
@@ -110,17 +165,15 @@ HRESULT Client::CKoukuMadnessGaugeView::Load_Config()
 	}
 
 	f32_t fHeadOffset = 2.2f;
-	if (const DATA_JSON_VALUE* pHead = pMadness->Find("headOffsetMeters");
-		nullptr != pHead && pHead->Is_Number())
-	{
-		fHeadOffset = static_cast<f32_t>(pHead->Get_Number());
-	}
+	float2_t screenOffset{};
+	if (!ReadPosition(Root, screenOffset, fHeadOffset)) return E_FAIL;
 
 	/* Commit only after every field validated so a bad file leaves the previous
 	(empty, hidden) configuration untouched. */
 	m_Thresholds = std::move(Thresholds);
 	m_FillTextures = std::move(FillTextures);
-	m_fHeadOffsetMeters = fHeadOffset;
+	m_fHeadOffsetMeters = m_fSavedHeadOffsetMeters = fHeadOffset;
+	m_vScreenOffset = m_vSavedScreenOffset = screenOffset;
 	m_bConfigLoaded = true;
 	return S_OK;
 }
@@ -186,8 +239,8 @@ void Client::CKoukuMadnessGaugeView::Update(
 
 	/* CUILayoutRuntime positions are reference-resolution units; the projection is
 	viewport pixels. */
-	const f32_t fAnchorX = vScreen.x * (REF_WIDTH / vViewport.x);
-	const f32_t fAnchorY = vScreen.y * (REF_HEIGHT / vViewport.y);
+	const f32_t fAnchorX = vScreen.x * (REF_WIDTH / vViewport.x) + m_vScreenOffset.x;
+	const f32_t fAnchorY = vScreen.y * (REF_HEIGHT / vViewport.y) + m_vScreenOffset.y;
 	for (const SLOT_OFFSET& Offset : m_SlotOffsets)
 		m_pView->Set_SlotPosition(Offset.strId, fAnchorX + Offset.fDx, fAnchorY + Offset.fDy);
 
@@ -226,4 +279,97 @@ void Client::CKoukuMadnessGaugeView::Update(
 
 	m_bVisible = true;
 	m_pView->Update(fTimeDelta);
+}
+
+void Client::CKoukuMadnessGaugeView::Get_Position(float2_t& screenOffset, f32_t& headOffsetMeters) const
+{
+	screenOffset = m_vScreenOffset;
+	headOffsetMeters = m_fHeadOffsetMeters;
+}
+
+bool_t Client::CKoukuMadnessGaugeView::Set_Position(const float2_t& offset, const f32_t head)
+{
+	if (!std::isfinite(offset.x) || !std::isfinite(offset.y) || !std::isfinite(head) ||
+		std::abs(offset.x) > 1280.f || std::abs(offset.y) > 1280.f || std::abs(head) > 10.f) return false;
+	m_vScreenOffset = offset; m_fHeadOffsetMeters = head;
+	return true;
+}
+
+bool_t Client::CKoukuMadnessGaugeView::Reload_Position(string& status)
+{
+	if (FAILED(Load_Config())) { status = "Invalid HUD configuration; current preview preserved."; return false; }
+	status = "Reloaded saved madness position.";
+	return true;
+}
+
+bool_t Client::CKoukuMadnessGaugeView::Save_Position(string& status)
+{
+	const filesystem::path path = CProjectDataRoot::Resolve(L"UI/KoukuSaydon/KoukuHudModes.json");
+	const filesystem::path lockPath = path.wstring() + L".madness-position.lock";
+	const HANDLE lock = CreateFileW(lockPath.c_str(), GENERIC_READ | GENERIC_WRITE, 0u, nullptr,
+		OPEN_ALWAYS, FILE_ATTRIBUTE_TEMPORARY | FILE_FLAG_DELETE_ON_CLOSE, nullptr);
+	if (lock == INVALID_HANDLE_VALUE) { status = "HUD position save is already in progress."; return false; }
+	struct LOCK_GUARD { HANDLE handle; ~LOCK_GUARD() { CloseHandle(handle); } } guard{ lock };
+	string before, error;
+	DATA_JSON_VALUE root;
+	float2_t savedOffset{}; f32_t savedHead = 0.f;
+	if (!ReadText(path, before) || !CDataJson::Parse(before, root, error) ||
+		!ReadPosition(root, savedOffset, savedHead))
+	{ status = "HUD configuration could not be read; disk and preview preserved. " + error; return false; }
+	const bool changedX = m_vScreenOffset.x != m_vSavedScreenOffset.x;
+	const bool changedY = m_vScreenOffset.y != m_vSavedScreenOffset.y;
+	const bool changedHead = m_fHeadOffsetMeters != m_fSavedHeadOffsetMeters;
+	if ((changedX && savedOffset.x != m_vSavedScreenOffset.x) ||
+		(changedY && savedOffset.y != m_vSavedScreenOffset.y) ||
+		(changedHead && savedHead != m_fSavedHeadOffsetMeters))
+	{ status = "Edited position field changed on disk. Reload saved position before saving; current preview preserved."; return false; }
+	if (!changedX && !changedY && !changedHead)
+	{
+		m_vScreenOffset = m_vSavedScreenOffset = savedOffset;
+		m_fHeadOffsetMeters = m_fSavedHeadOffsetMeters = savedHead;
+		status = "No position edits; refreshed position from disk.";
+		return true;
+	}
+	// Merge only edited fields into the latest document, including independent axis edits.
+	auto fields = root.Get_Object();
+	auto madness = fields.at("madness").Get_Object();
+	if (changedX) madness["screenOffsetX"] = DATA_JSON_VALUE::Number(m_vScreenOffset.x);
+	if (changedY) madness["screenOffsetY"] = DATA_JSON_VALUE::Number(m_vScreenOffset.y);
+	if (changedHead) madness["headOffsetMeters"] = DATA_JSON_VALUE::Number(m_fHeadOffsetMeters);
+	fields["madness"] = DATA_JSON_VALUE::Object(std::move(madness));
+	std::ostringstream serialized;
+	serialized.imbue(std::locale::classic());
+	WriteJson(serialized, DATA_JSON_VALUE::Object(std::move(fields)));
+	const string after = serialized.str() + "\n";
+	DATA_JSON_VALUE verified;
+	if (!CDataJson::Parse(after, verified, error) || !ReadPosition(verified, savedOffset, savedHead))
+	{ status = "Position serialization rejected; disk and preview preserved."; return false; }
+	const auto suffix = std::to_wstring(GetCurrentProcessId()) + L"." + std::to_wstring(GetTickCount64());
+	const filesystem::path temporary = path.wstring() + L".tmp." + suffix;
+	const filesystem::path backup = path.wstring() + L".backup." + suffix;
+	{
+		ofstream stream(temporary, ios::binary | ios::trunc);
+		stream.write(after.data(), static_cast<std::streamsize>(after.size())); stream.flush();
+		if (!stream.good()) { status = "Position temporary write failed; source preserved."; return false; }
+	}
+	string current;
+	if (!ReadText(temporary, current) || current != after || !ReadText(path, current) || current != before)
+	{ DeleteFileW(temporary.c_str()); status = "HUD source changed during save; disk and preview preserved."; return false; }
+	if (!ReplaceFileW(path.c_str(), temporary.c_str(), backup.c_str(), 0u, nullptr, nullptr))
+	{ DeleteFileW(temporary.c_str()); status = "Position atomic replace failed; backup preserved at " + backup.string(); return false; }
+	string displaced;
+	if (!ReadText(backup, displaced) || displaced != before)
+	{
+		if (ReadText(path, current) && current == after)
+		{
+			const filesystem::path recovery = path.wstring() + L".conflict." + suffix;
+			(void)ReplaceFileW(path.c_str(), backup.c_str(), recovery.c_str(), 0u, nullptr, nullptr);
+		}
+		status = "Concurrent HUD save detected; recovery files preserved beside the source. Reload before retrying.";
+		return false;
+	}
+	m_vScreenOffset = m_vSavedScreenOffset = savedOffset;
+	m_fHeadOffsetMeters = m_fSavedHeadOffsetMeters = savedHead;
+	status = "Saved madness position. Backup: " + backup.string();
+	return true;
 }

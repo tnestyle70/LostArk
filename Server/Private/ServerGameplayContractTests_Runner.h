@@ -23,6 +23,9 @@ public:
     static int Run_KoukuRaid();
     static int Run_KoukuDiceDamageContracts();
     static int Run_KoukuDraft();
+    static int Run_KoukuProductOnly();
+    static int Run_ValtanLifecycleOnly();
+    static int Run_SkillStagesOnly();
     static int Run_ValtanArenaSupport();
     static int Run_ValtanPatternControl();
     static int Run_NpcRaidReturn();

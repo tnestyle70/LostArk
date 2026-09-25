@@ -71,6 +71,14 @@ def decode_native_lighting(tail: bytes, reference: Callable[[int], dict]) -> dic
         raise UnsupportedNative("shadow-map or vertex-shadow payload is not implemented", reader.offset, header)
     kind = reader.i32()
     header["lightMapKind"] = kind
+    if kind == 0 and len(tail) == 21 and tail[reader.offset:] == bytes(5):
+        # Verified v868 SL08 water component: one LOD, no shadows, null
+        # FLightMap pointer, no vertex-color override and the four-byte footer.
+        # Other kind-0 layouts remain unsupported until their payload is read.
+        return {**header, "status": "NULL_LIGHTMAP", "hasColor": False,
+                "colorVertexCount": 0, "colorBytes": 0, "colorSHA256": digest(b""),
+                "colorEncoding": "original BGRA8 bytes", "terminalZeroBytes": 4,
+                "nativeTailCompletelyConsumed": True}
     if kind != 2:
         raise UnsupportedNative(f"lightmap kind {kind} is not implemented", reader.offset, header)
     lighting: dict[str, Any] = {**header, "status": "RNM_TEXTURE_LIGHTMAP"}

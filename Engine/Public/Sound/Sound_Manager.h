@@ -32,6 +32,7 @@ public:
 	bool_t Get_SoundDurationMs(const wstring_t& path, uint32_t& durationMs);
 	bool_t Is_SoundCueActive(uint64_t handle) const;
 	void Pause_SoundCue(uint64_t handle, bool_t paused);
+    void Set_SoundCuePlaybackRate(uint64_t handle, f32_t playbackRate);
 	void Seek_SoundCue(uint64_t handle, uint32_t ageMs);
 	void Stop_SoundCue(uint64_t handle);
 

@@ -83,6 +83,8 @@ namespace LostArk::Server
 		std::vector<std::pair<std::uint32_t, std::uint32_t>> ScheduledDanceIntervals;
 		LostArk::Shared::KOUKU_HUD_MODE eHudMode = LostArk::Shared::KOUKU_HUD_MODE::NONE;
 		std::vector<KOUKUSAYDON_LOGIC_WINDOW_STATE> Windows;
+		std::set<std::string> RetiredWorldOccurrences;
+		std::uint32_t iBingoLineJudgementTick = 0u, iBingoCompletedLines = 0u;
 		std::vector<std::uint32_t> ContactWindowOrder;
 		std::set<std::tuple<std::string, std::uint32_t, std::string>> ConsumedContactGroups;
 		// A lower-priority reaction cannot replace a card state already won in this pattern.
@@ -90,6 +92,7 @@ namespace LostArk::Server
 		std::vector<KOUKUSAYDON_LOGIC_CUE_STATE> WorldSequences;
 		std::vector<KOUKUSAYDON_LOGIC_CUE_STATE> MechanicTriggers;
 		std::vector<KOUKUSAYDON_PLAYER_TARGET_WINDOW_STATE> PlayerTargetWindows;
+		bool bTrackingTargetReached = false;
 		// One snapshot of the entry roster: world X descending, then stable PlayerId.
 		bool bCardMazeEntryRosterCaptured = false;
 		std::vector<LostArk::Shared::PLAYER_ID> CardMazeEntryPlayers;
@@ -110,6 +113,7 @@ namespace LostArk::Server
 		std::string strOccurrenceId;
 		std::uint32_t iStartTick = 0u;
 		std::string strTargetWorldOccurrenceId;
+		bool bAuthoredMadness = false;
 		std::optional<BOSS_PATTERN_WORLD_COMBAT_BODY> CombatBody;
 		std::optional<BOSS_PATTERN_WORLD_PLACEMENT> Placement;
 	};
@@ -135,6 +139,7 @@ namespace LostArk::Server
 		// Set only after an ending counter hit has committed its validated landing.
 		bool bCounterSuccessLanded = false;
 		bool bStaggerSuccess = false;
+		std::optional<bool> BingoLineCompletion;
 		std::string strStatus;
 	};
 
@@ -299,14 +304,15 @@ namespace LostArk::Server
 		complete. Bits outside the board are ignored rather than refused so a
 		caller cannot half-apply a fill. */
 		void Fill(std::uint32_t cellMask) noexcept;
-		/* One bomb blast. Empty cells in the mask light up, white cells
-		become red skulls, and red cells are left
+		/* One bomb blast. Empty cells become red, white skulls disappear,
+		and existing red cells are left
 		alone. Every cell is judged against the board as it stood before the
 		blast, so neighbours inside one cross cannot cancel each other by
-		order. Completed lines promote afterwards, same as Fill. */
+		order. Fill retains its separate complete-line authoring operation. */
 		void Detonate(std::uint32_t cellMask) noexcept;
 		[[nodiscard]] std::uint32_t Get_WhiteMask() const noexcept { return m_iWhiteMask; }
 		[[nodiscard]] std::uint32_t Get_RedMask() const noexcept { return m_iRedMask; }
+		[[nodiscard]] std::uint32_t Count_CompletedRowsAndColumns() const noexcept;
 		/* True while this position stands on a completed line. The wipe attack
 		is the consumer; until then only the contract test asks. */
 		[[nodiscard]] bool Is_Safe(float x, float z) const noexcept;
@@ -323,6 +329,9 @@ namespace LostArk::Server
 			float fPositionX = 0.f;
 			float fPositionZ = 0.f;
 			std::uint32_t iDetonateTick = 0u;
+			// Invisible gap after the head mark; reserves this slot until ground spawn.
+			std::uint32_t iPlantTick = 0u;
+			std::uint32_t iMarkOrdinal = 0u;
 		};
 		using BOMB_SLOTS = std::array<BOMB,
 			static_cast<std::size_t>(LostArk::Shared::KOUKU_BINGO_MAX_BOMBS)>;
@@ -331,11 +340,12 @@ namespace LostArk::Server
 		false rather than replacing an existing mark, so a double press cannot
 		restart someone else's clock. */
 		bool Start_Bomb(LostArk::Shared::NET_ENTITY_ID carrier,
-			std::uint32_t detonateTick) noexcept;
+			std::uint32_t detonateTick, std::uint32_t markOrdinal = 0u) noexcept;
 		/* Turns a MARKED slot into a PLANTED bomb at this position, burning
 		until the given tick. */
 		void Plant_Bomb(std::size_t slot, float x, float z,
 			std::uint32_t fuseTick) noexcept;
+		void Queue_BombPlant(std::size_t slot, float x, float z, std::uint32_t plantTick) noexcept;
 		void Clear_Bomb(std::size_t slot) noexcept;
 		[[nodiscard]] const BOMB_SLOTS& Get_Bombs() const noexcept { return m_Bombs; }
 

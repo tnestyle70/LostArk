@@ -1,4 +1,3 @@
-// source.character.static-map-native-214.v1 / source program 4b65c1956d0f25469fa644129f4284ec
 SOURCE_CHARACTER_NATIVE_OUTPUT SourceMapMonsterBaked214(SOURCE_CHARACTER_NATIVE_INPUT input)
 {
     SOURCE_CHARACTER_NATIVE_OUTPUT output = (SOURCE_CHARACTER_NATIVE_OUTPUT)0;
@@ -8174,3 +8173,5 @@ SOURCE_CHARACTER_NATIVE_OUTPUT SourceCharacterBase223(SOURCE_CHARACTER_NATIVE_IN
     // 141: ret
     return output;
 }
+
+// source.character.static-map-native-224.v1 / source program 87c053efe3f0dc4e924d49533f0f4c74

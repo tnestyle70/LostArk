@@ -28,7 +28,7 @@ namespace Client::EffectDocumentCodecDetail
 {
 
 
-	constexpr std::array<std::string_view, 53u>
+	constexpr std::array<std::string_view, 54u>
 		PORTABLE_AUTHORED_PARTICLE_MODULE_CLASSES = {
 			"particlemodulecollision",
 			"particlemoduleattractorpoint",
@@ -74,6 +74,7 @@ namespace Client::EffectDocumentCodecDetail
 			"particlemodulespawnperunit",
 			"particlemodulesubuv",
 			"particlemodulesubuvmovie",
+			"particlemodulesubuvselect",
 			"particlemoduletypedatamesh",
 			"particlemodulevectorfieldrotationrate",
 			"particlemodulevectorfieldscale",
@@ -86,7 +87,7 @@ namespace Client::EffectDocumentCodecDetail
 		};
 
 
-	constexpr std::array<std::pair<std::string_view, std::string_view>, 83u>
+	constexpr std::array<std::pair<std::string_view, std::string_view>, 84u>
 		PORTABLE_AUTHORED_PARTICLE_DISTRIBUTION_PROPERTIES = {
 			std::pair{ "particlemoduleattractorpoint", "position" },
 			std::pair{ "particlemoduleattractorpoint", "range" },
@@ -161,6 +162,7 @@ namespace Client::EffectDocumentCodecDetail
 			std::pair{ "particlemodulesubuv", "subimageindex" },
 			std::pair{ "particlemodulesubuvmovie", "subimageindex" },
 			std::pair{ "particlemodulesubuvmovie", "framerate" },
+			std::pair{ "particlemodulesubuvselect", "subimageselect" },
 			std::pair{ "particlemodulevectorfieldscale", "scale" },
 			std::pair{ "particlemodulevectorfieldscaleoverlife", "scaleoverlife" },
 			std::pair{ "particlemodulevelocity", "startvelocity" },
@@ -572,11 +574,12 @@ namespace Client::EffectDocumentCodecDetail
                 !ReadPortableBoolLiteral(Module, "bapplyphysics", false, ApplyPhysics) || ApplyPhysics ||
                 !ReadPortableBoolLiteral(Module, "bonlyverticalnormalsdecrementcount", false, VerticalOnly) || VerticalOnly ||
                 !ReadPortableStringLiteral(Module, "collisioncompletionoption", "epcc_kill", Completion) ||
-                (Completion != "epcc_kill" && Completion != "epcc_freezemovement") ||
+                (Completion != "epcc_kill" && Completion != "epcc_freezemovement" &&
+                    Completion != "epcc_freezerotation") ||
                 !ReadPortableNumberLiteral(Module, "dirscalar", 1.0, Scalar) || Scalar < 0.0 ||
                 !ReadPortableNumberLiteral(Module, "maxcollisiondistance", 1000.0, Distance) || Distance < 0.0)
             {
-                strOutError = "Source Collision requires static-world bounce followed by Kill or FreezeMovement.";
+                strOutError = "Source Collision requires static-world bounce followed by Kill, FreezeMovement or FreezeRotation.";
                 return false;
             }
         }
@@ -806,6 +809,17 @@ namespace Client::EffectDocumentCodecDetail
 				}
 			}
 		}
+		if (strNormalizedClass == "particlemodulesubuvselect")
+		{
+			for (const auto& Distribution : Module.Distributions)
+			{
+				if (Distribution.iComponentCount != 3u)
+				{
+					strOutError = "Source SubUVSelect requires a three-component tile selection.";
+					return false;
+				}
+			}
+		}
 		if (strNormalizedClass == "particlemodulesubuvmovie")
 		{
 			double StartingFrame = 1.0;
@@ -975,6 +989,26 @@ namespace Client::EffectDocumentCodecDetail
 			for (const EFFECT_DISTRIBUTION_DESC& Distribution :
 				Module.Distributions)
 			{
+				const bool_t bWorldParameter = Distribution.eParameterBinding ==
+					EFFECT_DISTRIBUTION_PARAMETER_BINDING::WORLD_SAMPLE;
+				if (bWorldParameter)
+				{
+					const bool_t bColor =
+						(NormalizedClass == "particlemodulecoloroverlife" && Distribution.strPropertyPath == "coloroverlife") ||
+						(NormalizedClass == "particlemodulecolorscaleoverlife" && Distribution.strPropertyPath == "colorscaleoverlife");
+					const bool_t bAlpha =
+						(NormalizedClass == "particlemodulecoloroverlife" && Distribution.strPropertyPath == "alphaoverlife") ||
+						(NormalizedClass == "particlemodulecolorscaleoverlife" && Distribution.strPropertyPath == "alphascaleoverlife");
+					if (!Element.SourceRecipe.bEnabled || Element.eKind != EFFECT_ELEMENT_KIND::PARTICLE ||
+						(!bMesh && !bSprite) || (!bColor && !bAlpha) ||
+						Distribution.iComponentCount != (bColor ? 3u : 1u) ||
+						!CEffectDistribution::Validate(Distribution, strOutError))
+					{
+						if (strOutError.empty()) strOutError =
+							"Portable WORLD particle parameters require a validated sprite/mesh color update binding.";
+						return false;
+					}
+				}
 				const bool_t bNativeEvidence =
 					!Distribution.strReferenceId.empty() ||
 					!Distribution.strOccurrenceId.empty() ||
@@ -982,9 +1016,9 @@ namespace Client::EffectDocumentCodecDetail
 					!Distribution.strFidelity.empty() ||
 					Distribution.ExecutionAdmission.bAllowed ||
 					!Distribution.ExecutionAdmission.Blockers.empty() ||
-					Distribution.eParameterBinding !=
+					(!bWorldParameter && (Distribution.eParameterBinding !=
 						EFFECT_DISTRIBUTION_PARAMETER_BINDING::NONE ||
-					!Distribution.strParameterName.empty();
+					 !Distribution.strParameterName.empty() || Distribution.ParameterMapping.has_value()));
 				const bool_t bIgnoredNullCdo =
 					NormalizedClass == "particlemodulerequired" &&
 					Distribution.strPropertyPath == "spawnrate";
@@ -1052,7 +1086,8 @@ namespace Client::EffectDocumentCodecDetail
 			const bool_t bDecalOnly =
 				ClassName == "particlemoduletypedatadecal";
 			const bool_t bSpriteOnly =
-				((ClassName == "particlemodulesubuv" || ClassName == "particlemodulesubuvmovie") && !(bMesh &&
+				((ClassName == "particlemodulesubuv" || ClassName == "particlemodulesubuvmovie" ||
+					ClassName == "particlemodulesubuvselect") && !(bMesh &&
 					(Has_ArtistMaterialContract(Element) || Has_WarlordNativeMaterialContract(Element) ||
 						Has_LanceMasterVAMaterialContract(Element))));
 			const auto Maximum = std::ranges::find_if(
@@ -1071,6 +1106,21 @@ namespace Client::EffectDocumentCodecDetail
 				strOutError =
 					"Portable authored particle carrier module Family/cardinality is unsupported: " +
 					ClassName + ".";
+				return false;
+			}
+		}
+		if (CountClass("particlemodulesubuvselect") != 0u)
+		{
+			const auto Required = std::ranges::find_if(Element.SourceRecipe.Modules,
+				[](const auto& Module) { return Module.strClassName == "particlemodulerequired"; });
+			double Columns = 1., Rows = 1.;
+			if (Required == Element.SourceRecipe.Modules.end() ||
+				!ReadPortableNumberLiteral(*Required, "subimages_horizontal", 1., Columns) ||
+				!ReadPortableNumberLiteral(*Required, "subimages_vertical", 1., Rows) ||
+				Columns < 1. || Rows < 1. || Columns > 256. || Rows > 256. ||
+				std::floor(Columns) != Columns || std::floor(Rows) != Rows)
+			{
+				strOutError = "Source SubUVSelect requires positive integer atlas dimensions.";
 				return false;
 			}
 		}
@@ -1126,8 +1176,7 @@ namespace Client::EffectDocumentCodecDetail
 		for (const EFFECT_ELEMENT_DESC& Element : Document.Elements)
 		{
 			if (!Element.bVisible ||
-				!Is_EffectAuthoringExecutionTarget(
-					Element.Material.Execution) ||
+				!Is_EffectElementAuthoringExecutionTarget(Element) ||
 				(Element.eKind != EFFECT_ELEMENT_KIND::PARTICLE &&
 				 Element.eKind != EFFECT_ELEMENT_KIND::DECAL) ||
 				Element.Renderer.eType != EFFECT_RENDERER_TYPE::END ||
@@ -1203,22 +1252,14 @@ namespace Client::EffectDocumentCodecDetail
 				"Portable authored particle event queue has an unbounded per-step upper limit.";
 			return false;
 		}
-		for (const auto& [strRoute, SourceElements] : Generators)
-		{
-			(void)SourceElements;
-			if (!Receivers.contains(strRoute))
-			{
-				strOutError =
-					"Portable authored particle event generator has no same-document receiver.";
-				return false;
-			}
-		}
-
+		// An original Cascade generator may have no local listener. Its bounded event
+		// is inert here; only connected routes participate in cycle validation.
 		std::unordered_map<std::string, std::vector<std::string>> Adjacency;
 		for (const auto& [strRoute, SourceElements] : Generators)
 		{
-			const std::vector<std::string>& TargetElements =
-				Receivers.at(strRoute);
+			const auto Receiver = Receivers.find(strRoute);
+			if (Receiver == Receivers.end()) continue;
+			const std::vector<std::string>& TargetElements = Receiver->second;
 			for (const std::string& strSourceElement : SourceElements)
 			{
 				auto& Targets = Adjacency[strSourceElement];

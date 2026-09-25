@@ -1,4 +1,4 @@
-LOSTARK_WORLD_BOOTSTRAP	11	KAKULSAYDON_ARENA	LV_LUT_MIDNIGHTC_ED	8801	114	339	36	117
+LOSTARK_WORLD_BOOTSTRAP	11	KAKULSAYDON_ARENA	LV_LUT_MIDNIGHTC_ED	8801	114	340	36	117
 1Stage_Final	triggerBox	-	-	27.7999992	0.449999988	-67.6999969	123.5	1	6	1	1	1	1	0	playSequence	1	world.sequence.instance.circusfinale
 2-1Stage_Move	triggerBox	-	-	48.4529991	5.42626988E-16	-81.762001	45.5	0	3	1	3	1	1	0	playSequence	1	world.sequence.instance.original_kouku
 Book1_Monsters	triggerBox	-	-	1.49173	0.15635	-29.70873	10.371094	1	5.12	1.28	2.56	0	1	0	activateSpawnGroup	1	spawn.kouku.book1
@@ -261,6 +261,7 @@ world.object.instance.kouku.saydon.circus.split.g4
 world.object.instance.kouku.saydon.circus.split.g5
 world.object.instance.kouku.saydon.eaten.ball
 world.object.instance.kouku.saydon.rolling.ball
+world.object.instance.kouku.saydon.rolling.ball.g3
 world.object.instance.kouku.saydon_hat_right
 world.object.instance.kouku.saydon_showtime_gun_left
 world.object.instance.kouku.saydon_showtime_gun_right

@@ -2339,6 +2339,7 @@ bool Client::CBalanceTool::Upsert_ValtanSummonDraft(
 		static_cast<std::uint64_t>(value.iFirstSpawnOffsetMs) + (value.iSpawnScheduleCount > 0u ? value.iSpawnScheduleCount - 1u : 0u) * static_cast<std::uint64_t>(value.iSpawnIntervalMs) >= stage->iDurationMs)
 	{ status = "Summon count, spawn clock or shared lifetime is invalid."; return false; }
 	bool known = false;
+	for (const auto& clone : m_valtanSummonClones) known = known || clone.archetypeId == value.strCombatObjectArchetypeId;
 	for (const auto* group : { &m_loadedValtanPatternTree.Gimmicks, &m_loadedValtanPatternTree.Rotation })
 		for (const auto& owner : *group) for (const auto& sourceStage : owner.Stages) for (const auto& row : sourceStage.CombatObjectEffects)
 			known = known || row.strCombatObjectArchetypeId == value.strCombatObjectArchetypeId;
@@ -2349,6 +2350,61 @@ bool Client::CBalanceTool::Upsert_ValtanSummonDraft(
 		for (auto& owner : *group) for (auto& sourceStage : owner.Stages) for (auto& row : sourceStage.CombatObjectEffects)
 			if (row.strCombatObjectArchetypeId == value.strCombatObjectArchetypeId) row.iLifetimeMs = value.iLifetimeMs;
 	MarkDirty(true); status.clear(); return true;
+}
+
+bool Client::CBalanceTool::Clone_ValtanSummonDraft(const std::string& patternId, const std::string& stageId,
+	const VALTAN_COMBAT_OBJECT_EFFECT_VIEW& source, const std::string& sourceRevision,
+	const uint32_t startMs, VALTAN_COMBAT_OBJECT_EFFECT_VIEW& created, std::string& status)
+{
+	if (!Require_ValtanAuthoringAdmission("Valtan Summon copy", status)) return false;
+	if (sourceRevision != m_valtanAuthoringRevision)
+	{ status = "The copied Summon belongs to a different source revision; copy it again."; return false; }
+	auto* pattern = FindValtanPattern(m_valtanPatternTree, patternId);
+	auto* stage = pattern ? FindValtanStage(*pattern, stageId) : nullptr;
+	if (!stage || !pattern->bAuthoringMasterManaged || stage->CombatObjectEffects.size() >= 8u ||
+		source.strTrigger != "ENTER" || !source.iLifetimeMs || source.iLifetimeMs > 600000u ||
+		startMs >= stage->iDurationMs || !source.iSpawnValue || source.iSpawnValue > 8u ||
+		source.iSpawnScheduleCount > 8u ||
+		(source.iSpawnScheduleCount > 1u && (!source.iSpawnIntervalMs || uint64_t(startMs) +
+			uint64_t(source.iSpawnScheduleCount - 1u) * source.iSpawnIntervalMs >= stage->iDurationMs)))
+	{ status = "The copied Summon count or spawn schedule does not fit the destination Stage."; return false; }
+	std::string original = source.strCombatObjectArchetypeId;
+	for (const auto& clone : m_valtanSummonClones) if (clone.archetypeId == original) { original = clone.sourceArchetypeId; break; }
+	bool known = false;
+	std::unordered_set<std::string> used;
+	for (const auto& clone : m_valtanSummonClones) used.insert(clone.archetypeId);
+	for (const auto* group : {&m_loadedValtanPatternTree.Gimmicks, &m_loadedValtanPatternTree.Rotation})
+		for (const auto& owner : *group) for (const auto& ownerStage : owner.Stages)
+			for (const auto& row : ownerStage.CombatObjectEffects)
+			{ known |= row.strCombatObjectArchetypeId == original; used.insert(row.strCombatObjectArchetypeId); used.insert(row.strClientVisualId); }
+	for (const auto* group : {&m_valtanPatternTree.Gimmicks, &m_valtanPatternTree.Rotation})
+		for (const auto& owner : *group) for (const auto& ownerStage : owner.Stages)
+			for (const auto& row : ownerStage.CombatObjectEffects)
+			{ used.insert(row.strCombatObjectArchetypeId); used.insert(row.strClientVisualId); }
+	if (!known) { status = "The copied Summon has no admitted typed definition."; return false; }
+	auto row = source;
+	for (uint32_t ordinal = 1u;; ++ordinal)
+	{
+		row.strCombatObjectArchetypeId = "combatobject.valtan.composition.copy." + std::to_string(ordinal);
+		row.strClientVisualId = "combatobject.visual.valtan.composition.copy." + std::to_string(ordinal);
+		if (!used.contains(row.strCombatObjectArchetypeId) && !used.contains(row.strClientVisualId)) break;
+	}
+	row.iFirstSpawnOffsetMs = startMs;
+	if (startMs && row.strVolleyPolicy.empty())
+	{ status = "This immediate Summon resource has no delayed-volley policy; paste at the Stage start."; return false; }
+	for (std::size_t index = 0u; index < row.HitIds.size(); ++index)
+		row.HitIds[index] = row.strCombatObjectArchetypeId + ".hit." + std::to_string(index + 1u);
+	for (std::size_t index = 0u; index < row.Hits.size(); ++index)
+		row.Hits[index].strHitId = row.strCombatObjectArchetypeId + ".hit." + std::to_string(index + 1u);
+	auto clones = m_valtanSummonClones;
+	clones.push_back({original, row.strCombatObjectArchetypeId});
+	auto objects = stage->CombatObjectEffects;
+	objects.push_back(row);
+	created = row;
+	stage->CombatObjectEffects = std::move(objects);
+	m_valtanSummonClones = std::move(clones);
+	MarkDirty(true); status = "Copied the Summon with independent definition, visual and occurrence identities.";
+	return true;
 }
 
 bool Client::CBalanceTool::Remove_ValtanSummonDraft(
@@ -2370,10 +2426,11 @@ bool Client::CBalanceTool::Apply_ValtanCompositionDraftTransaction(
 {
 	if (!Require_ValtanAuthoringAdmission("Valtan composition transaction", status)) return false;
 	const auto tree = m_valtanPatternTree;
+	const auto summonClones = m_valtanSummonClones;
 	const auto generation = m_valtanDraftGeneration;
 	const bool dirty = m_dirty, validated = m_valtanDraftValidated;
 	const auto revision = m_valtanCandidateRevision, applyClass = m_valtanCandidateApplyClass;
-	const auto rollback = [&]() { m_valtanPatternTree = tree; m_valtanDraftGeneration = generation; m_dirty = dirty; m_valtanDraftValidated = validated; m_valtanCandidateRevision = revision; m_valtanCandidateApplyClass = applyClass; };
+	const auto rollback = [&]() { m_valtanPatternTree = tree; m_valtanSummonClones = summonClones; m_valtanDraftGeneration = generation; m_dirty = dirty; m_valtanDraftValidated = validated; m_valtanCandidateRevision = revision; m_valtanCandidateApplyClass = applyClass; };
 	try { if (!edit(status)) { rollback(); return false; } }
 	catch (...) { rollback(); throw; }
 	if (m_valtanDraftGeneration != generation) m_valtanDraftGeneration = generation + 1u;
@@ -7134,6 +7191,7 @@ bool Client::CBalanceTool::Reload()
 	m_loadedDamageProfiles = m_damageProfiles;
 	m_loadedBosses = m_bosses;
 	m_loadedValtanPatternTree = m_valtanPatternTree;
+	m_valtanSummonClones.clear();
 	m_valtanSourceOwnerBaselines = std::move(sourceBaselines);
 	m_loadedValtanAxeVolley = m_valtanAxeVolley;
 	m_selectedPlayer = (std::min)(m_selectedPlayer,
@@ -11293,6 +11351,28 @@ bool Client::CBalanceTool::BuildValtanDraftPatch(
 						<< ",\"lifetimeMs\":" << row.iLifetimeMs << "}"; }
 					json << "]"; return json.str();
 				};
+				for (const auto& object : stage.CombatObjectEffects)
+				{
+					const auto clone = std::find_if(m_valtanSummonClones.begin(), m_valtanSummonClones.end(),
+						[&](const auto& row) { return row.archetypeId == object.strCombatObjectArchetypeId; });
+					if (clone == m_valtanSummonClones.end()) continue;
+					std::ostringstream op;
+					op << "    {\"op\":\"CLONE_COMBAT_OBJECT\",\"patternId\":" << Quote(pattern.strPatternId)
+						<< ",\"stageId\":" << Quote(stage.strStageId) << ",\"actionId\":" << Quote(stage.strActionId)
+						<< ",\"sourceCombatObjectArchetypeId\":" << Quote(clone->sourceArchetypeId)
+						<< ",\"combatObjectArchetypeId\":" << Quote(object.strCombatObjectArchetypeId)
+						<< ",\"clientVisualId\":" << Quote(object.strClientVisualId)
+						<< ",\"eventId\":" << Quote("event." + object.strCombatObjectArchetypeId)
+						<< ",\"lifetimeMs\":" << object.iLifetimeMs << ",\"hitShapes\":[";
+					for (std::size_t index = 0; index < object.Hits.size(); ++index)
+					{
+						if (index) op << ',';
+						const auto& hit = object.Hits[index];
+						op << "{\"shape\":" << Quote(hit.strHitShape) << ",\"innerRadiusM\":" << FormatJsonNumber(hit.fInnerRadiusM)
+							<< ",\"outerRadiusM\":" << FormatJsonNumber(hit.fOuterRadiusM) << '}';
+					}
+					op << "]}"; append(op);
+				}
 				if (serializeSummons(stage.CombatObjectEffects) != serializeSummons(loadedStage->CombatObjectEffects))
 				{ std::ostringstream op; op << "    { \"op\": \"SET_STAGE_SUMMONS\", \"patternId\": " << Quote(pattern.strPatternId) << ", \"stageId\": " << Quote(stage.strStageId) << ", \"summons\": " << serializeSummons(stage.CombatObjectEffects) << " }"; append(op); }
 				for (const auto& object : stage.CombatObjectEffects)
@@ -11866,6 +11946,7 @@ bool Client::CBalanceTool::RunValtanDraftCommand(
 		m_loadedDamageProfiles = m_damageProfiles;
 		m_loadedBosses = m_bosses;
 		m_loadedValtanPatternTree = m_valtanPatternTree;
+		m_valtanSummonClones.clear();
 		m_loadedValtanAxeVolley = m_valtanAxeVolley;
 		m_dirty = false;
 		m_valtanDraftValidated = true;

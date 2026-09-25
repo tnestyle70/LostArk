@@ -120,10 +120,13 @@ namespace
 			const auto* model = motion && motion->bindings.size() == 1u ?
 				document.Find_ObjectResource(motion->bindings.front().targetId) : nullptr;
 			if (!motion || !sequence || motion->anchorKind != "WORLD" || motion->walkableSurface ||
-				!sequence->colliderTracks.empty() || !model || model->modelAssetId.empty() || model->combatBody ||
+				!model || model->modelAssetId.empty() || model->combatBody ||
 				!model->motionInstanceIds.empty() || motion->bindings.front().targetKind != WORLD_SEQUENCE_TARGET_KIND::OBJECT_RESOURCE ||
 				(motion->motionEnd != WORLD_SEQUENCE_MOTION_END::STOP && motion->motionEnd != WORLD_SEQUENCE_MOTION_END::LOOP))
 				return {}; // A visual group cannot create unreplicated gameplay objects.
+			// Collider tracks are baked into Server pattern geometry; the Client only
+			// validates their model bones and draws Debug previews. They remain valid
+			// metadata on an otherwise visual group motion.
 			if (motion->enabled) result.push_back(member);
 		}
 		return result;
@@ -225,17 +228,18 @@ namespace
 	}
 
 	bool_t CompositionWorldPivot(const CWorldSequencePlayer& player, const std::string& id,
-		float4x4_t& out, const uint32_t emissionIndex = 0u)
+		float4x4_t& out, const uint32_t emissionIndex = 0u, const std::string& bone = {},
+        const bool_t boneRotation = false)
 	{
 		const auto* group = player.Get_Document().Find_ObjectResource(id);
-		if (!group || group->motionInstanceIds.empty()) return player.Try_GetSequencePivot(id, out, emissionIndex);
+		if (!group || group->motionInstanceIds.empty()) return player.Try_GetSequencePivot(id, out, emissionIndex, bone, boneRotation);
 		bool_t found = false;
 		for (const auto& member : CompositionWorldMotions(player.Get_Document(), id))
 		{
 			float4x4_t visible;
 			if (!player.Try_GetObjectPivot(member, visible)) continue;
 			float4x4_t pivot;
-			if (!player.Try_GetSequencePivot(member, pivot, emissionIndex)) continue;
+			if (!player.Try_GetSequencePivot(member, pivot, emissionIndex, bone, boneRotation)) continue;
 			if (found) return false; // Parallel visible motions have no unique effect anchor.
 			out = pivot; found = true;
 		}
@@ -2090,11 +2094,11 @@ void Client::CLevel_KakulSaydonArena::Update(const f32_t fTimeDelta)
 	if (!m_bMapAuthoringActive)
 #endif
 		m_MapRuntime.Update_SelfMotions(fTimeDelta);
+	HUD_KOUKU_GIMMICK_STATE madnessState = CCombatHUDViewModel::Get().Get_KoukuGimmick();
+	if (LostArk::Shared::KOUKU_HUD_MODE::MAZE == CCombatHUDViewModel::Get().Get_Player().eKoukuHudMode)
+		madnessState.eHudMode = HUD_KOUKU_HUD_MODE::MAZE;
 	if (nullptr != m_pMadnessGaugeView)
-	{
-		m_pMadnessGaugeView->Update(fTimeDelta, localCharacter,
-			CCombatHUDViewModel::Get().Get_KoukuGimmick());
-	}
+		m_pMadnessGaugeView->Update(fTimeDelta, localCharacter, madnessState);
 	/* Teammates: their own madness from the snapshot, drawn the same way over them. */
 	{
 		size_t iOther = 0u;
@@ -2103,7 +2107,8 @@ void Client::CLevel_KakulSaydonArena::Update(const f32_t fTimeDelta)
 			if (Player.isLocal || iOther >= m_OtherMadnessGaugeViews.size())
 				continue;
 			const REPLICATED_PLAYER_HEALTH Health = m_Replication.Get_PlayerHealth().Find(Player.iNetEntityId);
-			HUD_KOUKU_GIMMICK_STATE State{};
+			// Keep the local maze presentation policy for every world-space gauge.
+			HUD_KOUKU_GIMMICK_STATE State = madnessState;
 			State.isValid = Health.Has_Madness();
 			State.iMadnessGauge = Health.iCurrentMadness;
 			State.iMadnessMaximum = Health.iMaximumMadness;
@@ -2116,6 +2121,41 @@ void Client::CLevel_KakulSaydonArena::Update(const f32_t fTimeDelta)
 				m_OtherMadnessGaugeViews[iOther]->Hide();
 	}
 	Update_StatusEffectText(fTimeDelta);
+}
+
+bool_t Client::CLevel_KakulSaydonArena::Get_MadnessGaugePosition(
+	float2_t& screenOffset, f32_t& headOffsetMeters) const
+{
+	if (!m_pMadnessGaugeView) return false;
+	m_pMadnessGaugeView->Get_Position(screenOffset, headOffsetMeters);
+	return true;
+}
+
+bool_t Client::CLevel_KakulSaydonArena::Set_MadnessGaugePosition(
+	const float2_t& screenOffset, const f32_t headOffsetMeters)
+{
+	if (!m_pMadnessGaugeView || !m_pMadnessGaugeView->Set_Position(screenOffset, headOffsetMeters)) return false;
+	for (auto& view : m_OtherMadnessGaugeViews)
+		if (view) view->Set_Position(screenOffset, headOffsetMeters);
+	return true;
+}
+
+bool_t Client::CLevel_KakulSaydonArena::Save_MadnessGaugePosition(std::string& status)
+{
+	if (!m_pMadnessGaugeView) { status = "Madness view is unavailable."; return false; }
+	if (!m_pMadnessGaugeView->Save_Position(status)) return false;
+	float2_t offset; f32_t head;
+	m_pMadnessGaugeView->Get_Position(offset, head);
+	return Set_MadnessGaugePosition(offset, head);
+}
+
+bool_t Client::CLevel_KakulSaydonArena::Reload_MadnessGaugePosition(std::string& status)
+{
+	if (!m_pMadnessGaugeView) { status = "Madness view is unavailable."; return false; }
+	if (!m_pMadnessGaugeView->Reload_Position(status)) return false;
+	float2_t offset; f32_t head;
+	m_pMadnessGaugeView->Get_Position(offset, head);
+	return Set_MadnessGaugePosition(offset, head);
 }
 
 void Client::CLevel_KakulSaydonArena::Update_StatusEffectText(const f32_t fTimeDelta)
@@ -2456,9 +2496,9 @@ HRESULT Client::CLevel_KakulSaydonArena::Render()
 	if (m_bGate3AuraOccupied && !m_bGate3AuraSubmitted && Is_LocalRaidLeader())
 	{
 		drawPrompt(L"\uC7A0\uC2DC \uD6C4 \uB2E4\uC74C \uC9C0\uC810\uC73C\uB85C \uC774\uB3D9\uB429\uB2C8\uB2E4.",
-			0.045f, 1.25f, Colors::White);
+			0.72f, 0.625f, Colors::White);
 		const std::wstring countdown = std::to_wstring(static_cast<int>(std::ceil(m_fGate3AuraSecondsLeft))) + L"\uCD08";
-		drawPrompt(countdown.c_str(), 0.088f, 1.4f, Colors::Yellow);
+		drawPrompt(countdown.c_str(), 0.755f, 0.7f, Colors::Yellow);
 	}
 	const std::string& offered =
 		CCombatHUDViewModel::Get().Get_InteractPromptTriggerId();
@@ -2727,6 +2767,9 @@ bool_t Client::CLevel_KakulSaydonArena::Can_InteractGateProgress() const
 	using LostArk::Shared::KOUKUSAYDON_RAID_PHASE;
 	const auto phase = Get_KoukuRaidState().ePhase;
     if (m_bLocalSequencePlaybackActive) return false;
+	// Gate 3 clear is an automatic Server-owned Encore transition.
+	if (m_GateProgress.iCurrentGate == 3u && m_GateProgress.iGateCount > 3u &&
+		0u != (m_GateProgress.iClearedMask & 4u)) return false;
 	if (!Is_LocalGateParticipant() || (Is_ServerRaidActive() &&
 		(phase == KOUKUSAYDON_RAID_PHASE::PREPARING || phase == KOUKUSAYDON_RAID_PHASE::CINEMATIC ||
             (phase == KOUKUSAYDON_RAID_PHASE::WAIT_GATE && Get_KoukuRaidState().strGateId == "GATE3" && Get_KoukuRaidState().iEndTick)))) return false;
@@ -2827,7 +2870,7 @@ void Client::CLevel_KakulSaydonArena::Apply_GateProgressState(
 				m_pMvpResultView->Hide();
 			m_bGateVoteAnswered = false;
 			Trigger_RaidClear();
-            m_bRaidClearShowMvp = !(State.iCurrentGate == 3u && Is_ServerRaidActive());
+            m_bRaidClearShowMvp = !(State.iCurrentGate == 3u && State.iGateCount > 3u);
 		}
 	}
 	/* Vote: a member gets the accept / decline prompt once; the proposer waits. */
@@ -2990,9 +3033,10 @@ void Client::CLevel_KakulSaydonArena::Update_GateProgress(const f32_t fTimeDelta
 	if (bCleared)
 		eButton = iShownGate < iShownCount ? CRaidGateProgressView::BUTTON::PROGRESS : CRaidGateProgressView::BUTTON::EXIT;
 	if (bCleared && iShownGate == 3u && iShownCount > 3u)
-		eButton = CRaidGateProgressView::BUTTON::ENTER_BINGO;
-	if (Get_KoukuRaidState().ePhase == KOUKUSAYDON_RAID_PHASE::WAIT_ENTRY ||
-        (!Is_ServerRaidActive() && Is_AtGate3EntryTerrace()))
+		eButton = CRaidGateProgressView::BUTTON::NONE;
+	if (eButton != CRaidGateProgressView::BUTTON::NONE &&
+		(Get_KoukuRaidState().ePhase == KOUKUSAYDON_RAID_PHASE::WAIT_ENTRY ||
+        (!Is_ServerRaidActive() && Is_AtGate3EntryTerrace())))
 		eButton = CRaidGateProgressView::BUTTON::ENTER_GATE3;
 	const bool_t canPropose = canInteract && Is_LocalRaidLeader() && !bVoteOpen;
 	Update_Gate3EntryAura(canPropose, eButton == CRaidGateProgressView::BUTTON::ENTER_GATE3 && canInteract);
@@ -4799,7 +4843,7 @@ void Client::CLevel_KakulSaydonArena::Update_TriggerMoveFade(
 
 bool_t Client::CLevel_KakulSaydonArena::Try_GetCompositionWorldPivot(
  const std::string_view instanceId, float4x4_t& out, const std::string_view occurrenceId,
- const std::uint32_t emissionIndex) const
+ const std::uint32_t emissionIndex, const std::string& bone, const bool_t boneRotation) const
 {
 #ifdef _DEBUG
  if (!m_CompositionWorldPreviewCues.empty())
@@ -4812,10 +4856,10 @@ bool_t Client::CLevel_KakulSaydonArena::Try_GetCompositionWorldPivot(
     if (selected) return false;
     selected = playback.player.get();
    }
-  return selected && CompositionWorldPivot(*selected, std::string(instanceId), out, emissionIndex);
+  return selected && CompositionWorldPivot(*selected, std::string(instanceId), out, emissionIndex, bone, boneRotation);
  }
 #endif
- return m_SequencePlayer.Try_GetSequencePivot(std::string(instanceId), out, emissionIndex);
+ return m_SequencePlayer.Try_GetSequencePivot(std::string(instanceId), out, emissionIndex, bone, boneRotation);
 }
 
 bool_t Client::CLevel_KakulSaydonArena::Is_CinematicPresentationActive() const
@@ -5911,7 +5955,7 @@ void Client::CLevel_KakulSaydonArena::Consume_OwnedWorldCue(
 bool_t Client::CLevel_KakulSaydonArena::Try_GetOwnedCompositionWorldPivot(
     std::uint32_t runEpoch, const std::string& memberId, const std::string& sequenceId,
     const std::string& cueId, float4x4_t& out, const std::uint32_t emissionIndex,
-    const std::uint32_t patternSequence) const
+    const std::uint32_t patternSequence, const std::string& bone, const bool_t boneRotation) const
 {
     const OWNED_WORLD_CUE* found = nullptr;
     for (const auto& [id, cue] : m_OwnedWorldCues)
@@ -5922,7 +5966,7 @@ bool_t Client::CLevel_KakulSaydonArena::Try_GetOwnedCompositionWorldPivot(
             if (found) return false;
             found = &cue;
         }
-    return found && CompositionWorldPivot(*found->player, sequenceId, out, emissionIndex);
+    return found && CompositionWorldPivot(*found->player, sequenceId, out, emissionIndex, bone, boneRotation);
 }
 
 

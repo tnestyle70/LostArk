@@ -25,7 +25,9 @@ struct CLIENT_LEVEL_DESCRIPTOR final
 	using CREATE_FUNCTION = unique_ptr<Engine::CLevel>(*)(
 		ComPtr<ID3D11Device>,
 		ComPtr<ID3D11DeviceContext>);
-	using LOAD_FUNCTION = HRESULT (CLoader::*)();
+	// A pointer to a member of forward-declared CLoader has an include-order
+	// dependent representation in MSVC. Keep this public descriptor layout fixed.
+	using LOAD_FUNCTION = HRESULT (*)(CLoader&);
 
 	LEVEL eLevel = LEVEL::END;
 	CLIENT_LEVEL_KIND eKind = CLIENT_LEVEL_KIND::PRODUCT;

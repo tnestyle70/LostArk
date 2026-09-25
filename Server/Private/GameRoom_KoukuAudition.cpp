@@ -6,6 +6,7 @@
 #include "Network/PacketMessages.h"
 #include "Network/PacketWriter.h"
 #include "Gameplay/WorldCollisionContract.h"
+#include "Gameplay/CombatCollisionContract.h"
 
 #include <algorithm>
 #include <array>
@@ -741,11 +742,11 @@ void LostArk::Server::CGameRoom::Broadcast_OwnedWorldSequence(const LostArk::Sha
 }
 
 bool LostArk::Server::CGameRoom::Stage_KoukuWorldBody(
-	const BOSS_PATTERN_WORLD_COMBAT_BODY& body, const LostArk::Shared::S2C_WORLD_SEQUENCE_PLAY& play)
+	const BOSS_PATTERN_WORLD_COMBAT_BODY& body, const LostArk::Shared::S2C_WORLD_SEQUENCE_PLAY& play, const bool authoredMadness)
 {
 	using namespace LostArk::Shared;
 	if (!body.iMaximumHp || body.iMaximumHp > 1000000000u || !std::isfinite(body.fRadiusM) ||
-		body.fRadiusM <= .001f || body.fRadiusM > 1000.f || !play.bUntilDestroyed || !play.iRunEpoch ||
+		body.fRadiusM <= .001f || body.fRadiusM > 1000.f || (!play.bUntilDestroyed && (!authoredMadness || !play.iDurationMs)) || !play.iRunEpoch ||
 		play.strMemberId.empty() || play.strCueId.empty() || play.strOccurrenceId.empty() ||
 		m_iNextNetEntityId == INVALID_NET_ENTITY_ID || m_KoukuDamageableWorldCues.size() >= 1024u)
 	{ m_strStatus = "World combat body is invalid or its capacity is exhausted"; return false; }
@@ -769,6 +770,19 @@ bool LostArk::Server::CGameRoom::Stage_KoukuWorldBody(
 	KOUKU_DAMAGEABLE_WORLD_CUE cue;
 	cue.Play = play; cue.iBodyId = entity.iNetEntityId;
 	cue.iOwnerSessionId = m_KoukuSaydonPatternAudition.iOwnerSessionId;
+	if (play.strSequenceInstanceId == "world.object.instance.kouku.mario_circus_ball.aura") cue.iMadnessSource = 1u;
+	else if (play.strSequenceInstanceId == "world.object.instance.kouku.odd_doll.large.att_battle_2_01" ||
+		play.strSequenceInstanceId == "world.object.instance.kouku.odd_doll.att_battle_2_01") cue.iMadnessSource = 2u;
+	if (authoredMadness) cue.iMadnessSource = 0u;
+	if (cue.iMadnessSource)
+	{
+		const auto* catalog = Resolve_KoukuProductCatalog();
+		const auto* policy = catalog ? catalog->Find_KoukuMadnessPolicy(std::string(KOUKUSAYDON_G1_ENCOUNTER_ID)) : nullptr;
+		if (!policy) { m_strStatus = "World madness source has no admitted policy"; return false; }
+		cue.MadnessPolicy = *policy;
+		cue.iNextMadnessTick = Add_ServerTicksSkippingReservedZero(play.iStartTick,
+			(policy->iSpecialIntervalMs * SERVER_TICK_HZ + 999u) / 1000u);
+	}
 	m_PendingKoukuWorldBodies.reserve(m_PendingKoukuWorldBodies.size() + 1u);
 	m_KoukuDamageableWorldCues.reserve(m_KoukuDamageableWorldCues.size() + 1u);
 	m_PendingKoukuWorldBodies.push_back(std::move(entity));
@@ -803,8 +817,59 @@ void LostArk::Server::CGameRoom::Update_KoukuWorldBodies(const std::uint32_t ser
 		const bool ownerAlive = std::any_of(m_WorldEntities.begin(), m_WorldEntities.end(), [&](const auto& row) {
 			return row.iNetEntityId == cue->Play.iBossNetEntityId && row.eKind == WORLD_BOOTSTRAP_KIND::BOSS &&
 				row.iCurrentHp != 0u && row.eAction != SERVER_ENTITY_ACTION::DEAD; });
-		if (!cue->bCancelled && alive && ownerAlive) { ++cue; continue; }
+		const bool expired = !cue->Play.bUntilDestroyed && cue->Play.iDurationMs &&
+			Has_ReachedServerTick(serverTick, Add_ServerTicksSkippingReservedZero(cue->Play.iStartTick,
+				CKoukuSaydonLogicRuntime::Ticks_FromMs(cue->Play.iDurationMs)));
+		if (!cue->bCancelled && alive && ownerAlive && !expired)
+		{
+			if (cue->iMadnessSource && Has_ReachedServerTick(serverTick, cue->iNextMadnessTick))
+			{
+				const auto& policy = cue->MadnessPolicy;
+				const bool ball = cue->iMadnessSource == 1u;
+				const auto& body = live != m_WorldEntities.end() ? *live : *pending;
+				const float radius = ball ? policy.fBallRadiusM : policy.fDollRadiusM;
+				const float yaw = cue->Play.fWorldRotationYDegrees * .017453292519943295f;
+				const float forwardX = std::sin(yaw), forwardZ = std::cos(yaw);
+				for (auto& [id, player] : m_Players)
+				{
+					if (!player.iCurrentHp || !player.isCombatReady || player.iMarioStage ||
+						player.eAction == PLAYER_ACTION_STATE::FALLING || player.eAction == PLAYER_ACTION_STATE::DEAD ||
+						player.eAction == PLAYER_ACTION_STATE::GRABBED || player.bPatternBound ||
+						player.eMadnessForm != PLAYER_MADNESS_FORM::NORMAL ||
+						std::abs(player.fPositionY - body.fPositionY) > 2.f) continue;
+					const CombatCollision::BODY_CIRCLE_XZ target{ player.fPositionX, player.fPositionZ,
+						WorldCollision::PLAYER_HALF_EXTENT_X };
+					// Ball: original 200 cm circle. Doll: original 400 cm / 30 degree
+					// breath sectors in the saved placement basis; gauge amount is project tuning.
+					const bool inside = ball ? CombatCollision::Circles_Overlap(
+						CombatCollision::CIRCLE_XZ{ body.fPositionX, body.fPositionZ, radius }, target) :
+						(CombatCollision::Circle_IntersectsCone(target, body.fPositionX, body.fPositionZ,
+							forwardX, forwardZ, radius, 30.f) ||
+						 CombatCollision::Circle_IntersectsCone(target, body.fPositionX, body.fPositionZ,
+							-forwardX, -forwardZ, radius, 30.f));
+					if (!inside) continue;
+					const double gain = static_cast<double>(player.iMaximumMadness) *
+						(ball ? policy.iBallGainPercent : policy.iDollGainPercent) / 100. *
+						(ball ? policy.iBallMultiplierPercent : policy.iDollMultiplierPercent) / 100.;
+					CServerCombatHitRuntime::Add_MadnessGauge(player, gain);
+					if (player.iMaximumMadness && player.iCurrentMadness >= player.iMaximumMadness)
+						CKoukuSaydonLogicRuntime::Transform_ToClown(player, &policy, serverTick, 0u);
+				}
+				cue->iNextMadnessTick = Add_ServerTicksSkippingReservedZero(serverTick,
+					(policy.iSpecialIntervalMs * SERVER_TICK_HZ + 999u) / 1000u);
+			}
+			++cue; continue;
+		}
 		S2C_WORLD_SEQUENCE_PLAY stop;
+		const auto retireContact = [&](KOUKUSAYDON_PATTERN_AUDITION_MEMBER& member) {
+			if (member.strMemberId == cue->Play.strMemberId && member.LogicLedger.iPatternSequence == cue->Play.iPatternSequence)
+				member.LogicLedger.RetiredWorldOccurrences.insert(cue->Play.strOccurrenceId);
+		};
+		if (m_KoukuSaydonPatternAudition.iRoomAuditionEpoch == cue->Play.iRunEpoch)
+		{
+			for (auto& member : m_KoukuSaydonPatternAudition.Members) retireContact(member);
+			for (auto& tail : m_KoukuSaydonPatternAudition.Tails) retireContact(tail.Member);
+		}
 		stop.eOperation = WORLD_SEQUENCE_OPERATION::STOP_CUE;
 		stop.iRunEpoch = cue->Play.iRunEpoch; stop.strMemberId = cue->Play.strMemberId;
 		stop.strCueId = cue->Play.strCueId; stop.strOccurrenceId = cue->Play.strOccurrenceId;
@@ -1461,6 +1526,7 @@ bool LostArk::Server::CGameRoom::Update_KoukuSaydonBoss(SERVER_WORLD_ENTITY& bos
 		{ m_strStatus = "Cross direction child failed: " + status; Clear_KoukuSaydonPatternAudition(); return true; }
 		if (!boss.bKoukuDirectionPlaybackComplete)
 		{
+			Update_KoukuActorContacts(*child, *childPattern, *catalog, serverTick);
 			const auto finalPose = *child;
 			const auto result = m_KoukuSaydonBrain.Update(*child, *catalog, serverTick, status);
 			if (result == KOUKUSAYDON_BRAIN_UPDATE_RESULT::PATTERN_COMPLETED)
@@ -1487,6 +1553,7 @@ bool LostArk::Server::CGameRoom::Update_KoukuSaydonBoss(SERVER_WORLD_ENTITY& bos
         &m_ServerNavigation, &m_ServerCollisionSystem);
 	Update_KoukuMarioEntry(*member, serverTick);
 	Update_KoukuPlayerTargets(boss, *pattern, member->LogicLedger, *baseCatalog, serverTick);
+	output.bEndPatternEarly = output.bEndPatternEarly || member->LogicLedger.bTrackingTargetReached;
 	const auto sourceOwner = boss;
 	const bool outputCompleted = Apply_KoukuLogicOutput(output, boss, serverTick);
     const bool parentStarted = !outputCompleted && Start_KoukuParentSequence(*member, boss, *pattern, serverTick);

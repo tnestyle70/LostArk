@@ -1,6 +1,7 @@
 #pragma once
 
 #include "CompositionAnimationResource.h"
+#include "CompositionEditing.h"
 
 #include <array>
 #include <cstdint>
@@ -76,6 +77,18 @@ public:
     /* The shell picked one boss entry; a session serving several entries
        narrows what it lists. Sessions with one entry ignore it. */
     virtual void Select_WorkbenchBoss(COMPOSITION_WORKBENCH_BOSS) {}
+    virtual bool Execute_CompositionEdit(COMPOSITION_EDIT_COMMAND, std::string& status)
+    {
+        status = "Select an editable resource or timeline box in this session.";
+        return false;
+    }
+    virtual bool Insert_CompositionTransfer(const COMPOSITION_TRANSFER& transfer, std::string& status)
+    {
+        if (const auto animation = std::dynamic_pointer_cast<const COMPOSITION_ANIMATION_TRANSFER>(transfer))
+            return Append_CompositionAnimationResource(animation->resource, false, status);
+        status = "This session cannot insert the selected resource type.";
+        return false;
+    }
     virtual bool Can_AppendCompositionAnimationResource(
         const COMPOSITION_ANIMATION_RESOURCE&, bool, std::string& status) const
     {

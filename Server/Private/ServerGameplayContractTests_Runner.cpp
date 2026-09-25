@@ -36,6 +36,35 @@
 using namespace LostArk::Server;
 using namespace LostArk::Shared;
 
+int CServerGameplayContractRunner::Run_ValtanLifecycleOnly()
+{
+    int result = 1;
+    const auto execute = [](void* output) {
+        std::cout << std::unitbuf;
+        TESTS tests{}; CGameplayCatalog catalog;
+        if (!catalog.Load()) { std::cout << catalog.Get_Status() << '\n'; return; }
+        Run_ValtanLifecycle(tests, catalog);
+        Run_ValtanPinnedGeneration(tests, catalog);
+        std::cout << "failures : " << tests.failures << '\n';
+        *static_cast<int*>(output) = tests.failures == 0 ? 0 : 1;
+    };
+    return Run_WithContractWorkerStack(execute, &result) ? result : 1;
+}
+
+int CServerGameplayContractRunner::Run_SkillStagesOnly()
+{
+    int result = 1;
+    const auto execute = [](void* output) {
+        std::cout << std::unitbuf;
+        TESTS tests{}; CGameplayCatalog catalog;
+        if (!catalog.Load()) { std::cout << catalog.Get_Status() << '\n'; return; }
+        Run_SkillStages(tests, catalog);
+        std::cout << "failures : " << tests.failures << '\n';
+        *static_cast<int*>(output) = tests.failures == 0 ? 0 : 1;
+    };
+    return Run_WithContractWorkerStack(execute, &result) ? result : 1;
+}
+
 int LostArk::Server::CServerGameplayContractRunner::Run(
     CONTRACT_TEST_RUN_CONTEXT& context)
 {

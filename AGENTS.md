@@ -152,6 +152,12 @@ CModel preScale·socket offset·particle 단위를 함께 실측한다. syntheti
 - 물리 폴더가 소스 구조의 정본이다. `.vcxproj`와 `.filters`는 필요한 항목만 추가하고 기존 필터를 재배치하지 않는다.
 - 컴파일·링크 산출물(`exe/dll/lib/pdb/cso`), `EngineSDK`, `.vs`, `imgui.ini`는 소스 커밋에 섞지 않는다. publisher가 생성한 `Client/Bin/DataFiles`, `Server/Bin/DataFiles` 실행 데이터는 아래 Git 전달 계약에 따라 포함한다.
 
+## 렌더링 옵션 정본과 변경 권한
+
+- 모든 rendering option은 팀장이 현재 조율·저장한 값을 정본으로 삼는다. FXAA/anti-aliasing, SSAO, bloom, exposure, gamma, LUT, 조명·환경·scene/region quality 값을 에이전트나 팀원이 임의로 켜거나 이전 값·원본 복원값·다른 PC 값으로 덮어쓰지 않는다.
+- 특히 쿠크 Mario1~4는 팀장의 현재 FXAA/anti-aliasing OFF 설정을 유지한다. 패턴·이펙트 복원, merge, publish, 기본값 갱신을 이유로 다시 활성화하지 않는다. 팀장의 명시적인 변경 요청이 있을 때만 해당 옵션을 변경한다.
+- 렌더링 관련 파일의 다른 수정이 필요해도 최신 저장본에서 요청한 필드만 병합하고 나머지 팀장 튜닝은 보존한다. 실제 정본·게시 경로와 적용 순서는 `CLAUDE.md`의 렌더링 옵션 정본을 따른다.
+
 ## 구현 원칙
 
 - 추측보다 현재 코드와 데이터 실측을 우선한다.

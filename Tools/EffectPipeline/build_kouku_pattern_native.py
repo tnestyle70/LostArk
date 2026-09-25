@@ -37,7 +37,7 @@ def parse_numbered_static_set(data, offset, names):
     payload, table, numbered = bytearray(data), list(names), []
     cursor = offset + 16
     for array_name, stride in (('staticSwitchParameters', 32), ('staticComponentMaskParameters', 44),
-                               ('normalParameters', 32), ('terrainLayerWeightParameters', 32)):
+                               ('normalParameters', 29), ('terrainLayerWeightParameters', 32)):
         if cursor + 4 > len(data):
             raise ValueError('Numbered static parameter array count is outside candidate bytes')
         count = struct.unpack_from('<I', data, cursor)[0]
@@ -78,6 +78,11 @@ def pkg(name):
         return pkg('startup')
     if name == 'startup':
         candidates = list((restore.SOURCE / 'CanonicalSource/Shared/Packages/STARTUP/Source').glob('*.upk'))
+        if not candidates:
+            # STARTUP is present at ReleasePC's root in a retail installation.
+            # Resolve its original logical identity instead of requiring one
+            # machine's historical export folder.
+            candidates = [restore.ue3.resolve_physical_package(UMODEL, RELEASE, 'startup', 'kr')]
         assert len(candidates) == 1, ('STARTUP source package identity', candidates)
         source_native.packages[name] = candidates[0]
     return _source_package(name)
@@ -378,7 +383,11 @@ def prepare(evidence, first, last, reuse_roots=(), resource_root=None):
             original_shape = shape
             type_classes = [records[p]['classPath'].rsplit('.', 1)[-1] for p in occurrence['moduleOrder']
                             if p in records and 'typedata' in records[p]['classPath']]
-            if any('typedatabeam' in name for name in type_classes):
+            if any('typedataanimtrail' in name for name in type_classes):
+                shape = 'animationTrail'
+            elif any('typedataribbon' in name for name in type_classes):
+                shape = 'ribbon'
+            elif any('typedatabeam' in name for name in type_classes):
                 shape = 'beam'
             row = by_material[occurrence['sourceMaterial']]
             component = occurrence.get('sourceStaticMeshComponent')
@@ -457,9 +466,21 @@ def prepare(evidence, first, last, reuse_roots=(), resource_root=None):
             if value(row['parentProperties'], 'busesdistortion', False):
                 distortion_ps = [s for s in shaders if s['shaderType'] == 'tdistortionmeshpixelshader<fdistortmeshaccumulatepolicy>']
                 distortion_vs = [s for s in shaders if s['shaderType'] == 'tdistortionmeshvertexshader<fdistortmeshaccumulatepolicy>']
-                assert len(distortion_ps) == len(distortion_vs) == 1, ('missing original distortion pair', occurrence['elementId'], vf)
-                program['distortionPass'] = dict(sourcePS=distortion_ps[0]['shaderIdHex'], sourceVS=distortion_vs[0]['shaderIdHex'])
-                referenced_shaders.extend([distortion_ps[0], distortion_vs[0]])
+                # This original OneLayer permutation samples SceneColor in its
+                # base pass (the already restored SDNative374 ABI). Its source
+                # map contains no separate accumulation pass. Other materials
+                # still require the complete original distortion pair.
+                single_pass = (row['sourceMaterial'] == 'fx_mastermaterial.fx_mi.fx_mm_onelayerdistortion_02_01_ad'
+                    and vf == 'fparticledynamicparametervertexfactory'
+                    and program['sourceVS'] == '5825675b4ffbc840ad691ec56973cf7e'
+                    and program['sourcePS'] == 'eb2bcd5c8f3c6c49805ab689687b14f6')
+                if single_pass:
+                    assert not distortion_ps and not distortion_vs, 'OneLayer source pass layout changed'
+                    program['sourceSceneColorBasePass'] = True
+                else:
+                    assert len(distortion_ps) == len(distortion_vs) == 1, ('missing original distortion pair', occurrence['elementId'], vf)
+                    program['distortionPass'] = dict(sourcePS=distortion_ps[0]['shaderIdHex'], sourceVS=distortion_vs[0]['shaderIdHex'])
+                    referenced_shaders.extend([distortion_ps[0], distortion_vs[0]])
             for shader in referenced_shaders:
                 refs[shader['shaderIdHex']] = shader
                 shader_material[shader['shaderIdHex']] = row
@@ -558,6 +579,16 @@ def prepare(evidence, first, last, reuse_roots=(), resource_root=None):
                         bias_pairs.difference_update(reviewed_scene_bias[1])
                     candidates = [candidate for candidate in candidates if bias_pairs.issubset(
                         candidate['textureSampleClosure']['materialSamplePairs'])]
+                    if sid == '9aa5e61191a9654290657484e8c9cae6':
+                        # Same source localcrack PS qualified in the 2026-09-15
+                        # VNative66 restoration: 37 same-class shader objects
+                        # establish the scalar-array offset 152, not the false
+                        # vector-array interpretation at 148. Pin the actual
+                        # bytecode and semantic wire before reusing that ABI.
+                        assert hashlib.sha256(bytecode).hexdigest() == 'cb21a8e5eb108ff1f70a60acdd6446d5ee387b922634cd1f5e4d2a096d478c1a'
+                        candidates = [candidate for candidate in candidates
+                            if candidate['bindingArraysOffsetInShaderObject'] == 152
+                            and candidate['bindingSemanticSha256'] == 'b1c5843f0ae303f802f881a8db7cadfc0f9f4f07209bcd93ceedade1e3a7589c']
                     write('shader_objects/' + sid + '.candidates.json', dict(declaration=declaration, candidates=candidates))
                     if candidates and declaration['declaredConstantBuffer0Float4Count'] == 0:
                         groups = {}
@@ -598,7 +629,7 @@ def generate_native(evidence, first, last, resource_root=None):
     reused = restore.read(out / 'reused_native_programs.json')['programs']
     source_failures = restore.read(out / 'source_material_failures.json')
     companion = restore.read(out / 'selected_distortion_programs.json')['programs']
-    prepare_textures(evidence, out)
+    prepare_textures(evidence, out, resource_root=resource_root)
     subprocess.run([sys.executable, str(ROOT / 'Tools/EffectPipeline/generate_artist_native_runtime_shader.py'),
         '--source-dir', str(out), '--program-start', str(first), '--profile-domain', 'kouku'] +
         (['--resource-root', str(resource_root)] if resource_root else []), check=True)
@@ -676,18 +707,38 @@ def prepare_distortion(out, merged, first, resource_root=None):
 
 
 
-def prepare_textures(evidence, out):
+def prepare_textures(evidence, out, resource_root=None):
     required = restore.read(out / 'required_native_textures.json')
-    resources = ROOT / 'Client/Bin/Resources'
+    installed_resources = ROOT / 'Client/Bin/Resources'
+    resources = Path(resource_root).resolve() if resource_root is not None else installed_resources
+    resources.mkdir(parents=True, exist_ok=True)
     export_root = evidence / 'source_texture_export'
     by_name = {}
     for path in resources.rglob('*.dds'):
         by_name.setdefault((path.parent.name.lower(), path.stem.lower()), []).append(path)
+    if resources.resolve() != installed_resources.resolve():
+        # Installed files are read-only inputs when preparing an offline cohort.
+        # Preserve their existing relative asset IDs in the candidate closure.
+        for path in installed_resources.rglob('*.dds'):
+            by_name.setdefault((path.parent.name.lower(), path.stem.lower()), []).append(path)
     for key in required:
         package, relative = key.split('.', 1)
         name = relative.rsplit('.', 1)[-1]
         if (package, name) in by_name:
             matches = by_name[(package, name)]
+            if resources.resolve() != installed_resources.resolve():
+                copied = []
+                for match in matches:
+                    if match.resolve().is_relative_to(resources.resolve()):
+                        copied.append(match)
+                        continue
+                    destination = resources / match.relative_to(installed_resources)
+                    destination.parent.mkdir(parents=True, exist_ok=True)
+                    assert not destination.exists() or destination.read_bytes() == match.read_bytes(), destination
+                    if not destination.exists():
+                        shutil.copyfile(match, destination)
+                    copied.append(destination)
+                matches = copied
             if not any(path.relative_to(resources).parts[0] == 'Effect' for path in matches):
                 # Effect document texture IDs are deliberately Effect-relative.
                 # Reuse the exact source bytes, without widening the codec's
@@ -732,7 +783,7 @@ def prepare_textures(evidence, out):
         assert not destination.exists() or destination.read_bytes() == matches[0].read_bytes(), destination
         if not destination.exists():
             shutil.copyfile(matches[0], destination)
-    restore.prepare_textures(out, out / 'required_native_textures.json')
+    restore.prepare_textures(out, out / 'required_native_textures.json', resource_root=resources)
 
 
 def prepare_geometry(evidence):

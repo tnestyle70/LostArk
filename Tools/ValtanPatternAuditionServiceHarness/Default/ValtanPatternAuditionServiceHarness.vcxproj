@@ -36,7 +36,7 @@
       <LanguageStandard>stdcpp20</LanguageStandard>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
-      <AdditionalOptions>/MP /utf-8 %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalOptions>/MP /bigobj /utf-8 %(AdditionalOptions)</AdditionalOptions>
       <PreprocessorDefinitions>LOSTARK_VALTAN_AUDITION_SERVICE_HARNESS;_CONSOLE;NOMINMAX;WIN32_LEAN_AND_MEAN;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>$(ProjectDir)..\..\..\Client\Public;$(ProjectDir)..\..\..\Shared\Public;$(ProjectDir)..\..\..\Engine\Public;$(ProjectDir)..\..\..\Engine\External\imgui;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
 	  <!-- No-PCH Client sources expose legacy global `using namespace std`.

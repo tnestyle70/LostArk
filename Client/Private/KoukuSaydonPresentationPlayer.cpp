@@ -418,9 +418,14 @@ OCCURRENCE Read_Occurrence(const DATA_JSON_VALUE& row, std::uint32_t durationMs,
     if (box.strBoneTarget == "WEAPON" && ((kind != KIND::COLLIDER && kind != KIND::EFFECT) || box.strAnchorKind != "BOSS" || box.strBone.empty()))
         throw std::runtime_error("WEAPON bone target needs a Boss Collider/Effect and a named weapon bone.");
     if (row.Find("boneRotation")) box.strBoneRotation = Text(row, "boneRotation");
-    if (box.strBoneRotation != "TARGET_YAW" && (box.strBoneRotation != "BONE" || kind != KIND::EFFECT ||
-        box.strAnchorKind != "BOSS" || box.strBone.empty()))
-        throw std::runtime_error("Bone rotation needs a Boss Effect and a named bone: " + box.strOccurrenceId);
+    const bool worldBoneCollider = kind == KIND::COLLIDER && box.strAnchorKind == "WORLD" &&
+        box.bFollowBoss && box.strBoneTarget == "BODY" && !box.strBone.empty();
+    if (box.strAnchorKind == "WORLD" && !box.strBone.empty() && !worldBoneCollider)
+        throw std::runtime_error("WORLD bone requires a following BODY Collider: " + box.strOccurrenceId);
+    if (box.strBoneRotation != "TARGET_YAW" && (box.strBoneRotation != "BONE" ||
+        (!worldBoneCollider && ((kind != KIND::EFFECT && kind != KIND::COLLIDER) ||
+            box.strAnchorKind != "BOSS" || box.strBone.empty() || (kind == KIND::COLLIDER && !box.bFollowBoss)))))
+        throw std::runtime_error("Bone rotation needs a Boss Effect or following Collider and a named bone: " + box.strOccurrenceId);
     return box;
 }
 
@@ -496,7 +501,8 @@ std::uint32_t Pattern_Duration(const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern)
 
 bool Make_Pivot(const OCCURRENCE& box, const float4x4_t& root,
     const std::shared_ptr<Engine::CModel>& model, float4x4_t& result,
-    const ANIMATION_MODEL_TARGET_VIEW* weaponView = nullptr, float4x4_t* sampledBasis = nullptr)
+    const ANIMATION_MODEL_TARGET_VIEW* weaponView = nullptr, float4x4_t* sampledBasis = nullptr,
+    const bool planarBone = false)
 {
     float4x4_t anchor = root;
     if (!box.strBone.empty())
@@ -528,11 +534,24 @@ bool Make_Pivot(const OCCURRENCE& box, const float4x4_t& root,
         basis.r[axis] = XMVector3Normalize(basis.r[axis]);
     }
     if (sampledBasis) XMStoreFloat4x4(sampledBasis, basis);
-    XMStoreFloat4x4(&result,
-        XMMatrixScaling(float(box.Scale[0]), float(box.Scale[1]), float(box.Scale[2])) *
+    matrix_t placed = XMMatrixScaling(float(box.Scale[0]), float(box.Scale[1]), float(box.Scale[2])) *
         XMMatrixRotationRollPitchYaw(XMConvertToRadians(float(box.RotationDegrees[0])),
             XMConvertToRadians(float(box.RotationDegrees[1])), XMConvertToRadians(float(box.RotationDegrees[2]))) *
-        XMMatrixTranslation(float(box.PositionOffset[0]), float(box.PositionOffset[1]), float(box.PositionOffset[2])) * basis);
+        XMMatrixTranslation(float(box.PositionOffset[0]), float(box.PositionOffset[1]), float(box.PositionOffset[2])) * basis;
+    if (planarBone && box.strBoneRotation == "BONE")
+    {
+        // Compose the authored box in the full bone/socket basis before projecting
+        // its final heading onto Server combat's XZ plane. A mouth's local fire
+        // axis need not be the bone's +Z axis.
+        const float x = XMVectorGetX(placed.r[2]), z = XMVectorGetZ(placed.r[2]);
+        const float horizontal = x * x + z * z;
+        if (!std::isfinite(horizontal) || horizontal < 0.00000001f) return false;
+        const vector_t position = placed.r[3];
+        placed = XMMatrixScaling(float(box.Scale[0]), float(box.Scale[1]), float(box.Scale[2])) *
+            XMMatrixRotationY(std::atan2(x, z));
+        placed.r[3] = position;
+    }
+    XMStoreFloat4x4(&result, placed);
     return true;
 }
 
@@ -2533,14 +2552,17 @@ void Client::CKoukuSaydonPresentationPlayer::Sample(SESSION& session,
                 if ((box.strWorldOccurrenceId.empty() || id == box.strWorldOccurrenceId) &&
                     player->Is_Playing(world->strSequenceInstanceId))
                 { if (selected) return false; selected = player.get(); }
-            return selected && selected->Try_GetSequencePivot(world->strSequenceInstanceId, anchor, box.iWorldEmissionIndex);
+            return selected && selected->Try_GetSequencePivot(world->strSequenceInstanceId, anchor, box.iWorldEmissionIndex,
+                box.strBone, box.strBoneRotation == "BONE");
         }
         const auto* level = CLevel_KakulSaydonArena::Get_Active();
         if (!level) return false;
         if (session.runEpoch)
             return level->Try_GetOwnedCompositionWorldPivot(session.runEpoch, session.memberId,
-                world->strSequenceInstanceId, box.strWorldOccurrenceId, anchor, box.iWorldEmissionIndex, session.patternSequence);
-        return level->Try_GetCompositionWorldPivot(world->strSequenceInstanceId, anchor, box.strWorldOccurrenceId, box.iWorldEmissionIndex);
+                world->strSequenceInstanceId, box.strWorldOccurrenceId, anchor, box.iWorldEmissionIndex, session.patternSequence,
+                box.strBone, box.strBoneRotation == "BONE");
+        return level->Try_GetCompositionWorldPivot(world->strSequenceInstanceId, anchor, box.strWorldOccurrenceId, box.iWorldEmissionIndex,
+            box.strBone, box.strBoneRotation == "BONE");
     };
     // Observe future anchored cues as well as active ones. Their first emission
     // can then interpolate the real samples bracketing the box start even when
@@ -2705,7 +2727,8 @@ void Client::CKoukuSaydonPresentationPlayer::Sample(SESSION& session,
                 anchorModel.reset();
             }
             if (!Make_Pivot(placedBox, anchor, anchorModel, row.pivot, weaponView,
-                (resource.eKind == KIND::COLLIDER || resource.eKind == KIND::EFFECT || resource.eKind == KIND::LIGHT) ? &row.placementAnchor : nullptr))
+                (resource.eKind == KIND::COLLIDER || resource.eKind == KIND::EFFECT || resource.eKind == KIND::LIGHT) ? &row.placementAnchor : nullptr,
+                resource.eKind == KIND::COLLIDER))
             {
                 row.waitingForAnchor = resource.eKind == KIND::LIGHT;
                 row.failed = !row.waitingForAnchor;
@@ -5528,9 +5551,9 @@ void Client::CKoukuSaydonPresentationPlayer::Update_BingoMarks(float dt)
             if (mark.red == red) continue;
         }
         if (!mark.retry.TryBegin(nowMs)) continue;
-        // A newly painted white cell plays the native rotating tile, then its
-        // saved NEXT maintenance; an ordinary-to-red transition replays that native flip.
-        const std::string motion = red ? (mark.player && !mark.red ? redFlipId : redId) : (mark.player ? whiteId : flipId);
+        // Every newly painted cell plays the native rotating tile before its
+        // saved NEXT maintenance, including an empty-to-red Server transition.
+        const std::string motion = red ? redFlipId : (mark.player ? whiteId : flipId);
         CWorldSequencePlayer::OBJECT_PLACEMENT placement;
         placement.position = { LostArk::Shared::Kouku_BingoCellCenterX(cell), .02f,
             LostArk::Shared::Kouku_BingoCellCenterZ(cell) };
@@ -5938,7 +5961,8 @@ bool Client::CKoukuSaydonPresentationPlayer::Preview_PresentationGeometry(
                 placed.Scale[axis] *= active->second.placementAnchorScale[axis];
             }
             float4x4_t pivot{};
-            if (!Make_Pivot(placed, active->second.placementAnchor, nullptr, pivot)) return false;
+            if (!Make_Pivot(placed, active->second.placementAnchor, nullptr, pivot, nullptr, nullptr,
+                resource->eKind == KIND::COLLIDER)) return false;
             if (resource->eKind == KIND::EFFECT && active->second.effectHandle &&
                 !CEffectV2Runtime::Rebuild_GroupPlacement(active->second.effectHandle, pivot,
                     Effect_V2PivotSampler(edited, session.rootHistory, active->second.effectPivotHistory),

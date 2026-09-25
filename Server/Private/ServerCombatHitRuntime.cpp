@@ -78,7 +78,8 @@ namespace
 		const LostArk::Shared::PLAYER_ID sourcePlayerId = LostArk::Shared::INVALID_PLAYER_ID,
 		const std::uint32_t staggerAmount = 0u,
 		const bool counterSuccess = false,
-		const bool critical = false)
+		const bool critical = false,
+		const LostArk::Shared::DAMAGE_HIT_FLAG hitFlag = LostArk::Shared::DAMAGE_HIT_FLAG::NORMAL)
 	{
 		/* A counter or stagger-only hit still reaches the combat analyzer. */
 		if ((0u == amount && 0u == staggerAmount && !counterSuccess) ||
@@ -94,7 +95,8 @@ namespace
 		event.iSourcePlayerId = sourcePlayerId;
 		event.iStaggerAmount = staggerAmount;
 		event.isCounterSuccess = counterSuccess;
-		if (critical && 0u != amount)
+		event.eHitFlag = hitFlag;
+		if (critical && 0u != amount && hitFlag == LostArk::Shared::DAMAGE_HIT_FLAG::NORMAL)
 			event.eHitFlag = LostArk::Shared::DAMAGE_HIT_FLAG::CRITICAL;
 		events.push_back(event);
 	}
@@ -364,6 +366,9 @@ LostArk::Server::CServerCombatHitRuntime::Apply_PlayerToWorld(
 		const BOSS_HIT_RESULT bossHit =
 			CBossCombatRuntime::Apply_PlayerHit(target, incoming);
 		damage = bossHit.iHealthDamage;
+		PushDamageEvent(target.iNetEntityId, bossHit.iShieldDamage,
+			target.fPositionX, target.fPositionY, target.fPositionZ, true, outDamageEvents,
+			hit.iSourcePlayerId, 0u, false, false, LostArk::Shared::DAMAGE_HIT_FLAG::ABSORB);
 		staggerDealt = bossHit.iStaggerDamage;
 		counterTriggered = bossHit.bCounterTriggered;
 		if (LostArk::Shared::INVALID_PLAYER_ID != hit.iSourcePlayerId &&
@@ -461,6 +466,19 @@ LostArk::Server::CServerCombatHitRuntime::Apply_PlayerToWorld(
 	return SERVER_COMBAT_HIT_RESULT::KILLED;
 }
 
+void LostArk::Server::CServerCombatHitRuntime::Add_MadnessGauge(
+	SERVER_PLAYER& target, const double gain)
+{
+	using namespace LostArk::Shared;
+	if (!target.iMaximumMadness || !target.iCurrentHp || !target.isCombatReady ||
+		target.eMadnessForm != PLAYER_MADNESS_FORM::NORMAL ||
+		!std::isfinite(gain) || gain <= 0.) return;
+	const double total = target.iCurrentMadness + target.dMadnessRemainder + gain;
+	const double clamped = (std::min)(total, static_cast<double>(target.iMaximumMadness));
+	target.iCurrentMadness = static_cast<std::uint32_t>(clamped + 1e-9);
+	target.dMadnessRemainder = (std::max)(0., clamped - target.iCurrentMadness);
+}
+
 LostArk::Server::SERVER_COMBAT_HIT_RESULT
 LostArk::Server::CServerCombatHitRuntime::Apply_WorldToPlayer(
 	SERVER_PLAYER& target,
@@ -472,16 +490,16 @@ LostArk::Server::CServerCombatHitRuntime::Apply_WorldToPlayer(
 	if (hit.bUsePushDirection && (!std::isfinite(hit.fPushDirectionX) || !std::isfinite(hit.fPushDirectionZ) ||
 		hit.fPushDirectionX * hit.fPushDirectionX + hit.fPushDirectionZ * hit.fPushDirectionZ < .000001f))
 		return SERVER_COMBAT_HIT_RESULT::NOT_ADMITTED;
-	if (0u == target.iCurrentHp || !target.isCombatReady ||
+	if (0u == target.iCurrentHp || (!hit.bEncounterWipe && !target.isCombatReady) ||
 		PLAYER_ACTION_STATE::DEAD == target.eAction ||
-		PLAYER_ACTION_STATE::FALLING == target.eAction ||
-		PLAYER_ACTION_STATE::GRABBED == target.eAction)
+		(!hit.bEncounterWipe && (PLAYER_ACTION_STATE::FALLING == target.eAction ||
+		PLAYER_ACTION_STATE::GRABBED == target.eAction)))
 	{
 		return SERVER_COMBAT_HIT_RESULT::NOT_ADMITTED;
 	}
-	if (hit.iServerTick < target.iInvulnerableEndTick)
+	if (!hit.bEncounterWipe && hit.iServerTick < target.iInvulnerableEndTick)
 		return SERVER_COMBAT_HIT_RESULT::ABSORBED;
-	if (!hit.bIgnoreCounter &&
+	if (!hit.bEncounterWipe && !hit.bIgnoreCounter &&
 		CPlayerSkillSystem::Try_Counter(target, catalog, hit.iServerTick))
 		return SERVER_COMBAT_HIT_RESULT::ABSORBED;
 
@@ -491,18 +509,21 @@ LostArk::Server::CServerCombatHitRuntime::Apply_WorldToPlayer(
 		CGameplayCatalog::Apply_Defense(
 			hit.iRawDamage, nullptr == playerProfile ? 0u : playerProfile->iDefense);
 	/* A guardian's protection reduces what the hit finally takes off. */
-	const std::uint32_t damage = CServerBuffRuntime::Scale_Damage(
+	const std::uint32_t damage = hit.bEncounterWipe ? target.iCurrentHp : CServerBuffRuntime::Scale_Damage(
 		mitigated,
 		CServerBuffRuntime::Damage_TakenPercent(catalog, target.ActiveBuffs));
 	/* The shield takes the hit first and only what it cannot hold reaches HP. */
 	std::uint32_t throughShield = damage;
-	if (0u != target.iShield && 0u != throughShield)
+	if (!hit.bEncounterWipe && 0u != target.iShield && 0u != throughShield)
 	{
 		const std::uint32_t absorbed = (std::min)(target.iShield, throughShield);
 		target.iShield -= absorbed;
 		throughShield -= absorbed;
+		PushDamageEvent(target.iNetEntityId, absorbed,
+			target.fPositionX, target.fPositionY, target.fPositionZ, false, outDamageEvents,
+			INVALID_PLAYER_ID, 0u, false, false, DAMAGE_HIT_FLAG::ABSORB);
 	}
-	if (throughShield >= target.iCurrentHp &&
+	if (!hit.bEncounterWipe && throughShield >= target.iCurrentHp &&
 		0u != Death_DenyInvulnerableMs(catalog, target))
 	{
 		/* The original leaves the holder alive and untouchable for a moment
@@ -514,32 +535,25 @@ LostArk::Server::CServerCombatHitRuntime::Apply_WorldToPlayer(
 			(invulnerableMs * BUFF_TICK_HZ + 999u) / 1000u;
 		Consume_DeathDeny(catalog, target);
 	}
+	const std::uint32_t hpBefore = target.iCurrentHp;
 	target.iCurrentHp = throughShield >= target.iCurrentHp ?
 		0u : target.iCurrentHp - throughShield;
-	/* The original madness gauge has no passive fill: it only moves through a
-	skill effect or accumulate_damage_ratio, so the share of a player's maximum
-	HP a hit took is the share of the gauge it charges. A world without a
-	madness policy carries a 0 maximum and charges nothing. */
-	if (0u != target.iMaximumMadness && 0u != damage &&
-		LostArk::Shared::PLAYER_MADNESS_FORM::NORMAL == target.eMadnessForm &&
-		nullptr != playerProfile && 0u != playerProfile->iMaximumHp)
-	{
-		const std::uint64_t charge =
-			static_cast<std::uint64_t>(target.iMaximumMadness) *
-			(std::min)(static_cast<std::uint64_t>(damage),
-				static_cast<std::uint64_t>(playerProfile->iMaximumHp)) /
-			static_cast<std::uint64_t>(playerProfile->iMaximumHp);
-		const std::uint64_t charged =
-			static_cast<std::uint64_t>(target.iCurrentMadness) + charge;
-		target.iCurrentMadness = static_cast<std::uint32_t>(
-			(std::min<std::uint64_t>)(charged, target.iMaximumMadness));
-	}
+	// Count only HP actually removed after mitigation, shield and death-deny.
+	// The room enables this policy only for Kouku; client snapshots never set it.
+	if (target.iMadnessDamageGainPercent && target.iMaximumHp)
+		Add_MadnessGauge(target, static_cast<double>(hpBefore - target.iCurrentHp) *
+			target.iMaximumMadness / target.iMaximumHp * target.iMadnessDamageGainPercent / 100.);
 	PushDamageEvent(
-		target.iNetEntityId, damage,
+		target.iNetEntityId, hpBefore - target.iCurrentHp,
 		target.fPositionX, target.fPositionY, target.fPositionZ,
 		false, outDamageEvents);
 	if (0u == target.iCurrentHp)
 	{
+		if (hit.bEncounterWipe)
+		{
+			target.iShield = 0u; target.iInvulnerableEndTick = 0u;
+			target.ActiveBuffs.clear(); target.Clear_Attachment();
+		}
 		target.eAction = PLAYER_ACTION_STATE::DEAD;
 		target.iCurrentSkillId = INVALID_SKILL_ID;
 		target.Clear_SkillTarget();

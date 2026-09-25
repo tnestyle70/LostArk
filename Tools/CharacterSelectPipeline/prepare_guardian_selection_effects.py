@@ -8,6 +8,31 @@ import copy
 import struct
 
 
+def project_static_mesh_material_slots(element):
+    if element['sourceRecipe']['rendererShape'] != 'mesh':
+        return
+    modules = element['sourceRecipe']['modules']
+    slots = [m for m in modules if m['className'] == 'particlemodulemeshmaterial']
+    if not slots or element['detail']['mesh'].get('sourceMaterialSlots'):
+        return
+    if len(slots) != 1 or slots[0]['distributions']:
+        raise ValueError('Expected one static source MeshMaterial module')
+    paths = [v for v in slots[0]['literals'] if v['propertyPath'] == 'meshmaterials.objectpath']
+    indices = [v for v in slots[0]['literals'] if v['propertyPath'].startswith('meshmaterials[')]
+    if len(paths) != 1 or len(indices) != 1 or indices[0]['propertyPath'] != 'meshmaterials[0]':
+        raise ValueError('Expected the reviewed single-entry MeshMaterial array')
+    material = element['material']
+    if paths[0]['value'] != material['sourceMaterialPath']:
+        raise ValueError('Native material differs from the source MeshMaterial slot')
+    required = next(m for m in modules if m['className'] == 'particlemodulerequired')
+    source = next((v['value'] for v in required['literals'] if v['propertyPath'] == 'material.objectpath'), '')
+    element['detail']['mesh']['sourceMaterialSlots'] = [dict(sourceMaterialIndex=0, material=material)]
+    element['material'] = dict(templateId='effect.standard', sourceMaterialPath=source,
+        renderProfile='alpha_two_sided_depth_read', sourceProfile=dict(enabled=False),
+        execution=dict(enabled=False, failClosed=True))
+    paths[0]['propertyPath'] = 'meshmaterials[0].objectpath'
+
+
 def project(output, require_native):
     """Retain shared Cascade recipes and exact native material/VF bindings."""
     from build_kouku_action_effect_groups import restored_index
@@ -50,7 +75,11 @@ def project(output, require_native):
                 if require_native:
                     element['resources'] = [dict(slotId='meshModel', assetId=mesh_assets[occurrence['sourceMesh']])]
             if require_native:
-                for resource in element['resources'] + element['material']['sourceProfile'].get('textures', []):
+                project_static_mesh_material_slots(element)
+                textures = element['material']['sourceProfile'].get('textures', []) + [
+                    texture for slot in element['detail']['mesh'].get('sourceMaterialSlots', [])
+                    for texture in slot['material']['sourceProfile'].get('textures', [])]
+                for resource in element['resources'] + textures:
                     assert (ROOT / 'Client/Bin/Resources' / resource['assetId']).is_file(), resource
         # A world PSC owns its original emitter loops. The phase controller
         # supplies a finite source-loop horizon and extends it without respawn.

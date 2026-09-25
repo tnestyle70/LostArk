@@ -547,8 +547,11 @@ PS_OUT_LIGHT Resolve_SourceCharacterLight(PS_IN input, float3 lightDirection,
     const float3 binormal = SourceCharacterSafeUnit(cross(normal, tangent)) * (geometry.w < 0.f ? -1.f : 1.f);
     const float4 clipPosition = mul(mul(float4(position,1.f),
         g_SourceCharacterViewMatrix),g_SourceCharacterProjMatrix);
+    float4 vertexChannels = g_MaterialSpecularTexture.Load(pixel);
+    if (IsSourceMovieStatic(g_SourceCharacterProgram) && vertexChannels.z < 0.f)
+        vertexChannels.z = -1.f-vertexChannels.z;
     SOURCE_CHARACTER_NATIVE_INPUT nativeInput = MakeSourceCharacterInput(surface.xy,
-        g_MaterialSpecularTexture.Load(pixel), position, tangent, binormal, normal,
+        vertexChannels, position, tangent, binormal, normal,
         g_vCamPosition.xyz, clipPosition,
         mul(g_SourceCharacterViewMatrix,g_SourceCharacterProjMatrix),
         lightDirection, light.diffuse.rgb, directShadow, abs(geometry.w) < 1.5f);
@@ -566,7 +569,8 @@ PS_OUT_LIGHT Resolve_SourceCharacterLight(PS_IN input, float3 lightDirection,
     // the scene's explicit ambient approximation separate from recovered direct.
     const bool nativeMapMaterial = (g_SourceCharacterProgram >= 80u && g_SourceCharacterProgram <= 83u) || IsSourceStaticMapSL10();
     const bool nativeMapBaked = nativeMapMaterial && g_SourceMapMonsterBakedEnabled != 0u &&
-        (IsSourceStaticMapSL10() ? g_MaterialSpecularTexture.Load(pixel).z : g_MaterialSpecularTexture.Load(pixel).w) > .5f;
+        (IsSourceMovieStatic(g_SourceCharacterProgram) ? g_MaterialSpecularTexture.Load(pixel).z < 0.f :
+         (IsSourceStaticMapSL10() ? g_MaterialSpecularTexture.Load(pixel).z : g_MaterialSpecularTexture.Load(pixel).w) > .5f);
     // A missing source SH/probe input may be supplied explicitly by the scene.
     // It is independent of excluded directional RGB, and defaults to zero.
     // Native IBL stays in RT4; resolved MRT3 albedo is multiplied once at combine.
@@ -591,7 +595,8 @@ bool Reject_LightReceiver(PS_IN input, DEFERRED_LIGHT_INPUT light)
     if (g_SourceCharacterRow != 0u)
         return marker == 5.f && ((g_SourceCharacterProgram >= 80u &&
             g_SourceCharacterProgram <= 83u) || IsSourceStaticMapSL10()) && g_SourceMapMonsterBakedEnabled != 0u &&
-            (IsSourceStaticMapSL10() ? g_MaterialSpecularTexture.Load(pixel).z : g_MaterialSpecularTexture.Load(pixel).w) > .5f;
+            (IsSourceMovieStatic(g_SourceCharacterProgram) ? g_MaterialSpecularTexture.Load(pixel).z < 0.f :
+         (IsSourceStaticMapSL10() ? g_MaterialSpecularTexture.Load(pixel).z : g_MaterialSpecularTexture.Load(pixel).w) > .5f);
     const bool sourceMap = marker == 3.f || marker == 4.f ||
         (marker >= 7.f && marker <= 13.f);
     return sourceMap && (asuint(g_GeometricNormalTexture.Load(pixel).w) & 0x00400000u) != 0u;
@@ -1214,7 +1219,7 @@ bool Is_ProtectedNoiseReceiver(int2 pixel, float4 depth)
         return true;
     if (depth.w != 5.f)
         return false;
-    const uint program = bits & 255u;
+    const uint program = (bits & 255u) | (((bits >> 9u) & 255u) << 8u);
     return (program >= 1u && program <= 24u) ||
         (program >= 26u && program <= 29u);
 }

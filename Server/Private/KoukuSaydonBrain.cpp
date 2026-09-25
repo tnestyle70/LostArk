@@ -423,7 +423,8 @@ bool LostArk::Server::CKoukuSaydonBrain::Validate_AnimationOnlyPattern(
 		const bool endTickKind =
 			BOSS_PATTERN_LOGIC_KIND::GAZE_REAL_BOSS == window.eKind;
 		bool valuesValid = true;
-		if (((window.bRearmOnExit || window.bRepeatAfterKnockback || window.iRepeatIntervalMs) && window.eKind != BOSS_PATTERN_LOGIC_KIND::ENTER_AREA) ||
+		if (((window.bRearmOnExit || window.bRepeatAfterKnockback) && window.eKind != BOSS_PATTERN_LOGIC_KIND::ENTER_AREA) ||
+			(window.iRepeatIntervalMs && window.eKind != BOSS_PATTERN_LOGIC_KIND::ENTER_AREA && window.eKind != BOSS_PATTERN_LOGIC_KIND::AREA_OVERLAP) ||
 			(window.bRearmOnExit && window.bRepeatAfterKnockback) || window.iRepeatIntervalMs > 600000u ||
 			(window.iRepeatIntervalMs && (window.bRearmOnExit || window.bRepeatAfterKnockback)))
 		{ status = "ENTER_AREA accepts one contact repeat policy"; return false; }
@@ -481,6 +482,10 @@ bool LostArk::Server::CKoukuSaydonBrain::Validate_AnimationOnlyPattern(
 			break;
 		case BOSS_PATTERN_LOGIC_KIND::STAGGER_WINDOW:
 			valuesValid = window.iThreshold > 0u;
+			break;
+		case BOSS_PATTERN_LOGIC_KIND::BINGO_COMPLETED_LINES:
+			valuesValid = window.iThreshold >= 1u && window.iThreshold <= 10u && window.CardRegions.empty() &&
+				!window.bInsideIsFail && !window.bEndsPatternOnSuccess && window.OnTimeout.empty();
 			break;
 		default:
 			valuesValid = false;
@@ -546,6 +551,8 @@ bool LostArk::Server::CKoukuSaydonBrain::Validate_AnimationOnlyPattern(
 				if (result.eKind == BOSS_PATTERN_LOGIC_RESULT_KIND::FIXED_DAMAGE ?
 					(result.iDamageAmount == 0u || result.iDamageAmount > 1000000000u || result.iPercent != 0u || result.iDurationMs != 0u || !result.strPatternId.empty()) : result.iDamageAmount != 0u)
 					return false;
+				if (result.eKind == BOSS_PATTERN_LOGIC_RESULT_KIND::PLAYER_INVULNERABILITY &&
+					(!result.iDurationMs || result.iDurationMs > 600000u || result.iPercent || !result.strPatternId.empty())) return false;
 				const bool worldMotion = BOSS_PATTERN_LOGIC_RESULT_KIND::PLAY_WORLD_OBJECT_MOTION == result.eKind;
 				if ((worldMotion && (result.strTargetWorldInstanceId.empty() || result.strMotionInstanceId.empty() ||
 					result.iPercent != 0u || result.iDurationMs != 0u || !result.strPatternId.empty())) ||
@@ -605,7 +612,7 @@ bool LostArk::Server::CKoukuSaydonBrain::Validate_AnimationOnlyPattern(
 				BOSS_PATTERN_LOGIC_KIND::GAZE_REAL_BOSS != window.eKind) ||
 			std::any_of(window.CardRegions.begin(),window.CardRegions.end(),[&](const BOSS_LOGIC_REGION& region)
 			{ return region.WorldTrack.bEnabled && (region.WorldTrack.Keys.empty() ||
-				(BOSS_PATTERN_LOGIC_KIND::ENTER_AREA != window.eKind && BOSS_PATTERN_LOGIC_KIND::OBJECT_OVERLAP != window.eKind &&
+				(BOSS_PATTERN_LOGIC_KIND::ENTER_AREA != window.eKind && BOSS_PATTERN_LOGIC_KIND::AREA_OVERLAP != window.eKind && BOSS_PATTERN_LOGIC_KIND::OBJECT_OVERLAP != window.eKind &&
 				 BOSS_PATTERN_LOGIC_KIND::OBJECT_CONTACT != window.eKind) ||
 				region.WorldTrack.iStartMs > window.iStartMs); }) ||
 			!resultsValid(window.OnSuccess) || !resultsValid(window.OnFail) ||
@@ -679,7 +686,16 @@ bool LostArk::Server::CKoukuSaydonBrain::Validate_SummonedPattern(
 		owner.AuditionBossArchetypeIds.empty() || owner.AuditionBossArchetypeIds.size() != child.AuditionBossArchetypeIds.size() ||
 		!std::all_of(owner.AuditionBossArchetypeIds.begin(), owner.AuditionBossArchetypeIds.end(), [&](const auto& archetype) {
 			return std::find(child.AuditionBossArchetypeIds.begin(), child.AuditionBossArchetypeIds.end(), archetype) != child.AuditionBossArchetypeIds.end(); }) ||
-		child.BossMotion || child.bResetBossToSpawn || child.ResetBossYawDegrees || !child.LogicWindows.empty() ||
+		child.BossMotion || child.bResetBossToSpawn || child.ResetBossYawDegrees ||
+		std::any_of(child.LogicWindows.begin(), child.LogicWindows.end(), [](const auto& window) {
+			if (window.eKind != BOSS_PATTERN_LOGIC_KIND::AREA_OVERLAP && window.eKind != BOSS_PATTERN_LOGIC_KIND::ENTER_AREA) return true;
+			const auto unsupported = [](const auto& result) { return result.eKind != BOSS_PATTERN_LOGIC_RESULT_KIND::FIXED_DAMAGE &&
+				result.eKind != BOSS_PATTERN_LOGIC_RESULT_KIND::MAX_HP_PERCENT_DAMAGE &&
+				result.eKind != BOSS_PATTERN_LOGIC_RESULT_KIND::MADNESS_GAUGE_ADD_PERCENT; };
+			return std::any_of(window.OnSuccess.begin(), window.OnSuccess.end(), unsupported) ||
+				std::any_of(window.OnFail.begin(), window.OnFail.end(), unsupported) ||
+				std::any_of(window.OnTimeout.begin(), window.OnTimeout.end(), unsupported);
+		}) ||
 		std::any_of(child.MechanicTriggers.begin(), child.MechanicTriggers.end(), [&](const auto& trigger) {
 			return !allowActorLocalAirborne || trigger.eKind != BOSS_PATTERN_MECHANIC_TRIGGER_KIND::ALBION_AIRBORNE ||
 				(trigger.eAirbornePhase != ALBION_AIRBORNE_PHASE::JUMP && trigger.eAirbornePhase != ALBION_AIRBORNE_PHASE::SLAM) ||
@@ -877,6 +893,7 @@ bool LostArk::Server::CKoukuSaydonBrain::Begin_Pattern(
 		return false;
 	}
 	boss.PinnedDefinitionRevision = revision;
+	boss.KoukuContactLedger.reset();
 	boss.KoukuDirectionPlayback.reset();
 	boss.iKoukuDirectionEndTick = 0u;
 	boss.bKoukuDirectionPlaybackComplete = false;
@@ -908,6 +925,7 @@ void LostArk::Server::CKoukuSaydonBrain::Finish_Pattern(
 		boss.PatternTerminalReceipt.eResult = result;
 	}
 	boss.PatternStageRootMotion.clear();
+	boss.KoukuContactLedger.reset();
 	boss.bPatternRootGrounded = false;
 	boss.KoukuDirectionPlayback.reset();
 	boss.iKoukuDirectionEndTick = 0u;

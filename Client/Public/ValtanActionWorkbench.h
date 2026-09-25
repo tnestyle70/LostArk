@@ -180,6 +180,8 @@ public:
 	void Render_WorkbenchPane(COMPOSITION_WORKBENCH_PANE pane) override;
 	void End_WorkbenchFrame() override;
 	COMPOSITION_WORKBENCH_VIEW_REQUEST Consume_WorkbenchViewRequest() override;
+	bool Execute_CompositionEdit(COMPOSITION_EDIT_COMMAND command, std::string& status) override;
+	bool Insert_CompositionTransfer(const COMPOSITION_TRANSFER& transfer, std::string& status) override;
 	bool Can_AppendCompositionAnimationResource(const COMPOSITION_ANIMATION_RESOURCE& resource,
 		bool asNewStage, std::string& status) const override;
 	bool Append_CompositionAnimationResource(const COMPOSITION_ANIMATION_RESOURCE& resource,
@@ -240,6 +242,19 @@ public:
 	bool_t Set_PlayheadMs(uint32_t iPlayheadMs);
 
 private:
+	COMPOSITION_TRANSFER Capture_CompositionSelection(std::string& status);
+	bool Apply_CompositionTransfer(const COMPOSITION_TRANSFER& transfer,
+		const std::string& patternId, const std::string& stageId,
+		uint32_t playheadMs, bool duplicate, std::string& status);
+	struct PENDING_COMPOSITION_PASTE final
+	{
+		COMPOSITION_TRANSFER transfer;
+		std::string patternId, stageId;
+		uint32_t playheadMs = 0u;
+		bool duplicate = false;
+	};
+	std::optional<PENDING_COMPOSITION_PASTE> m_PendingCompositionPaste;
+	bool m_bCompositionResourcesFocused = false;
 	struct PENDING_RESOURCE_APPEND final
 	{
 		COMPOSITION_ANIMATION_RESOURCE Resource;

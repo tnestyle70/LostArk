@@ -4160,6 +4160,7 @@ float4 ArtistNative4632(ARTIST_NATIVE_INPUT input)
 }
 #endif
 #endif
+
 #if !defined(EFFECT_NATIVE_PARTICLE_CARRIER) && !defined(EFFECT_NATIVE_DECAL_CARRIER) && !defined(EFFECT_NATIVE_TRAIL_CARRIER) && !defined(EFFECT_NATIVE_SCREEN_POST_CARRIER)
 #ifndef ARTIST_NATIVE_MODEL_ONLY
 // fx_d_me_meshflow_01_07_tr: 9565d57d764a144a9947dd6818a0db76; selected map 5d3c6ab98aea73121ed43cf7ad7718d7f52a67c789c1e36c430fe30e526055d9.
@@ -4301,6 +4302,7 @@ float4 ArtistNative4633(ARTIST_NATIVE_INPUT input)
 }
 #endif
 #endif
+
 #if !defined(ARTIST_NATIVE_MODEL_ONLY) && !defined(EFFECT_NATIVE_PARTICLE_CARRIER) && !defined(EFFECT_NATIVE_DECAL_CARRIER) && !defined(EFFECT_NATIVE_TRAIL_CARRIER) && !defined(EFFECT_NATIVE_SCREEN_POST_CARRIER)
 float4 ArtistNative4633Distortion(ARTIST_NATIVE_INPUT input)
 {
@@ -4358,6 +4360,7 @@ float4 ArtistNative4633Distortion(ARTIST_NATIVE_INPUT input)
     return output;
 }
 #endif
+
 #if !defined(EFFECT_NATIVE_MESH_CARRIER) && !defined(EFFECT_NATIVE_DECAL_CARRIER) && !defined(EFFECT_NATIVE_TRAIL_CARRIER) && !defined(EFFECT_NATIVE_SCREEN_POST_CARRIER)
 #ifndef ARTIST_NATIVE_MODEL_ONLY
 // fx_w_pa_twirl_09_4_tr: 68d6ff5e3032d744bee6c576d2083fbd; selected map e3ec37bfd2a0d86886a0ad3e6d5d20e1fc3592141940e0da5886d7ad532eb6df.
@@ -4608,6 +4611,7 @@ float4 ArtistNative4634(ARTIST_NATIVE_INPUT input)
 }
 #endif
 #endif
+
 #if !defined(ARTIST_NATIVE_MODEL_ONLY) && !defined(EFFECT_NATIVE_MESH_CARRIER) && !defined(EFFECT_NATIVE_DECAL_CARRIER) && !defined(EFFECT_NATIVE_TRAIL_CARRIER) && !defined(EFFECT_NATIVE_SCREEN_POST_CARRIER)
 float4 ArtistNative4634Distortion(ARTIST_NATIVE_INPUT input)
 {
@@ -4665,6 +4669,7 @@ float4 ArtistNative4634Distortion(ARTIST_NATIVE_INPUT input)
     return output;
 }
 #endif
+
 #if !defined(EFFECT_NATIVE_MESH_CARRIER) && !defined(EFFECT_NATIVE_DECAL_CARRIER) && !defined(EFFECT_NATIVE_TRAIL_CARRIER) && !defined(EFFECT_NATIVE_SCREEN_POST_CARRIER)
 #ifndef ARTIST_NATIVE_MODEL_ONLY
 // fx_w_pa_ringmaster_01_31_tr: 6ce45af450b1524491ad0f63cc7aa8a2; selected map 69eefa47119ae317e5346589b3092ebd85e14e399e968108c148565081f65023.
@@ -4951,6 +4956,7 @@ float4 ArtistNative4635(ARTIST_NATIVE_INPUT input)
 }
 #endif
 #endif
+
 #if !defined(ARTIST_NATIVE_MODEL_ONLY) && !defined(EFFECT_NATIVE_MESH_CARRIER) && !defined(EFFECT_NATIVE_DECAL_CARRIER) && !defined(EFFECT_NATIVE_TRAIL_CARRIER) && !defined(EFFECT_NATIVE_SCREEN_POST_CARRIER)
 float4 ArtistNative4635Distortion(ARTIST_NATIVE_INPUT input)
 {
@@ -5224,6 +5230,7 @@ float4 ArtistNative4635Distortion(ARTIST_NATIVE_INPUT input)
     return output;
 }
 #endif
+
 #if !defined(EFFECT_NATIVE_MESH_CARRIER) && !defined(EFFECT_NATIVE_DECAL_CARRIER) && !defined(EFFECT_NATIVE_TRAIL_CARRIER) && !defined(EFFECT_NATIVE_SCREEN_POST_CARRIER)
 #ifndef ARTIST_NATIVE_MODEL_ONLY
 // fx_d_pa_atta_05_12_ad: f0aa4e3e7314dd4e9c13f71b608b7852; selected map 05b29fa49858053a667bb6066e164e45c67777aed8d16de4034a1f011b111555.
@@ -5265,6 +5272,7 @@ float4 ArtistNative4636(ARTIST_NATIVE_INPUT input)
 }
 #endif
 #endif
+
 #if !defined(EFFECT_NATIVE_MESH_CARRIER) && !defined(EFFECT_NATIVE_DECAL_CARRIER) && !defined(EFFECT_NATIVE_TRAIL_CARRIER) && !defined(EFFECT_NATIVE_SCREEN_POST_CARRIER)
 #ifndef ARTIST_NATIVE_MODEL_ONLY
 // fx_h_pa_trail_01_2_tr: 8e647d71dc721040a294fe0e8a5d07bd; selected map 3fac1705e61764edae396d321277809a78ac3c54731a489e7e6838b6bd58b2f5.
@@ -5465,6 +5473,7 @@ float4 ArtistNative4637(ARTIST_NATIVE_INPUT input)
 }
 #endif
 #endif
+
 #if !defined(ARTIST_NATIVE_MODEL_ONLY) && !defined(EFFECT_NATIVE_MESH_CARRIER) && !defined(EFFECT_NATIVE_DECAL_CARRIER) && !defined(EFFECT_NATIVE_TRAIL_CARRIER) && !defined(EFFECT_NATIVE_SCREEN_POST_CARRIER)
 float4 ArtistNative4637Distortion(ARTIST_NATIVE_INPUT input)
 {
@@ -5522,6 +5531,7 @@ float4 ArtistNative4637Distortion(ARTIST_NATIVE_INPUT input)
     return output;
 }
 #endif
+
 #if !defined(EFFECT_NATIVE_PARTICLE_CARRIER) && !defined(EFFECT_NATIVE_DECAL_CARRIER) && !defined(EFFECT_NATIVE_TRAIL_CARRIER) && !defined(EFFECT_NATIVE_SCREEN_POST_CARRIER)
 #ifndef ARTIST_NATIVE_MODEL_ONLY
 // fx_m_pa_bloodcliff_trail_01_13_tr: 13eb0c448d109c44b667c502c4e3ac5f; selected map 2f122762b41a7ef111d8a7ffad58d067a2bd4f1efd0d1eea9c67cd00c2d111aa.
@@ -5694,6 +5704,7 @@ float4 ArtistNative4638(ARTIST_NATIVE_INPUT input)
 }
 #endif
 #endif
+
 #if !defined(EFFECT_NATIVE_MESH_CARRIER) && !defined(EFFECT_NATIVE_DECAL_CARRIER) && !defined(EFFECT_NATIVE_TRAIL_CARRIER) && !defined(EFFECT_NATIVE_SCREEN_POST_CARRIER)
 #ifndef ARTIST_NATIVE_MODEL_ONLY
 // fx_m_pa_dl_finish_03_02_tr_inst: cb00f25c542bff4e80cadb10ef536113; selected map 03b9b81443d762a972c3e6405ebd2127f5f0a2bf3d63c1b89c057bf31963bdc6.
@@ -6026,6 +6037,7 @@ float4 ArtistNative4639(ARTIST_NATIVE_INPUT input)
 }
 #endif
 #endif
+
 #if !defined(EFFECT_NATIVE_PARTICLE_CARRIER) && !defined(EFFECT_NATIVE_DECAL_CARRIER) && !defined(EFFECT_NATIVE_TRAIL_CARRIER) && !defined(EFFECT_NATIVE_SCREEN_POST_CARRIER)
 #ifndef ARTIST_NATIVE_MODEL_ONLY
 // fx_m_me_dk_backtrail_01_tr: ec441a1337ba9944880381250c765568; selected map 3448f31ad91c177b7d01041b0a86c41ccc1e98c10d4317e45ee2946faf6d4db6.
@@ -6304,6 +6316,7 @@ float4 ArtistNative4640(ARTIST_NATIVE_INPUT input)
 }
 #endif
 #endif
+
 #if !defined(EFFECT_NATIVE_MESH_CARRIER) && !defined(EFFECT_NATIVE_DECAL_CARRIER) && !defined(EFFECT_NATIVE_TRAIL_CARRIER) && !defined(EFFECT_NATIVE_SCREEN_POST_CARRIER)
 #ifndef ARTIST_NATIVE_MODEL_ONLY
 // fx_m_pa_dl_finish_03_tr_inst: cb00f25c542bff4e80cadb10ef536113; selected map 03b9b81443d762a972c3e6405ebd2127f5f0a2bf3d63c1b89c057bf31963bdc6.
@@ -6636,6 +6649,7 @@ float4 ArtistNative4641(ARTIST_NATIVE_INPUT input)
 }
 #endif
 #endif
+
 #if !defined(EFFECT_NATIVE_PARTICLE_CARRIER) && !defined(EFFECT_NATIVE_DECAL_CARRIER) && !defined(EFFECT_NATIVE_TRAIL_CARRIER) && !defined(EFFECT_NATIVE_SCREEN_POST_CARRIER)
 #ifndef ARTIST_NATIVE_MODEL_ONLY
 // fx_r_me_spritewave_05_02_tr: 39f7e63594b10f4a9237dc9eb19a1dfc; selected map 468bfdf79d6dc23e741433c076e865a0dc985c19ebfc0e1519efd8ca20aad846.
@@ -6858,6 +6872,7 @@ float4 ArtistNative4642(ARTIST_NATIVE_INPUT input)
 }
 #endif
 #endif
+
 #if !defined(EFFECT_NATIVE_PARTICLE_CARRIER) && !defined(EFFECT_NATIVE_DECAL_CARRIER) && !defined(EFFECT_NATIVE_TRAIL_CARRIER) && !defined(EFFECT_NATIVE_SCREEN_POST_CARRIER)
 #ifndef ARTIST_NATIVE_MODEL_ONLY
 // fx_m_me_dl_trail_01_01_tr: 497e78bdfb81374b86f718b6e6671cf4; selected map ddcc4bb8371e7b8f78d5132b052dff52eaf6ee55322c4fa565753835f446a184.
@@ -7116,6 +7131,7 @@ float4 ArtistNative4643(ARTIST_NATIVE_INPUT input)
 }
 #endif
 #endif
+
 #if !defined(EFFECT_NATIVE_PARTICLE_CARRIER) && !defined(EFFECT_NATIVE_DECAL_CARRIER) && !defined(EFFECT_NATIVE_TRAIL_CARRIER) && !defined(EFFECT_NATIVE_SCREEN_POST_CARRIER)
 #ifndef ARTIST_NATIVE_MODEL_ONLY
 // bfx_d_me_ember_01_01_msk: 2e7eee7f19865e458ea3ba440222259d; selected map 8f874a4b48af3a32656cc6d32724044bbd525186f31db36c85207c0a3a758d79.
@@ -7238,6 +7254,7 @@ float4 ArtistNative4644(ARTIST_NATIVE_INPUT input)
 }
 #endif
 #endif
+
 #if !defined(EFFECT_NATIVE_MESH_CARRIER) && !defined(EFFECT_NATIVE_DECAL_CARRIER) && !defined(EFFECT_NATIVE_TRAIL_CARRIER) && !defined(EFFECT_NATIVE_SCREEN_POST_CARRIER)
 #ifndef ARTIST_NATIVE_MODEL_ONLY
 // fx_q_pa_atypical_01_ad: 4f527c8d4974aa46abe996f4219e8531; selected map 6c9f58c52f6a30325949c47ddded0ab30d3d49a61a569c7b1a984b29e9c52369.
@@ -7327,6 +7344,7 @@ float4 ArtistNative4645(ARTIST_NATIVE_INPUT input)
 }
 #endif
 #endif
+
 #if !defined(EFFECT_NATIVE_MESH_CARRIER) && !defined(EFFECT_NATIVE_DECAL_CARRIER) && !defined(EFFECT_NATIVE_TRAIL_CARRIER) && !defined(EFFECT_NATIVE_SCREEN_POST_CARRIER)
 #ifndef ARTIST_NATIVE_MODEL_ONLY
 // fx_d_pa_spla_04_06_tr: 76b3d5058457234d8a5a5e7ecad6d9e7; selected map 08b1602b8439593b4c75329231983ae4d23f4f83f72ba3d00485f45eaf5c6fda.
@@ -7456,6 +7474,7 @@ float4 ArtistNative4646(ARTIST_NATIVE_INPUT input)
 }
 #endif
 #endif
+
 #if !defined(EFFECT_NATIVE_MESH_CARRIER) && !defined(EFFECT_NATIVE_DECAL_CARRIER) && !defined(EFFECT_NATIVE_TRAIL_CARRIER) && !defined(EFFECT_NATIVE_SCREEN_POST_CARRIER)
 #ifndef ARTIST_NATIVE_MODEL_ONLY
 // fx_q_m_dust_01_tr: 86a568a5a2bbc146a587c25093857511; selected map 8ea0d92482d7de01904e5bf1172ccf5b63138a1716eb87a30b1bf64cc575c35b.

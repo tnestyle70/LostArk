@@ -831,6 +831,12 @@ namespace Client::EffectDocumentCodecDetail
 				{
 					return false;
 				}
+				if (Distribution.eParameterBinding == Client::EFFECT_DISTRIBUTION_PARAMETER_BINDING::WORLD_SAMPLE &&
+					!Out.bEnabled)
+				{
+					strOutError = "WORLD particle parameter bindings require an enabled sourceRecipe.";
+					return false;
+				}
 				Module.Distributions.push_back(std::move(Distribution));
 			}
 			Out.Modules.push_back(std::move(Module));
@@ -1277,7 +1283,8 @@ namespace Client::EffectDocumentCodecDetail
 					<< "\", \"sourceObjectPath\": \""
 					<< Client::CDataJson::Escape(
 						Distribution.strSourceObjectPath) << '"';
-				if (bSourceContract &&
+				if ((bSourceContract || Distribution.eParameterBinding ==
+					Client::EFFECT_DISTRIBUTION_PARAMETER_BINDING::WORLD_SAMPLE) &&
 					Is_ParticleParameterDistribution(Distribution.strSourceClass))
 				{
 					Output << ", \"parameterBinding\": \""
@@ -1286,6 +1293,33 @@ namespace Client::EffectDocumentCodecDetail
 						<< "\", \"parameterName\": \""
 						<< Client::CDataJson::Escape(Distribution.strParameterName)
 						<< '"';
+				}
+				if (Distribution.ParameterMapping)
+				{
+					const auto& Mapping = *Distribution.ParameterMapping;
+					Output << ", \"parameterMapping\": { \"modes\": [";
+					for (size_t iMode = 0u; iMode < Mapping.Modes.size(); ++iMode)
+					{
+						if (iMode) Output << ", ";
+						Output << '"' << DISTRIBUTION_PARAMETER_MODE_TOKENS[
+							static_cast<size_t>(Mapping.Modes[iMode])] << '"';
+					}
+					const auto WriteMappingVector = [&Output, &Distribution](const char_t* Name, const float4_t& Value)
+					{
+						Output << ", \"" << Name << "\": [";
+						for (uint32_t i = 0u; i < Distribution.iComponentCount; ++i)
+						{
+							if (i) Output << ", ";
+							Output << (&Value.x)[i];
+						}
+						Output << ']';
+					};
+					Output << ']';
+					WriteMappingVector("minInput", Mapping.vMinInput);
+					WriteMappingVector("maxInput", Mapping.vMaxInput);
+					WriteMappingVector("minOutput", Mapping.vMinOutput);
+					WriteMappingVector("maxOutput", Mapping.vMaxOutput);
+					Output << " }";
 				}
 				Output << ", \"componentCount\": "
 					<< Distribution.iComponentCount

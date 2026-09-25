@@ -4354,6 +4354,25 @@ int Run_KoukuFixedDamageContractTests()
         }
         KOUKU_SAYDON_COMPOSITION_DOCUMENT source; std::string status;
         RequireEditorStep(CKoukuSaydonCompositionDocument::Parse_Text(originalSource, source, status), status, "parse fixed damage source");
+        // Keep old drafts readable, while preserving the explicit saved Bingo control reference.
+        auto bingoSource = source;
+        auto bingoFlow = std::find_if(bingoSource.PatternFlows.begin(), bingoSource.PatternFlows.end(),
+            [](const auto& row) { return row.strGateId == "BINGO"; });
+        Require(bingoFlow != bingoSource.PatternFlows.end(), "Bingo control fixture needs a saved Flow");
+        bingoFlow->strBingoSpecialPatternId = "KAKULSAYDON_G1_PATTERN_107";
+        RequireEditorStep(CKoukuSaydonCompositionDocument::Validate_BingoSpecialPatternTarget(
+            bingoSource, bingoFlow->strBingoSpecialPatternId, status), status, "validate actual finite Bingo special Parent");
+        KOUKU_SAYDON_COMPOSITION_DOCUMENT bingoParsed;
+        RequireEditorStep(CKoukuSaydonCompositionDocument::Parse_Text(
+            CKoukuSaydonCompositionDocument::Serialize(bingoSource), bingoParsed, status), status, "roundtrip Bingo special reference");
+        Require(bingoParsed == bingoSource, "Bingo special stable reference changed during save/reopen");
+        const auto bingoGood = bingoParsed;
+        bingoFlow->strBingoSpecialPatternId = "missing.bingo.special";
+        Require(!CKoukuSaydonCompositionDocument::Parse_Text(CKoukuSaydonCompositionDocument::Serialize(bingoSource), bingoParsed, status) &&
+            bingoParsed == bingoGood, "invalid Bingo reference must preserve the last good document");
+        bingoFlow->strBingoSpecialPatternId.clear();
+        RequireEditorStep(CKoukuSaydonCompositionDocument::Parse_Text(
+            CKoukuSaydonCompositionDocument::Serialize(bingoSource), bingoParsed, status), status, "allow an unassigned Bingo draft");
         const auto found = std::find_if(source.Patterns.begin(), source.Patterns.end(), [](const auto& p) { return p.strLoadError.empty(); });
         Require(found != source.Patterns.end(), "fixed damage needs an admitted actor fixture");
         KOUKU_SAYDON_COMPOSITION_PATTERN pattern;
@@ -4554,6 +4573,50 @@ int Run_KoukuFixedDamageContractTests()
             workbench.Get_Composition() == captureBefore && ReadText(sourcePath) == captureDisk,
             "damage Apply changed an actual exclusive capture/hold mechanic");
         Require(ReadText(sourceRoot / relative) == originalSource, "focused test changed live authoring source");
+        // Use the same typed commit as inline Box Detail, then save/reopen with
+        // fractional card-rain settings. No UI or live authoring is involved.
+        std::string tuningId;
+        RequireEditorStep(workbench.Create_Logic("Duration contact tuning", "DURATION", tuningId, status), status, "create duration tuning");
+        KOUKU_SAYDON_COMPOSITION_LOGIC_DEFINITION tuning;
+        tuning.strLogicType = "DURATION"; tuning.strJudgementKind = "AREA_OVERLAP"; tuning.iRepeatIntervalMs = 100u;
+        RequireEditorStep(workbench.Set_LogicDefinitionValues(tuningId, tuning, status), status, "apply duration 100 ms pulse");
+        const auto goodTuning = workbench.Get_Composition();
+        tuning.iRepeatIntervalMs = 1u;
+        Require(!workbench.Set_LogicDefinitionValues(tuningId, tuning, status) && workbench.Get_Composition() == goodTuning,
+            "invalid duration tick partially committed");
+        std::string soldierId;
+        RequireEditorStep(workbench.Create_Logic("Card soldier tuning", "TRIGGER", soldierId, status), status, "create soldier tuning");
+        tuning = {}; tuning.strLogicType = "TRIGGER"; tuning.strTriggerKind = "CARD_RAIN_SOLDIERS";
+        tuning.SoldierCounts = {2u, 0u, 5u}; tuning.fSpawnRadiusMinM = 2.125; tuning.fSpawnRadiusMaxM = 6.375;
+        RequireEditorStep(workbench.Set_LogicDefinitionValues(soldierId, tuning, status), status, "apply fractional soldier radius");
+        RequireEditorRoundtrip(workbench);
+        const auto& storedLogics = workbench.Get_Composition().Logics;
+        const auto storedSoldiers = std::find_if(storedLogics.begin(), storedLogics.end(), [&](const auto& row) { return row.strLogicId == soldierId; });
+        Require(storedSoldiers != storedLogics.end() && storedSoldiers->SoldierCounts == std::array<std::uint32_t, 3u>{2u, 0u, 5u} &&
+            storedSoldiers->fSpawnRadiusMinM == 2.125 && storedSoldiers->fSpawnRadiusMaxM == 6.375,
+            "soldier count/radius changed during Save/Reopen");
+        const auto storedPulse = std::find_if(storedLogics.begin(), storedLogics.end(), [&](const auto& row) { return row.strLogicId == tuningId; });
+        Require(storedPulse != storedLogics.end() && storedPulse->iRepeatIntervalMs == 100u,
+            "duration pulse changed during Save/Reopen");
+        for (const char* kind : {"BOSS_TRACK_TARGET", "BINGO_DETONATION"})
+        {
+            tuning = {}; tuning.strLogicType = "TRIGGER"; tuning.strTriggerKind = kind;
+            RequireEditorStep(workbench.Set_LogicDefinitionValues(soldierId, tuning, status), status, "apply instantaneous mechanic Trigger");
+            RequireEditorRoundtrip(workbench);
+        }
+        tuning = {}; tuning.strLogicType = "DURATION"; tuning.strJudgementKind = "BINGO_COMPLETED_LINES"; tuning.iThreshold = 3u;
+        RequireEditorStep(workbench.Set_LogicDefinitionValues(tuningId, tuning, status), status, "apply three completed Bingo lines");
+        RequireEditorRoundtrip(workbench);
+        const auto bingoValid = workbench.Get_Composition();
+        tuning.iThreshold = 11u;
+        Require(!workbench.Set_LogicDefinitionValues(tuningId, tuning, status) && workbench.Get_Composition() == bingoValid,
+            "invalid Bingo line count partially committed");
+        std::string invulnerableId;
+        RequireEditorStep(workbench.Create_Logic("Timed player invulnerability", "RESULT", invulnerableId, status), status, "create invulnerability Result");
+        tuning = {}; tuning.strLogicType = "RESULT"; tuning.strOutcomeKind = "PLAYER_INVULNERABILITY"; tuning.iDurationMs = 30000u;
+        RequireEditorStep(workbench.Set_LogicDefinitionValues(invulnerableId, tuning, status), status, "apply 30 second invulnerability");
+        RequireEditorRoundtrip(workbench);
+        Require(ReadText(sourceRoot / relative) == originalSource, "tuning contract changed live authoring source");
         std::cout << "KoukuFixedDamageContractTests: fixed500/pure-vertical-flight/shared-Result-COW/typed-damage-contact-role/legacy-window-rewire/Hold-capture-Success-preservation/Dirty-generation/commit-reset/invalid-rollback/AttackHits-rise-time/Save-Reopen/percent-switch/live-source-preservation passed\n";
         return 0;
     }

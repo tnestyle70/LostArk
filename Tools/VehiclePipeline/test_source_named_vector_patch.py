@@ -1,4 +1,5 @@
 """Named source overrides preserve original packing and reject guessed slots."""
+import ast
 import unittest
 import build_vehicle_source_material as source
 
@@ -12,6 +13,18 @@ def fixture(body, tail=''):
 
 
 class NamedSourceVectorPatchTests(unittest.TestCase):
+    def test_generated_parameter_literals_preserve_utf8_under_legacy_code_pages(self):
+        names = ('normal_intensity', 'r \ud655\uc7a5 / g \ubc14\uc6b4\ub4dc\ubc1c\uad11 / b \uc54c\ud30c / a \ub514\uc878\ube0c',
+                 '\ud6551"\\\n')
+        for name in names:
+            for kind in ('fmaterialuniformexpressionscalarparameter', 'fmaterialuniformexpressionvectorparameter'):
+                with self.subTest(name=name, kind=kind):
+                    expression = source.cpp(dict(typeName=kind, parameterName=name))
+                    self.assertTrue(expression.isascii())
+                    literal = expression.removeprefix('parameter(').removesuffix(')')
+                    self.assertEqual(ast.literal_eval('b' + literal), name.encode('utf-8'))
+        self.assertEqual(source.cpp_string('normal_intensity'), '"normal_intensity"')
+
     def test_guarded_dispatch_preserves_packing_and_named_vector_detection(self):
         header = fixture('        staged.baseConstants[4] = vector(parameter("transcolor"));')
         guarded = header.replace('if (family == ', 'if (staged.program == 0u && family == ')

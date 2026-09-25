@@ -115,11 +115,11 @@ bool_t CMapPlacementRuntime::Load_Area(
 		document,
 		stagedPlacements,
 		stagedBatches,
-		loadScope.frustumCulling))
+		loadScope.frustumCulling, &m_Status))
 	{
 		Remove_PlacementRuntime(
 			levelIndex, stagedPlacements, stagedBatches);
-		m_Status = "Map runtime staging rolled back";
+		m_Status = "Map runtime staging rolled back: " + areaId + ": " + m_Status;
 		return false;
 	}
 
@@ -173,6 +173,12 @@ void CMapPlacementRuntime::Apply_LoadScope(
 						pAsset->renderProfile.renderMode;
 			}),
 			records.end());
+}
+
+void CMapPlacementRuntime::Discard_LoadStage(const std::string& areaId)
+{
+	std::scoped_lock lock{ g_MapLoadStageMutex };
+	g_MapLoadStages.erase(areaId);
 }
 
 void CMapPlacementRuntime::Cache_LoadStage(
@@ -447,8 +453,18 @@ bool_t CMapPlacementRuntime::Stage_PlacementRuntime(
 	const std::vector<MAP_PLACEMENT_RECORD>& records,
 	std::vector<MAP_RUNTIME_PLACED_ENTRY>& outPlacements,
 	std::vector<MAP_RUNTIME_STATIC_BATCH_ENTRY>& outBatches,
-	const MAP_FRUSTUM_CULLING_POLICY& frustumCulling)
+	const MAP_FRUSTUM_CULLING_POLICY& frustumCulling,
+	std::string* outFailure)
 {
+	if (outFailure) outFailure->clear();
+	auto fail = [&](const char* stage, const std::string& assetId,
+		const MAP_PLACEMENT_RECORD* record = nullptr) {
+		const std::string detail = std::string(stage) + " / asset=" + assetId +
+			(record ? " / placement=" + record->sourcePlacementId : "");
+		if (outFailure) *outFailure = detail;
+		OutputDebugStringA(("[MapPlacementRuntime] " + detail + "\n").c_str());
+		return false;
+	};
 	using BATCH_KEY = std::pair<std::string, bool_t>;
 	std::map<BATCH_KEY, std::vector<const MAP_PLACEMENT_RECORD*>> groups;
 
@@ -456,7 +472,7 @@ bool_t CMapPlacementRuntime::Stage_PlacementRuntime(
 	{
 		const MAP_ASSET_ENTRY* asset = catalog.Find(record.assetId);
 		if (nullptr == asset)
-			return false;
+			return fail("Catalog lookup failed", record.assetId, &record);
 		if (!Is_BatchEligible(*asset))
 			continue;
 
@@ -473,14 +489,14 @@ bool_t CMapPlacementRuntime::Stage_PlacementRuntime(
 	{
 		const MAP_ASSET_ENTRY* asset = catalog.Find(key.first);
 		if (nullptr == asset)
-			return false;
+			return fail("Batch catalog lookup failed", key.first);
 
 		shared_ptr<Engine::CModel> model =
 			dynamic_pointer_cast<Engine::CModel>(
 				CGameInstance::Get().Clone_Prototype(
 					levelIndex, asset->prototypeTag));
 		if (nullptr == model)
-			return false;
+			return fail("Model prototype clone failed", asset->id, placements.front());
 
 		if (!model->Has_LocalBounds())
 			continue;
@@ -519,7 +535,7 @@ bool_t CMapPlacementRuntime::Stage_PlacementRuntime(
 			&desc,
 			&gameObject)))
 		{
-			return false;
+			return fail("Static batch object creation failed", asset->id, placements.front());
 		}
 
 		shared_ptr<CMapStaticBatchObject> batch =
@@ -528,7 +544,7 @@ bool_t CMapPlacementRuntime::Stage_PlacementRuntime(
 		{
 			CGameInstance::Get().Remove_GameObject_from_Layer(
 				levelIndex, MAP_BATCH_LAYER, gameObject);
-			return false;
+			return fail("Static batch type mismatch", asset->id, placements.front());
 		}
 
 		outBatches.push_back({ asset->id, key.second, batch });
@@ -538,7 +554,7 @@ bool_t CMapPlacementRuntime::Stage_PlacementRuntime(
 				record->placementId, batch);
 			UNREFERENCED_PARAMETER(iter);
 			if (!inserted)
-				return false;
+				return fail("Duplicate batch placement ID", asset->id, record);
 		}
 	}
 
@@ -559,7 +575,7 @@ bool_t CMapPlacementRuntime::Stage_PlacementRuntime(
 		MAP_RUNTIME_PLACED_ENTRY fallback{};
 		if (!Create_Placement(
 			levelIndex, catalog, record, fallback, frustumCulling))
-			return false;
+			return fail("Map object creation failed", record.assetId, &record);
 		outPlacements.push_back(std::move(fallback));
 	}
 

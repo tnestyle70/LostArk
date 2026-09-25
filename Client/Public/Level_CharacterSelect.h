@@ -38,6 +38,15 @@ class IWorldEntityCommandSink;
 class CMapLightPresentationRuntime;
 class CMapEffectPresentationRuntime;
 
+struct CHARACTER_SELECT_MOVIE_OPTION
+{
+	std::string id;
+	std::string label;
+	std::string floorSourcePlacementId;
+	// Empty when this authored floor category has no connected movie class.
+	std::string classId;
+};
+
 #ifdef _DEBUG
 enum class CHARACTER_SELECT_FLOOR_ENVIRONMENT
 {
@@ -96,7 +105,11 @@ public:
 	CClassSelectionPresentation& Get_ClassSelectionPresentation() { return m_ClassSelectionPresentation; }
 	const CClassSelectionPresentation& Get_ClassSelectionPresentation() const { return m_ClassSelectionPresentation; }
 	const std::string& Get_ClassCinematicStatus() const
-	{ return m_strClassCinemaPreparationFailure.empty() ? m_ClassSelectionPresentation.Get_Status() : m_strClassCinemaPreparationFailure; }
+	{
+		if (!m_strClassMovieRequestFailure.empty()) return m_strClassMovieRequestFailure;
+		if (!m_strClassMovieCatalogFailure.empty()) return m_strClassMovieCatalogFailure;
+		return m_strClassCinemaPreparationFailure.empty() ? m_ClassSelectionPresentation.Get_Status() : m_strClassCinemaPreparationFailure;
+	}
 	bool_t Reload_MapLights();
 	void Set_MapLightAuthoringOverride(const shared_ptr<CMapLightPresentationRuntime>& preview)
 	{ m_pMapLightAuthoringOverride = preview; }
@@ -110,6 +123,12 @@ public:
 
 
 private:
+	bool_t Load_ClassMovieCategories();
+	bool_t Load_ClassCinematicBackgrounds(const std::string& primaryAreaId,
+		const std::string& fallbackAreaId, const MAP_LOAD_SCOPE& loadScope);
+	std::string Resolve_ClassCinematicBackgroundArea(const std::string& classId) const;
+	bool_t Check_ClassCinematicBackground(const std::string& classId, std::string& outFailure) const;
+	void Update_ClassCinematicBackgroundVisibility();
 	HRESULT Ready_Lights();
 	HRESULT Ready_Camera();
 	HRESULT Ready_ServerGameplay();
@@ -216,6 +235,15 @@ public:
 	bool_t Is_CustomizingOpen() const;
 	bool_t Is_ClassCinematicActive() const { return m_ClassSelectionPresentation.Is_Active(); }
 	bool_t Can_PlayClassCinematic() const;
+	const std::vector<CHARACTER_SELECT_MOVIE_OPTION>& Get_ClassMovieOptions() const
+	{ return m_ClassMovieOptions; }
+	size_t Get_SelectedClassMovieCategory() const { return m_iSelectedClassMovieCategory; }
+	const std::string& Get_ClassMovieCategoryId() const;
+	const std::string& Get_ClassMovieId() const;
+	const std::string& Get_ClassMovieLabel() const;
+	bool_t Select_ClassMovieCategory(size_t index);
+	bool_t Select_ClassCinematic(LostArk::Shared::CHARACTER_CLASS_ID characterClass);
+	bool_t Play_ClassCinematic(const std::string& classId);
 	// F1 reuses the active Level's cinematic owner in both Debug and Release.
 	static void Render_ClassSelectMovieControls();
 	bool_t Is_ProductPresentationOpen() const
@@ -362,9 +390,21 @@ private:
 
 	CMapPlacementRuntime m_MapRuntime;
 	CClassSelectionPresentation m_ClassSelectionPresentation;
-	CMapPlacementRuntime m_ClassCinemaMap;
+	struct CLASS_CINEMA_BACKGROUND
+	{
+		std::string areaId;
+		unique_ptr<CMapPlacementRuntime> runtime;
+		std::string failure;
+		bool_t visible = false;
+	};
+	std::vector<CLASS_CINEMA_BACKGROUND> m_ClassCinemaBackgrounds;
+	std::string m_strClassCinemaFallbackAreaId;
 	std::string m_strClassCinemaPreparationFailure;
-	bool_t m_isClassCinemaBackgroundVisible = false;
+	// Session movie selection is independent of the Server-approved player class.
+	std::vector<CHARACTER_SELECT_MOVIE_OPTION> m_ClassMovieOptions;
+	size_t m_iSelectedClassMovieCategory = 0;
+	std::string m_strClassMovieCatalogFailure;
+	std::string m_strClassMovieRequestFailure;
 	/* Stays empty: LV_LOBBY_CLASSSELECT_SL00 declares no DeployProp source
 	   pair, so Stage_DeployProps returns before touching it. Map Tool's runtime
 	   attach still needs a real owner because TARGET_SET::Is_Complete() does. */

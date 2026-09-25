@@ -43,6 +43,77 @@ using namespace LostArk::Shared;
 
 namespace
 {
+    void Run_SplitBallCylinderDamageContracts(TESTS& tests, const CGameplayCatalog& catalog)
+    {
+        auto boss = std::make_unique<SERVER_WORLD_ENTITY>();
+        boss->iPatternSequence = 1u; boss->iCurrentHp = 100u;
+        BOSS_PATTERN_DEFINITION pattern{}; pattern.strPatternId = "split.ball.cylinder.contract";
+        for (unsigned emission = 0u; emission < 2u; ++emission)
+        {
+            BOSS_PATTERN_LOGIC_WINDOW window{};
+            window.strWindowId = "split.ball.explosion." + std::to_string(emission);
+            window.eKind = BOSS_PATTERN_LOGIC_KIND::ENTER_AREA;
+            window.iStartMs = 100u; window.iDurationMs = 34u;
+            BOSS_PATTERN_LOGIC_RESULT damage{};
+            damage.eKind = BOSS_PATTERN_LOGIC_RESULT_KIND::MAX_HP_PERCENT_DAMAGE; damage.iPercent = 10u;
+            window.OnSuccess = {damage};
+            BOSS_LOGIC_REGION cylinder{}; cylinder.strRegionId = window.strWindowId + ".cylinder";
+            cylinder.bCylinder = true; cylinder.fRadiusM = 2.f;
+            cylinder.fHalfX = cylinder.fHalfZ = 2.f; cylinder.fCenterY = cylinder.fHalfY = 1.f;
+            auto& track = cylinder.WorldTrack; track.bEnabled = true;
+            track.iStartMs = window.iStartMs; track.iDurationMs = window.iDurationMs;
+            track.fBaselineX = 10.f + emission; track.fBaselineY = 3.f; track.fBaselineZ = 20.f;
+            BOSS_LOGIC_WORLD_TRANSFORM_KEY key{}; track.Keys.push_back(key);
+            key.iTimeMs = window.iDurationMs - 1u; track.Keys.push_back(key);
+            // Published explosion tracks are visible through 33ms and hidden at 34ms.
+            key.iTimeMs = window.iDurationMs; key.bVisible = false; track.Keys.push_back(key);
+            window.CardRegions = {cylinder}; pattern.LogicWindows.push_back(window);
+        }
+        std::map<PLAYER_ID, SERVER_PLAYER> players;
+        const auto addPlayer = [&](PLAYER_ID id, float x, float y, float z) {
+            auto& player = players[id]; player.iPlayerId = id; player.iNetEntityId = 100u + id;
+            player.iCurrentHp = player.iMaximumHp = 13200u; player.isCombatReady = true;
+            player.fPositionX = x; player.fPositionY = y; player.fPositionZ = z;
+        };
+        addPlayer(1u, 8.f, 3.f, 20.f);       // Inside only the first explosion.
+        addPlayer(2u, 10.5f, 3.f, 20.f);    // Inside both independent explosions.
+        addPlayer(3u, 8.1f, 3.f, 21.9f);   // Inside the enclosing box corner, outside both circles.
+        addPlayer(4u, 10.5f, 7.f, 20.f);    // Same XZ overlap, above both cylinders.
+        KOUKUSAYDON_LOGIC_LEDGER ledger; KOUKUSAYDON_LOGIC_OUTPUT output;
+        std::vector<DAMAGE_EVENT> events;
+        CKoukuSaydonLogicRuntime::Build(pattern, *boss, 100u, ledger);
+        const auto update = [&](unsigned tick) {
+            CKoukuSaydonLogicRuntime::Update(*boss, pattern, ledger, players, catalog, nullptr, tick, events, output);
+        };
+        update(102u);
+        tests.Require(events.empty() && players.at(1u).iCurrentHp == 13200u && players.at(2u).iCurrentHp == 13200u,
+            "Split-ball damage stays inactive before the authored explosion window");
+        update(103u);
+        tests.Require(players.at(1u).iCurrentHp == 11880u,
+            "One split-ball WORLD cylinder applies 1320 damage from ten percent of 13200 maximum HP through the authoritative result consumer");
+        tests.Require(players.at(2u).iCurrentHp == 10560u,
+            "Two independent overlapping split-ball explosion windows stack to 2640 damage in one Server tick");
+        tests.Require(players.at(3u).iCurrentHp == 13200u && players.at(4u).iCurrentHp == 13200u,
+            "Split-ball cylinder rejects the enclosing box corner and finite-height misses after WORLD-track placement");
+        tests.Require(events.size() == 3u && std::all_of(events.begin(), events.end(),
+            [](const DAMAGE_EVENT& event) { return event.iAmount == 1320u && !event.isOutgoing; }),
+            "Split-ball hits each emit an independent incoming 1320 damage event");
+        update(103u); players.at(1u).fPositionX = 50.f; update(104u);
+        players.at(1u).fPositionX = 8.f; update(104u);
+        tests.Require(events.size() == 3u && players.at(1u).iCurrentHp == 11880u && players.at(2u).iCurrentHp == 10560u,
+            "A split-ball explosion hits each player once despite duplicate ticks, continued overlap or reentry");
+        // One-shot ENTER_AREA judges the ceil-rounded end tick before closing.
+        // Keep the outside player still until that final contact sample is consumed.
+        update(105u);
+        const bool closedWithoutDamage = events.size() == 3u && players.at(3u).iCurrentHp == 13200u &&
+            ledger.Windows.size() == 2u && std::all_of(ledger.Windows.begin(), ledger.Windows.end(),
+                [](const auto& state) { return state.bClosed; });
+        players.at(3u).fPositionX = 10.5f; players.at(3u).fPositionZ = 20.f;
+        update(106u); update(107u);
+        tests.Require(closedWithoutDamage && events.size() == 3u && players.at(3u).iCurrentHp == 13200u,
+            "The 34ms explosion hides before its rounded 30Hz closing tick, closes without damage, and rejects subsequent entry");
+    }
+
     void Run_ColliderMotionAndTickContracts(TESTS& tests, const CGameplayCatalog& catalog)
     {
         auto boss = std::make_unique<SERVER_WORLD_ENTITY>();
@@ -153,6 +224,7 @@ namespace
         contact.OnSuccess.front().iMarioEntryStage = 1u;
         resetPlayer(1u, boss->fPositionX, boss->fPositionY);
         players.at(1u).fPositionZ = boss->fPositionZ + 3.f;
+        players.at(1u).eMadnessForm = PLAYER_MADNESS_FORM::CLOWN;
         tests.Require(CKoukuSaydonLogicRuntime::Is_InsideMarioEntry(pattern, *boss, players.at(1u), 3u),
             "A fixed boss-anchored Mario entry resolves against its room-owned frozen entry anchor");
         players.at(1u).fPositionY -= 10.f;
@@ -853,6 +925,7 @@ int LostArk::Server::Run_ServerKoukuObjectOverlapContractTests()
 	TESTS tests;
 	const CGameplayCatalog catalog;
 	CServerGameplayContractRunner::Run_KoukuPushContracts(tests, catalog);
+	Run_SplitBallCylinderDamageContracts(tests, catalog);
 	Run_ColliderMotionAndTickContracts(tests, catalog);
 	Run_KoukuObjectOverlapContracts(tests, catalog);
 	Run_KoukuObjectContactContracts(tests, catalog);
@@ -1138,6 +1211,28 @@ int LostArk::Server::Run_ServerKoukuObjectOverlapContractTests()
 			tests.Require(first.iCurrentHp == static_cast<unsigned>(boundary[1]),
 				"Reverse safe angle zero hits the full ellipse and 360 leaves an empty hazard");
 		}
+        // Duration contact uses the same per-player clock as trigger contact.
+        auto& repeated = pattern.LogicWindows.front();
+        repeated.eKind = BOSS_PATTERN_LOGIC_KIND::AREA_OVERLAP;
+        repeated.iDurationMs = 500u; repeated.iRepeatIntervalMs = 100u;
+        repeated.bRearmOnExit = repeated.bRepeatAfterKnockback = false;
+        BOSS_PATTERN_LOGIC_RESULT fixed; fixed.eKind = BOSS_PATTERN_LOGIC_RESULT_KIND::FIXED_DAMAGE; fixed.iDamageAmount = 100u;
+        BOSS_PATTERN_LOGIC_RESULT madness; madness.eKind = BOSS_PATTERN_LOGIC_RESULT_KIND::MADNESS_GAUGE_ADD_PERCENT; madness.iPercent = 2u;
+        repeated.OnSuccess = {fixed, madness}; repeated.OnFail.clear(); repeated.OnTimeout.clear();
+        auto& rectangle = repeated.CardRegions.front(); rectangle = {};
+        rectangle.eAnchor = BOSS_LOGIC_REGION_ANCHOR::WORLD; rectangle.fHalfX = rectangle.fHalfZ = 2.f;
+        first = SERVER_PLAYER{}; first.iPlayerId = 1u; first.iNetEntityId = 8101u;
+        first.iCurrentHp = first.iMaximumHp = 2000u; first.iMaximumMadness = 100u; first.isCombatReady = true;
+        second.fPositionX = 50.f; events.clear();
+        CKoukuSaydonLogicRuntime::Build(pattern, *boss, 800u, ledger);
+        update(800u); update(801u); update(802u);
+        tests.Require(first.iCurrentHp == 1900u && first.iCurrentMadness == 2u && events.size() == 1u,
+            "Duration flame contact hits immediately then respects the authored hundred-millisecond interval");
+        update(803u); first.fPositionX = 20.f; update(806u); first.fPositionX = 0.f; update(809u);
+        update(812u); update(815u); update(818u);
+        tests.Require(first.iCurrentHp == 1600u && first.iCurrentMadness == 8u && events.size() == 4u,
+            "Duration contact applies damage and madness together, excludes exits and expires without an extra end-tick hit");
+
 	}
 #endif
 	std::cout << "failures : " << tests.failures << '\n';

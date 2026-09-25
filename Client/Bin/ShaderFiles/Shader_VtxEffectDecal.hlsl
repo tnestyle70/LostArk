@@ -136,7 +136,7 @@ EFFECT_PS_OUT PS_MATERIAL(VS_OUT input)
         local.x / (halfSize.x * 2.f) + 0.5f,
         0.5f - local.z / (halfSize.y * 2.f));
     EFFECT_PS_OUT output = (EFFECT_PS_OUT)0;
-    if (g_SourceMaterialProfile >= 2304u && g_SourceMaterialProfile <= 4671u)
+    if (g_SourceMaterialProfile >= 2304u && g_SourceMaterialProfile <= 5247u)
     {
         ARTIST_NATIVE_INPUT nativeInput = (ARTIST_NATIVE_INPUT)0;
         nativeInput.uv = decalUV;

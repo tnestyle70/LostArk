@@ -85,6 +85,14 @@ private:
 	ComPtr<ID3D11DepthStencilView> m_pSourceLightMaskDSV;
 	uint32_t m_iSourceLightMaskWidth = 0u, m_iSourceLightMaskHeight = 0u;
 	uint32_t m_iSourceLightMaskFailedWidth = 0u, m_iSourceLightMaskFailedHeight = 0u;
+	// An opt-in late pass updates the picking target without clearing opaque picks.
+	ComPtr<ID3D11Texture2D> m_pPickingTexture;
+	ComPtr<ID3D11RenderTargetView> m_pPickingRTV;
+	ComPtr<ID3D11Texture2D> m_pPickingDepthTexture;
+	ComPtr<ID3D11DepthStencilView> m_pPickingDSV;
+	D3D11_TEXTURE2D_DESC m_PickingDepthDesc{};
+	D3D11_DEPTH_STENCIL_VIEW_DESC m_PickingDSVDesc{};
+	bool_t m_bPickingDepthCaptured = false;
 	vector<shared_ptr<CGameObject>>		m_RenderObjects[ETOUI(RENDERGROUP::END)];
 
 	shared_ptr<class CVIBuffer_Rect>		m_pVIBuffer = { nullptr };
@@ -152,6 +160,8 @@ private:
 		ComPtr<ID3D11ShaderResourceView> pSourceSRV, DEFERRED ePass);
 	HRESULT Render_Final();
 	HRESULT Render_UI();
+	HRESULT Capture_PickingDepth();
+	HRESULT Render_Picking();
 
 private:
 	HRESULT Stage_SourceGradingLut(const SOURCE_POST_PROCESS_SETTINGS& source, f32_t gamma,

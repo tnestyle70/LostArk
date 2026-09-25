@@ -616,6 +616,10 @@ namespace
 			(LostArk::Shared::DAMAGE_HIT_FLAG::HEAL != damage.eHitFlag ||
 				(damage.isOutgoing && 0 == damage.iStaggerAmount &&
 					!damage.isCounterSuccess)) &&
+			/* Shield absorption carries only its own positive amount. */
+			(LostArk::Shared::DAMAGE_HIT_FLAG::ABSORB != damage.eHitFlag ||
+				(0u != damage.iAmount && 0u == damage.iStaggerAmount && !damage.isCounterSuccess &&
+					damage.eCardMazeSuit == LostArk::Shared::MECHANIC_CARD_SYMBOL::NONE)) &&
 			/* Stagger and counters are things a player did to a boss. */
 			((0 == damage.iStaggerAmount && !damage.isCounterSuccess) || damage.isOutgoing) &&
 			LostArk::Shared::Is_Valid_MechanicCardSymbol(damage.eCardMazeSuit) &&

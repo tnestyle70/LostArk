@@ -27,6 +27,12 @@ int main(const int argumentCount, char** arguments)
 		return LostArk::Server::CServerGameplayContractRunner::Run_ValtanPatternControl();
 	if (2 == argumentCount && std::string_view(arguments[1]) == "--kouku-draft-contract-test")
 		return LostArk::Server::CServerGameplayContractRunner::Run_KoukuDraft();
+	if (2 == argumentCount && std::string_view(arguments[1]) == "--kouku-product-contract-test")
+		return LostArk::Server::CServerGameplayContractRunner::Run_KoukuProductOnly();
+	if (2 == argumentCount && std::string_view(arguments[1]) == "--valtan-lifecycle-contract-test")
+		return LostArk::Server::CServerGameplayContractRunner::Run_ValtanLifecycleOnly();
+	if (2 == argumentCount && std::string_view(arguments[1]) == "--skill-stages-contract-test")
+		return LostArk::Server::CServerGameplayContractRunner::Run_SkillStagesOnly();
 	if (2 == argumentCount && std::string_view(arguments[1]) == "--kouku-dice-hit-contract-test")
 		return LostArk::Server::CServerGameplayContractRunner::Run_KoukuDiceDamageContracts();
 	if (2 == argumentCount && std::string_view(arguments[1]) == "--kouku-raid-contract-test")
@@ -161,7 +167,8 @@ int main(const int argumentCount, char** arguments)
 		std::cerr << "Usage: Server [--contract-test | "
 			"--kouku-object-overlap-contract-test | --kouku-support-surface-contract-test | "
 			"--kouku-bundle-contract-test | --card-maze-contract-test | "
-			"--kouku-raid-contract-test | --kouku-dice-hit-contract-test | --kouku-draft-contract-test | "
+			"--kouku-raid-contract-test | --kouku-dice-hit-contract-test | --kouku-draft-contract-test | --kouku-product-contract-test | "
+			"--valtan-lifecycle-contract-test | --skill-stages-contract-test | "
 			"--bingo-contract-test | --vehicle-riding-contract-test | "
 			"--navigation-contract-test | --valtan-arena-support-contract-test | "
 			"--debug-teleport-contract-test | "

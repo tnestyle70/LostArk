@@ -6179,7 +6179,7 @@ class ValtanGameplayBootstrapAdmissionContractTests(unittest.TestCase):
         )
         self.assertEqual(pipeline.GAMEPLAY_BOOTSTRAP_VERSION, version)
         self.assertGreater(len(rows), 0)
-        self.assertLessEqual(len(rows), 8192)
+        self.assertLessEqual(len(rows), pipeline.MAXIMUM_GAMEPLAY_BOOTSTRAP_ROWS)
 
     def test_bootstrap_row_limit_and_exact_count(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -6193,18 +6193,52 @@ class ValtanGameplayBootstrapAdmissionContractTests(unittest.TestCase):
                     encoding="utf-8",
                 )
 
-            for count in (1, 4096, 4097, 8192):
+            for count in (1, 4096, 8192, pipeline.MAXIMUM_GAMEPLAY_BOOTSTRAP_ROWS):
                 with self.subTest(accepted_rows=count):
                     write_rows(count)
                     self.assertEqual(count, len(pipeline._parse_gameplay_bootstrap(path)[1]))
-            for count in (0, 8193):
+            for count in (0, pipeline.MAXIMUM_GAMEPLAY_BOOTSTRAP_ROWS + 1):
                 with self.subTest(rejected_rows=count):
                     write_rows(count)
                     with self.assertRaisesRegex(pipeline.PipelineError, "version/count is invalid"):
                         pipeline._parse_gameplay_bootstrap(path)
-            write_rows(8191, declared=8192)
+            write_rows(pipeline.MAXIMUM_GAMEPLAY_BOOTSTRAP_ROWS - 1, declared=pipeline.MAXIMUM_GAMEPLAY_BOOTSTRAP_ROWS)
             with self.assertRaisesRegex(pipeline.PipelineError, "version/count is invalid"):
                 pipeline._parse_gameplay_bootstrap(path)
+            path.write_text(f"LOSTARK_GAMEPLAY_BOOTSTRAP\t{pipeline.GAMEPLAY_BOOTSTRAP_VERSION - 1}\t1\nROW\t0\n", encoding="utf-8")
+            with self.assertRaisesRegex(pipeline.PipelineError, "version/count is invalid"):
+                pipeline._parse_gameplay_bootstrap(path)
+
+
+    def test_bootstrap_capacity_matches_shared_contract(self) -> None:
+        self.assertEqual(131072, pipeline.MAXIMUM_GAMEPLAY_BOOTSTRAP_ROWS)
+        self.assertEqual(64 * 1024 * 1024, pipeline.MAXIMUM_GAMEPLAY_BOOTSTRAP_BYTES)
+        shared = (REPOSITORY_ROOT / "Shared/Public/GameplayDataRevision.h").read_text(encoding="utf-8")
+        self.assertIn(f"GAMEPLAY_BOOTSTRAP_MAX_ROWS = {pipeline.MAXIMUM_GAMEPLAY_BOOTSTRAP_ROWS}u;", shared)
+        self.assertIn(f"GAMEPLAY_BOOTSTRAP_MAX_BYTES = {pipeline.MAXIMUM_GAMEPLAY_BOOTSTRAP_BYTES}u;", shared)
+        self.assertIn(f"GAMEPLAY_BOOTSTRAP_FORMAT_VERSION = {pipeline.GAMEPLAY_BOOTSTRAP_VERSION}u;", shared)
+
+    def test_bootstrap_byte_limit_and_file_growth_during_read(self) -> None:
+        limit = 1024
+        header = f"LOSTARK_GAMEPLAY_BOOTSTRAP\t{pipeline.GAMEPLAY_BOOTSTRAP_VERSION}\t1\n".encode("utf-8")
+        data = header + b"R" * (limit - len(header) - 1) + b"\n"
+        self.assertEqual(limit, len(data))
+        with tempfile.TemporaryDirectory() as temporary:
+            path = Path(temporary) / "Gameplay.bootstrap"
+            with mock.patch.object(pipeline, "MAXIMUM_GAMEPLAY_BOOTSTRAP_BYTES", limit):
+                path.write_bytes(data)
+                self.assertEqual(1, len(pipeline._parse_gameplay_bootstrap(path)[1]))
+                accepted_stat = path.stat()
+                path.write_bytes(data + b"R")
+                with self.assertRaisesRegex(pipeline.PipelineError, "byte size is outside"):
+                    pipeline._parse_gameplay_bootstrap(path)
+                # A file that grows after stat must also fail the bounded read gate.
+                with mock.patch.object(Path, "stat", return_value=accepted_stat):
+                    with self.assertRaisesRegex(pipeline.PipelineError, "byte size is outside"):
+                        pipeline._parse_gameplay_bootstrap(path)
+                path.write_bytes(b"")
+                with self.assertRaisesRegex(pipeline.PipelineError, "byte size is outside"):
+                    pipeline._parse_gameplay_bootstrap(path)
 
 
 class ValtanDynamicManualLineageContractTests(unittest.TestCase):

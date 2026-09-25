@@ -82,3 +82,24 @@ geometry triangle/좌표·UV1·색 stream 대응, 선택 배치/재질/atlas joi
 자동 검증 결과와 실제 Client 실행·사용자 화면 비교는 RESULT에서 구분한다. 사용자는
 Server + Client를 실행해 Lobby → Valtan의 중앙 바닥과 주변 바위를 비교한다. 원본 색조,
 광원 전체·그림자·안개 및 Deploy 바닥까지 동일해졌다는 판정은 이번 구조 연결로 대신하지 않는다.
+
+## G05. 2026-09-25 작은 원형 바닥의 누락된 원본 그림자 연결
+
+사용자가 제공한 원작 이미지와 현재 디스크 입력을 다시 비교한다. 현재 브랜치는
+`codex/kouku-timeline-local-preview`이며, 기존 다른 기능의 변경을 보존한다.
+외곽 rock04와 작은 원형 두 MIC의 활성 색·밝기·채도·overlay 값은 현재 원본 패키지에서
+재추출한 값과 일치했다. 이를 임의로 같은 색으로 바꾸지 않는다.
+
+원형 `LV_LUT_HEARTRB_ED_SL00:export:1274`의 원본 component는
+`ShadowMap2D_7168`(package reference233, zero-based export232)을 참조한다.
+이 shadow는 외곽1271의 shadow와 같은 texture reference772 및 DOM GUID를 사용하지만,
+현재 원형 두 material의 `bakedLighting.staticShadow`와 해당 placement의
+`shadowCoordinateScale/Bias`가 빠져 있다. 기존 shadow DDS1706, lightChannel1,
+PROJECT_ADAPTER width0.05/exponent2 소비자를 재사용하고 원형의 원본 좌표
+scale `[0.1796875, 0.1796875]`, bias `[0.25390625, 0.25390625]`를 연결한다.
+
+후보는 기존 mapmaterials 한 문서의 두 material·한 placement만 변경한다.
+Resources·shader·렌더 옵션·재질 색은 변경하지 않는다. 원본 record, DDS 압축 데이터,
+WModel 채널, 기존 publisher의 실제 material reader와 stable ID join을 검증한 뒤
+통합 담당자가 최신 저장본 hash/CAS·백업·원자 교체와 기존 Area publisher로 반영한다.
+새 C++ 파일이나 프로젝트 등록, 빌드는 필요 없다. 최종 화면 판정은 사용자가 수행한다.
