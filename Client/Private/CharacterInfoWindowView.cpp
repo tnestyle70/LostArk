@@ -734,6 +734,15 @@ void Client::CCharacterInfoWindowView::Update_PortraitDrag()
 		f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
 		if (!m_pView->Get_SlotRect("CI_Preview", fX, fY, fWidth, fHeight))
 			return;
+		/* Is_Clicked is a plain rect test with no window order, and this window updates
+		before the title and avatar windows that sit on top of it. A press that lands on
+		their art belongs to them, so the portrait skips it the same way its labels do. */
+		f32_t fCursorX = 0.f, fCursorY = 0.f;
+		if (m_bCovered && Router.Get_ClientCursorPosition(fCursorX, fCursorY) &&
+			Router.Is_UnderTopWindow(fCursorX, fCursorY))
+		{
+			return;
+		}
 		if (Router.Is_Clicked(fX, fY, fWidth, fHeight, fRefWidth, fRefHeight))
 		{
 			m_bDraggingPortrait = true;

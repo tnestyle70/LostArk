@@ -36,7 +36,8 @@ namespace
 			if (!value->Is_Number() || !std::isfinite(value->Get_Number())) return false;
 			out = static_cast<f32_t>(value->Get_Number()); return std::isfinite(out);
 		};
-		return read("headOffsetMeters", 2.2f, head) && read("screenOffsetX", 0.f, offset.x) &&
+		/* Now a delta above the real head anchor, not a height above the feet. */
+		return read("headOffsetMeters", 0.f, head) && read("screenOffsetX", 0.f, offset.x) &&
 			read("screenOffsetY", 0.f, offset.y) && std::abs(head) <= 10.f &&
 			std::abs(offset.x) <= 1280.f && std::abs(offset.y) <= 1280.f;
 	}
@@ -223,9 +224,22 @@ void Client::CKoukuMadnessGaugeView::Update(
 		return;
 	}
 
+	/* The transform origin is at the feet and the body above it is not a fixed height:
+	the clown avatar swaps the body for its own pre-scale, a Mario stage scales it again,
+	and the map profile plus the F1 character size multiply the presentation root. A
+	constant metre offset therefore slides down the body. Take the same real head anchor
+	the nameplate uses -- the eye bone through the presentation root matrix -- and treat
+	the authored offset as a delta above it. */
 	float3_t vHead{};
-	XMStoreFloat3(&vHead, pTransform->Get_State(STATE::POSITION));
-	vHead.y += m_fHeadOffsetMeters;
+	if (!CWorldPlayerNameplateView::Try_GetHeadAnchor(*pLocalCharacter, vHead))
+	{
+		XMStoreFloat3(&vHead, pTransform->Get_State(STATE::POSITION));
+		vHead.y += m_fHeadOffsetMeters * pLocalCharacter->Get_PresentationScale();
+	}
+	else
+	{
+		vHead.y += m_fHeadOffsetMeters;
+	}
 
 	const float2_t vViewport = GameInstance.Get_ViewportSize();
 	float2_t vScreen{};
