@@ -1,0 +1,12 @@
+{
+  "classId": "ARTIST",
+  "displayName": "ARTIST",
+  "prefix": "classselect.artist",
+  "phases": {
+    "intro": 699,
+    "loop": 692
+  },
+  "backgroundAreaId": "LV_LOBBY_CLASSSELECT_SL08",
+  "sourcePackageSha256": "69538e81c4a1566795799fc8a5348d1bb0561217db935f0ac76b1d4bab0cc748",
+  "compactCameraKeys": true
+}

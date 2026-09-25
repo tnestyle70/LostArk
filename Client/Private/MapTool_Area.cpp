@@ -3,6 +3,7 @@
 #include "WorldSequenceToolPanel.h"
 #include "Camera_Free.h"
 #include "DataJson.h"
+#include "ActorCatalog.h"
 #include "GameInstance.h"
 #include "MapEditorWorkspaceService.h"
 #include "Level_Bern.h"
@@ -136,6 +137,7 @@ bool_t Client::CMapTool::Ensure_DeployAuthoringPrototypes(
 	const auto admitModel = [this, &modelTransform](
 		const std::wstring& prototypeTag,
 		const std::filesystem::path& modelPath,
+		const std::filesystem::path& relativeModelPath,
 		const MODEL modelKind,
 		const std::string& assetId)
 	{
@@ -150,11 +152,16 @@ bool_t Client::CMapTool::Ensure_DeployAuthoringPrototypes(
 					modelPath.lexically_normal();
 		}
 
+		MODEL_ASSET_LOAD_DESC loadDesc;
+		if (!CActorCatalog::Build_ModelLoadDescription(
+			relativeModelPath.generic_string(), loadDesc, m_Status))
+			return false;
+
 		auto model = CModel::Create(
 			m_pDevice,
 			m_pContext,
 			modelKind,
-			modelPath.string().c_str(),
+			loadDesc,
 			modelTransform);
 		if (nullptr == model || FAILED(CGameInstance::Get().Add_Prototype(
 			m_iAuthoringLevelIndex,
@@ -177,6 +184,7 @@ bool_t Client::CMapTool::Ensure_DeployAuthoringPrototypes(
 		if (!admitModel(
 			asset.intactPrototypeTag,
 			asset.intactResolvedPath,
+			asset.intactRelativePath,
 			modelKind,
 			asset.id))
 		{
@@ -187,6 +195,7 @@ bool_t Client::CMapTool::Ensure_DeployAuthoringPrototypes(
 			!admitModel(
 				asset.fracturedPrototypeTag,
 				asset.fracturedResolvedPath,
+				asset.fracturedRelativePath,
 				MODEL::NONANIM,
 				asset.id))
 		{

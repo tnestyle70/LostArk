@@ -152,6 +152,12 @@ PROJECT_POLICY = {
     # only rises through a skill effect or accumulate_damage_ratio.  The Server now charges
     # it from the share of maximum HP a hit took, so the authored fixed step retires.
     "madnessGaugeAddPercent": 0,
+    # Gauge max/hold and NPC aura 10 points / 1s / 2m are native table values.
+    # Damage conversion, doll gauge, and requested doubled multipliers are PROJECT_TUNED.
+    "madness": [{"policyId": "KOUKUSAYDON", "damageGainPercent": 100,
+                 "ballGainPercent": 10, "ballMultiplierPercent": 200, "ballRadiusM": 2.0,
+                 "dollGainPercent": 10, "dollMultiplierPercent": 200, "dollRadiusM": 4.0,
+                 "specialIntervalMs": 1000}],
     # Skill.PartsAttackLevelTooltip is the original part-break level 1..3 and 0 for a
     # skill that cannot break a part at all.  The Server subtracts partDamage straight
     # from a plate's durability, so the level is the amount and the authored plate
@@ -704,6 +710,7 @@ def main() -> int:
         "displayName": "원작 수치 (발탄 1415 / 쿠크세이튼 1475, 기준 스펙 아이템 레벨 1500)",
         "staggerGaugeScale": PROJECT_POLICY["staggerGaugeScale"],
         "madnessGaugeAddPercent": PROJECT_POLICY["madnessGaugeAddPercent"],
+        "madness": PROJECT_POLICY["madness"],
         "players": build_players(pcs, players_document["players"]),
         "skills": build_skills(skills, effects, messages, skills_document["skills"]),
         "damageProfiles": [],

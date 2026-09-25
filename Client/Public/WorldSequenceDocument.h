@@ -81,10 +81,22 @@ struct WORLD_SEQUENCE_COMBAT_BODY
 	std::string lifetimePolicy = "UNTIL_DESTROYED";
 };
 
+// Authoring organization only; folders never own transforms or playable motions.
+struct WORLD_SEQUENCE_OBJECT_FOLDER
+{
+    std::string folderId;
+    std::string displayName;
+    std::string anchorKind = "WORLD";
+    std::string parentId;
+    bool operator==(const WORLD_SEQUENCE_OBJECT_FOLDER&) const = default;
+};
+
 struct WORLD_SEQUENCE_OBJECT_RESOURCE
 {
 	std::string objectId;
 	std::string displayName;
+	// Optional organizational parent: a folder or another Object resource.
+	std::string parentId;
 	std::string modelAssetId;
 	/* Optional clip donor for a skinned body whose clips ship in a separate
 	   AnimSet WModel (the Valtan bodies). Attached once at model admission;
@@ -230,8 +242,10 @@ struct WORLD_SEQUENCE_COLLIDER_TRACK
 	uint32_t startMs = 0;
 	uint32_t durationMs = 1000;
 	float3_t positionOffset = {};
+	// CYLINDER uses [radius, halfHeight, radius]; omitted shape remains BOX.
 	float3_t halfExtents = {.5f, .5f, .5f};
-	// Ground BOX yaw is independent of the visual mesh spin.
+	std::string shape = "BOX";
+	// Ground collider yaw is independent of the visual mesh spin.
 	f32_t yawDegrees = 0.f;
 	std::string behavior = "DAMAGE";
 	f32_t damagePercent = 20.f;
@@ -333,6 +347,22 @@ struct WORLD_SEQUENCE_INSTANCE
 		(std::max)(sequence.ObjectSpanMs(), sequence.PresentationSpanMs()) : sequence.ObjectSpanMs(); }
 };
 
+// Process-local clipboard values; no runtime handles or source document pointers.
+struct WORLD_SEQUENCE_OBJECT_BUNDLE
+{
+    WORLD_SEQUENCE_OBJECT_RESOURCE resource;
+    std::vector<std::string> rootMotionIds;
+    std::vector<WORLD_SEQUENCE_TEMPLATE> templates;
+    std::vector<WORLD_SEQUENCE_INSTANCE> instances;
+};
+
+struct WORLD_SEQUENCE_PASTE_RESULT
+{
+    std::string objectId;
+    std::vector<std::string> rootMotionIds;
+    std::vector<std::string> instanceIds;
+};
+
 class CWorldSequenceDocument final
 {
 public:
@@ -361,6 +391,21 @@ public:
 		const WORLD_SEQUENCE_DEPLOY_MAP& availableDeployPlacements,
 		std::string& outStatus) const;
 
+	// Also accepts unfinished model-less tool drafts; checks only organization.
+	bool_t Validate_ObjectHierarchy(std::string& outStatus) const;
+
+    // Empty selection captures every Motion of a model Object; otherwise include NEXT closure.
+    bool_t Capture_ObjectBundle(const std::string& objectId,
+        const std::vector<std::string>& selectedMotionIds,
+        WORLD_SEQUENCE_OBJECT_BUNDLE& outBundle, std::string& outStatus) const;
+    // Empty destination creates an Object. Existing destination retains its ID/name/parent.
+    // Caller marks the document dirty once after success; failure leaves document/output intact.
+    bool_t Paste_ObjectBundle(const WORLD_SEQUENCE_OBJECT_BUNDLE& bundle,
+        const std::string& destinationObjectId, const std::string& newObjectName,
+        const std::string& parentId, const WORLD_SEQUENCE_PLACEMENT_MAP& mapPlacements,
+        const WORLD_SEQUENCE_DEPLOY_MAP& deployPlacements,
+        WORLD_SEQUENCE_PASTE_RESULT& outResult, std::string& outStatus);
+
 	void Reset_Empty(const std::string& areaId);
 	void Touch();
 
@@ -383,6 +428,10 @@ public:
     bool_t Duplicate_ColliderTrack(const std::string& sequenceId, size_t index,
         const WORLD_SEQUENCE_PLACEMENT_MAP& mapPlacements,
         const WORLD_SEQUENCE_DEPLOY_MAP& deployPlacements, size_t& outIndex, std::string& outStatus);
+    WORLD_SEQUENCE_OBJECT_FOLDER* Find_ObjectFolder(const std::string& folderId);
+    const WORLD_SEQUENCE_OBJECT_FOLDER* Find_ObjectFolder(const std::string& folderId) const;
+    std::vector<WORLD_SEQUENCE_OBJECT_FOLDER>& Get_ObjectFolders() noexcept { return m_ObjectFolders; }
+    const std::vector<WORLD_SEQUENCE_OBJECT_FOLDER>& Get_ObjectFolders() const noexcept { return m_ObjectFolders; }
 	WORLD_SEQUENCE_OBJECT_RESOURCE* Find_ObjectResource(const std::string& objectId);
 	const WORLD_SEQUENCE_OBJECT_RESOURCE* Find_ObjectResource(const std::string& objectId) const;
 	std::vector<WORLD_SEQUENCE_OBJECT_RESOURCE>& Get_ObjectResources() noexcept { return m_ObjectResources; }
@@ -437,6 +486,7 @@ private:
 	std::vector<WORLD_SEQUENCE_TEMPLATE> m_Templates;
 	std::vector<WORLD_SEQUENCE_INSTANCE> m_Instances;
 	std::vector<WORLD_SEQUENCE_OBJECT_RESOURCE> m_ObjectResources;
+	std::vector<WORLD_SEQUENCE_OBJECT_FOLDER> m_ObjectFolders;
 };
 
 NS_END

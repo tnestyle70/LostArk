@@ -13,6 +13,7 @@ from native_shader_dispatch import (expand_dispatch_includes, insert_grouped_cas
                                     write_partitioned_dispatch, artist_wrapper_source)
 
 ROOT = Path(__file__).resolve().parents[2]
+FIRST_PROFILE, LAST_PROFILE = 2304, 5247
 
 
 def update(path, transform):
@@ -99,6 +100,17 @@ def route_receiver_isolated_distortion(case_text):
     return case_text
 
 
+def extend_shared_carrier_dispatch(shaders):
+    # The shared Decal/Trail gates must follow append-only native admission.
+    for name in ("Shader_VtxEffectDecal.hlsl", "Shader_VtxEffectTrail.hlsl"):
+        def extend(text):
+            pattern = r'g_SourceMaterialProfile >= 2304u && g_SourceMaterialProfile <= \d+u'
+            assert len(re.findall(pattern, text)) == 1, name
+            return re.sub(pattern,
+                f'g_SourceMaterialProfile >= {FIRST_PROFILE}u && g_SourceMaterialProfile <= {LAST_PROFILE}u', text)
+        update(shaders / name, extend)
+
+
 def install_partitioned_groups(shader_text, case_text):
     """Generate declarations, dispatch, runtime selection and project inputs together."""
     shaders = ROOT / 'Client/Bin/ShaderFiles'
@@ -108,7 +120,7 @@ def install_partitioned_groups(shader_text, case_text):
         assert len(names) == 1, 'A carrier block must contain one native function'
         name, number = names[0]
         number = int(number)
-        assert 2304 <= number <= 4799 and name not in functions, name
+        assert FIRST_PROFILE <= number <= LAST_PROFILE and name not in functions, name
         assert not re.search(r'\bprojection\[', block) or re.search(r'float4\s+projection\[4\]', block), (
             'Stale generated projection adapter; regenerate this source cohort with '
             'generate_artist_native_runtime_shader.py before installing', name)
@@ -219,6 +231,7 @@ def install_partitioned_groups(shader_text, case_text):
             assert all(f'..\\Bin\\ShaderFiles\\Shader_VtxEffect{carrier}Kouku{group}.hlsl' in compile_items for carrier, group in entries)
             return text
         update(ROOT / ('Client/Default/Client.vcxproj' + suffix), register)
+    extend_shared_carrier_dispatch(shaders)
     return len(programs), len(groups), len(entries)
 
 
@@ -263,7 +276,7 @@ def append_reviewed(source_dir, resource_root=None):
     rows = contract['programs']
     assert rows and not contract.get('deferredPrograms')
     owned = {row['program'] for row in rows}
-    assert len(owned) == len(rows) and owned <= set(range(2304, 4800))
+    assert len(owned) == len(rows) and owned <= set(range(FIRST_PROFILE, LAST_PROFILE + 1))
     merged_path = source_dir / 'merged_native_runtime_contract.json'
     if merged_path.is_file():
         merged = json.loads(merged_path.read_bytes())
@@ -352,7 +365,7 @@ def install(source_dir, append_source_dir=None):
         rows += additional["programs"]
         source += "\n" + (directory / "Shader_EffectArtistNative.hlsli").read_text(encoding="utf8")
     identifiers = {r["program"] for r in rows}
-    assert len(identifiers) == len(rows) and set(range(2304, 2342)) <= identifiers <= set(range(2304, 4800))
+    assert len(identifiers) == len(rows) and set(range(2304, 2342)) <= identifiers <= set(range(FIRST_PROFILE, LAST_PROFILE + 1))
     # A newly recovered pass may belong to a byte-identical program reused from
     # an older cohort. Join that pass by its original material/VS/PS identity;
     # the older base-color function and stable program ID remain authoritative.
@@ -455,13 +468,7 @@ def install(source_dir, append_source_dir=None):
     # dispatch gates must reach every newly installed program as well.
     # Mesh/Particle select exact guarded profile IDs from their own group. The
     # broad Decal/Trail consumers retain their existing authored dispatch gate.
-    for name, expected in (("Shader_VtxEffectDecal.hlsl", 1),
-                           ("Shader_VtxEffectTrail.hlsl", 1)):
-        def extend_dispatch(text):
-            pattern = r'g_SourceMaterialProfile >= 2304u && g_SourceMaterialProfile <= \d+u'
-            assert len(re.findall(pattern, text)) == expected, name
-            return re.sub(pattern, 'g_SourceMaterialProfile >= 2304u && g_SourceMaterialProfile <= 4799u', text)
-        update(shaders / name, extend_dispatch)
+    extend_shared_carrier_dispatch(shaders)
 
     print(f"Installed {summary[0]} Kouku native programs in {summary[1]} groups and {summary[2]} existing-family shader carriers.")
 

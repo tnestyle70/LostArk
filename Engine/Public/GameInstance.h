@@ -66,6 +66,7 @@ public: /* For.Sound_Manager */
 	bool_t Get_SoundDurationMs(const wstring_t& path, uint32_t& durationMs);
 	bool_t Is_SoundCueActive(uint64_t handle) const;
 	void Pause_SoundCue(uint64_t handle, bool_t paused);
+    void Set_SoundCuePlaybackRate(uint64_t handle, f32_t playbackRate);
 	void Seek_SoundCue(uint64_t handle, uint32_t ageMs);
 	void Stop_SoundCue(uint64_t handle);
 
@@ -124,9 +125,7 @@ public: /* Renderer */
 	void Commit_RenderEnvironment(const RENDER_ENVIRONMENT_STATE& state);
 	RENDER_ENVIRONMENT_STATE Get_RenderEnvironment() const;
 
-#ifdef _DEBUG
 	HRESULT Add_DebugComponent(shared_ptr<CComponent> pDebugComponent);
-#endif
 
 public: /* For.PipeLine */
 	void Set_Transform(D3DTS eType, fmatrix_t TransformMatrix);

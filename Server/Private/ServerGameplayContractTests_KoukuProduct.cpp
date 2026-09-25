@@ -43,6 +43,57 @@ using namespace LostArk::Shared;
 void LostArk::Server::CServerGameplayContractRunner::Run_KoukuMarioEntryContact(TESTS& tests)
 {
 #ifdef _DEBUG
+    for (const std::uint8_t source : {1u, 2u}) {
+        auto room = std::make_unique<CGameRoom>(WORLD_ID::KAKULSAYDON_ARENA);
+        SERVER_WORLD_ENTITY boss{}; boss.eKind = WORLD_BOOTSTRAP_KIND::BOSS;
+        boss.iNetEntityId = 99001u; boss.iCurrentHp = boss.iMaximumHp = 1000u;
+        boss.strPatternId = "test.damageable.contact"; boss.iPatternSequence = 3u;
+        SERVER_WORLD_ENTITY body{}; body.eKind = WORLD_BOOTSTRAP_KIND::WORLD_OBJECT;
+        body.iNetEntityId = 99002u; body.iCurrentHp = body.iMaximumHp = 1000u;
+        room->m_WorldEntities.push_back(boss); room->m_WorldEntities.push_back(body);
+        CGameRoom::KOUKU_DAMAGEABLE_WORLD_CUE cue{};
+        cue.Play.iBossNetEntityId = boss.iNetEntityId; cue.iBodyId = body.iNetEntityId;
+        cue.Play.iRunEpoch = 7u; cue.Play.iPatternSequence = boss.iPatternSequence;
+        cue.Play.strMemberId = "contact.member"; cue.Play.strOccurrenceId = "contact.world";
+        cue.iMadnessSource = source; cue.iNextMadnessTick = 30u;
+        cue.MadnessPolicy.iMaximum = 100u; cue.MadnessPolicy.iClownHoldMs = 15000u;
+        room->m_KoukuDamageableWorldCues.push_back(cue);
+        room->m_KoukuSaydonPatternAudition.iRoomAuditionEpoch = 7u;
+        auto& member = room->m_KoukuSaydonPatternAudition.Members.emplace_back(); member.strMemberId = cue.Play.strMemberId;
+        BOSS_PATTERN_DEFINITION ownedContact; ownedContact.strPatternId = boss.strPatternId;
+        auto& ownedWindow = ownedContact.LogicWindows.emplace_back(); ownedWindow.strOwnerWorldOccurrenceId = cue.Play.strOccurrenceId;
+        ownedWindow.eKind = BOSS_PATTERN_LOGIC_KIND::AREA_OVERLAP; ownedWindow.iDurationMs = 10000u; ownedWindow.iRepeatIntervalMs = 100u;
+        auto& ownedRegion = ownedWindow.CardRegions.emplace_back(); ownedRegion.fHalfX = ownedRegion.fHalfZ = 10.f;
+        BOSS_PATTERN_LOGIC_RESULT burn; burn.eKind = BOSS_PATTERN_LOGIC_RESULT_KIND::FIXED_DAMAGE; burn.iDamageAmount = 10u;
+        ownedWindow.OnSuccess.push_back(burn);
+        CKoukuSaydonLogicRuntime::Build(ownedContact, boss, 1u, member.LogicLedger);
+        SERVER_PLAYER player{}; player.iPlayerId = 99003u; player.iNetEntityId = 99004u;
+        player.iCurrentHp = player.iMaximumHp = 1000u; player.isCombatReady = true;
+        player.iMaximumMadness = 100u; player.fPositionZ = source == 1u ? 1.f : 3.f;
+        room->m_Players.emplace(player.iPlayerId, player);
+        auto outside = player; outside.iPlayerId = 99005u; outside.fPositionX = 3.f; outside.fPositionZ = 0.f;
+        room->m_Players.emplace(outside.iPlayerId, outside);
+        auto upper = player; upper.iPlayerId = 99006u; upper.fPositionY = 4.f;
+        room->m_Players.emplace(upper.iPlayerId, upper);
+        room->Update_KoukuWorldBodies(29u);
+        tests.Require(!room->m_Players.at(player.iPlayerId).iCurrentMadness, "Special Madness contact respects its first interval");
+        room->Update_KoukuWorldBodies(30u); room->Update_KoukuWorldBodies(30u);
+        tests.Require(room->m_Players.at(player.iPlayerId).iCurrentMadness == 20u &&
+            !room->m_Players.at(outside.iPlayerId).iCurrentMadness && !room->m_Players.at(upper.iPlayerId).iCurrentMadness,
+            "Ball circle and doll sector apply tuned gain once per interval and exclude outside/other-floor players");
+        room->Update_KoukuWorldBodies(60u);
+        tests.Require(room->m_Players.at(player.iPlayerId).iCurrentMadness == 40u, "A surviving special object repeats contact gain on the Server clock");
+        room->m_WorldEntities.back().iCurrentHp = 0u;
+        room->Update_KoukuWorldBodies(90u);
+        tests.Require(room->m_Players.at(player.iPlayerId).iCurrentMadness == 40u && room->m_KoukuDamageableWorldCues.empty(),
+            "Destroying a special object cancels its Madness contact and its cue together");
+        std::vector<DAMAGE_EVENT> ownedDamage; KOUKUSAYDON_LOGIC_OUTPUT ownedOutput;
+        CKoukuSaydonLogicRuntime::Update(boss, ownedContact, member.LogicLedger, room->m_Players,
+            room->m_GameplayCatalog, nullptr, 90u, ownedDamage, ownedOutput);
+        tests.Require(member.LogicLedger.RetiredWorldOccurrences.contains(cue.Play.strOccurrenceId) &&
+            member.LogicLedger.Windows.front().bClosed && ownedDamage.empty() && room->m_Players.at(player.iPlayerId).iCurrentHp == 1000u,
+            "WORLD body destruction retires the exact authored damage/madness window before any subsequent contact result");
+    }
     BOSS_PATTERN_DEFINITION root{};
     BOSS_PATTERN_LOGIC_WINDOW entry{};
     entry.eKind = BOSS_PATTERN_LOGIC_KIND::ENTER_AREA;
@@ -72,6 +123,7 @@ void LostArk::Server::CServerGameplayContractRunner::Run_KoukuMarioEntryContact(
         const float rightX = std::cos(radians), rightZ = -std::sin(radians);
         SERVER_PLAYER player{};
         player.iPlayerId = 991u; player.iNetEntityId = 992u; player.iCurrentHp = 100u; player.isCombatReady = true;
+        player.eMadnessForm = PLAYER_MADNESS_FORM::CLOWN;
         player.fPositionX = anchor.fPositionX + rightX * 1.5f;
         player.fPositionY = anchor.fPositionY; player.fPositionZ = anchor.fPositionZ + rightZ * 1.5f;
         const float proposedX = anchor.fPositionX + rightX * 1.4f;
@@ -100,7 +152,7 @@ void LostArk::Server::CServerGameplayContractRunner::Run_KoukuMarioEntryContact(
             tests.Require(CKoukuSaydonLogicRuntime::Is_InsideMarioEntry(root, anchor, player, contactTick),
                 "Mario body contact does not wait for ordinary actions, knockdown or fear to finish");
         }
-        for (int invalid = 0; invalid < 8; ++invalid) {
+        for (int invalid = 0; invalid < 9; ++invalid) {
             auto rejected = player;
             switch (invalid) {
             case 0: rejected.iCurrentHp = 0u; break;
@@ -111,9 +163,10 @@ void LostArk::Server::CServerGameplayContractRunner::Run_KoukuMarioEntryContact(
             case 5: rejected.bArenaEjectionActive = true; break;
             case 6: rejected.TriggerMove.isActive = true; break;
             case 7: rejected.iMarioStage = 1u; break;
+            case 8: rejected.eMadnessForm = PLAYER_MADNESS_FORM::NORMAL; break;
             }
             tests.Require(!CKoukuSaydonLogicRuntime::Is_InsideMarioEntry(root, anchor, rejected, contactTick),
-                "Mario entry preserves death, fall, attachment, binding and existing-transfer ownership");
+                "Mario entry requires Clown and preserves death, fall, attachment, binding and existing-transfer ownership");
         }
         // A non-chain entry honours the window end; a chain root (honorWindowEnd false) stays open past it.
         {
@@ -149,6 +202,7 @@ void LostArk::Server::CServerGameplayContractRunner::Run_KoukuMarioEntryContact(
             SERVER_PLAYER player{};
             player.iPlayerId = 994u; player.iNetEntityId = 995u; player.iCurrentHp = player.iMaximumHp = 100u;
             player.isCombatReady = true; player.eAction = action; player.iCurrentSkillId = 34010u;
+        player.eMadnessForm = PLAYER_MADNESS_FORM::CLOWN;
             player.iActionStartTick = 1u; player.fActionElapsedSeconds = .1f; player.iComboStage = 2u;
             player.Projectiles.emplace_back(); player.hasMoveGoal = true; player.fKnockbackRemainingSeconds = 1.f;
             player.iKnockdownEndTick = player.iFearEndTick = 60u; player.strFearPresentationId = "contact-test";
@@ -168,6 +222,7 @@ void LostArk::Server::CServerGameplayContractRunner::Run_KoukuMarioEntryContact(
         auto room = std::make_unique<CGameRoom>(WORLD_ID::KAKULSAYDON_ARENA);
         SERVER_PLAYER player{};
         player.iPlayerId = 996u; player.iNetEntityId = 997u; player.iCurrentHp = 100u; player.isCombatReady = true;
+        player.eMadnessForm = PLAYER_MADNESS_FORM::CLOWN;
         player.eAction = PLAYER_ACTION_STATE::SKILL; player.iCurrentSkillId = 34010u;
         player.Projectiles.emplace_back(); player.fPositionX = 5.f; player.fPositionZ = 942.f;
         tests.Require(seedOwnedObject(*room, player), "Stage a live action before a rejected Mario layout");
@@ -239,6 +294,21 @@ int LostArk::Server::CServerGameplayContractRunner::Run_KoukuDraft()
     return tests.failures == 0 ? 0 : 1;
 }
 
+int LostArk::Server::CServerGameplayContractRunner::Run_KoukuProductOnly()
+{
+    int result = 1;
+    const auto execute = [](void* output) {
+        std::cout << std::unitbuf;
+        TESTS tests{}; CGameplayCatalog catalog;
+        if (!catalog.Load()) { std::cout << catalog.Get_Status() << '\n'; return; }
+        Run_KoukuMarioEntryContact(tests);
+        Run_KoukuProduct(tests, catalog);
+        std::cout << "failures : " << tests.failures << '\n';
+        *static_cast<int*>(output) = tests.failures == 0 ? 0 : 1;
+    };
+    return Run_WithContractWorkerStack(execute, &result) ? result : 1;
+}
+
 void LostArk::Server::CServerGameplayContractRunner::Run_KoukuDraftContracts(TESTS& tests, CGameplayCatalog& catalog)
 {
     {
@@ -282,7 +352,10 @@ void LostArk::Server::CServerGameplayContractRunner::Run_KoukuDraftContracts(TES
         if (configured && configured < buffer.size()) dataRoot = buffer.data();
         else { GetModuleFileNameW(nullptr, buffer.data(), static_cast<DWORD>(buffer.size())); dataRoot = fs::path(buffer.data()).parent_path().parent_path() / L"DataFiles"; }
         std::ifstream input(dataRoot / L"Gameplay" / L"Gameplay.bootstrap", std::ios::binary);
-        std::string rows, line;
+        std::string rows, allKoukuRows, line;
+        // One selected audition carries only its dependencies. P1's real stagger
+        // success references P4; the complete published product is a different contract.
+        const std::set<std::string> selectedIds{"KAKULSAYDON_G1_PATTERN_1", "KAKULSAYDON_G1_PATTERN_4"};
         const auto* patterns = catalog.Find_BossPatterns("ENCOUNTER_KAKULSAYDON_G1");
         while (std::getline(input, line)) {
             if (!line.empty() && line.back() == '\r') line.pop_back();
@@ -291,14 +364,25 @@ void LostArk::Server::CServerGameplayContractRunner::Run_KoukuDraftContracts(TES
             const auto kind = line.substr(0u, tab), owner = line.substr(tab + 1u, next - tab - 1u);
             bool keep = owner == "ENCOUNTER_KAKULSAYDON_G1" &&
                 (kind.starts_with("PATTERN") || kind == "KOUKUMADNESS" || kind == "KOUKUSAYDONPRODUCTREVISION" || kind == "ENCOUNTERINTRO");
-            if (kind == "RAIDGATE" || kind == "RAIDFLOWSTEP" || kind == "RAIDFLOWGROUP" || kind == "RAIDARRIVAL") keep = true;
+            if (kind == "RAIDGATE" || kind == "RAIDFLOWSTEP" || kind == "RAIDFLOWGROUP" || kind == "RAIDARRIVAL" || kind == "RAIDBINGOSPECIAL") keep = true;
             if (kind == "PATTERNTARGET" && patterns) keep = std::any_of(patterns->begin(), patterns->end(), [&](const auto& p) { return p.strPatternId == owner; });
             if (kind == "PATTERNBUNDLE" || kind == "PATTERNBUNDLEMEMBER") {
                 const auto* bundle = catalog.Find_BossPatternBundle(owner);
                 keep = bundle && bundle->strEncounterId == "ENCOUNTER_KAKULSAYDON_G1";
             }
-            if (keep) rows += line + "\n";
+            if (keep) allKoukuRows += line + "\n";
+            bool selected = owner == "ENCOUNTER_KAKULSAYDON_G1" &&
+                (kind == "KOUKUMADNESS" || kind == "KOUKUSAYDONPRODUCTREVISION");
+            if (owner == "ENCOUNTER_KAKULSAYDON_G1" && kind.starts_with("PATTERN") && next != std::string::npos) {
+                const auto third = line.find('\t', next + 1u);
+                selected = selectedIds.contains(line.substr(next + 1u, third - next - 1u));
+            }
+            if (kind == "PATTERNTARGET") selected = selectedIds.contains(owner);
+            if (selected) rows += line + "\n";
         }
+        rows += "PATTERNSEQUENCE\tENCOUNTER_KAKULSAYDON_G1\tKAKULSAYDON_G1_PLAY_ALL\tORDERED_ONCE_THEN_IDLE\t100\t2\n"
+            "PATTERNSEQUENCESTEP\tENCOUNTER_KAKULSAYDON_G1\tKAKULSAYDON_G1_PLAY_ALL\t0\tKAKULSAYDON_G1_PATTERN_1\t100\n"
+            "PATTERNSEQUENCESTEP\tENCOUNTER_KAKULSAYDON_G1\tKAKULSAYDON_G1_PLAY_ALL\t1\tKAKULSAYDON_G1_PATTERN_4\t0\n";
         const DWORD candidateLength = GetEnvironmentVariableW(L"LOSTARK_KOUKU_DRAFT_TEST_ROWS", buffer.data(), static_cast<DWORD>(buffer.size()));
         if (candidateLength && candidateLength < buffer.size()) {
             std::ifstream candidate(fs::path(buffer.data()), std::ios::binary);
@@ -319,6 +403,40 @@ void LostArk::Server::CServerGameplayContractRunner::Run_KoukuDraftContracts(TES
             "Memory draft reparses only Kouku rows against the active player/boss balance without replacing its gameplay identity");
         if (admitted) {
             const auto originalSource = CKoukuSaydonBrain::Resolve_ProductSourceRevision(draft);
+            if (allKoukuRows.size() > MAX_KOUKUSAYDON_DRAFT_BYTES) {
+                GameplayDataRevision productRowsHash;
+                tests.Require(hashRows(allKoukuRows, productRowsHash) &&
+                    !draft.Load_DraftKoukuProduct(catalog, allKoukuRows, productRowsHash) &&
+                    draft.Has_SameNonKoukuGameplay(catalog) &&
+                    CKoukuSaydonBrain::Resolve_ProductSourceRevision(draft) == originalSource,
+                    "A complete product above 16 MiB rejects as a single draft and preserves the admitted selection");
+            }
+            const auto madnessStart = rows.find("KOUKUMADNESS\t");
+            const auto madnessEnd = rows.find('\n', madnessStart);
+            tests.Require(madnessStart != std::string::npos && madnessEnd != std::string::npos, "Resolve actual Madness bootstrap row for admission variants");
+            if (madnessStart != std::string::npos && madnessEnd != std::string::npos) {
+                const auto validateMadness = [&](const std::string& fields, const bool expected) {
+                    auto candidateRows = rows;
+                    candidateRows.replace(madnessStart, madnessEnd - madnessStart,
+                        "KOUKUMADNESS\tENCOUNTER_KAKULSAYDON_G1\t100\t15000" + fields);
+                    GameplayDataRevision candidateHash; CGameplayCatalog candidate;
+                    const bool accepted = hashRows(candidateRows, candidateHash) && candidate.Load_DraftKoukuProduct(catalog, candidateRows, candidateHash);
+                    tests.Require(accepted == expected, "v37 Madness admits exactly its 4/12-column variants and rejects malformed tuning");
+                    if (accepted) {
+                        const auto* source = catalog.Find_KoukuMadnessPolicy("ENCOUNTER_KAKULSAYDON_G1");
+                        const auto* active = candidate.Find_KoukuMadnessPolicy("ENCOUNTER_KAKULSAYDON_G1");
+                        tests.Require(source && active && active->iDamageGainPercent == source->iDamageGainPercent &&
+                            active->iBallMultiplierPercent == source->iBallMultiplierPercent && active->iDollMultiplierPercent == source->iDollMultiplierPercent,
+                            "Sequence draft preserves admitted Balance Test multipliers instead of replacing them with draft defaults");
+                    }
+                };
+                validateMadness("", true);
+                validateMadness("\t123\t10\t250\t2.5\t10\t350\t4\t1000", true);
+                validateMadness("\t123\t10\t250\t2.5\t10\t350\t4", false);
+                validateMadness("\t123\t10\t250\t2.5\t10\t350\t4\t1000\t0", false);
+                validateMadness("\t123\t10\t250\tnan\t10\t350\t4\t1000", false);
+                validateMadness("\t10001\t10\t250\t2\t10\t350\t4\t1000", false);
+            }
             auto wrongHash = rowsHash; wrongHash.Bytes.front() ^= 1u;
             const std::string wrongDomain = rows + "PLAYER\tnot.a.kouku.row\n";
             GameplayDataRevision wrongDomainHash;
@@ -390,7 +508,7 @@ void LostArk::Server::CServerGameplayContractRunner::Run_KoukuDraftContracts(TES
             const auto* definitions = draft.Find_BossPatterns("ENCOUNTER_KAKULSAYDON_G1");
             const BOSS_PATTERN_DEFINITION* selected = nullptr;
             if (definitions) for (const auto& pattern : *definitions)
-                if (pattern.strGateId == "GATE1" && !pattern.strTargetBossPlacementId.empty()) { selected = &pattern; break; }
+                if (!pattern.strGateId.empty() && !pattern.strTargetBossPlacementId.empty()) { selected = &pattern; break; }
             auto boss = std::make_unique<SERVER_WORLD_ENTITY>();
             const auto* placement = selected ? room->Find_Placement(selected->strTargetBossPlacementId) : nullptr;
             bool built = placement && room->Build_WorldEntity(*placement, room->m_iNextNetEntityId++, *boss);
@@ -422,7 +540,7 @@ void LostArk::Server::CServerGameplayContractRunner::Run_KoukuDraftContracts(TES
                     "A reused draft request sequence cannot substitute a different content hash");
                 room->Clear_KoukuSaydonPatternAudition();
             }
-            tests.Require(built, "Draft contract resolves a real admitted Gate 1 boss placement");
+            tests.Require(built, "Draft contract resolves the selected pattern's real admitted gate boss placement");
 #endif
         }
         fs::remove(path, error); fs::remove(directory, error);
@@ -433,6 +551,88 @@ void LostArk::Server::CServerGameplayContractRunner::Run_KoukuProduct(TESTS& tes
 {
     Run_KoukuDraftContracts(tests, catalog);
 #ifdef _DEBUG
+    {
+        namespace fs = std::filesystem;
+        std::vector<wchar_t> buffer(32768u); fs::path dataRoot;
+        const DWORD configured = GetEnvironmentVariableW(L"LOSTARK_SERVER_DATA_ROOT", buffer.data(), static_cast<DWORD>(buffer.size()));
+        if (configured && configured < buffer.size()) dataRoot = buffer.data();
+        else { GetModuleFileNameW(nullptr, buffer.data(), static_cast<DWORD>(buffer.size())); dataRoot = fs::path(buffer.data()).parent_path().parent_path() / L"DataFiles"; }
+        std::ifstream input(dataRoot / L"Gameplay" / L"Gameplay.bootstrap", std::ios::binary);
+        std::string base((std::istreambuf_iterator<char>(input)), std::istreambuf_iterator<char>());
+        if (!base.empty() && base.back() != '\n') base += '\n';
+        const auto baseRows = static_cast<std::uint32_t>(std::count(base.begin(), base.end(), '\n') - 1);
+        const auto setCount = [](std::string& bytes, const std::uint32_t count) {
+            const auto end = bytes.find('\n'), column = bytes.rfind('\t', end);
+            bytes.replace(column + 1u, end - column - 1u, std::to_string(count));
+        };
+        const auto directory = fs::temp_directory_path() / (L"LostArkBootstrapCapacity-" + std::to_wstring(GetCurrentProcessId()));
+        std::error_code error; fs::create_directories(directory, error);
+        const auto path = directory / L"Gameplay.bootstrap";
+        auto generation = std::make_unique<CGameplayCatalog>(catalog);
+        const auto load = [&](const std::string& bytes) {
+            { std::ofstream file(path, std::ios::binary | std::ios::trunc); file.write(bytes.data(), static_cast<std::streamsize>(bytes.size())); }
+            GameplayDataRevision hash; std::string status;
+            return CServerApp::Hash_GameplayFileForAdmission(path, hash, status) && generation->Load_FromBootstrap(fs::canonical(path), hash, hash);
+        };
+        tests.Require(!base.empty() && baseRows < GAMEPLAY_BOOTSTRAP_MAX_ROWS && !error,
+            "Bootstrap capacity fixture starts from the valid published product");
+        if (!base.empty() && baseRows < GAMEPLAY_BOOTSTRAP_MAX_ROWS && !error)
+        {
+            std::string rows = base;
+            for (auto index = baseRows; index < GAMEPLAY_BOOTSTRAP_MAX_ROWS; ++index)
+                rows += "DAMAGE\tcontract.capacity." + std::to_string(index) + "\t1\n";
+            setCount(rows, GAMEPLAY_BOOTSTRAP_MAX_ROWS);
+            tests.Require(load(rows), "The complete catalog admits exactly 131072 valid bounded rows");
+            auto accepted = generation->Get_ActiveRevision();
+            rows += "DAMAGE\tcontract.capacity.overflow\t1\n";
+            setCount(rows, GAMEPLAY_BOOTSTRAP_MAX_ROWS + 1u);
+            tests.Require(!load(rows) && generation->Get_ActiveRevision() == accepted &&
+                generation->Find_DamageRatePercent("contract.capacity." + std::to_string(baseRows)) == 1u,
+                "One row beyond the shared bound is rejected without replacing the admitted catalog");
+            rows.clear(); rows.shrink_to_fit();
+
+            std::string bytes = base + "DAMAGE\tcontract.capacity.bytes\t1\n";
+            setCount(bytes, baseRows + 1u);
+            // Leading zeroes keep this numeric field equal to one while exercising the exact byte boundary.
+            bytes.insert(bytes.size() - 2u, GAMEPLAY_BOOTSTRAP_MAX_BYTES - bytes.size(), '0');
+            tests.Require(bytes.size() == GAMEPLAY_BOOTSTRAP_MAX_BYTES && load(bytes),
+                "The complete catalog admits an exact 64 MiB valid UTF-8 bootstrap");
+            accepted = generation->Get_ActiveRevision();
+            bytes += '\n';
+            tests.Require(!load(bytes) && generation->Get_ActiveRevision() == accepted &&
+                generation->Find_DamageRatePercent("contract.capacity.bytes") == 1u &&
+                generation->Get_Status().find("byte size") != std::string::npos,
+                "One byte beyond 64 MiB is rejected before admission and preserves the prior catalog");
+            bytes = base + "DAMAGE\tcontract.capacity.trailing\t1\n";
+            tests.Require(!load(bytes) && generation->Get_ActiveRevision() == accepted,
+                "Raising capacity still rejects undeclared trailing rows and preserves the catalog");
+            bytes = base; setCount(bytes, baseRows + 1u);
+            tests.Require(!load(bytes) && generation->Get_ActiveRevision() == accepted,
+                "Raising capacity still rejects a truncated declared row set and preserves the catalog");
+            const auto* bingo = catalog.Find_KoukuRaidGate("BINGO");
+            const std::string specialRow = bingo ? "RAIDBINGOSPECIAL\tBINGO\t" + bingo->strBingoSpecialPatternId : std::string{};
+            const auto specialAt = specialRow.empty() ? std::string::npos : base.find(specialRow);
+            tests.Require(bingo && !bingo->strBingoSpecialPatternId.empty() && specialAt != std::string::npos,
+                "Published Bingo flow pins one explicit stable special Parent");
+            if (specialAt != std::string::npos) {
+                const auto specialEnd = base.find('\n', specialAt);
+                auto missing = base; missing.erase(specialAt, specialEnd + 1u - specialAt); setCount(missing, baseRows - 1u);
+                tests.Require(!load(missing) && generation->Get_ActiveRevision() == accepted,
+                    "Missing Bingo special binding rejects and preserves the admitted catalog");
+                for (const auto& row : {std::string{"RAIDBINGOSPECIAL\tGATE3\t"} + bingo->strBingoSpecialPatternId,
+                        std::string{"RAIDBINGOSPECIAL\tBINGO\tmissing.special.parent"},
+                        std::string{"RAIDBINGOSPECIAL\tBINGO\tKAKULSAYDON_G1_PATTERN_94"}}) {
+                    auto invalid = base; invalid.replace(specialAt, specialEnd - specialAt, row);
+                    tests.Require(!load(invalid) && generation->Get_ActiveRevision() == accepted,
+                        "Wrong gate, missing pattern and non-Parent special references reject transactionally");
+                }
+                auto duplicate = base + specialRow + "\n"; setCount(duplicate, baseRows + 1u);
+                tests.Require(!load(duplicate) && generation->Get_ActiveRevision() == accepted,
+                    "Duplicate Bingo special owner rows reject without replacing the pinned generation");
+            }
+        }
+        fs::remove_all(directory, error);
+    }
     // These use the published composition, real room and the same command
     // admission/terminal receipts consumed by Complete Play and its F1 test.
     enum class MARIO_SCENARIO { NO_ENTRY, RETURN_AFTER_CHAIN, RETURN_EARLY, PARTY, DEATH, DISCONNECT, LAST_TICK_ENTRY, NO_FOLLOWUP, CANCEL };
@@ -480,6 +680,7 @@ void LostArk::Server::CServerGameplayContractRunner::Run_KoukuProduct(TESTS& tes
         SERVER_PLAYER player{};
         player.iPlayerId = 923u; player.iNetEntityId = 924u; player.iSessionId = 925u;
         player.iCurrentHp = player.iMaximumHp = 100000u; player.isCombatReady = true;
+        player.eMadnessForm = PLAYER_MADNESS_FORM::CLOWN;
         player.fPositionX = boss.fPositionX; player.fPositionY = boss.fPositionY; player.fPositionZ = boss.fPositionZ;
         if (!enterPortal || scenario == MARIO_SCENARIO::LAST_TICK_ENTRY) player.fPositionX += 25.f;
         room->m_Players.emplace(player.iPlayerId, player);
@@ -710,13 +911,83 @@ void LostArk::Server::CServerGameplayContractRunner::Run_KoukuProduct(TESTS& tes
     (void)marioScenario(MARIO_SCENARIO::DEATH);
     (void)marioScenario(MARIO_SCENARIO::DISCONNECT);
     (void)marioScenario(MARIO_SCENARIO::LAST_TICK_ENTRY);
-    // The Parent P88 (KAKULSAYDON_G1_PATTERN_88) owns ENTER_AREA -> MARIO_ENTER without a completion chain;
-    // its portal is the pattern's own window and it must not publish a Client hold.
-    // LAST_TICK ends P88 early through a stagger success on the very tick the entrant is judged inside the
+    {
+        // Exercise the unmodified saved Parent, including its damaging WORLD rows.
+        // Its 4.667-second opening is followed by real children through 41.109 seconds;
+        // the late portal must admit one entrant and preserve the authored P33 handoff.
+        auto room = std::make_unique<CGameRoom>(WORLD_ID::KAKULSAYDON_ARENA);
+        const auto* placement = room->Find_Placement("boss.kakulsaydon.g3.saydon");
+        SERVER_WORLD_ENTITY boss{}; std::string status;
+        const auto* parent = CKoukuSaydonBrain::Find_AnimationOnlyPattern(room->m_GameplayCatalog.Active(),
+            "KAKULSAYDON_G1_PATTERN_88", status);
+        const auto entry = parent ? std::find_if(parent->LogicWindows.begin(), parent->LogicWindows.end(), [](const auto& window) {
+            return window.eKind == BOSS_PATTERN_LOGIC_KIND::ENTER_AREA && !window.CardRegions.empty() &&
+                window.OnSuccess.size() == 1u && window.OnSuccess.front().eKind == BOSS_PATTERN_LOGIC_RESULT_KIND::MARIO_ENTER;
+        }) : std::vector<BOSS_PATTERN_LOGIC_WINDOW>::const_iterator{};
+        const bool sourceReady = room->Is_Ready() && placement && parent && entry != parent->LogicWindows.end() &&
+            !parent->ParentChildren.empty() && entry->OnSuccess.front().strPatternId == "KAKULSAYDON_G1_PATTERN_33" &&
+            room->Build_WorldEntity(*placement, room->m_iNextNetEntityId++, boss);
+        tests.Require(sourceReady, "Published P88 retains its real Parent children, late Mario window and P33 success handoff");
+        if (sourceReady) {
+            const auto portal = entry->CardRegions.front();
+            const auto enterMs = entry->iStartMs + 500u;
+            room->m_WorldEntities.push_back(boss);
+            for (unsigned ordinal = 0u; ordinal < 2u; ++ordinal) {
+                SERVER_PLAYER player{}; player.iPlayerId = 970u + ordinal; player.iNetEntityId = 980u + ordinal;
+                player.iSessionId = 990u + ordinal; player.iCurrentHp = player.iMaximumHp = 100000u; player.isCombatReady = true;
+                player.eMadnessForm = ordinal ? PLAYER_MADNESS_FORM::NORMAL : PLAYER_MADNESS_FORM::CLOWN;
+                player.fPositionX = boss.fPositionX + 25.f + ordinal; player.fPositionY = boss.fPositionY; player.fPositionZ = boss.fPositionZ;
+                room->m_Players.emplace(player.iPlayerId, player);
+            }
+            C2S_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_REQUEST request{};
+            request.iRequestSequence = 1u; request.eOperation = KOUKUSAYDON_PATTERN_AUDITION_OPERATION::PLAY_SELECTED;
+            request.Scope.eWorldId = WORLD_ID::KAKULSAYDON_ARENA; request.Scope.strGateId = "GATE3";
+            request.Scope.strEncounterId = "ENCOUNTER_KAKULSAYDON_G1";
+            request.Scope.strBossPlacementId = placement->strPlacementId; request.Scope.strBossArchetypeId = placement->strArchetypeId;
+            request.Scope.ExpectedGameplayRevision = room->m_GameplayCatalog.Get_ActiveRevision();
+            request.Scope.iExpectedSourceRevision = CKoukuSaydonBrain::Resolve_ProductSourceRevision(room->m_GameplayCatalog.Active());
+            request.strPatternId = parent->strPatternId;
+            S2C_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_RESULT result{};
+            const bool queued = room->Evaluate_KoukuSaydonPatternAudition(990u, request, result) == KOUKUSAYDON_PATTERN_AUDITION_RESULT::QUEUED;
+            bool moved = false, entered = false, reachedPhaseTwo = false, lateChild = false;
+            std::uint32_t rootStart = 0u, entryTick = 0u;
+            for (std::uint32_t tick = 1u; queued && tick < 2400u; ++tick) {
+                room->m_iServerTick = tick; room->Prepare_KoukuAuditionTick(tick);
+                room->Update_KoukuPatternTails(tick);
+                auto* live = room->Find_KoukuSaydonArenaBoss(placement->strPlacementId, placement->strArchetypeId);
+                if (!live || room->m_KoukuSaydonPatternAudition.Members.empty()) break;
+                const auto& member = room->m_KoukuSaydonPatternAudition.Members.front();
+                if (member.MarioEntryAnchor && !rootStart) rootStart = member.iMarioEntryStartTick;
+                if (rootStart && !moved && tick - rootStart >= CKoukuSaydonLogicRuntime::Ticks_FromMs(enterMs)) {
+                    auto& player = room->m_Players.at(970u);
+                    player.fPositionX = portal.fCenterX; player.fPositionY = portal.fCenterY; player.fPositionZ = portal.fCenterZ;
+                    lateChild = live->strPatternId != parent->strPatternId && !live->strPatternId.empty(); moved = true;
+                }
+                reachedPhaseTwo = live->strPatternId == "KAKULSAYDON_G1_PATTERN_33";
+                if (reachedPhaseTwo) break;
+                if (!room->Update_KoukuSaydonBoss(*live, tick)) break;
+                room->Commit_KoukuMechanicTriggers(tick); room->Commit_KoukuMarioEntries();
+                if (room->m_Players.at(970u).iMarioStage && !entered) { entered = true; entryTick = tick; }
+                if (room->m_KoukuSaydonPatternAudition.ePhase == CGameRoom::KOUKUSAYDON_PATTERN_AUDITION_PHASE::INACTIVE) break;
+            }
+            const auto& entrant = room->m_Players.at(970u);
+            if (!(queued && lateChild && entered && reachedPhaseTwo))
+                std::cout << "[SavedP88] queued=" << queued << " child=" << lateChild << " entered=" << entered
+                    << " phaseTwo=" << reachedPhaseTwo << " tick=" << room->m_iServerTick << " root=" << rootStart
+                    << " entry=" << entryTick << " hp=" << entrant.iCurrentHp << " form=" << unsigned(entrant.eMadnessForm)
+                    << " status=" << room->Get_Status() << '\n';
+            tests.Require(queued && lateChild && entered && reachedPhaseTwo && entrant.iMarioStage == 1u &&
+                room->m_iNextMarioEntryStage == 2u && entryTick - rootStart >= CKoukuSaydonLogicRuntime::Ticks_FromMs(entry->iStartMs),
+                "Actual P88 admits the late portal during its saved child, keeps damaging WORLD rows and reaches P33 exactly once");
+        }
+    }
+    // Plain entry is an optional runtime contract, separate from the saved P88 Parent.
+    // Use a small synthetic generation so authored children, fire and clip clocks remain unchanged.
+    // LAST_TICK ends the plain entry through stagger on the very tick the entrant is judged inside the
     // Mario window, so the queued entry and the pattern completion race within one boss update.
     enum class PARENT_ENTRY { AUTHORED_STAGE, LIVE_COUNTER, REQUEST_STAGE, AFTER_WINDOW, LAST_TICK, LAST_TICK_SINGLE, MULTI_WINDOW };
     const auto parentMarioEntry = [&](const PARENT_ENTRY scenario) {
-        const std::string parentId = "KAKULSAYDON_G1_PATTERN_88";
+        const std::string parentId = "KAKULSAYDON_CONTRACT_PLAIN_ENTRY";
         auto room = std::make_unique<CGameRoom>(WORLD_ID::KAKULSAYDON_ARENA);
         const auto* placement = room->Find_Placement("boss.kakulsaydon.g3.saydon");
         SERVER_WORLD_ENTITY boss{};
@@ -728,6 +999,29 @@ void LostArk::Server::CServerGameplayContractRunner::Run_KoukuProduct(TESTS& tes
         const bool finalTick = scenario == PARENT_ENTRY::LAST_TICK || scenario == PARENT_ENTRY::LAST_TICK_SINGLE;
         auto generation = std::make_shared<CGameplayCatalog>(room->m_GameplayCatalog.Active());
         auto* definitions = const_cast<std::vector<BOSS_PATTERN_DEFINITION>*>(generation->Find_BossPatterns("ENCOUNTER_KAKULSAYDON_G1"));
+        if (definitions) {
+            const auto source = std::find_if(definitions->begin(), definitions->end(), [](const auto& pattern) {
+                return pattern.strPatternId == "KAKULSAYDON_G1_PATTERN_88"; });
+            if (source != definitions->end() && !source->Stages.empty()) {
+                const auto entry = std::find_if(source->LogicWindows.begin(), source->LogicWindows.end(), [](const auto& window) {
+                    return window.eKind == BOSS_PATTERN_LOGIC_KIND::ENTER_AREA && !window.CardRegions.empty(); });
+                if (entry != source->LogicWindows.end()) {
+                    auto plain = *source; auto portal = *entry;
+                    plain.strPatternId = parentId; plain.strActionId = "contract.plain.mario.entry";
+                    plain.ParentChildren.clear(); plain.strParentLoopStartOccurrenceId.clear();
+                    plain.WorldSequences.clear(); plain.MechanicTriggers.clear(); plain.SceneProfiles.clear();
+                    plain.BossMotion.reset(); plain.bResetBossToSpawn = false; plain.ResetBossYawDegrees.reset();
+                    plain.Stages.resize(1u); plain.iExpectedStageCount = 1u;
+                    plain.Stages.front().iDurationMs = 3000u; plain.Stages.front().Motion = {};
+                    plain.Stages.front().Actions.clear(); plain.Stages.front().Branches.clear();
+                    plain.iTimelineDurationMs = 3000u;
+                    portal.strWindowId = parentId + ".logic.1";
+                    portal.iStartMs = 100u; portal.iDurationMs = 1000u; portal.OnTimeout.clear();
+                    plain.LogicWindows = {portal};
+                    definitions->push_back(std::move(plain));
+                }
+            }
+        }
         BOSS_LOGIC_REGION region{}; std::uint32_t windowStartMs = 0u, windowEndMs = 0u; bool authored = false, chainFree = false;
         if (definitions) for (auto& definition : *definitions) if (definition.strPatternId == parentId) {
             chainFree = std::none_of(definition.LogicWindows.begin(), definition.LogicWindows.end(),
@@ -759,13 +1053,14 @@ void LostArk::Server::CServerGameplayContractRunner::Run_KoukuProduct(TESTS& tes
         const auto* parent = CKoukuSaydonBrain::Find_AnimationOnlyPattern(*generation, parentId, status);
         tests.Require(authored && chainFree && parent && CKoukuSaydonLogicRuntime::Has_MarioEntry(*parent) &&
             CKoukuSaydonLogicRuntime::Find_MarioEntryResult(*parent) && CKoukuSaydonLogicRuntime::Find_MarioEntryResult(*parent)->iMarioEntryStage == authoredStage,
-            "The published Parent P88 owns a chain-free ENTER_AREA window that can carry the authored Mario entry");
+            "An isolated plain ENTER_AREA pattern carries authored Mario entry independently of the saved P88 Parent");
         if (!authored) return;
         room->m_pKoukuPublishedProductGeneration = std::move(generation);
         room->m_WorldEntities.push_back(boss);
         SERVER_PLAYER player{};
         player.iPlayerId = 940u; player.iNetEntityId = 941u; player.iSessionId = 942u;
         player.iCurrentHp = player.iMaximumHp = 100000u; player.isCombatReady = true;
+        player.eMadnessForm = PLAYER_MADNESS_FORM::CLOWN;
         player.fPositionX = boss.fPositionX + 25.f; player.fPositionY = boss.fPositionY; player.fPositionZ = boss.fPositionZ;
         room->m_Players.emplace(player.iPlayerId, player);
         if (scenario == PARENT_ENTRY::LIVE_COUNTER) room->m_iNextMarioEntryStage = 3u;
@@ -840,6 +1135,17 @@ void LostArk::Server::CServerGameplayContractRunner::Run_KoukuProduct(TESTS& tes
             }
         }
         const auto& entrant = room->m_Players.at(player.iPlayerId);
+        if (!(bounded && spliced && stageOk && wire && secondReached && anchorCleared && pendingClear) ||
+            (scenario != PARENT_ENTRY::AFTER_WINDOW && !entryTick))
+            std::cout << "[ParentMario] scenario=" << static_cast<unsigned>(scenario)
+                << " tick=" << room->m_iServerTick << " start=" << memberStart << " entry=" << entryTick
+                << " completion=" << completionTick << " bounded=" << bounded << " spliced=" << spliced
+                << " stageOk=" << stageOk << " wire=" << wire << " moved=" << moved
+                << " second=" << secondReached << " anchorCleared=" << anchorCleared << " pendingClear=" << pendingClear
+                << " hp=" << entrant.iCurrentHp << " ready=" << entrant.isCombatReady
+                << " form=" << static_cast<unsigned>(entrant.eMadnessForm) << " action=" << static_cast<unsigned>(entrant.eAction)
+                << " xyz=" << entrant.fPositionX << ',' << entrant.fPositionY << ',' << entrant.fPositionZ
+                << " status=" << room->Get_Status() << '\n';
         tests.Require(bounded && spliced && stageOk && wire && secondReached && anchorCleared && pendingClear,
             "A chain-free entry Parent pins its own anchor without a Client hold and drops the portal when the pattern completes");
         if (scenario == PARENT_ENTRY::AFTER_WINDOW)
@@ -909,6 +1215,7 @@ void LostArk::Server::CServerGameplayContractRunner::Run_KoukuProduct(TESTS& tes
         auto room = std::make_unique<CGameRoom>(WORLD_ID::KAKULSAYDON_ARENA);
         SERVER_PLAYER player{}; player.iPlayerId = 930u; player.iNetEntityId = 931u;
         player.iCurrentHp = player.iMaximumHp = 100000u; player.isCombatReady = true;
+        player.eMadnessForm = PLAYER_MADNESS_FORM::CLOWN;
         const bool entered = room->Enter_MarioFromPattern(player, stage);
         const auto after = player;
         const bool duplicateRejected = !room->Enter_MarioFromPattern(player, stage) && player.iMarioStage == after.iMarioStage && player.fPositionX == after.fPositionX;
@@ -1141,29 +1448,58 @@ void LostArk::Server::CServerGameplayContractRunner::Run_KoukuProduct(TESTS& tes
 			}
 
 			{
-				/* The F1 gate buttons raise disabled arena boss placements. Such a
-				boss shares the Gate 1 encounter but never owns a brain: it must
-				idle through fixed ticks until an audition names it, and the Debug
-				revert must remove it while keeping the enabled Gate 1 Kouku. */
+				/* Every published gate boss placement is disabled, including Gate 1
+				Kouku. Explicitly activate that original actor before testing that
+				an audition owned by another boss keeps it idle. All-despawn removes
+				both disabled-placement actors, while preserving unrelated Esther. */
 				auto arenaRoom = std::make_unique<CGameRoom>(
 					WORLD_ID::KAKULSAYDON_ARENA);
 				const WORLD_BOOTSTRAP_PLACEMENT* gateSaydon =
 					arenaRoom->Find_Placement("boss.kakulsaydon.g1.saydon");
 				const WORLD_BOOTSTRAP_PLACEMENT* gateKouku =
 					arenaRoom->Find_Placement("boss.kakulsaydon.g1.kouku");
+				WORLD_BOOTSTRAP_PLACEMENT enabledTemplate{};
+				if (gateKouku) enabledTemplate = *gateKouku;
+				enabledTemplate.isEnabled = true;
 				const bool placementsAdmitted = arenaRoom->Is_Ready() &&
 					nullptr != gateSaydon && nullptr != gateKouku &&
 					CKoukuSaydonBrain::Is_ArenaBossPlacement(
 						WORLD_ID::KAKULSAYDON_ARENA, *gateSaydon) &&
-					!CKoukuSaydonBrain::Is_ArenaBossPlacement(
+					CKoukuSaydonBrain::Is_ArenaBossPlacement(
 						WORLD_ID::KAKULSAYDON_ARENA, *gateKouku) &&
+					!CKoukuSaydonBrain::Is_ArenaBossPlacement(
+						WORLD_ID::KAKULSAYDON_ARENA, enabledTemplate) &&
+					nullptr == arenaRoom->Find_KoukuSaydonAuditionBoss() &&
 					!CKoukuSaydonBrain::Is_ArenaBossPlacement(
 						WORLD_ID::CHARACTER_SELECT_ARENA, *gateSaydon);
 				tests.Require(placementsAdmitted,
 					"Admit only disabled KoukuSaydon gate boss placements for the arena Debug spawn");
 
+				SERVER_WORLD_ENTITY originalKouku{};
+				const bool originalBuilt = placementsAdmitted && arenaRoom->Build_WorldEntity(
+					*gateKouku, arenaRoom->m_iNextNetEntityId, originalKouku);
+				if (originalBuilt)
+				{
+					++arenaRoom->m_iNextNetEntityId;
+					arenaRoom->m_WorldEntities.push_back(std::move(originalKouku));
+				}
+				SERVER_WORLD_ENTITY protectedEsther{};
+				protectedEsther.iNetEntityId = arenaRoom->m_iNextNetEntityId++;
+				protectedEsther.eKind = WORLD_BOOTSTRAP_KIND::NPC;
+				protectedEsther.strPlacementId = "fixture.kouku.unrelated.esther";
+				protectedEsther.isEstherSummon = true;
+				protectedEsther.iCurrentHp = protectedEsther.iMaximumHp = 1u;
+				protectedEsther.iEstherStrikeMs = 600000u;
+				const NET_ENTITY_ID protectedEstherId = protectedEsther.iNetEntityId;
+				arenaRoom->m_WorldEntities.push_back(std::move(protectedEsther));
+				const auto estherPreserved = [&]() {
+					return std::any_of(arenaRoom->m_WorldEntities.begin(), arenaRoom->m_WorldEntities.end(),
+						[protectedEstherId](const SERVER_WORLD_ENTITY& entity) {
+							return entity.iNetEntityId == protectedEstherId && entity.isEstherSummon;
+						});
+				};
 				SERVER_WORLD_ENTITY gateBoss{};
-				const bool built = placementsAdmitted &&
+				const bool built = originalBuilt &&
 					arenaRoom->Build_WorldEntity(
 						*gateSaydon, arenaRoom->m_iNextNetEntityId, gateBoss);
 				bool idle = built;
@@ -1203,15 +1539,15 @@ void LostArk::Server::CServerGameplayContractRunner::Run_KoukuProduct(TESTS& tes
 				tests.Require(built && idle,
 					"Keep a Debug-activated KoukuSaydon gate boss idle without a brain or pattern");
 
-				/* The arena navgrid has 4 m cells. Snapping the raised boss to
-				its cell centre moved it 1.29 m from the fixed Gate 1 player
-				position, so the gate teleport was refused as a collision. */
+				/* Match the actual F1 Gate 1 destination in Client Get_DebugGates
+				and Server KOUKU_GATES. A farther player-spawn placement would
+				miss a collision introduced by snapping the raised boss. */
 				arenaRoom->Refresh_PlayerBlockingBodies();
 				tests.Require(built &&
 					std::abs(gateBoss.fPositionX - gateSaydon->fPositionX) < 0.001f &&
 					std::abs(gateBoss.fPositionZ - gateSaydon->fPositionZ) < 0.001f &&
 					arenaRoom->m_ServerCollisionSystem.Is_PlayerPositionClear(
-						-2.84f, 1.32f, 941.02f, INVALID_NET_ENTITY_ID),
+						-2.45f, 1.32f, 740.37f, INVALID_NET_ENTITY_ID),
 					"Keep a raised KoukuSaydon gate boss on its authored XZ so the Gate 1 player position stays clear");
 
 				{
@@ -1272,7 +1608,7 @@ void LostArk::Server::CServerGameplayContractRunner::Run_KoukuProduct(TESTS& tes
 
 #ifdef _DEBUG
 				{
-					/* The audition scope may name the enabled Gate 1 Kouku, but a
+					/* The audition scope may name the explicitly activated Gate 1 Kouku, but a
 					Saydon-body pattern must not play on the Kouku body. */
 					C2S_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_REQUEST saydonRequest{};
 					saydonRequest.iRequestSequence = 1u;
@@ -1411,6 +1747,7 @@ void LostArk::Server::CServerGameplayContractRunner::Run_KoukuProduct(TESTS& tes
 						arenaRoom->m_KoukuSaydonPatternAudition.ePhase &&
 					nullptr == arenaRoom->Find_KoukuSaydonArenaBoss(
 						secondRequest.Scope.strBossPlacementId, secondRequest.Scope.strBossArchetypeId) &&
+					nullptr == arenaRoom->Find_KoukuSaydonAuditionBoss() && estherPreserved() &&
 					std::any_of(lifecycle.begin(), lifecycle.end(),
 						[secondKoukuId, sequenceBeforeDespawn](const auto& entry)
 						{
@@ -1422,7 +1759,7 @@ void LostArk::Server::CServerGameplayContractRunner::Run_KoukuProduct(TESTS& tes
 								KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE_STATE::ABORTED == entry.Message.eState;
 						});
 				tests.Require(removedActive,
-					"Abort the active raised-boss Play All occurrence when Debug gate despawn removes its owner");
+					"Abort the active raised-boss Play All owner and remove disabled gate bosses while preserving Esther");
 #endif
 
 				const bool reverted = built && idle &&
@@ -1434,9 +1771,9 @@ void LostArk::Server::CServerGameplayContractRunner::Run_KoukuProduct(TESTS& tes
 						{
 							return candidate.iNetEntityId == gateId;
 						}) &&
-					nullptr != arenaRoom->Find_KoukuSaydonAuditionBoss();
+					nullptr == arenaRoom->Find_KoukuSaydonAuditionBoss() && estherPreserved();
 				tests.Require(reverted,
-					"Despawn only the Debug-activated gate boss and keep the enabled Gate 1 Kouku");
+					"Despawn all Debug-activated gate bosses and preserve the unrelated Esther summon");
 			}
 
 #ifdef _DEBUG

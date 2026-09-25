@@ -531,6 +531,8 @@ bool_t CMapAssetCatalog::Parse_MaterialOverrides(const DATA_JSON_VALUE& root)
         if (!sourceRow.Is_Object()) { m_Status = "Map material row must be an object"; return false; }
         auto materialFields = sourceRow.Get_Object();
         materialFields.erase("renderMode"); materialFields.erase("cullMode");
+        const auto* sourceWind = sourceRow.Find("foliageWind");
+        materialFields.erase("foliageWind");
         const auto* sourceBaked = sourceRow.Find("bakedLighting");
         const auto* sourceShadow = sourceBaked && sourceBaked->Is_Object() ? sourceBaked->Find("staticShadow") : nullptr;
         if (sourceShadow)
@@ -605,6 +607,52 @@ bool_t CMapAssetCatalog::Parse_MaterialOverrides(const DATA_JSON_VALUE& root)
             else { m_Status = "Unknown per-material cull mode: " + name; return false; }
         }
         drawPolicies.emplace(assetId + "\n" + material.materialName, std::make_pair(renderMode, cullMode));
+        if (const auto* wind = sourceWind)
+        {
+            auto& surface = material.surface;
+            const auto reject = [&](const char* reason) { m_Status = "Invalid source wind: " + assetId + "/" + reason; return false; };
+            if (family != "bg-source-foliage-masked" && family != "bg-source-grass-masked" && !family.starts_with("source."))
+                return reject("unsupported wind surface");
+            if (!exactFields(*wind, { "program", "localCenter", "localBounds", "actorPositionSourceCm",
+                "windDirectionSpeedSource", "playerPositionSource", "scalarRows" })) return reject("wind fields");
+            std::string program;
+            if (!readString(*wind, "program", program)) return reject("wind program");
+            if (program == "UE3_FOLIAGE_VS_E4FE") surface.sourceFoliageWindProgram = 1u;
+            else if (program == "UE3_FOLIAGE_VS_A1C6") surface.sourceFoliageWindProgram = 2u;
+            else if (program == "UE3_FOLIAGE_VS_1C39") surface.sourceFoliageWindProgram = 3u;
+            else return reject("wind program");
+            if (family == "bg-source-grass-masked" && surface.sourceFoliageWindProgram == 1u) return reject("wind family");
+            const auto vector = [](const DATA_JSON_VALUE* value, float4_t& result)
+            {
+                if (!value || !value->Is_Array() || value->Get_Array().size() != 4u) return false;
+                float values[4]{};
+                for (size_t i = 0; i < 4u; ++i)
+                {
+                    const auto& item = value->Get_Array()[i];
+                    if (!item.Is_Number() || !std::isfinite(item.Get_Number()) || std::abs(item.Get_Number()) > 1e8) return false;
+                    values[i] = static_cast<float>(item.Get_Number());
+                }
+                result = float4_t(values[0], values[1], values[2], values[3]); return true;
+            };
+            if (!vector(wind->Find("localCenter"), surface.sourceFoliageWindLocalCenter) ||
+                !vector(wind->Find("localBounds"), surface.sourceFoliageWindLocalBounds) ||
+                !vector(wind->Find("actorPositionSourceCm"), surface.sourceFoliageWindActorPosition) ||
+                !vector(wind->Find("windDirectionSpeedSource"), surface.sourceFoliageWindDirectionSpeed) ||
+                !vector(wind->Find("playerPositionSource"), surface.sourceFoliageWindPlayerPosition)) return reject("wind vectors");
+            const auto* scalars = wind->Find("scalarRows");
+            if (!scalars || !scalars->Is_Array() || scalars->Get_Array().size() != 4u) return reject("wind scalar rows");
+            for (size_t i = 0; i < 4u; ++i)
+                if (!vector(&scalars->Get_Array()[i], surface.sourceFoliageWindScalars[i])) return reject("wind scalar value");
+            const auto& bounds = surface.sourceFoliageWindLocalBounds;
+            const auto& direction = surface.sourceFoliageWindDirectionSpeed;
+            if (surface.sourceFoliageWindLocalCenter.w != 1.f || surface.sourceFoliageWindActorPosition.w != 0.f ||
+                bounds.x <= 0.f || bounds.y <= 0.f || bounds.z <= 0.f || bounds.w <= 0.f ||
+                bounds.x > 1e5f || bounds.y > 1e5f || bounds.z > 1e5f || bounds.w > 1e5f ||
+                direction.x != 0.f || direction.y != 0.f || direction.z != 1.f || direction.w != 0.f ||
+                !surface.Has_ValidSourceFoliageWindProgramInputs())
+                return reject("wind bounds or upstream no-wind contract");
+            surface.sourceFoliageWind = true;
+        }
 		if (family == "diffuse-sampler")
 		{
 			std::string addressU, sourceTexture;
@@ -633,6 +681,8 @@ bool_t CMapAssetCatalog::Parse_MaterialOverrides(const DATA_JSON_VALUE& root)
                 !SourceCharacterMaterial::Read(*parameters, values) ||
                 !SourceCharacterMaterial::Configure(family, values, material.surface.sourceCharacter)) return reject("invalid native program inputs");
             material.surface.family = Engine::MODEL_SURFACE_FAMILY::SOURCE_CHARACTER;
+            if (material.surface.sourceFoliageWind && (material.surface.sourceCharacter.program < 1100u ||
+                material.surface.sourceCharacter.program > 1166u)) return reject("native wind program is not a reviewed static-map cohort");
             const uint32_t required = material.surface.sourceCharacter.baseTextureMask | material.surface.sourceCharacter.lightTextureMask;
             const bool texturelessHelper = family == "source.map.black.v1" || family == "source.map.shadow-modulate.v1";
             if (texturelessHelper != (required == 0u) || (texturelessHelper && !textures->Get_Array().empty()))
@@ -666,7 +716,8 @@ bool_t CMapAssetCatalog::Parse_MaterialOverrides(const DATA_JSON_VALUE& root)
                 std::string space;
                 const bool supportsBaked = (program >= 80u && program <= 83u) ||
                     (program >= 40u && program <= 63u && program != 47u && program != 53u && program != 55u) || program == 209u || program == 210u ||
-                    (program >= 214u && program <= 234u) || program == 237u;
+                    (program >= 214u && program <= 234u) || program == 237u ||
+                    (program >= 1100u && program <= 1166u) || (program >= 1400u && program <= 1413u);
                 if (!supportsBaked ||
                     !exactFields(*baked, { "averageTexture", "directionalTexture", "colorSpace" }) ||
                     !readString(*baked, "colorSpace", space) || (space != "linear" && space != "srgb"))
@@ -997,7 +1048,7 @@ bool_t CMapAssetCatalog::Parse_MaterialOverrides(const DATA_JSON_VALUE& root)
             const auto reject = [&](const char* reason) { m_Status = "Invalid source foliage material: " + assetId + "/" + material.materialName + " / " + reason; return false; };
             std::unordered_set<std::string> fields = { "assetId", "materialName", "sourceMaterial", "family", "sourceFlags", "transmissionColor",
                 "diffuseBrightness", "normalIntensity", "specularIntensity", "specularPower", "diffuseSaturation", "diffuseColor", "specularColor", "castsShadow", "diffuseTexture", "textureColorSpace" };
-            for (const char* optional : { "normalTexture", "specularTexture", "maskTexture", "emissive", "bakedLighting" }) if (row.Find(optional)) fields.insert(optional);
+            for (const char* optional : { "normalTexture", "specularTexture", "maskTexture", "emissive", "bakedLighting", "foliageWind" }) if (row.Find(optional)) fields.insert(optional);
             if (version->Get_Number() != 2.0 || !exactFields(row, fields)) return reject("fields");
             const auto* flags = row.Find("sourceFlags");
             if (!flags || !flags->Is_Number() || flags->Get_Number() < 0.0 || flags->Get_Number() > 127.0 || std::floor(flags->Get_Number()) != flags->Get_Number()) return reject("flags");

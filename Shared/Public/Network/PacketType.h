@@ -106,7 +106,8 @@ namespace LostArk::Shared
 	// Both peers must use 105; all existing packet identities are preserved.
 	// 109 combines Retail combat snapshots, gate-kill commands and shared
 	// F1 cooldown policy. Both peers must use this complete wire contract.
-	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 109;
+	// 110 carries the Server ballistic hit-reaction phase in PLAYER_SNAPSHOT.
+	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 111;
 
 	enum class WORLD_ID : std::uint16_t
 	{

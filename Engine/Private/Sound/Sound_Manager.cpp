@@ -294,6 +294,12 @@ void CSound_Manager::Pause_SoundCue(uint64_t handle, bool_t paused)
 	const auto found = m_CueChannels.find(handle);
 	if (found != m_CueChannels.end()) found->second->setPaused(paused);
 }
+void CSound_Manager::Set_SoundCuePlaybackRate(uint64_t handle, f32_t rate)
+{
+    if (!std::isfinite(rate) || rate <= 0.f || rate > 16.f) return;
+    const auto found = m_CueChannels.find(handle);
+    if (found != m_CueChannels.end()) found->second->setPitch(rate);
+}
 void CSound_Manager::Seek_SoundCue(uint64_t handle, uint32_t ageMs)
 {
 	const auto found = m_CueChannels.find(handle);

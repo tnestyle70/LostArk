@@ -198,6 +198,7 @@ struct EFFECT_FIXED_STEP_TRANSFORM_SAMPLE final
 {
 	float4x4_t RootWorld{};
 	std::unordered_map<std::string, float4x4_t> SourceAnchorWorlds;
+	std::vector<EFFECT_PARAMETER_INPUT> ParticleParameters;
 };
 
 // The existing renderer-owned animated model supplies these at the fixed-step time.
@@ -253,6 +254,13 @@ private:
         float3_t vRotationRateDegreesPerSecond{};
         bool_t bLink = false;
     };
+	struct SOURCE_COLOR_OPERATION final
+	{
+		const EFFECT_DISTRIBUTION_DESC* pColor = nullptr;
+		const EFFECT_DISTRIBUTION_DESC* pAlpha = nullptr;
+		float4_t value{};
+		bool_t multiply = false;
+	};
 	struct PARTICLE_STATE final
 	{
 		float3_t vPosition{};
@@ -278,6 +286,8 @@ private:
 		float3_t vSourceMeshRotationRateScale = { 1.f, 1.f, 1.f };
 		float4_t vBaseColor = { 1.f, 1.f, 1.f, 1.f };
 		float4_t vColor = { 1.f, 1.f, 1.f, 1.f };
+		// Captured update results keep random lanes and spawn color unchanged when held.
+		std::vector<SOURCE_COLOR_OPERATION> SourceColorOperations;
 		float4_t vDynamicParameter{};
 		float3_t vOrbitOffset{};
 		float3_t vBaseOrbitOffset{};
@@ -301,6 +311,7 @@ private:
         uint32_t iSourceCollisionsRemaining = 0u;
         f32_t fSourceCollisionDelay = 0.f;
 		bool_t bSourceCollisionMovementFrozen = false;
+		bool_t bSourceCollisionRotationFrozen = false;
 		bool_t bSourceEmitterLocationResolved = true;
 		std::string strSourceAnchorName;
 		float3_t vSourceAnchorOffset{};
@@ -334,6 +345,7 @@ private:
 
 	struct ELEMENT_STATE final
 	{
+		bool_t bWorldParameterColor = false;
 		uint32_t iRandomState = 1u;
 		f32_t fSpawnAccumulator = 0.f;
 		bool_t bFixedCenterSpacingInitialized = false;
@@ -433,6 +445,11 @@ public:
 	bool_t Seek_WithTransformHistory(
 		f32_t fSampleTimeSeconds,
 		const EFFECT_FIXED_STEP_TRANSFORM_PROVIDER& TransformProvider,
+		std::string& strOutError);
+	bool_t Validate_ParticleParameters(const std::vector<EFFECT_PARAMETER_INPUT>& Inputs,
+		std::string& strOutError) const;
+	// Installs current presentation inputs without advancing or resetting particles.
+	bool_t Set_CurrentParticleParameters(const std::vector<EFFECT_PARAMETER_INPUT>& Inputs,
 		std::string& strOutError);
 	void Set_SourceAnchorWorlds(
 		const std::unordered_map<std::string, float4x4_t>& SourceAnchorWorlds);
@@ -587,6 +604,8 @@ private:
 	std::vector<SOURCE_VECTOR_FIELD_UPDATE> Prepare_SourceVectorFieldUpdates(
 		const EFFECT_ELEMENT_DESC& Element, f32_t fEmitterTimeSeconds,
 		std::span<const size_t> ModuleIndices) const;
+	bool_t Evaluate_CurrentParticleColor(const PARTICLE_STATE& Particle,
+		float4_t& OutColor, std::string& strOutError) const;
 	void Apply_SourceUpdateModules(
 		const EFFECT_ELEMENT_DESC& Element,
 		ELEMENT_STATE& State,
@@ -725,6 +744,10 @@ private:
 	std::unordered_map<std::string, size_t> m_TransformMasterIndices;
 	std::unordered_map<std::string, float4x4_t> m_SourceAnchorWorlds;
 	EFFECT_MODEL_CUE_ANCHOR_PROVIDER m_ModelCueAnchorProvider;
+	std::vector<EFFECT_PARAMETER_INPUT> m_ParticleParameters;
+	std::unordered_map<const EFFECT_DISTRIBUTION_DESC*, float4_t> m_WorldParameterValues;
+	std::vector<const EFFECT_DISTRIBUTION_DESC*> m_WorldParameterDistributions;
+	std::string m_strWorldParameterContractError;
 	std::vector<SOURCE_PARTICLE_EVENT> m_PendingSourceEvents;
 	float3_t m_vPreviousRootPosition{};
 	float3_t m_vParentVelocity{};

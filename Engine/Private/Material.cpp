@@ -540,7 +540,8 @@ HRESULT CMaterial::Initialize(const MODEL_MATERIAL_DATA& material)
             const uint32_t program = m_Surface.sourceCharacter.program;
             const bool supportsBaked = (program >= 80u && program <= 83u) ||
                 (program >= 40u && program <= 63u && program != 47u && program != 53u && program != 55u) ||
-                program == 209u || program == 210u || (program >= 214u && program <= 234u) || program == 237u;
+                program == 209u || program == 210u || (program >= 214u && program <= 234u) || program == 237u ||
+                (program >= 1100u && program <= 1166u) || (program >= 1400u && program <= 1413u);
             if (!supportsBaked ||
                 FAILED(LoadSharedTexture(m_pDevice, m_SharedTextureViews, material.bakedAveragePath, m_Surface.bakedLightingSRGB, m_BakedAverage, true)) ||
                 FAILED(LoadSharedTexture(m_pDevice, m_SharedTextureViews, material.bakedDirectionalPath, m_Surface.bakedLightingSRGB, m_BakedDirectional, true))) return E_FAIL;

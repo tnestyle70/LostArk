@@ -42,6 +42,9 @@ public:
     bool Append_CompositionAnimationResource(const COMPOSITION_ANIMATION_RESOURCE& resource,
         bool replace, std::string& status) override;
 
+    bool Execute_CompositionEdit(COMPOSITION_EDIT_COMMAND command, std::string& status) override;
+    bool Insert_CompositionTransfer(const COMPOSITION_TRANSFER& transfer, std::string& status) override;
+
 private:
     // STAGE, GAP and TIMING rows are synthetic read-only mirrors of PlayerSkills;
     // they never own a saved id and keep the existing kinds' indices stable.
@@ -132,6 +135,7 @@ private:
     bool m_ModelMode = false;
     bool m_CompositionMode = true;
     bool m_CompositionReady = false;
+    bool m_CompositionResourcesFocused = false;
     std::function<void(const std::string&)> m_OpenEffect;
     ANIMATION_SKILL_BINDING_DOCUMENT m_Bindings;
     ANIMATION_SKILL_BINDING m_CompositionBaselineBinding;

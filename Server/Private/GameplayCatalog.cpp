@@ -557,6 +557,8 @@ namespace
 			output = BOSS_PATTERN_LOGIC_KIND::STAGGER_WINDOW;
 		else if ("INVULNERABILITY_ZONE" == value)
 			output = BOSS_PATTERN_LOGIC_KIND::INVULNERABILITY_ZONE;
+		else if ("BINGO_COMPLETED_LINES" == value)
+			output = BOSS_PATTERN_LOGIC_KIND::BINGO_COMPLETED_LINES;
 		else if ("AREA_OVERLAP" == value)
 			output = BOSS_PATTERN_LOGIC_KIND::AREA_OVERLAP;
 		else if ("ENTER_AREA" == value)
@@ -589,6 +591,8 @@ namespace
 			output = BOSS_PATTERN_LOGIC_RESULT_KIND::INSTANT_DEATH;
 		else if ("FIXED_DAMAGE" == value)
 			output = BOSS_PATTERN_LOGIC_RESULT_KIND::FIXED_DAMAGE;
+		else if ("PLAYER_INVULNERABILITY" == value)
+			output = BOSS_PATTERN_LOGIC_RESULT_KIND::PLAYER_INVULNERABILITY;
 		else if ("MAX_HP_PERCENT_DAMAGE" == value)
 			output = BOSS_PATTERN_LOGIC_RESULT_KIND::MAX_HP_PERCENT_DAMAGE;
 		else if ("MADNESS_GAUGE_ADD_PERCENT" == value)
@@ -1481,7 +1485,7 @@ bool LostArk::Server::CGameplayCatalog::Load_DraftKoukuProduct(
 			 kind == "KOUKUSAYDONPRODUCTREVISION" || kind == "ENCOUNTERINTRO");
 		const bool joinedRow = kind == "PATTERNTARGET" || kind == "PATTERNBUNDLE" ||
 			kind == "PATTERNBUNDLEMEMBER" || kind == "RAIDGATE" ||
-			kind == "RAIDFLOWSTEP" || kind == "RAIDFLOWGROUP" || kind == "RAIDARRIVAL";
+			kind == "RAIDFLOWSTEP" || kind == "RAIDFLOWGROUP" || kind == "RAIDARRIVAL" || kind == "RAIDBINGOSPECIAL";
 		if (!encounterRow && !joinedRow)
 		{ m_strStatus = "Kouku draft contains a row outside its encounter"; return false; }
 	}
@@ -1494,6 +1498,16 @@ bool LostArk::Server::CGameplayCatalog::Load_DraftKoukuProduct(
 	{ m_strStatus = staged.Get_Status(); return false; }
 	if (!staged.Has_SameNonKoukuGameplay(activeGameplay))
 	{ m_strStatus = "Kouku draft cannot replace player/boss balance or another encounter"; return false; }
+	// A Sequence draft owns authored maximum/hold, but cannot replace the
+	// currently admitted Balance Test tuning with projector defaults.
+	for (auto& [id, policy] : staged.m_KoukuMadnessPolicies)
+		if (const auto active = activeGameplay.m_KoukuMadnessPolicies.find(id);
+			active != activeGameplay.m_KoukuMadnessPolicies.end())
+		{
+			const auto maximum = policy.iMaximum, hold = policy.iClownHoldMs;
+			policy = active->second;
+			policy.iMaximum = maximum; policy.iClownHoldMs = hold;
+		}
 	*this = std::move(staged);
 	m_strStatus = "Kouku memory draft admitted for one audition";
 	return true;
@@ -1543,16 +1557,23 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 	const LostArk::Shared::GameplayDataRevision* expectedBootstrapRevision,
 	const LostArk::Shared::GameplayDataRevision* parentRevision)
 {
-	std::ifstream bootstrapFile(path, std::ios::binary);
+	std::ifstream bootstrapFile(path, std::ios::binary | std::ios::ate);
 	if (!bootstrapFile)
 	{
 		m_strStatus = "Missing gameplay bootstrap: " + path.string();
 		return false;
 	}
-	const std::string bootstrapBytes{
-		std::istreambuf_iterator<char>{ bootstrapFile },
-		std::istreambuf_iterator<char>{} };
-	if (bootstrapFile.bad())
+	const auto byteCount = static_cast<std::streamoff>(bootstrapFile.tellg());
+	if (byteCount <= 0 || byteCount > LostArk::Shared::GAMEPLAY_BOOTSTRAP_MAX_BYTES)
+	{
+		m_strStatus = "Gameplay bootstrap byte size is outside the supported bound";
+		return false;
+	}
+	std::string bootstrapBytes(static_cast<std::size_t>(byteCount), '\0');
+	bootstrapFile.seekg(0, std::ios::beg);
+	bootstrapFile.read(bootstrapBytes.data(), static_cast<std::streamsize>(bootstrapBytes.size()));
+	if (!bootstrapFile || bootstrapFile.gcount() != static_cast<std::streamsize>(bootstrapBytes.size()) ||
+		bootstrapFile.peek() != std::char_traits<char>::eof())
 	{
 		m_strStatus = "Gameplay bootstrap could not be read";
 		return false;
@@ -1565,6 +1586,11 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 	const LostArk::Shared::GameplayDataRevision* expectedBootstrapRevision,
 	const LostArk::Shared::GameplayDataRevision* parentRevision)
 {
+	if (bootstrapBytes.empty() || bootstrapBytes.size() > LostArk::Shared::GAMEPLAY_BOOTSTRAP_MAX_BYTES)
+	{
+		m_strStatus = "Gameplay bootstrap byte size is outside the supported bound";
+		return false;
+	}
 	using SKILL_MAP = decltype(m_Skills);
 	using BOSS_MAP = decltype(m_Bosses);
 	using BOSS_PART_MAP = decltype(m_BossParts);
@@ -1836,8 +1862,9 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 			DAMAGE_PROFILE profile{};
 			/* A row published before the original formula shipped carries the flat
 			percent alone; the coefficient/addend pair is appended after it. */
-			const bool hasFormula = 5u == fields.size() || 6u == fields.size();
-			const bool hasSpread = 6u == fields.size();
+			const bool hasFormula = 5u == fields.size() || 6u == fields.size() || 7u == fields.size();
+			const bool hasSpread = 6u == fields.size() || 7u == fields.size();
+			const bool hasBossHealthBars = 7u == fields.size();
 			if ((3u != fields.size() && !hasFormula) || !IsStableId(fields[1]) ||
 				!ParseNumber(fields[2], ratePercent) || 0u == ratePercent ||
 				ratePercent > MAXIMUM_DAMAGE_RATE_PERCENT ||
@@ -1847,6 +1874,9 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 				(hasSpread &&
 					(!ParseNumber(fields[5], profile.iDamageSpreadPercent) ||
 					 profile.iDamageSpreadPercent >= 100u)) ||
+				(hasBossHealthBars &&
+					(!ParseNumber(fields[6], profile.iBossHealthBarDamage) ||
+					 profile.iBossHealthBarDamage > 1000u)) ||
 				!m_DamageRatePercentByProfileId.emplace(
 					std::string(fields[1]), ratePercent).second)
 			{
@@ -2974,6 +3004,20 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 			{ m_strStatus = "Boss logic cancellation window is missing or duplicated"; return false; }
 			window->bCancelAtEnd = true;
 		}
+        else if (!fields.empty() && "PATTERNLOGICWORLDOWNER" == fields[0])
+        {
+            if (fields.size() != 5u || !IsStableId(fields[1]) || !IsStableId(fields[2]) || !IsStableId(fields[3]) || !IsStableId(fields[4]))
+            { m_strStatus = "Contact WORLD owner row is invalid"; return false; }
+            const auto owners = m_BossPatterns.find(std::string(fields[1]));
+            if (owners == m_BossPatterns.end()) { m_strStatus = "Contact WORLD owner encounter is missing"; return false; }
+            const auto pattern = std::find_if(owners->second.begin(), owners->second.end(), [&](const auto& row) { return row.strPatternId == fields[2]; });
+            if (pattern == owners->second.end()) { m_strStatus = "Contact WORLD owner pattern is missing"; return false; }
+            const auto window = std::find_if(pattern->LogicWindows.begin(), pattern->LogicWindows.end(), [&](const auto& row) { return row.strWindowId == fields[3]; });
+            if (window == pattern->LogicWindows.end() || !window->strOwnerWorldOccurrenceId.empty() ||
+                (window->eKind != BOSS_PATTERN_LOGIC_KIND::ENTER_AREA && window->eKind != BOSS_PATTERN_LOGIC_KIND::AREA_OVERLAP))
+            { m_strStatus = "Contact WORLD owner requires one contact window"; return false; }
+            window->strOwnerWorldOccurrenceId = fields[4];
+        }
         else if (!fields.empty() && "PATTERNLOGICTICK" == fields[0])
         {
             std::uint32_t interval = 0u;
@@ -2987,9 +3031,9 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
             if (pattern == owners->second.end()) { m_strStatus = "Collider tick pattern is missing"; return false; }
             const auto window = std::find_if(pattern->LogicWindows.begin(), pattern->LogicWindows.end(),
                 [&](const auto& row) { return row.strWindowId == fields[3]; });
-            if (window == pattern->LogicWindows.end() || window->eKind != BOSS_PATTERN_LOGIC_KIND::ENTER_AREA ||
-                window->iRepeatIntervalMs || window->bRearmOnExit || window->bRepeatAfterKnockback)
-            { m_strStatus = "Collider tick requires one ENTER_AREA repeat policy"; return false; }
+            if (window == pattern->LogicWindows.end() || (window->eKind != BOSS_PATTERN_LOGIC_KIND::ENTER_AREA &&
+                window->eKind != BOSS_PATTERN_LOGIC_KIND::AREA_OVERLAP) || window->iRepeatIntervalMs || window->bRearmOnExit || window->bRepeatAfterKnockback)
+            { m_strStatus = "Collider tick requires one ENTER_AREA or AREA_OVERLAP repeat policy"; return false; }
             window->iRepeatIntervalMs = interval;
         }
 		else if (!fields.empty() && "PATTERNLOGICREARM" == fields[0])
@@ -3188,13 +3232,13 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 			if (owner == owners->second.end()) { m_strStatus = "Boss Logic WORLD pattern is missing"; return false; }
 			const auto window = std::find_if(owner->LogicWindows.begin(),owner->LogicWindows.end(),
 				[&](const BOSS_PATTERN_LOGIC_WINDOW& row) { return row.strWindowId == fields[3]; });
-			if (window == owner->LogicWindows.end() || (BOSS_PATTERN_LOGIC_KIND::ENTER_AREA != window->eKind &&
+			if (window == owner->LogicWindows.end() || (BOSS_PATTERN_LOGIC_KIND::ENTER_AREA != window->eKind && BOSS_PATTERN_LOGIC_KIND::AREA_OVERLAP != window->eKind &&
 				BOSS_PATTERN_LOGIC_KIND::OBJECT_OVERLAP != window->eKind && BOSS_PATTERN_LOGIC_KIND::OBJECT_CONTACT != window->eKind))
 			{ m_strStatus = "Boss Logic WORLD Trigger window is missing"; return false; }
 			const auto region = std::find_if(window->CardRegions.begin(),window->CardRegions.end(),
 				[&](const BOSS_LOGIC_REGION& row) { return row.strRegionId == fields[4]; });
 			if (region == window->CardRegions.end() || (BOSS_LOGIC_REGION_ANCHOR::BOSS_CURRENT == region->eAnchor &&
-				window->eKind != BOSS_PATTERN_LOGIC_KIND::OBJECT_CONTACT && window->eKind != BOSS_PATTERN_LOGIC_KIND::ENTER_AREA))
+				window->eKind != BOSS_PATTERN_LOGIC_KIND::OBJECT_CONTACT && window->eKind != BOSS_PATTERN_LOGIC_KIND::ENTER_AREA && window->eKind != BOSS_PATTERN_LOGIC_KIND::AREA_OVERLAP))
 			{ m_strStatus = "Boss Logic WORLD region is missing or uses a bone track outside Object Contact / Enter Area"; return false; }
 			auto& track = region->WorldTrack;
 			if (!isKey)
@@ -3299,6 +3343,11 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
                 if (fields.size() != 11u || result.iPercent || result.iDurationMs || fields[9] != "-" ||
                     !ParseNumber(fields[10], result.iDamageAmount) || !result.iDamageAmount || result.iDamageAmount > 1000000000u)
                 { m_strStatus = "Fixed damage requires 1..1000000000 HP and no percent/duration/target"; return false; }
+            }
+            else if (result.eKind == BOSS_PATTERN_LOGIC_RESULT_KIND::PLAYER_INVULNERABILITY)
+            {
+                if (fields.size() != 10u || result.iPercent || !result.iDurationMs || result.iDurationMs > 600000u || fields[9] != "-")
+                { m_strStatus = "Player invulnerability requires only a bounded duration"; return false; }
             }
             else if (result.eKind == BOSS_PATTERN_LOGIC_RESULT_KIND::FEAR)
             {
@@ -3607,9 +3656,10 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 					trigger.fFaceCenterYawOffsetDegrees != 0.f)
 				{ m_strStatus = "Albion airborne base row carries unrelated values"; return false; }
 			}
-			else if (fields[4] == "BINGO_BOARD")
+			else if (fields[4] == "BINGO_BOARD" || fields[4] == "BINGO_DETONATION")
 			{
-				trigger.eKind = BOSS_PATTERN_MECHANIC_TRIGGER_KIND::BINGO_BOARD;
+				trigger.eKind = fields[4] == "BINGO_BOARD" ? BOSS_PATTERN_MECHANIC_TRIGGER_KIND::BINGO_BOARD :
+					BOSS_PATTERN_MECHANIC_TRIGGER_KIND::BINGO_DETONATION;
                 if (mode != 0u || trigger.iDurationMs > 600000u || fields[11] != "-" ||
                     fields[12] != "0" || fields[13] != "0" || fields[14] != "0" ||
                     trigger.fTeleportX != 0.f || trigger.fTeleportY != 0.f || trigger.fTeleportZ != 0.f || trigger.fFaceCenterYawOffsetDegrees != 0.f)
@@ -3656,6 +3706,27 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 			if (owners->second.end() == owner || owner->MechanicTriggers.size() >= 64u)
 				return false;
 			owner->MechanicTriggers.push_back(std::move(trigger));
+		}
+		else if (!fields.empty() && "PATTERNCARDRAINSOLDIERS" == fields[0])
+		{
+			std::array<std::uint32_t, 3u> counts{};
+			float radiusMin = 0.f, radiusMax = 0.f;
+			if (fields.size() != 9u || !IsStableId(fields[1]) || !IsStableId(fields[2]) || !IsStableId(fields[3]) ||
+				!ParseNumber(fields[4], counts[0]) || !ParseNumber(fields[5], counts[1]) || !ParseNumber(fields[6], counts[2]) ||
+				!ParseNumber(fields[7], radiusMin) || !ParseNumber(fields[8], radiusMax) ||
+				std::any_of(counts.begin(), counts.end(), [](auto count) { return count > 32u; }) ||
+				counts[0] + counts[1] + counts[2] == 0u || counts[0] + counts[1] + counts[2] > 64u ||
+				!std::isfinite(radiusMin) || !std::isfinite(radiusMax) || radiusMin < 0.f || radiusMax > 100.f || radiusMin > radiusMax)
+			{ m_strStatus = "Card rain soldier tuning is invalid"; return false; }
+			const auto encounter = m_BossPatterns.find(std::string(fields[1]));
+			if (encounter == m_BossPatterns.end()) return false;
+			const auto pattern = std::find_if(encounter->second.begin(), encounter->second.end(), [&](const auto& row) { return row.strPatternId == fields[2]; });
+			if (pattern == encounter->second.end()) return false;
+			const auto trigger = std::find_if(pattern->MechanicTriggers.begin(), pattern->MechanicTriggers.end(), [&](const auto& row) { return row.strTriggerId == fields[3]; });
+			if (trigger == pattern->MechanicTriggers.end() || trigger->eKind != BOSS_PATTERN_MECHANIC_TRIGGER_KIND::CARD_RAIN_SOLDIERS || trigger->bHasSoldierTuning)
+			{ m_strStatus = "Card rain tuning owner is missing or duplicated"; return false; }
+			trigger->SoldierCounts = counts; trigger->fSoldierSpawnRadiusMinM = radiusMin;
+			trigger->fSoldierSpawnRadiusMaxM = radiusMax; trigger->bHasSoldierTuning = true;
 		}
 		else if (!fields.empty() && "PATTERNCARDMAZESTAGING" == fields[0])
 		{
@@ -4114,6 +4185,17 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 			}
 			owner->WorldSequences.push_back(std::move(sequence));
 		}
+		else if (!fields.empty() && "PATTERNWORLDAUTHOREDMADNESS" == fields[0])
+		{
+			if (fields.size() != 4u || !IsStableId(fields[1]) || !IsStableId(fields[2]) || !IsStableId(fields[3])) return false;
+			const auto encounter = m_BossPatterns.find(std::string(fields[1]));
+			if (encounter == m_BossPatterns.end()) return false;
+			const auto pattern = std::find_if(encounter->second.begin(), encounter->second.end(), [&](const auto& row) { return row.strPatternId == fields[2]; });
+			if (pattern == encounter->second.end()) return false;
+			const auto cue = std::find_if(pattern->WorldSequences.begin(), pattern->WorldSequences.end(), [&](const auto& row) { return row.strOccurrenceId == fields[3]; });
+			if (cue == pattern->WorldSequences.end() || cue->bAuthoredMadness || !cue->iDurationMs) return false;
+			cue->bAuthoredMadness = true;
+		}
 		else if (!fields.empty() && "PATTERNWORLDPLACEMENT" == fields[0])
 		{
 			BOSS_PATTERN_WORLD_PLACEMENT placement;
@@ -4215,11 +4297,20 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 		else if (!fields.empty() && "KOUKUMADNESS" == fields[0])
 		{
 			BOSS_ENCOUNTER_MADNESS_POLICY policy{};
-			if (4u != fields.size() || !IsStableId(fields[1]) ||
+			if ((4u != fields.size() && 12u != fields.size()) || !IsStableId(fields[1]) ||
 				!ParseNumber(fields[2], policy.iMaximum) || 0u == policy.iMaximum ||
 				policy.iMaximum > 1000000u ||
 				!ParseNumber(fields[3], policy.iClownHoldMs) ||
 				policy.iClownHoldMs > 600000u ||
+				(12u == fields.size() &&
+				 (!ParseNumber(fields[4], policy.iDamageGainPercent) || policy.iDamageGainPercent > 10000u ||
+				  !ParseNumber(fields[5], policy.iBallGainPercent) || policy.iBallGainPercent > 100u ||
+				  !ParseNumber(fields[6], policy.iBallMultiplierPercent) || policy.iBallMultiplierPercent > 10000u ||
+				  !ParseNumber(fields[7], policy.fBallRadiusM) || !std::isfinite(policy.fBallRadiusM) || policy.fBallRadiusM <= 0.f || policy.fBallRadiusM > 20.f ||
+				  !ParseNumber(fields[8], policy.iDollGainPercent) || policy.iDollGainPercent > 100u ||
+				  !ParseNumber(fields[9], policy.iDollMultiplierPercent) || policy.iDollMultiplierPercent > 10000u ||
+				  !ParseNumber(fields[10], policy.fDollRadiusM) || !std::isfinite(policy.fDollRadiusM) || policy.fDollRadiusM <= 0.f || policy.fDollRadiusM > 20.f ||
+				  !ParseNumber(fields[11], policy.iSpecialIntervalMs) || policy.iSpecialIntervalMs < 100u || policy.iSpecialIntervalMs > 60000u)) ||
 				!m_KoukuMadnessPolicies.emplace(std::string(fields[1]), policy).second)
 			{
 				m_strStatus = "KoukuSaydon madness policy row is invalid or duplicated";
@@ -5177,6 +5268,15 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 			if (fields.size() >= 13u && fields[12] != "NONE") gate.strEntrySequenceInstanceId = fields[12];
 			if (fields.size() == 14u) gate.strLoopStartEntryId = fields[13];
 			m_KoukuRaidGates.emplace(gate.strGateId, std::move(gate));
+		}
+		else if (!fields.empty() && "RAIDBINGOSPECIAL" == fields[0])
+		{
+			if (fields.size() != 3u || fields[1] != "BINGO" || !IsStableId(fields[2]))
+			{ m_strStatus = "Bingo special parent reference is invalid"; return false; }
+			auto gate = m_KoukuRaidGates.find(std::string(fields[1]));
+			if (gate == m_KoukuRaidGates.end() || !gate->second.strBingoSpecialPatternId.empty())
+			{ m_strStatus = "Bingo special parent owner is missing or duplicated"; return false; }
+			gate->second.strBingoSpecialPatternId = fields[2];
 		}
 		else if (!fields.empty() && "RAIDFLOWSTEP" == fields[0])
 		{
@@ -6209,6 +6309,13 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 	for (const auto& [skillId, skill] : m_Skills)
 	{
 		(void)skillId;
+		const auto* damageProfile = Find_DamageProfile(skill.strDamageProfileId);
+		if (nullptr != damageProfile && 0u != damageProfile->iBossHealthBarDamage &&
+			LostArk::Shared::PLAYER_SKILL_KIND::ACTIVE != skill.eSkillKind)
+		{
+			m_strStatus = "Boss health-bar damage requires a single-stage ACTIVE skill";
+			return false;
+		}
 		const bool isCombo = LostArk::Shared::PLAYER_SKILL_KIND::COMBO ==
 			skill.eSkillKind;
 		const bool validStageCount = isCombo ?
@@ -7540,6 +7647,9 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 			for (const auto& window : pattern.LogicWindows)
 			{
 				const auto fail = [&](const char* reason) { m_strStatus = "Pattern " + pattern.strPatternId + " / " + window.strWindowId + ": " + reason; return false; };
+                if (!window.strOwnerWorldOccurrenceId.empty() && std::count_if(pattern.WorldSequences.begin(), pattern.WorldSequences.end(),
+                    [&](const auto& cue) { return cue.strOccurrenceId == window.strOwnerWorldOccurrenceId && cue.CombatBody.has_value(); }) != 1)
+                    return fail("Contact owner must resolve one damageable WORLD occurrence");
                 const auto chainCount = std::count_if(pattern.LogicWindows.begin(), pattern.LogicWindows.end(), [](const auto& row) {
                     return row.eKind == BOSS_PATTERN_LOGIC_KIND::PATTERN_COMPLETION_COUNT;
                 });
@@ -7616,9 +7726,9 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 						track.Keys.front().iTimeMs != 0u || track.Keys.back().iTimeMs != window.iDurationMs)
 						return fail("Contact bone track requires the exact trigger clock, endpoints and identity baseline");
 					for (const auto& key : track.Keys)
-						if (!key.bVisible || key.fRotationY != 0.f || key.fRotationW != 1.f ||
+						if (!key.bVisible ||
 							key.fScaleX != 1.f || key.fScaleY != 1.f || key.fScaleZ != 1.f)
-							return fail("Contact bone track moves the tip while keeping authored TARGET_YAW geometry");
+							return fail("Contact bone track must preserve visibility and authored scale");
 				}
 				if (window.eKind != BOSS_PATTERN_LOGIC_KIND::OBJECT_CONTACT) continue;
 				if (!window.bHasContactGroup || window.ContactTargets.empty() || window.CardRegions.empty() ||
@@ -7990,7 +8100,7 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 			koukuOwned = fields[1] == "ENCOUNTER_KAKULSAYDON_G1" &&
 				(kind.starts_with("PATTERN") || kind == "KOUKUMADNESS" ||
 				 kind == "KOUKUSAYDONPRODUCTREVISION" || kind == "ENCOUNTERINTRO");
-			if (kind == "RAIDGATE" || kind == "RAIDFLOWSTEP" || kind == "RAIDFLOWGROUP" || kind == "RAIDARRIVAL") koukuOwned = true;
+			if (kind == "RAIDGATE" || kind == "RAIDFLOWSTEP" || kind == "RAIDFLOWGROUP" || kind == "RAIDARRIVAL" || kind == "RAIDBINGOSPECIAL") koukuOwned = true;
 			if (kind == "PATTERNTARGET" && nullptr != koukuPatterns)
 				koukuOwned = std::any_of(koukuPatterns->begin(), koukuPatterns->end(),
 					[&fields](const auto& pattern) { return pattern.strPatternId == fields[1]; });
@@ -8015,16 +8125,49 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 	{
 		if (gate.Entries.size() != gate.iExpectedEntryCount || gate.strEncounterId != "ENCOUNTER_KAKULSAYDON_G1")
 		{ m_strStatus = "Kouku raid flow is incomplete or outside its encounter"; return false; }
+		if (gateId == "BINGO")
+		{
+			const auto* patterns = Find_BossPatterns(gate.strEncounterId);
+			const auto special = patterns ? std::find_if(patterns->begin(), patterns->end(), [&](const auto& pattern) {
+				return pattern.strPatternId == gate.strBingoSpecialPatternId;
+			}) : std::vector<BOSS_PATTERN_DEFINITION>::const_iterator{};
+			if (!patterns || special == patterns->end() || special->strGateId != gateId ||
+				special->strTargetBossPlacementId != gate.strPrimaryBossPlacementId || !special->bFixedTimelineClock ||
+				special->Stages.empty() || !special->strParentLoopStartOccurrenceId.empty())
+			{ m_strStatus = "Bingo flow needs its exact finite special Parent in the same boss scope"; return false; }
+			std::uint64_t specialDurationMs = 0u;
+			for (const auto& stage : special->Stages) specialDurationMs += stage.iDurationMs;
+			specialDurationMs = (std::max)(specialDurationMs, std::uint64_t(special->iTimelineDurationMs));
+			if (!specialDurationMs || specialDurationMs > 600000u)
+			{ m_strStatus = "Bingo special Parent duration must be finite and bounded"; return false; }
+			unsigned detonations = static_cast<unsigned>(std::count_if(special->MechanicTriggers.begin(), special->MechanicTriggers.end(),
+				[](const auto& trigger) { return trigger.eKind == BOSS_PATTERN_MECHANIC_TRIGGER_KIND::BINGO_DETONATION; }));
+			for (const auto& child : special->ParentChildren)
+			{
+				const auto found = std::find_if(patterns->begin(), patterns->end(), [&](const auto& pattern) { return pattern.strPatternId == child.strPatternId; });
+				if (found == patterns->end() || found->strGateId != gateId || found->strTargetBossPlacementId != gate.strPrimaryBossPlacementId)
+				{ m_strStatus = "Bingo special Parent child scope is invalid"; return false; }
+				detonations += static_cast<unsigned>(std::count_if(found->MechanicTriggers.begin(), found->MechanicTriggers.end(),
+					[](const auto& trigger) { return trigger.eKind == BOSS_PATTERN_MECHANIC_TRIGGER_KIND::BINGO_DETONATION; }));
+			}
+			if (detonations != 1u)
+			{ m_strStatus = "Bingo special Parent must own exactly one detonation"; return false; }
+		}
 		if (!gate.strLoopStartEntryId.empty() && std::none_of(gate.Entries.begin(), gate.Entries.end(),
 			[&](const auto& entry) { return entry.strEntryId == gate.strLoopStartEntryId; }))
 		{ m_strStatus = "Kouku raid loop start is not an entry of its flow"; return false; }
 		for (const auto& entry : gate.Entries)
 		{
+			if (gateId == "BINGO" && !entry.bBundle && entry.strTargetId == gate.strBingoSpecialPatternId)
+			{ m_strStatus = "Bingo special Parent cannot also be a normal flow entry"; return false; }
 			if (entry.bBundle)
 			{
 				const auto* bundle = Find_BossPatternBundle(entry.strTargetId);
 				if (!bundle || bundle->strEncounterId != gate.strEncounterId || bundle->strGateId != gateId)
 				{ m_strStatus = "Kouku raid flow bundle scope mismatch"; return false; }
+				if (gateId == "BINGO" && std::any_of(bundle->Members.begin(), bundle->Members.end(),
+					[&](const auto& member) { return member.strPatternId == gate.strBingoSpecialPatternId; }))
+				{ m_strStatus = "Bingo special Parent cannot also be a normal flow bundle member"; return false; }
 			}
 			else
 			{

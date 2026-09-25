@@ -185,6 +185,48 @@ class ValtanCombatObjectTypedWriterTests(unittest.TestCase):
         )
         return boss["combatObjectVisuals"]
 
+    def clone_operation(self) -> dict[str, object]:
+        return {
+            "op": "CLONE_COMBAT_OBJECT", "patternId": "VALTAN_HIGH_JUMP",
+            "stageId": "AIRBORNE", "actionId": "valtan.attack.high-jump.airborne",
+            "sourceCombatObjectArchetypeId": "combatobject.valtan.high-jump.target-axe",
+            "combatObjectArchetypeId": ARCHETYPE_ID, "clientVisualId": VISUAL_ID,
+            "eventId": EVENT_ID, "lifetimeMs": 8000,
+            "hitShapes": [{"shape": "CIRCLE", "innerRadiusM": 0, "outerRadiusM": 3.5}],
+        }
+
+    def test_clone_preserves_definition_visual_clock_and_independent_identity(self) -> None:
+        result = self.apply([self.clone_operation()])
+        source = next(row for row in self.docs[pipeline.COMBAT_AUTHORING_REL]["objects"]
+                      if row["combatObjectArchetypeId"] == "combatobject.valtan.high-jump.target-axe")
+        copied = next(row for row in result[3]["objects"] if row["combatObjectArchetypeId"] == ARCHETYPE_ID)
+        expected = copy.deepcopy(source)
+        expected["combatObjectArchetypeId"] = ARCHETYPE_ID
+        expected["lifetimeMs"] = 8000
+        expected["hits"][0]["hitId"] = ARCHETYPE_ID + ".hit.1"
+        self.assertEqual(expected, copied)
+        visual = next(row for row in self.valtan_visuals(result[4]) if row["combatObjectArchetypeId"] == ARCHETYPE_ID)
+        self.assertEqual("boss.valtan.axe", visual["effectV2Group"]["groupId"])
+        self.assertEqual(ARCHETYPE_ID + ".hit.1", visual["effectV2Group"]["serverHitId"])
+        self.assertEqual(2350, visual["effectV2Group"]["visualHitMs"])
+        self.assertEqual(VISUAL_ID, visual["clientVisualId"])
+        products = pipeline._compile_combat_products(result[0], result[3],
+            self.docs[pipeline.LEGACY_REL], result[4])
+        self.assertEqual(1, sum(row["combatObjectArchetypeId"] == ARCHETYPE_ID for row in products))
+
+    def test_clone_missing_source_or_second_conflict_preserves_input(self) -> None:
+        original = copy.deepcopy((self.master, self.docs))
+        missing = self.clone_operation()
+        missing["sourceCombatObjectArchetypeId"] = "combatobject.missing"
+        for operations in ([missing], [self.clone_operation(), self.clone_operation()]):
+            with self.assertRaises(pipeline.PipelineError): self.apply(operations)
+            self.assertEqual(original, (self.master, self.docs))
+
+    def test_clone_rejects_visual_hit_desynchronization_without_rewriting_source(self) -> None:
+        request = self.clone_operation()
+        request["lifetimeMs"] = 1000
+        with self.assertRaises(pipeline.PipelineError): self.apply([request])
+
     def test_add_update_delete_round_trip_owns_all_three_sources(self) -> None:
         original_master = copy.deepcopy(self.master)
         original_combat = copy.deepcopy(self.docs[pipeline.COMBAT_AUTHORING_REL])

@@ -3,10 +3,11 @@
 
 #include "Shader_SourceCharacterPrograms.hlsli"
 #include "Shader_StaticShadowMap.hlsli"
+#include "Shader_SourceMovieStaticInputs.hlsli"
 
 bool IsSourceStaticMapSL10()
 {
-    return (g_SourceCharacterProgram >= 214u && g_SourceCharacterProgram <= 234u) || g_SourceCharacterProgram == 237u;
+    return (g_SourceCharacterProgram >= 214u && g_SourceCharacterProgram <= 234u) || g_SourceCharacterProgram == 237u || IsSourceMovieStatic(g_SourceCharacterProgram);
 }
 
 float3 SourceCharacterSafeUnit(float3 value)
@@ -86,7 +87,7 @@ SOURCE_CHARACTER_NATIVE_INPUT MakeSourceCharacterInput(float2 uv, float4 extraUV
         input.values[5] = float4(tangentView, 1.f);
         input.values[6] = sourcePosition;
     }
-    if (g_SourceCharacterProgram == 6u)
+    if (g_SourceCharacterProgram == 6u || g_SourceCharacterProgram == 601u)
     {
         input.values[2] = float4(uv, 0.f, 0.f);
         input.values[3] = float4(tangentLight, 1.f);
@@ -105,8 +106,11 @@ SOURCE_CHARACTER_NATIVE_INPUT MakeSourceCharacterInput(float2 uv, float4 extraUV
     }
     if (g_SourceCharacterProgram == 6u || g_SourceCharacterProgram == 7u ||
         g_SourceCharacterProgram == 18u || g_SourceCharacterProgram == 20u ||
-        g_SourceCharacterProgram == 29u || g_SourceCharacterProgram == 84u ||
-        g_SourceCharacterProgram == 88u || g_SourceCharacterProgram == 99u)
+        g_SourceCharacterProgram == 29u || g_SourceCharacterProgram == 800u || g_SourceCharacterProgram == 84u ||
+        g_SourceCharacterProgram == 88u || g_SourceCharacterProgram == 99u ||
+        g_SourceCharacterProgram == 600u || g_SourceCharacterProgram == 601u ||
+        g_SourceCharacterProgram == 700u || g_SourceCharacterProgram == 701u ||
+        g_SourceCharacterProgram == 801u || g_SourceCharacterProgram == 702u)
     {
         input.values[5] = float4(0.f, 0.f, 0.f, 1.f); // Source fog identity.
         input.values[6] = g_SourceCharacterProgram == 6u ? 0.f : float4(tangentView, 1.f);
@@ -155,6 +159,44 @@ SOURCE_CHARACTER_NATIVE_INPUT MakeSourceCharacterInput(float2 uv, float4 extraUV
         input.values[9] = sourcePosition;
     }
 #endif
+    // Movie MICs retain the source GPU-skin VS register layouts.
+#ifdef SOURCE_CHARACTER_LIGHT_PASS
+    if (g_SourceCharacterProgram == 901u || g_SourceCharacterProgram == 902u ||
+        g_SourceCharacterProgram == 903u || g_SourceCharacterProgram == 703u) input.values[8] = clipPosition;
+    if (g_SourceCharacterProgram == 904u)
+    {
+        input.values[2] = float4(uv, 0.f, 0.f);
+        input.values[3] = float4(tangentLight, 1.f);
+        input.values[5] = float4(tangentView, 1.f);
+        input.values[6] = clipPosition;
+    }
+#else
+    if (g_SourceCharacterProgram == 901u || g_SourceCharacterProgram == 902u || g_SourceCharacterProgram == 703u)
+        input.values[7] = clipPosition;
+    if (g_SourceCharacterProgram == 903u)
+    {
+        input.values[5] = float4(0.f, 0.f, 0.f, 1.f);
+        input.values[6] = float4(tangentView, 1.f);
+        input.values[7] = float4(up, 0.f);
+        input.values[8] = sourcePosition;
+    }
+#endif
+    // Eyelash and transparent movie skin factories use compact light registers.
+#ifdef SOURCE_CHARACTER_LIGHT_PASS
+    if (g_SourceCharacterProgram == 601u || g_SourceCharacterProgram == 702u)
+    {
+        input.values[0] = 1.f; input.values[1] = 0.f;
+        input.values[2] = float4(uv,0.f,0.f); input.values[3] = float4(tangentLight,1.f);
+        input.values[4] = 0.f; input.values[5] = float4(tangentView,1.f);
+        input.values[6] = clipPosition; input.values[7] = frontFace ? 1.f : 0.f;
+    }
+#else
+    if (g_SourceCharacterProgram == 601u || g_SourceCharacterProgram == 702u)
+    {
+        input.values[4].zw = 0.f;
+        input.values[8] = clipPosition;
+    }
+#endif
     // Guardian selection MICs use their recovered GPU-skin varying layouts.
 #ifdef SOURCE_CHARACTER_LIGHT_PASS
     if (g_SourceCharacterProgram == 104u || g_SourceCharacterProgram == 211u ||
@@ -189,6 +231,21 @@ SOURCE_CHARACTER_NATIVE_INPUT MakeSourceCharacterInput(float2 uv, float4 extraUV
             input.values[5] = float4(tangentView,1.f);
             input.values[6] = sourcePosition;
         }
+#endif
+    }
+    if (IsSourceMovieStatic(g_SourceCharacterProgram))
+    {
+        const float3 sourceView = (cameraPosition - worldPosition) * 100.f;
+        const float4 rawView = float4(dot(t, sourceView), dot(b, sourceView), dot(n, sourceView), 1.f);
+        const float4 tangentX = input.values[0], tangentZ = input.values[1];
+        input.projection[0] = viewProjection[0]; input.projection[1] = -viewProjection[2];
+        input.projection[2] = viewProjection[1]; input.projection[3] = viewProjection[3] * 100.f;
+#ifdef SOURCE_CHARACTER_LIGHT_PASS
+        PackSourceMovieLightInput(input, tangentX, tangentZ, extraUV, uv, rawView,
+            float4(tangentLight, 1.f), float4(up, 0.f), clipPosition * 100.f, float4(0.f,0.f,0.f,1.f));
+#else
+        PackSourceMovieBaseInput(input, tangentX, tangentZ, extraUV, uv, rawView,
+            float4(tangentLight, 1.f), float4(up, 0.f), clipPosition * 100.f, float4(0.f,0.f,0.f,1.f));
 #endif
     }
     input.sourceCameraPosition = float3(cameraPosition.x,-cameraPosition.z,cameraPosition.y)*100.f;
@@ -238,7 +295,7 @@ SOURCE_CHARACTER_GBUFFER EvaluateSourceCharacterGeometry(float2 uv, float4 extra
     // ordered coverage until its source sorted-translucency passes are present.
     if (g_SourceCharacterProgram == 6u || g_SourceCharacterProgram == 7u ||
         g_SourceCharacterProgram == 18u || g_SourceCharacterProgram == 20u ||
-        g_SourceCharacterProgram == 29u || g_SourceCharacterProgram == 84u ||
+        g_SourceCharacterProgram == 29u || g_SourceCharacterProgram == 800u || g_SourceCharacterProgram == 84u ||
         g_SourceCharacterProgram == 99u)
     {
         static const float threshold[16] = {
@@ -259,11 +316,12 @@ SOURCE_CHARACTER_GBUFFER EvaluateSourceCharacterGeometry(float2 uv, float4 extra
     output.normal = float4(mappedNormal * .5f + .5f, 0.f);
     output.depth = float4(clipPosition.z / clipPosition.w, clipPosition.w / 1000.f,
         float(g_SourceCharacterRow), 5.f);
-    // Marker-5 PickPos.W uses low 8 mantissa bits for the source program.
-    // Keep exponent 127: the RGBA32_FLOAT payload stays finite/nonzero, and
-    // EncodeMapStaticShadowChannel preserves these bits. Picking consumes XYZ.
+    // Marker-5 keeps legacy program bits 0..7; bit8 belongs to skinned writers.
+    // Bits 9..16 retain the high program byte without changing the exponent or
+    // static-shadow channel. Picking consumes XYZ; old IDs keep identical bits.
     output.pickPosition = float4(worldPosition,
-        asfloat(0x3f800000u | (g_SourceCharacterProgram & 255u)));
+        asfloat(0x3f800000u | (g_SourceCharacterProgram & 255u) |
+            (((g_SourceCharacterProgram >> 8u) & 255u) << 9u)));
     output.indirect = float4(native.targets[0].rgb, 0.f);
     if ((g_SourceCharacterProgram >= 80u && g_SourceCharacterProgram <= 83u) || g_SourceCharacterProgram == 210u || IsSourceStaticMapSL10())
     {
@@ -276,6 +334,9 @@ SOURCE_CHARACTER_GBUFFER EvaluateSourceCharacterGeometry(float2 uv, float4 extra
     if ((g_SourceCharacterProgram >= 80u && g_SourceCharacterProgram <= 83u) || g_SourceCharacterProgram == 210u)
         output.extraUV.w = nativeInput.hasBakedLighting ? 1.f : 0.f;
     if (IsSourceStaticMapSL10()) output.extraUV.z = nativeInput.hasBakedLighting ? 1.f : 0.f;
+    // Movie light shaders consume vertex RGBA. Retain blue while marking RNM use.
+    if (IsSourceMovieStatic(g_SourceCharacterProgram))
+        output.extraUV.z = nativeInput.hasBakedLighting ? -1.f-extraUV.z : extraUV.z;
     output.surfaceUVTangent = float4(uv, SourceCharacterOctEncode(SourceCharacterSafeUnit(tangent)));
     output.geometricNormal = float4(SourceCharacterSafeUnit(normal),
         (dot(cross(normal, tangent), binormal) < 0.f ? -1.f : 1.f) * (frontFace ? 1.f : 2.f));

@@ -5,6 +5,60 @@
 #include <algorithm>
 #include <iterator>
 
+namespace
+{
+    constexpr const char* TransferPayload = "COMPOSITION_RESOURCE_V1";
+    Client::COMPOSITION_TRANSFER DragTransfer;
+    std::uint64_t DragToken = 0;
+}
+
+void Client::Offer_CompositionResourceDrag(const char* label,
+    const std::function<COMPOSITION_TRANSFER()>& capture)
+{
+    if (!ImGui::BeginDragDropSource()) return;
+    const ImGuiPayload* active = ImGui::GetDragDropPayload();
+    if (!active || !active->IsDataType(TransferPayload))
+    {
+        DragTransfer = capture ? capture() : COMPOSITION_TRANSFER{};
+        ++DragToken;
+        if (!DragToken) ++DragToken;
+    }
+    if (DragTransfer)
+    {
+        ImGui::SetDragDropPayload(TransferPayload, &DragToken, sizeof(DragToken), ImGuiCond_Once);
+        ImGui::TextUnformatted(label ? label : DragTransfer->label.c_str());
+        ImGui::TextDisabled("Drop in the destination Sequencer or Box Detail.");
+    }
+    else ImGui::TextDisabled("This resource cannot be transferred.");
+    ImGui::EndDragDropSource();
+}
+
+Client::COMPOSITION_TRANSFER Client::Accept_CompositionResourceDropInWindow()
+{
+    const ImGuiPayload* active = ImGui::GetDragDropPayload();
+    if (!active || !active->IsDataType(TransferPayload)) return {};
+    // A non-interactive item supplies the pane-sized target using public ImGui
+    // APIs. It exists only during a resource drag and captures no mouse clicks.
+    const ImVec2 cursor = ImGui::GetCursorScreenPos();
+    const ImVec2 position = ImGui::GetWindowPos();
+    const ImVec2 size = ImGui::GetWindowSize();
+    const ImVec2 padding = ImGui::GetStyle().WindowPadding;
+    ImGui::SetCursorScreenPos({position.x + padding.x, position.y + padding.y});
+    ImGui::Dummy({(std::max)(1.f, size.x - 2.f * padding.x),
+        (std::max)(1.f, size.y - 2.f * padding.y)});
+    COMPOSITION_TRANSFER result;
+    if (ImGui::BeginDragDropTarget())
+    {
+        if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(TransferPayload))
+            if (payload->IsDelivery() && payload->DataSize == sizeof(DragToken) &&
+                *static_cast<const std::uint64_t*>(payload->Data) == DragToken)
+                result = DragTransfer;
+        ImGui::EndDragDropTarget();
+    }
+    ImGui::SetCursorScreenPos(cursor);
+    return result;
+}
+
 void Client::InsertResourceTree(
 	COMPOSITION_RESOURCE_TREE_NODE& Root,
 	const std::vector<std::string>& CategorySegments,

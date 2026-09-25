@@ -6,6 +6,37 @@ import copy
 from typing import Any
 
 
+def validate_bingo_special(action: dict[str, Any], flow: dict[str, Any]) -> str:
+    """Validate the authored Parent before its children are flattened for runtime."""
+    identity = flow.get("bingoSpecialPatternId", "")
+    patterns = {row["patternId"]: row for row in action["patterns"]}
+    parent = patterns.get(identity) if isinstance(identity, str) else None
+    if flow.get("gateId") != "BINGO" or not parent or parent.get("authoringStatus") != "PRODUCT" or \
+            parent.get("gateId") != "BINGO" or parent.get("targetBossPlacementId") != "boss.kakulsaydon.bingo.saydon" or \
+            not parent.get("patternOccurrences") or parent.get("loopStartPatternOccurrenceId"):
+        raise ValueError("BINGO publication requires bingoSpecialPatternId naming an admitted finite Parent on the Bingo boss")
+    bundle_map = {row["bundleId"]: row for row in action.get("bundles", [])}
+    if any((entry["kind"] == "PATTERN" and entry["targetId"] == identity) or
+           (entry["kind"] == "BUNDLE" and any(member["patternId"] == identity for member in
+            bundle_map.get(entry["targetId"], {}).get("members", []))) for entry in flow["entries"]):
+        raise ValueError("Bingo special cannot also be a normal Flow entry or Bundle member")
+    owners = [parent]
+    for box in parent["patternOccurrences"]:
+        child = patterns.get(box.get("patternId"))
+        if not child or child is parent or box.get("repeat", False) or child.get("patternOccurrences") or \
+                child.get("authoringStatus") != "PRODUCT" or \
+                any(child.get(key) != parent.get(key) for key in ("gateId", "actorProfileId", "targetBossPlacementId")):
+            raise ValueError("Bingo special children must be admitted finite Patterns on the same Gate and boss")
+        owners.append(child)
+    logics = {row["logicId"]: row for row in action.get("logics", [])}
+    detonations = sum(1 for owner in owners for box in owner.get("logicOccurrences", [])
+                      if box.get("enabled", True) and logics.get(box.get("logicId"), {}).get("logicType") == "TRIGGER"
+                      and logics[box["logicId"]].get("triggerKind") == "BINGO_DETONATION")
+    if detonations != 1:
+        raise ValueError("Bingo special requires exactly one enabled BINGO_DETONATION across its Parent and children")
+    return identity
+
+
 def project_raid_gates(action: dict[str, Any], sequence: dict[str, Any]) -> list[dict[str, Any]]:
     flows = {row["gateId"]: row for row in action.get("patternFlows", [])}
     sequences = {row["patternId"]: row for row in sequence["patterns"]}
@@ -36,6 +67,7 @@ def project_raid_gates(action: dict[str, Any], sequence: dict[str, Any]) -> list
             if row["targetId"] not in targets:
                 raise ValueError(f"{gate} flow cannot admit unavailable {row['targetId']}")
             entries.append(dict(row))
+        special_id = validate_bingo_special(action, flow) if gate == "BINGO" else ""
         loop_start = flow.get("loopStartEntryId", "")
         if not isinstance(loop_start, str) or (loop_start and loop_start not in {row["entryId"] for row in entries}):
             raise ValueError(f"{gate} flow loop start is not a saved entry")
@@ -84,5 +116,6 @@ def project_raid_gates(action: dict[str, Any], sequence: dict[str, Any]) -> list
                        "primaryBossPlacementId": primary, "entries": entries, "arrivals": arrivals,
                        "entrySequenceInstanceId": next(iter(entry_sequences), ""),
                        **({"loopStartEntryId": loop_start} if loop_start else {}),
+                       **({"bingoSpecialPatternId": special_id} if special_id else {}),
                        **({"entryGroups": copy.deepcopy(flow["entryGroups"])} if "entryGroups" in flow else {})})
     return result

@@ -25,6 +25,19 @@ def read(relative: str) -> str:
 class WorldSequenceAuthoringContractTests(unittest.TestCase):
     """Fast source/project integration guards; the Product build compiles behavior."""
 
+    def test_native_publisher_decodes_cpp_utf8_parameter_names(self) -> None:
+        publisher = read("Tools/MapPipeline/Publish-MapAuthoring.ps1")
+        definition = re.search(r"(?ms)^function Get-SequenceNativeMaterialContract \{.*?^\}", publisher).group(0)
+        script = "$ErrorActionPreference='Stop'\n[Console]::OutputEncoding=[Text.UTF8Encoding]::new($false)\n$ProjectRoot='" + str(ROOT).replace("'", "''") + "'\n" + definition
+        script += "\n$c=Get-SequenceNativeMaterialContract 'source.character.static-map-native-1523.v1'; ConvertTo-Json -InputObject @($c.ParameterNames) -Compress"
+        with tempfile.TemporaryDirectory() as temporary:
+            path = Path(temporary) / "contract.ps1"
+            path.write_text(script, encoding="utf-8-sig")
+            result = subprocess.run(["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(path)], capture_output=True, timeout=30)
+            self.assertEqual(0, result.returncode, result.stderr)
+            names = json.loads(result.stdout.decode("utf-8-sig"))
+            self.assertIn("r 확장 / g 바운드발광 / b 알파 / a 디졸브", names)
+
     def test_combined_object_selection_retains_full_motion_editor(self) -> None:
         code = read("Client/Private/WorldObjectTool.cpp")
         header = read("Client/Public/WorldObjectTool.h")
@@ -56,6 +69,142 @@ class WorldSequenceAuthoringContractTests(unittest.TestCase):
         self.map_tool_h = read("Client/Public/MapTool.h")
         self.map_tool_cpp = read("Client/Private/MapTool.cpp")
 
+    def test_object_hierarchy_publisher_preserves_organization_and_rejects_invalid_graphs(self) -> None:
+        resource = {"objectId": "object.hook", "displayName": "Hook", "modelAssetId": "Map/Test/hook.wmodel",
+                    "modelPreScale": 0.01, "animated": False, "scale": [1, 1, 1]}
+        source = {"schema": "lostark.world-sequences", "formatVersion": 3, "areaId": "TEST",
+                  "revision": 1, "templates": [], "instances": [], "objectResources": [resource]}
+        organized = copy.deepcopy(source)
+        organized["objectFolders"] = [{"folderId": "folder.props", "displayName": "Props"},
+                                      {"folderId": "folder.nested", "displayName": "Nested", "parentId": "object.hook"}]
+        organized["objectResources"][0]["parentId"] = "folder.props"
+        child = copy.deepcopy(resource)
+        child.update(objectId="object.hook.second", parentId="folder.nested")
+        organized["objectResources"].append(child)
+        cases = [("legacy", source, True), ("organized", organized, True)]
+        for name, mutate in (
+            ("unknown_parent", lambda d: d["objectResources"][1].update(parentId="missing")),
+            ("case_sensitive_parent", lambda d: d["objectResources"][0].update(parentId="FOLDER.props")),
+            ("self_cycle", lambda d: d["objectResources"][0].update(parentId="object.hook")),
+            ("mixed_cycle", lambda d: d["objectFolders"][0].update(parentId="object.hook.second")),
+            ("anchor_mismatch", lambda d: d["objectFolders"][0].update(anchorKind="PLAYER")),
+            ("duplicate_id", lambda d: d["objectFolders"][0].update(folderId="object.hook")),
+            ("invalid_id", lambda d: d["objectFolders"][0].update(folderId="folder/props")),
+            ("empty_name", lambda d: d["objectFolders"][0].update(displayName="")),
+            ("name_byte_limit", lambda d: d["objectFolders"][0].update(displayName="기" * 43)),
+            ("name_control", lambda d: d["objectFolders"][0].update(displayName="Bad\nName")),
+            ("parent_type", lambda d: d["objectResources"][0].update(parentId=1)),
+            ("folder_parent_type", lambda d: d["objectFolders"][0].update(parentId=None)),
+            ("folder_anchor_type", lambda d: d["objectFolders"][0].update(anchorKind=1)),
+            ("unknown_folder_field", lambda d: d["objectFolders"][0].update(typo=True)),
+            ("folders_type", lambda d: d.update(objectFolders={})),
+        ):
+            candidate = copy.deepcopy(organized)
+            mutate(candidate)
+            cases.append((name, candidate, False))
+        for depth, valid in ((64, True), (65, False)):
+            candidate = copy.deepcopy(source)
+            candidate["objectFolders"] = [dict(folderId=f"folder.{i}", displayName=f"Folder {i}",
+                                               parentId=f"folder.{i - 1}" if i else "") for i in range(depth)]
+            candidate["objectResources"][0]["parentId"] = f"folder.{depth - 1}"
+            cases.append((f"depth_{depth}", candidate, valid))
+        empty_parent = copy.deepcopy(organized)
+        empty_parent["objectResources"][1]["parentId"] = ""
+        cases.append(("empty_parent", empty_parent, True))
+        publisher = read("Tools/MapPipeline/Publish-MapAuthoring.ps1")
+        definitions = [re.search(r"(?ms)^function " + name + r" \{.*?^\}", publisher).group(0)
+                       for name in ("Test-JsonNumber", "Assert-ExactJsonProperties", "Read-WorldSequenceDocument")]
+        with tempfile.TemporaryDirectory() as temporary:
+            folder = Path(temporary)
+            for name, document, _ in cases:
+                (folder / (name + ".json")).write_text(json.dumps(document, ensure_ascii=False), encoding="utf-8")
+            script = "$ErrorActionPreference='Stop'\n$AreaId='TEST'\n" + "\n".join(definitions)
+            script += """
+$results=@(); foreach($file in Get-ChildItem -LiteralPath $PSScriptRoot -Filter '*.json') {
+    try {
+        $lines = @(Read-WorldSequenceDocument $file.FullName)
+        $roundtrip = [string]::Join([Environment]::NewLine, $lines)
+        [IO.File]::WriteAllText(($file.FullName + '.validated'), $roundtrip, [Text.UTF8Encoding]::new($false))
+        $ok=$true; $reason=''
+    } catch { $ok=$false; $reason=$_.Exception.Message }
+    $results += [pscustomobject]@{name=$file.BaseName;valid=$ok;reason=$reason}
+}; ConvertTo-Json -InputObject @($results) -Compress
+"""
+            script_path = folder / "validate.ps1"
+            script_path.write_text(script, encoding="utf-8-sig")
+            result = subprocess.run(["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(script_path)],
+                                    capture_output=True, text=True)
+            self.assertEqual(0, result.returncode, result.stderr)
+            actual = {row["name"]: row for row in json.loads(result.stdout)}
+            for name, document, valid in cases:
+                with self.subTest(case=name):
+                    self.assertEqual(valid, actual[name]["valid"], actual[name]["reason"])
+                    if valid:
+                        self.assertEqual(document, json.loads((folder / (name + ".json.validated")).read_text(encoding="utf-8")))
+
+    def test_collider_publisher_preserves_cylinder_and_legacy_box(self) -> None:
+        source = json.loads(read("Data/Maps/Authoring/LV_LUT_MIDNIGHTC_ED/LV_LUT_MIDNIGHTC_ED.worldsequences.json"))
+        instance = next(row for row in source["instances"]
+                        if row["instanceId"] == "world.object.instance.kouku.saydon.circus.split.g0")
+        sequence = next(row for row in source["templates"] if row["sequenceId"] == instance["templateId"])
+        resource = next(row for row in source["objectResources"]
+                        if row["objectId"] == instance["bindings"][0]["targetId"])
+        source.update(instances=[instance], templates=[sequence], objectResources=[resource])
+        source.pop("objectFolders", None)
+        resource.pop("parentId", None)
+        sequence["colliderTracks"] = [sequence["colliderTracks"][0]]
+        collider = sequence["colliderTracks"][0]
+        collider.pop("shape", None)
+        collider["halfExtents"] = [.5, .75, .5]
+        cases = [("legacy_box", copy.deepcopy(source), True)]
+        for name, fields, valid in (
+            ("explicit_box", {"shape": "BOX", "halfExtents": [.5, .75, 1]}, True),
+            ("cylinder", {"shape": "CYLINDER"}, True),
+            ("cylinder_tolerance", {"shape": "CYLINDER", "halfExtents": [.5, .75, .50005]}, True),
+            ("cylinder_death", {"shape": "CYLINDER", "behavior": "INSTANT_DEATH", "damagePercent": 0}, True),
+            ("box_hook", {"shape": "BOX", "behavior": "HOOK_CAPTURE", "damagePercent": 0}, True),
+            ("unknown_shape", {"shape": "SPHERE"}, False),
+            ("lowercase_shape", {"shape": "cylinder"}, False),
+            ("null_shape", {"shape": None}, False),
+            ("numeric_shape", {"shape": 1}, False),
+            ("cylinder_unequal_radii", {"shape": "CYLINDER", "halfExtents": [.5, .75, .501]}, False),
+            ("cylinder_hook", {"shape": "CYLINDER", "behavior": "HOOK_CAPTURE", "damagePercent": 0}, False),
+            ("cylinder_zero_damage", {"shape": "CYLINDER", "damagePercent": 0}, False),
+        ):
+            candidate = copy.deepcopy(source)
+            candidate["templates"][0]["colliderTracks"][0].update(fields)
+            cases.append((name, candidate, valid))
+        publisher = read("Tools/MapPipeline/Publish-MapAuthoring.ps1")
+        definitions = [re.search(r"(?ms)^function " + name + r" \{.*?^\}", publisher).group(0)
+                       for name in ("Test-JsonNumber", "Assert-ExactJsonProperties", "Read-WorldSequenceDocument")]
+        with tempfile.TemporaryDirectory() as temporary:
+            folder = Path(temporary)
+            for name, document, _ in cases:
+                (folder / (name + ".json")).write_text(json.dumps(document), encoding="utf-8")
+            script = "$ErrorActionPreference='Stop'\n$AreaId='LV_LUT_MIDNIGHTC_ED'\n" + "\n".join(definitions)
+            script += """
+$results=@(); foreach($file in Get-ChildItem -LiteralPath $PSScriptRoot -Filter '*.json') {
+    try {
+        $lines = @(Read-WorldSequenceDocument $file.FullName)
+        [IO.File]::WriteAllText(($file.FullName + '.validated'),
+            [string]::Join([Environment]::NewLine, $lines), [Text.UTF8Encoding]::new($false))
+        $ok=$true; $reason=''
+    } catch { $ok=$false; $reason=$_.Exception.Message }
+    $results += [pscustomobject]@{name=$file.BaseName;valid=$ok;reason=$reason}
+}; ConvertTo-Json -InputObject @($results) -Compress
+"""
+            script_path = folder / "validate.ps1"
+            script_path.write_text(script, encoding="utf-8-sig")
+            result = subprocess.run(["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(script_path)],
+                                    capture_output=True, text=True)
+            self.assertEqual(0, result.returncode, result.stderr)
+            actual = {row["name"]: row for row in json.loads(result.stdout)}
+            for name, document, valid in cases:
+                with self.subTest(case=name):
+                    self.assertEqual(valid, actual[name]["valid"], actual[name]["reason"])
+                    if valid:
+                        self.assertEqual(document, json.loads((folder / (name + ".json.validated")).read_text(encoding="utf-8")))
+
     def test_walkable_surface_accepts_fixed_roulette_and_rejects_unsupported_geometry(self) -> None:
         source = json.loads(read("Data/Maps/Authoring/LV_LUT_MIDNIGHTC_ED/LV_LUT_MIDNIGHTC_ED.worldsequences.json"))
         instance = next(row for row in source["instances"] if row["instanceId"] == "world.sequence.instance.8")
@@ -66,6 +215,14 @@ class WorldSequenceAuthoringContractTests(unittest.TestCase):
         keys = source["templates"][0]["tracks"][0]["keys"]
         source["templates"][0]["tracks"][0]["keys"] = [keys[0], keys[-1]]
         cases = [("valid", source, True)]
+        mirrored = copy.deepcopy(source)
+        for key in mirrored["templates"][-1]["tracks"][0]["keys"]:
+            key["scaleMultiplier"] = [1, -1, 1]
+        cases.append(("reflected_object_valid", mirrored, True))
+        for name, final_scale in (("singular", [1, 0, 1]), ("axis_sign_crossing", [-1, 1, 1])):
+            invalid = copy.deepcopy(mirrored)
+            invalid["templates"][-1]["tracks"][0]["keys"][-1]["scaleMultiplier"] = final_scale
+            cases.append(("reflected_object_" + name, invalid, False))
         for name, mutate in (
             ("negative_radius", lambda d: d["instances"][0]["walkableSurface"].update(radiusM=-1)),
             ("boolean_height", lambda d: d["instances"][0]["walkableSurface"].update(localHeightM=True)),

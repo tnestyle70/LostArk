@@ -7,6 +7,7 @@
 #include "WorldSequenceDocument.h"
 
 #include <string>
+#include <cmath>
 #include <functional>
 #include <optional>
 #include <unordered_map>
@@ -134,6 +135,7 @@ public:
 	// Prepare hidden clones through the existing Prototype/Clone/Layer path.
 	// Stop/completion returns them for later occurrences; failure preserves the pool.
 	bool_t Prewarm_ObjectInstances(const std::string& instanceId, uint32_t copies, const TARGET_SET& targets);
+	bool_t Prewarm_HiddenObjectPose(const std::string& instanceId, f32_t elapsedMs, const TARGET_SET& targets);
 	static bool_t Resolve_BossBoneAnchor(const std::shared_ptr<Engine::CModel>& model,
 		const float4x4_t& root, const std::string& bone, PLAYER_ANCHOR& out, std::string& status);
 	static void Collect_ValidationTargets(const TARGET_SET& targets,
@@ -150,16 +152,19 @@ public:
 
 	/* emissionIndex selects one row of an authored emission list; a seeded
 	   emitter keeps the single-object contract and answers index 0 only. */
-	bool_t Try_GetObjectPivot(const std::string& instanceId, float4x4_t& out, uint32_t emissionIndex = 0u) const;
+	bool_t Try_GetObjectPivot(const std::string& instanceId, float4x4_t& out, uint32_t emissionIndex = 0u,
+		const std::string& bone = {}, bool_t boneRotation = false) const;
 	// No match leaves status empty; an active but unavailable/ambiguous actor fails closed.
 	bool_t Try_GetPresentationBossAnchor(const std::string& archetype, const std::string& bone,
 		PLAYER_ANCHOR& out, std::string& status) const;
-	bool_t Try_GetSequencePivot(const std::string& instanceId, float4x4_t& out, uint32_t emissionIndex = 0u) const;
+	bool_t Try_GetSequencePivot(const std::string& instanceId, float4x4_t& out, uint32_t emissionIndex = 0u,
+		const std::string& bone = {}, bool_t boneRotation = false) const;
 	std::string Get_ObjectSampleStatus(const std::string& instanceId) const;
 #ifdef _DEBUG
 	struct OBJECT_COLLIDER_SAMPLE
 	{
 		std::string instanceId, colliderTrackId, behavior;
+		std::string shape = "BOX";
 		uint32_t emissionIndex = 0;
 		float3_t center{}, halfExtents{}, gripPosition{};
 		f32_t yawDegrees = 0.f;
@@ -217,6 +222,9 @@ public:
 	   of it. Paused instances stop advancing but keep their baselines, so a
 	   scrub never restarts the sequence or loses the placed pose. */
 	void Set_Paused(bool_t paused);
+    // For a presentation owner that supplies source milliseconds by external seek.
+    // This changes audio pitch only; the owner continues to drive every track.
+    void Set_ExternalSoundClockRate(f32_t rate) { if (std::isfinite(rate) && rate > 0.f && rate <= 16.f) m_ExternalSoundClockRate = rate; }
     void Update_SoundTails(f32_t timeDelta);
     void Retire_InstanceSoundTails(const std::string& instanceId);
 	bool_t Is_Paused() const noexcept { return m_bPaused; }
@@ -402,6 +410,7 @@ private:
 	bool_t m_bPaused = false;
 	std::vector<ACTIVE_INSTANCE> m_Active;
     std::vector<RETIRED_SOUND> m_RetiredSounds;
+    f32_t m_ExternalSoundClockRate = 1.f;
 	// Finished clocks no longer tick, but own their held pose until explicit stop/replay.
 	std::vector<ACTIVE_INSTANCE> m_Held;
 	std::unordered_map<std::string, shared_ptr<CModel>> m_ModelCache;

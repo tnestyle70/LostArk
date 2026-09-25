@@ -645,7 +645,8 @@ namespace LostArk::Server
 		COUNTER_WINDOW,
         ATTACHMENT_HOLD,
 		PATTERN_COMPLETION_COUNT,
-		INVULNERABILITY_ZONE
+		INVULNERABILITY_ZONE,
+		BINGO_COMPLETED_LINES
 	};
 
 	enum class BOSS_PATTERN_LOGIC_RESULT_KIND : std::uint8_t
@@ -666,7 +667,8 @@ namespace LostArk::Server
 		track can offer this, because only that region keeps moving. */
 		GRAB_TO_WORLD_OBJECT,
 		MARIO_ENTER,
-		FIXED_DAMAGE
+		FIXED_DAMAGE,
+		PLAYER_INVULNERABILITY
 	};
 
 	struct BOSS_LOGIC_CONTACT_MOTION final
@@ -786,6 +788,7 @@ namespace LostArk::Server
 		bool bEndsPatternOnSuccess = false;
 		// A scheduled Parent cut this child window short; close without a verdict.
 		bool bCancelAtEnd = false;
+		std::string strOwnerWorldOccurrenceId;
 		std::vector<BOSS_PATTERN_LOGIC_RESULT> OnSuccess;
 		std::vector<BOSS_PATTERN_LOGIC_RESULT> OnFail;
 		std::vector<BOSS_PATTERN_LOGIC_RESULT> OnTimeout;
@@ -818,6 +821,7 @@ namespace LostArk::Server
 		CROSS_DIRECTION_CLONES,
 		PURSUIT_PROJECTILES,
 		BINGO_BOARD,
+		BINGO_DETONATION,
 		BOSS_TELEPORT_GROUNDED,
 		CARD_MAZE_STAGE_PLAYERS,
 		CARD_RAIN_SOLDIERS
@@ -899,6 +903,9 @@ namespace LostArk::Server
 		float fProjectileSpeedMps = 0.f, fProjectileContactRadiusM = 0.f, fProjectileSpawnRadiusM = 0.f;
 		std::uint32_t iProjectileLifetimeMs = 0u, iProjectileCountPerWave = 0u;
 		bool bProjectileHoming = false;
+		std::array<std::uint32_t, 3u> SoldierCounts{ 1u, 1u, 1u };
+		float fSoldierSpawnRadiusMinM = 3.f, fSoldierSpawnRadiusMaxM = 6.f;
+		bool bHasSoldierTuning = false;
 	};
 
 	/* Presentation cues the pattern clock fires. The Server only knows the
@@ -942,6 +949,7 @@ namespace LostArk::Server
 		float fAnchorPositionY = 0.f;
 		float fAnchorPositionZ = 0.f;
 		std::vector<BOSS_PATTERN_WORLD_SUPPORT_WINDOW> SupportWindows;
+		bool bAuthoredMadness = false;
 		std::optional<BOSS_PATTERN_WORLD_COMBAT_BODY> CombatBody;
 		std::optional<BOSS_PATTERN_WORLD_PLACEMENT> Placement;
 	};
@@ -961,6 +969,12 @@ namespace LostArk::Server
 	{
 		std::uint32_t iMaximum = 0u;
 		std::uint32_t iClownHoldMs = 0u;
+		std::uint32_t iDamageGainPercent = 100u;
+		std::uint32_t iBallGainPercent = 10u, iBallMultiplierPercent = 200u;
+		float fBallRadiusM = 2.f;
+		std::uint32_t iDollGainPercent = 10u, iDollMultiplierPercent = 200u;
+		float fDollRadiusM = 4.f;
+		std::uint32_t iSpecialIntervalMs = 1000u;
 	};
 
 	struct BOSS_PATTERN_STAGE_DEFINITION
@@ -1219,6 +1233,7 @@ namespace LostArk::Server
 		std::string strIntroPatternId, strClearPatternId, strPrimaryBossPlacementId;
 		std::string strEntrySequenceInstanceId;
 		std::string strLoopStartEntryId;
+		std::string strBingoSpecialPatternId;
 		std::uint32_t iSequenceRevision = 0u, iIntroDurationMs = 0u, iClearDurationMs = 0u, iExpectedEntryCount = 0u;
 		std::vector<KOUKU_RAID_FLOW_ENTRY> Entries;
 		std::vector<KOUKU_RAID_FLOW_GROUP> EntryGroups;
@@ -1557,6 +1572,8 @@ namespace LostArk::Server
 			instead of always dealing the mean. Published as a whole percent of the
 			mean; 0 keeps the deterministic value. */
 			std::uint32_t iDamageSpreadPercent = 0;
+			// Optional ACTIVE full-cast boss damage, in the target's maximum health bars.
+			std::uint32_t iBossHealthBarDamage = 0;
 		};
 		[[nodiscard]] const DAMAGE_PROFILE* Find_DamageProfile(
 			const std::string& damageProfileId) const;

@@ -150,6 +150,9 @@ struct CEffectAuthoringSequencer::BOX_DETAIL_DRAFT final
     bool dirty = false;
 };
 
+bool CEffectAuthoringSequencer::Has_PendingBoxEdit() const
+{ return m_BoxDetailDraft && m_BoxDetailDraft->dirty; }
+
 bool CEffectAuthoringSequencer::Refresh_CompositionResourceInventory()
 {
     std::vector<RESOURCE_ENTRY> staged;
@@ -358,6 +361,14 @@ void CEffectAuthoringSequencer::Render_CompositionResources(const bool embedded)
                     const auto& row = m_CompositionResources[index];
                     ImGui::PushID(row.id.c_str());
                     if (ImGui::Selectable(row.label.c_str(), m_SelectedResourceIds[family] == row.id)) m_SelectedResourceIds[family] = row.id;
+                    if (row.kind == TRACK_KIND::EFFECT && row.status.empty() && row.key.Is_Valid())
+                        Offer_CompositionResourceDrag(row.label.c_str(), [row]() -> COMPOSITION_TRANSFER {
+                            auto transfer = std::make_shared<COMPOSITION_EFFECT_TRANSFER>(); transfer->label = row.label;
+                            COMPOSITION_EFFECT_ITEM item; item.resourceId = row.key.strStableId; item.displayName = row.label;
+                            item.resourceKind = row.key.eOwnerKind == EFFECT_RESOURCE_OWNER_KIND::V1_DOCUMENT ? "V1_EFFECT" :
+                                row.key.eOwnerKind == EFFECT_RESOURCE_OWNER_KIND::V2_LEAF ? "LEAF" : "GROUP";
+                            item.durationMs = row.durationMs; transfer->items.push_back(std::move(item)); return transfer;
+                        });
                     if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s%s%s", row.key.Is_Valid() ? row.key.strStableId.c_str() : row.id.c_str(),
                         row.status.empty() ? "" : "\n", row.status.c_str());
                     ImGui::PopID();
@@ -565,7 +576,7 @@ void CEffectAuthoringSequencer::Render_BoxDetail(const bool embedded)
     }
     if (draft.dirty) ImGui::TextDisabled("Unapplied values");
     ImGui::BeginDisabled(draft.dirty);
-    if (ImGui::Button("Duplicate")) { if (Duplicate_SelectedRow()) m_BoxDetailDraft.reset(); }
+    if (ImGui::Button("Duplicate")) { if (Execute_CompositionEdit(COMPOSITION_EDIT_COMMAND::DUPLICATE_SELECTION, m_Status)) m_BoxDetailDraft.reset(); }
     ImGui::SameLine();
     if (ImGui::Button("Remove")) { if (Remove_SelectedRow()) m_BoxDetailDraft.reset(); }
     ImGui::EndDisabled();

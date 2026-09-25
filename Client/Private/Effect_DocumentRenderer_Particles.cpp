@@ -1076,7 +1076,8 @@ HRESULT Client::CEffectDocumentRenderer::Render_Trails(
 		const bool_t bTypedSourceRibbon =
 			bTypedArtistRibbon || bFlowRibbon01 || bKoukuNativeRibbon;
         const auto Curve = bKoukuNativeRibbon && !bSourceBeam &&
-            pResource->iSourceMaterialProfile >= 2304u && pResource->iSourceMaterialProfile <= 4799u ?
+            SourceTrailProgram && SourceTrailProgram->iProfileIndex == pResource->iSourceMaterialProfile &&
+            SourceTrailProgram->iProfileIndex >= 2304u ?
             Native_RibbonCurveSettings(*Trail.pElement) : NATIVE_RIBBON_CURVE_SETTINGS{};
         if (Curve.enabled && Trail.Points.size() > 512u)
             return Fail_RenderOperation("Native Ribbon exceeds its control-point limit.", E_INVALIDARG, true);
@@ -1324,8 +1325,9 @@ HRESULT Client::CEffectDocumentRenderer::Render_Trails(
 				const f32_t U = fTilingDistance > 0.f ?
 					Point.fCumulativeDistance / fTilingDistance :
 					static_cast<f32_t>(iPair);
-                const bool bKoukuNativeTrail = pResource->iSourceMaterialProfile >= 2304u &&
-                    pResource->iSourceMaterialProfile <= 4799u;
+                const bool bKoukuNativeTrail = SourceTrailProgram &&
+                    SourceTrailProgram->iProfileIndex == pResource->iSourceMaterialProfile &&
+                    SourceTrailProgram->iProfileIndex >= 2304u;
                 if (bKoukuNativeTrail && Point.iSourceColorComponentMask != 0x0fu)
                     return Fail_RenderOperation("Kouku source trail color payload is incomplete.", E_INVALIDARG, true);
                 const float4_t Color = bKoukuNativeTrail ? Point.vSourceColor : bRuntimeMaterialV2Ribbon ?

@@ -243,17 +243,20 @@ void LostArk::Server::CGameRoom::Begin_KoukuBingoDuration(const SERVER_WORLD_ENT
         const auto second = (first + 1u + std::uint32_t((random >> 8u) % (KOUKU_BINGO_CELL_COUNT - 1))) % KOUKU_BINGO_CELL_COUNT;
         m_KoukuBingo.Fill((1u << first) | (1u << second));
     }
+    else if (m_KoukuBingoDuration.bEncounterOwned && m_KoukuBingoDuration.iOwnerId == owner.iNetEntityId) return;
     else Stop_KoukuBingoDuration(false);
     auto& duration = m_KoukuBingoDuration;
     duration.iOwnerId = owner.iNetEntityId; duration.iPatternSequence = owner.iPatternSequence;
     duration.iEndTick = Add_ServerTicksSkippingReservedZero(tick, CKoukuSaydonLogicRuntime::Ticks_FromMs(trigger.iDurationMs));
+    duration.bEncounterOwned = Is_KoukuRaidRunning() && m_KoukuRaid.State.strGateId == "BINGO";
+    if (duration.bEncounterOwned) duration.iEndTick = 0u;
     if (const auto* catalog = Resolve_KoukuProductCatalog())
     {
         std::string status;
         const auto* pattern = CKoukuSaydonBrain::Find_AnimationOnlyPattern(*catalog, owner.strPatternId, status);
         if (pattern && !pattern->strParentLoopStartOccurrenceId.empty()) duration.iEndTick = 0u;
     }
-    if (!duration.iNextBombTick) duration.iNextBombTick = Add_ServerTicksSkippingReservedZero(tick, CKoukuSaydonLogicRuntime::Ticks_FromMs(KOUKU_BINGO_BOMB_INTERVAL_MS));
+    if (!duration.iNextBombTick) duration.iNextBombTick = Add_ServerTicksSkippingReservedZero(tick, CKoukuSaydonLogicRuntime::Ticks_FromMs(KOUKU_BINGO_BOMB_INITIAL_DELAY_MS + KOUKU_BINGO_BOMB_INTERVAL_MS));
     if (!duration.iNextHammerTick) duration.iNextHammerTick = Add_ServerTicksSkippingReservedZero(tick, CKoukuSaydonLogicRuntime::Ticks_FromMs(KOUKU_BINGO_HAMMER_INTERVAL_MS));
     if (!duration.iNextMadnessTick) duration.iNextMadnessTick = Add_ServerTicksSkippingReservedZero(tick, SERVER_TICK_HZ);
 }
@@ -265,7 +268,13 @@ void LostArk::Server::CGameRoom::Update_KoukuBingo(const std::uint32_t tick)
 		return;
 
     auto& duration = m_KoukuBingoDuration;
-    const auto* owner = duration.iOwnerId ? Find_KoukuOccurrenceOwner(duration.iOwnerId, duration.iPatternSequence) : nullptr;
+    const SERVER_WORLD_ENTITY* owner = nullptr;
+    if (duration.bEncounterOwned)
+    {
+        const auto found = std::find_if(m_WorldEntities.begin(), m_WorldEntities.end(), [&](const auto& entity) { return entity.iNetEntityId == duration.iOwnerId; });
+        if (found != m_WorldEntities.end()) owner = &*found;
+    }
+    else if (duration.iOwnerId) owner = Find_KoukuOccurrenceOwner(duration.iOwnerId, duration.iPatternSequence);
     if (duration.iOwnerId && (!owner || !owner->iCurrentHp || (duration.iEndTick && Has_ReachedServerTick(tick, duration.iEndTick))))
     { Stop_KoukuBingoDuration(false); owner = nullptr; }
     if (owner)
@@ -299,7 +308,7 @@ void LostArk::Server::CGameRoom::Update_KoukuBingo(const std::uint32_t tick)
             {
                 const auto cell = Kouku_BingoCellAt(player->fPositionX, player->fPositionZ);
                 if (!(m_KoukuBingo.Get_WhiteMask() & (1u << cell))) continue;
-                player->iCurrentMadness = (std::min)(player->iMaximumMadness, player->iCurrentMadness + 3u);
+                player->iCurrentMadness = (std::min)(player->iMaximumMadness, player->iCurrentMadness + 10u);
                 if (player->iMaximumMadness && player->iCurrentMadness == player->iMaximumMadness)
                     CKoukuSaydonLogicRuntime::Transform_ToClown(*player, madness, tick, 0u);
             }
@@ -334,15 +343,35 @@ void LostArk::Server::CGameRoom::Update_KoukuBingo(const std::uint32_t tick)
 	const auto& bombs = m_KoukuBingo.Get_Bombs();
 	for (std::size_t slot = 0u; slot < bombs.size(); ++slot)
 	{
+        if (bombs[slot].iPlantTick && Has_ReachedServerTick(tick, bombs[slot].iPlantTick))
+        {
+            const auto x = bombs[slot].fPositionX, z = bombs[slot].fPositionZ;
+            const auto fuseTick = Add_ServerTicksSkippingReservedZero(bombs[slot].iPlantTick,
+                CKoukuSaydonLogicRuntime::Ticks_FromMs(KOUKU_BINGO_BOMB_FUSE_MS));
+            m_KoukuBingo.Plant_Bomb(slot, x, z, fuseTick);
+            Broadcast_WorldSequencePlay("world.sequence.instance.kouku.bingo.bomb.planted.slot." +
+                std::to_string(slot), 1.f, x, 0.f, z);
+        }
 		if (BINGO_BOMB_PHASE::PLANTED == bombs[slot].ePhase)
 		{
 			/* The fuse. Painting the cross is the bomb's whole effect, so the
 			slot is freed in the same step; the cells it lit stay on the board,
 			and Fill promotes any line the cross completed. */
-			if (tick < bombs[slot].iDetonateTick)
+			if (!Has_ReachedServerTick(tick, bombs[slot].iDetonateTick))
 				continue;
 			m_KoukuBingo.Detonate(Kouku_BingoCrossMask(Kouku_BingoCellAt(
 				bombs[slot].fPositionX, bombs[slot].fPositionZ)));
+			if (bombs[slot].iMarkOrdinal && bombs[slot].iMarkOrdinal % 3u == 0u)
+			{
+				duration.iLastLineJudgementTick = tick;
+				duration.bLastLineCompletionSucceeded = false;
+				const auto publish = [&](KOUKUSAYDON_PATTERN_AUDITION_MEMBER& member) {
+					member.LogicLedger.iBingoLineJudgementTick = tick;
+					member.LogicLedger.iBingoCompletedLines = m_KoukuBingo.Count_CompletedRowsAndColumns();
+				};
+				for (auto& member : m_KoukuSaydonPatternAudition.Members) publish(member);
+				for (auto& tail : m_KoukuSaydonPatternAudition.Tails) publish(tail.Member);
+			}
 			m_KoukuBingo.Clear_Bomb(slot);
 			continue;
 		}
@@ -370,20 +399,13 @@ void LostArk::Server::CGameRoom::Update_KoukuBingo(const std::uint32_t tick)
             const auto cell = Kouku_BingoCellAt(carrier->fPositionX, carrier->fPositionZ);
             if (!Is_KoukuBingoCell(cell)) { m_KoukuBingo.Clear_Bomb(slot); continue; }
             const auto x = Kouku_BingoCellCenterX(cell), z = Kouku_BingoCellCenterZ(cell);
-            m_KoukuBingo.Plant_Bomb(slot, x, z,
-                Add_ServerTicksSkippingReservedZero(tick, CKoukuSaydonLogicRuntime::Ticks_FromMs(KOUKU_BINGO_BOMB_FUSE_MS)));
-			/* The burning bomb is authored. One instance per slot, because a
-			second play of the same instance restarts it in place, and the plant
-			point rides the cue as its position offset. The fuse above stays
-			authoritative; the sequence shows those same three seconds. */
-			Broadcast_WorldSequencePlay(
-				"world.sequence.instance.kouku.bingo.bomb.planted.slot." +
-				std::to_string(slot), 1.f,
-                x, 0.f, z);
+            m_KoukuBingo.Queue_BombPlant(slot, x, z,
+                Add_ServerTicksSkippingReservedZero(bombs[slot].iDetonateTick,
+                    CKoukuSaydonLogicRuntime::Ticks_FromMs(KOUKU_BINGO_BOMB_DROP_DELAY_MS)));
+
 		}
 	}
-    // Mature existing marks first: at each 5 s boundary even a solo player can
-    // plant the previous bomb and receive the next head mark in the same tick.
+    // The board clock survives ordinary pattern changes; head marks recur every twenty seconds.
     if (owner && Has_ReachedServerTick(tick, duration.iNextBombTick))
     {
         std::vector<NET_ENTITY_ID> alive;
@@ -393,8 +415,13 @@ void LostArk::Server::CGameRoom::Update_KoukuBingo(const std::uint32_t tick)
         if (!alive.empty())
         {
             const auto pick = Mix_DeterministicRandom(std::uint64_t(tick) ^ (std::uint64_t(duration.iPatternSequence) << 32u)) % alive.size();
-            m_KoukuBingo.Start_Bomb(alive[pick], Add_ServerTicksSkippingReservedZero(tick,
-                CKoukuSaydonLogicRuntime::Ticks_FromMs(KOUKU_BINGO_BOMB_MARK_MS)));
+            if (m_KoukuBingo.Start_Bomb(alive[pick], Add_ServerTicksSkippingReservedZero(tick,
+                CKoukuSaydonLogicRuntime::Ticks_FromMs(KOUKU_BINGO_BOMB_MARK_MS)), duration.iMarkedBombCount + 1u))
+            {
+                ++duration.iMarkedBombCount;
+                if (duration.bEncounterOwned && duration.iMarkedBombCount % 3u == 0u)
+                { duration.bSpecialPatternPending = true; duration.bLastLineCompletionSucceeded = false; duration.iLastLineJudgementTick = 0u; }
+            }
         }
         duration.iNextBombTick = Add_ServerTicksSkippingReservedZero(tick, CKoukuSaydonLogicRuntime::Ticks_FromMs(KOUKU_BINGO_BOMB_INTERVAL_MS));
     }
@@ -748,6 +775,8 @@ bool LostArk::Server::CGameRoom::Apply_KoukuLogicOutput(
     }
 	for (const auto& trigger : output.MechanicTriggers)
 		m_PendingKoukuMechanicTriggers.push_back({ boss.iNetEntityId, boss.iPatternSequence, trigger });
+	if (output.BingoLineCompletion.has_value() && m_KoukuBingoDuration.iLastLineJudgementTick)
+		m_KoukuBingoDuration.bLastLineCompletionSucceeded = *output.BingoLineCompletion;
 	for (const KOUKUSAYDON_LOGIC_WORLD_PLAY& play : output.WorldSequencePlays)
 	{
 		S2C_WORLD_SEQUENCE_PLAY message;
@@ -759,7 +788,7 @@ bool LostArk::Server::CGameRoom::Apply_KoukuLogicOutput(
 		message.strOccurrenceId = play.strOccurrenceId;
 		message.iStartTick = play.iStartTick ? play.iStartTick : serverTick; message.iServerTick = serverTick;
 		message.iBossNetEntityId = boss.iNetEntityId; message.iPatternSequence = boss.iPatternSequence;
-		if (play.CombatBody) { message.bUntilDestroyed = true; message.iDurationMs = 0u; }
+		if (play.CombatBody && !play.bAuthoredMadness) { message.bUntilDestroyed = true; message.iDurationMs = 0u; }
 		if (play.Placement)
 		{
 			const auto& placement = *play.Placement; message.bHasPlacement = true;
@@ -767,7 +796,7 @@ bool LostArk::Server::CGameRoom::Apply_KoukuLogicOutput(
 			message.fWorldRotationXDegrees = placement.fRotationXDegrees; message.fWorldRotationYDegrees = placement.fRotationYDegrees; message.fWorldRotationZDegrees = placement.fRotationZDegrees;
 			message.fWorldScaleX = placement.fScaleX; message.fWorldScaleY = placement.fScaleY; message.fWorldScaleZ = placement.fScaleZ;
 		}
-		if (play.CombatBody && !Stage_KoukuWorldBody(*play.CombatBody, message)) continue;
+		if (play.CombatBody && !Stage_KoukuWorldBody(*play.CombatBody, message, play.bAuthoredMadness)) continue;
 		if (!play.strTargetSequenceInstanceId.empty())
 		{
 			const auto& cues = play.strTargetWorldOccurrenceId.empty() ? member->WorldCueByInstance : member->WorldCueByOccurrence;
@@ -822,10 +851,10 @@ bool LostArk::Server::CGameRoom::Apply_KoukuLogicOutput(
 		m_strStatus = "KoukuSaydon logic: " + output.strStatus;
 	if (!output.bEndPatternEarly)
 		return false;
-	if (output.bCounterSuccessLanded)
+	if (output.bCounterSuccessLanded || output.bStaggerSuccess)
 	{
-		// A successful counter interrupts this member, including the still-live
-		// rolling ball. Natural completion may keep tails; interruption must not.
+		// Counter and stagger success interrupt this member's hazards immediately.
+		// Natural completion may keep tails; interruption must not.
 		Stop_KoukuWorldOwner(member->strMemberId);
 		m_CombatObjectRuntime.Cancel_Source(boss.iNetEntityId);
 		std::erase_if(m_PendingKoukuMechanicTriggers, [&](const auto& trigger) {
@@ -1260,7 +1289,8 @@ void LostArk::Server::CGameRoom::Update_MarioControlState(SERVER_PLAYER& player)
 			(void)Configure_MarioRail(player, player.strMarioRailArrivalId);
 		return;
 	}
-	if (player.bPatternBound || INVALID_NET_ENTITY_ID != player.iAttachmentOwnerNetEntityId ||
+	if (player.eMadnessForm != PLAYER_MADNESS_FORM::CLOWN ||
+		player.bPatternBound || INVALID_NET_ENTITY_ID != player.iAttachmentOwnerNetEntityId ||
 		(PLAYER_ACTION_STATE::NONE != player.eAction &&
 			PLAYER_ACTION_STATE::TRIGGER_MOVE != player.eAction &&
 			PLAYER_ACTION_STATE::WALL_CLIMB != player.eAction))

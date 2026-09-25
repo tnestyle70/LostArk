@@ -1,0 +1,12 @@
+{
+  "classId": "DIMENSIONMASTER",
+  "displayName": "DIMENSIONMASTER",
+  "prefix": "classselect.dimensionmaster",
+  "phases": {
+    "intro": 700,
+    "loop": 698
+  },
+  "backgroundAreaId": "LV_LOBBY_CLASSSELECT_SL12",
+  "sourcePackageSha256": "69538e81c4a1566795799fc8a5348d1bb0561217db935f0ac76b1d4bab0cc748",
+  "compactCameraKeys": true
+}

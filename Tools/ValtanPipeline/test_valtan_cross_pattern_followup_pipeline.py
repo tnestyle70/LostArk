@@ -220,13 +220,16 @@ class ValtanCrossPatternFollowupPipelineTests(unittest.TestCase):
         )
         self.validate(boundary)
 
-    def test_publisher_uses_dedicated_followup_row_and_v33(self) -> None:
+    def test_publisher_uses_dedicated_followup_row_and_current_version(self) -> None:
         source = PUBLISHER.read_text(encoding="utf-8")
         self.assertIn("'PATTERNSTAGEFOLLOWUP'", source)
-        self.assertIn("$gameplayBootstrapVersion = if ($rotationFormatVersion -eq 4) { 33 }", source)
+        self.assertIn("$gameplayBootstrapVersion = if ($rotationFormatVersion -eq 4) { 37 }", source)
         self.assertIn("follow-up target must be an untargeted AUDITION_ONLY pattern", source)
         self.assertIn("Pattern follow-up graph exceeds maximum depth", source)
-        self.assertEqual(33, pipeline.GAMEPLAY_BOOTSTRAP_VERSION)
+        self.assertEqual(37, pipeline.GAMEPLAY_BOOTSTRAP_VERSION)
+        shared = (ROOT / "Shared/Public/GameplayDataRevision.h").read_text(encoding="utf-8")
+        self.assertIn(f"GAMEPLAY_BOOTSTRAP_FORMAT_VERSION = {pipeline.GAMEPLAY_BOOTSTRAP_VERSION}u;", shared)
+        self.assertIn(f"GAMEPLAY_BOOTSTRAP_MAX_ROWS = {pipeline.MAXIMUM_GAMEPLAY_BOOTSTRAP_ROWS}u;", shared)
 
     def test_client_read_gate_revalidates_followup_shape_and_graph(self) -> None:
         source = CLIENT_PATTERN_TREE.read_text(encoding="utf-8")

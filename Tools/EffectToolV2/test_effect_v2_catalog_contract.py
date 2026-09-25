@@ -546,15 +546,10 @@ class EffectV2CatalogContractTests(unittest.TestCase):
         for parameter in ("strPatternId", "strStageId", "strActionId"):
             self.assertIn(parameter, declaration)
 
-    def test_new_boss_mutations_reject_foreign_subjects_and_overlaps(self) -> None:
+    def test_new_boss_mutations_validate_shared_resources_and_overlaps(self) -> None:
         source = read(SOURCE)
-        validation = function_tail(
-            source,
-            "\tbool_t Validate_BossValtanMutationSubject(",
-            "\tbool_t Matches_StageBindingKey(",
-        )
-        self.assertIn('BOSS_VALTAN_RESOURCE_PREFIX = "boss.valtan."', source)
-        self.assertIn("starts_with(BOSS_VALTAN_RESOURCE_PREFIX)", validation)
+        self.assertNotIn("BOSS_VALTAN_RESOURCE_PREFIX", source)
+        self.assertNotIn("Validate_BossValtanMutationSubject", source)
 
         overlap = function_tail(
             source,
@@ -581,8 +576,20 @@ class EffectV2CatalogContractTests(unittest.TestCase):
             "BOSS_VALTAN_BINDING_MUTATION::APPEND_BINDING == eMutation",
             mutation_body,
         )
-        self.assertIn("Validate_BossValtanMutationSubject(", mutation_body)
+        self.assertIn("Validate_StageBindingAppendRequest(", mutation_body)
         self.assertIn("Validate_NoLeafGroupClockOverlap(", mutation_body)
+
+        batch_body = function_tail(
+            source,
+            "bool_t Client::CEffectV2Catalog::Stage_AppendBossValtanBindings(",
+            "bool_t Client::CEffectV2Catalog::Stage_RemoveBossValtanStageBinding(",
+        )
+        self.assertIn("auto candidate = m_pSnapshot->m_BossValtanBindings;", batch_body)
+        self.assertIn("Validate_StageBindingAppendRequest(", batch_body)
+        self.assertIn("Generate_StableBindingId(candidate, binding)", batch_body)
+        self.assertEqual(batch_body.count("Commit_BossValtanBindingsLocked("), 1)
+        self.assertLess(batch_body.index("Commit_BossValtanBindingsLocked("),
+                        batch_body.index("OutBindingIds = std::move(created);"))
 
     def test_cross_validation_joins_documents_groups_and_boss_bindings(self) -> None:
         source = read(SOURCE)

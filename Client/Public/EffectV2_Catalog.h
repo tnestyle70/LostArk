@@ -138,6 +138,11 @@ public:
 		const std::string& strActionId,
 		uint32_t iStartMs,
 		std::string& strOutError);
+	// Value snapshots are validated as one candidate. IDs are allocated only in
+	// that candidate; a rejected later row leaves the entire draft unchanged.
+	bool_t Stage_AppendBossValtanBindings(
+		const std::vector<EFFECT_V2_BINDING>& Sources,
+		std::vector<std::string>& OutBindingIds, std::string& strOutError);
 	bool_t Stage_RemoveBossValtanStageBinding(
 		const EFFECT_V2_STAGE_BINDING_KEY& Key,
 		std::string& strOutError);

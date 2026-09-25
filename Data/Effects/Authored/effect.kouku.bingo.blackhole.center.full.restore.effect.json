@@ -195,8 +195,8 @@
           "tileIndex": 0
         },
         "timing": {
-          "startDelaySeconds": 5.4,
-          "lifeTimeSeconds": 9.5,
+          "startDelaySeconds": 0,
+          "lifeTimeSeconds": 13,
           "afterImageSeconds": 0.0,
           "dissolveStartNormalized": 1.0
         },
@@ -309,7 +309,7 @@
           "sourceScale": {
             "count": 1,
             "size": 1,
-            "lifeTime": 1,
+            "lifeTime": 1.3,
             "speed": 1,
             "rotation": 1,
             "alpha": 1,
@@ -370,7 +370,7 @@
         "enabled": true,
         "rendererShape": "sprite",
         "emitterDelaySeconds": 0.0,
-        "emitterDurationSeconds": 9.5,
+        "emitterDurationSeconds": 13,
         "emitterLoopCount": 1,
         "bursts": [
           {
@@ -1565,8 +1565,8 @@
           "tileIndex": 0
         },
         "timing": {
-          "startDelaySeconds": 5.4,
-          "lifeTimeSeconds": 9.5,
+          "startDelaySeconds": 0,
+          "lifeTimeSeconds": 13,
           "afterImageSeconds": 0.0,
           "dissolveStartNormalized": 1.0
         },
@@ -1679,7 +1679,7 @@
           "sourceScale": {
             "count": 1,
             "size": 1,
-            "lifeTime": 1,
+            "lifeTime": 1.3,
             "speed": 1,
             "rotation": 1,
             "alpha": 1,
@@ -1740,7 +1740,7 @@
         "enabled": true,
         "rendererShape": "sprite",
         "emitterDelaySeconds": 0.0,
-        "emitterDurationSeconds": 9.5,
+        "emitterDurationSeconds": 13,
         "emitterLoopCount": 1,
         "bursts": [
           {
@@ -2940,7 +2940,7 @@
           "tileIndex": 0
         },
         "timing": {
-          "startDelaySeconds": 5.4,
+          "startDelaySeconds": 0,
           "lifeTimeSeconds": 1.0,
           "afterImageSeconds": 0.0,
           "dissolveStartNormalized": 1.0
@@ -3054,7 +3054,7 @@
           "sourceScale": {
             "count": 1,
             "size": 1,
-            "lifeTime": 1,
+            "lifeTime": 1.3,
             "speed": 1,
             "rotation": 1,
             "alpha": 1,
@@ -4259,7 +4259,7 @@
           "tileIndex": 0
         },
         "timing": {
-          "startDelaySeconds": 5.4,
+          "startDelaySeconds": 0,
           "lifeTimeSeconds": 1.0,
           "afterImageSeconds": 0.0,
           "dissolveStartNormalized": 1.0
@@ -4373,7 +4373,7 @@
           "sourceScale": {
             "count": 1,
             "size": 1,
-            "lifeTime": 1,
+            "lifeTime": 1.3,
             "speed": 1,
             "rotation": 1,
             "alpha": 1,
@@ -5579,7 +5579,7 @@
           "tileIndex": 0
         },
         "timing": {
-          "startDelaySeconds": 5.4,
+          "startDelaySeconds": 0,
           "lifeTimeSeconds": 1.0,
           "afterImageSeconds": 0.0,
           "dissolveStartNormalized": 1.0
@@ -5693,7 +5693,7 @@
           "sourceScale": {
             "count": 1,
             "size": 1,
-            "lifeTime": 1,
+            "lifeTime": 1.3,
             "speed": 1,
             "rotation": 1,
             "alpha": 1,
@@ -6944,8 +6944,8 @@
           "tileIndex": 0
         },
         "timing": {
-          "startDelaySeconds": 5.4,
-          "lifeTimeSeconds": 9.5,
+          "startDelaySeconds": 0,
+          "lifeTimeSeconds": 13,
           "afterImageSeconds": 0.0,
           "dissolveStartNormalized": 1.0
         },
@@ -7120,7 +7120,7 @@
         "enabled": true,
         "rendererShape": "mesh",
         "emitterDelaySeconds": 0.0,
-        "emitterDurationSeconds": 9.5,
+        "emitterDurationSeconds": 13,
         "emitterLoopCount": 1,
         "bursts": [
           {
@@ -8661,7 +8661,7 @@
           "tileIndex": 0
         },
         "timing": {
-          "startDelaySeconds": 5.4,
+          "startDelaySeconds": 0,
           "lifeTimeSeconds": 1.0,
           "afterImageSeconds": 0.0,
           "dissolveStartNormalized": 1.0
@@ -8775,7 +8775,7 @@
           "sourceScale": {
             "count": 1,
             "size": 1,
-            "lifeTime": 1,
+            "lifeTime": 1.3,
             "speed": 1,
             "rotation": 1,
             "alpha": 1,
@@ -10322,8 +10322,8 @@
           "tileIndex": 0
         },
         "timing": {
-          "startDelaySeconds": 5.4,
-          "lifeTimeSeconds": 9.5,
+          "startDelaySeconds": 0,
+          "lifeTimeSeconds": 13,
           "afterImageSeconds": 0.0,
           "dissolveStartNormalized": 1.0
         },
@@ -10498,7 +10498,7 @@
         "enabled": true,
         "rendererShape": "mesh",
         "emitterDelaySeconds": 0.0,
-        "emitterDurationSeconds": 9.5,
+        "emitterDurationSeconds": 13,
         "emitterLoopCount": 1,
         "bursts": [
           {
@@ -12278,7 +12278,7 @@
           "tileIndex": 0
         },
         "timing": {
-          "startDelaySeconds": 5.4,
+          "startDelaySeconds": 0,
           "lifeTimeSeconds": 1.0,
           "afterImageSeconds": 0.0,
           "dissolveStartNormalized": 1.0
@@ -12392,7 +12392,7 @@
           "sourceScale": {
             "count": 1,
             "size": 1,
-            "lifeTime": 1,
+            "lifeTime": 1.3,
             "speed": 1,
             "rotation": 1,
             "alpha": 1,
@@ -13579,8 +13579,8 @@
           "tileIndex": 0
         },
         "timing": {
-          "startDelaySeconds": 5.4,
-          "lifeTimeSeconds": 9.5,
+          "startDelaySeconds": 0,
+          "lifeTimeSeconds": 13,
           "afterImageSeconds": 0.0,
           "dissolveStartNormalized": 1.0
         },
@@ -13754,7 +13754,7 @@
         "enabled": true,
         "rendererShape": "sprite",
         "emitterDelaySeconds": 0.0,
-        "emitterDurationSeconds": 9.5,
+        "emitterDurationSeconds": 13,
         "emitterLoopCount": 1,
         "bursts": [
           {
@@ -14975,8 +14975,8 @@
           "tileIndex": 0
         },
         "timing": {
-          "startDelaySeconds": 5.4,
-          "lifeTimeSeconds": 9.5,
+          "startDelaySeconds": 0,
+          "lifeTimeSeconds": 13,
           "afterImageSeconds": 0.0,
           "dissolveStartNormalized": 1.0
         },
@@ -15150,7 +15150,7 @@
         "enabled": true,
         "rendererShape": "sprite",
         "emitterDelaySeconds": 0.0,
-        "emitterDurationSeconds": 9.5,
+        "emitterDurationSeconds": 13,
         "emitterLoopCount": 1,
         "bursts": [],
         "modules": [
@@ -16677,8 +16677,8 @@
           "tileIndex": 0
         },
         "timing": {
-          "startDelaySeconds": 5.4,
-          "lifeTimeSeconds": 9.5,
+          "startDelaySeconds": 0,
+          "lifeTimeSeconds": 13,
           "afterImageSeconds": 0.0,
           "dissolveStartNormalized": 1.0
         },
@@ -16852,7 +16852,7 @@
         "enabled": true,
         "rendererShape": "sprite",
         "emitterDelaySeconds": 0.0,
-        "emitterDurationSeconds": 9.5,
+        "emitterDurationSeconds": 13,
         "emitterLoopCount": 1,
         "bursts": [],
         "modules": [
@@ -18016,8 +18016,8 @@
           "tileIndex": 0
         },
         "timing": {
-          "startDelaySeconds": 5.4,
-          "lifeTimeSeconds": 9.5,
+          "startDelaySeconds": 0,
+          "lifeTimeSeconds": 13,
           "afterImageSeconds": 0.0,
           "dissolveStartNormalized": 1.0
         },
@@ -18191,7 +18191,7 @@
         "enabled": true,
         "rendererShape": "sprite",
         "emitterDelaySeconds": 0.0,
-        "emitterDurationSeconds": 9.5,
+        "emitterDurationSeconds": 13,
         "emitterLoopCount": 1,
         "bursts": [],
         "modules": [
@@ -19724,8 +19724,8 @@
           "tileIndex": 0
         },
         "timing": {
-          "startDelaySeconds": 5.4,
-          "lifeTimeSeconds": 9.5,
+          "startDelaySeconds": 0,
+          "lifeTimeSeconds": 13,
           "afterImageSeconds": 0.0,
           "dissolveStartNormalized": 1.0
         },
@@ -19899,7 +19899,7 @@
         "enabled": true,
         "rendererShape": "sprite",
         "emitterDelaySeconds": 0.0,
-        "emitterDurationSeconds": 9.5,
+        "emitterDurationSeconds": 13,
         "emitterLoopCount": 1,
         "bursts": [
           {
@@ -21894,8 +21894,8 @@
           "tileIndex": 0
         },
         "timing": {
-          "startDelaySeconds": 5.4,
-          "lifeTimeSeconds": 9.5,
+          "startDelaySeconds": 0,
+          "lifeTimeSeconds": 13,
           "afterImageSeconds": 0.0,
           "dissolveStartNormalized": 1.0
         },
@@ -22069,7 +22069,7 @@
         "enabled": true,
         "rendererShape": "sprite",
         "emitterDelaySeconds": 0.0,
-        "emitterDurationSeconds": 9.5,
+        "emitterDurationSeconds": 13,
         "emitterLoopCount": 1,
         "bursts": [
           {
@@ -23999,8 +23999,8 @@
           "tileIndex": 0
         },
         "timing": {
-          "startDelaySeconds": 5.4,
-          "lifeTimeSeconds": 9.5,
+          "startDelaySeconds": 0,
+          "lifeTimeSeconds": 13,
           "afterImageSeconds": 0.0,
           "dissolveStartNormalized": 1.0
         },
@@ -24174,7 +24174,7 @@
         "enabled": true,
         "rendererShape": "sprite",
         "emitterDelaySeconds": 0.0,
-        "emitterDurationSeconds": 9.5,
+        "emitterDurationSeconds": 13,
         "emitterLoopCount": 1,
         "bursts": [
           {
@@ -26091,7 +26091,7 @@
           "tileIndex": 0
         },
         "timing": {
-          "startDelaySeconds": 15.801622998893261,
+          "startDelaySeconds": 13,
           "lifeTimeSeconds": 1.5,
           "afterImageSeconds": 0.0,
           "dissolveStartNormalized": 1.0
@@ -27453,7 +27453,7 @@
           "tileIndex": 0
         },
         "timing": {
-          "startDelaySeconds": 15.80525900143385,
+          "startDelaySeconds": 13,
           "lifeTimeSeconds": 1.0,
           "afterImageSeconds": 0.0,
           "dissolveStartNormalized": 1.0
@@ -29608,7 +29608,7 @@
           "tileIndex": 0
         },
         "timing": {
-          "startDelaySeconds": 15.80525900143385,
+          "startDelaySeconds": 13,
           "lifeTimeSeconds": 1.0,
           "afterImageSeconds": 0.0,
           "dissolveStartNormalized": 1.0
@@ -32155,7 +32155,7 @@
           "tileIndex": 0
         },
         "timing": {
-          "startDelaySeconds": 15.80525900143385,
+          "startDelaySeconds": 13,
           "lifeTimeSeconds": 1.0,
           "afterImageSeconds": 0.0,
           "dissolveStartNormalized": 1.0
@@ -34091,7 +34091,7 @@
           "tileIndex": 0
         },
         "timing": {
-          "startDelaySeconds": 15.80525900143385,
+          "startDelaySeconds": 13,
           "lifeTimeSeconds": 1.0,
           "afterImageSeconds": 0.0,
           "dissolveStartNormalized": 1.0
@@ -36299,7 +36299,7 @@
           "tileIndex": 0
         },
         "timing": {
-          "startDelaySeconds": 15.80525900143385,
+          "startDelaySeconds": 13,
           "lifeTimeSeconds": 1.0,
           "afterImageSeconds": 0.0,
           "dissolveStartNormalized": 1.0
@@ -37793,7 +37793,7 @@
           "tileIndex": 0
         },
         "timing": {
-          "startDelaySeconds": 15.80525900143385,
+          "startDelaySeconds": 13,
           "lifeTimeSeconds": 1.0,
           "afterImageSeconds": 0.0,
           "dissolveStartNormalized": 1.0
@@ -39272,7 +39272,7 @@
           "tileIndex": 0
         },
         "timing": {
-          "startDelaySeconds": 15.80525900143385,
+          "startDelaySeconds": 13,
           "lifeTimeSeconds": 1.0,
           "afterImageSeconds": 0.0,
           "dissolveStartNormalized": 1.0
@@ -41523,7 +41523,7 @@
           "tileIndex": 0
         },
         "timing": {
-          "startDelaySeconds": 15.80525900143385,
+          "startDelaySeconds": 13,
           "lifeTimeSeconds": 1.0,
           "afterImageSeconds": 0.0,
           "dissolveStartNormalized": 1.0
@@ -44023,7 +44023,7 @@
           "tileIndex": 0
         },
         "timing": {
-          "startDelaySeconds": 15.80525900143385,
+          "startDelaySeconds": 13,
           "lifeTimeSeconds": 2.5,
           "afterImageSeconds": 0.0,
           "dissolveStartNormalized": 1.0
@@ -45941,7 +45941,7 @@
           "tileIndex": 0
         },
         "timing": {
-          "startDelaySeconds": 15.80525900143385,
+          "startDelaySeconds": 13,
           "lifeTimeSeconds": 2.5,
           "afterImageSeconds": 0.0,
           "dissolveStartNormalized": 1.0
@@ -47895,7 +47895,7 @@
           "tileIndex": 0
         },
         "timing": {
-          "startDelaySeconds": 15.80525900143385,
+          "startDelaySeconds": 13,
           "lifeTimeSeconds": 2.5,
           "afterImageSeconds": 0.0,
           "dissolveStartNormalized": 1.0
@@ -50108,7 +50108,7 @@
           "tileIndex": 0
         },
         "timing": {
-          "startDelaySeconds": 15.80525900143385,
+          "startDelaySeconds": 13,
           "lifeTimeSeconds": 1.0,
           "afterImageSeconds": 0.0,
           "dissolveStartNormalized": 1.0
@@ -51973,7 +51973,7 @@
           "tileIndex": 0
         },
         "timing": {
-          "startDelaySeconds": 15.80525900143385,
+          "startDelaySeconds": 13,
           "lifeTimeSeconds": 1.1500000059604645,
           "afterImageSeconds": 0.0,
           "dissolveStartNormalized": 1.0
@@ -53944,7 +53944,7 @@
           "tileIndex": 0
         },
         "timing": {
-          "startDelaySeconds": 15.80525900143385,
+          "startDelaySeconds": 13,
           "lifeTimeSeconds": 1.0,
           "afterImageSeconds": 0.0,
           "dissolveStartNormalized": 1.0
@@ -56389,7 +56389,7 @@
           "tileIndex": 0
         },
         "timing": {
-          "startDelaySeconds": 15.80525900143385,
+          "startDelaySeconds": 13,
           "lifeTimeSeconds": 1.0,
           "afterImageSeconds": 0.0,
           "dissolveStartNormalized": 1.0
@@ -58323,7 +58323,7 @@
           "tileIndex": 0
         },
         "timing": {
-          "startDelaySeconds": 15.80525900143385,
+          "startDelaySeconds": 13,
           "lifeTimeSeconds": 1.0,
           "afterImageSeconds": 0.0,
           "dissolveStartNormalized": 1.0
@@ -60776,7 +60776,7 @@
           "tileIndex": 0
         },
         "timing": {
-          "startDelaySeconds": 15.80525900143385,
+          "startDelaySeconds": 13,
           "lifeTimeSeconds": 1.0,
           "afterImageSeconds": 0.0,
           "dissolveStartNormalized": 1.0
@@ -62782,7 +62782,7 @@
           "tileIndex": 0
         },
         "timing": {
-          "startDelaySeconds": 15.80525900143385,
+          "startDelaySeconds": 13,
           "lifeTimeSeconds": 1.0,
           "afterImageSeconds": 0.0,
           "dissolveStartNormalized": 1.0
@@ -64451,7 +64451,7 @@
           "tileIndex": 0
         },
         "timing": {
-          "startDelaySeconds": 15.80525900143385,
+          "startDelaySeconds": 13,
           "lifeTimeSeconds": 1.0,
           "afterImageSeconds": 0.0,
           "dissolveStartNormalized": 1.0
@@ -66348,7 +66348,7 @@
           "tileIndex": 0
         },
         "timing": {
-          "startDelaySeconds": 15.80525900143385,
+          "startDelaySeconds": 13,
           "lifeTimeSeconds": 2.5,
           "afterImageSeconds": 0.0,
           "dissolveStartNormalized": 1.0
@@ -68480,7 +68480,7 @@
           "tileIndex": 0
         },
         "timing": {
-          "startDelaySeconds": 15.80525900143385,
+          "startDelaySeconds": 13,
           "lifeTimeSeconds": 1.0,
           "afterImageSeconds": 0.0,
           "dissolveStartNormalized": 1.0
@@ -70626,7 +70626,7 @@
           "tileIndex": 0
         },
         "timing": {
-          "startDelaySeconds": 15.80525900143385,
+          "startDelaySeconds": 13,
           "lifeTimeSeconds": 1.0,
           "afterImageSeconds": 0.0,
           "dissolveStartNormalized": 1.0
@@ -72330,7 +72330,7 @@
           "tileIndex": 0
         },
         "timing": {
-          "startDelaySeconds": 15.80525900143385,
+          "startDelaySeconds": 13,
           "lifeTimeSeconds": 0.5,
           "afterImageSeconds": 0.0,
           "dissolveStartNormalized": 1.0
@@ -73675,55 +73675,6 @@
     "gateId": "ENCORE",
     "actorProfileId": "MN_RPCT_05",
     "targetBossPlacementId": "boss.kakulsaydon.bingo.saydon",
-    "animations": [
-      {
-        "runtimeClip": "rpct00_att_battle_12_02",
-        "startOffsetMs": 0,
-        "sourceStartMs": 0,
-        "playMs": 5400,
-        "playRate": 1,
-        "endPolicy": "HOLD_LAST_POSE"
-      },
-      {
-        "runtimeClip": "rpct00_att_battle_12_04",
-        "startOffsetMs": 5400,
-        "sourceStartMs": 0,
-        "playMs": 10333,
-        "playRate": 1,
-        "endPolicy": "HOLD_LAST_POSE"
-      },
-      {
-        "runtimeClip": "rpct00_att_battle_12_05",
-        "startOffsetMs": 15733,
-        "sourceStartMs": 0,
-        "playMs": 200,
-        "playRate": 1,
-        "endPolicy": "HOLD_LAST_POSE"
-      },
-      {
-        "runtimeClip": "rpct00_dmg_critical_start_1",
-        "startOffsetMs": 15933,
-        "sourceStartMs": 0,
-        "playMs": 1167,
-        "playRate": 1,
-        "endPolicy": "HOLD_LAST_POSE"
-      },
-      {
-        "runtimeClip": "rpct00_dmg_critical_loop_1",
-        "startOffsetMs": 17100,
-        "sourceStartMs": 0,
-        "playMs": 5100,
-        "playRate": 1,
-        "endPolicy": "LOOP_TO_WINDOW"
-      },
-      {
-        "runtimeClip": "rpct00_dmg_critical_end_1",
-        "startOffsetMs": 22200,
-        "sourceStartMs": 0,
-        "playMs": 1333,
-        "playRate": 1,
-        "endPolicy": "HOLD_LAST_POSE"
-      }
-    ]
+    "animations": [{"runtimeClip":"rpct00_att_battle_12_04","startOffsetMs":0,"sourceStartMs":0,"playMs":13000,"playRate":1,"endPolicy":"LOOP_TO_WINDOW"},{"runtimeClip":"rpct00_att_battle_12_05","startOffsetMs":13000,"sourceStartMs":0,"playMs":200,"playRate":1,"endPolicy":"HOLD_LAST_POSE"},{"runtimeClip":"rpct00_dmg_critical_start_1","startOffsetMs":13200,"sourceStartMs":0,"playMs":1167,"playRate":1,"endPolicy":"HOLD_LAST_POSE"},{"runtimeClip":"rpct00_dmg_critical_loop_1","startOffsetMs":14367,"sourceStartMs":0,"playMs":5100,"playRate":1,"endPolicy":"LOOP_TO_WINDOW"},{"runtimeClip":"rpct00_dmg_critical_end_1","startOffsetMs":19467,"sourceStartMs":0,"playMs":1333,"playRate":1,"endPolicy":"HOLD_LAST_POSE"}]
   }
 }

@@ -40,6 +40,7 @@ struct ARTIST_PROGRAM_DESC final
     std::span<const ARTIST_PARAMETER_DESC> Parameters;
     std::span<const ARTIST_SWITCH_DESC> StaticSwitches;
     bool bSourceTransformMesh = false;
+    bool bUsesOneLayerDistortion = false;
 };
 
 // Native material tables are compiled once; generators use native_material_tables.py.
@@ -52,6 +53,17 @@ inline const ARTIST_PROGRAM_DESC* Find_ArtistProgram(
 {
     for (const auto& Program : ARTIST_PROGRAMS)
         if (Program.strRuntimeProfileId == runtimeId) return &Program;
+    return nullptr;
+}
+
+// The shared native carrier namespace is admitted by its generated descriptor.
+// Unregistered values fail closed; installing another class movie does not need
+// to edit a second numeric upper bound in every decal/trail/screen-post caller.
+inline const ARTIST_PROGRAM_DESC* Find_ArtistNativeCarrierProgram(const uint32_t profile)
+{
+    if (profile < 2304u) return nullptr;
+    for (const auto& Program : ARTIST_PROGRAMS)
+        if (Program.iProfileIndex == profile) return &Program;
     return nullptr;
 }
 

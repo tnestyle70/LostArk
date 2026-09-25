@@ -1735,3 +1735,4 @@ SOURCE_CHARACTER_NATIVE_OUTPUT SourceCharacterBase236(SOURCE_CHARACTER_NATIVE_IN
     return output;
 }
 
+// source.character.static-map-native-214.v1 / source program 4b65c1956d0f25469fa644129f4284ec

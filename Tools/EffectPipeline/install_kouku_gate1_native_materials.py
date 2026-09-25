@@ -1,7 +1,7 @@
 """Install the selected Kouku native material tables without replacing peers.
 
 The existing Artist material interpreter owns the runtime. This tool updates
-only supplied program IDs within 2304..3967 and emits sourceMaterial patches. It does
+only supplied program IDs within 2304..5247 and emits sourceMaterial patches. It does
 not rewrite the renderer or Has_ArtistMaterialContract implementation.
 """
 from pathlib import Path
@@ -9,7 +9,7 @@ import argparse, copy, hashlib, json, re
 from native_material_tables import read_material_bytes, read_material_source, write_material_source
 
 ROOT=Path(__file__).resolve().parents[2]
-FIRST,LAST=2304,4799
+FIRST,LAST=2304,5247
 def read(path):return json.loads(path.read_text(encoding='utf-8-sig'))
 def write(path,value):
     path.parent.mkdir(parents=True,exist_ok=True)
@@ -29,6 +29,11 @@ def install(contract_path,evidence,header_path,resource_root=None):
         i=p['program'];parent=p['parentMaterial'];pid=profile_id(parent);runtime=f'effect.ue3.kouku-{i}-native.v1'
         assert p['nativeBlend'] in ('blend_additive','blend_translucent','blend_opaque','blend_masked','blend_modulate'),p['nativeBlend']
         source_transform_mesh = bool(p.get('sourceTransformMesh', False))
+        one_layer = bool(p.get('usesOneLayerDistortion', False))
+        if one_layer:
+            assert (p['sourceVS'], p['sourcePS'], p['rendererShape']) == (
+                '5825675b4ffbc840ad691ec56973cf7e', 'eb2bcd5c8f3c6c49805ab689687b14f6', 'sprite')
+            assert p['requiresSceneColor'] and not p['modelCue'] and not source_transform_mesh
         render=('ADDITIVE' if p['nativeBlend']=='blend_additive' else 'ALPHA')+('_TWO_SIDED_DEPTH_READ' if p['nativeTwoSided'] else '_ONE_SIDED_DEPTH_READ')
         if p['nativeBlend'] == 'blend_modulate':
             assert (p['rendererShape'] == 'sprite' and not p['nativeTwoSided'] and
@@ -53,7 +58,8 @@ def install(contract_path,evidence,header_path,resource_root=None):
         shape=p['rendererShape']
         if source_transform_mesh:
             assert shape == 'mesh' and not p['modelCue'] and p.get('sourceStaticMeshComponents')
-        entries.append('    {'+f'{i}u,'+','.join(quote(x) for x in [runtime,p['sourceMaterial'],parent,pid])+','+str(shape in ('mesh','staticMesh')).lower()+','+str(p['modelCue']).lower()+','+quote(shape)+','+','.join(str(v).lower() for v in [p['requiresSceneColor'],p['requiresDepthSample'],p['requiresTangentView'],'dynamicparameter' in p['sourceVF']])+',EFFECT_RENDER_PROFILE::'+render+f',ARTIST_TEXTURES_{i},ARTIST_PARAMETERS_{i},ARTIST_SWITCHES_{i}'+(',true' if source_transform_mesh else '')+'},\n')
+        extras = (','+str(source_transform_mesh).lower()+',true') if one_layer else (',true' if source_transform_mesh else '')
+        entries.append('    {'+f'{i}u,'+','.join(quote(x) for x in [runtime,p['sourceMaterial'],parent,pid])+','+str(shape in ('mesh','staticMesh')).lower()+','+str(p['modelCue']).lower()+','+quote(shape)+','+','.join(str(v).lower() for v in [p['requiresSceneColor'],p['requiresDepthSample'],p['requiresTangentView'],'dynamicparameter' in p['sourceVF']])+',EFFECT_RENDER_PROFILE::'+render+f',ARTIST_TEXTURES_{i},ARTIST_PARAMETERS_{i},ARTIST_SWITCHES_{i}'+extras+'},\n')
         source=dict(enabled=True,profileId=pid,runtimeShaderProfileId=runtime,parentMaterialPath=parent,semanticStatus='reconstructed_profile',
             textures=[{k:t[k] for k in ('name','sourceObjectPath','assetId','addressU','addressV','colorSpace','samplingEvidence')} for t in textures],
             scalars=[dict(name=v['name'],group='None',value=v['effective']) for v in parameters if v['kind']=='scalar'],

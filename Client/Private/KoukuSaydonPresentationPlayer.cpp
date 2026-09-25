@@ -357,6 +357,10 @@ OCCURRENCE Read_Occurrence(const DATA_JSON_VALUE& row, std::uint32_t durationMs,
     box.fVolume = Number(row, "volume", 0.0, 1.0);
     if (row.Find("soundSourceStartMs")) box.iSoundSourceStartMs = UInt(row, "soundSourceStartMs", 0u, MAX_TIMELINE_MS);
     if (box.iSoundSourceStartMs && kind != KIND::SOUND) throw std::runtime_error("Sound Source In requires SOUND.");
+    if (row.Find("effectSourceStartMs")) box.iEffectSourceStartMs = UInt(row, "effectSourceStartMs", 0u, MAX_TIMELINE_MS);
+    if (box.iEffectSourceStartMs && (kind != KIND::EFFECT ||
+        box.iEffectSourceStartMs >= UInt(row, "resourceDurationMs", 1u, MAX_TIMELINE_MS)))
+        throw std::runtime_error("Effect Source In must be inside an Effect resource lifetime.");
     if (row.Find("brightnessMultiplier")) box.fBrightnessMultiplier = Number(row, "brightnessMultiplier", 0.0, 16.0);
     const auto& follow = Field(row, "followBoss");
     if (!follow.Is_Boolean()) throw std::runtime_error("followBoss must be Boolean.");
@@ -414,9 +418,14 @@ OCCURRENCE Read_Occurrence(const DATA_JSON_VALUE& row, std::uint32_t durationMs,
     if (box.strBoneTarget == "WEAPON" && ((kind != KIND::COLLIDER && kind != KIND::EFFECT) || box.strAnchorKind != "BOSS" || box.strBone.empty()))
         throw std::runtime_error("WEAPON bone target needs a Boss Collider/Effect and a named weapon bone.");
     if (row.Find("boneRotation")) box.strBoneRotation = Text(row, "boneRotation");
-    if (box.strBoneRotation != "TARGET_YAW" && (box.strBoneRotation != "BONE" || kind != KIND::EFFECT ||
-        box.strAnchorKind != "BOSS" || box.strBone.empty()))
-        throw std::runtime_error("Bone rotation needs a Boss Effect and a named bone: " + box.strOccurrenceId);
+    const bool worldBoneCollider = kind == KIND::COLLIDER && box.strAnchorKind == "WORLD" &&
+        box.bFollowBoss && box.strBoneTarget == "BODY" && !box.strBone.empty();
+    if (box.strAnchorKind == "WORLD" && !box.strBone.empty() && !worldBoneCollider)
+        throw std::runtime_error("WORLD bone requires a following BODY Collider: " + box.strOccurrenceId);
+    if (box.strBoneRotation != "TARGET_YAW" && (box.strBoneRotation != "BONE" ||
+        (!worldBoneCollider && ((kind != KIND::EFFECT && kind != KIND::COLLIDER) ||
+            box.strAnchorKind != "BOSS" || box.strBone.empty() || (kind == KIND::COLLIDER && !box.bFollowBoss)))))
+        throw std::runtime_error("Bone rotation needs a Boss Effect or following Collider and a named bone: " + box.strOccurrenceId);
     return box;
 }
 
@@ -492,7 +501,8 @@ std::uint32_t Pattern_Duration(const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern)
 
 bool Make_Pivot(const OCCURRENCE& box, const float4x4_t& root,
     const std::shared_ptr<Engine::CModel>& model, float4x4_t& result,
-    const ANIMATION_MODEL_TARGET_VIEW* weaponView = nullptr, float4x4_t* sampledBasis = nullptr)
+    const ANIMATION_MODEL_TARGET_VIEW* weaponView = nullptr, float4x4_t* sampledBasis = nullptr,
+    const bool planarBone = false)
 {
     float4x4_t anchor = root;
     if (!box.strBone.empty())
@@ -524,11 +534,24 @@ bool Make_Pivot(const OCCURRENCE& box, const float4x4_t& root,
         basis.r[axis] = XMVector3Normalize(basis.r[axis]);
     }
     if (sampledBasis) XMStoreFloat4x4(sampledBasis, basis);
-    XMStoreFloat4x4(&result,
-        XMMatrixScaling(float(box.Scale[0]), float(box.Scale[1]), float(box.Scale[2])) *
+    matrix_t placed = XMMatrixScaling(float(box.Scale[0]), float(box.Scale[1]), float(box.Scale[2])) *
         XMMatrixRotationRollPitchYaw(XMConvertToRadians(float(box.RotationDegrees[0])),
             XMConvertToRadians(float(box.RotationDegrees[1])), XMConvertToRadians(float(box.RotationDegrees[2]))) *
-        XMMatrixTranslation(float(box.PositionOffset[0]), float(box.PositionOffset[1]), float(box.PositionOffset[2])) * basis);
+        XMMatrixTranslation(float(box.PositionOffset[0]), float(box.PositionOffset[1]), float(box.PositionOffset[2])) * basis;
+    if (planarBone && box.strBoneRotation == "BONE")
+    {
+        // Compose the authored box in the full bone/socket basis before projecting
+        // its final heading onto Server combat's XZ plane. A mouth's local fire
+        // axis need not be the bone's +Z axis.
+        const float x = XMVectorGetX(placed.r[2]), z = XMVectorGetZ(placed.r[2]);
+        const float horizontal = x * x + z * z;
+        if (!std::isfinite(horizontal) || horizontal < 0.00000001f) return false;
+        const vector_t position = placed.r[3];
+        placed = XMMatrixScaling(float(box.Scale[0]), float(box.Scale[1]), float(box.Scale[2])) *
+            XMMatrixRotationY(std::atan2(x, z));
+        placed.r[3] = position;
+    }
+    XMStoreFloat4x4(&result, placed);
     return true;
 }
 
@@ -571,6 +594,19 @@ CEffectV2Object::PIVOT_SAMPLER Effect_PivotSampler(const OCCURRENCE& box,
             Make_Pivot(box, recorded, {}, output)) return true;
         error = "Recorded Effect anchor cannot form its authored pivot.";
         return false;
+    };
+}
+
+CEffectV2Object::PIVOT_SAMPLER Effect_V2PivotSampler(const OCCURRENCE& box,
+    const std::shared_ptr<EFFECT_V2_PIVOT_HISTORY>& rootHistory,
+    const std::shared_ptr<EFFECT_V2_PIVOT_HISTORY>& anchorHistory,
+    CEffectV2Object::PIVOT_SAMPLER exactRoot = {})
+{
+    auto sampler = Effect_PivotSampler(box, rootHistory, anchorHistory, std::move(exactRoot));
+    if (!sampler || !box.iEffectSourceStartMs) return sampler;
+    return [sampler = std::move(sampler), sourceStart = box.iEffectSourceStartMs / 1000.f]
+        (float sourceSeconds, float4x4_t& output, std::string& error) {
+        return sampler((std::max)(0.f, sourceSeconds - sourceStart), output, error);
     };
 }
 
@@ -745,7 +781,7 @@ CKoukuSaydonPresentationPlayer::V1_SOURCE_ANCHOR_SAMPLER Make_SourceAnchorSample
     const RESOURCE& resource, const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern,
     const std::shared_ptr<CModel>& model, const float4x4_t& ownerRoot, uint32_t startMs,
     CEffectV2Object::PIVOT_SAMPLER exactRoot = {},
-    float sourceSecondsPerBoxSecond = 1.f, float sourceCycleStartSeconds = 0.f)
+    float sourceSecondsPerBoxSecond = 1.f, float sourceCycleStartSeconds = 0.f, float sourceStartSeconds = 0.f)
 {
     const auto document = CEffectCatalog::Find_Loaded(resource.strAssetId);
     if (!document) return [](float, const float4x4_t&, SOURCE_BONES&, std::string& error)
@@ -808,10 +844,11 @@ CKoukuSaydonPresentationPlayer::V1_SOURCE_ANCHOR_SAMPLER Make_SourceAnchorSample
     return [attachments = std::move(attachments), animations = std::move(animations), names = std::move(names),
         frozenBones = std::move(frozenBones), frozenError = std::move(frozenError), freezeResourcePose,
         blendWindows = pattern.AnimationBlendWindows, weakModel = std::weak_ptr<CModel>(model), ownerRoot, startMs,
-        sourceDocument, sourceSecondsPerBoxSecond, sourceCycleStartSeconds, localFearCamera, exactRoot = std::move(exactRoot)]
-        (float seconds, const float4x4_t& root, SOURCE_BONES& anchors, std::string& error)
+        sourceDocument, sourceSecondsPerBoxSecond, sourceCycleStartSeconds, sourceStartSeconds, localFearCamera, exactRoot = std::move(exactRoot)]
+        (float sourceSeconds, const float4x4_t& root, SOURCE_BONES& anchors, std::string& error)
     {
-        if (!std::isfinite(seconds) || seconds < 0.f) { error = "Invalid Kouku source anchor sample time."; return false; }
+        if (!std::isfinite(sourceSeconds) || sourceSeconds < 0.f) { error = "Invalid Kouku source anchor sample time."; return false; }
+        const float seconds = sourceCycleStartSeconds + (std::max)(0.f, (sourceSeconds - sourceStartSeconds) / sourceSecondsPerBoxSecond);
         if (localFearCamera)
         {
             EFFECT_V2_TARGET_VIEW cameraOnlyView;
@@ -829,7 +866,6 @@ CKoukuSaydonPresentationPlayer::V1_SOURCE_ANCHOR_SAMPLER Make_SourceAnchorSample
         }
         if (sourceDocument)
         {
-            const float sourceSeconds = (std::max)(0.f, seconds - sourceCycleStartSeconds) * sourceSecondsPerBoxSecond;
             return CKoukuSaydonPresentationPlayer::Sample_SourceAnchorWorlds(
                 *sourceDocument, view, root, sourceSeconds, anchors, error);
         }
@@ -846,7 +882,7 @@ CKoukuSaydonPresentationPlayer::V1_SOURCE_ANCHOR_SAMPLER Make_SourceAnchorSample
 
 float Effect_SourceClockRate(const RESOURCE& resource, const OCCURRENCE& box)
 {
-    return box.bFitEffectToDuration ? float(resource.iDurationMs) / float(box.iDurationMs) : 1.f;
+    return box.bFitEffectToDuration ? float(resource.iDurationMs - box.iEffectSourceStartMs) / float(box.iDurationMs) : 1.f;
 }
 
 float Effect_SourceCycleStartSeconds(const float ageSeconds, const float finiteCycleSeconds)
@@ -863,16 +899,17 @@ EFFECT_FIXED_STEP_TRANSFORM_PROVIDER Effect_V1TransformProvider(const OCCURRENCE
     float sourceCycleStartSeconds = 0.f)
 {
     return [sampler = Effect_PivotSampler(box, rootHistory, anchorHistory, std::move(exactRoot)), frozenPivot,
-        sourceAnchors = std::move(sourceAnchors), sourceSecondsPerBoxSecond, sourceCycleStartSeconds]
-        (float seconds, EFFECT_FIXED_STEP_TRANSFORM_SAMPLE& output, std::string& error)
+        sourceAnchors = std::move(sourceAnchors), sourceSecondsPerBoxSecond, sourceCycleStartSeconds,
+        sourceStart = box.iEffectSourceStartMs / 1000.f]
+        (float sourceSeconds, EFFECT_FIXED_STEP_TRANSFORM_SAMPLE& output, std::string& error)
     {
-        // A finite source cycle restarts particles only. Root, bone and source
-        // attachment history continue at the full occurrence age.
-        seconds = sourceCycleStartSeconds + seconds / sourceSecondsPerBoxSecond;
+        // Trim pre-roll retains the occurrence's birth frame. Later particle
+        // births and finite-loop cycles use the continuing Pattern history.
+        const float seconds = sourceCycleStartSeconds + (std::max)(0.f, (sourceSeconds - sourceStart) / sourceSecondsPerBoxSecond);
         output.RootWorld = frozenPivot;
         output.SourceAnchorWorlds.clear();
         if (sampler && !sampler(seconds, output.RootWorld, error)) return false;
-        if (sourceAnchors && !sourceAnchors(seconds, output.RootWorld, output.SourceAnchorWorlds, error)) return false;
+        if (sourceAnchors && !sourceAnchors(sourceSeconds, output.RootWorld, output.SourceAnchorWorlds, error)) return false;
         error.clear();
         return true;
     };
@@ -2515,14 +2552,17 @@ void Client::CKoukuSaydonPresentationPlayer::Sample(SESSION& session,
                 if ((box.strWorldOccurrenceId.empty() || id == box.strWorldOccurrenceId) &&
                     player->Is_Playing(world->strSequenceInstanceId))
                 { if (selected) return false; selected = player.get(); }
-            return selected && selected->Try_GetSequencePivot(world->strSequenceInstanceId, anchor, box.iWorldEmissionIndex);
+            return selected && selected->Try_GetSequencePivot(world->strSequenceInstanceId, anchor, box.iWorldEmissionIndex,
+                box.strBone, box.strBoneRotation == "BONE");
         }
         const auto* level = CLevel_KakulSaydonArena::Get_Active();
         if (!level) return false;
         if (session.runEpoch)
             return level->Try_GetOwnedCompositionWorldPivot(session.runEpoch, session.memberId,
-                world->strSequenceInstanceId, box.strWorldOccurrenceId, anchor, box.iWorldEmissionIndex, session.patternSequence);
-        return level->Try_GetCompositionWorldPivot(world->strSequenceInstanceId, anchor, box.strWorldOccurrenceId, box.iWorldEmissionIndex);
+                world->strSequenceInstanceId, box.strWorldOccurrenceId, anchor, box.iWorldEmissionIndex, session.patternSequence,
+                box.strBone, box.strBoneRotation == "BONE");
+        return level->Try_GetCompositionWorldPivot(world->strSequenceInstanceId, anchor, box.strWorldOccurrenceId, box.iWorldEmissionIndex,
+            box.strBone, box.strBoneRotation == "BONE");
     };
     // Observe future anchored cues as well as active ones. Their first emission
     // can then interpolate the real samples bracketing the box start even when
@@ -2610,8 +2650,9 @@ void Client::CKoukuSaydonPresentationPlayer::Sample(SESSION& session,
         } failureGuard{row, m_strStatus, box.strOccurrenceId, resource.strAssetId};
         const float age = (clockMs - box.iStartMs) / 1000.f;
         const float effectRate = Effect_SourceClockRate(resource, box);
+        const float effectSourceStart = box.iEffectSourceStartMs / 1000.f;
         float effectCycleStart = Effect_SourceCycleStartSeconds(age, row.v1FiniteLoopSeconds);
-        float effectAge = (std::max)(0.f, age - effectCycleStart) * effectRate;
+        float effectAge = effectSourceStart + (std::max)(0.f, age - effectCycleStart) * effectRate;
         if (row.v1EffectHandle && effectCycleStart != row.v1CycleStartSeconds)
         {
             CEffectPresentationService::Stop_WorldRoot({row.v1EffectHandle});
@@ -2686,7 +2727,8 @@ void Client::CKoukuSaydonPresentationPlayer::Sample(SESSION& session,
                 anchorModel.reset();
             }
             if (!Make_Pivot(placedBox, anchor, anchorModel, row.pivot, weaponView,
-                (resource.eKind == KIND::COLLIDER || resource.eKind == KIND::EFFECT || resource.eKind == KIND::LIGHT) ? &row.placementAnchor : nullptr))
+                (resource.eKind == KIND::COLLIDER || resource.eKind == KIND::EFFECT || resource.eKind == KIND::LIGHT) ? &row.placementAnchor : nullptr,
+                resource.eKind == KIND::COLLIDER))
             {
                 row.waitingForAnchor = resource.eKind == KIND::LIGHT;
                 row.failed = !row.waitingForAnchor;
@@ -2752,12 +2794,18 @@ void Client::CKoukuSaydonPresentationPlayer::Sample(SESSION& session,
                             (!CEffectPresentationService::Try_Get_PreparedProductDurationSeconds(resource.strAssetId, row.v1FiniteLoopSeconds) ||
                              !std::isfinite(row.v1FiniteLoopSeconds) || row.v1FiniteLoopSeconds <= 0.f))
                         { row.failed = true; m_strStatus = "Finite V1 loop needs a prepared source duration: " + resource.strAssetId; break; }
+                        if (!nativeInfiniteLoop)
+                        {
+                            row.v1FiniteLoopSeconds -= effectSourceStart;
+                            if (row.v1FiniteLoopSeconds <= 0.f)
+                            { row.failed = true; m_strStatus = "Effect Source In exceeds the prepared loop lifetime: " + resource.strAssetId; break; }
+                        }
                     }
                     if (!box.bLoopEffectToDuration || nativeInfiniteLoop) row.v1FiniteLoopSeconds = 0.f;
                     effectCycleStart = Effect_SourceCycleStartSeconds(age, row.v1FiniteLoopSeconds);
-                    effectAge = (std::max)(0.f, age - effectCycleStart) * effectRate;
+                    effectAge = effectSourceStart + (std::max)(0.f, age - effectCycleStart) * effectRate;
                     row.sourceAnchorSampler = Make_SourceAnchorSampler(resource, pattern, model, pivot, box.iStartMs,
-                        exactRoot, effectRate, effectCycleStart);
+                        exactRoot, effectRate, effectCycleStart, effectSourceStart);
                     EFFECT_LEVEL_PLACEMENT_SPAWN_DESC spawn;
                     spawn.iLevelIndex = CGameInstance::Get().Get_CurrentLevelID();
                     spawn.strPlacementId = "kouku:" + session.key + ":" + box.strOccurrenceId;
@@ -2768,7 +2816,7 @@ void Client::CKoukuSaydonPresentationPlayer::Sample(SESSION& session,
                     spawn.bExternallySampled = true;
                     // EmitterLoops=0 uses bounded source emission. Finite sources
                     // repeat their prepared lifetime without mutating the shared asset.
-                    spawn.fSourceLoopEndSeconds = nativeInfiniteLoop ? box.iDurationMs / 1000.f : 0.f;
+                    spawn.fSourceLoopEndSeconds = nativeInfiniteLoop ? effectSourceStart + box.iDurationMs / 1000.f : 0.f;
                     EFFECT_WORLD_ROOT_HANDLE handle;
                     if (!CEffectPresentationService::Spawn_LevelPlacement(spawn, handle, m_strStatus))
                     {
@@ -2783,8 +2831,13 @@ void Client::CKoukuSaydonPresentationPlayer::Sample(SESSION& session,
                 { row.failed = true; break; }
                 EFFECT_V2_GROUP_PLAYBACK_DESC playback;
                 playback.PivotWorld = row.pivot;
-                playback.fInitialAgeSeconds = age;
-                playback.fDurationSeconds = box.iDurationMs / 1000.f;
+                playback.fInitialAgeSeconds = effectAge;
+                if (box.iEffectSourceStartMs)
+                {
+                    playback.fEnvelopeSourceStartSeconds = effectSourceStart;
+                    playback.fEnvelopeDurationSeconds = box.iDurationMs / 1000.f;
+                }
+                playback.fDurationSeconds = effectSourceStart + box.iDurationMs / 1000.f;
                 // Workbench Fade 0 retains the leaf envelope via the runtime's -1 sentinel.
                 playback.fFadeInSeconds = box.iFadeInMs > 0u ? box.iFadeInMs / 1000.f : -1.f;
                 playback.fFadeOutSeconds = box.iFadeOutMs > 0u ? box.iFadeOutMs / 1000.f : -1.f;
@@ -2794,7 +2847,7 @@ void Client::CKoukuSaydonPresentationPlayer::Sample(SESSION& session,
                 // MainApp's general Effect clock cannot advance it a second time.
                 playback.bProductOwned = true;
                 playback.bExternalClock = true;
-                playback.PivotSampler = Effect_PivotSampler(box, session.rootHistory, row.effectPivotHistory, exactRoot);
+                playback.PivotSampler = Effect_V2PivotSampler(box, session.rootHistory, row.effectPivotHistory, exactRoot);
                 if (resource.strResourceKind == "GROUP")
                 {
                     const auto* group = effects->Find_Group(resource.strAssetId);
@@ -2895,7 +2948,7 @@ void Client::CKoukuSaydonPresentationPlayer::Sample(SESSION& session,
                 !CEffectPresentationService::Seek_WorldRoot({row.v1EffectHandle}, effectAge,
                     Effect_V1TransformProvider(box, row.pivot, session.rootHistory, row.effectPivotHistory,
                         row.sourceAnchorSampler, effectRate, exactRoot, effectCycleStart),
-                    false, ((std::min)(box.iDurationMs / 1000.f - effectCycleStart,
+                    false, effectSourceStart + ((std::min)(box.iDurationMs / 1000.f - effectCycleStart,
                         row.v1FiniteLoopSeconds > 0.f ? row.v1FiniteLoopSeconds : box.iDurationMs / 1000.f)) * effectRate) || (captureSample && FAILED(
                         CEffectPresentationService::Commit_WorldRootCaptureSample({row.v1EffectHandle}))))
             {
@@ -2911,7 +2964,7 @@ void Client::CKoukuSaydonPresentationPlayer::Sample(SESSION& session,
         if (row.effectHandle)
         {
             CEffectV2Runtime::Set_GroupPivot(row.effectHandle, row.pivot);
-            (void)CEffectV2Runtime::Sample_Group(row.effectHandle, age, paused, m_Device, m_Context);
+            (void)CEffectV2Runtime::Sample_Group(row.effectHandle, effectAge, paused, m_Device, m_Context);
             std::string failure;
             if (CEffectV2Runtime::Consume_GroupFailure(row.effectHandle, failure))
             {
@@ -5014,13 +5067,14 @@ bool Client::CKoukuSaydonPresentationPlayer::Resolve_PreviewCaptureClock(
                     EFFECT_SCREEN_POST_PROFILE::SCENE_COLLAPSE_CAPTURE_V1 ||
                 (!resource->strElementId.empty() && resource->strElementId != element.strElementId)) continue;
             const double effectRate = Effect_SourceClockRate(*resource, box);
-            const double delayMs = double(element.Detail.Timing.fStartDelaySeconds) * 1000.0 / effectRate;
-            if (!std::isfinite(delayMs) || delayMs < 0.0 || delayMs >= box.iDurationMs) continue;
+            const double sourceDelayMs = (double(element.Detail.Timing.fStartDelaySeconds) * 1000.0 - box.iEffectSourceStartMs) / effectRate;
+            const double delayMs = (std::max)(0.0, sourceDelayMs);
+            const double sourceEndMs = sourceDelayMs + double(element.Detail.Timing.fLifeTimeSeconds) * 1000.0 / effectRate;
+            if (!std::isfinite(sourceDelayMs) || sourceEndMs <= 0.0 || delayMs >= box.iDurationMs) continue;
             // Float seconds can put an authored integer millisecond a fraction
             // of a microsecond above itself; retain that cursor before rounding up.
             const auto captureMs = static_cast<std::uint32_t>(boxStartMs + std::ceil(delayMs - 0.001));
-            const double captureEndMs = double(boxStartMs) + delayMs +
-                double(element.Detail.Timing.fLifeTimeSeconds) * 1000.0 / effectRate;
+            const double captureEndMs = double(boxStartMs) + sourceEndMs;
             if (captureMs > requestedMs || double(requestedMs) >= captureEndMs) continue;
             const auto row = owner.session->rows.find(box.strOccurrenceId);
             if (row != owner.session->rows.end())
@@ -5497,9 +5551,9 @@ void Client::CKoukuSaydonPresentationPlayer::Update_BingoMarks(float dt)
             if (mark.red == red) continue;
         }
         if (!mark.retry.TryBegin(nowMs)) continue;
-        // A newly painted white cell plays the native rotating tile, then its
-        // saved NEXT maintenance; an ordinary-to-red transition replays that native flip.
-        const std::string motion = red ? (mark.player && !mark.red ? redFlipId : redId) : (mark.player ? whiteId : flipId);
+        // Every newly painted cell plays the native rotating tile before its
+        // saved NEXT maintenance, including an empty-to-red Server transition.
+        const std::string motion = red ? redFlipId : (mark.player ? whiteId : flipId);
         CWorldSequencePlayer::OBJECT_PLACEMENT placement;
         placement.position = { LostArk::Shared::Kouku_BingoCellCenterX(cell), .02f,
             LostArk::Shared::Kouku_BingoCellCenterZ(cell) };
@@ -5907,10 +5961,11 @@ bool Client::CKoukuSaydonPresentationPlayer::Preview_PresentationGeometry(
                 placed.Scale[axis] *= active->second.placementAnchorScale[axis];
             }
             float4x4_t pivot{};
-            if (!Make_Pivot(placed, active->second.placementAnchor, nullptr, pivot)) return false;
+            if (!Make_Pivot(placed, active->second.placementAnchor, nullptr, pivot, nullptr, nullptr,
+                resource->eKind == KIND::COLLIDER)) return false;
             if (resource->eKind == KIND::EFFECT && active->second.effectHandle &&
                 !CEffectV2Runtime::Rebuild_GroupPlacement(active->second.effectHandle, pivot,
-                    Effect_PivotSampler(edited, session.rootHistory, active->second.effectPivotHistory),
+                    Effect_V2PivotSampler(edited, session.rootHistory, active->second.effectPivotHistory),
                     m_Device, m_Context))
             {
                 m_strStatus = "Effect geometry preview failed: " + CEffectV2Runtime::Last_Error();
@@ -5919,10 +5974,10 @@ bool Client::CKoukuSaydonPresentationPlayer::Preview_PresentationGeometry(
             if (resource->eKind == KIND::EFFECT && active->second.v1EffectHandle &&
                 (!CEffectPresentationService::Update_WorldRoot({active->second.v1EffectHandle}, pivot) ||
                  !CEffectPresentationService::Seek_WorldRoot({active->second.v1EffectHandle},
-                    (std::max)(0.f, active->second.lastAge - active->second.v1CycleStartSeconds) * Effect_SourceClockRate(*resource, edited),
+                    edited.iEffectSourceStartMs / 1000.f + (std::max)(0.f, active->second.lastAge - active->second.v1CycleStartSeconds) * Effect_SourceClockRate(*resource, edited),
                     Effect_V1TransformProvider(edited, pivot, session.rootHistory, active->second.effectPivotHistory,
                         active->second.sourceAnchorSampler, Effect_SourceClockRate(*resource, edited), {}, active->second.v1CycleStartSeconds), true,
-                    ((std::min)(edited.iDurationMs / 1000.f - active->second.v1CycleStartSeconds,
+                    edited.iEffectSourceStartMs / 1000.f + ((std::min)(edited.iDurationMs / 1000.f - active->second.v1CycleStartSeconds,
                         active->second.v1FiniteLoopSeconds > 0.f ? active->second.v1FiniteLoopSeconds : edited.iDurationMs / 1000.f)) *
                         Effect_SourceClockRate(*resource, edited))))
             {

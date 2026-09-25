@@ -358,21 +358,23 @@ namespace ServerGameplayContractDetail
 	{
 		using namespace LostArk::Shared;
 		using namespace LostArk::Server;
-		for (const unsigned scenario : { 0u, 1u, 2u })
+		for (const unsigned scenario : { 0u, 1u, 2u, 3u })
 		{
 			BOSS_PATTERN_DEFINITION pattern{}; pattern.strPatternId = "bone.contact.contract";
 			BOSS_PATTERN_LOGIC_WINDOW window{}; window.strWindowId = "hammer.tip";
 			window.eKind = BOSS_PATTERN_LOGIC_KIND::OBJECT_CONTACT; window.iStartMs = scenario == 2u ? 101u : 100u;
 			window.iDurationMs = 100u; window.bHasContactGroup = true;
-			const float targetX = scenario == 0u ? 12.f : scenario == 1u ? 35.5f : 4000.f / 30.f - 101.f;
-			window.ContactTargets = { { "tip.card", "card.idle", targetX, scenario == 0u ? 18.5f : scenario == 1u ? 48.f : 0.f, .01f } };
+			const float targetX = scenario == 0u ? 12.f : scenario == 1u ? 35.5f : scenario == 3u ? 12.5f : 4000.f / 30.f - 101.f;
+			window.ContactTargets = { { "tip.card", "card.idle", targetX, scenario == 0u ? 18.5f : scenario == 1u ? 48.f : scenario == 3u ? 20.f : 0.f, .01f } };
 			BOSS_PATTERN_LOGIC_RESULT result{}; result.eKind = BOSS_PATTERN_LOGIC_RESULT_KIND::PLAY_CONTACT_WORLD_OBJECT_MOTION;
 			result.ContactMotions = { { "tip.card", "card.flip" } }; window.OnSuccess.push_back(result);
 			BOSS_LOGIC_REGION region{}; region.eAnchor = BOSS_LOGIC_REGION_ANCHOR::BOSS_CURRENT;
 			region.fCenterX = scenario == 2u ? 0.f : .5f; region.fYawDegrees = 90.f;
 			region.fHalfX = .1f; region.fHalfZ = 1.2f; region.bCircle = scenario == 2u; region.fRadiusM = .01f;
 			auto& track = region.WorldTrack; track.bEnabled = true; track.iStartMs = window.iStartMs; track.iDurationMs = 100u;
-			BOSS_LOGIC_WORLD_TRANSFORM_KEY key{}; key.fOffsetZ = scenario == 2u ? 0.f : 2.f; track.Keys.push_back(key);
+			BOSS_LOGIC_WORLD_TRANSFORM_KEY key{}; key.fOffsetZ = scenario == 2u ? 0.f : 2.f;
+			if (scenario == 3u) key.fRotationY = key.fRotationW = .70710678118f;
+			track.Keys.push_back(key);
 			key.iTimeMs = 100u; key.fOffsetX = scenario == 2u ? 100.f : 3.f; track.Keys.push_back(key);
 			window.CardRegions.push_back(region); pattern.LogicWindows.push_back(window);
 			auto boss = std::make_unique<SERVER_WORLD_ENTITY>(); boss->iNetEntityId = 1u;
@@ -401,7 +403,8 @@ namespace ServerGameplayContractDetail
 			tests.Require(beforeStart && beforeMovedRoot && output.WorldSequencePlays.size() == 1u &&
 				output.WorldSequencePlays.front().strTargetWorldOccurrenceId == "tip.card" && events.empty(), scenario == 2u ?
 				"Bone contact uses the exact authored millisecond clock after a fractional-tick trigger start" : scenario == 1u ?
-				"Baked bone motion composes the current Server boss position and yaw once at the final tick" :
+				"Baked bone motion composes the current Server boss position and yaw once at the final tick" : scenario == 3u ?
+				"Sampled bone yaw rotates contact offset and shape before the live boss basis exactly once" :
 				"Bone tip plus authored offset follows the boss while collision shape keeps authored TARGET_YAW orientation");
 		}
 	}
@@ -730,6 +733,37 @@ namespace ServerGameplayContractDetail
 		policy.iMaximum = 100u;
 		policy.iClownHoldMs = 15000u;
 		std::vector<DAMAGE_EVENT> logicEvents;
+		{
+			auto target = makePlayer(42u, 0.f, 0.f, 0.f);
+			target.isCombatReady = true; target.iMadnessDamageGainPercent = 100u;
+			SERVER_WORLD_TO_PLAYER_HIT hit{};
+			hit.iRawDamage = 1u; hit.bIgnoreDefense = hit.bIgnoreCounter = true; hit.iServerTick = 10u;
+			std::vector<DAMAGE_EVENT> events;
+			for (int i = 0; i < 10; ++i) CServerCombatHitRuntime::Apply_WorldToPlayer(target, hit, catalog, events);
+			tests.Require(target.iCurrentHp == 990u && target.iCurrentMadness == 1u && target.dMadnessRemainder < 1e-8,
+				"Ten sub-unit admitted HP hits accumulate exactly one gauge unit instead of rounding each hit away");
+			target.iCurrentMadness = 0u; target.dMadnessRemainder = 0.; target.iShield = 5u; hit.iRawDamage = 7u;
+			CServerCombatHitRuntime::Apply_WorldToPlayer(target, hit, catalog, events);
+			tests.Require(target.iCurrentHp == 988u && target.iCurrentMadness == 0u && std::abs(target.dMadnessRemainder - .2) < 1e-8,
+				"Shield-absorbed damage does not fill madness; only the two HP actually lost do");
+			target.iMadnessDamageGainPercent = 0u; hit.iRawDamage = 10u;
+			CServerCombatHitRuntime::Apply_WorldToPlayer(target, hit, catalog, events);
+			tests.Require(target.iCurrentMadness == 0u && std::abs(target.dMadnessRemainder - .2) < 1e-8,
+				"A room without a Madness policy cannot charge gauge from incoming damage");
+			target.iMadnessDamageGainPercent = 200u; hit.iRawDamage = 5u;
+			CServerCombatHitRuntime::Apply_WorldToPlayer(target, hit, catalog, events);
+			tests.Require(target.iCurrentMadness == 1u && std::abs(target.dMadnessRemainder - .2) < 1e-8,
+				"Damage gain tuning scales actual HP loss and preserves the earlier fractional gauge");
+			target.iInvulnerableEndTick = 11u;
+			CServerCombatHitRuntime::Apply_WorldToPlayer(target, hit, catalog, events);
+			tests.Require(target.iCurrentHp == 973u && target.iCurrentMadness == 1u,
+				"Invulnerability rejects both HP damage and damage-derived madness");
+			CServerCombatHitRuntime::Add_MadnessGauge(target, 1000.);
+			tests.Require(target.iCurrentMadness == 100u && target.dMadnessRemainder == 0., "Gauge gain clamps at the encounter maximum");
+			target.eMadnessForm = PLAYER_MADNESS_FORM::CLOWN; target.iCurrentMadness = 0u;
+			CServerCombatHitRuntime::Add_MadnessGauge(target, 10.);
+			tests.Require(!target.iCurrentMadness, "Already transformed players cannot charge another Madness transformation");
+		}
 		{
 			BOSS_PATTERN_DEFINITION anchoredPattern{};
 			anchoredPattern.strPatternId = "KAKULSAYDON_TEST_ANCHORED_WORLD";
@@ -1214,7 +1248,7 @@ namespace ServerGameplayContractDetail
 			CKoukuSaydonLogicRuntime::Update(staggerBoss, pattern, ledger, players, catalog,
 				&policy, 411u, logicEvents, output);
 			tests.Require(shieldRaised && belowThreshold && ledger.Windows.front().bClosed &&
-				!staggerBoss.bKoukuShieldActive && output.bEndPatternEarly &&
+				!staggerBoss.bKoukuShieldActive && output.bEndPatternEarly && output.bStaggerSuccess &&
 				1u == output.FollowupPatternIds.size() &&
 				"KAKULSAYDON_TEST_GROGGY" == output.FollowupPatternIds.front() &&
 				1000u == players.at(1u).iCurrentHp,
@@ -1228,7 +1262,7 @@ namespace ServerGameplayContractDetail
 				&policy, 500u, logicEvents, timeoutOutput);
 			CKoukuSaydonLogicRuntime::Update(timeoutBoss, pattern, timeoutLedger, players, catalog,
 				&policy, 560u, logicEvents, timeoutOutput);
-			tests.Require(timeoutLedger.Windows.front().bClosed && !timeoutOutput.bEndPatternEarly &&
+			tests.Require(timeoutLedger.Windows.front().bClosed && !timeoutOutput.bEndPatternEarly && !timeoutOutput.bStaggerSuccess &&
 				0u == players.at(1u).iCurrentHp,
 				"Wipe the living raid when the stagger window times out");
 		}
@@ -1277,9 +1311,12 @@ namespace ServerGameplayContractDetail
 			clown.iMadnessFormEndTick = 1104u;
 			CKoukuSaydonLogicRuntime::Update_PlayerModes(players, nullptr, &policy, 1104u);
 			const bool areaSurvivesTimedForm = PLAYER_MADNESS_FORM::CLOWN == clown.eMadnessForm &&
-				KOUKU_HUD_MODE::MARIO == clown.eKoukuHudMode && 0u == clown.iMadnessFormEndTick;
+				KOUKU_HUD_MODE::MARIO == clown.eKoukuHudMode && 1104u == clown.iMadnessFormEndTick;
+			clown.eKoukuAreaHudMode = KOUKU_HUD_MODE::NONE;
+			CKoukuSaydonLogicRuntime::Update_PlayerModes(players, nullptr, &policy, 1105u);
+			const bool restoredAfterMario = clown.eMadnessForm == PLAYER_MADNESS_FORM::NORMAL && !clown.iMadnessFormEndTick;
 			tests.Require(transformed && polymorphHud && restored && mario && danceParty &&
-				overrideCleared && areaSurvivesTimedForm,
+				overrideCleared && areaSurvivesTimedForm && restoredAfterMario,
 				"Fill the gauge into a timed clown form, restore it, and keep Mario active when that timer ends");
 		}
 		{

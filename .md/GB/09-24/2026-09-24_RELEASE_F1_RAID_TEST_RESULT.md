@@ -26,17 +26,23 @@ PR #453 통합의 앵콜은 앞부분 5초를 줄인 21.322초 sequence와 기�
 
 Retail 통합 검증에서 GameplayCatalog 재로드의 버프 두 lookup, damage formula, ember map이 기존 transaction에 포함되지 않은 문제도 확인했다. 동일 generation 교체와 late failure rollback에 네 map을 함께 묶어 중복 버프 누적과 이전 damage 값 잔류를 막았다. 실제 제품 bootstrap의 반복 로드·값 교체·실패 후 이전값 보존을 두 구성에서 검사했다.
 
-## 체력별 flow의 완료·미완료 구분
+## 실제 F1 화면과 체력별 flow 후속
 
 optional entryGroups의 저장·표시·게시와 Server HP 반복 scheduler, Complete Play 연결은 구현했다. 반복 중 HP와 run epoch를 유지하고 패턴/후속 완료 시 기믹 전환 경계를 판단한다. 여러 임계를 넘긴 경우 아직 시작하지 않은 일반 묶음은 건너뛰고 기믹을 차례대로 한 번씩 실행한다.
 
-130 무력화 / 110 진짜세이튼 / 85 댄스타임 / 60 무력화 / 50 룰렛 / 30 진짜세이튼의 실제 authoring 변경은 사용자에게 재질문한 일반 패턴 묶음과 전환 방식 답변을 기다린다. 현 디스크 G1은 기존 28 entry / 0 entryGroups다. 이 상태를 HP flow 설치 완료로 기록하지 않는다. 선택 후 G1 Flow만 최신 저장본에 병합하고 재게시해야 한다.
+사용자가 기존 평면 목록을 확인한 뒤 실제 반영을 요청하여 G1 authoring과 공식 publisher 출력을 revision 2238로 갱신했다. 130 무력화 / 110 진짜세이튼 / 85 댄스타임 / 60 무력화 / 50 룰렛 / 30 진짜세이튼 사이에 일반 12패턴과 기존 추적 연결을 반복한다. 쓰리투원투하를 포함하며 현재 패턴과 카운터 후속 완료 후 기믹으로 전환한다.
 
-12개 일반 패턴과 기존 추적 연결을 보존하는 추천 후보는 `out/KoukuHealthFlow20260924/g1-health-flow.candidate-review.md`에 준비했다. 반복 7구간과 기믹 6개, 총 159 entry / 13 group이며 전체 문서와 flow validator가 통과했다. 실제 Data 원본과 runtime에는 반영하지 않았다.
+반복 7구간과 기믹 6개, 총 159 entry / 13 group을 실제 Data와 Server bootstrap에 게시했다. 기존 28개 stable entry와 다른 관문을 보존했고 F1은 반복 청크와 일회 기믹을 구분한다. 상세 검증은 G1 HEALTH_FLOW RESULT에 기록했다. 이 게시가 이미 실행 중인 room의 자동 교체를 의미하지는 않는다.
 
-## 검증 기록
+Player Follow Camera ImGui 패널과 전용 draft를 제거했다. 사용자의 최종 선택에 따라 그 자리에 `Open Balance Test` 버튼을 배치하고 기존 별도 수치 창을 사용한다. F1이 닫혀도 저장·게시 결과를 수거한다. 카메라 runtime profile과 F6 동작은 유지한다.
 
-최종 제품 빌드 및 native 검사 결과를 아래에 기록한다. 상세 로그는 `out/ReleaseRaidTools20260924`에 둔다.
+접힌 Balance Test 창을 다시 Open하면 펼침·초점 요청을 공용 패널에도 적용하도록 조기 반환 순서를 수정했다. F1 공통 Character Select Movie는 Guardian Knight를 기본 선택하며 기존 Level의 연출 소유자로 Play/Restart/Stop을 실행한다. 다른 Level에서는 Character Select 진입을 안내한다. 기존 설치 리소스를 재사용하며 영화 재생은 사용자 확인 대상이다.
+
+08:33:32의 Complete Play 준비 실패는 고정 Action 2237과 게시 중 저장 Action 2238의 불일치였다. 이후 START도 같은 게시 진행 구간에 발생했다. 기존 검증을 유지하면서 성공한 목록 로드 안내가 실패 이유로 남지 않도록 expected/current revision을 표시하고, Server 게시 잠금·로드·baseline·Action/Sequence 불일치를 구분한다. 기존 실행 로그를 화면 성공 근거로 사용하지 않는다.
+
+## PR #456 최초 통합 검증 기록
+
+아래는 Composition revision 2237과 최초 Release F1 통합 시점의 제품 빌드·native 검사 기록이다. 이후 F1 launcher·Character Select Movie·HP Flow revision 2238 변경의 최종 검증은 다음 섹션으로 구분한다. 이 최초 통합 로그는 `out/ReleaseRaidTools20260924`에 있다.
 
 - Composition publish: PASS, revision 2237, product pattern 113개 / stage 574개.
 - Retail Balance Runtime Set publish: PASS, Gameplay·4개 World·Items transaction 완료.
@@ -61,4 +67,42 @@ optional entryGroups의 저장·표시·게시와 Server HP 반복 scheduler, Co
 teleport 로그는 `-verified.log`, object overlap은 `-final.log`, 나머지는 기본 `.log`를 따른다.
 실패했던 최초 검사를 최종 통과로 덮어 기록하지 않고 각 최종 로그 경로를 구분했다.
 
+## 2026-09-24 최종 F1·HP Flow 후속 검증
+
+F1 Balance Test launcher 이동, 공용 창 작업 결과 수거와 펼침 처리, Character Select Movie, 실제 G1 HP 그룹 및 준비 실패 원인 표시를 반영한 최종 제품 빌드를 확인했다. 두 receipt 모두 `profile=Product`, `result=PASS`, `skippedBuild=false`다.
+
+| 검사 | Debug | Release | 증거 |
+|---|---:|---:|---|
+| Product build | PASS | PASS | `out/BuildPipeline/runs/20260923T234847724Z-debug-product.json`, `20260923T234951599Z-release-product.json` |
+| Kouku raid 계약 | 1,252 PASS / 0 FAIL | 978 PASS / 0 FAIL | `out/F1BalanceGate1-Debug-raid-contract.log`, `F1BalanceGate1-Release-raid-contract.log` |
+| Kouku draft / HP Flow 계약 | 20 PASS / 0 FAIL | 12 PASS / 0 FAIL | `out/F1BalanceGate1-Debug-hp-contract.log`, `F1BalanceGate1-Release-hp-contract.log` |
+
+- Balance 저장 transaction: 최종 14 tests PASS. 위 최초 통합의 10 tests와 별개인 후속 검증이다.
+- Movie 설치 참조: 기존 758개 파일의 존재·비어 있지 않음과 JSON 9개 parse PASS. source/runtime WorldSequence 객체가 일치한다. 증거는 `out/CharacterSelectMovie20260924/installed-resource-check.json`이다. 이 검사는 실제 movie 재생·GPU 표시 성공을 의미하지 않는다.
+- 최종 변경 C++ 13개 인코딩·BOM·개행 검사 및 변경 JSON 3개 parse: PASS. 파일별 기존 형식을 유지했다. 증거는 `out/F1BalanceGate1-final-encoding.json`이다.
+- 이 문서 변경의 `git diff --check`: PASS.
+
+Debug bundle 최초 검사는 구형 fixture가 DAMAGE 행의 마지막 spread 열을 rate로 가정해 유효 범위를 벗어난 값으로 바꾸는 문제로 1건 실패했다. rate 열만 수정하고 실제 admission이 기존 rate/coefficient/addend/spread를 보존하는지 검사하도록 고쳤다. 제품 runtime과 Release 전처리 산출물은 변경하지 않았다.
+
+후속 Debug Server 증분 빌드는 PASS이며 `out/F1BalanceGate1-Debug-server-bundle-fix-build.log`에 기록했다. 최종 `--kouku-bundle-contract-test`는 95 PASS / 0 FAIL이다. 실패 이력은 `out/F1BalanceGate1-Debug-bundle-contract.log`, 최종 통과는 `out/F1BalanceGate1-Debug-bundle-contract-final.log`로 구분한다. 검사 뒤 Gameplay 및 세 spawn-group 게시 hash가 최종 Retail 검증 값과 일치했다.
+
 Client/UI는 실행하지 않았다. F1 동작 화면, 4인 모드 변경과 실제 전투 체감, Encore UI 타이밍 및 FPS 비교는 사용자 수동 확인으로 남는다.
+
+## 13시 Debug 흰 창 직후 종료의 빌드 복구
+
+사용자가 Debug Client의 흰 창 직후 종료를 보고했다. 13:06:29 / 13:06:43 / 13:07:29 Windows Application Error는 모두 이 저장소의 `Client/Bin/Debug/Client.exe`에서 발생한 `0xc0000005`다. 각 실행의 `Client/Default/ClientStartup.user.log`는 Engine·렌더링·네트워크 초기화·ImGui·폰트·Effect catalog·UI·Lobby와 최종 `Initialize ready`까지 성공했다. 초기 데이터 누락이나 접속 실패로 종료한 경우가 아니다.
+
+충돌 EXE의 PE timestamp는 WER와 같고 로컬 PDB의 RSDS GUID/age도 일치했다. LLVM으로 첫 RVA `0x19821f0`은 `std::_Ref_count_base::_Decref`, 나머지 `0x199af48`은 문자열 `assign`으로 해석했다. WER 보고서는 남아 있으나 덤프는 삭제돼 실제 native 호출 스택을 확보하지 못했다. 증거는 `out/DebugStartup20260924/crash-evidence.json`, `windows-application-crash-events.json`, `startup-three-crashes.txt`에 보존했다.
+
+실제 빌드 결함은 camera draft 제거 뒤의 CMainApp 클래스 배치와 이전 Debug OBJ의 혼합이다. MainApp.h는 08:33:59에 변경됐지만 직접 소비자 36개 중 28개의 Debug OBJ가 07:29~07:41 상태였다. 이 28개의 `CL.read.1.tlog` 기록에는 소스와 Client.pch만 있고 MainApp.h가 없었다. 최신 MainApp 생성·초기화 뒤 첫 프레임은 이전 `MainApp_RenderingLighting.obj`의 `UpdateLightingPreview → StopLightingPreview`를 호출한다. 이 함수는 이동된 문자열과 shared_ptr 멤버에 접근하므로 기존 offset으로 접근하면 위 오류가 발생할 수 있다. Release의 36개 소비자는 모두 최신 헤더 시각 이후의 OBJ이며 헤더 의존성도 기록돼 있었다.
+
+이전 Product 빌드 PASS는 컴파일러·링커 종료 성공이었으며, 누락된 header tracking 때문에 서로 다른 클래스 배치가 섞인 문제를 잡지 못했다. 이 결과를 실행 정상으로 볼 수 없음을 정정한다. Movie는 기본 닫힌 F1 안에서만 호출되고 Balance Update는 null guard 뒤에 있어 이번 첫 프레임 충돌 우회 대상으로 바꾸지 않았다.
+
+복구 전후 대조는 `mainapp-dependencies-before.json` / `mainapp-dependencies-after.json`이다. 원인이 확인된 Debug OBJ 28개만 `out/DebugStartup20260924/previous-debug-objects`에 격리하고 기존 read/write/command tracking을 진단용으로 복사했다. 원본 tracking, PCH, 소스 timestamp와 다른 산출물은 지우거나 조작하지 않았다. 동일 VS18 Insiders / v143 14.44.35207의 정상 Debug Product Build로 해당 28개를 다시 컴파일했다. 재컴파일 뒤 Debug/Release 모두 36개 직접 소비자가 MainApp.h를 추적하고 해당 헤더보다 최신 OBJ임을 확인했다. 추적 누락을 최초로 만든 명령은 보존된 로그로 확정할 수 없어 PCH 자체나 특정 pull 명령의 문제로 단정하지 않는다.
+
+- Debug Product: PASS, `out/BuildPipeline/runs/20260924T041443638Z-debug-product.json`.
+- Client 실제 변경: OBJ 28개, PCH 0개, CSO 0개, EXE 링크 1개. Client build 17.497초.
+- 설치 Debug EXE: `Client/Bin/Debug/Client.exe`, 2026-09-24 13:14:42 KST.
+- 변경 기능·리소스·runtime DataFiles는 이전 상태를 유지하며 C++ 제품 로직 수정은 없다.
+- Git 추적 밖 debugger endpoint는 초기 자동 동기화 후 사용자가 앞서 지정한 `172.27.160.1`로 복구했다. 이번 AV는 endpoint와 별개다.
+- Client 실행은 사용자가 수행한다. 새 EXE의 실제 로비 표시 확인은 아직 응답 대기다.

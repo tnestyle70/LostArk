@@ -14,6 +14,7 @@
 
 namespace LostArk::Server
 {
+	struct KOUKUSAYDON_LOGIC_LEDGER;
 	// The existing root-motion consumer owns this vertical phase for one Pattern.
 	struct SERVER_ALBION_AIRBORNE_STATE final
 	{
@@ -197,6 +198,7 @@ namespace LostArk::Server
 		// Immutable staged child reuses the existing brain/root consumer while
 		// this entity keeps the parent Pattern, HP, identity and Logic ledger.
 		std::shared_ptr<const SERVER_WORLD_ENTITY> KoukuDirectionPlayback;
+		std::shared_ptr<KOUKUSAYDON_LOGIC_LEDGER> KoukuContactLedger;
 		std::uint32_t iKoukuDirectionEndTick = 0u;
 		bool bKoukuDirectionPlaybackComplete = false;
 		/* Auxiliary ghosts use their own deterministic occurrence identity and

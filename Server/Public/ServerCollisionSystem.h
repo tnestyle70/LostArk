@@ -100,6 +100,11 @@ namespace LostArk::Server
 			LostArk::Shared::NET_ENTITY_ID ignoredBodyId =
 				LostArk::Shared::INVALID_NET_ENTITY_ID,
 			bool allowBodySlide = true) const;
+		/* A clicked point inside the same body this step reaches is an arrival
+		at its boundary. Goals beyond a body keep the normal sliding route. */
+		bool Is_PlayerMoveBlockedAtGoalBody(
+			const SERVER_PLAYER& player, float proposedX, float proposedY,
+			float proposedZ, float goalY) const;
 		bool Resolve_PlayerMove(
 			const SERVER_PLAYER& player,
 			float proposedX,

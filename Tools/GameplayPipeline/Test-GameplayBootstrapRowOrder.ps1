@@ -4,7 +4,7 @@ param()
 # Exercise the actual publisher sorter without publishing or starting the Server.
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
-$publisher = Join-Path $PSScriptRoot 'Publish-GameplayBalance.ps1'
+$publisher = Join-Path $PSScriptRoot '../KoukuSaydonPipeline/KoukuBootstrapRows.ps1'
 $tokens = $null
 $parseErrors = $null
 $ast = [Management.Automation.Language.Parser]::ParseFile(
@@ -100,6 +100,33 @@ function Assert-ExistingDependencyOrder {
     foreach ($count in $stages.Values) { Assert-Condition ($count -eq 32) 'Stage actions are incomplete.' }
 }
 
+function Assert-ParentChildOrder {
+    param([string[]]$Rows)
+    $ends = @{}
+    $seen = @{}
+    $lastOwner = ''
+    foreach ($row in $Rows) {
+        $fields = $row.Split("`t")
+        if ($fields[0] -cne 'PATTERNPARENTCHILD') { continue }
+        $owner = $fields[1..2] -join "`t"
+        if (-not $ends.ContainsKey($owner)) {
+            $ends[$owner] = [uint64]0
+            $seen[$owner] = 0
+        } elseif ($lastOwner -cne $owner) {
+            throw "Parent child owners are interleaved: $owner"
+        }
+        Assert-Condition ([uint64]$fields[5] -ge $ends[$owner]) `
+            "Parent child time order is invalid: $owner"
+        $ends[$owner] = [uint64]$fields[5] + [uint64]$fields[6]
+        $seen[$owner]++
+        $lastOwner = $owner
+    }
+    Assert-Condition ($seen.Count -eq 3) 'Parent child owner coverage changed.'
+    foreach ($count in $seen.Values) {
+        Assert-Condition ($count -eq 3) 'Parent child count changed.'
+    }
+}
+
 function Assert-RowBytesPreserved {
     param([string[]]$Before, [string[]]$After)
     # Base64 keys compare every UTF-8 byte, including tabs, numeric spellings and
@@ -180,6 +207,20 @@ foreach ($owner in $owners) {
     }
     $index++
 }
+# Stable IDs are identities, not chronology: a later edit can insert .44/.45
+# before .30. Numeric times 9/10/100 also reject lexicographic time ordering.
+foreach ($owner in @(
+    @('encounter.2', 'pattern.2'),
+    @('encounter.2', 'pattern.10'),
+    @('encounter.10', 'pattern.2')
+)) {
+    $rows.Add((@('PATTERNPARENTCHILD') + $owner +
+        @('child.30', 'target.2', '100', '1', '1')) -join "`t")
+    $rows.Add((@('PATTERNPARENTCHILD') + $owner +
+        @('child.45', 'target.10', '10', '90', '0')) -join "`t")
+    $rows.Add((@('PATTERNPARENTCHILD') + $owner +
+        @('child.44', 'target.2', '9', '1', '0')) -join "`t")
+}
 # Repeated uninterpreted rows also retain their original bytes and multiplicity.
 $rows.Add("ORDER_FIXTURE`t0002`t-0.000`t1e-05")
 $rows.Add("ORDER_FIXTURE`t0002`t-0.000`t1e-05")
@@ -199,6 +240,7 @@ foreach ($seed in @(7, 19, 20260915)) {
     })
     Assert-ShowtimeOrder $sorted $showtimeCounts
     Assert-ExistingDependencyOrder $sorted
+    Assert-ParentChildOrder $sorted
     Assert-RowBytesPreserved $before $sorted
 }
 
@@ -210,6 +252,13 @@ catch {
     $caughtOriginalFailure = $true
 }
 Assert-Condition $caughtOriginalFailure 'The original parent-order regression was not detected.'
+$caughtParentTimeFailure = $false
+try { Assert-ParentChildOrder @($before | Sort-Object) }
+catch {
+    if ($_.Exception.Message -notlike 'Parent child time order is invalid:*') { throw }
+    $caughtParentTimeFailure = $true
+}
+Assert-Condition $caughtParentTimeFailure 'The ID-before-time regression was not detected.'
 Write-Output (("PASS: actual publisher sort; {0} rows x 3 shuffles; 6 Showtime owners, " +
-    "128 random volleys, targets-only, byte preservation, World/Logic/Stage dependencies; " +
-    'original-order negative control rejected.') -f $before.Count)
+    "128 random volleys, targets-only, byte preservation, World/Logic/Stage dependencies, 3 Parent child owners; " +
+    'original-order and Parent ID-before-time negative controls rejected.') -f $before.Count)

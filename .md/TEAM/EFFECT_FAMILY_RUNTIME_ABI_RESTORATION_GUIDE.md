@@ -814,3 +814,13 @@ bound helper는 stationary affine root와 rigid camera를 요구한다. root 변
 미지원 source module·mesh/trail/light/screen/control은 fail-open한다. 새 source 기능이나 sprite VS
 변형을 추가할 때 이 admission을 함께 검토하고 모르는 변형을 기존 sphere에 조용히 포함하지 않는다.
 상세 지원 범위와 검증 증거는 [공통 최적화 RESULT](../GB/09-22/2026-09-22_BERN_RELEASE_PROFILER_OPTIMIZATION_RESULT.md)의 G07에 둔다.
+
+
+### Portable movie particle의 타일·충돌·이벤트
+
+기존 authored particle carrier는 SubUVSelect의 relative-age vector X/Y tile 선택과 Collision의
+FreezeRotation 완료를 소비한다. atlas dimensions는 양의 정수, SubImageSelect는 3성분을 요구한다.
+FreezeRotation은 이동·수명을 보존하고 후속 sprite/mesh 회전과 collision만 정지한다.
+수신자 없는 원본 generator는 bounded local no-op으로 보존하며 연결된 cycle과 queue 초과는
+계속 거부한다. codec와 playback 모두 sourceMaterialSlots를 포함한 element 실행 판정을 쓴다.
+실제 원본·PhysX·다섯 무비 증거는 [무비 RESULT](../GB/09-25/2026-09-25_FOUR_CLASS_SELECTION_MOVIES_IMPLEMENTATION_RESULT.md)의 G05/G07을 따른다.

@@ -69,6 +69,7 @@ float4 g_DyeRegionB = 1.f;
 float4 g_DyeRegionC = 1.f;
 
 #include "Shader_MapMaterialSurface.hlsli"
+#include "Shader_SourceFoliageWind.hlsli"
 #include "Shader_SourceCharacterMaterial.hlsli"
 #include "Shader_SourceMapForwardPrograms.hlsli"
 
@@ -134,6 +135,11 @@ VS_OUT VS_MAIN(VS_IN input)
             g_SourceCharacterTime*.09f)*6.283185f;
         output.vWorldPos.y+=(-sin(phase.x)-cos(phase.y))*
             g_SourceCharacterBaseConstants[63].x*input.vColor.b*.01f;
+        output.vPosition=mul(mul(output.vWorldPos,g_ViewMatrix),g_ProjMatrix);
+    }
+    if(g_SurfaceProgram==9u && g_SourceFoliageWindEnabled!=0u)
+    {
+        output.vWorldPos.xyz += SourceFoliageWorldOffset(output.vWorldPos.xyz,input.vColor,g_WorldMatrix);
         output.vPosition=mul(mul(output.vWorldPos,g_ViewMatrix),g_ProjMatrix);
     }
     output.vProjPos = output.vPosition;
@@ -928,6 +934,22 @@ PixelShader ChargeAfterimagePS = NULL;
 #define BINARY_STATIC_AFTERIMAGE_PASS_POLICY 2
 #endif
 
+// The completed frame's cursor query owns this payload, after every G-buffer
+// geometry/normal consumer. It never contributes scene color or lighting.
+float4 PS_MAIN_PICKING(VS_OUT input) : SV_TARGET0
+{
+    return float4(input.vWorldPos.xyz, 1.f);
+}
+
+// Picking belongs to the base program; source-material variants keep its ABI only.
+#if SOURCE_CHARACTER_PROGRAM_GROUP == 0
+PixelShader BinaryMeshPickingPS = compile ps_5_0 PS_MAIN_PICKING();
+#define BINARY_STATIC_PICKING_PASS_POLICY 1
+#else
+PixelShader BinaryMeshPickingPS = NULL;
+#define BINARY_STATIC_PICKING_PASS_POLICY 2
+#endif
+
 technique11 DefaultTechnique
 {
     pass DefaultPass
@@ -1163,5 +1185,36 @@ technique11 DefaultTechnique
         VertexShader = BinaryMeshVS;
         GeometryShader = NULL;
         PixelShader = BinaryMeshSourceTranslucentPS;
+    }
+    // Appended 25..27: opt-in transparent gameplay surfaces, color MRT = PickPos only.
+    pass PickingBackPass
+    < int ProgramVariantPass = BINARY_STATIC_PICKING_PASS_POLICY; >
+    {
+        SetRasterizerState(RS_Default);
+        SetDepthStencilState(DSS_Default, 0);
+        SetBlendState(BS_Default, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
+        VertexShader = BinaryMeshVS;
+        GeometryShader = NULL;
+        PixelShader = BinaryMeshPickingPS;
+    }
+    pass PickingFrontPass
+    < int ProgramVariantPass = BINARY_STATIC_PICKING_PASS_POLICY; >
+    {
+        SetRasterizerState(RS_Cull_CW);
+        SetDepthStencilState(DSS_Default, 0);
+        SetBlendState(BS_Default, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
+        VertexShader = BinaryMeshVS;
+        GeometryShader = NULL;
+        PixelShader = BinaryMeshPickingPS;
+    }
+    pass PickingTwoSidedPass
+    < int ProgramVariantPass = BINARY_STATIC_PICKING_PASS_POLICY; >
+    {
+        SetRasterizerState(RS_Cull_None);
+        SetDepthStencilState(DSS_Default, 0);
+        SetBlendState(BS_Default, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
+        VertexShader = BinaryMeshVS;
+        GeometryShader = NULL;
+        PixelShader = BinaryMeshPickingPS;
     }
 }

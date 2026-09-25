@@ -109,7 +109,11 @@ namespace Client::EffectDocumentCodecDetail
 	};
 	inline constexpr const char_t* DISTRIBUTION_PARAMETER_BINDING_TOKENS[] =
 	{
-		"none", "actionCue"
+		"none", "actionCue", "worldSample"
+	};
+	inline constexpr const char_t* DISTRIBUTION_PARAMETER_MODE_TOKENS[] =
+	{
+		"DIRECT", "NORMAL"
 	};
 	inline constexpr const char_t* SLOT_TOKENS[] =
 	{

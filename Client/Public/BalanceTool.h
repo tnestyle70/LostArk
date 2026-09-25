@@ -167,6 +167,9 @@ public:
 	bool Get_ValtanAuthoringView(VALTAN_PATTERN_TREE_VIEW& view, std::string& status) const;
 	bool Apply_ValtanCompositionDraftTransaction(const std::function<bool(std::string&)>& edit, std::string& status);
 	bool Upsert_ValtanSummonDraft(const std::string& patternId, const std::string& stageId, const VALTAN_COMBAT_OBJECT_EFFECT_VIEW& summon, std::string& status);
+	bool Clone_ValtanSummonDraft(const std::string& patternId, const std::string& stageId,
+		const VALTAN_COMBAT_OBJECT_EFFECT_VIEW& source, const std::string& sourceRevision,
+		uint32_t startMs, VALTAN_COMBAT_OBJECT_EFFECT_VIEW& created, std::string& status);
 	bool Remove_ValtanSummonDraft(const std::string& patternId, const std::string& stageId, const VALTAN_COMBAT_OBJECT_EFFECT_VIEW& summon, std::string& status);
 
 	bool Set_ValtanStageLightOccurrences(const std::string& patternId, const std::string& stageId, const std::vector<BOSS_STAGE_LIGHT_OCCURRENCE>& occurrences, std::string& status);
@@ -189,6 +192,8 @@ public:
 		const std::string& expectedRepositoryRevision,
 		std::string& status) const;
 	void Render();
+	// Collect numeric Save/Publish completion even while its window is hidden.
+	void Update_EmbeddedPanel();
 	/* Action Presentation Workbench consumes this narrow stable-ID boundary
 	   instead of reaching into Balance Tool widgets or constructing a second
 	   Valtan draft.  Both windows therefore edit and publish one in-memory
@@ -892,6 +897,8 @@ private:
 	std::vector<PATTERN_EDIT> m_patterns;
 	std::vector<ENCOUNTER_STATE_EDIT> m_encounterStates;
 	VALTAN_PATTERN_TREE_VIEW m_valtanPatternTree;
+	struct SUMMON_CLONE final { std::string sourceArchetypeId, archetypeId; };
+	std::vector<SUMMON_CLONE> m_valtanSummonClones;
 	std::vector<DAMAGE_EDIT> m_loadedDamageProfiles;
 	std::vector<BOSS_EDIT> m_loadedBosses;
 	VALTAN_PATTERN_TREE_VIEW m_loadedValtanPatternTree;

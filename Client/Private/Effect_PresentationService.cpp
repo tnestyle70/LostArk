@@ -264,6 +264,8 @@ namespace
 		f32_t fAmbientWorldRadius = 0.f;
 		f32_t fAmbientTickDelta = 0.f;
 		Client::EFFECT_FIXED_STEP_TRANSFORM_PROVIDER ExternalTransformProvider;
+		std::optional<float4x4_t> ExternalPresentationRoot;
+		std::optional<std::vector<EFFECT_PARAMETER_INPUT>> ExternalPresentationParameters;
 		bool_t bExternalHistorySampled = false;
 		std::string strLevelPlacementId;
 		bool_t bVehicleModelAnchors = false;
@@ -299,6 +301,14 @@ namespace
 	bool_t Commit_ExternalTransformHistorySample(
 		ACTIVE_EFFECT& Effect, std::string& strOutError)
 	{
+		if (Effect.ExternalPresentationParameters && !Effect.ExternalPresentationRoot)
+		{
+			strOutError = "Final particle parameters require a presentation root.";
+			return false;
+		}
+		// Validate the final held-age input before any historical simulation mutation.
+		if (Effect.ExternalPresentationParameters && !Effect.pObject->Validate_ParticleParameters(
+			*Effect.ExternalPresentationParameters, strOutError)) return false;
 		const f32_t fTarget = std::clamp(Effect.fPendingInitialSampleTimeSeconds,
 			0.f, Effect.pObject->Get_PreviewDurationSeconds());
 		const f64_t fClock = Effect.pObject->Get_PreviewFixedStepClockSeconds();
@@ -314,6 +324,14 @@ namespace
 				static_cast<f32_t>((std::max)(0.0, fDelta)),
 				Effect.ExternalTransformProvider, strOutError);
 		if (!bCommitted) return false;
+		// Refresh only the rendered frame after historical simulation has committed.
+		if (Effect.ExternalPresentationParameters)
+		{
+			if (!Effect.pObject->Set_PresentationSample(*Effect.ExternalPresentationRoot,
+				*Effect.ExternalPresentationParameters, strOutError)) return false;
+		}
+		else if (Effect.ExternalPresentationRoot)
+			Effect.pObject->Set_RootWorld(*Effect.ExternalPresentationRoot);
 		Effect.bExternalHistorySampled = true;
 		Effect.bPendingInitialSeek = false;
 		Effect.fElapsedCueTimeSeconds = fTarget;
@@ -5285,9 +5303,15 @@ bool_t Client::CEffectPresentationService::Seek_WorldRoot(
 	const f32_t fSampleTimeSeconds,
 	const EFFECT_FIXED_STEP_TRANSFORM_PROVIDER& TransformProvider,
 	const bool_t bRebuildHistory,
-	const f32_t fPlaybackEndSeconds)
+	const f32_t fPlaybackEndSeconds,
+	const float4x4_t* pPresentationRoot,
+	const std::vector<EFFECT_PARAMETER_INPUT>* pPresentationParameters)
 {
-	if (!Handle.Is_Valid() || !std::isfinite(fSampleTimeSeconds) ||
+	std::string parameterError;
+	if ((pPresentationParameters && (!pPresentationRoot || !TransformProvider ||
+		!CEffectDistribution::Validate_ParameterInputs(*pPresentationParameters, parameterError))) ||
+		(pPresentationRoot && (!TransformProvider || !Is_NonDegenerateAffineMatrix(*pPresentationRoot))) ||
+		!Handle.Is_Valid() || !std::isfinite(fSampleTimeSeconds) ||
 		fSampleTimeSeconds < 0.f || !std::isfinite(fPlaybackEndSeconds) || fPlaybackEndSeconds < 0.f)
 	{
 		return false;
@@ -5300,6 +5324,10 @@ bool_t Client::CEffectPresentationService::Seek_WorldRoot(
 			pending.Desc.fExternalPlaybackEndSeconds = fPlaybackEndSeconds;
 			pending.Desc.fInitialSampleTimeSeconds = fSampleTimeSeconds;
 			pending.Desc.ExternalTransformProvider = TransformProvider;
+			pending.Desc.ExternalPresentationRoot = pPresentationRoot ?
+				std::optional<float4x4_t>(*pPresentationRoot) : std::nullopt;
+			pending.Desc.ExternalPresentationParameters = pPresentationParameters ?
+				std::optional<std::vector<EFFECT_PARAMETER_INPUT>>(*pPresentationParameters) : std::nullopt;
 			return true;
 		}
 	}
@@ -5313,6 +5341,10 @@ bool_t Client::CEffectPresentationService::Seek_WorldRoot(
 			effect.fElapsedCueTimeSeconds = fSampleTimeSeconds;
 			effect.bPendingInitialSeek = true;
 			effect.ExternalTransformProvider = TransformProvider;
+			effect.ExternalPresentationRoot = pPresentationRoot ?
+				std::optional<float4x4_t>(*pPresentationRoot) : std::nullopt;
+			effect.ExternalPresentationParameters = pPresentationParameters ?
+				std::optional<std::vector<EFFECT_PARAMETER_INPUT>>(*pPresentationParameters) : std::nullopt;
 			if (bRebuildHistory || !TransformProvider) effect.bExternalHistorySampled = false;
 			return true;
 		}
@@ -5896,6 +5928,8 @@ bool_t Client::CEffectPresentationService::Spawn_Immediate(
 	Active.bLevelOwned = Desc.bLevelOwned;
 	Active.bExternallySampled = Desc.bExternallySampled;
 	Active.ExternalTransformProvider = Desc.ExternalTransformProvider;
+	Active.ExternalPresentationRoot = Desc.ExternalPresentationRoot;
+	Active.ExternalPresentationParameters = Desc.ExternalPresentationParameters;
 	Active.strLevelPlacementId = Desc.strLevelPlacementId;
 	Active.bVehicleModelAnchors = Desc.bVehicleModelAnchors;
 	if (Desc.bAllowOffscreenPause && Desc.bLevelOwned && Desc.bUseWorldRoot &&

@@ -40,11 +40,17 @@ class ComponentLightingTests(unittest.TestCase):
         self.assertEqual(result["colorSHA256"], hashlib.sha256(color).hexdigest())
         self.assertTrue(result["nativeTailCompletelyConsumed"])
 
-    def test_no_lod_is_source_absence_but_unverified_lightmap_kind_is_unsupported(self):
+    def test_no_lod_and_exact_null_lightmap_preserve_distinct_source_absence(self):
         self.assertEqual(subject.decode_native_lighting(bytes(4), reference)["status"], "NO_LOD_LIGHTING_DATA")
         no_lightmap = struct.pack("<4i", 1, 0, 0, 0) + bytes(5)
-        with self.assertRaises(subject.UnsupportedNative):
-            subject.decode_native_lighting(no_lightmap, reference)
+        null = subject.decode_native_lighting(no_lightmap, reference)
+        self.assertEqual(null["status"], "NULL_LIGHTMAP")
+        self.assertEqual(null["lodCount"], 1)
+        self.assertEqual(null["lightMapKind"], 0)
+        self.assertTrue(null["nativeTailCompletelyConsumed"])
+        for unknown in (no_lightmap+b"\0", no_lightmap[:-1]+b"\1", no_lightmap[:16]+b"\1"+bytes(4)):
+            with self.assertRaises(subject.UnsupportedNative):
+                subject.decode_native_lighting(unknown, reference)
         with self.assertRaises(ValueError):
             subject.decode_native_lighting(bytes(8), reference)
 

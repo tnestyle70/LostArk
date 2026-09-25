@@ -637,6 +637,7 @@ $balanceProfileSkills = @{}
 $balanceProfileBosses = @{}
 $balanceProfileStaggerScale = 0
 $balanceProfileMadnessAddPercent = -1
+$balanceProfileMadness = $null
 $balanceProfileDamage = @{}
 $balanceProfileBuffRows = [Collections.Generic.List[string]]::new()
 $balanceProfileBuffKeys = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
@@ -646,7 +647,7 @@ if (-not [string]::IsNullOrWhiteSpace($BalanceProfile)) {
     Assert-ExactProperties $balanceProfileDocument @(
         'schema','formatVersion','profileId','displayName','staggerGaugeScale',
         'players','skills','bosses','monsters',
-        'madnessGaugeAddPercent','damageProfiles','skillBuffs') 'balance profile document'
+        'madnessGaugeAddPercent','madness','damageProfiles','skillBuffs') 'balance profile document'
     Assert-JsonString $balanceProfileDocument.schema 'balance profile schema'
     Assert-JsonInteger $balanceProfileDocument.formatVersion 'balance profile formatVersion' 1 1
     if ($balanceProfileDocument.schema -ne 'lostark.balance-profile' -or
@@ -660,6 +661,19 @@ if (-not [string]::IsNullOrWhiteSpace($BalanceProfile)) {
         'balance profile madnessGaugeAddPercent' 0 100
     $balanceProfileMadnessAddPercent =
         [int]$balanceProfileDocument.madnessGaugeAddPercent
+    $madnessRows = @($balanceProfileDocument.madness)
+    if ($madnessRows.Count -ne 1 -or $madnessRows[0].policyId -cne 'KOUKUSAYDON') { throw 'Retail needs one KOUKUSAYDON Madness policy.' }
+    $balanceProfileMadness = $madnessRows[0]
+    Assert-ExactProperties $balanceProfileMadness @('policyId','damageGainPercent','ballGainPercent','ballMultiplierPercent','ballRadiusM','dollGainPercent','dollMultiplierPercent','dollRadiusM','specialIntervalMs') 'Madness tuning'
+    foreach ($field in @('damageGainPercent','ballMultiplierPercent','dollMultiplierPercent')) {
+        Assert-JsonInteger $balanceProfileMadness.$field "Madness $field" 0 10000
+    }
+    foreach ($field in @('ballGainPercent','dollGainPercent')) { Assert-JsonInteger $balanceProfileMadness.$field "Madness $field" 0 100 }
+    foreach ($field in @('ballRadiusM','dollRadiusM')) {
+        Assert-JsonNumber $balanceProfileMadness.$field "Madness $field"
+        if ([double]$balanceProfileMadness.$field -le 0 -or [double]$balanceProfileMadness.$field -gt 20) { throw "Madness $field must be in (0,20] metres" }
+    }
+    Assert-JsonInteger $balanceProfileMadness.specialIntervalMs 'Madness interval' 100 60000
     foreach ($entry in @($balanceProfileDocument.players)) {
         Assert-StableId $entry.characterClass 'balance profile player characterClass'
         if ($balanceProfilePlayers.ContainsKey([string]$entry.characterClass)) {
@@ -749,6 +763,7 @@ foreach ($profile in @($damageDocument.profiles)) {
     # ValueA and ValueB bracket one hit and the addend above is their mean, so this is
     # how far a landed hit rolls either side of it. Zero stays deterministic.
     $damageSpreadPercent = 0
+    $bossHealthBarDamage = 0
     $damageOverride = $balanceProfileDamage[[string]$profile.damageProfileId]
     if ($null -ne $damageOverride) {
         Assert-JsonInteger $damageOverride.attackCoefficientBp `
@@ -760,10 +775,16 @@ foreach ($profile in @($damageDocument.profiles)) {
         $damageCoefficientBp = [uint32]$damageOverride.attackCoefficientBp
         $damageAddend = [uint32]$damageOverride.damageAddend
         $damageSpreadPercent = [uint32]$damageOverride.damageSpreadPercent
+        if ($null -ne $damageOverride.PSObject.Properties['bossHealthBarDamage']) {
+            Assert-JsonInteger $damageOverride.bossHealthBarDamage `
+                'balance profile bossHealthBarDamage' 0 1000
+            $bossHealthBarDamage = [uint32]$damageOverride.bossHealthBarDamage
+        }
     }
-    $damageRows.Add(
-        ("DAMAGE`t$($profile.damageProfileId)`t$ratePercent`t$damageCoefficientBp" +
-         "`t$damageAddend`t$damageSpreadPercent"))
+    $damageRow = "DAMAGE`t$($profile.damageProfileId)`t$ratePercent`t$damageCoefficientBp" +
+        "`t$damageAddend`t$damageSpreadPercent"
+    if ($bossHealthBarDamage -gt 0) { $damageRow += "`t$bossHealthBarDamage" }
+    $damageRows.Add($damageRow)
 }
 
 
@@ -773,6 +794,15 @@ Assert-JsonString $skillDocument.schema 'skill document schema'
 Assert-JsonInteger $skillDocument.formatVersion 'skill document formatVersion' 3 3
 if ($skillDocument.schema -ne 'lostark.player-skills' -or $skillDocument.formatVersion -ne 3) {
     throw 'Player skill header is invalid.'
+}
+# A full-cast amount cannot be restarted by combo/hold/counter stages.
+foreach ($skill in @($skillDocument.skills)) {
+    $damageOverride = $balanceProfileDamage[[string]$skill.serverDamageProfileId]
+    if ($null -ne $damageOverride -and
+        $null -ne $damageOverride.PSObject.Properties['bossHealthBarDamage'] -and
+        $damageOverride.bossHealthBarDamage -gt 0 -and $skill.skillKind -cne 'ACTIVE') {
+        throw "Boss health-bar damage requires a single-stage ACTIVE skill: $($skill.skillId)"
+    }
 }
 if ($balanceProfileSkills.Count -gt 0) {
     foreach ($skill in @($skillDocument.skills)) {
@@ -3341,7 +3371,7 @@ $koukuTargetBindings = $null
 if (@($koukuEncounterDocument.patterns | Where-Object { $null -ne $_.PSObject.Properties['showtimeTargets'] -or $null -ne $_.PSObject.Properties['pursuitProjectiles'] }).Count -gt 0) {
     $koukuTargetBindings = Read-JsonDocument 'Data/Animation/Authored/KoukuSaydon/KoukuSaydon.patternbindings.json'
 }
-Add-KoukuBootstrapRows -Encounter $koukuEncounterDocument -Presentation $koukuTargetBindings -BossProfiles $bossDocument -Rows $patternRows -MadnessGaugeAddPercent $balanceProfileMadnessAddPercent
+Add-KoukuBootstrapRows -Encounter $koukuEncounterDocument -Presentation $koukuTargetBindings -BossProfiles $bossDocument -Rows $patternRows -MadnessGaugeAddPercent $balanceProfileMadnessAddPercent -MadnessTuning $balanceProfileMadness
 
 # Pattern/action/branch rows are projected directly from the current Source.
 # Specific historical rows are not an admission contract: adding a Stage or
@@ -5504,9 +5534,24 @@ $maximumGameplayBootstrapRows = [uint32]::Parse($maximumGameplayBootstrapRowsMat
 if ($rows.Count -eq 0 -or $rows.Count -gt $maximumGameplayBootstrapRows) {
     throw "Gameplay bootstrap row count must be in 1..$maximumGameplayBootstrapRows (got $($rows.Count))"
 }
-$gameplayBootstrapVersion = if ($rotationFormatVersion -eq 4) { 36 } elseif (
+$gameplayBootstrapVersion = if ($rotationFormatVersion -eq 4) { 37 } elseif (
 	$rotationFormatVersion -eq 3) { 21 } else { 18 }
 $lines = @("LOSTARK_GAMEPLAY_BOOTSTRAP`t$gameplayBootstrapVersion`t$($rows.Count)") + $rows
+$maximumGameplayBootstrapBytesMatch = [regex]::Match($gameplayRevisionContract,
+    'GAMEPLAY_BOOTSTRAP_MAX_BYTES\s*=\s*(\d+)u;')
+if (-not $maximumGameplayBootstrapBytesMatch.Success) { throw 'Shared gameplay bootstrap byte bound is missing.' }
+$maximumGameplayBootstrapBytes = [long]::Parse($maximumGameplayBootstrapBytesMatch.Groups[1].Value)
+$bootstrapEncoding = [Text.UTF8Encoding]::new($false)
+$bootstrapNewlineBytes = $bootstrapEncoding.GetByteCount([Environment]::NewLine)
+[long]$bootstrapByteCount = 0
+# WriteAllLines emits BOM-free UTF-8 with one platform newline per line, including the header and final row.
+foreach ($bootstrapLine in $lines) {
+    $bootstrapByteCount += [long]$bootstrapEncoding.GetByteCount([string]$bootstrapLine) + $bootstrapNewlineBytes
+    if ($bootstrapByteCount -gt $maximumGameplayBootstrapBytes) {
+        throw "Gameplay bootstrap byte size must be in 1..$maximumGameplayBootstrapBytes (got at least $bootstrapByteCount)"
+    }
+}
+Write-Host "Gameplay bootstrap bounds: $($rows.Count)/$maximumGameplayBootstrapRows rows, $bootstrapByteCount/$maximumGameplayBootstrapBytes bytes."
 
 if ($Mode -eq 'Publish') {
     $root = $resolvedOutputRoot
@@ -5519,7 +5564,7 @@ if ($Mode -eq 'Publish') {
     try {
 		$mutexName = Get-PublishDestinationMutexName $destination
 		$publishMutex = Enter-PublishDestinationMutex $mutexName
-        [IO.File]::WriteAllLines($staged, $lines, [Text.UTF8Encoding]::new($false))
+        [IO.File]::WriteAllLines($staged, $lines, $bootstrapEncoding)
 		$stagedHash = Get-PublishFileSha256 $staged
 		$matchesPublishedOutput = Test-PublishFileHash $destination $stagedHash `
 			'Gameplay balance bootstrap hash read'

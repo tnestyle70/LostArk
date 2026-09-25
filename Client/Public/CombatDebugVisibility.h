@@ -8,7 +8,7 @@
 
 NS_BEGIN(Client)
 
-/* One process-wide Debug presentation contract.  Every Client replication
+/* One process-wide developer presentation contract.  Every Client replication
    instance consumes a revisioned snapshot, so changing Levels cannot silently
    restore an older mixture of boss/player geometry switches. */
 struct COMBAT_DEBUG_VISIBILITY_SNAPSHOT final
@@ -20,11 +20,13 @@ struct COMBAT_DEBUG_VISIBILITY_SNAPSHOT final
 	bool_t bCounterProxy = true;
 	bool_t bPlayerSkillHitGeometry = true;
 	std::uint64_t iRevision = 0u;
+	bool_t bPlayerBodyCollider = false;
 
 	bool_t Has_SameVisibility(
 		const COMBAT_DEBUG_VISIBILITY_SNAPSHOT& Other) const
 	{
-		return bBossBodyCollider == Other.bBossBodyCollider &&
+		return bPlayerBodyCollider == Other.bPlayerBodyCollider &&
+			bBossBodyCollider == Other.bBossBodyCollider &&
 			bBossPatternHitPulse == Other.bBossPatternHitPulse &&
 			bBossStageGeometry == Other.bBossStageGeometry &&
 			bCombatObjectHit == Other.bCombatObjectHit &&

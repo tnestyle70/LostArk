@@ -5,7 +5,7 @@
 
 ## 1. 지금 바로 기억할 결론
 
-Debug/Release Client에서 `F1 -> Balance Test`를 열면 `Players / Skills / Damage / Bosses`에서
+Debug/Release Client에서 `F1 -> Balance Test`를 열면 `Players / Skills / Damage / Bosses / Madness`에서
 공용 수치를 편집하고 아래에서 실제 Server HP와 tick을 확인한다. 일반 수치 panel은 Valtan
 pattern source를 로드하지 않는다. Valtan Boss/Animation/Effect Tool이 소비하는 기존 typed
 authoring backend는 유지하며, `Valtan Authoring`의 패턴 편집과 공용 수치 draft는 서로 분리한다.
@@ -215,3 +215,54 @@ Server/Bin/Debug/Server.exe --contract-test
 
 완료 보고에서는 자동 검증과 수동 F1 smoke를 분리한다. Client를 실행하지 않았다면 Balance Test의
 시각/입력/저장 smoke를 PASS라고 쓰지 않는다.
+
+
+## Madness 수치 계약
+
+정본은 `Data/Balance/Profiles/Retail.balanceprofile.json`의 단일 `madness` row이며 stable ID는
+`policyId=KOUKUSAYDON`이다. 기존 `madnessGaugeAddPercent`는 패턴 기믹 penalty의 별도 override이므로
+피해/공/인형 배율로 재사용하지 않는다. 공용 scalar draft와 Save/Validate/Publish 절차는 같다.
+
+| 필드 | 초기값 | 의미/검증 |
+|---|---:|---|
+| damageGainPercent | 100 | HP 손실 대비 광기 변환 배율, 0~10000% |
+| ballGainPercent | 10 | 공 접촉 1회당 최대 광기 대비 기본량, 0~100% |
+| ballMultiplierPercent | 200 | 공 기본량에 곱할 배율, 0~10000% |
+| ballRadiusM | 2.0 | 공 접촉 원 반경, 0 초과~20m |
+| dollGainPercent | 10 | 인형 접촉 1회당 최대 광기 대비 기본량, 0~100% |
+| dollMultiplierPercent | 200 | 인형 기본량에 곱할 배율, 0~10000% |
+| dollRadiusM | 4.0 | 인형 양쪽 30도 sector 반경, 0 초과~20m |
+| specialIntervalMs | 1000 | 살아 있는 특수 오브젝트의 접촉 간격, 100~60000ms |
+
+Server 계산은 다음과 같다. Percent 100은 x1, 200은 x2다.
+
+```text
+damageGain = maximumGauge × actualHpLost / maximumHp × damageGainPercent / 100
+sourcePulse = maximumGauge × sourceGainPercent / 100 × sourceMultiplierPercent / 100
+total = clamp(previous + damageGain + sourcePulses + authoredMechanicGain, 0, maximumGauge)
+```
+
+실제 HP 손실은 방어/피해 버프·보호막·죽음 방지 뒤의 감소량이다. 무효 피격, 무적, 보호막으로
+전부 흡수한 피격은 피해 충전을 만들지 않는다. 소수 잔여값은 다음 피격/접촉까지 누적하며 변신·
+부활·관문 초기화 시 지운다. 최대 도달 시 기존 Server 변신 policy를 사용하고 이미 CLOWN인
+플레이어는 추가 충전하지 않는다. 쿠크 외 월드는 피해 배율을 0으로 둔다.
+
+공/인형 충전은 기존 damageable WORLD cue의 위치와 파괴 수명을 사용한다. 공은 원, 인형은
+저장된 placement yaw의 앞/뒤 30도 sector를 Shared collision primitive로 검사한다. 높이 2m를
+벗어난 플레이어, 마리오 내부, 사망·낙하·잡힘·binding 상태는 제외한다. 자연 pattern 종료 후
+살아 있는 오브젝트는 유지하고 파괴/취소/소유 보스 사망으로 충전을 끝낸다. 실제 회전하는
+mouth bone·화염 mesh 전체와 일치하는 collider 복원은 포함하지 않는다.
+
+근거는 원본 설치 LPK의 `ZoneContentsGauge[3708100]`(최대 100, 자동충전 0, hold 15000ms),
+`SkillBuff[4219994] -> SkillEffect[421991716] -> SkillEffect[421990117]`(NPC aura +10,
+1000ms, 원형 200cm), `MN_CDMD_00.loa att_battle_2_01 -> SkillEffect[422230501/502/504]`
+(인형 공격 400cm/30도)다. 피해 비례 변환 100%, 인형 광기 +10%, 공/인형 200%는
+PROJECT_TUNED다. 후자는 사용자의 증가 요청에 따른 초기값이며 원작의 정확한 계수라고
+주장하지 않는다. F1 panel에서 이 구분과 계산식을 함께 읽을 수 있다.
+
+Gameplay bootstrap v37의 publisher는 `KOUKUMADNESS` row의 최대/hold 뒤에 위 8개 수치를 순서대로
+기록한다. v37은 base 비교의 4-column row와 Retail의 12-column row만 허용하며 v36 이하를
+generation admission에서 거부한다. Server/Client는 Shared version/max-row(65536) 계약을 공유하고,
+Valtan generation parser도 같은 값을 사용한다. Server는 두 row variant를 검증하며 Sequence 메모리 draft가 활성
+Balance Test 수치를 projector 기본값으로 되돌리지 않도록 현재 수치 배율을 보존한다.
+게시 후 Server 재시작이 필요하며 Client는 snapshot만 소비한다.

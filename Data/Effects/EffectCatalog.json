@@ -6665,6 +6665,391 @@
       "effectAssetId": "effect.esther.wei.cameo.npc_sk_dochul.full.restore",
       "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
       "authoringPath": "Effects/Authored/effect.esther.wei.cameo.npc_sk_dochul.full.restore.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.card.match.contact.recovery",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.card.match.contact.recovery.effect.json"
+    },
+    {
+      "effectAssetId": "effect.classselect.artist.bfx_high_00.etc.par_d_dropink_01",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.classselect.artist.bfx_high_00.etc.par_d_dropink_01.effect.json"
+    },
+    {
+      "effectAssetId": "effect.classselect.artist.fx_cm_03.trail.par_d_mptrail_03",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.classselect.artist.fx_cm_03.trail.par_d_mptrail_03.effect.json"
+    },
+    {
+      "effectAssetId": "effect.classselect.artist.fx_cm_03.water.par_b_crane_01",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.classselect.artist.fx_cm_03.water.par_b_crane_01.effect.json"
+    },
+    {
+      "effectAssetId": "effect.classselect.artist.fx_cm_03.water.par_b_crane_04",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.classselect.artist.fx_cm_03.water.par_b_crane_04.effect.json"
+    },
+    {
+      "effectAssetId": "effect.classselect.artist.fx_cm_03.water.par_d_water_001_pr",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.classselect.artist.fx_cm_03.water.par_d_water_001_pr.effect.json"
+    },
+    {
+      "effectAssetId": "effect.classselect.artist.fx_pc_sdm_05.par_y_sdm_moondrawing_01_03",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.classselect.artist.fx_pc_sdm_05.par_y_sdm_moondrawing_01_03.effect.json"
+    },
+    {
+      "effectAssetId": "effect.classselect.artist.fx_pc_sdm_06.par_d_sdm_graffiti_05_rib",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.classselect.artist.fx_pc_sdm_06.par_d_sdm_graffiti_05_rib.effect.json"
+    },
+    {
+      "effectAssetId": "effect.classselect.artist.fx_pc_sdm_06.par_d_sdm_pond_02",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.classselect.artist.fx_pc_sdm_06.par_d_sdm_pond_02.effect.json"
+    },
+    {
+      "effectAssetId": "effect.classselect.artist.scene_a.fx.par_o_butterflydream_03_04_cine",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.classselect.artist.scene_a.fx.par_o_butterflydream_03_04_cine.effect.json"
+    },
+    {
+      "effectAssetId": "effect.classselect.artist.scene_a_lobby.sp.fx_n_sdm_flower_cine",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.classselect.artist.scene_a_lobby.sp.fx_n_sdm_flower_cine.effect.json"
+    },
+    {
+      "effectAssetId": "effect.classselect.artist.scene_a_lobby.sp.par_c_lightflare_09_cine",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.classselect.artist.scene_a_lobby.sp.par_c_lightflare_09_cine.effect.json"
+    },
+    {
+      "effectAssetId": "effect.classselect.artist.scene_a_lobby.sp.par_d_dropink_01_sp",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.classselect.artist.scene_a_lobby.sp.par_d_dropink_01_sp.effect.json"
+    },
+    {
+      "effectAssetId": "effect.classselect.artist.scene_a_lobby.sp.par_d_sdm_pond_71_sp",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.classselect.artist.scene_a_lobby.sp.par_d_sdm_pond_71_sp.effect.json"
+    },
+    {
+      "effectAssetId": "effect.classselect.artist.scene_a_lobby.sp.par_n_sdm_circle_01_01_sp",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.classselect.artist.scene_a_lobby.sp.par_n_sdm_circle_01_01_sp.effect.json"
+    },
+    {
+      "effectAssetId": "effect.classselect.artist.scene_a_lobby.sp.par_o_butterflydream_02_03_sp",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.classselect.artist.scene_a_lobby.sp.par_o_butterflydream_02_03_sp.effect.json"
+    },
+    {
+      "effectAssetId": "effect.classselect.artist.scene_a_lobby.sp.par_w_sdm_four_02_1_sp",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.classselect.artist.scene_a_lobby.sp.par_w_sdm_four_02_1_sp.effect.json"
+    },
+    {
+      "effectAssetId": "effect.classselect.artist.scene_a_lobby.sp.par_w_sdm_four_02_sp",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.classselect.artist.scene_a_lobby.sp.par_w_sdm_four_02_sp.effect.json"
+    },
+    {
+      "effectAssetId": "effect.classselect.artist.scene_a_lobby.sp.par_y_sdm_moondrawing_01_01_sp",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.classselect.artist.scene_a_lobby.sp.par_y_sdm_moondrawing_01_01_sp.effect.json"
+    },
+    {
+      "effectAssetId": "effect.classselect.artist.scene_a_lobby.sp.par_y_sdm_moondrawing_01_02_sp",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.classselect.artist.scene_a_lobby.sp.par_y_sdm_moondrawing_01_02_sp.effect.json"
+    },
+    {
+      "effectAssetId": "effect.classselect.dimensionmaster.bfx_low_13.leaf.par_l_sakura_01",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.classselect.dimensionmaster.bfx_low_13.leaf.par_l_sakura_01.effect.json"
+    },
+    {
+      "effectAssetId": "effect.classselect.dimensionmaster.fx_pc_swp_00.par_j_swp_jump_00_1",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.classselect.dimensionmaster.fx_pc_swp_00.par_j_swp_jump_00_1.effect.json"
+    },
+    {
+      "effectAssetId": "effect.classselect.dimensionmaster.fx_pc_swp_00.par_j_swp_jump_00_2",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.classselect.dimensionmaster.fx_pc_swp_00.par_j_swp_jump_00_2.effect.json"
+    },
+    {
+      "effectAssetId": "effect.classselect.dimensionmaster.fx_pc_swp_01.par_w_swp_jump_01_7",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.classselect.dimensionmaster.fx_pc_swp_01.par_w_swp_jump_01_7.effect.json"
+    },
+    {
+      "effectAssetId": "effect.classselect.dimensionmaster.fx_pc_swp_05.par_k_swp_instance_cam_03",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.classselect.dimensionmaster.fx_pc_swp_05.par_k_swp_instance_cam_03.effect.json"
+    },
+    {
+      "effectAssetId": "effect.classselect.dimensionmaster.fx_pc_swp_05.par_k_swp_tentdevider_flare_00_01",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.classselect.dimensionmaster.fx_pc_swp_05.par_k_swp_tentdevider_flare_00_01.effect.json"
+    },
+    {
+      "effectAssetId": "effect.classselect.dimensionmaster.scene_d.fx.par_j_swp_willowrend_swing_dt",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.classselect.dimensionmaster.scene_d.fx.par_j_swp_willowrend_swing_dt.effect.json"
+    },
+    {
+      "effectAssetId": "effect.classselect.dimensionmaster.scene_d.fx.par_q_shieldbreak_dt",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.classselect.dimensionmaster.scene_d.fx.par_q_shieldbreak_dt.effect.json"
+    },
+    {
+      "effectAssetId": "effect.classselect.dimensionmaster.scene_d.fx.par_q_shieldbreak_dt.psc1724",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.classselect.dimensionmaster.scene_d.fx.par_q_shieldbreak_dt.psc1724.effect.json"
+    },
+    {
+      "effectAssetId": "effect.classselect.dimensionmaster.bfx_low_13.leaf.par_l_sakura_01.psc1728",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.classselect.dimensionmaster.bfx_low_13.leaf.par_l_sakura_01.psc1728.effect.json"
+    },
+    {
+      "effectAssetId": "effect.classselect.dimensionmaster.bfx_low_13.leaf.par_l_sakura_01.psc1729",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.classselect.dimensionmaster.bfx_low_13.leaf.par_l_sakura_01.psc1729.effect.json"
+    },
+    {
+      "effectAssetId": "effect.classselect.lancemaster.bfx_high_01._pcselect.par_d_pcselect_fighteraura_01",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.classselect.lancemaster.bfx_high_01._pcselect.par_d_pcselect_fighteraura_01.effect.json"
+    },
+    {
+      "effectAssetId": "effect.classselect.lancemaster.bfx_low_00.dust.par_d_pcselect_duststop_01",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.classselect.lancemaster.bfx_low_00.dust.par_d_pcselect_duststop_01.effect.json"
+    },
+    {
+      "effectAssetId": "effect.classselect.lancemaster.bfx_low_02.glow.par_b_glow_param_001",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.classselect.lancemaster.bfx_low_02.glow.par_b_glow_param_001.effect.json"
+    },
+    {
+      "effectAssetId": "effect.classselect.lancemaster.bfx_low_03.lensflare.par_c_lightflare_07",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.classselect.lancemaster.bfx_low_03.lensflare.par_c_lightflare_07.effect.json"
+    },
+    {
+      "effectAssetId": "effect.classselect.lancemaster.bg_pcselect02.particle.par_d_pcselect_03",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.classselect.lancemaster.bg_pcselect02.particle.par_d_pcselect_03.effect.json"
+    },
+    {
+      "effectAssetId": "effect.classselect.lancemaster.bg_pcselect02.particle.par_d_pcselect_12_1",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.classselect.lancemaster.bg_pcselect02.particle.par_d_pcselect_12_1.effect.json"
+    },
+    {
+      "effectAssetId": "effect.classselect.lancemaster.bg_pcselect02.particle.par_d_pcselect_13",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.classselect.lancemaster.bg_pcselect02.particle.par_d_pcselect_13.effect.json"
+    },
+    {
+      "effectAssetId": "effect.classselect.lancemaster.fx_cm_00.dust.par_d_dust_007_pr",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.classselect.lancemaster.fx_cm_00.dust.par_d_dust_007_pr.effect.json"
+    },
+    {
+      "effectAssetId": "effect.classselect.lancemaster.fx_cm_00.dust.par_e_underdust_03_2",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.classselect.lancemaster.fx_cm_00.dust.par_e_underdust_03_2.effect.json"
+    },
+    {
+      "effectAssetId": "effect.classselect.lancemaster.fx_pc_fif_01.par_j_fif_ironfist_02_2",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.classselect.lancemaster.fx_pc_fif_01.par_j_fif_ironfist_02_2.effect.json"
+    },
+    {
+      "effectAssetId": "effect.classselect.lancemaster.fx_pc_fif_01.par_s_fif_earthqs_exp_01_2",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.classselect.lancemaster.fx_pc_fif_01.par_s_fif_earthqs_exp_01_2.effect.json"
+    },
+    {
+      "effectAssetId": "effect.classselect.lancemaster.fx_q_w_01.fx_par.par_q_attackgrass",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.classselect.lancemaster.fx_q_w_01.fx_par.par_q_attackgrass.effect.json"
+    },
+    {
+      "effectAssetId": "effect.classselect.lancemaster.fx_q_w_01.fx_par.par_q_attackgrassstop_01",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.classselect.lancemaster.fx_q_w_01.fx_par.par_q_attackgrassstop_01.effect.json"
+    },
+    {
+      "effectAssetId": "effect.classselect.lancemaster.fx_q_w_01.fx_par.par_q_attackgrassstop_01_01",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.classselect.lancemaster.fx_q_w_01.fx_par.par_q_attackgrassstop_01_01.effect.json"
+    },
+    {
+      "effectAssetId": "effect.classselect.lancemaster.fx_q_w_01.fx_par.par_q_attackgrassstop_01_02",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.classselect.lancemaster.fx_q_w_01.fx_par.par_q_attackgrassstop_01_02.effect.json"
+    },
+    {
+      "effectAssetId": "effect.classselect.lancemaster.scene_a_lobby.dr.par_d_pcselect_floatingember_02_cine",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.classselect.lancemaster.scene_a_lobby.dr.par_d_pcselect_floatingember_02_cine.effect.json"
+    },
+    {
+      "effectAssetId": "effect.classselect.lancemaster.scene_a_lobby.ft.par_j_vs_dusts_01_cine",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.classselect.lancemaster.scene_a_lobby.ft.par_j_vs_dusts_01_cine.effect.json"
+    },
+    {
+      "effectAssetId": "effect.classselect.lancemaster.scene_a_lobby.ft.par_o_fif_roundup_01_02_cine",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.classselect.lancemaster.scene_a_lobby.ft.par_o_fif_roundup_01_02_cine.effect.json"
+    },
+    {
+      "effectAssetId": "effect.classselect.lancemaster.scene_a_lobby.ft.par_o_fif_roundup_01_02_cine.psc913",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.classselect.lancemaster.scene_a_lobby.ft.par_o_fif_roundup_01_02_cine.psc913.effect.json"
+    },
+    {
+      "effectAssetId": "effect.classselect.lancemaster.scene_a_lobby.ft.par_o_fif_roundup_01_02_cine.psc968",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.classselect.lancemaster.scene_a_lobby.ft.par_o_fif_roundup_01_02_cine.psc968.effect.json"
+    },
+    {
+      "effectAssetId": "effect.classselect.lancemaster.fx_q_w_01.fx_par.par_q_attackgrassstop_01_01.psc1057",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.classselect.lancemaster.fx_q_w_01.fx_par.par_q_attackgrassstop_01_01.psc1057.effect.json"
+    },
+    {
+      "effectAssetId": "effect.classselect.lancemaster.fx_q_w_01.fx_par.par_q_attackgrassstop_01.psc1068",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.classselect.lancemaster.fx_q_w_01.fx_par.par_q_attackgrassstop_01.psc1068.effect.json"
+    },
+    {
+      "effectAssetId": "effect.classselect.lancemaster.fx_q_w_01.fx_par.par_q_attackgrassstop_01.psc1079",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.classselect.lancemaster.fx_q_w_01.fx_par.par_q_attackgrassstop_01.psc1079.effect.json"
+    },
+    {
+      "effectAssetId": "effect.classselect.lancemaster.fx_q_w_01.fx_par.par_q_attackgrassstop_01_01.psc1091",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.classselect.lancemaster.fx_q_w_01.fx_par.par_q_attackgrassstop_01_01.psc1091.effect.json"
+    },
+    {
+      "effectAssetId": "effect.classselect.lancemaster.fx_q_w_01.fx_par.par_q_attackgrassstop_01_01.psc1102",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.classselect.lancemaster.fx_q_w_01.fx_par.par_q_attackgrassstop_01_01.psc1102.effect.json"
+    },
+    {
+      "effectAssetId": "effect.classselect.lancemaster.fx_q_w_01.fx_par.par_q_attackgrassstop_01.psc1113",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.classselect.lancemaster.fx_q_w_01.fx_par.par_q_attackgrassstop_01.psc1113.effect.json"
+    },
+    {
+      "effectAssetId": "effect.classselect.lancemaster.fx_q_w_01.fx_par.par_q_attackgrassstop_01_02.psc1124",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.classselect.lancemaster.fx_q_w_01.fx_par.par_q_attackgrassstop_01_02.psc1124.effect.json"
+    },
+    {
+      "effectAssetId": "effect.classselect.lancemaster.bfx_high_01._pcselect.par_d_pcselect_fighteraura_01.psc1135",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.classselect.lancemaster.bfx_high_01._pcselect.par_d_pcselect_fighteraura_01.psc1135.effect.json"
+    },
+    {
+      "effectAssetId": "effect.classselect.lancemaster.fx_q_w_01.fx_par.par_q_attackgrassstop_01_01.psc1146",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.classselect.lancemaster.fx_q_w_01.fx_par.par_q_attackgrassstop_01_01.psc1146.effect.json"
+    },
+    {
+      "effectAssetId": "effect.classselect.lancemaster.fx_q_w_01.fx_par.par_q_attackgrass.psc1190",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.classselect.lancemaster.fx_q_w_01.fx_par.par_q_attackgrass.psc1190.effect.json"
+    },
+    {
+      "effectAssetId": "effect.classselect.lancemaster.fx_q_w_01.fx_par.par_q_attackgrassstop_01_02.psc1235",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.classselect.lancemaster.fx_q_w_01.fx_par.par_q_attackgrassstop_01_02.psc1235.effect.json"
+    },
+    {
+      "effectAssetId": "effect.classselect.lancemaster.bfx_low_02.glow.par_b_glow_param_001.psc1246",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.classselect.lancemaster.bfx_low_02.glow.par_b_glow_param_001.psc1246.effect.json"
+    },
+    {
+      "effectAssetId": "effect.classselect.lancemaster.fx_q_w_01.fx_par.par_q_attackgrassstop_01_02.psc1257",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.classselect.lancemaster.fx_q_w_01.fx_par.par_q_attackgrassstop_01_02.psc1257.effect.json"
+    },
+    {
+      "effectAssetId": "effect.classselect.lancemaster.bfx_low_02.glow.par_b_glow_param_001.psc1379",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.classselect.lancemaster.bfx_low_02.glow.par_b_glow_param_001.psc1379.effect.json"
+    },
+    {
+      "effectAssetId": "effect.classselect.lancemaster.bfx_low_00.dust.par_d_pcselect_duststop_01.psc1557",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.classselect.lancemaster.bfx_low_00.dust.par_d_pcselect_duststop_01.psc1557.effect.json"
+    },
+    {
+      "effectAssetId": "effect.classselect.lancemaster.bfx_low_00.dust.par_d_pcselect_duststop_01.psc1568",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.classselect.lancemaster.bfx_low_00.dust.par_d_pcselect_duststop_01.psc1568.effect.json"
+    },
+    {
+      "effectAssetId": "effect.classselect.lancemaster.bfx_low_00.dust.par_d_pcselect_duststop_01.psc1601",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.classselect.lancemaster.bfx_low_00.dust.par_d_pcselect_duststop_01.psc1601.effect.json"
+    },
+    {
+      "effectAssetId": "effect.classselect.lancemaster.bfx_low_02.glow.par_b_glow_param_001.psc1646",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.classselect.lancemaster.bfx_low_02.glow.par_b_glow_param_001.psc1646.effect.json"
+    },
+    {
+      "effectAssetId": "effect.classselect.warlord.bfx_high_01._pcselect.par_d_pcselect_floatingember_01",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.classselect.warlord.bfx_high_01._pcselect.par_d_pcselect_floatingember_01.effect.json"
+    },
+    {
+      "effectAssetId": "effect.classselect.warlord.bfx_high_01.sparkling.par_d_kayangel_spark_02",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.classselect.warlord.bfx_high_01.sparkling.par_d_kayangel_spark_02.effect.json"
+    },
+    {
+      "effectAssetId": "effect.classselect.warlord.bfx_low_05.snow.par_c_blizzard_002",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.classselect.warlord.bfx_low_05.snow.par_c_blizzard_002.effect.json"
+    },
+    {
+      "effectAssetId": "effect.classselect.warlord.fx_pc_gst_00.par_k_gst_airstrike_exp_01",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.classselect.warlord.fx_pc_gst_00.par_k_gst_airstrike_exp_01.effect.json"
+    },
+    {
+      "effectAssetId": "effect.classselect.warlord.fx_pc_msm_01.par_k_msm_arcanebolter_exp_08_01",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.classselect.warlord.fx_pc_msm_01.par_k_msm_arcanebolter_exp_08_01.effect.json"
+    },
+    {
+      "effectAssetId": "effect.classselect.warlord.fx_pc_msm_02.par_c_firehorse_03_1",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.classselect.warlord.fx_pc_msm_02.par_c_firehorse_03_1.effect.json"
+    },
+    {
+      "effectAssetId": "effect.classselect.warlord.scene_a_lobby.bk.par_j_groundspark_001_cine",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.classselect.warlord.scene_a_lobby.bk.par_j_groundspark_001_cine.effect.json"
+    },
+    {
+      "effectAssetId": "effect.classselect.warlord.scene_a_lobby.bk.par_q_firesh_bk_cine",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.classselect.warlord.scene_a_lobby.bk.par_q_firesh_bk_cine.effect.json"
     }
   ]
 }

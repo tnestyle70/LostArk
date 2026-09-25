@@ -106,11 +106,12 @@ namespace
 	bool Read_File(
 		const std::filesystem::path& path,
 		std::string& bytes,
-		std::string& status)
+		std::string& status,
+		const std::uint64_t maximumBytes = MAX_ARTIFACT_BYTES)
 	{
 		std::error_code error;
 		const std::uint64_t size = std::filesystem::file_size(path, error);
-		if (error || 0u == size || size > MAX_ARTIFACT_BYTES ||
+		if (error || 0u == size || size > maximumBytes ||
 			size > static_cast<std::uint64_t>(
 				(std::numeric_limits<std::streamsize>::max)()))
 		{
@@ -199,6 +200,11 @@ namespace
 		GameplayDataRevision& generationId,
 		std::string& status)
 	{
+		if (bytes.empty() || bytes.size() > LostArk::Shared::GAMEPLAY_BOOTSTRAP_MAX_BYTES)
+		{
+			status = "Gameplay.bootstrap byte size is outside the supported bound.";
+			return false;
+		}
 		if (!Hash_Bytes(bytes, gameplayRevision))
 		{
 			status = "Gameplay.bootstrap SHA-256 could not be calculated.";
@@ -846,7 +852,7 @@ namespace
 	{
 		std::string bootstrapBytes;
 		if (!Read_File(root / "Server/Bin/DataFiles/Gameplay/Gameplay.bootstrap",
-				bootstrapBytes, status))
+				bootstrapBytes, status, LostArk::Shared::GAMEPLAY_BOOTSTRAP_MAX_BYTES))
 		{
 			return false;
 		}

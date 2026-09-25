@@ -75,6 +75,42 @@ class SourceMapMaterialTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "undecoded MIC parameter"):
             subject.MaterialResolver.validate_instance_rows(props, decoded, "package.mat.mic")
 
+    def test_empty_resource_needs_pinned_parent_map_and_rejects_source_changes(self):
+        base = bytes(range(1, 17))
+        parsed = subject.shader_maps.parse_static_parameter_set(base + bytes(16), 0, [])
+        equality = subject.shader_maps.canonical_json_sha256(
+            subject.shader_maps.engine_equivalent_static_parameter_set(parsed))
+        full, parent, serial = "package.mat.child", "package.mat.base", b"original MIC"
+        package = SimpleNamespace(names=[], sha256="original-package")
+        resolved = {"baseId": base.hex(), "switches": {}, "unresolvedDefaults": []}
+        props = {"parent": {"value": 1}, "textureparametervalues": {"value": []}}
+        resolver = subject.MaterialResolver.__new__(subject.MaterialResolver)
+        resolver.parent_static_proofs = {}
+        resolver.parent_static_evidence = {"path": "reviewed-proof.json", "sha256": "pinned"}
+        with self.assertRaisesRegex(ValueError, "absent"):
+            resolver.inherited_static(full, parent, package, serial, b"", props, resolved)
+        proof = dict(sourceMaterial=full, parentMaterial=parent,
+            sourceSerialSha256=subject.digest(serial), sourcePackageSha256=package.sha256,
+            baseMaterialId=base.hex(), sourceNativeTailBytes=0,
+            allowedPropertyNames=sorted(props), engineEqualityStaticParameterSetSha256=equality,
+            nativeShaderMapContext={"engineEqualityStaticParameterSetSha256": equality},
+            sourceLocalVertexFactoryShaders=[{"shaderIdHex": "source-qualified"}])
+        resolver.parent_static_proofs[full] = proof
+        value = resolver.inherited_static(full, parent, package, serial, b"", props, resolved)
+        self.assertEqual(value["status"], "SOURCE_PROVED_PARENT_MAP_INHERITANCE")
+        for changed in (
+            (serial + b"changed", b"", props, resolved),
+            (serial, b"native resource", props, resolved),
+            (serial, b"", dict(props, bhasstaticpermutationresource={"value": True}), resolved),
+            (serial, b"", props, dict(resolved, switches={"enabled": False})),
+        ):
+            with self.subTest(changed=changed):
+                with self.assertRaises(ValueError):
+                    resolver.inherited_static(full, parent, package, *changed)
+        proof["nativeShaderMapContext"]["engineEqualityStaticParameterSetSha256"] = "other-key"
+        with self.assertRaisesRegex(ValueError, "shader-map key"):
+            resolver.inherited_static(full, parent, package, serial, b"", props, resolved)
+
 
 if __name__ == "__main__":
     unittest.main()

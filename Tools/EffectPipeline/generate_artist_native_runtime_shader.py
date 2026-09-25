@@ -289,8 +289,18 @@ for ordinal, selection in enumerate(selections):
     try:
         r=byid[selection['resolvedMaterial']]
         source_motion_blur = selection['sourcePS'] == 'b9fc10ac51695c41b71ae1807fe6a47d'
-        if r['sourceMaterial'] in ('fx_mastermaterial.fx_mi.fx_mm_onelayerdistortion_02_01_ad','fx_m_mi_j_00.fx_mi.fx_j_pa_hologram_01_01_tr'):
-            errors.append({'program':program,'material':r['sourceMaterial'],'occurrences':selection['occurrences'],'reason':'Explicit new engine/VF input requires closure: OneLayer clipZ and cb0[10].x; Hologram source-world varying, cb0[0].xyz origin and .w opacity, distinct source VS.'});continue
+        reviewed_sd_pair = {
+            'fx_mastermaterial.fx_mi.fx_mm_onelayerdistortion_02_01_ad':
+                ('5825675b4ffbc840ad691ec56973cf7e', 'eb2bcd5c8f3c6c49805ab689687b14f6'),
+            'fx_m_mi_j_00.fx_mi.fx_j_pa_hologram_01_01_tr':
+                ('c7afe261ee6b2342b612cebb098b1933', 'e0b5fe98a973904985c18256b8eb8f8b'),
+        }.get(r['sourceMaterial'])
+        if reviewed_sd_pair:
+            # Reuse SDNative374/375's recovered engine ABI, not a material-name
+            # fallback for other source permutations. Uniforms still come from
+            # this source map and this MIC's exact current values.
+            assert (selection['sourceVS'], selection['sourcePS']) == reviewed_sd_pair
+            assert selection['rendererShape'] == 'sprite'
 
         kouku_ice = (arguments.profile_domain == 'kouku' and
             selection['sourceVS'] == '5298fd1cc3a2f64dab8401a32a6bef3c' and
@@ -527,6 +537,14 @@ for ordinal, selection in enumerate(selections):
             # Guardian ALT V fixed-area impact and DragonDecal source permutations.
             'b319111a4ef50d40a6b4b960d6c835c7': ('5d79421dc8571c45aa49790f50274f51', 16, [0, 1, 2, 14, 15, 16, 17, 18]),
             '225313f3418d1644afd364c8fc464a7d': ('772e94581a5e6548b9529bc7cc103bca', None, [0, 1, 2]),
+            # Specialist selection pond/butterfly decals: original clip-depth,
+            # RGBA/opacity prefix; butterfly's sky expression is rows 19..21.
+            # Rows 17/18 are declared suffix padding unused by its native PS.
+            '91fd29777c6998448300eb5d573dd525': ('772e94581a5e6548b9529bc7cc103bca', None, [0, 1, 2]),
+            'ef68ae7aec8f94458ef2cbb3c6bafd2d': ('5d79421dc8571c45aa49790f50274f51', 19, [0, 1, 2, 17, 18, 19, 20, 21]),
+            # Warrior selection arcanebolter decal: same original projection
+            # prefix, sky rows 13..15, unused declared suffix padding 11/12.
+            '57983e11986fc848b45046b7922de2b2': ('5d79421dc8571c45aa49790f50274f51', 13, [0, 1, 2, 11, 12, 13, 14, 15]),
         }.get(sid) if decal else None
         if kouku_decal:
             assert selection['sourceVS'] == kouku_decal[0]
@@ -651,13 +669,15 @@ for ordinal, selection in enumerate(selections):
             # The original local VS exports LocalToWorld at TEXCOORD5; its
             # distortion PS then applies ViewProjection from CB1 itself.
             lines += ['    float4 projection[4]; [unroll] for(uint i=0u;i<4u;++i) projection[i]=input.sourceProjection[i];']
-        kouku_world_distortion = arguments.profile_domain == 'kouku' and sid == '2d8c822c88934149bfa9587fd772c1e8'
+        kouku_world_distortion = arguments.profile_domain == 'kouku' and sid in (
+            '2d8c822c88934149bfa9587fd772c1e8', '6ee267a9e874c343a3f8ce5f7a733a2a')
         if kouku_world_distortion:
-            assert selection['sourceVS'] in (
+            reviewed_vertices = (
                 '48f2462ce60a75419377f4ac51e71569',
                 '959f42f324748b4386aab65adea222f9',
-                'f560771685f7254fb3e269da6253d5d9'), ('Unreviewed world-position distortion VS', selection['sourceVS'])
-            assert bindings['constantBufferClosure']['unownedConstantBuffer0Slots'] == []
+                'f560771685f7254fb3e269da6253d5d9') if sid == '2d8c822c88934149bfa9587fd772c1e8' else ('140465382862754d99c15d13bf230261',)
+            assert selection['sourceVS'] in reviewed_vertices, ('Unreviewed world-position distortion VS', selection['sourceVS'])
+            assert bindings['constantBufferClosure']['unownedConstantBuffer0Slots'] == ([] if sid == '2d8c822c88934149bfa9587fd772c1e8' else [0])
             assert 'dcl_constantbuffer CB1[4], immediateIndexed' in declarations
             # These original ribbon/sprite VSs export unprojected position at
             # TEXCOORD5 and apply CB1 only to SV_POSITION. Their PS projects
@@ -683,7 +703,8 @@ for ordinal, selection in enumerate(selections):
                           '    float4 projection[4]; [unroll] for(uint i=0u;i<4u;++i) projection[i]=input.sourceProjection[i];']
             lines += [f'    source[{sky}]=float4(input.skyUpperColor,0.f);', f'    source[{sky+1}]=float4(input.skyLowerColor,0.f);', f'    source[{sky+2}]=float4(input.ambientColor,input.skyIntensity);']
         guardian_world_position = sid in (
-            '6c98ffeb71f43947910f9d868cbb2b55', 'c33eb51395d71c4b804cf843eee2a488')
+            '6c98ffeb71f43947910f9d868cbb2b55', 'c33eb51395d71c4b804cf843eee2a488',
+            'e0b5fe98a973904985c18256b8eb8f8b')
         guardian_world_to_local = sid in (
             '34ab808091791e4ea33d0193d9a46f79', 'c33eb51395d71c4b804cf843eee2a488')
         if guardian_world_position:
@@ -695,6 +716,15 @@ for ordinal, selection in enumerate(selections):
             assert selection['rendererShape'] == 'sprite'
             assert bindings['constantBufferClosure']['unownedConstantBuffer0Slots'] == [0,1,2,3]
             lines += ['    [unroll] for(uint row=0u;row<3u;++row) source[1u+row]=g_ArtistSourceWorldToLocal[row];']
+        if sid == 'eb2bcd5c8f3c6c49805ab689687b14f6':
+            assert reviewed_sd_pair and bindings['constantBufferClosure']['unownedConstantBuffer0Slots'] == [0, 10]
+            lines += ['    source[10].x=0.f; // Existing SDNative374 project neutral scene attenuation; NOT a recovered source default.',
+                      '    // Zero distortion/emission must preserve SceneColor: Scene*(1-x)=Scene requires x=0.']
+        if sid == '9aa5e61191a9654290657484e8c9cae6':
+            assert mesh and selection['sourceVS'] == 'e520045fc771e74d9a67d28b8621c46c'
+            assert bindings['bindingSemanticSha256'] == 'b1c5843f0ae303f802f881a8db7cadfc0f9f4f07209bcd93ceedade1e3a7589c'
+            assert bindings['constantBufferClosure']['unownedConstantBuffer0Slots'] == [0]
+            lines += ['    source[0]=input.dynamicParameter; // Original local-mesh distortion dynamic parameter prefix.']
         if sid == 'eaac28d26f446743a4f6e0a035d6cfb6':
             assert selection['rendererShape'] == 'sprite' and selection['sourceVS'] == '5825675b4ffbc840ad691ec56973cf7e'
             assert bindings['constantBufferClosure']['unownedConstantBuffer0Slots'] == [0,1,2]
@@ -797,6 +827,10 @@ for ordinal, selection in enumerate(selections):
                 '52f3a078c5510e46a8de35cbed7fda61', 'fb6f0054b2bc094ab3b058418968b930',
                 # Terpeion wing ghost skin: CB2[3]/CB2[4] diffuse/specular overrides only.
                 '5f33bef7c823444d8983ab12adf5b7bb',
+                # Fighter earth-impact opaque fragment: row 4 feeds only o5
+                # specular MRT after the final RT0 write; row 3 is the existing
+                # neutral diffuse override. Exact LocalVF/prefix above applies.
+                '3a96e00bdfda46489bb6aa32ae1ac89c',
                 # Ninave Esther arrow mesh fx_l_me_transition_05_8_ma: CB2[3]/CB2[4]
                 # are colour scale/offset (mad) overrides only, same shape as the wing.
                 '77a224a19f03dd4683b192b1134b4832')), ('Unreviewed source pass constants', sid, pass_count)
@@ -952,6 +986,7 @@ for ordinal, selection in enumerate(selections):
              'nativeTwoSided':r['parentProperties'].get('twosided',{}).get('value',False),
              'staticSwitches':r.get('mic',{}).get('staticParameterSet',{}).get('staticSwitchParameters',[])}
         row['modelCue']=model
+        row['usesOneLayerDistortion'] = sid == 'eb2bcd5c8f3c6c49805ab689687b14f6'
         if selection.get('sourceTransformMesh'):
             assert mesh and not model and selection.get('sourceStaticMeshComponents')
             row['sourceTransformMesh'] = True

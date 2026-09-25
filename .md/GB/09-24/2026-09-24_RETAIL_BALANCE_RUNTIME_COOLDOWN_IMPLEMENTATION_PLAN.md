@@ -23,3 +23,9 @@ Shared의 cooldown mode enum, 요청/결과, player snapshot mode와 cooldown du
 Kill Current Gate Boss의 Release 전용 거부를 제거하되 현재 session/world/gate, primary boss, stale HUD와 sequence 검증 및 정상 death 소비자는 유지한다. Debug/Release가 같은 계약을 검증한다.
 
 focused packet round-trip/잘못된 enum, room 기본 정책/전원 전환/기존 cooldown 보존, active HUD duration, profile field save/CAS/rollback을 검사한다. 제품 빌드·게시·commit은 root가 수행한다. Client/UI와 4인 화면 검증은 사용자가 직접 한다. 실제 실행 증거는 대응 RESULT에 기록한다.
+
+## G04. 공용 게시의 World 출력 누락 보정
+
+G1 HP flow를 공식 게시하면서 Kouku spawn-group에만 base 몬스터 수치가 남아 있던 것을 확인했다. `Publish-BalanceRuntimeSet.ps1`은 World publisher가 staging에 생성한 여섯 world와 optional spawn-group 중 네 world만 최종 교체했다. 기존 transaction의 targets에 실제 생성된 모든 `*.worldbootstrap`과 `*.spawngroupsbootstrap`을 정렬해 포함하고, generation/Gameplay/Items와 같은 promotion 및 역순 rollback을 적용한다. 새 배포 경로를 만들지 않는다.
+
+`test_balance_test_transaction.py`의 임시 저장소 fixture에서 실제 통합 스크립트·writer admission·File.Replace를 실행한다. Kouku 및 spawn-group을 포함한 전체 출력의 동일 generation 게시, 후반 promotion 실패와 최종 source revision 변경 시 이전 bytes 복원을 검증한다. 제품 프로세스와 설치 데이터는 변경하지 않는다. C++와 프로젝트 등록 변경은 없으며 기존 공식 Kouku 게시가 이미 완료됐으므로 이 보정 자체의 검증은 isolated fixture로 수행한다.

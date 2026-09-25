@@ -382,11 +382,14 @@ namespace Client::EffectDocumentCodecDetail
 		const bool_t bSourceContract,
 		std::string& strOutError)
 	{
+		const auto* pParameterBinding = Value.Find("parameterBinding");
+		const bool_t bLegacyWorldParameter = !bSourceContract && pParameterBinding &&
+			pParameterBinding->Is_String() && pParameterBinding->Get_String() == "worldSample";
 		if (!bSourceContract)
 		{
 			constexpr const char_t* SourceOnlyFields[] = {
 				"referenceId", "occurrenceId", "payloadStatus", "fidelity",
-				"executionAdmission", "parameterBinding", "parameterName"
+				"executionAdmission"
 			};
 			for (const char_t* pField : SourceOnlyFields)
 			{
@@ -397,11 +400,17 @@ namespace Client::EffectDocumentCodecDetail
 					return false;
 				}
 			}
+			if (!bLegacyWorldParameter && (pParameterBinding || Value.Find("parameterName") ||
+				Value.Find("parameterMapping")))
+			{
+				strOutError = "Legacy Effect distribution only admits explicit WORLD particle parameter bindings.";
+				return false;
+			}
 		}
-		if (bSourceContract && !Validate_ExactFields(Value,
+		if ((bSourceContract || bLegacyWorldParameter) && !Validate_ExactFields(Value,
 			{ "propertyPath", "referenceId", "occurrenceId", "payloadStatus",
 				"fidelity", "executionAdmission", "sourceClass", "sourceObjectPath",
-				"parameterBinding", "parameterName", "componentCount",
+				"parameterBinding", "parameterName", "parameterMapping", "componentCount",
 				"operation", "randomLockAxes", "lookupTableChunkSize",
 				"lookupTableNumElements", "lookupTableTimeScale",
 				"lookupTableStartTime", "defaultMinimum", "defaultMaximum",
@@ -456,7 +465,7 @@ namespace Client::EffectDocumentCodecDetail
 		{
 			return false;
 		}
-		if (bSourceContract)
+		if (bSourceContract || bLegacyWorldParameter)
 		{
 			const Client::DATA_JSON_VALUE* pBinding = Value.Find(
 				"parameterBinding");
@@ -479,7 +488,7 @@ namespace Client::EffectDocumentCodecDetail
 				Out.strParameterName = pName->Get_String();
 				if ((Client::EFFECT_DISTRIBUTION_PARAMETER_BINDING::NONE ==
 						Out.eParameterBinding && !Out.strParameterName.empty()) ||
-					(Client::EFFECT_DISTRIBUTION_PARAMETER_BINDING::ACTION_CUE ==
+					(Client::EFFECT_DISTRIBUTION_PARAMETER_BINDING::NONE !=
 						Out.eParameterBinding && Out.strParameterName.empty()))
 				{
 					strOutError =
@@ -493,6 +502,36 @@ namespace Client::EffectDocumentCodecDetail
 					"Non-ParticleParameter distribution carries source binding fields.";
 				return false;
 			}
+		}
+		const auto* pMapping = Value.Find("parameterMapping");
+		const bool_t bWorldParameter = Out.eParameterBinding ==
+			Client::EFFECT_DISTRIBUTION_PARAMETER_BINDING::WORLD_SAMPLE;
+		if (bWorldParameter != (pMapping != nullptr))
+		{ strOutError = "WORLD particle parameter mapping and binding disagree."; return false; }
+		if (pMapping)
+		{
+			if (!pMapping->Is_Object() || !Validate_ExactFields(*pMapping,
+				{ "modes", "minInput", "maxInput", "minOutput", "maxOutput" },
+				"WORLD particle parameter mapping", strOutError) ||
+				(Out.iComponentCount != 1u && Out.iComponentCount != 3u))
+			{ if (strOutError.empty()) strOutError = "WORLD particle parameter mapping shape is invalid."; return false; }
+			Client::EFFECT_PARAMETER_MAPPING_DESC Mapping;
+			const auto* pModes = pMapping->Find("modes");
+			if (!pModes || !pModes->Is_Array() || pModes->Get_Array().size() != Out.iComponentCount ||
+				!Read_Array(*pMapping, "minInput", &Mapping.vMinInput.x, Out.iComponentCount, strOutError) ||
+				!Read_Array(*pMapping, "maxInput", &Mapping.vMaxInput.x, Out.iComponentCount, strOutError) ||
+				!Read_Array(*pMapping, "minOutput", &Mapping.vMinOutput.x, Out.iComponentCount, strOutError) ||
+				!Read_Array(*pMapping, "maxOutput", &Mapping.vMaxOutput.x, Out.iComponentCount, strOutError))
+			{ if (strOutError.empty()) strOutError = "WORLD particle parameter mapping values are invalid."; return false; }
+			for (const auto& ValueMode : pModes->Get_Array())
+			{
+				Client::EFFECT_PARAMETER_MODE Mode = Client::EFFECT_PARAMETER_MODE::END;
+				if (!ValueMode.Is_String() || !Parse_Token(ValueMode.Get_String(),
+					DISTRIBUTION_PARAMETER_MODE_TOKENS, std::size(DISTRIBUTION_PARAMETER_MODE_TOKENS), Mode))
+				{ strOutError = "WORLD particle parameter mode is unsupported."; return false; }
+				Mapping.Modes.push_back(Mode);
+			}
+			Out.ParameterMapping = std::move(Mapping);
 		}
 		const Client::DATA_JSON_VALUE* pRandomLockAxes =
 			Value.Find("randomLockAxes");
@@ -563,7 +602,7 @@ namespace Client::EffectDocumentCodecDetail
 			}
 			Out.Keys.push_back(std::move(Key));
 		}
-		return true;
+		return !bWorldParameter || Client::CEffectDistribution::Validate(Out, strOutError);
 	}
 
 	bool_t Validate_ElementMaterial(const Client::EFFECT_ELEMENT_DESC& Element,

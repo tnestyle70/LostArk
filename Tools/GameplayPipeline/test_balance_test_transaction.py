@@ -113,6 +113,31 @@ class BalanceTestTransaction(unittest.TestCase):
         profile["players"] = [{"characterClass": "LANCE_MASTER", "attackPower": attack, "criticalChancePercent": 70, "futureField": 17}]
         self.write(PROFILE, profile)
 
+    def test_madness_tuning_merges_numeric_fields_and_preserves_unrelated_edits(self):
+        profile = json.loads((self.root / PROFILE).read_text())
+        profile["madness"] = [{"policyId": "KOUKUSAYDON", "damageGainPercent": 100,
+                              "ballMultiplierPercent": 200, "dollMultiplierPercent": 200,
+                              "ballRadiusM": 2.0, "futureField": 17}]
+        self.write(PROFILE, profile)
+        result = self.run_draft([
+            {"document": PROFILE, "domain": "madness", "id": "KOUKUSAYDON", "field": "damageGainPercent", "before": 100, "value": 150},
+            {"document": PROFILE, "domain": "madness", "id": "KOUKUSAYDON", "field": "ballRadiusM", "before": 2.0, "value": 2.5}])
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        actual = json.loads((self.root / PROFILE).read_text())["madness"][0]
+        self.assertEqual((actual["damageGainPercent"], actual["ballRadiusM"]), (150, 2.5))
+        self.assertEqual((actual["ballMultiplierPercent"], actual["dollMultiplierPercent"], actual["futureField"]), (200, 200, 17))
+
+    def test_madness_tuning_rejects_a_same_field_concurrent_edit(self):
+        profile = json.loads((self.root / PROFILE).read_text())
+        profile["madness"] = [{"policyId": "KOUKUSAYDON", "dollMultiplierPercent": 300}]
+        self.write(PROFILE, profile)
+        before = (self.root / PROFILE).read_bytes()
+        result = self.run_draft([
+            {"document": PROFILE, "domain": "madness", "id": "KOUKUSAYDON", "field": "dollMultiplierPercent", "before": 200, "value": 250}])
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("CONFLICT", result.stderr)
+        self.assertEqual(before, (self.root / PROFILE).read_bytes())
+
     def test_retail_and_base_fields_save_together_without_erasing_unknown_fields(self):
         self.retail_player()
         result = self.run_draft([
@@ -161,6 +186,123 @@ class BalanceTestTransaction(unittest.TestCase):
         result = self.run_draft()
         self.assertNotEqual(result.returncode, 0)
         self.assertEqual(before, [(self.root / name).read_bytes() for name in (SOURCE, RECEIPT)])
+
+
+class BalanceRuntimeSetPublication(unittest.TestCase):
+    """Run the production promotion/rollback with isolated publisher outputs."""
+
+    WORLD_FILES = tuple(name + ".worldbootstrap" for name in (
+        "BERN", "VALTAN_ARENA", "KAKULSAYDON_ARENA", "TRAINING_GROUND",
+        "CHARACTER_SELECT_ARENA", "MAHARAKA")) + tuple(name + ".spawngroupsbootstrap" for name in (
+        "VALTAN_ARENA", "KAKULSAYDON_ARENA", "CHARACTER_SELECT_ARENA"))
+    REVISION = "a" * 64
+
+    def setUp(self):
+        self.temporary = tempfile.TemporaryDirectory(prefix="LostArkBalancePublish-")
+        self.addCleanup(self.temporary.cleanup)
+        self.root = Path(self.temporary.name)
+        for relative in (
+            "Tools/GameplayPipeline/Publish-BalanceRuntimeSet.ps1",
+            "Tools/GameplayPipeline/Publish-FileTransaction.ps1",
+            "Tools/ValtanPipeline/ValtanCanonicalWriterAdmission.psm1",
+        ):
+            path = self.root / relative
+            path.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(ROOT / relative, path)
+        (self.root / "revision.txt").write_text(self.REVISION, encoding="utf-8")
+        (self.root / "Tools/ValtanPipeline/valtan_tuning_pipeline.py").write_text(
+            "import json,pathlib\n"
+            "root=pathlib.Path(__file__).resolve().parents[2]\n"
+            "print(json.dumps({'ok':True,'command':'SOURCE_MANIFEST','payload':"
+            "{'sourceManifestId':(root/'revision.txt').read_text()}}))\n", encoding="utf-8")
+        self.fixture_publisher("Tools/GameplayPipeline/Publish-GameplayBalance.ps1",
+            ("Gameplay.bootstrap", "ValtanPresentationGenerations/" + self.REVISION + ".json"), retail=True)
+        self.fixture_publisher("Tools/WorldPipeline/Publish-WorldGameplay.ps1", self.WORLD_FILES, retail=True)
+        self.fixture_publisher("Tools/GameplayPipeline/Publish-ItemCatalog.ps1", ("Items.bootstrap",))
+        self.runtime = self.root / "Server/Bin/DataFiles"
+        self.outputs = (
+            "Gameplay/ValtanPresentationGenerations/" + self.REVISION + ".json",
+            "Gameplay/Gameplay.bootstrap",
+            *("World/" + name for name in self.WORLD_FILES),
+            "Items/Items.bootstrap",
+        )
+        for relative in self.outputs:
+            if relative == "World/KAKULSAYDON_ARENA.spawngroupsbootstrap":
+                continue  # Rollback must restore absence as well as old bytes.
+            path = self.runtime / relative
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(("previous:" + relative).encode())
+        self.before = self.snapshot()
+
+    def fixture_publisher(self, relative, names, retail=False, after_publish=""):
+        path = self.root / relative
+        path.parent.mkdir(parents=True, exist_ok=True)
+        literals = ",".join("'" + name + "'" for name in names)
+        path.write_text(
+            "param([string]$Mode,[string]$OutputRoot,[string]$BalanceProfile,"
+            "[int]$ExternalCanonicalWriterPid,[string]$ExternalCanonicalWriterNonce)\n"
+            + ("if ($BalanceProfile -cne 'Retail') { throw 'Retail profile not forwarded' }\n" if retail else "")
+            + "if ($Mode -ne 'Publish') { return }\n"
+            "$root = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '../..'))\n"
+            f"foreach ($name in @({literals})) {{\n"
+            "$path = Join-Path (Join-Path $root $OutputRoot) $name\n"
+            "[IO.Directory]::CreateDirectory([IO.Path]::GetDirectoryName($path)) | Out-Null\n"
+            f"[IO.File]::WriteAllText($path, 'published:{self.REVISION}:' + $name)\n"
+            "}\n" + after_publish, encoding="utf-8")
+
+    def snapshot(self):
+        return {relative: (self.runtime / relative).read_bytes() if (self.runtime / relative).exists() else None
+                for relative in self.outputs}
+
+    def run_publish(self, failure=0):
+        return subprocess.run(["powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File",
+            str(self.root / "Tools/GameplayPipeline/Publish-BalanceRuntimeSet.ps1"),
+            "-Mode", "Publish", "-ExpectedValtanSourceRevision", self.REVISION,
+            "-FailureAfterPromote", str(failure)], cwd=self.root,
+            capture_output=True, text=True, errors="replace", timeout=45)
+
+    def assert_clean_transaction(self):
+        self.assertFalse(list(self.runtime.glob(".balance-runtime-set.staging.*")))
+        self.assertFalse(list(self.runtime.rglob("*.rollback.*")))
+
+    def test_publish_promotes_kouku_and_every_staged_world_and_spawn_group(self):
+        result = self.run_publish()
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        for relative, content in self.snapshot().items():
+            with self.subTest(output=relative):
+                self.assertIsNotNone(content)
+                self.assertTrue(content.startswith(("published:" + self.REVISION + ":").encode()))
+        self.assertIn("9 world/spawn-group outputs", result.stdout)
+        self.assert_clean_transaction()
+
+    def test_failure_after_all_promotions_restores_every_output_and_new_file_absence(self):
+        result = self.run_publish(failure=len(self.outputs))
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("Injected balance runtime set failure", result.stderr)
+        self.assertEqual(self.snapshot(), self.before)
+        self.assert_clean_transaction()
+
+    def test_missing_required_world_rejects_before_any_runtime_promotion(self):
+        for missing in ("BERN", "VALTAN_ARENA", "TRAINING_GROUND", "CHARACTER_SELECT_ARENA", "KAKULSAYDON_ARENA"):
+            with self.subTest(world=missing):
+                self.fixture_publisher("Tools/WorldPipeline/Publish-WorldGameplay.ps1",
+                    tuple(name for name in self.WORLD_FILES if name != missing + ".worldbootstrap"), retail=True)
+                result = self.run_publish()
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn("Balance runtime staged output is missing", result.stderr)
+                self.assertIn(missing + ".worldbootstrap", result.stderr)
+                self.assertEqual(self.snapshot(), self.before)
+                self.assert_clean_transaction()
+
+    def test_final_source_revision_change_rolls_back_kouku_and_spawn_groups(self):
+        self.fixture_publisher("Tools/GameplayPipeline/Publish-ItemCatalog.ps1", ("Items.bootstrap",),
+            after_publish="[IO.File]::WriteAllText((Join-Path $root 'revision.txt'), '" + "b" * 64 + "')\n")
+        result = self.run_publish()
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("STALE_REVISION", result.stderr)
+        self.assertEqual(self.snapshot(), self.before)
+        self.assertEqual((self.root / "revision.txt").read_text(), "b" * 64)
+        self.assert_clean_transaction()
 
 
 if __name__ == "__main__":

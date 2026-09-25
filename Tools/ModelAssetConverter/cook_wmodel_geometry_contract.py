@@ -39,6 +39,7 @@ WINT_UV1_VERSION_MINOR = 2
 WINT_SKINNED_UV_VERSION_MINOR = 3
 WINT_STATIC_UV2_VERSION_MINOR = 4
 WINT_SKINNED_BASIS_VERSION_MINOR = 5
+WINT_SKINNED_BASIS_UV_VERSION_MINOR = 6
 SKINNED_UV_HEADER = struct.Struct("<4sIII32s")
 STRIDE_SKINNED = 76
 STRIDE_SKINNED_BASIS = 80
@@ -1875,14 +1876,14 @@ def rebuild_wmodel(
 
 
 def parse_skinned_uv_wmodel(data: bytes) -> dict[str, Any]:
-    """Read skinned geometry, including the explicit WMSH 1.5 tangent sign.
+    """Read skinned geometry, including 1.5 basis and combined 1.6 basis/UV inputs.
 
     This validates payload shape, not the original-source identity of UV values.
     Callers must establish the source-to-runtime vertex join before cooking.
     """
     require(len(data) >= FILE_HEADER.size + MODEL_HEADER.size, "skinned WModel is truncated")
     magic, major, minor, flags, size = FILE_HEADER.unpack_from(data)
-    require(magic == b"WINT" and major == 1 and minor in (0, 3, 5)
+    require(magic == b"WINT" and major == 1 and minor in (0, 3, 5, 6)
             and flags == 0 and size == len(data) - FILE_HEADER.size,
             "skinned WModel WINT header is invalid")
     model = MODEL_HEADER.unpack_from(data, FILE_HEADER.size)
@@ -1912,17 +1913,17 @@ def parse_skinned_uv_wmodel(data: bytes) -> dict[str, Any]:
     header = MESH_HEADER.unpack_from(mesh, FILE_HEADER.size)
     _, subcount, bones, vertex_flags, stride, vcount, icount, istride, bounds, reserved = header
     base_flags = VF_STATIC_BASE | VF_BONE_WEIGHT
-    allowed = base_flags | ((VF_TEXCOORD1 | VF_TEXCOORD2) if minor == 3 else 0)
-    if minor == WINT_SKINNED_BASIS_VERSION_MINOR:
+    allowed = base_flags | ((VF_TEXCOORD1 | VF_TEXCOORD2) if minor in (3, 6) else 0)
+    if minor in (WINT_SKINNED_BASIS_VERSION_MINOR, WINT_SKINNED_BASIS_UV_VERSION_MINOR):
         allowed |= VF_TANGENT_HANDEDNESS
-    expected_stride = STRIDE_SKINNED_BASIS if minor == WINT_SKINNED_BASIS_VERSION_MINOR else STRIDE_SKINNED
+    expected_stride = STRIDE_SKINNED_BASIS if minor in (WINT_SKINNED_BASIS_VERSION_MINOR, WINT_SKINNED_BASIS_UV_VERSION_MINOR) else STRIDE_SKINNED
     require(header[0] == b"WMSH" and 0 < subcount <= 2048 and 0 < bones <= 512
             and vcount <= 10_000_000
             and stride == expected_stride and istride in (2, 4) and bounds in (0, 1)
             and reserved == b"\0\0\0" and vertex_flags & base_flags == base_flags
             and vertex_flags & ~allowed == 0
-            and (minor != 3 or vertex_flags & VF_TEXCOORD1)
-            and (minor != 5 or vertex_flags & VF_TANGENT_HANDEDNESS),
+            and (minor not in (3, 6) or vertex_flags & VF_TEXCOORD1)
+            and (minor not in (5, 6) or vertex_flags & VF_TANGENT_HANDEDNESS),
             "skinned WMSH metadata or vertex format is invalid")
     vertex_start = FILE_HEADER.size + MESH_HEADER.size + subcount * SUBMESH_DESC.size
     index_start = vertex_start + vcount * stride
@@ -1943,26 +1944,6 @@ def parse_skinned_uv_wmodel(data: bytes) -> dict[str, Any]:
     if minor in (0, 5):
         require(legacy_end == len(mesh), "legacy skinned WMSH has trailing bytes")
         uv_rows = [{} for _ in submeshes]
-        if minor == 5:
-            for index in range(vcount):
-                row = vertex_start + index * stride
-                sign = struct.unpack_from("<f", mesh, row + 76)[0]
-                normal = struct.unpack_from("<3f", mesh, row + 12)
-                tangent = struct.unpack_from("<3f", mesh, row + 32)
-                normal_length2 = sum(v * v for v in normal)
-                tangent_length2 = sum(v * v for v in tangent)
-                require(all(math.isfinite(v) for v in (*normal, *tangent))
-                        and 1e-12 < normal_length2 <= 3.4028234663852886e38
-                        and 1e-12 < tangent_length2 <= 3.4028234663852886e38,
-                        "skinned source normal or tangent is degenerate")
-                normal = tuple(v / math.sqrt(normal_length2) for v in normal)
-                tangent = tuple(v / math.sqrt(tangent_length2) for v in tangent)
-                cross = (normal[1] * tangent[2] - normal[2] * tangent[1],
-                         normal[2] * tangent[0] - normal[0] * tangent[2],
-                         normal[0] * tangent[1] - normal[1] * tangent[0])
-                require(sign in (-1.0, 1.0) and all(math.isfinite(v) for v in (*normal, *tangent, *cross))
-                        and sum(v * v for v in cross) > 1e-12,
-                        "skinned source tangent basis or handedness is invalid")
     else:
         require(legacy_end + SKINNED_UV_HEADER.size <= len(mesh), "skinned UV header is truncated")
         uv_header = SKINNED_UV_HEADER.unpack_from(mesh, legacy_end)
@@ -1991,6 +1972,26 @@ def parse_skinned_uv_wmodel(data: bytes) -> dict[str, Any]:
             uv_rows.append(row_uv)
         require(cursor == len(payload) and aggregate == vertex_flags & (VF_TEXCOORD1 | VF_TEXCOORD2),
                 "skinned UV payload length or aggregate mask disagrees")
+    if minor in (5, 6):
+        for index in range(vcount):
+            row = vertex_start + index * stride
+            sign = struct.unpack_from("<f", mesh, row + 76)[0]
+            normal = struct.unpack_from("<3f", mesh, row + 12)
+            tangent = struct.unpack_from("<3f", mesh, row + 32)
+            normal_length2 = sum(v * v for v in normal)
+            tangent_length2 = sum(v * v for v in tangent)
+            require(all(math.isfinite(v) for v in (*normal, *tangent))
+                    and 1e-12 < normal_length2 <= 3.4028234663852886e38
+                    and 1e-12 < tangent_length2 <= 3.4028234663852886e38,
+                    "skinned source normal or tangent is degenerate")
+            normal = tuple(v / math.sqrt(normal_length2) for v in normal)
+            tangent = tuple(v / math.sqrt(tangent_length2) for v in tangent)
+            cross = (normal[1] * tangent[2] - normal[2] * tangent[1],
+                     normal[2] * tangent[0] - normal[0] * tangent[2],
+                     normal[0] * tangent[1] - normal[1] * tangent[0])
+            require(sign in (-1.0, 1.0) and all(math.isfinite(v) for v in (*normal, *tangent, *cross))
+                    and sum(v * v for v in cross) > 1e-12,
+                    "skinned source tangent basis or handedness is invalid")
     return {"modelHeader": (model[1], model[2], model[3], tuple(model[4:])),
             "sections": sections, "mesh": mesh, "meshHeader": header,
             "submeshes": submeshes, "vertexStart": vertex_start, "indexStart": index_start,
@@ -2004,7 +2005,8 @@ def cook_skinned_uv_contract(data: bytes, channels: dict[int, dict[str, list[tup
     no UV0 duplication or source-evidence flags are manufactured by this writer.
     """
     original = parse_skinned_uv_wmodel(data)
-    require(original["versionMinor"] == 0, "skinned UV cooker requires a legacy 1.0 input")
+    require(original["versionMinor"] in (0, WINT_SKINNED_BASIS_VERSION_MINOR),
+            "skinned UV cooker requires a legacy 1.0 or signed-basis 1.5 input")
     submeshes = original["submeshes"]
     require(bool(channels) and all(type(i) is int and 0 <= i < len(submeshes) for i in channels),
             "skinned UV submesh selection is invalid")
@@ -2036,7 +2038,8 @@ def cook_skinned_uv_contract(data: bytes, channels: dict[int, dict[str, list[tup
     content = bytearray(original["mesh"][FILE_HEADER.size:])
     struct.pack_into("<I", content, 12, original["meshHeader"][3] | aggregate)
     content.extend(tail)
-    mesh = FILE_HEADER.pack(b"WINT", 1, WINT_SKINNED_UV_VERSION_MINOR, 0, len(content)) + content
+    minor = WINT_SKINNED_BASIS_UV_VERSION_MINOR if original["versionMinor"] == WINT_SKINNED_BASIS_VERSION_MINOR else WINT_SKINNED_UV_VERSION_MINOR
+    mesh = FILE_HEADER.pack(b"WINT", 1, minor, 0, len(content)) + content
     result = rebuild_wmodel(original["modelHeader"], original["sections"], mesh)
     readback = parse_skinned_uv_wmodel(result)
     require(readback["mesh"][FILE_HEADER.size + MESH_HEADER.size:original["legacyEnd"]]
@@ -2046,10 +2049,88 @@ def cook_skinned_uv_contract(data: bytes, channels: dict[int, dict[str, list[tup
         require(old.type_id == new.type_id and old.index == new.index and old.name_bytes == new.name_bytes
                 and (old.type_id == 1 or old.payload == new.payload),
                 "skinned UV cook changed an existing non-mesh section")
-    return result, {"formatVersion": "1.3", "legacyVertexStride": STRIDE_SKINNED,
+    return result, {"formatVersion": f"1.{minor}", "legacyVertexStride": original["meshHeader"][4],
                     "legacyMeshStreamPreserved": True, "nonMeshSectionsPreserved": True,
                     "animationCount": original["modelHeader"][1], "submeshes": summaries,
                     "uvPayloadSha256": hashlib.sha256(payload).hexdigest()}
+
+
+def cook_skinned_basis_uv_contract(
+    data: bytes,
+    channels: dict[int, dict[str, list[tuple[float, float]]]],
+    tangent_signs: dict[int, list[float]],
+) -> tuple[bytes, dict[str, Any]]:
+    """Preserve exact joined source sign/UVs on an already normalized skin mesh.
+
+    This applies no basis/coordinate conversion. The caller owns the source
+    vertex join. Existing UVs and explicit signs must agree with supplied inputs;
+    missing source UVs remain absent. All original 76-byte vertex records survive.
+    """
+    original = parse_skinned_uv_wmodel(data)
+    submeshes, mesh = original["submeshes"], original["mesh"]
+    require(set(tangent_signs) == set(range(len(submeshes)))
+            and all(type(index) is int for index in tangent_signs),
+            "source tangent signs must cover every skinned submesh")
+    require(all(type(index) is int and 0 <= index < len(submeshes) for index in channels),
+            "skinned UV submesh selection is invalid")
+    merged = {index: dict(row) for index, row in enumerate(original["uvRows"])}
+    for index, row in channels.items():
+        require(set(row) <= {"TEXCOORD_1", "TEXCOORD_2"}, "unknown skinned source UV channel")
+        for name, values in row.items():
+            require(len(values) == submeshes[index][1]
+                    and all(len(uv) == 2 and all(math.isfinite(v) for v in uv) for uv in values),
+                    "skinned UV source count or finite float2 validation failed")
+            packed = b"".join(struct.pack("<2f", *uv) for uv in values)
+            if name in merged[index]:
+                require(packed == b"".join(struct.pack("<2f", *uv) for uv in merged[index][name]),
+                        "existing skinned UV channel disagrees with joined source")
+            merged[index][name] = values
+    blocks, descriptors, receipts = [], [], []
+    vertex_offset = 0
+    for index, desc in enumerate(submeshes):
+        signs = tangent_signs[index]
+        require(len(signs) == desc[1] and all(type(sign) in (int, float)
+                and sign in (-1.0, 1.0) for sign in signs),
+                "source tangent sign count or handedness is invalid")
+        records = []
+        for vertex, sign in enumerate(signs):
+            start = original["vertexStart"] + desc[0] + vertex * original["meshHeader"][4]
+            old = mesh[start:start + STRIDE_SKINNED]
+            packed = struct.pack("<f", sign)
+            if original["versionMinor"] in (5, 6):
+                require(mesh[start + STRIDE_SKINNED:start + STRIDE_SKINNED_BASIS] == packed,
+                        "existing tangent handedness disagrees with joined source")
+            records.append(old + packed)
+        block = b"".join(records)
+        replacement = list(desc)
+        replacement[0] = vertex_offset
+        descriptors.append(SUBMESH_DESC.pack(*replacement))
+        blocks.append(block)
+        vertex_offset += len(block)
+        receipts.append({"submeshIndex": index, "vertexCount": desc[1],
+                         "positiveHandedness": sum(sign > 0 for sign in signs),
+                         "negativeHandedness": sum(sign < 0 for sign in signs),
+                         "handednessSha256": hashlib.sha256(b"".join(struct.pack("<f", sign) for sign in signs)).hexdigest()})
+    header = list(original["meshHeader"])
+    header[3] = (header[3] & ~(VF_TEXCOORD1 | VF_TEXCOORD2)) | VF_TANGENT_HANDEDNESS
+    header[4] = STRIDE_SKINNED_BASIS
+    remainder = mesh[original["indexStart"]:original["legacyEnd"]]
+    content = MESH_HEADER.pack(*header) + b"".join(descriptors) + b"".join(blocks) + remainder
+    signed_mesh = FILE_HEADER.pack(b"WINT", 1, WINT_SKINNED_BASIS_VERSION_MINOR, 0, len(content)) + content
+    result = rebuild_wmodel(original["modelHeader"], original["sections"], signed_mesh)
+    uv_receipt = None
+    if any(merged.values()):
+        result, uv_receipt = cook_skinned_uv_contract(result, merged)
+    readback = parse_skinned_uv_wmodel(result)
+    require([section for section in original["sections"] if section.type_id != 1]
+            == [section for section in readback["sections"] if section.type_id != 1],
+            "skinned channel cook changed a non-mesh section")
+    require(readback["mesh"][readback["indexStart"]:readback["legacyEnd"]] == remainder,
+            "skinned channel cook changed indices, bone palette, or bounds")
+    return result, {"formatVersion": f"1.{readback['versionMinor']}",
+                    "sourceVertexJoinOwnedByCaller": True, "coordinateConversionApplied": False,
+                    "originalVertex76BytesPreserved": True, "indicesBonesBoundsPreserved": True,
+                    "nonMeshSectionsPreserved": True, "submeshes": receipts, "uv": uv_receipt}
 
 
 def cook_wmodel_geometry_contract(

@@ -314,9 +314,9 @@ def trail_history(evidence):
     write(evidence/'trail_source.json',dict(outer=outer,history=row,projection=history))
     return history
 
-def prepare_textures(evidence, required_path):
+def prepare_textures(evidence, required_path, resource_root=None):
     from PIL import Image
-    root=ROOT/'Client/Bin/Resources';required=read(required_path);byname=collections.defaultdict(list)
+    root=Path(resource_root) if resource_root is not None else ROOT/'Client/Bin/Resources';required=read(required_path);byname=collections.defaultdict(list)
     for p in root.rglob('*.dds'):byname[p.stem.lower()].append(p)
     result={};receipts=[]
     explicit={

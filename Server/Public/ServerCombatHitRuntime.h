@@ -36,6 +36,8 @@ namespace LostArk::Server
 		float fPushRangeM = 0.f;
 		std::uint32_t iPushMs = 0u;
 		std::uint32_t iServerTick = 0u;
+		// A typed boss health-bar amount bypasses armor, but not shields or immunity.
+		bool bHealthDamagePreResolved = false;
 	};
 
 	struct SERVER_WORLD_TO_PLAYER_HIT final
@@ -59,6 +61,8 @@ namespace LostArk::Server
 		them. Ordinary boss hits leave both false. */
 		bool bIgnoreDefense = false;
 		bool bIgnoreCounter = false;
+		// Server encounter failure verdict; bypasses all personal damage protection.
+		bool bEncounterWipe = false;
 	};
 
 	/* Buffs live next to the two damage directions because that is where they are
@@ -100,6 +104,7 @@ namespace LostArk::Server
 	class CServerCombatHitRuntime final
 	{
 	public:
+		static void Add_MadnessGauge(SERVER_PLAYER& target, double gain);
 		static SERVER_COMBAT_HIT_RESULT Apply_PlayerToWorld(
 			SERVER_WORLD_ENTITY& target,
 			const SERVER_PLAYER_TO_WORLD_HIT& hit,

@@ -277,7 +277,7 @@ namespace
 		std::string& status)
 	{
 		constexpr const char* bindingRelative =
-			"Data/Effects/V2/Bindings/BOSS_VALTAN.effectv2bindings.json";
+			"Data/Valtan/Published/BOSS_VALTAN.effectv2bindings.json";
 		Client::DATA_JSON_VALUE bindingRoot;
 		if (!Load_JsonFixture(
 				repositoryRoot / bindingRelative, bindingRoot, status))
@@ -699,7 +699,7 @@ int Run_ValtanPresentationGenerationAdmissionContractTests()
 		}
 
 		const std::string v2BindingRelative =
-			"Data/Effects/V2/Bindings/BOSS_VALTAN.effectv2bindings.json";
+			"Data/Valtan/Published/BOSS_VALTAN.effectv2bindings.json";
 		const std::string v2GroupRelative =
 			"Data/Effects/V2/Groups/boss.valtan.impact.effectv2group.json";
 		const std::string v2LeafRelative =
@@ -735,7 +735,7 @@ int Run_ValtanPresentationGenerationAdmissionContractTests()
 		};
 		const V2_REPLACE_CASE replaceCases[]{
 			{
-				"Data/Effects/V2/Bindings/BOSS_VALTAN.effectv2bindings.json",
+				"Data/Valtan/Published/BOSS_VALTAN.effectv2bindings.json",
 				"\"id\": \"boss.valtan.hand_1\"",
 				"\"id\": \"../boss.valtan.hand_1\"",
 				"BOSS_VALTAN Effect V2 bindings failed strict v2 admission: id must be a stable ID.",
@@ -789,8 +789,8 @@ int Run_ValtanPresentationGenerationAdmissionContractTests()
 		};
 		const V2_MISSING_CASE missingCases[]{
 			{
-				"Data/Effects/V2/Bindings/BOSS_VALTAN.effectv2bindings.json",
-				"BOSS_VALTAN Effect V2 bindings is missing or is not a regular file: Data/Effects/V2/Bindings/BOSS_VALTAN.effectv2bindings.json",
+				"Data/Valtan/Published/BOSS_VALTAN.effectv2bindings.json",
+				"BOSS_VALTAN Effect V2 bindings is missing or is not a regular file: Data/Valtan/Published/BOSS_VALTAN.effectv2bindings.json",
 				"missing BOSS_VALTAN Effect V2 binding artifact was not rejected exactly"
 			},
 			{

@@ -161,6 +161,62 @@
       "placementCount": 1356,
       "assetCount": 574,
       "runtimeAssetRoot": "Map/LV_LOBBY_CLASSSELECT_SL10"
+    },
+    {
+      "id": "LV_LOBBY_CLASSSELECT_SL01",
+      "kind": "product",
+      "catalogType": "single",
+      "sourceCatalog": "Data/Maps/Imported/LV_LOBBY_CLASSSELECT_SL01/LV_LOBBY_CLASSSELECT_SL01.mapassets",
+      "sourcePlacements": "Data/Maps/Authoring/LV_LOBBY_CLASSSELECT_SL01/LV_LOBBY_CLASSSELECT_SL01.mapplacements",
+      "sourceMaterials": "Data/Maps/Authoring/LV_LOBBY_CLASSSELECT_SL01/LV_LOBBY_CLASSSELECT_SL01.mapmaterials.json",
+      "catalog": "Client/Bin/DataFiles/Map/LV_LOBBY_CLASSSELECT_SL01.mapassets",
+      "placements": "Client/Bin/DataFiles/Map/LV_LOBBY_CLASSSELECT_SL01.mapplacements",
+      "materials": "Client/Bin/DataFiles/Map/LV_LOBBY_CLASSSELECT_SL01.mapmaterials.json",
+      "placementCount": 436,
+      "assetCount": 166,
+      "runtimeAssetRoot": "Map/LV_LOBBY_CLASSSELECT_SL01"
+    },
+    {
+      "id": "LV_LOBBY_CLASSSELECT_SL03",
+      "kind": "product",
+      "catalogType": "single",
+      "sourceCatalog": "Data/Maps/Imported/LV_LOBBY_CLASSSELECT_SL03/LV_LOBBY_CLASSSELECT_SL03.mapassets",
+      "sourcePlacements": "Data/Maps/Authoring/LV_LOBBY_CLASSSELECT_SL03/LV_LOBBY_CLASSSELECT_SL03.mapplacements",
+      "sourceMaterials": "Data/Maps/Authoring/LV_LOBBY_CLASSSELECT_SL03/LV_LOBBY_CLASSSELECT_SL03.mapmaterials.json",
+      "catalog": "Client/Bin/DataFiles/Map/LV_LOBBY_CLASSSELECT_SL03.mapassets",
+      "placements": "Client/Bin/DataFiles/Map/LV_LOBBY_CLASSSELECT_SL03.mapplacements",
+      "materials": "Client/Bin/DataFiles/Map/LV_LOBBY_CLASSSELECT_SL03.mapmaterials.json",
+      "placementCount": 509,
+      "assetCount": 137,
+      "runtimeAssetRoot": "Map/LV_LOBBY_CLASSSELECT_SL03"
+    },
+    {
+      "id": "LV_LOBBY_CLASSSELECT_SL08",
+      "kind": "product",
+      "catalogType": "single",
+      "sourceCatalog": "Data/Maps/Imported/LV_LOBBY_CLASSSELECT_SL08/LV_LOBBY_CLASSSELECT_SL08.mapassets",
+      "sourcePlacements": "Data/Maps/Authoring/LV_LOBBY_CLASSSELECT_SL08/LV_LOBBY_CLASSSELECT_SL08.mapplacements",
+      "sourceMaterials": "Data/Maps/Authoring/LV_LOBBY_CLASSSELECT_SL08/LV_LOBBY_CLASSSELECT_SL08.mapmaterials.json",
+      "catalog": "Client/Bin/DataFiles/Map/LV_LOBBY_CLASSSELECT_SL08.mapassets",
+      "placements": "Client/Bin/DataFiles/Map/LV_LOBBY_CLASSSELECT_SL08.mapplacements",
+      "materials": "Client/Bin/DataFiles/Map/LV_LOBBY_CLASSSELECT_SL08.mapmaterials.json",
+      "placementCount": 374,
+      "assetCount": 141,
+      "runtimeAssetRoot": "Map/LV_LOBBY_CLASSSELECT_SL08"
+    },
+    {
+      "id": "LV_LOBBY_CLASSSELECT_SL12",
+      "kind": "product",
+      "catalogType": "single",
+      "sourceCatalog": "Data/Maps/Imported/LV_LOBBY_CLASSSELECT_SL12/LV_LOBBY_CLASSSELECT_SL12.mapassets",
+      "sourcePlacements": "Data/Maps/Authoring/LV_LOBBY_CLASSSELECT_SL12/LV_LOBBY_CLASSSELECT_SL12.mapplacements",
+      "sourceMaterials": "Data/Maps/Authoring/LV_LOBBY_CLASSSELECT_SL12/LV_LOBBY_CLASSSELECT_SL12.mapmaterials.json",
+      "catalog": "Client/Bin/DataFiles/Map/LV_LOBBY_CLASSSELECT_SL12.mapassets",
+      "placements": "Client/Bin/DataFiles/Map/LV_LOBBY_CLASSSELECT_SL12.mapplacements",
+      "materials": "Client/Bin/DataFiles/Map/LV_LOBBY_CLASSSELECT_SL12.mapmaterials.json",
+      "placementCount": 1461,
+      "assetCount": 407,
+      "runtimeAssetRoot": "Map/LV_LOBBY_CLASSSELECT_SL12"
     }
   ],
   "editorSelection": {

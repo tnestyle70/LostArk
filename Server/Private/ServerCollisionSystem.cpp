@@ -502,6 +502,37 @@ bool LostArk::Server::CServerCollisionSystem::Sweep_CircleAgainstBody(
 	return true;
 }
 
+bool LostArk::Server::CServerCollisionSystem::Is_PlayerMoveBlockedAtGoalBody(
+	const SERVER_PLAYER& player, const float proposedX, const float proposedY,
+	const float proposedZ, const float goalY) const
+{
+	if (!player.hasMoveGoal || !std::isfinite(goalY) ||
+		!std::isfinite(proposedX) || !std::isfinite(proposedY) || !std::isfinite(proposedZ) ||
+		!std::isfinite(player.fPositionX) || !std::isfinite(player.fPositionY) || !std::isfinite(player.fPositionZ) ||
+		!std::isfinite(player.fMoveGoalX) || !std::isfinite(player.fMoveGoalZ))
+		return false;
+	const float goalCenterY = goalY + PLAYER_CENTER_OFFSET_Y;
+	for (const auto& body : m_BlockingBodies)
+	{
+		if (body.iNetEntityId == player.iNetEntityId ||
+			goalCenterY + PLAYER_HALF_EXTENT_Y < body.fCenterY - body.fHalfHeight ||
+			goalCenterY - PLAYER_HALF_EXTENT_Y > body.fCenterY + body.fHalfHeight)
+			continue;
+		const float dx = player.fMoveGoalX - body.fX;
+		const float dz = player.fMoveGoalZ - body.fZ;
+		const float radius = PLAYER_HALF_EXTENT_X + body.fRadius;
+		if (dx * dx + dz * dz >= radius * radius)
+			continue;
+		float hitRatio = 0.f;
+		if (Sweep_CircleAgainstBody(player.fPositionX, player.fPositionY,
+			player.fPositionZ, proposedX, proposedY, proposedZ,
+			PLAYER_HALF_EXTENT_X, PLAYER_HALF_EXTENT_Y, PLAYER_CENTER_OFFSET_Y,
+			body, hitRatio))
+			return true;
+	}
+	return false;
+}
+
 bool LostArk::Server::CServerCollisionSystem::Resolve_PlayerMove(
 	const SERVER_PLAYER& player,
 	const float proposedX,

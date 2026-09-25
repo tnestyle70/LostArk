@@ -1,5 +1,7 @@
 #include "imgui.h"
 #include "SequencerTool.h"
+#include "CompositionTimeline.h"
+#include <cmath>
 
 #include <algorithm>
 #include <array>
@@ -57,7 +59,10 @@ namespace
         {
             m_State = Read_State();
             if (!m_State.active || m_State.ownerToken != m_OwnerToken) m_OwnsPlayback = false;
-            if (!m_Scrubbing) m_EditMs = static_cast<float>(m_State.clockMs);
+            if (m_FollowPlayback && m_State.active && m_State.activeClassId == m_State.selectedClassId)
+                m_ViewLoop = m_State.looping;
+            m_Timeline = m_Callbacks.timeline ? m_Callbacks.timeline(m_State.selectedClassId, m_ViewLoop) : nullptr;
+            if (!m_Scrubbing) m_EditMs = MatchesPlayback() ? static_cast<float>(m_State.clockMs) : 0.f;
         }
 
         void Render_WorkbenchPane(const PANE pane) override
@@ -71,7 +76,7 @@ namespace
                     ImGui::Selectable("Character Select", true);
                     ImGui::EndCombo();
                 }
-                ImGui::Selectable("Guardian Knight / Intro + Loop", true);
+                Render_CategorySelector();
                 break;
             case PANE::TOOLBAR:
                 Render_Transport();
@@ -80,21 +85,22 @@ namespace
                 Render_Timeline();
                 break;
             case PANE::DETAILS:
-                ImGui::TextUnformatted("Guardian Knight");
-                ImGui::Text("Intro: %.3f s", m_State.introDurationMs * .001);
-                ImGui::Text("Loop: %.3f s", m_State.loopDurationMs * .001);
-                ImGui::TextWrapped("The intro plays once, then the loop repeats until Stop.");
-                ImGui::TextWrapped("Camera cuts, actor poses and effects use the same class-selection playback.");
+                Render_Details();
                 break;
             case PANE::RESOURCES:
-                ImGui::TextUnformatted("Character Select / Guardian Knight");
-                ImGui::BulletText("Camera cuts");
-                ImGui::BulletText("Character and dragon");
-                ImGui::BulletText("Stage and effects");
+                ImGui::Text("Character Select / %s", m_State.selectedLabel.c_str());
+                if (m_Timeline)
+                    for (const auto* kind : ROW_KINDS)
+                    {
+                        size_t count = 0;
+                        for (const auto& row : m_Timeline->rows) if (row.kind == kind) count += row.boxes.size();
+                        ImGui::BulletText("%s: %zu", kind, count);
+                    }
                 break;
             case PANE::PREVIEW:
-                ImGui::TextWrapped("Play shows the sequence in the current Character Select viewport.");
-                ImGui::TextWrapped("Stop restores the camera. Pause holds the sequence; drag the timeline to inspect a moment.");
+                ImGui::TextWrapped("Play opens the selected class movie on its original stage.");
+                ImGui::TextWrapped("All rows use Movie time. Source time preserves the original slow-motion curve.");
+                ImGui::TextWrapped("Select a box or camera key to inspect it. Pause and seek share the F1 movie player.");
                 break;
             default: break;
             }
@@ -102,11 +108,14 @@ namespace
 
         void End_WorkbenchFrame() override
         {
+            if (m_RequestedRate && m_Callbacks.setPlaybackRate)
+                (void)m_Callbacks.setPlaybackRate(*m_RequestedRate);
+            m_RequestedRate.reset();
             const auto command = std::exchange(m_Pending, COMMAND::NONE);
             switch (command)
             {
             case COMMAND::PLAY:
-                if (m_Callbacks.play && m_Callbacks.play()) Claim_Playback();
+                if (m_Callbacks.play && m_Callbacks.play()) { m_FollowPlayback = true; Claim_Playback(); }
                 break;
             case COMMAND::STOP:
                 if (m_Callbacks.stop) m_Callbacks.stop();
@@ -155,11 +164,40 @@ namespace
             m_Pending = COMMAND::SEEK;
         }
 
+        void Render_CategorySelector()
+        {
+            ImGui::BeginDisabled(!m_Callbacks.selectCategory || m_State.options.empty());
+            if (ImGui::BeginCombo("Category##ClassMovie", m_State.selectedLabel.c_str()))
+            {
+                for (std::size_t i = 0u; i < m_State.options.size(); ++i)
+                {
+                    const auto& option = m_State.options[i];
+                    ImGui::PushID(option.categoryId.c_str());
+                    const bool selected = i == m_State.selectedCategory;
+                    if (ImGui::Selectable(option.label.c_str(), selected) && m_Callbacks.selectCategory)
+                    {
+                        m_Callbacks.selectCategory(i);
+                        m_Scrubbing = false;
+                        m_Pending = COMMAND::NONE;
+                        m_State = Read_State();
+                        m_SelectedBox.clear(); m_SelectedRow.clear(); m_ViewLoop = false;
+                        m_Timeline = m_Callbacks.timeline ? m_Callbacks.timeline(m_State.selectedClassId, false) : nullptr;
+                    }
+                    if (selected) ImGui::SetItemDefaultFocus();
+                    ImGui::PopID();
+                }
+                ImGui::EndCombo();
+            }
+            ImGui::EndDisabled();
+        }
+
         void Render_Transport()
         {
-            ImGui::TextUnformatted("World / Character Select / Guardian Knight");
+            ImGui::TextUnformatted("World / Character Select");
+            Render_CategorySelector();
             ImGui::BeginDisabled(!m_State.available || !m_Callbacks.play);
-            if (ImGui::Button(m_State.active ? "Restart intro" : "Play")) m_Pending = COMMAND::PLAY;
+            const bool restarting = m_State.active && m_State.activeClassId == m_State.selectedClassId;
+            if (ImGui::Button(restarting ? "Restart intro" : "Play")) m_Pending = COMMAND::PLAY;
             ImGui::EndDisabled();
             ImGui::SameLine();
             ImGui::BeginDisabled(!m_State.active || !m_Callbacks.setPaused);
@@ -173,34 +211,185 @@ namespace
             ImGui::BeginDisabled(!m_State.active || !m_Callbacks.stop);
             if (ImGui::Button("Stop")) m_Pending = COMMAND::STOP;
             ImGui::EndDisabled();
+            Render_RateControl();
             if (!m_State.status.empty()) ImGui::TextWrapped("%s", m_State.status.c_str());
+        }
+
+
+        inline static constexpr std::array<const char*, 8> ROW_KINDS = {
+            "World Model", "Animation", "Camera", "Effect", "Material", "Light", "Sound", "Time Control"};
+
+        bool MatchesPlayback() const
+        { return m_State.active && m_State.activeClassId == m_State.selectedClassId && m_State.looping == m_ViewLoop; }
+
+        void Render_RateControl()
+        {
+            float rate = static_cast<float>(m_RequestedRate.value_or(m_State.playbackRate));
+            ImGui::BeginDisabled(!m_Callbacks.setPlaybackRate || !m_State.available);
+            ImGui::SetNextItemWidth(170.f);
+            if (ImGui::SliderFloat("Movie speed", &rate, .05f, 2.f, "%.2fx")) m_RequestedRate = rate;
+            ImGui::SameLine();
+            if (ImGui::SmallButton("1x")) m_RequestedRate = 1.;
+            ImGui::EndDisabled();
         }
 
         void Render_Timeline()
         {
-            ImGui::Text("%s / %.3f of %.3f s", m_State.looping ? "Loop" : "Intro",
-                m_State.clockMs * .001, m_State.durationMs * .001);
-            if (m_State.looping)
-                ImGui::Text("Loop cycle %llu", static_cast<unsigned long long>(m_State.loopCycle + 1u));
-            const float duration = static_cast<float>(m_State.durationMs);
-            const float progress = duration > 0.f ? std::clamp(static_cast<float>(m_State.clockMs) / duration, 0.f, 1.f) : 0.f;
-            ImGui::ProgressBar(progress, ImVec2(-1.f, 0.f));
-            ImGui::BeginDisabled(!m_State.active || !m_Callbacks.seek || duration <= 0.f);
+            ImGui::Text("%s / %s", m_State.selectedLabel.c_str(), m_ViewLoop ? "Loop" : "Intro");
+            if (ImGui::RadioButton("Intro", !m_ViewLoop)) { m_ViewLoop = false; m_FollowPlayback = false; }
+            ImGui::SameLine();
+            if (ImGui::RadioButton("Loop", m_ViewLoop)) { m_ViewLoop = true; m_FollowPlayback = false; }
+            ImGui::SameLine(); ImGui::Checkbox("Follow playback", &m_FollowPlayback);
+            m_Timeline = m_Callbacks.timeline ? m_Callbacks.timeline(m_State.selectedClassId, m_ViewLoop) : nullptr;
+            if (!m_Timeline) { ImGui::TextUnformatted("Movie timeline is not loaded."); return; }
+            ImGui::Text("Movie duration %.3f s / source duration %.3f s",
+                m_Timeline->movieDurationMs * .001, m_Timeline->sourceDurationMs * .001);
+            if (MatchesPlayback())
+                ImGui::Text("Movie %.3f s -> source %.3f s | source rate %.3fx | movie speed %.2fx",
+                    m_State.clockMs * .001, m_State.sourceClockMs * .001, m_State.sourceRate, m_State.playbackRate);
+            const float duration = static_cast<float>(m_Timeline->movieDurationMs);
+            ImGui::BeginDisabled(!m_State.active || m_State.activeClassId != m_State.selectedClassId || !m_Callbacks.seek);
             ImGui::SetNextItemWidth(-1.f);
-            (void)ImGui::SliderFloat("##ClassSelectionClock", &m_EditMs, 0.f, (std::max)(1.f, duration), "%.0f ms");
+            (void)ImGui::SliderFloat("##ClassSelectionClock", &m_EditMs, 0.f, (std::max)(1.f, duration), "Movie %.0f ms");
             if (ImGui::IsItemActivated())
             {
-                m_Scrubbing = true;
-                m_ScrubLoop = m_State.looping;
-                m_RequestedPause = true;
-                m_Pending = COMMAND::PAUSE;
+                m_Scrubbing = true; m_ScrubLoop = m_ViewLoop;
+                m_RequestedPause = true; m_Pending = COMMAND::PAUSE;
             }
             if (ImGui::IsItemDeactivatedAfterEdit()) Queue_Seek(m_ScrubLoop, m_EditMs);
             if (ImGui::IsItemDeactivated()) m_Scrubbing = false;
-            if (ImGui::Button("Intro start")) Queue_Seek(false, 0.);
+            if (ImGui::Button("Intro start")) { m_ViewLoop = false; Queue_Seek(false, 0.); }
             ImGui::SameLine();
-            if (ImGui::Button("Loop start")) Queue_Seek(true, 0.);
+            if (ImGui::Button("Loop start")) { m_ViewLoop = true; Queue_Seek(true, 0.); }
             ImGui::EndDisabled();
+            m_RowFilter.Draw("Filter rows", 220.f);
+            ImGui::SameLine(); ImGui::SetNextItemWidth(140.f);
+            ImGui::SliderFloat("Zoom", &m_PixelsPerSecond, 20.f, 200.f, "%.0f px/s");
+            if (ImGui::BeginChild("MovieRows", ImVec2(0.f, 0.f), ImGuiChildFlags_Borders,
+                ImGuiWindowFlags_HorizontalScrollbar))
+            {
+                using namespace Client::CompositionTimeline;
+                constexpr float labelWidth = 260.f;
+                const float width = (std::max)(400.f, duration * .001f * m_PixelsPerSecond);
+                auto* draw = ImGui::GetWindowDrawList();
+                const auto origin = ImGui::GetCursorScreenPos();
+                DrawRuler(draw, {origin.x + labelWidth, origin.y}, {origin.x + labelWidth + width, origin.y + LaneHeight},
+                    static_cast<uint32_t>(std::ceil(duration)), m_PixelsPerSecond);
+                ImGui::Dummy({labelWidth + width, LaneHeight});
+                for (size_t family = 0; family < ROW_KINDS.size(); ++family)
+                {
+                    std::vector<const Client::CLASS_MOVIE_TIMELINE_ROW*> rows;
+                    for (const auto& row : m_Timeline->rows)
+                        if (row.kind == ROW_KINDS[family] &&
+                            (!m_RowFilter.IsActive() || m_RowFilter.PassFilter(row.label.c_str()) ||
+                                m_RowFilter.PassFilter(row.kind.c_str()))) rows.push_back(&row);
+                    if (rows.empty()) continue;
+                    const std::string heading = std::string(ROW_KINDS[family]) + " (" + std::to_string(rows.size()) + ")";
+                    if (!ImGui::CollapsingHeader(heading.c_str(), ImGuiTreeNodeFlags_DefaultOpen)) continue;
+                    ImGuiListClipper clipper;
+                    clipper.Begin(static_cast<int>(rows.size()), LaneHeight + ImGui::GetStyle().ItemSpacing.y);
+                    while (clipper.Step()) for (int i = clipper.DisplayStart; i < clipper.DisplayEnd; ++i)
+                    {
+                        const auto& row = *rows[i];
+                        ImGui::PushID(row.kind.c_str()); ImGui::PushID(row.id.c_str());
+                        const auto p = ImGui::GetCursorScreenPos();
+                        ImGui::InvisibleButton("lane", {labelWidth + width, LaneHeight});
+                        draw->AddRectFilled({p.x + labelWidth, p.y}, {p.x + labelWidth + width, p.y + LaneHeight},
+                            IM_COL32(32, 36, 44, 255));
+                        draw->PushClipRect(p, {p.x + labelWidth - 5.f, p.y + LaneHeight}, true);
+                        draw->AddText({p.x + 3.f, p.y + 3.f}, IM_COL32(220, 224, 230, 255), row.label.c_str());
+                        draw->PopClipRect();
+                        for (const auto& box : row.boxes)
+                        {
+                            const float x = p.x + labelWidth + static_cast<float>(box.movieStartMs * .001 * m_PixelsPerSecond);
+                            const float endX = (std::max)(x + MinimumBoxWidth,
+                                p.x + labelWidth + static_cast<float>(box.movieEndMs * .001 * m_PixelsPerSecond));
+                            const ImVec2 min{x, p.y + 2.f}, max{endX, p.y + LaneHeight - 2.f};
+                            const bool selected = m_SelectedRow == row.id && m_SelectedKind == row.kind && m_SelectedBox == box.id;
+                            const ImU32 colors[] = {IM_COL32(62,94,130,255), IM_COL32(72,116,79,255),
+                                IM_COL32(105,77,154,255), IM_COL32(143,89,46,255), IM_COL32(120,100,61,255),
+                                IM_COL32(135,121,45,255), IM_COL32(59,121,122,255), IM_COL32(131,72,101,255)};
+                            DrawBox(draw, min, max, colors[family], selected, box.label.c_str(), false, false);
+                            float lastX = -1.e20f;
+                            for (double time : box.keyMovieTimes)
+                            {
+                                const float keyX = p.x + labelWidth + static_cast<float>(time * .001 * m_PixelsPerSecond);
+                                if (keyX - lastX < 4.f) continue;
+                                draw->AddLine({keyX, max.y - 3.f}, {keyX, max.y}, IM_COL32(224,225,230,190)); lastX = keyX;
+                            }
+                            if (ImGui::IsItemHovered() && ImGui::IsMouseHoveringRect(min, max))
+                            {
+                                ImGui::SetTooltip("%s\nMovie %.3f - %.3f s\nSource %.3f - %.3f s", box.label.c_str(),
+                                    box.movieStartMs * .001, box.movieEndMs * .001, box.sourceStartMs * .001, box.sourceEndMs * .001);
+                                if (ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+                                { m_SelectedKind = row.kind; m_SelectedRow = row.id; m_SelectedBox = box.id; m_CameraKey = 0; }
+                            }
+                        }
+                        if (MatchesPlayback())
+                        {
+                            const float cursor = p.x + labelWidth + static_cast<float>(m_State.clockMs * .001 * m_PixelsPerSecond);
+                            draw->AddLine({cursor, p.y}, {cursor, p.y + LaneHeight}, IM_COL32(255,210,80,255), 2.f);
+                        }
+                        ImGui::PopID(); ImGui::PopID();
+                    }
+                }
+            }
+            ImGui::EndChild();
+        }
+
+        void Render_Details()
+        {
+            const Client::CLASS_MOVIE_TIMELINE_BOX* box = nullptr;
+            if (m_Timeline) for (const auto& row : m_Timeline->rows)
+                if (row.id == m_SelectedRow && row.kind == m_SelectedKind)
+                    for (const auto& value : row.boxes) if (value.id == m_SelectedBox) box = &value;
+            if (!box) { ImGui::TextWrapped("Select a timeline box to inspect its source and movie timing."); return; }
+            ImGui::SeparatorText(m_SelectedKind.c_str());
+            ImGui::TextWrapped("%s", box->label.c_str());
+            ImGui::TextWrapped("Resource: %s", box->resource.c_str());
+            ImGui::Text("Movie: %.3f - %.3f s", box->movieStartMs * .001, box->movieEndMs * .001);
+            ImGui::Text("Source: %.3f - %.3f s", box->sourceStartMs * .001, box->sourceEndMs * .001);
+            const bool canSeek = m_State.active && m_State.activeClassId == m_State.selectedClassId && m_Callbacks.seek;
+            ImGui::BeginDisabled(!canSeek);
+            if (ImGui::Button("Seek to box start")) Queue_Seek(m_ViewLoop, box->movieStartMs);
+            ImGui::EndDisabled();
+            if (m_SelectedKind == "Animation")
+                ImGui::Text("Clip offset %.3f s / clip rate %.3fx", box->sourceOffsetMs * .001, box->playbackRate);
+            if (m_SelectedKind == "Time Control")
+            {
+                Render_RateControl();
+                ImGui::Text("Source dilation: %.4fx", m_State.sourceRate);
+                ImGui::Text("Effective speed: %.4fx", m_State.sourceRate * m_State.playbackRate);
+                ImGui::TextWrapped("Movie speed multiplies the shared movie clock. Original time-dilation keys stay unchanged.");
+            }
+            if (!box->camera) { ImGui::Text("Keys: %zu", box->keyMovieTimes.size()); return; }
+            const auto& row = *box->camera;
+            if (row.cue.Keyframes.empty()) return;
+            ImGui::SeparatorText("Saved camera key");
+            const int count = static_cast<int>(row.cue.Keyframes.size());
+            ImGui::SetNextItemWidth(140.f); ImGui::InputInt("Key", &m_CameraKey);
+            m_CameraKey = (std::clamp)(m_CameraKey, 0, count - 1);
+            const auto& key = row.cue.Keyframes[m_CameraKey];
+            const double movieMs = box->keyMovieTimes[m_CameraKey];
+            ImGui::Text("Key %d / %d | %s", m_CameraKey + 1, count, key.cutBefore ? "Cut" : "Continuous");
+            ImGui::Text("Movie %.3f s / source %.3f s / box-local %.3f s", movieMs * .001,
+                (row.startMs + key.iTimeMs) * .001, key.iTimeMs * .001);
+            ImGui::Text("Eye (m): %.4f, %.4f, %.4f", key.vEye.x, key.vEye.y, key.vEye.z);
+            ImGui::Text("Look at (m): %.4f, %.4f, %.4f", key.vLookAt.x, key.vLookAt.y, key.vLookAt.z);
+            ImGui::Text("Saved %s FOV: %.4f deg", row.horizontalFov ? "horizontal" : "vertical", key.fFovYDegrees);
+            ImGui::BeginDisabled(!canSeek);
+            if (ImGui::Button("Seek to camera key")) Queue_Seek(m_ViewLoop, movieMs);
+            ImGui::EndDisabled();
+            ImGui::SeparatorText("Applied camera sample");
+            const auto& sample = m_State.cameraSample;
+            if (!MatchesPlayback() || !sample.valid || sample.rowId != row.id)
+            { ImGui::TextWrapped("This camera box is not currently applied. Seek to the box to compare."); return; }
+            ImGui::Text("Movie %.3f s / sampled source %.3f s", sample.movieMs * .001, sample.sourceMs * .001);
+            ImGui::Text("Eye (m): %.4f, %.4f, %.4f", sample.pose.vEye.x, sample.pose.vEye.y, sample.pose.vEye.z);
+            ImGui::Text("Look at (m): %.4f, %.4f, %.4f", sample.pose.vLookAt.x, sample.pose.vLookAt.y, sample.pose.vLookAt.z);
+            ImGui::Text("Up: %.4f, %.4f, %.4f", sample.up.x, sample.up.y, sample.up.z);
+            ImGui::Text("Applied vertical FOV: %.4f deg | aspect %.4f", sample.pose.fFovYDegrees, sample.aspect);
+            ImGui::TextWrapped("Applied values come from the movie's camera submission after interpolation and FOV conversion.");
         }
 
         CALLBACKS m_Callbacks;
@@ -214,6 +403,13 @@ namespace
         bool m_SeekLoop = false;
         float m_EditMs = 0.f;
         double m_SeekMs = 0.;
+        bool m_ViewLoop = false, m_FollowPlayback = true;
+        float m_PixelsPerSecond = 45.f;
+        int m_CameraKey = 0;
+        ImGuiTextFilter m_RowFilter;
+        std::optional<double> m_RequestedRate;
+        std::shared_ptr<const Client::CLASS_MOVIE_TIMELINE> m_Timeline;
+        std::string m_SelectedKind, m_SelectedRow, m_SelectedBox;
     };
 
     const char* PaneLabel(const PANE pane, const bool sequenceWorkspace)
@@ -576,6 +772,7 @@ void Client::CSequencerTool::Render_PhysicalAnimationBrowser(ICompositionWorkben
     }
     if (ImGui::BeginChild("##CompositionPhysicalAnimationTree", ImVec2(0.f, 260.f), true))
     {
+        m_bPhysicalAnimationFocused = ImGui::IsWindowFocused(ImGuiFocusedFlags_ChildWindows);
         RenderResourceTree(m_AnimationResourceTree, [&](const std::size_t index)
         {
             const auto& resource = m_AnimationResources[index];
@@ -597,6 +794,12 @@ void Client::CSequencerTool::Render_PhysicalAnimationBrowser(ICompositionWorkben
                     resource.strSourceAssetId.c_str(), resource.iDurationMs);
                 if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) Queue_AnimationPreview(resource);
             }
+            Offer_CompositionResourceDrag(label.c_str(), [&resource, &label]() -> COMPOSITION_TRANSFER
+            {
+                auto transfer = std::make_shared<COMPOSITION_ANIMATION_TRANSFER>();
+                transfer->resource = resource; transfer->label = label;
+                return transfer;
+            });
             ImGui::PopID(); ImGui::PopID(); ImGui::PopID();
         });
         if (m_AnimationResourceTree.iRecursiveLeafCount == 0u)
@@ -610,6 +813,15 @@ void Client::CSequencerTool::Render_PhysicalAnimationBrowser(ICompositionWorkben
             resource.strRuntimeClip.c_str(), resource.iDurationMs);
         if (ImGui::Button("Play Preview##CompositionPhysicalAnimation"))
             Queue_AnimationPreview(resource);
+        ImGui::SameLine();
+        if (ImGui::Button("Copy Resource##CompositionPhysicalAnimation"))
+        {
+            auto transfer = std::make_shared<COMPOSITION_ANIMATION_TRANSFER>();
+            transfer->resource = resource;
+            transfer->label = resource.strDisplayName.empty() ? resource.strRuntimeClip : resource.strDisplayName;
+            CCompositionClipboard::Get().Write(std::move(transfer));
+            m_CompositionEditStatus = "Animation resource copied.";
+        }
     }
     if (m_bHasSelectedAnimationResource || m_AnimationPreviewState.bPlaying)
     {
@@ -795,6 +1007,12 @@ void Client::CSequencerTool::Render_Pane(
             (hasBossOwner ? static_cast<int>(Get_SelectedBoss()) : 0));
         session.Render_WorkbenchPane(pane);
         ImGui::PopID();
+        if (pane == PANE::SEQUENCER || pane == PANE::RESOURCES ||
+            pane == PANE::PATTERNS || pane == PANE::DETAILS)
+            m_bCompositionEditFocused |= ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows);
+        if (pane == PANE::SEQUENCER || pane == PANE::DETAILS)
+            if (auto transfer = Accept_CompositionResourceDropInWindow())
+                m_PendingCompositionTransfer = std::move(transfer);
     }
     ImGui::End();
     if (pane == PANE::RESOURCES)
@@ -852,11 +1070,26 @@ void Client::CSequencerTool::Render()
         return;
     }
     m_bInsideFrame = true;
+    m_bCompositionEditFocused = false;
+    m_bPhysicalAnimationFocused = false;
+    m_PendingCompositionEdit.reset();
+    m_PendingCompositionTransfer.reset();
     session->Begin_WorkbenchFrame();
     Apply_ViewRequest(*session);
     if (expanded)
     {
         ImGui::Separator();
+        if (ImGui::Button("Copy##SharedCompositionEdit"))
+            m_PendingCompositionEdit = COMPOSITION_EDIT_COMMAND::COPY;
+        ImGui::SameLine();
+        ImGui::BeginDisabled(!CCompositionClipboard::Get().Read());
+        if (ImGui::Button("Paste##SharedCompositionEdit"))
+            m_PendingCompositionEdit = COMPOSITION_EDIT_COMMAND::PASTE;
+        ImGui::EndDisabled();
+        ImGui::SameLine();
+        if (ImGui::Button("Duplicate##SharedCompositionEdit"))
+            m_PendingCompositionEdit = COMPOSITION_EDIT_COMMAND::DUPLICATE_SELECTION;
+        if (!m_CompositionEditStatus.empty()) ImGui::TextWrapped("%s", m_CompositionEditStatus.c_str());
         const bool hasBossOwner = m_eSelectedTarget == TARGET::BOSS || m_eSelectedTarget == TARGET::SEQUENCE;
         ImGui::PushID(static_cast<int>(m_eSelectedTarget) * 16 +
             (hasBossOwner ? static_cast<int>(Get_SelectedBoss()) : 0));
@@ -871,6 +1104,34 @@ void Client::CSequencerTool::Render()
             Render_Pane(*session, pane);
     }
     session->End_WorkbenchFrame();
+    // Defer all authoring changes until every pane has released its row views.
+    const auto& io = ImGui::GetIO();
+    const COMPOSITION_EDIT_INPUT editInput{m_bCompositionEditFocused, io.KeyCtrl, io.WantTextInput,
+        ImGui::IsAnyItemActive(), ImGui::IsPopupOpen(nullptr, ImGuiPopupFlags_AnyPopupId),
+        ImGui::IsMouseDragging(ImGuiMouseButton_Left) || ImGui::GetDragDropPayload() != nullptr,
+        ImGui::IsKeyPressed(ImGuiKey_C, false), ImGui::IsKeyPressed(ImGuiKey_V, false),
+        ImGui::IsKeyPressed(ImGuiKey_D, false)};
+    if (const auto command = Resolve_CompositionShortcut(editInput))
+    {
+        if (m_bPhysicalAnimationFocused && *command == COMPOSITION_EDIT_COMMAND::COPY)
+        {
+            if (m_bHasSelectedAnimationResource)
+            {
+                auto transfer = std::make_shared<COMPOSITION_ANIMATION_TRANSFER>();
+                transfer->resource = m_SelectedAnimationResource;
+                transfer->label = m_SelectedAnimationResource.strDisplayName.empty() ?
+                    m_SelectedAnimationResource.strRuntimeClip : m_SelectedAnimationResource.strDisplayName;
+                CCompositionClipboard::Get().Write(std::move(transfer));
+                m_CompositionEditStatus = "Animation resource copied.";
+            }
+            else m_CompositionEditStatus = "Select an Animation resource first.";
+        }
+        else m_PendingCompositionEdit = command;
+    }
+    if (m_PendingCompositionTransfer)
+        session->Insert_CompositionTransfer(m_PendingCompositionTransfer, m_CompositionEditStatus);
+    else if (m_PendingCompositionEdit)
+        session->Execute_CompositionEdit(*m_PendingCompositionEdit, m_CompositionEditStatus);
     m_bInsideFrame = false;
     Apply_ViewRequest(*session);
     m_bApplyResetLayoutThisFrame = false;

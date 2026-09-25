@@ -40,6 +40,36 @@ class ObjectColliderTests(unittest.TestCase):
         self.assertEqual([r["durationMs"] for r in rows],[300]*6)
         self.assertEqual(len({r["occurrenceId"] for r in rows}),6)
 
+    def test_group_members_bake_independent_emission_damage(self):
+        f = self.fixture()
+        first = f[0]["instances"][0]
+        second = {**first, "instanceId": "motion.second", "position": [30, 0, 0], "startDelayMs": 100}
+        f[0]["instances"].append(second)
+        f[0]["objectResources"].append({"objectId": "group.test", "motionInstanceIds": ["motion.test", "motion.second"]})
+        f[1]["world.test"]["sequenceInstanceId"] = "group.test"
+        before = copy.deepcopy(f)
+        rows = self.bake(f)
+        self.assertEqual([0, 100], [r["startMs"] for r in rows])
+        self.assertEqual([10, 30], [r["region"]["worldTrack"]["keys"][0]["positionOffset"][0] for r in rows])
+        self.assertEqual(2, len({r["occurrenceId"] for r in rows}))
+        self.assertEqual(before, f)
+
+    def test_group_member_requires_single_object_binding(self):
+        for invalid in ({"bindings": []}, {"instanceId": "missing"}):
+            f = self.fixture()
+            f[0]["objectResources"].append({"objectId": "group.test", "motionInstanceIds": ["motion.test"]})
+            f[1]["world.test"]["sequenceInstanceId"] = "group.test"
+            f[0]["instances"][0].update(invalid)
+            with self.subTest(invalid=invalid), self.assertRaises(subject.ColliderBakeError):
+                self.bake(f)
+
+    def test_disabled_group_member_does_not_publish_damage(self):
+        f = self.fixture()
+        f[0]["objectResources"].append({"objectId": "group.test", "motionInstanceIds": ["motion.test"]})
+        f[1]["world.test"]["sequenceInstanceId"] = "group.test"
+        f[0]["instances"][0]["enabled"] = False
+        self.assertEqual([], self.bake(f))
+
     def test_emission_delay_and_visible_span_clock(self):
         f=self.fixture();s=f[0]["templates"][0]
         s["effectTracks"]=[{}]
@@ -49,6 +79,57 @@ class ObjectColliderTests(unittest.TestCase):
         self.assertEqual([r["startMs"] for r in rows],[0,700])
         self.assertEqual(rows[1]["durationMs"],600)
         self.assertEqual(rows[1]["region"]["yawDegrees"],90)
+
+    def test_cylinder_percent_damage_keeps_overlapping_emissions_independent(self):
+        f = self.fixture()
+        sequence = f[0]["templates"][0]
+        sequence["effectTracks"] = [{}]
+        sequence["objectMotion"].update(velocity=[0, 0, 0], emissions=[
+            dict(positionOffset=[0, 0, 0], yawDegrees=0, startDelayMs=0),
+            dict(positionOffset=[0, 0, 0], yawDegrees=0, startDelayMs=0)])
+        row = sequence["colliderTracks"][0]
+        row.update(shape="CYLINDER", halfExtents=[.75, .2, .75], damagePercent=10)
+        f[0]["objectResources"][0]["scale"] = [2, 3, 4]
+        f[2][0]["placement"] = dict(position=[7, 8, 9], rotationDegrees=[0, 0, 0], scale=[3, 5, 2])
+        before = copy.deepcopy(f)
+        rows = self.bake(f)
+        self.assertEqual(2, len(rows))
+        self.assertEqual(2, len({r["occurrenceId"] for r in rows}))
+        self.assertEqual(2, len({r["region"]["regionId"] for r in rows}))
+        self.assertTrue(all(r["damagePercent"] == 10 for r in rows))
+        for result in rows:
+            self.assertEqual("CYLINDER", result["region"]["shape"])
+            self.assertEqual(.75, result["region"]["radiusM"])
+            self.assertEqual([.75, .2, .75], result["region"]["halfExtents"])
+            # Existing circular WORLD tracks need equal radial keys, while the
+            # original max(X,Z) radius, Y height and sampled center stay intact.
+            key = result["region"]["worldTrack"]["keys"][0]
+            self.assertEqual([8, 15, 8], key["scaleMultiplier"])
+            self.assertEqual([7, 8, 9], key["positionOffset"])
+            self.assertEqual(0, result["startMs"])
+            self.assertEqual(600, result["durationMs"])
+        self.assertEqual(rows[0]["region"]["worldTrack"], rows[1]["region"]["worldTrack"])
+        self.assertEqual(before, f)
+
+    def test_explicit_legacy_defaults_preserve_baked_bytes(self):
+        f = self.fixture()
+        f[0]["templates"][0]["colliderTracks"][0]["damagePercent"] = 10
+        before = self.bake(f)
+        f[0]["templates"][0]["colliderTracks"][0].update(shape="BOX")
+        after = self.bake(f)
+        self.assertEqual(json.dumps(before), json.dumps(after))
+        self.assertEqual("BOX", after[0]["region"]["shape"])
+        self.assertEqual(10, after[0]["damagePercent"])
+
+    def test_cylinder_rejects_invalid_schema_and_hook_shape(self):
+        changes = (
+            dict(shape="SPHERE"), dict(shape=[]), dict(shape="CYLINDER"),
+            dict(behavior="HOOK_CAPTURE", damagePercent=0, shape="CYLINDER", halfExtents=[1, 1, 1]))
+        for change in changes:
+            f = self.fixture()
+            f[0]["templates"][0]["colliderTracks"][0].update(change)
+            with self.subTest(change=change), self.assertRaises(subject.ColliderBakeError):
+                self.bake(f)
 
     def test_hook_capture_and_carry_are_distinct(self):
         rows=self.bake(self.fixture("HOOK_CAPTURE"))

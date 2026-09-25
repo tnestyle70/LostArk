@@ -1397,7 +1397,19 @@ function Get-SequenceNativeMaterialContract {
         throw "World object native family requires an unsupported post-pack contract: $Family"
     }
     $names = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
-    foreach ($match in [regex]::Matches($body, 'parameter\("([^"\r\n]+)"\)')) { [void]$names.Add($match.Groups[1].Value) }
+    foreach ($match in [regex]::Matches($body, 'parameter\("((?:\\.|[^"\\\r\n])+)"\)')) {
+        # Generated C++ spells non-ASCII UTF-8 bytes as octal escapes. Compare
+        # the decoded parameter name with JSON, not the source-code spelling.
+        $name = [regex]::Replace($match.Groups[1].Value, '(?:\\[0-7]{1,3})+', {
+            param($escaped)
+            [byte[]]$bytes = @([regex]::Matches($escaped.Value, '\\([0-7]{1,3})') | ForEach-Object {
+                [Convert]::ToByte($_.Groups[1].Value, 8)
+            })
+            [Text.UTF8Encoding]::new($false, $true).GetString($bytes)
+        })
+        $name = $name.Replace('\"', '"').Replace('\\', '\')
+        [void]$names.Add($name)
+    }
     $mask = 0
     foreach ($match in [regex]::Matches($body, 'staged\.(?:base|light)TextureMask = ([0-9]+)u;')) {
         $mask = $mask -bor [int]$match.Groups[1].Value
@@ -1416,6 +1428,7 @@ function Read-WorldSequenceDocument {
     catch { throw "World sequence JSON parse failed: $Path" }
     $rootProperties = @('schema','formatVersion','areaId','revision','templates','instances')
     if ($document.formatVersion -eq 3) { $rootProperties += 'objectResources' }
+    if ($document.formatVersion -eq 3 -and $null -ne $document.PSObject.Properties['objectFolders']) { $rootProperties += 'objectFolders' }
     Assert-ExactJsonProperties $document $rootProperties 'World sequence root'
     if ($document.schema -isnot [string] -or
         $document.schema -ne 'lostark.world-sequences' -or
@@ -1454,6 +1467,39 @@ function Read-WorldSequenceDocument {
         }
     }
     $objectResources = [Collections.Generic.Dictionary[string,object]]::new([StringComparer]::Ordinal)
+    $hierarchy = [Collections.Generic.Dictionary[string,object]]::new([StringComparer]::Ordinal)
+    if ($null -ne $document.PSObject.Properties['objectFolders']) {
+        if ($document.formatVersion -ne 3 -or $document.objectFolders -isnot [System.Array] -or $document.objectFolders.Count -gt 2048) {
+            throw 'World object folder list is invalid'
+        }
+        foreach ($folder in $document.objectFolders) {
+            $fields = @('folderId','displayName')
+            foreach ($optional in @('anchorKind','parentId')) {
+                if ($null -ne $folder.PSObject.Properties[$optional]) { $fields += $optional }
+            }
+            Assert-ExactJsonProperties $folder $fields 'World object folder'
+            if ($folder.folderId -isnot [string] -or $folder.folderId -cnotmatch $stableId -or
+                $hierarchy.ContainsKey($folder.folderId) -or $folder.displayName -isnot [string] -or
+                [Text.UTF8Encoding]::new($false, $true).GetByteCount($folder.displayName) -notin 1..128 -or
+                $folder.displayName -match '[\x00-\x1f\x7f]') {
+                throw 'Invalid or duplicate World object folder'
+            }
+            $anchor = 'WORLD'; $parent = ''
+            if ($null -ne $folder.PSObject.Properties['anchorKind']) {
+                if ($folder.anchorKind -isnot [string] -or $folder.anchorKind -cnotin @('WORLD','PLAYER','BOSS')) {
+                    throw 'World object folder anchor must be WORLD, PLAYER or BOSS'
+                }
+                $anchor = $folder.anchorKind
+            }
+            if ($null -ne $folder.PSObject.Properties['parentId']) {
+                if ($folder.parentId -isnot [string] -or ($folder.parentId -cne '' -and $folder.parentId -cnotmatch $stableId)) {
+                    throw 'World object folder parent must be a stable ID or empty'
+                }
+                $parent = $folder.parentId
+            }
+            $hierarchy.Add($folder.folderId, [pscustomobject]@{ Anchor = $anchor; Parent = $parent })
+        }
+    }
     $sequenceMaterialCatalogs = $null
     if ($document.formatVersion -eq 3) {
         if ($document.objectResources -isnot [System.Array] -or @($document.objectResources).Count -gt 2048) {
@@ -1461,7 +1507,7 @@ function Read-WorldSequenceDocument {
         }
         foreach ($resource in $document.objectResources) {
             $fields = @('objectId','displayName','modelAssetId','modelPreScale','animated','scale')
-            foreach ($optional in @('diffuseTextureAssetId','sequenceInstanceId','anchorKind','anchorBossArchetypeId','anchorBone','defaultMotionInstanceId','materialProfile','materialSourceModelAssetId','mapMaterialBindings','motionInstanceIds','combatBody','animationSetAssetId','presentationBossArchetypeId')) {
+            foreach ($optional in @('diffuseTextureAssetId','sequenceInstanceId','anchorKind','anchorBossArchetypeId','anchorBone','defaultMotionInstanceId','materialProfile','materialSourceModelAssetId','mapMaterialBindings','motionInstanceIds','combatBody','animationSetAssetId','presentationBossArchetypeId','parentId')) {
                 if ($null -ne $resource.PSObject.Properties[$optional]) { $fields += $optional }
             }
             Assert-ExactJsonProperties $resource $fields 'World object resource'
@@ -1480,6 +1526,15 @@ function Read-WorldSequenceDocument {
             }
             $resourceAnchor = 'WORLD'
             if ($null -ne $resource.PSObject.Properties['anchorKind']) { $resourceAnchor = [string]$resource.anchorKind }
+            $parent = ''
+            if ($null -ne $resource.PSObject.Properties['parentId']) {
+                if ($resource.parentId -isnot [string] -or ($resource.parentId -cne '' -and $resource.parentId -cnotmatch $stableId)) {
+                    throw 'World object parent must be a stable ID or empty'
+                }
+                $parent = $resource.parentId
+            }
+            if ($hierarchy.ContainsKey($resource.objectId)) { throw 'Duplicate World object hierarchy ID' }
+            $hierarchy.Add($resource.objectId, [pscustomobject]@{ Anchor = $resourceAnchor; Parent = $parent })
             $anchorBossArchetypeId = ''
             $anchorBone = ''
             foreach ($field in @('anchorBossArchetypeId','anchorBone')) {
@@ -1677,6 +1732,21 @@ function Read-WorldSequenceDocument {
             $objectResources[$resource.objectId] = $resource
         }
     }
+    foreach ($entry in $hierarchy.GetEnumerator()) {
+        $visited = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+        [void]$visited.Add($entry.Key)
+        $current = $entry.Value; $depth = 0
+        while ($current.Parent -cne '') {
+            if (-not $hierarchy.ContainsKey($current.Parent) -or $hierarchy[$current.Parent].Anchor -cne $entry.Value.Anchor) {
+                throw 'World object parent must exist in the same anchor category'
+            }
+            $depth++
+            if (-not $visited.Add($current.Parent) -or $depth -gt 64) {
+                throw 'World object hierarchy contains a cycle or exceeds 64 parents'
+            }
+            $current = $hierarchy[$current.Parent]
+        }
+    }
     $trackCounts = @{}
     $templateRows = [Collections.Generic.Dictionary[string,object]]::new([StringComparer]::Ordinal)
     $templateIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
@@ -1796,7 +1866,14 @@ function Read-WorldSequenceDocument {
                     }
                 }
                 Assert-SequenceVector $key.positionOffset 'World sequence key position'
-                Assert-SequenceVector $key.scaleMultiplier 'World sequence key scale' $true
+                Assert-SequenceVector $key.scaleMultiplier 'World sequence key scale'
+                for ($axis = 0; $axis -lt 3; $axis++) {
+                    $scale = [double]$key.scaleMultiplier[$axis]
+                    if ([math]::Abs($scale) -lt 0.000001 -or
+                        [math]::Sign($scale) -ne [math]::Sign([double]$keys[0].scaleMultiplier[$axis])) {
+                        throw 'World sequence scale is singular or changes axis sign'
+                    }
+                }
                 $quaternionLength = 0.0
                 foreach ($component in $key.rotationQuaternion) { $quaternionLength += [double]$component * [double]$component }
                 if ([math]::Abs([math]::Sqrt($quaternionLength) - 1.0) -gt 0.001 -or
@@ -1944,7 +2021,13 @@ function Read-WorldSequenceDocument {
             foreach ($row in $template.colliderTracks) {
                 $fields = @('colliderTrackId','slotId','startMs','durationMs','positionOffset','halfExtents','yawDegrees','behavior','damagePercent','gripLocalOffset')
                 if ($null -ne $row.PSObject.Properties['attachmentBone']) { $fields += 'attachmentBone' }
+                if ($null -ne $row.PSObject.Properties['shape']) { $fields += 'shape' }
                 Assert-ExactJsonProperties $row $fields 'World Object collider track'
+                $colliderShape = 'BOX'
+                if ($null -ne $row.PSObject.Properties['shape']) {
+                    if ($row.shape -isnot [string] -or $row.shape -cnotin @('BOX','CYLINDER')) { throw 'Invalid World Object collider shape' }
+                    $colliderShape = $row.shape
+                }
                 if ($row.colliderTrackId -isnot [string] -or $row.colliderTrackId -notmatch $stableId -or -not $colliderIds.Add($row.colliderTrackId) -or
                     $row.slotId -isnot [string] -or @($template.tracks | Where-Object { $_.slotId -ceq $row.slotId }).Count -ne 1 -or
                     $row.behavior -cnotin @('DAMAGE','INSTANT_DEATH','HOOK_CAPTURE')) { throw 'Invalid collider identity, transform slot or behavior' }
@@ -1960,6 +2043,9 @@ function Read-WorldSequenceDocument {
                     Assert-SequenceVector $row.$field "Collider $field"
                     $maximum = if ($field -ceq 'halfExtents') { 1000 } else { 100000 }
                     if (@($row.$field | Where-Object { [math]::Abs([double]$_) -gt $maximum -or ($field -ceq 'halfExtents' -and [double]$_ -le 0.001) }).Count) { throw 'Invalid collider vector range' }
+                }
+                if ($colliderShape -ceq 'CYLINDER' -and ([math]::Abs([double]$row.halfExtents[0] - [double]$row.halfExtents[2]) -gt 0.0001 -or $row.behavior -ceq 'HOOK_CAPTURE')) {
+                    throw 'Cylinder Collider requires equal X/Z radii and cannot capture a hook'
                 }
                 if ($row.behavior -cne 'HOOK_CAPTURE' -and (@($row.gripLocalOffset | Where-Object { [double]$_ -ne 0 }).Count -or -not [string]::IsNullOrEmpty([string]$row.attachmentBone))) { throw 'Only hook capture carries a grip or bone' }
                 if ($null -ne $row.PSObject.Properties['attachmentBone'] -and ($row.attachmentBone -isnot [string] -or
@@ -2144,6 +2230,11 @@ function Read-WorldSequenceDocument {
                 if ($resource.modelAssetId -eq '' -or ($animationTracks.Count -gt 0 -and -not $resource.animated) -or
                     ($transformTracks.Count -eq 0 -and $animationTracks.Count -eq 0)) { throw 'Invalid object resource slot or animation binding' }
             } else {
+                foreach ($track in $transformTracks) {
+                    if (@($track.keys[0].scaleMultiplier | Where-Object { [double]$_ -lt 0 }).Count -gt 0) {
+                        throw 'Signed scale requires an Object Resource binding'
+                    }
+                }
                 $numericTarget = [uint64]0
                 if (-not [uint64]::TryParse($binding.targetId, [ref]$numericTarget) -or $numericTarget -eq 0) { throw 'Placed sequence target ID is outside uint64 range' }
                 if (($null -ne $instance.PSObject.Properties['anchorKind'] -and $instance.anchorKind -ne 'WORLD') -or
@@ -2862,7 +2953,8 @@ function Read-MapMaterialDocument {
                 }
                 elseif ($row.family -cmatch '^source\.character\.static-map-native-(\d+)\.v1$') {
                     $nativeProgram = [int]$Matches[1]
-                    $supportsNativeBaked = ($nativeProgram -ge 214 -and $nativeProgram -le 234) -or $nativeProgram -eq 237
+                    $supportsNativeBaked = ($nativeProgram -ge 214 -and $nativeProgram -le 234) -or $nativeProgram -eq 237 -or
+                        ($nativeProgram -ge 1100 -and $nativeProgram -le 1166) -or ($nativeProgram -ge 1400 -and $nativeProgram -le 1413)
                 }
                 if (-not $supportsNativeBaked) { throw 'Unsupported native baked lighting family' }
                 $nativeFields += 'bakedLighting'

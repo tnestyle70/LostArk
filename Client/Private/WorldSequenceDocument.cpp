@@ -290,9 +290,9 @@ namespace
 			!finiteBounded(key.scaleMultiplier.x) ||
 			!finiteBounded(key.scaleMultiplier.y) ||
 			!finiteBounded(key.scaleMultiplier.z) ||
-			key.scaleMultiplier.x < MIN_SCALE ||
-			key.scaleMultiplier.y < MIN_SCALE ||
-			key.scaleMultiplier.z < MIN_SCALE)
+			std::abs(key.scaleMultiplier.x) < MIN_SCALE ||
+			std::abs(key.scaleMultiplier.y) < MIN_SCALE ||
+			std::abs(key.scaleMultiplier.z) < MIN_SCALE)
 		{
 			return false;
 		}
@@ -386,7 +386,7 @@ bool_t Client::CWorldSequenceDocument::Load(
 	if (!parsed ||
 		!Is_ObjectShape(root,
 			{ "schema", "formatVersion", "areaId", "revision",
-			  "templates", "instances" }, { "objectResources" }))
+			  "templates", "instances" }, { "objectResources", "objectFolders" }))
 	{
 		outStatus = "World sequence JSON root is invalid: " + parseError;
 		return false;
@@ -419,6 +419,27 @@ bool_t Client::CWorldSequenceDocument::Load(
 	CWorldSequenceDocument staged;
 	staged.m_AreaId = expectedAreaId;
 	staged.m_iRevision = parsedRevision;
+    if (const auto* folders = root.Find("objectFolders"))
+    {
+        if (parsedFormatVersion != 3u || !folders->Is_Array() || folders->Get_Array().size() > MAX_INSTANCE_COUNT)
+        { outStatus = "World object folder list is invalid"; return false; }
+        for (const auto& row : folders->Get_Array())
+        {
+            if (!Is_ObjectShape(row, {"folderId", "displayName"}, {"anchorKind", "parentId"}) ||
+                !row.Find("folderId")->Is_String() || !row.Find("displayName")->Is_String())
+            { outStatus = "World object folder fields are invalid"; return false; }
+            WORLD_SEQUENCE_OBJECT_FOLDER folder;
+            folder.folderId = row.Find("folderId")->Get_String();
+            folder.displayName = row.Find("displayName")->Get_String();
+            for (const char_t* key : {"anchorKind", "parentId"})
+                if (const auto* value = row.Find(key))
+                {
+                    if (!value->Is_String()) { outStatus = "World object folder anchor and parent must be text"; return false; }
+                    (std::string(key) == "anchorKind" ? folder.anchorKind : folder.parentId) = value->Get_String();
+                }
+            staged.m_ObjectFolders.push_back(std::move(folder));
+        }
+    }
 	const DATA_JSON_VALUE* objects = root.Find("objectResources");
 	if ((parsedFormatVersion < 3u && nullptr != objects) ||
 		(parsedFormatVersion == 3u && (nullptr == objects || !objects->Is_Array() ||
@@ -433,7 +454,7 @@ bool_t Client::CWorldSequenceDocument::Load(
 		{
 			WORLD_SEQUENCE_OBJECT_RESOURCE object;
 			if (!Is_ObjectShape(row, { "objectId", "displayName", "modelAssetId", "modelPreScale",
-				"animated", "scale" }, { "diffuseTextureAssetId", "sequenceInstanceId", "anchorKind", "defaultMotionInstanceId", "anchorBossArchetypeId", "anchorBone", "materialProfile", "materialSourceModelAssetId", "mapMaterialBindings", "motionInstanceIds", "combatBody", "animationSetAssetId", "presentationBossArchetypeId" }) ||
+				"animated", "scale" }, { "diffuseTextureAssetId", "sequenceInstanceId", "anchorKind", "defaultMotionInstanceId", "anchorBossArchetypeId", "anchorBone", "materialProfile", "materialSourceModelAssetId", "mapMaterialBindings", "motionInstanceIds", "combatBody", "animationSetAssetId", "presentationBossArchetypeId", "parentId" }) ||
 				!row.Find("objectId")->Is_String() || !row.Find("displayName")->Is_String() ||
 				!row.Find("modelAssetId")->Is_String() || !row.Find("animated")->Is_Boolean() ||
 				!Read_FiniteFloat(row.Find("modelPreScale"), object.modelPreScale) ||
@@ -444,6 +465,11 @@ bool_t Client::CWorldSequenceDocument::Load(
 			}
 			object.objectId = row.Find("objectId")->Get_String();
 			object.displayName = row.Find("displayName")->Get_String();
+            if (const auto* parent = row.Find("parentId"))
+            {
+                if (!parent->Is_String()) { outStatus = "World object parent ID must be text"; return false; }
+                object.parentId = parent->Get_String();
+            }
 			object.modelAssetId = row.Find("modelAssetId")->Get_String();
 			object.animated = row.Find("animated")->Get_Boolean();
 			if (const auto* value = row.Find("combatBody"))
@@ -822,7 +848,7 @@ bool_t Client::CWorldSequenceDocument::Load(
 			{
 				WORLD_SEQUENCE_COLLIDER_TRACK collider;
 				if (!Is_ObjectShape(row, { "colliderTrackId", "slotId", "startMs", "durationMs", "positionOffset",
-					"halfExtents", "yawDegrees", "behavior", "damagePercent", "gripLocalOffset" }, { "attachmentBone" }))
+					"halfExtents", "yawDegrees", "behavior", "damagePercent", "gripLocalOffset" }, { "attachmentBone", "shape" }))
 				{ outStatus = "World Object collider track shape is invalid"; return false; }
 				for (const char* key : { "colliderTrackId", "slotId", "behavior" })
 					if (!row.Find(key)->Is_String())
@@ -830,6 +856,11 @@ bool_t Client::CWorldSequenceDocument::Load(
 				collider.colliderTrackId = row.Find("colliderTrackId")->Get_String();
 				collider.slotId = row.Find("slotId")->Get_String();
 				collider.behavior = row.Find("behavior")->Get_String();
+				if (const auto* shape = row.Find("shape"))
+				{
+					if (!shape->Is_String()) { outStatus = "World Object collider shape must be text"; return false; }
+					collider.shape = shape->Get_String();
+				}
 				if (const auto* bone = row.Find("attachmentBone"))
 				{
 					if (!bone->Is_String()) { outStatus = "World Object collider attachmentBone must be text"; return false; }
@@ -1046,8 +1077,24 @@ bool_t Client::CWorldSequenceDocument::Save(
 		<< "  \"schema\": \"" << SCHEMA << "\",\n"
 		<< "  \"formatVersion\": " << FORMAT_VERSION << ",\n"
 		<< "  \"areaId\": \"" << CDataJson::Escape(m_AreaId) << "\",\n"
-		<< "  \"revision\": " << m_iRevision << ",\n"
-		<< "  \"objectResources\": [";
+		<< "  \"revision\": " << m_iRevision << ",\n";
+    if (!m_ObjectFolders.empty())
+    {
+        output << "  \"objectFolders\": [";
+        for (size_t index = 0; index < m_ObjectFolders.size(); ++index)
+        {
+            const auto& folder = m_ObjectFolders[index];
+            output << (index ? ",\n" : "\n") << "    {\n"
+                << "      \"folderId\": \"" << CDataJson::Escape(folder.folderId) << "\",\n"
+                << "      \"displayName\": \"" << CDataJson::Escape(folder.displayName) << "\",\n"
+                << "      \"anchorKind\": \"" << CDataJson::Escape(folder.anchorKind) << "\"";
+            if (!folder.parentId.empty())
+                output << ",\n      \"parentId\": \"" << CDataJson::Escape(folder.parentId) << "\"";
+            output << "\n    }";
+        }
+        output << "\n  ],\n";
+    }
+    output << "  \"objectResources\": [";
 	for (size_t index = 0u; index < m_ObjectResources.size(); ++index)
 	{
 		const auto& object = m_ObjectResources[index];
@@ -1061,6 +1108,8 @@ bool_t Client::CWorldSequenceDocument::Save(
 			<< "      \"animated\": " << (object.animated ? "true" : "false") << ",\n"
 			<< "      \"scale\": [" << object.scale.x << ", " << object.scale.y << ", " << object.scale.z << "],\n"
 			<< "      \"sequenceInstanceId\": \"" << CDataJson::Escape(object.sequenceInstanceId) << "\"";
+        if (!object.parentId.empty())
+            output << ",\n      \"parentId\": \"" << CDataJson::Escape(object.parentId) << "\"";
 		if (object.anchorKind == "BOSS")
 			output << ",\n      \"anchorBossArchetypeId\": \"" << CDataJson::Escape(object.anchorBossArchetypeId)
 				<< "\",\n      \"anchorBone\": \"" << CDataJson::Escape(object.anchorBone) << "\"";
@@ -1260,6 +1309,7 @@ bool_t Client::CWorldSequenceDocument::Save(
 					<< "], \"yawDegrees\": " << collider.yawDegrees << ", \"behavior\": \"" << collider.behavior
 					<< "\", \"damagePercent\": " << collider.damagePercent << ", \"gripLocalOffset\": ["
 					<< collider.gripLocalOffset.x << ", " << collider.gripLocalOffset.y << ", " << collider.gripLocalOffset.z << "]";
+				if (collider.shape != "BOX") output << ", \"shape\": \"" << CDataJson::Escape(collider.shape) << "\"";
 				if (!collider.attachmentBone.empty()) output << ", \"attachmentBone\": \"" << CDataJson::Escape(collider.attachmentBone) << "\"";
 				output << " }";
 			}
@@ -1349,6 +1399,43 @@ bool_t Client::CWorldSequenceDocument::Save(
 	return true;
 }
 
+bool_t Client::CWorldSequenceDocument::Validate_ObjectHierarchy(std::string& outStatus) const
+{
+    if (m_ObjectFolders.size() > MAX_INSTANCE_COUNT || m_ObjectResources.size() > MAX_INSTANCE_COUNT)
+    { outStatus = "World object hierarchy exceeds its limits"; return false; }
+    struct NODE { const std::string* parent; const std::string* anchor; };
+    std::unordered_map<std::string, NODE> nodes;
+    const auto add = [&](const std::string& id, const std::string& name,
+        const std::string& anchor, const std::string& parent) {
+        return Is_ValidStableId(id) && !name.empty() && name.size() <= 128u &&
+            Is_ValidUtf8DisplayText(name) &&
+            (anchor == "WORLD" || anchor == "PLAYER" || anchor == "BOSS") &&
+            (parent.empty() || Is_ValidStableId(parent)) && nodes.emplace(id, NODE{&parent, &anchor}).second;
+    };
+    for (const auto& folder : m_ObjectFolders)
+        if (!add(folder.folderId, folder.displayName, folder.anchorKind, folder.parentId))
+        { outStatus = "Invalid or duplicate Object folder: " + folder.folderId; return false; }
+    for (const auto& object : m_ObjectResources)
+        if (!add(object.objectId, object.displayName, object.anchorKind, object.parentId))
+        { outStatus = "Invalid or duplicate Object hierarchy entry: " + object.objectId; return false; }
+    for (const auto& [id, node] : nodes)
+    {
+        std::unordered_set<std::string> visited{id};
+        const NODE* current = &node;
+        size_t depth = 0;
+        while (!current->parent->empty())
+        {
+            const auto found = nodes.find(*current->parent);
+            if (found == nodes.end() || *found->second.anchor != *node.anchor)
+            { outStatus = "Object parent must exist in the same anchor category: " + id; return false; }
+            if (!visited.insert(found->first).second || ++depth > 64u)
+            { outStatus = "Object hierarchy contains a cycle or exceeds 64 parents: " + id; return false; }
+            current = &found->second;
+        }
+    }
+    return true;
+}
+
 bool_t Client::CWorldSequenceDocument::Validate(
 	const WORLD_SEQUENCE_PLACEMENT_MAP& availablePlacements,
 	const WORLD_SEQUENCE_DEPLOY_MAP& availableDeployPlacements,
@@ -1362,6 +1449,7 @@ bool_t Client::CWorldSequenceDocument::Validate(
 		outStatus = "World sequence document header is invalid";
 		return false;
 	}
+	if (!Validate_ObjectHierarchy(outStatus)) return false;
 	std::unordered_set<std::string> objectIds;
 	for (const WORLD_SEQUENCE_OBJECT_RESOURCE& object : m_ObjectResources)
 	{
@@ -1542,6 +1630,8 @@ bool_t Client::CWorldSequenceDocument::Validate(
 				[&](const auto& track) { return track.slotId == collider.slotId; });
 			if (!Is_ValidStableId(collider.colliderTrackId) || !colliderIds.insert(collider.colliderTrackId).second ||
 				!Is_ValidStableId(collider.slotId) || !slotExists ||
+				(collider.shape != "BOX" && collider.shape != "CYLINDER") ||
+				(collider.shape == "CYLINDER" && (hook || std::abs(collider.halfExtents.x - collider.halfExtents.z) > .0001f)) ||
 				collider.durationMs == 0u || uint64_t(collider.startMs) + collider.durationMs > value.durationMs ||
 				!Is_BoundedFloat3(collider.positionOffset) || !Is_BoundedFloat3(collider.halfExtents) ||
 				collider.halfExtents.x <= .001f || collider.halfExtents.y <= .001f || collider.halfExtents.z <= .001f ||
@@ -1567,23 +1657,24 @@ bool_t Client::CWorldSequenceDocument::Validate(
 					value.sequenceId;
 				return false;
 			}
-			bool_t mirrored = false;
 			for (size_t keyIndex = 0; keyIndex < track.keys.size(); ++keyIndex)
 			{
 				const WORLD_SEQUENCE_TRANSFORM_KEY& key = track.keys[keyIndex];
-				const bool_t keyMirrored = key.scaleMultiplier.x *
-					key.scaleMultiplier.y * key.scaleMultiplier.z < 0.f;
-				if (!Is_FiniteTransform(key) || keyMirrored ||
+				const auto& first = track.keys.front().scaleMultiplier;
+				// A reflected source actor is valid. Each axis must retain its sign
+				// so interpolation never crosses a singular, zero-scale transform.
+				if (!Is_FiniteTransform(key) ||
 					key.timeMs > value.durationMs ||
 					(0u != keyIndex &&
 						track.keys[keyIndex - 1u].timeMs >= key.timeMs) ||
-					(0u != keyIndex && keyMirrored != mirrored))
+					std::signbit(first.x) != std::signbit(key.scaleMultiplier.x) ||
+					std::signbit(first.y) != std::signbit(key.scaleMultiplier.y) ||
+					std::signbit(first.z) != std::signbit(key.scaleMultiplier.z))
 				{
 					outStatus = "Invalid keyframe in world sequence template: " +
 						value.sequenceId + "/" + track.slotId;
 					return false;
 				}
-				mirrored = keyMirrored;
 			}
 		}
 		/* An animation slot may carry an ordered clip chain, so its rows are
@@ -1708,6 +1799,12 @@ bool_t Client::CWorldSequenceDocument::Validate(
 				binding.targetId;
 			const bool_t hasTransformSlot =
 				targetTemplate->tracks.end() != transformSlot;
+			if (hasTransformSlot && binding.targetKind != WORLD_SEQUENCE_TARGET_KIND::OBJECT_RESOURCE)
+			{
+				const auto& scale = transformSlot->keys.front().scaleMultiplier;
+				if (scale.x < 0.f || scale.y < 0.f || scale.z < 0.f)
+				{ outStatus = "Signed scale requires an Object Resource binding: " + value.instanceId; return false; }
+			}
 			const bool_t hasAnimationSlot =
 				targetTemplate->animationTracks.end() != animationSlot;
 			/* A Deploy target may carry a transform track alongside its clip
@@ -1862,6 +1959,7 @@ void Client::CWorldSequenceDocument::Reset_Empty(const std::string& areaId)
 	m_Templates.clear();
 	m_Instances.clear();
 	m_ObjectResources.clear();
+	m_ObjectFolders.clear();
 }
 
 void Client::CWorldSequenceDocument::Touch()
@@ -1916,6 +2014,20 @@ Client::CWorldSequenceDocument::Find_Instance(
 	return m_Instances.end() == found ? nullptr : &*found;
 }
 
+Client::WORLD_SEQUENCE_OBJECT_FOLDER* Client::CWorldSequenceDocument::Find_ObjectFolder(const std::string& folderId)
+{
+    const auto found = std::find_if(m_ObjectFolders.begin(), m_ObjectFolders.end(),
+        [&folderId](const auto& value) { return value.folderId == folderId; });
+    return found == m_ObjectFolders.end() ? nullptr : &*found;
+}
+
+const Client::WORLD_SEQUENCE_OBJECT_FOLDER* Client::CWorldSequenceDocument::Find_ObjectFolder(const std::string& folderId) const
+{
+    const auto found = std::find_if(m_ObjectFolders.begin(), m_ObjectFolders.end(),
+        [&folderId](const auto& value) { return value.folderId == folderId; });
+    return found == m_ObjectFolders.end() ? nullptr : &*found;
+}
+
 Client::WORLD_SEQUENCE_OBJECT_RESOURCE* Client::CWorldSequenceDocument::Find_ObjectResource(const std::string& objectId)
 {
 	const auto found = std::find_if(m_ObjectResources.begin(), m_ObjectResources.end(),
@@ -1952,7 +2064,8 @@ bool_t Client::CWorldSequenceDocument::Is_Equivalent(
 	if (m_AreaId != other.m_AreaId || m_iRevision != other.m_iRevision ||
 		m_Templates.size() != other.m_Templates.size() ||
 		m_Instances.size() != other.m_Instances.size() ||
-		m_ObjectResources.size() != other.m_ObjectResources.size())
+		m_ObjectResources.size() != other.m_ObjectResources.size() ||
+        m_ObjectFolders != other.m_ObjectFolders)
 	{
 		return false;
 	}
@@ -1961,6 +2074,7 @@ bool_t Client::CWorldSequenceDocument::Is_Equivalent(
 		const auto& left = m_ObjectResources[index];
 		const auto& right = other.m_ObjectResources[index];
 		if (left.objectId != right.objectId || left.displayName != right.displayName ||
+            left.parentId != right.parentId ||
 			left.anchorKind != right.anchorKind || left.anchorBossArchetypeId != right.anchorBossArchetypeId ||
 			left.anchorBone != right.anchorBone ||
 			left.modelAssetId != right.modelAssetId || left.diffuseTextureAssetId != right.diffuseTextureAssetId ||
@@ -2023,7 +2137,7 @@ bool_t Client::CWorldSequenceDocument::Is_Equivalent(
 			if (a.colliderTrackId != b.colliderTrackId || a.slotId != b.slotId || a.startMs != b.startMs ||
 				a.durationMs != b.durationMs || !sameFloat3(a.positionOffset, b.positionOffset) ||
 				!sameFloat3(a.halfExtents, b.halfExtents) || !sameFloat(a.yawDegrees, b.yawDegrees) ||
-				a.behavior != b.behavior || !sameFloat(a.damagePercent, b.damagePercent) ||
+				a.shape != b.shape || a.behavior != b.behavior || !sameFloat(a.damagePercent, b.damagePercent) ||
 				!sameFloat3(a.gripLocalOffset, b.gripLocalOffset) || a.attachmentBone != b.attachmentBone) return false;
 		}
 		for (size_t trackIndex = 0u; trackIndex < left.tracks.size(); ++trackIndex)
@@ -2410,5 +2524,211 @@ bool_t CWorldSequenceDocument::Duplicate_ColliderTrack(const std::string& sequen
     *current = std::move(*staged);
     outIndex = index + 1u;
     outStatus = "Duplicated the collider with its original time window.";
+    return true;
+}
+
+namespace
+{
+    bool Validate_ObjectBundle(const WORLD_SEQUENCE_OBJECT_BUNDLE& bundle, std::string& status)
+    {
+        const auto& resource = bundle.resource;
+        if (resource.modelAssetId.empty() || !resource.sequenceInstanceId.empty() || !resource.motionInstanceIds.empty())
+        { status = "Copy requires a model Object, not a placed alias or combined Motion group."; return false; }
+        CWorldSequenceDocument projection;
+        projection.Reset_Empty("clipboard.world.object");
+        projection.Get_ObjectResources().push_back(resource);
+        projection.Get_ObjectResources().front().parentId.clear();
+        projection.Get_Templates() = bundle.templates;
+        projection.Get_Instances() = bundle.instances;
+        if (!projection.Validate({}, {}, status)) return false;
+        std::unordered_set<std::string> rootIds, visited, templateIds;
+        std::vector<std::string> pending = bundle.rootMotionIds;
+        for (const auto& id : pending)
+            if (!rootIds.insert(id).second || !projection.Find_Instance(id))
+            { status = "Copied Motion roots must be unique and present in the bundle."; return false; }
+        for (size_t index = 0; index < pending.size(); ++index)
+        {
+            const auto& id = pending[index];
+            if (!visited.insert(id).second) continue;
+            const auto* instance = projection.Find_Instance(id);
+            if (!instance || instance->bindings.size() != 1u ||
+                instance->bindings.front().targetKind != WORLD_SEQUENCE_TARGET_KIND::OBJECT_RESOURCE ||
+                instance->bindings.front().targetId != resource.objectId || instance->anchorKind != resource.anchorKind)
+            { status = "Every copied Motion must bind only the copied Object in its anchor category."; return false; }
+            templateIds.insert(instance->templateId);
+            if (instance->motionEnd == WORLD_SEQUENCE_MOTION_END::NEXT) pending.push_back(instance->nextMotionId);
+        }
+        if (visited.size() != bundle.instances.size() || templateIds.size() != bundle.templates.size())
+        { status = "Copied Motion bundle contains unreferenced instances or templates."; return false; }
+        return true;
+    }
+
+    bool Is_UnboundObjectDraft(const CWorldSequenceDocument& document,
+        const WORLD_SEQUENCE_OBJECT_RESOURCE& resource)
+    {
+        // Only the unfinished model selection produced by Create Object is exempt.
+        // A malformed assigned model or a referenced resource still gets full validation.
+        return resource.modelAssetId.empty() && resource.sequenceInstanceId.empty() &&
+            resource.motionInstanceIds.empty() && resource.defaultMotionInstanceId.empty() &&
+            resource.animationSetAssetId.empty() && resource.presentationBossArchetypeId.empty() &&
+            resource.diffuseTextureAssetId.empty() && !resource.materialProfile && !resource.combatBody &&
+            resource.materialSourceModelAssetId.empty() && resource.mapMaterialBindings.empty() && !resource.animated &&
+            std::isfinite(resource.modelPreScale) && resource.modelPreScale >= MIN_SCALE && resource.modelPreScale <= MAX_COMPONENT &&
+            Is_BoundedFloat3(resource.scale) && resource.scale.x >= MIN_SCALE && resource.scale.y >= MIN_SCALE && resource.scale.z >= MIN_SCALE &&
+            std::none_of(document.Get_Instances().begin(), document.Get_Instances().end(), [&](const auto& instance) {
+                return std::any_of(instance.bindings.begin(), instance.bindings.end(), [&](const auto& binding) {
+                    return binding.targetKind == WORLD_SEQUENCE_TARGET_KIND::OBJECT_RESOURCE && binding.targetId == resource.objectId;
+                });
+            });
+    }
+}
+
+bool_t CWorldSequenceDocument::Capture_ObjectBundle(const std::string& objectId,
+    const std::vector<std::string>& selectedMotionIds, WORLD_SEQUENCE_OBJECT_BUNDLE& outBundle,
+    std::string& outStatus) const
+{
+    const auto* resource = Find_ObjectResource(objectId);
+    if (!resource || resource->modelAssetId.empty() || !resource->sequenceInstanceId.empty() || !resource->motionInstanceIds.empty())
+    { outStatus = "Copy requires a model Object. Placed aliases and combined Motion groups keep their existing bindings."; return false; }
+    WORLD_SEQUENCE_OBJECT_BUNDLE staged;
+    staged.resource = *resource;
+    staged.rootMotionIds = selectedMotionIds;
+    if (selectedMotionIds.empty())
+        for (const auto& instance : m_Instances)
+            if (std::any_of(instance.bindings.begin(), instance.bindings.end(), [&](const auto& binding) {
+                return binding.targetKind == WORLD_SEQUENCE_TARGET_KIND::OBJECT_RESOURCE && binding.targetId == objectId;
+            })) staged.rootMotionIds.push_back(instance.instanceId);
+    std::unordered_set<std::string> instanceIds, templateIds;
+    std::vector<std::string> pending = staged.rootMotionIds;
+    for (size_t index = 0; index < pending.size(); ++index)
+    {
+        const auto id = pending[index];
+        if (!instanceIds.insert(id).second) continue;
+        const auto* instance = Find_Instance(id);
+        const auto* sequence = instance ? Find_Template(instance->templateId) : nullptr;
+        if (!instance || !sequence || instance->bindings.size() != 1u ||
+            instance->bindings.front().targetKind != WORLD_SEQUENCE_TARGET_KIND::OBJECT_RESOURCE ||
+            instance->bindings.front().targetId != objectId || instance->anchorKind != resource->anchorKind)
+        { outStatus = "Copy refused: every selected and NEXT Motion must bind this model Object only."; return false; }
+        if (instanceIds.size() > MAX_INSTANCE_COUNT)
+        { outStatus = "Copy refused: Motion bundle capacity reached."; return false; }
+        staged.instances.push_back(*instance);
+        if (templateIds.insert(sequence->sequenceId).second) staged.templates.push_back(*sequence);
+        if (instance->motionEnd == WORLD_SEQUENCE_MOTION_END::NEXT) pending.push_back(instance->nextMotionId);
+    }
+    if (!selectedMotionIds.empty() && !instanceIds.contains(staged.resource.defaultMotionInstanceId))
+    {
+        staged.resource.defaultMotionInstanceId.clear();
+        for (const auto& id : staged.rootMotionIds)
+            if (const auto* instance = Find_Instance(id); instance && instance->enabled)
+            { staged.resource.defaultMotionInstanceId = id; break; }
+    }
+    if (!Validate_ObjectBundle(staged, outStatus))
+    { outStatus = "Copy refused: " + outStatus + " Existing clipboard preserved."; return false; }
+    outBundle = std::move(staged);
+    outStatus = "Copied the Object resource and " + std::to_string(outBundle.instances.size()) + " independent Motion values.";
+    return true;
+}
+
+bool_t CWorldSequenceDocument::Paste_ObjectBundle(const WORLD_SEQUENCE_OBJECT_BUNDLE& bundle,
+    const std::string& destinationObjectId, const std::string& newObjectName, const std::string& parentId,
+    const WORLD_SEQUENCE_PLACEMENT_MAP& mapPlacements, const WORLD_SEQUENCE_DEPLOY_MAP& deployPlacements,
+    WORLD_SEQUENCE_PASTE_RESULT& outResult, std::string& outStatus)
+{
+    if (!Validate_ObjectBundle(bundle, outStatus))
+    { outStatus = "Paste refused: " + outStatus + " Existing draft preserved."; return false; }
+    const bool createObject = destinationObjectId.empty();
+    const auto* destination = createObject ? nullptr : Find_ObjectResource(destinationObjectId);
+    if (!createObject && !destination)
+    { outStatus = "Paste refused: destination Object is unavailable. Existing draft preserved."; return false; }
+    if (m_Templates.size() + bundle.templates.size() > MAX_TEMPLATE_COUNT ||
+        m_Instances.size() + bundle.instances.size() > MAX_INSTANCE_COUNT ||
+        m_ObjectResources.size() + (createObject ? 1u : 0u) > MAX_INSTANCE_COUNT)
+    { outStatus = "Paste refused: World sequence document capacity reached. Existing draft preserved."; return false; }
+    const bool fillDraft = destination && Is_UnboundObjectDraft(*this, *destination);
+    if (destination && (destination->anchorKind != bundle.resource.anchorKind ||
+        !destination->sequenceInstanceId.empty() || !destination->motionInstanceIds.empty() ||
+        (!fillDraft && (destination->modelAssetId != bundle.resource.modelAssetId ||
+            destination->animationSetAssetId != bundle.resource.animationSetAssetId ||
+            destination->animated != bundle.resource.animated ||
+            destination->presentationBossArchetypeId != bundle.resource.presentationBossArchetypeId))))
+    { outStatus = "Paste refused: destination requires the same model, animation set and anchor category. Existing draft preserved."; return false; }
+    auto candidate = *this;
+    WORLD_SEQUENCE_PASTE_RESULT result;
+    result.objectId = destinationObjectId;
+    if (createObject)
+    {
+        for (uint32_t serial = 1u; ; ++serial)
+        {
+            result.objectId = "world.object.copy." + std::to_string(serial);
+            if (!candidate.Find_ObjectResource(result.objectId) && !candidate.Find_ObjectFolder(result.objectId)) break;
+        }
+        auto resource = bundle.resource;
+        resource.objectId = result.objectId;
+        resource.displayName = newObjectName;
+        resource.parentId = parentId;
+        candidate.Get_ObjectResources().push_back(std::move(resource));
+    }
+    else if (fillDraft)
+    {
+        auto resource = bundle.resource;
+        resource.objectId = destination->objectId;
+        resource.displayName = destination->displayName;
+        resource.parentId = destination->parentId;
+        *candidate.Find_ObjectResource(result.objectId) = std::move(resource);
+    }
+    std::unordered_map<std::string, std::string> templateIds, instanceIds;
+    for (const auto& original : bundle.templates)
+    {
+        auto sequence = original;
+        for (uint32_t serial = 1u; ; ++serial)
+        {
+            sequence.sequenceId = "world.object.motion.copy." + std::to_string(serial);
+            if (!candidate.Find_Template(sequence.sequenceId)) break;
+        }
+        templateIds.emplace(original.sequenceId, sequence.sequenceId);
+        candidate.Get_Templates().push_back(std::move(sequence));
+    }
+    for (const auto& original : bundle.instances)
+    {
+        auto instance = original;
+        for (uint32_t serial = 1u; ; ++serial)
+        {
+            instance.instanceId = "world.object.instance.copy." + std::to_string(serial);
+            if (!candidate.Find_Instance(instance.instanceId)) break;
+        }
+        instance.templateId = templateIds.at(original.templateId);
+        instance.bindings.front().targetId = result.objectId;
+        instanceIds.emplace(original.instanceId, instance.instanceId);
+        result.instanceIds.push_back(instance.instanceId);
+        candidate.Get_Instances().push_back(std::move(instance));
+    }
+    for (const auto& id : result.instanceIds)
+    {
+        auto* instance = candidate.Find_Instance(id);
+        if (instance->motionEnd == WORLD_SEQUENCE_MOTION_END::NEXT)
+            instance->nextMotionId = instanceIds.at(instance->nextMotionId);
+    }
+    for (const auto& id : bundle.rootMotionIds) result.rootMotionIds.push_back(instanceIds.at(id));
+    auto* resource = candidate.Find_ObjectResource(result.objectId);
+    if (createObject || fillDraft || resource->defaultMotionInstanceId.empty())
+        resource->defaultMotionInstanceId = bundle.resource.defaultMotionInstanceId.empty() ? std::string{} :
+            instanceIds.at(bundle.resource.defaultMotionInstanceId);
+    if (!candidate.Validate_ObjectHierarchy(outStatus))
+    { outStatus = "Paste refused: " + outStatus + " Existing draft preserved."; return false; }
+    // Other Create Object drafts remain visible and unchanged. Remove only those
+    // unbound placeholders from a validation copy; Save still validates everything.
+    auto validation = candidate;
+    auto& resources = validation.Get_ObjectResources();
+    resources.erase(std::remove_if(resources.begin(), resources.end(), [&](const auto& row) {
+        return row.objectId != result.objectId && Is_UnboundObjectDraft(candidate, row);
+    }), resources.end());
+    validation.Get_ObjectFolders().clear();
+    for (auto& row : resources) row.parentId.clear();
+    if (!validation.Validate(mapPlacements, deployPlacements, outStatus))
+    { outStatus = "Paste refused: " + outStatus + " Existing draft preserved."; return false; }
+    *this = std::move(candidate);
+    outResult = std::move(result);
+    outStatus = "Pasted an independent Object/Motion copy. Save to keep the resource.";
     return true;
 }

@@ -32,6 +32,23 @@ def documents():
     return action, sequence
 
 
+def bingo_documents():
+    action, sequence = documents()
+    for number, duration, combat in ((9, 51285, False), (10, 23333, True)):
+        sequence["patterns"].append({"patternId": PREFIX + str(number), "gateId": "BINGO",
+            "enterCombatOnFinish": combat, "durationMs": duration, "stages": [{"durationMs": duration}], "logicOccurrences": []})
+    common = {"gateId": "BINGO", "authoringStatus": "PRODUCT", "actorProfileId": "MN_RPCT_07",
+              "targetBossPlacementId": "boss.kakulsaydon.bingo.saydon"}
+    action["patterns"].extend([dict(common, patternId="parent.bingo"),
+        dict(common, patternId="special.bingo", patternOccurrences=[{"patternId": "child.bingo", "repeat": False}]),
+        dict(common, patternId="child.bingo", logicOccurrences=[{"logicId": "detonate", "enabled": True}])])
+    action["logics"] = [{"logicId": "detonate", "logicType": "TRIGGER", "triggerKind": "BINGO_DETONATION"}]
+    action["patternFlows"].append({"gateId": "BINGO", "flowId": "flow.bingo", "bingoSpecialPatternId": "special.bingo",
+        "entries": [{"entryId": "bingo.parent", "kind": "PATTERN", "targetId": "parent.bingo", "waitAfterMs": 0}]})
+    for flow in action["patternFlows"]: flow["displayName"] = flow["gateId"]
+    return action, sequence
+
+
 class RaidProjectionTests(unittest.TestCase):
     def test_hp_groups_preserve_saved_identity_and_completion_boundary(self):
         action, sequence = documents()
@@ -113,15 +130,8 @@ class RaidProjectionTests(unittest.TestCase):
                     subject.project_raid_gates(action, sequence)
 
     def test_bingo_reuses_saved_encore_intro_then_combat_and_ending(self):
-        action, sequence = documents()
-        sequence["patterns"].append({"patternId": PREFIX + "9", "gateId": "BINGO",
-            "durationMs": 51285, "stages": [{"durationMs": 49083}], "logicOccurrences": []})
-        sequence["patterns"].append({"patternId": PREFIX + "10", "gateId": "BINGO",
-            "enterCombatOnFinish": True, "stages": [{"durationMs": 23333}], "logicOccurrences": []})
-        action["patterns"].append({"patternId": "parent.bingo", "gateId": "BINGO", "authoringStatus": "PRODUCT"})
-        flow = {"gateId": "BINGO", "flowId": "flow.bingo", "entries": [
-            {"entryId": "bingo.parent", "kind": "PATTERN", "targetId": "parent.bingo", "waitAfterMs": 0}]}
-        action["patternFlows"].append(flow)
+        action, sequence = bingo_documents()
+        flow = action["patternFlows"][-1]
         bingo = subject.project_raid_gates(action, sequence)[-1]
         self.assertEqual("BINGO", bingo["gateId"])
         self.assertEqual("boss.kakulsaydon.bingo.saydon", bingo["primaryBossPlacementId"])
@@ -130,9 +140,60 @@ class RaidProjectionTests(unittest.TestCase):
         self.assertEqual((PREFIX + "9", 51285), (bingo["clearPatternId"], bingo["clearDurationMs"]))
         self.assertEqual((sequence["compositionId"], sequence["revision"]),
                          (bingo["sequenceCompositionId"], bingo["sequenceRevision"]))
-        action["patterns"][-1]["authoringStatus"] = "DRAFT"
+        next(p for p in action["patterns"] if p["patternId"] == "parent.bingo")["authoringStatus"] = "DRAFT"
         with self.assertRaisesRegex(ValueError, "unavailable parent.bingo"):
             subject.project_raid_gates(action, sequence)
+
+    def test_bingo_special_draft_compatibility_projection_and_dependency_closure(self):
+        action, sequence = bingo_documents()
+        flow = action["patternFlows"][-1]
+        before = copy.deepcopy(action)
+        composition.validate_pattern_flows(action)
+        self.assertEqual("special.bingo", subject.project_raid_gates(action, sequence)[-1]["bingoSpecialPatternId"])
+        self.assertEqual(before, action)
+        flow["entries"].append(dict(flow["entries"][0], entryId="bingo.second"))
+        flow["entries"].reverse()
+        self.assertEqual("special.bingo", subject.project_raid_gates(action, sequence)[-1]["bingoSpecialPatternId"])
+        del flow["bingoSpecialPatternId"]
+        composition.validate_pattern_flows(action)  # Old unassigned drafts remain readable.
+        with self.assertRaisesRegex(ValueError, "bingoSpecialPatternId"):
+            subject.project_raid_gates(action, sequence)
+        actual = json.loads((ROOT / prepare.ACTION).read_text("utf-8-sig"))
+        bingo = next(f for f in actual["patternFlows"] if f["gateId"] == "BINGO")
+        bingo["bingoSpecialPatternId"] = PREFIX + "107"
+        # This source-only metadata check does not admit draft Patterns or write live files.
+        for pattern in actual["patterns"]: pattern["authoringStatus"] = "PRODUCT"
+        self.assertEqual(PREFIX + "107", subject.validate_bingo_special(actual, bingo))
+        parent = next(p for p in actual["patterns"] if p["patternId"] == PREFIX + "107")
+        self.assertEqual({PREFIX + str(i) for i in (127, 94, 128)}, composition._pattern_dependencies(actual, parent))
+
+    def test_bingo_special_rejects_ambiguous_or_unavailable_parent(self):
+        mutations = [
+            lambda a,f: f.update(bingoSpecialPatternId="missing.special"),
+            lambda a,f: f.update(bingoSpecialPatternId=3),
+            lambda a,f: a["patterns"][-2].update(gateId="GATE3"),
+            lambda a,f: a["patterns"][-2].update(targetBossPlacementId="wrong.boss"),
+            lambda a,f: a["patterns"][-2].update(patternOccurrences=[]),
+            lambda a,f: a["patterns"][-2].update(loopStartPatternOccurrenceId="loop"),
+            lambda a,f: a["patterns"][-2]["patternOccurrences"][0].update(repeat=True),
+            lambda a,f: a["patterns"][-1].update(patternOccurrences=[{"patternId": "parent.bingo"}]),
+            lambda a,f: a["patterns"][-1].update(actorProfileId="wrong.actor"),
+            lambda a,f: a["patterns"][-1].update(authoringStatus="DRAFT"),
+            lambda a,f: a["patterns"][-1]["logicOccurrences"][0].update(enabled=False),
+            lambda a,f: a["patterns"][-2].update(logicOccurrences=[{"logicId": "detonate"}]),
+            lambda a,f: f["entries"][0].update(targetId="special.bingo"),
+            lambda a,f: (a["bundles"].append({"bundleId": "bundle.special", "members": [{"patternId": "special.bingo"}]}),
+                         f["entries"][0].update(kind="BUNDLE", targetId="bundle.special")),
+        ]
+        for index, mutation in enumerate(mutations):
+            with self.subTest(index=index):
+                action, sequence = bingo_documents(); mutation(action, action["patternFlows"][-1])
+                with self.assertRaises(ValueError): subject.project_raid_gates(action, sequence)
+        for value in (None, 4, [], "missing.special"):
+            action, _ = bingo_documents(); action["patternFlows"][-1]["bingoSpecialPatternId"] = value
+            with self.assertRaises(composition.CompositionError): composition.validate_pattern_flows(action)
+        action, _ = bingo_documents(); action["patternFlows"][0]["bingoSpecialPatternId"] = "special.bingo"
+        with self.assertRaises(composition.CompositionError): composition.validate_pattern_flows(action)
 
     def test_release_entry_uses_the_authored_time_zero_world_identity(self):
         action, sequence = documents()
@@ -201,7 +262,22 @@ class RaidProjectionTests(unittest.TestCase):
         # Include index 10 so the actual publisher sort's numeric padding is covered.
         first = valid["raidGates"][0]
         first["entries"] = [dict(first["entries"][0], entryId=f"entry.{i}") for i in range(12)]
+        bingo_action, bingo_sequence = bingo_documents()
+        valid["raidGates"].append(subject.project_raid_gates(bingo_action, bingo_sequence)[-1])
+        valid["patterns"].extend([{"patternId": "parent.bingo", "gateId": "BINGO"},
+            {"patternId": "special.bingo", "gateId": "BINGO", "fixedTimeline": True,
+             "targetBossPlacementId": "boss.kakulsaydon.bingo.saydon", "stages": [{"durationMs": 32628}],
+             "mechanicTriggers": [{"kind": "BINGO_DETONATION"}]}])
         cases = [{"name": "valid", "accepted": True, "document": valid}]
+        for name in ("absent_special", "missing_special", "wrong_gate", "no_detonation", "double_detonation", "ordinary_special"):
+            invalid = copy.deepcopy(valid)
+            if name == "absent_special": del invalid["raidGates"][-1]["bingoSpecialPatternId"]
+            elif name == "missing_special": invalid["raidGates"][-1]["bingoSpecialPatternId"] = "missing.special"
+            elif name == "wrong_gate": invalid["patterns"][-1]["gateId"] = "GATE3"
+            elif name == "no_detonation": invalid["patterns"][-1]["mechanicTriggers"] = []
+            elif name == "double_detonation": invalid["patterns"][-1]["mechanicTriggers"] *= 2
+            else: invalid["raidGates"][-1]["entries"][0]["targetId"] = "special.bingo"
+            cases.append({"name": name, "accepted": False, "document": invalid})
         grouped = copy.deepcopy(valid)
         grouped["raidGates"][0]["entryGroups"] = [{"groupId": "normal.first", "displayName": "First normal group",
             "startEntryId": "entry.0", "endEntryId": "entry.10", "repeatUntilHealthBars": 130, "transitionAt": "PATTERN_END"},
@@ -265,6 +341,11 @@ foreach ($case in (Get-Content -LiteralPath $Cases -Raw | ConvertFrom-Json)) {
             }
             $index = 0
             foreach ($row in $gateRows) { if ($row.StartsWith("RAIDFLOWSTEP`t")) { if ([int]$row.Split("`t")[2] -ne $index) { throw 'Flow order was not dense' }; ++$index } }
+            $specials = @($gateRows | Where-Object { $_.StartsWith("RAIDBINGOSPECIAL`t") })
+            if ($gate.gateId -ceq 'BINGO') {
+                if ($specials.Count -ne 1 -or $specials[0] -cne "RAIDBINGOSPECIAL`tBINGO`t$($gate.bingoSpecialPatternId)") { throw 'Bingo special identity was lost' }
+                if ([Array]::IndexOf($gateRows, $specials[0]) -le $index) { throw 'Special preceded normal Flow rows' }
+            } elseif ($specials.Count -ne 0) { throw 'Other Gate acquired a Bingo special' }
             $groups = @($gateRows | Where-Object { $_.StartsWith("RAIDFLOWGROUP`t") })
             if ($null -ne $gate.PSObject.Properties['entryGroups']) {
                 if ($groups.Count -ne @($gate.entryGroups).Count) { throw 'Flow groups were lost' }

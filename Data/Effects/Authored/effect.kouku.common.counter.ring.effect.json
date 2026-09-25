@@ -108,12 +108,7 @@
             0,
             0
           ],
-          "multiply": [
-            0,
-            2.63000011,
-            5.44999981,
-            3
-          ],
+          "multiply": [0.0,0.4825688443464368,1.0,0.5],
           "clip": 0,
           "emissiveIntensity": 1,
           "distortionIntensity": 0,

@@ -334,10 +334,10 @@ public:
     // A nonnegative clock belongs to Tool Preview; product uses its received state.
     void Set_CounterAfterimageEnabled(bool enabled, float previewClockSeconds = -1.f);
     void Reset_AfterimageHistory();
-#ifdef _DEBUG
 	void Set_CombatColliderDebugVisible(bool_t isVisible) {
 		m_isCombatColliderDebugVisible = isVisible;
 	}
+#ifdef _DEBUG
 	/* F1 tuning only. The scale multiplies the drawn body transform, the
 	offset shifts the drawn body from its replicated position, and the weapon
 	multiplier scales the socketed weapon. None of them reaches the Server or
@@ -440,8 +440,8 @@ private:
 	bool_t m_isTransientReturnLoop = true;
 	f32_t m_fOutlineWidth = { 0.f };
 	float4_t m_vOutlineColor = { 1.f, 1.f, 1.f, 1.f };
-#ifdef _DEBUG
 	bool_t m_isCombatColliderDebugVisible = { false };
+#ifdef _DEBUG
 	f32_t m_fDebugPresentationScale = 1.f;
 	float3_t m_vDebugPresentationOffset = {};
 	float3_t m_vDebugUnadjustedPosition = {};

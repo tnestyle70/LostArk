@@ -5,6 +5,19 @@
   "displayName": "원작 수치 (발탄 1415 / 쿠크세이튼 1475, 기준 스펙 아이템 레벨 1500)",
   "staggerGaugeScale": 400,
   "madnessGaugeAddPercent": 0,
+  "madness": [
+    {
+      "policyId": "KOUKUSAYDON",
+      "damageGainPercent": 100,
+      "ballGainPercent": 10,
+      "ballMultiplierPercent": 200,
+      "ballRadiusM": 2.0,
+      "dollGainPercent": 10,
+      "dollMultiplierPercent": 200,
+      "dollRadiusM": 4.0,
+      "specialIntervalMs": 1000
+    }
+  ],
   "players": [
     {
       "characterClass": "LANCE_MASTER",
@@ -1072,6 +1085,7 @@
     },
     {
       "damageProfileId": "damage.player.34630",
+      "bossHealthBarDamage": 35,
       "attackCoefficientBp": 16286651,
       "damageAddend": 75170,
       "damageSpreadPercent": 10

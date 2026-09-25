@@ -337,14 +337,12 @@ namespace Client
 			std::string& strOutStatus) const;
 		bool Try_Consume_WorldDestructionLiveEvent(
 			LostArk::Shared::WORLD_DESTRUCTION_EVENT_WIRE& outEvent);
-#ifdef _DEBUG
 		/* F1 Developer Tools writes one process-global snapshot. Every Level-owned
 		   replication consumes it by revision, including while disconnected. */
 		static COMBAT_DEBUG_VISIBILITY_SNAPSHOT
 			Get_GlobalCombatDebugVisibility();
 		static void Set_GlobalCombatDebugVisibility(
 			const COMBAT_DEBUG_VISIBILITY_SNAPSHOT& Visibility);
-#endif
 
 		std::shared_ptr<CCharacter> Get_LocalCharacter() const;
 		std::shared_ptr<CValtan> Find_PrimaryValtanPresentation() const;
@@ -499,6 +497,9 @@ namespace Client
 		void Drain_ChatLines(std::vector<CHAT_LINE>& outLines);
 
 	private:
+		void Sync_GlobalCombatDebugVisibility();
+		void Apply_CombatDebugVisibility(
+			const COMBAT_DEBUG_VISIBILITY_SNAPSHOT& Visibility);
 #ifdef _DEBUG
 		struct COMBAT_OBJECT_HIT_AREA_DEBUG final
 		{
@@ -513,9 +514,6 @@ namespace Client
 			std::uint32_t iRepeatCount = 0u;
 			std::uint32_t iRepeatIntervalMs = 0u;
 		};
-		void Sync_GlobalCombatDebugVisibility();
-		void Apply_CombatDebugVisibility(
-			const COMBAT_DEBUG_VISIBILITY_SNAPSHOT& Visibility);
 		bool_t Load_CombatObjectHitAreaDebug(std::string& strOutStatus);
 		void Draw_CombatObjectHitAreaDebug();
 #endif
@@ -732,8 +730,8 @@ namespace Client
 		/* Latest snapshot's worn honor title per player, read by Collect_PlayerViews. */
 		std::unordered_map<LostArk::Shared::NET_ENTITY_ID, LostArk::Shared::HONOR_TITLE_ID>
 			m_HonorTitleByNetEntityId;
-#ifdef _DEBUG
 		COMBAT_DEBUG_VISIBILITY_SNAPSHOT m_CombatDebugVisibility{};
+#ifdef _DEBUG
 		bool_t m_isCombatObjectHitAreaDebugLoadAttempted = false;
 		std::unordered_map<std::string,
 			std::vector<COMBAT_OBJECT_HIT_AREA_DEBUG>>

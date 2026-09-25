@@ -1099,7 +1099,7 @@ namespace
 		revision = {};
 		std::vector<std::uint8_t> bytes;
 		if (!Read_BoundedFile(
-			bootstrapPath, 64u * 1024u * 1024u, bytes, status))
+			bootstrapPath, LostArk::Shared::GAMEPLAY_BOOTSTRAP_MAX_BYTES, bytes, status))
 		{
 			return false;
 		}
@@ -1146,7 +1146,8 @@ namespace
 					parsedVersion.ptr != fields[1].data() + fields[1].size() ||
 					LostArk::Server::GAMEPLAY_BOOTSTRAP_VERSION != version ||
 					std::errc{} != parsedCount.ec ||
-					parsedCount.ptr != fields[2].data() + fields[2].size())
+					parsedCount.ptr != fields[2].data() + fields[2].size() || !declaredRowCount ||
+					declaredRowCount > LostArk::Shared::GAMEPLAY_BOOTSTRAP_MAX_ROWS)
 				{
 					status = "Gameplay bootstrap header is invalid for domain hashing";
 					return false;
@@ -1562,7 +1563,7 @@ namespace
 		error.clear();
 		if (!Resolve_ExactRegularFile(candidateDirectory,
 			bootstrapRelative, bootstrapPath, status) ||
-			fs::file_size(bootstrapPath, error) > 64u * 1024u * 1024u || error ||
+			fs::file_size(bootstrapPath, error) > LostArk::Shared::GAMEPLAY_BOOTSTRAP_MAX_BYTES || error ||
 			!Hash_FileSha256(bootstrapPath, bootstrapRevision, status) ||
 			Format_GameplayDataRevision(bootstrapRevision) !=
 				Find_Member(*bootstrap, "candidateSha256")->String)

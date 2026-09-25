@@ -57,9 +57,7 @@ public:
 	   has to feed a time value into every screen pass. */
 	void Advance_PresentationClock(f32_t fTimeDelta);
 
-#ifdef _DEBUG
 	HRESULT Add_DebugComponent(shared_ptr<CComponent> pDebugComponent);
-#endif
 
 private:
 	ComPtr<ID3D11Device>					m_pDevice = { nullptr };
@@ -87,6 +85,14 @@ private:
 	ComPtr<ID3D11DepthStencilView> m_pSourceLightMaskDSV;
 	uint32_t m_iSourceLightMaskWidth = 0u, m_iSourceLightMaskHeight = 0u;
 	uint32_t m_iSourceLightMaskFailedWidth = 0u, m_iSourceLightMaskFailedHeight = 0u;
+	// An opt-in late pass updates the picking target without clearing opaque picks.
+	ComPtr<ID3D11Texture2D> m_pPickingTexture;
+	ComPtr<ID3D11RenderTargetView> m_pPickingRTV;
+	ComPtr<ID3D11Texture2D> m_pPickingDepthTexture;
+	ComPtr<ID3D11DepthStencilView> m_pPickingDSV;
+	D3D11_TEXTURE2D_DESC m_PickingDepthDesc{};
+	D3D11_DEPTH_STENCIL_VIEW_DESC m_PickingDSVDesc{};
+	bool_t m_bPickingDepthCaptured = false;
 	vector<shared_ptr<CGameObject>>		m_RenderObjects[ETOUI(RENDERGROUP::END)];
 
 	shared_ptr<class CVIBuffer_Rect>		m_pVIBuffer = { nullptr };
@@ -125,9 +131,7 @@ private:
     bool_t m_bSceneEnvironmentReplaced = false;
 	f32_t							m_fPresentationClock = 0.f;
 
-#ifdef _DEBUG
 	list<shared_ptr<CComponent>>			m_DebugComponent;
-#endif
 
 private:
 	HRESULT Render_Priority();
@@ -156,6 +160,8 @@ private:
 		ComPtr<ID3D11ShaderResourceView> pSourceSRV, DEFERRED ePass);
 	HRESULT Render_Final();
 	HRESULT Render_UI();
+	HRESULT Capture_PickingDepth();
+	HRESULT Render_Picking();
 
 private:
 	HRESULT Stage_SourceGradingLut(const SOURCE_POST_PROCESS_SETTINGS& source, f32_t gamma,
@@ -167,10 +173,8 @@ private:
 	HRESULT Ready_ScenePostTargets(uint32_t iWidth, uint32_t iHeight);
 	void SetUp_ViewportDesc(uint32_t iWidth, uint32_t iHeight);
 
-#ifdef _DEBUG
 private:
 	HRESULT Render_Debug();
-#endif
 
 
 

@@ -12,6 +12,7 @@ function Add-KoukuRaidRows([object]$Encounter, [object]$Rows) {
         if ($null -ne $gate.PSObject.Properties['entrySequenceInstanceId']) { $gateProperties += 'entrySequenceInstanceId' }
         if ($null -ne $gate.PSObject.Properties['loopStartEntryId']) { $gateProperties += 'loopStartEntryId' }
         if ($null -ne $gate.PSObject.Properties['entryGroups']) { $gateProperties += 'entryGroups' }
+        if ($null -ne $gate.PSObject.Properties['bingoSpecialPatternId']) { $gateProperties += 'bingoSpecialPatternId' }
         Assert-ExactProperties $gate $gateProperties 'Kouku raid gate'
         if ($gate.gateId -cnotin @('GATE1','GATE2','GATE3','BINGO') -or $seenGates.ContainsKey($gate.gateId)) {
             throw 'Kouku raid gate is unknown or duplicated.'
@@ -62,6 +63,41 @@ function Add-KoukuRaidRows([object]$Encounter, [object]$Rows) {
             $gate.primaryBossPlacementId,@($gate.entries).Count,$entrySequence)
         if ($loopStart) { $gateRow += $loopStart }
         $Rows.Add(($gateRow -join "`t"))
+        if ($gate.gateId -ceq 'BINGO') {
+            if ($null -eq $gate.PSObject.Properties['bingoSpecialPatternId']) { throw 'Bingo flow requires an explicit special Parent.' }
+            Assert-StableId $gate.bingoSpecialPatternId 'Bingo special Parent'
+            $specials = @($Encounter.patterns | Where-Object { $_.patternId -ceq $gate.bingoSpecialPatternId })
+            if ($specials.Count -ne 1) { throw 'Bingo special Parent must reference one published pattern.' }
+            $special = $specials[0]
+            $specialDuration = [uint64]0
+            foreach ($stage in $special.stages) { $specialDuration += [uint64]$stage.durationMs }
+            if ($null -ne $special.PSObject.Properties['timelineDurationMs']) {
+                $specialDuration = [Math]::Max($specialDuration, [uint64]$special.timelineDurationMs)
+            }
+            if ($special.gateId -cne 'BINGO' -or $special.targetBossPlacementId -cne $gate.primaryBossPlacementId -or
+                $null -eq $special.PSObject.Properties['fixedTimeline'] -or -not $special.fixedTimeline -or
+                $specialDuration -lt 1 -or $specialDuration -gt 600000) {
+                throw 'Bingo special Parent must be finite and share the flow boss scope.'
+            }
+            $children = @()
+            if ($null -ne $special.PSObject.Properties['parentPatternSequence']) {
+                if (@($special.parentPatternSequence.entries).Count -eq 0 -or $special.parentPatternSequence.loopStartOccurrenceId) {
+                    throw 'Bingo special Parent must have ordered finite children.'
+                }
+                $children = @($special.parentPatternSequence.entries)
+            }
+            $detonations = @($special.mechanicTriggers | Where-Object { $_.kind -ceq 'BINGO_DETONATION' }).Count
+            foreach ($childRef in $children) {
+                $childPatterns = @($Encounter.patterns | Where-Object { $_.patternId -ceq $childRef.patternId })
+                if ($childPatterns.Count -ne 1 -or $childPatterns[0].gateId -cne 'BINGO' -or
+                    $childPatterns[0].targetBossPlacementId -cne $gate.primaryBossPlacementId) { throw 'Bingo special child scope is invalid.' }
+                $detonations += @($childPatterns[0].mechanicTriggers | Where-Object { $_.kind -ceq 'BINGO_DETONATION' }).Count
+            }
+            if ($detonations -ne 1) { throw 'Bingo special Parent must own exactly one detonation.' }
+            $Rows.Add((@('RAIDBINGOSPECIAL',$gate.gateId,$gate.bingoSpecialPatternId) -join "`t"))
+        } elseif ($null -ne $gate.PSObject.Properties['bingoSpecialPatternId']) {
+            throw 'Only Bingo may bind a special Parent.'
+        }
         $entryIds = @{}
         for ($index = 0; $index -lt @($gate.entries).Count; ++$index) {
             $entry = $gate.entries[$index]
@@ -79,6 +115,10 @@ function Add-KoukuRaidRows([object]$Encounter, [object]$Rows) {
                 @($Encounter.bundles | Where-Object { $_.bundleId -ceq $entry.targetId -and $_.gateId -ceq $gate.gateId })
             }
             if (@($targets).Count -ne 1) { throw "Kouku raid flow target must exact-join its published gate: $($gate.gateId) / $($entry.targetId), matches=$(@($targets).Count)." }
+            if ($gate.gateId -ceq 'BINGO' -and (($entry.kind -ceq 'PATTERN' -and $entry.targetId -ceq $gate.bingoSpecialPatternId) -or
+                ($entry.kind -ceq 'BUNDLE' -and @($targets[0].members | Where-Object { $_.patternId -ceq $gate.bingoSpecialPatternId }).Count -gt 0))) {
+                throw 'Bingo special Parent cannot also be a normal flow entry or bundle member.'
+            }
             $Rows.Add((@('RAIDFLOWSTEP',$gate.gateId,$index,$entry.entryId,$entry.kind,$entry.targetId,$entry.waitAfterMs) -join "`t"))
         }
         if ($null -ne $gate.PSObject.Properties['entryGroups']) {

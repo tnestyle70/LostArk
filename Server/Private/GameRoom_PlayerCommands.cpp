@@ -521,7 +521,7 @@ void LostArk::Server::CGameRoom::Handle_RevivePlayer(
 	player.iCurrentResource = player.iMaximumResource;
 	player.iResourceAccumulator = 0u;
 	CPlayerSkillSystem::Reset_Gauges(player, m_GameplayCatalog);
-	player.iCurrentMadness = 0u;
+	player.iCurrentMadness = 0u; player.dMadnessRemainder = 0.;
 	player.iMaximumMadness = SERVER_PLAYER::MADNESS_GAUGE_MAXIMUM;
 	player.eMadnessForm = PLAYER_MADNESS_FORM::NORMAL;
 	player.Clear_KoukuInteractionState();
@@ -1118,7 +1118,7 @@ LostArk::Server::CGameRoom::Apply_CharacterClassChange(
 	staged.iCurrentResource = profile->iMaximumResource;
 	staged.iMaximumResource = profile->iMaximumResource;
 	staged.iResourceAccumulator = 0u;
-	staged.iCurrentMadness = 0u;
+	staged.iCurrentMadness = 0u; staged.dMadnessRemainder = 0.;
 	staged.iMaximumMadness = SERVER_PLAYER::MADNESS_GAUGE_MAXIMUM;
 	staged.Clear_MarioControl();
 	staged.eMadnessForm = PLAYER_MADNESS_FORM::NORMAL;

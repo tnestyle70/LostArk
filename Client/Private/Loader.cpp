@@ -571,13 +571,27 @@ HRESULT CLoader::Ready_For_CharacterSelect()
 	}
 #endif
 	Set_Status(TEXT("CHARACTER SELECT: class selection cinematics"));
-	if (CClassSelectionPresentation::Is_Configured() && pEntry->pPresentationMapAreaId && FAILED(Ready_MapArea(
-		ETOUI(LEVEL::CHARACTER_SELECT), pEntry->pPresentationMapAreaId,
-		pEntry->PresentationMapLoadScope, false)))
+	if (CClassSelectionPresentation::Is_Configured())
 	{
-		if (m_isCancellationRequested.load(std::memory_order_acquire))
-			return HRESULT_FROM_WIN32(ERROR_CANCELLED);
-		OutputDebugStringA("[Loader][ClassSelectionCinema] Optional background unavailable.\n");
+		std::vector<std::string> backgroundAreas;
+		std::string backgroundStatus;
+		if (!CClassSelectionPresentation::Load_BackgroundAreas(pEntry->pMapAreaId,
+			pEntry->pPresentationMapAreaId ? pEntry->pPresentationMapAreaId : "",
+			backgroundAreas, backgroundStatus))
+			OutputDebugStringA(("[Loader][ClassSelectionCinema] " + backgroundStatus + "\n").c_str());
+		else for (const auto& backgroundArea : backgroundAreas)
+		{
+			// The primary Area is already prepared; never register its prototypes twice.
+			if (backgroundArea == pEntry->pMapAreaId) continue;
+			if (FAILED(Ready_MapArea(ETOUI(LEVEL::CHARACTER_SELECT), backgroundArea,
+				pEntry->PresentationMapLoadScope, false)))
+			{
+				if (m_isCancellationRequested.load(std::memory_order_acquire))
+					return HRESULT_FROM_WIN32(ERROR_CANCELLED);
+				OutputDebugStringA(("[Loader][ClassSelectionCinema] Optional background unavailable: " +
+					backgroundArea + "\n").c_str());
+			}
+		}
 	}
 	std::string selectionSequenceStatus;
 	if (!CWorldSequencePlayer::Prepare_AreaLoad(ETOUI(LEVEL::CHARACTER_SELECT),
@@ -963,6 +977,8 @@ HRESULT CLoader::Ready_MapArea(
 	if (iLevelIndex >= ETOUI(LEVEL::END) || areaId.empty())
 		return E_INVALIDARG;
 
+	// A failed optional preparation must not leave a previous visit's stage available.
+	CMapPlacementRuntime::Discard_LoadStage(areaId);
 	try
 	{
 		if (prepareMapCore && FAILED(Ready_MapAuthoringCore(iLevelIndex)))
@@ -1259,15 +1275,28 @@ HRESULT CLoader::Ready_Camera_Prototype(
 HRESULT CLoader::Ready_StaticMeshShader(
 	const uint32_t iLevelIndex)
 {
-	return CGameInstance::Get().Add_Prototype(
+	auto shader = CShader::Create(
+		m_pDevice,
+		m_pContext,
+		TEXT("../Bin/ShaderFiles/Shader_VtxMeshBinary.hlsl"),
+		VTXMESH::Elements,
+		VTXMESH::iNumElements);
+	if (!shader)
+	{
+		Set_Status(TEXT("Map: Shader_VtxMeshBinary creation failed (compiled shader or program variants)"));
+		OutputDebugStringA("[Loader][Shader] Shader_VtxMeshBinary creation failed before prototype registration.\n");
+		return E_FAIL;
+	}
+	const HRESULT result = CGameInstance::Get().Add_Prototype(
 		iLevelIndex,
 		TEXT("Prototype_Component_Shader_VtxMeshBinary"),
-		CShader::Create(
-			m_pDevice,
-			m_pContext,
-			TEXT("../Bin/ShaderFiles/Shader_VtxMeshBinary.hlsl"),
-			VTXMESH::Elements,
-			VTXMESH::iNumElements));
+		std::move(shader));
+	if (FAILED(result))
+	{
+		Set_Status(TEXT("Map: Shader_VtxMeshBinary prototype registration failed"));
+		OutputDebugStringA("[Loader][Shader] Shader_VtxMeshBinary prototype registration failed.\n");
+	}
+	return result;
 }
 
 HRESULT CLoader::Ready_AnimatedMeshShader(

@@ -2,6 +2,7 @@
 #include "ServerGameplayContractTests.h"
 #include "GameplayCatalog.h"
 #include "PlayerSkillSystem.h"
+#include "ServerCombatHitRuntime.h"
 #include "ServerNavigation.h"
 #include "WorldDestructionBootstrapContractTests.h"
 #include <Windows.h>
@@ -34,6 +35,49 @@ using namespace LostArk::Shared;
 
 void LostArk::Server::CServerGameplayContractRunner::Run_SkillStages(TESTS& tests, CGameplayCatalog& catalog)
 {
+	{
+		SERVER_PLAYER shielded{};
+		shielded.iNetEntityId = 991u; shielded.eCharacterClass = CHARACTER_CLASS_ID::LANCE_MASTER;
+		shielded.iCurrentHp = shielded.iMaximumHp = 100u; shielded.iShield = 5u;
+		shielded.isCombatReady = true;
+		SERVER_WORLD_TO_PLAYER_HIT hit{};
+		hit.iRawDamage = 7u; hit.iServerTick = 30u; hit.bIgnoreDefense = true; hit.bIgnoreCounter = true;
+		std::vector<DAMAGE_EVENT> events;
+		(void)CServerCombatHitRuntime::Apply_WorldToPlayer(shielded, hit, catalog, events);
+		tests.Require(shielded.iCurrentHp == 98u && shielded.iShield == 0u && events.size() == 2u &&
+			events[0].eHitFlag == DAMAGE_HIT_FLAG::ABSORB && events[0].iAmount == 5u &&
+			events[1].eHitFlag == DAMAGE_HIT_FLAG::NORMAL && events[1].iAmount == 2u,
+			"Partial shield hit sends absorption and only actual HP damage separately");
+		shielded.iShield = 10u; shielded.iCurrentHp = 100u; events.clear();
+		(void)CServerCombatHitRuntime::Apply_WorldToPlayer(shielded, hit, catalog, events);
+		tests.Require(shielded.iCurrentHp == 100u && shielded.iShield == 3u && events.size() == 1u &&
+			events.front().eHitFlag == DAMAGE_HIT_FLAG::ABSORB && events.front().iAmount == 7u,
+			"Full shield hit sends one absorption event with no false HP damage");
+		shielded.iShield = 10000u; shielded.iCurrentHp = 100u;
+		shielded.isCombatReady = false;
+		shielded.iInvulnerableEndTick = 1000u; shielded.eAction = PLAYER_ACTION_STATE::GRABBED;
+		shielded.iAttachmentOwnerNetEntityId = 992u; shielded.hasMoveGoal = true;
+		hit.bEncounterWipe = true; events.clear();
+		const auto wipe = CServerCombatHitRuntime::Apply_WorldToPlayer(shielded, hit, catalog, events);
+		tests.Require(wipe == SERVER_COMBAT_HIT_RESULT::KILLED && !shielded.iCurrentHp &&
+			!shielded.iShield && !shielded.iInvulnerableEndTick && !shielded.iAttachmentOwnerNetEntityId &&
+			shielded.eAction == PLAYER_ACTION_STATE::DEAD && !shielded.hasMoveGoal &&
+			events.size() == 1u && events[0].iAmount == 100u && events[0].eHitFlag == DAMAGE_HIT_FLAG::NORMAL,
+			"Encounter wipe bypasses shield, invulnerability and attachment while retaining death cleanup");
+		SERVER_WORLD_ENTITY boss{};
+		boss.eKind = WORLD_BOOTSTRAP_KIND::BOSS; boss.iNetEntityId = 992u;
+		boss.iCurrentHp = boss.iMaximumHp = 100u;
+		boss.BossCombat.iShieldCurrent = boss.BossCombat.iShieldMaximum = 5u;
+		SERVER_PLAYER_TO_WORLD_HIT outgoing{};
+		outgoing.iRawDamage = 7u; outgoing.iSkillId = 34010u; outgoing.iSourcePlayerId = 1u;
+		outgoing.iServerTick = 30u; outgoing.bHealthDamagePreResolved = true;
+		events.clear(); (void)CServerCombatHitRuntime::Apply_PlayerToWorld(boss, outgoing, events);
+		tests.Require(boss.iCurrentHp == 98u && events.size() == 2u &&
+			events[0].eHitFlag == DAMAGE_HIT_FLAG::ABSORB && events[0].iAmount == 5u &&
+			events[1].iAmount == 2u && events[1].isOutgoing,
+			"Boss shield absorption uses the same typed event and preserves HP accounting");
+	}
+
 
 
 	{

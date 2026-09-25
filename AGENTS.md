@@ -152,6 +152,12 @@ CModel preScale·socket offset·particle 단위를 함께 실측한다. syntheti
 - 물리 폴더가 소스 구조의 정본이다. `.vcxproj`와 `.filters`는 필요한 항목만 추가하고 기존 필터를 재배치하지 않는다.
 - 컴파일·링크 산출물(`exe/dll/lib/pdb/cso`), `EngineSDK`, `.vs`, `imgui.ini`는 소스 커밋에 섞지 않는다. publisher가 생성한 `Client/Bin/DataFiles`, `Server/Bin/DataFiles` 실행 데이터는 아래 Git 전달 계약에 따라 포함한다.
 
+## 렌더링 옵션 정본과 변경 권한
+
+- 모든 rendering option은 팀장이 현재 조율·저장한 값을 정본으로 삼는다. FXAA/anti-aliasing, SSAO, bloom, exposure, gamma, LUT, 조명·환경·scene/region quality 값을 에이전트나 팀원이 임의로 켜거나 이전 값·원본 복원값·다른 PC 값으로 덮어쓰지 않는다.
+- 특히 쿠크 Mario1~4는 팀장의 현재 FXAA/anti-aliasing OFF 설정을 유지한다. 패턴·이펙트 복원, merge, publish, 기본값 갱신을 이유로 다시 활성화하지 않는다. 팀장의 명시적인 변경 요청이 있을 때만 해당 옵션을 변경한다.
+- 렌더링 관련 파일의 다른 수정이 필요해도 최신 저장본에서 요청한 필드만 병합하고 나머지 팀장 튜닝은 보존한다. 실제 정본·게시 경로와 적용 순서는 `CLAUDE.md`의 렌더링 옵션 정본을 따른다.
+
 ## 구현 원칙
 
 - 추측보다 현재 코드와 데이터 실측을 우선한다.
@@ -191,7 +197,7 @@ CModel preScale·socket offset·particle 단위를 함께 실측한다. syntheti
 - 레벨은 `STATIC, LOADING, LOBBY, CHARACTER_SELECT, BERN, VALTAN_ARENA, KAKULSAYDON_ARENA, DEVELOPMENT, MAHARAKA`만 사용한다. 새 레벨은 enum, registry, loader, 프로젝트 등록과 실제 Server+Client 진입 검증을 한 변경 단위로 추가한다.
 - 제품 맵은 `CLevelRegistry` descriptor의 `MAP_LOAD_SCOPE`로 선언한 진입/전투 범위와 배경만 로드한다. Loader와 runtime placement는 반드시 같은 scope를 소비한다.
 - 레벨 전환 요청은 `CLevelTransitionService`로 보낸다. `Change_Level`은 현재 Level update가 끝난 뒤 `CMainApp`만 호출한다. `CLevel_Loading`은 로드 성공 시 activation 요청만 제출한다.
-- 공식 전역 기능키는 Debug/Release 공통 Developer Tools의 F1, follow/free camera 전환의 F6, Debug/Release 공통 Profiler 창의 F7이다. F1의 Release 범위는 Balance Test, Profiler, Valtan/Kouku의 게시 패턴 재생·중지·관문 보스 처치이며 기본은 닫힘이다. F7은 profiler 창만 열고 닫으며 Capture 수집과 이름 있는 JSON 저장은 그 창에서 수행한다. F2~F5, F8~F12로 레벨, 맵, 프로파일러, 도구 상태를 바꾸지 않는다. free camera에서는 gameplay command 입력을 보내지 않는다. Debug 아레나의 명시적 F1 `Move Player`는 예외적인 저작 명령으로, UI 밖의 한 번 피킹을 `CPlayerController -> IPlayerCommandSink`로 제출한다. Server가 현재 session/world와 navigation·collision을 검증한 뒤 자기 player만 이동하고 snapshot으로 반영하며 Client Transform을 직접 바꾸지 않는다.
+- 공식 전역 기능키는 Debug/Release 공통 Developer Tools의 F1, follow/free camera 전환의 F6, Debug/Release 공통 Profiler 창의 F7이다. F1의 Release 범위는 Balance Test, Profiler, Valtan/Kouku의 게시 패턴 재생·중지·관문 보스 처치와 Kouku 플레이어·보스 몸체 Collider 표시이며 기본은 닫힘이다. F7은 profiler 창만 열고 닫으며 Capture 수집과 이름 있는 JSON 저장은 그 창에서 수행한다. F2~F5, F8~F12로 레벨, 맵, 프로파일러, 도구 상태를 바꾸지 않는다. free camera에서는 gameplay command 입력을 보내지 않는다. Debug 아레나의 명시적 F1 `Move Player`는 예외적인 저작 명령으로, UI 밖의 한 번 피킹을 `CPlayerController -> IPlayerCommandSink`로 제출한다. Server가 현재 session/world와 navigation·collision을 검증한 뒤 자기 player만 이동하고 snapshot으로 반영하며 Client Transform을 직접 바꾸지 않는다.
 - `Client/Bin/Resources`의 최상위 폴더는 `Fonts, Character, Deploy, Effect, Map, Sound, UI` 정확히 일곱 개다. `Resources/LostArk` 래퍼와 `SourceData`를 만들지 않는다.
 - 런타임 asset ID는 Resources 상대 경로다. 절대 경로, drive-qualified 경로, `..`로 루트를 벗어나는 경로를 거부한다.
 - UI와 gameplay 설정은 JSON만 사용한다. `.cfg` 신규 추가와 runtime cfg reader는 금지한다.

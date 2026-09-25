@@ -1,4 +1,5 @@
 #include "Effect_DocumentRenderer_Internal.h"
+#include "Effect_ArtistMaterial.h"
 #include "GameInstance.h"
 #include "Model.h"
 #include "Profiler.h"
@@ -677,7 +678,7 @@ HRESULT Client::CEffectDocumentRenderer::Render_Decal(
 		Element.fLocalTimeSeconds, Element.fNormalizedLife, Resource);
 	if (FAILED(hResult))
 		return Fail_RenderOperation("Decal material shader bind failed.", hResult);
-    if (Resource.iSourceMaterialProfile >= 2304u && Resource.iSourceMaterialProfile <= 4799u &&
+    if (nullptr != Find_ArtistNativeCarrierProgram(Resource.iSourceMaterialProfile) &&
         FAILED(m_pDecalShader->Bind_RawValue("g_KoukuDecalProjection",
             &Projection.vSourceProjection, sizeof(Projection.vSourceProjection))))
         return Fail_RenderOperation("Kouku source decal plane binding failed.", E_FAIL);

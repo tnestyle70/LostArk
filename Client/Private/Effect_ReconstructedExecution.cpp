@@ -4788,6 +4788,11 @@ bool_t Client::CEffectReconstructedSourceRuntimeFactory::Build_Document(
 	}
 	if (StagedDocument.Elements.size() != Program->Emitters.size())
 		return Fail("native-v14 and Program emitter denominators differ.");
+	for (const auto& Element : StagedDocument.Elements)
+		for (const auto& Module : Element.SourceRecipe.Modules)
+			for (const auto& Distribution : Module.Distributions)
+				if (Distribution.eParameterBinding == EFFECT_DISTRIBUTION_PARAMETER_BINDING::WORLD_SAMPLE)
+					return Fail("the reconstructed immutable projection does not consume WORLD_SAMPLE history.");
 
 	const auto AssignF32 = [&Fail](const double fValue, f32_t& fOut,
 		const std::string_view strField) -> bool_t

@@ -84,8 +84,9 @@ EFFECT_V1_ALIASES_REL = (
 )
 PROVENANCE_REL = "Data/Balance/Reference/Official/2026-08-05.balance-provenance.receipt.json"
 GAMEPLAY_BOOTSTRAP_REL = "Runtime/Gameplay/Gameplay.bootstrap"
-GAMEPLAY_BOOTSTRAP_VERSION = 33
-MAXIMUM_GAMEPLAY_BOOTSTRAP_ROWS = 8192
+GAMEPLAY_BOOTSTRAP_VERSION = 37
+MAXIMUM_GAMEPLAY_BOOTSTRAP_ROWS = 131072
+MAXIMUM_GAMEPLAY_BOOTSTRAP_BYTES = 67108864
 # Keep the authored cross-pattern follow-up bound aligned with the native
 # GameplayCatalog/ValtanBrain traversal guard.  A single edge has depth 1.
 PATTERN_FOLLOWUP_MAX_DEPTH = 32
@@ -7774,6 +7775,10 @@ def source_manifest(root: Path) -> dict[str, Any]:
 
 DRAFT_PATCH_SCHEMA = "lostark.valtan-tuning-draft-patch"
 DRAFT_PATCH_OPERATIONS = {
+    "CLONE_COMBAT_OBJECT": (
+        "op", "patternId", "stageId", "actionId", "sourceCombatObjectArchetypeId",
+        "combatObjectArchetypeId", "clientVisualId", "eventId", "lifetimeMs", "hitShapes",
+    ),
     "SET_SCRIPTED_SEQUENCE": (
         "op",
         "sequenceId",
@@ -9898,6 +9903,62 @@ def apply_draft_patch(
             exact(operation, fields, f"operations[{ordinal}]")
         except PipelineError as exc:
             raise _draft_error(str(exc), operation_ordinal=ordinal) from exc
+
+        if kind == "CLONE_COMBAT_OBJECT":
+            # Resolve the immutable source generation, never a previous mutation
+            # in this patch. Copied editable radii/lifetime come from the value
+            # snapshot; the remaining gameplay and visual fields stay exact.
+            if combat_authoring is None or boss_catalog is None:
+                raise _draft_error("Summon copy requires its definition and visual owners",
+                                   operation_ordinal=ordinal, error_code="OWNER_CLOSURE_UNAVAILABLE")
+            source_id = stable_id(operation["sourceCombatObjectArchetypeId"], "Summon source")
+            definitions = [row for row in combat_authoring["objects"] if row["combatObjectArchetypeId"] == source_id]
+            visuals = [row for row in _valtan_combat_visual_rows(boss_catalog, "Summon copy")
+                       if row["combatObjectArchetypeId"] == source_id]
+            templates = [event for owner in master["patterns"] for owner_stage in owner["stages"]
+                         for event in owner_stage["events"] if event.get("combatObjectArchetypeId") == source_id
+                         and event["kind"] in ("SPAWN_COMBAT_OBJECT", "SPAWN_COMBAT_OBJECT_VOLLEY")]
+            if len(definitions) != 1 or len(visuals) != 1 or len(templates) != 1:
+                raise _draft_error("Summon source must resolve one definition, visual and spawn owner",
+                                   operation_ordinal=ordinal, error_code="STABLE_ID_NOT_FOUND")
+            definition, visual, event = copy.deepcopy((definitions[0], visuals[0], templates[0]))
+            archetype = stable_id(operation["combatObjectArchetypeId"], "Summon copied archetype")
+            definition["combatObjectArchetypeId"] = archetype
+            definition["lifetimeMs"] = integer(operation["lifetimeMs"], "Summon lifetime", 1, 600000)
+            shapes = operation["hitShapes"]
+            if not isinstance(shapes, list) or len(shapes) != len(definition["hits"]):
+                raise _draft_error("Summon copied hit inventory differs from its source", operation_ordinal=ordinal)
+            hit_ids = {}
+            for hit_index, (hit, shape) in enumerate(zip(definition["hits"], shapes)):
+                exact(shape, ("shape", "innerRadiusM", "outerRadiusM"), "Summon copied shape")
+                if shape["shape"] != hit["shape"]["kind"]:
+                    raise _draft_error("Summon copy cannot replace the source hit kind", operation_ordinal=ordinal)
+                if shape["shape"] in ("CIRCLE", "RING"):
+                    hit["shape"]["outerRadiusM"] = number(shape["outerRadiusM"], "Summon outer radius", 0.000001, 1000)
+                    if shape["shape"] == "RING":
+                        hit["shape"]["innerRadiusM"] = number(shape["innerRadiusM"], "Summon inner radius", 0.000001, 1000)
+                    elif shape["innerRadiusM"] != 0:
+                        raise _draft_error("Circle copy cannot acquire an inner radius", operation_ordinal=ordinal)
+                elif shape["innerRadiusM"] != 0 or shape["outerRadiusM"] != 0:
+                    raise _draft_error("Directional copy cannot acquire circle radii", operation_ordinal=ordinal)
+                copied_id = stable_id(f"{archetype}.hit.{hit_index + 1}", "Summon copied hit")
+                hit_ids[hit["hitId"]] = copied_id
+                hit["hitId"] = copied_id
+            visual["combatObjectArchetypeId"] = archetype
+            visual["clientVisualId"] = operation["clientVisualId"]
+            if "effectV2Group" in visual and "serverHitId" in visual["effectV2Group"]:
+                original_hit = visual["effectV2Group"]["serverHitId"]
+                if original_hit not in hit_ids:
+                    raise _draft_error("Summon visual references an absent source hit", operation_ordinal=ordinal)
+                visual["effectV2Group"]["serverHitId"] = hit_ids[original_hit]
+            event["eventId"] = operation["eventId"]
+            event["combatObjectArchetypeId"] = archetype
+            # Its occurrence schedule is subsequently authored by SET_STAGE_SUMMONS.
+            # Preserve the source spawn policy; the clone is already independently owned.
+            operation = {"op": "ADD_COMBAT_OBJECT", "patternId": operation["patternId"],
+                         "stageId": operation["stageId"], "actionId": operation["actionId"],
+                         "spawnEvent": event, "definition": definition, "visual": visual}
+            kind = "ADD_COMBAT_OBJECT"
 
         if kind in {"SET_STAGE_SCENE_PROFILES", "SET_STAGE_LIGHTS"}:
             pattern = next((row for row in patched_master["patterns"]
@@ -12620,7 +12681,12 @@ def _publish_gameplay_bootstrap(
 
 
 def _parse_gameplay_bootstrap(path: Path) -> tuple[int, list[str]]:
-    data = path.read_bytes()
+    if not 0 < path.stat().st_size <= MAXIMUM_GAMEPLAY_BOOTSTRAP_BYTES:
+        raise PipelineError(f"Gameplay.bootstrap byte size is outside the supported bound: {path}")
+    with path.open("rb") as stream:
+        data = stream.read(MAXIMUM_GAMEPLAY_BOOTSTRAP_BYTES + 1)
+    if not 0 < len(data) <= MAXIMUM_GAMEPLAY_BOOTSTRAP_BYTES:
+        raise PipelineError(f"Gameplay.bootstrap byte size is outside the supported bound: {path}")
     if data.startswith(b"\xef\xbb\xbf"):
         raise PipelineError(f"Gameplay.bootstrap must not contain a UTF-8 BOM: {path}")
     try:

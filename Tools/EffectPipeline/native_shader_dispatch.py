@@ -402,7 +402,9 @@ def write_artist_runtime_source(path, text):
     return tuple(files)
 
 
-SOURCE_CHARACTER_PROGRAM_GROUPS = ((1, 8), (9, 16), (17, 24), (25, 32), (80, 83), (84, 112), (160, 175), (176, 191), (192, 200), (208, 213), (214, 223), (224, 234), (235, 236), (237, 237))
+from source_character_registration import read_registry
+
+SOURCE_CHARACTER_REGISTERED_PROGRAMS, SOURCE_CHARACTER_PROGRAM_GROUPS = read_registry()
 _SOURCE_GROUP_INCLUDE = re.compile(r'#include "(Shader_SourceCharacter(?:Base|Light)Group\d+\.hlsli)"\n')
 _SOURCE_GROUP_GUARD = re.compile(
     r'^#if !defined\(SOURCE_CHARACTER_PROGRAM_GROUP\) \|\| SOURCE_CHARACTER_PROGRAM_GROUP == \d+\n'
@@ -416,7 +418,7 @@ def expand_source_character_stage(text, shader_dir):
     return _SOURCE_GROUP_GUARD.sub('', expanded)
 
 
-def partition_source_character_stage(text, stage, shader_dir):
+def partition_source_character_stage(text, stage, shader_dir, *, groups=None, registered=None):
     """Place exact native functions in independently compiled program cohorts."""
     expanded = expand_source_character_stage(text, shader_dir)
     prefix = f'SourceCharacter{stage}'
@@ -428,8 +430,13 @@ def partition_source_character_stage(text, stage, shader_dir):
     if not starts:
         raise ValueError(f'No SourceCharacter {stage} functions')
 
+    groups = SOURCE_CHARACTER_PROGRAM_GROUPS if groups is None else groups
+    registered = SOURCE_CHARACTER_REGISTERED_PROGRAMS if registered is None else registered
+
     def group(number):
-        for first, last in SOURCE_CHARACTER_PROGRAM_GROUPS:
+        if number > 238 and number not in registered:
+            raise ValueError(f'SourceCharacter program {number} needs an exact registered CSO cohort')
+        for first, last in groups:
             if first <= number <= last:
                 return first
         raise ValueError(f'SourceCharacter program {number} needs a registered CSO cohort')
@@ -460,6 +467,32 @@ def partition_source_character_stage(text, stage, shader_dir):
     restored = _SOURCE_GROUP_INCLUDE.sub(lambda match: files[match[1]], result)
     if _SOURCE_GROUP_GUARD.sub('', restored) != expanded:
         raise ValueError(f'SourceCharacter {stage} partition changed authored source')
+    # Existing cohorts may use a single guard for several adjacent cases. Keep
+    # that reviewed layout and its boundary comments whenever it represents the
+    # same expanded source; a material edit then touches only its own leaf.
+    original_path = Path(shader_dir) / f'Shader_SourceCharacter{stage}Programs.hlsli'
+    if original_path.is_file():
+        original = original_path.read_text(encoding='utf8')
+        original_dispatch = original.find(f'SOURCE_CHARACTER_NATIVE_OUTPUT Evaluate{prefix}(')
+        if original_dispatch >= 0:
+            original_prefix, original_tail = original[:original_dispatch], original[original_dispatch:]
+            proposed_files = dict(files)
+            def code_only(body):
+                return re.sub(r'\s+', '', re.sub(r'//[^\n]*', '', body))
+            for name, body in files.items():
+                prior = Path(shader_dir) / name
+                if prior.is_file():
+                    previous = prior.read_text(encoding='utf8')
+                    if previous in expanded and code_only(previous) == code_only(body):
+                        proposed_files[name] = previous
+            prior_names = {match[1] for match in _SOURCE_GROUP_INCLUDE.finditer(original_prefix)}
+            new_names = set(files) - prior_names
+            if not new_names and _SOURCE_GROUP_GUARD.sub('', original_tail) == _SOURCE_GROUP_GUARD.sub('', tail):
+                proposed = original_prefix + original_tail
+                proposed_expanded = _SOURCE_GROUP_GUARD.sub('', _SOURCE_GROUP_INCLUDE.sub(
+                    lambda match: proposed_files[match[1]], proposed))
+                if proposed_expanded == expanded:
+                    return proposed, proposed_files
     return result, files
 
 
