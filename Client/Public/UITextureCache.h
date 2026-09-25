@@ -26,6 +26,8 @@ public:
 	for a keyframe-animation layer whose on-screen size is its art's own size times the key's
 	scale, not an authored rect. False (outputs untouched) if the image can't be loaded. */
 	bool_t Get_Texture_Size(const string& strPath, f32_t& outWidth, f32_t& outHeight);
+	static ComPtr<ID3D11ShaderResourceView> Load_Texture(ID3D11Device* pDevice, const string& strPath);
+	void Adopt(const string& strPath, ComPtr<ID3D11ShaderResourceView> pSRV);
 
 private:
 	struct TEXTURE_SIZE { f32_t fWidth = 0.f, fHeight = 0.f; };

@@ -3,6 +3,8 @@
 #include "Engine_Defines.h"
 #include "Sound/TrackedSoundChannel.h"
 
+#include <mutex>
+
 namespace FMOD
 {
 	class System;
@@ -84,6 +86,7 @@ private:
 	instance per (asset, mode) so an SFX and a music cue cannot mutate each
 	other when they happen to reference the same WAV. */
 	map<pair<wstring_t, bool_t>, FMOD::Sound*> m_Sounds;
+	mutex m_SoundsMutex;
 	map<uint64_t, FMOD::Channel*> m_CueChannels;
 	uint64_t m_iNextCueHandle = 1u;
 	CTrackedSoundChannel<FMOD::Channel> m_MusicChannel;

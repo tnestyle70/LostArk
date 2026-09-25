@@ -383,9 +383,12 @@ void CSound_Manager::Update()
 FMOD::Sound* CSound_Manager::Find_Or_LoadSound(const wstring_t& strSoundFilePath, bool_t bLoop)
 {
 	const pair<wstring_t, bool_t> SoundKey{ strSoundFilePath, bLoop };
-	const auto SoundIter = m_Sounds.find(SoundKey);
-	if (m_Sounds.end() != SoundIter)
-		return SoundIter->second;
+	{
+		lock_guard<mutex> Lock(m_SoundsMutex);
+		const auto SoundIter = m_Sounds.find(SoundKey);
+		if (m_Sounds.end() != SoundIter)
+			return SoundIter->second;
+	}
 
 	const int32_t iPathLength = WideCharToMultiByte(
 		CP_UTF8, 0, strSoundFilePath.c_str(), -1, nullptr, 0, nullptr, nullptr);
@@ -411,8 +414,11 @@ FMOD::Sound* CSound_Manager::Find_Or_LoadSound(const wstring_t& strSoundFilePath
 	if (bLoop)
 		pSound->setLoopCount(-1);
 
-	m_Sounds.emplace(SoundKey, pSound);
-	return pSound;
+	lock_guard<mutex> Lock(m_SoundsMutex);
+	const auto [SoundIter, bInserted] = m_Sounds.emplace(SoundKey, pSound);
+	if (!bInserted)
+		pSound->release();
+	return SoundIter->second;
 }
 
 unique_ptr<CSound_Manager> CSound_Manager::Create()

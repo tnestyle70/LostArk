@@ -311,3 +311,30 @@ bool_t Client::CEstherActionSoundCueDocument::Play_Due(
 		std::to_string(played) + ", dropped " + std::to_string(dropped) + ".";
 	return true;
 }
+
+std::size_t Client::CEstherActionSoundCueDocument::Preload_Sounds()
+{
+	if (!s_bLoaded)
+		return 0u;
+	std::set<std::string> assetIds;
+	for (const ESTHER_ACTION_SOUND_CUE& cue : s_Cues)
+	{
+		for (const std::string& variant : CSoundCueCatalog::Find_Variants(
+				cue.strCatalogOwnerId, cue.strSoundEvent))
+			assetIds.insert(variant);
+	}
+	std::size_t loaded = 0u;
+	for (const std::string& assetId : assetIds)
+	{
+		const std::filesystem::path soundPath = CRuntimeAssetRoot::Resolve(assetId);
+		std::error_code assetError;
+		std::uint32_t durationMs = 0u;
+		if (!soundPath.empty() &&
+			std::filesystem::is_regular_file(soundPath, assetError) && !assetError &&
+			CGameInstance::Get().Get_SoundDurationMs(soundPath.wstring(), durationMs))
+		{
+			++loaded;
+		}
+	}
+	return loaded;
+}
