@@ -13,6 +13,7 @@
 #include "KakulArenaHiddenPlacements.h"
 #include "Transform.h"
 #include "WorldGameplayDocument.h"
+#include "Gameplay/KoukuMarioBombContract.h"
 #include "GameInstance.h"
 #include "Profiler.h"
 #include <cmath>
@@ -21,26 +22,11 @@
 
 using namespace Client;
 
-namespace
-{
-    constexpr std::uint32_t MARIO_BOMB_INTERVAL_MS = 4000u;
-    constexpr float MARIO_BOMB_SPEED_MPS = 3.f;
-    constexpr float MARIO_BOMB_LOW_BOTTOM_M = .05f;
-    constexpr float MARIO_BOMB_HIGH_BOTTOM_M = .90f;
-}
+namespace { namespace MarioBomb = LostArk::Shared::KoukuMarioBomb; }
 
 bool_t CLevel_KakulSaydonArena::Ready_MarioBombPresentation(std::string& status)
 {
-    struct BINDING { std::uint8_t stage; const char* marker; const char* arrival; const char* exit; };
-    static constexpr BINDING bindings[] = {
-        {2u, "Mario2_Boom", "Mario2_go", "Mario2_Trigger_2"},
-        {2u, "Mario2_Boom_1", "Mario2_Trigger_2", "Mario2_Trigger_4"},
-        {2u, "Mario2_Boom_2", "Mario2_Trigger_4", "Mario2_Trigger_7"},
-        {3u, "Mario3_Boom", "Mario3_Trigger_4", "Mario3_Trigger_5"},
-        {3u, "Mario3_Boom_1", "Mario3_Trigger_4", "Mario3_Trigger_5"},
-        {3u, "Mario3_Boom_2", "Mario3_Trigger_8", "Mario3_Trigger_10"},
-        {4u, "Mario4_Boom", "Mario4_Tigger_6", "Mario4_Tigger_7"}
-    };
+    const auto& bindings = MarioBomb::BINDINGS;
     CWorldGameplayDocument world;
     const auto path = CMapAssetCatalog::Get_MapDataRoot().parent_path() / "World" /
         "LV_LUT_MIDNIGHTC_ED.viewer.world.json";
@@ -85,12 +71,10 @@ bool_t CLevel_KakulSaydonArena::Ready_MarioBombPresentation(std::string& status)
         MARIO_BOMB_EMITTER emitter;
         emitter.stage = binding.stage;
         // Stable marker identity, never vector order, supplies the random sequence and launch phase.
-        emitter.seed = 2166136261u;
-        for (const char* c = binding.marker; *c; ++c)
-            emitter.seed = (emitter.seed ^ static_cast<unsigned char>(*c)) * 16777619u;
-        emitter.phaseMs = emitter.seed % MARIO_BOMB_INTERVAL_MS;
-        emitter.durationMs = static_cast<std::uint32_t>(std::ceil(length / MARIO_BOMB_SPEED_MPS * 1000.));
-        const auto slotCount = (emitter.durationMs + MARIO_BOMB_INTERVAL_MS - 1u) / MARIO_BOMB_INTERVAL_MS;
+        emitter.seed = MarioBomb::Seed(binding.marker);
+        emitter.phaseMs = emitter.seed % MarioBomb::INTERVAL_MS;
+        emitter.durationMs = static_cast<std::uint32_t>(std::ceil(length / MarioBomb::SPEED_MPS * 1000.));
+        const auto slotCount = (emitter.durationMs + MarioBomb::INTERVAL_MS - 1u) / MarioBomb::INTERVAL_MS;
         if (!slotCount || slotCount > 32u)
         { status = std::string("Mario bomb slot budget exceeded: ") + binding.marker; return false; }
         WORLD_SEQUENCE_TEMPLATE flight;
@@ -145,7 +129,7 @@ bool_t CLevel_KakulSaydonArena::Ready_MarioBombPresentation(std::string& status)
     if (m_pMarioBombPlayer) m_pMarioBombPlayer->Stop_All(targets, true);
     m_pMarioBombPlayer = std::move(stagedPlayer);
     m_MarioBombEmitters = std::move(stagedEmitters);
-    status = "7 Mario bomb markers ready; 4000ms interval, 3m/s, face follows flight, no damage.";
+    status = "7 Mario bomb markers ready; 4000ms interval, 3m/s; Server contact and knockdown.";
     OutputDebugStringA(("[MarioBomb] " + status + "\n").c_str());
     return true;
 }
@@ -183,15 +167,14 @@ void CLevel_KakulSaydonArena::Update_MarioBombPresentation(const f32_t timeDelta
     for (auto& emitter : m_MarioBombEmitters)
     {
         if (emitter.stage != stage || emitter.failed) continue;
-        const auto latest = static_cast<std::int64_t>(std::floor((clockMs - emitter.phaseMs) / MARIO_BOMB_INTERVAL_MS));
         const auto count = static_cast<std::int64_t>(emitter.slots.size());
         for (std::int64_t slot = 0; slot < count; ++slot)
         {
             const auto& id = emitter.slots[static_cast<size_t>(slot)];
-            const auto birth = latest < slot ? -1 : latest - (latest - slot) % count;
-            const double birthMs = double(birth) * MARIO_BOMB_INTERVAL_MS + emitter.phaseMs;
+            const auto birth = MarioBomb::Birth(clockMs, emitter.phaseMs, static_cast<std::uint32_t>(slot), static_cast<std::uint32_t>(count));
+            const double birthMs = double(birth) * MarioBomb::INTERVAL_MS + emitter.phaseMs;
             const double age = clockMs - birthMs;
-            if (birth < 0 || birthMs < m_fMarioBombStageStartMs || age < 0. || age >= emitter.durationMs)
+            if (birth < 0 || age < 0. || age >= emitter.durationMs)
             {
                 if (m_pMarioBombPlayer->Is_Playing(id)) m_pMarioBombPlayer->Stop_Instance(id, targets, true);
                 emitter.births[static_cast<size_t>(slot)] = -1;
@@ -200,9 +183,7 @@ void CLevel_KakulSaydonArena::Update_MarioBombPresentation(const f32_t timeDelta
             if (emitter.births[static_cast<size_t>(slot)] != birth)
             {
                 m_pMarioBombPlayer->Stop_Instance(id, targets, true);
-                std::uint32_t random = emitter.seed ^ (static_cast<std::uint32_t>(birth) * 0x9e3779b9u);
-                random ^= random << 13; random ^= random >> 17; random ^= random << 5;
-                const float3_t heightOffset{0.f, (random & 1u) ? MARIO_BOMB_HIGH_BOTTOM_M : MARIO_BOMB_LOW_BOTTOM_M, 0.f};
+                const float3_t heightOffset{0.f, MarioBomb::Bottom(emitter.seed, birth), 0.f};
                 if (!m_pMarioBombPlayer->Play(id, targets, 1.f, heightOffset))
                 { emitter.failed = true; break; }
                 emitter.births[static_cast<size_t>(slot)] = birth;
@@ -421,6 +402,24 @@ CWorldSequencePlayer::TARGET_SET CLevel_KakulSaydonArena::Make_WorldSequenceTarg
     targets.device = m_pDevice;
     targets.context = m_pContext;
     targets.objectPreparationOwner = &m_SequencePlayer;
+    if (m_ServerEncoreView)
+    {
+        // Attached particle providers may outlive the Level's sample call. Their
+        // immutable source clock and camera values never borrow this Level.
+        const auto held = m_ServerEncoreView->heldPose;
+        const auto authored = m_ServerEncoreView->authoredTrack;
+        targets.objectWorldPostTransform = [held, authored](const std::string& instanceId,
+            const f32_t sourceElapsedMs, float4x4_t& out, std::string& status)
+        {
+            XMStoreFloat4x4(&out, XMMatrixIdentity());
+            if (instanceId != "world.sequence.instance.kouku.bingo.encore.saydon") return true;
+            VALTAN_CINEMATIC_CAMERA_POSE source;
+            if (!CValtanCinematicCameraController::Sample_Cue(authored, sourceElapsedMs / 1000.f, source) ||
+                !CValtanCinematicCameraController::Build_ViewRebaseTransform(source, held, out))
+            { status = "Encore actor could not preserve its captured player view."; return false; }
+            return true;
+        };
+    }
     targets.playerAnchors = [this]()
     {
         std::vector<CWorldSequencePlayer::PLAYER_ANCHOR> anchors;
@@ -630,7 +629,6 @@ bool_t CLevel_KakulSaydonArena::Debug_PrepareGateObjects(const size_t gateIndex,
     staged->player = std::make_unique<CWorldSequencePlayer>();
     auto targets = Make_WorldSequenceTargets();
     targets.objectPreparationOwner = staged->player.get();
-    if (!staged->player->Set_Document(document, targets, status)) return false;
     if (gateIndex == 0u)
     {
         const std::string bookId = "world.sequence.instance.kouku.gate1.authored.book";
@@ -639,7 +637,7 @@ bool_t CLevel_KakulSaydonArena::Debug_PrepareGateObjects(const size_t gateIndex,
             book->bindings.size() != 1u || book->bindings.front().targetKind != WORLD_SEQUENCE_TARGET_KIND::OBJECT_RESOURCE ||
             book->bindings.front().targetId != "world.object.kouku.popup.book")
         { status = "Gate 1 requires its saved popup book HOLD motion."; return false; }
-        staged->instances.emplace_back(bookId, staged->player->Get_InstanceElapsedSpanMs(bookId));
+        staged->instances.emplace_back(bookId, 0.f);
         // Match the existing Sequence end: the standing copy replaces the
         // unfolding copy. Holding both copies would draw overlapping floors.
         for (uint64_t id = 41u; id <= 176u; ++id)
@@ -678,6 +676,20 @@ bool_t CLevel_KakulSaydonArena::Debug_PrepareGateObjects(const size_t gateIndex,
             staged->instances.emplace_back(id, 0.f);
         }
     }
+    std::vector<std::string> playbackIds;
+    for (const auto& [id, clock] : staged->instances) playbackIds.push_back(id);
+    CWorldSequenceDocument playback;
+    if (!document.Build_PlaybackSubset(playbackIds, playback, status) ||
+        !staged->player->Set_Document(playback, targets, status)) return false;
+    // The staged player owns no document until Set_Document succeeds. Resolve
+    // HOLD endpoints afterwards so the book is prewarmed at its final pose.
+    if (gateIndex == 0u)
+        for (auto& [id, clock] : staged->instances)
+        {
+            clock = staged->player->Get_InstanceElapsedSpanMs(id);
+            if (!std::isfinite(clock) || clock <= 0.f)
+            { status = "Gate 1 book HOLD endpoint is unavailable: " + id; return false; }
+        }
     std::map<std::string, std::pair<std::string, uint32_t>> cloneCounts;
     for (const auto& [id, clock] : staged->instances)
     {
@@ -866,6 +878,7 @@ void CLevel_KakulSaydonArena::Debug_StopGateObjects()
 
 bool_t CLevel_KakulSaydonArena::Begin_ServerRaidCinematicPresentation(std::string& status)
 {
+    if (!Begin_ServerEncoreView(status)) return false;
     if (!m_ServerRaidEnvironmentBaseline)
     {
         if (!m_pPendingGateObjects || !m_pPendingGateObjects->serverRaidPrepared)
@@ -905,6 +918,13 @@ bool_t CLevel_KakulSaydonArena::Begin_ServerRaidCinematicPresentation(std::strin
 bool_t CLevel_KakulSaydonArena::End_ServerRaidCinematicPresentation(
     const bool_t restorePrevious, std::string& status)
 {
+    if (m_ServerEncoreView)
+    {
+        // MainApp commits the new gate before ending a successful cinematic.
+        // Release the hold now; an earlier camera-row tail must not release it.
+        m_ServerEncoreView.reset();
+        Stop_CompositionCamera(restorePrevious);
+    }
     if (restorePrevious && m_pPendingGateObjects && m_pPendingGateObjects->serverRaidPrepared)
     {
         Debug_CancelGateObjects();

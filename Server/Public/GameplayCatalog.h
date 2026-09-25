@@ -824,7 +824,8 @@ namespace LostArk::Server
 		BINGO_DETONATION,
 		BOSS_TELEPORT_GROUNDED,
 		CARD_MAZE_STAGE_PLAYERS,
-		CARD_RAIN_SOLDIERS
+		CARD_RAIN_SOLDIERS,
+		BOSS_RANDOM_TARGET
 	};
 
 	enum class ALBION_AIRBORNE_PHASE : std::uint8_t
@@ -850,6 +851,16 @@ namespace LostArk::Server
 		std::vector<LostArk::Shared::ATTACK_HIT_TEMPLATE> Hits;
 		std::string strClientVisualId;
 		std::uint32_t iLifetimeMs = 0u;
+	};
+
+	// One fixed bomb is resolved once against the owner's final tracking fan.
+	struct BOSS_SHOWTIME_BOMB_RESOLUTION final
+	{
+		std::uint32_t iBodyStartMs = 0u;
+		std::string strBodyVisualId, strExplosionVisualId;
+		std::uint32_t iExplosionLifetimeMs = 0u;
+		std::array<float, 3u> BodyPosition{};
+		BOSS_LOGIC_REGION FanRegion;
 	};
 
 	struct BOSS_PATTERN_MECHANIC_TRIGGER final
@@ -906,6 +917,7 @@ namespace LostArk::Server
 		std::array<std::uint32_t, 3u> SoldierCounts{ 1u, 1u, 1u };
 		float fSoldierSpawnRadiusMinM = 3.f, fSoldierSpawnRadiusMaxM = 6.f;
 		bool bHasSoldierTuning = false;
+		std::optional<BOSS_SHOWTIME_BOMB_RESOLUTION> ShowtimeBomb;
 	};
 
 	/* Presentation cues the pattern clock fires. The Server only knows the

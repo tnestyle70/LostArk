@@ -1006,6 +1006,9 @@ void LostArk::Server::CGameRoom::Tick(const float fixedDeltaSeconds,
 			Handle_GateProgressRespond(
 				command.iSessionId, command.GateProgressRespond);
 			break;
+		case ROOM_COMMAND_TYPE::ROOM_PING:
+			Handle_RoomPing(command.iSessionId, command.RoomPing);
+			break;
 		case ROOM_COMMAND_TYPE::CHAT:
 			Handle_Chat(command.iSessionId, command.Chat);
 			break;

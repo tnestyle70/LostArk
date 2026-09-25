@@ -1,7 +1,7 @@
 {
     "schema":  "lostark.rendering-profiles",
     "formatVersion":  1,
-    "revision":  82,
+    "revision":  85,
     "globalQuality":  {
                           "ssaoEnabled":  true,
                           "ssaoRadius":  0.0399999991,
@@ -4495,7 +4495,7 @@
                                                                                             1
                                                                                         ],
                                                                            "desaturation":  0.125,
-                                                                           "colorGradingLut":  ""
+                                                                           "colorGradingLut":  "Map/Lighting/KoukuSaydon/lv_lut_midnightc_lut_01.dds"
                                                                        }
                                              },
                          "displayName":  "Gate 3 - source tone, LUT off",
@@ -5202,7 +5202,7 @@
                                                                                                                        1
                                                                                                                    ],
                                                                                                       "desaturation":  0.125,
-                                                                                                      "colorGradingLut":  ""
+                                                                                                      "colorGradingLut":  "Map/Lighting/KoukuSaydon/lv_lut_midnightc_lut_01.dds"
                                                                                                   }
                                                                         },
                                                         "fog":  {
@@ -7240,7 +7240,7 @@
                                                                                                                        1
                                                                                                                    ],
                                                                                                       "desaturation":  0.125,
-                                                                                                      "colorGradingLut":  ""
+                                                                                                      "colorGradingLut":  "Map/Lighting/KoukuSaydon/lv_lut_midnightc_lut_01.dds"
                                                                                                   }
                                                                         },
                                                         "fog":  {
@@ -7279,7 +7279,7 @@
                                                  "ssaoIntensity":  0.689999998,
                                                  "ssaoPower":  2.0999999,
                                                  "ssaoDistanceFade":  132.5,
-                                                 "bloomEnabled":  true,
+                                                 "bloomEnabled":  false,
                                                  "bloomThreshold":  0.699999988,
                                                  "bloomSoftKnee":  1,
                                                  "bloomIntensity":  0.899999976,
@@ -7669,7 +7669,7 @@
                                                                                                                        1
                                                                                                                    ],
                                                                                                       "desaturation":  0.125,
-                                                                                                      "colorGradingLut":  ""
+                                                                                                      "colorGradingLut":  "Map/Lighting/KoukuSaydon/lv_lut_midnightc_lut_01.dds"
                                                                                                   }
                                                                         },
                                                         "fog":  {

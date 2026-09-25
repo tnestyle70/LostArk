@@ -155,6 +155,7 @@ namespace
 							hit.fPushRangeM = monster.fAttackPushRangeM; hit.iPushMs = monster.iAttackPushMs;
 							hit.bKnockdown = monster.bAttackKnockdown; hit.iDownMs = monster.iAttackDownMs;
 							hit.iServerTick = tick;
+							if (monster.strArchetypeId == "MONSTER_MARIO_REUP") Configure_MarioHazardLaunch(hit);
 							(void)CServerCombatHitRuntime::Apply_WorldToPlayer(*target, hit, catalog, damageEvents);
 						}
 					}

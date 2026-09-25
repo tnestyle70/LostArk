@@ -823,6 +823,17 @@ void Client::CEffectObject::Set_RootWorld(const float4x4_t& RootWorld)
 		m_Playback.Update(0.f, m_RootWorld);
 }
 
+bool_t Client::CEffectObject::Set_PresentationPostTransform(
+	const float4x4_t* postTransform, std::string& error)
+{
+	if (!postTransform) { m_PresentationFrame.reset(); return true; }
+	EFFECT_EVALUATED_FRAME candidate;
+	if (!CEffectPlayback::Build_PresentationFrame(m_Playback.Get_Frame(), *postTransform, candidate))
+	{ error = "Effect presentation post transform produced an invalid frame."; return false; }
+	m_PresentationFrame = std::move(candidate);
+	return true;
+}
+
 bool_t Client::CEffectObject::Validate_ParticleParameters(
 	const std::vector<EFFECT_PARAMETER_INPUT>& Parameters, std::string& strOutError) const
 {
@@ -1063,7 +1074,7 @@ HRESULT Client::CEffectObject::Submit_RenderGroups()
 		return S_FALSE;
 	const shared_ptr<CEffectObject> Self =
 		static_pointer_cast<CEffectObject>(shared_from_this());
-	const auto& Particles = m_Playback.Get_Frame().Particles;
+	const auto& Particles = Get_PresentationFrame().Particles;
 	// Staging validates material contracts once for this immutable playback
 	// document. Current visibility, particle alpha and Solo selection still
 	// decide whether this frame actually needs the shared scene-color snapshot.
@@ -1096,10 +1107,10 @@ HRESULT Client::CEffectObject::Submit_RenderGroups()
 	}
     // A local authored backdrop replaces the map/sky for exactly its evaluated
     // lifetime. Player/Effect draws keep their ordinary depth and lighting path.
-    if (m_pRenderer->Has_ActiveSceneBackdrop(m_Playback.Get_Frame()))
+    if (m_pRenderer->Has_ActiveSceneBackdrop(Get_PresentationFrame()))
         CGameInstance::Get().Request_SceneEnvironmentReplacement();
 	// Shadow uses the same evaluated frame/pose as the later surface draw.
-	if (m_pRenderer->Has_ShadowModelCues(m_Playback.Get_Frame()))
+	if (m_pRenderer->Has_ShadowModelCues(Get_PresentationFrame()))
 		CGameInstance::Get().Add_RenderObject(
 			RENDERGROUP::SHADOW, static_pointer_cast<CGameObject>(Self));
 	if (m_pRenderer->Has_NonBlendModelCues())
@@ -1169,7 +1180,7 @@ HRESULT Client::CEffectObject::Submit_Presentation()
 	}
 	if (!m_bVisible)
 		return Complete(S_OK);
-	const EFFECT_EVALUATED_FRAME& Frame = m_Playback.Get_Frame();
+	const EFFECT_EVALUATED_FRAME& Frame = Get_PresentationFrame();
 	const uint64_t iVisibleLightCount = static_cast<uint64_t>(std::count_if(
 		Frame.Lights.begin(), Frame.Lights.end(),
 		[this](const EFFECT_EVALUATED_LIGHT& Value)
@@ -1351,7 +1362,7 @@ HRESULT Client::CEffectObject::Render_Shadow()
 		m_strStatus = std::move(GateStatus);
 		return Complete_LocalEffectFailure(E_FAIL, m_strStatus, "shadow", false);
 	}
-	const HRESULT Result = m_pRenderer->Render_ShadowModelCues(m_Playback.Get_Frame());
+	const HRESULT Result = m_pRenderer->Render_ShadowModelCues(Get_PresentationFrame());
 	m_strStatus = m_pRenderer->Get_Status();
 	return Complete_RenderResult(Result, m_strStatus);
 }
@@ -1371,7 +1382,7 @@ HRESULT Client::CEffectObject::Render_NonBlendModelCues()
 			E_FAIL, m_strStatus, "render", false);
 	}
 	const HRESULT Result =
-		m_pRenderer->Render_NonBlendModelCues(m_Playback.Get_Frame());
+		m_pRenderer->Render_NonBlendModelCues(Get_PresentationFrame());
 	m_strStatus = m_pRenderer->Get_Status();
 	return Complete_RenderResult(Result, m_strStatus);
 }
@@ -1391,7 +1402,7 @@ HRESULT Client::CEffectObject::Render_WorldMarks()
 			E_FAIL, m_strStatus, "render", false);
 	}
 	const HRESULT Result = m_pRenderer->Render_WorldMarks(
-		m_Playback.Get_Frame(), m_iRenderSubmissionSerial);
+		Get_PresentationFrame(), m_iRenderSubmissionSerial);
 	m_strStatus = m_pRenderer->Get_Status();
 	return Complete_RenderResult(Result, m_strStatus);
 }
@@ -1434,7 +1445,7 @@ HRESULT Client::CEffectObject::Render()
 	if (!m_bVisible)
 		return S_FALSE;
 	const HRESULT Result = m_pRenderer->Render(
-		m_Playback.Get_Frame(), m_iRenderSubmissionSerial);
+		Get_PresentationFrame(), m_iRenderSubmissionSerial);
 	m_strStatus = m_pRenderer->Get_Status();
 	return Complete_RenderResult(Result, m_strStatus);
 }
@@ -1502,6 +1513,7 @@ HRESULT Client::CEffectObject::Complete_LocalEffectFailure(
 
 void Client::CEffectObject::Reset_RenderFailureIsolation()
 {
+	m_PresentationFrame.reset();
 	m_bRenderFailureIsolated = false;
 	m_bPresentationFailureIsolated = false;
 	m_ePresentationFailureScope = PRESENTATION_FAILURE_SCOPE::NONE;

@@ -23,7 +23,7 @@
 namespace
 {
     HRESULT BindSourceFoliageWind(const std::shared_ptr<Engine::CShader>& shader,
-        const Engine::MODEL_SURFACE_PARAMETERS* surface, float time)
+        const Engine::MODEL_SURFACE_PARAMETERS* surface, float time, bool skinned = false)
     {
         const uint32_t enabled = surface &&
             (surface->family == Engine::MODEL_SURFACE_FAMILY::SOURCE_FOLIAGE_MASKED ||
@@ -31,6 +31,10 @@ namespace
              (surface->family == Engine::MODEL_SURFACE_FAMILY::SOURCE_CHARACTER &&
               surface->sourceCharacter.program >= 1100u && surface->sourceCharacter.program <= 1166u)) &&
             surface->sourceFoliageWind ? 1u : 0u;
+        // Animated scenery shares the BG material evaluator, but its skinned VS
+        // has no foliage-wind input. Do not bind the static-only reset there.
+        // An actual wind request still fails instead of silently losing motion.
+        if (skinned) return enabled ? E_INVALIDARG : S_OK;
         if (FAILED(shader->Bind_RawValue("g_SourceFoliageWindEnabled", &enabled, sizeof(enabled)))) return E_FAIL;
         if (!enabled) return S_OK;
         if (!std::isfinite(time)) return E_INVALIDARG;
@@ -879,7 +883,7 @@ HRESULT Client::CMapAssetRenderUtils::Bind_ShadowMaterial(
 	if (program != 0u &&
 		FAILED(model->Bind_SurfaceTexture(shader, "g_DiffuseTexture", meshIndex, aiTextureType_DIFFUSE)))
 		return E_FAIL;
-	if (FAILED(BindSourceFoliageWind(shader, surface, elapsedTime))) return E_FAIL;
+	if (FAILED(BindSourceFoliageWind(shader, surface, elapsedTime, model->Is_Skinned()))) return E_FAIL;
 	return shader->Bind_RawValue("g_SurfaceProgram", &program, sizeof(program));
 }
 
@@ -1128,7 +1132,7 @@ HRESULT Client::CMapAssetRenderUtils::Bind_Material(
                 FAILED(shader->Bind_RawValue("g_LightmapDirectionalScale", &lighting.directionalScale, sizeof(lighting.directionalScale))) ||
                 (hasBaked && !hasStaticShadow && FAILED(model->Bind_SurfaceLighting(shader, meshIndex)))) return E_FAIL;
         }
-        if (FAILED(BindSourceFoliageWind(shader, nativeSurface, elapsedTime))) return E_FAIL;
+        if (FAILED(BindSourceFoliageWind(shader, nativeSurface, elapsedTime, model->Is_Skinned()))) return E_FAIL;
         if (FAILED(model->Bind_SourceCharacter(shader, meshIndex))) return E_FAIL;
         return movieForward ? model->Bind_SourceCharacterForwardLight(shader, meshIndex) : S_OK;
     }
@@ -1146,7 +1150,7 @@ HRESULT Client::CMapAssetRenderUtils::Bind_Material(
     const float4_t pbrParameters = pbrComparisonActive ? settings.MapPBR.vSurfaceParameters : float4_t(1.f, 0.f, 0.f, 0.f);
     if (FAILED(shader->Bind_RawValue("g_MapPBRContributionScale", &pbrContributions, sizeof(pbrContributions))) ||
         FAILED(shader->Bind_RawValue("g_MapPBRDiagnosticParameters", &pbrParameters, sizeof(pbrParameters)))) return E_FAIL;
-    if (FAILED(BindSourceFoliageWind(shader, surface, elapsedTime))) return E_FAIL;
+    if (FAILED(BindSourceFoliageWind(shader, surface, elapsedTime, model->Is_Skinned()))) return E_FAIL;
 	// Bind last: the legacy diffuse binder resets source programs on shared shaders.
 	if (FAILED(shader->Bind_RawValue("g_SurfaceProgram", &program, sizeof(program))) ||
 		FAILED(shader->Bind_RawValue("g_HasSurfaceDefinition", &hasSurface, sizeof(hasSurface))) ||

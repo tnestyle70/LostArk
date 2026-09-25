@@ -114,3 +114,104 @@ Client/UI가 편집 중이면 후보·검증을 완성한 최종 교체 시점�
 중복 금지, 최대 HP 13,200에서 단일 1,320·중첩 2,640 피해, 실제 저장/게시의16개 독립 CYLINDER 창 및
 결과값을 확인한다. 변경 C++ 정상 Product Build, JSON/XML parse, diff check를 수행한다.
 추가 C++ 파일은 계획하지 않으며 기존 프로젝트 등록을 사용한다. 실제 폭발 화면은 사용자 확인이다.
+
+
+## G09. 팝업북·추적 조기 종료와 전투 피드백 수정
+
+2026-09-25 후속 요청 기준 HEAD는88fa743d106ad016922b37394a79d00f6c5c50e0이며 시작 worktree는 clean이다.
+첨부 팝업북의 WORLD mesh0 material binding 실패는 MapAssetRenderUtils의 foliage wind 바인딩과
+animated BG shader 입력 불일치를 실제 설치 모델·CSO로 확인한다. 바람을 쓰지 않는 skinned 모델은
+해당 입력을 요구하지 않되 실제 바람을 요청한 unsupported 모델은 기존 실패를 유지한다.
+2관문 무대와 세이튼 등장 사운드는 같은 연출의 모델·SOUND 연결과 실제 재생 창을 대조한다.
+
+GameRoom_BossSimulation의 BOSS_TRACK_TARGET 접촉 완료는 사용자 지정 `플레이어 1초 추적`
+P104 stable ID 하나에만 적용한다. 패턴 구조로 대상을 추측하지 않는다. 다른 패턴은 가까이 도달해도
+전체 패턴을 완료하지 않는다. 노란장판·문양장판은 SELECT 시점의 Server 플레이어 위치가
+APPEAR와 실제 presentation에 전달되는지 확인하고, 저글링은 공을 던지기 전에 위치를 받는
+기존 typed Trigger를 연결한다. 현재 디스크에 저글링 Trigger가 없으면 후보를 준비하고
+최종 저장본에 사용자가 추가한 항목과 stable ID/의미를 대조해 중복을 피한다.
+
+쓰리투원투하의 제거된 마지막2회 폭발 SOUND를 실제3회 폭발 시계에 맞춘다.
+돌진카운터는 방구의 기존 Server push Result를 비교하여 요청한 밀림을 연결하고,
+카드미로 중앙 파괴체 HP는1000으로 조정한다. 잘못된 카드 잔상은 실제 원본 carrier를
+확인해 복구하거나 해당 잔상만 제거한다. MainApp의 Complete Play 목록 child 높이는240에서720으로 바꾼다.
+
+기존 C++ 파일과 기존 typed 데이터 경로를 수정하므로 신규 project/filter 등록은 없다.
+후보를 먼저 작성·검증한 뒤 편집 중 데이터의 최종 저장/반영 기준을 한 번 확인한다.
+최신 디스크 stable field 병합, writer lock, hash 재검사, 백업, 원자 교체와 실패 rollback을
+유지한다. 필요한 domain publish와 Debug Product 증분 Build, 접촉 종료·공격 유지 및
+실제 material binding 검사를 수행한다. Client/UI 실행과 최종 화면 판정은 사용자 확인이다.
+
+
+## G10. 선택한 플레이어 위치의 장판·투척 소비
+
+문양장판P47의 MAP 고정 배치와 노란장판P79/P119/P122의 MAP 피해를 기존
+ALBION_AIRBORNE SELECT_PLAYER가 소유하는 selectedEffectGroupId와 fixedHits로 연결한다.
+선택 위치를 Server가 확정하고 같은 combat object의 visual과 hit template이 공유한다.
+기존 pattern occurrence의 시각 효과를 중복 재생하지 않고 기존 targeted visual 경로를 쓴다.
+
+저글링P106은 손에서 돌리는42개 source element, 투척 공3종 각3개 element, 충돌12개 element를
+독립 Effect5문서로 분리한다. 원본 복합 문서와 Resources·native material program은 보존한다.
+비행의 기존 고정8m preview 궤적을 제거하고 선택 template의 selectedFlightMs,
+selectedFlightArcHeightM, selectedFlightSourceOffset으로 실제 보스 출발점부터 Server가
+확정한 플레이어 위치까지 기존 targeted visual pivot을 샘플링한다.0ms 기본값은 기존 고정형
+선택 이펙트 동작을 유지한다. 비행 종점과 충돌·피해 위치가 같고 위치를 다시 추적하지 않는다.
+
+Client codec/save/preview·Python projection·bootstrap/Server fixedHits 소비를 함께 연결한다.
+5개 저작 JSON은 EffectCatalog와 ResourceTree, Client.vcxproj/.filters의96.DataFiles None
+항목에 등록한다. 새 C++파일, 새 모델runtime, 새packet 경로는 만들지 않는다.
+실제 source element Stage, 선택 위치 변경, 다른 플레이어의 이동, 늦은snapshot/수명종료,
+정상 고정 template 보존과 잘못된 값 거부를 검증하며 사용자 화면판정과 구분한다.
+
+- 게시 단계에서 실제 WinError32가 발생하면 source 검증을 생략하지 않는다. 기존 원자 교체와
+  rollback을 유지하고 WinError32/33만 최대2초 재시도한다. 영구 잠금·다른 권한 오류·cleanup
+  실패·rollback 복구를 각각 검사한다. 실패 staging은 out의 복구 증거로 보존한다.
+
+
+## G11. 전 관문 재생 후 회귀 수정
+
+2026-09-25 사용자 1~3관문 재시험의 요청을 현재 revision2350과 기존 dirty 위에서 연결한다.
+55줄 Mario4 진입은 실제 Parent admission과 boss cleanup을 재현하며, 실패한 패턴 시작이
+보스 소멸로 숨겨지지 않도록 원인을 고친다. Gate2 MVP 종료는 기존 typed ADVANCE 제출에
+연결하고 Gate3 false-clear는 MVP 없이 기존 Encore 컷씬과 Bingo를 사용한다. 각 관문과
+Bingo는 전투 시작 전 Server가 3초 IDLE을 소유한다. Bingo 해골은 1초마다 최대 광기5%다.
+
+Server CombatObjectRuntime의 카드 추적 대상과 접촉 대상은 분리한다. 동일 문양 면역을
+보존하고 다른 문양은 최대 HP90%다. 초기 레이저 접촉, 비활성 불어날리기, 빈 Collider
+연결의 무지개댄스, 누락된 화염파동·저글링·알비온 판정을 실제 표현 창과 연결한다.
+불뿜기는 광기1%씩 총3회로 연결한다. 피해와 밀침은 기존 Server 결과 소비자가 소유한다.
+
+RenderingProfileService와 Rendering Workbench는 선택 scene/region의 quality owner와
+최신 저작 저장본을 구분해 저장한다. Mario1~4 FXAA=false는 유지하고 WorldObject
+placement와 Composition occurrence override를 명확히 연결한다. Mario2 갈고리 X=0,
+공·인형 tick 광기5%, 갈고리 IDLE 및 폭탄 공중 반응을 기존 경로로 수정한다.
+
+P40의 소실된 화염 Effect/Collider를 현재 분신용 십자화염과 대조해 복구하고 2분신을
+연결한다. P35의 MAP 고정 부채꼴만 제거하며 추적 부채꼴은 유지한다. 카드 문양·쇼타임
+사격·화염파동·노란장판 사운드는 실제 설치 음원과 현재 cue를 대조한다. 룰렛3회차는
+source-in의 실제 입자 시각을 검사한다.
+
+데이터 후보는 out/KoukuRaidReview20260925에 별도로 준비한다. 최종 저장 기준 확인 뒤
+stable ID 필드 병합·hash/CAS·백업·원자 교체하며 공식 owner publisher를 사용한다.
+C++은 기존 파일과 프로젝트 등록을 재사용한다. 정상 Debug Product Build, 관련 Server
+contract, Client codec/presentation 수치, JSON/XML parse와 diff check를 수행한다.
+Client/UI 실행·Reload와 최종 화면 판정은 사용자가 직접 한다.
+
+후속 재시험에서 강조된 저장·중단·freeze도 같은 G11 범위다. FXAA 상단 비교 체크박스의
+비영구 값이 매 프레임 저장 profile을 덮는 경로를 없애고 두 체크박스를 같은 quality draft에
+연결한다. 렌더링 저장은 profileId/regionId별 3-way merge와 writer lease로 최신 튜닝을 보존한다.
+Gate2 MVP는 실제 roster의 0기여 결과도 송신하며, Client가 clear와 같은 gate의 결과를 기다려
+늦은 패킷에도 표시한다. Gate3→Bingo의 MVP 생략은 Gate3에만 적용한다.
+
+실제 사용자 session의 P88/P92 중단 기록과 P93을 함께 재현한다. 입장자가 없는 Mario 종료는
+저작된 실패 피해를 적용한 기믹 종료이며, 정상적인 실패를 전체 실행 오류로 승격해 보스를
+제거하지 않는다. 구조 오류의 상세 원인은 보존한다. 공·인형 생성 및 Gate1 전투 전환의
+WORLD 문서 전체 검증/복사와 첫 clone 비용, 재질/profile 변경을 각각 실측한다. 필요한
+오브젝트 의존 closure와 기존 pool을 준비 단계에서 구성하며 새로운 모델 runtime은 만들지 않는다.
+
+사용자의 후속 지시에 따라 Mario1페이즈 입장자가 없으면 저작된 전멸 피해는 유지하되
+레이드를 멈추지 않는다. 사망 상태 그대로 다음 Flow와 반복을 진행하고 자동 부활은 하지 않는다.
+Mario 비행 폭탄은 기존 WORLD 시계와 같은 Shared marker/주기를 Server 접촉이 소비한다.
+새 헤더 `Shared/Public/Gameplay/KoukuMarioBombContract.h`는 Shared 프로젝트와 filters에 등록한다.
+1관문 folding/standing 바닥은 실제 설치 WModel 기하 일치를 확인한 배치만 전투용 material
+variant와 placement lighting으로 맞춘다. 공통 원본 재질·연출 transform은 바꾸지 않는다.

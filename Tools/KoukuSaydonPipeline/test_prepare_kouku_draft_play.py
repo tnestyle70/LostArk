@@ -7,12 +7,34 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from unittest import mock
 
 from Tools.KoukuSaydonPipeline import prepare_kouku_draft_play as subject
 
 
 ROOT = Path(__file__).resolve().parents[2]
 TARGET = "KAKULSAYDON_G1_PATTERN_1"
+
+
+class KoukuDraftEncodingTests(unittest.TestCase):
+    def test_draft_keeps_canonical_projected_bytes(self):
+        source = {"revision": 1, "patterns": [{"patternId": TARGET,
+            "gateId": "G1", "targetBossPlacementId": "boss.1"}], "bundles": []}
+        inventory = {"patterns": [{"patternId": TARGET, "unavailableReason": ""}], "bundles": []}
+        encounter = (json.dumps({"patterns": [{"patternId": TARGET}], "bundles": []},
+                                separators=(",", ":")) + "\n").encode()
+        presentation = b'{"patterns":[]}\n'
+        outputs = {subject.composition.ENCOUNTER_PATH: encounter,
+                   subject.composition.PRESENTATION_PATH: presentation}
+        with mock.patch.object(subject.composition, "_saved_pattern_inventory", return_value=inventory), \
+             mock.patch.object(subject.composition, "_pattern_dependencies", return_value=set()), \
+             mock.patch.object(subject.composition, "_publication_candidate", return_value=source), \
+             mock.patch.object(subject.composition, "prepare_publication", return_value=(source, inventory)), \
+             mock.patch.object(subject.composition, "projected_outputs", return_value=outputs):
+            metadata, artifacts = subject.prepare(source, ROOT, pattern_id=TARGET)
+        self.assertEqual([TARGET], metadata["patternIds"])
+        self.assertEqual(encounter, artifacts[Path("encounter.json")])
+        self.assertEqual(presentation, artifacts[Path("presentation.json")])
 
 
 class KoukuDraftPlayContractTests(unittest.TestCase):

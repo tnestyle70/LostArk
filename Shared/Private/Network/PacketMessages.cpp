@@ -6012,6 +6012,57 @@ bool LostArk::Shared::Read_Message(
 	return true;
 }
 
+namespace
+{
+	bool ValidRoomPingPoint(float x, float y, float z)
+	{
+		return std::isfinite(x) && std::isfinite(y) && std::isfinite(z) &&
+			std::abs(x) <= 1000000.f && std::abs(y) <= 1000000.f && std::abs(z) <= 1000000.f;
+	}
+}
+
+bool LostArk::Shared::Write_Message(CPacketWriter& writer, const C2S_ROOM_PING& message)
+{
+	if (!message.iClientSequence || !Is_Known_World_Id(message.eWorldId) ||
+		!ValidRoomPingPoint(message.fPositionX, message.fPositionY, message.fPositionZ)) return false;
+	writer.Write_U32(message.iClientSequence);
+	writer.Write_U16(static_cast<std::uint16_t>(message.eWorldId));
+	writer.Write_F32(message.fPositionX); writer.Write_F32(message.fPositionY); writer.Write_F32(message.fPositionZ);
+	return true;
+}
+
+bool LostArk::Shared::Read_Message(CPacketReader& reader, C2S_ROOM_PING& message)
+{
+	C2S_ROOM_PING decoded{}; std::uint16_t world = 0u;
+	if (!reader.Read_U32(decoded.iClientSequence) || !reader.Read_U16(world) ||
+		!reader.Read_F32(decoded.fPositionX) || !reader.Read_F32(decoded.fPositionY) || !reader.Read_F32(decoded.fPositionZ)) return false;
+	decoded.eWorldId = static_cast<WORLD_ID>(world);
+	if (!decoded.iClientSequence || !Is_Known_World_Id(decoded.eWorldId) ||
+		!ValidRoomPingPoint(decoded.fPositionX, decoded.fPositionY, decoded.fPositionZ)) return false;
+	message = decoded; return true;
+}
+
+bool LostArk::Shared::Write_Message(CPacketWriter& writer, const S2C_ROOM_PING& message)
+{
+	if (message.iFromNetEntityId == INVALID_NET_ENTITY_ID || !message.iClientSequence ||
+		!Is_Known_World_Id(message.eWorldId) || !ValidRoomPingPoint(message.fPositionX, message.fPositionY, message.fPositionZ)) return false;
+	writer.Write_U16(static_cast<std::uint16_t>(message.eWorldId));
+	writer.Write_U32(message.iFromNetEntityId); writer.Write_U32(message.iClientSequence);
+	writer.Write_F32(message.fPositionX); writer.Write_F32(message.fPositionY); writer.Write_F32(message.fPositionZ);
+	return true;
+}
+
+bool LostArk::Shared::Read_Message(CPacketReader& reader, S2C_ROOM_PING& message)
+{
+	S2C_ROOM_PING decoded{}; std::uint16_t world = 0u;
+	if (!reader.Read_U16(world) || !reader.Read_U32(decoded.iFromNetEntityId) || !reader.Read_U32(decoded.iClientSequence) ||
+		!reader.Read_F32(decoded.fPositionX) || !reader.Read_F32(decoded.fPositionY) || !reader.Read_F32(decoded.fPositionZ)) return false;
+	decoded.eWorldId = static_cast<WORLD_ID>(world);
+	if (decoded.iFromNetEntityId == INVALID_NET_ENTITY_ID || !decoded.iClientSequence || !Is_Known_World_Id(decoded.eWorldId) ||
+		!ValidRoomPingPoint(decoded.fPositionX, decoded.fPositionY, decoded.fPositionZ)) return false;
+	message = decoded; return true;
+}
+
 bool LostArk::Shared::Write_Message(
 	CPacketWriter& writer,
 	const C2S_CHAT& message)
@@ -6265,6 +6316,11 @@ bool LostArk::Shared::Write_Message(
 	const bool stop = message.eOperation == WORLD_SEQUENCE_OPERATION::STOP_OWNER ||
 		message.eOperation == WORLD_SEQUENCE_OPERATION::FINISH_OWNER;
 	const bool stopCue = message.eOperation == WORLD_SEQUENCE_OPERATION::STOP_CUE;
+	if (message.iCombatBodyNetEntityId != INVALID_NET_ENTITY_ID &&
+		(message.eOperation != WORLD_SEQUENCE_OPERATION::PLAY || message.iRunEpoch == 0u ||
+		 message.iBossNetEntityId == INVALID_NET_ENTITY_ID || message.iCombatBodyNetEntityId == message.iBossNetEntityId ||
+		 message.strOccurrenceId.empty() || !message.strTargetSequenceInstanceId.empty() || !message.strTargetCueId.empty()))
+		return false;
 	const bool transportControl = message.eOperation == WORLD_SEQUENCE_OPERATION::REPLAY ||
 		message.eOperation == WORLD_SEQUENCE_OPERATION::STOP;
 	// Viewer transport is separate from exact owned cue and owner lifecycle operations.
@@ -6323,6 +6379,7 @@ bool LostArk::Shared::Write_Message(
 	writer.Write_F32(message.fWorldRotationXDegrees); writer.Write_F32(message.fWorldRotationYDegrees); writer.Write_F32(message.fWorldRotationZDegrees);
 	writer.Write_F32(message.fWorldScaleX); writer.Write_F32(message.fWorldScaleY); writer.Write_F32(message.fWorldScaleZ);
 	writer.Write_U8(message.bUntilDestroyed ? 1u : 0u);
+	writer.Write_U32(message.iCombatBodyNetEntityId);
 	return true;
 }
 
@@ -6343,7 +6400,8 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader, S2C_WORLD_SEQUENCE_PLA
 		!reader.Read_F32(decoded.fWorldPositionX) || !reader.Read_F32(decoded.fWorldPositionY) || !reader.Read_F32(decoded.fWorldPositionZ) ||
 		!reader.Read_F32(decoded.fWorldRotationXDegrees) || !reader.Read_F32(decoded.fWorldRotationYDegrees) || !reader.Read_F32(decoded.fWorldRotationZDegrees) ||
 		!reader.Read_F32(decoded.fWorldScaleX) || !reader.Read_F32(decoded.fWorldScaleY) || !reader.Read_F32(decoded.fWorldScaleZ) ||
-		!reader.Read_U8(untilDestroyed) || untilDestroyed > 1u) return false;
+		!reader.Read_U8(untilDestroyed) || untilDestroyed > 1u ||
+		!reader.Read_U32(decoded.iCombatBodyNetEntityId)) return false;
 	decoded.bHasPlacement = hasPlacement == 1u;
 	decoded.bUntilDestroyed = untilDestroyed == 1u;
 	decoded.eOperation = static_cast<WORLD_SEQUENCE_OPERATION>(operation);

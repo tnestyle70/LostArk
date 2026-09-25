@@ -220,8 +220,19 @@ Server/Bin/Debug/Server.exe --contract-test
 ## Madness 수치 계약
 
 정본은 `Data/Balance/Profiles/Retail.balanceprofile.json`의 단일 `madness` row이며 stable ID는
-`policyId=KOUKUSAYDON`이다. 기존 `madnessGaugeAddPercent`는 패턴 기믹 penalty의 별도 override이므로
-피해/공/인형 배율로 재사용하지 않는다. 공용 scalar draft와 Save/Validate/Publish 절차는 같다.
+`policyId=KOUKUSAYDON`이다. `madnessGaugeAddPercent=-1`은 패턴의 명시 광기 결과를 그대로 게시한다.
+Retail과 생성기의 기본값은 `-1`이며, `0..100`은 양수로 저작된 결과에 대한 전역 override다.
+이 필드는 피해/공/인형 배율로 재사용하지 않는다. 공용 scalar draft와 Save/Validate/Publish 절차는 같다.
+
+`MADNESS_GAUGE_ADD_PERCENT`는 `0..100`을 허용한다. 피해 결과와 함께 둔 `0`은 자동 HP 비례 광기까지
+억제하는 명시적인 피해 전용 판정이며, 전역 override로도 양수로 바꾸지 않는다. 양수 명시값도 같은
+판정의 자동 광기와 중복되지 않는다. 피해가 무적이나 보호막으로 전부 막히면 해당 명시 광기도
+증가하지 않는다. 명시 광기 결과가 없는 피해는 기존 자동 증가를 유지한다. 최대 HP 피해 결과의
+percent는 계속 `1..100`만 허용한다.
+
+현재 저작값 보존은 불뿜기 `1%` 8창, Mario 공·인형 `5%` 20창, 불뿜기 잔류 장판 `0%` 21창과
+기존 P6/P7 실패·시간초과 penalty `50%` 11개 결과 슬롯을 포함한다. `-1` 전환은 이전 전역 `0`이
+지우던 P6/P7의 저작 penalty도 복구한다.
 
 | 필드 | 초기값 | 의미/검증 |
 |---|---:|---|

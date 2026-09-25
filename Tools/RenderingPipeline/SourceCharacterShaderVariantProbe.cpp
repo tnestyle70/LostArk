@@ -1,7 +1,9 @@
-// Headless verification of the product CShader path; no window, draw or capture.
+// Headless product CShader verification; isolated numeric draw readback, no window/capture.
 #include "Shader.h"
 #include "Engine_VertexTypes.h"
 #include <array>
+#include <cmath>
+#include <type_traits>
 #include <chrono>
 #include <cstdio>
 #include <cstring>
@@ -74,17 +76,183 @@ template<class Function> static double Measure(Function&& function)
     return std::chrono::duration<double, std::micro>(std::chrono::steady_clock::now() - start).count() / iterations;
 }
 
+
+// A closed slab isolates hull coverage, depth occlusion, alpha masks and transient
+// hit reset. Numeric readback is not a claim about any game's final appearance.
+template<class Vertex> static uint32_t CheckCombatDraw(ID3D11Device* device,
+    ID3D11DeviceContext* context, CShader& shader, uint32_t outlinePass, bool silhouette = false)
+{
+    constexpr UINT side = 64u;
+    D3D11_TEXTURE2D_DESC td{};
+    td.Width = td.Height = side; td.MipLevels = td.ArraySize = 1u;
+    td.Format = DXGI_FORMAT_R32G32B32A32_FLOAT; td.SampleDesc.Count = 1u;
+    td.BindFlags = D3D11_BIND_RENDER_TARGET;
+    std::array<ComPtr<ID3D11Texture2D>, 8> targets;
+    std::array<ComPtr<ID3D11RenderTargetView>, 8> views;
+    ID3D11RenderTargetView* rawViews[8]{};
+    for (UINT i = 0; i < 8u; ++i)
+    {
+        Require(SUCCEEDED(device->CreateTexture2D(&td, nullptr, &targets[i])) &&
+            SUCCEEDED(device->CreateRenderTargetView(targets[i].Get(), nullptr, &views[i])), "combat MRT creation failed");
+        rawViews[i] = views[i].Get();
+    }
+    td.BindFlags = 0u; td.Usage = D3D11_USAGE_STAGING; td.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
+    ComPtr<ID3D11Texture2D> readback;
+    Require(SUCCEEDED(device->CreateTexture2D(&td, nullptr, &readback)), "combat readback creation failed");
+    td.Format = DXGI_FORMAT_D24_UNORM_S8_UINT; td.BindFlags = D3D11_BIND_DEPTH_STENCIL;
+    td.Usage = D3D11_USAGE_DEFAULT; td.CPUAccessFlags = 0u;
+    ComPtr<ID3D11Texture2D> depth;
+    ComPtr<ID3D11DepthStencilView> dsv;
+    Require(SUCCEEDED(device->CreateTexture2D(&td, nullptr, &depth)) &&
+        SUCCEEDED(device->CreateDepthStencilView(depth.Get(), nullptr, &dsv)), "combat depth creation failed");
+    std::array<Vertex, 8> vertices{};
+    for (UINT i = 0; i < 8u; ++i)
+    {
+        const float x = (i % 4u >= 2u) ? .45f : -.45f;
+        const float y = (i % 4u == 1u || i % 4u == 2u) ? .45f : -.45f;
+        vertices[i].vPosition = {x, y, i < 4u ? .4f : .6f};
+        vertices[i].vNormal = {x, y, i < 4u ? -1.f : 1.f};
+        vertices[i].vTangent = {1.f,0.f,0.f}; vertices[i].vBinormal = {0.f,1.f,0.f};
+        vertices[i].vTexcoord = {.5f,.5f};
+        if constexpr (std::is_same_v<Vertex,VTXANIMMESH>) vertices[i].vBlendWeights = {1.f,0.f,0.f,0.f};
+    }
+    const UINT indices[] = {0,1,2,0,2,3,4,6,5,4,7,6};
+    D3D11_BUFFER_DESC bd{}; bd.ByteWidth = sizeof(vertices); bd.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+    D3D11_SUBRESOURCE_DATA data{vertices.data(),0u,0u};
+    ComPtr<ID3D11Buffer> vb, ib;
+    Require(SUCCEEDED(device->CreateBuffer(&bd, &data, &vb)), "combat vertices failed");
+    bd.ByteWidth = sizeof(indices); bd.BindFlags = D3D11_BIND_INDEX_BUFFER; data.pSysMem = indices;
+    Require(SUCCEEDED(device->CreateBuffer(&bd, &data, &ib)), "combat indices failed");
+    UINT stride = sizeof(Vertex), offset = 0u; ID3D11Buffer* rawVB = vb.Get();
+    context->IASetVertexBuffers(0u,1u,&rawVB,&stride,&offset);
+    context->IASetIndexBuffer(ib.Get(),DXGI_FORMAT_R32_UINT,0u);
+    context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+    const D3D11_VIEWPORT viewport{0.f,0.f,float(side),float(side),0.f,1.f};
+    context->RSSetViewports(1u,&viewport); context->OMSetRenderTargets(8u,rawViews,dsv.Get());
+    float4x4_t identity; DirectX::XMStoreFloat4x4(&identity,DirectX::XMMatrixIdentity());
+    for (const char* name : {"g_WorldMatrix","g_ViewMatrix","g_ProjMatrix"})
+        Require(SUCCEEDED(shader.Bind_Matrix(name,&identity)), "combat transform bind failed");
+    if constexpr (std::is_same_v<Vertex,VTXANIMMESH>)
+    {
+        std::array<float4x4_t,512> bones; bones.fill(identity);
+        Require(SUCCEEDED(shader.Bind_Matrices("g_BoneMatrices",bones.data(),UINT(bones.size()))), "combat bones failed");
+    }
+    else Require(SUCCEEDED(shader.Bind_Matrix("g_WorldInvTransposeMatrix",&identity)), "combat normal matrix failed");
+    const uint32_t zero = 0u, one = 1u; const float intensity = 4.f;
+    const float4_t yellow{1.f,.72f,.08f,1.f}; const float2_t width{(silhouette?8.f:4.f)/side,(silhouette?8.f:4.f)/side};
+    for (const char* name : {"g_SourceCharacterProgram","g_SurfaceProgram","g_HasNormalTexture",
+        "g_HasEmissiveTexture","g_HasFullSurfaceEmissiveOverride","g_CombatHoverReflected"})
+        Require(SUCCEEDED(shader.Bind_RawValue(name,&zero,sizeof(zero))), "combat reset bind failed");
+    Require(SUCCEEDED(shader.Bind_RawValue("g_CombatHoverNdcWidth",&width,sizeof(width))), "combat width bind failed");
+    const auto texture = [&](bool opaque) {
+        D3D11_TEXTURE2D_DESC desc{}; desc.Width=desc.Height=desc.MipLevels=desc.ArraySize=1u;
+        desc.Format=DXGI_FORMAT_R8G8B8A8_UNORM; desc.SampleDesc.Count=1u; desc.BindFlags=D3D11_BIND_SHADER_RESOURCE;
+        const UINT pixel=opaque?0xffffffffu:0x00ffffffu; D3D11_SUBRESOURCE_DATA input{&pixel,4u,0u};
+        ComPtr<ID3D11Texture2D> tex; ComPtr<ID3D11ShaderResourceView> srv;
+        Require(SUCCEEDED(device->CreateTexture2D(&desc,&input,&tex)) &&
+            SUCCEEDED(device->CreateShaderResourceView(tex.Get(),nullptr,&srv)) &&
+            SUCCEEDED(shader.Bind_Texture("g_DiffuseTexture",srv)), "combat diffuse bind failed");
+    };
+    const auto clear = [&](float z) { const float black[4]{};
+        for (const auto& view:views) context->ClearRenderTargetView(view.Get(),black);
+        context->ClearDepthStencilView(dsv.Get(),D3D11_CLEAR_DEPTH|D3D11_CLEAR_STENCIL,z,5u); };
+    uint32_t drawCount = 0u;
+    const auto draw = [&](uint32_t pass) { Require(SUCCEEDED(shader.Begin(pass)),"combat pass failed"); context->DrawIndexed(12u,0u,0); ++drawCount; };
+    const auto count = [&](bool rimOnly) {
+        context->CopyResource(readback.Get(),targets[4].Get()); D3D11_MAPPED_SUBRESOURCE mapped{};
+        Require(SUCCEEDED(context->Map(readback.Get(),0u,D3D11_MAP_READ,0u,&mapped)), "combat map failed");
+        uint32_t lit=0u, inside=0u; bool finite=true;
+        for(UINT y=0;y<side;++y) for(UINT x=0;x<side;++x) {
+            const float* rgb=reinterpret_cast<const float*>(static_cast<const uint8_t*>(mapped.pData)+y*mapped.RowPitch)+x*4u;
+            finite &= std::isfinite(rgb[0]) && std::isfinite(rgb[1]) && std::isfinite(rgb[2]);
+            if(rgb[0]>.001f) { ++lit; if(x>=20u && x<44u && y>=20u && y<44u) ++inside; }
+        }
+        context->Unmap(readback.Get(),0u); Require(finite,"combat RGB was not finite");
+        if(rimOnly) Require(inside==0u,"hover painted over the body interior"); return lit;
+    };
+    if (silhouette)
+    {
+        const uint32_t mask = 0x80u;
+        const auto maskDraw = [&](uint32_t reference) {
+            Require(SUCCEEDED(shader.Bind_RawValue("g_CombatHoverStencilReference", &reference, sizeof(reference))), "mask reference bind failed");
+            draw(20u);
+        };
+        const auto background = [&] {
+            float4x4_t world; XMStoreFloat4x4(&world, XMMatrixScaling(3.f,3.f,1.f)*XMMatrixTranslation(0,0,.4f));
+            Require(SUCCEEDED(shader.Bind_Matrix("g_WorldMatrix",&world)),"background transform failed");
+            draw(0u);
+            Require(SUCCEEDED(shader.Bind_Matrix("g_WorldMatrix",&identity)),"body transform restore failed");
+        };
+        // Reproduce the former order: read-only hull is erased by later opaque
+        // geometry because no body depth exists at the exterior border pixels.
+        texture(true); clear(1.f); draw(0u); draw(18u);
+        Require(count(true)>0u,"old-order fixture has no initial border");
+        background(); Require(count(false)==0u,"old-order overwrite was not reproduced");
+        D3D11_TEXTURE2D_DESC depthReadDesc; depth->GetDesc(&depthReadDesc);
+        depthReadDesc.Usage=D3D11_USAGE_STAGING; depthReadDesc.BindFlags=0; depthReadDesc.CPUAccessFlags=D3D11_CPU_ACCESS_READ;
+        ComPtr<ID3D11Texture2D> depthRead;
+        Require(SUCCEEDED(device->CreateTexture2D(&depthReadDesc,nullptr,&depthRead)),"stencil readback creation failed");
+        const auto depthBytes = [&] {
+            std::array<uint32_t,side*side> values;
+            context->CopyResource(depthRead.Get(),depth.Get()); D3D11_MAPPED_SUBRESOURCE mapped{};
+            Require(SUCCEEDED(context->Map(depthRead.Get(),0,D3D11_MAP_READ,0,&mapped)),"stencil map failed");
+            for(UINT y=0;y<side;++y) std::memcpy(values.data()+y*side,
+                static_cast<const uint8_t*>(mapped.pData)+y*mapped.RowPitch,side*sizeof(uint32_t));
+            context->Unmap(depthRead.Get(),0); return values;
+        };
+        uint32_t least=UINT32_MAX, most=0;
+        for (const float shift : {-.012f,-.006f,0.f,.006f,.012f})
+        {
+            float4x4_t view; XMStoreFloat4x4(&view,XMMatrixTranslation(shift,0,0));
+            Require(SUCCEEDED(shader.Bind_Matrix("g_ViewMatrix",&view)),"moving camera bind failed");
+            clear(1.f); draw(0u); background(); const auto before=depthBytes();
+            maskDraw(mask); draw(outlinePass); const auto pixels=count(true);
+            Require(pixels>=360u,"four-pixel silhouette was missing/thinned during camera motion");
+            least=(std::min)(least,pixels); most=(std::max)(most,pixels);
+            maskDraw(0u); Require(before==depthBytes(),"hover changed depth or failed to return its stencil bit");
+        }
+        Require(SUCCEEDED(shader.Bind_Matrix("g_ViewMatrix",&identity)),"view restore failed");
+        clear(0.f); maskDraw(mask); draw(outlinePass); maskDraw(0u);
+        Require(count(false)==0u,"silhouette ignored scene occlusion");
+        texture(false); clear(1.f); maskDraw(mask); draw(outlinePass); maskDraw(0u);
+        Require(count(false)==0u,"silhouette ignored alpha coverage");
+        std::printf("silhouette moving-camera pixels=%u..%u old-order-repro/interior/occlusion/alpha/stencil-depth PASS\n",least,most);
+        context->ClearState(); return drawCount;
+    }
+    texture(true); clear(1.f); draw(0u); draw(outlinePass);
+    const UINT rimPixels=count(true); Require(rimPixels>0u,"hover emitted no border pixels");
+    clear(0.f); draw(outlinePass); Require(count(false)==0u,"hover ignored occluding depth");
+    texture(false); clear(1.f); draw(outlinePass); Require(count(false)==0u,"hover ignored material alpha mask");
+    texture(true); clear(1.f);
+    Require(SUCCEEDED(shader.Bind_RawValue("g_HasFullSurfaceEmissiveOverride",&one,sizeof(one))) &&
+        SUCCEEDED(shader.Bind_RawValue("g_FullSurfaceEmissiveMaskMode",&one,sizeof(one))) &&
+        SUCCEEDED(shader.Bind_RawValue("g_FullSurfaceEmissiveColor",&yellow,sizeof(yellow))) &&
+        SUCCEEDED(shader.Bind_RawValue("g_FullSurfaceEmissiveIntensity",&intensity,sizeof(intensity))), "combat hit bind failed");
+    draw(0u); Require(count(false)>0u,"hit emitted no finite radiance");
+    clear(1.f); Require(SUCCEEDED(shader.Bind_RawValue("g_HasFullSurfaceEmissiveOverride",&zero,sizeof(zero))),"hit reset failed");
+    draw(0u); Require(count(false)==0u,"expired hit leaked to following draw");
+    std::printf("combat outline pass=%u rimPixels=%u depth/mask/hit-reset PASS\n",outlinePass,rimPixels);
+    context->ClearState(); return drawCount;
+}
+
 int wmain(int argc, wchar_t** argv)
 {
     try
     {
-        Require(argc == 2, "expected isolated compiled shader directory");
+        Require(argc == 2 || argc == 3, "expected isolated compiled shader directory [--silhouette-only]");
         const std::filesystem::path directory = argv[1];
         ComPtr<ID3D11Device> device;
         ComPtr<ID3D11DeviceContext> context;
         D3D_FEATURE_LEVEL level{};
         Require(SUCCEEDED(D3D11CreateDevice(nullptr, D3D_DRIVER_TYPE_WARP, nullptr, 0,
             nullptr, 0, D3D11_SDK_VERSION, &device, &level, &context)), "WARP device creation failed");
+        if (argc == 3 && std::wstring(argv[2]) == L"--silhouette-only")
+        {
+            auto shader=CShader::Create(device,context,L"HoverSilhouette.hlsl",VTXANIMMESH::Elements,VTXANIMMESH::iNumElements);
+            Require(shader != nullptr,"focused silhouette shader failed");
+            CheckCombatDraw<VTXANIMMESH>(device.Get(),context.Get(),*shader,21u,true);
+            return 0;
+        }
         D3D11_TEXTURE2D_DESC textureDesc{};
         textureDesc.Width = textureDesc.Height = textureDesc.MipLevels = textureDesc.ArraySize = 1;
         textureDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
@@ -102,7 +270,7 @@ int wmain(int argc, wchar_t** argv)
         };
         uint32_t programsChecked = 0u, clonesChecked = 0u, failureCases = 0u, lightPassesChecked = 0u;
         uint32_t nativePassesChecked = 0u, unavailablePassesChecked = 0u;
-        uint32_t afterimagePassesChecked = 0u;
+        uint32_t afterimagePassesChecked = 0u, combatPassesChecked = 0u, combatDraws = 0u;
         for (const auto& fixture : fixtures)
         {
             const std::wstring logical = std::wstring(fixture.name) + L".hlsl";
@@ -148,6 +316,21 @@ int wmain(int argc, wchar_t** argv)
                     for (uint32_t pass : {9u, 10u})
                         Require(SUCCEEDED(first->Begin(pass)) && ConstantsBound(device.Get(), context.Get(), false, constants.data(), sizeof(constants)), "translucent hair light pass lost its constants");
                     Require(SUCCEEDED(first->Begin(fixture.pass)), "restore primary geometry pass failed");
+                }
+                if (!fixture.light && (program == 21u || program == 25u || program == 84u))
+                {
+                    const uint32_t firstPass = fixture.bones ? 18u : 28u;
+                    for (uint32_t pass : {firstPass, firstPass + 1u})
+                    {
+                        Require(SUCCEEDED(first->Begin(pass)), "combat hover cohort pass failed");
+                        ComPtr<ID3D11DepthStencilState> state; UINT reference = 0u;
+                        context->OMGetDepthStencilState(&state,&reference);
+                        D3D11_DEPTH_STENCIL_DESC desc{}; Require(state != nullptr,"combat depth state missing"); state->GetDesc(&desc);
+                        Require(desc.DepthEnable && desc.DepthWriteMask == D3D11_DEPTH_WRITE_MASK_ZERO && !desc.StencilEnable,
+                            "combat hover modified scene depth/stencil contract");
+                        ++combatPassesChecked;
+                    }
+                    Require(SUCCEEDED(first->Begin(fixture.pass)), "combat primary pass restore failed");
                 }
                 ComPtr<ID3D11PixelShader> active;
                 context->PSGetShader(&active, nullptr, nullptr);
@@ -276,9 +459,13 @@ int wmain(int argc, wchar_t** argv)
             Require(SUCCEEDED(first->Begin(fixture.pass)) &&
                 ConstantsBound(device.Get(), context.Get(), false, constants.data(), sizeof(constants)), "failed reload replaced existing valid shader state");
             failureCases += 2u;
+            if (!fixture.light)
+                combatDraws += fixture.bones ? CheckCombatDraw<VTXANIMMESH>(device.Get(), context.Get(), *first, 18u) :
+                    CheckCombatDraw<VTXMESH>(device.Get(), context.Get(), *first, 28u);
+                if (fixture.bones) combatDraws += CheckCombatDraw<VTXANIMMESH>(device.Get(),context.Get(),*first,21u,true);
             std::printf("checked source shader %ls\n", fixture.name);
         }
-        std::printf("{\"programsChecked\":%u,\"clonesChecked\":%u,\"failureCases\":%u,\"lightPassesChecked\":%u,\"nativePassesChecked\":%u,\"afterimagePassesChecked\":%u,\"unavailablePassesChecked\":%u,\"windowsCreated\":0,\"draws\":0}\n", programsChecked, clonesChecked, failureCases, lightPassesChecked, nativePassesChecked, afterimagePassesChecked, unavailablePassesChecked);
+        std::printf("{\"programsChecked\":%u,\"clonesChecked\":%u,\"failureCases\":%u,\"lightPassesChecked\":%u,\"nativePassesChecked\":%u,\"afterimagePassesChecked\":%u,\"unavailablePassesChecked\":%u,\"combatPassesChecked\":%u,\"windowsCreated\":0,\"draws\":%u}\n", programsChecked, clonesChecked, failureCases, lightPassesChecked, nativePassesChecked, afterimagePassesChecked, unavailablePassesChecked, combatPassesChecked, combatDraws);
         context->ClearState();
         return 0;
     }

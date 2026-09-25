@@ -314,15 +314,41 @@ bool LostArk::Server::CKoukuSaydonBrain::Validate_AnimationOnlyPattern(
 		else if (trigger.eAirbornePhase != Air::NONE || trigger.fAirborneHeightM != 0.f || trigger.iAirborneDurationMs != 0u ||
 			trigger.bCaptureAirborneTargetPosition || !trigger.strSelectedEffectVisualId.empty() || trigger.iSelectedEffectLifetimeMs != 0u)
 		{ status = "Non-Albion trigger carries airborne values"; return false; }
+		if (trigger.ShowtimeBomb)
+		{
+			const auto& bomb = *trigger.ShowtimeBomb;
+			const auto& fan = bomb.FanRegion;
+			if (trigger.eKind != BOSS_PATTERN_MECHANIC_TRIGGER_KIND::BOSS_TRACK_TARGET ||
+				trigger.fFollowSpeedScale != 0.f || trigger.iDurationMs <= 34u ||
+				bomb.iBodyStartMs >= std::uint64_t(trigger.iStartMs) + trigger.iDurationMs ||
+				bomb.strBodyVisualId.empty() || bomb.strExplosionVisualId.empty() || bomb.strBodyVisualId == bomb.strExplosionVisualId ||
+				!bomb.iExplosionLifetimeMs || bomb.iExplosionLifetimeMs > 600000u ||
+				std::any_of(bomb.BodyPosition.begin(), bomb.BodyPosition.end(), [](float value) { return !std::isfinite(value) || std::abs(value) > 100000.f; }) ||
+				fan.eAnchor != BOSS_LOGIC_REGION_ANCHOR::BOSS_CURRENT || !fan.bSector || fan.bReverseSector || fan.bCircle ||
+				fan.bCylinder || fan.bLinearMotion || fan.WorldTrack.bEnabled || fan.fInnerRadiusM != 0.f ||
+				!std::isfinite(fan.fCenterX) || std::abs(fan.fCenterX) > 1000.f ||
+				!std::isfinite(fan.fCenterY) || std::abs(fan.fCenterY) > 1000.f ||
+				!std::isfinite(fan.fCenterZ) || std::abs(fan.fCenterZ) > 1000.f ||
+				!std::isfinite(fan.fYawDegrees) || std::abs(fan.fYawDegrees) > 360.f ||
+				!std::isfinite(fan.fRadiusM) || fan.fRadiusM <= 0.f ||
+				!std::isfinite(fan.fRadiusXM) || fan.fRadiusXM <= 0.f || fan.fRadiusXM > 1000.f ||
+				!std::isfinite(fan.fRadiusZM) || fan.fRadiusZM <= 0.f || fan.fRadiusZM > 1000.f ||
+				!std::isfinite(fan.fHalfAngleDegrees) || fan.fHalfAngleDegrees <= 0.f || fan.fHalfAngleDegrees >= 180.f)
+			{ status = "Showtime bomb requires a fixed MAP visual and the final rotate-only boss fan"; return false; }
+		}
 		const bool hitShowtime = trigger.eKind == BOSS_PATTERN_MECHANIC_TRIGGER_KIND::SHOWTIME_PLAYER_TARGETS;
 		const bool hitPursuit = trigger.eKind == BOSS_PATTERN_MECHANIC_TRIGGER_KIND::PURSUIT_PROJECTILES;
 		const bool hitAlbion = trigger.eKind == BOSS_PATTERN_MECHANIC_TRIGGER_KIND::ALBION_BLUE_CIRCLE;
+		const bool hitSelected = trigger.eKind == BOSS_PATTERN_MECHANIC_TRIGGER_KIND::ALBION_AIRBORNE &&
+			trigger.eAirbornePhase == Air::SELECT_PLAYER && trigger.bCaptureAirborneTargetPosition &&
+			!trigger.strSelectedEffectVisualId.empty();
 		if ((!hitShowtime && !trigger.TrackingHits.empty()) ||
-			(!hitShowtime && !hitAlbion && !trigger.FixedHits.empty()) ||
+			(!hitShowtime && !hitAlbion && !hitSelected && !trigger.FixedHits.empty()) ||
 			(!hitPursuit && !trigger.ProjectileHits.empty()) ||
-			(!hitAlbion && !trigger.FixedHits.empty() && trigger.strFixedVisualId.empty()) ||
+			(!hitAlbion && !hitSelected && !trigger.FixedHits.empty() && trigger.strFixedVisualId.empty()) ||
 			(!trigger.TrackingHits.empty() && trigger.strTrackingVisualId.empty()) ||
-			!LostArk::Shared::Validate_AttackHitTemplates(trigger.FixedHits, hitAlbion ? trigger.iEffectLifetimeMs : trigger.iFixedLifetimeMs) ||
+			!LostArk::Shared::Validate_AttackHitTemplates(trigger.FixedHits, hitAlbion ? trigger.iEffectLifetimeMs :
+				hitSelected ? trigger.iSelectedEffectLifetimeMs : trigger.iFixedLifetimeMs) ||
 			!LostArk::Shared::Validate_AttackHitTemplates(trigger.TrackingHits, trigger.iDurationMs) ||
 			!LostArk::Shared::Validate_AttackHitTemplates(trigger.ProjectileHits, trigger.iProjectileLifetimeMs ? trigger.iProjectileLifetimeMs : 600000u) ||
 			std::any_of(trigger.RandomVolleys.begin(), trigger.RandomVolleys.end(), [](const auto& volley) { return !LostArk::Shared::Validate_AttackHitTemplates(volley.Hits, volley.iLifetimeMs); }))
@@ -367,9 +393,11 @@ bool LostArk::Server::CKoukuSaydonBrain::Validate_AnimationOnlyPattern(
 			 trigger.iSpawnIntervalMs == 0u || trigger.iSpawnIntervalMs > 600000u ||
 			 !std::isfinite(trigger.fFollowSpeedScale) || trigger.fFollowSpeedScale < .01f || trigger.fFollowSpeedScale > 10.f))
 		{ status = "Showtime player-target visual or timing contract is invalid"; return false; }
-		if (trigger.eKind == BOSS_PATTERN_MECHANIC_TRIGGER_KIND::BOSS_TRACK_TARGET &&
+		if ((trigger.eKind == BOSS_PATTERN_MECHANIC_TRIGGER_KIND::BOSS_TRACK_TARGET ||
+			trigger.eKind == BOSS_PATTERN_MECHANIC_TRIGGER_KIND::BOSS_RANDOM_TARGET) &&
 			(trigger.iDurationMs > 600000u || !trigger.strFixedVisualId.empty() || !trigger.strTrackingVisualId.empty() ||
 			 trigger.iFixedLifetimeMs != 0u || trigger.iSpawnIntervalMs != 0u ||
+			 (trigger.eKind == BOSS_PATTERN_MECHANIC_TRIGGER_KIND::BOSS_RANDOM_TARGET && trigger.fFollowSpeedScale != 0.f) ||
 			 // Zero rotates only; an authored scale walks the body at the tracked player's speed.
 			 !std::isfinite(trigger.fFollowSpeedScale) || trigger.fFollowSpeedScale < 0.f ||
 			 (trigger.fFollowSpeedScale != 0.f && (trigger.fFollowSpeedScale < .01f || trigger.fFollowSpeedScale > 10.f)) ||
@@ -445,7 +473,7 @@ bool LostArk::Server::CKoukuSaydonBrain::Validate_AnimationOnlyPattern(
 				window.SectorSymbols.size() == window.iSectorCount && window.fOuterRadiusM > 0.f);
 			break;
 		case BOSS_PATTERN_LOGIC_KIND::INVULNERABILITY_ZONE:
-			valuesValid = !window.CardRegions.empty() && window.OnSuccess.empty() && window.OnFail.empty() &&
+			valuesValid = window.iThreshold <= 4u && !window.CardRegions.empty() && window.OnSuccess.empty() && window.OnFail.empty() &&
 				window.OnTimeout.empty() && !window.bEndsPatternOnSuccess &&
 				std::all_of(window.CardRegions.begin(), window.CardRegions.end(), [](const auto& region) {
 					return region.eAnchor == BOSS_LOGIC_REGION_ANCHOR::WORLD && !region.WorldTrack.bEnabled;
@@ -533,6 +561,8 @@ bool LostArk::Server::CKoukuSaydonBrain::Validate_AnimationOnlyPattern(
 				return false;
 			for (const BOSS_PATTERN_LOGIC_RESULT& result : results)
 			{
+				if (result.iPercent > 100u ||
+					(result.eKind == BOSS_PATTERN_LOGIC_RESULT_KIND::MAX_HP_PERCENT_DAMAGE && result.iPercent == 0u)) return false;
 				if (!std::isfinite(result.fPushRangeM) || result.fPushRangeM < 0.f || result.fPushRangeM > (result.bPushBallistic ? 100.f : 20.f) ||
 					(result.ePushDirection != BOSS_LOGIC_PUSH_DIRECTION::AWAY_FROM_BOSS && result.ePushDirection != BOSS_LOGIC_PUSH_DIRECTION::BOSS_FORWARD && result.ePushDirection != BOSS_LOGIC_PUSH_DIRECTION::AWAY_FROM_CONTACT) ||
 					(result.ePushDirection == BOSS_LOGIC_PUSH_DIRECTION::BOSS_FORWARD && result.fPushRangeM <= 0.f && result.fPushHeightM <= 0.f) ||
@@ -697,6 +727,8 @@ bool LostArk::Server::CKoukuSaydonBrain::Validate_SummonedPattern(
 				std::any_of(window.OnTimeout.begin(), window.OnTimeout.end(), unsupported);
 		}) ||
 		std::any_of(child.MechanicTriggers.begin(), child.MechanicTriggers.end(), [&](const auto& trigger) {
+			if (trigger.eKind == BOSS_PATTERN_MECHANIC_TRIGGER_KIND::BOSS_TRACK_TARGET &&
+				trigger.iDurationMs > 0u && trigger.iDurationMs <= 34u && trigger.fFollowSpeedScale == 0.f) return false;
 			return !allowActorLocalAirborne || trigger.eKind != BOSS_PATTERN_MECHANIC_TRIGGER_KIND::ALBION_AIRBORNE ||
 				(trigger.eAirbornePhase != ALBION_AIRBORNE_PHASE::JUMP && trigger.eAirbornePhase != ALBION_AIRBORNE_PHASE::SLAM) ||
 				trigger.bCaptureAirborneTargetPosition || !trigger.strSelectedEffectVisualId.empty(); }) ||

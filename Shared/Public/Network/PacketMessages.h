@@ -174,6 +174,14 @@ namespace LostArk::Shared
 		END
 	};
 
+	// Gate 2 Large Saydon owns encounter attacks, but is never a player-hit target.
+	// Share the stable-archetype rule with Client targeting and hit presentation.
+	[[nodiscard]] inline bool Is_PlayerDamageableWorldArchetype(
+		const std::string_view archetypeId) noexcept
+	{
+		return archetypeId != "BOSS_KAKULSAYDON_G2_BIG_SAYDON";
+	}
+
 	struct S2C_WORLD_ENTITY_SPAWNED
 	{
 		NET_ENTITY_ID iNetEntityId = INVALID_NET_ENTITY_ID;
@@ -3017,6 +3025,26 @@ namespace LostArk::Shared
 	// this only exists to (a) let the Server relay it to everyone else in the
 	// room and (b) drive the sender's own head bubble from the same broadcast
 	// every other player's bubble uses, rather than a second local-only path.
+	// Server validates the sender/world and ground point; every room member, including
+	// the sender, renders only the resulting broadcast.
+	struct C2S_ROOM_PING
+	{
+		std::uint32_t iClientSequence = 0u;
+		WORLD_ID eWorldId = WORLD_ID::END;
+		float fPositionX = 0.f, fPositionY = 0.f, fPositionZ = 0.f;
+	};
+	struct S2C_ROOM_PING
+	{
+		WORLD_ID eWorldId = WORLD_ID::END;
+		NET_ENTITY_ID iFromNetEntityId = INVALID_NET_ENTITY_ID;
+		std::uint32_t iClientSequence = 0u;
+		float fPositionX = 0.f, fPositionY = 0.f, fPositionZ = 0.f;
+	};
+	bool Write_Message(CPacketWriter& writer, const C2S_ROOM_PING& message);
+	bool Read_Message(CPacketReader& reader, C2S_ROOM_PING& message);
+	bool Write_Message(CPacketWriter& writer, const S2C_ROOM_PING& message);
+	bool Read_Message(CPacketReader& reader, S2C_ROOM_PING& message);
+
 	struct C2S_CHAT
 	{
 		std::string strText;
@@ -3288,6 +3316,8 @@ namespace LostArk::Shared
 		std::uint32_t iDurationMs = 0u; // Zero uses the authored sequence lifetime.
 		// Server-owned combat object: no time limit; only death or explicit cancellation stops it.
 		bool bUntilDestroyed = false;
+		// Nonzero only for an admitted live Server combat body owned by this exact cue.
+		NET_ENTITY_ID iCombatBodyNetEntityId = INVALID_NET_ENTITY_ID;
 		// Empty starts a sequence; otherwise apply its motion to this existing instance.
 		std::string strTargetSequenceInstanceId;
 		std::uint32_t iRunEpoch = 0u; // Zero is a non-audition map sequence.

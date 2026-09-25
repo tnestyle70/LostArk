@@ -4,6 +4,7 @@
 #include "GameRoom.h"
 #include "KoukuSaydonBrain.h"
 #include "ServerApp.h"
+#include "ClientSession.h"
 #include "WorldDestructionBootstrapContractTests.h"
 #include "Network/PacketReader.h"
 #include "Network/PacketWriter.h"
@@ -122,6 +123,12 @@ void LostArk::Server::CServerGameplayContractRunner::Run_KoukuBundles(TESTS& tes
 			if (index != 1u)
 				bytes += "PATTERNSTAGEACTION\t" + encounter + "\t" + retargetId + "\t" + actionId + "\t0\tENTER\tRETARGET_RANDOM_ALIVE\tboss.target.pattern\t1\t0\n";
 		}
+		const std::string randomTriggerId = "KAKULSAYDON_G1_RANDOM_TARGET_TRIGGER_CONTRACT";
+		appendPattern(randomTriggerId, "BOSS_KAKULSAYDON_G2_BIG_SAYDON", "boss.kakulsaydon.g2.big-saydon", 1000u);
+		for (unsigned index = 0u; index < 3u; ++index)
+			bytes += "PATTERNMECHANICTRIGGER\t" + encounter + "\t" + randomTriggerId + "\trandom.target." +
+				std::to_string(index) + "\tBOSS_RANDOM_TARGET\t" + std::to_string(index * 200u) +
+				"\t34\t0\t0\t0\t0\t-\t0\t0\t0\t1\t0\t0\t0\t0\t0\t0\t0\t0\t0\n";
 		const std::string rootId = "KAKULSAYDON_G1_ROOT_MOTION_CONTRACT";
 		for (const bool legacy : { false, true })
 		{
@@ -156,6 +163,8 @@ void LostArk::Server::CServerGameplayContractRunner::Run_KoukuBundles(TESTS& tes
 		const std::string contactId = "KAKULSAYDON_G1_CONTACT_CONTRACT";
 		const std::string crossParentId = "KAKULSAYDON_G1_CROSS_PARENT";
 		appendPattern(crossParentId, "BOSS_KAKULSAYDON_G2_KOUKU", "boss.kakulsaydon.g2.kouku", 1000u);
+        const auto resetRow = "PATTERNSPAWNRESET\t" + encounter + "\t" + crossParentId + "\t1\n";
+        bytes.erase(bytes.find(resetRow), resetRow.size());
 		bytes += "PATTERNFIXEDTIMELINE\t" + encounter + "\t" + crossParentId + "\n";
 		std::array<std::string, 4u> crossIds{};
 		for (unsigned direction = 0u; direction < 4u; ++direction)
@@ -177,6 +186,8 @@ void LostArk::Server::CServerGameplayContractRunner::Run_KoukuBundles(TESTS& tes
 			const std::array<std::string, 4u> endpoints{ "0:1", "0:-1", "1:0", "-1:0" };
 			bytes += "PATTERNSTAGEROOTMOTION\t" + encounter + "\t" + id + "\t0\t2\t0:0:0:0,100:" + endpoints[direction] + ":0\n";
 		}
+        bytes += "PATTERNMECHANICTRIGGER\t" + encounter + "\t" + crossIds[0] +
+            "\tfront.nearest\tBOSS_TRACK_TARGET\t34\t34\t0\t0\t0\t0\t-\t0\t0\t0\t1\n";
 		bytes += "PATTERNCROSSDIRECTION\t" + encounter + "\t" + crossParentId + "\tcross.logic\t0\t200\t" +
 			crossIds[0] + "\t" + crossIds[1] + "\t" + crossIds[2] + "\t" + crossIds[3] + "\tSTAGE_1\n";
 		bytes += "PATTERNMECHANICTRIGGER\t" + encounter + "\t" + crossParentId + "\tparent.later.hud\tHUD_ENTER\t300\t300\t3\t0\t0\t0\t-\t0\t0\t0\t1\n";
@@ -399,6 +410,93 @@ void LostArk::Server::CServerGameplayContractRunner::Run_KoukuBundles(TESTS& tes
 				tests.Require(boss && boss->strPatternId.empty() && !boss->KoukuDirectionPlayback && clones() == 0,
 					"Parent completion releases child and clone lifetime state");
 			}
+            for (const bool frontIsReal : {true, false})
+            {
+                auto room = makeRoom(); auto* owner = getBoss(*room, false);
+                if (!owner) continue;
+                owner->fPositionX = owner->fSpawnPositionX + (frontIsReal ? -10.f : 10.f);
+                owner->fPositionZ = owner->fSpawnPositionZ; owner->fYawDegrees = 0.f;
+                auto request = requestFor(*room, 0u);
+                request.eOperation = KOUKUSAYDON_PATTERN_AUDITION_OPERATION::PLAY_SELECTED;
+                request.strBundleId.clear(); request.strPatternId = crossParentId;
+                request.Scope.strBossPlacementId = "boss.kakulsaydon.g2.kouku";
+                request.Scope.strBossArchetypeId = "BOSS_KAKULSAYDON_G2_KOUKU";
+                S2C_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_RESULT result;
+                const bool queued = room->Evaluate_KoukuSaydonPatternAudition(917u, request, result) == KOUKUSAYDON_PATTERN_AUDITION_RESULT::QUEUED;
+                tick(*room); tick(*room);
+                const auto front = [&]() -> const SERVER_WORLD_ENTITY* {
+                    for (auto& body : room->m_WorldEntities)
+                    {
+                        auto* actor = body.bKoukuSummonClone ? &body : body.KoukuDirectionPlayback.get();
+                        if (actor && actor->strPatternId == crossIds[0]) return actor;
+                    }
+                    return nullptr;
+                };
+                auto* actor = front(); owner = getBoss(*room, false);
+                tests.Require(queued && actor && owner && (actor == owner->KoukuDirectionPlayback.get()) == frontIsReal && actor->fYawDegrees == 0.f,
+                    "Front-only facing fixture retains either real or clone actor and original yaw before its attack tick");
+                if (!actor) continue;
+                const auto actorId = actor->iNetEntityId;
+                for (unsigned id = 1u; id <= 5u; ++id)
+                {
+                    auto& player = room->m_Players[id]; player.iPlayerId = id; player.iSessionId = 700u + id;
+                    player.iNetEntityId = 200u - id; player.isCombatReady = true;
+                    player.iCurrentHp = player.iMaximumHp = 100u; player.iCurrentResource = player.iMaximumResource = 100u;
+                    player.eCharacterClass = CHARACTER_CLASS_ID::LANCE_MASTER;
+                    player.fPositionX = actor->fPositionX + (id <= 2u ? 4.f : 0.f);
+                    player.fPositionY = actor->fPositionY; player.fPositionZ = actor->fPositionZ + (id <= 2u ? 8.f : 0.f);
+                }
+                room->m_Players.at(3u).iCurrentHp = 0u;
+                room->m_Players.at(4u).eAction = PLAYER_ACTION_STATE::GRABBED;
+                room->m_Players.at(5u).isCombatReady = false;
+                tick(*room); actor = front();
+                const auto& target = room->m_Players.at(2u);
+                const float expectedYaw = actor ? std::atan2(target.fPositionX - actor->fPositionX,
+                    target.fPositionZ - actor->fPositionZ) * 57.295779513f : 0.f;
+                tests.Require(actor && actor->iPatternTargetEntityId == target.iNetEntityId && std::abs(actor->fYawDegrees - expectedYaw) < .001f &&
+                    actor->KoukuContactLedger && actor->KoukuContactLedger->PlayerTargetWindows.front().bClosed,
+                    "Actual cross body targets nearest living ready player once at attack start with stable entity-ID tie breaking");
+                unsigned unchanged = 0u;
+                for (const auto& body : room->m_WorldEntities)
+                {
+                    const auto* sibling = body.bKoukuSummonClone ? &body : body.KoukuDirectionPlayback.get();
+                    if (sibling && sibling->strPatternId != crossIds[0] && sibling->fYawDegrees == 0.f) ++unchanged;
+                }
+                tests.Require(unchanged == 3u, "Front actor facing leaves all three other directional actor yaws unchanged");
+                if (!actor) continue;
+                const auto* child = CKoukuSaydonBrain::Find_AnimationOnlyPattern(*generation, actor->strPatternId, status);
+                const float heldYaw = actor->fYawDegrees;
+                room->m_Players.at(2u).fPositionZ -= 30.f;
+                auto repeatedActor = *actor;
+                room->Update_KoukuActorContacts(repeatedActor, *child, *generation, room->m_iServerTick + 1u);
+                tests.Require(repeatedActor.fYawDegrees == heldYaw, "Moving a target after the instantaneous child Trigger never retargets that attack");
+                auto session = std::make_shared<CClientSession>(701u, INVALID_SOCKET, CClientSession::FRAME_HANDLER{}, CClientSession::CLOSED_HANDLER{});
+                session->m_isSendRunning.store(true); room->m_Sessions.emplace(701u, session); room->m_PlayerIdBySessionId[701u] = 1u;
+                auto savedPlayers = room->m_Players;
+                room->m_Players.erase(3u); room->m_Players.erase(4u); room->m_Players.erase(5u);
+                room->Broadcast_WorldSnapshot(); room->m_Players = std::move(savedPlayers); bool delivered = false;
+                for (const auto& frame : session->m_OutboundFrames)
+                {
+                    if (frame.ePacketType != PACKET_TYPE::S2C_WORLD_SNAPSHOT) continue;
+                    CPacketReader reader(std::span<const std::uint8_t>(frame.Bytes).subspan(PACKET_HEADER_BYTES));
+                    S2C_WORLD_SNAPSHOT snapshot;
+                    if (!Read_Message(reader, snapshot)) continue;
+                    const auto body = std::find_if(snapshot.Entities.begin(), snapshot.Entities.end(), [&](const auto& value) { return value.iNetEntityId == actorId; });
+                    delivered = body != snapshot.Entities.end() && body->fYawDegrees == heldYaw &&
+                        (frontIsReal ? body->strPresentationPatternId == crossIds[0] : body->strPatternId == crossIds[0]);
+                }
+                tests.Require(delivered, "Real snapshot serialization sends the exact front real-or-clone yaw on its existing entity and child clock");
+                // A fresh actor samples an empty eligible raid roster once and preserves its pose.
+                auto emptyActor = *actor; emptyActor.KoukuContactLedger.reset(); emptyActor.fYawDegrees = 17.f;
+                room->m_KoukuRaid.State.ePhase = KOUKUSAYDON_RAID_PHASE::COMBAT; room->m_KoukuRaid.PlayerIds = {3u};
+                room->Update_KoukuActorContacts(emptyActor, *child, *generation, room->m_iServerTick);
+                tests.Require(emptyActor.fYawDegrees == 17.f && emptyActor.iPatternTargetEntityId == INVALID_NET_ENTITY_ID &&
+                    emptyActor.KoukuContactLedger->PlayerTargetWindows.front().bClosed,
+                    "Instant actor facing excludes dead and nonparticipating raid players without random fallback or delayed retry");
+                room->m_KoukuRaid.State.ePhase = KOUKUSAYDON_RAID_PHASE::INACTIVE;
+                tick(*room);
+                tests.Require(frontIsReal || !front(), "A clone already at its authored cutoff is removed without deferred facing or resurrection");
+            }
 			{
 				const auto* root = CKoukuSaydonBrain::Find_AnimationOnlyPattern(*generation, rootId, status);
 				const auto* legacy = CKoukuSaydonBrain::Find_AnimationOnlyPattern(*generation, rootId + "_LEGACY", status);
@@ -602,6 +700,55 @@ void LostArk::Server::CServerGameplayContractRunner::Run_KoukuBundles(TESTS& tes
 				const float oldX = getBoss(*failedMotion, false)->fPositionX;
 				tests.Require(failedMotion->Evaluate_KoukuSaydonPatternAudition(921u, motionRequest, motionResult) == KOUKUSAYDON_PATTERN_AUDITION_RESULT::REJECTED_UNSUPPORTED_PATTERN &&
 					getBoss(*failedMotion, false)->fPositionX == oldX && failedMotion->m_KoukuSaydonPatternAudition.Members.empty(), "Off-navigation Boss Motion fails before moving or reserving the actor");
+			}
+			{
+				auto randomRoom = makeRoom(); auto randomRequest = requestFor(*randomRoom, 0u);
+				randomRequest.eOperation = KOUKUSAYDON_PATTERN_AUDITION_OPERATION::PLAY_SELECTED;
+				randomRequest.strBundleId.clear(); randomRequest.strPatternId = randomTriggerId;
+				randomRequest.Scope.strBossPlacementId = "boss.kakulsaydon.g2.big-saydon";
+				randomRequest.Scope.strBossArchetypeId = "BOSS_KAKULSAYDON_G2_BIG_SAYDON";
+				auto* boss = getBoss(*randomRoom, true);
+				for (unsigned index = 0u; index < 4u; ++index)
+				{
+					SERVER_PLAYER player; player.iPlayerId = player.iNetEntityId = 970u + index;
+					player.iCurrentHp = index == 2u ? 0u : 100u; player.isCombatReady = true;
+					player.eAction = index == 3u ? PLAYER_ACTION_STATE::FALLING : PLAYER_ACTION_STATE::NONE;
+					player.fPositionX = boss->fPositionX + (index ? -5.f : 5.f);
+					player.fPositionY = boss->fPositionY; player.fPositionZ = boss->fPositionZ;
+					randomRoom->m_Players.emplace(player.iPlayerId, player);
+				}
+				S2C_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_RESULT randomResult;
+				const bool admitted = randomRoom->Evaluate_KoukuSaydonPatternAudition(970u, randomRequest, randomResult) ==
+					KOUKUSAYDON_PATTERN_AUDITION_RESULT::QUEUED;
+				std::vector<std::uint32_t> changeTicks;
+				NET_ENTITY_ID previous = INVALID_NET_ENTITY_ID;
+				bool aliveTargets = true, capturedPose = true;
+				for (unsigned step = 0u; step < 29u; ++step)
+				{
+					tick(*randomRoom);
+					if (boss->iPatternTargetEntityId != previous)
+					{ changeTicks.push_back(randomRoom->m_iServerTick); previous = boss->iPatternTargetEntityId; }
+					aliveTargets = aliveTargets && (previous == 970u || previous == 971u);
+					const auto target = randomRoom->m_Players.find(previous);
+					capturedPose = capturedPose && target != randomRoom->m_Players.end() && boss->bHasPatternTargetLastPosition &&
+						boss->iTargetEntityId == previous && boss->fPatternTargetLastPositionX == target->second.fPositionX;
+				}
+				tests.Require(admitted && aliveTargets && capturedPose && changeTicks == std::vector<std::uint32_t>{1u, 7u, 13u},
+					"Three random target Triggers select at start and twice later, hold between ticks, and exclude dead/falling/previous targets");
+				for (auto& [id, player] : randomRoom->m_Players) if (id != previous) player.iCurrentHp = 0u;
+				const auto* sole = randomRoom->Select_BossRandomAliveTarget(*boss, "solo", "boss.target.random.next", 30u);
+				tests.Require(sole && sole->iNetEntityId == previous,
+					"A random retarget keeps the sole living candidate instead of dropping the target");
+				for (auto& [id, player] : randomRoom->m_Players) player.iCurrentHp = 0u;
+				tests.Require(!randomRoom->Select_BossRandomAliveTarget(*boss, "empty", "boss.target.random.next", 31u),
+					"A random target Trigger cannot select a dead room member");
+				const auto* definition = CKoukuSaydonBrain::Find_AnimationOnlyPattern(*generation, randomTriggerId, status);
+				if (definition)
+				{
+					auto invalid = *definition; invalid.MechanicTriggers.front().fFollowSpeedScale = 1.f;
+					tests.Require(!CKoukuSaydonBrain::Validate_AnimationOnlyPattern(invalid, status),
+						"One-shot random target Triggers reject continuous-follow values");
+				}
 			}
 			{
 				auto targetingRoom = makeRoom(); auto targetingRequest = requestFor(*targetingRoom, 0u);

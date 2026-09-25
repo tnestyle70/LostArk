@@ -310,6 +310,8 @@ public:
 	/* The Server relays this to every current room member (sender included)
 	as an S2C_CHAT replication event -- there is no direct reply. */
 	bool Send_Chat(const std::string& text);
+	bool Send_RoomPing(std::uint32_t sequence, float x, float y, float z);
+	bool Try_Consume_RoomPing(LostArk::Shared::S2C_ROOM_PING& ping);
 	/* Debug-only. The Server owns the truth; this only carries the request and
 	the answer arrives as an S2C_INVENTORY_SNAPSHOT replication event. */
 	bool Send_DebugGiveItem(
@@ -578,6 +580,7 @@ private:
 		m_DebugTeleportResults;
 	std::deque<LostArk::Shared::S2C_DEBUG_MARIO_JUMP_RESULT> m_DebugMarioJumpResults;
 	std::deque<LostArk::Shared::S2C_MARIO_RETURN_RESULT> m_MarioReturnResults;
+	std::deque<LostArk::Shared::S2C_ROOM_PING> m_RoomPings;
 	std::deque<LostArk::Shared::S2C_DEBUG_KILL_GATE_BOSSES_RESULT> m_DebugKillGateBossesResults;
 	std::deque<LostArk::Shared::S2C_SET_COOLDOWN_MODE_RESULT> m_SetCooldownModeResults;
 	std::deque<LostArk::Shared::S2C_DEBUG_WORLD_PLAYBACK_RESULT> m_DebugWorldPlaybackResults;

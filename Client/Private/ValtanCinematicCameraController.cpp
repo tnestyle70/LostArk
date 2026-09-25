@@ -241,6 +241,35 @@ namespace
 	}
 }
 
+bool_t Client::CValtanCinematicCameraController::Build_ViewRebaseTransform(
+	const VALTAN_CINEMATIC_CAMERA_POSE& authoredPose,
+	const VALTAN_CINEMATIC_CAMERA_POSE& heldPose, float4x4_t& outTransform)
+{
+	if (!Is_ValidPose(authoredPose) || !Is_ValidPose(heldPose)) return false;
+	const auto view = [](const auto& pose, matrix_t& out) {
+		const auto forward = XMLoadFloat3(&pose.vLookAt) - XMLoadFloat3(&pose.vEye);
+		const auto up = pose.hasUp ? XMLoadFloat3(&pose.vUp) : XMVectorSet(0.f, 1.f, 0.f, 0.f);
+		const auto crossLength = XMVectorGetX(XMVector3LengthSq(XMVector3Cross(up, XMVector3Normalize(forward))));
+		if (!std::isfinite(crossLength) || crossLength < .000001f) return false;
+		out = XMMatrixLookAtLH(XMLoadFloat3(&pose.vEye), XMLoadFloat3(&pose.vLookAt), up);
+		return true;
+	};
+	matrix_t authoredView, heldView;
+	if (!view(authoredPose, authoredView) || !view(heldPose, heldView)) return false;
+	const float ratio = std::tan(XMConvertToRadians(heldPose.fFovYDegrees) * .5f) /
+		std::tan(XMConvertToRadians(authoredPose.fFovYDegrees) * .5f);
+	if (!std::isfinite(ratio) || ratio <= 0.f) return false;
+	// Row-vector convention: authored world -> authored view -> held view volume -> world.
+	float4x4_t candidate;
+	XMStoreFloat4x4(&candidate, authoredView * XMMatrixScaling(ratio, ratio, 1.f) *
+		XMMatrixInverse(nullptr, heldView));
+	for (const auto& row : candidate.m)
+		for (const auto value : row)
+			if (!std::isfinite(value)) return false;
+	outTransform = candidate;
+	return true;
+}
+
 bool_t Client::CValtanCinematicCameraController::Sample_Cue(
 	const VALTAN_CINEMATIC_CAMERA_CUE& cue,
 	const f32_t elapsedSeconds,

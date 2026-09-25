@@ -135,7 +135,7 @@ class ResultTuningContractTests(unittest.TestCase):
         window.pop("onSuccessLogicIds")
         definition = document["logics"][-2]
         definition.pop("rearmOnExit")
-        for kind in ("BOSS_TRACK_TARGET", "BINGO_DETONATION", "CARD_RAIN_SOLDIERS"):
+        for kind in ("BOSS_TRACK_TARGET", "BOSS_RANDOM_TARGET", "BINGO_DETONATION", "CARD_RAIN_SOLDIERS"):
             definition["triggerKind"] = kind
             self.fixture.validate(document)
             projected = self.fixture.first_product(subject.project_encounter(document))["mechanicTriggers"][0]

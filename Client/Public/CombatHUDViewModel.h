@@ -279,6 +279,13 @@ namespace Client
 		std::uint8_t iCardMazeKills = 0u;
 		std::uint8_t iCardMazeKillTarget = 0u;
 		LostArk::Shared::CARD_MAZE_PRESENTATION CardMaze;
+
+        [[nodiscard]] bool Has_VisibleSkillSlot(const std::size_t slot) const noexcept
+        {
+            // MAZE uses the W wire slot for LMB, but presents only the Q skill.
+            return slot < HUD_KOUKU_SLOT_COUNT && eHudMode != HUD_KOUKU_HUD_MODE::NONE &&
+                (eHudMode != HUD_KOUKU_HUD_MODE::MAZE || slot == 0u) && ModeSkillIndexBySlot[slot] >= 0;
+        }
 	};
 
 	/* KoukuSaydon minigame time limit (retail dungeontimer.gfx, titleImageType

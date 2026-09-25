@@ -48,6 +48,7 @@ struct KOUKU_CARD_PRESENTATION_VIEW final
 {
     std::weak_ptr<CCharacter> pCharacter;
     LostArk::Shared::PLAYER_SNAPSHOT Snapshot;
+    bool isRaidParticipant = true;
 };
 struct KOUKU_MAZE_TARGET_VIEW final
 {
@@ -213,6 +214,7 @@ private:
     struct SESSION final
     {
         std::string key;
+        std::function<bool(float, float4x4_t&, std::string&)> exactRootOverride;
         std::string productPatternId;
         std::uint32_t bossEntityId = 0u, patternSequence = 0u, patternStartTick = 0u;
         float lastClockMs = -1.f;
@@ -265,6 +267,7 @@ private:
         SESSION session;
         float4x4_t pivot{};
     };
+    static float4x4_t Sample_SelectedFlightPivot(const float3_t& source, const float4x4_t& target, double ageMs, std::uint32_t flightMs, double arcHeightM);
     struct PURSUIT_PREVIEW_PROJECTILE final
     {
         PRODUCT_PATTERN presentation;
@@ -319,6 +322,9 @@ private:
         PRODUCT_PATTERN sourceBossPresentation;
         std::string archetypeId;
         std::string contactVisualId, contactEffectAssetId;
+        std::uint32_t selectedFlightMs = 0u;
+        double selectedFlightArcHeightM = 0.0;
+        float3_t selectedFlightSourceOffset{};
         bool loop = false;
     };
     struct TARGETED_COMBAT_SESSION final
@@ -333,6 +339,8 @@ private:
         float uniformScale = 1.f;
         std::uint64_t cycle = 0u;
         float4x4_t root{};
+        bool flightSourceCaptured = false;
+        float3_t flightSource{};
         bool finished = false;
         bool contactReceived = false;
         std::string failure;
@@ -372,6 +380,7 @@ private:
         SESSION session;
         std::vector<KOUKU_SAYDON_COMPOSITION_ANIMATION_OCCURRENCE> animations;
         std::vector<KOUKU_SAYDON_COMPOSITION_STAGE> facingStages;
+        std::vector<std::pair<uint32_t, KOUKU_SAYDON_COMPOSITION_STAGE>> selectedFacingStages;
         bool finiteActorLifetime = false;
         bool spatialLogicPreview = false;
         std::map<std::string, std::pair<uint32_t, uint32_t>> cloneAnimationWindows;
@@ -386,7 +395,8 @@ private:
         {
             std::string occurrenceId;
             uint32_t startMs = 0u, durationMs = 0u, targetEntityId = 0u;
-            bool immediate = false;
+            bool immediate = false, nearestOnce = false;
+            uint32_t clockOffsetTicks = 0u;
             // Each first-visited fixed tick pins the then-current replicated target
             // position. Replaying those inputs reproduces facing on any later seek.
             std::map<uint32_t, std::optional<float3_t>> targetSamples;
@@ -411,6 +421,9 @@ private:
         std::map<std::string, float3_t> airborneAppearancePositions;
         uint32_t airborneSelectionSeed = 0u;
     };
+    static void Append_PreviewTargetTracking(const KOUKU_SAYDON_COMPOSITION_DOCUMENT& document,
+        const KOUKU_SAYDON_COMPOSITION_PATTERN& source, BUNDLE_PREVIEW_MEMBER& member,
+        uint32_t offsetTicks = 0u, const std::string& prefix = {});
     bool Prepare_CloneSplitPreview(const KOUKU_SAYDON_COMPOSITION_DOCUMENT& document,
         std::vector<BUNDLE_PREVIEW_MEMBER>& members, std::string& status);
     static const KOUKU_SAYDON_COMPOSITION_ANIMATION_OCCURRENCE* Resolve_PreviewAnimation(
@@ -483,7 +496,20 @@ private:
     SESSION m_ProductBundleSession;
     std::uint32_t m_iProductSourceRevision = 0u;
     LostArk::Shared::GameplayDataRevision m_ProductDraftRowsRevision{};
-    std::uint32_t m_iProductReloadRunEpoch = 0u;
+    struct PRODUCT_RUN_PREPARATION final
+    {
+        std::uint32_t runEpoch = 0u, sourceRevision = 0u;
+        LostArk::Shared::GameplayDataRevision rowsRevision{};
+        bool ready = false;
+        std::string failureStatus;
+        bool Matches(const LostArk::Shared::S2C_KOUKUSAYDON_BUNDLE_STATE& run) const
+        {
+            return runEpoch == run.iRunEpoch && sourceRevision == run.iPinnedSourceRevision &&
+                rowsRevision == run.DraftRowsRevision;
+        }
+    };
+    bool Prepare_AdmittedRun(const LostArk::Shared::S2C_KOUKUSAYDON_BUNDLE_STATE& run);
+    PRODUCT_RUN_PREPARATION m_ProductRunPreparation;
     std::set<std::string> m_MissingProductPatterns;
     std::map<std::uint32_t, std::weak_ptr<CNpc>> m_CounterAfterimageOwners;
     std::map<std::uint32_t, SESSION> m_BossSessions;
@@ -507,7 +533,15 @@ private:
     std::shared_ptr<const CWorldSequenceDocument> m_BingoWorldDocument;
     /* Keyed by the Server's bomb slot, so a mark turning into a planted
     bomb replaces the same entry instead of leaving two on screen. */
-    std::map<std::int32_t, CARD> m_BingoBombs;
+    struct BINGO_BOMB_MARK final
+    {
+        std::unique_ptr<CWorldSequencePlayer> player;
+        std::uint32_t carrierId = 0u;
+        CARD_MAZE_MARK_RETRY retry;
+    };
+    void Update_BingoBombs(float dt, const std::vector<KOUKU_CARD_PRESENTATION_VIEW>& players);
+    std::map<std::int32_t, BINGO_BOMB_MARK> m_BingoBombs;
+    std::shared_ptr<const CWorldSequenceDocument> m_BingoBombWorldDocument;
     std::map<std::string, bool> m_ColliderDebugOverrides;
     std::uint64_t m_iColliderAuthoringGeneration = UINT64_MAX;
     bool m_bProductLoaded = false, m_bProductAttempted = false;

@@ -5018,6 +5018,25 @@
       ],
       "G_Voltan2_DownM1": [
         "Sound/Valtan/g_voltan2_downm1__134755858.wav"
+      ],
+      "FlameKerberos_Damage1": [
+        "Sound/Valtan/flamekerberos_damage1__233210362.wav",
+        "Sound/Valtan/flamekerberos_damage1__460309255.wav",
+        "Sound/Valtan/flamekerberos_damage1__561273314.wav",
+        "Sound/Valtan/flamekerberos_damage1__727988019.wav"
+      ],
+      "Troll1_Damage1": [
+        "Sound/Valtan/troll1_damage1__118525168.wav",
+        "Sound/Valtan/troll1_damage1__160695823.wav",
+        "Sound/Valtan/troll1_damage1__317186929.wav",
+        "Sound/Valtan/troll1_damage1__420459163.wav",
+        "Sound/Valtan/troll1_damage1__636975403.wav"
+      ],
+      "Retch_Voice_Damage1": [
+        "Sound/Valtan/retch_voice_damage1__1153301.wav",
+        "Sound/Valtan/retch_voice_damage1__698765214.wav",
+        "Sound/Valtan/retch_voice_damage1__727158521.wav",
+        "Sound/Valtan/retch_voice_damage1__823849935.wav"
       ]
     },
     "Vehicle": {
@@ -9123,8 +9142,16 @@
         "Sound/KoukuSaton/S_MOB_G_KOUKU1/g_kouku1_attack07_projexp1__252111761.wav",
         "Sound/KoukuSaton/S_MOB_G_KOUKU1/g_kouku1_attack07_projexp1__687064545.wav",
         "Sound/KoukuSaton/S_MOB_G_KOUKU1/g_kouku1_attack07_projexp1__814036278.wav"
+      ],
+      "s_mob_c01.clownbox1_damage1": [
+        "Sound/KoukuSaton/S_MOB_C01/clownbox1_damage1__152993343.wav",
+        "Sound/KoukuSaton/S_MOB_C01/clownbox1_damage1__331504829.wav",
+        "Sound/KoukuSaton/S_MOB_C01/clownbox1_damage1__584484424.wav",
+        "Sound/KoukuSaton/S_MOB_C01/clownbox1_damage1__681741228.wav",
+        "Sound/KoukuSaton/S_MOB_C01/clownbox1_damage1__992337172.wav"
       ]
-    },
+    ,
+      "s_scene_ocean3_3.scene_midnightc_ed_appeargiantsaton": ["Sound/KoukuSaton/Events/scene_midnightc_ed_appeargiantsaton.voice.120512111.wav"]},
     "GuardianKnight": {
       "PC_DragonKnight_F_Att_Battle1_1": [
         "Sound/Character/GuardianKnight/PC_DragonKnight_F_Att_Battle1_1__25627877.wav",

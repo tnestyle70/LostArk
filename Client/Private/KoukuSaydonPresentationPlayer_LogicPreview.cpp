@@ -102,12 +102,13 @@ bool Client::CKoukuSaydonPresentationPlayer::Build_SelectedAirbornePresentation(
         row.iStartMs -= occurrence.iStartMs;
         for (size_t axis = 0u; axis < row.PositionOffset.size(); ++axis) row.PositionOffset[axis] -= origin[axis];
         row.strAnchorKind = "BOSS";
+        row.bFollowBoss = logic.iSelectedFlightMs != 0u;
         row.strSelectionGroupId.clear();
         staged.durationMs = (std::max)(staged.durationMs, uint32_t(endMs - occurrence.iStartMs));
         staged.pattern.PresentationOccurrences.push_back(std::move(row));
     }
-    if (staged.pattern.PresentationOccurrences.size() < 2u)
-    { error = "Selected airborne Effect group requires at least two members."; return false; }
+    if (staged.pattern.PresentationOccurrences.empty())
+    { error = "Selected airborne Effect group requires a member."; return false; }
     staged.pattern.iDurationMs = staged.durationMs;
     output = std::move(staged);
     error.clear();
@@ -209,14 +210,35 @@ void Client::CKoukuSaydonPresentationPlayer::Sample_LogicPreview(SESSION& owner,
                 spawn.session.key = owner.key + ":selected:" + occurrence.strOccurrenceId;
                 const auto& position = capture->second.second;
                 DirectX::XMStoreFloat4x4(&spawn.pivot, DirectX::XMMatrixTranslation(position.x, position.y, position.z));
+                if (selected->iSelectedFlightMs)
+                {
+                    float3_t source; float yaw = 0.f;
+                    if (!Sample_BundlePreviewPose(*member, occurrence.iStartMs, source, yaw, false)) continue;
+                    const float angle = DirectX::XMConvertToRadians(yaw);
+                    const auto& offset = selected->SelectedFlightSourceOffset;
+                    source.x += float(std::cos(angle) * offset[0] + std::sin(angle) * offset[2]);
+                    source.y += float(offset[1]);
+                    source.z += float(-std::sin(angle) * offset[0] + std::cos(angle) * offset[2]);
+                    const auto target = spawn.pivot; const auto flightMs = selected->iSelectedFlightMs;
+                    const auto arc = selected->fSelectedFlightArcHeightM;
+                    spawn.session.exactRootOverride = [source, target, flightMs, arc](float seconds, float4x4_t& out, std::string& error) {
+                        out = Sample_SelectedFlightPivot(source, target, seconds * 1000.0, flightMs, arc); error.clear(); return true;
+                    };
+                }
                 trigger.presentation = std::move(presentation);
                 trigger.spawns.push_back(std::move(spawn));
                 trigger.captured = true;
             }
             for (auto& spawn : trigger.spawns)
                 if (ageMs >= trigger.presentation.durationMs) Stop_Session(spawn.session);
-                else Sample(spawn.session, trigger.presentation.document, trigger.presentation.pattern,
-                    float(ageMs), paused, spawn.pivot, nullptr);
+                else
+                {
+                    auto pivot = spawn.pivot;
+                    if (spawn.session.exactRootOverride)
+                        spawn.session.exactRootOverride(float(ageMs * .001), pivot, m_strStatus);
+                    Sample(spawn.session, trigger.presentation.document, trigger.presentation.pattern,
+                        float(ageMs), paused, pivot, nullptr);
+                }
             continue;
         }
         const auto* logic = Find_BlueCircleLogic(document, occurrence);

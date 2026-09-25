@@ -572,7 +572,7 @@ namespace LostArk::Server
 			LostArk::Shared::NET_ENTITY_ID iPrimaryBossId = LostArk::Shared::INVALID_NET_ENTITY_ID;
 			std::uint32_t iAuditionRequestSequence = 0u, iAuditionEpoch = 0u, iNextEntryTick = 0u;
 			bool bClearCinematic = false, bEntryRunning = false, bGate3CombatEntered = false;
-            bool bClearedGate3Preparation = false;
+            bool bClearedBossPreparation = false;
             bool bGateVoteEntry = false;
             bool bBingoSpecialRunning = false;
             std::uint32_t iGate3ClearTick = 0u;
@@ -587,14 +587,14 @@ namespace LostArk::Server
 		void Update_KoukuRaid(std::uint32_t tick);
 		void Notify_KoukuRaidBossDeath(const SERVER_WORLD_ENTITY& boss, std::uint32_t tick);
 		void Stop_KoukuRaid(std::string reason, bool completed = false);
-		bool Begin_KoukuRaidPreparation(SESSION_ID sessionId, const LostArk::Shared::C2S_DEBUG_KOUKUSAYDON_RAID_REQUEST& request, std::string& reason, bool clearedGate3 = false, bool gateVoteEntry = false);
+		bool Begin_KoukuRaidPreparation(SESSION_ID sessionId, const LostArk::Shared::C2S_DEBUG_KOUKUSAYDON_RAID_REQUEST& request, std::string& reason, bool clearedGateBoss = false, bool gateVoteEntry = false);
 		bool Apply_KoukuRaidReadiness(SESSION_ID sessionId, const LostArk::Shared::C2S_DEBUG_KOUKUSAYDON_RAID_REQUEST& request, std::string& reason);
 		bool Begin_KoukuRaidCinematic(const std::string& gateId, bool clear, std::uint32_t tick);
 		bool Advance_KoukuRaidGate(std::uint8_t nextGate, bool restart);
 		bool Start_KoukuRaidCombat(std::uint32_t tick, const std::string& preflightGateId = {});
         bool Build_KoukuRaidEntryRequest(const KOUKU_RAID_GATE_DEFINITION& gate, std::uint32_t entryIndex,
             LostArk::Shared::C2S_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_REQUEST& request);
-		bool Enter_KoukuRaidCombat(std::uint8_t gate);
+		bool Enter_KoukuRaidCombat(std::uint8_t gate, std::uint32_t tick);
 		bool Start_KoukuRaidEntry(std::uint32_t tick);
 		void Handle_KoukuSaydonDraftChunk(SESSION_ID sessionId,
 			const LostArk::Shared::C2S_DEBUG_KOUKUSAYDON_DRAFT_CHUNK& chunk);
@@ -771,7 +771,7 @@ namespace LostArk::Server
 		std::vector<KOUKU_DAMAGEABLE_WORLD_CUE> m_KoukuDamageableWorldCues;
 		std::vector<SERVER_WORLD_ENTITY> m_PendingKoukuWorldBodies;
 		bool Stage_KoukuWorldBody(const BOSS_PATTERN_WORLD_COMBAT_BODY& body,
-			const LostArk::Shared::S2C_WORLD_SEQUENCE_PLAY& play, bool authoredMadness = false);
+			LostArk::Shared::S2C_WORLD_SEQUENCE_PLAY& play, bool authoredMadness = false);
 		void Cancel_KoukuWorldBodies(const std::string& memberId = {}, SESSION_ID ownerSession = INVALID_SESSION_ID);
 		void Update_KoukuWorldBodies(std::uint32_t serverTick);
 
@@ -1269,6 +1269,7 @@ namespace LostArk::Server
 		   every current session in this room receives the relayed line,
 		   including the sender (its own head bubble is driven off the same
 		   S2C_CHAT the rest of the room gets, not a second local-only path). */
+		void Handle_RoomPing(SESSION_ID sessionId, const LostArk::Shared::C2S_ROOM_PING& request);
 		void Handle_Chat(
 			SESSION_ID sessionId,
 			const LostArk::Shared::C2S_CHAT& request);
@@ -1535,6 +1536,7 @@ namespace LostArk::Server
 		void Despawn_CardMazeTargets();
 		void Resolve_CardMazeHammerHit(SERVER_PLAYER& player, std::uint32_t updateTick);
 		void Resolve_MarioHammerHit(SERVER_PLAYER& player, std::uint32_t updateTick);
+		void Update_MarioBombContacts(SERVER_PLAYER& player, std::uint32_t updateTick);
 		std::uint8_t Mario_CurseReleasedMask(std::uint8_t stage, std::uint8_t layout) const;
 		bool Spawn_CardMazeTarget(const CKoukuCardMazeRuntime::SPAWN_REQUEST& request);
 		void Remove_CardMazeTarget(LostArk::Shared::NET_ENTITY_ID id);
@@ -1730,6 +1732,7 @@ namespace LostArk::Server
             std::uint32_t iMarkedBombCount = 0u;
             bool bEncounterOwned = false, bSpecialPatternPending = false;
             bool bLastLineCompletionSucceeded = false;
+            bool bLineRewardSinceLastJudgement = false;
             std::uint32_t iLastLineJudgementTick = 0u;
             struct HAMMER { std::int32_t anchor = -1; std::uint32_t startTick = 0u; };
             std::array<HAMMER, 2u> Hammers{};

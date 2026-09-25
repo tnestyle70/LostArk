@@ -147,6 +147,14 @@ bool_t Client::CEffect_Tool::Consume_TypedEffectResourceOpenRequest(
 	return true;
 }
 
+bool Client::CEffect_Tool::Consume_ClassMovieEditorRequest(std::string& classId)
+{
+    if (!m_PendingClassMovieEditor) return false;
+    classId = std::move(*m_PendingClassMovieEditor);
+    m_PendingClassMovieEditor.reset();
+    return true;
+}
+
 bool_t Client::CEffect_Tool::Open_ValtanProductEffect(
 	const EFFECT_TOOL_VALTAN_PRODUCT_OPEN_REQUEST& Request)
 {

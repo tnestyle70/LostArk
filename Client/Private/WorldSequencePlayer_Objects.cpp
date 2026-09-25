@@ -66,6 +66,23 @@ bool_t CWorldSequencePlayer::Set_ObjectMaterialConstants(const std::string& inst
 
 namespace
 {
+bool_t Sample_ObjectPresentationPostTransform(
+    const decltype(CWorldSequencePlayer::TARGET_SET::objectWorldPostTransform)& callback,
+    const std::string& instanceId, const f32_t sourceMs, float4x4_t& out, std::string& status)
+{
+    XMStoreFloat4x4(&out, XMMatrixIdentity());
+    if (callback && !callback(instanceId, sourceMs, out, status))
+    {
+        if (status.empty()) status = "World Object presentation transform is unavailable: " + instanceId;
+        return false;
+    }
+    for (const auto& row : out.m)
+        for (const float component : row)
+            if (!std::isfinite(component))
+            { status = "World Object presentation transform is not finite: " + instanceId; return false; }
+    return true;
+}
+
 /* The product Valtan part group: a static weapon on the body's grip bone and
    skinned armour plates on its palette, as CValtan builds them. */
 void Fill_PresentationParts(const std::string& archetypeId, CWorldSequenceObject::DESC& desc)
@@ -522,7 +539,7 @@ bool_t CWorldSequencePlayer::Prepare_ObjectResources(
             // Reject trimmed native ranges before releasing an existing preview owner.
             for (const auto& animation : sequence->animationTracks)
             {
-                if (animation.slotId != binding.slotId || animation.sourceStartMs == 0u) continue;
+                if (animation.slotId != binding.slotId || (animation.sourceStartMs == 0u && animation.sourceEndMs == 0u)) continue;
                 uint64_t targetId = 0u;
                 const auto object = Try_ParseTargetId(binding, targetId) && targets.pDeployRuntime ?
                     targets.pDeployRuntime->Find(targetId) : nullptr;
@@ -656,13 +673,13 @@ bool_t CWorldSequencePlayer::Prepare_ObjectResources(
                 for (uint32_t i = 0; i < model->second.model->Get_NumAnimations(); ++i)
                     if (animation.clipName == model->second.model->Get_AnimationName(i)) { index = i; break; }
                 if (index == UINT32_MAX) { m_Status = "World Object clip is absent: " + animation.clipName; return false; }
-                if (animation.sourceStartMs != 0u)
+                if (animation.sourceStartMs != 0u || animation.sourceEndMs != 0u)
                 {
                     float position = 0.f, duration = 0.f, ticks = 0.f;
                     if (!model->second.model->Get_AnimationProgress(index, position, duration) ||
                         !CWorldSequenceDocument::Try_SampleAnimationTicks(animation, static_cast<float>(animation.startMs),
                             static_cast<float>(sequence->durationMs), model->second.model->Get_AnimationTickPerSecond(index), duration, ticks))
-                    { m_Status = "World Object animation source start exceeds the native clip range: " + animation.clipName; return false; }
+                    { m_Status = "World Object animation source range exceeds the native clip range: " + animation.clipName; return false; }
                 }
             }
         if (sequence)
@@ -811,7 +828,8 @@ bool_t CWorldSequencePlayer::Prewarm_HiddenObjectPose(const std::string& instanc
     ACTIVE_INSTANCE active; active.instanceId = instanceId;
     PLAYER_ANCHOR anchor; XMStoreFloat4x4(&anchor.world, XMMatrixIdentity());
     float4x4_t world;
-    if (!Sample_ObjectWorld(active, *instance, *sequence, *resource, binding.slotId, anchor, 0u, ageMs, world, m_Status)) return false;
+    if (!Sample_ObjectWorld(active, *instance, *sequence, *resource, binding.slotId, anchor, 0u, ageMs, world, m_Status,
+        true, targets.objectWorldPostTransform)) return false;
     f32_t windowEnd = 0.f;
     const auto* animation = Find_AnimationTrackAt(*sequence, binding.slotId, ageMs, windowEnd);
     // Evaluate the actual animation on the clones which combat will borrow.
@@ -1036,7 +1054,8 @@ bool_t CWorldSequencePlayer::Sample_ObjectWorld(const ACTIVE_INSTANCE& active,
     const WORLD_SEQUENCE_INSTANCE& instance, const WORLD_SEQUENCE_TEMPLATE& sequence,
     const WORLD_SEQUENCE_OBJECT_RESOURCE& resource, const std::string& slotId,
     const PLAYER_ANCHOR& anchor, const uint32_t emitter, const f32_t ageMs, float4x4_t& out, std::string& status,
-    const bool_t inheritObjectRotation)
+    const bool_t inheritObjectRotation,
+    const decltype(TARGET_SET::objectWorldPostTransform)& postTransform)
 {
     const auto& motion = sequence.objectMotion;
     const auto* track = Find_Track(sequence, slotId);
@@ -1108,6 +1127,12 @@ bool_t CWorldSequencePlayer::Sample_ObjectWorld(const ACTIVE_INSTANCE& active,
     }
     else if (!anchor.emissionOverride) world.r[3] += XMVectorSet(active.positionOffset.x, active.positionOffset.y, active.positionOffset.z, 0.f);
     if (anchor.emissionOverride || localPlacement) world *= basis;
+    if (postTransform)
+    {
+        float4x4_t post;
+        if (!Sample_ObjectPresentationPostTransform(postTransform, instance.instanceId, ageMs, post, status)) return false;
+        world *= XMLoadFloat4x4(&post);
+    }
     XMStoreFloat4x4(&out, world);
     return true;
 }
@@ -1223,7 +1248,8 @@ bool_t CWorldSequencePlayer::Apply_Objects(ACTIVE_INSTANCE& active,
                 const auto key = track ? Sample_Track(sequence, *track, ageMs) : WORLD_SEQUENCE_TRANSFORM_KEY{};
                 float4x4_t stored;
                 if (!Sample_ObjectWorld(active, instance, sequence, *resource, binding.slotId, emissionAnchor, emitter,
-                    (std::min)(ageMs, static_cast<f32_t>(sequence.durationMs)), stored, m_Status)) return false;
+                    (std::min)(ageMs, static_cast<f32_t>(sequence.durationMs)), stored, m_Status,
+                    true, targets.objectWorldPostTransform)) return false;
                 f32_t windowEnd = 0.f;
                 const auto* animation = Find_AnimationTrackAt(sequence, binding.slotId, ageMs, windowEnd);
                 if (!found->object)
@@ -1434,7 +1460,8 @@ bool_t CWorldSequencePlayer::Apply_ObjectEffects(ACTIVE_INSTANCE& active,
                                         static_cast<float>(sequence.durationMs));
                                     float4x4_t objectWorld;
                                     if (!Sample_ObjectWorld(placementState, owner, sequence, resource, effect.slotId,
-                                        emissionAnchor, emitter, sampleMs, objectWorld, error, effect.inheritObjectRotation)) return false;
+                                        emissionAnchor, emitter, sampleMs, objectWorld, error,
+                                        effect.inheritObjectRotation)) return false;
                                     matrix_t pivot = XMLoadFloat4x4(&objectWorld);
                                     // Preserve existing V2 metre sizing; V1 shares the Object's
                                     // authored owner scale so both doll variants attach proportionally.
@@ -1456,6 +1483,21 @@ bool_t CWorldSequencePlayer::Apply_ObjectEffects(ACTIVE_INSTANCE& active,
                                 };
                                 EFFECT_FIXED_STEP_TRANSFORM_SAMPLE frame;
                                 if (!provider(sourceSeconds, frame, m_Status)) return false;
+                                // Retain raw birth/history transforms. WORLD particles must receive
+                                // the current presentation transform after evaluating the whole frame.
+                                std::optional<float4x4_t> presentationPost;
+                                if (targets.objectWorldPostTransform)
+                                {
+                                    float4x4_t post;
+                                    const float currentSourceMs = (std::min)(trigger + ageMs,
+                                        static_cast<float>(sequence->durationMs));
+                                    if (!Sample_ObjectPresentationPostTransform(targets.objectWorldPostTransform,
+                                        motion->instanceId, currentSourceMs, post, m_Status)) return false;
+                                    if (!XMMatrixIsIdentity(XMLoadFloat4x4(&post))) presentationPost = post;
+                                }
+                                // V2 consumes a current pivot, after its normal metre-size conversion.
+                                if (!v1 && presentationPost)
+                                    XMStoreFloat4x4(&frame.RootWorld, XMLoadFloat4x4(&frame.RootWorld) * XMLoadFloat4x4(&*presentationPost));
                                 if (found == active.effects.end())
                                 {
                                     size_t total = active.effects.size();
@@ -1510,7 +1552,8 @@ bool_t CWorldSequencePlayer::Apply_ObjectEffects(ACTIVE_INSTANCE& active,
                                         found->sampledPositionOffset.y != active.positionOffset.y ||
                                         found->sampledPositionOffset.z != active.positionOffset.z;
                                     if (!CEffectPresentationService::Update_WorldRoot({found->v1Handle}, frame.RootWorld) ||
-                                        !CEffectPresentationService::Seek_WorldRoot({found->v1Handle}, sourceSeconds, provider, placementEdited))
+                                        !CEffectPresentationService::Seek_WorldRoot({found->v1Handle}, sourceSeconds, provider,
+                                            placementEdited, 0.f, nullptr, nullptr, presentationPost ? &*presentationPost : nullptr))
                                     { m_Status = "World Object V1 effect sample failed: " + effect.resourceId + " / " + CEffectPresentationService::Get_Status(); return false; }
                                     found->sampledPlacement = active.placement;
                                     found->sampledPositionOffset = active.positionOffset;
@@ -1715,4 +1758,16 @@ void CWorldSequencePlayer::Apply_Sounds(ACTIVE_INSTANCE& active)
         at = active.sounds.erase(at);
     }
     active.seekSounds = false;
+}
+
+void Client::CWorldSequencePlayer::Collect_VisibleObjects(
+    std::vector<std::shared_ptr<CWorldSequenceObject>>& out) const
+{
+    const auto collect = [&](const auto& instances) {
+        for (const auto& instance : instances)
+            for (const auto& entry : instance.objects)
+                if (entry.object && entry.object->Is_Visible()) out.push_back(entry.object);
+    };
+    collect(m_Active);
+    collect(m_Held);
 }

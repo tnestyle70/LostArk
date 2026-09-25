@@ -78,8 +78,10 @@ public:
     static bool Stage_DraftProduct(std::shared_ptr<const KOUKU_SAYDON_DRAFT_PRODUCT> draft, std::string& status);
     static bool Authorize_DraftProduct(const LostArk::Shared::GameplayDataRevision& rowsRevision,
         std::uint32_t runEpoch, std::string& status);
-    static bool Validate_DraftBindings(std::uint32_t levelIndex,
-        const std::shared_ptr<const KOUKU_SAYDON_DRAFT_PRODUCT>& draft, std::string& status);
+    // One model per call; the exact canonical/draft cache commits only on Server admission.
+    static bool Prepare_ProductBindings(std::uint32_t levelIndex,
+        std::uint32_t sourceRevision, bool& ready, std::string& status,
+        std::shared_ptr<const KOUKU_SAYDON_DRAFT_PRODUCT> draft = {});
     static bool Admit_RunProduct(std::uint32_t levelIndex, std::uint32_t sourceRevision,
         const LostArk::Shared::GameplayDataRevision& rowsRevision, std::uint32_t runEpoch, std::string& status);
     static bool Matches_AdmittedRun(std::uint32_t sourceRevision,

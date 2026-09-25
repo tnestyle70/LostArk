@@ -142,7 +142,8 @@ bool_t Client::CNpcPresentationAssetService::Try_GetSaydonHatWorld(
 HRESULT Client::CNpcPresentationAssetService::Render_SaydonHat(
 	const std::shared_ptr<Engine::CModel>& body, const std::shared_ptr<Engine::CModel>& hat,
 	const std::shared_ptr<Engine::CShader>& shader, const float4x4_t& bodyWorld,
-	const uint32_t pass, const bool_t nativeBinaryBasePass, const bool_t shadow)
+	const uint32_t pass, const bool_t nativeBinaryBasePass, const bool_t shadow,
+	const DEFERRED_EMISSIVE_OVERRIDE* combatPresentation)
 {
 	if (!hat || Is_SaydonHatSuppressed(body)) return S_OK;
 	if (!shader) return E_FAIL;
@@ -153,9 +154,11 @@ HRESULT Client::CNpcPresentationAssetService::Render_SaydonHat(
 	for (uint32_t mesh = 0; mesh < hat->Get_NumMeshes(); ++mesh)
 	{
 		const HRESULT material = shadow ? hat->Bind_Material(shader, "g_DiffuseTexture", mesh, aiTextureType_DIFFUSE, 0) :
-			Bind_DeferredMaterialInputs(*hat, shader, mesh, {}, nullptr, nullptr, nativeBinaryBasePass);
+			Bind_DeferredMaterialInputs(*hat, shader, mesh, {}, combatPresentation, nullptr, nativeBinaryBasePass);
 		if (FAILED(material) || FAILED(hat->Bind_BoneMatrices(shader, "g_BoneMatrices", mesh)) ||
 			FAILED(shader->Begin(pass)) || FAILED(hat->Render(mesh))) { result = E_FAIL; break; }
+		if (!shadow && pass == 0u && nativeBinaryBasePass)
+			(void)Render_CombatHoverMesh(*hat, shader, mesh, combatPresentation, true);
 	}
 	// A following weapon/outline/part must still receive the body root.
 	const HRESULT restored = shader->Bind_Matrix("g_WorldMatrix", &bodyWorld);

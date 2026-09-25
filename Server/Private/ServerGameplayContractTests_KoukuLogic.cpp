@@ -473,6 +473,82 @@ namespace ServerGameplayContractDetail
             "Zone entry and re-entry pulse immediately, repeat every 60 ticks, and contact expires on exit");
         update(190u); tests.Require(player.iInvulnerabilityZoneContactTick == 190u, "Zone protects the final judgement tick");
         update(191u); tests.Require(player.iInvulnerabilityZoneContactTick != 191u, "Zone expires after final judgement tick");
+        const auto makePlayers = [&](std::uint32_t count) {
+            std::map<PLAYER_ID, SERVER_PLAYER> result;
+            for (PLAYER_ID id = 1u; id <= count; ++id)
+            { auto& target = result[id]; target = base; target.iPlayerId = id; target.iNetEntityId = 100u + id; }
+            return result;
+        };
+        const auto judge = [&](BOSS_PATTERN_DEFINITION& definition, std::map<PLAYER_ID, SERVER_PLAYER>& targets,
+            KOUKUSAYDON_LOGIC_LEDGER& state, std::uint32_t tick) {
+            CKoukuSaydonLogicRuntime::Update(*boss, definition, state, targets, catalog, nullptr, tick, events, output);
+        };
+        gaze.OnFail = {half, fear};
+        for (const std::uint32_t required : {0u, 1u, 2u})
+            for (std::uint32_t count = 0u; count <= 3u; ++count)
+            {
+                auto exact = pattern; exact.LogicWindows = {gaze, zone}; exact.LogicWindows.back().iThreshold = required;
+                auto targets = makePlayers(count); KOUKUSAYDON_LOGIC_LEDGER state;
+                CKoukuSaydonLogicRuntime::Build(exact, *boss, 200u, state); judge(exact, targets, state, 203u);
+                const bool protects = required == 0u || required == count;
+                tests.Require(std::all_of(targets.begin(), targets.end(), [&](const auto& row) {
+                    return protects ? row.second.iCurrentHp == 100u && row.second.iFearEndTick == 0u &&
+                        row.second.iInvulnerabilityZoneContactTick == 203u && row.second.iInvulnerabilityZonePulseTick == 203u :
+                        row.second.iCurrentHp == 50u && row.second.iFearEndTick != 0u &&
+                        row.second.iInvulnerabilityZoneContactTick == 0u && row.second.iInvulnerabilityZonePulseTick == 0u;
+                }), "Zone threshold zero allows any count; blue one and red two protect only their exact occupancy");
+            }
+        for (std::uint32_t excluded = 0u; excluded < 5u; ++excluded)
+        {
+            auto exact = pattern; exact.LogicWindows = {gaze, zone}; exact.LogicWindows.back().iThreshold = 1u;
+            auto targets = makePlayers(2u); auto& ignored = targets.at(2u);
+            if (excluded == 0u) ignored.iCurrentHp = 0u;
+            else if (excluded == 1u) ignored.isCombatReady = false;
+            else ignored.eAction = excluded == 2u ? PLAYER_ACTION_STATE::DEAD :
+                excluded == 3u ? PLAYER_ACTION_STATE::FALLING : PLAYER_ACTION_STATE::GRABBED;
+            KOUKUSAYDON_LOGIC_LEDGER state; CKoukuSaydonLogicRuntime::Build(exact, *boss, 200u, state);
+            judge(exact, targets, state, 203u);
+            tests.Require(targets.at(1u).iCurrentHp == 100u && targets.at(1u).iInvulnerabilityZoneContactTick == 203u &&
+                ignored.iInvulnerabilityZonePulseTick == 0u,
+                "Only living combat-ready judgeable occupants count; dead, falling and grabbed players never pulse");
+        }
+        for (const std::uint32_t required : {1u, 2u})
+        {
+            auto exact = pattern; exact.LogicWindows = {gaze, zone}; exact.LogicWindows.back().iThreshold = required;
+            auto targets = makePlayers(2u); if (required == 1u) targets.at(2u).fPositionZ = 4.f;
+            KOUKUSAYDON_LOGIC_LEDGER state; CKoukuSaydonLogicRuntime::Build(exact, *boss, 200u, state);
+            judge(exact, targets, state, 200u);
+            targets.at(1u).iInvulnerableEndTick = 1000u; // An independent Inanna/Bingo buff is never revoked.
+            targets.at(2u).fPositionZ = required == 1u ? 2.f : 4.f;
+            judge(exact, targets, state, 201u);
+            tests.Require(targets.at(1u).iInvulnerabilityZoneContactTick == 200u &&
+                targets.at(1u).iInvulnerabilityZonePulseTick == 200u && targets.at(1u).iInvulnerableEndTick == 1000u,
+                "Extra occupant or departure cancels zone contact immediately without changing existing invulnerability");
+            targets.at(1u).iInvulnerableEndTick = 0u;
+            judge(exact, targets, state, 203u);
+            tests.Require(targets.at(1u).iCurrentHp == 50u && targets.at(1u).iFearEndTick != 0u,
+                "A previously valid exact zone does not retain protection at a later wrong-count judgement");
+        }
+        {
+            auto exact = pattern; auto blue = zone; blue.iThreshold = 1u;
+            auto second = region; second.strRegionId = "zone.second"; second.fCenterZ = 5.f;
+            blue.CardRegions.push_back(second); exact.LogicWindows = {gaze, blue};
+            auto targets = makePlayers(2u); targets.at(2u).fPositionZ = 5.f;
+            KOUKUSAYDON_LOGIC_LEDGER state; CKoukuSaydonLogicRuntime::Build(exact, *boss, 200u, state);
+            judge(exact, targets, state, 203u);
+            tests.Require(targets.at(1u).iCurrentHp == 100u && targets.at(2u).iCurrentHp == 100u,
+                "Two linked blue Colliders count independently instead of combining their occupants");
+        }
+        {
+            auto exact = pattern; auto blue = zone; blue.iThreshold = 1u;
+            auto red = zone; red.strWindowId = "red.zone"; red.iThreshold = 2u;
+            exact.LogicWindows = {gaze, blue, red}; auto targets = makePlayers(2u);
+            KOUKUSAYDON_LOGIC_LEDGER state; CKoukuSaydonLogicRuntime::Build(exact, *boss, 200u, state);
+            judge(exact, targets, state, 203u);
+            tests.Require(targets.at(1u).iCurrentHp == 100u && targets.at(2u).iCurrentHp == 100u,
+                "A valid red zone protects overlapping occupants even when the blue zone count is invalid");
+        }
+
     }
 
     void Run_KoukuFearAndCounterContracts(TESTS& tests, const LostArk::Server::CGameplayCatalog& catalog)

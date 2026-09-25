@@ -23,7 +23,7 @@ def validate_hits(rows, lifetime_ms=600000):
         raise ValueError("Attack templates require a bounded array of at most 32 hits")
     result, ids = [], set()
     for row in rows:
-        if not isinstance(row, dict) or set(row) - (HIT_DEFAULTS.keys() | {"riseHeightM", "pushMs"}):
+        if not isinstance(row, dict) or set(row) - (HIT_DEFAULTS.keys() | {"riseHeightM", "pushMs", "pushRangeM", "forcePush", "pushDirection"}):
             raise ValueError("Attack hit has unknown fields")
         hit = {**HIT_DEFAULTS, **copy.deepcopy(row)}
         identity = hit["hitId"]
@@ -72,9 +72,17 @@ def validate_hits(rows, lifetime_ms=600000):
         if not valid:
             raise ValueError("Attack damage policy is invalid")
         height, duration = hit.get("riseHeightM", 0), hit.get("pushMs", 0)
+        push_range = row.get("pushRangeM", 0)
+        if type(push_range) not in (int, float) or not math.isfinite(push_range) or not 0 <= push_range <= 100:
+            raise ValueError("Attack horizontal push requires a finite bounded range")
         if (type(height) not in (int, float) or not math.isfinite(height) or not 0 <= height <= 100
-                or type(duration) is not int or (duration != 0 if height == 0 else not 100 <= duration <= 5000)):
-            raise ValueError("Attack rise height and flight time must form a bounded pair")
+                or type(duration) is not int or (duration != 0 if height == 0 and push_range == 0 else not 100 <= duration <= 5000)):
+            raise ValueError("Attack push motion and duration must form a bounded pair")
+        if "forcePush" in row and type(row["forcePush"]) is not bool:
+            raise ValueError("Attack forcePush must be boolean")
+        if row.get("pushDirection", "AWAY_FROM_CONTACT") not in ("AWAY_FROM_CONTACT", "AWAY_FROM_BOSS"):
+            raise ValueError("Attack push direction must retain its contact or boss origin")
+        if "pushRangeM" in row: hit["pushRangeM"] = push_range
         if "riseHeightM" in row or "pushMs" in row:
             hit["riseHeightM"], hit["pushMs"] = height, duration
         result.append(hit)
@@ -83,7 +91,7 @@ def validate_hits(rows, lifetime_ms=600000):
 
 def validate_logic_hits(logic):
     kind = logic.get("judgementKind") if logic.get("logicType") == "DURATION" else logic.get("triggerKind", "")
-    allowed = {"fixedHits", "trackingHits", "randomVolleyHits"} if kind == "SHOWTIME_PLAYER_TARGETS" else {"projectileHits"} if kind == "PURSUIT_PROJECTILES" else {"fixedHits"} if kind == "ALBION_BLUE_CIRCLE" else set()
+    allowed = {"fixedHits", "trackingHits", "randomVolleyHits"} if kind == "SHOWTIME_PLAYER_TARGETS" else {"projectileHits"} if kind == "PURSUIT_PROJECTILES" else {"fixedHits"} if kind in {"ALBION_BLUE_CIRCLE", "ALBION_AIRBORNE"} else set()
     keys = {"fixedHits", "trackingHits", "randomVolleyHits", "projectileHits"} & logic.keys()
     if keys - allowed:
         raise ValueError("Only the matching dynamic attack owner can carry hit templates")
@@ -95,7 +103,10 @@ def validate_logic_hits(logic):
             raise ValueError("Random attack templates must match the ordered visual set count")
         for hits in rows:
             validate_hits(hits)
-    if kind != "ALBION_BLUE_CIRCLE" and logic.get("fixedHits") and not logic.get("fixedSelectionGroupId"):
+    if kind == "ALBION_AIRBORNE" and logic.get("fixedHits") and (
+            logic.get("airbornePhase") != "SELECT_PLAYER" or logic.get("airborneTargetPositionPolicy") != "SELECT" or not logic.get("selectedEffectGroupId")):
+        raise ValueError("Selected attack lacks its captured position and visual owner")
+    if kind not in {"ALBION_BLUE_CIRCLE", "ALBION_AIRBORNE"} and logic.get("fixedHits") and not logic.get("fixedSelectionGroupId"):
         raise ValueError("Fixed attack lacks its visual owner")
     if logic.get("trackingHits") and not logic.get("trackingPresentationOccurrenceId"):
         raise ValueError("Tracking attack lacks its visual owner")

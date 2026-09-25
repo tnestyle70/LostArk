@@ -166,6 +166,100 @@ void CServerGameplayContractRunner::Run_KoukuRaidIntegration(TESTS& tests)
         tests.Require(room.Begin_KoukuRaidPreparation(session, request, reason), "Release entry admission pins the actual published raid");
 #endif
     };
+    const auto finishEntryIdle = [&](CGameRoom& room) {
+        auto& run = room.m_KoukuRaid;
+        if (run.State.ePhase != KOUKUSAYDON_RAID_PHASE::COMBAT || run.bEntryRunning) return;
+        const auto start = run.State.iStartTick;
+        tests.Require(run.iNextEntryTick == start + 90u && !run.bEntryRunning,
+            "Every gate enters combat with a three-second idle before its first flow entry");
+        room.m_iServerTick = run.iNextEntryTick - 1u;
+        room.Update_KoukuRaid(room.m_iServerTick);
+        tests.Require(!run.bEntryRunning && std::all_of(room.m_WorldEntities.begin(), room.m_WorldEntities.end(),
+            [](const auto& boss) { return boss.strPatternId.empty() && boss.eAction == SERVER_ENTITY_ACTION::IDLE; }),
+            "The first attack cannot begin one tick before the entry idle ends");
+        room.m_iServerTick = run.iNextEntryTick;
+        room.Update_KoukuRaid(room.m_iServerTick);
+        tests.Require(run.bEntryRunning, "The first authored flow entry starts at the three-second boundary");
+    };
+    for (const auto& [marioPattern, bars] : std::array<std::pair<const char*, unsigned>, 3u>{
+        {{"KAKULSAYDON_G1_PATTERN_88", 155u}, {"KAKULSAYDON_G1_PATTERN_92", 80u}, {"KAKULSAYDON_G1_PATTERN_93", 55u}}})
+    {
+        auto room = std::make_unique<CGameRoom>(WORLD_ID::KAKULSAYDON_ARENA);
+        auto& run = room->m_KoukuRaid;
+        run.pCatalog = room->m_GameplayCatalog.Get_ActiveGeneration();
+        run.iOwnerSessionId = 501u; run.PlayerIds = {1u};
+        run.State.iRunEpoch = 1u; run.State.iOwnerPlayerId = 1u;
+        run.State.ParticipantPlayerIds = run.PlayerIds;
+        run.State.strGateId = "GATE3"; run.State.ePhase = KOUKUSAYDON_RAID_PHASE::CINEMATIC;
+        run.State.PinnedGameplayRevision = room->m_GameplayCatalog.Get_ActiveRevision();
+        run.State.iActionSourceRevision = CKoukuSaydonBrain::Resolve_ProductSourceRevision(*run.pCatalog);
+        auto& player = room->m_Players[1u];
+        player.iPlayerId = 1u; player.iSessionId = 501u; player.iNetEntityId = 101u;
+        player.iCurrentHp = player.iMaximumHp = 100000000u;
+        player.isCombatReady = true; player.eCharacterClass = CHARACTER_CLASS_ID::LANCE_MASTER;
+        player.fPositionX = -2.45f; player.fPositionY = 1.32f; player.fPositionZ = 945.17f;
+        room->m_PlayerIdBySessionId[501u] = 1u;
+        room->m_iServerTick = 100u;
+        const bool spawned = room->Start_KoukuRaidCombat(100u);
+        tests.Require(spawned, "The published Gate 3 flow admits its live primary boss before a Mario threshold");
+        if (spawned)
+        {
+            const auto* gate = run.pCatalog->Find_KoukuRaidGate("GATE3");
+            const auto mechanic = std::find_if(gate->Entries.begin(), gate->Entries.end(), [&](const auto& entry) {
+                return entry.strTargetId == marioPattern; });
+            auto* boss = room->Find_KoukuSaydonArenaBoss("boss.kakulsaydon.g3.saydon", "BOSS_KAKULSAYDON_G3_SAYDON");
+            tests.Require(boss && mechanic != gate->Entries.end(), "The threshold fixture resolves the real Mario entry and actor");
+            if (boss && mechanic != gate->Entries.end())
+            {
+                const auto bossId = boss->iNetEntityId;
+                boss->iCurrentHp = static_cast<std::uint32_t>(static_cast<std::uint64_t>(boss->iMaximumHp) * (bars + 1u) / boss->iMaximumHealthBars);
+                run.State.iFlowEntryIndex = static_cast<std::uint32_t>(mechanic - gate->Entries.begin() - 1u);
+                bool alive = true, entered = false, penaltyCompleted = false, continuedLoop = false;
+                std::uint32_t marioDeadline = 0u, previousFlowIndex = run.State.iFlowEntryIndex;
+                for (std::uint32_t tick = 190u; tick < 17500u && alive && !continuedLoop; ++tick)
+                {
+                    room->m_iServerTick = tick; player.iInvulnerableEndTick = marioDeadline && tick + 1u >= marioDeadline ? 0u : tick + 600u;
+                    room->Prepare_KoukuAuditionTick(tick);
+                    room->Update_KoukuPatternTails(tick);
+                    boss = room->Find_KoukuSaydonArenaBoss("boss.kakulsaydon.g3.saydon", "BOSS_KAKULSAYDON_G3_SAYDON");
+                    if (!boss) { alive = false; break; }
+                    if (tick > 190u) boss->iCurrentHp = static_cast<std::uint32_t>(
+                        static_cast<std::uint64_t>(boss->iMaximumHp) * (bars - 1u) / boss->iMaximumHealthBars);
+                    if (room->m_KoukuSaydonPatternAudition.Request.strPatternId == marioPattern)
+                    {
+                        entered = true;
+                        if (!marioDeadline && !room->m_KoukuSaydonPatternAudition.Members.empty())
+                        {
+                            const auto& member = room->m_KoukuSaydonPatternAudition.Members.front();
+                            std::string status;
+                            const auto* pattern = CKoukuSaydonBrain::Find_AnimationOnlyPattern(*run.pCatalog, marioPattern, status);
+                            if (member.iMarioEntryStartTick && pattern) marioDeadline = member.iMarioEntryStartTick +
+                                CKoukuSaydonLogicRuntime::Ticks_FromMs(pattern->iTimelineDurationMs);
+                        }
+                    }
+                    room->Update_KoukuSaydonBoss(*boss, tick);
+                    room->Commit_KoukuMechanicTriggers(tick);
+                    room->Update_KoukuWorldBodies(tick);
+                    const auto receipt = room->m_KoukuSaydonPatternAuditionReceiptBySessionId.find(501u);
+                    penaltyCompleted = penaltyCompleted || (entered && !player.iCurrentHp && receipt != room->m_KoukuSaydonPatternAuditionReceiptBySessionId.end() &&
+                        receipt->second.LastLifecycle && receipt->second.LastLifecycle->eState == KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE_STATE::COMPLETED);
+                    room->Update_KoukuRaid(tick);
+                    continuedLoop = penaltyCompleted && run.bEntryRunning &&
+                        run.State.iFlowEntryIndex < previousFlowIndex &&
+                        run.State.iFlowEntryIndex > static_cast<std::uint32_t>(mechanic - gate->Entries.begin());
+                    previousFlowIndex = run.State.iFlowEntryIndex;
+                    alive = run.State.ePhase == KOUKUSAYDON_RAID_PHASE::COMBAT &&
+                        std::any_of(room->m_WorldEntities.begin(), room->m_WorldEntities.end(),
+                            [&](const auto& entity) { return entity.iNetEntityId == bossId && entity.iCurrentHp; });
+                }
+                tests.Require(alive && entered && penaltyCompleted && continuedLoop && !player.iCurrentHp &&
+                    run.State.iFlowEntryIndex > static_cast<std::uint32_t>(mechanic - gate->Entries.begin()) &&
+                    run.bEntryRunning && room->m_KoukuSaydonPatternAudition.Request.strPatternId != marioPattern,
+                    "Mario 1/3/4 timeout keeps players dead while the same raid boss completes and repeats its next normal flow");
+                if (!alive || !penaltyCompleted || !continuedLoop) std::cout << "[MARIO ENTRY] pattern=" << marioPattern << " deadline=" << marioDeadline << " hp=" << player.iCurrentHp << " reason=" << run.State.strReason << " status=" << room->m_strStatus << '\n';
+            }
+        }
+    }
     const auto verifyBingoFlow = [&](CGameRoom& room, unsigned firstTick, bool verifySpecial) {
         auto& run = room.m_KoukuRaid;
         const auto* gate = run.pCatalog ? run.pCatalog->Find_KoukuRaidGate("BINGO") : nullptr;
@@ -201,13 +295,15 @@ void CServerGameplayContractRunner::Run_KoukuRaidIntegration(TESTS& tests)
         const auto advance = [&](bool normalOnly) {
             room.m_iServerTick = tick;
             room.m_TickDamageEvents.clear();
-            // These scheduler fixtures isolate progression from ordinary hit/hammer attrition.
-            // Failed Bingo judgement still bypasses this protection and must fail the fixture.
+            // Isolate ordinary attrition without masking the actual 30-second line reward.
+            // The special must still emit its exact successful thirteen-bar damage event.
             for (auto& [id, player] : room.m_Players)
             {
                 if (!player.iCurrentHp || player.eAction == PLAYER_ACTION_STATE::DEAD) return rejectAdvance("player already dead");
                 player.iCurrentHp = player.iMaximumHp = 100000000u;
-                player.iInvulnerableEndTick = tick + 60000u;
+                if (normalOnly) player.iInvulnerableEndTick = tick + 60000u;
+                else if (!player.iInvulnerableEndTick || CKoukuSaydonLogicRuntime::Has_ReachedTick(tick, player.iInvulnerableEndTick))
+                    player.iInvulnerableEndTick = tick + 1u;
             }
             if (room.m_KoukuBingoDuration.iOwnerId)
             {
@@ -298,7 +394,7 @@ void CServerGameplayContractRunner::Run_KoukuRaidIntegration(TESTS& tests)
                 return window.eKind == BOSS_PATTERN_LOGIC_KIND::GAZE_REAL_BOSS && window.iStartMs == 8567u && window.iDurationMs == 500u; }) &&
             std::any_of(special->LogicWindows.begin(), special->LogicWindows.end(), [](const auto& window) {
                 return window.eKind == BOSS_PATTERN_LOGIC_KIND::BINGO_COMPLETED_LINES && !window.iStartMs &&
-                    window.iDurationMs == 32628u && window.iThreshold == 3u &&
+                    window.iDurationMs == 32628u && window.iThreshold == 1u &&
                     std::any_of(window.OnSuccess.begin(), window.OnSuccess.end(), [](const auto& result) {
                         return result.eKind == BOSS_PATTERN_LOGIC_RESULT_KIND::PLAYER_INVULNERABILITY && result.iDurationMs == 30000u; }); });
         tests.Require(flattened,
@@ -353,13 +449,24 @@ void CServerGameplayContractRunner::Run_KoukuRaidIntegration(TESTS& tests)
             room.m_KoukuBingoDuration.iNextBombTick == durationBefore.iNextBombTick &&
             room.m_KoukuBingoDuration.iMarkedBombCount == durationBefore.iMarkedBombCount,
             "Rejected special preflight preserves every live actor, normal occurrence, receipt and encounter-owned board without consuming an epoch");
-        // Use the real 30s first mark / 20s repeat clock twice. The board's three
-        // completed rows provide the actual success input for the detonation, not a forced verdict.
-        room.m_KoukuBingo.Fill(0x7fffu);
+        // Use the real 30s first mark / 20s repeat clock twice. Complete one
+        // row for the third bomb, then one different column for the sixth.
+        // Earlier blasts cannot reward incomplete crosses; used red lines stay on the board.
+        room.m_KoukuBingo.Reset();
+        const std::uint32_t firstLines = Kouku_BingoLineMask(1);
+        const std::uint32_t nextLines = Kouku_BingoLineMask(KOUKU_BINGO_SIDE + 2);
+        for (auto& [id, player] : room.m_Players)
+        {
+            player.iInvulnerableEndTick = 0u;
+            player.fPositionX = Kouku_BingoCellCenterX(7);
+            player.fPositionZ = Kouku_BingoCellCenterZ(7);
+        }
         room.m_KoukuBingoDuration.iNextBombTick = tick + CKoukuSaydonLogicRuntime::Ticks_FromMs(
             KOUKU_BINGO_BOMB_INITIAL_DELAY_MS + KOUKU_BINGO_BOMB_INTERVAL_MS);
         const auto firstMarkCount = room.m_KoukuBingoDuration.iMarkedBombCount;
-        unsigned starts = 0u, resumes = 0u, interruptedIndex = 0u;
+        unsigned starts = 0u, resumes = 0u, interruptedIndex = 0u, lineRewards = 0u;
+        unsigned expectedBombTick = room.m_KoukuBingoDuration.iNextBombTick;
+        bool exactBombClock = true, exactLineRewards = true, usedLinesRetained = false;
         std::string interruptedEntry;
         bool waitingForResume = false, specialValid = firstMarkCount == 0u;
         std::string specialFailure = specialValid ? "" : "nonzero initial mark count";
@@ -373,7 +480,36 @@ void CServerGameplayContractRunner::Run_KoukuRaidIntegration(TESTS& tests)
             const bool wasSpecial = run.bBingoSpecialRunning;
             const auto beforeEntry = run.State.strFlowEntryId;
             const auto beforeIndex = run.State.iFlowEntryIndex;
+            const auto previousMarks = room.m_KoukuBingoDuration.iMarkedBombCount;
+            const auto unusedBefore = room.m_KoukuBingo.Count_UnconsumedRowsAndColumns();
+            const auto redBefore = room.m_KoukuBingo.Get_RedMask();
             advanced = advance(false);
+            const auto marks = room.m_KoukuBingoDuration.iMarkedBombCount;
+            if (marks != previousMarks)
+            {
+                exactBombClock = exactBombClock && marks == previousMarks + 1u && tick == expectedBombTick;
+                expectedBombTick = tick + CKoukuSaydonLogicRuntime::Ticks_FromMs(KOUKU_BINGO_BOMB_INTERVAL_MS);
+            }
+            exactBombClock = exactBombClock && room.m_KoukuBingoDuration.iNextBombTick == expectedBombTick;
+            const auto unusedAfter = room.m_KoukuBingo.Count_UnconsumedRowsAndColumns();
+            if (unusedAfter < unusedBefore)
+            {
+                ++lineRewards;
+                exactLineRewards = exactLineRewards && lineRewards <= 2u && unusedBefore == 1u && unusedAfter == 0u &&
+                    starts == lineRewards && marks == lineRewards * 3u && redBefore == room.m_KoukuBingo.Get_RedMask() &&
+                    room.m_KoukuBingo.Count_CompletedRowsAndColumns() == lineRewards &&
+                    std::all_of(room.m_Players.begin(), room.m_Players.end(), [&](const auto& pair) {
+                        return pair.second.iInvulnerableEndTick == tick + CKoukuSaydonLogicRuntime::Ticks_FromMs(30000u); });
+                if (lineRewards == 1u)
+                {
+                    room.m_KoukuBingo.Fill(firstLines);
+                    usedLinesRetained = room.m_KoukuBingo.Get_RedMask() == firstLines &&
+                        room.m_KoukuBingo.Count_CompletedRowsAndColumns() == 1u &&
+                        room.m_KoukuBingo.Count_UnconsumedRowsAndColumns() == 0u;
+                }
+            }
+            if (lineRewards == 1u && starts == 1u)
+                exactLineRewards = exactLineRewards && unusedAfter == 0u;
             if (!wasSpecial && run.bBingoSpecialRunning)
             {
                 ++starts;
@@ -382,6 +518,11 @@ void CServerGameplayContractRunner::Run_KoukuRaidIntegration(TESTS& tests)
                     room.m_KoukuSaydonPatternAudition.Request.strPatternId == special->strPatternId;
                 noteSpecialFailure("third-mark insertion changed the cursor or selected the wrong request");
                 interruptedIndex = beforeIndex; interruptedEntry = beforeEntry;
+                exactLineRewards = exactLineRewards && lineRewards + 1u == starts &&
+                    room.m_KoukuBingo.Count_UnconsumedRowsAndColumns() == 0u;
+                room.m_KoukuBingo.Fill(starts == 1u ? firstLines : nextLines);
+                exactLineRewards = exactLineRewards && room.m_KoukuBingo.Count_UnconsumedRowsAndColumns() == 1u &&
+                    room.m_KoukuBingo.Get_RedMask() == (starts == 1u ? firstLines : firstLines | nextLines);
                 observedStages.clear(); specialStartTick = 0u; detonations = 0u;
             }
             else if (wasSpecial && !run.bBingoSpecialRunning)
@@ -432,6 +573,11 @@ void CServerGameplayContractRunner::Run_KoukuRaidIntegration(TESTS& tests)
                 ++resumes; waitingForResume = false;
             }
         }
+        tests.Require(exactLineRewards && lineRewards == 2u && usedLinesRetained &&
+            room.m_KoukuBingo.Count_CompletedRowsAndColumns() == 2u && room.m_KoukuBingo.Count_UnconsumedRowsAndColumns() == 0u,
+            "Two real special cycles consume one new row and one new column exactly once while retaining both red lines and granting exact thirty-second rewards");
+        tests.Require(exactBombClock,
+            "Special insertion, line rewards and normal-entry replay preserve every thirty/twenty-second bomb deadline");
         tests.Require(advanced && specialValid && starts == 2u && resumes == 2u && stableOwner && exactRequests,
             "Every third real Bingo mark executes the flattened special on exact stage/detonation clocks and resumes the interrupted stable entry without resetting the raid or board");
         if (!advanced || !specialValid || starts != 2u || resumes != 2u || !stableOwner || !exactRequests)
@@ -440,6 +586,7 @@ void CServerGameplayContractRunner::Run_KoukuRaidIntegration(TESTS& tests)
                 << " stableOwner=" << stableOwner << " exactRequests=" << exactRequests << " phase=" << unsigned(run.State.ePhase)
                 << " tick=" << tick << " failedTick=" << failedTick << " specialStart=" << specialStartTick
                 << " stages=" << observedStages.size() << " detonations=" << detonations
+                << " rewards=" << lineRewards << " exactRewards=" << exactLineRewards << " exactBombClock=" << exactBombClock
                 << " advanceCause=" << advanceFailure << " specialCause=" << specialFailure
                 << " reason=" << run.State.strReason << " status=" << room.m_strStatus << '\n';
     };
@@ -574,9 +721,10 @@ void CServerGameplayContractRunner::Run_KoukuRaidIntegration(TESTS& tests)
         if (scenario == 1u)
         {
             room->m_iServerTick = run.State.iEndTick; room->Update_KoukuRaid(room->m_iServerTick);
+            finishEntryIdle(*room);
             tests.Require(run.State.ePhase == KOUKUSAYDON_RAID_PHASE::COMBAT && run.bEntryRunning &&
                 run.State.strGateId == "BINGO" && run.iAuditionEpoch != 0u,
-                "Bingo UI intro completion immediately queues its first published independent entry");
+                "Bingo UI intro completion queues its first published independent entry after the idle delay");
             const auto common = room->m_KoukuSaydonPatternAudition.iCommonStartTick;
             room->m_iServerTick = common; room->Prepare_KoukuAuditionTick(common);
             const auto* boss = room->Find_KoukuSaydonArenaBoss("boss.kakulsaydon.bingo.saydon", "BOSS_KAKULSAYDON_BINGO_SAYDON");
@@ -794,6 +942,7 @@ void CServerGameplayContractRunner::Run_KoukuRaidIntegration(TESTS& tests)
         {
             auto& player = room->m_Players[id]; player.iPlayerId = id; player.iSessionId = 500u + id;
             player.iNetEntityId = 100u + id; player.iCurrentHp = player.iMaximumHp = 100u;
+            player.strNickName = "Encore-" + std::to_string(id);
             player.eCharacterClass = CHARACTER_CLASS_ID::LANCE_MASTER; player.isCombatReady = true;
             player.fPositionX = -2.45f; player.fPositionY = 1.32f; player.fPositionZ = 945.17f;
             room->m_PlayerIdBySessionId[player.iSessionId] = id;
@@ -814,11 +963,11 @@ void CServerGameplayContractRunner::Run_KoukuRaidIntegration(TESTS& tests)
         if (count > 1u) { room->m_Players.at(count).iCurrentHp = 0u; room->m_Players.at(count).eAction = PLAYER_ACTION_STATE::DEAD; }
         room->Notify_KoukuRaidBossDeath(dead, 100u); room->Notify_GateBossDeath(dead);
         auto& run = room->m_KoukuRaid;
-        tests.Require(run.State.ePhase == KOUKUSAYDON_RAID_PHASE::PREPARING && run.bClearedGate3Preparation &&
+        tests.Require(run.State.ePhase == KOUKUSAYDON_RAID_PHASE::PREPARING && run.bClearedBossPreparation &&
             room->Is_KoukuRaidInputBlocked() && run.iGate3ClearTick == 100u && !room->m_GateProgress.iProposalId &&
             (room->m_GateProgress.iClearedMask & 4u),
             "A standalone G3 kill admits one pinned run, cancels an old vote and shows false clear while resources prepare");
-        if (!run.bClearedGate3Preparation) { std::cout << "[LEGACY ADMISSION] " << room->m_strStatus << '\n'; continue; }
+        if (!run.bClearedBossPreparation) { std::cout << "[LEGACY ADMISSION] " << room->m_strStatus << '\n'; continue; }
         const auto epoch = run.State.iRunEpoch;
         room->Notify_KoukuRaidBossDeath(dead, 101u);
         tests.Require(run.State.iRunEpoch == epoch && run.iGate3ClearTick == 100u,
@@ -829,7 +978,7 @@ void CServerGameplayContractRunner::Run_KoukuRaidIntegration(TESTS& tests)
         C2S_GATE_PROGRESS_PROPOSE bypass; bypass.iRequestSequence = 90u;
         bypass.eWorldId = WORLD_ID::KAKULSAYDON_ARENA; bypass.eKind = GATE_PROGRESS_KIND::ADVANCE;
         room->Handle_GateProgressPropose(501u, bypass);
-        tests.Require(!room->m_GateProgress.iProposalId && !room->Enter_KoukuRaidCombat(4u),
+        tests.Require(!room->m_GateProgress.iProposalId && !room->Enter_KoukuRaidCombat(4u, room->m_iServerTick),
             "Manual advance and direct Bingo entry cannot bypass a standalone clear's resource preparation");
         // Exercise timer-first while the shared bounded resource preparation is pending.
         const auto readyTick = count % 2u ? 120u : 390u;
@@ -856,10 +1005,216 @@ void CServerGameplayContractRunner::Run_KoukuRaidIntegration(TESTS& tests)
             "Both ready-first and timer-first races converge to the same pinned Encore cinematic");
         const auto start = run.State.iStartTick; room->Update_KoukuRaid(room->m_iServerTick);
         tests.Require(run.State.iStartTick == start, "Repeated safe ticks do not restart Encore playback");
-        room->m_iServerTick = run.State.iEndTick; room->Update_KoukuRaid(room->m_iServerTick);
-        tests.Require(run.State.ePhase == KOUKUSAYDON_RAID_PHASE::COMBAT && run.State.strGateId == "BINGO" &&
+        const auto encoreEndTick = run.State.iEndTick;
+        room->m_iServerTick = encoreEndTick - 2u;
+        room->Tick(1.f / 30.f);
+        tests.Require(room->m_iServerTick == encoreEndTick - 1u &&
+            run.State.ePhase == KOUKUSAYDON_RAID_PHASE::CINEMATIC,
+            "The real room tick retains Encore until its authored final tick");
+        room->Tick(1.f / 30.f);
+        tests.Require(room->m_iServerTick == encoreEndTick && run.State.iStartTick == encoreEndTick &&
+            run.State.ePhase == KOUKUSAYDON_RAID_PHASE::COMBAT && run.State.strGateId == "BINGO" &&
             std::all_of(room->m_Players.begin(), room->m_Players.end(), [](const auto& p) { return p.second.iCurrentHp > 0u; }),
-            "Standalone Encore completion enters normal Bingo authority and revives its pinned participants");
+            "Standalone Encore completion enters normal Bingo authority on the active tick and revives its pinned participants");
+        if (run.State.ePhase != KOUKUSAYDON_RAID_PHASE::COMBAT || run.State.strGateId != "BINGO") continue;
+        const auto* bingo = run.pCatalog->Find_KoukuRaidGate("BINGO");
+        std::string patternStatus;
+        const auto* firstPattern = bingo && !bingo->Entries.empty() && !bingo->Entries.front().bBundle ?
+            CKoukuSaydonBrain::Find_AnimationOnlyPattern(*run.pCatalog, bingo->Entries.front().strTargetId, patternStatus) : nullptr;
+        const auto* nextPattern = bingo && bingo->Entries.size() > 1u && !bingo->Entries[1u].bBundle ?
+            CKoukuSaydonBrain::Find_AnimationOnlyPattern(*run.pCatalog, bingo->Entries[1u].strTargetId, patternStatus) : nullptr;
+        tests.Require(firstPattern && !firstPattern->Stages.empty() && nextPattern && nextPattern->Stages.size() > 1u,
+            "Standalone Bingo pins its actual opening and following authored patterns with playable stages");
+        if (!firstPattern || firstPattern->Stages.empty() || !nextPattern || nextPattern->Stages.size() < 2u) continue;
+        const auto bingoBossId = run.iPrimaryBossId;
+        const auto firstEntryTick = encoreEndTick + 90u;
+        tests.Require(run.iNextEntryTick == firstEntryTick && !run.bEntryRunning && run.State.strFlowEntryId.empty(),
+            "Standalone Bingo schedules the common 90-tick entry idle before its first authored flow");
+        // Isolate scheduler progression from ordinary contact damage; keep every production tick and board timer.
+        for (auto& [id, player] : room->m_Players) player.iInvulnerableEndTick = firstEntryTick + 600u;
+        bool idleHeld = true;
+        for (unsigned step = 1u; step < 90u; ++step)
+        {
+            room->Tick(1.f / 30.f);
+            const auto* activeBoss = room->Find_KoukuSaydonArenaBoss("boss.kakulsaydon.bingo.saydon", "BOSS_KAKULSAYDON_BINGO_SAYDON");
+            idleHeld = idleHeld && room->m_iServerTick == encoreEndTick + step &&
+                run.State.ePhase == KOUKUSAYDON_RAID_PHASE::COMBAT && !run.bEntryRunning &&
+                run.State.strFlowEntryId.empty() && activeBoss && activeBoss->iNetEntityId == bingoBossId &&
+                activeBoss->iCurrentHp && activeBoss->strPatternId.empty();
+        }
+        tests.Require(idleHeld, "One to four resurrected participants remain in Bingo entry idle for all 89 preceding real ticks");
+        const auto boardBefore = room->m_KoukuBingoDuration;
+        const auto boardEpoch = room->m_iKoukuBingoBoardEpoch;
+        tests.Require(boardBefore.iOwnerId == bingoBossId && boardBefore.bEncounterOwned && !boardBefore.iEndTick &&
+            boardEpoch == epoch && boardBefore.iNextBombTick > firstEntryTick && boardBefore.iNextHammerTick > firstEntryTick,
+            "The actual Bingo board duration belongs to the raid boss and arms persistent bomb and hammer timers during entry idle");
+        room->Tick(1.f / 30.f);
+        tests.Require(room->m_iServerTick == firstEntryTick && run.bEntryRunning &&
+            run.State.strFlowEntryId == bingo->Entries.front().strEntryId && run.State.iFlowEntryIndex == 0u &&
+            room->m_KoukuSaydonPatternAudition.Request.strPatternId == firstPattern->strPatternId,
+            "The 90th real tick queues the first authored Bingo flow instead of leaving an idle combat shell");
+        room->Tick(1.f / 30.f);
+        const auto* playing = room->Find_KoukuSaydonArenaBoss("boss.kakulsaydon.bingo.saydon", "BOSS_KAKULSAYDON_BINGO_SAYDON");
+        const bool openingPlaying = playing && playing->iNetEntityId == bingoBossId && playing->iCurrentHp &&
+            playing->strPatternId == firstPattern->strPatternId && playing->iPatternSequence &&
+            playing->iPatternStageIndex == 0u && playing->strActionId == firstPattern->Stages.front().strActionId &&
+            playing->iPatternStageDurationMs == firstPattern->Stages.front().iDurationMs &&
+            playing->iPatternStageFirstEvaluationTick == firstEntryTick &&
+            playing->iPatternStartTick == firstEntryTick &&
+            room->m_KoukuSaydonPatternAudition.iCommonStartTick == firstEntryTick &&
+            !room->m_KoukuSaydonPatternAudition.Members.empty() &&
+            room->m_KoukuSaydonPatternAudition.Members.front().LogicLedger.iPatternStartTick == firstEntryTick;
+        tests.Require(openingPlaying, "The next real room tick starts the exact Bingo opening boss pattern and authored action stage");
+        const auto openingSequence = playing ? playing->iPatternSequence : 0u;
+        bool nextPlaying = false, nextStagePlaying = false, boardPreserved = true;
+        // The published board opener is 34ms; 180 ticks cover it and the following pattern's first stage.
+        for (unsigned step = 0u; step < 180u && !nextStagePlaying; ++step)
+        {
+            room->Tick(1.f / 30.f);
+            playing = room->Find_KoukuSaydonArenaBoss("boss.kakulsaydon.bingo.saydon", "BOSS_KAKULSAYDON_BINGO_SAYDON");
+            const auto& board = room->m_KoukuBingoDuration;
+            boardPreserved = boardPreserved && board.iOwnerId == bingoBossId && board.bEncounterOwned && !board.iEndTick &&
+                room->m_iKoukuBingoBoardEpoch == boardEpoch && board.iNextBombTick == boardBefore.iNextBombTick &&
+                board.iNextHammerTick == boardBefore.iNextHammerTick;
+            if (run.State.ePhase != KOUKUSAYDON_RAID_PHASE::COMBAT || !playing || !playing->iCurrentHp) break;
+            if (playing->strPatternId != nextPattern->strPatternId) continue;
+            nextPlaying = run.bEntryRunning && run.State.iFlowEntryIndex == 1u &&
+                run.State.strFlowEntryId == bingo->Entries[1u].strEntryId &&
+                playing->iNetEntityId == bingoBossId && playing->iPatternSequence > openingSequence;
+            nextStagePlaying = nextPlaying && playing->iPatternStageIndex == 1u &&
+                playing->strActionId == nextPattern->Stages[1u].strActionId &&
+                playing->iPatternStageDurationMs == nextPattern->Stages[1u].iDurationMs &&
+                playing->iPatternStageFirstEvaluationTick == room->m_iServerTick;
+        }
+        tests.Require(nextPlaying && nextStagePlaying,
+            "Real ticks complete the Bingo board opener, enter the next saved flow and advance its actual boss animation stage");
+        tests.Require(boardPreserved && run.State.iRunEpoch == epoch,
+            "Bingo flow and stage changes preserve the same encounter-owned board and its original bomb/hammer schedule");
+        if (!openingPlaying || !nextStagePlaying || !boardPreserved)
+            std::cout << "[LEGACY BINGO PLAY] players=" << count << " tick=" << room->m_iServerTick
+                << " flow=" << run.State.strFlowEntryId << " pattern=" << (playing ? playing->strPatternId : "missing")
+                << " reason=" << run.State.strReason << " status=" << room->m_strStatus << '\n';
+        // Kill the actual owner on the real fixed tick in both pinned and standalone F1 paths.
+        const auto verifyEnding = [&](const bool standalone) {
+            if (standalone)
+            {
+                room->Stop_KoukuRaid("Standalone final clear fixture");
+                for (auto& [id, player] : room->m_Players)
+                { player.iCurrentHp = player.iMaximumHp; player.eAction = PLAYER_ACTION_STATE::NONE; }
+                C2S_SPAWN_WORLD_ENTITY spawn;
+                spawn.strPlacementId = "boss.kakulsaydon.bingo.saydon";
+                room->Handle_SpawnWorldEntity(501u, spawn);
+                tests.Require(!(room->m_GateProgress.iClearedMask & 8u) &&
+                    std::any_of(room->m_WorldEntities.begin(), room->m_WorldEntities.end(), [&](const auto& entity) {
+                        return entity.strPlacementId == spawn.strPlacementId; }),
+                    "Standalone F1 Bingo creates the authored boss and resets its previous gate clear before final-clear admission");
+            }
+            auto endingBoss = std::find_if(room->m_WorldEntities.begin(), room->m_WorldEntities.end(), [](const auto& row) {
+                return row.strPlacementId == "boss.kakulsaydon.bingo.saydon"; });
+            tests.Require(endingBoss != room->m_WorldEntities.end() && endingBoss->iMaximumHealthBars == 77u,
+                "The real published Bingo boss spawns with exactly seventy-seven health bars");
+            if (endingBoss == room->m_WorldEntities.end()) return;
+            for (const auto& session : sessions) { session->m_OutboundFrames.clear(); session->m_iQueuedOutboundBytes = 0u; }
+            struct ENDING_DELIVERY
+            {
+                bool sawEnding = false, sawClear = false, correctOrder = true;
+                unsigned results = 0u, clearTick = 0u, mvpTick = 0u;
+            };
+            std::vector<ENDING_DELIVERY> deliveries(sessions.size());
+            // The sender drains between simulation ticks in production. Observe decoded
+            // deliveries at each tick instead of treating its queue as a packet history.
+            const auto endingTick = [&] {
+                room->Tick(1.f / 30.f);
+                for (std::size_t i = 0u; i < sessions.size(); ++i)
+                {
+                    const auto& session = sessions[i]; auto& delivery = deliveries[i];
+                    for (const auto& frame : session->m_OutboundFrames)
+                    {
+                        CPacketReader reader(std::span<const std::uint8_t>(frame.Bytes).subspan(PACKET_HEADER_BYTES));
+                        if (frame.ePacketType == PACKET_TYPE::S2C_KOUKUSAYDON_RAID_STATE)
+                        {
+                            S2C_KOUKUSAYDON_RAID_STATE state;
+                            const bool decoded = Read_Message(reader, state);
+                            delivery.correctOrder &= decoded;
+                            if (decoded && state.ePhase == KOUKUSAYDON_RAID_PHASE::CINEMATIC &&
+                                state.strSequencePatternId == "KAKULSAYDON_G1_PATTERN_9") delivery.sawEnding = true;
+                        }
+                        else if (frame.ePacketType == PACKET_TYPE::S2C_GATE_PROGRESS_STATE)
+                        {
+                            S2C_GATE_PROGRESS_STATE state;
+                            const bool decoded = Read_Message(reader, state);
+                            delivery.correctOrder &= decoded;
+                            if (decoded && (state.iClearedMask & 8u))
+                            {
+                                delivery.correctOrder &= delivery.sawEnding; delivery.sawClear = true;
+                                delivery.clearTick = room->m_iServerTick;
+                            }
+                        }
+                        else if (frame.ePacketType == PACKET_TYPE::S2C_RAID_MVP_RESULT)
+                        {
+                            S2C_RAID_MVP_RESULT result; ++delivery.results;
+                            delivery.correctOrder &= delivery.sawEnding && delivery.sawClear && Read_Message(reader, result) &&
+                                result.iGate == 4u && result.Participants.size() == count;
+                            delivery.mvpTick = room->m_iServerTick;
+                        }
+                    }
+                    session->m_OutboundFrames.clear(); session->m_iQueuedOutboundBytes = 0u;
+                }
+            };
+            const auto noMvp = [&] { return std::all_of(deliveries.begin(), deliveries.end(),
+                [](const auto& delivery) { return delivery.results == 0u; }); };
+            endingBoss->iCurrentHp = 0u; endingBoss->eAction = SERVER_ENTITY_ACTION::DEAD;
+            endingTick();
+            tests.Require(room->Is_Ready() && !(room->m_GateProgress.iClearedMask & 8u) && noMvp(),
+                "Actual Bingo death cannot publish a clear or MVP before its final cinematic");
+            if (standalone)
+            {
+                tests.Require(run.State.ePhase == KOUKUSAYDON_RAID_PHASE::PREPARING && run.bClearedBossPreparation &&
+                    run.State.strSequencePatternId == "KAKULSAYDON_G1_PATTERN_9" && room->Is_KoukuRaidInputBlocked(),
+                    "Standalone Bingo death reuses pinned shared resource preparation for its original ending");
+                if (run.State.ePhase != KOUKUSAYDON_RAID_PHASE::PREPARING) return;
+                auto endingReady = run.Request; endingReady.eOperation = KOUKUSAYDON_RAID_OPERATION::READY;
+                endingReady.iExpectedRunEpoch = run.State.iRunEpoch; ++endingReady.iRequestSequence;
+                for (unsigned id = 1u; id <= count; ++id)
+                {
+                    std::string reason;
+                    tests.Require(room->Apply_KoukuRaidReadiness(500u + id, endingReady, reason),
+                        "Every standalone Bingo participant acknowledges the pinned final sequence resources");
+                    if (id < count)
+                    {
+                        endingTick();
+                        tests.Require(run.State.ePhase == KOUKUSAYDON_RAID_PHASE::PREPARING && noMvp(),
+                            "Partial readiness cannot skip the standalone Bingo ending or publish MVP");
+                    }
+                }
+                endingTick();
+            }
+            const auto* finalGate = run.pCatalog ? run.pCatalog->Find_KoukuRaidGate("BINGO") : nullptr;
+            tests.Require(finalGate && run.State.ePhase == KOUKUSAYDON_RAID_PHASE::CINEMATIC && run.bClearCinematic &&
+                run.State.strSequencePatternId == "KAKULSAYDON_G1_PATTERN_9" && room->Is_KoukuRaidInputBlocked() &&
+                !run.bEntryRunning && !room->m_KoukuBingoDuration.iOwnerId && noMvp(),
+                "The next safe fixed tick starts only the original Bingo ending and retires combat and board timers");
+            if (!finalGate || run.State.ePhase != KOUKUSAYDON_RAID_PHASE::CINEMATIC) return;
+            const auto finalEnd = run.State.iEndTick;
+            tests.Require(finalEnd == run.State.iStartTick + CKoukuSaydonLogicRuntime::Ticks_FromMs(finalGate->iClearDurationMs),
+                "Bingo final clear waits for the complete pinned Sequence and sound-tail duration");
+            room->m_iServerTick = finalEnd - 2u; endingTick();
+            tests.Require(run.State.ePhase == KOUKUSAYDON_RAID_PHASE::CINEMATIC &&
+                !(room->m_GateProgress.iClearedMask & 8u) && noMvp(),
+                "The penultimate ending tick still has no gate-clear or MVP publication");
+            endingTick();
+            tests.Require(run.State.ePhase == KOUKUSAYDON_RAID_PHASE::WAIT_GATE && run.State.strSequencePatternId.empty() &&
+                (room->m_GateProgress.iClearedMask & 8u) && !run.bEntryRunning,
+                "The exact ending completion tick commits final gate clear without restarting Bingo combat");
+            endingTick();
+            for (const auto& delivery : deliveries)
+                tests.Require(delivery.correctOrder && delivery.sawEnding && delivery.sawClear && delivery.results == 1u &&
+                    delivery.clearTick == finalEnd && delivery.mvpTick == finalEnd,
+                    "Each participant receives final Sequence then gate clear then exactly one roster MVP on the ending completion tick");
+        };
+        verifyEnding(false);
+        verifyEnding(true);
+
     }
     for (unsigned count = 1; count <= 4; ++count)
     {
@@ -876,9 +1231,11 @@ void CServerGameplayContractRunner::Run_KoukuRaidIntegration(TESTS& tests)
         const BOSS_PATTERN_MECHANIC_TRIGGER* formation = nullptr;
         if (phase) for (const auto& trigger : phase->MechanicTriggers)
             if (trigger.eKind == BOSS_PATTERN_MECHANIC_TRIGGER_KIND::MARIO_PHASE2_PLAYERS) formation = &trigger;
-        tests.Require(formation && std::abs(formation->fTeleportX + 7.07f) < .02f &&
-            std::abs(formation->fTeleportY - 1.32f) < .02f && std::abs(formation->fTeleportZ - 934.43f) < .02f,
-            "Phase 2 uses the saved Iron Maiden effect anchor as its formation and return point");
+        SERVER_NAV_POINT cageGround{};
+        tests.Require(formation && std::isfinite(formation->fTeleportY) &&
+            room->m_ServerNavigation.Sample_Position(formation->fTeleportX, formation->fTeleportZ, cageGround) &&
+            std::abs(cageGround.y - formation->fTeleportY) <= 1.f,
+            "Phase 2 resolves the published typed Iron Maiden anchor on valid navigation for formation and return");
         if (!formation) continue;
         SERVER_WORLD_ENTITY boss;
         boss.iNetEntityId = 90u; boss.iPatternSequence = 7u; boss.iPatternStartTick = 100u;
@@ -1019,6 +1376,7 @@ void CServerGameplayContractRunner::Run_KoukuRaidIntegration(TESTS& tests)
         {
             auto& player = room->m_Players[id]; player.iPlayerId = id; player.iSessionId = 500u + id;
             player.iNetEntityId = 100u + id; player.iCurrentHp = player.iMaximumHp = 100u; player.eCharacterClass = CHARACTER_CLASS_ID::LANCE_MASTER;
+            player.strNickName = "Raid-" + std::to_string(id);
             player.isCombatReady = true; player.fPositionX = 10.f + id; player.fPositionZ = -60.f;
             room->m_PlayerIdBySessionId[player.iSessionId] = id;
             auto connection = std::make_shared<CClientSession>(player.iSessionId, INVALID_SOCKET,
@@ -1124,7 +1482,7 @@ void CServerGameplayContractRunner::Run_KoukuRaidIntegration(TESTS& tests)
                     "Elapsed time cannot start Gate 3 combat without the entry button vote");
                 const auto firstX = room->m_Players.at(1u).fPositionX;
                 room->m_Players.at(count).bPatternBound = true;
-                tests.Require(!room->Enter_KoukuRaidCombat(3u) && room->m_Players.at(1u).fPositionX == firstX &&
+                tests.Require(!room->Enter_KoukuRaidCombat(3u, room->m_iServerTick) && room->m_Players.at(1u).fPositionX == firstX &&
                     run.State.ePhase == KOUKUSAYDON_RAID_PHASE::WAIT_ENTRY && !run.bEntryRunning,
                     "A rejected participant keeps the entire arrival formation and flow unchanged");
                 room->m_Players.at(count).bPatternBound = false;
@@ -1133,7 +1491,7 @@ void CServerGameplayContractRunner::Run_KoukuRaidIntegration(TESTS& tests)
                 const auto beforeAdmissionGate = room->m_GateProgress;
                 const auto gameplayPin = run.State.PinnedGameplayRevision;
                 run.State.PinnedGameplayRevision = {};
-                tests.Require(!room->Enter_KoukuRaidCombat(3u) && run.State.ePhase == KOUKUSAYDON_RAID_PHASE::WAIT_ENTRY &&
+                tests.Require(!room->Enter_KoukuRaidCombat(3u, room->m_iServerTick) && run.State.ePhase == KOUKUSAYDON_RAID_PHASE::WAIT_ENTRY &&
                     room->m_WorldEntities.size() == beforeAdmissionEntities && room->m_GateProgress.iCurrentGate == beforeAdmissionGate.iCurrentGate &&
                     room->m_GateProgress.iClearedMask == beforeAdmissionGate.iClearedMask,
                     "Rejected first-flow admission preserves Gate 3 arrival state before any actor or GateProgress commit");
@@ -1161,6 +1519,8 @@ void CServerGameplayContractRunner::Run_KoukuRaidIntegration(TESTS& tests)
             }
             if (run.State.ePhase != KOUKUSAYDON_RAID_PHASE::COMBAT)
                 std::cout << "[RAID STATUS] " << gateId << ": " << run.State.strReason << '\n';
+            finishEntryIdle(*room);
+            end = room->m_iServerTick;
             tests.Require(run.State.ePhase == KOUKUSAYDON_RAID_PHASE::COMBAT && run.bEntryRunning,
                 "Sequence completion starts the saved Server pattern flow");
             if (run.State.ePhase != KOUKUSAYDON_RAID_PHASE::COMBAT) break;
@@ -1180,6 +1540,8 @@ void CServerGameplayContractRunner::Run_KoukuRaidIntegration(TESTS& tests)
                     run.State.strSequencePatternId == gate->strIntroPatternId && room->m_Players.at(1u).iCurrentHp == 100u,
                     "An approved restart revives participants and replays the same gate intro before combat");
                 end = run.State.iEndTick; room->m_iServerTick = end; room->Update_KoukuRaid(end);
+                finishEntryIdle(*room);
+                end = room->m_iServerTick;
                 tests.Require(run.State.ePhase == KOUKUSAYDON_RAID_PHASE::COMBAT && run.bEntryRunning,
                     "Restarted intro resumes the first authored flow entry");
             }
@@ -1196,7 +1558,25 @@ void CServerGameplayContractRunner::Run_KoukuRaidIntegration(TESTS& tests)
                 tests.Require(run.State.ePhase == KOUKUSAYDON_RAID_PHASE::COMBAT && !(room->m_GateProgress.iClearedMask & 2u),
                     "Gate 2 supporting actor cannot clear the pinned primary boss encounter");
             }
+            for (const auto& session : sessions)
+            { session->m_OutboundFrames.clear(); session->m_iQueuedOutboundBytes = 0u; }
             dead.iCurrentHp = 0u; room->Notify_KoukuRaidBossDeath(dead, end + 2u);
+            for (const auto& session : sessions)
+            {
+                unsigned resultCount = 0u; bool actualRoster = false;
+                for (const auto& frame : session->m_OutboundFrames)
+                {
+                    if (frame.ePacketType != PACKET_TYPE::S2C_RAID_MVP_RESULT) continue;
+                    ++resultCount; S2C_RAID_MVP_RESULT result;
+                    CPacketReader reader(std::span<const std::uint8_t>(frame.Bytes).subspan(PACKET_HEADER_BYTES));
+                    actualRoster = Read_Message(reader, result) && result.iGate == room->m_GateProgress.iCurrentGate &&
+                        result.Participants.size() == count && std::all_of(result.Participants.begin(), result.Participants.end(),
+                            [&](const auto& row) { return room->m_Players.contains(row.iPlayerId) &&
+                                row.iNetEntityId == room->m_Players.at(row.iPlayerId).iNetEntityId && !row.iDamage; });
+                }
+                tests.Require(std::string(gateId) == "GATE3" ? resultCount == 0u : resultCount == 1u && actualRoster,
+                    "Immediate Gate 1/2 clear sends the actual zero-damage roster MVP once; Gate 3 false clear sends none");
+            }
             const auto currentGate = room->m_GateProgress.iCurrentGate;
             tests.Require(run.State.ePhase == KOUKUSAYDON_RAID_PHASE::WAIT_GATE &&
                 (room->m_GateProgress.iClearedMask & (1u << (currentGate - 1u))),
@@ -1208,7 +1588,7 @@ void CServerGameplayContractRunner::Run_KoukuRaidIntegration(TESTS& tests)
                     run.State.iEndTick == end + 152u && room->Is_KoukuRaidInputBlocked(),
                     "Gate 3 false clear reserves exactly five Server seconds and blocks gameplay");
                 propose(GATE_PROGRESS_KIND::ADVANCE);
-                tests.Require(!room->m_GateProgress.iProposalId && !room->Enter_KoukuRaidCombat(4u),
+                tests.Require(!room->m_GateProgress.iProposalId && !room->Enter_KoukuRaidCombat(4u, room->m_iServerTick),
                     "A vote or direct entry cannot bypass the pending encore");
                 continue;
             }
@@ -1270,7 +1650,7 @@ void CServerGameplayContractRunner::Run_KoukuRaidIntegration(TESTS& tests)
             CPacketWriter encoreWriter;
             tests.Require(Write_Message(encoreWriter, run.State), "Encore intro is valid on the Shared wire");
             room->m_iServerTick = run.State.iEndTick - 1u; room->Update_KoukuRaid(room->m_iServerTick);
-            tests.Require(!room->Enter_KoukuRaidCombat(4u) && run.State.ePhase == KOUKUSAYDON_RAID_PHASE::CINEMATIC,
+            tests.Require(!room->Enter_KoukuRaidCombat(4u, room->m_iServerTick) && run.State.ePhase == KOUKUSAYDON_RAID_PHASE::CINEMATIC,
                 "Bingo combat cannot cut the encore short by one tick");
             room->m_iServerTick = run.State.iEndTick;
             const auto originalPlayers = room->m_Players;
@@ -1278,7 +1658,7 @@ void CServerGameplayContractRunner::Run_KoukuRaidIntegration(TESTS& tests)
             const auto originalGate = room->m_GateProgress;
             const auto gameplayPin = run.State.PinnedGameplayRevision;
             run.State.PinnedGameplayRevision = {};
-            tests.Require(!room->Enter_KoukuRaidCombat(4u) && run.State.strGateId == "BINGO" &&
+            tests.Require(!room->Enter_KoukuRaidCombat(4u, room->m_iServerTick) && run.State.strGateId == "BINGO" &&
                 run.State.ePhase == KOUKUSAYDON_RAID_PHASE::CINEMATIC && room->m_WorldEntities.size() == originalWorldCount &&
                 room->m_GateProgress.iCurrentGate == originalGate.iCurrentGate && room->m_GateProgress.iClearedMask == originalGate.iClearedMask,
                 "Rejected Bingo audition admission preserves old actors, gate progress and the cleared flow");
@@ -1296,7 +1676,7 @@ void CServerGameplayContractRunner::Run_KoukuRaidIntegration(TESTS& tests)
             std::string supportStatus;
             tests.Require(room->m_ServerNavigation.Set_RuntimeSupportSurfaces(blockedSupport, supportStatus),
                 "Bingo rejection fixture stages an incompatible destination deck");
-            tests.Require(!room->Enter_KoukuRaidCombat(4u) && run.State.strGateId == "BINGO" &&
+            tests.Require(!room->Enter_KoukuRaidCombat(4u, room->m_iServerTick) && run.State.strGateId == "BINGO" &&
                 run.State.ePhase == KOUKUSAYDON_RAID_PHASE::CINEMATIC && room->m_WorldEntities.size() == originalWorldCount,
                 "Rejected Bingo navigation preserves the cleared gate, flow and existing world");
             for (const auto& [id, player] : room->m_Players)
@@ -1311,6 +1691,7 @@ void CServerGameplayContractRunner::Run_KoukuRaidIntegration(TESTS& tests)
             room->m_Players.at(count).iCurrentHp = 0u;
             room->m_Players.at(count).eAction = PLAYER_ACTION_STATE::DEAD;
             room->Update_KoukuRaid(room->m_iServerTick);
+            finishEntryIdle(*room);
             tests.Require(run.State.strGateId == "BINGO" && run.State.ePhase == KOUKUSAYDON_RAID_PHASE::COMBAT &&
                 run.bEntryRunning && room->m_GateProgress.iCurrentGate == 4u && !room->Is_KoukuRaidInputBlocked(),
                 "Encore completion revives the full roster and starts the saved Bingo combat flow");
@@ -1328,6 +1709,7 @@ void CServerGameplayContractRunner::Run_KoukuRaidIntegration(TESTS& tests)
             room->m_Players.at(count).eAction = PLAYER_ACTION_STATE::DEAD;
             propose(GATE_PROGRESS_KIND::RESTART);
             for (unsigned id = 2u; id <= count; ++id) respond(id, true);
+            finishEntryIdle(*room);
             tests.Require(run.State.strGateId == "BINGO" && run.State.ePhase == KOUKUSAYDON_RAID_PHASE::COMBAT &&
                 run.State.iFlowEntryIndex == 0u && run.bEntryRunning && room->m_Players.at(count).iCurrentHp == 100u,
                 "Bingo restart revives the roster and ignores its soon-despawned boss blocking the original spawn");
@@ -1349,6 +1731,7 @@ void CServerGameplayContractRunner::Run_KoukuRaidIntegration(TESTS& tests)
             bingoReady.eOperation = KOUKUSAYDON_RAID_OPERATION::READY; bingoReady.iExpectedRunEpoch = run.State.iRunEpoch;
             for (unsigned id = 1u; id <= count; ++id) room->Handle_KoukuRaidRequest(500u + id, bingoReady);
             ++room->m_iServerTick; room->Update_KoukuRaid(room->m_iServerTick);
+            finishEntryIdle(*room);
             tests.Require(run.State.strGateId == "BINGO" && run.State.ePhase == KOUKUSAYDON_RAID_PHASE::COMBAT &&
                 run.bEntryRunning, "Standalone Bingo READY starts the same saved combat loop without a cinematic phase");
             if (!bingo->strClearPatternId.empty())
@@ -1450,7 +1833,7 @@ int CServerGameplayContractRunner::Run_KoukuDiceDamageContracts()
             trigger.fProjectileContactRadiusM = 1.f; trigger.iProjectileLifetimeMs = 1000u;
             trigger.iProjectileCountPerWave = 1u; trigger.bProjectileHoming = true;
             ATTACK_HIT_TEMPLATE hit{}; hit.strHitId = "card.contact"; hit.strTrigger = hitKind;
-            hit.strShape = "CIRCLE"; hit.strDamageKind = "MAX_HP_PERCENT"; hit.iDamagePercent = 50u;
+            hit.strShape = "CIRCLE"; hit.strDamageKind = "MAX_HP_PERCENT"; hit.iDamagePercent = 90u;
             hit.fRadiusM = 1.; hit.iRepeatCount = 1u;
             if (hit.strTrigger == "CONTACT") hit.iEndMs = 1000u;
             else hit.iAtMs = 33u;
@@ -1466,7 +1849,7 @@ int CServerGameplayContractRunner::Run_KoukuDiceDamageContracts()
             room->m_CombatObjectRuntime.Update(room->m_Players, room->m_WorldEntities, catalog, .034f, 101u, events);
             bool correct = events.size() == 4u;
             for (const auto& [id, p] : room->m_Players) {
-                const auto expected = (id == symbol || id == 5u) ? p.iMaximumHp : p.iMaximumHp / 2u;
+                const auto expected = (id == symbol || id == 5u) ? p.iMaximumHp : p.iMaximumHp / 10u;
                 correct = correct && p.iCurrentHp == expected;
             }
             if (!correct) {
@@ -1476,11 +1859,47 @@ int CServerGameplayContractRunner::Run_KoukuDiceDamageContracts()
                 std::cout << '\n';
             }
             tests.Require(correct, hit.strTrigger == "CONTACT" ?
-                "Contact card: each of four suits ignores color, protects only matching players, and deals 50% maximum HP to different or unassigned suits including bound players" :
-                "Timed card: each of four suits uses the same per-player symbol immunity and exact 50% maximum HP without hitting distant players");
+                "Contact card: each of four suits ignores color, protects only matching players, and deals 90% maximum HP to different or unassigned suits including bound players" :
+                "Timed card: each of four suits uses the same per-player symbol immunity and exact 90% maximum HP without hitting distant players");
             const auto eventCount = events.size();
             room->m_CombatObjectRuntime.Update(room->m_Players, room->m_WorldEntities, catalog, .034f, 102u, events);
             tests.Require(events.size() == eventCount, "A completed card contact does not deal a duplicate hit on the next tick");
+        }
+        for (unsigned symbol = 1u; symbol <= 4u; ++symbol)
+        for (const bool matching : {false, true}) {
+            seedPlayers(MECHANIC_CARD_COLOR::BLACK); room->m_CombatObjectRuntime.Reset();
+            room->m_CombatObjectRuntime.Discard_PendingLifecycle();
+            for (auto& [id, player] : room->m_Players) player.fPositionX = player.fPositionZ = 10000.f;
+            auto& interceptor = room->m_Players.at(2u);
+            interceptor.fPositionX = interceptor.fPositionZ = 0.f;
+            interceptor.eMechanicCardSymbol = matching ? static_cast<MECHANIC_CARD_SYMBOL>(symbol) : MECHANIC_CARD_SYMBOL::NONE;
+            BOSS_PATTERN_MECHANIC_TRIGGER trigger{};
+            trigger.strTriggerId = "dice.interceptor"; trigger.eKind = BOSS_PATTERN_MECHANIC_TRIGGER_KIND::PURSUIT_PROJECTILES;
+            trigger.iDurationMs = 1000u; trigger.ProjectileVisualIds = {"test.card"};
+            trigger.ProjectileCardSymbols = {static_cast<MECHANIC_CARD_SYMBOL>(symbol)};
+            trigger.strContactVisualId = "test.card.burst"; trigger.fProjectileSpeedMps = 1.f;
+            trigger.fProjectileContactRadiusM = 1.f; trigger.iProjectileLifetimeMs = 1000u;
+            trigger.iProjectileCountPerWave = 1u; trigger.bProjectileHoming = true;
+            ATTACK_HIT_TEMPLATE hit{}; hit.strHitId = "card.intercept"; hit.strTrigger = "CONTACT";
+            hit.strShape = "CIRCLE"; hit.strDamageKind = "MAX_HP_PERCENT"; hit.iDamagePercent = 90u;
+            hit.fRadiusM = 1.; hit.iRepeatCount = 1u; hit.iEndMs = 1000u; trigger.ProjectileHits = {hit};
+            BOSS_PATTERN_DEFINITION pattern{}; pattern.strPatternId = boss.strPatternId; pattern.MechanicTriggers = {trigger};
+            KOUKUSAYDON_LOGIC_LEDGER ledger{}; CKoukuSaydonLogicRuntime::Build(pattern, boss, 150u, ledger);
+            room->Update_KoukuPlayerTargets(boss, pattern, ledger, catalog, 150u);
+            const auto& live = room->m_CombatObjectRuntime.Get_LiveObjects();
+            tests.Require(live.size() == 1u && live.front().iLockedTargetNetEntityId == 101u,
+                "Dice card keeps its designated steering target when a bound bystander intercepts");
+            std::vector<DAMAGE_EVENT> damage;
+            room->m_CombatObjectRuntime.Update(room->m_Players, room->m_WorldEntities, catalog, .034f, 151u, damage);
+            std::vector<S2C_COMBAT_OBJECT_SPAWNED> spawned;
+            std::vector<S2C_COMBAT_OBJECT_PRESENTATION_EVENT> pulses;
+            std::vector<S2C_COMBAT_OBJECT_DESPAWNED> retired;
+            room->m_CombatObjectRuntime.Drain_Lifecycle(spawned, pulses, retired);
+            std::erase_if(pulses, [&](const auto& event) { return event.strHitId != trigger.strContactVisualId; });
+            tests.Require(interceptor.iCurrentHp == (matching ? 2000u : 200u) &&
+                room->m_Players.at(1u).iCurrentHp == 1000u && damage.size() == (matching ? 0u : 1u) &&
+                pulses.size() == 1u && retired.size() == 1u && live.empty(),
+                "Every suit card terminates on a bound bystander: equal suit immune, other suit 90 percent HP, one contact burst");
         }
         // An ordinary pursuit with no card symbols remains an ordinary authored attack.
         seedPlayers(MECHANIC_CARD_COLOR::RED); room->m_CombatObjectRuntime.Reset();
@@ -1534,12 +1953,14 @@ int CServerGameplayContractRunner::Run_KoukuDiceDamageContracts()
             tests.Require(admitted, "Actual prepared Dice rows pass the native transactional draft parser");
             if (admitted) {
                 const auto* patterns = draft.Find_BossPatterns("ENCOUNTER_KAKULSAYDON_G1");
-                bool exact = false;
+                std::set<MECHANIC_CARD_SYMBOL> exact;
                 if (patterns) for (const auto& pattern : *patterns) if (pattern.strPatternId == "KAKULSAYDON_G1_PATTERN_78")
-                    for (const auto& trigger : pattern.MechanicTriggers) if (trigger.strTriggerId == "KAKULSAYDON_G1_PATTERN_78.logic.1")
-                        exact = trigger.ProjectileCardSymbols == std::vector<MECHANIC_CARD_SYMBOL>{MECHANIC_CARD_SYMBOL::HEART, MECHANIC_CARD_SYMBOL::SPADE, MECHANIC_CARD_SYMBOL::CLUB, MECHANIC_CARD_SYMBOL::DIAMOND} &&
-                            trigger.ProjectileHits.size() == 1u && trigger.ProjectileHits.front().iDamagePercent == 50u;
-                tests.Require(exact, "Native P78 parser retains the visual-slot symbols and 50% maximum-HP contact damage");
+                    for (const auto& trigger : pattern.MechanicTriggers)
+                        if (trigger.ProjectileCardSymbols.size() == 1u && trigger.ProjectileHits.size() == 1u &&
+                            trigger.ProjectileHits.front().iDamagePercent == 90u)
+                            exact.insert(trigger.ProjectileCardSymbols.front());
+                tests.Require(exact == std::set<MECHANIC_CARD_SYMBOL>{MECHANIC_CARD_SYMBOL::HEART, MECHANIC_CARD_SYMBOL::SPADE, MECHANIC_CARD_SYMBOL::CLUB, MECHANIC_CARD_SYMBOL::DIAMOND},
+                    "Native P78 parser retains all four authored suit cards and 90% maximum-HP contact damage");
             }
         }
         std::cout << "failures : " << tests.failures << '\n';

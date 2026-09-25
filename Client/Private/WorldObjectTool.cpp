@@ -577,8 +577,12 @@ void CWorldObjectTool::Open()
 
 bool CWorldObjectTool::Open_ObjectMotion(const std::string& objectId,
     const std::string& instanceId, std::string& status,
-    const std::optional<CWorldSequencePlayer::OBJECT_PLACEMENT>& previewPlacement)
+    const std::optional<CWorldSequencePlayer::OBJECT_PLACEMENT>& previewPlacement,
+    const std::string& patternId, const std::string& occurrenceId, const bool sequenceWorkspace, const bool explicitPlacement,
+    const bool focusAnimationClips)
 {
+    if (m_CompositionPlacementDirty)
+    { status = m_Status = "Save the edited World box position before opening another Object. Current edits preserved."; return false; }
     if (!m_Ready && !Load_Source()) { status = m_Status; return false; }
     const auto* resource = m_Document.Find_ObjectResource(objectId);
     if (!resource)
@@ -592,7 +596,12 @@ bool CWorldObjectTool::Open_ObjectMotion(const std::string& objectId,
     Open();
     Select_Object(objectId);
     if (!instanceId.empty()) Select_State(instanceId);
+    m_FocusAnimationClips = focusAnimationClips;
+    if (focusAnimationClips) { m_DetailOpen = true; m_SelectedBoxKind = 1; m_SelectedAnimationRow = 0; }
     m_CompositionPreviewPlacement = previewPlacement;
+    m_CompositionSavedPlacement = m_CompositionEditedPlacement = previewPlacement;
+    m_CompositionPatternId = patternId; m_CompositionOccurrenceId = occurrenceId;
+    m_CompositionSequenceWorkspace = sequenceWorkspace; m_CompositionExplicitPlacement = explicitPlacement;
     m_CompositionPreviewObjectId = previewPlacement ? objectId : std::string{};
     if (previewPlacement) m_PreviewAtCharacter = false;
     status = m_Status = instanceId.empty() ? "Opened Object settings. Save keeps edits." :
@@ -698,7 +707,12 @@ bool CWorldObjectTool::Save_Source(const bool publishRuntime)
     for (size_t index = 0; index < paths.size(); ++index)
     {
         std::error_code error;
-        if (!std::filesystem::exists(paths[index], error) && !error) continue;
+        if (!std::filesystem::exists(paths[index], error) && !error)
+        {
+            if (m_CompositionPlacementDirty && index == (m_CompositionSequenceWorkspace ? 1u : 0u))
+            { m_Status = "Edited World box source was removed. Current draft preserved."; cleanup(); return false; }
+            continue;
+        }
         LinkedAuthoringWrite write;
         write.path = paths[index];
         if (!ReadSource(write.path, write.before, m_Status)) { cleanup(); return false; }
@@ -706,6 +720,40 @@ bool CWorldObjectTool::Save_Source(const bool publishRuntime)
         if (!owner.Reload(m_Status)) { cleanup(); return false; }
         auto candidate = owner.Get_LastGood();
         bool references = false;
+        if (m_CompositionPlacementDirty && index == (m_CompositionSequenceWorkspace ? 1u : 0u))
+        {
+            auto pattern = std::find_if(candidate.Patterns.begin(), candidate.Patterns.end(),
+                [&](const auto& row) { return row.strPatternId == m_CompositionPatternId; });
+            if (pattern == candidate.Patterns.end() || !pattern->strLoadError.empty() ||
+                !m_CompositionSavedPlacement || !m_CompositionEditedPlacement)
+            { m_Status = "Edited World box owner is unavailable. Current sources and draft preserved."; cleanup(); return false; }
+            auto box = std::find_if(pattern->WorldOccurrences.begin(), pattern->WorldOccurrences.end(),
+                [&](const auto& row) { return row.strOccurrenceId == m_CompositionOccurrenceId; });
+            if (box == pattern->WorldOccurrences.end())
+            { m_Status = "Edited World box was removed. Current sources and draft preserved."; cleanup(); return false; }
+            const auto& before = m_CompositionSavedPlacement->position;
+            const auto& desired = m_CompositionEditedPlacement->position;
+            auto placement = box->Placement.value_or(KOUKU_SAYDON_WORLD_PLACEMENT{});
+            if (!box->Placement && m_CompositionExplicitPlacement)
+            { m_Status = "Edited World box placement was removed on disk. Current sources and draft preserved."; cleanup(); return false; }
+            if (!box->Placement)
+            {
+                const auto& saved = *m_CompositionSavedPlacement;
+                placement.Position = {saved.position.x, saved.position.y, saved.position.z};
+                placement.RotationDegrees = {saved.rotationDegrees.x, saved.rotationDegrees.y, saved.rotationDegrees.z};
+                placement.Scale = {saved.scale.x, saved.scale.y, saved.scale.z};
+            }
+            const std::array<float, 3> old{before.x, before.y, before.z}, next{desired.x, desired.y, desired.z};
+            for (size_t axis = 0; axis < 3u; ++axis)
+            {
+                if (old[axis] == next[axis]) continue;
+                if (static_cast<float>(placement.Position[axis]) != old[axis] && static_cast<float>(placement.Position[axis]) != next[axis])
+                { m_Status = "World box position changed on disk. Current sources and draft preserved."; cleanup(); return false; }
+                placement.Position[axis] = next[axis];
+            }
+            box->Placement = placement;
+            references = true;
+        }
         if (!SynchronizeEmissionReferences(candidate, m_SavedDocument, verified,
             m_EmissionOrigins, m_EditedMotionIds, references, m_Status)) { cleanup(); return false; }
         linked = linked || references;
@@ -741,6 +789,8 @@ bool CWorldObjectTool::Save_Source(const bool publishRuntime)
     cleanup();
     m_SourceBytes = std::move(stagedBytes); m_Document = std::move(verified);
     m_SavedDocument = m_Document; m_Dirty = false; ++m_SavedGeneration;
+    if (m_CompositionPlacementDirty) m_CompositionExplicitPlacement = true;
+    m_CompositionSavedPlacement = m_CompositionEditedPlacement; m_CompositionPlacementDirty = false;
     m_EmissionOrigins.clear(); m_EditedMotionIds.clear();
     m_PristinePatternId.clear();
     m_LinkedSavePending = m_LinkedSavePending || (linked && publishRuntime);
@@ -1174,6 +1224,55 @@ void CWorldObjectTool::Render_QuickTransformTuning(const std::string& objectId, 
     ImGui::PopID();
 }
 
+
+void CWorldObjectTool::Render_BingoSizeTuning()
+{
+    if (!m_Ready && !Load_Source()) { ImGui::TextWrapped("%s", m_Status.c_str()); return; }
+    const auto* bomb = m_Document.Find_ObjectResource("world.object.kouku.bingo_bomb.original");
+    const auto* hammer = m_Document.Find_ObjectResource("world.object.kouku.bingo_hammer");
+    if (!bomb || !hammer) { ImGui::TextDisabled("Bingo Object settings are unavailable."); return; }
+    float bombSize = bomb->scale.x, hammerSize = hammer->scale.x;
+    ImGui::PushID("BingoSizes");
+    ImGui::BeginDisabled(m_PublishProcess != nullptr);
+    bool changed = ImGui::DragFloat("Bomb Size", &bombSize, .05f, .1f, 50.f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
+    changed |= ImGui::DragFloat("Hammer Size", &hammerSize, .05f, .05f, 50.f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
+    if (changed && std::isfinite(bombSize) && std::isfinite(hammerSize) &&
+        bombSize >= .1f && hammerSize >= .05f && bombSize <= 50.f && hammerSize <= 50.f)
+    {
+        auto candidate = m_Document;
+        candidate.Find_ObjectResource(bomb->objectId)->scale = {bombSize, bombSize, bombSize};
+        candidate.Find_ObjectResource(hammer->objectId)->scale = {hammerSize, hammerSize, hammerSize};
+        // Board warnings keep their authored world footprint and height when the prop grows.
+        for (auto& sequence : candidate.Get_Templates())
+            if (sequence.sequenceId.starts_with("sequence.kouku.bingo.hammer."))
+                for (auto& effect : sequence.effectTracks)
+                    if (effect.effectTrackId.starts_with("effect.bingo.hammer.warning.original."))
+                    {
+                        const float3_t ratio{hammer->scale.x / hammerSize, hammer->scale.y / hammerSize, hammer->scale.z / hammerSize};
+                        XMStoreFloat3(&effect.positionOffset, XMLoadFloat3(&effect.positionOffset) * XMLoadFloat3(&ratio));
+                        XMStoreFloat3(&effect.scale, XMLoadFloat3(&effect.scale) * XMLoadFloat3(&ratio));
+                    }
+        std::string status;
+        if (candidate.Validate(m_MapTargets, m_DeployTargets, status))
+        {
+            m_Document = std::move(candidate);
+            m_Document.Touch(); m_Dirty = true;
+            m_EffectPreviewDocument.reset(); m_PendingEffectPreviewDocument.reset();
+            m_PreviewPreparationPending = false; m_PlayAfterPreparation = m_Playing;
+            m_PristinePatternId.clear(); m_PreviewDirty = m_PreviewActive;
+        }
+        else m_Status = "Bingo sizes refused: " + status + ". Existing draft preserved.";
+    }
+    if (ImGui::Button("Save")) Save_Source();
+    ImGui::SameLine();
+    if (ImGui::Button("Reload Saved") && !m_Dirty) Load_Source();
+    if (ImGui::IsItemHovered() && m_Dirty) ImGui::SetTooltip("Save pending Object edits before reloading.");
+    ImGui::TextDisabled("Visual sizes. Bomb hits stay on five cells; hammer warning and hit area stay fixed.");
+    ImGui::TextDisabled("Save includes pending World Object edits and applies them for the next play.");
+    ImGui::EndDisabled();
+    Render_SaveStatus();
+    ImGui::PopID();
+}
 
 void CWorldObjectTool::Update(const f32_t seconds, const bool_t active)
 {
@@ -2652,6 +2751,74 @@ bool CWorldObjectTool::Duplicate_TimelineBox(WORLD_SEQUENCE_TEMPLATE& sequence, 
     return true;
 }
 
+bool CWorldObjectTool::Apply_AnimationEdit(WORLD_SEQUENCE_TEMPLATE& sequence, const size_t index,
+    const WORLD_SEQUENCE_ANIMATION_TRACK& edited, const uint32_t endMs)
+{
+    if (index >= sequence.animationTracks.size() || endMs <= edited.startMs) return false;
+    auto candidate = m_Document;
+    auto* staged = candidate.Find_Template(sequence.sequenceId);
+    const auto original = staged->animationTracks[index];
+    size_t nextIndex = staged->animationTracks.size();
+    for (size_t i = 0; i < staged->animationTracks.size(); ++i)
+        if (i != index && staged->animationTracks[i].slotId == original.slotId &&
+            staged->animationTracks[i].startMs > original.startMs &&
+            (nextIndex == staged->animationTracks.size() || staged->animationTracks[i].startMs < staged->animationTracks[nextIndex].startMs)) nextIndex = i;
+    staged->animationTracks[index] = edited;
+    if (nextIndex < staged->animationTracks.size()) staged->animationTracks[nextIndex].startMs = endMs;
+    else if (endMs != staged->durationMs)
+    {
+        uint32_t required = 0u;
+        if (endMs < staged->durationMs && !Animation_EndMs(*staged, true, required)) return false;
+        if (!candidate.Resize_TimelineDuration(sequence.sequenceId, endMs, required, m_MapTargets, m_DeployTargets, m_Status)) return false;
+        staged = candidate.Find_Template(sequence.sequenceId);
+    }
+    std::string status;
+    if (!candidate.Validate(m_MapTargets, m_DeployTargets, status))
+    { m_Status = "Animation edit refused: " + status + ". Existing draft preserved."; return false; }
+    // The surrounding Detail pane holds this template reference.
+    sequence = std::move(*staged);
+    Mark_Dirty();
+    return true;
+}
+
+bool CWorldObjectTool::Split_AnimationAtCursor(WORLD_SEQUENCE_TEMPLATE& sequence, const size_t index)
+{
+    if (index >= sequence.animationTracks.size()) return false;
+    Refresh_AnimationResources();
+    const auto& current = sequence.animationTracks[index];
+    const auto native = std::find_if(m_AnimationResources.begin(), m_AnimationResources.end(),
+        [&](const auto& row) { return row.clipName == current.clipName; });
+    if (!m_AnimationCatalogReady || native == m_AnimationResources.end() || current.loop)
+    { m_Status = "Split requires an available native clip with Range Loop off. The draft is unchanged."; return false; }
+    const auto* instance = m_Document.Find_Instance(m_SelectedInstance);
+    const double cursor = instance ? (double(m_ClockMs) - instance->startDelayMs) * instance->playbackSpeed : -1.;
+    uint32_t end = sequence.durationMs;
+    for (const auto& next : sequence.animationTracks)
+        if (next.slotId == current.slotId && next.startMs > current.startMs) end = (std::min)(end, next.startMs);
+    if (!std::isfinite(cursor) || cursor <= current.startMs || cursor >= end)
+    { m_Status = "Place the playhead inside the selected animation box before splitting."; return false; }
+    const uint32_t cut = static_cast<uint32_t>(std::lround(cursor));
+    const double sourceEnd = current.sourceEndMs ? (std::min)(double(current.sourceEndMs), native->durationMs) : native->durationMs;
+    const double source = current.sourceStartMs + (double(cut) - current.startMs) * current.playbackRate;
+    const uint32_t sourceCut = static_cast<uint32_t>(std::lround(source));
+    if (cut <= current.startMs || cut >= end || sourceCut <= current.sourceStartMs || sourceCut >= sourceEnd)
+    { m_Status = "The playhead must be inside moving source frames, before the held last pose."; return false; }
+    auto candidate = m_Document;
+    auto* staged = candidate.Find_Template(sequence.sequenceId);
+    auto second = staged->animationTracks[index];
+    second.startMs = cut; second.sourceStartMs = sourceCut;
+    staged->animationTracks[index].sourceEndMs = sourceCut;
+    staged->animationTracks.insert(staged->animationTracks.begin() + index + 1u, std::move(second));
+    std::string status;
+    if (!candidate.Validate(m_MapTargets, m_DeployTargets, status))
+    { m_Status = "Split refused: " + status + ". Existing draft preserved."; return false; }
+    sequence = std::move(*staged);
+    m_SelectedBoxKind = 1; m_SelectedAnimationRow = index + 1u;
+    Mark_Dirty();
+    m_Status = "Split at the playhead. Source frames remain consecutive; other tracks keep their timing.";
+    return true;
+}
+
 void CWorldObjectTool::Refresh_AnimationResources()
 {
     const auto* resource = m_Document.Find_ObjectResource(m_SelectedObject);
@@ -2897,7 +3064,7 @@ void CWorldObjectTool::Use_AuthoredMapPreview()
 
 bool CWorldObjectTool::Render_MapAnchor(const WORLD_SEQUENCE_OBJECT_RESOURCE& resource)
 {
-    if (!resource.sequenceInstanceId.empty()) return false;
+    if (!resource.sequenceInstanceId.empty() || (m_CompositionPreviewPlacement && !m_CompositionOccurrenceId.empty())) return false;
     std::vector<std::string> ids;
     float3_t center{};
     for (const auto& id : StateIds(resource))
@@ -3269,7 +3436,15 @@ void CWorldObjectTool::Render_Detail()
     {
         const bool worldAnchor = instance->anchorKind == "WORLD";
         ImGui::TextDisabled("Creation Anchor: %s", instance->anchorKind == "BOSS" ? "Boss / BODY Bone" : instance->anchorKind == "PLAYER" ? "Character" : "Map");
-        const bool positionEdited = ImGui::DragFloat3(instance->anchorKind == "BOSS" ? "Bone Offset" : instance->anchorKind == "PLAYER" ? "Character Offset" : "Map Position", &instance->position.x, .01f);
+        const bool boxPlacement = worldAnchor && m_CompositionPreviewPlacement && !m_CompositionOccurrenceId.empty();
+        auto& editedPosition = boxPlacement ? m_CompositionPreviewPlacement->position : instance->position;
+        const auto commitBoxPosition = [&]() {
+            m_CompositionEditedPlacement = m_CompositionPreviewPlacement;
+            m_CompositionPlacementDirty = true; m_Dirty = true;
+            m_PreviewAtCharacter = false; m_PreviewDirty = m_PreviewActive; Seek(m_ClockMs);
+            m_Status = "World box position updated. Save preserves this occurrence; shared Motion positions remain unchanged.";
+        };
+        const bool positionEdited = ImGui::DragFloat3(instance->anchorKind == "BOSS" ? "Bone Offset" : instance->anchorKind == "PLAYER" ? "Character Offset" : boxPlacement ? "World Box Map Position" : "Map Position", &editedPosition.x, .01f);
         // A WORLD edit is committed below through Mark_Dirty/Seek; counting it in
         // `changed` as well would Mark_Dirty twice and restart the preview twice.
         if (!worldAnchor) changed |= positionEdited;
@@ -3291,9 +3466,8 @@ void CWorldObjectTool::Render_Detail()
             {
                 // An explicit Map edit chooses authored space over transient preview placement.
                 // Mark_Dirty/Seek do not replace m_Document, so instance/sequence stay valid below.
-                Use_AuthoredMapPreview();
-                Mark_Dirty();
-                Seek(m_ClockMs);
+                if (boxPlacement) commitBoxPosition();
+                else { Use_AuthoredMapPreview(); Mark_Dirty(); Seek(m_ClockMs); }
             }
         }
         if (ImGui::Button("Use Current Character Position"))
@@ -3301,8 +3475,11 @@ void CWorldObjectTool::Render_Detail()
             if (instance->anchorKind == "PLAYER" || instance->anchorKind == "BOSS") { instance->position = {}; changed = true; }
             else if (auto* level = CLevel_KakulSaydonArena::Get_Active())
             {
-                if (level->Try_Get_AuthoringPreviewPlacement(instance->position, m_Status))
-                { Use_AuthoredMapPreview(); Mark_Dirty(); Seek(m_ClockMs); }
+                if (level->Try_Get_AuthoringPreviewPlacement(editedPosition, m_Status))
+                {
+                    if (boxPlacement) commitBoxPosition();
+                    else { Use_AuthoredMapPreview(); Mark_Dirty(); Seek(m_ClockMs); }
+                }
             }
             else m_Status = "Player placement requires the active KoukuSaydon arena.";
         }
@@ -4187,7 +4364,10 @@ bool CWorldObjectTool::Animation_EndMs(const WORLD_SEQUENCE_TEMPLATE& sequence, 
         if (source == m_AnimationResources.end() || !std::isfinite(clip.playbackRate) || clip.playbackRate <= 0.f ||
             clip.sourceStartMs > source->durationMs)
         { m_Status = "Cannot resize Stage: missing or invalid native Animation " + clip.clipName; return false; }
-        double nativeEnd = clip.startMs + (std::max)(1., std::ceil((source->durationMs - clip.sourceStartMs) / clip.playbackRate));
+        const double sourceEnd = clip.sourceEndMs ? (std::min)(double(clip.sourceEndMs), source->durationMs) : source->durationMs;
+        if (sourceEnd <= clip.sourceStartMs)
+        { m_Status = "Cannot resize Stage: empty native Animation range " + clip.clipName; return false; }
+        double nativeEnd = clip.startMs + (std::max)(1., std::ceil((sourceEnd - clip.sourceStartMs) / clip.playbackRate));
         // Earlier clips already end at the next authored clip, regardless of their natural duration.
         for (const auto& next : sequence.animationTracks)
             if (next.slotId == clip.slotId && next.startMs > clip.startMs) nativeEnd = (std::min)(nativeEnd, double(next.startMs));
@@ -4270,53 +4450,109 @@ void CWorldObjectTool::Render_KeyEditor(WORLD_SEQUENCE_TEMPLATE& sequence)
             ImGui::EndDisabled();
         }
     }
-    if (ImGui::CollapsingHeader("Animation Clips", ImGuiTreeNodeFlags_DefaultOpen))
+    if (m_FocusAnimationClips) ImGui::SetNextItemOpen(true, ImGuiCond_Always);
+    const bool showClips = ImGui::CollapsingHeader("Animation Clips", ImGuiTreeNodeFlags_DefaultOpen);
+    if (m_FocusAnimationClips) { ImGui::SetScrollHereY(0.f); m_FocusAnimationClips = false; }
+    if (showClips)
     {
-        ImGui::Text("%zu clips on this Motion", sequence.animationTracks.size());
         const auto* resource = m_Document.Find_ObjectResource(m_SelectedObject);
-        if (resource && !resource->sequenceInstanceId.empty())
-            ImGui::TextWrapped("These clips drive the existing placed actor. Save applies edits to every Sequence using this Motion. Removing a clip extends the previous clip; removing the first starts the next at 0 ms.");
+        if (m_AnimationObjectId != m_SelectedObject || (resource && m_AnimationModelAssetId != resource->modelAssetId))
+            Refresh_AnimationResources();
+        ImGui::Text("%zu clips on this Motion", sequence.animationTracks.size());
+        ImGui::TextWrapped("Choose a native clip, trim its Source In/Out, and repeat that range inside its timeline window.");
+        if (ImGui::SmallButton("Refresh Native Clips")) Refresh_AnimationResources();
+        if (!m_AnimationCatalogReady) ImGui::TextWrapped("%s", m_AnimationResourceStatus.c_str());
+        ImGui::InputTextWithHint("##ClipEditSearch", "Search native clip", m_AnimationSearch.data(), m_AnimationSearch.size());
+        const auto search = Lower(m_AnimationSearch.data());
         for (size_t index = 0; index < sequence.animationTracks.size(); ++index)
         {
-            auto& clip = sequence.animationTracks[index]; ImGui::PushID(static_cast<int>(index));
+            const auto original = sequence.animationTracks[index];
+            auto edited = original;
+            ImGui::PushID(static_cast<int>(index));
             uint32_t endMs = sequence.durationMs;
             for (const auto& next : sequence.animationTracks)
-                if (next.slotId == clip.slotId && next.startMs > clip.startMs) endMs = (std::min)(endMs, next.startMs);
+                if (next.slotId == original.slotId && next.startMs > original.startMs) endMs = (std::min)(endMs, next.startMs);
             ImGui::Separator();
-            const auto clipLabel = std::to_string(index + 1u) + ". " + clip.clipName;
-            if (ImGui::Selectable(clipLabel.c_str(), m_SelectedBoxKind == 1 && m_SelectedAnimationRow == index))
+            const auto label = std::to_string(index + 1u) + ". " + (original.displayName.empty() ? original.clipName : original.displayName);
+            if (ImGui::Selectable(label.c_str(), m_SelectedBoxKind == 1 && m_SelectedAnimationRow == index))
             { m_SelectedAnimationRow = index; m_SelectedBoxKind = 1; }
-            ImGui::Text("%u - %u ms", clip.startMs, endMs);
+            ImGui::Text("%u - %u ms (%u ms)", original.startMs, endMs, endMs - original.startMs);
             if (ImGui::SmallButton("Duplicate Clip"))
             { Duplicate_TimelineBox(sequence, true, index); ImGui::PopID(); break; }
-            ImGui::Text("Slot: %s", clip.slotId.c_str());
-            bool changed = EditText("Clip display name", clip.displayName);
-            ImGui::TextWrapped("Native clip: %s", clip.clipName.c_str());
-            uint32_t minimum = 0, maximum = sequence.durationMs - 1;
+            ImGui::SameLine();
+            if (ImGui::SmallButton("Split at Cursor"))
+            { Split_AnimationAtCursor(sequence, index); ImGui::PopID(); break; }
+            bool changed = EditText("Clip display name", edited.displayName);
+            if (ImGui::BeginCombo("Native Clip", edited.clipName.c_str()))
+            {
+                for (const auto& native : m_AnimationResources)
+                {
+                    if (!search.empty() && Lower(native.clipName).find(search) == std::string::npos) continue;
+                    if (ImGui::Selectable(native.clipName.c_str(), native.clipName == edited.clipName))
+                    {
+                        edited.clipName = native.clipName; edited.displayName = native.clipName;
+                        edited.sourceStartMs = 0u; edited.sourceEndMs = 0u; changed = true;
+                    }
+                    if (ImGui::IsItemHovered()) ImGui::SetTooltip("Native duration: %.3f ms", native.durationMs);
+                }
+                ImGui::EndCombo();
+            }
+            uint32_t minimum = 0u, maximum = sequence.durationMs - 1u;
+            uint32_t maximumEnd = endMs == sequence.durationMs ? CWorldSequenceDocument::MAX_DURATION_MS : sequence.durationMs - 1u;
             bool first = true;
             for (size_t other = 0; other < sequence.animationTracks.size(); ++other)
             {
                 const auto& next = sequence.animationTracks[other];
-                if (other == index || next.slotId != clip.slotId) continue;
-                if (next.startMs < clip.startMs) { minimum = (std::max)(minimum, next.startMs + 1); first = false; }
-                if (next.startMs > clip.startMs) maximum = (std::min)(maximum, next.startMs - 1);
+                if (other == index || next.slotId != original.slotId) continue;
+                if (next.startMs < original.startMs) { minimum = (std::max)(minimum, next.startMs + 1u); first = false; }
+                if (next.startMs > original.startMs) maximum = (std::min)(maximum, next.startMs - 1u);
+                if (next.startMs > endMs) maximumEnd = (std::min)(maximumEnd, next.startMs - 1u);
             }
-            ImGui::BeginDisabled(first); changed |= EditUInt("Clip Start (ms)", clip.startMs, maximum, minimum); ImGui::EndDisabled();
-            changed |= EditUInt("Source Start (ms)", clip.sourceStartMs, CWorldSequenceDocument::MAX_DURATION_MS);
-            ImGui::TextDisabled("Source Start skips native clip time; Clip Start places this box on the Motion timeline.");
-            changed |= ImGui::DragFloat("Clip Speed", &clip.playbackRate, .01f, .05f, 8.f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
-            changed |= ImGui::Checkbox("Clip Loop", &clip.loop); changed |= ImGui::Checkbox("Hold Last Pose", &clip.holdLastFrame);
-            if (changed) Mark_Dirty();
+            ImGui::BeginDisabled(first); changed |= EditUInt("Clip Start (ms)", edited.startMs, maximum, minimum); ImGui::EndDisabled();
+            uint32_t editedEnd = endMs;
+            changed |= EditUInt("Clip End (ms)", editedEnd, maximumEnd, edited.startMs + 1u);
+            ImGui::TextDisabled("Clip End moves the next clip boundary; the last clip ends with this Motion.");
+            const auto native = std::find_if(m_AnimationResources.begin(), m_AnimationResources.end(),
+                [&](const auto& row) { return row.clipName == edited.clipName; });
+            const uint32_t nativeEnd = native == m_AnimationResources.end() ? CWorldSequenceDocument::MAX_DURATION_MS :
+                static_cast<uint32_t>((std::clamp)(std::ceil(native->durationMs), 1., double(CWorldSequenceDocument::MAX_DURATION_MS)));
+            const uint32_t sourceEnd = edited.sourceEndMs ? edited.sourceEndMs : nativeEnd;
+            changed |= EditUInt("Source In (ms)", edited.sourceStartMs, sourceEnd - 1u);
+            bool fullSource = edited.sourceEndMs == 0u;
+            if (ImGui::Checkbox("Use native end", &fullSource))
+            { edited.sourceEndMs = fullSource ? 0u : nativeEnd; changed = true; }
+            ImGui::BeginDisabled(fullSource);
+            uint32_t sourceOut = edited.sourceEndMs ? edited.sourceEndMs : nativeEnd;
+            if (EditUInt("Source Out (ms)", sourceOut, nativeEnd, edited.sourceStartMs + 1u))
+            { edited.sourceEndMs = sourceOut; changed = true; }
+            ImGui::EndDisabled();
+            changed |= ImGui::DragFloat("Clip Speed", &edited.playbackRate, .01f, .05f, 8.f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
+            changed |= ImGui::Checkbox("Range Loop", &edited.loop); changed |= ImGui::Checkbox("Hold Range End", &edited.holdLastFrame);
+            const double rangeMs = double(edited.sourceEndMs ? edited.sourceEndMs : nativeEnd) - edited.sourceStartMs;
+            const double cycleMs = rangeMs / edited.playbackRate;
+            if (cycleMs > 0.) ImGui::TextDisabled("One range: %.1f ms; window: %.2f cycles", cycleMs, (editedEnd - edited.startMs) / cycleMs);
+            if (changed)
+            { Apply_AnimationEdit(sequence, index, edited, editedEnd); ImGui::PopID(); break; }
             if (ImGui::SmallButton("Remove Clip"))
             {
-                const auto slot = clip.slotId; sequence.animationTracks.erase(sequence.animationTracks.begin() + index);
-                for (auto& remaining : sequence.animationTracks) if (remaining.slotId == slot) { remaining.startMs = 0; break; }
-                Mark_Dirty(); ImGui::PopID(); break;
+                auto candidate = m_Document;
+                auto* staged = candidate.Find_Template(sequence.sequenceId);
+                staged->animationTracks.erase(staged->animationTracks.begin() + index);
+                auto first = staged->animationTracks.end();
+                for (auto it = staged->animationTracks.begin(); it != staged->animationTracks.end(); ++it)
+                    if (it->slotId == original.slotId && (first == staged->animationTracks.end() || it->startMs < first->startMs)) first = it;
+                if (first != staged->animationTracks.end()) first->startMs = 0u;
+                std::string status;
+                if (candidate.Validate(m_MapTargets, m_DeployTargets, status))
+                { sequence = std::move(*staged); Mark_Dirty(); }
+                else m_Status = "Remove refused: " + status + ". Existing draft preserved.";
+                ImGui::PopID(); break;
             }
             ImGui::PopID();
         }
+        ImGui::TextWrapped("Duplicate repeats this box and shifts later clips on this actor. Camera, sound and other actors keep their timing.");
         if (!resource || resource->sequenceInstanceId.empty())
-            ImGui::TextWrapped("Select a native clip in Object Resources, then Append Clip to this Motion.");
+            ImGui::TextWrapped("Append more native clips from the Animation Resources tab.");
     }
 }
 

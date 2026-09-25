@@ -2,6 +2,7 @@
 
 #include <cmath>
 #include <cstdint>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -15,8 +16,11 @@ struct ATTACK_HIT_TEMPLATE final
     std::uint32_t iAtMs = 0u, iEndMs = 0u, iRepeatCount = 1u, iRepeatIntervalMs = 0u, iDamagePercent = 10u;
     double fRadiusM = 1.0, fInnerRadiusM = 0.0, fLengthM = 0.0, fHalfWidthM = 0.0;
     double fAngleDegrees = 0.0, fOffsetForwardM = 0.0, fOffsetRightM = 0.0, fYawOffsetDegrees = 0.0;
-    double fRiseHeightM = 0.0;
+    double fRiseHeightM = 0.0, fPushRangeM = 0.0;
     std::uint32_t iPushMs = 0u;
+    // Omission retains the historical generic ballistic/contact response.
+    std::optional<bool> ForcePush;
+    std::string strPushDirection = "AWAY_FROM_CONTACT";
     bool operator==(const ATTACK_HIT_TEMPLATE&) const = default;
 };
 
@@ -39,8 +43,10 @@ inline bool Validate_AttackHitTemplates(const std::vector<ATTACK_HIT_TEMPLATE>& 
         if (!Is_AttackStableId(h.strHitId) || h.iAtMs > 600000u || h.iEndMs > 600000u ||
             !h.iRepeatCount || h.iRepeatCount > 64u || h.iRepeatIntervalMs > 600000u ||
             (h.iRepeatCount > 1u && h.iRepeatIntervalMs < 34u)) return false;
+        if (!std::isfinite(h.fPushRangeM) || h.fPushRangeM < 0.0 || h.fPushRangeM > 100.0 ||
+            (h.strPushDirection != "AWAY_FROM_CONTACT" && h.strPushDirection != "AWAY_FROM_BOSS")) return false;
         if (!std::isfinite(h.fRiseHeightM) || h.fRiseHeightM < 0.0 || h.fRiseHeightM > 100.0 ||
-            (h.fRiseHeightM == 0.0 ? h.iPushMs != 0u : h.iPushMs < 100u || h.iPushMs > 5000u)) return false;
+            (h.fRiseHeightM == 0.0 && h.fPushRangeM == 0.0 ? h.iPushMs != 0u : h.iPushMs < 100u || h.iPushMs > 5000u)) return false;
         for (std::size_t j = 0u; j < i; ++j) if (hits[j].strHitId == h.strHitId) return false;
         for (const double v : {h.fRadiusM, h.fInnerRadiusM, h.fLengthM, h.fHalfWidthM})
             if (!std::isfinite(v) || v < 0.0 || v > 1000.0) return false;

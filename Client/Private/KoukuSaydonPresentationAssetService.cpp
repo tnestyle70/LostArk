@@ -67,6 +67,24 @@ namespace
 	using ATTACHMENT_GRIPS = std::unordered_map<std::string, PLAYER_HAND_GRIP_LOCAL_OFFSET>;
 	std::unordered_map<std::string, ATTACHMENT_GRIPS> g_AttachmentGripsByArchetype;
 	std::unordered_map<std::string, std::uint32_t> g_BindingSourceRevisions;
+    // The same immutable source backs every model-filtered canonical cache.
+    // Admission compares bytes once, then keeps the prepared clip rows in place.
+    std::unordered_map<std::string, std::shared_ptr<const std::string>> g_CanonicalBindingSources;
+    std::shared_ptr<const std::string> g_LastCanonicalBindingSource;
+    struct BINDING_PREPARATION
+    {
+        std::uint32_t levelIndex = 0u, sourceRevision = 0u;
+        std::shared_ptr<const std::string> source;
+        std::shared_ptr<const KOUKU_SAYDON_DRAFT_PRODUCT> draft;
+        std::vector<std::string> archetypes;
+        std::size_t nextArchetype = 0u;
+        bool reusesActive = false;
+        decltype(g_ActionPresentationsByArchetype) actions;
+        decltype(g_AttachmentGripsByArchetype) grips;
+        decltype(g_BindingSourceRevisions) revisions;
+        decltype(g_CanonicalBindingSources) sources;
+    };
+    std::unique_ptr<BINDING_PREPARATION> g_BindingPreparation;
     std::shared_ptr<const KOUKU_SAYDON_DRAFT_PRODUCT> g_PreparedDraft, g_AdmittedDraft;
     std::uint32_t g_AdmittedRunEpoch = 0u, g_AdmittedSourceRevision = 0u, g_PreparedAuthorizedEpoch = 0u;
     bool g_RunAdmissionFailed = false;
@@ -165,14 +183,72 @@ namespace
         return false;
     }
 
+    bool Read_CanonicalBindingSource(std::shared_ptr<const std::string>& out, std::string& status)
+    {
+        const auto path = CProjectDataRoot::Resolve(std::filesystem::path(L"Animation/Authored/KoukuSaydon") / L"KoukuSaydon.patternbindings.json");
+        std::error_code error;
+        const auto bytes = std::filesystem::file_size(path, error);
+        if (path.empty() || error || !bytes || bytes > MAX_BINDING_BYTES)
+        { status = "KoukuSaydon Product animation binding is missing or oversized."; return false; }
+        const auto before = std::filesystem::last_write_time(path, error);
+        if (error) { status = "KoukuSaydon Product animation binding timestamp is unavailable."; return false; }
+        std::ifstream input(path, std::ios::binary);
+        std::string text(static_cast<std::size_t>(bytes), '\0');
+        input.read(text.data(), static_cast<std::streamsize>(bytes));
+        if (!input || input.peek() != std::char_traits<char>::eof())
+        { status = "KoukuSaydon Product animation binding changed during read."; return false; }
+        const auto after = std::filesystem::last_write_time(path, error);
+        if (error || before != after)
+        { status = "KoukuSaydon Product animation binding changed during read."; return false; }
+        // Equality, rather than timestamp/size alone, rejects edited contents even
+        // when an authoring save preserves those two metadata fields.
+        if (!g_LastCanonicalBindingSource || *g_LastCanonicalBindingSource != text)
+            g_LastCanonicalBindingSource = std::make_shared<const std::string>(std::move(text));
+        out = g_LastCanonicalBindingSource;
+        return true;
+    }
+
+    std::vector<std::string> Ready_CanonicalBindingArchetypes(const std::uint32_t levelIndex)
+    {
+        std::vector<std::string> result;
+        const auto ready = g_ReadyByLevel.find(levelIndex);
+        if (ready != g_ReadyByLevel.end())
+            for (const auto& archetype : ready->second)
+                if (archetype.starts_with(KOUKU_FAMILY_ARCHETYPE_PREFIX)) result.push_back(archetype);
+        std::sort(result.begin(), result.end());
+        return result;
+    }
+
+    bool Have_PreparedCanonicalBindings(const std::uint32_t levelIndex,
+        const std::uint32_t sourceRevision, const std::string& source)
+    {
+        const auto ready = g_ReadyByLevel.find(levelIndex);
+        if (!sourceRevision || ready == g_ReadyByLevel.end()) return false;
+        bool any = false;
+        for (const auto& archetype : ready->second)
+        {
+            if (!archetype.starts_with(KOUKU_FAMILY_ARCHETYPE_PREFIX)) continue;
+            const auto revision = g_BindingSourceRevisions.find(archetype);
+            const auto bytes = g_CanonicalBindingSources.find(archetype);
+            if (revision == g_BindingSourceRevisions.end() || revision->second != sourceRevision ||
+                bytes == g_CanonicalBindingSources.end() || !bytes->second || *bytes->second != source ||
+                !g_ActionPresentationsByArchetype.contains(archetype) || !g_AttachmentGripsByArchetype.contains(archetype))
+                return false;
+            any = true;
+        }
+        return any;
+    }
+
 	bool Load_PresentationBindings(
 		const Engine::CModel& model,
 		std::unordered_map<std::string, KOUKU_SAYDON_ACTION_PRESENTATION>& out,
 		std::string& outStatus, std::uint32_t& outRevision, ATTACHMENT_GRIPS& outGrips,
-		const std::uint32_t expectedRevision = 0u, const std::string* supplied = nullptr, const bool canonical = false)
+		const std::uint32_t expectedRevision = 0u, const std::string* supplied = nullptr, const bool canonical = false,
+        std::shared_ptr<const std::string>* outCanonicalSource = nullptr)
 	{
         if (!supplied && !canonical && g_AdmittedDraft) supplied = &g_AdmittedDraft->PresentationJson;
-        std::string text;
+        std::shared_ptr<const std::string> canonicalSource;
+        std::string_view text;
         if (supplied)
         {
             if (supplied->empty() || supplied->size() > MAX_BINDING_BYTES)
@@ -181,15 +257,8 @@ namespace
         }
         else
         {
-            const auto path = CProjectDataRoot::Resolve(std::filesystem::path(L"Animation/Authored/KoukuSaydon") / L"KoukuSaydon.patternbindings.json");
-            std::error_code fileError;
-            const auto fileBytes = std::filesystem::file_size(path, fileError);
-            if (path.empty() || fileError || fileBytes > MAX_BINDING_BYTES)
-            { outStatus = "KoukuSaydon Product animation binding is missing or oversized."; return false; }
-            std::ifstream input(path, std::ios::binary);
-            text.assign(std::istreambuf_iterator<char>(input), std::istreambuf_iterator<char>());
-            if (!input || input.bad() || text.size() != fileBytes)
-            { outStatus = "KoukuSaydon Product animation binding could not be read."; return false; }
+            if (!Read_CanonicalBindingSource(canonicalSource, outStatus)) return false;
+            text = *canonicalSource;
         }
 
 		DATA_JSON_VALUE root;
@@ -391,6 +460,7 @@ namespace
         outGrips = std::move(stagedGrips);
 		out = std::move(staged);
 		outRevision = parsedRevision;
+        if (outCanonicalSource) *outCanonicalSource = std::move(canonicalSource);
 		outStatus = "Loaded " + std::to_string(out.size()) +
 			" KoukuSaydon Product animation action(s), skipped " + std::to_string(skipped) + " invalid row(s).";
 		return true;
@@ -431,6 +501,7 @@ void Client::CKoukuSaydonPresentationAssetService::Begin_LevelLoad(
 	g_ActionPresentationsByArchetype.clear();
 	g_AttachmentGripsByArchetype.clear();
 	g_BindingSourceRevisions.clear();
+    g_CanonicalBindingSources.clear(); g_LastCanonicalBindingSource.reset(); g_BindingPreparation.reset();
     g_PreparedDraft.reset(); g_AdmittedDraft.reset();
     g_AdmittedRunEpoch = g_AdmittedSourceRevision = g_PreparedAuthorizedEpoch = 0u; g_RunAdmissionFailed = false;
 	g_Status = "KoukuSaydon presentation is waiting for Product admission.";
@@ -692,7 +763,8 @@ HRESULT Client::CKoukuSaydonPresentationAssetService::Ensure_Prototypes(
 	std::string bindingStatus;
 	std::uint32_t bindingRevision = 0u;
 	ATTACHMENT_GRIPS grips;
-	if (!Load_PresentationBindings(*body, bindings, bindingStatus, bindingRevision, grips))
+    std::shared_ptr<const std::string> canonicalSource;
+	if (!Load_PresentationBindings(*body, bindings, bindingStatus, bindingRevision, grips, 0u, nullptr, false, &canonicalSource))
 	{
 		// A missing action document must not remove the boss body and other tools.
 		bindingStatus = "Animation bindings unavailable; boss body remains usable: " + bindingStatus;
@@ -719,6 +791,7 @@ HRESULT Client::CKoukuSaydonPresentationAssetService::Ensure_Prototypes(
 	g_ActionPresentationsByArchetype[std::string(archetypeId)] = std::move(bindings);
 	g_AttachmentGripsByArchetype[std::string(archetypeId)] = std::move(grips);
 	g_BindingSourceRevisions[std::string(archetypeId)] = bindingRevision;
+    g_CanonicalBindingSources[std::string(archetypeId)] = std::move(canonicalSource);
 	ready.insert(std::string(archetypeId));
 	g_Status = std::move(bindingStatus);
 	return S_OK;
@@ -825,20 +898,59 @@ bool Client::CKoukuSaydonPresentationAssetService::Authorize_DraftProduct(
     g_PreparedAuthorizedEpoch = runEpoch; status.clear(); return true;
 }
 
-bool Client::CKoukuSaydonPresentationAssetService::Validate_DraftBindings(
-    const std::uint32_t levelIndex, const std::shared_ptr<const KOUKU_SAYDON_DRAFT_PRODUCT>& draft, std::string& status)
+bool Client::CKoukuSaydonPresentationAssetService::Prepare_ProductBindings(
+    const std::uint32_t levelIndex, const std::uint32_t sourceRevision, bool& ready, std::string& status,
+    std::shared_ptr<const KOUKU_SAYDON_DRAFT_PRODUCT> draft)
 {
-    if (!draft) { status = "Draft Product is missing."; return false; }
+    ready = false;
     std::scoped_lock lock{g_KoukuAssetMutex};
-    const auto ready = g_ReadyByLevel.find(levelIndex);
-    if (ready == g_ReadyByLevel.end()) { status = "Draft boss models are not prepared."; return false; }
-    for (const auto& archetype : ready->second)
+    const auto archetypes = Ready_CanonicalBindingArchetypes(levelIndex);
+    if (!sourceRevision || archetypes.empty())
+    { status = "Animation preparation requires an exact revision and prepared boss models."; return false; }
+    if (draft && (draft->iSourceRevision != sourceRevision || !draft->RowsRevision.Is_Valid()))
+    { status = "Draft animation preparation has no exact source/hash identity."; return false; }
+    std::shared_ptr<const std::string> source;
+    if (draft) source = std::shared_ptr<const std::string>(draft, &draft->PresentationJson);
+    else if (!Read_CanonicalBindingSource(source, status)) return false;
+    if (!g_BindingPreparation || g_BindingPreparation->levelIndex != levelIndex ||
+        g_BindingPreparation->sourceRevision != sourceRevision || g_BindingPreparation->archetypes != archetypes ||
+        g_BindingPreparation->draft != draft)
     {
-        if (!archetype.starts_with(KOUKU_FAMILY_ARCHETYPE_PREFIX)) continue;
-        const auto model = std::dynamic_pointer_cast<Engine::CModel>(CGameInstance::Get().Clone_Prototype(levelIndex, Get_ModelPrototypeTag(archetype)));
-        std::uint32_t revision = 0u; std::unordered_map<std::string, KOUKU_SAYDON_ACTION_PRESENTATION> rows; ATTACHMENT_GRIPS grips;
-        if (!model || !Load_PresentationBindings(*model, rows, status, revision, grips, draft->iSourceRevision, &draft->PresentationJson)) return false;
+        auto staged = std::make_unique<BINDING_PREPARATION>();
+        staged->levelIndex = levelIndex; staged->sourceRevision = sourceRevision;
+        staged->source = source; staged->draft = draft; staged->archetypes = archetypes;
+        staged->reusesActive = !draft && Have_PreparedCanonicalBindings(levelIndex, sourceRevision, *source);
+        if (staged->reusesActive) staged->nextArchetype = archetypes.size();
+        else
+        {
+            staged->actions = g_ActionPresentationsByArchetype; staged->grips = g_AttachmentGripsByArchetype;
+            staged->revisions = g_BindingSourceRevisions; staged->sources = g_CanonicalBindingSources;
+        }
+        g_BindingPreparation = std::move(staged);
     }
+    auto& staged = *g_BindingPreparation;
+    if (!draft && *source != *staged.source)
+    { status = "Canonical animation source changed during preparation. Prepare the saved Product again."; return false; }
+    if (staged.nextArchetype < staged.archetypes.size())
+    {
+        // Reusing a GPU model does not make its old revision's clip cache ready.
+        // Validate one model per PREPARING frame, without touching the live run.
+        const auto& archetype = staged.archetypes[staged.nextArchetype];
+        const auto model = std::dynamic_pointer_cast<Engine::CModel>(CGameInstance::Get().Clone_Prototype(levelIndex, Get_ModelPrototypeTag(archetype)));
+        std::uint32_t revision = 0u;
+        std::unordered_map<std::string, KOUKU_SAYDON_ACTION_PRESENTATION> rows;
+        ATTACHMENT_GRIPS grips;
+        if (!model || !Load_PresentationBindings(*model, rows, status, revision, grips, sourceRevision, staged.source.get(), true))
+        { status = "Animation preparation preserved the active cache: " + status; return false; }
+        staged.actions[archetype] = std::move(rows); staged.grips[archetype] = std::move(grips);
+        staged.revisions[archetype] = revision;
+        staged.sources[archetype] = draft ? std::shared_ptr<const std::string>{} : staged.source;
+        ++staged.nextArchetype;
+        status = "Preparing animation bindings " + std::to_string(staged.nextArchetype) + "/" + std::to_string(staged.archetypes.size());
+        return true;
+    }
+    ready = true;
+    status = "Animation bindings are staged for the exact selected Product.";
     return true;
 }
 
@@ -859,26 +971,76 @@ bool Client::CKoukuSaydonPresentationAssetService::Admit_RunProduct(
         else return fail("Admitted draft hash/source is unavailable locally; previous caches are preserved.");
         if (!runEpoch) return fail("Draft admission requires the Server run epoch.");
     }
+    const auto commitAdmission = [&]() {
+        g_AdmittedDraft = candidate;
+        g_AdmittedRunEpoch = runEpoch; g_AdmittedSourceRevision = sourceRevision; g_RunAdmissionFailed = false;
+        status = g_Status = "Product animation bindings admitted for the exact run.";
+        return true;
+    };
+    if (g_BindingPreparation && g_BindingPreparation->levelIndex == levelIndex &&
+        g_BindingPreparation->sourceRevision == sourceRevision && g_BindingPreparation->draft == candidate)
+    {
+        auto& prepared = *g_BindingPreparation;
+        if (prepared.nextArchetype != prepared.archetypes.size() || Ready_CanonicalBindingArchetypes(levelIndex) != prepared.archetypes)
+            return fail("Animation Product reached admission before its preparation barrier completed.");
+        // Draft bytes are owned by the exact immutable pointer whose hash/epoch
+        // was authorized above. Canonical files also need a final freshness read.
+        auto source = prepared.source;
+        if (!candidate)
+        {
+            if (!Read_CanonicalBindingSource(source, status)) return fail(status);
+            if (*source != *prepared.source)
+                return fail("Canonical animation source changed after READY; the previous cache is preserved. Prepare the saved Product again.");
+        }
+        if (prepared.reusesActive)
+        {
+            if (!Have_PreparedCanonicalBindings(levelIndex, sourceRevision, *source))
+                return fail("Prepared canonical animation cache changed before admission; the previous cache is preserved.");
+        }
+        else
+        {
+            g_ActionPresentationsByArchetype = std::move(prepared.actions);
+            g_AttachmentGripsByArchetype = std::move(prepared.grips);
+            g_BindingSourceRevisions = std::move(prepared.revisions);
+            g_CanonicalBindingSources = std::move(prepared.sources);
+        }
+        g_BindingPreparation.reset();
+        return commitAdmission();
+    }
+    const bool retained = !g_RunAdmissionFailed && sourceRevision == g_AdmittedSourceRevision && candidate == g_AdmittedDraft &&
+        (!candidate || runEpoch == g_AdmittedRunEpoch);
+    // Later occurrences keep the immutable admitted pin; they must not copy every
+    // archetype's validated rows just to update the room occurrence epoch.
+    if (retained) return commitAdmission();
+    if (!candidate && !g_AdmittedDraft)
+    {
+        std::shared_ptr<const std::string> canonicalSource;
+        if (!Read_CanonicalBindingSource(canonicalSource, status)) return fail(status);
+        if (Have_PreparedCanonicalBindings(levelIndex, sourceRevision, *canonicalSource))
+            return commitAdmission();
+    }
+    // Standalone/late-observer admission without a Complete Play barrier keeps
+    // the existing recovery path. A prepared raid never reparses at first combat.
     auto staged = g_ActionPresentationsByArchetype;
     auto stagedGrips = g_AttachmentGripsByArchetype;
     auto revisions = g_BindingSourceRevisions;
+    auto sources = g_CanonicalBindingSources;
     const auto ready = g_ReadyByLevel.find(levelIndex);
-    const bool retained = !g_RunAdmissionFailed && sourceRevision == g_AdmittedSourceRevision && candidate == g_AdmittedDraft &&
-        (!candidate || runEpoch == g_AdmittedRunEpoch);
-    if (!retained && ready != g_ReadyByLevel.end())
+    if (ready != g_ReadyByLevel.end())
         for (const auto& archetype : ready->second)
         {
             if (!archetype.starts_with(KOUKU_FAMILY_ARCHETYPE_PREFIX)) continue;
             const auto model = std::dynamic_pointer_cast<Engine::CModel>(CGameInstance::Get().Clone_Prototype(levelIndex, Get_ModelPrototypeTag(archetype)));
             std::uint32_t revision = 0u; std::unordered_map<std::string, KOUKU_SAYDON_ACTION_PRESENTATION> rows; ATTACHMENT_GRIPS grips;
+            std::shared_ptr<const std::string> canonicalSource;
             if (!model || !Load_PresentationBindings(*model, rows, status, revision, grips, sourceRevision,
-                candidate ? &candidate->PresentationJson : nullptr, !candidate)) return fail("Product animation admission preserved the previous cache: " + status);
+                candidate ? &candidate->PresentationJson : nullptr, !candidate, &canonicalSource)) return fail("Product animation admission preserved the previous cache: " + status);
             staged[archetype] = std::move(rows); stagedGrips[archetype] = std::move(grips); revisions[archetype] = revision;
+            sources[archetype] = std::move(canonicalSource);
         }
     g_ActionPresentationsByArchetype = std::move(staged); g_AttachmentGripsByArchetype = std::move(stagedGrips);
-    g_BindingSourceRevisions = std::move(revisions); g_AdmittedDraft = std::move(candidate);
-    g_AdmittedRunEpoch = runEpoch; g_AdmittedSourceRevision = sourceRevision; g_RunAdmissionFailed = false;
-    status = g_Status = "Product animation bindings admitted for the exact run."; return true;
+    g_BindingSourceRevisions = std::move(revisions); g_CanonicalBindingSources = std::move(sources);
+    return commitAdmission();
 }
 
 bool Client::CKoukuSaydonPresentationAssetService::Matches_AdmittedRun(

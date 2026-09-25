@@ -2559,6 +2559,127 @@ bool_t CModel::Try_GetBindGeometryBounds(float3_t& minimum, float3_t& maximum) c
     minimum = m_vBindGeometryBoundsMin; maximum = m_vBindGeometryBoundsMax; return true;
 }
 
+bool_t CModel::Try_PickCurrentPose(const float4x4_t& world, const float3_t& rayOrigin,
+    const float3_t& rayDirection, f32_t& distance) const
+{
+    const auto finite = [](vector_t value) { return !XMVector3IsNaN(value) && !XMVector3IsInfinite(value); };
+    const vector_t ray = XMLoadFloat3(&rayDirection);
+    const float rayLength = XMVectorGetX(XMVector3Length(ray));
+    if (!finite(ray) || !finite(XMLoadFloat3(&rayOrigin)) || rayLength <= 1.e-8f) return false;
+    for (const auto& row : world.m) for (const float value : row)
+        if (!std::isfinite(value)) return false;
+    vector_t determinant;
+    const matrix_t inverse = XMMatrixInverse(&determinant, XMLoadFloat4x4(&world));
+    const float det = XMVectorGetX(determinant);
+    if (!std::isfinite(det) || std::fabs(det) < 1.e-8f) return false;
+    const vector_t origin = XMVector3TransformCoord(XMLoadFloat3(&rayOrigin), inverse);
+    const vector_t localRay = XMVector3TransformNormal(ray / rayLength, inverse);
+    const float localLength = XMVectorGetX(XMVector3Length(localRay));
+    if (!finite(origin) || !finite(localRay) || localLength <= 1.e-8f) return false;
+    const vector_t direction = localRay / localLength;
+    float3_t minimum, maximum;
+    if (!Try_GetCurrentPoseBounds(minimum, maximum)) return false;
+    BoundingBox bounds;
+    BoundingBox::CreateFromPoints(bounds, XMLoadFloat3(&minimum), XMLoadFloat3(&maximum));
+    float boundDistance;
+    if (!bounds.Intersects(origin, direction, boundDistance)) return false;
+    float closest = (std::numeric_limits<float>::max)();
+    bool hit = false;
+    for (const auto& mesh : m_Meshes)
+    {
+        if (!mesh || mesh->m_hasUniqueVertexBuffer || !mesh->m_PickGeometry) continue;
+        const auto& geometry = *mesh->m_PickGeometry;
+        vector<float4x4_t> palette;
+        if (geometry.skinned)
+        {
+            if (mesh->m_iNumBones == 0u || mesh->m_iNumBones > 512u) continue;
+            palette.resize(mesh->m_iNumBones);
+            mesh->Build_SkinPalette(m_Bones, palette.data());
+        }
+        vector<float3_t> positions(geometry.vertices.size());
+        bool valid = true;
+        for (size_t index = 0; index < geometry.vertices.size(); ++index)
+        {
+            const auto& vertex = geometry.vertices[index];
+            vector_t position = XMLoadFloat3(&vertex.position);
+            if (geometry.skinned)
+            {
+                const uint32_t bones[] = {vertex.bones.x, vertex.bones.y, vertex.bones.z, vertex.bones.w};
+                const float weights[] = {vertex.weights.x, vertex.weights.y, vertex.weights.z, vertex.weights.w};
+                position = XMVectorZero();
+                for (size_t lane = 0; lane < 4u; ++lane)
+                {
+                    if (bones[lane] >= palette.size()) { valid = false; break; }
+                    position += XMVector3TransformCoord(XMLoadFloat3(&vertex.position),
+                        XMLoadFloat4x4(&palette[bones[lane]])) * weights[lane];
+                }
+            }
+            if (!valid || !finite(position)) { valid = false; break; }
+            XMStoreFloat3(&positions[index], position);
+        }
+        if (!valid) continue;
+        for (size_t index = 0; index + 2u < geometry.indices.size(); index += 3u)
+        {
+            const auto a = geometry.indices[index], b = geometry.indices[index + 1u], c = geometry.indices[index + 2u];
+            if (a >= positions.size() || b >= positions.size() || c >= positions.size()) continue;
+            float candidate;
+            if (TriangleTests::Intersects(origin, direction, XMLoadFloat3(&positions[a]),
+                XMLoadFloat3(&positions[b]), XMLoadFloat3(&positions[c]), candidate) && candidate < closest)
+            { closest = candidate; hit = true; }
+        }
+    }
+    if (!hit) return false;
+    distance = closest / localLength;
+    return std::isfinite(distance);
+}
+
+bool_t CModel::Try_GetCurrentPoseBounds(float3_t& minimum, float3_t& maximum) const
+{
+    if (MODEL::NONANIM == m_eType)
+    {
+        if (!m_bHasLocalBounds) return false;
+        minimum = m_vLocalBoundsMin; maximum = m_vLocalBoundsMax; return true;
+    }
+    if (MODEL::ANIM != m_eType || m_Meshes.empty()) return false;
+    const float limit = (std::numeric_limits<float>::max)();
+    vector_t low = XMVectorReplicate(limit), high = XMVectorReplicate(-limit);
+    bool hasPoint = false;
+    for (const auto& mesh : m_Meshes)
+    {
+        if (!mesh || mesh->m_hasUniqueVertexBuffer ||
+            mesh->m_BoneVertexBounds.size() != mesh->m_iNumBones ||
+            mesh->m_BoneIndices.size() != mesh->m_iNumBones ||
+            mesh->m_OffsetMatrices.size() != mesh->m_iNumBones) return false;
+        for (uint32_t index = 0u; index < mesh->m_iNumBones; ++index)
+        {
+            const auto& bounds = mesh->m_BoneVertexBounds[index];
+            if (!bounds.valid) continue;
+            const uint32_t bone = mesh->m_BoneIndices[index];
+            if (bone >= m_Bones.size() || !m_Bones[bone]) return false;
+            // Exactly the same inverse-bind * combined order as the GPU palette.
+            // Combined already owns the asset pretransform; do not apply it twice.
+            const matrix_t skin = XMLoadFloat4x4(&mesh->m_OffsetMatrices[index]) *
+                m_Bones[bone]->Get_CombinedTransformationMatrix();
+            for (uint32_t corner = 0u; corner < 8u; ++corner)
+            {
+                const vector_t point = XMVector3TransformCoord(XMVectorSet(
+                    (corner & 1u) ? bounds.maximum.x : bounds.minimum.x,
+                    (corner & 2u) ? bounds.maximum.y : bounds.minimum.y,
+                    (corner & 4u) ? bounds.maximum.z : bounds.minimum.z, 1.f), skin);
+                if (XMVector3IsNaN(point) || XMVector3IsInfinite(point)) return false;
+                low = XMVectorMin(low, point); high = XMVectorMax(high, point);
+                hasPoint = true;
+            }
+        }
+    }
+    if (!hasPoint) return false;
+    // Cover float rounding in normalized skin weights without changing scale.
+    const vector_t margin = XMVectorReplicate(1.e-4f);
+    XMStoreFloat3(&minimum, XMVectorSubtract(low, margin));
+    XMStoreFloat3(&maximum, XMVectorAdd(high, margin));
+    return true;
+}
+
 void CModel::Include_BindGeometryPosition(fvector_t value)
 {
     float3_t position; XMStoreFloat3(&position, value);

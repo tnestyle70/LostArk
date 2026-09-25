@@ -68,6 +68,9 @@ namespace LostArk::Server
 		std::uint32_t iStartTick = 0u, iEndTick = 0u, iNextFixedTick = 0u;
 		std::uint32_t iLastUpdateTick = 0u;
 		std::uint32_t iNextRandomTick = 0u, iRandomWaveOrdinal = 0u;
+		std::uint32_t iBombStartTick = 0u;
+		LostArk::Shared::COMBAT_OBJECT_ID iBombBodyObjectId = 0u;
+		std::optional<bool> BombInsideAtEnd;
 		bool bClosed = false;
 		std::map<LostArk::Shared::PLAYER_ID, LostArk::Shared::COMBAT_OBJECT_ID> TrackingObjects;
 	};
@@ -85,6 +88,7 @@ namespace LostArk::Server
 		std::vector<KOUKUSAYDON_LOGIC_WINDOW_STATE> Windows;
 		std::set<std::string> RetiredWorldOccurrences;
 		std::uint32_t iBingoLineJudgementTick = 0u, iBingoCompletedLines = 0u;
+		bool bBingoLineRewardApplied = false;
 		std::vector<std::uint32_t> ContactWindowOrder;
 		std::set<std::tuple<std::string, std::uint32_t, std::string>> ConsumedContactGroups;
 		// A lower-priority reaction cannot replace a card state already won in this pattern.
@@ -165,6 +169,9 @@ namespace LostArk::Server
 		static bool Is_InsideMarioEntry(const BOSS_PATTERN_DEFINITION& root,
 			const SERVER_WORLD_ENTITY& anchor, const SERVER_PLAYER& player,
 			std::uint32_t elapsedTicks, bool honorWindowEnd = false, std::uint8_t* matchedStage = nullptr);
+		// Uses the same authored region transform and elliptic-sector boundary as contacts.
+		[[nodiscard]] static bool Is_PointInsideRegion(const BOSS_LOGIC_REGION& region,
+			const SERVER_WORLD_ENTITY& boss, float worldX, float worldZ) noexcept;
 		static void Build(
 			const BOSS_PATTERN_DEFINITION& pattern,
 			const SERVER_WORLD_ENTITY& boss,
@@ -287,9 +294,9 @@ namespace LostArk::Server
 	dealt and how many of that suit they have felled. It owns no entity and no
 	socket -- the room spawns, hits and despawns on its verdicts -- and it is
 	reset with the run, never by the roulette that shares the suit enum. */
-	/* The bingo board. Two 25-bit masks are the whole of it: a white bit is a
-	skull, a red bit is a skull on a line that has completed. Red never clears
-	until the board resets, so a finished line stays safe. */
+	/* Two 25-bit masks describe the visible board: white is the legacy wire
+	name for every skull, red is a permanent completed row/column subset.
+	A separate Server-only line mask records rewards already consumed. */
 	class CKoukuBingoRuntime final
 	{
 	public:
@@ -297,6 +304,7 @@ namespace LostArk::Server
 		{
 			m_iWhiteMask = 0u;
 			m_iRedMask = 0u;
+			m_iConsumedLineMask = 0u;
 			m_Bombs = {};
 			m_Hammer = {};
 		}
@@ -304,15 +312,17 @@ namespace LostArk::Server
 		complete. Bits outside the board are ignored rather than refused so a
 		caller cannot half-apply a fill. */
 		void Fill(std::uint32_t cellMask) noexcept;
-		/* One bomb blast. Empty cells become red, white skulls disappear,
-		and existing red cells are left
-		alone. Every cell is judged against the board as it stood before the
-		blast, so neighbours inside one cross cannot cancel each other by
-		order. Fill retains its separate complete-line authoring operation. */
+		/* Toggle ordinary skulls in one blast, preserving red cells, then
+		promote completed rows/columns. The wire's white mask includes both
+		ordinary black skull tiles and permanent red tiles; diagonals do not promote. */
 		void Detonate(std::uint32_t cellMask) noexcept;
 		[[nodiscard]] std::uint32_t Get_WhiteMask() const noexcept { return m_iWhiteMask; }
 		[[nodiscard]] std::uint32_t Get_RedMask() const noexcept { return m_iRedMask; }
 		[[nodiscard]] std::uint32_t Count_CompletedRowsAndColumns() const noexcept;
+		[[nodiscard]] std::uint32_t Count_UnconsumedRowsAndColumns() const noexcept;
+		/* Consume exactly this many distinct red lines in stable row/column
+		order. Insufficient lines leave all reward and board state unchanged. */
+		bool Consume_CompletedRowsAndColumns(std::uint32_t count) noexcept;
 		/* True while this position stands on a completed line. The wipe attack
 		is the consumer; until then only the contract test asks. */
 		[[nodiscard]] bool Is_Safe(float x, float z) const noexcept;
@@ -365,6 +375,7 @@ namespace LostArk::Server
 
 		std::uint32_t m_iWhiteMask = 0u;
 		std::uint32_t m_iRedMask = 0u;
+		std::uint32_t m_iConsumedLineMask = 0u;
 		BOMB_SLOTS m_Bombs{};
 		LostArk::Shared::BINGO_HAMMER_SNAPSHOT m_Hammer{};
 	};

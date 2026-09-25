@@ -266,3 +266,318 @@ receipt는 `out/BuildPipeline/runs/20260925T013413528Z-debug-product.json`이다
 
 현재 상태: 코드·데이터 설치, 공식 게시, Server 실행 검증 및 최종 Debug Product Build 완료.
 실제 화면의 폭발 크기·피격 체감 확인은 사용자 확인 전이다.
+
+## G11. 팝업북·공굴리기 조기 종료·선택 위치 장판·저글링 보정
+
+사용자 보고의 직접 원인과 변경 범위는 다음과 같다.
+
+- 팝업북과 2관문 도입 WORLD의 animated 모델에도 static shader 전용 foliage wind
+  변수를 바인딩해 mesh 0에서 실패했다. `MapAssetRenderUtils`는 skinned 모델의
+  비활성 wind 바인딩을 생략한다. skinned에서 실제 wind를 요청한 경우는 계속 거부하며
+  static 모델과 shader·렌더링 설정은 유지한다.
+- 양수 속도의 모든 `BOSS_TRACK_TARGET`이 플레이어 접촉을 패턴 완료로 처리했다.
+  사용자 최종 지정인 `플레이어 1초 추적` P104 stable ID에만 접촉 완료를 허용한다.
+  구조로 대상을 추측하지 않으며 P101·공굴리기 등 나머지 패턴은 접촉 중 이동만 멈추고
+  원래 카운터·착지·WORLD·피해 시계를 계속 진행한다.
+- P47 문양 장판은 절대 MAP 시각과 BOSS-follow Collider가 서로 다른 원점을 썼다.
+  각 시작 시각 0/4445ms에 Server가 플레이어 ground를 고정하고 같은 combat object가
+  시각과 fixedHits를 소유하게 했다. 이전 boss-local X=-0.15는 고정 target 중심으로
+  옮기면서 제거하고 반경·피해 시각·넉백은 유지한다.
+- 노란 장판 P79와 3관문 P119, 빙고 앵콜 P122는 시각만 SELECT를 사용하고 Collider는
+  절대 MAP 좌표에 남았다. 세 패턴 모두 8883ms의 같은 포착 위치에서 시각과 피해를
+  처리한다. 실제 타격 시각 10833/11470/12025ms, 원/고리 반경 3/4.5/6m와 기존
+  최대 HP 10%, 수평 1m·상승 2m·1200ms 반응은 보존한다.
+- P106 저글링은 손 안의 원본 효과, 비행 3종, 착탄 효과를 기존 Effect 경로의 5개
+  authored JSON으로 분리했다. 2200/3700/5200ms와 두 번째 반복의 +5800ms마다 Server가
+  플레이어 위치를 포착한다. Client는 복제된 보스 발사 pose에서 포착 위치까지
+  1239/1200/1239ms 동안 시각만 보간한다. 원래 particle tail은 유지하며 기존 고정 8m
+  궤적을 중복 적용하지 않는다. 새 파일은 Client 프로젝트·filters의 `96.DataFiles`에 등록했다.
+- P83 분열 공의 마지막 폭발을 줄인 뒤 독립 SOUND lane에 남은 `.presentation.43/.44`
+  (17663/19207ms) 두 항목만 제거했다. 남은 폭발의 사운드는 유지한다.
+- 돌진 카운터 P80/P117에 방구와 같은 Collider 349와 결과 134를 연결했다.
+  시작 1200ms·수명 500ms, 최대 HP 10%·5.1m/2161ms 강제 밀림을 적용하고
+  기존 카운터 창은 보존한다.
+- 회전 카드 4종의 불량 잔상은 이미 원본 native2999가 연결된 emitter_0이었다.
+  사용자가 허용한 제거 범위로 해당 element의 visible만 끄고 카드 본체·다른 emitter는
+  유지했다. 원본 shader나 화면 복원 성공으로 기록하지 않는다.
+- 카드 미로 중앙 상자는 기본 profile 500을 활성 Retail profile 587993이 덮고 있었다.
+  두 원본 모두 1000으로 맞췄다. 제품 피해 Q=500/LMB=100은 유지한다.
+- F1 Complete Play 패턴 목록 높이를 240에서 720으로 늘렸다.
+
+현재 원본 설치는 revision2349, 총16파일이며 최신 hash 확인·writer lock·백업·원자 교체로
+완료했다. 최초16파일 receipt는 해당 transaction의 `receipt.json`이며,
+`out/transactions/kouku-raid-40baca0f7efd4bad9675c3b3c8944ec8`에 설치 근거를 보존한다.
+
+검증 완료:
+
+- 실제 설치된 animated 모델 6개·mesh17개의 CModel→WORLD Render 호출은 변경 전
+  모두 material binding 실패, 변경 후 모두 S_OK다. 창 없는 WARP 검사이며 화면의 픽셀이나
+  연출 완성도를 판정한 것이 아니다. 근거: `out/KoukuPlaybackFix20260925/material-probe/receipt.json`.
+- P47/P79/P106/P119/P122의 실제 `Prepare-KoukuDraftPlay` 투영 모두 통과했다.
+  앵콜을 포함한 장판 시각·피해 중심 및 시계 일치, 저글링의 원본 시각과 착탄·tail 수명은
+  `out/KoukuLiveFix20260925/target-projection-verification.json`에 기록했다.
+- P9의 실제 SOUND 3개는 Product parse→Sample→SoundCueCatalog→FMOD까지 무음 mixer로
+  재생·seek·늦은 snapshot·정리 검사를 통과했다. 해당 사운드 결함은 재현하지 못했고
+  데이터는 수정하지 않았다. 사용자는 125줄 등장 사운드를 이번 수정본에서 다시 확인하기로 했다.
+
+검증 중 발견한 구현 오류:
+
+- 첫 Product Build는 SELECTED의 `ATTACK_HIT_TEMPLATE`을 legacy Hits vector에 대입하여
+  Server 컴파일이 실패했다. 기존 typed `AttackTemplates` staging 경로로 교정했다.
+- Server Brain의 최종 validator에도 SELECTED fixedHits 허용과 수명 검사를 연결했다.
+  catalog parse만 통과해도 실제 pattern이 거부될 수 있으므로 native 소비 검사에 포함한다.
+- 구형 Client OBJ archive로 신규 Effect native 검사를 실행한 최초 시도는 원본과 후보 모두
+  Codec Load에서 access violation이었다. 후보 성공으로 간주하지 않고 최신 Product OBJ로
+  archive를 다시 만든 뒤 재검증한다.
+
+최종 빌드·게시·native 실행 검증은 아래 후속 기록에서 완료 여부를 구분한다.
+Client 실행·도구 조작·화면 확인은 수행하지 않았다.
+
+### G11 후속 빌드와 게시 실패 복구
+
+Debug Product Build는 Engine·Shared·Server·Client 모두 통과했다. Client 실제 재컴파일과
+링크·DLL/CSO 배치를 포함하며, receipt는
+`out/BuildPipeline/runs/20260925T064625193Z-debug-product.json`, 로그는
+`out/KoukuPlaybackFix20260925/product-build-final.log`다. 기존 문자 집합 경고는 남아 있다.
+
+첫 공식 게시 시도는 projection 검증 뒤 49MB Encounter staging을 승격하는 순간
+WinError32로 실패했다. cleanup의 같은 잠금 오류가 원래 오류도 덮었다. 이전 Encounter와
+presentation의 원본 bytes, Server Gameplay의 개행 정규화 bytes가 기존 HEAD와 일치함을
+확인했다. 검사 시점에는 staging과 destination 모두 exclusive read가 가능해 지속 점유는
+확인되지 않았다. 특정 백신이나 프로세스를 원인으로 단정하지 않는다.
+
+publisher의 승격·rollback·cleanup에 WinError32/33만 최대2초의 bounded retry를 넣었다.
+권한 오류 등 다른 오류는 즉시 실패하고 freshness·백업·원자 교체·검증 실패 rollback은
+그대로 유지한다. cleanup 실패는 원래 오류를 가리지 않고 보존 경로를 출력한다.
+신규5개와 기존 rollback/freshness3개 검사가 통과했다. 첫 실패의 staging·rollback4개는
+`out/KoukuPlaybackFix20260925/failed-publish-recovery/`에 hash와 함께 보존했다.
+
+EffectCatalog의 통합 serializer가 기존 배열 줄바꿈까지 바꾼 것은 원래 형식으로 교정했다.
+JSON 값은 그대로이며 기존 행을 유지하고 신규5개 등록의25줄만 추가한다. 교체 근거는
+`out/KoukuPlaybackFix20260925/catalog-format.receipt.json`이다.
+
+최신 Client Product OBJ로 다시 만든 격리 archive 검사는 다음과 같이 통과했다.
+
+- 원본 저글링과 신규5개 모두 실제 Effect Codec·Stage PASS. 비행3개 각각 peakMeshes=1,
+  고정 궤적 중복과 착지 후 메시 잔류 없음, 자연 tail 종료. 착탄 단일 burst는 원본 count81로
+  일치하고 중복 death spawn 없음. 유한 particle transform 표본3981개 PASS.
+- 실제 CompositionDocument Parse→Serialize→Parse의 전체 typed equality와 직렬화
+  idempotence PASS. rev2349의121패턴·186logic에서 격리 패턴0, flight6개·fixedHits14개·
+  fixedHit pushRange10개·RESULT pushRange29개 보존을 확인했다.
+- 근거는 `out/KoukuLiveFix20260925/juggling/native-validation.json`과
+  `composition-codec-validation.json`이다. 실제 owner rig 부착과 GPU 화면은 미검증이다.
+
+사용자 최종 지시에 따라 접촉 종료 범위는 P104 하나로 명시했다. 공통 추적 사용 여부나
+단일 창·전체 길이로 대상을 추측하지 않는다. 앞선 구조 조건 검사는 P101까지 포함했으므로
+최종 요구의 증거로 사용하지 않는다. 최종 검사는 P104 접촉 완료, P101·P81·P118 및 다른
+패턴의 접촉 후 원래 시계 보존을 각각 확인한다.
+
+두 번째 owner publish는 product·map·world 단계까지 성공했지만 gameplay.balance의
+targeted visual 필드 검증기가 새 selectedFlight3개를 허용하지 않아 실패했다. 실패 뒤
+Encounter·presentation의 sourceRevision2348과 기존 Server Gameplay 정규화 bytes 일치를
+확인했다. `publish-final.log`의 owner 전체 성공을 기록하지 않는다. 해당 실제 최종 검증기의
+허용 조건·잘못된 값 거부를 추가한 뒤 재게시한다.
+
+원래 RESULT와 추가 대조에서 P47의 두 번째 장판 수평1m/250ms가 fixedHits 이관 중 빠진
+문제와 첫 장판의 force/default direction 의미 차이를 발견했다. 최종 후보에서는 두 hit의
+기존 AWAY_FROM_BOSS·force=false를 명시하고, 첫 hit의 ballistic 상승2m와 두 번째 hit의
+수평 밀림만 있는 반응을 보존한다. 노란 장판은 기존 AWAY_FROM_CONTACT·force=true를 유지한다.
+
+### 게시 시간과 분리 범위 조사
+
+사용자의 게시 지연 질문에 대해 실제 로그와 코드를 조사했다. 두 번째 시도의 Product438.9초,
+Map74.1초, World7.8초가 근거이며 Navigation은 이 owner 실행 대상에 없다. Map에는 이미
+정확한 input/tool/output fingerprint 일치 시 REUSED 경로가 있다. 복구된 기존 receipt 대비
+MapCatalog.json과 Publish-MapAuthoring.ps1이 달랐으며, 실패 시 receipt도 복구되므로
+재시도마다 해당 도메인을 다시 처리했다. Map이 무조건 실행된다고 단정하지 않는다.
+
+Product는 저장121패턴 각각의 의존 closure를 검증·투영한 뒤 준비된 전체·각 bundle·최종 flow를
+검증한다. 현재 후보는 공유 logic/resource 목록과 revision을 유지하고 계산 memo는 게시 한 번
+안에서만 유효하다. 영속 certificate는 validate의 전체 exact-input에만 적용되고 publish는
+다시 prepare로 진입한다. 내부 함수별 시간은 측정하지 않았으므로438.9초 전체를 특정
+콜라이더나 모델 연산의 비용으로 단정하지 않는다.
+
+이번 변경에는 게시 단계의 Win32 잠금 복구와 새 필드 검증만 포함한다. 패턴별 영속 캐시나
+Map의 Lights/WorldSequences/CameraShots/Placements/Deploy별 receipt 분리는 구현하지 않았다.
+이 분리를 할 때는 실제 참조 logic/resource·모델/clip/골격/preScale·WorldSequence·도구 버전을
+캐시 의존성에 포함하고 최종 교차 참조 검증·freshness·원자 교체·rollback을 유지해야 한다.
+
+### 최종 범위의 구현·검사
+
+P104만 접촉 종료를 허용하는 최종 코드와 원래 밀림 정책을 보존하는 hit30열 계약을 함께
+Debug Product Build했다. Engine·Shared·Server·Client 모두 PASS이며 최종 receipt는
+`out/BuildPipeline/runs/20260925T070614615Z-debug-product.json`, 로그는
+`out/KoukuPlaybackFix20260925/product-build-p104-parity.log`다.
+
+P47·노란 장판 원래 RESULT와 비교해11hit의26필드만 추가 교정하고 source2350을 CAS 설치했다.
+해당 transaction은 `out/transactions/kouku-raid-53a426fe91a540a8bd49083a29c6aa86`이며 최신
+`out/KoukuPlaybackFix20260925/install.receipt.json`은 이 마지막1파일 설치의 receipt다.
+기존25/27/28열을 수용하고 명시 force/direction은30열을 사용한다. optional forcePush 생략은
+기존 상승 시 강제 밀림, direction 생략은 contact 원점을 유지하므로 무관한 기존 template의
+기본 동작을 바꾸지 않는다. Shared의 새 필드는 catalog-only이며 packet layout은 바뀌지 않는다.
+
+- 최신 Server Bingo 검사98 PASS/실패0. P104 접촉 완료, P101·P81·P118·임의 추적 패턴의
+  시계 보존 및 실제 Incoming Hit 수평/ballistic/force=false 기존 반응 보존/contact force=true
+  네 가지를 검사했다. 로그: `out/KoukuPlaybackFix20260925/server-bingo-p104-parity.log`.
+- 실제 마지막 PS targeted-visual 검증기로 이전 실패를 재현하고 새 Product21개 정의의
+  승인을 확인했다. 신규 회귀36사례는 field 누락·타입·범위·nonfinite·loop 금지를 검사했다.
+  같은 hit30열의 P47/P79 실제 draft publish와 Python hit/flight15개 검사도 PASS다.
+- 최신2350 OBJ archive로 Client codec roundtrip을 다시 실행했다. 명시 falseForce2개,
+  수평전용1m/250ms1개, BOSS 방향2개, fixedPush11개와 전체 typed equality·재직렬화 일치,
+  격리 패턴0을 확인했다. 구형 archive 결과를 최종 ABI 증거로 재사용하지 않았다.
+
+사용자의 최종 우선순위는 이번 연출·콜라이더·패턴 수정의 게시와 사용 가능한 빌드다.
+게시 단위 분리나 성능 리팩터를 현재 수정에 추가하지 않는다.
+
+### 최종 게시 완료
+
+source2350의 공식 KoukuSaydon owner publish가 전체 PASS했다. 총608105ms이며 Product456064ms,
+Map73286ms, World8279ms, Gameplay68033ms다. 로그는
+`out/KoukuPlaybackFix20260925/publish-2350.log`다. source·Encounter·Client presentation·Server
+bootstrap 모두2350 일치를 확인했으며 원본과 생성된 실행 데이터를 같은 변경으로 유지한다.
+
+최종 실제 게시본 검사:
+
+- Server Bingo98 PASS/실패0, CardMaze95 PASS/실패0. 카드미로 실제 spawn 체력1000,
+  Q500 첫 타격 후500 생존·두 번째 타격 후파괴와 후속 telescope 진행까지 통과했다.
+  로그는 `server-bingo-published2350.log`, `server-cardmaze-2350.log`다.
+- 전체 support 회귀는322 PASS/실패0이다. 로그 `server-support-surface-push30.log`는
+  새30열과 기존25/27/28열, transaction 실패 시 기존 generation 보존을 포함한다.
+- `out/KoukuLiveFix20260925/postpublish-verification.json`의8검사 모두 PASS.
+  남은 사운드9개 보존·정확2개 제거, 돌진2패턴·counter 보존, 장판11hit의 실제30열
+  수치/force/direction, 저글링6회 포착·3비행template, 중앙상자HP1000, 카드4element만
+  비활성화, 신규5자산 등록과 무관 Rendering·WORLD 원본 보존을 확인했다.
+- 위 보조 검사 첫 실행은 소유자 열을 ALBION으로 잘못 기대해 실패했다. 실제 producer와
+  Server parser의 계약은 SELECTED다. 검사만 올바른 기대값으로 고친 뒤 전체 재실행 PASS했으며
+  제품 코드·데이터는 변경하지 않았다.
+- 변경 JSON17개·프로젝트 XML2개 parse와 `git diff --check` PASS.
+
+현재 코드와 실행 파일, 데이터 게시 및 수치 검증은 완료했다. Client/UI는 실행하지 않았으며
+팝업북·관문 컷씬의 실제 화면, 저글링 손 부착과 시각 품질,125줄 등장 사운드는 사용자 확인 전이다.
+125줄 사운드 데이터 자체는 수정하지 않았고 실제 재생 함수·무음 mixer 검증만 통과했다.
+공유 Server가 실행 중이면 새 EXE·게시 데이터를 사용하는 재시작이 필요하다.
+
+### G11 전 관문 재시험: 저장 owner·실패 수명·피해 연결
+
+사용자가 반복 재시험한 후속 요청을 revision2350 위에서 수정했다. 이전 작업과 다른 세션의
+dirty 변경은 보존했다. 아래 내용은 source 수정과 수치 검증이며 최종 게시·빌드 상태는
+이 항목 끝의 최종 반영 기록으로 구분한다. Client/UI는 실행하지 않았다.
+
+**저장과 보스 소멸 원인**
+
+- Mario FXAA의 현재 authoring/runtime은 revision82에서 이미 OFF였다. 상단 LiveCompare는
+  영구 quality draft와 다른 transient 값을 바꿨고, 선택 Mario owner가 기본 관문으로 돌아가는
+  경로와 camera comparison이 저장 OFF를 마지막에 덮는 경로가 있었다. 두 checkbox가 선택
+  scene/region의 같은 draft를 편집하고 comparison은 resolved FXAA를 계승하도록 수정했다.
+  저장은 profileId/regionId 3-way merge, writer lease, bytes freshness, backup/atomic replace를
+  유지한다. 다른 장면의 global FXAA=true는 보존한다.
+- 갈고리는 WORLD 기본 위치보다 Pattern occurrence의 placement가 우선했다. Action에서 연
+  Object Tool이 실제 선택 pattern/occurrence를 기억해 그 override를 저장하도록 연결했다.
+  P33.world.2의 X만0으로 바꾸고 다른 축·관문·오브젝트는 유지한다. 명시 placement가 있는
+  경우 legacy instance.position을 다시 더하지 않는 실제 consumer까지 확인했다.
+- 사용자 로그의 중단은 P88/P92 Mario1페이즈 입장자 부재에서 확인됐다. 실패 피해 후
+  Clear(false)가 정상 기믹 실패를 실행 오류로 승격해 보스와 Flow를 정리했다. 같은 consumer인
+  P93도 수정·검사했다. 전멸 피해를 적용한 뒤 기믹 실행을 완료하고 다음 Flow로 진행한다.
+  최신 사용자 지시에 따라 전원HP0이어도 일반 패턴과 반복을 계속하며 자동 부활은 하지 않는다.
+  catalog/admission 같은 실제 실행 오류는 구체 reason을 유지한다.
+
+**관문과 전투 연결**
+
+- 1~3관문과 BINGO는90fixed ticks=3초 IDLE 뒤 시작한다. G1/G2 MVP는0기여 고정 roster도
+  포함하며 Client는 같은 world/gate의 실제 결과를 기다려 늦은 패킷도 표시한다. G2 MVP를
+  닫으면 leader가 기존 ADVANCE를 제출한다. 다인 전원 승인 계약은 유지한다. G3 false-clear는
+  기존 MVP 생략·Encore→BINGO 연결을 유지한다. G2 giant actor 제거는 primary clear의 정상 정리다.
+- Bingo 해골은 최대 광기5%/1초로 바꿨다. 세 번째 폭탄의 기존 특수 요청·블랙홀과 반복 시계를
+  실제 Server 검사로 확인했다. G3 MVP 생략이 G2까지 전파된 코드는 없었으며 G2의 결과 누락과
+  수신 순서·후속 요청 경로를 각각 고쳤다.
+- P78 카드의 homing target과 contact 대상은 분리했다. 모든 플레이어가 접촉할 수 있고 동일
+  문양은 면역, 다른 문양은 최대HP90%다. 네 설치 음원을 문양 trigger의 시각에 고정 연결했다.
+- P85 첫 바주카의 두231ms 판정 창을 실제 표시1634ms에 맞추고 기존 ENTER_AREA의 최초
+  접촉 판정을 쓴다. 상태별 피해·강제 밀침은 기존 공통 hit consumer를 사용한다.
+- P106 저글링6착탄은 반경1.5m·최대HP10%다. 비활성 불어날리기, 무지개댄스의 빈 연결,
+  화염파동의 실제 pillar 시각·위치, 알비온3갈래·파란장판·4갈래, 기분나빠의 clone contact를
+  연결했다. 알비온 파란장판/4갈래와 무지개는 기존 launch Result를 소비한다.
+- 불뿜기는 공통 한 verdict의3개 영역을 사용해1%씩3회다. P102의 독립3window 중복을 없앴다.
+  P43/P102/P114의 잔류 화염21창은 기존100피해/tick을 유지하고 명시 광기0을 추가해 자동
+  HP비례 광기가 중첩되지 않게 했다. 명시 gauge와 damage가 있는 verdict는 방어로 피해가
+  차단되면 gauge도 올리지 않는다. gauge0은 허용하되 최대HP피해0은 계속 거부한다.
+- 게시의 Retail.madnessGaugeAddPercent=0이 저작1/5까지0으로 덮는 별도 원인을 발견했다.
+  -1은 저작값 유지 계약으로 연결했다. 활성 source의1%=8창,5%=20창,0%=21창과 기존 P6/P7
+  Fail/Timeout의50%=11슬롯을 보존한다. 새로운 임의 상수로 기존 penalty를 덮지 않는다.
+
+**표현과 Mario**
+
+- P40은 소실된 십자 Effect3개·Collider4개와 기존 P63/P64 두 clone을 연결했다. 분신의
+  actor-local contact는 Client validator와 publisher가 같은 제한으로 승인하고 Server의
+  기존 clone consumer를 재사용한다. P52는 closest-player facing 이후 clone을 시작한다.
+- P35의 고정 MAP 부채꼴 하나만 제거하고 BOSS 추적4개를 보존했다. 양팔 사격 SOUND를
+  빠진 STAGE4에 넣었다. P59 화염파동/P119 노란폭탄은 임의 event variant 대신 각각의 설치
+  원래 voice를 고정했다. 음원 분류는 ASR 보조이며 사용자 청취 판정으로 기록하지 않는다.
+- 룰렛3회차는 마지막Collider와 같은 snapshot anchor/위치와 source 첫 burst 시각으로 맞췄다.
+  기존 source6.862초에도 impact139particles가 있었으므로 모든 입자가 이미 죽어 사라졌다고
+  단정하지 않는다. 새 첫 burst6.637초와 다음 sample의 생성은 actual Playback으로 확인했다.
+- 공·인형 tick은 명시5%다. 갈고리는 광대 변신 플레이어를 제외하고 일반 피포획자는 IDLE로
+  표시한다. Mario 폭탄은 Shared7marker·4초 세대 시계를 Client와 Server가 함께 소비한다.
+  최대HP10%·4m/1초·높이2m 날아감과 착지는 Server combat hit 경로다. 뿅망치는 기존 endEffect
+  1367ms에 피해 windup을 맞추고 기존 전체2초 cadence,100피해를 보존해 같은 ballistic을 쓴다.
+
+**정지 현상과 검증 경계**
+
+- WORLD lane마다13.5MB 문서 전체를 복사/검증하던 경로를 선택 motion/group/NEXT/같은
+  resource 전환 closure로 줄였다. actual native full copy/validate는 Release4.37ms,
+  Debug30.2ms였고 ball/doll subset은 Release0.012/0.113ms였다. 처음 생성되는 공4·인형4
+  clone은 Complete Play 준비 barrier에서 확보한다.
+- subset 변경 중 발견한 book endpoint 조회 순서 오류도 수정했다. 문서를 넣은 뒤 실제
+  Get_InstanceElapsedSpanMs를 조회하며 full/subset 모두3385.71ms다. 빈 player의0ms를
+  endpoint로 쓰지 않는다. authored codec/closure1230검사를 통과했다.
+- 실제 WModel 비교에서 folding/standing floor 두 쌍의 vertex/index/bounds/slot은 완전히
+  같았지만 material family·brightness·RNM이 달랐다. 배치43~46의 asset4개와 placement
+  lighting4개만 기존 전투용 variant로 맞췄다. 기하·애니메이션과 공유 원본 재질은 보존했다.
+- castsShadow static batch는 처음 표시될 때 shadow instance buffer를 만들던 일을 Initialize로
+  이동했다.65native capacity/failure checks PASS, 해당 맵의 추가 준비727KiB다. 기존4703ms
+  로그는 Render.World 이전이므로 이 수정만으로 기존 정지 원인을 설명하지 않는다.
+- 최초 전투 bundle의 Admit_RunProduct가 준비한592animation bindings의 JSON을 archetype별로
+  다시 읽고 파싱했다. 실제 Debug CDataJson의4MB×6회 read/parse/destruction 하한은2139ms,
+  두 process 동시 검사는2205/2188ms다. clone/animation 검증을 제외한 수치이며 실제4.7초
+  전체를 동일 재현한 것은 아니다. canonical bytes의 immutable snapshot과 실제 최신 bytes,
+  sourceRevision 및 cache 존재가 모두 같으면 검증 결과를 재사용하도록 수정했다. 내용 변경은
+  원래 staged 재검증을 사용하고 실패 시 기존 cache를 보존한다.
+
+현재까지의 native 증거: 최종 전멸 지속정책을 포함한 Raid1856 PASS, Bingo99 PASS;
+Mario7marker×2세대의 hit/정점/착지/jump 각14 PASS, 바주카24조건 PASS, dice 실패0이다.
+Rendering merge14·WORLD 위치10·writer lock 검증과 실제 저장 owner/region/comparison192조합을
+확인했다. 이 수치·파일 검증을 최종 사용자 화면·청취·전체 frame-time PASS로 대신하지 않는다.
+
+후속 exact-content cache 재사용 helper15검사는 실패0이다. 같은 실제4MB source의 최초
+인계는5.2451ms였으며 same-size/same-mtime 내용 변경·revision mismatch·cache 누락·draft
+provenance·mixed source·파일 누락은 모두 재사용을 거절했다. 전체4703ms 프레임 재측정은 아니다.
+
+Mario2~4에는 P33 입장 후 갈고리와 별개로1페이즈 갈고리 생성이 빠져 있었다. P91/P92/P93
+부모에 P18/P19의 기존 WORLD13을 추가했다. 해당 template의18 emission/HOOK_CAPTURE가
+publisher에서 GRAB_TO_WORLD_OBJECT18창을 생성하므로 수동 Collider/Result를 중복 추가하지
+않았다.1000~27875ms WORLD 수명과 부모 절대 시계·P33 X0를 보존했다. 실제 projector4패턴
+검사와 별도 reviewer 확인을 통과했다. 설치 후보는 revision2354다.
+
+게시 검토 중2351/2352/2353 준비를 이 작업이 의도적으로 중단했다. 각 owner가 이전 Product·
+Server data·receipts를 복구한 것을 확인했다. 이 중단을 성공 게시로 기록하지 않는다.
+Map Placements 단독 Validate는 기존 WorldSequence의 deployassets 미포함으로 거절됐다.
+새 asset/placement-lighting은 실제 publisher reader 검사로 통과했고 최종 Area owner 검증을 쓴다.
+광기 validator 관련 신규7검사와 실제 PS override -1/0/25 검사는 통과했다. 기존 source 의존
+typed_logic/outcome_slots 검사의2failures/1error는 수정 전2352·이전 validator에서도 동일하게
+재현돼 별도 기존 fixture 불일치로 기록하고 무관한 fixture는 수정하지 않았다.
+
+새 게시 후 Client를 재실행하지 않는 경계도 추가로 닫았다. 기존 GPU model이 ready라는 이유로
+이전 revision의 animation cache를 재사용한 채 첫 combat에서 파싱하지 않는다. canonical과
+immutable draft 모두 같은 Prepare_ProductBindings를 사용하며 준비 중 한 archetype/frame으로
+별도 maps를 만든다. active cache는 승인 전까지 보존하고, READY 뒤 source bytes 변경 또는
+draft hash/epoch 불일치는 빠르게 거절한다. 최초 combat은 준비된 maps를 move한다. 이46개
+staging/admission native 검사는 실패0이며 draft 인계0.0907ms, 인계 중 parse0을 확인했다.
+사용자17:17 전체 Raid는 MainApp의 canonical 준비와 Server의 빈 DraftRowsRevision 경로다.
+draft 단독 편집기 경로도 같은 수정에 포함하되 기존16MiB draft 제한은 변경하지 않았다.
+
+2354의 첫 공식 게시 시도는 hook3개 추가 후 생성 Encounter가68,815,768bytes여서 기존
+64MiB admission을 초과해 거절됐고 기존 게시물을 복구했다. Encounter 생성 직렬화에만
+pretty가 한도를 넘을 때 동일 값의 compact JSON을 쓰는 경로를 추가했다. compact도 byte,
+depth 또는 value 개수 한도를 넘으면 계속 실패한다. source 저작 문서와 작은 생성 문서의
+형식은 그대로다. 관련6검사에서 semantic equality, 게시/validate bytes 일치와 초과 거절을
+확인했다. 새 최종 owner 실행은 `publish-2354-compact.log`에 분리한다.

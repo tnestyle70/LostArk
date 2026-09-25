@@ -65,6 +65,7 @@ namespace LostArk::Server
 		GATE_PROGRESS_PROPOSE,
 		GATE_PROGRESS_RESPOND,
 		CHAT,
+		ROOM_PING,
 		LEAVE
 	};
 
@@ -151,6 +152,7 @@ namespace LostArk::Server
 		LostArk::Shared::C2S_GATE_PROGRESS_PROPOSE GateProgressPropose;
 		LostArk::Shared::C2S_GATE_PROGRESS_RESPOND GateProgressRespond;
 		LostArk::Shared::C2S_CHAT Chat;
+		LostArk::Shared::C2S_ROOM_PING RoomPing;
 
 		LostArk::Shared::PLAYER_DESPAWN_REASON eLeaveReason =
 			LostArk::Shared::PLAYER_DESPAWN_REASON::DISCONNECTED;

@@ -11,6 +11,7 @@
 #include "PresentationProvider.h"
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -159,6 +160,9 @@ public:
 	}
 	HRESULT Get_IsolatedRenderFailure() const { return m_hRenderFailure; }
 	void Set_RootWorld(const float4x4_t& RootWorld);
+	bool_t Set_PresentationPostTransform(const float4x4_t* postTransform, std::string& error);
+	const EFFECT_EVALUATED_FRAME& Get_PresentationFrame() const
+	{ return m_PresentationFrame ? *m_PresentationFrame : m_Playback.Get_Frame(); }
 	bool_t Validate_ParticleParameters(const std::vector<EFFECT_PARAMETER_INPUT>& Parameters,
 		std::string& strOutError) const;
 	bool_t Set_PresentationSample(const float4x4_t& RootWorld,
@@ -299,6 +303,7 @@ private:
 	unique_ptr<CEffectDocumentRenderer> m_pRenderer;
 	CEffectReconstructedRuntimeBoundary m_ReconstructedRuntimeBoundary;
 	CEffectPlayback m_Playback;
+	std::optional<EFFECT_EVALUATED_FRAME> m_PresentationFrame;
 	std::shared_ptr<const EFFECT_RECONSTRUCTED_SELECTED_FRAME>
 		m_pReconstructedDiagnosticFrame;
 	float4x4_t m_RootWorld{};

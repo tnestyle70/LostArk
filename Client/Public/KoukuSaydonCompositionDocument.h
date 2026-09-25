@@ -129,6 +129,12 @@ namespace Client
 		std::string strTrackingPresentationOccurrenceId;
 		std::uint32_t iSpawnIntervalMs = 0u;
 		double fFollowSpeedScale = 0.0;
+        // Optional rotate-only bomb test. Stable rows remain editable templates.
+        std::string strBombPresentationOccurrenceId;
+        std::string strBombExplosionPresentationOccurrenceId;
+        std::string strBombSectorPresentationOccurrenceId;
+        double fBombSectorRadiusM = 0.0;
+        double fBombSectorHalfAngleDegrees = 0.0;
 		std::vector<LostArk::Shared::ATTACK_HIT_TEMPLATE> FixedHits, TrackingHits, ProjectileHits;
 		std::vector<std::vector<LostArk::Shared::ATTACK_HIT_TEMPLATE>> RandomVolleyHits;
         // Effect resource IDs; the Server owns travel, contact and object lifetime.
@@ -220,6 +226,9 @@ namespace Client
 		std::string strAirbornePhase;
 		std::string strAirborneTargetPositionPolicy = "APPEAR";
 		std::string strSelectedEffectGroupId;
+        std::uint32_t iSelectedFlightMs = 0u;
+        double fSelectedFlightArcHeightM = 0.0;
+        std::array<double, 3u> SelectedFlightSourceOffset{0.0, 0.0, 0.0};
 		double fAirborneHeightM = 0.0;
 		std::uint32_t iAirborneDurationMs = 0u;
 		std::string strClonePatternId;
@@ -731,6 +740,9 @@ namespace Client
 		static bool_t Load_ImmutableActionReferences(
 			KOUKU_SAYDON_ACTION_REFERENCE_SET& outReferences,
 			std::string& outStatus);
+        static bool_t Validate_CrossDirectionChildLogic(
+            const KOUKU_SAYDON_COMPOSITION_DOCUMENT& document,
+            const KOUKU_SAYDON_COMPOSITION_PATTERN& child, std::string& outStatus);
         static bool_t Try_ResolveCrossDirectionWindows(
             const KOUKU_SAYDON_COMPOSITION_DOCUMENT& document,
             const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern,

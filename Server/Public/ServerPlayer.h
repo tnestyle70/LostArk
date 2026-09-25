@@ -8,6 +8,8 @@
 #include "ServerNavigation.h"
 
 #include <array>
+#include <map>
+#include <utility>
 #include <optional>
 #include <cstdint>
 #include <bitset>
@@ -164,6 +166,7 @@ namespace LostArk::Server
 
 		std::uint32_t iLastMoveSequence = 0;
 		std::uint32_t iLastReviveSequence = 0;
+		std::uint32_t iLastRoomPingSequence = 0u, iLastRoomPingTick = 0u;
 		std::uint32_t iLastClassChangeSequence = 0;
 		/* One idempotent Debug verdict belongs to this player in this room. */
 		LostArk::Shared::S2C_DEBUG_TELEPORT_TO_POSITION_RESULT LastDebugTeleportResult;
@@ -188,6 +191,8 @@ namespace LostArk::Server
 		carried through world transfers. */
 		LostArk::Shared::HONOR_TITLE_ID iHonorTitleId = LostArk::Shared::INVALID_HONOR_TITLE_ID;
 		std::uint8_t iMarioStage = 0u;
+		std::uint8_t iMarioBombContactStage = 0u;
+		std::map<std::pair<std::uint32_t, std::uint32_t>, std::int64_t> MarioBombHitBirths;
 		std::uint8_t iMarioLayoutVariant = 0u;
 		// Pinned by the entry pattern; survives the arena phase and terminal move start.
 		std::optional<std::array<float, 3u>> MarioReturnPosition;
@@ -221,6 +226,8 @@ namespace LostArk::Server
 			}
 			if (!preserveReturnPosition) MarioReturnPosition.reset();
 			iMarioStage = 0u;
+			iMarioBombContactStage = 0u;
+			MarioBombHitBirths.clear();
 			iMarioLayoutVariant = 0u;
 			iMarioMoveExpiryTick = 0u;
 			fMarioDirectionX = fMarioDirectionZ = 0.f;

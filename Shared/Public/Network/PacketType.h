@@ -107,7 +107,9 @@ namespace LostArk::Shared
 	// 109 combines Retail combat snapshots, gate-kill commands and shared
 	// F1 cooldown policy. Both peers must use this complete wire contract.
 	// 110 carries the Server ballistic hit-reaction phase in PLAYER_SNAPSHOT.
-	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 111;
+	// 112 maps owned WORLD cues to their Server combat body for hit/hover presentation.
+	// 113 adds validated same-room ground ping intent and reliable room broadcast.
+	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 113;
 
 	enum class WORLD_ID : std::uint16_t
 	{
@@ -409,7 +411,9 @@ namespace LostArk::Shared
 		C2S_DEBUG_KILL_GATE_BOSSES,
 		S2C_DEBUG_KILL_GATE_BOSSES_RESULT,
 		C2S_SET_COOLDOWN_MODE,
-		S2C_SET_COOLDOWN_MODE_RESULT
+		S2C_SET_COOLDOWN_MODE_RESULT,
+		C2S_ROOM_PING,
+		S2C_ROOM_PING
 	};
 
 	//TCP는 메시지 경계를 보존하지 않기 때문에, payload앞에 header를 둔다.
@@ -451,6 +455,8 @@ namespace LostArk::Shared
 		case PACKET_TYPE::C2S_CHANGE_CHARACTER_CLASS:
 		case PACKET_TYPE::S2C_CHARACTER_CLASS_CHANGE_RESULT:
 		case PACKET_TYPE::S2C_WORLD_SNAPSHOT:
+		case PACKET_TYPE::C2S_ROOM_PING:
+		case PACKET_TYPE::S2C_ROOM_PING:
 		case PACKET_TYPE::C2S_CHAT:
 		case PACKET_TYPE::S2C_CHAT:
 		case PACKET_TYPE::S2C_PLAYER_DESPAWNED:

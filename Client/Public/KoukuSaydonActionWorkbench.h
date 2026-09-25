@@ -76,7 +76,7 @@ namespace Client
 	{
 		std::string strClipName, strSlotId;
 		double fStartMs = 0., fEndMs = 0., fPlaybackRate = 1.;
-		std::uint32_t iSourceStartMs = 0u;
+		std::uint32_t iSourceStartMs = 0u, iSourceEndMs = 0u;
 		bool bLoop = false, bHoldLastFrame = false;
 	};
 	struct KOUKU_WORLD_SEQUENCE_RESOURCE final
@@ -112,7 +112,10 @@ namespace Client
 	{
 		std::string strObjectId;
 		std::string strMotionInstanceId;
-		// Transient MAP box transform; Object Tool never writes it into the shared Motion.
+		std::string strPatternId, strOccurrenceId;
+		bool bSequenceWorkspace = false, bExplicitPlacement = false;
+		bool bFocusAnimationClips = false;
+		// MAP box placement is saved on this occurrence, never into the shared Motion.
 		std::optional<KOUKU_SAYDON_WORLD_PLACEMENT> PreviewPlacement;
 	};
 
@@ -855,6 +858,8 @@ namespace Client
 			std::string_view resourceId, std::string& outStatus);
 		bool_t Delete_PresentationBox(std::string_view patternId, std::string_view occurrenceId, std::string& outStatus);
 		void Queue_WorldBoxPreview(std::string_view patternId, std::string_view occurrenceId);
+		void Queue_WorldObjectEdit(std::string_view patternId, std::string_view occurrenceId,
+			std::string_view motionId = {}, bool focusAnimationClips = false);
 		void Queue_SummonBoxPreview(std::string_view patternId, std::string_view occurrenceId, bool rebuild);
 		void Queue_PresentationPreview(const KOUKU_SAYDON_COMPOSITION_PRESENTATION_RESOURCE& resource,
 			const KOUKU_SAYDON_COMPOSITION_PRESENTATION_OCCURRENCE* occurrence = nullptr);

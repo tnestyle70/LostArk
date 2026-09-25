@@ -10,12 +10,24 @@
 #include "SourceMovieMaterialPrograms.h"
 #include <algorithm>
 #include <cmath>
+#include <sstream>
 
 using namespace Client;
 using namespace Engine;
 
 namespace
 {
+    std::string MaterialBindingFailure(const CModel& model, uint32_t mesh, HRESULT result)
+    {
+        std::ostringstream label;
+        label << "material binding (mesh " << mesh << ", HRESULT=0x" << std::hex
+            << static_cast<uint32_t>(result) << std::dec << ", material=" << model.Get_MaterialName(mesh);
+        const auto* surface = model.Get_MaterialSurface(mesh);
+        if (surface && surface->family == MODEL_SURFACE_FAMILY::SOURCE_CHARACTER)
+            label << ", sourceProgram=" << surface->sourceCharacter.program;
+        label << ')';
+        return label.str();
+    }
     // Source translucent programs draw only in the forward BLEND pass, as the product
     // owners do (CBody_Valtan 84, CPart_Vehicle 18/88). The opaque G-buffer pass
     // dithers them by native opacity, which leaves scattered fragments.
@@ -92,6 +104,7 @@ HRESULT CWorldSequenceObject::Initialize(void* argument)
         partDesc.pSkeletonModel = m_Model;
         partDesc.pSocketBoneName = part.socketBone.empty() ? nullptr : part.socketBone.c_str();
         partDesc.strMaterialProfileId = m_MaterialProfileId;
+        partDesc.pEmissiveOverride = &m_CombatPresentation;
         auto cloned = dynamic_pointer_cast<CPart_Equipment>(CGameInstance::Get().Clone_Prototype(
             desc.levelIndex, L"Prototype_GameObject_Part_Equipment", &partDesc));
         if (!cloned) return E_FAIL;
@@ -133,6 +146,7 @@ bool_t CWorldSequenceObject::Sample(const float4x4_t& world, const bool_t visibl
     m_SampleTimeSeconds = (std::max)(0.f, localMs) * 0.001f;
     m_World = world;
     m_Visible = visible;
+    if (!visible) Hide();
     // Parts follow this exact pose: the weapon reads its grip bone from the body now.
     for (const auto& part : m_Parts) part->Update(0.f);
     return true;
@@ -169,6 +183,8 @@ bool_t CWorldSequenceObject::Try_GetAttachmentWorld(const std::string& bone, flo
 bool_t CWorldSequenceObject::Reset_ForReuse()
 {
     Hide();
+    m_CombatPresentation = {};
+    m_HitFlashSeconds = 0.f;
     if (!m_Model || !Get_RenderStatus().empty()) return false;
     m_Model->Clear_SourceCharacterOverrides();
     if (m_Model->Is_Skinned())
@@ -185,9 +201,27 @@ bool_t CWorldSequenceObject::Reset_ForReuse()
     return true;
 }
 
-void CWorldSequenceObject::Late_Update(f32_t)
+void CWorldSequenceObject::Trigger_HitFlash()
 {
     if (!m_Visible) return;
+    m_HitFlashSeconds = .12f;
+    m_CombatPresentation.isEnabled = true;
+    m_CombatPresentation.vColor = { 1.f, .72f, .08f, 1.f };
+    m_CombatPresentation.fIntensity = 4.f;
+    m_CombatPresentation.usesSurfaceDetailMask = true;
+}
+
+void CWorldSequenceObject::Late_Update(f32_t deltaSeconds)
+{
+    // Apply_Objects temporarily hides each object before resampling it. Only a
+    // still-hidden object at the render boundary has actually left presentation.
+    if (!m_Visible) { m_CombatPresentation = {}; m_HitFlashSeconds = 0.f; return; }
+    if (std::isfinite(deltaSeconds) && deltaSeconds > 0.f && m_HitFlashSeconds > 0.f)
+    {
+        m_HitFlashSeconds = (std::max)(0.f, m_HitFlashSeconds - deltaSeconds);
+        m_CombatPresentation.fIntensity = 4.f * m_HitFlashSeconds / .12f;
+        m_CombatPresentation.isEnabled = m_HitFlashSeconds > 0.f;
+    }
     const auto self = static_pointer_cast<CGameObject>(shared_from_this());
     CGameInstance::Get().Add_RenderObject(RENDERGROUP::NONBLEND, self);
     if (m_HasTranslucentMeshes) CGameInstance::Get().Add_RenderObject(RENDERGROUP::BLEND, self);
@@ -258,10 +292,12 @@ HRESULT CWorldSequenceObject::Render()
         const bool mapSurface = surface && surface->family == MODEL_SURFACE_FAMILY::SOURCE_BG_OPAQUE_MASKED;
         const DEFERRED_MATERIAL_PROFILE bodyProfile = m_MaterialProfileId.empty() ? DEFERRED_MATERIAL_PROFILE{} :
             Resolve_DeferredMaterialProfile(m_MaterialProfileId, m_Model->Get_MaterialName(mesh));
-        const HRESULT material = animated && !mapSurface ? Bind_DeferredMaterialInputs(*m_Model, m_Shader, mesh, bodyProfile, nullptr, m_Diffuse) :
+        const HRESULT material = animated && !mapSurface ? Bind_DeferredMaterialInputs(*m_Model, m_Shader, mesh, bodyProfile, &m_CombatPresentation, m_Diffuse) :
             CMapAssetRenderUtils::Bind_Material(m_Model, m_Shader, mesh, profile, m_SampleTimeSeconds, m_Diffuse);
         const auto meshLabel = " (mesh " + std::to_string(mesh) + ")";
-        if (FAILED(material)) return failed("material binding" + meshLabel);
+        if (FAILED(material)) return failed(MaterialBindingFailure(*m_Model, mesh, material));
+        if (FAILED(Bind_CombatPresentationInputs(*m_Model, m_Shader, mesh, m_CombatPresentation)))
+            return failed("combat presentation binding" + meshLabel);
         if (animated && FAILED(m_Model->Bind_BoneMatrices(m_Shader, "g_BoneMatrices", mesh)))
             return failed("bone matrix binding" + meshLabel);
         // Reuse the existing two-sided PS_MAIN pass for thin animated map/card surfaces.
@@ -269,8 +305,11 @@ HRESULT CWorldSequenceObject::Render()
         if (FAILED(m_Shader->Begin(pass)))
             return failed("shader pass" + meshLabel);
         if (FAILED(Render_Mesh(mesh))) return failed("mesh submission" + meshLabel);
+        (void)Render_CombatHoverMesh(*m_Model, m_Shader, mesh, &m_CombatPresentation, animated, false,
+            XMVectorGetX(XMMatrixDeterminant(XMLoadFloat4x4(&m_World))) < 0.f);
     }
-    if (FAILED(CNpcPresentationAssetService::Render_SaydonHat(m_Model, m_SaydonHatModel, m_Shader, m_World)))
+    if (FAILED(CNpcPresentationAssetService::Render_SaydonHat(m_Model, m_SaydonHatModel, m_Shader, m_World,
+        0u, true, false, &m_CombatPresentation)))
         return failed("head prop submission");
     m_RenderStatus.clear();
     return S_OK;
@@ -308,12 +347,18 @@ HRESULT CWorldSequenceObject::Render_Translucent()
             Resolve_DeferredMaterialProfile(m_MaterialProfileId, m_Model->Get_MaterialName(mesh));
         if (animated)
         {
-            if (FAILED(Bind_DeferredMaterialInputs(*m_Model, m_Shader, mesh, bodyProfile, nullptr, m_Diffuse)) ||
-                FAILED(m_Model->Bind_SourceCharacterForwardLight(m_Shader, mesh)))
-                return failed("material binding" + meshLabel);
+            HRESULT material = Bind_DeferredMaterialInputs(*m_Model, m_Shader, mesh, bodyProfile, &m_CombatPresentation, m_Diffuse);
+            if (SUCCEEDED(material)) material = m_Model->Bind_SourceCharacterForwardLight(m_Shader, mesh);
+            if (FAILED(material)) return failed(MaterialBindingFailure(*m_Model, mesh, material));
         }
-        else if (FAILED(CMapAssetRenderUtils::Bind_Material(m_Model, m_Shader, mesh,
-            profile, m_SampleTimeSeconds, m_Diffuse))) return failed("static material binding" + meshLabel);
+        else
+        {
+            const HRESULT material = CMapAssetRenderUtils::Bind_Material(m_Model, m_Shader, mesh,
+                profile, m_SampleTimeSeconds, m_Diffuse);
+            if (FAILED(material)) return failed(MaterialBindingFailure(*m_Model, mesh, material));
+        }
+        if (FAILED(Bind_CombatPresentationInputs(*m_Model, m_Shader, mesh, m_CombatPresentation)))
+            return failed("combat presentation binding" + meshLabel);
         if (animated && FAILED(m_Model->Bind_BoneMatrices(m_Shader, "g_BoneMatrices", mesh)))
             return failed("bone matrix binding" + meshLabel);
         if (FAILED(m_Shader->Begin(pass))) return failed("shader pass" + meshLabel);

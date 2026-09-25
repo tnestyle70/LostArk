@@ -37,6 +37,7 @@ namespace Client
 	class CPlayableCharacterAssetService;
 	class CNpc;
 	class CValtan;
+	class CWorldSequenceObject;
 	class CDeployPropRuntime;
 	struct VALTAN_PATTERN_SOUND_SOURCE_RECEIPT;
 
@@ -310,6 +311,14 @@ namespace Client
 		~CClientReplication();
 		bool Initialize(const DESC& desc);
 		bool Update();
+		// Level input ownership gates this read-only, nearest-model hover projection.
+		void Update_CombatHover(bool_t enabled);
+		struct WORLD_COMBAT_TARGET final
+		{
+			LostArk::Shared::NET_ENTITY_ID iBodyNetEntityId = LostArk::Shared::INVALID_NET_ENTITY_ID;
+			std::shared_ptr<CWorldSequenceObject> object;
+		};
+		void Set_WorldCombatTargets(const std::vector<WORLD_COMBAT_TARGET>& targets);
 		bool Has_PendingConnectionLoss() const;
 		bool Has_FatalWorldDestructionFailure() const
 		{
@@ -771,10 +780,21 @@ namespace Client
 			LostArk::Shared::GameplayDataRevision AdmittedPresentationRevision{};
 			LostArk::Shared::GameplayDataRevision RejectedPresentationRevision{};
 			bool_t bPresentationIsolated = false;
+			bool_t bCombatHoverTarget = false;
 			bool_t bUsesValtanGhostPool = false;
 			std::weak_ptr<CNpc> pNpc;
 			std::weak_ptr<CValtan> pValtan;
 		};
+		std::weak_ptr<CNpc> m_HoveredCombatNpc;
+		std::weak_ptr<CValtan> m_HoveredCombatValtan;
+		struct WORLD_COMBAT_PRESENTATION final
+		{
+			LostArk::Shared::NET_ENTITY_ID iBodyNetEntityId = LostArk::Shared::INVALID_NET_ENTITY_ID;
+			std::weak_ptr<CWorldSequenceObject> object;
+		};
+		std::vector<WORLD_COMBAT_PRESENTATION> m_WorldCombatTargets;
+		std::vector<std::weak_ptr<CWorldSequenceObject>> m_HoveredCombatWorldObjects;
+		std::unordered_set<LostArk::Shared::NET_ENTITY_ID> m_PendingWorldCombatHits;
 		WORLD_ENTITY_PRESENTATION* Find_ValtanPresentation(
 			const std::shared_ptr<CValtan>& pValtan);
 		bool_t Ensure_ValtanPresentationRevision(

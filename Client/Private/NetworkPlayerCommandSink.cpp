@@ -180,6 +180,16 @@ bool Client::CNetworkPlayerCommandSink::Request_VehicleFlightInput(
     return CNetworkManager::Get().Send_VehicleFlightInput(sequence, x, z, vertical);
 }
 
+bool Client::CNetworkPlayerCommandSink::Request_RoomPing(std::uint32_t sequence, float x, float y, float z)
+{
+	return CNetworkManager::Get().Send_RoomPing(sequence, x, y, z);
+}
+
+bool Client::CNetworkPlayerCommandSink::Consume_RoomPing(LostArk::Shared::S2C_ROOM_PING& ping)
+{
+	return CNetworkManager::Get().Try_Consume_RoomPing(ping);
+}
+
 bool Client::CNetworkPlayerCommandSink::Request_MoveGoal(
 	std::uint32_t clientSequence,
 	float goalX,

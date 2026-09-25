@@ -5,6 +5,10 @@
 #include "Effect_PresentationService.h"
 #include "AnimationTargetService.h"
 #include "NpcPresentationAssetService.h"
+#include "RuntimeAssetRoot.h"
+#include "SoundCueCatalog.h"
+#include "MonsterPresentationAssetService.h"
+#include "KoukuSaydonPresentationAssetService.h"
 
 #include "Collider.h"
 #include "DeferredMaterialRenderUtils.h"
@@ -15,6 +19,9 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstdlib>
+#include <array>
+#include <random>
 
 namespace
 {
@@ -166,6 +173,7 @@ bool_t CNpc::Try_Get_PlayerHandGripSocketView(const LostArk::Shared::PLAYER_ATTA
 
 bool_t CNpc::Set_Animation(const char_t* pClipName, bool_t isLoop)
 {
+	m_iPendingHitReactionSoundClip = UINT32_MAX;
 	if (nullptr == pClipName || nullptr == m_pModelCom)
 		return false;
 	m_bNetworkAnimationWindow = false;
@@ -338,6 +346,7 @@ bool_t CNpc::Play_NetworkAction(
 	const f32_t fBlendSeconds,
 	const f32_t fRootVerticalScale)
 {
+	m_iPendingHitReactionSoundClip = UINT32_MAX;
 	m_strClipEndEffect.clear();
 	m_fClipEndEffectRemaining = 0.f;
 	m_bNetworkAnimationWindow = false;
@@ -378,6 +387,7 @@ bool_t CNpc::Play_NetworkAction(
 		EFFECT_V2_TARGET::From_Npc(static_pointer_cast<CNpc>(shared_from_this())),
 		pClipName);
 	Arm_ActionEffectCues(pClipName);
+	Arm_HitReactionSound(pClipName);
 	return true;
 }
 
@@ -433,6 +443,79 @@ void CNpc::Arm_ActionEffectCues(const char_t* pClipName)
 	m_NpcActionEffectState.strClip = pClipName;
 	m_NpcActionEffectState.bActive = true;
 	++m_iNpcActionEffectOccurrence;
+}
+
+void CNpc::Arm_HitReactionSound(const char_t* pClipName)
+{
+	m_iPendingHitReactionSoundClip = UINT32_MAX;
+	m_iPendingHitReactionSoundEvent = UINT32_MAX;
+	if (!pClipName || !m_pModelCom || m_isNetworkAnimationLoop) return;
+	const std::string_view clip(pClipName);
+	const auto monster = [&](const std::string_view archetype) {
+		return m_strModelTag == CMonsterPresentationAssetService::Get_ModelPrototypeTag(archetype);
+	};
+	if ((clip == "rpcz00_dmg_idle_1" || clip == "rpcz00_dmg_idle_2") &&
+		(m_strModelTag == CKoukuSaydonPresentationAssetService::Get_ModelPrototypeTag("BOSS_KAKULSAYDON_G1_KOUKU") ||
+		 m_strModelTag == CKoukuSaydonPresentationAssetService::Get_ModelPrototypeTag("BOSS_KAKULSAYDON_G2_KOUKU")))
+		m_iPendingHitReactionSoundEvent = 0u;
+	else if (clip == "mn_padd_01_sk.ao_dmg_idle_1" && monster("MONSTER_VALTAN_PADD_01"))
+		m_iPendingHitReactionSoundEvent = 1u;
+	else if (clip == "mn_sjfc_00_sk.ao_dmg_idle_1" &&
+		(monster("MONSTER_VALTAN_SJFC_00_4") || monster("MONSTER_VALTAN_SJFC_ELITE")))
+		m_iPendingHitReactionSoundEvent = 2u;
+	else if (clip == "mn_0019_05_sk.ao_dmg_idle_1" && monster("MONSTER_VALTAN_0019_05"))
+		m_iPendingHitReactionSoundEvent = 3u;
+	else if (clip == "dmg_idle_1" && monster("MONSTER_KOUKU_CLOWN_BOX"))
+		m_iPendingHitReactionSoundEvent = 4u;
+	if (m_iPendingHitReactionSoundEvent != UINT32_MAX)
+		m_iPendingHitReactionSoundClip = m_pModelCom->Get_CurrentAnimIndex();
+}
+
+void CNpc::Update_HitReactionSound()
+{
+	if (m_iPendingHitReactionSoundClip == UINT32_MAX) return;
+	struct SOUND_NOTIFY final { const char* soundClass; const char* event; uint32_t startMs; };
+	static constexpr std::array<SOUND_NOTIFY, 5u> notifies = {{
+		{"KoukuSaydon", "s_mob_g_kouku1.g_kouku1_damage1", 1u},
+		{"Valtan", "Retch_Voice_Damage1", 10u},
+		{"Valtan", "FlameKerberos_Damage1", 10u},
+		{"Valtan", "Troll1_Damage1", 1u},
+		{"KoukuSaydon", "s_mob_c01.clownbox1_damage1", 1u}
+	}};
+	const uint32_t clip = m_iPendingHitReactionSoundClip;
+	const uint32_t event = m_iPendingHitReactionSoundEvent;
+	const auto cancel = [&]() { m_iPendingHitReactionSoundClip = UINT32_MAX;
+		m_iPendingHitReactionSoundEvent = UINT32_MAX; };
+	if (event >= notifies.size() || !m_pModelCom || !Is_PresentationVisible() ||
+		m_pModelCom->Get_CurrentAnimIndex() != clip ||
+		(m_bNetworkAnimationWindow && m_iNetworkAnimationSourceStartMs > notifies[event].startMs))
+	{ cancel(); return; }
+	float position = 0.f, duration = 0.f;
+	const float ticksPerSecond = m_pModelCom->Get_AnimationTickPerSecond(clip);
+	if (!std::isfinite(ticksPerSecond) || ticksPerSecond <= 0.f ||
+		!m_pModelCom->Get_AnimationProgress(clip, position, duration) ||
+		!std::isfinite(position) || !std::isfinite(duration) || duration <= 0.f)
+	{ cancel(); return; }
+	if (position / ticksPerSecond < notifies[event].startMs * .001f) return;
+	// Consume before lookup/play: a missing resource never retries each frame.
+	cancel();
+	const auto& variants = CSoundCueCatalog::Find_Variants(notifies[event].soundClass, notifies[event].event);
+	if (variants.empty()) return;
+	// All five native event containers are global, equal-weight, avoid-repeat 1.
+	// Asset IDs survive catalog reordering and shrinking without stale indices.
+	static std::array<std::string, notifies.size()> previousAssets;
+	auto& previousAsset = previousAssets[event];
+	std::vector<size_t> eligible;
+	for (size_t i = 0u; i < variants.size(); ++i)
+		if (variants[i] != previousAsset) eligible.push_back(i);
+	if (eligible.empty())
+		for (size_t i = 0u; i < variants.size(); ++i) eligible.push_back(i);
+	static std::mt19937 random(std::random_device{}());
+	std::uniform_int_distribution<size_t> choose(0u, eligible.size() - 1u);
+	const size_t variant = eligible[choose(random)];
+	previousAsset = variants[variant];
+	const auto path = CRuntimeAssetRoot::Resolve(variants[variant]);
+	(void)CGameInstance::Get().Play_Sound(path.wstring(), 1.f);
 }
 
 void CNpc::Update_ActionEffectCues(const f32_t fTimeDelta)
@@ -571,7 +654,7 @@ void CNpc::Trigger_HitFlash()
 {
 	m_fHitFlashRemainingSeconds = HIT_FLASH_DURATION_SECONDS;
 	m_HitFlash.isEnabled = true;
-	m_HitFlash.vColor = float4_t(1.f, 1.f, 1.f, 1.f);
+	m_HitFlash.vColor = float4_t(1.f, 0.72f, 0.08f, 1.f);
 	m_HitFlash.fIntensity = HIT_FLASH_PEAK_INTENSITY;
 	m_HitFlash.usesSurfaceDetailMask = true;
 }
@@ -675,6 +758,7 @@ void CNpc::Update(f32_t fTimeDelta)
 		}
 	}
 	Update_ActionEffectCues(frameDelta);
+	Update_HitReactionSound();
 	CEffectV2Runtime::Tick(
 		EFFECT_V2_TARGET::From_Npc(static_pointer_cast<CNpc>(shared_from_this())),
 		m_pDevice, m_pContext);
@@ -684,7 +768,8 @@ void CNpc::Update(f32_t fTimeDelta)
 		if (m_fHitFlashRemainingSeconds <= 0.f)
 		{
 			m_fHitFlashRemainingSeconds = 0.f;
-			m_HitFlash = {};
+			m_HitFlash.isEnabled = false;
+			m_HitFlash.fIntensity = 0.f;
 		}
 		else
 		{
@@ -827,7 +912,7 @@ void CNpc::Set_DebugPresentationYawOffset(const f32_t fYawOffsetDegrees)
 #endif
 
 void CNpc::Set_ChargeAfterimageEnabled(const bool enabled, const bool backstep,
-    const float previewClockSeconds)
+    const float previewClockSeconds, const CSkeletalAfterimage::SETTINGS* sourceSettings)
 {
     const bool externalClock = std::isfinite(previewClockSeconds) && previewClockSeconds >= 0.f;
     if (externalClock != m_ChargeAfterimageExternalClock ||
@@ -837,12 +922,18 @@ void CNpc::Set_ChargeAfterimageEnabled(const bool enabled, const bool backstep,
     m_ChargeAfterimageExternalClock = externalClock;
     if (externalClock) m_ChargeAfterimageClockSeconds = previewClockSeconds;
     // Keep the source lifetime/style while the last emitted pose fades out.
-    if (enabled) m_BackstepAfterimageStyle = backstep;
+    if (enabled)
+    {
+        m_BackstepAfterimageStyle = backstep;
+        m_HasSourceAfterimageSettings = sourceSettings && sourceSettings->sourceChannels;
+        if (m_HasSourceAfterimageSettings) m_SourceAfterimageSettings = *sourceSettings;
+    }
 }
 
 void CNpc::Reset_AfterimageHistory()
 {
     m_ChargeAfterimageLastSampleSeconds = -1.f;
+    m_SourceAfterimageOwnsHistory = false;
     m_BodyAfterimage.Reset();
     m_WeaponAfterimage.Reset();
     m_HatAfterimage.Reset();
@@ -853,7 +944,10 @@ void CNpc::Set_CounterAfterimageEnabled(const bool enabled, const float previewC
     const bool externalClock = std::isfinite(previewClockSeconds) && previewClockSeconds >= 0.f;
     if (enabled != m_CounterAfterimageEnabled || externalClock != m_CounterAfterimageExternalClock)
     {
-        Reset_AfterimageHistory();
+        // Source TrailGhost children outlive their emission and counter flag.
+        // A counter transition cannot erase a still-owned native child history.
+        if (!m_SourceAfterimageOwnsHistory) Reset_AfterimageHistory();
+        else m_HatAfterimage.Reset();
         m_CounterAfterimageClockSeconds = 0.f;
     }
     m_CounterAfterimageEnabled = enabled;
@@ -865,15 +959,21 @@ void CNpc::Late_Update(f32_t fTimeDelta)
 {
     if (!Is_PresentationVisible())
     {
+        m_HitFlash.isCombatHovered = false;
         Reset_AfterimageHistory();
         return;
     }
     if (m_bNativeBinaryBasePass)
     {
+        const bool useSourceTrail = m_HasSourceAfterimageSettings &&
+            (m_ChargeAfterimageEnabled || (m_SourceAfterimageOwnsHistory &&
+                (m_BodyAfterimage.Has_Samples() || m_WeaponAfterimage.Has_Samples())));
+        m_SourceAfterimageOwnsHistory = useSourceTrail;
+        const bool useCounterPulse = m_CounterAfterimageEnabled && !useSourceTrail;
         CSkeletalAfterimage::SETTINGS settings;
         // Saydon's owner path uses translucent exposure; other model histories
         // retain their shared defaults and native material reflection inputs.
-        settings.color = { .8f, .8f, .8f, .19f };
+        settings.color = { .8f, .8f, .8f, .38f };
         settings.endColor = { .8f, .8f, .8f, 0.f };
         if (m_BackstepAfterimageStyle)
         {
@@ -887,13 +987,15 @@ void CNpc::Late_Update(f32_t fTimeDelta)
             settings.color = { .5f, .5f, .5f, .19f };
             settings.endColor = { .5f, .5f, .5f, 0.f };
         }
-        if (m_CounterAfterimageEnabled)
+        if (useSourceTrail) settings = m_SourceAfterimageSettings;
+        if (useCounterPulse)
         {
+            settings = {}; // Counter remains a separate PROJECT_AUTHORED pulse.
             // Project-authored counter cue; the live native materials stay intact.
             settings.sampleIntervalSeconds = .24f;
             settings.sampleLifetimeSeconds = .16f;
             settings.maxSamples = 1u;
-            settings.color = { .05f, .3f, 1.f, .35f };
+            settings.color = { .05f, .3f, 1.f, .70f };
             settings.endColor = { .05f, .3f, 1.f, 0.f };
             settings.sourceColorIntensity = 0.f;
         }
@@ -909,7 +1011,7 @@ void CNpc::Late_Update(f32_t fTimeDelta)
             m_ChargeAfterimageLastSampleSeconds = m_ChargeAfterimageClockSeconds;
         const auto sample = [&](CSkeletalAfterimage& afterimage,
             const std::shared_ptr<CModel>& model, const float4x4_t& world) {
-            if (m_CounterAfterimageEnabled)
+            if (useCounterPulse)
                 afterimage.Sample_Pulse(m_CounterAfterimageClockSeconds, model, world);
             else if (initialPreviewPose && m_ChargeAfterimageEnabled && model && model->Is_Skinned())
             {
@@ -928,7 +1030,7 @@ void CNpc::Late_Update(f32_t fTimeDelta)
             sample(m_WeaponAfterimage, m_pWeaponModelCom, weaponView.BoneRoot);
         else m_WeaponAfterimage.Reset();
         float4x4_t hatWorld;
-        if (m_CounterAfterimageEnabled && m_pSaydonHatModel &&
+        if (useCounterPulse && m_pSaydonHatModel &&
             CNpcPresentationAssetService::Try_GetSaydonHatWorld(m_pModelCom, bodyWorld, hatWorld))
         {
             (void)m_HatAfterimage.Configure(settings);
@@ -945,6 +1047,9 @@ void CNpc::Late_Update(f32_t fTimeDelta)
 	CGameInstance::Get().Add_RenderObject(
 		RENDERGROUP::NONBLEND,
 		static_pointer_cast<CGameObject>(shared_from_this()));
+    if (m_bNativeBinaryBasePass && m_HitFlash.isCombatHovered)
+        CGameInstance::Get().Add_RenderObject(RENDERGROUP::DEFERRED_OVERLAY,
+            static_pointer_cast<CGameObject>(shared_from_this()));
 	if (m_isCombatColliderDebugVisible && nullptr != m_pColliderCom)
 		CGameInstance::Get().Add_DebugComponent(m_pColliderCom);
 }
@@ -982,8 +1087,10 @@ HRESULT CNpc::Render()
 			FAILED(m_pModelCom->Render(i)))
 			return E_FAIL;
 	}
+    auto hatPresentation = m_HitFlash;
+    hatPresentation.isCombatHovered = false;
 	if (FAILED(CNpcPresentationAssetService::Render_SaydonHat(m_pModelCom, m_pSaydonHatModel,
-		m_pShaderCom, *m_pTransformCom->Get_WorldMatrixPtr(), 0u, m_bNativeBinaryBasePass)))
+		m_pShaderCom, *m_pTransformCom->Get_WorldMatrixPtr(), 0u, m_bNativeBinaryBasePass, false, &hatPresentation)))
 		return E_FAIL;
 	if (nullptr != m_pWeaponModelCom && !CNpcPresentationAssetService::Is_SaydonHammerSuppressed(m_pModelCom))
 	{
@@ -1027,6 +1134,60 @@ HRESULT CNpc::Render()
 		}
 	}
 	return S_OK;
+}
+
+bool_t CNpc::Try_PickPresentation(const float3_t& origin, const float3_t& direction, f32_t& distance) const
+{
+    if (!Is_PresentationVisible() || !m_pTransformCom) return false;
+    bool hit = false;
+    float closest = (std::numeric_limits<float>::max)();
+    const auto pick = [&](const shared_ptr<CModel>& model, const float4x4_t& world) {
+        float candidate;
+        if (model && model->Try_PickCurrentPose(world, origin, direction, candidate) && candidate < closest)
+        { closest = candidate; hit = true; }
+    };
+    const auto& world = *m_pTransformCom->Get_WorldMatrixPtr();
+    pick(m_pModelCom, world);
+    float4x4_t hatWorld;
+    if (!CNpcPresentationAssetService::Is_SaydonHatSuppressed(m_pModelCom) &&
+        CNpcPresentationAssetService::Try_GetSaydonHatWorld(m_pModelCom, world, hatWorld))
+        pick(m_pSaydonHatModel, hatWorld);
+    ANIMATION_MODEL_TARGET_VIEW weapon;
+    if (!CNpcPresentationAssetService::Is_SaydonHammerSuppressed(m_pModelCom) &&
+        Try_GetAnimationModelTarget(ANIMATION_BONE_TARGET::WEAPON, weapon)) pick(weapon.Model, weapon.BoneRoot);
+    if (hit) distance = closest;
+    return hit;
+}
+
+HRESULT CNpc::Render_DeferredOverlay()
+{
+    if (!Is_PresentationVisible() || !m_bNativeBinaryBasePass || !m_HitFlash.isCombatHovered) return S_OK;
+    if (FAILED(Bind_ShaderResources())) return E_FAIL;
+    const auto& world = *m_pTransformCom->Get_WorldMatrixPtr();
+    float4x4_t hatWorld;
+    const bool hatVisible = m_pSaydonHatModel && !CNpcPresentationAssetService::Is_SaydonHatSuppressed(m_pModelCom) &&
+        CNpcPresentationAssetService::Try_GetSaydonHatWorld(m_pModelCom, world, hatWorld);
+    ANIMATION_MODEL_TARGET_VIEW weapon;
+    const bool weaponVisible = m_pWeaponModelCom && !CNpcPresentationAssetService::Is_SaydonHammerSuppressed(m_pModelCom) &&
+        Try_GetAnimationModelTarget(ANIMATION_BONE_TARGET::WEAPON, weapon);
+    HRESULT result = S_OK;
+    // Stamp the complete actor before any dilation, then return bit 0x80. The
+    // lower seven stencil bits, scene depth and original body pixels stay intact.
+    for (const auto phase : {COMBAT_HOVER_PHASE::MASK, COMBAT_HOVER_PHASE::OUTLINE, COMBAT_HOVER_PHASE::CLEAR})
+    {
+        const auto render = [&](const shared_ptr<CModel>& model, const float4x4_t& root) {
+            if (FAILED(m_pShaderCom->Bind_Matrix("g_WorldMatrix", &root))) { result = E_FAIL; return; }
+            for (uint32_t mesh = 0; mesh < model->Get_NumMeshes(); ++mesh)
+                if (FAILED(Bind_DeferredMaterialInputs(*model, m_pShaderCom, mesh, {}, &m_HitFlash, nullptr, true)) ||
+                    FAILED(model->Bind_BoneMatrices(m_pShaderCom, "g_BoneMatrices", mesh)) ||
+                    FAILED(Render_CombatHoverSilhouetteMesh(*model, m_pShaderCom, mesh, phase))) result = E_FAIL;
+        };
+        render(m_pModelCom, world);
+        if (hatVisible) render(m_pSaydonHatModel, hatWorld);
+        if (weaponVisible) render(weapon.Model, weapon.BoneRoot);
+    }
+    (void)m_pShaderCom->Bind_Matrix("g_WorldMatrix", &world);
+    return result;
 }
 
 HRESULT CNpc::Ready_Components(const NPC_DESC* pDesc)

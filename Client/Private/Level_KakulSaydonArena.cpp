@@ -805,6 +805,7 @@ Client::CLevel_KakulSaydonArena::~CLevel_KakulSaydonArena()
 	Stop_CompositionCamera(true);
 	Clear_EntranceTriggerMarkers();
 	Clear_Gate3Auras();
+	Clear_JokerTargetMarker();
 	if (this == s_pActiveInstance)
 		s_pActiveInstance = nullptr;
 #ifdef _DEBUG
@@ -920,7 +921,6 @@ bool_t Client::CLevel_KakulSaydonArena::Debug_BeginCompositionWorldPreview(
 	auto targets = Make_WorldSequenceTargets();
 	const auto& document = sourceDocument ? *sourceDocument : m_SequencePlayer.Get_Document();
 	std::map<std::string, COMPOSITION_WORLD_PREVIEW_PLAYBACK> staged;
-	std::vector<CWorldSequencePlayer*> stagedPlayers;
 	std::set<std::pair<WORLD_SEQUENCE_TARGET_KIND, std::string>> placementBindings;
 	bool previewsResourceBook = false;
 	bool previewsPopupBook = false;
@@ -962,7 +962,6 @@ bool_t Client::CLevel_KakulSaydonArena::Debug_BeginCompositionWorldPreview(
 			}
 		}
 		auto player = make_unique<CWorldSequencePlayer>();
-		stagedPlayers.push_back(player.get());
 		auto stagedCue = cue;
 		auto groupTargets = targets;
 		groupTargets.objectEmissionAnchor = cue.emissionAnchor;
@@ -970,11 +969,15 @@ bool_t Client::CLevel_KakulSaydonArena::Debug_BeginCompositionWorldPreview(
 		stagedCue.emissionAnchor = std::move(groupTargets.objectEmissionAnchor);
 		staged.emplace(cue.occurrenceId, COMPOSITION_WORLD_PREVIEW_PLAYBACK{std::move(stagedCue), std::move(player)});
 	}
-	if (!CWorldSequencePlayer::Set_DocumentBatch(document, targets, stagedPlayers, status)) return false;
 	for (auto& [id, playback] : staged)
 	{
 		auto& player = *playback.player;
 		const auto& cue = playback.cue;
+        CWorldSequenceDocument selected;
+        // Keep a cue's dependency closure only. Cinematic stop releases these
+        // small documents instead of one full Area document per WORLD lane.
+        if (!document.Build_PlaybackSubset({cue.instanceId}, selected, status) ||
+            !player.Set_Document(selected, targets, status)) return false;
 		if (!PrepareCompositionWorld(player, cue.instanceId, targets, cue.placement, status))
 		{
 			status = "WORLD preview " + cue.occurrenceId + ": " + player.Get_Status();
@@ -1474,13 +1477,22 @@ HRESULT Client::CLevel_KakulSaydonArena::Initialize()
 				}
 				++worldPrepared;
 			}
+            // Release's Loader has already settled the V1 closure. Debug prepares
+            // these effect-bearing props in Complete Play after its async barrier.
+            if (!m_SequencePlayer.Prewarm_ObjectInstances("world.object.instance.kouku.mario_circus_ball.aura", 4u, sequenceTargets) ||
+                !m_SequencePlayer.Prewarm_ObjectInstances("world.object.instance.kouku.odd_doll.large.att_battle_2_01", 4u, sequenceTargets))
+            {
+                OutputDebugStringA(("[Level_KakulSaydonArena][MarioPrewarm] " +
+                    m_SequencePlayer.Get_Status() + "\n").c_str());
+                return E_FAIL;
+            }
 			Write_EffectFailureDiagnostic("Kouku.Loading.WorldPrepared",
 				"elapsed_ms=" + std::to_string(GetTickCount64() - worldStarted) +
 				" instances=" + std::to_string(worldPrepared));
 #endif
 			CProfilerScope prepareScope(pProfiler, "Level.Kouku.JokerCards.Prewarm");
-			// The encounter's six normal cards and one joker reuse these hidden clones.
-			// Prepare during arena entry, before the first Pattern 13 spawn frame.
+            // Six cards and one joker have no asynchronous Effect dependency.
+            // Shared cue players borrow these exact clones from m_SequencePlayer.
 			if (!m_SequencePlayer.Prewarm_ObjectInstances("world.object.instance.kouku.card", 6u, sequenceTargets) ||
 				!m_SequencePlayer.Prewarm_ObjectInstances("world.object.instance.kouku.joker_card", 1u, sequenceTargets))
 			{
@@ -2064,6 +2076,15 @@ void Client::CLevel_KakulSaydonArena::Update(const f32_t fTimeDelta)
 		if (!value.player->Has_ActiveInstances()) cue = m_OwnedWorldCues.erase(cue);
 		else ++cue;
 	}
+	std::vector<CClientReplication::WORLD_COMBAT_TARGET> combatTargets;
+	for (const auto& [key, cue] : m_OwnedWorldCues)
+	{
+		if (!cue.combatBodyNetEntityId) continue;
+		std::vector<std::shared_ptr<CWorldSequenceObject>> objects;
+		cue.player->Collect_VisibleObjects(objects);
+		for (auto& object : objects) combatTargets.push_back({ cue.combatBodyNetEntityId, std::move(object) });
+	}
+	m_Replication.Set_WorldCombatTargets(combatTargets);
 	Update_CutsceneBossRetire(targets);
 	Update_CompositionCamera(fTimeDelta);
 	Update_CameraShots(fTimeDelta);
@@ -2084,6 +2105,7 @@ void Client::CLevel_KakulSaydonArena::Update(const f32_t fTimeDelta)
 #ifdef _DEBUG
 	sequenceInputReady = sequenceInputReady && !Is_DebugGatePending();
 #endif
+	m_Replication.Update_CombatHover(sequenceInputReady && nullptr != m_pCamera && m_pCamera->Is_FollowEnabled() && !isCameraTrackPlaying);
 	m_PlayerController.Update(
 		sequenceInputReady && nullptr != m_pCamera && m_pCamera->Is_FollowEnabled() && !isCameraTrackPlaying,
 		sequenceInputReady && nullptr != m_pCamera && !m_pCamera->Is_FollowRequested() &&
@@ -2613,7 +2635,10 @@ void Client::CLevel_KakulSaydonArena::Show_MvpResult(const bool_t bReplayLast)
 		return;
 	for (weak_ptr<CCharacter>& pStaged : m_MvpStageCharacters)
 		pStaged.reset();
-	if (m_bHasRaidMvpResult && (m_bRaidMvpResultFresh || bReplayLast))
+	const bool_t matchesClear = !m_iPendingRaidMvpGate ||
+		(m_RaidMvpResult.eWorldId == LostArk::Shared::WORLD_ID::KAKULSAYDON_ARENA &&
+		 m_RaidMvpResult.iGate == m_iPendingRaidMvpGate);
+	if (m_bHasRaidMvpResult && matchesClear && (m_bRaidMvpResultFresh || bReplayLast))
 	{
 		vector<LostArk::Shared::PLAYER_ID> StagePlayerIds;
 		const MVP_RESULT_DATA Data = CMvpAwardCatalog::Get().Build_ServerPage(
@@ -2633,9 +2658,12 @@ void Client::CLevel_KakulSaydonArena::Show_MvpResult(const bool_t bReplayLast)
 			}
 		}
 		m_bRaidMvpResultFresh = false;
+		m_iPendingRaidMvpGate = 0u;
 		m_pMvpResultView->Show(Data);
 		return;
 	}
+	// A Server clear waits for its matching award packet, including late arrival.
+	if (m_iPendingRaidMvpGate) return;
 #ifdef _DEBUG
 	m_MvpStageCharacters[0] = m_Replication.Get_LocalCharacter();
 	m_pMvpResultView->Show(Build_MvpResultPreviewData(Current_GateNumber()));
@@ -2742,6 +2770,7 @@ void Client::CLevel_KakulSaydonArena::Update_RaidClear(const f32_t fTimeDelta)
 void Client::CLevel_KakulSaydonArena::Trigger_RaidClear()
 {
 	m_bRaidClearShowMvp = true;
+	m_iPendingRaidMvpGate = 0u;
 	m_fRaidClearElapsedSeconds = 0.f;
 }
 
@@ -2774,6 +2803,7 @@ bool_t Client::CLevel_KakulSaydonArena::Can_InteractGateProgress() const
 		(phase == KOUKUSAYDON_RAID_PHASE::PREPARING || phase == KOUKUSAYDON_RAID_PHASE::CINEMATIC ||
             (phase == KOUKUSAYDON_RAID_PHASE::WAIT_GATE && Get_KoukuRaidState().strGateId == "GATE3" && Get_KoukuRaidState().iEndTick)))) return false;
 	// The clear mark hands over to MVP before offering the next gate vote.
+	if (m_iPendingRaidMvpGate) return false;
 	return !(m_fRaidClearElapsedSeconds >= 0.f && m_fRaidClearElapsedSeconds * CLEAR_FPS < CLEAR_END_FRAME) &&
 		(!m_pMvpResultView || !m_pMvpResultView->Is_Visible());
 }
@@ -2852,6 +2882,7 @@ void Client::CLevel_KakulSaydonArena::Apply_GateProgressState(
 			if (nullptr != m_pMvpResultView)
 				m_pMvpResultView->Hide();
 			m_fRaidClearElapsedSeconds = -1.f;
+			m_iPendingRaidMvpGate = 0u;
 			if (nullptr != m_pRaidClearView)
 				m_pRaidClearView->Set_AllSlotsVisible(false);
 			m_bGateVoteAnswered = false;
@@ -2871,6 +2902,7 @@ void Client::CLevel_KakulSaydonArena::Apply_GateProgressState(
 			m_bGateVoteAnswered = false;
 			Trigger_RaidClear();
             m_bRaidClearShowMvp = !(State.iCurrentGate == 3u && State.iGateCount > 3u);
+			m_iPendingRaidMvpGate = m_bRaidClearShowMvp ? State.iCurrentGate : 0u;
 		}
 	}
 	/* Vote: a member gets the accept / decline prompt once; the proposer waits. */
@@ -3005,6 +3037,9 @@ void Client::CLevel_KakulSaydonArena::Update_GateProgress(const f32_t fTimeDelta
 		m_bHasRaidMvpResult = true;
 		m_bRaidMvpResultFresh = true;
 	}
+	if (m_iPendingRaidMvpGate && m_bRaidClearShowMvp &&
+		m_fRaidClearElapsedSeconds * CLEAR_FPS >= CLEAR_END_FRAME)
+		Show_MvpResult(false);
 
 	/* Defer votes under a cinematic, clear mark or MVP; late joins observe only. */
 	const bool_t canInteract = Can_InteractGateProgress();
@@ -3019,6 +3054,13 @@ void Client::CLevel_KakulSaydonArena::Update_GateProgress(const f32_t fTimeDelta
 		m_GateProgressView.Open_Prompt(Gate_VotePrompt(m_GateProgress.eKind),
 			Find_PlayerNickname(m_GateProgress.iProposerNetEntityId));
 	}
+	// Closing the cleared Gate 2 award page submits the existing Server vote once.
+	// Party members still consent through the typed gate-progress contract.
+	if (m_bMvpWasVisible && !bMvpVisible && canInteract && !bVoteOpen &&
+		m_GateProgress.iCurrentGate == 2u && (m_GateProgress.iClearedMask & 2u) &&
+		Is_LocalRaidLeader() && nullptr != m_pPlayerCommandSink)
+		(void)m_pPlayerCommandSink->Request_GateProgressPropose(
+			m_iNextGateRequestSequence++, GATE_PROGRESS_KIND::ADVANCE);
 	m_bMvpWasVisible = bMvpVisible;
 
 	/* The panel button follows the raid: restart while a gate is up, dungeon progress once a
@@ -3113,6 +3155,7 @@ void Client::CLevel_KakulSaydonArena::Debug_Hide_MvpResult()
 	if (nullptr != m_pMvpResultView)
 		m_pMvpResultView->Hide();
 	m_fRaidClearElapsedSeconds = -1.f;
+	m_iPendingRaidMvpGate = 0u;
 	if (nullptr != m_pRaidClearView)
 		m_pRaidClearView->Set_AllSlotsVisible(false);
 }
@@ -4606,6 +4649,83 @@ void Client::CLevel_KakulSaydonArena::Update_CardMazePresentation(f32_t dt)
 	m_bCardMazeMarchPlaying = playing;
 }
 
+void Client::CLevel_KakulSaydonArena::Clear_JokerTargetMarker()
+{
+	CEffectPresentationService::Stop_WorldRoot(m_JokerTargetMarker.handle);
+	m_JokerTargetMarker = {};
+}
+
+void Client::CLevel_KakulSaydonArena::Submit_JokerTargetMarker()
+{
+	using namespace LostArk::Shared;
+	std::vector<KOUKU_BOSS_PRESENTATION_VIEW> bosses;
+	std::vector<KOUKU_CARD_PRESENTATION_VIEW> players;
+	m_Replication.Collect_KoukuPresentationViews(bosses, players);
+	// Every room member consumes the same Server-selected target. Never infer
+	// it from facing, local player identity, or the input ping's lifetime.
+	const auto boss = std::find_if(bosses.begin(), bosses.end(), [](const auto& view) {
+		const auto& state = view.Snapshot;
+		return view.strArchetypeId == "BOSS_KAKULSAYDON_G2_BIG_SAYDON" &&
+			state.strPatternId == "KAKULSAYDON_G1_PATTERN_13" && state.iCurrentHp &&
+			state.eAction != WORLD_ENTITY_ACTION::DEAD && state.iPatternSequence &&
+			state.iPatternTargetNetEntityId != INVALID_NET_ENTITY_ID;
+	});
+	const auto target = boss == bosses.end() ? players.end() :
+		std::find_if(players.begin(), players.end(), [&](const auto& view) {
+			return view.Snapshot.iNetEntityId == boss->Snapshot.iPatternTargetNetEntityId &&
+				view.Snapshot.iCurrentHp && view.Snapshot.eAction != PLAYER_ACTION_STATE::DEAD;
+		});
+	const auto character = target == players.end() ? nullptr : target->pCharacter.lock();
+	float3_t head{};
+	if (m_Replication.Has_PendingConnectionLoss() || !character ||
+		!CWorldPlayerNameplateView::Try_GetHeadAnchor(*character, head))
+	{
+		Clear_JokerTargetMarker();
+		return;
+	}
+	head.y += 0.55f;
+	const auto& state = boss->Snapshot;
+	if (m_JokerTargetMarker.bossId != state.iNetEntityId ||
+		m_JokerTargetMarker.targetId != state.iPatternTargetNetEntityId ||
+		m_JokerTargetMarker.patternSequence != state.iPatternSequence)
+	{
+		// Retire the former target before preparing its replacement: a missing
+		// optional Effect must not keep identifying the wrong player.
+		Clear_JokerTargetMarker();
+		m_JokerTargetMarker.bossId = state.iNetEntityId;
+		m_JokerTargetMarker.targetId = state.iPatternTargetNetEntityId;
+		m_JokerTargetMarker.patternSequence = state.iPatternSequence;
+	}
+	if (m_JokerTargetMarker.failed) return;
+	float4x4_t world{};
+	XMStoreFloat4x4(&world, XMMatrixTranslation(head.x, head.y, head.z));
+	if (!m_JokerTargetMarker.handle.Is_Valid())
+	{
+		EFFECT_LEVEL_PLACEMENT_SPAWN_DESC desc;
+		desc.iLevelIndex = ETOUI(LEVEL::KAKULSAYDON_ARENA);
+		desc.strPlacementId = "kouku.joker.target." + std::to_string(state.iNetEntityId);
+		desc.strEffectAssetId = "effect.world.target_reticle";
+		desc.RootWorld = world;
+		desc.bOwnerSustainedSourceLoops = true;
+		std::string status;
+		if (!CEffectPresentationService::Spawn_LevelPlacement(desc, m_JokerTargetMarker.handle, status))
+		{
+			m_JokerTargetMarker.failed = true;
+			OutputDebugStringA(("[KoukuJokerTarget] Optional target marker unavailable: " + status + "\n").c_str());
+			return;
+		}
+		// This submission runs after object iteration, like the existing auras.
+		CEffectPresentationService::Commit_PendingWorldRootSpawns({ m_JokerTargetMarker.handle });
+	}
+	if (!CEffectPresentationService::Update_WorldRoot(m_JokerTargetMarker.handle, world))
+	{
+		CEffectPresentationService::Stop_WorldRoot(m_JokerTargetMarker.handle);
+		m_JokerTargetMarker.handle = {};
+		m_JokerTargetMarker.failed = true;
+		OutputDebugStringA("[KoukuJokerTarget] Target marker update failed; stale marker retired.\n");
+	}
+}
+
 bool_t Client::CLevel_KakulSaydonArena::Load_EntranceTriggerMarkers()
 {
 	CWorldGameplayDocument document;
@@ -4692,6 +4812,7 @@ void Client::CLevel_KakulSaydonArena::Submit_EntranceTriggerMarkers()
 	if (CGameInstance::Get().Get_CurrentLevelID() != ETOUI(LEVEL::KAKULSAYDON_ARENA))
 		return;
 	Submit_Gate3Auras();
+	Submit_JokerTargetMarker();
 	for (auto& marker : m_EntranceTriggerMarkers)
 	{
 		if (marker.retired) continue;
@@ -5149,6 +5270,61 @@ void Client::CLevel_KakulSaydonArena::Restore_CinematicSurroundings()
 	m_iCinematicOwnedSignature = 0u;
 }
 
+bool_t Client::CLevel_KakulSaydonArena::Begin_ServerEncoreView(std::string& status)
+{
+    const auto& raid = m_Replication.Get_KoukuRaidState();
+    const bool encore = raid.ePhase == LostArk::Shared::KOUKUSAYDON_RAID_PHASE::CINEMATIC &&
+        raid.strGateId == "BINGO" && raid.strSequenceCompositionId == "boss.composition.kakulsaydon.sequencer" &&
+        raid.strSequencePatternId == "KAKULSAYDON_G1_PATTERN_10";
+    if (m_ServerEncoreView && (!encore || m_ServerEncoreView->runEpoch != raid.iRunEpoch ||
+        m_ServerEncoreView->startTick != raid.iStartTick))
+    {
+        m_ServerEncoreView.reset();
+        Stop_CompositionCamera(true);
+    }
+    if (!encore || m_ServerEncoreView) return true;
+    if (!m_pPendingGateObjects || !m_pPendingGateObjects->serverRaidPrepared)
+    { status = "Encore player view requires the prepared Server gate."; return false; }
+    const auto shot = std::find_if(m_CameraShots.begin(), m_CameraShots.end(), [](const auto& row) {
+        return row.strShotId == "kouku.bingo.encore.camera.1" && row.hasCameraTrack;
+    });
+    SERVER_ENCORE_VIEW candidate;
+    candidate.runEpoch = raid.iRunEpoch; candidate.startTick = raid.iStartTick;
+    if (shot == m_CameraShots.end() || !m_pCamera || !CCameraTool::Capture_ViewPose(candidate.heldPose))
+    { status = "Encore published camera or current player view is unavailable."; return false; }
+    candidate.authoredTrack = shot->CameraTrack;
+    candidate.blendOutMs = shot->iBlendOutMs; candidate.easing = shot->eTransitionEasing;
+    m_ServerEncoreView = std::move(candidate);
+    if (m_pCamera->Is_FollowEnabled() && !Acquire_ServerEncoreView(status))
+    { m_ServerEncoreView.reset(); return false; }
+    return true;
+}
+
+bool_t Client::CLevel_KakulSaydonArena::Acquire_ServerEncoreView(std::string& status)
+{
+    constexpr uint64_t owner = 0x4b4f554b55434f4dull;
+    if (!m_ServerEncoreView || !m_pCamera || !m_pCamera->Is_FollowEnabled()) return false;
+    const auto& view = *m_ServerEncoreView;
+    if (!m_pCamera->Begin_PresentationOverride(owner, Engine::CCamera::PRESENTATION_PRIORITY::AUTHORING_PREVIEW))
+    { status = "Encore could not acquire the player camera."; return false; }
+    Release_CameraShot();
+    const auto& pose = view.heldPose;
+    if (!m_pCamera->Apply_PresentationPoseWithUp(owner, pose.vEye, pose.vLookAt, pose.vUp, pose.fFovYDegrees))
+    {
+        (void)m_pCamera->End_PresentationOverride(owner);
+        status = "Encore could not hold the captured player camera.";
+        return false;
+    }
+    auto& transition = m_CompositionCamera;
+    transition = {};
+    transition.ownerKey = "server.encore." + std::to_string(view.runEpoch) + "." + std::to_string(view.startTick);
+    transition.shotId = "kouku.bingo.encore.camera.1"; transition.cinematicTrack = true;
+    transition.fromPose = transition.entryPose = transition.appliedPose = pose;
+    transition.blendOutMs = view.blendOutMs; transition.easing = view.easing;
+    transition.followAtStart = true;
+    return true;
+}
+
 bool_t Client::CLevel_KakulSaydonArena::Is_CompositionCameraEnabled() const
 {
 	return m_pCamera && m_pCamera->Is_FollowEnabled();
@@ -5162,8 +5338,9 @@ bool_t Client::CLevel_KakulSaydonArena::Sample_CompositionCamera(
 	if (!m_pCamera || ownerKey.empty() || !std::isfinite(seconds) || seconds < 0.f || durationMs == 0u ||
 		!std::isfinite(offset.x) || !std::isfinite(offset.y) || !std::isfinite(offset.z)) return false;
 	if (!Is_CompositionCameraEnabled()) return false;
-	if (preview) { std::string status; if (!Ensure_CameraShotAuthoring(status)) return false; }
-	const auto& shots = preview ? m_AuthoringCameraShots : m_CameraShots;
+    const bool serverEncore = m_ServerEncoreView && shotId == "kouku.bingo.encore.camera.1";
+	if (preview && !serverEncore) { std::string status; if (!Ensure_CameraShotAuthoring(status)) return false; }
+	const auto& shots = preview && !serverEncore ? m_AuthoringCameraShots : m_CameraShots;
 	const auto found = std::find_if(shots.begin(), shots.end(), [shotId](const auto& shot) { return shot.strShotId == shotId; });
 	if (found == shots.end() || durationMs < found->iBlendInMs) return false;
 	if (!preview && !Is_SequenceCameraAudience(found->strSequenceInstanceId,
@@ -5179,7 +5356,8 @@ bool_t Client::CLevel_KakulSaydonArena::Sample_CompositionCamera(
 	if (transition.ownerKey != ownerKey || transition.returning || seconds + 0.01f < transition.lastSeconds)
 	{
 		VALTAN_CINEMATIC_CAMERA_POSE current;
-		if (!CCameraTool::Capture_ViewPose(current)) return false;
+        if (serverEncore) current = m_ServerEncoreView->heldPose;
+		else if (!CCameraTool::Capture_ViewPose(current)) return false;
 		if (!m_pCamera->Begin_PresentationOverride(owner, Engine::CCamera::PRESENTATION_PRIORITY::AUTHORING_PREVIEW)) return false;
 		// Taking over an Area shot keeps the displayed pose but drops its stale owner state.
 		Release_CameraShot();
@@ -5208,7 +5386,8 @@ bool_t Client::CLevel_KakulSaydonArena::Sample_CompositionCamera(
 		m_pCamera->Is_FollowEnabled() != transition.followAtStart)
 	{ Stop_CompositionCamera(true); return false; }
 	VALTAN_CINEMATIC_CAMERA_POSE target{ found->vEye, found->vLookAt, found->fFovYDegrees };
-	if (found->hasCameraTrack)
+    if (serverEncore) target = m_ServerEncoreView->heldPose;
+	else if (found->hasCameraTrack)
 	{
 		if (!CValtanCinematicCameraController::Sample_Cue(found->CameraTrack, seconds, target))
 		{ Stop_CompositionCamera(true); return false; }
@@ -5222,8 +5401,11 @@ bool_t Client::CLevel_KakulSaydonArena::Sample_CompositionCamera(
 		target.vEye = float3_t(player.x + found->vFollowEyeOffset.x, player.y + found->vFollowEyeOffset.y, player.z + found->vFollowEyeOffset.z);
 		target.vLookAt = float3_t(player.x + found->vFollowLookAtOffset.x, player.y + found->vFollowLookAtOffset.y, player.z + found->vFollowLookAtOffset.z);
 	}
-	target.vEye.x += offset.x; target.vEye.y += offset.y; target.vEye.z += offset.z;
-	target.vLookAt.x += offset.x; target.vLookAt.y += offset.y; target.vLookAt.z += offset.z;
+    if (!serverEncore)
+    {
+	    target.vEye.x += offset.x; target.vEye.y += offset.y; target.vEye.z += offset.z;
+	    target.vLookAt.x += offset.x; target.vLookAt.y += offset.y; target.vLookAt.z += offset.z;
+    }
 	VALTAN_CINEMATIC_CAMERA_POSE applied = target;
 	if (found->iBlendInMs && !CValtanCinematicCameraController::Sample_BoundedTransition(
 		transition.fromPose, target, found->iBlendInMs, seconds, applied, found->eTransitionEasing))
@@ -5256,6 +5438,9 @@ bool_t Client::CLevel_KakulSaydonArena::Resolve_CompositionFollowPose(VALTAN_CIN
 void Client::CLevel_KakulSaydonArena::Stop_CompositionCamera(const bool_t force)
 {
 	auto& transition = m_CompositionCamera;
+    // The authored camera ends before the Encore sound tail and Server gate handoff.
+    // F6/abort may still release the override immediately.
+    if (!force && m_ServerEncoreView && transition.shotId == "kouku.bingo.encore.camera.1") return;
 	transition.finishedOwnerKey.clear();
 	if (transition.ownerKey.empty()) return;
 	if (force)
@@ -5293,6 +5478,13 @@ void Client::CLevel_KakulSaydonArena::Update_CompositionCamera(const f32_t timeD
 		transition.cancelledOwnerKey.clear();
 		return;
 	}
+    if (m_ServerEncoreView && transition.ownerKey.empty() && m_pCamera && m_pCamera->Is_FollowEnabled())
+    {
+        // F6 may return after the authored Camera row has already ended.
+        // The Server lease still owns its sound tail, using the same captured view.
+        std::string status;
+        if (!Acquire_ServerEncoreView(status)) return;
+    }
 	if (transition.ownerKey.empty()) return;
 	if (!m_pCamera || !m_pCamera->Is_PresentationOverrideOwnedBy(owner) ||
 		m_pCamera->Is_FollowEnabled() != transition.followAtStart)
@@ -5929,7 +6121,9 @@ void Client::CLevel_KakulSaydonArena::Consume_OwnedWorldCue(
     BindCompositionGroupOrigin(m_SequencePlayer.Get_Document(), play.strSequenceInstanceId, cueTargets);
     auto player = std::make_shared<CWorldSequencePlayer>();
     const auto placement = WorldPlacementFromCue(play);
-    if (!player->Set_Document(m_SequencePlayer.Get_Document(), targets, status) ||
+    CWorldSequenceDocument playback;
+    if (!m_SequencePlayer.Get_Document().Build_PlaybackSubset({play.strSequenceInstanceId}, playback, status) ||
+        !player->Set_Document(playback, targets, status) ||
         !PrepareCompositionWorld(*player, play.strSequenceInstanceId, targets, placement, status) ||
         !PlayCompositionWorld(*player, play.strSequenceInstanceId, cueTargets, play.fPlaybackSpeed,
             float3_t(play.fPositionOffsetX, play.fPositionOffsetY, play.fPositionOffsetZ), play.iDurationMs, placement) ||
@@ -5945,6 +6139,7 @@ void Client::CLevel_KakulSaydonArena::Consume_OwnedWorldCue(
     cue.runEpoch = play.iRunEpoch; cue.patternSequence = play.iPatternSequence;
     cue.startTick = play.iStartTick; cue.durationMs = play.iDurationMs;
     cue.untilDestroyed = play.bUntilDestroyed;
+    cue.combatBodyNetEntityId = play.iCombatBodyNetEntityId;
     cue.memberId = play.strMemberId; cue.cueId = play.strCueId; cue.occurrenceId = play.strOccurrenceId; cue.sequenceId = play.strSequenceInstanceId;
     cue.emissionAnchor = std::move(cueTargets.objectEmissionAnchor);
     cue.clockMs = ageMs; cue.player = std::move(player);
@@ -6019,7 +6214,22 @@ bool Client::CLevel_KakulSaydonArena::Debug_PrepareCompletePlayResources(
         // A publish can finish after arena entry. Refresh the idle runtime base once
         // per new request; active cues and editor drafts retain their own snapshots.
         if (m_SequencePlayer.Has_ActiveInstances())
-        { status = "Stop the active WORLD sequence before preparing a new Complete Play."; return false; }
+        {
+            // A late participant can consume an entry WORLD cue immediately before
+            // the shared PREPARING state. Busy is pending, not PREPARE_FAILED:
+            // the ordinary level update keeps advancing that Server-owned cue.
+            // Do not read files or replace its document/model pools while it plays.
+            status = "Waiting for the current WORLD sequence to finish before preparing Complete Play";
+            size_t shown = 0u;
+            for (const auto& instance : document.Get_Instances())
+            {
+                if (!m_SequencePlayer.Is_Playing(instance.instanceId)) continue;
+                if (shown == 4u) { status += ", ..."; break; }
+                status += (shown++ == 0u ? ": " : ", ") + instance.instanceId;
+            }
+            status += ". Preparation will continue automatically.";
+            return true;
+        }
         if (!Reload_WorldObjectRuntime(status)) return false;
         COMPLETE_PLAY_PREPARATION staged;
         staged.selectedPatterns = patternIds; staged.selectedBundles = bundleIds; staged.sourceRevision = sourceRevision;
@@ -6129,12 +6339,23 @@ bool Client::CLevel_KakulSaydonArena::Debug_PrepareCompletePlayResources(
     if (pending.worldIndex < resources.WorldInstanceIds.size())
     {
         const auto& id = resources.WorldInstanceIds[pending.worldIndex];
-        if (!m_SequencePlayer.Prepare_InstanceResources(id, Make_WorldSequenceTargets()))
+        const auto targets = Make_WorldSequenceTargets();
+        if (!m_SequencePlayer.Prepare_InstanceResources(id, targets))
         { status = "Complete Play WORLD preparation failed: " + id + "; " + m_SequencePlayer.Get_Status(); return false; }
+        const uint32_t copies = id == "world.object.instance.kouku.card" ? 6u :
+            id == "world.object.instance.kouku.joker_card" ? 1u :
+            (id == "world.object.instance.kouku.mario_circus_ball.aura" ||
+             id == "world.object.instance.kouku.odd_doll.large.att_battle_2_01") ? 4u : 0u;
+        // A runtime reload clears the entry pools. Rebuild them inside this
+        // preparation barrier, before Server playback can create the first props.
+        if (copies && !m_SequencePlayer.Prewarm_ObjectInstances(id, copies, targets))
+        { status = "Complete Play WORLD clone preparation failed: " + id + "; " + m_SequencePlayer.Get_Status(); return false; }
         ++pending.worldIndex; return true;
     }
-    if (pending.draft && !CKoukuSaydonPresentationAssetService::Validate_DraftBindings(
-        ETOUI(LEVEL::KAKULSAYDON_ARENA), pending.draft, status)) return false;
+    bool bindingsReady = false;
+    if (!CKoukuSaydonPresentationAssetService::Prepare_ProductBindings(
+        ETOUI(LEVEL::KAKULSAYDON_ARENA), sourceRevision, bindingsReady, status, pending.draft)) return false;
+    if (!bindingsReady) return true;
     ready = true;
     status = "Complete Play dependencies are fully prepared.";
     return true;

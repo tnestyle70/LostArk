@@ -34,6 +34,9 @@ namespace Client
 {
 struct CKoukuSaydonWorkbenchTestAccess
 {
+    static bool Commit(CKoukuSaydonActionWorkbench& workbench,
+        KOUKU_SAYDON_COMPOSITION_DOCUMENT candidate, std::string& status)
+    { return workbench.Commit_Candidate(std::move(candidate), "Parent timing fixture", status); }
     static bool Append(CKoukuSaydonActionWorkbench& workbench,
         const KOUKU_SAYDON_COMPOSITION_PRESENTATION_RESOURCE& source, std::string& status)
     { return workbench.Append_PresentationSource(source, status); }
@@ -4261,6 +4264,200 @@ int Run_KoukuPatternDeleteContractTests()
     { std::cerr << "Kouku Pattern deletion FAIL: " << error.what() << '\n'; return 1; }
 }
 
+
+int Run_KoukuSequentialParentTimingContractTests()
+{
+    try
+    {
+        using namespace Client;
+        const auto sourceRoot = CProjectDataRoot::Get();
+        const auto scratchRoot = std::filesystem::temp_directory_path() /
+            ("LostArkKoukuParentTiming-" + std::to_string(GetCurrentProcessId()) + "-" + std::to_string(GetTickCount64()));
+        SCOPED_TEST_DIRECTORY cleanup(scratchRoot);
+        const auto dataRoot = scratchRoot / "Data";
+        const auto relative = std::filesystem::path("KoukuSaydon/Gate1/KoukuSaydonComposition.json");
+        const auto sourcePath = dataRoot / relative;
+        Require(CopyFixture(sourceRoot / relative, sourcePath), "copy actual Parent timing fixture");
+        for (const char* profile : {"MN_RPCT_05", "MN_RPCT_06", "MN_RPCT_07", "MN_RPCZ_00"})
+        {
+            const auto reference = std::filesystem::path("Animation/Reference/KoukuSaydon") /
+                (std::string(profile) + ".actionreference.json");
+            Require(CopyFixture(sourceRoot / reference, dataRoot / reference), "copy source Action reference");
+        }
+        SCOPED_ENVIRONMENT_VARIABLE environment(L"LOSTARK_PROJECT_DATA_ROOT");
+        Require(environment.Set(dataRoot), "select scratch Parent timing owner");
+        CKoukuSaydonActionWorkbench workbench;
+        std::string status;
+        RequireEditorStep(workbench.Reload(status), status, "load actual Parent fixture");
+        const auto original = workbench.Get_Composition();
+        const std::string childId = "KAKULSAYDON_G1_PATTERN_52", parentId = "KAKULSAYDON_G1_PATTERN_92";
+        const auto find = [&](auto& document, const std::string& id) -> auto& {
+            const auto row = std::find_if(document.Patterns.begin(), document.Patterns.end(), [&](const auto& value) { return value.strPatternId == id; });
+            Require(row != document.Patterns.end(), "Parent fixture Pattern is missing"); return *row;
+        };
+        const auto install = [&](const auto& document) {
+            Require(WriteText(sourcePath, CKoukuSaydonCompositionDocument::Serialize(document)), "write scratch Parent fixture");
+            RequireEditorStep(workbench.Reload(status), status, "reload scratch Parent fixture");
+            Require(workbench.Get_Composition().Patterns == document.Patterns, "fixture reload quarantined a Pattern");
+        };
+        const auto lifetime = [](const auto& pattern) {
+            std::uint32_t value = pattern.iDurationMs;
+            if (!value) for (const auto& stage : pattern.Stages) value += stage.iDurationMs;
+            return value;
+        };
+        const auto verifyParent = [&](const auto& before, const auto& after) {
+            auto expected = before;
+            std::int64_t shift = 0;
+            auto rows = before.PatternOccurrences;
+            std::sort(rows.begin(), rows.end(), [](const auto& a, const auto& b) { return a.iStartMs < b.iStartMs; });
+            for (const auto& row : rows)
+            {
+                const auto nextLifetime = lifetime(EditorPattern(workbench, row.strPatternId));
+                auto next = std::find_if(expected.PatternOccurrences.begin(), expected.PatternOccurrences.end(),
+                    [&](const auto& value) { return value.strOccurrenceId == row.strOccurrenceId; });
+                next->iStartMs = static_cast<std::uint32_t>(std::int64_t(row.iStartMs) + shift);
+                next->iDurationMs = nextLifetime;
+                shift += std::int64_t(nextLifetime) - row.iDurationMs;
+            }
+            expected.iDurationMs = static_cast<std::uint32_t>(std::int64_t(before.iDurationMs) + shift);
+            const auto ends = [&](auto& lane) {
+                for (auto& row : lane) if (std::uint64_t(row.iStartMs) + row.iDurationMs == before.iDurationMs)
+                    row.iDurationMs = expected.iDurationMs - row.iStartMs;
+            };
+            ends(expected.LogicOccurrences); ends(expected.SummonOccurrences); ends(expected.WorldOccurrences);
+            ends(expected.SceneProfileOccurrences); ends(expected.PresentationOccurrences);
+            expected.strAuthoringStatus = "DRAFT";
+            Require(expected == after, "Parent timing changed gaps, independent rows, source clocks, rates or identity");
+        };
+        Require(EditorPattern(workbench, childId).iDurationMs == 13009u, "expected saved 13009 ms source");
+        RequireEditorStep(workbench.Set_PatternDuration(childId, 9500u, status), status, "shrink actual Summon Parent to 9500 ms");
+        Require(EditorPattern(workbench, childId).iDurationMs == 9500u, "requested lifetime was not committed");
+        verifyParent(find(original, parentId), EditorPattern(workbench, parentId));
+        for (const auto& pattern : original.Patterns)
+            if (pattern.strPatternId != childId && pattern.strPatternId != parentId)
+                Require(EditorPattern(workbench, pattern.strPatternId) == pattern, "unrelated Pattern changed during Parent retime");
+        RequireEditorRoundtrip(workbench);
+        std::cout << "ParentTiming actual P52 13009->9500/P92 50362->46853 + Save/Reload PASS\n";
+
+        install(original);
+        const std::string albionId = "KAKULSAYDON_G1_PATTERN_39";
+        const auto albion = EditorPattern(workbench, albionId);
+        RequireEditorStep(workbench.Set_StageDuration(albionId, albion.Stages.back().strStageId,
+            albion.Stages.back().iDurationMs - 1000u, status), status, "shrink actual Albion Stage by 1000 ms");
+        Require(lifetime(EditorPattern(workbench, albionId)) == lifetime(albion) - 1000u, "Albion Stage did not shorten lifetime");
+        Require(EditorPattern(workbench, albionId).PresentationOccurrences == albion.PresentationOccurrences &&
+            EditorPattern(workbench, albionId).LogicOccurrences == albion.LogicOccurrences, "Albion Stage edit changed lane clocks");
+        verifyParent(find(original, parentId), EditorPattern(workbench, parentId));
+        verifyParent(find(original, "KAKULSAYDON_G1_PATTERN_93"), EditorPattern(workbench, "KAKULSAYDON_G1_PATTERN_93"));
+        RequireEditorRoundtrip(workbench);
+        std::cout << "ParentTiming actual Albion Stage shrink / two referencing Parents + Save/Reload PASS\n";
+
+        // Current data uses independent Bingo flow entries. Reuse its real
+        // board Logic and actor as a legacy complete-child Loop Parent fixture.
+        auto bingo = original;
+        const std::string bingoParentId = "KAKULSAYDON_G1_PATTERN_129";
+        const std::string bingoChildId = "KAKULSAYDON_G1_PATTERN_108";
+        auto& bingoParent = find(bingo, bingoParentId);
+        const auto bingoDuration = lifetime(find(bingo, bingoChildId));
+        const std::string loopId = bingoParentId + ".pattern.1";
+        bingoParent.Stages.front().strActionId = bingoParentId + ".parent-owner";
+        bingoParent.strLoopStartPatternOccurrenceId = loopId;
+        bingoParent.PatternOccurrences = {{loopId, bingoChildId, 0u, bingoDuration, false}};
+        bingoParent.iNextPatternOccurrenceOrdinal = 2u;
+        bingoParent.iDurationMs = bingoDuration;
+        bingoParent.LogicOccurrences.front().iDurationMs = bingoDuration;
+        install(bingo);
+        const auto bingoBefore = EditorPattern(workbench, bingoParentId);
+        RequireEditorStep(workbench.Set_PatternDuration(bingoChildId, bingoDuration + 300u, status), status,
+            "extend complete child of Bingo Loop Parent");
+        const auto& bingoAfter = EditorPattern(workbench, bingoParentId);
+        verifyParent(bingoBefore, bingoAfter);
+        Require(bingoAfter.strLoopStartPatternOccurrenceId == loopId &&
+            bingoAfter.iDurationMs == bingoDuration + 300u && bingoAfter.LogicOccurrences.size() == 1u &&
+            bingoAfter.LogicOccurrences.front().iStartMs == 0u &&
+            bingoAfter.LogicOccurrences.front().iDurationMs == bingoAfter.iDurationMs,
+            "Bingo Loop Parent lost continuous board coverage or its loop start identity");
+        RequireEditorRoundtrip(workbench);
+        std::cout << "ParentTiming Bingo Loop Parent / continuous board / loop identity + Save/Reload PASS\n";
+
+        // Keep a pre-existing gap, and consume both occurrences of the same
+        // source child. Fixed-window Parents deliberately keep their timing.
+        auto gaps = original;
+        auto& gapParent = find(gaps, parentId);
+        const auto oldEnd = gapParent.iDurationMs;
+        for (auto& row : gapParent.PatternOccurrences) if (row.iStartMs >= 19355u) row.iStartMs += 75u;
+        gapParent.iDurationMs += 75u;
+        const auto extendEnd = [&](auto& lane) { for (auto& row : lane)
+            if (std::uint64_t(row.iStartMs) + row.iDurationMs == oldEnd) row.iDurationMs += 75u; };
+        extendEnd(gapParent.LogicOccurrences); extendEnd(gapParent.WorldOccurrences); extendEnd(gapParent.PresentationOccurrences);
+        auto& fixed = find(gaps, "KAKULSAYDON_G1_PATTERN_93");
+        fixed.bPlayChildrenSequentially = false;
+        install(gaps);
+        const auto fixedBefore = EditorPattern(workbench, fixed.strPatternId);
+        const std::string repeatedId = "KAKULSAYDON_G1_PATTERN_124";
+        RequireEditorStep(workbench.Set_PatternDuration(repeatedId,
+            lifetime(EditorPattern(workbench, repeatedId)) + 100u, status), status, "extend twice-referenced child");
+        verifyParent(gapParent, EditorPattern(workbench, parentId));
+        auto expectedFixed = fixedBefore; expectedFixed.strAuthoringStatus = EditorPattern(workbench, fixed.strPatternId).strAuthoringStatus;
+        Require(expectedFixed == EditorPattern(workbench, fixed.strPatternId), "fixed Parent timing was rewritten");
+        RequireEditorRoundtrip(workbench);
+        std::cout << "ParentTiming gap / repeated source / fixed windows preserved PASS\n";
+
+        install(original);
+        const auto assertRejected = [&](auto candidate, const char* contains) {
+            const auto before = workbench.Get_Composition(); const auto generation = workbench.Get_DraftGeneration();
+            Require(!CKoukuSaydonWorkbenchTestAccess::Commit(workbench, std::move(candidate), status), "conflicting edit unexpectedly succeeded");
+            Require(status.find(contains) != std::string::npos, "rejected edit lacks precise diagnostic");
+            Require(workbench.Get_Composition() == before && workbench.Get_DraftGeneration() == generation,
+                "failed Parent edit changed the live draft");
+        };
+        auto conflicting = original;
+        find(conflicting, childId).iDurationMs = 9500u;
+        find(conflicting, parentId).PatternOccurrences.back().iDurationMs -= 1u;
+        assertRejected(conflicting, "both edited");
+        conflicting = original; find(conflicting, childId).iDurationMs = 9500u;
+        find(conflicting, parentId).WorldOccurrences.front().iDurationMs -= 1u;
+        assertRejected(conflicting, "also edited");
+        const auto beforeOverflow = workbench.Get_Composition();
+        Require(!workbench.Set_PatternDuration(childId, 600000u, status) && status.find("600000") != std::string::npos &&
+            workbench.Get_Composition() == beforeOverflow, "overflow was not rejected atomically");
+        auto shortEnd = original;
+        auto& lateWorld = find(shortEnd, parentId).WorldOccurrences.front();
+        lateWorld.iStartMs = find(shortEnd, parentId).iDurationMs - 100u; lateWorld.iDurationMs = 100u;
+        install(shortEnd);
+        const auto beforeShort = workbench.Get_Composition();
+        Require(!workbench.Set_PatternDuration(childId, 9500u, status) && status.find("precedes row") != std::string::npos &&
+            workbench.Get_Composition() == beforeShort, "end before a common row was not rejected atomically");
+        std::cout << "ParentTiming same-candidate conflicts / overflow / too-short end atomic rejection PASS\n";
+
+        install(original);
+        const std::string frontId = "KAKULSAYDON_G1_PATTERN_50";
+        const auto rotation = std::find_if(original.Logics.begin(), original.Logics.end(), [](const auto& logic) {
+            return logic.strLogicType == "TRIGGER" && logic.strTriggerKind == "BOSS_TRACK_TARGET" && logic.fFollowSpeedScale == 0.0; });
+        Require(rotation != original.Logics.end(), "instant facing Logic missing from real catalog");
+        std::string occurrenceId;
+        RequireEditorStep(workbench.Append_LogicBox(frontId, rotation->strLogicId, 0u, 1000u, occurrenceId, status), status,
+            "append nearest-player facing to actual front actor");
+        const auto& front = EditorPattern(workbench, frontId);
+        const auto inserted = std::find_if(front.LogicOccurrences.begin(), front.LogicOccurrences.end(),
+            [&](const auto& box) { return box.strOccurrenceId == occurrenceId; });
+        Require(inserted != front.LogicOccurrences.end() && inserted->iDurationMs == 34u, "directional facing Trigger did not get an instant window");
+        for (const auto& pattern : original.Patterns) if (pattern.strPatternId != frontId)
+            Require(EditorPattern(workbench, pattern.strPatternId) == pattern, "front facing edit changed another actor");
+        RequireEditorRoundtrip(workbench);
+        auto invalidFront = EditorPattern(workbench, frontId); invalidFront.LogicOccurrences.back().iDurationMs = 35u;
+        Require(!CKoukuSaydonCompositionDocument::Validate_CrossDirectionChildLogic(workbench.Get_Composition(), invalidFront, status),
+            "direction actor allowed a non-instant facing window");
+        invalidFront = EditorPattern(workbench, frontId); invalidFront.LogicOccurrences.back().OnSuccessLogicIds.push_back(original.Logics.front().strLogicId);
+        Require(!CKoukuSaydonCompositionDocument::Validate_CrossDirectionChildLogic(workbench.Get_Composition(), invalidFront, status),
+            "direction actor allowed facing outcomes");
+        std::cout << "ParentTiming front-only facing append / narrow validation / Save/Reload PASS\n";
+        return 0;
+    }
+    catch (const std::exception& error)
+    { std::cerr << "KoukuSequentialParentTimingContractTests FAIL: " << error.what() << '\n'; return 1; }
+}
+
 int Run_KoukuIndependentRowClockContractTests()
 {
     try
@@ -4584,6 +4781,21 @@ int Run_KoukuFixedDamageContractTests()
         tuning.iRepeatIntervalMs = 1u;
         Require(!workbench.Set_LogicDefinitionValues(tuningId, tuning, status) && workbench.Get_Composition() == goodTuning,
             "invalid duration tick partially committed");
+        std::string zoneId;
+        RequireEditorStep(workbench.Create_Logic("Exact occupant safe zone", "DURATION", zoneId, status), status, "create exact zone");
+        for (const std::uint32_t required : {0u, 1u, 2u, 4u})
+        {
+            tuning = {}; tuning.strLogicType = "DURATION"; tuning.strJudgementKind = "INVULNERABILITY_ZONE"; tuning.iThreshold = required;
+            RequireEditorStep(workbench.Set_LogicDefinitionValues(zoneId, tuning, status), status, "apply exact zone occupancy");
+            RequireEditorRoundtrip(workbench);
+            const auto& saved = workbench.Get_Composition().Logics;
+            const auto found = std::find_if(saved.begin(), saved.end(), [&](const auto& row) { return row.strLogicId == zoneId; });
+            Require(found != saved.end() && found->iThreshold == required, "zone exact count changed on save/reload");
+        }
+        const auto validZone = workbench.Get_Composition(); const auto validZoneDisk = ReadText(sourcePath);
+        tuning.iThreshold = 5u;
+        Require(!workbench.Set_LogicDefinitionValues(zoneId, tuning, status) && workbench.Get_Composition() == validZone &&
+            ReadText(sourcePath) == validZoneDisk, "invalid zone count partially changed memory or disk");
         std::string soldierId;
         RequireEditorStep(workbench.Create_Logic("Card soldier tuning", "TRIGGER", soldierId, status), status, "create soldier tuning");
         tuning = {}; tuning.strLogicType = "TRIGGER"; tuning.strTriggerKind = "CARD_RAIN_SOLDIERS";
@@ -4616,8 +4828,81 @@ int Run_KoukuFixedDamageContractTests()
         tuning = {}; tuning.strLogicType = "RESULT"; tuning.strOutcomeKind = "PLAYER_INVULNERABILITY"; tuning.iDurationMs = 30000u;
         RequireEditorStep(workbench.Set_LogicDefinitionValues(invulnerableId, tuning, status), status, "apply 30 second invulnerability");
         RequireEditorRoundtrip(workbench);
+        // An unrelated damage Apply must not dissolve another Pattern's one-member
+        // gameplay template. Only unreferenced UI selection groups may collapse.
+        auto grouped = workbench.Get_Composition();
+        KOUKU_SAYDON_COMPOSITION_PATTERN semantic;
+        semantic.strPatternId = "KAKULSAYDON_G1_PATTERN_" + std::to_string(grouped.iNextPatternOrdinal++);
+        semantic.strDisplayName = "Semantic singleton groups"; semantic.strAuthoringStatus = "DRAFT";
+        semantic.strCategory = "NORMAL"; semantic.iDurationMs = 10000u;
+        semantic.strActorProfileId = pattern.strActorProfileId; semantic.strGateId = pattern.strGateId;
+        semantic.strTargetBossPlacementId = pattern.strTargetBossPlacementId;
+        KOUKU_SAYDON_COMPOSITION_PRESENTATION_RESOURCE effect;
+        effect.strResourceId = "kakulsaydon.g1.presentation." + std::to_string(grouped.iNextPresentationResourceOrdinal++);
+        effect.strDisplayName = "Semantic group Effect"; effect.strAssetId = "contract.semantic.effect";
+        effect.strResourceKind = "LEAF"; effect.strDefaultAnchorKind = "MAP";
+        grouped.PresentationResources.push_back(effect);
+        const std::string selectedGroup = semantic.strPatternId + ".effectgroup.selected";
+        const std::string fixedGroup = semantic.strPatternId + ".effectgroup.fixed";
+        const std::string uiGroup = semantic.strPatternId + ".effectgroup.ui";
+        for (const auto& groupId : {selectedGroup, fixedGroup, uiGroup})
+        {
+            KOUKU_SAYDON_COMPOSITION_PRESENTATION_OCCURRENCE row;
+            row.strOccurrenceId = semantic.strPatternId + ".presentation." + std::to_string(semantic.iNextPresentationOccurrenceOrdinal++);
+            row.strResourceId = effect.strResourceId; row.strAnchorKind = "MAP"; row.bFollowBoss = false;
+            row.strSelectionGroupId = groupId; row.iStartMs = 500u; row.iDurationMs = 700u;
+            semantic.PresentationOccurrences.push_back(row);
+        }
+        KOUKU_SAYDON_COMPOSITION_LOGIC_DEFINITION selected;
+        selected.strLogicId = "kakulsaydon.g1.logic." + std::to_string(grouped.iNextLogicOrdinal++);
+        selected.strDisplayName = "Selected group owner"; selected.strLogicType = "TRIGGER";
+        selected.strTriggerKind = "ALBION_AIRBORNE"; selected.strAirbornePhase = "SELECT_PLAYER";
+        selected.strAirborneTargetPositionPolicy = "SELECT"; selected.strSelectedEffectGroupId = selectedGroup;
+        auto unplaced = selected;
+        unplaced.strLogicId = "kakulsaydon.g1.logic." + std::to_string(grouped.iNextLogicOrdinal++);
+        unplaced.strDisplayName = "Unplaced catalog definition"; unplaced.strSelectedEffectGroupId = uiGroup;
+        KOUKU_SAYDON_COMPOSITION_LOGIC_DEFINITION fixedOwner;
+        fixedOwner.strLogicId = "kakulsaydon.g1.logic." + std::to_string(grouped.iNextLogicOrdinal++);
+        fixedOwner.strDisplayName = "Disabled fixed group owner"; fixedOwner.strLogicType = "DURATION";
+        fixedOwner.strJudgementKind = "SHOWTIME_PLAYER_TARGETS"; fixedOwner.strFixedSelectionGroupId = fixedGroup;
+        fixedOwner.iSpawnIntervalMs = 500u; fixedOwner.fFollowSpeedScale = 1.0;
+        grouped.Logics.insert(grouped.Logics.end(), {selected, fixedOwner, unplaced});
+        for (const auto& owner : {selected, fixedOwner})
+        {
+            KOUKU_SAYDON_COMPOSITION_LOGIC_OCCURRENCE window;
+            window.strOccurrenceId = semantic.strPatternId + ".logic." + std::to_string(semantic.iNextLogicOccurrenceOrdinal++);
+            window.strLogicId = owner.strLogicId; window.iDurationMs = 2000u;
+            window.bEnabled = owner.strLogicId == selected.strLogicId;
+            semantic.LogicOccurrences.push_back(window);
+        }
+        grouped.Patterns.push_back(semantic);
+        Require(WriteText(sourcePath, CKoukuSaydonCompositionDocument::Serialize(grouped)), "stage semantic singleton fixture");
+        RequireEditorStep(workbench.Reload(status), status, "load semantic singleton fixture");
+        const auto& semanticError = EditorPattern(workbench, semantic.strPatternId).strLoadError;
+        RequireEditorStep(semanticError.empty(), semanticError, "semantic singleton fixture admission");
+        KOUKU_COLLIDER_DAMAGE_SETTINGS vertical;
+        vertical.iPercent = 10; vertical.fPushHeightM = 3.0; vertical.iPushMs = 500u;
+        vertical.bPushBallistic = vertical.bForcePush = true;
+        const auto singletonGeneration = workbench.Get_DraftGeneration();
+        RequireEditorStep(workbench.Set_ColliderTriggerDamage(patternId, box(secondId), vertical, status), status,
+            "apply unrelated vertical damage with semantic singletons");
+        Require(workbench.Is_Dirty() && workbench.Get_DraftGeneration() == singletonGeneration + 1u,
+            "semantic singleton preservation did not commit Dirty/generation");
+        const auto& preservedGroups = EditorPattern(workbench, semantic.strPatternId).PresentationOccurrences;
+        Require(preservedGroups[0].strSelectionGroupId == selectedGroup && preservedGroups[1].strSelectionGroupId == fixedGroup &&
+            preservedGroups[2].strSelectionGroupId.empty(), "semantic ownership or unreferenced UI singleton cleanup changed");
+        RequireEditorRoundtrip(workbench);
+        const auto singletonGood = workbench.Get_Composition();
+        const auto singletonDisk = ReadText(sourcePath);
+        const auto singletonSavedGeneration = workbench.Get_DraftGeneration();
+        auto missingGroup = selected; missingGroup.strSelectedEffectGroupId += ".missing";
+        Require(!workbench.Set_LogicDefinitionValues(selected.strLogicId, missingGroup, status) &&
+            status.find("Selected Effect group is missing") != std::string::npos &&
+            workbench.Get_Composition() == singletonGood && !workbench.Is_Dirty() &&
+            workbench.Get_DraftGeneration() == singletonSavedGeneration && ReadText(sourcePath) == singletonDisk,
+            "a genuinely missing semantic group committed or changed the last good source");
         Require(ReadText(sourceRoot / relative) == originalSource, "tuning contract changed live authoring source");
-        std::cout << "KoukuFixedDamageContractTests: fixed500/pure-vertical-flight/shared-Result-COW/typed-damage-contact-role/legacy-window-rewire/Hold-capture-Success-preservation/Dirty-generation/commit-reset/invalid-rollback/AttackHits-rise-time/Save-Reopen/percent-switch/live-source-preservation passed\n";
+        std::cout << "KoukuFixedDamageContractTests: fixed500/pure-vertical-flight/shared-Result-COW/typed-damage-contact-role/legacy-window-rewire/Hold-capture-Success-preservation/Dirty-generation/commit-reset/invalid-rollback/AttackHits-rise-time/Save-Reopen/percent-switch/semantic-singleton-ownership/unreferenced-UI-group-cleanup/missing-group-rollback/live-source-preservation passed\n";
         return 0;
     }
     catch (const std::exception& error)

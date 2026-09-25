@@ -658,7 +658,7 @@ if (-not [string]::IsNullOrWhiteSpace($BalanceProfile)) {
         'balance profile staggerGaugeScale' 1 100000
     $balanceProfileStaggerScale = [uint32]$balanceProfileDocument.staggerGaugeScale
     Assert-JsonInteger $balanceProfileDocument.madnessGaugeAddPercent `
-        'balance profile madnessGaugeAddPercent' 0 100
+        'balance profile madnessGaugeAddPercent' -1 100
     $balanceProfileMadnessAddPercent =
         [int]$balanceProfileDocument.madnessGaugeAddPercent
     $madnessRows = @($balanceProfileDocument.madness)

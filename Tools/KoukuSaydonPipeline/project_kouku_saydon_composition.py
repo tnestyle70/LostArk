@@ -24,6 +24,7 @@ import shlex
 import sys
 import struct
 import tempfile
+import time
 import uuid
 from typing import Any, Iterable
 
@@ -156,12 +157,13 @@ LOGIC_KIND_VALUE_KEYS = {
     "CARD_DICE_BIND": set(),
     "STAGGER_WINDOW": {"threshold", "shieldArcDegrees", "endsPatternOnSuccess", "normalYawOffsetDegrees"},
     "AREA_OVERLAP": {"insideOutcome", "repeatIntervalMs"},
-    "INVULNERABILITY_ZONE": set(),
+    "INVULNERABILITY_ZONE": {"threshold"},
     "OBJECT_OVERLAP": {"targetWorldInstanceId", "targetRadiusM", "insideOutcome"},
     "EXTERNAL_SIGNAL": {"endsPatternOnSuccess"},
     "COUNTER_WINDOW": {"endsPatternOnSuccess"},
     "ATTACHMENT_HOLD": set(),
-    "BOSS_TRACK_TARGET": {"followSpeedScale"},
+    "BOSS_TRACK_TARGET": {"followSpeedScale", "bombPresentationOccurrenceId", "bombExplosionPresentationOccurrenceId",
+                          "bombSectorPresentationOccurrenceId", "bombSectorRadiusM", "bombSectorHalfAngleDegrees"},
     "BINGO_BOARD": set(),
     "BINGO_COMPLETED_LINES": {"threshold"},
     "PURSUIT_PROJECTILES": {"projectileHits", "visualIds", "cardSymbols", "contactVisualId", "speedMps", "contactRadiusM", "spawnRadiusM", "lifetimeMs", "spawnIntervalMs", "homing", "countPerWave", "maxDistanceM"},
@@ -175,7 +177,7 @@ LOGIC_RESULT_VALUE_KEYS = {"outcomeKind", "percent", "damageAmount", "durationMs
                            "contactMotions", "targetLogicOccurrenceId", "contactTargetWorldOccurrenceId", "sceneProfileId", "effectResourceId", "lightResourceId", "soundResourceId", "effectDelayMs", "attachmentSlot", "gripLocalOffset", "pushRangeM", "pushMs", "pushDirection", "forcePush", "pushCanLeaveArena", "pushBallistic", "pushHeightM", "pushYawOffsetDegrees", "marioStage"}
 LOGIC_TRIGGER_VALUE_KEYS = {"fixedHits", "countPerPlayer", "radiusM", "effectLifetimeMs", "arenaRandomCount", "arenaRandomRadiusM", "arenaHeightToleranceM", "arenaMinimumSpacingM", "randomPlayerOnly", "triggerKind", "hudMode", "teleportPosition", "clonePatternId", "clockHours", "faceCenterYawOffsetDegrees",
                             "targetWorldOccurrenceIds", "targetRadiusM", "contactGroupId", "contactPriority", "bossChargeDistanceM", "chargeYawOffsetDegrees", "rearmOnExit", "repeatAfterKnockback", "repeatIntervalMs",
-                            "airbornePhase", "airborneHeightM", "airborneDurationMs", "airborneTargetPositionPolicy", "selectedEffectGroupId", "playerEntryEffectOccurrenceIds", "soldierCounts", "spawnRadiusMinM", "spawnRadiusMaxM"}
+                            "airbornePhase", "airborneHeightM", "airborneDurationMs", "airborneTargetPositionPolicy", "selectedEffectGroupId", "selectedFlightMs", "selectedFlightArcHeightM", "selectedFlightSourceOffset", "playerEntryEffectOccurrenceIds", "soldierCounts", "spawnRadiusMinM", "spawnRadiusMaxM"}
 LOGIC_OPTIONAL_KEYS = LOGIC_DURATION_VALUE_KEYS | LOGIC_RESULT_VALUE_KEYS | LOGIC_TRIGGER_VALUE_KEYS | {"colliderDamageContactRole"}
 JUDGEMENT_KINDS = set(LOGIC_KIND_VALUE_KEYS)
 # End-tick kinds judge once when the window closes: Success or Fail, never
@@ -599,11 +601,13 @@ def _validate_logic_definition(
             definition["directionPatternIds"] = [_stable_id(item, f"{context} directionPatternId") for item in candidates]
             definition["cloneEndStageId"] = _stable_id(logic.get("cloneEndStageId", ""), f"{context} cloneEndStageId")
             definition["summonOccurrenceId"] = _stable_id(logic.get("summonOccurrenceId", ""), f"{context} summonOccurrenceId")
-        elif kind == "BOSS_TRACK_TARGET" and "followSpeedScale" in logic:
+        elif kind == "BOSS_TRACK_TARGET":
             # Absent keeps the saved rotate-only window. A present scale multiplies the
             # tracked player's own move speed into the forward step the Server owns.
-            definition["followSpeedScale"] = _number(
-                logic["followSpeedScale"], f"{context} followSpeedScale", .01, 10.0)
+            if "followSpeedScale" in logic:
+                definition["followSpeedScale"] = _number(
+                    logic["followSpeedScale"], f"{context} followSpeedScale", .01, 10.0)
+            definition.update(_track_bomb_fields(logic, context))
         elif kind == "PURSUIT_PROJECTILES":
             definition.update(_pursuit_fields(logic, context))
         elif kind == "SHOWTIME_PLAYER_TARGETS":
@@ -673,6 +677,8 @@ def _validate_logic_definition(
                 raise CompositionError(f"{context} requires 1..16 unique candidate patterns")
             definition["patternIds"] = [_stable_id(item, f"{context} candidate") for item in candidates]
             definition["completionCount"] = _integer(logic.get("completionCount", 0), f"{context} completionCount", 1, len(candidates))
+        elif kind == "INVULNERABILITY_ZONE":
+            definition["threshold"] = _integer(logic.get("threshold", 0), f"{context} threshold", 0, 4)
         elif kind == "BINGO_COMPLETED_LINES":
             definition["threshold"] = _integer(logic.get("threshold", 3), f"{context} threshold", 1, 10)
         elif kind == "STAGGER_WINDOW":
@@ -702,7 +708,7 @@ def _validate_logic_definition(
                 raise CompositionError(f"{context} HUD_ENTER requires a supported hudMode")
         elif kind == "ALBION_AIRBORNE":
             required = {"triggerKind", "airbornePhase", "airborneHeightM", "airborneDurationMs", "teleportPosition"}
-            if not required <= extra or extra - required - {"airborneTargetPositionPolicy", "selectedEffectGroupId"}:
+            if not required <= extra or extra - required - {"airborneTargetPositionPolicy", "selectedEffectGroupId", "fixedHits", "selectedFlightMs", "selectedFlightArcHeightM", "selectedFlightSourceOffset"}:
                 raise CompositionError(f"{context} Albion airborne requires phase, height, duration and teleportPosition")
             phase = _string(logic["airbornePhase"], f"{context} airbornePhase")
             if phase not in {"SELECT_PLAYER", "JUMP", "APPEAR_PLAYER", "DISAPPEAR", "CENTER", "SLAM"}:
@@ -716,6 +722,12 @@ def _validate_logic_definition(
                 if policy != "SELECT": raise CompositionError(f"{context} selected Effect requires SELECT position policy")
             elif not isinstance(group, str):
                 raise CompositionError(f"{context} selectedEffectGroupId must be text")
+            flight_ms = _integer(logic.get("selectedFlightMs", 0), f"{context} selectedFlightMs", 0, MAX_TIMELINE_MS)
+            flight_arc = _number(logic.get("selectedFlightArcHeightM", 0), f"{context} selectedFlightArcHeightM", 0, 1000)
+            flight_offset = logic.get("selectedFlightSourceOffset", [0, 0, 0])
+            _vector3(flight_offset, f"{context} selectedFlightSourceOffset", -1000, 1000)
+            if ((flight_ms or flight_arc or any(flight_offset)) and (not group or not flight_ms)):
+                raise CompositionError(f"{context} selected flight needs a SELECT Effect group and a finite duration")
             height = _number(logic["airborneHeightM"], f"{context} airborneHeightM", 0.0, 100000.0)
             duration = _integer(logic["airborneDurationMs"], f"{context} airborneDurationMs", 0, MAX_TIMELINE_MS)
             position = _array(logic["teleportPosition"], f"{context} teleportPosition", 3)
@@ -746,7 +758,7 @@ def _validate_logic_definition(
                 raise CompositionError(f"{context} arena supplement needs count, radius, height tolerance and spacing together")
             if random_player and (count != 1 or radius != 0):
                 raise CompositionError(f"{context} randomPlayerOnly needs one circle at the chosen player's position")
-        elif kind in {"ANIMATION_BLEND", "ROOM_PLAYER_ARRIVAL", "BINGO_DETONATION", "BOSS_TRACK_TARGET"}:
+        elif kind in {"ANIMATION_BLEND", "ROOM_PLAYER_ARRIVAL", "BINGO_DETONATION", "BOSS_TRACK_TARGET", "BOSS_RANDOM_TARGET"}:
             if extra != {"triggerKind"}:
                 raise CompositionError(f"{context} {kind} carries unrelated values")
         elif kind == "CARD_MAZE_STAGE_PLAYERS":
@@ -843,7 +855,7 @@ def _validate_logic_definition(
         followup = logic.get("followupPatternId", "")
         if not isinstance(followup, str):
             raise CompositionError(f"{context} followupPatternId must be text")
-        if kind in PERCENT_OUTCOME_KINDS and percent == 0:
+        if kind == "MAX_HP_PERCENT_DAMAGE" and percent == 0:
             raise CompositionError(f"{context} {kind} requires a percent of 1..100")
         if kind not in PERCENT_OUTCOME_KINDS and percent != 0:
             raise CompositionError(f"{context} {kind} does not take a percent")
@@ -1119,18 +1131,26 @@ def _validate_summon_pattern_spawns(document, owner):
                 raise CompositionError("Summon Pattern requires a self-contained actor MECHANIC timeline")
             for logic_box in child.get("logicOccurrences", []):
                 logic = logics.get(logic_box["logicId"], {})
+                contact = logic.get("judgementKind", logic.get("triggerKind")) in {"AREA_OVERLAP", "ENTER_AREA"}
+                if contact:
+                    if any(logics.get(identity, {}).get("outcomeKind") not in
+                           {"FIXED_DAMAGE", "MAX_HP_PERCENT_DAMAGE", "MADNESS_GAUGE_ADD_PERCENT"}
+                           for slot in OUTCOME_SLOTS for identity in outcome_logic_ids(logic_box, slot)):
+                        raise CompositionError("Summon contact Results must change contact HP or madness")
+                    continue
                 if (logic.get("logicType") != "TRIGGER" or logic.get("triggerKind") != "ALBION_AIRBORNE" or
                         logic.get("airbornePhase") not in {"JUMP", "SLAM"} or
                         logic.get("airborneTargetPositionPolicy", "APPEAR") != "APPEAR" or
                         logic.get("selectedEffectGroupId") or
                         any(outcome_logic_ids(logic_box, slot) for slot in OUTCOME_SLOTS)):
-                    raise CompositionError("Summon child Logic supports only actor-local JUMP/SLAM without outcomes")
+                    raise CompositionError("Summon child Logic supports actor-local contact or JUMP/SLAM without outcomes")
             for cue in child.get("presentationOccurrences", []):
                 resource = resources.get(cue["resourceId"], {})
-                if (resource.get("kind") not in {"EFFECT", "SOUND"} or
+                if (resource.get("kind") not in {"EFFECT", "SOUND", "COLLIDER"} or
                         cue.get("anchorKind", resource.get("defaultAnchorKind", "BOSS")) != "BOSS" or
-                        cue.get("logicOccurrenceId") or cue.get("worldOccurrenceId") or cue.get("worldId")):
-                    raise CompositionError("Summon child presentation supports only actor-anchored Effect/Sound")
+                        (cue.get("logicOccurrenceId") and resource.get("kind") != "COLLIDER") or
+                        cue.get("worldOccurrenceId") or cue.get("worldId")):
+                    raise CompositionError("Summon child presentation supports actor-anchored Effect/Sound/contact Collider")
             if _pattern_duration(child) > box["durationMs"]:
                 raise CompositionError("Summon lifetime must contain its child Pattern duration")
 
@@ -1218,9 +1238,16 @@ def _validate_cross_direction(document, owner):
                     stage.get("retargetOnEnter", False) for stage in child["stages"]):
                 raise CompositionError("Cross direction children require leaf Animation/Effect Patterns")
             for contact in child.get("logicOccurrences", []):
-                contact_definition = definitions.get(contact["logicId"], {})
+                contact_definition = definitions.get(contact.get("logicId"), {})
+                instant_facing = (contact_definition.get("logicType") == "TRIGGER" and
+                                  contact_definition.get("triggerKind") == "BOSS_TRACK_TARGET" and
+                                  0 < contact.get("durationMs", 0) <= 34 and
+                                  contact_definition.get("followSpeedScale", 0) == 0 and
+                                  not any(outcome_logic_ids(contact, slot) for slot in ("Success", "Fail", "Timeout")))
+                if instant_facing:
+                    continue
                 if contact_definition.get("judgementKind", contact_definition.get("triggerKind")) not in {"AREA_OVERLAP", "ENTER_AREA"}:
-                    raise CompositionError("Cross direction child Logic must be an overlap contact")
+                    raise CompositionError("Cross direction child Logic must be an overlap contact or instantaneous actor facing")
                 for slot in ("Success", "Fail", "Timeout"):
                     if any(definitions.get(identity, {}).get("outcomeKind") not in
                            {"FIXED_DAMAGE", "MAX_HP_PERCENT_DAMAGE", "MADNESS_GAUGE_ADD_PERCENT"}
@@ -2186,9 +2213,9 @@ def _validate_document(document: dict[str, Any], root: Path = REPOSITORY_ROOT) -
                 if enabled and status == "PRODUCT" and (not hold.get("enabled", True) or
                         hold_start > capture_start or hold_start + hold_duration < capture_start + capture_duration):
                     raise CompositionError(f"{box_context} Hold must be enabled and cover the complete Trigger window")
-            if kind in {"ATTACHMENT_HOLD", "BOSS_TRACK_TARGET", "CROSS_DIRECTION_CLONES", "BINGO_BOARD", "INVULNERABILITY_ZONE"} and any(outcomes.values()):
+            if kind in {"ATTACHMENT_HOLD", "BOSS_TRACK_TARGET", "BOSS_RANDOM_TARGET", "CROSS_DIRECTION_CLONES", "BINGO_BOARD", "INVULNERABILITY_ZONE"} and any(outcomes.values()):
                 raise CompositionError(f"{box_context} {kind} has no outcomes")
-            if kind in {"ATTACHMENT_HOLD", "BOSS_TRACK_TARGET", "CROSS_DIRECTION_CLONES", "BINGO_BOARD"} and any(row.get("logicOccurrenceId") == box_id and
+            if kind in {"ATTACHMENT_HOLD", "BOSS_TRACK_TARGET", "BOSS_RANDOM_TARGET", "CROSS_DIRECTION_CLONES", "BINGO_BOARD"} and any(row.get("logicOccurrenceId") == box_id and
                     presentation_resources[row["resourceId"]]["kind"] == "COLLIDER" for row in pattern.get("presentationOccurrences", [])):
                 raise CompositionError(f"{box_context} {kind} has no Collider")
             if sum(logic_defs[target].get("kind") == "CAPTURE_PLAYER" for target in outcomes["Success"]) > 1:
@@ -2526,6 +2553,7 @@ def _validate_document(document: dict[str, Any], root: Path = REPOSITORY_ROOT) -
                     raise CompositionError("SHOWTIME random volley reference is missing or unresolved in this Pattern")
                 _showtime_visual_template(document, pattern, [by_presentation[i] for i in identities], "fixed", random_mixed=True)
         _project_airborne_selected_effects(document, pattern)
+        _project_track_bombs(document, pattern)
         if status == "PRODUCT":
             _project_showtime_targets(document, pattern)
             _project_pursuit_projectiles(document, pattern)
@@ -4426,6 +4454,20 @@ def _build_bone_collider_track(pattern, logic_box, collider, root, cache, suppre
 
 
 def _project_world_bone_collider_track(root, sequences, world, box, collider):
+    session = _PUBLICATION_INPUTS.get()
+    if session is None:
+        return _build_world_bone_collider_track(root, sequences, world, box, collider)
+    # Only load_json's pinned, read-only documents have stable object identity.
+    # Standalone callers may edit the same sequence value between requests.
+    pinned = any(sequences is value for value in session.json.values())
+    sequence_digest = _pinned_json_digest(sequences) if pinned else _memo_digest(sequences)
+    key = (str(root.resolve()), sequence_digest, _memo_digest([world, box, collider]))
+    track = _publication_memo("world-bone-track", key,
+        lambda: _build_world_bone_collider_track(root, sequences, world, box, collider))
+    return copy.deepcopy(track)
+
+
+def _build_world_bone_collider_track(root, sequences, world, box, collider):
     """Use the same installed model/clip sampler as World Object collider baking."""
     instances = {row["instanceId"]: row for row in sequences["instances"]}
     templates = {row["sequenceId"]: row for row in sequences["templates"]}
@@ -4730,7 +4772,7 @@ def _project_logic_window(
         "halfAngleDegrees": float(logic.get("halfAngleDegrees", 0.0)) if kind == "GAZE_REAL_BOSS" else 0.0,
         "maxDistanceM": float(logic.get("maxDistanceM", 0.0)) if kind == "GAZE_REAL_BOSS" else 0.0,
         "poseIndex": int(logic.get("poseIndex", 0)) if kind == "POSE_INPUT" else 0,
-        "threshold": int(logic.get("threshold", 3 if kind == "BINGO_COMPLETED_LINES" else 0)) if kind in {"STAGGER_WINDOW", "BINGO_COMPLETED_LINES"} else 0,
+        "threshold": int(logic.get("threshold", 3 if kind == "BINGO_COMPLETED_LINES" else 0)) if kind in {"STAGGER_WINDOW", "BINGO_COMPLETED_LINES", "INVULNERABILITY_ZONE"} else 0,
         "shieldArcDegrees": float(logic.get("shieldArcDegrees", 0.0)) if kind == "STAGGER_WINDOW" else 0.0,
         "endsPatternOnSuccess": bool(logic.get("endsPatternOnSuccess", False)) if kind in {"STAGGER_WINDOW", "COUNTER_WINDOW", "EXTERNAL_SIGNAL"} else False,
         "onSuccess": _project_outcomes(logics, outcome_logic_ids(box, "Success")),
@@ -5013,6 +5055,8 @@ def project_encounter(document: dict[str, Any], root: Path = REPOSITORY_ROOT) ->
                    if _project_pursuit_projectiles(document, source)[0] else {}),
                 **({"showtimeTargets": _project_showtime_targets(document, source)[0]}
                    if _showtime_logic_occurrences(document, source) else {}),
+                **({"trackBombs": _project_track_bombs(document, source)[0]}
+                   if _track_bomb_occurrences(document, source) else {}),
                 "mechanicTriggers": mechanic_triggers,
                 "worldSequences": [
                     {
@@ -5269,13 +5313,13 @@ def _validate_presentation_occurrences(pattern: dict[str, Any], resources: dict[
         collider = resources[box["resourceId"]]["kind"] == "COLLIDER"
         capture_source = normalized["anchorPresentationOccurrenceId"]
         if capture_source:
-            _stable_id(capture_source, "Collider anchorPresentationOccurrenceId")
+            _stable_id(capture_source, "anchorPresentationOccurrenceId")
             source = next((member for member in boxes if member["occurrenceId"] == capture_source), None)
-            if (not collider or normalized["anchorKind"] != "BOSS" or normalized["followBoss"] or normalized["bone"] or normalized["boneTarget"] != "BODY" or
+            if (not (collider or effect) or normalized["anchorKind"] != "BOSS" or normalized["followBoss"] or normalized["bone"] or normalized["boneTarget"] != "BODY" or
                     source is None or resources.get(source["resourceId"], {}).get("kind") != "EFFECT" or
                     source.get("anchorKind", "BOSS") != "BOSS" or source.get("followBoss", True) or source.get("bone", "") or source.get("boneTarget", "BODY") != "BODY" or
-                    source["startMs"] > normalized["startMs"]):
-                raise CompositionError("Collider anchor source requires an earlier fixed BOSS Effect in the same Pattern")
+                    source["startMs"] > normalized["startMs"] or source is box or source.get("anchorPresentationOccurrenceId")):
+                raise CompositionError("Shared birth anchor requires an earlier fixed BOSS Effect without an anchor chain in the same Pattern")
         if normalized["colliderMotion"] not in {"STATIC", "LINEAR"}:
             raise CompositionError("colliderMotion must be STATIC or LINEAR")
         if normalized["colliderMotion"] == "LINEAR":
@@ -5426,6 +5470,93 @@ def _project_pursuit_projectiles(document: dict[str, Any], pattern: dict[str, An
             except ValueError as error: raise CompositionError(str(error)) from error
     rows.sort(key=lambda row: (row["startMs"], row["occurrenceId"]))
     return rows, templates
+
+
+TRACK_BOMB_REFERENCE_KEYS = ("bombPresentationOccurrenceId", "bombExplosionPresentationOccurrenceId", "bombSectorPresentationOccurrenceId")
+TRACK_BOMB_KEYS = {*TRACK_BOMB_REFERENCE_KEYS, "bombSectorRadiusM", "bombSectorHalfAngleDegrees"}
+
+
+def _track_bomb_fields(logic, context):
+    if not (set(logic) & TRACK_BOMB_KEYS):
+        return {}
+    if not TRACK_BOMB_KEYS <= set(logic) or logic.get("followSpeedScale", 0) != 0:
+        raise CompositionError(f"{context} bomb resolution needs all five fields on rotate-only tracking")
+    fields = {key: _stable_id(logic[key], f"{context} {key}") for key in TRACK_BOMB_REFERENCE_KEYS}
+    if len(set(fields.values())) != 3:
+        raise CompositionError(f"{context} bomb, explosion and sector references must be distinct")
+    radius = _number(logic["bombSectorRadiusM"], f"{context} bombSectorRadiusM", 0, 1000)
+    angle = _number(logic["bombSectorHalfAngleDegrees"], f"{context} bombSectorHalfAngleDegrees", 0, 180)
+    if radius <= 0 or not 0 < angle < 180:
+        raise CompositionError(f"{context} bomb sector radius and half angle must be positive and half angle below 180")
+    return {**fields, "bombSectorRadiusM": radius, "bombSectorHalfAngleDegrees": angle}
+
+
+def _track_bomb_occurrences(document, pattern, *, enabled_only=True):
+    definitions = {row["logicId"]: row for row in document.get("logics", [])}
+    return [(box, definitions[box["logicId"]]) for box in pattern.get("logicOccurrences", [])
+            if (box.get("enabled", True) or not enabled_only)
+            and definitions[box["logicId"]].get("judgementKind") == "BOSS_TRACK_TARGET"
+            and definitions[box["logicId"]].get("bombPresentationOccurrenceId")]
+
+
+def _project_track_bombs(document, pattern):
+    """A fixed V1 bomb is born on its authored clock and judged on tracking expiry."""
+    owners = _track_bomb_occurrences(document, pattern, enabled_only=False)
+    if not owners:
+        return [], {}, set()
+    resources = {row["resourceId"]: row for row in document.get("presentationResources", [])}
+    occurrences = {row["occurrenceId"]: row for row in pattern.get("presentationOccurrences", [])}
+    rows, templates, controlled, owned = [], {}, set(), set()
+    for owner, logic in owners:
+        fields = _track_bomb_fields(logic, owner["occurrenceId"])
+        ids = [fields[key] for key in TRACK_BOMB_REFERENCE_KEYS]
+        if any(identity not in occurrences or identity in owned for identity in ids):
+            raise CompositionError("Tracking bomb requires three exclusive same-pattern Effect occurrences")
+        owned.update(ids)
+        body, explosion, sector = [dict(PRESENTATION_OCCURRENCE_DEFAULTS, **occurrences[identity]) for identity in ids]
+        for member in (body, explosion, sector):
+            resource = resources.get(member["resourceId"], {})
+            if (resource.get("kind") != "EFFECT" or resource.get("resourceKind") not in {"V1_EFFECT", "V1_ELEMENT"} or
+                    member["bone"] or member["boneTarget"] != "BODY" or member["worldId"] or member["worldOccurrenceId"] or
+                    member["worldEmissionIndex"] or member["logicOccurrenceId"] or member["anchorPresentationOccurrenceId"]):
+                raise CompositionError("Tracking bomb references require unbound V1 Effect placements")
+        if any(row["anchorKind"] != "MAP" or row["followBoss"] for row in (body, explosion)) or body["positionOffset"] != explosion["positionOffset"]:
+            raise CompositionError("Tracking bomb body and explosion require the same fixed MAP position")
+        if (sector["anchorKind"] != "BOSS" or not sector["followBoss"] or
+                sector["rotationDegrees"][0] != 0 or sector["rotationDegrees"][2] != 0):
+            raise CompositionError("Tracking bomb sector requires a following upright BOSS Effect")
+        end = owner["startMs"] + owner["durationMs"]
+        if owner.get("cancelAtEnd") or owner["durationMs"] <= 34:
+            raise CompositionError("Parent cannot truncate a tracking bomb judgement; extend its child window")
+        if body["startMs"] >= end or sector["startMs"] > owner["startMs"] or sector["startMs"] + sector["durationMs"] < end:
+            raise CompositionError("Tracking bomb must be born before judgement and sector must cover tracking")
+        radii = [fields["bombSectorRadiusM"] * sector["scale"][axis] for axis in (0, 2)]
+        if any(not 0 < value <= 1000 for value in radii) or any(abs(value) > 1000 for value in sector["positionOffset"]):
+            raise CompositionError("Tracking bomb sector axes must be positive and bounded")
+        if not owner.get("enabled", True):
+            continue
+        # Private projection copies: leave the user's group, TRS and source animation intact.
+        body["durationMs"] = end - body["startMs"]
+        body["fadeInMs"] = min(body["fadeInMs"], body["durationMs"])
+        body["fadeOutMs"] = min(body["fadeOutMs"], body["durationMs"] - body["fadeInMs"])
+        explosion["startMs"] = end
+        visual_body = _showtime_visual_template(document, pattern, [body], "fixed", selection_start_ms=body["startMs"])
+        visual_explosion = _showtime_visual_template(document, pattern, [explosion], "fixed", selection_start_ms=end)
+        if visual_body["clientVisualId"] == visual_explosion["clientVisualId"]:
+            raise CompositionError("Tracking bomb body and explosion must be distinct visuals")
+        for visual in (visual_body, visual_explosion):
+            templates[visual["clientVisualId"]] = visual
+        controlled.update(ids[:2])
+        rows.append(dict(occurrenceId=owner["occurrenceId"], bodyStartMs=body["startMs"],
+                         bodyVisualId=visual_body["clientVisualId"], explosionVisualId=visual_explosion["clientVisualId"],
+                         explosionLifetimeMs=visual_explosion["durationMs"], position=list(body["positionOffset"]),
+                         fan=dict(positionOffset=list(sector["positionOffset"]), yawDegrees=math.remainder(sector["rotationDegrees"][1], 360),
+                                  radiusXM=radii[0], radiusZM=radii[1], halfAngleDegrees=fields["bombSectorHalfAngleDegrees"])))
+    other_owned = _project_showtime_targets(document, pattern)[2] | _project_airborne_selected_effects(document, pattern)[2]
+    if controlled & other_owned:
+        raise CompositionError("Tracking bomb Effect cannot also belong to another targeted visual owner")
+    rows.sort(key=lambda row: (row["bodyStartMs"], row["occurrenceId"]))
+    return rows, templates, controlled
 
 
 def _showtime_logic_occurrences(document: dict[str, Any], pattern: dict[str, Any]) -> list[tuple[dict[str, Any], dict[str, Any]]]:
@@ -5582,13 +5713,23 @@ def _project_airborne_selected_effects(document: dict[str, Any], pattern: dict[s
             raise CompositionError("Selected Effect requires one exclusive SELECT position owner")
         used_groups.add(group)
         members = [row for row in pattern.get("presentationOccurrences", []) if row.get("selectionGroupId") == group]
-        if len(members) < 2:
-            raise CompositionError("Selected Effect group requires at least two same-pattern Effect occurrences")
+        if not members:
+            raise CompositionError("Selected Effect group requires a same-pattern Effect occurrence")
         template = _showtime_visual_template(document, pattern, members, "fixed", selection_start_ms=box["startMs"])
         if not box.get("enabled", True): continue
+        if logic.get("selectedFlightMs", 0):
+            if logic["selectedFlightMs"] >= template["durationMs"]:
+                raise CompositionError("Selected flight must end before its impact visual tail")
+            template["selectedFlightMs"] = logic["selectedFlightMs"]
+            template["selectedFlightArcHeightM"] = logic.get("selectedFlightArcHeightM", 0)
+            template["selectedFlightSourceOffset"] = logic.get("selectedFlightSourceOffset", [0, 0, 0])
+            payload = {key: value for key, value in template.items() if key != "clientVisualId"}
+            digest = hashlib.sha256(json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"), allow_nan=False).encode("utf-8")).hexdigest()
+            template["clientVisualId"] = f"kouku.showtime.fixed.{digest}"
         templates[template["clientVisualId"]] = template
         rows[box["occurrenceId"]] = {"selectedEffectVisualId": template["clientVisualId"],
-                                      "selectedEffectLifetimeMs": template["durationMs"]}
+                                      "selectedEffectLifetimeMs": template["durationMs"],
+                                      **({"fixedHits": validate_hits(logic["fixedHits"], template["durationMs"])} if logic.get("fixedHits") else {})}
         controlled.update(row["occurrenceId"] for row in members)
     return rows, templates, controlled
 
@@ -5650,6 +5791,7 @@ def _project_pattern_presentation(document: dict[str, Any], pattern: dict[str, A
     resources = {resource["resourceId"]: resource for resource in document.get("presentationResources", [])}
     _, _, controlled = _project_showtime_targets(document, pattern)
     controlled |= _project_airborne_selected_effects(document, pattern)[2]
+    controlled |= _project_track_bombs(document, pattern)[2]
     occurrences = []
     for box in pattern.get("presentationOccurrences", []):
         if box["occurrenceId"] not in controlled:
@@ -5822,6 +5964,7 @@ def project_presentation(document: dict[str, Any], root: Path = REPOSITORY_ROOT)
         if pattern["authoringStatus"] != "PRODUCT":
             continue
         targeted_visuals.update(_project_showtime_targets(document, pattern)[1])
+        targeted_visuals.update(_project_track_bombs(document, pattern)[1])
         targeted_visuals.update(_project_airborne_selected_effects(document, pattern)[1])
         targeted_visuals.update(_project_pursuit_projectiles(document, pattern)[1])
         suppress_root_motion = bool(_project_pattern_root_motion(document, pattern, root, native_actor_cache))
@@ -5914,12 +6057,22 @@ def projected_outputs(document: dict[str, Any], root: Path = REPOSITORY_ROOT,
             encounter = {**encounter, "raidGates": project_raid_gates(document, sequence)}
         except (ValueError, KeyError, TypeError) as error:
             raise CompositionError(f"Complete Play raid plan: {error}") from error
-    encounter_bytes = serialize_json(encounter)
-    _validate_encounter_admission(encounter, encounter_bytes)
+    encounter_bytes = serialize_encounter_json(encounter)
     return {
         ENCOUNTER_PATH: encounter_bytes,
         PRESENTATION_PATH: serialize_json(presentation),
     }
+
+
+def serialize_encounter_json(document: dict[str, Any]) -> bytes:
+    content = serialize_json(document)
+    if len(content) > MAX_ENCOUNTER_BYTES:
+        # Generated collision samples can outgrow the reader's byte budget
+        # through indentation alone. Preserve every value and all reader limits.
+        content = (json.dumps(document, ensure_ascii=False, separators=(",", ":"),
+                              allow_nan=False) + "\n").encode("utf-8")
+    _validate_encounter_admission(document, content)
+    return content
 
 
 def _validate_encounter_admission(document: dict[str, Any], content: bytes) -> None:
@@ -5953,6 +6106,18 @@ def validate_outputs(root: Path, expected: dict[Path, bytes]) -> None:
 
 
 def publish_outputs(root: Path, outputs: dict[Path, bytes]) -> None:
+    def file_operation(operation):
+        # A scanner can briefly hold a newly written staging file without
+        # delete sharing. Retry only Windows sharing/byte-range lock errors,
+        # for at most two seconds; permission and other I/O failures stay fatal.
+        for attempt in range(21):
+            try:
+                return operation()
+            except OSError as error:
+                if getattr(error, "winerror", None) not in (32, 33) or attempt == 20:
+                    raise
+                time.sleep(0.1)
+
     transaction_id = uuid.uuid4().hex
     staged: dict[Path, Path] = {}
     backups: dict[Path, Path | None] = {}
@@ -5985,7 +6150,7 @@ def publish_outputs(root: Path, outputs: dict[Path, bytes]) -> None:
         if session is not None:
             session.assert_unchanged()
         for destination, temporary in staged.items():
-            os.replace(temporary, destination)
+            file_operation(lambda: os.replace(temporary, destination))
             promoted.append(destination)
         validate_outputs(root, outputs)
         if session is not None:
@@ -5996,9 +6161,9 @@ def publish_outputs(root: Path, outputs: dict[Path, bytes]) -> None:
             backup = backups.get(destination)
             try:
                 if backup is None:
-                    destination.unlink(missing_ok=True)
+                    file_operation(lambda: destination.unlink(missing_ok=True))
                 elif backup.exists():
-                    os.replace(backup, destination)
+                    file_operation(lambda: os.replace(backup, destination))
             except OSError as rollback_error:
                 if backup is not None and backup.exists():
                     preserved_backups.add(backup)
@@ -6013,11 +6178,15 @@ def publish_outputs(root: Path, outputs: dict[Path, bytes]) -> None:
             ) from publish_error
         raise
     finally:
-        for temporary in staged.values():
-            temporary.unlink(missing_ok=True)
-        for backup in backups.values():
-            if backup is not None and backup not in preserved_backups:
-                backup.unlink(missing_ok=True)
+        cleanup = list(staged.values()) + [backup for backup in backups.values()
+            if backup is not None and backup not in preserved_backups]
+        for path in cleanup:
+            try:
+                file_operation(lambda: path.unlink(missing_ok=True))
+            except OSError as cleanup_error:
+                # Cleanup must not hide the publish/rollback exception, or turn
+                # an already validated commit into an apparent failed publish.
+                print(f"KoukuSaydon Product cleanup retained {path}: {cleanup_error}", file=sys.stderr)
 
 
 _VALIDATION_CERTIFICATE = Path("out/KoukuSaydon/composition-validation.receipt.json")

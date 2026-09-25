@@ -2903,7 +2903,7 @@ def _validate_world_sequence_source(
             _require_exact_fields(
                 track,
                 ("slotId", "clipName", "playbackRate", "loop", "holdLastFrame"),
-                ("startMs", "displayName", "sourceStartMs"),
+                ("startMs", "displayName", "sourceStartMs", "sourceEndMs"),
                 track_context,
             )
             slot_id = _require_owner_stable_id(
@@ -2919,6 +2919,11 @@ def _validate_world_sequence_source(
                     f"{track_context}.sourceStartMs exceeds "
                     f"{WORLD_SEQUENCE_MAX_DURATION_MS}"
                 )
+            source_end_ms = _require_nonnegative_int(
+                track.get("sourceEndMs", 0), f"{track_context}.sourceEndMs"
+            )
+            if source_end_ms > WORLD_SEQUENCE_MAX_DURATION_MS or (source_end_ms and source_end_ms <= source_start_ms):
+                raise CompositionError(f"{track_context}.sourceEndMs must follow sourceStartMs and remain bounded")
             start_ms = 0
             if "startMs" in track:
                 start_ms = _require_nonnegative_int(

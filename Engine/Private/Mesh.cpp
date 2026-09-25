@@ -11,6 +11,8 @@
 #include "GameInstance.h"
 #include "Profiler.h"
 #include "StaticMeshLod.h"
+#include <algorithm>
+#include <cmath>
 
 CMesh::CMesh(ComPtr<ID3D11Device> pDevice, ComPtr<ID3D11DeviceContext> pContext)
 	: CVIBuffer { pDevice, pContext }
@@ -121,6 +123,7 @@ HRESULT CMesh::Initialize_Prototype(MODEL eType, const MODEL_MESH_DATA& mesh,
 			m_BoneIndices.push_back(i);
 			m_OffsetMatrices.push_back(skeleton.bones[i].inverseBind);
 		}
+        Prepare_BoneVertexBounds(mesh);
 	}
 	else
 	{
@@ -158,12 +161,63 @@ HRESULT CMesh::Initialize_Prototype(MODEL eType, const MODEL_MESH_DATA& mesh,
 	if (FAILED(m_pDevice->CreateBuffer(&indexBufferDesc, &indexInitialData, &m_pIB)))
 		return E_FAIL;
 
+    auto pick = make_shared<PICK_GEOMETRY>();
+    pick->skinned = isAnimated;
+    pick->indices = mesh.indices;
+    pick->vertices.reserve(m_iNumVertices);
+    if (isAnimated)
+        for (const auto& vertex : mesh.skinnedVertices)
+            pick->vertices.push_back({vertex.vPosition, vertex.vBlendIndices, vertex.vBlendWeights});
+    else
+        for (const auto& vertex : staticVertices)
+            pick->vertices.push_back({vertex.vPosition, {}, {}});
+    m_PickGeometry = std::move(pick);
 	return S_OK;
 }
 
 HRESULT CMesh::Initialize(void* pArg)
 {
 	return S_OK;
+}
+
+void CMesh::Prepare_BoneVertexBounds(const MODEL_MESH_DATA& mesh)
+{
+    vector<BONE_VERTEX_BOUNDS> staged(m_iNumBones);
+    for (const auto& vertex : mesh.skinnedVertices)
+    {
+        const float3_t& position = vertex.vPosition;
+        if (!std::isfinite(position.x) || !std::isfinite(position.y) ||
+            !std::isfinite(position.z)) return;
+        const uint32_t indices[4] = { vertex.vBlendIndices.x, vertex.vBlendIndices.y,
+            vertex.vBlendIndices.z, vertex.vBlendIndices.w };
+        const float weights[4] = { vertex.vBlendWeights.x, vertex.vBlendWeights.y,
+            vertex.vBlendWeights.z, vertex.vBlendWeights.w };
+        float sum = 0.f;
+        for (uint32_t lane = 0u; lane < 4u; ++lane)
+        {
+            if (!std::isfinite(weights[lane]) || weights[lane] < 0.f ||
+                indices[lane] >= staged.size()) return;
+            sum += weights[lane];
+            if (weights[lane] == 0.f) continue;
+            auto& bounds = staged[indices[lane]];
+            if (!bounds.valid)
+            {
+                bounds.minimum = bounds.maximum = position;
+                bounds.valid = true;
+                continue;
+            }
+            bounds.minimum.x = (std::min)(bounds.minimum.x, position.x);
+            bounds.minimum.y = (std::min)(bounds.minimum.y, position.y);
+            bounds.minimum.z = (std::min)(bounds.minimum.z, position.z);
+            bounds.maximum.x = (std::max)(bounds.maximum.x, position.x);
+            bounds.maximum.y = (std::max)(bounds.maximum.y, position.y);
+            bounds.maximum.z = (std::max)(bounds.maximum.z, position.z);
+        }
+        // WModel decoding normalizes nonnegative weights. This convex bound is
+        // unavailable for any other weight contract; never change the geometry.
+        if (!std::isfinite(sum) || std::fabs(sum - 1.f) > 1.e-5f) return;
+    }
+    m_BoneVertexBounds = std::move(staged);
 }
 
 void CMesh::Build_SkinPalette(const vector<shared_ptr<class CBone>>& Bones,

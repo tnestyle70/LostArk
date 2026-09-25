@@ -794,6 +794,9 @@ void LostArk::Server::CGameRoom::Clear_KoukuPlayerTargets(
 		for (const auto& [playerId, objectId] : window.TrackingObjects)
 			m_CombatObjectRuntime.Cancel_OwnedVisualObject(objectId, boss.iNetEntityId, ledger.iPatternSequence);
 		window.TrackingObjects.clear();
+		if (window.iBombBodyObjectId)
+			m_CombatObjectRuntime.Cancel_OwnedVisualObject(window.iBombBodyObjectId, boss.iNetEntityId, ledger.iPatternSequence);
+		window.iBombBodyObjectId = 0u;
 		window.bClosed = true;
 	}
 }
@@ -963,6 +966,9 @@ void LostArk::Server::CGameRoom::Update_KoukuPlayerTargets(
 	using namespace LostArk::Shared;
 	using Clock = CKoukuSaydonLogicRuntime;
 	if (ledger.strPatternId != pattern.strPatternId || ledger.iPatternSequence != boss.iPatternSequence) return;
+	// Only the authored one-second player pursuit ends its Pattern on contact.
+	// Every other tracking window preserves its attack, landing and flow clocks.
+	const bool completeOnPlayerContact = pattern.strPatternId == "KAKULSAYDON_G1_PATTERN_104";
 	const auto eligible = [](const SERVER_PLAYER& player) {
 		return player.isCombatReady && player.iCurrentHp != 0u &&
 			player.eAction != PLAYER_ACTION_STATE::DEAD && player.eAction != PLAYER_ACTION_STATE::FALLING;
@@ -970,13 +976,79 @@ void LostArk::Server::CGameRoom::Update_KoukuPlayerTargets(
 	for (auto& window : ledger.PlayerTargetWindows)
 	{
 		if (window.bClosed || window.iLastUpdateTick == serverTick || window.iTriggerIndex >= pattern.MechanicTriggers.size()) continue;
-		if (!Clock::Has_ReachedTick(serverTick, window.iStartTick) ||
-			(window.iLastUpdateTick != 0u && !Clock::Has_ReachedTick(serverTick, window.iLastUpdateTick))) continue;
+		if (window.iLastUpdateTick != 0u && !Clock::Has_ReachedTick(serverTick, window.iLastUpdateTick)) continue;
+		const auto& trigger = pattern.MechanicTriggers[window.iTriggerIndex];
+		const auto spawnBombVisual = [&](const std::string& visualId, const std::uint32_t lifeMs,
+			const std::uint32_t birthTick, COMBAT_OBJECT_ID& objectId) {
+			const auto& bomb = *trigger.ShowtimeBomb;
+			BOSS_COMBAT_OBJECT_DEFINITION definition;
+			definition.strEncounterId = boss.strEncounterId; definition.strOwnerPatternId = pattern.strPatternId;
+			definition.strOwnerStageActionId = trigger.strTriggerId;
+			definition.strCombatObjectArchetypeId = "combatobject.kouku.showtime.fixed";
+			definition.strClientVisualId = visualId; definition.iLifeMs = lifeMs;
+			definition.eOriginPolicy = BOSS_COMBAT_OBJECT_ORIGIN_POLICY::LOCKED_TARGET_PER_ALIVE_PLAYER;
+			definition.PresentationPulses.push_back({ "combatpresentation.kouku.showtime.started", 0u });
+			SERVER_COMBAT_OBJECT_LOCKED_TARGET origin;
+			origin.fPositionX = bomb.BodyPosition[0]; origin.fPositionY = bomb.BodyPosition[1]; origin.fPositionZ = bomb.BodyPosition[2];
+			auto transaction = m_CombatObjectRuntime.Begin_Transaction();
+			std::string failure;
+			if (!m_CombatObjectRuntime.Stage_BossCombatObject(transaction, boss, &origin, definition, nullptr,
+				catalog, 1u, serverTick, failure))
+			{ m_strStatus = "Showtime bomb preserved its verdict: " + failure; return false; }
+			auto& object = transaction.Objects.back();
+			const auto stagedId = object.iCombatObjectId;
+			// A late evaluation still presents the original authored birth clock. The
+			// room owns the exact body deadline; float lifetime includes a spare tick.
+			object.iSpawnTick = birthTick;
+			object.LiveState.CurrentPose.fYawDegrees = 0.f;
+			object.LiveState.CurrentPose.fDirectionX = 0.f; object.LiveState.CurrentPose.fDirectionZ = 1.f;
+			object.LiveState.PreviousPose = object.LiveState.CurrentPose;
+			transaction.Spawned.back().iSpawnTick = birthTick;
+			transaction.Spawned.back().fYawDegrees = 0.f;
+			if (!m_CombatObjectRuntime.Commit(std::move(transaction)))
+			{ m_strStatus = "Showtime bomb preserved its verdict: visual transaction changed"; return false; }
+			objectId = stagedId;
+			return true;
+		};
+		// The falling body and fuse precede the tracking window and share one owner.
+		if (trigger.ShowtimeBomb && !window.iBombBodyObjectId &&
+			Clock::Has_ReachedTick(serverTick, window.iBombStartTick) && !Clock::Has_ReachedTick(serverTick, window.iEndTick))
+		{
+			const auto remaining = Elapsed_ServerTicksSkippingReservedZero(serverTick, window.iEndTick);
+			const auto life = static_cast<std::uint32_t>((remaining * 1000u + 29u) / 30u + 34u);
+			(void)spawnBombVisual(trigger.ShowtimeBomb->strBodyVisualId, life, window.iBombStartTick, window.iBombBodyObjectId);
+		}
+		if (!Clock::Has_ReachedTick(serverTick, window.iStartTick)) continue;
 		const std::uint32_t previousUpdateTick = window.iLastUpdateTick;
 		window.iLastUpdateTick = serverTick;
-		const auto& trigger = pattern.MechanicTriggers[window.iTriggerIndex];
 		if (Clock::Has_ReachedTick(serverTick, window.iEndTick))
 		{
+			if (trigger.ShowtimeBomb)
+			{
+				const auto& bomb = *trigger.ShowtimeBomb;
+				// Tracking owns [start,end): do not rotate toward a changed target at expiry.
+				if (!window.BombInsideAtEnd) window.BombInsideAtEnd = Clock::Is_PointInsideRegion(
+					bomb.FanRegion, boss, bomb.BodyPosition[0], bomb.BodyPosition[2]);
+				if (!*window.BombInsideAtEnd)
+				{
+					COMBAT_OBJECT_ID explosion = 0u;
+					if (!spawnBombVisual(bomb.strExplosionVisualId, bomb.iExplosionLifetimeMs, serverTick, explosion)) continue;
+					for (auto& [playerId, player] : m_Players)
+					{
+						if (!player.iCurrentHp || player.eAction == PLAYER_ACTION_STATE::DEAD ||
+							(Is_KoukuRaidRunning() && std::find(m_KoukuRaid.PlayerIds.begin(), m_KoukuRaid.PlayerIds.end(), playerId) == m_KoukuRaid.PlayerIds.end())) continue;
+						SERVER_WORLD_TO_PLAYER_HIT wipe{};
+						wipe.bEncounterWipe = true; wipe.bIgnoreDefense = true; wipe.bIgnoreCounter = true;
+						wipe.iRawDamage = player.iCurrentHp; wipe.iServerTick = serverTick;
+						wipe.fSourceX = bomb.BodyPosition[0]; wipe.fSourceZ = bomb.BodyPosition[2];
+						(void)CServerCombatHitRuntime::Apply_WorldToPlayer(player, wipe, catalog, m_TickDamageEvents);
+					}
+				}
+				if (window.iBombBodyObjectId)
+					m_CombatObjectRuntime.Cancel_OwnedVisualObject(window.iBombBodyObjectId, boss.iNetEntityId, ledger.iPatternSequence);
+				window.iBombBodyObjectId = 0u;
+				m_strStatus = *window.BombInsideAtEnd ? "Showtime bomb defused inside the final fan" : "Showtime bomb missed the final fan; raid wiped";
+			}
 			for (const auto& [playerId, objectId] : window.TrackingObjects)
 				m_CombatObjectRuntime.Cancel_OwnedVisualObject(objectId, boss.iNetEntityId, ledger.iPatternSequence);
 			window.TrackingObjects.clear(); window.bClosed = true;
@@ -1024,14 +1096,17 @@ void LostArk::Server::CGameRoom::Update_KoukuPlayerTargets(
 			float nearestSquared = (std::numeric_limits<float>::max)();
 			for (auto& [id, player] : m_Players)
 			{
-				if (!eligible(player) || player.eAction == PLAYER_ACTION_STATE::GRABBED) continue;
+				if (!eligible(player) || player.eAction == PLAYER_ACTION_STATE::GRABBED ||
+					(Is_KoukuRaidRunning() && std::find(m_KoukuRaid.PlayerIds.begin(), m_KoukuRaid.PlayerIds.end(), id) == m_KoukuRaid.PlayerIds.end())) continue;
 				const float dx = player.fPositionX - boss.fPositionX, dz = player.fPositionZ - boss.fPositionZ;
 				const float distanceSquared = dx * dx + dz * dz;
-				if (distanceSquared < nearestSquared) { nearestSquared = distanceSquared; facingTarget = &player; }
+				if (std::isfinite(distanceSquared) && (distanceSquared < nearestSquared ||
+					(distanceSquared == nearestSquared && facingTarget && player.iNetEntityId < facingTarget->iNetEntityId)))
+				{ nearestSquared = distanceSquared; facingTarget = &player; }
 			}
 		}
-		if (tracksFacing && !facingTarget) facingTarget = findFacingTarget(boss.iTargetEntityId);
-		if (tracksFacing && !facingTarget) facingTarget = Select_BossRandomAliveTarget(boss, trigger.strTriggerId, "boss.target.pattern", serverTick);
+		if (!instantFacing && tracksFacing && !facingTarget) facingTarget = findFacingTarget(boss.iTargetEntityId);
+		if (!instantFacing && tracksFacing && !facingTarget) facingTarget = Select_BossRandomAliveTarget(boss, trigger.strTriggerId, "boss.target.pattern", serverTick);
 		if (facingTarget)
 		{
 			boss.iTargetEntityId = boss.iPatternTargetEntityId = facingTarget->iNetEntityId;
@@ -1069,13 +1144,21 @@ void LostArk::Server::CGameRoom::Update_KoukuPlayerTargets(
 			boss.iTargetEntityId = boss.iPatternTargetEntityId = INVALID_NET_ENTITY_ID;
 			boss.bHasPatternTargetLastPosition = false;
 		}
+		// An instantaneous authored Trigger samples once, including an empty roster.
+		if (instantFacing) window.bClosed = true;
 		if (rotateOnly)
 		{
 			if (facingTarget && trigger.fFollowSpeedScale > 0.f &&
 				std::hypot(facingTarget->fPositionX - boss.fPositionX, facingTarget->fPositionZ - boss.fPositionZ) <=
 				boss.fCollisionRadius + WorldCollision::PLAYER_HALF_EXTENT_X + .5f)
 			{
-				window.bClosed = true; ledger.bTrackingTargetReached = true;
+				if (completeOnPlayerContact)
+				{
+					window.bClosed = true;
+					ledger.bTrackingTargetReached = true;
+				}
+				// Attacks stop translation while touching, then resume following if
+				// the player moves away before this authored window ends.
 				continue;
 			}
 			/* A positive authored scale walks the body along the yaw this tick just wrote,
@@ -1270,6 +1353,7 @@ bool LostArk::Server::CGameRoom::Commit_KoukuAlbionAirborne(
 	   definition.strClientVisualId = trigger.strSelectedEffectVisualId;
 	   definition.eOriginPolicy = BOSS_COMBAT_OBJECT_ORIGIN_POLICY::LOCKED_TARGET_PER_ALIVE_PLAYER;
 	   definition.iLifeMs = trigger.iSelectedEffectLifetimeMs;
+	   definition.AttackTemplates = trigger.FixedHits;
 	   definition.PresentationPulses.push_back({ "combatpresentation.kouku.showtime.started", 0u });
 	   auto transaction = m_CombatObjectRuntime.Begin_Transaction(); std::string status;
 	   if (!m_CombatObjectRuntime.Stage_BossCombatObject(transaction, boss, &target, definition, nullptr, *catalog, 1u, serverTick, status))
@@ -1395,28 +1479,53 @@ void LostArk::Server::CGameRoom::Commit_KoukuMechanicTriggers(const std::uint32_
 		if (!owner || liveOwner == m_WorldEntities.end()) continue;
 		const bool detached = owner != &*liveOwner;
 		const auto& trigger = pending.Trigger;
+		if (trigger.eKind == BOSS_PATTERN_MECHANIC_TRIGGER_KIND::BOSS_RANDOM_TARGET)
+		{
+			// A Trigger selects exactly once. Detached tails cannot retarget the
+			// actor after another Pattern has taken ownership.
+			if (detached || !owner->iCurrentHp || owner->eAction == SERVER_ENTITY_ACTION::DEAD) continue;
+			const auto* selected = Select_BossRandomAliveTarget(*owner, trigger.strTriggerId,
+				trigger.iStartMs == 0u ? "boss.target.pattern" : "boss.target.random.next", serverTick);
+			owner->iTargetEntityId = owner->iPatternTargetEntityId = selected ? selected->iNetEntityId : INVALID_NET_ENTITY_ID;
+			owner->bHasPatternTargetLastPosition = selected != nullptr;
+			if (!selected) continue;
+			owner->fPatternTargetLastPositionX = selected->fPositionX;
+			owner->fPatternTargetLastPositionY = selected->fPositionY;
+			owner->fPatternTargetLastPositionZ = selected->fPositionZ;
+			const float dx = selected->fPositionX - owner->fPositionX, dz = selected->fPositionZ - owner->fPositionZ;
+			if (dx * dx + dz * dz > .000001f)
+			{
+				owner->fYawDegrees = std::atan2(dx, dz) * RADIANS_TO_DEGREES;
+				if (owner->strArchetypeId == "BOSS_KAKULSAYDON_G2_BIG_SAYDON" ||
+					owner->strArchetypeId == "BOSS_KAKULSAYDON_G2_KOUKU") owner->fYawDegrees -= 90.f;
+			}
+			continue;
+		}
         if (trigger.eKind == BOSS_PATTERN_MECHANIC_TRIGGER_KIND::BINGO_BOARD)
         { Begin_KoukuBingoDuration(*owner, trigger, serverTick); continue; }
 		if (trigger.eKind == BOSS_PATTERN_MECHANIC_TRIGGER_KIND::BINGO_DETONATION)
 		{
 			const auto* catalog = Resolve_KoukuProductCatalog();
 			if (!catalog || detached || owner->strArchetypeId != "BOSS_KAKULSAYDON_BINGO_SAYDON" || !owner->iMaximumHealthBars) continue;
-			if (!m_KoukuBingoDuration.bLastLineCompletionSucceeded)
-			{
-				for (auto& [id, player] : m_Players)
-				{
-					if (Is_KoukuRaidRunning() && std::find(m_KoukuRaid.PlayerIds.begin(), m_KoukuRaid.PlayerIds.end(), id) == m_KoukuRaid.PlayerIds.end()) continue;
-					SERVER_WORLD_TO_PLAYER_HIT wipe;
-					wipe.iRawDamage = player.iCurrentHp; wipe.iServerTick = serverTick; wipe.bEncounterWipe = true;
-					wipe.fSourceX = owner->fPositionX; wipe.fSourceZ = owner->fPositionZ;
-					(void)CServerCombatHitRuntime::Apply_WorldToPlayer(player, wipe, *catalog, m_TickDamageEvents);
-				}
-				continue;
-			}
-			BOSS_PATTERN_LOGIC_RESULT explosion; explosion.eKind = BOSS_PATTERN_LOGIC_RESULT_KIND::INSTANT_DEATH;
 			for (auto& [id, player] : m_Players)
-				if (player.iCurrentHp)
-					CKoukuSaydonLogicRuntime::Apply_Result(player, explosion, *owner, *catalog, nullptr, serverTick, m_TickDamageEvents);
+			{
+				if (!player.iCurrentHp || player.eAction == PLAYER_ACTION_STATE::DEAD) continue;
+				if (Is_KoukuRaidRunning() && std::find(m_KoukuRaid.PlayerIds.begin(), m_KoukuRaid.PlayerIds.end(), id) == m_KoukuRaid.PlayerIds.end()) continue;
+				// Bingo alone permits Inanna or an earned line buff to survive the black hole.
+				// An earlier line reward may already have expired, so success cannot soften this wipe.
+				if (serverTick < player.iInvulnerableEndTick)
+				{
+				    // Emit the same deduplicated combat-text pulse as a safe-zone verdict.
+				    player.iInvulnerabilityZoneContactTick = serverTick;
+				    player.iInvulnerabilityZonePulseTick = serverTick;
+				    continue;
+				}
+				SERVER_WORLD_TO_PLAYER_HIT wipe{};
+				wipe.iRawDamage = player.iCurrentHp; wipe.iServerTick = serverTick; wipe.bEncounterWipe = true;
+				wipe.fSourceX = owner->fPositionX; wipe.fSourceZ = owner->fPositionZ;
+				(void)CServerCombatHitRuntime::Apply_WorldToPlayer(player, wipe, *catalog, m_TickDamageEvents);
+			}
+			if (!m_KoukuBingoDuration.bLastLineCompletionSucceeded) continue;
 			const auto damage = static_cast<std::uint32_t>((std::min)(std::uint64_t(owner->iCurrentHp),
 				std::uint64_t(owner->iMaximumHp) * 13u / owner->iMaximumHealthBars));
 			owner->iCurrentHp -= damage;
@@ -1866,6 +1975,9 @@ bool LostArk::Server::CGameRoom::Update_KoukuSummonTriggers(
 	for (std::size_t index = 0u; index < pattern.MechanicTriggers.size(); ++index)
 	{
 		const auto& trigger = pattern.MechanicTriggers[index];
+		// The actor ledger consumes this facing Trigger before its contact windows.
+		if (trigger.eKind == BOSS_PATTERN_MECHANIC_TRIGGER_KIND::BOSS_TRACK_TARGET &&
+			trigger.iDurationMs > 0u && trigger.iDurationMs <= 34u && trigger.fFollowSpeedScale == 0.f) continue;
 		if (std::find(clone.KoukuSummonStartedTriggers.begin(), clone.KoukuSummonStartedTriggers.end(), index) == clone.KoukuSummonStartedTriggers.end() &&
 			Clock::Has_ReachedTick(serverTick, Clock::Add_Ticks(clone.iPatternStartTick, Clock::Ticks_FromMs(trigger.iStartMs))))
 			due.push_back(index);
@@ -1890,7 +2002,7 @@ void LostArk::Server::CGameRoom::Update_KoukuActorContacts(
 	SERVER_WORLD_ENTITY& actor, const BOSS_PATTERN_DEFINITION& pattern,
 	const CGameplayCatalog& product, const std::uint32_t serverTick)
 {
-	if (pattern.LogicWindows.empty()) return;
+	if (pattern.LogicWindows.empty() && pattern.MechanicTriggers.empty()) return;
 	const auto* base = m_GameplayCatalog.Resolve(actor.PinnedDefinitionRevision);
 	if (!base) return;
 	if (!actor.KoukuContactLedger)
@@ -1898,8 +2010,11 @@ void LostArk::Server::CGameRoom::Update_KoukuActorContacts(
 		actor.KoukuContactLedger = std::make_shared<KOUKUSAYDON_LOGIC_LEDGER>();
 		CKoukuSaydonLogicRuntime::Build(pattern, actor, actor.iPatternStartTick, *actor.KoukuContactLedger);
 	}
+	// Root motion has already placed this particular body. Face its own target
+	// before evaluating BOSS-anchored contacts; siblings keep their original yaw.
+	Update_KoukuPlayerTargets(actor, pattern, *actor.KoukuContactLedger, *base, serverTick);
 	KOUKUSAYDON_LOGIC_OUTPUT output;
-	// Summoned children admit contact damage/madness only; they cannot submit
+	// Summoned children admit actor-local facing and contact damage; they cannot submit
 	// room transitions, follow-up patterns, WORLD changes or player ownership.
 	CKoukuSaydonLogicRuntime::Update(actor, pattern, *actor.KoukuContactLedger, m_Players, *base,
 		product.Find_KoukuMadnessPolicy(actor.strEncounterId), serverTick, m_TickDamageEvents, output,

@@ -36,6 +36,75 @@ using namespace LostArk::Shared;
 void LostArk::Server::CServerGameplayContractRunner::Run_SkillStages(TESTS& tests, CGameplayCatalog& catalog)
 {
 	{
+		SERVER_WORLD_ENTITY largeSaydon{};
+		largeSaydon.eKind = WORLD_BOOTSTRAP_KIND::BOSS;
+		largeSaydon.strArchetypeId = "BOSS_KAKULSAYDON_G2_BIG_SAYDON";
+		largeSaydon.iNetEntityId = 99901u;
+		largeSaydon.iCurrentHp = largeSaydon.iMaximumHp = 100000u;
+		largeSaydon.fPositionZ = 1.f; largeSaydon.fCollisionRadius = 1.f;
+		CBossCombatRuntime::Set_Shield(largeSaydon.BossCombat, 100u);
+		CBossCombatRuntime::Set_StaggerGauge(largeSaydon.BossCombat, 100u);
+		CBossCombatRuntime::Set_Flag(largeSaydon.BossCombat, SERVER_BOSS_COMBAT_FLAG::COUNTERABLE, true);
+		const auto revision = largeSaydon.BossCombat.iStateRevision;
+		SERVER_PLAYER_TO_WORLD_HIT incoming{};
+		incoming.iSkillId = 34040u; incoming.iSourcePlayerId = 1u; incoming.iServerTick = 1u;
+		incoming.iRawDamage = 200u; incoming.iStaggerDamage = 100u;
+		incoming.iPartDamage = 100u; incoming.iCounterPower = 1u;
+		std::vector<DAMAGE_EVENT> events;
+		tests.Require(!Is_PlayerDamageableWorldArchetype(largeSaydon.strArchetypeId) &&
+			CServerCombatHitRuntime::Apply_PlayerToWorld(largeSaydon, incoming, events) == SERVER_COMBAT_HIT_RESULT::NOT_ADMITTED &&
+			largeSaydon.iCurrentHp == largeSaydon.iMaximumHp && largeSaydon.BossCombat.iShieldCurrent == 100u &&
+			!largeSaydon.BossCombat.iStaggerCurrent && largeSaydon.BossCombat.iStateRevision == revision &&
+			largeSaydon.BossCombat.PendingOutcomes.empty() && largeSaydon.MvpLedger.empty() && events.empty(),
+			"Gate 2 Large Saydon rejects player hits before HP, shield, stagger, counter and damage-event mutation");
+		for (int path = 0; path != 4; ++path)
+		{
+			auto fixture = std::make_unique<CGameplayCatalog>(catalog);
+			auto* skill = const_cast<PLAYER_SKILL_DEFINITION*>(fixture->Find_Skill(34040u));
+			tests.Require(nullptr != skill, "The player-target filter fixture resolves a product skill");
+			if (!skill) continue;
+			skill->RootMotion.clear(); skill->Projectiles.clear(); skill->Hits.clear();
+			skill->fMovementDistance = 0.f; skill->iResourceCost = 0u;
+			skill->iActionDurationMs = 500u; skill->iHitTimeMs = 100u;
+			skill->fMaximumRange = 4.f;
+			PLAYER_SKILL_HIT shape{}; shape.iTimeMs = 100u; shape.iAreaType = 1u;
+			shape.fRange = 4.f; shape.fHeight = 2.f; shape.iMaxTargets = 1u;
+			if (path == 0) skill->Hits.push_back(shape);
+			else if (path == 1 || path == 2)
+			{
+				PLAYER_SKILL_PROJECTILE projectile{};
+				projectile.eKind = PLAYER_PROJECTILE_KIND::FIXAREA;
+				projectile.eOrigin = PLAYER_PROJECTILE_ORIGIN::CASTER;
+				projectile.iLifeMs = 500u; projectile.fRadius = 4.f;
+				PLAYER_PROJECTILE_HIT hit{}; hit.Hit = shape; hit.isContact = path == 2;
+				projectile.Hits.push_back(hit); skill->Projectiles.push_back(projectile);
+			}
+			auto kouku = largeSaydon;
+			kouku.strArchetypeId = "BOSS_KAKULSAYDON_G2_KOUKU";
+			kouku.iNetEntityId = 99902u; kouku.fPositionZ = 2.f;
+			kouku.BossCombat = {};
+			std::vector<SERVER_WORLD_ENTITY> targets{ largeSaydon, kouku };
+			SERVER_PLAYER player{}; player.iPlayerId = 99900u;
+			player.eCharacterClass = CHARACTER_CLASS_ID::LANCE_MASTER;
+			player.eStance = PLAYER_STANCE_ID::LANCE_MASTER_LONG_SPEAR;
+			player.iCurrentHp = player.iMaximumHp = 10000u;
+			player.iCurrentResource = player.iMaximumResource = 10000u;
+			C2S_USE_SKILL command{}; command.iSkillId = skill->iSkillId;
+			command.iClientSequence = 1u; command.fAimZ = 3.f;
+			CPlayerSkillSystem runtime;
+			const bool started = runtime.Try_Start(player, command, *fixture, 1u);
+			events.clear();
+			if (started)
+				for (std::uint32_t tick = 2u; tick < 40u; ++tick)
+					runtime.Update(player, targets, *fixture, nullptr, nullptr, 1.f / 30.f, tick, events);
+			tests.Require(started && targets[0].iCurrentHp == largeSaydon.iCurrentHp &&
+				targets[0].BossCombat.iStateRevision == revision && targets[1].iCurrentHp < kouku.iCurrentHp &&
+				!events.empty() && std::all_of(events.begin(), events.end(), [&](const DAMAGE_EVENT& event) {
+					return event.iTargetNetEntityId == kouku.iNetEntityId; }),
+				"Caster, timed/contact projectile and fallback targeting skip Large Saydon before the nearest/maximum-target limit");
+		}
+	}
+	{
 		SERVER_PLAYER shielded{};
 		shielded.iNetEntityId = 991u; shielded.eCharacterClass = CHARACTER_CLASS_ID::LANCE_MASTER;
 		shielded.iCurrentHp = shielded.iMaximumHp = 100u; shielded.iShield = 5u;

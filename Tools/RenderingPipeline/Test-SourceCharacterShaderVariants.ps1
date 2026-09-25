@@ -35,9 +35,9 @@ foreach ($taskDirectory in @($taskClient, $taskEngine)) {
 }
 foreach ($taskStem in @('Shader_VtxAnimMeshBinary', 'Shader_VtxMeshBinary', 'Shader_Deferred')) {
     $taskDirectory = if ($taskStem -eq 'Shader_Deferred') { $taskEngine } else { $taskClient }
-    foreach ($taskSuffix in @('', '_SourceGroup001', '_SourceGroup009', '_SourceGroup017', '_SourceGroup025', '_SourceGroup080', '_SourceGroup084')) {
-        Copy-Item -LiteralPath (Join-Path $taskDirectory ($taskStem + $taskSuffix + '.cso')) -Destination $taskOutput -Force
-    }
+    Copy-Item -LiteralPath (Join-Path $taskDirectory ($taskStem + '.cso')) -Destination $taskOutput -Force
+    Get-ChildItem -LiteralPath $taskDirectory -Filter ($taskStem + '_SourceGroup*.cso') |
+        Copy-Item -Destination $taskOutput -Force
 }
 & $taskExecutable $taskOutput *> (Join-Path $taskOutput 'probe.log')
 $taskCode = $LASTEXITCODE

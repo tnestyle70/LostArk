@@ -31,6 +31,21 @@ Preview와 toolbar는 공통 shell이 소유하고 각 세션은 자기 문서·
   `ClassSelection.cinematics.json`의 optional `scenes[].backgroundAreaId`는 원본 배경 Area이며
   생략 시 registry의 기존 presentation Area를 사용한다. 같은 Area를 한 번 준비하고 활성 scene만
   표시하며 배경 실패는 해당 class에 격리한다. 11개 바닥의 사용자 배치를 영화 재생으로 수정하지 않는다.
+- Character Select 입장 후 `All Effects → World → Character Selection Movies → Open Editor`도
+  같은 World 세션을 연다. 목록은 현재 Level이 준비한 class만 사용한다. Intro/Loop 타임라인의
+  박스를 선택하면 Box Detail에서 actor transform, animation clip/offset/rate, camera, Effect,
+  material, light, sound, clock의 기존 행과 키를 편집한다. 시간 입력은 source ms이고 타임라인은
+  원본 slow-motion을 반영한 movie ms다. `Apply row`는 검증 후 현재 재생을 중지하고 초안에 적용한다.
+  박스를 열어 조회하는 동작은 재생을 중지하지 않는다. `Revert row`는 아직 적용하지 않은 행을 되돌린다.
+- `Save movie`는 `Data/Camera/ClassSelection.cinematics.json`과 SL00의 authoring WorldSequences를
+  각 stable ID/변경 필드 기준으로 최신 저장본과 병합한다. 실제 모델 clip과 source offset,
+  문서 구조 검증을 통과해야 교체하며 같은 필드 충돌은 초안을 보존하고 거절한다.
+  World 변경은 기존 Area publisher의 `WorldSequences` 범위로 비동기 게시한다. 저장 성공과
+  게시 완료/실패를 따로 표시하고 게시 실패는 다음 Save로 재시도한다. Camera 문서는 기존 Data
+  정본을 직접 소비한다. `Reload saved movie`는 미저장 초안이 있으면 확인 후 유효한 저장본만 적용한다.
+  Effect 박스의 `Open Effect Editor`는 실제 V1 Effect owner를 열며, 그 창에서 Save 후 무비를
+  다시 Play하면 기존 prepared-resource 갱신 경로로 반영한다. 영화 저장이 Effect 내부 문서를 대신
+  저장하지 않는다. 구현/검증 경계는 `../GB/09-25/2026-09-25_FOUR_CLASS_SELECTION_MOVIES_IMPLEMENTATION_RESULT.md`를 따른다.
 - Object Parent는 연결 Motion의 Transform/Animation/Effect overview를 보여 주고 row 선택으로 기존
   Motion 편집에 들어간다. 저장은 기존 World Sequence atomic save와 Area publish, 열린 Composition의
   dirty/외부 변경 검사를 유지한다.
@@ -1187,8 +1202,15 @@ Effect/Map/Deploy/Character 폴더의 `.wmodel`/`.dds` 실제 파일을 보여 �
 원본 모델·Animation 목록에서 클립을 골라 Append하면 선택한 Object의 모델과 animation track에 연결된다.
 아래 Sequencer에서 재생하고 오른쪽 Detail에서 편집한 뒤 Save한다. 원본 클립 전체를 저장 상태로
 자동 복제하지 않으며, 목록은 기존 WModel decoder로 물리 모델에서 직접 읽는다.
-Animation Clips의 `Clip display name`은 한글 별명을 저장한다. 실제 `Native clip` ID는 읽기 전용이며
-별명을 바꿔도 모델 lookup을 유지한다. `Physics / Motion / Emission`에서 Lifetime과 Arc Height를
+Animation Clips의 표시 이름은 한글 별명을 저장하며 이름 변경은 모델 lookup을 바꾸지 않는다.
+`Native Clip`은 선택 Object의 실제 모델 clip 목록에서 교체한다. `Source In/Out`은 원본 구간,
+`Clip Start/End`는 Motion 안의 재생 창이며 `Range Loop`는 선택 원본 구간만 반복한다.
+`Use native end`는 optional `sourceEndMs=0`으로 저장하며 기존 문서에서는 생략한다.
+명시 Source Out은 Source In보다 커야 하고 실제 clip 끝을 넘을 수 없다. Clip End는 바로 다음
+같은 배우의 clip 시작을 옮기며 마지막 행은 Motion 끝을 조절한다. 다른 배우·사운드·카메라는
+자동으로 이동하지 않는다. `Split at Cursor`는 반복을 끈 움직이는 구간에서 원본과 timeline을
+나누며, `Duplicate`는 해당 배우의 뒤쪽 clip 행만 이동한다. Save는 기존 World 문서에 반영한다.
+`Physics / Motion / Emission`에서 Lifetime과 Arc Height를
 정한 뒤 `Apply Vertical Arc`를 누르면 시작 높이로 돌아오는 상하 운동을 기존 속도·가속도에 저장한다.
 Physics Y Timeline을 드래그해 같은 Seek로 확인한다. Lifetime을 바꾼 뒤 같은 높이/복귀 시간을
 원하면 프리셋을 다시 적용한다. 생성 개수와 간격은 유지되며 곡선은 첫 생성 기준이다.
@@ -1312,7 +1334,8 @@ range는 모델 크기를 상속하지 않는다. Resource 정의의 기본 앵�
 MAP 리소스를 BOSS/PLAYER/WORLD에서 재사용하면 원본 절대 XZ를 더하지 않고, 원본
 광원 중심 ray가 실제 대상 높이의 평면을 비추도록 재배치한다. 방향·cone·range는 보존하며
 그 평면에 도달하지 못하면 오류로 표시한다. BOSS 단독 Preview는 선택한 관문과 actor를 사용한다.
-연출용 placed sequence의 애니메이션은 World Object → Edit This Motion → Animation Clips에서
+연출용 placed sequence의 애니메이션은 WORLD 상세 → Edit Animation Clips 또는
+World Object → Edit This Motion → Animation Clips에서
 관리한다. 같은 instance의 표시 별칭은 새 배우나 새 Action Pattern을 생성하지 않으며,
 클립 삭제/Save는 해당 instance를 공유하는 모든 연출에 반영된다.
 
@@ -1577,7 +1600,21 @@ WORLD 기본값을 가진 V1 리소스는 특정 Object ID가 정해진 것은 �
 
 Action Workbench의 Summon Box Detail에서 `World Preview`를 누르면 해당 소환창 안의 커서 또는 최초 생성 tick을 정지 미리보기로 연다. Spawned Patterns의 Pos/Yaw 변경은 기존 preview 배우에 즉시 반영하고 Save는 기존 patternSpawns에 저장한다. 배치를 바꾼 배우의 과거 자세/이펙트 이력만 비우며 다른 배우를 전부 다시 만들지 않는다. Server playback 중에는 draft만 변경하고 로컬 Preview 전환은 Server playback을 멈춘 뒤 한다.
 
-World sequence가 animation을 소유한 연출은 Animation lane에 `World: <clip>` 읽기전용 행으로 표시한다. 클릭하면 World Box Detail의 clip, model, 시각 구간, source in, speed를 확인하며 `Edit This Motion`에서 기존 World animation 저작에 진입한다. 별도 Composition Animation을 복제하지 않으므로 같은 배우가 중복 생성되지 않는다. 저장 catalog의 metadata cache를 쓰며 타임라인 draw마다 파일을 읽지 않는다.
+World sequence가 animation을 소유한 연출은 Animation lane에 `World: <clip>` 정보 행으로 표시한다. 클릭하면 World Box Detail의 clip, model, 시각 구간, source in/out, speed를 확인하며, 더블클릭 또는 `Edit Animation Clips`로 기존 Object/Motion의 Animation Clips를 연다. 별도 Composition Animation을 복제하지 않으므로 같은 배우가 중복 생성되지 않는다. 저장 catalog의 metadata cache를 쓰며 타임라인 draw마다 파일을 읽지 않는다.
+
+쿠크 순차/반복 Parent의 자식은 전체 lifetime을 재생한다. 자식의 Stage 또는 Full lifetime 변경이
+실제 lifetime을 바꾸면 같은 편집 candidate에서 해당 완전재생 참조의 길이와 뒤쪽 child 시작을
+갱신하고 원래 간격을 보존한다. Parent 끝에 맞춰 있던 공통 row는 시작을 유지하고 끝을 맞춘다.
+따로 고정한 일반 Parent 창·반복 occurrence·더 짧은 공통 row는 이동하지 않는다. 자식과 Parent
+창을 같은 명령에서 직접 수정한 충돌, 범위 초과, 새 끝보다 늦은 고정 row는 전체 편집을 거부하고
+원래 draft와 구체적인 Parent/child ID를 표시한다. Source Save와 제품 publish는 기존 경로다.
+
+CROSS_DIRECTION_CLONES Summon의 방향별 `Open Source Pattern`은 해당 자식 원본을 연다.
+자식에는 접촉 판정과 기존 `TRIGGER/BOSS_TRACK_TARGET`의34ms 즉시 회전을 연결할 수 있다.
+즉시 회전은 그 배우의 현재 위치에서 가장 가까운 살아 있는 플레이어를 한 번 선택하며,
+Server yaw/접촉과 Client Preview는 배우별 시계를 사용한다. Parent와 다른 방향의 yaw를
+대신 수정하지 않는다. 움직임 추적·방 이동·후속 패턴 등 room 전체를 바꾸는 자식 Logic은
+계속 거부한다. 분신 종료 이후에 놓은 회전은 해당 분신을 되살리거나 수명을 늘리지 않는다.
 
 단독 Effect Preview의 `loopEffectToDuration`은 Product/Composition과 같은 정책으로 동작한다. 원본 무한 emitter는 지정 수명까지 방출을 연장하고 finite source는 자연 주기를 반복한다. 반복 시 particle source 나이만 되감으며 본/owner 시계는 occurrence 나이를 유지한다. 한 공통 불뿜기를 서로 다른 occurrence 수명으로 재사용하므로 수명만 다른 asset 복제는 필요 없다.
 
@@ -1640,3 +1677,26 @@ EffectPresentationService에 제출한다. 준비 지연은 살아 있는 동일
 한 번 제출한다. action 변경은 pending admission을 취소한다. CUE_END는 source 길이를 rate로 변환한
 수명과 interaction action owner를 함께 사용한다. legacy scalar는 start 0, root, ACTION_FACING을 유지한다.
 이 계약은 애니메이션·Effect presentation이며 Mario/MAZE 입력·피해·이동의 Server authority를 바꾸지 않는다.
+
+### 쇼타임 회전 추적의 폭탄과 고정 예고
+
+`DURATION/BOSS_TRACK_TARGET`은 보스 방향만 회전하며 부채꼴 Effect를 만들지 않는다.
+rotate-only Duration의 선택적 폭탄 설정은 `bombPresentationOccurrenceId`,
+`bombExplosionPresentationOccurrenceId`, `bombSectorPresentationOccurrenceId`,
+`bombSectorRadiusM`, `bombSectorHalfAngleDegrees` 다섯 필드를 함께 저장한다.
+본체/폭발은 같은 패턴·같은 위치의 고정 MAP V1 Effect, 부채꼴은 해당 추적 구간을 덮는
+따라가는 BOSS V1 Effect다. 편집 그룹은 유지할 수 있다. 공유 Logic의 서로 다른 폭탄은
+별도 Logic 정의로 연결한다. moving tracking, 34ms 이하 창, cancelAtEnd, 중복 소유와
+기존 Showtime targeted owner와의 중복은 거부한다.
+
+게시기는 본체와 폭발을 기존 Server CombatObject visual로 연결하고 두 정적 행의 중복
+재생을 제외한다. Server는 원래 본체 시작 시각에 생성하고 추적 종료의 최종 방향으로
+폭탄 위치를 한 번 판정한다. 안이면 본체/심지가 사라지고, 밖이면 같은 위치의 파란 폭발과
+참가자 전멸을 처리한다. 반경은 이펙트 scale X/Z를 각각 반영한 타원 부채꼴이며 원본 yaw를
+보존한다. 일반 저작 Preview는 저장된 타임라인을 표시하고 성공/실패 판정은 Server Play에서 확인한다.
+
+고정 BOSS Effect의 `anchorPresentationOccurrenceId`는 먼저 시작한 독립 고정 BOSS Effect의
+생성 시점 보스 위치·방향을 공유한다. 두 Effect는 각자의 offset/rotation/scale를 유지하며
+그 뒤의 보스 회전을 따라가지 않는다. 예고/폭발 각각 follow만 끄면 서로 다른 시각의 보스
+방향을 캡처하므로 위치가 벌어질 수 있다. 같은 예고 기준을 연결하고 self/chain/future
+참조는 거부한다. 원래 MAP 배치는 저장된 절대 위치를 유지한다.

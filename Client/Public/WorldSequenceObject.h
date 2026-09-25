@@ -3,6 +3,7 @@
 #include "Client_Defines.h"
 #include "GameObject.h"
 #include "WorldSequenceDocument.h"
+#include "DeferredMaterialRenderUtils.h"
 
 NS_BEGIN(Engine)
 class CModel;
@@ -44,6 +45,8 @@ public:
         const WORLD_SEQUENCE_ANIMATION_TRACK* animation, f32_t localMs, f32_t windowEndMs);
     bool_t Is_Visible() const { return m_Visible; }
     void Hide() { m_Visible = false; }
+    void Trigger_HitFlash();
+    void Set_CombatHovered(bool_t hovered) { m_CombatPresentation.isCombatHovered = hovered && m_Visible; }
     // Return to the same rest-pose state as a new clone, without recreating it.
     bool_t Reset_ForReuse();
     const shared_ptr<Engine::CModel>& Get_Model() const { return m_Model; }
@@ -68,6 +71,8 @@ private:
     std::string m_MaterialProfileId;
     float4x4_t m_World{};
     f32_t m_SampleTimeSeconds = 0.f;
+    DEFERRED_EMISSIVE_OVERRIDE m_CombatPresentation;
+    f32_t m_HitFlashSeconds = 0.f;
     bool_t m_Visible = false;
     bool_t m_HasTranslucentMeshes = false;
     std::string m_RenderStatus;

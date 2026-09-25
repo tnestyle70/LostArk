@@ -6,6 +6,7 @@
 #include "GameRoom.h"
 #include "PlayerSkillSystem.h"
 #include "ServerNavigation.h"
+#include "ServerCombatHitRuntime.h"
 #include "ValtanBrain.h"
 #include "WorldBootstrap.h"
 #include "WorldDestructionBootstrapContractTests.h"
@@ -1516,3 +1517,111 @@ void LostArk::Server::CServerGameplayContractRunner::Run_WorldDestruction(TESTS&
 	}
 }
 
+
+void LostArk::Server::CServerGameplayContractRunner::Run_InannaProtection(
+    TESTS& tests, const CGameplayCatalog& catalog)
+{
+    auto generation = std::make_shared<CGameplayCatalog>(catalog);
+    auto room = std::make_unique<CGameRoom>(WORLD_ID::KAKULSAYDON_ARENA, generation);
+    auto otherRoom = std::make_unique<CGameRoom>(WORLD_ID::KAKULSAYDON_ARENA, generation);
+    tests.Require(room->Is_Ready() && otherRoom->Is_Ready(), "Inanna fixtures admit two independent Kouku rooms");
+    if (!room->Is_Ready() || !otherRoom->Is_Ready()) return;
+    constexpr SESSION_ID casterSession = 741u;
+    constexpr std::uint32_t callTick = 1000u;
+    constexpr std::uint32_t endTick = callTick + 900u;
+    SERVER_PLAYER seed;
+    seed.iPlayerId = 1u; seed.iNetEntityId = 101u;
+    seed.iCurrentHp = seed.iMaximumHp = 100u; seed.isCombatReady = true;
+    seed.eCharacterClass = CHARACTER_CLASS_ID::LANCE_MASTER;
+    room->m_Players.emplace(1u, seed);
+    seed.iPlayerId = 2u; seed.iNetEntityId = 102u; seed.fPositionX = 1000.f;
+    room->m_Players.emplace(2u, seed);
+    seed.iPlayerId = 3u; seed.iNetEntityId = 103u; seed.iCurrentHp = 0u; seed.eAction = PLAYER_ACTION_STATE::DEAD;
+    room->m_Players.emplace(3u, seed);
+    seed.iPlayerId = 4u; seed.iNetEntityId = 104u; seed.iCurrentHp = 100u; seed.eAction = PLAYER_ACTION_STATE::NONE;
+    room->m_Players.emplace(4u, seed);
+    otherRoom->m_Players.emplace(4u, seed);
+    room->m_PlayerIdBySessionId.emplace(casterSession, 1u);
+    room->m_KoukuRaid.State.ePhase = KOUKUSAYDON_RAID_PHASE::COMBAT;
+    room->m_KoukuRaid.PlayerIds = {1u, 2u, 3u};
+    room->m_iServerTick = callTick - 1u;
+    C2S_USE_ESTHER_SKILL use; use.iClientSequence = 1u; use.iSlotIndex = 3u;
+    room->Handle_UseEstherSkill(casterSession, use);
+    tests.Require(room->m_Players.at(1u).iInvulnerableEndTick == 0u && room->m_PendingEstherSummons.empty(),
+        "Rejected Inanna call grants no protection while the gauge is empty");
+    room->m_EstherSkillSystem.Update(5.f, true);
+    room->Handle_UseEstherSkill(casterSession, use);
+    auto& caster = room->m_Players.at(1u);
+    auto& peer = room->m_Players.at(2u);
+    tests.Require(caster.iInvulnerableEndTick == endTick && peer.iInvulnerableEndTick == endTick &&
+        caster.eAction == PLAYER_ACTION_STATE::ESTHER_CAST && room->m_EstherSkillSystem.Get_Gauge() == 0u,
+        "Accepted Inanna gives every living raid participant thirty seconds immediately, independent of distance");
+    tests.Require(room->m_Players.at(3u).iCurrentHp == 0u && room->m_Players.at(3u).iInvulnerableEndTick == 0u &&
+        room->m_Players.at(4u).iInvulnerableEndTick == 0u && otherRoom->m_Players.at(4u).iInvulnerableEndTick == 0u,
+        "Inanna does not resurrect, grant outside the raid roster, or leak into another Server room");
+    tests.Require(room->m_PendingEstherSummons.size() == 1u &&
+        room->m_PendingEstherSummons.front().pRosterEntry->eEstherId == ESTHER_ID::INANNA &&
+        room->m_PendingEstherSummons.front().pRosterEntry->iStrikeMs == 4100u,
+        "Inanna keeps the authored 4.1-second summon presentation separate from its thirty-second protection");
+    std::vector<DAMAGE_EVENT> events;
+    SERVER_WORLD_TO_PLAYER_HIT hit; hit.iRawDamage = 10u; hit.bIgnoreDefense = true;
+    hit.iServerTick = callTick;
+    tests.Require(CServerCombatHitRuntime::Apply_WorldToPlayer(caster, hit, catalog, events) == SERVER_COMBAT_HIT_RESULT::ABSORBED &&
+        CServerCombatHitRuntime::Apply_WorldToPlayer(peer, hit, catalog, events) == SERVER_COMBAT_HIT_RESULT::ABSORBED &&
+        caster.iCurrentHp == 100u && peer.iCurrentHp == 100u && events.empty(),
+        "Inanna absorbs ordinary Server damage for the caster and the other participant");
+    auto expired = peer; hit.iServerTick = endTick;
+    tests.Require(CServerCombatHitRuntime::Apply_WorldToPlayer(expired, hit, catalog, events) == SERVER_COMBAT_HIT_RESULT::LANDED && expired.iCurrentHp == 90u,
+        "Inanna ordinary-damage protection ends at exactly thirty seconds");
+    auto unrelatedWipe = peer; hit.iServerTick = callTick + 1u; hit.bEncounterWipe = true;
+    tests.Require(CServerCombatHitRuntime::Apply_WorldToPlayer(unrelatedWipe, hit, catalog, events) == SERVER_COMBAT_HIT_RESULT::KILLED &&
+        unrelatedWipe.iCurrentHp == 0u,
+        "Other encounter wipes still bypass Inanna through the unchanged global damage arbiter");
+
+    auto& audition = room->m_KoukuSaydonPatternAudition;
+    audition.ePhase = CGameRoom::KOUKUSAYDON_PATTERN_AUDITION_PHASE::ACTIVE;
+    audition.iRoomAuditionEpoch = 741u;
+    audition.PinnedGameplayRevision = room->m_GameplayCatalog.Get_ActiveRevision();
+    audition.pProductGeneration = generation;
+    audition.iPinnedSourceRevision = CKoukuSaydonBrain::Resolve_ProductSourceRevision(*generation);
+    const auto* placement = room->Find_Placement("boss.kakulsaydon.bingo.saydon");
+    SERVER_WORLD_ENTITY boss;
+    const bool ready = placement && room->Build_WorldEntity(*placement, 900u, boss) && room->Resolve_KoukuProductCatalog();
+    tests.Require(ready, "Inanna black-hole fixture uses the admitted Bingo boss and pinned Product catalog");
+    if (!ready) return;
+    boss.iPatternSequence = 1u; boss.strPatternId = "test.inanna.blackhole";
+    boss.iCurrentHp = boss.iMaximumHp = 10000u; boss.iMaximumHealthBars = 100u;
+    room->m_WorldEntities.clear(); room->m_WorldEntities.push_back(std::move(boss));
+    auto& owner = room->m_WorldEntities.front();
+    room->m_KoukuBingo.Reset();
+    room->m_KoukuBingoDuration.bLastLineCompletionSucceeded = false;
+    BOSS_PATTERN_MECHANIC_TRIGGER detonation; detonation.eKind = BOSS_PATTERN_MECHANIC_TRIGGER_KIND::BINGO_DETONATION;
+    room->m_PendingKoukuMechanicTriggers.push_back({owner.iNetEntityId, owner.iPatternSequence, detonation});
+    room->Commit_KoukuMechanicTriggers(endTick - 1u);
+    tests.Require(caster.iCurrentHp == 100u && peer.iCurrentHp == 100u && owner.iCurrentHp == 10000u &&
+        room->m_KoukuBingo.Get_RedMask() == 0u,
+        "Inanna survives the Bingo black hole with zero red lines until the last protected tick without earning boss damage");
+    tests.Require(caster.iInvulnerabilityZonePulseTick == endTick - 1u && peer.iInvulnerabilityZonePulseTick == endTick - 1u &&
+        caster.iInvulnerabilityZoneContactTick == endTick - 1u && peer.iInvulnerabilityZoneContactTick == endTick - 1u &&
+        !room->m_Players.at(3u).iInvulnerabilityZonePulseTick && !room->m_Players.at(4u).iInvulnerabilityZonePulseTick,
+        "Inanna emits the identical black-hole protection pulse only for living protected raid participants");
+    room->m_PendingKoukuMechanicTriggers.push_back({owner.iNetEntityId, owner.iPatternSequence, detonation});
+    room->Commit_KoukuMechanicTriggers(endTick);
+    tests.Require(caster.iCurrentHp == 0u && peer.iCurrentHp == 0u && owner.iCurrentHp == 10000u && room->m_Players.at(4u).iCurrentHp == 100u,
+        "Bingo black hole wipes unprotected raid participants at exact Inanna expiry while preserving nonparticipants");
+    caster.iCurrentHp = peer.iCurrentHp = 100u;
+    caster.eAction = peer.eAction = PLAYER_ACTION_STATE::NONE;
+    caster.iInvulnerableEndTick = peer.iInvulnerableEndTick = endTick;
+    caster.iShield = peer.iShield = 5000u;
+    room->m_KoukuBingoDuration.bLastLineCompletionSucceeded = true;
+    room->m_PendingKoukuMechanicTriggers.push_back({owner.iNetEntityId, owner.iPatternSequence, detonation});
+    room->Commit_KoukuMechanicTriggers(endTick - 1u);
+    tests.Require(caster.iCurrentHp == 100u && peer.iCurrentHp == 100u && caster.iShield == 5000u && peer.iShield == 5000u &&
+        owner.iCurrentHp == 8700u && room->m_Players.at(4u).iCurrentHp == 100u,
+        "Successful Bingo judgement damages thirteen boss bars while active protection saves only raid participants from the blast");
+    room->m_PendingKoukuMechanicTriggers.push_back({owner.iNetEntityId, owner.iPatternSequence, detonation});
+    room->Commit_KoukuMechanicTriggers(endTick);
+    tests.Require(caster.iCurrentHp == 0u && peer.iCurrentHp == 0u && caster.iShield == 0u && peer.iShield == 0u &&
+        owner.iCurrentHp == 7400u && room->m_Players.at(4u).iCurrentHp == 100u,
+        "An earlier successful line reward cannot let shields survive the black hole after its thirty-second protection expires");
+}

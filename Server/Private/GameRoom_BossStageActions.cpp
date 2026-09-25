@@ -40,6 +40,8 @@ LostArk::Server::SERVER_PLAYER* LostArk::Server::CGameRoom::Select_BossRandomAli
 		candidates.push_back(&player);
 	}
 	if (candidates.empty()) return nullptr;
+	if ("boss.target.random.next" == targetId && candidates.size() > 1u)
+		std::erase_if(candidates, [&](const auto* player) { return player->iNetEntityId == boss.iPatternTargetEntityId; });
 	if ("boss.target.nearest" == targetId)
 	{
 		return *std::min_element(candidates.begin(), candidates.end(),

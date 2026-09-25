@@ -265,6 +265,7 @@ namespace
 		f32_t fAmbientTickDelta = 0.f;
 		Client::EFFECT_FIXED_STEP_TRANSFORM_PROVIDER ExternalTransformProvider;
 		std::optional<float4x4_t> ExternalPresentationRoot;
+		std::optional<float4x4_t> ExternalPresentationPostTransform;
 		std::optional<std::vector<EFFECT_PARAMETER_INPUT>> ExternalPresentationParameters;
 		bool_t bExternalHistorySampled = false;
 		std::string strLevelPlacementId;
@@ -332,6 +333,8 @@ namespace
 		}
 		else if (Effect.ExternalPresentationRoot)
 			Effect.pObject->Set_RootWorld(*Effect.ExternalPresentationRoot);
+		if (!Effect.pObject->Set_PresentationPostTransform(Effect.ExternalPresentationPostTransform ?
+			&*Effect.ExternalPresentationPostTransform : nullptr, strOutError)) return false;
 		Effect.bExternalHistorySampled = true;
 		Effect.bPendingInitialSeek = false;
 		Effect.fElapsedCueTimeSeconds = fTarget;
@@ -5303,12 +5306,14 @@ bool_t Client::CEffectPresentationService::Seek_WorldRoot(
 	const bool_t bRebuildHistory,
 	const f32_t fPlaybackEndSeconds,
 	const float4x4_t* pPresentationRoot,
-	const std::vector<EFFECT_PARAMETER_INPUT>* pPresentationParameters)
+	const std::vector<EFFECT_PARAMETER_INPUT>* pPresentationParameters,
+	const float4x4_t* pPresentationPostTransform)
 {
 	std::string parameterError;
 	if ((pPresentationParameters && (!pPresentationRoot || !TransformProvider ||
 		!CEffectDistribution::Validate_ParameterInputs(*pPresentationParameters, parameterError))) ||
 		(pPresentationRoot && (!TransformProvider || !Is_NonDegenerateAffineMatrix(*pPresentationRoot))) ||
+		(pPresentationPostTransform && (!TransformProvider || !Is_NonDegenerateAffineMatrix(*pPresentationPostTransform))) ||
 		!Handle.Is_Valid() || !std::isfinite(fSampleTimeSeconds) ||
 		fSampleTimeSeconds < 0.f || !std::isfinite(fPlaybackEndSeconds) || fPlaybackEndSeconds < 0.f)
 	{
@@ -5322,6 +5327,8 @@ bool_t Client::CEffectPresentationService::Seek_WorldRoot(
 			pending.Desc.fExternalPlaybackEndSeconds = fPlaybackEndSeconds;
 			pending.Desc.fInitialSampleTimeSeconds = fSampleTimeSeconds;
 			pending.Desc.ExternalTransformProvider = TransformProvider;
+			pending.Desc.ExternalPresentationPostTransform = pPresentationPostTransform ?
+				std::optional<float4x4_t>(*pPresentationPostTransform) : std::nullopt;
 			pending.Desc.ExternalPresentationRoot = pPresentationRoot ?
 				std::optional<float4x4_t>(*pPresentationRoot) : std::nullopt;
 			pending.Desc.ExternalPresentationParameters = pPresentationParameters ?
@@ -5339,6 +5346,9 @@ bool_t Client::CEffectPresentationService::Seek_WorldRoot(
 			effect.fElapsedCueTimeSeconds = fSampleTimeSeconds;
 			effect.bPendingInitialSeek = true;
 			effect.ExternalTransformProvider = TransformProvider;
+			effect.ExternalPresentationPostTransform = pPresentationPostTransform ?
+				std::optional<float4x4_t>(*pPresentationPostTransform) : std::nullopt;
+			if (!TransformProvider && !effect.pObject->Set_PresentationPostTransform(nullptr, parameterError)) return false;
 			effect.ExternalPresentationRoot = pPresentationRoot ?
 				std::optional<float4x4_t>(*pPresentationRoot) : std::nullopt;
 			effect.ExternalPresentationParameters = pPresentationParameters ?
@@ -5927,6 +5937,7 @@ bool_t Client::CEffectPresentationService::Spawn_Immediate(
 	Active.bExternallySampled = Desc.bExternallySampled;
 	Active.ExternalTransformProvider = Desc.ExternalTransformProvider;
 	Active.ExternalPresentationRoot = Desc.ExternalPresentationRoot;
+	Active.ExternalPresentationPostTransform = Desc.ExternalPresentationPostTransform;
 	Active.ExternalPresentationParameters = Desc.ExternalPresentationParameters;
 	Active.strLevelPlacementId = Desc.strLevelPlacementId;
 	Active.bVehicleModelAnchors = Desc.bVehicleModelAnchors;

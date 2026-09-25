@@ -542,6 +542,11 @@ public:
     void Deactivate_AuthoringWorkspace();
     bool Open_AuthoringResource(const EFFECT_RESOURCE_KEY& key);
     bool Consume_AuthoringInteraction();
+    struct CLASS_MOVIE_RESOURCE_ROW final { std::string classId, label; };
+    // The active Level supplies its admitted list; the browser owns only an open request.
+    void Set_ClassMovieResources(std::vector<CLASS_MOVIE_RESOURCE_ROW> movies)
+    { m_ClassMovieResources = std::move(movies); }
+    bool Consume_ClassMovieEditorRequest(std::string& classId);
     void Update(f32_t fTimeDelta);
     void Render();
     /* Composition Save committed a new canonical revision. Queue that exact
@@ -1212,6 +1217,8 @@ private:
 	std::string m_strValtanEffectResourceStatus;
 	bool_t m_bValtanEffectResourceLoadAttempted = false;
 	std::optional<EFFECT_RESOURCE_KEY> m_PendingTypedEffectResourceOpen;
+    std::vector<CLASS_MOVIE_RESOURCE_ROW> m_ClassMovieResources;
+    std::optional<std::string> m_PendingClassMovieEditor;
 	std::unordered_map<std::string, size_t>
 		m_BossProductCueMappingCounts;
 	shared_ptr<const EFFECT_VISUAL_PROGRAM_DOCUMENT_PROJECTION>

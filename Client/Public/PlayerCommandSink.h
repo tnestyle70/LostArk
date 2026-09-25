@@ -79,6 +79,8 @@ public:
 		LostArk::Shared::S2C_DEBUG_SET_KOUKU_HUD_MODE_RESULT& result) = 0;
 
 	virtual bool Request_VehicleFlightInput(std::uint32_t, float, float, float) { return false; }
+	virtual bool Request_RoomPing(std::uint32_t, float, float, float) { return false; }
+	virtual bool Consume_RoomPing(LostArk::Shared::S2C_ROOM_PING&) { return false; }
 	virtual bool Request_MoveGoal(
 		std::uint32_t clientSequence,
 		float goalX,

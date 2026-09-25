@@ -1003,10 +1003,45 @@ class WorldSequenceAnimationSourceStartContractTests(unittest.TestCase):
         before = copy.deepcopy(self.document)
         self.assertEqual({"instance.source-start"}, self.validate(self.document))
         self.assertEqual(before, self.document)
-        # This extension does not admit an unimplemented source-end contract.
         template["animationTracks"][1]["sourceEndMs"] = 10559
-        with self.assertRaisesRegex(pipeline.CompositionError, "sourceEndMs"):
-            self.validate(self.document)
+        before = copy.deepcopy(self.document)
+        self.assertEqual({"instance.source-start"}, self.validate(self.document))
+        self.assertEqual(before, self.document)
+
+    def test_source_out_range_matches_map_owner_and_preserves_inputs(self) -> None:
+        import re
+        import subprocess
+
+        cases = [(None, True), (0, True), (201, True), (600000, True)]
+        cases += [(value, False) for value in (-1, 1.5, 200, 199, 600001, "300", True, [], {})]
+        publisher = (ROOT / "Tools/MapPipeline/Publish-MapAuthoring.ps1").read_text(encoding="utf-8-sig")
+        functions = [re.search(r"(?ms)^function " + name + r" \{.*?^\}", publisher).group(0)
+                     for name in ("Test-JsonNumber", "Assert-ExactJsonProperties", "Read-WorldSequenceDocument")]
+        with tempfile.TemporaryDirectory() as temporary:
+            folder = Path(temporary)
+            for index, (source_end, valid) in enumerate(cases):
+                candidate = copy.deepcopy(self.document)
+                track = candidate["templates"][0]["animationTracks"][0]
+                track["sourceStartMs"] = 200
+                if source_end is not None:
+                    track["sourceEndMs"] = source_end
+                before = copy.deepcopy(candidate)
+                with self.subTest(source_end=source_end):
+                    if valid:
+                        self.assertEqual({"instance.source-start"}, self.validate(candidate))
+                    else:
+                        with self.assertRaisesRegex(pipeline.CompositionError, "sourceEndMs"):
+                            self.validate(candidate)
+                    self.assertEqual(before, candidate)
+                (folder / (str(index) + ".json")).write_text(json.dumps(candidate), encoding="utf-8")
+            script = "$ErrorActionPreference='Stop'\n$AreaId='LV_LUT_MIDNIGHTC_ED'\n" + "\n".join(functions)
+            script += "\n$results=@(); foreach($file in Get-ChildItem -LiteralPath $PSScriptRoot -Filter '*.json') { try { [void](Read-WorldSequenceDocument $file.FullName); $ok=$true } catch { $ok=$false }; $results += [pscustomobject]@{index=[int]$file.BaseName;valid=$ok} }; ConvertTo-Json -InputObject @($results) -Compress"
+            script_path = folder / "ranges.ps1"
+            script_path.write_text(script, encoding="utf-8-sig")
+            result = subprocess.run(["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(script_path)], capture_output=True, text=True, timeout=30)
+            self.assertEqual(0, result.returncode, result.stderr)
+            self.assertEqual({index: valid for index, (_, valid) in enumerate(cases)},
+                             {row["index"]: row["valid"] for row in json.loads(result.stdout)})
 
 
 class WorldSequenceColliderContractTests(unittest.TestCase):

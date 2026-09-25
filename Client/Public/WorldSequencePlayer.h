@@ -81,6 +81,9 @@ public:
 		std::function<bool_t(const std::string&, const std::string&, PLAYER_ANCHOR&, std::string&)> bossAnchor;
 		// Occurrence-local real milliseconds at birth -> frozen world origin.
 		std::function<bool_t(f32_t, float4x4_t&)> objectEmissionAnchor;
+		// Optional presentation-only post transform, sampled at the Object's source clock.
+		// Effect frames use the current post transform without rebasing their birth history.
+		std::function<bool_t(const std::string&, f32_t, float4x4_t&, std::string&)> objectWorldPostTransform;
 
 		bool_t Is_Complete() const noexcept
 		{
@@ -160,6 +163,8 @@ public:
 	bool_t Try_GetSequencePivot(const std::string& instanceId, float4x4_t& out, uint32_t emissionIndex = 0u,
 		const std::string& bone = {}, bool_t boneRotation = false) const;
 	std::string Get_ObjectSampleStatus(const std::string& instanceId) const;
+	// The admitted sequence retains object ownership; callers inspect the current visible pose only.
+	void Collect_VisibleObjects(std::vector<std::shared_ptr<CWorldSequenceObject>>& out) const;
 #ifdef _DEBUG
 	struct OBJECT_COLLIDER_SAMPLE
 	{
@@ -387,7 +392,8 @@ private:
 	static bool_t Sample_ObjectWorld(const ACTIVE_INSTANCE& active, const WORLD_SEQUENCE_INSTANCE& instance,
 		const WORLD_SEQUENCE_TEMPLATE& sequence, const WORLD_SEQUENCE_OBJECT_RESOURCE& resource,
 		const std::string& slotId, const PLAYER_ANCHOR& anchor, uint32_t emitter, f32_t ageMs, float4x4_t& out, std::string& status,
-		bool_t inheritObjectRotation = true);
+		bool_t inheritObjectRotation = true,
+		const decltype(TARGET_SET::objectWorldPostTransform)& postTransform = {});
 	bool_t Apply_ObjectEffects(ACTIVE_INSTANCE& active, const WORLD_SEQUENCE_INSTANCE& instance,
 		const TARGET_SET& targets);
     void Apply_Sounds(ACTIVE_INSTANCE& active);

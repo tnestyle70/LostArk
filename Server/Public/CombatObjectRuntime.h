@@ -56,6 +56,7 @@ namespace LostArk::Server
 		std::uint32_t iCounterPower = 0u;
 		float fPushRangeM = 0.f;
 		float fRiseHeightM = 0.f;
+		bool bForcePush = false, bPushFromBoss = false;
 		std::uint32_t iPushMs = 0u;
 		bool bKnockdown = false;
 		std::uint32_t iDownMs = 0u;

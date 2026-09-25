@@ -308,9 +308,11 @@ void LostArk::Server::CGameRoom::Update_KoukuBingo(const std::uint32_t tick)
             {
                 const auto cell = Kouku_BingoCellAt(player->fPositionX, player->fPositionZ);
                 if (!(m_KoukuBingo.Get_WhiteMask() & (1u << cell))) continue;
-                player->iCurrentMadness = (std::min)(player->iMaximumMadness, player->iCurrentMadness + 10u);
-                if (player->iMaximumMadness && player->iCurrentMadness == player->iMaximumMadness)
-                    CKoukuSaydonLogicRuntime::Transform_ToClown(*player, madness, tick, 0u);
+                if (!catalog) continue;
+                BOSS_PATTERN_LOGIC_RESULT gain;
+                gain.eKind = BOSS_PATTERN_LOGIC_RESULT_KIND::MADNESS_GAUGE_ADD_PERCENT;
+                gain.iPercent = 5u;
+                CKoukuSaydonLogicRuntime::Apply_Result(*player, gain, *owner, *catalog, madness, tick, m_TickDamageEvents);
             }
             duration.iNextMadnessTick = Add_ServerTicksSkippingReservedZero(tick, SERVER_TICK_HZ);
         }
@@ -354,23 +356,54 @@ void LostArk::Server::CGameRoom::Update_KoukuBingo(const std::uint32_t tick)
         }
 		if (BINGO_BOMB_PHASE::PLANTED == bombs[slot].ePhase)
 		{
-			/* The fuse. Painting the cross is the bomb's whole effect, so the
-			slot is freed in the same step; the cells it lit stay on the board,
-			and Fill promotes any line the cross completed. */
+			/* Toggle non-red cells and promote complete rows/columns before
+			claiming newly completed lines. The board owns permanent reward identity. */
 			if (!Has_ReachedServerTick(tick, bombs[slot].iDetonateTick))
 				continue;
 			m_KoukuBingo.Detonate(Kouku_BingoCrossMask(Kouku_BingoCellAt(
 				bombs[slot].fPositionX, bombs[slot].fPositionZ)));
+			const auto* product = Resolve_KoukuProductCatalog();
+			const auto* gate = product ? product->Find_KoukuRaidGate("BINGO") : nullptr;
+			const auto* patterns = gate ? product->Find_BossPatterns(gate->strEncounterId) : nullptr;
+			const BOSS_PATTERN_LOGIC_WINDOW* reward = nullptr;
+			if (patterns)
+				for (const auto& pattern : *patterns)
+					if (pattern.strPatternId == gate->strBingoSpecialPatternId)
+						for (const auto& window : pattern.LogicWindows)
+							if (window.eKind == BOSS_PATTERN_LOGIC_KIND::BINGO_COMPLETED_LINES && window.iThreshold &&
+								std::any_of(window.OnSuccess.begin(), window.OnSuccess.end(), [](const auto& result) {
+									return result.eKind == BOSS_PATTERN_LOGIC_RESULT_KIND::PLAYER_INVULNERABILITY && result.iDurationMs; }))
+								reward = &window;
+			const auto eligible = [&](const PLAYER_ID id, const SERVER_PLAYER& player) {
+				return player.iCurrentHp && player.eAction != PLAYER_ACTION_STATE::DEAD &&
+					(!Is_KoukuRaidRunning() || std::find(m_KoukuRaid.PlayerIds.begin(), m_KoukuRaid.PlayerIds.end(), id) != m_KoukuRaid.PlayerIds.end());
+			};
+			bool claimed = false;
+			if (owner && reward && std::any_of(m_Players.begin(), m_Players.end(), [&](const auto& row) { return eligible(row.first, row.second); }))
+				while (m_KoukuBingo.Consume_CompletedRowsAndColumns(reward->iThreshold)) claimed = true;
+			if (claimed)
+			{
+				const auto* policy = product->Find_KoukuMadnessPolicy(gate->strEncounterId);
+				for (auto& [id, player] : m_Players)
+					if (eligible(id, player))
+						for (const auto& result : reward->OnSuccess)
+							if (result.eKind == BOSS_PATTERN_LOGIC_RESULT_KIND::PLAYER_INVULNERABILITY)
+								CKoukuSaydonLogicRuntime::Apply_Result(player, result, *owner, *product, policy, tick, m_TickDamageEvents);
+				duration.bLineRewardSinceLastJudgement = true;
+			}
 			if (bombs[slot].iMarkOrdinal && bombs[slot].iMarkOrdinal % 3u == 0u)
 			{
 				duration.iLastLineJudgementTick = tick;
-				duration.bLastLineCompletionSucceeded = false;
+				duration.bLastLineCompletionSucceeded = duration.bLineRewardSinceLastJudgement;
 				const auto publish = [&](KOUKUSAYDON_PATTERN_AUDITION_MEMBER& member) {
 					member.LogicLedger.iBingoLineJudgementTick = tick;
-					member.LogicLedger.iBingoCompletedLines = m_KoukuBingo.Count_CompletedRowsAndColumns();
+					member.LogicLedger.iBingoCompletedLines = duration.bLineRewardSinceLastJudgement && reward ? reward->iThreshold : 0u;
+					// The formation tick already applied the authored protection result.
+					member.LogicLedger.bBingoLineRewardApplied = duration.bLineRewardSinceLastJudgement;
 				};
 				for (auto& member : m_KoukuSaydonPatternAudition.Members) publish(member);
 				for (auto& tail : m_KoukuSaydonPatternAudition.Tails) publish(tail.Member);
+				duration.bLineRewardSinceLastJudgement = false;
 			}
 			m_KoukuBingo.Clear_Bomb(slot);
 			continue;

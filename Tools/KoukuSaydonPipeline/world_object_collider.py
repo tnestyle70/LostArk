@@ -148,16 +148,23 @@ def sample_bone(sequence, resource, slot, age, bone, load_model):
         if animation is None or animation.channels is None or animation.ticks_per_second <= 0:
             raise ColliderBakeError("Object collider animation is unavailable")
         source = track.get("sourceStartMs",0)*.001*animation.ticks_per_second
+        source_end_ms = track.get("sourceEndMs", 0)
+        source_end = source_end_ms*.001*animation.ticks_per_second if source_end_ms else animation.duration_ticks
+        if (not math.isfinite(source) or not math.isfinite(source_end) or source > animation.duration_ticks or
+                (source_end_ms and (source_end_ms <= track.get("sourceStartMs", 0) or
+                    source_end_ms > animation.duration_ticks * 1000 / animation.ticks_per_second + 1))):
+            raise ColliderBakeError("Object animation source range exceeds the native clip")
+        source_end = min(source_end, animation.duration_ticks)
+        if source > source_end or (track.get("loop", False) and source >= source_end):
+            raise ColliderBakeError("Object animation loop has no remaining source duration")
         elapsed = max(0,age-track.get("startMs",0))*.001*track["playbackRate"]*animation.ticks_per_second
         end = min([r.get("startMs",0) for r in tracks if r.get("startMs",0)>track.get("startMs",0)] + [sequence["durationMs"]])
         if age >= end and track.get("holdLastFrame",True):
-            ticks = animation.duration_ticks
+            ticks = source_end
         elif track.get("loop",False):
-            span = animation.duration_ticks-source
-            if span <= 0: raise ColliderBakeError("Object animation loop has no remaining source duration")
-            ticks = source + elapsed % span
-        elif source+elapsed > animation.duration_ticks:
-            ticks = animation.duration_ticks if track.get("holdLastFrame",True) else source
+            ticks = source + elapsed % (source_end-source)
+        elif source+elapsed > source_end:
+            ticks = source_end if track.get("holdLastFrame",True) else source
         else: ticks = source+elapsed
         for channel in animation.channels:
             local[channel.bone_index] = matrix(wm.sample_vector(channel.scale_keys,ticks,(1,1,1)),

@@ -1,5 +1,15 @@
 # LostArk merge 회귀 방지 정본
 
+### 스킨 모델 호버의 빈 공간 판정과 배경 덮임
+
+- pose 전체 AABB는 broad phase일 뿐이다. 몸 사이 빈 공간도 선택되면 현재 palette로 변형한
+  삼각형의 실제 교차와 표시 중인 body/part 수명을 확인한다. CPU triangle picking은 알파 텍스처
+  구멍까지 읽는 GPU pixel picking과 구분한다.
+- mesh draw 직후 depth-write 없이 그린 hull은 뒤의 바닥 draw에 덮일 수 있다. 최종 deferred
+  overlay에서 visible silhouette을 임시 stencil bit로 표시하고 바깥쪽 픽셀만 그린 뒤 그 bit만
+  반환한다. 공유 depth와 다른 stencil bit, 노란 hit와 LUT를 변경하지 않는다. 구현/검증은
+  09-25 KOUKU_RESULT_TUNING의 G23에 기록한다.
+
 ### 쿠크 광기 충전과 특수 오브젝트 판정
 
 - 최대 100인 게이지를 hit마다 정수 나눗셈하면 1% 미만 피해가 모두 소실된다. 실제 HP 전후 차와 소수 잔여량을 누적하고 변신·부활·관문 reset에서 잔여량을 지운다. 보호막 흡수량을 HP 피해로 세지 않는다.
@@ -2841,6 +2851,7 @@ lease에 연결한다. 저장된 DURATION은 timing 존재와 PRODUCT 의미의 
 - 배경 의존 본체는 `F(black)`에서0이므로 본체 밝기 제한을 조정하거나 Bloom intensity만 올려도 자기 발광은 생기지 않는다. 독립 발광을 추가할 때는 세 scene read mode에서 같은 값을 더하고 `F(SceneBloom)-F(black)+Write_SceneBloom(F(black))`를 유지한다. 광도 압축만 하고 alpha를 높이면 밝은 배경을 어두운 면으로 더 많이 교체하는 회귀가 생긴다.
 - 합성 보라색 입력의 shader 검사로 실제 Q의 금색을 검증했다고 기록하지 않는다. 실제 particle `(7,6,1,.6)`, MIC tint, 원본 DDS, face/edge UV, 활성 tone과 alpha 합성을 사용한다. `R>G>B`만으로 금색이 충분히 남았다고 판단하지 말고 백색화 정도도 비교한다. Character Select의 LUT OFF는 source tone OFF가 아니며 directional OFF도 baked 배경을 제거하지 않는다.
 - unlit·자체 RGB·개별 Bloom은 최종 맵 tone/LUT 제외를 뜻하지 않는다. 보라색이 특정 맵에서 청색으로 바뀌면 실제 활성 region/LUT와 동일 HDR 입력의 후처리를 먼저 비교한다. 원본 추출이 검증된 LUT도 의도적으로 큰 색 회전을 만들 수 있으므로 재질 누락이나 잘못된 텍스처로 단정하지 않는다.
+- 대상의 청색화를 줄이려고 최종 LUT를 통째로 해제하면 배경의 분위기와 대비도 함께 바뀐다. LUT 복구와 환경광 조정을 한 번에 섞지 않고 같은 카메라의 비교 기준을 보존한다. light receiver는 조명 수신 경계이며 합성 이후 LUT의 대상별 제외 기능이 아니다.
 - 3D 투명 이펙트의 색을 보호할 때 이미 섞인 pixel 전체에서 LUT를 끄면 배경까지 바뀐다. 원본 SceneColor 투과와 자체 발광을 구분하고 depth·반투명 정렬·distortion·Bloom을 포함한 합성을 검토한다. 화면 overlay를 3D 유리의 우회 경로로 사용하지 않는다.
 
 ### 차원술사 유리의 coverage와 T의 환경 조명 경로
@@ -3643,3 +3654,290 @@ Lobby의 `Server entry failed`는 로딩 복구에도 표시된다. 원격 상�
 - MeshMaterial을 sourceMaterialSlots로 옮긴 뒤에는 codec와 실제 Stage가 같은 element 실행 판정을
   사용해야 한다. 원본 수신자 없는 이벤트는 local visual no-op이며 모듈 삭제나 dummy receiver로
   우회하지 않는다. 연결된 event cycle/queue 상한 검사는 그대로 유지한다.
+
+
+### 쿠크 추적 접촉 종료와 특수 오브젝트 체력의 실제 입력
+
+BOSS_TRACK_TARGET를 쓰는 공격 패턴도 플레이어와 접촉할 수 있다. 접촉을 모든 패턴의
+완료로 바꾸면 공굴리기 카운터의 착지·피해·WORLD 종료 이전에 다음 Flow로 진행한다.
+사용자가 지정한 플레이어 1초 추적 P104의 stable ID에만 접촉 종료를 허용한다. 같은
+BOSS_TRACK_TARGET 사용이나 단독 창 구조를 근거로 P101·공굴리기 등 다른 패턴까지
+확장하지 않는다. 다른 패턴은 접촉 중 이동만 멈추며 본래 종료 시계를 유지한다. P104 양성과
+P101·공굴리기 음성을 각각 같은 접촉 위치로 검사한다.
+
+카드미로 중앙 상자의 실제 체력은 MonsterProfiles 기본값뿐 아니라 활성 balanceprofile와
+게시된 spawngroupsbootstrap까지 대조한다. 기본값500만 읽으면 Retail의587993 덮어쓰기를
+놓친다. 요청값1000은 두 정본에서 일치시키고 실제 Server spawn·Q500 두 번과 LMB100을
+확인한다. 생성된 bootstrap을 직접 편집하지 않는다.
+
+
+### 팝업북·컷씬의 material binding 실패
+
+animated WORLD가 정적 배경 material binder를 공유할 때 shader에 없는 foliage wind 입력을
+비사용 reset까지 필수 바인딩하지 않는다. 실제 skinned/static CSO와 모델을 함께 검사하고
+바람이 필요한 unsupported 입력의 거절은 유지한다. WORLD 실패로 Bundle 전체가 중지되면
+그 이후 SOUND·카메라도 재생되지 않으므로 각각의 파일 누락이라고 먼저 판단하지 않는다.
+
+### 선택한 플레이어 위치의 장판·투척과 독립 SOUND
+
+Effect만 SELECT target에 연결하고 Collider를 기존 MAP 또는 BOSS 원점에 두면 화면과 실제
+피해 위치가 분리된다. 선택 시점의 Server ground capture를 기존 combat object의 시각과
+fixedHits가 함께 소비하게 하고 원래 hit 시각·반경·피해·밀림을 각각 대조한다. 같은 공격의
+다른 관문·앵콜 복제본도 실제 Flow 사용처로 확인한다.
+
+투척 compound를 target flight로 분리할 때는 기존 source transform·velocity·attachment의
+고정 이동을 중복 적용하지 않는다. 비행 종료와 원본 particle tail을 구분하고, 착탄 시각의
+오프셋·death event와 직접 burst의 중복 여부를 실제 Effect codec·Stage·Playback으로 확인한다.
+새 Client header와 구형 OBJ archive를 섞은 격리 검사의 실패는 최신 Product OBJ로 원본과
+후보를 함께 재검증하기 전까지 자산 결함으로 단정하지 않는다.
+
+WORLD의 폭발 횟수를 줄여도 독립 Composition SOUND lane은 자동으로 줄지 않는다.
+없어진 occurrence에 대응하는 SOUND ID·시각만 제거하고 남은 폭발의 소리는 유지한다.
+
+### 전투 피격 강조의 실제 모델과 골격 경계
+
+BOSS라는 network kind만 보고 CValtan을 호출하면 CNpc로 표시하는 쿠크 보스의 피격 표현이
+빠진다. Server WORLD_OBJECT인 공·인형은 일반 WorldEntity snapshot에도 없으므로 기존
+owned WORLD cue의 combat body NetEntityId로 DAMAGE_EVENT와 표시 모델을 연결한다.
+별도 모델을 생성하거나 cue 문자열에서 entity ID를 추측하지 않는다. 배경 소품·큰 세이튼과
+실제 공격 가능한 body를 구분하고 stop·owner 종료·late join의 수명을 함께 확인한다.
+
+WModel raw vertex의 bind bounds에 preScale만 곱하면 원본 골격 basis의100배 확대를
+빠뜨릴 수 있다. 호버·피킹에는 현재 inverseBind×combined palette와 같은 좌표계의 경계를
+사용하고 actor root는 한 번만 적용한다. Reference bind bounds 의미를 바꾸지 않는다.
+노란 Hit_Color rim과 SelectionColor RGB tint는 실제 바깥 외곽선 pass와 다르다.
+공통 shader에 pass를 추가하면 base/source cohort의 pass index·ABI도 함께 빌드한다.
+세부 구현·수치·사용자 화면 미확인은09-25 COMBAT_HIT_HOVER RESULT에 둔다.
+
+
+### 클래스 무비의 실제 draw와 frame native material row 상한
+
+WorldSequence/Effect의 Update·Seek·pose 수치가 성공해도 실제 World Object Render의 재질 바인딩은 실패할 수 있다. 클래스 선택 무비는 배경과 배우를 같은 프레임에 그린 뒤 render status와 intro→loop 수명을 함께 확인한다. Guardian 얼굴 native200과 DimensionMaster 무기 native902는 단독 바인딩은 성공했지만 기존 Engine frame registry의 257번째 재질에서 E_BOUNDS가 재현됐다. SourceCharacterRow는 R32G32B32A32_FLOAT Target_Depth.z에 저장하는 프레임 한정 정수이며 256개 ABI가 아니다. 임의 상한을 재도입하거나 실패 배우를 숨겨 재생 완료로 처리하지 않는다. 상세 구현·제품 반영 여부는 09-25 FOUR_CLASS_SELECTION_MOVIES RESULT를 따른다.
+
+### Mario 저장 대상과 정상 기믹 실패의 수명
+
+화면의 FXAA 비교 override와 저장 scene quality draft가 분리돼 있으면 Save/Publish 성공 뒤에도
+매 프레임 override가 저장값을 덮어 보인다. checkbox의 실제 owner, 선택 Mario profile/region,
+직렬화 문서, 게시본, 마지막 프레임 적용 순서를 함께 검사한다. 저장값이 false라는 사실만으로
+사용자 조작 오류로 판단하지 않는다. profileId/regionId 3-way merge와 writer lease를 유지한다.
+
+WORLD 기본 배치와 Pattern occurrence의 placement override는 서로 다른 소유자다. Action에서
+연 WORLD 편집은 선택 pattern/occurrence stable ID를 보존해 실제 소비 override를 저장한다.
+같은 object ID만 보고 기본값을 바꾸거나 다른 Pattern의 배치를 덮지 않는다.
+
+Mario 입장자 부재는 저작된 전멸 결과를 적용할 정상 기믹 실패다. 이를 raid 실행 오류로
+승격하면 cleanup이 보스와 Flow를 함께 제거한다. 현재 테스트 정책은 HP0을 유지한 채 다음
+Flow와 반복을 계속하는 것이다. catalog/admission 오류는 별도 이유와 실패 수명으로 유지한다.
+
+WORLD lane마다 전체 문서를 validate/copy하지 않는다. 선택 instance·group·NEXT·같은 resource의
+전환 motion closure를 stage하고 실제 활성화 전에 clone pool을 준비한다. 부분 문서로 바꿀 때
+span/endpoint 조회는 Set_Document 이후여야 한다. CPU subset 개선을 전체 화면 freeze 해결의
+증거로 대신하지 않는다. 관문 전환의 실제 frame gap과 GPU 표시 결과는 별도로 확인한다.
+
+광기와 같은 authored Result 수치는 source/Encounter만 확인하지 말고 최종 balanceprofile
+overlay를 거친 Server bootstrap까지 확인한다. Retail의 전역0이 개별1/5%를 지우던 경로는
+저작값 보존 sentinel -1로 구분한다. 명시0은 추가 광기가 없는 피해 verdict이며 최대HP피해0과
+같은 validator 조건으로 묶지 않는다. shield/invulnerability 뒤 gauge만 오르지 않는지도 확인한다.
+
+준비 단계에서 이미 읽은 presentation을 첫 combat bundle에서 archetype마다 재파싱하면
+화면이 나오기 전 main thread가 멈춘다. exact source bytes·revision·캐시 존재와 canonical/draft
+provenance가 모두 같을 때 검증 결과를 재사용한다. timestamp/size 일치만으로 승인하지 않고
+retained run의 cache deep-copy도 피한다. 입력 변경 시 원래 stage/validate/commit을 유지한다.
+
+### 원본 피격·호버·TrailGhost의 증거 경계
+
+- monster Hit_Color는 원본 program별 Base 전용 row를 확인해 draw 사본만 변경한다.
+  동일 번호를 Light에 쓰거나 shared CMaterial을 변경하면 다른 개체/조명에 상태가 샌다.
+  native rim을 사용할 때 generic Fresnel 중복 가산을 끄고 다음 non-hit bind 복구를 확인한다.
+- SelectionColor의 RGB tint, PPOutline 후처리, geometry extrusion은 같은 기능이 아니다.
+  ColorOption의 적 빨강은 색 근거이며 width·RT·depth·blend의 근거를 대신하지 않는다.
+  원본 DXBC texture swizzle을 그대로 읽고 sample destination 성분만 보고 채널을 추측하지 않는다.
+- TrailGhost의 notify 발생 기간·생성 주기·child 수명·initial alpha hold·사용자 알파 배율은
+  분리한다. 다음 발생의 설정으로 살아 있는 child를 바꾸지 않고 실제 관측한 pose만 보존한다.
+  source field 복구와 native fade/shader 식 복구 여부도 별도로 기록한다.
+- AKEvent가 있는 실제 피격 action/clip 시작과 Server damage 수신은 다르다. SoundSet의
+  weapon/flesh slot을 식별하지 못한 채 모든 피해에 같은 음성을 붙이지 않는다.
+  원본 HIRC의 reachable media 목록은 동시 재생이나 동일 확률 random 계약을 뜻하지 않는다.
+  자세한 조사·구현·검증 범위는 09-25 COMBAT_HIT_HOVER_RESULT G09 이후를 따른다.
+
+### 단일 Effect 그룹과 무관한 Collider Apply 실패
+
+Apply의 singleton 정리는 해당 Pattern의 실제 Logic occurrence가 selectedEffectGroupId 또는
+fixedSelectionGroupId로 참조하는 그룹을 보존해야 한다. 한 Effect만 가진 그룹도 위치·공격
+소유권의 정상 대상이다. 전체 문서에서 이를 UI 편의 그룹으로 지우면 다른 Pattern의 변경도
+`Selected Effect group is missing or has no members`로 거절되고 Dirty/Save가 활성화되지 않는다.
+disabled occurrence도 보존 대상이며 미배치 catalog 정의는 실제 소유자가 아니다.
+누락·빈 그룹 검증은 그대로 유지한다. 실제 P59 재현과 회귀는 09-25 KOUKU_RESULT_TUNING 결과 G12.
+
+### 마리오 단독 입장자 사망과 앵콜 종료 경계
+
+마리오 입장자 사망도 입장자 부재처럼 정상 기믹 실패다. 연결 해제와 묶어 runtime ABORT를
+기록하면 raid cleanup이 살아 있는 보스까지 제거한다. HP0 귀환과 typed 부활은 기존 경로를
+유지하고, 기믹 실패 완료 receipt를 실제 Raid가 소비한 뒤 같은 boss가 남는지 확인한다.
+
+fixed update 중에는 현재 updateTick과 아직 commit되지 않은 m_iServerTick이 다르다.
+컷씬 종료 판단과 다음 전투의 admission·commit에 같은 tick을 전달해야 한다. helper 내부에서
+이전 tick을 다시 읽으면 정확한 종료 프레임만 거부된다. tick을 직접 조작한 helper 호출만으로
+검증하지 말고 실제 room.Tick의 종료 직전·종료 경계를 통과시킨다. 상세 근거는 위 결과 G13.
+
+양눈 attachment를 포함한 저장 Effect로 시선을 교체할 때 단안 occurrence 두 개의 bone/roll을
+그대로 씌우지 않는다. boss root의 한 occurrence에서 기존 양눈 TRS를 소비하고 기믹 수명에만
+loop를 건다. 조커 표적 과녁은 Server pattern target을, Ctrl 위치 핑은 별도 room broadcast를
+소비한다. 로컬 입력 pending 표식과 전투 표적의 수명을 묶으면 다른 client가 같은 대상을
+볼 수 없고 Ctrl만 눌러도 과녁이 나온다. 실제 연결과 검사 범위는 위 결과 G14.
+
+### 빙고 반전 순서와 보상 수명
+
+폭탄 중심+상하좌우 중 판 안의 모든 nonred 칸을 먼저 XOR한 뒤 가로·세로 줄을 한 번만
+승격한다. 칸별 변경 도중 줄을 판정하면 같은 폭발이 완성 줄의 이웃 칸을 지우기 전에
+빨간 줄이 잘못 확정된다. a2~a5 검정→a1 폭발은 a2 빈칸으로 빙고가 아니며, 이어 b2 폭발이
+a2를 다시 채울 때 a행이 완성되는 예시를 실제 소비자 회귀로 유지한다. 대각선은 제외한다.
+
+빨간 바닥의 영속 상태와 이미 보상받은 줄의 identity는 구분한다. 사용자 최종 규칙은 새1줄당
+30초이며 같은 폭발에서 완성된 줄도 모두 사용 처리해 다음 폭발의 지연 보상으로 남기지 않는다.
+일반 보스 패턴 교체와 Parent 재개는 board의 사용 기록을 지우지 않는다. 보상은 pinned
+special 정의의 threshold/Result를 실제 완성 tick에 적용하고, 뒤늦은 Parent 판정이 같은
+무적을 다시 적용해 만료 시각을 연장하지 않게 한다. 참가자와 생존 여부를 적용·소비 전에 확인한다.
+
+블랙홀은 성공·실패 모두 폭발 tick의 유효 무적으로만 생존한다. 성공 분기를 일반 즉사로
+처리하면 이미 만료된 줄 보상 이후에도 실드가 전멸을 막을 수 있으므로 player 판정을 공통화한다.
+이난나는 승인된 같은 레이드 생존자에게30초 보호를 주고 Bingo만 이를 존중한다. 다른 기믹의
+encounter wipe 규칙을 전역으로 약화하지 않는다. 상세 구현·검증은 위 결과 G15.
+
+### 고정 플레이어 시점의 시퀀스 배우와 WORLD 파편
+
+시퀀스 카메라만 멈추면 절대 WORLD 배우는 원본 공간에 남는다. 각 Client 진입 pose를 보존할
+때는 authored view→held view의 변환을 배우의 최종 world에 적용하고 FOV 비율도 함께 맞춘다.
+WORLD 입자의 birth root에 이 변환을 넣으면 이전 입자가 과거 카메라에 남는다. 원본 simulation과
+history는 유지하고 완성된 현재 evaluated frame의 render 사본에만 현재 변환을 적용한다.
+Client마다 다른 뷰는 Server 좌표·자산·shader에 쓰지 않는다. 카메라 행이 먼저 끝나도 Server
+컷씬의 audio tail과 다음 gate commit까지 hold하며, F6 복귀 때 같은 캡처를 재사용한다.
+수치 투영·history 불변과 최종 화면 확인을 구분한다. 실제 구현/검증은09-25 KOUKU_RESULT_TUNING G16.
+
+### Publish의 WORLD 본 Collider 중복 계산
+
+pattern closure와 bundle admission이 같은 WORLD 본 track을 반복 투영할 수 있다. 검증 횟수를
+줄이기 전에 실제 native sampling의 중복 여부를 측정한다. 동일 게시 세션에서 root, sequence,
+world/box/collider 전체 입력으로 계산 결과를 재사용하며 반환값을 격리한다. 외부 native 파일은
+첫 계산 때 입력 snapshot에 등록하고 게시 직전 exact-byte freshness 검사를 유지해야 한다.
+mutable 입력을 객체 identity만으로 캐시하거나 프로세스 간 결과를 무조건 재사용하지 않는다.
+시간 개선은 동일 출력 hash와 함께 확인하고 Composition 단계 시간을 전체 UI Publish 시간으로
+설명하지 않는다. 실제 구현과 측정 근거는09-25 KOUKU_RESULT_TUNING G20이다.
+
+### WORLD 컷신 clip 분할과 원본 시계 불연속
+
+원본 Matinee가 같은 clip의 source 위치를 되감는 경계는 baked animation에도 남을 수 있다.
+timeline 박스만 나누고 분할 전후 sampling 동등성만 확인해서 동작을 복구했다고 설명하지
+않는다. 경계 앞뒤 bone 회전·이동 및 원본 weight/control을 확인하고 native clip 편집과
+구간 반복의 의미를 구분한다. sourceEndMs가 있는 WORLD 구간은 pose·부착 FX·본 Collider가
+동일 범위를 사용해야 하며, 새 클립 교체가 다른 배우·camera/audio를 자동 이동하지 않는다.
+
+원작 선택지를 추가할 때 이미 검증된 baked 구간의 key 값은 재샘플하지 않고 시간만
+재기준화할 수 있다. 기존 continuous와 모든 model section을 보존하고 클립 목록 추가와
+저장된 박스 start 변경을 구분한다. 음향 동기는 원본 event·자막 시각 및 각 배우의
+timeline을 함께 대조하며 한 배우만 밀린 문제를 전체 음원 이동으로 덮지 않는다.
+
+### 자식 시간 편집과 완전재생 Parent 참조
+
+자식 lifetime과 이를 완전재생하는 Parent occurrence duration을 별도로 저장하면 자식만 바꾸는
+편집은 전체 문서 검증에서 거절된다. 입력→candidate→검사→commit 경로에서 실제 바뀐 자식의
+순차/loop 참조와 뒤쪽 시작을 함께 갱신한다. 기존 간격과 별도 고정 window는 보존하고 모든
+변경이 유효할 때만 commit한다. 해당 오류를 publish 성능 문제로 단정하거나 검사를 삭제하지
+않는다. 진단에는 실제 Parent/child ID와 두 시간을 포함하며 Save/Reload까지 검증한다.
+
+분신 child의 Logic guard를 풀기 전에 Server의 분리된 배우 실행 경로가 그 Logic을 소비하는지
+확인한다. 부모에서 실행한 회전과 특정 분신의 회전은 다른 상태 owner다. 배우별 ledger와
+snapshot을 사용하고 접촉 판정보다 먼저 방향을 확정한다. 다른 분신·부모와 이미 종료한 분신에
+상태가 전파되지 않는지 검증한다.
+
+
+### WORLD 칼날 크기·경로와 포박 위치를 함께 확인
+
+Object/Motion의 첫 scale key만 바꾸면 뒤의 baked scale key가 다음 프레임부터 값을
+덮어쓴다. 일정 크기를 요청받으면 해당 motion의 전체 key와 실제 occurrence placement를
+함께 확인한다. 공유 motion에 다른 시작점·yaw의 occurrence를 추가하면 도착점도 달라진다.
+각 시작점을 보존하면서 하나의 감옥으로 모을 때는 해당 occurrence용 motion variant로
+분리하고, emission yaw/offset → occurrence TRS 순서의 실제 소비 좌표로 도착점을 검증한다.
+
+아이언 메이든의 표시 FX 위치와 MARIO_PHASE2_PLAYERS의 teleportPosition은 별도 저작
+필드다. 표시만 옮기면 포박·마리오 복귀 위치는 남는다. 두 필드를 같은 위치로 맞추고
+Server navigation 결과 및 WORLD ENTER_AREA 접촉/구출 성공 해제를 함께 확인한다.
+칼날의 중앙 도착 시각을 새 사망 타이머로 만들지 않는다. 판정은 실제 collider 접촉이다.
+
+
+### Summon child Logic 허용 조건은 모든 소비자에서 함께 변경
+
+actor-local Logic을 추가하면 Client Composition validation, Python projection, canonical
+KoukuBootstrapRows.ps1, Server Brain validation을 함께 대조한다. 앞의 두 검사만 통과해도
+정식 Gameplay publish의 이전 guard가 새 Trigger를 거절할 수 있다. 짧은 BOSS_TRACK_TARGET은
+34ms 이하·이동 추적 없음만 허용하고, 일반 Summon의 기존 Albion JUMP/SLAM 예외와
+Cross Direction의 더 좁은 경계를 유지한다. 실제 최종 bootstrap 게시와 제품 로드를 완료
+하기 전에는 데이터 반영 완료로 보고하지 않는다.
+
+### 추적 Logic·조건부 폭탄·고정 예고의 소유권
+
+BOSS_TRACK_TARGET이 회전한다고 별도 부채꼴 Effect까지 생성하는 것은 아니다. 실제 Effect
+행을 유지하고 조건부 본체/폭발만 Duration에 stable occurrence ID로 연결한다. Server가
+조건부 visual을 소유하면 정적 presentation에서 같은 행을 제외해야 무조건 폭발이나 중복
+표시를 막을 수 있다. 파티 전멸 뒤에도 finite 폭발 tail은 자연 수명까지 유지하고 명시 Stop은 정리한다.
+
+원본 부채꼴의 비균등 scale X/Z와 emitter/decal 전방을 조사하고 Server 타원 부채꼴에
+반영한다. world 각도나 단일 반경으로 근사하지 않는다. 고정 사각 예고와 폭발은 먼저
+생성된 예고의 보스 birth basis를 공유해야 한다. 각 행의 follow=false만으로는 생성 시각이
+달라질 때 같은 위치를 보장하지 않는다. 서로 다른 원본 Effect의 180도 yaw 차이는 보존한다.
+
+### 저작 schema 확장과 실행 중 구 Client의 Save
+
+현재 저장 codec이 unknown field를 거부한다면 새 optional 필드도 구 실행 Client에는 호환되지
+않는다. 그 상태에서 외부 최신본 병합은 Parse/Validate에서 막혀 미저장 draft를 Save하지
+못할 수 있다. 필드 병합만 안전하다고 판단하지 말고 실행 중 소비자의 저장 schema도 확인한다.
+새 필드 후보와 빌드를 준비한 뒤 사용자 draft Save 완료를 먼저 받아 최종 교체한다. 기존
+저장본을 복구해야 하면 자기 설치 hash가 같은 경우에만 자기 변경을 회수하고 사용자 변경은
+보존한다. 회수 뒤 같은 revision으로 재저장될 수 있으므로 publish freshness는 revision뿐
+아니라 실제 source hash와 pattern 내용을 함께 대조한다.
+
+### 같은 Effect asset ID의 레이저 collider 실측 재사용
+
+asset ID와 occurrence TRS가 같아도 V1 내부 element 삭제·본별 회전·scale 변경으로 실제
+레이저 크기가 달라질 수 있다. 이전 native CSV를 재사용하기 전에 authored Effect 내용,
+설치 모델·본·preScale 및 animation 소비 경로를 대조한다. 변경됐으면 현재 source-direct
+Effect를 실제 CModel 본과 particle world 평가로 다시 측정한다. primary shaft와 남아 있는
+beam을 눈별로 분리하여 바닥 XZ의 BOX를 맞추고 피해창·음성·원래 Effect 자체는 보존한다.
+
+### 선택적 Product 참조의 빈 값과 로드 실패 재시도
+
+Projector가 기본값을 정규화해 만드는 targeted visual은 선택 필드의 빈 문자열도
+직렬화할 수 있다. authoring validator와 Python projection 통과만으로 native
+Product consumer 통과를 대신하지 않는다. 누락/빈 값은 미사용으로 같은 의미여야
+하며 실제 참조의 kind·stable ID·시간·소유 관계는 계속 검증한다. 최종 게시본
+전체를 runtime parser에 통과시키는 회귀가 필요하다.
+
+Run 준비 성공 뒤에만 epoch를 기록하고 실패를 매 프레임 재시도하면 하나의
+잘못된 optional field가 전 관문의 카메라/연출 문서 재파싱으로 확대된다.
+Admission 대기와 확정된 parse 실패를 구분하고 같은 run/source/draft 실패는
+보존한다. 새 실행 identity 또는 명시적 Reload/Reset으로만 무거운 재시도를 허용한다.
+GPU frame timestamp는 CPU 제출 공백을 포함할 수 있으므로 전체 GPU ms만으로
+VRAM 또는 shader 병목을 단정하지 않고 CPU scope·실제 render scope를 대조한다.
+
+### Complete Play 준비와 활성 WORLD의 대기 계약
+
+Level Update에서 Server WORLD 큐를 소비한 뒤 같은 프레임에 raid 준비가 호출될 수
+있다. 특히 늦게 입장한 참가자의 정상 연출을 준비 실패로 회신하면 Server가 파티 전체를
+취소한다. 활성 재생 때문에 문서 reload가 잠시 불가능한 경우는 `true/ready=false`로
+기다리고 기존 WORLD Update를 계속한다. 실제 parse/revision 오류만 실패로 보낸다.
+대기 중 파일을 매 프레임 다시 읽거나 현재 문서·모델 pool을 초기화하지 않는다.
+활성 stable ID를 상태에 표시하며, 무한 반복·일시정지는 유한 연출 종료와 구분한다.
+
+
+### Complete Play 준비 인원과 도구 자동 Open
+
+개별 Pattern audition IDLE은 Server Raid PREPARING과 별개다. 전체 재생 진단은
+ParticipantPlayerIds의 고정 roster와 iReadyMask를 읽어 준비 x/N·미준비 PlayerId를
+표시한다. 로컬 READY 송신 성공과 Server 확인은 구분하며 확인 뒤 송신 대기 문구를
+남기지 않는다. 상세 로컬 실패는 매 프레임 일반 대기 문구로 덮어쓰지 않는다.
+다른 Client의 세부 리소스 단계는 기존 wire에 없으므로 추정하지 않는다.
+
+F1 안의 Bingo Size 같은 embedded tuner 준비에 창을 여는 EnsureDebugTool을 그대로
+호출하면 Action Workbench가 자동으로 열리고 focus를 가져간다. 내부 준비 호출은
+bShowWindow=false를 사용하고 기존 창의 선택·입력 owner·preview를 보존한다. 준비 뒤
+Hide로 되돌리는 방식은 Deactivate/Stop을 일으키므로 사용하지 않는다.

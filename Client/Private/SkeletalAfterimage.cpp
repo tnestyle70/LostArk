@@ -7,8 +7,8 @@
 
 namespace
 {
-    // Project-authored presentation values. The source TrailGhost notify is
-    // known; its native material/fade ABI has not been recovered.
+    // The existing carrier serves authored cues and source TrailGhost parameters.
+    // Native material/fade code is unavailable; source-channel rendering is an adapter.
     constexpr uint32_t AFTERIMAGE_PASS = 14u;
 
     bool Finite(const float4x4_t& value)
@@ -39,15 +39,31 @@ bool Client::CSkeletalAfterimage::Configure(const SETTINGS& settings)
     if (!std::isfinite(settings.sourceColorIntensity) || settings.sourceColorIntensity < 0.f || settings.sourceColorIntensity > 100.f) return false;
     for (const float value : {settings.endColor.x, settings.endColor.y, settings.endColor.z, settings.endColor.w})
         if (!std::isfinite(value) || value < 0.f) return false;
-    if (settings.sampleIntervalSeconds != m_Settings.sampleIntervalSeconds ||
+    if (!std::isfinite(settings.sourceInitialAlpha) || settings.sourceInitialAlpha < 0.f || settings.sourceInitialAlpha > 1.f ||
+        !std::isfinite(settings.userAlphaScale) || settings.userAlphaScale < 0.f ||
+        settings.sourceInitialAlpha * settings.userAlphaScale > 1.f ||
+        !std::isfinite(settings.sourceAlphaHoldSeconds) || settings.sourceAlphaHoldSeconds < 0.f ||
+        settings.sourceAlphaHoldSeconds >= settings.sampleLifetimeSeconds) return false;
+    for (const auto& color : {settings.ambientStart, settings.ambientEnd})
+        for (const float value : {color.x, color.y, color.z, color.w})
+            if (!std::isfinite(value) || value < 0.f || value > 1.f) return false;
+    const auto sameColor = [](const float4_t& a, const float4_t& b) {
+        return a.x == b.x && a.y == b.y && a.z == b.z && a.w == b.w;
+    };
+    const bool changed = settings.sampleIntervalSeconds != m_Settings.sampleIntervalSeconds ||
         settings.sampleLifetimeSeconds != m_Settings.sampleLifetimeSeconds || settings.maxSamples != m_Settings.maxSamples ||
-        settings.color.x != m_Settings.color.x || settings.color.y != m_Settings.color.y ||
-        settings.color.z != m_Settings.color.z || settings.color.w != m_Settings.color.w ||
+        !sameColor(settings.color, m_Settings.color) || !sameColor(settings.endColor, m_Settings.endColor) ||
         settings.capturePoseChanges != m_Settings.capturePoseChanges || settings.interpolateColor != m_Settings.interpolateColor ||
-        settings.endColor.x != m_Settings.endColor.x || settings.endColor.y != m_Settings.endColor.y ||
-        settings.endColor.z != m_Settings.endColor.z || settings.endColor.w != m_Settings.endColor.w || settings.sourceColorIntensity != m_Settings.sourceColorIntensity)
+        settings.sourceColorIntensity != m_Settings.sourceColorIntensity || settings.sourceChannels != m_Settings.sourceChannels ||
+        settings.sourceInitialAlpha != m_Settings.sourceInitialAlpha || settings.userAlphaScale != m_Settings.userAlphaScale ||
+        settings.sourceAlphaHoldSeconds != m_Settings.sourceAlphaHoldSeconds ||
+        !sameColor(settings.ambientStart, m_Settings.ambientStart) || !sameColor(settings.ambientEnd, m_Settings.ambientEnd);
+    if (changed)
     {
-        Reset();
+        // A new source notify must not recolor or prematurely expire its siblings.
+        // Legacy style/counter transitions keep their existing isolation behavior.
+        if (!settings.sourceChannels || !m_Settings.sourceChannels) Reset();
+        else { m_Accumulator = 0.f; m_WasEmitting = false; }
         m_Settings = settings;
     }
     return true;
@@ -60,6 +76,7 @@ void Client::CSkeletalAfterimage::Reset()
     m_Accumulator = 0.f;
     m_PulseClockSeconds = m_PulseBirthSeconds = -1.f;
     m_SuppressedUntilDisabled = false;
+    m_WasEmitting = false;
 }
 
 void Client::CSkeletalAfterimage::Suppress_FailedPresentation()
@@ -88,28 +105,35 @@ void Client::CSkeletalAfterimage::Update(const float deltaSeconds, const bool em
     // A paused owner cannot age or manufacture samples. A discontinuity cannot
     // leave silhouettes spanning a teleport or a suspended process.
     if (deltaSeconds == 0.f) return;
-    if (deltaSeconds > m_Settings.sampleLifetimeSeconds || (!m_Samples.empty() &&
+    float longestLifetime = m_Settings.sampleLifetimeSeconds;
+    for (const auto& sample : m_Samples) longestLifetime = (std::max)(longestLifetime, sample.settings.sampleLifetimeSeconds);
+    if (deltaSeconds > longestLifetime || (!m_Samples.empty() &&
         DistanceSquared(m_Samples.back().world, world) > 100.f))
     {
         m_Samples.clear();
         m_Accumulator = 0.f;
+        m_WasEmitting = false;
     }
     for (auto& sample : m_Samples) sample.ageSeconds += deltaSeconds;
-    while (!m_Samples.empty() && m_Samples.front().ageSeconds >= m_Settings.sampleLifetimeSeconds)
-        m_Samples.pop_front();
+    std::erase_if(m_Samples, [](const SAMPLE& sample) {
+        return sample.ageSeconds >= sample.settings.sampleLifetimeSeconds;
+    });
     if (!emitting)
     {
         m_Accumulator = 0.f;
         m_SuppressedUntilDisabled = false;
+        m_WasEmitting = false;
         return;
     }
     if (m_SuppressedUntilDisabled) return;
+    const bool initialSourcePose = m_Settings.sourceChannels && !m_WasEmitting;
+    m_WasEmitting = true;
     m_Accumulator += deltaSeconds;
-    if (m_Accumulator < m_Settings.sampleIntervalSeconds) return;
-    m_Accumulator = std::fmod(m_Accumulator, m_Settings.sampleIntervalSeconds);
+    if (!initialSourcePose && m_Accumulator < m_Settings.sampleIntervalSeconds) return;
+    m_Accumulator = initialSourcePose ? 0.f : std::fmod(m_Accumulator, m_Settings.sampleIntervalSeconds);
     // Save one actual pose per presented frame, never duplicate it to fabricate
     // missed sub-frame motion. Stationary actors do not accumulate a bright stack.
-    const bool stationary = !m_Samples.empty() && DistanceSquared(m_Samples.back().world, world) < .0016f;
+    const bool stationary = !initialSourcePose && !m_Samples.empty() && DistanceSquared(m_Samples.back().world, world) < .0016f;
     if (stationary && !m_Settings.capturePoseChanges) return;
     SAMPLE staged;
     if (!Capture_Sample(model, world, staged)) return;
@@ -138,6 +162,7 @@ bool Client::CSkeletalAfterimage::Capture_Sample(const std::shared_ptr<Engine::C
     const float4x4_t& world, SAMPLE& sample)
 {
     sample.world = world;
+    sample.settings = m_Settings;
     const bool supplied = m_View.model == model;
     sample.hiddenMeshMask = supplied ? m_View.hiddenMeshMask : 0u;
     sample.palettes.resize(model->Get_NumMeshes());
@@ -158,6 +183,7 @@ bool Client::CSkeletalAfterimage::Capture_Initial(const MODEL_VIEW& view, const 
     SAMPLE sample;
     if (!Capture_Sample(view.model, view.world, sample)) return false;
     sample.ageSeconds = ageSeconds; m_Samples.push_back(std::move(sample));
+    m_WasEmitting = true;
     while (m_Samples.size() > m_Settings.maxSamples) m_Samples.pop_front();
     return true;
 }
@@ -209,15 +235,32 @@ HRESULT Client::CSkeletalAfterimage::Render(const std::shared_ptr<Engine::CModel
     {
         if (FAILED(result)) break;
         if (sample.palettes.size() != model->Get_NumMeshes()) { result = E_FAIL; break; }
-        const float life = std::clamp(1.f - sample.ageSeconds / m_Settings.sampleLifetimeSeconds, 0.f, 1.f);
-        const float blend = m_Settings.interpolateColor ? 1.f - life : 0.f;
+        const auto& settings = sample.settings;
+        const float life = std::clamp(1.f - sample.ageSeconds / settings.sampleLifetimeSeconds, 0.f, 1.f);
+        const float blend = settings.sourceChannels || settings.interpolateColor ? 1.f - life : 0.f;
+        // PROJECT_RECONSTRUCTED: keep the decoded initial-alpha plateau, then
+        // retain this carrier's squared fade over the remaining child lifetime.
+        const float heldLife = std::clamp(1.f - (std::max)(0.f, sample.ageSeconds - settings.sourceAlphaHoldSeconds) /
+            (settings.sampleLifetimeSeconds - settings.sourceAlphaHoldSeconds), 0.f, 1.f);
+        const float opacity = settings.sourceChannels ? settings.sourceInitialAlpha * settings.userAlphaScale * heldLife * heldLife :
+            std::lerp(settings.color.w, settings.endColor.w, blend) * life * life;
         const float4_t color{
-            std::lerp(m_Settings.color.x, m_Settings.endColor.x, blend),
-            std::lerp(m_Settings.color.y, m_Settings.endColor.y, blend),
-            std::lerp(m_Settings.color.z, m_Settings.endColor.z, blend),
-            std::lerp(m_Settings.color.w, m_Settings.endColor.w, blend) * life * life};
+            std::lerp(settings.color.x, settings.endColor.x, blend),
+            std::lerp(settings.color.y, settings.endColor.y, blend),
+            std::lerp(settings.color.z, settings.endColor.z, blend), opacity};
+        const float4_t ambient{
+            std::lerp(settings.ambientStart.x, settings.ambientEnd.x, blend),
+            std::lerp(settings.ambientStart.y, settings.ambientEnd.y, blend),
+            std::lerp(settings.ambientStart.z, settings.ambientEnd.z, blend),
+            std::lerp(settings.ambientStart.w, settings.ambientEnd.w, blend)};
         result = shader->Bind_Matrix("g_WorldMatrix", &sample.world);
         if (SUCCEEDED(result)) result = shader->Bind_RawValue("g_ChargeAfterimageColor", &color, sizeof(color));
+        if (!socketed && SUCCEEDED(result))
+        {
+            const int sourceChannels = settings.sourceChannels ? 1 : 0;
+            result = shader->Bind_RawValue("g_ChargeAfterimageSourceChannels", &sourceChannels, sizeof(sourceChannels));
+            if (SUCCEEDED(result)) result = shader->Bind_RawValue("g_ChargeAfterimageAmbientColor", &ambient, sizeof(ambient));
+        }
         for (uint32_t mesh = 0u; SUCCEEDED(result) && mesh < model->Get_NumMeshes(); ++mesh)
         {
             if (mesh < 32u && (sample.hiddenMeshMask & (1u << mesh))) continue;
@@ -229,8 +272,8 @@ HRESULT Client::CSkeletalAfterimage::Render(const std::shared_ptr<Engine::CModel
                 float4x4_t inverse; XMStoreFloat4x4(&inverse, XMMatrixTranspose(XMMatrixInverse(nullptr, normal)));
                 result = shader->Bind_Matrix("g_WorldInvTransposeMatrix", &inverse);
             }
-            if (SUCCEEDED(result)) result = shader->Bind_RawValue("g_ChargeAfterimageSourceIntensity", &m_Settings.sourceColorIntensity, sizeof(float));
-            if (SUCCEEDED(result) && m_Settings.sourceColorIntensity > 0.f)
+            if (SUCCEEDED(result)) result = shader->Bind_RawValue("g_ChargeAfterimageSourceIntensity", &settings.sourceColorIntensity, sizeof(float));
+            if (SUCCEEDED(result) && settings.sourceColorIntensity > 0.f)
                 result = model->Bind_Material(shader, "g_DiffuseTexture", mesh, aiTextureType_DIFFUSE, 0);
             if (SUCCEEDED(result)) result = shader->Begin(socketed ? 23u : AFTERIMAGE_PASS);
             if (SUCCEEDED(result)) result = model->Render(mesh);

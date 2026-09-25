@@ -13,12 +13,13 @@ using namespace GameRoomDetail;
 namespace
 {
     constexpr std::uint32_t KOUKU_GATE3_CLEAR_HOLD_MS = 5000u;
+    constexpr std::uint32_t KOUKU_GATE_ENTRY_IDLE_MS = 3000u;
 }
 
 bool LostArk::Server::CGameRoom::Is_KoukuRaidInputBlocked() const
 {
     return Is_KoukuRaidRunning() && ((m_KoukuRaid.State.ePhase == KOUKUSAYDON_RAID_PHASE::PREPARING &&
-        m_KoukuRaid.bClearedGate3Preparation) || m_KoukuRaid.State.ePhase == KOUKUSAYDON_RAID_PHASE::CINEMATIC ||
+        m_KoukuRaid.bClearedBossPreparation) || m_KoukuRaid.State.ePhase == KOUKUSAYDON_RAID_PHASE::CINEMATIC ||
         m_KoukuRaid.State.ePhase == KOUKUSAYDON_RAID_PHASE::WAIT_ENTRY ||
         (m_KoukuRaid.State.ePhase == KOUKUSAYDON_RAID_PHASE::WAIT_GATE &&
             m_KoukuRaid.State.strGateId == "GATE3" && m_KoukuRaid.State.iEndTick != 0u));
@@ -83,7 +84,7 @@ void LostArk::Server::CGameRoom::Handle_KoukuRaidRequest(const SESSION_ID sessio
     if (!Begin_KoukuRaidPreparation(sessionId, request, reason)) reject(reason.c_str());
 }
 bool LostArk::Server::CGameRoom::Begin_KoukuRaidPreparation(const SESSION_ID sessionId,
-    const C2S_DEBUG_KOUKUSAYDON_RAID_REQUEST& request, std::string& reason, const bool clearedGate3, const bool gateVoteEntry)
+    const C2S_DEBUG_KOUKUSAYDON_RAID_REQUEST& request, std::string& reason, const bool clearedGateBoss, const bool gateVoteEntry)
 {
     reason.clear(); CPacketWriter validation;
     if (!Write_Message(validation, request)) { reason = "Invalid raid request shape"; return false; }
@@ -97,13 +98,13 @@ bool LostArk::Server::CGameRoom::Begin_KoukuRaidPreparation(const SESSION_ID ses
         (m_GateProgress.eKind != GATE_PROGRESS_KIND::ADVANCE && m_GateProgress.eKind != GATE_PROGRESS_KIND::RESTART) ||
         m_GateProgress.Voters.empty() || m_GateProgress.Accepted.size() != m_GateProgress.Voters.size()))
     { reason = "Gate entry requires its matching unanimous vote"; return false; }
-    if (Is_KoukuRaidRunning() || (!clearedGate3 && !gateVoteEntry && (m_GateProgress.iProposalId ||
+    if (Is_KoukuRaidRunning() || (!clearedGateBoss && !gateVoteEntry && (m_GateProgress.iProposalId ||
         m_KoukuSaydonPatternAudition.ePhase != KOUKUSAYDON_PATTERN_AUDITION_PHASE::INACTIVE)) ||
-        (clearedGate3 && request.strStartGateId != "GATE3"))
+        (clearedGateBoss && request.strStartGateId != "GATE3" && request.strStartGateId != "BINGO"))
     { reason = "A raid or pattern run already owns this room"; return false; }
     // An entry can retry while a companion finishes a transfer. Reject that
     // temporary condition before the full Product/actor preflight or epoch commit.
-    if (!clearedGate3 && !gateVoteEntry && std::any_of(m_Players.begin(), m_Players.end(), [](const auto& entry) {
+    if (!clearedGateBoss && !gateVoteEntry && std::any_of(m_Players.begin(), m_Players.end(), [](const auto& entry) {
         const auto& player = entry.second;
         return !player.iCurrentHp || player.iMarioStage || player.TriggerMove.isActive;
     })) { reason = "All room participants must be alive and outside a transfer"; return false; }
@@ -187,14 +188,16 @@ bool LostArk::Server::CGameRoom::Begin_KoukuRaidPreparation(const SESSION_ID ses
         staged.PriorAuditionRequest = receipt->second.Request; staged.PriorAuditionResult = receipt->second.Result;
         staged.PriorAuditionLifecycle = receipt->second.LastLifecycle;
     }
-    staged.bClearedGate3Preparation = clearedGate3;
+    staged.bClearedBossPreparation = clearedGateBoss;
     staged.bGateVoteEntry = gateVoteEntry;
     ++m_iNextKoukuRaidEpoch;
     m_KoukuRaid = std::move(staged);
     const auto* gate = product->Find_KoukuRaidGate(request.strStartGateId);
     auto& state = m_KoukuRaid.State;
     state.ePhase = KOUKUSAYDON_RAID_PHASE::PREPARING;
-    state.strSequenceCompositionId = gate->strSequenceCompositionId; state.strSequencePatternId = request.strStartGateId == "BINGO" && !gateVoteEntry ? "" : gate->strIntroPatternId;
+    state.strSequenceCompositionId = gate->strSequenceCompositionId;
+    state.strSequencePatternId = clearedGateBoss && request.strStartGateId == "BINGO" ? gate->strClearPatternId :
+        (request.strStartGateId == "BINGO" && !gateVoteEntry ? "" : gate->strIntroPatternId);
     state.ParticipantPlayerIds = m_KoukuRaid.PlayerIds;
     // F1 Complete Play and world entry share bounded resource readiness in both builds.
     constexpr uint32_t preparationTicks = 20u * 60u * 30u;
@@ -346,7 +349,12 @@ bool LostArk::Server::CGameRoom::Start_KoukuRaidCombat(const std::uint32_t tick,
     m_iNextNetEntityId = nextId; run.State.ePhase = KOUKUSAYDON_RAID_PHASE::COMBAT;
     run.State.strSequencePatternId.clear(); run.State.iStartTick = tick; run.State.iEndTick = 0u; run.State.iFlowEntryIndex = 0u;
     run.State.iServerTick = tick;
-    if (!Start_KoukuRaidEntry(tick)) return false;
+    // Spawn into the same idle state in every gate. Admission above validates the
+    // first entry without starting its clock before the common entry delay ends.
+    run.bEntryRunning = false; run.bBingoSpecialRunning = false;
+    run.State.strFlowEntryId.clear();
+    run.iNextEntryTick = Add_ServerTicksSkippingReservedZero(tick,
+        CKoukuSaydonLogicRuntime::Ticks_FromMs(KOUKU_GATE_ENTRY_IDLE_MS));
     Broadcast_KoukuRaidState(); return true;
 }
 bool LostArk::Server::CGameRoom::Build_KoukuRaidEntryRequest(const KOUKU_RAID_GATE_DEFINITION& gate,
@@ -447,28 +455,30 @@ bool LostArk::Server::CGameRoom::Start_KoukuBingoSpecialPattern(const std::uint3
 }
 void LostArk::Server::CGameRoom::Notify_KoukuRaidBossDeath(const SERVER_WORLD_ENTITY& boss, const std::uint32_t tick)
 {
-    // Legacy F1 and in-game gate entry create the same authored G3 boss without a raid epoch.
-    // Admit its clear through normal pinned resource preparation before starting Encore.
+    // Legacy F1 can create the authored G3 or Bingo boss without a raid epoch.
+    // Reuse pinned resource admission before Encore or the final ending, respectively.
     if (!Is_KoukuRaidRunning() && m_eWorldId == WORLD_ID::KAKULSAYDON_ARENA &&
-        boss.strPlacementId == "boss.kakulsaydon.g3.saydon" &&
+        (boss.strPlacementId == "boss.kakulsaydon.g3.saydon" || boss.strPlacementId == "boss.kakulsaydon.bingo.saydon") &&
         (boss.iCurrentHp == 0u || boss.eAction == SERVER_ENTITY_ACTION::DEAD) && !m_Players.empty())
     {
         auto product = m_GameplayCatalog.Get_ActiveGeneration();
         if (m_pKoukuPublishedProductGeneration && m_pKoukuPublishedProductGeneration->Has_SameNonKoukuGameplay(m_GameplayCatalog.Active()))
             product = m_pKoukuPublishedProductGeneration;
-        const auto* gate = product ? product->Find_KoukuRaidGate("GATE3") : nullptr;
+        const bool bingoEnding = boss.strPlacementId == "boss.kakulsaydon.bingo.saydon";
+        const std::string gateId = bingoEnding ? "BINGO" : "GATE3";
+        const auto* gate = product ? product->Find_KoukuRaidGate(gateId) : nullptr;
         const auto* bingo = product ? product->Find_KoukuRaidGate("BINGO") : nullptr;
         const auto* placement = Find_Placement(boss.strPlacementId);
         const auto owner = m_PlayerIdBySessionId.contains(m_KoukuSaydonPatternAudition.iOwnerSessionId) ?
             m_KoukuSaydonPatternAudition.iOwnerSessionId : m_Players.begin()->second.iSessionId;
         const auto old = m_KoukuRaidReceipts.find(owner);
         const auto sequence = old == m_KoukuRaidReceipts.end() ? 1u : old->second.first.iRequestSequence + 1u;
-        if (gate && bingo && !bingo->strIntroPatternId.empty() && placement && sequence &&
+        if (gate && bingo && !(bingoEnding ? bingo->strClearPatternId : bingo->strIntroPatternId).empty() && placement && sequence &&
             gate->strPrimaryBossPlacementId == boss.strPlacementId && placement->strArchetypeId == boss.strArchetypeId)
         {
             C2S_DEBUG_KOUKUSAYDON_RAID_REQUEST request;
             request.eWorldId = m_eWorldId; request.eOperation = KOUKUSAYDON_RAID_OPERATION::START;
-            request.iRequestSequence = sequence; request.strStartGateId = "GATE3";
+            request.iRequestSequence = sequence; request.strStartGateId = gateId;
             request.ExpectedGameplayRevision = m_GameplayCatalog.Get_ActiveRevision();
             request.iActionSourceRevision = CKoukuSaydonBrain::Resolve_ProductSourceRevision(*product);
             request.iSequenceSourceRevision = gate->iSequenceRevision;
@@ -476,16 +486,19 @@ void LostArk::Server::CGameRoom::Notify_KoukuRaidBossDeath(const SERVER_WORLD_EN
             if (Begin_KoukuRaidPreparation(owner, request, reason, true))
             {
                 auto& prepared = m_KoukuRaid;
-                prepared.iPrimaryBossId = boss.iNetEntityId; prepared.iGate3ClearTick = tick;
-                prepared.bGate3CombatEntered = true;
+                prepared.iPrimaryBossId = boss.iNetEntityId;
+                if (!bingoEnding) { prepared.iGate3ClearTick = tick; prepared.bGate3CombatEntered = true; }
                 if (m_GateProgress.iProposalId) Close_GateProgressVote(GATE_PROGRESS_VOTE_RESULT::CANCELLED);
                 if (m_KoukuSaydonPatternAudition.iRoomAuditionEpoch)
-                    Clear_KoukuSaydonPatternAudition(false, "Gate 3 defeated; preparing Encore");
-                m_GateProgress.iCurrentGate = 3u; m_GateProgress.iClearedMask |= 4u;
-                Broadcast_GateProgressState(false, GATE_PROGRESS_VOTE_RESULT::NONE);
+                    Clear_KoukuSaydonPatternAudition(false, bingoEnding ? "Bingo defeated; preparing ending" : "Gate 3 defeated; preparing Encore");
+                if (!bingoEnding)
+                {
+                    m_GateProgress.iCurrentGate = 3u; m_GateProgress.iClearedMask |= 4u;
+                    Broadcast_GateProgressState(false, GATE_PROGRESS_VOTE_RESULT::NONE);
+                }
                 return;
             }
-            m_strStatus = "Gate 3 Encore admission failed: " + reason;
+            m_strStatus = (bingoEnding ? "Bingo ending admission failed: " : "Gate 3 Encore admission failed: ") + reason;
         }
     }
     auto& run = m_KoukuRaid;
@@ -523,13 +536,13 @@ bool LostArk::Server::CGameRoom::Advance_KoukuRaidGate(const std::uint8_t nextGa
     const auto* targetGate = run.pCatalog->Find_KoukuRaidGate(target);
     if (!targetGate || run.PlayerIds.empty()) return false;
     if (run.State.ePhase == KOUKUSAYDON_RAID_PHASE::WAIT_ENTRY)
-        return restart && nextGate == 3u && Enter_KoukuRaidCombat(nextGate);
+        return restart && nextGate == 3u && Enter_KoukuRaidCombat(nextGate, m_iServerTick);
     for (const auto id : run.PlayerIds)
     {
         const auto player = m_Players.find(id);
         if (player == m_Players.end() || !m_GameplayCatalog.Find_Player(player->second.eCharacterClass)) return false;
     }
-    if (nextGate == 4u) return Enter_KoukuRaidCombat(4u);
+    if (nextGate == 4u) return Enter_KoukuRaidCombat(4u, m_iServerTick);
     // The existing unanimous vote authorizes a reset, including reviving dead participants.
     if (m_KoukuSaydonPatternAudition.iRoomAuditionEpoch != 0u)
         Clear_KoukuSaydonPatternAudition(false, restart ? "Gate restart approved" : "Next gate approved");
@@ -568,13 +581,20 @@ void LostArk::Server::CGameRoom::Update_KoukuRaid(const std::uint32_t tick)
                 const auto& player = m_Players.at(id);
                 if (!m_GameplayCatalog.Find_Player(player.eCharacterClass))
                 { Stop_KoukuRaid("A participant profile became unavailable while preparing"); return; }
-                if (!run.bClearedGate3Preparation && !run.bGateVoteEntry && (!player.iCurrentHp || player.iMarioStage || player.TriggerMove.isActive))
+                if (!run.bClearedBossPreparation && !run.bGateVoteEntry && (!player.iCurrentHp || player.iMarioStage || player.TriggerMove.isActive))
                 { Stop_KoukuRaid("A participant became unavailable while preparing"); return; }
             }
             m_pKoukuPublishedProductGeneration = run.pCatalog;
-            if (run.bClearedGate3Preparation)
+            if (run.bClearedBossPreparation)
             {
-                run.bClearedGate3Preparation = false;
+                run.bClearedBossPreparation = false;
+                if (run.State.strGateId == "BINGO")
+                {
+                    Stop_KoukuBingoDuration(true);
+                    if (!Begin_KoukuRaidCinematic("BINGO", true, Add_ServerTicksSkippingReservedZero(tick, 1u)))
+                        Stop_KoukuRaid("Bingo ending Sequence failed after preparation");
+                    return;
+                }
                 run.State.ePhase = KOUKUSAYDON_RAID_PHASE::WAIT_GATE;
                 run.State.strSequencePatternId.clear(); run.State.iStartTick = run.iGate3ClearTick;
                 run.State.iEndTick = Add_ServerTicksSkippingReservedZero(run.iGate3ClearTick, CKoukuSaydonLogicRuntime::Ticks_FromMs(KOUKU_GATE3_CLEAR_HOLD_MS));
@@ -591,7 +611,7 @@ void LostArk::Server::CGameRoom::Update_KoukuRaid(const std::uint32_t tick)
                     Stop_KoukuBingoDuration(true); Reset_CardMaze();
                     m_iNextMarioEntryStage = 1u;
                 }
-                if (run.Request.strStartGateId == "BINGO" && !run.bGateVoteEntry ? !Enter_KoukuRaidCombat(4u) :
+                if (run.Request.strStartGateId == "BINGO" && !run.bGateVoteEntry ? !Enter_KoukuRaidCombat(4u, tick) :
                     !Begin_KoukuRaidCinematic(run.Request.strStartGateId, false, Add_ServerTicksSkippingReservedZero(tick, 1u)))
                     Stop_KoukuRaid("Sequence admission failed after preparation");
                 else if (run.bGateVoteEntry && run.State.strGateId != "BINGO")
@@ -650,11 +670,11 @@ void LostArk::Server::CGameRoom::Update_KoukuRaid(const std::uint32_t tick)
                 Broadcast_RaidMvpResult(4u);
             }
             else if (!run.bClearCinematic && run.State.strGateId == "BINGO")
-            { if (!Enter_KoukuRaidCombat(4u)) Stop_KoukuRaid("Encore combat entry failed: " + m_strStatus); }
+            { if (!Enter_KoukuRaidCombat(4u, tick)) Stop_KoukuRaid("Encore combat entry failed: " + m_strStatus); }
             else if (run.bClearCinematic)
             { if (!Begin_KoukuRaidCinematic("GATE3", false, Add_ServerTicksSkippingReservedZero(tick, 1u))) Stop_KoukuRaid("Gate 3 Sequence failed"); }
             else if (run.State.strGateId == "GATE3" && run.bGate3CombatEntered)
-            { if (!Enter_KoukuRaidCombat(3u)) Stop_KoukuRaid("Gate 3 restart entry failed: " + m_strStatus); }
+            { if (!Enter_KoukuRaidCombat(3u, tick)) Stop_KoukuRaid("Gate 3 restart entry failed: " + m_strStatus); }
             else if (run.State.strGateId == "GATE3")
             {
                 run.State.ePhase = KOUKUSAYDON_RAID_PHASE::WAIT_ENTRY;
@@ -718,7 +738,15 @@ void LostArk::Server::CGameRoom::Update_KoukuRaid(const std::uint32_t tick)
             const auto receipt = m_KoukuSaydonPatternAuditionReceiptBySessionId.find(run.iOwnerSessionId);
             if (receipt == m_KoukuSaydonPatternAuditionReceiptBySessionId.end() || !receipt->second.LastLifecycle ||
                 receipt->second.LastLifecycle->iRoomAuditionEpoch != run.iAuditionEpoch || receipt->second.LastLifecycle->eState != KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE_STATE::COMPLETED)
-            { Stop_KoukuRaid("Flow occurrence aborted before completion"); return; }
+            {
+                // Keep the concrete runtime failure visible after abort cleanup;
+                // otherwise a failed Mario child looks like an unexplained despawn.
+                const auto detail = receipt != m_KoukuSaydonPatternAuditionReceiptBySessionId.end() &&
+                    receipt->second.LastLifecycle && !receipt->second.LastLifecycle->strReason.empty() ?
+                    receipt->second.LastLifecycle->strReason : m_strStatus;
+                Stop_KoukuRaid("Flow " + run.State.strFlowEntryId + " aborted: " + detail);
+                return;
+            }
             run.bEntryRunning = false;
             // After the inserted special, replay the interrupted normal entry from
             // its stable definition. Its authored next-entry transition remains intact.

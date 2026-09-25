@@ -2933,6 +2933,7 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 				!std::isfinite(window.fMaxDistanceM) || window.fMaxDistanceM < 0.f ||
 				!ParseNumber(fields[15], window.iPoseIndex) || window.iPoseIndex > 7u ||
 				!ParseNumber(fields[16], window.iThreshold) ||
+				(window.eKind == BOSS_PATTERN_LOGIC_KIND::INVULNERABILITY_ZONE && window.iThreshold > 4u) ||
 				!ParseNumber(fields[17], window.fShieldArcDegrees) ||
 				!std::isfinite(window.fShieldArcDegrees) ||
 				window.fShieldArcDegrees < 0.f || window.fShieldArcDegrees > 360.f ||
@@ -3319,6 +3320,7 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 				!ParseBossPatternLogicResultKind(fields[6], result.eKind) ||
 				BOSS_PATTERN_LOGIC_RESULT_KIND::NONE == result.eKind ||
 				!ParseNumber(fields[7], result.iPercent) || result.iPercent > 100u ||
+				(result.eKind == BOSS_PATTERN_LOGIC_RESULT_KIND::MAX_HP_PERCENT_DAMAGE && result.iPercent == 0u) ||
 				!ParseNumber(fields[8], result.iDurationMs) ||
 				("-" != fields[9] && !IsStableId(fields[9])))
 			{
@@ -3665,9 +3667,10 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
                     trigger.fTeleportX != 0.f || trigger.fTeleportY != 0.f || trigger.fTeleportZ != 0.f || trigger.fFaceCenterYawOffsetDegrees != 0.f)
                 { m_strStatus = "Bingo duration carries unrelated values"; return false; }
 			}
-			else if (fields[4] == "BOSS_TRACK_TARGET")
+			else if (fields[4] == "BOSS_TRACK_TARGET" || fields[4] == "BOSS_RANDOM_TARGET")
 			{
-				trigger.eKind = BOSS_PATTERN_MECHANIC_TRIGGER_KIND::BOSS_TRACK_TARGET;
+				trigger.eKind = fields[4] == "BOSS_RANDOM_TARGET" ? BOSS_PATTERN_MECHANIC_TRIGGER_KIND::BOSS_RANDOM_TARGET :
+					BOSS_PATTERN_MECHANIC_TRIGGER_KIND::BOSS_TRACK_TARGET;
 				if (mode != 0u || trigger.iDurationMs > 600000u || fields[11] != "-" ||
 					fields[12] != "0" || fields[13] != "0" || fields[14] != "0" ||
 					trigger.fTeleportX != 0.f || trigger.fTeleportY != 0.f || trigger.fTeleportZ != 0.f || trigger.fFaceCenterYawOffsetDegrees != 0.f)
@@ -3779,6 +3782,47 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 				trigger->bCaptureAirborneTargetPosition = true;
 				trigger->strSelectedEffectVisualId = fields[8];
 			}
+		}
+		else if (!fields.empty() && "PATTERNTRACKBOMB" == fields[0])
+		{
+			BOSS_SHOWTIME_BOMB_RESOLUTION bomb;
+			if (fields.size() != 18u || !IsStableId(fields[1]) || !IsStableId(fields[2]) ||
+				!IsStableId(fields[3]) || !ParseNumber(fields[4], bomb.iBodyStartMs) ||
+				!IsStableId(fields[5]) || !IsStableId(fields[6]) || fields[5] == fields[6] ||
+				!ParseNumber(fields[7], bomb.iExplosionLifetimeMs) ||
+				!bomb.iExplosionLifetimeMs || bomb.iExplosionLifetimeMs > 600000u)
+			{ m_strStatus = "Showtime bomb attachment identity or lifetime is invalid"; return false; }
+			for (std::size_t axis = 0u; axis < 3u; ++axis)
+				if (!ParseNumber(fields[8u + axis], bomb.BodyPosition[axis]) ||
+					!std::isfinite(bomb.BodyPosition[axis]) || std::abs(bomb.BodyPosition[axis]) > 100000.f)
+				{ m_strStatus = "Showtime bomb MAP position is invalid"; return false; }
+			auto& fan = bomb.FanRegion;
+			float* values[] = { &fan.fCenterX, &fan.fCenterY, &fan.fCenterZ, &fan.fYawDegrees,
+				&fan.fRadiusXM, &fan.fRadiusZM, &fan.fHalfAngleDegrees };
+			for (std::size_t index = 0u; index < 7u; ++index)
+				if (!ParseNumber(fields[11u + index], *values[index]) || !std::isfinite(*values[index]))
+				{ m_strStatus = "Showtime bomb fan contains a non-finite value"; return false; }
+			if (std::abs(fan.fCenterX) > 1000.f || std::abs(fan.fCenterY) > 1000.f ||
+				std::abs(fan.fCenterZ) > 1000.f || std::abs(fan.fYawDegrees) > 360.f ||
+				fan.fRadiusXM <= 0.f || fan.fRadiusXM > 1000.f || fan.fRadiusZM <= 0.f || fan.fRadiusZM > 1000.f ||
+				fan.fHalfAngleDegrees <= 0.f || fan.fHalfAngleDegrees >= 180.f)
+			{ m_strStatus = "Showtime bomb fan is outside its sector bounds"; return false; }
+			const auto owners = m_BossPatterns.find(std::string(fields[1]));
+			if (owners == m_BossPatterns.end()) { m_strStatus = "Showtime bomb encounter is missing"; return false; }
+			const auto pattern = std::find_if(owners->second.begin(), owners->second.end(),
+				[&](const auto& row) { return row.strPatternId == fields[2]; });
+			if (pattern == owners->second.end()) { m_strStatus = "Showtime bomb pattern is missing"; return false; }
+			const auto trigger = std::find_if(pattern->MechanicTriggers.begin(), pattern->MechanicTriggers.end(),
+				[&](const auto& row) { return row.strTriggerId == fields[3]; });
+			if (trigger == pattern->MechanicTriggers.end() || trigger->ShowtimeBomb ||
+				trigger->eKind != BOSS_PATTERN_MECHANIC_TRIGGER_KIND::BOSS_TRACK_TARGET ||
+				trigger->fFollowSpeedScale != 0.f || trigger->iDurationMs <= 34u ||
+				bomb.iBodyStartMs >= std::uint64_t(trigger->iStartMs) + trigger->iDurationMs)
+			{ m_strStatus = "Showtime bomb needs one rotate-only tracking duration and an earlier body birth"; return false; }
+			bomb.strBodyVisualId = fields[5]; bomb.strExplosionVisualId = fields[6];
+			fan.strRegionId = fields[3]; fan.eAnchor = BOSS_LOGIC_REGION_ANCHOR::BOSS_CURRENT;
+			fan.bSector = true; fan.fRadiusM = (std::max)(fan.fRadiusXM, fan.fRadiusZM);
+			trigger->ShowtimeBomb = std::move(bomb);
 		}
 		else if (!fields.empty() && "PATTERNTRACKMOVE" == fields[0])
 		{
@@ -3924,7 +3968,7 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 		{
 			LostArk::Shared::ATTACK_HIT_TEMPLATE hit;
 			std::uint32_t set = 0u, ordinal = 0u;
-			if ((fields.size() != 25u && fields.size() != 27u) || !IsStableId(fields[1]) || !IsStableId(fields[2]) || !IsStableId(fields[3]) ||
+			if ((fields.size() != 25u && fields.size() != 27u && fields.size() != 28u && fields.size() != 30u) || !IsStableId(fields[1]) || !IsStableId(fields[2]) || !IsStableId(fields[3]) ||
 				!ParseNumber(fields[5], set) || !ParseNumber(fields[6], ordinal) || set >= 32u || ordinal >= 32u)
 			{ m_strStatus = "Attack template header is invalid"; return false; }
 			hit.strHitId = fields[7]; hit.strTrigger = fields[8]; hit.strShape = fields[13];
@@ -3943,8 +3987,15 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 				!ParseNumber(fields[21], hit.fYawOffsetDegrees) ||
 				!ParseNumber(fields[23], hit.iDamagePercent))
 			{ m_strStatus = "Attack template number is invalid"; return false; }
-			if (fields.size() == 27u && (!ParseNumber(fields[25], hit.fRiseHeightM) || !ParseNumber(fields[26], hit.iPushMs)))
+			if (fields.size() >= 27u && (!ParseNumber(fields[25], hit.fRiseHeightM) || !ParseNumber(fields[26], hit.iPushMs)))
 			{ m_strStatus = "Attack template rise height or duration is invalid"; return false; }
+            if (fields.size() >= 28u && !ParseNumber(fields[27], hit.fPushRangeM))
+            { m_strStatus = "Attack template push range is invalid"; return false; }
+            if (fields.size() == 30u)
+            {
+                if (fields[28] != "0" && fields[28] != "1") { m_strStatus = "Attack forcePush is invalid"; return false; }
+                hit.ForcePush = fields[28] == "1"; hit.strPushDirection = fields[29];
+            }
 			const auto owners = m_BossPatterns.find(std::string(fields[1]));
 			if (owners == m_BossPatterns.end()) { m_strStatus = "Attack encounter is missing"; return false; }
 			const auto pattern = std::find_if(owners->second.begin(), owners->second.end(), [&](const auto& row) { return row.strPatternId == fields[2]; });
@@ -3961,6 +4012,10 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 			}
 			else if (trigger->eKind == BOSS_PATTERN_MECHANIC_TRIGGER_KIND::ALBION_BLUE_CIRCLE && fields[4] == "ALBION" && set == 0u)
 			{ destination = &trigger->FixedHits; lifetime = trigger->iEffectLifetimeMs; }
+            else if (trigger->eKind == BOSS_PATTERN_MECHANIC_TRIGGER_KIND::ALBION_AIRBORNE && fields[4] == "SELECTED" && set == 0u &&
+                trigger->eAirbornePhase == ALBION_AIRBORNE_PHASE::SELECT_PLAYER && trigger->bCaptureAirborneTargetPosition &&
+                !trigger->strSelectedEffectVisualId.empty())
+            { destination = &trigger->FixedHits; lifetime = trigger->iSelectedEffectLifetimeMs; }
 			else if (trigger->eKind == BOSS_PATTERN_MECHANIC_TRIGGER_KIND::PURSUIT_PROJECTILES && fields[4] == "PROJECTILE" && set == 0u)
 			{ destination = &trigger->ProjectileHits; lifetime = trigger->iProjectileLifetimeMs ? trigger->iProjectileLifetimeMs : 600000u; }
 			if (!destination || destination->size() != ordinal ||

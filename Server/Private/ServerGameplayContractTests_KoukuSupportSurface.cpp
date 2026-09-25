@@ -1331,6 +1331,19 @@ REGION "blocked" "closed" 0 1
         tests.Require(!room->Commit_KoukuAlbionAirborne(albionOwner,pattern,phase,12231u) &&
             room->m_CombatObjectRuntime.Get_LiveObjects().size()==1u && albionOwner.AlbionAirborne.SelectedGround.x==beforeSelectedFailure.SelectedGround.x,
             "A rejected fixed-object transaction preserves the previous target anchor and live Effect");
+        phase.iSelectedEffectLifetimeMs = 2000u;
+        LostArk::Shared::ATTACK_HIT_TEMPLATE selectedHit;
+        selectedHit.strHitId = "selected.contact"; selectedHit.strTrigger = "CONTACT";
+        selectedHit.iAtMs = 1000u; selectedHit.iEndMs = 1100u;
+        selectedHit.fRadiusM = 3.0; selectedHit.fRiseHeightM = 2.0; selectedHit.fPushRangeM = 1.0; selectedHit.iPushMs = 1200u;
+        phase.FixedHits = {selectedHit};
+        tests.Require(room->Commit_KoukuAlbionAirborne(albionOwner, pattern, phase, 12231u) &&
+            room->m_CombatObjectRuntime.Get_LiveObjects().back().Hits.size() == 1u &&
+            room->m_CombatObjectRuntime.Get_LiveObjects().back().Hits.front().fPushRangeM == 1.f &&
+            room->m_CombatObjectRuntime.Get_LiveObjects().back().Hits.front().fRiseHeightM == 2.f &&
+            room->m_CombatObjectRuntime.Get_LiveObjects().back().LiveState.CurrentPose.fPositionX == 10.f,
+            "Selected ground Effect and its damage/ballistic push share one staged authoritative object");
+        phase.FixedHits.clear();
         phase.strSelectedEffectVisualId.clear(); phase.bCaptureAirborneTargetPosition=false;
         phase.eAirbornePhase=Phase::APPEAR_PLAYER; phase.fAirborneHeightM=3.2783114f;
         room->m_Players[1u].fPositionX=12.f; room->m_Players[1u].fPositionZ=12.f; room->m_Players[1u].iCurrentHp=0u;
@@ -1641,7 +1654,25 @@ REGION "blocked" "closed" 0 1
         tests.Require(selectedPattern && selectedPattern->MechanicTriggers.front().bCaptureAirborneTargetPosition &&
             selectedPattern->MechanicTriggers.front().strSelectedEffectVisualId=="test.selected.group" &&
             selectedPattern->MechanicTriggers.front().iSelectedEffectLifetimeMs==2000u, "Selected point policy and visual exact-join the existing occurrence");
+        const std::string selectedHit = "PATTERNATTACKHIT\t" + encounter + "\t" + patternId +
+            "\tair.jump\tSELECTED\t0\t0\tselected.impact\tCONTACT\t1000\t1100\t1\t0\tRING\t4.5\t3\t0\t0\t0\t0\t0\t0\tMAX_HP_PERCENT\t10\t-";
+        for (const auto* suffix : {"", "\t2\t1200", "\t2\t1200\t1", "\t0\t250\t1\t0\tAWAY_FROM_BOSS"})
+        {
+            tests.Require(loadSupplement(airBase + "\n" + airPrefix + selectedFields + "\n" + selectedHit + suffix),
+                "Selected target hit admits legacy 25/27/28 fields and the 30-field explicit push policy");
+            const auto* hitPattern = CKoukuSaydonBrain::Find_AnimationOnlyPattern(parsedTargets, patternId, status);
+            const bool explicitPolicy = std::string(suffix).find("AWAY_FROM_BOSS") != std::string::npos;
+            const bool hasRange = explicitPolicy || std::string(suffix) == "\t2\t1200\t1";
+            tests.Require(hitPattern && hitPattern->MechanicTriggers.front().FixedHits.size() == 1u &&
+                hitPattern->MechanicTriggers.front().FixedHits.front().fPushRangeM == (hasRange ? 1.0 : 0.0) &&
+                (!explicitPolicy || (hitPattern->MechanicTriggers.front().FixedHits.front().ForcePush == false &&
+                 hitPattern->MechanicTriggers.front().FixedHits.front().strPushDirection == "AWAY_FROM_BOSS")),
+                "Selected fixed hit parser preserves the source horizontal push and defaults legacy rows to zero");
+        }
         const auto selectedRevision=parsedTargets.Get_ActiveRevision();
+        tests.Require(!loadSupplement(airBase + "\n" + airPrefix + selectedFields + "\n" + selectedHit + "\t2\t1200\t101") &&
+            parsedTargets.Get_ActiveRevision() == selectedRevision,
+            "An oversized selected-hit push range preserves the previously admitted catalog");
         bool invalidSelectedRejected=true;
         for (const std::string fields : {"SELECT_PLAYER\t0\t0\tUNKNOWN\ttest.selected.group\t2000", "JUMP\t13\t200\tSELECT\ttest.selected.group\t2000",
             "SELECT_PLAYER\t0\t0\tSELECT\ttest.selected.group\t0", "SELECT_PLAYER\t0\t0\tSELECT\t\t2000", "SELECT_PLAYER\t0\t0\tSELECT\ttest.selected.group\t600001"})
@@ -1912,4 +1943,224 @@ REGION "blocked" "closed" 0 1
 	std::error_code cleanupError; fs::remove_all(fixture, cleanupError);
 	std::cout << "failures : " << tests.failures << std::endl;
 	return tests.failures ? 1 : 0;
+}
+
+
+int LostArk::Server::CServerGameplayContractRunner::Run_ShowtimeBombs()
+{
+    TESTS tests;
+    auto room = std::make_unique<CGameRoom>(WORLD_ID::KAKULSAYDON_ARENA);
+    tests.Require(room->Is_Ready(), "Showtime bomb fixture admits the installed gameplay catalog");
+    if (!room->Is_Ready()) return 1;
+    // Exercise the exact eighteen-field row through the real catalog parser.
+    {
+        namespace fs = std::filesystem;
+        wchar_t configured[32768]{};
+        const auto length = GetEnvironmentVariableW(L"LOSTARK_SERVER_DATA_ROOT", configured, 32768u);
+        tests.Require(length && length < 32768u, "Isolated Showtime tests receive an explicit Server data root");
+        if (!length || length >= 32768u) return 1;
+        std::ifstream input(fs::path(configured) / L"Gameplay/Gameplay.bootstrap", std::ios::binary);
+        std::string baseline{std::istreambuf_iterator<char>(input), std::istreambuf_iterator<char>()};
+        const std::string owner = "ENCOUNTER_KAKULSAYDON_G1\tKAKULSAYDON_G1_SHOWTIME_BOMB_CONTRACT";
+        if (!baseline.empty() && baseline.back() != '\n') baseline += '\n';
+        baseline += "PATTERN\t" + owner + "\tbomb.action\tAUDITION_ONLY\t0\t0\t0\t0\t0\t0\t0\t1\t1\tANY\tANY\t0\n";
+        baseline += "PATTERNBOSS\t" + owner + "\tBOSS_KAKULSAYDON_G3_SAYDON\n";
+        baseline += "PATTERNPOLICY\t" + owner + "\tNORMAL\t1\t1\tNONE\tNONE\n";
+        baseline += "PATTERNSOURCE\t" + owner + "\t1\t0\t0\t0\t0\t0\t0\n";
+        baseline += "PATTERNSTAGE\t" + owner + "\t0\tSTAGE_1\tbomb.stage.1\tACTIVE\t5000\tNONE\t0\t0\t0\t0\t0\t0\t0\t0\t-\t0\t0\t0\t0\n";
+        baseline += "PATTERNSTAGEBRANCH\t" + owner + "\tbomb.stage.1\tTIMEOUT\t-\n";
+        baseline += "PATTERNTARGET\tKAKULSAYDON_G1_SHOWTIME_BOMB_CONTRACT\tGATE3\tboss.kakulsaydon.g3.saydon\n";
+        baseline += "PATTERNMECHANICTRIGGER\t" + owner + "\tbomb.track\tBOSS_TRACK_TARGET\t1000\t1000\t0\t0\t0\t0\t-\t0\t0\t0\t1\n";
+        const std::string row = "PATTERNTRACKBOMB\t" + owner + "\tbomb.track\t0\tbomb.body\tbomb.explosion\t2801\t12\t1\t8\t0\t0\t0\t90\t24.2\t13.75\t22.5\n";
+        const auto fixture = fs::temp_directory_path() / (L"LostArkShowtimeBomb-" + std::to_wstring(_getpid()));
+        fs::create_directories(fixture / L"Gameplay");
+        CGameplayCatalog parsed;
+        const auto load = [&](const std::string& supplement) {
+            auto bytes = baseline + supplement;
+            const auto headerEnd = bytes.find('\n'), countAt = bytes.rfind('\t', headerEnd);
+            if (headerEnd == std::string::npos || countAt == std::string::npos) return false;
+            bytes.replace(countAt + 1u, headerEnd - countAt - 1u, std::to_string(std::count(bytes.begin(), bytes.end(), '\n') - 1u));
+            { std::ofstream file(fixture / L"Gameplay/Gameplay.bootstrap", std::ios::binary); file.write(bytes.data(), bytes.size()); }
+            SetEnvironmentVariableW(L"LOSTARK_SERVER_DATA_ROOT", fixture.c_str());
+            const bool accepted = parsed.Load();
+            SetEnvironmentVariableW(L"LOSTARK_SERVER_DATA_ROOT", configured);
+            return accepted;
+        };
+        std::string status;
+        const bool accepted = load(row);
+        const auto* saved = accepted ? CKoukuSaydonBrain::Find_AnimationOnlyPattern(parsed, "KAKULSAYDON_G1_SHOWTIME_BOMB_CONTRACT", status) : nullptr;
+        if (!saved) std::cout << "Bomb row admission: " << parsed.Get_Status() << " / " << status << std::endl;
+        tests.Require(saved && saved->MechanicTriggers.size() == 1u && saved->MechanicTriggers.front().ShowtimeBomb &&
+            saved->MechanicTriggers.front().ShowtimeBomb->strBodyVisualId == "bomb.body" &&
+            saved->MechanicTriggers.front().ShowtimeBomb->FanRegion.fYawDegrees == 90.f,
+            "Actual eighteen-field PATTERNTRACKBOMB parses into its exact tracking owner and passes brain validation");
+        tests.Require(!load(row + row), "A repeated tracking bomb attachment is rejected");
+        auto invalid = row; invalid.replace(invalid.rfind("22.5"), 4u, "180");
+        tests.Require(!load(invalid), "The parser rejects a full-circle bomb fan");
+        invalid = row; invalid.replace(invalid.find("\t24.2\t"), 6u, "\tnan\t");
+        tests.Require(!load(invalid), "The parser rejects non-finite bomb fan axes");
+        std::error_code ignored;
+        fs::remove(fixture / L"Gameplay/Gameplay.bootstrap", ignored); fs::remove(fixture / L"Gameplay", ignored); fs::remove(fixture, ignored);
+    }
+    room->m_WorldEntities.clear();
+    room->m_WorldEntities.emplace_back();
+    auto& boss = room->m_WorldEntities.front();
+    BOSS_PATTERN_DEFINITION pattern;
+    KOUKUSAYDON_LOGIC_LEDGER ledger;
+    const std::uint32_t birth = 40000u;
+    const auto begin = [&](const unsigned waves, const bool raid) {
+        room->m_CombatObjectRuntime.Reset(); room->m_CombatObjectRuntime.Discard_PendingLifecycle();
+        room->m_Players.clear(); room->m_TickDamageEvents.clear();
+        room->m_KoukuSaydonPatternAudition = {}; room->m_KoukuRaid = {};
+        for (PLAYER_ID id = 1u; id <= 5u; ++id)
+        {
+            auto& player = room->m_Players[id]; player.iPlayerId = id; player.iNetEntityId = 100u + id;
+            player.iCurrentHp = player.iMaximumHp = 100u; player.isCombatReady = true;
+            player.fPositionX = 12.f; player.fPositionY = 1.f; player.fPositionZ = 8.f;
+            player.iShield = 1000u; player.iInvulnerableEndTick = birth + 10000u;
+        }
+        if (raid) { room->m_KoukuRaid.State.ePhase = KOUKUSAYDON_RAID_PHASE::COMBAT; room->m_KoukuRaid.PlayerIds = {1u,2u,3u,4u}; }
+        boss = {};
+        boss.iNetEntityId = 700u; boss.eKind = WORLD_BOOTSTRAP_KIND::BOSS;
+        boss.strEncounterId = "ENCOUNTER_KAKULSAYDON_G1"; boss.strArchetypeId = "BOSS_KAKULSAYDON_G3_SAYDON";
+        boss.iCurrentHp = boss.iMaximumHp = 100u; boss.PinnedDefinitionRevision = room->m_GameplayCatalog.Get_ActiveRevision();
+        boss.fPositionX = boss.fPositionZ = 8.f; boss.fPositionY = 1.f;
+        boss.iPatternSequence = 71u; boss.iPatternStartTick = birth;
+        boss.iPatternTargetEntityId = boss.iTargetEntityId = 101u;
+        pattern = {}; pattern.strPatternId = boss.strPatternId = "KAKULSAYDON_TEST_SHOWTIME_BOMBS";
+        for (unsigned wave = 0u; wave < waves; ++wave)
+        {
+            BOSS_PATTERN_MECHANIC_TRIGGER trigger;
+            trigger.strTriggerId = "showtime.track." + std::to_string(wave);
+            trigger.eKind = BOSS_PATTERN_MECHANIC_TRIGGER_KIND::BOSS_TRACK_TARGET;
+            trigger.iStartMs = wave * 3000u + 1000u; trigger.iDurationMs = 1000u;
+            BOSS_SHOWTIME_BOMB_RESOLUTION bomb;
+            bomb.iBodyStartMs = wave * 3000u; bomb.strBodyVisualId = "showtime.bomb.body";
+            bomb.strExplosionVisualId = "showtime.bomb.explosion"; bomb.iExplosionLifetimeMs = 2801u;
+            bomb.BodyPosition = {12.f,1.f,8.f};
+            auto& fan = bomb.FanRegion; fan.strRegionId = trigger.strTriggerId;
+            fan.eAnchor = BOSS_LOGIC_REGION_ANCHOR::BOSS_CURRENT; fan.bSector = true;
+            fan.fRadiusM = fan.fRadiusXM = 24.2f; fan.fRadiusZM = 13.75f;
+            fan.fHalfAngleDegrees = 22.5f; fan.fYawDegrees = 90.f;
+            trigger.ShowtimeBomb = bomb; pattern.MechanicTriggers.push_back(std::move(trigger));
+        }
+        CKoukuSaydonLogicRuntime::Build(pattern, boss, birth, ledger);
+    };
+    const auto update = [&](const std::uint32_t tick) {
+        room->Update_KoukuPlayerTargets(boss, pattern, ledger, room->m_GameplayCatalog, tick);
+    };
+    const auto countVisual = [&](const char* id) {
+        return std::count_if(room->m_CombatObjectRuntime.Get_LiveObjects().begin(), room->m_CombatObjectRuntime.Get_LiveObjects().end(),
+            [&](const auto& object) { return object.strClientVisualId == id; });
+    };
+    begin(4u, true); update(birth - 1u);
+    tests.Require(room->m_CombatObjectRuntime.Get_LiveObjects().empty(), "Bomb body is absent before its authored birth");
+    update(birth); update(birth);
+    tests.Require(countVisual("showtime.bomb.body") == 1 && boss.fYawDegrees == 0.f && !ledger.PlayerTargetWindows.front().bClosed,
+        "One body plus fuse is born before tracking without rotating or resolving the owner");
+    std::vector<S2C_COMBAT_OBJECT_SPAWNED> restored;
+    room->m_CombatObjectRuntime.Build_LiveSpawnMessages(birth + 10u, restored);
+    bool wire = restored.size() == 1u;
+    for (const auto& spawn : restored)
+    {
+        CPacketWriter writer; S2C_COMBAT_OBJECT_SPAWNED decoded;
+        wire = Write_Message(writer, spawn) && wire; CPacketReader reader{writer.Get_Buffer()};
+        wire = Read_Message(reader, decoded) && wire && decoded.iSpawnTick == birth && decoded.iServerTick == birth + 10u &&
+            decoded.strClientVisualId == "showtime.bomb.body" && decoded.fPositionX == 12.f && decoded.fPositionZ == 8.f;
+    }
+    tests.Require(wire, "Bomb body uses the existing reliable spawn and late-join clock contract");
+    bool finalYaw = true, noEarlyVerdict = true;
+    for (unsigned wave = 0u; wave < 4u; ++wave)
+    {
+        const auto offset = wave * 90u;
+        update(birth + offset);
+        room->m_Players.at(1u).fPositionX = 4.f;
+        update(birth + offset + 30u);
+        noEarlyVerdict = noEarlyVerdict && !ledger.PlayerTargetWindows[wave].bClosed;
+        room->m_Players.at(1u).fPositionX = 12.f;
+        update(birth + offset + 59u); // The last live tracking tick aims exactly at +X.
+        const auto yaw = boss.fYawDegrees;
+        room->m_Players.at(1u).fPositionX = 4.f;
+        update(birth + offset + 60u); update(birth + offset + 60u); update(birth + offset + 59u);
+        finalYaw = finalYaw && boss.fYawDegrees == yaw && ledger.PlayerTargetWindows[wave].bClosed &&
+            ledger.PlayerTargetWindows[wave].BombInsideAtEnd == true;
+    }
+    tests.Require(noEarlyVerdict && finalYaw && countVisual("showtime.bomb.body") == 0 && countVisual("showtime.bomb.explosion") == 0 &&
+        room->m_TickDamageEvents.empty(), "All four bombs judge only the final fan, preserve end-tick yaw and defuse once without an explosion");
+    std::vector<S2C_COMBAT_OBJECT_SPAWNED> spawned;
+    std::vector<S2C_COMBAT_OBJECT_PRESENTATION_EVENT> pulses;
+    std::vector<S2C_COMBAT_OBJECT_DESPAWNED> despawned;
+    room->m_CombatObjectRuntime.Drain_Lifecycle(spawned, pulses, despawned);
+    tests.Require(spawned.size() == 4u && despawned.size() == 4u, "Four successes replicate four exact body removals without duplicate lifecycle edges");
+
+    begin(1u, true);
+    const auto& fan = pattern.MechanicTriggers.front().ShowtimeBomb->FanRegion;
+    tests.Require(CKoukuSaydonLogicRuntime::Is_PointInsideRegion(fan, boss, 21.74f, 8.f) &&
+        !CKoukuSaydonLogicRuntime::Is_PointInsideRegion(fan, boss, 21.76f, 8.f) &&
+        !CKoukuSaydonLogicRuntime::Is_PointInsideRegion(fan, boss, 13.f, 18.f) &&
+        !CKoukuSaydonLogicRuntime::Is_PointInsideRegion(fan, boss, std::numeric_limits<float>::quiet_NaN(), 8.f),
+        "Final fan preserves authored elliptic axes, semantic +Z, angular bounds and finite point validation");
+    auto edgeFan = fan; edgeFan.fYawDegrees = 0.f; edgeFan.fHalfAngleDegrees = 90.f;
+    tests.Require(CKoukuSaydonLogicRuntime::Is_PointInsideRegion(edgeFan, boss, 8.f, 8.f) &&
+        CKoukuSaydonLogicRuntime::Is_PointInsideRegion(edgeFan, boss, 9.f, 8.f) &&
+        CKoukuSaydonLogicRuntime::Is_PointInsideRegion(edgeFan, boss, 7.f, 8.f),
+        "Bomb point containment includes the fan apex and both radial edges");
+    update(birth); update(birth + 30u);
+    tests.Require(room->m_TickDamageEvents.empty(), "Being inside during tracking cannot resolve a bomb early");
+    room->m_Players.at(1u).fPositionX = 4.f;
+    update(birth + 59u); update(birth + 60u);
+    tests.Require(countVisual("showtime.bomb.body") == 0 && countVisual("showtime.bomb.explosion") == 1 &&
+        room->m_TickDamageEvents.size() == 4u && room->m_Players.at(5u).iCurrentHp == 100u &&
+        std::all_of(room->m_KoukuRaid.PlayerIds.begin(), room->m_KoukuRaid.PlayerIds.end(), [&](auto id) {
+            const auto& player = room->m_Players.at(id); return !player.iCurrentHp && !player.iShield &&
+                !player.iInvulnerableEndTick && player.eAction == PLAYER_ACTION_STATE::DEAD; }),
+        "A final miss creates one original explosion and wipes every raid participant through shields and invulnerability, preserving nonparticipants");
+    update(birth + 60u); update(birth + 61u);
+    // Run the actual raid update after the wipe. Death alone must not abort the
+    // owning boss or discard the already committed finite explosion.
+    auto& raid = room->m_KoukuRaid;
+    raid.pCatalog = room->m_GameplayCatalog.Get_ActiveGeneration();
+    raid.State.strGateId = "GATE3"; raid.State.PinnedGameplayRevision = room->m_GameplayCatalog.Get_ActiveRevision();
+    raid.iOwnerSessionId = 501u; room->m_PlayerIdBySessionId[501u] = 1u;
+    raid.iPrimaryBossId = boss.iNetEntityId; raid.bEntryRunning = true;
+    room->m_KoukuSaydonPatternAudition.ePhase = CGameRoom::KOUKUSAYDON_PATTERN_AUDITION_PHASE::ACTIVE;
+    room->Update_KoukuRaid(birth + 60u); room->Update_KoukuRaid(birth + 61u);
+    tests.Require(room->Is_KoukuRaidRunning() && countVisual("showtime.bomb.explosion") == 1,
+        "The actual same-tick and next-tick raid updates preserve the explosion after a party wipe");
+    tests.Require(countVisual("showtime.bomb.explosion") == 1 && room->m_TickDamageEvents.size() == 4u,
+        "A resolved miss cannot repeat its explosion or encounter wipe");
+    auto& member = room->m_KoukuSaydonPatternAudition.Members.emplace_back();
+    member.strMemberId = "showtime.member"; member.iBossEntityId = boss.iNetEntityId;
+    member.iPatternSequence = boss.iPatternSequence; member.PatternIds = {pattern.strPatternId}; member.LogicLedger = ledger;
+    room->Clear_KoukuSaydonPatternAudition(true);
+    tests.Require(countVisual("showtime.bomb.explosion") == 1, "Natural completion retains the failed bomb's finite explosion tail");
+    room->m_CombatObjectRuntime.Update(room->m_Players, room->m_WorldEntities, room->m_GameplayCatalog, 3.f, birth + 151u, room->m_TickDamageEvents);
+    tests.Require(room->m_CombatObjectRuntime.Get_LiveObjects().empty(), "The failure explosion expires normally after the players have died");
+
+    begin(1u, false); update(birth + 59u); // Late first evaluation keeps the authored body birth.
+    room->m_CombatObjectRuntime.Build_LiveSpawnMessages(birth + 59u, restored);
+    tests.Require(restored.size() == 1u && restored.front().iSpawnTick == birth, "Late body evaluation preserves the original authored age");
+    boss.fYawDegrees = 180.f; update(birth + 60u);
+    tests.Require(room->m_TickDamageEvents.size() == 5u && std::all_of(room->m_Players.begin(), room->m_Players.end(),
+        [](const auto& entry) { return entry.second.iCurrentHp == 0u; }), "Standalone pattern Play wipes the whole living room on a final miss");
+
+    for (const bool completed : {false, true})
+    {
+        begin(1u, true); update(birth);
+        auto& current = room->m_KoukuSaydonPatternAudition.Members.emplace_back();
+        current.strMemberId = "showtime.member"; current.iBossEntityId = boss.iNetEntityId;
+        current.iPatternSequence = boss.iPatternSequence; current.PatternIds = {pattern.strPatternId}; current.LogicLedger = ledger;
+        room->Clear_KoukuSaydonPatternAudition(completed);
+        tests.Require(room->m_CombatObjectRuntime.Get_LiveObjects().empty() && room->m_TickDamageEvents.empty(),
+            completed ? "Natural cleanup removes an unresolved body without inventing a verdict" :
+                "Explicit Stop removes body plus fuse without spawning an explosion or wiping players");
+    }
+    begin(1u, true); update(birth);
+    auto stale = ledger; stale.iPatternSequence -= 1u;
+    room->Clear_KoukuPlayerTargets(boss, stale);
+    tests.Require(countVisual("showtime.bomb.body") == 1, "A stale pattern owner cannot cancel another occurrence's bomb");
+    room->Clear_KoukuPlayerTargets(boss, ledger);
+    tests.Require(room->m_CombatObjectRuntime.Get_LiveObjects().empty(), "The exact retained ledger owner cancels its bomb during tail cleanup");
+    std::cout << "Showtime bomb failures : " << tests.failures << std::endl;
+    return tests.failures ? 1 : 0;
 }

@@ -170,3 +170,43 @@ Kill 동작은 보존한다. 실제 무비 60개 Effect 준비 및 다섯 Play �
 원본 Cascade의 수신자 없는 event generator는 bounded queue에 남는 무효 이벤트로 보존한다.
 연결된 route만 순환 검사를 하고 queue 상한과 event identity 검증은 유지한다. codec와 runtime은
 mesh sourceMaterialSlots를 포함한 동일 element 실행 판정을 사용한다.
+
+## G10. 실제 재질 draw 실패와 끝까지 재생
+
+사용자 화면에서 Guardian의 `guardianknight.intro.a12265.p0`는 시작 직후,
+DimensionMaster의 `dimensionmaster.intro.a740.p0`는 약4.67초에 mesh0 material binding으로
+중단됐다. 실제 target은 skinned SOURCE_CHARACTER의 Guardian 얼굴 native200과
+DimensionMaster 무기 native902다. WorldSequenceObject의 재질 binder에서 legacy 입력과
+native 입력을 분리해 실패 지점을 확인하고 기존 CModel/CMaterial 경로를 수정한다.
+실패를 무시하거나 actor를 숨겨 무비 완료로 처리하지 않는다.
+
+설치 Engine의 실제 native clone은 256개까지 성공하고 257번째가 E_BOUNDS로 실패했다.
+CMaterial frame registry의 임의 256 상한을 Target_Depth.z의 R32 float 정확정수 계약에
+맞추고 pointer→row 조회를 같은 frame owner에 유지한다. frame reset은 vector와 lookup을
+함께 비운다. WorldSequenceObject는 실패 HRESULT·실제 material/program을 보존해 원인을
+표시한다. 셰이더의 재질식과 사용자 조명·후처리 설정은 바꾸지 않는다.
+
+기존 headless fixture의 pose/particle sampling은 실제 World Object draw의 성공 증거가
+아니다. 같은 실제 player·모델·설치 shader로 활성 WORLD 객체 Render와 render status를
+검사한다. 시작·4.67초뿐 아니라 intro 전체와 두 loop, Stop/rePlay와 seek 경계까지 확인한다.
+정상인 Artist/Lance/Warlord 경로도 같은 binder를 사용하므로 재질 admission 회귀를 확인한다.
+Client/UI 실행·화면 촬영은 하지 않고 최종 육안 확인은 사용자가 수행한다.
+
+## G11. All Effects World와 무비 타임라인 편집
+
+현재 ClassSelectionTimeline은 read-only 투영이며 camera/Effect/material/light/clock의 정본은
+`Data/Camera/ClassSelection.cinematics.json`, 모델 transform/animation/sound의 정본은 SL00
+WorldSequences다. 두 문서의 stable ID를 유지하며 기존 presentation owner에 검증된 draft
+적용과 Save/Reload를 연결한다. 선택 row/key 편집을 기존 SequencerTool Box Detail에 노출하고
+재생·seek는 같은 CClassSelectionPresentation과 CWorldSequencePlayer가 소비한다.
+
+All Effects의 World에는 현재 Level이 승인한 다섯 movie option을 그대로 표시한다.
+Open Editor는 class ID 요청을 MainApp에 전달하고 기존 WORLD Sequencer를 연다. 별도
+movie catalog·Effect 사본·재생기를 만들지 않는다. 현재 class의 실제 길이와 intro/loop
+clock mapping을 사용하여 긴 컷신 전체를 편집·탐색할 수 있게 한다.
+
+저장은 최신 디스크와 stable row/field 기준으로 비교해 무관한 수정은 보존하고 같은 필드의
+실제 충돌만 거절한다. parse→validate→stage→commit과 실패 시 기존 draft/재생 보존을
+검사한다. 기존 파일 확장으로 구현하되 새 C++ 파일이 필요하면 project/filter도 등록한다.
+이 작업 중 사용자의 정본 JSON을 자동 교체하거나 Reload하지 않는다. 구현된 UI의 명시 Save가
+저작·게시 경로를 사용하도록 연결하고, 임시 복사본에서 저장/재로드를 검증한다.
