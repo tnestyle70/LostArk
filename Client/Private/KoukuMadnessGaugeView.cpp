@@ -36,7 +36,8 @@ namespace
 			if (!value->Is_Number() || !std::isfinite(value->Get_Number())) return false;
 			out = static_cast<f32_t>(value->Get_Number()); return std::isfinite(out);
 		};
-		return read("headOffsetMeters", 2.2f, head) && read("screenOffsetX", 0.f, offset.x) &&
+		/* Metres above the feet, which is the transform origin the bar sits on. */
+		return read("feetOffsetMeters", 0.f, head) && read("screenOffsetX", 0.f, offset.x) &&
 			read("screenOffsetY", 0.f, offset.y) && std::abs(head) <= 10.f &&
 			std::abs(offset.x) <= 1280.f && std::abs(offset.y) <= 1280.f;
 	}
@@ -164,15 +165,15 @@ HRESULT Client::CKoukuMadnessGaugeView::Load_Config()
 		}
 	}
 
-	f32_t fHeadOffset = 2.2f;
+	f32_t fFeetOffset = 0.f;
 	float2_t screenOffset{};
-	if (!ReadPosition(Root, screenOffset, fHeadOffset)) return E_FAIL;
+	if (!ReadPosition(Root, screenOffset, fFeetOffset)) return E_FAIL;
 
 	/* Commit only after every field validated so a bad file leaves the previous
 	(empty, hidden) configuration untouched. */
 	m_Thresholds = std::move(Thresholds);
 	m_FillTextures = std::move(FillTextures);
-	m_fHeadOffsetMeters = m_fSavedHeadOffsetMeters = fHeadOffset;
+	m_fFeetOffsetMeters = m_fSavedFeetOffsetMeters = fFeetOffset;
 	m_vScreenOffset = m_vSavedScreenOffset = screenOffset;
 	m_bConfigLoaded = true;
 	return S_OK;
@@ -223,14 +224,19 @@ void Client::CKoukuMadnessGaugeView::Update(
 		return;
 	}
 
-	float3_t vHead{};
-	XMStoreFloat3(&vHead, pTransform->Get_State(STATE::POSITION));
-	vHead.y += m_fHeadOffsetMeters;
+	/* The bar sits at the character's feet, which is the transform origin itself, so it
+	stays put no matter what the body above it does: the clown avatar swaps the body for
+	its own pre-scale, a Mario stage scales it again, and the map profile plus the F1
+	character size multiply the presentation root. The old constant metre offset above
+	the origin rode that changing height and drifted up the body. */
+	float3_t vFeet{};
+	XMStoreFloat3(&vFeet, pTransform->Get_State(STATE::POSITION));
+	vFeet.y += m_fFeetOffsetMeters;
 
 	const float2_t vViewport = GameInstance.Get_ViewportSize();
 	float2_t vScreen{};
 	if (!CWorldPlayerNameplateView::Try_ProjectWorldPosition(
-		vHead, *pView, *pProj, vViewport, vScreen) ||
+		vFeet, *pView, *pProj, vViewport, vScreen) ||
 		vViewport.x <= 0.f || vViewport.y <= 0.f)
 	{
 		Hide();
@@ -281,17 +287,17 @@ void Client::CKoukuMadnessGaugeView::Update(
 	m_pView->Update(fTimeDelta);
 }
 
-void Client::CKoukuMadnessGaugeView::Get_Position(float2_t& screenOffset, f32_t& headOffsetMeters) const
+void Client::CKoukuMadnessGaugeView::Get_Position(float2_t& screenOffset, f32_t& feetOffsetMeters) const
 {
 	screenOffset = m_vScreenOffset;
-	headOffsetMeters = m_fHeadOffsetMeters;
+	feetOffsetMeters = m_fFeetOffsetMeters;
 }
 
 bool_t Client::CKoukuMadnessGaugeView::Set_Position(const float2_t& offset, const f32_t head)
 {
 	if (!std::isfinite(offset.x) || !std::isfinite(offset.y) || !std::isfinite(head) ||
 		std::abs(offset.x) > 1280.f || std::abs(offset.y) > 1280.f || std::abs(head) > 10.f) return false;
-	m_vScreenOffset = offset; m_fHeadOffsetMeters = head;
+	m_vScreenOffset = offset; m_fFeetOffsetMeters = head;
 	return true;
 }
 
@@ -312,21 +318,21 @@ bool_t Client::CKoukuMadnessGaugeView::Save_Position(string& status)
 	struct LOCK_GUARD { HANDLE handle; ~LOCK_GUARD() { CloseHandle(handle); } } guard{ lock };
 	string before, error;
 	DATA_JSON_VALUE root;
-	float2_t savedOffset{}; f32_t savedHead = 0.f;
+	float2_t savedOffset{}; f32_t savedFeet = 0.f;
 	if (!ReadText(path, before) || !CDataJson::Parse(before, root, error) ||
-		!ReadPosition(root, savedOffset, savedHead))
+		!ReadPosition(root, savedOffset, savedFeet))
 	{ status = "HUD configuration could not be read; disk and preview preserved. " + error; return false; }
 	const bool changedX = m_vScreenOffset.x != m_vSavedScreenOffset.x;
 	const bool changedY = m_vScreenOffset.y != m_vSavedScreenOffset.y;
-	const bool changedHead = m_fHeadOffsetMeters != m_fSavedHeadOffsetMeters;
+	const bool changedFeet = m_fFeetOffsetMeters != m_fSavedFeetOffsetMeters;
 	if ((changedX && savedOffset.x != m_vSavedScreenOffset.x) ||
 		(changedY && savedOffset.y != m_vSavedScreenOffset.y) ||
-		(changedHead && savedHead != m_fSavedHeadOffsetMeters))
+		(changedFeet && savedFeet != m_fSavedFeetOffsetMeters))
 	{ status = "Edited position field changed on disk. Reload saved position before saving; current preview preserved."; return false; }
-	if (!changedX && !changedY && !changedHead)
+	if (!changedX && !changedY && !changedFeet)
 	{
 		m_vScreenOffset = m_vSavedScreenOffset = savedOffset;
-		m_fHeadOffsetMeters = m_fSavedHeadOffsetMeters = savedHead;
+		m_fFeetOffsetMeters = m_fSavedFeetOffsetMeters = savedFeet;
 		status = "No position edits; refreshed position from disk.";
 		return true;
 	}
@@ -335,14 +341,14 @@ bool_t Client::CKoukuMadnessGaugeView::Save_Position(string& status)
 	auto madness = fields.at("madness").Get_Object();
 	if (changedX) madness["screenOffsetX"] = DATA_JSON_VALUE::Number(m_vScreenOffset.x);
 	if (changedY) madness["screenOffsetY"] = DATA_JSON_VALUE::Number(m_vScreenOffset.y);
-	if (changedHead) madness["headOffsetMeters"] = DATA_JSON_VALUE::Number(m_fHeadOffsetMeters);
+	if (changedFeet) madness["feetOffsetMeters"] = DATA_JSON_VALUE::Number(m_fFeetOffsetMeters);
 	fields["madness"] = DATA_JSON_VALUE::Object(std::move(madness));
 	std::ostringstream serialized;
 	serialized.imbue(std::locale::classic());
 	WriteJson(serialized, DATA_JSON_VALUE::Object(std::move(fields)));
 	const string after = serialized.str() + "\n";
 	DATA_JSON_VALUE verified;
-	if (!CDataJson::Parse(after, verified, error) || !ReadPosition(verified, savedOffset, savedHead))
+	if (!CDataJson::Parse(after, verified, error) || !ReadPosition(verified, savedOffset, savedFeet))
 	{ status = "Position serialization rejected; disk and preview preserved."; return false; }
 	const auto suffix = std::to_wstring(GetCurrentProcessId()) + L"." + std::to_wstring(GetTickCount64());
 	const filesystem::path temporary = path.wstring() + L".tmp." + suffix;
@@ -369,7 +375,7 @@ bool_t Client::CKoukuMadnessGaugeView::Save_Position(string& status)
 		return false;
 	}
 	m_vScreenOffset = m_vSavedScreenOffset = savedOffset;
-	m_fHeadOffsetMeters = m_fSavedHeadOffsetMeters = savedHead;
+	m_fFeetOffsetMeters = m_fSavedFeetOffsetMeters = savedFeet;
 	status = "Saved madness position. Backup: " + backup.string();
 	return true;
 }

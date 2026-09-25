@@ -38,8 +38,8 @@ public:
 		const HUD_KOUKU_GIMMICK_STATE& State);
 	void Hide();
 	/* Reference pixels after projection; head height remains in world meters. */
-	void Get_Position(float2_t& screenOffset, f32_t& headOffsetMeters) const;
-	bool_t Set_Position(const float2_t& screenOffset, f32_t headOffsetMeters);
+	void Get_Position(float2_t& screenOffset, f32_t& feetOffsetMeters) const;
+	bool_t Set_Position(const float2_t& screenOffset, f32_t feetOffsetMeters);
 	bool_t Save_Position(string& status);
 	bool_t Reload_Position(string& status);
 
@@ -66,10 +66,10 @@ private:
 	vector<uint32_t>				m_Thresholds;
 	/* Fill strip texture per state; a state past the list keeps the last strip. */
 	vector<string>					m_FillTextures;
-	f32_t							m_fHeadOffsetMeters = 2.2f;
+	f32_t							m_fFeetOffsetMeters = 0.f;
 	float2_t m_vScreenOffset = {};
 	float2_t m_vSavedScreenOffset = {};
-	f32_t m_fSavedHeadOffsetMeters = 2.2f;
+	f32_t m_fSavedFeetOffsetMeters = 0.f;
 	bool_t							m_bConfigLoaded = false;
 	int32_t							m_iLastState = -1;
 	f32_t							m_fFlashAlpha = 0.f;

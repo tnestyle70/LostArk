@@ -8,7 +8,7 @@
       100
     ],
     "holdMs": 15000,
-    "headOffsetMeters": 2.2,
+    "feetOffsetMeters": 0,
     "fillTextureByState": [
       "UI/KoukuSaydon/Madness/madness_fill_state_0.png",
       "UI/KoukuSaydon/Madness/madness_fill_state_1.png"

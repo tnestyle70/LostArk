@@ -124,8 +124,8 @@ public:
 	virtual HRESULT Initialize() override;
 	virtual void Update(f32_t fTimeDelta) override;
 	virtual HRESULT Render() override;
-	bool_t Get_MadnessGaugePosition(float2_t& screenOffset, f32_t& headOffsetMeters) const;
-	bool_t Set_MadnessGaugePosition(const float2_t& screenOffset, f32_t headOffsetMeters);
+	bool_t Get_MadnessGaugePosition(float2_t& screenOffset, f32_t& feetOffsetMeters) const;
+	bool_t Set_MadnessGaugePosition(const float2_t& screenOffset, f32_t feetOffsetMeters);
 	bool_t Save_MadnessGaugePosition(std::string& status);
 	bool_t Reload_MadnessGaugePosition(std::string& status);
 	const ARENA_CAMERA_PROFILE& Get_FollowCameraProfile() const

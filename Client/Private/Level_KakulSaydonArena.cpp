@@ -2124,19 +2124,19 @@ void Client::CLevel_KakulSaydonArena::Update(const f32_t fTimeDelta)
 }
 
 bool_t Client::CLevel_KakulSaydonArena::Get_MadnessGaugePosition(
-	float2_t& screenOffset, f32_t& headOffsetMeters) const
+	float2_t& screenOffset, f32_t& feetOffsetMeters) const
 {
 	if (!m_pMadnessGaugeView) return false;
-	m_pMadnessGaugeView->Get_Position(screenOffset, headOffsetMeters);
+	m_pMadnessGaugeView->Get_Position(screenOffset, feetOffsetMeters);
 	return true;
 }
 
 bool_t Client::CLevel_KakulSaydonArena::Set_MadnessGaugePosition(
-	const float2_t& screenOffset, const f32_t headOffsetMeters)
+	const float2_t& screenOffset, const f32_t feetOffsetMeters)
 {
-	if (!m_pMadnessGaugeView || !m_pMadnessGaugeView->Set_Position(screenOffset, headOffsetMeters)) return false;
+	if (!m_pMadnessGaugeView || !m_pMadnessGaugeView->Set_Position(screenOffset, feetOffsetMeters)) return false;
 	for (auto& view : m_OtherMadnessGaugeViews)
-		if (view) view->Set_Position(screenOffset, headOffsetMeters);
+		if (view) view->Set_Position(screenOffset, feetOffsetMeters);
 	return true;
 }
 
