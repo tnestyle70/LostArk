@@ -6,7 +6,8 @@
 
 namespace Client
 {
-// Read-only projection of the admitted movie. Movie milliseconds include the
+// Projection of the admitted movie, refreshed after a validated authoring edit.
+// Movie milliseconds include the
 // source time-dilation curve; source milliseconds address the original tracks.
 struct CLASS_MOVIE_TIMELINE_BOX final
 {
@@ -27,6 +28,14 @@ struct CLASS_MOVIE_TIMELINE final
     bool loop = false;
     double movieDurationMs = 0., sourceDurationMs = 0.;
     std::vector<CLASS_MOVIE_TIMELINE_ROW> rows;
+};
+// A copied row draft; identities address the source, never a saved vector index.
+struct CLASS_MOVIE_AUTHORING_BOX final
+{
+    std::string classId, kind, boxId;
+    bool loop = false;
+    uint64_t generation = 0u;
+    DATA_JSON_VALUE value;
 };
 struct CLASS_MOVIE_CAMERA_SAMPLE final
 {

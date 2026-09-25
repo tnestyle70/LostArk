@@ -148,10 +148,10 @@ PROJECT_POLICY = {
     # Authored SET_STAGGER_GAUGE values are 30 and 100; x400 makes the large window the
     # original 40000 of NpcBalance.ParalyzationPointMax.
     "staggerGaugeScale": 400,
-    # ZoneContentsGauge 3708100 has no passive fill, so the original Kouku madness gauge
-    # only rises through a skill effect or accumulate_damage_ratio.  The Server now charges
-    # it from the share of maximum HP a hit took, so the authored fixed step retires.
-    "madnessGaugeAddPercent": 0,
+    # Preserve per-pattern results: breath 1%, Mario hazard 5%, failure penalty 50%,
+    # and explicit zero for damage-only lingering floors. Automatic HP-based gain
+    # remains the fallback only for damage verdicts without a madness result.
+    "madnessGaugeAddPercent": -1,
     # Gauge max/hold and NPC aura 10 points / 1s / 2m are native table values.
     # Damage conversion, doll gauge, and requested doubled multipliers are PROJECT_TUNED.
     "madness": [{"policyId": "KOUKUSAYDON", "damageGainPercent": 100,

@@ -14,6 +14,7 @@ NS_BEGIN(Client)
 class CWorldSequenceObject;
 struct SAYDON_WEAPON_REPLACEMENT;
 struct SAYDON_HAT_REPLACEMENT;
+struct DEFERRED_EMISSIVE_OVERRIDE;
 
 class CNpcPresentationAssetService final
 {
@@ -53,7 +54,7 @@ public:
 	static HRESULT Render_SaydonHat(const std::shared_ptr<Engine::CModel>& body,
 		const std::shared_ptr<Engine::CModel>& hat, const std::shared_ptr<Engine::CShader>& shader,
 		const float4x4_t& bodyWorld, uint32_t pass = 0u, bool_t nativeBinaryBasePass = false,
-		bool_t shadow = false);
+		bool_t shadow = false, const DEFERRED_EMISSIVE_OVERRIDE* combatPresentation = nullptr);
 	static void Track_SaydonHatReplacement(std::shared_ptr<const SAYDON_HAT_REPLACEMENT>& registration,
 		const std::shared_ptr<Engine::CModel>& body, const std::shared_ptr<CWorldSequenceObject>& object);
 	static bool_t Is_SaydonHatSuppressed(const std::shared_ptr<Engine::CModel>& body);

@@ -65,6 +65,16 @@ namespace LostArk::Server
 		bool bEncounterWipe = false;
 	};
 
+	// Mario hazards share the normal authoritative knockdown/landing path.
+	inline void Configure_MarioHazardLaunch(SERVER_WORLD_TO_PLAYER_HIT& hit)
+	{
+		if (hit.fPushRangeM <= 0.f || !hit.iPushMs) return;
+		hit.bKnockdown = hit.bForcePush = hit.bPushBallistic = true;
+		hit.bPushCanLeaveArena = false;
+		hit.fPushHeightM = 2.f;
+		if (hit.iDownMs < hit.iPushMs + 600u) hit.iDownMs = hit.iPushMs + 600u;
+	}
+
 	/* Buffs live next to the two damage directions because that is where they are
 	read: a holder's buffs scale the damage it deals and the damage it takes. */
 	class CServerBuffRuntime final
@@ -104,6 +114,8 @@ namespace LostArk::Server
 	class CServerCombatHitRuntime final
 	{
 	public:
+		[[nodiscard]] static bool Is_PlayerDamageableWorldTarget(
+			const SERVER_WORLD_ENTITY& target) noexcept;
 		static void Add_MadnessGauge(SERVER_PLAYER& target, double gain);
 		static SERVER_COMBAT_HIT_RESULT Apply_PlayerToWorld(
 			SERVER_WORLD_ENTITY& target,

@@ -83,6 +83,28 @@ private:
 	vector<float4x4_t>		m_OffsetMatrices;
 	// Binary meshes use the same ordered inverse-bind palette within one model.
 	bool_t m_bUsesSkeletonPalette = false;
+    struct BONE_VERTEX_BOUNDS final
+    {
+        float3_t minimum{}, maximum{};
+        bool_t valid = false;
+    };
+    // Immutable per-influence geometry metadata, shared with the mesh by model clones.
+    vector<BONE_VERTEX_BOUNDS> m_BoneVertexBounds;
+    void Prepare_BoneVertexBounds(const MODEL_MESH_DATA& mesh);
+    struct PICK_VERTEX final
+    {
+        float3_t position{};
+        DirectX::XMUINT4 bones{};
+        float4_t weights{};
+    };
+    struct PICK_GEOMETRY final
+    {
+        vector<PICK_VERTEX> vertices;
+        vector<uint32_t> indices;
+        bool skinned = false;
+    };
+    // Immutable WModel geometry; shared by clones, never read back from the GPU.
+    shared_ptr<const PICK_GEOMETRY> m_PickGeometry;
 
 	/* The unmorphed rest position/normal per vertex, in this mesh's own local index space,
 	read back off the GPU by Make_VertexBuffer_Unique(). Null until then. Held by

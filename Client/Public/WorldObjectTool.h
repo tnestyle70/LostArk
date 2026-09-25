@@ -26,11 +26,14 @@ public:
     void Open();
     // Select stable authoring IDs without reloading or saving an existing draft.
     bool Open_ObjectMotion(const std::string& objectId, const std::string& instanceId, std::string& status,
-        const std::optional<CWorldSequencePlayer::OBJECT_PLACEMENT>& previewPlacement = {});
+        const std::optional<CWorldSequencePlayer::OBJECT_PLACEMENT>& previewPlacement = {},
+        const std::string& patternId = {}, const std::string& occurrenceId = {}, bool sequenceWorkspace = false,
+        bool explicitPlacement = false, bool focusAnimationClips = false);
     void Deactivate();
     void Update(f32_t seconds, bool_t active);
     void Render();
     void Render_QuickTransformTuning(const std::string& objectId, const std::string& instanceId);
+    void Render_BingoSizeTuning();
     void Begin_WorkbenchFrame() override;
     void Render_WorkbenchPane(COMPOSITION_WORKBENCH_PANE pane) override;
     void End_WorkbenchFrame() override;
@@ -127,6 +130,9 @@ private:
     bool Duplicate_ColliderTrack(WORLD_SEQUENCE_TEMPLATE& sequence, size_t index);
     bool Append_SelectedAnimation();
     bool Duplicate_TimelineBox(WORLD_SEQUENCE_TEMPLATE& sequence, bool animation, size_t index);
+    bool Split_AnimationAtCursor(WORLD_SEQUENCE_TEMPLATE& sequence, size_t index);
+    bool Apply_AnimationEdit(WORLD_SEQUENCE_TEMPLATE& sequence, size_t index,
+        const WORLD_SEQUENCE_ANIMATION_TRACK& edited, uint32_t endMs);
     bool Stage_SelectedModel(CWorldSequenceDocument& candidate);
     bool Assign_SelectedModel();
     void Render_Detail();
@@ -150,6 +156,7 @@ private:
     bool m_ResourcesOpen = true;
     bool m_SequencerOpen = true;
     bool m_DetailOpen = true;
+    bool m_FocusAnimationClips = false;
     bool m_ResetLayoutRequested = false;
     bool m_InteractionRequested = false;
     bool m_CompositionResourceFocused = false;
@@ -164,6 +171,9 @@ private:
     // Read-only context from a Composition box, valid only while this Object is selected.
     std::optional<CWorldSequencePlayer::OBJECT_PLACEMENT> m_CompositionPreviewPlacement;
     std::string m_CompositionPreviewObjectId;
+    std::string m_CompositionPatternId, m_CompositionOccurrenceId;
+    bool m_CompositionSequenceWorkspace = false, m_CompositionPlacementDirty = false, m_CompositionExplicitPlacement = false;
+    std::optional<CWorldSequencePlayer::OBJECT_PLACEMENT> m_CompositionSavedPlacement, m_CompositionEditedPlacement;
     bool m_Ready = false;
     bool m_Dirty = false;
     bool m_PreviewActive = false;

@@ -70,6 +70,14 @@ public:
 	const float3_t& Get_LocalBoundsMax() const { return m_vLocalBoundsMax; }
     // Reference vertex bounds after asset pretransform; independent of animated culling.
     bool_t Try_GetBindGeometryBounds(float3_t& minimum, float3_t& maximum) const;
+    // Conservative current WModel skin bounds in model-root space. The bone
+    // palette already includes pretransform; callers apply only the actor root.
+    // Unsupported/morphed geometry leaves both outputs unchanged.
+    bool_t Try_GetCurrentPoseBounds(float3_t& minimum, float3_t& maximum) const;
+    // WModel triangle query at the current rendered pose. Bounds are broad phase
+    // only; distance is in world units. Unsupported/morphed geometry is not picked.
+    bool_t Try_PickCurrentPose(const float4x4_t& world, const float3_t& rayOrigin,
+        const float3_t& rayDirection, f32_t& distance) const;
 	bool_t Has_SelfConsistentUnauthenticatedGeometryMetadata() const {
 		return m_bHasSelfConsistentUnauthenticatedGeometryMetadata;
 	}

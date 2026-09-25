@@ -29,6 +29,22 @@ Input/UI intent
 
 Client는 입력을 빠르게 제출하지만 위치, damage, cooldown, HP, boss phase를 확정하지 않는다. Server가 확정한 snapshot이 권위 상태다. 일반 클릭 이동의 자기 캐릭터 표시는 입력 직후 예측할 수 있으며 Server snapshot으로 보정한다.
 
+Ctrl+좌클릭 위치 핑은 `CPlayerController -> IPlayerCommandSink::Request_RoomPing ->
+C2S_ROOM_PING -> CGameRoom::Handle_RoomPing -> S2C_ROOM_PING` 경계로 전달한다.
+protocol v113의 Server는 실제 session/player/world, 증가 sequence, 생존 상태와 navigation
+지면을 검증하고 최소8tick 간격으로 해당 room의 sender와 모든 참가자에게 같은 위치를 보낸다.
+같은 world여도 다른 private room에는 보내지 않는다. Client는 typed sink의 Consume_RoomPing으로
+수신한 하늘색 지면 핑만3초 표시하며 로컬 Ctrl pending 상태로 머리 위 과녁을 만들지 않는다.
+조커 찾기의 머리 위 과녁은 별도로 Server boss snapshot의 iPatternTargetNetEntityId를 읽어
+해당 local/remote character를 따라가고 대상 교체·패턴 종료·사망·퇴장 때 해제한다.
+
+Kouku Composition의 `BOSS_RANDOM_TARGET`은 추가 수치와 Outcome/Collider를 갖지 않는
+typed Trigger다. 기존 Server one-shot mechanic ledger가 해당 occurrence 시작에 한 번만
+현재 Pattern owner의 생존 player target을 선택하고 target ID·last position·yaw를 snapshot에
+연결한다. 시작0ms는 전체 생존 후보, 이후 occurrence는 후보가 둘 이상일 때 직전 대상을
+제외한다. 조커 P13은0/6266/12560ms의 세 Trigger를 사용하며34ms는 편집 box 길이이지 반복
+선택 주기가 아니다. stage retargetOnEnter는 꺼서 네 번째 선택과 중복 실행을 막는다.
+
 Lobby는 `Test`, `Character Select`, `Valtan`, `KoukuSaydon`, `Bern` 다섯 명령만 제공한다. Character Select는 Lobby가 `WORLD_ID::CHARACTER_SELECT_ARENA` 승인 payload를 검증한 뒤 기존 socket을 one-shot handoff하여 같은 visual map을 여는 Server 전용 Level이다. offline Preview와 `Preview / Server Play` mode 선택은 없다. Level은 직접 connect/send하지 않고 `CClientReplication`, `CNetworkPlayerCommandSink`, `CPlayerController`로 HUD·우클릭 이동·quick-slot 스킬을 Server snapshot에 연결한다. class thumbnail 선택은 target asset admission 뒤 즉시 typed class-change command를 제출하며, Server 승인 snapshot이 같은 entity presentation과 skill catalog class를 교체한다. 살아 있는 위치와 identity는 유지하고 전투 상태는 새 profile로 초기화하며, 사망 중 변경은 원래 projected spawn에서 부활한다. 연결 실패·거부·5초 timeout은 Lobby에 남고 disconnect는 Lobby로 복귀하며 자동 local gameplay fallback은 없다. Debug ImGui의 일반 몬스터, `MINIBOSS_LUGARU`, Valtan 선택은 `IWorldEntityCommandSink`를 통해 stable SpawnGroup/placement ID만 제출한다. Server는 Character Select Area 문서, navigation, profile을 검증해 실제 entity 생성이 성공한 뒤 활성화 결과를 회신하고 기존 monster brain 또는 Valtan brain으로 broadcast하며 Client local spawn은 없다. 마지막 플레이어가 퇴장하면 동적 audition entity와 SpawnGroup 상태를 초기화해 다음 입장을 새 세대로 시작한다. Bern/Valtan map 진입도 마지막 Server 승인 class로 Lobby Server 승인이 필수다.
 
 Lobby의 `KoukuSaydon` 버튼은 기존 `CLobbyCommandService -> C2S_ENTER_WORLD -> S2C_ENTER_ACCEPTED` 경로로 입장하며, 선택 class와 created/audition nickname을 발탄과 같은 규칙으로 사용한다. Character Select ImGui의 `Enter KoukuSaydon Arena`는 현재 session의 기존 typed world transfer를 사용한다.
@@ -197,10 +213,13 @@ Test-NetConnection 192.168.0.22 -Port 7777
 
 ### 1.2 같은 방 파티와 Bern → Valtan/KoukuSaydon 이동
 
-Bern/Valtan에서 다른 플레이어를 우클릭해 초대하고 상대가 수락하면 최대 4인의
+Bern에서 다른 플레이어를 우클릭해 초대하고 상대가 수락하면 최대 4인의
 Server-owned 파티가 된다. `IPlayerCommandSink`가 typed invite/respond를 제출하고
 `S2C_PARTY_ROSTER`의 배열 첫 member가 leader다. nickname은 표시용이며 초대·roster는
 현재 방의 NetEntityId로 식별한다. 옛 초대 응답은 교체된 새 초대를 소비하지 않는다.
+초대 UI는 Debug/Release 공통으로 Bern의 follow camera에서 사용한다. 레이드 입장 팝업이나
+UI 마우스 입력 점유 중에는 막힌다. Valtan은 전투 중 새 초대 우클릭을 막고 이미 받은 초대만
+표시하며, Kouku에는 초대 UI가 연결되어 있지 않으므로 Bern에서 파티를 만든 뒤 입장한다.
 
 Bern의 군단장 레이드 UI는 선택한 Valtan/KoukuSaydon target으로 입장 투표를 요청한다.
 파티가 있으면 leader가 요청하고 전원의 수락 뒤 이동하며, 솔로도 같은 target을 소비한다.
@@ -381,6 +400,12 @@ source 카메라 기준은 공통50도/16m, 발탄55도/18m다. 쿠크는 option
 Character Select의 `Move Player`는 계속 비활성이다. 새 Server command와 Resources 전달물은 없다.
 
 ### 4.1.1 Debug 웨이브 몬스터 버튼 (Kouku Book1/Book2, Valtan Stage_1/Stage_2)
+
+F1 쿠크 `Bingo Board`의 재생 버튼 아래 `Bomb Size`·`Hammer Size`·`Save`는 기존
+World Object 문서의 해당 resource scale을 편집/저장한다. Save는 같은 문서의 다른 미저장
+Object 편집도 포함하며 기존 freshness 검사와 WorldSequences 게시 뒤 다음 재생에 반영한다.
+크기는 표시 배율이다. 폭탄5칸 판정과 망치 공격 범위는 그대로이며 망치 선행 경고의 월드
+위치·크기도 유지한다. `Reload Saved`는 미저장 Object 편집이 있으면 실행하지 않는다.
 
 Kouku의 `Book1_Monsters`/`Book2_Monsters`와 Valtan의 `Stage_1`/`Stage_2` 트리거 상자는 각각
 `spawn.kouku.book1`/`spawn.kouku.book2`, `spawn.valtan.stage01`/`spawn.valtan.stage03` 그룹을 시작한다.
@@ -1144,6 +1169,11 @@ Sequence 전용 `TRIGGER / ROOM_PLAYER_ARRIVAL`은 Logic occurrence의 optional
 다른 World와 Release Server는 실행하지 않는다. Pause·scrub은 이동 요청을 만들지 않고,
 같은 재생의 occurrence는 한 번만 보낸다. 거절·5초 응답 부재는 전투 진입을 막는다.
 Sequence의 `Complete Play`와 `Complete Play - Sequences + Pattern Flow`는 같은 Server Raid START를 사용한다.
+F1 Complete Play 패널은 전체 Raid phase와 개별 Pattern 상태를 구분한다. 준비 인원은
+START 때 고정한 ParticipantPlayerIds와 Server iReadyMask의 x/N이며 최대4명이 항상
+분모가 되는 것은 아니다. 참가자별 READY 수신 여부, 로컬 리소스 단계·실패 이유·통지
+상태와 실제 접속 주소를 표시한다. 원격 세부 단계는 그 PC의 패널에서 확인한다. 전원
+준비되면 Debug/Release 모두 자동 재생하며 ABORTED는 기다려도 재시작되지 않는다.
 Sequence의 combat handoff는 BINGO 앵콜까지 허용하며, 관문 intro 선택은 게시된 Server raid plan이 소유한다. 직접 BINGO Complete Play는 전투 Loop이고 컷씬 단독은 앵콜/최종엔딩 행의 일반 Play다. SOUND의 MAP anchor는 비위치 음향이며 followBoss·bone·World occurrence·emission index를 사용하지 않는다.
 ROOM_PLAYER_ARRIVAL은 게시된 Sequence의 슬롯·위치·시각을 Server가 실행하며 Client가 목적지를 다시 제출하지 않는다.
 Client는 `S2C_KOUKUSAYDON_RAID_STATE`의 공통 tick으로 기존 presentation player를 샘플링하고,
@@ -1265,14 +1295,26 @@ CENTER만 절대 목적지 XYZ를 가진다. 기존25열 mechanic 부모 뒤에 
 SELECT_PLAYER의 optional `airborneTargetPositionPolicy`는 기본 `APPEAR`이며 위 기존 동작을 유지한다.
 `SELECT`이면 선택 시점 플레이어의 navigation ground XYZ를 한 번 저장하고 이후 이동·사망·퇴장에도
 APPEAR_PLAYER가 같은 좌표를 사용한다. 목적지 navigation·body 검증은 유지하며 실패 시 기존 pose를 보존한다.
-optional `selectedEffectGroupId`는 이 SELECT 정책에만 허용하며 같은 Pattern의 두 개 이상 MAP/nonfollow
+optional `selectedEffectGroupId`는 이 SELECT 정책에만 허용하며 같은 Pattern의 한 개 이상 MAP/nonfollow
 Effect occurrence를 참조한다. 첫 멤버의 MAP XYZ를 공통 원점으로 빼고 각 시작 시각에서 SELECT 시각을 빼서
 기존 `combatobject.kouku.showtime.fixed` visual 하나에 투영한다. 원래 일반 Effect lane에서는 해당 멤버를 제외한다.
-Server는 ground capture와 presentation-only combat object를 한 transaction으로 확정한다. 새 Shared packet은 없다.
+Server는 ground capture와 combat object를 한 transaction으로 확정한다. optional `fixedHits`가 있으면
+같은 object의 고정 target에서 피해를 처리해 Effect와 Collider의 위치·시계를 일치시킨다. 비어 있으면
+기존 presentation-only 동작을 유지한다. 새 Shared packet은 없다.
 선택 정책이 있는 supplement만 기존7열 뒤에 `SELECT`, visual ID, lifetime ms를 붙인10열을 사용한다.
 visual/lifetime 쌍은 optional이며 capture만 있으면 빈 ID/0이다. visual이 있으면 lifetime1~600000ms이고
 SELECT 시작 시각+수명이 Pattern 끝을 넘을 수 없다. Client 일반 Play의0ms SELECT는 비동기 Effect 준비보다 먼저
 실제 player ground를 고정하며 동일 rewind에서는 같은 점을 재사용한다. 기존 APPEAR 정책은 변경하지 않는다.
+선택 그룹의 optional `selectedFlightMs`, `selectedFlightArcHeightM`, `selectedFlightSourceOffset`은
+캡처한 보스의 복제 pose에서 Server가 고정한 target까지의 시각 비행을 지정한다. 세 필드는 함께 저장하며
+비행 시간 뒤에도 입자 수명이 끝날 때까지 target을 유지한다. Preview와 제품은 같은 원본 시각 sampler를
+사용한다. 이 시각 보간은 Server 피해 좌표나 새 이동 packet을 만들지 않는다.
+선택 target의 fixedHits는 `PATTERNATTACKHIT`의 `SELECTED` 소유자로 게시한다. 기존25/27/28열을
+수용하며, optional `forcePush`와 `pushDirection`을 명시하면30열을 사용한다. suffix는
+`riseHeightM, pushMs, pushRangeM, forcePush(0/1), pushDirection`이다. forcePush 생략은 기존
+상승 시 강제 밀림 정책을 유지하고 direction 생략은 AWAY_FROM_CONTACT다. AWAY_FROM_BOSS는
+피해 tick의 실제 sourceEntity XZ를 사용한다. 수평 밀림만 있으면 상승0과 양수 range/time을
+허용한다. 이 필드들은 catalog-only이며 network packet을 변경하지 않는다.
 
 DURATION `BOSS_TRACK_TARGET`은 추가 field 없이 지정된 Server pattern target을 향해 몸만
 회전한다. occurrence의 start/duration이 회전 구간이며, 현재 yaw에서 목표 yaw까지 최단 각도를
@@ -1284,6 +1326,10 @@ optional `followSpeedScale > 0`이면 대상의 실효 이동속도에 배율을
 이 추적 이동의 회전은 수명과 독립적인 최단각 최대180도/초이며, 기존 이동 없는 회전 창은
 남은 시간 보간을 유지한다. Saydon의 설치 BODY 모델 정면은 +X이므로 목표 body yaw는 방향각-90도,
 전진 방향은 body yaw+90도다. Preview와 Server가 같은 tick 순서로 회전 후 이동한다.
+플레이어 접촉으로 패턴을 조기 완료하는 대상은 사용자 지정 `플레이어 1초 추적`의 stable ID
+`KAKULSAYDON_G1_PATTERN_104` 하나다. `BOSS_TRACK_TARGET` 사용이나 패턴 구조로 대상을
+추측하지 않는다. P101을 포함한 다른 패턴은 접촉 중 이동만 멈추며 나머지 카운터·피해·착지 시계를
+유지하고, 플레이어가 떨어지면 창이 끝나기 전까지 다시 추적한다.
 
 
 단순 피해 영역은 Collider의 Box Detail에서 데미지 모드를 선택하고 최대 HP 대비 피해율,
@@ -1897,7 +1943,7 @@ BINGO 직접 시작 Flow는 Action/Sequence revision을 pin하고 준비와 목�
 
 Mario Parent의 선택적 `playChildrenSequentially: true`는 원래 입장 애니메이션 뒤 자식을 순서대로 실행한다. 자식의 카운터 후속 그로기와 완료, 플레이어의 Mario 복귀가 끝나야 기존 2페이즈 후속 Pattern을 시작한다. 두 옵션은 Client 문서 codec, projector, `PATTERNPARENTCHILD` 게시 행과 Server catalog/scheduler가 함께 소비한다. 옵션 없는 기존 Parent는 기존 유한 펼치기를 유지하며, 새 옵션의 중첩 자식 Parent와 잘못된 반복 ID는 거부한다.
 
-보드는 처음 일반 해골2칸,5초마다 살아 있는 보드 위 플레이어1명 표식,5초 후 현재 칸 중심에 폭탄 설치,3초 후 중심+상하좌우를 일반해골로 만든다. 기존 일반해골은 빨간해골로 승격하며 빨간해골은 유지한다. 기존 완성 line 승격도 보존한다. 두 해골 모두 초당 광기3이며 최대 도달 시 기존 광대 변신 policy를 소비한다. 10초마다 같은 축의 서로 최소2칸 떨어진 두 무작위 경로를 선택한다. 원본4.69m 망치 머리 폭보다 넓은6.08m 이상 간격으로 실제 머리도 겹치지 않는다. UV 화살표3초 뒤 원본 하강1.4초+이동1.6초를 소비하고 머리의 swept XZ만 서버 즉사 판정한다. 높은 사슬은 판정하지 않는다.
+보드는 처음 검은 일반 해골2칸이다. 전투 시작30초 뒤 살아 있는 보드 위 무작위 플레이어1명에게 첫 폭탄 표식을 주고 이후20초마다 반복한다. 표식6초+숨김 대기2초 뒤 폭탄을 설치하고4초 후 폭발한다. 폭탄 범위는 중심+상하좌우 최대5칸이며 판 밖은 제외한다. 모든 영향 칸의 검정↔빈 바닥 반전을 먼저 완료하고 가로·세로5칸이 완성된 줄만 빨강으로 승격한다. 대각선은 제외하며 빨간 칸은 이후 폭탄에도 유지한다. wire의 whiteMask는 이 일반 해골 존재를 뜻하는 기존 이름이다. 두 해골 모두 1초마다 최대 광기의5%를 증가시키며 최대 도달 시 기존 광대 변신 policy를 소비한다. 10초마다 같은 축의 서로 최소2칸 떨어진 두 무작위 경로를 선택한다. 원본4.69m 망치 머리 폭보다 넓은6.08m 이상 간격으로 실제 머리도 겹치지 않는다. UV 화살표3초 뒤 원본 하강1.4초+이동1.6초를 소비하고 머리의 swept XZ만 서버 즉사 판정한다. 높은 사슬은 판정하지 않는다.
 
 갈고리 attachment는 마지막 authored grip에 도달하면 끝쪽 정지/tail을 기다리지 않고 이동 잠금을 해제한다. 마지막 숨김 key 좌표도 적용한 뒤 해제하며 강제1.5초 knockdown을 추가하지 않는다. 정지 갈고리는 기존 명시 deadline을 유지한다.
 
@@ -2027,7 +2073,7 @@ BOSS_TRACK_TARGET/회전 Logic으로 먼저 설정하고, Collider는 그 순간
 
 Logic Box Detail은 연결된 Success/Fail/Timeout Result의 typed 수치를 편집한다. 같은 stable Logic ID를 공유하는 창은 같은 값을 소비하며 표시 이름에 피해·넉백 수치를 고정하지 않는다. BOSS/WORLD 본 Collider는 실제 모델의 전체 bone basis에 local XYZ TRS를 먼저 합성한 뒤 최종 XZ 중심·yaw를 얻는다. damageable WORLD의 `ownerWorldOccurrenceId`는 body 사망·취소·만료와 contact ledger의 수명을 묶고, 명시적 전체 수명 광기의 `authoredMadness`만 기존 aura를 대체한다.
 
-빙고의 `BINGO_COMPLETED_LINES` Duration은 매 세 번째 폭탄의 실제 폭발·tile 갱신 사건에서 빨간 가로·세로 완성 줄을 한 번 판정한다. `threshold`는1..10(기본3)이며 대각선은 제외한다. Success의 `PLAYER_INVULNERABILITY` Result는 양수 `durationMs`(1..600000) 동안 생존자를 보호한다. 현재 저작값은30000ms다. 후속 `BINGO_DETONATION`은 성공이면 보스13줄 피해, 실패이면 보호막·개인 무적을 우회하는 encounter wipe다. 보드·폭탄은 encounter가 유지하고, 이동→첫 클립→메두사→블랙홀13초의 작은 Parent는 일반 반복 Flow에 삽입한다. 폭탄의 표식6초+대기2초+fuse4초는 Parent 애니메이션 길이와 독립이다.
+빙고는 각 실제 폭탄 폭발의 바닥 반전·줄 승격 뒤 아직 보상에 쓰지 않은 빨간 가로·세로 줄을 집계한다. pinned `bingoSpecialPatternId`의 `BINGO_COMPLETED_LINES` threshold(1..10, 현재1) 단위로 새 줄을 사용 처리하고 기존 Success의 `PLAYER_INVULNERABILITY` Result(현재30000ms)를 같은 레이드 생존 참가자에게 즉시 적용한다. 현재 규칙은 새1줄마다30초이며 같은 폭발에서 완성된 여러 새 줄도 모두 사용 처리한다. 사용한 줄은 다음 집계에서 제외하고 빨간 바닥 자체는 유지한다. 다른 새 줄이 완성되면 그 시점부터30초로 갱신한다. 세 번째 폭탄의 Parent 판정은 해당 주기의 보상 성공을 소비하며 이미 지급한 무적 시간을 다시 연장하지 않는다. 후속 `BINGO_DETONATION`은 해당 주기 성공이면 보스13줄 피해를 주고, 플레이어는 성공·실패와 관계없이 폭발 시점의 유효 무적으로만 생존한다. 쿠크 이난나 소환 승인은 같은 레이드 생존 참가자에게30초 무적을 부여하여 새 빨간 줄 없이도 블랙홀을 피하게 한다. Bingo 폭발만 이 무적을 존중하며 다른 encounter wipe의 기존 무적 우회 계약은 유지한다. 보드·폭탄은 encounter가 유지하고, 이동→첫 클립→메두사→블랙홀13초의 작은 Parent는 일반 반복 Flow에 삽입한다. 폭탄의 표식6초+대기2초+fuse4초는 Parent 애니메이션 길이와 독립이다.
 
 빙고 전투 묶음은 `patternFlows`의 일반 entry/loop와 `bingoSpecialPatternId`의 특수 Parent를 함께 저장한다. 이 참조는 제품 BINGO에 필수이며 같은 gate·encounter·boss와 유일한 폭발을 가진 유효 Parent만 게시한다. `RAIDBINGOSPECIAL` supplemental 행을 Server gate definition에 고정하고 이름 검색이나 전체 패턴 추론으로 선택하지 않는다. 빙고 페이즈 진입 때 encounter 시계를 시작하며 매 세 번째 머리 표식에 현재 일반 occurrence를 정리하고 특수 Parent를 실행한다. 완료 뒤 중단했던 일반 entry를 처음부터 재생한다. 보드·폭탄 시계와 raid owner는 유지하며 동시에 두 패턴이 보스를 제어하지 않는다. 기존 다중 actor 동시 재생 Bundle 계약은 유지한다.
 
@@ -2089,3 +2135,68 @@ Engine·SDK·Client를 같은 변경으로 빌드한다.
 일반 우클릭 목적지가 현재 접촉한 동적 몸통 안이면 Server는 그 몸통 경계에서 이동을
 완료한다. 목적지가 몸통 너머에 있거나 아직 접촉하지 않았거나 다른 층이면 기존 경로·접선
 이동을 유지한다. editor picking, G 이동과 teleport는 이 도착 처리의 대상이 아니다.
+
+### 전투 대상의 피격·호버 presentation
+
+일반 WorldEntity는 Server DAMAGE_EVENT를 CClientReplication이 실제 CNpc/CValtan에
+전달한다. 노란 피격은 양수 outgoing NORMAL/CRITICAL/ABSORB만 사용하고, heal·miss·
+invincible·카드 문양 획득은 제외한다. 호버는 최신 HP/action과 Server archetype admission을
+읽는 표시 전용 상태이며 gameplay command나 Client 피해 판정을 만들지 않는다.
+`BOSS_KAKULSAYDON_G2_BIG_SAYDON`은 Server의 player-hit 최종 처리와 스킬·투사체 후보에서
+제외하며 Client의 공격 가능 호버도 동일한 Shared predicate를 사용한다.
+
+공·괴기스러운 인형처럼 owned WORLD cue로 표시하는 Server WORLD_OBJECT는 기존
+S2C_WORLD_SEQUENCE_PLAY의 combat body NetEntityId로 실제 피해 이벤트와 cue 모델을
+연결한다. 일반 WorldEntity spawn을 추가해 표시 모델을 중복 생성하지 않는다. 공격할 수
+없는 소품은 invalid body ID이며 PLAY/STOP_CUE/STOP_OWNER와 late join의 기존 수명을
+보존한다. wire 변경은 같은 protocol의 Server/Client를 함께 빌드·배포해야 한다.
+세부 API·검증과 사용자 화면 확인 상태는09-25 COMBAT_HIT_HOVER RESULT를 따른다.
+
+### 쿠크 전멸 지속 재생·MVP 수신과 Mario 접촉
+
+1~3관문과 BINGO는 전투 진입 후 Server fixed tick 기준3초 IDLE 뒤 첫 Pattern을 실행한다.
+Mario1페이즈 입장자 부재는 저작된 전멸 결과를 적용하고 다음 Flow를 계속한다. 플레이어를
+자동 부활시키거나 보스를 제거하지 않으며 전원 사망을 이유로 반복 Flow를 멈추지 않는다.
+
+G1/G2 MVP는 고정 raid roster의0기여 참가자도 포함한다. Client clear UI는 같은 world/gate의
+실제 결과를 기다리며 늦은 결과를 재시도한다. G2 MVP를 닫으면 leader의 기존 typed ADVANCE
+투표를 시작하고 고정 roster 전원의 승인 정책은 유지한다. G3 false-clear는 MVP를 생략하고
+기존 Encore Sequence→BINGO 경로를 사용한다.
+
+Mario 비행 폭탄의7개 stable marker와4초 주기·궤적은 `KoukuMarioBombContract.h`를 공유한다.
+Server는 세대별 swept 접촉을 한 번만 적용하며 최대 HP10% 피해와4m/1초·높이2m 날아감을
+기존 combat hit 경로로 확정한다. Client는 같은 시계의 폭탄과 snapshot 반응만 표시한다.
+갈고리는 광대 변신 참가자를 잡지 않으며 잡힌 일반 참가자의 표시 animation은 IDLE이다.
+Object Tool의 Action 유래 배치는 pattern/occurrence stable ID의 placement를 저장한다.
+Rendering Workbench의 두 FXAA checkbox는 같은 선택 Mario scene/region의 영구 draft를 사용한다.
+
+명시 `MADNESS_GAUGE_ADD_PERCENT`는0..100을 허용한다.0은 해당 damage verdict의 추가 광기를
+없애며 HP비례 자동 광기도 중복 적용하지 않는다. 최대HP피해 Result는 계속1..100이다.
+실제 HP피해가 방어나 무적으로 차단되면 같은 verdict의 명시 광기도 적용하지 않는다.
+Retail의 `madnessGaugeAddPercent=-1`은 Pattern별 저작값 보존이며0..100은 명시 전역 override다.
+명시0 결과는 양수 전역 override에서도0을 보존한다. 이 정책은 불뿜기1%×3, 잔류장판0,
+공·인형5%와 기존 실패 penalty의 서로 다른 값을 유지하기 위한 게시 계약이다.
+
+Complete Play의 canonical/draft animation bindings는 PREPARING에서 한 archetype/frame으로
+별도 검증 maps를 준비한다. Server 승인 전에는 active cache를 변경하지 않는다. 첫 bundle은
+canonical의 exact bytes/revision 또는 draft의 immutable Product/hash/epoch를 확인해 준비된
+maps만 인계한다. READY 이후 입력 변경은 기존 cache를 보존하며 이유를 표시하고 새 준비를
+요구한다. 단독/late-observer의 기존 admission fallback은 유지한다.
+
+### Kouku 앵콜의 각 Client 플레이어 시점
+
+Server CINEMATIC의 Sequence `boss.composition.kakulsaydon.sequencer`/P10 앵콜은 각 Client의
+진입 eye/look/up/FOV를 고정하고 WORLD encore.saydon의 연출만 그 view로 재배치한다.
+원본 CameraTrack은 화면상 동작·크기 보존의 읽기 전용 기준이며 Server actor 위치를 바꾸지 않는다.
+카메라 행 종료가 전체 컷씬 종료보다 빨라도 Server gate commit까지 hold를 유지하고 정상 종료에
+빙고 플레이어 follow로 돌아온다. 일반 Sequence preview와 최종 엔딩은 해당 정책의 대상이 아니다.
+WorldSequence TARGET_SET의 optional objectWorldPostTransform은 source elapsed ms를 받아
+순수 presentation 후합성을 반환한다. V1의 fixed-step birth/history는 원본 공간을 유지하고
+Effect_PresentationService의 optional post-transform이 현재 렌더 프레임에만 이를 적용한다.
+
+### Kouku 인원 조건 안전 영역
+
+INVULNERABILITY_ZONE의 기존 threshold필드는0이면인원제한없음,1~4면각연결Collider안의
+정확한판정가능생존플레이어수다. Server가매tick각영역을독립집계하고조건이맞는영역의
+보호대상만합집합으로적용한다. 부족·초과·퇴장시지속buff를남기지않으며별도이난나/빙고
+무적은보존한다. 파1빨2는파랑1명·빨강2명으로저장하며Client는Server pulse만표현한다.

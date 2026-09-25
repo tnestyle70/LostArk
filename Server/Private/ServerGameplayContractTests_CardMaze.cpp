@@ -121,12 +121,25 @@ int LostArk::Server::Run_ServerCardMazeContractTests()
 		tests.Require(entrant.ModeSkillIndexBySlot[0] == 0 && entrant.ModeSkillIndexBySlot[1] == 1,
 			"MAZE exposes Q and LMB on existing Q/W wire slots");
 		const auto hpBeforeLmb = findBox()->iCurrentHp;
+        const auto qCooldownId = Kouku_InteractionCooldownSkillId(KOUKU_HUD_MODE::MAZE, 0u);
+        const auto lmbCooldownId = Kouku_InteractionCooldownSkillId(KOUKU_HUD_MODE::MAZE, 1u);
+        const auto qDeadlineBeforeLmb = entrant.CooldownEndTickBySkillId.at(qCooldownId);
+        constexpr SKILL_ID classWSkillId = 34090u;
+        const auto* classW = room->m_GameplayCatalog.Active().Find_Skill(classWSkillId);
+        tests.Require(classW && classW->strInputSlot == "W", "Cooldown isolation fixture resolves a real published class W skill");
+        const auto classWDeadline = tick + 900u;
+        entrant.CooldownEndTickBySkillId[classWSkillId] = classWDeadline;
+        entrant.CooldownDurationTicksBySkillId[classWSkillId] = 900u;
 		room->m_iServerTick = tick;
 		press.iRequestSequence = 2u; press.eSlot = INTERACTION_SLOT::W;
 		room->Handle_InteractionSlot(11u, press);
 		tests.Require(entrant.eAction == PLAYER_ACTION_STATE::INTERACTION && entrant.iCurrentSkillId == 1u,
 			"LMB W-wire press reaches actual handler after Q recovery cancel");
 		const auto lmbStart = entrant.iActionStartTick;
+        tests.Require(entrant.CooldownEndTickBySkillId.at(qCooldownId) == qDeadlineBeforeLmb &&
+            entrant.CooldownEndTickBySkillId.at(classWSkillId) == classWDeadline &&
+            entrant.CooldownEndTickBySkillId.at(lmbCooldownId) == lmbStart + 12u,
+            "Actual maze LMB records only its own 400ms deadline and never reduces Q or class W cooldown");
 		const auto lmbHit = lmbStart + Maze::Hammer_HitTickOffset(1u);
 		room->m_iServerTick = lmbHit - 2u; room->Update_Players(1.f / 30.f);
 		tests.Require(findBox()->iCurrentHp == hpBeforeLmb, "LMB does not hit before native swing contact");
@@ -137,10 +150,22 @@ int LostArk::Server::Run_ServerCardMazeContractTests()
 		tests.Require(findBox()->iCurrentHp == hpAfterLmb, "LMB contact is applied exactly once");
 		tests.Require(Kouku_InteractionActionMs(KOUKU_HUD_MODE::MAZE, 0u) == 2500u &&
 			Kouku_InteractionActionMs(KOUKU_HUD_MODE::MAZE, 1u) == 1000u, "Both locks match native clip lengths");
-		// Reset this real 500-HP box to measure a full-health Q after the LMB check.
+        room->m_iServerTick = (std::max)(lmbHit,
+            entrant.CooldownEndTickBySkillId.at(lmbCooldownId));
+        press.iRequestSequence = 3u;
+        room->Handle_InteractionSlot(11u, press);
+        const auto repeatedLmbStart = entrant.iActionStartTick;
+        tests.Require(entrant.eAction == PLAYER_ACTION_STATE::INTERACTION && entrant.iCurrentSkillId == 1u &&
+            repeatedLmbStart > lmbStart && entrant.CooldownEndTickBySkillId.at(qCooldownId) == qDeadlineBeforeLmb &&
+            entrant.CooldownEndTickBySkillId.at(classWSkillId) == classWDeadline &&
+            entrant.CooldownDurationTicksBySkillId.at(classWSkillId) == 900u &&
+            entrant.CooldownEndTickBySkillId.at(lmbCooldownId) == repeatedLmbStart + 12u,
+            "A second real LMB advances only its own absolute deadline while Q and class W remain unchanged");
+        room->m_iServerTick = repeatedLmbStart + Maze::Hammer_HitTickOffset(1u);
+		// Reset the published box to measure two full Q hits after the LMB check.
 		findBox()->iCurrentHp = findBox()->iMaximumHp;
 		const auto hpBeforeQ = findBox()->iCurrentHp;
-		press.iRequestSequence = 3u; press.eSlot = INTERACTION_SLOT::Q;
+		press.iRequestSequence = 4u; press.eSlot = INTERACTION_SLOT::Q;
 		room->Handle_InteractionSlot(11u, press);
 		tests.Require(entrant.eAction == PLAYER_ACTION_STATE::INTERACTION && entrant.iCurrentSkillId == 0u,
 			"Maze Q reaches the actual interaction handler");
@@ -151,14 +176,28 @@ int LostArk::Server::Run_ServerCardMazeContractTests()
 		room->m_iServerTick = qHit - 1u; room->Update_Players(1.f / 30.f);
 		const bool qReported = std::any_of(room->m_TickDamageEvents.begin(), room->m_TickDamageEvents.end(),
 			[boxId](const DAMAGE_EVENT& event) { return event.iTargetNetEntityId == boxId && event.iAmount == 500u; });
-		tests.Require(hpBeforeQ == 500u && qReported && room->m_bCardMazeClownBoxDestroyed &&
-			findBox()->iCurrentHp == 0u && findBox()->eAction == SERVER_ENTITY_ACTION::DEAD &&
+		tests.Require(hpBeforeQ == 1000u && qReported && !room->m_bCardMazeClownBoxDestroyed &&
+			findBox()->iCurrentHp == 500u && findBox()->eAction != SERVER_ENTITY_ACTION::DEAD &&
 			room->m_KoukuCardMaze.Get_Phase() == Maze::PHASE::INACTIVE,
-			"Q deals 500 and destroys the full-health clown box without claiming the telescope");
+			"First Q deals 500 to the published 1000-HP box without opening the telescope");
 		const auto eventCountAfterQ = room->m_TickDamageEvents.size();
 		room->m_iServerTick = qHit; room->Update_Players(1.f / 30.f);
 		tests.Require(room->m_TickDamageEvents.size() == eventCountAfterQ &&
 			room->m_KoukuCardMaze.Get_Phase() == Maze::PHASE::INACTIVE, "Q contact is applied exactly once");
+		room->m_iServerTick = (std::max)(room->m_iServerTick,
+			entrant.CooldownEndTickBySkillId.at(Kouku_InteractionCooldownSkillId(KOUKU_HUD_MODE::MAZE, 0u)));
+		press.iRequestSequence = 5u;
+		room->Handle_InteractionSlot(11u, press);
+		tests.Require(entrant.eAction == PLAYER_ACTION_STATE::INTERACTION && entrant.iCurrentSkillId == 0u &&
+			entrant.iActionStartTick > qHit, "Second Q starts through the actual handler after cooldown");
+		const auto secondQHit = entrant.iActionStartTick + Maze::Hammer_HitTickOffset(0u);
+		room->m_TickDamageEvents.clear();
+		room->m_iServerTick = secondQHit - 1u; room->Update_Players(1.f / 30.f);
+		tests.Require(room->m_bCardMazeClownBoxDestroyed && findBox()->iCurrentHp == 0u &&
+			findBox()->eAction == SERVER_ENTITY_ACTION::DEAD && room->m_KoukuCardMaze.Get_Phase() == Maze::PHASE::INACTIVE &&
+			std::any_of(room->m_TickDamageEvents.begin(), room->m_TickDamageEvents.end(),
+				[boxId](const DAMAGE_EVENT& event) { return event.iTargetNetEntityId == boxId && event.iAmount == 500u; }),
+			"Second Q destroys the 1000-HP box while the telescope waits for the next interaction");
 		tick = room->m_iServerTick + 1u;
 		room->Resolve_CardMazeHammerHit(entrant, tick++);
 		tests.Require(room->m_KoukuCardMaze.Get_Phase() == Maze::PHASE::HUNTING &&

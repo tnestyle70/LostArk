@@ -6,6 +6,8 @@
 #include "Network/PacketMessages.h"
 #include "Network/PacketWriter.h"
 #include "Gameplay/WorldCollisionContract.h"
+#include "Gameplay/CombatCollisionContract.h"
+#include "Gameplay/KoukuMarioBombContract.h"
 
 #include <algorithm>
 #include <array>
@@ -118,6 +120,75 @@ void LostArk::Server::CGameRoom::Despawn_CardMazeTargets()
 		Broadcast_WorldEntityDespawned(entity->iNetEntityId);
 		m_WorldEntities.erase(entity);
 	}
+}
+
+void LostArk::Server::CGameRoom::Update_MarioBombContacts(
+    SERVER_PLAYER& player, const std::uint32_t updateTick)
+{
+    using namespace LostArk::Shared;
+    namespace Bomb = KoukuMarioBomb;
+    const auto stage = player.iCurrentHp && player.iMarioStage >= 2u && player.iMarioStage <= 4u ? player.iMarioStage : 0u;
+    if (stage != player.iMarioBombContactStage)
+    {
+        player.MarioBombHitBirths.clear();
+        player.iMarioBombContactStage = static_cast<std::uint8_t>(stage);
+    }
+    if (m_eWorldId != WORLD_ID::KAKULSAYDON_ARENA || !stage || !updateTick || !player.isCombatReady ||
+        player.TriggerMove.isActive || player.eAction == PLAYER_ACTION_STATE::DEAD ||
+        player.eAction == PLAYER_ACTION_STATE::FALLING || player.eAction == PLAYER_ACTION_STATE::GRABBED) return;
+    const double clockMs = double(updateTick) * (1000. / SERVER_TICK_HZ);
+    for (std::uint32_t index = 0u; index < Bomb::BINDINGS.size(); ++index)
+    {
+        const auto& binding = Bomb::BINDINGS[index];
+        if (binding.stage != stage) continue;
+        const auto* marker = Find_Placement(binding.marker);
+        const auto* arrival = Find_Placement(binding.arrival);
+        const auto* exit = Find_Placement(binding.exit);
+        if (!marker || !arrival || !exit || arrival->TriggerActions.size() != 1u ||
+            arrival->TriggerActions.front().eKind != WORLD_TRIGGER_ACTION_KIND::MOVE_PLAYER) continue;
+        const auto& lane = arrival->TriggerActions.front();
+        const auto distance = [&](float x, float z) { return std::hypot(double(x) - marker->fPositionX, double(z) - marker->fPositionZ); };
+        const bool towardArrival = distance(lane.fTargetX, lane.fTargetZ) > distance(exit->fPositionX, exit->fPositionZ);
+        const float endX = towardArrival ? lane.fTargetX : exit->fPositionX;
+        const float endZ = towardArrival ? lane.fTargetZ : exit->fPositionZ;
+        const double length = distance(endX, endZ);
+        if (!std::isfinite(length) || length < .1 || length > 200.) continue;
+        const auto duration = static_cast<std::uint32_t>(std::ceil(length / Bomb::SPEED_MPS * 1000.));
+        const auto count = (duration + Bomb::INTERVAL_MS - 1u) / Bomb::INTERVAL_MS;
+        if (!count || count > 32u) continue;
+        const auto seed = Bomb::Seed(binding.marker), phase = seed % Bomb::INTERVAL_MS;
+        for (std::uint32_t slot = 0u; slot < count; ++slot)
+        {
+            const auto birth = Bomb::Birth(clockMs, phase, slot, count);
+            const double age = clockMs - (double(birth) * Bomb::INTERVAL_MS + phase);
+            if (birth < 0 || age < 0. || age >= duration) continue;
+            const auto identity = std::make_pair(index, slot);
+            const auto previous = player.MarioBombHitBirths.find(identity);
+            if (previous != player.MarioBombHitBirths.end() && previous->second == birth) continue;
+            const float height = marker->fPositionY + Bomb::Bottom(seed, birth) + Bomb::RADIUS_M;
+            const float bodyY = player.fPositionY + WorldCollision::PLAYER_CENTER_OFFSET_Y;
+            if (std::abs(bodyY - height) > WorldCollision::PLAYER_HALF_EXTENT_Y + Bomb::RADIUS_M) continue;
+            const float fraction = static_cast<float>(age / duration);
+            const float before = static_cast<float>((std::max)(0., age - 1000. / SERVER_TICK_HZ) / duration);
+            const float dx = endX - marker->fPositionX, dz = endZ - marker->fPositionZ;
+            const float x = marker->fPositionX + dx * fraction, z = marker->fPositionZ + dz * fraction;
+            if (!CombatCollision::Segment_IntersectsCircle(marker->fPositionX + dx * before,
+                marker->fPositionZ + dz * before, x, z,
+                {player.fPositionX, player.fPositionZ, WorldCollision::PLAYER_HALF_EXTENT_X + Bomb::RADIUS_M})) continue;
+            SERVER_WORLD_TO_PLAYER_HIT hit{};
+            hit.iRawDamage = (std::max)(1u, player.iMaximumHp / 10u);
+            hit.bIgnoreDefense = hit.bIgnoreCounter = true;
+            hit.fSourceX = x; hit.fSourceZ = z;
+            hit.bUsePushDirection = true;
+            hit.fPushDirectionX = dx / static_cast<float>(length);
+            hit.fPushDirectionZ = dz / static_cast<float>(length);
+            hit.fPushRangeM = 4.f; hit.iPushMs = 1000u; hit.iServerTick = updateTick;
+            Configure_MarioHazardLaunch(hit);
+            (void)CServerCombatHitRuntime::Apply_WorldToPlayer(player, hit, m_GameplayCatalog, m_TickDamageEvents);
+            player.MarioBombHitBirths[identity] = birth;
+            if (!player.iCurrentHp) return;
+        }
+    }
 }
 
 void LostArk::Server::CGameRoom::Resolve_MarioHammerHit(

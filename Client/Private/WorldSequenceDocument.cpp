@@ -376,6 +376,15 @@ bool_t Client::CWorldSequenceDocument::Load(
 		outStatus = "World sequence document changed or failed while reading";
 		return false;
 	}
+	return Load_Text(text, expectedAreaId, availablePlacements, availableDeployPlacements, outStatus);
+}
+
+bool_t Client::CWorldSequenceDocument::Load_Text(const std::string_view text,
+	const std::string& expectedAreaId, const WORLD_SEQUENCE_PLACEMENT_MAP& availablePlacements,
+	const WORLD_SEQUENCE_DEPLOY_MAP& availableDeployPlacements, std::string& outStatus)
+{
+	if (text.size() > MAX_DOCUMENT_BYTES)
+	{ outStatus = "World sequence document exceeds the 16 MiB parse limit"; return false; }
 	DATA_JSON_VALUE root;
 	std::string parseError;
 	bool_t parsed = false;
@@ -743,7 +752,7 @@ bool_t Client::CWorldSequenceDocument::Load(
 			{
 				if (!Is_ObjectShape(trackValue,
 						{ "slotId", "clipName", "playbackRate", "loop",
-						  "holdLastFrame" }, { "startMs", "displayName", "sourceStartMs" }))
+						  "holdLastFrame" }, { "startMs", "displayName", "sourceStartMs", "sourceEndMs" }))
 				{
 					outStatus = "World sequence animation track shape is invalid";
 					return false;
@@ -777,6 +786,11 @@ bool_t Client::CWorldSequenceDocument::Load(
 				{
 					if (!Read_Uint32(sourceStart, parsedTrack.sourceStartMs, MAX_DURATION_MS))
 					{ outStatus = "World sequence animation source start is invalid"; return false; }
+				}
+				if (const auto* sourceEnd = trackValue.Find("sourceEndMs"))
+				{
+					if (!Read_Uint32(sourceEnd, parsedTrack.sourceEndMs, MAX_DURATION_MS))
+					{ outStatus = "World sequence animation source end is invalid"; return false; }
 				}
 				parsedTrack.slotId = slotId->Get_String();
 				parsedTrack.clipName = clipName->Get_String();
@@ -1264,6 +1278,8 @@ bool_t Client::CWorldSequenceDocument::Save(
 				output << ", \"displayName\": \"" << CDataJson::Escape(track.displayName) << "\"";
 			if (track.sourceStartMs != 0u)
 				output << ", \"sourceStartMs\": " << track.sourceStartMs;
+			if (track.sourceEndMs != 0u)
+				output << ", \"sourceEndMs\": " << track.sourceEndMs;
 			output << ", \"startMs\": " << track.startMs
 					<< ", \"playbackRate\": " << track.playbackRate
 				<< ", \"loop\": " << (track.loop ? "true" : "false")
@@ -1433,6 +1449,52 @@ bool_t Client::CWorldSequenceDocument::Validate_ObjectHierarchy(std::string& out
             current = &found->second;
         }
     }
+    return true;
+}
+
+bool_t Client::CWorldSequenceDocument::Build_PlaybackSubset(
+    const std::vector<std::string>& roots, CWorldSequenceDocument& out, std::string& status) const
+{
+    CWorldSequenceDocument staged;
+    staged.m_AreaId = m_AreaId;
+    staged.m_iRevision = m_iRevision;
+    std::unordered_set<std::string> instances, objects, templates;
+    std::vector<std::string> pending = roots;
+    if (pending.empty()) { status = "World playback selection is empty."; return false; }
+    for (size_t index = 0u; index < pending.size(); ++index)
+    {
+        const std::string id = pending[index];
+        if (const auto* object = Find_ObjectResource(id))
+        {
+            if (!objects.insert(id).second) continue;
+            staged.m_ObjectResources.push_back(*object);
+            // Folder ancestry is authoring organization, not a playback dependency.
+            staged.m_ObjectResources.back().parentId.clear();
+            if (!object->sequenceInstanceId.empty()) pending.push_back(object->sequenceInstanceId);
+            if (!object->defaultMotionInstanceId.empty()) pending.push_back(object->defaultMotionInstanceId);
+            pending.insert(pending.end(), object->motionInstanceIds.begin(), object->motionInstanceIds.end());
+            if (!object->modelAssetId.empty())
+                for (const auto& motion : m_Instances)
+                    if (std::any_of(motion.bindings.begin(), motion.bindings.end(), [&](const auto& binding) {
+                        return binding.targetKind == WORLD_SEQUENCE_TARGET_KIND::OBJECT_RESOURCE && binding.targetId == id;
+                    })) pending.push_back(motion.instanceId);
+            continue;
+        }
+        if (!instances.insert(id).second) continue;
+        const auto* instance = Find_Instance(id);
+        const auto* sequence = instance ? Find_Template(instance->templateId) : nullptr;
+        if (!instance || !sequence)
+        { status = "World playback dependency is unavailable: " + id; return false; }
+        staged.m_Instances.push_back(*instance);
+        if (templates.insert(sequence->sequenceId).second) staged.m_Templates.push_back(*sequence);
+        if (instance->motionEnd == WORLD_SEQUENCE_MOTION_END::NEXT) pending.push_back(instance->nextMotionId);
+        for (const auto& binding : instance->bindings)
+            if (binding.targetKind == WORLD_SEQUENCE_TARGET_KIND::OBJECT_RESOURCE) pending.push_back(binding.targetId);
+        if (instances.size() > MAX_INSTANCE_COUNT || objects.size() > MAX_INSTANCE_COUNT || templates.size() > MAX_TEMPLATE_COUNT)
+        { status = "World playback dependency closure exceeds document capacity."; return false; }
+    }
+    out = std::move(staged);
+    status.clear();
     return true;
 }
 
@@ -1697,6 +1759,8 @@ bool_t Client::CWorldSequenceDocument::Validate(
 				!std::isfinite(track.playbackRate) || track.playbackRate < 0.05f ||
 				track.playbackRate > 8.f ||
 				track.startMs >= value.durationMs || track.sourceStartMs > MAX_DURATION_MS ||
+				track.sourceEndMs > MAX_DURATION_MS ||
+				(track.sourceEndMs != 0u && track.sourceEndMs <= track.sourceStartMs) ||
 				(firstOfSlot && 0u != track.startMs) ||
 				(!firstOfSlot && track.startMs <= chained->second))
 			{
@@ -2175,6 +2239,7 @@ bool_t Client::CWorldSequenceDocument::Is_Equivalent(
 			if (leftTrack.slotId != rightTrack.slotId ||
 				leftTrack.startMs != rightTrack.startMs ||
 				leftTrack.sourceStartMs != rightTrack.sourceStartMs ||
+				leftTrack.sourceEndMs != rightTrack.sourceEndMs ||
 				leftTrack.clipName != rightTrack.clipName ||
 				leftTrack.displayName != rightTrack.displayName ||
 				!sameFloat(leftTrack.playbackRate, rightTrack.playbackRate) ||
@@ -2301,16 +2366,22 @@ bool_t Client::CWorldSequenceDocument::Try_SampleAnimationTicks(
         return false;
     const f32_t sourceTicks = static_cast<f32_t>(static_cast<double>(track.sourceStartMs) *
         .001 * static_cast<double>(ticksPerSecond));
-    if (!std::isfinite(sourceTicks) || sourceTicks > durationTicks ||
-        (track.loop && sourceTicks >= durationTicks)) return false;
+    // Authored milliseconds may round a native float duration by less than one ms.
+    const f32_t authoredEnd = track.sourceEndMs == 0u ? durationTicks :
+        static_cast<f32_t>(static_cast<double>(track.sourceEndMs) * .001 * static_cast<double>(ticksPerSecond));
+    if (!std::isfinite(sourceTicks) || sourceTicks > durationTicks || !std::isfinite(authoredEnd) ||
+        (track.sourceEndMs != 0u && (track.sourceEndMs <= track.sourceStartMs ||
+            static_cast<double>(track.sourceEndMs) > static_cast<double>(durationTicks) * 1000.0 / ticksPerSecond + 1.0))) return false;
+    const f32_t endTicks = (std::min)(authoredEnd, durationTicks);
+    if ((track.loop && sourceTicks >= endTicks) || sourceTicks > endTicks) return false;
     const f32_t elapsedTicks = (std::max)(0.f, localMs - track.startMs) * .001f *
         track.playbackRate * ticksPerSecond;
     if (!std::isfinite(elapsedTicks)) return false;
     f32_t ticks = sourceTicks + elapsedTicks;
     // Hold wins at the timeline end, including looped clips, as before.
-    if (localMs >= windowEndMs && track.holdLastFrame) ticks = durationTicks;
-    else if (track.loop) ticks = sourceTicks + std::fmod(elapsedTicks, durationTicks - sourceTicks);
-    else if (ticks > durationTicks) ticks = track.holdLastFrame ? durationTicks : sourceTicks;
+    if (localMs >= windowEndMs && track.holdLastFrame) ticks = endTicks;
+    else if (track.loop) ticks = sourceTicks + std::fmod(elapsedTicks, endTicks - sourceTicks);
+    else if (ticks > endTicks) ticks = track.holdLastFrame ? endTicks : sourceTicks;
     if (!std::isfinite(ticks)) return false;
     outTicks = ticks;
     return true;

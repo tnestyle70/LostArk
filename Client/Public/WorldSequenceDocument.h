@@ -211,6 +211,8 @@ struct WORLD_SEQUENCE_ANIMATION_TRACK
 	std::string displayName;
 	// Native clip milliseconds before playbackRate; independent of timeline startMs.
 	uint32_t sourceStartMs = 0;
+	// Zero preserves the native end; otherwise loop/hold is bounded by this source out.
+	uint32_t sourceEndMs = 0;
 };
 
 struct WORLD_SEQUENCE_EFFECT_TRACK
@@ -381,6 +383,10 @@ public:
 		const WORLD_SEQUENCE_PLACEMENT_MAP& availablePlacements,
 		const WORLD_SEQUENCE_DEPLOY_MAP& availableDeployPlacements,
 		std::string& outStatus);
+	// Authoring drafts use exactly the same parser and validation as file loads.
+	bool_t Load_Text(std::string_view text, const std::string& expectedAreaId,
+		const WORLD_SEQUENCE_PLACEMENT_MAP& availablePlacements,
+		const WORLD_SEQUENCE_DEPLOY_MAP& availableDeployPlacements, std::string& outStatus);
 	bool_t Save(
 		const std::filesystem::path& path,
 		const WORLD_SEQUENCE_PLACEMENT_MAP& availablePlacements,
@@ -405,6 +411,11 @@ public:
         const std::string& parentId, const WORLD_SEQUENCE_PLACEMENT_MAP& mapPlacements,
         const WORLD_SEQUENCE_DEPLOY_MAP& deployPlacements,
         WORLD_SEQUENCE_PASTE_RESULT& outResult, std::string& outStatus);
+
+    // Runtime projection keeps selected groups/aliases, model motion switches and NEXT closure.
+    // The caller admits the resulting document through the same Validate path.
+    bool_t Build_PlaybackSubset(const std::vector<std::string>& roots,
+        CWorldSequenceDocument& out, std::string& status) const;
 
 	void Reset_Empty(const std::string& areaId);
 	void Touch();

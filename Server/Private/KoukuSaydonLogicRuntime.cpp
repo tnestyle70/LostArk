@@ -188,6 +188,8 @@ void LostArk::Server::CKoukuSaydonLogicRuntime::Build(
 			if (trigger.eKind == BOSS_PATTERN_MECHANIC_TRIGGER_KIND::PURSUIT_PROJECTILES && trigger.iSpawnIntervalMs == 0u &&
 				!Has_ReachedTick(state.iEndTick, Add_Ticks(state.iStartTick, 1u)))
 				state.iEndTick = Add_Ticks(state.iStartTick, 1u);
+			if (trigger.ShowtimeBomb)
+				state.iBombStartTick = Add_Ticks(startTick, Ticks_FromMs(trigger.ShowtimeBomb->iBodyStartMs));
 			state.iNextFixedTick = state.iStartTick;
 			state.iNextRandomTick = state.iStartTick;
 			ledger.PlayerTargetWindows.push_back(std::move(state));
@@ -705,6 +707,7 @@ namespace
 		LOGIC_REGION_TRANSFORM transform;
 		if (0u == releaseTick || 0u == player.iCurrentHp ||
 			PLAYER_ACTION_STATE::DEAD == player.eAction || PLAYER_ACTION_STATE::FEAR == player.eAction ||
+			PLAYER_MADNESS_FORM::CLOWN == player.eMadnessForm ||
 			!Resolve_LogicRegionTransform(region, boss, patternElapsedTicks, transform) ||
 			!std::isfinite(transform.centerX) || !std::isfinite(transform.centerZ) ||
 			!std::isfinite(transform.yaw))
@@ -1003,6 +1006,26 @@ bool LostArk::Server::CKoukuSaydonLogicRuntime::Enter_CardMaze(
 	Reveal_CardMazeEntryPlayers(ledger, players);
 	outStatus = "Card maze entry committed; strike the central telescope with Q to begin";
 	return true;
+}
+
+bool LostArk::Server::CKoukuSaydonLogicRuntime::Is_PointInsideRegion(
+	const BOSS_LOGIC_REGION& region, const SERVER_WORLD_ENTITY& boss,
+	const float worldX, const float worldZ) noexcept
+{
+	if (!std::isfinite(worldX) || !std::isfinite(worldZ) || !std::isfinite(boss.fPositionX) ||
+		!std::isfinite(boss.fPositionZ) || !std::isfinite(boss.fYawDegrees)) return false;
+	LOGIC_REGION_TRANSFORM transform;
+	if (!region.bSector || region.bReverseSector || region.bLinearMotion || region.WorldTrack.bEnabled ||
+		!Resolve_LogicRegionTransform(region, boss, 0u, transform) ||
+		!(transform.radiusX > 0.f) || !(transform.radiusZ > 0.f)) return false;
+	// A bomb is a point, so no player radius or shared-edge ownership is added.
+	// This is the inclusive point-interior branch of the shared elliptic sector.
+	const double radians = double(transform.yaw) * 0.017453292519943295;
+	const double dx = double(worldX) - transform.centerX, dz = double(worldZ) - transform.centerZ;
+	const double nx = (std::cos(radians) * dx - std::sin(radians) * dz) / transform.radiusX;
+	const double nz = (std::sin(radians) * dx + std::cos(radians) * dz) / transform.radiusZ;
+	return nx * nx + nz * nz <= 1.0 &&
+		std::abs(std::atan2(nx, nz)) <= double(region.fHalfAngleDegrees) * 0.017453292519943295;
 }
 
 void LostArk::Server::CKoukuSaydonLogicRuntime::Capture_StartRegions(
@@ -1499,8 +1522,28 @@ void LostArk::Server::CKoukuSaydonLogicRuntime::Apply_Results(
 	const std::set<LostArk::Shared::PLAYER_ID>& invulnerablePlayers,
 	const std::array<float, 2u>* const pContactCenter)
 {
-	for (const BOSS_PATTERN_LOGIC_RESULT& result : results)
+	const auto isDamage = [](const BOSS_PATTERN_LOGIC_RESULT& result) {
+		return result.eKind == BOSS_PATTERN_LOGIC_RESULT_KIND::INSTANT_DEATH ||
+			result.eKind == BOSS_PATTERN_LOGIC_RESULT_KIND::MAX_HP_PERCENT_DAMAGE ||
+			result.eKind == BOSS_PATTERN_LOGIC_RESULT_KIND::FIXED_DAMAGE;
+	};
+	const bool hasDamage = std::any_of(results.begin(), results.end(), isDamage);
+	const bool hasAuthoredMadness = std::any_of(results.begin(), results.end(), [](const auto& result) {
+		return result.eKind == BOSS_PATTERN_LOGIC_RESULT_KIND::MADNESS_GAUGE_ADD_PERCENT;
+	});
+	std::set<LostArk::Shared::PLAYER_ID> damagedPlayers;
+	// Resolve a verdict's damage before its explicit gauge reward regardless of
+	// authoring order. A blocked/absorbed hit cannot gain gauge, and an authored
+	// amount replaces the automatic HP-proportional gain for this verdict only.
+	std::vector<const BOSS_PATTERN_LOGIC_RESULT*> ordered;
+	ordered.reserve(results.size());
+	for (const auto& result : results)
+		if (!hasDamage || result.eKind != BOSS_PATTERN_LOGIC_RESULT_KIND::MADNESS_GAUGE_ADD_PERCENT) ordered.push_back(&result);
+	if (hasDamage) for (const auto& result : results)
+		if (result.eKind == BOSS_PATTERN_LOGIC_RESULT_KIND::MADNESS_GAUGE_ADD_PERCENT) ordered.push_back(&result);
+	for (const auto* resultPointer : ordered)
 	{
+		const auto& result = *resultPointer;
         if (BOSS_PATTERN_LOGIC_RESULT_KIND::CAPTURE_PLAYER == result.eKind)
         {
             if (pPlayer && Is_Judgeable(*pPlayer) && pPlayer->eAction != LostArk::Shared::PLAYER_ACTION_STATE::FEAR && state.iHoldEndTick &&
@@ -1535,7 +1578,15 @@ void LostArk::Server::CKoukuSaydonLogicRuntime::Apply_Results(
 				 result.eKind == BOSS_PATTERN_LOGIC_RESULT_KIND::MAX_HP_PERCENT_DAMAGE ||
 				 result.eKind == BOSS_PATTERN_LOGIC_RESULT_KIND::FIXED_DAMAGE ||
 				 result.eKind == BOSS_PATTERN_LOGIC_RESULT_KIND::FEAR)) return;
+			if (hasDamage && result.eKind == BOSS_PATTERN_LOGIC_RESULT_KIND::MADNESS_GAUGE_ADD_PERCENT &&
+				(!damagedPlayers.contains(player.iPlayerId) || !player.iCurrentHp ||
+				 player.eMadnessForm != LostArk::Shared::PLAYER_MADNESS_FORM::NORMAL)) return;
+			const auto automaticGain = player.iMadnessDamageGainPercent;
+			const auto hpBefore = player.iCurrentHp;
+			if (hasAuthoredMadness && isDamage(result)) player.iMadnessDamageGainPercent = 0u;
 			Apply_Result(player, result, boss, catalog, pMadnessPolicy, serverTick, outDamageEvents, pContactCenter);
+			player.iMadnessDamageGainPercent = automaticGain;
+			if (isDamage(result) && player.iCurrentHp < hpBefore) damagedPlayers.insert(player.iPlayerId);
 		};
 		if (nullptr != pPlayer)
 		{
@@ -1754,22 +1805,27 @@ void LostArk::Server::CKoukuSaydonLogicRuntime::Update(
 	// Gather protection before any result, independently of authored window order.
 	// Protection belongs to this pattern execution; only presentation pulses form a room-wide union.
 	std::set<LostArk::Shared::PLAYER_ID> invulnerablePlayers;
-	for (auto& [playerId, player] : players)
+	for (const auto& state : ledger.Windows)
 	{
-		(void)playerId;
-		if (!Is_Judgeable(player)) continue;
-		const bool inside = std::any_of(ledger.Windows.begin(), ledger.Windows.end(), [&](const auto& state) {
-			if (state.bClosed || state.iWindowIndex >= pattern.LogicWindows.size() ||
-				!Has_ReachedTick(serverTick, state.iStartTick) ||
-				(Has_ReachedTick(serverTick, state.iEndTick) && serverTick != state.iEndTick)) return false;
-			const auto& window = pattern.LogicWindows[state.iWindowIndex];
-			return window.eKind == BOSS_PATTERN_LOGIC_KIND::INVULNERABILITY_ZONE &&
-				std::any_of(window.CardRegions.begin(), window.CardRegions.end(), [&](const auto& region) {
-					return Contains_LogicRegion(Window_Region(region, state), boss, player, serverTick - ledger.iPatternStartTick);
-				});
-		});
-		if (!inside) continue;
-		invulnerablePlayers.insert(playerId);
+		if (state.bClosed || state.iWindowIndex >= pattern.LogicWindows.size() ||
+			!Has_ReachedTick(serverTick, state.iStartTick) ||
+			(Has_ReachedTick(serverTick, state.iEndTick) && serverTick != state.iEndTick)) continue;
+		const auto& window = pattern.LogicWindows[state.iWindowIndex];
+		if (window.eKind != BOSS_PATTERN_LOGIC_KIND::INVULNERABILITY_ZONE || window.iThreshold > 4u) continue;
+		for (const auto& region : window.CardRegions)
+		{
+			std::vector<LostArk::Shared::PLAYER_ID> occupants;
+			for (const auto& [playerId, player] : players)
+				if (Is_Judgeable(player) && Contains_LogicRegion(Window_Region(region, state), boss, player,
+					serverTick - ledger.iPatternStartTick)) occupants.push_back(playerId);
+			// Every Collider owns its exact count; overlapping valid regions form a union.
+			if (window.iThreshold == 0u || occupants.size() == window.iThreshold)
+				invulnerablePlayers.insert(occupants.begin(), occupants.end());
+		}
+	}
+	for (const auto playerId : invulnerablePlayers)
+	{
+		auto& player = players.at(playerId);
 		const bool continuous = player.iInvulnerabilityZoneContactTick != 0u &&
 			(player.iInvulnerabilityZoneContactTick == serverTick ||
 			 Add_Ticks(player.iInvulnerabilityZoneContactTick, 1u) == serverTick);
@@ -1858,9 +1914,13 @@ void LostArk::Server::CKoukuSaydonLogicRuntime::Update(
 				!Has_ReachedTick(ledger.iBingoLineJudgementTick, state.iEndTick) && Has_ReachedTick(serverTick, ledger.iBingoLineJudgementTick))
 			{
 				const bool passed = ledger.iBingoCompletedLines >= window.iThreshold;
+				auto results = passed ? window.OnSuccess : window.OnFail;
+				if (passed && ledger.bBingoLineRewardApplied)
+					std::erase_if(results, [](const auto& result) {
+						return result.eKind == BOSS_PATTERN_LOGIC_RESULT_KIND::PLAYER_INVULNERABILITY; });
 				for (auto& [id, player] : players)
 					if (player.iCurrentHp && player.eAction != LostArk::Shared::PLAYER_ACTION_STATE::DEAD)
-						Apply_Results(passed ? window.OnSuccess : window.OnFail, state, &player, players, boss, catalog, pMadnessPolicy,
+						Apply_Results(results, state, &player, players, boss, catalog, pMadnessPolicy,
 							serverTick, outDamageEvents, outOutput, invulnerablePlayers);
 				outOutput.BingoLineCompletion = passed;
 				Close_Window(boss, window, state, players);
@@ -2359,7 +2419,7 @@ namespace
 void LostArk::Server::CKoukuBingoRuntime::Promote_Lines() noexcept
 {
 	using namespace LostArk::Shared;
-	for (std::int32_t line = 0; line < KOUKU_BINGO_LINE_COUNT; ++line)
+	for (std::int32_t line = 0; line < KOUKU_BINGO_SIDE * 2; ++line)
 	{
 		const std::uint32_t lineMask = Kouku_BingoLineMask(line);
 		if (0u != lineMask && lineMask == (m_iWhiteMask & lineMask))
@@ -2381,10 +2441,8 @@ void LostArk::Server::CKoukuBingoRuntime::Detonate(const std::uint32_t cellMask)
 	the rest is decided against the board as it stands right now. */
 	const std::uint32_t affected =
 		(cellMask & KOUKU_BINGO_ALL_CELLS_MASK) & ~m_iRedMask;
-	const std::uint32_t removedWhite = affected & m_iWhiteMask;
-	const std::uint32_t newRed = affected & ~m_iWhiteMask;
-	m_iWhiteMask = (m_iWhiteMask & ~removedWhite) | newRed;
-	m_iRedMask |= newRed;
+	m_iWhiteMask ^= affected;
+	Promote_Lines();
 }
 
 std::uint32_t LostArk::Server::CKoukuBingoRuntime::Count_CompletedRowsAndColumns() const noexcept
@@ -2396,6 +2454,31 @@ std::uint32_t LostArk::Server::CKoukuBingoRuntime::Count_CompletedRowsAndColumns
 		if ((m_iRedMask & mask) == mask) ++count;
 	}
 	return count;
+}
+
+std::uint32_t LostArk::Server::CKoukuBingoRuntime::Count_UnconsumedRowsAndColumns() const noexcept
+{
+	std::uint32_t count = 0u;
+	for (std::uint32_t line = 0u; line < LostArk::Shared::KOUKU_BINGO_SIDE * 2u; ++line)
+	{
+		const auto mask = LostArk::Shared::Kouku_BingoLineMask(line);
+		if (!(m_iConsumedLineMask & (1u << line)) && (m_iRedMask & mask) == mask) ++count;
+	}
+	return count;
+}
+
+bool LostArk::Server::CKoukuBingoRuntime::Consume_CompletedRowsAndColumns(const std::uint32_t count) noexcept
+{
+	if (!count || Count_UnconsumedRowsAndColumns() < count) return false;
+	auto remaining = count;
+	for (std::uint32_t line = 0u; line < LostArk::Shared::KOUKU_BINGO_SIDE * 2u && remaining; ++line)
+	{
+		const auto bit = 1u << line;
+		const auto mask = LostArk::Shared::Kouku_BingoLineMask(line);
+		if (!(m_iConsumedLineMask & bit) && (m_iRedMask & mask) == mask)
+		{ m_iConsumedLineMask |= bit; --remaining; }
+	}
+	return true;
 }
 
 bool LostArk::Server::CKoukuBingoRuntime::Start_Bomb(

@@ -154,6 +154,15 @@ public:
 
 private:
 	void UpdateKoukuGateCompletePlay();
+    void RenderKoukuRaidPreparationDiagnostics();
+    struct KOUKU_RAID_PREPARATION_DIAGNOSTICS final
+    {
+        uint32_t epoch = 0u;
+        std::string stage, detail, submission;
+        bool failed = false;
+        std::chrono::steady_clock::time_point observedAt{};
+    };
+    KOUKU_RAID_PREPARATION_DIAGNOSTICS m_KoukuRaidPreparationDiagnostics;
 	string m_strKoukuCompletePlayFlowGate;
 	std::unique_ptr<KOUKU_SAYDON_COMPOSITION_DOCUMENT> m_pKoukuRaidSequenceDocument;
 	LostArk::Shared::C2S_DEBUG_KOUKUSAYDON_RAID_REQUEST m_KoukuRaidRequest;
@@ -479,7 +488,7 @@ private:
 	void RenderCombatHUDText();
 
 	HRESULT ReadyDebugTools();
-	HRESULT EnsureDebugTool(DEBUG_TOOL eTool);
+	HRESULT EnsureDebugTool(DEBUG_TOOL eTool, bool_t bShowWindow = true);
 	HRESULT EnsureAnimationPreviewBackend();
 	bool_t IsDebugToolVisible(DEBUG_TOOL eTool) const;
 	void SetDebugToolVisible(DEBUG_TOOL eTool, bool_t bVisible);

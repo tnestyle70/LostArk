@@ -467,11 +467,12 @@ std::shared_ptr<const CLASS_MOVIE_TIMELINE> CClassSelectionPresentation::Get_Tim
 {
     const auto key = std::make_pair(classId, loop);
     if (const auto found = m_Timelines.find(key); found != m_Timelines.end()) return found->second;
-    const auto scene = std::find_if(m_Scenes.begin(), m_Scenes.end(),
+    const auto& scenes = m_Authoring ? m_Authoring->scenes : m_Scenes;
+    const auto scene = std::find_if(scenes.begin(), scenes.end(),
         [&classId](const auto& value) { return value.classId == classId; });
-    if (scene == m_Scenes.end()) return {};
+    if (scene == scenes.end()) return {};
     const auto& phase = loop ? scene->loop : scene->intro;
-    const auto& document = m_Resources.Get_Document();
+    const auto& document = m_Authoring ? m_Authoring->document : m_Resources.Get_Document();
     auto timeline = std::make_shared<CLASS_MOVIE_TIMELINE>();
     timeline->classId = classId; timeline->loop = loop;
     timeline->movieDurationMs = phase.WallDurationMs(); timeline->sourceDurationMs = phase.durationMs;
@@ -812,6 +813,11 @@ const std::string& CClassSelectionPresentation::Get_BackgroundAreaId(const std::
 
 bool CClassSelectionPresentation::Play(const std::string& classId)
 {
+    // Opening the editor only reads a source draft. Explicit Play admits that
+    // already-read generation; it never reloads files or discards unsaved edits.
+    if (m_Authoring && !m_Authoring->appliedToPreview)
+        if (!Prepare_Authoring(m_Authoring->scenes, m_Authoring->document, m_Status) ||
+            !Commit_Authoring(m_Authoring->scenes, m_Authoring->document, m_Status)) return false;
     const auto scene = std::find_if(m_Scenes.begin(), m_Scenes.end(),
         [&classId](const SCENE& value) { return value.classId == classId; });
     if (scene == m_Scenes.end())
@@ -1072,6 +1078,7 @@ bool CClassSelectionPresentation::Sample_MaterialsAndLights(const PHASE& phase, 
 
 void CClassSelectionPresentation::Update(const float deltaSeconds)
 {
+    Poll_AuthoringPublish();
     if (!m_Active || !m_Scene) return;
     if (!std::isfinite(deltaSeconds) || deltaSeconds < 0.f)
     { Fail("Invalid class selection frame time."); return; }
@@ -1135,6 +1142,7 @@ void CClassSelectionPresentation::Fail(const std::string& reason)
 void CClassSelectionPresentation::Clear()
 {
     Stop();
+    m_Authoring.reset();
     m_Resources.Clear();
     m_Targets = {};
     m_Camera.reset();

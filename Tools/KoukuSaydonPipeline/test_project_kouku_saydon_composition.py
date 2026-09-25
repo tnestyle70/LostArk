@@ -100,6 +100,30 @@ class KoukuSaydonCompositionProjectionTests(unittest.TestCase):
             with self.subTest(mutation=mutation), self.assertRaises(subject.CompositionError):
                 subject._validate_summon_pattern_spawns(document, owner)
 
+    def test_summoned_cross_contacts_admit_damage_but_reject_global_side_effects(self):
+        document, owner, child = self.summon_layout_document(2)
+        document["logics"] = [
+            dict(logicId="contact", logicType="TRIGGER", triggerKind="ENTER_AREA"),
+            dict(logicId="damage", logicType="RESULT", outcomeKind="MAX_HP_PERCENT_DAMAGE", percent=10)]
+        child["logicOccurrences"] = [dict(occurrenceId="child.contact", logicId="contact",
+            onSuccessLogicIds=["damage"], onFailLogicIds=[], onTimeoutLogicIds=[])]
+        document["presentationResources"].append(dict(resourceId="cross.box", kind="COLLIDER",
+            defaultAnchorKind="BOSS"))
+        child["presentationOccurrences"].append(dict(resourceId="cross.box", anchorKind="BOSS",
+            logicOccurrenceId="child.contact"))
+        before = copy.deepcopy(document)
+        subject._validate_summon_pattern_spawns(document, owner)
+        self.assertEqual(before, document)
+        for mutation in ("global_result", "missing_result", "map_collider", "world_binding"):
+            broken = copy.deepcopy(document)
+            actor = broken["patterns"][1]
+            if mutation == "global_result": broken["logics"][1]["outcomeKind"] = "PLAYER_STATE_CHANGE"
+            elif mutation == "missing_result": actor["logicOccurrences"][0]["onSuccessLogicIds"] = ["missing"]
+            elif mutation == "map_collider": actor["presentationOccurrences"][-1]["anchorKind"] = "MAP"
+            else: actor["presentationOccurrences"][-1]["worldOccurrenceId"] = "external.world"
+            with self.subTest(mutation=mutation), self.assertRaises(subject.CompositionError):
+                subject._validate_summon_pattern_spawns(broken, broken["patterns"][0])
+
     @staticmethod
     def world_group_fixture():
         members = [f"test.group.motion.g{i}" for i in range(6)]
@@ -316,6 +340,90 @@ class KoukuSaydonCompositionProjectionTests(unittest.TestCase):
         self.assertEqual(definition["directionPatternIds"], projected["mechanicTriggers"][0]["directionPatternIds"])
         self.assertEqual("CROSS_DIRECTION_CLONES", projected["mechanicTriggers"][0]["kind"])
         self.assertEqual(before, document)
+
+    def test_cross_direction_actor_facing_is_instant_local_and_projects_exact_child_clock(self):
+        document, parent, definition = self.cross_direction_document()
+        child = document["patterns"][1]
+        facing = dict(logicId="kakulsaydon.g1.logic.998", displayName="Nearest", logicType="TRIGGER",
+                      triggerKind="BOSS_TRACK_TARGET")
+        document["logics"].append(facing)
+        child["logicOccurrences"] = [dict(occurrenceId=child["patternId"] + ".logic.1",
+            logicId=facing["logicId"], startMs=700, durationMs=34, enabled=True)]
+        subject._validate_cross_direction(document, parent)
+        with mock.patch.object(subject, "_project_pattern_root_motion", return_value={}):
+            encounter = subject.project_encounter(document)
+        projected = {row["patternId"]: row for row in encounter["patterns"]}
+        row = projected[child["patternId"]]["mechanicTriggers"][0]
+        self.assertEqual(("BOSS_TRACK_TARGET", 700, 34), (row["kind"], row["startMs"], row["durationMs"]))
+        self.assertTrue(all(not projected[identity]["mechanicTriggers"] for identity in definition["directionPatternIds"][1:]))
+        self.assertEqual("CROSS_DIRECTION_CLONES", projected[parent["patternId"]]["mechanicTriggers"][0]["kind"])
+        for invalid in ("duration", "follow", "outcome", "kind", "continuous"):
+            with self.subTest(invalid=invalid):
+                broken = copy.deepcopy(document)
+                logic = broken["logics"][-1]; box = broken["patterns"][1]["logicOccurrences"][0]
+                if invalid == "duration": box["durationMs"] = 35
+                if invalid == "follow": logic["followSpeedScale"] = 1
+                if invalid == "outcome": box["onSuccessLogicIds"] = ["missing.result"]
+                if invalid == "kind": logic["triggerKind"] = "BOSS_RANDOM_TARGET"
+                if invalid == "continuous": logic.update(logicType="DURATION", judgementKind="BOSS_TRACK_TARGET")
+                with self.assertRaises(subject.CompositionError):
+                    subject._validate_cross_direction(broken, broken["patterns"][0])
+
+    def test_actor_facing_bootstrap_predicate_matches_direction_and_summon_admission(self):
+        powershell = shutil.which("powershell")
+        if not powershell:
+            self.skipTest("PowerShell is required for the actual bootstrap predicate")
+        document, _, _ = self.cross_direction_document()
+        child = document["patterns"][1]
+        document["logics"].append(dict(logicId="kakulsaydon.g1.logic.998", displayName="Nearest",
+            logicType="TRIGGER", triggerKind="BOSS_TRACK_TARGET"))
+        child["logicOccurrences"] = [dict(occurrenceId=child["patternId"] + ".logic.1",
+            logicId="kakulsaydon.g1.logic.998", startMs=700, durationMs=34)]
+        with mock.patch.object(subject, "_project_pattern_root_motion", return_value={}):
+            encounter = subject.project_encounter(document)
+        projected = next(row for row in encounter["patterns"] if row["patternId"] == child["patternId"])
+        facing = projected["mechanicTriggers"][0]
+        self.assertNotIn("followSpeedScale", facing)
+        cases = []
+        def case(name, triggers, direction, summon):
+            cases.append(dict(name=name, child=dict(mechanicTriggers=triggers), direction=direction, summon=summon))
+        case("empty", [], True, True)
+        case("projected instant", [facing], True, True)
+        case("one millisecond", [dict(facing, durationMs=1)], True, True)
+        case("zero follow", [dict(facing, followSpeedScale=0)], True, True)
+        for duration in (0, 35, 1000, 1.5, True, "34", None):
+            case("invalid duration " + str(duration), [dict(facing, durationMs=duration)], False, False)
+        for speed in (.01, 1, -1, "0", True, None):
+            case("invalid follow " + str(speed), [dict(facing, followSpeedScale=speed)], False, False)
+        case("different target kind", [dict(facing, kind="BOSS_RANDOM_TARGET")], False, False)
+        for phase in ("JUMP", "SLAM"):
+            airborne = dict(kind="ALBION_AIRBORNE", airbornePhase=phase)
+            case(phase, [airborne], False, True)
+            case(phase + " mixed", [facing, airborne], False, True)
+            case(phase + " captured", [dict(airborne, airborneTargetPositionPolicy="SELECT")], False, False)
+            case(phase + " selection", [dict(airborne, selectedEffectVisualId="effect.selected")], False, False)
+        case("unsupported airborne phase", [dict(kind="ALBION_AIRBORNE", airbornePhase="SELECT_PLAYER")], False, False)
+        case("valid cannot hide invalid", [facing, dict(facing, durationMs=35)], False, False)
+        output = ROOT / "out/KoukuFrontFacing20260926"
+        output.mkdir(parents=True, exist_ok=True)
+        with tempfile.TemporaryDirectory(dir=output) as temporary:
+            fixture = Path(temporary) / "cases.json"
+            fixture.write_text(json.dumps(cases), encoding="utf-8")
+            script = Path(temporary) / "probe.ps1"
+            script.write_text(r"""
+param([string]$Root, [string]$Cases)
+$ErrorActionPreference = 'Stop'
+Set-StrictMode -Version Latest
+. (Join-Path $Root 'Tools/KoukuSaydonPipeline/KoukuBootstrapRows.ps1')
+foreach ($case in (Get-Content -LiteralPath $Cases -Raw | ConvertFrom-Json)) {
+    if ((Test-KoukuActorMechanicTriggers $case.child) -ne $case.direction) { throw "Direction: $($case.name)" }
+    if ((Test-KoukuActorMechanicTriggers $case.child $true) -ne $case.summon) { throw "Summon: $($case.name)" }
+}
+Write-Output 'PASS actual bootstrap actor-local trigger admission'
+""", encoding="utf-8")
+            completed = subprocess.run([powershell, "-NoProfile", "-ExecutionPolicy", "Bypass",
+                "-File", str(script), "-Root", str(ROOT), "-Cases", str(fixture)], capture_output=True, text=True)
+            self.assertEqual(0, completed.returncode, completed.stdout + completed.stderr)
 
     def test_cross_direction_keeps_actor_sound_on_each_child_clock(self):
         document, parent, definition = self.cross_direction_document()
@@ -660,6 +768,30 @@ class KoukuSaydonCompositionProjectionTests(unittest.TestCase):
         pattern["logicOccurrences"][0]["enabled"] = False
         self.assertEqual(({}, {}, set()), subject._project_airborne_selected_effects(document, pattern))
         self.assertEqual(6, len(subject._project_pattern_presentation(document, pattern)["presentationOccurrences"]))
+
+    def test_selected_flight_and_hits_share_capture_clock_and_content_identity(self):
+        document = self.airborne_document("SELECT_PLAYER")
+        logic = document["logics"][0]
+        logic.update(airborneTargetPositionPolicy="SELECT", selectedEffectGroupId="showtime.fixed.group",
+                     selectedFlightMs=1239, selectedFlightArcHeightM=2.5, selectedFlightSourceOffset=[.2, 1.0990578, 0],
+                     fixedHits=[dict(hitId="landing", atMs=2000, radiusM=3, riseHeightM=2, pushMs=1200, pushRangeM=1)])
+        pattern = self.first_product(document)
+        pattern["logicOccurrences"][0]["startMs"] = 0
+        self.validate(document)
+        rows, templates, _ = subject._project_airborne_selected_effects(document, pattern)
+        visual = next(iter(templates.values()))
+        self.assertEqual((1239, 2.5, [.2, 1.0990578, 0]),
+                         (visual["selectedFlightMs"], visual["selectedFlightArcHeightM"], visual["selectedFlightSourceOffset"]))
+        self.assertEqual(1, next(iter(rows.values()))["fixedHits"][0]["pushRangeM"])
+        old_id = visual["clientVisualId"]
+        logic["selectedFlightArcHeightM"] = 3.0
+        changed = next(iter(subject._project_airborne_selected_effects(document, pattern)[1].values()))
+        self.assertNotEqual(old_id, changed["clientVisualId"])
+        for field, value in (("selectedFlightMs", 4400), ("selectedFlightArcHeightM", -1), ("selectedFlightSourceOffset", [0, 0])):
+            candidate = copy.deepcopy(document)
+            candidate["logics"][0][field] = value
+            with self.subTest(field=field), self.assertRaises((subject.CompositionError, ValueError)):
+                self.validate(candidate)
 
     def test_selected_airborne_group_rejects_incomplete_or_conflicting_ownership(self):
         document = self.airborne_document("SELECT_PLAYER")
@@ -4929,6 +5061,28 @@ class KoukuSaydonCompositionProjectionTests(unittest.TestCase):
                     self.assertEqual([], window[slot])
                 self.assertEqual(before, document)
 
+    def test_invulnerability_zone_exact_count_threshold_roundtrip(self):
+        for threshold in (None, 0, 1, 2, 4):
+            document, pattern, _ = self.invulnerability_zone_document(2)
+            logic = next(row for row in document["logics"] if row["logicId"] == pattern["logicOccurrences"][0]["logicId"])
+            if threshold is not None:
+                logic["threshold"] = threshold
+            before = copy.deepcopy(document)
+            with self.subTest(threshold=threshold):
+                self.validate(document)
+                projected = next(row for row in subject.project_encounter(document)["patterns"]
+                                 if row["patternId"] == pattern["patternId"])
+                window, = projected["logicWindows"]
+                self.assertEqual(threshold or 0, window["threshold"])
+                self.assertEqual(2, len(window["cardRegions"]))
+                self.assertEqual(before, document)
+        for threshold in (-1, 5, 1.5, True, "2"):
+            document, pattern, _ = self.invulnerability_zone_document()
+            logic = next(row for row in document["logics"] if row["logicId"] == pattern["logicOccurrences"][0]["logicId"])
+            logic["threshold"] = threshold
+            with self.subTest(invalid_threshold=threshold), self.assertRaises(subject.CompositionError):
+                self.validate(document)
+
     def test_invulnerability_zone_rejects_results_missing_or_excess_colliders(self):
         document, pattern, result_id = self.invulnerability_zone_document()
         for slot in ("onSuccessLogicIds", "onFailLogicIds", "onTimeoutLogicIds"):
@@ -6558,6 +6712,135 @@ class KoukuPublishAllInventoryTests(unittest.TestCase):
                 self.assertTrue(all(row.channels is None for row in other_actor["body"].animations if row.name != clip))
 
 
+class KoukuWorldBoneCacheTests(unittest.TestCase):
+    @staticmethod
+    def fixture():
+        sequences = dict(instances=[dict(instanceId="bone.instance", templateId="bone.sequence",
+            enabled=True, anchorKind="WORLD", position=[0, 0, 0], startDelayMs=0,
+            playbackSpeed=1, motionEnd="LOOP", nextMotionId="", bindings=[
+                dict(slotId="object", targetKind="OBJECT_RESOURCE", targetId="bone.object")])],
+            templates=[dict(sequenceId="bone.sequence", durationMs=1000, interpolation="LINEAR",
+                animationTracks=[dict(slotId="object", clipName="att_battle_2_01", startMs=0,
+                    playbackRate=1, loop=False, holdLastFrame=True)])],
+            objectResources=[dict(objectId="bone.object", animated=True, modelPreScale=.01,
+                scale=[1, 1, 1], modelAssetId="Character/KoukuSaton/MN_CDMD_00/MN_CDMD_00.wmodel")])
+        world = dict(worldId="bone.world", sequenceInstanceId="bone.instance",
+            positionOffset=[0, 0, 0], anchorKind="NONE", anchorPosition=[0, 0, 0])
+        box = dict(occurrenceId="bone.world.1", worldId="bone.world", startMs=100,
+            durationMs=133, playbackSpeed=1, placement=dict(position=[4, 1, 9],
+                rotationDegrees=[0, 0, 0], scale=[1, 1, 1]))
+        collider = dict(occurrenceId="bone.collider", bone="b_mouth_f", boneRotation="TARGET_YAW",
+            worldEmissionIndex=0, positionOffset=[0, 0, 0], rotationDegrees=[0, 0, 0])
+        sequences["instances"].append({**copy.deepcopy(sequences["instances"][0]),
+            "instanceId": "bone.other.instance", "playbackSpeed": 2})
+        return sequences, world, box, collider
+
+    def test_pinned_sequence_reuses_native_track_and_returns_independent_values(self):
+        sequences, world, box, collider = self.fixture()
+        expected = subject._project_world_bone_collider_track(ROOT, sequences, world, box, collider)
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "sequence.json"
+            path.write_bytes(subject.serialize_json(sequences))
+            with subject._publication_session(), \
+                 mock.patch.object(subject, "_build_world_bone_collider_track", wraps=subject._build_world_bone_collider_track) as build, \
+                 mock.patch.object(subject, "_memo_digest", wraps=subject._memo_digest) as digest:
+                pinned = subject.load_json(path)
+                first = subject._project_world_bone_collider_track(ROOT, pinned, world, box, collider)
+                first["keys"][0]["positionOffset"][0] += 1000
+                second = subject._project_world_bone_collider_track(ROOT, pinned, world, box, collider)
+                third = subject._project_world_bone_collider_track(ROOT, pinned, world, box, collider)
+                self.assertEqual(1, build.call_count)
+                self.assertEqual(1, sum(call.args[0] is pinned for call in digest.call_args_list))
+                self.assertEqual(subject.serialize_json(expected), subject.serialize_json(second))
+                self.assertEqual(expected, third)
+                self.assertIsNot(second["keys"], third["keys"])
+
+    def test_unpinned_sequence_mutation_changes_key_in_same_session(self):
+        sequences, world, box, collider = self.fixture()
+        with subject._publication_session(), \
+             mock.patch.object(subject, "_build_world_bone_collider_track", wraps=subject._build_world_bone_collider_track) as build:
+            first = subject._project_world_bone_collider_track(ROOT, sequences, world, box, collider)
+            sequences["objectResources"][0]["modelPreScale"] = .02
+            second = subject._project_world_bone_collider_track(ROOT, sequences, world, box, collider)
+            self.assertEqual(2, build.call_count)
+            self.assertNotEqual(first, second)
+            self.assertEqual(second, subject._build_world_bone_collider_track(ROOT, sequences, world, box, collider))
+
+    def test_world_window_clock_placement_and_bone_changes_do_not_alias(self):
+        sequences, world, box, collider = self.fixture()
+        variants = []
+        for field in ("world", "start", "duration", "speed", "position", "rotation", "scale", "bone"):
+            changed = copy.deepcopy((world, box, collider))
+            w, b, c = changed
+            if field == "world": w["sequenceInstanceId"] = "bone.other.instance"
+            elif field == "start": b["startMs"] += 33
+            elif field == "duration": b["durationMs"] += 34
+            elif field == "speed": b["playbackSpeed"] = 2
+            elif field == "position": b["placement"]["position"][0] += 5
+            elif field == "rotation": b["placement"]["rotationDegrees"][1] = 90
+            elif field == "scale": b["placement"]["scale"] = [2, 2, 2]
+            else: c["bone"] = "b_root"
+            variants.append((field, changed))
+        with subject._publication_session(), \
+             mock.patch.object(subject, "_build_world_bone_collider_track", wraps=subject._build_world_bone_collider_track) as build:
+            baseline = subject._project_world_bone_collider_track(ROOT, sequences, world, box, collider)
+            for field, (w, b, c) in variants:
+                with self.subTest(field=field):
+                    before = build.call_count
+                    result = subject._project_world_bone_collider_track(ROOT, sequences, w, b, c)
+                    self.assertEqual(before + 1, build.call_count)
+                    self.assertEqual(result, subject._project_world_bone_collider_track(ROOT, sequences, w, b, c))
+                    self.assertEqual(before + 1, build.call_count)
+                    self.assertNotEqual(baseline, result)
+
+    def test_failure_retries_and_session_cache_does_not_survive_next_invocation(self):
+        sequences, world, box, collider = self.fixture()
+        with mock.patch.object(subject, "_build_world_bone_collider_track", wraps=subject._build_world_bone_collider_track) as build:
+            with subject._publication_session():
+                collider["bone"] = "missing.bone"
+                for _ in range(2):
+                    with self.assertRaises(subject.CompositionError):
+                        subject._project_world_bone_collider_track(ROOT, sequences, world, box, collider)
+                self.assertEqual(2, build.call_count)
+                collider["bone"] = "b_mouth_f"
+                expected = subject._project_world_bone_collider_track(ROOT, sequences, world, box, collider)
+                self.assertEqual(3, build.call_count)
+            with subject._publication_session():
+                self.assertEqual(expected, subject._project_world_bone_collider_track(ROOT, sequences, world, box, collider))
+            self.assertEqual(4, build.call_count)
+
+    def test_memo_hit_retains_json_and_native_exact_input_guards(self):
+        for changed_input in ("json", "native"):
+            with self.subTest(changed_input=changed_input), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                sequences, world, box, collider = self.fixture()
+                sequence_path = root / "sequence.json"
+                sequence_path.write_bytes(subject.serialize_json(sequences))
+                relative = Path("Client/Bin/Resources") / sequences["objectResources"][0]["modelAssetId"]
+                native_path = root / relative
+                native_path.parent.mkdir(parents=True)
+                shutil.copy2(ROOT / relative, native_path)
+                changed_path = sequence_path if changed_input == "json" else native_path
+                original_stat, stat = changed_path.stat(), Path.stat
+
+                def stable_stat(candidate, *args, **kwargs):
+                    return original_stat if candidate == changed_path else stat(candidate, *args, **kwargs)
+
+                with mock.patch.object(Path, "stat", stable_stat), \
+                     mock.patch.object(subject, "_build_world_bone_collider_track", wraps=subject._build_world_bone_collider_track) as build:
+                    with self.assertRaisesRegex(subject.CompositionError, "input changed during validation"):
+                        with subject._publication_session():
+                            pinned = subject.load_json(sequence_path)
+                            first = subject._project_world_bone_collider_track(root, pinned, world, box, collider)
+                            self.assertEqual(first, subject._project_world_bone_collider_track(root, pinned, world, box, collider))
+                            self.assertEqual(1, build.call_count)
+                            content = bytearray(changed_path.read_bytes())
+                            content[-1] ^= 1
+                            changed_path.write_bytes(content)
+                            self.assertEqual(first, subject._project_world_bone_collider_track(root, pinned, world, box, collider))
+                            self.assertEqual(1, build.call_count)
+
+
 class KoukuAnimationRootMotionTests(unittest.TestCase):
     @staticmethod
     def animation(**changes):
@@ -6887,11 +7170,50 @@ class KoukuInventoryAdmissionTests(unittest.TestCase):
 
     def test_projected_outputs_reject_before_publication(self):
         encounter = {"payload": "large"}
-        with mock.patch.object(subject, "project_encounter", return_value=encounter), \
+        with tempfile.TemporaryDirectory() as directory, \
+             mock.patch.object(subject, "project_encounter", return_value=encounter), \
              mock.patch.object(subject, "project_presentation", return_value={}), \
              mock.patch.object(subject, "MAX_ENCOUNTER_BYTES", 1):
             with self.assertRaisesRegex(subject.CompositionError, "64 MiB"):
-                subject.projected_outputs({})
+                subject.projected_outputs({}, Path(directory))
+
+    def test_encounter_serializer_keeps_pretty_when_within_byte_limit(self):
+        document = {"unicode": "\ud558\ud2b8", "samples": [{"timeMs": 0, "x": 1.25}]}
+        expected = subject.serialize_json(document)
+        with mock.patch.object(subject, "MAX_ENCOUNTER_BYTES", len(expected)):
+            self.assertEqual(expected, subject.serialize_encounter_json(document))
+
+    def test_projected_encounter_compacts_only_whitespace_when_needed(self):
+        encounter = {"unicode": "\uac08\uace0\ub9ac", "samples": [
+            {"timeMs": 0, "offset": [0.0, -1.25, 9e-7], "active": True},
+            {"timeMs": 1000, "offset": [1, 2, 3], "optional": None}]}
+        expected = (json.dumps(encounter, ensure_ascii=False, separators=(",", ":"),
+                               allow_nan=False) + "\n").encode("utf-8")
+        self.assertLess(len(expected), len(subject.serialize_json(encounter)))
+        with tempfile.TemporaryDirectory() as directory, \
+             mock.patch.object(subject, "project_encounter", return_value=encounter), \
+             mock.patch.object(subject, "project_presentation", return_value={}), \
+             mock.patch.object(subject, "MAX_ENCOUNTER_BYTES", len(expected)):
+            outputs = subject.projected_outputs({}, Path(directory))
+            self.assertEqual(expected, outputs[subject.ENCOUNTER_PATH])
+            self.assertEqual(encounter, json.loads(outputs[subject.ENCOUNTER_PATH]))
+            self.assertEqual(subject.serialize_json({}), outputs[subject.PRESENTATION_PATH])
+            subject.publish_outputs(Path(directory), outputs)
+            subject.validate_outputs(Path(directory),
+                                     subject.projected_outputs({}, Path(directory)))
+
+    def test_compact_encounter_still_rejects_byte_depth_and_value_overflow(self):
+        document = {"a": [0, 1]}
+        compact = (json.dumps(document, separators=(",", ":")) + "\n").encode()
+        with mock.patch.object(subject, "MAX_ENCOUNTER_BYTES", len(compact) - 1):
+            with self.assertRaisesRegex(subject.CompositionError, "64 MiB"):
+                subject.serialize_encounter_json(document)
+        for limit, value in (("MAX_ENCOUNTER_DEPTH", 1), ("MAX_ENCOUNTER_VALUES", 3)):
+            with self.subTest(limit=limit), \
+                 mock.patch.object(subject, "MAX_ENCOUNTER_BYTES", len(compact)), \
+                 mock.patch.object(subject, limit, value):
+                with self.assertRaisesRegex(subject.CompositionError, "depth/value"):
+                    subject.serialize_encounter_json(document)
 
     def test_depth_and_value_boundaries(self):
         with mock.patch.object(subject, "MAX_ENCOUNTER_DEPTH", 2), \

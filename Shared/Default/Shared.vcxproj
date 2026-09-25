@@ -23,6 +23,7 @@
 	<ClInclude Include="..\Public\Gameplay\CombatCollisionContract.h" />
 	<ClInclude Include="..\Public\Gameplay\WorldCollisionContract.h" />
 	<ClInclude Include="..\Public\Gameplay\AttackHitTemplate.h" />
+	<ClInclude Include="..\Public\Gameplay\KoukuMarioBombContract.h" />
 	<ClInclude Include="..\Public\Gameplay\KoukuTargetTracking.h" />
 	<ClInclude Include="..\Public\Gameplay\KoukuArenaReadyAreas.h" />
     <ClInclude Include="..\Public\Network\NetworkIds.h" />

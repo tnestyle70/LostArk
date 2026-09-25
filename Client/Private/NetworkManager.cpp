@@ -890,6 +890,8 @@ bool CNetworkManager::Has_DispatchCapacity(
 		return m_DebugTeleportResults.size() < MAX_REVISION_CONTROL_QUEUE;
 	case PACKET_TYPE::S2C_MARIO_RETURN_RESULT:
 		return m_MarioReturnResults.size() < MAX_REVISION_CONTROL_QUEUE;
+	case PACKET_TYPE::S2C_ROOM_PING:
+		return m_RoomPings.size() < MAX_REVISION_CONTROL_QUEUE;
 	case PACKET_TYPE::S2C_DEBUG_MARIO_JUMP_RESULT:
 		return m_DebugMarioJumpResults.size() < MAX_REVISION_CONTROL_QUEUE;
 	case PACKET_TYPE::S2C_DEBUG_KILL_GATE_BOSSES_RESULT:
@@ -2137,6 +2139,24 @@ bool CNetworkManager::Send_PartyInviteRespond(
 		frameBytes) && Send_All(frameBytes);
 }
 
+bool CNetworkManager::Send_RoomPing(std::uint32_t sequence, float x, float y, float z)
+{
+	using namespace LostArk::Shared;
+	if (!Is_Connected()) return false;
+	C2S_ROOM_PING request;
+	request.iClientSequence = sequence; request.eWorldId = m_eWorldId;
+	request.fPositionX = x; request.fPositionY = y; request.fPositionZ = z;
+	CPacketWriter writer;
+	std::vector<std::uint8_t> frame;
+	return Write_Message(writer, request) && Build_Packet_Frame(PACKET_TYPE::C2S_ROOM_PING, writer.Get_Buffer(), frame) && Send_All(frame);
+}
+
+bool CNetworkManager::Try_Consume_RoomPing(LostArk::Shared::S2C_ROOM_PING& ping)
+{
+	if (m_RoomPings.empty()) return false;
+	ping = m_RoomPings.front(); m_RoomPings.pop_front(); return true;
+}
+
 bool CNetworkManager::Send_Chat(const std::string& text)
 {
 	using namespace LostArk::Shared;
@@ -2729,6 +2749,7 @@ void CNetworkManager::Reset_WorldInboundState()
 	m_DebugTeleportResults.clear();
 	m_DebugMarioJumpResults.clear();
 	m_MarioReturnResults.clear();
+	m_RoomPings.clear();
 	m_DebugKillGateBossesResults.clear();
 	m_SetCooldownModeResults.clear();
 	m_DebugWorldPlaybackResults.clear();
@@ -4594,6 +4615,25 @@ void CNetworkManager::Handle_Frame(const LostArk::Shared::PACKET_FRAME & frame)
 		event.eType = Client::CLIENT_REPLICATION_EVENT_TYPE::RAID_ENTRY_VOTE;
 		event.RaidEntryVote = vote;
 		Enqueue_ReplicationEvent(std::move(event));
+		break;
+	}
+	case PACKET_TYPE::S2C_ROOM_PING:
+	{
+		S2C_ROOM_PING ping{};
+		if (!Read_Message(reader, ping) || reader.Get_RemainingSize())
+		{
+			Fail_Protocol(WSAEINVAL, SESSION_DIAGNOSTIC_REASON::CLIENT_MESSAGE_DECODE_FAILED,
+				frame.ePacketType, "Room ping payload decode or trailing-byte validation failed.");
+			return;
+		}
+		if (ping.eWorldId != m_eWorldId) break;
+		if (m_RoomPings.size() >= MAX_REVISION_CONTROL_QUEUE)
+		{
+			Fail_Protocol(WSAENOBUFS, SESSION_DIAGNOSTIC_REASON::CLIENT_EVENT_QUEUE_OVERFLOW,
+				frame.ePacketType, "Room ping queue overflow.");
+			return;
+		}
+		m_RoomPings.push_back(ping);
 		break;
 	}
 	case PACKET_TYPE::S2C_CHAT:

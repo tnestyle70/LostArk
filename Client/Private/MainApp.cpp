@@ -1270,6 +1270,7 @@ void CMainApp::UpdateKoukuGateCompletePlay()
         m_iKoukuRaidPendingRequest = 0u; m_bKoukuRaidStopAfterAdmission = false;
         m_KoukuRaidRequest = {}; m_KoukuRaidReplyDeadline = {}; m_strKoukuRaidReplyStatus.clear();
         m_iKoukuCompletePlayWorldGeneration = 0u;
+        m_KoukuRaidPreparationDiagnostics = {};
         return;
     }
     if (m_KoukuRaidResourcePreparation)
@@ -1362,14 +1363,38 @@ void CMainApp::UpdateKoukuGateCompletePlay()
     }
     if (state.ePhase == KOUKUSAYDON_RAID_PHASE::PREPARING)
     {
-        m_strKoukuCompletePlayStatus = "Preparing the shared raid documents; waiting for every participant.";
+        auto& diagnostics = m_KoukuRaidPreparationDiagnostics;
+        if (diagnostics.epoch != state.iRunEpoch)
+        {
+            diagnostics = {};
+            diagnostics.epoch = state.iRunEpoch;
+            diagnostics.observedAt = std::chrono::steady_clock::now();
+        }
+        size_t readyCount = 0u;
+        for (size_t i = 0u; i < state.ParticipantPlayerIds.size(); ++i)
+            if (state.iReadyMask & (1u << i)) ++readyCount;
+        m_strKoukuCompletePlayStatus = "Raid preparation: " + std::to_string(readyCount) + " / " +
+            std::to_string(state.ParticipantPlayerIds.size()) +
+            " participants confirmed by Server. Playback starts automatically when all are ready.";
         const auto localId = CNetworkManager::Get().Get_LocalPlayerId();
-        if (std::find(state.ParticipantPlayerIds.begin(), state.ParticipantPlayerIds.end(), localId) == state.ParticipantPlayerIds.end() ||
-            m_iKoukuRaidAcknowledgedEpoch == state.iRunEpoch || !arena->Get_PlayerCommandSink()) return;
+        if (std::find(state.ParticipantPlayerIds.begin(), state.ParticipantPlayerIds.end(), localId) == state.ParticipantPlayerIds.end())
+        {
+            diagnostics.stage = "observer";
+            diagnostics.detail = "Joined after START; this Client is not part of the preparation barrier.";
+            return;
+        }
+        if (m_iKoukuRaidAcknowledgedEpoch == state.iRunEpoch) return;
+        if (!arena->Get_PlayerCommandSink())
+        {
+            diagnostics.stage = "command.sink";
+            diagnostics.detail = "Cannot report readiness: the player command sink is unavailable.";
+            return;
+        }
         std::string preparationError;
         CKoukuSaydonCompositionDocument actions;
         CKoukuSaydonCompositionDocument sequences(CKoukuSaydonCompositionDocument::Resolve_SequencePath());
-        std::string preparationStage = "action.reload";
+        std::string& preparationStage = diagnostics.stage;
+        preparationStage = "action.reload";
         bool ready = true;
         if (m_iKoukuRaidDocumentEpoch != state.iRunEpoch || !m_pKoukuRaidSequenceDocument)
         {
@@ -1428,7 +1453,8 @@ void CMainApp::UpdateKoukuGateCompletePlay()
                 state.iActionSourceRevision, resourcesReady, preparationError, true)) ready = false;
             if (ready && !resourcesReady)
             {
-                m_strKoukuCompletePlayStatus = preparationError + " Waiting for all raid participants.";
+                diagnostics.detail = preparationError;
+                diagnostics.submission = "READY has not been sent; local resources are still preparing.";
                 return; // PREPARING owns no playback clock; never acknowledge queued-only work.
             }
             if (ready)
@@ -1450,6 +1476,8 @@ void CMainApp::UpdateKoukuGateCompletePlay()
             preparationStage = "gate.prepare";
             ready = arena->Prepare_ServerRaidGatePresentation(state.strGateId, preparationError);
         }
+        diagnostics.failed = !ready;
+        diagnostics.detail = ready ? "Local documents, resources and gate presentation are prepared." : preparationError;
         // Preserve the exact local preflight result before the bounded wire reason is shortened.
         try
         {
@@ -1473,7 +1501,7 @@ void CMainApp::UpdateKoukuGateCompletePlay()
             preparationError.resize(cut);
         }
         if (!m_iNextKoukuRaidRequest || state.iRequestSequence == UINT32_MAX)
-        { m_strKoukuCompletePlayStatus = "Raid request sequence is exhausted"; return; }
+        { diagnostics.submission = m_strKoukuCompletePlayStatus = "Raid request sequence is exhausted; readiness cannot be submitted."; return; }
         m_iNextKoukuRaidRequest = (std::max)(m_iNextKoukuRaidRequest, state.iRequestSequence + 1u);
         C2S_DEBUG_KOUKUSAYDON_RAID_REQUEST acknowledgement;
         acknowledgement.iRequestSequence = m_iNextKoukuRaidRequest++;
@@ -1485,8 +1513,16 @@ void CMainApp::UpdateKoukuGateCompletePlay()
         acknowledgement.iSequenceSourceRevision = state.iSequenceSourceRevision;
         acknowledgement.strStartGateId = state.strGateId;
         if (!ready) acknowledgement.strReason = preparationError;
-        if (arena->Get_PlayerCommandSink()->Request_KoukuRaid(acknowledgement)) m_iKoukuRaidAcknowledgedEpoch = state.iRunEpoch;
-        m_strKoukuCompletePlayStatus = ready ? "Raid documents prepared; waiting for the shared start tick." : preparationError;
+        const bool submitted = arena->Get_PlayerCommandSink()->Request_KoukuRaid(acknowledgement);
+        const std::string submission = submitted ?
+            (ready ? "READY submitted; waiting for Server confirmation." : "FAILED submitted; waiting for Server abort.") :
+            "Readiness submission failed; the Server has not confirmed this Client.";
+        if (submitted || diagnostics.submission != submission)
+            Record_KoukuRaidRequestEvent(submitted ? "kouku.raid.prepare.submitted" : "kouku.raid.prepare.submit_failed",
+                acknowledgement, m_iKoukuCompletePlayWorldGeneration, state.iRunEpoch, diagnostics.detail);
+        diagnostics.submission = submission;
+        if (submitted) m_iKoukuRaidAcknowledgedEpoch = state.iRunEpoch;
+        if (!ready) m_strKoukuCompletePlayStatus = preparationStage + ": " + diagnostics.detail;
         return;
     }
     const bool cinematic = active && state.ePhase == KOUKUSAYDON_RAID_PHASE::CINEMATIC;
@@ -2065,7 +2101,7 @@ void CMainApp::Update(const f32_t fTimeDelta)
 	if (m_pKoukuSaydonBossTool && m_pKoukuSaydonBossTool->Consume_PublishRequest())
 	{
 #ifdef _DEBUG
-		const bool available = SUCCEEDED(EnsureDebugTool(DEBUG_TOOL::SEQUENCER)) && m_pKoukuSaydonActionWorkbench;
+		const bool available = SUCCEEDED(EnsureDebugTool(DEBUG_TOOL::SEQUENCER, false)) && m_pKoukuSaydonActionWorkbench;
 #else
 		if (!m_pKoukuSaydonActionWorkbench)
 			m_pKoukuSaydonActionWorkbench = make_unique<CKoukuSaydonActionWorkbench>();
@@ -2185,6 +2221,12 @@ void CMainApp::Update(const f32_t fTimeDelta)
         }
         if (m_pEffectTool)
         {
+            std::vector<CEffect_Tool::CLASS_MOVIE_RESOURCE_ROW> movies;
+            if (auto* level = CLevel_CharacterSelect::Get_Active(); level &&
+                CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::CHARACTER_SELECT))
+                for (const auto& option : level->Get_ClassMovieOptions())
+                    movies.push_back({option.classId, option.label});
+            m_pEffectTool->Set_ClassMovieResources(std::move(movies));
             m_pEffectTool->Set_AuthoringCamera(effectCamera);
             {
                 Engine::CProfilerScope toolScope(CGameInstance::Get().Get_Profiler(), "ImGui.Tool.EffectV1.Update_AuthoringWorkspace");
@@ -2204,6 +2246,27 @@ void CMainApp::Update(const f32_t fTimeDelta)
                 m_strToolStatus = bOpened ?
                     "Opened the selected resource in its typed Effect owner." :
                     "The typed Effect owner preserved its current draft; inspect the owner status.";
+            }
+            std::string movieClassId;
+            if (m_pEffectTool->Consume_ClassMovieEditorRequest(movieClassId))
+            {
+                auto* level = CLevel_CharacterSelect::Get_Active();
+                bool opened = false;
+                if (level && CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::CHARACTER_SELECT))
+                {
+                    const auto& options = level->Get_ClassMovieOptions();
+                    const auto option = std::find_if(options.begin(), options.end(),
+                        [&](const auto& value) { return value.classId == movieClassId; });
+                    if (option != options.end() && SUCCEEDED(EnsureDebugTool(DEBUG_TOOL::SEQUENCER)) &&
+                        level->Select_ClassMovieCategory(static_cast<size_t>(std::distance(options.begin(), option))))
+                    {
+                        m_pSequencerTool->Open(COMPOSITION_WORKBENCH_TARGET::WORLD);
+                        m_eDebugInputOwner = DEBUG_TOOL::SEQUENCER;
+                        opened = true;
+                    }
+                }
+                m_strToolStatus = opened ? "Opened the selected class movie timeline." :
+                    "Enter Character Select from Lobby before opening a class movie timeline.";
             }
         }
     }
@@ -3720,7 +3783,8 @@ HRESULT CMainApp::Render()
 							{float(value.RotationDegrees[0]), float(value.RotationDegrees[1]), float(value.RotationDegrees[2])},
 							{float(value.Scale[0]), float(value.Scale[1]), float(value.Scale[2])}};
 					}
-					(void)m_pWorldObjectTool->Open_ObjectMotion(request.strObjectId, request.strMotionInstanceId, status, placement);
+					(void)m_pWorldObjectTool->Open_ObjectMotion(request.strObjectId, request.strMotionInstanceId, status, placement,
+						request.strPatternId, request.strOccurrenceId, request.bSequenceWorkspace, request.bExplicitPlacement, request.bFocusAnimationClips);
 				}
 				workbench->Notify_WorldObjectEditResult(std::move(status));
 			}
@@ -5406,8 +5470,8 @@ void CMainApp::Update_KoukuHudMode()
 
 		const int32_t iSkillIndex = kouku.ModeSkillIndexBySlot[i];
 		/* The mouse hammer remains an input action, but the maze HUD presents Q only. */
-		const bool_t bHasSkill = (HUD_KOUKU_HUD_MODE::MAZE != kouku.eHudMode || 0u == i) &&
-			iSkillIndex >= 0 && static_cast<size_t>(iSkillIndex) < pMode->Skills.size();
+		const bool_t bHasSkill = kouku.Has_VisibleSkillSlot(i) &&
+			static_cast<size_t>(iSkillIndex) < pMode->Skills.size();
 		if (bHasSkill)
 		{
 			m_pHUDRuntimeView->Set_SlotTexture(strIconSlot,
@@ -7391,7 +7455,7 @@ void CMainApp::RenderSkillCooldownText()
 	{
 		for (std::size_t i = 0; i < HUD_KOUKU_SLOT_COUNT; ++i)
 		{
-			if (kouku.ModeSkillIndexBySlot[i] < 0 || kouku.CooldownEndTicks[i] <= player.iServerTick) continue;
+			if (!kouku.Has_VisibleSkillSlot(i) || kouku.CooldownEndTicks[i] <= player.iServerTick) continue;
 			float x, y, width, height;
 			if (m_pHUDRuntimeView->Get_SlotRect(std::string("Skill_") + KOUKU_SLOT_KEYS[i] + "_Icon", x, y, width, height))
 			{
@@ -9841,28 +9905,32 @@ HRESULT CMainApp::EnsureAnimationPreviewBackend()
 
 #endif
 
-HRESULT CMainApp::EnsureDebugTool(const DEBUG_TOOL eTool)
+HRESULT CMainApp::EnsureDebugTool(const DEBUG_TOOL eTool, const bool_t bShowWindow)
 {
 	Engine::CProfilerScope panelScope(CGameInstance::Get().Get_Profiler(), "ImGui.Tool.Open");
 #ifdef _DEBUG
 	/* Keep the old enum value as an internal compatibility route only. */
 	if (DEBUG_TOOL::EFFECT_COMPOSITION == eTool)
-		return EnsureDebugTool(DEBUG_TOOL::EFFECT);
+		return EnsureDebugTool(DEBUG_TOOL::EFFECT, bShowWindow);
 	if (eTool == DEBUG_TOOL::WORLD_OBJECT || eTool == DEBUG_TOOL::SEQUENCER_BENCHMARK)
 	{
-		if (FAILED(EnsureDebugTool(DEBUG_TOOL::SEQUENCER))) return E_FAIL;
-		m_pSequencerTool->Open(eTool == DEBUG_TOOL::WORLD_OBJECT ?
-			COMPOSITION_WORKBENCH_TARGET::OBJECT : COMPOSITION_WORKBENCH_TARGET::SEQUENCE);
-		m_eDebugInputOwner = eTool;
+		if (FAILED(EnsureDebugTool(DEBUG_TOOL::SEQUENCER, bShowWindow))) return E_FAIL;
+        if (bShowWindow)
+        {
+		    m_pSequencerTool->Open(eTool == DEBUG_TOOL::WORLD_OBJECT ?
+			    COMPOSITION_WORKBENCH_TARGET::OBJECT : COMPOSITION_WORKBENCH_TARGET::SEQUENCE);
+		    m_eDebugInputOwner = eTool;
+        }
 		return S_OK;
 	}
 	if (DEBUG_TOOL::VALTAN_ACTION_WORKBENCH == eTool ||
 		DEBUG_TOOL::KOUKU_SAYDON_ACTION_WORKBENCH == eTool)
 	{
-		if (FAILED(EnsureDebugTool(DEBUG_TOOL::SEQUENCER)))
+		if (FAILED(EnsureDebugTool(DEBUG_TOOL::SEQUENCER, bShowWindow)))
 			return E_FAIL;
-		m_pSequencerTool->Open(DEBUG_TOOL::VALTAN_ACTION_WORKBENCH == eTool ?
-			COMPOSITION_WORKBENCH_BOSS::VALTAN : COMPOSITION_WORKBENCH_BOSS::KOUKU_SAYDON);
+        if (bShowWindow)
+		    m_pSequencerTool->Open(DEBUG_TOOL::VALTAN_ACTION_WORKBENCH == eTool ?
+			    COMPOSITION_WORKBENCH_BOSS::VALTAN : COMPOSITION_WORKBENCH_BOSS::KOUKU_SAYDON);
 		return S_OK;
 	}
 
@@ -10096,6 +10164,9 @@ HRESULT CMainApp::EnsureDebugTool(const DEBUG_TOOL eTool)
 				state.selectedClassId = level->Get_ClassMovieId();
 				state.activeClassId = preview.Get_ActiveClass();
 				state.selectedLabel = level->Get_ClassMovieLabel();
+				state.authoringDirty = preview.Has_AuthoringChanges();
+                state.authoringPublishPending = preview.Is_AuthoringPublishPending();
+                state.authoringStatus = preview.Get_AuthoringStatus();
 				state.active = preview.Is_Active();
 				state.paused = preview.Is_Paused();
 				state.looping = preview.Is_Looping();
@@ -10142,7 +10213,7 @@ HRESULT CMainApp::EnsureDebugTool(const DEBUG_TOOL eTool)
 				return level && level->Can_PlayClassCinematic() &&
 					CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::CHARACTER_SELECT) &&
 					level->Get_ClassSelectionPresentation().Seek(
-						level->Get_ClassSelectionPresentation().Get_ActiveClass(), loop, timeMs);
+						level->Get_ClassMovieId(), loop, timeMs);
 			};
 			classSelection.setPlaybackRate = [](double rate) {
                 auto* level = CLevel_CharacterSelect::Get_Active();
@@ -10153,6 +10224,35 @@ HRESULT CMainApp::EnsureDebugTool(const DEBUG_TOOL eTool)
                 auto* level = CLevel_CharacterSelect::Get_Active();
                 return level && CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::CHARACTER_SELECT) ?
                     level->Get_ClassSelectionPresentation().Get_Timeline(classId, loop) : nullptr;
+            };
+            classSelection.beginAuthoring = [](std::string& status) {
+                auto* level = CLevel_CharacterSelect::Get_Active();
+                return level && level->Get_ClassSelectionPresentation().Begin_Authoring(status);
+            };
+            classSelection.editableBox = [](const std::string& classId, bool loop, const std::string& kind,
+                const std::string& id, CLASS_MOVIE_AUTHORING_BOX& out, std::string& status) {
+                auto* level = CLevel_CharacterSelect::Get_Active();
+                return level && level->Get_ClassSelectionPresentation().Get_AuthoringBox(classId, loop, kind, id, out, status);
+            };
+            classSelection.applyBox = [](const CLASS_MOVIE_AUTHORING_BOX& before, const DATA_JSON_VALUE& value, std::string& status) {
+                auto* level = CLevel_CharacterSelect::Get_Active();
+                return level && level->Get_ClassSelectionPresentation().Apply_AuthoringBox(before, value, status);
+            };
+            classSelection.saveAuthoring = [](std::string& status) {
+                auto* level = CLevel_CharacterSelect::Get_Active();
+                return level && level->Get_ClassSelectionPresentation().Save_Authoring(status);
+            };
+            classSelection.reloadAuthoring = [](std::string& status) {
+                auto* level = CLevel_CharacterSelect::Get_Active();
+                return level && level->Get_ClassSelectionPresentation().Reload_Authoring(status);
+            };
+            classSelection.openEffectEditor = [this](const std::string& assetId, std::string& status) {
+                EnsureDebugTool(DEBUG_TOOL::EFFECT);
+                if (!m_pEffectTool || !m_pEffectTool->Open_AuthoringResource({EFFECT_RESOURCE_OWNER_KIND::V1_DOCUMENT, assetId}))
+                { status = "The selected Effect could not be opened; its existing editor draft was preserved."; return false; }
+                if (auto* level = CLevel_CharacterSelect::Get_Active()) level->Get_ClassSelectionPresentation().Stop();
+                status = "Edit and Save this Effect, then return to the Movie and Play. Save refreshes the same prepared Effect target.";
+                return true;
             };
             m_pSequencerTool->Set_ClassSelectionPreviewCallbacks(std::move(classSelection));
 			/* The Map Tool hosts the same Sequence session for its integrated
@@ -10172,13 +10272,16 @@ HRESULT CMainApp::EnsureDebugTool(const DEBUG_TOOL eTool)
 				m_eDebugInputOwner = target == COMPOSITION_WORKBENCH_TARGET::OBJECT ? DEBUG_TOOL::WORLD_OBJECT :
 					(target == COMPOSITION_WORKBENCH_TARGET::SEQUENCE ? DEBUG_TOOL::SEQUENCER_BENCHMARK : DEBUG_TOOL::SEQUENCER);
 			});
-			if (CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::CHARACTER_SELECT))
-				m_pSequencerTool->Open(COMPOSITION_WORKBENCH_TARGET::WORLD);
-			else m_pSequencerTool->Open(ETOUI(LEVEL::KAKULSAYDON_ARENA) ==
-				CGameInstance::Get().Get_CurrentLevelID() ?
-				COMPOSITION_WORKBENCH_BOSS::KOUKU_SAYDON : COMPOSITION_WORKBENCH_BOSS::VALTAN);
+            if (bShowWindow)
+            {
+			    if (CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::CHARACTER_SELECT))
+				    m_pSequencerTool->Open(COMPOSITION_WORKBENCH_TARGET::WORLD);
+			    else m_pSequencerTool->Open(ETOUI(LEVEL::KAKULSAYDON_ARENA) ==
+				    CGameInstance::Get().Get_CurrentLevelID() ?
+				    COMPOSITION_WORKBENCH_BOSS::KOUKU_SAYDON : COMPOSITION_WORKBENCH_BOSS::VALTAN);
+            }
 		}
-		else
+		else if (bShowWindow)
 		{
 			const auto level = CGameInstance::Get().Get_CurrentLevelID();
 			const bool selectedValtan = m_pSequencerTool->Get_SelectedBoss() == COMPOSITION_WORKBENCH_BOSS::VALTAN;
@@ -10254,6 +10357,9 @@ HRESULT CMainApp::EnsureDebugTool(const DEBUG_TOOL eTool)
 		return E_INVALIDARG;
 	}
 
+    // Embedded tuners need the shared session without opening its window or
+    // stealing preview/input focus. Explicit Open callers keep the default true.
+    if (!bShowWindow) return S_OK;
 	SetDebugToolVisible(eTool, true);
 	/* Valtan Logic Pattern is a read-only Server-state blueprint. Opening or focusing
 	it must not steal the explicit world/preview input owner. */
@@ -11559,14 +11665,14 @@ void CMainApp::RenderKoukuSaydonArenaControls()
 	owns both masks, so these only ask. */
 	if (ImGui::TreeNode("Kouku Whirlwind Hammer Transform"))
 	{
-		if ((m_pKoukuSaydonActionWorkbench || SUCCEEDED(EnsureDebugTool(DEBUG_TOOL::SEQUENCER))) && m_pKoukuSaydonActionWorkbench)
+		if ((m_pKoukuSaydonActionWorkbench || SUCCEEDED(EnsureDebugTool(DEBUG_TOOL::SEQUENCER, false))) && m_pKoukuSaydonActionWorkbench)
 			m_pKoukuSaydonActionWorkbench->Render_WorldPlacementTuning("KAKULSAYDON_G1_PATTERN_24",
 				"KAKULSAYDON_G1_PATTERN_24.world.1");
 		ImGui::TreePop();
 	}
 	ImGui::SeparatorText("Bingo Board");
 	ImGui::TextDisabled(
-		"Play1 paints cells 0-2, Play2 paints 3-4 and completes row 0. Rows, columns and both diagonals count.");
+		"Play1 paints cells 0-2, Play2 paints 3-4 and completes row 0. Only rows and columns count.");
 	{
 		CPlayerController& bingoController = pArena->Get_DebugPlayerController();
 		if (ImGui::Button("Bingo_Play1", ImVec2(160.f, 0.f)))
@@ -11588,6 +11694,8 @@ void CMainApp::RenderKoukuSaydonArenaControls()
 		swept. */
 		if (ImGui::Button("Bingo_Hammer", ImVec2(160.f, 0.f)))
 			(void)bingoController.Request_DebugBingoHammer();
+		if ((m_pWorldObjectTool || SUCCEEDED(EnsureDebugTool(DEBUG_TOOL::WORLD_OBJECT, false))) && m_pWorldObjectTool)
+			m_pWorldObjectTool->Render_BingoSizeTuning();
 		/* Wave monsters: Debug builds no longer raise Book1_Monsters / Book2_Monsters
 		when a player steps into the trigger, so these two buttons ask the Server to
 		summon them again. */
@@ -11945,7 +12053,7 @@ void CMainApp::RenderKoukuSaydonCompletePlayControls()
 	const auto& bundles = m_pKoukuSaydonBossTool->Get_ProductBundles();
 	const auto findPattern = [&](const std::string& id) -> const CKoukuSaydonBossTool::PRODUCT_PATTERN* {
 		auto it=std::find_if(patterns.begin(),patterns.end(),[&](const auto& p){return p.strPatternId==id;}); return it==patterns.end()?nullptr:&*it; };
-	if (ImGui::BeginChild("KoukuCompletePlayInventory", ImVec2(0,240), true))
+	if (ImGui::BeginChild("KoukuCompletePlayInventory", ImVec2(0,720), true))
 		(void)(m_iKoukuCompletePlayCategory == 0 ?
 			m_pKoukuSaydonBossTool->Render_SavedPatternFlow(gate, m_iKoukuCompletePlaySelection, m_strKoukuCompletePlayPatternId) :
 			m_pKoukuSaydonBossTool->Render_PatternTree(gate, m_iKoukuCompletePlaySelection, m_strKoukuCompletePlayPatternId));
@@ -12035,11 +12143,15 @@ void CMainApp::RenderKoukuSaydonCompletePlayControls()
 		(void)m_pKoukuSaydonBossTool->Play_CompositionAll(gate, m_strKoukuCompletePlayStatus);
 	ImGui::EndDisabled();
 	if (preparing) ImGui::TextWrapped("%s", m_pKoukuSaydonBossTool->Get_Status().c_str());
-	ImGui::Text("Server: %s",Describe_KoukuSaydonPatternAuditionState(audition.eState));
+    RenderKoukuRaidPreparationDiagnostics();
+	ImGui::Text("Individual pattern: %s",Describe_KoukuSaydonPatternAuditionState(audition.eState));
 	if (!flow.strStatus.empty()) ImGui::TextWrapped("%s", flow.strStatus.c_str());
 	if (!audition.strBundleId.empty()) ImGui::Text("Bundle %s | run %u | common tick %u",audition.strBundleId.c_str(),audition.iRoomAuditionEpoch,audition.iCommonStartTick);
 	for (const auto& member : audition.Members) ImGui::BulletText("%s | boss %u | %s | state %u",member.strMemberId.c_str(),member.iBossNetEntityId,member.strPatternId.c_str(),unsigned(member.eState));
-	ImGui::TextWrapped("%s",audition.strStatus.c_str());
+    const auto* raidArena = CLevel_KakulSaydonArena::Get_Active();
+    if (!raidArena || !raidArena->Get_KoukuRaidState().iRunEpoch ||
+        audition.strStatus != "Level changed; no KoukuSaydon Server pattern is Live in this Client session.")
+        ImGui::TextWrapped("%s", audition.strStatus.c_str());
 	// Submission returns a pending message once; the service owns its later verdict.
 	if (!m_strKoukuCompletePlayStatus.starts_with("Waiting for the Server to admit") &&
 		m_strKoukuCompletePlayStatus != audition.strStatus)
@@ -12049,6 +12161,105 @@ void CMainApp::RenderKoukuSaydonCompletePlayControls()
     if (!m_strKoukuRaidReplyStatus.empty() && m_strKoukuRaidReplyStatus != m_strKoukuCompletePlayStatus &&
         m_strKoukuRaidReplyStatus != audition.strStatus)
         ImGui::TextWrapped("%s", m_strKoukuRaidReplyStatus.c_str());
+}
+
+void CMainApp::RenderKoukuRaidPreparationDiagnostics()
+{
+    using namespace LostArk::Shared;
+    auto& network = CNetworkManager::Get();
+    const auto connection = network.Get_SessionDiagnosticSnapshot();
+    ImGui::Separator();
+    ImGui::Text("Connection: %s | %s | local Player %u | process %lu",
+        network.Is_Connected() ? "CONNECTED" : "DISCONNECTED", connection.strEndpoint.c_str(),
+        network.Get_LocalPlayerId(), GetCurrentProcessId());
+    if (connection.iLastReceiveUnixMs)
+    {
+        const auto nowMs = std::chrono::duration_cast<std::chrono::milliseconds>(
+            std::chrono::system_clock::now().time_since_epoch()).count();
+        const auto ageMs = nowMs > static_cast<int64_t>(connection.iLastReceiveUnixMs) ?
+            nowMs - static_cast<int64_t>(connection.iLastReceiveUnixMs) : 0;
+        ImGui::Text("Last packet: %.1f s ago | receive queue: %zu", ageMs / 1000.0, connection.iRawQueueDepth);
+        if (ageMs >= 5000)
+            ImGui::TextWrapped("No recent Server packet. Readiness below is the last received state, not a live confirmation.");
+    }
+    const auto* arena = CLevel_KakulSaydonArena::Get_Active();
+    if (!arena) { ImGui::TextWrapped("Raid: no active KoukuSaydon arena."); return; }
+    const auto& state = arena->Get_KoukuRaidState();
+    const char* phase = "UNKNOWN";
+    switch (state.ePhase)
+    {
+    case KOUKUSAYDON_RAID_PHASE::INACTIVE: phase = "INACTIVE"; break;
+    case KOUKUSAYDON_RAID_PHASE::PREPARING: phase = "PREPARING"; break;
+    case KOUKUSAYDON_RAID_PHASE::CINEMATIC: phase = "CINEMATIC / PLAYING SEQUENCE"; break;
+    case KOUKUSAYDON_RAID_PHASE::COMBAT: phase = "COMBAT"; break;
+    case KOUKUSAYDON_RAID_PHASE::WAIT_GATE: phase = "WAIT_GATE"; break;
+    case KOUKUSAYDON_RAID_PHASE::WAIT_MINIGAME: phase = "WAIT_MINIGAME"; break;
+    case KOUKUSAYDON_RAID_PHASE::WAIT_ENTRY: phase = "WAIT_ENTRY"; break;
+    case KOUKUSAYDON_RAID_PHASE::COMPLETE: phase = "COMPLETE"; break;
+    case KOUKUSAYDON_RAID_PHASE::ABORTED: phase = "ABORTED"; break;
+    default: break;
+    }
+    ImGui::Text("Server raid: %s | run %u | gate %s", phase, state.iRunEpoch, state.strGateId.c_str());
+    if (m_KoukuRaidResourcePreparation)
+        ImGui::TextWrapped("Before START: this Client is preparing resources. The Server participant roster is not fixed yet.");
+    if (m_iKoukuRaidPendingRequest)
+        ImGui::Text("Waiting for the final Server reply to request %u.", m_iKoukuRaidPendingRequest);
+    if (!state.strReason.empty()) ImGui::TextWrapped("Server reason: %s", state.strReason.c_str());
+    if (!state.iRunEpoch) return;
+
+    const auto count = state.ParticipantPlayerIds.size();
+    size_t readyCount = 0u;
+    for (size_t i = 0u; i < count; ++i)
+        if (state.iReadyMask & (1u << i)) ++readyCount;
+    ImGui::Text("Server-confirmed preparation: %zu / %zu | maximum room size: 4", readyCount, count);
+    ImGui::ProgressBar(count ? static_cast<float>(readyCount) / static_cast<float>(count) : 0.f);
+    if (ImGui::BeginTable("KoukuRaidParticipants", 3, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg))
+    {
+        ImGui::TableSetupColumn("Participant");
+        ImGui::TableSetupColumn("Server confirmation");
+        ImGui::TableSetupColumn("Waiting on");
+        ImGui::TableHeadersRow();
+        for (size_t i = 0u; i < count; ++i)
+        {
+            const auto id = state.ParticipantPlayerIds[i];
+            const bool local = id == network.Get_LocalPlayerId();
+            const bool ready = (state.iReadyMask & (1u << i)) != 0u;
+            ImGui::TableNextRow(); ImGui::TableNextColumn();
+            ImGui::Text("Player %u%s%s", id, local ? " (this Client)" : "", id == state.iOwnerPlayerId ? " (owner)" : "");
+            ImGui::TableNextColumn();
+            ImGui::TextUnformatted(ready ? "READY received" : "READY not received");
+            ImGui::TableNextColumn();
+            ImGui::TextWrapped("%s", ready ? "Prepared" : (local ? "See local preparation below" :
+                "Remote Client preparation / READY delivery. Open its F1 panel for the exact resource stage."));
+        }
+        ImGui::EndTable();
+    }
+    const auto& diagnostics = m_KoukuRaidPreparationDiagnostics;
+    if (diagnostics.epoch == state.iRunEpoch)
+    {
+        ImGui::Text("Local preparation stage: %s%s", diagnostics.stage.c_str(), diagnostics.failed ? " [FAILED]" : "");
+        ImGui::TextWrapped("%s", diagnostics.detail.c_str());
+        const auto local = std::find(state.ParticipantPlayerIds.begin(), state.ParticipantPlayerIds.end(), network.Get_LocalPlayerId());
+        const bool serverConfirmed = local != state.ParticipantPlayerIds.end() &&
+            (state.iReadyMask & (1u << std::distance(state.ParticipantPlayerIds.begin(), local))) != 0u;
+        if (serverConfirmed) ImGui::TextUnformatted("Server confirmed this Client READY.");
+        else if (!diagnostics.submission.empty()) ImGui::TextWrapped("%s", diagnostics.submission.c_str());
+        if (state.ePhase == KOUKUSAYDON_RAID_PHASE::PREPARING)
+        {
+            const auto seconds = std::chrono::duration_cast<std::chrono::seconds>(
+                std::chrono::steady_clock::now() - diagnostics.observedAt).count();
+            ImGui::Text("Preparation observed on this Client: %lld s | Server limit: 20 min", static_cast<long long>(seconds));
+        }
+    }
+    if (state.ePhase == KOUKUSAYDON_RAID_PHASE::PREPARING)
+        ImGui::TextWrapped("%s", readyCount == count ?
+            "All READY confirmations received; waiting for the Server cinematic state." :
+            "Playback has not started. It starts automatically after every listed participant is ready. Debug builds use the same barrier.");
+    if (state.ePhase == KOUKUSAYDON_RAID_PHASE::ABORTED)
+        ImGui::TextWrapped("This run was aborted. Waiting will not restart it; resolve the Server/local reason and start again explicitly.");
+    if (!state.strSequencePatternId.empty()) ImGui::TextWrapped("Sequence: %s", state.strSequencePatternId.c_str());
+    if (state.ePhase == KOUKUSAYDON_RAID_PHASE::CINEMATIC)
+        ImGui::Text("Sequence ticks: %u -> %u | latest Server tick: %u", state.iStartTick, state.iEndTick, connection.iLastServerTick);
 }
 
 void CMainApp::RefreshCompletePlayPatternOptions()
@@ -12532,7 +12743,7 @@ void CMainApp::RefreshWorldObjectResources()
 				info.fStartMs = instance.startDelayMs + animation.startMs / static_cast<double>(instance.playbackSpeed);
 				info.fEndMs = instance.startDelayMs + endMs / static_cast<double>(instance.playbackSpeed);
 				info.fPlaybackRate = animation.playbackRate * instance.playbackSpeed;
-				info.iSourceStartMs = animation.sourceStartMs;
+				info.iSourceStartMs = animation.sourceStartMs; info.iSourceEndMs = animation.sourceEndMs;
 				info.bLoop = animation.loop; info.bHoldLastFrame = animation.holdLastFrame;
 				row.AnimationTracks.push_back(std::move(info));
 			}
@@ -13099,8 +13310,22 @@ void CMainApp::RenderRenderingWorkbench()
             m_bRenderQualityDraftInitialized = false;
         }
     }
+    const string previousQualityOwner = m_strRenderingQualityProfileId;
     if (const auto* descriptor = CLevelRegistry::Find(m_eRenderingSelectedLevel))
+    {
         m_strRenderingQualityProfileId = descriptor->pRenderingProfileId;
+        const auto* selected = m_RenderingProfiles.Find_Profile(m_strRenderingSelectedProfileId);
+        const auto* active = m_RenderingProfiles.Get_ActiveProfile();
+        // An independently authored scene (including Mario) owns its quality.
+        // The default Level selection follows that scene while viewing this Level.
+        if (m_strRenderingSelectedProfileId == descriptor->pRenderingProfileId &&
+            currentLevel == ETOUI(m_eRenderingSelectedLevel) && active && active->bHasQualityOverride)
+            m_strRenderingQualityProfileId = active->strProfileId;
+        else if (selected && selected->bHasQualityOverride)
+            m_strRenderingQualityProfileId = selected->strProfileId;
+    }
+    if (previousQualityOwner != m_strRenderingQualityProfileId)
+        m_bRenderQualityDraftInitialized = false;
     if (m_strRenderingSelectedProfileId.empty())
         m_strRenderingSelectedProfileId = m_RenderingProfiles.Get_ActiveProfileId();
     const auto syncDraft = [this]()
@@ -13209,7 +13434,7 @@ void CMainApp::RenderRenderingWorkbench()
         const auto* pActiveProfile = m_RenderingProfiles.Get_ActiveProfile();
         if (!pActiveProfile || !m_RenderingProfiles.Find_Profile(m_strRenderingSelectedProfileId))
         { ImGui::TextWrapped("Selected rendering profile is unavailable."); ImGui::End(); return; }
-        ImGui::Text("Selected Level quality: %s", m_strRenderingQualityProfileId.c_str());
+        ImGui::Text("Selected scene quality: %s", m_strRenderingQualityProfileId.c_str());
 	const float2_t viewportSize = CGameInstance::Get().Get_ViewportSize();
 	ImGui::Text("Pipeline: legacy_deferred_v1");
 	ImGui::Text("Scene profile: %s", m_strRenderingDraftProfileId.c_str());
@@ -13217,7 +13442,7 @@ void CMainApp::RenderRenderingWorkbench()
 	ImGui::TextDisabled(
 		"FP16 Light -> SceneHDR -> Screen Post -> half-res Bloom -> Hable/FXAA -> UI");
 	ImGui::TextDisabled(
-		"Quality edits are saved with the selected Level base; pattern scene changes retain Level quality.");
+		"Quality edits save to the owner shown below. Independent scenes such as Mario retain their own settings.");
 	if (nullptr != m_pRenderingBenchmark)
 	{
 		const auto& game = CGameInstance::Get();
@@ -13232,6 +13457,24 @@ void CMainApp::RenderRenderingWorkbench()
 		m_pRenderingBenchmark->Render_Section(
 			CGameInstance::Get().Get_Profiler(), strQualitySummary, m_RenderingProfiles);
 	}
+
+	const auto applyGlobal = [this]()
+	{
+		if (const auto* source = m_RenderingProfiles.Find_Profile(m_strRenderingQualityProfileId))
+		{
+			auto profile = *source;
+			profile.bHasQualityOverride = true;
+			profile.QualityOverride = m_RenderQualityDraft;
+			if (m_RenderingProfiles.Update_Profile(profile, m_strRenderingStatus))
+			{
+				auto comparison = m_RenderingProfiles.Get_ComparisonOptions();
+				comparison.bFXAAEnabled = profile.QualityOverride.bFXAAEnabled;
+				(void)m_RenderingProfiles.Set_ComparisonOptions(comparison);
+			}
+		}
+		m_RenderQualityDraft = m_RenderingProfiles.Get_ProfileQuality(m_strRenderingQualityProfileId);
+		if (const auto* profile = m_RenderingProfiles.Find_Profile(m_strRenderingSelectedProfileId)) m_SceneRenderingDraft = *profile;
+	};
 
     ImGui::SeparatorText("Live rendering comparison");
     auto comparison = m_RenderingProfiles.Get_ComparisonOptions();
@@ -13249,7 +13492,13 @@ void CMainApp::RenderRenderingWorkbench()
         ImGui::SetTooltip("Updates the current view while dragging. Ctrl+click to enter an exact multiplier.");
     comparisonChanged |= ImGui::Checkbox("LUT grading##LiveCompare", &comparison.bLutEnabled);
     ImGui::SameLine();
-    comparisonChanged |= ImGui::Checkbox("FXAA##LiveCompare", &comparison.bFXAAEnabled);
+    // Both FXAA controls edit the same persistent scene quality. A transient
+    // comparison switch must not mask Save/Publish or re-enable the saved value.
+    if (ImGui::Checkbox("FXAA (saved)##LiveCompare", &m_RenderQualityDraft.bFXAAEnabled))
+    {
+        applyGlobal();
+        comparison.bFXAAEnabled = m_RenderQualityDraft.bFXAAEnabled;
+    }
     ImGui::SameLine();
     comparisonChanged |= ImGui::Checkbox("Bloom##LiveCompare", &comparison.bBloomEnabled);
     if (comparisonChanged)
@@ -13261,7 +13510,7 @@ void CMainApp::RenderRenderingWorkbench()
     ImGui::EndDisabled();
     ImGui::Text("Effective exposure: %.3f", CGameInstance::Get().Get_RenderQualitySettings().fExposure);
     ImGui::TextWrapped("Exposure scales brightness; LUT grading runs once. Directional toggles diffuse/specular while ambient stays active.");
-    ImGui::TextWrapped("Comparison applies to the current view, including Mario. Reset, close, or change Level to return to authored settings. These switches are not saved.");
+    ImGui::TextWrapped("Directional, exposure, LUT and Bloom comparisons last for this session. FXAA updates the selected scene quality and is included in Save Authored / Publish Runtime.");
 
 	ImGui::TextDisabled("Pixel inputs and material comparisons are in the Benchmark section.");
 
@@ -13280,21 +13529,10 @@ void CMainApp::RenderRenderingWorkbench()
 	ImGui::TextDisabled(
 		"Effect Base/Mask/Dissolve/Distortion/Emissive enter SceneHDR before these posts and Bloom.");
 
-	const auto applyGlobal = [this]()
-	{
-		if (const auto* source = m_RenderingProfiles.Find_Profile(m_strRenderingQualityProfileId))
-		{
-			auto profile = *source;
-			profile.bHasQualityOverride = true;
-			profile.QualityOverride = m_RenderQualityDraft;
-			m_RenderingProfiles.Update_Profile(profile, m_strRenderingStatus);
-		}
-		m_RenderQualityDraft = m_RenderingProfiles.Get_ProfileQuality(m_strRenderingQualityProfileId);
-		if (const auto* profile = m_RenderingProfiles.Find_Profile(m_strRenderingSelectedProfileId)) m_SceneRenderingDraft = *profile;
-	};
+
 
 	bool_t globalChanged = false;
-	ImGui::SeparatorText("Selected Level Quality");
+	ImGui::SeparatorText("Selected Scene Quality");
 	ImGui::Text("Quality owner: %s", m_strRenderingQualityProfileId.c_str());
 	globalChanged |= ImGui::Checkbox(
 		"Enabled##SSAO", &m_RenderQualityDraft.bSSAOEnabled);

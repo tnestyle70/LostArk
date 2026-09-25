@@ -13,12 +13,102 @@
 #include <fstream>
 #include <iomanip>
 #include <iterator>
+#include <locale>
 #include <set>
 #include <sstream>
 
 namespace
 {
 	using namespace Client;
+
+
+#ifdef _DEBUG
+    string RenderingJson(const DATA_JSON_VALUE& value)
+    {
+        ostringstream out; out.imbue(locale::classic()); out << setprecision(17);
+        const auto write = [&](const auto& self, const DATA_JSON_VALUE& item) -> void {
+            switch (item.Get_Type())
+            {
+            case DATA_JSON_TYPE::NULL_VALUE: out << "null"; break;
+            case DATA_JSON_TYPE::BOOLEAN: out << (item.Get_Boolean() ? "true" : "false"); break;
+            case DATA_JSON_TYPE::NUMBER: out << item.Get_Number(); break;
+            case DATA_JSON_TYPE::STRING: out << '\"' << CDataJson::Escape(item.Get_String()) << '\"'; break;
+            case DATA_JSON_TYPE::ARRAY:
+                out << '[';
+                for (size_t i = 0; i < item.Get_Array().size(); ++i)
+                { if (i) out << ','; self(self, item.Get_Array()[i]); }
+                out << ']'; break;
+            case DATA_JSON_TYPE::OBJECT:
+                out << '{';
+                { bool first = true;
+                  for (const auto& [key, child] : item.Get_Object())
+                  { if (!first) out << ','; first = false; out << '\"' << CDataJson::Escape(key) << "\":"; self(self, child); } }
+                out << '}'; break;
+            }
+        };
+        write(write, value); return out.str();
+    }
+
+    // Save only the user's changed fields onto the latest authoring catalog.
+    // Profile/region arrays merge by stable ID; scalar arrays remain one field.
+    bool MergeRendering(const DATA_JSON_VALUE* baseline, const DATA_JSON_VALUE* draft,
+        const DATA_JSON_VALUE* latest, DATA_JSON_VALUE& out, bool& present, string& status,
+        const string& path = "$", const string& field = {})
+    {
+        const auto equal = [](const auto* a, const auto* b) {
+            return (!a || !b) ? a == b : RenderingJson(*a) == RenderingJson(*b);
+        };
+        const auto use = [&](const auto* value) { present = value != nullptr; if (value) out = *value; return true; };
+        if (equal(baseline, draft)) return use(latest);
+        if (equal(baseline, latest) || equal(draft, latest)) return use(draft);
+        if (baseline && draft && latest && baseline->Is_Object() && draft->Is_Object() && latest->Is_Object())
+        {
+            auto fields = latest->Get_Object();
+            set<string> names;
+            for (const auto* value : {baseline, draft}) for (const auto& [name, child] : value->Get_Object()) names.insert(name);
+            for (const auto& name : names)
+            {
+                DATA_JSON_VALUE merged; bool keep = false;
+                if (!MergeRendering(baseline->Find(name), draft->Find(name), latest->Find(name), merged, keep, status, path + "/" + name, name)) return false;
+                if (keep) fields[name] = move(merged); else fields.erase(name);
+            }
+            out = DATA_JSON_VALUE::Object(move(fields), latest->Get_ObjectInsertionOrder()); present = true; return true;
+        }
+        const char* identity = field == "profiles" ? "profileId" : field == "environmentRegions" ? "regionId" : nullptr;
+        if (identity && baseline && draft && latest && baseline->Is_Array() && draft->Is_Array() && latest->Is_Array())
+        {
+            DATA_JSON_VALUE indexed[3]; size_t index = 0;
+            for (const auto* value : {baseline, draft, latest})
+            {
+                DATA_JSON_VALUE::OBJECT rows;
+                for (const auto& row : value->Get_Array())
+                {
+                    const auto* id = row.Find(identity);
+                    if (!id || !id->Is_String() || !rows.emplace(id->Get_String(), row).second)
+                    { status = "Rendering Save rejected duplicate or absent stable identity: " + path; return false; }
+                }
+                indexed[index++] = DATA_JSON_VALUE::Object(move(rows));
+            }
+            DATA_JSON_VALUE merged; bool keep = false;
+            if (!MergeRendering(&indexed[0], &indexed[1], &indexed[2], merged, keep, status, path)) return false;
+            DATA_JSON_VALUE::ARRAY rows; set<string> written;
+            for (const auto* value : {latest, draft}) for (const auto& row : value->Get_Array())
+            {
+                const auto& id = row.Find(identity)->Get_String();
+                if (const auto* item = merged.Find(id); item && written.insert(id).second) rows.push_back(*item);
+            }
+            out = DATA_JSON_VALUE::Array(move(rows)); present = true; return true;
+        }
+        status = "Rendering Save conflict at " + path + ". Latest file and current draft preserved."; return false;
+    }
+
+    bool ReadRenderingBytes(const filesystem::path& path, string& bytes)
+    {
+        ifstream input(path, ios::binary);
+        bytes.assign(istreambuf_iterator<char>(input), {});
+        return input && !bytes.empty();
+    }
+#endif
 
 	constexpr size_t MAXIMUM_PROFILE_COUNT = 32u;
 
@@ -409,6 +499,9 @@ bool_t CRenderingProfileService::Load_Runtime(string& strOutStatus)
 	if (!Parse_Catalog(Find_RuntimeCatalog(), staged, strOutStatus))
 		return false;
 	m_Catalog = move(staged);
+#ifdef _DEBUG
+	m_SavedCatalog = m_Catalog;
+#endif
 	m_strActiveProfileId.clear();
 	m_strLevelQualityProfileId.clear();
 	strOutStatus = "Rendering runtime catalog loaded.";
@@ -423,6 +516,9 @@ bool_t CRenderingProfileService::Reload_Runtime(string& strOutStatus)
 	if (m_strActiveProfileId.empty())
 	{
 		m_Catalog = move(staged);
+#ifdef _DEBUG
+	m_SavedCatalog = m_Catalog;
+#endif
 		strOutStatus = "Rendering runtime catalog reloaded.";
 		return true;
 	}
@@ -446,6 +542,9 @@ bool_t CRenderingProfileService::Reload_Runtime(string& strOutStatus)
 		return false;
 	}
 	m_Catalog = move(staged);
+#ifdef _DEBUG
+	m_SavedCatalog = m_Catalog;
+#endif
 	m_EffectiveQuality = effective;
 	strOutStatus = "Runtime catalog reloaded and active scene reapplied.";
 	return true;
@@ -540,7 +639,9 @@ bool_t CRenderingProfileService::Apply_CameraEnvironment(f32_t deltaSeconds, str
     {
         auto compared = quality;
         compared.fExposure = std::clamp(quality.fExposure * m_ComparisonOptions.fExposureMultiplier, 0.01f, 32.f);
-        compared.bFXAAEnabled = m_ComparisonOptions.bFXAAEnabled;
+        // FXAA is authored scene quality, including Mario's OFF override.
+        // A comparison left open in another scene cannot replace that owner.
+        compared.bFXAAEnabled = quality.bFXAAEnabled;
         compared.bBloomEnabled = m_ComparisonOptions.bBloomEnabled;
         if (!m_ComparisonOptions.bLutEnabled) compared.SourcePostProcess.LutLayers.clear();
         if (FAILED(game.Apply_RenderQualitySettings(compared)))
@@ -1779,57 +1880,68 @@ string CRenderingProfileService::Serialize_Catalog(const CATALOG& Catalog)
 
 bool_t CRenderingProfileService::Save_Authored(string& strOutStatus)
 {
-	CATALOG staged = m_Catalog;
-	if (UINT32_MAX == staged.iRevision)
-	{
-		strOutStatus = "Rendering profile revision cannot be incremented.";
-		return false;
-	}
-	++staged.iRevision;
-	const filesystem::path path = CProjectDataRoot::Resolve(
-		L"Rendering/Authored/RenderingProfiles.json");
-	if (path.empty())
-	{
-		strOutStatus = "Authored rendering profile path is outside Data.";
-		return false;
-	}
-	error_code error;
-	filesystem::create_directories(path.parent_path(), error);
-	if (error)
-	{
-		strOutStatus = "Could not create the authored rendering directory.";
-		return false;
-	}
-	filesystem::path temporary = path;
-	temporary += L".tmp";
-	{
-		ofstream output(temporary, ios::binary | ios::trunc);
-		const string document = Serialize_Catalog(staged);
-		output.write(document.data(), static_cast<streamsize>(document.size()));
-		if (!output)
-		{
-			strOutStatus = "Could not write the staged authored rendering profile.";
-			return false;
-		}
-	}
-	CATALOG roundTrip;
-	if (!Parse_Catalog(temporary, roundTrip, strOutStatus))
-	{
-		filesystem::remove(temporary, error);
-		return false;
-	}
-	if (!MoveFileExW(
-		temporary.c_str(), path.c_str(),
-		MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH))
-	{
-		filesystem::remove(temporary, error);
-		strOutStatus = "Could not atomically promote the authored rendering profile.";
-		return false;
-	}
-	m_Catalog.iRevision = staged.iRevision;
-	strOutStatus = "Authored rendering profiles saved at revision " +
-		to_string(staged.iRevision) + ".";
-	return true;
+    const filesystem::path path = CProjectDataRoot::Resolve(L"Rendering/Authored/RenderingProfiles.json");
+    if (path.empty()) { strOutStatus = "Authored rendering profile path is outside Data."; return false; }
+    struct WriterLock final
+    {
+        HANDLE handle = INVALID_HANDLE_VALUE;
+        ~WriterLock() { if (handle != INVALID_HANDLE_VALUE) CloseHandle(handle); }
+    } lock;
+    const auto lockPath = path.wstring() + L".writer.lock";
+    lock.handle = CreateFileW(lockPath.c_str(), GENERIC_READ | GENERIC_WRITE, 0, nullptr,
+        CREATE_NEW, FILE_ATTRIBUTE_TEMPORARY | FILE_FLAG_DELETE_ON_CLOSE, nullptr);
+    if (lock.handle == INVALID_HANDLE_VALUE)
+    { strOutStatus = "Rendering Save is already running. Current draft preserved; retry when it finishes."; return false; }
+    string latestBytes;
+    CATALOG latest;
+    if (path.empty() || !ReadRenderingBytes(path, latestBytes) || !Parse_Catalog(path, latest, strOutStatus))
+    { strOutStatus = "Rendering authoring source is unavailable; current draft preserved. " + strOutStatus; return false; }
+    if (latest.iRevision == UINT32_MAX)
+    { strOutStatus = "Rendering profile revision cannot be incremented."; return false; }
+    auto draft = m_Catalog;
+    auto baseline = m_SavedCatalog;
+    // Revision belongs to the commit, never to field conflict detection.
+    draft.iRevision = baseline.iRevision = latest.iRevision;
+    DATA_JSON_VALUE baseJson, draftJson, latestJson, merged;
+    bool present = false;
+    if (!CDataJson::Parse(Serialize_Catalog(baseline), baseJson, strOutStatus) ||
+        !CDataJson::Parse(Serialize_Catalog(draft), draftJson, strOutStatus) ||
+        !CDataJson::Parse(Serialize_Catalog(latest), latestJson, strOutStatus) ||
+        !MergeRendering(&baseJson, &draftJson, &latestJson, merged, present, strOutStatus)) return false;
+    auto fields = merged.Get_Object();
+    fields["revision"] = DATA_JSON_VALUE::Number(latest.iRevision + 1u);
+    merged = DATA_JSON_VALUE::Object(move(fields));
+    const wstring suffix = L".rendering-" + to_wstring(GetCurrentProcessId()) + L"-" + to_wstring(GetTickCount64());
+    const filesystem::path temporary = path.wstring() + suffix + L".stage";
+    const filesystem::path backup = path.wstring() + suffix + L".backup";
+    error_code error;
+    const auto write = [&](const string& bytes) {
+        ofstream output(temporary, ios::binary | ios::trunc);
+        output.write(bytes.data(), static_cast<streamsize>(bytes.size())); output.flush();
+        return static_cast<bool>(output);
+    };
+    if (!write(RenderingJson(merged)))
+    { strOutStatus = "Could not stage rendering source; current file and draft preserved."; return false; }
+    CATALOG roundTrip;
+    if (!Parse_Catalog(temporary, roundTrip, strOutStatus) || !write(Serialize_Catalog(roundTrip)))
+    { filesystem::remove(temporary, error); return false; }
+    string currentBytes;
+    if (!ReadRenderingBytes(path, currentBytes) || currentBytes != latestBytes)
+    {
+        filesystem::remove(temporary, error);
+        strOutStatus = "Rendering source changed during Save. Current file and draft preserved; retry Save."; return false;
+    }
+    if (!ReplaceFileW(path.c_str(), temporary.c_str(), backup.c_str(), REPLACEFILE_IGNORE_MERGE_ERRORS, nullptr, nullptr))
+    {
+        filesystem::remove(temporary, error);
+        strOutStatus = "Could not atomically replace rendering source. Current draft preserved."; return false;
+    }
+    filesystem::remove(backup, error);
+    m_Catalog = move(roundTrip);
+    m_SavedCatalog = m_Catalog;
+    strOutStatus = "Authored rendering profiles saved at revision " + to_string(m_Catalog.iRevision) +
+        ". Unrelated saved edits preserved; Publish applies this source.";
+    return true;
 }
 
 bool_t CRenderingProfileService::Publish_Runtime(string& strOutStatus) const

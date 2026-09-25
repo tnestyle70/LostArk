@@ -511,6 +511,23 @@ void LostArk::Server::CGameRoom::Handle_RevivePlayer(
 		reviveZ = projected.z;
 		reviveY = projected.y;
 	}
+	// A revive command is drained before Prepare_KoukuAuditionTick. Complete
+	// the failed solo mechanic while the admitted corpse is still observable.
+	if (WORLD_ID::KAKULSAYDON_ARENA == m_eWorldId &&
+		m_KoukuSaydonPatternAudition.ePhase != KOUKUSAYDON_PATTERN_AUDITION_PHASE::INACTIVE)
+	{
+		for (auto& member : m_KoukuSaydonPatternAudition.Members)
+		{
+			if (!member.bMarioSoloReturnRequired || member.bCompletionChainSuccessQueued ||
+				member.iMarioEntrantPlayerId != player.iPlayerId ||
+				member.iMarioEntrantSessionId != player.iSessionId ||
+				member.iMarioEntrantNetEntityId != player.iNetEntityId) continue;
+			member.bCompleted = true;
+			m_strStatus = "Mario solo entrant died before phase 2; mechanic completed as failed";
+			Clear_KoukuSaydonPatternAudition(true);
+			break;
+		}
+	}
 	player.fPositionX = reviveX;
 	player.fPositionY = reviveY;
 	player.fPositionZ = reviveZ;
@@ -970,6 +987,20 @@ void LostArk::Server::CGameRoom::Begin_EstherCall(
 	caster.iMovePathIndex = 0;
 	caster.Clear_SkillTarget();
 	caster.PendingCommand.Clear();
+
+	if (LostArk::Shared::WORLD_ID::KAKULSAYDON_ARENA == m_eWorldId &&
+		LostArk::Shared::ESTHER_ID::INANNA == rosterEntry.eEstherId)
+	{
+		const auto until = CKoukuSaydonLogicRuntime::Add_Ticks(caster.iActionStartTick,
+			CKoukuSaydonLogicRuntime::Ticks_FromMs(ESTHER_INANNA_INVULNERABLE_DURATION_MS));
+		for (auto& [id, player] : m_Players)
+		{
+			if (!player.iCurrentHp || player.eAction == LostArk::Shared::PLAYER_ACTION_STATE::DEAD) continue;
+			if (Is_KoukuRaidRunning() && std::find(m_KoukuRaid.PlayerIds.begin(), m_KoukuRaid.PlayerIds.end(), id) == m_KoukuRaid.PlayerIds.end()) continue;
+			if (!player.iInvulnerableEndTick || CKoukuSaydonLogicRuntime::Has_ReachedTick(until, player.iInvulnerableEndTick))
+				player.iInvulnerableEndTick = until;
+		}
+	}
 }
 
 void LostArk::Server::CGameRoom::Update_PendingEstherSummons(

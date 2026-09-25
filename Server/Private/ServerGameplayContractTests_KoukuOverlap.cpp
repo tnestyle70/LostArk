@@ -5,6 +5,8 @@
 #include "KoukuSaydonBrain.h"
 #include "ServerApp.h"
 #include "PlayerSkillSystem.h"
+#include "Gameplay/KoukuMarioBombContract.h"
+#include "ServerCombatHitRuntime.h"
 #include "Network/PacketReader.h"
 #include "Network/PacketWriter.h"
 #include "GameRoom.h"
@@ -394,10 +396,14 @@ void CServerGameplayContractRunner::Run_KoukuPushContracts(TESTS& tests, const C
                 const auto line = rising.substr(start, end - start);
                 const auto columns = std::count(line.begin(), line.end(), '\t') + 1;
                 if (columns == 25) rising.insert(end, "\t3\t1200");
-                else if (columns == 27) {
-                    const auto last = rising.rfind('\t', end);
-                    const auto previous = rising.rfind('\t', last - 1u);
-                    rising.replace(previous, end - previous, "\t3\t1200");
+                else if (columns == 27 || columns == 28 || columns == 30) {
+                    // Retain optional horizontal push/force/direction columns.
+                    std::istringstream source(line); std::string field; std::vector<std::string> values;
+                    while (std::getline(source, field, '\t')) values.push_back(field);
+                    values[25] = "3"; values[26] = "1200";
+                    std::string replacement;
+                    for (const auto& value : values) { if (!replacement.empty()) replacement += '\t'; replacement += value; }
+                    rising.replace(start, end - start, replacement);
                 } else admitsRise = false;
             }
             admitsRise = admitsRise && load(rising);
@@ -524,6 +530,97 @@ void CServerGameplayContractRunner::Run_KoukuPushContracts(TESTS& tests, const C
             "Short laser contact rearms on real reentry during previous push and stays latched between exits");
     }
     {
+        namespace Bomb = LostArk::Shared::KoukuMarioBomb;
+        for (const auto& binding : Bomb::BINDINGS)
+        {
+            const auto* marker = room->Find_Placement(binding.marker);
+            const auto* arrival = room->Find_Placement(binding.arrival);
+            const auto* exit = room->Find_Placement(binding.exit);
+            const bool ready = marker && arrival && exit && arrival->TriggerActions.size() == 1u;
+            tests.Require(ready, "Mario bomb contact consumes the actual published disabled marker and lane");
+            if (!ready) continue;
+            const auto& lane = arrival->TriggerActions.front();
+            const auto distance = [&](float x, float z) { return std::hypot(double(x) - marker->fPositionX, double(z) - marker->fPositionZ); };
+            const bool towardArrival = distance(lane.fTargetX, lane.fTargetZ) > distance(exit->fPositionX, exit->fPositionZ);
+            const float endX = towardArrival ? lane.fTargetX : exit->fPositionX;
+            const float endZ = towardArrival ? lane.fTargetZ : exit->fPositionZ;
+            const double length = distance(endX, endZ);
+            const auto duration = static_cast<unsigned>(std::ceil(length / Bomb::SPEED_MPS * 1000.));
+            const auto seed = Bomb::Seed(binding.marker), phase = seed % Bomb::INTERVAL_MS;
+            for (unsigned generation : {100u, 101u})
+            {
+                const auto birthMs = generation * Bomb::INTERVAL_MS + phase;
+                const auto tick = (birthMs + 1000u) * 30u / 1000u + 1u;
+                const float fraction = static_cast<float>((double(tick) * (1000. / 30.) - birthMs) / duration);
+                auto victim = player(); victim.iMarioStage = binding.stage;
+                victim.fPositionX = marker->fPositionX + (endX - marker->fPositionX) * fraction;
+                victim.fPositionZ = marker->fPositionZ + (endZ - marker->fPositionZ) * fraction;
+                victim.fPositionY = marker->fPositionY;
+                const auto expectedX = victim.fPositionX, expectedZ = victim.fPositionZ;
+                room->m_TickDamageEvents.clear();
+                room->Update_MarioBombContacts(victim, tick);
+                room->Update_MarioBombContacts(victim, tick);
+                room->Update_MarioBombContacts(victim, tick + 1u);
+                tests.Require(victim.iCurrentHp == 90u && room->m_TickDamageEvents.size() == 1u &&
+                    victim.eAction == PLAYER_ACTION_STATE::KNOCKDOWN && victim.bKnockbackBallistic &&
+                    victim.fKnockbackRemainingSeconds > .99f,
+                    "Every Mario emitter generation hits once and launches the player through authoritative knockdown");
+                room->Advance_PlayerKnockback(victim, .5f);
+                tests.Require(std::abs(victim.fPositionY - marker->fPositionY - 2.f) < .001f,
+                    "Mario bomb launch reaches its two-metre apex during the knockdown animation");
+                room->Advance_PlayerKnockback(victim, .5f);
+                tests.Require(std::abs(victim.fPositionY - marker->fPositionY) < .001f &&
+                    std::abs(std::hypot(victim.fPositionX - expectedX, victim.fPositionZ - expectedZ) - 4.f) < .001f &&
+                    victim.fKnockbackRemainingSeconds == 0.f,
+                    "Mario bomb stops at its four-metre endpoint and lands instead of continuing to drift");
+                auto airborne = player(); airborne.iMarioStage = binding.stage;
+                airborne.fPositionX = expectedX; airborne.fPositionZ = expectedZ; airborne.fPositionY = marker->fPositionY + 4.f;
+                room->Update_MarioBombContacts(airborne, tick);
+                tests.Require(airborne.iCurrentHp == 100u, "A jump above the flying bomb's volume avoids its contact");
+            }
+        }
+        auto noPush = SERVER_WORLD_TO_PLAYER_HIT{};
+        Configure_MarioHazardLaunch(noPush);
+        tests.Require(!noPush.bPushBallistic, "Unconfigured ordinary attacks do not acquire Mario launch motion");
+    }
+    // P85 uses the same first-contact path for both visible beam occurrences.
+    for (const unsigned startMs : {3083u, 5222u})
+    for (const unsigned entryDelayTicks : {0u, 1u, 20u, 45u})
+    for (const auto priorAction : {PLAYER_ACTION_STATE::NONE, PLAYER_ACTION_STATE::FEAR, PLAYER_ACTION_STATE::KNOCKDOWN})
+    {
+        BOSS_PATTERN_DEFINITION laser{}; laser.strPatternId = "bazooka.first.contact";
+        BOSS_PATTERN_LOGIC_WINDOW contact{}; contact.strWindowId = "bazooka.contact";
+        contact.eKind = BOSS_PATTERN_LOGIC_KIND::ENTER_AREA;
+        contact.iStartMs = startMs; contact.iDurationMs = 1634u;
+        auto hit = push; hit.fPushRangeM = 12.f; hit.iPushMs = 1200u;
+        hit.bForcePush = hit.bPushBallistic = true; hit.fPushHeightM = 3.f;
+        hit.ePushDirection = BOSS_LOGIC_PUSH_DIRECTION::BOSS_FORWARD; hit.fPushYawOffsetDegrees = 90.f;
+        contact.OnSuccess = {hit};
+        BOSS_LOGIC_REGION region{}; region.strRegionId = "bazooka.box";
+        region.eAnchor = BOSS_LOGIC_REGION_ANCHOR::BOSS_CURRENT;
+        region.fCenterX = 8.4f; region.fCenterY = .35f;
+        region.fHalfX = 7.951f; region.fHalfY = .509209f; region.fHalfZ = .314871f;
+        contact.CardRegions = {region}; laser.LogicWindows = {contact};
+        std::map<PLAYER_ID, SERVER_PLAYER> players{{1u, player()}};
+        auto& victim = players.at(1u); victim.fPositionX = 8.4f;
+        victim.eAction = priorAction; victim.iHitReactionGraceEndTick = 10000u;
+        victim.fKnockbackRemainingSeconds = priorAction == PLAYER_ACTION_STATE::KNOCKDOWN ? 1.f : 0.f;
+        KOUKUSAYDON_LOGIC_LEDGER ledger{}; KOUKUSAYDON_LOGIC_OUTPUT output{};
+        std::vector<DAMAGE_EVENT> damage;
+        CKoukuSaydonLogicRuntime::Build(laser, *boss, 100u, ledger);
+        const auto birth = 100u + (startMs * 30u + 999u) / 1000u;
+        const auto update = [&](unsigned tick) { CKoukuSaydonLogicRuntime::Update(*boss, laser,
+            ledger, players, catalog, nullptr, tick, damage, output); };
+        update(birth - 1u);
+        const bool inactiveBeforeBirth = damage.empty() && victim.iCurrentHp == 100u;
+        if (entryDelayTicks) { victim.fPositionZ = 20.f; update(birth); victim.fPositionZ = 0.f; }
+        update(birth + entryDelayTicks); update(birth + entryDelayTicks + 1u);
+        tests.Require(inactiveBeforeBirth && victim.iCurrentHp == 90u && damage.size() == 1u &&
+            victim.eAction == PLAYER_ACTION_STATE::KNOCKDOWN && victim.bKnockbackBallistic &&
+            victim.fKnockbackRemainingSeconds > 1.19f && victim.fKnockbackDirectionX > .999f,
+            "Both bazooka shots hit initial overlap or later visible entry once, replacing fear/down/grace with the authored launch");
+    }
+    {
         const auto hookPattern = [](bool grip, bool sweep, bool hidden) {
             BOSS_PATTERN_DEFINITION p{}; p.strPatternId = "hook.body";
             BOSS_PATTERN_LOGIC_WINDOW w{}; w.strWindowId = "hook.capture";
@@ -541,8 +638,9 @@ void CServerGameplayContractRunner::Run_KoukuPushContracts(TESTS& tests, const C
             }
             w.CardRegions = {r}; p.LogicWindows = {w}; return p;
         };
-        const auto capture = [&](float x, float y, float z, bool grip, bool sweep, bool hidden) {
+        const auto capture = [&](float x, float y, float z, bool grip, bool sweep, bool hidden, bool clown = false) {
             auto p = player(); p.fPositionX = x; p.fPositionY = y; p.fPositionZ = z;
+            if (clown) p.eMadnessForm = PLAYER_MADNESS_FORM::CLOWN;
             auto definition = hookPattern(grip, sweep, hidden);
             auto owner = std::make_unique<SERVER_WORLD_ENTITY>(); owner->iNetEntityId = 201u; owner->iPatternSequence = 3u;
             std::map<PLAYER_ID, SERVER_PLAYER> players{{1u, p}};
@@ -554,6 +652,7 @@ void CServerGameplayContractRunner::Run_KoukuPushContracts(TESTS& tests, const C
             return caught.eAction == PLAYER_ACTION_STATE::GRABBED && caught.eAttachmentSlot == PLAYER_ATTACHMENT_SLOT::WORLD_HOOK_TIP;
         };
         tests.Require(capture(0.f, 1.3f, 0.f, true, false, false), "Hook body contact captures even when the feet miss its vertical box");
+        tests.Require(!capture(0.f, 1.3f, 0.f, true, false, false, true), "Hook leaves transformed Mario entrants free to enter their stage");
         tests.Require(capture(.55f, 1.3f, 0.f, true, false, false), "Hook side contact uses the existing player body radius");
         tests.Require(capture(.7005f, 1.3f, 0.f, true, false, false), "Hook admits the common contact margin at body tangency");
         tests.Require(!capture(.702f, 1.3f, 0.f, true, false, false), "Separated hook and body do not capture");
@@ -1223,6 +1322,7 @@ int LostArk::Server::Run_ServerKoukuObjectOverlapContractTests()
         rectangle.eAnchor = BOSS_LOGIC_REGION_ANCHOR::WORLD; rectangle.fHalfX = rectangle.fHalfZ = 2.f;
         first = SERVER_PLAYER{}; first.iPlayerId = 1u; first.iNetEntityId = 8101u;
         first.iCurrentHp = first.iMaximumHp = 2000u; first.iMaximumMadness = 100u; first.isCombatReady = true;
+        first.iMadnessDamageGainPercent = 100u;
         second.fPositionX = 50.f; events.clear();
         CKoukuSaydonLogicRuntime::Build(pattern, *boss, 800u, ledger);
         update(800u); update(801u); update(802u);
@@ -1232,6 +1332,46 @@ int LostArk::Server::Run_ServerKoukuObjectOverlapContractTests()
         update(812u); update(815u); update(818u);
         tests.Require(first.iCurrentHp == 1600u && first.iCurrentMadness == 8u && events.size() == 4u,
             "Duration contact applies damage and madness together, excludes exits and expires without an extra end-tick hit");
+        // Gauge belongs to a landed damage verdict, regardless of result order.
+        repeated.iDurationMs = 900u; repeated.iRepeatIntervalMs = 300u;
+        madness.iPercent = 1u; repeated.OnSuccess = {madness, fixed};
+        const auto resetFlame = [&] {
+            first = SERVER_PLAYER{}; first.iPlayerId = 1u; first.iNetEntityId = 8101u;
+            first.iCurrentHp = first.iMaximumHp = 2000u; first.iMaximumMadness = 100u;
+            first.iMadnessDamageGainPercent = 100u; first.isCombatReady = true;
+            events.clear(); CKoukuSaydonLogicRuntime::Build(pattern, *boss, 900u, ledger);
+        };
+        resetFlame();
+        for (unsigned tick = 900u; tick <= 930u; ++tick) update(tick);
+        tests.Require(first.iCurrentHp == 1700u && first.iCurrentMadness == 3u &&
+            first.dMadnessRemainder == 0. && events.size() == 3u && first.iMadnessDamageGainPercent == 100u,
+            "Three explicit breath ticks preserve 100 damage each and add exactly 3 percent madness without automatic gain");
+        resetFlame(); first.iShield = 1000u;
+        for (unsigned tick = 900u; tick <= 930u; ++tick) update(tick);
+        tests.Require(first.iCurrentHp == 2000u && first.iShield == 700u && first.iCurrentMadness == 0u,
+            "Shield-absorbed breath damage cannot add explicit contact madness");
+        resetFlame(); first.iInvulnerableEndTick = 1000u;
+        for (unsigned tick = 900u; tick <= 930u; ++tick) update(tick);
+        tests.Require(first.iCurrentHp == 2000u && first.iCurrentMadness == 0u && events.empty(),
+            "Invulnerability blocks breath damage and its explicit madness as one verdict");
+        madness.iPercent = 0u; repeated.OnSuccess = {fixed, madness};
+        resetFlame(); first.iCurrentMadness = 3u;
+        for (unsigned tick = 900u; tick <= 930u; ++tick) update(tick);
+        tests.Require(first.iCurrentHp == 1700u && first.iCurrentMadness == 3u &&
+            first.dMadnessRemainder == 0. && events.size() == 3u && first.iMadnessDamageGainPercent == 100u,
+            "Explicit zero madness preserves flame-floor damage and the prior three-percent gauge while suppressing automatic gain");
+        resetFlame(); first.iShield = 1000u;
+        for (unsigned tick = 900u; tick <= 930u; ++tick) update(tick);
+        tests.Require(first.iCurrentHp == 2000u && first.iShield == 700u && first.iCurrentMadness == 0u,
+            "Explicit zero madness preserves shield absorption without gaining gauge");
+        resetFlame(); first.iInvulnerableEndTick = 1000u;
+        for (unsigned tick = 900u; tick <= 930u; ++tick) update(tick);
+        tests.Require(first.iCurrentHp == 2000u && first.iCurrentMadness == 0u && events.empty(),
+            "Explicit zero madness preserves invulnerability without contact damage or gauge");
+        repeated.OnSuccess = {fixed}; resetFlame(); update(900u);
+        tests.Require(first.iCurrentHp == 1900u && first.iCurrentMadness == 5u && first.iMadnessDamageGainPercent == 100u,
+            "An ordinary damage verdict without an explicit madness result retains automatic HP-proportional gain");
+
 
 	}
 #endif

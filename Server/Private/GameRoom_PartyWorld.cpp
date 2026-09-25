@@ -1191,6 +1191,35 @@ void LostArk::Server::CGameRoom::Flush_PartyTransferResults()
 	}
 }
 
+void LostArk::Server::CGameRoom::Handle_RoomPing(
+	const SESSION_ID sessionId, const LostArk::Shared::C2S_ROOM_PING& request)
+{
+	using namespace LostArk::Shared;
+	const auto binding = m_PlayerIdBySessionId.find(sessionId);
+	if (binding == m_PlayerIdBySessionId.end() || request.eWorldId != m_eWorldId) return;
+	const auto sender = m_Players.find(binding->second);
+	if (sender == m_Players.end() || sender->second.iSessionId != sessionId) return;
+	auto& player = sender->second;
+	CPacketWriter validated;
+	if (!Write_Message(validated, request) || !Is_NewerSequence(request.iClientSequence, player.iLastRoomPingSequence) ||
+		!player.iCurrentHp || !player.isCombatReady || player.eAction == PLAYER_ACTION_STATE::DEAD) return;
+	player.iLastRoomPingSequence = request.iClientSequence;
+	const auto tick = m_iServerTick ? m_iServerTick : 1u;
+	if (player.iLastRoomPingTick && Elapsed_ServerTicksSkippingReservedZero(player.iLastRoomPingTick, tick) < 8u) return;
+	SERVER_NAV_POINT ground;
+	if (!m_ServerNavigation.Sample_Position(request.fPositionX, request.fPositionZ, ground, request.fPositionY)) return;
+	S2C_ROOM_PING message;
+	message.eWorldId = m_eWorldId; message.iFromNetEntityId = player.iNetEntityId;
+	message.iClientSequence = request.iClientSequence;
+	message.fPositionX = ground.x; message.fPositionY = ground.y; message.fPositionZ = ground.z;
+	CPacketWriter writer;
+	if (!Write_Message(writer, message)) return;
+	player.iLastRoomPingTick = tick;
+	for (const auto& [id, recipient] : m_Players)
+		if (const auto session = Find_Session(recipient.iSessionId); session &&
+			!session->Send_Frame(PACKET_TYPE::S2C_ROOM_PING, writer.Get_Buffer())) session->Request_Close();
+}
+
 void LostArk::Server::CGameRoom::Handle_Chat(
 	const SESSION_ID sessionId,
 	const LostArk::Shared::C2S_CHAT& request)

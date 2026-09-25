@@ -43,6 +43,21 @@ HRESULT CBody_Valtan::Initialize(void* pArg)
 		return E_INVALIDARG;
 	m_pEmissiveOverride = pDesc->pEmissiveOverride;
     m_pChargeAfterimageEnabled = pDesc->pChargeAfterimageEnabled;
+    CSkeletalAfterimage::SETTINGS chargeSettings;
+    // MN_RPBF_00/action420604/stage003: decoded native TrailGhost fields.
+    chargeSettings.sampleIntervalSeconds = .1f;
+    chargeSettings.sampleLifetimeSeconds = .4f;
+    chargeSettings.maxSamples = 8u;
+    chargeSettings.capturePoseChanges = true;
+    chargeSettings.sourceChannels = true;
+    chargeSettings.sourceInitialAlpha = .5f;
+    chargeSettings.userAlphaScale = 1.52f; // Preserve requested .76 peak independently.
+    chargeSettings.sourceAlphaHoldSeconds = .1f;
+    chargeSettings.sourceColorIntensity = .8f;
+    chargeSettings.color = { 186.f / 255.f, 186.f / 255.f, 186.f / 255.f, 1.f };
+    chargeSettings.endColor = { 0.f, 0.f, 0.f, 1.f };
+    chargeSettings.ambientStart = chargeSettings.ambientEnd = { 0.f, 0.f, 0.f, 1.f };
+    (void)m_ChargeAfterimage.Configure(chargeSettings);
 	if (FAILED(__super::Initialize(pArg)) || FAILED(Ready_Components()))
 		return E_FAIL;
 
@@ -117,6 +132,7 @@ HRESULT CBody_Valtan::Render()
 			FAILED(m_pShaderCom->Begin(0)) ||
 			FAILED(m_pModelCom->Render(i)))
 			return E_FAIL;
+		(void)Render_CombatHoverMesh(*m_pModelCom, m_pShaderCom, i, m_pEmissiveOverride, true);
 	}
 	return S_OK;
 }
@@ -182,6 +198,7 @@ HRESULT CBody_Valtan::Render_OpaqueGhost()
         result = checked(m_pModelCom->Render(i), "mesh submission" + label);
         if (FAILED(result)) return result;
         ++m_iOpaqueGhostDrawCount;
+        (void)Render_CombatHoverMesh(*m_pModelCom, m_pShaderCom, i, m_pEmissiveOverride, true, true);
     }
     m_strOpaqueGhostRenderFailure.clear();
     return S_OK;

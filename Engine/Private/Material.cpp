@@ -23,6 +23,7 @@
 #include <cstring>
 #include <fstream>
 #include <iterator>
+#include <limits>
 
 #pragma pack(push, 1)
 namespace
@@ -883,11 +884,18 @@ namespace
     // Populated only by actual mesh draws on the rendering thread. Keeping a
     // shared reference until light accumulation finishes also closes teardown.
     thread_local std::vector<std::shared_ptr<CMaterial>> g_SourceCharacterFrame;
+    thread_local std::unordered_map<const CMaterial*, uint32_t> g_SourceCharacterRows;
+    // The row lives in the R32_FLOAT depth target, not an eight-bit material index.
+    // Every positive integer through 2^24 is exactly representable there.
+    constexpr uint32_t SOURCE_CHARACTER_MAX_EXACT_ROW =
+        1u << std::numeric_limits<float>::digits;
+    static_assert(std::numeric_limits<float>::is_iec559 && std::numeric_limits<float>::digits == 24);
     thread_local float g_SourceCharacterTime = 0.f;
 }
 
 void CMaterial::Reset_SourceCharacterFrame(float presentationTime)
 {
+    g_SourceCharacterRows.clear();
     g_SourceCharacterFrame.clear();
     g_SourceCharacterTime = presentationTime;
 }
@@ -956,17 +964,17 @@ HRESULT CMaterial::Bind_SourceCharacter(shared_ptr<CShader> shader)
     if ((program >= 33u && program <= 65u) || program == 209u ||
         (program >= 224u && program <= 226u) || program == 237u)
         return Bind_SourceCharacterInputs(shader, false, 0u);
-    auto found = std::find_if(g_SourceCharacterFrame.begin(), g_SourceCharacterFrame.end(),
-        [this](const auto& entry) { return entry.get() == this; });
-    if (found == g_SourceCharacterFrame.end())
-    {
-        // Row IDs are ephemeral render indices, never serialized asset IDs.
-        if (g_SourceCharacterFrame.size() >= 256u) return E_BOUNDS;
-        g_SourceCharacterFrame.push_back(shared_from_this());
-        found = std::prev(g_SourceCharacterFrame.end());
-    }
-    const uint32_t row = static_cast<uint32_t>(std::distance(g_SourceCharacterFrame.begin(), found)) + 1u;
-    return Bind_SourceCharacterInputs(shader, false, row);
+    const auto found = g_SourceCharacterRows.find(this);
+    if (found != g_SourceCharacterRows.end())
+        return Bind_SourceCharacterInputs(shader, false, found->second);
+    if (g_SourceCharacterFrame.size() >= SOURCE_CHARACTER_MAX_EXACT_ROW) return E_BOUNDS;
+    // Row IDs are ephemeral render indices, never serialized asset IDs.
+    const uint32_t row = static_cast<uint32_t>(g_SourceCharacterFrame.size()) + 1u;
+    const HRESULT result = Bind_SourceCharacterInputs(shader, false, row);
+    if (FAILED(result)) return result;
+    g_SourceCharacterFrame.push_back(shared_from_this());
+    g_SourceCharacterRows.emplace(this, row);
+    return S_OK;
 }
 
 HRESULT CMaterial::Bind_SourceCharacterForwardLight(shared_ptr<CShader> shader)

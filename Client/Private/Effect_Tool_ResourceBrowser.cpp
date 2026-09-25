@@ -2627,6 +2627,25 @@ void Client::CEffect_Tool::Render_AllEffectsWindow()
 
 	if (m_bAllEffectsWorldSelected || m_bAllEffectsKoukuBossSelected)
 	{
+        if (m_bAllEffectsWorldSelected)
+        {
+            ImGui::SeparatorText("Character Selection Movies");
+            if (m_ClassMovieResources.empty())
+                ImGui::TextDisabled("Enter Character Select from Lobby to open the movie timelines.");
+            for (const auto& movie : m_ClassMovieResources)
+            {
+                if (!Search.empty() && !Contains_NoCase(movie.label, Search) &&
+                    !Contains_NoCase(movie.classId, Search) && !Contains_NoCase("Character Selection Movie", Search)) continue;
+                ImGui::PushID(movie.classId.c_str());
+                ImGui::TextUnformatted(movie.label.c_str());
+                ImGui::SameLine();
+                if (ImGui::SmallButton("Open Editor")) m_PendingClassMovieEditor = movie.classId;
+                if (ImGui::IsItemHovered())
+                    ImGui::SetTooltip("Open the complete Intro / Loop timeline to edit, save and replay this movie.");
+                ImGui::PopID();
+            }
+            ImGui::Spacing();
+        }
 		Render_SavedAuthoredEffectSection(Search, m_bAllEffectsWorldSelected);
 	}
 	else if (m_bAllEffectsValtanBossSelected)

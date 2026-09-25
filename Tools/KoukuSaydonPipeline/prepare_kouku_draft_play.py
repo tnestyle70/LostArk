@@ -56,7 +56,6 @@ def prepare(source: dict, root: Path, *, pattern_id: str = "", bundle_id: str = 
             raise composition.CompositionError("Draft target is unavailable: " + identity + ": " + reason)
         projected = composition.projected_outputs(admitted, root, selected_inventory)
         encounter = json.loads(projected[composition.ENCOUNTER_PATH])
-        presentation = json.loads(projected[composition.PRESENTATION_PATH])
         target = bundle if bundle_id else patterns[pattern_id]
         starts = [patterns[row["patternId"]] for row in bundle["members"]] if bundle_id else [target]
         metadata = {
@@ -70,8 +69,8 @@ def prepare(source: dict, root: Path, *, pattern_id: str = "", bundle_id: str = 
             "savedPatternCount": len(inventory["patterns"]),
         }
         return metadata, {
-            Path("encounter.json"): composition.serialize_json(encounter),
-            Path("presentation.json"): composition.serialize_json(presentation),
+            Path("encounter.json"): projected[composition.ENCOUNTER_PATH],
+            Path("presentation.json"): projected[composition.PRESENTATION_PATH],
         }
 
 

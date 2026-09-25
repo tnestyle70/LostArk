@@ -127,6 +127,16 @@ public:
     double Get_SourceRate() const;
     const CLASS_MOVIE_CAMERA_SAMPLE& Get_CameraSample() const { return m_CameraSample; }
     std::shared_ptr<const CLASS_MOVIE_TIMELINE> Get_Timeline(const std::string& classId, bool loop) const;
+    bool Begin_Authoring(std::string& status);
+    bool Get_AuthoringBox(const std::string& classId, bool loop, const std::string& kind,
+        const std::string& boxId, CLASS_MOVIE_AUTHORING_BOX& out, std::string& status);
+    bool Apply_AuthoringBox(const CLASS_MOVIE_AUTHORING_BOX& before,
+        const DATA_JSON_VALUE& replacement, std::string& status);
+    bool Save_Authoring(std::string& status);
+    bool Reload_Authoring(std::string& status);
+    bool Has_AuthoringChanges() const { return m_Authoring && m_Authoring->dirty; }
+    bool Is_AuthoringPublishPending() const { return m_Authoring && m_Authoring->publishProcess; }
+    const std::string& Get_AuthoringStatus() const { return m_Authoring ? m_Authoring->status : m_Status; }
     bool Is_Paused() const { return m_Paused; }
     uint64_t Get_LoopCycle() const { return m_LoopCycle; }
     uint64_t Get_PlaybackToken() const { return m_PlaybackToken; }
@@ -160,6 +170,27 @@ private:
     void Stop_Effects();
     void Fail(const std::string& reason);
 
+    struct AUTHORING_STATE final
+    {
+        DATA_JSON_VALUE manifest, world, manifestBase, worldBase;
+        uint64_t generation = 1u;
+        bool dirty = false, needsPublish = false, appliedToPreview = false;
+        std::vector<SCENE> scenes;
+        CWorldSequenceDocument document;
+        HANDLE publishProcess = nullptr;
+        std::filesystem::path publishLog;
+        std::string status;
+        ~AUTHORING_STATE() { if (publishProcess) CloseHandle(publishProcess); }
+    };
+    bool Validate_Authoring(const DATA_JSON_VALUE& manifest, const DATA_JSON_VALUE& world,
+        std::vector<SCENE>& scenes, CWorldSequenceDocument& document, std::string& status) const;
+    bool Prepare_Authoring(const std::vector<SCENE>& scenes, const CWorldSequenceDocument& document,
+        std::string& status);
+    bool Commit_Authoring(std::vector<SCENE> scenes, const CWorldSequenceDocument& document,
+        std::string& status);
+    void Start_AuthoringPublish();
+    void Poll_AuthoringPublish();
+    std::unique_ptr<AUTHORING_STATE> m_Authoring;
     CWorldSequencePlayer m_Resources;
     std::unique_ptr<CWorldSequencePlayer> m_Active;
     CWorldSequencePlayer::TARGET_SET m_Targets;

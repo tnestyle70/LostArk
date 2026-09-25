@@ -121,9 +121,9 @@
                                        "type":  "project-policy",
                                        "policyId":  "koukusaydon-animation-audition-admission-v1"
                                    },
-                        "sourceValue":  160,
+                        "sourceValue":  77,
                         "transform":  "KoukuSaydon animation-audition admission baseline",
-                        "resultValue":  160,
+                        "resultValue":  77,
                         "note":  "Non-final preview survival and admission value; combat fidelity is not claimed."
                     },
                     {

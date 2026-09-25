@@ -314,7 +314,7 @@ bool LostArk::Server::CGameRoom::Build_PlayerEntryFrames(
 		// Natural Stage/run completion retains independent World rows for late join.
 		for (auto play : m_KoukuSaydonPatternAudition.WorldPlays)
 		{
-			if (play.bUntilDestroyed) continue; // Persistent bodies below own late join replay.
+			if (play.bUntilDestroyed || play.iCombatBodyNetEntityId) continue; // Live combat bodies below own late join replay.
 			if (play.iDurationMs && Has_ReachedServerTick(m_iServerTick, Add_ServerTicksSkippingReservedZero(play.iStartTick, CKoukuSaydonLogicRuntime::Ticks_FromMs(play.iDurationMs)))) continue;
 			play.iServerTick = m_iServerTick;
 			if (!append(PACKET_TYPE::S2C_WORLD_SEQUENCE_PLAY, play)) return false;

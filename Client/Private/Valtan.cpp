@@ -3490,7 +3490,7 @@ void CValtan::Trigger_HitFlash()
 		return;
 	m_fHitFlashRemainingSeconds = HIT_FLASH_DURATION_SECONDS;
 	m_HitFlash.isEnabled = true;
-	m_HitFlash.vColor = float4_t(1.f, 1.f, 1.f, 1.f);
+	m_HitFlash.vColor = float4_t(1.f, 0.72f, 0.08f, 1.f);
 	m_HitFlash.fIntensity = HIT_FLASH_PEAK_INTENSITY;
 	m_HitFlash.usesSurfaceDetailMask = true;
 }
@@ -3576,7 +3576,8 @@ void CValtan::Update(f32_t fTimeDelta)
 		if (m_fHitFlashRemainingSeconds <= 0.f)
 		{
 			m_fHitFlashRemainingSeconds = 0.f;
-			m_HitFlash = {};
+			m_HitFlash.isEnabled = false;
+			m_HitFlash.fIntensity = 0.f;
 		}
 		else
 		{
@@ -3807,13 +3808,16 @@ void CValtan::Set_CinematicPresentationSuppressed(const bool_t suppressed)
 
 void CValtan::Late_Update(f32_t fTimeDelta)
 {
+    if (!Is_PresentationVisible() || m_iState == VALTAN_STATE::DEAD || m_DeathPresentationClock.Has_Started())
+        m_HitFlash.isCombatHovered = false;
     // Source420604/4_01 TrailGhost starts at2461.7ms; this approved stage
     // samples2450ms onward at0.6 source speed. Keep gameplay on the Server.
     m_ChargeAfterimageEnabled = m_isServerAuthoritative && !m_isReplicationDormant &&
         !m_isGhostPresentationHidden && !m_isPatternBodyHidden &&
         m_strServerPatternId == "VALTAN_DASH_CHARGE" &&
         m_strServerActionId == "valtan.attack.dash-charge.active" &&
-        m_fServerActionAgeSeconds >= (2.461735964f - 2.45f) / .6f;
+        m_fServerActionAgeSeconds >= (2.461735964f - 2.45f) / .6f &&
+        m_fServerActionAgeSeconds < (2.461735964f + .6f - 2.45f) / .6f;
     if (m_isReplicationDormant || m_isGhostPresentationHidden || m_isPatternBodyHidden)
     {
         const auto body = m_PartObjects.find(BODY_PART_TAG);

@@ -599,6 +599,7 @@ void CLevel_Bern::Update(f32_t fTimeDelta)
 		CGameInstance::Get().SetMouseButtonBlocked(DIM::RB, true);
 	}
 
+	m_Replication.Update_CombatHover(nullptr != m_pCamera && m_pCamera->Is_FollowEnabled() && !Is_ValtanEntryModalOpen());
 	m_PlayerController.Update(
 		nullptr != m_pCamera && m_pCamera->Is_FollowEnabled(),
 		nullptr != m_pCamera && !m_pCamera->Is_FollowRequested() &&

@@ -23,6 +23,9 @@
 #include "NpcPlacementPresentationService.h"
 #include "NpcPresentationAssetService.h"
 #include "PlayableCharacterAssetService.h"
+#include "PlayerController.h"
+#include "UIInputRouter.h"
+#include "WorldSequenceObject.h"
 #include "Transform.h"
 #include "Valtan.h"
 #include "ValtanPatternAuditionService.h"
@@ -41,12 +44,20 @@
 #ifdef _DEBUG
 #include <fstream>
 #include <iterator>
-#include <limits>
 #endif
+#include <limits>
 #include <span>
 
 namespace
 {
+	bool Try_PickCombatModel(const Engine::CModel& model, const float4x4_t& root,
+		fvector_t rayOrigin, fvector_t rayDirection, f32_t& outDistance)
+	{
+        float3_t origin, direction;
+        XMStoreFloat3(&origin, rayOrigin); XMStoreFloat3(&direction, rayDirection);
+        return model.Try_PickCurrentPose(root, origin, direction, outDistance);
+	}
+
 	Client::CLocalMovePrediction::Snapshot LocalMoveSnapshot(
 		const LostArk::Shared::PLAYER_SNAPSHOT& player, const std::uint32_t serverTick)
 	{
@@ -264,6 +275,8 @@ void Client::CClientReplication::Expect_KoukuRaidReply(const std::uint32_t reque
 
 bool Client::CClientReplication::Update()
 {
+	Update_CombatHover(false);
+	m_PendingWorldCombatHits.clear();
 	Engine::CProfilerScope updateScope(
 		CGameInstance::Get().Get_Profiler(), "Replication.Update");
 	if (!m_isInitialized)
@@ -470,6 +483,101 @@ bool Client::CClientReplication::Update()
 		Draw_CombatObjectHitAreaDebug();
 #endif
 	return allSucceeded;
+}
+
+void Client::CClientReplication::Set_WorldCombatTargets(const std::vector<WORLD_COMBAT_TARGET>& targets)
+{
+	m_WorldCombatTargets.clear();
+	for (const auto& target : targets)
+	{
+		if (target.iBodyNetEntityId == LostArk::Shared::INVALID_NET_ENTITY_ID ||
+			m_WorldEntities.contains(target.iBodyNetEntityId) || !target.object || !target.object->Is_Visible()) continue;
+		m_WorldCombatTargets.push_back({ target.iBodyNetEntityId, target.object });
+		if (m_PendingWorldCombatHits.contains(target.iBodyNetEntityId)) target.object->Trigger_HitFlash();
+	}
+	// A stopped/dead cue cannot receive an old hit when an object pool is reused.
+	m_PendingWorldCombatHits.clear();
+}
+
+void Client::CClientReplication::Update_CombatHover(const bool_t enabled)
+{
+	if (const auto previous = m_HoveredCombatNpc.lock()) previous->Set_CombatHovered(false);
+	if (const auto previous = m_HoveredCombatValtan.lock()) previous->Set_CombatHovered(false);
+	m_HoveredCombatNpc.reset();
+	m_HoveredCombatValtan.reset();
+	for (const auto& previous : m_HoveredCombatWorldObjects)
+		if (const auto object = previous.lock()) object->Set_CombatHovered(false);
+	m_HoveredCombatWorldObjects.clear();
+	if (!enabled || !m_isInitialized || !m_wasConnected ||
+		GetForegroundWindow() != g_hWnd || CGameInstance::Get().IsMouseInputBlocked() ||
+		CUIInputRouter::Get().Is_MouseClaimedThisFrame() ||
+		CUIInputRouter::Get().Was_MouseClaimedLastFrame() ||
+		CUIInputRouter::Get().Is_TextInputActive() || !Get_LocalCharacter()) return;
+	vector_t origin{}, direction{};
+	if (!CPlayerController::Try_PickWorldRay(origin, direction) ||
+		XMVectorGetX(XMVector3LengthSq(direction)) < 1.e-8f) return;
+	direction = XMVector3Normalize(direction);
+	f32_t bestDistance = (std::numeric_limits<f32_t>::max)();
+	LostArk::Shared::NET_ENTITY_ID bestId = LostArk::Shared::INVALID_NET_ENTITY_ID;
+	for (const auto& [id, entity] : m_WorldEntities)
+	{
+		if (!entity.bCombatHoverTarget || entity.bPresentationIsolated) continue;
+        f32_t distance = 0.f;
+        bool hit = false;
+		if (const auto npc = entity.pNpc.lock())
+		{
+            float3_t pickOrigin, pickDirection;
+            XMStoreFloat3(&pickOrigin, origin); XMStoreFloat3(&pickDirection, direction);
+            hit = npc->Try_PickPresentation(pickOrigin, pickDirection, distance);
+		}
+		else if (const auto valtan = entity.pValtan.lock())
+		{
+            float4x4_t root;
+			if (!valtan->Is_PresentationVisible() || !valtan->Try_Get_PresentationRootMatrix(&root)) continue;
+            const auto model = valtan->Get_BodyModel();
+            hit = model && Try_PickCombatModel(*model, root, origin, direction, distance);
+		}
+		if (hit &&
+			(distance < bestDistance || (distance == bestDistance && id < bestId)))
+		{
+			bestDistance = distance;
+			bestId = id;
+		}
+	}
+	for (const auto& target : m_WorldCombatTargets)
+	{
+		const auto object = target.object.lock();
+		if (!object || !object->Is_Visible() || !object->Get_Model()) continue;
+		f32_t distance = 0.f;
+		if (Try_PickCombatModel(*object->Get_Model(), object->Get_SampledWorld(), origin, direction, distance) &&
+			(distance < bestDistance || (distance == bestDistance && target.iBodyNetEntityId < bestId)))
+		{
+			bestDistance = distance;
+			bestId = target.iBodyNetEntityId;
+		}
+	}
+	const auto selected = m_WorldEntities.find(bestId);
+	if (selected == m_WorldEntities.end())
+	{
+		for (const auto& target : m_WorldCombatTargets)
+			if (target.iBodyNetEntityId == bestId)
+				if (const auto object = target.object.lock(); object && object->Is_Visible())
+				{
+					object->Set_CombatHovered(true);
+					m_HoveredCombatWorldObjects.push_back(object);
+				}
+		return;
+	}
+	if (const auto npc = selected->second.pNpc.lock())
+	{
+		npc->Set_CombatHovered(true);
+		m_HoveredCombatNpc = npc;
+	}
+	else if (const auto valtan = selected->second.pValtan.lock())
+	{
+		valtan->Set_CombatHovered(true);
+		m_HoveredCombatValtan = valtan;
+	}
 }
 
 bool Client::CClientReplication::Apply_WorldDestructionFullSync(
@@ -1735,11 +1843,23 @@ void Client::CClientReplication::Collect_KoukuPresentationViews(
 			!entity.pNpc.expired() && !entity.bPresentationIsolated && entity.KoukuSnapshot.iNetEntityId == id)
 			bosses.push_back({entity.pNpc, entity.KoukuSnapshot, m_iLastServerTick,
 				entity.iOwnerBossNetEntityId, entity.strArchetypeId});
+	const auto& raid = Get_KoukuRaidState();
+	using LostArk::Shared::KOUKUSAYDON_RAID_PHASE;
+	const bool running = raid.ePhase == KOUKUSAYDON_RAID_PHASE::PREPARING || raid.ePhase == KOUKUSAYDON_RAID_PHASE::CINEMATIC ||
+		raid.ePhase == KOUKUSAYDON_RAID_PHASE::COMBAT || raid.ePhase == KOUKUSAYDON_RAID_PHASE::WAIT_GATE ||
+		raid.ePhase == KOUKUSAYDON_RAID_PHASE::WAIT_MINIGAME || raid.ePhase == KOUKUSAYDON_RAID_PHASE::WAIT_ENTRY;
+	const auto live = m_Registry.Get_LivePlayers();
 	for (const auto& snapshot : m_KoukuCardSnapshots)
 	{
 		OBJECT_HANDLE handle;
 		if (m_Registry.Find_Handle(snapshot.iNetEntityId, handle))
-			if (auto character = m_Registry.Resolve(handle)) cards.push_back({character, snapshot});
+			if (auto character = m_Registry.Resolve(handle))
+			{
+				const auto player = std::find_if(live.begin(), live.end(), [&](const auto& value) { return value.Record.iNetEntityId == snapshot.iNetEntityId; });
+				const bool participant = !running || (player != live.end() &&
+					std::find(raid.ParticipantPlayerIds.begin(), raid.ParticipantPlayerIds.end(), player->Record.iPlayerId) != raid.ParticipantPlayerIds.end());
+				cards.push_back({character, snapshot, participant});
+			}
 	}
 }
 
@@ -3516,6 +3636,11 @@ bool Client::CClientReplication::Apply_WorldSnapshot(
 			allSucceeded = false;
 			continue;
 		}
+		iter->second.bCombatHoverTarget =
+			(iter->second.eKind == WORLD_ENTITY_KIND::MONSTER || iter->second.eKind == WORLD_ENTITY_KIND::BOSS) &&
+			Is_PlayerDamageableWorldArchetype(iter->second.strArchetypeId) &&
+			iter->second.iOwnerBossNetEntityId == INVALID_NET_ENTITY_ID &&
+			entity.eAction != WORLD_ENTITY_ACTION::DEAD && entity.iCurrentHp > 0u;
 		const float3_t position(
 			entity.fPositionX,
 			entity.fPositionY,
@@ -3965,11 +4090,24 @@ bool Client::CClientReplication::Apply_WorldSnapshot(
 		Remove_DependentBossPresentations(owner);
 	for (const DAMAGE_EVENT& damageEvent : snapshot.DamageEvents)
 	{
-		if (!damageEvent.isOutgoing)
+		if (!damageEvent.isOutgoing || damageEvent.iAmount == 0u ||
+			(damageEvent.eHitFlag != DAMAGE_HIT_FLAG::NORMAL &&
+			 damageEvent.eHitFlag != DAMAGE_HIT_FLAG::CRITICAL &&
+			 damageEvent.eHitFlag != DAMAGE_HIT_FLAG::ABSORB) ||
+			damageEvent.eCardMazeSuit != MECHANIC_CARD_SYMBOL::NONE)
 			continue;
 		const auto hitEntity =
 			m_WorldEntities.find(damageEvent.iTargetNetEntityId);
 		if (hitEntity == m_WorldEntities.end())
+		{
+			// Owned WORLD bodies are not duplicated as ordinary world entities.
+			// Level resolves this same-frame event after consuming its reliable PLAY/STOP cues.
+			if (m_Desc.iLayerLevelIndex == ETOUI(LEVEL::KAKULSAYDON_ARENA))
+				m_PendingWorldCombatHits.insert(damageEvent.iTargetNetEntityId);
+			continue;
+		}
+		if (hitEntity->second.bPresentationIsolated ||
+			!Is_PlayerDamageableWorldArchetype(hitEntity->second.strArchetypeId))
 			continue;
 		if (WORLD_ENTITY_KIND::MONSTER == hitEntity->second.eKind)
 		{
@@ -4000,9 +4138,9 @@ bool Client::CClientReplication::Apply_WorldSnapshot(
 		}
 		else if (WORLD_ENTITY_KIND::BOSS == hitEntity->second.eKind)
 		{
-			if (hitEntity->second.bPresentationIsolated)
-				continue;
-			if (const std::shared_ptr<CValtan> boss =
+			if (const std::shared_ptr<CNpc> boss = hitEntity->second.pNpc.lock())
+				boss->Trigger_HitFlash();
+			else if (const std::shared_ptr<CValtan> boss =
 				hitEntity->second.pValtan.lock())
 			{
 				boss->Trigger_HitFlash();
@@ -4149,6 +4287,9 @@ void Client::CClientReplication::Update_DeathPresentations()
 
 void Client::CClientReplication::Reset_World()
 {
+	Update_CombatHover(false);
+	m_WorldCombatTargets.clear();
+	m_PendingWorldCombatHits.clear();
 	if (const auto character = Get_LocalCharacter())
 		CAnimationTargetService::Unbind(character);
 	if (m_pPlayerAssetPreparation) m_pPlayerAssetPreparation->Cancel_AsyncPreparation();

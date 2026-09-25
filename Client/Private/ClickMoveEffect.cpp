@@ -4,7 +4,6 @@
 #include "CombatHUDViewModel.h"
 #include "GameInstance.h"
 #include "Transform.h"
-#include "WorldPlayerNameplateView.h"
 
 #include <cmath>
 #include <string_view>
@@ -132,85 +131,58 @@ bool_t Client::CClickMoveEffect::Spawn_Marker(const char* effectId,
 }
 
 void Client::CClickMoveEffect::Play_Ping(const float3_t& worldPosition,
-	const shared_ptr<CCharacter>& character)
+	const std::uint32_t senderId, const std::uint32_t sequence)
 {
-	if (!character || CGameInstance::Get().Get_CurrentLevelID() != m_iLevelIndex) return;
+	if (CGameInstance::Get().Get_CurrentLevelID() != m_iLevelIndex) return;
 	const float3_t position{ worldPosition.x, worldPosition.y + 0.035f, worldPosition.z };
-	if (Spawn_Marker(PING_EFFECT_ID, "player.ping", position, m_PingHandle))
+	ROOM_PING_MARKER staged;
+	const auto placement = "player.ping." + std::to_string(senderId) + "." + std::to_string(sequence);
+	if (!Spawn_Marker(PING_EFFECT_ID, placement.c_str(), position, staged.Handle)) return;
+	if (m_RoomPings.size() >= 64u)
 	{
-		m_pCharacter = character;
-		m_fPingSeconds = 0.f;
+		CEffectPresentationService::Stop_WorldRoot(m_RoomPings.front().Handle);
+		m_RoomPings.erase(m_RoomPings.begin());
 	}
+	m_RoomPings.push_back(std::move(staged));
 }
 
-void Client::CClickMoveEffect::Set_PingPending(const bool_t pending,
-	const shared_ptr<CCharacter>& character)
+void Client::CClickMoveEffect::Clear_Move()
 {
-	m_bPingPending = pending && character != nullptr;
-	if (m_bPingPending) m_pCharacter = character;
-	else
-	{
-		CEffectPresentationService::Stop_WorldRoot(m_PendingHandle);
-		m_PendingHandle = {};
-	}
+	CEffectPresentationService::Stop_WorldRoot(m_ClickHandle);
+	m_ClickHandle = {};
+	m_pCharacter.reset();
 }
 
 void Client::CClickMoveEffect::Clear()
 {
-	CEffectPresentationService::Stop_WorldRoot(m_ClickHandle);
-	m_ClickHandle = {};
-	CEffectPresentationService::Stop_WorldRoot(m_PingHandle);
-	CEffectPresentationService::Stop_WorldRoot(m_PendingHandle);
-	m_PingHandle = {};
-	m_PendingHandle = {};
-	m_bPingPending = false;
-	m_pCharacter.reset();
+	Clear_Move();
+	for (auto& ping : m_RoomPings) CEffectPresentationService::Stop_WorldRoot(ping.Handle);
+	m_RoomPings.clear();
 }
 
 void Client::CClickMoveEffect::Late_Update(const f32_t fTimeDelta)
 {
-	if (!m_ClickHandle.Is_Valid() && !m_PingHandle.Is_Valid() && !m_bPingPending) return;
-	const shared_ptr<CCharacter> character = m_pCharacter.lock();
-	const auto& player = CCombatHUDViewModel::Get().Get_Player();
-	if (!character || CGameInstance::Get().Get_CurrentLevelID() != m_iLevelIndex ||
-		!player.isValid || 0u == player.iCurrentHp || player.isPatternBound)
+	if (CGameInstance::Get().Get_CurrentLevelID() != m_iLevelIndex)
 	{
 		Clear();
 		return;
 	}
-	if (m_bPingPending)
+	const auto& player = CCombatHUDViewModel::Get().Get_Player();
+	if (m_pCharacter.expired() || !player.isValid || !player.iCurrentHp || player.isPatternBound)
+		Clear_Move();
+	if (!std::isfinite(fTimeDelta) || fTimeDelta < 0.f) return;
+	for (auto& ping : m_RoomPings)
 	{
-		float3_t head{};
-		if (CWorldPlayerNameplateView::Try_GetHeadAnchor(*character, head))
+		ping.fSeconds += fTimeDelta;
+		if (ping.fSeconds >= PING_DURATION_SECONDS)
 		{
-			head.y += 0.55f;
-			if (!m_PendingHandle.Is_Valid())
-				(void)Spawn_Marker(PENDING_EFFECT_ID, "player.ping.pending", head, m_PendingHandle, true);
-			else
-			{
-				float4x4_t world{};
-				XMStoreFloat4x4(&world, XMMatrixTranslation(head.x, head.y, head.z));
-				if (!CEffectPresentationService::Update_WorldRoot(m_PendingHandle, world))
-				{
-					CEffectPresentationService::Stop_WorldRoot(m_PendingHandle);
-					m_PendingHandle = {};
-				}
-			}
+			CEffectPresentationService::Stop_WorldRoot(ping.Handle);
+			ping.Handle = {};
 		}
 	}
-	if (!std::isfinite(fTimeDelta) || fTimeDelta < 0.f) return;
+	std::erase_if(m_RoomPings, [](const auto& ping) { return !ping.Handle.Is_Valid(); });
 	m_fClickSeconds += fTimeDelta;
-	m_fPingSeconds += fTimeDelta;
-	if (m_PingHandle.Is_Valid() && m_fPingSeconds >= PING_DURATION_SECONDS)
-	{
-		CEffectPresentationService::Stop_WorldRoot(m_PingHandle);
-		m_PingHandle = {};
-	}
-	if (m_ClickHandle.Is_Valid() && m_fClickSeconds >= CLICK_DURATION_SECONDS)
-	{
-		CEffectPresentationService::Stop_WorldRoot(m_ClickHandle);
-		m_ClickHandle = {};
-	}
+	if (m_ClickHandle.Is_Valid() && m_fClickSeconds >= CLICK_DURATION_SECONDS) Clear_Move();
 }
 
 HRESULT Client::CClickMoveEffect::Render() { return S_OK; }

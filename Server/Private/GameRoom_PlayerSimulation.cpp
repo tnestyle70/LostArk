@@ -759,6 +759,7 @@ void LostArk::Server::CGameRoom::Update_Players(const float fixedDeltaSeconds)
 			};
         (void)CKoukuSaydonLogicRuntime::Update_PlayerFear(player, updateTick);
 		Update_MarioControlState(player);
+		Update_MarioBombContacts(player, updateTick);
 		if (m_eWorldId == LostArk::Shared::WORLD_ID::KAKULSAYDON_ARENA && player.iCurrentHp &&
 			!player.iMarioStage && !player.TriggerMove.isActive &&
 			player.eAction != LostArk::Shared::PLAYER_ACTION_STATE::FALLING)

@@ -20,8 +20,7 @@ uint g_HasFullSurfaceEmissiveOverride = 0;
 float4 g_FullSurfaceEmissiveColor = 1.f;
 float g_FullSurfaceEmissiveIntensity = 0.f;
 /* 0: diffuse luminance weights the whole surface (skill glow).
-   1: normal-map bump strength times specular weights only creases and
-   metal, so a hit flash reads the shape instead of washing it out. */
+   1: camera-facing rim for a brief hit response; authored surface stays visible. */
 uint g_FullSurfaceEmissiveMaskMode = 0;
 /* The source game's dye contract: the mask's channels select colour regions
 of a mostly achromatic diffuse and each region multiplies its tint in. */
@@ -247,7 +246,7 @@ PS_OUT Evaluate_Material(
             float3 camera = -mul((float3x3)g_ViewMatrix, g_ViewMatrix[3].xyz);
             float weight = g_FullSurfaceEmissiveMaskMode == 1u ?
                 pow(1.f - saturate(dot(normalize(input.vNormal.xyz),
-                    normalize(camera - input.vWorldPos.xyz))), 3.f) : 1.f;
+                    normalize(camera - input.vWorldPos.xyz))), 1.5f) : 1.f;
             output.vEmissive.rgb += g_FullSurfaceEmissiveColor.rgb *
                 g_FullSurfaceEmissiveIntensity * weight;
         }
@@ -350,7 +349,7 @@ PS_OUT Evaluate_Material(
                 -mul((float3x3)g_ViewMatrix, g_ViewMatrix[3].xyz);
             const float3 toCamera =
                 normalize(cameraPosition - input.vWorldPos.xyz);
-            const float rim = pow(1.f - saturate(dot(normal, toCamera)), 3.f);
+            const float rim = pow(1.f - saturate(dot(normal, toCamera)), 1.5f);
             output.vEmissive.rgb += g_FullSurfaceEmissiveColor.rgb *
                 rim * g_FullSurfaceEmissiveIntensity * diffuse.a;
         }
@@ -642,6 +641,12 @@ SCENE_COLOR_BLOOM_OUT PS_MAIN_SOURCE_CHARACTER_GHOST_OPAQUE(VS_OUT input, bool f
     float3 color = base.targets[3].rgb * ambient + direct;
     const float4 fog = EvaluateSceneFog(input.vWorldPos.xyz, camera);
     color = color * fog.w + fog.rgb + base.targets[0].rgb;
+    if (g_HasFullSurfaceEmissiveOverride != 0u)
+    {
+        const float rim = pow(1.f - saturate(dot(normalize(input.vNormal.xyz),
+            normalize(camera - input.vWorldPos.xyz))), 1.5f);
+        color += g_FullSurfaceEmissiveColor.rgb * g_FullSurfaceEmissiveIntensity * rim;
+    }
     return Write_SceneColorAndBloom(float4(color, 1.f));
 #else
     // Base FX dispatches program84 to its cohort. Other cohorts cannot draw it.
@@ -735,10 +740,14 @@ float4 PS_MAIN_SCREEN_CUTIN(VS_OUT input) : SV_TARGET0
     return float4(color, 1.f);
 }
 
-// PROJECT_AUTHORED white pose echo. TrailGhost notify identity/timing is source
-// evidence; this presentation shader is not claimed as its native material ABI.
+// Legacy authored pose echo plus opt-in decoded TrailGhost color channels.
+// PROJECT_RECONSTRUCTED adapter: diffuse + ambient + view-rim color. Native
+// TrailGhost material bytecode/fade semantics are not recovered. Channel alpha
+// is kept separate from child opacity; it is not guessed as a coverage mask.
 float4 g_ChargeAfterimageColor = 0.f;
 float g_ChargeAfterimageSourceIntensity = 0.f;
+int g_ChargeAfterimageSourceChannels = 0;
+float4 g_ChargeAfterimageAmbientColor = 0.f;
 SCENE_COLOR_BLOOM_OUT PS_MAIN_CHARGE_AFTERIMAGE(VS_OUT input)
 {
     const float3 view = normalize(g_vCamPosition.xyz - input.vWorldPos.xyz);
@@ -746,6 +755,9 @@ SCENE_COLOR_BLOOM_OUT PS_MAIN_CHARGE_AFTERIMAGE(VS_OUT input)
     float3 source = 0.f;
     if (g_ChargeAfterimageSourceIntensity > 0.f)
         source = g_DiffuseTexture.Sample(MaterialAnisotropicSampler, input.vTexcoord).rgb * g_ChargeAfterimageSourceIntensity;
+    if (g_ChargeAfterimageSourceChannels != 0)
+        return Write_SceneColorAndBloom(float4(source + g_ChargeAfterimageAmbientColor.rgb +
+            g_ChargeAfterimageColor.rgb * rim, g_ChargeAfterimageColor.a));
     return Write_SceneColorAndBloom(float4(source + g_ChargeAfterimageColor.rgb,
         g_ChargeAfterimageColor.a * lerp(.3f, 1.f, rim)));
 }
@@ -767,6 +779,134 @@ PixelShader BinaryAnimatedSurfacePS = compile ps_5_0 PS_MAIN();
 PixelShader BinaryAnimatedTranslucentPS = compile ps_5_0 PS_MAIN_SOURCE_CHARACTER_TRANSLUCENT();
 PixelShader BinaryAnimatedGhostOpaquePS = compile ps_5_0 PS_MAIN_SOURCE_CHARACTER_GHOST_OPAQUE();
 // END SHARED MODEL PASS PROGRAMS
+
+// ColorOption.loa OUTLINE_MONSTER_ENEMY is FE0000; energy remains project tuned.
+// Combat target outline uses this same model, pose and native alpha coverage.
+// It owns no stencil bits and never changes the scene depth or shared material.
+float2 g_CombatHoverNdcWidth = 0.f;
+uint g_CombatHoverReflected = 0u;
+VS_OUT VS_COMBAT_HOVER(VS_IN input)
+{
+    VS_OUT output = VS_MAIN(input);
+    const float3 viewNormal = mul(float4(output.vNormal.xyz, 0.f), g_ViewMatrix).xyz;
+    const float2 direction = viewNormal.xy * float2(g_ProjMatrix[0][0], g_ProjMatrix[1][1]);
+    const float lengthSquared = dot(direction, direction);
+    if (lengthSquared > 1e-10f)
+        output.vPosition.xy += direction * rsqrt(lengthSquared) *
+            g_CombatHoverNdcWidth * output.vPosition.w;
+    return output;
+}
+PS_OUT PS_COMBAT_HOVER(VS_OUT input, bool frontFace : SV_IsFrontFace)
+{
+    if (frontFace != (g_CombatHoverReflected != 0u)) discard;
+    Evaluate_Material(input, true, .3f, true);
+    PS_OUT output = (PS_OUT)0;
+    output.vDepth = float4(input.vProjPos.z / input.vProjPos.w,
+        input.vProjPos.w / 1000.f, 0.f, 1.f);
+    output.vEmissive = float4(2.f * (254.f / 255.f), 0.f, 0.f, 0.f);
+    return output;
+}
+SCENE_COLOR_BLOOM_OUT PS_COMBAT_HOVER_FORWARD(VS_OUT input, bool frontFace : SV_IsFrontFace)
+{
+    if (frontFace != (g_CombatHoverReflected != 0u)) discard;
+#if SOURCE_CHARACTER_PROGRAM_GROUP == 84
+    if (g_SourceCharacterProgram == 84u)
+    {
+        // Match the live opaque ghost pass16; packed zero alpha is not a hole.
+        const float3 camera = -mul((float3x3)g_ViewMatrix, g_ViewMatrix[3].xyz);
+        const SOURCE_CHARACTER_NATIVE_INPUT nativeInput = MakeSourceCharacterInput(input.vTexcoord,
+            input.vSourceExtraUV, input.vWorldPos.xyz, input.vTangent.xyz, input.vBinormal.xyz,
+            input.vNormal.xyz, camera, input.vProjPos, mul(g_ViewMatrix, g_ProjMatrix),
+            float3(0.f, 1.f, 0.f), 0.f, 1.f, true);
+        const SOURCE_CHARACTER_NATIVE_OUTPUT native = SourceCharacterBase84(nativeInput, true);
+        if (native.discarded) discard;
+    }
+    else
+#endif
+        Evaluate_Material(input, true, .3f, true);
+    return Write_SceneColorAndBloom(float4(2.f * (254.f / 255.f), 0.f, 0.f, 1.f));
+}
+
+VertexShader CombatHoverVS = compile vs_5_0 VS_COMBAT_HOVER();
+
+// Deferred-overlay silhouette: capture the actual visible coverage, then dilate
+// its projected geometry. Bone normals cannot create spikes or interior lines.
+uint g_CombatHoverStencilReference = 128u;
+DepthStencilState DSS_CombatHoverMask
+{
+    DepthEnable = true;
+    DepthWriteMask = zero;
+    DepthFunc = less_equal;
+    StencilEnable = true;
+    StencilReadMask = 0x80;
+    StencilWriteMask = 0x80;
+    FrontFaceStencilFunc = always;
+    FrontFaceStencilPass = replace;
+    FrontFaceStencilFail = keep;
+    FrontFaceStencilDepthFail = keep;
+    BackFaceStencilFunc = always;
+    BackFaceStencilPass = replace;
+    BackFaceStencilFail = keep;
+    BackFaceStencilDepthFail = keep;
+};
+DepthStencilState DSS_CombatHoverOutside
+{
+    DepthEnable = true;
+    DepthWriteMask = zero;
+    DepthFunc = less_equal;
+    StencilEnable = true;
+    StencilReadMask = 0x80;
+    StencilWriteMask = 0;
+    FrontFaceStencilFunc = not_equal;
+    FrontFaceStencilPass = keep;
+    FrontFaceStencilFail = keep;
+    FrontFaceStencilDepthFail = keep;
+    BackFaceStencilFunc = not_equal;
+    BackFaceStencilPass = keep;
+    BackFaceStencilFail = keep;
+    BackFaceStencilDepthFail = keep;
+};
+BlendState BS_CombatHoverMask
+{
+    RenderTargetWriteMask[0] = 0;
+    RenderTargetWriteMask[1] = 0;
+    RenderTargetWriteMask[2] = 0;
+    RenderTargetWriteMask[3] = 0;
+    RenderTargetWriteMask[4] = 0;
+    RenderTargetWriteMask[5] = 0;
+    RenderTargetWriteMask[6] = 0;
+    RenderTargetWriteMask[7] = 0;
+};
+void PS_COMBAT_HOVER_MASK(VS_OUT input)
+{
+    Evaluate_Material(input, true, .3f, true);
+}
+[maxvertexcount(24)]
+void GS_COMBAT_HOVER_SILHOUETTE(triangle VS_OUT input[3], inout TriangleStream<VS_OUT> stream)
+{
+    const float2 directions[8] = {
+        float2(1,0), float2(.70710678,.70710678), float2(0,1), float2(-.70710678,.70710678),
+        float2(-1,0), float2(-.70710678,-.70710678), float2(0,-1), float2(.70710678,-.70710678)};
+    [unroll] for (uint offsetIndex = 0; offsetIndex < 8; ++offsetIndex)
+    {
+        [unroll] for (uint vertex = 0; vertex < 3; ++vertex)
+        {
+            VS_OUT output = input[vertex];
+            output.vPosition.xy += directions[offsetIndex] * g_CombatHoverNdcWidth * output.vPosition.w;
+            stream.Append(output);
+        }
+        stream.RestartStrip();
+    }
+}
+PS_OUT PS_COMBAT_HOVER_SILHOUETTE(VS_OUT input)
+{
+    Evaluate_Material(input, true, .3f, true);
+    PS_OUT output = (PS_OUT)0;
+    output.vDepth = float4(input.vProjPos.z / input.vProjPos.w,
+        input.vProjPos.w / 1000.f, 0.f, 1.f);
+    output.vEmissive = float4(2.f * (254.f / 255.f), 0.f, 0.f, 0.f);
+    return output;
+}
 
 technique11 DefaultTechnique
 {
@@ -968,4 +1108,43 @@ technique11 DefaultTechnique
         PixelShader = NULL;
     }
 
+
+    // Appended combat hover passes preserve every existing pass index.
+    pass CombatHoverOutline
+    {
+        SetRasterizerState(RS_Cull_None);
+        SetDepthStencilState(DSS_ReadOnly, 0);
+        SetBlendState(BS_Default, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
+        VertexShader = CombatHoverVS;
+        GeometryShader = NULL;
+        PixelShader = compile ps_5_0 PS_COMBAT_HOVER();
+    }
+    pass CombatHoverOutlineForward
+    {
+        SetRasterizerState(RS_Cull_None);
+        SetDepthStencilState(DSS_ReadOnly, 0);
+        SetBlendState(BS_Default, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
+        VertexShader = CombatHoverVS;
+        GeometryShader = NULL;
+        PixelShader = compile ps_5_0 PS_COMBAT_HOVER_FORWARD();
+    }
+    // Appended 20/21 keep every existing material/cue/ghost pass index stable.
+    pass CombatHoverMask
+    {
+        SetRasterizerState(RS_Cull_None);
+        SetDepthStencilState(DSS_CombatHoverMask, g_CombatHoverStencilReference);
+        SetBlendState(BS_CombatHoverMask, float4(0,0,0,0), 0xffffffff);
+        VertexShader = compile vs_5_0 VS_MAIN();
+        GeometryShader = NULL;
+        PixelShader = compile ps_5_0 PS_COMBAT_HOVER_MASK();
+    }
+    pass CombatHoverSilhouette
+    {
+        SetRasterizerState(RS_Cull_None);
+        SetDepthStencilState(DSS_CombatHoverOutside, 128);
+        SetBlendState(BS_Default, float4(0,0,0,0), 0xffffffff);
+        VertexShader = compile vs_5_0 VS_MAIN();
+        GeometryShader = compile gs_5_0 GS_COMBAT_HOVER_SILHOUETTE();
+        PixelShader = compile ps_5_0 PS_COMBAT_HOVER_SILHOUETTE();
+    }
 }

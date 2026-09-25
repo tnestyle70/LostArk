@@ -123,7 +123,7 @@
       "encounterId": "ENCOUNTER_KAKULSAYDON_G1",
       "displayName": "앵콜을 외친 쿠크세이튼",
       "maximumHp": 600000,
-      "maximumHealthBars": 160,
+      "maximumHealthBars": 77,
       "attackPower": 100,
       "collisionRadius": 1.0,
       "engageDistance": 100.0,

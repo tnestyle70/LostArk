@@ -2,6 +2,7 @@
 #include "Network/PacketMessages.h"
 #include "KoukuSaydonLogicRuntime.h"
 #include "GameRoom.h"
+#include "ServerCombatHitRuntime.h"
 #include <bit>
 #include "ServerGameplayContractTests.h"
 #include "Network/PacketReader.h"
@@ -153,14 +154,25 @@ int LostArk::Server::Run_ServerBingoContractTests()
 	}
 	{
 		CKoukuBingoRuntime board;
-		/* A diagonal counts, which is the rule the user chose. */
+		/* Diagonal marks remain ordinary skulls; only rows and columns promote. */
 		board.Fill(0x1041041u);
-		tests.Require(0x1041041u == board.Get_RedMask(),
-			"A completed diagonal turns red like a row or a column");
+		tests.Require(0x1041041u == board.Get_WhiteMask() && !board.Get_RedMask(),
+			"A completed diagonal never turns red or earns a completed line");
 		board.Fill(~0u);
 		tests.Require(KOUKU_BINGO_ALL_CELLS_MASK == board.Get_WhiteMask() &&
 			KOUKU_BINGO_ALL_CELLS_MASK == board.Get_RedMask(),
 			"Bits above the board are dropped and a full board completes every line");
+		tests.Require(board.Count_CompletedRowsAndColumns() == 10u && board.Count_UnconsumedRowsAndColumns() == 10u &&
+			board.Consume_CompletedRowsAndColumns(3u) && board.Count_UnconsumedRowsAndColumns() == 7u &&
+			board.Consume_CompletedRowsAndColumns(3u) && board.Count_UnconsumedRowsAndColumns() == 4u,
+			"Each reward consumes exactly three distinct rows/columns while preserving extra unused lines");
+		tests.Require(!board.Consume_CompletedRowsAndColumns(5u) && !board.Consume_CompletedRowsAndColumns(0u) &&
+			board.Count_UnconsumedRowsAndColumns() == 4u && board.Get_RedMask() == KOUKU_BINGO_ALL_CELLS_MASK,
+			"Insufficient or zero-sized reward claims preserve every unused line and all permanent red cells");
+		board.Reset(); board.Fill(0x7fffu);
+		tests.Require(board.Count_UnconsumedRowsAndColumns() == 3u && board.Consume_CompletedRowsAndColumns(3u) &&
+			!board.Count_UnconsumedRowsAndColumns() && !board.Consume_CompletedRowsAndColumns(3u),
+			"A fresh board resets reward identity and the same three permanent lines cannot be reused");
 	}
 	{
 		S2C_WORLD_SNAPSHOT snapshot{};
@@ -254,24 +266,24 @@ int LostArk::Server::Run_ServerBingoContractTests()
 		bombs.Fill(Kouku_BingoCrossMask(3));
 		tests.Require(0x1Fu == (bombs.Get_RedMask() & 0x1Fu),
 			"A second cross that finishes row 0 turns that row red");
-		/* A blast paints empty cells red, clears ordinary skulls, and preserves red. */
+		/* A blast toggles ordinary skulls and promotes only completed rows/columns. */
 		CKoukuBingoRuntime blast;
 		blast.Detonate(Kouku_BingoCrossMask(12));
 		const std::uint32_t cross12 = Kouku_BingoCrossMask(12);
-		tests.Require(cross12 == blast.Get_WhiteMask() && cross12 == blast.Get_RedMask(),
-			"A blast on black floor creates red skulls throughout its cross");
+		tests.Require(cross12 == blast.Get_WhiteMask() && !blast.Get_RedMask(),
+			"A blast on empty floor creates ordinary skulls without prematurely turning them red");
 		blast.Detonate(cross12);
-		tests.Require(cross12 == blast.Get_WhiteMask() && cross12 == blast.Get_RedMask(),
-			"A second blast preserves every red skull");
+		tests.Require(!blast.Get_WhiteMask() && !blast.Get_RedMask(),
+			"A second blast on the same unfinished cross removes its ordinary skulls");
 		blast.Detonate(Kouku_BingoCrossMask(11));
 		const std::uint32_t before = blast.Get_WhiteMask();
 		blast.Detonate(Kouku_BingoCrossMask(13));
-		tests.Require(before != blast.Get_WhiteMask() &&
-			0u != (blast.Get_RedMask() & (1u << 12)),
-			"An overlapping blast preserves and promotes the shared skulls");
+		tests.Require(blast.Get_WhiteMask() == (before ^ Kouku_BingoCrossMask(13)) &&
+			!(blast.Get_WhiteMask() & (1u << 12)) && !blast.Get_RedMask(),
+			"Overlapping crosses toggle the shared unfinished skull exactly once per blast");
 		blast.Reset(); blast.Fill(1u << 12u); blast.Detonate(Kouku_BingoCrossMask(12));
 		tests.Require(!(blast.Get_WhiteMask() & (1u << 12u)) && !(blast.Get_RedMask() & (1u << 12u)),
-			"A bomb removes an existing white skull while neighbouring black cells become red");
+			"A bomb removes an existing ordinary skull while its empty neighbours become ordinary skulls");
 		blast.Reset();
 		blast.Fill(0x1Fu);
 		tests.Require(0x1Fu == blast.Get_RedMask(), "Row 0 is red before the blast");
@@ -281,6 +293,15 @@ int LostArk::Server::Run_ServerBingoContractTests()
 			"A blast never clears a cell that belongs to a completed line");
 		tests.Require(0u != (blast.Get_WhiteMask() & (1u << 7)),
 			"The same blast still lights the empty cell below the red row");
+		blast.Reset(); blast.Fill((1u << 1u) | (1u << 2u) | (1u << 3u) | (1u << 4u));
+		blast.Detonate(Kouku_BingoCrossMask(0));
+		tests.Require(blast.Get_WhiteMask() == ((1u << 0u) | (1u << 2u) | (1u << 3u) | (1u << 4u) | (1u << 5u)) &&
+			!blast.Get_RedMask(),
+			"With a2-a5 black, an a1 bomb toggles all affected cells first: a1 black, a2 empty and no transient red row");
+		blast.Detonate(Kouku_BingoCrossMask(6));
+		tests.Require((blast.Get_WhiteMask() & Kouku_BingoLineMask(0)) == Kouku_BingoLineMask(0) &&
+			blast.Get_RedMask() == Kouku_BingoLineMask(0),
+			"The following b2 bomb restores a2 and only then promotes the completed a row to permanent red");
 		tests.Require(bombs.Start_Bomb(41u, 150u) &&
 			BINGO_BOMB_PHASE::MARKED == bombs.Get_Bombs()[1].ePhase,
 			"The same carrier can be marked again once its bomb is planted");
@@ -329,6 +350,7 @@ int LostArk::Server::Run_ServerBingoContractTests()
 #ifdef _DEBUG
     {
         auto room = std::make_unique<CGameRoom>(WORLD_ID::KAKULSAYDON_ARENA);
+        if (room->Is_Ready()) CServerGameplayContractRunner::Run_InannaProtection(tests, room->m_GameplayCatalog.Active());
         auto& audition = room->m_KoukuSaydonPatternAudition;
         audition.ePhase = CGameRoom::KOUKUSAYDON_PATTERN_AUDITION_PHASE::ACTIVE;
         audition.iRoomAuditionEpoch = 71u;
@@ -360,10 +382,15 @@ int LostArk::Server::Run_ServerBingoContractTests()
             room->Update_KoukuBingo(start + 29u);
             tests.Require(player.iCurrentMadness == 0u, "Ordinary skull madness waits for the one-second boundary");
             room->Update_KoukuBingo(start + 30u);
-            tests.Require(player.iCurrentMadness == 10u, "Ordinary skull adds ten madness per second");
-            room->m_KoukuBingo.Reset(); room->m_KoukuBingo.Detonate(1u << 12u);
+            tests.Require(player.iCurrentMadness == 5u, "Ordinary skull adds five percent madness per second");
+            room->m_KoukuBingo.Reset(); room->m_KoukuBingo.Fill(Kouku_BingoLineMask(2));
             room->Update_KoukuBingo(start + 60u);
-            tests.Require(player.iCurrentMadness == 20u, "Red skull adds the same ten madness per second");
+            tests.Require(player.iCurrentMadness == 10u, "Red skull adds the same five percent madness per second");
+            player.iMaximumMadness = 200u;
+            room->Update_KoukuBingo(start + 90u);
+            tests.Require(player.iCurrentMadness == 20u, "Skull madness scales with the player's maximum instead of adding fixed points");
+            player.iMaximumMadness = 100u;
+            room->m_KoukuBingo.Reset();
             const auto countPhase = [&](BINGO_BOMB_PHASE phase) { return std::count_if(room->m_KoukuBingo.Get_Bombs().begin(), room->m_KoukuBingo.Get_Bombs().end(), [&](const auto& b) { return b.ePhase == phase; }); };
             room->m_KoukuBingoDuration.bEncounterOwned = true;
             room->m_KoukuBingoDuration.iEndTick = 0u;
@@ -410,6 +437,7 @@ int LostArk::Server::Run_ServerBingoContractTests()
                 "The third bomb detonates at twelve seconds and snapshots completed red rows and columns after its flip");
             for (std::size_t slot = 0u; slot < room->m_KoukuBingo.Get_Bombs().size(); ++slot) room->m_KoukuBingo.Clear_Bomb(slot);
             room->m_KoukuBingoDuration.bSpecialPatternPending = false;
+            player.iInvulnerableEndTick = 0u; // The following fixture isolates hammer contact damage.
 
             // At the authored hammer head; the raised chain must never deal damage.
             auto& hammer = room->m_KoukuBingoDuration.Hammers[0]; hammer.anchor = 4; hammer.startTick = 4000u;
@@ -466,12 +494,12 @@ int LostArk::Server::Run_ServerBingoContractTests()
             unsafe.iPlayerId = 2u; unsafe.iNetEntityId = 102u;
             unsafe.fPositionX = Kouku_BingoCellCenterX(12); unsafe.fPositionZ = Kouku_BingoCellCenterZ(12);
             room->m_KoukuBingo.Reset(); room->m_KoukuBingo.Fill(Kouku_BingoLineMask(KOUKU_BINGO_SIDE * 2u));
-            tests.Require(room->m_KoukuBingo.Count_CompletedRowsAndColumns() == 0u, "Red diagonals never count toward the three-row/column judgement");
-            room->m_KoukuBingo.Reset(); room->m_KoukuBingo.Fill(0x7fffu);
+            tests.Require(room->m_KoukuBingo.Count_CompletedRowsAndColumns() == 0u, "Diagonals never count toward the row/column reward");
+            room->m_KoukuBingo.Reset(); room->m_KoukuBingo.Fill(0x1fu);
             owner.iMaximumHp = owner.iCurrentHp = 10000u; owner.iMaximumHealthBars = 100u;
             BOSS_PATTERN_DEFINITION linePattern; linePattern.strPatternId = owner.strPatternId;
             auto& lines = linePattern.LogicWindows.emplace_back(); lines.eKind = BOSS_PATTERN_LOGIC_KIND::BINGO_COMPLETED_LINES;
-            lines.iDurationMs = 32628u; lines.iThreshold = 3u;
+            lines.iDurationMs = 32628u; lines.iThreshold = 1u;
             BOSS_PATTERN_LOGIC_RESULT protect; protect.eKind = BOSS_PATTERN_LOGIC_RESULT_KIND::PLAYER_INVULNERABILITY; protect.iDurationMs = 30000u;
             lines.OnSuccess.push_back(protect);
             KOUKUSAYDON_LOGIC_LEDGER lineLedger; CKoukuSaydonLogicRuntime::Build(linePattern, owner, 6100u, lineLedger);
@@ -480,20 +508,30 @@ int LostArk::Server::Run_ServerBingoContractTests()
             CKoukuSaydonLogicRuntime::Update(owner, linePattern, lineLedger, room->m_Players, room->m_GameplayCatalog, nullptr, 6200u, damage, lineOutput);
             room->m_KoukuBingoDuration.bLastLineCompletionSucceeded = lineOutput.BingoLineCompletion.value_or(false);
             tests.Require(lineOutput.BingoLineCompletion == true && player.iInvulnerableEndTick == 7100u && unsafe.iInvulnerableEndTick == 7100u,
-                "Three completed red rows grant every living player a thirty-second buff independent of tile position");
+                "One completed red row grants every living player a thirty-second buff independent of tile position");
             BOSS_PATTERN_MECHANIC_TRIGGER detonation; detonation.eKind = BOSS_PATTERN_MECHANIC_TRIGGER_KIND::BINGO_DETONATION;
             room->m_PendingKoukuMechanicTriggers.push_back({owner.iNetEntityId, owner.iPatternSequence, detonation});
             room->Commit_KoukuMechanicTriggers(6500u);
             tests.Require(player.iCurrentHp == 100u && unsafe.iCurrentHp == 100u && owner.iCurrentHp == 8700u,
-                "Successful three-line judgement makes the later black hole remove thirteen boss bars while the party survives");
+                "Successful new-line judgement makes the later black hole remove thirteen boss bars while the party survives");
+            tests.Require(player.iInvulnerabilityZoneContactTick == 6500u && player.iInvulnerabilityZonePulseTick == 6500u &&
+                unsafe.iInvulnerabilityZoneContactTick == 6500u && unsafe.iInvulnerabilityZonePulseTick == 6500u,
+                "A line-protected black-hole verdict emits the same per-player invulnerable combat-text pulse as a safe zone");
             room->Commit_KoukuMechanicTriggers(6501u);
             tests.Require(owner.iCurrentHp == 8700u, "A drained detonation queue cannot apply thirteen bars twice");
             room->m_KoukuBingoDuration.bLastLineCompletionSucceeded = false;
             player.iShield = unsafe.iShield = 5000u;
             room->m_PendingKoukuMechanicTriggers.push_back({owner.iNetEntityId, owner.iPatternSequence, detonation});
             room->Commit_KoukuMechanicTriggers(6550u);
+            tests.Require(player.iCurrentHp == 100u && unsafe.iCurrentHp == 100u && owner.iCurrentHp == 8700u,
+                "An active thirty-second line reward survives failed Bingo detonation without awarding boss damage");
+            room->m_PendingKoukuMechanicTriggers.push_back({owner.iNetEntityId, owner.iPatternSequence, detonation});
+            room->Commit_KoukuMechanicTriggers(7100u);
             tests.Require(player.iCurrentHp == 0u && unsafe.iCurrentHp == 0u && owner.iCurrentHp == 8700u,
-                "Failed three-line judgement wipes the whole party through shields and prior protection without damaging the boss");
+                "At the exact protection deadline failed Bingo detonation again wipes through shields without damaging the boss");
+            tests.Require(player.iInvulnerabilityZonePulseTick == 6550u && unsafe.iInvulnerabilityZonePulseTick == 6550u &&
+                player.iInvulnerabilityZoneContactTick != 7100u && unsafe.iInvulnerabilityZoneContactTick != 7100u,
+                "An expired black-hole verdict never reports another invulnerable combat-text occurrence");
 
             player.iCurrentHp = 100u; player.eAction = PLAYER_ACTION_STATE::NONE; player.isCombatReady = true;
             player.fPositionX = owner.fPositionX + 1.f; player.fPositionZ = owner.fPositionZ;
@@ -507,11 +545,109 @@ int LostArk::Server::Run_ServerBingoContractTests()
             room->Update_KoukuPlayerTargets(owner, tracking, trackingLedger, room->m_GameplayCatalog.Active(), 6200u);
             tests.Require(owner.iPatternTargetEntityId == player.iNetEntityId && std::abs(owner.fYawDegrees) < .001f,
                 "The one-shot facing Trigger immediately chooses the closest living player using the Saydon model basis");
+            tracking.bFixedTimelineClock = true;
+            tracking.Stages.emplace_back().iDurationMs = 10000u;
             track.iDurationMs = 10000u; track.fFollowSpeedScale = 1.f;
             CKoukuSaydonLogicRuntime::Build(tracking, owner, 6300u, trackingLedger);
             room->Update_KoukuPlayerTargets(owner, tracking, trackingLedger, room->m_GameplayCatalog.Active(), 6300u);
-            tests.Require(trackingLedger.bTrackingTargetReached && trackingLedger.PlayerTargetWindows.front().bClosed,
-                "Moving pursuit completes its pattern when the target is within body distance");
+            tests.Require(!trackingLedger.bTrackingTargetReached && !trackingLedger.PlayerTargetWindows.front().bClosed,
+                "An arbitrary whole-pattern pursuit does not inherit the explicit one-second pursuit completion rule");
+            tracking.LogicWindows.emplace_back().iDurationMs = 10000u;
+            CKoukuSaydonLogicRuntime::Build(tracking, owner, 6301u, trackingLedger);
+            room->Update_KoukuPlayerTargets(owner, tracking, trackingLedger, room->m_GameplayCatalog.Active(), 6301u);
+            tests.Require(!trackingLedger.bTrackingTargetReached && !trackingLedger.PlayerTargetWindows.front().bClosed,
+                "A contact or counter attack keeps its remaining pattern and tracking window after touching the player");
+            tracking.LogicWindows.clear(); track.iStartMs = 100u; track.iDurationMs = 1000u;
+            CKoukuSaydonLogicRuntime::Build(tracking, owner, 6302u, trackingLedger);
+            room->Update_KoukuPlayerTargets(owner, tracking, trackingLedger, room->m_GameplayCatalog.Active(), 6305u);
+            tests.Require(!trackingLedger.bTrackingTargetReached && !trackingLedger.PlayerTargetWindows.front().bClosed,
+                "An interior tracking window never truncates later landing or attack stages");
+            for (const auto* ballPatternId : {"KAKULSAYDON_G1_PATTERN_81", "KAKULSAYDON_G1_PATTERN_118"})
+            {
+                std::string ballStatus;
+                const auto* ballPattern = CKoukuSaydonBrain::Find_AnimationOnlyPattern(room->m_GameplayCatalog.Active(), ballPatternId, ballStatus);
+                tests.Require(ballPattern != nullptr, "Published rolling-ball attack is available for contact regression");
+                if (!ballPattern) continue;
+                auto ballOwner = owner; ballOwner.strPatternId = ballPatternId;
+                ballOwner.fPositionY += 3.f; // The rolling clip is above ground when contact occurs.
+                const float ballHeight = ballOwner.fPositionY;
+                KOUKUSAYDON_LOGIC_LEDGER ballLedger;
+                CKoukuSaydonLogicRuntime::Build(*ballPattern, ballOwner, 6300u, ballLedger);
+                room->Update_KoukuPlayerTargets(ballOwner, *ballPattern, ballLedger, room->m_GameplayCatalog.Active(), 6391u);
+                tests.Require(!ballLedger.bTrackingTargetReached && !ballLedger.PlayerTargetWindows.empty() &&
+                    !ballLedger.PlayerTargetWindows.front().bClosed && ballOwner.fPositionY == ballHeight,
+                    "Published rolling-ball contact preserves its landing clock and cannot advance the raid flow");
+            }
+
+            for (const auto& [pursuitId, completesOnContact] : {std::pair{"KAKULSAYDON_G1_PATTERN_101", false}, std::pair{"KAKULSAYDON_G1_PATTERN_104", true}})
+            {
+                std::string pursuitStatus;
+                const auto* pursuit = CKoukuSaydonBrain::Find_AnimationOnlyPattern(room->m_GameplayCatalog.Active(), pursuitId, pursuitStatus);
+                tests.Require(pursuit != nullptr, "Published standalone pursuit is available for contact regression");
+                if (!pursuit) continue;
+                auto pursuitOwner = owner; pursuitOwner.strPatternId = pursuitId;
+                KOUKUSAYDON_LOGIC_LEDGER pursuitLedger;
+                CKoukuSaydonLogicRuntime::Build(*pursuit, pursuitOwner, 6392u, pursuitLedger);
+                room->Update_KoukuPlayerTargets(pursuitOwner, *pursuit, pursuitLedger, room->m_GameplayCatalog.Active(), 6392u);
+                tests.Require(pursuitLedger.bTrackingTargetReached == completesOnContact &&
+                    pursuitLedger.PlayerTargetWindows.front().bClosed == completesOnContact,
+                    completesOnContact ? "Only published one-second pursuit P104 finishes on player contact" :
+                    "Published ordinary player pursuit P101 preserves its authored duration after player contact");
+            }
+
+            // Compare the selected-object hit to the original RESULT consumer, including
+            // a moved boss origin and an already active reaction that force=false must retain.
+            for (unsigned pushCase = 0u; pushCase < 4u; ++pushCase)
+            {
+                auto pushOwner = owner; pushOwner.fPositionX = 0.f; pushOwner.fPositionZ = -5.f;
+                std::vector<SERVER_WORLD_ENTITY> pushOwners{pushOwner};
+                SERVER_PLAYER victim; victim.iPlayerId = 1u; victim.iNetEntityId = 991u;
+                victim.iCurrentHp = victim.iMaximumHp = 1000u;
+                victim.fPositionX = 1.f; victim.fPositionY = 1.f; victim.fPositionZ = 0.f;
+                if (pushCase == 3u) { victim.fKnockbackRemainingSeconds = .7f; victim.fKnockbackDirectionZ = -1.f; }
+                auto expected = victim;
+                std::map<PLAYER_ID, SERVER_PLAYER> victims{{1u, victim}};
+                ATTACK_HIT_TEMPLATE authored; authored.strHitId = "selected.push.parity";
+                authored.strTrigger = "CONTACT"; authored.iEndMs = 100u; authored.fRadiusM = 3.0;
+                authored.fPushRangeM = 1.0; authored.iPushMs = 250u;
+                authored.fRiseHeightM = pushCase == 0u ? 0.0 : 2.0;
+                authored.ForcePush = pushCase == 2u;
+                authored.strPushDirection = pushCase == 2u ? "AWAY_FROM_CONTACT" : "AWAY_FROM_BOSS";
+                BOSS_COMBAT_OBJECT_DEFINITION definition;
+                definition.strEncounterId = pushOwner.strEncounterId; definition.strOwnerPatternId = pushOwner.strPatternId;
+                definition.strOwnerStageActionId = "selected.push.parity"; definition.iLifeMs = 1000u;
+                definition.strCombatObjectArchetypeId = "combatobject.kouku.showtime.fixed";
+                definition.strClientVisualId = "test.selected.push";
+                definition.eOriginPolicy = BOSS_COMBAT_OBJECT_ORIGIN_POLICY::LOCKED_TARGET_PER_ALIVE_PLAYER;
+                definition.AttackTemplates = {authored};
+                SERVER_COMBAT_OBJECT_LOCKED_TARGET center;
+                center.iNetEntityId = victim.iNetEntityId; center.fPositionX = -1.f; center.fPositionY = 1.f; center.fPositionZ = 0.f;
+                CCombatObjectRuntime runtime; auto transaction = runtime.Begin_Transaction(); std::string pushStatus;
+                const bool staged = runtime.Stage_BossCombatObject(transaction, pushOwner, &center, definition, nullptr,
+                    room->m_GameplayCatalog.Active(), 1u, 20000u, pushStatus) && runtime.Commit(std::move(transaction));
+                tests.Require(staged, "Selected hit stages horizontal-only or ballistic motion with explicit original push policy");
+                if (!staged) continue;
+                // The direction is sampled at damage, not cached at selection.
+                pushOwners.front().fPositionX = 0.f; pushOwners.front().fPositionZ = -4.f;
+                SERVER_WORLD_TO_PLAYER_HIT original;
+                original.iRawDamage = 100u; original.bIgnoreDefense = original.bIgnoreCounter = true;
+                original.fSourceX = pushCase == 2u ? center.fPositionX : pushOwners.front().fPositionX;
+                original.fSourceZ = pushCase == 2u ? center.fPositionZ : pushOwners.front().fPositionZ;
+                original.fPushRangeM = 1.f; original.iPushMs = 250u;
+                original.bForcePush = pushCase == 2u; original.bPushBallistic = pushCase != 0u;
+                original.fPushHeightM = float(authored.fRiseHeightM); original.iServerTick = 20001u;
+                std::vector<DAMAGE_EVENT> expectedDamage, actualDamage;
+                (void)CServerCombatHitRuntime::Apply_WorldToPlayer(expected, original, room->m_GameplayCatalog.Active(), expectedDamage);
+                runtime.Update(victims, pushOwners, room->m_GameplayCatalog.Active(), 1.f / 30.f, 20001u, actualDamage);
+                const auto& actual = victims.at(1u);
+                tests.Require(actual.iCurrentHp == 900u && actual.iCurrentHp == expected.iCurrentHp &&
+                    actual.eAction == expected.eAction && actual.bKnockbackBallistic == expected.bKnockbackBallistic &&
+                    std::abs(actual.fKnockbackDirectionX - expected.fKnockbackDirectionX) < .00001f &&
+                    std::abs(actual.fKnockbackDirectionZ - expected.fKnockbackDirectionZ) < .00001f &&
+                    std::abs(actual.fKnockbackRemainingSeconds - expected.fKnockbackRemainingSeconds) < .00001f &&
+                    std::abs(actual.fKnockbackVelocityY - expected.fKnockbackVelocityY) < .00001f,
+                    "Selected hit preserves original RESULT damage, current boss/contact origin, ballistic height and force=false immunity");
+            }
 
             BOSS_PATTERN_DEFINITION contact; contact.strPatternId = owner.strPatternId;
             auto& flame = contact.LogicWindows.emplace_back(); flame.eKind = BOSS_PATTERN_LOGIC_KIND::AREA_OVERLAP;
@@ -534,6 +670,106 @@ int LostArk::Server::Run_ServerBingoContractTests()
             room->Update_KoukuActorContacts(copy, contact, room->m_GameplayCatalog.Active(), 6403u);
             tests.Require(player.iCurrentHp == 90u && unsafe.iCurrentHp == 80u,
                 "Moving the real direction actor moves its fire region while a clone retains its own next contact tick");
+
+            // Drive the real planted-bomb consumer with the pinned authored one-line reward.
+            const auto* product = room->Resolve_KoukuProductCatalog();
+            const auto* bingoGate = product ? product->Find_KoukuRaidGate("BINGO") : nullptr;
+            std::string rewardStatus;
+            const auto* rewardPattern = bingoGate ? CKoukuSaydonBrain::Find_AnimationOnlyPattern(
+                *product, bingoGate->strBingoSpecialPatternId, rewardStatus) : nullptr;
+            const BOSS_PATTERN_LOGIC_WINDOW* savedReward = nullptr;
+            if (rewardPattern) for (const auto& row : rewardPattern->LogicWindows)
+                if (row.eKind == BOSS_PATTERN_LOGIC_KIND::BINGO_COMPLETED_LINES) savedReward = &row;
+            tests.Require(savedReward && savedReward->iThreshold == 1u && savedReward->OnSuccess.size() == 1u &&
+                savedReward->OnSuccess.front().eKind == BOSS_PATTERN_LOGIC_RESULT_KIND::PLAYER_INVULNERABILITY &&
+                savedReward->OnSuccess.front().iDurationMs == 30000u,
+                "The pinned Bingo special owns the one-new-line threshold and thirty-second typed reward");
+            if (savedReward)
+            {
+                owner.strPatternId = rewardPattern->strPatternId; owner.iCurrentHp = owner.iMaximumHp;
+                player.iCurrentHp = player.iMaximumHp = 100u; player.eAction = PLAYER_ACTION_STATE::NONE;
+                player.iInvulnerableEndTick = 0u;
+                unsafe.iCurrentHp = unsafe.iMaximumHp = 100u; unsafe.eAction = PLAYER_ACTION_STATE::NONE;
+                unsafe.iInvulnerableEndTick = 0u; unsafe.fPositionZ = 1351.65f;
+                auto& deadPlayer = room->m_Players[3u]; deadPlayer.iPlayerId = 3u; deadPlayer.iNetEntityId = 103u;
+                deadPlayer.iCurrentHp = 0u; deadPlayer.eAction = PLAYER_ACTION_STATE::DEAD;
+                auto& outsider = room->m_Players[4u]; outsider.iPlayerId = 4u; outsider.iNetEntityId = 104u;
+                outsider.iCurrentHp = outsider.iMaximumHp = 100u; outsider.eAction = PLAYER_ACTION_STATE::NONE;
+                room->m_KoukuRaid.State.ePhase = KOUKUSAYDON_RAID_PHASE::COMBAT;
+                room->m_KoukuRaid.State.strGateId = "BINGO"; room->m_KoukuRaid.State.iRunEpoch = 71u;
+                room->m_KoukuRaid.PlayerIds = {1u, 2u, 3u}; room->m_KoukuRaid.pCatalog = audition.pProductGeneration;
+                room->Begin_KoukuBingoDuration(owner, trigger, 20000u);
+                room->m_KoukuBingoDuration.iNextBombTick = room->m_KoukuBingoDuration.iNextHammerTick =
+                    room->m_KoukuBingoDuration.iNextMadnessTick = 30000u;
+                room->m_KoukuBingoDuration.bLineRewardSinceLastJudgement = false;
+                room->m_KoukuBingo.Reset();
+                BOSS_PATTERN_DEFINITION rewardOnly; rewardOnly.strPatternId = owner.strPatternId;
+                rewardOnly.LogicWindows.push_back(*savedReward);
+                audition.Members.clear();
+                auto& rewardMember = audition.Members.emplace_back(); rewardMember.strMemberId = "bingo.reward.contract";
+                rewardMember.iBossEntityId = owner.iNetEntityId;
+                rewardMember.iPatternSequence = owner.iPatternSequence;
+                CKoukuSaydonLogicRuntime::Build(rewardOnly, owner, 20000u, rewardMember.LogicLedger);
+                const auto detonate = [&](int cell, unsigned tick, unsigned ordinal) {
+                    tests.Require(room->m_KoukuBingo.Start_Bomb(player.iNetEntityId, tick, ordinal),
+                        "Focused line reward fixture acquires a real bomb slot");
+                    room->m_KoukuBingo.Plant_Bomb(0u, Kouku_BingoCellCenterX(cell), Kouku_BingoCellCenterZ(cell), tick);
+                    room->Update_KoukuBingo(tick);
+                };
+                room->m_KoukuBingo.Fill(0x1eu); detonate(0, 20001u, 1u);
+                tests.Require(!room->m_KoukuBingo.Get_RedMask() && !player.iInvulnerableEndTick && !unsafe.iInvulnerableEndTick,
+                    "The a1 bomb cannot earn a transient line while a2 is toggled away in the same blast");
+                detonate(6, 20002u, 2u);
+                const auto rewardEnd = 20902u;
+                tests.Require(room->m_KoukuBingo.Count_CompletedRowsAndColumns() == 1u &&
+                    !room->m_KoukuBingo.Count_UnconsumedRowsAndColumns() &&
+                    player.iInvulnerableEndTick == rewardEnd && unsafe.iInvulnerableEndTick == rewardEnd &&
+                    !deadPlayer.iInvulnerableEndTick && !outsider.iInvulnerableEndTick && !room->m_KoukuBingoDuration.iLastLineJudgementTick,
+                    "The second bomb completes one new row and immediately protects living raid participants for thirty seconds, excluding dead members and nonparticipants");
+                detonate(2, 20003u, 3u);
+                KOUKUSAYDON_LOGIC_OUTPUT rewardedOutput;
+                CKoukuSaydonLogicRuntime::Update(owner, rewardOnly, rewardMember.LogicLedger, room->m_Players,
+                    *product, nullptr, 20004u, damage, rewardedOutput);
+                room->m_KoukuBingoDuration.bLastLineCompletionSucceeded = false;
+                (void)room->Apply_KoukuLogicOutput(rewardedOutput, owner, 20004u);
+                tests.Require(rewardedOutput.BingoLineCompletion == true && rewardMember.LogicLedger.bBingoLineRewardApplied &&
+                    room->m_KoukuBingoDuration.bLastLineCompletionSucceeded && player.iInvulnerableEndTick == rewardEnd &&
+                    unsafe.iInvulnerableEndTick == rewardEnd && !outsider.iInvulnerableEndTick && !room->m_KoukuBingo.Count_UnconsumedRowsAndColumns(),
+                    "The delayed Parent acknowledges an already rewarded line without renewing expiry, paying outsiders or consuming again");
+                CKoukuSaydonLogicRuntime::Build(rewardOnly, owner, 20005u, rewardMember.LogicLedger);
+                detonate(2, 20005u, 6u);
+                KOUKUSAYDON_LOGIC_OUTPUT reusedOutput;
+                CKoukuSaydonLogicRuntime::Update(owner, rewardOnly, rewardMember.LogicLedger, room->m_Players,
+                    *product, nullptr, 20006u, damage, reusedOutput);
+                tests.Require(reusedOutput.BingoLineCompletion == false && player.iInvulnerableEndTick == rewardEnd,
+                    "A later judgement cannot reuse the old permanent red line to renew protection");
+                room->m_KoukuBingo.Detonate(1u << 7u); // Prepare the sole missing ordinary cell before the real blast.
+                room->m_KoukuBingo.Fill(Kouku_BingoLineMask(1) & ~(1u << 7u));
+                detonate(2, 20007u, 7u);
+                tests.Require(room->m_KoukuBingo.Count_CompletedRowsAndColumns() == 2u &&
+                    !room->m_KoukuBingo.Count_UnconsumedRowsAndColumns() && player.iInvulnerableEndTick == 20907u &&
+                    unsafe.iInvulnerableEndTick == 20907u && !outsider.iInvulnerableEndTick,
+                    "Completing a different single red row immediately refreshes protection from that new formation tick");
+                room->m_KoukuBingo.Fill((Kouku_BingoLineMask(2) & ~(1u << 12u)) |
+                    (Kouku_BingoLineMask(4) & ~(1u << 22u)));
+                detonate(17, 20008u, 8u);
+                tests.Require(room->m_KoukuBingo.Count_CompletedRowsAndColumns() == 7u &&
+                    !room->m_KoukuBingo.Count_UnconsumedRowsAndColumns() && player.iInvulnerableEndTick == 20908u,
+                    "One blast completes multiple rows and columns atomically and consumes every newly rewarded line at that same tick");
+                detonate(17, 20009u, 9u);
+                tests.Require(player.iInvulnerableEndTick == 20908u && !room->m_KoukuBingo.Count_UnconsumedRowsAndColumns(),
+                    "Simultaneous extra lines cannot remain queued to create a delayed reward on the next explosion");
+                room->m_KoukuBingo.Reset(); room->m_KoukuBingo.Fill(Kouku_BingoLineMask(0));
+                player.iCurrentHp = unsafe.iCurrentHp = 0u; player.eAction = unsafe.eAction = PLAYER_ACTION_STATE::DEAD;
+                detonate(2, 20010u, 10u);
+                tests.Require(room->m_KoukuBingo.Count_UnconsumedRowsAndColumns() == 1u && !outsider.iInvulnerableEndTick,
+                    "A living nonparticipant cannot consume a reward while every pinned raid participant is dead");
+                player.iCurrentHp = 100u; player.eAction = PLAYER_ACTION_STATE::NONE;
+                detonate(2, 20011u, 11u);
+                tests.Require(!room->m_KoukuBingo.Count_UnconsumedRowsAndColumns() && player.iInvulnerableEndTick == 20911u &&
+                    !outsider.iInvulnerableEndTick && unsafe.iInvulnerableEndTick == 20908u,
+                    "An eligible revived participant may claim the retained new line without renewing dead or unpinned players");
+            }
         }
     }
 #endif

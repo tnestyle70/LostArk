@@ -1389,6 +1389,7 @@
     <ClInclude Include="..\Public\ClassSelectionTimeline.h" />
     <ClInclude Include="..\Public\ClassSelectionPresentation.h" />
     <ClCompile Include="..\Private\ClassSelectionPresentation.cpp" />
+    <ClCompile Include="..\Private\ClassSelectionPresentation_Authoring.cpp" />
     <ClInclude Include="..\Public\ArenaCameraProfile.h" />
     <ClCompile Include="..\Private\ArenaCameraProfile.cpp" />
     <None Include="..\..\Data\Camera\CharacterSelect.camera.json" />
@@ -4015,6 +4016,11 @@
     <None Include="..\..\Data\Effects\Authored\effect.kouku.gate2.fanfare.front.music.effect.json"></None>
     <None Include="..\..\Data\Effects\Authored\effect.kouku.gate2.fanfare.rectangle.warning.effect.json"></None>
     <None Include="..\..\Data\Effects\Authored\effect.kouku.gate2.juggling.three.balls.effect.json"></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate2.juggling.inhand.effect.json"></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate2.juggling.target.flight.0.effect.json"></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate2.juggling.target.flight.1.effect.json"></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate2.juggling.target.flight.2.effect.json"></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate2.juggling.target.impact.effect.json"></None>
     <None Include="..\..\Data\Effects\Authored\effect.kouku.gate2.entrance.rope.trail.effect.json"></None>
     <None Include="..\..\Data\Effects\Authored\effect.kouku.gate2.entrance.drop.ball.effect.json"></None>
     <None Include="..\..\Data\Effects\Authored\effect.kouku.gate2.safezone.blue.full.restore.effect.json"></None>

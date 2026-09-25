@@ -15,6 +15,7 @@ int Run_ValtanEncounterReferenceContractTests();
 int Run_ValtanCanonicalGraphContractTests();
 int Run_BossCompositionDocumentContractTests();
 int Run_KoukuIndependentRowClockContractTests();
+int Run_KoukuSequentialParentTimingContractTests();
 int Run_KoukuCompositionEditorContractTests();
 int Run_KoukuPatternDeleteContractTests();
 int Run_KoukuSequenceDocumentContractTests();
@@ -1379,8 +1380,12 @@ namespace
 	}
 }
 
+int Run_CinematicViewRebaseContractTests();
+
 int main(const int argc, const char* const argv[])
 {
+	if (argc == 2 && std::string(argv[1]) == "--cinematic-view-rebase-contract")
+		return Run_CinematicViewRebaseContractTests();
 	if (argc == 2 && std::string(argv[1]) == "--valtan-presentation-contract")
 		return Run_ValtanPresentationContractTests();
 	if (argc == 2 && std::string(argv[1]) == "--kouku-pattern-delete-contract")
@@ -1399,6 +1404,8 @@ int main(const int argc, const char* const argv[])
 		return Run_KoukuPreviewTransportContractTests();
 	if (argc == 2 && std::string(argv[1]) == "--kouku-sequence-document-contract")
 		return Run_KoukuSequenceDocumentContractTests();
+	if (argc == 2 && std::string(argv[1]) == "--kouku-parent-timing-contract")
+		return Run_KoukuSequentialParentTimingContractTests();
 	if (argc == 2 && std::string(argv[1]) == "--kouku-independent-row-clock-contract")
 		return Run_KoukuIndependentRowClockContractTests();
 	if (argc == 2 && std::string(argv[1]) == "--kouku-composition-editor-contract")
@@ -1406,7 +1413,7 @@ int main(const int argc, const char* const argv[])
 	if (argc != 1)
 	{
 		std::cerr << "Usage: ValtanPatternAuditionServiceHarness "
-			"[--valtan-presentation-contract | --kouku-pattern-delete-contract | --presentation-generation-admission-contract | --kouku-composition-editor-contract | --kouku-preview-transport-contract | --kouku-sequence-document-contract | --kouku-collider-group-contract | --kouku-collider-duplicate-contract | --kouku-fixed-damage-contract | --kouku-independent-row-clock-contract | --kouku-sound-timeline-contract]\n";
+			"[--cinematic-view-rebase-contract | --valtan-presentation-contract | --kouku-pattern-delete-contract | --presentation-generation-admission-contract | --kouku-composition-editor-contract | --kouku-preview-transport-contract | --kouku-sequence-document-contract | --kouku-collider-group-contract | --kouku-collider-duplicate-contract | --kouku-fixed-damage-contract | --kouku-parent-timing-contract | --kouku-independent-row-clock-contract | --kouku-sound-timeline-contract]\n";
 		return 2;
 	}
 	const std::vector<std::pair<const char*, std::function<void()>>> Tests{

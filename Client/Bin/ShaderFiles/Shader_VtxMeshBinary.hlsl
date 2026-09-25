@@ -20,8 +20,7 @@ uint g_HasFullSurfaceEmissiveOverride = 0;
 float4 g_FullSurfaceEmissiveColor = 1.f;
 float g_FullSurfaceEmissiveIntensity = 0.f;
 /* 0: diffuse luminance weights the whole surface (skill glow).
-   1: normal-map bump strength times specular weights only creases and
-   metal, so a hit flash reads the shape instead of washing it out. */
+   1: camera-facing rim for a brief hit response; authored surface stays visible. */
 uint g_FullSurfaceEmissiveMaskMode = 0;
 float g_SpecularIntensity = 1.f;
 float g_SpecularPower = 50.f;
@@ -264,7 +263,7 @@ PS_OUT PS_MAIN(VS_OUT input)
             float3 camera = -mul((float3x3)g_ViewMatrix, g_ViewMatrix[3].xyz);
             float weight = g_FullSurfaceEmissiveMaskMode == 1u ?
                 pow(1.f - saturate(dot(normalize(input.vNormal.xyz),
-                    normalize(camera - input.vWorldPos.xyz))), 3.f) : 1.f;
+                    normalize(camera - input.vWorldPos.xyz))), 1.5f) : 1.f;
             output.vEmissive.rgb += g_FullSurfaceEmissiveColor.rgb *
                 g_FullSurfaceEmissiveIntensity * weight;
         }
@@ -423,7 +422,7 @@ PS_OUT PS_MAIN(VS_OUT input)
                 -mul((float3x3)g_ViewMatrix, g_ViewMatrix[3].xyz);
             const float3 toCamera =
                 normalize(cameraPosition - input.vWorldPos.xyz);
-            const float rim = pow(1.f - saturate(dot(normal, toCamera)), 3.f);
+            const float rim = pow(1.f - saturate(dot(normal, toCamera)), 1.5f);
             output.vEmissive.rgb += g_FullSurfaceEmissiveColor.rgb *
                 rim * g_FullSurfaceEmissiveIntensity * diffuse.a;
         }
@@ -950,6 +949,41 @@ PixelShader BinaryMeshPickingPS = NULL;
 #define BINARY_STATIC_PICKING_PASS_POLICY 2
 #endif
 
+// ColorOption.loa OUTLINE_MONSTER_ENEMY is FE0000; energy remains project tuned.
+// Combat target outline uses this same model, pose and native alpha coverage.
+// It owns no stencil bits and never changes the scene depth or shared material.
+float2 g_CombatHoverNdcWidth = 0.f;
+uint g_CombatHoverReflected = 0u;
+VS_OUT VS_COMBAT_HOVER(VS_IN input)
+{
+    VS_OUT output = VS_MAIN(input);
+    const float3 viewNormal = mul(float4(output.vNormal.xyz, 0.f), g_ViewMatrix).xyz;
+    const float2 direction = viewNormal.xy * float2(g_ProjMatrix[0][0], g_ProjMatrix[1][1]);
+    const float lengthSquared = dot(direction, direction);
+    if (lengthSquared > 1e-10f)
+        output.vPosition.xy += direction * rsqrt(lengthSquared) *
+            g_CombatHoverNdcWidth * output.vPosition.w;
+    return output;
+}
+PS_OUT PS_COMBAT_HOVER(VS_OUT input, bool frontFace : SV_IsFrontFace)
+{
+    if (frontFace != (g_CombatHoverReflected != 0u)) discard;
+    PS_MAIN(input);
+    PS_OUT output = (PS_OUT)0;
+    output.vDepth = float4(input.vProjPos.z / input.vProjPos.w,
+        input.vProjPos.w / 1000.f, 0.f, 1.f);
+    output.vEmissive = float4(2.f * (254.f / 255.f), 0.f, 0.f, 0.f);
+    return output;
+}
+SCENE_COLOR_BLOOM_OUT PS_COMBAT_HOVER_FORWARD(VS_OUT input, bool frontFace : SV_IsFrontFace)
+{
+    if (frontFace != (g_CombatHoverReflected != 0u)) discard;
+    PS_MAIN(input);
+    return Write_SceneColorAndBloom(float4(2.f * (254.f / 255.f), 0.f, 0.f, 1.f));
+}
+
+VertexShader CombatHoverVS = compile vs_5_0 VS_COMBAT_HOVER();
+
 technique11 DefaultTechnique
 {
     pass DefaultPass
@@ -1216,5 +1250,25 @@ technique11 DefaultTechnique
         VertexShader = BinaryMeshVS;
         GeometryShader = NULL;
         PixelShader = BinaryMeshPickingPS;
+    }
+
+    // Appended combat hover passes preserve every existing pass index.
+    pass CombatHoverOutline
+    {
+        SetRasterizerState(RS_Cull_None);
+        SetDepthStencilState(DSS_ReadOnly, 0);
+        SetBlendState(BS_Default, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
+        VertexShader = CombatHoverVS;
+        GeometryShader = NULL;
+        PixelShader = compile ps_5_0 PS_COMBAT_HOVER();
+    }
+    pass CombatHoverOutlineForward
+    {
+        SetRasterizerState(RS_Cull_None);
+        SetDepthStencilState(DSS_ReadOnly, 0);
+        SetBlendState(BS_Default, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
+        VertexShader = CombatHoverVS;
+        GeometryShader = NULL;
+        PixelShader = compile ps_5_0 PS_COMBAT_HOVER_FORWARD();
     }
 }

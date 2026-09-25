@@ -420,6 +420,16 @@ private:
 	   snapshots only; it never decides that a status is on. */
 	void Update_StatusEffectText(f32_t fTimeDelta);
 	void Update_CardMazePresentation(f32_t fTimeDelta);
+	void Submit_JokerTargetMarker();
+	void Clear_JokerTargetMarker();
+	struct JOKER_TARGET_MARKER final
+	{
+		LostArk::Shared::NET_ENTITY_ID bossId = LostArk::Shared::INVALID_NET_ENTITY_ID;
+		LostArk::Shared::NET_ENTITY_ID targetId = LostArk::Shared::INVALID_NET_ENTITY_ID;
+		std::uint32_t patternSequence = 0u;
+		bool_t failed = false;
+		EFFECT_WORLD_ROOT_HANDLE handle;
+	} m_JokerTargetMarker;
 	void Update_MarioBallBouncePresentation(f32_t fTimeDelta);
 	void Update_MarioLayoutPresentation();
 	std::string m_strMarioLayoutInstance;
@@ -541,6 +551,7 @@ private:
 		std::string memberId, cueId, occurrenceId, sequenceId;
 		float clockMs = 0.f;
 		bool untilDestroyed = false;
+		LostArk::Shared::NET_ENTITY_ID combatBodyNetEntityId = LostArk::Shared::INVALID_NET_ENTITY_ID;
 		WORLD_EMISSION_ANCHOR emissionAnchor;
 		std::shared_ptr<CWorldSequencePlayer> player;
 	};
@@ -709,6 +720,17 @@ private:
         std::optional<CMapLightDocument> source;
     };
     std::optional<SERVER_RAID_ENVIRONMENT_BASELINE> m_ServerRaidEnvironmentBaseline;
+    struct SERVER_ENCORE_VIEW final
+    {
+        uint32_t runEpoch = 0u, startTick = 0u;
+        VALTAN_CINEMATIC_CAMERA_POSE heldPose;
+        VALTAN_CINEMATIC_CAMERA_CUE authoredTrack;
+        uint32_t blendOutMs = 0u;
+        VALTAN_CINEMATIC_CAMERA_EASING easing = VALTAN_CINEMATIC_CAMERA_EASING::LINEAR;
+    };
+    std::optional<SERVER_ENCORE_VIEW> m_ServerEncoreView;
+    bool_t Begin_ServerEncoreView(std::string& status);
+    bool_t Acquire_ServerEncoreView(std::string& status);
 
 	bool_t m_bSequenceCombatPending = false;
 	bool_t m_bSequenceCombatFadeHeld = false;
@@ -759,6 +781,7 @@ private:
 	/* Negative until a clear starts. */
 	f32_t m_fRaidClearElapsedSeconds = -1.f;
 	bool_t m_bRaidClearShowMvp = true;
+	uint8_t m_iPendingRaidMvpGate = 0u;
 	void Update_RaidClear(f32_t fTimeDelta);
 	/* Commander raid gate progress. The Server owns the cleared mask, the vote and the gate
 	   switch (S2C_GATE_PROGRESS_STATE); this Level shows the panel, starts the clear mark

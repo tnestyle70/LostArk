@@ -120,11 +120,7 @@ namespace
 
 	bool IsDamageable(const LostArk::Server::SERVER_WORLD_ENTITY& entity)
 	{
-		using namespace LostArk::Server;
-		return (WORLD_BOOTSTRAP_KIND::BOSS == entity.eKind ||
-			(WORLD_BOOTSTRAP_KIND::MONSTER == entity.eKind || WORLD_BOOTSTRAP_KIND::WORLD_OBJECT == entity.eKind)) &&
-			LostArk::Shared::INVALID_NET_ENTITY_ID == entity.iOwnerBossNetEntityId &&
-			SERVER_ENTITY_ACTION::DEAD != entity.eAction && 0u != entity.iCurrentHp;
+		return LostArk::Server::CServerCombatHitRuntime::Is_PlayerDamageableWorldTarget(entity);
 	}
 
 	bool IsDamageable(const LostArk::Server::SERVER_PLAYER& player)
@@ -719,6 +715,9 @@ bool LostArk::Server::CCombatObjectRuntime::Stage_BossCombatObject(
 			hit.bIgnoreDefense = authored.strDamageKind != "PROFILE";
 			hit.iDamagePercent = authored.iDamagePercent;
 			hit.fRiseHeightM = static_cast<float>(authored.fRiseHeightM);
+			hit.fPushRangeM = static_cast<float>(authored.fPushRangeM);
+			hit.bForcePush = authored.ForcePush.value_or(authored.fRiseHeightM > 0.0);
+			hit.bPushFromBoss = authored.strPushDirection == "AWAY_FROM_BOSS";
 			hit.iPushMs = authored.iPushMs;
 			const auto rate = authored.strDamageKind == "PROFILE" ? catalog.Find_DamageRatePercent(authored.strDamageProfileId) : 1u;
 			if (!rate || !CServerCombatGeometry::Is_Valid(hit.Shape))
@@ -956,7 +955,11 @@ void LostArk::Server::CCombatObjectRuntime::Update(
 			bool contacted = false;
 			for (const auto& [id, player] : players)
 			{
-				if (!IsDamageable(player) || (object.bHoming && player.iNetEntityId != object.iLockedTargetNetEntityId) ||
+				// Card pursuit selects only its steering target. Every player can intercept
+				// the card; its suit-specific damage immunity is evaluated below.
+				const bool targetOnly = object.bHoming &&
+					object.eDamageImmuneCardSymbol == LostArk::Shared::MECHANIC_CARD_SYMBOL::NONE;
+				if (!IsDamageable(player) || (targetOnly && player.iNetEntityId != object.iLockedTargetNetEntityId) ||
 					!ContactOverlaps(object, contact, BodyOf(player))) continue;
 				// A swept hit can cross the whole body in one tick. Anchor its contact
 				// burst on the hit player's authoritative pose, never the overshot endpoint.
@@ -1062,7 +1065,10 @@ void LostArk::Server::CCombatObjectRuntime::Update(
 						incoming.fPushRangeM = hit.fPushRangeM;
 						incoming.iPushMs = hit.iPushMs;
 						incoming.fPushHeightM = hit.fRiseHeightM;
-						incoming.bPushBallistic = incoming.bForcePush = hit.fRiseHeightM > 0.f;
+						incoming.bPushBallistic = hit.fRiseHeightM > 0.f;
+						incoming.bForcePush = hit.bForcePush;
+						if (hit.bPushFromBoss && sourceEntity)
+						{ incoming.fSourceX = sourceEntity->fPositionX; incoming.fSourceZ = sourceEntity->fPositionZ; }
 						incoming.bKnockdown = hit.bKnockdown;
 						incoming.iDownMs = hit.iDownMs;
 						incoming.iServerTick = serverTick;
@@ -1169,7 +1175,10 @@ void LostArk::Server::CCombatObjectRuntime::Update(
 						incoming.fPushRangeM = hit.fPushRangeM;
 						incoming.iPushMs = hit.iPushMs;
 						incoming.fPushHeightM = hit.fRiseHeightM;
-						incoming.bPushBallistic = incoming.bForcePush = hit.fRiseHeightM > 0.f;
+						incoming.bPushBallistic = hit.fRiseHeightM > 0.f;
+						incoming.bForcePush = hit.bForcePush;
+						if (hit.bPushFromBoss && sourceEntity)
+						{ incoming.fSourceX = sourceEntity->fPositionX; incoming.fSourceZ = sourceEntity->fPositionZ; }
 						incoming.bKnockdown = hit.bKnockdown;
 						incoming.iDownMs = hit.iDownMs;
 						incoming.iServerTick = serverTick;

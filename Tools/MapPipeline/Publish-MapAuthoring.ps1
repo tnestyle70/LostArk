@@ -1911,6 +1911,17 @@ function Read-WorldSequenceDocument {
                     throw "World sequence animation source start is invalid: $($template.sequenceId)"
                 }
             }
+            if ($null -ne $track.PSObject.Properties['sourceEndMs']) {
+                $trackProperties += 'sourceEndMs'
+                $sourceStartMs = 0
+                if ($null -ne $track.PSObject.Properties['sourceStartMs']) { $sourceStartMs = [double]$track.sourceStartMs }
+                if (-not (Test-JsonNumber $track.sourceEndMs) -or
+                    [double]$track.sourceEndMs -lt 0 -or [double]$track.sourceEndMs -gt 600000 -or
+                    [double]$track.sourceEndMs -ne [math]::Floor([double]$track.sourceEndMs) -or
+                    ([double]$track.sourceEndMs -ne 0 -and [double]$track.sourceEndMs -le $sourceStartMs)) {
+                    throw "World sequence animation source end is invalid: $($template.sequenceId)"
+                }
+            }
             Assert-ExactJsonProperties $track $trackProperties `
                 'World sequence animation track'
             $startMs = 0

@@ -1261,7 +1261,7 @@ CWorldSequencePlayer::APPLY_RESULT CWorldSequencePlayer::Apply_Instance(
 				}
 				if (!std::isfinite(clipSeconds) || clipSeconds <= 0.f)
 					return APPLY_RESULT::FAILED;
-				if (animationTrack->sourceStartMs == 0u)
+				if (animationTrack->sourceStartMs == 0u && animationTrack->sourceEndMs == 0u)
 				{
 					const f32_t windowMs = (std::max)(0.f,
 						localMs - static_cast<f32_t>(animationTrack->startMs));

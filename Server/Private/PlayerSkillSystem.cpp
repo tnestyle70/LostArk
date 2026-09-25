@@ -229,11 +229,7 @@ namespace
 
 	bool IsDamageable(const LostArk::Server::SERVER_WORLD_ENTITY& entity)
 	{
-		using namespace LostArk::Server;
-		return (WORLD_BOOTSTRAP_KIND::BOSS == entity.eKind ||
-			(WORLD_BOOTSTRAP_KIND::MONSTER == entity.eKind || WORLD_BOOTSTRAP_KIND::WORLD_OBJECT == entity.eKind)) &&
-			LostArk::Shared::INVALID_NET_ENTITY_ID == entity.iOwnerBossNetEntityId &&
-			SERVER_ENTITY_ACTION::DEAD != entity.eAction && 0u != entity.iCurrentHp;
+		return LostArk::Server::CServerCombatHitRuntime::Is_PlayerDamageableWorldTarget(entity);
 	}
 
 	std::uint32_t ProjectileSubHitCount(

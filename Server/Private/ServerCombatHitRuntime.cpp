@@ -56,17 +56,6 @@ namespace
 		}
 	}
 
-	bool IsDamageableWorldTarget(
-		const LostArk::Server::SERVER_WORLD_ENTITY& target)
-	{
-		using namespace LostArk::Server;
-		return (WORLD_BOOTSTRAP_KIND::BOSS == target.eKind ||
-			(WORLD_BOOTSTRAP_KIND::MONSTER == target.eKind || WORLD_BOOTSTRAP_KIND::WORLD_OBJECT == target.eKind)) &&
-			LostArk::Shared::INVALID_NET_ENTITY_ID == target.iOwnerBossNetEntityId &&
-			SERVER_ENTITY_ACTION::DEAD != target.eAction &&
-			0u != target.iCurrentHp;
-	}
-
 	void PushDamageEvent(
 		const LostArk::Shared::NET_ENTITY_ID targetId,
 		const std::uint32_t amount,
@@ -183,7 +172,8 @@ void LostArk::Server::CServerBuffRuntime::Apply_SkillBuffs(
 		case CGameplayCatalog::SKILL_BUFF_TARGET::ENEMY:
 			for (SERVER_WORLD_ENTITY* enemy : enemies)
 			{
-				if (nullptr == enemy || 0u == enemy->iCurrentHp)
+				if (nullptr == enemy || 0u == enemy->iCurrentHp ||
+					!LostArk::Shared::Is_PlayerDamageableWorldArchetype(enemy->strArchetypeId))
 					continue;
 				GrantBuff(enemy->ActiveBuffs, definition.iBuffId, endTick);
 				/* A boss keeps its own pattern clock, so it takes the mark but
@@ -321,13 +311,24 @@ LostArk::Server::SERVER_MVP_LEDGER_ROW& LostArk::Server::Find_Or_Add_MvpLedgerRo
 	return row;
 }
 
+bool LostArk::Server::CServerCombatHitRuntime::Is_PlayerDamageableWorldTarget(
+	const SERVER_WORLD_ENTITY& target) noexcept
+{
+	return (WORLD_BOOTSTRAP_KIND::BOSS == target.eKind ||
+		WORLD_BOOTSTRAP_KIND::MONSTER == target.eKind ||
+		WORLD_BOOTSTRAP_KIND::WORLD_OBJECT == target.eKind) &&
+		LostArk::Shared::Is_PlayerDamageableWorldArchetype(target.strArchetypeId) &&
+		LostArk::Shared::INVALID_NET_ENTITY_ID == target.iOwnerBossNetEntityId &&
+		SERVER_ENTITY_ACTION::DEAD != target.eAction && 0u != target.iCurrentHp;
+}
+
 LostArk::Server::SERVER_COMBAT_HIT_RESULT
 LostArk::Server::CServerCombatHitRuntime::Apply_PlayerToWorld(
 	SERVER_WORLD_ENTITY& target,
 	const SERVER_PLAYER_TO_WORLD_HIT& hit,
 	std::vector<LostArk::Shared::DAMAGE_EVENT>& outDamageEvents)
 {
-	if (!IsDamageableWorldTarget(target) ||
+	if (!Is_PlayerDamageableWorldTarget(target) ||
 		((WORLD_BOOTSTRAP_KIND::MONSTER == target.eKind || WORLD_BOOTSTRAP_KIND::WORLD_OBJECT == target.eKind) && hit.iRawDamage == 0u) ||
 		(target.strSpawnGroupId == "cardmaze.targets" && hit.iSkillId != 56411u) ||
 		LostArk::Shared::INVALID_SKILL_ID == hit.iSkillId)

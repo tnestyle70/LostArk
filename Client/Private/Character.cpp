@@ -2653,21 +2653,8 @@ bool_t CCharacter::Apply_NetworkAction(
 		m_fActionPresentationSeconds = 0.f;
 		Commit_PendingClipChains();
 		m_eNetworkGrabSlot = grabSlot;
-		// Ground drag is not a boss hand capture. Use the existing original
-		// down pose; Server snapshots remain the only position writer.
-		if (PLAYER_ATTACHMENT_SLOT::WORLD_HOOK_TIP == grabSlot)
-		{
-			if (!Set_Animation(CHARACTER_ANIM::DOWN_LOOP, true) &&
-				Set_Animation(CHARACTER_ANIM::KNOCKDOWN_LAND, false))
-			{
-				const auto animation = m_pBodyModel->Get_CurrentAnimIndex();
-				f32_t position = 0.f, duration = 0.f;
-				if (m_pBodyModel->Get_AnimationProgress(animation, position, duration))
-					m_pBodyModel->Set_AnimTrackPosition(animation, duration);
-			}
-		}
-		else
-			Set_Animation(CHARACTER_ANIM::IDLE, true);
+		// The server carries the attached player; a hook capture keeps the idle pose.
+		Set_Animation(CHARACTER_ANIM::IDLE, true);
 		m_iCurrentEffectSkillId = INVALID_SKILL_ID;
 		m_iEffectActionStartTick = 0u;
 		m_bHasEffectActionFacingYaw = false;

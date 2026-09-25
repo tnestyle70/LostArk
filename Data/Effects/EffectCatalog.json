@@ -7050,6 +7050,31 @@
       "effectAssetId": "effect.classselect.warlord.scene_a_lobby.bk.par_q_firesh_bk_cine",
       "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
       "authoringPath": "Effects/Authored/effect.classselect.warlord.scene_a_lobby.bk.par_q_firesh_bk_cine.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.gate2.juggling.inhand",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.gate2.juggling.inhand.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.gate2.juggling.target.flight.0",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.gate2.juggling.target.flight.0.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.gate2.juggling.target.flight.1",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.gate2.juggling.target.flight.1.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.gate2.juggling.target.flight.2",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.gate2.juggling.target.flight.2.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.gate2.juggling.target.impact",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.gate2.juggling.target.impact.effect.json"
     }
   ]
 }

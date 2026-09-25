@@ -127,7 +127,7 @@ void LostArk::Server::CGameRoom::Notify_GateBossDeath(const SERVER_WORLD_ENTITY&
 {
     // A pinned raid defines its primary boss; Gate 2's supporting actor cannot delay or trigger its clear.
     if (Is_KoukuRaidRunning() && (m_KoukuRaid.State.ePhase != LostArk::Shared::KOUKUSAYDON_RAID_PHASE::PREPARING ||
-        m_KoukuRaid.bClearedGate3Preparation)) return;
+        m_KoukuRaid.bClearedBossPreparation)) return;
 	const int iGate = Gate_IndexOfPlacement(deadBoss.strPlacementId);
 	if (iGate < 0)
 		return;
@@ -212,6 +212,18 @@ void LostArk::Server::CGameRoom::Broadcast_RaidMvpResult(const std::uint8_t iGat
 	S2C_RAID_MVP_RESULT message{};
 	message.eWorldId = m_eWorldId;
 	message.iGate = iGate;
+	// A legal immediate clear may precede the first ledger tick. Keep the actual
+	// raid roster in the result with zero contribution instead of omitting MVP.
+	if (WORLD_ID::KAKULSAYDON_ARENA == m_eWorldId)
+	{
+		for (const auto& [playerId, player] : m_Players)
+		{
+			if (Is_KoukuRaidRunning() && std::find(m_KoukuRaid.State.ParticipantPlayerIds.begin(),
+				m_KoukuRaid.State.ParticipantPlayerIds.end(), playerId) == m_KoukuRaid.State.ParticipantPlayerIds.end())
+				continue;
+			(void)Find_Or_Add_MvpLedgerRow(m_GateMvpLedger, playerId);
+		}
+	}
 	/* Only players still in the room have an identity to show. */
 	for (const SERVER_MVP_LEDGER_ROW& row : m_GateMvpLedger)
 	{
@@ -377,7 +389,7 @@ void LostArk::Server::CGameRoom::Close_GateProgressVote(
 				entered = Is_KoukuRaidRunning() && m_GateProgress.iRaidEpoch == m_KoukuRaid.State.iRunEpoch &&
 					m_GateProgress.iProposerId == m_KoukuRaid.State.iOwnerPlayerId &&
 					m_KoukuRaid.State.strGateId == "GATE3" &&
-					m_KoukuRaid.State.ePhase == KOUKUSAYDON_RAID_PHASE::WAIT_ENTRY && Enter_KoukuRaidCombat(3u);
+					m_KoukuRaid.State.ePhase == KOUKUSAYDON_RAID_PHASE::WAIT_ENTRY && Enter_KoukuRaidCombat(3u, m_iServerTick);
 			}
 			else if (!Is_KoukuRaidRunning())
 			{
@@ -454,7 +466,7 @@ bool LostArk::Server::CGameRoom::Spawn_GatePlacement(const std::string& placemen
 	return true;
 }
 
-bool LostArk::Server::CGameRoom::Enter_KoukuRaidCombat(const std::uint8_t gateIndex)
+bool LostArk::Server::CGameRoom::Enter_KoukuRaidCombat(const std::uint8_t gateIndex, const std::uint32_t tick)
 {
     using namespace LostArk::Shared;
     auto& run = m_KoukuRaid;
@@ -466,7 +478,7 @@ bool LostArk::Server::CGameRoom::Enter_KoukuRaidCombat(const std::uint8_t gateIn
             (run.State.strGateId == "BINGO" && (run.State.ePhase == KOUKUSAYDON_RAID_PHASE::PREPARING ||
                 run.State.ePhase == KOUKUSAYDON_RAID_PHASE::WAIT_GATE || run.State.ePhase == KOUKUSAYDON_RAID_PHASE::COMBAT ||
                 (run.State.ePhase == KOUKUSAYDON_RAID_PHASE::CINEMATIC && !run.bClearCinematic &&
-                    GameRoomDetail::Has_ReachedServerTick(m_iServerTick, run.State.iEndTick)))));
+                    GameRoomDetail::Has_ReachedServerTick(tick, run.State.iEndTick)))));
     if ((!gateThreeEntry && !bingoEntry) || run.PlayerIds.empty() || !run.pCatalog ||
         !run.pCatalog->Find_KoukuRaidGate(bingoEntry ? "BINGO" : "GATE3")) return false;
     const auto& gate = KOUKU_GATES[gateIndex - 1u];
@@ -498,7 +510,7 @@ bool LostArk::Server::CGameRoom::Enter_KoukuRaidCombat(const std::uint8_t gateIn
         destinations.emplace_back(id, ground);
         previousPlayers.emplace_back(id, player->second);
     }
-    if (!Start_KoukuRaidCombat(m_iServerTick, bingoEntry ? "BINGO" : "GATE3")) return false;
+    if (!Start_KoukuRaidCombat(tick, bingoEntry ? "BINGO" : "GATE3")) return false;
     const auto previousState = run.State;
     const auto previousGateProgress = m_GateProgress;
     if (bingoEntry)
@@ -530,7 +542,7 @@ bool LostArk::Server::CGameRoom::Enter_KoukuRaidCombat(const std::uint8_t gateIn
         Reset_PlayerForDebugTeleport(player);
         player.fPositionX = ground.x; player.fPositionY = ground.y; player.fPositionZ = ground.z;
     }
-    if (!Start_KoukuRaidCombat(m_iServerTick))
+    if (!Start_KoukuRaidCombat(tick))
     {
         // No snapshot can observe a partial formation within this room tick.
         if (m_KoukuSaydonPatternAudition.iRoomAuditionEpoch)

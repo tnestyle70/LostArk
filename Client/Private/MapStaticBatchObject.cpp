@@ -182,13 +182,17 @@ HRESULT CMapStaticBatchObject::Initialize(void* pArg)
 	m_bMirrored = desc.Mirrored;
 	m_Instances = desc.Instances;
 
+    // Hidden gate batches become visible together at the cinematic handoff.
+    // Allocate both streams while staging so their first shadow draw only uploads.
 	if (FAILED(Ready_Components(
 		desc.PrototypeLevelIndex,
 		desc.ModelPrototypeTag)) ||
 		FAILED(Rebuild_PlacementLookup()) ||
 		FAILED(Ensure_InstanceCapacity(
 			static_cast<uint32_t>(
-				m_Instances.size()))))
+				m_Instances.size()))) ||
+        (m_RenderProfile.castsShadow && FAILED(Ensure_ShadowInstanceCapacity(
+            static_cast<uint32_t>(m_Instances.size())))))
 	{
 		return E_FAIL;
 	}

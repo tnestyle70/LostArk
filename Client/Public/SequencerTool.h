@@ -42,6 +42,8 @@ public:
         std::vector<CLASS_SELECTION_PREVIEW_OPTION> options;
         std::size_t selectedCategory = 0u;
         std::string selectedClassId, activeClassId, selectedLabel;
+        bool authoringDirty = false, authoringPublishPending = false;
+        std::string authoringStatus;
         bool available = false;
         bool active = false;
         bool paused = false;
@@ -70,6 +72,10 @@ public:
         std::function<bool(bool, double)> seek;
         std::function<bool(double)> setPlaybackRate;
         std::function<std::shared_ptr<const CLASS_MOVIE_TIMELINE>(const std::string&, bool)> timeline;
+        std::function<bool(std::string&)> beginAuthoring, saveAuthoring, reloadAuthoring;
+        std::function<bool(const std::string&, bool, const std::string&, const std::string&, CLASS_MOVIE_AUTHORING_BOX&, std::string&)> editableBox;
+        std::function<bool(const CLASS_MOVIE_AUTHORING_BOX&, const DATA_JSON_VALUE&, std::string&)> applyBox;
+        std::function<bool(const std::string&, std::string&)> openEffectEditor;
     };
 
     CSequencerTool(

@@ -398,6 +398,10 @@ public:
 	static f32_t Calculate_ElementEndSeconds(
 		const EFFECT_ELEMENT_DESC& Element,
 		bool_t bSourceVisualElementActive);
+	// Copies evaluated presentation only; fixed-step state and birth roots stay unchanged.
+	// Invalid affine input or a non-finite result preserves outFrame.
+	static bool_t Build_PresentationFrame(const EFFECT_EVALUATED_FRAME& source,
+		const float4x4_t& postTransform, EFFECT_EVALUATED_FRAME& outFrame);
 	/* owner_yaw keeps the animated bone position but replaces its imported
 	   basis/scale with the actual gameplay owner's unit orientation.  This
 	   shared, mutation-free calculation is used by product, Tool, and harness. */

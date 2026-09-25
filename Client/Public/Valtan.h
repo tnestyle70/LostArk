@@ -256,6 +256,7 @@ public:
 	virtual HRESULT Render() override;
 
 	void Trigger_HitFlash();
+	void Set_CombatHovered(bool_t hovered) { m_HitFlash.isCombatHovered = hovered && Is_PresentationVisible(); }
 	// Reliable DEAD despawns can arrive without the final snapshot.
 	bool_t Begin_NetworkDeathPresentation();
 	bool_t Is_NetworkDeathPresentationComplete() const;
@@ -320,6 +321,8 @@ public:
 		bool_t bHoldBodyHiddenUntilPatternSnapshot);
 	bool_t Return_ToReplicatedPool();
 	bool_t Is_ReplicationDormant() const { return m_isReplicationDormant; }
+	bool_t Is_PresentationVisible() const { return !m_isReplicationDormant &&
+		!m_isGhostPresentationHidden && !m_isPatternBodyHidden && !m_isCinematicPresentationSuppressed; }
 	/* Animation Tool-only local audition.  It deliberately bypasses network,
 	   Effect, Sound, hit and movement, but samples the same admitted Product
 	   binding through the exact helper Apply_NetworkState uses. */

@@ -9524,3 +9524,71 @@ bool_t Client::CEffectPlayback::Is_Finished() const
 	}
 	return true;
 }
+
+bool_t Client::CEffectPlayback::Build_PresentationFrame(const EFFECT_EVALUATED_FRAME& source,
+    const float4x4_t& postTransform, EFFECT_EVALUATED_FRAME& outFrame)
+{
+    const auto finiteMatrix = [](const float4x4_t& value) {
+        for (const auto& row : value.m) for (float cell : row) if (!std::isfinite(cell)) return false;
+        return true;
+    };
+    if (!finiteMatrix(postTransform) || std::abs(postTransform._14) > 1.e-6f ||
+        std::abs(postTransform._24) > 1.e-6f || std::abs(postTransform._34) > 1.e-6f ||
+        std::abs(postTransform._44 - 1.f) > 1.e-6f) return false;
+    const auto post = XMLoadFloat4x4(&postTransform);
+    const float determinant = XMVectorGetX(XMMatrixDeterminant(post));
+    if (!std::isfinite(determinant) || std::abs(determinant) < 1.e-8f) return false;
+    const auto matrix = [&](float4x4_t& value) {
+        XMStoreFloat4x4(&value, XMLoadFloat4x4(&value) * post); return finiteMatrix(value);
+    };
+    const auto vector = [&](float3_t& value, bool point) {
+        XMStoreFloat3(&value, point ? XMVector3TransformCoord(XMLoadFloat3(&value), post) :
+            XMVector3TransformNormal(XMLoadFloat3(&value), post));
+        return std::isfinite(value.x) && std::isfinite(value.y) && std::isfinite(value.z);
+    };
+    // A conservative scalar bound for radii/widths; matrix carriers retain the exact affine map.
+    const auto gram = post * XMMatrixTranspose(post);
+    float extentSquared = 0.f;
+    for (int row = 0; row < 3; ++row)
+    {
+        float sum = 0.f;
+        for (int column = 0; column < 3; ++column) sum += std::abs(XMVectorGetByIndex(gram.r[row], column));
+        extentSquared = (std::max)(extentSquared, sum);
+    }
+    const float extentScale = std::sqrt(extentSquared);
+    if (!std::isfinite(extentScale)) return false;
+    const auto extent = [&](float& value) { value *= extentScale; return std::isfinite(value); };
+    auto candidate = source;
+    if (!matrix(candidate.RootWorld)) return false;
+    for (auto& element : candidate.Elements) if (!matrix(element.World)) return false;
+    for (auto& particle : candidate.Particles)
+    {
+        if (!matrix(particle.World) || !matrix(particle.SourceEmitterWorld) ||
+            !vector(particle.vWorldVelocity, false)) return false;
+        if (particle.bSourceMacroUV && (!vector(particle.vSourceMacroUVWorldCenter, true) ||
+            !extent(particle.fSourceMacroUVWorldRadius))) return false;
+    }
+    for (auto& trail : candidate.Trails)
+    {
+        for (auto& point : trail.Points)
+            if (!vector(point.vWorldPosition, true) || !extent(point.fSourceWidth) ||
+                !extent(point.fCumulativeDistance)) return false;
+        for (auto& edge : trail.EdgePairs)
+            if (!vector(edge.vFirstEdgeWorld, true) || !vector(edge.vControlPointWorld, true) ||
+                !vector(edge.vSecondEdgeWorld, true) || !vector(edge.Payload.vWorldPosition, true) ||
+                !extent(edge.Payload.fSourceWidth) || !extent(edge.Payload.fCumulativeDistance)) return false;
+    }
+    for (auto& afterimage : candidate.AfterImages) if (!matrix(afterimage.World)) return false;
+    for (auto& light : candidate.Lights)
+    {
+        if (!vector(light.vWorldPosition, true) || !vector(light.vWorldDirection, false) || !extent(light.fRange)) return false;
+        const auto direction = XMLoadFloat3(&light.vWorldDirection);
+        if (XMVectorGetX(XMVector3LengthSq(direction)) > 1.e-12f)
+            XMStoreFloat3(&light.vWorldDirection, XMVector3Normalize(direction));
+    }
+    for (auto& screen : candidate.ScreenPosts)
+        if (!matrix(screen.SourceWorld) || !matrix(screen.SourceEmitterWorld)) return false;
+    // GpuOccurrences carry counts/element identity only; renderer candidate rows above own placement.
+    outFrame = std::move(candidate);
+    return true;
+}

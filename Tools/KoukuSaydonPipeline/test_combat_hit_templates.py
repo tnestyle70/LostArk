@@ -9,6 +9,14 @@ class AttackTemplateTests(unittest.TestCase):
   self.assertEqual(validate_hits([row])[0]['pushMs'],1200)
   for fields in ({'riseHeightM':3},{'pushMs':1200},{'riseHeightM':101,'pushMs':1200},{'riseHeightM':3,'pushMs':99},{'riseHeightM':True,'pushMs':1200}):
    with self.subTest(fields=fields),self.assertRaises(ValueError):validate_hits([{'hitId':'bad',**fields}])
+ def test_explicit_push_policy_preserves_horizontal_and_legacy_defaults(self):
+  legacy=validate_hits([dict(hitId='legacy',riseHeightM=2,pushMs=250)])[0]
+  self.assertNotIn('forcePush',legacy);self.assertNotIn('pushDirection',legacy)
+  for rise in (0,2):
+   hit=validate_hits([dict(hitId='original.result',riseHeightM=rise,pushRangeM=1,pushMs=250,forcePush=False,pushDirection='AWAY_FROM_BOSS')])[0]
+   self.assertIs(hit['forcePush'],False);self.assertEqual(hit['pushDirection'],'AWAY_FROM_BOSS');self.assertEqual(hit['pushRangeM'],1)
+  for fields in ({'pushRangeM':1},{'pushRangeM':1,'pushMs':99},{'forcePush':0},{'forcePush':'false'},{'pushDirection':'BOSS_FORWARD'}):
+   with self.subTest(fields=fields),self.assertRaises(ValueError):validate_hits([dict(hitId='bad',**fields)])
  def test_defaults_and_no_input_mutation(self):
   row={'hitId':'attack.1'}; before=copy.deepcopy(row); self.assertEqual(validate_hits([row])[0]['damagePercent'],10);self.assertEqual(row,before)
  def test_primitive_and_damage_policies(self):

@@ -246,6 +246,52 @@ class ObjectColliderTests(unittest.TestCase):
         grip=self.bake(f)[0]["region"]["worldTrack"]["keys"][0]["gripPosition"]
         self.assertAlmostEqual(grip[0],10);self.assertAlmostEqual(grip[2],-1)
 
+    def test_native_source_out_controls_baked_bone_loop_hold_and_next_clip(self):
+        channel = SimpleNamespace(bone_index=0, scale_keys=[], rotation_keys=[],
+                                  position_keys=[(0, 0, 0, 0), (100, 100, 0, 0)])
+        model = SimpleNamespace(skeleton_bones=[SimpleNamespace(name="b_tip", parent=-1,
+            transform=subject.matrix())], animations=[SimpleNamespace(name="clip", ticks_per_second=100,
+                duration_ticks=100, channels=[channel])])
+        track = dict(slotId="object", clipName="clip", startMs=100, sourceStartMs=200,
+                     sourceEndMs=600, playbackRate=2, loop=True, holdLastFrame=True)
+        sequence = dict(durationMs=1000, animationTracks=[track])
+        resource = dict(modelAssetId="unused.wmodel", modelPreScale=1)
+        load = lambda asset, clips: model
+        def position(age):
+            return subject.sample_bone(sequence, resource, "object", age, "b_tip", load)[12]
+        for age, expected in ((100, 20), (200, 40), (300, 20), (999, 39.8), (1000, 60)):
+            with self.subTest(age=age): self.assertAlmostEqual(expected, position(age))
+        track["loop"] = False
+        self.assertAlmostEqual(60, position(900))
+        track["holdLastFrame"] = False
+        self.assertAlmostEqual(20, position(900))
+        sequence["animationTracks"].append(dict(track, startMs=500, sourceStartMs=700, sourceEndMs=900))
+        self.assertAlmostEqual(70, position(500))
+        before = copy.deepcopy(sequence)
+        position(550)
+        self.assertEqual(before, sequence)
+
+    def test_native_source_out_legacy_and_invalid_range(self):
+        channel = SimpleNamespace(bone_index=0, scale_keys=[], rotation_keys=[],
+                                  position_keys=[(0, 0, 0, 0), (100, 100, 0, 0)])
+        model = SimpleNamespace(skeleton_bones=[SimpleNamespace(name="b_tip", parent=-1,
+            transform=subject.matrix())], animations=[SimpleNamespace(name="clip", ticks_per_second=100,
+                duration_ticks=100, channels=[channel])])
+        track = dict(slotId="object", clipName="clip", sourceStartMs=200, playbackRate=1,
+                     loop=True, holdLastFrame=True)
+        sequence = dict(durationMs=2000, animationTracks=[track])
+        resource = dict(modelAssetId="unused.wmodel", modelPreScale=1)
+        load = lambda asset, clips: model
+        sample = lambda age: subject.sample_bone(sequence, resource, "object", age, "b_tip", load)
+        baseline = [sample(age) for age in (0, 400, 800, 1999, 2000)]
+        track["sourceEndMs"] = 0
+        self.assertEqual(baseline, [sample(age) for age in (0, 400, 800, 1999, 2000)])
+        track["sourceEndMs"] = 1001
+        self.assertEqual(100, sample(2000)[12])
+        for end in (199, 200, 1002):
+            track["sourceEndMs"] = end
+            with self.subTest(source_end=end), self.assertRaises(subject.ColliderBakeError): sample(0)
+
     def test_hook_model_selection_is_reused_only_within_one_bake(self):
         fixture = self.fixture("HOOK_CAPTURE")
         fixture[0]["templates"][0]["colliderTracks"][0]["attachmentBone"] = "b_tip"

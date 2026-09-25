@@ -1207,6 +1207,7 @@ void CLevel_CharacterSelect::Update_ServerArena()
 	if (!m_isCreateCharacterModalOpen && !Is_ProductPresentationOpen() &&
 		!Is_AuthoritativeClassReplacementPending())
 	{
+		m_Replication.Update_CombatHover(nullptr != m_pCamera && m_pCamera->Is_FollowEnabled() && !Is_ProductPointerHovered());
 		m_PlayerController.Update(
 			nullptr != m_pCamera && m_pCamera->Is_FollowEnabled());
 	}

@@ -840,6 +840,62 @@ namespace
 		return Cues.end() == Found ? nullptr : &*Found;
 	}
 
+	bool VerifyCameraViewRebase()
+	{
+		using Client::VALTAN_CINEMATIC_CAMERA_POSE;
+		using Client::CValtanCinematicCameraController;
+		const std::array<VALTAN_CINEMATIC_CAMERA_POSE, 3> sources = {{
+			{{-9.605593f,12.260625f,950.01242f},{-4.607508f,5.189559f,945.01050f},29.394958f,
+			 {.499808f,.707107f,-.500192f},true},
+			{{-7.724598f,14.926277f,948.12991f},{.772145f,2.905464f,939.62665f},29.394958f,
+			 {.499808f,.707107f,-.500192f},true},
+			{{3.f,8.f,-4.f},{0.f,1.f,0.f},72.f}
+		}};
+		const std::array<VALTAN_CINEMATIC_CAMERA_POSE, 4> viewers = {{
+			{{-20.f,18.f,902.f},{-12.f,0.f,890.f},45.f},
+			{{30.f,25.f,920.f},{20.f,0.f,900.f},60.f,{.3f,1.f,.2f},true},
+			{{-8.f,40.f,960.f},{0.f,0.f,940.f},29.394958f},
+			{{9.f,8.f,878.f},{12.f,1.f,886.f},85.f,{-.2f,1.f,.4f},true}
+		}};
+		const auto view = [](const auto& pose) {
+			return XMMatrixLookAtLH(XMLoadFloat3(&pose.vEye), XMLoadFloat3(&pose.vLookAt),
+				pose.hasUp ? XMLoadFloat3(&pose.vUp) : XMVectorSet(0.f,1.f,0.f,0.f));
+		};
+		for (const auto& source : sources)
+			for (const auto& viewer : viewers)
+			{
+				float4x4_t rebase;
+				if (!Require(CValtanCinematicCameraController::Build_ViewRebaseTransform(source,viewer,rebase),
+					"valid player camera could not rebase its cinematic actor")) return false;
+				const auto sourceView = view(source), targetView = view(viewer);
+				const auto sourceProjection = XMMatrixPerspectiveFovLH(XMConvertToRadians(source.fFovYDegrees),16.f/9.f,.1f,2000.f);
+				const auto targetProjection = XMMatrixPerspectiveFovLH(XMConvertToRadians(viewer.fFovYDegrees),16.f/9.f,.1f,2000.f);
+				for (const auto& point : std::array<float3_t,4>{{{0.f,0.f,2.f},{1.f,-.5f,3.f},{-2.f,1.f,6.f},{3.f,2.f,20.f}}})
+				{
+					const auto world = XMVector3TransformCoord(XMLoadFloat3(&point),XMMatrixInverse(nullptr,sourceView));
+					const auto original = XMVector3TransformCoord(world,sourceView*sourceProjection);
+					const auto relocated = XMVector3TransformCoord(world,XMLoadFloat4x4(&rebase)*targetView*targetProjection);
+					const auto error = XMVectorAbs(original-relocated);
+					if (!Require(XMVectorGetX(error)<.001f && XMVectorGetY(error)<.001f && XMVectorGetZ(error)<.001f,
+						"cinematic rebase changed screen position, size or depth for a player's FOV/roll")) return false;
+				}
+			}
+		float4x4_t lastGood; XMStoreFloat4x4(&lastGood,XMMatrixTranslation(12.f,34.f,56.f));
+		for (int invalid = 0; invalid < 4; ++invalid)
+		{
+			auto bad = sources.front();
+			if (invalid==0) bad.vEye.x = std::numeric_limits<float>::quiet_NaN();
+			if (invalid==1) bad.vLookAt = bad.vEye;
+			if (invalid==2) bad.fFovYDegrees = 0.f;
+			if (invalid==3) { bad.hasUp=true; bad.vUp={0.f,0.f,0.f}; }
+			if (!Require(!CValtanCinematicCameraController::Build_ViewRebaseTransform(bad,viewers.front(),lastGood) &&
+				!CValtanCinematicCameraController::Build_ViewRebaseTransform(viewers.front(),bad,lastGood) &&
+				lastGood._41==12.f && lastGood._42==34.f && lastGood._43==56.f,
+				"invalid cinematic/player pose overwrote the last valid rebase")) return false;
+		}
+		return true;
+	}
+
 	bool VerifyBoundedCameraTransitionSampler()
 	{
 		const Client::VALTAN_CINEMATIC_CAMERA_POSE From{
@@ -1899,6 +1955,13 @@ namespace
 	}
 }
 
+int Run_CinematicViewRebaseContractTests()
+{
+	if (!VerifyCameraViewRebase() || !VerifyBoundedCameraTransitionSampler()) return 1;
+	std::cout << "PASS: cinematic view rebase and bounded camera transitions\n";
+	return 0;
+}
+
 int Run_ValtanPresentationContractTests()
 {
 	if (!VerifyFiniteDeathPresentationClock() ||
@@ -1913,6 +1976,7 @@ int Run_ValtanPresentationContractTests()
 		!VerifyElementStartTimelineRoundTrip() ||
 		!VerifyCuePreviewDuration() ||
 		!VerifyNaturalProductPreviewDurationFloor() ||
+		!VerifyCameraViewRebase() ||
 		!VerifyBoundedCameraTransitionSampler() ||
 		!VerifyMonsterActionOccurrenceProjection() ||
 		!VerifyValtanCinematicTracking(std::filesystem::current_path()))

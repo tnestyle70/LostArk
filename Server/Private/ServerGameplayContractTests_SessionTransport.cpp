@@ -3,6 +3,7 @@
 #include "ClientSession.h"
 #include "GameRoom.h"
 #include "Network/PacketWriter.h"
+#include "Network/PacketReader.h"
 #include "ServerApp.h"
 #include "WinSockContext.h"
 #include "WorldDestructionBootstrapContractTests.h"
@@ -33,6 +34,95 @@
 
 using namespace LostArk::Server;
 using namespace LostArk::Shared;
+
+int LostArk::Server::CServerGameplayContractRunner::Run_RoomPing()
+{
+	TESTS tests{};
+	C2S_ROOM_PING request;
+	request.iClientSequence = 1u; request.eWorldId = WORLD_ID::KAKULSAYDON_ARENA;
+	request.fPositionX = -2.45f; request.fPositionY = 1.32f; request.fPositionZ = 945.17f;
+	CPacketWriter writer;
+	tests.Require(Write_Message(writer, request) && Is_Known_Packet_Type(PACKET_TYPE::C2S_ROOM_PING) &&
+		Is_Known_Packet_Type(PACKET_TYPE::S2C_ROOM_PING), "Room ping intent and broadcast have registered wire identities");
+	C2S_ROOM_PING decoded; CPacketReader reader{writer.Get_Buffer()};
+	tests.Require(Read_Message(reader, decoded) && !reader.Get_RemainingSize() &&
+		decoded.iClientSequence == 1u && decoded.eWorldId == request.eWorldId && decoded.fPositionZ == request.fPositionZ,
+		"Room ping intent round-trips its world, sequence and picked point");
+	for (std::size_t size = 0u; size < writer.Get_Buffer().size(); ++size)
+	{
+		auto retained = request; retained.iClientSequence = 92u;
+		CPacketReader shortReader{std::span<const std::uint8_t>(writer.Get_Buffer()).first(size)};
+		tests.Require(!Read_Message(shortReader, retained) && retained.iClientSequence == 92u,
+			"Truncated room ping preserves the previous decoded intent");
+	}
+	for (unsigned kind = 0u; kind < 4u; ++kind)
+	{
+		auto invalid = request;
+		if (kind == 0u) invalid.eWorldId = WORLD_ID::END;
+		if (kind == 1u) invalid.iClientSequence = 0u;
+		if (kind == 2u) invalid.fPositionX = std::numeric_limits<float>::quiet_NaN();
+		if (kind == 3u) invalid.fPositionZ = 1000001.f;
+		CPacketWriter rejected;
+		tests.Require(!Write_Message(rejected, invalid) && rejected.Get_Buffer().empty(),
+			"Invalid ping world, sequence, nonfinite and out-of-bounds points fail before serialization");
+	}
+	auto room = std::make_unique<CGameRoom>(WORLD_ID::KAKULSAYDON_ARENA);
+	auto otherRoom = std::make_unique<CGameRoom>(WORLD_ID::KAKULSAYDON_ARENA);
+	tests.Require(room->Is_Ready() && otherRoom->Is_Ready(), "Ping isolation fixture loads two independent rooms in the same world");
+	std::vector<std::shared_ptr<CClientSession>> sessions;
+	for (unsigned id = 1u; id <= 4u; ++id)
+	{
+		auto& target = id < 4u ? *room : *otherRoom;
+		auto& player = target.m_Players[id];
+		player.iPlayerId = id; player.iSessionId = 9000u + id; player.iNetEntityId = 100u + id;
+		player.iCurrentHp = player.iMaximumHp = 100u; player.isCombatReady = true;
+		if (id == 3u) { player.iCurrentHp = 0u; player.eAction = PLAYER_ACTION_STATE::DEAD; }
+		target.m_PlayerIdBySessionId[player.iSessionId] = id;
+		auto session = std::make_shared<CClientSession>(player.iSessionId, INVALID_SOCKET,
+			CClientSession::FRAME_HANDLER{}, CClientSession::CLOSED_HANDLER{});
+		session->m_isSendRunning.store(true); target.m_Sessions[player.iSessionId] = session;
+		sessions.push_back(std::move(session));
+	}
+	room->m_iServerTick = 30u;
+	room->Handle_RoomPing(9001u, request);
+	std::vector<std::uint8_t> expected;
+	for (std::size_t i = 0u; i < 3u; ++i)
+	{
+		const auto& frames = sessions[i]->m_OutboundFrames;
+		bool valid = frames.size() == 1u && frames.front().ePacketType == PACKET_TYPE::S2C_ROOM_PING;
+		if (valid)
+		{
+			const auto& bytes = frames.front().Bytes;
+			CPacketReader messageReader{std::span<const std::uint8_t>(bytes).subspan(PACKET_HEADER_BYTES)};
+			S2C_ROOM_PING ping;
+			valid = Read_Message(messageReader, ping) && !messageReader.Get_RemainingSize() &&
+				ping.iFromNetEntityId == 101u && ping.iClientSequence == 1u && ping.eWorldId == request.eWorldId &&
+				std::abs(ping.fPositionX - request.fPositionX) < .1f && std::abs(ping.fPositionZ - request.fPositionZ) < .1f;
+			if (i == 0u) expected = bytes; else valid = valid && bytes == expected;
+		}
+		tests.Require(valid, "Sender, peer and dead room member receive the identical authoritative ground ping");
+	}
+	tests.Require(sessions[3]->m_OutboundFrames.empty(), "Another simulation with the same world id never receives this room's ping");
+	room->Handle_RoomPing(9001u, request);
+	auto invalid = request; invalid.iClientSequence = 2u; invalid.eWorldId = WORLD_ID::BERN;
+	room->Handle_RoomPing(9001u, invalid);
+	room->Handle_RoomPing(9004u, request);
+	room->Handle_RoomPing(9003u, request);
+	invalid = request; invalid.iClientSequence = 2u; room->Handle_RoomPing(9001u, invalid);
+	tests.Require(sessions[0]->m_OutboundFrames.size() == 1u && sessions[1]->m_OutboundFrames.size() == 1u &&
+		sessions[2]->m_OutboundFrames.size() == 1u && sessions[3]->m_OutboundFrames.empty(),
+		"Duplicate, wrong-world, outsider, dead-sender and rate-limited pings cannot broadcast");
+	room->m_iServerTick = 60u;
+	invalid = request; invalid.iClientSequence = 3u; invalid.fPositionX = 999999.f;
+	room->Handle_RoomPing(9001u, invalid);
+	tests.Require(sessions[0]->m_OutboundFrames.size() == 1u, "A ping outside this room's navigation surface is rejected");
+	request.iClientSequence = 4u; room->Handle_RoomPing(9001u, request);
+	tests.Require(sessions[0]->m_OutboundFrames.size() == 2u && sessions[1]->m_OutboundFrames.size() == 2u &&
+		sessions[2]->m_OutboundFrames.size() == 2u && sessions[3]->m_OutboundFrames.empty(),
+		"A later valid ping broadcasts once after rejected requests");
+	std::cout << "failures : " << tests.failures << '\n';
+	return tests.failures ? 1 : 0;
+}
 
 void LostArk::Server::CServerGameplayContractRunner::Run_SessionTransport(TESTS& tests)
 {

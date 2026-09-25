@@ -251,6 +251,8 @@ HRESULT CPart_Equipment::Render_Pass(
 			FAILED(m_pShaderCom->Begin(materialPass)) ||
 			FAILED(m_pModelCom->Render(i)))
 			return E_FAIL;
+		if (iPassIndex == 0u)
+			(void)Render_CombatHoverMesh(*m_pModelCom, m_pShaderCom, i, m_pEmissiveOverride, isSkinned);
 	}
 	return S_OK;
 }

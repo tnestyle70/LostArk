@@ -240,6 +240,279 @@ def build(out):
     return patch
 
 
+def build_hand_reach(out):
+    """Candidate only: repair the B-slot rewind without retiming the cinematic.
+
+    The 30 Hz-aligned window keeps both installed endpoint poses. Only the
+    native body clock changes; source layer weights and SkelControls retain
+    their original cinematic time. Repetition is an authoring choice, not a
+    default change made by this bake.
+    """
+    out = out.resolve()
+    assert not out.is_relative_to(base.RESOURCES.resolve())
+    out.mkdir(parents=True, exist_ok=True)
+    rows, trees = read_source(out)
+    start_ms, end_ms = 12900, 16400
+    duration_ms = end_ms - start_ms
+    name = 'kouku.bingo.ending.handreach'
+    baked_name = 'kouku.bingo.ending.saydon1'
+    asset = 'Character/KoukuSaton/MN_RPCT_05/MN_RPCT_05.wmodel'
+    source = base.RESOURCES / asset
+    raw = source.read_bytes()
+    tracks = base.active_tracks(rows, 49)
+    animation = {t['p']['slotname']: t['p'] for t in tracks
+                 if t['cls'] == 'interptrackanimcontrol'}
+    metadata = base.wm.read_wmodel(source, include_geometry=False, animation_names=())
+    needed = {'idle_normal_1'} | {key['animseqname'] for track in animation.values()
+                                for key in track['animseqs']}
+    names = [a.name for a in metadata.animations
+             if base.clip_name(a.name) in needed or a.name == baked_name]
+    model = base.wm.read_wmodel(source, include_geometry=False, animation_names=names)
+    clips = {base.clip_name(a.name): a for a in model.animations}
+    old_baked = next(a for a in model.animations if a.name == baked_name)
+    controls = controls_for(model, trees[2039], trees, tracks)
+    control_scale = control_translation_scale(model, 'MN_RPCT_05')
+    start, end = start_ms / 1000., end_ms / 1000.
+    before_anim, source_start = base.anim_at(animation['b'], clips, start)
+    after_anim, source_end = base.anim_at(animation['b'], clips, end)
+    assert before_anim.name == after_anim.name == 'rpct00_evt2_atpain01'
+    span = end - start
+    source_delta = source_end - source_start
+    minimum_source_rate = min(1., 1. + 1.5 * (source_delta / span - 1.))
+    assert minimum_source_rate > 0.  # Quadratic derivative minimum over the entire interval.
+
+    def source_clock(seconds):
+        u = min(1., max(0., (seconds - start) / span))
+        # Cubic Hermite, native seconds per cinematic second = 1 at both ends.
+        clock = ((2*u**3 - 3*u**2 + 1)*source_start +
+                 (u**3 - 2*u**2 + u)*span +
+                 (-2*u**3 + 3*u**2)*source_end +
+                 (u**3 - u**2)*span)
+        rate = 1. + 6.*u*(1.-u)*(source_delta/span - 1.)
+        return clock, rate
+
+    samples, old_samples, source_samples = [], [], []
+    for frame in range(duration_ms * 30 // 1000 + 1):
+        seconds = start + frame / 30.
+        clock, rate = source_clock(seconds)
+        pose = base.pose_sample(model, clips['idle_normal_1'],
+            seconds % (clips['idle_normal_1'].duration_ticks / clips['idle_normal_1'].ticks_per_second))
+        for slot in ('b', 'a', 'c'):
+            track = animation.get(slot)
+            if not track or seconds + 1e-6 < track['animseqs'][0]['starttime']:
+                continue
+            anim, time = (before_anim, clock) if slot == 'b' else base.anim_at(track, clips, seconds)
+            weight = float(base.curve(track.get('floattrack', {}).get('points', []), seconds, 1.))
+            pose = blend(pose, base.pose_sample(model, anim, time), weight)
+        pose = apply_controls(pose, controls, strength_at(tracks, seconds), control_scale)
+        assert np.isfinite(np.array([np.concatenate(p) for p in pose])).all()
+        samples.append(pose)
+        old_samples.append(base.pose_sample(model, old_baked, seconds))
+        source_samples.append(dict(timelineMs=seconds*1000., sourceMs=clock*1000., rate=rate))
+    # Reuse the exact stored 30 Hz endpoint keys, including the old float32
+    # quantization. Re-sampling a quaternion would unnecessarily normalize it.
+    def endpoint_keys(ticks):
+        channels = {channel.bone_index: channel for channel in old_baked.channels}
+        result = []
+        for bone in range(len(model.skeleton_bones)):
+            channel = channels[bone]
+            result.append(tuple(np.array(next(key[1:] for key in keys if key[0] == ticks))
+                                for keys in (channel.position_keys, channel.rotation_keys, channel.scale_keys)))
+        return result
+
+    samples[0], samples[-1] = endpoint_keys(start_ms * 30 // 1000), endpoint_keys(end_ms * 30 // 1000)
+    assert min(row['rate'] for row in source_samples) > 0.
+    assert abs(source_samples[0]['rate'] - 1.) < 1e-12
+    assert abs(source_samples[-1]['rate'] - 1.) < 1e-12
+    assert np.all(np.diff([row['sourceMs'] for row in source_samples]) > 0.)
+    donor = out / 'handreach-donor' / 'Saydon.wmodel'
+    base.write_clip(source, donor, model, samples, name, 'saydon1')
+    additions = [(name, animation_payloads(donor.read_bytes())[name])]
+    candidate, count = append_idempotent(raw, additions)
+    assert append_idempotent(candidate, additions) == (candidate, 0)
+    target = out / 'candidate-resources' / asset
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_bytes(candidate)
+    check = base.wm.read_wmodel(target, include_geometry=False, animation_names=(name,))
+    fixed = next(a for a in check.animations if a.name == name)
+    assert len(fixed.channels) == len(model.skeleton_bones) == 168
+    assert fixed.duration_ticks == 105. and fixed.ticks_per_second == 30.
+    for channel in fixed.channels:
+        for coordinate, keys in enumerate((channel.position_keys, channel.rotation_keys, channel.scale_keys)):
+            assert tuple(keys[0][1:]) == tuple(samples[0][channel.bone_index][coordinate])
+            assert tuple(keys[-1][1:]) == tuple(samples[-1][channel.bone_index][coordinate])
+    saved = [base.pose_sample(check, fixed, frame / 30.) for frame in range(106)]
+
+    def pose_error(left, right):
+        return float(max(np.max(np.abs(np.concatenate(a) - np.concatenate(b)))
+                         for a, b in zip(left, right)))
+
+    def rotation_delta(a, b):
+        a, b = a / np.linalg.norm(a), b / np.linalg.norm(b)
+        return math.degrees(2.*math.acos(min(1., abs(float(np.dot(a, b))))))
+
+    def metrics(poses):
+        result = []
+        wanted = {'bip001-r-hand', 'bip001-r-forearm', 'bip001-r-upperarm',
+                  'bip001-l-hand', 'bip001-l-forearm', 'bip001-l-upperarm'}
+        combined = [base.wm.combined_transforms(model.skeleton_bones,
+            [base.wm.affine_matrix(s, q, p) for p, q, s in pose]) for pose in poses]
+        for index, bone in enumerate(model.skeleton_bones):
+            angles = [rotation_delta(poses[i-1][index][1], poses[i][index][1])
+                      for i in range(1, len(poses))]
+            distances = [math.dist(combined[i-1][index][12:15], combined[i][index][12:15])*.01
+                         for i in range(1, len(poses))]
+            result.append(dict(bone=bone.name, maxLocalRotationDegrees=max(angles),
+                               maxPivotStepMeters=max(distances), handWitness=bone.name in wanted))
+        return result
+
+    original_metrics, fixed_metrics = metrics(old_samples), metrics(saved)
+    endpoints = [pose_error(saved[0], old_samples[0]), pose_error(saved[-1], old_samples[-1])]
+    assert max(endpoints) < 1e-7, endpoints
+    witnesses = []
+    for old, new in zip(original_metrics, fixed_metrics):
+        if not old['handWitness']:
+            continue
+        witnesses.append(dict(bone=old['bone'], before=old, after=new))
+        assert new['maxLocalRotationDegrees'] < old['maxLocalRotationDegrees'], (old, new)
+        assert new['maxPivotStepMeters'] < old['maxPivotStepMeters'], (old, new)
+    world_path = ROOT / 'Data/Maps/Authoring/LV_LUT_MIDNIGHTC_ED/LV_LUT_MIDNIGHTC_ED.worldsequences.json'
+    world_raw = world_path.read_bytes()
+    world = base.read(world_path)
+    template = next(r for r in world['templates'] if r['sequenceId'] == 'sequence.kouku.bingo.ending.saydon1')
+    before = copy.deepcopy(template['animationTracks'])
+    after = copy.deepcopy(before)
+    selected = next(r for r in after if r['slotId'] == 'actor' and r['startMs'] == 12967)
+    following = next(r for r in after if r['slotId'] == 'actor' and r['startMs'] == 16333)
+    assert selected['clipName'] == following['clipName'] == baked_name
+    assert selected.get('sourceStartMs') == 12967 and following.get('sourceStartMs') == 16333
+    selected.update(startMs=start_ms, sourceStartMs=0, sourceEndMs=duration_ms,
+                    clipName=name, displayName='Saydon hand reach (continuous)', loop=False)
+    following.update(startMs=end_ms, sourceStartMs=end_ms)
+    patch = dict(kind='animationTracks-field-patch', sequenceId=template['sequenceId'],
+                 baselineRevision=world['revision'], baselineSha256=hashlib.sha256(world_raw).hexdigest(),
+                 before=before, after=after,
+                 changes=[dict(index=index, identity={key: old[key] for key in ('slotId', 'startMs', 'clipName')},
+                               fields={key: dict(before=old.get(key), after=new.get(key))
+                                       for key in sorted(old.keys() | new.keys()) if old.get(key) != new.get(key)})
+                          for index, (old, new) in enumerate(zip(before, after)) if old != new],
+                 unchanged=['template.durationMs=49083', 'WORLD transform/visibility/effects',
+                            'all other actors', 'Sequence Composition', 'camera', 'sound', 'subtitles'])
+    receipt = dict(clipName=name, assetId=asset, sourceNativeClip=before_anim.name,
+                   sourceMatinee='SCENE01B group49 actor37 B track72',
+                   appliedControls=len(controls), windowMs=[start_ms, end_ms],
+                   durationTicks=fixed.duration_ticks, ticksPerSecond=fixed.ticks_per_second,
+                   channelCount=len(fixed.channels), sourceClock=source_samples,
+                   minimumSourceRate=minimum_source_rate,
+                   endpointStoredKeyValuesIdentical=True,
+                   endpointPoseMaximumComponentError=endpoints, handWitnesses=witnesses,
+                   beforeAllBones=original_metrics, afterAllBones=fixed_metrics,
+                   baselineSha256=hashlib.sha256(raw).hexdigest(), sha256=hashlib.sha256(candidate).hexdigest(),
+                   candidate=str(target.relative_to(ROOT)), donor=str(donor.relative_to(ROOT)),
+                   addedClips=count, existingSectionPayloadsPreserved=True,
+                   repetition='Default non-loop. User chooses later repeat count/range; total P9 time is unchanged.',
+                   manualVisualValidation='USER_PENDING')
+    base.write(out / 'handreach-field-patch.json', patch)
+    base.write(out / 'handreach-receipt.json', receipt)
+    print('handreach candidate', target, 'endpoint errors', endpoints, flush=True)
+    return receipt
+
+
+
+def slice_baked_window(payload, first_tick, last_tick):
+    """Copy a 30 Hz baked WANM window; only its key timestamps change."""
+    wm = base.wm
+    nested = list(wm.FILE_HEADER.unpack_from(payload))
+    header = list(wm.ANIMATION_HEADER.unpack_from(payload, wm.FILE_HEADER.size))
+    assert nested[:3] == [b'WINT', 1, 0] and nested[-1] == len(payload) - wm.FILE_HEADER.size
+    assert header[0] == b'WANM' and header[3] == 30. and header[5] == 0
+    assert 0 <= first_tick < last_tick <= header[2]
+    table_start = wm.FILE_HEADER.size + wm.ANIMATION_HEADER.size
+    key_start = table_start + header[1] * wm.ANIMATION_CHANNEL.size
+    channels, keys = bytearray(), bytearray()
+    count = last_tick - first_tick + 1
+    for index in range(header[1]):
+        row = list(wm.ANIMATION_CHANNEL.unpack_from(payload, table_start + index * wm.ANIMATION_CHANNEL.size))
+        for column, fmt in ((1, wm.VECTOR_KEY), (3, wm.QUATERNION_KEY), (5, wm.VECTOR_KEY)):
+            source_count, source_offset = row[column:column + 2]
+            assert source_count == int(header[2]) + 1 and last_tick < source_count
+            assert key_start + source_offset + source_count * fmt.size <= len(payload) - 8
+            row[column:column + 2] = count, len(keys)
+            for tick in range(first_tick, last_tick + 1):
+                offset = key_start + source_offset + tick * fmt.size
+                key = payload[offset:offset + fmt.size]
+                assert base.struct.unpack_from('<f', key)[0] == tick
+                keys += base.struct.pack('<f', float(tick - first_tick)) + key[4:]
+        channels += wm.ANIMATION_CHANNEL.pack(*row)
+    header[2], header[4] = float(last_tick - first_tick), header[1] * count * 3
+    result = wm.ANIMATION_HEADER.pack(*header) + channels + keys + payload[-8:]
+    nested[-1] = len(result)
+    return wm.FILE_HEADER.pack(*nested) + result
+
+
+def build_original_hand_reach(out):
+    """Prepare one original-scene clip choice without changing live authoring."""
+    from bake_character_cinematic_clips import validate_keys
+    out = out.resolve()
+    assert not out.is_relative_to(base.RESOURCES.resolve())
+    out.mkdir(parents=True, exist_ok=True)
+    asset = 'Character/KoukuSaton/MN_RPCT_05/MN_RPCT_05.wmodel'
+    source = base.RESOURCES / asset
+    raw = source.read_bytes()
+    baked_name = 'kouku.bingo.ending.saydon1'
+    name = 'kouku.bingo.ending.handreach.original'
+    first, last = 387, 492
+    payload = slice_baked_window(animation_payloads(raw)[baked_name], first, last)
+    additions = [(name, payload)]
+    candidate, count = append_idempotent(raw, additions)
+    assert append_idempotent(candidate, additions) == (candidate, 0)
+    target = out / 'candidate-resources' / asset
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_bytes(candidate)
+    model = base.wm.read_wmodel(target, include_geometry=False, animation_names=(baked_name, name))
+    original, cropped = (next(a for a in model.animations if a.name == clip) for clip in (baked_name, name))
+    assert len(original.channels) == len(cropped.channels) == len(model.skeleton_bones) == 168
+    assert cropped.duration_ticks == 105. and cropped.ticks_per_second == 30.
+    key_count = validate_keys(cropped)
+    for before, after in zip(original.channels, cropped.channels):
+        assert before.bone_index == after.bone_index
+        for left, right in zip((before.position_keys, before.rotation_keys, before.scale_keys),
+                               (after.position_keys, after.rotation_keys, after.scale_keys)):
+            assert len(right) == 106
+            assert all(a[0] - first == b[0] and a[1:] == b[1:]
+                       for a, b in zip(left[first:last + 1], right))
+    max_error = 0.
+    # Include every stored frame and every midpoint to check interpolation.
+    for half_frame in range(211):
+        seconds = half_frame / 60.
+        old_pose = base.pose_sample(model, original, first / 30. + seconds)
+        new_pose = base.pose_sample(model, cropped, seconds)
+        error = max(float(np.max(np.abs(np.concatenate(a) - np.concatenate(b))))
+                    for a, b in zip(old_pose, new_pose))
+        max_error = max(max_error, error)
+    assert max_error < 1e-7, max_error
+    assert source.read_bytes() == raw, 'Source model changed while preparing candidate'
+    receipt = dict(clipName=name, assetId=asset, sourceClip=baked_name,
+                   sourceMatinee='SCENE01B group49 actor37; original slot blend and SkelControls',
+                   windowMs=[12900, 16400], durationTicks=105, ticksPerSecond=30,
+                   channelCount=168, keyCount=key_count, sampleCountPerChannel=106,
+                   originalStoredKeyValuesIdentical=True, poseSamplesChecked=211,
+                   maximumPoseComponentError=max_error, existingSectionPayloadsPreserved=True,
+                   baselineSha256=hashlib.sha256(raw).hexdigest(),
+                   sha256=hashlib.sha256(candidate).hexdigest(), addedClips=count,
+                   nativeClipCount=len(model.animations),
+                   candidate=str(target.relative_to(ROOT)),
+                   authoringModified=False, installed=False, manualVisualValidation='USER_PENDING')
+    base.write(out / 'original-handreach-receipt.json', receipt)
+    print('original handreach candidate', target, 'pose error', max_error, flush=True)
+    return receipt
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(__doc__); parser.add_argument('--output', type=Path, default=DEFAULT_OUT)
-    args = parser.parse_args(); build(args.output)
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument('--original-hand-reach', action='store_true', help='Prepare the original 3.5-second hand-reach clip choice')
+    mode.add_argument('--hand-reach', action='store_true', help='Prepare only the continuous hand-reach clip candidate')
+    args = parser.parse_args()
+    (build_original_hand_reach if args.original_hand_reach else
+     build_hand_reach if args.hand_reach else build)(args.output)

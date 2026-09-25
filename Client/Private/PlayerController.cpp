@@ -169,7 +169,7 @@ void Client::CPlayerController::Rebind_LocalCharacter(
 	if (m_pLocalCharacter.lock() == character)
 		return;
 	m_pLocalCharacter = character;
-	if (m_pClickMoveEffect) m_pClickMoveEffect->Clear();
+	if (m_pClickMoveEffect) m_pClickMoveEffect->Clear_Move();
 	Cancel_GroundTargeting();
 	// This is the same Server player, not a new input session. Preserve physical
 	// press/release gates even when the restored body arrives after the Mario
@@ -246,8 +246,15 @@ void Client::CPlayerController::Update(
 		!ImGui::GetIO().WantTextInput && !CUIInputRouter::Get().Is_TextInputActive();
 	const bool_t pingRequested = m_PingInputGate.Observe(
 		pingCtrlDown, pingLeftDown, otherPingCommand, pingEnabled);
-	if (m_pClickMoveEffect)
-		m_pClickMoveEffect->Set_PingPending(m_PingInputGate.Is_Pending(), m_pLocalCharacter.lock());
+	// Received pings remain visible while this client is captured, dead or unfocused.
+	if (m_pCommandSink)
+	{
+		LostArk::Shared::S2C_ROOM_PING ping;
+		while (m_pCommandSink->Consume_RoomPing(ping))
+			if (m_pClickMoveEffect)
+				m_pClickMoveEffect->Play_Ping({ping.fPositionX, ping.fPositionY, ping.fPositionZ},
+					ping.iFromNetEntityId, ping.iClientSequence);
+	}
 	if (pingRequested)
 	{
 		Cancel_GroundTargeting();
@@ -255,10 +262,13 @@ void Client::CPlayerController::Update(
 		const auto owner = m_pLocalCharacter.lock();
 		const auto transform = owner ? owner->Get_Transform() : nullptr;
 		float3_t picked{}, grounded{};
-		if (transform && m_pClickMoveEffect &&
+		if (transform && m_pCommandSink &&
 			Try_PickGroundPlane(XMVectorGetY(transform->Get_State(STATE::POSITION)), picked) &&
-			owner->Try_SampleTargetGround(picked.x, picked.z, grounded))
-			m_pClickMoveEffect->Play_Ping(grounded, owner);
+			owner->Try_SampleTargetGround(picked.x, picked.z, grounded) &&
+			m_pCommandSink->Request_RoomPing(m_iNextActionSequence, grounded.x, grounded.y, grounded.z))
+		{
+			if (++m_iNextActionSequence == 0u) m_iNextActionSequence = 1u;
+		}
 	}
 	for (std::size_t key = 0u; key < m_wasKeyDown.size(); ++key)
 	{
@@ -273,7 +283,7 @@ void Client::CPlayerController::Update(
 	m_CaptureInputGate.Observe(CPLAYER_CAPTURE_INPUT_GATE::RIGHT_MOUSE,
 		isRightMousePhysicallyDown, isControlCaptured || marioControlsActive);
 	if (m_pClickMoveEffect && (!gameplayCommandsEnabled || isControlCaptured || marioControlsActive))
-		m_pClickMoveEffect->Clear();
+		m_pClickMoveEffect->Clear_Move();
 	if (isControlCaptured || marioControlsActive)
 	{
 		Cancel_GroundTargeting();

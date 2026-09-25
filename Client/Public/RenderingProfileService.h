@@ -190,6 +190,9 @@ private:
 
 private:
 	CATALOG m_Catalog;
+#ifdef _DEBUG
+	CATALOG m_SavedCatalog;
+#endif
 	vector<string> m_ProtectedProfileIds;
 	string m_strActiveProfileId;
     string m_strAppliedEnvironmentRegion;

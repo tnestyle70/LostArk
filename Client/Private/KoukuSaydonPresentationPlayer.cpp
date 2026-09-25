@@ -21,6 +21,7 @@
 #include "EffectV2_Object.h"
 #include "EffectV2_Runtime.h"
 #include "GameInstance.h"
+#include "Profiler.h"
 #include "CombatHUDViewModel.h"
 #include "Level_KakulSaydonArena.h"
 #include "LightResourceCatalog.h"
@@ -78,26 +79,80 @@ float Counter_AfterimageAgeSeconds(const KOUKU_SAYDON_COMPOSITION_DOCUMENT& docu
 }
 
 bool Charge_AfterimageActive(const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern, const float clockMs,
-    bool& backstep)
+    bool& backstep, CSkeletalAfterimage::SETTINGS& settings, const float previousClockMs = -1.f,
+    const bool counterCueActive = false)
 {
     backstep = false;
-    if (pattern.strActorProfileId != "MN_RPCT_05" || !std::isfinite(clockMs)) return false;
+    if ((pattern.strActorProfileId != "MN_RPCT_05" && pattern.strActorProfileId != "MN_RPCZ_00") ||
+        !std::isfinite(clockMs)) return false;
     double stageStart = 0.0;
     for (const auto& stage : pattern.Stages)
     {
         for (const auto& animation : stage.AnimationOccurrences)
         {
-            // Cooked Action 4219863 TrailGhostEffect notify times, in source clip time.
-            const double notifyMs = animation.strRuntimeClip == "rpct00_att_battle_22_01" ? 209.004 :
-                animation.strRuntimeClip == "rpct00_att_battle_22_04" ? 198.055 : -1.0;
+            // Admit exact enabled native notify identities, not a same-named clip
+            // on an unrelated actor/action. Native timings remain per occurrence.
+            const auto& sourceStage = animation.strSourceStageId;
+            const bool warmup = pattern.strActorProfileId == "MN_RPCT_05" && animation.strProfileId == "MN_RPCT_05" && animation.iSourceActionId == 4219863u &&
+                animation.strRuntimeClip == "rpct00_att_battle_22_01" &&
+                (sourceStage == "stage-000" || sourceStage == "stage-003" || sourceStage == "stage-008");
+            const bool dash = pattern.strActorProfileId == "MN_RPCT_05" && animation.strProfileId == "MN_RPCT_05" && animation.iSourceActionId == 4219863u &&
+                animation.strRuntimeClip == "rpct00_att_battle_22_04" &&
+                (sourceStage == "stage-001" || sourceStage == "stage-009");
+            const bool backwardClip = animation.strRuntimeClip == "rpct00_att_battle_34_04";
+            const bool forwardClip = animation.strRuntimeClip == "rpct00_att_battle_34_03";
+            const bool backstepSource = pattern.strActorProfileId == "MN_RPCT_05" && animation.strProfileId == "MN_RPCT_07" &&
+                ((animation.iSourceActionId == 4219951u &&
+                    ((backwardClip && (sourceStage == "stage-004" || sourceStage == "stage-010")) ||
+                     (forwardClip && (sourceStage == "stage-005" || sourceStage == "stage-011")))) ||
+                 (sourceStage == "stage-000" &&
+                    ((backwardClip && animation.iSourceActionId == 4219922u) ||
+                     (forwardClip && (animation.iSourceActionId == 4219923u || animation.iSourceActionId == 4219964u)) ||
+                     (animation.iSourceActionId == 4219920u && animation.strRuntimeClip == "rpct00_att_battle_34_01") ||
+                     (animation.iSourceActionId == 4219921u && animation.strRuntimeClip == "rpct00_att_battle_34_02"))));
+            const bool koukuCharge = pattern.strActorProfileId == "MN_RPCZ_00" &&
+                animation.strProfileId == "MN_RPCZ_00" && animation.iSourceActionId == 4219776u &&
+                ((sourceStage == "stage-000" && animation.strRuntimeClip == "rpcz00_att_battle_6_01") ||
+                 (sourceStage == "stage-001" && animation.strRuntimeClip == "rpcz00_att_battle_6_02") ||
+                 (sourceStage == "stage-002" && animation.strRuntimeClip == "rpcz00_att_battle_6_03") ||
+                 (sourceStage == "stage-003" && animation.strRuntimeClip == "rpcz00_att_battle_6_04"));
+            if (!warmup && !dash && !backstepSource && !koukuCharge) continue;
+            const bool koukuBlueRim = koukuCharge && sourceStage == "stage-002";
+            const double notifyMs = warmup ? 209.0039998292923 : dash ? 198.05499911308289 :
+                koukuCharge && sourceStage == "stage-000" ? 269.27900314331055 : 0.0;
+            const double durationMs = koukuCharge ? (koukuBlueRim ? 1200.0000476837158 : 1149.999976158142) : 50.0;
             const double localMs = clockMs - stageStart - animation.iStartOffsetMs;
             const double sourceMs = animation.iSourceStartMs + localMs * animation.fPlayRate;
-            // Original TrailGhost at clip 34_04 time 0, emission duration 50ms.
-            if (animation.strRuntimeClip == "rpct00_att_battle_34_04" &&
-                localMs >= 0.0 && localMs < animation.iPlayMs && sourceMs >= 0.0 && sourceMs < 50.0)
-            { backstep = true; return true; }
-            if (notifyMs >= 0.0 && localMs >= 0.0 && localMs < animation.iPlayMs &&
-                animation.iSourceStartMs + localMs * animation.fPlayRate >= notifyMs) return true;
+            if (localMs < 0.0 || localMs >= animation.iPlayMs || animation.iSourceStartMs >= notifyMs + durationMs ||
+                (animation.iSourceEndMs && sourceMs >= animation.iSourceEndMs)) continue;
+            const bool inWindow = sourceMs >= notifyMs && sourceMs < notifyMs + durationMs;
+            const double previousSourceMs = animation.iSourceStartMs +
+                (previousClockMs - stageStart - animation.iStartOffsetMs) * animation.fPlayRate;
+            // A short native notify can pass wholly between displayed frames.
+            // Deliver one current pose on a continuous clock crossing, never
+            // synthesize past poses after seek, rewind, pause or discontinuity.
+            const bool crossedWindow = previousClockMs >= 0.f && clockMs > previousClockMs &&
+                clockMs <= previousClockMs + 150.f && previousSourceMs < notifyMs && sourceMs >= notifyMs;
+            if (!inWindow && !crossedWindow) continue;
+            backstep = backstepSource;
+            settings = {};
+            settings.sourceChannels = true;
+            settings.capturePoseChanges = true;
+            settings.sampleIntervalSeconds = koukuCharge ? .2f : warmup ? .1f : .005f;
+            settings.sampleLifetimeSeconds = koukuCharge ? .4f : warmup ? .6f : .5f;
+            settings.maxSamples = 64u;
+            settings.sourceInitialAlpha = koukuCharge ? .6f : warmup ? .8f : 1.f;
+            // New Kouku trail uses native .6. While replacing the authored
+            // counter cue, keep its requested .70 peak as a separate multiplier.
+            settings.userAlphaScale = koukuCharge ? (counterCueActive ? .70f / .6f : 1.f) :
+                backstep ? .19f : warmup ? .475f : .38f;
+            settings.sourceColorIntensity = koukuCharge || warmup ? .6f : 1.f;
+            settings.color = warmup ? float4_t{65.f / 255.f, 147.f / 255.f, 243.f / 255.f, 1.f} :
+                koukuBlueRim ? float4_t{0.f, 0.f, 1.f, 1.f} : float4_t{0.f, 0.f, 0.f, 0.f};
+            settings.endColor = warmup ? float4_t{0.f, 0.f, 0.f, 1.f} : float4_t{0.f, 0.f, 0.f, 0.f};
+            settings.ambientStart = {0.f, 0.f, 0.f, warmup || koukuCharge ? 0.f : 1.f};
+            settings.ambientEnd = {0.f, 0.f, 0.f, warmup ? 1.f : 0.f};
+            return true;
         }
         stageStart += stage.iDurationMs;
     }
@@ -332,9 +387,10 @@ OCCURRENCE Read_Occurrence(const DATA_JSON_VALUE& row, std::uint32_t durationMs,
     box.Scale = Vector(row, "scale", 0.001, 100000.0);
     box.ColliderEndPositionOffset = box.PositionOffset;
     box.ColliderEndScale = box.Scale;
-    if (row.Find("anchorPresentationOccurrenceId")) box.strAnchorPresentationOccurrenceId = Text(row, "anchorPresentationOccurrenceId");
-    if (!box.strAnchorPresentationOccurrenceId.empty() && kind != KIND::COLLIDER)
-        throw std::runtime_error("Only Collider can reference an Effect birth anchor.");
+    // Normalized conditional visuals serialize an unused optional anchor as "".
+    if (row.Find("anchorPresentationOccurrenceId")) box.strAnchorPresentationOccurrenceId = Text(row, "anchorPresentationOccurrenceId", true);
+    if (!box.strAnchorPresentationOccurrenceId.empty() && kind != KIND::COLLIDER && kind != KIND::EFFECT)
+        throw std::runtime_error("Only Collider or Effect can reference an Effect birth anchor.");
     if (row.Find("colliderMotion")) box.strColliderMotion = Text(row, "colliderMotion");
     if (row.Find("colliderEndPositionOffset")) box.ColliderEndPositionOffset = Vector(row, "colliderEndPositionOffset", -100000.0, 100000.0);
     if (row.Find("colliderEndScale")) box.ColliderEndScale = Vector(row, "colliderEndScale", 0.001, 100000.0);
@@ -1314,6 +1370,14 @@ Client::CKoukuSaydonPresentationPlayer::Read_TargetedCombatVisuals(const DATA_JS
         auto& presentation = definition->presentation;
         presentation.pattern.strPatternId = id;
         presentation.durationMs = UInt(row, "durationMs", 1u, MAX_TIMELINE_MS);
+        if (row.Find("selectedFlightMs"))
+        {
+            if (definition->loop) throw std::runtime_error("Selected flight requires a finite captured target.");
+            definition->selectedFlightMs = UInt(row, "selectedFlightMs", 1u, presentation.durationMs - 1u);
+            definition->selectedFlightArcHeightM = Number(row, "selectedFlightArcHeightM", 0.0, 1000.0);
+            const auto offset = Vector(row, "selectedFlightSourceOffset", -1000.0, 1000.0);
+            definition->selectedFlightSourceOffset = {float(offset[0]), float(offset[1]), float(offset[2])};
+        }
         auto& sourceBossPresentation = definition->sourceBossPresentation;
         sourceBossPresentation.pattern.strPatternId = id;
         sourceBossPresentation.durationMs = presentation.durationMs;
@@ -1343,7 +1407,7 @@ Client::CKoukuSaydonPresentationPlayer::Read_TargetedCombatVisuals(const DATA_JS
             if (!stableId(box.strOccurrenceId) || !ids.insert(box.strOccurrenceId).second ||
                 (resource->second == KIND::SOUND && !map) || (!map && !sourceBoss) || !box.strBone.empty() || box.strBoneTarget != "BODY" ||
                 !box.strWorldId.empty() || !box.strWorldOccurrenceId.empty() ||
-                !box.strLogicOccurrenceId.empty() || box.iWorldEmissionIndex != 0u)
+                !box.strLogicOccurrenceId.empty() || !box.strAnchorPresentationOccurrenceId.empty() || box.iWorldEmissionIndex != 0u)
                 throw std::runtime_error("Targeted occurrence requires a relative MAP or following source BOSS placement.");
             if (sourceBoss)
             {
@@ -1354,7 +1418,7 @@ Client::CKoukuSaydonPresentationPlayer::Read_TargetedCombatVisuals(const DATA_JS
             // authoritative CombatObject translation, without a boss model or yaw.
             // Published MAP offsets and the ordinary fixed-MAP path are unchanged.
             box.strAnchorKind = "BOSS";
-            box.bFollowBoss = definition->loop;
+            box.bFollowBoss = definition->loop || definition->selectedFlightMs != 0u;
             presentation.pattern.PresentationOccurrences.push_back(std::move(box));
         }
         if (std::none_of(presentation.pattern.PresentationOccurrences.begin(), presentation.pattern.PresentationOccurrences.end(),
@@ -1449,6 +1513,18 @@ bool Client::CKoukuSaydonPresentationPlayer::Update_TargetedCombatVisual(
     return true;
 }
 
+float4x4_t Client::CKoukuSaydonPresentationPlayer::Sample_SelectedFlightPivot(
+    const float3_t& source, const float4x4_t& target, const double ageMs,
+    const std::uint32_t flightMs, const double arcHeightM)
+{
+    const double t = flightMs ? (std::clamp)(ageMs / flightMs, 0.0, 1.0) : 1.0;
+    auto pivot = target;
+    pivot._41 = float(source.x + (target._41 - source.x) * t);
+    pivot._42 = float(source.y + (target._42 - source.y) * t + 4.0 * arcHeightM * t * (1.0 - t));
+    pivot._43 = float(source.z + (target._43 - source.z) * t);
+    return pivot;
+}
+
 bool Client::CKoukuSaydonPresentationPlayer::Sample_TargetedCombatVisual(
     TARGETED_COMBAT_SESSION& session, const KOUKU_BOSS_PRESENTATION_VIEW* sourceBoss)
 {
@@ -1484,7 +1560,31 @@ bool Client::CKoukuSaydonPresentationPlayer::Sample_TargetedCombatVisual(
         session.playback.rootRecordedSeconds = 0.f;
         session.playback.rootRecordedPivot = session.root;
     }
-    Sample(session.playback, presentation.document, presentation.pattern, clock, false, session.root, nullptr);
+    float4x4_t presentationRoot = session.root;
+    if (session.definition->selectedFlightMs)
+    {
+        if (!session.flightSourceCaptured)
+        {
+            // The Server owns the immutable landing point; the source actor's
+            // replicated pose supplies only the visual throw origin.
+            if (!sourceBoss || sourceBoss->Snapshot.iNetEntityId != session.sourceId) return true;
+            const auto& boss = sourceBoss->Snapshot;
+            const float radians = XMConvertToRadians(boss.fYawDegrees);
+            const auto& offset = session.definition->selectedFlightSourceOffset;
+            session.flightSource = {boss.fPositionX + std::cos(radians) * offset.x + std::sin(radians) * offset.z,
+                boss.fPositionY + offset.y,
+                boss.fPositionZ - std::sin(radians) * offset.x + std::cos(radians) * offset.z};
+            session.flightSourceCaptured = true;
+        }
+        const auto source = session.flightSource; const auto target = session.root;
+        const auto flightMs = session.definition->selectedFlightMs;
+        const auto arc = session.definition->selectedFlightArcHeightM;
+        session.playback.exactRootOverride = [source, target, flightMs, arc](float seconds, float4x4_t& out, std::string& error) {
+            out = Sample_SelectedFlightPivot(source, target, seconds * 1000.0, flightMs, arc); error.clear(); return true;
+        };
+        presentationRoot = Sample_SelectedFlightPivot(source, target, clock, flightMs, arc);
+    }
+    Sample(session.playback, presentation.document, presentation.pattern, clock, false, presentationRoot, nullptr);
     const auto& sourcePresentation = session.definition->sourceBossPresentation;
     bool sampledSourceBoss = false;
     if (!sourcePresentation.pattern.PresentationOccurrences.empty() && sourceBoss &&
@@ -1807,8 +1907,9 @@ Client::CKoukuSaydonPresentationPlayer::Parse_ProductRoot(const DATA_JSON_VALUE&
                 if (source == item.pattern.PresentationOccurrences.end() || resource == item.document.PresentationResources.end() ||
                     resource->eKind != KIND::EFFECT || source->strAnchorKind != "BOSS" || source->bFollowBoss ||
                     !source->strBone.empty() || source->strBoneTarget != "BODY" || source->iStartMs > occurrence.iStartMs ||
+                    source->strOccurrenceId == occurrence.strOccurrenceId || !source->strAnchorPresentationOccurrenceId.empty() ||
                     occurrence.strAnchorKind != "BOSS" || occurrence.bFollowBoss || !occurrence.strBone.empty() || occurrence.strBoneTarget != "BODY")
-                    throw std::runtime_error("Product Collider has an invalid fixed Effect birth anchor.");
+                    throw std::runtime_error("Product occurrence has an invalid fixed Effect birth anchor.");
             }
             const std::string key = item.pattern.strPatternId;
             if (!staged.emplace(key, std::move(item)).second)
@@ -1975,6 +2076,7 @@ bool Client::CKoukuSaydonPresentationPlayer::Validate_DraftProductJson(
 bool Client::CKoukuSaydonPresentationPlayer::Reload_Product(
     std::string& status, const std::uint32_t expectedSourceRevision)
 {
+    Engine::CProfilerScope reloadScope(CGameInstance::Get().Get_Profiler(), "Kouku.Product.Reload");
     const auto admittedDraft = CKoukuSaydonPresentationAssetService::Get_AdmittedDraftProduct();
     const auto draftRevision = admittedDraft ? admittedDraft->RowsRevision : LostArk::Shared::GameplayDataRevision{};
     // Content identity distinguishes unsaved drafts with the same source revision.
@@ -2046,6 +2148,9 @@ bool Client::CKoukuSaydonPresentationPlayer::Reload_Product(
         try { CNetworkManager::Get().Record_SessionEvent("kouku.product.loaded",
             "revision=" + std::to_string(m_iProductSourceRevision) + " patterns=" + std::to_string(m_Product.size())); }
         catch (...) { }
+        // An explicit successful reload can recover this exact failed run.
+        // Failed reloads retain their retry guard and the last good presentation.
+        if (!m_ProductRunPreparation.ready) m_ProductRunPreparation = {};
         return true;
     }
     catch (const std::exception& error)
@@ -2453,7 +2558,7 @@ void Client::CKoukuSaydonPresentationPlayer::Sample(SESSION& session,
         [&](const auto& member) { return &session == &member.session; }) || std::any_of(
         m_ExternalStageEnvironments.begin(), m_ExternalStageEnvironments.end(),
         [&](const auto& pair) { return pair.second.preview && &session == &pair.second.session; });
-    CEffectV2Object::PIVOT_SAMPLER exactRoot;
+    CEffectV2Object::PIVOT_SAMPLER exactRoot = session.exactRootOverride;
     const auto previewMember = std::find_if(m_BundlePreviewMembers.begin(), m_BundlePreviewMembers.end(),
         [&](const auto& member) { return &session == &member.session && member.spatialLogicPreview; });
     if (previewMember != m_BundlePreviewMembers.end())
@@ -2532,8 +2637,9 @@ void Client::CKoukuSaydonPresentationPlayer::Sample(SESSION& session,
                 [&](const auto& value) { return value.strResourceId == source->strResourceId; });
         if (source == pattern.PresentationOccurrences.end() || resource == document.PresentationResources.end() || resource->eKind != KIND::EFFECT ||
             source->strAnchorKind != "BOSS" || source->bFollowBoss || !source->strBone.empty() || source->strBoneTarget != "BODY" ||
-            box.strAnchorKind != "BOSS" || box.bFollowBoss || !box.strBone.empty() || source->iStartMs > box.iStartMs)
-        { m_strStatus = "Collider Effect birth anchor is invalid: " + box.strOccurrenceId; return; }
+            box.strAnchorKind != "BOSS" || box.bFollowBoss || !box.strBone.empty() || source->iStartMs > box.iStartMs ||
+            source->strOccurrenceId == box.strOccurrenceId || !source->strAnchorPresentationOccurrenceId.empty())
+        { m_strStatus = "Effect birth anchor is invalid: " + box.strOccurrenceId; return; }
         const auto captureTick = (std::uint64_t(source->iStartMs) * 30u + 999u) / 1000u;
         const float seconds = float(captureTick) / 30.f;
         if (clockMs + .001f < seconds * 1000.f) continue;
@@ -3276,6 +3382,51 @@ void Client::CKoukuSaydonPresentationPlayer::Update_FearPresentation(float dt,
         clockMs, false, pivot, nullptr);
 }
 
+bool Client::CKoukuSaydonPresentationPlayer::Prepare_AdmittedRun(
+    const LostArk::Shared::S2C_KOUKUSAYDON_BUNDLE_STATE& run)
+{
+    // Admission can arrive after the replicated run. Waiting must neither read
+    // Product/Camera JSON nor cache a failure for that not-yet-admitted identity.
+    if (!CKoukuSaydonPresentationAssetService::Matches_AdmittedRun(
+        run.iPinnedSourceRevision, run.DraftRowsRevision, run.iRunEpoch))
+    {
+        m_strStatus = "Presentation draft hash/epoch is unavailable for the admitted run.";
+        return false;
+    }
+    if (m_ProductRunPreparation.runEpoch && m_ProductRunPreparation.Matches(run))
+    {
+        if (!m_ProductRunPreparation.ready) m_strStatus = m_ProductRunPreparation.failureStatus;
+        return m_ProductRunPreparation.ready;
+    }
+
+    Engine::CProfilerScope prepareScope(CGameInstance::Get().Get_Profiler(), "Kouku.Product.RunPreparation");
+    PRODUCT_RUN_PREPARATION requested;
+    requested.runEpoch = run.iRunEpoch;
+    requested.sourceRevision = run.iPinnedSourceRevision;
+    requested.rowsRevision = run.DraftRowsRevision;
+    m_ProductRunPreparation = requested;
+    if (!m_bProductLoaded || run.DraftRowsRevision.Is_Valid() ||
+        run.iPinnedSourceRevision != m_iProductSourceRevision || run.DraftRowsRevision != m_ProductDraftRowsRevision)
+    {
+        std::string status;
+        if (!Reload_Product(status, run.iPinnedSourceRevision))
+        {
+            m_ProductRunPreparation.failureStatus = status;
+            return false;
+        }
+    }
+    // Product success precedes the optional Camera reload. A failed immutable
+    // Product is not reparsed every frame, and cannot release the old camera.
+    if (auto* level = CLevel_KakulSaydonArena::Get_Active())
+    {
+        std::string cameraStatus;
+        if (!level->Reload_PublishedCameraShots(cameraStatus)) m_strStatus = cameraStatus;
+    }
+    requested.ready = true;
+    m_ProductRunPreparation = std::move(requested);
+    return true;
+}
+
 void Client::CKoukuSaydonPresentationPlayer::Update(float dt,
     const std::vector<KOUKU_BOSS_PRESENTATION_VIEW>& bosses,
     const std::vector<KOUKU_CARD_PRESENTATION_VIEW>& players)
@@ -3334,16 +3485,7 @@ void Client::CKoukuSaydonPresentationPlayer::Update(float dt,
         (run->eState == RUN_STATE::PENDING || run->eState == RUN_STATE::ACTIVE || run->eState == RUN_STATE::PATTERN_COMPLETED);
     const bool runPresentationLive = run && run->iRunEpoch &&
         (runLive || run->eState == RUN_STATE::COMPLETED);
-    if (runLive && m_iProductReloadRunEpoch != run->iRunEpoch)
-    {
-        if (auto* level = CLevel_KakulSaydonArena::Get_Active())
-        { std::string cameraStatus; if (!level->Reload_PublishedCameraShots(cameraStatus)) m_strStatus = cameraStatus; }
-        if (!CKoukuSaydonPresentationAssetService::Matches_AdmittedRun(run->iPinnedSourceRevision, run->DraftRowsRevision, run->iRunEpoch))
-        { m_strStatus = "Presentation draft hash/epoch is unavailable for the admitted run."; return; }
-        if (run->DraftRowsRevision.Is_Valid() || run->iPinnedSourceRevision != m_iProductSourceRevision || run->DraftRowsRevision != m_ProductDraftRowsRevision)
-        { std::string status; if (!Reload_Product(status, run->iPinnedSourceRevision)) return; }
-        m_iProductReloadRunEpoch = run->iRunEpoch;
-    }
+    if (runLive && !Prepare_AdmittedRun(*run)) return;
     if (runPresentationLive && (!CKoukuSaydonPresentationAssetService::Matches_AdmittedRun(
         run->iPinnedSourceRevision, run->DraftRowsRevision, run->iRunEpoch) || run->DraftRowsRevision != m_ProductDraftRowsRevision)) return;
     if (runPresentationLive && !run->strBundleId.empty())
@@ -3468,8 +3610,10 @@ void Client::CKoukuSaydonPresentationPlayer::Update(float dt,
         ANIMATION_MODEL_TARGET_VIEW weaponView;
         const bool hasWeapon = npc->Try_GetAnimationModelTarget(ANIMATION_BONE_TARGET::WEAPON, weaponView);
         bool backstepAfterimage = false;
-        const bool chargeAfterimage = Charge_AfterimageActive(product->second.pattern, clock, backstepAfterimage);
-        npc->Set_ChargeAfterimageEnabled(chargeAfterimage, backstepAfterimage);
+        CSkeletalAfterimage::SETTINGS afterimageSettings;
+        const bool chargeAfterimage = Charge_AfterimageActive(product->second.pattern, clock, backstepAfterimage, afterimageSettings,
+            session.lastClockMs, npc->Is_CounterAfterimageEnabled());
+        npc->Set_ChargeAfterimageEnabled(chargeAfterimage, backstepAfterimage, -1.f, &afterimageSettings);
         Sample(session, product->second.document, product->second.pattern,
             (std::min)(clock, float(product->second.durationMs)), false,
             *npc->Get_Transform()->Get_WorldMatrixPtr(), npc->Get_Model(), hasWeapon ? &weaponView : nullptr);
@@ -3535,8 +3679,10 @@ void Client::CKoukuSaydonPresentationPlayer::Update(float dt,
         ANIMATION_MODEL_TARGET_VIEW weaponView;
         const bool hasWeapon = npc->Try_GetAnimationModelTarget(ANIMATION_BONE_TARGET::WEAPON, weaponView);
         bool backstepAfterimage = false;
-        if (Charge_AfterimageActive(child->second.pattern, clock, backstepAfterimage))
-            npc->Set_ChargeAfterimageEnabled(true, backstepAfterimage);
+        CSkeletalAfterimage::SETTINGS afterimageSettings;
+        if (Charge_AfterimageActive(child->second.pattern, clock, backstepAfterimage, afterimageSettings,
+            session.lastClockMs, npc->Is_CounterAfterimageEnabled()))
+            npc->Set_ChargeAfterimageEnabled(true, backstepAfterimage, -1.f, &afterimageSettings);
         Sample(session, child->second.document, child->second.pattern,
             (std::min)(clock, float(child->second.durationMs)), false,
             *npc->Get_Transform()->Get_WorldMatrixPtr(), npc->Get_Model(), hasWeapon ? &weaponView : nullptr);
@@ -3621,6 +3767,7 @@ void Client::CKoukuSaydonPresentationPlayer::Update(float dt,
     }
     Update_DiceBindVisuals(dt, players);
     Update_MazeMarks(players);
+    Update_BingoBombs(dt, players);
     Update_BingoMarks(dt);
     Update_FearPresentation(dt, players);
     if (m_bPreviewPlaying && m_bOwnPreviewClock && m_bPreviewPivotReady)
@@ -3808,6 +3955,32 @@ void Client::CKoukuSaydonPresentationPlayer::Release_BundlePreviewMembers(
     members.clear();
 }
 
+void Client::CKoukuSaydonPresentationPlayer::Append_PreviewTargetTracking(
+    const KOUKU_SAYDON_COMPOSITION_DOCUMENT& document,
+    const KOUKU_SAYDON_COMPOSITION_PATTERN& source, BUNDLE_PREVIEW_MEMBER& member,
+    const uint32_t offsetTicks, const std::string& prefix)
+{
+    for (const auto& box : source.LogicOccurrences)
+    {
+        if (!box.bEnabled) continue;
+        const auto definition = std::find_if(document.Logics.begin(), document.Logics.end(),
+            [&](const auto& logic) { return logic.strLogicId == box.strLogicId; });
+        if (definition == document.Logics.end()) continue;
+        const bool nearest = definition->strLogicType == "TRIGGER" &&
+            definition->strTriggerKind == "BOSS_TRACK_TARGET";
+        const bool track = definition->strJudgementKind == "BOSS_TRACK_TARGET";
+        const bool showtime = definition->strJudgementKind == "SHOWTIME_PLAYER_TARGETS" &&
+            (definition->strFixedSelectionGroupId.empty() || !definition->strTrackingPresentationOccurrenceId.empty());
+        if (!nearest && !track && !showtime) continue;
+        auto& window = member.targetTracking.emplace_back();
+        window.occurrenceId = prefix + box.strOccurrenceId;
+        window.startMs = box.iStartMs; window.durationMs = nearest ? 34u : box.iDurationMs;
+        window.clockOffsetTicks = offsetTicks;
+        window.nearestOnce = nearest; window.immediate = nearest || showtime;
+        if (track) window.followSpeedScale = definition->fFollowSpeedScale;
+    }
+}
+
 bool Client::CKoukuSaydonPresentationPlayer::Prepare_CloneSplitPreview(
     const KOUKU_SAYDON_COMPOSITION_DOCUMENT& document,
     std::vector<BUNDLE_PREVIEW_MEMBER>& members, std::string& status)
@@ -3852,6 +4025,7 @@ bool Client::CKoukuSaydonPresentationPlayer::Prepare_CloneSplitPreview(
         clone.spatialLogicPreview = std::any_of(source.LogicOccurrences.begin(), source.LogicOccurrences.end(),
             [](const auto& box) { return box.bEnabled; });
         clone.animations = flatten(source);
+        Append_PreviewTargetTracking(document, source, clone);
         if (!level || !duration || clone.animations.empty() ||
             !level->Create_CompositionPreviewActor(source, clone.actor, status)) return false;
         clone.actor->Set_PresentationVisible(false);
@@ -3924,6 +4098,16 @@ bool Client::CKoukuSaydonPresentationPlayer::Prepare_CloneSplitPreview(
                     member.offsetTicks + startTicks, cutoffs[i], position, yaw)) return fail(status);
             }
             const auto prefix = box.strOccurrenceId + ".selected.";
+            Append_PreviewTargetTracking(document, *candidates[selected], member, startTicks, prefix);
+            uint32_t childStageStart = box.iStartMs;
+            for (auto stage : candidates[selected]->Stages)
+            {
+                stage.strStageId = prefix + stage.strStageId;
+                member.selectedFacingStages.emplace_back(childStageStart, std::move(stage));
+                childStageStart += member.selectedFacingStages.back().second.iDurationMs;
+            }
+            member.spatialLogicPreview |= !member.targetTracking.empty();
+            member.spatialPoseSamples.clear(); member.facingCheckpoints.clear();
             for (auto row : flatten(*candidates[selected]))
             {
                 row.strOccurrenceId = prefix + row.strOccurrenceId;
@@ -4114,19 +4298,10 @@ bool Client::CKoukuSaydonPresentationPlayer::Begin_BundlePreview(
             airborne |= definition->strTriggerKind == "ALBION_AIRBORNE";
             spatialLogic |= (definition->strTriggerKind == "BOSS_TELEPORT_XZ" || definition->strTriggerKind == "BOSS_TELEPORT_GROUNDED" ||
                 definition->strTriggerKind == "BOSS_TELEPORT_FACE_CENTER");
-            if (definition->strJudgementKind == "BOSS_TRACK_TARGET" ||
-                (definition->strJudgementKind == "SHOWTIME_PLAYER_TARGETS" &&
-                 (definition->strFixedSelectionGroupId.empty() || !definition->strTrackingPresentationOccurrenceId.empty())))
-            {
-                auto& tracking = member.targetTracking.emplace_back();
-                tracking.occurrenceId = box.strOccurrenceId;
-                tracking.startMs = box.iStartMs; tracking.durationMs = box.iDurationMs;
-                tracking.immediate = definition->strJudgementKind == "SHOWTIME_PLAYER_TARGETS";
-                if (definition->strJudgementKind == "BOSS_TRACK_TARGET")
-                    tracking.followSpeedScale = definition->fFollowSpeedScale;
-                spatialLogic = true;
-            }
+
         }
+        Append_PreviewTargetTracking(document, *source, member);
+        spatialLogic |= !member.targetTracking.empty();
         member.spatialLogicPreview = airborne || spatialLogic;
         if ((airborne || spatialLogic) && !CKoukuSaydonPreviewRootMotion::Allows_AutomaticMotion(document, *source))
             return fail("Spatial Logic preview requires no competing boss motion owner.");
@@ -4439,7 +4614,7 @@ bool Client::CKoukuSaydonPresentationPlayer::Sample_BundlePreviewPose(
     players.erase(std::remove_if(players.begin(), players.end(), [](const auto& view) {
         const auto& s = view.Snapshot;
         using LostArk::Shared::PLAYER_ACTION_STATE;
-        return !s.iCurrentHp || s.eAction == PLAYER_ACTION_STATE::DEAD ||
+        return !s.isCombatReady || !s.iCurrentHp || s.eAction == PLAYER_ACTION_STATE::DEAD ||
             s.eAction == PLAYER_ACTION_STATE::FALLING || s.eAction == PLAYER_ACTION_STATE::GRABBED ||
             !std::isfinite(s.fPositionX) || !std::isfinite(s.fPositionY) || !std::isfinite(s.fPositionZ);
     }), players.end());
@@ -4565,14 +4740,17 @@ bool Client::CKoukuSaydonPresentationPlayer::Sample_BundlePreviewPose(
         if (stageStartMs > completedClock && stageStartMs <= localMs) facingEvents.push_back({double(stageStartMs), &stage});
         stageStartMs += stage.iDurationMs;
     }
+    for (const auto& [start, stage] : member.selectedFacingStages)
+        if (start > completedClock && start <= localMs) facingEvents.push_back({double(start), &stage});
     if (member.rootMotion)
         for (const auto& teleport : member.rootMotion->Airborne_Events())
             if (teleport.phase == "TELEPORT_FACE_CENTER" && teleport.clockMs > completedClock && teleport.clockMs <= localMs)
                 facingEvents.push_back({double(teleport.clockMs), nullptr, nullptr, 0u, 0u, &teleport});
     for (auto& window : member.targetTracking)
     {
-        const auto begin = (uint64_t(window.startMs) * 30u + 999u) / 1000u;
-        const auto end = ((uint64_t(window.startMs) + window.durationMs) * 30u + 999u) / 1000u;
+        const auto begin = window.clockOffsetTicks + (uint64_t(window.startMs) * 30u + 999u) / 1000u;
+        const auto end = window.nearestOnce ? begin + 1u :
+            window.clockOffsetTicks + ((uint64_t(window.startMs) + window.durationMs) * 30u + 999u) / 1000u;
         const auto first = (std::max)(begin, completedClock < 0.0 ? uint64_t(0u) :
             static_cast<uint64_t>(std::floor(completedClock * 30.0 / 1000.0)));
         for (auto tick = first; tick < end && double(tick) * 1000.0 / 30.0 <= localMs; ++tick)
@@ -4684,7 +4862,21 @@ bool Client::CKoukuSaydonPresentationPlayer::Sample_BundlePreviewPose(
             auto target = std::find_if(players.begin(), players.end(), [&](const auto& view) {
                 return view.Snapshot.iNetEntityId == window.targetEntityId;
             });
-            if (target == players.end())
+            if (window.nearestOnce)
+            {
+                target = std::min_element(players.begin(), players.end(), [&](const auto& left, const auto& right) {
+                    if (left.isRaidParticipant != right.isRaidParticipant) return left.isRaidParticipant;
+                    const auto distance = [&](const auto& view) {
+                        const float dx = view.Snapshot.fPositionX - origin.x, dz = view.Snapshot.fPositionZ - origin.z;
+                        return dx * dx + dz * dz;
+                    };
+                    const auto a = distance(left), b = distance(right);
+                    return a != b ? a < b : left.Snapshot.iNetEntityId < right.Snapshot.iNetEntityId;
+                });
+                if (!target->isRaidParticipant) continue;
+                window.targetEntityId = target->Snapshot.iNetEntityId;
+            }
+            else if (target == players.end())
             {
                 uint32_t seed = member.airborneSelectionSeed;
                 for (const unsigned char c : window.occurrenceId) seed = (seed ^ c) * 16777619u;
@@ -4975,10 +5167,12 @@ void Client::CKoukuSaydonPresentationPlayer::Sample_BundlePreview()
             Counter_AfterimageAgeSeconds(m_PreviewDocument, member.pattern, localMs) : -1.f;
         member.actor->Set_CounterAfterimageEnabled(counterAge >= 0.f, counterAge);
         bool backstepAfterimage = false;
+        CSkeletalAfterimage::SETTINGS afterimageSettings;
         const bool chargeAfterimage = localMs >= 0.0 && localMs < member.durationMs &&
-            Charge_AfterimageActive(member.pattern, float(localMs), backstepAfterimage);
+            Charge_AfterimageActive(member.pattern, float(localMs), backstepAfterimage, afterimageSettings,
+                m_bPreviewPaused ? -1.f : member.session.lastClockMs, counterAge >= 0.f);
         member.actor->Set_ChargeAfterimageEnabled(chargeAfterimage, backstepAfterimage,
-            float((std::max)(0.0, localMs) * .001));
+            float((std::max)(0.0, localMs) * .001), &afterimageSettings);
 #ifdef _DEBUG
         if (m_bBundleWorldExternal && !member.finiteActorLifetime)
         {
@@ -5439,53 +5633,91 @@ void Client::CKoukuSaydonPresentationPlayer::Update_MazeMarks(
             i = marks.erase(i);
         }
     };
-    /* The bingo bomb's mark. It rides one named carrier and the Server can
-       cancel it mid-flight, so it stays a followed state rather than a
-       timeline. Height and size live in the authored document, so the pivot
-       here is only the ground point under its carrier. The planted half is a
-       World Sequence the Server names the moment it plants. */
-    {
-        const auto& bombBoard = CCombatHUDViewModel::Get().Get_BingoBoard();
-        std::set<std::int32_t> liveBombs;
-        for (std::uint8_t index = 0u; index < bombBoard.iBombCount; ++index)
-        {
-            const auto& bomb = bombBoard.Bombs[index];
-            const char* bombAsset = nullptr;
-            float4x4_t bombPivot;
-            if (LostArk::Shared::BINGO_BOMB_PHASE::MARKED == bomb.ePhase)
-            {
-                std::shared_ptr<CCharacter> carrier;
-                for (const auto& view : players)
-                    if (view.Snapshot.iNetEntityId == bomb.iCarrierNetEntityId)
-                    { carrier = view.pCharacter.lock(); break; }
-                if (!carrier || !carrier->Get_Transform()) continue;
-                const float4x4_t& carrierWorld =
-                    *carrier->Get_Transform()->Get_WorldMatrixPtr();
-                XMStoreFloat4x4(&bombPivot, XMMatrixTranslation(
-                    carrierWorld._41, carrierWorld._42, carrierWorld._43));
-                bombAsset = "bingo.bomb.mark";
-            }
-            /* PLANTED falls through: dropping the slot out of liveBombs is
-               what takes the mark off the carrier, and the sequence has already
-               started where it stood. */
-            else continue;
-            const std::int32_t slot = static_cast<std::int32_t>(index);
-            liveBombs.insert(slot);
-            Sync_MazeMark(m_BingoBombs[slot], bombAsset, bombPivot);
-        }
-        for (auto i = m_BingoBombs.begin(); i != m_BingoBombs.end();)
-        {
-            if (liveBombs.contains(i->first)) { ++i; continue; }
-            if (i->second.handle) CEffectV2Runtime::Stop_Group(i->second.handle);
-            i = m_BingoBombs.erase(i);
-        }
-    }
     /* The bingo hammer is authored now: four World Sequence templates, one
        per sweep direction, and one instance per anchor. The Server names the
        instance when it rolls the anchor, so there is nothing to pose here. */
     removeStale(m_MazePlayerMarks, livePlayers);
     removeStale(m_MazeTargetMarks, liveTargets);
     removeStale(m_MazeExits, liveExits);
+}
+
+void Client::CKoukuSaydonPresentationPlayer::Update_BingoBombs(
+    float dt, const std::vector<KOUKU_CARD_PRESENTATION_VIEW>& players)
+{
+    using namespace LostArk::Shared;
+    constexpr const char* motionId = "world.sequence.instance.kouku.bingo.bomb.marked";
+    const std::vector<std::string> effectTargets{"effect.kouku.gate3.showtime.bomb.fuse"};
+    auto* arena = CLevel_KakulSaydonArena::Get_Active();
+    const auto& board = CCombatHUDViewModel::Get().Get_BingoBoard();
+    if (!arena || !board.iBombCount) { m_BingoBombs.clear(); return; }
+    std::erase_if(m_BingoBombs, [&](const auto& row) {
+        return row.first < 0 || row.first >= board.iBombCount ||
+            board.Bombs[row.first].ePhase != BINGO_BOMB_PHASE::MARKED ||
+            board.Bombs[row.first].iCarrierNetEntityId != row.second.carrierId;
+    });
+    bool marked = false;
+    for (std::uint8_t index = 0; index < board.iBombCount; ++index)
+        marked |= board.Bombs[index].ePhase == BINGO_BOMB_PHASE::MARKED;
+    if (!marked) return;
+    const auto& source = arena->Get_WorldSequenceDocument();
+    auto targets = arena->Get_CompositionWorldTargets();
+    if (!m_BingoBombWorldDocument || m_BingoBombWorldDocument->Get_Revision() != source.Get_Revision())
+    {
+        auto staged = std::make_shared<CWorldSequenceDocument>();
+        std::string status;
+        if (!source.Build_PlaybackSubset({motionId}, *staged, status))
+        { m_strStatus = "Bingo bomb motion unavailable: " + status; return; }
+        std::vector<std::string> queued;
+        if (!CEffectPresentationService::Queue_ProductTargets_Priority(effectTargets, queued, status))
+        { m_strStatus = "Bingo bomb fuse unavailable: " + status; return; }
+        m_BingoBombWorldDocument = std::move(staged);
+    }
+    const auto ready = CEffectPresentationService::Get_ProductCuePreparationProbe(effectTargets);
+    if (!Is_ProductPrewarmTargetActivationReady(ready)) return;
+    const auto generation = CEffectV2Runtime::Cache_Generation() ^
+        (static_cast<std::uint64_t>(source.Get_Revision()) << 32u);
+    const auto nowMs = static_cast<std::uint64_t>(std::chrono::duration_cast<
+        std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count());
+    std::set<std::int32_t> live;
+    for (std::uint8_t index = 0; index < board.iBombCount; ++index)
+    {
+        const auto& bomb = board.Bombs[index];
+        if (bomb.ePhase != BINGO_BOMB_PHASE::MARKED) continue;
+        std::shared_ptr<CCharacter> carrier;
+        for (const auto& view : players)
+            if (view.Snapshot.iNetEntityId == bomb.iCarrierNetEntityId && view.Snapshot.iCurrentHp)
+            { carrier = view.pCharacter.lock(); break; }
+        if (!carrier || !carrier->Get_Transform()) continue;
+        live.insert(index);
+        auto& mark = m_BingoBombs[index];
+        if (mark.carrierId != bomb.iCarrierNetEntityId) { mark = {}; mark.carrierId = bomb.iCarrierNetEntityId; }
+        mark.retry.ObserveGeneration(generation);
+        const auto& world = *carrier->Get_Transform()->Get_WorldMatrixPtr();
+        CWorldSequencePlayer::OBJECT_PLACEMENT placement;
+        placement.position = {world._41, world._42, world._43};
+        if (mark.player)
+        {
+            if (mark.player->Set_ObjectPlacement(motionId, placement, targets))
+            {
+                mark.player->Update((std::max)(0.f, dt), targets);
+                if (mark.player->Is_Playing(motionId)) continue;
+            }
+            m_strStatus = "Bingo bomb playback failed: " + mark.player->Get_Status();
+            mark.player.reset(); mark.retry.Defer(nowMs);
+        }
+        if (!mark.retry.TryBegin(nowMs)) continue;
+        auto staged = std::make_unique<CWorldSequencePlayer>();
+        std::string status;
+        if (!staged->Set_Document(*m_BingoBombWorldDocument, targets, status) ||
+            !staged->Play(motionId, targets, 1.f, {}, 0u, placement) ||
+            !staged->Seek_InstanceToMs(motionId, 0.f, targets))
+        {
+            m_strStatus = "Bingo bomb start failed: " + (status.empty() ? staged->Get_Status() : status);
+            mark.retry.Defer(nowMs); continue;
+        }
+        mark.player = std::move(staged); mark.retry = {};
+    }
+    std::erase_if(m_BingoBombs, [&](const auto& row) { return !live.contains(row.first); });
 }
 
 void Client::CKoukuSaydonPresentationPlayer::Update_BingoMarks(float dt)
@@ -5604,7 +5836,7 @@ void Client::CKoukuSaydonPresentationPlayer::Reset()
     m_CounterAfterimageOwners.clear();
     m_LightPlayerPivots.clear();
     m_LightBossFollowers.clear();
-    m_iProductReloadRunEpoch = 0u;
+    m_ProductRunPreparation = {};
     for (auto& [id, session] : m_TargetedCombatSessions)
     { Stop_Session(session.playback); Stop_Session(session.sourceBossPlayback); }
     m_TargetedCombatSessions.clear();
@@ -5631,9 +5863,8 @@ void Client::CKoukuSaydonPresentationPlayer::Reset()
     m_DiceBindVisuals.clear();
     m_BingoMarks.clear();
     m_BingoWorldDocument.reset();
-    for (const auto& [slot, bomb] : m_BingoBombs)
-        if (bomb.handle) CEffectV2Runtime::Stop_Group(bomb.handle);
     m_BingoBombs.clear();
+    m_BingoBombWorldDocument.reset();
     for (const auto& [id, exit] : m_MazeExits)
         if (exit.handle) CEffectV2Runtime::Stop_Group(exit.handle);
     m_MazeExits.clear();

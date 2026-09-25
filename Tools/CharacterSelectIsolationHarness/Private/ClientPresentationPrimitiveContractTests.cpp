@@ -1,4 +1,5 @@
 #include "ClientReplicationEvent.h"
+#include "CombatHUDViewModel.h"
 #include "LocalMovePrediction.h"
 #include "MouseButtonReleaseGate.h"
 #include "PartyTransferNotice.h"
@@ -16,6 +17,28 @@ namespace
 			std::cerr << "ClientPresentationPrimitiveContracts: " << message << '\n';
 		return condition;
 	}
+
+    bool VerifyKoukuVisibleCooldownSlots()
+    {
+        Client::HUD_KOUKU_GIMMICK_STATE hud;
+        hud.eHudMode = Client::HUD_KOUKU_HUD_MODE::MAZE;
+        hud.ModeSkillIndexBySlot[0] = 0; hud.ModeSkillIndexBySlot[1] = 1;
+        hud.CooldownEndTicks[0] = 140u; hud.CooldownEndTicks[1] = 112u;
+        if (!Require(hud.Has_VisibleSkillSlot(0u) && !hud.Has_VisibleSkillSlot(1u) &&
+            !hud.Has_VisibleSkillSlot(Client::HUD_KOUKU_SLOT_COUNT),
+            "maze LMB wire cooldown appeared as a W icon, ring or countdown")) return false;
+        for (const auto mode : {Client::HUD_KOUKU_HUD_MODE::POLYMORPH,
+            Client::HUD_KOUKU_HUD_MODE::MARIO, Client::HUD_KOUKU_HUD_MODE::DANCE})
+        {
+            hud.eHudMode = mode;
+            if (!Require(hud.Has_VisibleSkillSlot(0u) && hud.Has_VisibleSkillSlot(1u) &&
+                !hud.Has_VisibleSkillSlot(2u), "maze filtering hid another mode's assigned W skill")) return false;
+        }
+        hud.eHudMode = Client::HUD_KOUKU_HUD_MODE::NONE;
+        return Require(!hud.Has_VisibleSkillSlot(0u) && !hud.Has_VisibleSkillSlot(1u) &&
+            hud.CooldownEndTicks[0] == 140u && hud.CooldownEndTicks[1] == 112u,
+            "interaction HUD visibility altered replicated cooldown deadlines or leaked into the class HUD");
+    }
 
 	bool VerifyMousePressOwnership()
 	{
@@ -629,7 +652,7 @@ namespace
 
 int Run_ClientPresentationPrimitiveContractTests()
 {
-	if (!VerifyMousePressOwnership() || !VerifyIndependentLoopedSound() ||
+	if (!VerifyKoukuVisibleCooldownSlots() || !VerifyMousePressOwnership() || !VerifyIndependentLoopedSound() ||
 		!VerifyReplicatedPartyHealth() || !VerifyPartyTransferNotice() ||
 		!VerifyImmediateMovePrediction() || !VerifyAcknowledgedMoveCorrection() ||
 		!VerifyMoveSequenceOrdering() || !VerifyMoveRejectionAndForcedState() ||

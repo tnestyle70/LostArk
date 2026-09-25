@@ -323,6 +323,7 @@ public:
 		std::uint32_t iServerTick = 0u,
 		bool_t snapToSnapshot = false);
 	void Trigger_HitFlash();
+	void Set_CombatHovered(bool_t hovered) { m_HitFlash.isCombatHovered = hovered && Is_PresentationVisible(); }
     void Set_PresentationVisible(bool visible) { m_bPresentationVisible = visible; }
     // Preview owns only a render suppression; network state and base visibility keep updating.
     void Acquire_CompositionPreviewSuppression() { ++m_iCompositionPreviewSuppressions; }
@@ -330,9 +331,10 @@ public:
     bool Is_PresentationVisible() const { return m_bPresentationVisible && m_iCompositionPreviewSuppressions == 0u; }
     // Presentation owner gates this using the approved Server pattern clock.
     void Set_ChargeAfterimageEnabled(bool enabled, bool backstep = false,
-        float previewClockSeconds = -1.f);
+        float previewClockSeconds = -1.f, const CSkeletalAfterimage::SETTINGS* sourceSettings = nullptr);
     // A nonnegative clock belongs to Tool Preview; product uses its received state.
     void Set_CounterAfterimageEnabled(bool enabled, float previewClockSeconds = -1.f);
+    bool Is_CounterAfterimageEnabled() const { return m_CounterAfterimageEnabled; }
     void Reset_AfterimageHistory();
 	void Set_CombatColliderDebugVisible(bool_t isVisible) {
 		m_isCombatColliderDebugVisible = isVisible;
@@ -370,12 +372,17 @@ public:
 	virtual void Late_Update(f32_t fTimeDelta) override;
 	virtual HRESULT Render() override;
 	virtual HRESULT Render_Group(RENDERGROUP group) override;
+    virtual HRESULT Render_DeferredOverlay() override;
+    bool_t Try_PickPresentation(const float3_t& origin, const float3_t& direction, f32_t& distance) const;
 
 private:
 	shared_ptr<Engine::CShader> m_pShaderCom = { nullptr };
 	bool_t m_bNativeBinaryBasePass = false;
     bool m_ChargeAfterimageEnabled = false;
     bool m_BackstepAfterimageStyle = false;
+    bool m_HasSourceAfterimageSettings = false;
+    bool m_SourceAfterimageOwnsHistory = false;
+    CSkeletalAfterimage::SETTINGS m_SourceAfterimageSettings;
     bool m_ChargeAfterimageExternalClock = false;
     float m_ChargeAfterimageClockSeconds = 0.f;
     float m_ChargeAfterimageLastSampleSeconds = -1.f;
@@ -401,6 +408,11 @@ private:
 	bool_t m_bNpcActionEffectTargetsQueued = false;
 	void Arm_ActionEffectCues(const char_t* pClipName);
 	void Update_ActionEffectCues(f32_t fTimeDelta);
+	// Native MN_RPCZ_00 BEHIT notify, owned by one successful action entry.
+	uint32_t m_iPendingHitReactionSoundClip = UINT32_MAX;
+	uint32_t m_iPendingHitReactionSoundEvent = UINT32_MAX;
+	void Arm_HitReactionSound(const char_t* pClipName);
+	void Update_HitReactionSound();
 	/* Socketed weapon with body-clock pose synchronization; null when the
 	desc declared none. It never starts a clip of its own. */
 	shared_ptr<Engine::CModel> m_pWeaponModelCom = { nullptr };

@@ -31,8 +31,8 @@ public:
 	bool_t Initialize_Effects(uint32_t levelIndex);
 	void Play(const float3_t& worldPosition,
 		const shared_ptr<CCharacter>& character);
-	void Play_Ping(const float3_t& worldPosition, const shared_ptr<CCharacter>& character);
-	void Set_PingPending(bool_t pending, const shared_ptr<CCharacter>& character);
+	void Play_Ping(const float3_t& worldPosition, std::uint32_t senderId, std::uint32_t sequence);
+	void Clear_Move();
 	void Clear();
 
 private:
@@ -41,10 +41,12 @@ private:
 		const float3_t& position, EFFECT_WORLD_ROOT_HANDLE& handle, bool_t sustained = false);
 	uint32_t m_iLevelIndex = ETOUI(LEVEL::END);
 	EFFECT_WORLD_ROOT_HANDLE m_ClickHandle;
-	EFFECT_WORLD_ROOT_HANDLE m_PingHandle;
-	EFFECT_WORLD_ROOT_HANDLE m_PendingHandle;
-	bool_t m_bPingPending = false;
-	f32_t m_fPingSeconds = 0.f;
+	struct ROOM_PING_MARKER
+	{
+		EFFECT_WORLD_ROOT_HANDLE Handle;
+		f32_t fSeconds = 0.f;
+	};
+	std::vector<ROOM_PING_MARKER> m_RoomPings;
 	weak_ptr<CCharacter> m_pCharacter;
 	f32_t m_fClickSeconds = 0.f;
 	std::string m_strLastFailure;

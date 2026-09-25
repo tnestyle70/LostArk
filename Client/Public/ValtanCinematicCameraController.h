@@ -72,6 +72,13 @@ public:
 		const VALTAN_CINEMATIC_CAMERA_CUE& cue,
 		const VALTAN_CINEMATIC_CAMERA_INPUT& input,
 		VALTAN_CINEMATIC_CAMERA_POSE& inOutPose);
+	/* Keep an authored actor's screen framing while displaying another fixed
+	   camera. The result post-multiplies its world transform; neither pose changes.
+	   Invalid input preserves outTransform. Both views use the same viewport. */
+	static bool_t Build_ViewRebaseTransform(
+		const VALTAN_CINEMATIC_CAMERA_POSE& authoredPose,
+		const VALTAN_CINEMATIC_CAMERA_POSE& heldPose,
+		float4x4_t& outTransform);
 	/* Entry and gameplay-handoff blends share one bounded sampler. Keeping this
 	   independent of camera ownership lets the Level retain the override until
 	   it has submitted the exact final follow pose. */

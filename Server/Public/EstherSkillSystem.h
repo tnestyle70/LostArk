@@ -31,6 +31,8 @@ namespace LostArk::Server
 	the same length for every class, so the ESTHER_CAST action holds exactly
 	this long before the room returns the player to NONE. */
 	inline constexpr std::uint32_t ESTHER_CAST_DURATION_MS = 1500u;
+	// Inanna protects the living Kouku raid participants from the accepted call.
+	inline constexpr std::uint32_t ESTHER_INANNA_INVULNERABLE_DURATION_MS = 30000u;
 
 	/* Every summonable Esther. Each authored clip carries its own entrance and
 	exit (Sillian npc_evt1_sk_swordofchampion_bk 157 frames at 30 fps, Wei

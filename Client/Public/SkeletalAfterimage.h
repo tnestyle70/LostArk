@@ -33,6 +33,14 @@ public:
         bool interpolateColor = false;
         float sourceColorIntensity = 0.f;
         float4_t endColor{1.f, 1.f, 1.f, 1.f};
+        // Opt-in source TrailGhost channels. color/endColor hold the rim channel;
+        // legacy callers retain their authored shader, opacity and reset policy.
+        bool sourceChannels = false;
+        float sourceInitialAlpha = 1.f;
+        float userAlphaScale = 1.f;
+        float sourceAlphaHoldSeconds = 0.f;
+        float4_t ambientStart{0.f, 0.f, 0.f, 0.f};
+        float4_t ambientEnd{0.f, 0.f, 0.f, 0.f};
     };
     bool Configure(const SETTINGS& settings);
     void Set_PresentationView(const MODEL_VIEW& view) { m_View = view; }
@@ -54,6 +62,7 @@ private:
         std::vector<std::vector<float4x4_t>> palettes;
         float ageSeconds = 0.f;
         uint32_t hiddenMeshMask = 0u;
+        SETTINGS settings; // An emitted child retains its own lifetime and colors.
     };
     MODEL_VIEW m_View;
     SETTINGS m_Settings;
@@ -61,6 +70,7 @@ private:
     std::weak_ptr<Engine::CModel> m_Model;
     float m_Accumulator = 0.f;
     bool m_SuppressedUntilDisabled = false;
+    bool m_WasEmitting = false;
     float m_PulseClockSeconds = -1.f;
     float m_PulseBirthSeconds = -1.f;
     bool Capture_Sample(const std::shared_ptr<Engine::CModel>& model,
