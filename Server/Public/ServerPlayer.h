@@ -308,10 +308,8 @@ namespace LostArk::Server
 		std::uint32_t iEmberOrbs = 0;
 		std::uint32_t iEmberLockedSockets = 0;
 		std::uint32_t iEmberSpentOnAction = 0;
-		/* KoukuSaydon madness gauge and the avatar it drives. The maximum is a
-		fixed first value until the encounter owns it; nothing raises the
-		current value yet. The form is Server truth the Client presents; the
-		Debug F1 toggle and authored Mario entry change it. */
+		/* The encounter policy owns gauge units and gain. Server damage and
+		world-object contact fill it; snapshots expose only the resulting form. */
 		static constexpr std::uint32_t MADNESS_GAUGE_MAXIMUM = 10000u;
 		/* Buffs the player holds. Expired entries are dropped each tick, and the
 		newest cast of the same buff replaces the older one. */
@@ -320,6 +318,9 @@ namespace LostArk::Server
 		std::uint32_t iShield = 0;
 		/* Set while a death-deny buff has already spent itself on a lethal hit. */
 		std::uint32_t iInvulnerableEndTick = 0;
+		// Room policy gates damage gain; fractional units survive small admitted hits.
+		std::uint32_t iMadnessDamageGainPercent = 0u;
+		double dMadnessRemainder = 0.;
 		std::uint32_t iCurrentMadness = 0;
 		std::uint32_t iMaximumMadness = MADNESS_GAUGE_MAXIMUM;
 		LostArk::Shared::PLAYER_MADNESS_FORM eMadnessForm =

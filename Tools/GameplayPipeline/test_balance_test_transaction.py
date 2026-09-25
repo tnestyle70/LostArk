@@ -113,6 +113,31 @@ class BalanceTestTransaction(unittest.TestCase):
         profile["players"] = [{"characterClass": "LANCE_MASTER", "attackPower": attack, "criticalChancePercent": 70, "futureField": 17}]
         self.write(PROFILE, profile)
 
+    def test_madness_tuning_merges_numeric_fields_and_preserves_unrelated_edits(self):
+        profile = json.loads((self.root / PROFILE).read_text())
+        profile["madness"] = [{"policyId": "KOUKUSAYDON", "damageGainPercent": 100,
+                              "ballMultiplierPercent": 200, "dollMultiplierPercent": 200,
+                              "ballRadiusM": 2.0, "futureField": 17}]
+        self.write(PROFILE, profile)
+        result = self.run_draft([
+            {"document": PROFILE, "domain": "madness", "id": "KOUKUSAYDON", "field": "damageGainPercent", "before": 100, "value": 150},
+            {"document": PROFILE, "domain": "madness", "id": "KOUKUSAYDON", "field": "ballRadiusM", "before": 2.0, "value": 2.5}])
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        actual = json.loads((self.root / PROFILE).read_text())["madness"][0]
+        self.assertEqual((actual["damageGainPercent"], actual["ballRadiusM"]), (150, 2.5))
+        self.assertEqual((actual["ballMultiplierPercent"], actual["dollMultiplierPercent"], actual["futureField"]), (200, 200, 17))
+
+    def test_madness_tuning_rejects_a_same_field_concurrent_edit(self):
+        profile = json.loads((self.root / PROFILE).read_text())
+        profile["madness"] = [{"policyId": "KOUKUSAYDON", "dollMultiplierPercent": 300}]
+        self.write(PROFILE, profile)
+        before = (self.root / PROFILE).read_bytes()
+        result = self.run_draft([
+            {"document": PROFILE, "domain": "madness", "id": "KOUKUSAYDON", "field": "dollMultiplierPercent", "before": 200, "value": 250}])
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("CONFLICT", result.stderr)
+        self.assertEqual(before, (self.root / PROFILE).read_bytes())
+
     def test_retail_and_base_fields_save_together_without_erasing_unknown_fields(self):
         self.retail_player()
         result = self.run_draft([

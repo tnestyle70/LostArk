@@ -19,6 +19,7 @@
 #include "CharacterSpec.h"
 #include "CombatHUDViewModel.h"
 #include "CustomizingView.h"
+#include "DataJson.h"
 #include "Effect_PresentationService.h"
 #include "GameInstance.h"
 #include "ImGuiLayer.h"
@@ -34,6 +35,7 @@
 #include "NetworkPlayerCommandSink.h"
 #include "NetworkWorldEntityCommandSink.h"
 #include "PlayableCharacterAssetService.h"
+#include "ProjectDataRoot.h"
 #include "RaidEntryPreviewView.h"
 #include "RuntimeAssetRoot.h"
 #include "Transform.h"
@@ -46,13 +48,11 @@
 #include <algorithm>
 #include <cmath>
 #include <cstring>
-#ifdef _DEBUG
-#include "DataJson.h"
-#include "ProjectDataRoot.h"
-#include <charconv>
 #include <fstream>
 #include <sstream>
 #include <unordered_set>
+#ifdef _DEBUG
+#include <charconv>
 #endif
 
 namespace
@@ -88,6 +88,16 @@ namespace
 	};
 
 	const char* Get_CinematicClassId(size_t index);
+
+	const char* Get_MovieClassForCategory(const std::string& categoryId)
+	{
+		if (categoryId == "class.warrior") return "WARLORD";
+		if (categoryId == "class.fighter") return "LANCE_MASTER";
+		if (categoryId == "class.specialist") return "ARTIST";
+		if (categoryId == "class.dragon_human") return "GUARDIANKNIGHT";
+		if (categoryId == "class.specialist_male") return "DIMENSIONMASTER";
+		return "";
+	}
 
 	const char_t* Get_CharacterClassName(
 		const LostArk::Shared::CHARACTER_CLASS_ID characterClass)
@@ -145,7 +155,9 @@ CLevel_CharacterSelect::CLevel_CharacterSelect(
 CLevel_CharacterSelect::~CLevel_CharacterSelect()
 {
 	m_ClassSelectionPresentation.Clear();
-	m_ClassCinemaMap.Clear();
+	for (auto& background : m_ClassCinemaBackgrounds)
+		if (background.runtime) background.runtime->Clear();
+	m_ClassCinemaBackgrounds.clear();
 	// Stop the owner before clearing level/catalog/replication state it observes.
 	m_pClassAssetPreparation.reset();
 	if (this == s_pActiveInstance)
@@ -225,6 +237,8 @@ HRESULT CLevel_CharacterSelect::Initialize()
 		m_iSelectedClassIndex = static_cast<size_t>(
 			std::distance(SUPPORTED_CLASSES.begin(), selected));
 	}
+	if (Load_ClassMovieCategories())
+		(void)Select_ClassCinematic(initialClass);
 
 	if (FAILED(Ready_Camera()))
 		return E_FAIL;
@@ -237,28 +251,23 @@ HRESULT CLevel_CharacterSelect::Initialize()
 	selectionTargets.device = m_pDevice;
 	selectionTargets.context = m_pContext;
 	m_strClassCinemaPreparationFailure.clear();
-	bool_t cinemaBackgroundReady = false;
+	bool_t cinemaManifestReady = false;
 	if (!CClassSelectionPresentation::Is_Configured())
 		m_strClassCinemaPreparationFailure = "Class selection manifest is missing: Data/Camera/ClassSelection.cinematics.json";
-	else if (!entry->pPresentationMapAreaId)
-		m_strClassCinemaPreparationFailure = "Class selection presentation background Area is not configured.";
 	else
-	{
-		cinemaBackgroundReady = m_ClassCinemaMap.Load_Area(ETOUI(LEVEL::CHARACTER_SELECT),
-			entry->pPresentationMapAreaId, entry->PresentationMapLoadScope);
-		if (!cinemaBackgroundReady)
-			m_strClassCinemaPreparationFailure = "Class selection background " +
-				std::string(entry->pPresentationMapAreaId) + ": " + m_ClassCinemaMap.Get_Status();
-	}
-	for (auto& placement : m_ClassCinemaMap.Get_MutablePlacements())
-		(void)CMapPlacementRuntime::Set_RuntimeSuppressed(placement, true);
-	if (!cinemaBackgroundReady)
+		cinemaManifestReady = Load_ClassCinematicBackgrounds(entry->pMapAreaId,
+			entry->pPresentationMapAreaId ? entry->pPresentationMapAreaId : "", entry->PresentationMapLoadScope);
+	if (!cinemaManifestReady)
 		OutputDebugStringA(("[Level_CharacterSelect][ClassCinema] " +
 			m_strClassCinemaPreparationFailure + "\n").c_str());
-	if (cinemaBackgroundReady &&
+	// Background admission is per Area; one missing scene's map cannot disable every movie.
+	if (cinemaManifestReady &&
 		!m_ClassSelectionPresentation.Initialize(entry->pMapAreaId, selectionTargets, m_pCamera))
+	{
+		m_strClassCinemaPreparationFailure = m_ClassSelectionPresentation.Get_Status();
 		OutputDebugStringA(("[Level_CharacterSelect][ClassCinema] " +
-			m_ClassSelectionPresentation.Get_Status() + "\n").c_str());
+			m_strClassCinemaPreparationFailure + "\n").c_str());
+	}
 
 	m_pClassSelectView = std::make_unique<CUILayoutRuntime>(
 		m_pDevice, m_pContext, ETOUI(LEVEL::CHARACTER_SELECT), TEXT("Layer_UI"),
@@ -353,13 +362,7 @@ void CLevel_CharacterSelect::Update(const f32_t fTimeDelta)
 	if (m_ClassSelectionPresentation.Is_Active() &&
 		CGameInstance::Get().Get_DIKeyPressed(DIK_F6))
 		m_ClassSelectionPresentation.Stop();
-	const bool_t cinemaVisible = m_ClassSelectionPresentation.Is_Active();
-	if (cinemaVisible != m_isClassCinemaBackgroundVisible)
-	{
-		m_isClassCinemaBackgroundVisible = cinemaVisible;
-		for (auto& placement : m_ClassCinemaMap.Get_MutablePlacements())
-			(void)CMapPlacementRuntime::Set_RuntimeSuppressed(placement, !cinemaVisible);
-	}
+	Update_ClassCinematicBackgroundVisibility();
 }
 
 HRESULT CLevel_CharacterSelect::Render()
@@ -1840,23 +1843,262 @@ bool_t CLevel_CharacterSelect::Can_PlayClassCinematic() const
 	return true;
 }
 
+bool_t CLevel_CharacterSelect::Load_ClassCinematicBackgrounds(const std::string& primaryAreaId,
+	const std::string& fallbackAreaId, const MAP_LOAD_SCOPE& loadScope)
+{
+	std::vector<std::string> areaIds;
+	std::string status;
+	if (!CClassSelectionPresentation::Load_BackgroundAreas(primaryAreaId, fallbackAreaId,
+		areaIds, status))
+	{
+		m_strClassCinemaPreparationFailure = status;
+		return false;
+	}
+
+	std::vector<CLASS_CINEMA_BACKGROUND> staged;
+	for (const auto& areaId : areaIds)
+	{
+		// The primary Area is already alive and is never owned by cinematic suppression.
+		if (areaId == primaryAreaId) continue;
+		CLASS_CINEMA_BACKGROUND background;
+		background.areaId = areaId;
+		background.runtime = std::make_unique<CMapPlacementRuntime>();
+		if (!background.runtime->Load_Area(ETOUI(LEVEL::CHARACTER_SELECT), areaId, loadScope))
+		{
+			background.failure = "Class selection background " + areaId + ": " + background.runtime->Get_Status();
+			OutputDebugStringA(("[Level_CharacterSelect][ClassCinema] " + background.failure + "\n").c_str());
+		}
+		for (auto& placement : background.runtime->Get_MutablePlacements())
+			(void)CMapPlacementRuntime::Set_RuntimeSuppressed(placement, true);
+		staged.push_back(std::move(background));
+	}
+	m_ClassCinemaBackgrounds.swap(staged);
+	m_strClassCinemaFallbackAreaId = fallbackAreaId;
+	m_strClassCinemaPreparationFailure.clear();
+	return true;
+}
+
+std::string CLevel_CharacterSelect::Resolve_ClassCinematicBackgroundArea(const std::string& classId) const
+{
+	const auto& authored = m_ClassSelectionPresentation.Get_BackgroundAreaId(classId);
+	return authored.empty() ? m_strClassCinemaFallbackAreaId : authored;
+}
+
+bool_t CLevel_CharacterSelect::Check_ClassCinematicBackground(const std::string& classId,
+	std::string& outFailure) const
+{
+	outFailure.clear();
+	const auto areaId = Resolve_ClassCinematicBackgroundArea(classId);
+	if (areaId.empty())
+	{
+		outFailure = "Class selection presentation background Area is not configured.";
+		return false;
+	}
+	if (areaId == m_MapRuntime.Get_Catalog().Get_AreaId()) return true;
+	const auto background = std::find_if(m_ClassCinemaBackgrounds.begin(), m_ClassCinemaBackgrounds.end(),
+		[&](const auto& value) { return value.areaId == areaId; });
+	if (background == m_ClassCinemaBackgrounds.end() || !background->runtime)
+		outFailure = "Class selection background was not prepared: " + areaId;
+	else if (!background->failure.empty())
+		outFailure = background->failure;
+	else
+		return true;
+	return false;
+}
+
+void CLevel_CharacterSelect::Update_ClassCinematicBackgroundVisibility()
+{
+	const auto activeArea = m_ClassSelectionPresentation.Is_Active() ?
+		Resolve_ClassCinematicBackgroundArea(m_ClassSelectionPresentation.Get_ActiveClass()) : std::string{};
+	for (auto& background : m_ClassCinemaBackgrounds)
+	{
+		const bool_t visible = background.runtime && background.failure.empty() && background.areaId == activeArea;
+		if (visible == background.visible) continue;
+		background.visible = visible;
+		if (background.runtime)
+			for (auto& placement : background.runtime->Get_MutablePlacements())
+				(void)CMapPlacementRuntime::Set_RuntimeSuppressed(placement, !visible);
+	}
+}
+
+bool_t CLevel_CharacterSelect::Load_ClassMovieCategories()
+{
+	try
+	{
+		const auto path = CProjectDataRoot::Resolve(L"Rendering/Authored/CharacterSelectFloorSwap.json");
+		std::ifstream input(path, std::ios::binary | std::ios::ate);
+		if (!input.is_open() || input.tellg() < 0 || input.tellg() > 65536)
+		{
+			m_strClassMovieCatalogFailure = "Cannot read class movie categories: " + path.string();
+			return false;
+		}
+		input.seekg(0);
+		std::ostringstream text;
+		text << input.rdbuf();
+		if (input.bad())
+		{
+			m_strClassMovieCatalogFailure = "Class movie category read failed; previous options retained.";
+			return false;
+		}
+		DATA_JSON_VALUE root;
+		DATA_JSON_PARSE_LIMITS limits;
+		limits.iMaximumBytes = 65536u;
+		limits.iMaximumDepth = 8u;
+		limits.iMaximumValues = 1024u;
+		std::string error;
+		if (!CDataJson::Parse(text.str(), root, error, limits))
+		{
+			m_strClassMovieCatalogFailure = "Class movie category JSON: " + error;
+			return false;
+		}
+		const auto readString = [](const DATA_JSON_VALUE* value, std::string& out)
+		{
+			if (!value || !value->Is_String() || value->Get_String().empty() ||
+				value->Get_String().size() > 256u ||
+				std::any_of(value->Get_String().begin(), value->Get_String().end(),
+					[](const unsigned char c) { return c < 32u || c == 127u; })) return false;
+			out = value->Get_String();
+			return true;
+		};
+		std::string schema, area;
+		const auto* version = root.Find("formatVersion");
+		const auto* options = root.Find("options");
+		if (!root.Is_Object() || !readString(root.Find("schema"), schema) ||
+			schema != "lostark.character-select-floor-swap" ||
+			!version || !version->Is_Number() || version->Was_FloatingPointToken() || version->Get_Number() != 1.0 ||
+			!readString(root.Find("areaId"), area) || area != "LV_LOBBY_CLASSSELECT_SL00" ||
+			area != m_MapRuntime.Get_Catalog().Get_AreaId() ||
+			!options || !options->Is_Array() || options->Get_Array().empty() || options->Get_Array().size() > 32u)
+		{
+			m_strClassMovieCatalogFailure = "Class movie categories require the SL00 floor catalog.";
+			return false;
+		}
+		std::vector<CHARACTER_SELECT_MOVIE_OPTION> staged;
+		std::unordered_set<std::string> ids, floors;
+		for (const auto& value : options->Get_Array())
+		{
+			CHARACTER_SELECT_MOVIE_OPTION option;
+			if (!value.Is_Object() || !readString(value.Find("id"), option.id) ||
+				!readString(value.Find("label"), option.label) ||
+				!readString(value.Find("floorSourcePlacementId"), option.floorSourcePlacementId) ||
+				!ids.insert(option.id).second || !floors.insert(option.floorSourcePlacementId).second)
+			{
+				m_strClassMovieCatalogFailure = "Class movie category ID, label, or floor source is invalid or duplicated.";
+				return false;
+			}
+			option.classId = Get_MovieClassForCategory(option.id);
+			if (option.classId.empty()) continue;
+			const auto& placements = m_MapRuntime.Get_Placements();
+			if (1 != std::count_if(placements.begin(), placements.end(), [&](const auto& entry)
+				{ return entry.record.sourcePlacementId == option.floorSourcePlacementId; }))
+			{
+				m_strClassMovieCatalogFailure = "Class movie floor is missing or ambiguous: " + option.floorSourcePlacementId;
+				return false;
+			}
+			staged.push_back(std::move(option));
+		}
+		// Both F1 and the Action Workbench consume this one admitted movie list.
+		const std::array<std::pair<const char*, const char*>, 5> movies = {{{"ARTIST", "\353\217\204\355\231\224\352\260\200"},
+			{"WARLORD", "\354\233\214\353\241\234\353\223\234"}, {"DIMENSIONMASTER", "\354\260\250\354\233\220\354\210\240\354\202\254"},
+			{"LANCE_MASTER", "\354\260\275\354\210\240\354\202\254"}, {"GUARDIANKNIGHT", "\352\260\200\353\224\224\354\226\270\353\202\230\354\235\264\355\212\270"}}};
+		std::vector<CHARACTER_SELECT_MOVIE_OPTION> ordered;
+		for (const auto& [classId, label] : movies)
+		{
+			const auto found = std::find_if(staged.begin(), staged.end(),
+				[&](const auto& option) { return option.classId == classId; });
+			if (found == staged.end())
+			{
+				m_strClassMovieCatalogFailure = std::string("Missing movie category: ") + classId;
+				return false;
+			}
+			found->label = label;
+			ordered.push_back(std::move(*found));
+		}
+		m_ClassMovieOptions.swap(ordered);
+		m_iSelectedClassMovieCategory = 0;
+		m_strClassMovieCatalogFailure.clear();
+		m_strClassMovieRequestFailure.clear();
+		return true;
+	}
+	catch (const std::exception& error)
+	{
+		m_strClassMovieCatalogFailure = std::string("Class movie category load failed: ") + error.what();
+		return false;
+	}
+}
+
+const std::string& CLevel_CharacterSelect::Get_ClassMovieCategoryId() const
+{
+	static const std::string empty;
+	return m_iSelectedClassMovieCategory < m_ClassMovieOptions.size() ?
+		m_ClassMovieOptions[m_iSelectedClassMovieCategory].id : empty;
+}
+
+const std::string& CLevel_CharacterSelect::Get_ClassMovieId() const
+{
+	static const std::string empty;
+	return m_iSelectedClassMovieCategory < m_ClassMovieOptions.size() ?
+		m_ClassMovieOptions[m_iSelectedClassMovieCategory].classId : empty;
+}
+
+const std::string& CLevel_CharacterSelect::Get_ClassMovieLabel() const
+{
+	static const std::string unavailable = "No class movie category";
+	return m_iSelectedClassMovieCategory < m_ClassMovieOptions.size() ?
+		m_ClassMovieOptions[m_iSelectedClassMovieCategory].label : unavailable;
+}
+
+bool_t CLevel_CharacterSelect::Select_ClassMovieCategory(const size_t index)
+{
+	if (index >= m_ClassMovieOptions.size()) return false;
+	if (m_iSelectedClassMovieCategory != index) m_strClassMovieRequestFailure.clear();
+	m_iSelectedClassMovieCategory = index;
+	return true;
+}
+
+bool_t CLevel_CharacterSelect::Select_ClassCinematic(
+	const LostArk::Shared::CHARACTER_CLASS_ID characterClass)
+{
+	const auto found = std::find(SUPPORTED_CLASSES.begin(), SUPPORTED_CLASSES.end(), characterClass);
+	if (found == SUPPORTED_CLASSES.end()) return false;
+	const std::string classId = Get_CinematicClassId(static_cast<size_t>(std::distance(SUPPORTED_CLASSES.begin(), found)));
+	for (size_t i = 0; i < m_ClassMovieOptions.size(); ++i)
+		if (m_ClassMovieOptions[i].classId == classId) return Select_ClassMovieCategory(i);
+	return false;
+}
+
+bool_t CLevel_CharacterSelect::Play_ClassCinematic(const std::string& classId)
+{
+	m_strClassMovieRequestFailure.clear();
+	std::string backgroundFailure;
+	const std::string selected = Get_ClassMovieLabel() + " [" + Get_ClassMovieCategoryId() + "]";
+	if (!m_strClassMovieCatalogFailure.empty())
+		m_strClassMovieRequestFailure = m_strClassMovieCatalogFailure;
+	else if (classId != Get_ClassMovieId())
+		m_strClassMovieRequestFailure = "Movie selection changed; choose Play again for " + selected + ".";
+	else if (!Can_PlayClassCinematic())
+		m_strClassMovieRequestFailure = "Cannot play " + selected + ": wait for Server admission and close character creation or raid-entry preview.";
+	else if (classId.empty())
+		m_strClassMovieRequestFailure = "No movie is connected to " + selected + ".";
+	else if (!m_strClassCinemaPreparationFailure.empty())
+		m_strClassMovieRequestFailure = "Cannot play " + selected + " (" + classId + "): " + m_strClassCinemaPreparationFailure;
+	else if (!m_ClassSelectionPresentation.Has_Class(classId))
+		m_strClassMovieRequestFailure = "No prepared movie for " + selected + " (" + classId + "). " + m_ClassSelectionPresentation.Get_Status();
+	else if (!Check_ClassCinematicBackground(classId, backgroundFailure))
+		m_strClassMovieRequestFailure = "Cannot play " + selected + " (" + classId + "): " + backgroundFailure;
+	else if (!m_ClassSelectionPresentation.Play(classId))
+		m_strClassMovieRequestFailure = "Cannot play " + selected + " (" + classId + "): " + m_ClassSelectionPresentation.Get_Status();
+	else
+	{
+		Update_ClassCinematicBackgroundVisibility();
+		return true;
+	}
+	return false;
+}
+
 void CLevel_CharacterSelect::Render_ClassSelectMovieControls()
 {
-	using LostArk::Shared::CHARACTER_CLASS_ID;
-	static CHARACTER_CLASS_ID selectedClass = CHARACTER_CLASS_ID::GUARDIANKNIGHT;
 	ImGui::PushID("CharacterSelectMovie");
-	if (ImGui::BeginCombo("Class", Get_CharacterClassName(selectedClass)))
-	{
-		for (const auto characterClass : SUPPORTED_CLASSES)
-		{
-			const bool selected = selectedClass == characterClass;
-			if (ImGui::Selectable(Get_CharacterClassName(characterClass), selected))
-				selectedClass = characterClass;
-			if (selected) ImGui::SetItemDefaultFocus();
-		}
-		ImGui::EndCombo();
-	}
-	ImGui::TextDisabled("Movie preview only; your Server character stays unchanged.");
 	auto* const level = Get_Active();
 	if (!level || CGameInstance::Get().Get_CurrentLevelID() != ETOUI(LEVEL::CHARACTER_SELECT))
 	{
@@ -1864,29 +2106,40 @@ void CLevel_CharacterSelect::Render_ClassSelectMovieControls()
 		ImGui::PopID();
 		return;
 	}
-	const auto selected = std::find(SUPPORTED_CLASSES.begin(), SUPPORTED_CLASSES.end(), selectedClass);
-	const std::string classId = Get_CinematicClassId(
-		static_cast<size_t>(std::distance(SUPPORTED_CLASSES.begin(), selected)));
+	if (ImGui::BeginCombo("Category", level->Get_ClassMovieLabel().c_str()))
+	{
+		for (size_t i = 0; i < level->m_ClassMovieOptions.size(); ++i)
+		{
+			const auto& option = level->m_ClassMovieOptions[i];
+			const bool selected = level->m_iSelectedClassMovieCategory == i;
+			if (ImGui::Selectable(option.label.c_str(), selected))
+				(void)level->Select_ClassMovieCategory(i);
+			if (selected) ImGui::SetItemDefaultFocus();
+		}
+		ImGui::EndCombo();
+	}
+	ImGui::TextDisabled("Movie preview only; your Server character stays unchanged.");
+	const std::string classId = level->Get_ClassMovieId();
+	for (size_t i = 0; i < SUPPORTED_CLASSES.size(); ++i)
+		if (classId == Get_CinematicClassId(i))
+			ImGui::Text("Class: %s", Get_CharacterClassName(SUPPORTED_CLASSES[i]));
 	auto& presentation = level->m_ClassSelectionPresentation;
 	const bool admitted = presentation.Has_Class(classId);
 	const bool canPlay = level->Can_PlayClassCinematic();
-	ImGui::BeginDisabled(!admitted || !canPlay);
-	if (ImGui::Button(presentation.Is_Active() ? "Restart Intro" : "Play"))
-		(void)presentation.Play(classId);
+	ImGui::BeginDisabled(!canPlay);
+	if (ImGui::Button(presentation.Is_Active() && presentation.Get_ActiveClass() == classId ? "Restart Intro" : "Play"))
+		(void)level->Play_ClassCinematic(classId);
 	ImGui::EndDisabled();
 	ImGui::SameLine();
 	ImGui::BeginDisabled(!presentation.Is_Active());
 	if (ImGui::Button("Stop")) presentation.Stop();
 	ImGui::EndDisabled();
+	if (!canPlay)
+		ImGui::TextWrapped("Wait for Server admission and close character creation or raid-entry preview before Play.");
 	if (!admitted)
-		ImGui::TextWrapped("No prepared movie for %s. %s", Get_CharacterClassName(selectedClass),
-			level->Get_ClassCinematicStatus().c_str());
-	else
-	{
-		if (!canPlay)
-			ImGui::TextWrapped("Wait for Server admission and close character creation or raid-entry preview before Play.");
-		ImGui::TextWrapped("%s", level->Get_ClassCinematicStatus().c_str());
-	}
+		ImGui::TextWrapped("No prepared movie for %s%s.", level->Get_ClassMovieLabel().c_str(),
+			classId.empty() ? " (no class movie connected)" : "");
+	ImGui::TextWrapped("%s", level->Get_ClassCinematicStatus().c_str());
 	if (presentation.Is_Active())
 		ImGui::Text("%s | %s%s | %.2f / %.2f s", presentation.Get_ActiveClass().c_str(),
 			presentation.Is_Looping() ? "Loop" : "Intro", presentation.Is_Paused() ? " (paused)" : "",
@@ -2302,11 +2555,11 @@ void CLevel_CharacterSelect::Render_SelectionPanel()
 
 	ImGui::Separator();
 	ImGui::TextUnformatted("Class selection cinematic");
+	ImGui::Text("Selected movie: %s", Get_ClassMovieLabel().c_str());
 	ImGui::TextWrapped("%s", Get_ClassCinematicStatus().c_str());
-	ImGui::BeginDisabled(!Can_PlayClassCinematic() ||
-		!m_ClassSelectionPresentation.Has_Class("GUARDIANKNIGHT"));
-	if (ImGui::Button("Play Guardian Knight intro / loop"))
-		(void)m_ClassSelectionPresentation.Play("GUARDIANKNIGHT");
+	ImGui::BeginDisabled(!Can_PlayClassCinematic());
+	if (ImGui::Button("Play selected class intro / loop"))
+		(void)Play_ClassCinematic(Get_ClassMovieId());
 	ImGui::EndDisabled();
 	if (m_ClassSelectionPresentation.Is_Active() && ImGui::Button("Stop class cinematic"))
 		m_ClassSelectionPresentation.Stop();
@@ -2849,10 +3102,11 @@ void CLevel_CharacterSelect::Update_ClassList()
 			{
 				CMainApp::Play_UIButtonClickSound();
 				m_iExpandedCategory = bExpanded ? -1 : i;
-				if (!bExpanded && m_ClassSelectionPresentation.Has_Class(Get_CinematicClassId(Entry.iSupportedClassIndex)))
+				const bool selectedMovie = Select_ClassCinematic(SUPPORTED_CLASSES[Entry.iSupportedClassIndex]);
+				if (!bExpanded && selectedMovie && m_ClassSelectionPresentation.Has_Class(Get_ClassMovieId()))
 				{
-					if (!m_ClassSelectionPresentation.Play(Get_CinematicClassId(Entry.iSupportedClassIndex)))
-						m_strStatus = m_ClassSelectionPresentation.Get_Status();
+					if (!Play_ClassCinematic(Get_ClassMovieId()))
+						m_strStatus = Get_ClassCinematicStatus();
 				}
 				else
 					m_ClassSelectionPresentation.Stop();
@@ -3756,7 +4010,7 @@ bool_t CLevel_CharacterSelect::Debug_ReloadFloorSwapOptions()
 		std::vector<CHARACTER_SELECT_FLOOR_SWAP_OPTION> labels;
 		std::vector<FLOOR_SWAP_SOURCE_PAIR> sources;
 		std::unordered_set<std::string> optionIds, sourceIds;
-		if (!options || !options->Is_Array() || options->Get_Array().size() != 11u)
+		if (!options || !options->Is_Array() || options->Get_Array().empty() || options->Get_Array().size() > 32u)
 		{
 			m_FloorSwapStatus = "Floor swap requires exactly eleven stage pair options.";
 			return false;

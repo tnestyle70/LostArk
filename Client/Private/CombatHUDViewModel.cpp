@@ -478,7 +478,8 @@ void Client::CCombatHUDViewModel::Apply_DamageEvents(
 	for (const LostArk::Shared::DAMAGE_EVENT& event : events)
 	{
 		if (LostArk::Shared::INVALID_PLAYER_ID != localPlayerId &&
-			event.iSourcePlayerId == localPlayerId && event.isOutgoing)
+			event.iSourcePlayerId == localPlayerId && event.isOutgoing &&
+			event.eHitFlag != LostArk::Shared::DAMAGE_HIT_FLAG::ABSORB)
 		{
 			/* Own hit: the raid's clock starts on the first one; nothing resets until the
 			level is left. */

@@ -508,7 +508,7 @@ bool_t CWMeshReader::ReadMemory(const uint8_t* pData,
 		const FILE_HEADER fileHeader = fileReader.Read<FILE_HEADER>();
 		if (!HasMagic(fileHeader.magic, WINTERS_MAGIC) ||
 			WINT_VERSION_MAJOR != fileHeader.versionMajor ||
-			fileHeader.versionMinor > WINT_SKINNED_BASIS_VERSION_MINOR ||
+			fileHeader.versionMinor > WINT_SKINNED_BASIS_UV_VERSION_MINOR ||
 			0 != fileHeader.flags ||
 			fileHeader.contentSize != fileReader.Remaining())
 		{
@@ -520,9 +520,11 @@ bool_t CWMeshReader::ReadMemory(const uint8_t* pData,
 			(WINT_GEOMETRY_VERSION_MINOR <= fileHeader.versionMinor &&
 			fileHeader.versionMinor <= WINT_UV1_VERSION_MINOR) ||
 			fileHeader.versionMinor == WINT_STATIC_UV2_VERSION_MINOR;
-		const bool_t skinnedUVContract =
+		const bool_t skinnedBasisUVContract =
+			fileHeader.versionMinor == WINT_SKINNED_BASIS_UV_VERSION_MINOR;
+		const bool_t skinnedUVContract = skinnedBasisUVContract ||
 			fileHeader.versionMinor == WINT_SKINNED_UV_VERSION_MINOR;
-		const bool_t skinnedBasisContract =
+		const bool_t skinnedBasisContract = skinnedBasisUVContract ||
 			fileHeader.versionMinor == WINT_SKINNED_BASIS_VERSION_MINOR;
 		const uint8_t* pContent = fileReader.Peek();
 		CBinaryReader reader(pContent, fileHeader.contentSize);
@@ -533,7 +535,12 @@ bool_t CWMeshReader::ReadMemory(const uint8_t* pData,
 		const bool_t hasUV2 = 0 != (meshHeader.vertexFormatFlags & VF_TEXCOORD2);
 		const uint32_t expectedStride = (hasColor0 ?
 			STRIDE_STATIC_COLOR0 : STRIDE_STATIC) + (hasUV1 ? sizeof(float2_t) : 0) + (hasUV2 ? sizeof(float2_t) : 0);
-		const bool_t versionedFlagsValid = skinnedBasisContract ?
+		const bool_t versionedFlagsValid = skinnedBasisUVContract ?
+			(skinned && hasUV1 &&
+				(meshHeader.vertexFormatFlags & (VF_STATIC_BASE | VF_TANGENT_HANDEDNESS)) ==
+					(VF_STATIC_BASE | VF_TANGENT_HANDEDNESS) &&
+				0 == (meshHeader.vertexFormatFlags &
+					~(VF_STATIC_BASE | VF_BONE_WEIGHT | VF_TANGENT_HANDEDNESS | VF_TEXCOORD1 | VF_TEXCOORD2))) : skinnedBasisContract ?
 			(meshHeader.vertexFormatFlags == (VF_STATIC_BASE | VF_BONE_WEIGHT | VF_TANGENT_HANDEDNESS)) : skinnedUVContract ?
 			(skinned && hasUV1 &&
 				(meshHeader.vertexFormatFlags & VF_STATIC_BASE) == VF_STATIC_BASE &&
@@ -799,7 +806,7 @@ bool_t CWMeshReader::ReadMemory(const uint8_t* pData,
 						mesh.skinnedVertices[i]))
 					{
 						outReport.error = skinnedBasisContract ?
-							"A WMSH 1.5 skinned vertex contains invalid bone or tangent-basis data." :
+							"A signed-basis WMSH skinned vertex contains invalid bone or tangent-basis data." :
 							"A skinned vertex contains invalid bone data.";
 						return false;
 					}

@@ -64,9 +64,9 @@ def compact_animation_payload(data):
     return wm.FILE_HEADER.pack(*file_header) + payload
 
 
-def rebase_donor_material_paths(data, source_path):
+def rebase_donor_material_paths(data, source_path, resource_root=None):
     """Keep installed texture identity when copying a donor into ClassSelect."""
-    resources = (ROOT / "Client/Bin/Resources").resolve()
+    resources = Path(resource_root or ROOT / "Client/Bin/Resources").resolve()
     source_path = source_path.resolve()
     if not source_path.is_relative_to(resources):
         return data  # Candidate actor materials already use Resources asset IDs.
@@ -213,8 +213,8 @@ def target_samples(target, body, samples, preserve_rest):
     return output
 
 
-def save_model(original_path, target_path, model, phases, drop_existing_animations=False):
-    original = rebase_donor_material_paths(original_path.read_bytes(), original_path)
+def save_model(original_path, target_path, model, phases, drop_existing_animations=False, resource_root=None):
+    original = rebase_donor_material_paths(original_path.read_bytes(), original_path, resource_root)
     if drop_existing_animations:
         header = list(base.wm.MODEL_HEADER.unpack_from(original, base.wm.FILE_HEADER.size))
         rows = [row for row in sections(original) if row[0] != 4]
@@ -246,6 +246,174 @@ def save_model(original_path, target_path, model, phases, drop_existing_animatio
                 boneCount=len(model.skeleton_bones), preservedSections=len(sections(original)))
 
 
+def apply_profile_controls(model, pose, controls, strengths, actor):
+    """Apply source controls in the basis proven by this actor's converter."""
+    basis = np.asarray(actor['controlBasis'], dtype=float)
+    component_basis = np.asarray(actor.get('componentBasis', base.BASIS), dtype=float)
+    local_scale = float(actor['controlTranslationScale'])
+    component_scale = float(actor.get('componentTranslationScale', 100.))
+    for matrix in (basis, component_basis):
+        assert matrix.shape == (3, 3) and np.isfinite(matrix).all()
+        assert np.allclose(matrix.T @ matrix, np.eye(3), atol=1e-6)
+    assert math.isfinite(local_scale) and local_scale > 0
+    assert math.isfinite(component_scale) and component_scale > 0
+    pose = list(pose)
+    for index, p in controls:
+        alpha = float(np.clip(strengths[p['controlname']], 0., 1.))
+        if not alpha:
+            continue
+        position, quaternion, scale = pose[index]
+        rotation = Rotation.from_quat(quaternion).as_matrix()
+        if p.get('bapplytranslation'):
+            delta = basis @ base.vec(p.get('bonetranslation')) * local_scale
+            space = p.get('bonetranslationspace', 'bcs_bonespace')
+            if space == 'bcs_bonespace':
+                delta = rotation @ (scale * delta)
+            elif space == 'bcs_otherbonespace':
+                combined, lineage = np.eye(3), []
+                parent = model.skeleton_bones[index].parent
+                while parent >= 0:
+                    lineage.append(parent); parent = model.skeleton_bones[parent].parent
+                for ancestor in reversed(lineage):
+                    _, aq, asc = pose[ancestor]
+                    combined = combined @ Rotation.from_quat(aq).as_matrix() @ np.diag(asc)
+                delta = np.linalg.solve(combined, component_basis @ base.vec(p.get('bonetranslation')) * component_scale)
+            position = position + delta * alpha
+        if p.get('bapplyrotation'):
+            delta = basis @ base.actor_rotation({'rotation': p.get('bonerotation', {})}) @ basis.T
+            target = delta @ rotation if p.get('bonerotationspace') == 'bcs_parentbonespace' else rotation @ delta
+            quaternion = base.slerp(quaternion, Rotation.from_matrix(target).as_quat(), alpha)
+        scale = scale * (1.-alpha+alpha*p.get('bonescale', 1.))
+        pose[index] = position, quaternion, scale
+    return pose
+
+
+def bake_profile(profile_path, output):
+    from class_selection_animation_tree import SourceAnimTree, sample_times, source_controls, source_strengths
+
+    profile_path, output = profile_path.resolve(), output.resolve()
+    assert output.is_relative_to((ROOT / 'out').resolve()), 'Candidate output must stay under repository out'
+    profile = read(profile_path)
+
+    def path(value):
+        candidate = Path(value)
+        return (candidate if candidate.is_absolute() else profile_path.parent / candidate).resolve()
+
+    inputs = {}
+    documents = {}
+
+    def source_rows(source_path):
+        if source_path not in documents:
+            payload = source_path.read_bytes()
+            inputs[str(source_path)] = hashlib.sha256(payload).hexdigest()
+            raw = read(source_path)
+            records = rows_from(raw)
+            for row in raw['rows']:
+                if 'parseError' in row:
+                    records[row['exportIndex0']+1]['parseError'] = row['parseError']
+            documents[source_path] = records
+        return documents[source_path]
+
+    rows = source_rows(path(profile['sourcePath']))
+    actors = profile['actors']
+    assert 0 < len(actors) <= 128
+    identities, assets = set(), set()
+    receipt = dict(classId=profile['classId'], profilePath=str(profile_path),
+                   profileSha256=hashlib.sha256(profile_path.read_bytes()).hexdigest(),
+                   actors=[], boneBindings=[], resources=[], installed=False)
+    for actor in actors:
+        identity, asset = actor['actorId'], actor['outputAssetId']
+        assert identity and identity not in identities and asset not in assets
+        identities.add(identity); assets.add(asset)
+        relative = Path(asset)
+        assert not relative.is_absolute() and not relative.drive and '..' not in relative.parts
+        assert relative.parts[0] in ('Character', 'Effect') and relative.suffix.lower() == '.wmodel'
+        donor_path = path(actor['donorModelPath'])
+        geometry_path = path(actor.get('geometryModelPath', actor['donorModelPath']))
+        resource_root = path(actor['resourceRoot'])
+        assert geometry_path.is_relative_to(resource_root), 'Geometry must belong to its candidate Resources root'
+        donor_bytes, geometry_bytes = donor_path.read_bytes(), geometry_path.read_bytes()
+        inputs[str(donor_path)] = hashlib.sha256(donor_bytes).hexdigest()
+        inputs[str(geometry_path)] = hashlib.sha256(geometry_bytes).hexdigest()
+        skeleton = lambda data: [blob for kind, _, _, blob in sections(data) if kind == 3]
+        assert len(skeleton(donor_bytes)) == 1 and skeleton(donor_bytes) == skeleton(geometry_bytes), (
+            'Donor/geometry skeleton or rest basis mismatch', identity)
+        clip_map = actor['clipMap']
+        assert clip_map and len(set(clip_map.values())) == len(clip_map), 'Clip aliases must be explicit and unambiguous'
+        model = base.wm.read_wmodel(donor_path, include_geometry=False, animation_names=set(clip_map.values()))
+        by_name = {clip.name: clip for clip in model.animations}
+        assert set(clip_map.values()) <= set(by_name), ('Missing donor clips', set(clip_map.values())-set(by_name))
+        clips = {native: by_name[name] for native, name in clip_map.items()}
+        trees = source_rows(path(actor['treePath']))
+        root = int(actor['treeExportIndex0'])+1
+        phases, details, phase_clips = [], [], {}
+        for phase in actor['phases']:
+            name, clip_name = phase['name'], phase['clipName']
+            assert name in ('intro', 'loop') and name not in phase_clips
+            phase_clips[name] = clip_name
+            matinee, data, duration = phase_info(rows, int(phase['matineeExportIndex0']))
+            if 'sourceHoldFrom' in phase:
+                source_phase = phase['sourceHoldFrom']
+                assert source_phase == 'intro' and name == 'loop'
+                prior = next((p for p in phases if p[0] == phase_clips.get(source_phase)), None)
+                assert prior is not None, 'Source hold requires a successfully baked intro'
+                assert 'groupExportIndex0' not in phase, 'Source hold cannot replace a live authored group'
+                final_pose = prior[2][-1]
+                times, samples = [0., duration/1000.], [final_pose, final_pose]
+                phases.append((clip_name, times, samples))
+                details.append(dict(name=name, clipName=clip_name, durationMs=duration, sampleCount=2,
+                                    sourceMatineeExportIndex0=matinee-1, sourceHoldFrom=source_phase,
+                                    heldSourceSeconds=prior[1][-1]))
+                print('held', profile['classId'], identity, name, 'from intro endpoint', flush=True)
+                continue
+            group = int(phase['groupExportIndex0'])+1
+            assert group in rows[data]['p']['interpgroups'], ('Group not owned by phase', identity, name)
+            source_actors = actor.get('sourceActorExportIndices0', [])
+            assert source_actors and set(ref+1 for ref in source_actors) <= set(base.group_actor(rows, group, matinee)), (
+                'Source actor/group binding mismatch', identity, name)
+            tracks = base.active_tracks(rows, group)
+            tree = SourceAnimTree(model, trees, root, tracks, clips)
+            controls, absent = source_controls(model, trees, root, tracks)
+            times, samples, probes = sample_times(tracks, duration), [], []
+            last_control_signature, last_control_pose = None, None
+            for index, seconds in enumerate(times):
+                pose = tree.sample(seconds)
+                strengths = source_strengths(tracks, seconds)
+                signature = (id(pose), tuple(sorted(strengths.items())))
+                if signature == last_control_signature:
+                    pose = last_control_pose
+                else:
+                    pose = apply_profile_controls(model, pose, controls, strengths, actor)
+                    last_control_signature, last_control_pose = signature, pose
+                assert np.isfinite(np.asarray([np.concatenate(bone) for bone in pose])).all(), (identity, name, seconds)
+                samples.append(pose)
+                if index in (0, len(times)//2, len(times)-1):
+                    probes.append(dict(sourceSeconds=seconds, rootPosition=pose[0][0].tolist(), rootRotation=pose[0][1].tolist()))
+            phases.append((clip_name, times, samples))
+            details.append(dict(name=name, clipName=clip_name, durationMs=duration, sampleCount=len(times),
+                                sourceMatineeExportIndex0=matinee-1, sourceGroupExportIndex0=group-1,
+                                namedControls=len(controls), absentPaletteControls=absent, probes=probes, **tree.receipt()))
+            print('baked', profile['classId'], identity, name, len(times), 'frames', flush=True)
+        destination = output / 'Resources' / asset
+        saved = save_model(geometry_path, destination, model, phases, drop_existing_animations=True, resource_root=resource_root)
+        detail = dict(actorId=identity, animationSetAssetId=asset, donorModel=str(destination),
+                      sourceActorExportIndices0=actor['sourceActorExportIndices0'], clips=phase_clips,
+                      phases=details, controlBasis=actor['controlBasis'], controlTranslationScale=actor['controlTranslationScale'], **saved)
+        receipt['actors'].append(detail)
+        receipt['resources'].append(dict(animationSetAssetId=asset, candidatePath=str(destination),
+                                         clips=phase_clips, sha256=saved['sha256']))
+        for source_actor in actor['sourceActorExportIndices0']:
+            receipt['boneBindings'].append(dict(sourceActorIndex0=source_actor, donorModel=str(destination),
+                modelPreScale=float(actor.get('modelPreScale', .01)), animationSetAssetId=asset, clips=phase_clips))
+        write(output / 'bake-receipt.json', receipt)
+    for source_path, expected in inputs.items():
+        assert hashlib.sha256(Path(source_path).read_bytes()).hexdigest() == expected, ('Source changed during bake', source_path)
+    receipt['inputs'] = inputs
+    receipt['complete'] = True
+    write(output / 'bake-receipt.json', receipt)
+    return receipt
+
+
 def bake_dragon(rows, output):
     path = ROOT / 'Client/Bin/Resources/Effect/GuardianKnight/FullRestore/Models/SK_DDK_DRG_00/sk_ddk_drg_00_head_mi.wmodel'
     clip_name = 'evt1_sk_super_sanctumofembereth'
@@ -271,12 +439,18 @@ def bake_dragon(rows, output):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--source", type=Path, required=True)
-    parser.add_argument("--tree", type=Path, required=True)
-    parser.add_argument("--geometry-manifest", type=Path, required=True)
+    parser.add_argument("--profile", type=Path, help="Exact offline source/actor/palette profile; preserves the Guardian default CLI")
+    parser.add_argument("--source", type=Path)
+    parser.add_argument("--tree", type=Path)
+    parser.add_argument("--geometry-manifest", type=Path)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--dragon-only", action="store_true")
     args = parser.parse_args()
+    if args.profile:
+        assert not args.dragon_only
+        bake_profile(args.profile, args.output)
+        return
+    assert args.source and args.tree and args.geometry_manifest, 'Guardian mode requires source, tree and geometry-manifest'
     assert not args.output.resolve().is_relative_to(ROOT / "Client/Bin/Resources")
     rows, trees = rows_from(read(args.source)), rows_from(read(args.tree))
     if args.dragon_only:

@@ -67,12 +67,12 @@ namespace Client
 	/* The judgement a DURATION Logic runs and the outcome a RESULT Logic
 	   applies. Both are the Server's typed vocabulary; a definition that is
 	   only a name keeps the kind empty and stays DRAFT-only. */
-	inline constexpr std::array<const char_t*, 17u> KOUKU_SAYDON_JUDGEMENT_KINDS = {
-		"CARD_DICE_BIND", "ROULETTE_CARD_MATCH", "GAZE_REAL_BOSS", "POSE_INPUT", "STAGGER_WINDOW", "COUNTER_WINDOW", "AREA_OVERLAP", "OBJECT_OVERLAP", "EXTERNAL_SIGNAL", "ATTACHMENT_HOLD", "PATTERN_COMPLETION_COUNT", "SHOWTIME_PLAYER_TARGETS", "BOSS_TRACK_TARGET", "CROSS_DIRECTION_CLONES", "PURSUIT_PROJECTILES", "BINGO_BOARD", "INVULNERABILITY_ZONE" };
-	inline constexpr std::array<const char_t*, 13u> KOUKU_SAYDON_OUTCOME_KINDS = {
+	inline constexpr std::array<const char_t*, 18u> KOUKU_SAYDON_JUDGEMENT_KINDS = {
+		"CARD_DICE_BIND", "ROULETTE_CARD_MATCH", "GAZE_REAL_BOSS", "POSE_INPUT", "STAGGER_WINDOW", "COUNTER_WINDOW", "AREA_OVERLAP", "OBJECT_OVERLAP", "EXTERNAL_SIGNAL", "ATTACHMENT_HOLD", "PATTERN_COMPLETION_COUNT", "SHOWTIME_PLAYER_TARGETS", "BOSS_TRACK_TARGET", "CROSS_DIRECTION_CLONES", "PURSUIT_PROJECTILES", "BINGO_BOARD", "INVULNERABILITY_ZONE", "BINGO_COMPLETED_LINES" };
+	inline constexpr std::array<const char_t*, 14u> KOUKU_SAYDON_OUTCOME_KINDS = {
 		"INSTANT_DEATH", "MAX_HP_PERCENT_DAMAGE", "FIXED_DAMAGE", "MADNESS_GAUGE_ADD_PERCENT",
 		"CLOWN_TRANSFORM", "FEAR", "FOLLOWUP_PATTERN", "PLAY_WORLD_OBJECT_MOTION",
-		"PLAY_CONTACT_WORLD_OBJECT_MOTION", "COMPLETE_LOGIC_WINDOW", "CAPTURE_PLAYER", "GRAB_TO_WORLD_OBJECT", "MARIO_ENTER" };
+		"PLAY_CONTACT_WORLD_OBJECT_MOTION", "COMPLETE_LOGIC_WINDOW", "CAPTURE_PLAYER", "GRAB_TO_WORLD_OBJECT", "MARIO_ENTER", "PLAYER_INVULNERABILITY" };
 	inline constexpr std::array<const char_t*, 4u> KOUKU_SAYDON_CARD_SYMBOLS = {
 		"HEART", "SPADE", "CLUB", "DIAMOND" };
 	inline constexpr std::size_t KOUKU_SAYDON_MAX_OUTCOMES_PER_SLOT = 4u;
@@ -193,6 +193,9 @@ namespace Client
 		std::string strTargetWorldInstanceId;
 		std::string strMotionInstanceId;
 		double fTargetRadiusM = 0.0;
+		// CARD_RAIN_SOLDIERS defaults preserve the original club/heart/diamond spawn.
+		std::array<std::uint32_t, 3u> SoldierCounts{1u, 1u, 1u};
+		double fSpawnRadiusMinM = 3.0, fSpawnRadiusMaxM = 6.0;
 		/* TRIGGER values are projected to Server mechanic cues. */
 		std::string strTriggerKind;
 		// Authoring-only role for Collider Damage/Knockback contact defaults.
@@ -646,6 +649,7 @@ namespace Client
 		std::string strGateId;
 		std::string strDisplayName;
 		std::string strLoopStartEntryId;
+		std::string strBingoSpecialPatternId;
 		std::vector<KOUKU_SAYDON_COMPOSITION_FLOW_ENTRY> Entries;
 		std::vector<KOUKU_SAYDON_COMPOSITION_FLOW_GROUP> EntryGroups;
 		bool operator==(const KOUKU_SAYDON_COMPOSITION_PATTERN_FLOW&) const = default;
@@ -736,6 +740,9 @@ namespace Client
             const KOUKU_SAYDON_COMPOSITION_DOCUMENT& document,
             const KOUKU_SAYDON_COMPOSITION_PATTERN& owner,
             std::string_view targetPatternId, std::string& outStatus);
+		static bool_t Validate_BingoSpecialPatternTarget(
+			const KOUKU_SAYDON_COMPOSITION_DOCUMENT& document,
+			std::string_view patternId, std::string& outStatus);
 		static bool_t Validate(
 			const KOUKU_SAYDON_COMPOSITION_DOCUMENT& document,
 			const KOUKU_SAYDON_ACTION_REFERENCE_SET& references,

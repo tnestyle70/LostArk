@@ -48,6 +48,7 @@ Mario/Dance/Card Maze는 각각 `MARIO/DANCE/MAZE`를 사용한다. 모든 inter
 슈퍼맨, 양팔 벌리기, 한 다리 올리기다. 첫 오답은 fail, 유효 입력 없이 창 종료는 timeout이다.
 F1의 mode 선택은 typed Debug 명령으로 실제 모델·HUD·스킬을 바꾸고 Return to Player는 원래
 class로 복귀한다. 별도 `Kouku UI Preview`는 표시 전용 override이며 해제하면 실제 snapshot으로 돌아간다.
+F1 `Kouku UI Preview -> Madness gauge position`에서 위치를 조절한다. `screenOffsetX/Y`는 1280×720 기준 픽셀(+Y 아래), `headOffsetMeters`는 월드 높이다. Save는 `Data/UI/KoukuSaydon/KoukuHudModes.json`의 변경한 위치 필드만 최신 저장본에 병합하고 충돌 시 기존 저장본과 preview를 보존한다. 카드 미로에서는 본인과 동료의 광기 게이지를 모두 숨긴다.
 Mario1의 `Mario1_go`/`Mario1_Trigger_5`는 이동 도착 시에만 mode를 전환한다. movePlayer event의
 optional `koukuHudMode`는 `MARIO/MAZE/NONE`이고 Server가 이동 성공 후 적용한다. Card Maze Debug gate는
 `(0.09,-0.01,1351.48)`에 플레이어만 이동시키고 보스를 생성하지 않는다. Mario2~4 진입점은 미등록이다.
@@ -406,7 +407,7 @@ Release Server는 이 명령을 무시한다. `Stage_MiniBoss_Spawn`, `Stage_3`,
 ### 4.2 마리오 변신·방향키 조작·Debug 점프
 
 Server가 기존 `Mario1_Intro`~`Mario4_Intro` OBB 진입을 검사해 `PLAYER_SNAPSHOT.iMarioStage`를
-0(일반)/1~4로 보낸다. 입장 시 기존 `eMadnessForm=CLOWN` 외형 교체 경로를 사용하고,
+0(일반)/1~4로 보낸다. 패턴 entry와 Intro 모두 이미 `eMadnessForm=CLOWN`인 플레이어만 입장하며,
 기존 퇴장 이동·다른 F1 배치·아레나 컷신 강제 배치 시 전용 상태를 해제하고 입장 전 외형을 복원한다.
 사망/낙하·프로필 교체·월드 전환도 상태를 정리한다. 일반 F1 Clown만 켠 상태는 마리오 모드가 아니다.
 
@@ -690,6 +691,12 @@ UI가 바로 사용할 읽기 경계는 `CCombatHUDViewModel`이다.
 damage, target NetEntityId, world anchor, incoming/outgoing을 제공하며 UI가 HP 차이로 damage를
 재계산하지 않는다. F1 Balance Test는 이 경계로 최근 16개 event를 표시한다.
 
+보호막이 실제로 소비한 양은 protocol111의 `DAMAGE_HIT_FLAG::ABSORB` 이벤트로 전달한다.
+UI는 이를 파란 `흡수`로 표시하고 HP 피해·DPS·stagger에 합산하지 않는다. 부분 흡수는
+흡수 이벤트와 남은 실제 HP 피해 이벤트를 각각 전달하며, UI가 shield 수치 차이로 추정하지 않는다.
+
+Gameplay bootstrap의 공통 용량은 `Shared/Public/GameplayDataRevision.h`의 최대131,072행·64MiB다. publisher·Server·Client admission과 Python parser가 같은 유한 상한을 소비하며 format37과 wire protocol111은 유지한다. Server는 파일 읽기 전과 bytes admission에서 크기를 확인하고, 전체 행 수·개별 track4096keys·정규화 geometry·후행 행 거부를 계속 검사한다. 실제 본 회전의 전체 수명 궤적을 임의로 줄여 용량 검사를 통과시키지 않는다. Debug draft 전송의16MiB 상한은 별도 계약이다.
+
 쿨타임 남은 tick은 `max(0, cooldownEndTick - serverTick)`이며 UI가 별도 timer를 정답으로 만들지 않는다. 표시 damage는 데이터 정의를 읽은 값이고 실제 피해 적용은 Server만 한다.
 
 밸런스 정본:
@@ -707,7 +714,7 @@ damage, target NetEntityId, world anchor, incoming/outgoing을 제공하며 UI�
 UI 담당자는 JSON을 매 프레임 읽지 않는다. `CCombatHUDViewModel::Initialize_Definitions()`가 정의를 준비하고 `CClientReplication`이 snapshot마다 runtime 상태를 적용한다. UI 코드에서 packet, socket, Character, boss GameObject를 직접 조회하지 않는다.
 
 Debug/Release F1의 `Open Balance Test`는 공용 수치 편집용 독립 창을 연다. `Players / Skills /
-Damage / Bosses`에서 실제 소비하는 수치를 편집하며 일반 수치 panel은 Valtan pattern source를
+Damage / Bosses / Madness`에서 실제 소비하는 수치를 편집하며 일반 수치 panel은 Valtan pattern source를
 로드하지 않는다. `Retail.balanceprofile.json`이 덮는 field는 그 실효값을 읽고 같은 Retail row에
 저장하며, 덮지 않는 movement/timing 등은 base JSON에 저장한다. 별도 Valtan authoring backend는 유지한다.
 
@@ -717,6 +724,12 @@ Damage / Bosses`에서 실제 소비하는 수치를 편집하며 일반 수치 
 파일 저장·게시와 실행 반영은 별도이며 Server와 Client를 재시작한 뒤 Server snapshot/damage event로
 확인한다. 일반 수치 panel은 runtime Hot Reload를 수행하지 않는다. 세부 작업법은
 `BALANCE_TOOL_OWNER_HANDOFF.md`가 정본이다.
+
+Madness는 Retail `madness[policyId=KOUKUSAYDON]`의 피해·공·인형 배율과 접촉 주기/영역을
+소유한다. 피해는 보호막·방어·무적을 처리한 실제 HP 감소 비율에서 계산하고 소수 잔여값을 누적한다.
+공/인형은 Server WORLD cue의 생성·파괴 수명에서만 충전하며 이미 CLOWN/마리오인 플레이어는 제외한다.
+원본에서 확인한 최대 100·hold 15초·NPC aura +10/초/2m와 인형 공격 4m/30도는 근거로 표시한다.
+피해 변환 계수·인형 충전량과 요청에 따른 특수 배율 2배는 PROJECT_TUNED이며 원작 공식으로 표기하지 않는다.
 
 ### 6.1 ImGui authoring에서 제품 이미지 UI로 전환
 
@@ -1779,7 +1792,7 @@ MAZE 진입 → 30tick 뒤 중앙의 Server 삐에로 상자(`MONSTER_KOUKU_CLOW
 
 Kouku Sequence Composition의 optional `enterCombatOnFinish`는 GATE1/GATE2/GATE3별 입장 Pattern 하나를 식별한다. publisher는 Action의 저장 `patternFlows`와 Sequence의 입장·클리어·도착 슬롯을 `RAIDGATE`, `RAIDFLOWSTEP`, `RAIDARRIVAL` 행으로 투영한다. `C2S_DEBUG_KOUKUSAYDON_RAID_REQUEST` START는 Server-active gameplay revision, 저장 Action·Sequence revision, 시작 관문을 전달한다. Server는 같은 비쿠크 gameplay를 유지하는 최신 게시 Product만 승인하고 실행 동안 immutable catalog를 유지한다. Debug owner의 STOP은 실행 epoch가 일치해야 하며 재전송은 같은 요청 결과를 반환한다. Release는 published `RAIDGATE.entrySequenceInstanceId`에 해당하는 입장 collider 접촉이 같은 준비 helper를 호출한다. 기존 단독 WorldSequence 재생을 중복 실행하지 않으며, 준비 실패 뒤에는 해당 one-shot activation만 복원해 재접촉을 허용한다. 기존 GateProgress packet ID를 유지한 뒤 Raid packet을 추가한다.
 
-Server는 시작 시 1~4명의 PlayerId 순서를 고정하고 `PREPARING` 상태에 roster와 준비 기한(Release 10초, Debug의 지연 리소스 준비는 20분)을 전송한다. 각 참가자는 저장 Action·Sequence의 정확한 revision을 검사하고 Sequence 문서를 immutable copy로 미리 읽은 뒤 같은 epoch/revision으로 `READY` 또는 이유가 있는 `FAILED`를 회신한다. 준비 단계에서는 재생·teleport·boss despawn을 하지 않는다. 모든 시작 참가자의 READY 뒤 다음 fixed tick에서 공통 시작 시각을 확정한다. FAILED·timeout·owner STOP·참가자 퇴장은 기존 actor·위치·미니게임 상태를 보존한 채 준비를 중단한다. 중복 ACK는 멱등이며 이전 epoch·다른 revision·late join의 ACK는 시작 roster를 바꾸지 못한다. 입장 중 이동·스킬을 차단하며 저작 도착 시각에 각 슬롯을 이동한다. 1·2관문 Sequence가 끝나면 기존 audition 경로로 Flow의 Pattern/Bundle을 순서대로 실행한다. Client는 READY 전에 관문 오브젝트와 조명을 준비하고 같은 Server 실행의 stage를 전투 전환에서 commit한다. 카드미로가 활성 상태이거나 참가자의 역할이 남아 있으면 다음 Flow 항목을 기다린다. 게시된 primary 보스의 실제 HP 0/사망은 기존 GateProgress clear mask를 갱신하고 `WAIT_GATE`로 전환한다. Gate 2의 보조 배우는 이 완료 조건을 지연하거나 대신 충족하지 않는다. 자동 10초 전환은 없으며 기존 클리어·MVP·던전입장 UI를 거친 고정 roster 전원의 승인만 다음 관문 Sequence를 시작한다. 거절·투표 timeout은 WAIT_GATE를 유지한다. 재시작 투표 승인도 같은 관문의 입장 Sequence와 첫 Flow 항목으로 돌아간다. 2관문 클리어 후 승인하면 3관문 입장 Sequence만 재생한다. 3관문 최초 Sequence 종료는 `WAIT_ENTRY`로 전환하며 HUD를 표시하되 이동·스킬 입력을 차단한다. 마지막 네 Effect의 도착 슬롯 위치와 전투 시작 위치는 별개다. 기존 leader·전원 승인 정책의 `3관문 입장` 버튼이 명시 `ENTER_GATE3` 투표를 제출하고, Server가 모든 참가자의 session·profile·목적지 navigation/높이/충돌과 기존 audition evaluator의 첫 Flow admission을 staged actor로 검증한 뒤 전원을 원래 전투 위치로 이동하고 첫 Flow를 시작한다. 검증 실패는 위치와 대기 상태를 유지한다. 한 번 입장한 뒤 버튼은 `재시작`이며 재시작 Sequence 뒤에는 자동으로 전투를 시작한다. 3관문 클리어 후 `빙고 입장`은 기존 ADVANCE 투표를 사용한다. BINGO는 입장 Sequence 없이 준비·목적지 검증 후 전투를 시작하고 UI에는 기존 세 관문을 완료 상태로 표시한다. 빙고 클리어는 WAIT_GATE와 clear mask를 유지하여 기존 EXIT·재시작 UI를 받는다. 단순 Flow 종료나 보스 제거는 관문 클리어로 취급하지 않는다.
+Server는 시작 시 1~4명의 PlayerId 순서를 고정하고 `PREPARING` 상태에 roster와 준비 기한(Release 10초, Debug의 지연 리소스 준비는 20분)을 전송한다. 각 참가자는 저장 Action·Sequence의 정확한 revision을 검사하고 Sequence 문서를 immutable copy로 미리 읽은 뒤 같은 epoch/revision으로 `READY` 또는 이유가 있는 `FAILED`를 회신한다. 준비 단계에서는 재생·teleport·boss despawn을 하지 않는다. 모든 시작 참가자의 READY 뒤 다음 fixed tick에서 공통 시작 시각을 확정한다. FAILED·timeout·owner STOP·참가자 퇴장은 기존 actor·위치·미니게임 상태를 보존한 채 준비를 중단한다. 중복 ACK는 멱등이며 이전 epoch·다른 revision·late join의 ACK는 시작 roster를 바꾸지 못한다. 입장 중 이동·스킬을 차단하며 저작 도착 시각에 각 슬롯을 이동한다. 1·2관문 Sequence가 끝나면 기존 audition 경로로 Flow의 Pattern/Bundle을 순서대로 실행한다. Client는 READY 전에 관문 오브젝트와 조명을 준비하고 같은 Server 실행의 stage를 전투 전환에서 commit한다. 카드미로가 활성 상태이거나 참가자의 역할이 남아 있으면 다음 Flow 항목을 기다린다. 게시된 primary 보스의 실제 HP 0/사망은 기존 GateProgress clear mask를 갱신하고 `WAIT_GATE`로 전환한다. Gate 2의 보조 배우는 이 완료 조건을 지연하거나 대신 충족하지 않는다. 자동 10초 전환은 없으며 기존 클리어·MVP·던전입장 UI를 거친 고정 roster 전원의 승인만 다음 관문 Sequence를 시작한다. 거절·투표 timeout은 WAIT_GATE를 유지한다. 재시작 투표 승인도 같은 관문의 입장 Sequence와 첫 Flow 항목으로 돌아간다. 2관문 클리어 후 승인하면 3관문 입장 Sequence만 재생한다. 3관문 최초 Sequence 종료는 `WAIT_ENTRY`로 전환하며 HUD를 표시하되 이동·스킬 입력을 차단한다. 마지막 네 Effect의 도착 슬롯 위치와 전투 시작 위치는 별개다. 기존 leader·전원 승인 정책의 `3관문 입장` 버튼이 명시 `ENTER_GATE3` 투표를 제출하고, Server가 모든 참가자의 session·profile·목적지 navigation/높이/충돌과 기존 audition evaluator의 첫 Flow admission을 staged actor로 검증한 뒤 전원을 원래 전투 위치로 이동하고 첫 Flow를 시작한다. 검증 실패는 위치와 대기 상태를 유지한다. 한 번 입장한 뒤 버튼은 `재시작`이며 재시작 Sequence 뒤에는 자동으로 전투를 시작한다. 3관문 클리어 후 별도 `빙고 입장` UI·투표를 표시하지 않는다. Server의 5초 false-clear 뒤 Encore intro Sequence를 자동 재생하고 준비·목적지 검증을 거쳐 BINGO 전투를 시작한다. 단독으로 소환한 보스의 Kill Boss 이후 ADVANCE/RESTART도 기존 raid 준비 owner로 들어가 전원 READY 뒤 다음/같은 관문 intro를 먼저 재생한다. 준비 실패는 이전 actor와 위치를 보존하고, 성공 뒤 이전 audition·Bingo·미로를 정리하고 Mario 진입 단계를 초기화한다. UI에는 기존 세 관문을 완료 상태로 표시한다. 빙고 클리어는 WAIT_GATE와 clear mask를 유지하여 기존 EXIT·재시작 UI를 받는다. 단순 Flow 종료나 보스 제거는 관문 클리어로 취급하지 않는다.
 
 `S2C_KOUKUSAYDON_RAID_STATE`의 phase·epoch·시작/종료/server tick이 모든 Client의 연출 시계다. Client는 저장 Sequence의 정확한 composition ID와 revision을 별도로 pin하고 기존 presentation player로 표현한다. 늦은 입장에는 현재 상태와 원래 시작 tick에 이어 `S2C_GATE_PROGRESS_STATE`의 현재 관문·클리어 mask·진행 중 투표 상태를 초기 reliable batch로 전송한다. 시작 참가자 슬롯과 투표 권한은 추가하지 않는다. 시작 참가자가 퇴장하면 실행을 중단한다. 시작 참가자가 준비 중 Sequence를 불러오지 못하면 FAILED로 전원 시작을 중단한다. 준비가 끝난 뒤의 표시 실패나 late join의 문서 불일치는 해당 Client에 이유를 표시하며 이미 확정된 Server 실행 시각을 바꾸지 않는다. 단독 F1 Gate/일반 Preview는 별도 기존 시험 경로를 유지한다. 일반 Preview의 도착 Logic 또는 ImGui의 `3관문 입장 전 공간` 이동은 기존 Server 승인 teleport를 사용한다. 제품 Raid가 없는 이 공간에서는 같은 `ENTER_GATE3` 투표를 받아 실제 proposer 위치와 참가자 roster, 전원 목적지 및 boss 생성·정리를 사전 검증한 뒤 기존 3관문을 활성화한다. 거절·timeout·사전 검증 실패는 이전 위치와 보스를 보존한다. Client에서 WAIT_ENTRY를 만들지 않는다. Client의 대기 BGM과 이 버튼 표시는 공유 ready-area 범위에 대한 replicated XYZ를 읽으며 이동 판정 권위를 갖지 않는다. 시작 공간 및 3관문 판자 공간의 BGM은 local Sequence 재생 중과 Server CINEMATIC/COMBAT 중 억제하고 Level 퇴장에서 정리한다.
 
@@ -1952,7 +1965,7 @@ SHOWTIME_PLAYER_TARGETS의 random volley는 fixed/tracking template 없이 단�
 
 유한 random volley에는 MAP SOUND occurrence를 함께 포함할 수 있다. 최소 한 개의 MAP EFFECT가 위치 기준을 소유하며 SOUND만 있는 세트, BOSS-follow SOUND 및 looping targeted SOUND는 거부한다. Sound도 같은 content-addressed visual ID와 Server birth clock에 속하므로 각 투하에서 한 번 재생하고 늦은 입장에서는 이미 지난 음원 구간을 다시 시작하지 않는다. 기존 SoundCueCatalog의 variant는 해당 CombatObject ID/spawn tick/occurrence로 고정되며, 원본 Wwise avoid-repeat 메모리 전체를 재구현한 계약은 아니다.
 
-`CARD_RAIN_SOLDIERS`는 추가 매개변수가 없는 typed trigger다. MonsterCatalog의 CLUB·HEART·DIAMOND를 Server Spawn_Monster에서 생성하며 maze 진행 상태에는 등록하지 않는다. MonsterProfiles의 전투 수치와 기존 MonsterBrain·navigation으로 플레이어를 추적·공격한다. 같은 profile을 쓰는 미로 target은 생성 직후 maze에 등록하고 generic Brain에서 제외해 미로가 위치와 접촉을 계속 소유한다. 카드비 병정은 패턴 종료와 30초 이후에도 유지되며, 병정 사망·owner 사망/제거 때 정리된다.
+`CARD_RAIN_SOLDIERS`는 typed trigger이며 optional `soldierCounts`는 CLUB·HEART·DIAMOND 순서의 정수3개(각0..32, 합계1..64, 기본1/1/1), `spawnRadiusMinM/MaxM`는 정렬된 finite0..100m(기본3..6m)를 받는다. Box Detail에서 편집하며 publisher의 `PATTERNCARDRAINSOLDIERS` supplemental row를 Server가 소비한다. Server는 보스 기준 반경의 navigation 위치를 전부 확보한 뒤 MonsterCatalog의 세 archetype을 Spawn_Monster로 생성하며 maze 진행 상태에는 등록하지 않는다. MonsterProfiles의 전투 수치와 기존 MonsterBrain·navigation으로 플레이어를 추적·공격한다. 같은 profile을 쓰는 미로 target은 생성 직후 maze에 등록하고 generic Brain에서 제외해 미로가 위치와 접촉을 계속 소유한다. 카드비 병정은 패턴 종료와30초 이후에도 유지되며, 병정 사망·owner 사망/제거 때 정리된다.
 
 쿠크 Level의 단일 BGM owner가 Ready Terrace·GATE1/2/3·Mario1~4·Card Maze·Bingo를 승인된 player/raid 상태에서 선택한다. 시퀀스와컷씬/카메라 재생 중에는 BGM을 중지하고 같은 state의 반복 snapshot은 음악을 재시작하지 않는다. 원본 intro/loop 구간은 WAV smpl metadata를 소비한다. cue sound는 기존 pattern presentation 경로를 사용한다.
 
@@ -2006,11 +2019,17 @@ BOSS_TRACK_TARGET/회전 Logic으로 먼저 설정하고, Collider는 그 순간
 본 Collider는 기존 Follow=true 조건을 유지한다. 서버 판정은 원통과 이동 Collider의 수직 범위와
 플레이어 몸체 높이를 검사하며, 자체 선형 이동 원통·박스는 고정 tick 사이도 sweep한다.
 
-`ENTER_AREA.repeatIntervalMs`는 플레이어별 접촉 반복 간격이며0은 기존 정책이다.
+`ENTER_AREA.repeatIntervalMs`와 `AREA_OVERLAP` Duration의 같은 필드는 플레이어별 접촉 반복 간격이며0은 기존 정책이다. 양수34..600000ms는 접촉한 첫 tick부터 간격마다 Success를 실행한다.
 단발, 재진입, 넉백 종료 후 반복, 일정 간격 반복 중 하나를 선택한다. 마지막 정책은
 접촉 중 수명 종료 전까지만 Success를 반복한다. 결과는 기존 `MAX_HP_PERCENT_DAMAGE`
 등의 Result 슬롯을 사용한다. 저장은 저작 JSON, Publish는 런타임 snapshot, Server 재시작이나
 재생 승인에 따른 catalog 갱신은 각각 별도 단계다.
+
+Logic Box Detail은 연결된 Success/Fail/Timeout Result의 typed 수치를 편집한다. 같은 stable Logic ID를 공유하는 창은 같은 값을 소비하며 표시 이름에 피해·넉백 수치를 고정하지 않는다. BOSS/WORLD 본 Collider는 실제 모델의 전체 bone basis에 local XYZ TRS를 먼저 합성한 뒤 최종 XZ 중심·yaw를 얻는다. damageable WORLD의 `ownerWorldOccurrenceId`는 body 사망·취소·만료와 contact ledger의 수명을 묶고, 명시적 전체 수명 광기의 `authoredMadness`만 기존 aura를 대체한다.
+
+빙고의 `BINGO_COMPLETED_LINES` Duration은 매 세 번째 폭탄의 실제 폭발·tile 갱신 사건에서 빨간 가로·세로 완성 줄을 한 번 판정한다. `threshold`는1..10(기본3)이며 대각선은 제외한다. Success의 `PLAYER_INVULNERABILITY` Result는 양수 `durationMs`(1..600000) 동안 생존자를 보호한다. 현재 저작값은30000ms다. 후속 `BINGO_DETONATION`은 성공이면 보스13줄 피해, 실패이면 보호막·개인 무적을 우회하는 encounter wipe다. 보드·폭탄은 encounter가 유지하고, 이동→첫 클립→메두사→블랙홀13초의 작은 Parent는 일반 반복 Flow에 삽입한다. 폭탄의 표식6초+대기2초+fuse4초는 Parent 애니메이션 길이와 독립이다.
+
+빙고 전투 묶음은 `patternFlows`의 일반 entry/loop와 `bingoSpecialPatternId`의 특수 Parent를 함께 저장한다. 이 참조는 제품 BINGO에 필수이며 같은 gate·encounter·boss와 유일한 폭발을 가진 유효 Parent만 게시한다. `RAIDBINGOSPECIAL` supplemental 행을 Server gate definition에 고정하고 이름 검색이나 전체 패턴 추론으로 선택하지 않는다. 빙고 페이즈 진입 때 encounter 시계를 시작하며 매 세 번째 머리 표식에 현재 일반 occurrence를 정리하고 특수 Parent를 실행한다. 완료 뒤 중단했던 일반 entry를 처음부터 재생한다. 보드·폭탄 시계와 raid owner는 유지하며 동시에 두 패턴이 보스를 제어하지 않는다. 기존 다중 actor 동시 재생 Bundle 계약은 유지한다.
 
 같은 Server 접촉 경로의 추가 입력 계약은 다음과 같다.
 

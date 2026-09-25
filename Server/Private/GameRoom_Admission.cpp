@@ -149,7 +149,7 @@ bool LostArk::Server::CGameRoom::Stage_PlayerEntry(
 	player.fMoveSpeed = profile->fMoveSpeed;
 	player.iMaximumIdentity = profile->iMaximumIdentity;
 	CPlayerSkillSystem::Reset_Gauges(player, m_GameplayCatalog);
-	player.iCurrentMadness = 0u;
+	player.iCurrentMadness = 0u; player.dMadnessRemainder = 0.;
 	player.iMaximumMadness = SERVER_PLAYER::MADNESS_GAUGE_MAXIMUM;
 	player.eMadnessForm = PLAYER_MADNESS_FORM::NORMAL;
 	player.Clear_KoukuInteractionState();

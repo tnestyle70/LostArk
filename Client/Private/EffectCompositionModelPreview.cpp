@@ -489,6 +489,9 @@ bool Client::CEffectCompositionModelPreview::Select_SourceEffect(const EFFECT_DO
     { m_Status = "Source model preview actor and Gate do not match their saved placement."; return false; }
     KOUKU_SAYDON_COMPOSITION_DOCUMENT staged;
     staged.iRevision = 1u;
+    // The saved source actor belongs to the validated Kouku arena contract.
+    // Standalone Effects have no WORLD prop document to supply this Area.
+    staged.strAreaId = "LV_LUT_MIDNIGHTC_ED";
     KOUKU_SAYDON_COMPOSITION_PATTERN pattern;
     pattern.strPatternId = "effect.model." + effect.strEffectAssetId;
     pattern.strDisplayName = effect.strDisplayName;

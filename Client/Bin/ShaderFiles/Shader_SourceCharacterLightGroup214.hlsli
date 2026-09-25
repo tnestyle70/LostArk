@@ -1,4 +1,3 @@
-// source.character.static-map-native-214.v1 / source program 0ee452099b26704b80628873c2a1e89e
 SOURCE_CHARACTER_NATIVE_OUTPUT SourceCharacterLight214(SOURCE_CHARACTER_NATIVE_INPUT input)
 {
     SOURCE_CHARACTER_NATIVE_OUTPUT output = (SOURCE_CHARACTER_NATIVE_OUTPUT)0;
@@ -2923,3 +2922,5 @@ SOURCE_CHARACTER_NATIVE_OUTPUT SourceCharacterLight223(SOURCE_CHARACTER_NATIVE_I
     // 125: ret
     return output;
 }
+
+// source.character.static-map-native-224.v1 / source program a54c39add512e849b1b65e7fc6b1ba55

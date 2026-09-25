@@ -101,7 +101,7 @@ EFFECT_PS_OUT PS_MATERIAL(VS_OUT input)
         clip(-1.f);
         return output;
     }
-    if (g_SourceMaterialProfile >= 2304u && g_SourceMaterialProfile <= 4671u)
+    if (g_SourceMaterialProfile >= 2304u && g_SourceMaterialProfile <= 5247u)
     {
         ARTIST_NATIVE_INPUT nativeInput = (ARTIST_NATIVE_INPUT)0;
         const float4 packedUV = Resolve_NativeTrailUV(input.runtimeUV,

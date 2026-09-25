@@ -124,7 +124,7 @@ const CLIENT_LEVEL_DESCRIPTOR* CLevelRegistry::Find(
 			"scene.lobby.neutral.v1",
 			{},
 			CreateLobby,
-			&CLoader::Ready_For_Lobby
+			[](CLoader& loader) -> HRESULT { return loader.Ready_For_Lobby(); }
 		},
 		{
 			LEVEL::CHARACTER_SELECT,
@@ -134,7 +134,7 @@ const CLIENT_LEVEL_DESCRIPTOR* CLevelRegistry::Find(
 			"scene.character-select.warm-high-key.v1",
 			MakeFullMapScope(),
 			CreateCharacterSelect,
-			&CLoader::Ready_For_CharacterSelect,
+			[](CLoader& loader) -> HRESULT { return loader.Ready_For_CharacterSelect(); },
 			"LV_LOBBY_CLASSSELECT_SL10",
 			MakeFullMapScope()
 		},
@@ -151,7 +151,7 @@ const CLIENT_LEVEL_DESCRIPTOR* CLevelRegistry::Find(
 			// the full area.
 			MakeBernMapScope(),
 			CreateBern,
-			&CLoader::Ready_For_Bern
+			[](CLoader& loader) -> HRESULT { return loader.Ready_For_Bern(); }
 		},
 		{
 			LEVEL::VALTAN_ARENA,
@@ -161,7 +161,7 @@ const CLIENT_LEVEL_DESCRIPTOR* CLevelRegistry::Find(
 			"scene.valtan.cool-low-key.v1",
 			MakeFullMapScope(),
 			CreateValtanArena,
-			&CLoader::Ready_For_ValtanArena
+			[](CLoader& loader) -> HRESULT { return loader.Ready_For_ValtanArena(); }
 		},
 		{
 			LEVEL::KAKULSAYDON_ARENA,
@@ -171,7 +171,7 @@ const CLIENT_LEVEL_DESCRIPTOR* CLevelRegistry::Find(
 			"scene.kakulsaydon.g1.base.v1",
 			MakeFullMapScope(),
 			CreateKakulSaydonArena,
-			&CLoader::Ready_For_KakulSaydonArena
+			[](CLoader& loader) -> HRESULT { return loader.Ready_For_KakulSaydonArena(); }
 		},
 		{
 			LEVEL::DEVELOPMENT,
@@ -181,7 +181,7 @@ const CLIENT_LEVEL_DESCRIPTOR* CLevelRegistry::Find(
 			"scene.development.neutral.v1",
 			{ true, false, -20.f, -20.f, 20.f, 20.f },
 			CreateDevelopment,
-			&CLoader::Ready_For_Development
+			[](CLoader& loader) -> HRESULT { return loader.Ready_For_Development(); }
 		},
 		{
 			LEVEL::MAHARAKA,
@@ -193,7 +193,7 @@ const CLIENT_LEVEL_DESCRIPTOR* CLevelRegistry::Find(
 			"scene.development.neutral.v1",
 			MakeFullMapScope(),
 			CreateMaharaka,
-			&CLoader::Ready_For_Maharaka
+			[](CLoader& loader) -> HRESULT { return loader.Ready_For_Maharaka(); }
 		}
 	}};
 
@@ -229,5 +229,5 @@ HRESULT CLevelRegistry::Execute_Load(
 	if (nullptr == pDescriptor || nullptr == pDescriptor->pLoad)
 		return E_INVALIDARG;
 
-	return (loader.*pDescriptor->pLoad)();
+	return pDescriptor->pLoad(loader);
 }

@@ -571,7 +571,7 @@ void Prepare_TimelineAuditionPlayer(
 		player.iResourceAccumulator = 0u;
 		player.iCurrentIdentity = player.iMaximumIdentity;
 		player.iIdentityAccumulator = 0u;
-		player.iCurrentMadness = 0u;
+		player.iCurrentMadness = 0u; player.dMadnessRemainder = 0.;
 		player.iMaximumMadness = SERVER_PLAYER::MADNESS_GAUGE_MAXIMUM;
 		player.eMadnessForm = PLAYER_MADNESS_FORM::NORMAL;
 		player.Clear_KoukuInteractionState();

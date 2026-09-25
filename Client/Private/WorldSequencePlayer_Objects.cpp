@@ -14,6 +14,7 @@
 #include "EffectV2_Runtime.h"
 #include "Effect_PresentationService.h"
 #include "Effect_Playback.h"
+#include "Profiler.h"
 #include <unordered_set>
 #include <algorithm>
 #include <cmath>
@@ -104,8 +105,16 @@ bool Sample_ObjectCollider(const WORLD_SEQUENCE_COLLIDER_TRACK& collider,
         XMMatrixRotationY(XMConvertToRadians(emissionYaw)) * XMMatrixScalingFromVector(placementScale) *
         XMMatrixRotationY(XMConvertToRadians(placementYaw));
     out.behavior = collider.behavior;
+    out.shape = collider.shape;
     out.yawDegrees = emissionYaw + placementYaw + collider.yawDegrees;
     XMStoreFloat3(&out.halfExtents, XMVectorAbs(XMLoadFloat3(&collider.halfExtents) * localScale * placementScale));
+    if (collider.shape == "CYLINDER")
+    {
+        float3_t scale;
+        XMStoreFloat3(&scale, XMVectorAbs(localScale * placementScale));
+        // Server worldTrack cylinders use the authored X radius and the larger ground scale.
+        out.halfExtents.x = out.halfExtents.z = collider.halfExtents.x * (std::max)(scale.x, scale.z);
+    }
     out.hasGrip = collider.behavior == "HOOK_CAPTURE";
     if (out.hasGrip)
     {
@@ -774,6 +783,48 @@ bool_t CWorldSequencePlayer::Prewarm_ObjectInstances(const std::string& instance
     return true;
 }
 
+bool_t CWorldSequencePlayer::Prewarm_HiddenObjectPose(const std::string& instanceId,
+    const f32_t elapsedMs, const TARGET_SET& targets)
+{
+    CProfilerScope scope(CGameInstance::Get().Get_Profiler(), "WorldSequence.HiddenPose.Prewarm");
+    const auto* instance = m_Document.Find_Instance(instanceId);
+    const auto* sequence = instance ? m_Document.Find_Template(instance->templateId) : nullptr;
+    if (!instance || !sequence || !instance->enabled || instance->anchorKind != "WORLD" ||
+        instance->motionEnd != WORLD_SEQUENCE_MOTION_END::HOLD || instance->bindings.size() != 1u ||
+        instance->bindings.front().targetKind != WORLD_SEQUENCE_TARGET_KIND::OBJECT_RESOURCE ||
+        sequence->objectMotion.EmissionCount() != 1u || !sequence->effectTracks.empty() ||
+        !std::isfinite(elapsedMs) || elapsedMs < instance->startDelayMs ||
+        !std::isfinite(instance->playbackSpeed) || instance->playbackSpeed <= 0.f ||
+        targets.objectPreparationOwner != this)
+    { m_Status = "Hidden pose prewarm requires one prepared WORLD HOLD model without Effect tracks: " + instanceId; return false; }
+    const auto& binding = instance->bindings.front();
+    const auto* resource = m_Document.Find_ObjectResource(binding.targetId);
+    const auto pool = m_PreparedObjectPools.find(binding.targetId);
+    if (!resource || pool == m_PreparedObjectPools.end() || !pool->second->acceptsReturns ||
+        pool->second->levelIndex != targets.levelIndex || pool->second->idle.empty())
+    { m_Status = "Hidden pose prewarm has no idle prepared clone: " + instanceId; return false; }
+    const f32_t localMs = (std::min)(static_cast<f32_t>(sequence->durationMs),
+        (elapsedMs - instance->startDelayMs) * instance->playbackSpeed);
+    const f32_t ageMs = localMs - sequence->objectMotion.EmissionDelayMs(0u);
+    if (!std::isfinite(ageMs) || ageMs < 0.f)
+    { m_Status = "Hidden pose prewarm precedes the object birth: " + instanceId; return false; }
+    ACTIVE_INSTANCE active; active.instanceId = instanceId;
+    PLAYER_ANCHOR anchor; XMStoreFloat4x4(&anchor.world, XMMatrixIdentity());
+    float4x4_t world;
+    if (!Sample_ObjectWorld(active, *instance, *sequence, *resource, binding.slotId, anchor, 0u, ageMs, world, m_Status)) return false;
+    f32_t windowEnd = 0.f;
+    const auto* animation = Find_AnimationTrackAt(*sequence, binding.slotId, ageMs, windowEnd);
+    // Evaluate the actual animation on the clones which combat will borrow.
+    // They remain idle and hidden; no playback, sound, Effect or scene visibility is committed.
+    for (const auto& object : pool->second->idle)
+    {
+        if (!object || !object->Sample(world, false, animation, ageMs, windowEnd))
+        { m_Status = "Hidden pose prewarm sample failed: " + instanceId; return false; }
+    }
+    m_Status = "Hidden endpoint pose prepared: " + instanceId;
+    return true;
+}
+
 void CWorldSequencePlayer::Clear_PreparedObjects()
 {
     for (auto& [id, pool] : m_PreparedObjectPools)
@@ -872,19 +923,46 @@ bool_t CWorldSequencePlayer::Try_GetPresentationBossAnchor(const std::string& ar
 }
 
 bool_t CWorldSequencePlayer::Try_GetObjectPivot(const std::string& instanceId, float4x4_t& out,
-    const uint32_t emissionIndex) const
+    const uint32_t emissionIndex, const std::string& bone, const bool_t boneRotation) const
 {
     const auto active = std::find_if(m_Active.begin(), m_Active.end(),
         [&](const auto& value) { return value.instanceId == instanceId; });
     if (active == m_Active.end()) return false;
+    const auto sample = [&](const CWorldSequenceObject& object) {
+        const auto& root = object.Get_SampledWorld();
+        if (bone.empty()) { out = root; return true; }
+        const auto model = object.Get_Model();
+        if (!model || !model->Has_Bone(bone.c_str())) return false;
+        const matrix_t objectWorld = XMLoadFloat4x4(&root);
+        const matrix_t socket = model->Get_BoneMatrix(bone.c_str()) * objectWorld;
+        const vector_t forward = boneRotation ? socket.r[2] : objectWorld.r[2];
+        const float x = XMVectorGetX(forward), z = XMVectorGetZ(forward);
+        if (!std::isfinite(x) || !std::isfinite(z) || (!boneRotation && x*x + z*z < 0.00000001f)) return false;
+        const float sx = XMVectorGetX(XMVector3Length(objectWorld.r[0]));
+        const float sy = XMVectorGetX(XMVector3Length(objectWorld.r[1]));
+        const float sz = XMVectorGetX(XMVector3Length(objectWorld.r[2]));
+        matrix_t pivot = XMMatrixRotationY(std::atan2(x, z));
+        if (boneRotation)
+        {
+            for (size_t axis = 0u; axis < 3u; ++axis)
+            {
+                if (XMVectorGetX(XMVector3LengthSq(socket.r[axis])) < 0.00000001f) return false;
+                pivot.r[axis] = XMVector3Normalize(socket.r[axis]);
+            }
+        }
+        pivot = XMMatrixScaling(sx, sy, sz) * pivot;
+        pivot.r[3] = XMVectorSetW(socket.r[3], 1.f);
+        XMStoreFloat4x4(&out, pivot);
+        const auto* values = reinterpret_cast<const float*>(&out);
+        return std::all_of(values, values + 16u, [](float value) { return std::isfinite(value); });
+    };
     const auto* instance = m_Document.Find_Instance(instanceId);
     const auto* sequence = nullptr != instance ? m_Document.Find_Template(instance->templateId) : nullptr;
     if (nullptr == sequence || sequence->objectMotion.emissions.empty())
     {
         if (0u != emissionIndex || active->objects.size() != 1 || !active->objects.front().object ||
             !active->objects.front().object->Is_Visible()) return false;
-        out = active->objects.front().object->Get_SampledWorld();
-        return true;
+        return sample(*active->objects.front().object);
     }
     // An authored row is one clone per anchor; a WORLD motion has exactly one anchor.
     const CWorldSequenceObject* found = nullptr;
@@ -895,8 +973,7 @@ bool_t CWorldSequencePlayer::Try_GetObjectPivot(const std::string& instanceId, f
         found = entry.object.get();
     }
     if (!found || !found->Is_Visible()) return false;
-    out = found->Get_SampledWorld();
-    return true;
+    return sample(*found);
 }
 
 #ifdef _DEBUG
@@ -1470,9 +1547,10 @@ bool_t CWorldSequencePlayer::Apply_ObjectEffects(ACTIVE_INSTANCE& active,
 }
 
 bool_t Client::CWorldSequencePlayer::Try_GetSequencePivot(const std::string& instanceId, float4x4_t& out,
- const uint32_t emissionIndex) const
+ const uint32_t emissionIndex, const std::string& bone, const bool_t boneRotation) const
 {
- if (Try_GetObjectPivot(instanceId, out, emissionIndex)) return true;
+ if (Try_GetObjectPivot(instanceId, out, emissionIndex, bone, boneRotation)) return true;
+ if (!bone.empty()) return false;
  // Placed map/deploy aliases have no emission rows; only row 0 can name them.
  if (0u != emissionIndex) return false;
  const auto* instance = Get_Document().Find_Instance(instanceId);
@@ -1612,12 +1690,13 @@ void CWorldSequencePlayer::Apply_Sounds(ACTIVE_INSTANCE& active)
                     {
                         const auto path = CRuntimeAssetRoot::Resolve(row.assetId);
                         const auto handle = audio.Play_SoundCue(path.wstring(), row.volume,
-                            static_cast<uint32_t>(ageMs), m_bPaused, rate);
+                            static_cast<uint32_t>(ageMs), m_bPaused, rate * m_ExternalSoundClockRate);
                         // A missing cue is isolated and remembered, so a broken asset
                         // cannot retrigger file I/O or invalidate an otherwise valid scene.
                         active.sounds.push_back({key, handle, birthMs + row.durationMs / rate});
                         if (!handle) m_Status = "World sequence sound unavailable: " + row.assetId;
                     }
+                    else audio.Set_SoundCuePlaybackRate(found->handle, rate * m_ExternalSoundClockRate);
                 }
             }
             if (motion->motionEnd != WORLD_SEQUENCE_MOTION_END::NEXT) break;

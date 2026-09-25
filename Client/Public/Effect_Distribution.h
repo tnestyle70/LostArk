@@ -4,6 +4,8 @@
 #include "Engine_Defines.h"
 
 #include <cstdint>
+#include <optional>
+#include <span>
 #include <string>
 #include <vector>
 
@@ -21,7 +23,39 @@ enum class EFFECT_DISTRIBUTION_PARAMETER_BINDING : uint8_t
 {
 	NONE,
 	ACTION_CUE,
+	WORLD_SAMPLE,
 	END
+};
+
+enum class EFFECT_PARAMETER_VALUE_KIND : uint8_t
+{
+	SCALAR,
+	VECTOR3,
+	END
+};
+
+struct EFFECT_PARAMETER_INPUT final
+{
+	std::string strName;
+	EFFECT_PARAMETER_VALUE_KIND eKind = EFFECT_PARAMETER_VALUE_KIND::END;
+	f32_t fScalarValue = 0.f;
+	float3_t vVectorValue = { 0.f, 0.f, 0.f };
+};
+
+enum class EFFECT_PARAMETER_MODE : uint8_t
+{
+	DIRECT,
+	NORMAL,
+	END
+};
+
+struct EFFECT_PARAMETER_MAPPING_DESC final
+{
+	std::vector<EFFECT_PARAMETER_MODE> Modes;
+	float4_t vMinInput = { 0.f, 0.f, 0.f, 0.f };
+	float4_t vMaxInput = { 0.f, 0.f, 0.f, 0.f };
+	float4_t vMinOutput = { 0.f, 0.f, 0.f, 0.f };
+	float4_t vMaxOutput = { 0.f, 0.f, 0.f, 0.f };
 };
 
 struct EFFECT_DISTRIBUTION_KEY_DESC final
@@ -56,6 +90,7 @@ struct EFFECT_DISTRIBUTION_DESC final
 	std::string strParameterName;
 	EFFECT_DISTRIBUTION_PARAMETER_BINDING eParameterBinding =
 		EFFECT_DISTRIBUTION_PARAMETER_BINDING::NONE;
+	std::optional<EFFECT_PARAMETER_MAPPING_DESC> ParameterMapping;
 	uint32_t iComponentCount = 1u;
 	uint32_t iOperation = 1u;
 	uint32_t iRandomLockAxes = 0u;
@@ -74,6 +109,16 @@ struct EFFECT_DISTRIBUTION_DESC final
 class CEffectDistribution final
 {
 public:
+	static bool_t Validate_ParameterInputs(
+		std::span<const EFFECT_PARAMETER_INPUT> Inputs,
+		std::string& strOutError);
+	// Inputs are raw values already sampled at the owning WORLD occurrence time.
+	// Missing or mismatched input fails without changing OutValue.
+	static bool_t Resolve_WorldParameter(
+		const EFFECT_DISTRIBUTION_DESC& Distribution,
+		std::span<const EFFECT_PARAMETER_INPUT> Inputs,
+		float4_t& OutValue,
+		std::string& strOutError);
 	static float4_t Evaluate(
 		const EFFECT_DISTRIBUTION_DESC& Distribution,
 		f32_t fTime,

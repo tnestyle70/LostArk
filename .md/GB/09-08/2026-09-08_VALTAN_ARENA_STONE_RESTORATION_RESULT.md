@@ -170,3 +170,72 @@ PID53988의 빌드 자식만 중단했다. 다른 세션 프로세스는 중단�
 갱신됐지만 Client 최종 링크/정상 배포는 끝나지 않았다. 현재 디렉터리의 기존 EXE를 실행
 가능한 완성본으로 안내하지 않는다. 291건은 앞선 발탄 shader checkpoint의 검증이며,
 이번 전체 빌드 시작 전에 다른 세션이 수정한 WR 이펙트의 새 동작까지 검증한 수치가 아니다.
+
+## G08. 2026-09-25 작은 원형 바닥의 원본 정적 그림자 복원
+
+사용자의 원작 이미지 `codex-clipboard-7b59133e-ae5c-4eb0-a576-ac90a0cd27f3.png`를
+확인했다. 현재 설치 원본 UPK에서 외곽 rock04, 원형 두 MIC, Deploy crack MIC를
+재추출했다. 활성 diffuse/normal/specular/overlay 값과 원형·외곽 static flags263은
+현재 저작과 일치한다. 원작에서도 서로 다른 세 MIC이므로 같은 tint로 통일하지 않았다.
+저작과 runtime mapmaterials SHA256은 조사 시점에 서로 같았다.
+
+현재 Resources의 해당 D/N·overlay 10종, 동일 파일의 복사본을 포함한18경로의
+최상위 압축 payload가 원본 추출본과 모두 일치했다. DX10 header148바이트와 기존
+DDS header128바이트를 구분해 대조했으며, lower mip 전체의 원본 일치를 주장하지 않는다.
+설치 WModel은 외곽1271 32,940정점/479색, 원형1274 1,185정점/80색,
+Deploy A 25,819정점/157색, B 34,306정점/679색이며 COLOR0·UV1과 유효 tangentW를
+기존 geometry contract reader로 확인했다. 이번에 geometry를 재추출·교체하지 않았다.
+
+확정한 누락은 원형1274의 원본 그림자다. source component native prefix의 shadow
+reference233은 `ShadowMap2D_7168`(zero-based export232)을 가리킨다. 해당 원본 record의
+texture reference772는 `shadowmaptexture2d_1706`(export771)이며 외곽1271과 같다.
+원본 GUID는 `4ba587b9fa985e4b91c324a665a0ef33`, 좌표 scale은
+`[0.1796875,0.1796875]`, bias는 `[0.25390625,0.25390625]`다.
+원본 texture는256×256 PF_G8/sRGB=false이고 native LZ4 top mip65,536바이트를
+직접 풀어 현재 DDS top payload와 동일함을 확인했다. circle UV1에 좌표를 적용한
+1,185 nearest vertex sample은 G8 범위0..255/평균60.8101이며889개가
+128미만이었다. 따라서 빈 흰색 입력이 아니라 실제로 광량을 바꾸는 atlas다.
+이 수치는 GPU 화면 검증이 아니다.
+
+후보는 다음 한 문서의 두 material에 `bakedLighting.staticShadow`, 원형 placement
+한 행에 `shadowCoordinateScale/Bias`만 추가한다. 색·재질 상수·geometry·Resources·
+렌더 옵션·shader는 그대로다. 기존 외곽과 같은 lightChannel1 및
+PROJECT_ADAPTER penumbraWidth0.05/shadowExponent2를 재사용한다.
+원본 CPU의 transfer width를 새로 복원했다고 해석하지 않는다.
+
+- 후보/백업/해시: `out/ValtanStoneColor20260925/manifest.json`.
+- 최신본의 안정 ID 병합 함수: `prepare_circle_shadow_candidate.py`의
+  `patch_document` 또는 다른 행의 원래 바이트를 보존하는 `patch_bytes`.
+- source hash: `4c9f4d5ea80f9e377ada40abbc037416427bbeb75a6394c9bfdc9c06c5fd3e61`.
+- candidate hash: `f07d44f13b2442d08a1d96a350c135426273c0f688dbbf29c0deb2ca810360f0`.
+- 원본 근거: `source-parameters-receipt.json`, `selected-shadow-records.json`,
+  `shadow-texture-reference.json`, `installed-resource-audit.json`.
+
+현재 publisher의 함수들을 AST로 그대로 로드해 전체 후보의 실제
+`Read-MapMaterialDocument`를 실행했다. material4,511행과 placementLighting11,076행의
+원본형식·설치 WModel slot·DDS·source placement join 검증이 exit0/PASS였다.
+로그는 `out/ValtanStoneColor20260925/validate-candidate.log`다.
+제품 소비자는 `CMapAssetCatalog`의 기존 staticShadow parser와
+`CMapAssetRenderUtils::Bind_Material`의 hasStaticShadow/SRV 경로다.
+관련 후보와 문서 `git diff --check`도 통과했다.
+
+통합 담당자가 최신 저장본 CAS·백업·원자 교체를 완료했다. 설치 receipt는
+`out/ValtanStoneColor20260925/install.receipt.json`, transaction은
+`kouku-raid-327b3c2fc40a41829ea6ebe88f20d478`이며 `status=installed`다.
+실제 저작 파일 SHA256도 위 candidate hash와 같음을 다시 확인했다.
+통합 담당자의 Area Publish와 Check가 모두 exit0으로 완료됐다.
+게시 범위는13,184placements/24files/8shards이며 로그는
+`out/ValtanStoneColor20260925/publish.log`, `check.log`다.
+독립 검증 `verification.json`은 duplicate key 없는 엄격한 JSON parse, 저작/runtime
+전체 문서 의미 동등성 및 baseline에 정확한 두 material·한 placement patch만 적용한
+결과와의 일치를 PASS로 기록한다. runtime SHA256은
+`ab149ceea52e4e39b9800c4eadecf8c193077ac8c1ecf0c6ec7861f3af3cfe1d`다.
+저작과 runtime의 byte hash 차이는 CRLF→LF 정규화로 제거된636,036바이트뿐이며,
+정규화 뒤에는 전체 바이트도 일치한다. shader나 재질 필드의 추가 변형은 없다.
+공식 최소 지원 scope는 Area다. 설치 후
+`Publish-MapAuthoring.ps1 -AreaId LV_LUT_HEARTRB_ED -Scope Area -Mode Publish`,
+동일 명령의 `-Mode Check`로 확인한다. Materials 전용 scope는 현재 없다.
+위 Publish/Check는 완료했으며 중복 실행하지 않는다. 코드·shader 변경이 없어 별도
+빌드는 수행하지 않았다. Client/UI를 실행하지 않았다.
+사용자 최종 화면 비교와 source scene hemisphere/ambient의 미복원 경계는 남아 있으며,
+이 국소 연결만으로 외곽·중앙의 최종 색이 원작과 완전히 같아졌다고 판정하지 않는다.

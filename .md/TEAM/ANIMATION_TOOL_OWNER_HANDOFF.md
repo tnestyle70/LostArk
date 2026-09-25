@@ -6,7 +6,7 @@
 ## Action Workbench의 공통 창과 저장 owner
 
 F1 → Action Workbench의 왼쪽 창은 **Composition Actions**다. 최상단 Boss / Character / Object /
-Sequence 선택 아래 각 owner의 트리가 나온다. Object/Sequence는 이 공통 창에서 편집한다.
+Sequence / World 선택 아래 각 owner의 트리가 나온다. Object/Sequence는 이 공통 창에서 편집한다.
 Effect는 F1의 `Open Effect Tool V1`, `Open Effect Tool V2`로 각각 원래 독립 창을 연다.
 두 Effect 창은 함께 표시할 수 있고 Action의 창 닫기·카테고리 변경이 Effect 문서를 바꾸지 않는다.
 Action의 Effect resource 편집 명령은 해당 독립 Effect owner를 연다. Resources, Sequencer, Box Detail,
@@ -22,6 +22,15 @@ Preview와 toolbar는 공통 shell이 소유하고 각 세션은 자기 문서·
   source cue 편집은 Details에 포함한 기존 Animation Tool owner의 Save를 사용하고, 저장한 cue는
   `Refresh saved cues`로 action timeline에 다시 읽는다. Effect 내부 모양은 `Edit Effect resource`로
   같은 공통 창의 실제 V1/V2 owner를 열어 저장한다. Effect Sequence의 Save를 제품 skill Save로 쓰지 않는다.
+- World의 `Character Select`는 기존 11개 바닥 Category를 F1 `Character Select Movie`와 공유한다.
+  Play는 선택 class를 Level의 공통 명령으로 검증하며 Server player의 class를 요구하거나 바꾸지 않는다.
+  미연결·준비 실패는 선택 Category에 표시하고, 현재 재생의 Seek·Pause·Stop과 다음 Play 선택을 구분한다.
+  PSC의 움직임은 effects[].rootKeys, 시간별 color/alpha는 effects[].parameterTracks로
+  동일한 phase source time을 사용한다. 파티클 age와 별도로 입력하고 Pause/Seek/Stop은 기존
+  WORLD movie owner가 처리한다. 음성은 기존 template.soundTracks를 사용한다.
+  `ClassSelection.cinematics.json`의 optional `scenes[].backgroundAreaId`는 원본 배경 Area이며
+  생략 시 registry의 기존 presentation Area를 사용한다. 같은 Area를 한 번 준비하고 활성 scene만
+  표시하며 배경 실패는 해당 class에 격리한다. 11개 바닥의 사용자 배치를 영화 재생으로 수정하지 않는다.
 - Object Parent는 연결 Motion의 Transform/Animation/Effect overview를 보여 주고 row 선택으로 기존
   Motion 편집에 들어간다. 저장은 기존 World Sequence atomic save와 Area publish, 열린 Composition의
   dirty/외부 변경 검사를 유지한다.
@@ -48,6 +57,32 @@ caster 시간은 action/stage 기준이고 projectile 시간은 생성 이후 �
 구현과 실행한 검사, 남은 사용자 화면 확인은
 `../GB/09-13/2026-09-13_ACTION_WORKBENCH_UNIFIED_ACTIONS_RESULT.md`에서 구분한다.
 
+## 공통 복사·붙여넣기와 리소스 전달
+
+`CompositionEditing.h`의 값 snapshot과 `ICompositionWorkbenchSession`의
+`Execute_CompositionEdit`/`Insert_CompositionTransfer`를 Boss·Character·Object가 공유한다.
+공통 toolbar의 Copy/Paste/Duplicate와 편집 창의 Ctrl+C/V/D는 같은 owner API를 호출한다.
+텍스트 입력·팝업·드래그 중에는 단축키를 소비하지 않는다. Resource 드래그도 같은 snapshot을
+전달하며 대상 owner의 현재 커서에 삽입한다. 기존 owner의 선택·저장·게시 경로는 유지한다.
+
+clipboard는 저작 값을 소유하고 runtime handle과 원본 문서 포인터를 보관하지 않는다.
+같은 owner의 복사는 원래 행의 전체 지원 정책을 보존한다. 서로 다른 owner 사이에는 공통
+V1/V2 Effect 참조와 표현 가능한 TRS·수명·부착 정책만 전달하며, 지원하지 않는 정책은 이유를
+표시하고 전체 후보를 거절한다. Animation은 목적지의 실제 모델·clip package 호환성을 검사한다.
+고정/world snapshot Effect는 owner마다 절대 좌표와 발생 순간의 상대 좌표 의미가 달라 현재
+교차 owner 전달을 거절한다. 같은 owner의 native 복사는 원래 좌표 정책을 유지한다.
+이 API가 다른 보스의 Server Logic을 Character나 Object에 자동 이식하는 계약은 아니다.
+
+World Object Copy는 모델·재질·combatBody와 직접 연결 Motion 및 NEXT 연결을 값으로 캡처한다.
+Paste/Duplicate는 Object/template/instance ID를 새로 만들고 내부 참조를 함께 재배선한다.
+기존 빈 Object에 Paste하면 목적지 이름·ID·Parent를 유지하며 내용을 채운다. 모델이 이미 있는
+Object에는 호환 모델의 독립 Motion을 추가한다. 원본 Object에 Paste하거나 Duplicate하면
+독립 형제를 만든다. Motion 선택 상태의 복사는 해당 Motion과 NEXT 연결만 포함한다.
+전체 Object 복사는 모델 없는 합성 alias나 실제 Map placement를 복제하지 않는다.
+
+검증 범위와 남은 화면 확인은
+`../GB/09-24/2026-09-24_SHARED_SEQUENCER_RESOURCE_TRANSFER_RESULT.md`를 따른다.
+
 ## Valtan Composition source Save와 Product Publish
 
 Valtan Composition의 Save는 기존 `Data/Valtan` gameplay/presentation/combat-object와 BossCatalog의 변경분,
@@ -66,6 +101,9 @@ Source inventory는 생성된 Product와의 동등성 없이 다시 열 수 있�
 Logic의 ENTER/EXIT와 phase·counter·world의 기존 Server 권위를 유지한다. World event set은 전체 source에서
 한 번만 호출되므로 Resource 이동은 기존 호출을 옮기는 트랜잭션이다. Summon은 기존 combat-object 정의의
 spawn을 배치하며 lifetime 수정은 같은 archetype의 모든 호출에 적용되는 공유 정의 변경이다.
+독립 편집이 필요한 Summon은 Copy/Paste/Duplicate를 사용한다. `CLONE_COMBAT_OBJECT`는 source
+revision을 고정하고 combat definition·BossCatalog visual·spawn event와 hit ID를 함께 복제한다.
+V2 visual의 `serverHitId`도 새 hit를 참조한다. 기존 Save의 owner closure·CAS·rollback을 유지한다.
 
 ## World Level 목록과 MAP Effect 배치
 
@@ -330,9 +368,9 @@ Data/Effects/V2/Bindings/BOSS_VALTAN.effectv2bindings.json
 - Composition에서 Group을 Pattern에 붙일 때 group children을 `Valtan.gameplay.json`이나
   `Valtan.presentation.json`에 펼쳐 복사하지 않는다. Effect Tool V2가 group body를 Save하고
   Composition은 `groupId` occurrence만 저장한다.
-- Composition의 기본 palette는 `boss.valtan.*` Group 우선이다. direct leaf는
-  `Advanced / Direct Leaves`에서만 같은 boss scope로 연다. 다른 owner의 leaf를 발탄 Pattern에
-  연결하지 않는다.
+- Composition의 palette는 공통 catalog의 Group과 `Advanced / Direct Leaves`를 사용한다.
+  발탄 Pattern도 다른 owner가 만든 stable Effect resource를 참조할 수 있다. prefix로 소유자를
+  제한하지 않으며 실제 catalog 존재·group closure·clock·anchor·중복 재생 검증은 유지한다.
 - group binding이 펼치는 동일 leaf와 direct leaf의 expanded clock이 같으면 중복 재생이므로
   editor와 validator가 저장을 거부한다.
 - 선택 animation box에 Group을 붙이면 그 box의 stable occurrence와 Stage-local start가 binding

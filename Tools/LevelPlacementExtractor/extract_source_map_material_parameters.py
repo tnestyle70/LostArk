@@ -123,13 +123,60 @@ def assign(result: dict[str, Any], field: str, name: str, value: Any, evidence: 
 
 
 class MaterialResolver:
-    def __init__(self, package_root: Path, umodel: Path):
+    def __init__(self, package_root: Path, umodel: Path, parent_static_proof: Path | None = None):
         self.package_root = package_root.resolve(strict=True)
         self.umodel = umodel.resolve(strict=True)
         self.packages: dict[str, closure.PackageData] = {}
         self.materials: dict[str, dict[str, Any]] = {}
         self.active: list[str] = []
         self.static_decoder = MapStaticSetDecoder()
+        self.parent_static_proofs: dict[str, Any] = {}
+        self.parent_static_evidence: dict[str, Any] | None = None
+        if parent_static_proof is not None:
+            payload = parent_static_proof.read_bytes()
+            document = json.loads(payload)
+            require(document.get("format") == "lostark-source-parent-static-map-proof" and
+                    document.get("formatVersion") == 1, "unsupported parent static map evidence")
+            for key in ("sourceShaderCache", "classDefaultEvidence"):
+                item = document[key]
+                require(digest(Path(item["path"]).read_bytes()) == item["sha256"],
+                        f"parent static map evidence changed: {key}")
+            self.parent_static_proofs = document["proofs"]
+            self.parent_static_evidence = {"path": str(parent_static_proof.resolve()), "sha256": digest(payload)}
+
+    def inherited_static(self, full: str, parent: str, package: closure.PackageData,
+                         serial: bytes, tail: bytes, props: dict, resolved: dict) -> dict:
+        """Accept only an explicitly proved, unchanged parent-map MIC.
+
+        Absence alone remains an error. The opt-in proof pins the original MIC,
+        CDO evidence and the real cache's unique parent map. Scalar/vector/texture
+        overrides are retained below; an instance static permutation is never
+        replaced by this path.
+        """
+        proof = self.parent_static_proofs.get(full)
+        require(proof is not None, "MIC native static resource absent; effective switches are unresolved")
+        allowed = {"parent", "parentlightingguid", "scalarparametervalues",
+                   "vectorparametervalues", "textureparametervalues"}
+        keys = {key.casefold() for key in props}
+        require(not tail and keys <= allowed and keys == set(proof["allowedPropertyNames"]),
+                f"{full}: parent-map proof has an unreviewed instance property or native resource")
+        require(proof["sourceMaterial"] == full and proof["parentMaterial"] == parent and
+                proof["sourceSerialSha256"] == digest(serial) and
+                proof["sourcePackageSha256"] == package.sha256 and
+                proof["baseMaterialId"] == resolved["baseId"] and proof["sourceNativeTailBytes"] == 0,
+                f"{full}: parent-map source identity changed")
+        require(not resolved["switches"] and not any(row["field"] == "switches"
+                for row in resolved["unresolvedDefaults"]), f"{full}: unproved static parent state")
+        parsed = shader_maps.parse_static_parameter_set(
+            bytes.fromhex(resolved["baseId"]) + bytes(16), 0, package.names)
+        equality = shader_maps.canonical_json_sha256(shader_maps.engine_equivalent_static_parameter_set(parsed))
+        require(equality == proof["engineEqualityStaticParameterSetSha256"] and
+                proof["nativeShaderMapContext"]["engineEqualityStaticParameterSetSha256"] == equality and
+                proof["sourceLocalVertexFactoryShaders"], f"{full}: parent shader-map key changed")
+        return {"status": "SOURCE_PROVED_PARENT_MAP_INHERITANCE", "nativeTailByteCount": 0,
+                "staticParameterSet": shader_maps.public_static_set(parsed),
+                "engineEqualityStaticParameterSetSha256": equality,
+                "evidence": self.parent_static_evidence, "parentMaterial": parent}
 
     def package(self, logical_name: str) -> closure.PackageData:
         if logical_name not in self.packages:
@@ -167,7 +214,9 @@ class MaterialResolver:
                 result = copy.deepcopy(self.resolve(parent))
                 result["sourceMaterial"], result["parent"] = full, parent
                 result["chain"].append(evidence)
-                native = self.static_decoder.decode(serial[end:], bytes.fromhex(result["baseId"]), package.names)
+                native = (self.static_decoder.decode(serial[end:], bytes.fromhex(result["baseId"]), package.names)
+                          if serial[end:] else self.inherited_static(full, parent, package, serial,
+                                                                    serial[end:], props, result))
                 result["static"] = native
                 for row in native["staticParameterSet"]["staticSwitchParameters"]:
                     assign(result, "switches", row["parameterName"], row["value"],
@@ -262,9 +311,10 @@ class MaterialResolver:
         return result
 
 
-def extract_parameters(source_materials: list[str], package_root: Path, umodel: Path) -> dict[str, Any]:
+def extract_parameters(source_materials: list[str], package_root: Path, umodel: Path,
+                       parent_static_proof: Path | None = None) -> dict[str, Any]:
     require(bool(source_materials), "no source Material paths supplied")
-    resolver = MaterialResolver(package_root, umodel)
+    resolver = MaterialResolver(package_root, umodel, parent_static_proof)
     rows, failures = {}, []
     for full in sorted({full_source_name(value) for value in source_materials}):
         try:
@@ -275,6 +325,8 @@ def extract_parameters(source_materials: list[str], package_root: Path, umodel: 
     for logical_name, package in resolver.packages.items():
         require(digest(package.path.read_bytes()) == package.sha256, f"source package changed during extraction: {package.path}")
         sources.append({"logicalName": logical_name, "path": str(package.path), "sha256": package.sha256})
+    if resolver.parent_static_evidence:
+        sources.append(resolver.parent_static_evidence)
     return {"format": FORMAT, "formatVersion": 1, "materials": rows, "sources": sources, "failures": failures,
             "sourceStaticFormat": STATIC_FORMAT,
             "scope": "source parameter resolution only; no shader-map/runtime/visual admission; absent defaults remain unresolved"}
@@ -284,6 +336,8 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--source-material", action="append", default=[])
     parser.add_argument("--source-materials-json", type=Path, help="JSON array of full package.object paths")
+    parser.add_argument("--parent-static-proof", type=Path,
+                        help="Opt-in source/CDO/cache proof for exact empty-tail parent-map instances")
     for name in ("package-root", "umodel", "output", "receipt"):
         parser.add_argument(f"--{name}", required=True, type=Path)
     args = parser.parse_args(argv)
@@ -300,7 +354,7 @@ def main(argv: list[str] | None = None) -> int:
                     "output must not overwrite source packages or decoder")
             require(args.source_materials_json is None or target != args.source_materials_json.resolve(),
                     "output must not overwrite source list")
-        document = extract_parameters(materials, args.package_root, args.umodel)
+        document = extract_parameters(materials, args.package_root, args.umodel, args.parent_static_proof)
         receipt_document = {"format": FORMAT + "-receipt", "formatVersion": 1,
                             "status": "PASS" if not document["failures"] else "FAILED_OUTPUT_PRESERVED",
                             "requested": sorted(set(materials)), "sources": document["sources"],

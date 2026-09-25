@@ -60,7 +60,7 @@ def validate_tracks(sequence):
     required = {"colliderTrackId", "slotId", "startMs", "durationMs", "positionOffset",
                 "halfExtents", "yawDegrees", "behavior", "damagePercent", "gripLocalOffset"}
     for row in rows:
-        if set(row) - required - {"attachmentBone"} or required - set(row):
+        if set(row) - required - {"attachmentBone", "shape"} or required - set(row):
             raise ColliderBakeError("Object collider has missing or unknown fields")
         identity = row["colliderTrackId"]
         if not isinstance(identity, str) or not re.fullmatch(r"[A-Za-z0-9_.-]{1,128}",identity) or identity in ids:
@@ -79,11 +79,18 @@ def validate_tracks(sequence):
                 raise ColliderBakeError("Object collider vector is outside its finite bounds")
         if type(row["yawDegrees"]) not in (int, float) or not math.isfinite(row["yawDegrees"]) or abs(row["yawDegrees"]) > 36000:
             raise ColliderBakeError("Object collider yaw is invalid")
+        shape = row.get("shape", "BOX")
+        if shape not in ("BOX", "CYLINDER"):
+            raise ColliderBakeError("Object collider shape must be BOX or CYLINDER")
+        if shape == "CYLINDER" and abs(row["halfExtents"][0] - row["halfExtents"][2]) > .0001:
+            raise ColliderBakeError("Object CYLINDER requires equal X/Z radii")
         behavior = row["behavior"]
         if behavior not in ("DAMAGE", "INSTANT_DEATH", "HOOK_CAPTURE") or type(row["damagePercent"]) not in (int, float):
             raise ColliderBakeError("Object collider behavior is invalid")
         if (behavior == "DAMAGE" and not (1 <= row["damagePercent"] <= 100 and int(row["damagePercent"]) == row["damagePercent"])) or (behavior != "DAMAGE" and row["damagePercent"] != 0):
             raise ColliderBakeError("Only DAMAGE carries an integer HP percentage")
+        if behavior == "HOOK_CAPTURE" and shape != "BOX":
+            raise ColliderBakeError("HOOK_CAPTURE requires a BOX collider")
         bone = row.get("attachmentBone", "")
         if not isinstance(bone, str) or len(bone.encode()) > 256 or any(ord(c) < 32 or ord(c) == 127 for c in bone):
             raise ColliderBakeError("Object collider bone is invalid")
@@ -215,7 +222,7 @@ def sample_object(sequence, instance, resource, box, world, emitter, age, row, l
     elif row["behavior"] == "HOOK_CAPTURE":
         pivot = visual
     else:
-        # Mesh upright correction and self-spin must not rotate the floor BOX.
+        # Mesh upright correction and self-spin must not rotate the floor collider.
         emission_yaw = emissions[emitter].get("yawDegrees",0) if emissions else 0.
         pivot = matrix(local_scale,rotation([0,emission_yaw,0]))
         if placement:
@@ -241,8 +248,33 @@ def bake_windows(sequences, worlds, boxes, load_model, *, pattern_end_ms=None, s
     instances = {r["instanceId"]:r for r in sequences["instances"]}
     resources = {r["objectId"]:r for r in sequences.get("objectResources",[])}
     for template in templates.values(): validate_tracks(template)
-    result = []
+    # Model-less groups share one placed origin. Expand only publication input;
+    # each child still bakes through the existing emission/motion sampler.
+    worlds = dict(worlds)
+    expanded_boxes = []
     for box in boxes:
+        world = worlds[box["worldId"]]
+        group = resources.get(world["sequenceInstanceId"], {})
+        members = group.get("motionInstanceIds")
+        if members is None:
+            expanded_boxes.append(box)
+            continue
+        for index, identity in enumerate(members):
+            instance = instances.get(identity)
+            if instance is None:
+                raise ColliderBakeError("Collider group motion is missing")
+            if not instance.get("enabled", True):
+                continue
+            bindings = instance.get("bindings", [])
+            if len(bindings) != 1 or bindings[0].get("targetKind") != "OBJECT_RESOURCE":
+                raise ColliderBakeError("Collider group motion needs one real model binding")
+            world_id = box["worldId"] + ".collider-member." + str(index)
+            worlds[world_id] = {**world, "sequenceInstanceId": identity,
+                                "objectResourceId": bindings[0]["targetId"]}
+            expanded_boxes.append({**box, "worldId": world_id,
+                                   "occurrenceId": box["occurrenceId"] + ".member." + str(index)})
+    result = []
+    for box in expanded_boxes:
         world = worlds[box["worldId"]]
         instance = instances[world["sequenceInstanceId"]]
         initial_instance = instance
@@ -316,6 +348,12 @@ def bake_windows(sequences, worlds, boxes, load_model, *, pattern_end_ms=None, s
                                 if time in sample_cache: return sample_cache[time]
                                 age = max(0,(source_origin+time)*rate-delay)
                                 center,grip,scale,current_yaw,visible = sample_object(sequence,initial_instance,resource,box,world,emitter,age,row,load_model)
+                                if row.get("shape", "BOX") == "CYLINDER":
+                                    # Circular WORLD tracks require equal X/Z keys.
+                                    # Preserve the existing radius * max(X,Z) hit
+                                    # shape after the full source center is sampled.
+                                    radius_scale = max(scale[0], scale[2])
+                                    scale = [radius_scale, scale[1], radius_scale]
                                 key={"timeMs":time,"positionOffset":list(center),"rotationY":0.,"rotationW":1.,"scaleMultiplier":scale,"visible":bool(visible and time<duration and age<first_hidden)}
                                 if row["behavior"] == "HOOK_CAPTURE": key["gripPosition"]=list(grip)
                                 if any(not math.isfinite(x) or abs(x)>100000 for x in [*center,*grip]): raise ColliderBakeError("Object collider bake exceeds world bounds")
@@ -342,8 +380,9 @@ def bake_windows(sequences, worlds, boxes, load_model, *, pattern_end_ms=None, s
                                       if "gripPosition" in key else {})} for key in keys]
                             yaw=sample(0)[1]
                             identity = hashlib.sha256((box["occurrenceId"]+'|'+instance["instanceId"]+'|'+row["colliderTrackId"]+f'|{cycle}|{emitter}|{visible_start}').encode()).hexdigest()[:32]
-                            region={"regionId":"object.collider.region."+identity,"shape":"BOX","anchorKind":"WORLD","center":[0,0,0],
-                                    "yawDegrees":yaw,"halfExtents":row["halfExtents"],"radiusM":1.,"halfAngleDegrees":45.,"cardSymbol":"NONE","cardColor":"NONE",
+                            shape = row.get("shape", "BOX")
+                            region={"regionId":"object.collider.region."+identity,"shape":shape,"anchorKind":"WORLD","center":[0,0,0],
+                                    "yawDegrees":yaw,"halfExtents":row["halfExtents"],"radiusM":row["halfExtents"][0] if shape == "CYLINDER" else 1.,"halfAngleDegrees":45.,"cardSymbol":"NONE","cardColor":"NONE",
                                     "worldTrack":{"startMs":start_ms,"startDelayMs":0,"durationMs":duration,"playbackSpeed":1.,"interpolation":"LINEAR",
                                                   "baselinePosition":[0,0,0],"baselineYawDegrees":0.,"baselineScale":[1,1,1],"keys":keys}}
                             result.append({"occurrenceId":"object.collider.window."+identity,"startMs":start_ms,"durationMs":stop_ms-start_ms,

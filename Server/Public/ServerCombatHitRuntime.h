@@ -61,6 +61,8 @@ namespace LostArk::Server
 		them. Ordinary boss hits leave both false. */
 		bool bIgnoreDefense = false;
 		bool bIgnoreCounter = false;
+		// Server encounter failure verdict; bypasses all personal damage protection.
+		bool bEncounterWipe = false;
 	};
 
 	/* Buffs live next to the two damage directions because that is where they are
@@ -102,6 +104,7 @@ namespace LostArk::Server
 	class CServerCombatHitRuntime final
 	{
 	public:
+		static void Add_MadnessGauge(SERVER_PLAYER& target, double gain);
 		static SERVER_COMBAT_HIT_RESULT Apply_PlayerToWorld(
 			SERVER_WORLD_ENTITY& target,
 			const SERVER_PLAYER_TO_WORLD_HIT& hit,

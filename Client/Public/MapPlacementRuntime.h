@@ -160,6 +160,7 @@ public:
 		const CMapAssetCatalog& catalog,
 		const MAP_LOAD_SCOPE& loadScope,
 		std::vector<MAP_PLACEMENT_RECORD>& records);
+	static void Discard_LoadStage(const std::string& areaId);
 	static void Cache_LoadStage(
 		const std::string& areaId,
 		const MAP_LOAD_SCOPE& loadScope,
@@ -185,7 +186,8 @@ public:
 		const std::vector<MAP_PLACEMENT_RECORD>& records,
 		std::vector<MAP_RUNTIME_PLACED_ENTRY>& outPlacements,
 		std::vector<MAP_RUNTIME_STATIC_BATCH_ENTRY>& outBatches,
-		const MAP_FRUSTUM_CULLING_POLICY& frustumCulling = {});
+		const MAP_FRUSTUM_CULLING_POLICY& frustumCulling = {},
+		std::string* outFailure = nullptr);
 
 	static void Remove_PlacementRuntime(
 		uint32_t levelIndex,

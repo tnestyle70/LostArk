@@ -955,3 +955,4 @@ SOURCE_CHARACTER_NATIVE_OUTPUT SourceCharacterLight236(SOURCE_CHARACTER_NATIVE_I
     return output;
 }
 
+// source.character.static-map-native-214.v1 / source program 0ee452099b26704b80628873c2a1e89e

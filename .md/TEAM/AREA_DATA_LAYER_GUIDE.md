@@ -304,6 +304,18 @@ WorldSequence JSON의 저장 버전은 `formatVersion: 3`이며 `CWorldSequenceD
 binding도 유지한다. 모델 path와 별칭 instance를 동시에 지정하거나 별칭을 모델 binding으로 쓰는
 저장은 거부한다.
 
+World Object 목록의 정리용 계층은 v3 optional `objectFolders`와 Object의 optional `parentId`로
+저장한다. Folder는 stable `folderId`, `displayName`, optional `anchorKind`(기본 WORLD),
+optional `parentId`를 가진다. 부모는 같은 anchor category의 Folder 또는 기존 Object이며 빈 값은
+category root다. Folder/Object ID는 서로 중복할 수 없고 없는 부모·순환·64단계 초과를 거부한다.
+이 소속은 모델·Transform·개수·Motion binding의 상속이나 함께 재생하는 `motionInstanceIds`가 아니다.
+기존 필드 없는 문서는 root 목록을 유지하고 codec·Save/Reload·publisher가 optional 계층을 보존한다.
+World Object Tool에서 Ctrl 클릭은 추가/해제, Shift 클릭은 현재 펼쳐진 Object/Parent 행의 범위 선택이다.
+우클릭 `Create Parent`는 이름을 입력받아 선택한 가지를 묶고, 바로 아래 `Move to Parent`는 기존
+Folder/Object 또는 category root로 옮긴다. 상위·자식을 함께 선택하면 내부 소속은 유지한다.
+Parent/Object 하나를 선택한 `Create Object`는 그 아래 생성한다. 각 Object의 Motion은 기존 편집
+행을 유지하며 계층 변경은 기존 Save를 눌렀을 때 저장·게시된다.
+
 새 상태도 기존 `templates`/`instances`에 저장한다. optional `objectMotion`은 `velocity`(m/s),
 `acceleration`(m/s²), `angularVelocityDegrees`·`revolutionDegreesPerSecond`(각 축 deg/s),
 `revolutionOffset`(m), `count`(1..128), `intervalMs`, `spreadDegrees`(0..180), `seed`를 가진다.
@@ -857,7 +869,7 @@ World Object Tool → Object Resources에서 통합 묶음은 자식 없는 한 
 
 WorldSequence v3 template의 optional `colliderTracks`는 stable `colliderTrackId`, Transform `slotId`, `startMs`, `durationMs`, `positionOffset`, `halfExtents`, `yawDegrees`, `behavior`, `damagePercent`, `gripLocalOffset`을 저장한다. `attachmentBone`은 선택 필드다. 모든 Transform/Animation/Effect/Collider/Sound/Subtitle 행을 합해 64개 이하이며, 시간 창은 Motion 내부여야 한다. Collider가 있는 instance는 같은 슬롯에 WORLD Object Resource 하나를 바인딩한다.
 
-사각형은 수평 BOX다. DAMAGE는 정수 1~100의 최대 HP 비율을 사용하고, INSTANT_DEATH와 HOOK_CAPTURE는 damagePercent 0을 사용한다. 본과 grip은 HOOK_CAPTURE만 사용하며 본이 있으면 실제 animated CModel에서 존재해야 한다. 본 offset은 모델 import scale 적용 후, Object/placement scale 적용 전의 미터 단위다. 칼날의 시각적 자전이나 메시를 세우는 회전은 사각형의 방향을 바꾸지 않는다.
+optional `shape`는 생략하면 수평 BOX이며 CYLINDER도 지원한다. CYLINDER의 `halfExtents`는 `[radius, halfHeight, radius]`이고 X/Z 반경은 같아야 한다. Object/placement와 Motion scale을 적용하며 비균등 X/Z scale의 원통 반경은 큰 축을 사용한다. DAMAGE는 정수 1~100의 최대 HP 비율을 사용하고, INSTANT_DEATH와 HOOK_CAPTURE는 damagePercent 0을 사용한다. HOOK_CAPTURE는 BOX만 사용한다. 본과 grip은 HOOK_CAPTURE만 사용하며 본이 있으면 실제 animated CModel에서 존재해야 한다. 본 offset은 모델 import scale 적용 후, Object/placement scale 적용 전의 미터 단위다. 칼날의 시각적 자전이나 메시를 세우는 회전은 수평 판정의 방향을 바꾸지 않는다.
 
 Object Tool은 Collider 행의 생성·시간·형태·결과·복제·삭제를 저장한다. 현재 객체와 본에서 읽은 와이어는 편집용이며 피해 권위가 없다. Kouku WORLD occurrence를 게시하면 projector가 emission·delay·속도·반복·원본 본 이동을 기존 ENTER_AREA region.WorldTrack으로 변환하고 Server가 접촉을 판정한다. 갈고리는 접촉 창 이후에도 이미 잡힌 플레이어가 원래 숨김 시점까지 본 끝을 따라갈 수 있다. 새 별도 collision runtime은 없다.
 
@@ -880,3 +892,13 @@ Pattern의 WORLD 박스는 생존 Object의 생성 시점·배치를 소유한�
 mapmaterials의 PBR environment는 optional sourceIndirect를 지원한다. model은 UE3_NATIVE_PBR이며 cubeTexture, brdfTexture, color(float4), rotation(unit float2), packedSH(7×float4, finite ±64, 마지막w=1), upperSkyColor/lowerSkyColor(float3,0~64), ambientAndSkyFactor(float4,RGB0~64,w0~4)를 요구한다. texture는 Resources-relative DDS이며 CMaterial은 원본 cube와 RG16_UNORM 2D BRDF를 별도 보존한다. parse/validate/stage/commit 및 publisher가 잘못된 입력을 거절한다.
 
 optional environment.legacyEnabled는 기본true다. false는 sourceIndirect가 있을 때만 유효하며, 원본 모드를 끄면 이 재질의 환경 경로를 사용하지 않는다. 따라서 과거에 환경이 없었던 재질에도 이전 비교 동작을 유지할 수 있다. Scene RenderingProfiles environment.useSourcePBRIndirect는 optional bool이며 생략/false는 기존 식과 리소스다. true는 sourceIndirect가 있는 PBR에서만 원본 입력을 선택하고 기존 cubeDiffuse 추가 합성을 억제한다. 이 선택은 profile transaction과 Save/Publish roundtrip을 따른다. before-restoration은 과거 전체 shader/pass로 되돌리는 기능은 아니지만 이 선택적 간접광 경로는 이전 값으로 비교한다.
+
+
+### World Object의 원본 반사 Transform
+
+WorldSequence Transform key의 `scaleMultiplier`는 OBJECT_RESOURCE binding에서 음수 축을
+허용한다. 모든 축은 finite이며 절댓값1e-6 이상, 한 track의 같은 축은 모든 key에서 같은 부호여야
+한다. 보간 중0을 통과하는 입력은 codec/publisher가 거절한다. MAP_PLACEMENT/DEPLOY_PROP
+binding은 기존대로 양수만 허용한다. object resource의 기본 scale과 modelPreScale도 기존
+양수 계약을 유지한다. 실제 CWorldSequenceObject는 합성 world determinant가 음수인 draw의
+FrontCounterClockwise만 뒤집고 원래 rasterizer를 복원하며 CullNone을 바꾸지 않는다.

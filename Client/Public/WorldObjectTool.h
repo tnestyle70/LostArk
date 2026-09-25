@@ -33,7 +33,13 @@ public:
     void Render_QuickTransformTuning(const std::string& objectId, const std::string& instanceId);
     void Begin_WorkbenchFrame() override;
     void Render_WorkbenchPane(COMPOSITION_WORKBENCH_PANE pane) override;
-    void End_WorkbenchFrame() override {}
+    void End_WorkbenchFrame() override;
+    bool Execute_CompositionEdit(COMPOSITION_EDIT_COMMAND command, std::string& status) override;
+    bool Insert_CompositionTransfer(const COMPOSITION_TRANSFER& transfer, std::string& status) override;
+    bool Can_AppendCompositionAnimationResource(const COMPOSITION_ANIMATION_RESOURCE& resource,
+        bool replace, std::string& status) const override;
+    bool Append_CompositionAnimationResource(const COMPOSITION_ANIMATION_RESOURCE& resource,
+        bool replace, std::string& status) override;
     void On_WorkbenchDeactivated() override { Deactivate(); }
     bool_t Is_Open() const { return m_Open; }
     bool Consume_InteractionRequest();
@@ -60,6 +66,11 @@ public:
 
 private:
     bool Load_Source();
+    COMPOSITION_TRANSFER Capture_CompositionObject(const std::string& objectId,
+        const std::string& motionId, std::string& status) const;
+    bool Paste_CompositionObject(const COMPOSITION_WORLD_OBJECT_TRANSFER& transfer,
+        bool duplicate, std::string& status);
+    bool Insert_CompositionEffects(const COMPOSITION_EFFECT_TRANSFER& transfer, std::string& status);
     bool Render_SaveButton();
     void Render_SaveStatus() const;
     void Render_ColliderPreview();
@@ -74,6 +85,7 @@ private:
     bool Prepare_PreviewEffects(const CWorldSequenceDocument& document, const std::string& targetId);
     bool Begin_EffectPreview(CWorldSequenceDocument staged, const std::string& instanceId);
     void Play_Preview();
+    void Play_AtPlayer();
     std::vector<std::string> Server_ColliderMotionIds() const;
     bool Refresh_ServerPlayPatterns(const std::vector<std::string>& motionIds);
     void Render_ServerPlayControls();
@@ -82,6 +94,16 @@ private:
     f32_t SpanMs() const;
     f32_t PreviewSpanMs() const;
     void Select_Object(const std::string& id);
+    void Select_ResourceRow(const std::string& id, const std::vector<std::string>& visibleRows,
+        bool control, bool shift);
+    std::string Resource_Parent(const std::string& id) const;
+    std::string Resource_Anchor(const std::string& id) const;
+    std::string Resource_Label(const std::string& id) const;
+    std::vector<std::string> Selected_ResourceRoots() const;
+    bool Can_MoveResources(const std::vector<std::string>& ids, const std::string& parentId) const;
+    bool Move_Resources(const std::vector<std::string>& ids, const std::string& parentId);
+    bool Create_ResourceParent(const std::vector<std::string>& ids);
+    void Reveal_Resource(const std::string& id);
     void Select_State(const std::string& id);
     std::vector<std::string> StateIds(const WORLD_SEQUENCE_OBJECT_RESOURCE& resource) const;
     bool Create_Object();
@@ -130,6 +152,10 @@ private:
     bool m_DetailOpen = true;
     bool m_ResetLayoutRequested = false;
     bool m_InteractionRequested = false;
+    bool m_CompositionResourceFocused = false;
+    bool m_NativeResourceSelected = false;
+    std::optional<COMPOSITION_EDIT_COMMAND> m_PendingCompositionEdit;
+    COMPOSITION_TRANSFER m_PendingCompositionTransfer;
     bool m_PreviewAtCharacter = true;
     std::string m_ServerPlayScope, m_ServerPatternId, m_ServerPlayStatus, m_PendingServerPatternId;
     std::vector<std::pair<std::string, std::string>> m_ServerPatterns;
@@ -181,6 +207,16 @@ private:
     std::string m_Status;
     std::string m_PreviewStatus;
     std::string m_SelectedObject;
+    // Organizational selection never changes Motion bindings or model transforms.
+    std::set<std::string> m_SelectedResources;
+    std::string m_ResourceSelectionAnchor;
+    std::string m_SelectedFolder;
+    std::string m_ResourceAnchorKind = "WORLD";
+    std::set<std::string> m_RevealResourceParents;
+    std::vector<std::string> m_ParentEditSelection;
+    std::string m_MoveResourceParent;
+    std::string m_NewObjectParent;
+    std::array<char, 128> m_NewParentName{};
     // Preview scope stays on the combined resource while the editor selects a member.
     std::string m_SelectedGroup;
     std::string m_SelectedInstance;

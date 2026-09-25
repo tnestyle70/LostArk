@@ -803,7 +803,8 @@ namespace
 			return SOURCE_SPAWN_MODULE_KIND::MESH_ROTATION_RATE;
 		if (SourceClass_Matches(Module, "particlemodulecameraoffset"))
 			return SOURCE_SPAWN_MODULE_KIND::CAMERA_OFFSET;
-		if (SourceClass_Matches(Module, "particlemodulesubuv"))
+		if (SourceClass_Matches(Module, "particlemodulesubuv") ||
+			SourceClass_Matches(Module, "particlemodulesubuvselect"))
 			return SOURCE_SPAWN_MODULE_KIND::SUB_UV;
 		if (SourceClass_Matches(Module, "particlemodulesubuvmovie"))
 			return SOURCE_SPAWN_MODULE_KIND::SUB_UV_MOVIE;
@@ -878,7 +879,8 @@ namespace
 		if (SourceClass_Matches(Module, "particlemodulecameraoffset"))
 			return SOURCE_UPDATE_MODULE_KIND::CAMERA_OFFSET;
 		if (SourceClass_Matches(Module, "particlemodulesubuv") ||
-			SourceClass_Matches(Module, "particlemodulesubuvmovie"))
+			SourceClass_Matches(Module, "particlemodulesubuvmovie") ||
+			SourceClass_Matches(Module, "particlemodulesubuvselect"))
 			return SOURCE_UPDATE_MODULE_KIND::SUB_UV;
 		if (SourceClass_Matches(Module, "particlemoduleparameterdynamic"))
 			return SOURCE_UPDATE_MODULE_KIND::PARAMETER_DYNAMIC;
@@ -1562,21 +1564,14 @@ namespace
 				"Portable source event queue has an unbounded per-step upper limit.";
 			return false;
 		}
-		for (const auto& [Route, Elements] : Generators)
-		{
-			UNREFERENCED_PARAMETER(Elements);
-			if (!Receivers.contains(Route))
-			{
-				strOutError =
-					"Portable source event generator has no same-document receiver.";
-				return false;
-			}
-		}
-
+		// An original Cascade generator may have no local listener. Its bounded event
+		// is inert here; only connected routes participate in cycle validation.
 		std::unordered_map<std::string, std::vector<std::string>> Edges;
 		for (const auto& [Route, SourceElements] : Generators)
 		{
-			const std::vector<std::string>& TargetElements = Receivers.at(Route);
+			const auto Receiver = Receivers.find(Route);
+			if (Receiver == Receivers.end()) continue;
+			const std::vector<std::string>& TargetElements = Receiver->second;
 			for (const std::string& SourceElement : SourceElements)
 			{
 				auto& Targets = Edges[SourceElement];
@@ -2037,7 +2032,7 @@ namespace
 		std::string& strOutError)
 	{
 		strOutError.clear();
-		static constexpr std::array<std::string_view, 41u> Supported = {
+		static constexpr std::array<std::string_view, 42u> Supported = {
 			"particlemoduleacceleration",
 			"particlemoduleaccelerationoverlifetime",
 			"particlemodulecameraoffset",
@@ -2072,6 +2067,7 @@ namespace
 			"particlemodulespawnperunit",
 			"particlemodulesubuv",
 			"particlemodulesubuvmovie",
+			"particlemodulesubuvselect",
 			"particlemoduletypedatadecal",
 			"particlemoduletypedatalight",
 			"particlemoduletypedatamesh",
@@ -2272,6 +2268,9 @@ namespace
 		Client::EFFECT_DISTRIBUTION_DESC& Destination,
 		std::string& strOutError)
 	{
+		if (Destination.eParameterBinding == Client::EFFECT_DISTRIBUTION_PARAMETER_BINDING::WORLD_SAMPLE)
+			return Reject_ReconstructedSourceRuntime(strOutError,
+				"the frozen Artist parameter overlay cannot consume WORLD_SAMPLE inputs");
 		std::array<double, 4u> Resolved{};
 		if (!Try_ResolveReconstructedParameter(Source, Resolved, strOutError))
 			return false;
@@ -2629,7 +2628,8 @@ struct Client::CEffectPlayback::SOURCE_UPDATE_MODULE final
 		case SOURCE_UPDATE_MODULE_KIND::SUB_UV:
 		{
 			Result.bSubUVMovie = SourceClass_Matches(Module, "particlemodulesubuvmovie");
-			Bind(0u, Result.bSubUVMovie ? "framerate" : "subimageindex");
+			Bind(0u, Result.bSubUVMovie ? "framerate" :
+				SourceClass_Matches(Module, "particlemodulesubuvselect") ? "subimageselect" : "subimageindex");
 			Result.UseEmitterTime[0u] = SourceBool(Module, "buseemittertime", false);
 			if (const auto* Required = Find_SourceModule(Element, "particlemodulerequired"))
 			{
@@ -3981,6 +3981,10 @@ bool_t Client::CEffectPlayback::Stage_ReconstructedRuntimeProgram(
 	m_States.clear();
 	m_TransformMasterIndices.clear();
 	m_SourceAnchorWorlds.clear();
+	m_ParticleParameters.clear();
+	m_WorldParameterValues.clear();
+	m_WorldParameterDistributions.clear();
+	m_strWorldParameterContractError.clear();
 	m_PendingSourceEvents.clear();
 	m_MissedShowtimeBursts.clear();
 	m_PresentedShowtimeBursts.clear();
@@ -4121,6 +4125,10 @@ bool_t Client::CEffectPlayback::Resolve_ParticleSpriteSubUV(
 
 void Client::CEffectPlayback::Reset()
 {
+	m_ParticleParameters.clear();
+	m_WorldParameterValues.clear();
+	m_WorldParameterDistributions.clear();
+	m_strWorldParameterContractError.clear();
 	std::string GateStatus;
 	if (!m_bReconstructedSourceRuntimeActive &&
 		!m_bSourceVisualProgramActive &&
@@ -4153,6 +4161,27 @@ void Client::CEffectPlayback::Reset()
 			continue;
 		ELEMENT_STATE& State = m_States[Element.strElementId];
 		State = {};
+		if (Element.SourceRecipe.bEnabled)
+			for (const auto& Module : Element.SourceRecipe.Modules)
+			{
+				if (!SourceModule_Enabled(Module)) continue;
+				for (const auto& Distribution : Module.Distributions)
+				{
+					if (Distribution.eParameterBinding != EFFECT_DISTRIBUTION_PARAMETER_BINDING::WORLD_SAMPLE)
+						continue;
+					m_WorldParameterDistributions.push_back(&Distribution);
+					const bool_t color = (SourceClass_Matches(Module, "particlemodulecoloroverlife") &&
+						(Distribution.strPropertyPath == "coloroverlife" || Distribution.strPropertyPath == "alphaoverlife")) ||
+						(SourceClass_Matches(Module, "particlemodulecolorscaleoverlife") &&
+						 (Distribution.strPropertyPath == "colorscaleoverlife" || Distribution.strPropertyPath == "alphascaleoverlife"));
+					const bool_t supportedCarrier = Is_ParticleSimulationElement(Element,
+						Is_SourceVisualProgramElementAdmitted(Element)) || Element.eKind == EFFECT_ELEMENT_KIND::LIGHT ||
+						Element.eKind == EFFECT_ELEMENT_KIND::SCREEN_POST;
+					if (!color || !supportedCarrier)
+						m_strWorldParameterContractError = "WORLD_SAMPLE currently requires a supported particle/light/post color update: " + Element.strElementId;
+					State.bWorldParameterColor = State.bWorldParameterColor || color;
+				}
+			}
 		State.iRandomState = Hash_RuntimeRandomIdentity(Element) ^
 			Element.Detail.Particle.iRandomSeed;
 		if (0u == State.iRandomState)
@@ -4161,7 +4190,7 @@ void Client::CEffectPlayback::Reset()
 	}
 	float4x4_t Identity{};
 	XMStoreFloat4x4(&Identity, XMMatrixIdentity());
-	Rebuild_Frame(Identity);
+	if (m_WorldParameterDistributions.empty()) Rebuild_Frame(Identity);
 }
 
 void Client::CEffectPlayback::Set_ModelCueAnchorProvider(
@@ -4207,6 +4236,8 @@ void Client::CEffectPlayback::Update(
 		m_bFrameInputsDirty = true;
 		return;
 	}
+	if (!m_WorldParameterDistributions.empty() &&
+		!Validate_ParticleParameters(m_ParticleParameters, m_strSourceVisualProgramStatus)) return;
 	if (!std::isfinite(fTimeDelta) || fTimeDelta <= 0.f)
 	{
 		Rebuild_Frame(RootWorld);
@@ -4248,6 +4279,11 @@ void Client::CEffectPlayback::Seek(
 		m_bFrameInputsDirty = true;
 		return;
 	}
+	if (!m_WorldParameterDistributions.empty())
+	{
+		m_strSourceVisualProgramStatus = "WORLD_SAMPLE seek requires typed parameter history.";
+		return;
+	}
 	const f32_t fTarget = std::clamp(
 		std::isfinite(fSampleTimeSeconds) ? fSampleTimeSeconds : 0.f,
 		0.f,
@@ -4285,6 +4321,39 @@ void Client::CEffectPlayback::Seek(
 	Mark_ShowtimeBurstsPresented();
 }
 
+bool_t Client::CEffectPlayback::Validate_ParticleParameters(
+	const std::vector<EFFECT_PARAMETER_INPUT>& Inputs, std::string& strOutError) const
+{
+	if (!m_strWorldParameterContractError.empty())
+	{ strOutError = m_strWorldParameterContractError; return false; }
+	if (!CEffectDistribution::Validate_ParameterInputs(Inputs, strOutError)) return false;
+	for (const auto* Distribution : m_WorldParameterDistributions)
+	{
+		float4_t resolved{};
+		if (!CEffectDistribution::Resolve_WorldParameter(*Distribution, Inputs, resolved, strOutError)) return false;
+	}
+	strOutError.clear();
+	return true;
+}
+
+bool_t Client::CEffectPlayback::Set_CurrentParticleParameters(
+	const std::vector<EFFECT_PARAMETER_INPUT>& Inputs, std::string& strOutError)
+{
+	if (!Validate_ParticleParameters(Inputs, strOutError)) return false;
+	std::unordered_map<const EFFECT_DISTRIBUTION_DESC*, float4_t> values;
+	values.reserve(m_WorldParameterDistributions.size());
+	for (const auto* distribution : m_WorldParameterDistributions)
+	{
+		float4_t resolved{};
+		if (!CEffectDistribution::Resolve_WorldParameter(*distribution, Inputs, resolved, strOutError)) return false;
+		values.emplace(distribution, resolved);
+	}
+	m_ParticleParameters = Inputs;
+	m_WorldParameterValues = std::move(values);
+	m_bFrameInputsDirty = true;
+	return true;
+}
+
 bool_t Client::CEffectPlayback::Collect_TransformHistorySample(
 	const f32_t fSampleTimeSeconds,
 	const EFFECT_FIXED_STEP_TRANSFORM_PROVIDER& TransformProvider,
@@ -4312,6 +4381,7 @@ bool_t Client::CEffectPlayback::Collect_TransformHistorySample(
 		strOutError = "Effect transform history root is not a finite affine matrix.";
 		return false;
 	}
+	if (!Validate_ParticleParameters(Staged.ParticleParameters, strOutError)) return false;
 	if (m_ModelCueAnchorProvider && !m_ModelCueAnchorProvider(
 		fSampleTimeSeconds, Staged.RootWorld, Staged.SourceAnchorWorlds, strOutError))
 		return false;
@@ -4455,6 +4525,7 @@ bool_t Client::CEffectPlayback::Update_WithTransformHistory(
 	for (EFFECT_FIXED_STEP_TRANSFORM_SAMPLE& Sample : Samples)
 	{
 		m_SourceAnchorWorlds = std::move(Sample.SourceAnchorWorlds);
+		if (!Set_CurrentParticleParameters(Sample.ParticleParameters, strOutError)) return false;
 		FinalRoot = Sample.RootWorld;
 		if (!Step(FIXED_STEP_SECONDS, FinalRoot))
 		{
@@ -4468,6 +4539,8 @@ bool_t Client::CEffectPlayback::Update_WithTransformHistory(
 	m_fAccumulatorSeconds = fCommittedAccumulator;
 	m_fSampleTimeSeconds = fTargetSampleTime;
 	Set_SourceAnchorWorlds(std::move(FinalSample.SourceAnchorWorlds));
+	if (!Set_CurrentParticleParameters(FinalSample.ParticleParameters, strOutError)) return false;
+	m_bFrameInputsDirty = true;
 	Rebuild_Frame(FinalSample.RootWorld);
 	Append_MissedShowtimeBursts();
 	strOutError.clear();
@@ -4528,6 +4601,7 @@ bool_t Client::CEffectPlayback::Seek_WithTransformHistory(
 	for (EFFECT_FIXED_STEP_TRANSFORM_SAMPLE& Sample : Samples)
 	{
 		m_SourceAnchorWorlds = std::move(Sample.SourceAnchorWorlds);
+		if (!Set_CurrentParticleParameters(Sample.ParticleParameters, strOutError)) return false;
 		if (!Step(FIXED_STEP_SECONDS, Sample.RootWorld))
 		{
 			strOutError = m_strSourceVisualProgramStatus;
@@ -4538,6 +4612,7 @@ bool_t Client::CEffectPlayback::Seek_WithTransformHistory(
 		0.0, static_cast<f64_t>(fTarget) - fSteppedTime);
 	m_fSampleTimeSeconds = fTarget;
 	m_SourceAnchorWorlds = std::move(FinalSample.SourceAnchorWorlds);
+	if (!Set_CurrentParticleParameters(FinalSample.ParticleParameters, strOutError)) return false;
 	Rebuild_Frame(FinalSample.RootWorld);
 	Mark_ShowtimeBurstsPresented();
 	strOutError.clear();
@@ -5587,6 +5662,13 @@ f32_t Client::CEffectPlayback::Evaluate_ModuleFloat(
 {
 	if (nullptr == pDistribution)
 		return fFallback;
+	if (pDistribution->eParameterBinding == EFFECT_DISTRIBUTION_PARAMETER_BINDING::WORLD_SAMPLE)
+	{
+		const auto value = m_WorldParameterValues.find(pDistribution);
+		if (value == m_WorldParameterValues.end())
+		{ m_strSourceVisualProgramStatus = "WORLD_SAMPLE was not installed before particle update."; return std::numeric_limits<f32_t>::quiet_NaN(); }
+		return value->second.x;
+	}
 	if (Uses_ImplicitAlphaIdentity(*pDistribution, pDistribution->strPropertyPath))
 		return fFallback;
 	float4_t RandomUnits{};
@@ -5616,6 +5698,16 @@ float3_t Client::CEffectPlayback::Evaluate_ModuleVector(
 {
 	if (nullptr == pDistribution)
 		return Fallback;
+	if (pDistribution->eParameterBinding == EFFECT_DISTRIBUTION_PARAMETER_BINDING::WORLD_SAMPLE)
+	{
+		const auto value = m_WorldParameterValues.find(pDistribution);
+		if (value == m_WorldParameterValues.end())
+		{
+			m_strSourceVisualProgramStatus = "WORLD_SAMPLE was not installed before particle update.";
+			const auto invalid = std::numeric_limits<f32_t>::quiet_NaN(); return {invalid, invalid, invalid};
+		}
+		return {value->second.x, value->second.y, value->second.z};
+	}
 	float4_t RandomUnits{};
 	if (4u == pDistribution->iOperation)
 	{
@@ -5661,12 +5753,26 @@ void Client::CEffectPlayback::Apply_SourceSubUV(
 	const SOURCE_UPDATE_MODULE* pPreparedModule)
 {
 	if (!(pPreparedModule != nullptr ? pPreparedModule->bUpdateEnabled :
-		SourceBool(Module, bSpawn ? "bspawnmodule" : "bupdatemodule", true)))
+		SourceBool(Module, bSpawn ? "bspawnmodule" : "bupdatemodule",
+			!bSpawn || !SourceClass_Matches(Module, "particlemodulesubuvselect"))))
 		return;
 	const auto* Required = pPreparedModule != nullptr ?
 		(pPreparedModule->iRequiredModuleIndex == SOURCE_UPDATE_MODULE::MISSING_INDEX ? nullptr :
 			&Element.SourceRecipe.Modules[pPreparedModule->iRequiredModuleIndex]) :
 		Find_SourceModule(Element, "particlemodulerequired");
+	if (SourceClass_Matches(Module, "particlemodulesubuvselect"))
+	{
+		// Cascade selects horizontal/vertical tile coordinates at relative age.
+		const float Columns = Required ? SourceNumber(*Required, "subimages_horizontal", 1.f) : 1.f;
+		const float Rows = Required ? SourceNumber(*Required, "subimages_vertical", 1.f) : 1.f;
+		const auto Tile = Evaluate_ModuleVector(State, Module,
+			pPreparedModule ? pPreparedModule->Distribution(Module, 0u) :
+			Find_SourceDistribution(&Module, "subimageselect"), fNormalizedAge, float3_t{});
+		Particle.bSourceRandomSubUV = false;
+		Particle.fSubImageIndex = std::clamp(std::floor(Tile.x), 0.f, Columns - 1.f) +
+			std::clamp(std::floor(Tile.y), 0.f, Rows - 1.f) * Columns;
+		return;
+	}
 	if (pPreparedModule != nullptr ? pPreparedModule->bSubUVMovie :
 		SourceClass_Matches(Module, "particlemodulesubuvmovie"))
 	{
@@ -6555,6 +6661,11 @@ void Client::CEffectPlayback::Update_Particles(
 			Particle.vSourceMeshRotationDegrees = PreviousMeshRotation;
 			Particle.vOrbitOffset = PreviousOrbitOffset;
 		}
+		if (Particle.bSourceCollisionRotationFrozen)
+		{
+			Particle.vRotationDegrees = PreviousRotation;
+			Particle.vSourceMeshRotationDegrees = PreviousMeshRotation;
+		}
 		if (bGeneratesDeath && Particle.fAgeSeconds >= Particle.fLifeTimeSeconds)
 		{
 			// Preserve the terminal world position and effective velocity before removal.
@@ -6586,7 +6697,7 @@ void Client::CEffectPlayback::Apply_SourceWorldCollisions(const float4x4_t& Root
         const auto CurrentRoot = Evaluate_ElementWorld(Element, m_fSampleTimeSeconds, RootWorld);
         for (auto& Particle : StateIt->second.Particles)
         {
-            if (Particle.bSourceCollisionMovementFrozen ||
+            if (Particle.bSourceCollisionMovementFrozen || Particle.bSourceCollisionRotationFrozen ||
                 Particle.fAgeSeconds < Particle.fSourceCollisionDelay) continue;
             const auto& Root = Element.Detail.Particle.bLocalSpace ? CurrentRoot : Particle.SpawnRootWorld;
             const matrix_t Matrix = XMLoadFloat4x4(&Root);
@@ -6602,7 +6713,7 @@ void Client::CEffectPlayback::Apply_SourceWorldCollisions(const float4x4_t& Root
             Engine::PHYSICS_STATIC_SWEEP_HIT Hit;
             if (!Physics->Sweep_StaticBox(Start, End, Half, Hit)) continue;
             // The existing bounded event queue receives the actual contact
-            // before Kill/FreezeMovement or bounce changes the source particle.
+            // before collision completion or bounce changes the source particle.
             // Collision receivers currently admit location-only spawning.
             PARTICLE_STATE Impact = Particle;
             Impact.vPosition = Transform_Coord(Lerp3Clamped(Start, End,
@@ -6629,6 +6740,8 @@ void Client::CEffectPlayback::Apply_SourceWorldCollisions(const float4x4_t& Root
                     Particle.vTargetAttractorWorldVelocity = {};
                     Particle.bSourceCollisionMovementFrozen = true;
                 }
+                else if (SourceString(Module, "collisioncompletionoption") == "epcc_freezerotation")
+                    Particle.bSourceCollisionRotationFrozen = true;
                 else
                     Particle.fAgeSeconds = Particle.fLifeTimeSeconds;
                 continue;
@@ -6879,6 +6992,35 @@ Client::CEffectPlayback::Prepare_SourceVectorFieldUpdates(
 	return Updates;
 }
 
+bool_t Client::CEffectPlayback::Evaluate_CurrentParticleColor(
+	const PARTICLE_STATE& Particle, float4_t& OutColor, std::string& strOutError) const
+{
+	if (Particle.SourceColorOperations.empty()) { OutColor = Particle.vColor; return true; }
+	float4_t color = Particle.vBaseColor;
+	for (const auto& operation : Particle.SourceColorOperations)
+	{
+		float4_t value = operation.value;
+		if (operation.pColor && operation.pColor->eParameterBinding == EFFECT_DISTRIBUTION_PARAMETER_BINDING::WORLD_SAMPLE)
+		{
+			const auto resolved = m_WorldParameterValues.find(operation.pColor);
+			if (resolved == m_WorldParameterValues.end())
+			{ strOutError = "Current WORLD color input is missing."; return false; }
+			value.x = resolved->second.x; value.y = resolved->second.y; value.z = resolved->second.z;
+		}
+		if (operation.pAlpha && operation.pAlpha->eParameterBinding == EFFECT_DISTRIBUTION_PARAMETER_BINDING::WORLD_SAMPLE)
+		{
+			const auto resolved = m_WorldParameterValues.find(operation.pAlpha);
+			if (resolved == m_WorldParameterValues.end())
+			{ strOutError = "Current WORLD alpha input is missing."; return false; }
+			value.w = resolved->second.x;
+		}
+		color = operation.multiply ? float4_t(color.x * value.x, color.y * value.y,
+			color.z * value.z, color.w * value.w) : value;
+	}
+	OutColor = color;
+	return true;
+}
+
 void Client::CEffectPlayback::Apply_SourceUpdateModules(
 	const EFFECT_ELEMENT_DESC& Element,
 	ELEMENT_STATE& State,
@@ -6894,6 +7036,7 @@ void Client::CEffectPlayback::Apply_SourceUpdateModules(
 	// UE resets live Orbit offset before applying this tick's curve samples.
 	Particle.vOrbitOffset = Particle.vBaseOrbitOffset;
 	Particle.vColor = Particle.vBaseColor;
+	if (State.bWorldParameterColor) Particle.SourceColorOperations.clear();
 	Particle.vVelocityScale = { 1.f, 1.f, 1.f };
 	Particle.vRotationRateScale = { 1.f, 1.f, 1.f };
 	Particle.vSourceMeshRotationRateScale = { 1.f, 1.f, 1.f };
@@ -7081,6 +7224,9 @@ void Client::CEffectPlayback::Apply_SourceUpdateModules(
 				float3_t(1.f, 1.f, 1.f));
 			const f32_t fAlpha = Evaluate_ModuleFloat(
 				State, Module, PreparedModule.Distribution(Module, 1u), fNormalizedAge, 1.f);
+			if (State.bWorldParameterColor)
+				Particle.SourceColorOperations.push_back({PreparedModule.Distribution(Module, 0u),
+					PreparedModule.Distribution(Module, 1u), {Color.x, Color.y, Color.z, fAlpha}, false});
 			Particle.vColor = { Color.x, Color.y, Color.z, fAlpha };
 		}
 		else if (Kind == SOURCE_UPDATE_MODULE_KIND::COLOR_SCALE_OVER_LIFE)
@@ -7092,6 +7238,9 @@ void Client::CEffectPlayback::Apply_SourceUpdateModules(
 				float3_t(1.f, 1.f, 1.f));
 			const f32_t fAlpha = Evaluate_ModuleFloat(
 				State, Module, PreparedModule.Distribution(Module, 1u), fTime, 1.f);
+			if (State.bWorldParameterColor)
+				Particle.SourceColorOperations.push_back({PreparedModule.Distribution(Module, 0u),
+					PreparedModule.Distribution(Module, 1u), {Scale.x, Scale.y, Scale.z, fAlpha}, true});
 			Particle.vColor = {
 				Particle.vColor.x * Scale.x,
 				Particle.vColor.y * Scale.y,
@@ -8151,6 +8300,11 @@ f32_t Client::CEffectPlayback::Evaluate_SourceFloat(
 		Find_SourceDistribution(pModule, pPropertyPath);
 	if (nullptr == pDistribution)
 		return fFallback;
+	if (pDistribution->eParameterBinding == EFFECT_DISTRIBUTION_PARAMETER_BINDING::WORLD_SAMPLE)
+	{
+		const auto value = m_WorldParameterValues.find(pDistribution);
+		return value == m_WorldParameterValues.end() ? std::numeric_limits<f32_t>::quiet_NaN() : value->second.x;
+	}
 	if (Uses_ImplicitAlphaIdentity(*pDistribution, pPropertyPath))
 		return fFallback;
 	return CEffectDistribution::Evaluate(
@@ -8187,6 +8341,13 @@ float3_t Client::CEffectPlayback::Evaluate_SourceVector(
 		Find_SourceDistribution(pModule, pPropertyPath);
 	if (nullptr == pDistribution)
 		return Fallback;
+	if (pDistribution->eParameterBinding == EFFECT_DISTRIBUTION_PARAMETER_BINDING::WORLD_SAMPLE)
+	{
+		const auto value = m_WorldParameterValues.find(pDistribution);
+		if (value == m_WorldParameterValues.end())
+		{ const auto invalid = std::numeric_limits<f32_t>::quiet_NaN(); return {invalid, invalid, invalid}; }
+		return {value->second.x, value->second.y, value->second.z};
+	}
 	const float4_t Value = CEffectDistribution::Evaluate(
 		*pDistribution, fTime, fRandomUnit);
 	return { Value.x, Value.y, Value.z };
@@ -8771,11 +8932,13 @@ void Client::CEffectPlayback::Rebuild_Frame(const float4x4_t& RootWorld,
 				Evaluate_Color(Element, ParticleT).vColorMultiply;
 			if (Element.SourceRecipe.bEnabled)
 			{
+				float4_t currentColor{};
+				if (!Evaluate_CurrentParticleColor(Particle, currentColor, m_strSourceVisualProgramStatus)) continue;
 				Evaluated.Color = {
-					ElementColor.x * Particle.vColor.x,
-					ElementColor.y * Particle.vColor.y,
-					ElementColor.z * Particle.vColor.z,
-					ElementColor.w * Particle.vColor.w
+					ElementColor.x * currentColor.x,
+					ElementColor.y * currentColor.y,
+					ElementColor.z * currentColor.z,
+					ElementColor.w * currentColor.w
 				};
 			}
 			else

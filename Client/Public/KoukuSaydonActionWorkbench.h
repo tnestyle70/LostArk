@@ -698,6 +698,9 @@ namespace Client
 			std::string_view occurrenceId,
 			std::string& outStatus);
 
+    bool Execute_CompositionEdit(COMPOSITION_EDIT_COMMAND command, std::string& status) override;
+    bool Insert_CompositionTransfer(const COMPOSITION_TRANSFER& transfer, std::string& status) override;
+
 	private:
 		enum class RENAME_TARGET : std::uint8_t
 		{
@@ -815,7 +818,7 @@ namespace Client
 		void Render_LogicDefinitionValues(
 			const KOUKU_SAYDON_COMPOSITION_LOGIC_DEFINITION& logic,
 			std::string_view colliderPatternId = {},
-			const KOUKU_SAYDON_COMPOSITION_PRESENTATION_OCCURRENCE* collider = nullptr);
+			const KOUKU_SAYDON_COMPOSITION_PRESENTATION_OCCURRENCE* collider = nullptr, bool_t inlineDetail = false);
 		void Render_LogicBoxDetails(const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern);
 		bool_t Render_LogicOutcomeSlots(const std::string& patternId, const std::string& occurrenceId);
         bool_t Render_SummonPolicy(const KOUKU_SAYDON_COMPOSITION_SUMMON_DEFINITION& summon,
@@ -1054,6 +1057,9 @@ namespace Client
 		// Typed Logic values under edit; committed to the draft by Apply Values.
 		KOUKU_SAYDON_COMPOSITION_LOGIC_DEFINITION m_LogicValueDraft;
 		std::string m_strLogicValueDraftId;
+		// Stable definition IDs isolate pending values across inline Outcome editors.
+		std::map<std::string, KOUKU_SAYDON_COMPOSITION_LOGIC_DEFINITION> m_InlineLogicValueDrafts;
+		// Stable definition IDs isolate pending values across inline Outcome editors.
 		KOUKU_SAYDON_COMPOSITION_LOGIC_DEFINITION m_ColliderLogicValueDraft;
 		std::string m_strColliderLogicValueDraftId;
 		// Which gate the shell selected; only the pattern list header and model filter follow it.
@@ -1088,7 +1094,13 @@ namespace Client
 			// Copy summary per kind for status text: stages, animations, patterns, logics, summons, worlds, sceneProfiles, effects, colliders, otherPresentation.
 			std::array<std::size_t, 10u> Counts{};
 		};
+		struct COMPOSITION_NATIVE_TRANSFER final : COMPOSITION_EFFECT_TRANSFER
+		{
+			TIMELINE_CLIPBOARD clipboard;
+			std::string_view Type() const noexcept override { return "kouku.timeline.v1"; }
+		};
 		std::optional<TIMELINE_CLIPBOARD> m_TimelineClipboard;
+        bool m_CompositionResourcesFocused = false;
 		KOUKU_SAYDON_COMPOSITION_DOCUMENT m_Draft;
 		KOUKU_PATTERN_SELECTION m_ePatternSelection = KOUKU_PATTERN_SELECTION::GATE;
 		std::string m_strSelectedGateId = "GATE1";

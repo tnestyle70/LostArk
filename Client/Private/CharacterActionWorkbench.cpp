@@ -222,6 +222,7 @@ bool CCharacterActionWorkbench::Has_Draft() const
 }
 void CCharacterActionWorkbench::Begin_WorkbenchFrame()
 {
+    m_CompositionResourcesFocused = false;
     if (!m_CatalogLoaded) m_CatalogLoaded = CPlayerSkillCatalog::Load(m_Status);
     // One read per session; Reload re-reads it. A failed read leaves timing rows out with a status.
     if (m_CatalogLoaded && !m_TimingsLoaded) { m_TimingsLoaded = true; Load_SkillTimings(); }
@@ -252,6 +253,8 @@ void CCharacterActionWorkbench::End_WorkbenchFrame()
 }
 void CCharacterActionWorkbench::Render_WorkbenchPane(const COMPOSITION_WORKBENCH_PANE pane)
 {
+    if (ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows))
+        m_CompositionResourcesFocused = pane == COMPOSITION_WORKBENCH_PANE::RESOURCES;
     if (ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows)) m_Interaction = true;
     if (m_ModelMode && pane != COMPOSITION_WORKBENCH_PANE::PATTERNS)
     {
@@ -1567,6 +1570,33 @@ void CCharacterActionWorkbench::Stop_SoundPreview()
     if (!m_SoundPreviewHandle) return;
     CGameInstance::Get().Stop_SoundCue(m_SoundPreviewHandle);
     m_SoundPreviewHandle = 0u;
+}
+
+bool CCharacterActionWorkbench::Execute_CompositionEdit(const COMPOSITION_EDIT_COMMAND command, std::string& status)
+{
+    if (m_CompositionResourcesFocused && command != COMPOSITION_EDIT_COMMAND::PASTE)
+    {
+        status = m_Status = "Drag the selected catalog resource into the Sequencer; Copy and Duplicate here require a timeline selection.";
+        return false;
+    }
+    if (m_Sequencer && (m_ModelMode || (m_CompositionMode && m_CompositionReady)))
+    {
+        const bool result = m_Sequencer->Execute_CompositionEdit(command, status);
+        m_Status = status; return result;
+    }
+    status = m_Status = "Open a Character composition before editing timeline occurrences.";
+    return false;
+}
+
+bool CCharacterActionWorkbench::Insert_CompositionTransfer(const COMPOSITION_TRANSFER& transfer, std::string& status)
+{
+    if (m_Sequencer && (m_ModelMode || (m_CompositionMode && m_CompositionReady)))
+    {
+        const bool result = m_Sequencer->Insert_CompositionTransfer(transfer, status);
+        m_Status = status; return result;
+    }
+    status = m_Status = "Open a Character composition before inserting resources.";
+    return false;
 }
 
 bool CCharacterActionWorkbench::Can_AppendCompositionAnimationResource(const COMPOSITION_ANIMATION_RESOURCE& resource,

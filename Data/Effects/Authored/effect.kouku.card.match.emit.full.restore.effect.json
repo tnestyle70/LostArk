@@ -336,9 +336,7 @@
         "mesh": {
           "useModelMaterial": true
         },
-        "sprite": {
-          "billboard": true
-        },
+        "sprite": {"billboard":true,"followEmitterAxisRotation":true},
         "decal": {
           "size": [
             1.25,
@@ -1725,9 +1723,7 @@
         "mesh": {
           "useModelMaterial": true
         },
-        "sprite": {
-          "billboard": true
-        },
+        "sprite": {"billboard":true,"followEmitterAxisRotation":true},
         "decal": {
           "size": [
             2.5,
@@ -3114,9 +3110,7 @@
         "mesh": {
           "useModelMaterial": true
         },
-        "sprite": {
-          "billboard": true
-        },
+        "sprite": {"billboard":true,"followEmitterAxisRotation":true},
         "decal": {
           "size": [
             2.5,
@@ -4638,9 +4632,7 @@
         "mesh": {
           "useModelMaterial": true
         },
-        "sprite": {
-          "billboard": true
-        },
+        "sprite": {"billboard":true,"followEmitterAxisRotation":true},
         "decal": {
           "size": [
             2.5,
@@ -5927,9 +5919,7 @@
         "mesh": {
           "useModelMaterial": true
         },
-        "sprite": {
-          "billboard": true
-        },
+        "sprite": {"billboard":true,"followEmitterAxisRotation":true},
         "decal": {
           "size": [
             0.15,
@@ -8913,9 +8903,7 @@
         "mesh": {
           "useModelMaterial": true
         },
-        "sprite": {
-          "billboard": true
-        },
+        "sprite": {"billboard":true,"followEmitterAxisRotation":true},
         "decal": {
           "size": [
             0.8,
@@ -10388,9 +10376,7 @@
         "mesh": {
           "useModelMaterial": true
         },
-        "sprite": {
-          "billboard": true
-        },
+        "sprite": {"billboard":true,"followEmitterAxisRotation":true},
         "decal": {
           "size": [
             0.8,
@@ -19503,9 +19489,7 @@
         "mesh": {
           "useModelMaterial": true
         },
-        "sprite": {
-          "billboard": true
-        },
+        "sprite": {"billboard":true,"followEmitterAxisRotation":true},
         "decal": {
           "size": [
             1.2,

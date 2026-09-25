@@ -10,6 +10,7 @@
 #include "ValtanCinematicCameraDocument.h"
 #include "CompositionResourceTree.h"
 #include "CompositionAnimationResource.h"
+#include "CompositionEditing.h"
 #include <array>
 #include <iosfwd>
 #include "EffectResourceCatalog.h"
@@ -69,6 +70,8 @@ public:
     bool Append_CharacterAnimation(const COMPOSITION_ANIMATION_RESOURCE& resource,
         bool replace, std::string& status);
     bool Rebind_CharacterModel(std::string& status);
+    bool Execute_CompositionEdit(COMPOSITION_EDIT_COMMAND command, std::string& status);
+    bool Insert_CompositionTransfer(const COMPOSITION_TRANSFER& transfer, std::string& status);
     void Set_WorkbenchSaveCallback(std::function<bool()> callback) { m_WorkbenchSave = std::move(callback); }
     bool Save_WorkbenchSequence() { return Save_Sequence(); }
     void Refresh_ModelResources() { m_ResourceModelGeneration = ~std::uint64_t{0u}; }
@@ -194,6 +197,21 @@ private:
         bool muted = false, debugRender = true;
         std::optional<HIT_AREA_SHAPE> productShape;
     };
+    struct ROW_TRANSFER final : COMPOSITION_EFFECT_TRANSFER
+    {
+        TRACK_KIND kind = TRACK_KIND::EFFECT;
+        std::string asset;
+        CLIP animation;
+        EFFECT_ROW effect;
+        SOUND_ROW sound;
+        COLLIDER_ROW collider;
+        CAMERA_ROW camera;
+        std::string_view Type() const noexcept override { return "character.occurrence.v1"; }
+    };
+    static EFFECT_ROW Authoring_EffectRow(const EFFECT_ROW& source);
+    COMPOSITION_TRANSFER Capture_CompositionSelection(std::string& status);
+    bool Insert_EffectRows(std::vector<EFFECT_ROW> rows, std::string& status);
+    bool Has_PendingBoxEdit() const;
     struct RESOURCE_ENTRY final
     {
         TRACK_KIND kind = TRACK_KIND::EFFECT;

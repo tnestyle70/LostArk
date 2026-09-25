@@ -1114,6 +1114,9 @@ void LostArk::Server::CGameRoom::Tick(const float fixedDeltaSeconds,
 				spawnGroupId, entry, anchor, profile, ordinal);
 		});
 	m_EstherSkillSystem.Update(fixedDeltaSeconds, !m_Players.empty());
+	// Player/Esther hits may have destroyed an owned WORLD body this tick.
+	// Retire its contact windows before any boss Logic can charge damage or madness.
+	Update_KoukuWorldBodies(updateTick);
 	Update_WorldEntities(fixedDeltaSeconds);
 	Update_KoukuWorldBodies(updateTick);
 	// An owner may have completed or aborted during the boss update this tick.

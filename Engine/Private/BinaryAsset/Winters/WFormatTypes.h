@@ -21,6 +21,8 @@ namespace Engine::WintersFormat
 	constexpr uint16_t WINT_SKINNED_UV_VERSION_MINOR = 3;
 	constexpr uint16_t WINT_STATIC_UV2_VERSION_MINOR = 4;
 	constexpr uint16_t WINT_SKINNED_BASIS_VERSION_MINOR = 5;
+	// 1.6 combines the 80-byte signed basis with the existing WUVS tail.
+	constexpr uint16_t WINT_SKINNED_BASIS_UV_VERSION_MINOR = 6;
 	constexpr uint32_t VF_POSITION = 1u << 0;
 	constexpr uint32_t VF_NORMAL = 1u << 1;
 	constexpr uint32_t VF_TEXCOORD0 = 1u << 2;

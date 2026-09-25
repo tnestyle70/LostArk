@@ -88,6 +88,9 @@ struct EFFECT_SPAWN_DESC final
 	f32_t fExternalPlaybackEndSeconds = 0.f;
 	// Set by external world-root sampling; shares the existing playback history path.
 	EFFECT_FIXED_STEP_TRANSFORM_PROVIDER ExternalTransformProvider;
+	// Current root can move while the simulation clock is held on a plateau.
+	std::optional<float4x4_t> ExternalPresentationRoot;
+	std::optional<std::vector<EFFECT_PARAMETER_INPUT>> ExternalPresentationParameters;
 	std::string strLevelPlacementId;
 };
 
@@ -401,7 +404,9 @@ public:
 		f32_t fSampleTimeSeconds,
 		const EFFECT_FIXED_STEP_TRANSFORM_PROVIDER& TransformProvider = {},
 		bool_t bRebuildHistory = false,
-		f32_t fPlaybackEndSeconds = 0.f);
+		f32_t fPlaybackEndSeconds = 0.f,
+		const float4x4_t* pPresentationRoot = nullptr,
+		const std::vector<EFFECT_PARAMETER_INPUT>* pPresentationParameters = nullptr);
 	// The owner calls once after the final camera, before rendering the world.
 	// Level-owned external placements keep their objects while hidden; visible
 	// samples commit before using the ordinary Effect rendergroup submission.

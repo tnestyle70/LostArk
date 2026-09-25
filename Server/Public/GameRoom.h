@@ -573,19 +573,21 @@ namespace LostArk::Server
 			std::uint32_t iAuditionRequestSequence = 0u, iAuditionEpoch = 0u, iNextEntryTick = 0u;
 			bool bClearCinematic = false, bEntryRunning = false, bGate3CombatEntered = false;
             bool bClearedGate3Preparation = false;
-            bool bBingoGateVoteEntry = false;
+            bool bGateVoteEntry = false;
+            bool bBingoSpecialRunning = false;
             std::uint32_t iGate3ClearTick = 0u;
 		};
 		KOUKU_RAID_RUN m_KoukuRaid;
 		std::uint32_t m_iNextKoukuRaidEpoch = 1u;
 		std::map<SESSION_ID, std::pair<LostArk::Shared::C2S_DEBUG_KOUKUSAYDON_RAID_REQUEST, LostArk::Shared::S2C_KOUKUSAYDON_RAID_STATE>> m_KoukuRaidReceipts;
 		bool Is_KoukuRaidRunning() const;
+		bool Start_KoukuBingoSpecialPattern(std::uint32_t tick);
 		bool Build_KoukuRaidState(LostArk::Shared::S2C_KOUKUSAYDON_RAID_STATE& state) const;
 		void Broadcast_KoukuRaidState();
 		void Update_KoukuRaid(std::uint32_t tick);
 		void Notify_KoukuRaidBossDeath(const SERVER_WORLD_ENTITY& boss, std::uint32_t tick);
 		void Stop_KoukuRaid(std::string reason, bool completed = false);
-		bool Begin_KoukuRaidPreparation(SESSION_ID sessionId, const LostArk::Shared::C2S_DEBUG_KOUKUSAYDON_RAID_REQUEST& request, std::string& reason, bool clearedGate3 = false, bool bingoGateVoteEntry = false);
+		bool Begin_KoukuRaidPreparation(SESSION_ID sessionId, const LostArk::Shared::C2S_DEBUG_KOUKUSAYDON_RAID_REQUEST& request, std::string& reason, bool clearedGate3 = false, bool gateVoteEntry = false);
 		bool Apply_KoukuRaidReadiness(SESSION_ID sessionId, const LostArk::Shared::C2S_DEBUG_KOUKUSAYDON_RAID_REQUEST& request, std::string& reason);
 		bool Begin_KoukuRaidCinematic(const std::string& gateId, bool clear, std::uint32_t tick);
 		bool Advance_KoukuRaidGate(std::uint8_t nextGate, bool restart);
@@ -630,6 +632,8 @@ namespace LostArk::Server
 		[[nodiscard]] bool Commit_KoukuAlbionAirborne(SERVER_WORLD_ENTITY& boss,
 			const BOSS_PATTERN_DEFINITION& pattern, const BOSS_PATTERN_MECHANIC_TRIGGER& trigger, std::uint32_t serverTick);
 		void Commit_KoukuMechanicTriggers(std::uint32_t serverTick);
+		void Update_KoukuActorContacts(SERVER_WORLD_ENTITY& actor, const BOSS_PATTERN_DEFINITION& pattern,
+			const CGameplayCatalog& product, std::uint32_t serverTick);
 		void Update_KoukuPursuitProjectiles(SERVER_WORLD_ENTITY& boss, const BOSS_PATTERN_MECHANIC_TRIGGER& trigger,
 			KOUKUSAYDON_PLAYER_TARGET_WINDOW_STATE& window, const CGameplayCatalog& catalog, std::uint32_t serverTick);
 		void Update_KoukuPlayerTargets(SERVER_WORLD_ENTITY& boss,
@@ -760,11 +764,14 @@ namespace LostArk::Server
 			LostArk::Shared::NET_ENTITY_ID iBodyId = LostArk::Shared::INVALID_NET_ENTITY_ID;
 			SESSION_ID iOwnerSessionId = INVALID_SESSION_ID;
 			bool bCancelled = false;
+			std::uint32_t iNextMadnessTick = 0u;
+			BOSS_ENCOUNTER_MADNESS_POLICY MadnessPolicy;
+			std::uint8_t iMadnessSource = 0u; // 1 circus ball, 2 odd doll
 		};
 		std::vector<KOUKU_DAMAGEABLE_WORLD_CUE> m_KoukuDamageableWorldCues;
 		std::vector<SERVER_WORLD_ENTITY> m_PendingKoukuWorldBodies;
 		bool Stage_KoukuWorldBody(const BOSS_PATTERN_WORLD_COMBAT_BODY& body,
-			const LostArk::Shared::S2C_WORLD_SEQUENCE_PLAY& play);
+			const LostArk::Shared::S2C_WORLD_SEQUENCE_PLAY& play, bool authoredMadness = false);
 		void Cancel_KoukuWorldBodies(const std::string& memberId = {}, SESSION_ID ownerSession = INVALID_SESSION_ID);
 		void Update_KoukuWorldBodies(std::uint32_t serverTick);
 
@@ -1520,7 +1527,8 @@ namespace LostArk::Server
 		/* Card maze. The telescope claim deals the suits and raises the
 		targets; the MAZE hammer press judges its swing once, at the runtime's
 		hit tick, against those targets. */
-		bool Spawn_KoukuCardRainSoldiers(LostArk::Shared::NET_ENTITY_ID ownerId, std::uint32_t tick);
+		bool Spawn_KoukuCardRainSoldiers(LostArk::Shared::NET_ENTITY_ID ownerId, std::uint32_t tick,
+			const BOSS_PATTERN_MECHANIC_TRIGGER* tuning = nullptr);
 		void Update_KoukuCardRainSoldiers(std::uint32_t tick);
 		bool Begin_CardMaze(LostArk::Shared::PLAYER_ID claimantId);
 		void Reset_CardMaze();
@@ -1719,6 +1727,10 @@ namespace LostArk::Server
             LostArk::Shared::NET_ENTITY_ID iOwnerId = LostArk::Shared::INVALID_NET_ENTITY_ID;
             std::uint32_t iPatternSequence = 0u, iEndTick = 0u;
             std::uint32_t iNextBombTick = 0u, iNextHammerTick = 0u, iNextMadnessTick = 0u;
+            std::uint32_t iMarkedBombCount = 0u;
+            bool bEncounterOwned = false, bSpecialPatternPending = false;
+            bool bLastLineCompletionSucceeded = false;
+            std::uint32_t iLastLineJudgementTick = 0u;
             struct HAMMER { std::int32_t anchor = -1; std::uint32_t startTick = 0u; };
             std::array<HAMMER, 2u> Hammers{};
         } m_KoukuBingoDuration;

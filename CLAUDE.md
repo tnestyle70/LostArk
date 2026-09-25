@@ -236,6 +236,12 @@ Composition과 Arena Sequencer source graph를 검증하고, resolved Client rea
 
 Loader worker에서 호출되는 shader/model/navigation/camera/character/part/Valtan factory는 modal dialog를 띄우지 않고 실패를 반환한다. 종료 시 cooperative cancellation과 `CancelSynchronousIo`를 순서대로 시도한다. 그래도 10초를 넘기면 `TerminateThread`로 손상된 process를 계속 실행하지 않고 `ERROR_TIMEOUT`으로 process fail-fast한다. smoke harness는 조기 종료나 report 누락을 실패로 판정한다.
 
+## 렌더링 옵션 정본
+
+렌더링 옵션은 팀장이 조율·관리한다. 현재 팀장의 저장값이 정본이며 모든 에이전트와 팀원은 임의 복원·기본값 적용·전수 덮어쓰기를 하지 않는다. 특히 쿠크 Mario1~4의 FXAA/anti-aliasing OFF를 유지한다. 변경 권한 경계는 `AGENTS.md`의 렌더링 옵션 정본과 변경 권한을 따른다.
+
+품질·scene/region 정본은 `Data/Rendering/Authored/RenderingProfiles.json`이다. 쿠크의 실제 base는 `scene.kakulsaydon.g1.base.v1`이며 그 `qualityOverride`는 패턴 scene 전환에도 유지된다. source 비교 profile이나 region override를 수정할 때도 같은 팀장 저장값을 보존한다. `Tools/RenderingPipeline/Publish-RenderingProfiles.ps1 -Mode Publish`만 `Client/Bin/DataFiles/Rendering/RenderingProfiles.runtime.json`을 생성한다. 생성물을 수동 편집하거나 효과 수정에 무관한 렌더링 재설정을 끼워 넣지 않는다. 실행 중 draft·사용자 video 설정과 게시 파일은 서로 다른 수명이며 게시를 자동 Reload로 설명하지 않는다.
+
 ## 팀 협업 규칙
 
 ### 저장소 · 리소스 배포 정책
@@ -347,7 +353,7 @@ enum class LEVEL { STATIC, LOADING, LOBBY, CHARACTER_SELECT, BERN, VALTAN_ARENA,
 
 ### 레벨 전환 흐름
 
-Level 전환 요청은 `CLevelTransitionService`에 제출한다. `CMainApp`은 현재 Level update가 끝난 뒤 `LOADING` 진입과 목표 Level activation을 수행하는 유일한 `Change_Level` 호출자다. `CLevel_Loading`은 Loader 성공 후 activation 요청만 제출한다. 로드는 `parse -> validate -> stage -> commit`이며 실패/취소 시 staging을 rollback한다.
+Level 전환 요청은 `CLevelTransitionService`에 제출한다. `CMainApp`은 이전 프레임의 Level update/render가 끝난 뒤 다음 Update 시작에서 `LOADING` 진입과 목표 Level activation을 수행하는 유일한 `Change_Level` 호출자다. 새 Level은 자신의 첫 Update/Late_Update로 렌더 큐를 만든 뒤 Render한다. Loading 진입 시 STATIC의 Lobby 이미지와 캐릭터 선택 창을 숨겨 UI 갱신 억제 중 이전 화면이 남지 않게 한다. `CLevel_Loading`은 Loader 성공 후 activation 요청만 제출한다. 로드는 `parse -> validate -> stage -> commit`이며 실패/취소 시 staging을 rollback한다.
 
 `CLevelRegistry` descriptor의 `MAP_LOAD_SCOPE`가 제품 맵 로딩 범위의 런타임 정본이다. Bern과 Valtan 제품 Level은 자신의 진입/전투 범위와 배경만 로드한다. Loader와 `CMapPlacementRuntime`은 같은 `MAP_LOAD_SCOPE`를 소비해야 하며 한쪽만 필터링하면 안 된다. 로더 작업 스레드의 실패는 상태와 HRESULT로 반환하고 `MessageBox`로 대기시키지 않는다.
 
@@ -468,9 +474,9 @@ Debug x64는 외부 ImGui core/backend 여섯 소스와 `Profiler.cpp`, `Shader.
 해당 파일은 명령 재배치·local 변수 생략 때문에 stepping이 제한되고 `/RTC`와 Just My Code를
 사용하지 않는다. `_DEBUG`, Debug CRT, ImGui assert, D3D debug layer와 다른 소스의 Debug 설정은 유지한다.
 
-F1의 `Character Select Movie`는 Character Select에서 기존 클래스 영화를 재생한다. 기본 선택은 Guardian Knight이며 Play/Restart Intro·Stop을 제공한다. 현재 등록된 영화는 Guardian Knight이고, 미등록 class와 다른 Level에서는 재생을 시작하지 않는다. 영화 선택은 Server 캐릭터 class 변경과 별개다.
+F1의 `Character Select Movie`와 Action Workbench의 `World → Character Select`는 `Data/Rendering/Authored/CharacterSelectFloorSwap.json`의 11개 바닥 Category와 같은 Level 선택을 사용한다. 초기값은 입장 class이며, Play는 현재 Category의 class를 검증해 재생한다. 영화 선택은 Server 캐릭터 class와 독립이고 미연결·준비 실패는 해당 Category의 이유를 표시한다. Guardian은 `10 Dragon Human`에서 선택한다. 사용자가 옮긴 바닥은 유지하고 영화는 배우·카메라·FX와 원본 WORLD 무대를 사용한다. `Data/Camera/ClassSelection.cinematics.json`의 scene별 optional `backgroundAreaId`가 배경을 정하며, 생략하면 registry의 기존 presentation Area(SL10)를 사용한다. 배경은 고유 Area별로 한 번 준비하고 현재 재생 scene의 배경만 표시한다. 한 배경 실패는 다른 class의 Play를 막지 않는다. Pause·시간 탐색·Stop은 현재 재생을 제어하고, 다음 Play는 새 선택을 사용한다.
 
-F1의 `Balance Test`는 공용 Players/Skills/Damage/Bosses 숫자 scalar 편집과 Server HP/tick 진단을
+F1의 `Balance Test`는 공용 Players/Skills/Damage/Bosses/Madness 숫자 scalar 편집과 Server HP/tick 진단을
 제공한다. `Save + Validate`는 stable ID/field의 이전값으로 최신 `Data/Balance` 저장본에 병합하고,
 candidate provenance/gameplay 검증 뒤 freshness 확인과 원자 교체를 수행한다. `Publish Server Data`
 뒤 Server와 Client를 재시작해야 적용된다. Valtan의 typed 패턴 저작 backend와 draft는 별도로 유지한다.
@@ -551,16 +557,20 @@ Pattern`과 F1 Complete Play가 audition target 보스에서만 재생한다. Ko
 기존 Play All은 저작 순서를 유지하면서 대상 body에 맞는 Product 패턴만 재생하고, 맞는 항목이 없으면 거부한다. 관문
 spawn/despawn·teleport는 Debug Server 전용이다. 보스 spawn은 저작 좌표가 보행 가능 셀이면 그 XZ를 유지하고
 높이만 navgrid에서 샘플하며, 비보행 셀만 가장 가까운 셀 중심으로 투영한다(이 Area의 셀은 4m).
-플레이어는 `PLAYER_SNAPSHOT`의 광기 게이지(`iCurrentMadness/iMaximumMadness`, 최대치는 Server 상수 10000)와
+플레이어는 `PLAYER_SNAPSHOT`의 광기 게이지(`iCurrentMadness/iMaximumMadness`, 쿠크 최대치는 게시 policy의 100)와
 `eMadnessForm`을 받는다. `CLOWN`이면 `CClientReplication`이 class 변경과 같은 transaction으로 같은 entity를
 MN_RPCT_03 광대 몸체(`Spec_KoukuSaydonClown`, idle/run만)로 교체하고 퀵슬롯은 replicated class를 계속 쓴다.
 F1 `KoukuSaydon Arena`의 `Change to Clown`/`Return to Player`는 Debug typed 명령
 `C2S_DEBUG_SET_MADNESS_FORM`으로 Server가 소유한 form만 바꾸며 Release는 typed 거부를 돌려준다.
 광기 HUD 바는 `CCombatHUDViewModel::Get_KoukuGimmick()`의 Server 수치를 읽으며, 상태 임계값 49/100은
 최대치 대비 백분율로 적용한다. F1 `Kouku UI Preview`를 명시 활성화한 동안만 표시값을 덮어쓰고,
-해제·session reset 시 최신 snapshot으로 돌아간다. 광대 몸체 교체는 원래 class 스킬을 유지하므로
-실제 변신으로 POLYMORPH 스킬 HUD를 켜지 않는다. 광기 게이지에 의한 자동 변신·모드별 스킬과 패턴은 후속이다.
-마리오 1~4 입장은 별도로 Server가 기존 Intro trigger에서 `iMarioStage`를 확정하고 CLOWN으로 자동 전환한다.
+해제·session reset 시 최신 snapshot으로 돌아간다. 게이지가 차면 Server가 15초 CLOWN과 POLYMORPH HUD를
+확정한다. 실제 HP 손실은 최대 HP 대비 비율에 `Madness.damageGainPercent`를 곱해 충전하며 작은 피해의
+소수 잔여값도 누적한다. 공·인형은 살아 있는 damageable WORLD cue의 접촉 충전을 사용한다.
+`Balance Test -> Madness`에서 공식과 원본 근거를 보고 피해·공·인형 배율을 저장·게시한다. 상세 schema와
+원본/PROJECT_TUNED 구분은 `.md/TEAM/BALANCE_TOOL_OWNER_HANDOFF.md`를 따른다.
+마리오 1~4는 패턴 entry와 기존 Intro trigger 모두 Server에서 이미 CLOWN인 플레이어만 승인한다.
+마리오 중 변신 유지 시간이 끝나면 퇴장 뒤 일반 형태로 복원하며, Debug의 무기한 광대는 유지한다.
 패턴 입장은 Gate 3 Pattern의 ENTER_AREA box가 Collider region을 갖고 sole Success가 `MARIO_ENTER`일 때
 그 box로 들어가며 completion chain은 선택이다. `MARIO_ENTER`의 optional `marioStage` 0..4는 0이면 방의
 live counter, 1..4면 저작 단계이고 요청의 test stage가 우선한다. 0이 아닐 때만 문서·projection·

@@ -287,3 +287,46 @@ root의 후속 설치 요청을 받아 원본11파일을 재검사했고 staging
 
 현재 사용자 VS 빌드가 진행 중이라는 root 확인에 따라 authoring/runtime commit과 publisher는
 대기한다. 별도 OverlayInstall staging과 CAS 기준본만 준비하며, 하늘/LightFunction은 제외한다.
+
+## G13. 2026-09-25 3시·9시 파괴 바닥의 재질 소비 재확인
+
+사용자가 지정한 대상은 파괴되는 A/B 석재와 난간 여섯 Deploy 배치다. 작은 원형 바닥
+SL00 export1274의 static shadow 수정과 다른 작업이다. 현재 floor84의 placement는
+7000000000000000005/6/7, floor30은7000000000000000001/2/3이다.
+
+현재 제품의 세 모델은 `SourceDeployRestore`를 사용하며 A/B 각2슬롯과 rail4슬롯이
+BossCatalog override에 정확히 대응한다. A/B6종·rail15종 texture는 실제로 존재하며,
+원본/게시 deploy catalog와 placement의 의미도 일치한다. A/B rock04와 crack의
+원본 scalar/color21항목 및 texture6개의 SRGB/linear·WRAP 설정이 현재 데이터와 일치했다.
+원래 static 배치에 동일 A/B/rail asset을 참조하는 행은0개다.
+
+제품은 `DeployPropRuntime → ActorCatalog descriptor → CModel/CMaterial → DeployPropObject
+→ MapAssetRenderUtils`를 사용한다. Clone은 재질을 보존하며 native surface에서는 legacy
+발광 overlay를 건너뛴다. 현재 제품의 텍스처 누락이나 원본 재질 override 유실은 발견하지 못했다.
+
+확인된 결함은 MapTool의 `Ensure_DeployAuthoringPrototypes`가 raw path로 모델을 생성하던
+부분이다. `MapTool_Area.cpp`에서 intact/fractured 모두 상대 asset ID로 ActorCatalog
+descriptor를 만든 뒤 기존 CModel에 전달하도록 수정했다. 생성 전 descriptor 실패는
+상태 메시지를 남기고 해당 prototype을 추가하지 않는다. 기존 경로 fingerprint·.01 사전 배율·
+model kind·배치·파괴 동작을 보존했다. 독립 코드 검토와 UTF-8/CRLF 보존·diff 검사는 PASS다.
+새 C++ 파일·프로젝트 등록·데이터/Resources 변경·추가 게시가 없다. 기존 메모리 prototype을
+자동으로 다시 만들거나 사용자 편집을 Reload하지 않았다. 통합 Debug Product Build는
+Engine·Shared·Server·Client 모두 PASS이며 실제 `MapTool_Area.cpp` 재컴파일과 Client 링크를
+확인했다. `out/BuildPipeline/runs/20260925T013413528Z-debug-product.json`과
+`out/KoukuAuthoring20260925/product-build-confirm.log`에 근거가 있다. 기존 컴파일·셰이더·
+외부 라이브러리 PDB 경고는 남아 있으며 빌드 오류는0이다.
+
+제품 화면의 색 차이를 위 저작 경로의 결함으로 단정하지 않는다. family7의 원본 hemisphere와
+scene color 입력을0으로 둔 것은 09-08부터 명시된 미복원 경계다. 정적 석재는 RNM을 소비하지만
+합성 Deploy A/B에는 연결된 RNM이 없고, 다른 배치의 atlas를 복사할 근거도 없다.
+원본 실제 생성자의 material override·동적 조명 입력과 사용자 현재 화면은 별도 확인 대상이다.
+공통 렌더링 옵션과 현재 재질 밝기·색상·텍스처는 임의로 바꾸지 않았다. Client/UI 실행과
+사용자 화면의 시각 검증은 수행하지 않았다.
+
+원본15 UPK의 actor/component·컷신 재질 track 조사와 정확한6배치/재질 근거는
+`out/ValtanDestructible20260925/source-owner-lighting-review.json`에 기록했다.
+원본 EFStaticMeshActor의 LightEnvironment 기본 연결은 확인했지만 해당 바닥의 실제
+spawn class join을 확인하지 못했으므로 그 값을 바닥에 적용하지 않았다.
+같은 receipt의 추가 조사에서는 원본 Map37051의 DeployData169 actor를 Prop27정의와
+LookInfo17모델에 연결했으나 A/B/rail의 직접 참조는 없었다. 이는 검사한 범위의 부재이며
+게임 전체에서 생성자가 없다는 결론이 아니다. 실제 프로젝트의 문제 화면은 아직 받지 못했다.

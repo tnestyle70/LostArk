@@ -124,6 +124,10 @@ public:
 	virtual HRESULT Initialize() override;
 	virtual void Update(f32_t fTimeDelta) override;
 	virtual HRESULT Render() override;
+	bool_t Get_MadnessGaugePosition(float2_t& screenOffset, f32_t& headOffsetMeters) const;
+	bool_t Set_MadnessGaugePosition(const float2_t& screenOffset, f32_t headOffsetMeters);
+	bool_t Save_MadnessGaugePosition(std::string& status);
+	bool_t Reload_MadnessGaugePosition(std::string& status);
 	const ARENA_CAMERA_PROFILE& Get_FollowCameraProfile() const
 	{ return m_FollowCameraProfile; }
 	const ARENA_CAMERA_PROFILE& Get_EffectiveFollowCameraProfile() const
@@ -323,7 +327,8 @@ public:
 	void Trace_CinematicPresentation(std::string_view renderingProfile);
 	void Stop_CompositionCamera(bool_t force = false);
 	bool_t Try_GetCompositionWorldPivot(std::string_view instanceId, float4x4_t& out,
-		std::string_view occurrenceId = {}, std::uint32_t emissionIndex = 0u) const;
+		std::string_view occurrenceId = {}, std::uint32_t emissionIndex = 0u,
+        const std::string& bone = {}, bool_t boneRotation = false) const;
     bool_t Create_CompositionPreviewActor(const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern,
         std::shared_ptr<CNpc>& outActor, std::string& status);
     void Release_CompositionPreviewActor(const std::shared_ptr<CNpc>& actor);
@@ -342,7 +347,7 @@ public:
         const CWorldSequenceDocument* sourceDocument = nullptr) const;
 	bool_t Try_GetOwnedCompositionWorldPivot(std::uint32_t runEpoch, const std::string& memberId,
 		const std::string& sequenceId, const std::string& cueId, float4x4_t& out, std::uint32_t emissionIndex = 0u,
-        std::uint32_t patternSequence = 0u) const;
+        std::uint32_t patternSequence = 0u, const std::string& bone = {}, bool_t boneRotation = false) const;
 	void Get_WorldObjectValidationTargets(WORLD_SEQUENCE_PLACEMENT_MAP&, WORLD_SEQUENCE_DEPLOY_MAP&) const;
 	bool_t Reload_WorldObjectRuntime(std::string& status);
 #ifdef _DEBUG

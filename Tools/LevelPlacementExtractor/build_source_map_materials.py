@@ -20,6 +20,7 @@ import sys
 
 import source_map_surface
 import source_map_surface_extra
+import source_foliage_wind
 from source_extraction_io import write_pair
 
 
@@ -154,6 +155,10 @@ def check_finite(value, context):
 def validate_surface(row, resources):
     """Bounds shared by the existing CMapAssetCatalog surface carriers."""
     check_finite(row, row['assetId'])
+    if 'foliageWind' in row:
+        require(row['family'] in ('bg-source-foliage-masked', 'bg-source-grass-masked') or
+                row['family'].startswith('source.'), 'wind requires a reviewed source map family')
+        source_foliage_wind.validate(row['foliageWind'])
     for key, value in row.items():
         if type(value) in (int, float) and key != 'sourceIceBumpOffset':
             require(value >= 0, f'{key} must be non-negative')
@@ -325,8 +330,9 @@ def compile_materials(manifest_path, resources_root):
         missing_switches = [x for x in resolved.get('unresolvedDefaults', [])
                             if 'switch' in str(x).casefold()]
         require(not missing_switches, f'{source}: unresolved switch defaults: {missing_switches}')
-        require(not any(v for k, v in resolved['switches'].items() if 'dynamicfoliage' in k),
-                f'{source}: source foliage vertex wind has no verified binding in this compiler')
+        wind_enabled = any(v for k, v in resolved['switches'].items() if 'dynamicfoliage' in k)
+        require(not wind_enabled or bool(slot.get('foliageWind')),
+                f'{source}: source foliage vertex wind needs an exact verified binding')
         consumed_textures = set()
         def texture(parameter):
             source_object = resolved['textures'].get(parameter)
@@ -358,6 +364,8 @@ def compile_materials(manifest_path, resources_root):
         tracked = TrackedValues(resolved['values'])
         row = builder.build_surface(source, terminal, tracked, resolved['switches'],
                                     texture, asset_id=asset, material_name=name)
+        if slot.get('foliageWind'):
+            row['foliageWind'] = source_foliage_wind.build(slot['foliageWind'], source, verified_file, manifest_path.parent, sources, tracked)
         component = slot['component']
         render = component['rendering']
         require(type(render['castsShadow']) is bool and render['renderMode'] == 'deferred' and

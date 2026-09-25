@@ -1,10 +1,13 @@
 #include "MapAssetRenderUtils.h"
+#include "SourceMovieMaterialPrograms.h"
 #include "Engine_RenderTypes.h"
 
 #include "GameInstance.h"
 #include "Model.h"
 #include "Shader.h"
 #include "Presentation_Manager.h"
+#include "AnimationTargetService.h"
+#include "Character.h"
 #include <array>
 #include <atomic>
 
@@ -19,6 +22,42 @@
 
 namespace
 {
+    HRESULT BindSourceFoliageWind(const std::shared_ptr<Engine::CShader>& shader,
+        const Engine::MODEL_SURFACE_PARAMETERS* surface, float time)
+    {
+        const uint32_t enabled = surface &&
+            (surface->family == Engine::MODEL_SURFACE_FAMILY::SOURCE_FOLIAGE_MASKED ||
+             surface->family == Engine::MODEL_SURFACE_FAMILY::SOURCE_GRASS_MASKED ||
+             (surface->family == Engine::MODEL_SURFACE_FAMILY::SOURCE_CHARACTER &&
+              surface->sourceCharacter.program >= 1100u && surface->sourceCharacter.program <= 1166u)) &&
+            surface->sourceFoliageWind ? 1u : 0u;
+        if (FAILED(shader->Bind_RawValue("g_SourceFoliageWindEnabled", &enabled, sizeof(enabled)))) return E_FAIL;
+        if (!enabled) return S_OK;
+        if (!std::isfinite(time)) return E_INVALIDARG;
+        if (FAILED(shader->Bind_RawValue("g_SourceFoliageWindProgram", &surface->sourceFoliageWindProgram,
+            sizeof(surface->sourceFoliageWindProgram)))) return E_FAIL;
+        float4_t player = surface->sourceFoliageWindPlayerPosition;
+        if (surface->sourceFoliageWindProgram == 3u)
+        {
+            const auto character = Client::CAnimationTargetService::Resolve_SceneCharacter();
+            float4x4_t root{};
+            if (character && character->Try_Get_PresentationRootMatrix(&root))
+            {
+                if (!std::isfinite(root._41) || !std::isfinite(root._42) || !std::isfinite(root._43)) return E_INVALIDARG;
+                player = float4_t(root._41 * 100.f, -root._43 * 100.f, root._42 * 100.f, 0.f);
+            }
+        }
+        for (const auto& pair : { std::pair<const char*, const float4_t*>("g_SourceFoliageWindLocalCenter", &surface->sourceFoliageWindLocalCenter),
+            { "g_SourceFoliageWindLocalBounds", &surface->sourceFoliageWindLocalBounds },
+            { "g_SourceFoliageWindActorPosition", &surface->sourceFoliageWindActorPosition },
+            { "g_SourceFoliageWindDirectionSpeed", &surface->sourceFoliageWindDirectionSpeed },
+            { "g_SourceFoliageWindPlayerPosition", &player } })
+            if (FAILED(shader->Bind_RawValue(pair.first, pair.second, sizeof(float4_t)))) return E_FAIL;
+        if (FAILED(shader->Bind_RawValue("g_SourceFoliageWindScalars", surface->sourceFoliageWindScalars, sizeof(surface->sourceFoliageWindScalars))) ||
+            FAILED(shader->Bind_RawValue("g_SourceFoliageWindTime", &time, sizeof(time)))) return E_FAIL;
+        return S_OK;
+    }
+
     HRESULT BindForwardSceneLights(const std::shared_ptr<Engine::CShader>& shader, bool bakedReceiver, const float4_t* worldCullSphere,
         bool withAmbient = false)
     {
@@ -763,7 +802,7 @@ bool_t Client::CMapAssetRenderUtils::Uses_StaticShadowInputs(
 	case Engine::MODEL_SURFACE_FAMILY::LEGACY:
 	case Engine::MODEL_SURFACE_FAMILY::SOURCE_FOLIAGE_MASKED:
 	case Engine::MODEL_SURFACE_FAMILY::SOURCE_GRASS_MASKED:
-		return profile.uvSpeed.x == 0.f && profile.uvSpeed.y == 0.f;
+		return !surface->sourceFoliageWind && profile.uvSpeed.x == 0.f && profile.uvSpeed.y == 0.f;
 	case Engine::MODEL_SURFACE_FAMILY::SPECULAR_TEXTURE_REFLECTION:
 	case Engine::MODEL_SURFACE_FAMILY::DIFFUSE_SPECULAR_REFLECTION:
 	case Engine::MODEL_SURFACE_FAMILY::PBR_SEAMLESS_OPAQUE:
@@ -840,6 +879,7 @@ HRESULT Client::CMapAssetRenderUtils::Bind_ShadowMaterial(
 	if (program != 0u &&
 		FAILED(model->Bind_SurfaceTexture(shader, "g_DiffuseTexture", meshIndex, aiTextureType_DIFFUSE)))
 		return E_FAIL;
+	if (FAILED(BindSourceFoliageWind(shader, surface, elapsedTime))) return E_FAIL;
 	return shader->Bind_RawValue("g_SurfaceProgram", &program, sizeof(program));
 }
 
@@ -1044,9 +1084,13 @@ HRESULT Client::CMapAssetRenderUtils::Bind_Material(
         if (FAILED(shader->Bind_RawValue("g_SurfaceProgram", &noMapSurface, sizeof(noMapSurface))) ||
             FAILED(shader->Bind_RawValue("g_HasSurfaceDefinition", &noMapSurface, sizeof(noMapSurface)))) return E_FAIL;
         const uint32_t sourceProgram = nativeSurface->sourceCharacter.program;
+        const bool movieStatic = SourceMovieMaterial::Is_Static(sourceProgram);
+        const bool movieForward = SourceMovieMaterial::Is_Forward(sourceProgram) ||
+            sourceProgram == 224u || sourceProgram == 225u || sourceProgram == 226u || sourceProgram == 237u;
         const bool forwardBakedProgram = (sourceProgram >= 40u && sourceProgram <= 63u &&
-            sourceProgram != 47u && sourceProgram != 53u && sourceProgram != 55u) || sourceProgram == 209u;
-        if ((sourceProgram >= 80u && sourceProgram <= 83u) || sourceProgram == 210u)
+            sourceProgram != 47u && sourceProgram != 53u && sourceProgram != 55u) || sourceProgram == 209u || movieForward;
+        if ((sourceProgram >= 80u && sourceProgram <= 83u) || sourceProgram == 210u ||
+            (sourceProgram >= 214u && sourceProgram <= 234u) || sourceProgram == 237u || movieStatic)
         {
             const Engine::MODEL_BAKED_LIGHTING_INSTANCE emptyLighting{};
             const auto& instanceLighting = bakedLighting ? *bakedLighting : emptyLighting;
@@ -1054,7 +1098,7 @@ HRESULT Client::CMapAssetRenderUtils::Bind_Material(
                 FAILED(shader->Bind_RawValue("g_LightmapAverageScale", &instanceLighting.averageScale, sizeof(instanceLighting.averageScale))) ||
                 FAILED(shader->Bind_RawValue("g_LightmapDirectionalScale", &instanceLighting.directionalScale, sizeof(instanceLighting.directionalScale)))) return E_FAIL;
         }
-        if ((sourceProgram >= 33u && sourceProgram <= 63u) || sourceProgram == 65u || sourceProgram == 209u)
+        if ((sourceProgram >= 33u && sourceProgram <= 63u) || sourceProgram == 65u || sourceProgram == 209u || movieForward)
         {
             float4_t ambient(0.f, 0.f, 0.f, 1.f);
             for (const auto& light : CGameInstance::Get().Get_SceneLights())
@@ -1067,13 +1111,13 @@ HRESULT Client::CMapAssetRenderUtils::Bind_Material(
                 FAILED(shader->Bind_RawValue("g_SourceMapAmbient", &ambient, sizeof(ambient))) ||
                 FAILED(CGameInstance::Get().Bind_RT_SRV(TEXT("Target_Depth"), shader,
                     "g_SourceMapSceneDepth"))) return E_FAIL;
-            if (sourceProgram >= 38u && sourceProgram <= 63u &&
+            if (((sourceProgram >= 38u && sourceProgram <= 63u) || SourceMovieMaterial::Needs_SceneColor(sourceProgram)) &&
                 FAILED(CGameInstance::Get().Bind_RT_SRV(TEXT("Target_EffectSceneColor"), shader,
                     "g_SourceMapSceneColor"))) return E_FAIL;
         }
-        if (((sourceProgram >= 38u && sourceProgram <= 63u) || sourceProgram == 209u) &&
+        if (((sourceProgram >= 38u && sourceProgram <= 63u) || sourceProgram == 209u || movieForward) &&
             FAILED(BindForwardSceneLights(shader, forwardBakedProgram && nativeSurface->hasBakedLighting && bakedLighting, worldCullSphere))) return E_FAIL;
-        if ((sourceProgram >= 40u && sourceProgram <= 63u) || sourceProgram == 209u)
+        if ((sourceProgram >= 40u && sourceProgram <= 63u) || sourceProgram == 209u || movieForward)
         {
             const uint32_t hasBaked = forwardBakedProgram && nativeSurface->hasBakedLighting && bakedLighting ? 1u : 0u;
             const Engine::MODEL_BAKED_LIGHTING_INSTANCE emptyLighting{};
@@ -1084,7 +1128,9 @@ HRESULT Client::CMapAssetRenderUtils::Bind_Material(
                 FAILED(shader->Bind_RawValue("g_LightmapDirectionalScale", &lighting.directionalScale, sizeof(lighting.directionalScale))) ||
                 (hasBaked && !hasStaticShadow && FAILED(model->Bind_SurfaceLighting(shader, meshIndex)))) return E_FAIL;
         }
-        return model->Bind_SourceCharacter(shader, meshIndex);
+        if (FAILED(BindSourceFoliageWind(shader, nativeSurface, elapsedTime))) return E_FAIL;
+        if (FAILED(model->Bind_SourceCharacter(shader, meshIndex))) return E_FAIL;
+        return movieForward ? model->Bind_SourceCharacterForwardLight(shader, meshIndex) : S_OK;
     }
 
 	const auto* surface = nativeSurface;
@@ -1100,6 +1146,7 @@ HRESULT Client::CMapAssetRenderUtils::Bind_Material(
     const float4_t pbrParameters = pbrComparisonActive ? settings.MapPBR.vSurfaceParameters : float4_t(1.f, 0.f, 0.f, 0.f);
     if (FAILED(shader->Bind_RawValue("g_MapPBRContributionScale", &pbrContributions, sizeof(pbrContributions))) ||
         FAILED(shader->Bind_RawValue("g_MapPBRDiagnosticParameters", &pbrParameters, sizeof(pbrParameters)))) return E_FAIL;
+    if (FAILED(BindSourceFoliageWind(shader, surface, elapsedTime))) return E_FAIL;
 	// Bind last: the legacy diffuse binder resets source programs on shared shaders.
 	if (FAILED(shader->Bind_RawValue("g_SurfaceProgram", &program, sizeof(program))) ||
 		FAILED(shader->Bind_RawValue("g_HasSurfaceDefinition", &hasSurface, sizeof(hasSurface))) ||

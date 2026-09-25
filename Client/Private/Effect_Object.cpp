@@ -823,6 +823,27 @@ void Client::CEffectObject::Set_RootWorld(const float4x4_t& RootWorld)
 		m_Playback.Update(0.f, m_RootWorld);
 }
 
+bool_t Client::CEffectObject::Validate_ParticleParameters(
+	const std::vector<EFFECT_PARAMETER_INPUT>& Parameters, std::string& strOutError) const
+{
+	if (m_bReconstructedDiagnosticActive)
+	{
+		strOutError = "Particle parameter sampling is unavailable in diagnostic mode.";
+		return false;
+	}
+	return m_Playback.Validate_ParticleParameters(Parameters, strOutError);
+}
+
+bool_t Client::CEffectObject::Set_PresentationSample(const float4x4_t& RootWorld,
+	const std::vector<EFFECT_PARAMETER_INPUT>& Parameters, std::string& strOutError)
+{
+	if (!Validate_ParticleParameters(Parameters, strOutError) ||
+		!m_Playback.Set_CurrentParticleParameters(Parameters, strOutError)) return false;
+	m_RootWorld = RootWorld;
+	m_Playback.Update(0.f, m_RootWorld);
+	return true;
+}
+
 void Client::CEffectObject::Set_SourceAnchorWorlds(
 	const std::unordered_map<std::string, float4x4_t>& SourceAnchorWorlds)
 {

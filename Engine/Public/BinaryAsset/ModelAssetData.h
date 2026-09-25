@@ -134,6 +134,32 @@ struct MODEL_SURFACE_PARAMETERS
     uint32_t sourceFoliageFlags = 0u;
     float4_t sourceFoliageTransmission = { 0.f, 0.f, 0.f, 1.f };
     bool_t sourceFoliageMaskSRGB = false;
+    // Exact admitted foliage VS; runtime fields are per-material inputs, not a second renderer.
+    bool_t sourceFoliageWind = false;
+    uint32_t sourceFoliageWindProgram = 1u; // Exact original vertex program: E4FE/A1C6/1C39.
+    float4_t sourceFoliageWindLocalCenter = { 0.f, 0.f, 0.f, 1.f };
+    float4_t sourceFoliageWindLocalBounds = { 1.f, 1.f, 1.f, 1.f };
+    float4_t sourceFoliageWindActorPosition = { 0.f, 0.f, 0.f, 0.f };
+    float4_t sourceFoliageWindDirectionSpeed = { 0.f, 0.f, 1.f, 0.f };
+    float4_t sourceFoliageWindPlayerPosition = { 0.f, 0.f, 0.f, 0.f };
+    float4_t sourceFoliageWindScalars[4]{};
+    bool Has_ValidSourceFoliageWindProgramInputs() const
+    {
+        if (sourceFoliageWindProgram < 1u || sourceFoliageWindProgram > 3u) return false;
+        const auto lane = [&](uint32_t i) { const auto& v = sourceFoliageWindScalars[i / 4u];
+            switch (i % 4u) { case 0u: return v.x; case 1u: return v.y; case 2u: return v.z; default: return v.w; } };
+        const uint32_t count = sourceFoliageWindProgram == 1u ? 16u : sourceFoliageWindProgram == 2u ? 7u : 10u;
+        const uint32_t time = sourceFoliageWindProgram == 1u ? 10u : sourceFoliageWindProgram == 2u ? 1u : 4u;
+        if (lane(time) != 0.f) return false;
+        for (uint32_t i = count; i < 16u; ++i) if (lane(i) != 0.f) return false;
+        if (sourceFoliageWindProgram == 1u) return lane(2u) > 0.f;
+        const auto& p = sourceFoliageWindPlayerPosition;
+        if (sourceFoliageWindProgram == 2u) return
+            sourceFoliageWindLocalCenter.x == 0.f && sourceFoliageWindLocalCenter.y == 0.f &&
+            sourceFoliageWindLocalCenter.z == 0.f && p.x == 0.f && p.y == 0.f && p.z == 0.f && p.w == 0.f;
+        return lane(0u) > 0.f && p.x == 99999.f && p.y == 99999.f && p.z == 0.f && p.w == 0.f;
+    }
+
 
     // Source opaque overlay uses vertex R coverage and vertex A normal strength.
     float4_t overlayColor = { 1.f, 1.f, 1.f, 1.f };

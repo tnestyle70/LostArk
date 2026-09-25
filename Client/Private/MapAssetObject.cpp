@@ -12,6 +12,7 @@
 #include "Profiler.h"
 
 #include "MapAssetRenderUtils.h"
+#include "SourceMovieMaterialPrograms.h"
 
 #include <algorithm>
 #include <cmath>
@@ -158,7 +159,8 @@ void CMapAssetObject::Late_Update(f32_t fTimeDelta)
         const auto profile = Get_MaterialRenderProfile(mesh);
         const auto* surface = m_pModelCom->Get_MaterialSurface(mesh);
         if (surface && surface->family == Engine::MODEL_SURFACE_FAMILY::SOURCE_CHARACTER &&
-            surface->sourceCharacter.program >= 38u && surface->sourceCharacter.program <= 43u)
+            ((surface->sourceCharacter.program >= 38u && surface->sourceCharacter.program <= 43u) ||
+             SourceMovieMaterial::Needs_SceneColor(surface->sourceCharacter.program)))
             CGameInstance::Get().Request_SceneColorSnapshot();
         const auto group = MaterialRenderGroup(profile);
         if (group == RENDERGROUP::END) continue;
@@ -167,6 +169,10 @@ void CMapAssetObject::Late_Update(f32_t fTimeDelta)
             CGameInstance::Get().Is_ShadowLightEnabled())
             queued[static_cast<size_t>(RENDERGROUP::SHADOW)] = true;
     }
+    // This playable translucent floor has no opaque G-buffer contribution.
+    // Reuse its actual geometry for cursor picking after all scene consumers.
+    if (Client::IsCardMazeFloorReceiver(m_iPlacementId, m_AssetId))
+        queued[static_cast<size_t>(RENDERGROUP::PICKING)] = true;
     for (size_t group = 0; group < std::size(queued); ++group)
         if (queued[group]) CGameInstance::Get().Add_RenderObject(static_cast<RENDERGROUP>(group),
             static_pointer_cast<CGameObject>(shared_from_this()));
@@ -191,6 +197,8 @@ int32_t CMapAssetObject::Get_BlendSortPriority() const
 
 HRESULT CMapAssetObject::Render_Group(RENDERGROUP group)
 {
+    const bool picking = group == RENDERGROUP::PICKING;
+    if (picking && !Client::IsCardMazeFloorReceiver(m_iPlacementId, m_AssetId)) return S_OK;
 	/* Late_Update may already have queued this object when a presentation cue
 	   hides it. Re-check at draw time so the previous frame cannot leak through. */
 	if (!Is_Rendered() || m_fPresentationOpacityMultiplier <= 0.f ||
@@ -237,11 +245,13 @@ HRESULT CMapAssetObject::Render_Group(RENDERGROUP group)
         for (uint32_t meshIndex = 0; SUCCEEDED(renderResult) && meshIndex < m_pModelCom->Get_NumMeshes(); ++meshIndex)
         {
             auto presentationProfile = Get_MaterialRenderProfile(meshIndex);
-            if (MaterialRenderGroup(presentationProfile) != group) continue;
+            if (!picking && MaterialRenderGroup(presentationProfile) != group) continue;
             const bool_t bWater = presentationProfile.renderMode == MAP_ASSET_RENDER_MODE::WATER && m_bHasWaterProfile;
             if (presentationProfile.renderMode == MAP_ASSET_RENDER_MODE::WATER && !m_bHasWaterProfile)
                 presentationProfile.renderMode = MAP_ASSET_RENDER_MODE::TRANSLUCENT;
-            const uint32_t passIndex = CMapAssetRenderUtils::Select_Pass(presentationProfile, m_bMirrored);
+            // Appended 25..27 use the same cull/mirror choice and exact vertex path.
+            const uint32_t materialPass = CMapAssetRenderUtils::Select_Pass(presentationProfile, m_bMirrored);
+            const uint32_t passIndex = picking ? 25u + materialPass % 3u : materialPass;
             presentationProfile.opacity *= m_fPresentationOpacityMultiplier;
             if (bWater)
             {

@@ -456,7 +456,15 @@
       "bakedLighting": {
         "averageTexture": "Map/Lighting/Valtan/LV_LUT_HEARTRB_ED_SL00_normalizedaveragecolor1_55.dds",
         "directionalTexture": "Map/Lighting/Valtan/LV_LUT_HEARTRB_ED_SL00_directionalmaxcomponent1_55.dds",
-        "colorSpace": "linear"
+        "colorSpace": "linear",
+        "staticShadow": {
+          "texture": "Map/Lighting/Valtan/LV_LUT_HEARTRB_ED_SL00_shadowmaptexture2d_1706.dds",
+          "lightGuid": "4ba587b9fa985e4b91c324a665a0ef33",
+          "lightChannel": 1,
+          "penumbraWidth": 0.05,
+          "penumbraBasis": "PROJECT_ADAPTER",
+          "shadowExponent": 2
+        }
       }
     },
     {
@@ -507,7 +515,15 @@
       "bakedLighting": {
         "averageTexture": "Map/Lighting/Valtan/LV_LUT_HEARTRB_ED_SL00_normalizedaveragecolor1_55.dds",
         "directionalTexture": "Map/Lighting/Valtan/LV_LUT_HEARTRB_ED_SL00_directionalmaxcomponent1_55.dds",
-        "colorSpace": "linear"
+        "colorSpace": "linear",
+        "staticShadow": {
+          "texture": "Map/Lighting/Valtan/LV_LUT_HEARTRB_ED_SL00_shadowmaptexture2d_1706.dds",
+          "lightGuid": "4ba587b9fa985e4b91c324a665a0ef33",
+          "lightChannel": 1,
+          "penumbraWidth": 0.05,
+          "penumbraBasis": "PROJECT_ADAPTER",
+          "shadowExponent": 2
+        }
       }
     },
     {
@@ -338687,6 +338703,14 @@
         1.301937222480774,
         1.26918363571167,
         1.2202305793762207
+      ],
+      "shadowCoordinateScale": [
+        0.1796875,
+        0.1796875
+      ],
+      "shadowCoordinateBias": [
+        0.25390625,
+        0.25390625
       ]
     },
     {

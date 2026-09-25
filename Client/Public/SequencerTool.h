@@ -1,5 +1,6 @@
 #pragma once
 #include "CompositionResourceTree.h"
+#include "ClassSelectionTimeline.h"
 
 #include "Client_Defines.h"
 #include "Engine_Defines.h"
@@ -9,6 +10,7 @@
 #include <cstddef>
 #include <functional>
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -31,8 +33,15 @@ public:
         std::uint32_t iDurationMs = 0u;
     };
 
+    struct CLASS_SELECTION_PREVIEW_OPTION final
+    {
+        std::string categoryId, label, classId;
+    };
     struct CLASS_SELECTION_PREVIEW_STATE final
     {
+        std::vector<CLASS_SELECTION_PREVIEW_OPTION> options;
+        std::size_t selectedCategory = 0u;
+        std::string selectedClassId, activeClassId, selectedLabel;
         bool available = false;
         bool active = false;
         bool paused = false;
@@ -40,9 +49,13 @@ public:
         std::uint64_t ownerToken = 0;
         std::uint64_t loopCycle = 0;
         double clockMs = 0.;
+        double sourceClockMs = 0., sourceRate = 1., playbackRate = 1.;
+        CLASS_MOVIE_CAMERA_SAMPLE cameraSample;
         double durationMs = 0.;
         double introDurationMs = 0.;
         double loopDurationMs = 0.;
+        double activeIntroDurationMs = 0.;
+        double activeLoopDurationMs = 0.;
         std::string status;
     };
     // The Level owns playback, camera and resources. This session only submits
@@ -50,10 +63,13 @@ public:
     struct CLASS_SELECTION_PREVIEW_CALLBACKS final
     {
         std::function<CLASS_SELECTION_PREVIEW_STATE()> state;
+        std::function<void(std::size_t)> selectCategory;
         std::function<bool()> play;
         std::function<void()> stop;
         std::function<void(bool)> setPaused;
         std::function<bool(bool, double)> seek;
+        std::function<bool(double)> setPlaybackRate;
+        std::function<std::shared_ptr<const CLASS_MOVIE_TIMELINE>(const std::string&, bool)> timeline;
     };
 
     CSequencerTool(
@@ -112,6 +128,11 @@ private:
     [[nodiscard]] ICompositionWorkbenchSession* Selected_Session() const noexcept;
 
     bool m_bInsideFrame = false;
+    bool m_bCompositionEditFocused = false;
+    bool m_bPhysicalAnimationFocused = false;
+    std::optional<COMPOSITION_EDIT_COMMAND> m_PendingCompositionEdit;
+    COMPOSITION_TRANSFER m_PendingCompositionTransfer;
+    std::string m_CompositionEditStatus;
     bool m_bBossChangePending = false;
     COMPOSITION_WORKBENCH_BOSS m_ePendingBoss = COMPOSITION_WORKBENCH_BOSS::VALTAN;
     ICompositionWorkbenchSession* m_pCharacterSession = nullptr;

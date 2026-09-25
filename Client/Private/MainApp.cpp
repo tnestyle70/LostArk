@@ -1495,6 +1495,7 @@ void CMainApp::UpdateKoukuGateCompletePlay()
     {
         if (m_pKoukuPresentationPlayer && m_pKoukuPresentationPlayer->Preview_IsServerClock())
         {
+            Engine::CProfilerScope scope(CGameInstance::Get().Get_Profiler(), "Kouku.Cinematic.StopPreview");
             m_pKoukuPresentationPlayer->Stop_Preview();
             // Natural cinematic completion keeps the authored return blend alive.
             // Explicit Stop/abort still uses Debug_ReturnToPlayerCamera below.
@@ -1617,6 +1618,9 @@ void CMainApp::Sync_KoukuCinematicUI()
 
 void CMainApp::Update(const f32_t fTimeDelta)
 {
+	// Commit last frame's request before this frame builds UI and render queues.
+	// The newly active Level must Update/Late_Update before its first Render.
+	Apply_LevelRequest();
 	{
 		Engine::CProfilerScope cpuPhaseScope(CGameInstance::Get().Get_Profiler(), "MainApp.InputAndUI.Update");
 	Update_CustomizingSceneProfile();
@@ -3297,7 +3301,6 @@ void CMainApp::Update(const f32_t fTimeDelta)
 	}
 #endif
 
-	// 현재 Level의 Update가 끝난 뒤에만 기존 Level을 파괴한다.
 	{
 		Engine::CProfilerScope cpuPhaseScope(CGameInstance::Get().Get_Profiler(), "MainApp.LevelAndEnvironment.Update");
     string environmentStatus;
@@ -3322,7 +3325,6 @@ void CMainApp::Update(const f32_t fTimeDelta)
     if (!m_RenderingProfiles.Apply_CameraEnvironment(fTimeDelta, environmentStatus,
         koukuCinematic || valtanCinematic || marioStage, nullptr, vehicleBrightness, &controlsColor))
         OutputDebugStringA((environmentStatus + "\n").c_str());
-	Apply_LevelRequest();
 	}
 
 	/* Every shown runtime surface now declares where it covers the screen and on which layer,
@@ -5585,6 +5587,11 @@ bool_t CMainApp::Is_RuntimeUIScreenSuppressed() const
 
 void CMainApp::Close_RuntimeWindowsForLoading()
 {
+	// Loading suppresses normal UI updates, including the Lobby visibility gate.
+	// STATIC sprites survive Level teardown and must be hidden before it.
+	if (nullptr != m_pLobbyBackgroundView) m_pLobbyBackgroundView->Set_AllSlotsVisible(false);
+	m_bLobbyWasActive = false;
+	if (nullptr != m_pCharacterSelectWindowView) m_pCharacterSelectWindowView->Close();
 	if (nullptr != m_pInventoryView) m_pInventoryView->Close();
 	if (nullptr != m_pCharacterInfoView) m_pCharacterInfoView->Close();
 	if (nullptr != m_pAvatarBookView) m_pAvatarBookView->Close();
@@ -8872,7 +8879,8 @@ void CMainApp::RenderDamageNumbers()
 		/* INVINCIBLE is drawn by nothing in retail either. */
 		if (LostArk::Shared::DAMAGE_HIT_FLAG::INVINCIBLE == number.eHitFlag)
 			continue;
-		const wstring strAmount = isShard ?
+		const bool_t isAbsorb = LostArk::Shared::DAMAGE_HIT_FLAG::ABSORB == number.eHitFlag;
+		const wstring strAmount = isAbsorb ? L"\uD761\uC218" : isShard ?
 			shardText(number.eCardMazeSuit, number.iAmount) :
 			Format_ThousandsSeparated(number.iAmount);
 		const float2_t vMeasured =
@@ -8894,6 +8902,8 @@ void CMainApp::RenderDamageNumbers()
 			vColor = XMVectorSet(0.6f, 0.6f, 0.6f, fAlpha); break;
 		case LostArk::Shared::DAMAGE_HIT_FLAG::HEAL:
 			vColor = XMVectorSet(0.f, 1.f, 0.f, fAlpha); break;
+		case LostArk::Shared::DAMAGE_HIT_FLAG::ABSORB:
+			vColor = XMVectorSet(0.2f, 0.65f, 1.f, fAlpha); break;
 		default: break;
 		}
 		/* A shard is a pickup, not a hit, so it keeps the plain white. */
@@ -10079,26 +10089,43 @@ HRESULT CMainApp::EnsureDebugTool(const DEBUG_TOOL eTool)
 				if (!level || CGameInstance::Get().Get_CurrentLevelID() != ETOUI(LEVEL::CHARACTER_SELECT))
 				{ state.status = "Enter Character Select from Lobby to preview this WORLD scene."; return state; }
 				const auto& preview = level->Get_ClassSelectionPresentation();
-				state.available = level->Can_PlayClassCinematic() && preview.Has_Class("GUARDIANKNIGHT");
+				state.available = level->Can_PlayClassCinematic();
+				for (const auto& option : level->Get_ClassMovieOptions())
+					state.options.push_back({option.id, option.label, option.classId});
+				state.selectedCategory = level->Get_SelectedClassMovieCategory();
+				state.selectedClassId = level->Get_ClassMovieId();
+				state.activeClassId = preview.Get_ActiveClass();
+				state.selectedLabel = level->Get_ClassMovieLabel();
 				state.active = preview.Is_Active();
 				state.paused = preview.Is_Paused();
 				state.looping = preview.Is_Looping();
 				state.ownerToken = preview.Get_PlaybackToken();
 				state.loopCycle = preview.Get_LoopCycle();
 				state.clockMs = preview.Get_ClockMs();
+                state.sourceClockMs = preview.Get_SourceClockMs();
+                state.sourceRate = preview.Get_SourceRate();
+                state.playbackRate = preview.Get_PlaybackRate();
+                state.cameraSample = preview.Get_CameraSample();
 				state.durationMs = preview.Get_DurationMs();
-				state.introDurationMs = preview.Get_PhaseDurationMs("GUARDIANKNIGHT", false);
-				state.loopDurationMs = preview.Get_PhaseDurationMs("GUARDIANKNIGHT", true);
+				state.introDurationMs = preview.Get_PhaseDurationMs(state.selectedClassId, false);
+				state.loopDurationMs = preview.Get_PhaseDurationMs(state.selectedClassId, true);
+				state.activeIntroDurationMs = preview.Get_PhaseDurationMs(state.activeClassId, false);
+				state.activeLoopDurationMs = preview.Get_PhaseDurationMs(state.activeClassId, true);
 				state.status = level->Get_ClassCinematicStatus();
-				if (preview.Has_Class("GUARDIANKNIGHT") && !level->Can_PlayClassCinematic())
-					state.status = "Class cinematic is ready; close customizing or another preview and wait for the arena to finish connecting.";
+				if (!level->Can_PlayClassCinematic())
+					state.status = "Close customizing or another preview and wait for the arena to finish connecting.";
 				return state;
+			};
+			classSelection.selectCategory = [](std::size_t category) {
+				if (auto* level = CLevel_CharacterSelect::Get_Active(); level &&
+					CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::CHARACTER_SELECT))
+					(void)level->Select_ClassMovieCategory(category);
 			};
 			classSelection.play = [] {
 				auto* level = CLevel_CharacterSelect::Get_Active();
 				return level && level->Can_PlayClassCinematic() &&
 					CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::CHARACTER_SELECT) &&
-					level->Get_ClassSelectionPresentation().Play("GUARDIANKNIGHT");
+					level->Play_ClassCinematic(level->Get_ClassMovieId());
 			};
 			classSelection.stop = [] {
 				if (auto* level = CLevel_CharacterSelect::Get_Active(); level &&
@@ -10114,9 +10141,20 @@ HRESULT CMainApp::EnsureDebugTool(const DEBUG_TOOL eTool)
 				auto* level = CLevel_CharacterSelect::Get_Active();
 				return level && level->Can_PlayClassCinematic() &&
 					CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::CHARACTER_SELECT) &&
-					level->Get_ClassSelectionPresentation().Seek("GUARDIANKNIGHT", loop, timeMs);
+					level->Get_ClassSelectionPresentation().Seek(
+						level->Get_ClassSelectionPresentation().Get_ActiveClass(), loop, timeMs);
 			};
-			m_pSequencerTool->Set_ClassSelectionPreviewCallbacks(std::move(classSelection));
+			classSelection.setPlaybackRate = [](double rate) {
+                auto* level = CLevel_CharacterSelect::Get_Active();
+                return level && CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::CHARACTER_SELECT) &&
+                    level->Get_ClassSelectionPresentation().Set_PlaybackRate(rate);
+            };
+            classSelection.timeline = [](const std::string& classId, bool loop) -> std::shared_ptr<const CLASS_MOVIE_TIMELINE> {
+                auto* level = CLevel_CharacterSelect::Get_Active();
+                return level && CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::CHARACTER_SELECT) ?
+                    level->Get_ClassSelectionPresentation().Get_Timeline(classId, loop) : nullptr;
+            };
+            m_pSequencerTool->Set_ClassSelectionPreviewCallbacks(std::move(classSelection));
 			/* The Map Tool hosts the same Sequence session for its integrated
 			   cutscene view. One owner and one draft, borrowed per frame. */
 			if (m_pMapTool)
@@ -10657,6 +10695,24 @@ void CMainApp::RenderKoukuUiPreviewControls()
 	{
 		m_KoukuUiPreview.iMadnessGauge = static_cast<uint32_t>(iGauge);
 		bChanged = true;
+	}
+	if (auto* arena = CLevel_KakulSaydonArena::Get_Active())
+	{
+		float2_t offset{}; f32_t head = 0.f;
+		static std::string positionStatus;
+		if (arena->Get_MadnessGaugePosition(offset, head))
+		{
+			ImGui::SeparatorText("Madness gauge position");
+			bool changed = ImGui::DragFloat2("Screen offset X / Y##KoukuMadness", &offset.x, 1.f, -1280.f, 1280.f, "%.1f");
+			changed |= ImGui::DragFloat("World height (m)##KoukuMadness", &head, 0.05f, -10.f, 10.f, "%.2f");
+			if (changed) (void)arena->Set_MadnessGaugePosition(offset, head);
+			if (ImGui::Button("Save position##KoukuMadness")) (void)arena->Save_MadnessGaugePosition(positionStatus);
+			ImGui::SameLine();
+			if (ImGui::Button("Reload saved position##KoukuMadness")) (void)arena->Reload_MadnessGaugePosition(positionStatus);
+			ImGui::TextDisabled("1280 x 720 reference pixels; +Y moves down. Applies to all player gauges.");
+			ImGui::TextDisabled("Save writes Data/UI/KoukuSaydon/KoukuHudModes.json. Card maze hides all gauges.");
+			if (!positionStatus.empty()) ImGui::TextWrapped("%s", positionStatus.c_str());
+		}
 	}
 	constexpr const char* MODE_LABELS[] =
 		{ "None", "Clown", "Mario", "Dance", "Card maze" };

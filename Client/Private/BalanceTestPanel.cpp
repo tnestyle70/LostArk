@@ -122,6 +122,28 @@ bool CBalanceTestPanel::Reload()
         }
         staged.push_back(std::move(document));
     }
+    DOCUMENT madness;
+    madness.path = profilePath;
+    madness.label = "Madness";
+    const auto* madnessRows = profile.Find("madness");
+    if (!madnessRows || !madnessRows->Is_Array() || madnessRows->Get_Array().size() != 1u)
+    { m_status = "Retail Madness policy is missing. Install the matching saved balance profile."; return false; }
+    const auto& policy = madnessRows->Get_Array().front();
+    const auto* identity = policy.Find("policyId");
+    if (!identity || !identity->Is_String() || identity->Get_String() != "KOUKUSAYDON")
+    { m_status = "Retail Madness policy identity is invalid."; return false; }
+    ROW row;
+    row.id = "KOUKUSAYDON"; row.label = "KoukuSaydon | Damage / Mario ball / Odd doll";
+    for (const auto* name : { "damageGainPercent", "ballGainPercent", "ballMultiplierPercent", "ballRadiusM",
+        "dollGainPercent", "dollMultiplierPercent", "dollRadiusM", "specialIntervalMs" })
+    {
+        const auto* value = policy.Find(name);
+        if (!value || !value->Is_Number()) { m_status = "Missing Madness number: " + std::string(name); return false; }
+        row.fields.push_back({ name, value->Get_Number(), value->Get_Number(),
+            std::string_view(name) != "ballRadiusM" && std::string_view(name) != "dollRadiusM", profilePath, "madness" });
+    }
+    madness.rows.push_back(std::move(row));
+    staged.push_back(std::move(madness));
     m_documents = std::move(staged);
     m_row = 0;
     m_status = "Saved authoring loaded. Runtime values change after Publish Server Data and a Server/Client restart.";
@@ -300,6 +322,15 @@ void CBalanceTestPanel::Render(bool& open)
         {
             auto& row = document.rows[m_row];
             ImGui::TextWrapped("%s", row.label.c_str());
+            if (document.label == "Madness")
+            {
+                ImGui::TextWrapped("Damage gain = maximum gauge x actual HP lost / maximum HP x damageGainPercent / 100.");
+                ImGui::TextWrapped("Special pulse = maximum gauge x sourceGainPercent / 100 x sourceMultiplierPercent / 100. Interval is milliseconds; 100%% multiplier = x1.");
+                ImGui::TextWrapped("Total = clamp(current + damage gain + special pulses + authored mechanic gains, 0, maximum). Fractional gains accumulate; a full gauge transforms to Clown. Clown/Mario players receive no gain.");
+                ImGui::TextWrapped("Native reference: maximum 100, Clown hold 15s, NPC aura +10 per 1s in 2m. Doll breath reference: 4m / 30 degrees.");
+                ImGui::TextWrapped("PROJECT_TUNED: damage conversion (100%%), doll charge (10%%), requested ball/doll x2. Doll uses two sectors in the saved object basis; this is not a bone-accurate flame collider.");
+                ImGui::Separator();
+            }
             for (auto& field : row.fields)
             {
                 ImGui::InputDouble(field.name.c_str(), &field.value, field.integral ? 1.0 : 0.1, field.integral ? 100.0 : 1.0,
@@ -316,6 +347,8 @@ void CBalanceTestPanel::Render(bool& open)
     const auto& boss = CCombatHUDViewModel::Get().Get_Boss();
     ImGui::Text("Player HP %u / %u | Boss HP %u / %u | Server tick %u", player.iCurrentHp, player.iMaximumHp,
         boss.iCurrentHp, boss.iMaximumHp, player.iServerTick);
+    ImGui::Text("Server Madness: %u / %u | %s", player.iCurrentMadness, player.iMaximumMadness,
+        player.eMadnessForm == LostArk::Shared::PLAYER_MADNESS_FORM::CLOWN ? "Clown" : "Normal");
     Render_CooldownControl();
     Render_KillBossControl();
     ImGui::End();

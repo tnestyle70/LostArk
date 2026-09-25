@@ -469,27 +469,30 @@ HRESULT Client::CEffectDocumentRenderer::Stage_ElementResource(
 		}
 		Staged.bSourceRequiresSceneColor = pNativeSD->bNeedsSceneColor;
 		Staged.bSourceRequiresSceneDepth = pNativeSD->bNeedsDepthSample;
-		if (pNativeSD->bUsesOneLayerDistortion)
+	}
+	if (const auto* pArtist = Find_ArtistProgram(SourceMaterial.strRuntimeShaderProfileId);
+		(pArtist && pArtist->bUsesOneLayerDistortion) ||
+		(Find_DimensionMasterSDProgram(SourceMaterial.strRuntimeShaderProfileId) &&
+		 Find_DimensionMasterSDProgram(SourceMaterial.strRuntimeShaderProfileId)->bUsesOneLayerDistortion))
+	{
+		// UE3 BasePass switches OneLayer distortion to opaque blending:
+		// its RT0 already contains the sampled scene. Retain the material's
+		// read-only depth pass and leave the distortion accumulation MRT alone.
+		D3D11_BLEND_DESC Blend{};
+		Blend.IndependentBlendEnable = TRUE;
+		for (auto& Target : Blend.RenderTarget)
 		{
-			// UE3 BasePass switches OneLayer distortion to opaque blending:
-			// its RT0 already contains the sampled scene. Retain the material's
-			// read-only depth pass and leave the distortion accumulation MRT alone.
-			D3D11_BLEND_DESC Blend{};
-			Blend.IndependentBlendEnable = TRUE;
-			for (auto& Target : Blend.RenderTarget)
-			{
-				Target.SrcBlend = Target.SrcBlendAlpha = D3D11_BLEND_ONE;
-				Target.DestBlend = Target.DestBlendAlpha = D3D11_BLEND_ZERO;
-				Target.BlendOp = Target.BlendOpAlpha = D3D11_BLEND_OP_ADD;
-			}
-			Blend.RenderTarget[0u].RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_ALL;
-			Blend.RenderTarget[2u] = Blend.RenderTarget[0u];
-			const HRESULT Result = m_pDevice->CreateBlendState(&Blend, &Staged.pNativeOneLayerBlend);
-			if (FAILED(Result))
-			{
-				strOutError = "Native OneLayer blend-state creation failed: " + Element.strElementId;
-				return Result;
-			}
+			Target.SrcBlend = Target.SrcBlendAlpha = D3D11_BLEND_ONE;
+			Target.DestBlend = Target.DestBlendAlpha = D3D11_BLEND_ZERO;
+			Target.BlendOp = Target.BlendOpAlpha = D3D11_BLEND_OP_ADD;
+		}
+		Blend.RenderTarget[0u].RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_ALL;
+		Blend.RenderTarget[2u] = Blend.RenderTarget[0u];
+		const HRESULT Result = m_pDevice->CreateBlendState(&Blend, &Staged.pNativeOneLayerBlend);
+		if (FAILED(Result))
+		{
+			strOutError = "Native OneLayer blend-state creation failed: " + Element.strElementId;
+			return Result;
 		}
 	}
 	if (Staged.iSourceMaterialProfile >= 52u && Staged.iSourceMaterialProfile <= 76u &&

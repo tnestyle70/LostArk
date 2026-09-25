@@ -54,6 +54,11 @@ void LostArk::Server::CServerGameplayContractRunner::Run_ValtanPinnedGeneration(
 			return *std::find_if(trashDefinition->Stages.begin(), trashDefinition->Stages.end(),
 				[stageId](const BOSS_PATTERN_STAGE_DEFINITION& row) { return row.strStageId == stageId; });
 		};
+		const auto* counterProfile = catalog.Find_Player(CHARACTER_CLASS_ID::LANCE_MASTER);
+		const auto* counterSkill = catalog.Find_Skill(34580u);
+		tests.Require(nullptr != counterProfile && nullptr != counterSkill &&
+			counterProfile->iMaximumResource >= counterSkill->iResourceCost,
+			"The real Lance Master profile can fund the Counter fixture");
 		const auto prepareRoom = [&]()
 		{
 			auto room = std::make_unique<CGameRoom>(WORLD_ID::VALTAN_ARENA);
@@ -87,6 +92,8 @@ void LostArk::Server::CServerGameplayContractRunner::Run_ValtanPinnedGeneration(
 				player.iNetEntityId = 19300u + ordinal;
 				player.eCharacterClass = CHARACTER_CLASS_ID::LANCE_MASTER;
 				player.iCurrentHp = player.iMaximumHp = 100000u;
+				player.iCurrentResource = player.iMaximumResource =
+					nullptr == counterProfile ? 0u : counterProfile->iMaximumResource;
 				player.isCombatReady = true;
 				/* The Lance Master counter (34580) requires the short-spear stance. */
 				player.eStance = PLAYER_STANCE_ID::LANCE_MASTER_SHORT_SPEAR;

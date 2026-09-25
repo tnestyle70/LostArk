@@ -849,6 +849,24 @@ bool Client::CKoukuSaydonBossTool::Prepare_PatternFlow(const std::string_view ga
 		[&](const auto& row) { return row.strGateId == gateId; });
 	if (found == flows.end() || found->Entries.empty())
 	{ status = m_strStatus = "This Gate has no saved Pattern Flow. Add Pattern or Bundle rows in Boss Tool > Pattern Flow and Save Pattern Flow."; return false; }
+	if (gateId == "BINGO")
+	{
+		if (!CKoukuSaydonCompositionDocument::Validate_BingoSpecialPatternTarget(saved.Get_LastGood(), found->strBingoSpecialPatternId, status))
+		{ m_strStatus = status; return false; }
+		for (const auto& entry : found->Entries)
+		{
+			const bool direct = entry.strKind == "PATTERN" && entry.strTargetId == found->strBingoSpecialPatternId;
+			const auto bundle = std::find_if(saved.Get_LastGood().Bundles.begin(), saved.Get_LastGood().Bundles.end(),
+				[&](const auto& row) { return entry.strKind == "BUNDLE" && row.strBundleId == entry.strTargetId; });
+			if (direct || (bundle != saved.Get_LastGood().Bundles.end() && std::any_of(bundle->Members.begin(), bundle->Members.end(),
+				[&](const auto& row) { return row.strPatternId == found->strBingoSpecialPatternId; })))
+			{ status = m_strStatus = "Bingo special cannot also be a normal Flow row or Bundle member."; return false; }
+		}
+		const auto special = std::find_if(m_ProductPatterns.begin(), m_ProductPatterns.end(),
+			[&](const auto& row) { return row.strPatternId == found->strBingoSpecialPatternId; });
+		if (special == m_ProductPatterns.end() || !special->strLoadError.empty())
+		{ status = m_strStatus = "The selected Bingo special Parent is not published."; return false; }
+	}
 	for (const auto& entry : found->Entries)
 	{
 		std::string error;
@@ -879,9 +897,9 @@ bool Client::CKoukuSaydonBossTool::Play_PatternFlow(const std::string_view gateI
         status = m_strStatus = "Saved Pattern Flow changed after entry admission. Start the updated Pattern Flow explicitly.";
         return false;
     }
-    if (std::any_of(flow.EntryGroups.begin(), flow.EntryGroups.end(), [](const auto& group) { return group.RepeatUntilHealthBars.has_value(); }))
+    if (gateId == "BINGO" || std::any_of(flow.EntryGroups.begin(), flow.EntryGroups.end(), [](const auto& group) { return group.RepeatUntilHealthBars.has_value(); }))
     {
-        if (!m_CompletePlayAdmission) { status = m_strStatus = "HP Pattern Flow requires Server Complete Play admission."; return false; }
+        if (!m_CompletePlayAdmission) { status = m_strStatus = "This Pattern Flow requires Server Complete Play admission."; return false; }
         return m_CompletePlayAdmission(gateId, status);
     }
     std::vector<KOUKU_SAYDON_PATTERN_FLOW_ENTRY> entries;
@@ -990,6 +1008,15 @@ bool Client::CKoukuSaydonBossTool::Render_SavedPatternFlow(const std::string_vie
 		return false;
 	}
 	ImGui::TextUnformatted(flow->strDisplayName.c_str());
+	if (gateId == "BINGO" && !flow->strBingoSpecialPatternId.empty())
+	{
+		const auto special = std::find_if(m_ProductPatterns.begin(), m_ProductPatterns.end(),
+			[&](const auto& row) { return row.strPatternId == flow->strBingoSpecialPatternId; });
+		const std::string name = special == m_ProductPatterns.end() ? flow->strBingoSpecialPatternId : special->strDisplayName;
+		if (ImGui::Selectable(("[Every third bomb] " + name + "##bingoSpecial").c_str(),
+			selectionKind == 3 && selectedId == flow->strBingoSpecialPatternId))
+		{ selectionKind = 3; selectedId = flow->strBingoSpecialPatternId; }
+	}
 	const bool hasHealthRepeats = std::any_of(flow->EntryGroups.begin(), flow->EntryGroups.end(),
 		[](const auto& group) { return group.RepeatUntilHealthBars.has_value(); });
 	if (hasHealthRepeats)
@@ -1312,7 +1339,31 @@ void Client::CKoukuSaydonBossTool::Render_PatternFlowEditor(const std::string_vi
 	auto* flow = Find_DraftFlow(gateId);
 	if (!flow || flow->Entries.empty())
 	{ ImGui::TextWrapped("The Flow is empty. Add only the Patterns and Bundles used in this Gate's battle."); return; }
-	ImGui::SameLine();
+	if (gateId == "BINGO")
+	{
+		ImGui::TextWrapped("Normal rows run in order. Every third bomb interrupts the current row with the special Parent. Afterwards, that row restarts from its beginning.");
+		const auto& source = m_FlowDocument.Get_LastGood();
+		const auto selectedSpecial = std::find_if(source.Patterns.begin(), source.Patterns.end(),
+			[&](const auto& row) { return row.strPatternId == flow->strBingoSpecialPatternId; });
+		const std::string label = selectedSpecial == source.Patterns.end() ? "Select special Parent" : selectedSpecial->strDisplayName;
+		ImGui::SetNextItemWidth(330.f);
+		if (ImGui::BeginCombo("Bingo special Parent", label.c_str()))
+		{
+			if (ImGui::Selectable("Unassigned (draft)", flow->strBingoSpecialPatternId.empty()))
+			{ flow->strBingoSpecialPatternId.clear(); m_bFlowDirty = true; }
+			for (const auto& candidate : source.Patterns)
+			{
+				std::string error;
+				if (!CKoukuSaydonCompositionDocument::Validate_BingoSpecialPatternTarget(source, candidate.strPatternId, error)) continue;
+				if (ImGui::Selectable((candidate.strDisplayName + "##special." + candidate.strPatternId).c_str(), flow->strBingoSpecialPatternId == candidate.strPatternId))
+				{ flow->strBingoSpecialPatternId = candidate.strPatternId; m_bFlowDirty = true; }
+			}
+			ImGui::EndCombo();
+		}
+		std::string error;
+		if (!CKoukuSaydonCompositionDocument::Validate_BingoSpecialPatternTarget(source, flow->strBingoSpecialPatternId, error))
+			ImGui::TextWrapped("Save keeps this draft; Publish and Complete Play require a valid special Parent. %s", error.c_str());
+	}
 	ImGui::Text("%zu rows", flow->Entries.size());
 	const auto selected = std::find_if(flow->Entries.begin(), flow->Entries.end(),
 		[&](const auto& entry) { return entry.strEntryId == m_strSelectedFlowEntryId; });

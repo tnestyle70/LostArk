@@ -493,6 +493,13 @@ void CRenderer::Commit_ViewportResize(CTarget_Manager& targets, VIEWPORT_RESIZE_
     m_pSourceLightMaskDSV.Swap(staged.SourceLightMaskDSV);
     m_iSourceLightMaskWidth = staged.Width; m_iSourceLightMaskHeight = staged.Height;
     m_iSourceLightMaskFailedWidth = m_iSourceLightMaskFailedHeight = 0u;
+    m_pPickingRTV.Reset();
+    m_pPickingTexture.Reset();
+    m_pPickingDSV.Reset();
+    m_pPickingDepthTexture.Reset();
+    m_PickingDepthDesc = {};
+    m_PickingDSVDesc = {};
+    m_bPickingDepthCaptured = false;
     m_iBloomWidth = m_iSSAOWidth = max(1u, staged.Width / 2u);
     m_iBloomHeight = m_iSSAOHeight = max(1u, staged.Height / 2u);
     m_vBloomTexelSize = m_vSSAOTexelSize = float2_t(1.f / m_iBloomWidth, 1.f / m_iBloomHeight);
@@ -824,6 +831,7 @@ void CRenderer::Advance_PresentationClock(f32_t fTimeDelta)
 
 HRESULT CRenderer::Draw()
 {
+    m_bPickingDepthCaptured = false;
     // Priority sky and later forward water share this frame clock.
     CMaterial::Reset_SourceCharacterFrame(m_fPresentationClock);
 	CPresentation_Manager& Presentation = CPresentation_Manager::Get();
@@ -831,6 +839,7 @@ HRESULT CRenderer::Draw()
 		const char* stage, const HRESULT hResult) -> HRESULT
 	{
 		WriteRendererFailure(stage, hResult);
+        m_bPickingDepthCaptured = false;
         CMaterial::Reset_SourceCharacterFrame(m_fPresentationClock);
 		m_bSceneColorSnapshotRequested = false;
         m_bSceneEnvironmentReplaced = false;
@@ -873,6 +882,10 @@ HRESULT CRenderer::Draw()
 	}
 	if (FAILED(hResult))
 		return FailFrame("Render_NonBlend", hResult);
+	// Preserve only opaque depth before forward effects or UI can write to it.
+	hResult = Capture_PickingDepth();
+	if (FAILED(hResult))
+		return FailFrame("Capture_PickingDepth", hResult);
 	if (m_RenderQualitySettings.bSSAOEnabled)
 	{
 		CProfilerScope scope(pProfiler, "Render.SSAO");
@@ -987,6 +1000,16 @@ HRESULT CRenderer::Draw()
 	}
 	if (FAILED(hResult))
 		return FailFrame("Render_Debug", hResult);
+
+	// PickPos also carries deferred surface data. All visual consumers must finish
+	// before forward-only receivers replace its positions for the next input frame.
+	{
+		CProfilerScope scope(pProfiler, "Render.Picking");
+		CProfilerGpuScope gpuScope(pProfiler, "Render.Picking");
+		hResult = Render_Picking();
+	}
+	if (FAILED(hResult))
+		return FailFrame("Render_Picking", hResult);
 
 	m_bSceneColorSnapshotRequested = false;
     m_bSceneEnvironmentReplaced = false;
@@ -2256,6 +2279,111 @@ HRESULT CRenderer::Render_UI()
 
 	m_RenderObjects[ETOUI(RENDERGROUP::UI)].clear();
 
+	return S_OK;
+}
+
+HRESULT CRenderer::Capture_PickingDepth()
+{
+	m_bPickingDepthCaptured = false;
+	if (m_RenderObjects[ETOUI(RENDERGROUP::PICKING)].empty())
+		return S_OK;
+
+	ScopedSourceLutState restore(m_pContext.Get());
+	if (!restore.depth)
+		return E_FAIL;
+	ComPtr<ID3D11Resource> resource;
+	restore.depth->GetResource(resource.GetAddressOf());
+	ComPtr<ID3D11Texture2D> texture;
+	HRESULT result = resource.As(&texture);
+	if (FAILED(result))
+		return result;
+	D3D11_TEXTURE2D_DESC desc{};
+	texture->GetDesc(&desc);
+	desc.Usage = D3D11_USAGE_DEFAULT;
+	desc.BindFlags = D3D11_BIND_DEPTH_STENCIL;
+	desc.CPUAccessFlags = 0u;
+	desc.MiscFlags = 0u;
+	D3D11_DEPTH_STENCIL_VIEW_DESC viewDesc{};
+	restore.depth->GetDesc(&viewDesc);
+	if (!m_pPickingDepthTexture || !m_pPickingDSV ||
+		std::memcmp(&desc, &m_PickingDepthDesc, sizeof(desc)) != 0 ||
+		std::memcmp(&viewDesc, &m_PickingDSVDesc, sizeof(viewDesc)) != 0)
+	{
+		ComPtr<ID3D11Texture2D> stagedTexture;
+		ComPtr<ID3D11DepthStencilView> stagedView;
+		result = m_pDevice->CreateTexture2D(&desc, nullptr, stagedTexture.GetAddressOf());
+		if (SUCCEEDED(result))
+			result = m_pDevice->CreateDepthStencilView(stagedTexture.Get(), &viewDesc,
+				stagedView.GetAddressOf());
+		if (FAILED(result))
+			return result;
+		m_pPickingDepthTexture = std::move(stagedTexture);
+		m_pPickingDSV = std::move(stagedView);
+		m_PickingDepthDesc = desc;
+		m_PickingDSVDesc = viewDesc;
+	}
+
+	ID3D11ShaderResourceView* empty[D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT]{};
+	m_pContext->PSSetShaderResources(0u, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT, empty);
+	m_pContext->OMSetRenderTargets(0u, nullptr, nullptr);
+	m_pContext->CopyResource(m_pPickingDepthTexture.Get(), texture.Get());
+	m_bPickingDepthCaptured = true;
+	return S_OK;
+}
+
+HRESULT CRenderer::Render_Picking()
+{
+	auto& objects = m_RenderObjects[ETOUI(RENDERGROUP::PICKING)];
+	if (objects.empty())
+		return S_OK;
+
+	const auto source = CGameInstance::Get().Get_RT_SRV(TEXT("Target_PickPos"));
+	if (!source)
+		return E_FAIL;
+	ComPtr<ID3D11Resource> resource;
+	source->GetResource(resource.GetAddressOf());
+	ComPtr<ID3D11Texture2D> texture;
+	HRESULT result = resource.As(&texture);
+	if (FAILED(result))
+		return result;
+	D3D11_TEXTURE2D_DESC targetDesc{};
+	texture->GetDesc(&targetDesc);
+	if (texture.Get() != m_pPickingTexture.Get() || !m_pPickingRTV)
+	{
+		ComPtr<ID3D11RenderTargetView> view;
+		result = m_pDevice->CreateRenderTargetView(texture.Get(), nullptr, view.GetAddressOf());
+		if (FAILED(result))
+			return result;
+		m_pPickingTexture = texture;
+		m_pPickingRTV = std::move(view);
+	}
+
+	if (!m_bPickingDepthCaptured || !m_pPickingDSV ||
+		m_PickingDepthDesc.Width != targetDesc.Width ||
+		m_PickingDepthDesc.Height != targetDesc.Height ||
+		m_PickingDepthDesc.SampleDesc.Count != targetDesc.SampleDesc.Count ||
+		m_PickingDepthDesc.SampleDesc.Quality != targetDesc.SampleDesc.Quality)
+		return E_FAIL;
+
+	ScopedSourceLutState restore(m_pContext.Get());
+	// Begin_MRT clears every attached target, which would erase opaque picks.
+	// The opaque-depth snapshot excludes later UI/effects; writes to this private
+	// DSV resolve the nearest receiver without changing the visual scene's depth.
+	ID3D11ShaderResourceView* empty[D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT]{};
+	m_pContext->PSSetShaderResources(0u, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT, empty);
+	ID3D11RenderTargetView* target = m_pPickingRTV.Get();
+	m_pContext->OMSetRenderTargets(1u, &target, m_pPickingDSV.Get());
+	SetUp_ViewportDesc(targetDesc.Width, targetDesc.Height);
+	for (const auto& object : objects)
+	{
+		if (!object)
+			continue;
+		result = object->Render_Group(RENDERGROUP::PICKING);
+		if (FAILED(result))
+			return result; // Draw's FailFrame clears every queue after state restoration.
+	}
+	objects.clear();
+	m_bPickingDepthCaptured = false;
 	return S_OK;
 }
 

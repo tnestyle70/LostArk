@@ -134,7 +134,7 @@ namespace
 			const FILE_HEADER fileHeader = fileReader.Read<FILE_HEADER>();
 			if (!HasMagic(fileHeader.magic, WINTERS_MAGIC) ||
 				WINT_VERSION_MAJOR != fileHeader.versionMajor ||
-				fileHeader.versionMinor > WINT_SKINNED_BASIS_VERSION_MINOR ||
+				fileHeader.versionMinor > WINT_SKINNED_BASIS_UV_VERSION_MINOR ||
 				0 != fileHeader.flags ||
 				fileHeader.contentSize != fileReader.Remaining())
 			{
@@ -378,7 +378,7 @@ bool_t CWModelDecoder::Read_AnimationCatalog(const filesystem::path& modelPath,
 		if (!ReadAt(0, &fileHeader, sizeof(fileHeader)) ||
 			!HasMagic(fileHeader.magic, WINTERS_MAGIC) ||
 			WINT_VERSION_MAJOR != fileHeader.versionMajor ||
-			fileHeader.versionMinor > WINT_SKINNED_BASIS_VERSION_MINOR ||
+			fileHeader.versionMinor > WINT_SKINNED_BASIS_UV_VERSION_MINOR ||
 			0 != fileHeader.flags ||
 			fileHeader.contentSize != static_cast<uint64_t>(fileSize) - sizeof(FILE_HEADER))
 		{

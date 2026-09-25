@@ -53,34 +53,9 @@ def open_cache(d3dcompiler: pathlib.Path):
         name, number, rest = read_fname(data, offset, names)
         return (f'{number}.{name}' if number else name), 0, rest
     oracle.read_fname = numbered_read_fname
-    parse_static_parameter_set = oracle.parse_static_parameter_set
-
-    def normal_29_byte_static_parameter_set(data, offset, names):
-        # UE3 FNormalParameter is FName + BYTE CompressionSettings + UBOOL bOverride + GUID.
-        cursor = offset + 16
-        for entry_size in (32, 44):
-            if cursor + 4 > len(data):
-                return parse_static_parameter_set(data, offset, names)
-            count = struct.unpack_from('<I', data, cursor)[0]
-            cursor += 4 + min(count, 4097) * entry_size
-        if cursor + 4 > len(data):
-            return parse_static_parameter_set(data, offset, names)
-        normals = struct.unpack_from('<I', data, cursor)[0]
-        rows_at = cursor + 4
-        if normals == 0 or normals > 4096 or rows_at + normals * 29 > len(data):
-            return parse_static_parameter_set(data, offset, names)
-        widened = bytearray(data[:rows_at])
-        for index in range(normals):
-            entry = data[rows_at + index * 29:rows_at + (index + 1) * 29]
-            widened += entry[:8] + struct.pack('<II', entry[8], struct.unpack_from('<I', entry, 9)[0]) + entry[13:29]
-        widened += data[rows_at + normals * 29:]
-        decoded = parse_static_parameter_set(bytes(widened), offset, names)
-        shrink = normals * 3
-        decoded['byteSize'] -= shrink
-        decoded['endOffset'] -= shrink
-        return decoded
-    oracle.parse_static_parameter_set = normal_29_byte_static_parameter_set
-    sm.parse_static_parameter_set = normal_29_byte_static_parameter_set
+    # The shared reader owns the native 29-byte FStaticNormalParameter now.
+    # Do not widen the same source record a second time.
+    sm.parse_static_parameter_set = oracle.parse_static_parameter_set
     ref_cache.EXPECTED_D3DCOMPILER['byteSize'] = d3dcompiler.stat().st_size
     ref_cache.EXPECTED_D3DCOMPILER['sha256'] = hashlib.sha256(d3dcompiler.read_bytes()).hexdigest()
     cache = sm.package_tables(RELEASE / 'EV2LG3OVEH3HGV7THTFFTM7TOKMCC.upk')
@@ -393,6 +368,13 @@ def cpp_float(value):
     return (text if '.' in text or 'e' in text else text + '.') + 'f'
 
 
+def cpp_string(value):
+    # Preserve UTF-8 lookup bytes even when a consumer compiles under a legacy code page.
+    # Three octal digits prevent the following ASCII digit from extending an escape.
+    return '"' + ''.join(chr(byte) if 32 <= byte < 127 and byte not in (34, 92)
+                         else f'\\{byte:03o}' for byte in value.encode('utf-8')) + '"'
+
+
 def cpp(node):
     kind = node['typeName']
     if kind == 'fmaterialuniformexpressiontime':
@@ -400,7 +382,7 @@ def cpp(node):
     if kind == 'fmaterialuniformexpressionconstant':
         return 'Value{' + ','.join(cpp_float(v) for v in node['value']) + '}'
     if kind in ('fmaterialuniformexpressionscalarparameter', 'fmaterialuniformexpressionvectorparameter'):
-        return 'parameter("' + node['parameterName'] + '")'
+        return 'parameter(' + cpp_string(node['parameterName']) + ')'
     if kind == 'fmaterialuniformexpressionfoldedmath':
         return FOLD[node['operationOrdinal']][1] + '(' + cpp(node['a']) + ',' + cpp(node['b']) + ')'
     if kind == 'fmaterialuniformexpressionsine':
@@ -521,10 +503,10 @@ def emit_configure(document, family, number):
     if number <= 0:
         fail('generated source program must be nonzero for guarded family dispatch')
     time_parameter = time_parameter_of(document)
-    lines = [f'    if (staged.program == 0u && family == "{family}")', '    {', '        [&]() {', f'        staged.program = {number}u;']
+    lines = [f'    if (staged.program == 0u && family == {cpp_string(family)})', '    {', '        [&]() {', f'        staged.program = {number}u;']
     if time_parameter is not None:
-        lines.append(f'        staged.baseConstants[{TIME_PARAMETER_ROW}] = vector(parameter("{time_parameter}"));')
-        lines.append(f'        staged.lightConstants[{TIME_PARAMETER_ROW}] = vector(parameter("{time_parameter}"));')
+        lines.append(f'        staged.baseConstants[{TIME_PARAMETER_ROW}] = vector(parameter({cpp_string(time_parameter)}));')
+        lines.append(f'        staged.lightConstants[{TIME_PARAMETER_ROW}] = vector(parameter({cpp_string(time_parameter)}));')
     for stage, program_type in (('base', BASE_TYPE), ('light', LIGHT_TYPE)):
         program = document['programs'][program_type]
         lines.append(f'        staged.{stage}TextureMask = {texture_map_of(document, program)[2]}u;')
@@ -633,12 +615,32 @@ def install_program(path, function, number, stage):
         if existing != function:
             fail(f'{path.name} already holds a different {name}')
         return text
-    evaluate = f'\n\n\nSOURCE_CHARACTER_NATIVE_OUTPUT Evaluate{prefix}(SOURCE_CHARACTER_NATIVE_INPUT input)'
-    last_case = f'    case {number - 1}u: return {prefix}{number - 1}(input);\n'
-    if text.count(evaluate) != 1 or text.count(last_case) != 1 or f'case {number}u:' in text:
+    evaluate = f'SOURCE_CHARACTER_NATIVE_OUTPUT Evaluate{prefix}(SOURCE_CHARACTER_NATIVE_INPUT input)'
+    if text.count(evaluate) != 1 or f'case {number}u:' in text:
         fail(f'{path.name} dispatch anchors changed')
-    text = text.replace(evaluate, '\n\n' + function.rstrip('\n') + evaluate)
-    return text.replace(last_case, last_case + f'    case {number}u: return {name}(input);\n')
+    # Sparse source IDs may be installed in any order. Keep each compile cohort
+    # contiguous without changing an existing program's function or dispatch.
+    # A baked helper belongs to the following Base program. Inserting between
+    # the helper and Base would split the later program's compile cohort.
+    functions = list(re.finditer(rf'^SOURCE_CHARACTER_NATIVE_OUTPUT (?:{prefix}|SourceMapMonsterBaked)(\d+)\(', text, re.M))
+    later = next((match for match in functions if int(match[1]) > number), None)
+    insertion = later.start() if later else text.index(evaluate)
+    if later:
+        previous_line = text.rfind('\n', 0, insertion - 1) + 1
+        if text[previous_line:insertion].startswith('// source.'):
+            insertion = previous_line
+    text = text[:insertion] + function.rstrip('\n') + '\n\n' + text[insertion:]
+    dispatcher = text.index(evaluate)
+    cases = list(re.finditer(r'^    case (\d+)u:.*\n', text[dispatcher:], re.M))
+    later_case = next((match for match in cases if int(match[1]) > number), None)
+    if later_case:
+        insertion = dispatcher + later_case.start()
+    elif cases:
+        insertion = dispatcher + cases[-1].end()
+    else:
+        fail(f'{path.name} has no dispatch cases')
+    return text[:insertion] + f'    case {number}u: return {name}(input);\n' + text[insertion:]
+
 
 
 NAMED_VECTOR_HELPER_BEGIN = '// BEGIN GENERATED SOURCE CHARACTER NAMED VECTOR PATCH'
@@ -775,6 +777,10 @@ def refresh_named_vector_patch(header):
 
 
 def command_install(arguments):
+    # Source leaves participate in freshness even when their generated bytes do
+    # not change, since an expanded candidate was derived from those leaves.
+    dependencies = {path: path.read_bytes() for path in BASE_PROGRAMS.parent.glob('Shader_SourceCharacter*.hlsli')}
+    dependencies[PARAMETER_HEADER] = PARAMETER_HEADER.read_bytes()
     base = (arguments.generated / f'base{arguments.program}.hlsli').read_text(encoding='utf8')
     light = (arguments.generated / f'light{arguments.program}.hlsli').read_text(encoding='utf8')
     configure = guarded_configure_block((arguments.generated / f'configure{arguments.program}.h').read_text(encoding='utf8'))
@@ -788,12 +794,26 @@ def command_install(arguments):
     elif existing != configure:
         fail(f'{arguments.family} is already installed with a different packing')
     header = refresh_named_vector_patch(header)
-    for path, function, stage in ((BASE_PROGRAMS, base, 'base'), (LIGHT_PROGRAMS, light, 'light')):
-        from native_shader_dispatch import write_partitioned_source_character_stage, write_if_changed
-        leaves = write_partitioned_source_character_stage(path, install_program(path, function, arguments.program, stage))
-        for name in (path.name, *leaves):
-            write_if_changed(CLIENT_SHADER_DIR / name, (path.parent / name).read_text(encoding='utf8'))
-    write_preserving_newlines(PARAMETER_HEADER, header)
+    from native_shader_dispatch import partition_source_character_stage
+    from source_character_registration import stage_registration, commit_staged_files
+    base_source = install_program(BASE_PROGRAMS, base, arguments.program, 'base')
+    light_source = install_program(LIGHT_PROGRAMS, light, arguments.program, 'light')
+    added = (arguments.program,) if arguments.program > 238 else ()
+    staged, groups, registered = stage_registration(ROOT, added, base_source, light_source, header)
+    def stage(path, text):
+        before = path.read_bytes() if path.exists() else None
+        newline = '\r\n' if before is not None and b'\r\n' in before else '\n'
+        after = text.replace('\r\n', '\n').replace('\n', newline).encode('utf8')
+        if before != after:
+            staged[path] = before, after
+    for path, source, name in ((BASE_PROGRAMS, base_source, 'Base'), (LIGHT_PROGRAMS, light_source, 'Light')):
+        dispatch, leaves = partition_source_character_stage(source, name, path.parent,
+                                                           groups=groups, registered=registered)
+        for filename, text in {path.name: dispatch, **leaves}.items():
+            stage(path.parent / filename, text)
+            stage(CLIENT_SHADER_DIR / filename, text)
+    stage(PARAMETER_HEADER, header)
+    commit_staged_files(staged, expected=dependencies)
     print('installed program', arguments.program)
 
 

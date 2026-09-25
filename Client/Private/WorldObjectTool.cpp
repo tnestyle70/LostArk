@@ -492,6 +492,72 @@ bool SynchronizeEmissionReferences(Client::KOUKU_SAYDON_COMPOSITION_DOCUMENT& do
     return true;
 }
 
+bool ResolveTransferredEffectDuration(const std::string& resourceKind, const std::string& resourceId,
+    uint32_t& durationMs, std::string& status)
+{
+    using namespace Client;
+    if (resourceKind != "V1_EFFECT" && resourceKind != "GROUP" && resourceKind != "LEAF")
+    { status = "The effect resource kind is not supported by Object Motions."; return false; }
+    const auto kind = resourceKind == "GROUP" ? EFFECT_V2_RESOURCE_KIND::GROUP : EFFECT_V2_RESOURCE_KIND::LEAF;
+    double span = 0.;
+    if (resourceKind == "V1_EFFECT")
+    {
+        const auto document = CEffectCatalog::Find(resourceId);
+        if (!document) { status = "Effect unavailable: " + CEffectCatalog::Get_Status(); return false; }
+        for (const auto& element : document->Elements)
+        {
+            const auto& timing = element.Detail.Timing;
+            span = (std::max)(span, 1000.0 * (timing.fStartDelaySeconds + timing.fLifeTimeSeconds + timing.fAfterImageSeconds));
+        }
+        for (const auto& cue : document->ModelCues)
+            span = (std::max)(span, 1000.0 * (cue.fStartDelaySeconds + cue.fDurationSeconds));
+    }
+    else
+    {
+        std::shared_ptr<const EFFECT_V2_CATALOG_SNAPSHOT> snapshot;
+        if (!CEffectV2Catalog::Get().Load_ResourceSnapshot(kind, resourceId, snapshot, status))
+        { status = "Effect Append failed: " + status; return false; }
+        // Match the existing V2 authoring preview span, including particles/trails
+        // remaining after emission ends. The row does not stretch leaf envelopes.
+        const auto leafSpan = [](const EFFECT_V2_DOCUMENT& document, const uint32_t explicitMs, const bool tailEnabled)
+        {
+            const auto& params = document.Desc.Params;
+            const double rate = (std::max)(.001, static_cast<double>(params.fPlayRate));
+            const double emission = explicitMs ? explicitMs : params.fLifetime > 0.f ?
+                std::ceil(params.fLifetime * 1000.0 / rate) : 3000.0;
+            const double tail = !tailEnabled ? 0.0 : document.eType == EFFECT_V2_TYPE::PARTICLE ?
+                params.Particle.vLifetime.y * 1000.0 / rate : document.eType == EFFECT_V2_TYPE::TRAIL ?
+                params.Trail.fPointLifetime * 1000.0 / rate : 0.0;
+            return emission + std::ceil(tail);
+        };
+        if (kind == EFFECT_V2_RESOURCE_KIND::GROUP)
+        {
+            const auto* group = snapshot->Find_Group(resourceId);
+            if (!group) { status = "Selected Effect group is unavailable."; return false; }
+            span = group->iDurationMs;
+            if (!group->iDurationMs)
+                for (const auto& child : group->Children)
+                {
+                    const auto* leaf = snapshot->Find_Document(child.strEffectId);
+                    if (!leaf) { status = "Selected Effect group child is unavailable."; return false; }
+                    span = (std::max)(span, child.iStartMs + leafSpan(*leaf, child.iDurationMs,
+                        child.eStop == EFFECT_V2_CHILD_STOP::DEACTIVATE));
+                }
+        }
+        else
+        {
+            const auto* leaf = snapshot->Find_Document(resourceId);
+            if (!leaf) { status = "Selected Effect leaf is unavailable."; return false; }
+            span = leafSpan(*leaf, 0u, true);
+        }
+    }
+    if (!std::isfinite(span)) { status = "Selected Effect has an invalid duration."; return false; }
+    if (span > CWorldSequenceDocument::MAX_DURATION_MS)
+    { status = "The natural effect duration exceeds the 600-second Motion limit."; return false; }
+    durationMs = static_cast<uint32_t>((std::clamp)(std::ceil(span), 1., 600000.));
+    return true;
+}
+
 }
 
 using namespace Client;
@@ -695,7 +761,7 @@ bool CWorldObjectTool::Render_SaveButton()
 {
     ImGui::PushID("LocalMotionSave");
     ImGui::BeginDisabled(!m_Ready || m_PublishProcess != nullptr);
-    const bool clicked = ImGui::Button(m_Dirty ? "Save *" : "Save");
+    const bool clicked = ImGui::Button("Save");
     ImGui::EndDisabled();
     if (m_PublishProcess != nullptr)
     {
@@ -953,6 +1019,14 @@ void CWorldObjectTool::Render_ServerPlayControls()
     }
 }
 
+void CWorldObjectTool::Play_AtPlayer()
+{
+    Stop_Preview();
+    m_PreviewAtCharacter = true;
+    m_ClockMs = 0.f;
+    Play_Preview();
+}
+
 void CWorldObjectTool::Play_Preview()
 {
     m_PlayAfterPreparation = true;
@@ -1159,7 +1233,12 @@ std::vector<std::string> CWorldObjectTool::StateIds(const WORLD_SEQUENCE_OBJECT_
 
 void CWorldObjectTool::Select_Object(const std::string& id)
 {
+    m_NativeResourceSelected = false;
     Stop_Preview(); m_SelectedObject = id; m_SelectedInstance.clear(); m_ClockMs = 0.f;
+    m_SelectedFolder.clear();
+    m_SelectedResources.clear();
+    if (!id.empty()) m_SelectedResources.insert(id);
+    m_ResourceSelectionAnchor = id;
     if (id != m_CompositionPreviewObjectId)
     {
         m_CompositionPreviewPlacement.reset();
@@ -1167,6 +1246,7 @@ void CWorldObjectTool::Select_Object(const std::string& id)
     }
     m_SelectedGroup.clear();
     const auto* resource = m_Document.Find_ObjectResource(m_SelectedObject);
+    if (resource) m_ResourceAnchorKind = resource->anchorKind;
     if (resource && !resource->motionInstanceIds.empty())
     {
         m_SelectedGroup = resource->objectId;
@@ -1176,8 +1256,174 @@ void CWorldObjectTool::Select_Object(const std::string& id)
     m_SelectedTrack = 0; m_SelectedKey = 0;
 }
 
+std::string CWorldObjectTool::Resource_Parent(const std::string& id) const
+{
+    if (const auto* folder = m_Document.Find_ObjectFolder(id)) return folder->parentId;
+    if (const auto* object = m_Document.Find_ObjectResource(id)) return object->parentId;
+    return {};
+}
+
+std::string CWorldObjectTool::Resource_Anchor(const std::string& id) const
+{
+    if (const auto* folder = m_Document.Find_ObjectFolder(id)) return folder->anchorKind;
+    if (const auto* object = m_Document.Find_ObjectResource(id)) return object->anchorKind;
+    return {};
+}
+
+std::string CWorldObjectTool::Resource_Label(const std::string& id) const
+{
+    if (id.empty()) return "Category root";
+    std::string label;
+    auto current = id;
+    for (size_t depth = 0; !current.empty() && depth <= 64u; ++depth)
+    {
+        std::string name;
+        if (const auto* folder = m_Document.Find_ObjectFolder(current)) name = folder->displayName;
+        else if (const auto* object = m_Document.Find_ObjectResource(current)) name = object->displayName;
+        else return id;
+        label = name + (label.empty() ? "" : " / " + label);
+        current = Resource_Parent(current);
+    }
+    return label;
+}
+
+void CWorldObjectTool::Reveal_Resource(const std::string& id)
+{
+    auto current = Resource_Parent(id);
+    for (size_t depth = 0; !current.empty() && depth <= 64u; ++depth)
+    {
+        m_RevealResourceParents.insert(current);
+        current = Resource_Parent(current);
+    }
+}
+
+void CWorldObjectTool::Select_ResourceRow(const std::string& id,
+    const std::vector<std::string>& visibleRows, const bool control, const bool shift)
+{
+    if (Resource_Anchor(id).empty()) return;
+    auto selected = m_SelectedResources;
+    auto anchor = m_ResourceSelectionAnchor;
+    const auto first = std::find(visibleRows.begin(), visibleRows.end(), anchor);
+    const auto last = std::find(visibleRows.begin(), visibleRows.end(), id);
+    if (shift && first != visibleRows.end() && last != visibleRows.end())
+    {
+        if (!control) selected.clear();
+        const auto begin = (std::min)(first, last), end = (std::max)(first, last);
+        selected.insert(begin, end + 1);
+    }
+    else
+    {
+        if (!control) selected.clear();
+        if (control && selected.contains(id)) selected.erase(id);
+        else selected.insert(id);
+        anchor = id;
+    }
+    if (const auto* folder = m_Document.Find_ObjectFolder(id))
+    {
+        Stop_Preview();
+        m_SelectedObject.clear(); m_SelectedGroup.clear(); m_SelectedInstance.clear();
+        m_SelectedFolder = id; m_ResourceAnchorKind = folder->anchorKind;
+    }
+    else Select_Object(id);
+    m_SelectedResources = std::move(selected);
+    m_ResourceSelectionAnchor = std::move(anchor);
+}
+
+std::vector<std::string> CWorldObjectTool::Selected_ResourceRoots() const
+{
+    std::vector<std::string> roots;
+    for (const auto& id : m_SelectedResources)
+    {
+        if (Resource_Anchor(id).empty()) continue;
+        auto parent = Resource_Parent(id);
+        bool covered = false;
+        for (size_t depth = 0; !parent.empty() && depth <= 64u; ++depth)
+        {
+            if (m_SelectedResources.contains(parent)) { covered = true; break; }
+            parent = Resource_Parent(parent);
+        }
+        if (!covered) roots.push_back(id);
+    }
+    return roots;
+}
+
+bool CWorldObjectTool::Can_MoveResources(const std::vector<std::string>& ids, const std::string& parentId) const
+{
+    if (ids.empty()) return false;
+    const auto anchor = Resource_Anchor(ids.front());
+    if (anchor.empty() || (!parentId.empty() && Resource_Anchor(parentId) != anchor)) return false;
+    for (const auto& id : ids)
+    {
+        if (Resource_Anchor(id) != anchor) return false;
+        auto parent = parentId;
+        for (size_t depth = 0; !parent.empty(); ++depth)
+        {
+            if (parent == id || depth > 64u) return false;
+            parent = Resource_Parent(parent);
+        }
+    }
+    return true;
+}
+
+bool CWorldObjectTool::Move_Resources(const std::vector<std::string>& ids, const std::string& parentId)
+{
+    if (!Can_MoveResources(ids, parentId))
+    { m_Status = "Choose a parent in the same category, outside the selected branches. Existing objects preserved."; return false; }
+    auto candidate = m_Document;
+    for (const auto& id : ids)
+    {
+        if (auto* folder = candidate.Find_ObjectFolder(id)) folder->parentId = parentId;
+        else if (auto* object = candidate.Find_ObjectResource(id)) object->parentId = parentId;
+    }
+    if (!candidate.Validate_ObjectHierarchy(m_Status)) return false;
+    m_Document = std::move(candidate);
+    m_Document.Touch(); m_Dirty = true;
+    m_ObjectSearch[0] = 0;
+    for (const auto& id : ids) Reveal_Resource(id);
+    m_Status = "Moved " + std::to_string(ids.size()) + " selected branches to " + Resource_Label(parentId) + ". Save to keep the hierarchy.";
+    return true;
+}
+
+bool CWorldObjectTool::Create_ResourceParent(const std::vector<std::string>& ids)
+{
+    if (!ids.empty() && !Can_MoveResources(ids, {}))
+    { m_Status = "Select objects from one category to create a Parent. Existing objects preserved."; return false; }
+    WORLD_SEQUENCE_OBJECT_FOLDER folder;
+    folder.displayName = m_NewParentName.data();
+    folder.anchorKind = ids.empty() ? m_ResourceAnchorKind : Resource_Anchor(ids.front());
+    if (!ids.empty())
+    {
+        folder.parentId = Resource_Parent(ids.front());
+        for (const auto& id : ids)
+            if (Resource_Parent(id) != folder.parentId) { folder.parentId.clear(); break; }
+    }
+    for (uint32_t index = 1; index < UINT32_MAX; ++index)
+    {
+        folder.folderId = "world.object.folder." + std::to_string(index);
+        if (!m_Document.Find_ObjectFolder(folder.folderId) && !m_Document.Find_ObjectResource(folder.folderId)) break;
+    }
+    auto candidate = m_Document;
+    candidate.Get_ObjectFolders().push_back(folder);
+    for (const auto& id : ids)
+    {
+        if (auto* child = candidate.Find_ObjectFolder(id)) child->parentId = folder.folderId;
+        else if (auto* object = candidate.Find_ObjectResource(id)) object->parentId = folder.folderId;
+    }
+    if (!candidate.Validate_ObjectHierarchy(m_Status)) return false;
+    m_Document = std::move(candidate);
+    m_Document.Touch(); m_Dirty = true;
+    Select_ResourceRow(folder.folderId, {folder.folderId}, false, false);
+    m_ObjectSearch[0] = 0;
+    Reveal_Resource(folder.folderId);
+    m_RevealResourceParents.insert(folder.folderId);
+    m_Status = "Parent created with " + std::to_string(ids.size()) + " selected branches. Save to keep the hierarchy.";
+    m_NewParentName[0] = 0;
+    return true;
+}
+
 void CWorldObjectTool::Select_State(const std::string& id)
 {
+    m_NativeResourceSelected = false;
     if (const auto* group = Preview_Group())
     {
         const auto* instance = m_Document.Find_Instance(id);
@@ -1209,14 +1455,22 @@ bool CWorldObjectTool::Create_Object()
     for (uint32_t index = 1; index < UINT32_MAX; ++index)
     {
         resource.objectId = "world.object.resource." + std::to_string(index);
-        if (!m_Document.Find_ObjectResource(resource.objectId)) break;
+        if (!m_Document.Find_ObjectResource(resource.objectId) && !m_Document.Find_ObjectFolder(resource.objectId)) break;
     }
     resource.displayName = m_NewObjectName.data();
     resource.anchorKind = m_NewObjectAnchor == 2 ? "BOSS" : m_NewObjectAnchor == 1 ? "PLAYER" : "WORLD";
+    resource.parentId = m_NewObjectParent;
+    if (!resource.parentId.empty() && Resource_Anchor(resource.parentId) != resource.anchorKind)
+    { m_Status = "The selected parent is no longer in this category. Existing objects preserved."; return false; }
     if (m_Document.Get_ObjectResources().size() >= CWorldSequenceDocument::MAX_INSTANCE_COUNT)
     { m_Status = "World object resource capacity reached."; return false; }
-    m_Document.Get_ObjectResources().push_back(resource);
+    auto candidate = m_Document;
+    candidate.Get_ObjectResources().push_back(resource);
+    if (!candidate.Validate_ObjectHierarchy(m_Status)) return false;
+    m_Document = std::move(candidate);
     Mark_Dirty(); Select_Object(resource.objectId);
+    m_ObjectSearch[0] = 0;
+    Reveal_Resource(resource.objectId);
     m_Status = "Object created. Assign its shared model, then Create Motion in Object Detail. Assign Model before Save.";
     m_NewObjectName[0] = 0;
     m_NewStateName[0] = 0;
@@ -1277,6 +1531,12 @@ void CWorldObjectTool::Change_ResourceAnchor(
     WORLD_SEQUENCE_OBJECT_RESOURCE& resource, const std::string& anchorKind)
 {
     if (resource.anchorKind == anchorKind || !resource.sequenceInstanceId.empty()) return;
+    if (!resource.parentId.empty() ||
+        std::any_of(m_Document.Get_ObjectFolders().begin(), m_Document.Get_ObjectFolders().end(),
+            [&](const auto& child) { return child.parentId == resource.objectId; }) ||
+        std::any_of(m_Document.Get_ObjectResources().begin(), m_Document.Get_ObjectResources().end(),
+            [&](const auto& child) { return child.parentId == resource.objectId; }))
+    { m_Status = "Move this Object and its children to Category root before changing its Anchor Type. Existing hierarchy preserved."; return; }
     if (anchorKind != "WORLD")
         for (const auto& id : StateIds(resource))
             if (const auto* instance = m_Document.Find_Instance(id))
@@ -1307,13 +1567,205 @@ void CWorldObjectTool::Change_ResourceAnchor(
 
 void CWorldObjectTool::Begin_WorkbenchFrame()
 {
+    m_CompositionResourceFocused = false;
     if (!m_Open) Open();
+}
+
+void CWorldObjectTool::End_WorkbenchFrame()
+{
+    const auto command = m_PendingCompositionEdit;
+    auto transfer = std::move(m_PendingCompositionTransfer);
+    m_PendingCompositionEdit.reset();
+    if (transfer) Insert_CompositionTransfer(transfer, m_Status);
+    else if (command) Execute_CompositionEdit(*command, m_Status);
+}
+
+COMPOSITION_TRANSFER CWorldObjectTool::Capture_CompositionObject(const std::string& objectId,
+    const std::string& motionId, std::string& status) const
+{
+    auto bundle = std::make_shared<WORLD_SEQUENCE_OBJECT_BUNDLE>();
+    if (!m_Document.Capture_ObjectBundle(objectId, motionId.empty() ? std::vector<std::string>{} :
+        std::vector<std::string>{motionId}, *bundle, status)) return {};
+    auto transfer = std::make_shared<COMPOSITION_WORLD_OBJECT_TRANSFER>();
+    transfer->bundle = std::move(bundle);
+    transfer->selectedMotionsOnly = !motionId.empty();
+    transfer->label = transfer->bundle->resource.displayName;
+    if (!motionId.empty())
+        if (const auto* instance = m_Document.Find_Instance(motionId))
+            if (const auto* sequence = m_Document.Find_Template(instance->templateId)) transfer->label = sequence->displayName;
+    return transfer;
+}
+
+bool CWorldObjectTool::Execute_CompositionEdit(const COMPOSITION_EDIT_COMMAND command, std::string& status)
+{
+    if (!m_Ready || m_PublishProcess)
+    { status = m_Status = "Load Object Resources and wait for any active publish before editing."; return false; }
+    const auto capture = [&](std::string& reason) -> COMPOSITION_TRANSFER
+    {
+        if (m_CompositionResourceFocused)
+        { reason = "Drag the selected Effect or Animation into the destination Sequencer. Copy/Duplicate here never copies the previously selected Object Motion."; return {}; }
+        if (m_SelectedInstance.empty() && (m_SelectedResources.size() != 1u || !m_SelectedFolder.empty()))
+        { reason = "Select one model Object or one Motion to copy."; return {}; }
+        return Capture_CompositionObject(m_SelectedObject, m_SelectedInstance, reason);
+    };
+    const bool result = Dispatch_CompositionEdit(command, capture,
+        [&](const COMPOSITION_TRANSFER& value, std::string& reason) { return Insert_CompositionTransfer(value, reason); },
+        [&](std::string& reason) {
+            const auto value = std::dynamic_pointer_cast<const COMPOSITION_WORLD_OBJECT_TRANSFER>(capture(reason));
+            return value && Paste_CompositionObject(*value, true, reason);
+        }, status);
+    m_Status = status;
+    return result;
+}
+
+bool CWorldObjectTool::Paste_CompositionObject(const COMPOSITION_WORLD_OBJECT_TRANSFER& transfer,
+    const bool duplicate, std::string& status)
+{
+    if (!transfer.bundle)
+    { status = "The copied Object snapshot is unavailable. Existing draft preserved."; return false; }
+    if (m_SelectedResources.size() > 1u)
+    { status = "Select one destination Object. Paste separately to give each Object its own Motions."; return false; }
+    const auto* selected = m_Document.Find_ObjectResource(m_SelectedObject);
+    const auto& source = transfer.bundle->resource;
+    std::string destination, parent;
+    if (selected && (!duplicate || transfer.selectedMotionsOnly) &&
+        (transfer.selectedMotionsOnly || selected->objectId != source.objectId)) destination = selected->objectId;
+    if (destination.empty())
+    {
+        if (!m_SelectedFolder.empty()) parent = m_SelectedFolder;
+        else if (selected) parent = selected->parentId;
+        else if (m_Document.Find_ObjectFolder(source.parentId) || m_Document.Find_ObjectResource(source.parentId)) parent = source.parentId;
+    }
+    auto bundle = *transfer.bundle;
+    if (duplicate && transfer.selectedMotionsOnly)
+        for (auto& sequence : bundle.templates)
+            sequence.displayName = sequence.displayName.size() <= 121u ? sequence.displayName + " (Copy)" : "Motion Copy";
+    const auto name = source.displayName.size() <= 121u ? source.displayName + " (Copy)" : "Object Copy";
+    WORLD_SEQUENCE_PASTE_RESULT pasted;
+    if (!m_Document.Paste_ObjectBundle(bundle, destination, name, parent,
+        m_MapTargets, m_DeployTargets, pasted, status)) return false;
+    // No preview/selection changes occur until the complete candidate is accepted.
+    Select_Object(pasted.objectId);
+    if (transfer.selectedMotionsOnly && !pasted.rootMotionIds.empty()) Select_State(pasted.rootMotionIds.front());
+    m_ObjectSearch[0] = 0;
+    Reveal_Resource(pasted.objectId);
+    m_RevealResourceParents.insert(pasted.objectId);
+    m_SequencerOpen = m_DetailOpen = true;
+    Mark_Dirty();
+    status = "Pasted an independent copy. Model, clips, emissions and capture Collider are preserved; edit this copy and Save.";
+    return true;
+}
+
+bool CWorldObjectTool::Insert_CompositionEffects(const COMPOSITION_EFFECT_TRANSFER& transfer, std::string& status)
+{
+    const auto* instance = Effect_TargetInstance();
+    const auto* sequence = instance ? m_Document.Find_Template(instance->templateId) : nullptr;
+    if (!sequence || transfer.items.empty() || !std::isfinite(m_ClockMs) || m_ClockMs < 0.f || m_ClockMs > sequence->durationMs)
+    { status = "Select a Motion and place its playhead inside the Motion before pasting Effects."; return false; }
+    const auto instanceId = instance->instanceId;
+    auto candidate = m_Document;
+    auto* edited = candidate.Find_Template(sequence->sequenceId);
+    const size_t firstEffect = edited->effectTracks.size();
+    const auto startMs = static_cast<uint32_t>(m_ClockMs);
+    WORLD_OBJECT_TRAVEL_DRAFT travel;
+    std::string reason;
+    const bool preserveTravel = ObjectTravel::Read(*edited, false, travel, reason);
+    for (const auto& item : transfer.items)
+    {
+        if (!item.followOwner || !item.inheritOwnerRotation)
+        { status = "Cross-owner Effect paste requires a following root Effect with owner rotation; absolute placement, snapshots and World rotation cannot be preserved."; return false; }
+        if (uint64_t(startMs) + item.startMs > edited->durationMs)
+        { status = "Pasted Effect starts after the Motion ends. Extend the Motion or move its playhead first."; return false; }
+        WORLD_SEQUENCE_EFFECT_TRACK row;
+        uint32_t serial = 1u;
+        do { row.effectTrackId = "effect." + std::to_string(serial++); }
+        while (std::any_of(edited->effectTracks.begin(), edited->effectTracks.end(),
+            [&](const auto& existing) { return existing.effectTrackId == row.effectTrackId; }));
+        row.slotId = instance->bindings.front().slotId;
+        row.resourceKind = item.resourceKind; row.resourceId = item.resourceId;
+        row.timing = "TIME"; row.startMs = startMs + item.startMs; row.durationMs = item.durationMs;
+        if (!row.durationMs && !ResolveTransferredEffectDuration(row.resourceKind, row.resourceId, row.durationMs, status)) return false;
+        row.positionOffset = {item.position[0], item.position[1], item.position[2]};
+        row.rotationDegrees = {item.rotationDegrees[0], item.rotationDegrees[1], item.rotationDegrees[2]};
+        row.scale = {item.scale[0], item.scale[1], item.scale[2]};
+        row.bone = item.bone; row.followObject = item.followOwner; row.inheritObjectRotation = item.inheritOwnerRotation;
+        row.fitEffectToDuration = item.fitToDuration; row.loopEffectToDuration = item.loopToDuration;
+        edited->effectTracks.push_back(std::move(row));
+    }
+    if (preserveTravel)
+    {
+        WORLD_SEQUENCE_TEMPLATE rebuilt;
+        if (!ObjectTravel::Build(*edited, travel, rebuilt, status)) return false;
+        *edited = std::move(rebuilt);
+    }
+    if (!candidate.Validate(m_MapTargets, m_DeployTargets, status))
+    { status = "Effect paste refused: " + status + ". Existing draft preserved."; return false; }
+    Stop_Preview();
+    m_Document = std::move(candidate);
+    m_SelectedInstance = instanceId; m_SelectedEffectRow = firstEffect; m_SelectedBoxKind = 2;
+    Mark_Dirty();
+    status = "Pasted Effects at the playhead with their original timing, transform and attachment policies. Save to keep them.";
+    return true;
+}
+
+bool CWorldObjectTool::Insert_CompositionTransfer(const COMPOSITION_TRANSFER& transfer, std::string& status)
+{
+    if (!m_Ready || m_PublishProcess)
+    { status = m_Status = "Load Object Resources and wait for any active publish before editing."; return false; }
+    bool result = false;
+    if (const auto object = std::dynamic_pointer_cast<const COMPOSITION_WORLD_OBJECT_TRANSFER>(transfer))
+        result = Paste_CompositionObject(*object, false, status);
+    else if (const auto effects = std::dynamic_pointer_cast<const COMPOSITION_EFFECT_TRANSFER>(transfer))
+        result = Insert_CompositionEffects(*effects, status);
+    else if (const auto animation = std::dynamic_pointer_cast<const COMPOSITION_ANIMATION_TRANSFER>(transfer))
+        result = Append_CompositionAnimationResource(animation->resource, false, status);
+    else status = "This resource cannot be pasted into an Object Motion. Existing draft preserved.";
+    m_Status = status;
+    return result;
+}
+
+bool CWorldObjectTool::Can_AppendCompositionAnimationResource(const COMPOSITION_ANIMATION_RESOURCE& animation,
+    const bool replace, std::string& status) const
+{
+    const auto* resource = m_Document.Find_ObjectResource(m_SelectedObject);
+    if (replace || !resource || m_SelectedInstance.empty() || resource->modelAssetId != animation.strModelAssetId ||
+        !resource->animated || animation.strRuntimeClip.empty() || animation.strEndPolicy != "EXACT" ||
+        (!animation.strSourceAssetId.empty() && animation.strSourceAssetId != resource->modelAssetId &&
+            animation.strSourceAssetId != resource->animationSetAssetId))
+    { status = "Select a Motion on the same animated model/clip package. Object transfer appends clips; it does not replace the model."; return false; }
+    return true;
+}
+
+bool CWorldObjectTool::Append_CompositionAnimationResource(const COMPOSITION_ANIMATION_RESOURCE& animation,
+    const bool replace, std::string& status)
+{
+    if (!Can_AppendCompositionAnimationResource(animation, replace, status)) return false;
+    const auto previous = m_SelectedAnimationClip;
+    Refresh_AnimationResources();
+    const auto clip = std::find_if(m_AnimationResources.begin(), m_AnimationResources.end(), [&](const auto& row) {
+        return row.clipName == animation.strRuntimeClip;
+    });
+    if (!m_AnimationCatalogReady || clip == m_AnimationResources.end() ||
+        (animation.iDurationMs && double(animation.iDurationMs) != std::ceil(clip->durationMs)))
+    {
+        m_SelectedAnimationClip = previous;
+        status = "The transferred animation must exist on this model and use its exact native duration. Existing Motion preserved.";
+        return false;
+    }
+    m_SelectedAnimationClip = animation.strRuntimeClip;
+    const bool result = Append_SelectedAnimation();
+    if (!result) m_SelectedAnimationClip = previous;
+    else Stop_Preview();
+    status = m_Status;
+    return result;
 }
 
 void CWorldObjectTool::Render_WorkbenchPane(const COMPOSITION_WORKBENCH_PANE pane)
 {
     Render_ColliderPreview();
     ImGui::PushID("WorldObjectWorkbenchSession");
+    if (ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows))
+        m_CompositionResourceFocused = pane == COMPOSITION_WORKBENCH_PANE::RESOURCES;
     if (ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows) && ImGui::IsMouseClicked(0))
         m_InteractionRequested = true;
     switch (pane)
@@ -1385,6 +1837,7 @@ void CWorldObjectTool::Render_SelectedSequence()
 void CWorldObjectTool::Render()
 {
     if (!m_Open) return;
+    m_CompositionResourceFocused = false;
     Render_ColliderPreview();
     const auto* viewport = ImGui::GetMainViewport();
     const ImVec2 origin = viewport ? viewport->WorkPos : ImVec2(0.f, 0.f);
@@ -1398,6 +1851,7 @@ void CWorldObjectTool::Render()
     const float rightX = centerX + centerWidth + gap, topY = origin.y + margin;
     const ImGuiCond condition = m_ResetLayoutRequested ? ImGuiCond_Always : ImGuiCond_FirstUseEver;
     m_ResetLayoutRequested = false;
+    bool editFocused = false;
     const auto beginPane = [&](const char* name, bool& visible, const ImVec2 position, const ImVec2 size)
     {
         ImGui::SetNextWindowPos(position, condition);
@@ -1405,6 +1859,7 @@ void CWorldObjectTool::Render()
         const bool expanded = ImGui::Begin(name, &visible, ImGuiWindowFlags_MenuBar);
         if (ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows) && ImGui::IsMouseClicked(0))
             m_InteractionRequested = true;
+        editFocused |= expanded && ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows);
         if (expanded) Render_WindowMenu();
         return expanded;
     };
@@ -1423,6 +1878,8 @@ void CWorldObjectTool::Render()
             if (m_Ready) Render_EffectResources();
             Render_PhysicalResources();
             if (m_Ready) Render_AnimationResources();
+            if (ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows))
+                m_CompositionResourceFocused = m_NativeResourceSelected;
         }
         ImGui::End();
     }
@@ -1433,6 +1890,7 @@ void CWorldObjectTool::Render()
         {
             Render_Toolbar();
             Render_SelectedSequence();
+            if (auto transfer = Accept_CompositionResourceDropInWindow()) m_PendingCompositionTransfer = std::move(transfer);
         }
         ImGui::End();
     }
@@ -1443,9 +1901,18 @@ void CWorldObjectTool::Render()
         {
             if (m_Ready) Render_Detail();
             else ImGui::TextDisabled("Load Object Resources to edit an object.");
+            if (auto transfer = Accept_CompositionResourceDropInWindow()) m_PendingCompositionTransfer = std::move(transfer);
         }
         ImGui::End();
     }
+    const auto& io = ImGui::GetIO();
+    const COMPOSITION_EDIT_INPUT editInput{editFocused, io.KeyCtrl, io.WantTextInput,
+        ImGui::IsAnyItemActive(), ImGui::IsPopupOpen(nullptr, ImGuiPopupFlags_AnyPopupId),
+        ImGui::IsMouseDragging(ImGuiMouseButton_Left) || ImGui::GetDragDropPayload() != nullptr,
+        ImGui::IsKeyPressed(ImGuiKey_C, false), ImGui::IsKeyPressed(ImGuiKey_V, false),
+        ImGui::IsKeyPressed(ImGuiKey_D, false)};
+    if (const auto command = Resolve_CompositionShortcut(editInput)) m_PendingCompositionEdit = command;
+    End_WorkbenchFrame();
     if (!m_ResourcesOpen && !m_SequencerOpen && !m_DetailOpen) m_Open = false;
     if (!m_Open) Stop_Preview();
 }
@@ -1486,7 +1953,7 @@ void CWorldObjectTool::Render_Toolbar()
         ImGui::EndPopup();
     }
     ImGui::SameLine(); ImGui::BeginDisabled(!m_Ready || m_PublishProcess);
-    if (ImGui::Button(m_Dirty ? "Save *" : "Save")) Save_Source();
+    if (ImGui::Button("Save")) Save_Source();
     ImGui::EndDisabled();
     if (m_CompositionPreviewPlacement)
     {
@@ -1506,21 +1973,199 @@ void CWorldObjectTool::Render_Toolbar()
 
 void CWorldObjectTool::Render_Resources(const bool fillPane)
 {
+    bool createParent = false, moveParent = false;
     if (ImGui::Button("Create Object"))
     {
         m_CreateObjectFailed = false;
+        m_NewObjectParent = m_SelectedResources.size() == 1u ? *m_SelectedResources.begin() : std::string{};
+        const auto anchor = m_NewObjectParent.empty() ? m_ResourceAnchorKind : Resource_Anchor(m_NewObjectParent);
+        m_NewObjectAnchor = anchor == "BOSS" ? 2 : anchor == "PLAYER" ? 1 : 0;
         ImGui::OpenPopup("Create Object Resource");
     }
-    ImGui::SameLine(); ImGui::TextDisabled("%zu resources", m_Document.Get_ObjectResources().size());
+    ImGui::SameLine(); ImGui::TextDisabled("%zu resources / %zu selected",
+        m_Document.Get_ObjectResources().size(), m_SelectedResources.size());
+    if (ImGui::Button("Create Parent")) createParent = true;
+    ImGui::BeginDisabled(m_SelectedResources.empty());
+    if (ImGui::Button("Move to Parent")) moveParent = true;
+    ImGui::EndDisabled();
+    ImGui::TextDisabled("Ctrl: toggle selection | Shift: select row range");
+    ImGui::SetNextItemWidth(-1.f);
+    ImGui::InputTextWithHint("##ObjectSearch", "Search object, parent or motion", m_ObjectSearch.data(), m_ObjectSearch.size());
+    const float treeHeight = (std::max)(120.f, ImGui::GetContentRegionAvail().y * (fillPane ? 1.f : .28f));
+    std::vector<std::string> visibleRows;
+    std::string clicked, contextRow, contextMotion, contextMotionObject;
+    bool control = false, shift = false;
+    if (ImGui::BeginChild("ObjectResourceTree", ImVec2(0.f, treeHeight), true))
+    {
+        const auto search = Lower(m_ObjectSearch.data());
+        const auto stateMatches = [&search](const std::string& id, const WORLD_SEQUENCE_TEMPLATE* sequence)
+        {
+            const auto searchable = sequence ? sequence->displayName + " " + sequence->sequenceId + " " + id : id;
+            return Lower(searchable).find(search) != std::string::npos;
+        };
+        std::map<std::string, std::vector<std::string>> children;
+        std::set<std::string> directMatches, matchingBranches;
+        const auto addRow = [&](const std::string& id, const std::string& parent, const std::string& anchor, bool matches)
+        {
+            children[parent.empty() ? "category:" + anchor : parent].push_back(id);
+            if (!matches) return;
+            directMatches.insert(id);
+            auto current = id;
+            for (size_t depth = 0; !current.empty() && depth <= 64u; ++depth)
+            {
+                matchingBranches.insert(current);
+                current = Resource_Parent(current);
+            }
+        };
+        for (const auto& folder : m_Document.Get_ObjectFolders())
+            addRow(folder.folderId, folder.parentId, folder.anchorKind,
+                search.empty() || Lower(folder.displayName + " " + folder.folderId).find(search) != std::string::npos);
+        for (const auto& resource : m_Document.Get_ObjectResources())
+        {
+            bool matches = search.empty() || Lower(resource.displayName + " " + resource.objectId).find(search) != std::string::npos;
+            if (!matches)
+                for (const auto& id : StateIds(resource))
+                {
+                    const auto* state = m_Document.Find_Instance(id);
+                    if (stateMatches(id, state ? m_Document.Find_Template(state->templateId) : nullptr)) { matches = true; break; }
+                }
+            addRow(resource.objectId, resource.parentId, resource.anchorKind, matches);
+        }
+        const auto rowInput = [&](const std::string& id)
+        {
+            visibleRows.push_back(id);
+            if (ImGui::IsItemClicked(ImGuiMouseButton_Left) && !ImGui::IsItemToggledOpen())
+            { clicked = id; control = ImGui::GetIO().KeyCtrl; shift = ImGui::GetIO().KeyShift; }
+            if (ImGui::IsItemClicked(ImGuiMouseButton_Right)) contextRow = id;
+            if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", id.c_str());
+        };
+        std::function<void(const std::string&, bool)> renderBranch;
+        renderBranch = [&](const std::string& id, const bool parentMatches)
+        {
+            if (!parentMatches && !matchingBranches.contains(id)) return;
+            const auto* folder = m_Document.Find_ObjectFolder(id);
+            const auto* resource = m_Document.Find_ObjectResource(id);
+            if (!folder && !resource) return;
+            const bool matches = parentMatches || directMatches.contains(id);
+            const bool combined = resource && !resource->motionInstanceIds.empty();
+            const auto states = resource ? StateIds(*resource) : std::vector<std::string>{};
+            const auto descendants = children.find(id);
+            const bool hasChildren = descendants != children.end() && !descendants->second.empty();
+            const bool leaf = !hasChildren && (folder || combined || states.empty());
+            const std::string label = folder ? folder->displayName + " [Parent]" : resource->displayName +
+                (resource->sequenceInstanceId.empty() && resource->modelAssetId.empty() && !combined ? " [assign model]" : "");
+            ImGui::PushID(id.c_str());
+            ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick |
+                ImGuiTreeNodeFlags_SpanAvailWidth;
+            if (m_SelectedResources.contains(id)) flags |= ImGuiTreeNodeFlags_Selected;
+            if (leaf) flags |= ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
+            if (!search.empty() || m_RevealResourceParents.erase(id)) ImGui::SetNextItemOpen(true, ImGuiCond_Always);
+            const bool open = ImGui::TreeNodeEx("Resource", flags, "%s", label.c_str());
+            rowInput(id);
+            if (resource && !resource->modelAssetId.empty() && !combined && resource->sequenceInstanceId.empty())
+                Offer_CompositionResourceDrag(label.c_str(), [&, id]() {
+                    return Capture_CompositionObject(id, {}, m_Status);
+                });
+            if (open && !leaf)
+            {
+                if (resource && !combined)
+                    for (const auto& motionId : states)
+                    {
+                        const auto* instance = m_Document.Find_Instance(motionId);
+                        const auto* sequence = instance ? m_Document.Find_Template(instance->templateId) : nullptr;
+                        if (!matches && !stateMatches(motionId, sequence)) continue;
+                        ImGui::PushID(motionId.c_str());
+                        if (ImGui::Selectable(sequence ? sequence->displayName.c_str() : motionId.c_str(), motionId == m_SelectedInstance))
+                        {
+                            Select_Object(id);
+                            m_SelectedGroup.clear();
+                            Select_State(motionId);
+                        }
+                        if (ImGui::IsItemHovered()) ImGui::SetTooltip("Motion: %s", motionId.c_str());
+                        if (ImGui::IsItemClicked(ImGuiMouseButton_Right))
+                        { contextMotion = motionId; contextMotionObject = id; }
+                        Offer_CompositionResourceDrag(sequence ? sequence->displayName.c_str() : motionId.c_str(), [&, id, motionId]() {
+                            return Capture_CompositionObject(id, motionId, m_Status);
+                        });
+                        ImGui::PopID();
+                    }
+                if (hasChildren)
+                    for (const auto& child : descendants->second) renderBranch(child, matches);
+                ImGui::TreePop();
+            }
+            ImGui::PopID();
+        };
+        for (const char* anchor : {"WORLD", "PLAYER", "BOSS"})
+        {
+            const char* category = std::string(anchor) == "WORLD" ? "Map" : std::string(anchor) == "BOSS" ? "Boss" : "Character";
+            size_t count = 0;
+            for (const auto& resource : m_Document.Get_ObjectResources()) if (resource.anchorKind == anchor) ++count;
+            if (!m_RevealResourceParents.empty()) ImGui::SetNextItemOpen(true, ImGuiCond_Always);
+            const bool open = ImGui::TreeNodeEx(anchor, ImGuiTreeNodeFlags_DefaultOpen |
+                ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick, "%s (%zu)", category, count);
+            if (ImGui::IsItemClicked() && !ImGui::IsItemToggledOpen())
+            { Select_Object({}); m_ResourceAnchorKind = anchor; }
+            if (open)
+            {
+                if (const auto found = children.find(std::string("category:") + anchor); found != children.end())
+                    for (const auto& id : found->second) renderBranch(id, search.empty());
+                ImGui::TreePop();
+            }
+        }
+    }
+    ImGui::EndChild();
+    // Resolve after drawing so Shift also sees rows below the click in this frame.
+    if (!clicked.empty())
+    {
+        Select_ResourceRow(clicked, visibleRows, control, shift);
+        if (!control && !shift && Preview_Group()) { m_SequencerOpen = true; m_DetailOpen = true; Seek(0.f); }
+    }
+    if (!contextRow.empty())
+    {
+        if (!m_SelectedResources.contains(contextRow)) Select_ResourceRow(contextRow, visibleRows, false, false);
+        else if (m_SelectedResources.size() == 1u && !m_SelectedInstance.empty()) Select_Object(contextRow);
+        ImGui::OpenPopup("Object Resource Context");
+    }
+    if (ImGui::BeginPopup("Object Resource Context"))
+    {
+        if (ImGui::MenuItem("Create Parent")) createParent = true;
+        if (ImGui::MenuItem("Move to Parent", nullptr, false, !m_SelectedResources.empty())) moveParent = true;
+        ImGui::Separator();
+        const auto* resource = m_Document.Find_ObjectResource(m_SelectedObject);
+        const bool copyable = m_SelectedResources.size() == 1u && resource && !resource->modelAssetId.empty() &&
+            resource->sequenceInstanceId.empty() && resource->motionInstanceIds.empty();
+        if (ImGui::MenuItem("Copy Object", "Ctrl+C", false, copyable)) m_PendingCompositionEdit = COMPOSITION_EDIT_COMMAND::COPY;
+        if (ImGui::MenuItem("Paste", "Ctrl+V", false, bool(CCompositionClipboard::Get().Read()) && m_SelectedResources.size() <= 1u))
+            m_PendingCompositionEdit = COMPOSITION_EDIT_COMMAND::PASTE;
+        if (ImGui::MenuItem("Duplicate Object", "Ctrl+D", false, copyable)) m_PendingCompositionEdit = COMPOSITION_EDIT_COMMAND::DUPLICATE_SELECTION;
+        ImGui::EndPopup();
+    }
+    if (!contextMotion.empty())
+    {
+        Select_Object(contextMotionObject); Select_State(contextMotion);
+        ImGui::OpenPopup("Object Motion Context");
+    }
+    if (ImGui::BeginPopup("Object Motion Context"))
+    {
+        if (ImGui::MenuItem("Copy Motion", "Ctrl+C")) m_PendingCompositionEdit = COMPOSITION_EDIT_COMMAND::COPY;
+        if (ImGui::MenuItem("Paste", "Ctrl+V", false, bool(CCompositionClipboard::Get().Read()))) m_PendingCompositionEdit = COMPOSITION_EDIT_COMMAND::PASTE;
+        if (ImGui::MenuItem("Duplicate Motion", "Ctrl+D")) m_PendingCompositionEdit = COMPOSITION_EDIT_COMMAND::DUPLICATE_SELECTION;
+        ImGui::EndPopup();
+    }
+    if (createParent || moveParent)
+    {
+        m_ParentEditSelection = Selected_ResourceRoots();
+        m_MoveResourceParent.clear(); m_NewParentName[0] = 0;
+        ImGui::OpenPopup(createParent ? "Create Resource Parent" : "Move Resources to Parent");
+    }
     if (ImGui::BeginPopupModal("Create Object Resource", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
     {
         ImGui::InputTextWithHint("Name", "New object name", m_NewObjectName.data(), m_NewObjectName.size());
+        ImGui::TextWrapped("Parent: %s", Resource_Label(m_NewObjectParent).c_str());
+        ImGui::BeginDisabled(!m_NewObjectParent.empty());
         ImGui::Combo("Anchor Type", &m_NewObjectAnchor, "Map\0Character\0Boss\0");
-        ImGui::TextUnformatted(m_NewObjectAnchor == 2 ?
-            "Boss: motions follow the chosen boss BODY bone. Select the boss and bone in Object Detail." : m_NewObjectAnchor == 0 ?
-            "Map: motions created later use a fixed world anchor." :
-            "Character: motions created later use each living character as their anchor.");
-        ImGui::TextUnformatted("Creates the parent Object only. Add its motions from Object Detail.");
+        ImGui::EndDisabled();
+        ImGui::TextUnformatted("Assign a model, then add Motions in Object Detail.");
         ImGui::BeginDisabled(!m_NewObjectName[0]);
         if (ImGui::Button("Create"))
         {
@@ -1532,87 +2177,45 @@ void CWorldObjectTool::Render_Resources(const bool fillPane)
         if (m_CreateObjectFailed) ImGui::TextWrapped("%s", m_Status.c_str());
         ImGui::EndPopup();
     }
-    ImGui::SetNextItemWidth(-1.f);
-    ImGui::InputTextWithHint("##ObjectSearch", "Search object or motion", m_ObjectSearch.data(), m_ObjectSearch.size());
-    const float treeHeight = (std::max)(120.f, ImGui::GetContentRegionAvail().y * (fillPane ? 1.f : .28f));
-    if (ImGui::BeginChild("ObjectResourceTree", ImVec2(0.f, treeHeight), true))
+    if (ImGui::BeginPopupModal("Create Resource Parent", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
     {
-        const auto search = Lower(m_ObjectSearch.data());
-        const auto stateMatches = [&search](const std::string& id, const WORLD_SEQUENCE_TEMPLATE* sequence)
-        {
-            const auto searchable = sequence ? sequence->displayName + " " + sequence->sequenceId + " " + id : id;
-            return Lower(searchable).find(search) != std::string::npos;
-        };
-        for (const char* anchor : {"WORLD", "PLAYER", "BOSS"})
-        {
-            const char* category = std::string(anchor) == "WORLD" ? "Map" : std::string(anchor) == "BOSS" ? "Boss" : "Character";
-            size_t count = 0;
-            for (const auto& resource : m_Document.Get_ObjectResources()) if (resource.anchorKind == anchor) ++count;
-            const std::string categoryLabel = std::string(category) + " (" + std::to_string(count) + ")";
-            if (!ImGui::TreeNodeEx(anchor, ImGuiTreeNodeFlags_DefaultOpen, "%s", categoryLabel.c_str())) continue;
-            for (const auto& resource : m_Document.Get_ObjectResources())
-            {
-                if (resource.anchorKind != anchor) continue;
-                const auto states = StateIds(resource);
-                const bool resourceMatches = search.empty() || Lower(resource.displayName + " " + resource.objectId).find(search) != std::string::npos;
-                bool matches = resourceMatches;
-                if (!matches)
-                    for (const auto& id : states)
-                    {
-                        const auto* state = m_Document.Find_Instance(id);
-                        const auto* sequence = state ? m_Document.Find_Template(state->templateId) : nullptr;
-                        if (stateMatches(id, sequence)) { matches = true; break; }
-                    }
-                if (!matches) continue;
-                ImGui::PushID(resource.objectId.c_str());
-                if (!resource.motionInstanceIds.empty())
-                {
-                    // One authoring entry opens every member; it is not a folder of solo previews.
-                    if (ImGui::Selectable(resource.displayName.c_str(), m_SelectedGroup == resource.objectId))
-                    {
-                        Select_Object(resource.objectId);
-                        m_SequencerOpen = true;
-                        m_DetailOpen = true;
-                        Seek(0.f);
-                    }
-                    if (ImGui::IsItemHovered()) ImGui::SetTooltip("Open all %zu motions together in Object Sequencer.", states.size());
-                    ImGui::PopID();
-                    continue;
-                }
-                const auto label = resource.displayName +
-                    (resource.sequenceInstanceId.empty() && resource.modelAssetId.empty() ? " [assign model]" : "");
-                const ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick |
-                    ImGuiTreeNodeFlags_SpanAvailWidth | (m_SelectedObject == resource.objectId && m_SelectedInstance.empty() ? ImGuiTreeNodeFlags_Selected : 0);
-                if (!search.empty()) ImGui::SetNextItemOpen(true, ImGuiCond_Always);
-                const bool open = ImGui::TreeNodeEx("Resource", flags, "%s", label.c_str());
-                if (ImGui::IsItemClicked()) Select_Object(resource.objectId);
-                if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", resource.objectId.c_str());
-                if (open)
-                {
-                    for (const auto& id : states)
-                    {
-                        const auto* instance = m_Document.Find_Instance(id);
-                        const auto* sequence = instance ? m_Document.Find_Template(instance->templateId) : nullptr;
-                        if (!resourceMatches && !stateMatches(id, sequence)) continue;
-                        ImGui::PushID(id.c_str());
-                        if (ImGui::Selectable(sequence ? sequence->displayName.c_str() : id.c_str(), id == m_SelectedInstance))
-                        {
-                            m_SelectedGroup.clear();
-                            m_SelectedObject = resource.objectId;
-                            Select_State(id);
-                        }
-                        if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", id.c_str());
-                        ImGui::PopID();
-                    }
-                    if (states.empty()) ImGui::TextDisabled("No motions - select Object to Create Motion");
-                    ImGui::TreePop();
-                }
-                ImGui::PopID();
-            }
-            ImGui::TreePop();
-        }
+        ImGui::Text("Group %zu selected branches", m_ParentEditSelection.size());
+        ImGui::InputTextWithHint("Parent Name", "New parent name", m_NewParentName.data(), m_NewParentName.size());
+        ImGui::BeginDisabled(!m_NewParentName[0]);
+        if (ImGui::Button("Create"))
+            if (Create_ResourceParent(m_ParentEditSelection)) ImGui::CloseCurrentPopup();
+        ImGui::EndDisabled(); ImGui::SameLine();
+        if (ImGui::Button("Cancel")) ImGui::CloseCurrentPopup();
+        if (!m_Status.empty()) ImGui::TextWrapped("%s", m_Status.c_str());
+        ImGui::EndPopup();
     }
-    ImGui::EndChild();
+    if (ImGui::BeginPopupModal("Move Resources to Parent", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+    {
+        ImGui::Text("Move %zu selected branches", m_ParentEditSelection.size());
+        ImGui::SetNextItemWidth(420.f);
+        if (ImGui::BeginCombo("Parent", Resource_Label(m_MoveResourceParent).c_str()))
+        {
+            if (ImGui::Selectable("Category root", m_MoveResourceParent.empty())) m_MoveResourceParent.clear();
+            const auto target = [&](const std::string& id)
+            {
+                if (!Can_MoveResources(m_ParentEditSelection, id)) return;
+                ImGui::PushID(id.c_str());
+                if (ImGui::Selectable(Resource_Label(id).c_str(), m_MoveResourceParent == id)) m_MoveResourceParent = id;
+                ImGui::PopID();
+            };
+            for (const auto& folder : m_Document.Get_ObjectFolders()) target(folder.folderId);
+            for (const auto& object : m_Document.Get_ObjectResources()) target(object.objectId);
+            ImGui::EndCombo();
+        }
+        ImGui::TextUnformatted("Object models, positions, counts and Motions stay unchanged.");
+        ImGui::BeginDisabled(!Can_MoveResources(m_ParentEditSelection, m_MoveResourceParent));
+        if (ImGui::Button("Move"))
+            if (Move_Resources(m_ParentEditSelection, m_MoveResourceParent)) ImGui::CloseCurrentPopup();
+        ImGui::EndDisabled(); ImGui::SameLine();
+        if (ImGui::Button("Cancel")) ImGui::CloseCurrentPopup();
+        if (!m_Status.empty()) ImGui::TextWrapped("%s", m_Status.c_str());
+        ImGui::EndPopup();
+    }
 }
 
 void CWorldObjectTool::Render_EffectResources()
@@ -1652,7 +2255,15 @@ void CWorldObjectTool::Render_EffectResources()
             const auto& label = effect.strDisplayName.empty() ? effect.strAssetId : effect.strDisplayName;
             ImGui::BeginDisabled(!effect.strStatus.empty());
             if (ImGui::Selectable(label.c_str(), m_SelectedEffectAuthored && m_SelectedEffectResource == effect.strAssetId))
-            { m_SelectedEffectResource = effect.strAssetId; m_SelectedEffectAuthored = true; }
+            { m_SelectedEffectResource = effect.strAssetId; m_SelectedEffectAuthored = true; m_NativeResourceSelected = true; }
+            Offer_CompositionResourceDrag(label.c_str(), [&]() -> COMPOSITION_TRANSFER {
+                if (!effect.strStatus.empty()) return {};
+                auto transfer = std::make_shared<COMPOSITION_EFFECT_TRANSFER>();
+                transfer->label = label;
+                COMPOSITION_EFFECT_ITEM item; item.resourceId = effect.strAssetId; item.displayName = label;
+                transfer->items.push_back(std::move(item));
+                return transfer;
+            });
             ImGui::EndDisabled();
             if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
                 ImGui::SetTooltip("%s\n%s", effect.strAssetId.c_str(), effect.strStatus.c_str());
@@ -1668,7 +2279,17 @@ void CWorldObjectTool::Render_EffectResources()
                 (effect.strDisplayName.empty() ? effect.strResourceId : effect.strDisplayName);
             ImGui::BeginDisabled(!effect.strStatus.empty());
             if (ImGui::Selectable(label.c_str(), !m_SelectedEffectAuthored && m_SelectedEffectResource == effect.strResourceId && m_SelectedEffectKind == effect.eKind))
-            { m_SelectedEffectResource = effect.strResourceId; m_SelectedEffectKind = effect.eKind; m_SelectedEffectAuthored = false; }
+            { m_SelectedEffectResource = effect.strResourceId; m_SelectedEffectKind = effect.eKind; m_SelectedEffectAuthored = false; m_NativeResourceSelected = true; }
+            Offer_CompositionResourceDrag(label.c_str(), [&]() -> COMPOSITION_TRANSFER {
+                if (!effect.strStatus.empty()) return {};
+                auto transfer = std::make_shared<COMPOSITION_EFFECT_TRANSFER>();
+                transfer->label = label;
+                COMPOSITION_EFFECT_ITEM item;
+                item.resourceKind = effect.eKind == EFFECT_V2_RESOURCE_KIND::GROUP ? "GROUP" : "LEAF";
+                item.resourceId = effect.strResourceId; item.displayName = label;
+                transfer->items.push_back(std::move(item));
+                return transfer;
+            });
             ImGui::EndDisabled();
             if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
                 ImGui::SetTooltip("%s\n%s", effect.strResourceId.c_str(), effect.strStatus.c_str());
@@ -1704,59 +2325,10 @@ bool CWorldObjectTool::Build_SelectedEffectCandidate(CWorldSequenceDocument& sta
     const auto* sequence = instance ? m_Document.Find_Template(instance->templateId) : nullptr;
     if (!sequence || m_SelectedEffectResource.empty())
     { m_Status = "Select an Object Motion and an Effect."; return false; }
-    double span = 0.;
-    if (m_SelectedEffectAuthored)
-    {
-        const auto document = CEffectCatalog::Find(m_SelectedEffectResource);
-        if (!document) { m_Status = "Effect unavailable: " + CEffectCatalog::Get_Status(); return false; }
-        for (const auto& element : document->Elements)
-        {
-            const auto& timing = element.Detail.Timing;
-            span = (std::max)(span, 1000.0 * (timing.fStartDelaySeconds + timing.fLifeTimeSeconds + timing.fAfterImageSeconds));
-        }
-        for (const auto& cue : document->ModelCues)
-            span = (std::max)(span, 1000.0 * (cue.fStartDelaySeconds + cue.fDurationSeconds));
-    }
-    else
-    {
-        std::shared_ptr<const EFFECT_V2_CATALOG_SNAPSHOT> snapshot;
-        if (!CEffectV2Catalog::Get().Load_ResourceSnapshot(m_SelectedEffectKind, m_SelectedEffectResource, snapshot, m_EffectResourceStatus))
-        { m_Status = "Effect Append failed: " + m_EffectResourceStatus; return false; }
-        // Match the existing V2 authoring preview span, including particles/trails
-        // remaining after emission ends. The row does not stretch leaf envelopes.
-        const auto leafSpan = [](const EFFECT_V2_DOCUMENT& document, const uint32_t explicitMs, const bool tailEnabled)
-        {
-            const auto& params = document.Desc.Params;
-            const double rate = (std::max)(.001, static_cast<double>(params.fPlayRate));
-            const double emission = explicitMs ? explicitMs : params.fLifetime > 0.f ?
-                std::ceil(params.fLifetime * 1000.0 / rate) : 3000.0;
-            const double tail = !tailEnabled ? 0.0 : document.eType == EFFECT_V2_TYPE::PARTICLE ?
-                params.Particle.vLifetime.y * 1000.0 / rate : document.eType == EFFECT_V2_TYPE::TRAIL ?
-                params.Trail.fPointLifetime * 1000.0 / rate : 0.0;
-            return emission + std::ceil(tail);
-        };
-        if (m_SelectedEffectKind == EFFECT_V2_RESOURCE_KIND::GROUP)
-        {
-            const auto* group = snapshot->Find_Group(m_SelectedEffectResource);
-            if (!group) { m_Status = "Selected Effect group is unavailable."; return false; }
-            span = group->iDurationMs;
-            if (!group->iDurationMs)
-                for (const auto& child : group->Children)
-                {
-                    const auto* leaf = snapshot->Find_Document(child.strEffectId);
-                    if (!leaf) { m_Status = "Selected Effect group child is unavailable."; return false; }
-                    span = (std::max)(span, child.iStartMs + leafSpan(*leaf, child.iDurationMs,
-                        child.eStop == EFFECT_V2_CHILD_STOP::DEACTIVATE));
-                }
-        }
-        else
-        {
-            const auto* leaf = snapshot->Find_Document(m_SelectedEffectResource);
-            if (!leaf) { m_Status = "Selected Effect leaf is unavailable."; return false; }
-            span = leafSpan(*leaf, 0u, true);
-        }
-    }
-    if (!std::isfinite(span)) { m_Status = "Selected Effect has an invalid duration."; return false; }
+    uint32_t durationMs = 0u;
+    const std::string kind = m_SelectedEffectAuthored ? "V1_EFFECT" :
+        m_SelectedEffectKind == EFFECT_V2_RESOURCE_KIND::GROUP ? "GROUP" : "LEAF";
+    if (!ResolveTransferredEffectDuration(kind, m_SelectedEffectResource, durationMs, m_Status)) return false;
     staged = m_Document;
     auto* edited = staged.Find_Template(sequence->sequenceId);
     WORLD_SEQUENCE_EFFECT_TRACK row;
@@ -1771,7 +2343,7 @@ bool CWorldObjectTool::Build_SelectedEffectCandidate(CWorldSequenceDocument& sta
     row.timing = "TIME";
     row.startMs = 0u;
     row.followObject = true;
-    row.durationMs = static_cast<uint32_t>((std::clamp)(std::ceil(span), 1., 600000.));
+    row.durationMs = durationMs;
     WORLD_OBJECT_TRAVEL_DRAFT travel;
     std::string travelStatus;
     const bool preserveTravel = ObjectTravel::Read(*edited, false, travel, travelStatus);
@@ -1935,14 +2507,33 @@ void CWorldObjectTool::Render_ColliderRows(WORLD_SEQUENCE_TEMPLATE& sequence)
     bool changed = EditUInt("Collider Start (ms)", edited.startMs, sequence.durationMs - 1u);
     changed |= EditUInt("Collider Duration (ms)", edited.durationMs, sequence.durationMs, 1u);
     changed |= ImGui::DragFloat3("Collider Offset (m)", &edited.positionOffset.x, .01f, -100000.f, 100000.f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
-    changed |= ImGui::DragFloat3("Collider Half Extents (m)", &edited.halfExtents.x, .01f, .0011f, 1000.f, "%.4f", ImGuiSliderFlags_AlwaysClamp);
-    changed |= ImGui::DragFloat("Collider Yaw (deg)", &edited.yawDegrees, .5f, -36000.f, 36000.f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
+    int shape = edited.shape == "CYLINDER" ? 1 : 0;
+    ImGui::BeginDisabled(edited.behavior == "HOOK_CAPTURE");
+    if (ImGui::Combo("Collider Shape", &shape, "Box\0Cylinder\0"))
+    {
+        edited.shape = shape == 1 ? "CYLINDER" : "BOX";
+        if (shape == 1) edited.halfExtents.x = edited.halfExtents.z = (std::max)(edited.halfExtents.x, edited.halfExtents.z);
+        changed = true;
+    }
+    ImGui::EndDisabled();
+    if (edited.shape == "CYLINDER")
+    {
+        if (ImGui::DragFloat("Collider Radius (m)", &edited.halfExtents.x, .01f, .0011f, 1000.f, "%.4f", ImGuiSliderFlags_AlwaysClamp))
+        { edited.halfExtents.z = edited.halfExtents.x; changed = true; }
+        changed |= ImGui::DragFloat("Collider Half Height (m)", &edited.halfExtents.y, .01f, .0011f, 1000.f, "%.4f", ImGuiSliderFlags_AlwaysClamp);
+    }
+    else
+    {
+        changed |= ImGui::DragFloat3("Collider Half Extents (m)", &edited.halfExtents.x, .01f, .0011f, 1000.f, "%.4f", ImGuiSliderFlags_AlwaysClamp);
+        changed |= ImGui::DragFloat("Collider Yaw (deg)", &edited.yawDegrees, .5f, -36000.f, 36000.f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
+    }
     int behavior = edited.behavior == "HOOK_CAPTURE" ? 2 : edited.behavior == "INSTANT_DEATH" ? 1 : 0;
     if (ImGui::Combo("Collider Behavior", &behavior, "Damage\0Instant Death\0Hook Capture\0"))
     {
         edited.behavior = behavior == 2 ? "HOOK_CAPTURE" : behavior == 1 ? "INSTANT_DEATH" : "DAMAGE";
         edited.damagePercent = behavior == 0 ? 20.f : 0.f;
         if (behavior != 2) { edited.gripLocalOffset = {}; edited.attachmentBone.clear(); }
+        else edited.shape = "BOX";
         changed = true;
     }
     if (edited.behavior == "DAMAGE")
@@ -1960,7 +2551,7 @@ void CWorldObjectTool::Render_ColliderRows(WORLD_SEQUENCE_TEMPLATE& sequence)
         { edited.attachmentBone = bone.data(); changed = true; }
         ImGui::TextWrapped("Grip Offset uses meters after the model import scale and before Object scale. A named bone requires an animated model and an existing bone.");
     }
-    ImGui::TextWrapped("Half Extents are half the rectangle dimensions. Ground collision uses Collider Yaw and ignores visual mesh spin. Start + Duration must fit inside Motion Lifetime.");
+    ImGui::TextWrapped("Cylinder uses Radius and Half Height; Box uses Half Extents and Collider Yaw. Ground collision ignores visual mesh spin. Hook Capture requires Box. Start + Duration must fit inside Motion Lifetime.");
     if (!changed) return;
     auto candidate = m_Document;
     auto* staged = candidate.Find_Template(sequence.sequenceId);
@@ -2278,7 +2869,17 @@ void CWorldObjectTool::Render_AnimationResources()
             ImGui::PushID(clip.clipName.c_str());
             const float nameWidth = (std::max)(80.f, ImGui::GetContentRegionAvail().x - 82.f);
             if (ImGui::Selectable(clip.clipName.c_str(), clip.clipName == m_SelectedAnimationClip, 0, ImVec2(nameWidth, 0.f)))
-                m_SelectedAnimationClip = clip.clipName;
+            { m_SelectedAnimationClip = clip.clipName; m_NativeResourceSelected = true; }
+            Offer_CompositionResourceDrag(clip.clipName.c_str(), [&]() -> COMPOSITION_TRANSFER {
+                auto transfer = std::make_shared<COMPOSITION_ANIMATION_TRANSFER>();
+                transfer->label = clip.clipName;
+                transfer->resource.strModelAssetId = m_AnimationModelAssetId;
+                transfer->resource.strSourceAssetId = m_AnimationModelAssetId;
+                transfer->resource.strRuntimeClip = clip.clipName;
+                transfer->resource.strDisplayName = clip.clipName;
+                transfer->resource.iDurationMs = static_cast<uint32_t>((std::clamp)(std::ceil(clip.durationMs), 1., 600000.));
+                return transfer;
+            });
             if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s\n%.3f ms\n%s", clip.clipName.c_str(), clip.durationMs, m_AnimationModelAssetId.c_str());
             ImGui::SameLine(); ImGui::TextDisabled("%.0f ms", clip.durationMs);
             ImGui::PopID();
@@ -2613,6 +3214,23 @@ bool CWorldObjectTool::Render_TravelEditor(WORLD_SEQUENCE_INSTANCE& instance, WO
 
 void CWorldObjectTool::Render_Detail()
 {
+    if (const auto* folder = m_Document.Find_ObjectFolder(m_SelectedFolder))
+    {
+        ImGui::SeparatorText("Parent / Organization");
+        if (Render_SaveButton()) return;
+        Render_SaveStatus();
+        auto name = folder->displayName;
+        if (EditText("Parent Name", name))
+        {
+            auto candidate = m_Document;
+            candidate.Find_ObjectFolder(m_SelectedFolder)->displayName = name;
+            if (candidate.Validate_ObjectHierarchy(m_Status))
+            { m_Document = std::move(candidate); m_Document.Touch(); m_Dirty = true; }
+        }
+        ImGui::TextWrapped("%s", Resource_Label(m_SelectedFolder).c_str());
+        ImGui::TextWrapped("Create Object adds a child here. Use Ctrl/Shift selection and Move to Parent to organize existing Objects. Each Object keeps its own model and Motions.");
+        return;
+    }
     if (auto* group = m_Document.Find_ObjectResource(m_SelectedGroup)) Render_GroupDetail(*group);
     auto* resource = m_Document.Find_ObjectResource(m_SelectedObject);
     if (!resource) { ImGui::TextUnformatted("Select an object resource."); return; }
@@ -3142,6 +3760,8 @@ void CWorldObjectTool::Render_GroupSequence(const WORLD_SEQUENCE_OBJECT_RESOURCE
             else Play_Preview();
         }
         ImGui::SameLine();
+        if (ImGui::Button("Play at Player")) Play_AtPlayer();
+        ImGui::SameLine();
         if (ImGui::Button("Stop / Restore")) { Stop_Preview(); m_ClockMs = 0.f; }
         ImGui::SameLine();
         if (ImGui::Checkbox("Preview at Character", &m_PreviewAtCharacter)) m_PreviewDirty = m_PreviewActive;
@@ -3304,6 +3924,7 @@ void CWorldObjectTool::Render_Sequence(WORLD_SEQUENCE_TEMPLATE& sequence)
             { m_Playing = false; m_PlayAfterPreparation = false; }
         else Play_Preview();
     }
+    ImGui::SameLine(); if (ImGui::Button("Play at Player")) Play_AtPlayer();
     ImGui::SameLine(); if (ImGui::Button("Stop / Restore")) { Stop_Preview(); m_ClockMs = 0.f; }
     const auto* resource = m_Document.Find_ObjectResource(m_SelectedObject);
     const auto* selectedInstance = m_Document.Find_Instance(m_SelectedInstance);
@@ -3748,6 +4369,7 @@ void CWorldObjectTool::Render_PhysicalResources()
                 (asset.kind != PHYSICAL_RESOURCE_KIND::MODEL || m_AnimationCandidateObjectId == m_SelectedObject)))
             {
                 m_SelectedPhysical = asset.assetId;
+                m_NativeResourceSelected = true;
                 if (asset.kind == PHYSICAL_RESOURCE_KIND::MODEL)
                 {
                     m_AnimationCandidateModelAssetId = asset.assetId;

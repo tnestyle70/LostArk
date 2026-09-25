@@ -636,6 +636,7 @@ bool_t Client::CEffectDocumentCodec::Validate_SourceContract(
 					(Distribution.eParameterBinding !=
 						EFFECT_DISTRIBUTION_PARAMETER_BINDING::NONE ||
 					 !Distribution.strParameterName.empty() ||
+					 Distribution.ParameterMapping.has_value() ||
 					 0u != Distribution.iOperation ||
 					 0u != Distribution.iRandomLockAxes ||
 					 0u != Distribution.iLookupTableChunkSize ||

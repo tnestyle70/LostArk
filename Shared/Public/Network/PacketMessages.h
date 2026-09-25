@@ -1240,12 +1240,14 @@ namespace LostArk::Shared
 	/* Bingo bomb. The Server owns the whole clock: the mark rides one
 	player, and when it expires the bomb is planted at wherever that player
 	was standing. The Client draws only the phase the snapshot names. */
-	constexpr std::uint32_t KOUKU_BINGO_BOMB_MARK_MS = 5000u;
-	constexpr std::uint32_t KOUKU_BINGO_BOMB_INTERVAL_MS = 5000u;
+	constexpr std::uint32_t KOUKU_BINGO_BOMB_MARK_MS = 6000u;
+	constexpr std::uint32_t KOUKU_BINGO_BOMB_INTERVAL_MS = 20000u;
 	constexpr std::uint32_t KOUKU_BINGO_HAMMER_INTERVAL_MS = 10000u;
 	constexpr std::uint32_t KOUKU_BINGO_HAMMER_WARNING_MS = 3000u;
 	/* How long the planted bomb burns before it paints its cross. */
-	constexpr std::uint32_t KOUKU_BINGO_BOMB_FUSE_MS = 3000u;
+	constexpr std::uint32_t KOUKU_BINGO_BOMB_FUSE_MS = 4000u;
+	constexpr std::uint32_t KOUKU_BINGO_BOMB_DROP_DELAY_MS = 2000u;
+	constexpr std::uint32_t KOUKU_BINGO_BOMB_INITIAL_DELAY_MS = 10000u;
 	/* One mark per player in a full room. */
 	constexpr std::int32_t KOUKU_BINGO_MAX_BOMBS = 4;
 
@@ -1827,6 +1829,7 @@ namespace LostArk::Shared
 		MISS,
 		INVINCIBLE,
 		HEAL,
+		ABSORB, // Actual shield absorption, separate from HP damage.
 		END
 	};
 	inline bool Is_Valid_DamageHitFlag(const DAMAGE_HIT_FLAG eFlag)

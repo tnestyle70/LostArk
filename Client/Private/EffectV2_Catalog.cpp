@@ -26,7 +26,6 @@
 namespace
 {
 	constexpr const char* BOSS_VALTAN_ARCHETYPE_ID = "BOSS_VALTAN";
-	constexpr std::string_view BOSS_VALTAN_RESOURCE_PREFIX = "boss.valtan.";
 	constexpr std::string_view DOCUMENT_SUFFIX = ".effectv2.json";
 	constexpr std::string_view GROUP_SUFFIX = ".effectv2group.json";
 	constexpr uint32_t MAX_BINDING_MS = 600000u;
@@ -527,11 +526,10 @@ namespace
 					Binding.eResourceKind) ||
 				!Is_StableAsciiId(Binding.strResourceId,
 					Client::EFFECT_V2_RESOURCE_KIND::LEAF ==
-						Binding.eResourceKind ? 80u : 160u) ||
-				!Binding.strResourceId.starts_with(BOSS_VALTAN_RESOURCE_PREFIX))
+						Binding.eResourceKind ? 80u : 160u))
 			{
 				return Fail(strOutError,
-					"BOSS_VALTAN Effect V2 binding has an invalid typed boss.valtan.* resource.");
+					"BOSS_VALTAN Effect V2 binding has an invalid typed resource.");
 			}
 			if (!Is_StableAsciiId(Binding.strPatternId) ||
 				!Is_StableAsciiId(Binding.strStageId) ||
@@ -681,19 +679,6 @@ namespace
 		{
 			return Fail(strOutError,
 				"Effect V2 append startMs exceeds the ten-minute authoring limit.");
-		}
-		return true;
-	}
-
-	bool_t Validate_BossValtanMutationSubject(
-		const Client::EFFECT_V2_STAGE_BINDING_KEY& Key,
-		std::string& strOutError)
-	{
-		if (!Key.strResourceId.starts_with(BOSS_VALTAN_RESOURCE_PREFIX))
-		{
-			return Fail(strOutError,
-				"BOSS_VALTAN Effect V2 mutation requires a boss.valtan.* resource: " +
-				Key.strResourceId);
 		}
 		return true;
 	}
@@ -1457,8 +1442,7 @@ bool_t Client::CEffectV2Catalog::Mutate_BossValtanStageBinding(
 {
 	if (BOSS_VALTAN_BINDING_MUTATION::APPEND_BINDING == eMutation)
 	{
-		if (!Validate_StageBindingAppendRequest(SourceKey, strOutError) ||
-			!Validate_BossValtanMutationSubject(SourceKey, strOutError))
+		if (!Validate_StageBindingAppendRequest(SourceKey, strOutError))
 		{
 			return false;
 		}
@@ -1624,6 +1608,39 @@ bool_t Client::CEffectV2Catalog::Stage_AppendBossValtanStageBinding(
 	return Mutate_BossValtanStageBinding(
 		Key, iStartMs,
 		BOSS_VALTAN_BINDING_MUTATION::APPEND_BINDING, strOutError);
+}
+
+bool_t Client::CEffectV2Catalog::Stage_AppendBossValtanBindings(
+	const std::vector<EFFECT_V2_BINDING>& Sources,
+	std::vector<std::string>& OutBindingIds, std::string& strOutError)
+{
+	if (Sources.empty() || Sources.size() > 128u)
+		return Fail(strOutError, "Effect paste requires between one and 128 bindings.");
+	try
+	{
+		const std::lock_guard Lock(m_SnapshotMutex);
+		if (!m_pSnapshot || !m_pSnapshot->Is_Ready())
+			return Fail(strOutError, "Reload the Effect V2 catalog before pasting.");
+		auto candidate = m_pSnapshot->m_BossValtanBindings;
+		std::vector<std::string> created;
+		for (auto binding : Sources)
+		{
+			if (!Validate_StageBindingAppendRequest(
+					EFFECT_V2_STAGE_BINDING_KEY::From_Binding(binding), strOutError)) return false;
+			binding.strBindingId = Generate_StableBindingId(candidate, binding);
+			if (binding.strBindingId.empty())
+				return Fail(strOutError, "Effect paste exhausted stable binding identities.");
+			created.push_back(binding.strBindingId);
+			candidate.push_back(std::move(binding));
+		}
+		if (!Commit_BossValtanBindingsLocked(std::move(candidate), "paste", strOutError)) return false;
+		OutBindingIds = std::move(created);
+		return true;
+	}
+	catch (const std::exception& error)
+	{
+		return Fail(strOutError, "Effect paste failed before commit: " + std::string(error.what()));
+	}
 }
 
 bool_t Client::CEffectV2Catalog::Stage_RemoveBossValtanStageBinding(

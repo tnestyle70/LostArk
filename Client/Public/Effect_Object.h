@@ -159,6 +159,10 @@ public:
 	}
 	HRESULT Get_IsolatedRenderFailure() const { return m_hRenderFailure; }
 	void Set_RootWorld(const float4x4_t& RootWorld);
+	bool_t Validate_ParticleParameters(const std::vector<EFFECT_PARAMETER_INPUT>& Parameters,
+		std::string& strOutError) const;
+	bool_t Set_PresentationSample(const float4x4_t& RootWorld,
+		const std::vector<EFFECT_PARAMETER_INPUT>& Parameters, std::string& strOutError);
 	/* PresentationService calls this immediately before its single seek/update.
 	   It changes only the pending root so FOLLOW does not rebuild twice. */
 	void Set_RootWorldForNextUpdate(const float4x4_t& RootWorld);

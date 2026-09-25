@@ -494,7 +494,7 @@ def parse_shader_cache_serial(
 STATIC_PARAMETER_ARRAY_LAYOUTS = (
     ("staticSwitchParameters", 32),
     ("staticComponentMaskParameters", 44),
-    ("normalParameters", 32),
+    ("normalParameters", 29),
     ("terrainLayerWeightParameters", 32),
 )
 
@@ -553,6 +553,13 @@ def parse_static_parameter_set(
                     }
                 )
                 expression_guid_offset = entry_offset + 28
+            elif array_name == "normalParameters":
+                # FStaticNormalParameter serializes compression as one byte,
+                # followed by the 32-bit override and expression GUID.
+                value, overridden = struct.unpack_from("<BI", data, entry_offset + 8)
+                require(overridden in (0, 1), "normal override boolean is invalid")
+                row.update({"valueOrdinalCandidate": value, "overrideOrdinalCandidate": overridden})
+                expression_guid_offset = entry_offset + 13
             else:
                 value, overridden = struct.unpack_from("<II", data, entry_offset + 8)
                 row.update(

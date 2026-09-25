@@ -2,6 +2,7 @@
 
 #include "Client_Defines.h"
 #include "Engine_Defines.h"
+#include "CompositionEditing.h"
 
 #include <cstddef>
 #include <functional>
@@ -33,5 +34,11 @@ void RenderResourceTree(
 	const COMPOSITION_RESOURCE_TREE_NODE& Node,
 	const std::function<void(std::size_t)>& RenderLeaf,
 	const char* emptyMessage = nullptr);
+
+// Called immediately after a resource item. Captures an immutable value once
+// when its drag starts; ImGui transports only the token, never a source pointer.
+void Offer_CompositionResourceDrag(const char* label,
+    const std::function<COMPOSITION_TRANSFER()>& capture);
+COMPOSITION_TRANSFER Accept_CompositionResourceDropInWindow();
 
 NS_END

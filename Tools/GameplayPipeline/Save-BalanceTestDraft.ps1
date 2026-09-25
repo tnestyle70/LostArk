@@ -22,6 +22,7 @@ $domains = @{
 }
 $profilePath = 'Data/Balance/Profiles/Retail.balanceprofile.json'
 $profileDomains = @{
+    'madness' = @('madness', 'policyId', @('damageGainPercent','ballGainPercent','ballMultiplierPercent','ballRadiusM','dollGainPercent','dollMultiplierPercent','dollRadiusM','specialIntervalMs'))
     'players' = @('players', 'characterClass', @('maximumHp','maximumResource','resourceRegenPerSecond','attackPower','defense','criticalChancePercent','criticalDamagePercent'))
     'skills' = @('skills', 'skillId', @('cooldownMs','resourceCost','staggerDamage','partDamage'))
     'damageProfiles' = @('damageProfiles', 'damageProfileId', @('attackCoefficientBp','damageAddend','damageSpreadPercent','bossHealthBarDamage'))
@@ -65,7 +66,7 @@ try {
             [double]::IsNaN([double]$change.value) -or [double]::IsInfinity([double]$change.value)) {
             throw "Unsupported numeric field: $path/$($change.field)"
         }
-        if ([string]$change.field -cnotin @('moveSpeed','defenseStanceMoveSpeedScale','movementDistance','maximumRange','collisionRadius','engageDistance') -and
+        if ([string]$change.field -cnotin @('moveSpeed','defenseStanceMoveSpeedScale','movementDistance','maximumRange','collisionRadius','engageDistance','ballRadiusM','dollRadiusM') -and
             [math]::Floor([double]$change.value) -ne [double]$change.value) { throw 'A whole number is required.' }
         if ([double]$change.value -lt 0) { throw 'Negative balance values are not supported.' }
         if (-not $fields.Add("$path#$($domain[0])/$($change.id).$($change.field)")) { throw 'Duplicate draft field.' }

@@ -345,7 +345,7 @@ void LostArk::Server::CGameRoom::Resolve_CardMazeHammerHit(
 }
 
 bool LostArk::Server::CGameRoom::Spawn_KoukuCardRainSoldiers(
-    LostArk::Shared::NET_ENTITY_ID ownerId, std::uint32_t tick)
+    LostArk::Shared::NET_ENTITY_ID ownerId, std::uint32_t tick, const BOSS_PATTERN_MECHANIC_TRIGGER* tuning)
 {
     using namespace LostArk::Shared;
     const auto owner = std::find_if(m_WorldEntities.begin(), m_WorldEntities.end(),
@@ -361,24 +361,34 @@ bool LostArk::Server::CGameRoom::Spawn_KoukuCardRainSoldiers(
     // Source summons use the same three PPCH model families as the maze.
     // Encounter-lived soldiers keep their normal Server monster brain across patterns.
     // A room cap bounds repeated summons; no maze membership is added.
-    constexpr std::size_t maximumSoldiers = 48u;
-    if (m_KoukuCardRainSoldiers.size() + 3u > maximumSoldiers)
+    const std::array<std::uint32_t, 3u> counts = tuning ? tuning->SoldierCounts : std::array<std::uint32_t, 3u>{1u, 1u, 1u};
+    const float radiusMin = tuning ? tuning->fSoldierSpawnRadiusMinM : 3.f;
+    const float radiusMax = tuning ? tuning->fSoldierSpawnRadiusMaxM : 6.f;
+    const std::size_t count = counts[0] + counts[1] + counts[2];
+    if (!count || count > 64u || std::any_of(counts.begin(), counts.end(), [](auto n) { return n > 32u; }) ||
+        !std::isfinite(radiusMin) || !std::isfinite(radiusMax) || radiusMin < 0.f || radiusMax > 100.f || radiusMin > radiusMax)
+    { m_strStatus = "Card rain soldier tuning is invalid"; return false; }
+    constexpr std::size_t maximumSoldiers = 128u;
+    if (m_KoukuCardRainSoldiers.size() + count > maximumSoldiers)
     { m_strStatus = "Card rain soldier capacity reached; existing soldiers preserved"; return false; }
     constexpr std::array archetypes{ "MONSTER_KOUKU_CARD_CLUB", "MONSTER_KOUKU_CARD_HEART", "MONSTER_KOUKU_CARD_DIAMOND" };
-    std::array<const MONSTER_RUNTIME_PROFILE*, 3u> profiles{};
-    std::array<SPAWN_GROUP_ANCHOR, 3u> anchors{};
+    std::vector<const MONSTER_RUNTIME_PROFILE*> profiles(count);
+    std::vector<SPAWN_GROUP_ANCHOR> anchors(count);
+    std::vector<std::size_t> families;
+    for (std::size_t family = 0u; family < counts.size(); ++family)
+        families.insert(families.end(), counts[family], family);
     const float x = owner->fPositionX, y = owner->fPositionY, z = owner->fPositionZ;
     const std::string group = "kouku.cardrain." + std::to_string(ownerId) + "." + std::to_string(sequence);
     std::uint32_t random = ownerId ^ (sequence * 747796405u) ^ tick;
     const auto unit = [&]() { random = random * 1664525u + 1013904223u; return float(random >> 8u) / 16777216.f; };
-    for (std::size_t index = 0u; index < archetypes.size(); ++index)
+    for (std::size_t index = 0u; index < count; ++index)
     {
-        profiles[index] = m_SpawnGroupBootstrap.Find_Profile(archetypes[index]);
+        profiles[index] = m_SpawnGroupBootstrap.Find_Profile(archetypes[families[index]]);
         if (!profiles[index]) { m_strStatus = "Card rain soldier profile unavailable"; return false; }
         bool found = false;
         for (std::uint32_t attempt = 0u; attempt < 48u && !found; ++attempt)
         {
-            const float angle = unit() * 6.28318530718f, radius = 3.f + unit() * 3.f;
+            const float angle = unit() * 6.28318530718f, radius = radiusMin + unit() * (radiusMax - radiusMin);
             SERVER_NAV_POINT position{};
             if (!m_ServerNavigation.Sample_Position(x + std::cos(angle) * radius, z + std::sin(angle) * radius, position) ||
                 !std::isfinite(position.y) || std::abs(position.y - y) > 1.f ||
@@ -396,16 +406,16 @@ bool LostArk::Server::CGameRoom::Spawn_KoukuCardRainSoldiers(
             anchor.fYawDegrees = std::atan2(x - position.x, z - position.z) * 57.2957795131f;
             found = true;
         }
-        if (!found) { m_strStatus = "Card rain soldiers preserved: no three separated navigation points"; return false; }
+        if (!found) { m_strStatus = "Card rain soldiers preserved: not enough separated navigation points"; return false; }
     }
     if (m_iNextNetEntityId == INVALID_NET_ENTITY_ID ||
-        m_iNextNetEntityId > (std::numeric_limits<NET_ENTITY_ID>::max)() - 3u) return false;
+        m_iNextNetEntityId > (std::numeric_limits<NET_ENTITY_ID>::max)() - count) return false;
     const auto firstId = m_iNextNetEntityId;
-    m_WorldEntities.reserve(m_WorldEntities.size() + 3u);
-    for (std::uint32_t index = 0u; index < 3u; ++index)
+    m_WorldEntities.reserve(m_WorldEntities.size() + count);
+    for (std::uint32_t index = 0u; index < count; ++index)
     {
         SPAWN_GROUP_ENTRY entry{};
-        entry.strArchetypeId = archetypes[index]; entry.strAnchorId = anchors[index].strAnchorId; entry.iCount = 1u;
+        entry.strArchetypeId = archetypes[families[index]]; entry.strAnchorId = anchors[index].strAnchorId; entry.iCount = 1u;
         const auto id = m_iNextNetEntityId;
         if (!Spawn_Monster(group, entry, anchors[index], *profiles[index], index))
         {
@@ -423,7 +433,7 @@ bool LostArk::Server::CGameRoom::Spawn_KoukuCardRainSoldiers(
         m_KoukuCardRainSoldiers.emplace(id, KOUKU_CARD_RAIN_SOLDIER_STATE{
             ownerId, sequence, 0u });
     }
-    m_strStatus = "Card rain spawned three authoritative card soldiers";
+    m_strStatus = "Card rain spawned " + std::to_string(count) + " authoritative card soldiers";
     return true;
 }
 

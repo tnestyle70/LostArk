@@ -360,6 +360,8 @@ bool_t CGameInstance::Is_SoundCueActive(uint64_t handle) const
 { return m_pSound_Manager && m_pSound_Manager->Is_SoundCueActive(handle); }
 void CGameInstance::Pause_SoundCue(uint64_t handle, bool_t paused)
 { if (m_pSound_Manager) m_pSound_Manager->Pause_SoundCue(handle, paused); }
+void CGameInstance::Set_SoundCuePlaybackRate(uint64_t handle, f32_t rate)
+{ if (m_pSound_Manager) m_pSound_Manager->Set_SoundCuePlaybackRate(handle, rate); }
 void CGameInstance::Seek_SoundCue(uint64_t handle, uint32_t ageMs)
 { if (m_pSound_Manager) m_pSound_Manager->Seek_SoundCue(handle, ageMs); }
 void CGameInstance::Stop_SoundCue(uint64_t handle)

@@ -254,27 +254,30 @@ int LostArk::Server::Run_ServerBingoContractTests()
 		bombs.Fill(Kouku_BingoCrossMask(3));
 		tests.Require(0x1Fu == (bombs.Get_RedMask() & 0x1Fu),
 			"A second cross that finishes row 0 turns that row red");
-		/* A blast paints empty cells, promotes ordinary skulls, and preserves red. */
+		/* A blast paints empty cells red, clears ordinary skulls, and preserves red. */
 		CKoukuBingoRuntime blast;
 		blast.Detonate(Kouku_BingoCrossMask(12));
 		const std::uint32_t cross12 = Kouku_BingoCrossMask(12);
-		tests.Require(cross12 == blast.Get_WhiteMask() && 0u == blast.Get_RedMask(),
-			"A blast on an empty board lights its whole cross");
+		tests.Require(cross12 == blast.Get_WhiteMask() && cross12 == blast.Get_RedMask(),
+			"A blast on black floor creates red skulls throughout its cross");
 		blast.Detonate(cross12);
 		tests.Require(cross12 == blast.Get_WhiteMask() && cross12 == blast.Get_RedMask(),
-			"A second blast promotes all existing ordinary skulls to red");
+			"A second blast preserves every red skull");
 		blast.Detonate(Kouku_BingoCrossMask(11));
 		const std::uint32_t before = blast.Get_WhiteMask();
 		blast.Detonate(Kouku_BingoCrossMask(13));
 		tests.Require(before != blast.Get_WhiteMask() &&
 			0u != (blast.Get_RedMask() & (1u << 12)),
 			"An overlapping blast preserves and promotes the shared skulls");
+		blast.Reset(); blast.Fill(1u << 12u); blast.Detonate(Kouku_BingoCrossMask(12));
+		tests.Require(!(blast.Get_WhiteMask() & (1u << 12u)) && !(blast.Get_RedMask() & (1u << 12u)),
+			"A bomb removes an existing white skull while neighbouring black cells become red");
 		blast.Reset();
 		blast.Fill(0x1Fu);
 		tests.Require(0x1Fu == blast.Get_RedMask(), "Row 0 is red before the blast");
 		blast.Detonate(Kouku_BingoCrossMask(2));
 		tests.Require(0x1Fu == (blast.Get_WhiteMask() & 0x1Fu) &&
-			0x1Fu == blast.Get_RedMask(),
+			0x1Fu == (blast.Get_RedMask() & 0x1Fu),
 			"A blast never clears a cell that belongs to a completed line");
 		tests.Require(0u != (blast.Get_WhiteMask() & (1u << 7)),
 			"The same blast still lights the empty cell below the red row");
@@ -357,52 +360,56 @@ int LostArk::Server::Run_ServerBingoContractTests()
             room->Update_KoukuBingo(start + 29u);
             tests.Require(player.iCurrentMadness == 0u, "Ordinary skull madness waits for the one-second boundary");
             room->Update_KoukuBingo(start + 30u);
-            tests.Require(player.iCurrentMadness == 3u, "Ordinary skull adds exactly three madness per second");
-            room->m_KoukuBingo.Detonate(1u << 12u);
+            tests.Require(player.iCurrentMadness == 10u, "Ordinary skull adds ten madness per second");
+            room->m_KoukuBingo.Reset(); room->m_KoukuBingo.Detonate(1u << 12u);
             room->Update_KoukuBingo(start + 60u);
-            tests.Require(player.iCurrentMadness == 6u, "Red skull adds the same three madness per second");
+            tests.Require(player.iCurrentMadness == 20u, "Red skull adds the same ten madness per second");
             const auto countPhase = [&](BINGO_BOMB_PHASE phase) { return std::count_if(room->m_KoukuBingo.Get_Bombs().begin(), room->m_KoukuBingo.Get_Bombs().end(), [&](const auto& b) { return b.ePhase == phase; }); };
-            room->Update_KoukuBingo(start + 149u);
-            tests.Require(countPhase(BINGO_BOMB_PHASE::MARKED) == 0, "No automatic head mark before five seconds");
-            room->Update_KoukuBingo(start + 150u);
-            tests.Require(countPhase(BINGO_BOMB_PHASE::MARKED) == 1 && room->m_KoukuBingo.Get_Bombs()[0].iDetonateTick == start + 300u,
-                "Five-second head mark receives a separate five-second planting deadline");
-            room->Update_KoukuBingo(start + 300u);
-            tests.Require(countPhase(BINGO_BOMB_PHASE::MARKED) == 1 && countPhase(BINGO_BOMB_PHASE::PLANTED) == 1,
-                "Solo player plants and receives the next mark at exactly ten seconds");
-            const auto planted = std::find_if(room->m_KoukuBingo.Get_Bombs().begin(), room->m_KoukuBingo.Get_Bombs().end(), [](const auto& b) { return b.ePhase == BINGO_BOMB_PHASE::PLANTED; });
-            tests.Require(planted->iDetonateTick == start + 390u && planted->fPositionX == Kouku_BingoCellCenterX(12) && planted->fPositionZ == Kouku_BingoCellCenterZ(12),
-                "Planting snaps to the player's grid cell centre and retains a three-second fuse");
-            const auto h0 = room->m_KoukuBingoDuration.Hammers[0].anchor, h1 = room->m_KoukuBingoDuration.Hammers[1].anchor;
-            tests.Require(h0 >= 0 && h1 >= 0 && h0 / 10 == h1 / 10 && std::abs(h0 / 2 - h1 / 2) >= 2,
-                "Ten-second hammers choose two distinct parallel paths without crossing");
+            room->m_KoukuBingoDuration.bEncounterOwned = true;
+            room->m_KoukuBingoDuration.iEndTick = 0u;
+            room->m_KoukuBingoDuration.iNextMadnessTick = 99999u;
+            room->m_KoukuBingoDuration.iNextHammerTick = 99999u;
+            room->Update_KoukuBingo(start + 899u);
+            tests.Require(countPhase(BINGO_BOMB_PHASE::MARKED) == 0, "The first mark waits ten seconds plus twenty seconds");
+            room->Update_KoukuBingo(start + 900u);
+            tests.Require(countPhase(BINGO_BOMB_PHASE::MARKED) == 1 && room->m_KoukuBingo.Get_Bombs()[0].iDetonateTick == start + 1080u,
+                "The thirty-second mark lives exactly six seconds");
+            room->Update_KoukuBingo(start + 1080u);
+            tests.Require(countPhase(BINGO_BOMB_PHASE::MARKED) == 0 && countPhase(BINGO_BOMB_PHASE::PLANTED) == 0 &&
+                room->m_KoukuBingo.Get_Bombs()[0].iPlantTick == start + 1140u,
+                "Mark expiry captures a cell and hides the bomb for two seconds");
+            player.fPositionX = Kouku_BingoCellCenterX(0); player.fPositionZ = Kouku_BingoCellCenterZ(0);
+            room->Update_KoukuBingo(start + 1139u);
+            tests.Require(countPhase(BINGO_BOMB_PHASE::PLANTED) == 0, "The captured bomb cannot plant before its two-second delay");
+            room->Update_KoukuBingo(start + 1140u);
+            const auto& planted = room->m_KoukuBingo.Get_Bombs()[0];
+            tests.Require(planted.ePhase == BINGO_BOMB_PHASE::PLANTED && planted.iDetonateTick == start + 1260u &&
+                planted.fPositionX == Kouku_BingoCellCenterX(12) && planted.fPositionZ == Kouku_BingoCellCenterZ(12),
+                "Ground bomb uses the captured cell despite carrier movement and burns for four seconds");
             room->m_KoukuBingo.Fill(1u << 11u);
-            room->Update_KoukuBingo(start + 389u);
-            tests.Require(countPhase(BINGO_BOMB_PHASE::PLANTED) == 1 && !(room->m_KoukuBingo.Get_RedMask() & (1u << 11u)),
-                "Bomb cannot paint or recolour before its fuse deadline");
-            room->Update_KoukuBingo(start + 390u);
+            room->Update_KoukuBingo(start + 1259u);
+            tests.Require(countPhase(BINGO_BOMB_PHASE::PLANTED) == 1, "Bomb retains its full four-second fuse");
+            room->Update_KoukuBingo(start + 1260u);
             const auto cross = Kouku_BingoCrossMask(12);
-            tests.Require((room->m_KoukuBingo.Get_WhiteMask() & cross) == cross && (room->m_KoukuBingo.Get_RedMask() & (1u << 11u)),
-                "Detonation paints centre and four neighbours and promotes an existing ordinary skull");
-            room->m_KoukuBingoDuration.Hammers = {}; // Subsequent timing checks isolate bomb scheduling.
-            room->Update_KoukuBingo(start + 450u);
-            tests.Require(countPhase(BINGO_BOMB_PHASE::MARKED) == 1 && countPhase(BINGO_BOMB_PHASE::PLANTED) == 1,
-                "Solo player receives the third consecutive head mark at fifteen seconds");
-            for (std::size_t i = 0; i < room->m_KoukuBingo.Get_Bombs().size(); ++i) room->m_KoukuBingo.Clear_Bomb(i);
-            room->m_KoukuBingo.Start_Bomb(player.iNetEntityId, start + 1500u);
-            room->m_KoukuBingoDuration.iNextBombTick = start + 1500u;
+            tests.Require(countPhase(BINGO_BOMB_PHASE::PLANTED) == 0 &&
+                (room->m_KoukuBingo.Get_WhiteMask() & cross) == (cross & ~(1u << 11u)) &&
+                !(room->m_KoukuBingo.Get_WhiteMask() & (1u << 11u)),
+                "The bomb changes its cross at mark plus twelve seconds");
+            ++owner.iPatternSequence; owner.strPatternId = "different.normal.pattern";
             room->Update_KoukuBingo(start + 1500u);
-            const auto retained = room->m_KoukuBingo.Get_WhiteMask();
-            tests.Require(room->m_KoukuBingoDuration.iOwnerId == 0u && countPhase(BINGO_BOMB_PHASE::PLANTED) == 1,
-                "The fifty-second duration ends while a final marked bomb keeps its planting/fuse tail");
-            room->Begin_KoukuBingoDuration(owner, trigger, start + 1501u);
-            tests.Require(room->m_KoukuBingo.Get_WhiteMask() == retained && countPhase(BINGO_BOMB_PHASE::PLANTED) == 1,
-                "Repeating the Parent preserves board state and pending bomb tails within the same run");
-            room->Update_KoukuBingo(start + 1501u);
-            tests.Require(countPhase(BINGO_BOMB_PHASE::MARKED) == 1 && countPhase(BINGO_BOMB_PHASE::PLANTED) == 1,
-                "Repeating the Parent resumes the due fifty-second mark without a new five-second delay");
-            room->Update_KoukuBingo(start + 1590u);
-            tests.Require(countPhase(BINGO_BOMB_PHASE::PLANTED) == 0, "A previous-loop bomb completes its fuse during the next Parent");
+            tests.Require(countPhase(BINGO_BOMB_PHASE::MARKED) == 1 && room->m_KoukuBingoDuration.iMarkedBombCount == 2u,
+                "A different independent normal pattern cannot reset the fifty-second mark");
+            room->Update_KoukuBingo(start + 1680u); room->Update_KoukuBingo(start + 1740u);
+            room->Update_KoukuBingo(start + 1860u); room->Update_KoukuBingo(start + 2100u);
+            tests.Require(room->m_KoukuBingoDuration.iMarkedBombCount == 3u && room->m_KoukuBingoDuration.bSpecialPatternPending,
+                "The seventy-second third mark requests the authored special sequence once");
+            room->m_KoukuBingo.Fill(0x7fffu);
+            room->Update_KoukuBingo(start + 2280u); room->Update_KoukuBingo(start + 2340u);
+            room->Update_KoukuBingo(start + 2460u);
+            tests.Require(room->m_KoukuBingoDuration.iLastLineJudgementTick == start + 2460u && room->m_KoukuBingo.Count_CompletedRowsAndColumns() >= 3u,
+                "The third bomb detonates at twelve seconds and snapshots completed red rows and columns after its flip");
+            for (std::size_t slot = 0u; slot < room->m_KoukuBingo.Get_Bombs().size(); ++slot) room->m_KoukuBingo.Clear_Bomb(slot);
+            room->m_KoukuBingoDuration.bSpecialPatternPending = false;
 
             // At the authored hammer head; the raised chain must never deal damage.
             auto& hammer = room->m_KoukuBingoDuration.Hammers[0]; hammer.anchor = 4; hammer.startTick = 4000u;
@@ -433,19 +440,100 @@ int LostArk::Server::Run_ServerBingoContractTests()
             auto& region = window.CardRegions.emplace_back(); region.WorldTrack.bEnabled = true; region.WorldTrack.iDurationMs = 3000u;
             auto& keys = region.WorldTrack.Keys; keys.resize(3u);
             keys[0].bHasGripPosition = keys[1].bHasGripPosition = keys[2].bHasGripPosition = true;
-            keys[0].GripPosition = {0.f, 0.f, 1146.88f}; keys[1].GripPosition = keys[2].GripPosition = {10.f, 0.f, 1146.88f};
+            SERVER_NAV_POINT hookFloor{};
+            tests.Require(room->m_ServerNavigation.Sample_Position(1.f, 1146.88f, hookFloor), "Hook release fixture has a real admitted floor");
+            SERVER_NAV_POINT hookReleaseFloor{};
+            tests.Require(room->m_ServerNavigation.Project_PointOnSameLevel(hookFloor.x, hookFloor.z, hookReleaseFloor, hookFloor.y),
+                "Hook release fixture resolves the authoritative same-level landing projection");
+            keys[0].GripPosition = {0.f, hookFloor.y, 1146.88f}; keys[1].GripPosition = keys[2].GripPosition = {hookFloor.x, hookFloor.y, hookFloor.z};
             keys[1].iTimeMs = 1000u; keys[2].iTimeMs = 3000u; keys[2].bVisible = false;
             KOUKUSAYDON_LOGIC_LEDGER ledger; CKoukuSaydonLogicRuntime::Build(hookPattern, owner, 6000u, ledger);
             KOUKUSAYDON_LOGIC_OUTPUT output; std::vector<DAMAGE_EVENT> damage;
-            CKoukuSaydonLogicRuntime::Update(owner, hookPattern, ledger, room->m_Players, room->m_GameplayCatalog, nullptr, 6029u, damage, output);
-            tests.Require(player.iAttachmentReleaseTick == 7000u && player.fPositionX < 10.f,
+            CKoukuSaydonLogicRuntime::Update(owner, hookPattern, ledger, room->m_Players, room->m_GameplayCatalog, nullptr, 6029u, damage, output, &room->m_ServerNavigation);
+            tests.Require(player.iAttachmentReleaseTick == 7000u && player.fPositionX < hookFloor.x,
                 "Hook keeps the player attached while approaching its final grip");
-            CKoukuSaydonLogicRuntime::Update(owner, hookPattern, ledger, room->m_Players, room->m_GameplayCatalog, nullptr, 6030u, damage, output);
-            tests.Require(player.iAttachmentReleaseTick == 6030u && player.fPositionX == 10.f,
+            CKoukuSaydonLogicRuntime::Update(owner, hookPattern, ledger, room->m_Players, room->m_GameplayCatalog, nullptr, 6030u, damage, output, &room->m_ServerNavigation);
+            tests.Require(player.iAttachmentReleaseTick == 6030u && std::abs(player.fPositionX - hookReleaseFloor.x) < .001f,
                 "Hook releases at the exact final grip before its trailing visual hold");
             const auto remainedAttached = room->Update_PlayerAttachment(player, 6030u);
             tests.Require(!remainedAttached && player.eAttachmentSlot == PLAYER_ATTACHMENT_SLOT::NONE && player.eAction == PLAYER_ACTION_STATE::NONE,
                 "Hook endpoint clears movement lock without a synthetic knockdown delay");
+
+            // The small special Parent owns one detonation Trigger after its Medusa and black hole.
+            player.isCombatReady = true; player.iCurrentHp = 100u;
+            player.fPositionX = Kouku_BingoCellCenterX(2); player.fPositionZ = Kouku_BingoCellCenterZ(2);
+            auto& unsafe = room->m_Players[2u]; unsafe = player;
+            unsafe.iPlayerId = 2u; unsafe.iNetEntityId = 102u;
+            unsafe.fPositionX = Kouku_BingoCellCenterX(12); unsafe.fPositionZ = Kouku_BingoCellCenterZ(12);
+            room->m_KoukuBingo.Reset(); room->m_KoukuBingo.Fill(Kouku_BingoLineMask(KOUKU_BINGO_SIDE * 2u));
+            tests.Require(room->m_KoukuBingo.Count_CompletedRowsAndColumns() == 0u, "Red diagonals never count toward the three-row/column judgement");
+            room->m_KoukuBingo.Reset(); room->m_KoukuBingo.Fill(0x7fffu);
+            owner.iMaximumHp = owner.iCurrentHp = 10000u; owner.iMaximumHealthBars = 100u;
+            BOSS_PATTERN_DEFINITION linePattern; linePattern.strPatternId = owner.strPatternId;
+            auto& lines = linePattern.LogicWindows.emplace_back(); lines.eKind = BOSS_PATTERN_LOGIC_KIND::BINGO_COMPLETED_LINES;
+            lines.iDurationMs = 32628u; lines.iThreshold = 3u;
+            BOSS_PATTERN_LOGIC_RESULT protect; protect.eKind = BOSS_PATTERN_LOGIC_RESULT_KIND::PLAYER_INVULNERABILITY; protect.iDurationMs = 30000u;
+            lines.OnSuccess.push_back(protect);
+            KOUKUSAYDON_LOGIC_LEDGER lineLedger; CKoukuSaydonLogicRuntime::Build(linePattern, owner, 6100u, lineLedger);
+            lineLedger.iBingoLineJudgementTick = 6200u; lineLedger.iBingoCompletedLines = room->m_KoukuBingo.Count_CompletedRowsAndColumns();
+            KOUKUSAYDON_LOGIC_OUTPUT lineOutput;
+            CKoukuSaydonLogicRuntime::Update(owner, linePattern, lineLedger, room->m_Players, room->m_GameplayCatalog, nullptr, 6200u, damage, lineOutput);
+            room->m_KoukuBingoDuration.bLastLineCompletionSucceeded = lineOutput.BingoLineCompletion.value_or(false);
+            tests.Require(lineOutput.BingoLineCompletion == true && player.iInvulnerableEndTick == 7100u && unsafe.iInvulnerableEndTick == 7100u,
+                "Three completed red rows grant every living player a thirty-second buff independent of tile position");
+            BOSS_PATTERN_MECHANIC_TRIGGER detonation; detonation.eKind = BOSS_PATTERN_MECHANIC_TRIGGER_KIND::BINGO_DETONATION;
+            room->m_PendingKoukuMechanicTriggers.push_back({owner.iNetEntityId, owner.iPatternSequence, detonation});
+            room->Commit_KoukuMechanicTriggers(6500u);
+            tests.Require(player.iCurrentHp == 100u && unsafe.iCurrentHp == 100u && owner.iCurrentHp == 8700u,
+                "Successful three-line judgement makes the later black hole remove thirteen boss bars while the party survives");
+            room->Commit_KoukuMechanicTriggers(6501u);
+            tests.Require(owner.iCurrentHp == 8700u, "A drained detonation queue cannot apply thirteen bars twice");
+            room->m_KoukuBingoDuration.bLastLineCompletionSucceeded = false;
+            player.iShield = unsafe.iShield = 5000u;
+            room->m_PendingKoukuMechanicTriggers.push_back({owner.iNetEntityId, owner.iPatternSequence, detonation});
+            room->Commit_KoukuMechanicTriggers(6550u);
+            tests.Require(player.iCurrentHp == 0u && unsafe.iCurrentHp == 0u && owner.iCurrentHp == 8700u,
+                "Failed three-line judgement wipes the whole party through shields and prior protection without damaging the boss");
+
+            player.iCurrentHp = 100u; player.eAction = PLAYER_ACTION_STATE::NONE; player.isCombatReady = true;
+            player.fPositionX = owner.fPositionX + 1.f; player.fPositionZ = owner.fPositionZ;
+            unsafe.iCurrentHp = 100u; unsafe.eAction = PLAYER_ACTION_STATE::NONE; unsafe.isCombatReady = true;
+            unsafe.fPositionX = owner.fPositionX; unsafe.fPositionZ = owner.fPositionZ + 10.f;
+            owner.iTargetEntityId = owner.iPatternTargetEntityId = unsafe.iNetEntityId;
+            BOSS_PATTERN_DEFINITION tracking; tracking.strPatternId = owner.strPatternId;
+            auto& track = tracking.MechanicTriggers.emplace_back(); track.eKind = BOSS_PATTERN_MECHANIC_TRIGGER_KIND::BOSS_TRACK_TARGET;
+            track.iDurationMs = 34u;
+            KOUKUSAYDON_LOGIC_LEDGER trackingLedger; CKoukuSaydonLogicRuntime::Build(tracking, owner, 6200u, trackingLedger);
+            room->Update_KoukuPlayerTargets(owner, tracking, trackingLedger, room->m_GameplayCatalog.Active(), 6200u);
+            tests.Require(owner.iPatternTargetEntityId == player.iNetEntityId && std::abs(owner.fYawDegrees) < .001f,
+                "The one-shot facing Trigger immediately chooses the closest living player using the Saydon model basis");
+            track.iDurationMs = 10000u; track.fFollowSpeedScale = 1.f;
+            CKoukuSaydonLogicRuntime::Build(tracking, owner, 6300u, trackingLedger);
+            room->Update_KoukuPlayerTargets(owner, tracking, trackingLedger, room->m_GameplayCatalog.Active(), 6300u);
+            tests.Require(trackingLedger.bTrackingTargetReached && trackingLedger.PlayerTargetWindows.front().bClosed,
+                "Moving pursuit completes its pattern when the target is within body distance");
+
+            BOSS_PATTERN_DEFINITION contact; contact.strPatternId = owner.strPatternId;
+            auto& flame = contact.LogicWindows.emplace_back(); flame.eKind = BOSS_PATTERN_LOGIC_KIND::AREA_OVERLAP;
+            flame.iDurationMs = 500u; flame.iRepeatIntervalMs = 100u;
+            auto& flameRegion = flame.CardRegions.emplace_back(); flameRegion.eAnchor = BOSS_LOGIC_REGION_ANCHOR::BOSS_CURRENT;
+            flameRegion.fHalfX = flameRegion.fHalfZ = 2.f;
+            BOSS_PATTERN_LOGIC_RESULT burn; burn.eKind = BOSS_PATTERN_LOGIC_RESULT_KIND::FIXED_DAMAGE; burn.iDamageAmount = 10u;
+            flame.OnSuccess.push_back(burn);
+            owner.iPatternStartTick = 6400u; owner.KoukuContactLedger.reset();
+            auto copy = owner; copy.iNetEntityId = owner.iNetEntityId + 1u; copy.fPositionX += 30.f;
+            player.iCurrentHp = 100u; player.fPositionX = owner.fPositionX; player.fPositionZ = owner.fPositionZ;
+            unsafe.iCurrentHp = 100u; unsafe.fPositionX = copy.fPositionX; unsafe.fPositionZ = copy.fPositionZ;
+            room->Update_KoukuActorContacts(owner, contact, room->m_GameplayCatalog.Active(), 6400u);
+            room->Update_KoukuActorContacts(copy, contact, room->m_GameplayCatalog.Active(), 6400u);
+            room->Update_KoukuActorContacts(owner, contact, room->m_GameplayCatalog.Active(), 6400u);
+            tests.Require(player.iCurrentHp == 90u && unsafe.iCurrentHp == 90u && owner.KoukuContactLedger != copy.KoukuContactLedger,
+                "Direction actors own separate periodic contact ledgers and use their actual positions without duplicate-tick damage");
+            owner.fPositionX += 60.f;
+            room->Update_KoukuActorContacts(owner, contact, room->m_GameplayCatalog.Active(), 6403u);
+            room->Update_KoukuActorContacts(copy, contact, room->m_GameplayCatalog.Active(), 6403u);
+            tests.Require(player.iCurrentHp == 90u && unsafe.iCurrentHp == 80u,
+                "Moving the real direction actor moves its fire region while a clone retains its own next contact tick");
         }
     }
 #endif

@@ -1,4 +1,5 @@
 #include "Model.h"
+#include "SourceCharacterProgramRegistry.h"
 #pragma push_macro("new")
 #undef new
 #include "Assimp/Importer.hpp"
@@ -1887,16 +1888,40 @@ HRESULT CModel::Apply_MaterialOverrides(MODEL_MATERIAL_SOURCE& materialSource, c
                 transfer.y < 1.f || transfer.z <= 0.f || transfer.z > 128.f)
                 return failOverride("invalid source static shadow inputs");
         }
+        if (replacement.surface.sourceFoliageWind)
+        {
+            const auto& surface = replacement.surface;
+            const bool nativeMap = surface.family == MODEL_SURFACE_FAMILY::SOURCE_CHARACTER &&
+                surface.sourceCharacter.program >= 1100u && surface.sourceCharacter.program <= 1166u;
+            if (!nativeMap && surface.family != MODEL_SURFACE_FAMILY::SOURCE_FOLIAGE_MASKED &&
+                surface.family != MODEL_SURFACE_FAMILY::SOURCE_GRASS_MASKED) return failOverride("unsupported wind family");
+            const auto finite = [](const float4_t& v) { return std::isfinite(v.x) && std::isfinite(v.y) &&
+                std::isfinite(v.z) && std::isfinite(v.w) && std::abs(v.x) <= 1e8f && std::abs(v.y) <= 1e8f &&
+                std::abs(v.z) <= 1e8f && std::abs(v.w) <= 1e8f; };
+            const auto& b = surface.sourceFoliageWindLocalBounds;
+            const auto& w = surface.sourceFoliageWindDirectionSpeed;
+            if ((surface.sourceFoliageWindProgram == 1u && !nativeMap && surface.family != MODEL_SURFACE_FAMILY::SOURCE_FOLIAGE_MASKED) ||
+                !finite(b) || !finite(w) || !finite(surface.sourceFoliageWindLocalCenter) ||
+                !finite(surface.sourceFoliageWindActorPosition) || !finite(surface.sourceFoliageWindPlayerPosition) ||
+                surface.sourceFoliageWindLocalCenter.w != 1.f || surface.sourceFoliageWindActorPosition.w != 0.f ||
+                b.x <= 0.f || b.y <= 0.f || b.z <= 0.f || b.w <= 0.f || b.x > 1e5f || b.y > 1e5f || b.z > 1e5f || b.w > 1e5f ||
+                w.x != 0.f || w.y != 0.f || w.z != 1.f || w.w != 0.f ||
+                !surface.Has_ValidSourceFoliageWindProgramInputs() ||
+                any_of(begin(surface.sourceFoliageWindScalars), end(surface.sourceFoliageWindScalars), [&](const float4_t& v) { return !finite(v); }))
+                return failOverride("invalid source foliage wind inputs");
+        }
         if (replacement.surface.family == MODEL_SURFACE_FAMILY::SOURCE_CHARACTER)
         {
             const auto& source = replacement.surface.sourceCharacter;
             const uint32_t mask = source.baseTextureMask | source.lightTextureMask;
-            if (source.program == 0u || source.program > 237u || (source.program > 112u && source.program < 160u) ||
-                (source.program > 200u && source.program < 208u) || (source.program > 65u && source.program < 80u) ||
-                (mask == 0u && source.program != 64u && source.program != 65u) ||
-                ((source.program == 64u || source.program == 65u) && mask != 0u) || source.requiredExtraUVMask > 3u ||
+            // These native programs consume constants only in both source passes.
+            const bool textureless = source.program == 64u || source.program == 65u ||
+                source.program == 1510u || source.program == 1512u;
+            if (!Is_SourceCharacterProgramSupported(source.program) ||
+                (mask == 0u && !textureless) ||
+                (textureless && mask != 0u) || source.requiredExtraUVMask > 3u ||
                 (mask >> SOURCE_CHARACTER_TEXTURE_COUNT) != 0u ||
-                (replacement.surface.hasBakedLighting && !(source.program == 209u || source.program == 210u || (source.program >= 214u && source.program <= 234u) || source.program == 237u || (source.program >= 80u && source.program <= 83u) ||
+                (replacement.surface.hasBakedLighting && !(source.program == 209u || source.program == 210u || (source.program >= 214u && source.program <= 234u) || source.program == 237u || (source.program >= 1100u && source.program <= 1166u) || (source.program >= 1400u && source.program <= 1413u) || (source.program >= 80u && source.program <= 83u) ||
                     (source.program >= 40u && source.program <= 63u && source.program != 47u && source.program != 53u && source.program != 55u))) ||
                 replacement.surface.hasEnvironmentCube)
                 return failOverride("invalid source character program or texture mask");
