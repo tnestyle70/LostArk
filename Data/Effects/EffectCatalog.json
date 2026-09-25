@@ -6655,6 +6655,16 @@
       "effectAssetId": "effect.kouku.bingo.blackhole.center.full.restore",
       "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
       "authoringPath": "Effects/Authored/effect.kouku.bingo.blackhole.center.full.restore.effect.json"
+    },
+    {
+      "effectAssetId": "effect.esther.bahuntur.cameo.npc_sk_breathofarcturus.full.restore",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.esther.bahuntur.cameo.npc_sk_breathofarcturus.full.restore.effect.json"
+    },
+    {
+      "effectAssetId": "effect.esther.wei.cameo.npc_sk_dochul.full.restore",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.esther.wei.cameo.npc_sk_dochul.full.restore.effect.json"
     }
   ]
 }

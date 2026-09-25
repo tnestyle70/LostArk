@@ -1,0 +1,16 @@
+{
+  "schema": "lostark.npc-action-effect-cues",
+  "formatVersion": 1,
+  "archetypeId": "NPC_58700",
+  "cues": [
+    {
+      "cueId": "npc_58700.npc_sk_dochul",
+      "effectAssetId": "effect.esther.wei.cameo.npc_sk_dochul.full.restore",
+      "clip": "npc_sk_dochul",
+      "startMs": 0,
+      "durationMs": 10400,
+      "bone": "b_effectroot",
+      "followBone": false
+    }
+  ]
+}
