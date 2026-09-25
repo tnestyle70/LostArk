@@ -169,7 +169,8 @@ bool_t Client::CEstherActionSoundCueDocument::Load(
 			volume->Get_Number() <= 0.0 || volume->Get_Number() > 1.0 ||
 			nullptr == once || !once->Is_Boolean() || !once->Get_Boolean() ||
 			!ReadString(value, "timingBasis", cue.strTimingBasis) ||
-			"PROJECT_TUNED_EDGE" != cue.strTimingBasis ||
+			("PROJECT_TUNED_EDGE" != cue.strTimingBasis &&
+			 "SOURCE_SUMMONS_SEQUENCE" != cue.strTimingBasis) ||
 			cue.iStartMs > 600000u || cue.iLateToleranceMs > 10000u ||
 			!cueIds.insert(cue.strCueId).second)
 		{
@@ -309,4 +310,31 @@ bool_t Client::CEstherActionSoundCueDocument::Play_Due(
 	strOutStatus = "Esther action Sound occurrence played " +
 		std::to_string(played) + ", dropped " + std::to_string(dropped) + ".";
 	return true;
+}
+
+std::size_t Client::CEstherActionSoundCueDocument::Preload_Sounds()
+{
+	if (!s_bLoaded)
+		return 0u;
+	std::set<std::string> assetIds;
+	for (const ESTHER_ACTION_SOUND_CUE& cue : s_Cues)
+	{
+		for (const std::string& variant : CSoundCueCatalog::Find_Variants(
+				cue.strCatalogOwnerId, cue.strSoundEvent))
+			assetIds.insert(variant);
+	}
+	std::size_t loaded = 0u;
+	for (const std::string& assetId : assetIds)
+	{
+		const std::filesystem::path soundPath = CRuntimeAssetRoot::Resolve(assetId);
+		std::error_code assetError;
+		std::uint32_t durationMs = 0u;
+		if (!soundPath.empty() &&
+			std::filesystem::is_regular_file(soundPath, assetError) && !assetError &&
+			CGameInstance::Get().Get_SoundDurationMs(soundPath.wstring(), durationMs))
+		{
+			++loaded;
+		}
+	}
+	return loaded;
 }

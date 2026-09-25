@@ -1,0 +1,16 @@
+{
+  "schema": "lostark.npc-action-effect-cues",
+  "formatVersion": 1,
+  "archetypeId": "NPC_59060",
+  "cues": [
+    {
+      "cueId": "npc_59060.npc_sk_breathofarcturus",
+      "effectAssetId": "effect.esther.bahuntur.cameo.npc_sk_breathofarcturus.full.restore",
+      "clip": "npc_sk_breathofarcturus",
+      "startMs": 0,
+      "durationMs": 9000,
+      "bone": "b_effectroot",
+      "followBone": false
+    }
+  ]
+}

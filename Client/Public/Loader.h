@@ -113,6 +113,7 @@ private:
 	HRESULT Ready_Character_Shared_Prototypes(uint32_t iLevelIndex);
 	HRESULT Ready_AnimationPreviewModels(uint32_t iLevelIndex);
 	HRESULT Ready_ValtanPresentation(uint32_t iLevelIndex);
+	void Ready_EstherSummonPresentation(uint32_t iLevelIndex);
 	HRESULT Run_EffectLoadPreparation();
 	static unsigned __stdcall EffectThreadMain(void* pArgument);
 	void Request_Cancellation() noexcept;

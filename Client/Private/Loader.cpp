@@ -19,6 +19,8 @@
 #include "Effect_Catalog.h"
 #include "Effect_LoadPreparationJob.h"
 #include "Effect_PresentationService.h"
+#include "EstherActionSoundCueDocument.h"
+#include "EstherCutinPresentationService.h"
 #include "GameInstance.h"
 #include "LevelRegistry.h"
 #include "LevelTransitionService.h"
@@ -554,21 +556,7 @@ HRESULT CLoader::Ready_For_CharacterSelect()
 	summon roster as VALTAN is admitted here: a lazy first-spawn admission stalls
 	the frame the caster presses the key. Missing payload isolates only the summon. */
 	Set_Status(TEXT("CHARACTER SELECT: esther summon presentation"));
-	for (const char* pEstherArchetypeId :
-		{ "NPC_59030", "NPC_58700", "NPC_59060" })
-	{
-		if (FAILED(CNpcPresentationAssetService::Ensure_Prototypes(
-			m_pDevice,
-			m_pContext,
-			ETOUI(LEVEL::CHARACTER_SELECT),
-			pEstherArchetypeId)))
-		{
-			OutputDebugStringA(
-				(std::string("[Loader][NpcPresentation] CHARACTER SELECT esther "
-					"summon presentation is unavailable (") + pEstherArchetypeId +
-					"); the arena loads without it.\n").c_str());
-		}
-	}
+	Ready_EstherSummonPresentation(ETOUI(LEVEL::CHARACTER_SELECT));
 	CVehiclePresentationAssetService::Begin_LevelLoad(ETOUI(LEVEL::CHARACTER_SELECT));
 #ifndef _DEBUG
 	Set_Status(TEXT("CHARACTER SELECT: vehicle presentation"));
@@ -739,25 +727,7 @@ HRESULT CLoader::Ready_For_ValtanArena()
 	the frame the caster presses the key. This list mirrors the server's
 	CEstherSkillSystem roster and moves into a data contract with it. */
 	Set_Status(TEXT("VALTAN: esther summon presentation"));
-	for (const char* pEstherArchetypeId :
-		{ "NPC_59030", "NPC_58700", "NPC_59060" })
-	{
-		if (FAILED(CNpcPresentationAssetService::Ensure_Prototypes(
-			m_pDevice,
-			m_pContext,
-			ETOUI(LEVEL::VALTAN_ARENA),
-			pEstherArchetypeId)))
-		{
-			/* The summon payload lives in the team-managed Resources folder, so
-			a machine that has not received it yet must still be able to enter
-			the raid. Only that summon's presentation is isolated: the gauge,
-			the Server skill and every other arena contract are untouched. */
-			OutputDebugStringA(
-				(std::string("[Loader][NpcPresentation] VALTAN esther summon "
-					"presentation is unavailable (") + pEstherArchetypeId +
-					"); the arena loads without it.\n").c_str());
-		}
-	}
+	Ready_EstherSummonPresentation(ETOUI(LEVEL::VALTAN_ARENA));
 	Set_Status(TEXT("VALTAN: deploy environment prototypes"));
 	if (FAILED(Ready_DeployPropArea(
 		ETOUI(LEVEL::VALTAN_ARENA),
@@ -854,21 +824,7 @@ HRESULT CLoader::Ready_For_KakulSaydonArena()
 	/* Same Esther roster as Valtan (the Server enables the gauge in this raid too); the
 	   summons spawn mid-fight, so their models are prototypes before the arena opens. */
 	Set_Status(TEXT("KoukuSaydon: esther summon presentation"));
-	for (const char* pEstherArchetypeId :
-		{ "NPC_59030", "NPC_58700", "NPC_59060" })
-	{
-		if (FAILED(CNpcPresentationAssetService::Ensure_Prototypes(
-			m_pDevice,
-			m_pContext,
-			ETOUI(LEVEL::KAKULSAYDON_ARENA),
-			pEstherArchetypeId)))
-		{
-			OutputDebugStringA(
-				(std::string("[Loader][NpcPresentation] KOUKUSAYDON esther summon "
-					"presentation is unavailable (") + pEstherArchetypeId +
-					"); the arena loads without it.\n").c_str());
-		}
-	}
+	Ready_EstherSummonPresentation(ETOUI(LEVEL::KAKULSAYDON_ARENA));
 	Set_Status(TEXT("KoukuSaydon: deploy environment prototypes"));
 	if (FAILED(Ready_DeployPropArea(
 		ETOUI(LEVEL::KAKULSAYDON_ARENA),
@@ -1705,6 +1661,28 @@ HRESULT CLoader::Ready_ValtanPresentation(const uint32_t iLevelIndex)
 		m_pContext,
 		iLevelIndex,
 		"BOSS_VALTAN_GHOST");
+}
+
+void CLoader::Ready_EstherSummonPresentation(const uint32_t iLevelIndex)
+{
+	for (const char* pEstherArchetypeId :
+		{ "NPC_59030", "NPC_58700", "NPC_59060", "NPC_59504", "NPC_59620" })
+	{
+		if (FAILED(CNpcPresentationAssetService::Ensure_Prototypes(
+			m_pDevice,
+			m_pContext,
+			iLevelIndex,
+			pEstherArchetypeId)))
+		{
+			OutputDebugStringA(
+				(std::string("[Loader][NpcPresentation] esther summon "
+					"presentation is unavailable (") + pEstherArchetypeId +
+					"); the arena loads without it.\n").c_str());
+		}
+		(void)CEstherCutinPresentationService::Preload_Frames(
+			m_pDevice.Get(), pEstherArchetypeId);
+	}
+	(void)CEstherActionSoundCueDocument::Preload_Sounds();
 }
 
 unique_ptr<CLoader> CLoader::Create(

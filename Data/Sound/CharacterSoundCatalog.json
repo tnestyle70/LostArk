@@ -4497,6 +4497,134 @@
       ],
       "Silian1_Attack9_Shot2": [
         "Sound/Asther/silian1_attack9_shot2__262622594.wav"
+      ],
+      "Esther_Bahunturr1_Attack1_1": [
+        "Sound/Asther/esther_bahunturr1_attack1_1__391503036.wav"
+      ],
+      "Esther_Bahunturr1_Attack1_2": [
+        "Sound/Asther/esther_bahunturr1_attack1_2__82005488.wav"
+      ],
+      "Esther_Bahunturr1_Attack1_3": [
+        "Sound/Asther/esther_bahunturr1_attack1_3__156284222.wav"
+      ],
+      "Esther_Bahunturr1_Attack1_4": [
+        "Sound/Asther/esther_bahunturr1_attack1_4__200778395.wav"
+      ],
+      "Esther_Bahunturr1_Attack1_5": [
+        "Sound/Asther/esther_bahunturr1_attack1_5__364428403.wav"
+      ],
+      "Esther_Bahunturr1_Attack1_6": [
+        "Sound/Asther/esther_bahunturr1_attack1_6__314892316.wav"
+      ],
+      "Esther_Dochul1_Attack1_1": [
+        "Sound/Asther/esther_dochul1_attack1_1__155809376.wav"
+      ],
+      "Esther_Dochul1_Attack1_2": [
+        "Sound/Asther/esther_dochul1_attack1_2__285315284.wav",
+        "Sound/Asther/esther_dochul1_attack1_2__384559707.wav"
+      ],
+      "Esther_Dochul1_Attack1_3": [
+        "Sound/Asther/esther_dochul1_attack1_3__365948722.wav"
+      ],
+      "Esther_Inanna1_Attack1_1": [
+        "Sound/Asther/esther_inanna1_attack1_1__57007184.wav"
+      ],
+      "Esther_Inanna1_Attack1_2": [
+        "Sound/Asther/esther_inanna1_attack1_2__531343909.wav"
+      ],
+      "Esther_Inanna1_Attack1_3": [
+        "Sound/Asther/esther_inanna1_attack1_3__710664404.wav"
+      ],
+      "Esther_Ninave1_Attack1_1": [
+        "Sound/Asther/esther_ninave1_attack1_1__651350469.wav"
+      ],
+      "Esther_Ninave1_Attack1_2": [
+        "Sound/Asther/esther_ninave1_attack1_2__62885882.wav"
+      ],
+      "Esther_Ninave1_Attack1_3": [
+        "Sound/Asther/esther_ninave1_attack1_3__158606771.wav"
+      ],
+      "Esther_Ninave1_Attack1_4": [
+        "Sound/Asther/esther_ninave1_attack1_4__343378319.wav"
+      ],
+      "Esther_Ninave1_Attack1_5": [
+        "Sound/Asther/esther_ninave1_attack1_5__136840921.wav"
+      ],
+      "Esther_Silian1_Attack1_1": [
+        "Sound/Asther/esther_silian1_attack1_1__9551753.wav"
+      ],
+      "Esther_Silian1_Attack1_2": [
+        "Sound/Asther/esther_silian1_attack1_2__475771113.wav"
+      ],
+      "Esther_Silian1_Attack1_3": [
+        "Sound/Asther/esther_silian1_attack1_3__650786207.wav"
+      ],
+      "Esther_Silian1_Attack1_4": [
+        "Sound/Asther/esther_silian1_attack1_4__188909943.wav"
+      ],
+      "Esther_Silian1_Attack1_5": [
+        "Sound/Asther/esther_silian1_attack1_5__162302654.wav"
+      ],
+      "Esther_Waye1_Attack1_1": [
+        "Sound/Asther/esther_waye1_attack1_1__269043211.wav"
+      ],
+      "Esther_Waye1_Attack1_2": [
+        "Sound/Asther/esther_waye1_attack1_2__85455606.wav",
+        "Sound/Asther/esther_waye1_attack1_2__878280772.wav"
+      ],
+      "Esther_Waye1_Attack1_3": [
+        "Sound/Asther/esther_waye1_attack1_3__309013371.wav"
+      ],
+      "Esther_Waye1_Attack1_4": [
+        "Sound/Asther/esther_waye1_attack1_4__6271194.wav",
+        "Sound/Asther/esther_waye1_attack1_4__27752930.wav"
+      ],
+      "Esther_Waye1_Attack1_5": [
+        "Sound/Asther/esther_waye1_attack1_5__15918464.wav"
+      ],
+      "Esther_Waye1_Attack1_6": [
+        "Sound/Asther/esther_waye1_attack1_6__779064421.wav"
+      ],
+      "Esther_Bahunturr1_Attack1_Vox1_1_2d": [
+        "Sound/Asther/esther_bahunturr1_attack1_vox1_1_2d__68158454.wav",
+        "Sound/Asther/esther_bahunturr1_attack1_vox1_1_2d__12632865.wav",
+        "Sound/Asther/esther_bahunturr1_attack1_vox1_1_2d__343834538.wav",
+        "Sound/Asther/esther_bahunturr1_attack1_vox1_1_2d__26750464.wav",
+        "Sound/Asther/esther_bahunturr1_attack1_vox1_1_2d__750379904.wav",
+        "Sound/Asther/esther_bahunturr1_attack1_vox1_1_2d__519759962.wav",
+        "Sound/Asther/esther_bahunturr1_attack1_vox1_1_2d__66598372.wav"
+      ],
+      "Esther_Inanna1_Attack1_Vox1_1_2d": [
+        "Sound/Asther/esther_inanna1_attack1_vox1_1_2d__415479545.wav",
+        "Sound/Asther/esther_inanna1_attack1_vox1_1_2d__204350609.wav",
+        "Sound/Asther/esther_inanna1_attack1_vox1_1_2d__292980731.wav",
+        "Sound/Asther/esther_inanna1_attack1_vox1_1_2d__66941519.wav",
+        "Sound/Asther/esther_inanna1_attack1_vox1_1_2d__326777995.wav",
+        "Sound/Asther/esther_inanna1_attack1_vox1_1_2d__430085414.wav"
+      ],
+      "Esther_Ninave1_Attack1_Vox1_1_2d": [
+        "Sound/Asther/esther_ninave1_attack1_vox1_1_2d__7240275.wav",
+        "Sound/Asther/esther_ninave1_attack1_vox1_1_2d__167825616.wav",
+        "Sound/Asther/esther_ninave1_attack1_vox1_1_2d__16933124.wav",
+        "Sound/Asther/esther_ninave1_attack1_vox1_1_2d__664044105.wav",
+        "Sound/Asther/esther_ninave1_attack1_vox1_1_2d__312821333.wav",
+        "Sound/Asther/esther_ninave1_attack1_vox1_1_2d__76723289.wav",
+        "Sound/Asther/esther_ninave1_attack1_vox1_1_2d__12590547.wav"
+      ],
+      "Esther_Silian1_Attack1_Vox1_1_2d": [
+        "Sound/Asther/esther_silian1_attack1_vox1_1_2d__345931772.wav",
+        "Sound/Asther/esther_silian1_attack1_vox1_1_2d__237676382.wav",
+        "Sound/Asther/esther_silian1_attack1_vox1_1_2d__87229662.wav",
+        "Sound/Asther/esther_silian1_attack1_vox1_1_2d__58320007.wav",
+        "Sound/Asther/esther_silian1_attack1_vox1_1_2d__378617733.wav",
+        "Sound/Asther/esther_silian1_attack1_vox1_1_2d__37877217.wav"
+      ],
+      "Esther_Waye1_Attack1_Vox1_1_2d": [
+        "Sound/Asther/esther_waye1_attack1_vox1_1_2d__197265436.wav",
+        "Sound/Asther/esther_waye1_attack1_vox1_1_2d__88700953.wav",
+        "Sound/Asther/esther_waye1_attack1_vox1_1_2d__313423018.wav",
+        "Sound/Asther/esther_waye1_attack1_vox1_1_2d__367113227.wav",
+        "Sound/Asther/esther_waye1_attack1_vox1_1_2d__217283684.wav"
       ]
     },
     "Valtan": {

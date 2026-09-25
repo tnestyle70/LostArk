@@ -5678,6 +5678,20 @@
     <None Include="..\..\Data\Effects\Authored\effect.kouku.bingo.blackhole.center.full.restore.effect.json"><Filter>96.DataFiles</Filter></None>
   </ItemGroup>
   <ItemGroup>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectMeshKouku4672.hlsl"><Filter>97.ShaderFiles</Filter></FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectParticleKouku4672.hlsl"><Filter>97.ShaderFiles</Filter></FxCompile>
+    <None Include="..\Bin\ShaderFiles\Shader_EffectKoukuNativeGroup4672.hlsli"><Filter>97.ShaderFiles</Filter></None>
+    <None Include="..\Bin\ShaderFiles\Shader_EffectArtistNativeDispatchKoukuNativeCases4672.hlsli"><Filter>97.ShaderFiles</Filter></None>
+    <None Include="..\Bin\ShaderFiles\Shader_EffectArtistNativeSelectedGroup4672.hlsli"><Filter>97.ShaderFiles</Filter></None>
+  </ItemGroup>
+  <ItemGroup>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectMeshKouku4736.hlsl"><Filter>97.ShaderFiles</Filter></FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectParticleKouku4736.hlsl"><Filter>97.ShaderFiles</Filter></FxCompile>
+    <None Include="..\Bin\ShaderFiles\Shader_EffectKoukuNativeGroup4736.hlsli"><Filter>97.ShaderFiles</Filter></None>
+    <None Include="..\Bin\ShaderFiles\Shader_EffectArtistNativeDispatchKoukuNativeCases4736.hlsli"><Filter>97.ShaderFiles</Filter></None>
+    <None Include="..\Bin\ShaderFiles\Shader_EffectArtistNativeSelectedGroup4736.hlsli"><Filter>97.ShaderFiles</Filter></None>
+  </ItemGroup>
+  <ItemGroup>
     <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectMeshKouku4800.hlsl"><Filter>97.ShaderFiles</Filter></FxCompile>
     <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectParticleKouku4800.hlsl"><Filter>97.ShaderFiles</Filter></FxCompile>
     <None Include="..\Bin\ShaderFiles\Shader_EffectKoukuNativeGroup4800.hlsli"><Filter>97.ShaderFiles</Filter></None>

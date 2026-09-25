@@ -27,7 +27,7 @@ namespace Client
 #define EFFECT_SHADER_WIDEN(Value) EFFECT_SHADER_WIDEN_INNER(Value)
 #define EFFECT_SHADER_PROGRAM_ROW(Carrier, Family, First, Last, File) \
     { EFFECT_SHADER_CARRIER::Carrier, EFFECT_SHADER_FAMILY::Family, First, Last, File, EFFECT_SHADER_WIDEN(File) }
-    inline constexpr std::array<EFFECT_SHADER_PROGRAM_DESC, 137u> EFFECT_SHADER_PROGRAMS = {{
+    inline constexpr std::array<EFFECT_SHADER_PROGRAM_DESC, 141u> EFFECT_SHADER_PROGRAMS = {{
         EFFECT_SHADER_PROGRAM_ROW(MESH, GENERIC, 0u, 4294967295u, "Shader_VtxEffectMeshPreview.hlsl"),
         EFFECT_SHADER_PROGRAM_ROW(MESH, DIMENSIONMASTER_Q, 0u, 4294967295u, "Shader_VtxEffectMeshDimensionMasterQ.hlsl"),
         EFFECT_SHADER_PROGRAM_ROW(MESH, DIMENSIONMASTER_V, 0u, 4294967295u, "Shader_VtxEffectMeshDimensionMasterV.hlsl"),
@@ -120,6 +120,8 @@ namespace Client
         EFFECT_SHADER_PROGRAM_ROW(MESH, ARTIST, 4480u, 4543u, "Shader_VtxEffectMeshKouku4480.hlsl"),
         EFFECT_SHADER_PROGRAM_ROW(MESH, ARTIST, 4544u, 4607u, "Shader_VtxEffectMeshKouku4544.hlsl"),
         EFFECT_SHADER_PROGRAM_ROW(MESH, ARTIST, 4608u, 4671u, "Shader_VtxEffectMeshKouku4608.hlsl"),
+        EFFECT_SHADER_PROGRAM_ROW(MESH, ARTIST, 4672u, 4735u, "Shader_VtxEffectMeshKouku4672.hlsl"),
+        EFFECT_SHADER_PROGRAM_ROW(MESH, ARTIST, 4736u, 4799u, "Shader_VtxEffectMeshKouku4736.hlsl"),
         EFFECT_SHADER_PROGRAM_ROW(MESH, ARTIST, 4800u, 4863u, "Shader_VtxEffectMeshKouku4800.hlsl"),
         EFFECT_SHADER_PROGRAM_ROW(MESH, ARTIST, 4864u, 4927u, "Shader_VtxEffectMeshKouku4864.hlsl"),
         EFFECT_SHADER_PROGRAM_ROW(MESH, ARTIST, 4928u, 4991u, "Shader_VtxEffectMeshKouku4928.hlsl"),
@@ -159,6 +161,8 @@ namespace Client
         EFFECT_SHADER_PROGRAM_ROW(PARTICLE, ARTIST, 4480u, 4543u, "Shader_VtxEffectParticleKouku4480.hlsl"),
         EFFECT_SHADER_PROGRAM_ROW(PARTICLE, ARTIST, 4544u, 4607u, "Shader_VtxEffectParticleKouku4544.hlsl"),
         EFFECT_SHADER_PROGRAM_ROW(PARTICLE, ARTIST, 4608u, 4671u, "Shader_VtxEffectParticleKouku4608.hlsl"),
+        EFFECT_SHADER_PROGRAM_ROW(PARTICLE, ARTIST, 4672u, 4735u, "Shader_VtxEffectParticleKouku4672.hlsl"),
+        EFFECT_SHADER_PROGRAM_ROW(PARTICLE, ARTIST, 4736u, 4799u, "Shader_VtxEffectParticleKouku4736.hlsl"),
         EFFECT_SHADER_PROGRAM_ROW(PARTICLE, ARTIST, 4800u, 4863u, "Shader_VtxEffectParticleKouku4800.hlsl"),
         EFFECT_SHADER_PROGRAM_ROW(PARTICLE, ARTIST, 4864u, 4927u, "Shader_VtxEffectParticleKouku4864.hlsl"),
         EFFECT_SHADER_PROGRAM_ROW(PARTICLE, ARTIST, 4928u, 4991u, "Shader_VtxEffectParticleKouku4928.hlsl"),

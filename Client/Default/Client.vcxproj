@@ -4058,6 +4058,32 @@
     <None Include="..\..\Data\Effects\Authored\effect.kouku.bingo.blackhole.center.full.restore.effect.json"></None>
   </ItemGroup>
   <ItemGroup>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectMeshKouku4672.hlsl">
+      <DisableOptimizations Condition="'$(Platform)'=='x64'">false</DisableOptimizations>
+      <AdditionalOptions Condition="'$(Platform)'=='x64'">/O1 %(AdditionalOptions)</AdditionalOptions>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectParticleKouku4672.hlsl">
+      <DisableOptimizations Condition="'$(Platform)'=='x64'">false</DisableOptimizations>
+      <AdditionalOptions Condition="'$(Platform)'=='x64'">/O1 %(AdditionalOptions)</AdditionalOptions>
+    </FxCompile>
+    <None Include="..\Bin\ShaderFiles\Shader_EffectKoukuNativeGroup4672.hlsli" />
+    <None Include="..\Bin\ShaderFiles\Shader_EffectArtistNativeDispatchKoukuNativeCases4672.hlsli" />
+    <None Include="..\Bin\ShaderFiles\Shader_EffectArtistNativeSelectedGroup4672.hlsli" />
+  </ItemGroup>
+  <ItemGroup>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectMeshKouku4736.hlsl">
+      <DisableOptimizations Condition="'$(Platform)'=='x64'">false</DisableOptimizations>
+      <AdditionalOptions Condition="'$(Platform)'=='x64'">/O1 %(AdditionalOptions)</AdditionalOptions>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectParticleKouku4736.hlsl">
+      <DisableOptimizations Condition="'$(Platform)'=='x64'">false</DisableOptimizations>
+      <AdditionalOptions Condition="'$(Platform)'=='x64'">/O1 %(AdditionalOptions)</AdditionalOptions>
+    </FxCompile>
+    <None Include="..\Bin\ShaderFiles\Shader_EffectKoukuNativeGroup4736.hlsli" />
+    <None Include="..\Bin\ShaderFiles\Shader_EffectArtistNativeDispatchKoukuNativeCases4736.hlsli" />
+    <None Include="..\Bin\ShaderFiles\Shader_EffectArtistNativeSelectedGroup4736.hlsli" />
+  </ItemGroup>
+  <ItemGroup>
     <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectMeshKouku4800.hlsl">
       <DisableOptimizations Condition="'$(Platform)'=='x64'">false</DisableOptimizations>
       <AdditionalOptions Condition="'$(Platform)'=='x64'">/O1 %(AdditionalOptions)</AdditionalOptions>

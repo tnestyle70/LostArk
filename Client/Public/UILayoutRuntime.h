@@ -152,6 +152,7 @@ public:
 	fFps <= 0 keeps the slot's current fps. No-op if the slot doesn't exist. */
 	void Set_SlotAnimation(const string& strId, const vector<string>& Frames,
 		f32_t fFps, bool_t bLoop);
+	void Adopt_Texture(const string& strPath, ComPtr<ID3D11ShaderResourceView> pSRV);
 
 	f32_t Get_ResolutionWidth() const { return m_fResolutionWidth; }
 	f32_t Get_ResolutionHeight() const { return m_fResolutionHeight; }

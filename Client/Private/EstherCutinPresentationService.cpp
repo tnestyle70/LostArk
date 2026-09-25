@@ -4,9 +4,14 @@
 #include "CombatHUDViewModel.h"
 #include "GameInstance.h"
 #include "UILayoutRuntime.h"
+#include "UITextureCache.h"
 
 #include <algorithm>
 #include <cstdio>
+#include <iterator>
+#include <mutex>
+#include <set>
+#include <utility>
 #include <vector>
 
 namespace
@@ -14,6 +19,60 @@ namespace
 	constexpr const char_t* CUTIN_SLOT_ID = "Esther_Cutin";
 	/* A stalled frame (loader hitch, window drag) must not skip movie frames. */
 	constexpr f32_t CUTIN_MAX_STEP_SECONDS = 0.1f;
+
+	std::mutex g_PreloadMutex;
+	std::set<std::string> g_PreloadedArchetypes;
+	std::vector<std::pair<std::string, ComPtr<ID3D11ShaderResourceView>>> g_PendingFrames;
+
+	void BuildFramePaths(const Client::NPC_ACTOR_ENTRY::CUTIN_MOVIE& movie, std::vector<std::string>& outFrames)
+	{
+		outFrames.clear();
+		outFrames.reserve(movie.frameCount);
+		char_t szFrame[512] = {};
+		for (uint32_t i = 0; i < movie.frameCount; ++i)
+		{
+			(void)sprintf_s(szFrame, "%s_%03u.dds", movie.framePrefix.c_str(), i);
+			outFrames.emplace_back(szFrame);
+		}
+	}
+}
+
+std::size_t Client::CEstherCutinPresentationService::Preload_Frames(
+	ID3D11Device* pDevice, const std::string& archetypeId)
+{
+	const NPC_ACTOR_ENTRY* pActor = CActorCatalog::Find_Npc(archetypeId);
+	if (nullptr == pDevice || nullptr == pActor || 0u == pActor->cutinMovie.frameCount)
+		return 0u;
+	{
+		std::lock_guard<std::mutex> lock(g_PreloadMutex);
+		if (!g_PreloadedArchetypes.insert(archetypeId).second)
+			return 0u;
+	}
+	std::vector<std::string> frames;
+	BuildFramePaths(pActor->cutinMovie, frames);
+	std::vector<std::pair<std::string, ComPtr<ID3D11ShaderResourceView>>> loaded;
+	loaded.reserve(frames.size());
+	for (std::string& frame : frames)
+	{
+		ComPtr<ID3D11ShaderResourceView> pSRV = CUITextureCache::Load_Texture(pDevice, frame);
+		if (nullptr != pSRV)
+			loaded.emplace_back(std::move(frame), std::move(pSRV));
+	}
+	const std::size_t count = loaded.size();
+	std::lock_guard<std::mutex> lock(g_PreloadMutex);
+	std::move(loaded.begin(), loaded.end(), std::back_inserter(g_PendingFrames));
+	return count;
+}
+
+void Client::CEstherCutinPresentationService::Adopt_PreloadedFrames()
+{
+	std::vector<std::pair<std::string, ComPtr<ID3D11ShaderResourceView>>> pending;
+	{
+		std::lock_guard<std::mutex> lock(g_PreloadMutex);
+		pending.swap(g_PendingFrames);
+	}
+	for (auto& [path, pSRV] : pending)
+		m_pView->Adopt_Texture(path, std::move(pSRV));
 }
 
 Client::CEstherCutinPresentationService::CEstherCutinPresentationService(
@@ -35,6 +94,7 @@ void Client::CEstherCutinPresentationService::Update(f32_t fTimeDelta)
 	if (nullptr == m_pView)
 		return;
 
+	Adopt_PreloadedFrames();
 	const HUD_ESTHER_CUTIN_REQUEST& request =
 		CCombatHUDViewModel::Get().Get_EstherCutinRequest();
 	if (request.iGeneration != m_iConsumedGeneration)
@@ -76,14 +136,7 @@ void Client::CEstherCutinPresentationService::Begin(const std::string& archetype
 	}
 	const NPC_ACTOR_ENTRY::CUTIN_MOVIE& movie = pActor->cutinMovie;
 
-	m_Frames.clear();
-	m_Frames.reserve(movie.frameCount);
-	char_t szFrame[512] = {};
-	for (uint32_t i = 0; i < movie.frameCount; ++i)
-	{
-		(void)sprintf_s(szFrame, "%s_%03u.dds", movie.framePrefix.c_str(), i);
-		m_Frames.emplace_back(szFrame);
-	}
+	BuildFramePaths(movie, m_Frames);
 	m_fFps = movie.fps;
 	m_iActiveLevelIndex = CGameInstance::Get().Get_CurrentLevelID();
 	m_fDelaySeconds = static_cast<f32_t>(movie.delayMs) / 1000.f;

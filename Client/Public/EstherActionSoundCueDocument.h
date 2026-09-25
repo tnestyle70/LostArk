@@ -74,6 +74,8 @@ public:
 		ESTHER_ACTION_SOUND_PLAYBACK_STATE& State,
 		std::string& strOutStatus);
 
+	static std::size_t Preload_Sounds();
+
 private:
 	static std::vector<ESTHER_ACTION_SOUND_CUE> s_Cues;
 	static std::uint32_t s_iFixedTickHz;

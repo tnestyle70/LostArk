@@ -1025,3 +1025,9 @@ void Client::CUILayoutRuntime::Set_SlotAnimation(const string& strId,
 	if (nullptr != Slot.pSprite && !Frames.empty())
 		Slot.pSprite->Set_Texture(m_pTextureCache->Get_Or_Load(Frames[0]));
 }
+
+void Client::CUILayoutRuntime::Adopt_Texture(const string& strPath,
+	ComPtr<ID3D11ShaderResourceView> pSRV)
+{
+	m_pTextureCache->Adopt(strPath, std::move(pSRV));
+}

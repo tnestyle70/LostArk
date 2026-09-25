@@ -29,6 +29,7 @@ public:
 	/* Per-frame from CMainApp::Update: consumes a new request, advances the
 	flipbook, and hides it once every frame has shown or the level changes. */
 	void Update(f32_t fTimeDelta);
+	static std::size_t Preload_Frames(ID3D11Device* pDevice, const std::string& archetypeId);
 
 #ifdef _DEBUG
 	/* Re-issues the strike request for an archetype so the movie replays. */
@@ -39,6 +40,7 @@ private:
 	void Begin(const std::string& archetypeId);
 	void Show();
 	void End();
+	void Adopt_PreloadedFrames();
 
 private:
 	unique_ptr<CUILayoutRuntime> m_pView;
