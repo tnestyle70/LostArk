@@ -109,6 +109,13 @@ public: /* For.Object_Manager */
 
 public: /* Renderer */
 	HRESULT Add_RenderObject(RENDERGROUP eRenderGroupID, shared_ptr<class CGameObject> pRenderObject);
+	/* Queues one off-screen portrait for the next Draw, which renders it through the same
+	deferred path the world uses and copies the resolved colour into pDestination. The pieces
+	are passed separately so this header does not have to see CRenderer's request type. */
+	HRESULT Request_Portrait(ComPtr<ID3D11RenderTargetView> pDestination,
+		uint32_t iWidth, uint32_t iHeight,
+		const float4x4_t& ViewMatrix, const float4x4_t& ProjMatrix,
+		function<HRESULT()> DrawSubject);
 	void Request_SceneColorSnapshot();
     void Request_SceneEnvironmentReplacement();
     bool_t Is_SceneEnvironmentReplaced() const;
@@ -135,6 +142,9 @@ public: /* For.PipeLine */
 	HRESULT Bind_CamPosition(shared_ptr<class CShader> pShader, const char_t* pConstantName);
 	HRESULT Bind_Transform(shared_ptr<class CShader> pShader, const char_t* pConstantName, D3DTS eType);
 	HRESULT Bind_InverseTransform(shared_ptr<class CShader> pShader, const char_t* pConstantName, D3DTS eType);
+	/* Recomputes the inverse matrices and camera position from the transforms set above.
+	Rendering an offscreen view mid-frame sets a second camera and has to derive them again. */
+	void Refresh_CameraState();
 
 
 public: /* For.Light */
@@ -205,10 +215,6 @@ public: /* For.Physics */
 	{
 		return m_pPhysics_Manager.get();
 	}
-
-private:
-	void Refresh_CameraState();
-
 
 private:
 	unique_ptr<class CTimer_Manager>		m_pTimer_Manager = { nullptr };
