@@ -8848,6 +8848,12 @@ void CMainApp::RenderCombatHUDText()
 
 void CMainApp::RenderDamageNumbers()
 {
+	const auto& player = CCombatHUDViewModel::Get().Get_Player();
+	if (!player.isValid || player.iServerTick < m_iLastRenderedDamageServerTick)
+	{
+		m_iLastRenderedDamageServerTick = 0u;
+		m_FloatingDamageNumbers.clear();
+	}
 	const uint32_t currentLevel = CGameInstance::Get().Get_CurrentLevelID();
 	if (currentLevel != ETOUI(LEVEL::BERN) &&
 		currentLevel != ETOUI(LEVEL::VALTAN_ARENA) &&
@@ -8937,21 +8943,32 @@ void CMainApp::RenderDamageNumbers()
 			number.fScatterY = spreadY(scatterRandom);
 		}
 		m_dLastDamageSeconds = number.dSpawnSeconds;
-		m_FloatingDamageNumbers.push_back(number);
+		if (number.iAmount != 0u) m_FloatingDamageNumbers.push_back(number);
+		const auto appendSuccess = [&](const uint8_t kind, const f32_t offsetY)
+		{
+			auto success = number;
+			success.iMechanicSuccess = kind;
+			success.fScatterX = 0.f;
+			success.fScatterY = offsetY;
+			m_FloatingDamageNumbers.push_back(success);
+		};
+		if (damageEvent.Event.isCounterSuccess) appendSuccess(1u, -64.f);
+		if (damageEvent.Event.isStaggerSuccess) appendSuccess(2u,
+			damageEvent.Event.isCounterSuccess ? -104.f : -64.f);
 	}
 	/* System option "show damage": the events are still consumed above so switching it back
 	on does not replay a backlog. */
 	if (!CUserSettings::Get().Is_DamageNumberShown())
 	{
-		m_FloatingDamageNumbers.clear();
-		return;
+		std::erase_if(m_FloatingDamageNumbers, [](const auto& number) { return number.iMechanicSuccess == 0u; });
 	}
-	if (m_FloatingDamageNumbers.size() > MAX_FLOATING_DAMAGE_NUMBERS)
+	while (m_FloatingDamageNumbers.size() > MAX_FLOATING_DAMAGE_NUMBERS)
 	{
-		m_FloatingDamageNumbers.erase(
-			m_FloatingDamageNumbers.begin(),
-			m_FloatingDamageNumbers.begin() +
-				(m_FloatingDamageNumbers.size() - MAX_FLOATING_DAMAGE_NUMBERS));
+		// A same-tick burst must not evict the counter/stagger verdict before its first draw.
+		const auto amount = std::find_if(m_FloatingDamageNumbers.begin(), m_FloatingDamageNumbers.end(),
+			[](const auto& number) { return number.iMechanicSuccess == 0u; });
+		m_FloatingDamageNumbers.erase(amount == m_FloatingDamageNumbers.end() ?
+			m_FloatingDamageNumbers.begin() : amount);
 	}
 
 	const f64_t dNow = Product_Now_Seconds();
@@ -9035,10 +9052,11 @@ void CMainApp::RenderDamageNumbers()
 		const bool_t isShard =
 			LostArk::Shared::MECHANIC_CARD_SYMBOL::NONE != number.eCardMazeSuit;
 		/* INVINCIBLE is drawn by nothing in retail either. */
-		if (LostArk::Shared::DAMAGE_HIT_FLAG::INVINCIBLE == number.eHitFlag)
+		if (!number.iMechanicSuccess && LostArk::Shared::DAMAGE_HIT_FLAG::INVINCIBLE == number.eHitFlag)
 			continue;
 		const bool_t isAbsorb = LostArk::Shared::DAMAGE_HIT_FLAG::ABSORB == number.eHitFlag;
-		const wstring strAmount = isAbsorb ? L"\uD761\uC218" : isShard ?
+		const wstring strAmount = number.iMechanicSuccess == 1u ? L"\uCE74\uC6B4\uD130" :
+			number.iMechanicSuccess == 2u ? L"\uBB34\uB825\uD654" : isAbsorb ? L"\uD761\uC218" : isShard ?
 			shardText(number.eCardMazeSuit, number.iAmount) :
 			Format_ThousandsSeparated(number.iAmount);
 		const float2_t vMeasured =
@@ -9067,6 +9085,8 @@ void CMainApp::RenderDamageNumbers()
 		/* A shard is a pickup, not a hit, so it keeps the plain white. */
 		if (isShard)
 			vColor = XMVectorSet(1.f, 1.f, 1.f, fAlpha);
+		if (number.iMechanicSuccess == 1u) vColor = XMVectorSet(0.15f, 0.55f, 1.f, fAlpha);
+		if (number.iMechanicSuccess == 2u) vColor = XMVectorSet(1.f, 0.9f, 0.f, fAlpha);
 		const float2_t vDrawPosition(
 			XMVectorGetX(vProjected) + number.fScatterX * stageScale,
 			XMVectorGetY(vProjected) + number.fScatterY * stageScale);

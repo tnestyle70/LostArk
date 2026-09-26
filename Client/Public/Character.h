@@ -625,6 +625,9 @@ private:
 	void Load_InteractionAnimationBindings();
 	std::array<std::vector<CLIP_STEP>, 5> m_InteractionClips;
 	std::array<std::vector<std::vector<ANIMATION_EFFECT_CUE>>, 5> m_InteractionEffectCues;
+	struct INTERACTION_SOUND_CUE { std::string event; std::uint32_t startMs = 0u; };
+	std::array<std::vector<std::vector<INTERACTION_SOUND_CUE>>, 5> m_InteractionSoundCues;
+	std::vector<bool_t> m_InteractionSoundsSubmitted;
 	/* Optional: a class whose base AnimSet has not been cooked yet keeps the
 	previous locomotion loop for a server movePlayer instead of failing. */
 	bool_t m_hasTerrainJumpClip = false;
@@ -701,6 +704,10 @@ private:
 		f32_t fActionFacingYawDegrees);
 	void Update_EffectCues();
 	void Update_SoundCues();
+	bool_t Is_CombatSoundAudible() const;
+	void Update_CombatSoundAudience();
+	void Play_CombatSound(const std::wstring& path, f32_t volume);
+	std::vector<std::uint64_t> m_CombatSoundHandles;
 	void Update_CameraShakeCues();
 	void Update_VehicleSkillCues(const VEHICLE_SKILL_ENTRY& skill,
 		std::uint32_t actionStartTick, f32_t actionAgeSeconds);

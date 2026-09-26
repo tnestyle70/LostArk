@@ -2017,6 +2017,16 @@ void LostArk::Server::CKoukuSaydonLogicRuntime::Update(
 					outOutput.bEndPatternEarly = true;
 					outOutput.bStaggerSuccess = true;
 				}
+				// This authored window measures lost HP, not the typed stagger gauge.
+				// Publish its one-shot success without inventing damage or a contributor.
+				if (outDamageEvents.size() < LostArk::Shared::MAX_DAMAGE_EVENTS)
+				{
+					LostArk::Shared::DAMAGE_EVENT success{};
+					success.iTargetNetEntityId = boss.iNetEntityId;
+					success.fPositionX = boss.fPositionX; success.fPositionY = boss.fPositionY; success.fPositionZ = boss.fPositionZ;
+					success.isOutgoing = true; success.isStaggerSuccess = true;
+					outDamageEvents.push_back(success);
+				}
 				outOutput.strStatus = "stagger window succeeded";
 			}
 			else if (reachedEnd)

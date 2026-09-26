@@ -34,6 +34,7 @@
 #include "RuntimeAssetRoot.h"
 #include "SourceCharacterMaterialParameters.h"
 #include "SoundCueCatalog.h"
+#include "CombatHUDViewModel.h"
 #include "Gameplay/WorldCollisionContract.h"
 
 #include <algorithm>
@@ -196,6 +197,7 @@ CCharacter::CCharacter(const CCharacter& Prototype)
 
 CCharacter::~CCharacter()
 {
+	for (const auto handle : m_CombatSoundHandles) CGameInstance::Get().Stop_SoundCue(handle);
 }
 
 HRESULT CCharacter::Initialize_Prototype()
@@ -398,6 +400,7 @@ void CCharacter::Load_InteractionAnimationBindings()
  }
  std::array<std::vector<CLIP_STEP>, 5> staged;
  std::array<std::vector<std::vector<ANIMATION_EFFECT_CUE>>, 5> effects;
+ std::array<std::vector<std::vector<INTERACTION_SOUND_CUE>>, 5> sounds;
  for (const auto& mode : modes->Get_Array())
  {
   const auto* name = mode.Find("mode");
@@ -423,12 +426,31 @@ void CCharacter::Load_InteractionAnimationBindings()
    { status = "model has no clip " + step.clip; fail(); return; }
    std::vector<ANIMATION_EFFECT_CUE> cues;
    if (!Read_InteractionEffectCues(skill, step.clip, cues, status)) { fail(); return; }
+   std::vector<INTERACTION_SOUND_CUE> soundCues;
+   if (const auto* entries = skill.Find("soundCues"))
+   {
+    if (!clown || !entries->Is_Array() || entries->Get_Array().size() > 16u)
+    { status = "invalid interaction sound cues"; fail(); return; }
+    for (const auto& entry : entries->Get_Array())
+    {
+     const auto* event = entry.Find("event");
+     const auto* at = entry.Find("startMs");
+     if (!event || !event->Is_String() || event->Get_String().empty() ||
+      !at || !at->Is_Number() || !std::isfinite(at->Get_Number()) ||
+      at->Get_Number() < 0.0 || at->Get_Number() > duration * 1000.0 ||
+      std::floor(at->Get_Number()) != at->Get_Number())
+     { status = "invalid interaction sound event/time"; fail(); return; }
+     soundCues.push_back({event->Get_String(), static_cast<std::uint32_t>(at->Get_Number())});
+    }
+   }
+   sounds[index].push_back(std::move(soundCues));
    effects[index].push_back(std::move(cues));
    staged[index].push_back(std::move(step));
   }
  }
  m_InteractionClips = std::move(staged);
  m_InteractionEffectCues = std::move(effects);
+ m_InteractionSoundCues = std::move(sounds);
  // Blank, registered authoring slots stay silent until the user supplies FX.
  // A later ordinary Effect Tool Save replaces the prepared target in place.
  std::vector<std::string> targets;
@@ -834,6 +856,31 @@ void CCharacter::Update_EffectCues()
 	m_fPreviousEffectCueStageWallSeconds = fCurrentStageWallSeconds;
 }
 
+bool_t CCharacter::Is_CombatSoundAudible() const
+{
+    const auto& listener = CCombatHUDViewModel::Get().Get_Player();
+    return m_isLocallyControlled || !listener.isValid ||
+        listener.isPreview || listener.iMarioStage == 0u;
+}
+
+void CCharacter::Update_CombatSoundAudience()
+{
+    const bool audible = Is_CombatSoundAudible();
+    auto& audio = CGameInstance::Get();
+    std::erase_if(m_CombatSoundHandles, [&](const auto handle) {
+        if (!audible) audio.Stop_SoundCue(handle);
+        return !audible || !audio.Is_SoundCueActive(handle);
+    });
+}
+
+void CCharacter::Play_CombatSound(const std::wstring& path, f32_t volume)
+{
+    Update_CombatSoundAudience();
+    if (!Is_CombatSoundAudible()) return;
+    if (const auto handle = CGameInstance::Get().Play_SoundCue(path, volume))
+        m_CombatSoundHandles.push_back(handle);
+}
+
 void CCharacter::Update_SoundCues()
 {
 	if (nullptr == m_pBodyModel || nullptr == m_pChain ||
@@ -933,7 +980,7 @@ void CCharacter::Update_SoundCues()
 					(static_cast<std::size_t>(std::rand()) % Variants.size());
 				const filesystem::path SoundPath =
 					CRuntimeAssetRoot::Resolve(Variants[iVariant]);
-				CGameInstance::Get().Play_Sound(SoundPath.wstring(), 1.f);
+				Play_CombatSound(SoundPath.wstring(), 1.f);
 
 				if (iEpoch == (std::numeric_limits<uint64_t>::max)())
 					break;
@@ -1023,7 +1070,7 @@ void CCharacter::Update_VehicleSkillCues(
 			continue;
 		const std::size_t variant = variants.size() == 1u ? 0u :
 			(static_cast<std::size_t>(std::rand()) % variants.size());
-		CGameInstance::Get().Play_Sound(CRuntimeAssetRoot::Resolve(variants[variant]).wstring(), 1.f);
+		Play_CombatSound(CRuntimeAssetRoot::Resolve(variants[variant]).wstring(), 1.f);
 	}
 }
 
@@ -1066,7 +1113,7 @@ void CCharacter::Update_VehicleLocomotionSoundCues()
 			continue;
 		const std::size_t variant = variants.size() == 1u ? 0u :
 			(static_cast<std::size_t>(std::rand()) % variants.size());
-		CGameInstance::Get().Play_Sound(
+		Play_CombatSound(
 			CRuntimeAssetRoot::Resolve(variants[variant]).wstring(), 1.f);
 	}
 }
@@ -2341,6 +2388,7 @@ bool_t CCharacter::Apply_NetworkAction(
 			m_iLastNetworkActionStartTick = actionStartTick;
 			m_iCurrentEffectSkillId = INVALID_SKILL_ID; m_iEffectActionStartTick = 0;
 			m_InteractionEffectsSubmitted.clear();
+			m_InteractionSoundsSubmitted.clear();
 			m_pInteractionEffectAdmission = std::make_shared<EFFECT_PENDING_SPAWN_ADMISSION>();
 		}
 		f32_t interactionClipSeconds = 0.f, interactionRate = 1.f;
@@ -2359,6 +2407,21 @@ bool_t CCharacter::Apply_NetworkAction(
 			}
 		}
 		else if (!same) OutputDebugStringA("[Interaction] Approved action has no admitted clip binding.\n");
+        const auto& sounds = m_InteractionSoundCues[static_cast<std::size_t>(interactionMode)];
+        if (m_isLocallyControlled && skillId < sounds.size())
+        {
+            const auto& cues = sounds[skillId];
+            if (m_InteractionSoundsSubmitted.size() != cues.size()) m_InteractionSoundsSubmitted.assign(cues.size(), false);
+            for (size_t index = 0u; index < cues.size(); ++index)
+            {
+                if (m_InteractionSoundsSubmitted[index] || age * interactionRate * 1000.f < cues[index].startMs) continue;
+                m_InteractionSoundsSubmitted[index] = true;
+                if (age >= interactionClipSeconds) continue;
+                const auto& variants = CSoundCueCatalog::Find_Variants("Mario", cues[index].event);
+                if (!variants.empty()) Play_CombatSound(
+                    CRuntimeAssetRoot::Resolve(variants[static_cast<size_t>(std::rand()) % variants.size()]).wstring(), 1.f);
+            }
+        }
 		const auto& effects = m_InteractionEffectCues[static_cast<std::size_t>(interactionMode)];
 		m_eNetworkAction = action;
 		if (age >= interactionClipSeconds ||
@@ -3489,14 +3552,14 @@ void CCharacter::Apply_NetworkVehicle(const std::uint32_t vehicleId)
     m_iVehicleEffectGeneration = m_iVehicleEffectGeneration == UINT32_MAX ? 1u : m_iVehicleEffectGeneration + 1u;
     // Snapshot equality and failed staging returned above: each committed
     // mount transition owns exactly one old dismount and one new mount event.
-    const auto playVehicleEvent = [](const std::string& event)
+    const auto playVehicleEvent = [this](const std::string& event)
     {
         if (event.empty()) return;
         const auto& variants = CSoundCueCatalog::Find_Variants("Vehicle", event);
         if (variants.empty()) return;
         const std::size_t variant = variants.size() == 1u ? 0u :
             static_cast<std::size_t>(std::rand()) % variants.size();
-        CGameInstance::Get().Play_Sound(CRuntimeAssetRoot::Resolve(variants[variant]).wstring(), 1.f);
+        Play_CombatSound(CRuntimeAssetRoot::Resolve(variants[variant]).wstring(), 1.f);
     };
     if (const auto* previous = CActorCatalog::Find_Vehicle(m_iVehicleId))
         playVehicleEvent(previous->dismountSoundEvent);
@@ -3588,6 +3651,8 @@ void CCharacter::Priority_Update(f32_t fTimeDelta)
 
 void CCharacter::Update(f32_t fTimeDelta)
 {
+	// Audience changes stop even a finished action's still-playing audio tail.
+	Update_CombatSoundAudience();
 	//network state -> apply snapshot, !networkstate -> pathfinding
 	if (m_hasNetworkState)
 	{

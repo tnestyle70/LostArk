@@ -411,6 +411,7 @@ private:
 	// Native MN_RPCZ_00 BEHIT notify, owned by one successful action entry.
 	uint32_t m_iPendingHitReactionSoundClip = UINT32_MAX;
 	uint32_t m_iPendingHitReactionSoundEvent = UINT32_MAX;
+	uint64_t m_iKoukuHitReactionSound = 0u;
 	void Arm_HitReactionSound(const char_t* pClipName);
 	void Update_HitReactionSound();
 	/* Socketed weapon with body-clock pose synchronization; null when the

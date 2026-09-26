@@ -1682,6 +1682,8 @@ void CWorldSequencePlayer::Update_SoundTails(const f32_t timeDelta)
     if (m_bPaused || !std::isfinite(timeDelta) || timeDelta < 0.f) return;
     for (auto at = m_RetiredSounds.begin(); at != m_RetiredSounds.end();)
     {
+        if (m_SoundAudience && !m_SoundAudience(at->ownerId))
+        { CGameInstance::Get().Stop_SoundCue(at->handle); at = m_RetiredSounds.erase(at); continue; }
         at->remainingMs -= timeDelta * 1000.f;
         if (at->remainingMs > 0.f && CGameInstance::Get().Is_SoundCueActive(at->handle)) { ++at; continue; }
         CGameInstance::Get().Stop_SoundCue(at->handle);
@@ -1701,6 +1703,13 @@ void CWorldSequencePlayer::Retire_InstanceSoundTails(const std::string& instance
 
 void CWorldSequencePlayer::Apply_Sounds(ACTIVE_INSTANCE& active)
 {
+    if (m_SoundAudience && !m_SoundAudience(active.instanceId))
+    {
+        for (const auto& sound : active.sounds) CGameInstance::Get().Stop_SoundCue(sound.handle);
+        active.sounds.clear();
+        active.seekSounds = false;
+        return;
+    }
     if (active.soundPlaybackFinished && !active.seekSounds) return;
     active.soundPlaybackFinished = false;
     std::unordered_set<std::string> wanted;

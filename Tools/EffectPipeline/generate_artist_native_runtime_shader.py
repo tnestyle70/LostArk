@@ -221,6 +221,8 @@ struct ARTIST_NATIVE_INPUT
     float3 sourceWorldPosition;
     float3 sourceBasisX;
     float3 sourceBasisZ;
+    float3 sourceDecalTangent;
+    float3 sourceDecalBinormal;
     float handedness;
     float4 vertexColor;
     float2 screenUV;
@@ -545,6 +547,8 @@ for ordinal, selection in enumerate(selections):
             # Warrior selection arcanebolter decal: same original projection
             # prefix, sky rows 13..15, unused declared suffix padding 11/12.
             '57983e11986fc848b45046b7922de2b2': ('5d79421dc8571c45aa49790f50274f51', 13, [0, 1, 2, 11, 12, 13, 14, 15]),
+            # Circus-ball impact: LocalDecal receiver normal plus projected tangent/binormal.
+            '70820928f0b4b14486394a81b0f88c89': ('772e94581a5e6548b9529bc7cc103bca', None, [0, 1, 2, 8, 9]),
         }.get(sid) if decal else None
         if kouku_decal:
             assert selection['sourceVS'] == kouku_decal[0]
@@ -777,6 +781,10 @@ for ordinal, selection in enumerate(selections):
             sky=kouku_decal[1] if kouku_decal else {'be9bb8ea52a06b40bc25b550e349b5b9':7,'316b66ee3867964da197becf270077f0':15}.get(sid)
             if sky is not None:
                 lines += [f'    source[{sky}]=float4(input.skyUpperColor,0.f);', f'    source[{sky+1}]=float4(input.skyLowerColor,0.f);', f'    source[{sky+2}]=float4(input.ambientColor,input.skyIntensity);']
+        if sid == '70820928f0b4b14486394a81b0f88c89':
+            assert p['disassembly']['instructionSha256'] == 'b3fbebdb27b75593b006e0a62b8fee469386b37e3a1349b19ab39137ce7b4d34'
+            lines += ['    source[8]=float4(-input.sourceDecalTangent,0.f);',
+                      '    source[9]=float4(-input.sourceDecalBinormal,0.f);']
         for b in bindings['vectors']:
             exp=uniform['pixelVectorExpressions'][b['expressionIndexOrGroup']]
             lines += [f'    source[{b["baseIndex"]//16}] = {expression(exp)};']

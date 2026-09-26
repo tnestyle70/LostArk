@@ -525,3 +525,187 @@ protocol114 바이너리와 게시본으로 실행해야 하며 로컬 publish�
 것은 아니다. Client/Server/MSBuild 표준 제품 프로세스 점유가 없는 상태를 확인했다.
 최종4클라 화면·입력·망치/장판/링 표시 판정은 사용자 확인으로 남는다. 최종 확인서는
 같은 폴더의 final-ready-check.json, final-publication-check.json, final-file-validation.json이다.
+
+
+## G12. 카운터·무력화 성공 폰트
+
+Server의 일반 stagger gauge break와 쿠크 HP 기준 STAGGER_WINDOW close edge를
+isStaggerSuccess로 전달한다. 카운터의 기존 isCounterSuccess와 독립적이므로 같은 hit의
+두 성공도 각각 표시된다. DAMAGE_EVENT의 실제 피해량0을 유지한 성공 pulse를 허용하고
+incoming/HEAL/ABSORB의 잘못된 성공 조합은 packet validation에서 거절한다.
+
+CombatHUDViewModel이 피해0 성공을 보존하며 MainApp의 기존 Font_EventDamage 경로가
+파란색 카운터(RGB .15/.55/1), 노란색 무력화(1/.9/0)를 그린다. 피해 숫자 표시 OFF에서도
+성공은 유지하고, 한 tick의 많은 hit가 성공 문구를 FIFO에서 지우지 않도록 일반 숫자를
+먼저 제거한다. 기존 피해·DPS 수치에 성공용 가짜 피해를 추가하지 않는다. 새 세션의
+낮아진 serverTick은 기존 렌더 cursor를 초기화한다. 설치된 YoonGasiIIM.spritefont의
+11361 glyph를 읽어 여섯 한글 글자 존재를 확인했으며 새 폰트 resource는 없다.
+
+wire는 protocol115다. 같은 변경의 Mario hit source도 이 버전에 포함한다. Shared와
+Server/Client를 같은 버전으로 빌드해야 한다. NetworkProtocolHarness Debug 정상
+증분 Build와 실제 실행은1296 PASS/failures0이다. 프로토콜114에서 추가된 marker-color
+1byte가 빠진 기존 snapshot 크기 기대값도 보정했다. 증거는
+out/KoukuCombatFollowup20260927/protocol-build.log, protocol-test.log다.
+
+## G13. 문양 출생 위치와 중앙 포탈12개
+
+P47의 문양 presentation.2/.3은 실제로 MAP 절대좌표였다. 두 effect occurrence를
+bone 없는 BOSS, positionOffset0, followBoss=false로 바꿨다. Client는 첫 표시 frame의
+현재 보스 위치가 아니라 occurrence 시작 시각의 root history/exact root를 한 번 읽고
+고정 pivot을 사용한다. 이후 bone pose·보스 이동으로 effect를 갱신하지 않는다. 기존
+크기·회전·sourceStart4201ms·시간은 유지했다. 해당 문양에는 플레이어 위치로 생성하는
+활성 SELECT 장판 Logic이 없으며, 서버 판정 우회나 두 번째 이펙트 런타임은 추가하지 않았다.
+
+사용자 추가 요청의 마리오1~4 1페이즈는 P88/P91/P92/P93이다. 각3개 포탈을 같은 패턴의
+presentation.2 큰 중앙 오망성 위치(-0.0700000003, 1.3200000525, 942.3300170898)로
+맞추고 MAP/followBoss=false로 저장했다. 총12개다. Action2442→2443이며 최신 저장본의
+해당 필드만 병합하고 교체 직전 hash 확인·백업·원자 교체를 수행했다. 마리오 FXAA OFF를
+포함한 렌더링 설정은 변경하지 않았다. 증거는 같은 폴더의 anchor-changes.json이다.
+
+## G14. 알비온 대상과 마리오 전투 사운드 격리
+
+공용 boss random selection, 기존 target 재조회와 pursuit, 알비온의 SELECT/APPEAR/
+BLUE_CIRCLE에서 iMarioStage가 있는 플레이어를 제외한다. 전장에 유효 대상이 없으면
+target ID를 비우고 보스의 현재 navigation ground를 고정 표적으로 사용한다. 선택 후
+플레이어가 마리오로 이동해도 재검증하므로 마리오 위치를 추적하지 않는다.
+
+로컬 Mario stage가 있으면 Composition SOUND의 재생 중 handle을 중단하고 해당
+occurrence를 소비한 상태로 유지한다. CWorldSequencePlayer의 기존 soundTracks와
+retired tail에도 audience callback을 적용했다. 공유 전장 시각·시계는 계속 진행하며
+마리오 intro는 입장한 해당 stage 참가자만 듣는다. Kouku NPC hit reaction도 추적 가능한
+sound handle로 바꾸어 입장 시 중단한다. 마리오 자체 공격·피격과 BGM은 별도 소비자를
+유지한다. 일반·child·bundle·targeted·FEAR sound, owned WORLD와 tail의 실제 호출 경로를
+읽어 대조했으며, 이 검토를 실제4클라 청취 결과로 기록하지 않는다.
+
+## G15. 1관문 선행 트리거 원본 사운드
+
+원본 SCENE03A의 RemoteEvent37081_113→Matinee7/InterpData862→Track1239가
+circuspopup을200ms에 재생한다. 기존 팝업북 Matinee0의 movetoinsideofcircustent와
+별개인 선행 트리거여서 기존 컷신 sound import에 빠져 있었다. circus_finale WORLD
+template에 sound.kouku.source.circusfinale.circuspopup 한 soundTrack을 추가했다.
+WORLD2283→2284이며 다른 animation/camera/visual timing은 유지했다.
+
+Wwise event814076959→Play503324210→Layer93205929의 두 원본 media642900640/
+592867755를 원본 동시 layer로 복원했다. Resources-relative 설치 위치는
+Sound/KoukuSaton/Events/scene_midnightc_ed_circuspopup.source.wav, 길이10267ms다.
+기존 WorldSequence soundTracks 소비자의 seek/pause/stop/instance 수명으로 재생한다.
+다른 컷신 재생 경로나 중복 Composition SOUND를 추가하지 않았다.
+
+공식 WorldSequences Validate와 KoukuSaydon owner의4개 domain 게시 모두 PASS다.
+게시 로그는 out/KoukuCombatFollowup20260927/publish-kouku.log이며
+Gate1 원본·Wwise·물리 설치 증거는 out/KoukuGate1TriggerAudio20260927에 있다.
+원본 추적과 decode·설치는 실제 스피커에서 들리는 시점·음량의 사용자 확인과 구분한다.
+
+
+### G14 후속. 다른 플레이어와 에스더 전투음
+
+사용자의 추가 확인에 따라 Character의 일반 skill, vehicle skill/locomotion/mount,
+interaction sound5개 재생 지점을 Play_CombatSound로 모았다. 로컬 Mario는 자신의
+소리를 듣고, 비로컬 Character는 로컬 HUD의 Mario 상태에서 재생하지 않는다. Character가
+소유한 SoundCue handle만 정리해 입장 전부터 재생하던 소리도 중단한다. cue timeline과
+submitted 상태는 계속 진행하므로 복귀 시 밀린 소리가 재생되지 않는다.
+
+Esther PLAYER_ACTION ESTHER_CAST와 NPC_ACTION은 별도 Play_Due 소비자이므로
+같은 audience 검사와 서비스 소유 handle 정리를 추가했다. Kouku Level은 replication
+적용 직후 tail 정리를 호출한다. 입장 snapshot에서 local player를 remote action보다
+먼저 적용해 배열 순서로 이전 stage0를 읽는 문제를 닫았다. 초기 network-state 미준비를
+청취 허용 조건으로 사용하지 않아 새 remote의 첫 mount sound도 차단한다.
+
+실제 Character의 새3함수를 추출한 CPU 검증17PASS/0FAIL과5개 호출 경로 대조를 완료했다.
+이는 mock audio handle 기반 조건·수명 검증이며 실제4클라 청취 검증을 대신하지 않는다.
+증거는 character-audio-receipt.json, character-audio-test.log다.
+
+### G15 후속. 마리오 표식과 원본 공격·피격
+
+Server는 마리오1~4에 동일한 색·표시 상태를 전달하고 있었다. Client가 세 색 표식을 모두
+product prewarm하고, animated head matrix 대신 actor translation+고정2.45m 높이와
+identity rotation을 사용한다. 색별 준비와 bone 의존을 제거했으며 보고된1/4의 최종 표시와
+전 클래스에서의 높이는 사용자 화면 확인으로 남긴다.
+
+세 색 공은 실제 MN_PPCC_00 death4194520/21/22의 Par_X_PPCC_Expl_01/02/03 원본
+각10emitters를 복원해 기존 smoke를 교체했다. pop mask의 새 edge가 한 번 생성하며
+입장 전에 이미 터진 공은 숨기기만 한다. 비행 공은 Server의 실제 접촉만 FLYING_BALL로
+표시하고 shield absorption에도 source를 보존한다. 일반 피격을 비행 공으로 추측하지 않는다.
+비행 공의18emitters는 기존 원본 RHCN 폭발을 fuse/model 없이0초로 잘라0.22배 적용한
+프로젝트용 피격 표현이다. 해당 원작 비행 공과 동일한 asset이라고 주장하지 않는다.
+
+원본 Mario는 Polymorph4166/MN_REUP_07의 Q42784/W42785이며 일반 광대 MN_RPCZ의
+폭탄·나팔과 다르다. 실제 Q의4개 FX 시스템25emitters와 JumpClown1 음원을 사용한다.
+현재 프로젝트의 body/망치 clip은 유지하고 원본Shot500ms를 현재 contact400ms에 맞춰
+notify 시계0.8만 적용했다. 원본 notify TRS·color/lifetime/rotation-rate override는 보존했다.
+
+원본 StartControl/weapon socket이 현재 body에 없어 실제 설치 WP_MN_RHKP_07_Static과
+원본 weapon의1002개 같은 UV 정점을 대조했다. hand-frame cook 변환의 최대오차는
+7.0554e-8m이며 원본 handedness 변환1회와 설치 pitch220도/preScale1.313을 적용했다.
+실제 body의 bip001-r-hand에2개 follow FX를 retarget하고 다른2개는 root snapshot이다.
+이 수치·bone 존재 검증과 최종 움직이는 본 부착·GPU 화면 판정은 분리한다.
+
+native program5140~5168 총29개와 distortion companion14개를 기존 carrier에 연결했다.
+공 폭발의 exact PS70820928f0b4b14486394a81b0f88c89만 기존 decal 입력에 없던 receiver
+normal과 projector 두 축을 공급한다. 해당profile5140에만 적용하며 다른 decal에는
+전파하지 않았다. source instruction SHA와 CB0 row8/9의 원본 축 부호를 대조했다.
+mesh carrier5120도 Client project/filter와 기존 shader registry에 등록했다.
+
+최종5개 effect/73emitters의 공식 validator 내부 field 검사와 resource closure는 PASS다.
+새 Q 교체 뒤 재검사도 PASS다. 신규 음원은37WAV/30,154,228bytes(관문1+Mario36),
+effect 의존 Resources는82파일/8,606,816bytes다. 모두 설치본과 Desktop/GBResources의
+동일 상대경로 SHA256이 일치한다. authored JSON과 shader code는 Git 소유다.
+초기 일반 광대 음원·다른 망치 후보는 이번 작업의 추가분만 확인해 제거/교체했다.
+
+최종 sound는 Q/W 각3events와 Damage/Down/StandUp/Death, 공 파괴를 포함한다.
+기상은 살아 있는 로컬 Mario의 knockdown 종료 edge에서만 재생한다. Character의
+optional soundCues는 검증→stage→기존 binding 교체를 유지하고 승인된 action 시계를 쓴다.
+증거는 out/KoukuMarioPresentation20260927/RESULT.md, hammer-source/weapon-retarget.json,
+hammer-fx/retarget-receipt.json, fx-resource-install-receipt.json 및
+out/KoukuCombatFollowup20260927/audio-resource-final.json, effect-focused-validation.json이다.
+
+### G12~G15 서버 검증과 최종 게시
+
+Server/Shared Debug 증분 Build는27.96초/경고0/오류0이었다. KoukuSupportSurface328PASS,
+SkillStages64PASS이며 failures0이다. 첫 KoukuSupport 실행은 후반 catalog 검증의
+LOSTARK_SERVER_DATA_ROOT 미설정으로 실패했고, 현재 게시본과 SHA가 같은 격리 root를
+지정해 전체 재실행했다. 실패 로그를 보존했으며 새 gameplay 검사를 건너뛰지 않았다.
+
+공식 Kouku owner4개 domain 게시 뒤 최종 Effect/Sound catalog로 gameplay.balance를
+다시 게시했다. Action/Encounter/bindings/bootstrap2443, WORLD2284가 일치하며 포탈12개와
+P47장판2개의 저작/투영 필드도 일치한다. 공용 catalog를 포함한 Valtan presentation generation
+106edb25186d63f83c038fe3ac14f41b4a2948e268a2b23c6a53361798c31629의146artifact size/SHA가
+현재 파일과 일치한다. 이전 generation과의 변경은 기존 main의 에스더와 이번 Mario의
+공용 catalog2개뿐이며 Valtan gameplay를 수정한 결과가 아니다. 증거는
+publication-check-final.json, publish-gameplay-final.log, server-test-receipt.json이다.
+
+
+### G15 native CPU 검사
+
+최종5종 effect를 현재 Debug 객체로 native Codec Load→Playback Stage→Seek했다.
+0/.05/.1/.2/.4/.8/1.5/3/5초×5종 모두 성공했고 world/color/basis-scale nonfinite는0이다.
+누적 particle sample은 빨강215/파랑216/노랑215/비행피격557/망치76이다. 문서SHA는
+검사 전후 동일하고 linked Debug source/header dependency stale/missing도0이다.
+
+Q는 실제 socketLocalTRS와 identity bone parent fixture를 공급한 CPU 검증이다.
+0.4초11/0.8초52/1.5초13입자가 있으나 실제 animated bone 부착과 GPU 표시는 사용자
+확인으로 남긴다. 일부 짧은 emitter는 샘플 시각 사이에 끝나 원소별 range가 null이며
+이를 모든 원소의 표시 성공으로 확대하지 않는다. 증거는 mario-native-probe-receipt.json과
+종별 mario-native-*.jsonl이다.
+
+
+### G12~G15 최종 제품 빌드·전달 상태
+
+최종 일반 Product Debug/Release Build 모두 PASS이며 SkipBuild=false다. Debug는
+20260926T193822443Z-debug-product.json(13384ms), Release는
+20260926T195311159Z-release-product.json(831422ms)이다. 초기 Debug의100개 셰이더/
+201개 OBJ 컴파일 뒤 사용자 추가 청취 범위를 반영한 C++ 증분을 완료했다. 최종 Release는
+100개 CSO/205개 OBJ를 갱신했다. Clean/Rebuild는 실행하지 않았다. 공용 shader include
+변경으로 Shader_VtxAnimMeshBinary까지 다시 컴파일되어 빌드 시간이 길어졌다.
+기존 인코딩·형변환·PDB·HLSL 경고는 남으며 오류0이다.
+
+Engine/Shared/Server/Client의 컴파일·링크·배포, Engine DLL 설치 hash 일치, 새5120
+mesh/particle 및 decal CSO와 양쪽 EXE 존재를 확인했다. 변경 JSON15개/XML2개 parse,
+기존 Client C++17개 인코딩/CRLF 보존과 git diff --check도 PASS다. 최종 receipt는
+out/KoukuCombatFollowup20260927/final-build-ready.json과 changed-file-validation.json이다.
+
+Client/UI와4클라를 에이전트가 실행하지 않았다. 마리오1~4의 cold 표식, 이동 중 표식 높이,
+실제 망치 본 부착과 크기, 관문 진입음 동기·음량, 마리오/본진4클라 청취는 사용자 화면·
+청취 확인으로 남긴다. Server/Client 모두 protocol115의 새 실행 파일과 게시본을 사용해야
+하며 로컬 파일 게시가 원격 Server process를 갱신한 것은 아니다. 기존 사용자 RESULT의
+미커밋 기록을 보존하고 이번 G12~G15 추가 기록만 기능 커밋에 포함한다.

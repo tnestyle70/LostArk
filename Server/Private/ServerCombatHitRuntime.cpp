@@ -68,10 +68,12 @@ namespace
 		const std::uint32_t staggerAmount = 0u,
 		const bool counterSuccess = false,
 		const bool critical = false,
-		const LostArk::Shared::DAMAGE_HIT_FLAG hitFlag = LostArk::Shared::DAMAGE_HIT_FLAG::NORMAL)
+		const LostArk::Shared::DAMAGE_HIT_FLAG hitFlag = LostArk::Shared::DAMAGE_HIT_FLAG::NORMAL,
+		const bool staggerSuccess = false,
+		const LostArk::Shared::MARIO_HIT_SOURCE marioHitSource = LostArk::Shared::MARIO_HIT_SOURCE::NONE)
 	{
 		/* A counter or stagger-only hit still reaches the combat analyzer. */
-		if ((0u == amount && 0u == staggerAmount && !counterSuccess) ||
+		if ((0u == amount && 0u == staggerAmount && !counterSuccess && !staggerSuccess) ||
 			events.size() >= LostArk::Shared::MAX_DAMAGE_EVENTS)
 			return;
 		LostArk::Shared::DAMAGE_EVENT event{};
@@ -84,6 +86,8 @@ namespace
 		event.iSourcePlayerId = sourcePlayerId;
 		event.iStaggerAmount = staggerAmount;
 		event.isCounterSuccess = counterSuccess;
+		event.isStaggerSuccess = staggerSuccess;
+		event.eMarioHitSource = marioHitSource;
 		event.eHitFlag = hitFlag;
 		if (critical && 0u != amount && hitFlag == LostArk::Shared::DAMAGE_HIT_FLAG::NORMAL)
 			event.eHitFlag = LostArk::Shared::DAMAGE_HIT_FLAG::CRITICAL;
@@ -339,6 +343,7 @@ LostArk::Server::CServerCombatHitRuntime::Apply_PlayerToWorld(
 	std::uint32_t damage = 0u;
 	std::uint32_t staggerDealt = 0u;
 	bool counterTriggered = false;
+	bool staggerBroken = false;
 	if (WORLD_BOOTSTRAP_KIND::BOSS == target.eKind)
 	{
 		/* Product Valtan still carries the original armour plates because pattern
@@ -372,6 +377,7 @@ LostArk::Server::CServerCombatHitRuntime::Apply_PlayerToWorld(
 			hit.iSourcePlayerId, 0u, false, false, LostArk::Shared::DAMAGE_HIT_FLAG::ABSORB);
 		staggerDealt = bossHit.iStaggerDamage;
 		counterTriggered = bossHit.bCounterTriggered;
+		staggerBroken = bossHit.bStaggerBroken;
 		if (LostArk::Shared::INVALID_PLAYER_ID != hit.iSourcePlayerId &&
 			(0u != damage || 0u != staggerDealt || counterTriggered || 0u != bossHit.iPartDamage))
 		{
@@ -430,7 +436,8 @@ LostArk::Server::CServerCombatHitRuntime::Apply_PlayerToWorld(
 			target.iNetEntityId, damage,
 			target.fPositionX, target.fPositionY, target.fPositionZ,
 			true, outDamageEvents,
-			hit.iSourcePlayerId, staggerDealt, counterTriggered, hit.bCritical);
+			hit.iSourcePlayerId, staggerDealt, counterTriggered, hit.bCritical,
+			LostArk::Shared::DAMAGE_HIT_FLAG::NORMAL, staggerBroken);
 	}
 
 	const float pushDistance = 0u == hit.iPushMs ?
@@ -524,7 +531,7 @@ LostArk::Server::CServerCombatHitRuntime::Apply_WorldToPlayer(
 		throughShield -= absorbed;
 		PushDamageEvent(target.iNetEntityId, absorbed,
 			target.fPositionX, target.fPositionY, target.fPositionZ, false, outDamageEvents,
-			INVALID_PLAYER_ID, 0u, false, false, DAMAGE_HIT_FLAG::ABSORB);
+			INVALID_PLAYER_ID, 0u, false, false, DAMAGE_HIT_FLAG::ABSORB, false, hit.eMarioHitSource);
 	}
 	if (!hit.bEncounterWipe && throughShield >= target.iCurrentHp &&
 		0u != Death_DenyInvulnerableMs(catalog, target))
@@ -549,7 +556,7 @@ LostArk::Server::CServerCombatHitRuntime::Apply_WorldToPlayer(
 	PushDamageEvent(
 		target.iNetEntityId, hpBefore - target.iCurrentHp,
 		target.fPositionX, target.fPositionY, target.fPositionZ,
-		false, outDamageEvents);
+		false, outDamageEvents, INVALID_PLAYER_ID, 0u, false, false, DAMAGE_HIT_FLAG::NORMAL, false, hit.eMarioHitSource);
 	if (0u == target.iCurrentHp)
 	{
 		if (hit.bEncounterWipe)

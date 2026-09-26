@@ -4164,7 +4164,18 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="..\..\Data\Effects\Authored\effect.kouku.mario.marker.red.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.mario.flyingball.hit.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.mario.player.hammer.impact.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.mario.ball.pop.yellow.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.mario.ball.pop.red.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.mario.ball.pop.blue.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.kouku.mario.marker.blue.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.kouku.mario.marker.yellow.effect.json" />
+  </ItemGroup>
+  <ItemGroup>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectMeshKouku5120.hlsl">
+      <DisableOptimizations Condition="'$(Platform)'=='x64'">false</DisableOptimizations>
+      <AdditionalOptions Condition="'$(Platform)'=='x64'">/O1 %(AdditionalOptions)</AdditionalOptions>
+    </FxCompile>
   </ItemGroup>
 </Project>

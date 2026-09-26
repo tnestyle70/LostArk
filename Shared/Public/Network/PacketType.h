@@ -110,7 +110,8 @@ namespace LostArk::Shared
 	// 112 maps owned WORLD cues to their Server combat body for hit/hover presentation.
 	// 113 adds validated same-room ground ping intent and reliable room broadcast.
 	// 114 carries the Server-selected Mario colour marker over the assigned player.
-	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 114;
+	// 115 appends authoritative stagger success and Mario hit-source presentation to DAMAGE_EVENT.
+	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 115;
 
 	enum class WORLD_ID : std::uint16_t
 	{

@@ -3,7 +3,7 @@
   "formatVersion": 1,
   "lightResourceRevision": 30,
   "bossArchetypeId": "BOSS_KAKULSAYDON_G1_KOUKU",
-  "sourceRevision": 2442,
+  "sourceRevision": 2443,
   "bindings": [
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_1.stage.43",
@@ -89930,9 +89930,9 @@
           "assetId": "effect.kouku.common.trumpet.card.floor",
           "resourceDurationMs": 10638,
           "positionOffset": [
-            -0.2199999988079071,
-            1.3200000524520874,
-            737.72998046875
+            0,
+            0,
+            0
           ],
           "rotationDegrees": [
             0,
@@ -89955,7 +89955,7 @@
           "regionId": "",
           "cardSymbol": "NONE",
           "cardColor": "NONE",
-          "anchorKind": "MAP",
+          "anchorKind": "BOSS",
           "worldId": "",
           "logicOccurrenceId": "",
           "debugRender": true,
@@ -89989,9 +89989,9 @@
           "assetId": "effect.kouku.common.trumpet.card.floor",
           "resourceDurationMs": 10638,
           "positionOffset": [
-            -0.07000000029802322,
-            1.3200000524520874,
-            737.530029296875
+            0,
+            0,
+            0
           ],
           "rotationDegrees": [
             0,
@@ -90014,7 +90014,7 @@
           "regionId": "",
           "cardSymbol": "NONE",
           "cardColor": "NONE",
-          "anchorKind": "MAP",
+          "anchorKind": "BOSS",
           "worldId": "",
           "logicOccurrenceId": "",
           "debugRender": true,
@@ -125183,9 +125183,9 @@
           "assetId": "effect.kouku.gate3.mario.entry.portal.full.restore",
           "resourceDurationMs": 10000,
           "positionOffset": [
-            0,
-            0,
-            0
+            -0.07000000029802322,
+            1.3200000524520874,
+            942.3300170898438
           ],
           "rotationDegrees": [
             0,
@@ -125203,12 +125203,12 @@
           "dissolveEnd": 1,
           "volume": 1,
           "soundSourceStartMs": 0,
-          "followBoss": true,
+          "followBoss": false,
           "bone": "",
           "regionId": "",
           "cardSymbol": "NONE",
           "cardColor": "NONE",
-          "anchorKind": "BOSS",
+          "anchorKind": "MAP",
           "worldId": "",
           "logicOccurrenceId": "",
           "debugRender": true,
@@ -125825,9 +125825,9 @@
           "assetId": "effect.kouku.gate3.mario.entry.portal.full.restore",
           "resourceDurationMs": 10000,
           "positionOffset": [
-            0,
-            0,
-            0
+            -0.07000000029802322,
+            1.3200000524520874,
+            942.3300170898438
           ],
           "rotationDegrees": [
             0,
@@ -125845,12 +125845,12 @@
           "dissolveEnd": 1,
           "volume": 1,
           "soundSourceStartMs": 0,
-          "followBoss": true,
+          "followBoss": false,
           "bone": "",
           "regionId": "",
           "cardSymbol": "NONE",
           "cardColor": "NONE",
-          "anchorKind": "BOSS",
+          "anchorKind": "MAP",
           "worldId": "",
           "logicOccurrenceId": "",
           "debugRender": true,
@@ -125883,9 +125883,9 @@
           "assetId": "effect.kouku.gate3.mario.entry.portal.full.restore",
           "resourceDurationMs": 10000,
           "positionOffset": [
-            0,
-            0,
-            0
+            -0.07000000029802322,
+            1.3200000524520874,
+            942.3300170898438
           ],
           "rotationDegrees": [
             0,
@@ -125903,12 +125903,12 @@
           "dissolveEnd": 1,
           "volume": 1,
           "soundSourceStartMs": 0,
-          "followBoss": true,
+          "followBoss": false,
           "bone": "",
           "regionId": "",
           "cardSymbol": "NONE",
           "cardColor": "NONE",
-          "anchorKind": "BOSS",
+          "anchorKind": "MAP",
           "worldId": "",
           "logicOccurrenceId": "",
           "debugRender": true,
@@ -127936,9 +127936,9 @@
           "assetId": "effect.kouku.gate3.mario.entry.portal.full.restore",
           "resourceDurationMs": 10000,
           "positionOffset": [
-            0,
-            0,
-            0
+            -0.07000000029802322,
+            1.3200000524520874,
+            942.3300170898438
           ],
           "rotationDegrees": [
             0,
@@ -127956,12 +127956,12 @@
           "dissolveEnd": 1,
           "volume": 1,
           "soundSourceStartMs": 0,
-          "followBoss": true,
+          "followBoss": false,
           "bone": "",
           "regionId": "",
           "cardSymbol": "NONE",
           "cardColor": "NONE",
-          "anchorKind": "BOSS",
+          "anchorKind": "MAP",
           "worldId": "",
           "logicOccurrenceId": "",
           "debugRender": true,
@@ -128578,9 +128578,9 @@
           "assetId": "effect.kouku.gate3.mario.entry.portal.full.restore",
           "resourceDurationMs": 10000,
           "positionOffset": [
-            0,
-            0,
-            0
+            -0.07000000029802322,
+            1.3200000524520874,
+            942.3300170898438
           ],
           "rotationDegrees": [
             0,
@@ -128598,12 +128598,12 @@
           "dissolveEnd": 1,
           "volume": 1,
           "soundSourceStartMs": 0,
-          "followBoss": true,
+          "followBoss": false,
           "bone": "",
           "regionId": "",
           "cardSymbol": "NONE",
           "cardColor": "NONE",
-          "anchorKind": "BOSS",
+          "anchorKind": "MAP",
           "worldId": "",
           "logicOccurrenceId": "",
           "debugRender": true,
@@ -128636,9 +128636,9 @@
           "assetId": "effect.kouku.gate3.mario.entry.portal.full.restore",
           "resourceDurationMs": 10000,
           "positionOffset": [
-            0,
-            0,
-            0
+            -0.07000000029802322,
+            1.3200000524520874,
+            942.3300170898438
           ],
           "rotationDegrees": [
             0,
@@ -128656,12 +128656,12 @@
           "dissolveEnd": 1,
           "volume": 1,
           "soundSourceStartMs": 0,
-          "followBoss": true,
+          "followBoss": false,
           "bone": "",
           "regionId": "",
           "cardSymbol": "NONE",
           "cardColor": "NONE",
-          "anchorKind": "BOSS",
+          "anchorKind": "MAP",
           "worldId": "",
           "logicOccurrenceId": "",
           "debugRender": true,
@@ -128832,9 +128832,9 @@
           "assetId": "effect.kouku.gate3.mario.entry.portal.full.restore",
           "resourceDurationMs": 10000,
           "positionOffset": [
-            0,
-            0,
-            0
+            -0.07000000029802322,
+            1.3200000524520874,
+            942.3300170898438
           ],
           "rotationDegrees": [
             0,
@@ -128852,12 +128852,12 @@
           "dissolveEnd": 1,
           "volume": 1,
           "soundSourceStartMs": 0,
-          "followBoss": true,
+          "followBoss": false,
           "bone": "",
           "regionId": "",
           "cardSymbol": "NONE",
           "cardColor": "NONE",
-          "anchorKind": "BOSS",
+          "anchorKind": "MAP",
           "worldId": "",
           "logicOccurrenceId": "",
           "debugRender": true,
@@ -129474,9 +129474,9 @@
           "assetId": "effect.kouku.gate3.mario.entry.portal.full.restore",
           "resourceDurationMs": 10000,
           "positionOffset": [
-            0,
-            0,
-            0
+            -0.07000000029802322,
+            1.3200000524520874,
+            942.3300170898438
           ],
           "rotationDegrees": [
             0,
@@ -129494,12 +129494,12 @@
           "dissolveEnd": 1,
           "volume": 1,
           "soundSourceStartMs": 0,
-          "followBoss": true,
+          "followBoss": false,
           "bone": "",
           "regionId": "",
           "cardSymbol": "NONE",
           "cardColor": "NONE",
-          "anchorKind": "BOSS",
+          "anchorKind": "MAP",
           "worldId": "",
           "logicOccurrenceId": "",
           "debugRender": true,
@@ -129532,9 +129532,9 @@
           "assetId": "effect.kouku.gate3.mario.entry.portal.full.restore",
           "resourceDurationMs": 10000,
           "positionOffset": [
-            0,
-            0,
-            0
+            -0.07000000029802322,
+            1.3200000524520874,
+            942.3300170898438
           ],
           "rotationDegrees": [
             0,
@@ -129552,12 +129552,12 @@
           "dissolveEnd": 1,
           "volume": 1,
           "soundSourceStartMs": 0,
-          "followBoss": true,
+          "followBoss": false,
           "bone": "",
           "regionId": "",
           "cardSymbol": "NONE",
           "cardColor": "NONE",
-          "anchorKind": "BOSS",
+          "anchorKind": "MAP",
           "worldId": "",
           "logicOccurrenceId": "",
           "debugRender": true,
@@ -129728,9 +129728,9 @@
           "assetId": "effect.kouku.gate3.mario.entry.portal.full.restore",
           "resourceDurationMs": 10000,
           "positionOffset": [
-            0,
-            0,
-            0
+            -0.07000000029802322,
+            1.3200000524520874,
+            942.3300170898438
           ],
           "rotationDegrees": [
             0,
@@ -129748,12 +129748,12 @@
           "dissolveEnd": 1,
           "volume": 1,
           "soundSourceStartMs": 0,
-          "followBoss": true,
+          "followBoss": false,
           "bone": "",
           "regionId": "",
           "cardSymbol": "NONE",
           "cardColor": "NONE",
-          "anchorKind": "BOSS",
+          "anchorKind": "MAP",
           "worldId": "",
           "logicOccurrenceId": "",
           "debugRender": true,
@@ -130370,9 +130370,9 @@
           "assetId": "effect.kouku.gate3.mario.entry.portal.full.restore",
           "resourceDurationMs": 10000,
           "positionOffset": [
-            0,
-            0,
-            0
+            -0.07000000029802322,
+            1.3200000524520874,
+            942.3300170898438
           ],
           "rotationDegrees": [
             0,
@@ -130390,12 +130390,12 @@
           "dissolveEnd": 1,
           "volume": 1,
           "soundSourceStartMs": 0,
-          "followBoss": true,
+          "followBoss": false,
           "bone": "",
           "regionId": "",
           "cardSymbol": "NONE",
           "cardColor": "NONE",
-          "anchorKind": "BOSS",
+          "anchorKind": "MAP",
           "worldId": "",
           "logicOccurrenceId": "",
           "debugRender": true,
@@ -130428,9 +130428,9 @@
           "assetId": "effect.kouku.gate3.mario.entry.portal.full.restore",
           "resourceDurationMs": 10000,
           "positionOffset": [
-            0,
-            0,
-            0
+            -0.07000000029802322,
+            1.3200000524520874,
+            942.3300170898438
           ],
           "rotationDegrees": [
             0,
@@ -130448,12 +130448,12 @@
           "dissolveEnd": 1,
           "volume": 1,
           "soundSourceStartMs": 0,
-          "followBoss": true,
+          "followBoss": false,
           "bone": "",
           "regionId": "",
           "cardSymbol": "NONE",
           "cardColor": "NONE",
-          "anchorKind": "BOSS",
+          "anchorKind": "MAP",
           "worldId": "",
           "logicOccurrenceId": "",
           "debugRender": true,

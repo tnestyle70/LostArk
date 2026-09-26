@@ -229,6 +229,8 @@ public:
     // This changes audio pitch only; the owner continues to drive every track.
     void Set_ExternalSoundClockRate(f32_t rate) { if (std::isfinite(rate) && rate > 0.f && rate <= 16.f) m_ExternalSoundClockRate = rate; }
     void Update_SoundTails(f32_t timeDelta);
+    // Level-owned listener audience; visual clocks continue when its sound is inaudible.
+    void Set_SoundAudience(std::function<bool(const std::string&)> audience) { m_SoundAudience = std::move(audience); }
     void Retire_InstanceSoundTails(const std::string& instanceId);
 	bool_t Is_Paused() const noexcept { return m_bPaused; }
 	/* Moves every playing instance to the same wall-clock point and applies
@@ -413,6 +415,7 @@ private:
 	std::vector<ACTIVE_INSTANCE> m_Active;
     std::vector<RETIRED_SOUND> m_RetiredSounds;
     f32_t m_ExternalSoundClockRate = 1.f;
+    std::function<bool(const std::string&)> m_SoundAudience;
 	// Finished clocks no longer tick, but own their held pose until explicit stop/replay.
 	std::vector<ACTIVE_INSTANCE> m_Held;
 	std::unordered_map<std::string, shared_ptr<CModel>> m_ModelCache;

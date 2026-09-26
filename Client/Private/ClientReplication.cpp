@@ -3526,8 +3526,16 @@ bool Client::CClientReplication::Apply_WorldSnapshot(
 
 	bool allSucceeded = true;
 
+	// Admit the Kouku listener before remote action cues inspect its Mario audience.
+	// Network array order must not leak a remote skill on the Mario-entry snapshot.
+	const auto localFirst = m_Desc.iLayerLevelIndex == ETOUI(LEVEL::KAKULSAYDON_ARENA) ?
+		CNetworkManager::Get().Get_LocalEntityId() : INVALID_NET_ENTITY_ID;
 	for (const PLAYER_SNAPSHOT& player : snapshot.Players)
-		allSucceeded = Apply_PlayerSnapshot(player, snapshot.iServerTick, snapshot.Entities) && allSucceeded;
+		if (player.iNetEntityId == localFirst)
+			allSucceeded = Apply_PlayerSnapshot(player, snapshot.iServerTick, snapshot.Entities) && allSucceeded;
+	for (const PLAYER_SNAPSHOT& player : snapshot.Players)
+		if (player.iNetEntityId != localFirst)
+			allSucceeded = Apply_PlayerSnapshot(player, snapshot.iServerTick, snapshot.Entities) && allSucceeded;
 	if (m_Desc.iLayerLevelIndex == ETOUI(LEVEL::KAKULSAYDON_ARENA)) m_KoukuCardSnapshots = snapshot.Players;
 	std::vector<NET_ENTITY_ID> deadBossOwners;
 	for (const WORLD_ENTITY_SNAPSHOT& entity : snapshot.Entities)

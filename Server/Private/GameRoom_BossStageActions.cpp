@@ -34,7 +34,7 @@ LostArk::Server::SERVER_PLAYER* LostArk::Server::CGameRoom::Select_BossRandomAli
 	candidates.reserve(m_Players.size());
 	for (auto& [playerId, player] : m_Players)
 	{
-		if (player.iCurrentHp == 0u || !player.isCombatReady ||
+		if (player.iCurrentHp == 0u || !player.isCombatReady || player.iMarioStage != 0u ||
 			player.eAction == PLAYER_ACTION_STATE::GRABBED || player.eAction == PLAYER_ACTION_STATE::DEAD ||
 			player.eAction == PLAYER_ACTION_STATE::FALLING) continue;
 		candidates.push_back(&player);
