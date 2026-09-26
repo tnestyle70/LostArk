@@ -231,7 +231,7 @@ void LostArk::Server::CGameRoom::Begin_KoukuBingoDuration(const SERVER_WORLD_ENT
     const BOSS_PATTERN_MECHANIC_TRIGGER& trigger, const std::uint32_t tick)
 {
     using namespace LostArk::Shared;
-    if (owner.strArchetypeId != "BOSS_KAKULSAYDON_BINGO_SAYDON" || !trigger.iDurationMs || trigger.iDurationMs > 600000u) return;
+    if (owner.strArchetypeId != "BOSS_KAKULSAYDON_BINGO_SAYDON" || !trigger.iDurationMs || trigger.iDurationMs > 600000u || !trigger.BingoHammerHalfExtentsM) return;
     const auto epoch = Is_KoukuRaidRunning() ? m_KoukuRaid.State.iRunEpoch : m_KoukuSaydonPatternAudition.iRoomAuditionEpoch;
     if (!epoch) return;
     if (m_iKoukuBingoBoardEpoch != epoch)
@@ -247,6 +247,8 @@ void LostArk::Server::CGameRoom::Begin_KoukuBingoDuration(const SERVER_WORLD_ENT
     else Stop_KoukuBingoDuration(false);
     auto& duration = m_KoukuBingoDuration;
     duration.iOwnerId = owner.iNetEntityId; duration.iPatternSequence = owner.iPatternSequence;
+    duration.fHammerHalfForwardM = (*trigger.BingoHammerHalfExtentsM)[0];
+    duration.fHammerHalfWidthM = (*trigger.BingoHammerHalfExtentsM)[1];
     duration.iEndTick = Add_ServerTicksSkippingReservedZero(tick, CKoukuSaydonLogicRuntime::Ticks_FromMs(trigger.iDurationMs));
     duration.bEncounterOwned = Is_KoukuRaidRunning() && m_KoukuRaid.State.strGateId == "BINGO";
     if (duration.bEncounterOwned) duration.iEndTick = 0u;
@@ -287,8 +289,7 @@ void LostArk::Server::CGameRoom::Update_KoukuBingo(const std::uint32_t tick)
         {
             const auto random = Mix_DeterministicRandom((std::uint64_t(duration.iPatternSequence) << 32u) | tick);
             const int axis = int(random % 2u) * KOUKU_BINGO_SIDE;
-            // Native heads are 4.69 m wide, wider than one 3.04 m cell.
-            // Leave at least one row/column between paths so their heads never overlap.
+            // Preserve the authored two-hammer layout and its intervening row/column.
             static constexpr std::array<std::array<int, 2u>, 6u> pairs{{{0, 2}, {0, 3}, {0, 4}, {1, 3}, {1, 4}, {2, 4}}};
             const auto pair = pairs[(random >> 4u) % pairs.size()];
             const std::array<int, 2u> lines{axis + pair[0], axis + pair[1]};
@@ -322,20 +323,21 @@ void LostArk::Server::CGameRoom::Update_KoukuBingo(const std::uint32_t tick)
             const float ageMs = float(tick - hammer.startTick) * 1000.f / SERVER_TICK_HZ;
             constexpr float sweepStart = float(KOUKU_BINGO_HAMMER_WARNING_MS + KOUKU_BINGO_HAMMER_DESCEND_MS);
             if (ageMs < sweepStart) continue;
-            if (ageMs > sweepStart + KOUKU_BINGO_HAMMER_SWEEP_MS) { hammer = {}; continue; }
+            if (ageMs >= sweepStart + KOUKU_BINGO_HAMMER_SWEEP_MS) { hammer = {}; continue; }
             const auto path = Kouku_BingoHammerPath(hammer.anchor);
             const float dx = path.fEndX - path.fStartX, dz = path.fEndZ - path.fStartZ;
             const float length = std::hypot(dx, dz), fx = dx / length, fz = dz / length;
             const float previous = (std::clamp)((ageMs - 1000.f / SERVER_TICK_HZ - sweepStart) / KOUKU_BINGO_HAMMER_SWEEP_MS, 0.f, 1.f);
             const float current = (std::clamp)((ageMs - sweepStart) / KOUKU_BINGO_HAMMER_SWEEP_MS, 0.f, 1.f);
-            // Installed MN_UMAC_01 head: 4.69 m wide x 3.21 m deep at authored scale 1.8.
-            // Sweep the head between ticks, never the tall chain above it.
+            // Published WORLD head dimensions include the saved Object scale.
+            // Sweep the grounded head between ticks, never the tall chain above it.
             for (auto* player : alive)
             {
                 if (!catalog || !player->iCurrentHp || !CombatCollision::Circle_IntersectsForwardBox(
                     {player->fPositionX, player->fPositionZ, WorldCollision::PLAYER_HALF_EXTENT_X + WorldCollision::CONTACT_MARGIN},
-                    path.fStartX + dx * previous - fx * 1.605f, path.fStartZ + dz * previous - fz * 1.605f,
-                    fx, fz, 3.21f + length * (current - previous), 2.345f)) continue;
+                    path.fStartX + dx * previous - fx * duration.fHammerHalfForwardM,
+                    path.fStartZ + dz * previous - fz * duration.fHammerHalfForwardM,
+                    fx, fz, 2.f * duration.fHammerHalfForwardM + length * (current - previous), duration.fHammerHalfWidthM)) continue;
                 BOSS_PATTERN_LOGIC_RESULT death; death.eKind = BOSS_PATTERN_LOGIC_RESULT_KIND::INSTANT_DEATH;
                 CKoukuSaydonLogicRuntime::Apply_Result(*player, death, *owner, *catalog, madness, tick, m_TickDamageEvents);
             }
@@ -1348,6 +1350,7 @@ void LostArk::Server::CGameRoom::Update_MarioControlState(SERVER_PLAYER& player)
 		player.iMarioLayoutVariant = layout;
 		player.ePreMarioForm = player.eMadnessForm;
 		player.iMarioStage = stage;
+		Begin_MarioBallChallenge(player);
 		player.eMadnessForm = PLAYER_MADNESS_FORM::CLOWN;
 		/* MARIO is what deals the two interaction slots and what the Client
 		checks before it submits Q/W at all. The only authored source is
@@ -1427,6 +1430,11 @@ LostArk::Shared::S2C_MARIO_RETURN_RESULT LostArk::Server::CGameRoom::Apply_Mario
 		player.TriggerMove.isActive || player.bPatternBound || player.fKnockbackRemainingSeconds > 0.f ||
 		player.iAttachmentOwnerNetEntityId != INVALID_NET_ENTITY_ID)
 		return reject(MARIO_RETURN_RESULT::REJECTED_PLAYER_STATE);
+	if (Mario_MatchingBallCount(player) < 3u)
+	{
+		m_strStatus = "Break three balls of the marked colour before leaving Mario";
+		return reject(MARIO_RETURN_RESULT::REJECTED_PLAYER_STATE);
+	}
 	// Resolve the terminal authored exit of this stage; the Client supplies no target.
 	const auto lane = std::find_if(MARIO_LANES.begin(), MARIO_LANES.end(), [&player](const auto& candidate) {
 		return candidate.stage == player.iMarioStage && !std::any_of(MARIO_LANES.begin(), MARIO_LANES.end(),

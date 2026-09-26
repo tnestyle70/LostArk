@@ -76,6 +76,8 @@ public:
     ~CKoukuSaydonPresentationPlayer();
     bool Reload_Product(std::string& status, std::uint32_t expectedSourceRevision = 0u);
     static bool Validate_DraftProductJson(const std::string& text, std::uint32_t sourceRevision, std::string& status);
+    static bool Validate_ProductJson(const std::string& text, std::uint32_t sourceRevision,
+        std::string& status, bool allowIsolatedResources);
     // Loading owns collection/prewarm; playback borrows these immutable V2 snapshots.
     // The pair is (LEAF/GROUP, stable asset ID), never a prototype or vector index.
     static bool Collect_ProductEffectTargets(std::vector<std::string>& v1Targets,
@@ -171,6 +173,7 @@ public:
     std::uint32_t Preview_DurationMs() const { return m_iPreviewDurationMs; }
     const std::string& Preview_PatternId() const { return m_PreviewPattern.strPatternId; }
     const std::string& Status() const { return m_strStatus; }
+    bool Is_RandomTargetActive(const std::string& patternId, std::uint32_t serverTick, std::uint32_t startTick) const;
 private:
     std::unordered_map<std::string, std::vector<std::string>> m_SoundEventVariants;
     struct PLAYING_ROW final
@@ -218,6 +221,7 @@ private:
         std::string productPatternId;
         std::uint32_t bossEntityId = 0u, patternSequence = 0u, patternStartTick = 0u;
         float lastClockMs = -1.f;
+        std::optional<float3_t> presentationTarget;
         std::map<std::string, PLAYING_ROW> rows;
         std::uint32_t runEpoch = 0;
         std::string memberId;
@@ -449,6 +453,14 @@ private:
     void Sync_MazeMark(CARD& mark, const std::string& asset, const float4x4_t& pivot);
     void Update_FearPresentation(float dt, const std::vector<KOUKU_CARD_PRESENTATION_VIEW>& players);
     void Update_MazeMarks(const std::vector<KOUKU_CARD_PRESENTATION_VIEW>& players);
+    struct MARIO_MARK final
+    {
+        SESSION session;
+        KOUKU_SAYDON_COMPOSITION_DOCUMENT document;
+        KOUKU_SAYDON_COMPOSITION_PATTERN pattern;
+        std::uint8_t colour = 0u;
+    };
+    void Update_MarioMarks(const std::vector<KOUKU_CARD_PRESENTATION_VIEW>& players);
     struct DICE_BIND_VISUAL final
     {
         SESSION session;
@@ -519,6 +531,7 @@ private:
     std::map<std::uint32_t, SESSION> m_MarioEntrySessions;
     std::map<std::uint32_t, CARD> m_Cards;
     std::map<std::uint32_t, DICE_BIND_VISUAL> m_DiceBindVisuals;
+    std::map<std::uint32_t, MARIO_MARK> m_MarioMarks;
     std::map<std::uint32_t, CARD> m_MazeExits;
     std::map<std::uint32_t, CARD> m_MazePlayerMarks;
     std::map<std::uint32_t, CARD> m_MazeTargetMarks;

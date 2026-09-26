@@ -522,6 +522,44 @@ int LostArk::Server::CServerGameplayContractRunner::Run_DebugTeleport(TESTS& tes
 					"Casino uses the existing revive command and reappears at the safe center");
 			}
 		}
+		// Challenge choice belongs to the entrant and is independent of an outside captive.
+		for (std::uint32_t count = 1u; count <= 4u; ++count)
+		{
+			auto room = std::make_unique<CGameRoom>(WORLD_ID::KAKULSAYDON_ARENA);
+			room->m_Players.clear();
+			for (std::uint32_t id = 1u; id <= count; ++id)
+			{
+				auto& player = room->m_Players[id];
+				player.iPlayerId = id; player.iNetEntityId = 100u + id;
+				player.iCurrentHp = 100u; player.isCombatReady = true;
+				player.bPatternBound = id == 2u;
+			}
+			auto& entrant = room->m_Players.at(1u);
+			entrant.iMarioStage = 1u; entrant.iMarioLayoutVariant = 1u;
+			std::set<std::uint8_t> colours; std::set<NET_ENTITY_ID> marked;
+			room->m_MarioLayoutRandom.seed(12345u);
+			for (unsigned roll = 0u; roll < 96u; ++roll)
+			{
+				room->Begin_MarioBallChallenge(entrant);
+				colours.insert(entrant.iMarioRequiredColor); marked.insert(entrant.iMarioMarkerNetEntityId);
+				tests.Require(entrant.iMarioRequiredColor >= 1u && entrant.iMarioRequiredColor <= 3u &&
+					(count == 1u ? entrant.iMarioMarkerNetEntityId == entrant.iNetEntityId :
+					 entrant.iMarioMarkerNetEntityId > entrant.iNetEntityId && entrant.iMarioMarkerNetEntityId <= 100u + count),
+					"Mario picks one valid colour and the solo entrant or one outside player");
+			}
+			tests.Require(colours.size() == 3u && marked.size() == (count == 1u ? 1u : count - 1u),
+				"Random Mario choices include all three colours and every outside candidate, including the captive");
+			const auto target = entrant.iMarioMarkerNetEntityId;
+			tests.Require(room->Mario_MarkerColor(target) == entrant.iMarioRequiredColor, "Assigned marker is exposed only by its active entrant");
+			entrant.iCurrentHp = 0u;
+			tests.Require(room->Mario_MarkerColor(target) == 0u, "Entrant death removes even an outside player's marker immediately");
+			entrant.iCurrentHp = 100u; entrant.Clear_MarioControl();
+			tests.Require(!entrant.iMarioRequiredColor && !room->Mario_MarkerColor(target), "Mario cancellation clears the challenge and marker");
+			entrant.iMarioStage = 1u; room->Begin_MarioBallChallenge(entrant);
+			const auto departedTarget = entrant.iMarioMarkerNetEntityId;
+			room->m_Players.erase(1u);
+			tests.Require(room->Mario_MarkerColor(departedTarget) == 0u, "Entrant departure cannot leave an outside marker behind");
+		}
 		/* Product Return uses the same authored terminal move in Debug and Release.
 		   A packet carries no destination, and acceptance cannot skip its flight. */
 		for (std::uint8_t stage = 1u; stage <= 4u; ++stage)
@@ -558,6 +596,9 @@ int LostArk::Server::CServerGameplayContractRunner::Run_DebugTeleport(TESTS& tes
 			tests.Require(CServerTriggerSystem::Contains_Placement(*intro, player),
 				"Return starts inside the actual Intro box to guard against automatic re-entry");
 			player.hasMoveGoal = true; player.MovePath.push_back(origin);
+			player.iMarioLayoutVariant = 1u;
+			player.iMarioRequiredColor = 1u;
+			player.iMarioMarkerNetEntityId = player.iNetEntityId;
 			const auto original = player;
 			// Death in any of the four Mario stages returns a corpse, never a success or revive.
 			player.MarioReturnPosition = std::array<float, 3u>{ landing.x, landing.y, landing.z };
@@ -623,7 +664,32 @@ int LostArk::Server::CServerGameplayContractRunner::Run_DebugTeleport(TESTS& tes
 					a.TriggerMove.fTargetX == b.TriggerMove.fTargetX && a.TriggerMove.fTargetY == b.TriggerMove.fTargetY && a.TriggerMove.fTargetZ == b.TriggerMove.fTargetZ &&
 					a.TriggerMove.fDurationSeconds == b.TriggerMove.fDurationSeconds && a.TriggerMove.fElapsedSeconds == b.TriggerMove.fElapsedSeconds;
 			};
-			C2S_MARIO_RETURN request{}; request.iClientSequence = 10u; request.eWorldId = WORLD_ID::KAKULSAYDON_ARENA;
+			C2S_MARIO_RETURN request{}; request.iClientSequence = 1u; request.eWorldId = WORLD_ID::KAKULSAYDON_ARENA;
+			std::vector<std::uint8_t> matchingSlots;
+			std::uint16_t wrongColourMask = 0u;
+			for (const auto& ball : room->m_WorldBootstrap.Get_MarioBalls())
+				if (ball.stage == stage && ball.layout == 1u)
+				{
+					if (ball.color == 0u) matchingSlots.push_back(ball.slot);
+					else wrongColourMask |= static_cast<std::uint16_t>(1u << ball.slot);
+				}
+			tests.Require(matchingSlots.size() >= 3u, "Every published Mario layout provides three required-colour balls");
+			if (matchingSlots.size() < 3u) continue;
+			room->m_MarioPoppedBalls[stage] = wrongColourMask;
+			tests.Require(room->Mario_MatchingBallCount(player) == 0u, "Wrong-colour balls never advance the Mario exit requirement");
+			for (std::uint8_t count = 0u; count < 3u; ++count)
+			{
+				request.iClientSequence = 1u + count;
+				tests.Require(room->Mario_MatchingBallCount(player) == count &&
+					room->Apply_MarioReturn(player, request).eResult == MARIO_RETURN_RESULT::REJECTED_PLAYER_STATE &&
+					room->Begin_MarioTriggerMove(*terminal, player, 300u) == SERVER_TRIGGER_MOVE_ENTRY_RESULT::RETRY_WHILE_INSIDE &&
+					!player.TriggerMove.isActive && player.iMarioStage == stage && player.fPositionX == original.fPositionX,
+					"Zero, one or two matching balls preserve Mario position and reject both terminal G and Return");
+				room->m_MarioPoppedBalls[stage] |= static_cast<std::uint16_t>(1u << matchingSlots[count]);
+			}
+			tests.Require(room->Mario_MatchingBallCount(player) == 3u && room->Mario_MarkerColor(player.iNetEntityId) == 1u,
+				"Three matching balls unlock every Mario stage and retain the marker until escape");
+			request.iClientSequence = 10u;
 			const auto accepted = room->Apply_MarioReturn(player, request);
 			tests.Require(accepted.eResult == MARIO_RETURN_RESULT::ACCEPTED && accepted.iClientSequence == 10u &&
 				accepted.eWorldId == WORLD_ID::KAKULSAYDON_ARENA && player.TriggerMove.isActive &&
@@ -637,6 +703,8 @@ int LostArk::Server::CServerGameplayContractRunner::Run_DebugTeleport(TESTS& tes
 				!player.hasMoveGoal && player.MovePath.empty() && player.iCurrentHp == 100u,
 				"Mario Return starts the real terminal flight and restores form without teleporting or damaging the player");
 			if (accepted.eResult != MARIO_RETURN_RESULT::ACCEPTED) continue;
+			tests.Require(room->Mario_MarkerColor(player.iNetEntityId) == 1u,
+				"Mario marker survives the accepted return flight until landing");
 			room->Update_Players((std::min)(.1f, action.fDurationSeconds * .25f));
 			const auto inFlight = player;
 			bool stayedOutsideMario = player.iMarioStage == 0u;
@@ -659,6 +727,8 @@ int LostArk::Server::CServerGameplayContractRunner::Run_DebugTeleport(TESTS& tes
 				!player.iMarioStage && player.eMadnessForm == PLAYER_MADNESS_FORM::NORMAL && player.iCurrentHp == 100u &&
 				player.eCharacterClass == CHARACTER_CLASS_ID::LANCE_MASTER,
 				"Mario Return completes through ordinary player updates on the published Gate 3 landing");
+			tests.Require(!player.iMarioRequiredColor && !room->Mario_MarkerColor(player.iNetEntityId),
+				"Successful terminal landing clears the Mario marker and required colour");
 			const auto landed = player; request.iClientSequence = 12u;
 			tests.Require(room->Apply_MarioReturn(player, request).eResult == MARIO_RETURN_RESULT::REJECTED_OUTSIDE_MARIO &&
 				sameState(player, landed), "Return outside Mario preserves the completed landing");

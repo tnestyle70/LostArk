@@ -206,6 +206,7 @@ void Client::CKoukuMadnessGaugeView::Update(
 {
 	if (!m_bConfigLoaded || !State.isValid || 0u == State.iMadnessMaximum ||
 		HUD_KOUKU_HUD_MODE::MAZE == State.eHudMode ||
+		HUD_KOUKU_HUD_MODE::DANCE == State.eHudMode ||
 		LostArk::Shared::CARD_MAZE_ROLE::NONE != State.eCardMazeRole ||
 		nullptr == pLocalCharacter || m_SlotOffsets.empty())
 	{

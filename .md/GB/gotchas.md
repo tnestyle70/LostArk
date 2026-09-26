@@ -2618,7 +2618,12 @@ lease에 연결한다. 저장된 DURATION은 timing 존재와 PRODUCT 의미의 
 - capture의 scope drop이 있으면 최초182초 프레임의 원인을 세부 수치로 꾸미지 않는다. 이번 사용자 capture에는 timeline ms가 없어44299/55637ms의 정확 대응은 사용자 관찰이다. 구현·수치 검증과 사용자 FPS 확인은 대응 KOUKU_PATTERN_RUNTIME_REPAIR_RESULT에서 구분한다.
 
 - 단독 EffectAuthoringSequencer도 loopEffectToDuration의 finite/loop0 구분을 소비해야 한다. Composition만 고치면 공통 불25개 finite emitter가 단독 Preview에서 계속 거절된다. cycle을 되감을 때 provider의 owner/bone 시각에 cycle 시작을 다시 더한다.
-- 컷신의 Animation lane이 비어 있어도 World sequence의 animationTracks와 설치 WModel clip을 먼저 확인한다. 이미 World 배우가 소유한 clip은 정보 행으로 투영하고 같은 보스 Animation을 중복 생성하지 않는다.
+- 컷신의 Animation lane이 비어 있어도 World sequence의 animationTracks와 설치 WModel clip을 먼저 확인한다. 이미 World 배우가 소유한 clip은 기존 WORLD 편집 경계로 투영하고 같은 보스 Animation을 중복 생성하지 않는다.
+- WORLD Animation 표시 행을 시간 구간만으로 채우면 서로 다른 배우의 clip이 같은 행에 섞인다.
+  World occurrence+slot별로 행을 고정하고 배우를 표시한다. 공백과 이웃은 같은 owner의 source
+  구간·속도·끝 시각으로 판단하며 화면상의 빈칸만으로 validator를 풀거나 다른 clip을 밀지 않는다.
+  편집 거절은 이웃 충돌과 Motion 범위 초과를 구분하고 사용자 dirty 문서와 고정 시계를 보존한다.
+  같은 mesh를 쓰는 원본 actor도 별도 UObject·visibility·본 부착을 가질 수 있으므로 mesh 이름만으로 중복이라 판정해 삭제·병합하지 않는다.
 
 ### Show Navigation 오버레이는 main viewport background list에 명시적으로 그린다 (2026-09-18)
 
@@ -2809,7 +2814,7 @@ lease에 연결한다. 저장된 DURATION은 timing 존재와 PRODUCT 의미의 
 - **컷신 항목(패턴) 하나를 Boss 탭과 Sequence 탭에 추가하는 절차와 함정 (2026-09-20 `앵콜컷신`)**: 두 탭은 별개 문서다. Boss 탭은 `Data/KoukuSaydon/Gate1/KoukuSaydonComposition.json`, Sequence 탭은 `Data/Compositions/Sequences/KoukuSaydonSequenceComposition.json`이고, 같은 컷신도 각 문서에 패턴이 따로 있으며(ID 접두사만 다르다) 둘 다 `camerashots.json`의 shot과 `Data/Effects/V2`의 페이드 이펙트를 참조한다. 게이트별 트리는 `KoukuSaydonActionWorkbench.cpp`의 `Render_PatternTree`가 gateId와 folder/bundle 유무로 만들며, 폴더 없는 패턴은 게이트 바로 아래 `표시이름 [Actor]`로 나온다. `Tools/KoukuSaydonPipeline/build_gate_cutscenes_g12.py`는 CONFIGS 전체를 다시 만들고 id가 지금 문서와 어긋나 있어(id=8이 현재는 `1관문_연출`) 새 컷신을 위해 다시 돌리지 않는다. 컷신 하나만 추가할 때는 `Tools/KoukuSaydonPipeline/build_encore_cutscene.py`처럼 기존 `빙고_최종엔딩씬` 패턴을 복제하고 쓰기 직전에 baseline을 다시 확인한 뒤 원자 교체한다. Composition 두 문서는 파이썬 indent=2 + CRLF로 다시 써도 바이트가 같지만 `camerashots.json`은 실수 표기가 섞여 있어 텍스트 삽입으로만 고친다. 자막·가짜 클리어 UI·깨진 유리·배우 굽기(slot a/b 밖의 skelcontrolstrength 무시)는 이 파이프라인이 표현하지 못하므로, 패턴이 생겼다고 그 요소가 들어간 것이 아니다. 근거와 미포함 목록은 `2026-09-20_KOUKU_ENCORE_COMPOSITION_ENTRY_RESULT.md`에 있다.
 - **원본 컷신 배우(Matinee 그룹)를 World Sequence로 옮길 때 조용히 어긋나는 세 가지 (2026-09-20 앵콜컷신 세이튼)**: ① `build_source_sequences.actor_world`가 쓰는 `base.source_times`는 `cim_constant` 계단을 `round(ms)`와 `ms-1`에서 `world_pose(ms/1000)`로 샘플한다. 원본 키 시각이 7833.34ms처럼 정수 ms 바로 위면 `round`가 내림해 그 시각에는 아직 옛 값이 나오고, 새 값은 다음 200ms 경계에 도착해 배우가 계단 대신 167ms 동안 약 44m를 미끄러진다(앵콜 후보에서 실측). 계단 다음의 첫 정수 ms(`floor(t)+1`)를 키에 더한다(`build_encore_cutscene.add_step_keys`). 기존 baker는 고치지 않았고 다른 컷신에 같은 미끄러짐이 있는지는 확인하지 못했다. ② baker의 `rotationQuaternion`은 scipy가 w<0 부호로 줄 수 있는데 Composition/World Sequence 검증기는 정규화된 w≥0을 요구한다(`must be normalized with non-negative w`). q와 -q는 같은 회전이므로 부호를 뒤집어 저장한다. ③ Boss 문서 `worlds[].worldId`는 `kakulsaydon.g1.world.<N>`(N<nextWorldOrdinal)만 투영기 `_validate_catalog`가 받는다(`world.kouku.gate2.intro.*`만 예외). `world.kouku.bingo.encore.saydon`을 넣으면 `project_kouku_saydon_composition.py --check`가 `worldId must use kakulsaydon.g1.world.<N> below nextWorldOrdinal`로 실패했다(Sequence 문서 선례의 `world.kouku.*` 형식을 그대로 복사하면 안 된다). 또 baked wmodel 폴더에는 원본 `textures/`가 함께 있어야 한다. `write_clip`이 복사하지만 후보 Resources root에서 구우면 빠지므로 설치 때 같이 옮긴다. 근거: 09-20/2026-09-20_KOUKU_ENCORE_COMPOSITION_ENTRY_RESULT.md 10절.
 - **베른 castle↔castle.2 / library↔library.2 왕복 트리거는 예외적으로 밟자마자 발동하고, 화면이 어두워진 뒤에 이동한다 (2026-09-20).** 플레이어가 스스로 움직이는 movePlayer 상자는 기본이 G키 대기라서 `AUTO_ENTRY_RULES`에 `{BERN, MOVE_PLAYER, "castle"}`, `{BERN, MOVE_PLAYER, "library"}` 행이 있어야 G 없이 발동한다(id 접두어라 `castle.2`, `library.2`도 포함, Bern의 다른 movePlayer 상자는 계속 G). 도착 자리가 짝 상자 안이라 서버가 새로 밟은 것으로 보고 곧바로 되쏘는 무한 반복을 막으려고, Bern에서만 `Evaluate_Entries`가 방금 착지한 플레이어를 그 틱의 진입 발동에서 뺀다(`m_TriggerMoveInFlight`로 TRIGGER_MOVE가 끝난 틱을 안다. 나갔다 다시 들어와야 발동). 어두워진 뒤 이동은 서버가 `TriggerMove.fHoldSeconds`(Shared `BERN_TRAVEL_HOLD_MS`=500)만큼 제자리에 묶고 그 뒤 이동시키며, 클라는 `CSongCastGaugeView`의 전역 암전을 Bern 레벨에서만 TRIGGER_MOVE 동안 `BERN_TRAVEL_FADE_OUT_MS`(300)로 검게 만든다. 쿠크 아레나의 속도 휴리스틱 암전은 그대로이며 Bern 레벨에서만 켜지므로 이중 암전은 없다. 스퀘어홀은 TRIGGER_MOVE가 아니라 SQUAREHOLE_SONG 액션이라 겹치지 않는다. 이동 이벤트의 `durationSeconds`는 게시기 최소값 0.05이고 targetPosition의 Y는 짝 자리의 서버 네비 높이를 썼다(트리거 상자 Y와 최대 0.13m 차이). 프로토콜 94는 그대로지만 Shared 헤더가 바뀌므로 Server와 Client를 함께 빌드·재시작한다. 게시기 검증은 스크래치 루트(`Publish-WorldGameplay.ps1`의 repoRoot는 스크립트 상위 2단계)에 `Data` junction을 만들고 후보 파일만 복사해 저장소를 건드리지 않고 할 수 있다. 이때 junction은 `cmd /c rmdir`로만 지운다(`Remove-Item -Recurse`는 링크 대상까지 지울 수 있다). 자세한 검증 범위는 `.md/GB/09-20/2026-09-20_BERN_CASTLE_LIBRARY_TRAVEL_RESULT.md`.
-- **쿠크 앵콜컷신은 프로젝트 배우가 원본보다 1.7배 커서 카메라를 배우 루트 기준 1.7배 멀리 둔다 (2026-09-20).** 원본 SCENE07A의 배우 `쿠크세이튼_03`(export 24)과 컴포넌트(export 224)에는 DrawScale/Scale 속성이 없어 메시를 기본 크기(wmodel 단위 × 0.01)로 그린다. 프로젝트 몸체 `MN_RPCT_05`는 `bodyModelPreScale 0.017`이라 구운 배우가 1.7배 크다. 원본 카메라(위치·시선·FOV 29.395°)는 맞았고 발이 화면 아래 끝에 오는 것도 원본 영상과 같았다. 틀어진 것은 머리·몸통이 화면 위로 나가는 것뿐이었다. 세계를 배우 루트 A 기준으로 균등 배율하면 화면이 같으므로 배우를 줄이지 않고 `eye' = A + k(eye - A)`, `lookAt' = A + k(lookAt - A)`(k=1.7, up·FOV 유지)로 카메라 키를 배우 위치 키 시각에 맞춰 다시 만든다(`Tools/KoukuSaydonPipeline/fit_encore_camera_to_actor_scale.py`, 26키, 멱등이며 `--ratio`로 재조정). 다른 컷신에 배율을 옮기기 전에 그 배우의 원본 Actor/Component에 DrawScale이 있는지 UPK 속성(`Tools/.../encore_upk_props.py` 방식)으로 먼저 본다. 09-18 쇼타임의 1.4167(=0.017/(0.01×1.2))은 그 배우에 drawscale 1.2가 명시돼 있었기 때문이다. 배율은 이론값(0.017/0.01), 클로즈업에서 원본의 빨간 코가 화면 중앙에 오는 조건(눈 높이 2.36m ÷ 카메라 축 높이 1.373m = 1.72), 전신 구간 정점 범위 대조(1.4~1.8)가 겹쳐 정했다. 카메라 키는 shot당 최대 64개(`CAMERA_TRACK_MAX_KEYFRAMES`, CameraTool)이므로 배우 위치 키를 5mm 오차로 줄여 쓴다. 영상과 컷신의 시간 대응은 눈대중(+5.4초)이 아니라 프레임 차이 최대점으로 잡는다: 유리 파열 섬광 v=9.80초 = 컷신 15.433초로 오프셋 5.63초. 카메라를 옮기면 원본과 달리 배경이 움직이므로(원본은 카메라 고정, 배우가 카메라에 붙음) 배우 위치 키가 뛰는 8.167·20.4·20.933초에 카메라가 각각 약 2.1m·1.9m·0.6m 순간 이동해 배경이 튄다. 카메라는 원본보다 약 3m 뒤·위(높이 12.26m → 14.81~14.93m)로 가므로 천막·천장 지오메트리와 겹치는지는 화면에서 확인해야 한다. 화면 확인은 사용자 몫이며 이 항목은 수치 검증(스킨 메시 정점 투영, 등가성 NDC 차이 4e-4 이하)만 끝난 상태다. 근거: 09-20/2026-09-20_ENCORE_CAMERA_FIT_RESULT.md.
+- **쿠크 앵콜컷신은 프로젝트 배우가 원본보다 1.7배 커서 카메라를 배우 루트 기준 1.7배 멀리 둔다 (2026-09-20).** 원본 SCENE07A의 배우 `쿠크세이튼_03`(export 24)과 컴포넌트(export 224)에는 DrawScale/Scale 속성이 없어 메시를 기본 크기(wmodel 단위 × 0.01)로 그린다. 프로젝트 몸체 `MN_RPCT_05`는 `bodyModelPreScale 0.017`이라 구운 배우가 1.7배 크다. 원본 카메라(위치·시선·FOV 29.395°)는 맞았고 발이 화면 아래 끝에 오는 것도 원본 영상과 같았다. 틀어진 것은 머리·몸통이 화면 위로 나가는 것뿐이었다. 세계를 배우 루트 A 기준으로 균등 배율하면 화면이 같으므로 배우를 줄이지 않고 `eye' = A + k(eye - A)`, `lookAt' = A + k(lookAt - A)`(k=1.7, up·FOV 유지)로 카메라 키를 배우 위치 키 시각에 맞춰 다시 만든다(`Tools/KoukuSaydonPipeline/fit_encore_camera_to_actor_scale.py`, 26키, 멱등이며 `--ratio`로 재조정). 다른 컷신에 배율을 옮기기 전에 그 배우의 원본 Actor/Component에 DrawScale이 있는지 UPK 속성(`Tools/.../encore_upk_props.py` 방식)으로 먼저 본다. 09-18 쇼타임의 1.4167(=0.017/(0.01×1.2))은 그 배우에 drawscale 1.2가 명시돼 있었기 때문이다. 배율은 이론값(0.017/0.01), 클로즈업에서 원본의 빨간 코가 화면 중앙에 오는 조건(눈 높이 2.36m ÷ 카메라 축 높이 1.373m = 1.72), 전신 구간 정점 범위 대조(1.4~1.8)가 겹쳐 정했다. 카메라 키는 shot당 최대 128개(`CAMERA_TRACK_MAX_KEYFRAMES`, CameraTool)이므로 배우 위치 키를 5mm 오차로 줄여 쓴다. 영상과 컷신의 시간 대응은 눈대중(+5.4초)이 아니라 프레임 차이 최대점으로 잡는다: 유리 파열 섬광 v=9.80초 = 컷신 15.433초로 오프셋 5.63초. 카메라를 옮기면 원본과 달리 배경이 움직이므로(원본은 카메라 고정, 배우가 카메라에 붙음) 배우 위치 키가 뛰는 8.167·20.4·20.933초에 카메라가 각각 약 2.1m·1.9m·0.6m 순간 이동해 배경이 튄다. 카메라는 원본보다 약 3m 뒤·위(높이 12.26m → 14.81~14.93m)로 가므로 천막·천장 지오메트리와 겹치는지는 화면에서 확인해야 한다. 화면 확인은 사용자 몫이며 이 항목은 수치 검증(스킨 메시 정점 투영, 등가성 NDC 차이 4e-4 이하)만 끝난 상태다. 근거: 09-20/2026-09-20_ENCORE_CAMERA_FIT_RESULT.md.
 
 - **main과 병합할 때 두 브랜치가 같은 "다음 번호"를 쓰면 ID가 조용히 겹친다 (2026-09-20 쿠크 `PATTERN_94`, `world.40`).** 쿠크 Composition은 저장할 때 `nextPatternOrdinal`/`nextWorldOrdinal`을 올리므로, 같은 기준에서 갈라진 두 브랜치가 각자 새 패턴·월드를 만들면 서로 다른 내용이 같은 ID(`KAKULSAYDON_G1_PATTERN_94` 메두사공포 대 앵콜컷신, `kakulsaydon.g1.world.40` 뿅망치 대 앵콜 세이튼)를 갖는다. git은 텍스트 충돌만 보여 주므로 JSON을 ID 기준으로 비교해 "양쪽이 같은 ID를 추가했고 내용이 다름"부터 찾고, 한쪽을 새 번호로 옮기면서 그 ID를 참조하는 모든 파일(Composition, Encounter, patternbindings)을 함께 바꾼다. 생성 출력물(`KoukuSaydonEncounter.json`, `KoukuSaydon.patternbindings.json`)은 손으로 합치지 말고 병합된 Composition으로 재생성한다. 재생성 전에는 `sourceRevision`이 Composition `revision`보다 낮은 오래된 상태다.
 - **병합 충돌 해결 때의 함정 세 가지 (2026-09-20).** (1) 해결 스크립트가 실패해도 `;`로 이어 둔 `git add`는 실행되어 충돌 마커가 남은 파일이 "해결됨"으로 스테이징된다. 해결 명령은 `&&`로만 잇고 스테이징 뒤 `git show :0:<파일> | grep -c "^<<<<<<<"`로 0개를 확인한다. (2) autocrlf 때문에 작업 사본은 CRLF, 인덱스 blob은 LF라 바이트 앵커를 쓰는 해결 스크립트는 줄끝부터 감지해야 한다. main의 `gotchas.md`처럼 `CR CR LF`로 저장된 파일은 main 원본 바이트를 그대로 두고 우리 줄만 같은 줄끝으로 붙인다. (3) `git status`가 내용이 같은 파일을 계속 M으로 표시할 수 있다. `git update-index --refresh` 뒤에도 남으면 blob 해시와 `cmp`로 같음을 확인한 뒤 `git checkout -- <파일>`로 정리한다.
@@ -3976,3 +3981,66 @@ Hide로 되돌리는 방식은 Deactivate/Stop을 일으키므로 사용하지 �
 - Effect sourceModelPreview의 관문 정본은 `BINGO`다. legacy `ENCORE`는 codec decode에서 정규화한다. Effect Load/Drawable 성공만으로 재생 성공을 판단하지 말고 metadata → SourceProp → Composition model selection까지 검사한다.
 - `isPatternBound`는 입력 잠금이다. 매틱 처리나 formation 취소에서 `isCombatReady=false`를 남기면 즉사 칼날을 포함한 피해 판정에서 제외된다. 검증 fixture도 readiness를 강제로 복구하지 말고 실제 room update를 거친다.
 - WORLD JSON은 Client16MiB 제한이 있다. 필드 병합 시 숫자 vector를 원본처럼 한 줄로 보존하며, 전체 pretty-print 팽창을 데이터 증가로 오인하지 않는다.
+
+### 원본 Matinee의 시간과 배우·부착 소유권
+
+- Slomo가 있는 Matinee는 source 시각과 실제 경과 시각이 다르다. 카메라·WORLD·가시성·
+  애니메이션·자막·cue를 하나의 적분/역변환으로 맞춘다. 오디오 샘플 속도와 Stop 시각은
+  구분하고, 파티클 lifetime 꼬리를 Matinee 길이로 잘랐다고 원본 복원으로 기록하지 않는다.
+- 동일 mesh의1/2 배우를 이름만 보고 합치지 않는다. Matinee variablelink→actor/component→
+  visibility/baseBone을 확인한다. 새 부착물을 만들기 전에 World clone의 native hat/weapon
+  자동 부착까지 확인한다. 재질 트랙은 원본 대상 component에만 적용한다.
+- constant 변환 키는 정확한 소수 source 시각을 확인한다. 반올림 양쪽이 이전 자세를
+  샘플하면 다음30Hz frame까지 가짜 이동을 만든다. 본 부착 reduction은 저장 frame뿐 아니라
+  실제 재생 구간 중간 표본을 대조한다. full을 retime한 뒤 같은 결과에서 split을 잘라야 한다.
+- `effectSourceTimeKeys`는 원본 Effect 내부 시각을 보존한다. 일반 occurrence와 SCENE_PROFILE
+  투영 모두 absent일 때 빈 배열을 쓰지 않는다. Save 검증과 live anchor preview 검증이 같은
+  fixed MAP 제약을 쓰고 V2 trim이 normalized lifetime을 압축하지 않도록 한다.
+- WORLD authoring·Map publisher·Composition dependency validator는64 track/4096 key와
+  optional materialTracks/BOX·CYLINDER를 같은 strict 계약으로 검증한다. 한 소비자만 오래된
+  필드/키 상한을 유지하면 파일 저장은 성공해도 공식 게시가 막힌다.
+
+### Complete Play의 선택적 Effect 시계와 전체 Product 준비
+
+추적 폭탄은 occurrence 기본값을 채운 복사본을 targetedCombatVisuals에 투영한다.
+기본값에서 뺀 필드도 복사본에 이미 있으면 다시 출력될 수 있다. 미사용
+effectSourceTimeKeys=[]는 최종 occurrence 투영에서도 생략하고 reader는 absent와
+같게 읽는다.1개 키·비배열·잘못된 순서/범위는 계속 거절한다. Animation binding과
+Effect resource 준비만 성공해도 전체 presentation parser가 실패할 수 있으므로
+새 READY 준비 identity에서 전체 native Product parser를 한 번 검증한다. 같은
+source 실패를 매프레임 재파싱하지 않으며 기존 재생 cache를 보존한다.
+
+방향성 warning은 mesh/root의 관습적인 전방을 그대로 쓰지 않는다. DDS의 문양
+방향→quad UV→source StartRotation/axis lock→WORLD occurrence 회전으로 실제
+전방을 구한 뒤 이동 곡선과 내적을 검사한다. 공유 asset 크기/재질은 유지하고
+해당 occurrence 회전만 고친다.09-26 PLAYTEST_RECOVERY G07 결과에 수치를 둔다.
+
+
+### 쿠크 게시 schema·고정 장판 높이·피해 소유
+
+- 공식 Kouku owner는 Gameplay보다 앞서 World encounter metadata도 읽는다. 새 optional
+  pattern 필드는 양쪽 schema 경계에 연결해야 한다. trackBombs처럼 한 검증기에만 빠지면
+  저작 저장은 성공해도 owner 전체가 rollback된다. 검증 자체를 제거하지 않는다.
+- 같은 Effect가 Append에서는 보이고 group에서 숨으면 먼저 실제 occurrence Y와
+  source local Y를 지면에 대조한다. STATIC MAP은 절대 배치이고 Showtime의
+  Server-controlled template은 navigation ground에 상대 Y를 더한다. 두 값을 일괄
+  변경하면 이미 지면 기준인 서버 그룹이 뜬다. group 이름만으로 carrier 결함을 가정하지 않는다.
+- 망치 충돌은 모델의 진행축/가로축과 배율을 각각 확인한다. WORLD collider head와
+  저장 Object scale이 Server typed geometry와 Debug/Release 표시의 같은 정본이다.
+  새 필수 geometry를 연결할 때 timeline trigger뿐 아니라 entry idle의 자동 보드 시작도
+  현재 pinned flow의 실제 BINGO_BOARD 정의를 소비해야 한다. 빈 synthetic trigger는
+  보드 시작을 건너뛰어 원래 폭탄·망치 deadline까지 밀리게 한다.
+- GRABBED는 일반 공격에서 제외된다. 잡기 전용 저작 피해만 허용할 때는 같은 boss ID,
+  pattern sequence, BOSS_LEFT_HAND 및 활성 hold를 모두 검사하고 전역 면역을 풀지 않는다.
+- 주사위는 동문양 피해 면제와 속박 해제가 별도 소비다. 실제 CombatObject 접촉에서
+  owner/sequence가 일치하는 속박까지 해제해야 하며, 피해 0만 확인하면 구조상 누락을 놓친다.
+  자유 1명 선정, 실제 이동 명령, 속박된 플레이어의 카드 가로막기와 다음 tick 해제 유지까지
+  대조한다. 이 누락의 재현만으로 과거 전원 고정·GPU 이펙트 누락의 원인을 확정하지 않는다.
+- 지속 source 링이 몇 초 뒤 꺼지면 Required EmitterLoops의 생략값을 완전한 CDO chain에서
+  확인한다. 기본값0을 provisional1로 저장한 자산은 원본 근거가 있는 element만 복원한다.
+  외부 시각으로 재생하는 occurrence는 기존 loop-to-duration과 bounded source end도 함께
+  연결해야 한다. loopCount만0으로 고친 CPU 후보가 계속 사라지는 경우를 성공으로 기록하지 않는다.
+- 랜덤 표적 Duration은 시작 cue의 선택과 종료 시 조준 확정을 나눠 연결한다. 같은 선택 ID의
+  종료 위치를 ledger에서 한 번 저장하고, 이후 stage retarget이 덮지 않도록 occurrence로
+  소유한다. 다음 선택·완료·취소·새 패턴 시작은 원래 yaw를 복구해야 한다. 사용자 타이밍과
+  원본 무기 궤적을 바꾸지 않고 실제 다음 공격 stage까지 고정되는지 검사한다.

@@ -1107,6 +1107,7 @@ bool LostArk::Server::CGameRoom::Commit_BossPatternPlayerStageActions(
 		if (BOSS_PATTERN_STAGE_ACTION_KIND::RETARGET_RANDOM_ALIVE ==
 			action.eKind)
 		{
+			if (boss.Has_KoukuPresentationAim()) continue;
 			auto* target = Select_BossRandomAliveTarget(boss, actionId, action.strTargetId, serverTick);
 			if (!target)
 			{

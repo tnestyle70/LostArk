@@ -7065,6 +7065,21 @@
       "effectAssetId": "effect.kouku.gate2.juggling.target.impact",
       "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
       "authoringPath": "Effects/Authored/effect.kouku.gate2.juggling.target.impact.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.mario.marker.red",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.mario.marker.red.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.mario.marker.blue",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.mario.marker.blue.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.mario.marker.yellow",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.mario.marker.yellow.effect.json"
     }
   ]
 }

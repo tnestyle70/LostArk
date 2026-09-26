@@ -5722,4 +5722,20 @@
     <None Include="..\Bin\ShaderFiles\Shader_EffectArtistNativeSelectedGroup5056.hlsli"><Filter>97.ShaderFiles</Filter></None>
     <None Include="..\Bin\ShaderFiles\Shader_EffectArtistNativeSelectedGroup5120.hlsli"><Filter>97.ShaderFiles</Filter></None>
   </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\Data\Effects\V2\Authored\kouku.bingo.ending.fade.black.effectv2.json">
+      <Filter>96.DataFiles</Filter>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.mario.marker.red.effect.json">
+      <Filter>96.DataFiles</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.mario.marker.blue.effect.json">
+      <Filter>96.DataFiles</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.mario.marker.yellow.effect.json">
+      <Filter>96.DataFiles</Filter>
+    </None>
+  </ItemGroup>
 </Project>

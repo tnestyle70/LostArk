@@ -668,6 +668,14 @@ bool CWorldObjectTool::Edit_AnimationTimeline(const std::string& instanceId, con
         if (row.startMs < expectedStartMs && (!previous || row.startMs > previous->startMs)) previous = &row;
         if (row.startMs > expectedStartMs) nextStart = (std::min)(nextStart, row.startMs);
     }
+    const auto clipLabel = [](const WORLD_SEQUENCE_ANIMATION_TRACK& row) {
+        return row.displayName.empty() ? row.clipName : row.displayName + " [" + row.clipName + "]";
+    };
+    const auto localTime = [](const double value) {
+        char text[64]{};
+        std::snprintf(text, sizeof(text), "%.3f ms", value);
+        return std::string(text);
+    };
     double previousEnd = 0.;
     if (previous)
     {
@@ -681,11 +689,27 @@ bool CWorldObjectTool::Edit_AnimationTimeline(const std::string& instanceId, con
                 return refuse("The preceding animation has no valid native range.");
             previousEnd = (std::min)(previousEnd, previous->startMs + (end - previous->sourceStartMs) / previous->playbackRate);
         }
-        if (startMs <= previous->startMs) return refuse("The animation must stay after the preceding clip.");
+        if (startMs <= previous->startMs)
+            return refuse("Animation '" + clipLabel(current) + "' must stay after preceding clip '" + clipLabel(*previous) +
+                "'. Start must be greater than " + localTime(previous->startMs) + " (Motion local time).");
     }
     const double endMs = double(startMs) + double(sourceOutMs - sourceInMs) / current.playbackRate;
     if (double(startMs) + .001 < previousEnd || startMs >= nextStart || !std::isfinite(endMs) || endMs > double(nextStart) + .001)
-        return refuse("The animation would overlap a neighboring clip or exceed the World motion.");
+    {
+        if (double(startMs) + .001 < previousEnd)
+            return refuse("Animation '" + clipLabel(current) + "' overlaps preceding clip '" + clipLabel(*previous) +
+                "'. Earliest start is " + localTime(previousEnd) + " (Motion local time).");
+        if (!std::isfinite(endMs))
+            return refuse("Animation '" + clipLabel(current) + "' has a non-finite end time (Motion local time).");
+        const auto next = std::find_if(sequence->animationTracks.begin(), sequence->animationTracks.end(),
+            [&](const auto& row) { return row.slotId == slotId && row.startMs == nextStart; });
+        if (next != sequence->animationTracks.end())
+            return refuse("Animation '" + clipLabel(current) + "' overlaps following clip '" + clipLabel(*next) +
+                "'. Start must be before " + localTime(nextStart) + "; end must not exceed it (Motion local time).");
+        return refuse("Animation '" + clipLabel(current) + "' exceeds World motion '" + sequence->displayName +
+            "' [" + sequence->sequenceId + "]. Start must be before " + localTime(nextStart) +
+            "; end must not exceed it (Motion local time).");
+    }
     if (current.startMs == startMs && current.sourceStartMs == sourceInMs && current.sourceEndMs == sourceOutMs)
     { status = "Animation timing is unchanged."; return true; }
     auto candidate = m_Document;
@@ -1355,7 +1379,7 @@ void CWorldObjectTool::Render_BingoSizeTuning()
     ImGui::SameLine();
     if (ImGui::Button("Reload Saved") && !m_Dirty) Load_Source();
     if (ImGui::IsItemHovered() && m_Dirty) ImGui::SetTooltip("Save pending Object edits before reloading.");
-    ImGui::TextDisabled("Visual sizes. Bomb hits stay on five cells; hammer warning and hit area stay fixed.");
+    ImGui::TextDisabled("Bomb hits stay on five cells. Save and Publish Kouku to update the Server hammer hit size.");
     ImGui::TextDisabled("Save includes pending World Object edits and applies them for the next play.");
     ImGui::EndDisabled();
     Render_SaveStatus();

@@ -3,7 +3,7 @@
   "formatVersion": 1,
   "compositionId": "boss.composition.valtan",
   "sourceRevision": 1,
-  "compositionRevision": "c2ec959a39a4093fcd87f6df452561c85070456fbcee6e5e144da9821e1310de",
+  "compositionRevision": "9d17e4b13326d57c9e05bb2501ce44d8861bbf962c7b5aabb90a8c777928ad4a",
   "status": "SHADOW",
   "runtimeEligible": false,
   "displayName": "Valtan Boss Composition",
@@ -13,7 +13,7 @@
   "sourceManifest": {
     "schema": "lostark.composition-source-manifest",
     "formatVersion": 1,
-    "sourceManifestId": "c2ec959a39a4093fcd87f6df452561c85070456fbcee6e5e144da9821e1310de",
+    "sourceManifestId": "9d17e4b13326d57c9e05bb2501ce44d8861bbf962c7b5aabb90a8c777928ad4a",
     "files": [
       {
         "path": "Data/Animation/Authored/Valtan/Valtan.combatobjectsoundcues.json",
@@ -387,8 +387,8 @@
       },
       {
         "path": "Data/Effects/EffectCatalog.json",
-        "sha256": "22d10596f835cf0427050dc25d47700ffd3ca6c38483d22d12d1acbea0cdfbdd",
-        "bytes": 336122
+        "sha256": "7d090f5804079db6f76b87b9c50b22881291b98047e7d1bb18de38e8530228ec",
+        "bytes": 359304
       },
       {
         "path": "Data/Effects/V2/Authored/bingo.bomb.mark_1.effectv2.json",
@@ -1646,6 +1646,11 @@
         "bytes": 2690
       },
       {
+        "path": "Data/Effects/V2/Authored/kouku.bingo.ending.fade.black.effectv2.json",
+        "sha256": "02ec3fd6a011438e56b76306fa395e44eb800b492f4fa5313a37e3b37bbc6218",
+        "bytes": 3072
+      },
+      {
         "path": "Data/Effects/V2/Authored/kouku.gate1.authored.fade.black.effectv2.json",
         "sha256": "f6cfd0a029495c2f17709ab8012f47a11e78201c6123cbad2af984c9aff3f99a",
         "bytes": 2771
@@ -1997,8 +2002,8 @@
       },
       {
         "path": "Data/Sound/CharacterSoundCatalog.json",
-        "sha256": "48a5f2d05dfc25ce134749fa0c8dd017b237bbef2c86669e551da321496b2288",
-        "bytes": 764244
+        "sha256": "bfb5e9c2ba3d3d3f89efa0d27ff58fc36443d5dad253e471a0d1cca6ad839c19",
+        "bytes": 765688
       },
       {
         "path": "Data/Valtan/Valtan.combatobjects.json",

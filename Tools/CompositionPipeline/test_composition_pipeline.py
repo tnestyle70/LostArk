@@ -1047,6 +1047,215 @@ class WorldSequenceAnimationSourceStartContractTests(unittest.TestCase):
                              {row["index"]: row["valid"] for row in json.loads(result.stdout)})
 
 
+class WorldSequenceTransformKeyClockContractTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.document = {
+            "schema": "lostark.world-sequences", "formatVersion": 2,
+            "areaId": "LV_LUT_MIDNIGHTC_ED", "revision": 1,
+            "templates": [{
+                "sequenceId": "sequence.key-clock", "displayName": "Key clock",
+                "category": "World", "durationMs": 52317, "interpolation": "LINEAR",
+                "tracks": [{"slotId": "object", "keys": [
+                    {"timeMs": time, "positionOffset": [0, 0, 0],
+                     "rotationQuaternion": [0, 0, 0, 1], "scaleMultiplier": [1, 1, 1], "visible": True}
+                    for time in [0.0, 27051.0, 52317.0]
+                ]}], "animationTracks": [],
+            }],
+            "instances": [{
+                "instanceId": "instance.key-clock", "templateId": "sequence.key-clock",
+                "enabled": True, "startDelayMs": 0, "playbackSpeed": 1,
+                "bindings": [{"slotId": "object", "targetKind": "MAP_PLACEMENT", "targetId": "1"}],
+            }],
+        }
+
+    def test_integral_json_float_keys_preserve_source_representation(self) -> None:
+        before = json.dumps(self.document)
+        self.assertEqual({"instance.key-clock"}, pipeline._validate_world_sequence_source(
+            self.document, self.document["areaId"]))
+        self.assertEqual(before, json.dumps(self.document))
+        self.assertIsInstance(self.document["templates"][0]["tracks"][0]["keys"][1]["timeMs"], float)
+
+    def test_fractional_nonfinite_boolean_and_out_of_range_keys_are_rejected(self) -> None:
+        for value in (27051.5, -1.0, 600001.0, float("inf"), float("nan"), True, "27051.0"):
+            candidate = copy.deepcopy(self.document)
+            candidate["templates"][0]["tracks"][0]["keys"][1]["timeMs"] = value
+            before = json.dumps(candidate)
+            with self.subTest(value=value), self.assertRaisesRegex(pipeline.CompositionError, "timeMs"):
+                pipeline._validate_world_sequence_source(candidate, candidate["areaId"])
+            self.assertEqual(before, json.dumps(candidate))
+
+    def test_integral_float_admission_matches_official_map_reader(self) -> None:
+        import re
+        import subprocess
+
+        publisher = (ROOT / "Tools/MapPipeline/Publish-MapAuthoring.ps1").read_text(encoding="utf-8-sig")
+        functions = [re.search(r"(?ms)^function " + name + r" \{.*?^\}", publisher).group(0)
+                     for name in ("Test-JsonNumber", "Assert-ExactJsonProperties", "Read-WorldSequenceDocument")]
+        cases = [(27051.0, True), (27051, True), (27051.5, False), (-1.0, False), (600001.0, False)]
+        with tempfile.TemporaryDirectory() as temporary:
+            folder = Path(temporary)
+            for index, (value, valid) in enumerate(cases):
+                candidate = copy.deepcopy(self.document)
+                candidate["templates"][0]["tracks"][0]["keys"][1]["timeMs"] = value
+                (folder / f"{index}.json").write_text(json.dumps(candidate), encoding="utf-8")
+                if valid:
+                    pipeline._validate_world_sequence_source(candidate, candidate["areaId"])
+                else:
+                    with self.assertRaises(pipeline.CompositionError):
+                        pipeline._validate_world_sequence_source(candidate, candidate["areaId"])
+            script = "$ErrorActionPreference='Stop'\n$AreaId='LV_LUT_MIDNIGHTC_ED'\n" + "\n".join(functions)
+            script += "\n$results=@(); foreach($file in Get-ChildItem -LiteralPath $PSScriptRoot -Filter '*.json') { try { [void](Read-WorldSequenceDocument $file.FullName); $ok=$true } catch { $ok=$false }; $results += [pscustomobject]@{index=[int]$file.BaseName;valid=$ok} }; ConvertTo-Json -InputObject @($results) -Compress"
+            script_path = folder / "key-clock.ps1"
+            script_path.write_text(script, encoding="utf-8-sig")
+            result = subprocess.run(["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(script_path)], capture_output=True, text=True, timeout=30)
+            self.assertEqual(0, result.returncode, result.stderr)
+            self.assertEqual({i: valid for i, (_, valid) in enumerate(cases)},
+                             {row["index"]: row["valid"] for row in json.loads(result.stdout)})
+
+
+class WorldSequenceMaterialContractTests(unittest.TestCase):
+    def setUp(self) -> None:
+        # Native profile admission belongs to the Map owner. Reuse a real
+        # accepted profile and exercise Composition's exact binding join.
+        source = pipeline.read_json(ROOT / pipeline.KOUKU_SAYDON_ARENA_SOURCE_DOCUMENTS["WORLD_SEQUENCES"])
+        resource = copy.deepcopy(next(r for r in source["objectResources"] if r.get("materialProfile")))
+        resource["objectId"] = "object.material"
+        profile = resource["materialProfile"]
+        self.parameter = next(iter(profile["parameters"]))
+        self.document = {
+            "schema": "lostark.world-sequences", "formatVersion": 3,
+            "areaId": "LV_LUT_MIDNIGHTC_ED", "revision": 1,
+            "objectResources": [resource],
+            "templates": [{
+                "sequenceId": "sequence.material", "displayName": "Material curve",
+                "category": "World", "durationMs": 4095, "interpolation": "LINEAR",
+                "tracks": [], "animationTracks": [{
+                    "slotId": "object", "clipName": "pose", "playbackRate": 1,
+                    "loop": False, "holdLastFrame": True,
+                }],
+                "materialTracks": [{"slotId": "object", "materialName": profile["materialName"],
+                    "curves": [{"parameter": self.parameter, "keys": [
+                        {"timeMs": 0, "value": [0, 0, 0, 0], "interpolation": "CONSTANT"},
+                        {"timeMs": 4095, "value": [1, 1, 1, 1], "interpolation": "LINEAR"},
+                    ]}]}],
+            }],
+            "instances": [{
+                "instanceId": "instance.material", "templateId": "sequence.material",
+                "enabled": True, "startDelayMs": 0, "playbackSpeed": 1,
+                "bindings": [{"slotId": "object", "targetKind": "OBJECT_RESOURCE", "targetId": "object.material"}],
+            }],
+        }
+
+    def validate(self, document: dict) -> set[str]:
+        before = copy.deepcopy(document)
+        try:
+            return pipeline._validate_world_sequence_source(document, document["areaId"])
+        finally:
+            self.assertEqual(before, document)
+
+    def test_native_profile_curve_and_empty_optional_lane_preserve_document(self) -> None:
+        self.assertEqual({"instance.material"}, self.validate(self.document))
+        self.document["templates"][0]["materialTracks"] = []
+        self.assertEqual({"instance.material"}, self.validate(self.document))
+
+    def test_exact_object_profile_and_parameter_binding(self) -> None:
+        candidates = []
+        for target in ("DEPLOY_PLACEMENT", "MAP_PLACEMENT"):
+            candidate = copy.deepcopy(self.document)
+            candidate["instances"][0]["bindings"][0].update(targetKind=target, targetId="1")
+            candidates.append(candidate)
+        for field, value in (("materialName", "different-material"), ("parameters", {}), ("parameters", [])):
+            candidate = copy.deepcopy(self.document)
+            candidate["objectResources"][0]["materialProfile"][field] = value
+            candidates.append(candidate)
+        candidate = copy.deepcopy(self.document)
+        del candidate["objectResources"][0]["materialProfile"]
+        candidates.append(candidate)
+        candidate = copy.deepcopy(self.document)
+        candidate["templates"][0]["materialTracks"][0]["curves"][0]["parameter"] = self.parameter.upper()
+        candidates.append(candidate)
+        for candidate in candidates:
+            with self.subTest(candidate=candidate["instances"][0]), self.assertRaises(pipeline.CompositionError):
+                self.validate(candidate)
+
+    def test_material_rows_are_strict_bounded_unique_and_v3_only(self) -> None:
+        for invalid in (None, {}, [None], ["row"]):
+            candidate = copy.deepcopy(self.document)
+            candidate["templates"][0]["materialTracks"] = invalid
+            with self.subTest(lane=invalid), self.assertRaises(pipeline.CompositionError):
+                self.validate(candidate)
+        for fields in ({"slotId": "absent"}, {"slotId": "bad id"}, {"unknown": 1},
+                       {"materialName": ""}, {"materialName": "x" * 257},
+                       {"materialName": "bad\nname"}, {"materialName": "\ud800"},
+                       {"curves": []}, {"curves": {}}, {"curves": [None]}):
+            candidate = copy.deepcopy(self.document)
+            candidate["templates"][0]["materialTracks"][0].update(fields)
+            with self.subTest(fields=fields), self.assertRaises(pipeline.CompositionError):
+                self.validate(candidate)
+        duplicate = copy.deepcopy(self.document)
+        duplicate["templates"][0]["materialTracks"] *= 2
+        with self.assertRaisesRegex(pipeline.CompositionError, "duplicate"):
+            self.validate(duplicate)
+        legacy = copy.deepcopy(self.document)
+        legacy["formatVersion"] = 2
+        with self.assertRaisesRegex(pipeline.CompositionError, "materialTracks"):
+            self.validate(legacy)
+        overflow = copy.deepcopy(self.document)
+        overflow["templates"][0]["materialTracks"] *= pipeline.WORLD_SEQUENCE_MAX_TRACKS
+        with self.assertRaisesRegex(pipeline.CompositionError, "bounded array"):
+            self.validate(overflow)
+
+    def test_curve_names_collections_and_unknown_fields_remain_strict(self) -> None:
+        for fields in ({"parameter": ""}, {"parameter": "a" * 129}, {"parameter": "뼈" * 43},
+                       {"parameter": "bad\x7fname"}, {"parameter": "\ud800"}, {"parameter": None},
+                       {"keys": []}, {"keys": {}}, {"keys": [None]}, {"unknown": 0}):
+            candidate = copy.deepcopy(self.document)
+            candidate["templates"][0]["materialTracks"][0]["curves"][0].update(fields)
+            with self.subTest(fields=fields), self.assertRaises(pipeline.CompositionError):
+                self.validate(candidate)
+        for count in (2, 65):
+            candidate = copy.deepcopy(self.document)
+            candidate["templates"][0]["materialTracks"][0]["curves"] *= count
+            with self.subTest(count=count), self.assertRaises(pipeline.CompositionError):
+                self.validate(candidate)
+
+    def test_key_order_span_interpolation_and_finite_float4_bounds(self) -> None:
+        cases = [{"timeMs": v} for v in (-1, True, 1.5, 4096)]
+        cases += [{"value": v} for v in ([0, 0, 0], [0, 0, 0, 0, 0], "zero",
+                  [True, 0, 0, 0], [float("inf"), 0, 0, 0], [1000001, 0, 0, 0])]
+        cases += [{"interpolation": v} for v in (None, "linear", "SMOOTH_STEP", 0)]
+        cases += [{"unknown": 0}]
+        for fields in cases:
+            candidate = copy.deepcopy(self.document)
+            candidate["templates"][0]["materialTracks"][0]["curves"][0]["keys"][0].update(fields)
+            with self.subTest(fields=fields), self.assertRaises(pipeline.CompositionError):
+                self.validate(candidate)
+        for times in ([1, 4095], [0, 4094], [0, 0, 4095], [0, 100, 99, 4095]):
+            candidate = copy.deepcopy(self.document)
+            keys = candidate["templates"][0]["materialTracks"][0]["curves"][0]["keys"]
+            keys[:] = [dict(keys[0], timeMs=time) for time in times]
+            with self.subTest(times=times), self.assertRaises(pipeline.CompositionError):
+                self.validate(candidate)
+        keys = self.document["templates"][0]["materialTracks"][0]["curves"][0]["keys"]
+        keys[0]["value"] = [-1000000, 1000000, 0, .5]
+        self.validate(self.document)
+
+    def test_material_key_capacity_matches_native_curve_limit(self) -> None:
+        curve = self.document["templates"][0]["materialTracks"][0]["curves"][0]
+        curve["keys"] = [dict(curve["keys"][0], timeMs=time) for time in range(4096)]
+        self.validate(self.document)
+        curve["keys"].append(dict(curve["keys"][-1]))
+        with self.assertRaisesRegex(pipeline.CompositionError, "4096"):
+            self.validate(self.document)
+
+    def test_other_unsupported_template_fields_stay_rejected(self) -> None:
+        for lane in ("soundTracks", "subtitleTracks", "arbitraryTracks"):
+            candidate = copy.deepcopy(self.document)
+            candidate["templates"][0][lane] = []
+            with self.subTest(lane=lane), self.assertRaisesRegex(pipeline.CompositionError, lane):
+                self.validate(candidate)
+
+
 class WorldSequenceColliderContractTests(unittest.TestCase):
     def setUp(self) -> None:
         self.document = pipeline.read_json(
@@ -1085,6 +1294,28 @@ class WorldSequenceColliderContractTests(unittest.TestCase):
         for bone in ("", "a" * 256, "뼈" * 85):
             self.document["templates"][0]["colliderTracks"][0]["attachmentBone"] = bone
             self.validate(self.document)
+
+    def test_existing_native_cylinder_shape_and_world_capacity_bounds(self) -> None:
+        import re
+
+        header = (ROOT / "Client/Public/WorldSequenceDocument.h").read_bytes()
+        self.assertEqual(pipeline.WORLD_SEQUENCE_MAX_TRACKS,
+                         int(re.search(rb"MAX_TRACK_COUNT = (\d+);", header).group(1)))
+        self.assertEqual(pipeline.WORLD_SEQUENCE_MAX_KEYS,
+                         int(re.search(rb"MAX_KEY_COUNT = (\d+);", header).group(1)))
+        row = self.document["templates"][0]["colliderTracks"][0]
+        row.update(behavior="DAMAGE", damagePercent=10, shape="CYLINDER",
+                   halfExtents=[1, 2, 1], gripLocalOffset=[0, 0, 0], attachmentBone="")
+        self.validate(self.document)
+        for fields in ({"shape": "SPHERE"}, {"shape": "cylinder"}, {"shape": None},
+                       {"shape": True}, {"halfExtents": [1, 2, 1.0002]},
+                       {"behavior": "HOOK_CAPTURE", "damagePercent": 0}):
+            candidate = copy.deepcopy(self.document)
+            candidate["templates"][0]["colliderTracks"][0].update(fields)
+            with self.subTest(fields=fields), self.assertRaises(pipeline.CompositionError):
+                self.validate(candidate)
+        row.update(shape="BOX", halfExtents=[1, 2, 3])
+        self.validate(self.document)
 
     def test_invalid_collider_payloads_remain_rejected(self) -> None:
         cases = [
@@ -1431,6 +1662,21 @@ class CameraTrackContractTests(unittest.TestCase):
                 "fovYDegrees": 60,
             }],
         }
+
+    def test_camera_key_count_supports_dense_original_tracks(self) -> None:
+        track = self.make_track()
+        first = track["keyframes"][0]
+        track["keyframes"] = [dict(copy.deepcopy(first),
+            sceneId=f"camera.dense.{index}", timeMs=7400 * index // 127)
+            for index in range(128)]
+        before = copy.deepcopy(track)
+        pipeline._validate_camera_track(track, "dense source camera")
+        self.assertEqual(before, track)
+        track["keyframes"] = [dict(copy.deepcopy(first),
+            sceneId=f"camera.dense.{index}", timeMs=7400 * index // 128)
+            for index in range(129)]
+        with self.assertRaisesRegex(pipeline.CompositionError, "1 to 128 rows"):
+            pipeline._validate_camera_track(track, "oversized source camera")
 
     def test_one_pose_preserves_authored_frame_and_duration(self) -> None:
         track = self.make_track()

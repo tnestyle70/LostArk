@@ -391,7 +391,7 @@ void CServerGameplayContractRunner::Run_KoukuRaidIntegration(TESTS& tests)
             std::any_of(special->MechanicTriggers.begin(), special->MechanicTriggers.end(), [](const auto& trigger) {
                 return trigger.eKind == BOSS_PATTERN_MECHANIC_TRIGGER_KIND::BOSS_TELEPORT_FACE_CENTER && !trigger.iStartMs; }) &&
             std::any_of(special->LogicWindows.begin(), special->LogicWindows.end(), [](const auto& window) {
-                return window.eKind == BOSS_PATTERN_LOGIC_KIND::GAZE_REAL_BOSS && window.iStartMs == 8567u && window.iDurationMs == 500u; }) &&
+                return window.eKind == BOSS_PATTERN_LOGIC_KIND::GAZE_REAL_BOSS && window.iStartMs == 8567u && window.iDurationMs == 3261u && window.bGazeDuringWindow; }) &&
             std::any_of(special->LogicWindows.begin(), special->LogicWindows.end(), [](const auto& window) {
                 return window.eKind == BOSS_PATTERN_LOGIC_KIND::BINGO_COMPLETED_LINES && !window.iStartMs &&
                     window.iDurationMs == 32628u && window.iThreshold == 1u &&
@@ -1820,7 +1820,7 @@ int CServerGameplayContractRunner::Run_KoukuDiceDamageContracts()
         if (!room->Is_Ready()) { std::cout << "Dice room: " << room->Get_Status() << '\n'; *static_cast<int*>(opaque) = 1; return; }
         auto& catalog = room->m_GameplayCatalog;
         // Release retains disabled gate templates until admission; this focused fixture owns its actor.
-        room->m_WorldEntities.clear(); room->m_WorldEntities.emplace_back();
+        room->m_WorldEntities.clear(); room->m_WorldEntities.reserve(2u); room->m_WorldEntities.emplace_back();
         auto& boss = room->m_WorldEntities.front();
         boss.iNetEntityId = 700u; boss.eKind = WORLD_BOOTSTRAP_KIND::BOSS;
         boss.strEncounterId = "ENCOUNTER_KAKULSAYDON_G1"; boss.strArchetypeId = "BOSS_KAKULSAYDON_G1_SAYDON";
@@ -1838,6 +1838,7 @@ int CServerGameplayContractRunner::Run_KoukuDiceDamageContracts()
                 p.eMechanicCardColor = color;
                 p.bPatternBound = id == 2u || id == 3u;
                 p.iPatternBindOwnerNetEntityId = p.bPatternBound ? boss.iNetEntityId : INVALID_NET_ENTITY_ID;
+                p.iPatternBindSequence = p.bPatternBound ? boss.iPatternSequence : 0u;
                 if (id == 5u) p.fPositionX = 100.f;
             }
         };
@@ -1886,12 +1887,15 @@ int CServerGameplayContractRunner::Run_KoukuDiceDamageContracts()
             tests.Require(events.size() == eventCount, "A completed card contact does not deal a duplicate hit on the next tick");
         }
         for (unsigned symbol = 1u; symbol <= 4u; ++symbol)
-        for (const bool matching : {false, true}) {
+        for (const bool matching : {false, true})
+        for (unsigned ownership = 0u; ownership != 3u; ++ownership) {
             seedPlayers(MECHANIC_CARD_COLOR::BLACK); room->m_CombatObjectRuntime.Reset();
             room->m_CombatObjectRuntime.Discard_PendingLifecycle();
             for (auto& [id, player] : room->m_Players) player.fPositionX = player.fPositionZ = 10000.f;
             auto& interceptor = room->m_Players.at(2u);
             interceptor.fPositionX = interceptor.fPositionZ = 0.f;
+            if (ownership == 1u) ++interceptor.iPatternBindOwnerNetEntityId;
+            if (ownership == 2u) --interceptor.iPatternBindSequence;
             interceptor.eMechanicCardSymbol = matching ? static_cast<MECHANIC_CARD_SYMBOL>(symbol) : MECHANIC_CARD_SYMBOL::NONE;
             BOSS_PATTERN_MECHANIC_TRIGGER trigger{};
             trigger.strTriggerId = "dice.interceptor"; trigger.eKind = BOSS_PATTERN_MECHANIC_TRIGGER_KIND::PURSUIT_PROJECTILES;
@@ -1920,6 +1924,8 @@ int CServerGameplayContractRunner::Run_KoukuDiceDamageContracts()
                 room->m_Players.at(1u).iCurrentHp == 1000u && damage.size() == (matching ? 0u : 1u) &&
                 pulses.size() == 1u && retired.size() == 1u && live.empty(),
                 "Every suit card terminates on a bound bystander: equal suit immune, other suit 90 percent HP, one contact burst");
+            tests.Require(interceptor.bPatternBound == (!matching || ownership != 0u),
+                "Matching interception releases only its occurrence-owned bind and preserves other suits, foreign owners and other pattern sequences");
         }
         // An ordinary pursuit with no card symbols remains an ordinary authored attack.
         seedPlayers(MECHANIC_CARD_COLOR::RED); room->m_CombatObjectRuntime.Reset();
@@ -1937,6 +1943,115 @@ int CServerGameplayContractRunner::Run_KoukuDiceDamageContracts()
         room->m_CombatObjectRuntime.Update(room->m_Players, room->m_WorldEntities, catalog, .034f, 201u, events);
         tests.Require(room->m_Players.at(1u).iCurrentHp == 500u && events.size() == 5u,
             "Absent cardSymbols preserves ordinary damage even when players have card assignments");
+
+        // Use the installed P78 definition, its authored clock, actual player update and pursuit spawn.
+        const auto* installed = catalog.Find_BossPatterns(boss.strEncounterId);
+        const BOSS_PATTERN_DEFINITION* dice = nullptr;
+        if (installed) for (const auto& candidate : *installed)
+            if (candidate.strPatternId == "KAKULSAYDON_G1_PATTERN_78") dice = &candidate;
+        const BOSS_PATTERN_LOGIC_WINDOW* binding = nullptr;
+        if (dice) for (const auto& window : dice->LogicWindows)
+            if (window.eKind == BOSS_PATTERN_LOGIC_KIND::CARD_DICE_BIND) binding = &window;
+        const auto* spawn = room->Find_AvailablePlayerSpawn();
+        tests.Require(dice && binding && spawn, "Published P78 exposes its typed Dice binding and a real navigation spawn");
+        if (dice && binding && spawn) {
+            boss.strPatternId = dice->strPatternId;
+            const auto start = 100u + CKoukuSaydonLogicRuntime::Ticks_FromMs(binding->iStartMs);
+            const auto end = start + CKoukuSaydonLogicRuntime::Ticks_FromMs(binding->iDurationMs);
+            const auto seedRoster = [&](unsigned count) {
+                seedPlayers(MECHANIC_CARD_COLOR::BLACK);
+                std::erase_if(room->m_Players, [count](const auto& row) { return row.first > count; });
+                room->m_PlayerIdBySessionId.clear();
+                for (auto& [id, player] : room->m_Players) {
+                    player.Clear_PatternBindStatus(); player.fMoveSpeed = 5.f;
+                    player.fPositionX = spawn->fPositionX; player.fPositionY = spawn->fPositionY; player.fPositionZ = spawn->fPositionZ;
+                    room->m_PlayerIdBySessionId[500u + id] = id;
+                }
+                room->m_CombatObjectRuntime.Reset(); room->m_CombatObjectRuntime.Discard_PendingLifecycle();
+                room->m_KoukuSaydonPatternAudition.Members.clear();
+                room->m_KoukuSaydonPatternAudition.Members.emplace_back();
+                auto& member = room->m_KoukuSaydonPatternAudition.Members.back();
+                member.iBossEntityId = boss.iNetEntityId; member.iPatternSequence = boss.iPatternSequence;
+                CKoukuSaydonLogicRuntime::Build(*dice, boss, 100u, member.LogicLedger);
+            };
+            const auto boundCount = [&]() { return std::count_if(room->m_Players.begin(), room->m_Players.end(),
+                [](const auto& row) { return row.second.bPatternBound; }); };
+            for (unsigned count = 1u; count <= 4u; ++count) {
+                boss.iPatternSequence = 800u + count;
+                seedRoster(count);
+                auto& ledger = room->m_KoukuSaydonPatternAudition.Members.back().LogicLedger;
+                KOUKUSAYDON_LOGIC_OUTPUT output; std::vector<DAMAGE_EVENT> damage;
+                const auto update = [&](unsigned tick) { CKoukuSaydonLogicRuntime::Update(boss, *dice,
+                    ledger, room->m_Players, catalog, nullptr, tick, damage, output, &room->m_ServerNavigation); };
+                update(start - 1u);
+                tests.Require(boundCount() == 0, "Installed Dice does not bind before the exact authored start tick");
+                update(start);
+                const auto freeId = boss.iPatternTargetEntityId;
+                auto free = std::find_if(room->m_Players.begin(), room->m_Players.end(),
+                    [freeId](const auto& row) { return row.second.iNetEntityId == freeId; });
+                tests.Require(boundCount() == count - 1u && free != room->m_Players.end() && !free->second.bPatternBound,
+                    "Installed P78 selects one free participant and binds N minus one for solo through four players");
+                room->m_iServerTick = start;
+                room->Update_Players(1.f / 30.f); room->m_iServerTick = start + 1u; room->Update_Players(1.f / 30.f);
+                unsigned moving = 0u;
+                for (auto& [id, player] : room->m_Players) {
+                    C2S_MOVE move{}; move.iClientSequence = 1u;
+                    move.fGoalX = spawn->fPositionX + 1.f; move.fGoalZ = spawn->fPositionZ;
+                    room->Handle_Move(500u + id, move);
+                    moving += player.hasMoveGoal ? 1u : 0u;
+                }
+                tests.Require(boundCount() == count - 1u && moving == 1u &&
+                    std::all_of(room->m_Players.begin(), room->m_Players.end(), [](const auto& row) { return row.second.isCombatReady; }),
+                    "Two real player ticks and C2S_MOVE admit exactly the one free mover and retain every captive's damage eligibility");
+                const auto pursuit = std::find_if(dice->MechanicTriggers.begin(), dice->MechanicTriggers.end(), [](const auto& trigger) {
+                    return trigger.eKind == BOSS_PATTERN_MECHANIC_TRIGGER_KIND::PURSUIT_PROJECTILES && !trigger.ProjectileCardSymbols.empty(); });
+                tests.Require(pursuit != dice->MechanicTriggers.end(), "Published Dice has its authored suit pursuit");
+                if (pursuit == dice->MechanicTriggers.end() || free == room->m_Players.end()) continue;
+                const auto pursuitTick = 100u + CKoukuSaydonLogicRuntime::Ticks_FromMs(pursuit->iStartMs);
+                update(pursuitTick); room->Update_KoukuPlayerTargets(boss, *dice, ledger, catalog, pursuitTick);
+                const auto& cards = room->m_CombatObjectRuntime.Get_LiveObjects();
+                tests.Require(cards.size() == 1u && cards.front().iLockedTargetNetEntityId == freeId,
+                    "Actual published Dice pursuit steers toward the same sole free participant");
+                if (cards.empty()) continue;
+                auto victim = count == 1u ? free : std::find_if(room->m_Players.begin(), room->m_Players.end(),
+                    [](const auto& row) { return row.second.bPatternBound; });
+                for (auto& [id, player] : room->m_Players) { player.fPositionX = 10000.f; player.fPositionZ = 10000.f; }
+                victim->second.fPositionX = cards.front().LiveState.CurrentPose.fPositionX;
+                victim->second.fPositionZ = cards.front().LiveState.CurrentPose.fPositionZ;
+                victim->second.eMechanicCardSymbol = cards.front().eDamageImmuneCardSymbol;
+                const auto hp = victim->second.iCurrentHp;
+                room->m_CombatObjectRuntime.Update(room->m_Players, room->m_WorldEntities, catalog, .034f, pursuitTick + 1u, damage);
+                tests.Require(victim->second.iCurrentHp == hp && !victim->second.bPatternBound && damage.empty() && cards.empty(),
+                    "Actual P78 card is intercepted without damage and releases a matching captive through the production contact path");
+                update(pursuitTick + 2u);
+                tests.Require(boundCount() == (count > 1u ? count - 2u : 0u) && boss.iPatternTargetEntityId == freeId,
+                    "A rescued captive stays released and does not replace the original card steering target");
+                update(end);
+                tests.Require(boundCount() == 0u, "The exact published end tick clears all remaining owned Dice binds");
+            }
+            boss.iPatternSequence = 900u; seedRoster(4u);
+            SERVER_WORLD_ENTITY foreignOwner = boss; foreignOwner.iNetEntityId = 999u; foreignOwner.iPatternSequence = 77u;
+            room->m_WorldEntities.push_back(foreignOwner);
+            for (auto& [id, player] : room->m_Players) {
+                player.bPatternBound = true; player.iPatternBindOwnerNetEntityId = 999u; player.iPatternBindSequence = 77u;
+                player.iPatternBindEndTick = end + 100u; player.bPatternBindRestoreCombatReady = true;
+                player.fPatternBindRestoreX = player.fPositionX; player.fPatternBindRestoreY = player.fPositionY;
+                player.fPatternBindRestoreZ = player.fPositionZ;
+            }
+            auto& ledger = room->m_KoukuSaydonPatternAudition.Members.back().LogicLedger;
+            KOUKUSAYDON_LOGIC_OUTPUT output; std::vector<DAMAGE_EVENT> damage;
+            CKoukuSaydonLogicRuntime::Update(boss, *dice, ledger, room->m_Players, catalog, nullptr, start, damage, output);
+            room->m_iServerTick = start; room->Update_Players(1.f / 30.f);
+            const bool noSelectedFree = std::none_of(ledger.Windows.begin(), ledger.Windows.end(),
+                [](const auto& window) { return window.iFreePlayerNetEntityId != INVALID_NET_ENTITY_ID; });
+            tests.Require(boundCount() == 4u && noSelectedFree && std::all_of(room->m_Players.begin(), room->m_Players.end(),
+                [](const auto& row) { return row.second.iPatternBindOwnerNetEntityId == 999u; }),
+                "Four pre-existing live foreign binds remain foreign: Dice has zero eligible players and creates no binding or free target");
+            room->m_WorldEntities.back().iPatternSequence = 78u;
+            room->m_iServerTick = start + 1u; room->Update_Players(1.f / 30.f);
+            tests.Require(boundCount() == 0u, "The next player tick retires all four stale foreign occurrences instead of retaining an accidental Dice lock");
+            room->m_WorldEntities.pop_back(); room->m_KoukuSaydonPatternAudition.Members.clear();
+        }
 
         // Fixed damage is independent of maximum HP and shares the existing contact clock and safe-zone gate.
         BOSS_PATTERN_LOGIC_RESULT fixed{}; fixed.eKind = BOSS_PATTERN_LOGIC_RESULT_KIND::FIXED_DAMAGE; fixed.iDamageAmount = 500u;
@@ -1988,4 +2103,128 @@ int CServerGameplayContractRunner::Run_KoukuDiceDamageContracts()
     };
     if (!Run_WithContractWorkerStack(execute, &result)) return 1;
     return result;
+}
+
+int CServerGameplayContractRunner::Run_KoukuJokerAimContracts()
+{
+    int result = 1;
+    const auto execute = [](void* opaque) {
+        TESTS tests;
+        auto room = std::make_unique<CGameRoom>(WORLD_ID::KAKULSAYDON_ARENA);
+        tests.Require(room->Is_Ready(), "Joker aim fixture loads the actual published world and Product");
+        if (!room->Is_Ready()) { *static_cast<int*>(opaque) = 1; return; }
+        auto& catalog = room->m_GameplayCatalog;
+        std::string status;
+        const auto* pattern = CKoukuSaydonBrain::Find_AnimationOnlyPattern(catalog.Active(), "KAKULSAYDON_G1_PATTERN_13", status);
+        std::vector<const BOSS_PATTERN_MECHANIC_TRIGGER*> selections;
+        if (pattern) for (const auto& trigger : pattern->MechanicTriggers)
+            if (trigger.eKind == BOSS_PATTERN_MECHANIC_TRIGGER_KIND::BOSS_RANDOM_TARGET_PRESENTATION) selections.push_back(&trigger);
+        tests.Require(selections.size() == 3u && selections[0]->iStartMs == 0u && selections[0]->iDurationMs == 2658u &&
+            selections[1]->iStartMs == 6244u && selections[1]->iDurationMs == 2658u &&
+            selections[2]->iStartMs == 12587u && selections[2]->iDurationMs == 5323u,
+            "Published P13 preserves all three authored Duration boundaries 0-2658, 6244-8902 and 12587-17910 ms");
+        if (selections.size() != 3u) { *static_cast<int*>(opaque) = 1; return; }
+        const auto* placement = room->Find_Placement("boss.kakulsaydon.g2.big-saydon");
+        SERVER_WORLD_ENTITY entity;
+        const bool spawned = placement && room->Build_WorldEntity(*placement, room->m_iNextNetEntityId, entity);
+        tests.Require(spawned, "Joker uses its actual Gate 2 big Saydon body");
+        if (!spawned) { *static_cast<int*>(opaque) = 1; return; }
+        ++room->m_iNextNetEntityId; room->m_WorldEntities.push_back(std::move(entity));
+        const auto bossId = room->m_WorldEntities.back().iNetEntityId;
+        const auto getBoss = [&]() -> SERVER_WORLD_ENTITY* {
+            const auto found = std::find_if(room->m_WorldEntities.begin(), room->m_WorldEntities.end(),
+                [bossId](const auto& boss) { return boss.iNetEntityId == bossId; });
+            return found == room->m_WorldEntities.end() ? nullptr : &*found;
+        };
+        getBoss()->fYawDegrees = 27.f;
+        auto& player = room->m_Players[941u]; player.iPlayerId = player.iNetEntityId = 941u;
+        player.iCurrentHp = player.iMaximumHp = 1000u; player.isCombatReady = true;
+        player.eCharacterClass = CHARACTER_CLASS_ID::LANCE_MASTER; player.iInvulnerableEndTick = 5000u;
+        player.fPositionX = getBoss()->fPositionX + 15.f; player.fPositionY = getBoss()->fPositionY; player.fPositionZ = getBoss()->fPositionZ;
+        C2S_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_REQUEST request;
+        request.iRequestSequence = 1u; request.eOperation = KOUKUSAYDON_PATTERN_AUDITION_OPERATION::PLAY_SELECTED;
+        request.strPatternId = pattern->strPatternId; request.Scope.eWorldId = WORLD_ID::KAKULSAYDON_ARENA;
+        request.Scope.strEncounterId = pattern->strEncounterId; request.Scope.strGateId = "GATE2";
+        request.Scope.strBossPlacementId = placement->strPlacementId; request.Scope.strBossArchetypeId = placement->strArchetypeId;
+        request.Scope.ExpectedGameplayRevision = catalog.Get_ActiveRevision();
+        request.Scope.iExpectedSourceRevision = CKoukuSaydonBrain::Resolve_ProductSourceRevision(catalog.Active());
+        S2C_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_RESULT admitted;
+        tests.Require(room->Evaluate_KoukuSaydonPatternAudition(941u, request, admitted) == KOUKUSAYDON_PATTERN_AUDITION_RESULT::QUEUED,
+            "The actual P13 audition admits its published target selection and hammer stages");
+        const auto tick = [&]() { room->Update_WorldEntities(1.f / 30.f); ++room->m_iServerTick; };
+        const auto advance = [&](unsigned target) { while (room->m_iServerTick < target) tick(); };
+        const auto close = [](float a, float b) { return std::abs(std::remainder(a - b, 360.f)) < .001f; };
+        tick();
+        auto* boss = getBoss();
+        if (!boss || boss->strPatternId != pattern->strPatternId) { tests.Require(false, "P13 starts on the actual room tick"); *static_cast<int*>(opaque) = 1; return; }
+        const auto sequence = boss->iPatternSequence, start = boss->iPatternStartTick;
+        const auto initialYaw = boss->fYawDegrees;
+        const std::array<unsigned, 3u> impactMs{4855u, 11225u, 20212u};
+        for (unsigned index = 0u; index < selections.size(); ++index) {
+            const auto& selection = *selections[index];
+            const auto begin = start + CKoukuSaydonLogicRuntime::Ticks_FromMs(selection.iStartMs);
+            const auto end = start + CKoukuSaydonLogicRuntime::Ticks_FromMs(selection.iStartMs + selection.iDurationMs);
+            advance(begin); boss = getBoss();
+            tests.Require(boss && boss->iPatternTargetEntityId == player.iNetEntityId && !boss->Has_KoukuPresentationAim() && close(boss->fYawDegrees, initialYaw),
+                "Each authored Duration start retains the selected identity and restores the preceding body yaw");
+            if (!boss) break;
+            player.fPositionX = boss->fPositionX + 8.f; player.fPositionZ = boss->fPositionZ - 7.f;
+            advance(end - 1u); boss = getBoss();
+            tests.Require(boss && !boss->Has_KoukuPresentationAim() && close(boss->fYawDegrees, initialYaw),
+                "Moving the selected player throughout the Duration does not turn the boss before END");
+            if (!boss) break;
+            const std::array<float, 3u> aim{boss->fPositionX - 7.f - index, player.fPositionY, boss->fPositionZ + 12.f};
+            player.fPositionX = aim[0]; player.fPositionY = aim[1]; player.fPositionZ = aim[2];
+            advance(end); boss = getBoss();
+            const auto expectedYaw = std::atan2(aim[0] - boss->fPositionX, aim[2] - boss->fPositionZ) * 57.295779513f - 90.f;
+            tests.Require(boss->Has_KoukuPresentationAim() && boss->iPatternSequence == sequence &&
+                boss->fPatternTargetLastPositionX == aim[0] && boss->fPatternTargetLastPositionY == aim[1] &&
+                boss->fPatternTargetLastPositionZ == aim[2] && close(boss->fYawDegrees, expectedYaw),
+                "The exact END tick captures current selected XYZ once and publishes the model-X aim through the unchanged occurrence yaw");
+            const auto pinYaw = boss->fYawDegrees;
+            player.fPositionX += 25.f; player.fPositionZ -= 30.f;
+            advance(start + CKoukuSaydonLogicRuntime::Ticks_FromMs(impactMs[index]) + 1u); boss = getBoss();
+            tests.Require(boss && boss->Has_KoukuPresentationAim() && boss->iPatternSequence == sequence &&
+                boss->fPatternTargetLastPositionX == aim[0] && boss->fPatternTargetLastPositionZ == aim[2] && close(boss->fYawDegrees, pinYaw),
+                "The real room and later hammer attack stage preserve the END aim while the player moves elsewhere");
+            std::cout << "[JOKER END AIM] window=" << selection.strTriggerId << " start=" << begin << " end=" << end
+                << " impact=" << room->m_iServerTick << " yaw=" << pinYaw << " original=" << initialYaw << '\n';
+        }
+        boss = getBoss();
+        if (boss) {
+            auto completed = *boss; room->m_KoukuSaydonBrain.Complete_Pattern(completed, room->m_iServerTick);
+            tests.Require(!completed.Has_KoukuPresentationAim() && close(completed.fYawDegrees, initialYaw),
+                "Natural pattern completion releases the occurrence aim and restores the original yaw");
+            room->Clear_KoukuSaydonPatternAudition(false, "Joker aim cancellation contract"); boss = getBoss();
+            tests.Require(boss && !boss->Has_KoukuPresentationAim() && close(boss->fYawDegrees, initialYaw),
+                "Actual room cancellation and Brain Abort restore yaw before another pattern starts");
+            if (boss) {
+                tests.Require(room->m_KoukuSaydonBrain.Begin_Pattern(*boss, *pattern, catalog.Get_ActiveRevision(), room->m_iServerTick + 1u, status) &&
+                    !boss->Has_KoukuPresentationAim() && close(boss->fYawDegrees, initialYaw),
+                    "The next pattern begins in the original basis with no inherited Joker aim");
+                KOUKUSAYDON_LOGIC_LEDGER ledger; CKoukuSaydonLogicRuntime::Build(*pattern, *boss, 2000u, ledger);
+                auto& window = ledger.PlayerTargetWindows.front(); window.iSelectedTargetNetEntityId = player.iNetEntityId;
+                window.LastSelectedTargetPosition = std::array<float, 3u>{boss->fPositionX + 4.f, boss->fPositionY, boss->fPositionZ + 9.f};
+                const auto last = *window.LastSelectedTargetPosition;
+                player.iCurrentHp = 0u; player.fPositionX += 99.f;
+                SERVER_PLAYER other; other.iPlayerId = other.iNetEntityId = 942u; other.iCurrentHp = 100u; other.isCombatReady = true;
+                room->m_Players.emplace(other.iPlayerId, other);
+                room->Update_KoukuPlayerTargets(*boss, *pattern, ledger, catalog, window.iEndTick);
+                tests.Require(boss->iPatternTargetEntityId == 941u && boss->fPatternTargetLastPositionX == last[0] &&
+                    boss->fPatternTargetLastPositionZ == last[2] && boss->Has_KoukuPresentationAim(),
+                    "A dead selected target retains its last valid aim point instead of selecting another living player");
+                boss->Restore_KoukuPresentationAim();
+                CKoukuSaydonLogicRuntime::Build(*pattern, *boss, 3000u, ledger);
+                auto& departed = ledger.PlayerTargetWindows.front(); departed.iSelectedTargetNetEntityId = 941u; departed.LastSelectedTargetPosition = last;
+                room->m_Players.erase(941u);
+                room->Update_KoukuPlayerTargets(*boss, *pattern, ledger, catalog, departed.iEndTick);
+                tests.Require(boss->iPatternTargetEntityId == 941u && boss->fPatternTargetLastPositionX == last[0] &&
+                    boss->fPatternTargetLastPositionZ == last[2] && boss->Has_KoukuPresentationAim(),
+                    "A departed selected target retains the same last valid point without retargeting");
+            }
+        }
+        std::cout << "failures : " << tests.failures << '\n';
+        *static_cast<int*>(opaque) = tests.failures ? 1 : 0;
+    };
+    return Run_WithContractWorkerStack(execute, &result) ? result : 1;
 }

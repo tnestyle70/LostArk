@@ -71,6 +71,8 @@ namespace LostArk::Server
 		std::uint32_t iBombStartTick = 0u;
 		LostArk::Shared::COMBAT_OBJECT_ID iBombBodyObjectId = 0u;
 		std::optional<bool> BombInsideAtEnd;
+		LostArk::Shared::NET_ENTITY_ID iSelectedTargetNetEntityId = LostArk::Shared::INVALID_NET_ENTITY_ID;
+		std::optional<std::array<float, 3u>> LastSelectedTargetPosition;
 		bool bClosed = false;
 		std::map<LostArk::Shared::PLAYER_ID, LostArk::Shared::COMBAT_OBJECT_ID> TrackingObjects;
 	};

@@ -425,7 +425,7 @@ def main():
     assert not existing_ids & {s['shotId'] for s in shot_docs}, 'camera shot id collision'
     assert len(camera_doc['shots']) + len(shot_docs) <= 128, 'camera shot bound'
     for shot in shot_docs:
-        assert len(shot['cameraTrack']['keyframes']) <= 64, shot['shotId']
+        assert len(shot['cameraTrack']['keyframes']) <= 128, shot['shotId']
     leaf = bss.fade(CONFIG, rows)
 
     patterns = {key: add_to_composition(docs[key], shots, leaf) for key in ('sequence', 'boss')}

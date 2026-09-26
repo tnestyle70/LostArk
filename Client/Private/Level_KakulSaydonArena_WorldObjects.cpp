@@ -1,6 +1,4 @@
-#ifdef _DEBUG
 #include "imgui.h"
-#endif
 #include "Level_KakulSaydonArena.h"
 #include "Character.h"
 #include "Npc.h"
@@ -21,6 +19,90 @@
 #include <set>
 
 using namespace Client;
+
+namespace
+{
+void Draw_WorldObjectColliderSamples(const std::vector<CWorldSequencePlayer::OBJECT_COLLIDER_SAMPLE>& samples)
+{
+    if (!ImGui::GetCurrentContext()) return;
+    if (samples.empty()) return;
+    auto& game = Engine::CGameInstance::Get();
+    const matrix_t view = XMLoadFloat4x4(game.Get_Transform(D3DTS::VIEW));
+    const matrix_t projection = XMLoadFloat4x4(game.Get_Transform(D3DTS::PROJ));
+    auto* viewport = ImGui::GetMainViewport();
+    auto* draw = ImGui::GetBackgroundDrawList(viewport);
+    const auto project = [&](fvector_t world, ImVec2& out)
+    {
+        const vector_t v = XMVector3TransformCoord(world, view);
+        if (XMVectorGetZ(v) <= .1f) return false;
+        const vector_t p = XMVector3TransformCoord(v, projection);
+        out = {viewport->Pos.x + (XMVectorGetX(p) * .5f + .5f) * viewport->Size.x,
+            viewport->Pos.y + (.5f - XMVectorGetY(p) * .5f) * viewport->Size.y};
+        return std::isfinite(out.x) && std::isfinite(out.y);
+    };
+    for (const auto& sample : samples)
+    {
+        const ImU32 color = sample.behavior == "INSTANT_DEATH" ? IM_COL32(255, 65, 65, 240) :
+            sample.hasGrip ? IM_COL32(70, 225, 255, 240) : IM_COL32(255, 220, 65, 240);
+        const auto line = [&](fvector_t a, fvector_t b)
+        { ImVec2 pa{}, pb{}; if (project(a, pa) && project(b, pb)) draw->AddLine(pa, pb, color, 1.5f); };
+        const vector_t center = XMLoadFloat3(&sample.center);
+        if (sample.shape == "CYLINDER")
+        {
+            constexpr int segments = 32;
+            const vector_t height = XMVectorSet(0.f, sample.halfExtents.y, 0.f, 0.f);
+            for (int segment = 0; segment < segments; ++segment)
+            {
+                const float angle = XM_2PI * static_cast<float>(segment) / segments;
+                const float nextAngle = XM_2PI * static_cast<float>(segment + 1) / segments;
+                const vector_t a = center + XMVectorSet(std::cos(angle) * sample.halfExtents.x, 0.f,
+                    std::sin(angle) * sample.halfExtents.x, 0.f);
+                const vector_t b = center + XMVectorSet(std::cos(nextAngle) * sample.halfExtents.x, 0.f,
+                    std::sin(nextAngle) * sample.halfExtents.x, 0.f);
+                line(a - height, b - height);
+                line(a + height, b + height);
+                if (segment % (segments / 4) == 0) line(a - height, a + height);
+            }
+        }
+        else
+        {
+            const matrix_t rotation = XMMatrixRotationY(XMConvertToRadians(sample.yawDegrees));
+            vector_t corners[8];
+            for (int corner = 0; corner < 8; ++corner)
+                corners[corner] = center + XMVector3TransformNormal(XMVectorSet(
+                    (corner & 1 ? 1.f : -1.f) * sample.halfExtents.x,
+                    (corner & 2 ? 1.f : -1.f) * sample.halfExtents.y,
+                    (corner & 4 ? 1.f : -1.f) * sample.halfExtents.z, 0.f), rotation);
+            for (int corner = 0; corner < 8; ++corner)
+                for (int axis = 0; axis < 3; ++axis)
+                    if (!(corner & (1 << axis))) line(corners[corner], corners[corner | (1 << axis)]);
+        }
+        if (sample.hasGrip)
+        {
+            const vector_t grip = XMLoadFloat3(&sample.gripPosition);
+            for (int axis = 0; axis < 3; ++axis)
+            {
+                const vector_t radius = XMVectorSet(axis == 0 ? .12f : 0.f,
+                    axis == 1 ? .12f : 0.f, axis == 2 ? .12f : 0.f, 0.f);
+                line(grip - radius, grip + radius);
+            }
+            line(center, grip);
+        }
+    }
+}
+}
+
+void CLevel_KakulSaydonArena::Debug_DrawBingoHammerColliders() const
+{
+    std::vector<CWorldSequencePlayer::OBJECT_COLLIDER_SAMPLE> samples;
+    m_SequencePlayer.Collect_ObjectColliderSamples(samples);
+    std::erase_if(samples, [](const auto& sample) {
+        return !sample.instanceId.starts_with("world.sequence.instance.kouku.bingo.hammer.anchor.") ||
+            sample.colliderTrackId != "collider.bingo.hammer.head";
+    });
+    Draw_WorldObjectColliderSamples(samples);
+}
+
 
 namespace { namespace MarioBomb = LostArk::Shared::KoukuMarioBomb; }
 
@@ -1140,73 +1222,10 @@ bool_t CLevel_KakulSaydonArena::Debug_SampleWorldObjectPreview(const f32_t clock
 
 void CLevel_KakulSaydonArena::Debug_DrawWorldObjectColliderPreview() const
 {
-    if (!m_pWorldObjectPreview || !ImGui::GetCurrentContext()) return;
+    if (!m_pWorldObjectPreview) return;
     std::vector<CWorldSequencePlayer::OBJECT_COLLIDER_SAMPLE> samples;
     m_pWorldObjectPreview->Collect_ObjectColliderSamples(samples);
-    if (samples.empty()) return;
-    auto& game = Engine::CGameInstance::Get();
-    const matrix_t view = XMLoadFloat4x4(game.Get_Transform(D3DTS::VIEW));
-    const matrix_t projection = XMLoadFloat4x4(game.Get_Transform(D3DTS::PROJ));
-    auto* viewport = ImGui::GetMainViewport();
-    auto* draw = ImGui::GetBackgroundDrawList(viewport);
-    const auto project = [&](fvector_t world, ImVec2& out)
-    {
-        const vector_t v = XMVector3TransformCoord(world, view);
-        if (XMVectorGetZ(v) <= .1f) return false;
-        const vector_t p = XMVector3TransformCoord(v, projection);
-        out = {viewport->Pos.x + (XMVectorGetX(p) * .5f + .5f) * viewport->Size.x,
-            viewport->Pos.y + (.5f - XMVectorGetY(p) * .5f) * viewport->Size.y};
-        return std::isfinite(out.x) && std::isfinite(out.y);
-    };
-    for (const auto& sample : samples)
-    {
-        const ImU32 color = sample.behavior == "INSTANT_DEATH" ? IM_COL32(255, 65, 65, 240) :
-            sample.hasGrip ? IM_COL32(70, 225, 255, 240) : IM_COL32(255, 220, 65, 240);
-        const auto line = [&](fvector_t a, fvector_t b)
-        { ImVec2 pa{}, pb{}; if (project(a, pa) && project(b, pb)) draw->AddLine(pa, pb, color, 1.5f); };
-        const vector_t center = XMLoadFloat3(&sample.center);
-        if (sample.shape == "CYLINDER")
-        {
-            constexpr int segments = 32;
-            const vector_t height = XMVectorSet(0.f, sample.halfExtents.y, 0.f, 0.f);
-            for (int segment = 0; segment < segments; ++segment)
-            {
-                const float angle = XM_2PI * static_cast<float>(segment) / segments;
-                const float nextAngle = XM_2PI * static_cast<float>(segment + 1) / segments;
-                const vector_t a = center + XMVectorSet(std::cos(angle) * sample.halfExtents.x, 0.f,
-                    std::sin(angle) * sample.halfExtents.x, 0.f);
-                const vector_t b = center + XMVectorSet(std::cos(nextAngle) * sample.halfExtents.x, 0.f,
-                    std::sin(nextAngle) * sample.halfExtents.x, 0.f);
-                line(a - height, b - height);
-                line(a + height, b + height);
-                if (segment % (segments / 4) == 0) line(a - height, a + height);
-            }
-        }
-        else
-        {
-            const matrix_t rotation = XMMatrixRotationY(XMConvertToRadians(sample.yawDegrees));
-            vector_t corners[8];
-            for (int corner = 0; corner < 8; ++corner)
-                corners[corner] = center + XMVector3TransformNormal(XMVectorSet(
-                    (corner & 1 ? 1.f : -1.f) * sample.halfExtents.x,
-                    (corner & 2 ? 1.f : -1.f) * sample.halfExtents.y,
-                    (corner & 4 ? 1.f : -1.f) * sample.halfExtents.z, 0.f), rotation);
-            for (int corner = 0; corner < 8; ++corner)
-                for (int axis = 0; axis < 3; ++axis)
-                    if (!(corner & (1 << axis))) line(corners[corner], corners[corner | (1 << axis)]);
-        }
-        if (sample.hasGrip)
-        {
-            const vector_t grip = XMLoadFloat3(&sample.gripPosition);
-            for (int axis = 0; axis < 3; ++axis)
-            {
-                const vector_t radius = XMVectorSet(axis == 0 ? .12f : 0.f,
-                    axis == 1 ? .12f : 0.f, axis == 2 ? .12f : 0.f, 0.f);
-                line(grip - radius, grip + radius);
-            }
-            line(center, grip);
-        }
-    }
+    Draw_WorldObjectColliderSamples(samples);
 }
 
 void CLevel_KakulSaydonArena::Debug_StopWorldObjectPreview()

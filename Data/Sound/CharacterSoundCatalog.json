@@ -5236,7 +5236,7 @@
         "Sound/KoukuSaton/Events/event.7a14e8764345d9f18db0.wav"
       ],
       "s_bgm_commanderraid.bgm_midnightc_ed_m20_scene_finish": [
-        "Sound/KoukuSaton/Events/bgm_midnightc_ed_m20_scene_finish.source-stop.wav"
+        "Sound/KoukuSaton/Events/bgm_midnightc_ed_m20_scene_finish.source-clock-stop.wav"
       ],
       "s_mob_g_bigsatan1.g_bigsatan1_attack01_cast1": [
         "Sound/KoukuSaton/S_MOB_G_BIGSATAN1/g_bigsatan1_attack01_cast1__40119513.wav"

@@ -13,7 +13,7 @@
 #include <unordered_map>
 #include <vector>
 
-namespace Engine { struct MODEL_MATERIAL_OVERRIDE; }
+namespace Engine { struct MODEL_MATERIAL_OVERRIDE; struct MODEL_SOURCE_CHARACTER_PARAMETERS; }
 
 NS_BEGIN(Client)
 
@@ -215,6 +215,27 @@ struct WORLD_SEQUENCE_ANIMATION_TRACK
 	uint32_t sourceEndMs = 0;
 };
 
+// Curves share the object's explicit native material profile and motion clock.
+struct WORLD_SEQUENCE_MATERIAL_KEY
+{
+    uint32_t timeMs = 0u;
+    std::array<float, 4> value{};
+    bool constant = false;
+    bool operator==(const WORLD_SEQUENCE_MATERIAL_KEY&) const = default;
+};
+struct WORLD_SEQUENCE_MATERIAL_CURVE
+{
+    std::string parameter;
+    std::vector<WORLD_SEQUENCE_MATERIAL_KEY> keys;
+    bool operator==(const WORLD_SEQUENCE_MATERIAL_CURVE&) const = default;
+};
+struct WORLD_SEQUENCE_MATERIAL_TRACK
+{
+    std::string slotId, materialName;
+    std::vector<WORLD_SEQUENCE_MATERIAL_CURVE> curves;
+    bool operator==(const WORLD_SEQUENCE_MATERIAL_TRACK&) const = default;
+};
+
 struct WORLD_SEQUENCE_EFFECT_TRACK
 {
 	std::string effectTrackId;
@@ -289,6 +310,7 @@ struct WORLD_SEQUENCE_TEMPLATE
 	std::vector<WORLD_SEQUENCE_TRACK> tracks;
 	std::vector<WORLD_SEQUENCE_ANIMATION_TRACK> animationTracks;
 	std::vector<WORLD_SEQUENCE_EFFECT_TRACK> effectTracks;
+    std::vector<WORLD_SEQUENCE_MATERIAL_TRACK> materialTracks;
 	std::vector<WORLD_SEQUENCE_COLLIDER_TRACK> colliderTracks;
     std::vector<WORLD_SEQUENCE_SOUND_TRACK> soundTracks;
     std::vector<WORLD_SEQUENCE_SUBTITLE_TRACK> subtitleTracks;
@@ -466,6 +488,10 @@ public:
 	{
 		return m_Instances;
 	}
+
+    static bool_t Try_SampleMaterialParameters(const WORLD_SEQUENCE_MATERIAL_PROFILE& profile,
+        const WORLD_SEQUENCE_MATERIAL_TRACK& track, f32_t timeMs,
+        Engine::MODEL_SOURCE_CHARACTER_PARAMETERS& out);
 
     static bool_t Is_ValidMaterialProfile(const WORLD_SEQUENCE_MATERIAL_PROFILE& profile);
     static bool_t Build_MaterialOverride(const WORLD_SEQUENCE_MATERIAL_PROFILE& profile,

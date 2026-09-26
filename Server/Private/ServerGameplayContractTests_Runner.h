@@ -25,6 +25,7 @@ public:
     static int Run_ShowtimeBombs();
     static void Run_InannaProtection(TESTS& tests, const CGameplayCatalog& catalog);
     static int Run_KoukuDiceDamageContracts();
+    static int Run_KoukuJokerAimContracts();
     static int Run_KoukuDraft();
     static int Run_KoukuProductOnly();
     static int Run_ValtanLifecycleOnly();

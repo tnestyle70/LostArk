@@ -1,4 +1,5 @@
 #include "Part_Body.h"
+#include "Character.h"
 #include "BinaryAsset/ModelAssetData.h"
 #include "SourceEquipmentMaterialPrograms.h"
 
@@ -104,8 +105,15 @@ void CPart_Body::Update(f32_t fTimeDelta)
 		XMLoadFloat4x4(m_pTransformCom->Get_WorldMatrixPtr()));
 }
 
+bool_t CPart_Body::Is_CharacterPresentationHidden() const
+{
+	const auto owner = m_pCharacterPresentationOwner.lock();
+	return owner && owner->Is_WorldPresentationHidden();
+}
+
 void CPart_Body::Late_Update(f32_t fTimeDelta)
 {
+	if (Is_CharacterPresentationHidden()) return;
 	CGameInstance::Get().Add_RenderObject(
 		RENDERGROUP::NONBLEND,
 		static_pointer_cast<CGameObject>(shared_from_this()));
@@ -139,6 +147,7 @@ HRESULT CPart_Body::Render_Group(RENDERGROUP group)
 
 HRESULT CPart_Body::Render_ForwardSource(bool opaqueGhost)
 {
+	if (Is_CharacterPresentationHidden()) return S_OK;
 	if (Client::CNpcPresentationAssetService::Is_SaydonHammerSuppressed(m_WeaponReplacementBody.lock())) return S_OK;
 	if (FAILED(Bind_ShaderResources()) ||
 		FAILED(CMapAssetRenderUtils::Bind_SourceCharacterForwardLights(m_pShaderCom)))
@@ -166,6 +175,7 @@ HRESULT CPart_Body::Render_ForwardSource(bool opaqueGhost)
 
 HRESULT CPart_Body::Render_Pass(uint32_t iPassIndex)
 {
+	if (Is_CharacterPresentationHidden()) return S_OK;
 	if (Client::CNpcPresentationAssetService::Is_SaydonHammerSuppressed(m_WeaponReplacementBody.lock())) return S_OK;
 	if (FAILED(Bind_ShaderResources()))
 		return E_FAIL;
@@ -204,6 +214,7 @@ HRESULT CPart_Body::Render_Pass(uint32_t iPassIndex)
 
 HRESULT CPart_Body::Render_Shadow()
 {
+	if (Is_CharacterPresentationHidden()) return S_OK;
 	if (Client::CNpcPresentationAssetService::Is_SaydonHammerSuppressed(m_WeaponReplacementBody.lock())) return S_OK;
 	constexpr uint32_t ANIMATED_SHADOW_PASS = 1u;
 	if (FAILED(Bind_ShadowShaderResources()))

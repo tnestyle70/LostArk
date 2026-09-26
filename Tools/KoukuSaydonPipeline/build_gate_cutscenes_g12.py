@@ -628,7 +628,7 @@ def main():
     assert len(camera_bytes) < 2 * 1024 * 1024, 'Camera exceeds runtime byte bound'
     assert len(docs['cameras']['shots']) <= 128, len(docs['cameras']['shots'])
     for shot in docs['cameras']['shots']:
-        assert len(shot['cameraTrack']['keyframes']) <= 64 if 'cameraTrack' in shot else True, shot['shotId']
+        assert len(shot['cameraTrack']['keyframes']) <= 128 if 'cameraTrack' in shot else True, shot['shotId']
     outputs = {paths['composition']: docs['composition'], paths['cameras']: docs['cameras']}
     if OUT.exists():
         shutil.rmtree(OUT)

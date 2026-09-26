@@ -627,6 +627,56 @@ namespace ServerGameplayContractDetail
             invertedGazePlayers.at(6u).eAction == PLAYER_ACTION_STATE::FEAR,
             "Facing-is-fail gaze fears inside and boundary players, including co-location, while outside angle or range stays safe");
 
+        // The opt-in gaze reuses player-facing geometry, but observes its whole active Duration.
+        auto windowPlayers = invertedGazePlayers;
+        for (auto& [id, target] : windowPlayers)
+        {
+            target = player; target.iPlayerId = id; target.iNetEntityId = 100u + id;
+            target.fYawDegrees = 0.f; target.hasMoveGoal = false; target.iComboStage = 0u;
+        }
+        windowPlayers.at(2u).fYawDegrees = 45.f;
+        windowPlayers.at(3u).fYawDegrees = 45.1f;
+        windowPlayers.at(4u).fYawDegrees = 180.f;
+        windowPlayers.at(5u).fPositionZ = -31.f;
+        windowPlayers.at(6u).fPositionZ = 0.f;
+        gaze.bGazeDuringWindow = true; gaze.iStartMs = 100u; gaze.iDurationMs = 3261u;
+        gaze.fMaxDistanceM = 30.f; pattern.LogicWindows = {gaze}; boss->fYawDegrees = 73.f;
+        CKoukuSaydonLogicRuntime::Build(pattern, *boss, 500u, ledger);
+        const auto start = ledger.Windows.front().iStartTick, end = ledger.Windows.front().iEndTick;
+        const auto updateGaze = [&](std::uint32_t tick) {
+            output = {};
+            CKoukuSaydonLogicRuntime::Update(*boss, pattern, ledger, windowPlayers, catalog, nullptr, tick, events, output);
+        };
+        updateGaze(start - 1u);
+        tests.Require(std::none_of(windowPlayers.begin(), windowPlayers.end(), [](const auto& row) {
+            return row.second.iFearEndTick != 0u; }), "Continuous gaze does not judge before the Duration begins");
+        updateGaze(start);
+        tests.Require(windowPlayers.at(1u).iFearEndTick == start + 90u &&
+            windowPlayers.at(2u).iFearEndTick == start + 90u && windowPlayers.at(6u).iFearEndTick == start + 90u &&
+            !windowPlayers.at(3u).iFearEndTick && !windowPlayers.at(4u).iFearEndTick && !windowPlayers.at(5u).iFearEndTick,
+            "Continuous gaze uses player view: 45 degrees and co-location fail; 45.1 degrees, away and over 30m are safe");
+        boss->fYawDegrees = 281.f; updateGaze(start + 1u);
+        tests.Require(!windowPlayers.at(3u).iFearEndTick && !windowPlayers.at(4u).iFearEndTick,
+            "Changing Saydon facing does not rotate the player's gaze cone");
+        windowPlayers.at(4u).fYawDegrees = 0.f; updateGaze(start + 10u);
+        const auto middleFearEnd = windowPlayers.at(4u).iFearEndTick;
+        tests.Require(middleFearEnd == start + 100u,
+            "Turning toward Saydon midway through the Duration immediately starts one fear result");
+        windowPlayers.at(4u).fYawDegrees = 180.f; updateGaze(start + 20u);
+        tests.Require(windowPlayers.at(4u).iFearEndTick == middleFearEnd,
+            "Turning away after failure does not rearm the fear deadline");
+        (void)CKoukuSaydonLogicRuntime::Update_PlayerFear(windowPlayers.at(1u), start + 90u);
+        updateGaze(start + 91u);
+        tests.Require(!windowPlayers.at(1u).iFearEndTick && !ledger.Windows.front().bClosed,
+            "Each player receives Fail once even when fear expires before the gaze Duration ends");
+        windowPlayers.at(3u).fYawDegrees = 0.f; updateGaze(end);
+        tests.Require(!windowPlayers.at(3u).iFearEndTick && ledger.Windows.front().bClosed &&
+            windowPlayers.at(4u).iFearEndTick == middleFearEnd,
+            "Exact end only closes continuous gaze: no new fear or duplicate end-tick verdict");
+        updateGaze(end + 1u);
+        tests.Require(!windowPlayers.at(3u).iFearEndTick,
+            "Looking at Saydon after the gaze Duration does not apply fear");
+
         // A real navigation/collision fixture exercises counter landing before verdict commit.
         const auto counterFixture = std::filesystem::temp_directory_path() /
             (L"LostArkCounterLanding-" + std::to_wstring(_getpid()));

@@ -67,6 +67,22 @@ namespace
 {
 	/* Three gate icons remain visible; the Server may also expose the Bingo encore. */
 	constexpr uint8_t KOUKU_GATE_COUNT = 3u;
+
+	bool_t CinematicShotShowsPlayers(const std::string_view shotId)
+	{
+		// Only these authored scenes include the replicated party. The combined
+		// Gate 2 clear / Gate 3 entry reveals players only in entry shots 11-18.
+		return shotId == "1Stage.finale" || shotId == "2Stage.book" ||
+			shotId == "kouku.gate1.authored.finale" || shotId == "kouku.gate1.authored.portal" ||
+			shotId == "kouku.gate1.authored.book" || shotId.starts_with("kouku.gate1.full.camera.") ||
+			shotId.starts_with("kouku.gate2.maze.camera.") ||
+			shotId == "kouku.gate2.clear.camera.11" || shotId == "kouku.gate2.clear.camera.12" ||
+			shotId == "kouku.gate2.clear.camera.13" || shotId == "kouku.gate2.clear.camera.14" ||
+			shotId == "kouku.gate2.clear.camera.15" || shotId == "kouku.gate2.clear.camera.16" ||
+			shotId == "kouku.gate2.clear.camera.17" || shotId == "kouku.gate2.clear.camera.18" ||
+			shotId.starts_with("kouku.gate3.intro.camera.");
+	}
+
 	constexpr const wchar_t* KOUKU_READY_TERRACE_BGM_ASSET_ID =
 		L"Sound/KoukuSaton/S_BGM_COMMANDERRAID/bgm_midnightc_ed_m12_ready_terrace_2ndcircus__559227263.wav";
 
@@ -301,7 +317,7 @@ namespace
 	/* A cue longer than the cutscene it rides is authoring nonsense, and a
 	   key list longer than this is past what one shot can be read as. */
 	constexpr uint32_t CAMERA_TRACK_MAX_DURATION_MS = 120000u;
-	constexpr size_t CAMERA_TRACK_MAX_KEYFRAMES = 64u;
+	constexpr size_t CAMERA_TRACK_MAX_KEYFRAMES = 128u;
 	constexpr f32_t CAMERA_TRACK_MIN_LOOK_DISTANCE = 0.01f;
 	/* Distinct from the Bern and Valtan cinematic owners so the engine's
 	   single-owner override never confuses this arena with theirs. */
@@ -815,6 +831,9 @@ Client::CLevel_KakulSaydonArena::~CLevel_KakulSaydonArena()
     Debug_StopGateObjects();
 	// The gate focus is this arena's session state; the next level starts neutral.
 	CCombatHUDViewModel::Get().Clear_BossFocus();
+	for (const auto& player : m_NameplatePlayers)
+		if (const auto character = player.pCharacter.lock())
+			character->Set_CinematicPresentationSuppressed(false);
 	m_PlayerController.Set_LocalCharacter(nullptr);
 	m_PlayerController.Set_CommandSink(nullptr);
 	m_Replication.Reset();
@@ -2089,6 +2108,7 @@ void Client::CLevel_KakulSaydonArena::Update(const f32_t fTimeDelta)
 	Update_CompositionCamera(fTimeDelta);
 	Update_CameraShots(fTimeDelta);
 	Update_CinematicSurroundings();
+	Sync_CinematicPlayerVisibility();
 	Update_RaidBgm();
 	// Consume this frame's Server-started camera sequence before accepting input.
 	// A completed shot may keep following the player and must not block controls.
@@ -4662,10 +4682,11 @@ void Client::CLevel_KakulSaydonArena::Submit_JokerTargetMarker()
 	m_Replication.Collect_KoukuPresentationViews(bosses, players);
 	// Every room member consumes the same Server-selected target. Never infer
 	// it from facing, local player identity, or the input ping's lifetime.
-	const auto boss = std::find_if(bosses.begin(), bosses.end(), [](const auto& view) {
+	const auto boss = std::find_if(bosses.begin(), bosses.end(), [this](const auto& view) {
 		const auto& state = view.Snapshot;
 		return view.strArchetypeId == "BOSS_KAKULSAYDON_G2_BIG_SAYDON" &&
-			state.strPatternId == "KAKULSAYDON_G1_PATTERN_13" && state.iCurrentHp &&
+			m_pTargetedCombatPresentationPlayer && m_pTargetedCombatPresentationPlayer->Is_RandomTargetActive(
+                state.strPatternId, view.iServerTick, state.iPatternStartTick) && state.iCurrentHp &&
 			state.eAction != WORLD_ENTITY_ACTION::DEAD && state.iPatternSequence &&
 			state.iPatternTargetNetEntityId != INVALID_NET_ENTITY_ID;
 	});
@@ -4997,6 +5018,38 @@ bool_t Client::CLevel_KakulSaydonArena::Is_CinematicPresentationActive() const
 		!shot->strSequenceInstanceId.empty() && m_SequencePlayer.Is_Playing(shot->strSequenceInstanceId);
 }
 
+bool_t Client::CLevel_KakulSaydonArena::Should_HideCinematicPlayers() const
+{
+	if (!Is_CinematicPresentationActive()) return false;
+	if (m_pCamera && m_CompositionCamera.cinematicTrack && !m_CompositionCamera.ownerKey.empty() &&
+		m_pCamera->Is_PresentationOverrideOwnedBy(0x4b4f554b55434f4dull))
+		return !CinematicShotShowsPlayers(m_CompositionCamera.shotId);
+	if (m_pCamera && m_bCameraShotHeld &&
+		m_pCamera->Is_PresentationOverrideOwnedBy(KAKULSAYDON_CAMERA_SHOT_OWNER_ID))
+		return !CinematicShotShowsPlayers(m_strActiveCameraShotId);
+
+	// Keep an allowed Server sequence visible while its next camera row starts.
+	// P5 also contains the preceding clear scene: its gaps stay hidden and
+	// only the entry camera shots above reveal players. Unknown scenes hide.
+	const auto& raid = m_Replication.Get_KoukuRaidState();
+	if (raid.ePhase == LostArk::Shared::KOUKUSAYDON_RAID_PHASE::CINEMATIC &&
+		raid.strSequenceCompositionId == "boss.composition.kakulsaydon.sequencer")
+	{
+		const std::string_view pattern = raid.strSequencePatternId;
+		if (pattern == "KAKULSAYDON_G1_PATTERN_4" || pattern == "KAKULSAYDON_G1_PATTERN_6" ||
+			pattern == "KAKULSAYDON_G1_PATTERN_7") return false;
+	}
+	return true;
+}
+
+void Client::CLevel_KakulSaydonArena::Sync_CinematicPlayerVisibility()
+{
+	const bool_t suppressed = Should_HideCinematicPlayers();
+	for (const auto& player : m_NameplatePlayers)
+		if (const auto character = player.pCharacter.lock())
+			character->Set_CinematicPresentationSuppressed(suppressed);
+}
+
 void Client::CLevel_KakulSaydonArena::Trace_CinematicPresentation(const std::string_view renderingProfile)
 {
 	const auto& raid = m_Replication.Get_KoukuRaidState();
@@ -5015,7 +5068,8 @@ void Client::CLevel_KakulSaydonArena::Trace_CinematicPresentation(const std::str
 		else if (shown) ++visible;
 	}
 	std::ostringstream detail;
-	detail << "cinematic=" << Is_CinematicPresentationActive() << " pending=" << m_bSequenceCombatPending
+	detail << "cinematic=" << Is_CinematicPresentationActive() << " playersHidden=" << Should_HideCinematicPlayers()
+		<< " pending=" << m_bSequenceCombatPending
 		<< " raidEpoch=" << raid.iRunEpoch << " phase=" << static_cast<int>(raid.ePhase)
 		<< " gate=" << raid.strGateId << " sequence=" << raid.strSequencePatternId
 		<< " scene=" << renderingProfile << " gateScene=" << m_strGatePresentationProfileId

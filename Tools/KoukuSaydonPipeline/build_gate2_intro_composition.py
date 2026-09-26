@@ -575,7 +575,7 @@ def make_cameras(rows, matinee=329, interp_data=394, duration=DURATION,
                         error=max(float(np.linalg.norm(p-(a[0]*(1-u)+bp[0]*u)))/.005,angle/.1,abs(f-(a[2]*(1-u)+bp[2]*u))/.02)
                         if error>worst[0]:worst=(error,index)
                 if worst[1] is None:return [[times[i]for i in sorted(keep)]]
-                if len(keep)==64:
+                if len(keep)==128:
                     mid=len(times)//2
                     return reduced_times(times[:mid+1])+reduced_times(times[mid:])
                 keep.add(worst[1])

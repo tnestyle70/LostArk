@@ -54,8 +54,8 @@ MAX_STABLE_ID_BYTES = 255
 WORLD_SEQUENCE_MAX_DURATION_MS = 600_000
 WORLD_SEQUENCE_MAX_TEMPLATES = 512
 WORLD_SEQUENCE_MAX_INSTANCES = 2048
-WORLD_SEQUENCE_MAX_TRACKS = 32
-WORLD_SEQUENCE_MAX_KEYS = 256
+WORLD_SEQUENCE_MAX_TRACKS = 64
+WORLD_SEQUENCE_MAX_KEYS = 4096
 WORLD_SEQUENCE_MAX_COMPONENT = 100_000.0
 WORLD_SEQUENCE_MIN_SCALE = 0.000001
 CAMERA_SHOT_MAX_COUNT = 128
@@ -64,7 +64,7 @@ CAMERA_SHOT_MAX_PRIORITY = 1_000
 CAMERA_SHOT_MAX_HALF_EXTENT = 1_000.0
 CAMERA_SHOT_MAX_COORDINATE = 100_000.0
 CAMERA_TRACK_MAX_DURATION_MS = 120_000
-CAMERA_TRACK_MAX_KEYFRAMES = 64
+CAMERA_TRACK_MAX_KEYFRAMES = 128
 PUBLISH_LOCK_TIMEOUT_SECONDS = 120.0
 PUBLISH_RECEIPT_REL = "Composition.publish.receipt.json"
 PUBLISH_JOURNAL_NAME = ".composition-publish.journal.json"
@@ -2498,7 +2498,11 @@ def validate_boss_document(
 
 def _require_bounded_display_text(value: Any, context: str, maximum_bytes: int) -> str:
     result = _require_string(value, context)
-    if len(result.encode("utf-8")) > maximum_bytes or any(
+    try:
+        encoded = result.encode("utf-8")
+    except UnicodeEncodeError as error:
+        raise CompositionError(f"{context} must be valid UTF-8 display text") from error
+    if len(encoded) > maximum_bytes or any(
         ord(character) < 0x20 or ord(character) == 0x7F for character in result
     ):
         raise CompositionError(
@@ -2637,7 +2641,7 @@ def _validate_world_sequence_collider_tracks(
             collider,
             ("colliderTrackId", "slotId", "startMs", "durationMs", "positionOffset",
              "halfExtents", "yawDegrees", "behavior", "damagePercent", "gripLocalOffset"),
-            ("attachmentBone",), row_context,
+            ("attachmentBone", "shape"), row_context,
         )
         collider_id = _require_owner_stable_id(
             collider["colliderTrackId"], f"{row_context}.colliderTrackId", 128
@@ -2655,6 +2659,9 @@ def _validate_world_sequence_collider_tracks(
         behavior = collider["behavior"]
         if behavior not in ("DAMAGE", "INSTANT_DEATH", "HOOK_CAPTURE"):
             raise CompositionError(f"{row_context}.behavior is invalid")
+        shape = collider.get("shape", "BOX")
+        if shape not in ("BOX", "CYLINDER"):
+            raise CompositionError(f"{row_context}.shape is invalid")
         damage = _require_finite_number(collider["damagePercent"], f"{row_context}.damagePercent",
                                         minimum=0, maximum=100)
         if not damage.is_integer() or (behavior == "DAMAGE" and damage < 1) or (behavior != "DAMAGE" and damage != 0):
@@ -2667,6 +2674,10 @@ def _validate_world_sequence_collider_tracks(
                                       maximum_magnitude=1000, positive=True)
         if any(value <= 0.001 for value in half_extents):
             raise CompositionError(f"{row_context}.halfExtents must exceed 0.001")
+        if shape == "CYLINDER" and (
+            behavior == "HOOK_CAPTURE" or abs(half_extents[0] - half_extents[2]) > 0.0001
+        ):
+            raise CompositionError(f"{row_context} CYLINDER requires equal X/Z radii and cannot capture a hook")
         grip = _require_float3(collider["gripLocalOffset"], f"{row_context}.gripLocalOffset",
                                maximum_magnitude=WORLD_SEQUENCE_MAX_COMPONENT)
         bone = _require_string(collider.get("attachmentBone", ""),
@@ -2681,14 +2692,72 @@ def _validate_world_sequence_collider_tracks(
             raise CompositionError(f"{row_context} only hook capture carries a grip or bone")
 
 
+def _validate_world_sequence_material_tracks(
+    template: Mapping[str, Any], slots: Mapping[str, str], context: str
+) -> None:
+    """Validate v3 curves; the Map owner still owns native profile packing."""
+    targets: set[tuple[str, str]] = set()
+    for ordinal, track in enumerate(template["materialTracks"]):
+        track_context = f"{context}.materialTracks[{ordinal}]"
+        if not isinstance(track, dict):
+            raise CompositionError(f"{track_context} must be an object")
+        _require_exact_fields(track, ("slotId", "materialName", "curves"), (), track_context)
+        slot_id = _require_owner_stable_id(track["slotId"], f"{track_context}.slotId", 128)
+        material_name = _require_bounded_display_text(
+            track["materialName"], f"{track_context}.materialName", 256
+        )
+        target = (slot_id, material_name)
+        if slot_id not in slots or target in targets:
+            raise CompositionError(f"{track_context} has an unresolved or duplicate material target")
+        targets.add(target)
+        curves = track["curves"]
+        if not isinstance(curves, list) or not 1 <= len(curves) <= 64:
+            raise CompositionError(f"{track_context}.curves must contain 1..64 rows")
+        parameters: set[str] = set()
+        for curve_ordinal, curve in enumerate(curves):
+            curve_context = f"{track_context}.curves[{curve_ordinal}]"
+            if not isinstance(curve, dict):
+                raise CompositionError(f"{curve_context} must be an object")
+            _require_exact_fields(curve, ("parameter", "keys"), (), curve_context)
+            parameter = _require_bounded_display_text(
+                curve["parameter"], f"{curve_context}.parameter", 128
+            )
+            if parameter in parameters:
+                raise CompositionError(f"{curve_context}.parameter is duplicate")
+            parameters.add(parameter)
+            keys = curve["keys"]
+            if not isinstance(keys, list) or not 1 <= len(keys) <= 4096:
+                raise CompositionError(f"{curve_context}.keys must contain 1..4096 rows")
+            previous_time = -1
+            for key_ordinal, key in enumerate(keys):
+                key_context = f"{curve_context}.keys[{key_ordinal}]"
+                if not isinstance(key, dict):
+                    raise CompositionError(f"{key_context} must be an object")
+                _require_exact_fields(key, ("timeMs", "value", "interpolation"), (), key_context)
+                time_ms = _require_nonnegative_int(key["timeMs"], f"{key_context}.timeMs")
+                if time_ms <= previous_time or time_ms > template["durationMs"]:
+                    raise CompositionError(f"{key_context}.timeMs must increase within durationMs")
+                previous_time = time_ms
+                if key["interpolation"] not in ("LINEAR", "CONSTANT"):
+                    raise CompositionError(f"{key_context}.interpolation is invalid")
+                values = key["value"]
+                if not isinstance(values, list) or len(values) != 4:
+                    raise CompositionError(f"{key_context}.value must be a float4")
+                for axis, value in enumerate(values):
+                    _require_finite_number(value, f"{key_context}.value[{axis}]",
+                                           minimum=-1_000_000, maximum=1_000_000)
+            if keys[0]["timeMs"] != 0 or keys[-1]["timeMs"] != template["durationMs"]:
+                raise CompositionError(f"{curve_context} must cover its whole motion duration")
+
+
 def _validate_world_sequence_source(
     document: Mapping[str, Any], expected_area_id: str
 ) -> set[str]:
     """Validate the complete Map owner without publishing the Map domain.
 
     Format v3 adds objectResources, which the Map owner validates and publishes.
-    A composition only resolves template and instance references, so the field
-    is accepted here and left to its owner rather than inspected twice.
+    A composition resolves template/instance references and material-curve
+    bindings. Native object profiles remain validated by their Map owner.
     """
     context = "World Sequence source"
     _require_exact_fields(
@@ -2712,6 +2781,11 @@ def _validate_world_sequence_source(
         for resource in document.get("objectResources", ())
         if isinstance(resource, dict) and isinstance(resource.get("objectId"), str)
     }
+    object_resources = {
+        resource["objectId"]: resource
+        for resource in document.get("objectResources", ())
+        if isinstance(resource, dict) and isinstance(resource.get("objectId"), str)
+    }
     if (
         not isinstance(templates, list)
         or len(templates) > WORLD_SEQUENCE_MAX_TEMPLATES
@@ -2723,6 +2797,7 @@ def _validate_world_sequence_source(
     template_slots: dict[str, dict[str, str]] = {}
     effect_template_ids: set[str] = set()
     collider_template_ids: set[str] = set()
+    material_templates: dict[str, list[dict[str, Any]]] = {}
     for template_ordinal, template in enumerate(templates):
         template_context = f"{context}.templates[{template_ordinal}]"
         if not isinstance(template, dict):
@@ -2738,7 +2813,7 @@ def _validate_world_sequence_source(
                 "tracks",
                 "animationTracks",
             ),
-            (("objectMotion", "effectTracks", "colliderTracks") if document["formatVersion"] == 3
+            (("objectMotion", "effectTracks", "colliderTracks", "materialTracks") if document["formatVersion"] == 3
              else ("objectMotion",)),
             template_context,
         )
@@ -2791,6 +2866,12 @@ def _validate_world_sequence_source(
             or total_tracks + len(effect_tracks) + len(collider_tracks) > WORLD_SEQUENCE_MAX_TRACKS
         ):
             raise CompositionError(f"{template_context}.colliderTracks must be a bounded array")
+        material_tracks = template.get("materialTracks", [])
+        if (
+            not isinstance(material_tracks, list)
+            or total_tracks + len(effect_tracks) + len(collider_tracks) + len(material_tracks) > WORLD_SEQUENCE_MAX_TRACKS
+        ):
+            raise CompositionError(f"{template_context}.materialTracks must be a bounded array")
 
         # A slot may carry both a transform track and a clip chain so one
         # binding can walk an animated prop while it plays. Duplicates are a
@@ -2837,9 +2918,14 @@ def _validate_world_sequence_source(
                     (),
                     key_context,
                 )
-                time_ms = _require_nonnegative_int(
-                    key["timeMs"], f"{key_context}.timeMs"
+                # DATA_JSON/Read_Uint32 accepts integral JSON numbers, including
+                # 27051.0. Preserve the source value; never round fractional keys.
+                time_ms = _require_finite_number(
+                    key["timeMs"], f"{key_context}.timeMs",
+                    minimum=0, maximum=WORLD_SEQUENCE_MAX_DURATION_MS,
                 )
+                if not time_ms.is_integer():
+                    raise CompositionError(f"{key_context}.timeMs must be integer milliseconds")
                 if time_ms <= previous_time or time_ms > duration_ms:
                     raise CompositionError(
                         f"{key_context}.timeMs must increase within durationMs"
@@ -2965,6 +3051,9 @@ def _validate_world_sequence_source(
             _validate_world_sequence_collider_tracks(template, transform_slots, template_context)
         if collider_tracks:
             collider_template_ids.add(sequence_id)
+        if "materialTracks" in template:
+            _validate_world_sequence_material_tracks(template, slots, template_context)
+        material_templates[sequence_id] = material_tracks
         template_slots[sequence_id] = slots
 
     instance_ids: set[str] = set()
@@ -3103,6 +3192,17 @@ def _validate_world_sequence_source(
                         f"{binding_context}.targetId is out of range"
                     )
             target_key = (target_kind, target_id)
+            for material in material_templates[template_id]:
+                if material["slotId"] != slot_id:
+                    continue
+                resource = object_resources.get(target_id) if target_kind == "OBJECT_RESOURCE" else None
+                profile = resource.get("materialProfile") if resource is not None else None
+                if not isinstance(profile, dict) or profile.get("materialName") != material["materialName"]:
+                    raise CompositionError(f"{binding_context} material track requires its exact Object material profile")
+                parameters = profile.get("parameters")
+                for curve in material["curves"]:
+                    if not isinstance(parameters, dict) or curve["parameter"] not in parameters:
+                        raise CompositionError(f"{binding_context} material parameter is absent from its profile: {curve['parameter']}")
             if target_key in bound_targets:
                 raise CompositionError(
                     f"{binding_context} duplicates a placement target"

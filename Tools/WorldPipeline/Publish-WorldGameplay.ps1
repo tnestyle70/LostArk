@@ -336,6 +336,11 @@ function Get-EncounterProfiles {
 					throw 'KoukuSaydon showtimeTargets must be a bounded array.'
 				}
 			}
+			if ($isKoukuSaydon -and $null -ne $pattern.PSObject.Properties['trackBombs']) {
+				# Gameplay owns the bomb/sector join; World admission only consumes encounter identity.
+				$patternProperties += 'trackBombs'
+				if ($pattern.trackBombs -isnot [Array] -or @($pattern.trackBombs).Count -gt 64) { throw 'Kouku trackBombs must be a bounded array.' }
+			}
 			if ($isKoukuSaydon -and $null -ne $pattern.PSObject.Properties['parentPatternSequence']) {
 				$patternProperties += 'parentPatternSequence'
 				Assert-KoukuParentPatternSequence $pattern $patterns

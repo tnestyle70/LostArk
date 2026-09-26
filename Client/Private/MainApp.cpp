@@ -1700,7 +1700,10 @@ void CMainApp::UpdateKoukuGateCompletePlay()
 
 void CMainApp::Sync_KoukuCinematicUI()
 {
-	const auto* arena = CLevel_KakulSaydonArena::Get_Active();
+	auto* arena = CLevel_KakulSaydonArena::Get_Active();
+	// Composition camera sampling follows Engine.Late_Update; refresh the
+	// character owner before queued body/equipment/shadow draws consume it.
+	if (arena) arena->Sync_CinematicPlayerVisibility();
 	const bool_t suppressed = arena &&
 		CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::KAKULSAYDON_ARENA) &&
 		arena->Is_CinematicPresentationActive();
@@ -3991,6 +3994,8 @@ HRESULT CMainApp::Render()
             }
         }
 		{
+			if (m_bKoukuBingoHammerColliders)
+				if (auto* arena = CLevel_KakulSaydonArena::Get_Active()) arena->Debug_DrawBingoHammerColliders();
 			Engine::CProfilerScope cpuPhaseScope(CGameInstance::Get().Get_Profiler(), "ImGui.BackendSubmit");
 		Engine::CProfilerGpuScope gpuPhaseScope(CGameInstance::Get().Get_Profiler(), "ImGui.BackendSubmit");
 			m_pImGuiLayer->EndFrame();
@@ -4031,7 +4036,7 @@ HRESULT CMainApp::Render()
 		(ETOUI(LEVEL::CHARACTER_SELECT) == CGameInstance::Get().Get_CurrentLevelID() &&
 			nullptr != CLevel_CharacterSelect::Get_Active() &&
 			CLevel_CharacterSelect::Get_Active()->Is_ProductPresentationOpen());
-	if (!isCharSelectOverlayOpen && !Is_MvpResultPageOpen())
+	if (!isCharSelectOverlayOpen && !Is_MvpResultPageOpen() && !Is_KoukuMinigameHUDHidden())
 	{
 		CUITextLayerScope HudText(UI_TEXT_LAYER::HUD);
 		RenderCombatHUDText();
@@ -4204,6 +4209,14 @@ void CMainApp::Update_CombatHUD(const f32_t fTimeDelta)
 	Engine::CProfilerScope scope(CGameInstance::Get().Get_Profiler(), "UI.Runtime.CombatHUD.Update");
 	if (nullptr == m_pHUDRuntimeView)
 		return;
+
+	if (Is_KoukuMinigameHUDHidden())
+	{
+		Hide_CombatHUD();
+		if (m_pCombatAnalysisView) m_pCombatAnalysisView->Hide();
+		if (m_pQuickSlotDragView) { m_pQuickSlotDragView->Cancel(); m_pQuickSlotDragView->Hide(); }
+		return;
+	}
 
 	const uint32_t currentLevel = CGameInstance::Get().Get_CurrentLevelID();
 	const bool_t isSupportedLevel =
@@ -5714,6 +5727,16 @@ void CMainApp::Update_LobbyButtons(const f32_t fTimeDelta)
 	m_pLobbyBackgroundView->Update(fTimeDelta);
 }
 
+bool_t CMainApp::Is_KoukuMinigameHUDHidden() const
+{
+	if (ETOUI(LEVEL::KAKULSAYDON_ARENA) != CGameInstance::Get().Get_CurrentLevelID())
+		return false;
+	const auto gimmick = CCombatHUDViewModel::Get().Get_KoukuGimmick();
+	return gimmick.isValid &&
+		(gimmick.eHudMode == HUD_KOUKU_HUD_MODE::MAZE ||
+		 gimmick.eHudMode == HUD_KOUKU_HUD_MODE::DANCE);
+}
+
 bool_t CMainApp::Is_RuntimeUIScreenSuppressed() const
 {
 	return CUIInputRouter::Get().Is_CinematicSuppressed() ||
@@ -5998,7 +6021,7 @@ void CMainApp::Update_Minimap(const f32_t fTimeDelta)
 	}
 	/* Part of the in-game HUD, so it clears for the award page like the rest.
 	   A null snapshot is this view's own documented "hide every slot". */
-	if (Is_MvpResultPageOpen())
+	if (Is_MvpResultPageOpen() || Is_KoukuMinigameHUDHidden())
 		bHasSnapshot = false;
 	m_pMinimapView->Update(fTimeDelta, eLevel, bHasSnapshot ? &Snapshot : nullptr);
 	/* The world map window reads the same marker snapshot; it hides itself without one. */
@@ -7609,7 +7632,7 @@ void CMainApp::Update_BossImmuneGauge(const f32_t fTimeDelta)
 	const bool_t skillWindowOpen =
 		nullptr != m_pSkillWindowView && m_pSkillWindowView->Is_Open();
 	m_pBossImmuneGaugeView->Update(fTimeDelta,
-		CCombatHUDViewModel::Get().Get_Boss(), isSupportedLevel && !skillWindowOpen);
+		CCombatHUDViewModel::Get().Get_Boss(), isSupportedLevel && !skillWindowOpen && !Is_KoukuMinigameHUDHidden());
 }
 
 void CMainApp::Update_BossHealthBar()
@@ -7649,7 +7672,7 @@ void CMainApp::Update_BossHealthBar()
 			CLevel_CharacterSelect::Get_Active()->Is_ProductPresentationOpen());
 
 	const HUD_BOSS_STATE& boss = CCombatHUDViewModel::Get().Get_Boss();
-	if (!isSupportedLevel || skillWindowOpen || isCharSelectOverlayOpen ||
+	if (!isSupportedLevel || skillWindowOpen || isCharSelectOverlayOpen || Is_KoukuMinigameHUDHidden() ||
 		Is_MvpResultPageOpen() ||
 		!boss.isValid || 0u == boss.iMaximumHp)
 	{
@@ -8449,7 +8472,7 @@ void CMainApp::Update_EstherGauge(const f32_t fTimeDelta)
 	const bool_t isRaidArena =
 		ETOUI(LEVEL::VALTAN_ARENA) == currentLevel ||
 		ETOUI(LEVEL::KAKULSAYDON_ARENA) == currentLevel;
-	if (!isRaidArena || 0u == maximum || skillWindowOpen ||
+	if (!isRaidArena || 0u == maximum || skillWindowOpen || Is_KoukuMinigameHUDHidden() ||
 		!CCombatHUDViewModel::Get().Get_Player().isValid)
 	{
 		Hide_EstherUI();
@@ -12114,6 +12137,7 @@ void CMainApp::RenderKoukuSaydonCompletePlayControls()
 		bodyVisibility.bBossBodyCollider = showBodyColliders;
 		CClientReplication::Set_GlobalCombatDebugVisibility(bodyVisibility);
 	}
+	ImGui::Checkbox("Bingo Hammer Colliders##KoukuCompletePlay", &m_bKoukuBingoHammerColliders);
 	static const char* labels[] = { "\x31\xEA\xB4\x80\xEB\xAC\xB8", "\x32\xEA\xB4\x80\xEB\xAC\xB8", "\x33\xEA\xB4\x80\xEB\xAC\xB8", "\xEB\xB9\x99\xEA\xB3\xA0" };
 	static const char* gates[] = { "GATE1", "GATE2", "GATE3", "BINGO" };
 	m_iKoukuCompletePlayGate = (std::clamp)(m_iKoukuCompletePlayGate, 0, 3);

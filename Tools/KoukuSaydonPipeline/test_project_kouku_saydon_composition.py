@@ -4118,6 +4118,25 @@ Write-Output 'PASS actual bootstrap actor-local trigger admission'
             subject._validate_logic_definition(compatible["logics"][0], "fear sound", 2)
             self.assertIsNone(subject._project_fear_presentations(compatible)[0]["soundResource"])
 
+    def test_random_target_duration_preserves_window_and_effect_reference(self):
+        document = dict(logics=[dict(logicId="test.target", displayName="target", logicType="DURATION",
+            judgementKind="BOSS_RANDOM_TARGET", trackingPresentationOccurrenceId="effect.eye")],
+            presentationResources=[dict(resourceId="eye", kind="EFFECT")])
+        pattern = dict(logicOccurrences=[dict(occurrenceId="target.1", logicId="test.target", startMs=100, durationMs=300, enabled=True)],
+            presentationOccurrences=[dict(occurrenceId="effect.eye", resourceId="eye", startMs=0, durationMs=1000, anchorKind="BOSS", followBoss=True)])
+        before = copy.deepcopy((document, pattern))
+        self.assertEqual(subject._random_target_windows(document, pattern), [dict(occurrenceId="target.1", startMs=100,
+            durationMs=300, trackingPresentationOccurrenceId="effect.eye")])
+        self.assertEqual(before, (document, pattern))
+        for mutate in (lambda p: p["presentationOccurrences"][0].update(anchorKind="MAP"),
+                       lambda p: p["presentationOccurrences"][0].update(bone="eye"),
+                       lambda p: p["presentationOccurrences"][0].update(durationMs=399),
+                       lambda p: p["logicOccurrences"].append(dict(p["logicOccurrences"][0], occurrenceId="target.2", startMs=399))):
+            invalid = copy.deepcopy(pattern); mutate(invalid)
+            with self.assertRaises(subject.CompositionError): subject._random_target_windows(document, invalid)
+        pattern["logicOccurrences"][0]["enabled"] = False
+        self.assertEqual(subject._random_target_windows(document, pattern), [])
+
     def test_gaze_facing_outcome_projects_and_preserves_default(self):
         document = copy.deepcopy(self.document)
         logics = {row["logicId"]: row for row in document["logics"]}
@@ -4135,6 +4154,28 @@ Write-Output 'PASS actual bootstrap actor-local trigger admission'
         gaze["insideOutcome"] = "TIMEOUT"
         with self.assertRaisesRegex(subject.CompositionError, "insideOutcome"):
             self.validate(document)
+
+    def test_gaze_during_window_projects_only_explicit_facing_fail(self):
+        document = copy.deepcopy(self.document)
+        logics = {row["logicId"]: row for row in document["logics"]}
+        gaze = logics["kakulsaydon.g1.logic.16"]
+        box = next(row for row in self.find(document, GAZE_ID)["logicOccurrences"] if row["logicId"] == gaze["logicId"])
+        self.assertNotIn("gazeDuringWindow", subject._project_logic_window(box, gaze, logics, 0))
+        gaze.update(insideOutcome="FAIL", gazeDuringWindow=True)
+        subject._validate_logic_definition(gaze, "continuous gaze", 99999)
+        self.assertTrue(subject._project_logic_window(box, gaze, logics, 0)["gazeDuringWindow"])
+        for value in (None, 0, 1, "true", [], {}):
+            invalid = dict(gaze, gazeDuringWindow=value)
+            with self.subTest(value=value), self.assertRaisesRegex(subject.CompositionError, "gazeDuringWindow"):
+                subject._validate_logic_definition(invalid, "continuous gaze", 99999)
+        with self.assertRaisesRegex(subject.CompositionError, "facing outcome FAIL"):
+            subject._validate_logic_definition(dict(gaze, insideOutcome="SUCCESS"), "continuous gaze", 99999)
+        invalid = dict(gaze, judgementKind="POSE_INPUT", poseIndex=0)
+        invalid.pop("halfAngleDegrees"); invalid.pop("maxDistanceM"); invalid.pop("insideOutcome")
+        with self.assertRaises(subject.CompositionError):
+            subject._validate_logic_definition(invalid, "non-gaze flag", 99999)
+        gaze["gazeDuringWindow"] = False
+        self.assertNotIn("gazeDuringWindow", subject._project_logic_window(box, gaze, logics, 0))
 
     def test_counter_window_projects_followup_and_refuses_per_player_fail(self):
         document = copy.deepcopy(self.document)
@@ -4982,6 +5023,61 @@ Write-Output 'PASS actual bootstrap actor-local trigger admission'
         validate()
         projected = subject._project_presentation_occurrence({"worlds": []}, pattern, row, resource)
         self.assertNotIn("effectSourceStartMs", projected)
+
+    def test_tracking_bomb_templates_omit_unused_effect_clocks(self):
+        document = copy.deepcopy(self.hierarchy_document)
+        before = copy.deepcopy(document)
+        count = 0
+        for pattern in document["patterns"]:
+            _, templates, _ = subject._project_track_bombs(document, pattern)
+            for template in templates.values():
+                for occurrence in template["occurrences"]:
+                    self.assertNotEqual([], occurrence.get("effectSourceTimeKeys"),
+                                        (pattern["patternId"], template["clientVisualId"]))
+                    count += 1
+        self.assertGreater(count, 0)
+        self.assertEqual(before, document)
+
+    def test_explicit_unused_effect_clock_projects_like_absent(self):
+        resource = dict(resourceId="effect.clock", kind="EFFECT", resourceKind="V1_EFFECT", durationMs=5000)
+        box = dict(occurrenceId="pattern.clock.presentation.1", resourceId=resource["resourceId"],
+                   startMs=0, durationMs=5000)
+        absent = subject._project_presentation_occurrence({}, {}, box, resource)
+        box["effectSourceTimeKeys"] = []
+        before = copy.deepcopy(box)
+        self.assertEqual(absent, subject._project_presentation_occurrence({}, {}, box, resource))
+        self.assertEqual(before, box)
+
+    def test_original_scene_effect_clock_survives_projection_and_rejects_ambiguous_owners(self):
+        resource = dict(resourceId="effect.clock", kind="EFFECT", resourceKind="V1_EFFECT", durationMs=5000)
+        row = dict(occurrenceId="pattern.clock.presentation.1", resourceId=resource["resourceId"],
+                   startMs=100, durationMs=6000, anchorKind="MAP", followBoss=False,
+                   effectSourceTimeKeys=[dict(timeMs=0, sourceMs=0), dict(timeMs=2000, sourceMs=1000),
+                                         dict(timeMs=6000, sourceMs=5000)])
+        pattern = dict(patternId="pattern.clock", nextPresentationOccurrenceOrdinal=2, presentationOccurrences=[row])
+        def validate():
+            subject._validate_presentation_occurrences(pattern, {resource["resourceId"]: resource}, 6100, {})
+        before = copy.deepcopy(pattern)
+        validate()
+        projected = subject._project_presentation_occurrence({"worlds": []}, pattern, row, resource)
+        self.assertEqual(row["effectSourceTimeKeys"], projected["effectSourceTimeKeys"])
+        self.assertEqual(6000, projected["durationMs"])
+        self.assertEqual(before, pattern)
+        for change in (dict(followBoss=True), dict(effectSourceStartMs=1), dict(fitEffectToDuration=True),
+                       dict(loopEffectToDuration=True), dict(fadeInMs=10), dict(durationMs=5999),
+                       dict(effectSourceTimeKeys=[dict(timeMs=0, sourceMs=0), dict(timeMs=6000, sourceMs=6000)]),
+                       dict(effectSourceTimeKeys=[dict(timeMs=0, sourceMs=0), dict(timeMs=0, sourceMs=1000)]),
+                       dict(effectSourceTimeKeys=[dict(timeMs=0, sourceMs=1000), dict(timeMs=6000, sourceMs=0)]),
+                       dict(effectSourceTimeKeys=[dict(timeMs=0, sourceMs=0), dict(timeMs=6000, sourceMs=float('nan'))])):
+            row.clear(); row.update(copy.deepcopy(before["presentationOccurrences"][0])); row.update(change)
+            snapshot = copy.deepcopy(row)
+            with self.subTest(change=change), self.assertRaises(subject.CompositionError):
+                validate()
+            self.assertEqual(snapshot.keys(), row.keys())
+        row.clear(); row.update(copy.deepcopy(before["presentationOccurrences"][0]))
+        resource["kind"] = "SOUND"
+        with self.assertRaises(subject.CompositionError):
+            validate()
 
     def test_sound_selection_group_allows_independent_anchors_and_requires_two(self):
         resources, pattern = self.collider_selection_group_fixture()
@@ -6138,12 +6234,12 @@ Write-Output 'PASS actual bootstrap actor-local trigger admission'
         scene["blendMs"] = 600000
         self.assertLess(scene["durationMs"], scene["blendMs"])
         self.validate(document)
-        projected = next(row for row in subject.project_presentation(document)["patterns"]
-                         if row["patternId"] == GAZE_ID)
+        projected = subject._project_pattern_presentation(document, self.find(document, GAZE_ID))
         saved = next(row for row in projected["presentationOccurrences"]
                      if row["occurrenceId"] == scene["occurrenceId"])
         self.assertEqual(("SCENE_PROFILE", 600000, scene["durationMs"]),
                          (saved["kind"], saved["fadeInMs"], saved["durationMs"]))
+        self.assertNotIn("effectSourceTimeKeys", saved)
         scene["blendMs"] = 600001
         with self.assertRaisesRegex(subject.CompositionError, "blendMs"):
             self.validate(document)

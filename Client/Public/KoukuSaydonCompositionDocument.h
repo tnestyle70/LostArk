@@ -67,8 +67,8 @@ namespace Client
 	/* The judgement a DURATION Logic runs and the outcome a RESULT Logic
 	   applies. Both are the Server's typed vocabulary; a definition that is
 	   only a name keeps the kind empty and stays DRAFT-only. */
-	inline constexpr std::array<const char_t*, 18u> KOUKU_SAYDON_JUDGEMENT_KINDS = {
-		"CARD_DICE_BIND", "ROULETTE_CARD_MATCH", "GAZE_REAL_BOSS", "POSE_INPUT", "STAGGER_WINDOW", "COUNTER_WINDOW", "AREA_OVERLAP", "OBJECT_OVERLAP", "EXTERNAL_SIGNAL", "ATTACHMENT_HOLD", "PATTERN_COMPLETION_COUNT", "SHOWTIME_PLAYER_TARGETS", "BOSS_TRACK_TARGET", "CROSS_DIRECTION_CLONES", "PURSUIT_PROJECTILES", "BINGO_BOARD", "INVULNERABILITY_ZONE", "BINGO_COMPLETED_LINES" };
+	inline constexpr std::array<const char_t*, 19u> KOUKU_SAYDON_JUDGEMENT_KINDS = {
+		"CARD_DICE_BIND", "ROULETTE_CARD_MATCH", "GAZE_REAL_BOSS", "POSE_INPUT", "STAGGER_WINDOW", "COUNTER_WINDOW", "AREA_OVERLAP", "OBJECT_OVERLAP", "EXTERNAL_SIGNAL", "ATTACHMENT_HOLD", "PATTERN_COMPLETION_COUNT", "SHOWTIME_PLAYER_TARGETS", "BOSS_TRACK_TARGET", "CROSS_DIRECTION_CLONES", "PURSUIT_PROJECTILES", "BINGO_BOARD", "INVULNERABILITY_ZONE", "BINGO_COMPLETED_LINES", "BOSS_RANDOM_TARGET" };
 	inline constexpr std::array<const char_t*, 14u> KOUKU_SAYDON_OUTCOME_KINDS = {
 		"INSTANT_DEATH", "MAX_HP_PERCENT_DAMAGE", "FIXED_DAMAGE", "MADNESS_GAUGE_ADD_PERCENT",
 		"CLOWN_TRANSFORM", "FEAR", "FOLLOWUP_PATTERN", "PLAY_WORLD_OBJECT_MOTION",
@@ -96,9 +96,10 @@ namespace Client
 	}
 	inline bool_t Kouku_IsOutcomeSlotAllowed(
 		const std::string_view judgementKind,
-		const KOUKU_SAYDON_OUTCOME_SLOT slot)
+		const KOUKU_SAYDON_OUTCOME_SLOT slot, const bool_t gazeDuringWindow = false)
 	{
-		if (judgementKind == "CARD_DICE_BIND" || judgementKind == "ATTACHMENT_HOLD" || judgementKind == "SHOWTIME_PLAYER_TARGETS" || judgementKind == "BOSS_TRACK_TARGET" || judgementKind == "CROSS_DIRECTION_CLONES" || judgementKind == "PURSUIT_PROJECTILES" || judgementKind == "BINGO_BOARD" || judgementKind == "INVULNERABILITY_ZONE") return false;
+        if (judgementKind == "GAZE_REAL_BOSS" && gazeDuringWindow) return slot == KOUKU_SAYDON_OUTCOME_SLOT::FAIL;
+		if (judgementKind == "CARD_DICE_BIND" || judgementKind == "ATTACHMENT_HOLD" || judgementKind == "SHOWTIME_PLAYER_TARGETS" || judgementKind == "BOSS_TRACK_TARGET" || judgementKind == "BOSS_RANDOM_TARGET" || judgementKind == "CROSS_DIRECTION_CLONES" || judgementKind == "PURSUIT_PROJECTILES" || judgementKind == "BINGO_BOARD" || judgementKind == "INVULNERABILITY_ZONE") return false;
 		if (judgementKind == "PATTERN_COMPLETION_COUNT") return slot == KOUKU_SAYDON_OUTCOME_SLOT::SUCCESS;
 		if (KOUKU_SAYDON_OUTCOME_SLOT::TIMEOUT == slot)
 			return judgementKind != "GAZE_REAL_BOSS" && judgementKind != "OBJECT_CONTACT";
@@ -167,6 +168,7 @@ namespace Client
 		std::string strWorldSequenceInstanceId;
 		double fHalfAngleDegrees = 0.0;
 		double fMaxDistanceM = 0.0;
+        bool_t bGazeDuringWindow = false;
 		std::uint32_t iPoseIndex = 0u;
 		std::uint32_t iThreshold = 0u;
 		double fShieldArcDegrees = 0.0;
@@ -247,12 +249,12 @@ namespace Client
 
 	inline bool_t Kouku_LogicOwnsOutcomes(const KOUKU_SAYDON_COMPOSITION_LOGIC_DEFINITION& logic)
 	{
-		return (logic.strLogicType == "DURATION" && logic.strJudgementKind != "CARD_DICE_BIND" && logic.strJudgementKind != "ATTACHMENT_HOLD" && logic.strJudgementKind != "SHOWTIME_PLAYER_TARGETS" && logic.strJudgementKind != "BOSS_TRACK_TARGET" && logic.strJudgementKind != "CROSS_DIRECTION_CLONES" && logic.strJudgementKind != "PURSUIT_PROJECTILES" && logic.strJudgementKind != "BINGO_BOARD" && logic.strJudgementKind != "INVULNERABILITY_ZONE") ||
+		return (logic.strLogicType == "DURATION" && logic.strJudgementKind != "CARD_DICE_BIND" && logic.strJudgementKind != "ATTACHMENT_HOLD" && logic.strJudgementKind != "SHOWTIME_PLAYER_TARGETS" && logic.strJudgementKind != "BOSS_TRACK_TARGET" && logic.strJudgementKind != "BOSS_RANDOM_TARGET" && logic.strJudgementKind != "CROSS_DIRECTION_CLONES" && logic.strJudgementKind != "PURSUIT_PROJECTILES" && logic.strJudgementKind != "BINGO_BOARD" && logic.strJudgementKind != "INVULNERABILITY_ZONE") ||
 			(logic.strLogicType == "TRIGGER" && (logic.strTriggerKind == "ENTER_AREA" || logic.strTriggerKind == "OBJECT_CONTACT"));
 	}
 	inline bool_t Kouku_LogicAcceptsColliders(const KOUKU_SAYDON_COMPOSITION_LOGIC_DEFINITION& logic)
 	{
-		return (logic.strLogicType == "DURATION" && logic.strJudgementKind != "CARD_DICE_BIND" && logic.strJudgementKind != "PATTERN_COMPLETION_COUNT" && logic.strJudgementKind != "EXTERNAL_SIGNAL" && logic.strJudgementKind != "COUNTER_WINDOW" && logic.strJudgementKind != "ATTACHMENT_HOLD" && logic.strJudgementKind != "SHOWTIME_PLAYER_TARGETS" && logic.strJudgementKind != "BOSS_TRACK_TARGET" && logic.strJudgementKind != "CROSS_DIRECTION_CLONES" && logic.strJudgementKind != "PURSUIT_PROJECTILES" && logic.strJudgementKind != "BINGO_BOARD") ||
+		return (logic.strLogicType == "DURATION" && logic.strJudgementKind != "CARD_DICE_BIND" && logic.strJudgementKind != "PATTERN_COMPLETION_COUNT" && logic.strJudgementKind != "EXTERNAL_SIGNAL" && logic.strJudgementKind != "COUNTER_WINDOW" && logic.strJudgementKind != "ATTACHMENT_HOLD" && logic.strJudgementKind != "SHOWTIME_PLAYER_TARGETS" && logic.strJudgementKind != "BOSS_TRACK_TARGET" && logic.strJudgementKind != "BOSS_RANDOM_TARGET" && logic.strJudgementKind != "CROSS_DIRECTION_CLONES" && logic.strJudgementKind != "PURSUIT_PROJECTILES" && logic.strJudgementKind != "BINGO_BOARD") ||
 			(logic.strLogicType == "TRIGGER" && (logic.strTriggerKind == "ENTER_AREA" || logic.strTriggerKind == "OBJECT_CONTACT"));
 	}
 	inline const std::string& Kouku_LogicOutcomeKind(const KOUKU_SAYDON_COMPOSITION_LOGIC_DEFINITION& logic)
@@ -474,6 +476,12 @@ namespace Client
 		std::uint32_t iSoundSourceStartMs = 0u;
 		// Skips source time without changing the shared Effect asset.
 		std::uint32_t iEffectSourceStartMs = 0u;
+        // Optional occurrence-local elapsed ms -> absolute shared V1/V2 source ms.
+        // MAP effects only; the source asset and its particle history stay unchanged.
+        std::vector<std::array<double, 2u>> EffectSourceTimeKeys;
+        double Effect_SourceTimeMs(double elapsedMs) const noexcept;
+        double Effect_ElapsedTimeMs(double sourceMs) const noexcept;
+        bool Has_ValidEffectSourceTimeKeys(std::uint32_t resourceDurationMs) const noexcept;
 		double fBrightnessMultiplier = 1.0;
 		bool_t bFollowBoss = true;
 		// Retimes the V1 source clock to this occurrence window without adding loops.

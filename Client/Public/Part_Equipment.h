@@ -11,6 +11,8 @@ NS_END
 
 NS_BEGIN(Client)
 
+class CCharacter;
+
 struct DEFERRED_EMISSIVE_OVERRIDE;
 
 /* One visual equipment piece. The slot it fills is data, not behaviour:
@@ -57,6 +59,8 @@ public:
 	virtual ~CPart_Equipment();
 
 public:
+	void Set_CharacterPresentationOwner(const std::shared_ptr<CCharacter>& owner)
+	{ m_pCharacterPresentationOwner = owner; }
 	/* The worn piece's own model, for the creation screen to repaint a dyed material on
 	it the same way it repaints one on the body. */
 	shared_ptr<CModel> Get_Model() const {
@@ -78,7 +82,7 @@ public:
 
 public:
 	void Set_Visible(bool_t isVisible) { m_isVisible = isVisible; }
-	bool_t Is_Visible() const { return (m_isVisible || m_isPresentationVisible) && !m_isPresentationSuppressed; }
+	bool_t Is_Visible() const { return (m_isVisible || m_isPresentationVisible) && !m_isPresentationSuppressed && !Is_CharacterPresentationHidden(); }
     void Set_PresentationSuppressed(bool_t value) { m_isPresentationSuppressed = value; }
     void Set_PresentationVisible(bool_t value) { m_isPresentationVisible = m_isIdentityPart && value; }
     bool_t Is_WeaponPart() const { return m_isWeaponPart; }
@@ -92,6 +96,8 @@ private:
     bool_t m_isPresentationVisible = false;
     bool_t m_isWeaponPart = false, m_isIdentityPart = false;
 	uint32_t m_iHiddenMeshMask = {};
+	std::weak_ptr<CCharacter> m_pCharacterPresentationOwner;
+	bool_t Is_CharacterPresentationHidden() const;
 	shared_ptr<CShader> m_pShaderCom = { nullptr };
 	shared_ptr<CModel> m_pModelCom = { nullptr };
 	shared_ptr<CModel> m_pSkeletonModelCom = { nullptr };

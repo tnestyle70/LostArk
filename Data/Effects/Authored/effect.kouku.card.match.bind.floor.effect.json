@@ -12941,7 +12941,7 @@
         "rendererShape": "mesh",
         "emitterDelaySeconds": 1.0,
         "emitterDurationSeconds": 1.0,
-        "emitterLoopCount": 1,
+        "emitterLoopCount": 0,
         "bursts": [],
         "modules": [
           {
@@ -14944,7 +14944,7 @@
         "rendererShape": "mesh",
         "emitterDelaySeconds": 1.0,
         "emitterDurationSeconds": 1.0,
-        "emitterLoopCount": 1,
+        "emitterLoopCount": 0,
         "bursts": [],
         "modules": [
           {

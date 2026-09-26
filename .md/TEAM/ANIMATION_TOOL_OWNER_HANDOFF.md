@@ -14,6 +14,8 @@ Preview와 toolbar는 공통 shell이 소유하고 각 세션은 자기 문서·
 
 - Boss는 기존 Valtan과 Kouku 관문·Parent·Pattern을 사용한다. Sequence는 독립 저장 문서와 기존
   Complete Play의 `enterCombatOnFinish`/전투 handoff를 유지한다. Boss와 Sequence의 관문 선택은 독립이다.
+- Kouku의 WORLD Animation 표시 행은 World occurrence+slot별로 고정하고 label/tooltip에 배우를 표시한다.
+  이동·trim은 같은 배우의 이웃 clip과 Motion 범위를 검증하며 다른 배우나 lane의 시계를 자동 이동하지 않는다.
 - Character는 `PlayerSkills.json`의 일곱 class(GuardianKnight 포함)와 LMB/SPACE/ALT_V/ACTIVE 입력을 나열한다. action
   Parent와 combo stage에서 실제 clip, Effect/Sound/Shake cue, Collider → AREA_OVERLAP Logic → Result
   행을 본다. animation은 source start/length/rate와 순서를 기존 skillbindings에 저장한다.
@@ -1709,3 +1711,9 @@ rotate-only Duration의 선택적 폭탄 설정은 `bombPresentationOccurrenceId
 그 뒤의 보스 회전을 따라가지 않는다. 예고/폭발 각각 follow만 끄면 서로 다른 시각의 보스
 방향을 캡처하므로 위치가 벌어질 수 있다. 같은 예고 기준을 연결하고 self/chain/future
 참조는 거부한다. 원래 MAP 배치는 저장된 절대 위치를 유지한다.
+
+원본 Slomo를 가진 fixed MAP Effect occurrence는 선택적 `effectSourceTimeKeys`로 box elapsed ms를
+공유 asset source ms에 대응한다. 키는2..4096개, time/source가 유한·엄격 증가하고 box0..duration을
+덮는다. source-in·fit·loop·follow·bone·fade override와 혼용하지 않는다. body 이동은 곡선을
+유지하고 양끝 trim은 보존된 원본 시각 구간만 잘라낸다. 다른 occurrence와 asset 내부 element
+저장은 기존 계약을 유지하며, live anchor preview도 저장과 같은 제한을 적용한다.
