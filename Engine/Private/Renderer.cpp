@@ -89,7 +89,8 @@ namespace
 	static_assert(21u == ETOUI(DEFERRED::SOURCE_SPOT));
 	static_assert(28u == ETOUI(DEFERRED::SOURCE_LUT_BAKE));
 	static_assert(29u == ETOUI(DEFERRED::SOURCE_LUT_BAKE_NEUTRAL));
-	static_assert(30u == ETOUI(DEFERRED::END));
+	static_assert(30u == ETOUI(DEFERRED::PORTRAIT_RESOLVE));
+	static_assert(31u == ETOUI(DEFERRED::END));
 
 	bool_t IsFiniteInRange(const f32_t fValue, const f32_t fMinimum,
 		const f32_t fMaximum)
@@ -521,6 +522,19 @@ void CRenderer::Commit_ViewportResize(CTarget_Manager& targets, VIEWPORT_RESIZE_
     // Quality, source LUTs, scene environment and fixed-resolution shadow resources survive.
 }
 
+HRESULT CRenderer::Request_Portrait(PORTRAIT_REQUEST Request)
+{
+	if (nullptr == Request.pDestination || 0u == Request.iWidth || 0u == Request.iHeight ||
+		!Request.DrawSubject)
+	{
+		return E_INVALIDARG;
+	}
+
+	m_PortraitRequests.push_back(std::move(Request));
+
+	return S_OK;
+}
+
 HRESULT CRenderer::Add_RenderObject(RENDERGROUP eRenderGroupID, shared_ptr<CGameObject> pRenderObject)
 {
 	if (nullptr == pRenderObject ||
@@ -875,6 +889,15 @@ HRESULT CRenderer::Draw()
 	}
 	if (FAILED(hResult))
 		return FailFrame("Render_Shadow", hResult);
+	/* Portraits borrow the world G-buffer before the world fills it: Begin_MRT clears every
+	target, so Render_NonBlend below starts from a clean sheet whatever a portrait wrote. A
+	portrait failure is isolated -- the queue is dropped and the world frame continues. */
+	{
+		CProfilerScope scope(pProfiler, "Render.Portraits");
+		CProfilerGpuScope gpuScope(pProfiler, "Render.Portraits", true);
+		if (FAILED(Render_Portraits()))
+			m_PortraitRequests.clear();
+	}
 	{
 		CProfilerScope scope(pProfiler, "Render.NonBlend");
 		CProfilerGpuScope gpuScope(pProfiler, "Render.NonBlend", true);
@@ -1305,6 +1328,121 @@ HRESULT CRenderer::Render_SSAOPass(
 		hResult = E_FAIL;
 
 	return hResult;
+}
+
+/* A portrait is the deferred frame run once more with the portrait camera, before the world
+fills the same targets. Every stage below the subject draw is the world's own, called rather
+than copied, so the portrait lands on the same lighting, the same SourceCharacter light passes
+and the same tone curve as the field. */
+HRESULT CRenderer::Render_Portraits()
+{
+	if (m_PortraitRequests.empty())
+		return S_OK;
+
+	const float4x4_t PreviousView = *CGameInstance::Get().Get_Transform(D3DTS::VIEW);
+	const float4x4_t PreviousProjection = *CGameInstance::Get().Get_Transform(D3DTS::PROJ);
+	uint32_t iPreviousViewportCount = 1u;
+	D3D11_VIEWPORT PreviousViewport{};
+	m_pContext->RSGetViewports(&iPreviousViewportCount, &PreviousViewport);
+	/* The last resolve leaves a portrait target bound. Begin_MRT saves whatever is bound as the
+	target it restores on End_MRT, so the world pass that follows would adopt the portrait
+	texture as its back buffer and draw the rest of the frame into it. */
+	ComPtr<ID3D11RenderTargetView> pPreviousRTV;
+	ComPtr<ID3D11DepthStencilView> pPreviousDSV;
+	m_pContext->OMGetRenderTargets(1u, &pPreviousRTV, &pPreviousDSV);
+	/* Target_SSAOBlur still holds the world's occlusion, computed from a G-buffer the portrait
+	is about to overwrite, and a portrait is too small for its own SSAO pass to be worth a frame.
+	The lighting pass reads this flag, so it is cleared for the duration. */
+	const bool_t bPreviousSSAO = m_RenderQualitySettings.bSSAOEnabled;
+	m_RenderQualitySettings.bSSAOEnabled = false;
+
+	HRESULT hLastFailure = S_OK;
+	for (const PORTRAIT_REQUEST& Request : m_PortraitRequests)
+	{
+		CGameInstance::Get().Set_Transform(D3DTS::VIEW, XMLoadFloat4x4(&Request.ViewMatrix));
+		CGameInstance::Get().Set_Transform(D3DTS::PROJ, XMLoadFloat4x4(&Request.ProjMatrix));
+		/* Lighting and the combine rebuild world position from the inverse matrices and the
+		camera position, and those are derived once per frame from whatever was last set. Without
+		this the portrait is shaded as if the world camera were still the one looking at it. */
+		CGameInstance::Get().Refresh_CameraState();
+
+		/* The frame depth buffer is shared. Handing it to Begin_MRT clears it, which gives the
+		subject a clean depth test and keeps the previous portrait out of this one. */
+		if (FAILED(CGameInstance::Get().Begin_MRT(TEXT("MRT_GameObject"), pPreviousDSV)))
+		{
+			hLastFailure = E_FAIL;
+			continue;
+		}
+		const HRESULT hSubject = Request.DrawSubject();
+		const HRESULT hEndGeometry = CGameInstance::Get().End_MRT();
+		if (FAILED(hSubject) || FAILED(hEndGeometry))
+		{
+			hLastFailure = FAILED(hSubject) ? hSubject : hEndGeometry;
+			continue;
+		}
+
+		/* Render_Lights itself, not a reduced copy of it. Its ordinary pass skips the marker the
+		SourceCharacter materials write, so the mask and per-material passes that follow are the
+		only thing that lights a playable body; without them the subject resolves to an unlit
+		silhouette. It also consumes the source material frame list the subject draw just filled,
+		which the world pass would otherwise inherit and light a second time. */
+		const HRESULT hLights = Render_Lights();
+		if (FAILED(hLights))
+		{
+			hLastFailure = hLights;
+			continue;
+		}
+
+		/* Target_Shade and Target_Specular hold only the lighting terms; Render_Combined mixes
+		them with the G-buffer into MRT_SceneHDR, which is still pre-tone-map FP16. */
+		if (FAILED(CGameInstance::Get().Begin_MRT(TEXT("MRT_SceneHDR"))))
+		{
+			hLastFailure = E_FAIL;
+			continue;
+		}
+		const HRESULT hCombined = Render_Combined();
+		const HRESULT hEndScene = CGameInstance::Get().End_MRT();
+		if (FAILED(hCombined) || FAILED(hEndScene))
+		{
+			hLastFailure = FAILED(hCombined) ? hCombined : hEndScene;
+			continue;
+		}
+
+		/* The portrait resolve tone maps through a full-screen quad, so binding the caller's
+		target and shrinking the viewport resamples the whole subject into it. That keeps the
+		portrait on the field's tone curve without a second tone map path, and its own pass drops
+		the pixels the subject never wrote so the UI frame shows through. */
+		ID3D11RenderTargetView* pPortraitTarget = Request.pDestination.Get();
+		m_pContext->OMSetRenderTargets(1u, &pPortraitTarget, nullptr);
+		D3D11_VIEWPORT DestinationViewport{};
+		DestinationViewport.TopLeftX = 0.f;
+		DestinationViewport.TopLeftY = 0.f;
+		DestinationViewport.Width = static_cast<f32_t>(Request.iWidth);
+		DestinationViewport.Height = static_cast<f32_t>(Request.iHeight);
+		DestinationViewport.MinDepth = 0.f;
+		DestinationViewport.MaxDepth = 1.f;
+		m_pContext->RSSetViewports(1u, &DestinationViewport);
+		const HRESULT hResolve = Render_Final(true);
+		if (FAILED(hResolve))
+			hLastFailure = hResolve;
+	}
+
+	m_RenderQualitySettings.bSSAOEnabled = bPreviousSSAO;
+	m_PortraitRequests.clear();
+	CGameInstance::Get().Set_Transform(D3DTS::VIEW, XMLoadFloat4x4(&PreviousView));
+	CGameInstance::Get().Set_Transform(D3DTS::PROJ, XMLoadFloat4x4(&PreviousProjection));
+	CGameInstance::Get().Refresh_CameraState();
+	ID3D11RenderTargetView* pRestoredRTV = pPreviousRTV.Get();
+	m_pContext->OMSetRenderTargets(1u, &pRestoredRTV, pPreviousDSV.Get());
+	if (0u != iPreviousViewportCount)
+		m_pContext->RSSetViewports(1u, &PreviousViewport);
+	/* The world starts its own depth from scratch. Begin_MRT does not clear a depth buffer it
+	was not handed, so the last subject would otherwise reject the geometry standing behind it. */
+	if (pPreviousDSV)
+		m_pContext->ClearDepthStencilView(pPreviousDSV.Get(),
+			D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.f, 0);
+
+	return hLastFailure;
 }
 
 HRESULT CRenderer::Render_Lights()
@@ -2155,9 +2293,13 @@ HRESULT CRenderer::Render_BloomPass(const wstring_t& strMRTTag,
 	return hResult;
 }
 
-HRESULT CRenderer::Render_Final()
+/* bPortrait resolves an offscreen portrait instead of the frame: it reads Target_SceneHDR
+directly because the screen post chain has not run for it, drops bloom and any material debug
+view, and selects the pass that leaves the background transparent. */
+HRESULT CRenderer::Render_Final(bool_t bPortrait)
 {
-	const uint32_t materialView = static_cast<uint32_t>(m_MaterialRenderSettings.eDebugView);
+	const uint32_t materialView = bPortrait ? 0u :
+		static_cast<uint32_t>(m_MaterialRenderSettings.eDebugView);
 	if (FAILED(CGameInstance::Get().Bind_RT_SRV(TEXT("Target_Shade"), m_pShader, "g_ShadeTexture"))) return E_FAIL;
 	if (FAILED(m_pShader->Bind_RawValue("g_MaterialDebugView", &materialView, sizeof(materialView))) ||
 		FAILED(CGameInstance::Get().Bind_RT_SRV(TEXT("Target_Diffuse"), m_pShader, "g_DiffuseTexture")) ||
@@ -2168,7 +2310,7 @@ HRESULT CRenderer::Render_Final()
 		FAILED(CGameInstance::Get().Bind_RT_SRV(TEXT("Target_Specular"), m_pShader, "g_SpecularTexture")))
 		return E_FAIL;
 	const uint32_t iBloomEnabled =
-		m_RenderQualitySettings.bBloomEnabled ? 1u : 0u;
+		!bPortrait && m_RenderQualitySettings.bBloomEnabled ? 1u : 0u;
 	const uint32_t iFXAAEnabled =
 		m_RenderQualitySettings.bFXAAEnabled ? 1u : 0u;
 	const float2_t vInverseSceneSize = {
@@ -2187,9 +2329,11 @@ HRESULT CRenderer::Render_Final()
 		FAILED(m_pShader->Bind_RawValue("g_fSourceToneToe", &source.fToneToe, sizeof(source.fToneToe))) ||
 		FAILED(m_pShader->Bind_Texture("g_SourceGradingLut", m_pSourceGradingLut))) return E_FAIL;
 
-	if (FAILED(m_pShader->Bind_Texture(
-		"g_SceneHDRTexture",
-		m_pScenePostSRVs[m_iScenePostFinalTarget])))
+	if (FAILED(bPortrait ?
+			CGameInstance::Get().Bind_RT_SRV(TEXT("Target_SceneHDR"),
+				m_pShader, "g_SceneHDRTexture") :
+			m_pShader->Bind_Texture("g_SceneHDRTexture",
+				m_pScenePostSRVs[m_iScenePostFinalTarget])))
 		return E_FAIL;
 	if (FAILED(CGameInstance::Get().Bind_RT_SRV(TEXT("Target_BloomResult"), m_pShader, "g_BloomTexture")))
 		return E_FAIL;
@@ -2241,7 +2385,8 @@ HRESULT CRenderer::Render_Final()
 	if (FAILED(m_pShader->Bind_Matrix("g_ProjMatrix", &m_ProjMatrix)))
 		return E_FAIL;
 
-	if (FAILED(m_pShader->Begin(ETOUI(DEFERRED::FINAL))))
+	if (FAILED(m_pShader->Begin(ETOUI(bPortrait ?
+			DEFERRED::PORTRAIT_RESOLVE : DEFERRED::FINAL))))
 		return E_FAIL;
 
 	if (FAILED(m_pVIBuffer->Bind_Resources()))

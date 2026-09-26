@@ -45,6 +45,7 @@ namespace Engine
 		// 22-27 are the existing appended instanced-light passes.
 		SOURCE_LUT_BAKE = 28,
 		SOURCE_LUT_BAKE_NEUTRAL = 29,
+		PORTRAIT_RESOLVE = 30,
 		END
 	};
 
