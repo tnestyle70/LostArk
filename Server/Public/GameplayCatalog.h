@@ -907,6 +907,7 @@ namespace LostArk::Server
 		std::vector<BOSS_PATTERN_SUMMON_PATTERN_SPAWN> PatternSpawns;
 		std::vector<std::string> DirectionPatternIds;
 		std::string strCloneEndStageId;
+		std::string strRealPatternId;
 		std::vector<std::string> ProjectileVisualIds;
 		std::vector<LostArk::Shared::MECHANIC_CARD_SYMBOL> ProjectileCardSymbols;
 		std::string strContactVisualId;

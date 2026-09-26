@@ -649,10 +649,11 @@ void CServerGameplayContractRunner::Run_KoukuPushContracts(TESTS& tests, const C
             CKoukuSaydonLogicRuntime::Update(*owner, definition, ledger, players, catalog, nullptr,
                 sweep ? 101u : 100u, damage, output);
             const auto& caught = players.at(1u);
-            return caught.eAction == PLAYER_ACTION_STATE::GRABBED && caught.eAttachmentSlot == PLAYER_ATTACHMENT_SLOT::WORLD_HOOK_TIP;
+            return caught.eAction == PLAYER_ACTION_STATE::GRABBED && caught.eAttachmentSlot == PLAYER_ATTACHMENT_SLOT::WORLD_HOOK_TIP &&
+                caught.iNetEntityId == p.iNetEntityId && caught.eMadnessForm == p.eMadnessForm;
         };
         tests.Require(capture(0.f, 1.3f, 0.f, true, false, false), "Hook body contact captures even when the feet miss its vertical box");
-        tests.Require(!capture(0.f, 1.3f, 0.f, true, false, false, true), "Hook leaves transformed Mario entrants free to enter their stage");
+        tests.Require(capture(0.f, 1.3f, 0.f, true, false, false, true), "Hook captures a transformed Mario entrant through the same authoritative player body");
         tests.Require(capture(.55f, 1.3f, 0.f, true, false, false), "Hook side contact uses the existing player body radius");
         tests.Require(capture(.7005f, 1.3f, 0.f, true, false, false), "Hook admits the common contact margin at body tangency");
         tests.Require(!capture(.702f, 1.3f, 0.f, true, false, false), "Separated hook and body do not capture");
@@ -844,7 +845,7 @@ void CServerGameplayContractRunner::Run_KoukuPushContracts(TESTS& tests, const C
                 for (unsigned tick = 0u; tick < 60u && p.iCurrentHp; ++tick)
                     room->Update_PlayerFall(p, 1.f / 30.f, 102u + tick);
                 tests.Require(p.iCurrentHp == 0u && p.eAction == PLAYER_ACTION_STATE::DEAD &&
-                    p.fPositionY <= p.fFallDeathPlaneY, "Arena-exit push dies only after crossing the five-metre fall plane");
+                    p.fPositionY <= p.fFallDeathPlaneY, "Arena-exit push dies only after crossing its arena fall plane");
             }
         }
         for (const std::uint8_t gate : {std::uint8_t(1u), std::uint8_t(3u)})
@@ -893,6 +894,43 @@ void CServerGameplayContractRunner::Run_KoukuPushContracts(TESTS& tests, const C
             boss->fPositionX = p.fPositionX - 1.f; boss->fPositionZ = p.fPositionZ;
             CKoukuSaydonLogicRuntime::Apply_Result(p, push, *boss, catalog, nullptr, 100u, events); room->Advance_PlayerKnockback(p, .242f);
             tests.Require(p.eAction != PLAYER_ACTION_STATE::FALLING, "Interior navigation/height seam with further same-deck ground is not an arena exit");
+        }
+    }
+    {
+        SERVER_NAV_POINT chair{}, arenaFloor{}; bool foundChair = false, foundFloor = false;
+        for (float z = 307.25f; z < 332.5f && !(foundChair && foundFloor); z += .5f)
+            for (float x = -4.25f; x < 20.5f; x += .5f)
+            {
+                SERVER_NAV_POINT surface{};
+                if (!arenaNavigation.Sample_SurfacePosition(x, z, surface)) continue;
+                if (!foundChair && std::abs(surface.y - 6.51f) < .02f) { chair = surface; foundChair = true; }
+                if (!foundFloor && std::abs(surface.y - 10.56f) < .02f) { arenaFloor = surface; foundFloor = true; }
+            }
+        tests.Require(foundChair && foundFloor, "Published Gate 2 navigation retains the 6.51-metre chair below its 10.56-metre combat floor");
+        if (foundChair && foundFloor)
+        {
+            room->m_GateProgress.iCurrentGate = 2u;
+            auto p = player(); p.fPositionX = chair.x; p.fPositionZ = chair.z; p.fPositionY = arenaFloor.y;
+            p.bKnockbackBallistic = p.bKnockbackCanLeaveArena = true;
+            p.fKnockbackLaunchY = p.fKnockbackSupportY = arenaFloor.y;
+            p.fKnockbackRemainingSeconds = 2.f; p.fKnockbackVelocityY = -6.f; p.fKnockbackGravityMps2 = 12.f;
+            for (unsigned tick = 0u; tick < 60u && p.iCurrentHp; ++tick)
+            {
+                room->m_iServerTick = 100u + tick;
+                room->Advance_PlayerKnockback(p, 1.f / 30.f);
+                room->Update_PlayerFall(p, 1.f / 30.f, 101u + tick);
+            }
+            tests.Require(!p.iCurrentHp && p.eAction == PLAYER_ACTION_STATE::DEAD && p.fPositionY > chair.y &&
+                std::abs(p.fFallDeathPlaneY - (arenaFloor.y - 1.f)) < .001f,
+                "Gate 2 descent dies below the combat support before a lower chair can become a safe landing");
+            p = player(); p.fPositionX = arenaFloor.x; p.fPositionZ = arenaFloor.z; p.fPositionY = arenaFloor.y;
+            p.bKnockbackBallistic = p.bKnockbackCanLeaveArena = true;
+            p.fKnockbackLaunchY = p.fKnockbackSupportY = arenaFloor.y;
+            p.fKnockbackRemainingSeconds = 1.f; p.fKnockbackVelocityY = 3.f; p.fKnockbackGravityMps2 = 6.f;
+            for (unsigned tick = 0u; tick < 40u; ++tick) room->Advance_PlayerKnockback(p, 1.f / 30.f);
+            tests.Require(p.iCurrentHp && !p.bKnockbackBallistic && std::abs(p.fPositionY - arenaFloor.y) < .001f,
+                "Gate 2 launch landing back on its original supported floor remains alive");
+            room->m_GateProgress.iCurrentGate = 0u;
         }
     }
     {

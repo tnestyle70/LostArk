@@ -1952,9 +1952,6 @@ function Read-WorldSequenceDocument {
             } else {
                 # A slot may also carry a transform track, so only a second
                 # animation chain on the same slot is a conflict.
-                if (0 -ne $startMs) {
-                    throw "World sequence animation track is invalid: $($template.sequenceId)"
-                }
                 [void]$slotIds.Add($slot)
             }
             $animationSlotStarts[$slot] = $startMs

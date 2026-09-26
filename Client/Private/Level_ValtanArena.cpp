@@ -720,7 +720,6 @@ void CLevel_ValtanArena::Update(f32_t fTimeDelta)
 	debugPlacementEnabled = debugPlacementEnabled &&
 		!m_bReferenceCameraApplied;
 #endif
-	m_Replication.Update_CombatHover(cameraAcceptsGameplay && !isRaidClearActive);
 	m_PlayerController.Update(
 		cameraAcceptsGameplay && !isRaidClearActive, debugPlacementEnabled);
 	Update_DeadScene(isRaidClearActive, fTimeDelta);

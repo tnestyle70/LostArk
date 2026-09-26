@@ -1741,6 +1741,11 @@ Client::CKoukuSaydonPresentationPlayer::Parse_ProductRoot(const DATA_JSON_VALUE&
             if (value.Find("gateId")) item.pattern.strGateId = Text(value, "gateId");
             if (value.Find("targetBossPlacementId")) item.pattern.strTargetBossPlacementId = Text(value, "targetBossPlacementId");
             if (value.Find("actorProfileId")) item.pattern.strActorProfileId = Text(value, "actorProfileId");
+            if (const auto* diceBind = value.Find("diceBindVisual"))
+            {
+                if (!diceBind->Is_Boolean()) throw std::runtime_error("Product diceBindVisual must be Boolean.");
+                item.diceBindVisual = diceBind->Get_Boolean();
+            }
             item.durationMs = UInt(value, "durationMs", 1u, MAX_TIMELINE_MS);
             item.stageDurationMs = value.Find("stageDurationMs") ?
                 UInt(value, "stageDurationMs", 1u, item.durationMs) : item.durationMs;
@@ -2480,9 +2485,14 @@ void Client::CKoukuSaydonPresentationPlayer::Stop_Session(SESSION& session)
 }
 
 void Client::CKoukuSaydonPresentationPlayer::Update_DiceBindVisuals(float dt,
+    const std::vector<KOUKU_BOSS_PRESENTATION_VIEW>& bosses,
     const std::vector<KOUKU_CARD_PRESENTATION_VIEW>& players)
 {
     if (!std::isfinite(dt) || dt < 0.f) return;
+    const bool dicePatternActive = std::any_of(bosses.begin(), bosses.end(), [&](const auto& view) {
+        const auto product = m_Product.find(view.Snapshot.strPatternId);
+        return view.Snapshot.iCurrentHp && product != m_Product.end() && product->second.diceBindVisual;
+    });
     std::set<std::uint32_t> live;
     for (const auto& view : players)
     {
@@ -2491,6 +2501,12 @@ void Client::CKoukuSaydonPresentationPlayer::Update_DiceBindVisuals(float dt,
         if (!character || !character->Get_Transform() || !snapshot.iCurrentHp) continue;
         const auto id = snapshot.iNetEntityId;
         auto found = m_DiceBindVisuals.find(id);
+        // Iron Maiden uses the same gameplay bind bit. Only a published dice
+        // mechanic may start this cue; retain an admitted bind through its last
+        // snapshot and card-match release even when the boss pattern advances.
+        const bool admittedDiceBind = found != m_DiceBindVisuals.end() && !found->second.releasing &&
+            found->second.endTick == snapshot.iPatternBindEndTick;
+        if (snapshot.isPatternBound && !dicePatternActive && !admittedDiceBind) continue;
         if (!snapshot.isPatternBound && found == m_DiceBindVisuals.end()) continue;
         live.insert(id);
         bool restart = found == m_DiceBindVisuals.end();
@@ -3765,7 +3781,7 @@ void Client::CKoukuSaydonPresentationPlayer::Update(float dt,
         if (card->second.handle) CEffectV2Runtime::Stop_Group(card->second.handle);
         card = m_Cards.erase(card);
     }
-    Update_DiceBindVisuals(dt, players);
+    Update_DiceBindVisuals(dt, bosses, players);
     Update_MazeMarks(players);
     Update_BingoBombs(dt, players);
     Update_BingoMarks(dt);
@@ -4087,6 +4103,12 @@ bool Client::CKoukuSaydonPresentationPlayer::Prepare_CloneSplitPreview(
                 const double distance = dx * dx + dz * dz;
                 if (distance < bestDistance - 0.00001) { selected = i; bestDistance = distance; }
                 candidates[i] = candidate;
+            }
+            if (!box.strRealPatternId.empty())
+            {
+                const auto fixed = std::find(box.DirectionPatternIds.begin(), box.DirectionPatternIds.end(), box.strRealPatternId);
+                if (fixed == box.DirectionPatternIds.end()) return fail("Cross-direction real Pattern is not a candidate.");
+                selected = static_cast<size_t>(fixed - box.DirectionPatternIds.begin());
             }
             const uint32_t startTicks = (uint64_t(box.iStartMs) * 30u + 999u) / 1000u;
             for (size_t i = 0u; i < candidates.size(); ++i)

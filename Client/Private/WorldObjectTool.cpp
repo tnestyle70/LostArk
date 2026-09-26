@@ -616,6 +616,94 @@ bool CWorldObjectTool::Consume_InteractionRequest()
     return requested;
 }
 
+bool CWorldObjectTool::Edit_AnimationTimeline(const std::string& instanceId, const std::string& slotId,
+    const std::string& clipName, const uint32_t expectedStartMs, const uint32_t startMs,
+    const uint32_t sourceInMs, const uint32_t sourceOutMs, std::string& status)
+{
+    const auto refuse = [&](const std::string& reason) {
+        status = m_Status = reason + " Existing draft preserved."; return false;
+    };
+    if (!m_Ready && !Load_Source()) { status = m_Status; return false; }
+    if (m_PublishProcess) return refuse("Wait for the current World publish to finish.");
+    const auto* instance = m_Document.Find_Instance(instanceId);
+    auto* sequence = instance ? m_Document.Find_Template(instance->templateId) : nullptr;
+    if (!sequence) return refuse("The selected World motion is no longer available.");
+    size_t index = sequence->animationTracks.size();
+    for (size_t i = 0; i < sequence->animationTracks.size(); ++i)
+    {
+        const auto& row = sequence->animationTracks[i];
+        if (row.slotId != slotId || row.clipName != clipName || row.startMs != expectedStartMs) continue;
+        if (index != sequence->animationTracks.size()) return refuse("The selected animation identity is ambiguous.");
+        index = i;
+    }
+    if (index == sequence->animationTracks.size()) return refuse("The selected animation changed. Select its current timeline box.");
+    const auto& current = sequence->animationTracks[index];
+    if (current.loop || !std::isfinite(current.playbackRate) || current.playbackRate <= 0.f)
+        return refuse("Timeline trimming requires a finite animation with Range Loop off.");
+    const auto binding = std::find_if(instance->bindings.begin(), instance->bindings.end(),
+        [&](const auto& row) { return row.slotId == slotId; });
+    const auto* resource = binding != instance->bindings.end() && binding->targetKind == WORLD_SEQUENCE_TARGET_KIND::OBJECT_RESOURCE ?
+        m_Document.Find_ObjectResource(binding->targetId) : nullptr;
+    if (!resource || !resource->sequenceInstanceId.empty() || resource->modelAssetId.empty())
+        return refuse("The animation needs its bound Object's native model catalog.");
+    const auto path = CRuntimeAssetRoot::Resolve(resource->modelAssetId);
+    std::vector<Engine::MODEL_ANIMATION_CATALOG_ENTRY> catalog;
+    std::string catalogStatus;
+    if (path.empty() || !Engine::CWModelDecoder::Read_AnimationCatalog(path, catalog, catalogStatus))
+        return refuse("Animation catalog unavailable: " + resource->modelAssetId + ": " + catalogStatus);
+    const auto durationOf = [&](const std::string& name) {
+        const auto found = std::find_if(catalog.begin(), catalog.end(), [&](const auto& row) { return row.name == name; });
+        return found == catalog.end() ? 0. : double(found->durationTicks) / Engine::CAnimation::COOKED_TICK_RATE * 1000.;
+    };
+    const double nativeMs = durationOf(clipName);
+    if (!std::isfinite(nativeMs) || nativeMs <= 0. || sourceInMs >= sourceOutMs ||
+        double(sourceInMs) >= nativeMs || double(sourceOutMs) > nativeMs + 1.)
+        return refuse("Source In/Out must describe a nonempty range inside the native clip.");
+    const WORLD_SEQUENCE_ANIMATION_TRACK* previous = nullptr;
+    uint32_t nextStart = sequence->durationMs;
+    for (size_t i = 0; i < sequence->animationTracks.size(); ++i)
+    {
+        const auto& row = sequence->animationTracks[i];
+        if (i == index || row.slotId != slotId) continue;
+        if (row.startMs < expectedStartMs && (!previous || row.startMs > previous->startMs)) previous = &row;
+        if (row.startMs > expectedStartMs) nextStart = (std::min)(nextStart, row.startMs);
+    }
+    double previousEnd = 0.;
+    if (previous)
+    {
+        previousEnd = expectedStartMs;
+        if (!previous->loop)
+        {
+            const double duration = durationOf(previous->clipName);
+            const double end = previous->sourceEndMs ? (std::min)(double(previous->sourceEndMs), duration) : duration;
+            if (!std::isfinite(duration) || duration <= 0. || !std::isfinite(previous->playbackRate) ||
+                previous->playbackRate <= 0.f || end <= previous->sourceStartMs)
+                return refuse("The preceding animation has no valid native range.");
+            previousEnd = (std::min)(previousEnd, previous->startMs + (end - previous->sourceStartMs) / previous->playbackRate);
+        }
+        if (startMs <= previous->startMs) return refuse("The animation must stay after the preceding clip.");
+    }
+    const double endMs = double(startMs) + double(sourceOutMs - sourceInMs) / current.playbackRate;
+    if (double(startMs) + .001 < previousEnd || startMs >= nextStart || !std::isfinite(endMs) || endMs > double(nextStart) + .001)
+        return refuse("The animation would overlap a neighboring clip or exceed the World motion.");
+    if (current.startMs == startMs && current.sourceStartMs == sourceInMs && current.sourceEndMs == sourceOutMs)
+    { status = "Animation timing is unchanged."; return true; }
+    auto candidate = m_Document;
+    auto* staged = candidate.Find_Template(sequence->sequenceId);
+    auto& edited = staged->animationTracks[index];
+    edited.startMs = startMs; edited.sourceStartMs = sourceInMs; edited.sourceEndMs = sourceOutMs;
+    std::string validation;
+    if (!candidate.Validate(m_MapTargets, m_DeployTargets, validation))
+        return refuse("Animation edit refused: " + validation + ".");
+    // Keep outstanding template references and every other draft field intact.
+    const std::string templateId = sequence->sequenceId;
+    *sequence = std::move(*staged);
+    m_EditedMotionIds.insert(templateId);
+    Mark_Dirty();
+    status = m_Status = "Animation timing updated. Save commits the World draft.";
+    return true;
+}
+
 void CWorldObjectTool::Deactivate()
 {
     Stop_Preview();

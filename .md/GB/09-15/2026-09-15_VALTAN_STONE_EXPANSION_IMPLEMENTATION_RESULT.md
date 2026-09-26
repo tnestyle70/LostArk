@@ -330,3 +330,83 @@ spawn class join을 확인하지 못했으므로 그 값을 바닥에 적용하�
 같은 receipt의 추가 조사에서는 원본 Map37051의 DeployData169 actor를 Prop27정의와
 LookInfo17모델에 연결했으나 A/B/rail의 직접 참조는 없었다. 이는 검사한 범위의 부재이며
 게임 전체에서 생성자가 없다는 결론이 아니다. 실제 프로젝트의 문제 화면은 아직 받지 못했다.
+
+## G14. 09-26 무베이크 파괴 바닥의 주변광 소비 복구
+
+사용자는 저채도·검은빛 바닥의 반복 미해결과 MapTool 관련 여부를 지적했다.
+현재 SourceDeployRestore A/B의 rock04 두 slot과 rail의 wall06 한 slot은 program7이며
+RNM이 없다. 기존 Base의 `SourceStoneInactiveEngineInputs`는 간접광을0으로 만들고,
+Deferred program7도 직접광만 계산해 현재 장면의 ambient를 전혀 소비하지 않았다.
+crack은 기존 ambient를 소비하는 program8이라 같은 모델 안에서도 입력이 달랐다.
+
+`Engine/Bin/ShaderFiles/Shader_Deferred.hlsl`과 Client mirror에서
+`Resolve_MapSourceStoneLight`에 `applySceneAmbient`를 추가했다. 방향광만 true,
+점·스포트광은 false이며 baked bit22가 없는 표면에만 기존 장면 ambient를 더한다.
+합산값은 HDR diffuse × directional diffuse × ambient × materialAmbient × SSAO다.
+direct shadow/NoL을 곱하지 않고 최종 UNORM albedo로 다시 곱하지 않는다.
+정적 RNM과 직접광·발광은 보존한다. 동일 누락을 가진 무베이크 program7 공용 경로의
+수정이므로 현재 material 정의상 발탄2, 쿠크1, 베른126행도 조건을 만족할 수 있다.
+실제 어느 삼각형이 표시되는지는 배치·visibility에 달려 있다.
+
+이는 팀장 저장값을 그대로 소비하는 제품 주변광 보정이다. 원본 UE3의 동적
+LightEnvironment/hemisphere owner를 완전히 복구한 것으로 기록하지 않는다.
+RenderingProfiles, 재질 채도·밝기, DDS, geometry, placement, gameplay 데이터와
+게시 snapshot은 변경하지 않았다. 데이터 publisher나 신규 리소스 전달이 필요 없다.
+
+### 반복된 복구의 원인과 MapTool 범위
+
+정확한 요청10회는 기록으로 확정하지 못했다. 확인된 이력은09-08의 정적7배치,
+09-11의 작은 원형 바닥,09-15의 전체 석재/Deploy 확대,09-25의 원형 shadow 및
+MapTool 재질 전달 수정으로 대상과 완료 범위가 나뉜다. 정적 표면/텍스처/수식 검증이
+반복되는 동안 무베이크 Deploy의 간접광 소비 공백이09-08부터 계속 남아 있었다.
+
+MapTool의 raw-path prototype에서 ActorCatalog descriptor가 빠지던 오류는 실제로
+있었고88fa743d1에서 수정됐다. 현재 MapTool_Area와 제품 DeployPropRuntime 모두
+descriptor를 사용한다. MapTool Save_AllAuthoring은 mapmaterials/RenderingProfiles를
+쓰지 않으며 현재 재질 저장본을 계속 덮어써 색이 사라졌다는 근거는 없다.
+저작 SHA F07D44…360F0와 게시 SHA AB149C…CFE1D는09-25 설치본과 같고,
+줄바꿈을 정규화하면 전체 내용도 일치한다. 활성 발탄 노출·후처리 저장값도09-16 이후
+동일했다. 사용자 최종 화면과 작은 범위의 수치 검증을 혼동하지 않는 것만으로는 부족하며,
+문제가 남은 실제 consumer까지 연결해야 한다.
+
+유령 마지막 컷신의 별도 consumer 누락 수정은 기존
+[유령 결과 G06](../09-22/2026-09-22_GHOST_VALTAN_CHARACTER_SELECT_PREVIEW_RESULT.md)에 기록했다.
+
+### G14 자동 검증
+
+`out/ValtanFloorAmbient20260926`의 `prepare.ps1 → build.cmd → probe.exe probe.hlsl`을
+실행해 exit0을 확인했다. 현재 `Resolve_MapSourceStoneLight`와
+`Resolve_AmbientOcclusion`의 실제 본문, 수정하지 않은 SourceStoneSurface helper를
+컴파일하고 HEAD의 이전 함수와 동일 synthetic GBuffer에서 비교했다. D3D11 WARP
+40조건/613검사 PASS, 최대 절대오차0, debug warning/error0이다. RNM·local-light·
+ambient0의 기존 결과는 bitwise 동일하고 무베이크 shadow0에는 ambient RGB가 남는다.
+AO0/.25/1, SSAO OFF, HDR albedo2/4/8, material ambient tint도 검사했다.
+이는 함수의 수치·분기 검증이며 실제 아레나의 색 일치 증거는 아니다.
+
+`out/ValtanFloorGhost20260926/installed-input-check.json`에서 현재 mapmaterials의
+duplicate-key 없는 JSON parse와 저작/게시 문서 의미·줄바꿈 정규화 전체 일치를 다시
+확인했다. Engine/Client shader mirror SHA는34bdcf29…57c29cd85로 동일하며,
+이번 변경 파일들의 `git diff --check`는 exit0이다. Client/UI는 실행하지 않았다.
+
+### G14 제품 빌드·설치
+
+정본 `Invoke-BuildAndRegression.ps1 -Configuration Debug`의 최종 실행은 exit0/PASS다.
+최종 결과는 `out/BuildPipeline/runs/20260926T001506546Z-debug-product.json`, 로그는
+`out/ValtanFloorGhost20260926/product-debug-retry.log`다. Engine/Shared/Server/Client
+전부 통과했고 runtime presence 검사에서 missing/invalid는0이다. Client.exe 링크와
+Engine DLL/CSO 정상 배포를 완료했다. 최초 실행에서 Engine Deferred와 의존 variant
+24CSO가 갱신됐고 최종 실행은 이를 재사용해 Client 폴더에 배포했다.
+Engine/Client `Shader_Deferred.cso` SHA256은
+`646a5d230a00b59d59ed13c6628413ef74a55a5eaf8c71ff1f971dba98b5b639`로 같다.
+
+첫 실행은 다른 세션의 MainApp `Get_Status` 호출과 WorldObjectTool 선언이 저장 중
+엇갈려 Client 컴파일에서 실패했다. 현재 선언이 추가된 것을 확인했고 해당 파일은
+수정하지 않았다. 실패 이력은 `20260926T001332210Z-debug-product.json`에 보존하고
+정상 증분 재실행으로 마무리했다. 동시 진행된 다른 작업의 OBJ 변경을 이번 기능의
+소스 변경 수로 세지 않는다. 기존 codepage/FXC/외부 PDB 경고는 남아 있다.
+
+현재 확인할 실행 파일은 `Client/Bin/Debug/Client.exe`이고 작업 디렉터리는
+`Client/Default`다. Client·Server 실행, MapTool Reload 및 사용자 최종 화면 판정은
+수행하지 않았다. 사용자 경로는 공유 Server 준비 → Debug Client → Lobby → Valtan이며,
+3시·9시 파괴 바닥의 그림자 부분과 마지막 유령 컷신을 확인한다. Release는 이번에
+빌드하지 않았으므로 Release 실행본에 반영됐다고 안내하지 않는다.

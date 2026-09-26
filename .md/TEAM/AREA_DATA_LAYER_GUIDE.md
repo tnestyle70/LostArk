@@ -902,3 +902,5 @@ WorldSequence Transform key의 `scaleMultiplier`는 OBJECT_RESOURCE binding에�
 binding은 기존대로 양수만 허용한다. object resource의 기본 scale과 modelPreScale도 기존
 양수 계약을 유지한다. 실제 CWorldSequenceObject는 합성 world determinant가 음수인 draw의
 FrontCounterClockwise만 뒤집고 원래 rasterizer를 복원하며 CullNone을 바꾸지 않는다.
+
+WORLD Animation의 첫 track은 `startMs > 0`을 허용한다. 첫 시작 전에는 해당 clip의 Source In 자세를 유지하고, 이후 기존 sample/rate 계약을 소비한다. Sequencer의 WORLD Animation 행은 가운데 이동과 양끝 Source In/Out trim을 기존 WorldObjectTool draft에 적용한다. Save는 WORLD 저작 파일만 저장하며 다른 Composition의 미저장 변경을 대신 저장하거나 자동 publish하지 않는다.

@@ -33,6 +33,22 @@ def copy_repository_inputs(root: Path) -> None:
 
 
 class KoukuSaydonCompositionProjectionTests(unittest.TestCase):
+    def test_dice_bind_visual_projects_only_an_enabled_dice_mechanic(self):
+        document = copy.deepcopy(self.hierarchy_document)
+        dice = self.find(document, "KAKULSAYDON_G1_PATTERN_78")
+        maiden = self.find(document, "KAKULSAYDON_G1_PATTERN_33")
+        before = copy.deepcopy(document)
+        self.assertTrue(subject._project_pattern_presentation(document, dice)["diceBindVisual"])
+        self.assertNotIn("diceBindVisual", subject._project_pattern_presentation(document, maiden))
+        self.assertEqual(before, document)
+        dice["patternId"] = "test.renamed.dice"
+        self.assertTrue(subject._project_pattern_presentation(document, dice)["diceBindVisual"])
+        definitions = {row["logicId"]: row for row in document["logics"]}
+        for box in dice["logicOccurrences"]:
+            if definitions[box["logicId"]].get("judgementKind") == "CARD_DICE_BIND":
+                box["enabled"] = False
+        self.assertNotIn("diceBindVisual", subject._project_pattern_presentation(document, dice))
+
     @staticmethod
     def summon_layout_document(count=10):
         child = dict(patternId="KAKULSAYDON_G1_PATTERN_202", actorProfileId="MN_RPCZ_00",
@@ -517,6 +533,24 @@ Write-Output 'PASS actual bootstrap actor-local trigger admission'
         legacy_trigger["triggerId"] = trigger["triggerId"]
         self.assertEqual(legacy_trigger, trigger)
         self.assertEqual(before, document)
+
+    def test_cross_summon_fixed_real_pattern_projects_without_reordering_directions(self):
+        document, parent, definition = self.cross_summon_document()
+        directions = list(definition["directionPatternIds"])
+        definition["realPatternId"] = directions[2]
+        before = copy.deepcopy(document)
+        subject.validate_document(document)
+        with mock.patch.object(subject, "_project_pattern_root_motion", return_value={}):
+            encounter = subject.project_encounter(document)
+        trigger = next(row for row in encounter["patterns"] if row["patternId"] == parent["patternId"])["mechanicTriggers"][0]
+        self.assertEqual(directions[2], trigger["realPatternId"])
+        self.assertEqual(directions, trigger["directionPatternIds"])
+        self.assertEqual(before, document)
+        for invalid in ("", "not-a-candidate", parent["patternId"], 2):
+            with self.subTest(realPatternId=invalid):
+                definition["realPatternId"] = invalid
+                with self.assertRaises(subject.CompositionError):
+                    subject.validate_document(document)
 
     def test_cross_summon_legacy_named_box_remains_authoring_only(self):
         document, parent, definition = self.cross_summon_document()

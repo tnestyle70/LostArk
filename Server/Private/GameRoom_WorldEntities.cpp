@@ -349,6 +349,19 @@ bool LostArk::Server::CGameRoom::Reset_ReplayableArenaWhenEmpty()
 
 	Clear_KoukuSaydonPatternAudition();
 	Update_KoukuWorldBodies(m_iServerTick);
+	// A fresh room must not inherit the departed raid's gate vote or clear state.
+	// The empty-player guard above preserves an encounter still owned by its party.
+	m_GateProgress = {};
+	if (WORLD_ID::KAKULSAYDON_ARENA == m_eWorldId)
+	{
+		Stop_KoukuBingoDuration(true);
+		Reset_CardMaze();
+		m_KoukuRaid = {};
+		m_KoukuRaidReceipts.clear();
+		m_PendingKoukuMechanicTriggers.clear();
+		m_PendingKoukuMarioEntries.clear();
+		std::fill(std::begin(m_MarioPoppedBalls), std::end(m_MarioPoppedBalls), 0u);
+	}
 	m_iNextMarioEntryStage = 1u;
 	std::string resetStatus;
 	if (!m_ServerTriggerSystem.Initialize(

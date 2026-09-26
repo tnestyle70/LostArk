@@ -961,7 +961,7 @@ MAP spawn은 exact walkable과 authored Y의 navigation 지면 오차 1m 이내�
 Box Detail의 `Create two rows: 5 left + 5 right`는 빈 목록에 중심·좌우 거리·행 간격·layout yaw로
 10개 MAP 배치를 만든다. 생성 뒤 각 위치와 방향을 조정할 수 있고 child 전체 길이에 맞춰 Summon과
 부모 수명을 늘린다. Publisher는 `SUMMON_PATTERNS` trigger와 `PATTERNSUMMONSPAWN` 행으로 연결한다.
-네 방향 중 본체를 고르는 Parent는 Summon occurrence 하나를 사용한다. 재사용 Summon definition에 `summonKind=CROSS_DIRECTION_CLONES`, 전방/후방/왼쪽/오른쪽 순서의 `directionPatternIds` 네 개와 `cloneEndStageId`를 설정한다. occurrence의 start/duration이 유일한 실행 시계이고 별도 Logic이나 Pattern row는 필요 없다. 기분나빠·십자 화염폭발·3갈래 불뿜기는 서로 다른 패턴 세트를 같은 정책으로 재사용한다. 이름만 있는 기존 Summon은 여전히 동작을 추측하지 않는다. typed Summon과 독립 patternSpawns 또는 같은 Summon을 참조하는 CROSS Logic을 함께 사용하면 거부한다. 이전 저작 데이터의 DURATION `CROSS_DIRECTION_CLONES` 연결도 호환한다. `directionPatternIds`는 전방/후방/왼쪽/오른쪽 순서의 네 animation+Effect leaf Pattern, `cloneEndStageId`는 분신이 끝낼 Stage, `summonOccurrenceId`는 같은 Pattern의 이름 있는 Summon 박스를 참조한다. Summon과 Logic 시작은 같고 Summon 수명은 Logic 전체를 포함하며 독립 patternSpawns를 겹치지 않는다. 네 child의 explicit duration은 기존 fixedTimeline으로 게시되고 Logic 창 안에 끝나야 한다. 서버는 현재 본체 위치·yaw와 cutoff까지의 실제 root motion으로 네 목적지를 계산하고 원래 arena boss spawn XZ에 가장 가까운 방향을 한 번 선택한다. 동률은 배열 순서다.
+네 방향 중 본체를 고르는 Parent는 Summon occurrence 하나를 사용한다. 재사용 Summon definition에 `summonKind=CROSS_DIRECTION_CLONES`, 전방/후방/왼쪽/오른쪽 순서의 `directionPatternIds` 네 개와 `cloneEndStageId`를 설정한다. occurrence의 start/duration이 유일한 실행 시계이고 별도 Logic이나 Pattern row는 필요 없다. 기분나빠·십자 화염폭발·3갈래 불뿜기는 서로 다른 패턴 세트를 같은 정책으로 재사용한다. 이름만 있는 기존 Summon은 여전히 동작을 추측하지 않는다. typed Summon과 독립 patternSpawns 또는 같은 Summon을 참조하는 CROSS Logic을 함께 사용하면 거부한다. 이전 저작 데이터의 DURATION `CROSS_DIRECTION_CLONES` 연결도 호환한다. `directionPatternIds`는 전방/후방/왼쪽/오른쪽 순서의 네 animation+Effect leaf Pattern, `cloneEndStageId`는 분신이 끝낼 Stage, `summonOccurrenceId`는 같은 Pattern의 이름 있는 Summon 박스를 참조한다. Summon과 Logic 시작은 같고 Summon 수명은 Logic 전체를 포함하며 독립 patternSpawns를 겹치지 않는다. 네 child의 explicit duration은 기존 fixedTimeline으로 게시되고 Logic 창 안에 끝나야 한다. optional `realPatternId`를 네 `directionPatternIds` 중 하나로 지정하면 그 방향이 본체다. 생략하면 서버는 현재 본체 위치·yaw와 cutoff까지의 실제 root motion으로 네 목적지를 계산하고 원래 arena boss spawn XZ에 가장 가까운 방향을 한 번 선택한다. 동률은 배열 순서다. Workbench, 로컬 미리보기와 Server가 같은 stable ID 정책을 소비한다.
 
 Parent의 identity/clock/뒤쪽 Logic은 유지한다. 선택한 하나만 같은 실제 boss entity의 child animation/root motion/Effect를 재생하고 나머지 세 개는 기존 dependent Summon으로 생성하여 cutoff에서 종료한다. Parent의 Animation/Pattern/이동 Logic과 창이 겹치면 거절한다. Shared snapshot의 optional presentation pattern/action 및 시작 tick/stage는 이 child를 나타내며 parent gameplay snapshot을 대체하지 않는다. Client와 Server는 동일 protocol로 함께 빌드·재시작한다. 일반 Play는 기존 Preview 배우로 같은 네 방향 구성을 보여 주고, Complete Play는 Server의 확정 결과를 사용한다. 일반 Summon의 explicit patternSpawns도 Play에서 독립 배우를 재생한다.
 
@@ -2083,7 +2083,7 @@ Logic Box Detail은 연결된 Success/Fail/Timeout Result의 typed 수치를 편
 - Attack template의 optional `riseHeightM`/`pushMs`는 생략·0/0이면 기존 반응이다. 양수 높이(최대100m)는100~5000ms 비행 시간과 짝을 이루며 기존 TIMED/CONTACT 피해에 수평0의 상승·하강을 연결한다. `PATTERNATTACKHIT`는 기존25열과 높이·시간을 덧붙인27열을 모두 받는다.
 - `PURSUIT_PROJECTILES.cardSymbols`는 `visualIds`와 같은 개수의 HEART/SPADE/CLUB/DIAMOND를 순서대로 지정한다. 각 카드와 같은 문양인 플레이어는 그 카드의 접촉 피해에서 제외하며 색상은 비교하지 않는다. 생략하면 기존 접촉 규칙을 유지한다.
 - `BOSS_CURRENT` bone track은 `OBJECT_CONTACT`와 플레이어 `ENTER_AREA`에 허용한다. 두 소비자 모두 정확한 Trigger 시작·수명·양 끝 key와 identity baseline, 고정 회전·크기 검증을 요구한다.
-- GATE1·GATE3는 `pushCanLeaveArena`와 관계없이 지지면 경계를 막아 낙사를 금지한다. GATE2·BINGO는 지지면을 이탈한 뒤 최초 지지 높이보다5m 아래로 내려가면 Server가 사망을 확정한다. 공중 재피격은 기준 높이를 바꾸지 않으며, 부활은 현재 관문의 검증된 시작 위치로 복귀한다.
+- GATE1·GATE3는 `pushCanLeaveArena`와 관계없이 지지면 경계를 막아 낙사를 금지한다. GATE2 카지노 전투 영역은 최초 지지 높이보다1m 아래에서 Server가 낙사를 확정해 낮은 의자 착지를 생존으로 처리하지 않는다. BINGO와 나머지 낙사 허용 영역은 기존5m 깊이를 유지한다. 공중 재피격은 기준 높이를 바꾸지 않으며, 부활은 현재 관문의 검증된 시작 위치로 복귀한다.
 
 카드 비로 생성한 병정은 생성 Pattern 종료와30초 제한으로 제거하지 않는다. 기존 Server
 몬스터 AI가 플레이어 추적·공격을 계속하며 자기 사망·소환자 소멸·방 정리에서 제거한다.
@@ -2200,3 +2200,7 @@ INVULNERABILITY_ZONE의 기존 threshold필드는0이면인원제한없음,1~4�
 정확한판정가능생존플레이어수다. Server가매tick각영역을독립집계하고조건이맞는영역의
 보호대상만합집합으로적용한다. 부족·초과·퇴장시지속buff를남기지않으며별도이난나/빙고
 무적은보존한다. 파1빨2는파랑1명·빨강2명으로저장하며Client는Server pulse만표현한다.
+
+아이언 메이든 등 일반 `isPatternBound`는 행동 입력을 잠그며 피해 대상 자격은 유지한다. 주사위 카드 속박 연출은 게시 Pattern의 optional `diceBindVisual=true`에서만 시작한다. 이 값은 publisher가 enabled `CARD_DICE_BIND`에서 투영하며 아이언 메이든에는 붙이지 않는다. 실제 카드 속박의 해제 효과는 기존 bind deadline과 snapshot 해제를 따른다.
+
+마지막 참가자가 퇴장하면 Kouku/Valtan 방의 관문 진행·클리어·투표와 레이드 기믹 상태를 초기화한다. 참가자가 남은 방의 진행은 유지한다.

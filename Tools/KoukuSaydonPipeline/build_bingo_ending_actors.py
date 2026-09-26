@@ -212,6 +212,7 @@ def world_rows(rows, spec, asset, clip):
 
 
 def build(out):
+    out = out.resolve()
     out.mkdir(parents=True, exist_ok=True)
     rows, trees = read_source(out)
     baked = [bake_one(rows, trees, spec, out) for spec in SPECS]
@@ -420,7 +421,11 @@ def build_hand_reach(out):
 
 
 def slice_baked_window(payload, first_tick, last_tick):
-    """Copy a 30 Hz baked WANM window; only its key timestamps change."""
+    """Trim a baked WANM, preserving interior values and interpolating cut keys.
+
+    Matinee boxes use integer milliseconds, which are not always exact 30 Hz
+    frames. Keep those boundaries instead of rounding and shifting their poses.
+    """
     wm = base.wm
     nested = list(wm.FILE_HEADER.unpack_from(payload))
     header = list(wm.ANIMATION_HEADER.unpack_from(payload, wm.FILE_HEADER.size))
@@ -430,7 +435,8 @@ def slice_baked_window(payload, first_tick, last_tick):
     table_start = wm.FILE_HEADER.size + wm.ANIMATION_HEADER.size
     key_start = table_start + header[1] * wm.ANIMATION_CHANNEL.size
     channels, keys = bytearray(), bytearray()
-    count = last_tick - first_tick + 1
+    ticks = [first_tick] + list(range(math.floor(first_tick) + 1, math.ceil(last_tick))) + [last_tick]
+    count = len(ticks)
     for index in range(header[1]):
         row = list(wm.ANIMATION_CHANNEL.unpack_from(payload, table_start + index * wm.ANIMATION_CHANNEL.size))
         for column, fmt in ((1, wm.VECTOR_KEY), (3, wm.QUATERNION_KEY), (5, wm.VECTOR_KEY)):
@@ -438,16 +444,153 @@ def slice_baked_window(payload, first_tick, last_tick):
             assert source_count == int(header[2]) + 1 and last_tick < source_count
             assert key_start + source_offset + source_count * fmt.size <= len(payload) - 8
             row[column:column + 2] = count, len(keys)
-            for tick in range(first_tick, last_tick + 1):
-                offset = key_start + source_offset + tick * fmt.size
-                key = payload[offset:offset + fmt.size]
-                assert base.struct.unpack_from('<f', key)[0] == tick
-                keys += base.struct.pack('<f', float(tick - first_tick)) + key[4:]
+            for tick in ticks:
+                offset = key_start + source_offset + math.floor(tick) * fmt.size
+                left = fmt.unpack_from(payload, offset)
+                assert left[0] == math.floor(tick)
+                if tick == math.floor(tick):
+                    # Preserve every original float32 coordinate at stored keys.
+                    keys += base.struct.pack('<f', float(tick - first_tick)) + payload[offset + 4:offset + fmt.size]
+                else:
+                    right = fmt.unpack_from(payload, offset + fmt.size)
+                    assert right[0] == math.floor(tick) + 1
+                    value = (wm.sample_quaternion([left, right], tick) if column == 3
+                             else wm.sample_vector([left, right], tick, (0, 0, 0)))
+                    keys += fmt.pack(float(tick - first_tick), *value)
         channels += wm.ANIMATION_CHANNEL.pack(*row)
     header[2], header[4] = float(last_tick - first_tick), header[1] * count * 3
     result = wm.ANIMATION_HEADER.pack(*header) + channels + keys + payload[-8:]
     nested[-1] = len(result)
     return wm.FILE_HEADER.pack(*nested) + result
+
+
+def build_split_original_world(out, split_source, original_donors):
+    """Prepare independent native clips and a narrow original WORLD field patch.
+
+    This reads the latest world and models but never installs or publishes.
+    Camera, sound, subtitles, object size, and all other patterns stay unchanged.
+    """
+    from bake_character_cinematic_clips import validate_keys
+    out, split_source, original_donors = out.resolve(), split_source.resolve(), original_donors.resolve()
+    assert not out.is_relative_to(base.RESOURCES.resolve())
+    out.mkdir(parents=True, exist_ok=True)
+    world_path = ROOT / 'Data/Maps/Authoring/LV_LUT_MIDNIGHTC_ED/LV_LUT_MIDNIGHTC_ED.worldsequences.json'
+    world_raw = world_path.read_bytes()
+    world, baseline = base.read(world_path), base.read(split_source)
+    candidate_world = copy.deepcopy(world)
+    before_templates = {row['sequenceId']: row for row in world['templates']}
+    source_templates = {row['sequenceId']: row for row in baseline['templates']}
+    target_templates = {row['sequenceId']: row for row in candidate_world['templates']}
+    model_bytes, additions, windows, changes = {}, {}, [], []
+    for _, _, body, label, _ in SPECS:
+        baked_name = 'kouku.bingo.ending.' + label
+        identity = 'sequence.' + baked_name
+        asset = f'Character/KoukuSaton/{body}/{body}.wmodel'
+        if asset not in model_bytes:
+            model_bytes[asset] = (base.RESOURCES / asset).read_bytes()
+        raw = model_bytes[asset]
+        source_payload = animation_payloads(raw)[baked_name]
+        donor = original_donors / (label + '.wmodel')
+        # A fresh source bake proves the scene controls are still intact.
+        assert animation_payloads(donor.read_bytes())[baked_name] == source_payload, ('original bake differs', label)
+        old, target = source_templates[identity], target_templates[identity]
+        assert old['durationMs'] == DURATION
+        old_rows = old['animationTracks']
+        assert len(old_rows) == {'saydon1': 11, 'saydon2': 4, 'kouku1': 4, 'kouku2': 6}[label]
+        after = []
+        for index, row in enumerate(old_rows):
+            start = row['startMs']
+            end = old_rows[index + 1]['startMs'] if index + 1 < len(old_rows) else DURATION
+            assert row['clipName'] == baked_name and row.get('sourceStartMs', 0) == start
+            assert row['playbackRate'] == 1 and not row['loop'] and end > start
+            name = baked_name + f'.{index:02d}'
+            payload = slice_baked_window(source_payload, start * .03, end * .03)
+            additions.setdefault(asset, []).append((name, payload))
+            track = copy.deepcopy(row)
+            track.update(clipName=name, sourceStartMs=0, sourceEndMs=end-start, loop=False)
+            after.append(track)
+            windows.append(dict(actor=label, assetId=asset, clipName=name,
+                                sourceClip=baked_name, startMs=start, endMs=end,
+                                durationMs=end-start, originalSourcePayloadSha256=hashlib.sha256(source_payload).hexdigest()))
+        target['animationTracks'] = after
+        if label == 'saydon1':
+            # Previous Duplicate appended only an invisible held transform key.
+            # Refuse to discard any independent user edit inside the scene.
+            assert len(target['tracks']) == len(old['tracks'])
+            for current_track, old_track in zip(target['tracks'], old['tracks']):
+                assert {k: v for k, v in current_track.items() if k != 'keys'} == {k: v for k, v in old_track.items() if k != 'keys'}
+                assert current_track['keys'][:len(old_track['keys'])] == old_track['keys']
+                assert all(k['timeMs'] > DURATION and not k['visible'] for k in current_track['keys'][len(old_track['keys']):])
+            target['durationMs'], target['tracks'] = DURATION, copy.deepcopy(old['tracks'])
+        else:
+            assert target['durationMs'] == DURATION and target['tracks'] == old['tracks']
+        before = before_templates[identity]
+        fields = {field: dict(before=copy.deepcopy(before[field]), after=copy.deepcopy(target[field]))
+                  for field in ('animationTracks', 'durationMs', 'tracks') if before[field] != target[field]}
+        changes.append(dict(sequenceId=identity, fields=fields))
+    candidates, max_error = [], 0.
+    for asset, extra in additions.items():
+        raw = model_bytes[asset]
+        candidate, count = append_idempotent(raw, extra)
+        assert append_idempotent(candidate, extra) == (candidate, 0)
+        destination = out / 'candidate-resources' / asset
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        destination.write_bytes(candidate)
+        names = {name for name, _ in extra} | {r['sourceClip'] for r in windows if r['assetId'] == asset}
+        model = base.wm.read_wmodel(destination, include_geometry=False, animation_names=names)
+        animations = {a.name: a for a in model.animations}
+        for window in (r for r in windows if r['assetId'] == asset):
+            cropped, original = animations[window['clipName']], animations[window['sourceClip']]
+            window['keyCount'] = validate_keys(cropped)
+            assert len(cropped.channels) == len(original.channels) == len(model.skeleton_bones)
+            assert abs(cropped.duration_ticks / cropped.ticks_per_second * 1000. - window['durationMs']) < .002
+            # Check both cuts, every retained key, and interval midpoints.
+            sample_ticks = sorted({k[0] for c in cropped.channels for k in c.position_keys})
+            sample_ticks += [(a+b)*.5 for a, b in zip(sample_ticks, sample_ticks[1:])]
+            error = 0.
+            for old_channel, new_channel in zip(original.channels, cropped.channels):
+                assert old_channel.bone_index == new_channel.bone_index
+                for local_tick in sample_ticks:
+                    original_tick = window['startMs'] * .03 + local_tick
+                    for field in ('position_keys', 'scale_keys', 'rotation_keys'):
+                        old_keys, new_keys = getattr(old_channel, field), getattr(new_channel, field)
+                        if field == 'rotation_keys':
+                            left, right = np.array(base.wm.sample_quaternion(old_keys, original_tick)), np.array(base.wm.sample_quaternion(new_keys, local_tick))
+                            if float(np.dot(left, right)) < 0.: right = -right
+                        else:
+                            left, right = np.array(base.wm.sample_vector(old_keys, original_tick, (0, 0, 0))), np.array(base.wm.sample_vector(new_keys, local_tick, (0, 0, 0)))
+                        error = max(error, float(np.max(np.abs(left-right))))
+            # A float32 timestamp rebase can introduce sub-microsecond rounding.
+            assert error < .0001, (window['clipName'], error)
+            window.update(channelCount=len(cropped.channels), poseSamplesChecked=len(sample_ticks), maximumPoseComponentError=error)
+            max_error = max(max_error, error)
+        assert (base.RESOURCES / asset).read_bytes() == raw, 'Model changed during candidate preparation'
+        candidates.append(dict(assetId=asset, baselineSha256=hashlib.sha256(raw).hexdigest(),
+                               sha256=hashlib.sha256(candidate).hexdigest(), addedClips=count,
+                               candidate=str(destination.relative_to(ROOT))))
+    candidate_world['revision'] = world['revision'] + 1
+    reverse = copy.deepcopy(candidate_world)
+    reverse['revision'] = world['revision']
+    reverse_templates = {r['sequenceId']: r for r in reverse['templates']}
+    for change in changes:
+        for field, values in change['fields'].items():
+            reverse_templates[change['sequenceId']][field] = values['before']
+    assert reverse == world, 'Unrelated world data changed'
+    assert world_path.read_bytes() == world_raw, 'World changed during candidate preparation'
+    world_candidate = out / 'worldsequences.original-split.candidate.json'
+    base.write(world_candidate, candidate_world)
+    patch = dict(baselineRevision=world['revision'], baselineSha256=hashlib.sha256(world_raw).hexdigest(),
+                 revision=candidate_world['revision'], changes=changes,
+                 candidate=str(world_candidate.relative_to(ROOT)))
+    receipt = dict(clipCount=len(windows), windows=windows, models=candidates,
+                   maximumPoseComponentError=max_error, worldPatch='world-field-patch.json',
+                   allExistingModelSectionsIdentical=True, originalSourceBakeIdentical=True,
+                   otherWorldFieldsIdentical=True, compositionModified=False, installed=False,
+                   manualVisualValidation='USER_PENDING')
+    base.write(out / 'world-field-patch.json', patch)
+    base.write(out / 'original-split-receipt.json', receipt)
+    print('original split candidate', len(windows), 'clips; maximum pose component error', max_error, flush=True)
+    return receipt
 
 
 def build_original_hand_reach(out):
@@ -513,6 +656,14 @@ if __name__ == '__main__':
     mode = parser.add_mutually_exclusive_group()
     mode.add_argument('--original-hand-reach', action='store_true', help='Prepare the original 3.5-second hand-reach clip choice')
     mode.add_argument('--hand-reach', action='store_true', help='Prepare only the continuous hand-reach clip candidate')
+    mode.add_argument('--split-original-world', action='store_true', help='Prepare original timeline boxes as independent native clips')
+    parser.add_argument('--split-source', type=Path, help='Original WORLD document containing the 25 split boundaries')
+    parser.add_argument('--original-donors', type=Path, help='Freshly source-baked ending-donors directory')
     args = parser.parse_args()
-    (build_original_hand_reach if args.original_hand_reach else
-     build_hand_reach if args.hand_reach else build)(args.output)
+    if args.split_original_world:
+        if args.split_source is None or args.original_donors is None:
+            parser.error('--split-original-world requires --split-source and --original-donors')
+        build_split_original_world(args.output, args.split_source, args.original_donors)
+    else:
+        (build_original_hand_reach if args.original_hand_reach else
+         build_hand_reach if args.hand_reach else build)(args.output)

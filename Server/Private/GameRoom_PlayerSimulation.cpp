@@ -28,6 +28,9 @@ using namespace GameRoomDetail;
 namespace
 {
 	constexpr float KOUKU_FALL_DEPTH_M = 5.f;
+	// The casino chairs sit above the generic five-metre fall plane. A body
+	// leaving its support by more than the forced-move step limit is out.
+	constexpr float KOUKU_CASINO_FALL_DEPTH_M = 1.f;
 
 	enum class FORCED_SURFACE_RESULT
 	{
@@ -152,7 +155,8 @@ void LostArk::Server::CGameRoom::Begin_PlayerFall(
 	const std::uint32_t updateTick)
 {
 	using namespace LostArk::Shared;
-	player.fFallDeathPlaneY = (player.bKnockbackBallistic ? player.fKnockbackSupportY : player.fPositionY) - KOUKU_FALL_DEPTH_M;
+	const float fallDepth = Resolve_KoukuFallCenter(player) ? KOUKU_CASINO_FALL_DEPTH_M : KOUKU_FALL_DEPTH_M;
+	player.fFallDeathPlaneY = (player.bKnockbackBallistic ? player.fKnockbackSupportY : player.fPositionY) - fallDepth;
 	player.eAction = PLAYER_ACTION_STATE::FALLING;
 	player.bKoukuFallDeath = m_eWorldId == WORLD_ID::KAKULSAYDON_ARENA && !player.iMarioStage;
 	player.iActionStartTick = 0u == updateTick ? 1u : updateTick;
@@ -831,7 +835,9 @@ void LostArk::Server::CGameRoom::Update_Players(const float fixedDeltaSeconds)
 			player.MovePath.clear();
 			player.iMovePathIndex = 0u;
 			player.PendingCommand.Clear();
-			player.isCombatReady = false;
+			// Binding owns the input lock; it must not make a living captive immune
+			// to the same authoritative hit tests used for other participants.
+			player.isCombatReady = player.bPatternBindRestoreCombatReady;
 			continue;
 		}
 		if (LostArk::Shared::PLAYER_ACTION_STATE::FEAR == player.eAction) continue;
@@ -1318,8 +1324,9 @@ void LostArk::Server::CGameRoom::Advance_PlayerKnockback(
 			0.5f * player.fKnockbackGravityMps2 * step * step;
 		player.fKnockbackVelocityY -= player.fKnockbackGravityMps2 * step;
 		player.fKnockbackRemainingSeconds = (std::max)(0.f, player.fKnockbackRemainingSeconds - step);
+		const float fallDepth = Resolve_KoukuFallCenter(player) ? KOUKU_CASINO_FALL_DEPTH_M : KOUKU_FALL_DEPTH_M;
 		if (!bounded && m_eWorldId == LostArk::Shared::WORLD_ID::KAKULSAYDON_ARENA &&
-			player.fPositionY <= player.fKnockbackSupportY - KOUKU_FALL_DEPTH_M)
+			player.fPositionY <= player.fKnockbackSupportY - fallDepth)
 		{
 			const std::uint32_t tick = (std::numeric_limits<std::uint32_t>::max)() == m_iServerTick ? 1u : m_iServerTick + 1u;
 			Begin_PlayerFall(player, 0.f, tick);

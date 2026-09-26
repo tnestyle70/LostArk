@@ -1156,7 +1156,7 @@ def _validate_summon_pattern_spawns(document, owner):
 
 
 def _validate_summon_definition(summon, context):
-    if not any(key in summon for key in ("summonKind", "directionPatternIds", "cloneEndStageId")):
+    if not any(key in summon for key in ("summonKind", "directionPatternIds", "cloneEndStageId", "realPatternId")):
         return
     kind = summon.get("summonKind", "")
     if kind != "CROSS_DIRECTION_CLONES":
@@ -1166,6 +1166,8 @@ def _validate_summon_definition(summon, context):
     if len(candidates) != 4 or len(set(candidates)) != 4:
         raise CompositionError(f"{context} requires four distinct front/back/left/right Patterns")
     _stable_id(summon.get("cloneEndStageId", ""), f"{context} cloneEndStageId")
+    if "realPatternId" in summon and _stable_id(summon["realPatternId"], f"{context} realPatternId") not in candidates:
+        raise CompositionError(f"{context} realPatternId must name one of its four direction Patterns")
 
 
 def _cross_direction_windows(document, owner):
@@ -2058,7 +2060,7 @@ def _validate_document(document: dict[str, Any], root: Path = REPOSITORY_ROOT) -
     summon_ids, summon_defs = _validate_catalog(
         document, "nextSummonOrdinal", "summons", "summonId", GENERATED_SUMMON_RE,
         SUMMON_KEYS, MAX_SUMMONS, "kakulsaydon.g1.summon",
-        optional_keys={"summonKind", "directionPatternIds", "cloneEndStageId"},
+        optional_keys={"summonKind", "directionPatternIds", "cloneEndStageId", "realPatternId"},
     )
     for identity, summon in summon_defs.items():
         _validate_summon_definition(summon, f"Summon {identity}")
@@ -4987,6 +4989,7 @@ def project_encounter(document: dict[str, Any], root: Path = REPOSITORY_ROOT) ->
                     "startMs": box["startMs"], "durationMs": box["durationMs"],
                     "directionPatternIds": list(definition["directionPatternIds"]),
                     "cloneEndStageId": definition["cloneEndStageId"],
+                    **({"realPatternId": definition["realPatternId"]} if "realPatternId" in definition else {}),
                     "hudMode": "NONE", "teleportPosition": [0.0, 0.0, 0.0],
                     "clonePatternId": "", "clockHours": [], "faceCenterYawOffsetDegrees": 0.0,
                     "countPerPlayer": 0, "radiusM": 0.0, "effectLifetimeMs": 0,
@@ -5831,7 +5834,12 @@ def _project_pattern_presentation(document: dict[str, Any], pattern: dict[str, A
                 })
             stage_start += stage["durationMs"]
         source_animations.sort(key=lambda row: row["startOffsetMs"])
+    logics = {logic["logicId"]: logic for logic in document.get("logics", [])}
+    dice_bind_visual = any(box.get("enabled", True) and
+        logics.get(box["logicId"], {}).get("judgementKind") == "CARD_DICE_BIND"
+        for box in pattern.get("logicOccurrences", []))
     return {"patternId": pattern["patternId"], **_pattern_target_metadata(pattern), "durationMs": _pattern_duration(pattern),
+            **({"diceBindVisual": True} if dice_bind_visual else {}),
             **({"stageDurationMs": sum(stage["durationMs"] for stage in pattern["stages"])}
                if _pattern_duration(pattern) > sum(stage["durationMs"] for stage in pattern["stages"]) else {}),
             **({"bossMotion": copy.deepcopy(pattern["bossMotion"])} if "bossMotion" in pattern else {}),

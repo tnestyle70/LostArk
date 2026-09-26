@@ -3553,7 +3553,7 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 		{
 			BOSS_PATTERN_MECHANIC_TRIGGER trigger{};
 			trigger.eKind = BOSS_PATTERN_MECHANIC_TRIGGER_KIND::CROSS_DIRECTION_CLONES;
-			if (fields.size() != 11u || !IsStableId(fields[1]) || !IsStableId(fields[2]) || !IsStableId(fields[3]) ||
+			if ((fields.size() != 11u && fields.size() != 12u) || !IsStableId(fields[1]) || !IsStableId(fields[2]) || !IsStableId(fields[3]) ||
 				!ParseNumber(fields[4], trigger.iStartMs) || !ParseNumber(fields[5], trigger.iDurationMs) ||
 				trigger.iDurationMs == 0u || trigger.iDurationMs > 600000u || !IsStableId(fields[10]))
 			{ m_strStatus = "Cross direction row has invalid identity or duration"; return false; }
@@ -3564,6 +3564,12 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 					std::find(trigger.DirectionPatternIds.begin(), trigger.DirectionPatternIds.end(), fields[index]) != trigger.DirectionPatternIds.end())
 				{ m_strStatus = "Cross direction references must be four distinct child Patterns"; return false; }
 				trigger.DirectionPatternIds.emplace_back(fields[index]);
+			}
+			if (fields.size() == 12u)
+			{
+				if (!IsStableId(fields[11]) || std::find(trigger.DirectionPatternIds.begin(), trigger.DirectionPatternIds.end(), fields[11]) == trigger.DirectionPatternIds.end())
+				{ m_strStatus = "Cross direction real Pattern must be one of its four candidates"; return false; }
+				trigger.strRealPatternId = fields[11];
 			}
 			const auto encounter = m_BossPatterns.find(std::string(fields[1]));
 			if (encounter == m_BossPatterns.end()) { m_strStatus = "Cross direction encounter is missing"; return false; }

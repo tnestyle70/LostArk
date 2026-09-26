@@ -50,14 +50,6 @@
 
 namespace
 {
-	bool Try_PickCombatModel(const Engine::CModel& model, const float4x4_t& root,
-		fvector_t rayOrigin, fvector_t rayDirection, f32_t& outDistance)
-	{
-        float3_t origin, direction;
-        XMStoreFloat3(&origin, rayOrigin); XMStoreFloat3(&direction, rayDirection);
-        return model.Try_PickCurrentPose(root, origin, direction, outDistance);
-	}
-
 	Client::CLocalMovePrediction::Snapshot LocalMoveSnapshot(
 		const LostArk::Shared::PLAYER_SNAPSHOT& player, const std::uint32_t serverTick)
 	{
@@ -275,7 +267,6 @@ void Client::CClientReplication::Expect_KoukuRaidReply(const std::uint32_t reque
 
 bool Client::CClientReplication::Update()
 {
-	Update_CombatHover(false);
 	m_PendingWorldCombatHits.clear();
 	Engine::CProfilerScope updateScope(
 		CGameInstance::Get().Get_Profiler(), "Replication.Update");
@@ -497,87 +488,6 @@ void Client::CClientReplication::Set_WorldCombatTargets(const std::vector<WORLD_
 	}
 	// A stopped/dead cue cannot receive an old hit when an object pool is reused.
 	m_PendingWorldCombatHits.clear();
-}
-
-void Client::CClientReplication::Update_CombatHover(const bool_t enabled)
-{
-	if (const auto previous = m_HoveredCombatNpc.lock()) previous->Set_CombatHovered(false);
-	if (const auto previous = m_HoveredCombatValtan.lock()) previous->Set_CombatHovered(false);
-	m_HoveredCombatNpc.reset();
-	m_HoveredCombatValtan.reset();
-	for (const auto& previous : m_HoveredCombatWorldObjects)
-		if (const auto object = previous.lock()) object->Set_CombatHovered(false);
-	m_HoveredCombatWorldObjects.clear();
-	if (!enabled || !m_isInitialized || !m_wasConnected ||
-		GetForegroundWindow() != g_hWnd || CGameInstance::Get().IsMouseInputBlocked() ||
-		CUIInputRouter::Get().Is_MouseClaimedThisFrame() ||
-		CUIInputRouter::Get().Was_MouseClaimedLastFrame() ||
-		CUIInputRouter::Get().Is_TextInputActive() || !Get_LocalCharacter()) return;
-	vector_t origin{}, direction{};
-	if (!CPlayerController::Try_PickWorldRay(origin, direction) ||
-		XMVectorGetX(XMVector3LengthSq(direction)) < 1.e-8f) return;
-	direction = XMVector3Normalize(direction);
-	f32_t bestDistance = (std::numeric_limits<f32_t>::max)();
-	LostArk::Shared::NET_ENTITY_ID bestId = LostArk::Shared::INVALID_NET_ENTITY_ID;
-	for (const auto& [id, entity] : m_WorldEntities)
-	{
-		if (!entity.bCombatHoverTarget || entity.bPresentationIsolated) continue;
-        f32_t distance = 0.f;
-        bool hit = false;
-		if (const auto npc = entity.pNpc.lock())
-		{
-            float3_t pickOrigin, pickDirection;
-            XMStoreFloat3(&pickOrigin, origin); XMStoreFloat3(&pickDirection, direction);
-            hit = npc->Try_PickPresentation(pickOrigin, pickDirection, distance);
-		}
-		else if (const auto valtan = entity.pValtan.lock())
-		{
-            float4x4_t root;
-			if (!valtan->Is_PresentationVisible() || !valtan->Try_Get_PresentationRootMatrix(&root)) continue;
-            const auto model = valtan->Get_BodyModel();
-            hit = model && Try_PickCombatModel(*model, root, origin, direction, distance);
-		}
-		if (hit &&
-			(distance < bestDistance || (distance == bestDistance && id < bestId)))
-		{
-			bestDistance = distance;
-			bestId = id;
-		}
-	}
-	for (const auto& target : m_WorldCombatTargets)
-	{
-		const auto object = target.object.lock();
-		if (!object || !object->Is_Visible() || !object->Get_Model()) continue;
-		f32_t distance = 0.f;
-		if (Try_PickCombatModel(*object->Get_Model(), object->Get_SampledWorld(), origin, direction, distance) &&
-			(distance < bestDistance || (distance == bestDistance && target.iBodyNetEntityId < bestId)))
-		{
-			bestDistance = distance;
-			bestId = target.iBodyNetEntityId;
-		}
-	}
-	const auto selected = m_WorldEntities.find(bestId);
-	if (selected == m_WorldEntities.end())
-	{
-		for (const auto& target : m_WorldCombatTargets)
-			if (target.iBodyNetEntityId == bestId)
-				if (const auto object = target.object.lock(); object && object->Is_Visible())
-				{
-					object->Set_CombatHovered(true);
-					m_HoveredCombatWorldObjects.push_back(object);
-				}
-		return;
-	}
-	if (const auto npc = selected->second.pNpc.lock())
-	{
-		npc->Set_CombatHovered(true);
-		m_HoveredCombatNpc = npc;
-	}
-	else if (const auto valtan = selected->second.pValtan.lock())
-	{
-		valtan->Set_CombatHovered(true);
-		m_HoveredCombatValtan = valtan;
-	}
 }
 
 bool Client::CClientReplication::Apply_WorldDestructionFullSync(
@@ -3636,11 +3546,6 @@ bool Client::CClientReplication::Apply_WorldSnapshot(
 			allSucceeded = false;
 			continue;
 		}
-		iter->second.bCombatHoverTarget =
-			(iter->second.eKind == WORLD_ENTITY_KIND::MONSTER || iter->second.eKind == WORLD_ENTITY_KIND::BOSS) &&
-			Is_PlayerDamageableWorldArchetype(iter->second.strArchetypeId) &&
-			iter->second.iOwnerBossNetEntityId == INVALID_NET_ENTITY_ID &&
-			entity.eAction != WORLD_ENTITY_ACTION::DEAD && entity.iCurrentHp > 0u;
 		const float3_t position(
 			entity.fPositionX,
 			entity.fPositionY,
@@ -4287,7 +4192,6 @@ void Client::CClientReplication::Update_DeathPresentations()
 
 void Client::CClientReplication::Reset_World()
 {
-	Update_CombatHover(false);
 	m_WorldCombatTargets.clear();
 	m_PendingWorldCombatHits.clear();
 	if (const auto character = Get_LocalCharacter())

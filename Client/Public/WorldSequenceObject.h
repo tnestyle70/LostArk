@@ -52,14 +52,17 @@ public:
     const shared_ptr<Engine::CModel>& Get_Model() const { return m_Model; }
     const float4x4_t& Get_SampledWorld() const { return m_World; }
     const std::string& Get_RenderStatus() const
-    { return m_RenderStatus.empty() ? m_TranslucentRenderStatus : m_RenderStatus; }
+    {
+        if (!m_RenderStatus.empty()) return m_RenderStatus;
+        return m_OpaqueGhostRenderStatus.empty() ? m_TranslucentRenderStatus : m_OpaqueGhostRenderStatus;
+    }
 #ifdef _DEBUG
     // The visible pose owns this sample; offsets are metres in a normalized bone basis.
     bool_t Try_GetAttachmentWorld(const std::string& bone, float4x4_t& out) const;
 #endif
 private:
     CWorldSequenceObject(ComPtr<ID3D11Device>, ComPtr<ID3D11DeviceContext>);
-    HRESULT Render_Translucent();
+    HRESULT Render_ForwardSource(bool opaqueGhost);
     HRESULT Render_Mesh(uint32_t mesh);
     shared_ptr<Engine::CModel> m_Model;
     shared_ptr<Engine::CModel> m_SaydonHatModel;
@@ -75,7 +78,9 @@ private:
     f32_t m_HitFlashSeconds = 0.f;
     bool_t m_Visible = false;
     bool_t m_HasTranslucentMeshes = false;
+    bool_t m_HasOpaqueGhostMeshes = false;
     std::string m_RenderStatus;
     std::string m_TranslucentRenderStatus;
+    std::string m_OpaqueGhostRenderStatus;
 };
 NS_END

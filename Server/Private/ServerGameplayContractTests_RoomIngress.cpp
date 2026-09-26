@@ -85,8 +85,24 @@ int LostArk::Server::CServerGameplayContractRunner::Run_NpcRaidReturn()
 				"Return resolves navigable ground near the correct NPC and clears raid visit state");
 			if (landed) std::cout << guideId << " landing " << landing.Player.fPositionX << ','
 				<< landing.Player.fPositionY << ',' << landing.Player.fPositionZ << '\n';
-			raid->m_Players.clear();
-			raid->m_PlayerIdBySessionId.clear();
+			raid->m_GateProgress.iCurrentGate = world == WORLD_ID::KAKULSAYDON_ARENA ? 4u : 2u;
+			raid->m_GateProgress.iProposalId = 41u;
+			raid->m_GateProgress.Voters = {entry.Player.iPlayerId};
+			raid->m_KoukuRaid.State.iRunEpoch = 51u;
+			raid->m_KoukuRaid.State.ePhase = KOUKUSAYDON_RAID_PHASE::COMPLETE;
+			raid->m_MarioPoppedBalls[1] = 3u;
+			const auto occupiedGate = raid->m_GateProgress.iCurrentGate;
+			tests.Require(raid->Reset_ReplayableArenaWhenEmpty() &&
+				raid->m_GateProgress.iCurrentGate == occupiedGate && raid->m_GateProgress.iClearedMask == 0xffu &&
+				raid->m_Players.size() == 1u,
+				"An occupied raid keeps its current gate, clear state and admitted participant");
+			raid->Leave(sid, PLAYER_DESPAWN_REASON::LEVEL_CHANGED, false);
+			tests.Require(raid->Is_Ready() && raid->m_Players.empty() &&
+				!raid->m_GateProgress.iCurrentGate && !raid->m_GateProgress.iClearedMask &&
+				!raid->m_GateProgress.iProposalId && raid->m_GateProgress.Voters.empty() &&
+				(world != WORLD_ID::VALTAN_ARENA || !raid->m_bValtanRaidCleared) &&
+				(world != WORLD_ID::KAKULSAYDON_ARENA || (!raid->m_KoukuRaid.State.iRunEpoch && !raid->m_MarioPoppedBalls[1])),
+				"Last departure resets raid gates, votes, completion and Mario state before re-entry");
 			enter.eWorldId = world;
 			tests.Require(!raid->Stage_PlayerEntry(session, enter, {}, entry, reason, status,
 				{}, {}, INVALID_HONOR_TITLE_ID, "npc.invalid"), "Reject unknown return NPC without partial admission");

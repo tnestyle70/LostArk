@@ -266,6 +266,33 @@ void LostArk::Server::CServerGameplayContractRunner::Run_KoukuBundles(TESTS& tes
 				rotated.fPositionZ = 0.f;
 				tests.Require(CKoukuSaydonBrain::Select_CrossDirection(rotated, *crossParent, trigger, *generation, selected, durations, status) && selected == 0u,
 					"Cross direction center tie retains authored direction order");
+                auto fixed = trigger; fixed.strRealPatternId = crossIds[2];
+                for (float x : {-10.f, 0.f, 10.f})
+                {
+                    rotated.fPositionX = x;
+                    tests.Require(CKoukuSaydonBrain::Select_CrossDirection(rotated, *crossParent, fixed, *generation, selected, durations, status) && selected == 2u,
+                        "Authored real Pattern keeps the left body independent of the boss position and center tie");
+                }
+                fixed.strRealPatternId = "not.a.direction"; selected = 77u;
+                tests.Require(!CKoukuSaydonBrain::Select_CrossDirection(rotated, *crossParent, fixed, *generation, selected, durations, status) && selected == 77u,
+                    "An invalid fixed real Pattern fails without committing a selection");
+                for (const auto& real : {crossIds[2], std::string("not.a.direction")})
+                {
+                    auto fixedBytes = bytes;
+                    const std::string end = crossIds[3] + "\tSTAGE_1\n";
+                    fixedBytes.replace(fixedBytes.find(end), end.size(), crossIds[3] + "\tSTAGE_1\t" + real + "\n");
+                    { std::ofstream output(path, std::ios::binary | std::ios::trunc); output.write(fixedBytes.data(), static_cast<std::streamsize>(fixedBytes.size())); }
+                    GameplayDataRevision fixedRevision; CGameplayCatalog fixedCatalog;
+                    const bool admitted = CServerApp::Hash_GameplayFileForAdmission(path, fixedRevision, status) && fixedCatalog.Load_FromBootstrap(fs::canonical(path), fixedRevision, fixedRevision);
+                    tests.Require(admitted == (real == crossIds[2]), "Bootstrap admits only fixed real Patterns named among the four candidates");
+                    if (admitted)
+                    {
+                        const auto* fixedParent = CKoukuSaydonBrain::Find_AnimationOnlyPattern(fixedCatalog, crossParentId, status);
+                        tests.Require(fixedParent && fixedParent->MechanicTriggers.front().strRealPatternId == real,
+                            "Bootstrap preserves the authored real Pattern through catalog admission");
+                    }
+                }
+                { std::ofstream output(path, std::ios::binary | std::ios::trunc); output.write(bytes.data(), static_cast<std::streamsize>(bytes.size())); }
 				auto invalid = trigger; invalid.strCloneEndStageId = "STAGE_2"; selected = 77u;
 				tests.Require(!CKoukuSaydonBrain::Select_CrossDirection(rotated, *crossParent, invalid, *generation, selected, durations, status) && selected == 77u,
 					"Cross direction rejects terminal clone cutoff without changing selection");

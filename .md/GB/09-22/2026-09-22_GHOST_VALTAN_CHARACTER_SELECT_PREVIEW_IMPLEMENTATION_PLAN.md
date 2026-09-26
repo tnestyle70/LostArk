@@ -156,3 +156,19 @@ out/GhostCompileOptimize20260923의 후보와 검증 기록을 준비한 뒤 두
 대표 FX는 fxc /T fx_5_0 /Od로 cohort001과084를 각각 한 번 컴파일한다. ghost entry-only /T ps_5_0 /E PS_MAIN_SOURCE_CHARACTER_GHOST_OPAQUE /O1 결과는 실제 Product FX에 포함된 ghost PS와 token/switch 수를 비교한다. code size 감소를 전체 빌드 시간이나 프레임 성능 감소율로 해석하지 않는다.
 
 기존 actual ghost probe를 out에서만 확장해 full RGBA32F/depth readback을 저장하고, 실제 Product base+14cohort admission을 통과한 뒤 pass16, opacity0의 base-owned pass17, 원본 pass10을 비교한다. 후보 runtime은 대표001/084만 새 FX로 교체하고 나머지는 Product 복사본을 사용한다. 새로운 base FX나 다른12개 cohort를 컴파일하지 않은 경계는 RESULT에 적는다. 적용 후 candidate SHA 일치, CRLF, 두 shader와 PLAN/RESULT의 git diff --check를 확인한다.
+
+## G06. 09-26 최후 컷신도 부활 유령의 표시 경로 사용
+
+### G06-01. 실제 consumer와 목표
+
+`VALTAN_GHOST_RESPAWN_AUDITION`은 `mesh_respawn_1`과 phase3을 선택하며 CBody_Valtan이 native84를 NONLIGHT/pass16으로 그린다. 일반 preview의 CPart_Body도 같은 경로다. 반면 `world.sequence.instance.valtan.source-preview.finale`은 같은 `BOSS_VALTAN_GHOST` prototype에서 만든 CWorldSequenceObject를 사용하고, 이 객체의 native84 resolver만 BLEND/pass10에 남아 있다. 부활의 opaque 표시를 최후 컷신에 연결하는 변경이며 원본 translucent 식이나 색을 다시 조정하지 않는다.
+
+### G06-02. H/CPP 변경과 수명
+
+기존 WorldSequenceObject.h/cpp만 변경한다. `Resolve_TranslucentSourcePass`를 `Resolve_ForwardSourcePass`로 바꾸고 native84의 반환 pass를16으로 맞춘다. `Initialize`에서 opaque ghost와 나머지 translucent mesh를 따로 인식한다. `Late_Update`는 ghost를 기존 NONLIGHT 그룹에 등록하고 다른 forward mesh의 BLEND 등록을 유지한다. `Render_Group`에서 두 그룹을 같은 `Render_ForwardSource(bool opaqueGhost)`로 전달하며, 각 호출은 자신의 mesh만 material/light/bone 바인딩 후 제출한다. 기본 GBuffer draw는 모든 forward mesh를 계속 제외한다.
+
+NONLIGHT의 성공이 다른 BLEND 실패를 지우지 않도록 두 render status를 구분한다. 컷신의 기존 visible/sampled world/clip/pool 수명과 material copy-on-write, 장비·소켓, 반사 transform 처리는 그대로 소비한다. body shader/pass는 부활과 동일하고 다른 프로그램의 Sea/hair/eye/static movie pass를 바꾸지 않는다. 새 파일·프로젝트 등록·shader 재컴파일 입력·authoring/publish 데이터 변경은 없다.
+
+### G06-03. 종료 증거
+
+현재 제품 build에서 WorldSequenceObject 헤더를 사용하는 TU를 증분 컴파일한다. native84의 program/pass/group 연결과 native88/18/equipment/static movie의 기존 분류, GBuffer와 BLEND 중복 배제, opaque/translucent 실패 상태 보존을 현재 코드로 확인한다. 기존 shader pass16의 blend/depth/native84 계약을 사용한다. Client/UI를 실행하지 않으며 사용자가 최후 컷신과 부활의 몸체 표시를 직접 비교한다.

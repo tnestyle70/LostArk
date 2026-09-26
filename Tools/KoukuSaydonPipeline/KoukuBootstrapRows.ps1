@@ -1747,9 +1747,15 @@ foreach ($koukuPattern in @($koukuEncounterDocument.patterns)) {
 	$triggerIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
 	foreach ($trigger in @($koukuPattern.mechanicTriggers)) {
 		if ($trigger.kind -ceq 'CROSS_DIRECTION_CLONES') {
-			Assert-ExactProperties $trigger @('triggerId','kind','startMs','durationMs','hudMode','teleportPosition','clonePatternId',
+            $crossOptional = @()
+            if ($null -ne $trigger.PSObject.Properties['realPatternId']) {
+                Assert-StableId $trigger.realPatternId 'Cross direction real Pattern'
+                if ($trigger.directionPatternIds -cnotcontains $trigger.realPatternId) { throw 'Cross direction real Pattern must be one of its four candidates' }
+                $crossOptional += 'realPatternId'
+            }
+			Assert-ExactProperties $trigger (@('triggerId','kind','startMs','durationMs','hudMode','teleportPosition','clonePatternId',
 				'clockHours','faceCenterYawOffsetDegrees','countPerPlayer','radiusM','effectLifetimeMs','arenaRandomCount',
-				'arenaRandomRadiusM','arenaHeightToleranceM','arenaMinimumSpacingM','randomPlayerOnly','directionPatternIds','cloneEndStageId') 'Cross direction Logic'
+				'arenaRandomRadiusM','arenaHeightToleranceM','arenaMinimumSpacingM','randomPlayerOnly','directionPatternIds','cloneEndStageId') + $crossOptional) 'Cross direction Logic'
 			Assert-StableId $trigger.triggerId 'Cross direction occurrence'
 			Assert-StableId $trigger.cloneEndStageId 'Cross direction clone end Stage'
 			Assert-JsonInteger $trigger.startMs 'Cross direction startMs' 0 600000
@@ -1784,9 +1790,10 @@ foreach ($koukuPattern in @($koukuEncounterDocument.patterns)) {
 				}
 				$koukuFollowupTargets.Add([string]$identity)
 			}
-			$patternRows.Add((@('PATTERNCROSSDIRECTION',$koukuEncounterDocument.encounterId,$koukuPattern.patternId,
-				$trigger.triggerId,[uint32]$trigger.startMs,[uint32]$trigger.durationMs) + @($trigger.directionPatternIds) +
-				@($trigger.cloneEndStageId)) -join "`t")
+			$crossFields = @('PATTERNCROSSDIRECTION',$koukuEncounterDocument.encounterId,$koukuPattern.patternId,
+				$trigger.triggerId,[uint32]$trigger.startMs,[uint32]$trigger.durationMs) + @($trigger.directionPatternIds) + @($trigger.cloneEndStageId)
+            if ($crossOptional.Count) { $crossFields += $trigger.realPatternId }
+            $patternRows.Add($crossFields -join "`t")
 			continue
 		}
 		$triggerOptionalProperties = @()
