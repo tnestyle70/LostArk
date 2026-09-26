@@ -5745,11 +5745,29 @@
     <None Include="..\..\Data\Effects\Authored\effect.kouku.mario.marker.red.effect.json">
       <Filter>96.DataFiles</Filter>
     </None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.mario.flyingball.hit.effect.json">
+      <Filter>96.DataFiles</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.mario.player.hammer.impact.effect.json">
+      <Filter>96.DataFiles</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.mario.ball.pop.yellow.effect.json">
+      <Filter>96.DataFiles</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.mario.ball.pop.red.effect.json">
+      <Filter>96.DataFiles</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.mario.ball.pop.blue.effect.json">
+      <Filter>96.DataFiles</Filter>
+    </None>
     <None Include="..\..\Data\Effects\Authored\effect.kouku.mario.marker.blue.effect.json">
       <Filter>96.DataFiles</Filter>
     </None>
     <None Include="..\..\Data\Effects\Authored\effect.kouku.mario.marker.yellow.effect.json">
       <Filter>96.DataFiles</Filter>
     </None>
+  </ItemGroup>
+  <ItemGroup>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectMeshKouku5120.hlsl"><Filter>97.ShaderFiles</Filter></FxCompile>
   </ItemGroup>
 </Project>

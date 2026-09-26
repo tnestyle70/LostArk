@@ -4018,6 +4018,29 @@ source 실패를 매프레임 재파싱하지 않으며 기존 재생 cache를 �
 
 ### 쿠크 게시 schema·고정 장판 높이·피해 소유
 
+- 같은 공간의 고정 장판과 별도 공간의 플레이어 표식은 본 socket을 공통 정답으로 삼지
+  않는다. 장판은 bone 없는 BOSS/followBoss=false로 발생 시점 root를 한 번 캡처하고,
+  머리 표식은 actor translation에 고정 높이를 더한다. cold 입장에서 표시할 모든 색을
+  product prewarm 목록에 포함해야 하며 이미 본 색만 보이는 warm-cache 결과로 완료하지 않는다.
+- Mario 참가자 제외는 최초 random 선택과 기존 target 재조회 모두에 적용한다. 알비온의
+  유효 대상이 없으면 보스의 navigation ground를 고정 표적으로 사용한다. 청취 범위는
+  로컬 Server snapshot의 Mario 상태로 결정하고 Composition SOUND, WORLD soundTracks와
+  종료 후 tail을 함께 정리한다. BGM 전체를 mute하거나 시각·Server pattern clock을 멈추지 않는다.
+- 다른 플레이어 청취 격리는 Character의 일반 skill/vehicle과 Esther의 별도 action 소비자를
+  모두 확인한다. 이미 시작한 음원은 owned handle로 중단하고 mute 중에도 cue cursor를
+  소비한다. 로컬 Mario 상태를 remote action보다 먼저 반영하며 첫 remote snapshot의
+  network-state 미준비를 청취 허용 조건으로 사용하지 않는다.
+- 원본 Mario는 일반 광대 변신의 MN_RPCZ와 별도 Polymorph다. 실제 Polymorph→skill→action→
+  notify를 먼저 확인한다. 다른 body에 retarget할 때 source weapon/socket과 설치 mesh의
+  같은 정점을 대조하고 hand-frame cook, preScale, socket pitch를 함께 적용한다. source FX
+  복원과 프로젝트 body/contact-time 재매핑, 사용자 화면 확인을 서로 구분한다.
+- 성공 문구는 animation 이름·groggy 진입으로 추측하지 않는다. 일반 stagger gauge와
+  쿠크 HP-threshold STAGGER_WINDOW의 성공 edge는 서로 다른 생산자다. 피해0 성공도
+  DAMAGE_EVENT로 전달하고 실제 피해 숫자·DPS와 별도로 표시한다.
+- 원본 진입 음원 조사에서는 메인 컷신 Matinee뿐 아니라 선행 trigger가 재생하는 별도
+  Matinee/InterpData의 SoundTrack을 확인한다. 기존 WORLD motion에 귀속시켜 trigger와
+  시작 시계가 같게 연결하고 컷신 전체에 임의로 붙이지 않는다.
+
 - 공식 Kouku owner는 Gameplay보다 앞서 World encounter metadata도 읽는다. 새 optional
   pattern 필드는 양쪽 schema 경계에 연결해야 한다. trackBombs처럼 한 검증기에만 빠지면
   저작 저장은 성공해도 owner 전체가 rollback된다. 검증 자체를 제거하지 않는다.

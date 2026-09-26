@@ -10772,6 +10772,66 @@
         "Sound/Character/GuardianKnight/PC_DragonKnight_F_SK_WingStinger1_FX005_2__73541323.wav",
         "Sound/Character/GuardianKnight/PC_DragonKnight_F_SK_WingStinger1_FX005_2__62824419.wav"
       ]
+    },
+    "Mario": {
+      "CircusBall1_Attack5_Shot2": [
+        "Sound/Mario/Events/CircusBall1_Attack5_Shot2.variant01.wav",
+        "Sound/Mario/Events/CircusBall1_Attack5_Shot2.variant02.wav",
+        "Sound/Mario/Events/CircusBall1_Attack5_Shot2.variant03.wav"
+      ],
+      "JumpClown1_Attack1_Shot1": [
+        "Sound/Mario/Events/JumpClown1_Attack1_Shot1.variant01.wav",
+        "Sound/Mario/Events/JumpClown1_Attack1_Shot1.variant02.wav",
+        "Sound/Mario/Events/JumpClown1_Attack1_Shot1.variant03.wav"
+      ],
+      "JumpClown1_Down1": [
+        "Sound/Mario/Events/JumpClown1_Down1.variant01.wav",
+        "Sound/Mario/Events/JumpClown1_Down1.variant02.wav",
+        "Sound/Mario/Events/JumpClown1_Down1.variant03.wav",
+        "Sound/Mario/Events/JumpClown1_Down1.variant04.wav",
+        "Sound/Mario/Events/JumpClown1_Down1.variant05.wav"
+      ],
+      "JumpClown1_Attack2_CastVox1": [
+        "Sound/Mario/Events/JumpClown1_Attack2_CastVox1.variant01.wav",
+        "Sound/Mario/Events/JumpClown1_Attack2_CastVox1.variant02.wav",
+        "Sound/Mario/Events/JumpClown1_Attack2_CastVox1.variant03.wav"
+      ],
+      "JumpClown1_Attack2_Shot1": [
+        "Sound/Mario/Events/JumpClown1_Attack2_Shot1.variant01.wav",
+        "Sound/Mario/Events/JumpClown1_Attack2_Shot1.variant02.wav",
+        "Sound/Mario/Events/JumpClown1_Attack2_Shot1.variant03.wav"
+      ],
+      "JumpClown1_Attack1_Cast1": [
+        "Sound/Mario/Events/JumpClown1_Attack1_Cast1.variant01.wav",
+        "Sound/Mario/Events/JumpClown1_Attack1_Cast1.variant02.wav",
+        "Sound/Mario/Events/JumpClown1_Attack1_Cast1.variant03.wav"
+      ],
+      "JumpClown1_Attack1_CastVox1": [
+        "Sound/Mario/Events/JumpClown1_Attack1_CastVox1.variant01.wav",
+        "Sound/Mario/Events/JumpClown1_Attack1_CastVox1.variant02.wav",
+        "Sound/Mario/Events/JumpClown1_Attack1_CastVox1.variant03.wav"
+      ],
+      "JumpClown1_Attack2_Cast1": [
+        "Sound/Mario/Events/JumpClown1_Attack2_Cast1.variant01.wav",
+        "Sound/Mario/Events/JumpClown1_Attack2_Cast1.variant02.wav",
+        "Sound/Mario/Events/JumpClown1_Attack2_Cast1.variant03.wav"
+      ],
+      "JumpClown1_StandUp1": [
+        "Sound/Mario/Events/JumpClown1_StandUp1.variant01.wav",
+        "Sound/Mario/Events/JumpClown1_StandUp1.variant02.wav",
+        "Sound/Mario/Events/JumpClown1_StandUp1.variant03.wav"
+      ],
+      "JumpClown1_Death1": [
+        "Sound/Mario/Events/JumpClown1_Death1.variant01.wav",
+        "Sound/Mario/Events/JumpClown1_Death1.variant02.wav",
+        "Sound/Mario/Events/JumpClown1_Death1.variant03.wav"
+      ],
+      "JumpClown1_Damage1": [
+        "Sound/Mario/Events/JumpClown1_Damage1.variant01.wav",
+        "Sound/Mario/Events/JumpClown1_Damage1.variant02.wav",
+        "Sound/Mario/Events/JumpClown1_Damage1.variant03.wav",
+        "Sound/Mario/Events/JumpClown1_Damage1.variant04.wav"
+      ]
     }
   }
 }

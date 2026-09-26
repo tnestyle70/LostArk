@@ -1102,6 +1102,11 @@
     {"kind": "V1", "assetId": "effect.kouku.cardmaze.lmb", "displayName": "카드미로 | LMB | 이펙트 저작", "parentId": "root.v1"},
     {"kind": "V1", "assetId": "effect.kouku.mario.marker.red", "displayName": "Mario red assigned colour marker", "parentId": "kouku.category.mario.pattern"},
     {"kind": "V1", "assetId": "effect.kouku.mario.marker.blue", "displayName": "Mario blue assigned colour marker", "parentId": "kouku.category.mario.pattern"},
-    {"kind": "V1", "assetId": "effect.kouku.mario.marker.yellow", "displayName": "Mario yellow assigned colour marker", "parentId": "kouku.category.mario.pattern"}
+    {"kind": "V1", "assetId": "effect.kouku.mario.marker.yellow", "displayName": "Mario yellow assigned colour marker", "parentId": "kouku.category.mario.pattern"},
+    {"kind": "V1", "assetId": "effect.kouku.mario.ball.pop.blue", "displayName": "Mario blue ball original pop", "parentId": "kouku.category.mario.pattern"},
+    {"kind": "V1", "assetId": "effect.kouku.mario.ball.pop.red", "displayName": "Mario red ball original pop", "parentId": "kouku.category.mario.pattern"},
+    {"kind": "V1", "assetId": "effect.kouku.mario.ball.pop.yellow", "displayName": "Mario yellow ball original pop", "parentId": "kouku.category.mario.pattern"},
+    {"kind": "V1", "assetId": "effect.kouku.mario.player.hammer.impact", "displayName": "Mario original Q hammer (MN_REUP_07 / 42784)", "parentId": "kouku.category.mario.pattern"},
+    {"kind": "V1", "assetId": "effect.kouku.mario.flyingball.hit", "displayName": "Mario flying-ball contact (original RHCN explosion)", "parentId": "kouku.category.mario.pattern"}
   ]
 }

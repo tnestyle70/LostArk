@@ -427,7 +427,7 @@ Release Server는 예전처럼 플레이어가 밟으면 그룹을 시작한다.
 결과 메시지는 없고 monster는 world snapshot으로 온다. 거절 사유는 Server 콘솔의 `[WaveMonsters]` 줄에 남는다.
 
 Release Server는 이 명령을 무시한다. `Stage_MiniBoss_Spawn`, `Stage_3`, `Stage_Boss`, 다른 월드의 트리거는 Debug에서도
-예전처럼 동작한다. 다른 protocol의 Server/Client를 섞어 실행하지 않는다. 현재 wire 정본은 `PacketType.h`의 `NETWORK_PROTOCOL_VERSION` 110이다. 위 protocol 99 표기는 해당 명령이 도입된 버전이며 현재 실행 파일의 호환 버전으로 사용하지 않는다.
+예전처럼 동작한다. 다른 protocol의 Server/Client를 섞어 실행하지 않는다. 현재 wire 정본은 `PacketType.h`의 `NETWORK_PROTOCOL_VERSION` 115이다. 위 protocol 99 표기는 해당 명령이 도입된 버전이며 현재 실행 파일의 호환 버전으로 사용하지 않는다.
 
 ### 4.2 마리오 변신·방향키 조작·Debug 점프
 
@@ -1061,7 +1061,7 @@ MOTION_END tail까지 WORLD box 구간과 함께 확인한다.
 WORLD cue는 run epoch·member·cue ID와 시작 tick을 함께 전달한다. Client는 전달 지연만큼 시계를 맞추고,
 STOP_OWNER는 취소·실패·restart에 사용하고, 정상 완료의 FINISH_OWNER는 이미 생성한 공과 Effect의
 남은 수명을 보존한다. 두 명령 모두 해당 run/member가 만든 객체에만 적용한다.
-Server/Shared/Client는 같은 protocol114로 함께 빌드·재시작한다. FEAR snapshot 상태와
+Server/Shared/Client는 같은 protocol115로 함께 빌드·재시작한다. FEAR snapshot 상태와
 빙고·마리오·갈고리 attachment wire, 마리오 원본 공의 `iMarioPoppedBallMask`(u16)·
 `iMarioCurseReleasedMask`(u8), `iMarioMarkerColor`(u8)와 카드미로 ENTRY_HIDDEN을 함께 포함한다.
 이전 protocol 실행 파일과 혼용하지 않는다.
@@ -2228,7 +2228,7 @@ INVULNERABILITY_ZONE의 기존 threshold필드는0이면인원제한없음,1~4�
 
 ### 쿠크 후속 판정·표시 계약
 
-현재 protocol114의 player snapshot은 iMarioMarkerColor(0없음,1빨강,2파랑,3노랑)를
+현재 protocol115의 player snapshot은 iMarioMarkerColor(0없음,1빨강,2파랑,3노랑)를
 표시 대상에게 보낸다. Server가 마리오 진입 때 지정 색과 대상을 정하고1인은 진입자,
 2~4인은 바깥 참가자 중 한 명에게 표시한다. 표식 대상이 사망해도 진입자가 살아
 있는 동안 유지한다. 지정 색 공3개를 파괴해야 terminal 이동과 typed0키 복귀가
@@ -2250,3 +2250,28 @@ hammerHalfExtentsM(진행축·가로축)을 PATTERNBINGOHAMMER 행으로 읽는�
 카드미로 입장에는 사망자 위치도 포함하되 HP0/DEAD/빈 interaction slot을 보존한다.
 카드미로·댄스 모드는 사망 관전자도 HUD를 숨기며 기믹 입력이나 사망 복귀창을
 전역 UI suppression으로 차단하지 않는다.
+
+### 성공 문구와 마리오 전장 분리
+
+protocol115의 DAMAGE_EVENT는 isStaggerSuccess를 명시적으로 전달한다. 일반 stagger gauge
+완료와 쿠크 STAGGER_WINDOW 성공 모두 Server edge이며 피해0 성공도 유효하다. Client는
+기존 isCounterSuccess와 함께 CombatHUDViewModel을 거쳐 파란 카운터·노란 무력화 폰트를
+표시하고 가짜 피해나 Client 판정을 생성하지 않는다. 비행 공 피격은 typed Mario source로
+구분하며 일반 incoming damage를 공 충돌로 추측하지 않는다. Server/Client는 같은 버전으로
+교체·재시작한다.
+
+알비온과 보스 선택·추적은 마리오 참가자를 제외한다. 유효 전장 참가자가 없으면 현재
+보스의 navigation ground를 고정 표적으로 사용해 단계 진행을 유지한다. 마리오의 로컬
+청취 범위에서는 전장 보스 SOUND와 WORLD soundTracks·tail을 재생하지 않는다. 각자
+마리오의 자체 공격·피격·BGM은 유지하며 source/renderer나 gameplay clock을 멈추지 않는다.
+다른 플레이어의 Character skill/vehicle 및 Esther PLAYER_ACTION/NPC_ACTION 음원도
+같은 청취 범위에서 제외한다. 소유 handle로 진행 중 tail을 중단하고 mute 중 cue는
+소비하므로 복귀 시 밀린 음원이 재생되지 않는다. Kouku snapshot은 로컬 player를 먼저
+반영해 같은 입장 tick의 remote action도 현재 Mario 상태를 읽는다.
+
+Clown.interactionbindings.json의 각 skill은 optional soundCues를 가질 수 있다. 각 행은
+Mario sound catalog의 event 이름과 clip source 시계의 정수 startMs이며 최대16개다.
+Character가 clip/effect/sound를 함께 검증해 교체하고 Server가 승인한 로컬 interaction의
+actionStartTick과 playRate로 한 번만 재생한다. 잘못된 행은 기존 binding을 유지한다.
+공 파괴는 기존 Server pop mask, 비행 공 피격은 DAMAGE_EVENT.eMarioHitSource의
+FLYING_BALL을 소비하며 Client가 전투 판정을 새로 만들지 않는다.

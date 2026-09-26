@@ -494,8 +494,8 @@ void Client::CCombatHUDViewModel::Apply_DamageEvents(
 			if (event.isCounterSuccess)
 				++m_CombatAnalysis.iCounterSuccesses;
 		}
-		/* A stagger-only / counter-only event carries no number to float. */
-		if (0u == event.iAmount)
+		/* Successful mechanics remain visible even when the hit did no HP damage. */
+		if (0u == event.iAmount && !event.isCounterSuccess && !event.isStaggerSuccess)
 			continue;
 		HUD_DAMAGE_EVENT retained{};
 		retained.iServerTick = serverTick;

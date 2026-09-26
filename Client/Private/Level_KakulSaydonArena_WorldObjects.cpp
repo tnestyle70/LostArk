@@ -6,6 +6,9 @@
 #include "DeployPropObject.h"
 #include "EffectV2_Catalog.h"
 #include "EffectV2_Runtime.h"
+#include "Effect_PresentationService.h"
+#include "SoundCueCatalog.h"
+#include "RuntimeAssetRoot.h"
 #include "KoukuSaydonPresentationPlayer.h"
 #include "KoukuSaydonCompositionDocument.h"
 #include "KakulArenaHiddenPlacements.h"
@@ -364,10 +367,11 @@ void CLevel_KakulSaydonArena::Update_MarioBallBouncePresentation(const f32_t tim
 
 void CLevel_KakulSaydonArena::Update_MarioBallPresentation(const f32_t timeDelta)
 {
+    Update_MarioCombatPresentation();
     constexpr f32_t CURSE_NOTICE_SECONDS = 3.f;
     constexpr float BALL_CENTRE_HEIGHT_M = .47f;
-    static constexpr const char* SMOKE_LEAVES[3] = {
-        "boss.kouku.ball.smoke.red_1", "boss.kouku.ball.smoke.blue_1", "boss.kouku.ball.smoke.yellow_1" };
+    static constexpr const char* POP_EFFECTS[3] = {
+        "effect.kouku.mario.ball.pop.red", "effect.kouku.mario.ball.pop.blue", "effect.kouku.mario.ball.pop.yellow" };
     const auto& player = CCombatHUDViewModel::Get().Get_Player();
     const auto& document = m_SequencePlayer.Get_Document();
     // Follows the layout the bounce update chose this frame; empty outside Mario.
@@ -410,29 +414,21 @@ void CLevel_KakulSaydonArena::Update_MarioBallPresentation(const f32_t timeDelta
         const std::string& asset = entry->record.assetId;
         const int color = asset == "MAP_MARIO_RED_STAR_BALL" ? 0 :
             asset == "MAP_MARIO_BLUE_BALL" ? 1 : asset == "MAP_MARIO_YELLOW_BALL" ? 2 : -1;
-        if (color < 0 || m_bMarioBallSmokeFailed[color]) continue;
-        const auto smoke = m_SequencePlayer.Find_PreparedLeafSnapshot(SMOKE_LEAVES[color]);
-        if (!smoke)
-        {
-            m_bMarioBallSmokeFailed[color] = true;
-            OutputDebugStringA(("[MarioBall] Loader snapshot unavailable: " + std::string(SMOKE_LEAVES[color]) + "\n").c_str());
-            continue;
-        }
-        /* The authored cloud sits at its own local offset (2.3 m up, 1.35 m
-           forward) because it was written for a taller anchor. Cancel that
-           offset so the puff lands on the ball; reading it back keeps this
-           correct if the effect is re-authored. */
-        const auto* document = smoke->Find_Document(SMOKE_LEAVES[color]);
-        const float3_t authored = nullptr == document ? float3_t{} :
-            document->Desc.Params.Position.vStart;
-        EFFECT_V2_GROUP_PLAYBACK_DESC playback;
-        XMStoreFloat4x4(&playback.PivotWorld, XMMatrixTranslation(
-            entry->record.position.x - authored.x,
-            entry->record.position.y + BALL_CENTRE_HEIGHT_M - authored.y,
-            entry->record.position.z - authored.z));
-        playback.bProductOwned = true;
-        if (0u == CEffectV2Runtime::Play_Leaf(SMOKE_LEAVES[color], smoke, playback, m_pDevice, m_pContext))
-            OutputDebugStringA(("[MarioBall] smoke: " + CEffectV2Runtime::Last_Error() + "\n").c_str());
+        if (color < 0) continue;
+        EFFECT_LEVEL_PLACEMENT_SPAWN_DESC spawn;
+        spawn.iLevelIndex = ETOUI(LEVEL::KAKULSAYDON_ARENA);
+        spawn.strPlacementId = "mario.ball.pop:" + std::to_string(placementId) + ":" + std::to_string(player.iServerTick);
+        spawn.strEffectAssetId = POP_EFFECTS[color];
+        spawn.iSpawnTick = player.iServerTick;
+        XMStoreFloat4x4(&spawn.RootWorld, XMMatrixTranslation(entry->record.position.x,
+            entry->record.position.y + BALL_CENTRE_HEIGHT_M, entry->record.position.z));
+        EFFECT_WORLD_ROOT_HANDLE handle;
+        std::string status;
+        if (!CEffectPresentationService::Spawn_LevelPlacement(spawn, handle, status))
+            OutputDebugStringA(("[MarioBall] " + status + "\n").c_str());
+        const auto& variants = CSoundCueCatalog::Find_Variants("Mario", "CircusBall1_Attack5_Shot2");
+        if (!variants.empty()) CGameInstance::Get().Play_Sound(
+            CRuntimeAssetRoot::Resolve(variants[static_cast<size_t>(std::rand()) % variants.size()]).wstring(), 1.f);
     }
     m_iMarioPoppedBallsSeen = popped;
     if (!layoutChanged)
@@ -450,6 +446,62 @@ void CLevel_KakulSaydonArena::Update_MarioBallPresentation(const f32_t timeDelta
             m_iMarioCurseNoticeColor = color;
             m_fMarioCurseNoticeSeconds = CURSE_NOTICE_SECONDS;
         }
+}
+
+void CLevel_KakulSaydonArena::Update_MarioCombatPresentation()
+{
+    using namespace LostArk::Shared;
+    const auto& hud = CCombatHUDViewModel::Get();
+    const auto& local = hud.Get_Player();
+    const bool currentMario = local.isValid && local.iMarioStage != 0u;
+    const bool inMario = currentMario || m_bMarioCombatWasActive;
+    m_bMarioCombatWasActive = currentMario;
+    const auto character = m_Replication.Get_LocalCharacter();
+    std::vector<KOUKU_BOSS_PRESENTATION_VIEW> bosses;
+    std::vector<KOUKU_CARD_PRESENTATION_VIEW> players;
+    if (inMario && character) m_Replication.Collect_KoukuPresentationViews(bosses, players);
+    const auto view = std::find_if(players.begin(), players.end(), [&](const auto& row) { return row.pCharacter.lock() == character; });
+    const auto playSound = [](const char* event) {
+        const auto& variants = CSoundCueCatalog::Find_Variants("Mario", event);
+        if (!variants.empty()) CGameInstance::Get().Play_Sound(
+            CRuntimeAssetRoot::Resolve(variants[static_cast<size_t>(std::rand()) % variants.size()]).wstring(), 1.f);
+    };
+    const bool knockedDown = currentMario && local.eAction == PLAYER_ACTION_STATE::KNOCKDOWN;
+    if (currentMario && local.iCurrentHp && m_bMarioWasKnockedDown && !knockedDown)
+        playSound("JumpClown1_StandUp1");
+    m_bMarioWasKnockedDown = knockedDown;
+    uint32_t newest = m_iMarioDamageTick;
+    bool sounded = false, flyingShown = false;
+    for (const auto& retained : hud.Get_DamageEvents())
+    {
+        newest = (std::max)(newest, retained.iServerTick);
+        const auto& event = retained.Event;
+        if (retained.iServerTick <= m_iMarioDamageTick || !inMario || view == players.end() ||
+            event.iTargetNetEntityId != view->Snapshot.iNetEntityId || event.isOutgoing ||
+            !event.iAmount || event.eHitFlag == DAMAGE_HIT_FLAG::HEAL) continue;
+        if (!sounded)
+        {
+            playSound(!local.iCurrentHp ? "JumpClown1_Death1" :
+                local.eAction == PLAYER_ACTION_STATE::KNOCKDOWN ? "JumpClown1_Down1" : "JumpClown1_Damage1");
+            sounded = true;
+        }
+        if (!flyingShown && event.eMarioHitSource == MARIO_HIT_SOURCE::FLYING_BALL && character->Get_Transform())
+        {
+            EFFECT_LEVEL_PLACEMENT_SPAWN_DESC spawn;
+            spawn.iLevelIndex = ETOUI(LEVEL::KAKULSAYDON_ARENA);
+            spawn.strPlacementId = "mario.flying.hit:" + std::to_string(retained.iServerTick);
+            spawn.strEffectAssetId = "effect.kouku.mario.flyingball.hit";
+            spawn.iSpawnTick = retained.iServerTick;
+            XMStoreFloat4x4(&spawn.RootWorld, XMMatrixTranslation(event.fPositionX, event.fPositionY + .8f, event.fPositionZ));
+            EFFECT_WORLD_ROOT_HANDLE handle;
+            std::string status;
+            if (!CEffectPresentationService::Spawn_LevelPlacement(spawn, handle, status))
+                OutputDebugStringA(("[MarioHit] " + status + "\n").c_str());
+            flyingShown = true;
+        }
+    }
+    // Consume retained combat history even outside Mario, preventing replay on entry.
+    m_iMarioDamageTick = newest;
 }
 
 bool_t CLevel_KakulSaydonArena::Try_GetCinematicWorldBossAnchor(const std::string& archetype,

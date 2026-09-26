@@ -22,6 +22,7 @@
 #include "MapTool.h"
 #include "Character.h"
 #include "CombatHUDViewModel.h"
+#include "EstherActionSoundCueDocument.h"
 #include "DataJson.h"
 #include "GameInstance.h"
 #include "RuntimeAssetRoot.h"
@@ -332,6 +333,19 @@ namespace
 		const auto& player = CCombatHUDViewModel::Get().Get_Player();
 		return player.isValid && !player.isPreview && player.iMarioStage >= 1u && player.iMarioStage <= 4u;
 	}
+
+	bool Is_SequenceSoundAudience(const std::string& instanceId)
+    {
+        const auto& listener = CCombatHUDViewModel::Get().Get_Player();
+        if (!listener.isValid || listener.isPreview) return true;
+        constexpr std::array<std::string_view, 4> marioIntros = {
+            "world.sequence.instance.mario_m1_intro", "world.sequence.instance.mario_m2_intro",
+            "world.sequence.instance.mario_m3_intro", "world.sequence.instance.mario_m4_intro" };
+        const auto intro = std::find(marioIntros.begin(), marioIntros.end(), instanceId);
+        if (intro != marioIntros.end())
+            return listener.iMarioStage == static_cast<std::uint8_t>(intro - marioIntros.begin() + 1u);
+        return listener.iMarioStage == 0u;
+    }
 
 	bool_t Is_SequenceCameraAudience(const std::string_view instanceId, const std::uint8_t localMarioStage)
 	{
@@ -1350,6 +1364,7 @@ bool_t Client::CLevel_KakulSaydonArena::Debug_SampleCompositionWorldPreview(
 
 HRESULT Client::CLevel_KakulSaydonArena::Initialize()
 {
+    m_SequencePlayer.Set_SoundAudience(Is_SequenceSoundAudience);
 	const auto arenaStarted = GetTickCount64();
 	const EFFECT_SLOW_SCOPE_DIAGNOSTIC arenaTiming{"Kouku.Arena.Initialize", {}, {}};
 	CProfiler* const pProfiler = CGameInstance::Get().Get_Profiler();
@@ -1784,6 +1799,7 @@ void Client::CLevel_KakulSaydonArena::Update(const f32_t fTimeDelta)
 		OutputDebugStringA(
 			"[Level_KakulSaydonArena] Failed to apply replication event.\n");
 	}
+	CEstherActionSoundCueDocument::Update_SoundAudience();
 	m_Replication.Collect_PlayerViews(m_NameplatePlayers);
 	m_InteractKeyPrompt.Update(fTimeDelta, m_Replication.Get_LocalCharacter(),
 		CCombatHUDViewModel::Get().Get_InteractPromptTriggerId(),
@@ -6173,6 +6189,7 @@ void Client::CLevel_KakulSaydonArena::Consume_OwnedWorldCue(
     { defer(); return; }
     BindCompositionGroupOrigin(m_SequencePlayer.Get_Document(), play.strSequenceInstanceId, cueTargets);
     auto player = std::make_shared<CWorldSequencePlayer>();
+    player->Set_SoundAudience(Is_SequenceSoundAudience);
     const auto placement = WorldPlacementFromCue(play);
     CWorldSequenceDocument playback;
     if (!m_SequencePlayer.Get_Document().Build_PlaybackSubset({play.strSequenceInstanceId}, playback, status) ||

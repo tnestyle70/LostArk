@@ -42,6 +42,7 @@ namespace LostArk::Server
 
 	struct SERVER_WORLD_TO_PLAYER_HIT final
 	{
+		LostArk::Shared::MARIO_HIT_SOURCE eMarioHitSource = LostArk::Shared::MARIO_HIT_SOURCE::NONE;
 		std::uint32_t iRawDamage = 0u;
 		float fSourceX = 0.f;
 		float fSourceZ = 0.f;

@@ -2272,7 +2272,10 @@ bool Client::CKoukuSaydonPresentationPlayer::Collect_ProductEffectTargets(
     const auto started = GetTickCount64();
     try
     {
-        std::set<std::string> v1{ "effect.kouku.card.match.bind.floor", "effect.kouku.card.match.bind.release" };
+        std::set<std::string> v1{ "effect.kouku.card.match.bind.floor", "effect.kouku.card.match.bind.release",
+            "effect.kouku.mario.marker.red", "effect.kouku.mario.marker.blue", "effect.kouku.mario.marker.yellow",
+            "effect.kouku.mario.ball.pop.red", "effect.kouku.mario.ball.pop.blue", "effect.kouku.mario.ball.pop.yellow",
+            "effect.kouku.mario.flyingball.hit" };
         std::set<std::pair<std::string, std::string>> v2;
         const auto add = [&](const std::string& kind, const std::string& id) {
             if (!CEffectV2Document::Is_ValidEffectId(id))
@@ -2624,13 +2627,9 @@ void Client::CKoukuSaydonPresentationPlayer::Update_MarioMarks(
             occurrence.bFollowBoss = true;
         }
         const matrix_t world = XMLoadFloat4x4(character->Get_Transform()->Get_WorldMatrixPtr());
-        vector_t position = world.r[3];
-        const auto body = character->Get_BodyModel();
-        if (body && body->Has_Bone("bip001-head"))
-            position = (body->Get_BoneMatrix("bip001-head") * world).r[3];
-        else
-            position = XMVectorSetY(position, XMVectorGetY(position) + 1.7f);
-        position = XMVectorSetY(position, XMVectorGetY(position) + .75f);
+        // The marker follows actor movement only. Animated head/root bones add
+        // pose bobbing (and omit the scaled clown body-part basis).
+        const vector_t position = XMVectorSetY(world.r[3], XMVectorGetY(world.r[3]) + 2.45f);
         float4x4_t pivot;
         XMStoreFloat4x4(&pivot, XMMatrixTranslationFromVector(position));
         // A persistent image samples the native local-space source's settled
@@ -2941,6 +2940,16 @@ void Client::CKoukuSaydonPresentationPlayer::Sample(SESSION& session,
         auto [found, inserted] = session.rows.try_emplace(box.strOccurrenceId);
         PLAYING_ROW& row = found->second;
         if (row.failed) return;
+        const auto& listener = CCombatHUDViewModel::Get().Get_Player();
+        if (resource.eKind == KIND::SOUND && !previewSession && listener.isValid &&
+            !listener.isPreview && listener.iMarioStage != 0u)
+        {
+            if (row.soundHandle) CGameInstance::Get().Stop_SoundCue(row.soundHandle);
+            row.soundHandle = 0u;
+            // Remember this occurrence as consumed; leaving Mario never replays it.
+            row.kind = KIND::SOUND;
+            return;
+        }
         struct ROW_FAILURE_GUARD
         {
             PLAYING_ROW& row;
@@ -3003,8 +3012,9 @@ void Client::CKoukuSaydonPresentationPlayer::Sample(SESSION& session,
             const auto sharedBirth = session.fixedPresentationAnchors.find(box.strAnchorPresentationOccurrenceId.empty() ?
                 box.strOccurrenceId : box.strAnchorPresentationOccurrenceId);
             if (!frozenAnchor && sharedBirth != session.fixedPresentationAnchors.end()) anchor = sharedBirth->second;
-            else if (!frozenAnchor && exactRoot && !box.bFollowBoss && box.strAnchorKind == "BOSS" && box.strBone.empty() &&
-                !exactRoot(box.iStartMs / 1000.f, anchor, m_strStatus))
+            else if (!frozenAnchor && !box.bFollowBoss && box.strAnchorKind == "BOSS" && box.strBone.empty() &&
+                !(exactRoot ? exactRoot(box.iStartMs / 1000.f, anchor, m_strStatus) :
+                    session.rootHistory->Sample(box.iStartMs / 1000.f, anchor, m_strStatus)))
             { row.failed = true; return; }
             auto anchorModel = model;
             if (frozenAnchor)

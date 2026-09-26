@@ -7,6 +7,7 @@
 #include "NpcPresentationAssetService.h"
 #include "RuntimeAssetRoot.h"
 #include "SoundCueCatalog.h"
+#include "CombatHUDViewModel.h"
 #include "MonsterPresentationAssetService.h"
 #include "KoukuSaydonPresentationAssetService.h"
 
@@ -39,6 +40,7 @@ CNpc::CNpc(ComPtr<ID3D11Device> pDevice, ComPtr<ID3D11DeviceContext> pContext)
 
 CNpc::~CNpc()
 {
+	if (m_iKoukuHitReactionSound) CGameInstance::Get().Stop_SoundCue(m_iKoukuHitReactionSound);
 }
 
 HRESULT CNpc::Initialize_Prototype()
@@ -473,6 +475,13 @@ void CNpc::Arm_HitReactionSound(const char_t* pClipName)
 
 void CNpc::Update_HitReactionSound()
 {
+	const auto& listener = CCombatHUDViewModel::Get().Get_Player();
+	const bool muteBoss = listener.isValid && !listener.isPreview && listener.iMarioStage != 0u;
+	if (muteBoss && m_iKoukuHitReactionSound)
+	{
+		CGameInstance::Get().Stop_SoundCue(m_iKoukuHitReactionSound);
+		m_iKoukuHitReactionSound = 0u;
+	}
 	if (m_iPendingHitReactionSoundClip == UINT32_MAX) return;
 	struct SOUND_NOTIFY final { const char* soundClass; const char* event; uint32_t startMs; };
 	static constexpr std::array<SOUND_NOTIFY, 5u> notifies = {{
@@ -484,6 +493,8 @@ void CNpc::Update_HitReactionSound()
 	}};
 	const uint32_t clip = m_iPendingHitReactionSoundClip;
 	const uint32_t event = m_iPendingHitReactionSoundEvent;
+	if (muteBoss && event == 0u)
+	{ m_iPendingHitReactionSoundClip = m_iPendingHitReactionSoundEvent = UINT32_MAX; return; }
 	const auto cancel = [&]() { m_iPendingHitReactionSoundClip = UINT32_MAX;
 		m_iPendingHitReactionSoundEvent = UINT32_MAX; };
 	if (event >= notifies.size() || !m_pModelCom || !Is_PresentationVisible() ||
@@ -515,7 +526,12 @@ void CNpc::Update_HitReactionSound()
 	const size_t variant = eligible[choose(random)];
 	previousAsset = variants[variant];
 	const auto path = CRuntimeAssetRoot::Resolve(variants[variant]);
-	(void)CGameInstance::Get().Play_Sound(path.wstring(), 1.f);
+	if (event == 0u)
+	{
+		if (m_iKoukuHitReactionSound) CGameInstance::Get().Stop_SoundCue(m_iKoukuHitReactionSound);
+		m_iKoukuHitReactionSound = CGameInstance::Get().Play_SoundCue(path.wstring(), 1.f);
+	}
+	else (void)CGameInstance::Get().Play_Sound(path.wstring(), 1.f);
 }
 
 void CNpc::Update_ActionEffectCues(const f32_t fTimeDelta)

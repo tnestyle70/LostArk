@@ -1853,6 +1853,9 @@ namespace LostArk::Shared
 	// value to subtract it; this carries the same number rather than letting the
 	// client re-derive one it has no authority for. Like boss combat events below,
 	// a missed presentation edge never desynchronizes its persistent level state.
+	// Presentation evidence supplied only by the authoritative Mario contact.
+	enum class MARIO_HIT_SOURCE : std::uint8_t { NONE, FLYING_BALL, END };
+
 	struct DAMAGE_EVENT
 	{
 		// Whoever took the damage: a player or a world entity, both of which live
@@ -1880,6 +1883,9 @@ namespace LostArk::Shared
 		PLAYER_ID iSourcePlayerId = INVALID_PLAYER_ID;
 		std::uint32_t iStaggerAmount = 0;
 		bool isCounterSuccess = false;
+		// Server-confirmed threshold edge, independent of the later groggy animation.
+		bool isStaggerSuccess = false;
+		MARIO_HIT_SOURCE eMarioHitSource = MARIO_HIT_SOURCE::NONE;
 		/* Which of the retail damage-text styles this event is drawn in. The Server
 		decides it, exactly as retail's native side does. */
 		DAMAGE_HIT_FLAG eHitFlag = DAMAGE_HIT_FLAG::NORMAL;

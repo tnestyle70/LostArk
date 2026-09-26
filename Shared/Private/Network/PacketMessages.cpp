@@ -603,26 +603,29 @@ namespace
 			snapshot.PinnedDefinitionRevision.Is_Valid();
 	}
 
-	// A zero amount is not a hit, so it must not reach presentation as one; the
-	// server clamps every resolved hit to at least 1.
+	// Zero HP damage is valid only for an explicit stagger contribution or
+	// mechanic-success pulse; ordinary hits still require a positive amount.
 	bool Is_Valid_DamageEvent(
 		const LostArk::Shared::DAMAGE_EVENT& damage)
 	{
 		return
 			damage.iTargetNetEntityId !=
 				LostArk::Shared::INVALID_NET_ENTITY_ID &&
-			(0 != damage.iAmount || 0 != damage.iStaggerAmount || damage.isCounterSuccess) &&
+			(0 != damage.iAmount || 0 != damage.iStaggerAmount || damage.isCounterSuccess || damage.isStaggerSuccess) &&
 			LostArk::Shared::Is_Valid_DamageHitFlag(damage.eHitFlag) &&
+			static_cast<std::uint8_t>(damage.eMarioHitSource) < static_cast<std::uint8_t>(LostArk::Shared::MARIO_HIT_SOURCE::END) &&
+			(damage.eMarioHitSource == LostArk::Shared::MARIO_HIT_SOURCE::NONE ||
+				(!damage.isOutgoing && damage.iAmount && damage.eHitFlag != LostArk::Shared::DAMAGE_HIT_FLAG::HEAL)) &&
 			/* A heal is the target's own gain and carries no combat bookkeeping. */
 			(LostArk::Shared::DAMAGE_HIT_FLAG::HEAL != damage.eHitFlag ||
 				(damage.isOutgoing && 0 == damage.iStaggerAmount &&
-					!damage.isCounterSuccess)) &&
+					!damage.isCounterSuccess && !damage.isStaggerSuccess)) &&
 			/* Shield absorption carries only its own positive amount. */
 			(LostArk::Shared::DAMAGE_HIT_FLAG::ABSORB != damage.eHitFlag ||
-				(0u != damage.iAmount && 0u == damage.iStaggerAmount && !damage.isCounterSuccess &&
+				(0u != damage.iAmount && 0u == damage.iStaggerAmount && !damage.isCounterSuccess && !damage.isStaggerSuccess &&
 					damage.eCardMazeSuit == LostArk::Shared::MECHANIC_CARD_SYMBOL::NONE)) &&
 			/* Stagger and counters are things a player did to a boss. */
-			((0 == damage.iStaggerAmount && !damage.isCounterSuccess) || damage.isOutgoing) &&
+			((0 == damage.iStaggerAmount && !damage.isCounterSuccess && !damage.isStaggerSuccess) || damage.isOutgoing) &&
 			LostArk::Shared::Is_Valid_MechanicCardSymbol(damage.eCardMazeSuit) &&
 			/* A shard is something a hunter earned, so it is always outgoing. */
 			(LostArk::Shared::MECHANIC_CARD_SYMBOL::NONE == damage.eCardMazeSuit ||
@@ -3325,6 +3328,8 @@ bool LostArk::Shared::Write_Message(CPacketWriter& writer, const S2C_WORLD_SNAPS
 		writer.Write_U32(damage.iSourcePlayerId);
 		writer.Write_U32(damage.iStaggerAmount);
 		writer.Write_U8(damage.isCounterSuccess ? 1u : 0u);
+		writer.Write_U8(damage.isStaggerSuccess ? 1u : 0u);
+		writer.Write_U8(static_cast<std::uint8_t>(damage.eMarioHitSource));
 		writer.Write_U8(static_cast<std::uint8_t>(damage.eHitFlag));
 	}
 	writer.Write_U32(message.Bingo.iWhiteMask);
@@ -3684,6 +3689,8 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader, S2C_WORLD_SNAPSHOT& me
 		std::uint8_t rawOutgoing = 0;
 		std::uint8_t rawShardSuit = 0;
 		std::uint8_t rawCounter = 0;
+		std::uint8_t rawStagger = 0;
+		std::uint8_t rawMarioHit = 0;
 		std::uint8_t rawHitFlag = 0;
 		if (!reader.Read_U32(damage.iTargetNetEntityId) ||
 			!reader.Read_U32(damage.iAmount) ||
@@ -3698,6 +3705,8 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader, S2C_WORLD_SNAPSHOT& me
 			!reader.Read_U32(damage.iStaggerAmount) ||
 			!reader.Read_U8(rawCounter) ||
 			rawCounter > 1u ||
+			!reader.Read_U8(rawStagger) || rawStagger > 1u ||
+			!reader.Read_U8(rawMarioHit) || rawMarioHit >= static_cast<std::uint8_t>(MARIO_HIT_SOURCE::END) ||
 			!reader.Read_U8(rawHitFlag) ||
 			rawHitFlag >= static_cast<std::uint8_t>(DAMAGE_HIT_FLAG::END))
 		{
@@ -3706,6 +3715,8 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader, S2C_WORLD_SNAPSHOT& me
 		damage.isOutgoing = 0u != rawOutgoing;
 		damage.eCardMazeSuit = static_cast<MECHANIC_CARD_SYMBOL>(rawShardSuit);
 		damage.isCounterSuccess = 0u != rawCounter;
+		damage.isStaggerSuccess = 0u != rawStagger;
+		damage.eMarioHitSource = static_cast<MARIO_HIT_SOURCE>(rawMarioHit);
 		damage.eHitFlag = static_cast<DAMAGE_HIT_FLAG>(rawHitFlag);
 		if (!Is_Valid_DamageEvent(damage))
 			return false;

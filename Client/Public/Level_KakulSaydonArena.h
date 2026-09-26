@@ -445,15 +445,18 @@ private:
 	bool_t m_bMarioBallBounceFailed = false;
 	/* Server-popped source balls of the current layout: a newly set slot bit
 	   hides that binding through the sequence player and plays the ball's
-	   smoke leaf once; a newly set curse bit queues the centred notice. */
+	   original pop once; a newly set curse bit queues the centred notice. */
 	void Update_MarioBallPresentation(f32_t timeDelta);
+	void Update_MarioCombatPresentation();
+	std::uint32_t m_iMarioDamageTick = 0u;
+	bool_t m_bMarioCombatWasActive = false;
+	bool_t m_bMarioWasKnockedDown = false;
 	std::string m_strMarioBallLayoutInstance;
 	std::uint16_t m_iMarioPoppedBallsSeen = 0u;
 	std::uint8_t m_iMarioCurseSeen = 0u;
 	std::uint8_t m_iMarioCurseNoticeQueue = 0u;
 	std::int32_t m_iMarioCurseNoticeColor = -1;
 	f32_t m_fMarioCurseNoticeSeconds = 0.f;
-	std::array<bool_t, 3u> m_bMarioBallSmokeFailed = {};
 	// Presentation-only launch markers use published world positions and the existing object player.
 	struct MARIO_BOMB_EMITTER
 	{

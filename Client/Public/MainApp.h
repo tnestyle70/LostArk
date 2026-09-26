@@ -794,6 +794,8 @@ private:
 		float3_t vWorldPosition = {};
 		uint32_t iAmount = 0;
 		bool_t isOutgoing = false;
+		// 0 = amount, 1 = counter, 2 = stagger success.
+		uint8_t iMechanicSuccess = 0u;
 		/* NONE draws iAmount as a damage number. A suit draws it as that
 		hunter's card maze shard count instead. */
 		LostArk::Shared::MECHANIC_CARD_SYMBOL eCardMazeSuit =

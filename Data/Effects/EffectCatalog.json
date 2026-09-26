@@ -7090,6 +7090,31 @@
       "effectAssetId": "effect.kouku.mario.marker.yellow",
       "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
       "authoringPath": "Effects/Authored/effect.kouku.mario.marker.yellow.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.mario.ball.pop.blue",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.mario.ball.pop.blue.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.mario.ball.pop.red",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.mario.ball.pop.red.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.mario.ball.pop.yellow",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.mario.ball.pop.yellow.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.mario.player.hammer.impact",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.mario.player.hammer.impact.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.mario.flyingball.hit",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.mario.flyingball.hit.effect.json"
     }
   ]
 }

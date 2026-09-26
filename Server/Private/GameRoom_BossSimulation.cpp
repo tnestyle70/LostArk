@@ -889,7 +889,7 @@ void LostArk::Server::CGameRoom::Update_KoukuPursuitProjectiles(
 			if (binding.bOpened && !binding.bClosed && binding.iFreePlayerNetEntityId != INVALID_NET_ENTITY_ID)
 			{ requiredTarget = binding.iFreePlayerNetEntityId; diceBinding = true; break; }
 	for (auto& [id, player] : m_Players)
-		if (player.iNetEntityId == requiredTarget && (!diceBinding || !player.bPatternBound) && player.isCombatReady && player.iCurrentHp &&
+		if (player.iNetEntityId == requiredTarget && (!diceBinding || !player.bPatternBound) && player.isCombatReady && player.iCurrentHp && !player.iMarioStage &&
 			player.eAction != PLAYER_ACTION_STATE::DEAD && player.eAction != PLAYER_ACTION_STATE::FALLING &&
 			player.eAction != PLAYER_ACTION_STATE::GRABBED) { target = &player; break; }
 	if (!target && !diceBinding) target = Select_BossRandomAliveTarget(boss, trigger.strTriggerId, "pursuit.target", serverTick);
@@ -970,7 +970,7 @@ void LostArk::Server::CGameRoom::Update_KoukuPlayerTargets(
 	// Every other tracking window preserves its attack, landing and flow clocks.
 	const bool completeOnPlayerContact = pattern.strPatternId == "KAKULSAYDON_G1_PATTERN_104";
 	const auto eligible = [](const SERVER_PLAYER& player) {
-		return player.isCombatReady && player.iCurrentHp != 0u &&
+		return player.isCombatReady && player.iCurrentHp != 0u && player.iMarioStage == 0u &&
 			player.eAction != PLAYER_ACTION_STATE::DEAD && player.eAction != PLAYER_ACTION_STATE::FALLING;
 	};
 	for (auto& window : ledger.PlayerTargetWindows)
@@ -1353,7 +1353,7 @@ bool LostArk::Server::CGameRoom::Commit_KoukuAlbionAirborne(
 	auto& state = staged->AlbionAirborne;
 	if (state.iPatternSequence != boss.iPatternSequence) { state = {}; state.iPatternSequence = boss.iPatternSequence; }
 	const auto eligible = [](const SERVER_PLAYER& player) {
-	 return player.isCombatReady && player.iCurrentHp && player.eAction != PLAYER_ACTION_STATE::DEAD &&
+	 return player.isCombatReady && player.iCurrentHp && player.iMarioStage == 0u && player.eAction != PLAYER_ACTION_STATE::DEAD &&
 	  player.eAction != PLAYER_ACTION_STATE::FALLING && player.eAction != PLAYER_ACTION_STATE::GRABBED;
 	};
 	const auto selectedPlayer = [&]() -> SERVER_PLAYER* {
@@ -1363,22 +1363,25 @@ bool LostArk::Server::CGameRoom::Commit_KoukuAlbionAirborne(
 	if (trigger.eAirbornePhase == Phase::SELECT_PLAYER)
 	{
 	 auto* selected = Select_BossRandomAliveTarget(boss, trigger.strTriggerId, "albion.airborne.player", serverTick);
-	 if (!selected) return reject("no living selectable player");
-	 state.iSelectedPlayer = selected->iNetEntityId;
+	 state.iSelectedPlayer = selected ? selected->iNetEntityId : INVALID_NET_ENTITY_ID;
 	 state.bHasSelectedGround = false;
-	 if (trigger.bCaptureAirborneTargetPosition)
+	 if (trigger.bCaptureAirborneTargetPosition || !selected)
 	 {
-	  if (!m_ServerNavigation.Is_Loaded() || !m_ServerNavigation.Is_PointWalkableExact(selected->fPositionX, selected->fPositionZ) ||
-	   !m_ServerNavigation.Sample_Position(selected->fPositionX, selected->fPositionZ, state.SelectedGround) ||
+	  // An empty arena still completes its authored sequence at a fixed ground
+	  // point. Mario players belong to another area and never supply this anchor.
+	  const float x = selected ? selected->fPositionX : boss.fPositionX;
+	  const float z = selected ? selected->fPositionZ : boss.fPositionZ;
+	  if (!m_ServerNavigation.Is_Loaded() || !m_ServerNavigation.Is_PointWalkableExact(x, z) ||
+	   !m_ServerNavigation.Sample_Position(x, z, state.SelectedGround) ||
 	   !std::isfinite(state.SelectedGround.y)) return reject("selected navigation ground is unavailable");
-	  state.SelectedGround.x = selected->fPositionX; state.SelectedGround.z = selected->fPositionZ;
+	  state.SelectedGround.x = x; state.SelectedGround.z = z;
 	  state.bHasSelectedGround = true;
 	  if (!trigger.strSelectedEffectVisualId.empty())
 	  {
 	   const auto* catalog = Resolve_KoukuProductCatalog();
 	   if (!catalog) return reject("selected Effect catalog is unavailable");
 	   SERVER_COMBAT_OBJECT_LOCKED_TARGET target;
-	   target.iNetEntityId = selected->iNetEntityId;
+	   target.iNetEntityId = state.iSelectedPlayer;
 	   target.fPositionX = state.SelectedGround.x; target.fPositionY = state.SelectedGround.y; target.fPositionZ = state.SelectedGround.z;
 	   BOSS_COMBAT_OBJECT_DEFINITION definition;
 	   definition.strEncounterId = boss.strEncounterId; definition.strOwnerPatternId = pattern.strPatternId;
@@ -1400,7 +1403,7 @@ bool LostArk::Server::CGameRoom::Commit_KoukuAlbionAirborne(
 	   if (!m_CombatObjectRuntime.Commit(std::move(transaction))) return reject("selected Effect transaction changed");
 	  }
 	 }
-	 boss.AlbionAirborne = state; boss.iTargetEntityId = boss.iPatternTargetEntityId = selected->iNetEntityId;
+	 boss.AlbionAirborne = state; boss.iTargetEntityId = boss.iPatternTargetEntityId = state.iSelectedPlayer;
 	 return true;
 	}
 	SERVER_NAV_POINT oldGround{}, newGround{};
@@ -1436,8 +1439,14 @@ bool LostArk::Server::CGameRoom::Commit_KoukuAlbionAirborne(
 	  {
 	   auto* selected = selectedPlayer();
 	   if (!selected) selected = Select_BossRandomAliveTarget(boss,trigger.strTriggerId,"albion.airborne.player",serverTick);
-	   if (!selected) return reject("selected player is unavailable and no replacement is alive");
-	   state.iSelectedPlayer = selected->iNetEntityId; x = selected->fPositionX; z = selected->fPositionZ;
+	   state.iSelectedPlayer = selected ? selected->iNetEntityId : INVALID_NET_ENTITY_ID;
+	   if (selected) { x = selected->fPositionX; z = selected->fPositionZ; }
+	   else
+	   {
+	    state.SelectedGround = oldGround;
+	    state.SelectedGround.x = x; state.SelectedGround.z = z;
+	    state.bHasSelectedGround = true;
+	   }
 	  }
 	 }
 	 else if (state.ePhase == Phase::CENTER) { x = trigger.fTeleportX; z = trigger.fTeleportZ; }
@@ -1485,7 +1494,7 @@ bool LostArk::Server::CGameRoom::Commit_KoukuAlbionAirborne(
 	 staged->fPositionX=x; staged->fPositionY=y; staged->fPositionZ=z; staged->iPatternStageRootLastTick=serverTick;
 	 }
 	}
-	if (state.iSelectedPlayer) staged->iTargetEntityId=staged->iPatternTargetEntityId=state.iSelectedPlayer;
+	staged->iTargetEntityId=staged->iPatternTargetEntityId=state.iSelectedPlayer;
 	boss = std::move(*staged);
 	if (std::any_of(m_WorldEntities.begin(), m_WorldEntities.end(), [&](const auto& body) { return &body == &boss; }))
 		(void)m_ServerCollisionSystem.Update_BlockingBody(boss.iNetEntityId,boss.fPositionX,boss.fPositionY+boss.fCollisionRadius,boss.fPositionZ);
@@ -1869,8 +1878,6 @@ void LostArk::Server::CGameRoom::Commit_KoukuMechanicTriggers(const std::uint32_
 					if (selectedPlayerId == INVALID_PLAYER_ID || rank < selectedRank)
 					{ selectedPlayerId = playerId; selectedRank = rank; }
 				}
-				if (selectedPlayerId == INVALID_PLAYER_ID)
-				{ m_strStatus = "Albion volley preserved existing objects: no eligible arena player"; continue; }
 			}
 			BOSS_PATTERN_STAGE_ACTION arenaAction{};
 			arenaAction.strTargetId = trigger.strTriggerId;
@@ -1895,6 +1902,15 @@ void LostArk::Server::CGameRoom::Commit_KoukuMechanicTriggers(const std::uint32_
 				if (!m_CombatObjectRuntime.Stage_BossCombatObject(transaction, *owner, &target, definition, &volley,
 						*catalog, trigger.iCountPerPlayer, serverTick, failure))
 				{ admitted = false; break; }
+			}
+			if (admitted && transaction.Objects.empty())
+			{
+				// Preserve the authored player volley at the boss ground when the
+				// arena is empty; the resulting objects never follow later movement.
+				SERVER_COMBAT_OBJECT_LOCKED_TARGET fallback{};
+				fallback.fPositionX = owner->fPositionX; fallback.fPositionY = owner->fPositionY; fallback.fPositionZ = owner->fPositionZ;
+				admitted = m_CombatObjectRuntime.Stage_BossCombatObject(transaction, *owner, &fallback, definition,
+					&volley, *catalog, trigger.iCountPerPlayer, serverTick, failure);
 			}
 			for (const auto& origin : arenaOrigins)
 			{
