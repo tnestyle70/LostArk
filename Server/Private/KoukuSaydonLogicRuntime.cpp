@@ -707,7 +707,6 @@ namespace
 		LOGIC_REGION_TRANSFORM transform;
 		if (0u == releaseTick || 0u == player.iCurrentHp ||
 			PLAYER_ACTION_STATE::DEAD == player.eAction || PLAYER_ACTION_STATE::FEAR == player.eAction ||
-			PLAYER_MADNESS_FORM::CLOWN == player.eMadnessForm ||
 			!Resolve_LogicRegionTransform(region, boss, patternElapsedTicks, transform) ||
 			!std::isfinite(transform.centerX) || !std::isfinite(transform.centerZ) ||
 			!std::isfinite(transform.yaw))

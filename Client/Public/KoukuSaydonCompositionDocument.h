@@ -312,6 +312,7 @@ namespace Client
 		std::string strSummonKind;
 		std::vector<std::string> DirectionPatternIds;
 		std::string strCloneEndStageId;
+		std::string strRealPatternId;
 
 		bool operator==(
 			const KOUKU_SAYDON_COMPOSITION_SUMMON_DEFINITION&) const = default;
@@ -325,6 +326,7 @@ namespace Client
         std::uint32_t iDurationMs = 0u;
         std::vector<std::string> DirectionPatternIds;
         std::string strCloneEndStageId;
+        std::string strRealPatternId;
     };
 
     struct KOUKU_SAYDON_COMPOSITION_SUMMON_PATTERN_SPAWN final

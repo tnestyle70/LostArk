@@ -2940,11 +2940,6 @@ def _validate_world_sequence_source(
                         f"{sequence_id}/{slot_id}"
                     )
             else:
-                if start_ms != 0:
-                    raise CompositionError(
-                        f"World Sequence animation chain must start at 0ms: "
-                        f"{sequence_id}/{slot_id}"
-                    )
                 slots[slot_id] = "DEPLOY_PLACEMENT"
             animation_slot_starts[slot_id] = start_ms
             _require_bounded_display_text(

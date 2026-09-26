@@ -190,3 +190,25 @@ FX product cue는 이 설치에 포함하지 않으며 화면 판정은 사용�
 수행한다. 이 수정의 완료 범위는 MapTool의 원본 재질 전달이며, 제품 화면의 색 차이
 해결이나 원작 조명 복원 완료로 확대하지 않는다. 제품 파괴 바닥은 원본 실제 생성자의
 재질 override와 조명 입력 근거를 별도로 조사한다. 공통 렌더링 옵션은 변경하지 않는다.
+
+## G13. 09-26 무베이크 파괴 바닥의 현재 장면 주변광 연결
+
+현재 A/B 파괴 바닥의 재질은 program7이지만 RNM이 없다. 표면의 Base는
+`SourceStoneInactiveEngineInputs`를 받아 간접광이0이고, Deferred의 program7 분기는
+다른 무베이크 맵 재질과 달리 현재 장면의 ambient도 소비하지 않는다. 따라서 표면과
+COLOR0를 복원해도 그림자 부분의 고유색이 직접광 유무에만 종속된다.
+
+`Engine/Bin/ShaderFiles/Shader_Deferred.hlsl`의
+`Resolve_MapSourceStoneLight`에 방향광 호출인지 명시하는 인수를 더한다.
+기존 geometric-normal payload의 baked bit가 없는 방향광 호출에서만
+`surface.diffuse × light.diffuse × light.ambient × materialAmbient × SSAO`를
+HDR radiance에 한 번 합산한다. 점·스포트광과 RNM이 있는 정적 석재는 기존 계산을
+유지한다. Client shader mirror도 같은 코드로 맞춘다.
+
+이는 현재 팀장 장면 ambient의 누락된 소비를 연결하는 제품 보정이다. 원본 UE3
+LightEnvironment/hemisphere 전체 복원으로 표현하지 않는다. 렌더링 profile, 재질
+채도·밝기, texture, geometry 및 저작 데이터는 바꾸지 않는다. 새 C++·shader 파일이나
+프로젝트 등록, publisher 실행은 필요 없다.
+
+현재 출력 shader 컴파일과 무베이크/베이크, 그림자/주변광, local-light 분기 수치 검사를
+수행하고 Product Build로 배포한다. 최종 실제 바닥 색은 사용자가 아레나에서 확인한다.

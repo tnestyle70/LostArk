@@ -179,7 +179,7 @@ bool_t Client::CEffectDocumentCodec::Validate(
     if (Document.SourceModelPreview)
     {
         const auto& preview = *Document.SourceModelPreview;
-        if ((preview.strGateId != "GATE1" && preview.strGateId != "GATE2" && preview.strGateId != "GATE3" && preview.strGateId != "ENCORE") ||
+        if ((preview.strGateId != "GATE1" && preview.strGateId != "GATE2" && preview.strGateId != "GATE3" && preview.strGateId != "BINGO") ||
             preview.strActorProfileId.empty() || preview.strActorProfileId.size() > 128u ||
             preview.strTargetBossPlacementId.empty() || preview.strTargetBossPlacementId.size() > 128u ||
             preview.Animations.empty() || preview.Animations.size() > 256u)

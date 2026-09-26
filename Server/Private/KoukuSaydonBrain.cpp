@@ -265,13 +265,14 @@ bool LostArk::Server::CKoukuSaydonBrain::Validate_AnimationOnlyPattern(
 			std::unordered_set<std::string> directions(trigger.DirectionPatternIds.begin(), trigger.DirectionPatternIds.end());
 			if (pattern.BossMotion || trigger.DirectionPatternIds.size() != 4u || directions.size() != 4u ||
 				directions.count("") || directions.count(pattern.strPatternId) || trigger.strCloneEndStageId.empty() ||
+				(!trigger.strRealPatternId.empty() && !directions.count(trigger.strRealPatternId)) ||
 				trigger.eHudMode != LostArk::Shared::KOUKU_HUD_MODE::NONE || trigger.fTeleportX != 0.f ||
 				trigger.fTeleportY != 0.f || trigger.fTeleportZ != 0.f || !trigger.strClonePatternId.empty() ||
 				!trigger.ClockHours.empty() || !trigger.PatternSpawns.empty() || trigger.iCountPerPlayer ||
 				trigger.iEffectLifetimeMs || trigger.iArenaRandomCount || trigger.bRandomPlayerOnly)
 			{ status = "Cross direction requires four distinct child Patterns and one clone end Stage"; return false; }
 		}
-		else if (!trigger.DirectionPatternIds.empty() || !trigger.strCloneEndStageId.empty())
+		else if (!trigger.DirectionPatternIds.empty() || !trigger.strCloneEndStageId.empty() || !trigger.strRealPatternId.empty())
 		{ status = "Only cross direction owns directional Pattern references"; return false; }
 
 		using Air = ALBION_AIRBORNE_PHASE;
@@ -785,6 +786,13 @@ bool LostArk::Server::CKoukuSaydonBrain::Select_CrossDirection(
 		{ status = "Cross direction child has no finite directional movement at the clone end Stage"; return false; }
 		// Equal distances keep the authored front/back/left/right order.
 		if (distance < bestDistance - .00001) { bestDistance = distance; stagedSelection = index; }
+	}
+	if (!trigger.strRealPatternId.empty())
+	{
+		const auto fixed = std::find(trigger.DirectionPatternIds.begin(), trigger.DirectionPatternIds.end(), trigger.strRealPatternId);
+		if (fixed == trigger.DirectionPatternIds.end())
+		{ status = "Cross direction real Pattern is not a candidate"; return false; }
+		stagedSelection = static_cast<std::size_t>(fixed - trigger.DirectionPatternIds.begin());
 	}
 	selected = stagedSelection; cloneDurationsMs = stagedDurations; status.clear(); return true;
 }

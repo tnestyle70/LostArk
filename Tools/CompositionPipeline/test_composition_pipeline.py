@@ -1022,6 +1022,9 @@ class WorldSequenceAnimationSourceStartContractTests(unittest.TestCase):
             for index, (source_end, valid) in enumerate(cases):
                 candidate = copy.deepcopy(self.document)
                 track = candidate["templates"][0]["animationTracks"][0]
+                # Trimming the first box may delay it; publishers must accept
+                # the same held source-in interval as the runtime sampler.
+                track["startMs"] = 100
                 track["sourceStartMs"] = 200
                 if source_end is not None:
                     track["sourceEndMs"] = source_end

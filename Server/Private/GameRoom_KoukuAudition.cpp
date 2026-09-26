@@ -1395,6 +1395,9 @@ bool LostArk::Server::CGameRoom::Commit_KoukuMarioPhasePlayers(
 		{ m_strStatus = "Mario formation preserved all players: authored destination is blocked"; return false; }
 		auto copy = player;
 		Cancel_PlayerActionForPatternStatus(copy);
+		// Cancelling movement is not a damage-immunity state. Preserve the
+		// admitted readiness before the captive saves its restore state.
+		copy.isCombatReady = player.isCombatReady;
 		copy.fPositionX = x; copy.fPositionY = ground.y; copy.fPositionZ = z;
 		copy.Clear_PatternBindStatus();
 		staged.emplace_back(id, std::move(copy));

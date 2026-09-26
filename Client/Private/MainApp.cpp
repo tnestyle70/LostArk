@@ -3724,7 +3724,7 @@ HRESULT CMainApp::Render()
 					bool_t saved = true;
 					if (sequenceDirty && m_pSequenceActionWorkbench)
 						saved = m_pSequenceActionWorkbench->Save(integratedStatus) && saved;
-					if (objectDirty && m_pWorldObjectTool)
+					if (objectDirty && m_pWorldObjectTool && m_pWorldObjectTool->Is_Dirty())
 					{
 						/* false: authoring sources only. The Area publisher and the
 						   linked battle pattern publish stay explicit actions. */
@@ -10050,7 +10050,7 @@ HRESULT CMainApp::EnsureDebugTool(const DEBUG_TOOL eTool, const bool_t bShowWind
 					const std::string owner = editor == m_pKoukuSaydonActionWorkbench.get() ? "Pattern" : "Sequence";
 					if (editor->Is_PublishRunning())
 					{ status = owner + " Publish is already running. Wait for it to finish, then retry Object Save. All edits are preserved."; return false; }
-					if (editor->Is_Dirty())
+					if (editor->Is_CompositionDirty())
 					{ status = "Save " + owner + " edits first, including newly created Logic definitions, then retry Object Save. Starting Publish is not required. All edits are preserved."; return false; }
 				}
 				return true;
@@ -10062,7 +10062,7 @@ HRESULT CMainApp::EnsureDebugTool(const DEBUG_TOOL eTool, const bool_t bShowWind
 					const std::string owner = editor == m_pKoukuSaydonActionWorkbench.get() ? "Pattern" : "Sequence";
 					if (editor->Is_PublishRunning())
 					{ status = "Object is saved; linked reload waits for the running " + owner + " Publish. Retry Object Save after it finishes."; return false; }
-					if (editor->Is_Dirty())
+					if (editor->Is_CompositionDirty())
 					{ status = "Object is saved; new " + owner + " edits are preserved. Save them first, then retry Object Save. Starting Publish is not required."; return false; }
 				}
 				if (publishPatterns && !m_pKoukuSaydonActionWorkbench)
@@ -10085,7 +10085,7 @@ HRESULT CMainApp::EnsureDebugTool(const DEBUG_TOOL eTool, const bool_t bShowWind
 				}
 				for (auto* editor : {m_pKoukuSaydonActionWorkbench.get(), m_pSequenceActionWorkbench.get()})
 					if (editor && (editor->Has_Composition() || (publishPatterns && editor == m_pKoukuSaydonActionWorkbench.get())))
-						if (!editor->Reload(status)) return false;
+						{ editor->Notify_WorldAnimationSaved(); if (!editor->Reload(status)) return false; }
 				RefreshWorldObjectResources();
 				if (publishPatterns)
 				{
@@ -12673,27 +12673,35 @@ void CMainApp::RenderServerArenaActiveControls()
 
 const CWorldSequenceDocument* CMainApp::CompositionPreviewWorldSource() const
 {
-	if (nullptr == m_pWorldObjectTool)
-		return nullptr;
-	/* Only the Map Tool view that edits Motion, camera and timeline on one
-	   screen consumes the draft. Publishing and product playback are
-	   unaffected because they never reach this helper. */
-	if (nullptr != m_pMapTool && m_pMapTool->Is_IntegratedCutsceneViewOpen())
-	{
-		if (const CWorldSequenceDocument* draft =
-			m_pWorldObjectTool->Get_AuthoringDraftDocument())
-		{
-			return draft;
-		}
-	}
-	return m_pWorldObjectTool->Get_SavedDocument();
+	// Authoring previews consume the same draft edited by the direct Animation lane.
+	// Product playback still loads the published document through its existing path.
+	return m_pWorldObjectTool ? m_pWorldObjectTool->Get_AuthoringDraftDocument() : nullptr;
 }
 
 void CMainApp::RefreshWorldObjectResources()
 {
 	if (!m_pKoukuSaydonActionWorkbench && !m_pSequenceActionWorkbench) return;
+	for (auto* editor : {m_pKoukuSaydonActionWorkbench.get(), m_pSequenceActionWorkbench.get()})
+		if (editor) editor->Set_WorldAnimationCallbacks(
+			[this](const KOUKU_WORLD_ANIMATION_EDIT& edit, std::string& status) {
+				if (FAILED(EnsureDebugTool(DEBUG_TOOL::WORLD_OBJECT, false)) || !m_pWorldObjectTool)
+				{ status = "World animation owner is unavailable. Existing clips are preserved."; return false; }
+				return m_pWorldObjectTool->Edit_AnimationTimeline(edit.instanceId, edit.slotId, edit.clipName,
+					edit.expectedStartMs, edit.startMs, edit.sourceInMs, edit.sourceOutMs, status);
+			},
+			[this](std::string& status) {
+				if (!m_pWorldObjectTool)
+				{ status = "World animation draft is unavailable. Save was not completed."; return false; }
+				// Timeline Save writes authoring only; publishing remains explicit.
+				const bool saved = !m_pWorldObjectTool->Is_Dirty() || m_pWorldObjectTool->Save_Source(false);
+				status = m_pWorldObjectTool->Get_Status();
+				if (saved)
+					for (auto* owner : {m_pKoukuSaydonActionWorkbench.get(), m_pSequenceActionWorkbench.get()})
+						if (owner) owner->Notify_WorldAnimationSaved();
+				return saved;
+			});
 	const auto* level = CLevel_KakulSaydonArena::Get_Active();
-	const CWorldSequenceDocument* document = m_pWorldObjectTool ? m_pWorldObjectTool->Get_SavedDocument() : nullptr;
+	const CWorldSequenceDocument* document = m_pWorldObjectTool ? m_pWorldObjectTool->Get_AuthoringDraftDocument() : nullptr;
 	const uint64_t generation = document ? m_pWorldObjectTool->Get_SavedGeneration() : 0;
 	if (!document && level) document = &level->Get_WorldSequenceDocument();
 	const uint32_t revision = document ? document->Get_Revision() : 0;
@@ -12740,6 +12748,15 @@ void CMainApp::RefreshWorldObjectResources()
 						endMs = (std::min)(endMs, next.startMs);
 				KOUKU_WORLD_ANIMATION_INFO info;
 				info.strClipName = animation.clipName; info.strSlotId = animation.slotId;
+				info.strDisplayName = animation.displayName;
+				info.iLocalStartMs = animation.startMs;
+				info.fInstanceSpeed = instance.playbackSpeed; info.fTrackPlaybackRate = animation.playbackRate;
+				if (!animation.loop && animation.sourceEndMs > animation.sourceStartMs)
+				{
+					const double naturalEnd = animation.startMs +
+						(animation.sourceEndMs - animation.sourceStartMs) / double(animation.playbackRate);
+					endMs = (std::min)(endMs, static_cast<uint32_t>(std::ceil(naturalEnd)));
+				}
 				info.fStartMs = instance.startDelayMs + animation.startMs / static_cast<double>(instance.playbackSpeed);
 				info.fEndMs = instance.startDelayMs + endMs / static_cast<double>(instance.playbackSpeed);
 				info.fPlaybackRate = animation.playbackRate * instance.playbackSpeed;
@@ -12824,7 +12841,7 @@ void CMainApp::RefreshWorldObjectResources()
 		}
 	}
 	const std::string status = document ?
-		"Objects saved in Object Tool. Select an Object to preview or append; edit its animations in Object Tool." :
+		"World animation clips: drag their center or edges directly in the Animation timeline. Save commits the draft." :
 		"Enter KoukuSaydon or open Object Tool to load saved Objects.";
 	if (m_pKoukuSaydonActionWorkbench) m_pKoukuSaydonActionWorkbench->Set_WorldSequenceResources(resources, status);
 	if (m_pSequenceActionWorkbench) m_pSequenceActionWorkbench->Set_WorldSequenceResources(std::move(resources), status);

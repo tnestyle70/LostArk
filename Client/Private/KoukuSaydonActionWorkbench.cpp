@@ -1757,7 +1757,7 @@ Client::CKoukuSaydonActionWorkbench::~CKoukuSaydonActionWorkbench()
 bool_t Client::CKoukuSaydonActionWorkbench::Reload(std::string& outStatus)
 {
 	m_bLoadAttempted = true;
-	if (Is_Dirty())
+	if (Is_CompositionDirty())
 	{
 		outStatus = "KoukuSaydon composition Reload requires an explicit draft discard.";
 		m_strStatus = outStatus;
@@ -1816,7 +1816,14 @@ bool_t Client::CKoukuSaydonActionWorkbench::Save(std::string& outStatus)
 		outStatus = m_strStatus = !m_bHasDraft ? "No composition is loaded." : "Publish is reading the saved source. Keep editing the draft; Save is available after publish finishes.";
 		return false;
 	}
-	if (Is_Dirty())
+	const auto saveWorldAnimations = [&]() {
+		if (!m_WorldAnimationEditsPending) return true;
+		if (!m_SaveWorldAnimation || !m_SaveWorldAnimation(outStatus))
+		{ m_strStatus = outStatus.empty() ? "World animation Save is unavailable. Edits are preserved." : outStatus; return false; }
+		m_WorldAnimationEditsPending = false;
+		return true;
+	};
+	if (Is_CompositionDirty())
 	{
 		auto candidate = m_Draft;
 		for (const auto& edit : m_StagedPresentationGeometry)
@@ -1856,11 +1863,13 @@ bool_t Client::CKoukuSaydonActionWorkbench::Save(std::string& outStatus)
 		Synchronize_EditorFields();
 		if (Has_StaleLocalPreviewSnapshot())
 		{
+			if (!saveWorldAnimations()) return false;
 			Stop_StaleLocalPreview("Saved changes. The previous preview was reset; Play uses the saved timeline from this cursor.");
 			outStatus = m_strStatus;
 			return true;
 		}
 	}
+	if (!saveWorldAnimations()) return false;
 	outStatus = m_strStatus = m_bSequenceWorkspace ?
 		"Saved all Sequence changes to the independent Sequencer workspace." :
 		"Saved all Composition changes. Use Publish All Patterns to synchronize the F1 tree.";
@@ -8702,6 +8711,9 @@ void Client::CKoukuSaydonActionWorkbench::Render_Timeline()
 	{
 		std::string id, occurrenceId, label;
 		std::uint32_t startMs = 0u, durationMs = 0u;
+		KOUKU_WORLD_ANIMATION_EDIT edit;
+		double localSpeed = 1., nativeSpeed = 1., trackRate = 1.;
+		bool editable = false;
 	};
 	std::vector<WORLD_CLIP_ROW> worldClipRows;
 	for (const auto& box : pattern->WorldOccurrences)
@@ -8720,7 +8732,15 @@ void Client::CKoukuSaydonActionWorkbench::Render_Timeline()
 			if (end <= start) continue;
 			WORLD_CLIP_ROW row;
 			row.id = box.strOccurrenceId + ".clip-info." + std::to_string(index);
-			row.occurrenceId = box.strOccurrenceId; row.label = "World: " + clip.strClipName;
+			row.occurrenceId = box.strOccurrenceId;
+			row.label = clip.strDisplayName.empty() ? clip.strClipName : clip.strDisplayName;
+			row.edit = {source->strInstanceId, clip.strSlotId, clip.strClipName,
+				clip.iLocalStartMs, clip.iLocalStartMs, clip.iSourceStartMs, clip.iSourceEndMs};
+			row.localSpeed = clip.fInstanceSpeed * box.fPlaybackSpeed;
+			row.nativeSpeed = clip.fPlaybackRate * box.fPlaybackSpeed;
+			row.trackRate = clip.fTrackPlaybackRate;
+			row.editable = !clip.bLoop && clip.iSourceEndMs > clip.iSourceStartMs &&
+				row.localSpeed > 0. && row.nativeSpeed > 0. && bool(m_EditWorldAnimation);
 			row.startMs = box.iStartMs + start; row.durationMs = end - start;
 			lanes[animationLane].intervals.push_back({row.id, row.startMs, row.durationMs});
 			worldClipRows.push_back(std::move(row));
@@ -9226,20 +9246,71 @@ void Client::CKoukuSaydonActionWorkbench::Render_Timeline()
 	for (const auto& row : worldClipRows)
 	{
 		const ImVec2 top(origin.x + labelWidth + row.startMs * scale, boxY(animationLane, row.id));
-		const ImVec2 bottom(top.x + (std::max)(8.f, row.durationMs * scale), top.y + 22.f);
+		const float width = (std::max)(8.f, row.durationMs * scale);
 		ImGui::PushID(row.id.c_str());
 		ImGui::SetCursorScreenPos(top);
-		ImGui::InvisibleButton("##WorldClipInfo", ImVec2(bottom.x - top.x, 22.f));
-		if (canInteract && !m_bTimelineMarqueeActive && ImGui::IsItemClicked())
-			Select_TimelineBox({}, row.occurrenceId, false);
-		if (canInteract && !m_bTimelineMarqueeActive && ImGui::IsItemHovered() &&
-			ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
-			Queue_WorldObjectEdit(patternId, row.occurrenceId, {}, true);
+		ImGui::InvisibleButton("##WorldAnimationClip", ImVec2(width, 22.f));
+		if (canInteract && !m_bTimelineMarqueeActive && ImGui::IsItemActivated())
+		{
+			m_TimelineSelectedStageIds.clear(); m_TimelineSelectedOccurrenceIds.clear();
+			m_SelectedWorldAnimationId = row.id;
+			const auto gesture = CompositionTimeline::HitBoxGesture(ImGui::GetIO().MousePos.x,
+				top.x, top.x + width, 6.f, true, true);
+			m_WorldAnimationDragMode = !row.editable ? -1 :
+				(gesture == CompositionTimeline::BoxGesture::TRIM_START ? 1 :
+				 gesture == CompositionTimeline::BoxGesture::TRIM_END ? 2 : 0);
+		}
+		float shownX = top.x, shownWidth = width;
+		if (canInteract && row.editable && !m_bTimelineMarqueeActive &&
+			m_WorldAnimationDragMode >= 0 && m_SelectedWorldAnimationId == row.id &&
+			(ImGui::IsItemActive() || ImGui::IsItemDeactivated()))
+		{
+			auto changed = row.edit;
+			const double deltaMs = ImGui::GetMouseDragDelta().x / scale;
+			if (m_WorldAnimationDragMode == 1)
+			{
+				const int64_t minimum = -(std::min)(int64_t(changed.startMs),
+					static_cast<int64_t>(std::floor(changed.sourceInMs / row.trackRate)));
+				const int64_t maximum = static_cast<int64_t>(std::floor((changed.sourceOutMs - changed.sourceInMs - 1u) / row.trackRate));
+				const int64_t delta = std::clamp(static_cast<int64_t>(std::llround(deltaMs * row.localSpeed)), minimum, maximum);
+				changed.startMs = static_cast<uint32_t>(int64_t(changed.startMs) + delta);
+				changed.sourceInMs = static_cast<uint32_t>(std::clamp(int64_t(changed.sourceInMs) +
+					static_cast<int64_t>(std::llround(delta * row.trackRate)), int64_t{0}, int64_t(changed.sourceOutMs) - 1));
+			}
+			else if (m_WorldAnimationDragMode == 2)
+				changed.sourceOutMs = static_cast<uint32_t>(std::clamp(int64_t(changed.sourceOutMs) +
+					static_cast<int64_t>(std::llround(deltaMs * row.nativeSpeed)), int64_t(changed.sourceInMs) + 1, int64_t{600000}));
+			else
+				changed.startMs = static_cast<uint32_t>(std::clamp(int64_t(changed.startMs) +
+					static_cast<int64_t>(std::llround(deltaMs * row.localSpeed)), int64_t{0}, int64_t{599999}));
+			shownX += static_cast<float>((int64_t(changed.startMs) - row.edit.startMs) / row.localSpeed) * scale;
+			shownWidth = (std::max)(8.f, static_cast<float>((changed.sourceOutMs - changed.sourceInMs) / row.nativeSpeed) * scale);
+			if (ImGui::IsItemDeactivated())
+			{
+				if (changed.startMs != row.edit.startMs || changed.sourceInMs != row.edit.sourceInMs || changed.sourceOutMs != row.edit.sourceOutMs)
+				{
+					std::string status;
+					if (m_EditWorldAnimation(changed, status))
+					{ m_WorldAnimationEditsPending = true; ++m_iDraftGeneration; }
+					m_strStatus = std::move(status);
+				}
+				m_WorldAnimationDragMode = -1;
+			}
+		}
 		if (ImGui::IsItemHovered())
-			ImGui::SetTooltip("%s\nPlayback window %u - %u ms\nClick to select its World box. Double-click to edit Animation Clips.",
-				row.label.c_str(), row.startMs, row.startMs + row.durationMs);
-		CompositionTimeline::DrawBox(draw, top, bottom, IM_COL32(105, 151, 186, 220),
-			contains(m_TimelineSelectedOccurrenceIds, row.occurrenceId), row.label.c_str());
+		{
+			ImGui::SetMouseCursor(row.editable ? ImGuiMouseCursor_ResizeEW : ImGuiMouseCursor_Arrow);
+			ImGui::SetTooltip("%s\n%u - %u ms | Source %u - %u ms\n%s", row.label.c_str(),
+				row.startMs, row.startMs + row.durationMs, row.edit.sourceInMs, row.edit.sourceOutMs,
+				row.editable ? "Drag center: move. Drag either edge: trim this clip. Save commits the animation." : "This legacy clip has no explicit Source Out.");
+		}
+		CompositionTimeline::DrawBox(draw, ImVec2(shownX, top.y), ImVec2(shownX + shownWidth, top.y + 22.f),
+			IM_COL32(105, 151, 186, 240), m_SelectedWorldAnimationId == row.id, row.label.c_str());
+		if (row.editable)
+		{
+			draw->AddLine(ImVec2(shownX + 3.f, top.y + 4.f), ImVec2(shownX + 3.f, top.y + 18.f), IM_COL32(235, 245, 255, 210), 2.f);
+			draw->AddLine(ImVec2(shownX + shownWidth - 3.f, top.y + 4.f), ImVec2(shownX + shownWidth - 3.f, top.y + 18.f), IM_COL32(235, 245, 255, 210), 2.f);
+		}
 		ImGui::PopID();
 	}
 	/* World boxes: the sequence starts at the left edge; the width is the
@@ -10212,7 +10283,7 @@ bool_t Client::CKoukuSaydonActionWorkbench::Render_SummonPolicy(
     if (ImGui::BeginCombo("Behavior##SummonPolicy", cross ? "Four directions: one real body" : "Explicit spawned Patterns"))
     {
         if (ImGui::Selectable("Explicit spawned Patterns", !cross))
-        { draft.strSummonKind.clear(); draft.DirectionPatternIds.clear(); draft.strCloneEndStageId.clear(); }
+        { draft.strSummonKind.clear(); draft.DirectionPatternIds.clear(); draft.strCloneEndStageId.clear(); draft.strRealPatternId.clear(); }
         if (ImGui::Selectable("Four directions: one real body", cross))
         { draft.strSummonKind = "CROSS_DIRECTION_CLONES"; draft.DirectionPatternIds.resize(4u); }
         ImGui::EndCombo();
@@ -10258,6 +10329,17 @@ bool_t Client::CKoukuSaydonActionWorkbench::Render_SummonPolicy(
                 return true;
             }
         }
+        const auto* realPattern = Find_Pattern(m_Draft, draft.strRealPatternId);
+        if (ImGui::BeginCombo("Real body##SummonPolicy", realPattern ? realPattern->strDisplayName.c_str() : "Automatic: nearest arena center"))
+        {
+            if (ImGui::Selectable("Automatic: nearest arena center", draft.strRealPatternId.empty()))
+                draft.strRealPatternId.clear();
+            for (const auto& id : draft.DirectionPatternIds)
+                if (const auto* child = Find_Pattern(m_Draft, id))
+                    if (ImGui::Selectable((child->strDisplayName + "##real-" + id).c_str(), draft.strRealPatternId == id))
+                        draft.strRealPatternId = id;
+            ImGui::EndCombo();
+        }
         if (ImGui::BeginCombo("Clones play through##SummonPolicy", draft.strCloneEndStageId.empty() ? "(select Stage)" : draft.strCloneEndStageId.c_str()))
         {
             if (const auto* first = Find_Pattern(m_Draft, draft.DirectionPatternIds.front()))
@@ -10272,7 +10354,7 @@ bool_t Client::CKoukuSaydonActionWorkbench::Render_SummonPolicy(
                 }
             ImGui::EndCombo();
         }
-        ImGui::TextWrapped("At the Summon start, the direction ending nearest the arena center becomes the real body and plays its full animation and Effects. The other three clones disappear after the selected Stage. The Summon lifetime must cover all four Patterns.");
+        ImGui::TextWrapped("The selected real body plays its full animation and Effects. Automatic chooses the direction ending nearest the arena center. The other three clones disappear after the selected Stage. The Summon lifetime must cover all four Patterns.");
     }
     else ImGui::TextWrapped("Each Summon box configures its own spawned Pattern rows. A name alone creates no actors.");
     ImGui::BeginDisabled(draft == summon || !m_bHasDraft);
@@ -10286,6 +10368,7 @@ bool_t Client::CKoukuSaydonActionWorkbench::Render_SummonPolicy(
             found->strSummonKind = draft.strSummonKind;
             found->DirectionPatternIds = draft.DirectionPatternIds;
             found->strCloneEndStageId = draft.strCloneEndStageId;
+            found->strRealPatternId = draft.strRealPatternId;
             std::string status;
             (void)Commit_Candidate(std::move(candidate), "Updated Summon playback. Save to keep the changes.", status);
         }
@@ -14137,7 +14220,7 @@ void Client::CKoukuSaydonActionWorkbench::Render_WorldBoxDetails(
 					else ImGui::TextDisabled("  Source Out: native clip end");
 					ImGui::TextDisabled("  %s", clip.bLoop ? "Loop" : (clip.bHoldLastFrame ? "Hold last frame" : "Stop at clip end"));
 				}
-				ImGui::TextWrapped("Use Edit Animation Clips above, or double-click an Animation lane row to edit these saved World clips.");
+				ImGui::TextWrapped("Drag the Animation lane clips directly: center moves, left/right edges trim. Save commits these edits.");
 			}
 			if (initial->bUntilDestroyed)
 				ImGui::TextWrapped("HP: %u | Server lifetime: until destroyed", initial->iMaximumHp);

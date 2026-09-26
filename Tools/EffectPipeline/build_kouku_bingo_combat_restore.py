@@ -154,7 +154,7 @@ def build(output, loa_root, library):
         document = dict(schema='lostark.effect-authoring', version=13, effectAssetId=job['asset'],
             displayName=job['name'], particleSystem=dict(uniformScaleMultiplier=1,
                 yawOffsetDegrees=0, directionYawDegrees=0, initialSpeedMultiplier=1),
-            modelCues=[], elements=elements, sourceModelPreview=dict(gateId='ENCORE',
+            modelCues=[], elements=elements, sourceModelPreview=dict(gateId='BINGO',
                 actorProfileId='MN_RPCT_05', targetBossPlacementId='boss.kakulsaydon.bingo.saydon',
                 animations=animations))
         assert len(elements) == len({e['id'] for e in elements})

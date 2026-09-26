@@ -2105,7 +2105,6 @@ void Client::CLevel_KakulSaydonArena::Update(const f32_t fTimeDelta)
 #ifdef _DEBUG
 	sequenceInputReady = sequenceInputReady && !Is_DebugGatePending();
 #endif
-	m_Replication.Update_CombatHover(sequenceInputReady && nullptr != m_pCamera && m_pCamera->Is_FollowEnabled() && !isCameraTrackPlaying);
 	m_PlayerController.Update(
 		sequenceInputReady && nullptr != m_pCamera && m_pCamera->Is_FollowEnabled() && !isCameraTrackPlaying,
 		sequenceInputReady && nullptr != m_pCamera && !m_pCamera->Is_FollowRequested() &&

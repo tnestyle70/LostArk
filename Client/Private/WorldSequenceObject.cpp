@@ -17,6 +17,8 @@ using namespace Engine;
 
 namespace
 {
+    constexpr uint32_t SOURCE_GHOST_OPAQUE_PASS = 16u;
+
     std::string MaterialBindingFailure(const CModel& model, uint32_t mesh, HRESULT result)
     {
         std::ostringstream label;
@@ -28,9 +30,8 @@ namespace
         label << ')';
         return label.str();
     }
-    // Source translucent programs draw only in the forward BLEND pass, as the product
-    // owners do (CBody_Valtan 84, CPart_Vehicle 18/88). The opaque G-buffer pass
-    // dithers them by native opacity, which leaves scattered fragments.
+    // Forward sources bypass G-buffer coverage. Ghost 84 shares the product
+    // resurrection's NONLIGHT/pass16; the remaining translucent sources use BLEND.
     MAP_ASSET_RENDER_PROFILE MovieStaticProfile(const MODEL_SURFACE_PARAMETERS* surface)
     {
         MAP_ASSET_RENDER_PROFILE profile;
@@ -47,14 +48,14 @@ namespace
         return MovieStaticProfile(surface).renderMode != MAP_ASSET_RENDER_MODE::DEFERRED;
     }
 
-    uint32_t Resolve_TranslucentSourcePass(const MODEL_SURFACE_PARAMETERS* surface)
+    uint32_t Resolve_ForwardSourcePass(const MODEL_SURFACE_PARAMETERS* surface)
     {
         if (!surface || surface->family != MODEL_SURFACE_FAMILY::SOURCE_CHARACTER) return 0u;
         if (SourceEquipmentMaterial::Is_Translucent(surface->sourceCharacter.program)) return 9u;
         switch (surface->sourceCharacter.program)
         {
         case 18u: return 9u;
-        case 84u:
+        case 84u: return SOURCE_GHOST_OPAQUE_PASS;
         case 88u: return 10u;
         default: return 0u;
         }
@@ -84,10 +85,18 @@ HRESULT CWorldSequenceObject::Initialize(void* argument)
     // Its cloned rest pose still needs the same combined matrices as a sampled clip.
     if (m_Model->Is_Skinned()) m_Model->Refresh_BoneCombinedMatrices();
     m_HasTranslucentMeshes = false;
+    m_HasOpaqueGhostMeshes = false;
     for (uint32_t mesh = 0; mesh < m_Model->Get_NumMeshes(); ++mesh)
-        m_HasTranslucentMeshes |= m_Model->Is_Skinned() ?
-            0u != Resolve_TranslucentSourcePass(m_Model->Get_MaterialSurface(mesh)) :
-            IsMovieTranslucent(m_Model->Get_MaterialSurface(mesh));
+    {
+        const auto* surface = m_Model->Get_MaterialSurface(mesh);
+        if (m_Model->Is_Skinned())
+        {
+            const uint32_t pass = Resolve_ForwardSourcePass(surface);
+            m_HasOpaqueGhostMeshes |= pass == SOURCE_GHOST_OPAQUE_PASS;
+            m_HasTranslucentMeshes |= pass != 0u && pass != SOURCE_GHOST_OPAQUE_PASS;
+        }
+        else m_HasTranslucentMeshes |= IsMovieTranslucent(surface);
+    }
     if (FAILED(CNpcPresentationAssetService::Prepare_SaydonHat(m_pDevice, m_pContext, m_Model, m_SaydonHatModel)))
         OutputDebugStringA("[SaydonHat] Sequence head prop unavailable; body preserved.\n");
     XMStoreFloat4x4(&m_World, XMMatrixIdentity());
@@ -224,6 +233,7 @@ void CWorldSequenceObject::Late_Update(f32_t deltaSeconds)
     }
     const auto self = static_pointer_cast<CGameObject>(shared_from_this());
     CGameInstance::Get().Add_RenderObject(RENDERGROUP::NONBLEND, self);
+    if (m_HasOpaqueGhostMeshes) CGameInstance::Get().Add_RenderObject(RENDERGROUP::NONLIGHT, self);
     if (m_HasTranslucentMeshes) CGameInstance::Get().Add_RenderObject(RENDERGROUP::BLEND, self);
     for (uint32_t mesh = 0; mesh < m_Model->Get_NumMeshes(); ++mesh)
     {
@@ -238,7 +248,8 @@ void CWorldSequenceObject::Late_Update(f32_t deltaSeconds)
 
 HRESULT CWorldSequenceObject::Render_Group(RENDERGROUP group)
 {
-    return RENDERGROUP::BLEND == group ? Render_Translucent() : Render();
+    if (RENDERGROUP::NONLIGHT == group) return Render_ForwardSource(true);
+    return RENDERGROUP::BLEND == group ? Render_ForwardSource(false) : Render();
 }
 
 HRESULT CWorldSequenceObject::Render_Mesh(uint32_t mesh)
@@ -287,7 +298,7 @@ HRESULT CWorldSequenceObject::Render()
     for (uint32_t mesh = 0; mesh < m_Model->Get_NumMeshes(); ++mesh)
     {
         const auto* surface = m_Model->Get_MaterialSurface(mesh);
-        if (animated ? 0u != Resolve_TranslucentSourcePass(surface) : IsMovieTranslucent(surface)) continue;
+        if (animated ? 0u != Resolve_ForwardSourcePass(surface) : IsMovieTranslucent(surface)) continue;
         if (!animated) profile = MovieStaticProfile(surface);
         const bool mapSurface = surface && surface->family == MODEL_SURFACE_FAMILY::SOURCE_BG_OPAQUE_MASKED;
         const DEFERRED_MATERIAL_PROFILE bodyProfile = m_MaterialProfileId.empty() ? DEFERRED_MATERIAL_PROFILE{} :
@@ -315,11 +326,16 @@ HRESULT CWorldSequenceObject::Render()
     return S_OK;
 }
 
-HRESULT CWorldSequenceObject::Render_Translucent()
+HRESULT CWorldSequenceObject::Render_ForwardSource(bool opaqueGhost)
 {
     if (!m_Visible) return S_OK;
-    const auto failed = [this](const std::string& stage)
-    { m_TranslucentRenderStatus = "World Object translucent render failed: " + stage; return E_FAIL; };
+    std::string& status = opaqueGhost ? m_OpaqueGhostRenderStatus : m_TranslucentRenderStatus;
+    const auto failed = [&status, opaqueGhost](const std::string& stage)
+    {
+        status = std::string(opaqueGhost ? "World Object opaque ghost render failed: " :
+            "World Object translucent render failed: ") + stage;
+        return E_FAIL;
+    };
     if (FAILED(m_Shader->Bind_Matrix("g_WorldMatrix", &m_World)) ||
         FAILED(CGameInstance::Get().Bind_Transform(m_Shader, "g_ViewMatrix", D3DTS::VIEW)) ||
         FAILED(CGameInstance::Get().Bind_Transform(m_Shader, "g_ProjMatrix", D3DTS::PROJ)) ||
@@ -339,9 +355,9 @@ HRESULT CWorldSequenceObject::Render_Translucent()
     {
         const auto* surface = m_Model->Get_MaterialSurface(mesh);
         const auto profile = MovieStaticProfile(surface);
-        const uint32_t pass = animated ? Resolve_TranslucentSourcePass(surface) :
+        const uint32_t pass = animated ? Resolve_ForwardSourcePass(surface) :
             (IsMovieTranslucent(surface) ? CMapAssetRenderUtils::Select_Pass(profile, false) : 0u);
-        if (0u == pass) continue;
+        if (0u == pass || (animated && pass == SOURCE_GHOST_OPAQUE_PASS) != opaqueGhost) continue;
         const auto meshLabel = " (mesh " + std::to_string(mesh) + ")";
         const DEFERRED_MATERIAL_PROFILE bodyProfile = m_MaterialProfileId.empty() ? DEFERRED_MATERIAL_PROFILE{} :
             Resolve_DeferredMaterialProfile(m_MaterialProfileId, m_Model->Get_MaterialName(mesh));
@@ -364,6 +380,6 @@ HRESULT CWorldSequenceObject::Render_Translucent()
         if (FAILED(m_Shader->Begin(pass))) return failed("shader pass" + meshLabel);
         if (FAILED(Render_Mesh(mesh))) return failed("mesh submission" + meshLabel);
     }
-    m_TranslucentRenderStatus.clear();
+    status.clear();
     return S_OK;
 }

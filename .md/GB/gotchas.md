@@ -3450,6 +3450,9 @@ Lobby의 `Server entry failed`는 로딩 복구에도 표시된다. 원격 상�
 
 ### 유령 발탄의 coverage와 캐릭터 선택의 diffuse 환경 입력
 
+- CBody_Valtan의 부활과 CPart_Body 미리보기만 pass16으로 고치면 마지막 컷신은 여전히
+  CWorldSequenceObject의 pass10을 사용할 수 있다. native84 세 소비자의 NONLIGHT/pass16을
+  함께 확인하고, 실제 source-preview.finale의 actor 모델·material까지 join한다.
 - native84 유령 발탄은 원본 opacity0/discard, 공통 dither, forward alpha blend를 각각 확인한다.
   사용자 요청의 opaque 경로는 native84 전용이며 일반 발탄과 다른 반투명 재질에 전파하지 않는다.
   불투명 forward는 sorted BLEND 앞에서 depth-write하고 shadow silhouette도 같은 정책을 쓴다.
@@ -3624,6 +3627,12 @@ Lobby의 `Server entry failed`는 로딩 복구에도 표시된다. 원격 상�
 
 ## 석재 색 차이의 원본 그림자·DDS 대조
 
+- 파괴 바닥의 program7과 정적 석재를 구분한다. 동일 MIC/DDS라도 RNM이 없는 Deploy는
+  source Base의 미연결 hemisphere/ambient와 함께 간접광이0일 수 있다. 현재 무베이크
+  program7은 저장된 장면 방향광의 ambient를 한 번 소비하고, baked bit가 있으면 추가하지
+  않는다. local/effect light에는 이 보정을 반복하지 않으며 direct shadow로 ambient를
+  지우지 않는다. 이는 제품 장면 주변광 연결이고 원본 동적 LightEnvironment 복원은 아니다.
+  MapTool의 descriptor 전달 수정만으로 제품 조명까지 고쳤다고 판정하지 않는다.
 - MIC tint와 diffuse가 맞아도 component `ShadowMap2D` 및 placement atlas 좌표가 누락되면 직접광 색·밝기가 달라진다. 원형 바닥과 외곽처럼 같은 atlas를 쓰는 배치도 material의 `bakedLighting.staticShadow`와 placement의 `shadowCoordinateScale/Bias`를 각각 확인한다. 원본 참조가 확인된 연결만 복구하고 다른 재질을 같은 색으로 통일하거나 렌더 옵션으로 상쇄하지 않는다.
 - `extract_source_map_component_lighting.py`의 `PARTIAL_UNSUPPORTED`는 shadow 없음 판정이 아니다. 현재 shadow record 지원 경계에서는 native prefix의 reference를 따라 원본 `ShadowMap2D` tagged properties의 texture·GUID·좌표를 확인한다.
 - DDS top mip 대조는 legacy128/DX10 148바이트 header와 lower mip 추가를 분리한다. 고정128 offset 비교만으로 원본 압축 데이터 불일치를 선언하지 않는다. 발탄 적용 범위와 수치 근거는 [석재 RESULT G08](09-08/2026-09-08_VALTAN_ARENA_STONE_RESTORATION_RESULT.md#g08-2026-09-25-작은-원형-바닥-색-차이-재조사와-그림자-후보)에 있다.
@@ -3941,3 +3950,9 @@ F1 안의 Bingo Size 같은 embedded tuner 준비에 창을 여는 EnsureDebugTo
 호출하면 Action Workbench가 자동으로 열리고 focus를 가져간다. 내부 준비 호출은
 bShowWindow=false를 사용하고 기존 창의 선택·입력 owner·preview를 보존한다. 준비 뒤
 Hide로 되돌리는 방식은 Deactivate/Stop을 일으키므로 사용하지 않는다.
+
+### 쿠크 Bingo preview와 포박 판정 경계
+
+- Effect sourceModelPreview의 관문 정본은 `BINGO`다. legacy `ENCORE`는 codec decode에서 정규화한다. Effect Load/Drawable 성공만으로 재생 성공을 판단하지 말고 metadata → SourceProp → Composition model selection까지 검사한다.
+- `isPatternBound`는 입력 잠금이다. 매틱 처리나 formation 취소에서 `isCombatReady=false`를 남기면 즉사 칼날을 포함한 피해 판정에서 제외된다. 검증 fixture도 readiness를 강제로 복구하지 말고 실제 room update를 거친다.
+- WORLD JSON은 Client16MiB 제한이 있다. 필드 병합 시 숫자 vector를 원본처럼 한 줄로 보존하며, 전체 pretty-print 팽창을 데이터 증가로 오인하지 않는다.

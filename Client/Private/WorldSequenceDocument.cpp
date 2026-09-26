@@ -1761,7 +1761,6 @@ bool_t Client::CWorldSequenceDocument::Validate(
 				track.startMs >= value.durationMs || track.sourceStartMs > MAX_DURATION_MS ||
 				track.sourceEndMs > MAX_DURATION_MS ||
 				(track.sourceEndMs != 0u && track.sourceEndMs <= track.sourceStartMs) ||
-				(firstOfSlot && 0u != track.startMs) ||
 				(!firstOfSlot && track.startMs <= chained->second))
 			{
 				outStatus = "Invalid animation track in world sequence template: " +

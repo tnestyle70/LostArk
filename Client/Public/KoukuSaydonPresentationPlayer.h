@@ -247,6 +247,7 @@ private:
         KOUKU_SAYDON_COMPOSITION_DOCUMENT document;
         KOUKU_SAYDON_COMPOSITION_PATTERN pattern;
         std::uint32_t durationMs = 0, stageDurationMs = 0;
+        bool diceBindVisual = false;
         std::map<std::string, WORLD_EMISSION_ANCHOR> worldEmissionAnchors;
     };
     struct PRODUCT_TAIL final
@@ -457,7 +458,8 @@ private:
         float clockMs = 0.f;
         bool releasing = false;
     };
-    void Update_DiceBindVisuals(float dt, const std::vector<KOUKU_CARD_PRESENTATION_VIEW>& players);
+    void Update_DiceBindVisuals(float dt, const std::vector<KOUKU_BOSS_PRESENTATION_VIEW>& bosses,
+        const std::vector<KOUKU_CARD_PRESENTATION_VIEW>& players);
     void Sample(SESSION& session, const KOUKU_SAYDON_COMPOSITION_DOCUMENT& document,
         const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern, float clockMs, bool paused,
         const float4x4_t& pivot, const std::shared_ptr<Engine::CModel>& model,

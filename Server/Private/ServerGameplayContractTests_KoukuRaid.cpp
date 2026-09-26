@@ -1290,9 +1290,29 @@ void CServerGameplayContractRunner::Run_KoukuRaidIntegration(TESTS& tests)
                     "Other non-entrants retain distinct 1.25-metre offsets after the captive swap");
             tests.Require(bound == (count >= 3u ? 1u : 0u),
                 "Solo and duo formations have no captive; three or four participants bind one non-entrant");
+            if (count >= 3u && seed == 1u)
+            {
+                room->m_WorldEntities.push_back(boss);
+                room->m_iServerTick = 130u; room->Update_Players(1.f / 30.f);
+                room->m_iServerTick = 131u; room->Update_Players(1.f / 30.f);
+                const auto captive = std::find_if(room->m_Players.begin(), room->m_Players.end(),
+                    [](const auto& row) { return row.second.bPatternBound; });
+                tests.Require(captive != room->m_Players.end() && captive->second.isCombatReady &&
+                    captive->second.bPatternBindRestoreCombatReady && !captive->second.hasMoveGoal,
+                    "Actual room ticks keep Iron Maiden input locked while retaining authoritative damage eligibility");
+                if (captive != room->m_Players.end())
+                {
+                    auto victim = captive->second;
+                    BOSS_PATTERN_LOGIC_RESULT death{}; death.eKind = BOSS_PATTERN_LOGIC_RESULT_KIND::INSTANT_DEATH;
+                    std::vector<DAMAGE_EVENT> damage;
+                    CKoukuSaydonLogicRuntime::Apply_Result(victim, death, boss, catalog, nullptr, 132u, damage);
+                    tests.Require(victim.iCurrentHp == 0u && victim.eAction == PLAYER_ACTION_STATE::DEAD && !damage.empty(),
+                        "The same Server instant-death result kills an Iron Maiden captive after real player updates");
+                }
+                room->m_WorldEntities.pop_back();
+            }
         }
         if (count >= 3u) tests.Require(nonFirstCaptive, "Formation regression exercises a random captive other than the first player");
-        // Formation cancels the previous action and clears combat readiness for that tick.
         // Admit the next formation explicitly so this tests its blocked destination path.
         for (auto& [id, player] : room->m_Players)
             if (player.iCurrentHp && !player.iMarioStage) player.isCombatReady = true;

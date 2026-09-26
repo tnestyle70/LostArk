@@ -1188,6 +1188,8 @@ namespace
             (cross && (summon.DirectionPatternIds.size() != 4u || !Is_StableId(summon.strCloneEndStageId) ||
                 !std::all_of(summon.DirectionPatternIds.begin(), summon.DirectionPatternIds.end(),
                     [&](const auto& id) { return Is_StableId(id) && ids.insert(id).second; }))) ||
+            (!summon.strRealPatternId.empty() && (!cross ||
+                std::find(summon.DirectionPatternIds.begin(), summon.DirectionPatternIds.end(), summon.strRealPatternId) == summon.DirectionPatternIds.end())) ||
             (!cross && (!summon.DirectionPatternIds.empty() || !summon.strCloneEndStageId.empty())))
         {
             status = "Cross direction Summon needs four unique Pattern IDs and a clone end Stage ID: " + summon.strSummonId;
@@ -1215,7 +1217,7 @@ namespace
             if (!box.PatternSpawns.empty())
             { status = "A cross direction Summon cannot also own independent Pattern spawns: " + box.strOccurrenceId; return false; }
             staged.push_back({ box.strOccurrenceId, box.iStartMs, box.iDurationMs,
-                summon->DirectionPatternIds, summon->strCloneEndStageId });
+                summon->DirectionPatternIds, summon->strCloneEndStageId, summon->strRealPatternId });
         }
         for (const auto& box : pattern.LogicOccurrences)
         {
@@ -3704,7 +3706,7 @@ bool_t Client::CKoukuSaydonCompositionDocument::Parse_Text(
 		for (const DATA_JSON_VALUE& summonValue : summons->Get_Array())
 		{
 			if (!Has_Properties(summonValue, { "summonId", "displayName" },
-                { "summonKind", "directionPatternIds", "cloneEndStageId" }))
+                { "summonKind", "directionPatternIds", "cloneEndStageId", "realPatternId" }))
 			{
 				outStatus = "KoukuSaydon Summon definition has unexpected properties.";
 				return false;
@@ -3722,7 +3724,11 @@ bool_t Client::CKoukuSaydonCompositionDocument::Parse_Text(
             const auto* kind = summonValue.Find("summonKind");
             const auto* directions = summonValue.Find("directionPatternIds");
             const auto* cutoff = summonValue.Find("cloneEndStageId");
-            if (kind || directions || cutoff)
+            const auto* real = summonValue.Find("realPatternId");
+            if (real && (!real->Is_String() || !Is_StableId(real->Get_String())))
+            { outStatus = "Cross direction realPatternId must name one of its four Patterns."; return false; }
+            if (real) stagedSummon.strRealPatternId = real->Get_String();
+            if (kind || directions || cutoff || real)
             {
                 if (!kind || !kind->Is_String() || kind->Get_String() != "CROSS_DIRECTION_CLONES" ||
                     !directions || !cutoff || !cutoff->Is_String() ||
@@ -5213,6 +5219,8 @@ std::string Client::CKoukuSaydonCompositionDocument::Serialize(
             output << ",\n      \"summonKind\": \"" << CDataJson::Escape(summon.strSummonKind)
                 << "\",\n      \"cloneEndStageId\": \"" << CDataJson::Escape(summon.strCloneEndStageId) << "\",\n";
             textList("directionPatternIds", summon.DirectionPatternIds, "      ", true);
+            if (!summon.strRealPatternId.empty())
+                output << ",\n      \"realPatternId\": \"" << CDataJson::Escape(summon.strRealPatternId) << "\"";
         }
         output << "\n    }" << (summonIndex + 1u < document.Summons.size() ? "," : "") << "\n";
 	}
