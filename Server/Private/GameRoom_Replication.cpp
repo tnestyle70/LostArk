@@ -628,7 +628,10 @@ void LostArk::Server::CGameRoom::Broadcast_WorldSnapshot()
 		snapshot.iMarioLayoutVariant = player.iMarioLayoutVariant;
 		snapshot.iMarioPoppedBallMask = player.iMarioStage >= 1u && player.iMarioStage <= 4u ?
 			m_MarioPoppedBalls[player.iMarioStage] : std::uint16_t{};
-		snapshot.iMarioCurseReleasedMask = Mario_CurseReleasedMask(player.iMarioStage, player.iMarioLayoutVariant);
+		snapshot.iMarioCurseReleasedMask = player.iMarioRequiredColor >= 1u && player.iMarioRequiredColor <= 3u ?
+			static_cast<std::uint8_t>(Mario_CurseReleasedMask(player.iMarioStage, player.iMarioLayoutVariant) &
+				(1u << (player.iMarioRequiredColor - 1u))) : 0u;
+		snapshot.iMarioMarkerColor = Mario_MarkerColor(player.iNetEntityId);
 		snapshot.eCardMazeRole = player.eCardMazeRole;
 		snapshot.eCardMazeSuit = player.eCardMazeSuit;
 		snapshot.iCardMazeKills = player.iCardMazeKills;

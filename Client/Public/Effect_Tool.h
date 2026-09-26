@@ -48,6 +48,7 @@ struct EFFECT_TOOL_KOUKU_PATTERN_PREVIEW final
     std::string strEffectAssetId, strPatternId, strOccurrenceId;
 };
 
+struct CLASS_MOVIE_TIMELINE;
 class CCharacterPreviewPanel;
 class CEffectObject;
 class CEffectAuthoringResourceTree;
@@ -547,6 +548,27 @@ public:
     void Set_ClassMovieResources(std::vector<CLASS_MOVIE_RESOURCE_ROW> movies)
     { m_ClassMovieResources = std::move(movies); }
     bool Consume_ClassMovieEditorRequest(std::string& classId);
+    struct CLASS_MOVIE_STATE final
+    {
+        bool available = false, active = false, paused = false, loop = false;
+        double clockMs = 0., durationMs = 0.;
+        std::string status;
+    };
+    struct CLASS_MOVIE_CALLBACKS final
+    {
+        std::function<CLASS_MOVIE_STATE(const std::string&)> state;
+        std::function<std::shared_ptr<const CLASS_MOVIE_TIMELINE>(const std::string&, bool)> timeline;
+        std::function<bool(const std::string&, std::string&)> play;
+        std::function<bool(const std::string&, bool, double, std::string&)> seek;
+        std::function<void(bool)> pause;
+        std::function<void()> stop;
+        std::function<bool(const EFFECT_DOCUMENT_DESC&, std::string&)> preview;
+        std::function<bool(std::string&)> clearPreviews;
+    };
+    void Set_ClassMovieCallbacks(CLASS_MOVIE_CALLBACKS callbacks) { m_ClassMovieCallbacks = std::move(callbacks); }
+    bool Open_ClassMovie(const std::string& classId, bool loop = false, const std::string& effectId = {});
+    bool Play_ClassMovie();
+    bool End_ClassMovieEditing();
     void Update(f32_t fTimeDelta);
     void Render();
     /* Composition Save committed a new canonical revision. Queue that exact
@@ -563,6 +585,10 @@ public:
 		EFFECT_RESOURCE_KEY& OutKey);
 
 private:
+    bool Has_ClassMovieContext() const { return !m_strClassMovieId.empty(); }
+    bool Is_ClassMovieEffect(const std::string& assetId) const;
+    void Render_ClassMovieControls();
+    bool Stage_ClassMovieEffect(const EFFECT_DOCUMENT_DESC& document);
     void Render_EffectToolWindow();
     void Render_ModelViewWindow();
     void Render_EffectDetailWindow();
@@ -1219,6 +1245,12 @@ private:
 	std::optional<EFFECT_RESOURCE_KEY> m_PendingTypedEffectResourceOpen;
     std::vector<CLASS_MOVIE_RESOURCE_ROW> m_ClassMovieResources;
     std::optional<std::string> m_PendingClassMovieEditor;
+    CLASS_MOVIE_CALLBACKS m_ClassMovieCallbacks;
+    std::string m_strClassMovieId;
+    bool m_bClassMovieLoop = false;
+    bool m_bClassMovieScrubbing = false;
+    float m_fClassMovieSeekSeconds = 0.f;
+    std::string m_strClassMovieStatus;
 	std::unordered_map<std::string, size_t>
 		m_BossProductCueMappingCounts;
 	shared_ptr<const EFFECT_VISUAL_PROGRAM_DOCUMENT_PROJECTION>

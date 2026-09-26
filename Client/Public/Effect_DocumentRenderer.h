@@ -528,6 +528,11 @@ public:
 		const EFFECT_DOCUMENT_DESC& Document,
 		std::shared_ptr<const PREPARED_DOCUMENT>& OutPrepared,
 		std::string& strOutError);
+    // Tool-owned immutable preparation; never replaces a Product catalog target.
+    static bool_t Prepare_AuthoringDocument(
+        ComPtr<ID3D11Device> device, ComPtr<ID3D11DeviceContext> context,
+        const EFFECT_DOCUMENT_DESC& document,
+        std::shared_ptr<const PREPARED_DOCUMENT>& prepared, std::string& error);
 	static bool_t Prepare_VisualProgramDocument(
 		ComPtr<ID3D11Device> pDevice,
 		ComPtr<ID3D11DeviceContext> pContext,

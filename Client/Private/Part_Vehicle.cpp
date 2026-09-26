@@ -1,4 +1,5 @@
 #include "Part_Vehicle.h"
+#include "Character.h"
 #include "BinaryAsset/ModelAssetData.h"
 
 #include "DeferredMaterialRenderUtils.h"
@@ -450,8 +451,15 @@ void CPart_Vehicle::Update(f32_t fTimeDelta)
 	if (flight) Apply_FlightHeadIK(fTimeDelta);
 }
 
+bool_t CPart_Vehicle::Is_CharacterPresentationHidden() const
+{
+	const auto owner = m_pCharacterPresentationOwner.lock();
+	return owner && owner->Is_WorldPresentationHidden();
+}
+
 void CPart_Vehicle::Late_Update(f32_t fTimeDelta)
 {
+	if (Is_CharacterPresentationHidden()) return;
 	CGameInstance::Get().Add_RenderObject(
 		RENDERGROUP::NONBLEND,
 		static_pointer_cast<CGameObject>(shared_from_this()));
@@ -471,6 +479,7 @@ void CPart_Vehicle::Late_Update(f32_t fTimeDelta)
 
 HRESULT CPart_Vehicle::Render()
 {
+	if (Is_CharacterPresentationHidden()) return S_OK;
 	if (FAILED(Bind_ShaderResources()))
 		return E_FAIL;
 
@@ -504,6 +513,7 @@ HRESULT CPart_Vehicle::Render_Group(RENDERGROUP group)
 
 HRESULT CPart_Vehicle::Render_Translucent()
 {
+	if (Is_CharacterPresentationHidden()) return S_OK;
 	if (FAILED(Bind_ShaderResources()) ||
 		FAILED(CMapAssetRenderUtils::Bind_SourceCharacterForwardLights(m_pShaderCom)))
 		return E_FAIL;
@@ -527,6 +537,7 @@ HRESULT CPart_Vehicle::Render_Translucent()
 
 HRESULT CPart_Vehicle::Render_Shadow()
 {
+	if (Is_CharacterPresentationHidden()) return S_OK;
 	constexpr uint32_t ANIMATED_SHADOW_PASS = 1u;
 	if (FAILED(Bind_ShadowShaderResources()))
 		return E_FAIL;

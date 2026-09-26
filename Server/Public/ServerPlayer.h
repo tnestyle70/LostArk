@@ -194,6 +194,15 @@ namespace LostArk::Server
 		std::uint8_t iMarioBombContactStage = 0u;
 		std::map<std::pair<std::uint32_t, std::uint32_t>, std::int64_t> MarioBombHitBirths;
 		std::uint8_t iMarioLayoutVariant = 0u;
+		// The entrant owns the challenge until death/cancellation or the return landing.
+		// 0 inactive, 1 red, 2 blue, 3 yellow; the marker may belong to an outside player.
+		std::uint8_t iMarioRequiredColor = 0u;
+		LostArk::Shared::NET_ENTITY_ID iMarioMarkerNetEntityId = LostArk::Shared::INVALID_NET_ENTITY_ID;
+		void Clear_MarioBallChallenge()
+		{
+			iMarioRequiredColor = 0u;
+			iMarioMarkerNetEntityId = LostArk::Shared::INVALID_NET_ENTITY_ID;
+		}
 		// Pinned by the entry pattern; survives the arena phase and terminal move start.
 		std::optional<std::array<float, 3u>> MarioReturnPosition;
 		// Safe arena revive point retained through the fall's below-floor death pose.
@@ -224,7 +233,11 @@ namespace LostArk::Server
 				MovePath.clear();
 				iMovePathIndex = 0u;
 			}
-			if (!preserveReturnPosition) MarioReturnPosition.reset();
+			if (!preserveReturnPosition)
+			{
+				MarioReturnPosition.reset();
+				Clear_MarioBallChallenge();
+			}
 			iMarioStage = 0u;
 			iMarioBombContactStage = 0u;
 			MarioBombHitBirths.clear();

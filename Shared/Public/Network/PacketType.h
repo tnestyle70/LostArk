@@ -109,7 +109,8 @@ namespace LostArk::Shared
 	// 110 carries the Server ballistic hit-reaction phase in PLAYER_SNAPSHOT.
 	// 112 maps owned WORLD cues to their Server combat body for hit/hover presentation.
 	// 113 adds validated same-room ground ping intent and reliable room broadcast.
-	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 113;
+	// 114 carries the Server-selected Mario colour marker over the assigned player.
+	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 114;
 
 	enum class WORLD_ID : std::uint16_t
 	{

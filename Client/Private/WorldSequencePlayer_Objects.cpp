@@ -25,6 +25,28 @@
 using namespace Client;
 using namespace Engine;
 
+namespace
+{
+bool_t Apply_ObjectMaterialConstants(CModel& model, const std::string& materialName,
+    const MODEL_SOURCE_CHARACTER_PARAMETERS& parameters, std::string& status)
+{
+    bool exact = false;
+    for (uint32_t mesh = 0u; mesh < model.Get_NumMeshes(); ++mesh)
+    {
+        const auto& name = model.Get_MaterialName(mesh);
+        if (name.find(materialName) == std::string::npos) continue;
+        const auto* surface = model.Get_MaterialSurface(mesh);
+        if (name != materialName || !surface || surface->family != MODEL_SURFACE_FAMILY::SOURCE_CHARACTER ||
+            surface->sourceCharacter.program != parameters.program)
+        { status = "World Object material name/program mismatch: " + materialName; return false; }
+        exact = true;
+    }
+    if (!exact || model.Override_SourceCharacterConstants(materialName.c_str(), parameters) == 0u)
+    { status = "World Object material override was rejected: " + materialName; return false; }
+    return true;
+}
+}
+
 CWorldSequencePlayer::~CWorldSequencePlayer() { Clear(); }
 
 bool_t CWorldSequencePlayer::Set_ObjectMaterialConstants(const std::string& instanceId,
@@ -41,20 +63,7 @@ bool_t CWorldSequencePlayer::Set_ObjectMaterialConstants(const std::string& inst
         if (entry.slotId != slotId || !entry.object) continue;
         const auto& model = entry.object->Get_Model();
         if (!model) return false;
-        bool exact = false;
-        for (uint32_t mesh = 0u; mesh < model->Get_NumMeshes(); ++mesh)
-        {
-            const auto& name = model->Get_MaterialName(mesh);
-            if (name.find(materialName) == std::string::npos) continue;
-            const auto* surface = model->Get_MaterialSurface(mesh);
-            if (name != materialName || !surface ||
-                surface->family != MODEL_SURFACE_FAMILY::SOURCE_CHARACTER ||
-                surface->sourceCharacter.program != parameters.program)
-            { m_Status = "World Object material name/program mismatch: " + materialName; return false; }
-            exact = true;
-        }
-        if (!exact || model->Override_SourceCharacterConstants(materialName.c_str(), parameters) == 0u)
-        { m_Status = "World Object material override was rejected: " + materialName; return false; }
+        if (!Apply_ObjectMaterialConstants(*model, materialName, parameters, m_Status)) return false;
         matched = true;
     }
     // A source actor can be hidden before its first emission. It still exists
@@ -107,7 +116,6 @@ std::string Narrow_PrototypeTag(const wstring_t& tag)
     return text;
 }
 
-#ifdef _DEBUG
 bool Sample_ObjectCollider(const WORLD_SEQUENCE_COLLIDER_TRACK& collider,
     const WORLD_SEQUENCE_OBJECT_RESOURCE& resource, const WORLD_SEQUENCE_TRANSFORM_KEY& key,
     const WORLD_SEQUENCE_OBJECT_MOTION& motion, const uint32_t emitter,
@@ -135,11 +143,15 @@ bool Sample_ObjectCollider(const WORLD_SEQUENCE_COLLIDER_TRACK& collider,
     out.hasGrip = collider.behavior == "HOOK_CAPTURE";
     if (out.hasGrip)
     {
+#ifdef _DEBUG
         float4x4_t attachment;
         if (!object.Try_GetAttachmentWorld(collider.attachmentBone, attachment)) return false;
         const matrix_t world = XMLoadFloat4x4(&attachment);
         XMStoreFloat3(&out.center, XMVector3TransformCoord(XMLoadFloat3(&collider.positionOffset), world));
         XMStoreFloat3(&out.gripPosition, XMVector3TransformCoord(XMLoadFloat3(&collider.gripLocalOffset), world));
+#else
+        return false; // Bone attachment preview is an authoring-only capability.
+#endif
     }
     else
     {
@@ -149,7 +161,6 @@ bool Sample_ObjectCollider(const WORLD_SEQUENCE_COLLIDER_TRACK& collider,
     }
     return true;
 }
-#endif
 
 // Use the same clip windows, ticks and end policy as WorldSequenceObject::Sample,
 // but sample the immutable CModel skeleton without changing the visible palette.
@@ -864,9 +875,7 @@ void CWorldSequencePlayer::Release_Objects(ACTIVE_INSTANCE& active)
 {
     for (const auto& sound : active.sounds) CGameInstance::Get().Stop_SoundCue(sound.handle);
     active.sounds.clear();
-#ifdef _DEBUG
     active.objectColliderSamples.clear();
-#endif
     for (const auto& effect : active.effects)
     {
         if (effect.handle) CEffectV2Runtime::Stop_Group(effect.handle);
@@ -994,14 +1003,12 @@ bool_t CWorldSequencePlayer::Try_GetObjectPivot(const std::string& instanceId, f
     return sample(*found);
 }
 
-#ifdef _DEBUG
 void CWorldSequencePlayer::Collect_ObjectColliderSamples(std::vector<OBJECT_COLLIDER_SAMPLE>& out) const
 {
     out.clear();
     for (const auto& active : m_Active)
         out.insert(out.end(), active.objectColliderSamples.begin(), active.objectColliderSamples.end());
 }
-#endif
 
 std::string CWorldSequencePlayer::Get_ObjectSampleStatus(const std::string& instanceId) const
 {
@@ -1143,10 +1150,8 @@ bool_t CWorldSequencePlayer::Apply_Objects(ACTIVE_INSTANCE& active,
     const f32_t emissionStartMs, const f32_t emissionRate, const std::string& emissionMotionId)
 {
     active.objectSampleStatus.clear();
-#ifdef _DEBUG
     active.objectColliderSamples.clear();
     std::vector<OBJECT_COLLIDER_SAMPLE> colliderSamples;
-#endif
     for (auto& entry : active.objects) entry.object->Hide();
     if (!visible || std::none_of(instance.bindings.begin(), instance.bindings.end(),
         [](const auto& binding) { return binding.targetKind == WORLD_SEQUENCE_TARGET_KIND::OBJECT_RESOURCE; })) return true;
@@ -1256,12 +1261,25 @@ bool_t CWorldSequencePlayer::Apply_Objects(ACTIVE_INSTANCE& active,
                 { m_Status = "World Object clone type is invalid: " + resource->objectId; return false; }
                 if (!found->object->Get_RenderStatus().empty())
                 { m_Status = found->object->Get_RenderStatus() + " / " + resource->objectId; return false; }
+                for (const auto& material : sequence.materialTracks)
+                {
+                    if (material.slotId != binding.slotId) continue;
+                    MODEL_SOURCE_CHARACTER_PARAMETERS parameters;
+                    const auto& objectModel = found->object->Get_Model();
+                    if (!resource->materialProfile || !objectModel ||
+                        !CWorldSequenceDocument::Try_SampleMaterialParameters(*resource->materialProfile, material, ageMs, parameters))
+                    { m_Status = "World Object native material sample failed: " + material.materialName; return false; }
+                    if (!Apply_ObjectMaterialConstants(*objectModel, material.materialName, parameters, m_Status)) return false;
+                }
                 if (!found->object->Sample(stored, key.visible, animation, ageMs, windowEnd))
                 { m_Status = "World Object transform/animation sample failed: " + resource->objectId; return false; }
-#ifdef _DEBUG
                 if (found->object->Is_Visible())
                     for (const auto& collider : sequence.colliderTracks)
                     {
+#ifndef _DEBUG
+                        // Release F1 only inspects the Bingo head; authoring bone previews stay Debug-only.
+                        if (collider.colliderTrackId != "collider.bingo.hammer.head") continue;
+#endif
                         if (collider.slotId != binding.slotId || ageMs < collider.startMs ||
                             ageMs >= static_cast<double>(collider.startMs) + collider.durationMs) continue;
                         OBJECT_COLLIDER_SAMPLE sample;
@@ -1273,7 +1291,6 @@ bool_t CWorldSequencePlayer::Apply_Objects(ACTIVE_INSTANCE& active,
                         sample.emissionIndex = emitter;
                         colliderSamples.push_back(std::move(sample));
                     }
-#endif
                 if (anchor.liveBossAnchor &&
                     (resource->objectId == "world.object.kouku.saydon_showtime_gun_left" ||
                      resource->objectId == "world.object.kouku.saydon_showtime_gun_right"))
@@ -1286,9 +1303,7 @@ bool_t CWorldSequencePlayer::Apply_Objects(ACTIVE_INSTANCE& active,
                 else found->hatReplacement.reset();
             }
     }
-#ifdef _DEBUG
     active.objectColliderSamples = std::move(colliderSamples);
-#endif
     return true;
 }
 

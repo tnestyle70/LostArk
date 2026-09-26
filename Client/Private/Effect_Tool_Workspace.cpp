@@ -1,6 +1,7 @@
 #include "imgui.h"
 
 #include "Effect_Tool.h"
+#include "ClassSelectionTimeline.h"
 #include "EffectAuthoringResourceTree.h"
 #include "EffectAuthoringSequencer.h"
 #include "Effect_DocumentCodec.h"
@@ -13,6 +14,7 @@
 #include <algorithm>
 #include <cstring>
 #include <cstdio>
+#include <utility>
 
 namespace Client
 {
@@ -190,6 +192,7 @@ bool CEffect_Tool::Update_AuthoringPlacementInput(const bool active)
 
 void CEffect_Tool::Deactivate_AuthoringWorkspace()
 {
+    (void)End_ClassMovieEditing();
     if (m_pAuthoringSequencer) m_pAuthoringSequencer->Stop();
     m_bPreviewPlaying = false;
     Release_WorldPreview(true);
@@ -310,6 +313,7 @@ void CEffect_Tool::Render_AuthoringResourceTree()
 
 void CEffect_Tool::Render_AuthoringCommands()
 {
+    if (Has_ClassMovieContext()) return;
     if (!m_pAuthoringSequencer) return;
     if (m_ActiveDocument && m_ActiveDocument->strEffectAssetId.starts_with("effect.kouku."))
     {
@@ -535,4 +539,171 @@ bool CEffect_Tool::Render_WorldObjectResourceGrid(bool draft)
     ImGui::PopID();
     return true;
 }
+bool CEffect_Tool::Is_ClassMovieEffect(const std::string& assetId) const
+{
+    if (!Has_ClassMovieContext() || !m_ClassMovieCallbacks.timeline) return false;
+    for (const bool loop : {false, true})
+        if (const auto timeline = m_ClassMovieCallbacks.timeline(m_strClassMovieId, loop))
+            for (const auto& row : timeline->rows)
+                if (row.kind == "Effect")
+                    for (const auto& box : row.boxes)
+                        if (box.resource == assetId) return true;
+    return false;
+}
+
+bool CEffect_Tool::End_ClassMovieEditing()
+{
+    if (!Has_ClassMovieContext()) return true;
+    if (m_ClassMovieCallbacks.clearPreviews && !m_ClassMovieCallbacks.clearPreviews(m_strClassMovieStatus))
+        return false;
+    m_strClassMovieId.clear();
+    m_PreviewIsolationElementIds.clear();
+    m_ePreviewFilter = EFFECT_PREVIEW_FILTER::COMPLETE;
+    m_bClassMovieScrubbing = false;
+    return true;
+}
+
+bool CEffect_Tool::Open_ClassMovie(const std::string& classId, const bool loop, const std::string& effectId)
+{
+    const auto timeline = m_ClassMovieCallbacks.timeline ? m_ClassMovieCallbacks.timeline(classId, loop) : nullptr;
+    if (!timeline)
+    { m_strClassMovieStatus = "This Movie is not prepared. Enter Character Select and select an available Movie."; return false; }
+    const CLASS_MOVIE_TIMELINE_BOX* selected = nullptr;
+    for (const auto& row : timeline->rows)
+        if (row.kind == "Effect")
+            for (const auto& box : row.boxes)
+                if (!selected && (effectId.empty() || box.resource == effectId)) selected = &box;
+    if (!selected)
+    { m_strClassMovieStatus = "This Movie phase has no matching Effect. Use Timeline / Camera for other rows."; return false; }
+    const bool sameEffect = m_ActiveDocument && m_ActiveDocument->strEffectAssetId == selected->resource &&
+        m_eActiveDocumentSource == EFFECT_DOCUMENT_SOURCE::AUTHORED;
+    if (Has_UnsavedWork() && (!sameEffect || (Has_ClassMovieContext() && m_strClassMovieId != classId)))
+    { m_strClassMovieStatus = "Save or discard the current Effect changes before opening another Movie Effect."; return false; }
+    if (Has_ClassMovieContext() && m_strClassMovieId != classId && !End_ClassMovieEditing()) return false;
+    if (!sameEffect && !Open_AuthoringResource({EFFECT_RESOURCE_OWNER_KIND::V1_DOCUMENT, selected->resource}))
+    { m_strClassMovieStatus = m_strDocumentStatus; return false; }
+    if (m_pAuthoringSequencer) m_pAuthoringSequencer->Stop();
+    Release_WorldPreview(true);
+    Reset_SynchronizedAnimationSequence();
+    m_bPreviewPlaying = false;
+    m_strClassMovieId = classId;
+    m_PreviewIsolationElementIds.clear();
+    m_ePreviewFilter = EFFECT_PREVIEW_FILTER::COMPLETE;
+    m_bClassMovieLoop = loop;
+    m_bClassMovieScrubbing = false;
+    m_bAllEffectsWorldSelected = true;
+    m_bAllEffectsValtanBossSelected = m_bAllEffectsKoukuBossSelected = false;
+    const auto state = m_ClassMovieCallbacks.state ? m_ClassMovieCallbacks.state(classId) : CLASS_MOVIE_STATE{};
+    if (!state.active && m_ClassMovieCallbacks.seek &&
+        !m_ClassMovieCallbacks.seek(classId, loop, selected->movieStartMs, m_strClassMovieStatus)) return false;
+    EFFECT_DOCUMENT_DESC document;
+    if (!Resolve_AuthoringOccurrenceDocument({EFFECT_RESOURCE_OWNER_KIND::V1_DOCUMENT, selected->resource},
+        document, m_strClassMovieStatus) || !Stage_ClassMovieEffect(document))
+    {
+        m_strClassMovieStatus = "Movie editor opened; previous Effect preview retained: " + m_strPreviewStatus;
+        return true;
+    }
+    m_strClassMovieStatus = "Movie opened in V1. Select an Effect and Element; Play All uses its actors, camera and full timeline.";
+    return true;
+}
+
+bool CEffect_Tool::Stage_ClassMovieEffect(const EFFECT_DOCUMENT_DESC& document)
+{
+    if (!Is_ClassMovieEffect(document.strEffectAssetId) || !m_ClassMovieCallbacks.preview)
+    { m_strPreviewStatus = "This Effect is not part of the selected Movie. Open its Movie Effect again."; return false; }
+    EFFECT_DOCUMENT_DESC filtered;
+    const EFFECT_DOCUMENT_DESC* candidate = &document;
+    if (!m_PreviewIsolationElementIds.empty())
+    {
+        if (!Build_ElementsPreviewDocument(document, m_PreviewIsolationElementIds, filtered, m_strPreviewStatus)) return false;
+        candidate = &filtered;
+    }
+    if (!m_ClassMovieCallbacks.preview(*candidate, m_strPreviewStatus)) return false;
+    m_strClassMovieStatus = m_strPreviewStatus;
+    return true;
+}
+
+bool CEffect_Tool::Play_ClassMovie()
+{
+    if (!Has_ClassMovieContext() || !m_ClassMovieCallbacks.play) return false;
+    const auto previousIsolation = std::exchange(m_PreviewIsolationElementIds, {});
+    if (m_ActiveDocument && Is_ClassMovieEffect(m_ActiveDocument->strEffectAssetId))
+    {
+        EFFECT_DOCUMENT_DESC document;
+        if (!Resolve_AuthoringOccurrenceDocument({EFFECT_RESOURCE_OWNER_KIND::V1_DOCUMENT,
+            m_ActiveDocument->strEffectAssetId}, document, m_strClassMovieStatus) || !Stage_ClassMovieEffect(document))
+        { m_PreviewIsolationElementIds = previousIsolation; if (!m_strPreviewStatus.empty()) m_strClassMovieStatus = m_strPreviewStatus; return false; }
+    }
+    const bool played = m_ClassMovieCallbacks.play(m_strClassMovieId, m_strClassMovieStatus);
+    m_strPreviewStatus = m_strClassMovieStatus;
+    if (played) { m_bClassMovieLoop = false; m_bClassMovieScrubbing = false; }
+    return played;
+}
+
+void CEffect_Tool::Render_ClassMovieControls()
+{
+    const auto state = m_ClassMovieCallbacks.state ? m_ClassMovieCallbacks.state(m_strClassMovieId) : CLASS_MOVIE_STATE{};
+    const auto movie = std::find_if(m_ClassMovieResources.begin(), m_ClassMovieResources.end(),
+        [this](const auto& row) { return row.classId == m_strClassMovieId; });
+    ImGui::SeparatorText("Movie / Character Animation");
+    ImGui::TextWrapped("%s", movie == m_ClassMovieResources.end() ? m_strClassMovieId.c_str() : movie->label.c_str());
+    ImGui::BeginDisabled(!state.available);
+    if (ImGui::Button("Play All")) (void)Play_ClassMovie();
+    ImGui::EndDisabled();
+    ImGui::SameLine();
+    ImGui::BeginDisabled(!state.active);
+    if (ImGui::Button(state.paused ? "Resume" : "Pause") && m_ClassMovieCallbacks.pause)
+        m_ClassMovieCallbacks.pause(!state.paused);
+    ImGui::SameLine();
+    if (ImGui::Button("Stop") && m_ClassMovieCallbacks.stop) m_ClassMovieCallbacks.stop();
+    ImGui::EndDisabled();
+    ImGui::SameLine();
+    if (ImGui::Button("Timeline / Camera")) m_PendingClassMovieEditor = m_strClassMovieId;
+    ImGui::TextDisabled("Actors and Effects share Movie time. Element edits preview here; Save stores the Effect.");
+    if (state.active) ImGui::Text("Playing %s: %.3f / %.3f s%s", state.loop ? "Loop" : "Intro",
+        state.clockMs * .001, state.durationMs * .001, state.paused ? " (paused)" : "");
+    if (ImGui::RadioButton("Intro Effects", !m_bClassMovieLoop)) { m_bClassMovieLoop = false; m_bClassMovieScrubbing = false; }
+    ImGui::SameLine();
+    if (ImGui::RadioButton("Loop Effects", m_bClassMovieLoop)) { m_bClassMovieLoop = true; m_bClassMovieScrubbing = false; }
+    const auto timeline = m_ClassMovieCallbacks.timeline ? m_ClassMovieCallbacks.timeline(m_strClassMovieId, m_bClassMovieLoop) : nullptr;
+    if (timeline)
+    {
+        if (!m_bClassMovieScrubbing)
+            m_fClassMovieSeekSeconds = state.active && state.loop == m_bClassMovieLoop ? static_cast<float>(state.clockMs * .001) : 0.f;
+        ImGui::BeginDisabled(!state.available);
+        ImGui::SliderFloat("Movie time", &m_fClassMovieSeekSeconds, 0.f, static_cast<float>(timeline->movieDurationMs * .001), "%.3f s");
+        m_bClassMovieScrubbing = ImGui::IsItemActive();
+        if (ImGui::IsItemDeactivatedAfterEdit() && m_ClassMovieCallbacks.seek)
+            (void)m_ClassMovieCallbacks.seek(m_strClassMovieId, m_bClassMovieLoop,
+                m_fClassMovieSeekSeconds * 1000., m_strClassMovieStatus);
+        ImGui::EndDisabled();
+        ImGui::SeparatorText("Movie Effects");
+        std::set<std::string> shown;
+        for (const auto& row : timeline->rows)
+            if (row.kind == "Effect")
+                for (const auto& box : row.boxes)
+                {
+                    if (!shown.insert(box.resource).second) continue;
+                    ImGui::PushID(box.resource.c_str());
+                    const bool selected = m_ActiveDocument && m_ActiveDocument->strEffectAssetId == box.resource;
+                    if (ImGui::Selectable(box.resource.c_str(), selected))
+                        (void)Open_ClassMovie(m_strClassMovieId, m_bClassMovieLoop, box.resource);
+                    if (selected)
+                    {
+                        ImGui::BeginDisabled(!state.available);
+                        if (ImGui::SmallButton("View in Movie") && m_ClassMovieCallbacks.seek)
+                            (void)m_ClassMovieCallbacks.seek(m_strClassMovieId, m_bClassMovieLoop,
+                                box.movieStartMs + (std::min)(100., (box.movieEndMs - box.movieStartMs) * .5), m_strClassMovieStatus);
+                        ImGui::EndDisabled();
+                        ImGui::SameLine(); ImGui::TextDisabled("First occurrence %.3f s", box.movieStartMs * .001);
+                    }
+                    ImGui::PopID();
+                }
+    }
+    if (!state.status.empty()) ImGui::TextWrapped("%s", state.status.c_str());
+    if (!m_strClassMovieStatus.empty()) ImGui::TextWrapped("%s", m_strClassMovieStatus.c_str());
+    if (ImGui::Button("End Movie Editing")) (void)End_ClassMovieEditing();
+}
+
+
 }

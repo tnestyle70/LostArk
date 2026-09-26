@@ -799,6 +799,12 @@ void Client::CEffect_Tool::Render_ModelViewWindow()
         ImGui::End();
         return;
     }
+    if (Has_ClassMovieContext())
+    {
+        Render_ClassMovieControls();
+        ImGui::End();
+        return;
+    }
     if (m_pAuthoringSequencer)
     {
         m_pCharacterPreviewPanel->Render_Selector(false, {}, true);
@@ -1965,7 +1971,7 @@ void Client::CEffect_Tool::Render_ActiveAuthoredEffectTree()
 		*m_ActiveDocument, "Current Effect");
 	ImGui::TextWrapped("Editing and saving: %s", CurrentDisplayName.c_str());
     Render_ProjectileDestinationControls();
-    if (m_pAuthoringSequencer && Is_SceneAnchoredEffectAssetId(m_ActiveDocument->strEffectAssetId))
+    if (m_pAuthoringSequencer && !Has_ClassMovieContext() && Is_SceneAnchoredEffectAssetId(m_ActiveDocument->strEffectAssetId))
         m_pAuthoringSequencer->Render_PreviewPlacementControls();
 	ImGui::TextDisabled(
 		(m_bDocumentDirty || Has_UnappliedDetailDraft()) ?
@@ -2639,11 +2645,16 @@ void Client::CEffect_Tool::Render_AllEffectsWindow()
                 ImGui::PushID(movie.classId.c_str());
                 ImGui::TextUnformatted(movie.label.c_str());
                 ImGui::SameLine();
-                if (ImGui::SmallButton("Open Editor")) m_PendingClassMovieEditor = movie.classId;
-                if (ImGui::IsItemHovered())
-                    ImGui::SetTooltip("Open the complete Intro / Loop timeline to edit, save and replay this movie.");
+                ImGui::BeginDisabled(movie.classId.empty());
+                if (ImGui::SmallButton("Open Editor")) (void)Open_ClassMovie(movie.classId);
+                ImGui::SameLine();
+                if (ImGui::SmallButton("Play All") && Open_ClassMovie(movie.classId)) (void)Play_ClassMovie();
+                ImGui::SameLine();
+                if (ImGui::SmallButton("Timeline / Camera")) m_PendingClassMovieEditor = movie.classId;
+                ImGui::EndDisabled();
                 ImGui::PopID();
             }
+            if (!m_strClassMovieStatus.empty()) ImGui::TextWrapped("%s", m_strClassMovieStatus.c_str());
             ImGui::Spacing();
         }
 		Render_SavedAuthoredEffectSection(Search, m_bAllEffectsWorldSelected);

@@ -1021,6 +1021,40 @@ void LostArk::Server::CGameRoom::Update_KoukuPlayerTargets(
 		if (!Clock::Has_ReachedTick(serverTick, window.iStartTick)) continue;
 		const std::uint32_t previousUpdateTick = window.iLastUpdateTick;
 		window.iLastUpdateTick = serverTick;
+		if (trigger.eKind == BOSS_PATTERN_MECHANIC_TRIGGER_KIND::BOSS_RANDOM_TARGET_PRESENTATION)
+		{
+			// Keep the selected identity. A departed/dead target leaves its last
+			// valid position; it never causes a different player to be selected.
+			const auto selected = std::find_if(m_Players.begin(), m_Players.end(), [&](const auto& entry) {
+				const auto& player = entry.second;
+				return player.iNetEntityId == window.iSelectedTargetNetEntityId && eligible(player) &&
+					std::isfinite(player.fPositionX) && std::isfinite(player.fPositionY) && std::isfinite(player.fPositionZ);
+			});
+			if (selected != m_Players.end())
+				window.LastSelectedTargetPosition = std::array<float, 3u>{selected->second.fPositionX, selected->second.fPositionY, selected->second.fPositionZ};
+			if (!Clock::Has_ReachedTick(serverTick, window.iEndTick)) continue;
+			if (window.LastSelectedTargetPosition)
+			{
+				const auto& point = *window.LastSelectedTargetPosition;
+				boss.iTargetEntityId = boss.iPatternTargetEntityId = window.iSelectedTargetNetEntityId;
+				boss.bHasPatternTargetLastPosition = true;
+				boss.fPatternTargetLastPositionX = point[0]; boss.fPatternTargetLastPositionY = point[1]; boss.fPatternTargetLastPositionZ = point[2];
+				if (!boss.Has_KoukuPresentationAim())
+				{
+					boss.KoukuPresentationAimRestoreYawDegrees = boss.fYawDegrees;
+					boss.iKoukuPresentationAimSequence = boss.iPatternSequence;
+				}
+				const float dx = point[0] - boss.fPositionX, dz = point[2] - boss.fPositionZ;
+				if (dx * dx + dz * dz > .000001f)
+				{
+					boss.fYawDegrees = std::atan2(dx, dz) * RADIANS_TO_DEGREES;
+					if (boss.strArchetypeId == "BOSS_KAKULSAYDON_G2_BIG_SAYDON" ||
+						boss.strArchetypeId == "BOSS_KAKULSAYDON_G2_KOUKU") boss.fYawDegrees -= 90.f;
+				}
+			}
+			window.bClosed = true;
+			continue;
+		}
 		if (Clock::Has_ReachedTick(serverTick, window.iEndTick))
 		{
 			if (trigger.ShowtimeBomb)
@@ -1479,7 +1513,8 @@ void LostArk::Server::CGameRoom::Commit_KoukuMechanicTriggers(const std::uint32_
 		if (!owner || liveOwner == m_WorldEntities.end()) continue;
 		const bool detached = owner != &*liveOwner;
 		const auto& trigger = pending.Trigger;
-		if (trigger.eKind == BOSS_PATTERN_MECHANIC_TRIGGER_KIND::BOSS_RANDOM_TARGET)
+		if (trigger.eKind == BOSS_PATTERN_MECHANIC_TRIGGER_KIND::BOSS_RANDOM_TARGET ||
+            trigger.eKind == BOSS_PATTERN_MECHANIC_TRIGGER_KIND::BOSS_RANDOM_TARGET_PRESENTATION)
 		{
 			// A Trigger selects exactly once. Detached tails cannot retarget the
 			// actor after another Pattern has taken ownership.
@@ -1488,10 +1523,28 @@ void LostArk::Server::CGameRoom::Commit_KoukuMechanicTriggers(const std::uint32_
 				trigger.iStartMs == 0u ? "boss.target.pattern" : "boss.target.random.next", serverTick);
 			owner->iTargetEntityId = owner->iPatternTargetEntityId = selected ? selected->iNetEntityId : INVALID_NET_ENTITY_ID;
 			owner->bHasPatternTargetLastPosition = selected != nullptr;
+			if (trigger.eKind == BOSS_PATTERN_MECHANIC_TRIGGER_KIND::BOSS_RANDOM_TARGET_PRESENTATION)
+			{
+				owner->Restore_KoukuPresentationAim();
+				const auto* product = Resolve_KoukuProductCatalog();
+				std::string status;
+				const auto* pattern = product ? CKoukuSaydonBrain::Find_AnimationOnlyPattern(*product, owner->strPatternId, status) : nullptr;
+				if (auto* member = Find_KoukuAuditionMember(owner->iNetEntityId, owner->iPatternSequence))
+					for (auto& window : member->LogicLedger.PlayerTargetWindows)
+					{
+						if (!pattern || window.iTriggerIndex >= pattern->MechanicTriggers.size() ||
+							pattern->MechanicTriggers[window.iTriggerIndex].strTriggerId != trigger.strTriggerId) continue;
+						window.iSelectedTargetNetEntityId = selected ? selected->iNetEntityId : INVALID_NET_ENTITY_ID;
+						if (selected) window.LastSelectedTargetPosition = std::array<float, 3u>{selected->fPositionX, selected->fPositionY, selected->fPositionZ};
+					}
+			}
 			if (!selected) continue;
 			owner->fPatternTargetLastPositionX = selected->fPositionX;
 			owner->fPatternTargetLastPositionY = selected->fPositionY;
 			owner->fPatternTargetLastPositionZ = selected->fPositionZ;
+            // Tracking is presentation-only until END pins the selected point.
+            // The following Duration and pattern termination restore this body basis.
+            if (trigger.eKind == BOSS_PATTERN_MECHANIC_TRIGGER_KIND::BOSS_RANDOM_TARGET_PRESENTATION) continue;
 			const float dx = selected->fPositionX - owner->fPositionX, dz = selected->fPositionZ - owner->fPositionZ;
 			if (dx * dx + dz * dz > .000001f)
 			{

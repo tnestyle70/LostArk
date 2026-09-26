@@ -455,6 +455,11 @@ bool_t Client::CEffect_Tool::Try_SaveDocumentAs(
     const std::string& strAssetId, const std::string& strDisplayName,
     const std::string& strParentId)
 {
+    if (Has_ClassMovieContext())
+    {
+        m_strDocumentStatus = "End Movie Editing before saving under a new Effect ID. Save Changes updates the current Movie Effect.";
+        return false;
+    }
     if (!m_ActiveDocument.has_value())
     {
         m_strDocumentStatus = "There is no active Document to save.";
@@ -1188,6 +1193,32 @@ bool_t Client::CEffect_Tool::Try_LoadDocumentPathStaged(
     if (!m_ActiveDocument || m_ActiveDocument->strEffectAssetId != Staged.strEffectAssetId)
         m_MarkedElementIds.clear();
 	Reset_RuntimeOccurrenceTuningSession();
+    if (Has_ClassMovieContext() && !Is_ClassMovieEffect(Staged.strEffectAssetId) && !End_ClassMovieEditing())
+    { m_strDocumentStatus = m_strClassMovieStatus; return false; }
+    if (Has_ClassMovieContext() && m_ActiveDocument &&
+        m_ActiveDocument->strEffectAssetId != Staged.strEffectAssetId && !m_PreviewIsolationElementIds.empty())
+    {
+        EFFECT_DOCUMENT_DESC complete;
+        if (!Resolve_AuthoringOccurrenceDocument({EFFECT_RESOURCE_OWNER_KIND::V1_DOCUMENT,
+            m_ActiveDocument->strEffectAssetId}, complete, m_strDocumentStatus)) return false;
+        const auto previousIsolation = std::exchange(m_PreviewIsolationElementIds, {});
+        if (!Stage_ClassMovieEffect(complete))
+        {
+            m_PreviewIsolationElementIds = previousIsolation;
+            m_strDocumentStatus = m_strPreviewStatus;
+            return false;
+        }
+    }
+    if (Has_ClassMovieContext() && m_ActiveDocument && m_ActiveDocument->strEffectAssetId == Staged.strEffectAssetId)
+    {
+        const auto previousIsolation = std::exchange(m_PreviewIsolationElementIds, {});
+        if (!Stage_ClassMovieEffect(Staged))
+        {
+            m_PreviewIsolationElementIds = previousIsolation;
+            m_strDocumentStatus = m_strPreviewStatus;
+            return false;
+        }
+    }
 	m_pSelectedVisualSourceProjection = std::move(pStagedVisualProjection);
     Release_WorldPreview(true);
     std::string CanonicalBaseline;

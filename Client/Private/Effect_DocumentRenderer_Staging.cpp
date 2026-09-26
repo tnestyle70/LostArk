@@ -256,6 +256,23 @@ bool_t Client::CEffectDocumentRenderer::Stage_PrevalidatedVisualProgramDocument(
 	return true;
 }
 
+bool_t Client::CEffectDocumentRenderer::Prepare_AuthoringDocument(
+    ComPtr<ID3D11Device> device, ComPtr<ID3D11DeviceContext> context,
+    const EFFECT_DOCUMENT_DESC& document,
+    std::shared_ptr<const PREPARED_DOCUMENT>& prepared, std::string& error)
+{
+    if (!device || !context ||
+        !Validate_DimensionMasterProjectTunedDocumentExecution(document, error) ||
+        !CEffectDocumentCodec::Validate_Drawable(document, error)) return false;
+    CEffectDocumentRenderer loader(device, context);
+    PREWARM_ASSET_CACHE assets;
+    std::shared_ptr<const PREPARED_DOCUMENT> staged;
+    if (!loader.Build_PreparedDocument(0u, document.strEffectAssetId, document,
+        &assets, staged, error)) return false;
+    prepared = std::move(staged);
+    return true;
+}
+
 bool_t Client::CEffectDocumentRenderer::Stage_Document(
 	const EFFECT_DOCUMENT_DESC& Document,
 	std::string& strOutError)

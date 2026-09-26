@@ -565,7 +565,7 @@ function Get-BootstrapRowSortKey {
 		$dependencyOrder = if ($fields[0] -ceq 'PATTERNBOSSMOTION') { 0 } else { 1 }
 		$Row = (@('PATTERNBOSSMOTION',$fields[1],$fields[2],$dependencyOrder) + @($fields[3..($fields.Count - 1)])) -join "`t"
 	}
-	if ($fields.Count -ge 4 -and $fields[0] -cin @('PATTERNMECHANICTRIGGER','PATTERNALBIONAIRBORNE','PATTERNCARDMAZESTAGING','PATTERNCARDRAINSOLDIERS','PATTERNTRACKBOMB','PATTERNTRACKMOVE')) {
+	if ($fields.Count -ge 4 -and $fields[0] -cin @('PATTERNMECHANICTRIGGER','PATTERNALBIONAIRBORNE','PATTERNCARDMAZESTAGING','PATTERNBINGOHAMMER','PATTERNCARDRAINSOLDIERS','PATTERNTRACKBOMB','PATTERNTRACKMOVE')) {
 		# Child settings resolve their exact, already loaded mechanic occurrence.
 		$dependencyOrder = if ($fields[0] -ceq 'PATTERNMECHANICTRIGGER') { 0 } else { 1 }
 		$Row = (@('PATTERNMECHANICTRIGGER',$fields[1],$fields[2],$fields[3],$dependencyOrder) +
@@ -1113,6 +1113,7 @@ foreach ($koukuPattern in @($koukuEncounterDocument.patterns)) {
 			'endsPatternOnSuccess','normalYawOffsetDegrees','insideOutcome','cardRegions','onSuccess','onFail','onTimeout')
 		if ($null -ne $window.PSObject.Properties['bossChargeDistanceM']) { $windowProperties += 'bossChargeDistanceM' }
         if ($null -ne $window.PSObject.Properties['chargeYawOffsetDegrees']) { $windowProperties += 'chargeYawOffsetDegrees' }
+        if ($null -ne $window.PSObject.Properties['gazeDuringWindow']) { $windowProperties += 'gazeDuringWindow' }
 		if ($null -ne $window.PSObject.Properties['rearmOnExit']) { $windowProperties += 'rearmOnExit' }
 		if ($null -ne $window.PSObject.Properties['repeatAfterKnockback']) { $windowProperties += 'repeatAfterKnockback' }
 		if ($null -ne $window.PSObject.Properties['repeatIntervalMs']) { $windowProperties += 'repeatIntervalMs' }
@@ -1139,6 +1140,14 @@ foreach ($koukuPattern in @($koukuEncounterDocument.patterns)) {
 			Assert-JsonNumber $window.$field "KoukuSaydon logic window $field"
 		}
 		$windowKind = [string]$window.kind
+        $gazeDuringWindow = $false
+        if ($null -ne $window.PSObject.Properties['gazeDuringWindow']) {
+            if ($windowKind -cne 'GAZE_REAL_BOSS' -or $window.gazeDuringWindow -isnot [bool] -or
+                ($window.gazeDuringWindow -and ($window.insideOutcome -cne 'FAIL' -or @($window.onSuccess).Count -ne 0 -or @($window.onTimeout).Count -ne 0))) {
+                throw 'gazeDuringWindow requires Boolean GAZE_REAL_BOSS, facing FAIL and only Fail outcomes'
+            }
+            $gazeDuringWindow = [bool]$window.gazeDuringWindow
+        }
 		$rearmOnExit = $false
 		if ($null -ne $window.PSObject.Properties['rearmOnExit']) {
 			if ($windowKind -cne 'ENTER_AREA' -or $window.rearmOnExit -isnot [bool]) {
@@ -1293,6 +1302,10 @@ foreach ($koukuPattern in @($koukuEncounterDocument.patterns)) {
 			$patternRows.Add((@('PATTERNLOGICCANCEL', $koukuEncounterDocument.encounterId,
 				$koukuPattern.patternId, $window.windowId) -join "`t"))
 		}
+        if ($gazeDuringWindow) {
+            $patternRows.Add((@('PATTERNLOGICGAZE', $koukuEncounterDocument.encounterId,
+                $koukuPattern.patternId, $window.windowId) -join "`t"))
+        }
         if ($repeatIntervalMs -gt 0) {
             $patternRows.Add((@('PATTERNLOGICTICK', $koukuEncounterDocument.encounterId, $koukuPattern.patternId,
                 $window.windowId, $repeatIntervalMs) -join "`t"))
@@ -1811,6 +1824,7 @@ foreach ($koukuPattern in @($koukuEncounterDocument.patterns)) {
 		} elseif (@($triggerOptionalProperties).Count -ne 0) { throw 'Only card rain soldiers carry summon tuning' }
 		if ($null -ne $trigger.PSObject.Properties['patternSpawns']) { $triggerOptionalProperties += 'patternSpawns' }
 		if ($null -ne $trigger.PSObject.Properties['playerEntryPositions']) { $triggerOptionalProperties += 'playerEntryPositions' }
+		if ($null -ne $trigger.PSObject.Properties['hammerHalfExtentsM']) { $triggerOptionalProperties += 'hammerHalfExtentsM' }
 		foreach ($field in @('airbornePhase','airborneHeightM','airborneDurationMs','airborneTargetPositionPolicy','selectedEffectVisualId','selectedEffectLifetimeMs')) {
 			if ($null -ne $trigger.PSObject.Properties[$field]) { $triggerOptionalProperties += $field }
 		}
@@ -1836,7 +1850,7 @@ foreach ($koukuPattern in @($koukuEncounterDocument.patterns)) {
 		$modes = @('NONE','POLYMORPH','MARIO','DANCE','MAZE')
 		$triggerHudMode = [Array]::IndexOf($modes, [string]$trigger.hudMode)
 		if (-not $triggerIds.Add([string]$trigger.triggerId) -or $triggerHudMode -lt 0 -or
-			$trigger.kind -cnotin @('REAL_GAZE_TELEPORT','BOSS_TELEPORT_FACE_CENTER','MARIO_PHASE2_PLAYERS','BOSS_TELEPORT_XZ','BOSS_TELEPORT_GROUNDED','BOSS_TRACK_TARGET','BOSS_RANDOM_TARGET','BINGO_BOARD','BINGO_DETONATION','HUD_ENTER','CARD_RAIN_SOLDIERS','CARD_MAZE_HIDE_NEXT','CARD_MAZE_ENTER','CARD_MAZE_STAGE_PLAYERS','ALBION_BLUE_CIRCLE','SUMMON_PATTERNS','ALBION_AIRBORNE') -or
+			$trigger.kind -cnotin @('REAL_GAZE_TELEPORT','BOSS_TELEPORT_FACE_CENTER','MARIO_PHASE2_PLAYERS','BOSS_TELEPORT_XZ','BOSS_TELEPORT_GROUNDED','BOSS_TRACK_TARGET','BOSS_RANDOM_TARGET','BOSS_RANDOM_TARGET_PRESENTATION','BINGO_BOARD','BINGO_DETONATION','HUD_ENTER','CARD_RAIN_SOLDIERS','CARD_MAZE_HIDE_NEXT','CARD_MAZE_ENTER','CARD_MAZE_STAGE_PLAYERS','ALBION_BLUE_CIRCLE','SUMMON_PATTERNS','ALBION_AIRBORNE') -or
 			([uint64]$trigger.startMs + [uint64]$trigger.durationMs) -gt $koukuPatternDurationMs -or
 			$trigger.teleportPosition -isnot [Array] -or @($trigger.teleportPosition).Count -ne 3 -or
 			$trigger.clockHours -isnot [Array]) {
@@ -1845,9 +1859,9 @@ foreach ($koukuPattern in @($koukuEncounterDocument.patterns)) {
 		$position = @($trigger.teleportPosition)
 		foreach ($coordinate in $position) { Assert-JsonNumber $coordinate 'KoukuSaydon teleport coordinate' }
 		if ($trigger.kind -cin @('BOSS_TELEPORT_XZ','BOSS_TELEPORT_GROUNDED') -and @($position | Where-Object { [Math]::Abs([double]$_) -gt 100000 }).Count -ne 0) { throw 'Boss XZ teleport coordinates exceed the world bounds' }
-		if ($trigger.kind -cin @('CARD_RAIN_SOLDIERS','CARD_MAZE_HIDE_NEXT','CARD_MAZE_ENTER','CARD_MAZE_STAGE_PLAYERS','BOSS_TELEPORT_FACE_CENTER','MARIO_PHASE2_PLAYERS','BOSS_TELEPORT_XZ','BOSS_TELEPORT_GROUNDED','BOSS_TRACK_TARGET','BOSS_RANDOM_TARGET','BINGO_BOARD','BINGO_DETONATION') -and
+		if ($trigger.kind -cin @('CARD_RAIN_SOLDIERS','CARD_MAZE_HIDE_NEXT','CARD_MAZE_ENTER','CARD_MAZE_STAGE_PLAYERS','BOSS_TELEPORT_FACE_CENTER','MARIO_PHASE2_PLAYERS','BOSS_TELEPORT_XZ','BOSS_TELEPORT_GROUNDED','BOSS_TRACK_TARGET','BOSS_RANDOM_TARGET','BOSS_RANDOM_TARGET_PRESENTATION','BINGO_BOARD','BINGO_DETONATION') -and
 			($triggerHudMode -ne 0 -or $trigger.faceCenterYawOffsetDegrees -ne 0 -or
-			 ($trigger.kind -cin @('CARD_RAIN_SOLDIERS','CARD_MAZE_HIDE_NEXT','CARD_MAZE_STAGE_PLAYERS','BOSS_TRACK_TARGET','BOSS_RANDOM_TARGET','BINGO_BOARD','BINGO_DETONATION') -and @($position | Where-Object { $_ -ne 0 }).Count -ne 0))) {
+			 ($trigger.kind -cin @('CARD_RAIN_SOLDIERS','CARD_MAZE_HIDE_NEXT','CARD_MAZE_STAGE_PLAYERS','BOSS_TRACK_TARGET','BOSS_RANDOM_TARGET','BOSS_RANDOM_TARGET_PRESENTATION','BINGO_BOARD','BINGO_DETONATION') -and @($position | Where-Object { $_ -ne 0 }).Count -ne 0))) {
 			throw "KoukuSaydon card maze trigger carries unrelated values"
 		}
 		Assert-JsonInteger $trigger.countPerPlayer 'KoukuSaydon circles per player' 0 8
@@ -1892,6 +1906,18 @@ foreach ($koukuPattern in @($koukuEncounterDocument.patterns)) {
 			throw "KoukuSaydon HUD trigger carries clone values"
 		}
 		$spawnRows = [Collections.Generic.List[string]]::new()
+		if ($trigger.kind -ceq 'BINGO_BOARD') {
+			if ($trigger.hammerHalfExtentsM -isnot [Array] -or @($trigger.hammerHalfExtentsM).Count -ne 2) {
+				throw 'Bingo board needs the published WORLD head half extents'
+			}
+			foreach ($half in $trigger.hammerHalfExtentsM) {
+				Assert-JsonNumber $half 'Bingo hammer half extent'
+				if ($half -le 0 -or $half -gt 100) { throw 'Bingo hammer half extent must be positive and bounded' }
+			}
+			$spawnRows.Add((@('PATTERNBINGOHAMMER', $koukuEncounterDocument.encounterId,
+				$koukuPattern.patternId, $trigger.triggerId, (Format-InvariantFloat $trigger.hammerHalfExtentsM[0] 'Bingo head half forward'),
+				(Format-InvariantFloat $trigger.hammerHalfExtentsM[1] 'Bingo head half width')) -join "`t"))
+		} elseif ($null -ne $trigger.PSObject.Properties['hammerHalfExtentsM']) { throw 'Only Bingo board can carry hammer half extents' }
 		if ($trigger.kind -ceq 'CARD_MAZE_STAGE_PLAYERS') {
 			if ($trigger.playerEntryPositions -isnot [Array] -or @($trigger.playerEntryPositions).Count -lt 1 -or
 				@($trigger.playerEntryPositions).Count -gt 4) { throw 'Card maze staging needs one to four player entry positions' }

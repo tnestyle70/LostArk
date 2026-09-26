@@ -30,7 +30,7 @@ namespace
 	/* Both mirror the document validator so a bad new cut fails here with a
 	   reason instead of only at the strict save reparse. */
 	constexpr size_t MAX_DOCUMENT_CUE_COUNT = 32u;
-	constexpr size_t MAX_DOCUMENT_KEYFRAME_COUNT = 64u;
+	constexpr size_t MAX_DOCUMENT_KEYFRAME_COUNT = 128u;
 	constexpr size_t MAX_CUT_NAME_LENGTH = 128u;
 	constexpr uint32_t DEFAULT_DEATH_CUT_DURATION_MS = 10000u;
 
@@ -2234,7 +2234,7 @@ bool_t Client::CCameraTool::Append_CapturedPos(
 {
 	if (cue.Keyframes.size() >= MAX_DOCUMENT_KEYFRAME_COUNT)
 	{
-		m_strStatus = "The cut already holds the maximum 64 positions.";
+		m_strStatus = "The cut already holds the maximum 128 positions.";
 		return false;
 	}
 	if (cue.iDurationMs < cue.Keyframes.size())

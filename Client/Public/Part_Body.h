@@ -11,6 +11,8 @@ NS_END
 
 NS_BEGIN(Client)
 
+class CCharacter;
+
 struct DEFERRED_EMISSIVE_OVERRIDE;
 
 /* The character's skinned body. It owns the skeleton and the animation clock, so
@@ -37,6 +39,8 @@ public:
 	virtual ~CPart_Body();
 
 public:
+	void Set_CharacterPresentationOwner(const std::shared_ptr<CCharacter>& owner)
+	{ m_pCharacterPresentationOwner = owner; }
 	shared_ptr<CModel> Get_Model() const {
 		return m_pModelCom;
 	}
@@ -69,6 +73,8 @@ public:
 	HRESULT Render_Pass(uint32_t iPassIndex);
 
 private:
+	std::weak_ptr<CCharacter> m_pCharacterPresentationOwner;
+	bool_t Is_CharacterPresentationHidden() const;
 	shared_ptr<CShader> m_pShaderCom = { nullptr };
 	shared_ptr<CModel> m_pModelCom = { nullptr };
 	shared_ptr<CModel> m_pSaydonHatModel;

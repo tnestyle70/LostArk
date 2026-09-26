@@ -5105,7 +5105,40 @@ int Run_KoukuSoundTimelineContractTests()
         invalid = box(soundIds.front()); invalid.iEffectSourceStartMs = 1u;
         Require(!workbench.Set_PresentationBox(patternId, invalid, status) && workbench.Get_Composition() == colliderMixed,
             "Sound accepted an Effect source clock");
+        auto clocked = box(effectId);
+        clocked.iEffectSourceStartMs = 0u; clocked.strAnchorKind = "MAP"; clocked.bFollowBoss = false;
+        clocked.EffectSourceTimeKeys = {{0., 0.}, {2000., 1000.}, {6000., 5000.}};
+        RequireEditorStep(workbench.Set_PresentationBox(patternId, clocked, status), status, "apply original scene source clock");
+        Require(clocked.Effect_SourceTimeMs(1000.) == 500. && clocked.Effect_SourceTimeMs(3000.) == 2000. &&
+            clocked.Effect_SourceTimeMs(9000.) == 5000. && clocked.Effect_ElapsedTimeMs(500.) == 1000. &&
+            clocked.Effect_ElapsedTimeMs(-500.) == -1000. && clocked.Effect_ElapsedTimeMs(6000.) == 7000.,
+            "Original Effect clock sampling/inverse capture boundary is incorrect");
         RequireEditorRoundtrip(workbench);
+        Require(box(effectId) == clocked, "Original source clock changed during native Save/reopen");
+        const auto beforeClockTrim = clocked;
+        CKoukuSaydonActionWorkbench::Trim_PresentationWindow(clocked, 1000, true, 12000u, effect.iDurationMs, true);
+        Require(clocked.iStartMs == beforeClockTrim.iStartMs + 1000u && clocked.iDurationMs == 5000u &&
+            clocked.Effect_SourceTimeMs(0.) == 500. && clocked.Effect_SourceTimeMs(2000.) == 2000.,
+            "Original clock front trim restarted particles or lost source slope");
+        CKoukuSaydonActionWorkbench::Trim_PresentationWindow(clocked, -1000, false, 12000u, effect.iDurationMs, true);
+        Require(clocked.iDurationMs == 4000u && clocked.Effect_SourceTimeMs(4000.) == 4000. &&
+            clocked.Has_ValidEffectSourceTimeKeys(effect.iDurationMs), "Original clock end trim lost source endpoint");
+        RequireEditorStep(workbench.Set_PresentationBox(patternId, clocked, status), status, "apply trimmed source clock");
+        const auto clockGood = workbench.Get_Composition();
+        for (unsigned malformed = 0; malformed < 6; ++malformed)
+        {
+            invalid = clocked;
+            if (malformed == 0) invalid.EffectSourceTimeKeys[1][0] = 0.;
+            if (malformed == 1) invalid.EffectSourceTimeKeys.back()[1] = effect.iDurationMs + 1.;
+            if (malformed == 2) invalid.iDurationMs += 1;
+            if (malformed == 3) invalid.bFollowBoss = true;
+            if (malformed == 4) invalid.iEffectSourceStartMs = 1;
+            if (malformed == 5) invalid.bFitEffectToDuration = true;
+            Require(!workbench.Set_PresentationBox(patternId, invalid, status) && workbench.Get_Composition() == clockGood,
+                "Malformed original scene clock changed previous native draft");
+        }
+        RequireEditorRoundtrip(workbench);
+        Require(box(effectId) == clocked, "Trimmed original clock changed during native Save/reopen");
         Require(ReadText(sourceRoot / relative) == originalSource, "Sound timeline fixture changed live authoring source");
         std::cout << "KoukuSoundTimelineContractTests: Sound group/select/toggle/ungroup, mixed Effect+Sound move, boundary clamps, stale rollback, Collider Logic closure, Effect/Sound trim, fitted source clock and Save/reopen PASS\n";
         return 0;

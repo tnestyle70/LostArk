@@ -44,6 +44,13 @@
 #include <unordered_set>
 #include <vector>
 
+struct Client::EFFECT_WORLD_PREVIEW_TARGET final
+{
+    std::shared_ptr<const EFFECT_DOCUMENT_DESC> document;
+    std::shared_ptr<const CEffectDocumentRenderer::PREPARED_DOCUMENT> prepared;
+    EFFECT_SCENE_BUDGET_COST budget;
+};
+
 struct Client::EFFECT_PRODUCT_CAMERA_PREPARATION final
     {
         std::string asset;
@@ -268,6 +275,8 @@ namespace
 		std::optional<float4x4_t> ExternalPresentationPostTransform;
 		std::optional<std::vector<EFFECT_PARAMETER_INPUT>> ExternalPresentationParameters;
 		bool_t bExternalHistorySampled = false;
+        f32_t fSourceLoopEndSeconds = 0.f;
+        f32_t fExternalPlaybackEndSeconds = 0.f;
 		std::string strLevelPlacementId;
 		bool_t bVehicleModelAnchors = false;
     };
@@ -5048,8 +5057,13 @@ bool_t Client::CEffectPresentationService::Spawn(
 		g_strStatus = strOutStatus;
 		return false;
 	}
-	const std::shared_ptr<const EFFECT_DOCUMENT_DESC> pDocument =
-		CEffectCatalog::Find_Loaded(Desc.strEffectAssetId);
+    if (Desc.pAuthoringPreview && (!Desc.bLevelOwned || !Desc.bExternallySampled ||
+        !Desc.bUseWorldRoot || Desc.bOwnerSustainedSourceLoops || Desc.bExternalModelCueAnchors ||
+        !Desc.pNpcAnchorOwner.expired() ||
+        Desc.pAuthoringPreview->document->strEffectAssetId != Desc.strEffectAssetId))
+    { strOutStatus = "Authoring Effect target requires its external level-owned occurrence."; return false; }
+	const std::shared_ptr<const EFFECT_DOCUMENT_DESC> pDocument = Desc.pAuthoringPreview ?
+        Desc.pAuthoringPreview->document : CEffectCatalog::Find_Loaded(Desc.strEffectAssetId);
 	if (nullptr == pDocument)
 	{
 		strOutStatus =
@@ -5058,7 +5072,8 @@ bool_t Client::CEffectPresentationService::Spawn(
 		return false;
 	}
 	const std::shared_ptr<const CEffectDocumentRenderer::PREPARED_DOCUMENT>
-		pPrepared = Find_ProductPrepared(Desc.strEffectAssetId, *pDocument);
+		pPrepared = Desc.pAuthoringPreview ? Desc.pAuthoringPreview->prepared :
+        Find_ProductPrepared(Desc.strEffectAssetId, *pDocument);
 	if (nullptr == pPrepared)
 	{
 		strOutStatus =
@@ -5076,12 +5091,14 @@ bool_t Client::CEffectPresentationService::Spawn(
 	}
 	const auto Budget = g_ProductEffectBudgetCosts.find(
 		Desc.strEffectAssetId);
+    const EFFECT_SCENE_BUDGET_COST SelectedBudget = Desc.pAuthoringPreview ?
+        Desc.pAuthoringPreview->budget : (Budget == g_ProductEffectBudgetCosts.end() ?
+            EFFECT_SCENE_BUDGET_COST{} : Budget->second);
 	if (Budget != g_ProductEffectBudgetCosts.end())
 		Retire_PreviousRecoveryCueBeforeAdmission(Desc, Owner);
 	if (Budget == g_ProductEffectBudgetCosts.end() ||
 		!Validate_BudgetAccounting(Owner,
-			Budget == g_ProductEffectBudgetCosts.end() ?
-				EFFECT_SCENE_BUDGET_COST{} : Budget->second,
+			SelectedBudget,
 			true, strOutStatus))
 	{
 		++g_iSceneBudgetRejectedSpawnCount;
@@ -5118,7 +5135,7 @@ bool_t Client::CEffectPresentationService::Spawn(
 	PENDING_EFFECT_SPAWN Pending;
 	Pending.Desc = Desc;
 	Pending.iLevelIndex = CGameInstance::Get().Get_CurrentLevelID();
-	Pending.AdmissionCost = Budget->second;
+	Pending.AdmissionCost = SelectedBudget;
 	g_PendingEffectSpawns.push_back(std::move(Pending));
 	strOutStatus = "Queued admitted Effect for post-update layer commit: " +
 		Desc.strEffectAssetId;
@@ -5234,6 +5251,7 @@ bool_t Client::CEffectPresentationService::Spawn_LevelPlacement(
 	spawn.bExternalModelCueAnchors = Desc.bExternalModelCueAnchors;
 	spawn.pNpcAnchorOwner = Desc.pAnchorOwner;
 	spawn.strLevelPlacementId = Desc.strPlacementId;
+    spawn.pAuthoringPreview = Desc.pAuthoringPreview;
 	if (!Spawn(spawn, strOutStatus))
 		return false;
 
@@ -5242,6 +5260,179 @@ bool_t Client::CEffectPresentationService::Spawn_LevelPlacement(
 		g_iNextWorldRootHandle = 1u;
 	return true;
 }
+
+bool_t Client::CEffectPresentationService::Prepare_WorldPreviewTarget(
+    ComPtr<ID3D11Device> device, ComPtr<ID3D11DeviceContext> context,
+    const EFFECT_DOCUMENT_DESC& document,
+    std::shared_ptr<const EFFECT_WORLD_PREVIEW_TARGET>& target, std::string& status)
+{
+    // A Movie's original world placement has no Character bone owner. Preserve
+    // that boundary instead of silently dropping a newly edited bone attachment.
+    if (document.strEffectAssetId.empty() || !Collect_SourceAnchorRequests(document).empty())
+    { status = "Movie Effect preview requires WORLD elements without Character bone bindings."; return false; }
+    auto staged = std::make_shared<EFFECT_WORLD_PREVIEW_TARGET>();
+    // Prepared resource signatures include the immutable Document's address.
+    // Prepare and attach the same owned object for the entire preview lifetime.
+    staged->document = std::make_shared<const EFFECT_DOCUMENT_DESC>(document);
+    if (!Estimate_DocumentBudget(*staged->document, staged->budget, status) ||
+        !CEffectDocumentRenderer::Prepare_AuthoringDocument(device, context,
+            *staged->document, staged->prepared, status)) return false;
+    target = std::move(staged);
+    status.clear();
+    return true;
+}
+
+bool_t Client::CEffectPresentationService::Replace_WorldRootPreviews(
+    const std::vector<std::pair<EFFECT_WORLD_ROOT_HANDLE,
+        std::shared_ptr<const EFFECT_WORLD_PREVIEW_TARGET>>>& replacements,
+    std::string& status)
+{
+    struct REPLACEMENT final
+    {
+        size_t active = SIZE_MAX, pending = SIZE_MAX;
+        bool visible = true;
+        ACTIVE_EFFECT state;
+        std::shared_ptr<const EFFECT_WORLD_PREVIEW_TARGET> target;
+        std::shared_ptr<CEffectObject> object;
+    };
+    std::vector<REPLACEMENT> staged;
+    std::set<uint64_t> handles;
+    auto cleanup = [&] {
+        for (const auto& value : staged)
+            if (value.object) CGameInstance::Get().Remove_GameObject_from_Layer(
+                value.state.iLevelIndex, EFFECT_LAYER, value.object);
+    };
+    for (const auto& [handle, target] : replacements)
+    {
+        if (!handle.Is_Valid() || !handles.insert(handle.iValue).second)
+        { status = "Movie Effect replacement contains an invalid or repeated handle."; cleanup(); return false; }
+        REPLACEMENT value;
+        value.target = target;
+        for (size_t i = 0; i < g_ActiveEffects.size(); ++i)
+            if (g_ActiveEffects[i].iWorldRootHandle == handle.iValue)
+            { value.active = i; value.state = g_ActiveEffects[i]; break; }
+        if (value.active == SIZE_MAX)
+            for (size_t i = 0; i < g_PendingEffectSpawns.size(); ++i)
+            {
+                const auto& pending = g_PendingEffectSpawns[i];
+                const auto& desc = pending.Desc;
+                if (desc.iWorldRootHandle != handle.iValue) continue;
+                value.pending = i;
+                value.state.iLevelIndex = pending.iLevelIndex;
+                value.state.strEffectAssetId = desc.strEffectAssetId;
+                value.state.bLevelOwned = desc.bLevelOwned;
+                value.state.bExternallySampled = desc.bExternallySampled;
+                value.state.WorldRoot = desc.WorldRoot;
+                value.state.fPendingInitialSampleTimeSeconds = desc.fInitialSampleTimeSeconds;
+                value.state.fSourceLoopEndSeconds = desc.fSourceLoopEndSeconds;
+                value.state.fExternalPlaybackEndSeconds = desc.fExternalPlaybackEndSeconds;
+                value.state.ExternalTransformProvider = desc.ExternalTransformProvider;
+                value.state.ExternalPresentationRoot = desc.ExternalPresentationRoot;
+                value.state.ExternalPresentationPostTransform = desc.ExternalPresentationPostTransform;
+                value.state.ExternalPresentationParameters = desc.ExternalPresentationParameters;
+                break;
+            }
+        if ((value.active == SIZE_MAX && value.pending == SIZE_MAX) ||
+            !value.state.bLevelOwned || !value.state.bExternallySampled ||
+            value.state.iLevelIndex != CGameInstance::Get().Get_CurrentLevelID() ||
+            !value.state.SourceAnchorRequests.empty() ||
+            (target && target->document->strEffectAssetId != value.state.strEffectAssetId))
+        { status = "Movie Effect replacement no longer matches an external WORLD occurrence."; cleanup(); return false; }
+        const auto document = target ? target->document : CEffectCatalog::Find_Loaded(value.state.strEffectAssetId);
+        const auto projection = target ? nullptr : CEffectCatalog::Find_VisualProjection(value.state.strEffectAssetId);
+        const auto prepared = target ? target->prepared :
+            (document ? Find_ProductPrepared(value.state.strEffectAssetId, *document) : nullptr);
+        const auto budget = g_ProductEffectBudgetCosts.find(value.state.strEffectAssetId);
+        if (!document || !prepared || (!target && budget == g_ProductEffectBudgetCosts.end()) ||
+            !Collect_SourceAnchorRequests(*document).empty())
+        { status = "Movie Effect replacement has no matching prepared WORLD document."; cleanup(); return false; }
+        value.state.AdmissionCost = target ? target->budget : budget->second;
+        CEffectObject::EFFECT_OBJECT_DESC desc{};
+        // Clone the ordinary empty Tool object first so a failed prepared
+        // attachment can report its exact codec/runtime reason before rollback.
+        desc.RootWorld = value.state.WorldRoot;
+        desc.bAutoPlay = false;
+        desc.bExplicitControlOwner = true;
+        desc.bControlPreview = true;
+        std::shared_ptr<CGameObject> object;
+        if (FAILED(CGameInstance::Get().Add_GameObject_to_Layer(
+            ETOUI(LEVEL::STATIC), L"Prototype_GameObject_EffectObject",
+            value.state.iLevelIndex, EFFECT_LAYER, &desc, &object)))
+        { status = "Movie Effect replacement could not stage its prepared object."; cleanup(); return false; }
+        value.object = std::dynamic_pointer_cast<CEffectObject>(object);
+        if (!value.object)
+        {
+            CGameInstance::Get().Remove_GameObject_from_Layer(value.state.iLevelIndex, EFFECT_LAYER, object);
+            status = "Movie Effect replacement prototype has the wrong type."; cleanup(); return false;
+        }
+        value.object->Set_Visible(false);
+        const bool attached = projection ?
+            value.object->Stage_PrevalidatedVisualProgramDocument(projection, prepared, status) :
+            value.object->Stage_PreparedDocument(*document, prepared, status);
+        if (!attached)
+        {
+            CGameInstance::Get().Remove_GameObject_from_Layer(value.state.iLevelIndex, EFFECT_LAYER, value.object);
+            status = "Movie Effect prepared attachment failed for " + value.state.strEffectAssetId + ": " + status;
+            cleanup(); return false;
+        }
+        if (value.state.pObject)
+        {
+            value.visible = value.state.pObject->Is_Visible();
+            value.object->Preserve_StartingSceneCapture(*value.state.pObject);
+        }
+        value.state.pObject = value.object;
+        value.state.bExternalHistorySampled = false;
+        value.state.bPendingInitialSeek = true;
+        value.object->Set_ScreenPostPlaybackEnd(value.state.fExternalPlaybackEndSeconds);
+        staged.push_back(std::move(value));
+        auto& candidate = staged.back();
+        if ((candidate.state.fSourceLoopEndSeconds > 0.f &&
+            !candidate.object->Set_SourceLoopEndSeconds(candidate.state.fSourceLoopEndSeconds, status)) ||
+            (candidate.state.ExternalTransformProvider &&
+                !Commit_ExternalTransformHistorySample(candidate.state, status)))
+        { cleanup(); return false; }
+        if (!candidate.state.ExternalTransformProvider)
+            candidate.object->Set_SampleTime(candidate.state.fPendingInitialSampleTimeSeconds);
+    }
+    // Check the exact final reservation once: old occurrences being replaced
+    // do not count twice, and multiple new candidates share one aggregate.
+    EFFECT_SCENE_BUDGET_COST finalBudget;
+    bool budgetValid = true;
+    for (size_t i = 0; i < g_ActiveEffects.size(); ++i)
+        if (!g_ActiveEffects[i].bSupersededRecoveryCue && std::none_of(staged.begin(), staged.end(),
+            [i](const auto& value) { return value.active == i; }))
+            budgetValid &= Add_BudgetCost(finalBudget, g_ActiveEffects[i].AdmissionCost);
+    for (size_t i = 0; i < g_PendingEffectSpawns.size(); ++i)
+        if (std::none_of(staged.begin(), staged.end(), [i](const auto& value) { return value.pending == i; }))
+            budgetValid &= Add_BudgetCost(finalBudget, g_PendingEffectSpawns[i].AdmissionCost);
+    for (const auto& value : staged) budgetValid &= Add_BudgetCost(finalBudget, value.state.AdmissionCost);
+    if (!budgetValid)
+    { status = "Movie Effect replacement cost accounting overflowed."; cleanup(); return false; }
+    // Every replacement is drawable at the current external clock before any
+    // existing object or pending request changes. Handle identities are retained.
+    for (auto& value : staged)
+    {
+        if (value.pending != SIZE_MAX)
+        {
+            auto& pending = g_PendingEffectSpawns[value.pending];
+            pending.Desc.pAuthoringPreview = value.target;
+            pending.AdmissionCost = value.state.AdmissionCost;
+            CGameInstance::Get().Remove_GameObject_from_Layer(value.state.iLevelIndex, EFFECT_LAYER, value.object);
+        }
+        else
+        {
+            auto& active = g_ActiveEffects[value.active];
+            const auto previous = active.pObject;
+            active = std::move(value.state);
+            active.pObject->Set_Visible(value.visible);
+            if (previous) CGameInstance::Get().Remove_GameObject_from_Layer(active.iLevelIndex, EFFECT_LAYER, previous);
+        }
+        value.object.reset();
+    }
+    status = "Movie Effect elements updated at the current movie clock.";
+    return true;
+}
+
 
 bool_t Client::CEffectPresentationService::Update_WorldRoot(
 	const EFFECT_WORLD_ROOT_HANDLE Handle,
@@ -5295,7 +5486,9 @@ bool_t Client::CEffectPresentationService::Set_WorldRootSourceLoopEndSeconds(
 		{
 			if (!effect.bExternallySampled)
 			{ strOutStatus = "Source loop continuation requires an external clock."; return false; }
-			return effect.pObject->Set_SourceLoopEndSeconds(fEndSeconds, strOutStatus);
+            if (!effect.pObject->Set_SourceLoopEndSeconds(fEndSeconds, strOutStatus)) return false;
+            effect.fSourceLoopEndSeconds = fEndSeconds;
+            return true;
 		}
 	strOutStatus = "Source loop continuation handle is no longer active.";
 	return false;
@@ -5344,6 +5537,7 @@ bool_t Client::CEffectPresentationService::Seek_WorldRoot(
 		{
 			if ((TransformProvider || fPlaybackEndSeconds > 0.f) && !effect.bExternallySampled) return false;
 			effect.pObject->Set_ScreenPostPlaybackEnd(fPlaybackEndSeconds);
+            effect.fExternalPlaybackEndSeconds = fPlaybackEndSeconds;
 			effect.fPendingInitialSampleTimeSeconds = fSampleTimeSeconds;
 			effect.fElapsedCueTimeSeconds = fSampleTimeSeconds;
 			effect.bPendingInitialSeek = true;
@@ -5700,8 +5894,13 @@ bool_t Client::CEffectPresentationService::Spawn_Immediate(
 		g_strStatus = strOutStatus;
 		return false;
 	}
-	const std::shared_ptr<const EFFECT_DOCUMENT_DESC> pDocument =
-		CEffectCatalog::Find_Loaded(Desc.strEffectAssetId);
+    if (Desc.pAuthoringPreview && (!Desc.bLevelOwned || !Desc.bExternallySampled ||
+        !Desc.bUseWorldRoot || Desc.bOwnerSustainedSourceLoops || Desc.bExternalModelCueAnchors ||
+        !Desc.pNpcAnchorOwner.expired() ||
+        Desc.pAuthoringPreview->document->strEffectAssetId != Desc.strEffectAssetId))
+    { strOutStatus = "Authoring Effect target requires its external level-owned occurrence."; return false; }
+	const std::shared_ptr<const EFFECT_DOCUMENT_DESC> pDocument = Desc.pAuthoringPreview ?
+        Desc.pAuthoringPreview->document : CEffectCatalog::Find_Loaded(Desc.strEffectAssetId);
 	if (nullptr == pDocument)
 	{
 		strOutStatus =
@@ -5710,7 +5909,8 @@ bool_t Client::CEffectPresentationService::Spawn_Immediate(
 		return false;
 	}
     const std::shared_ptr<const CEffectDocumentRenderer::PREPARED_DOCUMENT>
-		pPrepared = Find_ProductPrepared(Desc.strEffectAssetId, *pDocument);
+		pPrepared = Desc.pAuthoringPreview ? Desc.pAuthoringPreview->prepared :
+        Find_ProductPrepared(Desc.strEffectAssetId, *pDocument);
     if (nullptr == pPrepared)
     {
         strOutStatus =
@@ -5728,12 +5928,14 @@ bool_t Client::CEffectPresentationService::Spawn_Immediate(
 	}
 	const auto Budget = g_ProductEffectBudgetCosts.find(
 		Desc.strEffectAssetId);
+    const EFFECT_SCENE_BUDGET_COST SelectedBudget = Desc.pAuthoringPreview ?
+        Desc.pAuthoringPreview->budget : (Budget == g_ProductEffectBudgetCosts.end() ?
+            EFFECT_SCENE_BUDGET_COST{} : Budget->second);
 	if (Budget != g_ProductEffectBudgetCosts.end())
 		Retire_PreviousRecoveryCueBeforeAdmission(Desc, Owner);
 	if (Budget == g_ProductEffectBudgetCosts.end() ||
 		!Validate_BudgetAccounting(Owner,
-			Budget == g_ProductEffectBudgetCosts.end() ?
-				EFFECT_SCENE_BUDGET_COST{} : Budget->second,
+			SelectedBudget,
 			false, strOutStatus))
 	{
 		++g_iSceneBudgetRejectedSpawnCount;
@@ -5790,8 +5992,8 @@ bool_t Client::CEffectPresentationService::Spawn_Immediate(
     ObjectDesc.bControlPreview=Desc.bExternallySampled;
     ObjectDesc.iControlActionStartTick=Desc.bVehicleModelAnchors?0u:Desc.iActionStartTick;
 	const std::shared_ptr<const EFFECT_VISUAL_PROGRAM_DOCUMENT_PROJECTION>
-		pVisualProjection = CEffectCatalog::Find_VisualProjection(
-			Desc.strEffectAssetId);
+		pVisualProjection = Desc.pAuthoringPreview ? nullptr :
+        CEffectCatalog::Find_VisualProjection(Desc.strEffectAssetId);
 	ObjectDesc.pDocument = nullptr == pVisualProjection ? pDocument.get() : nullptr;
 	ObjectDesc.pPreparedResources = pPrepared;
 	ObjectDesc.pVisualProgramProjection = pVisualProjection;
@@ -5932,11 +6134,13 @@ bool_t Client::CEffectPresentationService::Spawn_Immediate(
     Active.fPendingInitialSampleTimeSeconds =
         Desc.fInitialSampleTimeSeconds;
 	Active.SourceAnchorRequests = std::move(SourceAnchorRequests);
-	Active.AdmissionCost = Budget->second;
+	Active.AdmissionCost = SelectedBudget;
 	Active.iWorldRootHandle = Desc.iWorldRootHandle;
 	Active.WorldRoot = Desc.WorldRoot;
 	Active.bLevelOwned = Desc.bLevelOwned;
 	Active.bExternallySampled = Desc.bExternallySampled;
+    Active.fSourceLoopEndSeconds = Desc.fSourceLoopEndSeconds;
+    Active.fExternalPlaybackEndSeconds = Desc.fExternalPlaybackEndSeconds;
 	Active.ExternalTransformProvider = Desc.ExternalTransformProvider;
 	Active.ExternalPresentationRoot = Desc.ExternalPresentationRoot;
 	Active.ExternalPresentationPostTransform = Desc.ExternalPresentationPostTransform;

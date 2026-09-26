@@ -425,6 +425,9 @@ namespace LostArk::Server
 			std::uint32_t actionStartTick);
 		void Update_MarioControlState(SERVER_PLAYER& player);
 		std::uint8_t Begin_MarioStageObjects(std::uint8_t stage);
+		void Begin_MarioBallChallenge(SERVER_PLAYER& player);
+		std::uint8_t Mario_MatchingBallCount(const SERVER_PLAYER& player) const;
+		std::uint8_t Mario_MarkerColor(LostArk::Shared::NET_ENTITY_ID targetId) const;
 		void Reset_MarioStageObjects(std::uint8_t stage);
 		void Cleanup_EmptyMarioStages();
 		void Update_MarioMoveGoal(SERVER_PLAYER& player, std::uint32_t updateTick);
@@ -745,7 +748,7 @@ namespace LostArk::Server
 		void Update_KoukuMarioEntry(KOUKUSAYDON_PATTERN_AUDITION_MEMBER& member, std::uint32_t serverTick);
 		void Commit_KoukuMarioEntries();
 		bool Commit_KoukuMarioPhasePlayers(SERVER_WORLD_ENTITY& boss, const BOSS_PATTERN_MECHANIC_TRIGGER& trigger, std::uint32_t serverTick);
-		void Complete_KoukuMarioReturn(const SERVER_PLAYER& player,
+		void Complete_KoukuMarioReturn(SERVER_PLAYER& player,
 			const std::string& sourcePlacementId, std::uint32_t updateTick);
 		void Queue_KoukuCompletionChainSuccess(KOUKUSAYDON_PATTERN_AUDITION_MEMBER& member,
 			std::uint32_t serverTick);
@@ -1730,6 +1733,7 @@ namespace LostArk::Server
             std::uint32_t iPatternSequence = 0u, iEndTick = 0u;
             std::uint32_t iNextBombTick = 0u, iNextHammerTick = 0u, iNextMadnessTick = 0u;
             std::uint32_t iMarkedBombCount = 0u;
+            float fHammerHalfForwardM = 0.f, fHammerHalfWidthM = 0.f;
             bool bEncounterOwned = false, bSpecialPatternPending = false;
             bool bLastLineCompletionSucceeded = false;
             bool bLineRewardSinceLastJudgement = false;

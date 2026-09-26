@@ -776,6 +776,7 @@ namespace LostArk::Server
 		std::vector<LostArk::Shared::MECHANIC_CARD_SYMBOL> SectorSymbols;
 		float fHalfAngleDegrees = 0.f;
 		float fMaxDistanceM = 0.f;
+        bool bGazeDuringWindow = false;
 		std::uint32_t iPoseIndex = 0u;
 		std::uint32_t iThreshold = 0u;
 		float fShieldArcDegrees = 0.f;
@@ -825,7 +826,8 @@ namespace LostArk::Server
 		BOSS_TELEPORT_GROUNDED,
 		CARD_MAZE_STAGE_PLAYERS,
 		CARD_RAIN_SOLDIERS,
-		BOSS_RANDOM_TARGET
+		BOSS_RANDOM_TARGET,
+		BOSS_RANDOM_TARGET_PRESENTATION
 	};
 
 	enum class ALBION_AIRBORNE_PHASE : std::uint8_t
@@ -919,6 +921,8 @@ namespace LostArk::Server
 		float fSoldierSpawnRadiusMinM = 3.f, fSoldierSpawnRadiusMaxM = 6.f;
 		bool bHasSoldierTuning = false;
 		std::optional<BOSS_SHOWTIME_BOMB_RESOLUTION> ShowtimeBomb;
+		// WORLD head box after authored Object scale: path-forward, transverse.
+		std::optional<std::array<float, 2u>> BingoHammerHalfExtentsM;
 	};
 
 	/* Presentation cues the pattern clock fires. The Server only knows the

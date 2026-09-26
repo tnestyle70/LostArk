@@ -165,7 +165,6 @@ public:
 	std::string Get_ObjectSampleStatus(const std::string& instanceId) const;
 	// The admitted sequence retains object ownership; callers inspect the current visible pose only.
 	void Collect_VisibleObjects(std::vector<std::shared_ptr<CWorldSequenceObject>>& out) const;
-#ifdef _DEBUG
 	struct OBJECT_COLLIDER_SAMPLE
 	{
 		std::string instanceId, colliderTrackId, behavior;
@@ -177,7 +176,6 @@ public:
 	};
 	// Read the last successful Apply_Objects result; never advance or reconstruct its clock.
 	void Collect_ObjectColliderSamples(std::vector<OBJECT_COLLIDER_SAMPLE>& out) const;
-#endif
 	void Clear();
 
 	bool_t Is_Ready() const noexcept
@@ -353,9 +351,7 @@ private:
         bool_t hasSubtitleSample = false;
 
 		std::vector<OBJECT_INSTANCE> objects;
-#ifdef _DEBUG
 		std::vector<OBJECT_COLLIDER_SAMPLE> objectColliderSamples;
-#endif
 		struct EFFECT_INSTANCE
 		{
 			std::string key;

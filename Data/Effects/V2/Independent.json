@@ -12,7 +12,8 @@
     "bingo.hammer.warning.arrow",
     "kouku.bingo.encore.fade.black",
     "boss.kouku.dj.cardrain",
-    "boss.kouku.dj.delivery"
+    "boss.kouku.dj.delivery",
+    "kouku.bingo.ending.fade.black"
   ],
   "groups": [
     "cardmaze.mark.heart",

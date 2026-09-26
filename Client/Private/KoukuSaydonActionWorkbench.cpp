@@ -8705,11 +8705,19 @@ void Client::CKoukuSaydonActionWorkbench::Render_Timeline()
 			lanes[animationLane].intervals.push_back({ box.strOccurrenceId, stageBaseMs + box.iStartOffsetMs, box.iPlayMs });
 		stageBaseMs += stage.iDurationMs;
 	}
-	// World actors already own these clips. Display their saved windows on the
-	// Animation lane without adding another boss or another playback owner.
+	// Each occurrence/slot owns its display rows even when another actor fits
+	// inside a gap. Visual neighbors must not imply cross-actor clip ownership.
+	struct WORLD_CLIP_LANE
+	{
+		std::string occurrenceId, slotId, label;
+		std::vector<TIMELINE_DISPLAY_INTERVAL> intervals;
+		std::size_t firstRow = 0u;
+	};
+	std::vector<WORLD_CLIP_LANE> worldClipLanes;
+	const bool hasBossAnimations = !lanes[animationLane].intervals.empty();
 	struct WORLD_CLIP_ROW
 	{
-		std::string id, occurrenceId, label;
+		std::string id, occurrenceId, label, actorLabel;
 		std::uint32_t startMs = 0u, durationMs = 0u;
 		KOUKU_WORLD_ANIMATION_EDIT edit;
 		double localSpeed = 1., nativeSpeed = 1., trackRate = 1.;
@@ -8734,6 +8742,8 @@ void Client::CKoukuSaydonActionWorkbench::Render_Timeline()
 			row.id = box.strOccurrenceId + ".clip-info." + std::to_string(index);
 			row.occurrenceId = box.strOccurrenceId;
 			row.label = clip.strDisplayName.empty() ? clip.strClipName : clip.strDisplayName;
+			row.actorLabel = !source->strObjectDisplayName.empty() ? source->strObjectDisplayName :
+				(!world->strDisplayName.empty() ? world->strDisplayName : source->strDisplayName);
 			row.edit = {source->strInstanceId, clip.strSlotId, clip.strClipName,
 				clip.iLocalStartMs, clip.iLocalStartMs, clip.iSourceStartMs, clip.iSourceEndMs};
 			row.localSpeed = clip.fInstanceSpeed * box.fPlaybackSpeed;
@@ -8742,7 +8752,14 @@ void Client::CKoukuSaydonActionWorkbench::Render_Timeline()
 			row.editable = !clip.bLoop && clip.iSourceEndMs > clip.iSourceStartMs &&
 				row.localSpeed > 0. && row.nativeSpeed > 0. && bool(m_EditWorldAnimation);
 			row.startMs = box.iStartMs + start; row.durationMs = end - start;
-			lanes[animationLane].intervals.push_back({row.id, row.startMs, row.durationMs});
+			auto actorLane = std::find_if(worldClipLanes.begin(), worldClipLanes.end(),
+				[&](const auto& lane) { return lane.occurrenceId == box.strOccurrenceId && lane.slotId == clip.strSlotId; });
+			if (actorLane == worldClipLanes.end())
+			{
+				worldClipLanes.push_back({box.strOccurrenceId, clip.strSlotId, row.actorLabel});
+				actorLane = std::prev(worldClipLanes.end());
+			}
+			actorLane->intervals.push_back({row.id, row.startMs, row.durationMs});
 			worldClipRows.push_back(std::move(row));
 		}
 	}
@@ -8774,6 +8791,18 @@ void Client::CKoukuSaydonActionWorkbench::Render_Timeline()
 	{
 		if (!hasPatternLane && &lane == &lanes[patternLane]) { lane.firstRow = nextRow; lane.rowCount = 0u; continue; }
 		lane.layout = Allocate_TimelineDisplayRows(std::move(lane.intervals), minimumBoxMs);
+		if (&lane == &lanes[animationLane] && !worldClipLanes.empty())
+		{
+			if (!hasBossAnimations) lane.layout.rowCount = 0u;
+			for (auto& actorLane : worldClipLanes)
+			{
+				actorLane.firstRow = lane.layout.rowCount;
+				const auto actorLayout = Allocate_TimelineDisplayRows(std::move(actorLane.intervals), minimumBoxMs);
+				for (const auto& [id, row] : actorLayout.occurrenceRows)
+					lane.layout.occurrenceRows.emplace(id, actorLane.firstRow + row);
+				lane.layout.rowCount += actorLayout.rowCount;
+			}
+		}
 		lane.rowCount = lane.layout.rowCount;
 		lane.firstRow = nextRow;
 		nextRow += lane.rowCount;
@@ -8875,8 +8904,24 @@ void Client::CKoukuSaydonActionWorkbench::Render_Timeline()
 			(patternPreview || serverPlayback) ? IM_COL32(255, 220, 72, 230) : IM_COL32(200, 200, 200, 140), 1.5f);
 	}
 	draw->AddText(ImVec2(origin.x + 4.f, origin.y + rulerHeight + 4.f), IM_COL32_WHITE, "Stages");
-	draw->AddText(ImVec2(origin.x + 4.f, laneY(animationLane) + 4.f),
-		IM_COL32(240, 188, 98, 255), "Animation");
+	if (hasBossAnimations || worldClipLanes.empty())
+		draw->AddText(ImVec2(origin.x + 4.f, laneY(animationLane) + 4.f),
+			IM_COL32(240, 188, 98, 255), "Animation");
+	for (const auto& actorLane : worldClipLanes)
+	{
+		const float y = laneY(animationLane) + TIMELINE_LANE_HEIGHT * static_cast<float>(actorLane.firstRow);
+		std::string label = actorLane.label;
+		if (const auto separator = label.rfind(" / "); separator != std::string::npos)
+			label.erase(0u, separator + 3u);
+		label = "Anim: " + label;
+		if (actorLane.slotId != "actor") label += " / " + actorLane.slotId;
+		draw->PushClipRect(ImVec2(origin.x, y), ImVec2(origin.x + labelWidth - 4.f, y + TIMELINE_LANE_HEIGHT), true);
+		draw->AddText(ImVec2(origin.x + 4.f, y + 4.f), IM_COL32(240, 188, 98, 255), label.c_str());
+		draw->PopClipRect();
+		if (ImGui::IsMouseHoveringRect(ImVec2(origin.x, y), ImVec2(origin.x + labelWidth, y + TIMELINE_LANE_HEIGHT)))
+			ImGui::SetTooltip("Animation: %s\nWorld occurrence: %s\nSlot: %s\nClips keep this actor's own timing.",
+				actorLane.label.c_str(), actorLane.occurrenceId.c_str(), actorLane.slotId.c_str());
+	}
 	draw->AddText(ImVec2(origin.x + 4.f, laneY(logicLane) + 4.f),
 		IM_COL32(236, 170, 110, 255), "Logic");
 
@@ -9300,7 +9345,8 @@ void Client::CKoukuSaydonActionWorkbench::Render_Timeline()
 		if (ImGui::IsItemHovered())
 		{
 			ImGui::SetMouseCursor(row.editable ? ImGuiMouseCursor_ResizeEW : ImGuiMouseCursor_Arrow);
-			ImGui::SetTooltip("%s\n%u - %u ms | Source %u - %u ms\n%s", row.label.c_str(),
+			ImGui::SetTooltip("%s\nActor: %s\nWorld occurrence: %s | Slot: %s\n%u - %u ms | Source %u - %u ms\n%s",
+				row.label.c_str(), row.actorLabel.c_str(), row.occurrenceId.c_str(), row.edit.slotId.c_str(),
 				row.startMs, row.startMs + row.durationMs, row.edit.sourceInMs, row.edit.sourceOutMs,
 				row.editable ? "Drag center: move. Drag either edge: trim this clip. Save commits the animation." : "This legacy clip has no explicit Source Out.");
 		}
@@ -9532,7 +9578,11 @@ void Client::CKoukuSaydonActionWorkbench::Render_Timeline()
 				editedPresentationBox = box;
 				editedPresentationBox.iStartMs = static_cast<std::uint32_t>(start);
 				editedPresentationBox.iDurationMs = static_cast<std::uint32_t>(length);
-				if (effect) editedPresentationBox.iEffectSourceStartMs = mediaWindow.iEffectSourceStartMs;
+				if (effect)
+                {
+                    editedPresentationBox.iEffectSourceStartMs = mediaWindow.iEffectSourceStartMs;
+                    editedPresentationBox.EffectSourceTimeKeys = mediaWindow.EffectSourceTimeKeys;
+                }
 				else if (sound) editedPresentationBox.iSoundSourceStartMs = mediaWindow.iSoundSourceStartMs;
 				editedPresentationBox.iFadeInMs = (std::min)(box.iFadeInMs, editedPresentationBox.iDurationMs);
 				editedPresentationBox.iFadeOutMs = (std::min)(box.iFadeOutMs,
@@ -9974,7 +10024,7 @@ bool_t Client::CKoukuSaydonActionWorkbench::Set_LogicBoxOutcomes(
 		return false;
 	}
 	if (!Kouku_LogicOutcomeKind(*owner).empty() && !resultLogicIds.empty() &&
-		!Kouku_IsOutcomeSlotAllowed(Kouku_LogicOutcomeKind(*owner), slot))
+		!Kouku_IsOutcomeSlotAllowed(Kouku_LogicOutcomeKind(*owner), slot, owner->bGazeDuringWindow))
 	{
 		outStatus = m_strStatus = std::string(Outcome_SlotLabel(slot)) +
 			" is not an outcome of " + owner->strJudgementKind + ".";
@@ -11525,6 +11575,20 @@ void Client::CKoukuSaydonActionWorkbench::Trim_PresentationWindow(
 	const bool_t trimStart, const std::uint32_t timelineDurationMs,
 	const std::uint32_t sourceDurationMs, const bool_t effect)
 {
+    if (effect && !row.EffectSourceTimeKeys.empty())
+    {
+        const double first = trimStart ? double(std::clamp<std::int64_t>(deltaMs, 0, row.iDurationMs - 1u)) : 0.;
+        const double last = trimStart ? double(row.iDurationMs) :
+            double(std::clamp<std::int64_t>(std::int64_t(row.iDurationMs) + deltaMs, 1, row.iDurationMs));
+        std::vector<std::array<double, 2u>> keys{{0., row.Effect_SourceTimeMs(first)}};
+        for (const auto& key : row.EffectSourceTimeKeys)
+            if (key[0] > first && key[0] < last) keys.push_back({key[0] - first, key[1]});
+        keys.push_back({last - first, row.Effect_SourceTimeMs(last)});
+        row.iStartMs += static_cast<std::uint32_t>(first);
+        row.iDurationMs = static_cast<std::uint32_t>(last - first);
+        row.EffectSourceTimeKeys = std::move(keys);
+        return;
+    }
 	std::int64_t start = row.iStartMs, length = row.iDurationMs;
 	std::int64_t source = effect ? row.iEffectSourceStartMs : row.iSoundSourceStartMs;
 	if (length < 1 || (sourceDurationMs && source >= sourceDurationMs)) return;
@@ -13801,8 +13865,13 @@ void Client::CKoukuSaydonActionWorkbench::Render_PresentationBoxDetails(
 	const auto placementBeforeControls = edit;
 	int start = static_cast<int>(edit.iStartMs), duration = static_cast<int>(edit.iDurationMs);
 	if (ImGui::InputInt("Start ms##PresentationBox", &start)) edit.iStartMs = static_cast<std::uint32_t>((std::max)(0, start));
-	if (ImGui::InputInt(cameraBox ? "Entry + hold ms##PresentationBox" : "Lifetime ms##PresentationBox", &duration)) edit.iDurationMs = static_cast<std::uint32_t>((std::max)(1, duration));
-	if (definition.eKind == KOUKU_SAYDON_PRESENTATION_KIND::EFFECT)
+	if (ImGui::InputInt(cameraBox ? "Entry + hold ms##PresentationBox" : "Lifetime ms##PresentationBox", &duration))
+    {
+        if (edit.EffectSourceTimeKeys.empty()) edit.iDurationMs = static_cast<std::uint32_t>((std::max)(1, duration));
+        else Trim_PresentationWindow(edit, std::int64_t(duration) - edit.iDurationMs, false,
+            Pattern_DurationMs(pattern), definition.iDurationMs, true);
+    }
+	if (definition.eKind == KOUKU_SAYDON_PRESENTATION_KIND::EFFECT && edit.EffectSourceTimeKeys.empty())
 	{
 		const auto sourceLimit = (std::max)(1u, (std::min)(definition.iDurationMs, MAX_EDITOR_TIME_MS));
 		int sourceIn = static_cast<int>(edit.iEffectSourceStartMs);
@@ -13815,9 +13884,13 @@ void Client::CKoukuSaydonActionWorkbench::Render_PresentationBoxDetails(
 		ImGui::TextDisabled("Source %u ms. Source In skips the beginning of this whole Effect, keeping the box start.", definition.iDurationMs);
 		ImGui::TextWrapped("Drag the left edge to trim the Effect source; drag the middle to move without trimming. Apply and Save keep this box's source segment.");
 	}
+    if (!edit.EffectSourceTimeKeys.empty())
+        ImGui::TextWrapped("Original scene speed curve: %.3f..%.3f ms of Effect source. Move this box or trim its edges to preserve synchronization.",
+            edit.EffectSourceTimeKeys.front()[1], edit.EffectSourceTimeKeys.back()[1]);
 	if (definition.eKind == KOUKU_SAYDON_PRESENTATION_KIND::EFFECT &&
 		(definition.strResourceKind == "V1_EFFECT" || definition.strResourceKind == "V1_ELEMENT"))
 	{
+		ImGui::BeginDisabled(!edit.EffectSourceTimeKeys.empty());
 		if (ImGui::Checkbox("Fit Effect lifetime to box", &edit.bFitEffectToDuration) && edit.bFitEffectToDuration)
 			edit.bLoopEffectToDuration = false;
 		if (edit.bFitEffectToDuration)
@@ -13838,6 +13911,7 @@ void Client::CKoukuSaydonActionWorkbench::Render_PresentationBoxDetails(
 			if (ImGui::Button("Match remaining animation time")) edit.iDurationMs = animationEnd - edit.iStartMs;
 			ImGui::EndDisabled();
 		}
+		ImGui::EndDisabled();
 	}
 	const auto vectorControl = [](const char* label, std::array<double, 3u>& values, const float minimum, const float maximum) {
 		float v[3] = { static_cast<float>(values[0]), static_cast<float>(values[1]), static_cast<float>(values[2]) };
@@ -13921,6 +13995,7 @@ void Client::CKoukuSaydonActionWorkbench::Render_PresentationBoxDetails(
 	if (definition.eKind == KOUKU_SAYDON_PRESENTATION_KIND::EFFECT)
 	{
 		if (!Same_PresentationPlacement(placementBeforeControls, edit, true)) previewGeometry();
+		ImGui::BeginDisabled(!edit.EffectSourceTimeKeys.empty());
 		int fadeIn = static_cast<int>(edit.iFadeInMs), fadeOut = static_cast<int>(edit.iFadeOutMs);
 		if (ImGui::InputInt("Fade in ms", &fadeIn)) edit.iFadeInMs = static_cast<std::uint32_t>((std::max)(0, fadeIn));
 		if (ImGui::InputInt("Fade out ms", &fadeOut)) edit.iFadeOutMs = static_cast<std::uint32_t>((std::max)(0, fadeOut));
@@ -13930,6 +14005,7 @@ void Client::CKoukuSaydonActionWorkbench::Render_PresentationBoxDetails(
 		if (ImGui::SliderFloat("Dissolve out end", &endRatio, 0.f, 1.f)) edit.fDissolveEnd = endRatio;
 		ImGui::EndDisabled();
 		ImGui::TextDisabled("Fade 0 keeps authored alpha/dissolve. Positive fades override; dissolve-out follows Fade Out.");
+		ImGui::EndDisabled();
 	}
 	if (definition.eKind == KOUKU_SAYDON_PRESENTATION_KIND::SOUND)
 	{
@@ -14803,6 +14879,24 @@ void Client::CKoukuSaydonActionWorkbench::Render_LogicDefinitionValues(
             }
             ImGui::TextWrapped("The Server compares each direction's movement endpoint with the arena center. One real body plays its full Pattern; three Summon clones stop after the selected Stage. Duration must cover all four complete Patterns.");
         }
+        else if ("BOSS_RANDOM_TARGET" == draft.strJudgementKind)
+        {
+            const auto* pattern = Find_Pattern(m_Draft, colliderPatternId.empty() ? m_strSelectedPatternId : colliderPatternId);
+            if (ImGui::BeginCombo("Target-facing Effect", draft.strTrackingPresentationOccurrenceId.empty() ? "(select Effect)" : draft.strTrackingPresentationOccurrenceId.c_str()))
+            {
+                if (pattern) for (const auto& box : pattern->PresentationOccurrences)
+                {
+                    const auto* resource = Find_PresentationResource(m_Draft, box.strResourceId);
+                    if (!resource || resource->eKind != KOUKU_SAYDON_PRESENTATION_KIND::EFFECT || box.strAnchorKind != "BOSS" ||
+                        !box.bFollowBoss || !box.strBone.empty() || !box.strAnchorPresentationOccurrenceId.empty()) continue;
+                    const auto label = resource->strDisplayName + "##" + box.strOccurrenceId;
+                    if (ImGui::Selectable(label.c_str(), draft.strTrackingPresentationOccurrenceId == box.strOccurrenceId))
+                        draft.strTrackingPresentationOccurrenceId = box.strOccurrenceId;
+                }
+                ImGui::EndCombo();
+            }
+            ImGui::TextWrapped("Selects one living player when this Duration starts. The head marker and selected Effect follow that target until the Duration ends. The boss body keeps its authored direction.");
+        }
 		else if ("BOSS_TRACK_TARGET" == draft.strJudgementKind)
 		{
 			float followSpeed = static_cast<float>(draft.fFollowSpeedScale);
@@ -14892,7 +14986,14 @@ void Client::CKoukuSaydonActionWorkbench::Render_LogicDefinitionValues(
 					if (ImGui::Selectable(outcome, draft.strInsideOutcome == outcome)) draft.strInsideOutcome = outcome;
 				ImGui::EndCombo();
 			}
-			ImGui::TextDisabled("At the window end, the real boss inside this cone runs the selected Result slot; outside runs the opposite slot.");
+            if (ImGui::Checkbox("Judge gaze during window", &draft.bGazeDuringWindow) && draft.bGazeDuringWindow)
+                draft.strInsideOutcome = "FAIL";
+            if (draft.bGazeDuringWindow)
+            {
+                draft.strInsideOutcome = "FAIL";
+                ImGui::TextWrapped("During this Duration, looking at the real boss runs Fail once per player. Facing uses the player's view direction. Success and Timeout are unused.");
+            }
+            else ImGui::TextDisabled("At the window end, the real boss inside this cone runs the selected Result slot; outside runs the opposite slot.");
 		}
 		else if ("POSE_INPUT" == draft.strJudgementKind)
 		{
@@ -15776,7 +15877,7 @@ bool_t Client::CKoukuSaydonActionWorkbench::Render_LogicOutcomeSlots(
 			KOUKU_SAYDON_OUTCOME_SLOT::TIMEOUT })
 		{
 			const bool_t allowed = Kouku_LogicOutcomeKind(*logic).empty() ||
-				Kouku_IsOutcomeSlotAllowed(Kouku_LogicOutcomeKind(*logic), slot);
+				Kouku_IsOutcomeSlotAllowed(Kouku_LogicOutcomeKind(*logic), slot, logic->bGazeDuringWindow);
 			std::vector<std::string> targets = box->Outcomes(slot);
 			ImGui::PushID(static_cast<int32_t>(slot));
 			ImGui::BeginDisabled(!allowed);

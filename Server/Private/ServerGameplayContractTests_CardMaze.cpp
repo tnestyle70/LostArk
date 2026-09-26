@@ -261,6 +261,31 @@ int LostArk::Server::Run_ServerCardMazeContractTests()
 			"Card maze entry enables Q while preserving the normal class body");
 		entrants = players;
 		for (auto& [id, player] : entrants) { player.fPositionX = float(id); player.fPositionZ = 324.f; player.isCombatReady = true; }
+		entrants[4u].iCurrentHp = 0u; entrants[4u].eAction = PLAYER_ACTION_STATE::DEAD; entrants[4u].isCombatReady = false;
+		CKoukuSaydonLogicRuntime::Build(pattern, boss, 10u, ledger);
+		update(1000u, &navigation);
+		entrants[2u].iCurrentHp = 0u; entrants[2u].eAction = PLAYER_ACTION_STATE::DEAD; entrants[2u].isCombatReady = false;
+		update(5000u, &navigation);
+		tests.Require(entrants[4u].fPositionX == Maze::CENTER_X && entrants[4u].fPositionZ == Maze::CENTER_Z &&
+			entrants[2u].fPositionX == Maze::CENTER_X && entrants[2u].fPositionZ == Maze::CENTER_Z,
+			"Already dead and newly dead cinematic participants both enter the maze start position");
+		tests.Require(entrants[4u].iCurrentHp == 0u && entrants[2u].iCurrentHp == 0u &&
+			entrants[4u].eAction == PLAYER_ACTION_STATE::DEAD && entrants[2u].eAction == PLAYER_ACTION_STATE::DEAD &&
+			!entrants[4u].isCombatReady && !entrants[2u].isCombatReady &&
+			entrants[4u].eCardMazeRole == CARD_MAZE_ROLE::NONE && entrants[2u].eCardMazeRole == CARD_MAZE_ROLE::NONE,
+			"Maze relocation preserves death, combat admission and unassigned hunter roles");
+		CKoukuSaydonLogicRuntime::Update_PlayerModes(entrants, &ledger, nullptr, 160u);
+		tests.Require(entrants[4u].eKoukuHudMode == KOUKU_HUD_MODE::MAZE &&
+			std::all_of(std::begin(entrants[4u].ModeSkillIndexBySlot), std::end(entrants[4u].ModeSkillIndexBySlot),
+				[](auto slot) { return slot == KOUKU_HUD_SLOT_EMPTY; }),
+			"Dead maze spectator retains HUD suppression without gaining interaction slots");
+		entrants[4u].fPositionZ = 324.f;
+		CKoukuSaydonLogicRuntime::Build(pattern, boss, 10u, ledger);
+		update(5000u, nullptr);
+		tests.Require(entrants[4u].fPositionZ == 324.f && entrants[4u].eAction == PLAYER_ACTION_STATE::DEAD &&
+			entrants[4u].iCurrentHp == 0u, "Missing navigation also preserves the dead participant's position and death");
+		entrants = players;
+		for (auto& [id, player] : entrants) { player.fPositionX = float(id); player.fPositionZ = 324.f; player.isCombatReady = true; }
 		CKoukuSaydonLogicRuntime::Build(pattern, boss, 10u, ledger);
 		update(5000u, nullptr);
 		tests.Require(std::all_of(entrants.begin(), entrants.end(), [](const auto& row) {

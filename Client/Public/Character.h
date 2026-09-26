@@ -212,6 +212,9 @@ public:
 	bool_t Try_Get_SkillTargetRoot(float4x4_t& outWorld) const;
 	void Apply_NetworkStance(LostArk::Shared::PLAYER_STANCE_ID stance);
 	void Apply_NetworkPresentationHidden(bool_t hidden) { m_isNetworkPresentationHidden = hidden; }
+	void Set_CinematicPresentationSuppressed(bool_t suppressed);
+	bool_t Is_WorldPresentationHidden() const
+	{ return m_isNetworkPresentationHidden || m_isSourcePawnHidden || m_isCinematicPresentationSuppressed; }
     // Transient cue overlays never replace replicated stance or user part visibility.
     void Set_PresentationVisibilityControls(bool_t all, bool_t weapon, bool_t identity, bool_t showIdentity);
 	/* Replication hands over the replicated vehicle. Zero dismounts. A vehicle
@@ -431,6 +434,7 @@ private:
 	f32_t m_fPendingIdleSeconds = { -1.f };
 	wstring_t m_strNavigationPrototypeTag;
 	bool_t m_isNetworkPresentationHidden = false;
+	bool_t m_isCinematicPresentationSuppressed = false;
     bool_t m_isSourcePawnHidden = false, m_isSourceWeaponHidden = false, m_isSourceIdentityHidden = false;
     bool_t m_isSourceIdentityVisible = false;
 	std::uint32_t m_iVehicleId = 0u;
