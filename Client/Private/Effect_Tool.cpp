@@ -357,6 +357,17 @@ void Client::CEffect_Tool::Update(const f32_t fTimeDelta)
 	Update_ValtanServerPatternAudition();
 	Update_ValtanPatternProductEffectUnlink();
     m_pThumbnailCache->Begin_Frame(m_iFrameNumber);
+    if (Has_ClassMovieContext())
+    {
+        if (CGameInstance::Get().Get_CurrentLevelID() != ETOUI(LEVEL::CHARACTER_SELECT))
+            (void)End_ClassMovieEditing();
+        else
+        {
+            m_pCharacterPreviewPanel->Set_SessionLock(CHARACTER_PREVIEW_LOCK_OWNER::EFFECT_TOOL, false, {});
+            m_bPreviewPlaying = false;
+            return; // Movie owns actors, attachments and the single playback clock.
+        }
+    }
 	m_pCharacterPreviewPanel->Refresh_Level();
     if (m_pAuthoringSequencer)
     {
@@ -766,7 +777,7 @@ void Client::CEffect_Tool::Render()
             CGameInstance::Get().Get_Profiler(),
             "EffectTool.DataFilesWindow");
         Render_DataFilesWindow();
-    if (m_pAuthoringSequencer) m_pAuthoringSequencer->Render_Sequencer("Effect Action Benchmark###EffectAuthoring", true);
+    if (m_pAuthoringSequencer && !Has_ClassMovieContext()) m_pAuthoringSequencer->Render_Sequencer("Effect Action Benchmark###EffectAuthoring", true);
     }
     {
         Engine::CProfilerScope TrimProfile(
@@ -1064,6 +1075,7 @@ void Client::CEffect_Tool::Render_EffectTypeSelector()
 
 void Client::CEffect_Tool::Hide_WorldPreview()
 {
+    if (Has_ClassMovieContext() && m_ClassMovieCallbacks.stop) m_ClassMovieCallbacks.stop();
     m_bPreviewPlaying = false;
 	m_bPreviewVisibleRequested = false;
     Release_WorldPreview(true);
@@ -1102,6 +1114,7 @@ void Client::CEffect_Tool::Release_WorldPreview(
 
 void Client::CEffect_Tool::Discard_ActiveDocument()
 {
+    if (!End_ClassMovieEditing()) { m_strDocumentStatus = m_strClassMovieStatus; return; }
     if (m_pAuthoringSequencer && m_pAuthoringSequencer->Is_ElementPreview())
         m_pAuthoringSequencer->Stop();
     m_MarkedElementIds.clear();

@@ -1,5 +1,25 @@
 # LostArk merge 회귀 방지 정본
 
+### World Movie의 V1 편집과 camera live 적용
+
+- Movie Effect를 V1에서 열 때 원본 WORLD 배우·카메라·시계의 owner를 유지한다. 일반 Effect의
+  별도 모델 preview나 Element Solo 시계를 함께 실행하지 않는다. 실제 Movie class/phase/Effect ID로
+  연결하고 창 전환·편집 종료·Level 이탈의 임시 override 정리를 확인한다.
+- Element 초안은 기존 Effect renderer로 먼저 준비하고 활성·pending occurrence 모두 성공한 뒤
+  같은 handle의 인스턴스를 교체한다. 준비 실패는 이전 재생과 Product catalog를 보존한다.
+  Product Save·임시 preview·다음 spawn을 동일한 완료 상태로 기록하지 않는다.
+- prepared Effect의 Build_ResourceSignature는 Document 주소와 stable asset ID를 함께 사용한다.
+  caller 문서를 prepare한 뒤 내용이 같은 복사본을 attach하면 signature가 달라 거절된다.
+  불변 shared Document를 먼저 만들고 같은 객체를 prepare부터 active/pending attach까지 유지한다.
+  이 주소는 process 내부 cache identity이며 저장 ID가 아니다. prepare 통과를 attach 성공으로 대신하지 않는다.
+- Movie A의 Solo/Play Group 뒤 B로 전환할 때 isolation ID만 지우면 A의 filtered target이 남는다.
+  새 문서 검증 후 이전 A의 전체 draft를 먼저 복원하고, 실패하면 isolation과 문서 선택을 유지한다.
+  같은 asset의 Load Saved/Discard도 필터 없는 전체 저장본으로 복원한다. New/Save As는
+  End Movie Editing 뒤에 수행하며, End는 임시 target 복원 후 isolation ID와 filter를 초기화한다.
+- camera pose/FOV만 바뀌면 같은 Movie 시각에서 camera만 다시 평가하고 배우·Effect를 재시작하지
+  않는다. camera box 시작/길이를 바꿀 때는 기존 전체 Apply 경로를 유지한다. key의 source 시각과
+  현재 보간 sample, source horizontal FOV와 적용 vertical FOV를 구분한다.
+
 ### 스킨 모델 호버의 빈 공간 판정과 배경 덮임
 
 - pose 전체 AABB는 broad phase일 뿐이다. 몸 사이 빈 공간도 선택되면 현재 palette로 변형한

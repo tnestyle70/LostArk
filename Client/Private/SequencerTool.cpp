@@ -232,7 +232,14 @@ namespace
             if (m_ReloadRequested && m_Callbacks.reloadAuthoring && m_Callbacks.reloadAuthoring(m_EditStatus))
             { m_EditBox.reset(); m_RowDirty = false; }
             m_ReloadRequested = false;
-            if (!m_OpenEffect.empty() && m_Callbacks.openEffectEditor) (void)m_Callbacks.openEffectEditor(m_OpenEffect, m_EditStatus);
+            if (!m_OpenEffect.empty() && m_Callbacks.openEffectEditor)
+            {
+                // Opening V1 can deactivate this pane synchronously. Transfer
+                // the movie first, and restore our claim if admission fails.
+                const bool owned = std::exchange(m_OwnsPlayback, false);
+                if (!m_Callbacks.openEffectEditor(m_State.selectedClassId, m_ViewLoop, m_OpenEffect, m_EditStatus))
+                    m_OwnsPlayback = owned;
+            }
             m_OpenEffect.clear();
             const auto command = std::exchange(m_Pending, COMMAND::NONE);
             switch (command)
@@ -320,7 +327,7 @@ namespace
             Render_CategorySelector();
             ImGui::BeginDisabled(!m_State.available || !m_Callbacks.play);
             const bool restarting = m_State.active && m_State.activeClassId == m_State.selectedClassId;
-            if (ImGui::Button(restarting ? "Restart intro" : "Play")) m_Pending = COMMAND::PLAY;
+            if (ImGui::Button(restarting ? "Play All (restart intro)" : "Play All")) m_Pending = COMMAND::PLAY;
             ImGui::EndDisabled();
             ImGui::SameLine();
             ImGui::BeginDisabled(!m_State.active || !m_Callbacks.setPaused);
@@ -529,9 +536,8 @@ namespace
             if (!box->camera) { ImGui::Text("Keys: %zu", box->keyMovieTimes.size()); return; }
             const auto& row = *box->camera;
             if (row.cue.Keyframes.empty()) return;
-            ImGui::SeparatorText("Saved camera key");
+            ImGui::SeparatorText("Applied camera key");
             const int count = static_cast<int>(row.cue.Keyframes.size());
-            ImGui::SetNextItemWidth(140.f); ImGui::InputInt("Key", &m_CameraKey);
             m_CameraKey = (std::clamp)(m_CameraKey, 0, count - 1);
             const auto& key = row.cue.Keyframes[m_CameraKey];
             const double movieMs = box->keyMovieTimes[m_CameraKey];
@@ -570,19 +576,82 @@ namespace
             }
             if (!m_EditBox || (!matches && m_RowDirty)) return;
             ImGui::SeparatorText("Movie row editor");
-            ImGui::TextWrapped("Times are source milliseconds; the timeline maps them through the movie clock. Apply validates the whole movie and stops playback.");
+            ImGui::TextWrapped(m_SelectedKind == "Camera" ?
+                "Position and FOV edits preserve playback. Advanced box timing changes stop playback after full validation. Save movie keeps the changes." :
+                "Times are source milliseconds; the timeline maps them through the movie clock. Apply validates the whole movie and stops playback.");
             if (m_SelectedKind == "Effect" && m_Callbacks.openEffectEditor)
             {
                 if (ImGui::Button("Open Effect Editor")) m_OpenEffect = box.resource;
-                ImGui::TextWrapped("Save in the Effect Editor, then return here and Play to use the saved particle and material elements.");
+                ImGui::TextWrapped("The V1 editor keeps this movie's actors and animation. Play All previews its elements in the same movie.");
             }
             ImGui::BeginDisabled(!m_RowDirty);
-            if (ImGui::Button("Apply row")) m_ApplyRequested = true;
+            if (ImGui::Button(m_SelectedKind == "Camera" ? "Apply camera live" : "Apply row")) m_ApplyRequested = true;
             ImGui::SameLine();
             if (ImGui::Button("Revert row")) { m_EditValue = m_EditBox->value; m_RowDirty = false; }
             ImGui::EndDisabled();
-            if (EditMovieValue("Row values", m_EditValue, m_KeySelections, "movie-row"))
-            { m_RowDirty = true; m_FollowPlayback = false; }
+            if (m_SelectedKind == "Camera") Render_CameraKeyEditor();
+            if (m_SelectedKind != "Camera" || ImGui::CollapsingHeader("All camera row fields"))
+                if (EditMovieValue("Row values", m_EditValue, m_KeySelections, "movie-row"))
+                { m_RowDirty = true; m_FollowPlayback = false; }
+        }
+
+        void Render_CameraKeyEditor()
+        {
+            using Json = Client::DATA_JSON_VALUE;
+            const auto* keys = m_EditValue.Find("keys");
+            if (!keys || !keys->Is_Array() || keys->Get_Array().empty()) return;
+            ImGui::SeparatorText("Camera key position");
+            ImGui::SetNextItemWidth(140.f); ImGui::InputInt("Camera key", &m_CameraKey);
+            m_CameraKey = (std::clamp)(m_CameraKey, 0, static_cast<int>(keys->Get_Array().size()) - 1);
+            m_KeySelections["movie-row/keys"] = m_CameraKey;
+            const auto& key = keys->Get_Array()[m_CameraKey];
+            if (!key.Is_Object()) return;
+            auto fields = key.Get_Object();
+            const auto* id = key.Find("keyId"); const auto* time = key.Find("timeMs");
+            if (id && id->Is_String()) ImGui::TextWrapped("%s", id->Get_String().c_str());
+            if (time && time->Is_Number()) ImGui::Text("Box-local time: %.3f s", time->Get_Number() * .001);
+            ImGui::Checkbox("Apply camera when edit ends", &m_LiveCamera);
+            ImGui::TextWrapped("Play All, then Seek to camera key to tune that view. Drag the coordinates or Ctrl-click to type a value.");
+            bool changed = false, finishedEdit = false;
+            const auto editVector = [&](const char* field, const char* label, const float speed) {
+                const auto found = fields.find(field);
+                if (found == fields.end() || !found->second.Is_Array() || found->second.Get_Array().size() != 3u) return;
+                std::array<double, 3> values{};
+                for (size_t i = 0; i < values.size(); ++i)
+                {
+                    if (!found->second.Get_Array()[i].Is_Number()) return;
+                    values[i] = found->second.Get_Array()[i].Get_Number();
+                }
+                const bool edited = ImGui::DragScalarN(label, ImGuiDataType_Double, values.data(), 3, speed,
+                    nullptr, nullptr, "%.4f");
+                finishedEdit |= ImGui::IsItemDeactivatedAfterEdit();
+                if (edited && std::all_of(values.begin(), values.end(), [](double value) { return std::isfinite(value); }))
+                { found->second = Json::Array({Json::Number(values[0]), Json::Number(values[1]), Json::Number(values[2])}); changed = true; }
+            };
+            editVector("eye", "Eye position (m)", .05f);
+            editVector("lookAt", "Look at (m)", .05f);
+            editVector("up", "Up direction", .01f);
+            const auto fov = fields.find(fields.contains("fovDegrees") ? "fovDegrees" : "fovYDegrees");
+            if (fov != fields.end() && fov->second.Is_Number())
+            {
+                double value = fov->second.Get_Number();
+                const auto* axis = m_EditValue.Find("fovAxis");
+                const bool horizontal = axis && axis->Is_String() && axis->Get_String() == "HORIZONTAL";
+                const bool edited = ImGui::DragScalar(horizontal ? "Horizontal FOV (deg)" : "Vertical FOV (deg)",
+                    ImGuiDataType_Double, &value, .1f, nullptr, nullptr, "%.3f");
+                finishedEdit |= ImGui::IsItemDeactivatedAfterEdit();
+                if (edited && std::isfinite(value)) { fov->second = Json::Number(value); changed = true; }
+            }
+            if (changed)
+            {
+                auto items = keys->Get_Array();
+                items[m_CameraKey] = Json::Object(std::move(fields), key.Get_ObjectInsertionOrder());
+                auto row = m_EditValue.Get_Object(); row["keys"] = Json::Array(std::move(items));
+                row["source"] = Json::String("PROJECT_TUNED");
+                m_EditValue = Json::Object(std::move(row), m_EditValue.Get_ObjectInsertionOrder());
+                m_RowDirty = true; m_FollowPlayback = false;
+            }
+            if (m_LiveCamera && finishedEdit && m_RowDirty) m_ApplyRequested = true;
         }
 
         CALLBACKS m_Callbacks;
@@ -599,6 +668,7 @@ namespace
         bool m_ViewLoop = false, m_FollowPlayback = true;
         float m_PixelsPerSecond = 45.f;
         int m_CameraKey = 0;
+        bool m_LiveCamera = true;
         ImGuiTextFilter m_RowFilter;
         std::optional<double> m_RequestedRate;
         std::shared_ptr<const Client::CLASS_MOVIE_TIMELINE> m_Timeline;

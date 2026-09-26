@@ -131,6 +131,76 @@
 
 namespace
 {
+#ifdef _DEBUG
+    void ConfigureClassMovieEditor(Client::CEffect_Tool& tool)
+    {
+        CEffect_Tool::CLASS_MOVIE_CALLBACKS movieCallbacks;
+        movieCallbacks.state = [](const std::string& classId) {
+            CEffect_Tool::CLASS_MOVIE_STATE state;
+            auto* level = CLevel_CharacterSelect::Get_Active();
+            if (!level || CGameInstance::Get().Get_CurrentLevelID() != ETOUI(LEVEL::CHARACTER_SELECT))
+            { state.status = "Enter Character Select to edit this Movie."; return state; }
+            const auto& preview = level->Get_ClassSelectionPresentation();
+            state.available = level->Can_PlayClassCinematic() && preview.Has_Class(classId);
+            state.active = preview.Is_Active() && preview.Get_ActiveClass() == classId;
+            state.paused = preview.Is_Paused(); state.loop = preview.Is_Looping();
+            state.clockMs = preview.Get_ClockMs(); state.durationMs = preview.Get_DurationMs();
+            state.status = level->Get_ClassCinematicStatus();
+            return state;
+        };
+        movieCallbacks.timeline = [](const std::string& classId, bool loop) -> std::shared_ptr<const CLASS_MOVIE_TIMELINE> {
+            auto* level = CLevel_CharacterSelect::Get_Active();
+            return level && CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::CHARACTER_SELECT) ?
+                level->Get_ClassSelectionPresentation().Get_Timeline(classId, loop) : nullptr;
+        };
+        movieCallbacks.play = [](const std::string& classId, std::string& status) {
+            auto* level = CLevel_CharacterSelect::Get_Active();
+            if (!level || CGameInstance::Get().Get_CurrentLevelID() != ETOUI(LEVEL::CHARACTER_SELECT))
+            { status = "Enter Character Select to play this Movie."; return false; }
+            const auto& options = level->Get_ClassMovieOptions();
+            const auto option = std::find_if(options.begin(), options.end(), [&](const auto& value) { return value.classId == classId; });
+            const bool played = option != options.end() && level->Select_ClassMovieCategory(static_cast<size_t>(std::distance(options.begin(), option))) &&
+                level->Can_PlayClassCinematic() && level->Play_ClassCinematic(classId);
+            status = level->Get_ClassCinematicStatus();
+            return played;
+        };
+        movieCallbacks.seek = [](const std::string& classId, bool loop, double timeMs, std::string& status) {
+            auto* level = CLevel_CharacterSelect::Get_Active();
+            if (!level || CGameInstance::Get().Get_CurrentLevelID() != ETOUI(LEVEL::CHARACTER_SELECT) || !level->Can_PlayClassCinematic())
+            { status = "Wait for Character Select admission and close other character previews."; return false; }
+            const auto& options = level->Get_ClassMovieOptions();
+            const auto option = std::find_if(options.begin(), options.end(), [&](const auto& value) { return value.classId == classId; });
+            if (option == options.end() || !level->Select_ClassMovieCategory(static_cast<size_t>(std::distance(options.begin(), option))))
+            { status = "This Movie category is no longer available."; return false; }
+            auto& preview = level->Get_ClassSelectionPresentation();
+            // Level Play establishes the selected background before the shared seek.
+            if ((!preview.Is_Active() || preview.Get_ActiveClass() != classId) && !level->Play_ClassCinematic(classId))
+            { status = level->Get_ClassCinematicStatus(); return false; }
+            const bool sampled = preview.Seek(classId, loop, timeMs);
+            if (sampled) preview.Set_Paused(true);
+            status = level->Get_ClassCinematicStatus();
+            return sampled;
+        };
+        movieCallbacks.pause = [](bool paused) {
+            if (auto* level = CLevel_CharacterSelect::Get_Active()) level->Get_ClassSelectionPresentation().Set_Paused(paused);
+        };
+        movieCallbacks.stop = [] {
+            if (auto* level = CLevel_CharacterSelect::Get_Active()) level->Get_ClassSelectionPresentation().Stop();
+        };
+        movieCallbacks.preview = [](const EFFECT_DOCUMENT_DESC& document, std::string& status) {
+            auto* level = CLevel_CharacterSelect::Get_Active();
+            if (!level || CGameInstance::Get().Get_CurrentLevelID() != ETOUI(LEVEL::CHARACTER_SELECT))
+            { status = "Movie Effect preview requires Character Select."; return false; }
+            return level->Get_ClassSelectionPresentation().Preview_EffectDocument(document, status);
+        };
+        movieCallbacks.clearPreviews = [](std::string& status) {
+            auto* level = CLevel_CharacterSelect::Get_Active();
+            return !level || CGameInstance::Get().Get_CurrentLevelID() != ETOUI(LEVEL::CHARACTER_SELECT) ||
+                level->Get_ClassSelectionPresentation().Clear_EffectPreviews(status);
+        };
+        tool.Set_ClassMovieCallbacks(std::move(movieCallbacks));
+    }
+#endif
     void WriteStartupDiagnostic(const char* stage, const HRESULT result,
         const std::string& status)
     {
@@ -2227,6 +2297,7 @@ void CMainApp::Update(const f32_t fTimeDelta)
                 for (const auto& option : level->Get_ClassMovieOptions())
                     movies.push_back({option.classId, option.label});
             m_pEffectTool->Set_ClassMovieResources(std::move(movies));
+
             m_pEffectTool->Set_AuthoringCamera(effectCamera);
             {
                 Engine::CProfilerScope toolScope(CGameInstance::Get().Get_Profiler(), "ImGui.Tool.EffectV1.Update_AuthoringWorkspace");
@@ -9982,6 +10053,7 @@ HRESULT CMainApp::EnsureDebugTool(const DEBUG_TOOL eTool, const bool_t bShowWind
 			}
 		}
         m_pEffectTool->Configure_AuthoringWorkspace(m_pKoukuPresentationPlayer.get());
+                ConfigureClassMovieEditor(*m_pEffectTool);
         m_pEffectTool->Set_KoukuPatternPreviewProvider(
             [this](const std::string& effectId, EFFECT_TOOL_KOUKU_PATTERN_PREVIEW& context, std::string& status)
             {
@@ -10121,6 +10193,7 @@ HRESULT CMainApp::EnsureDebugTool(const DEBUG_TOOL eTool, const bool_t bShowWind
 				m_pEffectTool = make_unique<CEffect_Tool>(m_pDevice, m_pContext,
 					m_pCharacterPreviewPanel, m_pBalanceTool.get());
 				m_pEffectTool->Configure_AuthoringWorkspace(m_pKoukuPresentationPlayer.get());
+                ConfigureClassMovieEditor(*m_pEffectTool);
 			}
 			m_pCharacterActionWorkbench = make_unique<CCharacterActionWorkbench>(m_pCharacterPreviewPanel,
 				m_pEffectTool->Create_CompositionSequencer("character.actions"), m_pAnimationTool.get());
@@ -10246,12 +10319,12 @@ HRESULT CMainApp::EnsureDebugTool(const DEBUG_TOOL eTool, const bool_t bShowWind
                 auto* level = CLevel_CharacterSelect::Get_Active();
                 return level && level->Get_ClassSelectionPresentation().Reload_Authoring(status);
             };
-            classSelection.openEffectEditor = [this](const std::string& assetId, std::string& status) {
-                EnsureDebugTool(DEBUG_TOOL::EFFECT);
-                if (!m_pEffectTool || !m_pEffectTool->Open_AuthoringResource({EFFECT_RESOURCE_OWNER_KIND::V1_DOCUMENT, assetId}))
-                { status = "The selected Effect could not be opened; its existing editor draft was preserved."; return false; }
-                if (auto* level = CLevel_CharacterSelect::Get_Active()) level->Get_ClassSelectionPresentation().Stop();
-                status = "Edit and Save this Effect, then return to the Movie and Play. Save refreshes the same prepared Effect target.";
+            classSelection.openEffectEditor = [this](const std::string& classId, bool loop, const std::string& assetId, std::string& status) {
+                if (FAILED(EnsureDebugTool(DEBUG_TOOL::EFFECT)) || !m_pEffectTool ||
+                    !m_pEffectTool->Open_ClassMovie(classId, loop, assetId))
+                { status = "The Movie Effect could not be opened. Inspect V1 Movie status; current unsaved work is preserved."; return false; }
+                m_eDebugInputOwner = DEBUG_TOOL::EFFECT;
+                status = "Movie Effect opened in V1. Edit Elements with the Movie actors; Play All replays the complete Movie.";
                 return true;
             };
             m_pSequencerTool->Set_ClassSelectionPreviewCallbacks(std::move(classSelection));

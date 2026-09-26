@@ -127,6 +127,9 @@ public:
     double Get_SourceRate() const;
     const CLASS_MOVIE_CAMERA_SAMPLE& Get_CameraSample() const { return m_CameraSample; }
     std::shared_ptr<const CLASS_MOVIE_TIMELINE> Get_Timeline(const std::string& classId, bool loop) const;
+    // Instance-local V1 editor draft; retained across Play, Stop, Seek and phase transitions.
+    bool Preview_EffectDocument(const EFFECT_DOCUMENT_DESC& document, std::string& status);
+    bool Clear_EffectPreviews(std::string& status);
     bool Begin_Authoring(std::string& status);
     bool Get_AuthoringBox(const std::string& classId, bool loop, const std::string& kind,
         const std::string& boxId, CLASS_MOVIE_AUTHORING_BOX& out, std::string& status);
@@ -165,6 +168,7 @@ private:
     bool Start_Phase(const SCENE& scene, bool loop, double elapsedMs, uint64_t loopCycle = 0u,
         bool desiredPaused = false, bool rebuildEffects = false);
     bool Sample_Frame();
+    bool Sample_Camera(const PHASE& phase, float sampleMs);
     bool Sample_MaterialsAndLights(const PHASE& phase, float sampleMs);
     bool Sample_Effects(const PHASE& phase, float sampleMs);
     void Stop_Effects();
@@ -212,6 +216,7 @@ private:
         uint64_t loopCycle = 0u;
     };
     std::map<std::string, ACTIVE_EFFECT> m_Effects;
+    std::map<std::string, std::shared_ptr<const EFFECT_WORLD_PREVIEW_TARGET>> m_EffectPreviews;
     bool m_Looping = false;
     bool m_Paused = false;
     bool m_DeferAdvance = false;
