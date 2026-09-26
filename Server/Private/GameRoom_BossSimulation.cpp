@@ -2107,6 +2107,7 @@ void LostArk::Server::CGameRoom::Update_WorldEntities(
 			/* The clip carries its own entrance and exit; the room only clocks
 			the strike so the sweep below despawns it the moment it ends. */
 			entity.fActionElapsedSeconds += fixedDeltaSeconds;
+			Apply_EstherStrikeHits(entity, updateTick);
 			continue;
 		}
 		if (SERVER_DEPENDENT_BOSS_ROLE::PORTAL_RUNNER ==

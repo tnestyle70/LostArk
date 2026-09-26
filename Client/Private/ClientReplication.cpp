@@ -1853,6 +1853,11 @@ void Client::CClientReplication::Apply_CombatDebugVisibility(
 				boss->Set_CombatColliderDebugVisible(Visibility.bBossBodyCollider);
 		}
 #ifdef _DEBUG
+		if (LostArk::Shared::WORLD_ENTITY_KIND::NPC == presentation.eKind)
+		{
+			if (const std::shared_ptr<CNpc> npc = presentation.pNpc.lock())
+				npc->Set_SkillHitAreaDebugVisible(Visibility.bPlayerSkillHitGeometry);
+		}
 		if (std::shared_ptr<CValtan> valtan = presentation.pValtan.lock())
 		{
 			valtan->Set_CombatDebugVisibility(
@@ -2516,6 +2521,9 @@ bool Client::CClientReplication::Apply_WorldEntitySpawn(
 		presentation.fCollisionRadius = spawned.fCollisionRadius;
 		presentation.PinnedDefinitionRevision =
 			spawned.PinnedDefinitionRevision;
+#ifdef _DEBUG
+		npc->Set_SkillHitAreaDebugVisible(m_CombatDebugVisibility.bPlayerSkillHitGeometry);
+#endif
 		presentation.pNpc = npc;
 		/* An entity that spawns mid-action (a raid Esther summon) must show
 		its action clip from the very first rendered frame; waiting for the

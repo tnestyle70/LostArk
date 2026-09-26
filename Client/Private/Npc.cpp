@@ -11,6 +11,7 @@
 #include "KoukuSaydonPresentationAssetService.h"
 
 #include "Collider.h"
+#include "HitAreaWire.h"
 #include "DeferredMaterialRenderUtils.h"
 #include "GameInstance.h"
 #include "Model.h"
@@ -404,6 +405,10 @@ void CNpc::Arm_ActionEffectCues(const char_t* pClipName)
 		EFFECT_V2_TARGET::From_Npc(static_pointer_cast<CNpc>(shared_from_this())));
 	if (archetype.empty())
 		return;
+#ifdef _DEBUG
+	m_pDebugEstherStrike = LostArk::Shared::EstherStrike::Find_ByArchetype(archetype.c_str());
+	m_fDebugEstherStrikeAgeSeconds = 0.f;
+#endif
 	std::string status;
 	if (!CNpcActionEffectCueDocument::Load(archetype, status))
 	{
@@ -1052,7 +1057,43 @@ void CNpc::Late_Update(f32_t fTimeDelta)
             static_pointer_cast<CGameObject>(shared_from_this()));
 	if (m_isCombatColliderDebugVisible && nullptr != m_pColliderCom)
 		CGameInstance::Get().Add_DebugComponent(m_pColliderCom);
+#ifdef _DEBUG
+	Draw_EstherStrikeDebug(fTimeDelta);
+#endif
 }
+
+#ifdef _DEBUG
+void CNpc::Draw_EstherStrikeDebug(const f32_t fTimeDelta)
+{
+	if (nullptr == m_pDebugEstherStrike || nullptr == m_pTransformCom)
+		return;
+	m_fDebugEstherStrikeAgeSeconds += fTimeDelta;
+	if (!m_isSkillHitAreaDebugVisible)
+		return;
+	constexpr uint32_t ESTHER_HIT_COLOR_RGBA = 255u | (70u << 8) | (60u << 16) | (255u << 24);
+	constexpr f32_t VISIBLE_WINDOW_MS = 300.f;
+	const f32_t fAgeMs = m_fDebugEstherStrikeAgeSeconds * 1000.f;
+	const float4x4_t& World = *m_pTransformCom->Get_WorldMatrixPtr();
+	const vector_t vRight = XMVector3Normalize(XMVector3Cross(XMVectorSet(0.f, 1.f, 0.f, 0.f),
+		XMVectorSetY(XMLoadFloat4x4(&World).r[2], 0.f)));
+	for (size_t iHit = 0; iHit < m_pDebugEstherStrike->iHitCount; ++iHit)
+	{
+		const LostArk::Shared::EstherStrike::HIT& Hit = m_pDebugEstherStrike->pHits[iHit];
+		const f32_t fStartMs = static_cast<f32_t>(Hit.iTimeMs);
+		if (fAgeMs < fStartMs || fAgeMs > fStartMs + VISIBLE_WINDOW_MS)
+			continue;
+		HIT_AREA_SHAPE Shape{};
+		Shape.iAreaType = Hit.iAreaType;
+		Shape.iAreaRange = static_cast<int32_t>(std::lround(Hit.fRangeM * 100.f));
+		Shape.iAreaAngle = static_cast<int32_t>(std::lround(Hit.fWidthM * 100.f));
+		Shape.iAreaOffsetX = static_cast<int32_t>(std::lround(Hit.fOffsetForwardM * 100.f));
+		float4x4_t Root = World;
+		Root._41 += XMVectorGetX(vRight) * Hit.fOffsetRightM;
+		Root._43 += XMVectorGetZ(vRight) * Hit.fOffsetRightM;
+		CHitAreaWire::Draw(Root, Shape, ESTHER_HIT_COLOR_RGBA);
+	}
+}
+#endif
 
 HRESULT CNpc::Render_Group(const RENDERGROUP group)
 {

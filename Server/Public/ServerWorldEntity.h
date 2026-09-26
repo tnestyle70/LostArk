@@ -517,6 +517,9 @@ namespace LostArk::Server
 		through the MONSTER dead sweep. */
 		bool isEstherSummon = false;
 		std::uint32_t iEstherStrikeMs = 0;
+		LostArk::Shared::ESTHER_ID eEstherId = LostArk::Shared::ESTHER_ID::NONE;
+		LostArk::Shared::PLAYER_ID iEstherCasterPlayerId = LostArk::Shared::INVALID_PLAYER_ID;
+		std::uint32_t iEstherAppliedHitMask = 0u;
 		std::uint32_t iNextPathReplanTick = 0;
 		BOSS_PHASE_POLICY PhasePolicy;
 		/* Deprecated fixture mirror retained until callers have migrated to the

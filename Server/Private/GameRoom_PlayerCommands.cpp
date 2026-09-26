@@ -7,6 +7,8 @@
 #include "Network/PacketWriter.h"
 #include "Gameplay/WorldCollisionContract.h"
 #include "Gameplay/KoukuArenaReadyAreas.h"
+#include "Gameplay/CombatCollisionContract.h"
+#include "Gameplay/EstherStrikeContract.h"
 
 #include <algorithm>
 #include <array>
@@ -18,6 +20,7 @@
 #include <iostream>
 #include <limits>
 #include <new>
+#include <random>
 #include <set>
 #include <string_view>
 #include <utility>
@@ -943,6 +946,7 @@ void LostArk::Server::CGameRoom::Begin_EstherCall(
 	aim (cursor on the caster) keeps the caster's yaw and lands at their feet. */
 	PENDING_ESTHER_SUMMON pending{};
 	pending.pRosterEntry = &rosterEntry;
+	pending.iCasterPlayerId = caster.iPlayerId;
 	pending.fPositionX = caster.fPositionX;
 	pending.fPositionY = caster.fPositionY;
 	pending.fPositionZ = caster.fPositionZ;
@@ -1019,6 +1023,7 @@ void LostArk::Server::CGameRoom::Update_PendingEstherSummons(
 		{
 			Spawn_EstherSummon(
 				*iter->pRosterEntry,
+				iter->iCasterPlayerId,
 				iter->fPositionX,
 				iter->fPositionY,
 				iter->fPositionZ,
@@ -1030,6 +1035,7 @@ void LostArk::Server::CGameRoom::Update_PendingEstherSummons(
 
 bool LostArk::Server::CGameRoom::Spawn_EstherSummon(
 	const ESTHER_ROSTER_ENTRY& rosterEntry,
+	const LostArk::Shared::PLAYER_ID casterPlayerId,
 	const float positionX,
 	const float positionY,
 	const float positionZ,
@@ -1058,6 +1064,8 @@ bool LostArk::Server::CGameRoom::Spawn_EstherSummon(
 	staged.strActionId = ESTHER_ACTION_STRIKE;
 	staged.isEstherSummon = true;
 	staged.iEstherStrikeMs = rosterEntry.iStrikeMs;
+	staged.eEstherId = rosterEntry.eEstherId;
+	staged.iEstherCasterPlayerId = casterPlayerId;
 	staged.fPositionX = positionX;
 	staged.fPositionY = positionY;
 	staged.fPositionZ = positionZ;
@@ -1074,6 +1082,73 @@ bool LostArk::Server::CGameRoom::Spawn_EstherSummon(
 	m_WorldEntities.push_back(std::move(staged));
 	Broadcast_WorldEntitySpawned(m_WorldEntities.back());
 	return true;
+}
+
+void LostArk::Server::CGameRoom::Apply_EstherStrikeHits(
+	SERVER_WORLD_ENTITY& summon,
+	const std::uint32_t serverTick)
+{
+	namespace EstherStrike = LostArk::Shared::EstherStrike;
+	namespace CombatCollision = LostArk::Shared::CombatCollision;
+	const EstherStrike::DEFINITION* definition = EstherStrike::Find(summon.eEstherId);
+	if (nullptr == definition)
+		return;
+	const float yawRadians = summon.fYawDegrees / RADIANS_TO_DEGREES;
+	const float forwardX = std::sin(yawRadians);
+	const float forwardZ = std::cos(yawRadians);
+	const float rightX = forwardZ;
+	const float rightZ = -forwardX;
+	const float elapsedMs = summon.fActionElapsedSeconds * 1000.f;
+	const CGameplayCatalog& catalog = m_GameplayCatalog.Active();
+	static thread_local std::mt19937 generator{ std::random_device{}() };
+	for (std::size_t index = 0u; index < definition->iHitCount; ++index)
+	{
+		const std::uint32_t bit = 1u << index;
+		const EstherStrike::HIT& hit = definition->pHits[index];
+		if (0u != (summon.iEstherAppliedHitMask & bit) ||
+			elapsedMs < static_cast<float>(hit.iTimeMs))
+		{
+			continue;
+		}
+		summon.iEstherAppliedHitMask |= bit;
+		const float originX = summon.fPositionX +
+			forwardX * hit.fOffsetForwardM + rightX * hit.fOffsetRightM;
+		const float originZ = summon.fPositionZ +
+			forwardZ * hit.fOffsetForwardM + rightZ * hit.fOffsetRightM;
+		std::uniform_int_distribution<std::uint32_t> roll(hit.iDamageMin, hit.iDamageMax);
+		for (SERVER_WORLD_ENTITY& target : m_WorldEntities)
+		{
+			if (&target == &summon ||
+				!CServerCombatHitRuntime::Is_PlayerDamageableWorldTarget(target))
+			{
+				continue;
+			}
+			const BOSS_RUNTIME_PROFILE* bossProfile = catalog.Find_Boss(target.strArchetypeId);
+			const CombatCollision::BODY_CIRCLE_XZ body{ target.fPositionX, target.fPositionZ,
+				(WORLD_BOOTSTRAP_KIND::MONSTER == target.eKind ||
+					WORLD_BOOTSTRAP_KIND::WORLD_OBJECT == target.eKind) ?
+					target.fCollisionRadius :
+					(nullptr == bossProfile ? 0.f : bossProfile->fCollisionRadius) };
+			const bool overlaps = EstherStrike::AREA_FORWARD_BOX == hit.iAreaType ?
+				CombatCollision::Circle_IntersectsForwardBox(
+					body, originX, originZ, forwardX, forwardZ, hit.fRangeM, hit.fWidthM * 0.5f) :
+				CombatCollision::Circles_Overlap(
+					CombatCollision::CIRCLE_XZ{ originX, originZ, hit.fRangeM }, body);
+			if (!overlaps)
+				continue;
+			SERVER_PLAYER_TO_WORLD_HIT incoming{};
+			incoming.iSourcePlayerId = summon.iEstherCasterPlayerId;
+			incoming.iSkillId = definition->iSkillId;
+			incoming.iRawDamage = roll(generator) * EstherStrike::DAMAGE_MULTIPLIER;
+			incoming.fSourceX = summon.fPositionX;
+			incoming.fSourceZ = summon.fPositionZ;
+			incoming.fFallbackDirectionX = forwardX;
+			incoming.fFallbackDirectionZ = forwardZ;
+			incoming.iServerTick = serverTick;
+			(void)CServerCombatHitRuntime::Apply_PlayerToWorld(
+				target, incoming, m_TickDamageEvents);
+		}
+	}
 }
 
 LostArk::Shared::CHARACTER_CLASS_CHANGE_RESULT
