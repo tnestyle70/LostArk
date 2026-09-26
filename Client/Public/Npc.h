@@ -458,6 +458,8 @@ private:
 #ifdef _DEBUG
 	bool_t m_isSkillHitAreaDebugVisible = { false };
 	const LostArk::Shared::EstherStrike::DEFINITION* m_pDebugEstherStrike = nullptr;
+	const LostArk::Shared::EstherStrike::GUARD* m_pDebugEstherGuard = nullptr;
+	const LostArk::Shared::EstherStrike::ZONE* m_pDebugEstherZone = nullptr;
 	f32_t m_fDebugEstherStrikeAgeSeconds = 0.f;
 	void Draw_EstherStrikeDebug(f32_t fTimeDelta);
 	f32_t m_fDebugPresentationScale = 1.f;

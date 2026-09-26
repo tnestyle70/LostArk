@@ -991,20 +991,6 @@ void LostArk::Server::CGameRoom::Begin_EstherCall(
 	caster.iMovePathIndex = 0;
 	caster.Clear_SkillTarget();
 	caster.PendingCommand.Clear();
-
-	if (LostArk::Shared::WORLD_ID::KAKULSAYDON_ARENA == m_eWorldId &&
-		LostArk::Shared::ESTHER_ID::INANNA == rosterEntry.eEstherId)
-	{
-		const auto until = CKoukuSaydonLogicRuntime::Add_Ticks(caster.iActionStartTick,
-			CKoukuSaydonLogicRuntime::Ticks_FromMs(ESTHER_INANNA_INVULNERABLE_DURATION_MS));
-		for (auto& [id, player] : m_Players)
-		{
-			if (!player.iCurrentHp || player.eAction == LostArk::Shared::PLAYER_ACTION_STATE::DEAD) continue;
-			if (Is_KoukuRaidRunning() && std::find(m_KoukuRaid.PlayerIds.begin(), m_KoukuRaid.PlayerIds.end(), id) == m_KoukuRaid.PlayerIds.end()) continue;
-			if (!player.iInvulnerableEndTick || CKoukuSaydonLogicRuntime::Has_ReachedTick(until, player.iInvulnerableEndTick))
-				player.iInvulnerableEndTick = until;
-		}
-	}
 }
 
 void LostArk::Server::CGameRoom::Update_PendingEstherSummons(
@@ -1090,6 +1076,38 @@ void LostArk::Server::CGameRoom::Apply_EstherStrikeHits(
 {
 	namespace EstherStrike = LostArk::Shared::EstherStrike;
 	namespace CombatCollision = LostArk::Shared::CombatCollision;
+	const EstherStrike::GUARD* guard = EstherStrike::Find_Guard(summon.eEstherId);
+	if (nullptr != guard && !summon.bEstherSupportApplied &&
+		summon.fActionElapsedSeconds * 1000.f >= static_cast<float>(guard->iGrantTimeMs))
+	{
+		summon.bEstherSupportApplied = true;
+		const std::uint32_t endTick = serverTick + (guard->iDurationMs * 30u + 999u) / 1000u;
+		const float radiusSquared = guard->fRadiusM * guard->fRadiusM;
+		const float guardYawRadians = summon.fYawDegrees / RADIANS_TO_DEGREES;
+		const float centerX = summon.fPositionX + std::sin(guardYawRadians) * guard->fOffsetForwardM;
+		const float centerZ = summon.fPositionZ + std::cos(guardYawRadians) * guard->fOffsetForwardM;
+		for (auto& [playerId, player] : m_Players)
+		{
+			(void)playerId;
+			const float deltaX = player.fPositionX - centerX;
+			const float deltaZ = player.fPositionZ - centerZ;
+			if (0u == player.iCurrentHp ||
+				LostArk::Shared::PLAYER_ACTION_STATE::DEAD == player.eAction ||
+				deltaX * deltaX + deltaZ * deltaZ > radiusSquared)
+			{
+				continue;
+			}
+			player.iEstherGuardEndTick = endTick;
+			player.iEstherGuardDamageTakenPercent = guard->iDamageTakenPercent;
+		}
+	}
+	const EstherStrike::ZONE* zone = EstherStrike::Find_Zone(summon.eEstherId);
+	if (nullptr != zone && !summon.bEstherSupportApplied &&
+		summon.fActionElapsedSeconds * 1000.f >= static_cast<float>(zone->iStartMs))
+	{
+		summon.bEstherSupportApplied = true;
+		Open_EstherZone(*zone, summon.fPositionX, summon.fPositionZ, serverTick);
+	}
 	const EstherStrike::DEFINITION* definition = EstherStrike::Find(summon.eEstherId);
 	if (nullptr == definition)
 		return;
@@ -1151,6 +1169,88 @@ void LostArk::Server::CGameRoom::Apply_EstherStrikeHits(
 	}
 }
 
+void LostArk::Server::CGameRoom::Open_EstherZone(
+	const LostArk::Shared::EstherStrike::ZONE& zone,
+	const float positionX,
+	const float positionZ,
+	const std::uint32_t serverTick)
+{
+	ESTHER_ZONE_RUNTIME runtime{};
+	runtime.pZone = &zone;
+	runtime.fPositionX = positionX;
+	runtime.fPositionZ = positionZ;
+	runtime.iEndTick = CKoukuSaydonLogicRuntime::Add_Ticks(serverTick,
+		CKoukuSaydonLogicRuntime::Ticks_FromMs(zone.iDurationMs));
+	runtime.iNextPulseTick = serverTick;
+	m_EstherZones.push_back(runtime);
+}
+
+void LostArk::Server::CGameRoom::Update_EstherZones(const std::uint32_t serverTick)
+{
+	using namespace LostArk::Shared;
+	for (auto iter = m_EstherZones.begin(); iter != m_EstherZones.end();)
+	{
+		const EstherStrike::ZONE& zone = *iter->pZone;
+		const bool released = CKoukuSaydonLogicRuntime::Has_ReachedTick(serverTick, iter->iEndTick);
+		const bool pulse = !released &&
+			CKoukuSaydonLogicRuntime::Has_ReachedTick(serverTick, iter->iNextPulseTick);
+		if (pulse)
+		{
+			iter->iNextPulseTick = CKoukuSaydonLogicRuntime::Add_Ticks(serverTick,
+				CKoukuSaydonLogicRuntime::Ticks_FromMs(zone.iPulseMs));
+		}
+		const float radiusSquared = zone.fRadiusM * zone.fRadiusM;
+		const std::uint32_t protectUntil = CKoukuSaydonLogicRuntime::Add_Ticks(serverTick, 2u);
+		for (auto& [playerId, player] : m_Players)
+		{
+			const float deltaX = player.fPositionX - iter->fPositionX;
+			const float deltaZ = player.fPositionZ - iter->fPositionZ;
+			if (0u == player.iCurrentHp || PLAYER_ACTION_STATE::DEAD == player.eAction ||
+				deltaX * deltaX + deltaZ * deltaZ > radiusSquared ||
+				(Is_KoukuRaidRunning() && std::find(m_KoukuRaid.PlayerIds.begin(),
+					m_KoukuRaid.PlayerIds.end(), playerId) == m_KoukuRaid.PlayerIds.end()))
+			{
+				continue;
+			}
+			if (released)
+			{
+				const std::uint64_t heal = static_cast<std::uint64_t>(player.iMaximumHp) *
+					zone.iReleaseHealPercent / 100u;
+				const std::uint32_t before = player.iCurrentHp;
+				player.iCurrentHp = static_cast<std::uint32_t>((std::min)(
+					static_cast<std::uint64_t>(player.iMaximumHp),
+					static_cast<std::uint64_t>(player.iCurrentHp) + heal));
+				if (player.iCurrentHp != before && m_TickDamageEvents.size() < MAX_DAMAGE_EVENTS)
+				{
+					DAMAGE_EVENT healEvent{};
+					healEvent.iTargetNetEntityId = player.iNetEntityId;
+					healEvent.iAmount = player.iCurrentHp - before;
+					healEvent.fPositionX = player.fPositionX;
+					healEvent.fPositionY = player.fPositionY;
+					healEvent.fPositionZ = player.fPositionZ;
+					healEvent.isOutgoing = true;
+					healEvent.iSourcePlayerId = playerId;
+					healEvent.eHitFlag = DAMAGE_HIT_FLAG::HEAL;
+					m_TickDamageEvents.push_back(healEvent);
+				}
+				continue;
+			}
+			if (0u == player.iInvulnerableEndTick ||
+				CKoukuSaydonLogicRuntime::Has_ReachedTick(protectUntil, player.iInvulnerableEndTick))
+			{
+				player.iInvulnerableEndTick = protectUntil;
+			}
+			if (pulse && PLAYER_MADNESS_FORM::NORMAL == player.eMadnessForm)
+			{
+				const std::uint32_t drain = player.iMaximumMadness * zone.iMadnessDrainPercent / 100u;
+				player.iCurrentMadness = player.iCurrentMadness > drain ? player.iCurrentMadness - drain : 0u;
+				if (0u == player.iCurrentMadness)
+					player.dMadnessRemainder = 0.;
+			}
+		}
+		iter = released ? m_EstherZones.erase(iter) : iter + 1;
+	}
+}
 LostArk::Shared::CHARACTER_CLASS_CHANGE_RESULT
 LostArk::Server::CGameRoom::Apply_CharacterClassChange(
 	SERVER_PLAYER& player,

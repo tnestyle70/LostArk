@@ -407,6 +407,8 @@ void CNpc::Arm_ActionEffectCues(const char_t* pClipName)
 		return;
 #ifdef _DEBUG
 	m_pDebugEstherStrike = LostArk::Shared::EstherStrike::Find_ByArchetype(archetype.c_str());
+	m_pDebugEstherGuard = LostArk::Shared::EstherStrike::Find_GuardByArchetype(archetype.c_str());
+	m_pDebugEstherZone = LostArk::Shared::EstherStrike::Find_ZoneByArchetype(archetype.c_str());
 	m_fDebugEstherStrikeAgeSeconds = 0.f;
 #endif
 	std::string status;
@@ -1065,15 +1067,43 @@ void CNpc::Late_Update(f32_t fTimeDelta)
 #ifdef _DEBUG
 void CNpc::Draw_EstherStrikeDebug(const f32_t fTimeDelta)
 {
-	if (nullptr == m_pDebugEstherStrike || nullptr == m_pTransformCom)
+	if ((nullptr == m_pDebugEstherStrike && nullptr == m_pDebugEstherGuard && nullptr == m_pDebugEstherZone) ||
+		nullptr == m_pTransformCom)
 		return;
 	m_fDebugEstherStrikeAgeSeconds += fTimeDelta;
 	if (!m_isSkillHitAreaDebugVisible)
 		return;
 	constexpr uint32_t ESTHER_HIT_COLOR_RGBA = 255u | (70u << 8) | (60u << 16) | (255u << 24);
+	constexpr uint32_t ESTHER_GUARD_COLOR_RGBA = 80u | (220u << 8) | (120u << 16) | (255u << 24);
 	constexpr f32_t VISIBLE_WINDOW_MS = 300.f;
+	constexpr f32_t GUARD_VISIBLE_WINDOW_MS = 1000.f;
 	const f32_t fAgeMs = m_fDebugEstherStrikeAgeSeconds * 1000.f;
 	const float4x4_t& World = *m_pTransformCom->Get_WorldMatrixPtr();
+	if (nullptr != m_pDebugEstherGuard)
+	{
+		const f32_t fGrantMs = static_cast<f32_t>(m_pDebugEstherGuard->iGrantTimeMs);
+		if (fAgeMs >= fGrantMs && fAgeMs <= fGrantMs + GUARD_VISIBLE_WINDOW_MS)
+		{
+			HIT_AREA_SHAPE Shape{};
+			Shape.iAreaType = LostArk::Shared::EstherStrike::AREA_CIRCLE;
+			Shape.iAreaRange = static_cast<int32_t>(std::lround(m_pDebugEstherGuard->fRadiusM * 100.f));
+			Shape.iAreaOffsetX = static_cast<int32_t>(std::lround(m_pDebugEstherGuard->fOffsetForwardM * 100.f));
+			CHitAreaWire::Draw(World, Shape, ESTHER_GUARD_COLOR_RGBA);
+		}
+	}
+	if (nullptr != m_pDebugEstherZone)
+	{
+		const f32_t fStartMs = static_cast<f32_t>(m_pDebugEstherZone->iStartMs);
+		if (fAgeMs >= fStartMs && fAgeMs <= fStartMs + static_cast<f32_t>(m_pDebugEstherZone->iDurationMs))
+		{
+			HIT_AREA_SHAPE Shape{};
+			Shape.iAreaType = LostArk::Shared::EstherStrike::AREA_CIRCLE;
+			Shape.iAreaRange = static_cast<int32_t>(std::lround(m_pDebugEstherZone->fRadiusM * 100.f));
+			CHitAreaWire::Draw(World, Shape, ESTHER_GUARD_COLOR_RGBA);
+		}
+	}
+	if (nullptr == m_pDebugEstherStrike)
+		return;
 	const vector_t vRight = XMVector3Normalize(XMVector3Cross(XMVectorSet(0.f, 1.f, 0.f, 0.f),
 		XMVectorSetY(XMLoadFloat4x4(&World).r[2], 0.f)));
 	for (size_t iHit = 0; iHit < m_pDebugEstherStrike->iHitCount; ++iHit)

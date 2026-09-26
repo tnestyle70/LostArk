@@ -2094,6 +2094,7 @@ void LostArk::Server::CGameRoom::Update_WorldEntities(
 			}
 		};
 	Update_PendingEstherSummons(fixedDeltaSeconds);
+	Update_EstherZones(updateTick);
 	for (SERVER_WORLD_ENTITY& entity : m_WorldEntities)
 	{
 		CServerBuffRuntime::Expire(entity.ActiveBuffs, updateTick);

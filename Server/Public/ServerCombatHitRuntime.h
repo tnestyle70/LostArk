@@ -63,6 +63,7 @@ namespace LostArk::Server
 		bool bIgnoreCounter = false;
 		// Server encounter failure verdict; bypasses all personal damage protection.
 		bool bEncounterWipe = false;
+		bool bEstherGuardBlockable = false;
 	};
 
 	// Mario hazards share the normal authoritative knockdown/landing path.

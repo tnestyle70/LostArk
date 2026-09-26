@@ -60,6 +60,94 @@ inline constexpr DEFINITION DEFINITIONS[] =
 
 static_assert(std::size(SILLIAN_HITS) <= 32u && std::size(WEI_HITS) <= 32u && std::size(NINAV_HITS) <= 32u);
 
+// Source: Projectile/531200.loa SkillEffect 531201 grants SkillBuff 555010 (CombatEffect 5000, Key 34).
+struct GUARD
+{
+    ESTHER_ID eEstherId;
+    const char* pArchetypeId;
+    std::uint32_t iGrantTimeMs;
+    float fRadiusM;
+    float fOffsetForwardM;
+    std::uint32_t iDurationMs;
+    std::int32_t iDamageTakenPercent;
+};
+
+inline constexpr GUARD GUARDS[] =
+{
+    { ESTHER_ID::BAHUNTUR, "NPC_59060", 4000u, 7.f, 4.2f, 30000u, -50 },
+};
+
+// Source: Projectile/531500.loa summons NPC 54050 at 2.0 s; its aura 555030 (700 cm, 1000 ms) carries 555032 (Immune 20)
+// and 555034 -> SkillEffect 531513 (madness gauge 3708100, -10); 555031 ValueC 10000 ends it; 555033 heals 3500 on release.
+struct ZONE
+{
+    ESTHER_ID eEstherId;
+    const char* pArchetypeId;
+    std::uint32_t iStartMs;
+    std::uint32_t iDurationMs;
+    float fRadiusM;
+    std::uint32_t iPulseMs;
+    std::uint32_t iMadnessDrainPercent;
+    std::uint32_t iReleaseHealPercent;
+};
+
+inline constexpr ZONE ZONES[] =
+{
+    { ESTHER_ID::INANNA, "NPC_59620", 2000u, 10000u, 7.f, 1000u, 10u, 35u },
+};
+inline constexpr const char* GUARD_BLOCKED_DAMAGE_PROFILES[] =
+{
+    "damage.valtan.omnidirectional-wipe-130",
+};
+
+[[nodiscard]] inline bool Same_Id(const char* left, const char* right) noexcept
+{
+    if (nullptr == left || nullptr == right)
+        return false;
+    while (*left && *left == *right) { ++left; ++right; }
+    return *left == *right;
+}
+
+[[nodiscard]] inline const GUARD* Find_Guard(const ESTHER_ID estherId) noexcept
+{
+    for (const GUARD& guard : GUARDS)
+        if (guard.eEstherId == estherId)
+            return &guard;
+    return nullptr;
+}
+
+[[nodiscard]] inline const GUARD* Find_GuardByArchetype(const char* pArchetypeId) noexcept
+{
+    for (const GUARD& guard : GUARDS)
+        if (Same_Id(guard.pArchetypeId, pArchetypeId))
+            return &guard;
+    return nullptr;
+}
+
+[[nodiscard]] inline const ZONE* Find_Zone(const ESTHER_ID estherId) noexcept
+{
+    for (const ZONE& zone : ZONES)
+        if (zone.eEstherId == estherId)
+            return &zone;
+    return nullptr;
+}
+
+[[nodiscard]] inline const ZONE* Find_ZoneByArchetype(const char* pArchetypeId) noexcept
+{
+    for (const ZONE& zone : ZONES)
+        if (Same_Id(zone.pArchetypeId, pArchetypeId))
+            return &zone;
+    return nullptr;
+}
+
+[[nodiscard]] inline bool Is_GuardBlockedDamageProfile(const char* pDamageProfileId) noexcept
+{
+    for (const char* blocked : GUARD_BLOCKED_DAMAGE_PROFILES)
+        if (Same_Id(blocked, pDamageProfileId))
+            return true;
+    return false;
+}
+
 [[nodiscard]] inline const DEFINITION* Find(const ESTHER_ID estherId) noexcept
 {
     for (const DEFINITION& definition : DEFINITIONS)
@@ -70,16 +158,9 @@ static_assert(std::size(SILLIAN_HITS) <= 32u && std::size(WEI_HITS) <= 32u && st
 
 [[nodiscard]] inline const DEFINITION* Find_ByArchetype(const char* pArchetypeId) noexcept
 {
-    if (nullptr == pArchetypeId)
-        return nullptr;
     for (const DEFINITION& definition : DEFINITIONS)
-    {
-        const char* left = definition.pArchetypeId;
-        const char* right = pArchetypeId;
-        while (*left && *left == *right) { ++left; ++right; }
-        if (*left == *right)
+        if (Same_Id(definition.pArchetypeId, pArchetypeId))
             return &definition;
-    }
     return nullptr;
 }
 }
