@@ -79,6 +79,7 @@ public:
 	/* Same draw as Render() through explicit technique passes -- skinned pieces use the body
 	shader, socketed (weapon) pieces the static-mesh shader, whose pass tables differ. */
 	HRESULT Render_Pass(uint32_t iSkinnedPassIndex, uint32_t iSocketedPassIndex);
+	HRESULT Render_Translucent(ID3D11BlendState* pCoverageBlend = nullptr);
 
 public:
 	void Set_Visible(bool_t isVisible) { m_isVisible = isVisible; }
@@ -118,7 +119,6 @@ private:
 	HRESULT Ready_Components(const PART_EQUIPMENT_DESC* pDesc);
 	HRESULT Bind_ShaderResources();
 	HRESULT Bind_ShadowShaderResources();
-	HRESULT Render_Translucent();
 
 public:
 	static unique_ptr<CPart_Equipment> Create(ComPtr<ID3D11Device> pDevice,

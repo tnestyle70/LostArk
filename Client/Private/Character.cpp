@@ -4360,7 +4360,8 @@ HRESULT CCharacter::Render()
 
 HRESULT CCharacter::Render_PreviewParts(
 	uint32_t iSkinnedPassIndex, uint32_t iSocketedPassIndex,
-	const uint32_t iAvatarOverrideKinds, const uint32_t iAvatarHiddenKinds)
+	const uint32_t iAvatarOverrideKinds, const uint32_t iAvatarHiddenKinds,
+	const RENDERGROUP group, ID3D11BlendState* pCoverageBlend)
 {
 	const bool_t wasHeadHidden = m_isAvatarHeadHidden;
 	const bool_t wasArmorHidden = m_isAvatarArmorHidden;
@@ -4378,7 +4379,7 @@ HRESULT CCharacter::Render_PreviewParts(
 		m_isAvatarArmorHidden = previewArmorHidden;
 		Apply_DefaultEquipmentVisibility(m_iEquipmentPreviewOccupiedSlotsMask);
 	}
-	const HRESULT hResult = Render_PreviewPartsInternal(iSkinnedPassIndex, iSocketedPassIndex);
+	const HRESULT hResult = Render_PreviewPartsInternal(iSkinnedPassIndex, iSocketedPassIndex, group, pCoverageBlend);
 	if (previewDiffers)
 	{
 		m_isAvatarHeadHidden = wasHeadHidden;
@@ -4453,7 +4454,8 @@ bool CCharacter::Collect_PresentationAfterimageModels(const uint32_t sourcePartT
 }
 
 HRESULT CCharacter::Render_PreviewPartsInternal(
-	uint32_t iSkinnedPassIndex, uint32_t iSocketedPassIndex)
+	uint32_t iSkinnedPassIndex, uint32_t iSocketedPassIndex,
+	const RENDERGROUP group, ID3D11BlendState* pCoverageBlend)
 {
     Set_PresentationVisibilityControls(m_isSourcePawnHidden, m_isSourceWeaponHidden, m_isSourceIdentityHidden, m_isSourceIdentityVisible);
     if (m_isSourcePawnHidden) return S_OK;
@@ -4461,16 +4463,18 @@ HRESULT CCharacter::Render_PreviewPartsInternal(
 	{
 		if (CPart_Body* pBody = dynamic_cast<CPart_Body*>(Pair.second.get()))
 		{
-			if (FAILED(pBody->Render_Pass(iSkinnedPassIndex)))
+			if (FAILED(group == RENDERGROUP::NONBLEND ? pBody->Render_Pass(iSkinnedPassIndex) :
+				pBody->Render_ForwardSource(group == RENDERGROUP::NONLIGHT, pCoverageBlend)))
 				return E_FAIL;
 			continue;
 		}
 		if (CPart_Equipment* pEquipment =
 			dynamic_cast<CPart_Equipment*>(Pair.second.get()))
 		{
-			if (!pEquipment->Is_Visible())
+			if (!pEquipment->Is_Visible() || group == RENDERGROUP::NONLIGHT)
 				continue;
-			if (FAILED(pEquipment->Render_Pass(iSkinnedPassIndex, iSocketedPassIndex)))
+			if (FAILED(group == RENDERGROUP::BLEND ? pEquipment->Render_Translucent(pCoverageBlend) :
+				pEquipment->Render_Pass(iSkinnedPassIndex, iSocketedPassIndex)))
 				return E_FAIL;
 		}
 	}

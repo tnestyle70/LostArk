@@ -145,7 +145,7 @@ HRESULT CPart_Body::Render_Group(RENDERGROUP group)
     return RENDERGROUP::BLEND == group ? Render_ForwardSource(false) : Render();
 }
 
-HRESULT CPart_Body::Render_ForwardSource(bool opaqueGhost)
+HRESULT CPart_Body::Render_ForwardSource(bool opaqueGhost, ID3D11BlendState* pCoverageBlend)
 {
 	if (Is_CharacterPresentationHidden()) return S_OK;
 	if (Client::CNpcPresentationAssetService::Is_SaydonHammerSuppressed(m_WeaponReplacementBody.lock())) return S_OK;
@@ -166,8 +166,11 @@ HRESULT CPart_Body::Render_ForwardSource(bool opaqueGhost)
 			FAILED(m_pModelCom->Bind_SourceCharacterForwardLight(m_pShaderCom, i)) ||
 			FAILED(m_pModelCom->Bind_BoneMatrices(
 				m_pShaderCom, "g_BoneMatrices", i)) ||
-			FAILED(m_pShaderCom->Begin(pass)) ||
-			FAILED(m_pModelCom->Render(i)))
+			FAILED(m_pShaderCom->Begin(pass)))
+			return E_FAIL;
+		if (pCoverageBlend && !opaqueGhost)
+			m_pContext->OMSetBlendState(pCoverageBlend, nullptr, 0xffffffffu);
+		if (FAILED(m_pModelCom->Render(i)))
 			return E_FAIL;
 	}
 	return S_OK;
@@ -187,8 +190,7 @@ HRESULT CPart_Body::Render_Pass(uint32_t iPassIndex)
 
         uint32_t materialPass = iPassIndex;
         const auto* surface = m_pModelCom->Get_MaterialSurface(i);
-        /* The NONLIGHT/BLEND groups draw these forward; the portrait's explicit passes
-        still take every mesh so the second draw keeps its own look. */
+        /* NONLIGHT/BLEND draw these forward in both field and portrait captures. */
         if (iPassIndex == 0u && 0u != Resolve_ForwardSourcePass(surface))
             continue;
         if (iPassIndex == 0u && surface &&

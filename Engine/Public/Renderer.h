@@ -55,6 +55,9 @@ public:
 		float4x4_t							ProjMatrix{};
 		/* Draws the subject with the G-buffer bound. A failure skips only this request. */
 		function<HRESULT()>					DrawSubject;
+		/* Reuses subject forward passes after combine. The optional blend state
+		changes only coverage accumulation for the offscreen UI texture. */
+		function<HRESULT(RENDERGROUP, ID3D11BlendState*)> DrawForward;
 	};
 
 	/* Queued for the next Draw and cleared by it, so a window that stops asking stops being
@@ -91,6 +94,7 @@ private:
 	ComPtr<ID3D11ShaderResourceView>		m_pShadowSRV = { nullptr };
 	/* Frame queue, not a lookup: filled by Request_Portrait and emptied by Draw. */
 	vector<PORTRAIT_REQUEST>				m_PortraitRequests;
+	ComPtr<ID3D11BlendState> m_pPortraitBlendState;
     struct STATIC_SHADOW_CASTER final
     {
         weak_ptr<CGameObject> Owner;
@@ -167,7 +171,7 @@ private:
 	HRESULT Render_SSAOPass(const wstring_t& strMRTTag, DEFERRED ePass);
 	HRESULT Render_Lights();
 	HRESULT Render_Portraits();
-	HRESULT Render_Combined();
+	HRESULT Render_Combined(bool_t bPortrait = false);
 	HRESULT Render_NonLight();
 	HRESULT Render_Blend();
 	HRESULT Capture_SceneColorSnapshot();

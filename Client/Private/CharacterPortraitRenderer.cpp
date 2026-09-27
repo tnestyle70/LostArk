@@ -90,5 +90,13 @@ HRESULT Client::CCharacterPortraitRenderer::Render(const std::shared_ptr<CCharac
 				return S_FALSE;
 			return pLocked->Render_PreviewParts(
 				0u, 0u, iAvatarOverrideKinds, iAvatarHiddenKinds);
+		},
+		[pSubject, iAvatarOverrideKinds, iAvatarHiddenKinds](
+			RENDERGROUP group, ID3D11BlendState* pCoverageBlend) -> HRESULT
+		{
+			const shared_ptr<CCharacter> pLocked = pSubject.lock();
+			if (nullptr == pLocked) return S_FALSE;
+			return pLocked->Render_PreviewParts(0u, 0u, iAvatarOverrideKinds,
+				iAvatarHiddenKinds, group, pCoverageBlend);
 		});
 }

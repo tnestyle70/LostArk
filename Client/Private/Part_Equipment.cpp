@@ -192,7 +192,7 @@ HRESULT CPart_Equipment::Render_Group(RENDERGROUP group)
 	return RENDERGROUP::BLEND == group ? Render_Translucent() : Render();
 }
 
-HRESULT CPart_Equipment::Render_Translucent()
+HRESULT CPart_Equipment::Render_Translucent(ID3D11BlendState* pCoverageBlend)
 {
 	if (!Is_Visible())
 		return S_OK;
@@ -226,8 +226,11 @@ HRESULT CPart_Equipment::Render_Translucent()
 				*m_pModelCom, m_pShaderCom, i, Profile,
 				m_pEmissiveOverride)) ||
 			FAILED(m_pModelCom->Bind_SourceCharacterForwardLight(m_pShaderCom, i)) ||
-			FAILED(m_pShaderCom->Begin(m_strSocketBoneName.empty() ? pass : 24u)) ||
-			FAILED(m_pModelCom->Render(i)))
+			FAILED(m_pShaderCom->Begin(m_strSocketBoneName.empty() ? pass : 24u)))
+			return E_FAIL;
+		if (pCoverageBlend)
+			m_pContext->OMSetBlendState(pCoverageBlend, nullptr, 0xffffffffu);
+		if (FAILED(m_pModelCom->Render(i)))
 			return E_FAIL;
 	}
 	return S_OK;
@@ -266,8 +269,7 @@ HRESULT CPart_Equipment::Render_Pass(
 
 		uint32_t materialPass = iPassIndex;
 		const auto* surface = m_pModelCom->Get_MaterialSurface(i);
-		/* The BLEND group draws these forward; the portrait's explicit passes
-		still take every mesh so the second draw keeps its own look. */
+		/* BLEND draws these forward in both field and portrait captures. */
 		if (iPassIndex == 0u && 0u != Resolve_TranslucentSourcePass(surface))
 			continue;
 		if (m_strSocketBoneName.empty() && iPassIndex == 0u && surface &&

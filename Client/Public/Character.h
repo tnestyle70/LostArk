@@ -412,7 +412,8 @@ public:
 	state. Part visibility is re-derived for this draw and restored right after; the world
 	character is untouched -- real equip/unequip goes through Set_AvatarPartVisible. */
 	HRESULT Render_PreviewParts(uint32_t iSkinnedPassIndex, uint32_t iSocketedPassIndex,
-		uint32_t iAvatarOverrideKinds = 0u, uint32_t iAvatarHiddenKinds = 0u);
+		uint32_t iAvatarOverrideKinds = 0u, uint32_t iAvatarHiddenKinds = 0u,
+		RENDERGROUP group = RENDERGROUP::NONBLEND, ID3D11BlendState* pCoverageBlend = nullptr);
 
 private:
 	const CHARACTER_SPEC* m_pSpec = { nullptr };
@@ -664,7 +665,8 @@ private:
 		std::vector<ACTION_PRESENTATION_CLIP_TIMING>& OutTimings,
 		std::vector<std::uint32_t>* pOutAnimations = nullptr) const;
 	void Set_PartVisible(const tchar_t* pPartTag, bool_t isVisible);
-	HRESULT Render_PreviewPartsInternal(uint32_t iSkinnedPassIndex, uint32_t iSocketedPassIndex);
+	HRESULT Render_PreviewPartsInternal(uint32_t iSkinnedPassIndex, uint32_t iSocketedPassIndex,
+		RENDERGROUP group, ID3D11BlendState* pCoverageBlend);
 	void Apply_DefaultEquipmentVisibility(uint32_t occupiedSlotsMask);
 	void Restore_DefaultEquipmentVisibility();
 	void Sync_EquipmentPreviewStanceVisibility();

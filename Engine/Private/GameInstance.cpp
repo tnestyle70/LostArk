@@ -495,7 +495,8 @@ HRESULT CGameInstance::Add_RenderObject(RENDERGROUP eRenderGroupID, shared_ptr<C
 HRESULT CGameInstance::Request_Portrait(ComPtr<ID3D11RenderTargetView> pDestination,
 	uint32_t iWidth, uint32_t iHeight,
 	const float4x4_t& ViewMatrix, const float4x4_t& ProjMatrix,
-	function<HRESULT()> DrawSubject)
+	function<HRESULT()> DrawSubject,
+	function<HRESULT(RENDERGROUP, ID3D11BlendState*)> DrawForward)
 {
 	if (nullptr == m_pRenderer)
 		return E_FAIL;
@@ -507,6 +508,7 @@ HRESULT CGameInstance::Request_Portrait(ComPtr<ID3D11RenderTargetView> pDestinat
 	Request.ViewMatrix = ViewMatrix;
 	Request.ProjMatrix = ProjMatrix;
 	Request.DrawSubject = std::move(DrawSubject);
+	Request.DrawForward = std::move(DrawForward);
 
 	return m_pRenderer->Request_Portrait(std::move(Request));
 }
