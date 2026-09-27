@@ -30,7 +30,11 @@ powershell -ExecutionPolicy Bypass -File Tools/Network/Sync-TeamLanEndpoint.ps1
 ```
 
 `Tools/Network/TeamLanEndpoint.json`이 이 기간의 단일 endpoint 정본이다. 스크립트는 모든 PC의
-Git 제외 `Client.vcxproj.user`를 `LOSTARK_SERVER_HOST=192.168.0.22`로 갱신한다.
+Git 제외 `Client.vcxproj.user`를 기본적으로 `LOSTARK_SERVER_HOST=192.168.0.22`로 갱신한다.
+사용자가 로컬 F5 테스트를 명시적으로 요청하면 `-EndpointMode Local`로 개인 선택을 저장한다.
+이때 Client/Server는 `127.0.0.1:7777`을 사용하며 다음 기본 sync도 선택을 보존한다.
+팀 접속 복귀는 `-EndpointMode Team`으로 명시한다. 공유 endpoint는 바꾸지 않고 연결 실패에
+따른 자동 localhost fallback도 추가하지 않는다. 아래 LAN 주소 소유·방화벽 판정은 Team 모드 기준이다.
 현재 endpoint 주소를 실제로 가진 PC만 `server-host`로 판정해 `Server.vcxproj.user`의
 `--bind-address 0.0.0.0`과 TCP 7777 LocalSubnet 방화벽 규칙도 확인한다. 출력이
 `server-host`이면 `Server + Client` profile, `client`이면 Client project가 VS 시작 대상이다.

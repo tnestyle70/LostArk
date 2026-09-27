@@ -3,7 +3,9 @@ param(
     [switch]$SkipConnectionCheck,
     [switch]$AllowExpired,
     [ValidateSet('Auto', 'Server', 'Client')]
-    [string]$Role = 'Auto'
+    [string]$Role = 'Auto',
+    [ValidateSet('Saved', 'Team', 'Local')]
+    [string]$EndpointMode = 'Saved'
 )
 
 Set-StrictMode -Version Latest
@@ -351,6 +353,35 @@ if (-not (Test-Path -LiteralPath $endpointPath)) {
 
 $endpoint = Get-Content -LiteralPath $endpointPath -Raw -Encoding UTF8 |
     ConvertFrom-Json
+# A deliberate per-PC local F5 choice must survive the next session's sync.
+# Do not infer this from a stale host value or automatically fall back on failure.
+$effectiveEndpointMode = $EndpointMode
+if ('Saved' -eq $effectiveEndpointMode) {
+    $savedModes = @()
+    if (Test-Path -LiteralPath $clientUserPath) {
+        $savedDocument = [System.Xml.Linq.XDocument]::Load($clientUserPath)
+        $savedNamespace = [System.Xml.Linq.XNamespace]::Get(
+            'http://schemas.microsoft.com/developer/msbuild/2003')
+        if ($null -eq $savedDocument.Root -or
+            $savedDocument.Root.Name -ne ($savedNamespace + 'Project')) {
+            throw "Invalid Visual Studio user project XML: $clientUserPath"
+        }
+        $savedModes = @($savedDocument.Descendants($savedNamespace + 'LostArkEndpointMode') |
+            ForEach-Object { $_.Value } | Select-Object -Unique)
+    }
+    if ($savedModes.Count -gt 1 -or
+        ($savedModes.Count -eq 1 -and $savedModes[0] -notin @('Team', 'Local'))) {
+        throw 'LostArkEndpointMode must have one consistent Team or Local value.'
+    }
+    $effectiveEndpointMode = if ($savedModes.Count -eq 1) { $savedModes[0] } else { 'Team' }
+}
+# ValidateSet accepts case variants; persist a canonical value for later syncs.
+$effectiveEndpointMode = if ('Local' -eq $effectiveEndpointMode) { 'Local' } else { 'Team' }
+if ('Local' -eq $effectiveEndpointMode) {
+    # This only changes the in-memory endpoint, never the shared team document.
+    $endpoint.serverHost = '127.0.0.1'
+    $endpoint.serverBindAddress = '127.0.0.1'
+}
 # Loopback remains a supported isolated-test endpoint, while a shared LAN
 # contract uses one concrete Client address and an all-adapter Server bind.
 if ($endpoint.schema -ne 'lostark.team-lan-endpoint' -or
@@ -436,6 +467,10 @@ Set-ProjectUserEnvironmentVariable `
     -Path $clientUserPath `
     -VariableName 'LOSTARK_SERVER_HOST' `
     -Value $serverHost
+Set-ProjectUserProperty `
+    -Path $clientUserPath `
+    -PropertyName 'LostArkEndpointMode' `
+    -Value $effectiveEndpointMode
 
 # Loopback never leaves the machine, so it needs no inbound rule - and asking
 # for one would demand an elevated shell for nothing.
@@ -465,6 +500,7 @@ if (-not $SkipConnectionCheck) {
 }
 
 Write-Output "Team LAN active through: $($activeThrough.ToString('o'))"
+Write-Output "Debugger endpoint mode: $effectiveEndpointMode (saved per PC)"
 Write-Output "Machine role: $effectiveRole"
 Write-Output "Server debugger bind: $serverBindAddress`:$serverPort"
 Write-Output "Client debugger endpoint: $serverHost`:$serverPort"
