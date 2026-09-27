@@ -10,6 +10,7 @@
 #include "AreaLightAuthoringSession.h"
 #include "CombatHUDViewModel.h"
 
+#include <array>
 #include <chrono>
 #include <filesystem>
 
@@ -410,6 +411,11 @@ private:
 	void Hide_BossHealthBar();
 	/* Replicated enemies and other players; current pose projected after camera update. */
 	void Update_WorldHealthBars(f32_t fTimeDelta);
+	std::array<f32_t, 3> Get_HealthBarPositions() const;
+	bool_t Set_HealthBarPositions(const std::array<f32_t, 3>& offsets);
+	bool_t Save_HealthBarPositions(std::string& status);
+	bool_t Reload_HealthBarPositions(std::string& status);
+	void RenderHUDBarPositionControls();
 	/* Real HOLD skill (PLAYER_SKILL_KIND::HOLD) charge bar -- ChargeGauge_Bg/_Track/_Fill in
 	HUD_Layout.json (ownerClass:null, same as HealthBar). Progress is reconstructed client-side
 	from real Data/Balance/PlayerSkills.json comboStages[].actionDurationMs and the Server-owned
@@ -680,6 +686,11 @@ private:
 	   Level rather than inside the arena. */
 	unique_ptr<CDungeonTimerView> m_pDungeonTimerView;
 	unique_ptr<CWorldHealthBarView> m_pWorldHealthBarView = { nullptr };
+	/* mechanic / ally / enemy Y offsets, relative to the original authored positions. */
+	std::array<f32_t, 3> m_HealthBarOffsets{}, m_SavedHealthBarOffsets{};
+	std::array<float2_t, 3> m_MechanicBarBasePositions{};
+	std::array<bool_t, 3> m_MechanicBarHasBase{};
+	std::string m_strHealthBarPositionStatus;
 	/* UI/Esther/EstherUI.json's runtime consumer (Update_EstherGauge) -- real CUI_Sprite
 	GameObjects under LEVEL::STATIC, same reasoning as m_pBossUIView: the Esther skill window is
 	shared across every class, not tied to Combat HUD or Screen UI, so it gets its own

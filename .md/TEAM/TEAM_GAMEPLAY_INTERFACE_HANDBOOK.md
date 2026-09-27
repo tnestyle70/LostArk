@@ -53,7 +53,7 @@ Lobby의 `KoukuSaydon` 버튼은 기존 `CLobbyCommandService -> C2S_ENTER_WORLD
 
 Character Select의 `Create Character`는 선택 class와 공통 validator를 통과한 1~32-byte UTF-8 nickname을 `CCharacterSelectionState`의 pending identity로 stage한다. Lobby가 그 exact identity로 Bern entry를 승인받고 loading resource, rendering profile, 실제 `Change_Level(BERN)`까지 성공한 뒤에만 created identity로 commit한다. 중간 실패는 pending만 취소하고 기존 created identity는 유지한다. created identity가 없는 direct Bern, Character Select, Training, Valtan, KoukuSaydon entry는 process-local `Test-<process-id>` audition nickname을 사용한다. Bern은 pending 생성이 있으면 이를 우선하며, Lobby/F1의 직접 audition 입장은 생성 commit을 만들지 않는다. Server의 `SERVER_PLAYER::strNickName`과 world transfer가 session lifetime 동안 exact nickname을 보존하고 `S2C_PLAYER_SPAWNED`로 복제한다. nickname은 display text이며 player lookup, Party member ID, 고유성 검사 또는 Client 재실행 뒤 영구 저장에 사용하지 않는다. Bern과 Valtan은 `CClientReplication::Collect_PlayerViews`의 Server-replicated nickname과 weak character presentation을 `CWorldPlayerNameplateView`에 전달한다. projection, UTF-8 변환, font draw 실패는 gameplay와 replication을 건드리지 않고 해당 nameplate만 생략한다.
 
-2026-09-30 23:59 KST까지 공유 LAN Server는 같은 팀 LAN의 `192.168.200.113:7777`이다. Server PC는 현재 `Wi-Fi 2`에서 `192.168.200.113/24`를 소유한다. Server는 `0.0.0.0:7777`에 수신하고 Server PC와 다른 PC의 Client는 모두 concrete endpoint `192.168.200.113:7777`을 사용한다. `Tools/Network/TeamLanEndpoint.json`이 endpoint와 만료일 정본이다. 각 에이전트는 pull 후 `Tools/Network/Sync-TeamLanEndpoint.ps1`을 실행하고 출력된 역할에 맞는 target을 안내하며, 실제 `Ctrl+F5` 시작과 UI 조작은 사용자가 수행한다.
+2026-09-30 23:59 KST까지 공유 LAN Server는 같은 팀 LAN의 `192.168.200.113:7777`이다. Server PC는 현재 `Wi-Fi`에서 `192.168.200.113/24`를 소유한다. Server는 `0.0.0.0:7777`에 수신하고 Server PC와 다른 PC의 Client는 모두 concrete endpoint `192.168.200.113:7777`을 사용한다. `Tools/Network/TeamLanEndpoint.json`이 endpoint와 만료일 정본이다. 각 에이전트는 pull 후 `Tools/Network/Sync-TeamLanEndpoint.ps1`을 실행하고 출력된 역할에 맞는 target을 안내하며, 실제 `Ctrl+F5` 시작과 UI 조작은 사용자가 수행한다.
 
 쿠크 아레나의 광기와 네 HUD는 `CCombatHUDViewModel::Get_KoukuGimmick()`을 읽는다. v63
 `PLAYER_SNAPSHOT`의 madness, `eKoukuHudMode`, cooldown 종료 tick과 카드 문양·색이 실제 상태를 소유한다.
@@ -759,6 +759,13 @@ NetEntityId, player/local 구분, current/max HP, shield, presentation의 weak �
 기존 적·보호막 이미지를 중립 tint로 `CUILayoutRuntime -> CUI_Sprite`에 연결하며, HP와 보호막은
 `max(maxHP, HP + shield)`를 공통 분모로 사용한다. 살아 있고 화면에 투영되는 대상만 layout을
 처음 생성한다. 표시 위치는 전달받은 weak presentation의 현재 머리/모델 경계에서 계산한다.
+
+Debug/Release F1의 광기 위치 조절 아래 `Health bar positions`에서 주황 기믹, 다른 아군 HP,
+적·보스 HP의 Y offset을 독립 조절한다. `Data/UI/KoukuSaydon/KoukuHudModes.json`의 optional
+`healthBarPositions`는 `mechanicOffsetY`, `allyOffsetY`, `enemyOffsetY`를 저장한다. 각 값은
+1280×720 기준 pixel, +Y 아래, finite -1280..1280이며 누락 시 0이다. frame/HP/shield를 함께
+이동하며 상단 기믹은 원래 저작 rect에서 offset을 적용한다. `CMainApp`의 Save/Reload는
+최신 디스크의 다른 field를 보존하고 동일 field 충돌·검증 실패 시 현재 preview를 유지한다.
 
 `Get_DamageEvents()`는 최근 128개 Server `DAMAGE_EVENT`를 server tick과 함께 보관한다. 실제 적용
 damage, target NetEntityId, world anchor, incoming/outgoing을 제공하며 UI가 HP 차이로 damage를

@@ -449,7 +449,7 @@ Guide actor/별도 roster/대사/진단과 보스 기믹 게이지는 protocol 1
 
 ### 디버그 툴 (ImGui / MapTool)
 
-`CMainApp`이 Debug/Release 공통 Developer Tools 허브를 소유하고 F1로 토글한다. Release 허브는 Balance Test, Profiler, Valtan/Kouku Boss Tool과 아레나 Load/Complete Play/Kill Boss를 제공하며 기본은 닫힘이다. F6는 gameplay camera의 follow/free mode를 전환한다. Free camera는 WASD 이동, Tab mouse-look 전환을 사용하며 그동안 `CPlayerController`는 물리 key/mouse edge만 동기화하고 gameplay command는 제출하지 않는다. follow 복귀 뒤 새 press부터 제출한다. F7은 Debug/Release 공통 Profiler 창만 열고 닫는다. F2~F5와 F8~F12를 레벨/도구 전환에 사용하지 않는다. ImGui가 입력을 가져갈 때는 `CGameInstance::SetInputBlocked()`로 DirectInput 폴링을 막되 Character Select Server gameplay는 text input이 아닐 때만 명시적 keyboard passthrough를 사용한다. Client 실행 인자와 `CMainApp` 내부 runtime harness를 검증 경로로 다시 만들지 않는다.
+`CMainApp`이 Debug/Release 공통 Developer Tools 허브를 소유하고 F1로 토글한다. Release 허브는 Balance Test, Profiler, 광기·체력바 위치 조절과 저장·재로드, Valtan/Kouku Boss Tool과 아레나 Load/Complete Play/Kill Boss를 제공하며 기본은 닫힘이다. F6는 gameplay camera의 follow/free mode를 전환한다. Free camera는 WASD 이동, Tab mouse-look 전환을 사용하며 그동안 `CPlayerController`는 물리 key/mouse edge만 동기화하고 gameplay command는 제출하지 않는다. follow 복귀 뒤 새 press부터 제출한다. F7은 Debug/Release 공통 Profiler 창만 열고 닫는다. F2~F5와 F8~F12를 레벨/도구 전환에 사용하지 않는다. ImGui가 입력을 가져갈 때는 `CGameInstance::SetInputBlocked()`로 DirectInput 폴링을 막되 Character Select Server gameplay는 text input이 아닐 때만 명시적 keyboard passthrough를 사용한다. Client 실행 인자와 `CMainApp` 내부 runtime harness를 검증 경로로 다시 만들지 않는다.
 베른·발탄·쿠크 자유 카메라의 기본 속도는 20m/s다. Debug/Release 공통 F1 `Camera`에서
 0.1~400m/s로 조절한다. Debug 발탄·쿠크는 같은 아레나의 process-session 값을 유지하고,
 베른과 Release 조절값은 현재 맵 방문 동안 적용한다. Shift는 현재 속도의 30배다.

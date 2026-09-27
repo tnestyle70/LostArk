@@ -102,6 +102,14 @@ bool Client::CWorldHealthBarView::Try_GetHeadAnchor(
 	return false;
 }
 
+bool Client::CWorldHealthBarView::Set_YOffsets(const f32_t allyOffsetY, const f32_t enemyOffsetY)
+{
+	if (!std::isfinite(allyOffsetY) || !std::isfinite(enemyOffsetY) ||
+		std::abs(allyOffsetY) > 1280.f || std::abs(enemyOffsetY) > 1280.f) return false;
+	m_fAllyOffsetY = allyOffsetY; m_fEnemyOffsetY = enemyOffsetY;
+	return true;
+}
+
 void Client::CWorldHealthBarView::Update(const f32_t timeDelta,
 	const std::vector<HUD_WORLD_HEALTH_BAR_STATE>& states, const bool allowed)
 {
@@ -139,7 +147,8 @@ void Client::CWorldHealthBarView::Update(const f32_t timeDelta,
 		const auto& frame = bar.rects[0];
 		const f32_t x = screen.x * bar.view->Get_ResolutionWidth() / viewport.x - frame.width * 0.5f;
 		const f32_t y = screen.y * bar.view->Get_ResolutionHeight() / viewport.y - frame.height - HEAD_GAP -
-			(state.isPlayer ? CWorldPlayerNameplateView::Stack_Top_RefPx() : 0.f);
+			(state.isPlayer ? CWorldPlayerNameplateView::Stack_Top_RefPx() : 0.f) +
+			(state.isPlayer ? m_fAllyOffsetY : m_fEnemyOffsetY);
 		for (size_t index = 0u; index < bar.rects.size(); ++index)
 			bar.view->Set_SlotPosition(SLOTS[index], x + bar.rects[index].x - frame.x,
 				y + bar.rects[index].y - frame.y);

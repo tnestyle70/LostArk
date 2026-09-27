@@ -19,6 +19,8 @@ public:
 	CWorldHealthBarView(ComPtr<ID3D11Device> device, ComPtr<ID3D11DeviceContext> context);
 	~CWorldHealthBarView();
 	void Update(f32_t timeDelta, const std::vector<HUD_WORLD_HEALTH_BAR_STATE>& states, bool allowed);
+	/* Reference pixels; positive Y moves the whole HP/shield group down. */
+	bool Set_YOffsets(f32_t allyOffsetY, f32_t enemyOffsetY);
 
 private:
 	struct RECT
@@ -34,6 +36,7 @@ private:
 	std::unique_ptr<BAR> Create_Bar() const;
 	static bool Try_GetHeadAnchor(const HUD_WORLD_HEALTH_BAR_STATE& state, float3_t& position);
 
+	f32_t m_fAllyOffsetY = 0.f, m_fEnemyOffsetY = 0.f;
 	ComPtr<ID3D11Device> m_Device;
 	ComPtr<ID3D11DeviceContext> m_Context;
 	std::unordered_map<LostArk::Shared::NET_ENTITY_ID, std::unique_ptr<BAR>> m_Bars;

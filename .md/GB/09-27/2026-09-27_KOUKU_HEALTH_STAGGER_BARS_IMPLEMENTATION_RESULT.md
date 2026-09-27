@@ -59,3 +59,28 @@ GBResources 전달에는 하늘색 fill, 기존 frame/빨강/흰 shield와 `UI/B
 ## 수동 확인과 실행 경계
 
 Client/UI를 에이전트가 실행·조작하거나 화면을 캡처하지 않았다. 실제 속박 바닥 이펙트, 머리 위 HP/보호막 위치, 여러 초상의 머리카락·속눈썹 최종 화면은 사용자 확인 대상이다. 설치 데이터와 실행 중 Server/Client 메모리는 구분한다. 새 EXE와 게시 데이터가 있어도 이미 실행 중인 이전 process가 자동 갱신되지는 않는다.
+
+## GB/Valtan-Patttern-Complete 후속 변경
+
+### F1 체력바 위치 조절
+
+기존 광기 위치 조절 아래 `Health bar positions`에 주황 기믹, 다른 아군 하늘색 HP, 적·보스 빨간 HP의 Y offset을 추가했다. Debug/Release 모두 제공하고 `Save positions`/`Reload saved positions`로 기존 `Data/UI/KoukuSaydon/KoukuHudModes.json`의 optional `healthBarPositions`에 저장한다. 기준은 1280×720 pixel, +Y 아래, 범위 -1280..1280이며 기본값 0이다. 기존 madness/modes 설정은 변경하지 않았다.
+
+상단 기믹은 Initialize에서 잡은 원래 slot 위치에 offset을 더하므로 반복 조절해도 누적되지 않는다. 머리 위 체력바는 매 프레임 head projection 뒤 ally/enemy offset을 적용하고 frame/fill/shield를 함께 옮긴다. HP·보호막 수치나 Server 판정은 바꾸지 않는다. 저장은 광기 위치와 같은 lock을 사용하고 최신 문서의 수정 field만 병합한다. 같은 field의 외부 변경, 잘못된 문서와 저장 실패는 preview를 보존한다.
+
+### 현재 LAN과 기존 진단 표시 유지
+
+현재 default-route Wi-Fi 주소인 `192.168.200.113:7777`로 TeamLanEndpoint, compiled fallback, Debug/Release debugger 환경과 팀 문서를 함께 갱신했다. Server bind는 `0.0.0.0`, 만료일은 2026-09-30으로 유지했다. Sync가 이 PC를 server-host로 인식하고 Git 제외 debugger 설정과 TCP7777 LocalSubnet 방화벽을 확인했다. 영구 전역 환경변수와 VS 시작 profile은 변경하지 않았다.
+
+사용자가 거슬렸다고 한 대상은 Server CMD의 ShipNpc 3개 생성 로그였으며, 최종 지시에 따라 로그를 유지했다. 잠시 추가한 로비 진단 패널의 F1 표시 조건과 보조 getter는 제거했다. `Level_Lobby.cpp`는 HEAD와 차이가 없고 Debug 로비 진단은 원래 표시 방식이다. NPC 사전 생성은 Server 상태 준비이며 Client의 로비 모델 렌더링 경로가 아니다. 빈 방의 Server tick 비용은 존재하므로 비용이 0이라고 판단하지 않았다.
+
+### 후속 검증 증거
+
+- 실제 MainApp의 Get/Set/Save/Reload·parser·serializer와 실제 DataJson.cpp를 추출 컴파일한 CPU probe 통과. GPU view만 spy, 저장 root만 out fixture로 대체했다. NaN/범위 거절, 기본 0, 반복 위치 적용, 서로 다른 축 병합, 같은 축 충돌, unknown/madness 보존, 잘못된 JSON reload 보존, shared lock 거절, 무편집 disk refresh를 확인했다. `out/KoukuHealthIntegration20260927/bar-position-probe-test.log`.
+- Network endpoint 계약 3개 통과. 변경 JSON/XML parse, 기존 HUD 설정 구조 일치, C++ UTF-8/CRLF 유지, `git diff --check` 통과.
+- 로비 진단을 원복한 최종 Debug 공식 Product 전체 PASS/exit0. `out/BuildPipeline/runs/20260927T110738350Z-debug-product.json`.
+- Release Engine, Shared, Server 정상 Build PASS. 최신 Release Server의 `--kouku-dice-hit-contract-test` 182 PASS/실패0/exit0. 실제 Complete Play 2인 및 2인+Guide에서 자유 인간 1명의 4tick 이동, 인간 1명 속박과 Guide 제외, 양쪽 snapshot tick2502 수신을 확인했다. `out/KoukuHudPositionFollowupRelease/server-dice.log`.
+- Release 공식 Product는 Client 빌드 진행 중이다. 첫 시도는 같은 시점의 짧은 Server 계약 검사 프로세스를 output guard가 감지해 컴파일 전 거절했다. 검사 정상 종료 뒤 다시 시작했으며 사용자 프로세스를 종료하지 않았다.
+- 기존 `test_release_client_surface_contract.py` 전체 실행은 3개 통과/1개 실패였다. 실패는 무관한 Character Select modal fixture가 현재 코드에 없는 `m_hasCreateCharacterButtonClick = false`를 요구하는 항목이다. 해당 제품 코드와 fixture는 변경하지 않았다. 현재 작업의 Lobby focused 항목은 통과했다.
+
+Client/UI를 직접 실행하거나 GPU 화면을 확인하지 않았다. 위 Complete Play 증거는 실제 Server simulation·Shared snapshot·navigation 계약이며 화면 확인을 대신하지 않는다.

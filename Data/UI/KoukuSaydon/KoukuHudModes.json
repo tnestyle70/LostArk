@@ -1,5 +1,10 @@
 {
   "formatVersion": 1,
+  "healthBarPositions": {
+    "mechanicOffsetY": 0,
+    "allyOffsetY": 0,
+    "enemyOffsetY": 0
+  },
   "madness": {
     "feetOffsetMeters": 1.2999999523162842,
     "fillTextureByState": ["UI/KoukuSaydon/Madness/madness_fill_state_0.png", "UI/KoukuSaydon/Madness/madness_fill_state_1.png"],

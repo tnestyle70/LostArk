@@ -129,9 +129,72 @@
 #include <cwchar>
 #include <fstream>
 #include <iomanip>
+#include <locale>
+#include <sstream>
 
 namespace
 {
+	constexpr const char* HUD_BAR_POSITION_KEYS[] = { "mechanicOffsetY", "allyOffsetY", "enemyOffsetY" };
+	constexpr const char* HUD_MECHANIC_SLOTS[] = { "Boss_StaggerBg", "Boss_StaggerTrack", "Boss_StaggerFill" };
+
+	bool ReadHudBarText(const std::filesystem::path& path, std::string& text)
+	{
+		std::ifstream stream(path, std::ios::binary);
+		if (!stream.is_open()) return false;
+		text.assign(std::istreambuf_iterator<char>(stream), std::istreambuf_iterator<char>());
+		return !stream.bad();
+	}
+
+	bool ReadHudBarPositions(const Client::DATA_JSON_VALUE& root, std::array<f32_t, 3>& offsets)
+	{
+		const auto* schema = root.Find("schema");
+		const auto* version = root.Find("formatVersion");
+		if (!root.Is_Object() || !schema || !schema->Is_String() ||
+			schema->Get_String() != "lostark.kouku-hud-modes" || !version ||
+			!version->Is_Number() || version->Get_Number() != 1.0) return false;
+		std::array<f32_t, 3> staged{};
+		if (const auto* positions = root.Find("healthBarPositions"))
+		{
+			if (!positions->Is_Object()) return false;
+			for (size_t i = 0u; i < staged.size(); ++i)
+				if (const auto* value = positions->Find(HUD_BAR_POSITION_KEYS[i]))
+				{
+					if (!value->Is_Number() || !std::isfinite(value->Get_Number()) ||
+						std::abs(value->Get_Number()) > 1280.0) return false;
+					staged[i] = static_cast<f32_t>(value->Get_Number());
+				}
+		}
+		offsets = staged;
+		return true;
+	}
+
+	void WriteHudBarJson(std::ostream& out, const Client::DATA_JSON_VALUE& value, const size_t depth = 0u)
+	{
+		using Client::DATA_JSON_TYPE;
+		switch (value.Get_Type())
+		{
+		case DATA_JSON_TYPE::NULL_VALUE: out << "null"; break;
+		case DATA_JSON_TYPE::BOOLEAN: out << (value.Get_Boolean() ? "true" : "false"); break;
+		case DATA_JSON_TYPE::NUMBER: out << std::setprecision(17) << value.Get_Number(); break;
+		case DATA_JSON_TYPE::STRING: out << '"' << Client::CDataJson::Escape(value.Get_String()) << '"'; break;
+		case DATA_JSON_TYPE::ARRAY:
+			out << '[';
+			for (size_t i = 0u; i < value.Get_Array().size(); ++i)
+			{ if (i) out << ", "; WriteHudBarJson(out, value.Get_Array()[i], depth + 1u); }
+			out << ']'; break;
+		case DATA_JSON_TYPE::OBJECT:
+			out << '{';
+			{ bool first = true;
+			for (const auto& [key, item] : value.Get_Object())
+			{
+				out << (first ? "\n" : ",\n") << std::string((depth + 1u) * 2u, ' ') << '"'
+					<< Client::CDataJson::Escape(key) << "\": ";
+				WriteHudBarJson(out, item, depth + 1u); first = false;
+			} }
+			out << '\n' << std::string(depth * 2u, ' ') << '}'; break;
+		}
+	}
+
 #ifdef _DEBUG
     Client::CLASS_MOVIE_INSPECTION_CALLBACKS ClassMovieInspectionCallbacks()
     {
@@ -1072,6 +1135,13 @@ HRESULT CMainApp::Initialize()
 	m_pBossUIView = std::make_unique<CUILayoutRuntime>(
 		m_pDevice, m_pContext, ETOUI(LEVEL::STATIC), TEXT("Layer_UI"),
 		L"UI/BossUI/BossUI.json");
+	for (size_t i = 0u; i < m_MechanicBarBasePositions.size(); ++i)
+	{
+		f32_t width = 0.f, height = 0.f;
+		auto& base = m_MechanicBarBasePositions[i];
+		m_MechanicBarHasBase[i] = m_pBossUIView->Get_SlotRect(HUD_MECHANIC_SLOTS[i],
+			base.x, base.y, width, height);
+	}
 
 	m_pDungeonTimerView = std::make_unique<CDungeonTimerView>(
 		m_pDevice, m_pContext, ETOUI(LEVEL::STATIC));
@@ -1080,6 +1150,7 @@ HRESULT CMainApp::Initialize()
 	boss. */
 	Hide_BossHealthBar();
 	m_pWorldHealthBarView = std::make_unique<CWorldHealthBarView>(m_pDevice, m_pContext);
+	(void)Reload_HealthBarPositions(m_strHealthBarPositionStatus);
 	m_pEstherUIView = std::make_unique<CUILayoutRuntime>(
 		m_pDevice, m_pContext, ETOUI(LEVEL::STATIC), TEXT("Layer_UI"),
 		L"UI/Esther/EstherUI.json");
@@ -7715,6 +7786,112 @@ void CMainApp::Hide_BossHealthBar()
 		m_pBossUIView->Set_SlotVisible(pSlotId, false);
 }
 
+
+std::array<f32_t, 3> CMainApp::Get_HealthBarPositions() const
+{
+	return m_HealthBarOffsets;
+}
+
+bool_t CMainApp::Set_HealthBarPositions(const std::array<f32_t, 3>& offsets)
+{
+	for (const f32_t value : offsets)
+		if (!std::isfinite(value) || std::abs(value) > 1280.f) return false;
+	m_HealthBarOffsets = offsets;
+	if (m_pWorldHealthBarView) (void)m_pWorldHealthBarView->Set_YOffsets(offsets[1], offsets[2]);
+	if (m_pBossUIView)
+		for (size_t i = 0u; i < m_MechanicBarBasePositions.size(); ++i)
+			if (m_MechanicBarHasBase[i])
+				m_pBossUIView->Set_SlotPosition(HUD_MECHANIC_SLOTS[i],
+					m_MechanicBarBasePositions[i].x, m_MechanicBarBasePositions[i].y + offsets[0]);
+	return true;
+}
+
+bool_t CMainApp::Reload_HealthBarPositions(std::string& status)
+{
+	std::string text, error;
+	DATA_JSON_VALUE root;
+	std::array<f32_t, 3> staged{};
+	if (!ReadHudBarText(CProjectDataRoot::Resolve(L"UI/KoukuSaydon/KoukuHudModes.json"), text) ||
+		!CDataJson::Parse(text, root, error) || !ReadHudBarPositions(root, staged))
+	{ status = "Invalid health bar positions; current preview preserved. " + error; return false; }
+	(void)Set_HealthBarPositions(staged);
+	m_SavedHealthBarOffsets = staged;
+	status = "Reloaded saved health bar positions.";
+	return true;
+}
+
+bool_t CMainApp::Save_HealthBarPositions(std::string& status)
+{
+	const std::filesystem::path path = CProjectDataRoot::Resolve(L"UI/KoukuSaydon/KoukuHudModes.json");
+	// Share the document's existing madness-position lock, including saves from other clients.
+	const std::filesystem::path lockPath = path.wstring() + L".madness-position.lock";
+	const HANDLE lock = CreateFileW(lockPath.c_str(), GENERIC_READ | GENERIC_WRITE, 0u, nullptr,
+		OPEN_ALWAYS, FILE_ATTRIBUTE_TEMPORARY | FILE_FLAG_DELETE_ON_CLOSE, nullptr);
+	if (lock == INVALID_HANDLE_VALUE) { status = "HUD position save is already in progress."; return false; }
+	struct LOCK_GUARD { HANDLE handle; ~LOCK_GUARD() { CloseHandle(handle); } } guard{ lock };
+	std::string before, error;
+	DATA_JSON_VALUE root;
+	std::array<f32_t, 3> saved{};
+	if (!ReadHudBarText(path, before) || !CDataJson::Parse(before, root, error) || !ReadHudBarPositions(root, saved))
+	{ status = "HUD configuration could not be read; disk and preview preserved. " + error; return false; }
+	std::array<bool, 3> changed{};
+	bool anyChanged = false;
+	for (size_t i = 0u; i < changed.size(); ++i)
+	{
+		changed[i] = m_HealthBarOffsets[i] != m_SavedHealthBarOffsets[i];
+		anyChanged |= changed[i];
+		if (changed[i] && saved[i] != m_SavedHealthBarOffsets[i])
+		{ status = "Edited position field changed on disk. Reload saved positions before saving; preview preserved."; return false; }
+	}
+	if (!anyChanged)
+	{
+		(void)Set_HealthBarPositions(saved); m_SavedHealthBarOffsets = saved;
+		status = "No position edits; refreshed health bar positions from disk.";
+		return true;
+	}
+	auto fields = root.Get_Object();
+	const auto* previous = root.Find("healthBarPositions");
+	auto positions = previous ? previous->Get_Object() : DATA_JSON_VALUE::OBJECT{};
+	for (size_t i = 0u; i < changed.size(); ++i)
+		if (changed[i]) positions[HUD_BAR_POSITION_KEYS[i]] = DATA_JSON_VALUE::Number(m_HealthBarOffsets[i]);
+	fields["healthBarPositions"] = DATA_JSON_VALUE::Object(std::move(positions));
+	std::ostringstream serialized;
+	serialized.imbue(std::locale::classic());
+	WriteHudBarJson(serialized, DATA_JSON_VALUE::Object(std::move(fields)));
+	const std::string after = serialized.str() + "\n";
+	DATA_JSON_VALUE verified;
+	if (!CDataJson::Parse(after, verified, error) || !ReadHudBarPositions(verified, saved))
+	{ status = "Position serialization rejected; disk and preview preserved."; return false; }
+	const auto suffix = std::to_wstring(GetCurrentProcessId()) + L"." + std::to_wstring(GetTickCount64());
+	const std::filesystem::path temporary = path.wstring() + L".tmp." + suffix;
+	const std::filesystem::path backup = path.wstring() + L".backup." + suffix;
+	{
+		std::ofstream stream(temporary, std::ios::binary | std::ios::trunc);
+		stream.write(after.data(), static_cast<std::streamsize>(after.size())); stream.flush();
+		if (!stream.good())
+		{ stream.close(); DeleteFileW(temporary.c_str()); status = "Position temporary write failed; source preserved."; return false; }
+	}
+	std::string current;
+	if (!ReadHudBarText(temporary, current) || current != after || !ReadHudBarText(path, current) || current != before)
+	{ DeleteFileW(temporary.c_str()); status = "HUD source changed during save; disk and preview preserved."; return false; }
+	if (!ReplaceFileW(path.c_str(), temporary.c_str(), backup.c_str(), 0u, nullptr, nullptr))
+	{ DeleteFileW(temporary.c_str()); status = "Position atomic replace failed; backup preserved at " + backup.string(); return false; }
+	std::string displaced;
+	if (!ReadHudBarText(backup, displaced) || displaced != before)
+	{
+		if (ReadHudBarText(path, current) && current == after)
+		{
+			const std::filesystem::path recovery = path.wstring() + L".conflict." + suffix;
+			(void)ReplaceFileW(path.c_str(), backup.c_str(), recovery.c_str(), 0u, nullptr, nullptr);
+		}
+		status = "Concurrent HUD save detected; recovery files preserved beside source. Reload before retrying.";
+		return false;
+	}
+	(void)Set_HealthBarPositions(saved); m_SavedHealthBarOffsets = saved;
+	status = "Saved health bar positions. Backup: " + backup.string();
+	return true;
+}
+
 void CMainApp::Update_WorldHealthBars(const f32_t fTimeDelta)
 {
 	Engine::CProfilerScope scope(CGameInstance::Get().Get_Profiler(), "UI.Runtime.WorldHealthBars.Update");
@@ -11010,24 +11187,7 @@ void CMainApp::RenderKoukuUiPreviewControls()
 		m_KoukuUiPreview.iMadnessGauge = static_cast<uint32_t>(iGauge);
 		bChanged = true;
 	}
-	if (auto* arena = CLevel_KakulSaydonArena::Get_Active())
-	{
-		float2_t offset{}; f32_t head = 0.f;
-		static std::string positionStatus;
-		if (arena->Get_MadnessGaugePosition(offset, head))
-		{
-			ImGui::SeparatorText("Madness gauge position");
-			bool changed = ImGui::DragFloat2("Screen offset X / Y##KoukuMadness", &offset.x, 1.f, -1280.f, 1280.f, "%.1f");
-			changed |= ImGui::DragFloat("World height (m)##KoukuMadness", &head, 0.05f, -10.f, 10.f, "%.2f");
-			if (changed) (void)arena->Set_MadnessGaugePosition(offset, head);
-			if (ImGui::Button("Save position##KoukuMadness")) (void)arena->Save_MadnessGaugePosition(positionStatus);
-			ImGui::SameLine();
-			if (ImGui::Button("Reload saved position##KoukuMadness")) (void)arena->Reload_MadnessGaugePosition(positionStatus);
-			ImGui::TextDisabled("1280 x 720 reference pixels; +Y moves down. Applies to all player gauges.");
-			ImGui::TextDisabled("Save writes Data/UI/KoukuSaydon/KoukuHudModes.json. Card maze hides all gauges.");
-			if (!positionStatus.empty()) ImGui::TextWrapped("%s", positionStatus.c_str());
-		}
-	}
+	RenderHUDBarPositionControls();
 	constexpr const char* MODE_LABELS[] =
 		{ "None", "Clown", "Mario", "Dance", "Card maze" };
 	int32_t iMode = static_cast<int32_t>(m_KoukuUiPreview.eHudMode);
@@ -13059,6 +13219,42 @@ void CMainApp::RefreshWorldObjectResources()
 
 #endif
 
+void CMainApp::RenderHUDBarPositionControls()
+{
+	if (auto* arena = CLevel_KakulSaydonArena::Get_Active())
+	{
+		float2_t offset{}; f32_t head = 0.f;
+		static std::string positionStatus;
+		if (arena->Get_MadnessGaugePosition(offset, head))
+		{
+			ImGui::SeparatorText("Madness gauge position");
+			bool changed = ImGui::DragFloat2("Screen offset X / Y##KoukuMadness", &offset.x, 1.f, -1280.f, 1280.f, "%.1f");
+			changed |= ImGui::DragFloat("World height (m)##KoukuMadness", &head, 0.05f, -10.f, 10.f, "%.2f");
+			if (changed) (void)arena->Set_MadnessGaugePosition(offset, head);
+			if (ImGui::Button("Save position##KoukuMadness")) (void)arena->Save_MadnessGaugePosition(positionStatus);
+			ImGui::SameLine();
+			if (ImGui::Button("Reload saved position##KoukuMadness")) (void)arena->Reload_MadnessGaugePosition(positionStatus);
+			ImGui::TextDisabled("1280 x 720 reference pixels; +Y moves down. Applies to all player gauges.");
+			ImGui::TextDisabled("Save writes Data/UI/KoukuSaydon/KoukuHudModes.json. Card maze hides all gauges.");
+			if (!positionStatus.empty()) ImGui::TextWrapped("%s", positionStatus.c_str());
+		}
+	}
+
+	ImGui::SeparatorText("Health bar positions");
+	auto offsets = Get_HealthBarPositions();
+	bool changed = ImGui::DragFloat("Stagger bar Y offset##HUDBar", &offsets[0], 1.f, -1280.f, 1280.f, "%.1f");
+	changed |= ImGui::DragFloat("Ally HP (cyan) Y offset##HUDBar", &offsets[1], 1.f, -1280.f, 1280.f, "%.1f");
+	changed |= ImGui::DragFloat("Enemy / boss HP (red) Y offset##HUDBar", &offsets[2], 1.f, -1280.f, 1280.f, "%.1f");
+	if (changed && !Set_HealthBarPositions(offsets))
+		m_strHealthBarPositionStatus = "Offsets must be finite and between -1280 and 1280.";
+	if (ImGui::Button("Save positions##HUDBar")) (void)Save_HealthBarPositions(m_strHealthBarPositionStatus);
+	ImGui::SameLine();
+	if (ImGui::Button("Reload saved positions##HUDBar")) (void)Reload_HealthBarPositions(m_strHealthBarPositionStatus);
+	ImGui::TextDisabled("1280 x 720 reference pixels; +Y moves down. Frames and shields move together.");
+	ImGui::TextDisabled("Save writes Data/UI/KoukuSaydon/KoukuHudModes.json. Applies across levels.");
+	if (!m_strHealthBarPositionStatus.empty()) ImGui::TextWrapped("%s", m_strHealthBarPositionStatus.c_str());
+}
+
 void CMainApp::RenderBalanceTestLauncher()
 {
 	ImGui::SeparatorText("Balance Test");
@@ -13236,8 +13432,10 @@ void CMainApp::RenderDeveloperTools()
 
 	RenderDebugLevelNavigation();
 	RenderArenaCameraAndPlayerControls();
+	if (!CLevel_KakulSaydonArena::Get_Active()) RenderHUDBarPositionControls();
 #else
 	RenderBalanceTestLauncher();
+	RenderHUDBarPositionControls();
 #endif
 	RenderCameraSpeedControls();
 	RenderDragonControls();
