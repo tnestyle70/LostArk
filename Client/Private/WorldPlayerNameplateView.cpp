@@ -247,6 +247,9 @@ void Client::CWorldPlayerNameplateView::Render(
 			player.pCharacter.lock();
 		if (nullptr == pCharacter)
 			continue;
+		/* A ship sails without its rider on screen, so no name floats over the empty deck. */
+		if (pCharacter->Is_ShipPresentation())
+			continue;
 
 		float3_t vHeadPosition{};
 		if (!Try_GetHeadAnchor(*pCharacter, vHeadPosition))

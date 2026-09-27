@@ -17,7 +17,8 @@
   "moveSpeed": "이동속도 {0}",
   "quickslotHint": "탈것을 퀵슬롯에 등록하여 탑승할 수 있습니다.",
   "cannotHere": "탈것을 탑승할 수 없는 지역입니다.",
-  "cannotNow": "탈것을 소환할 수 없는 상태입니다."
+  "cannotNow": "탈것을 소환할 수 없는 상태입니다.",
+  "shipTitle": "선박"
  },
  "vehicles": [
   {
@@ -488,6 +489,159 @@
      }
     }
    ]
+  },
+  {
+   "vehicleId": 8200,
+   "archetypeId": "VEHICLE_SHIP_ESTOC",
+   "name": "에스토크",
+   "description": "에스토크대해적 검은이빨이 건네준 모험선.실용적이지만 위험한 해역을 누비기엔 다소 버겁다.루테란 항구를 떠나 첫 항해를 시작할 때 탑승할 수 있다.",
+   "moveSpeed": 2.0,
+   "iconAsset": "UI/Vehicle/Icons/ship_8200.png",
+   "iconSource": {
+    "page": "Voyage_Ship_0",
+    "x": 576,
+    "y": 64,
+    "width": 64,
+    "height": 64,
+    "icon": "Voyage_Ship_1_0"
+   },
+   "skills": []
+  },
+  {
+   "vehicleId": 8201,
+   "archetypeId": "VEHICLE_SHIP_WHITEWIND",
+   "name": "풍백",
+   "description": "풍백애니츠 풍의 독특한 외형이 매력적인 어선.모래폭풍에 강하고 세이렌 해역에도 어느정도 내성을 보유하고 있다.애니츠에 드리운 불길한 기운의 정체를 밝혀내면 얻을 수 있다.",
+   "moveSpeed": 1.9,
+   "iconAsset": "UI/Vehicle/Icons/ship_8201.png",
+   "iconSource": {
+    "page": "Voyage_Ship_0",
+    "x": 640,
+    "y": 64,
+    "width": 64,
+    "height": 64,
+    "icon": "Voyage_Ship_1_1"
+   },
+   "skills": []
+  },
+  {
+   "vehicleId": 8202,
+   "archetypeId": "VEHICLE_SHIP_ASTRAY",
+   "name": "아스트레이",
+   "description": "아스트레이동급 최강의 운항 속도를 자랑하는 해적선.위험 해역의 내성도 고루 보유 하고 있다.해적의 별을 찾는 자에게 행운이 올 것이니..",
+   "moveSpeed": 2.2,
+   "iconAsset": "UI/Vehicle/Icons/ship_8202.png",
+   "iconSource": {
+    "page": "Voyage_Ship_0",
+    "x": 960,
+    "y": 64,
+    "width": 64,
+    "height": 64,
+    "icon": "Voyage_Ship_1_6"
+   },
+   "skills": []
+  },
+  {
+   "vehicleId": 8203,
+   "archetypeId": "VEHICLE_SHIP_BARKSTORM",
+   "name": "바크스툼",
+   "description": "바크스툼슈샤이어를 방문하기 위해 반드시 건조 해야 하는 쇄빙선.한파에 강하며, 수초 해역에도 어느정도 내성을 보유하고 있다.베른을 잠식한 사령의 기운을 막아내면 여왕 에아달린의 선물로 얻을 수 있다.",
+   "moveSpeed": 1.8,
+   "iconAsset": "UI/Vehicle/Icons/ship_8203.png",
+   "iconSource": {
+    "page": "Voyage_Ship_0",
+    "x": 704,
+    "y": 64,
+    "width": 64,
+    "height": 64,
+    "icon": "Voyage_Ship_1_2"
+   },
+   "skills": []
+  },
+  {
+   "vehicleId": 8204,
+   "archetypeId": "VEHICLE_SHIP_GHOST",
+   "name": "에이번의 상처",
+   "description": "에이번의 상처압도적인 크기에서 뿜어 나오는 음산한 기운의 유령선.크기에 걸맞은 엄청난 내구도를 지니며,망자 해역에 대한 내성이 좋으며, 한파에도 어느정도 내성을 보유하고 있다.생명을 파괴하는 유령선에서 그 흔적을 찾을 수 있다.",
+   "moveSpeed": 1.83,
+   "iconAsset": "UI/Vehicle/Icons/ship_8204.png",
+   "iconSource": {
+    "page": "Voyage_Ship_0",
+    "x": 0,
+    "y": 128,
+    "width": 64,
+    "height": 64,
+    "icon": "Voyage_Ship_1_7"
+   },
+   "skills": []
+  },
+  {
+   "vehicleId": 8205,
+   "archetypeId": "VEHICLE_SHIP_BRAHMS",
+   "name": "브람스",
+   "description": "브람스베른의 빼어난 미적 감각이 고스란히 반영된 교역선.세이렌 해역에 특화되어 있으며, 망자 해역에도 어느정도 내성을 보유하고 있다.아크라시아의 물류 운송을 책임지는 주식회사 로팡에서 성실히 일하면 우수 직원에 대한 포상으로 얻을 수 있다.",
+   "moveSpeed": 1.85,
+   "iconAsset": "UI/Vehicle/Icons/ship_8205.png",
+   "iconSource": {
+    "page": "Voyage_Ship_0",
+    "x": 832,
+    "y": 64,
+    "width": 64,
+    "height": 64,
+    "icon": "Voyage_Ship_1_4"
+   },
+   "skills": []
+  },
+  {
+   "vehicleId": 8206,
+   "archetypeId": "VEHICLE_SHIP_TRAGON",
+   "name": "트라곤",
+   "description": "트라곤해상전투를 위해 건조된 아르데타인 기계 함선.폭풍우 해역에 특화되어 있으며, 모래폭풍에도 어느정도 내성을 보유하고 있다.히프노스의 눈에서 방어전 30회를 버텨내고, 역사상 전무후무한 디펜딩 챔피언이 되면 얻을 수 있다.",
+   "moveSpeed": 1.8,
+   "iconAsset": "UI/Vehicle/Icons/ship_8206.png",
+   "iconSource": {
+    "page": "Voyage_Ship_0",
+    "x": 896,
+    "y": 64,
+    "width": 64,
+    "height": 64,
+    "icon": "Voyage_Ship_1_5"
+   },
+   "skills": []
+  },
+  {
+   "vehicleId": 8207,
+   "archetypeId": "VEHICLE_SHIP_PNEUMA",
+   "name": "프뉴마",
+   "description": "프뉴마오직 빠른 속도를 위해 건조된 소형 쾌속선.선박 내구도가 다소 낮지만 운항 속도가 준수하고 수초해역에 특화되어 있다.페이토에서 누구보다 빠른 퇴근을 갈망하는 이를 찾아보자.",
+   "moveSpeed": 2.1,
+   "iconAsset": "UI/Vehicle/Icons/ship_8207.png",
+   "iconSource": {
+    "page": "Voyage_Ship_0",
+    "x": 768,
+    "y": 64,
+    "width": 64,
+    "height": 64,
+    "icon": "Voyage_Ship_1_3"
+   },
+   "skills": []
+  },
+  {
+   "vehicleId": 8208,
+   "archetypeId": "VEHICLE_SHIP_LUMINOUS",
+   "name": "루미나스",
+   "description": "루미나스달의 탑 최고의 마법사들에 의해 만들어진 배.소용돌이 해역마저 부드럽게 건너며, 모험가를 새로운 바다로 인도한다.베른 마법 학회에 있는 마력 정령과 도서관에 있는 마법 설계체를 찾으면 얻을 수 있다.",
+   "moveSpeed": 2.0,
+   "iconAsset": "UI/Vehicle/Icons/ship_8208.png",
+   "iconSource": {
+    "page": "Voyage_Ship_0",
+    "x": 64,
+    "y": 128,
+    "width": 64,
+    "height": 64,
+    "icon": "Voyage_Ship_1_8"
+   },
+   "skills": []
   }
  ]
 }

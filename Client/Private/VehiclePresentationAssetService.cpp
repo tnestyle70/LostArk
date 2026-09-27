@@ -1,5 +1,6 @@
 #include "VehiclePresentationAssetService.h"
 #include "BoneAnimationDocument.h"
+#include "EffectFailureDiagnostic.h"
 
 #include "ActorCatalog.h"
 #include "GameInstance.h"
@@ -19,6 +20,7 @@ namespace
 	HRESULT Reject(const std::string& reason)
 	{
 		g_VehicleAssetStatus = reason;
+		Client::Write_EffectFailureDiagnostic("vehicle.model", reason);
 		OutputDebugStringA(("[Client][VehiclePresentation] " + reason + "\n").c_str());
 		return E_FAIL;
 	}
@@ -66,7 +68,8 @@ HRESULT Client::CVehiclePresentationAssetService::Ensure_Prototypes(
 	unique_ptr<Engine::CModel> model = Engine::CModel::Create(
 		pDevice, pContext, MODEL::ANIM, load,
 		XMMatrixScaling(vehicle->modelPreScale, vehicle->modelPreScale, vehicle->modelPreScale) *
-		XMMatrixRotationY(XMConvertToRadians(-90.f)));
+		XMMatrixRotationY(XMConvertToRadians(vehicle->modelYawDegrees)) *
+		XMMatrixTranslation(0.f, vehicle->modelLiftMeters, 0.f));
 	if (nullptr == model || 0u == model->Get_NumMeshes() || !model->Has_Animations())
 		return Reject("Vehicle model has no usable animated geometry: " + vehicle->modelAssetId);
 	std::string authoredClipStatus;
@@ -86,6 +89,8 @@ HRESULT Client::CVehiclePresentationAssetService::Ensure_Prototypes(
 
 	g_ReadyVehiclesByLevel[iLevelIndex].insert(vehicleId);
 	g_VehicleAssetStatus.clear();
+	Client::Write_EffectFailureDiagnostic("vehicle.model", "ready vehicleId=" +
+		std::to_string(vehicleId) + " model=" + vehicle->modelAssetId);
 	return S_OK;
 }
 

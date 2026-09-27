@@ -1,0 +1,933 @@
+{
+ "schema": "lostark.map-light-presentation",
+ "formatVersion": 2,
+ "areaId": "LV_OCN_EVENTIS_MHP",
+ "provenance": "PROJECT_AUTHORED",
+ "nextLightOrdinal": 34,
+ "lights": [
+  {
+   "lightId": "light.lv_ocn_eventis_mhp.pointlight_0_lc.500",
+   "displayName": "pointlight_0_lc / pointlight_0_lc",
+   "kind": "POINT",
+   "groupId": "source",
+   "enabled": true,
+   "position": [
+    121.975391,
+    27.58,
+    -973.814844
+   ],
+   "rotationDegrees": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "rangeMeters": 2.0,
+   "falloffExponent": 2.0,
+   "innerConeDegrees": 0.0,
+   "outerConeDegrees": 0.0,
+   "color": [
+    1.0,
+    0.627451,
+    0.466667,
+    1.0
+   ],
+   "brightness": 2.0
+  },
+  {
+   "lightId": "light.lv_ocn_eventis_mhp.pointlight_10_lc.501",
+   "displayName": "pointlight_10_lc / pointlight_10_lc",
+   "kind": "POINT",
+   "groupId": "source",
+   "enabled": true,
+   "position": [
+    57.425732,
+    22.902781,
+    -1008.0925
+   ],
+   "rotationDegrees": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "rangeMeters": 3.2,
+   "falloffExponent": 3.0,
+   "innerConeDegrees": 0.0,
+   "outerConeDegrees": 0.0,
+   "color": [
+    1.0,
+    0.854902,
+    0.580392,
+    1.0
+   ],
+   "brightness": 3.5
+  },
+  {
+   "lightId": "light.lv_ocn_eventis_mhp.pointlight_11_lc.502",
+   "displayName": "pointlight_11_lc / pointlight_11_lc",
+   "kind": "POINT",
+   "groupId": "source",
+   "enabled": true,
+   "position": [
+    67.299146,
+    26.770371,
+    -1035.293125
+   ],
+   "rotationDegrees": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "rangeMeters": 3.0,
+   "falloffExponent": 2.0,
+   "innerConeDegrees": 0.0,
+   "outerConeDegrees": 0.0,
+   "color": [
+    1.0,
+    0.886275,
+    0.729412,
+    1.0
+   ],
+   "brightness": 3.0
+  },
+  {
+   "lightId": "light.lv_ocn_eventis_mhp.pointlight_12_lc.503",
+   "displayName": "pointlight_12_lc / pointlight_12_lc",
+   "kind": "POINT",
+   "groupId": "source",
+   "enabled": true,
+   "position": [
+    76.768154,
+    22.006306,
+    -1028.71875
+   ],
+   "rotationDegrees": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "rangeMeters": 2.0,
+   "falloffExponent": 2.0,
+   "innerConeDegrees": 0.0,
+   "outerConeDegrees": 0.0,
+   "color": [
+    1.0,
+    0.886275,
+    0.729412,
+    1.0
+   ],
+   "brightness": 2.0
+  },
+  {
+   "lightId": "light.lv_ocn_eventis_mhp.pointlight_13_lc.504",
+   "displayName": "pointlight_13_lc / pointlight_13_lc",
+   "kind": "POINT",
+   "groupId": "source",
+   "enabled": true,
+   "position": [
+    115.065322,
+    27.612227,
+    -979.145313
+   ],
+   "rotationDegrees": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "rangeMeters": 3.0,
+   "falloffExponent": 4.0,
+   "innerConeDegrees": 0.0,
+   "outerConeDegrees": 0.0,
+   "color": [
+    1.0,
+    0.701961,
+    0.376471,
+    1.0
+   ],
+   "brightness": 0.5
+  },
+  {
+   "lightId": "light.lv_ocn_eventis_mhp.pointlight_14_lc.505",
+   "displayName": "pointlight_14_lc / pointlight_14_lc",
+   "kind": "POINT",
+   "groupId": "source",
+   "enabled": true,
+   "position": [
+    92.705,
+    24.145928,
+    -1023.232344
+   ],
+   "rotationDegrees": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "rangeMeters": 3.2,
+   "falloffExponent": 3.0,
+   "innerConeDegrees": 0.0,
+   "outerConeDegrees": 0.0,
+   "color": [
+    1.0,
+    0.854902,
+    0.580392,
+    1.0
+   ],
+   "brightness": 3.5
+  },
+  {
+   "lightId": "light.lv_ocn_eventis_mhp.pointlight_15_lc.506",
+   "displayName": "pointlight_15_lc / pointlight_15_lc",
+   "kind": "POINT",
+   "groupId": "source",
+   "enabled": true,
+   "position": [
+    93.888066,
+    22.902781,
+    -1018.959609
+   ],
+   "rotationDegrees": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "rangeMeters": 3.2,
+   "falloffExponent": 3.0,
+   "innerConeDegrees": 0.0,
+   "outerConeDegrees": 0.0,
+   "color": [
+    1.0,
+    0.854902,
+    0.580392,
+    1.0
+   ],
+   "brightness": 3.5
+  },
+  {
+   "lightId": "light.lv_ocn_eventis_mhp.pointlight_16_lc.507",
+   "displayName": "pointlight_16_lc / pointlight_16_lc",
+   "kind": "POINT",
+   "groupId": "source",
+   "enabled": true,
+   "position": [
+    59.648096,
+    22.369563,
+    -1025.052813
+   ],
+   "rotationDegrees": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "rangeMeters": 3.2,
+   "falloffExponent": 3.0,
+   "innerConeDegrees": 0.0,
+   "outerConeDegrees": 0.0,
+   "color": [
+    1.0,
+    0.854902,
+    0.580392,
+    1.0
+   ],
+   "brightness": 3.5
+  },
+  {
+   "lightId": "light.lv_ocn_eventis_mhp.pointlight_17_lc.508",
+   "displayName": "pointlight_17_lc / pointlight_17_lc",
+   "kind": "POINT",
+   "groupId": "source",
+   "enabled": true,
+   "position": [
+    88.599268,
+    22.369585,
+    -1025.184844
+   ],
+   "rotationDegrees": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "rangeMeters": 3.2,
+   "falloffExponent": 3.0,
+   "innerConeDegrees": 0.0,
+   "outerConeDegrees": 0.0,
+   "color": [
+    1.0,
+    0.854902,
+    0.580392,
+    1.0
+   ],
+   "brightness": 3.5
+  },
+  {
+   "lightId": "light.lv_ocn_eventis_mhp.pointlight_18_lc.509",
+   "displayName": "pointlight_18_lc / pointlight_18_lc",
+   "kind": "POINT",
+   "groupId": "source",
+   "enabled": true,
+   "position": [
+    44.459751,
+    26.345928,
+    -1011.657812
+   ],
+   "rotationDegrees": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "rangeMeters": 3.2,
+   "falloffExponent": 3.0,
+   "innerConeDegrees": 0.0,
+   "outerConeDegrees": 0.0,
+   "color": [
+    1.0,
+    0.854902,
+    0.580392,
+    1.0
+   ],
+   "brightness": 3.5
+  },
+  {
+   "lightId": "light.lv_ocn_eventis_mhp.pointlight_19_lc.510",
+   "displayName": "pointlight_19_lc / pointlight_19_lc",
+   "kind": "POINT",
+   "groupId": "source",
+   "enabled": true,
+   "position": [
+    77.293428,
+    22.129185,
+    -1036.636719
+   ],
+   "rotationDegrees": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "rangeMeters": 1.8,
+   "falloffExponent": 2.0,
+   "innerConeDegrees": 0.0,
+   "outerConeDegrees": 0.0,
+   "color": [
+    1.0,
+    0.886275,
+    0.729412,
+    1.0
+   ],
+   "brightness": 3.0
+  },
+  {
+   "lightId": "light.lv_ocn_eventis_mhp.pointlight_1_lc.511",
+   "displayName": "pointlight_1_lc / pointlight_1_lc",
+   "kind": "POINT",
+   "groupId": "source",
+   "enabled": true,
+   "position": [
+    128.896152,
+    27.58,
+    -984.023906
+   ],
+   "rotationDegrees": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "rangeMeters": 2.0,
+   "falloffExponent": 2.0,
+   "innerConeDegrees": 0.0,
+   "outerConeDegrees": 0.0,
+   "color": [
+    1.0,
+    0.627451,
+    0.466667,
+    1.0
+   ],
+   "brightness": 2.0
+  },
+  {
+   "lightId": "light.lv_ocn_eventis_mhp.pointlight_20_lc.512",
+   "displayName": "pointlight_20_lc / pointlight_20_lc",
+   "kind": "POINT",
+   "groupId": "source",
+   "enabled": true,
+   "position": [
+    72.792573,
+    22.129185,
+    -1036.636719
+   ],
+   "rotationDegrees": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "rangeMeters": 1.8,
+   "falloffExponent": 2.0,
+   "innerConeDegrees": 0.0,
+   "outerConeDegrees": 0.0,
+   "color": [
+    1.0,
+    0.886275,
+    0.729412,
+    1.0
+   ],
+   "brightness": 3.0
+  },
+  {
+   "lightId": "light.lv_ocn_eventis_mhp.pointlight_23_lc.513",
+   "displayName": "pointlight_23_lc / pointlight_23_lc",
+   "kind": "POINT",
+   "groupId": "source",
+   "enabled": true,
+   "position": [
+    113.761328,
+    29.58,
+    -961.693203
+   ],
+   "rotationDegrees": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "rangeMeters": 2.0,
+   "falloffExponent": 2.0,
+   "innerConeDegrees": 0.0,
+   "outerConeDegrees": 0.0,
+   "color": [
+    1.0,
+    0.627451,
+    0.466667,
+    1.0
+   ],
+   "brightness": 2.0
+  },
+  {
+   "lightId": "light.lv_ocn_eventis_mhp.pointlight_25_lc.514",
+   "displayName": "pointlight_25_lc / pointlight_25_lc",
+   "kind": "POINT",
+   "groupId": "source",
+   "enabled": true,
+   "position": [
+    110.821914,
+    27.58,
+    -988.656016
+   ],
+   "rotationDegrees": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "rangeMeters": 2.0,
+   "falloffExponent": 2.0,
+   "innerConeDegrees": 0.0,
+   "outerConeDegrees": 0.0,
+   "color": [
+    1.0,
+    0.627451,
+    0.466667,
+    1.0
+   ],
+   "brightness": 2.0
+  },
+  {
+   "lightId": "light.lv_ocn_eventis_mhp.pointlight_26_lc.515",
+   "displayName": "pointlight_26_lc / pointlight_26_lc",
+   "kind": "POINT",
+   "groupId": "source",
+   "enabled": true,
+   "position": [
+    99.427705,
+    29.58,
+    -971.270703
+   ],
+   "rotationDegrees": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "rangeMeters": 2.0,
+   "falloffExponent": 2.0,
+   "innerConeDegrees": 0.0,
+   "outerConeDegrees": 0.0,
+   "color": [
+    1.0,
+    0.627451,
+    0.466667,
+    1.0
+   ],
+   "brightness": 2.0
+  },
+  {
+   "lightId": "light.lv_ocn_eventis_mhp.pointlight_27_lc.516",
+   "displayName": "pointlight_27_lc / pointlight_27_lc",
+   "kind": "POINT",
+   "groupId": "source",
+   "enabled": true,
+   "position": [
+    117.502031,
+    27.459749,
+    -979.382969
+   ],
+   "rotationDegrees": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "rangeMeters": 2.0,
+   "falloffExponent": 2.0,
+   "innerConeDegrees": 0.0,
+   "outerConeDegrees": 0.0,
+   "color": [
+    1.0,
+    0.627451,
+    0.466667,
+    1.0
+   ],
+   "brightness": 2.0
+  },
+  {
+   "lightId": "light.lv_ocn_eventis_mhp.pointlight_28_lc.517",
+   "displayName": "pointlight_28_lc / pointlight_28_lc",
+   "kind": "POINT",
+   "groupId": "source",
+   "enabled": true,
+   "position": [
+    111.652031,
+    27.459749,
+    -976.442969
+   ],
+   "rotationDegrees": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "rangeMeters": 2.0,
+   "falloffExponent": 2.0,
+   "innerConeDegrees": 0.0,
+   "outerConeDegrees": 0.0,
+   "color": [
+    1.0,
+    0.627451,
+    0.466667,
+    1.0
+   ],
+   "brightness": 2.0
+  },
+  {
+   "lightId": "light.lv_ocn_eventis_mhp.pointlight_29_lc.518",
+   "displayName": "pointlight_29_lc / pointlight_29_lc",
+   "kind": "POINT",
+   "groupId": "source",
+   "enabled": true,
+   "position": [
+    96.787979,
+    23.602781,
+    -983.308359
+   ],
+   "rotationDegrees": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "rangeMeters": 3.2,
+   "falloffExponent": 3.0,
+   "innerConeDegrees": 0.0,
+   "outerConeDegrees": 0.0,
+   "color": [
+    1.0,
+    0.854902,
+    0.580392,
+    1.0
+   ],
+   "brightness": 3.5
+  },
+  {
+   "lightId": "light.lv_ocn_eventis_mhp.pointlight_2_lc.519",
+   "displayName": "pointlight_2_lc / pointlight_2_lc",
+   "kind": "POINT",
+   "groupId": "source",
+   "enabled": true,
+   "position": [
+    107.44584,
+    27.58,
+    -983.542969
+   ],
+   "rotationDegrees": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "rangeMeters": 2.0,
+   "falloffExponent": 2.0,
+   "innerConeDegrees": 0.0,
+   "outerConeDegrees": 0.0,
+   "color": [
+    1.0,
+    0.627451,
+    0.466667,
+    1.0
+   ],
+   "brightness": 2.0
+  },
+  {
+   "lightId": "light.lv_ocn_eventis_mhp.pointlight_30_lc.520",
+   "displayName": "pointlight_30_lc / pointlight_30_lc",
+   "kind": "POINT",
+   "groupId": "source",
+   "enabled": true,
+   "position": [
+    110.820361,
+    29.78084,
+    -966.213203
+   ],
+   "rotationDegrees": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "rangeMeters": 5.12,
+   "falloffExponent": 2.0,
+   "innerConeDegrees": 0.0,
+   "outerConeDegrees": 0.0,
+   "color": [
+    1.0,
+    0.627451,
+    0.466667,
+    1.0
+   ],
+   "brightness": 1.5
+  },
+  {
+   "lightId": "light.lv_ocn_eventis_mhp.pointlight_31_lc.521",
+   "displayName": "pointlight_31_lc / pointlight_31_lc",
+   "kind": "POINT",
+   "groupId": "source",
+   "enabled": true,
+   "position": [
+    125.463174,
+    27.58,
+    -978.873125
+   ],
+   "rotationDegrees": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "rangeMeters": 2.0,
+   "falloffExponent": 2.0,
+   "innerConeDegrees": 0.0,
+   "outerConeDegrees": 0.0,
+   "color": [
+    1.0,
+    0.627451,
+    0.466667,
+    1.0
+   ],
+   "brightness": 2.0
+  },
+  {
+   "lightId": "light.lv_ocn_eventis_mhp.pointlight_32_lc.522",
+   "displayName": "pointlight_32_lc / pointlight_32_lc",
+   "kind": "POINT",
+   "groupId": "source",
+   "enabled": true,
+   "position": [
+    104.590361,
+    29.78084,
+    -970.363203
+   ],
+   "rotationDegrees": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "rangeMeters": 5.12,
+   "falloffExponent": 2.0,
+   "innerConeDegrees": 0.0,
+   "outerConeDegrees": 0.0,
+   "color": [
+    1.0,
+    0.627451,
+    0.466667,
+    1.0
+   ],
+   "brightness": 1.5
+  },
+  {
+   "lightId": "light.lv_ocn_eventis_mhp.pointlight_35_lc.523",
+   "displayName": "pointlight_35_lc / pointlight_35_lc",
+   "kind": "POINT",
+   "groupId": "source",
+   "enabled": true,
+   "position": [
+    104.352578,
+    29.78084,
+    -960.021719
+   ],
+   "rotationDegrees": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "rangeMeters": 5.12,
+   "falloffExponent": 2.0,
+   "innerConeDegrees": 0.0,
+   "outerConeDegrees": 0.0,
+   "color": [
+    1.0,
+    0.627451,
+    0.466667,
+    1.0
+   ],
+   "brightness": 1.5
+  },
+  {
+   "lightId": "light.lv_ocn_eventis_mhp.pointlight_36_lc.524",
+   "displayName": "pointlight_36_lc / pointlight_36_lc",
+   "kind": "POINT",
+   "groupId": "source",
+   "enabled": true,
+   "position": [
+    101.390361,
+    29.78084,
+    -962.003203
+   ],
+   "rotationDegrees": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "rangeMeters": 5.12,
+   "falloffExponent": 2.0,
+   "innerConeDegrees": 0.0,
+   "outerConeDegrees": 0.0,
+   "color": [
+    1.0,
+    0.627451,
+    0.466667,
+    1.0
+   ],
+   "brightness": 1.5
+  },
+  {
+   "lightId": "light.lv_ocn_eventis_mhp.pointlight_3_lc.525",
+   "displayName": "pointlight_3_lc / pointlight_3_lc",
+   "kind": "POINT",
+   "groupId": "source",
+   "enabled": true,
+   "position": [
+    114.346729,
+    27.58,
+    -993.820234
+   ],
+   "rotationDegrees": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "rangeMeters": 2.0,
+   "falloffExponent": 2.0,
+   "innerConeDegrees": 0.0,
+   "outerConeDegrees": 0.0,
+   "color": [
+    1.0,
+    0.627451,
+    0.466667,
+    1.0
+   ],
+   "brightness": 2.0
+  },
+  {
+   "lightId": "light.lv_ocn_eventis_mhp.pointlight_4_lc.526",
+   "displayName": "pointlight_4_lc / pointlight_4_lc",
+   "kind": "POINT",
+   "groupId": "source",
+   "enabled": true,
+   "position": [
+    61.358789,
+    23.992781,
+    -1017.416719
+   ],
+   "rotationDegrees": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "rangeMeters": 3.2,
+   "falloffExponent": 3.0,
+   "innerConeDegrees": 0.0,
+   "outerConeDegrees": 0.0,
+   "color": [
+    1.0,
+    0.854902,
+    0.580392,
+    1.0
+   ],
+   "brightness": 3.5
+  },
+  {
+   "lightId": "light.lv_ocn_eventis_mhp.pointlight_5_lc.527",
+   "displayName": "pointlight_5_lc / pointlight_5_lc",
+   "kind": "POINT",
+   "groupId": "source",
+   "enabled": true,
+   "position": [
+    56.160234,
+    24.145928,
+    -1022.669453
+   ],
+   "rotationDegrees": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "rangeMeters": 3.2,
+   "falloffExponent": 3.0,
+   "innerConeDegrees": 0.0,
+   "outerConeDegrees": 0.0,
+   "color": [
+    1.0,
+    0.854902,
+    0.580392,
+    1.0
+   ],
+   "brightness": 3.5
+  },
+  {
+   "lightId": "light.lv_ocn_eventis_mhp.pointlight_6_lc.528",
+   "displayName": "pointlight_6_lc / pointlight_6_lc",
+   "kind": "POINT",
+   "groupId": "source",
+   "enabled": true,
+   "position": [
+    75.301099,
+    26.770371,
+    -1036.23
+   ],
+   "rotationDegrees": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "rangeMeters": 3.0,
+   "falloffExponent": 2.0,
+   "innerConeDegrees": 0.0,
+   "outerConeDegrees": 0.0,
+   "color": [
+    1.0,
+    0.886275,
+    0.729412,
+    1.0
+   ],
+   "brightness": 3.0
+  },
+  {
+   "lightId": "light.lv_ocn_eventis_mhp.pointlight_7_lc.529",
+   "displayName": "pointlight_7_lc / pointlight_7_lc",
+   "kind": "POINT",
+   "groupId": "source",
+   "enabled": true,
+   "position": [
+    70.603633,
+    26.770371,
+    -1039.464297
+   ],
+   "rotationDegrees": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "rangeMeters": 3.0,
+   "falloffExponent": 2.0,
+   "innerConeDegrees": 0.0,
+   "outerConeDegrees": 0.0,
+   "color": [
+    1.0,
+    0.886275,
+    0.729412,
+    1.0
+   ],
+   "brightness": 3.0
+  },
+  {
+   "lightId": "light.lv_ocn_eventis_mhp.pointlight_8_lc.530",
+   "displayName": "pointlight_8_lc / pointlight_8_lc",
+   "kind": "POINT",
+   "groupId": "source",
+   "enabled": true,
+   "position": [
+    76.768154,
+    22.006306,
+    -1032.74875
+   ],
+   "rotationDegrees": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "rangeMeters": 2.0,
+   "falloffExponent": 2.0,
+   "innerConeDegrees": 0.0,
+   "outerConeDegrees": 0.0,
+   "color": [
+    1.0,
+    0.886275,
+    0.729412,
+    1.0
+   ],
+   "brightness": 2.0
+  },
+  {
+   "lightId": "light.lv_ocn_eventis_mhp.pointlight_9_lc.531",
+   "displayName": "pointlight_9_lc / pointlight_9_lc",
+   "kind": "POINT",
+   "groupId": "source",
+   "enabled": true,
+   "position": [
+    74.599868,
+    22.425063,
+    -1040.78125
+   ],
+   "rotationDegrees": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "rangeMeters": 3.0,
+   "falloffExponent": 2.0,
+   "innerConeDegrees": 0.0,
+   "outerConeDegrees": 0.0,
+   "color": [
+    1.0,
+    0.886275,
+    0.729412,
+    1.0
+   ],
+   "brightness": 3.0
+  },
+  {
+   "lightId": "light.lv_ocn_eventis_mhp.spotlight_0_lc.3634",
+   "displayName": "spotlight_0_lc / spotlight_0_lc",
+   "kind": "SPOT",
+   "groupId": "source",
+   "enabled": true,
+   "position": [
+    75.061704,
+    27.109712,
+    -1039.483906
+   ],
+   "rotationDegrees": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "rangeMeters": 10.0,
+   "falloffExponent": 2.0,
+   "innerConeDegrees": 10.0,
+   "outerConeDegrees": 25.0,
+   "color": [
+    1.0,
+    0.886275,
+    0.729412,
+    1.0
+   ],
+   "brightness": 5.0
+  }
+ ]
+}

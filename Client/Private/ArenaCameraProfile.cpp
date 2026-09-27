@@ -72,7 +72,8 @@ namespace
 			(root.Find("classSizeMultipliers") ? 1u : 0u) + (root.Find("clownSizeMultiplier") ? 1u : 0u) +
 			(root.Find("marioSizeMultiplier") ? 1u : 0u) + (root.Find("useSourceCameraRegions") ? 1u : 0u) +
 			(root.Find("mazeHammerPositionCm") ? 1u : 0u) +
-			(root.Find("mazeHammerRotationDegrees") ? 1u : 0u) + (root.Find("mazeHammerScale") ? 1u : 0u);
+			(root.Find("mazeHammerRotationDegrees") ? 1u : 0u) + (root.Find("mazeHammerScale") ? 1u : 0u) +
+			(root.Find("shipCamera") ? 1u : 0u) + (root.Find("shipFog") ? 1u : 0u);
 		if (nullptr == area || !root.Is_Object() || root.Get_Object().size() != expectedFields)
 		{
 			status = "Arena camera document requires eight supported fields and optional source-region/character size fields.";
@@ -126,6 +127,45 @@ namespace
 				if (!ReadFloat(sizes->Find(CLASS_SIZE_KEYS[i]), staged.classSizeMultipliers[i]))
 				{ status = "Class size tuning has an unknown/missing class or nonfinite multiplier."; return false; }
 			}
+		}
+		if (const auto* ship = root.Find("shipCamera"))
+		{
+			if (map != ARENA_CAMERA_MAP::BERN || !ship->Is_Object() || ship->Get_Object().size() != 7u)
+			{
+				status = "shipCamera is supported only for Bern and requires provenance, fovXDegrees, pitchDegrees, "
+					"yawDegrees, distanceMeters, focusOffsetYMeters and followResponse.";
+				return false;
+			}
+			const auto* provenance = ship->Find("provenance");
+			if (nullptr == provenance || !provenance->Is_String() ||
+				!ReadFloat(ship->Find("fovXDegrees"), staged.shipCamera.fovXDegrees) ||
+				!ReadFloat(ship->Find("pitchDegrees"), staged.shipCamera.pitchDegrees) ||
+				!ReadFloat(ship->Find("yawDegrees"), staged.shipCamera.yawDegrees) ||
+				!ReadFloat(ship->Find("distanceMeters"), staged.shipCamera.distanceMeters) ||
+				!ReadFloat(ship->Find("focusOffsetYMeters"), staged.shipCamera.focusOffsetYMeters) ||
+				!ReadFloat(ship->Find("followResponse"), staged.shipCamera.followResponse))
+			{
+				status = "shipCamera fields must be a provenance string and finite numbers.";
+				return false;
+			}
+			staged.shipCamera.provenance = provenance->Get_String();
+			staged.hasShipCamera = true;
+		}
+		if (const auto* shipFog = root.Find("shipFog"))
+		{
+			const auto* disable = shipFog->Find("disable");
+			if (map != ARENA_CAMERA_MAP::BERN || !shipFog->Is_Object() ||
+				shipFog->Get_Object().size() != 4u || nullptr == disable || !disable->Is_Boolean() ||
+				!ReadFloat(shipFog->Find("densityScale"), staged.shipFog.densityScale) ||
+				!ReadFloat(shipFog->Find("startDistanceMeters"), staged.shipFog.startDistanceMeters) ||
+				!ReadFloat(shipFog->Find("maximumOpacity"), staged.shipFog.maximumOpacity))
+			{
+				status = "shipFog is supported only for Bern and requires the boolean disable plus "
+					"finite densityScale, startDistanceMeters and maximumOpacity.";
+				return false;
+			}
+			staged.shipFog.disable = disable->Get_Boolean();
+			staged.hasShipFog = true;
 		}
 		if (!CArenaCameraProfile::Validate(staged, status))
 			return false;
@@ -186,7 +226,32 @@ namespace
 			<< ",\n  \"marioSizeMultiplier\": " << profile.marioSizeMultiplier
 			<< ",\n  \"mazeHammerPositionCm\": [" << profile.mazeHammerPositionCm.x << ", " << profile.mazeHammerPositionCm.y << ", " << profile.mazeHammerPositionCm.z << "]"
 			<< ",\n  \"mazeHammerRotationDegrees\": [" << profile.mazeHammerRotationDegrees.x << ", " << profile.mazeHammerRotationDegrees.y << ", " << profile.mazeHammerRotationDegrees.z << "]"
-			<< ",\n  \"mazeHammerScale\": [" << profile.mazeHammerScale.x << ", " << profile.mazeHammerScale.y << ", " << profile.mazeHammerScale.z << "]\n}\n";
+			<< ",\n  \"mazeHammerScale\": [" << profile.mazeHammerScale.x << ", " << profile.mazeHammerScale.y << ", " << profile.mazeHammerScale.z << "]";
+		if (profile.hasShipCamera)
+		{
+			std::string provenance;
+			for (const char c : profile.shipCamera.provenance)
+			{
+				if (c == '"' || c == '\\') provenance += '\\';
+				provenance += (c == '\n' || c == '\r' || c == '\t') ? ' ' : c;
+			}
+			output << ",\n  \"shipCamera\": {\n    \"provenance\": \"" << provenance << "\""
+				<< ",\n    \"fovXDegrees\": " << profile.shipCamera.fovXDegrees
+				<< ",\n    \"pitchDegrees\": " << profile.shipCamera.pitchDegrees
+				<< ",\n    \"yawDegrees\": " << profile.shipCamera.yawDegrees
+				<< ",\n    \"distanceMeters\": " << profile.shipCamera.distanceMeters
+				<< ",\n    \"focusOffsetYMeters\": " << profile.shipCamera.focusOffsetYMeters
+				<< ",\n    \"followResponse\": " << profile.shipCamera.followResponse << "\n  }";
+		}
+		if (profile.hasShipFog)
+		{
+			output << ",\n  \"shipFog\": {\n    \"disable\": "
+				<< (profile.shipFog.disable ? "true" : "false")
+				<< ",\n    \"densityScale\": " << profile.shipFog.densityScale
+				<< ",\n    \"startDistanceMeters\": " << profile.shipFog.startDistanceMeters
+				<< ",\n    \"maximumOpacity\": " << profile.shipFog.maximumOpacity << "\n  }";
+		}
+		output << "\n}\n";
 		return output.str();
 	}
 }
@@ -334,6 +399,19 @@ bool_t CArenaCameraProfile::Validate(const ARENA_CAMERA_PROFILE& profile, std::s
 		!InRange(profile.mazeHammerRotationDegrees.z, -3600.f, 3600.f) || !InRange(profile.mazeHammerScale.x, .05f, 8.f) ||
 		!InRange(profile.mazeHammerScale.y, .05f, 8.f) || !InRange(profile.mazeHammerScale.z, .05f, 8.f))
 		status = "Maze hammer requires finite position +/-1000 cm, rotation +/-3600 deg and scale 0.05..8.";
+	else if (!InRange(profile.shipCamera.fovXDegrees, 10.f, 150.f) ||
+		!InRange(profile.shipCamera.pitchDegrees, -89.f, 89.f) ||
+		!InRange(profile.shipCamera.yawDegrees, -180.f, 180.f) ||
+		!InRange(profile.shipCamera.distanceMeters, 0.1f, 1000.f) ||
+		!InRange(profile.shipCamera.focusOffsetYMeters, -100.f, 100.f) ||
+		!InRange(profile.shipCamera.followResponse, 0.f, 60.f))
+		status = "Ship camera requires FOV 10..150, pitch -89..89, yaw -180..180, distance 0.1..1000 m, "
+			"focus offset +/-100 m and response 0..60.";
+	else if (!InRange(profile.shipFog.densityScale, 0.f, 8.f) ||
+		!InRange(profile.shipFog.startDistanceMeters, -1.f, 10000.f) ||
+		!InRange(profile.shipFog.maximumOpacity, -1.f, 1.f))
+		status = "Ship fog requires densityScale 0..8, startDistanceMeters -1..10000 and "
+			"maximumOpacity -1..1, where -1 keeps the scene value.";
 	else
 	{
 		status.clear();

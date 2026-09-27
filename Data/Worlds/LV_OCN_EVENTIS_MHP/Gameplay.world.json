@@ -2,7 +2,7 @@
   "schema": "lostark.world-gameplay",
   "formatVersion": 6,
   "areaId": "LV_OCN_EVENTIS_MHP",
-  "revision": 1,
+  "revision": 2,
   "placements": [
     {
       "placementId": "player.spawn.maharaka.party01",
@@ -38,6 +38,28 @@
       "encounterId": null,
       "position": [57.55, 20.48, -982.72],
       "yawDegrees": 0.0,
+      "enabled": true
+    },
+    {
+      "placementId": "npc.maharaka.source57009.actor100",
+      "kind": "npc",
+      "archetypeId": "NPC_MAHARAKA_MOKOMOKO",
+      "encounterId": null,
+      "idleClip": null,
+      "behavior": null,
+      "position": [75.179, 19.904, -1007.262],
+      "yawDegrees": 0.0,
+      "enabled": true
+    },
+    {
+      "placementId": "npc.maharaka.source57009.actor188",
+      "kind": "npc",
+      "archetypeId": "NPC_MAHARAKA_WATERCANNON",
+      "encounterId": null,
+      "idleClip": null,
+      "behavior": null,
+      "position": [75.05, 22.36, -984.32],
+      "yawDegrees": -46.1,
       "enabled": true
     }
   ]

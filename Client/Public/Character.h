@@ -212,6 +212,8 @@ public:
 	bool_t Try_Get_SkillTargetRoot(float4x4_t& outWorld) const;
 	void Apply_NetworkStance(LostArk::Shared::PLAYER_STANCE_ID stance);
 	void Apply_NetworkPresentationHidden(bool_t hidden) { m_isNetworkPresentationHidden = hidden; }
+	/* True while riding a ship: the rider is not drawn, only the ship sails on the water. */
+	bool_t Is_ShipPresentation() const { return m_isShipPresentation; }
     // Transient cue overlays never replace replicated stance or user part visibility.
     void Set_PresentationVisibilityControls(bool_t all, bool_t weapon, bool_t identity, bool_t showIdentity);
 	/* Replication hands over the replicated vehicle. Zero dismounts. A vehicle
@@ -434,6 +436,7 @@ private:
     bool_t m_isSourcePawnHidden = false, m_isSourceWeaponHidden = false, m_isSourceIdentityHidden = false;
     bool_t m_isSourceIdentityVisible = false;
 	std::uint32_t m_iVehicleId = 0u;
+	bool_t m_isShipPresentation = false;
 	std::uint32_t m_iRejectedVehicleId = 0u;
 	shared_ptr<class CPart_Vehicle> m_pVehiclePart;
 	/* Where the looping vehicle locomotion clip sat last frame, so a ground

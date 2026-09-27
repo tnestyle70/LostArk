@@ -20,6 +20,7 @@ from build_maptool_scene import (
     imported_id,
     material_signature_from_slots,
     parse_args,
+    render_profile_text,
     scale_flags,
     source_visibility_from_chains,
     validate_source_material_geometry,
@@ -827,6 +828,46 @@ class MapToolSceneCompileTests(unittest.TestCase):
             )
             self.assertEqual(receipt["visibilityOverrideCount"], 1)
             self.assertEqual(receipt["overlayPlacementCount"], 1)
+
+
+class RenderProfileTextTests(unittest.TestCase):
+    """The catalog renderMode token the map publisher accepts.
+
+    Publish-MapAuthoring.ps1 accepts Opaque/Alpha/Sky/Additive/Water for this token. Water is
+    what the water material family needs; before this was accepted a catalog rebuild demoted
+    those rows to Opaque without reporting anything.
+    """
+
+    def mode_of(self, profile):
+        return render_profile_text(profile).split(" ", 1)[0]
+
+    def test_water_render_mode_round_trips(self):
+        self.assertEqual(self.mode_of({"renderMode": "Water"}), "Water")
+        self.assertEqual(
+            render_profile_text({"renderMode": "Water", "cullMode": "Front"}).split(" ")[:2],
+            ["Water", "Front"],
+        )
+
+    def test_previously_accepted_modes_are_unchanged(self):
+        for mode in ("Opaque", "Alpha", "Sky", "Additive"):
+            with self.subTest(mode=mode):
+                self.assertEqual(self.mode_of({"renderMode": mode}), mode)
+
+    def test_default_profile_is_still_opaque_back(self):
+        self.assertEqual(render_profile_text(None).split(" ")[:2], ["Opaque", "Back"])
+        self.assertEqual(render_profile_text({}).split(" ")[:2], ["Opaque", "Back"])
+
+    def test_unknown_render_mode_is_still_rejected(self):
+        for mode in ("water", "WATER", "Translucent", "Masked", ""):
+            with self.subTest(mode=mode):
+                with self.assertRaisesRegex(ValueError, "invalid renderMode"):
+                    render_profile_text({"renderMode": mode})
+
+    def test_water_still_validates_the_rest_of_the_profile(self):
+        with self.assertRaisesRegex(ValueError, "invalid cullMode"):
+            render_profile_text({"renderMode": "Water", "cullMode": "Both"})
+        with self.assertRaisesRegex(ValueError, "invalid numeric value"):
+            render_profile_text({"renderMode": "Water", "opacity": 2.0})
 
 
 if __name__ == "__main__":

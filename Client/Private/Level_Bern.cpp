@@ -9,7 +9,10 @@
 
 #include "Level_Bern.h"
 
+#include "ActorCatalog.h"
 #include "Camera_Free.h"
+#include "CombatHUDViewModel.h"
+#include "EffectFailureDiagnostic.h"
 #include "Character.h"
 #include "DataJson.h"
 #include "GameInstance.h"
@@ -455,6 +458,7 @@ HRESULT CLevel_Bern::Initialize()
 			"[Level_Bern] Item Upgrade NPC (npc.bern.schmidt) position "
 			"unavailable; right-click interaction is disabled.\n");
 	}
+	(void)Ready_ShipNpcs(pEntry->pMapAreaId);
 	m_pValtanEntryView = std::make_unique<CRaidEntryPreviewView>(
 		m_pDevice, m_pContext, ETOUI(LEVEL::BERN));
 
@@ -593,6 +597,9 @@ void CLevel_Bern::Update(f32_t fTimeDelta)
 	Poll_RaidEntryVote();
 	Update_ItemUpgradeNpcInteraction();
 	Advance_ItemUpgradeNpcWalk();
+	Update_ShipNpcInteraction();
+	Advance_ShipNpcWalk();
+	Update_ShipCamera();
 	if (Is_ValtanEntryModalOpen())
 	{
 		CGameInstance::Get().SetMouseButtonBlocked(DIM::LB, true);
@@ -1261,6 +1268,226 @@ void CLevel_Bern::Advance_ItemUpgradeNpcWalk()
 	m_isWalkingToItemUpgradeNpc = false;
 	if (CMainApp* pMainApp = CMainApp::Get_Active())
 		pMainApp->Open_ItemUpgradeWindow();
+}
+
+
+bool_t CLevel_Bern::Ready_ShipNpcs(const std::string& areaId)
+{
+	m_ShipNpcPositions.clear();
+	m_iWalkingToShipNpc = -1;
+
+	const std::filesystem::path documentPath = CProjectDataRoot::Resolve(
+		std::filesystem::path("Worlds") / areaId / "Gameplay.world.json");
+	std::error_code pathError;
+	if (documentPath.empty() ||
+		!std::filesystem::is_regular_file(documentPath, pathError) || pathError)
+	{
+		Write_EffectFailureDiagnostic("ship.npc.ready",
+			"area=" + areaId + " count=0 reason=world document missing: " + documentPath.string());
+		return false;
+	}
+
+	CWorldGameplayDocument document;
+	std::string status;
+	if (!document.Load(documentPath, areaId, status))
+	{
+		Write_EffectFailureDiagnostic("ship.npc.ready",
+			"area=" + areaId + " count=0 reason=world document rejected: " + status);
+		return false;
+	}
+
+	constexpr const char* SHIP_NPC_ARCHETYPE_PREFIX = "NPC_SHIP_";
+	for (const WORLD_GAMEPLAY_PLACEMENT& placement : document.Get_Placements())
+	{
+		if (WORLD_PLACEMENT_KIND::NPC == placement.eKind && placement.isEnabled &&
+			0 == placement.archetypeId.rfind(SHIP_NPC_ARCHETYPE_PREFIX, 0))
+		{
+			m_ShipNpcPositions.push_back(placement.position);
+		}
+	}
+	Write_EffectFailureDiagnostic("ship.npc.ready",
+		"area=" + areaId + " count=" + std::to_string(m_ShipNpcPositions.size()) +
+		" doc=" + documentPath.string());
+	return !m_ShipNpcPositions.empty();
+}
+
+void CLevel_Bern::Update_ShipNpcInteraction()
+{
+	const bool_t isRightMouseDown =
+		0 != (CGameInstance::Get().Get_DIMouseStateRaw(DIM::RB) & 0x80);
+	const bool_t isRightMousePressed =
+		isRightMouseDown && !m_wasRightMouseDownForShipNpcInteract;
+	m_wasRightMouseDownForShipNpcInteract = isRightMouseDown;
+
+	const shared_ptr<CCharacter> localCharacter =
+		m_Replication.Get_LocalCharacter();
+	if (m_ShipNpcPositions.empty() || !isRightMousePressed ||
+		0 == (CGameInstance::Get().Get_DIMouseState(DIM::RB) & 0x80) ||
+		nullptr == localCharacter ||
+		nullptr == m_pCamera || !m_pCamera->Is_FollowEnabled())
+	{
+		return;
+	}
+
+	vector_t rayOrigin{}, rayDirection{};
+	if (!CPlayerController::Try_PickWorldRay(rayOrigin, rayDirection))
+		return;
+	rayDirection = XMVector3Normalize(rayDirection);
+
+	/* The NPC nearest to the click ray wins when two of them stand close together. */
+	constexpr f32_t NPC_CLICK_RADIUS = 1.5f;
+	int32_t iPicked = -1;
+	f32_t fBestDistanceSq = NPC_CLICK_RADIUS * NPC_CLICK_RADIUS;
+	for (size_t i = 0; i < m_ShipNpcPositions.size(); ++i)
+	{
+		const vector_t vNpcPos = XMLoadFloat3(&m_ShipNpcPositions[i]);
+		const f32_t fRayParameter = XMVectorGetX(XMVector3Dot(
+			XMVectorSubtract(vNpcPos, rayOrigin), rayDirection));
+		if (fRayParameter < 0.f)
+			continue;
+		const vector_t vClosestPoint = XMVectorAdd(
+			rayOrigin, XMVectorScale(rayDirection, fRayParameter));
+		const f32_t fDistanceSq = XMVectorGetX(XMVector3LengthSq(
+			XMVectorSubtract(vNpcPos, vClosestPoint)));
+		if (fDistanceSq <= fBestDistanceSq)
+		{
+			fBestDistanceSq = fDistanceSq;
+			iPicked = static_cast<int32_t>(i);
+		}
+	}
+	if (iPicked < 0)
+		return;
+
+	m_PlayerController.Suppress_MoveClickThisFrame();
+	CGameInstance::Get().SetMouseButtonBlocked(DIM::RB, true);
+	m_iWalkingToShipNpc = iPicked;
+	Write_EffectFailureDiagnostic("ship.npc.clicked",
+		"index=" + std::to_string(iPicked) + " npc=" +
+		std::to_string(m_ShipNpcPositions[static_cast<size_t>(iPicked)].x) + "," +
+		std::to_string(m_ShipNpcPositions[static_cast<size_t>(iPicked)].y) + "," +
+		std::to_string(m_ShipNpcPositions[static_cast<size_t>(iPicked)].z));
+
+	/* Stop just inside interaction range on the side the character already stands. */
+	const float3_t& npcPosition = m_ShipNpcPositions[static_cast<size_t>(iPicked)];
+	const vector_t vNpcPos = XMLoadFloat3(&npcPosition);
+	const shared_ptr<CTransform> transform = localCharacter->Get_Transform();
+	if (nullptr != transform)
+	{
+		vector_t vTowardCharacter = XMVectorSubtract(transform->Get_State(STATE::POSITION), vNpcPos);
+		vTowardCharacter = XMVectorSetY(vTowardCharacter, 0.f);
+		constexpr f32_t INTERACTION_RADIUS = 3.f;
+		float3_t goal{};
+		if (XMVectorGetX(XMVector3LengthSq(vTowardCharacter)) < 0.01f)
+		{
+			goal = npcPosition;
+		}
+		else
+		{
+			vTowardCharacter = XMVector3Normalize(vTowardCharacter);
+			XMStoreFloat3(&goal, XMVectorAdd(
+				vNpcPos, XMVectorScale(vTowardCharacter, INTERACTION_RADIUS * 0.7f)));
+			goal.y = npcPosition.y;
+		}
+		m_PlayerController.Request_MoveToPoint(goal);
+	}
+}
+
+void CLevel_Bern::Advance_ShipNpcWalk()
+{
+	if (m_iWalkingToShipNpc < 0)
+		return;
+
+	const shared_ptr<CCharacter> localCharacter = m_Replication.Get_LocalCharacter();
+	if (nullptr == localCharacter ||
+		static_cast<size_t>(m_iWalkingToShipNpc) >= m_ShipNpcPositions.size())
+	{
+		m_iWalkingToShipNpc = -1;
+		return;
+	}
+	const shared_ptr<CTransform> transform = localCharacter->Get_Transform();
+	if (nullptr == transform)
+		return;
+
+	constexpr f32_t INTERACTION_RADIUS = 3.f;
+	const vector_t vDelta = XMVectorSubtract(transform->Get_State(STATE::POSITION),
+		XMLoadFloat3(&m_ShipNpcPositions[static_cast<size_t>(m_iWalkingToShipNpc)]));
+	if (XMVectorGetX(XMVector3LengthSq(XMVectorSetY(vDelta, 0.f))) >
+		INTERACTION_RADIUS * INTERACTION_RADIUS)
+	{
+		return;
+	}
+
+	m_iWalkingToShipNpc = -1;
+	if (CMainApp* pMainApp = CMainApp::Get_Active())
+	{
+		Write_EffectFailureDiagnostic("ship.window.open",
+			"requested: the character is inside the ship NPC interaction radius");
+		pMainApp->Open_ShipWindow();
+	}
+}
+
+void CLevel_Bern::Update_ShipCamera()
+{
+	if (nullptr == m_pCamera)
+		return;
+
+	const HUD_PLAYER_STATE& player = CCombatHUDViewModel::Get().Get_Player();
+	const VEHICLE_ACTOR_ENTRY* pVehicle = (player.isValid && 0u != player.iVehicleId) ?
+		CActorCatalog::Find_Vehicle(player.iVehicleId) : nullptr;
+	const bool_t onShip = nullptr != pVehicle && pVehicle->isShip;
+	if (onShip == m_bShipCameraActive)
+		return;
+
+	const ARENA_CAMERA_PROFILE& base = m_FollowCameraProfile;
+	const float3_t look = CArenaCameraProfile::LookOffset(base);
+	if (!onShip)
+	{
+		if (m_pCamera->Set_FollowPose(base.positionOffset, look, base.rotationDegrees.z,
+			base.fovYDegrees, base.followResponse))
+		{
+			m_bShipCameraActive = false;
+			Write_EffectFailureDiagnostic("ship.camera.applied",
+				"restored the map camera: distance=" + std::to_string(base.focusDistance) +
+				" fovY=" + std::to_string(base.fovYDegrees));
+		}
+		return;
+	}
+
+	/* EFTable_CameraSetting 1001 step 1, the Camera_Ocean row of every EFTable_VoyageShip base ship,
+	   converted with the (x, z, -y) basis of the 2026-09-14 camera restoration. The lens lives in
+	   Data/Camera/Bern.camera.json "shipCamera" (defaults in ARENA_SHIP_CAMERA). Pitch and yaw are
+	   absolute like the map camera, the focus offset is the source RelativeZ, and the FOV is the
+	   horizontal one at 16:9 converted to the vertical FOV Set_FollowPose takes. */
+	const ARENA_SHIP_CAMERA& lens = base.shipCamera;
+	const f32_t fovY = XMConvertToDegrees(2.f * atanf(
+		tanf(XMConvertToRadians(lens.fovXDegrees) * 0.5f) * 9.f / 16.f));
+	const auto rotation = XMMatrixRotationRollPitchYaw(
+		XMConvertToRadians(lens.pitchDegrees), XMConvertToRadians(lens.yawDegrees), 0.f);
+	float3_t forward;
+	XMStoreFloat3(&forward, XMVector3TransformNormal(XMVectorSet(0.f, 0.f, 1.f, 0.f), rotation));
+	const float3_t shipLook(0.f, lens.focusOffsetYMeters, 0.f);
+	const float3_t eye(
+		shipLook.x - forward.x * lens.distanceMeters,
+		shipLook.y - forward.y * lens.distanceMeters,
+		shipLook.z - forward.z * lens.distanceMeters);
+	const bool_t applied = m_pCamera->Set_FollowPose(
+		eye, shipLook, base.rotationDegrees.z, fovY, lens.followResponse);
+	/* One line per boarding. The lens that was asked for is readable from the diagnostic
+	   log, so a framing complaint can be told apart from a lens that never applied. */
+	Write_EffectFailureDiagnostic("ship.camera.applied",
+		"vehicle=" + std::to_string(player.iVehicleId) +
+		" applied=" + std::string(applied ? "1" : "0") +
+		" distance=" + std::to_string(lens.distanceMeters) +
+		" fovX=" + std::to_string(lens.fovXDegrees) +
+		" fovY=" + std::to_string(fovY) +
+		" mapDistance=" + std::to_string(base.focusDistance) +
+		" mapFovY=" + std::to_string(base.fovYDegrees) +
+		" pitch=" + std::to_string(lens.pitchDegrees) +
+		" yaw=" + std::to_string(lens.yawDegrees) +
+		" eye=" + std::to_string(eye.x) + "," + std::to_string(eye.y) +
+		"," + std::to_string(eye.z));
+	if (applied)
+		m_bShipCameraActive = true;
 }
 
 bool_t CLevel_Bern::Is_ValtanEntryModalOpen() const

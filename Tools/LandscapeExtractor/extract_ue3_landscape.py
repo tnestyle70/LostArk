@@ -2015,6 +2015,39 @@ def sample_image_repeat(image: ImageRgba, u: float, v: float) -> tuple[float, fl
     return red / 255.0, green / 255.0, blue / 255.0, alpha / 255.0
 
 
+def srgb_to_linear(value: float) -> float:
+    return value / 12.92 if value <= 0.04045 else ((value + 0.055) / 1.055) ** 2.4
+
+
+def linear_to_srgb(value: float) -> float:
+    value = max(0.0, value)
+    return value * 12.92 if value <= 0.0031308 else 1.055 * value ** (1.0 / 2.4) - 0.055
+
+
+SRGB_BYTE_TO_LINEAR = tuple(srgb_to_linear(value / 255.0) for value in range(256))
+
+
+def sample_layer_diffuse(layer: dict[str, Any], u: float, v: float) -> tuple[float, float, float, float]:
+    if not layer.get("linearColorBake", False):
+        return sample_image_repeat(layer["diffuse"], u, v)
+    # Match an sRGB SRV: decode each texel BEFORE bilinear interpolation. Alpha
+    # remains linear; it is a height/blend input, not an RGB colour channel.
+    image = layer["diffuse"]
+    x, y = (u % 1.0) * image.width - 0.5, (v % 1.0) * image.height - 0.5
+    ix, iy = math.floor(x), math.floor(y)
+    fx, fy = x - ix, y - iy
+    result = [0.0] * 4
+    for dx, dy, weight in ((0, 0, (1-fx)*(1-fy)), (1, 0, fx*(1-fy)),
+                           (0, 1, (1-fx)*fy), (1, 1, fx*fy)):
+        pixel = image.pixels[((iy+dy) % image.height) * image.width + (ix+dx) % image.width]
+        for channel in range(4):
+            value = pixel[channel] / 255.0
+            if channel < 3 and layer["diffuseSrgb"]:
+                value = SRGB_BYTE_TO_LINEAR[pixel[channel]]
+            result[channel] += value * weight
+    return tuple(result)
+
+
 def texture_coordinate(value: float, subsection_size: int) -> float:
     return value if value <= subsection_size else value + 1.0
 
@@ -2123,6 +2156,8 @@ def build_layer_sources(
         first_layer = layers[sorted(layers)[0]]
         layers["layercliff"] = dict(first_layer)
         layers["layercliff"]["fallbackFromLayer"] = sorted(layers)[0]
+    for layer_source in layers.values():
+        layer_source["headroomScale"] = layer_headroom_scale(layer_source)
     return layers
 
 
@@ -2239,8 +2274,8 @@ def sample_cliff_projection(
         world_point[1] / vertical_span * layer["tiling"],
         layer["rotation"],
     )
-    sample_x = sample_image_repeat(image, *uv_x)
-    sample_z = sample_image_repeat(image, *uv_z)
+    sample_x = sample_layer_diffuse(layer, *uv_x) if image is layer["diffuse"] else sample_image_repeat(image, *uv_x)
+    sample_z = sample_layer_diffuse(layer, *uv_z) if image is layer["diffuse"] else sample_image_repeat(image, *uv_z)
     weight_x = abs(source_normal[0])
     weight_z = abs(source_normal[2])
     weight_sum = weight_x + weight_z
@@ -2286,15 +2321,43 @@ def cliff_face_uv(
     )
 
 
+def layer_headroom_scale(layer: dict[str, Any]) -> float:
+    """Largest factor <= 1.0 that keeps this layer's own albedo inside [0, 1]."""
+    image = layer.get("diffuse")
+    if image is None:
+        return 1.0
+    desaturation = layer["desaturation"]
+    brightness = layer["brightness"]
+    color = layer["color"]
+    peak = 0.0
+    for pixel in image.pixels:
+        red = pixel[0] / 255.0
+        green = pixel[1] / 255.0
+        blue = pixel[2] / 255.0
+        luminance = red * 0.299 + green * 0.587 + blue * 0.114
+        for channel, value in enumerate((red, green, blue)):
+            adjusted = (
+                (value * (1.0 - desaturation) + luminance * desaturation)
+                * brightness
+                * color[channel]
+            )
+            if adjusted > peak:
+                peak = adjusted
+    if peak <= 1.0:
+        return 1.0
+    return 1.0 / peak
+
+
 def adjusted_layer_diffuse(
     sample: Sequence[float],
     layer: dict[str, Any],
 ) -> tuple[float, float, float]:
     red, green, blue = sample[:3]
-    luminance = red * 0.299 + green * 0.587 + blue * 0.114
+    luminance_weights = layer.get("luminanceWeights", (0.299, 0.587, 0.114))
+    luminance = sum(value * weight for value, weight in zip((red, green, blue), luminance_weights))
     desaturation = layer["desaturation"]
     color = layer["color"]
-    return (
+    unclamped = (
         (red * (1.0 - desaturation) + luminance * desaturation)
         * layer["brightness"]
         * color[0],
@@ -2304,6 +2367,23 @@ def adjusted_layer_diffuse(
         (blue * (1.0 - desaturation) + luminance * desaturation)
         * layer["brightness"]
         * color[2],
+    )
+    if layer.get("linearColorBake", False):
+        # Keep source brightness/tint in linear light. A per-texture peak gain
+        # changes the authored material; it is not an inverse tone mapper.
+        return tuple(max(0.0, component) for component in unclamped)
+    # brightness/color are authored for the original HDR lighting pass, where a product
+    # above 1.0 is compressed again by the scene tone mapper. This bake writes a plain
+    # 8-bit albedo, so everything above 1.0 is lost to the byte clamp: a layer authored at
+    # brightness 4.0 clamps most of its texels to the same ceiling and paints a flat
+    # fluorescent blob with no texture detail left. headroomScale -- computed once per
+    # layer so that the layer's brightest source texel lands exactly at 1.0 -- keeps the
+    # authored hue and the full texture detail, and is 1.0 for layers already in range.
+    scale = layer.get("headroomScale", 1.0)
+    return (
+        min(1.0, max(0.0, unclamped[0] * scale)),
+        min(1.0, max(0.0, unclamped[1] * scale)),
+        min(1.0, max(0.0, unclamped[2] * scale)),
     )
 
 
@@ -2318,14 +2398,39 @@ def decoded_layer_normal(
     )
 
 
+def source_landscape_uv(x: float, y: float, layer: dict[str, Any], scale: float) -> tuple[float, float]:
+    """Landscape VF section coordinates, then the source half-centred rotator."""
+    if not math.isfinite(scale) or scale <= 0:
+        raise LandscapeError("source Landscape UV scale must be finite and positive")
+    u, v = rotate_uv(x * scale - 0.5, y * scale - 0.5, layer["rotation"])
+    return (u + 0.5) * layer["tiling"], (v + 0.5) * layer["tiling"]
+
+
+def source_landscape_weights(weights: Sequence[float], heights: Sequence[float],
+                             modes: Sequence[str]) -> list[float]:
+    """Source DXBC: saturate(2*paint-1+height), sum, max(sum, .0001)."""
+    if len(weights) != len(heights) or len(weights) != len(modes):
+        raise LandscapeError("source blend lane counts differ")
+    if any(mode not in ("weight", "height") for mode in modes):
+        raise LandscapeError("unsupported source blend operation")
+    values = [weight if mode == "weight" else max(0.0, min(1.0, weight * 2.0 - 1.0 + height))
+              for weight, height, mode in zip(weights, heights, modes)]
+    denominator = max(sum(values), 0.0001)
+    return [value / denominator for value in values]
+
+
 def bake_component_textures(
     component: LandscapeComponent,
     proxy: LandscapeProxy,
     layers: dict[str, dict[str, Any]],
     resolution: int,
+    source_layer_contract: dict[str, Any] | None = None,
 ) -> tuple[ImageRgba, ImageRgba, ImageRgba, dict[str, Any]]:
     if resolution < 64 or resolution > 2048:
         raise LandscapeError("bake resolution must be between 64 and 2048")
+    linear_color_bake = all(layer.get("linearColorBake", False) for layer in layers.values())
+    if not linear_color_bake and any(layer.get("linearColorBake", False) for layer in layers.values()):
+        raise LandscapeError("a component cannot mix linear and legacy colour baking")
     visual_allocations = [
         allocation
         for allocation in component.allocations
@@ -2344,6 +2449,18 @@ def bake_component_textures(
         raise LandscapeError(
             f"component {component.export_index} has unmapped material layers {missing_layers}"
         )
+    if source_layer_contract is not None:
+        if not linear_color_bake:
+            raise LandscapeError("source layer blending requires linear colour inputs")
+        if set(source_layer_contract) != {"uvScale", "diffuseBlend", "normalBlend", "shaderMapKey"}:
+            raise LandscapeError("source layer contract fields differ")
+        if not re.fullmatch(r"[0-9a-f]{64}", source_layer_contract["shaderMapKey"]):
+            raise LandscapeError("source layer shader map identity is missing")
+        for allocation in visual_allocations:
+            name = allocation.layer_name.casefold()
+            for field in ("diffuseBlend", "normalBlend"):
+                if source_layer_contract[field].get(name) not in ("weight", "height"):
+                    raise LandscapeError("source layer has no supported blend: " + name)
     cliff_layer = layers.get("layercliff")
     if cliff_layer is None:
         raise LandscapeError("master Landscape material has no layercliff source")
@@ -2372,30 +2489,39 @@ def bake_component_textures(
                 sample_component_weight(component, allocation, local_x, local_y)
                 for allocation in visual_allocations
             ]
-            weight_sum = sum(weights)
-            if weight_sum <= 1.0e-8:
-                weights = [1.0] + [0.0] * (len(weights) - 1)
-                weight_sum = 1.0
-            weights = [weight / weight_sum for weight in weights]
+            if source_layer_contract is None:
+                weight_sum = sum(weights)
+                if weight_sum <= 1.0e-8:
+                    weights = [1.0] + [0.0] * (len(weights) - 1)
+                    weight_sum = 1.0
+                weights = [weight / weight_sum for weight in weights]
+            samples = []
+            uvs = []
+            for allocation in visual_allocations:
+                layer = layers[allocation.layer_name.casefold()]
+                x, y = component.section_base_x + local_x, component.section_base_y + local_y
+                uv = source_landscape_uv(x, y, layer, source_layer_contract["uvScale"]) if source_layer_contract else rotate_uv(
+                    x / component.component_size_quads * layer["tiling"],
+                    y / component.component_size_quads * layer["tiling"], layer["rotation"])
+                uvs.append(uv)
+                samples.append(sample_layer_diffuse(layer, *uv))
+            normal_weights = weights
+            if source_layer_contract is not None:
+                names = [allocation.layer_name.casefold() for allocation in visual_allocations]
+                heights = [sample[3] for sample in samples]
+                normal_weights = source_landscape_weights(weights, heights,
+                    [source_layer_contract["normalBlend"][name] for name in names])
+                weights = source_landscape_weights(weights, heights,
+                    [source_layer_contract["diffuseBlend"][name] for name in names])
 
             diffuse_accumulator = [0.0, 0.0, 0.0]
             normal_accumulator = [0.0, 0.0, 0.0]
-            for allocation, weight in zip(visual_allocations, weights):
+            for allocation, weight, normal_weight, sample, uv in zip(visual_allocations, weights, normal_weights, samples, uvs):
                 layer_name = allocation.layer_name.casefold()
                 layer = layers[layer_name]
-                world_u = (
-                    component.section_base_x + local_x
-                ) / component.component_size_quads
-                world_v = (
-                    component.section_base_y + local_y
-                ) / component.component_size_quads
-                uv_u, uv_v = rotate_uv(
-                    world_u * layer["tiling"],
-                    world_v * layer["tiling"],
-                    layer["rotation"],
-                )
+                uv_u, uv_v = uv
                 adjusted = adjusted_layer_diffuse(
-                    sample_image_repeat(layer["diffuse"], uv_u, uv_v),
+                    sample,
                     layer,
                 )
                 for channel in range(3):
@@ -2403,18 +2529,24 @@ def bake_component_textures(
 
                 if layer["normal"] is None:
                     sampled_normal = (0.0, 0.0, 1.0)
+                elif source_layer_contract is not None:
+                    normal_sample = sample_layer_diffuse(dict(diffuse=layer["normal"],
+                        linearColorBake=True, diffuseSrgb=False), uv_u, uv_v)
+                    nx, ny = normal_sample[0] * 2.0 - 1.0, normal_sample[1] * 2.0 - 1.0
+                    sampled_normal = (nx * layer["normalIntensity"], ny * layer["normalIntensity"],
+                        math.sqrt(max(0.0, 1.0 - nx * nx - ny * ny)) + 0.00001)
                 else:
                     sampled_normal = decoded_layer_normal(
                         sample_image_repeat(layer["normal"], uv_u, uv_v),
                         layer,
                     )
                 for channel in range(3):
-                    normal_accumulator[channel] += sampled_normal[channel] * weight
+                    normal_accumulator[channel] += sampled_normal[channel] * normal_weight
 
             source_normal = sample_component_source_normal(
                 component, local_x, local_y
             )
-            cliff_weight = cliff_blend_weight(source_normal[1])
+            cliff_weight = cliff_blend_weight(source_normal[1]) if source_layer_contract is None else 0.0
             if cliff_weight > 0.0:
                 world_point = component_world_point(
                     component, proxy, local_x, local_y
@@ -2452,6 +2584,8 @@ def bake_component_textures(
                         + cliff_normal[channel] * cliff_weight
                     )
 
+            if source_layer_contract is not None:
+                normal_accumulator[2] += 0.001
             normal_length = math.sqrt(
                 sum(component_value * component_value for component_value in normal_accumulator)
             )
@@ -2470,6 +2604,8 @@ def bake_component_textures(
                 else 0.0
             )
             alpha = 0 if is_ue3_landscape_hole(hole_weight * 255.0) else 255
+            if linear_color_bake:
+                diffuse_accumulator = [linear_to_srgb(value) for value in diffuse_accumulator]
             diffuse_pixels.append(
                 (
                     clamp_byte(diffuse_accumulator[0] * 255.0),
@@ -2497,15 +2633,21 @@ def bake_component_textures(
             "authoritative": False,
             "visualLayers": visual_layer_set,
             "cliffLayer": "layercliff",
-            "cliffProjection": "height-aware-side-projection",
-            "cliffBlendSteepUp": CLIFF_BLEND_STEEP_UP,
-            "cliffBlendFlatUp": CLIFF_BLEND_FLAT_UP,
+            "cliffProjection": "source-painted-layer" if source_layer_contract else "height-aware-side-projection",
+            "cliffBlendSteepUp": None if source_layer_contract else CLIFF_BLEND_STEEP_UP,
+            "cliffBlendFlatUp": None if source_layer_contract else CLIFF_BLEND_FLAT_UP,
             "holeLayer": hole_allocation.layer_name if hole_allocation else None,
             "holeThreshold": UE3_LANDSCAPE_HOLE_THRESHOLD,
             "holeThresholdComparison": ">",
             "renderHoleMode": "top-left-owned-quad-topology",
             "resolution": resolution,
+            "sourceLayerContract": source_layer_contract,
             "limitations": [
+                "source DXBC diffuse/normal blend and top UV are baked; the full GPU material is not executed",
+                "8-bit output does not preserve HDR; RNM/lightmaps and dynamic reflection are not restored",
+                "existing separately cooked side geometry and its UVs are unchanged",
+                "raw Weightmaps and original material parameters remain authoritative",
+            ] if source_layer_contract else [
                 "UE3 Landscape material graph is not executed",
                 "cliff blend thresholds and side projection are a deterministic approximation",
                 "raw Weightmaps and original material parameters remain authoritative",

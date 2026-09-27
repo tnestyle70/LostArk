@@ -9,6 +9,7 @@
 
 #include "AnimationSkillBindingDocument.h"
 #include "ActorCatalog.h"
+#include "EffectFailureDiagnostic.h"
 #include "ArenaCameraProfile.h"
 #include "CharacterCatalog.h"
 #include "KoukuSaydonPresentationAssetService.h"
@@ -3464,6 +3465,7 @@ void CCharacter::Apply_NetworkVehicle(const std::uint32_t vehicleId)
 		desc.strIdleClip = pVehicle->vehicleIdleClip;
 		desc.strRunClip = pVehicle->vehicleRunClip;
 		desc.strSeatBone = pVehicle->seatBone;
+		desc.vSeatOffset = pVehicle->seatOffset;
 		shared_ptr<CPartObject> pObject;
 		if (FAILED(__super::Clone_PartObject(m_iPrototypeLevelIndex,
 				TEXT("Prototype_GameObject_Part_Vehicle"), &desc, pObject)) ||
@@ -3505,6 +3507,18 @@ void CCharacter::Apply_NetworkVehicle(const std::uint32_t vehicleId)
 	m_iVehicleId = vehicleId;
 	m_iRejectedVehicleId = 0u;
 	m_pVehiclePart = pPart;
+	{
+		/* A ship carries no visible rider: the original sails the ship alone over the sea. */
+		const VEHICLE_ACTOR_ENTRY* pMounted = 0u == vehicleId ? nullptr : CActorCatalog::Find_Vehicle(vehicleId);
+		const bool_t isShip = nullptr != pMounted && pMounted->isShip && nullptr != pPart;
+		if (isShip != m_isShipPresentation)
+		{
+			m_isShipPresentation = isShip;
+			Write_EffectFailureDiagnostic("ship.rider.hidden", std::string(m_isLocallyControlled ? "local" : "remote") +
+				(isShip ? " boarded ship " + std::to_string(vehicleId) + ": the rider body, gear and nameplate are hidden, only the ship is drawn"
+				        : std::string(" left the ship: the rider is drawn again")));
+		}
+	}
 	m_fPreviousVehicleCueAgeSeconds = -1.f;
 	if (nullptr != m_pVehiclePart)
 	{
@@ -3989,6 +4003,12 @@ void CCharacter::Late_Update(f32_t fTimeDelta)
 	// Skip the composite part render queues without changing equipment visibility.
     Set_PresentationVisibilityControls(m_isSourcePawnHidden, m_isSourceWeaponHidden, m_isSourceIdentityHidden, m_isSourceIdentityVisible);
 	if (m_isNetworkPresentationHidden || m_isSourcePawnHidden) return;
+	if (m_isShipPresentation && nullptr != m_pVehiclePart)
+	{
+		/* The ship sails alone: submit only the ship, never the rider body or its equipment. */
+		m_pVehiclePart->Late_Update(fTimeDelta);
+		return;
+	}
 	__super::Late_Update(fTimeDelta);
 
 	/* Face sliders compose onto whatever the animation posed this frame; they

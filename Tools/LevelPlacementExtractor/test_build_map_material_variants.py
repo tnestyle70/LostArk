@@ -800,5 +800,126 @@ class CasInstallTests(unittest.TestCase):
                 self.assertFalse(resources.exists())
 
 
+class InstallPruneGuardTests(unittest.TestCase):
+    """install_runtime_area replaces the whole area, so a short manifest must not silently
+    destroy installed assets. These fixtures live in a temporary directory only."""
+
+    @staticmethod
+    def write_manifest(path: Path, area_id: str, runtime: Path, asset_ids: list[str]) -> None:
+        assets = []
+        for asset_id in asset_ids:
+            source = runtime / asset_id / f"{asset_id}.wmodel"
+            source.parent.mkdir(parents=True, exist_ok=True)
+            source.write_bytes(b"model-" + asset_id.encode("ascii"))
+            relative = f"{asset_id}/{asset_id}.wmodel"
+            assets.append(
+                {
+                    "assetId": asset_id,
+                    "runtimeCoverage": {
+                        "textureDependencyClosureComplete": True,
+                        "textureSlotsComplete": True,
+                        "materialComplete": True,
+                    },
+                    "sourceOnlyUnsupported": [],
+                    "files": [
+                        {
+                            "source": relative,
+                            "path": relative,
+                            "sha256": tool.sha256_file(source),
+                        }
+                    ],
+                }
+            )
+        path.write_text(
+            json.dumps(
+                {
+                    "schemaVersion": 1,
+                    "areaId": area_id,
+                    "assetCount": len(assets),
+                    "assets": assets,
+                }
+            ),
+            encoding="utf-8",
+        )
+
+    def install(self, root: Path, asset_ids: list[str], **kwargs) -> dict:
+        area_id = "LV_TEST"
+        manifest = root / "runtime.json"
+        runtime = root / "runtime"
+        self.write_manifest(manifest, area_id, runtime, asset_ids)
+        return tool.install_runtime_area(
+            manifest,
+            runtime,
+            root / "Resources",
+            area_id=area_id,
+            expect_variants=len(asset_ids),
+            **kwargs,
+        )
+
+    def installed_assets(self, root: Path) -> set[str]:
+        area = root / "Resources" / "Map" / "LV_TEST"
+        return {
+            child.name
+            for child in area.iterdir()
+            if child.is_dir()
+        }
+
+    def test_missing_assets_are_preserved_and_reported_without_the_flag(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            self.install(root, [f"A{index:02d}" for index in range(4)])
+            with self.assertRaisesRegex(tool.VariantError, "--prune-missing"):
+                self.install(root, ["A00"])
+            self.assertEqual(
+                {"A00", "A01", "A02", "A03"}, self.installed_assets(root)
+            )
+
+    def test_small_prune_with_the_flag_removes_assets_and_records_the_decision(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            original = [f"A{index:02d}" for index in range(60)]
+            self.install(root, original)
+            receipt = self.install(root, original[:55], prune_missing=True)
+            self.assertEqual(set(original[:55]), self.installed_assets(root))
+            prune = receipt["installPrune"]
+            self.assertEqual(60, prune["previousAssetCount"])
+            self.assertEqual(55, prune["preservedAssetCount"])
+            self.assertEqual(5, prune["droppedAssetCount"])
+            self.assertEqual(original[55:], prune["droppedAssets"])
+            self.assertTrue(prune["pruneMissingRequested"])
+
+    def test_prune_over_the_absolute_cap_is_refused_even_with_the_flag(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            original = [f"A{index:02d}" for index in range(60)]
+            self.install(root, original)
+            # 11 dropped is inside the 20% fraction cap (12) but over the absolute cap (10).
+            with self.assertRaisesRegex(tool.VariantError, "safety cap"):
+                self.install(root, original[:49], prune_missing=True)
+            self.assertEqual(set(original), self.installed_assets(root))
+
+    def test_prune_over_the_fraction_cap_is_refused_on_a_small_area(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            original = [f"A{index:02d}" for index in range(5)]
+            self.install(root, original)
+            # 2 dropped is inside the absolute cap but over 20% of a five-asset area.
+            with self.assertRaisesRegex(tool.VariantError, "safety cap"):
+                self.install(root, original[:3], prune_missing=True)
+            self.assertEqual(set(original), self.installed_assets(root))
+
+    def test_adding_and_updating_assets_is_unchanged(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            receipt = self.install(root, ["A00", "A01"])
+            self.assertEqual(0, receipt["installPrune"]["droppedAssetCount"])
+            self.assertFalse(receipt["installPrune"]["pruneMissingRequested"])
+            grown = self.install(root, ["A00", "A01", "A02"])
+            self.assertEqual({"A00", "A01", "A02"}, self.installed_assets(root))
+            self.assertEqual(0, grown["installPrune"]["droppedAssetCount"])
+            self.assertEqual(2, grown["installPrune"]["previousAssetCount"])
+            self.assertEqual(2, grown["installPrune"]["preservedAssetCount"])
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -1,0 +1,622 @@
+{
+  "schema": "lostark.map-water-presentation",
+  "formatVersion": 1,
+  "areaId": "LV_OCN_EVENTIS_MHP",
+  "revision": 2,
+  "unclassifiedAssetCount": 0,
+  "waters": [
+    {
+      "assetId": "MAP_3394CA48094A_LV_OCN_EVENTIS_MHP_WATER02_SM_OVR_53F9EEC1FCA4",
+      "materialName": "SLOT_000_dummy_material_0",
+      "provenance": "PROJECT_AUTHORED",
+      "sourceParentChain": [
+        "SPECIALRESOURCE.mat.ocean_trn",
+        "LV_OCN_EVENTIS_MHP.mat.lv_ocn_eventis_mhp_water03_mi"
+      ],
+      "sourceBlendMode": "BLEND_Translucent",
+      "twoSided": false,
+      "detailNormalTexture": "Map/LV_OCN_EVENTIS_MHP/MAP_3394CA48094A_LV_OCN_EVENTIS_MHP_WATER02_SM_OVR_53F9EEC1FCA4/textures/1e4b9c707a9c_waterbump_tex.dds",
+      "reflectionTexture": "Map/LV_OCN_EVENTIS_MHP/MAP_3394CA48094A_LV_OCN_EVENTIS_MHP_WATER02_SM_OVR_53F9EEC1FCA4/textures/b66eb928c1f2_ambientreflection_01.dds",
+      "foamTexture": "",
+      "opacity": 0.6,
+      "opacityPower": 1.0,
+      "fresnelIntensity": 0.0,
+      "fresnelPower": 3.0,
+      "screenDistortionIntensity": 5.0,
+      "normalIntensity": 2.5,
+      "detailNormalIntensity": 0.5,
+      "normalDistortionIntensity": 0.1,
+      "reflectionIntensity": 20.0,
+      "reflectionUv": 1.5,
+      "depthBias": -80.0,
+      "diffuseTiling": 1.0,
+      "diffuseColor": [
+        0.120182,
+        1.0,
+        0.951926,
+        1.0
+      ],
+      "reflectionColor": [
+        0.867408,
+        0.872882,
+        1.0,
+        1.0
+      ],
+      "normalTilingPanning": [
+        0.005,
+        0.007,
+        -1.0,
+        -0.2
+      ],
+      "detailNormalTilingPanning": [
+        0.2,
+        0.3,
+        -0.051,
+        0.051
+      ],
+      "reflectionTilingPanning": [
+        1.0,
+        1.0,
+        0.1,
+        0.1
+      ],
+      "missingSourceTextures": [
+        "texture_sky",
+        "texture_fresnel",
+        "texture_diffuse_mask",
+        "texture_opacity",
+        "texture_base_distortion"
+      ]
+    },
+    {
+      "assetId": "MAP_4C8A5424422D_BG_FAT_STONE_ROCK03_SM_OVR_1A2629364329",
+      "materialName": "SLOT_000_bg_fat_stone_rock03_mi_ksr",
+      "provenance": "SOURCE_MATERIAL_EXACT",
+      "sourceParentChain": [
+        "SPECIALRESOURCE.mat.ocean_trn",
+        "SPECIALRESOURCE.mi.river_water_mi",
+        "LV_BER_KANDAD.mat.lv_ber_kandad_f_water_01"
+      ],
+      "sourceBlendMode": "BLEND_Translucent",
+      "twoSided": false,
+      "detailNormalTexture": "Map/LV_OCN_EVENTIS_MHP/MAP_4C8A5424422D_BG_FAT_STONE_ROCK03_SM_OVR_1A2629364329/textures/ce2af44c27b1_base_normal_01.dds",
+      "reflectionTexture": "Map/LV_OCN_EVENTIS_MHP/MAP_4C8A5424422D_BG_FAT_STONE_ROCK03_SM_OVR_1A2629364329/textures/e76c4fba4cc1_ambientreflection_10a.dds",
+      "foamTexture": "",
+      "opacity": 0.3,
+      "opacityPower": 0.6,
+      "fresnelIntensity": 1.5,
+      "fresnelPower": 2.0,
+      "screenDistortionIntensity": 4.0,
+      "normalIntensity": 4.0,
+      "detailNormalIntensity": 2.0,
+      "normalDistortionIntensity": 0.01,
+      "reflectionIntensity": 0.0,
+      "reflectionUv": 20.0,
+      "depthBias": -150.0,
+      "diffuseTiling": 1.0,
+      "diffuseColor": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "reflectionColor": [
+        1.0,
+        0.651413,
+        0.484024,
+        1.0
+      ],
+      "normalTilingPanning": [
+        0.05,
+        0.05,
+        0.05,
+        0.15
+      ],
+      "detailNormalTilingPanning": [
+        0.906044,
+        0.906044,
+        0.165218,
+        0.1
+      ],
+      "reflectionTilingPanning": [
+        1.0,
+        1.0,
+        0.2,
+        0.1
+      ]
+    },
+    {
+      "assetId": "MAP_557CAE338ABF_BG_FAT_STONE_ROCK02_SM_OVR_1A2629364329",
+      "materialName": "SLOT_000_bg_fat_stone_rock02_mi_ksr",
+      "provenance": "SOURCE_MATERIAL_EXACT",
+      "sourceParentChain": [
+        "SPECIALRESOURCE.mat.ocean_trn",
+        "SPECIALRESOURCE.mi.river_water_mi",
+        "LV_BER_KANDAD.mat.lv_ber_kandad_f_water_01"
+      ],
+      "sourceBlendMode": "BLEND_Translucent",
+      "twoSided": false,
+      "detailNormalTexture": "Map/LV_OCN_EVENTIS_MHP/MAP_557CAE338ABF_BG_FAT_STONE_ROCK02_SM_OVR_1A2629364329/textures/ce2af44c27b1_base_normal_01.dds",
+      "reflectionTexture": "Map/LV_OCN_EVENTIS_MHP/MAP_557CAE338ABF_BG_FAT_STONE_ROCK02_SM_OVR_1A2629364329/textures/e76c4fba4cc1_ambientreflection_10a.dds",
+      "foamTexture": "",
+      "opacity": 0.3,
+      "opacityPower": 0.6,
+      "fresnelIntensity": 1.5,
+      "fresnelPower": 2.0,
+      "screenDistortionIntensity": 4.0,
+      "normalIntensity": 4.0,
+      "detailNormalIntensity": 2.0,
+      "normalDistortionIntensity": 0.01,
+      "reflectionIntensity": 0.0,
+      "reflectionUv": 20.0,
+      "depthBias": -150.0,
+      "diffuseTiling": 1.0,
+      "diffuseColor": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "reflectionColor": [
+        1.0,
+        0.651413,
+        0.484024,
+        1.0
+      ],
+      "normalTilingPanning": [
+        0.05,
+        0.05,
+        0.05,
+        0.15
+      ],
+      "detailNormalTilingPanning": [
+        0.906044,
+        0.906044,
+        0.165218,
+        0.1
+      ],
+      "reflectionTilingPanning": [
+        1.0,
+        1.0,
+        0.2,
+        0.1
+      ]
+    },
+    {
+      "assetId": "MAP_7BA4AC84CD3A_LV_MODULE_WATER02_512_OVR_3CB26CF55D22",
+      "materialName": "SLOT_000_dummy_material_0",
+      "provenance": "PROJECT_AUTHORED",
+      "sourceParentChain": [
+        "SPECIALRESOURCE.mat.ocean_trn",
+        "LV_OCN_EVENTIS_MHP.mat.lv_ocn_eventis_mhp_water_mi_01"
+      ],
+      "sourceBlendMode": "BLEND_Translucent",
+      "twoSided": false,
+      "detailNormalTexture": "Map/LV_OCN_EVENTIS_MHP/MAP_7BA4AC84CD3A_LV_MODULE_WATER02_512_OVR_3CB26CF55D22/textures/1e4b9c707a9c_waterbump_tex.dds",
+      "reflectionTexture": "Map/LV_OCN_EVENTIS_MHP/MAP_7BA4AC84CD3A_LV_MODULE_WATER02_512_OVR_3CB26CF55D22/textures/a470261a5a37_floorcloud_01_d.dds",
+      "foamTexture": "",
+      "opacity": 2.0,
+      "opacityPower": 0.6,
+      "fresnelIntensity": 1200.0,
+      "fresnelPower": 5.0,
+      "screenDistortionIntensity": 2.0,
+      "normalIntensity": 1.0,
+      "detailNormalIntensity": 0.2,
+      "normalDistortionIntensity": 0.1,
+      "reflectionIntensity": 0.5,
+      "reflectionUv": 0.5,
+      "depthBias": -600.0,
+      "diffuseTiling": 85.0,
+      "diffuseColor": [
+        0.0,
+        0.391257,
+        1.334205,
+        1.0
+      ],
+      "reflectionColor": [
+        0.0,
+        0.111302,
+        0.735955,
+        1.0
+      ],
+      "normalTilingPanning": [
+        0.005,
+        0.007,
+        -0.5,
+        0.12
+      ],
+      "detailNormalTilingPanning": [
+        0.322097,
+        0.483146,
+        -0.0161049,
+        0.01
+      ],
+      "reflectionTilingPanning": [
+        1.0,
+        1.0,
+        0.1,
+        0.1
+      ],
+      "missingSourceTextures": [
+        "texture_sky",
+        "texture_fresnel",
+        "texture_diffuse_mask",
+        "texture_opacity",
+        "texture_base_distortion"
+      ]
+    },
+    {
+      "assetId": "MAP_7BA4AC84CD3A_LV_MODULE_WATER02_512_OVR_53F9EEC1FCA4",
+      "materialName": "SLOT_000_dummy_material_0",
+      "provenance": "PROJECT_AUTHORED",
+      "sourceParentChain": [
+        "SPECIALRESOURCE.mat.ocean_trn",
+        "LV_OCN_EVENTIS_MHP.mat.lv_ocn_eventis_mhp_water03_mi"
+      ],
+      "sourceBlendMode": "BLEND_Translucent",
+      "twoSided": false,
+      "detailNormalTexture": "Map/LV_OCN_EVENTIS_MHP/MAP_7BA4AC84CD3A_LV_MODULE_WATER02_512_OVR_53F9EEC1FCA4/textures/1e4b9c707a9c_waterbump_tex.dds",
+      "reflectionTexture": "Map/LV_OCN_EVENTIS_MHP/MAP_7BA4AC84CD3A_LV_MODULE_WATER02_512_OVR_53F9EEC1FCA4/textures/b66eb928c1f2_ambientreflection_01.dds",
+      "foamTexture": "",
+      "opacity": 0.6,
+      "opacityPower": 1.0,
+      "fresnelIntensity": 0.0,
+      "fresnelPower": 3.0,
+      "screenDistortionIntensity": 5.0,
+      "normalIntensity": 2.5,
+      "detailNormalIntensity": 0.5,
+      "normalDistortionIntensity": 0.1,
+      "reflectionIntensity": 20.0,
+      "reflectionUv": 1.5,
+      "depthBias": -80.0,
+      "diffuseTiling": 9.0,
+      "diffuseColor": [
+        0.120182,
+        1.0,
+        0.951926,
+        1.0
+      ],
+      "reflectionColor": [
+        0.867408,
+        0.872882,
+        1.0,
+        1.0
+      ],
+      "normalTilingPanning": [
+        0.005,
+        0.007,
+        -1.0,
+        -0.2
+      ],
+      "detailNormalTilingPanning": [
+        0.2,
+        0.3,
+        -0.051,
+        0.051
+      ],
+      "reflectionTilingPanning": [
+        1.0,
+        1.0,
+        0.1,
+        0.1
+      ],
+      "missingSourceTextures": [
+        "texture_sky",
+        "texture_fresnel",
+        "texture_diffuse_mask",
+        "texture_opacity",
+        "texture_base_distortion"
+      ]
+    },
+    {
+      "assetId": "MAP_7BA4AC84CD3A_LV_MODULE_WATER02_512_OVR_E67B61F41453",
+      "materialName": "SLOT_000_dummy_material_0",
+      "provenance": "PROJECT_AUTHORED",
+      "sourceParentChain": [
+        "SPECIALRESOURCE.mat.ocean_trn",
+        "LV_OCN_EVENTIS_MHP.mat.lv_ocn_eventis_mhp_water_mi_03"
+      ],
+      "sourceBlendMode": "BLEND_Translucent",
+      "twoSided": false,
+      "detailNormalTexture": "Map/LV_OCN_EVENTIS_MHP/MAP_7BA4AC84CD3A_LV_MODULE_WATER02_512_OVR_E67B61F41453/textures/1e4b9c707a9c_waterbump_tex.dds",
+      "reflectionTexture": "Map/LV_OCN_EVENTIS_MHP/MAP_7BA4AC84CD3A_LV_MODULE_WATER02_512_OVR_E67B61F41453/textures/a470261a5a37_floorcloud_01_d.dds",
+      "foamTexture": "",
+      "opacity": 1.0,
+      "opacityPower": 0.4,
+      "fresnelIntensity": 1200.0,
+      "fresnelPower": 5.0,
+      "screenDistortionIntensity": 2.0,
+      "normalIntensity": 1.0,
+      "detailNormalIntensity": 0.2,
+      "normalDistortionIntensity": 0.1,
+      "reflectionIntensity": 0.5,
+      "reflectionUv": 0.5,
+      "depthBias": -200.0,
+      "diffuseTiling": 9.0,
+      "diffuseColor": [
+        0.0,
+        0.391257,
+        1.334205,
+        1.0
+      ],
+      "reflectionColor": [
+        0.0,
+        0.111302,
+        0.735955,
+        1.0
+      ],
+      "normalTilingPanning": [
+        0.005,
+        0.007,
+        -0.5,
+        0.12
+      ],
+      "detailNormalTilingPanning": [
+        0.322097,
+        0.483146,
+        -0.0161049,
+        0.01
+      ],
+      "reflectionTilingPanning": [
+        1.0,
+        1.0,
+        0.1,
+        0.1
+      ],
+      "missingSourceTextures": [
+        "texture_sky",
+        "texture_fresnel",
+        "texture_diffuse_mask",
+        "texture_opacity",
+        "texture_base_distortion"
+      ]
+    },
+    {
+      "assetId": "MAP_A98778E158B2_BG_FAT_STONE_ROCK01_SM_OVR_1A2629364329",
+      "materialName": "SLOT_000_bg_fat_stone_rock01_mi_ksr",
+      "provenance": "SOURCE_MATERIAL_EXACT",
+      "sourceParentChain": [
+        "SPECIALRESOURCE.mat.ocean_trn",
+        "SPECIALRESOURCE.mi.river_water_mi",
+        "LV_BER_KANDAD.mat.lv_ber_kandad_f_water_01"
+      ],
+      "sourceBlendMode": "BLEND_Translucent",
+      "twoSided": false,
+      "detailNormalTexture": "Map/LV_OCN_EVENTIS_MHP/MAP_A98778E158B2_BG_FAT_STONE_ROCK01_SM_OVR_1A2629364329/textures/ce2af44c27b1_base_normal_01.dds",
+      "reflectionTexture": "Map/LV_OCN_EVENTIS_MHP/MAP_A98778E158B2_BG_FAT_STONE_ROCK01_SM_OVR_1A2629364329/textures/e76c4fba4cc1_ambientreflection_10a.dds",
+      "foamTexture": "",
+      "opacity": 0.3,
+      "opacityPower": 0.6,
+      "fresnelIntensity": 1.5,
+      "fresnelPower": 2.0,
+      "screenDistortionIntensity": 4.0,
+      "normalIntensity": 4.0,
+      "detailNormalIntensity": 2.0,
+      "normalDistortionIntensity": 0.01,
+      "reflectionIntensity": 0.0,
+      "reflectionUv": 20.0,
+      "depthBias": -150.0,
+      "diffuseTiling": 1.0,
+      "diffuseColor": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "reflectionColor": [
+        1.0,
+        0.651413,
+        0.484024,
+        1.0
+      ],
+      "normalTilingPanning": [
+        0.05,
+        0.05,
+        0.05,
+        0.15
+      ],
+      "detailNormalTilingPanning": [
+        0.906044,
+        0.906044,
+        0.165218,
+        0.1
+      ],
+      "reflectionTilingPanning": [
+        1.0,
+        1.0,
+        0.2,
+        0.1
+      ]
+    },
+    {
+      "assetId": "MAP_C1B966AD13A1_LV_OCN_EVENTIS_MHP_WATER03_SM_OVR_53F9EEC1FCA4",
+      "materialName": "SLOT_000_dummy_material_0",
+      "provenance": "PROJECT_AUTHORED",
+      "sourceParentChain": [
+        "SPECIALRESOURCE.mat.ocean_trn",
+        "LV_OCN_EVENTIS_MHP.mat.lv_ocn_eventis_mhp_water03_mi"
+      ],
+      "sourceBlendMode": "BLEND_Translucent",
+      "twoSided": false,
+      "detailNormalTexture": "Map/LV_OCN_EVENTIS_MHP/MAP_C1B966AD13A1_LV_OCN_EVENTIS_MHP_WATER03_SM_OVR_53F9EEC1FCA4/textures/1e4b9c707a9c_waterbump_tex.dds",
+      "reflectionTexture": "Map/LV_OCN_EVENTIS_MHP/MAP_C1B966AD13A1_LV_OCN_EVENTIS_MHP_WATER03_SM_OVR_53F9EEC1FCA4/textures/b66eb928c1f2_ambientreflection_01.dds",
+      "foamTexture": "",
+      "opacity": 0.6,
+      "opacityPower": 1.0,
+      "fresnelIntensity": 0.0,
+      "fresnelPower": 3.0,
+      "screenDistortionIntensity": 5.0,
+      "normalIntensity": 2.5,
+      "detailNormalIntensity": 0.5,
+      "normalDistortionIntensity": 0.1,
+      "reflectionIntensity": 20.0,
+      "reflectionUv": 1.5,
+      "depthBias": -80.0,
+      "diffuseTiling": 1.0,
+      "diffuseColor": [
+        0.120182,
+        1.0,
+        0.951926,
+        1.0
+      ],
+      "reflectionColor": [
+        0.867408,
+        0.872882,
+        1.0,
+        1.0
+      ],
+      "normalTilingPanning": [
+        0.005,
+        0.007,
+        -1.0,
+        -0.2
+      ],
+      "detailNormalTilingPanning": [
+        0.2,
+        0.3,
+        -0.051,
+        0.051
+      ],
+      "reflectionTilingPanning": [
+        1.0,
+        1.0,
+        0.1,
+        0.1
+      ],
+      "missingSourceTextures": [
+        "texture_sky",
+        "texture_fresnel",
+        "texture_diffuse_mask",
+        "texture_opacity",
+        "texture_base_distortion"
+      ]
+    },
+    {
+      "assetId": "MAP_EA9C52CC4464_LV_BER_BERNILF_FLOOR01_SM_OVR_53F9EEC1FCA4",
+      "materialName": "SLOT_000_dummy_material_0",
+      "provenance": "PROJECT_AUTHORED",
+      "sourceParentChain": [
+        "SPECIALRESOURCE.mat.ocean_trn",
+        "LV_OCN_EVENTIS_MHP.mat.lv_ocn_eventis_mhp_water03_mi"
+      ],
+      "sourceBlendMode": "BLEND_Translucent",
+      "twoSided": false,
+      "detailNormalTexture": "Map/LV_OCN_EVENTIS_MHP/MAP_EA9C52CC4464_LV_BER_BERNILF_FLOOR01_SM_OVR_53F9EEC1FCA4/textures/1e4b9c707a9c_waterbump_tex.dds",
+      "reflectionTexture": "Map/LV_OCN_EVENTIS_MHP/MAP_EA9C52CC4464_LV_BER_BERNILF_FLOOR01_SM_OVR_53F9EEC1FCA4/textures/b66eb928c1f2_ambientreflection_01.dds",
+      "foamTexture": "",
+      "opacity": 0.6,
+      "opacityPower": 1.0,
+      "fresnelIntensity": 0.0,
+      "fresnelPower": 3.0,
+      "screenDistortionIntensity": 5.0,
+      "normalIntensity": 2.5,
+      "detailNormalIntensity": 0.5,
+      "normalDistortionIntensity": 0.1,
+      "reflectionIntensity": 20.0,
+      "reflectionUv": 1.5,
+      "depthBias": -80.0,
+      "diffuseTiling": 1.0,
+      "diffuseColor": [
+        0.120182,
+        1.0,
+        0.951926,
+        1.0
+      ],
+      "reflectionColor": [
+        0.867408,
+        0.872882,
+        1.0,
+        1.0
+      ],
+      "normalTilingPanning": [
+        0.005,
+        0.007,
+        -1.0,
+        -0.2
+      ],
+      "detailNormalTilingPanning": [
+        0.2,
+        0.3,
+        -0.051,
+        0.051
+      ],
+      "reflectionTilingPanning": [
+        1.0,
+        1.0,
+        0.1,
+        0.1
+      ],
+      "missingSourceTextures": [
+        "texture_sky",
+        "texture_fresnel",
+        "texture_diffuse_mask",
+        "texture_opacity",
+        "texture_base_distortion"
+      ]
+    },
+    {
+      "assetId": "MAP_EB275526D3D5_LV_OCN_EVENTIS_MHP_FLOOR02_SM_OVR_53F9EEC1FCA4",
+      "materialName": "SLOT_000_dummy_material_0",
+      "provenance": "PROJECT_AUTHORED",
+      "sourceParentChain": [
+        "SPECIALRESOURCE.mat.ocean_trn",
+        "LV_OCN_EVENTIS_MHP.mat.lv_ocn_eventis_mhp_water03_mi"
+      ],
+      "sourceBlendMode": "BLEND_Translucent",
+      "twoSided": false,
+      "detailNormalTexture": "Map/LV_OCN_EVENTIS_MHP/MAP_EB275526D3D5_LV_OCN_EVENTIS_MHP_FLOOR02_SM_OVR_53F9EEC1FCA4/textures/1e4b9c707a9c_waterbump_tex.dds",
+      "reflectionTexture": "Map/LV_OCN_EVENTIS_MHP/MAP_EB275526D3D5_LV_OCN_EVENTIS_MHP_FLOOR02_SM_OVR_53F9EEC1FCA4/textures/b66eb928c1f2_ambientreflection_01.dds",
+      "foamTexture": "",
+      "opacity": 0.6,
+      "opacityPower": 1.0,
+      "fresnelIntensity": 0.0,
+      "fresnelPower": 3.0,
+      "screenDistortionIntensity": 5.0,
+      "normalIntensity": 2.5,
+      "detailNormalIntensity": 0.5,
+      "normalDistortionIntensity": 0.1,
+      "reflectionIntensity": 20.0,
+      "reflectionUv": 1.5,
+      "depthBias": -80.0,
+      "diffuseTiling": 1.0,
+      "diffuseColor": [
+        0.120182,
+        1.0,
+        0.951926,
+        1.0
+      ],
+      "reflectionColor": [
+        0.867408,
+        0.872882,
+        1.0,
+        1.0
+      ],
+      "normalTilingPanning": [
+        0.005,
+        0.007,
+        -1.0,
+        -0.2
+      ],
+      "detailNormalTilingPanning": [
+        0.2,
+        0.3,
+        -0.051,
+        0.051
+      ],
+      "reflectionTilingPanning": [
+        1.0,
+        1.0,
+        0.1,
+        0.1
+      ],
+      "missingSourceTextures": [
+        "texture_sky",
+        "texture_fresnel",
+        "texture_diffuse_mask",
+        "texture_opacity",
+        "texture_base_distortion"
+      ]
+    }
+  ],
+  "deferred": []
+}

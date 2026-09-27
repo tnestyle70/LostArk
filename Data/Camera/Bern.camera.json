@@ -24,5 +24,20 @@
     "DIMENSIONMASTER": 1.0,
     "WARLORD": 1,
     "GUARDIANKNIGHT": 1
+  },
+  "shipCamera": {
+    "provenance": "Angles/FOV/response from EFTable_CameraSetting 1001/1 (VoyageShip.Camera_Ocean of 8200-8208): FOV 60 horizontal at 16:9, pitch -45 -> 45, yaw 0 -> 90, RelativeZ -50 cm -> focus y -0.5 m, Isometric_InterpolationRatio 2 -> followResponse 2. distanceMeters is PROJECT_AUTHORED 28 m, not the source ZoomDist 1700 cm (17 m): at 17 m the ghost ship 8204 (9.4 x 7.3 m) projects 11.8 m against an 11.0 m view and its masts leave the frame. A 40 m first pass cleared the frame but read too far away on screen, so the authored value is 20 m: the ghost ship then fills about 92% of screen height and the smaller ships 36-48%, just inside the 17 m frame overflow.",
+    "fovXDegrees": 60,
+    "pitchDegrees": 45,
+    "yawDegrees": 90,
+    "distanceMeters": 20,
+    "focusOffsetYMeters": -0.5,
+    "followResponse": 2
+  },
+  "shipFog": {
+    "disable": true,
+    "densityScale": 0.25,
+    "startDistanceMeters": 60,
+    "maximumOpacity": 0.35
   }
 }
