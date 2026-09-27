@@ -4800,13 +4800,24 @@ int Run_KoukuFixedDamageContractTests()
         RequireEditorStep(workbench.Create_Logic("Card soldier tuning", "TRIGGER", soldierId, status), status, "create soldier tuning");
         tuning = {}; tuning.strLogicType = "TRIGGER"; tuning.strTriggerKind = "CARD_RAIN_SOLDIERS";
         tuning.SoldierCounts = {2u, 0u, 5u}; tuning.fSpawnRadiusMinM = 2.125; tuning.fSpawnRadiusMaxM = 6.375;
+        tuning.iSoldierMaxHp = 69000u; tuning.iSoldierDamage = 13200u;
         RequireEditorStep(workbench.Set_LogicDefinitionValues(soldierId, tuning, status), status, "apply fractional soldier radius");
         RequireEditorRoundtrip(workbench);
         const auto& storedLogics = workbench.Get_Composition().Logics;
         const auto storedSoldiers = std::find_if(storedLogics.begin(), storedLogics.end(), [&](const auto& row) { return row.strLogicId == soldierId; });
         Require(storedSoldiers != storedLogics.end() && storedSoldiers->SoldierCounts == std::array<std::uint32_t, 3u>{2u, 0u, 5u} &&
-            storedSoldiers->fSpawnRadiusMinM == 2.125 && storedSoldiers->fSpawnRadiusMaxM == 6.375,
-            "soldier count/radius changed during Save/Reopen");
+            storedSoldiers->fSpawnRadiusMinM == 2.125 && storedSoldiers->fSpawnRadiusMaxM == 6.375 &&
+            storedSoldiers->iSoldierMaxHp == 69000u && storedSoldiers->iSoldierDamage == 13200u,
+            "soldier count/radius/HP/damage changed during Save/Reopen");
+        const auto goodSoldiers = workbench.Get_Composition();
+        tuning.iSoldierDamage = 2000000001u;
+        Require(!workbench.Set_LogicDefinitionValues(soldierId, tuning, status) && workbench.Get_Composition() == goodSoldiers,
+            "out-of-range soldier damage partially committed");
+        tuning.iSoldierDamage = 13200u;
+        tuning.strTriggerKind = "BINGO_DETONATION";
+        tuning.SoldierCounts = {1u, 1u, 1u}; tuning.fSpawnRadiusMinM = 3.0; tuning.fSpawnRadiusMaxM = 6.0;
+        Require(!workbench.Set_LogicDefinitionValues(soldierId, tuning, status) && workbench.Get_Composition() == goodSoldiers,
+            "card-rain HP/damage escaped into another mechanic");
         const auto storedPulse = std::find_if(storedLogics.begin(), storedLogics.end(), [&](const auto& row) { return row.strLogicId == tuningId; });
         Require(storedPulse != storedLogics.end() && storedPulse->iRepeatIntervalMs == 100u,
             "duration pulse changed during Save/Reopen");

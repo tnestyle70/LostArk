@@ -256,7 +256,7 @@ Guide가 받는 물리 collision damage/CC/갈고리/칼날은 일반 player 경
 Client 채팅과 말풍선은 이 서버 이벤트를 소비하며 외부 언어 모델이나 local trigger로 대사를 만들지 않는다.
 `S2C_GUIDE_STATE`는 실제 서버 점수·입력 변수·선택 이유를 Combat Detail에 전달하는 읽기 전용 자료다.
 도구 draft와 적용 revision을 구분하고 게시 후 Server가 새 revision을 소비했는지 확인한다.
-현재 wire는 protocol 116이며 이전 Server/Client와 혼용하지 않는다.
+현재 wire는 protocol 117이며 이전 Server/Client와 혼용하지 않는다.
 
 ## 2. 팀원이 먼저 읽을 파일
 
@@ -743,6 +743,22 @@ UI가 바로 사용할 읽기 경계는 `CCombatHUDViewModel`이다.
 - current/max HP
 - phase
 - server action과 action ID
+- `eMechanicGaugeKind`, `iCurrentMechanicGauge`, `iMaximumMechanicGauge`: protocol117의
+  서버 기믹 게이지 종류와 남은 값/최대값. `NONE`이면 상단 기믹 행 전체를 숨긴다.
+  `STAGGER`는 쿠크 1관문 무력화·3관문 마리오 2단계의 열린 판정 구간만 표시하고,
+  `BOSS_HP`는 빙고 블랙홀 13초 동안 실제 보스 current/max HP를 표시한다.
+  `Boss_StaggerFill`은 `UI/BossUI/boss_bar_fill_orange.png`를 사용하며 일반 누적 stagger나
+  response 값으로 대체하지 않는다. 기존 상단 보스 HP 여러 줄 표시는 유지한다.
+
+`Get_WorldHealthBars()`는 `HUD_WORLD_HEALTH_BAR_STATE` 목록을 제공한다. 각 항목은 stable
+NetEntityId, player/local 구분, current/max HP, shield, presentation의 weak 참조를 가진다.
+`CClientReplication`이 수락한 snapshot으로 목록을 교체하고 reliable despawn·runtime reset에서
+제거한다. 모든 몬스터·보스는 빨강, 자기 캐릭터를 제외한 다른 플레이어는 청록 HP와 흰 보호막을
+`CWorldHealthBarView`로 표시한다. 비전투 NPC는 제외한다. `Data/UI/HeadStatus/HealthBar_Layout.json`은
+원본 `headstatus_i6`의 Player HP 영역을 그대로 추출한 `UI/HeadStatus/HS_Fill_Player.png`와
+기존 적·보호막 이미지를 중립 tint로 `CUILayoutRuntime -> CUI_Sprite`에 연결하며, HP와 보호막은
+`max(maxHP, HP + shield)`를 공통 분모로 사용한다. 살아 있고 화면에 투영되는 대상만 layout을
+처음 생성한다. 표시 위치는 전달받은 weak presentation의 현재 머리/모델 경계에서 계산한다.
 
 `Get_DamageEvents()`는 최근 128개 Server `DAMAGE_EVENT`를 server tick과 함께 보관한다. 실제 적용
 damage, target NetEntityId, world anchor, incoming/outgoing을 제공하며 UI가 HP 차이로 damage를
@@ -768,7 +784,7 @@ Gameplay bootstrap의 공통 용량은 `Shared/Public/GameplayDataRevision.h`의
 | `Data/Encounters/Valtan/ValtanCombatObjects.json` | pattern stage가 생성하는 지연/이동 객체의 stable ID, motion, life, hit | Server room combat-object runtime |
 | `Data/Actors/BossCatalog.json`의 `combatObjectVisuals` | gameplay object ID + visual ID를 Product Effect ID에 연결 | Client replication/effect prewarm |
 
-UI 담당자는 JSON을 매 프레임 읽지 않는다. `CCombatHUDViewModel::Initialize_Definitions()`가 정의를 준비하고 `CClientReplication`이 snapshot마다 runtime 상태를 적용한다. UI 코드에서 packet, socket, Character, boss GameObject를 직접 조회하지 않는다.
+UI 담당자는 JSON을 매 프레임 읽지 않는다. `CCombatHUDViewModel::Initialize_Definitions()`가 정의를 준비하고 `CClientReplication`이 snapshot마다 runtime 상태를 적용한다. UI 코드에서 packet이나 socket을 사용하거나 Character·boss GameObject에서 gameplay 수치를 조회하지 않는다. 머리 위 체력바는 ViewModel이 제공한 weak presentation의 표시 위치만 읽는다.
 
 Debug/Release F1의 `Open Balance Test`는 공용 수치 편집용 독립 창을 연다. `Players / Skills /
 Damage / Bosses / Madness`에서 실제 소비하는 수치를 편집하며 일반 수치 panel은 Valtan pattern source를
@@ -2058,7 +2074,7 @@ SHOWTIME_PLAYER_TARGETS의 random volley는 fixed/tracking template 없이 단�
 
 유한 random volley에는 MAP SOUND occurrence를 함께 포함할 수 있다. 최소 한 개의 MAP EFFECT가 위치 기준을 소유하며 SOUND만 있는 세트, BOSS-follow SOUND 및 looping targeted SOUND는 거부한다. Sound도 같은 content-addressed visual ID와 Server birth clock에 속하므로 각 투하에서 한 번 재생하고 늦은 입장에서는 이미 지난 음원 구간을 다시 시작하지 않는다. 기존 SoundCueCatalog의 variant는 해당 CombatObject ID/spawn tick/occurrence로 고정되며, 원본 Wwise avoid-repeat 메모리 전체를 재구현한 계약은 아니다.
 
-`CARD_RAIN_SOLDIERS`는 typed trigger이며 optional `soldierCounts`는 CLUB·HEART·DIAMOND 순서의 정수3개(각0..32, 합계1..64, 기본1/1/1), `spawnRadiusMinM/MaxM`는 정렬된 finite0..100m(기본3..6m)를 받는다. Box Detail에서 편집하며 publisher의 `PATTERNCARDRAINSOLDIERS` supplemental row를 Server가 소비한다. Server는 보스 기준 반경의 navigation 위치를 전부 확보한 뒤 MonsterCatalog의 세 archetype을 Spawn_Monster로 생성하며 maze 진행 상태에는 등록하지 않는다. MonsterProfiles의 전투 수치와 기존 MonsterBrain·navigation으로 플레이어를 추적·공격한다. 같은 profile을 쓰는 미로 target은 생성 직후 maze에 등록하고 generic Brain에서 제외해 미로가 위치와 접촉을 계속 소유한다. 카드비 병정은 패턴 종료와30초 이후에도 유지되며, 병정 사망·owner 사망/제거 때 정리된다.
+`CARD_RAIN_SOLDIERS`는 typed trigger이며 optional `soldierCounts`는 CLUB·HEART·DIAMOND 순서의 정수3개(각0..32, 합계1..64, 기본1/1/1), `spawnRadiusMinM/MaxM`는 정렬된 finite0..100m(기본3..6m)를 받는다. Box Detail에서 편집하며 publisher의 `PATTERNCARDRAINSOLDIERS` supplemental row를 Server가 소비한다. Server는 보스 기준 반경의 navigation 위치를 전부 확보한 뒤 MonsterCatalog의 세 archetype을 Spawn_Monster로 생성하며 maze 진행 상태에는 등록하지 않는다. optional `soldierMaxHp/soldierDamage`는 0..2,000,000,000 정수이며 0 또는 누락은 MonsterProfiles를 유지한다. HP override는 해당 카드비 spawn에만 적용하고, damage override는 방어력 재감산 없이 기존 무적·보호막·받는 피해 보정을 소비한다. 게시된 카드비 기준은 HP 69,000과 피해 13,200이다. 기존 MonsterBrain·navigation으로 플레이어를 추적·공격한다. 같은 profile을 쓰는 미로 target은 생성 직후 maze에 등록하고 generic Brain에서 제외해 미로가 위치와 접촉을 계속 소유한다. 카드비 병정은 패턴 종료와30초 이후에도 유지되며, 병정 사망·owner 사망/제거 때 정리된다.
 
 쿠크 Level의 단일 BGM owner가 Ready Terrace·GATE1/2/3·Mario1~4·Card Maze·Bingo를 승인된 player/raid 상태에서 선택한다. 시퀀스와컷씬/카메라 재생 중에는 BGM을 중지하고 같은 state의 반복 snapshot은 음악을 재시작하지 않는다. 원본 intro/loop 구간은 WAV smpl metadata를 소비한다. cue sound는 기존 pattern presentation 경로를 사용한다.
 

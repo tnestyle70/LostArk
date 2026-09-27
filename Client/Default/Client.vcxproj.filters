@@ -879,6 +879,9 @@
     <ClCompile Include="..\Private\WorldPlayerNameplateView.cpp">
       <Filter>02.GameObjects\04. UI</Filter>
     </ClCompile>
+    <ClCompile Include="..\Private\WorldHealthBarView.cpp">
+      <Filter>02.GameObjects\04. UI</Filter>
+    </ClCompile>
     <ClCompile Include="..\Private\WorldPlayerChatBubbleView.cpp">
       <Filter>02.GameObjects\04. UI</Filter>
     </ClCompile>
@@ -1616,6 +1619,9 @@
       <Filter>02.GameObjects\04. UI</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\WorldPlayerNameplateView.h">
+      <Filter>02.GameObjects\04. UI</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\WorldHealthBarView.h">
       <Filter>02.GameObjects\04. UI</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\WorldPlayerChatBubbleView.h">
@@ -2797,6 +2803,9 @@
       <Filter>96.DataFiles\UI</Filter>
     </None>
     <None Include="..\..\Data\UI\BossUI\ImmuneGauge_Layout.json">
+      <Filter>96.DataFiles\UI</Filter>
+    </None>
+    <None Include="..\..\Data\UI\HeadStatus\HealthBar_Layout.json">
       <Filter>96.DataFiles\UI</Filter>
     </None>
     <None Include="..\..\Data\UI\RaidClear\RaidClear_Layout.json">

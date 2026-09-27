@@ -487,7 +487,8 @@ void LostArk::Server::CMonsterBrain::Update(
 			{
 				// The common hit owner applies damage, death and reactions once.
 				SERVER_WORLD_TO_PLAYER_HIT incoming{};
-				incoming.iRawDamage = monster.iAttackPower;
+				incoming.iRawDamage = monster.iAttackFixedDamage ? monster.iAttackFixedDamage : monster.iAttackPower;
+				incoming.bIgnoreDefense = monster.iAttackFixedDamage != 0u;
 				incoming.fSourceX = monster.fPositionX;
 				incoming.fSourceZ = monster.fPositionZ;
 				incoming.fPushRangeM = monster.fAttackPushRangeM;

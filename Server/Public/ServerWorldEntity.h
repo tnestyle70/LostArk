@@ -487,6 +487,8 @@ namespace LostArk::Server
 		float fCollisionRadius = 0.f;
 		float fAttackRange = 0.f;
 		std::uint32_t iAttackPower = 0;
+		// Encounter-owned fixed base hit; normal monsters retain zero and use attack power.
+		std::uint32_t iAttackFixedDamage = 0u;
 		std::uint32_t iDefense = 0;
 		std::uint32_t iDeadDespawnMs = 0;
 		/* Latches once this BOSS entity's Valtan clear rewards have been granted

@@ -15502,9 +15502,15 @@ void Client::CKoukuSaydonActionWorkbench::Render_LogicDefinitionValues(
 				int count = static_cast<int>(draft.SoldierCounts[i]);
 				if (ImGui::InputInt(labels[i], &count)) draft.SoldierCounts[i] = static_cast<std::uint32_t>(std::clamp(count, 0, 32));
 			}
+			int soldierMaxHp = static_cast<int>(draft.iSoldierMaxHp);
+			int soldierDamage = static_cast<int>(draft.iSoldierDamage);
+			if (ImGui::InputInt("Soldier HP (0 = profile)", &soldierMaxHp))
+				draft.iSoldierMaxHp = static_cast<std::uint32_t>(std::clamp(soldierMaxHp, 0, 2000000000));
+			if (ImGui::InputInt("Soldier fixed damage (0 = profile)", &soldierDamage))
+				draft.iSoldierDamage = static_cast<std::uint32_t>(std::clamp(soldierDamage, 0, 2000000000));
 			ImGui::InputDouble("Spawn radius minimum (m)", &draft.fSpawnRadiusMinM, .1, 1.0, "%.6f");
 			ImGui::InputDouble("Spawn radius maximum (m)", &draft.fSpawnRadiusMaxM, .1, 1.0, "%.6f");
-			ImGui::TextWrapped("The Server places the requested club, heart and diamond soldiers on navigation around the current boss. Counts total 1..64; radius is 0..100 m. Existing defaults are one of each, 3..6 m. They leave when the Pattern ends or after 30 seconds.");
+			ImGui::TextWrapped("The Server places the requested club, heart and diamond soldiers on navigation around the current boss. Counts total 1..64; radius is 0..100 m. Existing defaults are one of each, 3..6 m. They remain until killed or their owning boss is removed. Fixed damage bypasses defense but still respects protection and shields.");
 		}
 		else if (draft.strTriggerKind == "BOSS_TRACK_TARGET")
 			ImGui::TextWrapped("When this Trigger starts, the Server faces the nearest living player immediately. Subsequent boss-anchored effects use that direction.");

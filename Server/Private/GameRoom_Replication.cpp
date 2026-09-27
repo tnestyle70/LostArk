@@ -772,6 +772,15 @@ void LostArk::Server::CGameRoom::Broadcast_WorldSnapshot()
 					entity.iPatternBossResponseAccumulatedHealthDamage,
 					entity.iPatternBossResponseThreshold);
 			}
+			if (const auto* member = Find_KoukuAuditionMember(entity.iNetEntityId, entity.iPatternSequence))
+			{
+				const auto* catalog = Resolve_KoukuProductCatalog();
+				std::string status;
+				const auto* pattern = catalog ? CKoukuSaydonBrain::Find_AnimationOnlyPattern(
+					*catalog, member->LogicLedger.strPatternId, status) : nullptr;
+				if (pattern) CKoukuSaydonLogicRuntime::Project_MechanicGauge(
+					entity, *pattern, member->LogicLedger, m_iServerTick, snapshot.BossCombat);
+			}
 			/* The existing gameplay phase remains the one authority. The boss
 			payload mirrors it rather than introducing a second phase clock. */
 			snapshot.BossCombat.iGameplayPhase = entity.iPhase;

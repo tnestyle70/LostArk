@@ -1759,6 +1759,13 @@ namespace LostArk::Shared
 		return 0u != (flags & static_cast<std::uint16_t>(flag));
 	}
 
+	enum class BOSS_MECHANIC_GAUGE_KIND : std::uint8_t
+	{
+		NONE,
+		STAGGER,
+		BOSS_HP
+	};
+
 	struct BOSS_COMBAT_SNAPSHOT
 	{
 		std::uint32_t iStateRevision = 0;
@@ -1770,6 +1777,10 @@ namespace LostArk::Shared
 		std::uint32_t iMaximumShield = 0;
 		std::uint32_t iResponseProgress = 0;
 		std::uint32_t iResponseThreshold = 0;
+		// Server-owned visibility and remaining/maximum; NONE always carries zeroes.
+		BOSS_MECHANIC_GAUGE_KIND eMechanicGaugeKind = BOSS_MECHANIC_GAUGE_KIND::NONE;
+		std::uint32_t iCurrentMechanicGauge = 0;
+		std::uint32_t iMaximumMechanicGauge = 0;
 		std::uint8_t iGameplayPhase = 1;
 	};
 

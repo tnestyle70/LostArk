@@ -38,6 +38,19 @@ class ResultTuningContractTests(unittest.TestCase):
             with self.subTest(change=change), self.assertRaises(subject.CompositionError):
                 self.validate_logic(**dict(values, **change))
 
+    def test_soldier_combat_overrides_are_optional_bounded_and_trigger_owned(self):
+        defaults = dict(logicType="TRIGGER", triggerKind="CARD_RAIN_SOLDIERS")
+        row = self.validate_logic(**defaults)
+        self.assertEqual((0, 0), (row["soldierMaxHp"], row["soldierDamage"]))
+        row = self.validate_logic(**defaults, soldierMaxHp=69000, soldierDamage=13200)
+        self.assertEqual((69000, 13200), (row["soldierMaxHp"], row["soldierDamage"]))
+        for key in ("soldierMaxHp", "soldierDamage"):
+            for value in (-1, True, 1.5, 2000000001):
+                with self.subTest(key=key, value=value), self.assertRaises(subject.CompositionError):
+                    self.validate_logic(**defaults, **{key: value})
+            with self.assertRaises(subject.CompositionError):
+                self.validate_logic(logicType="TRIGGER", triggerKind="BINGO_DETONATION", **{key: 1})
+
     def test_duration_pulse_projects_result_values_and_preserves_input(self):
         document = self.fixture.reenter_damage_document()
         duration, result = document["logics"][-2:]

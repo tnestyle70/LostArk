@@ -2234,11 +2234,11 @@ namespace
         killed.eResult = DEBUG_KILL_GATE_BOSSES_RESULT::DISABLED; CPacketWriter rejectedKill;
         testRunner.Require(!Write_Message(rejectedKill, killed), "Rejected Gate Kill cannot claim a kill count");
 
-		testRunner.Require(NETWORK_PROTOCOL_VERSION == 116u &&
+		testRunner.Require(NETWORK_PROTOCOL_VERSION == 117u &&
 			Is_Known_Packet_Type(PACKET_TYPE::C2S_DEBUG_USE_ESTHER) &&
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_DEBUG_USE_ESTHER) ==
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_DEBUG_RESUMMON_WAVE_MONSTERS) + 1u,
-			"Protocol 116 combines flight and Debug Esther without renumbering packets");
+			"Protocol 117 combines flight and Debug Esther without renumbering packets");
 		for (const auto esther : { ESTHER_ID::SILLIAN, ESTHER_ID::WEI,
 			ESTHER_ID::BAHUNTUR, ESTHER_ID::NINAV, ESTHER_ID::INANNA })
 		{
@@ -2422,10 +2422,10 @@ namespace
 				unchanged.eDirection == request.eDirection,
 				"Malformed Mario direction or stop preserves output");
 		}
-		testRunner.Require(NETWORK_PROTOCOL_VERSION == 116u && Is_Known_Packet_Type(PACKET_TYPE::C2S_MARIO_MOVE) &&
+		testRunner.Require(NETWORK_PROTOCOL_VERSION == 117u && Is_Known_Packet_Type(PACKET_TYPE::C2S_MARIO_MOVE) &&
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_MARIO_MOVE) ==
 			static_cast<std::uint16_t>(PACKET_TYPE::S2C_DEBUG_MARIO_JUMP_RESULT) + 1u,
-			"Mario direction packet retains its appended identity in protocol 116");
+			"Mario direction packet retains its appended identity in protocol 117");
 	}
 
     void Test_FearSnapshotProtocol(TEST_RUNNER& testRunner)
@@ -2977,11 +2977,11 @@ namespace
 				unchanged.eWorldId == WORLD_ID::BERN && unchanged.eResult == MARIO_RETURN_RESULT::REJECTED_DESTINATION,
 				"Invalid Mario return verdict preserves caller output");
 		}
-		testRunner.Require(NETWORK_PROTOCOL_VERSION == 116u &&
+		testRunner.Require(NETWORK_PROTOCOL_VERSION == 117u &&
 			Is_Known_Packet_Type(PACKET_TYPE::C2S_MARIO_RETURN) && Is_Known_Packet_Type(PACKET_TYPE::S2C_MARIO_RETURN_RESULT) &&
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_MARIO_RETURN) == static_cast<std::uint16_t>(PACKET_TYPE::S2C_SET_VEHICLE_RIDING_RESULT) + 1u &&
 			static_cast<std::uint16_t>(PACKET_TYPE::S2C_MARIO_RETURN_RESULT) == static_cast<std::uint16_t>(PACKET_TYPE::C2S_MARIO_RETURN) + 1u,
-			"Protocol 116 preserves Mario return packet identities");
+			"Protocol 117 preserves Mario return packet identities");
 	}
 
 	void Test_DebugMarioJumpProtocol(TEST_RUNNER& testRunner)
@@ -3098,14 +3098,14 @@ namespace
 				unchanged.eResult == DEBUG_MARIO_JUMP_RESULT::REJECTED_DISABLED,
 				"Mario invalid or truncated verdict preserves caller output");
 		}
-		testRunner.Require(NETWORK_PROTOCOL_VERSION == 116u &&
+		testRunner.Require(NETWORK_PROTOCOL_VERSION == 117u &&
 			Is_Known_Packet_Type(PACKET_TYPE::C2S_DEBUG_MARIO_JUMP) &&
 			Is_Known_Packet_Type(PACKET_TYPE::S2C_DEBUG_MARIO_JUMP_RESULT) &&
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_DEBUG_MARIO_JUMP) ==
 			static_cast<std::uint16_t>(PACKET_TYPE::S2C_SCENE_PROFILE_APPLY) + 1u &&
 			static_cast<std::uint16_t>(PACKET_TYPE::S2C_DEBUG_MARIO_JUMP_RESULT) ==
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_DEBUG_MARIO_JUMP) + 1u,
-			"Protocol 116 preserves Mario jump packet identities without renumbering existing peers");
+			"Protocol 117 preserves Mario jump packet identities without renumbering existing peers");
 	}
 
 	void Test_DebugMadnessFormProtocol(TEST_RUNNER& testRunner)
@@ -3283,14 +3283,14 @@ namespace
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_DEBUG_BINGO_HAMMER) + 1u &&
 			static_cast<std::uint16_t>(PACKET_TYPE::S2C_SET_VEHICLE_RIDING_RESULT) ==
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_SET_VEHICLE_RIDING) + 1u &&
-			NETWORK_PROTOCOL_VERSION == 116u,
+			NETWORK_PROTOCOL_VERSION == 117u,
 			"Riding packet identities append without renumbering peers");
 	}
 
 	void Test_WorldObjectMotionProtocol(TEST_RUNNER& testRunner)
 	{
 		using namespace LostArk::Shared;
-		testRunner.Require(NETWORK_PROTOCOL_VERSION == 116u, "World Object owner lifecycle, fear, zone pulse, wave re-summon, wall climb and ember use protocol 116");
+		testRunner.Require(NETWORK_PROTOCOL_VERSION == 117u, "World Object owner lifecycle, fear, zone pulse, wave re-summon, wall climb and ember use protocol 117");
 		testRunner.Require(
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_DEBUG_MARIO_JUMP) == 72u &&
 			static_cast<std::uint16_t>(PACKET_TYPE::S2C_DEBUG_MARIO_JUMP_RESULT) == 73u &&
@@ -3662,8 +3662,8 @@ namespace
 			static_cast<std::uint16_t>(PACKET_TYPE::S2C_INTERACT_PROMPT) + 1u &&
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_INTERACTION_SLOT) ==
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_INTERACT_TRIGGER) + 1u &&
-			NETWORK_PROTOCOL_VERSION == 116u,
-			"Protocol 116 preserves main trigger identities with WORLD occurrence placement");
+			NETWORK_PROTOCOL_VERSION == 117u,
+			"Protocol 117 preserves main trigger identities with WORLD occurrence placement");
 	}
 
 	void Test_KakulAuthoringCommandProtocol(TEST_RUNNER& testRunner)
@@ -3779,8 +3779,8 @@ namespace
 	void Test_PartyInviteProtocol(TEST_RUNNER& testRunner)
 	{
 		{
-			testRunner.Require(116u == NETWORK_PROTOCOL_VERSION,
-				"KoukuSaydon Source Pin And Existing Contracts Use Protocol 116");
+			testRunner.Require(117u == NETWORK_PROTOCOL_VERSION,
+				"KoukuSaydon Source Pin And Existing Contracts Use Protocol 117");
 			C2S_ENTER_WORLD oldPeer{};
 			oldPeer.iProtocolVersion = 40u;
 			oldPeer.eWorldId = WORLD_ID::BERN;
@@ -4024,8 +4024,8 @@ namespace
         testRunner.Require(!Write_Message(rejectHp, badState), "Guide Trace Rejects HP Outside Unit Interval");
         state.fEvadeScore = std::numeric_limits<float>::quiet_NaN(); CPacketWriter rejectNan;
         testRunner.Require(!Write_Message(rejectNan, state), "Guide Trace Rejects Nonfinite Scores");
-        testRunner.Require(NETWORK_PROTOCOL_VERSION == 116u && Is_Known_Packet_Type(PACKET_TYPE::S2C_GUIDE_PROMPT) &&
-            Is_Known_Packet_Type(PACKET_TYPE::S2C_GUIDE_STATE), "Guide Protocol Requires Matching v116 Peers");
+        testRunner.Require(NETWORK_PROTOCOL_VERSION == 117u && Is_Known_Packet_Type(PACKET_TYPE::S2C_GUIDE_PROMPT) &&
+            Is_Known_Packet_Type(PACKET_TYPE::S2C_GUIDE_STATE), "Guide Protocol Requires Matching v117 Peers");
     }
 
 	void Test_ChatProtocol(TEST_RUNNER& testRunner)
@@ -4343,6 +4343,9 @@ namespace
 		entity.BossCombat.iMaximumShield = 0u;
 		entity.BossCombat.iResponseProgress = 600u;
 		entity.BossCombat.iResponseThreshold = 1000u;
+		entity.BossCombat.eMechanicGaugeKind = BOSS_MECHANIC_GAUGE_KIND::STAGGER;
+		entity.BossCombat.iCurrentMechanicGauge = 700u;
+		entity.BossCombat.iMaximumMechanicGauge = 1000u;
 		entity.BossCombat.iGameplayPhase = 1u;
 		entity.PinnedDefinitionRevision = source.ActiveGameplayRevision;
 		source.Entities.push_back(entity);
@@ -4414,10 +4417,12 @@ namespace
 		// Retained presentation has its own IDs and pattern/action/stage clocks.
         const std::size_t entityPresentationBytes =
             2 + entity.strPresentationPatternId.size() + 2 + entity.strPresentationActionId.size() + (4 * 3);
+		// Protocol 117 adds the gauge kind and remaining/maximum U32 pair.
+		constexpr std::size_t mechanicGaugeBytes = 1 + (4 * 2);
 		const std::size_t entityBytes =
 			4 + 1 + 2 + entity.strPatternId.size() + 2 +
 			entity.strActionId.size() + (4 * 4) + 1 + (4 * 7) + 1 + 1 + 1 +
-			4 + 4 + 2 + (4 * 6) + 1 + GAMEPLAY_DATA_REVISION_BYTES + entityPresentationBytes + 1; // boss buff count
+			4 + 4 + 2 + (4 * 6) + mechanicGaugeBytes + 1 + GAMEPLAY_DATA_REVISION_BYTES + entityPresentationBytes + 1; // boss buff count
 		constexpr std::size_t bossCombatEventBytes =
 			8 + 4 + 4 + 1 + 4;
 		constexpr std::size_t combatObjectBytes =
@@ -4664,6 +4669,9 @@ namespace
 			decoded.Entities[0].BossCombat.iMaximumStagger == 1000u &&
 			decoded.Entities[0].BossCombat.iResponseProgress == 600u &&
 			decoded.Entities[0].BossCombat.iResponseThreshold == 1000u &&
+			decoded.Entities[0].BossCombat.eMechanicGaugeKind == BOSS_MECHANIC_GAUGE_KIND::STAGGER &&
+			decoded.Entities[0].BossCombat.iCurrentMechanicGauge == 700u &&
+			decoded.Entities[0].BossCombat.iMaximumMechanicGauge == 1000u &&
 			decoded.Entities[0].BossCombat.iGameplayPhase == 1u,
 			"World Snapshot Entities Round Trip");
 
@@ -7246,8 +7254,8 @@ namespace
 		}
 
 		testRunner.Require(
-			116u == NETWORK_PROTOCOL_VERSION,
-			"Session Diagnostics Use Current Protocol Version 112");
+			117u == NETWORK_PROTOCOL_VERSION,
+			"Session Diagnostics Use Current Protocol Version 117");
 		testRunner.Require(
 			allReasonsAreKnown && allValuesAreContiguous,
 			"Every Session Diagnostic Reason Is Known And Append Only");
@@ -7274,8 +7282,8 @@ namespace
 	void Test_DataRevisionHotReloadProtocol(TEST_RUNNER& testRunner)
 	{
 		testRunner.Require(
-			116u == NETWORK_PROTOCOL_VERSION,
-			"World Spawn Pin Complete Play And Two-Revision Restart CAS Use Protocol 116");
+			117u == NETWORK_PROTOCOL_VERSION,
+			"World Spawn Pin Complete Play And Two-Revision Restart CAS Use Protocol 117");
 		const GameplayDataRevision base = Make_GameplayDataRevision(10u);
 		const GameplayDataRevision candidate = Make_GameplayDataRevision(40u);
 		const std::uint32_t required =

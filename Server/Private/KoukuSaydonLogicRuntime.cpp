@@ -3159,3 +3159,44 @@ void LostArk::Server::CKoukuCardMazeRuntime::Reset(
 	m_bMarchStarted = false;
 	m_ePhase = PHASE::INACTIVE;
 }
+
+void LostArk::Server::CKoukuSaydonLogicRuntime::Project_MechanicGauge(
+	const SERVER_WORLD_ENTITY& boss, const BOSS_PATTERN_DEFINITION& pattern,
+	const KOUKUSAYDON_LOGIC_LEDGER& ledger, const std::uint32_t serverTick,
+	LostArk::Shared::BOSS_COMBAT_SNAPSHOT& snapshot)
+{
+	using LostArk::Shared::BOSS_MECHANIC_GAUGE_KIND;
+	snapshot.eMechanicGaugeKind = BOSS_MECHANIC_GAUGE_KIND::NONE;
+	snapshot.iCurrentMechanicGauge = snapshot.iMaximumMechanicGauge = 0u;
+	if (!boss.iCurrentHp || !ledger.Is_Active() || boss.strPatternId != pattern.strPatternId ||
+		ledger.strPatternId != pattern.strPatternId || ledger.iPatternSequence != boss.iPatternSequence)
+		return;
+	for (const auto& state : ledger.Windows)
+	{
+		if (!state.bOpened || state.bClosed || state.iWindowIndex >= pattern.LogicWindows.size() ||
+			!Has_ReachedTick(serverTick, state.iStartTick) || Has_ReachedTick(serverTick, state.iEndTick)) continue;
+		const auto& window = pattern.LogicWindows[state.iWindowIndex];
+		if (window.eKind != BOSS_PATTERN_LOGIC_KIND::STAGGER_WINDOW || !window.iThreshold) continue;
+		const auto lost = state.iBossHpAtOpen > boss.iCurrentHp ? state.iBossHpAtOpen - boss.iCurrentHp : 0u;
+		snapshot.eMechanicGaugeKind = BOSS_MECHANIC_GAUGE_KIND::STAGGER;
+		snapshot.iMaximumMechanicGauge = window.iThreshold;
+		snapshot.iCurrentMechanicGauge = window.iThreshold - (std::min)(lost, window.iThreshold);
+		return;
+	}
+	// The typed detonation is scheduled in parent time too: its preceding 13 s
+	// are the black-hole damage interval. This never judges or cancels a pattern.
+	constexpr std::uint32_t blackHoleMs = 13000u;
+	for (const auto& cue : ledger.MechanicTriggers)
+	{
+		if (cue.bStarted || cue.iIndex >= pattern.MechanicTriggers.size()) continue;
+		const auto& trigger = pattern.MechanicTriggers[cue.iIndex];
+		if (trigger.eKind != BOSS_PATTERN_MECHANIC_TRIGGER_KIND::BINGO_DETONATION ||
+			trigger.iStartMs < blackHoleMs || !boss.iMaximumHp) continue;
+		const auto start = Add_Ticks(ledger.iPatternStartTick, Ticks_FromMs(trigger.iStartMs - blackHoleMs));
+		if (!Has_ReachedTick(serverTick, start) || Has_ReachedTick(serverTick, cue.iStartTick)) continue;
+		snapshot.eMechanicGaugeKind = BOSS_MECHANIC_GAUGE_KIND::BOSS_HP;
+		snapshot.iCurrentMechanicGauge = (std::min)(boss.iCurrentHp, boss.iMaximumHp);
+		snapshot.iMaximumMechanicGauge = boss.iMaximumHp;
+		return;
+	}
+}

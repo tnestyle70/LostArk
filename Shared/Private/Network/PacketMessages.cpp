@@ -269,7 +269,8 @@ namespace
 			  snapshot.eAction != LostArk::Shared::PLAYER_ACTION_STATE::GRABBED)) &&
 			(snapshot.isPatternBound ?
 				(snapshot.iPatternBindEndTick != 0u &&
-				 snapshot.iCurrentHp != 0u && !snapshot.isCombatReady &&
+				 snapshot.iCurrentHp != 0u &&
+				 // Binding locks input; combat readiness independently admits incoming hits.
 				 LostArk::Shared::PLAYER_LOCOMOTION_STATE::IDLE ==
 					snapshot.eLocomotionState &&
 				 LostArk::Shared::PLAYER_ACTION_STATE::NONE == snapshot.eAction &&
@@ -516,6 +517,8 @@ namespace
 			0u == snapshot.iMaximumShield &&
 			0u == snapshot.iResponseProgress &&
 			0u == snapshot.iResponseThreshold &&
+			LostArk::Shared::BOSS_MECHANIC_GAUGE_KIND::NONE == snapshot.eMechanicGaugeKind &&
+			0u == snapshot.iCurrentMechanicGauge && 0u == snapshot.iMaximumMechanicGauge &&
 			1u == snapshot.iGameplayPhase;
 	}
 
@@ -537,6 +540,12 @@ namespace
 			snapshot.iCurrentStagger <= snapshot.iMaximumStagger &&
 			snapshot.iCurrentShield <= snapshot.iMaximumShield &&
 			snapshot.iResponseProgress <= snapshot.iResponseThreshold &&
+			(snapshot.eMechanicGaugeKind == LostArk::Shared::BOSS_MECHANIC_GAUGE_KIND::NONE ?
+				(snapshot.iCurrentMechanicGauge == 0u && snapshot.iMaximumMechanicGauge == 0u) :
+				((snapshot.eMechanicGaugeKind == LostArk::Shared::BOSS_MECHANIC_GAUGE_KIND::STAGGER ||
+				  snapshot.eMechanicGaugeKind == LostArk::Shared::BOSS_MECHANIC_GAUGE_KIND::BOSS_HP) &&
+				 snapshot.iMaximumMechanicGauge > 0u &&
+				 snapshot.iCurrentMechanicGauge <= snapshot.iMaximumMechanicGauge)) &&
 			(hasShield == (0u != snapshot.iCurrentShield)) &&
 			(!isGhostHidden ||
 				(isInvulnerable && snapshot.iGameplayPhase >= 3u)) &&
@@ -3314,6 +3323,9 @@ bool LostArk::Shared::Write_Message(CPacketWriter& writer, const S2C_WORLD_SNAPS
 			writer.Write_U32(entity.BossCombat.iMaximumShield);
 			writer.Write_U32(entity.BossCombat.iResponseProgress);
 			writer.Write_U32(entity.BossCombat.iResponseThreshold);
+			writer.Write_U8(static_cast<std::uint8_t>(entity.BossCombat.eMechanicGaugeKind));
+			writer.Write_U32(entity.BossCombat.iCurrentMechanicGauge);
+			writer.Write_U32(entity.BossCombat.iMaximumMechanicGauge);
 			writer.Write_U8(entity.BossCombat.iGameplayPhase);
 		}
 		if (!Write_GameplayDataRevision(
@@ -3667,6 +3679,7 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader, S2C_WORLD_SNAPSHOT& me
 			return false;
 		}
 		entity.hasBossCombatState = 0u != rawHasBossCombatState;
+		std::uint8_t rawMechanicGaugeKind = 0u;
 		if (entity.hasBossCombatState &&
 			(!reader.Read_U32(entity.BossCombat.iStateRevision) ||
 			 !reader.Read_U32(entity.BossCombat.iAlivePartMask) ||
@@ -3677,6 +3690,9 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader, S2C_WORLD_SNAPSHOT& me
 			 !reader.Read_U32(entity.BossCombat.iMaximumShield) ||
 			 !reader.Read_U32(entity.BossCombat.iResponseProgress) ||
 			 !reader.Read_U32(entity.BossCombat.iResponseThreshold) ||
+			 !reader.Read_U8(rawMechanicGaugeKind) ||
+			 !reader.Read_U32(entity.BossCombat.iCurrentMechanicGauge) ||
+			 !reader.Read_U32(entity.BossCombat.iMaximumMechanicGauge) ||
 			 !reader.Read_U8(entity.BossCombat.iGameplayPhase)))
 		{
 			return false;
@@ -3686,6 +3702,7 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader, S2C_WORLD_SNAPSHOT& me
 		{
 			return false;
 		}
+		entity.BossCombat.eMechanicGaugeKind = static_cast<BOSS_MECHANIC_GAUGE_KIND>(rawMechanicGaugeKind);
 		entity.eAction = static_cast<WORLD_ENTITY_ACTION>(rawAction);
 		if (!Is_Valid_WorldEntitySnapshot(entity))
 			return false;

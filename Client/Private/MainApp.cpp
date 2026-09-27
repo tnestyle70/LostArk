@@ -11,7 +11,7 @@
 #include "MainApp.h"
 #include "PlayableCharacterAssetService.h"
 #include "DungeonTimerView.h"
-#include "BossImmuneGaugeView.h"
+#include "WorldHealthBarView.h"
 
 #include "CharacterSelectionState.h"
 #include "CharacterSelectWindowView.h"
@@ -1079,8 +1079,7 @@ HRESULT CMainApp::Initialize()
 	this Level::STATIC construction until the first Update_BossHealthBar() call finds a valid
 	boss. */
 	Hide_BossHealthBar();
-	m_pBossImmuneGaugeView = std::make_unique<CBossImmuneGaugeView>(
-		m_pDevice, m_pContext, ETOUI(LEVEL::STATIC));
+	m_pWorldHealthBarView = std::make_unique<CWorldHealthBarView>(m_pDevice, m_pContext);
 	m_pEstherUIView = std::make_unique<CUILayoutRuntime>(
 		m_pDevice, m_pContext, ETOUI(LEVEL::STATIC), TEXT("Layer_UI"),
 		L"UI/Esther/EstherUI.json");
@@ -1922,7 +1921,6 @@ void CMainApp::Update(const f32_t fTimeDelta)
 	}
 	Update_ItemUpgrade(fTimeDelta);
 	Update_BossHealthBar();
-	Update_BossImmuneGauge(fTimeDelta);
 	Update_EstherGauge(fTimeDelta);
 	if (nullptr != m_pEstherCutinService)
 		m_pEstherCutinService->Update(fTimeDelta);
@@ -3549,6 +3547,7 @@ void CMainApp::Update(const f32_t fTimeDelta)
 	/* Every shown runtime surface now declares where it covers the screen and on which layer,
 	so each text group can be hidden exactly where a surface above it covers it. */
 	Sync_KoukuCinematicUI();
+	Update_WorldHealthBars(fTimeDelta);
 	if (!CUIInputRouter::Get().Is_CinematicSuppressed()) Register_UITextOccluders();
 }
 
@@ -7716,10 +7715,10 @@ void CMainApp::Hide_BossHealthBar()
 		m_pBossUIView->Set_SlotVisible(pSlotId, false);
 }
 
-void CMainApp::Update_BossImmuneGauge(const f32_t fTimeDelta)
+void CMainApp::Update_WorldHealthBars(const f32_t fTimeDelta)
 {
-	Engine::CProfilerScope scope(CGameInstance::Get().Get_Profiler(), "UI.Runtime.BossImmuneGauge.Update");
-	if (nullptr == m_pBossImmuneGaugeView)
+	Engine::CProfilerScope scope(CGameInstance::Get().Get_Profiler(), "UI.Runtime.WorldHealthBars.Update");
+	if (nullptr == m_pWorldHealthBarView)
 		return;
 	const uint32_t currentLevel = CGameInstance::Get().Get_CurrentLevelID();
 	const bool_t isSupportedLevel =
@@ -7727,11 +7726,12 @@ void CMainApp::Update_BossImmuneGauge(const f32_t fTimeDelta)
 		currentLevel == ETOUI(LEVEL::VALTAN_ARENA) ||
 		currentLevel == ETOUI(LEVEL::DEVELOPMENT) ||
 		currentLevel == ETOUI(LEVEL::CHARACTER_SELECT) ||
+		currentLevel == ETOUI(LEVEL::MAHARAKA) ||
 		currentLevel == ETOUI(LEVEL::KAKULSAYDON_ARENA);
-	const bool_t skillWindowOpen =
-		nullptr != m_pSkillWindowView && m_pSkillWindowView->Is_Open();
-	m_pBossImmuneGaugeView->Update(fTimeDelta,
-		CCombatHUDViewModel::Get().Get_Boss(), isSupportedLevel && !skillWindowOpen && !Is_KoukuMinigameHUDHidden());
+	const bool_t characterPresentation = currentLevel == ETOUI(LEVEL::CHARACTER_SELECT) &&
+		CLevel_CharacterSelect::Get_Active() && CLevel_CharacterSelect::Get_Active()->Is_ProductPresentationOpen();
+	m_pWorldHealthBarView->Update(fTimeDelta, CCombatHUDViewModel::Get().Get_WorldHealthBars(),
+		isSupportedLevel && !Is_RuntimeUIScreenSuppressed() && !characterPresentation && !Is_MvpResultPageOpen());
 }
 
 void CMainApp::Update_BossHealthBar()
@@ -7839,12 +7839,9 @@ void CMainApp::Update_BossHealthBar()
 		Hide_BossHealthBar();
 		return;
 	}
-	/* Boss_Fill's own real visibility (healthRatio > 0.f) is set further below, once healthRatio
-	is known to be nonzero -- these three have no such data-driven condition, always on
-	whenever the bar itself is showing at all. */
+	/* The HP frame stays visible while a live boss owns the health bar. The
+	mechanic frame has a separate Server gate below. */
 	m_pBossUIView->Set_SlotVisible("Boss_Frame", true);
-	m_pBossUIView->Set_SlotVisible("Boss_StaggerBg", true);
-	m_pBossUIView->Set_SlotVisible("Boss_StaggerTrack", true);
 
 	/* Real EFUI_STATUS pieces -- see Resources/UI/BossUI. The boss_bar_fill_* set are solid-color
 	bar rows cropped directly from targetstatus_loc_int_i2.dds's top cluster (square left edge,
@@ -7901,25 +7898,18 @@ void CMainApp::Update_BossHealthBar()
 		m_pBossUIView->Set_SlotVisible("Boss_FillBehind", false);
 	}
 
-	/* Stagger/paralyzation gauge (real paralyzationGauge -- background + fill + hollow
-	purple-bordered track, char 473 in TargetGrade_Boss). The Server snapshot owns
-	current/maximum accumulated stagger damage. Presentation crops the authored CUI fill
-	to the remaining amount so admitted stagger damage visibly depletes toward the break. */
-	if (0u != boss.iMaximumStagger)
-	{
-		const f32_t fStaggerRatio = (std::clamp)(
-			static_cast<f32_t>(
-				boss.iMaximumStagger - (std::min)(
-					boss.iCurrentStagger, boss.iMaximumStagger)) /
-				static_cast<f32_t>(boss.iMaximumStagger),
-			0.f, 1.f);
-		m_pBossUIView->Set_SlotFillRatio("Boss_StaggerFill", fStaggerRatio);
-		m_pBossUIView->Set_SlotVisible("Boss_StaggerFill", true);
-	}
-	else
-	{
-		m_pBossUIView->Set_SlotVisible("Boss_StaggerFill", false);
-	}
+	/* Only an active Server mechanic owns this orange row. Blackhole reports
+	actual remaining boss HP; it never borrows ordinary accumulated stagger. */
+	const bool mechanicVisible = boss.iMaximumMechanicGauge > 0u &&
+		(boss.eMechanicGaugeKind == LostArk::Shared::BOSS_MECHANIC_GAUGE_KIND::STAGGER ||
+		 boss.eMechanicGaugeKind == LostArk::Shared::BOSS_MECHANIC_GAUGE_KIND::BOSS_HP);
+	m_pBossUIView->Set_SlotVisible("Boss_StaggerBg", mechanicVisible);
+	m_pBossUIView->Set_SlotVisible("Boss_StaggerTrack", mechanicVisible);
+	const f32_t mechanicRatio = mechanicVisible ? static_cast<f32_t>(
+		(std::min)(boss.iCurrentMechanicGauge, boss.iMaximumMechanicGauge)) /
+		static_cast<f32_t>(boss.iMaximumMechanicGauge) : 0.f;
+	m_pBossUIView->Set_SlotFillRatio("Boss_StaggerFill", mechanicRatio);
+	m_pBossUIView->Set_SlotVisible("Boss_StaggerFill", mechanicVisible && mechanicRatio > 0.f);
 
 	/* User-supplied boundary marker (HP seperate Bar.png -- a tiny 3x15 soft cream vertical glow
 	line, not an EFUI_STATUS extraction) drawn at the current fill/empty edge, matching the real
@@ -14081,6 +14071,7 @@ void CMainApp::Free()
 	m_pValtanBossTool.reset();
 	if (auto* profiler = CGameInstance::Get().Get_Profiler()) profiler->Set_Enabled(false);
 	m_pProfilerTool.reset();
+	m_pWorldHealthBarView.reset();
 	if (nullptr != m_pImGuiLayer)
 		m_pImGuiLayer->Shutdown();
 	m_pImGuiLayer.reset();

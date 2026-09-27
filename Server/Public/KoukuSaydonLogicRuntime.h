@@ -179,6 +179,10 @@ namespace LostArk::Server
 		// Uses the same authored region transform and elliptic-sector boundary as contacts.
 		[[nodiscard]] static bool Is_PointInsideRegion(const BOSS_LOGIC_REGION& region,
 			const SERVER_WORLD_ENTITY& boss, float worldX, float worldZ) noexcept;
+		// Read-only projection of the exact active authoritative mechanic interval.
+		static void Project_MechanicGauge(const SERVER_WORLD_ENTITY& boss,
+			const BOSS_PATTERN_DEFINITION& pattern, const KOUKUSAYDON_LOGIC_LEDGER& ledger,
+			std::uint32_t serverTick, LostArk::Shared::BOSS_COMBAT_SNAPSHOT& snapshot);
 		static void Build(
 			const BOSS_PATTERN_DEFINITION& pattern,
 			const SERVER_WORLD_ENTITY& boss,

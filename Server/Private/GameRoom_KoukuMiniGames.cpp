@@ -524,7 +524,9 @@ bool LostArk::Server::CGameRoom::Spawn_KoukuCardRainSoldiers(
         SPAWN_GROUP_ENTRY entry{};
         entry.strArchetypeId = archetypes[families[index]]; entry.strAnchorId = anchors[index].strAnchorId; entry.iCount = 1u;
         const auto id = m_iNextNetEntityId;
-        if (!Spawn_Monster(group, entry, anchors[index], *profiles[index], index))
+        auto profile = *profiles[index];
+        if (tuning && tuning->iSoldierMaxHp) profile.iMaxHp = tuning->iSoldierMaxHp;
+        if (!Spawn_Monster(group, entry, anchors[index], profile, index))
         {
             for (auto it = m_WorldEntities.begin(); it != m_WorldEntities.end();)
             {
@@ -537,6 +539,7 @@ bool LostArk::Server::CGameRoom::Spawn_KoukuCardRainSoldiers(
             m_strStatus = "Card rain soldier batch rolled back";
             return false;
         }
+        m_WorldEntities.back().iAttackFixedDamage = tuning ? tuning->iSoldierDamage : 0u;
         m_KoukuCardRainSoldiers.emplace(id, KOUKU_CARD_RAIN_SOLDIER_STATE{
             ownerId, sequence, 0u });
     }

@@ -2379,6 +2379,7 @@ bool Client::CClientReplication::Commit_PlayerSpawn(
 bool Client::CClientReplication::Apply_Despawn(
 	const LostArk::Shared::S2C_PLAYER_DESPAWNED& despawned)
 {
+	CCombatHUDViewModel::Get().Remove_WorldHealthBar(despawned.iNetEntityId);
 	m_PendingPlayerSpawns.erase(despawned.iNetEntityId);
 	m_PendingPlayerPresentations.erase(despawned.iNetEntityId);
 	m_FailedPlayerSpawnClasses.erase(despawned.iNetEntityId);
@@ -3110,6 +3111,7 @@ bool Client::CClientReplication::Apply_WorldEntityDespawn(
 	{
 		return false;
 	}
+	CCombatHUDViewModel::Get().Remove_WorldHealthBar(despawned.iNetEntityId);
 	const auto iter = m_WorldEntities.find(despawned.iNetEntityId);
 	if (m_WorldEntities.end() == iter)
 		return true;
@@ -4162,6 +4164,47 @@ bool Client::CClientReplication::Apply_WorldSnapshot(
 		snapshot.iEstherGauge,
 		snapshot.iEstherGaugeMaximum);
 	CCombatHUDViewModel::Get().Apply_BingoBoard(snapshot.Bingo);
+
+	// Replace the complete read model only after the accepted snapshot has
+	// resolved its presentations. No UI owns a replicated object's lifetime.
+	std::vector<HUD_WORLD_HEALTH_BAR_STATE> healthBars;
+	healthBars.reserve(snapshot.Players.size() + snapshot.Entities.size());
+	const auto localEntityId = CNetworkManager::Get().Get_LocalEntityId();
+	for (const auto& player : snapshot.Players)
+	{
+		if (player.iNetEntityId == localEntityId || !player.iCurrentHp || !player.iMaximumHp)
+			continue;
+		OBJECT_HANDLE handle{};
+		if (!m_Registry.Find_Handle(player.iNetEntityId, handle)) continue;
+		const auto character = m_Registry.Resolve(handle);
+		if (!character) continue;
+		HUD_WORLD_HEALTH_BAR_STATE state;
+		state.iNetEntityId = player.iNetEntityId;
+		state.isPlayer = true;
+		state.iCurrentHp = player.iCurrentHp;
+		state.iMaximumHp = player.iMaximumHp;
+		state.iShield = player.iShield;
+		state.pPresentation = character;
+		healthBars.push_back(std::move(state));
+	}
+	for (const auto& entity : snapshot.Entities)
+	{
+		if (!entity.iCurrentHp || !entity.iMaximumHp) continue;
+		const auto found = m_WorldEntities.find(entity.iNetEntityId);
+		if (found == m_WorldEntities.end() || found->second.bPresentationIsolated) continue;
+		const auto& presentation = found->second;
+		if (presentation.eKind != WORLD_ENTITY_KIND::MONSTER && presentation.eKind != WORLD_ENTITY_KIND::BOSS)
+			continue;
+		HUD_WORLD_HEALTH_BAR_STATE state;
+		state.iNetEntityId = entity.iNetEntityId;
+		state.iCurrentHp = entity.iCurrentHp;
+		state.iMaximumHp = entity.iMaximumHp;
+		state.iShield = entity.hasBossCombatState ? entity.BossCombat.iCurrentShield : 0u;
+		if (const auto npc = presentation.pNpc.lock()) state.pPresentation = npc;
+		else if (const auto boss = presentation.pValtan.lock()) state.pPresentation = boss;
+		if (!state.pPresentation.expired()) healthBars.push_back(std::move(state));
+	}
+	CCombatHUDViewModel::Get().Apply_WorldHealthBars(std::move(healthBars));
 
 	m_iLastServerTick = snapshot.iServerTick;
 	return allSucceeded;

@@ -112,7 +112,8 @@ namespace LostArk::Shared
 	// 114 carries the Server-selected Mario colour marker over the assigned player.
 	// 115 appends authoritative stagger success and Mario hit-source presentation to DAMAGE_EVENT.
 	// 116 carries explicit guide actors, a separate companion roster, dialogue and decision traces.
-	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 116;
+	// 117 carries the Server-selected mechanic gauge mode and remaining/maximum.
+	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 117;
 
 	enum class WORLD_ID : std::uint16_t
 	{

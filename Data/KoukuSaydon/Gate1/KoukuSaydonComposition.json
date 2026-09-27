@@ -1,7 +1,7 @@
 {
   "schema": "lostark.kouku-saydon-composition",
   "formatVersion": 3,
-  "revision": 2443,
+  "revision": 2444,
   "compositionId": "boss.composition.kakulsaydon.gate1",
   "encounterId": "ENCOUNTER_KAKULSAYDON_G1",
   "bossArchetypeId": "BOSS_KAKULSAYDON_G1_KOUKU",
@@ -26,7 +26,7 @@
       "displayName": "세이튼로직_방패무력화",
       "logicType": "DURATION",
       "judgementKind": "STAGGER_WINDOW",
-      "threshold": 1000,
+      "threshold": 115000,
       "shieldArcDegrees": 71.737272000000004,
       "endsPatternOnSuccess": true,
       "normalYawOffsetDegrees": 90
@@ -496,7 +496,7 @@
       "displayName": "쿠크세이튼_마리오_무력화",
       "logicType": "DURATION",
       "judgementKind": "STAGGER_WINDOW",
-      "threshold": 1000,
+      "threshold": 115000,
       "shieldArcDegrees": 0,
       "endsPatternOnSuccess": true,
       "normalYawOffsetDegrees": 0
@@ -1246,7 +1246,9 @@
       "triggerKind": "CARD_RAIN_SOLDIERS",
       "soldierCounts": [3, 3, 3],
       "spawnRadiusMinM": 3,
-      "spawnRadiusMaxM": 10
+      "spawnRadiusMaxM": 10,
+      "soldierMaxHp": 69000,
+      "soldierDamage": 13200
     },
     {
       "logicId": "kakulsaydon.g1.logic.130",

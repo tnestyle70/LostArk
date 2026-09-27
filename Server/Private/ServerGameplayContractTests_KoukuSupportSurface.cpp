@@ -39,10 +39,114 @@ using namespace LostArk::Shared;
 
 
 
+namespace
+{
+    void Run_MechanicGaugeContracts(TESTS& tests)
+    {
+        CGameplayCatalog catalog;
+        if (!catalog.Load()) { tests.Require(false, "Load gameplay for mechanic gauge verdict contracts"); return; }
+        BOSS_PATTERN_DEFINITION pattern;
+        pattern.strPatternId = "KAKULSAYDON_GAUGE_CONTRACT";
+        BOSS_PATTERN_LOGIC_WINDOW window;
+        window.strWindowId = "gauge.stagger"; window.eKind = BOSS_PATTERN_LOGIC_KIND::STAGGER_WINDOW;
+        window.iStartMs = 1000u; window.iDurationMs = 2000u; window.iThreshold = 115000u;
+        window.bEndsPatternOnSuccess = true; pattern.LogicWindows.push_back(window);
+        SERVER_WORLD_ENTITY boss;
+        boss.iNetEntityId = 421u; boss.eKind = WORLD_BOOTSTRAP_KIND::BOSS;
+        boss.strPatternId = pattern.strPatternId; boss.iPatternSequence = 7u;
+        boss.iCurrentHp = boss.iMaximumHp = 1000000u;
+        KOUKUSAYDON_LOGIC_LEDGER ledger; BOSS_COMBAT_SNAPSHOT view;
+        CKoukuSaydonLogicRuntime::Build(pattern, boss, 100u, ledger);
+        std::map<PLAYER_ID, SERVER_PLAYER> players; std::vector<DAMAGE_EVENT> damage;
+        KOUKUSAYDON_LOGIC_OUTPUT output;
+        CKoukuSaydonLogicRuntime::Project_MechanicGauge(boss, pattern, ledger, 129u, view);
+        tests.Require(view.eMechanicGaugeKind == BOSS_MECHANIC_GAUGE_KIND::NONE,
+            "Stagger gauge stays hidden before the authoritative window opens");
+        CKoukuSaydonLogicRuntime::Update(boss, pattern, ledger, players, catalog, nullptr, 130u, damage, output);
+        CKoukuSaydonLogicRuntime::Project_MechanicGauge(boss, pattern, ledger, 130u, view);
+        tests.Require(view.eMechanicGaugeKind == BOSS_MECHANIC_GAUGE_KIND::STAGGER &&
+            view.iCurrentMechanicGauge == 115000u && view.iMaximumMechanicGauge == 115000u,
+            "Stagger starts at five nominal Lance Master basic hits");
+        boss.iCurrentHp -= 4u * 23000u;
+        CKoukuSaydonLogicRuntime::Update(boss, pattern, ledger, players, catalog, nullptr, 131u, damage, output);
+        CKoukuSaydonLogicRuntime::Project_MechanicGauge(boss, pattern, ledger, 131u, view);
+        tests.Require(view.iCurrentMechanicGauge == 23000u && !output.bStaggerSuccess,
+            "Four nominal hits leave exactly one hit and do not succeed early");
+        boss.iCurrentHp -= 23000u;
+        CKoukuSaydonLogicRuntime::Update(boss, pattern, ledger, players, catalog, nullptr, 132u, damage, output);
+        CKoukuSaydonLogicRuntime::Project_MechanicGauge(boss, pattern, ledger, 132u, view);
+        tests.Require(output.bStaggerSuccess && output.bEndPatternEarly &&
+            view.eMechanicGaugeKind == BOSS_MECHANIC_GAUGE_KIND::NONE,
+            "Fifth nominal hit closes the real stagger window and hides its gauge");
+
+        pattern.LogicWindows.clear();
+        for (const std::uint32_t detonationMs : {13000u, 24828u})
+        {
+            pattern.MechanicTriggers.clear();
+            BOSS_PATTERN_MECHANIC_TRIGGER detonation;
+            detonation.eKind = BOSS_PATTERN_MECHANIC_TRIGGER_KIND::BINGO_DETONATION;
+            detonation.iStartMs = detonationMs; pattern.MechanicTriggers.push_back(detonation);
+            boss.iCurrentHp = 700000u;
+            CKoukuSaydonLogicRuntime::Build(pattern, boss, 200u, ledger);
+            const auto start = 200u + CKoukuSaydonLogicRuntime::Ticks_FromMs(detonationMs - 13000u);
+            const auto end = 200u + CKoukuSaydonLogicRuntime::Ticks_FromMs(detonationMs);
+            CKoukuSaydonLogicRuntime::Project_MechanicGauge(boss, pattern, ledger, start - 1u, view);
+            tests.Require(view.eMechanicGaugeKind == BOSS_MECHANIC_GAUGE_KIND::NONE,
+                "Black-hole HP gauge is hidden before its exact standalone or parent interval");
+            CKoukuSaydonLogicRuntime::Project_MechanicGauge(boss, pattern, ledger, start, view);
+            tests.Require(view.eMechanicGaugeKind == BOSS_MECHANIC_GAUGE_KIND::BOSS_HP &&
+                view.iCurrentMechanicGauge == 700000u && view.iMaximumMechanicGauge == 1000000u,
+                "Black-hole gauge projects current boss HP against actual maximum HP");
+            boss.iCurrentHp -= 115000u; output = {}; damage.clear();
+            CKoukuSaydonLogicRuntime::Update(boss, pattern, ledger, players, catalog, nullptr, start + 1u, damage, output);
+            CKoukuSaydonLogicRuntime::Project_MechanicGauge(boss, pattern, ledger, start + 1u, view);
+            tests.Require(view.iCurrentMechanicGauge == 585000u && !output.bStaggerSuccess &&
+                !output.bEndPatternEarly && damage.empty(),
+                "Damage lowers black-hole boss HP and its bar without a stagger verdict or cancellation");
+            CKoukuSaydonLogicRuntime::Project_MechanicGauge(boss, pattern, ledger, end, view);
+            tests.Require(view.eMechanicGaugeKind == BOSS_MECHANIC_GAUGE_KIND::NONE &&
+                view.iCurrentMechanicGauge == 0u && view.iMaximumMechanicGauge == 0u,
+                "Black-hole gauge ends exactly at the detonation tick");
+        }
+        S2C_WORLD_SNAPSHOT message;
+        message.iServerTick = 1u; message.ActiveGameplayRevision = catalog.Get_ActiveRevision();
+        message.eWorldId = WORLD_ID::KAKULSAYDON_ARENA;
+        PLAYER_SNAPSHOT player; player.iNetEntityId = 42u;
+        player.eCharacterClass = CHARACTER_CLASS_ID::LANCE_MASTER;
+        message.Players.push_back(player);
+        WORLD_ENTITY_SNAPSHOT entity;
+        entity.iNetEntityId = 421u; entity.eAction = WORLD_ENTITY_ACTION::IDLE;
+        entity.iCurrentHp = 585000u; entity.iMaximumHp = 1000000u;
+        entity.hasBossCombatState = true; entity.BossCombat.iStateRevision = 1u;
+        entity.PinnedDefinitionRevision = message.ActiveGameplayRevision;
+        entity.BossCombat.eMechanicGaugeKind = BOSS_MECHANIC_GAUGE_KIND::BOSS_HP;
+        entity.BossCombat.iCurrentMechanicGauge = 585000u; entity.BossCombat.iMaximumMechanicGauge = 1000000u;
+        message.Entities.push_back(entity);
+        CPacketWriter writer; S2C_WORLD_SNAPSHOT decoded;
+        bool roundtrip = Write_Message(writer, message);
+        if (roundtrip)
+        {
+            CPacketReader reader(writer.Get_Buffer());
+            roundtrip = Read_Message(reader, decoded) && reader.Get_RemainingSize() == 0u && decoded.Entities.size() == 1u;
+        }
+        tests.Require(roundtrip && decoded.Entities.front().BossCombat.eMechanicGaugeKind == BOSS_MECHANIC_GAUGE_KIND::BOSS_HP &&
+            decoded.Entities.front().BossCombat.iCurrentMechanicGauge == 585000u &&
+            decoded.Entities.front().BossCombat.iMaximumMechanicGauge == 1000000u,
+            "Typed mechanic gauge mode and remaining/maximum survive the real snapshot wire");
+        for (const auto invalid : {BOSS_MECHANIC_GAUGE_KIND::NONE, static_cast<BOSS_MECHANIC_GAUGE_KIND>(255u)})
+        {
+            message.Entities.front().BossCombat.eMechanicGaugeKind = invalid;
+            CPacketWriter rejected;
+            tests.Require(!Write_Message(rejected, message), "Snapshot rejects unknown modes and hidden gauges carrying values");
+        }
+    }
+}
+
 int LostArk::Server::Run_ServerKoukuSupportSurfaceContractTests()
 {
 	using namespace LostArk::Shared;
 	TESTS tests;
+	Run_MechanicGaugeContracts(tests);
 	namespace fs = std::filesystem;
 	const auto fixture = fs::temp_directory_path() / (L"LostArkKoukuSupport-" + std::to_wstring(_getpid()));
 	fs::create_directories(fixture / L"Navigation");
@@ -192,6 +296,7 @@ REGION "blocked" "closed" 0 1
 		}
 		else if (withFollowup)
 			counterWindow.OnSuccess.push_back({BOSS_PATTERN_LOGIC_RESULT_KIND::FOLLOWUP_PATTERN, 0u, 0u, groggyId});
+		if (stagger) counterBoss.iCurrentHp = counterBoss.iMaximumHp = counterWindow.iThreshold + 1u;
 		counterPattern.LogicWindows = {counterWindow};
 		auto& counterLedger = room->m_KoukuSaydonPatternAudition.Members.front().LogicLedger;
 		KOUKUSAYDON_LOGIC_OUTPUT counterOutput; std::vector<DAMAGE_EVENT> counterDamage;

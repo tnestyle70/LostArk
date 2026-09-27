@@ -373,6 +373,14 @@ int LostArk::Server::Run_ServerBingoContractTests()
             player.fPositionX = Kouku_BingoCellCenterX(12) + .4f;
             player.fPositionZ = Kouku_BingoCellCenterZ(12) - .4f;
             BOSS_PATTERN_MECHANIC_TRIGGER trigger; trigger.eKind = BOSS_PATTERN_MECHANIC_TRIGGER_KIND::BINGO_BOARD;
+            const auto* bingoPatterns = audition.pProductGeneration->Find_BossPatterns("ENCOUNTER_KAKULSAYDON_G1");
+            const BOSS_PATTERN_MECHANIC_TRIGGER* publishedBoard = nullptr;
+            if (bingoPatterns) for (const auto& pattern : *bingoPatterns)
+                for (const auto& candidate : pattern.MechanicTriggers)
+                    if (candidate.eKind == BOSS_PATTERN_MECHANIC_TRIGGER_KIND::BINGO_BOARD && candidate.BingoHammerHalfExtentsM)
+                        publishedBoard = &candidate;
+            tests.Require(publishedBoard != nullptr, "Bingo duration fixture loads its actual published hammer geometry");
+            if (publishedBoard) trigger = *publishedBoard;
             trigger.iDurationMs = 50000u;
             constexpr std::uint32_t start = 1000u;
             room->Begin_KoukuBingoDuration(owner, trigger, start);

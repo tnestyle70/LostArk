@@ -203,6 +203,8 @@ namespace Client
 		double fTargetRadiusM = 0.0;
 		// CARD_RAIN_SOLDIERS defaults preserve the original club/heart/diamond spawn.
 		std::array<std::uint32_t, 3u> SoldierCounts{1u, 1u, 1u};
+		// Zero keeps the monster profile; overrides belong only to card rain.
+		std::uint32_t iSoldierMaxHp = 0u, iSoldierDamage = 0u;
 		double fSpawnRadiusMinM = 3.0, fSpawnRadiusMaxM = 6.0;
 		/* TRIGGER values are projected to Server mechanic cues. */
 		std::string strTriggerKind;

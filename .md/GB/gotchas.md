@@ -4367,3 +4367,21 @@ CPU packing, named-vector patch, Base/Light 함수와 dispatch, registry를 함�
 기존 함수 본문·Engine/Client mirror를 대조한다. public header가 단일 CPP/generated INL로
 분리된 브랜치에는 새 packing을 INL에 연결하며 거대한 inline header를 되살리지 않는다.
 구체적인 병합 근거는 [PR 통합 결과](09-27/2026-09-27_MAIN_PR465_PR467_INTEGRATION_RESULT.md)에 둔다.
+
+### 초상 요청 간 viewport와 forward coverage
+
+여러 초상을 같은 G-buffer로 그릴 때마다 full-resolution viewport와 원래 DSV를 복구한다.
+Begin/End_MRT는 viewport를 초기화하지 않으며 마지막 UI resolve는 작은 viewport와 null DSV를
+남긴다. Character의 pass0은 source translucent hair/eyelash를 건너뛰므로 field의
+NONLIGHT/BLEND pass도 초상에 연결해야 한다. 이들 픽셀은 G-buffer marker가 없으므로
+초상 alpha를 depth marker만으로 만들지 말고 SceneHDR alpha-over coverage를 사용한다.
+근거: `.md/GB/09-27/2026-09-27_PORTRAIT_AND_SHIP_REVIEW_FIX_RESULT.md`.
+
+### 주사위 속박과 snapshot 전체 송신 중단
+
+`isPatternBound`는 입력 이동·스킬 차단이고 `isCombatReady`는 카드 피격 가능 상태다.
+두 상태가 동시에 true인 정상 속박을 wire validator가 거절하면 그 플레이어만이 아니라
+방 전체 snapshot encode가 실패해 자유 플레이어도 멎고 속박 표시도 갱신되지 않는다.
+속박 검증은 N명 중 N-1명 선택만 확인하지 말고 실제 Complete Play 진입 뒤 두 session의
+snapshot tick 진행과 자유 플레이어의 실제 이동까지 확인한다. GUIDE_AI는 인간 인원에서 제외한다.
+근거: `.md/GB/09-27/2026-09-27_KOUKU_HEALTH_STAGGER_BARS_IMPLEMENTATION_RESULT.md`.

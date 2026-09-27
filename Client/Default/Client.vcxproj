@@ -171,6 +171,7 @@
     <ClInclude Include="..\Public\ReplicatedPlayerHealth.h" />
     <ClInclude Include="..\Public\PartyTransferNotice.h" />
     <ClInclude Include="..\Public\WorldPlayerNameplateView.h" />
+    <ClInclude Include="..\Public\WorldHealthBarView.h" />
     <ClInclude Include="..\Public\WorldPlayerChatBubbleView.h" />
     <ClInclude Include="..\Public\PartyInteractionView.h" />
     <ClInclude Include="..\Public\CombatAnalysisFrameView.h" />
@@ -461,6 +462,7 @@
     <ClCompile Include="..\Private\ChatWindowView.cpp" />
     <ClCompile Include="..\Private\PartyWindowView.cpp" />
     <ClCompile Include="..\Private\WorldPlayerNameplateView.cpp" />
+    <ClCompile Include="..\Private\WorldHealthBarView.cpp" />
     <ClCompile Include="..\Private\WorldPlayerChatBubbleView.cpp" />
     <ClCompile Include="..\Private\PartyInteractionView.cpp" />
     <ClCompile Include="..\Private\CombatAnalysisFrameView.cpp" />
@@ -988,6 +990,7 @@
     <None Include="..\..\Data\Navigation\LV_LUT_MIDNIGHTC_ED.navregions" />
     <None Include="..\..\Data\UI\BossUI\BossUI.json" />
     <None Include="..\..\Data\UI\BossUI\ImmuneGauge_Layout.json" />
+    <None Include="..\..\Data\UI\HeadStatus\HealthBar_Layout.json" />
     <None Include="..\..\Data\UI\Esther\EstherUI.json" />
     <None Include="..\..\Data\UI\Esther\EstherCutin.json" />
     <None Include="..\..\Data\UI\Inventory\InventoryUI.json" />
