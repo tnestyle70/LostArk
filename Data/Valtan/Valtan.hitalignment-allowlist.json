@@ -369,121 +369,6 @@
       ]
     },
     {
-      "exceptionId": "exception.valtan.alignment.authored-sound.valtan_four_slash.slashes",
-      "rule": "PROJECT_AUTHORED_SOUND_TIMING",
-      "patternId": "VALTAN_FOUR_SLASH",
-      "stageId": "SLASHES",
-      "actionId": "valtan.attack.triple-slash.active",
-      "bindingId": null,
-      "expectedHitOffsetsMs": [
-        1790,
-        2560,
-        3330
-      ],
-      "reason": "Reviewed current user-saved sound timing; retain authored source-clock cues [G_Voltan2_Attack08_Cast1@1ms, G_Voltan2_Attack08_ShotVox1@200ms, G_Voltan2_Attack08_Shot1@1700ms, G_Voltan2_Attack08_Shot1@1790ms, G_Voltan2_Attack08_Shot1@2200ms, G_Voltan2_Attack08_Shot1@2560ms, G_Voltan2_Attack08_Shot2@3000ms] instead of reverting them to gameplay contact offsets [1790, 2560, 3330] ms. The complete cue payload and exact hit offsets below require review again on any edit; no gameplay contact is added or removed.",
-      "expectedAnimation": {
-        "endPolicy": "HOLD_LAST_POSE",
-        "repeatCount": 1,
-        "occurrences": [
-          {
-            "clipOccurrenceId": "valtan.attack.four-slash.active.clip.01",
-            "clip": "mesh_att_battle_10_01",
-            "mappingBasis": "ANIMATION_PR_127",
-            "sourceStartMs": 0,
-            "playMs": 0,
-            "playRate": 1.0,
-            "repeatUntilStageEnd": false
-          }
-        ]
-      },
-      "expectedSoundCues": [
-        {
-          "bindingId": "cue.sound.valtan.attack.four-slash.active.clip.01.01",
-          "occurrenceId": "cue.sound.valtan.attack.four-slash.active.clip.01.01.occurrence.01",
-          "patternId": "VALTAN_FOUR_SLASH",
-          "stageId": "SLASHES",
-          "actionId": "valtan.attack.triple-slash.active",
-          "clipOccurrenceId": "valtan.attack.four-slash.active.clip.01",
-          "soundBank": "S_Mob_G_Voltan2",
-          "soundEvent": "G_Voltan2_Attack08_Cast1",
-          "repeatPolicy": "once",
-          "startMs": 1
-        },
-        {
-          "bindingId": "cue.sound.valtan.attack.four-slash.active.clip.01.02",
-          "occurrenceId": "cue.sound.valtan.attack.four-slash.active.clip.01.02.occurrence.01",
-          "patternId": "VALTAN_FOUR_SLASH",
-          "stageId": "SLASHES",
-          "actionId": "valtan.attack.triple-slash.active",
-          "clipOccurrenceId": "valtan.attack.four-slash.active.clip.01",
-          "soundBank": "S_Mob_G_Voltan2",
-          "soundEvent": "G_Voltan2_Attack08_ShotVox1",
-          "repeatPolicy": "once",
-          "startMs": 200
-        },
-        {
-          "bindingId": "cue.sound.valtan.attack.four-slash.active.clip.01.03",
-          "occurrenceId": "cue.sound.valtan.attack.four-slash.active.clip.01.03.occurrence.01",
-          "patternId": "VALTAN_FOUR_SLASH",
-          "stageId": "SLASHES",
-          "actionId": "valtan.attack.triple-slash.active",
-          "clipOccurrenceId": "valtan.attack.four-slash.active.clip.01",
-          "soundBank": "S_Mob_G_Voltan2",
-          "soundEvent": "G_Voltan2_Attack08_Shot1",
-          "repeatPolicy": "once",
-          "startMs": 1700
-        },
-        {
-          "bindingId": "cue.sound.valtan.semantic.four-slash.slashes.impact-1790",
-          "occurrenceId": "cue.sound.valtan.semantic.four-slash.slashes.impact-1790.occurrence.01",
-          "patternId": "VALTAN_FOUR_SLASH",
-          "stageId": "SLASHES",
-          "actionId": "valtan.attack.triple-slash.active",
-          "clipOccurrenceId": "valtan.attack.four-slash.active.clip.01",
-          "soundBank": "S_Mob_G_Voltan2",
-          "soundEvent": "G_Voltan2_Attack08_Shot1",
-          "repeatPolicy": "once",
-          "startMs": 1790
-        },
-        {
-          "bindingId": "cue.sound.valtan.attack.four-slash.active.clip.01.04",
-          "occurrenceId": "cue.sound.valtan.attack.four-slash.active.clip.01.04.occurrence.01",
-          "patternId": "VALTAN_FOUR_SLASH",
-          "stageId": "SLASHES",
-          "actionId": "valtan.attack.triple-slash.active",
-          "clipOccurrenceId": "valtan.attack.four-slash.active.clip.01",
-          "soundBank": "S_Mob_G_Voltan2",
-          "soundEvent": "G_Voltan2_Attack08_Shot1",
-          "repeatPolicy": "once",
-          "startMs": 2200
-        },
-        {
-          "bindingId": "cue.sound.valtan.semantic.four-slash.slashes.impact-2560",
-          "occurrenceId": "cue.sound.valtan.semantic.four-slash.slashes.impact-2560.occurrence.01",
-          "patternId": "VALTAN_FOUR_SLASH",
-          "stageId": "SLASHES",
-          "actionId": "valtan.attack.triple-slash.active",
-          "clipOccurrenceId": "valtan.attack.four-slash.active.clip.01",
-          "soundBank": "S_Mob_G_Voltan2",
-          "soundEvent": "G_Voltan2_Attack08_Shot1",
-          "repeatPolicy": "once",
-          "startMs": 2560
-        },
-        {
-          "bindingId": "cue.sound.valtan.attack.four-slash.active.clip.01.05",
-          "occurrenceId": "cue.sound.valtan.attack.four-slash.active.clip.01.05.occurrence.01",
-          "patternId": "VALTAN_FOUR_SLASH",
-          "stageId": "SLASHES",
-          "actionId": "valtan.attack.triple-slash.active",
-          "clipOccurrenceId": "valtan.attack.four-slash.active.clip.01",
-          "soundBank": "S_Mob_G_Voltan2",
-          "soundEvent": "G_Voltan2_Attack08_Shot2",
-          "repeatPolicy": "once",
-          "startMs": 3000
-        }
-      ]
-    },
-    {
       "exceptionId": "exception.valtan.alignment.authored-sound.valtan_four_slash.spin",
       "rule": "PROJECT_AUTHORED_SOUND_TIMING",
       "patternId": "VALTAN_FOUR_SLASH",
@@ -491,9 +376,11 @@
       "actionId": "valtan.attack.rotation-slash.active",
       "bindingId": null,
       "expectedHitOffsetsMs": [
-        600
+        600,
+        1640,
+        3000
       ],
-      "reason": "Reviewed current user-saved sound timing; retain authored source-clock cues [G_Voltan2_Attack08_Shot3@500ms, G_Voltan2_Attack08_ShotVox2@1500ms, G_Voltan2_Attack08_Shot4@1500ms, G_Voltan2_Attack08_Shot5@3000ms] instead of reverting them to gameplay contact offsets [600] ms. The complete cue payload and exact hit offsets below require review again on any edit; no gameplay contact is added or removed.",
+      "reason": "Reviewed user-requested collider restoration against the currently saved visual effect: contacts [600, 1640, 3000] ms. Preserve the exact saved Sound cue payload and Animation below; they were not retimed. These contact offsets deliberately replace the prior gameplay offsets; any later hit, Sound, or Animation edit must be reviewed again.",
       "expectedAnimation": {
         "endPolicy": "HOLD_LAST_POSE",
         "repeatCount": 1,
@@ -568,9 +455,9 @@
       "actionId": "valtan.attack.high-jump.land",
       "bindingId": null,
       "expectedHitOffsetsMs": [
-        900
+        201
       ],
-      "reason": "Reviewed current user-saved sound timing; retain authored source-clock cues [G_Voltan2_Attack09_ShotVox1@1ms, G_Voltan2_Attack09_Shot1@100ms] instead of reverting them to gameplay contact offsets [900] ms. The complete cue payload and exact hit offsets below require review again on any edit; no gameplay contact is added or removed.",
+      "reason": "Reviewed user-requested collider restoration against the currently saved visual effect: contacts [201] ms. Preserve the exact saved Sound cue payload and Animation below; they were not retimed. These contact offsets deliberately replace the prior gameplay offsets; any later hit, Sound, or Animation edit must be reviewed again.",
       "expectedAnimation": {
         "endPolicy": "EXACT",
         "repeatCount": 1,

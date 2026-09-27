@@ -4063,6 +4063,18 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 			if (owners == m_BossPatterns.end()) { m_strStatus = "Attack encounter is missing"; return false; }
 			const auto pattern = std::find_if(owners->second.begin(), owners->second.end(), [&](const auto& row) { return row.strPatternId == fields[2]; });
 			if (pattern == owners->second.end()) { m_strStatus = "Attack pattern is missing"; return false; }
+			if (fields[4] == "STAGE")
+			{
+				const auto stage = std::find_if(pattern->Stages.begin(), pattern->Stages.end(),
+					[&](const auto& row) { return row.strActionId == fields[3]; });
+				if (set != 0u || stage == pattern->Stages.end() || stage->AttackContacts.size() != ordinal ||
+					(hit.strDamageKind == "PROFILE" && !Find_DamageRatePercent(hit.strDamageProfileId)))
+				{ m_strStatus = "Stage contact owner, order or profile is invalid"; return false; }
+				stage->AttackContacts.push_back(std::move(hit));
+				if (!stage->iDurationMs || !LostArk::Shared::Validate_AttackHitTemplates(stage->AttackContacts, stage->iDurationMs - 1u))
+				{ m_strStatus = "Stage contact shape, time or damage is invalid"; return false; }
+				continue;
+			}
 			const auto trigger = std::find_if(pattern->MechanicTriggers.begin(), pattern->MechanicTriggers.end(), [&](const auto& row) { return row.strTriggerId == fields[3]; });
 			if (trigger == pattern->MechanicTriggers.end()) { m_strStatus = "Attack dynamic owner is missing"; return false; }
 			std::vector<LostArk::Shared::ATTACK_HIT_TEMPLATE>* destination = nullptr;
@@ -6855,6 +6867,11 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 			{
 				const BOSS_PATTERN_STAGE_DEFINITION& stage =
 					pattern.Stages[stageIndex];
+				if (!LostArk::Shared::Validate_StageAttackContacts(stage.AttackContacts, stage.iDurationMs,
+					stage.HitOffsetsMs, stage.iHitCount, stage.iHitDelayMs, stage.iHitIntervalMs) ||
+					(!stage.AttackContacts.empty() && (stage.eHitActivationKind != BOSS_PATTERN_HIT_ACTIVATION_KIND::PULSE_SCHEDULE ||
+					 stage.ePlayerResponse != BOSS_PATTERN_PLAYER_RESPONSE::DAMAGE || stage.Motion.eKind != BOSS_PATTERN_STAGE_MOTION_KIND::NONE)))
+				{ m_strStatus = "Stage contacts do not match ordinary pulse authority"; return false; }
 				const bool zeroShapeValues =
 					0.f == stage.fHitOuterRadius &&
 					0.f == stage.fHitInnerRadius &&

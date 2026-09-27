@@ -643,6 +643,17 @@ Gameplay/Logic/Collider Details를 열어 보는 것과 Stage topology 또는 Ad
 admission이다. Details를 열기 위해 Pattern을 `manualAuditions`로 승격하지 않는다. selection candidate와
 manual audition의 교집합은 publisher/pipeline admission 오류다.
 
+Valtan source `hit.contacts`는 한 Stage에서 시점별 geometry/damage/push가 다를 때 사용하는 optional
+`Shared::ATTACK_HIT_TEMPLATE` 배열이다. Product `attackContacts`와 bootstrap `PATTERNATTACKHIT`의 `STAGE`
+role로 게시하며 action stable ID에 연결한다. 모든 entry는 단일 TIMED pulse이고 기존 schedule offset과
+개수·순서·atMs가 같아야 한다. ACTIVE_WINDOW, CAPTURE, Stage motion과 함께 쓰지 않는다. contacts가 없으면
+기존 공통 Stage hit를 유지하며, 있으면 Server `CValtanBrain`의 같은 due-hit loop가 개별 contact를 적용한다.
+MAX_HP_PERCENT와 forcePush/riseHeight/pushRange/pushMs는 쿠크의 공용 전투 계약을 사용한다. 개별 contact의
+forward/right/yaw offset은 기존 Stage hit anchor 뒤에 한 번 적용한다. 공용 Stage Collider Details는 contacts
+소유 Stage의 geometry/timing/damage를 읽기 전용으로 표시하고 재저장 때 배열을 보존한다. 개별 contact 편집
+UI는 아직 없다. Client wire mirror는 BOSS_CURRENT contact를 같은 clock/shape로 표시한다. STAGE_ORIGIN은
+Server origin pose가 복제되지 않으므로 그 contact wire를 그리지 않으며 Client 위치를 정답으로 추측하지 않는다.
+
 hit timing은 pulse schedule과 `ACTIVE_WINDOW` 중 정확히 하나다. Active Window는 Stage-local 반열린 구간
 `[startMs, startMs + lifetimeMs)`이고 target당 한 번만 판정한다. `anchor`와 `activation`은 geometry Tune 때도
 lossless round-trip하며, `NONE`은 schedule/activation/anchor/damage/response까지 함께 비운다. Damage profile

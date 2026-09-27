@@ -1052,6 +1052,7 @@ namespace LostArk::Server
 		cannot be represented by one delay plus a uniform interval. Empty keeps
 		the legacy schedule above. */
 		std::vector<std::uint32_t> HitOffsetsMs;
+		std::vector<LostArk::Shared::ATTACK_HIT_TEMPLATE> AttackContacts;
 		/* Spatial hit authority is independent from Effect presentation. The
 		default follows the current boss transform and preserves every existing
 		pulse-authored stage. */

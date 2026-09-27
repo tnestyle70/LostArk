@@ -1,5 +1,15 @@
 # LostArk merge 회귀 방지 정본
 
+### 한 Stage의 서로 다른 타격은 같은 pulse 시계의 contact로 보존한다
+
+검격·도넛처럼 도형과 피해가 다른 타격을 particle bounds나 단일 shape로 합치지 않는다.
+optional `hit.contacts`는 기존 pulse의 count/order/atMs와 정확히 일치시켜 source·Product·
+Server와 Client 저장을 함께 연결한다. 별도의 damage timer를 추가하면 중복 타격이 생긴다.
+`PATTERNATTACKHIT/STAGE` bootstrap은 owner Stage 뒤로 정렬해야 하며 실제 전체 정렬 결과를
+native Catalog로 읽어 검증한다. 구조체에 vector를 추가한 fixture는 ABI를 소비하는 모든 TU를
+다시 컴파일한다. 타격 시각을 고쳐 일반 허용오차 안에 들어온 Sound의 exact 예외는 제거한다.
+구현·검증은 [4연속·착지 판정 결과](09-28/2026-09-28_VALTAN_FOUR_SLASH_TRACKING_AXE_COLLIDER_RESULT.md)에 있다.
+
 ### Sequencer 호출 위치와 Effect·Sound의 재생 구간을 분리한다
 
 ONCE Effect의 시작은 실제 Animation/Stage 안에서 검증하되 종료를 유한 Animation 끝으로

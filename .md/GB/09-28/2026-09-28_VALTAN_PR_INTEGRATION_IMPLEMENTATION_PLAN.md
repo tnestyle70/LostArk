@@ -6,9 +6,9 @@
 
 ## G01. 판정과 표현 연결
 
-FOUR_SLASH의 현재 단일 CONE와 HIGH_JUMP/LAND의 900 ms 공격력 비례 피해는 사용자의 저장된 표현과 맞지 않는다. 실제 effect cue의 source trim/offset/rate를 적용한 시각과 공간을 측정하고, 쿠크 노란 장판이 사용하는 Shared ATTACK_HIT_TEMPLATE 및 ServerCombatHit 판정 경로를 재사용한다. 추적 도끼의 마지막 착지는 최대 체력 50% 피해와 넉백을 같은 hit로 처리한다. 저작 Data, publisher, Server 권위 판정, Client preview 소비와 집중 검증을 같은 변경으로 연결한다. animation·Sound·camera의 사용자 편집은 유지한다. 세부 수치와 구현 파일은 담당 조사 완료 후 해당 구현 기록에 추가한다.
+FOUR_SLASH의 현재 단일 CONE와 HIGH_JUMP/LAND의 900 ms 공격력 비례 피해는 사용자의 저장된 표현과 맞지 않는다. 실제 effect cue의 source trim/offset/rate를 적용한 시각과 공간을 측정하고, 쿠크 노란 장판이 사용하는 Shared ATTACK_HIT_TEMPLATE 및 ServerCombatHit 판정 경로를 재사용한다. 추적 도끼의 마지막 착지는 최대 체력 50% 피해와 넉백을 같은 hit로 처리한다. 저작 Data, publisher, Server 권위 판정, Client preview 소비와 집중 검증을 같은 변경으로 연결한다. animation·Sound·camera의 사용자 편집은 유지한다. 구체적 source hit.contacts → Product attackContacts → STAGE bootstrap과 7개 판정 수치·구현 파일은 같은 날짜의 `2026-09-28_VALTAN_FOUR_SLASH_TRACKING_AXE_COLLIDER_IMPLEMENTATION_PLAN.md`에 기록한다.
 
-피자·땅구르기 후 사자후의 돌 폭발은 현재 active에 연결된 복구 돌의 mesh/material과 대조하고 기존 발생 시각·파동·입자 수명을 보존한다. 버러지/발악의 데이터상 대상은 사용자 확인을 받아 동일한 기준으로 연결한다. Source JSON 수정과 실제 재생 소비자를 함께 검사하고 새로운 별도 effect runtime을 만들지 않는다.
+피자·땅구르기 후 사자후의 돌 폭발은 현재 active에 연결된 복구 돌의 mesh/material과 대조하고 기존 발생 시각·파동·입자 수명을 보존한다. 버러지/발악의 데이터상 대상은 선택 질문으로 확인하며, 답변 전에는 실제 돌을 생성하는 STRUGGLING을 적용 대상으로 가정한다고 알리고 그 별도 explode도 같은 기준으로 연결한다. 현재 TRASH의 8개 연출 track에 돌이 없다는 실측을 보존하고 새 spawn은 추가하지 않는다. Source JSON 수정과 실제 재생 소비자를 함께 검사하고 새로운 별도 effect runtime을 만들지 않는다.
 
 ## G02. Resources 전달
 

@@ -1594,6 +1594,7 @@ namespace
 		uint32_t iHitIntervalMs = 0u;
 		uint32_t iHitDelayMs = 0u;
 		std::vector<uint32_t> HitOffsetsMs;
+		std::vector<LostArk::Shared::ATTACK_HIT_TEMPLATE> AttackContacts;
 		bool_t bHasHitAnchor = false;
 		std::string strHitAnchorKind = "BOSS_CURRENT";
 		f32_t fHitAnchorForwardOffsetM = 0.f;
@@ -2029,7 +2030,7 @@ namespace
 				  "downMs", "motion", "actions", "branches", "animation",
 				  "effectRefs", "cameraInvocations" },
 				{ "partDamagePolicy", "counterProxy", "bossResponse", "hitAnchor",
-				  "hitActivation", "bodyVisibility", "verticalOffsetM", "sceneProfileOccurrences", "lightOccurrences" });
+				  "hitActivation", "bodyVisibility", "verticalOffsetM", "sceneProfileOccurrences", "lightOccurrences", "attackContacts" });
 		const bool_t bCaptureShape = Has_ExactPropertiesWithOptional(Value,
 				{ "stageId", "sequenceRole", "actionId", "stageKind",
 				  "durationMs", "hitShape", "hitOuterRadius", "hitInnerRadius",
@@ -2041,7 +2042,7 @@ namespace
 				  "actions", "branches", "animation", "effectRefs",
 				  "cameraInvocations" },
 				{ "partDamagePolicy", "counterProxy", "bossResponse", "hitAnchor",
-				  "hitActivation", "bodyVisibility", "verticalOffsetM", "sceneProfileOccurrences", "lightOccurrences" });
+				  "hitActivation", "bodyVisibility", "verticalOffsetM", "sceneProfileOccurrences", "lightOccurrences", "attackContacts" });
 		if (!bBaseShape && !bCaptureShape)
 		{
 			strOutError = "master stage has unexpected properties";
@@ -2178,6 +2179,7 @@ namespace
 			!Read_RequiredUInt32(Value, "hitIntervalMs", Out.iHitIntervalMs) ||
 			!Read_RequiredUInt32(Value, "hitDelayMs", Out.iHitDelayMs) ||
 			!Read_RequiredHitOffsets(Value, Out.HitOffsetsMs) ||
+			!Client::Parse_ValtanStageAttackContacts(Value.Find("attackContacts"), Out.AttackContacts) ||
 			!Read_RequiredFiniteFloat(Value, "pushRangeM", Out.fPushRangeM) ||
 			!Read_RequiredUInt32(Value, "pushMs", Out.iPushMs) ||
 			!Read_RequiredUInt32(Value, "downMs", Out.iDownMs) ||
@@ -2227,6 +2229,14 @@ namespace
 			strOutError = "master stage response/proxy contract is invalid";
 			return false;
 		}
+        if (!LostArk::Shared::Validate_StageAttackContacts(Out.AttackContacts,
+            Out.iDurationMs, Out.HitOffsetsMs, Out.iHitCount, Out.iHitDelayMs, Out.iHitIntervalMs) ||
+            (!Out.AttackContacts.empty() && (Out.bHasHitActivation || Out.Motion.has_value() ||
+                Out.strPlayerResponse != "DAMAGE" || Out.strHitShape == "NONE")))
+        {
+            strOutError = "master stage attackContacts contract is invalid";
+            return false;
+        }
 		const bool_t bHasExplicitOffsets = !Out.HitOffsetsMs.empty();
 		const bool_t bValidPulse = !Out.bHasHitActivation &&
 			((bHasExplicitOffsets && Out.HitOffsetsMs.size() == Out.iHitCount &&
@@ -3766,6 +3776,7 @@ namespace
 			Product.iHitIntervalMs == Master.iHitIntervalMs &&
 			Product.iHitDelayMs == Master.iHitDelayMs &&
 			Product.HitOffsetsMs == Master.HitOffsetsMs &&
+			Product.AttackContacts == Master.AttackContacts &&
 			Product.bHasHitAnchor == Master.bHasHitAnchor &&
 			Product.strHitAnchorKind == Master.strHitAnchorKind &&
 			Product.fHitAnchorForwardOffsetM ==
@@ -4386,7 +4397,7 @@ namespace
 				{ "shape", "serverDamageProfileId", "pushRangeM", "pushMs",
 				  "knockdown", "downMs" },
 				{ "schedule", "activation", "anchor", "playerResponse",
-				  "attachmentSlot", "gripLocalOffset" }) ||
+				  "attachmentSlot", "gripLocalOffset", "contacts" }) ||
 			((nullptr == pSchedule) == (nullptr == pActivation)) ||
 			((nullptr == pPlayerResponse) != (nullptr == pAttachmentSlot)) ||
 			((nullptr == pPlayerResponse) != (nullptr == pGripLocalOffset)))
@@ -4394,6 +4405,8 @@ namespace
 			strOutError = "split gameplay hit has unexpected properties";
 			return false;
 		}
+		if (const auto* contacts = Hit.Find("contacts"))
+			OutStage.emplace("attackContacts", *contacts);
 		if ("CIRCLE" == strKind)
 		{
 			if (!RequireShape({ "kind", "outerRadiusM" }) ||
@@ -6536,6 +6549,7 @@ namespace
 			Stage.iHitIntervalMs = Source.iHitIntervalMs;
 			Stage.iHitDelayMs = Source.iHitDelayMs;
 			Stage.HitOffsetsMs = Source.HitOffsetsMs;
+			Stage.AttackContacts = Source.AttackContacts;
 			Stage.bHasHitAnchor = Source.bHasHitAnchor;
 			Stage.strHitAnchorKind = Source.strHitAnchorKind;
 			Stage.fHitAnchorForwardOffsetM = Source.fHitAnchorForwardOffsetM;
@@ -9402,7 +9416,8 @@ bool_t Client::CValtanPatternTree::Load_FromAuthoringPaths(
 				Stage.fVerticalOffsetM = nullptr == pStageVerticalOffset ? 0.f :
 					static_cast<f32_t>(pStageVerticalOffset->Get_Number());
 				if (!Read_OptionalOrderedHitOffsets(
-						StageValue, Stage.HitOffsetsMs))
+						StageValue, Stage.HitOffsetsMs) ||
+					!Client::Parse_ValtanStageAttackContacts(StageValue.Find("attackContacts"), Stage.AttackContacts))
 				{
 					strOutStatus =
 						"Valtan encounter stage hitOffsetsMs is invalid: " +
@@ -9534,6 +9549,14 @@ bool_t Client::CValtanPatternTree::Load_FromAuthoringPaths(
 					return false;
 				}
 
+        if (!LostArk::Shared::Validate_StageAttackContacts(Stage.AttackContacts,
+            Stage.iDurationMs, Stage.HitOffsetsMs, Stage.iHitCount, Stage.iHitDelayMs, Stage.iHitIntervalMs) ||
+            (!Stage.AttackContacts.empty() && (Stage.bHasHitActivation || Stage.Motion.has_value() ||
+                Stage.strPlayerResponse != "DAMAGE" || Stage.strHitShape == "NONE")))
+        {
+            strOutStatus = "Valtan encounter stage attackContacts contract is invalid";
+            return false;
+        }
 				const bool_t bHasExplicitOffsets = !Stage.HitOffsetsMs.empty();
 				const bool_t bValidExplicitSchedule = bHasExplicitOffsets &&
 					Stage.HitOffsetsMs.size() == Stage.iHitCount &&
@@ -10063,3 +10086,90 @@ bool_t Client::CValtanPatternTree::Load_FromAuthoringPaths(
 	}
 	return true;
 }
+
+	bool Client::Parse_ValtanStageAttackContacts(const DATA_JSON_VALUE* value, std::vector<LostArk::Shared::ATTACK_HIT_TEMPLATE>& contacts)
+	{
+		if (!value) { contacts.clear(); return true; }
+		std::vector<LostArk::Shared::ATTACK_HIT_TEMPLATE> hits;
+		if (!value->Is_Array() || value->Get_Array().empty() || value->Get_Array().size() > 32u) return false;
+        const auto readUnsigned = [](const DATA_JSON_VALUE& item, uint32_t maximum, uint32_t& out)
+        {
+            if (!item.Is_Number() || !std::isfinite(item.Get_Number()) || item.Get_Number() < 0.0 ||
+                item.Get_Number() > maximum || std::floor(item.Get_Number()) != item.Get_Number()) return false;
+            out = static_cast<uint32_t>(item.Get_Number()); return true;
+        };
+        const auto readFinite = [](const DATA_JSON_VALUE& item, double minimum, double maximum, double& out)
+        {
+            if (!item.Is_Number() || !std::isfinite(item.Get_Number()) ||
+                item.Get_Number() < minimum || item.Get_Number() > maximum) return false;
+            out = item.Get_Number(); return true;
+        };
+        for (const auto& row : value->Get_Array())
+		{
+			LostArk::Shared::ATTACK_HIT_TEMPLATE hit;
+			if (!Has_ExactPropertiesWithOptional(row, { "hitId" }, { "trigger", "shape", "damageKind", "damageProfileId", "atMs", "endMs", "repeatCount", "repeatIntervalMs", "damagePercent", "radiusM", "innerRadiusM", "lengthM", "halfWidthM", "angleDegrees", "offsetForwardM", "offsetRightM", "yawOffsetDegrees", "riseHeightM", "pushMs", "pushRangeM", "forcePush", "pushDirection" })) return false;
+			if (const auto* item = row.Find("hitId")) { if (!item->Is_String()) return false; hit.strHitId = item->Get_String(); }
+			if (const auto* item = row.Find("trigger")) { if (!item->Is_String()) return false; hit.strTrigger = item->Get_String(); }
+			if (const auto* item = row.Find("shape")) { if (!item->Is_String()) return false; hit.strShape = item->Get_String(); }
+			if (const auto* item = row.Find("damageKind")) { if (!item->Is_String()) return false; hit.strDamageKind = item->Get_String(); }
+			if (const auto* item = row.Find("damageProfileId")) { if (!item->Is_String()) return false; hit.strDamageProfileId = item->Get_String(); }
+			if (const auto* item = row.Find("atMs")) if (!readUnsigned(*item, 600000u, hit.iAtMs)) return false;
+			if (const auto* item = row.Find("endMs")) if (!readUnsigned(*item, 600000u, hit.iEndMs)) return false;
+			if (const auto* item = row.Find("repeatCount")) if (!readUnsigned(*item, 600000u, hit.iRepeatCount)) return false;
+			if (const auto* item = row.Find("repeatIntervalMs")) if (!readUnsigned(*item, 600000u, hit.iRepeatIntervalMs)) return false;
+			if (const auto* item = row.Find("damagePercent")) if (!readUnsigned(*item, 600000u, hit.iDamagePercent)) return false;
+			if (const auto* item = row.Find("radiusM")) if (!readFinite(*item, -1000., 1000., hit.fRadiusM)) return false;
+			if (const auto* item = row.Find("innerRadiusM")) if (!readFinite(*item, -1000., 1000., hit.fInnerRadiusM)) return false;
+			if (const auto* item = row.Find("lengthM")) if (!readFinite(*item, -1000., 1000., hit.fLengthM)) return false;
+			if (const auto* item = row.Find("halfWidthM")) if (!readFinite(*item, -1000., 1000., hit.fHalfWidthM)) return false;
+			if (const auto* item = row.Find("angleDegrees")) if (!readFinite(*item, -1000., 1000., hit.fAngleDegrees)) return false;
+			if (const auto* item = row.Find("offsetForwardM")) if (!readFinite(*item, -1000., 1000., hit.fOffsetForwardM)) return false;
+			if (const auto* item = row.Find("offsetRightM")) if (!readFinite(*item, -1000., 1000., hit.fOffsetRightM)) return false;
+			if (const auto* item = row.Find("yawOffsetDegrees")) if (!readFinite(*item, -1000., 1000., hit.fYawOffsetDegrees)) return false;
+			if (const auto* item = row.Find("forcePush")) { if (!item->Is_Boolean()) return false; hit.ForcePush = item->Get_Boolean(); }
+			if (const auto* item = row.Find("pushDirection")) { if (!item->Is_String()) return false; hit.strPushDirection = item->Get_String(); }
+			if (const auto* item = row.Find("pushRangeM")) if (!readFinite(*item, 0., 100., hit.fPushRangeM)) return false;
+			if (const auto* item = row.Find("riseHeightM")) if (!readFinite(*item, 0., 100., hit.fRiseHeightM)) return false;
+			if (const auto* item = row.Find("pushMs")) if (!readUnsigned(*item, 5000u, hit.iPushMs)) return false;
+			hits.push_back(std::move(hit));
+		}
+		if (!LostArk::Shared::Validate_AttackHitTemplates(hits)) return false;
+		contacts = std::move(hits);
+		return true;
+	}
+	std::string Client::Serialize_ValtanStageAttackContacts(const std::vector<LostArk::Shared::ATTACK_HIT_TEMPLATE>& hits)
+	{
+		std::ostringstream output;
+		output.imbue(std::locale::classic());
+		output << std::setprecision(std::numeric_limits<double>::max_digits10);
+		output << "[";
+		for (std::size_t index = 0; index < hits.size(); ++index)
+		{
+			const auto& hit = hits[index]; output << (index ? ", {" : "{");
+			output << "\"hitId\": \"" << CDataJson::Escape(hit.strHitId) << "\"";
+			output << ", \"trigger\": \"" << CDataJson::Escape(hit.strTrigger) << "\"";
+			output << ", \"shape\": \"" << CDataJson::Escape(hit.strShape) << "\"";
+			output << ", \"damageKind\": \"" << CDataJson::Escape(hit.strDamageKind) << "\"";
+			output << ", \"damageProfileId\": \"" << CDataJson::Escape(hit.strDamageProfileId) << "\"";
+			output << ", \"atMs\": " << hit.iAtMs;
+			output << ", \"endMs\": " << hit.iEndMs;
+			output << ", \"repeatCount\": " << hit.iRepeatCount;
+			output << ", \"repeatIntervalMs\": " << hit.iRepeatIntervalMs;
+			output << ", \"damagePercent\": " << hit.iDamagePercent;
+			output << ", \"radiusM\": " << hit.fRadiusM;
+			output << ", \"innerRadiusM\": " << hit.fInnerRadiusM;
+			output << ", \"lengthM\": " << hit.fLengthM;
+			output << ", \"halfWidthM\": " << hit.fHalfWidthM;
+			output << ", \"angleDegrees\": " << hit.fAngleDegrees;
+			output << ", \"offsetForwardM\": " << hit.fOffsetForwardM;
+			output << ", \"offsetRightM\": " << hit.fOffsetRightM;
+			output << ", \"yawOffsetDegrees\": " << hit.fYawOffsetDegrees;
+			if (hit.ForcePush.has_value()) output << ", \"forcePush\": " << (*hit.ForcePush ? "true" : "false");
+			if (hit.strPushDirection != "AWAY_FROM_CONTACT") output << ", \"pushDirection\": \"" << hit.strPushDirection << "\"";
+			if (hit.fPushRangeM > 0.0) output << ", \"pushRangeM\": " << hit.fPushRangeM;
+			if (hit.fRiseHeightM > 0.0 || hit.iPushMs != 0u) output << ", \"riseHeightM\": " << hit.fRiseHeightM << ", \"pushMs\": " << hit.iPushMs;
+			output << "}";
+		}
+		output << "]";
+		return output.str();
+	}

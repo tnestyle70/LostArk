@@ -2407,6 +2407,7 @@ foreach ($pattern in @($encounterDocument.patterns)) {
 		$hasStageActions = $null -ne $stage.PSObject.Properties['actions']
 		$hasStageMotion = $null -ne $stage.PSObject.Properties['motion']
 		$hasHitOffsets = $null -ne $stage.PSObject.Properties['hitOffsetsMs']
+		$hasAttackContacts = $null -ne $stage.PSObject.Properties['attackContacts']
 		$hasHitAnchor = $null -ne $stage.PSObject.Properties['hitAnchor']
 		$hasHitActivation = $null -ne $stage.PSObject.Properties['hitActivation']
 		$hasPartDamagePolicy =
@@ -2431,6 +2432,7 @@ foreach ($pattern in @($encounterDocument.patterns)) {
 		if ($hasStageActions) { $stageProperties += 'actions' }
 		if ($hasStageMotion) { $stageProperties += 'motion' }
 		if ($hasHitOffsets) { $stageProperties += 'hitOffsetsMs' }
+		if ($hasAttackContacts) { $stageProperties += 'attackContacts' }
 		if ($hasHitAnchor) { $stageProperties += 'hitAnchor' }
 		if ($hasHitActivation) { $stageProperties += 'hitActivation' }
 		if ($hasPartDamagePolicy) { $stageProperties += 'partDamagePolicy' }
@@ -2734,6 +2736,22 @@ foreach ($pattern in @($encounterDocument.patterns)) {
 				'PATTERNSTAGEHITOFFSET', $encounterDocument.encounterId,
 				$pattern.patternId, $stage.actionId, [uint32]$hitOffsetIndex,
 				[uint32]$hitOffsetsMs[$hitOffsetIndex]) -join "`t"))
+		}
+		if ($hasAttackContacts) {
+			$contacts = @($stage.attackContacts)
+			if ($stage.attackContacts -isnot [Array] -or $contacts.Count -eq 0 -or
+				$contacts.Count -ne $hitCount -or $hasHitActivation -or $hasStageMotion -or $playerResponse -cne 'DAMAGE') {
+				throw 'Stage contacts require an ordinary pulse schedule with one contact per offset.'
+			}
+			for ($contactIndex = 0; $contactIndex -lt $contacts.Count; $contactIndex++) {
+				$contact = $contacts[$contactIndex]
+				$at = if ($hasHitOffsets) { $hitOffsetsMs[$contactIndex] } else { $hitDelayMs + $contactIndex * $hitIntervalMs }
+				if ($contact.trigger -cne 'TIMED' -or $contact.endMs -ne 0 -or $contact.repeatCount -ne 1 -or
+					$contact.repeatIntervalMs -ne 0 -or $contact.atMs -ne $at) { throw 'Stage contact does not match its pulse schedule.' }
+			}
+			foreach ($contactRow in @(New-KoukuAttackHitRows $contacts $encounterDocument.encounterId $pattern.patternId $stage.actionId 'STAGE' 0 ([uint32]$stage.durationMs - 1))) {
+				$patternRows.Add($contactRow)
+			}
 		}
 		if ($hasHitAnchor -or $hasHitActivation) {
 			$patternRows.Add((@(

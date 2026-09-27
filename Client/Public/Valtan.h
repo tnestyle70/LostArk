@@ -7,6 +7,7 @@
 #include "DeferredMaterialRenderUtils.h"
 #include "NavPathFollower.h"
 #include "PlayerHandGripTransform.h"
+#include "Gameplay/AttackHitTemplate.h"
 #include "Network/PacketMessages.h"
 #include "ValtanPatternEffectCueDocument.h"
 #include "ValtanPatternShakeCueDocument.h"
@@ -709,6 +710,11 @@ private:
 		uint32_t iHitDelayMs = 0u;
 		uint32_t iStageDurationMs = 0u;
 		std::vector<uint32_t> HitOffsetsMs;
+        std::vector<LostArk::Shared::ATTACK_HIT_TEMPLATE> AttackContacts;
+        bool_t bContactAnchorSupported = true;
+        f32_t fContactAnchorForwardM = 0.f;
+        f32_t fContactAnchorRightM = 0.f;
+        f32_t fContactAnchorYawDegrees = 0.f;
 		bool_t bHasActivation = false;
 		uint32_t iActivationStartMs = 0u;
 		uint32_t iActivationLifetimeMs = 0u;

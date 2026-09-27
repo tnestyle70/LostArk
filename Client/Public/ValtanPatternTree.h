@@ -5,6 +5,7 @@
 #include "Client_Defines.h"
 #include "Engine_Defines.h"
 #include "PlayerHandGripTransform.h"
+#include "Gameplay/AttackHitTemplate.h"
 
 #include <array>
 #include <cstddef>
@@ -17,6 +18,12 @@
 #include <vector>
 
 NS_BEGIN(Client)
+
+class DATA_JSON_VALUE;
+bool Parse_ValtanStageAttackContacts(const DATA_JSON_VALUE* value,
+	std::vector<LostArk::Shared::ATTACK_HIT_TEMPLATE>& contacts);
+std::string Serialize_ValtanStageAttackContacts(
+	const std::vector<LostArk::Shared::ATTACK_HIT_TEMPLATE>& contacts);
 
 /* Where a stage's editable Effect document came from. Product cue identity is
    authoritative for authoring; the evidence binding is recorded on that same
@@ -305,6 +312,7 @@ struct VALTAN_STAGE_VIEW final
 	/* Ordered stage-relative contacts. Empty means the authored stage uses
 	   iHitDelayMs + k * iHitIntervalMs. */
 	std::vector<uint32_t> HitOffsetsMs;
+	std::vector<LostArk::Shared::ATTACK_HIT_TEMPLATE> AttackContacts;
 	/* Optional typed Server hit authority.  BOSS_CURRENT preserves the
 	   existing pulse behavior; STAGE_ORIGIN pins the authored transform for
 	   the activation window.  These fields are a read-only Product mirror. */

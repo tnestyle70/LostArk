@@ -500,6 +500,11 @@ void CValtan::Load_PatternHitAreaDebug()
 				area.iHitIntervalMs = stage.iHitIntervalMs;
 				area.iHitDelayMs = stage.iHitDelayMs;
 				area.HitOffsetsMs = stage.hitOffsetsMs;
+                area.AttackContacts = stage.AttackContacts;
+                area.bContactAnchorSupported = !stage.bHasHitAnchor || stage.hitAnchorKind == "BOSS_CURRENT";
+                area.fContactAnchorForwardM = stage.fHitAnchorForwardOffsetM;
+                area.fContactAnchorRightM = stage.fHitAnchorRightOffsetM;
+                area.fContactAnchorYawDegrees = stage.fHitAnchorYawOffsetDegrees;
 				area.iStageDurationMs = stage.iDurationMs;
 				area.bHasActivation = stage.bHasHitActivation;
 				area.iActivationStartMs = stage.iHitActivationStartMs;
@@ -633,7 +638,7 @@ void CValtan::Draw_PatternHitAreaDebug() const
 
 	HIT_AREA_SHAPE Shape{};
 	const bool_t bDrawHitGeometry =
-		bDrawHitPulse || bDrawStageGeometry;
+		area.AttackContacts.empty() && (bDrawHitPulse || bDrawStageGeometry);
 	const uint32_t iHitGeometryColor = bDrawHitPulse ?
 		PATTERN_HIT_COLOR_RGBA : PATTERN_AUTHORING_GEOMETRY_COLOR_RGBA;
 	if (bDrawHitGeometry &&
@@ -677,6 +682,46 @@ void CValtan::Draw_PatternHitAreaDebug() const
 			Draw_WithYawOffset(-60.f, 0.f, 0.f, Shape, iHitGeometryColor);
 		}
 	}
+    // Per-contact geometry supersedes the common legacy shape. The Server
+    // stage-origin transform is not replicated; never invent that anchor here.
+    if (area.bContactAnchorSupported)
+    {
+        const f32_t anchorYaw = XMConvertToRadians(area.fContactAnchorYawDegrees);
+        for (const auto& contact : area.AttackContacts)
+        {
+            const bool pulse = fAgeMs >= static_cast<f32_t>(contact.iAtMs) &&
+                fAgeMs <= static_cast<f32_t>(contact.iAtMs) + MIN_VISIBLE_HIT_WINDOW_MS &&
+                (isPreviewDriven || m_isPatternHitPulseDebugVisible);
+            if (!pulse && !bDrawStageGeometry) continue;
+            HIT_AREA_SHAPE contactShape{};
+            if (contact.strShape == "CIRCLE" || contact.strShape == "RING")
+            {
+                contactShape.iAreaType = 1;
+                contactShape.iAreaRange = ToUnits(static_cast<f32_t>(contact.fRadiusM));
+                contactShape.iAreaInner = ToUnits(static_cast<f32_t>(contact.fInnerRadiusM));
+            }
+            else if (contact.strShape == "CONE")
+            {
+                contactShape.iAreaType = 3;
+                contactShape.iAreaRange = ToUnits(static_cast<f32_t>(contact.fLengthM));
+                contactShape.iAreaInner = ToUnits(static_cast<f32_t>(contact.fInnerRadiusM));
+                contactShape.iAreaAngle = static_cast<int32_t>(contact.fAngleDegrees + 0.5);
+            }
+            else if (contact.strShape == "BOX")
+            {
+                contactShape.iAreaType = 2;
+                contactShape.iAreaRange = ToUnits(static_cast<f32_t>(contact.fLengthM));
+                contactShape.iAreaAngle = ToUnits(static_cast<f32_t>(contact.fHalfWidthM * 2.0));
+            }
+            else continue;
+            const f32_t forward = area.fContactAnchorForwardM + static_cast<f32_t>(
+                contact.fOffsetForwardM * std::cos(anchorYaw) - contact.fOffsetRightM * std::sin(anchorYaw));
+            const f32_t right = area.fContactAnchorRightM + static_cast<f32_t>(
+                contact.fOffsetForwardM * std::sin(anchorYaw) + contact.fOffsetRightM * std::cos(anchorYaw));
+            Draw_WithYawOffset(area.fContactAnchorYawDegrees + static_cast<f32_t>(contact.fYawOffsetDegrees),
+                forward / METERS_TO_UNITS, right / METERS_TO_UNITS, contactShape, pulse ? PATTERN_HIT_COLOR_RGBA : PATTERN_AUTHORING_GEOMETRY_COLOR_RGBA);
+        }
+    }
 	if (bDrawCounterProxy)
 	{
 		HIT_AREA_SHAPE CounterShape{};
@@ -2307,6 +2352,11 @@ bool_t CValtan::Stage_LocalPatternAuthoringPreview(
 				Area.iHitIntervalMs = Stage.iHitIntervalMs;
 				Area.iHitDelayMs = Stage.iHitDelayMs;
 				Area.HitOffsetsMs = Stage.HitOffsetsMs;
+                Area.AttackContacts = Stage.AttackContacts;
+                Area.bContactAnchorSupported = !Stage.bHasHitAnchor || Stage.strHitAnchorKind == "BOSS_CURRENT";
+                Area.fContactAnchorForwardM = Stage.fHitAnchorForwardOffsetM;
+                Area.fContactAnchorRightM = Stage.fHitAnchorRightOffsetM;
+                Area.fContactAnchorYawDegrees = Stage.fHitAnchorYawOffsetDegrees;
 				Area.iStageDurationMs = Stage.iDurationMs;
 				Area.bHasActivation = Stage.bHasHitActivation;
 				Area.iActivationStartMs = Stage.iHitActivationStartMs;

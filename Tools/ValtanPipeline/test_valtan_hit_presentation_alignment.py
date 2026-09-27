@@ -162,7 +162,7 @@ class ValtanHitPresentationAlignmentTests(unittest.TestCase):
     def test_reviewed_receipts_preserve_shared_attack_roles(self) -> None:
         stats = self.validate()
         self.assertEqual(1, stats["presentationOnlyBindings"])
-        self.assertEqual(5, stats["authoredSoundExceptions"])
+        self.assertEqual(4, stats["authoredSoundExceptions"])
         roles = {row["id"]: row for row in self.roles["resources"]}
         self.assertEqual("ATTACK", roles["boss.valtan.shout.burst"]["role"])
         self.assertEqual("CLIP_TEMPLATE", roles["boss.valtan.shout.burst"]["alignmentPolicy"])
@@ -267,7 +267,8 @@ class ValtanHitPresentationAlignmentTests(unittest.TestCase):
         for mutation in ("rate", "source_start", "prefix", "extra_occurrence"):
             with self.subTest(mutation=mutation):
                 presentation = copy.deepcopy(self.presentation)
-                animation = self.stage(presentation, "VALTAN_FOUR_SLASH", "SLASHES")["animation"]
+                # SLASHES now aligns to its effects and needs no sound waiver.
+                animation = self.stage(presentation, "VALTAN_FOUR_SLASH", "SPIN")["animation"]
                 occurrences = animation["occurrences"]
                 if mutation == "rate":
                     occurrences[0]["playRate"] *= 2.0

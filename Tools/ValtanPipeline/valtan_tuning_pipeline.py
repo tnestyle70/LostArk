@@ -43,6 +43,8 @@ except ModuleNotFoundError:
     )
 
 
+from Tools.KoukuSaydonPipeline.combat_hit_templates import validate_hits as validate_attack_hits
+
 MASTER_REL = "Data/Valtan/Valtan.pattern.json"
 GAMEPLAY_AUTHORING_REL = "Data/Valtan/Valtan.gameplay.json"
 SCRIPTED_SEQUENCE_MAX_PATTERNS = 255
@@ -2939,6 +2941,7 @@ def _migrate_hit(stage: dict[str, Any]) -> dict[str, Any]:
         "pushMs": stage["pushMs"],
         "knockdown": stage["knockdown"],
         "downMs": stage["downMs"],
+        **({"contacts": copy.deepcopy(stage["attackContacts"])} if "attackContacts" in stage else {}),
     }
 
 
@@ -4729,6 +4732,8 @@ def validate_v2_master(
                     "knockdown",
                     "downMs",
                 )
+                if "contacts" in hit:
+                    hit_fields += ("contacts",)
                 has_anchor = "anchor" in hit
                 has_activation = "activation" in hit
                 hit_fields += (("activation",) if has_activation else ("schedule",))
@@ -4805,6 +4810,21 @@ def validate_v2_master(
                             raise PipelineError(f"interval hit escapes stage: {pattern_id}/{stage_id}")
                     else:
                         raise PipelineError(f"unsupported hit schedule: {pattern_id}/{stage_id}")
+                if "contacts" in hit:
+                    if has_activation or has_player_response or stage.get("motion") is not None:
+                        raise PipelineError(f"stage contacts require ordinary pulse authority: {pattern_id}/{stage_id}")
+                    try:
+                        contacts = validate_attack_hits(hit["contacts"], duration - 1)
+                    except ValueError as error:
+                        raise PipelineError(f"invalid stage contacts: {pattern_id}/{stage_id}: {error}") from error
+                    offsets = (schedule["offsetsMs"] if schedule["kind"] == "EXPLICIT_OFFSETS" else
+                               [schedule["firstOffsetMs"] + i * schedule["intervalMs"] for i in range(schedule["count"])])
+                    if not contacts or len(contacts) != len(offsets) or any(
+                        contact["trigger"] != "TIMED" or contact["repeatCount"] != 1 or
+                        contact["repeatIntervalMs"] != 0 or contact["atMs"] != offset
+                        for contact, offset in zip(contacts, offsets)
+                    ):
+                        raise PipelineError(f"stage contacts must match the pulse schedule: {pattern_id}/{stage_id}")
                 damage_id = stable_id(
                     hit["serverDamageProfileId"],
                     f"{pattern_id}/{stage_id}.serverDamageProfileId",
@@ -6410,6 +6430,8 @@ def _compile_hit(hit: dict[str, Any]) -> dict[str, Any]:
         result["playerResponse"] = hit["playerResponse"]
         result["attachmentSlot"] = hit["attachmentSlot"]
         result["gripLocalOffset"] = copy.deepcopy(hit["gripLocalOffset"])
+    if "contacts" in hit:
+        result["attackContacts"] = validate_attack_hits(hit["contacts"])
     if "anchor" in hit:
         result["hitAnchor"] = copy.deepcopy(hit["anchor"])
     if activation is not None:
