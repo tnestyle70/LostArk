@@ -18,15 +18,17 @@ class ValtanClipTemplateParityTests(unittest.TestCase):
         cls.presentation = validator._load(root / validator.PRESENTATION_PATH)
         cls.bindings = validator._load(root / validator.V2_BINDINGS_PATH)
         cls.sounds = validator._load(root / validator.SOUND_CUES_PATH)
+        cls.full_restore_animations = validator._load(root / validator.FULL_RESTORE_ANIMATIONS_PATH)
 
     def validate(self, *, templates=None, gameplay=None, presentation=None,
-                 bindings=None, sounds=None) -> dict[str, int]:
+                 bindings=None, sounds=None, full_restore_animations=None) -> dict[str, int]:
         return validator.validate_parity(
             templates if templates is not None else self.templates,
             gameplay if gameplay is not None else self.gameplay,
             presentation if presentation is not None else self.presentation,
             bindings if bindings is not None else self.bindings,
             sounds if sounds is not None else self.sounds,
+            full_restore_animations if full_restore_animations is not None else self.full_restore_animations,
         )
 
     def test_repository_contract_is_complete(self) -> None:
@@ -36,6 +38,33 @@ class ValtanClipTemplateParityTests(unittest.TestCase):
         self.assertGreater(stats["hits"], 0)
         self.assertGreater(stats["effects"], 0)
         self.assertGreater(stats["sounds"], 0)
+        self.assertEqual(2, stats["effectReplacements"])
+
+    def test_full_restore_replacements_keep_exact_source_cue_and_no_generic_duplicate(self) -> None:
+        for stage_id in ("STEP_03", "STEP_04"):
+            for field, value in (("effectAssetId", "effect.missing"),
+                                 ("sourceStartMs", 1), ("anchorSlotId", "b_root")):
+                presentation = copy.deepcopy(self.presentation)
+                stage = next(s for p in presentation["patterns"] if p["patternId"] == "VALTAN_SIX_PIZZA_106"
+                             for s in p["stages"] if s["stageId"] == stage_id)
+                stage["effectCues"][0][field] = value
+                with self.subTest(stage=stage_id, field=field), self.assertRaises(validator.ContractError):
+                    self.validate(presentation=presentation)
+            metadata = copy.deepcopy(self.full_restore_animations)
+            replacement = next(r["effectReplacement"] for r in self.templates["allowlist"]
+                               if r["patternId"] == "VALTAN_SIX_PIZZA_106" and r["stageId"] == stage_id)
+            next(r for r in metadata["effects"] if r["effectAssetId"] == replacement["effectAssetId"])["animationClips"][0]["clipName"] = "wrong_clip"
+            with self.assertRaises(validator.ContractError):
+                self.validate(full_restore_animations=metadata)
+            bindings = copy.deepcopy(self.bindings)
+            expected = replacement["templateEffect"]
+            bindings["bindings"].append({
+                "resource": {"kind": expected["resourceKind"], "id": expected["resourceId"]},
+                "scope": {"patternId": "VALTAN_SIX_PIZZA_106", "stageId": stage_id,
+                          "actionId": "valtan.sequence.center-six-pizza-charge." + stage_id.lower().replace("_", "-")},
+            })
+            with self.assertRaises(validator.ContractError):
+                self.validate(bindings=bindings)
 
     def test_missing_hit_effect_and_sound_each_fail_closed(self) -> None:
         gameplay = copy.deepcopy(self.gameplay)

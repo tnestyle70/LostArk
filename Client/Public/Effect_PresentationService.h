@@ -58,6 +58,8 @@ struct EFFECT_SPAWN_DESC final
 	bool_t bHasActionFacingYaw = false;
 	f32_t fActionFacingYawDegrees = 0.f;
     EFFECT_STOP_POLICY eStopPolicy = EFFECT_STOP_POLICY::NATURAL;
+	// A trimmed independent Valtan cue keeps its finite clock across Stage changes.
+	bool_t bPreserveBossActionTail = false;
     uint32_t iCueDurationMs = 0u;
     uint32_t iActionStartTick = 0u;
     uint32_t iCueStartMs = 0u;
@@ -75,6 +77,8 @@ struct EFFECT_SPAWN_DESC final
 	bool_t bLevelOwned = false;
 	uint32_t iLevelOwnerIndex = ETOUI(LEVEL::END);
 	bool_t bExternallySampled = false;
+	// Local boss preview only: source age = pattern timeline * playback rate + offset.
+	f64_t fLocalBossPreviewClockOffsetSeconds = 0.0;
 	// A real boss/level world-root or mounted Character sustains only source EmitterLoops=0.
 	bool_t bOwnerSustainedSourceLoops = false;
 	// LEVEL_ACTIVE ambient only: bounded static visual state pauses outside the camera.
@@ -621,6 +625,15 @@ public:
 	static EFFECT_BOSS_ACTION_STOP_RESULT Stop_BossAction(
 		const std::shared_ptr<CValtan>& pOwner,
 		uint32_t iActionStartTick);
+	/* The local composition owns every cue clock, including retained NATURAL
+	   tails. Repeated timeline samples hold both queued and active effects.
+	   Explicit seek reconstruction must bypass the real-time catch-up budget. */
+	static void Sample_LocalBossPreview(
+		const std::shared_ptr<CValtan>& pOwner, f32_t fTimelineSeconds,
+		bool_t bRebuildEffectHistory = false);
+	// Tool-only, outside ObjectManager iteration: prepare this sampled owner for
+	// the next Late_Update without committing unrelated Product spawn requests.
+	static void Commit_LocalBossPreviewSpawns(const std::shared_ptr<CValtan>& pOwner);
 	static void Stop_BossOwner(const std::shared_ptr<CValtan>& pOwner);
     static void Clear_Level(uint32_t iLevelIndex);
     static void Clear_All();
@@ -630,6 +643,7 @@ public:
     static const std::string& Get_Status();
 
 private:
+	static void Synchronize_FollowAnchors(const std::shared_ptr<CValtan>& pOnlyBossOwner);
 	static bool_t Spawn_Immediate(
 		const EFFECT_SPAWN_DESC& Desc,
 		std::string& strOutStatus);

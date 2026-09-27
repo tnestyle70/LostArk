@@ -2,7 +2,7 @@
   "schema": "lostark.world-sequences",
   "formatVersion": 3,
   "areaId": "LV_LUT_MIDNIGHTC_ED",
-  "revision": 2284,
+  "revision": 2285,
   "objectResources": [
     {
       "objectId": "world.object.kouku.card",
@@ -150940,7 +150940,8 @@
       ],
       "colliderTracks": [
         { "colliderTrackId": "world.object.kouku.cutting_blade.state.1.collider.1", "slotId": "object", "startMs": 0, "durationMs": 11000, "positionOffset": [0, 0, 0], "halfExtents": [0.0804767311, 0.979918718, 0.979918718], "yawDegrees": 0, "behavior": "DAMAGE", "damagePercent": 20, "gripLocalOffset": [0, 0, 0] }
-      ]
+      ],
+      "soundTracks": [{"soundTrackId": "world.object.kouku.cutting_blade.state.1.sound.native.1", "assetId": "Sound/KoukuSaton/Events/G_KoukuSatan1_Attack10_Proj1.layer1.variant01.wav", "startMs": 0, "durationMs": 11000, "volume": 1}, {"soundTrackId": "world.object.kouku.cutting_blade.state.1.sound.native.2", "assetId": "Sound/KoukuSaton/Events/G_KoukuSatan1_Attack10_Proj1.layer2.variant01.wav", "startMs": 2000, "durationMs": 9000, "volume": 1, "loopToDuration": true}, {"soundTrackId": "world.object.kouku.cutting_blade.state.1.sound.native.3", "assetId": "Sound/KoukuSaton/Events/G_KoukuSatan1_Attack10_Proj1.layer3.variant01.wav", "startMs": 3000, "durationMs": 8000, "volume": 1, "loopToDuration": true}]
     },
     {
       "sequenceId": "world.object.kouku.cutting_blade.state.instant_death",
@@ -150986,7 +150987,8 @@
       ],
       "colliderTracks": [
         { "colliderTrackId": "world.object.kouku.cutting_blade.state.instant_death.collider.1", "slotId": "object", "startMs": 0, "durationMs": 11000, "positionOffset": [0, 0, 0], "halfExtents": [0.0804767311, 0.979918718, 0.979918718], "yawDegrees": 0, "behavior": "INSTANT_DEATH", "damagePercent": 0, "gripLocalOffset": [0, 0, 0] }
-      ]
+      ],
+      "soundTracks": [{"soundTrackId": "world.object.kouku.cutting_blade.state.instant_death.sound.native.1", "assetId": "Sound/KoukuSaton/Events/G_KoukuSatan1_Attack10_Proj2.layer1.variant01.wav", "startMs": 0, "durationMs": 11000, "volume": 1}, {"soundTrackId": "world.object.kouku.cutting_blade.state.instant_death.sound.native.2", "assetId": "Sound/KoukuSaton/Events/G_KoukuSatan1_Attack10_Proj2.layer2.variant01.wav", "startMs": 2000, "durationMs": 9000, "volume": 1, "loopToDuration": true}, {"soundTrackId": "world.object.kouku.cutting_blade.state.instant_death.sound.native.3", "assetId": "Sound/KoukuSaton/Events/G_KoukuSatan1_Attack10_Proj2.layer3.variant01.wav", "startMs": 3000, "durationMs": 8000, "volume": 1, "loopToDuration": true}]
     },
     {
       "sequenceId": "sequence.kouku.gate1.full.book",
@@ -312734,7 +312736,8 @@
       ],
       "colliderTracks": [
         { "colliderTrackId": "world.object.kouku.cutting_blade.state.mario_phase2_instant.collider.instant_death", "slotId": "object", "startMs": 0, "durationMs": 11000, "positionOffset": [0, 0, 0], "halfExtents": [0.0804767311, 0.979918718, 0.979918718], "yawDegrees": 0, "behavior": "INSTANT_DEATH", "damagePercent": 0, "gripLocalOffset": [0, 0, 0] }
-      ]
+      ],
+      "soundTracks": [{"soundTrackId": "world.object.kouku.cutting_blade.state.mario_phase2_instant.sound.native.1", "assetId": "Sound/KoukuSaton/Events/G_KoukuSatan1_Attack10_Proj2.layer1.variant01.wav", "startMs": 0, "durationMs": 11000, "volume": 1}, {"soundTrackId": "world.object.kouku.cutting_blade.state.mario_phase2_instant.sound.native.2", "assetId": "Sound/KoukuSaton/Events/G_KoukuSatan1_Attack10_Proj2.layer2.variant01.wav", "startMs": 2000, "durationMs": 9000, "volume": 1, "loopToDuration": true}, {"soundTrackId": "world.object.kouku.cutting_blade.state.mario_phase2_instant.sound.native.3", "assetId": "Sound/KoukuSaton/Events/G_KoukuSatan1_Attack10_Proj2.layer3.variant01.wav", "startMs": 3000, "durationMs": 8000, "volume": 1, "loopToDuration": true}]
     },
     {
       "sequenceId": "sequence.kouku.maze_cinematic_hammer",
@@ -316616,7 +316619,8 @@
       ],
       "colliderTracks": [
         { "colliderTrackId": "world.object.kouku.cutting_blade.state.mario_phase2_instant.cage_second.collider.instant_death", "slotId": "object", "startMs": 0, "durationMs": 11000, "positionOffset": [0, 0, 0], "halfExtents": [0.0804767311, 0.979918718, 0.979918718], "yawDegrees": 0, "behavior": "INSTANT_DEATH", "damagePercent": 0, "gripLocalOffset": [0, 0, 0] }
-      ]
+      ],
+      "soundTracks": [{"soundTrackId": "world.object.kouku.cutting_blade.state.mario_phase2_instant.cage_second.sound.native.1", "assetId": "Sound/KoukuSaton/Events/G_KoukuSatan1_Attack10_Proj2.layer1.variant01.wav", "startMs": 0, "durationMs": 11000, "volume": 1}, {"soundTrackId": "world.object.kouku.cutting_blade.state.mario_phase2_instant.cage_second.sound.native.2", "assetId": "Sound/KoukuSaton/Events/G_KoukuSatan1_Attack10_Proj2.layer2.variant01.wav", "startMs": 2000, "durationMs": 9000, "volume": 1, "loopToDuration": true}, {"soundTrackId": "world.object.kouku.cutting_blade.state.mario_phase2_instant.cage_second.sound.native.3", "assetId": "Sound/KoukuSaton/Events/G_KoukuSatan1_Attack10_Proj2.layer3.variant01.wav", "startMs": 3000, "durationMs": 8000, "volume": 1, "loopToDuration": true}]
     },
     {
       "sequenceId": "sequence.kouku.bingo.ending.saydon1.weapon",

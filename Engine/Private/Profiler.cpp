@@ -390,6 +390,23 @@ void CProfiler::Record_ModelSubmitted(const void* model)
     m_SubmittedModels.insert(model);
 }
 
+void CProfiler::Record_ViewportPresent(const FProfilerViewportPresent& sample)
+{
+    if (GetCurrentThreadId() != m_MainThreadId || !m_FrameActive ||
+        !m_Collecting.load(std::memory_order_relaxed)) return;
+    Add_Counter(EProfilerCounter::ImGuiPresentAttempts);
+    if (sample.Result == DXGI_ERROR_WAS_STILL_DRAWING)
+        Add_Counter(EProfilerCounter::ImGuiPresentBusy);
+    else if (FAILED(sample.Result)) Add_Counter(EProfilerCounter::ImGuiPresentFailures);
+    else if (sample.Result == DXGI_STATUS_OCCLUDED) Add_Counter(EProfilerCounter::ImGuiPresentOccluded);
+    if (m_CurrentFrame.ViewportPresents.size() >= 32)
+    {
+        ++m_CurrentFrame.DroppedViewportPresents;
+        return;
+    }
+    m_CurrentFrame.ViewportPresents.push_back(sample);
+}
+
 void CProfiler::Add_Counter(
     EProfilerCounter counter, uint64_t value) noexcept
 {

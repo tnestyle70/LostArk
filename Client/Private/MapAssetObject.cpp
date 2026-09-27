@@ -118,6 +118,7 @@ HRESULT CMapAssetObject::Initialize(void* pArg)
 
 	Set_PlacementTransform(
 		desc.position, desc.rotationQuaternion, desc.signedScale);
+	Ready_StaticShadowInputs();
 	return S_OK;
 }
 
@@ -205,26 +206,10 @@ HRESULT CMapAssetObject::Render_Group(RENDERGROUP group)
         CGameInstance::Get().Is_SceneEnvironmentReplaced())
 		return S_OK;
 
-	MAP_CAMERA_CULL_SNAPSHOT cameraSnapshot{};
-	const bool_t hasCameraSnapshot =
-		CMapAssetRenderUtils::Capture_CameraCullSnapshot(cameraSnapshot);
+	const auto* cameraSnapshot = CMapAssetRenderUtils::Capture_CameraCullSnapshotView();
 	const bool_t background = group == RENDERGROUP::PRIORITY;
-	MAP_FRUSTUM_CULL_DECISION cullDecision{};
-	if (!background && m_bHasWorldCullBounds && hasCameraSnapshot &&
-		CMapAssetRenderUtils::Evaluate_FrustumVisibility(
-			m_FrustumCulling,
-			cameraSnapshot,
-			m_AssetId,
-			m_AssetGroupId,
-			m_iPlacementId,
-			m_vWorldCullCenter,
-			m_fWorldCullRadius,
-			m_FrustumState,
-			cullDecision) &&
-		!cullDecision.shouldRender)
-	{
+	if (!background && cameraSnapshot && Should_CullCamera(*cameraSnapshot))
 		return S_OK;
-	}
 
 	if (Engine::CProfiler* profiler =
 		CGameInstance::Get().Get_Profiler())
@@ -239,7 +224,7 @@ HRESULT CMapAssetObject::Render_Group(RENDERGROUP group)
 	// identity bind, including WATER rows downgraded to TRANSLUCENT below.
 	bool_t waterBindingsAttempted = false;
 	HRESULT renderResult = Bind_ShaderResources(
-		hasCameraSnapshot ? &cameraSnapshot : nullptr);
+		cameraSnapshot);
 	if (SUCCEEDED(renderResult))
 	{
         for (uint32_t meshIndex = 0; SUCCEEDED(renderResult) && meshIndex < m_pModelCom->Get_NumMeshes(); ++meshIndex)
@@ -380,35 +365,20 @@ bool_t CMapAssetObject::Try_GetStaticShadowRevision(uint64_t& outRevision) const
 		 !std::isfinite(current.worldCullRadius)))
 		return reject();
 
-	// Reuse capacity on cache hits; no per-frame candidate vector allocation.
-	m_StaticShadowCandidateMeshPasses.clear();
-	bool_t hasCaster = false;
-	for (uint32_t mesh = 0u; mesh < m_pModelCom->Get_NumMeshes(); ++mesh)
+	// Reuse the immutable material admission prepared with this model. Keep
+	// checking mutable geometry and texture overrides before every cache use.
+	if (!m_bStaticShadowMaterialInputs || m_pStaticShadowInputModel != m_pModelCom.get() ||
+		m_StaticShadowCasterMeshes.size() != m_pModelCom->Get_NumMeshes())
+		return reject();
+	current.hasVertexDisplacement = m_bStaticShadowVertexDisplacement;
+	for (uint32_t mesh = 0u; mesh < m_StaticShadowCasterMeshes.size(); ++mesh)
 	{
-		const auto* surface = m_pModelCom->Get_MaterialSurface(mesh);
 		const bool_t morph = m_pModelCom->Has_MorphBaseVertices(mesh);
-		// Render_Shadow disables the object's light cull for ANY such mesh,
-		// including a non-caster. Preserve that cull input in the snapshot.
-		current.hasVertexDisplacement |= morph ||
-			(surface && surface->family == Engine::MODEL_SURFACE_FAMILY::SOURCE_CHARACTER &&
-			 surface->sourceCharacter.program == 43u);
-		auto profile = Get_MaterialRenderProfile(mesh);
-		if (profile.renderMode != MAP_ASSET_RENDER_MODE::DEFERRED || !profile.castsShadow)
-		{
-			m_StaticShadowCandidateMeshPasses.push_back(3u); // No depth draw.
-			continue;
-		}
-		profile.opacity *= m_fPresentationOpacityMultiplier;
-		if (morph || m_pModelCom->Has_MaterialTextureOverrides(mesh) ||
-			!CMapAssetRenderUtils::Uses_StaticShadowInputs(surface, profile, true))
+		current.hasVertexDisplacement |= morph;
+		if (m_StaticShadowCasterMeshes[mesh] &&
+			(morph || m_pModelCom->Has_MaterialTextureOverrides(mesh)))
 			return reject();
-		const uint32_t cullPass = CMapAssetRenderUtils::Select_Pass(profile, m_bMirrored);
-		if (cullPass > 2u) return reject();
-		const bool_t opaque = CMapAssetRenderUtils::Uses_OpaqueShadowPass(surface, profile, true);
-		m_StaticShadowCandidateMeshPasses.push_back((opaque ? 20u : 12u) + cullPass);
-		hasCaster = true;
 	}
-	if (!hasCaster) return reject();
 
 	const auto& previous = m_StaticShadowSnapshot;
 	if (!m_bStaticShadowSnapshotValid || current.model != previous.model ||
@@ -418,14 +388,12 @@ bool_t CMapAssetObject::Try_GetStaticShadowRevision(uint64_t& outRevision) const
 		0 != std::memcmp(&current.presentationOpacity, &previous.presentationOpacity, sizeof(current.presentationOpacity)) ||
 		current.visible != previous.visible || current.mirrored != previous.mirrored ||
 		current.hasWorldCullBounds != previous.hasWorldCullBounds ||
-		current.hasVertexDisplacement != previous.hasVertexDisplacement ||
-		m_StaticShadowMeshPasses != m_StaticShadowCandidateMeshPasses)
+		current.hasVertexDisplacement != previous.hasVertexDisplacement)
 	{
 		// Never recycle a published revision into an older cached key.
 		if (m_iStaticShadowRevision == (std::numeric_limits<uint64_t>::max)())
 			return reject();
 		m_StaticShadowSnapshot = current;
-		m_StaticShadowMeshPasses = m_StaticShadowCandidateMeshPasses;
 		++m_iStaticShadowRevision;
 		m_bStaticShadowSnapshotValid = true;
 	}
@@ -533,6 +501,55 @@ void CMapAssetObject::Set_PlacementTransform(const float3_t& position,
 	//bottom-center 보정을 포함한 최종 world 행렬을 사용해야 실제 렌더 위치와 bounds가 일치한다.
 	Update_WorldCullBounds();
 	m_FrustumState = {};
+	m_bCameraCullCached = false;
+}
+
+void CMapAssetObject::Ready_StaticShadowInputs()
+{
+	m_pStaticShadowInputModel = m_pModelCom.get();
+	m_StaticShadowCasterMeshes.assign(m_pModelCom->Get_NumMeshes(), 0u);
+	m_bStaticShadowMaterialInputs = false;
+	m_bStaticShadowVertexDisplacement = false;
+	bool_t hasCaster = false;
+	bool_t valid = true;
+	for (uint32_t mesh = 0u; mesh < m_pModelCom->Get_NumMeshes(); ++mesh)
+	{
+		const auto* surface = m_pModelCom->Get_MaterialSurface(mesh);
+		m_bStaticShadowVertexDisplacement |= surface &&
+			surface->family == Engine::MODEL_SURFACE_FAMILY::SOURCE_CHARACTER &&
+			surface->sourceCharacter.program == 43u;
+		const auto profile = Get_MaterialRenderProfile(mesh);
+		if (profile.renderMode != MAP_ASSET_RENDER_MODE::DEFERRED || !profile.castsShadow)
+			continue;
+		m_StaticShadowCasterMeshes[mesh] = 1u;
+		hasCaster = true;
+		valid &= CMapAssetRenderUtils::Uses_StaticShadowInputs(surface, profile, true) &&
+			CMapAssetRenderUtils::Select_Pass(profile, false) <= 2u &&
+			CMapAssetRenderUtils::Select_Pass(profile, true) <= 2u;
+	}
+	m_bStaticShadowMaterialInputs = valid && hasCaster;
+}
+
+bool_t CMapAssetObject::Should_CullCamera(const MAP_CAMERA_CULL_SNAPSHOT& snapshot)
+{
+	if (!m_bHasWorldCullBounds)
+		return false;
+	if (m_bCameraCullCached && m_iCameraCullRevision == snapshot.revision)
+		return !m_bCameraCullShouldRender;
+	MAP_FRUSTUM_CULL_DECISION decision{};
+	if (!CMapAssetRenderUtils::Evaluate_FrustumVisibility(m_FrustumCulling, snapshot,
+		m_AssetId, m_AssetGroupId, m_iPlacementId, m_vWorldCullCenter,
+		m_fWorldCullRadius, m_FrustumState, decision))
+	{
+		m_bCameraCullCached = false;
+		return false;
+	}
+	m_iCameraCullRevision = snapshot.revision;
+	m_bCameraCullShouldRender = decision.shouldRender;
+	// Reject hysteresis advances on each existing Render_Group call. Cache only
+	// once the result is stable, including bypass and diagnostic transitions.
+	m_bCameraCullCached = decision.wouldBeVisible || !decision.shouldRender || m_FrustumCulling.bypass;
+	return !decision.shouldRender;
 }
 
 HRESULT CMapAssetObject::Ready_Components(

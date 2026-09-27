@@ -110,6 +110,12 @@
       "id": "boss.valtan.hand_6",
       "role": "ATTACK",
       "alignmentPolicy": "STAGE_DAMAGE_ACTION"
+    },
+    {
+      "kind": "GROUP",
+      "id": "boss.valtan.six.sonic.after",
+      "role": "STATE",
+      "alignmentPolicy": "NONE"
     }
   ]
 }

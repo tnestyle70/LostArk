@@ -1165,6 +1165,19 @@ bool_t Client::CEffect_Tool::Try_DuplicateSelectedElement()
 		return false;
 	}
 
+    const bool independentGroup = std::all_of(Targets.begin(), Targets.end(), [&](const auto& id) {
+        const auto element = std::find_if(m_ActiveDocument->Elements.begin(), m_ActiveDocument->Elements.end(),
+            [&](const auto& item) { return item.strElementId == id; });
+        return element != m_ActiveDocument->Elements.end() && Is_ManualElementGroupMember(*element);
+    });
+    if (independentGroup)
+    {
+        std::vector<std::string> copyIds;
+        for (const auto& id : Targets) copyIds.push_back(DuplicateIds.at(id));
+        std::string groupId;
+        if (!Create_IndependentElementGroup(Staged, copyIds, groupId, Error))
+        { m_strElementStatus = Error; return false; }
+    }
 	const auto OpenCopy = DuplicateIds.find(m_strSelectedElementId);
 	const std::string DuplicateId = OpenCopy == DuplicateIds.end() ?
 		DuplicateIds.at(Targets.front()) : OpenCopy->second;

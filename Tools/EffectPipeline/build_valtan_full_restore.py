@@ -165,12 +165,19 @@ def animation_metadata_write(stage_receipt, asset_ids):
     receipts = {row['effectAssetId']: row for row in stage_receipt}
     assert len(receipts) == len(stage_receipt), 'Duplicate source stage receipt'
     for asset in sorted(asset_ids):
-        match = re.fullmatch(r'effect\.valtan\.action\.([0-9]+)\.stage([0-9]{3})\.full\.restore', asset)
+        match = re.fullmatch(r'effect\.valtan\.action\.([0-9]+)\.stage([0-9]{3})(?:\.([a-z0-9-]{1,64}))?\.full\.restore', asset)
         if match is None:
             continue
+        action_id, stage_index = map(int, match.groups()[:2])
+        variant_id = match.group(3)
         row = receipts.get(asset)
+        if row is None and variant_id is not None:
+            original_asset = f'effect.valtan.action.{action_id}.stage{stage_index:03d}.full.restore'
+            original = receipts.get(original_asset)
+            if original is not None:
+                row = dict(original, effectAssetId=asset, variantId=variant_id)
         assert row is not None, f'Missing original animation receipt: {asset}'
-        action_id, stage_index = map(int, match.groups())
+        assert row.get('variantId') == variant_id, f'Variant identity differs from source receipt: {asset}'
         assert row['sourceActionId'] == action_id and row['sourceStageIndex'] == stage_index
         clips = row['originalAnimationClips']
         assert len(clips) == 1, f'Expected one original animation clip: {asset}: {clips}'
@@ -193,6 +200,8 @@ def animation_metadata_write(stage_receipt, asset_ids):
         addition = dict(effectAssetId=asset, sourceActionId=action_id, sourceStageIndex=stage_index,
             animationClips=[dict(clipName=name, playMs=milliseconds, loop=clip['loop'],
                 previewWallMs=preview_ms, previewWallBasis=preview_basis)])
+        if variant_id is not None:
+            addition['variantId'] = variant_id
         previous = copy.deepcopy(existing.get(asset))
         if previous is not None:
             # Upgrade only a missing repeat field; every prior authored value
@@ -204,6 +213,12 @@ def animation_metadata_write(stage_receipt, asset_ids):
                 for field in ('previewWallMs', 'previewWallBasis'):
                     if field not in previous_clips[0]:
                         previous_clips[0][field] = clip[field]
+        if previous is not None and 'authoredPreview' in previous:
+            preview = previous['authoredPreview']
+            assert isinstance(preview, dict) and preview.get('mappingBasis') == 'PROJECT_AUTHORED' and \
+                type(preview.get('loop')) is bool and type(preview.get('previewWallMs')) is int and \
+                0 < preview['previewWallMs'] <= 600000, f'Invalid authored preview override: {asset}'
+            addition['authoredPreview'] = copy.deepcopy(preview)
         assert previous is None or previous == addition, f'Preserve existing animation mapping: {asset}'
         existing[asset] = addition
     metadata['effects'] = [existing[key] for key in sorted(existing)]
@@ -250,14 +265,22 @@ def commit_writes(writes):
             assert (path.read_bytes() if path.exists() else None) == before, f'Concurrent edit: {path}'
             os.replace(temporary, path)
             committed.append((path, before, after, temporary))
-    except Exception:
+    except Exception as failure:
+        rollback_errors = []
         for path, before, after, temporary in reversed(committed):
-            assert path.read_bytes() == after, f'Concurrent edit preserved during rollback: {path}'
-            if before is None:
-                path.unlink()
-            else:
-                temporary.write_bytes(before)
-                os.replace(temporary, path)
+            try:
+                current = path.read_bytes() if path.exists() else None
+                assert current == after, f'Concurrent edit preserved during rollback: {path}'
+                if before is None:
+                    path.unlink()
+                else:
+                    temporary.write_bytes(before)
+                    os.replace(temporary, path)
+            except Exception as rollback_failure:
+                rollback_errors.append(f'{path}: {rollback_failure}')
+        if rollback_errors:
+            raise RuntimeError(f'Install failed: {failure}; rollback incomplete: '
+                               + '; '.join(rollback_errors)) from failure
         raise
     finally:
         for _, _, _, temporary in staged:
@@ -447,12 +470,13 @@ def build_stages(source_document, library_root, selections, evidence, native_pat
                 failures.append(dict(**context, sourceParticleSystems=systems,
                                      errorType=type(error).__name__, reason=str(error)))
         namespace(elements, histories)
-        document = dict(schema='lostark.effect-authoring', version=15 if histories else 13, effectAssetId=asset,
+        has_runtime_carrier = bool(histories) or any(e.get('runtimeCarrier') for e in elements)
+        document = dict(schema='lostark.effect-authoring', version=15 if has_runtime_carrier else 13, effectAssetId=asset,
             displayName=f"Valtan {action_id} / {stage['stageName']} [{stage_index}] full restore",
             particleSystem=dict(uniformScaleMultiplier=1, yawOffsetDegrees=0,
                                 directionYawDegrees=0, initialSpeedMultiplier=1),
             modelCues=[], elements=elements)
-        if histories:
+        if has_runtime_carrier:
             document['runtimeExtensions'] = dict(formatVersion=1,
                 bakedEdgeHistories=sorted(histories, key=lambda row: row['historyId']))
         if elements:

@@ -7,6 +7,7 @@
 #include "Effect_DocumentCodec.h"
 #include "Effect_DirectAuthoredSourceIndex.h"
 #include "EffectResourceCatalog.h"
+#include "CompositionEditing.h"
 #include "EffectV2_Catalog.h"
 #include "Effect_Object.h"
 #include "Effect_PresentationService.h"
@@ -1113,6 +1114,107 @@ void Client::CEffect_Tool::Render_ValtanAreaStaticEffectSection(
 	ImGui::TreePop();
 }
 
+bool_t Client::CEffect_Tool::Refresh_ValtanCinematicEffectLibrary()
+{
+    m_bValtanCinematicEffectLoadAttempted = true;
+    return Load_ValtanCinematicEffectLibrary(m_ValtanCinematicEffectLibrary,
+        m_strValtanCinematicEffectStatus);
+}
+
+void Client::CEffect_Tool::Render_ValtanCinematicEffectSection(const std::string& strSearch)
+{
+    if (!m_bValtanCinematicEffectLoadAttempted)
+        (void)Refresh_ValtanCinematicEffectLibrary();
+    if (!m_bValtanEffectResourceLoadAttempted)
+        (void)Refresh_ValtanEffectResourceSnapshot();
+    if (!strSearch.empty()) ImGui::SetNextItemOpen(true, ImGuiCond_Always);
+    else ImGui::SetNextItemOpen(true, ImGuiCond_FirstUseEver);
+    if (!ImGui::TreeNodeEx("CINEMATIC EFFECTS", ImGuiTreeNodeFlags_OpenOnArrow)) return;
+    ImGui::TextWrapped("Saved sequence Effects. Open Editor edits the shared Effect; Preview plays that Effect on its own. Complete Play retains the sequence actors, placement and timing.");
+    if (!m_strValtanCinematicEffectStatus.empty())
+        ImGui::TextWrapped("%s", m_strValtanCinematicEffectStatus.c_str());
+    if (ImGui::IsItemHovered())
+        ImGui::SetTooltip("%s", m_ValtanCinematicEffectLibrary.SourcePath.generic_string().c_str());
+    for (const auto& group : m_ValtanCinematicEffectLibrary.Groups)
+    {
+        const bool groupMatches = strSearch.empty() || Contains_NoCase(group.strDisplayName, strSearch) ||
+            Contains_NoCase(group.strSourceDisplayName, strSearch) || Contains_NoCase(group.strSequenceId, strSearch) ||
+            Contains_NoCase(group.strPatternId, strSearch);
+        // Keep every track occurrence visible while giving each shared Effect one editor row.
+        std::map<std::string, std::vector<const VALTAN_CINEMATIC_EFFECT_OCCURRENCE*>> rows;
+        for (const auto& effect : group.Effects)
+        {
+            const auto* resource = m_pValtanEffectResourceSnapshot ? m_pValtanEffectResourceSnapshot->Find(effect.Key) : nullptr;
+            if (groupMatches || Contains_NoCase(effect.Key.strStableId, strSearch) ||
+                Contains_NoCase(effect.strTrackId, strSearch) ||
+                (resource && Contains_NoCase(resource->strDisplayLabel, strSearch)))
+                rows[effect.Key.strStableId].push_back(&effect);
+        }
+        if (!groupMatches && rows.empty()) continue;
+        ImGui::PushID(group.strSequenceId.c_str());
+        if (!strSearch.empty()) ImGui::SetNextItemOpen(true, ImGuiCond_Always);
+        const std::string label = group.strDisplayName + " (" + std::to_string(rows.size()) + " Effects / " +
+            std::to_string(group.Effects.size()) + " occurrences)";
+        if (ImGui::TreeNodeEx(label.c_str(), ImGuiTreeNodeFlags_OpenOnArrow))
+        {
+            ImGui::TextWrapped("%s | %u ms", group.strSourceDisplayName.c_str(), group.iDurationMs);
+            if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s\n%s", group.strSequenceId.c_str(), group.strInstanceId.c_str());
+            if (group.Effects.empty()) ImGui::TextDisabled("This sequence has no Effect tracks.");
+            for (const auto& [id, occurrences] : rows)
+            {
+                const EFFECT_RESOURCE_KEY key = occurrences.front()->Key;
+                const auto* resource = m_pValtanEffectResourceSnapshot ? m_pValtanEffectResourceSnapshot->Find(key) : nullptr;
+                std::string editableStatus;
+                const bool exactSource = key.eOwnerKind == EFFECT_RESOURCE_OWNER_KIND::V1_DOCUMENT &&
+                    Observe_DirectAuthoredEditablePath(id, editableStatus) != nullptr;
+                const bool available = exactSource || (resource && resource->Capabilities.bCanLoad);
+                const std::string effectLabel = resource && !resource->strDisplayLabel.empty() ? resource->strDisplayLabel : id;
+                ImGui::PushID(id.c_str());
+                const bool open = ImGui::TreeNodeEx(effectLabel.c_str(), ImGuiTreeNodeFlags_OpenOnArrow);
+                if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s\n%zu sequence occurrences", id.c_str(), occurrences.size());
+                if (open)
+                {
+                    ImGui::BeginDisabled(!available);
+                    if (ImGui::SmallButton("Open Editor"))
+                        (void)Open_AuthoringResource(key);
+                    ImGui::SameLine();
+                    if (ImGui::SmallButton("Preview"))
+                        (void)Preview_AuthoringResource(key, m_strElementStatus);
+                    ImGui::SameLine();
+                    if (ImGui::SmallButton("Copy Resource"))
+                    {
+                        auto transfer = std::make_shared<COMPOSITION_EFFECT_TRANSFER>();
+                        COMPOSITION_EFFECT_ITEM item;
+                        item.resourceKind = key.eOwnerKind == EFFECT_RESOURCE_OWNER_KIND::V1_DOCUMENT ? "V1_EFFECT" :
+                            key.eOwnerKind == EFFECT_RESOURCE_OWNER_KIND::V2_LEAF ? "LEAF" : "GROUP";
+                        item.resourceId = id;
+                        item.displayName = effectLabel;
+                        transfer->label = effectLabel;
+                        transfer->items.push_back(std::move(item));
+                        CCompositionClipboard::Get().Write(std::move(transfer));
+                        m_strElementStatus = "Copied Effect resource. Paste into the selected Composition at its cursor.";
+                    }
+                    ImGui::EndDisabled();
+                    if (!available) ImGui::TextWrapped("Effect owner unavailable: %s", editableStatus.empty() ? id.c_str() : editableStatus.c_str());
+                    for (const auto* occurrence : occurrences)
+                    {
+                        ImGui::Text("%u - %u ms%s%s", occurrence->iStartMs,
+                            occurrence->iStartMs + occurrence->iDurationMs,
+                            occurrence->bLoopEffectToDuration ? " | Loop to duration" : "",
+                            occurrence->bFitEffectToDuration ? " | Fit to duration" : "");
+                        if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", occurrence->strTrackId.c_str());
+                    }
+                    ImGui::TreePop();
+                }
+                ImGui::PopID();
+            }
+            ImGui::TreePop();
+        }
+        ImGui::PopID();
+    }
+    ImGui::TreePop();
+}
+
 bool_t Client::CEffect_Tool::Refresh_ValtanEffectResourceSnapshot()
 {
 	m_bValtanEffectResourceLoadAttempted = true;
@@ -1457,6 +1559,7 @@ void Client::CEffect_Tool::Render_ValtanPatternTreeSection(
 	   "Animation-first manual audition | phase %u | source chain %s | automatic rotation disabled"
 	   Animator order now comes from ManualAuditions. All Effects and Valtan Boss Tool
 	   both submit the one shared typed Server audition service. */
+	Render_ValtanCinematicEffectSection(strSearch);
 	Render_ValtanEffectResourceSection(strSearch);
 	Render_ValtanExactAuthoredSourceSection(strSearch);
 	if (m_ValtanPatternProductUnlinkOperation.has_value())

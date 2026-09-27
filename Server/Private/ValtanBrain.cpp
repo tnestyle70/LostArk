@@ -2780,7 +2780,8 @@ void LostArk::Server::CValtanBrain::Update(
 	const CGameplayCatalog* activeThresholdCatalog,
 	const std::uint16_t activeThresholdGenerationEpoch,
 	std::vector<SERVER_PLAYER_CAPTURE_REQUEST>* outCaptureRequests,
-	const BOSS_PATTERN_SEQUENCE_DEFINITION* automaticSequenceOverride) const
+	const BOSS_PATTERN_SEQUENCE_DEFINITION* automaticSequenceOverride,
+	std::vector<SERVER_BOSS_PATTERN_HIT>* outOwnerHits) const
 {
 	if (WORLD_BOOTSTRAP_KIND::BOSS != boss.eKind)
 		return;
@@ -3225,6 +3226,20 @@ void LostArk::Server::CValtanBrain::Update(
 		ApplyPatternHit(
 			boss, players, catalog, serverTick, coverCircles,
 			outDamageEvents, outCaptureRequests);
+		if (nullptr != outOwnerHits && BOSS_PATTERN_HIT_SHAPE::CONE == boss.ePatternHitShape)
+		{
+			const auto pose = ResolvePatternHitTransform(boss);
+			SERVER_BOSS_PATTERN_HIT hit;
+			hit.iSourceNetEntityId = boss.iNetEntityId;
+			hit.iPatternSequence = boss.iPatternSequence;
+			hit.strPatternId = boss.strPatternId;
+			hit.strActionId = currentStage.strActionId;
+			hit.Cone = {pose.fPositionX, pose.fPositionZ,
+				std::sin(pose.fYawDegrees * DEGREES_TO_RADIANS),
+				std::cos(pose.fYawDegrees * DEGREES_TO_RADIANS),
+				boss.fPatternHitLength, boss.fPatternHitAngleDegrees};
+			outOwnerHits->push_back(std::move(hit));
+		}
 	}
 	while (boss.iAppliedPatternHitCount < boss.iPatternHitCount)
 	{
@@ -3240,6 +3255,20 @@ void LostArk::Server::CValtanBrain::Update(
 		ApplyPatternHit(
 			boss, players, catalog, serverTick, coverCircles,
 			outDamageEvents, outCaptureRequests);
+		if (nullptr != outOwnerHits && BOSS_PATTERN_HIT_SHAPE::CONE == boss.ePatternHitShape)
+		{
+			const auto pose = ResolvePatternHitTransform(boss);
+			SERVER_BOSS_PATTERN_HIT hit;
+			hit.iSourceNetEntityId = boss.iNetEntityId;
+			hit.iPatternSequence = boss.iPatternSequence;
+			hit.strPatternId = boss.strPatternId;
+			hit.strActionId = currentStage.strActionId;
+			hit.Cone = {pose.fPositionX, pose.fPositionZ,
+				std::sin(pose.fYawDegrees * DEGREES_TO_RADIANS),
+				std::cos(pose.fYawDegrees * DEGREES_TO_RADIANS),
+				boss.fPatternHitLength, boss.fPatternHitAngleDegrees};
+			outOwnerHits->push_back(std::move(hit));
+		}
 		if (boss.bPortalMotionActive)
 		{
 			boss.fPortalLastHitSampleX = boss.fPositionX;

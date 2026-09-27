@@ -404,6 +404,22 @@ void Client::CCombatHUDViewModel::Apply_Boss(
 	m_Boss.eMechanicGaugeKind = snapshot.BossCombat.eMechanicGaugeKind;
 	m_Boss.iCurrentMechanicGauge = snapshot.BossCombat.iCurrentMechanicGauge;
 	m_Boss.iMaximumMechanicGauge = snapshot.BossCombat.iMaximumMechanicGauge;
+	/* Valtan's magic-orb window predates the typed Kouku mechanic projection.
+	Use its Server response damage first, or the original Server stagger counter.
+	The stable action ID hides the bar immediately on success, timeout or cancel. */
+	if ((archetypeId == "BOSS_VALTAN" || archetypeId == "BOSS_VALTAN_GHOST") &&
+		snapshot.strPatternId == "VALTAN_MAGIC_ORB_STAGGER_76" &&
+		snapshot.strActionId == "valtan.mechanic.magic-orb-stagger-76.window")
+	{
+		const auto maximum = snapshot.BossCombat.iResponseThreshold > 0u ?
+			snapshot.BossCombat.iResponseThreshold : snapshot.BossCombat.iMaximumStagger;
+		const auto progress = snapshot.BossCombat.iResponseThreshold > 0u ?
+			snapshot.BossCombat.iResponseProgress : snapshot.BossCombat.iCurrentStagger;
+		m_Boss.eMechanicGaugeKind = maximum > 0u ? LostArk::Shared::BOSS_MECHANIC_GAUGE_KIND::STAGGER :
+			LostArk::Shared::BOSS_MECHANIC_GAUGE_KIND::NONE;
+		m_Boss.iMaximumMechanicGauge = maximum;
+		m_Boss.iCurrentMechanicGauge = maximum - (std::min)(progress, maximum);
+	}
 	m_Boss.hasPosition = true;
 	m_Boss.fPositionX = snapshot.fPositionX;
 	m_Boss.fPositionY = snapshot.fPositionY;

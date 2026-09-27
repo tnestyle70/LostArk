@@ -20,6 +20,8 @@
 #include "GameplayDataRevision.h"
 
 #include <filesystem>
+#include <functional>
+#include <optional>
 #include <string_view>
 #include <unordered_map>
 #include <unordered_set>
@@ -405,7 +407,8 @@ public:
 	bool_t Play_ValtanCompositionDraftPattern(
 		const VALTAN_PATTERN_VIEW& Pattern,
 		VALTAN_PATTERN_PREVIEW_PATH ePath,
-		std::string& strOutStatus);
+		std::string& strOutStatus,
+		uint32_t iPresentationDurationMs = 0u);
 	bool_t Seek_ValtanCompositionPattern(
 		const std::string& strPatternId,
 		uint32_t iPositionMs,
@@ -435,7 +438,8 @@ public:
 	bool_t Resolve_ValtanCompositionNativeClipDurationMs(
 		const std::string& strClipName,
 		uint32_t& iOutRoundedDurationMs,
-		std::string& strOutStatus) const;
+		std::string& strOutStatus,
+		f32_t* pOutNativeDurationSeconds = nullptr) const;
 	bool_t Validate_ValtanCompositionAnimationStageMutation(
 		const VALTAN_STAGE_VIEW& BaselineStage,
 		const VALTAN_STAGE_VIEW& CandidateStage,
@@ -523,6 +527,20 @@ public:
 		uint32_t iStartMs,
 		VALTAN_PATTERN_SOUND_REPEAT_POLICY eRepeatPolicy,
 		std::string& strOutStatus);
+	bool_t Patch_ValtanCompositionPatternSoundPlacement(
+		const VALTAN_PATTERN_VIEW& Pattern,
+		const VALTAN_STAGE_VIEW& SourceStage,
+		const VALTAN_STAGE_VIEW& TargetStage,
+		const std::string& strOccurrenceId,
+		const std::string& strTargetClipOccurrenceId,
+		uint32_t iStartMs,
+		uint32_t iPlaybackOffsetMs,
+		std::optional<uint32_t> iPlaybackDurationMs,
+		VALTAN_PATTERN_SOUND_REPEAT_POLICY eRepeatPolicy,
+		std::string& strOutStatus);
+	bool_t Apply_ValtanCompositionPatternSoundDraftTransaction(
+		const std::function<bool(std::string&)>& Mutation,
+		std::string& strOutStatus);
 	bool_t Add_ValtanCompositionPatternSound(
 		const VALTAN_PATTERN_VIEW& Pattern,
 		const VALTAN_STAGE_VIEW& Stage,
@@ -531,7 +549,9 @@ public:
 		uint32_t iStartMs,
 		VALTAN_PATTERN_SOUND_REPEAT_POLICY eRepeatPolicy,
 		VALTAN_PATTERN_SOUND_CUE_ROW_ID& OutCreatedRowId,
-		std::string& strOutStatus);
+		std::string& strOutStatus,
+		std::optional<uint32_t> iPlaybackOffsetMs = std::nullopt,
+		std::optional<uint32_t> iPlaybackDurationMs = std::nullopt);
 	bool_t Remove_ValtanCompositionPatternSound(
 		const VALTAN_PATTERN_VIEW& Pattern,
 		const VALTAN_STAGE_VIEW& Stage,
@@ -675,12 +695,14 @@ private:
 	bool_t Activate_ValtanPatternMasterItem(
 		const shared_ptr<Engine::CModel>& pModel,
 		std::size_t iItem,
-		f32_t fLocalWallSeconds);
+		f32_t fLocalWallSeconds,
+		bool_t bRebuildEffectHistory = false);
 	bool_t Apply_ValtanPatternMasterPose(
 		const shared_ptr<Engine::CModel>& pModel,
 		const VALTAN_PATTERN_MASTER_PLAY_ITEM& Item,
 		f32_t fLocalWallSeconds,
-		bool_t bForceAnimationEdge) const;
+		bool_t bForceAnimationEdge,
+		bool_t bRebuildEffectHistory = false) const;
 	bool_t Seek_ValtanPatternMasterPreview(
 		const shared_ptr<Engine::CModel>& pModel,
 		f32_t fTimelineSeconds,
@@ -977,6 +999,7 @@ private:
 		std::wstring Path;
 		f64_t fTimelineStartMs = 0.0;
 		uint32_t iDurationMs = 0u;
+		uint32_t iPlaybackOffsetMs = 0u;
 		uint64_t iHandle = 0u;
 		bool_t bAttempted = false;
 	};

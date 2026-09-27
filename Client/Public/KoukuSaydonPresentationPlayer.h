@@ -205,6 +205,7 @@ private:
         bool failed = false;
         std::string failureStatus;
         bool waitingForAnchor = false;
+        bool suppressedForLocalMario = false;
         bool debugRender = true;
     };
     struct EFFECT_ANCHOR_HISTORY final
@@ -436,6 +437,7 @@ private:
         const KOUKU_SAYDON_COMPOSITION_ANIMATION_OCCURRENCE*& previous);
     void Sample_BundlePreview();
     void Sync_PreviewSourceVisibility();
+    void Sync_PreviewSourceVisibility(const std::vector<KOUKU_BOSS_PRESENTATION_VIEW>& bosses);
     bool Prepare_PreviewEffects();
     void Fail_Preview(std::string status);
     bool Sample_BundlePreviewFacing(BUNDLE_PREVIEW_MEMBER& member, double localMs);

@@ -115,7 +115,9 @@ public:
 		const ComPtr<ID3D11DeviceContext>& pContext);
 	/* Local Action Composition preview only. The caller supplies the current
 	   parsed authoring snapshot, so saved groups/bindings can be reviewed on the
-	   next seek without a separate build or publish step. */
+	   next seek without a separate build or publish step. Absolute preview time
+	   keeps Stage children and natural tails on the same held/seekable clock;
+	   -1 uses Stage age for a single-Stage caller. Layer updates never advance them. */
 	static void Sync_StageAuthoring(
 		const EFFECT_V2_TARGET& Target,
 		const char_t* pActionId,
@@ -123,14 +125,16 @@ public:
 		std::span<const EFFECT_V2_CLIP_OCCURRENCE_CLOCK> ClipOccurrences,
 		std::shared_ptr<const EFFECT_V2_CATALOG_SNAPSHOT> pSnapshot,
 		const ComPtr<ID3D11Device>& pDevice,
-		const ComPtr<ID3D11DeviceContext>& pContext);
+		const ComPtr<ID3D11DeviceContext>& pContext,
+		f32_t fPreviewTimeSeconds = -1.f);
 	static void Sync_StageAuthoring(
 		const EFFECT_V2_TARGET& Target,
 		const char_t* pActionId,
 		f32_t fAgeSeconds,
 		std::shared_ptr<const EFFECT_V2_CATALOG_SNAPSHOT> pSnapshot,
 		const ComPtr<ID3D11Device>& pDevice,
-		const ComPtr<ID3D11DeviceContext>& pContext);
+		const ComPtr<ID3D11DeviceContext>& pContext,
+		f32_t fPreviewTimeSeconds = -1.f);
 	/* Destructive seek/reset for a tool-owned local preview target.  Product
 	   gameplay must continue to use Sync_Stage; CValtan admits this call only
 	   for its non-authoritative Action Composition preview instance. */

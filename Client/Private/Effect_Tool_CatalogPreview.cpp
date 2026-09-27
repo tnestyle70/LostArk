@@ -428,6 +428,13 @@ bool_t Client::CEffect_Tool::Refresh_DirectAuthoredEditableIndex(
 					Visual.clientVisualId };
 				BossCombatObjectOwners.emplace(Visual.effectAssetId, Owner);
 				++StagedBossProductCueMappingCounts[Visual.effectAssetId];
+				if (!Visual.armedEffectAssetId.empty())
+				{
+					BossCombatObjectOwners.emplace(
+						Visual.armedEffectAssetId, Owner);
+					++StagedBossProductCueMappingCounts[
+						Visual.armedEffectAssetId];
+				}
 				if (!Visual.hitEffectAssetId.empty())
 				{
 					BossCombatObjectOwners.emplace(

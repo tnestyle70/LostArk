@@ -223,7 +223,7 @@
       "offsetRightM": 0.0,
       "speedMps": 0.0,
       "maximumDistanceM": 0.0,
-      "lifeMs": 20700,
+      "lifeMs": 32000,
       "hits": [
         {
           "hitShape": "CIRCLE",
@@ -234,7 +234,7 @@
           "hitHalfWidth": 0.0,
           "hitId": "hit.valtan.six-pizza.rock-pillar.explode",
           "trigger": "TIMED",
-          "atMs": 19500,
+          "atMs": 0,
           "repeatCount": 1,
           "repeatIntervalMs": 0,
           "serverDamageProfileId": "damage.valtan.stomp",
@@ -244,7 +244,12 @@
           "downMs": 1000
         }
       ],
-      "coverRadiusM": 1.5
+      "coverRadiusM": 1.5,
+      "ownerHitChain": {
+        "triggerActionId": "valtan.sequence.center-six-pizza-charge.step-11",
+        "delayMs": 1500,
+        "armedPresentationEventId": "event.valtan.six-pizza.rock-pillar.armed"
+      }
     },
     {
       "combatObjectArchetypeId": "combatobject.valtan.struggling.rock-pillar",

@@ -160,6 +160,13 @@ public:
 	bool_t Stage_UpdateBossValtanBinding(
 		const EFFECT_V2_BINDING& Candidate,
 		std::string& strOutError);
+	/* Move one exact binding within its Pattern. Resource, clock policy, anchor,
+	   transform and stop policy are copied from the current row, never replaced. */
+	bool_t Stage_MoveBossValtanBinding(
+		const EFFECT_V2_STAGE_BINDING_KEY& SourceKey,
+		const std::string& strTargetStageId, const std::string& strTargetActionId,
+		const std::string& strTargetClipOccurrenceId, uint32_t iTargetStartMs,
+		std::string& strOutError);
 	bool_t Prepare_BossValtanBindingDraftSave(
 		std::string& strOutBaselineBytes,
 		std::string& strOutCandidateBytes,

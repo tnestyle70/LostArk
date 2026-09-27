@@ -3503,6 +3503,29 @@ namespace
 		return true;
 	}
 
+	bool Read_CombatObjectOwnerHitChain(
+		const DATA_JSON_VALUE& Object,
+		std::optional<Client::VALTAN_COMBAT_OBJECT_OWNER_HIT_CHAIN_VIEW>& Out)
+	{
+		Out.reset();
+		const auto* Chain = Object.Find("ownerHitChain");
+		if (!Chain)
+			return true;
+		Client::VALTAN_COMBAT_OBJECT_OWNER_HIT_CHAIN_VIEW Value;
+		if (!Chain->Is_Object() || !Has_ExactProperties(*Chain,
+			{ "triggerActionId", "delayMs", "armedPresentationEventId" }) ||
+			!Read_RequiredUInt32(*Chain, "delayMs", Value.iDelayMs))
+			return false;
+		Value.strTriggerActionId = Read_String(*Chain, "triggerActionId");
+		Value.strArmedPresentationEventId = Read_String(*Chain, "armedPresentationEventId");
+		if (!Is_StableToken(Value.strTriggerActionId) ||
+			!Is_StableToken(Value.strArmedPresentationEventId) ||
+			Value.iDelayMs == 0u || Value.iDelayMs > 600000u)
+			return false;
+		Out = std::move(Value);
+		return true;
+	}
+
 	struct COMBAT_OBJECT_EFFECT_REFERENCE final
 	{
 		std::string strClientVisualId;
@@ -3516,6 +3539,8 @@ namespace
 		f32_t fSpeedMps = 0.f;
 		f32_t fMaximumDistanceM = 0.f;
 		uint32_t iLifetimeMs = 0u;
+		f32_t fCoverRadiusM = 0.f;
+		std::optional<Client::VALTAN_COMBAT_OBJECT_OWNER_HIT_CHAIN_VIEW> OwnerHitChain;
 		std::vector<std::string> HitIds;
 		std::vector<uint32_t> HitOffsetsMs;
 		std::vector<Client::VALTAN_COMBAT_OBJECT_HIT_VIEW> Hits;
@@ -3626,6 +3651,8 @@ namespace
 			Product.vWorldScale.y == Authored.vWorldScale.y &&
 			Product.vWorldScale.z == Authored.vWorldScale.z &&
 			Product.iSourceStartMs == Authored.iSourceStartMs &&
+			Product.bHasPlaybackOffset == Authored.bHasPlaybackOffset &&
+			(!Product.bHasPlaybackOffset || Product.iPlaybackOffsetMs == Authored.iPlaybackOffsetMs) &&
 			Product.bHasSourceEnd == Authored.bHasSourceEnd &&
 			(!Product.bHasSourceEnd ||
 			 Product.iSourceEndMs == Authored.iSourceEndMs) &&
@@ -4055,15 +4082,15 @@ namespace
 	{
 		const bool_t bUsesStageClock = nullptr != Cue.Find("timingBasis");
 		const bool_t bValidShape = bUsesStageClock ?
-			Has_ExactProperties(Cue,
+			Has_ExactPropertiesWithOptional(Cue,
 				{ "cueId", "occurrenceId", "effectAssetId", "timingBasis",
 				  "stageOffsetMs", "anchorSlotId", "followPolicy", "stopPolicy",
-				  "repeatPolicy", "localTransform", "scalePolicy" }) :
-			Has_ExactProperties(Cue,
+				  "repeatPolicy", "localTransform", "scalePolicy" }, { "playbackOffsetMs" }) :
+			Has_ExactPropertiesWithOptional(Cue,
 				{ "cueId", "occurrenceId", "effectAssetId", "clipOccurrenceId",
 				  "sourceStartMs", "sourceEndMs", "anchorSlotId", "followPolicy",
 				  "stopPolicy", "repeatPolicy", "localTransform",
-				  "scalePolicy", "mappingBasis" });
+				  "scalePolicy", "mappingBasis" }, { "playbackOffsetMs" });
 		if (!bValidShape)
 		{
 			strOutError = "split presentation cue has unexpected properties";
@@ -4116,6 +4143,14 @@ namespace
 				 "each_loop" != Read_String(Cue, "repeatPolicy")))
 			{
 				strOutError = "split presentation cue timing/policy is invalid";
+				return false;
+			}
+		}
+		if (const auto* offset = Cue.Find("playbackOffsetMs"))
+		{
+			if (!Is_NonNegativeInteger(offset) || offset->Get_Number() > 600000.0)
+			{
+				strOutError = "Effect playbackOffsetMs must be an integer within 0..600000";
 				return false;
 			}
 		}
@@ -4248,6 +4283,9 @@ namespace
 			View.iSourceEndMs = View.bHasSourceEnd ? static_cast<uint32_t>(
 				Cue.Find("sourceEndMs")->Get_Number()) : 0u;
 		}
+		View.bHasPlaybackOffset = nullptr != Cue.Find("playbackOffsetMs");
+		View.iPlaybackOffsetMs = View.bHasPlaybackOffset ?
+			static_cast<uint32_t>(Cue.Find("playbackOffsetMs")->Get_Number()) : 0u;
 		View.iStageDurationMs = iStageDurationMs;
 		const DATA_JSON_VALUE& Transform = *Cue.Find("localTransform");
 		const DATA_JSON_VALUE::ARRAY& Position =
@@ -7632,7 +7670,8 @@ bool_t Client::VALTAN_TOOL_AUDITION_INVENTORY::Contains(
 
 bool_t Client::CValtanPatternTree::Load_FullRestoreSourceClips(
 	const std::filesystem::path& Path,
-	VALTAN_FULL_RESTORE_CLIP_INDEX& OutIndex, std::string& OutError)
+	VALTAN_FULL_RESTORE_CLIP_INDEX& OutIndex, std::string& OutError,
+	const bool_t bUseAuthoredPreview)
 {
 	using namespace Client;
 	std::ifstream Input(Path, std::ios::binary);
@@ -7678,7 +7717,18 @@ bool_t Client::CValtanPatternTree::Load_FullRestoreSourceClips(
 			return false;
 		std::ostringstream Id;
 		Id << "effect.valtan.action." << Action << ".stage" << std::setw(3)
-			<< std::setfill('0') << Stage << ".full.restore";
+			<< std::setfill('0') << Stage;
+		// A split restoration keeps the same verified source animation. The
+		// optional variant qualifies its own asset without replacing the original.
+		if (const auto* Variant = Effect.Find("variantId"))
+		{
+			if (!Variant->Is_String() || Variant->Get_String().empty() ||
+				Variant->Get_String().size() > 64u ||
+				Variant->Get_String().find_first_not_of("abcdefghijklmnopqrstuvwxyz0123456789-") != std::string::npos)
+				return false;
+			Id << "." << Variant->Get_String();
+		}
+		Id << ".full.restore";
 		if (!StringIs(Effect.Find("effectAssetId"), Id.str()) || Staged.contains(Id.str()))
 			return false;
 		std::vector<VALTAN_CLIP_OCCURRENCE_VIEW> SourceClips;
@@ -7700,6 +7750,24 @@ bool_t Client::CValtanPatternTree::Load_FullRestoreSourceClips(
 			Clip.bLoop = Loop->Get_Boolean();
 			Clip.strClipOccurrenceId = "editor.full-restore." + Id.str();
 			SourceClips.push_back(std::move(Clip));
+		}
+		// Authored audition timing never replaces the verified source receipt.
+		// Only the standalone editor opts in; Product matching keeps the source.
+		if (const auto* Preview = Effect.Find("authoredPreview"))
+		{
+			uint32_t WallMs = 0u;
+			const auto* Loop = Preview->Find("loop");
+			if (!Preview->Is_Object() ||
+				!StringIs(Preview->Find("mappingBasis"), "PROJECT_AUTHORED") ||
+				!Loop || !Loop->Is_Boolean() ||
+				!Unsigned(Preview->Find("previewWallMs"), WallMs) ||
+				!WallMs || WallMs > 600000u)
+				return false;
+			if (bUseAuthoredPreview)
+			{
+				SourceClips.front().bLoop = Loop->Get_Boolean();
+				SourceClips.front().iAuthoringWallMs = WallMs;
+			}
 		}
 		Staged.emplace(Id.str(), std::move(SourceClips));
 	}
@@ -7735,6 +7803,175 @@ bool_t Client::CValtanPatternTree::Matches_FullRestoreSource(
 				&Client::VALTAN_CLIP_OCCURRENCE_VIEW::strClipName) != Entry->second.end())
 				return true;
 	return false;
+}
+
+void Client::CValtanPatternTree::Build_EffectResourceDisplayLabels(
+    VALTAN_PATTERN_TREE_VIEW& View,
+    const std::unordered_map<std::string, std::string>& SavedNames,
+    const VALTAN_FULL_RESTORE_CLIP_INDEX& SourceClips)
+{
+    // The same inventory projection is consumed by both pickers and editor titles.
+    // Only ambiguous labels gain a display ordinal; saved IDs and names stay intact.
+    View.EffectResourceDisplayLabels.clear();
+    std::map<std::string, std::vector<std::string>> ByLabel;
+    for (const auto& [Id, Name] : SavedNames)
+        if (Id.starts_with("effect.valtan.") || Id.starts_with("boss.valtan."))
+            ByLabel[Describe_EffectResource(View, Id, Name, SourceClips)].push_back(Id);
+    std::unordered_map<std::string, std::string> Staged;
+    for (auto& [Label, Ids] : ByLabel)
+    {
+        std::ranges::sort(Ids);
+        for (size_t I = 0; I < Ids.size(); ++I)
+        {
+            std::ostringstream Ordinal;
+            if (Ids.size() > 1u) Ordinal << "\x20\xC2\xB7\x20" << std::setw(2) << std::setfill('0') << I + 1u;
+            Staged.emplace(Ids[I], Label + Ordinal.str());
+        }
+    }
+    View.EffectResourceDisplayLabels = std::move(Staged);
+}
+
+std::string Client::CValtanPatternTree::Describe_EffectResource(
+    const VALTAN_PATTERN_TREE_VIEW& View, const std::string& Id,
+    const std::string& SavedName, const VALTAN_FULL_RESTORE_CLIP_INDEX& Index)
+{
+    if (!Id.starts_with("effect.valtan.") && !Id.starts_with("boss.valtan."))
+        return SavedName.empty() ? Id : SavedName;
+    if (const auto Label = View.EffectResourceDisplayLabels.find(Id);
+        Label != View.EffectResourceDisplayLabels.end()) return Label->second;
+    const auto Number = [](size_t Value)
+    { std::ostringstream Out; Out << std::setw(2) << std::setfill('0') << Value; return Out.str(); };
+    const auto HasKorean = [](const std::string& Text)
+    {
+        for (size_t I = 0; I + 2 < Text.size(); ++I)
+        {
+            const auto A = static_cast<unsigned char>(Text[I]);
+            const auto B = static_cast<unsigned char>(Text[I + 1]);
+            const auto C = static_cast<unsigned char>(Text[I + 2]);
+            if ((A & 0xf0u) != 0xe0u || (B & 0xc0u) != 0x80u || (C & 0xc0u) != 0x80u) continue;
+            const unsigned Code = ((A & 15u) << 12) | ((B & 63u) << 6) | (C & 63u);
+            if (Code >= 0xac00u && Code <= 0xd7a3u) return true;
+        }
+        return false;
+    };
+    const bool Restore = Id.ends_with(".full.restore");
+    const auto Source = Index.find(Id);
+    const auto Variant = [&]() -> std::string
+    {
+        if (Id.ends_with(".body.full.restore")) return "\x20\xC2\xB7\x20\xEB\xB3\xB8\xEC\xB2\xB4";
+        if (Id.ends_with(".sectors.full.restore") || Id.ends_with(".sector.full.restore")) return "\x20\xC2\xB7\x20\xEB\xB6\x80\xEC\xB1\x84\xEA\xBC\xB4";
+        return {};
+    };
+    std::vector<const VALTAN_PATTERN_VIEW*> Patterns;
+    for (const auto* Rows : { &View.Gimmicks, &View.Rotation })
+        for (const auto& Pattern : *Rows) Patterns.push_back(&Pattern);
+    std::ranges::sort(Patterns, {}, [](const auto* Pattern) { return Pattern->strPatternId; });
+    for (const auto& Independent : View.IndependentEffects)
+        if (!Restore && Independent.strEffectAssetId == Id && HasKorean(Independent.strDisplayName))
+            return Independent.strDisplayName;
+    for (const auto* Pattern : Patterns)
+    {
+        size_t StageOrdinal = 0u;
+        bool Matches = Restore && Matches_FullRestoreSource(*Pattern, Id, Index);
+        for (size_t I = 0; I < Pattern->Stages.size(); ++I)
+        {
+            const auto& Stage = Pattern->Stages[I];
+            const bool Product = std::ranges::any_of(Stage.ProductCues,
+                [&](const auto& Cue) { return Cue.strEffectAssetId == Id || Cue.strV1EffectAssetId == Id; });
+            const bool Object = std::ranges::any_of(Stage.CombatObjectEffects,
+                [&](const auto& Row) { return Row.strEffectAssetId == Id || Row.strEffectV2GroupId == Id; });
+            const bool Clip = Restore && Source != Index.end() && std::ranges::any_of(Stage.ClipOccurrences,
+                [&](const auto& Occurrence) { return std::ranges::find(Source->second, Occurrence.strClipName,
+                    &VALTAN_CLIP_OCCURRENCE_VIEW::strClipName) != Source->second.end(); });
+            if (!StageOrdinal && (Product || Object || Clip)) StageOrdinal = I + 1u;
+            Matches = Matches || Product || Object;
+        }
+        if (!Matches) continue;
+        const std::string Name = HasKorean(Pattern->strDisplayName) ? Pattern->strDisplayName : "\xEB\xB0\x9C\xED\x83\x84\x20\xED\x8C\xA8\xED\x84\xB4";
+        if (Restore)
+        {
+            // Number restored pieces in the owning Pattern's clip order. Source
+            // variants keep that same order and gain a readable suffix only.
+            const auto BaseId = [](std::string Value)
+            {
+                for (const std::string_view Variant : { ".body.full.restore", ".sectors.full.restore", ".sector.full.restore" })
+                    if (Value.ends_with(Variant)) { Value.resize(Value.size() - Variant.size()); return Value + ".full.restore"; }
+                return Value;
+            };
+            std::set<std::string> Seen;
+            size_t Ordinal = 0u, SelectedOrdinal = 0u;
+            for (const auto& Stage : Pattern->Stages)
+                for (const auto& Clip : Stage.ClipOccurrences)
+                {
+                    std::set<std::string> MatchingSources;
+                    for (const auto& [RestoreId, Clips] : Index)
+                        if (Matches_FullRestoreSource(*Pattern, RestoreId, Index) &&
+                            std::ranges::find(Clips, Clip.strClipName,
+                                &VALTAN_CLIP_OCCURRENCE_VIEW::strClipName) != Clips.end())
+                            MatchingSources.insert(BaseId(RestoreId));
+                    for (const auto& RestoreId : MatchingSources)
+                        if (Seen.insert(RestoreId).second)
+                        {
+                            ++Ordinal;
+                            if (RestoreId == BaseId(Id)) SelectedOrdinal = Ordinal;
+                        }
+                }
+            std::string Role = "\xEC\x9B\x90\xEB\xB3\xB8\x20\xEC\x9D\xB4\xED\x8E\x99\xED\x8A\xB8";
+            if (Pattern->strPatternId == "VALTAN_CATCH_BREATH" && Source != Index.end())
+                for (const auto& Clip : Source->second)
+                {
+                    if (Clip.strClipName == "mesh_att_battle_21_01") Role = "\xEC\x9E\xA1\xEA\xB8\xB0\x20\xEC\xA4\x80\xEB\xB9\x84";
+                    else if (Clip.strClipName == "mesh_att_battle_21_03") Role = "\xEC\x82\xAC\xEC\x9E\x90\xED\x9B\x84\x20\xEC\xA4\x80\xEB\xB9\x84";
+                    else if (Clip.strClipName == "mesh_att_battle_21_04") Role = "\xEB\xB6\x88\xEC\x96\xB4\x20\xEB\x82\xA0\xEB\xA6\xAC\xEA\xB8\xB0";
+                }
+            return Name + "\x20\xC2\xB7\x20" + Number(SelectedOrdinal ? SelectedOrdinal : StageOrdinal) + " " + Role + Variant();
+        }
+        return Name + "\x20\xC2\xB7\x20" + Number(StageOrdinal) + "\x20\xEC\xA0\x9C\xED\x92\x88\x20\xEC\x9D\xB4\xED\x8E\x99\xED\x8A\xB8";
+    }
+    // Saved Korean names remain author-controlled. Drop only a trailing
+    // technical decoration; exact saved names remain in search and details.
+    if (!Restore && HasKorean(SavedName))
+    {
+        std::string Name = SavedName;
+        for (const char* Marker : { " | ", " / VALTAN_", " / STEP_" })
+            if (const auto At = Name.find(Marker); At != std::string::npos && HasKorean(Name.substr(0, At))) Name.resize(At);
+        return Name;
+    }
+    std::string Tail = Id.substr(Id.rfind('.') + 1u);
+    if (Id.starts_with("boss.valtan.")) Tail = Id.substr(12u);
+    std::string Numbers;
+    bool PreviousDigit = false;
+    for (const unsigned char C : Tail)
+    {
+        const bool Digit = C >= '0' && C <= '9';
+        if (Digit) { if (!PreviousDigit && !Numbers.empty()) Numbers += '-'; Numbers += static_cast<char>(C); }
+        PreviousDigit = Digit;
+    }
+    const std::pair<std::string_view, std::string_view> Terms[] = {
+        {"tracking-axe", "\xEC\xB6\x94\xEC\xA0\x81\x20\xEB\x8F\x84\xEB\x81\xBC"}, {"high-jump", "\xEC\xB6\x94\xEC\xA0\x81\x20\xEB\x8F\x84\xEB\x81\xBC"}, {"axe", "\xEB\x8F\x84\xEB\x81\xBC"},
+        {"catch-breath", "\xEC\x9E\xA1\xEC\x95\x84\xEC\xB1\x84\xEC\x84\x9C\x20\xEB\xB6\x88\xEC\x96\xB4\x20\xEB\x82\xA0\xEB\xA6\xAC\xEA\xB8\xB0"}, {"breathe.red", "\xEB\xB6\x89\xEC\x9D\x80\x20\xEC\x88\xA8\xEA\xB2\xB0"}, {"breathe", "\xEC\x88\xA8\xEA\xB2\xB0"},
+        {"magicball", "\xEB\xA7\x88\xEB\xA0\xA5\xEA\xB5\xAC"}, {"egg", "\xEB\xA7\x88\xEB\xA0\xA5\xEA\xB5\xAC"}, {"rock-pillar", "\xEB\x8F\x8C\x20\xEA\xB8\xB0\xEB\x91\xA5"}, {"rock", "\xEB\x8F\x8C"},
+        {"six", "\x36\xEB\xB0\xA9\xED\x96\xA5\x20\xEA\xB3\xB5\xEA\xB2\xA9"}, {"twohand", "\xEC\x96\x91\xEC\x86\x90\x20\xEB\x82\xB4\xEB\xA0\xA4\xEC\xB9\x98\xEA\xB8\xB0"}, {"portal", "\xED\x8F\xAC\xED\x83\x88"},
+        {"blackhole", "\xEB\xB8\x94\xEB\x9E\x99\xED\x99\x80"}, {"shout", "\xEC\x82\xAC\xEC\x9E\x90\xED\x9B\x84"}, {"roar", "\xEC\x82\xAC\xEC\x9E\x90\xED\x9B\x84"}, {"pounding", "\xEB\x82\xB4\xEB\xA0\xA4\xEC\xB9\x98\xEA\xB8\xB0"},
+        {"whirlwind", "\xED\x9C\xA0\xEC\x9C\x88\xEB\x93\x9C"}, {"wind_", "\xED\x9A\x8C\xEC\x98\xA4\xEB\xA6\xAC"}, {"stone", "\xEB\x8F\x8C\x20\xED\x8C\x8C\xED\x8E\xB8"}, {"dust", "\xEB\xA8\xBC\xEC\xA7\x80"},
+        {"zoomblur", "\xED\x99\x95\xEB\x8C\x80\x20\xEC\x9E\x94\xEC\x83\x81"}, {"filmnoise", "\xED\x99\x94\xEB\xA9\xB4\x20\xEB\x85\xB8\xEC\x9D\xB4\xEC\xA6\x88"}, {"distortion", "\xEC\x99\x9C\xEA\xB3\xA1"}, {"blur", "\xEC\x9E\x94\xEC\x83\x81"},
+        {"light", "\xEB\xB9\x9B"}, {"wave", "\xEC\xB6\xA9\xEA\xB2\xA9\xED\x8C\x8C"}, {"trail", "\xEA\xB6\xA4\xEC\xA0\x81"}, {"ribbon", "\xEA\xB6\xA4\xEC\xA0\x81"},
+        {"hold", "\xEC\x9E\xA1\xEA\xB8\xB0\x20\xEC\x9C\xA0\xEC\xA7\x80"}, {"cast", "\xEC\x8B\x9C\xEC\xA0\x84"}, {"swing", "\xED\x9C\x98\xEB\x91\x90\xEB\xA5\xB4\xEA\xB8\xB0"}, {"dash", "\xEB\x8F\x8C\xEC\xA7\x84"},
+        {"foot", "\xEB\xB0\x9C\xEC\x9E\x90\xEA\xB5\xAD"}, {"hand", "\xEC\x86\x90"}, {"hit", "\xED\x83\x80\xEA\xB2\xA9"}, {"impact", "\xEC\xB6\xA9\xEA\xB2\xA9"},
+        {"decal", "\xEB\xB0\x94\xEB\x8B\xA5\x20\xEC\x9E\xA5\xED\x8C\x90"}, {"aura", "\xEC\x98\xA4\xEB\x9D\xBC"}, {"smoke", "\xEC\x97\xB0\xEA\xB8\xB0"}, {"flash", "\xEC\x84\xAC\xEA\xB4\x91"},
+        {"comet", "\xEB\x82\x99\xED\x95\x98\xEC\xB2\xB4"}, {"fog", "\xEC\x95\x88\xEA\xB0\x9C"}, {"sonic", "\xEC\xB6\xA9\xEA\xB2\xA9\xED\x8C\x8C"}, {"spread", "\xED\x99\x95\xEC\x82\xB0"},
+        {"fluid", "\xEC\x9C\xA0\xEC\xB2\xB4"}, {"twinkle", "\xEB\xB0\x98\xEC\xA7\x9D\xEC\x9E\x84"}, {"atk", "\xEA\xB3\xB5\xEA\xB2\xA9"}, {"cinematic", "\xEC\xBB\xB7\xEC\x8B\xA0"}
+    };
+    std::string Role = Restore ? "\xEC\x9B\x90\xEB\xB3\xB8\x20\xEC\x9D\xB4\xED\x8E\x99\xED\x8A\xB8" : Id.find(".source.") != std::string::npos ? "\xEC\x9B\x90\xEB\xB3\xB8\x20\xEB\x9D\xBC\xEC\x9D\xB4\xEB\xB8\x8C\xEB\x9F\xAC\xEB\xA6\xAC" : "\xEC\xA0\x80\xEC\x9E\xA5\x20\xEC\x9D\xB4\xED\x8E\x99\xED\x8A\xB8";
+    for (const auto& [Token, Korean] : Terms)
+        if (Id.find(Token) != std::string::npos) { Role += "\x20\xC2\xB7\x20"; Role += Korean; break; }
+    if (Restore && Source != Index.end() && !Source->second.empty())
+    {
+        Numbers.clear();
+        const auto& Clip = Source->second.front().strClipName;
+        for (const unsigned char C : Clip) if (C >= '0' && C <= '9') Numbers += static_cast<char>(C);
+    }
+    return "\xEB\xB0\x9C\xED\x83\x84\x20\xC2\xB7\x20" + Role + (Numbers.empty() ? std::string{} : " " + Numbers) + Variant();
 }
 
 bool_t Client::CValtanPatternTree::Build_PlayablePatternInventory(
@@ -8272,6 +8509,9 @@ bool_t Client::CValtanPatternTree::Load_Authoring_WhileAdmitted(
                 row.iSpawnValue = static_cast<uint32_t>(Read_Number(event, kind == "SPAWN_COMBAT_OBJECT" ? "count" : "countPerResolvedTarget"));
                 row.strKind = Read_String(definition, "kind");
                 row.iLifetimeMs = definition.Find("lifetimeMs") ? static_cast<uint32_t>(Read_Number(definition, "lifetimeMs")) : stage.iDurationMs;
+                row.fCoverRadiusM = static_cast<float>(Read_Number(definition, "coverRadiusM"));
+                if (!Read_CombatObjectOwnerHitChain(definition, row.OwnerHitChain))
+                { strOutStatus = "Source combat-object owner-hit chain is invalid: " + id; return false; }
                 if (const auto* spawn = definition.Find("spawn"))
                 {
                     if (const auto* origin = spawn->Find("origin")) row.strOriginPolicy = Read_String(*origin, "kind");
@@ -8738,6 +8978,12 @@ bool_t Client::CValtanPatternTree::Load_FromAuthoringPaths(
 			Object, "originPolicy");
 		Reference->second.strDirectionPolicy = Read_String(
 			Object, "directionPolicy");
+		Reference->second.fCoverRadiusM = static_cast<float>(Read_Number(Object, "coverRadiusM"));
+		if (!Read_CombatObjectOwnerHitChain(Object, Reference->second.OwnerHitChain))
+		{
+			strOutStatus = "Combat-object Product owner-hit chain is invalid: " + strArchetypeId;
+			return false;
+		}
 		if (!Read_RequiredFiniteFloat(
 				Object, "speedMps", Reference->second.fSpeedMps) ||
 			!Read_RequiredFiniteFloat(Object, "maximumDistanceM",
@@ -8973,6 +9219,8 @@ bool_t Client::CValtanPatternTree::Load_FromAuthoringPaths(
 			SourceCue.iStartMs : 0u;
 		Cue.iSourceStartMs = SourceCue.iStartMs;
 		Cue.iSourceEndMs = SourceCue.iEndMs;
+		Cue.bHasPlaybackOffset = SourceCue.bHasPlaybackOffset;
+		Cue.iPlaybackOffsetMs = SourceCue.iPlaybackOffsetMs;
 		Cue.iStageDurationMs = SourceCue.iStageDurationMs;
 		Cue.bHasSourceEnd = SourceCue.bHasSourceEnd;
 		CueByAction[Cue.strActionId].push_back(std::move(Cue));
@@ -9442,6 +9690,8 @@ bool_t Client::CValtanPatternTree::Load_FromAuthoringPaths(
 						View.fMaximumDistanceM =
 							Reference->second.fMaximumDistanceM;
 						View.iLifetimeMs = Reference->second.iLifetimeMs;
+						View.fCoverRadiusM = Reference->second.fCoverRadiusM;
+						View.OwnerHitChain = Reference->second.OwnerHitChain;
 						View.HitIds = Reference->second.HitIds;
 						View.HitOffsetsMs = Reference->second.HitOffsetsMs;
 						View.Hits = Reference->second.Hits;

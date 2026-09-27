@@ -146,7 +146,8 @@ bool_t Client::CAnimation_Tool::Play_ValtanCompositionPattern(
 bool_t Client::CAnimation_Tool::Play_ValtanCompositionDraftPattern(
 	const VALTAN_PATTERN_VIEW& Pattern,
 	const VALTAN_PATTERN_PREVIEW_PATH ePath,
-	std::string& strOutStatus)
+	std::string& strOutStatus,
+	const uint32_t iPresentationDurationMs)
 {
 	if (Pattern.strPatternId.empty() || Pattern.Stages.empty())
 	{
@@ -170,6 +171,15 @@ bool_t Client::CAnimation_Tool::Play_ValtanCompositionDraftPattern(
 	m_eValtanPatternMasterPath = ePath;
 	const bool_t bStarted = Start_ValtanPatternMasterPreview(
 		pModel, m_ValtanCompositionDraftPreview, ePath);
+	// Preview alone holds the final pose while NATURAL Effect tails finish.
+	// Reuse the existing owner-hit tail clock; no Server Stage is extended.
+	if (bStarted && !m_ValtanPatternMasterPlaylist.empty() &&
+		iPresentationDurationMs > m_iValtanPatternMasterDurationMs && iPresentationDurationMs <= 600000u)
+	{
+		m_ValtanPatternMasterPlaylist.back().iAuthoringWallMs +=
+			iPresentationDurationMs - m_iValtanPatternMasterDurationMs;
+		m_iValtanPatternMasterDurationMs = iPresentationDurationMs;
+	}
 	if (!bStarted)
 	{
 		m_bValtanCompositionDraftPreviewReady = false;
@@ -204,6 +214,19 @@ bool_t Client::CAnimation_Tool::Seek_ValtanCompositionPattern(
 			return false;
 	}
 	const shared_ptr<Engine::CModel> pModel = Resolve_Model();
+	/* Pause/Resume uses the displayed rounded cursor. Preserve the exact clock
+	   and existing NATURAL tails instead of treating that transport toggle as
+	   a destructive seek into only the current stage. */
+	if (bSamePattern && pModel && m_ValtanPatternMasterModel.lock() == pModel &&
+		m_iValtanPatternMasterTargetGeneration == CAnimationTargetService::Resolve_TargetGeneration() &&
+		m_ValtanPatternMasterBoss.lock() == CAnimationTargetService::Resolve_Boss() &&
+		iPositionMs == Get_ValtanCompositionPreviewState().iPositionMs)
+	{
+		m_bValtanPatternMasterPaused = bPause;
+		Sample_ValtanPatternPreviewSounds();
+		strOutStatus = m_strValtanPatternMasterStatus;
+		return true;
+	}
 	if (nullptr == pModel || !Seek_ValtanPatternMasterPreview(
 			pModel, static_cast<f32_t>(iPositionMs) * 0.001f, bPause, true))
 	{
@@ -359,9 +382,11 @@ bool_t Client::CAnimation_Tool::Ensure_ValtanCompositionNativeResources(
 bool_t Client::CAnimation_Tool::Resolve_ValtanCompositionNativeClipDurationMs(
 	const std::string& strClipName,
 	uint32_t& iOutRoundedDurationMs,
-	std::string& strOutStatus) const
+	std::string& strOutStatus,
+	f32_t* pOutNativeDurationSeconds) const
 {
 	iOutRoundedDurationMs = 0u;
+	if (pOutNativeDurationSeconds) *pOutNativeDurationSeconds = 0.f;
 	if (!Ensure_ValtanCompositionNativeResources(strOutStatus))
 		return false;
 	VALTAN_NATIVE_CLIP_INVENTORY Inventory;
@@ -390,6 +415,8 @@ bool_t Client::CAnimation_Tool::Resolve_ValtanCompositionNativeClipDurationMs(
 		iOutRoundedDurationMs = 0u;
 		return false;
 	}
+	if (pOutNativeDurationSeconds)
+		*pOutNativeDurationSeconds = Found->second.fDurationTicks / Found->second.fTicksPerSecond;
 	strOutStatus = "Resolved native Valtan clip duration.";
 	return true;
 }

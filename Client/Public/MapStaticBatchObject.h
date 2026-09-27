@@ -159,6 +159,9 @@ private:
 	uint64_t m_iShadowLightRevision = {};
 	// Zero permanently opts out if the monotonic revision ever overflows.
 	uint64_t m_iStaticShadowRevision = 1u;
+	// Immutable surface admission, with mutable morph/override checks at use.
+	std::vector<uint32_t> m_StaticShadowCasterMeshes;
+	bool_t m_bStaticShadowMaterialInputs = false;
 	bool_t m_bVisibleInstancesDirty = true;
 	bool_t m_bVisibleInstancesUsedCamera = false;
 	uint64_t m_iVisibleCameraRevision = {};

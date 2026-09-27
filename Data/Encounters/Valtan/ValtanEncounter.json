@@ -99,7 +99,8 @@
       "actionId": "valtan.attack.dash-charge",
       "sourceActionIds": [
         420604,
-        400430
+        400430,
+        400424
       ],
       "selectionMode": "NORMAL",
       "minimumHealthBar": 1,
@@ -118,7 +119,7 @@
           "stageId": "WINDUP",
           "actionId": "valtan.attack.dash-charge.windup",
           "stageKind": "WINDUP",
-          "durationMs": 3650,
+          "durationMs": 7350,
           "hitShape": "NONE",
           "hitOuterRadius": 0.0,
           "hitInnerRadius": 0.0,
@@ -172,7 +173,7 @@
           "stageId": "GROGGY",
           "actionId": "valtan.attack.dash-charge.recovery",
           "stageKind": "GROGGY",
-          "durationMs": 6833,
+          "durationMs": 6897,
           "hitShape": "NONE",
           "hitOuterRadius": 0.0,
           "hitInnerRadius": 0.0,
@@ -7312,7 +7313,7 @@
           "stageId": "STEP_01",
           "actionId": "valtan.authoring.bind-slot.step-01",
           "stageKind": "ACTIVE",
-          "durationMs": 5000,
+          "durationMs": 4107,
           "hitShape": "CIRCLE",
           "hitOuterRadius": 8.0,
           "hitInnerRadius": 0.0,
@@ -7336,7 +7337,7 @@
               "kind": "SET_PLAYER_BIND",
               "targetId": "player.status.bind",
               "value": 5000,
-              "durationMs": 5000
+              "durationMs": 4107
             },
             {
               "trigger": "EXIT",

@@ -51,6 +51,28 @@ class ValtanFullRestoreAnimationMetadataTests(unittest.TestCase):
         builder.install_animation_metadata([row], self.root / 'evidence')
         self.assertEqual(path.read_bytes(), before)
 
+    def test_authored_preview_survives_source_refresh_without_changing_provenance(self):
+        _, row = self.install_fixture(420624, 1, 'Att_Battle_18_02', .5)
+        builder.install_animation_metadata([row], self.root / 'evidence')
+        path = self.root / builder.ANIMATIONS
+        metadata = json.loads(path.read_bytes())
+        source_clips = metadata['effects'][0]['animationClips']
+        preview = dict(mappingBasis='PROJECT_AUTHORED', loop=True, previewWallMs=1140)
+        metadata['effects'][0]['authoredPreview'] = preview
+        path.write_bytes(builder.encode_json(metadata))
+        builder.install_animation_metadata([row], self.root / 'evidence')
+        result = json.loads(path.read_bytes())['effects'][0]
+        self.assertEqual(result['animationClips'], source_clips)
+        self.assertEqual(result['authoredPreview'], preview)
+        for invalid in (None, dict(preview, loop=1), dict(preview, previewWallMs=0),
+                        dict(preview, previewWallMs=True), dict(preview, mappingBasis='SOURCE')):
+            metadata['effects'][0]['authoredPreview'] = invalid
+            before = builder.encode_json(metadata)
+            path.write_bytes(before)
+            with self.assertRaisesRegex(AssertionError, 'Invalid authored preview'):
+                builder.animation_metadata_write([row], [row['effectAssetId']])
+            self.assertEqual(path.read_bytes(), before)
+
     def test_existing_mappings_survive_incremental_stage_install(self):
         _, first = self.install_fixture()
         builder.install_animation_metadata([first], self.root / 'evidence')
@@ -73,6 +95,23 @@ class ValtanFullRestoreAnimationMetadataTests(unittest.TestCase):
             builder.animation_metadata_write([row], [row['effectAssetId']])
         self.assertEqual(path.read_bytes(), before)
 
+    def test_split_variant_keeps_original_animation_mapping_and_checks_identity(self):
+        _, original = self.install_fixture()
+        builder.install_animation_metadata([original], self.root / 'evidence')
+        variant = dict(original, effectAssetId=original['effectAssetId'].replace(
+            '.full.restore', '.body.full.restore'), variantId='body')
+        write = builder.animation_metadata_write([variant], [variant['effectAssetId']])
+        rows = {row['effectAssetId']: row for row in json.loads(write[2])['effects']}
+        self.assertEqual(set(rows), {original['effectAssetId'], variant['effectAssetId']})
+        self.assertEqual(rows[variant['effectAssetId']]['animationClips'],
+                         rows[original['effectAssetId']]['animationClips'])
+        self.assertEqual(rows[variant['effectAssetId']]['variantId'], 'body')
+        source_only = builder.animation_metadata_write([original], [variant['effectAssetId']])
+        self.assertEqual(json.loads(source_only[2]), json.loads(write[2]))
+        variant['variantId'] = 'sectors'
+        with self.assertRaisesRegex(AssertionError, 'Variant identity differs'):
+            builder.animation_metadata_write([variant], [variant['effectAssetId']])
+
     def test_replace_failure_restores_prior_files_and_removes_new_mapping(self):
         _, row = self.install_fixture()
         projects = {path: path.read_bytes() for path in (self.root / 'Client/Default').iterdir()}
@@ -92,6 +131,61 @@ class ValtanFullRestoreAnimationMetadataTests(unittest.TestCase):
         self.assertFalse((self.root / builder.ANIMATIONS).exists())
         for path, before in projects.items():
             self.assertEqual(path.read_bytes(), before)
+        self.assertFalse(list(self.root.rglob('*.staged')))
+
+    def test_rollback_preserves_all_concurrent_edits_and_restores_other_files(self):
+        restored, created, changed_a, changed_b, failed = [
+            self.root / name for name in ('restored', 'created', 'changed-a', 'changed-b', 'failed')]
+        for path in (restored, changed_a, changed_b, failed):
+            path.write_bytes(b'before')
+        writes = [(path, None if path == created else b'before', b'installed')
+                  for path in (restored, created, changed_a, changed_b, failed)]
+        actual_replace = builder.os.replace
+
+        def fail_after_concurrent_edits(source, target):
+            if target == failed:
+                changed_a.write_bytes(b'editor-a')
+                changed_b.write_bytes(b'editor-b')
+                raise OSError('injected install failure')
+            return actual_replace(source, target)
+
+        with mock.patch.object(builder.os, 'replace', side_effect=fail_after_concurrent_edits):
+            with self.assertRaisesRegex(RuntimeError, 'rollback incomplete') as caught:
+                builder.commit_writes(writes)
+        self.assertIsInstance(caught.exception.__cause__, OSError)
+        self.assertIn('injected install failure', str(caught.exception))
+        for path in (changed_a, changed_b):
+            self.assertIn(f'Concurrent edit preserved during rollback: {path}', str(caught.exception))
+        self.assertEqual(changed_a.read_bytes(), b'editor-a')
+        self.assertEqual(changed_b.read_bytes(), b'editor-b')
+        self.assertEqual(restored.read_bytes(), b'before')
+        self.assertEqual(failed.read_bytes(), b'before')
+        self.assertFalse(created.exists())
+        self.assertFalse(list(self.root.rglob('*.staged')))
+
+    def test_rollback_io_failure_does_not_skip_remaining_restores(self):
+        restored, locked, failed = [self.root / name for name in ('restored', 'locked', 'failed')]
+        for path in (restored, locked, failed):
+            path.write_bytes(b'before')
+        actual_replace = builder.os.replace
+
+        def fail_install_and_one_restore(source, target):
+            if target == failed:
+                raise OSError('injected install failure')
+            if target == locked and Path(source).read_bytes() == b'before':
+                raise PermissionError('injected rollback lock')
+            return actual_replace(source, target)
+
+        with mock.patch.object(builder.os, 'replace', side_effect=fail_install_and_one_restore):
+            with self.assertRaisesRegex(RuntimeError, 'injected rollback lock') as caught:
+                builder.commit_writes([(path, b'before', b'installed')
+                                       for path in (restored, locked, failed)])
+        self.assertIsInstance(caught.exception.__cause__, OSError)
+        self.assertIn('injected install failure', str(caught.exception))
+        self.assertIn(str(locked), str(caught.exception))
+        self.assertEqual(restored.read_bytes(), b'before')
+        self.assertEqual(locked.read_bytes(), b'installed')
+        self.assertEqual(failed.read_bytes(), b'before')
         self.assertFalse(list(self.root.rglob('*.staged')))
 
     def test_concurrent_project_edit_rejects_before_metadata_replacement(self):

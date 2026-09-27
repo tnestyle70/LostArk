@@ -246,6 +246,7 @@ namespace
 		f32_t fActionFacingYawDegrees = 0.f;
         Client::EFFECT_STOP_POLICY eStopPolicy =
             Client::EFFECT_STOP_POLICY::NATURAL;
+		bool_t bPreserveBossActionTail = false;
         uint32_t iCueDurationMs = 0u;
         uint32_t iActionStartTick = 0u;
         uint32_t iCueStartMs = 0u;
@@ -265,6 +266,8 @@ namespace
 		float4x4_t WorldRoot{};
 		bool_t bLevelOwned = false;
 		bool_t bExternallySampled = false;
+		f64_t fLocalBossPreviewClockOffsetSeconds = 0.0;
+		bool_t bLocalBossPreviewSamplePending = false;
 		bool_t bInspectionVisible = true;
 		bool_t bDeferredAmbientPresentation = false;
 		bool_t bStaticAmbientBoundsValid = false;
@@ -4219,6 +4222,11 @@ bool_t Client::CEffectPresentationService::Requires_SourceBoneImportScaleNormali
 		strRuntimeAnchorSlotId == "StartControl")
 		return true;
 
+	// The independent 400424 dash keeps the same measured Valtan socket.
+	if (strEffectAssetId == "effect.valtan.dash-charge.source.shield" &&
+		strRuntimeAnchorSlotId == "FX_Att_01")
+		return true;
+
 	// Source particles are already meters. These measured Warlord/Lance
 	// combined bones retain a 0.01 import basis while translations are meters.
 	// Normalize that basis once; preserve source StartSize and model geometry.
@@ -5041,7 +5049,9 @@ bool_t Client::CEffectPresentationService::Spawn(
 			(Desc.bUseWorldRoot &&
 			 Desc.iLevelOwnerIndex == CGameInstance::Get().Get_CurrentLevelID() &&
 			 !Desc.strLevelPlacementId.empty())) &&
-		(!Desc.bExternallySampled || Desc.bLevelOwned) &&
+		std::isfinite(Desc.fLocalBossPreviewClockOffsetSeconds) &&
+		(!Desc.bExternallySampled || Desc.bLevelOwned ||
+			(Owner.pBoss && Owner.pBoss->Is_LocalPatternAuthoringPreview())) &&
         (!Desc.bOwnerSustainedSourceLoops ||
             (!Desc.bExternallySampled && Desc.eStopPolicy == EFFECT_STOP_POLICY::NATURAL &&
                 ((Desc.bUseWorldRoot && !Owner.pCharacter &&
@@ -5919,7 +5929,9 @@ bool_t Client::CEffectPresentationService::Spawn_Immediate(
 			(!Desc.bUseWorldRoot || Desc.iLevelOwnerIndex !=
 			 CGameInstance::Get().Get_CurrentLevelID() ||
 			 Desc.strLevelPlacementId.empty())) ||
-		(Desc.bExternallySampled && !Desc.bLevelOwned) ||
+		!std::isfinite(Desc.fLocalBossPreviewClockOffsetSeconds) ||
+		(Desc.bExternallySampled && !Desc.bLevelOwned &&
+			(!Owner.pBoss || !Owner.pBoss->Is_LocalPatternAuthoringPreview())) ||
 		(Desc.bVehicleModelAnchors &&
 			(nullptr == Owner.pCharacter || Desc.bUseWorldRoot || nullptr == Owner.Get_Model())) ||
 		(nullptr != Owner.pNpcAnchors &&
@@ -6178,6 +6190,7 @@ bool_t Client::CEffectPresentationService::Spawn_Immediate(
 	Active.eOrientationPolicy = Desc.eOrientationPolicy;
 	Active.fActionFacingYawDegrees = Desc.fActionFacingYawDegrees;
     Active.eStopPolicy = Desc.eStopPolicy;
+	Active.bPreserveBossActionTail = Desc.bPreserveBossActionTail;
     Active.iCueDurationMs = Desc.iCueDurationMs;
     Active.iActionStartTick = Desc.iActionStartTick;
     Active.iCueStartMs = Desc.iCueStartMs;
@@ -6192,6 +6205,7 @@ bool_t Client::CEffectPresentationService::Spawn_Immediate(
 	Active.WorldRoot = Desc.WorldRoot;
 	Active.bLevelOwned = Desc.bLevelOwned;
 	Active.bExternallySampled = Desc.bExternallySampled;
+	Active.fLocalBossPreviewClockOffsetSeconds = Desc.fLocalBossPreviewClockOffsetSeconds;
     Active.fSourceLoopEndSeconds = Desc.fSourceLoopEndSeconds;
     Active.fExternalPlaybackEndSeconds = Desc.fExternalPlaybackEndSeconds;
 	Active.ExternalTransformProvider = Desc.ExternalTransformProvider;
@@ -6383,6 +6397,18 @@ void Client::CEffectPresentationService::Update(const f32_t fTimeDelta)
 			Effect.fAmbientTickDelta = (std::max)(0.f, fTimeDelta) * Effect.fPlaybackRate;
 			Effect.bAmbientTickReady = true;
 		}
+		else if (Effect.bLocalBossPreviewSamplePending && nullptr != Effect.pObject &&
+			!Effect.bFollowAnchorMissing)
+		{
+			const f32_t sample = Effect.fPendingInitialSampleTimeSeconds;
+			if (Effect.bPendingInitialSeek || sample < Effect.fElapsedCueTimeSeconds)
+				Effect.pObject->Set_SampleTime(sample);
+			else
+				Effect.pObject->Advance_Preview(sample - Effect.fElapsedCueTimeSeconds);
+			Effect.fElapsedCueTimeSeconds = sample;
+			Effect.bPendingInitialSeek = false;
+			Effect.bLocalBossPreviewSamplePending = false;
+		}
 		else if (Effect.bPendingInitialSeek && nullptr != Effect.pObject &&
 			!Effect.bFollowAnchorMissing)
 		{
@@ -6463,11 +6489,19 @@ void Client::CEffectPresentationService::Submit_VisibleLevelPresentations()
 
 void Client::CEffectPresentationService::Synchronize_FollowAnchors()
 {
+	Synchronize_FollowAnchors({});
+}
+
+void Client::CEffectPresentationService::Synchronize_FollowAnchors(
+	const std::shared_ptr<CValtan>& pOnlyBossOwner)
+{
 	Engine::CProfilerScope profile(
 		CGameInstance::Get().Get_Profiler(), "Effect.FollowAnchors.Update");
     const uint32_t iCurrentLevel = CGameInstance::Get().Get_CurrentLevelID();
     for (ACTIVE_EFFECT& Effect : g_ActiveEffects)
     {
+		if (pOnlyBossOwner && Effect.pBossOwner.lock() != pOnlyBossOwner)
+			continue;
 		const EFFECT_OWNER_VIEW Owner = Resolve_Owner(Effect);
         if (!Owner.Is_Valid() || nullptr == Effect.pObject ||
             Effect.iLevelIndex != iCurrentLevel)
@@ -6599,7 +6633,8 @@ Client::CEffectPresentationService::Stop_BossAction(
 		{
 			return 0u == Pending.Desc.iWorldRootHandle &&
 				Pending.Desc.pBossOwner.lock() == pOwner &&
-				Pending.Desc.iActionStartTick == iActionStartTick;
+				Pending.Desc.iActionStartTick == iActionStartTick &&
+				!Pending.Desc.bPreserveBossActionTail;
 		}), g_PendingEffectSpawns.end());
 	Result.iPendingStopped = static_cast<uint64_t>(
 		iPendingBefore - g_PendingEffectSpawns.size());
@@ -6613,7 +6648,8 @@ Client::CEffectPresentationService::Stop_BossAction(
 		{
 			continue;
 		}
-		if (!Should_StopBossActionActiveEffect(Effect.eStopPolicy))
+		if (Effect.bPreserveBossActionTail ||
+			!Should_StopBossActionActiveEffect(Effect.eStopPolicy))
 		{
 			++Result.iActiveRetainedNatural;
 			continue;
@@ -6622,6 +6658,103 @@ Client::CEffectPresentationService::Stop_BossAction(
 		++Result.iActiveStopped;
 	}
 	return Result;
+}
+
+void Client::CEffectPresentationService::Sample_LocalBossPreview(
+	const std::shared_ptr<CValtan>& pOwner, const f32_t fTimelineSeconds,
+	const bool_t bRebuildEffectHistory)
+{
+	if (!pOwner || !pOwner->Is_LocalPatternAuthoringPreview() ||
+		!std::isfinite(fTimelineSeconds) || fTimelineSeconds < 0.f)
+		return;
+	const auto SampleClock = [fTimelineSeconds](const f32_t rate, const f64_t offset)
+	{
+		return static_cast<f32_t>((std::max)(0.0,
+			static_cast<f64_t>(fTimelineSeconds) * rate + offset));
+	};
+	for (PENDING_EFFECT_SPAWN& Pending : g_PendingEffectSpawns)
+	{
+		EFFECT_SPAWN_DESC& Desc = Pending.Desc;
+		if (!Desc.bExternallySampled || Desc.bLevelOwned || Desc.pBossOwner.lock() != pOwner)
+			continue;
+		const f32_t sample = SampleClock(Desc.fPlaybackRate, Desc.fLocalBossPreviewClockOffsetSeconds);
+		if (std::isfinite(sample)) Desc.fInitialSampleTimeSeconds = sample;
+	}
+	for (ACTIVE_EFFECT& Effect : g_ActiveEffects)
+	{
+		if (!Effect.bExternallySampled || Effect.bLevelOwned || Effect.pBossOwner.lock() != pOwner)
+			continue;
+		const f32_t sample = SampleClock(Effect.fPlaybackRate, Effect.fLocalBossPreviewClockOffsetSeconds);
+		if (!std::isfinite(sample) || (!bRebuildEffectHistory &&
+			sample == Effect.fElapsedCueTimeSeconds && !Effect.bLocalBossPreviewSamplePending))
+			continue;
+		Effect.fPendingInitialSampleTimeSeconds = sample;
+		// Stage-end reconstruction is an absolute seek, not one real-time frame.
+		// Retain the normal incremental path for forward playback and pause/resume.
+		if (bRebuildEffectHistory) Effect.bPendingInitialSeek = true;
+		Effect.bLocalBossPreviewSamplePending = true;
+	}
+}
+
+void Client::CEffectPresentationService::Commit_LocalBossPreviewSpawns(
+	const std::shared_ptr<CValtan>& pOwner)
+{
+	if (!pOwner || !pOwner->Is_LocalPatternAuthoringPreview())
+		return;
+	// Sequencer samples occur after the normal pending-spawn phase. Leaving a
+	// replacement queued until the next frame means Late_Update sees no object,
+	// then the next mouse sample removes it before it ever reaches rendering.
+	std::vector<PENDING_EFFECT_SPAWN> Selected;
+	std::vector<PENDING_EFFECT_SPAWN> Retained;
+	for (auto& Pending : g_PendingEffectSpawns)
+	{
+		if (Pending.Desc.bExternallySampled && !Pending.Desc.bLevelOwned &&
+			Pending.Desc.pBossOwner.lock() == pOwner)
+			Selected.push_back(std::move(Pending));
+		else
+			Retained.push_back(std::move(Pending));
+	}
+	g_PendingEffectSpawns = std::move(Retained);
+	const uint32_t iCurrentLevel = CGameInstance::Get().Get_CurrentLevelID();
+	for (const auto& Request : Selected)
+	{
+		if (Request.iLevelIndex != iCurrentLevel ||
+			(Request.Desc.PendingAdmission && Request.Desc.PendingAdmission->expired()))
+			continue;
+		std::string Status;
+		if (!Spawn_Immediate(Request.Desc, Status))
+			OutputDebugStringA(("Local boss preview Effect spawn failed: " + Status + "\n").c_str());
+	}
+	// The sampled boss pose is already final. Resolve only this owner's roots
+	// before consuming its clock, leaving Product actors and other tools alone.
+	Synchronize_FollowAnchors(pOwner);
+	for (size_t iEffect = g_ActiveEffects.size(); iEffect-- > 0u;)
+	{
+		ACTIVE_EFFECT& Effect = g_ActiveEffects[iEffect];
+		if (!Effect.bExternallySampled || Effect.bLevelOwned ||
+			Effect.pBossOwner.lock() != pOwner)
+			continue;
+		if (!Effect.pObject || Effect.iLevelIndex != iCurrentLevel || Effect.bFollowAnchorMissing)
+		{
+			Remove_At(iEffect);
+			continue;
+		}
+		if (Effect.bPendingInitialSeek || Effect.bLocalBossPreviewSamplePending)
+		{
+			const f32_t fSample = Effect.fPendingInitialSampleTimeSeconds;
+			if (Effect.bPendingInitialSeek || fSample < Effect.fElapsedCueTimeSeconds)
+				Effect.pObject->Set_SampleTime(fSample);
+			else
+				Effect.pObject->Advance_Preview(fSample - Effect.fElapsedCueTimeSeconds);
+			Effect.fElapsedCueTimeSeconds = fSample;
+			Effect.bPendingInitialSeek = false;
+			Effect.bLocalBossPreviewSamplePending = false;
+		}
+		const bool_t bCueEnded = Effect.eStopPolicy == EFFECT_STOP_POLICY::CUE_END &&
+			Effect.fElapsedCueTimeSeconds * 1000.f >= Effect.iCueDurationMs;
+		if (bCueEnded || Effect.pObject->Is_Finished() || Effect.pObject->Is_RenderFailureIsolated())
+			Remove_At(iEffect);
+	}
 }
 
 void Client::CEffectPresentationService::Stop_BossOwner(

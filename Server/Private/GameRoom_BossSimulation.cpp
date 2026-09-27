@@ -2436,8 +2436,8 @@ void LostArk::Server::CGameRoom::Update_WorldEntities(
 					{
 						if (SERVER_COMBAT_OBJECT_HIT_TRIGGER::TIMED == hit.eTrigger &&
 							0u == hit.iAppliedTimedCount &&
-							combatObject.fElapsedMilliseconds <
-								static_cast<float>(hit.iAtMs))
+							(!combatObject.OwnerHitChain.strTriggerActionId.empty() ||
+							 combatObject.fElapsedMilliseconds < static_cast<float>(hit.iAtMs)))
 						{
 							pendingTimedDamage = true;
 							break;
@@ -2453,6 +2453,7 @@ void LostArk::Server::CGameRoom::Update_WorldEntities(
 				}
 				CValtanBrain& brain = LostArk::Shared::INVALID_NET_ENTITY_ID ==
 					entity.iOwnerBossNetEntityId ? m_ValtanBrain : *m_DependentValtanBrain;
+				std::vector<SERVER_BOSS_PATTERN_HIT> ownerHits;
 				brain.Update(
 					entity,
 					m_Players,
@@ -2465,7 +2466,10 @@ void LostArk::Server::CGameRoom::Update_WorldEntities(
 					&m_GameplayCatalog.Active(),
 					m_GameplayCatalog.Get_ActiveGenerationEpoch(),
 					&captureRequests,
-					patternFlowSequence);
+					patternFlowSequence, &ownerHits);
+				if (!ownerHits.empty())
+					m_CombatObjectRuntime.Apply_OwnerHits(ownerHits, m_Players,
+						m_WorldEntities, *occurrenceCatalog, updateTick, m_TickDamageEvents);
 				for (const SERVER_PLAYER_CAPTURE_REQUEST& request : captureRequests)
 				{
 					(void)Capture_PlayerAttachment(

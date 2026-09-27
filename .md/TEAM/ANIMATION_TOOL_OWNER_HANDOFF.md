@@ -124,6 +124,11 @@ Pattern Sound와 Effect V2 binding의 dirty owner만 저장한다. Reload에서 
 공용 writer lock 안에서 다시 비교하고 원자 교체한다. 같은 owner의 외부 변경 또는 구조 오류는 기존 파일과
 초안을 보존하며, 미완성 리소스 참조의 실행 준비 여부는 Publish에서 검증한다. 저장 성공은 Server 적용 성공이 아니다.
 
+일반 `Save` 완료 뒤에는 저장 receipt와 일치하는 source를 재개방하고 현재 revision을 다시 확인한다.
+이미 승인된 source와 Effect V2 snapshot을 재사용하며 Product 전체와 Effect V2 body 전체를 다시 읽지 않는다.
+`Save & Publish` 또는 `Retry Publish`가 Product를 게시하고 완료된 revision으로 All Effects의 Product 목록을 갱신한다.
+외부 저장으로 revision이 달라지거나 재개방에 실패하면 기존 표시와 초안을 보존한다.
+
 Source inventory는 생성된 Product와의 동등성 없이 다시 열 수 있다. 기존 source formatVersion 1의 ID·형식·범위와
 내부 Stage/branch 계약은 유지한다. 임의의 손상 JSON을 정상 source로 간주하거나 Publish validator를 해제하지 않는다.
 
@@ -453,13 +458,52 @@ collider mirror, camera/scene, combat-object visual 수명을 sample한다. Paus
 실제 플레이어 선택·counter 결과·피해·cover 판정은 실행하지 않는다. `Play Pattern`은 저장·게시된
 Pattern의 서버 권위 실행이며 gameplay/presentation revision이 맞아야 한다. Valtan에는 Kouku의
 미저장 draft 임시 Server audition protocol이 없으므로 dirty draft를 예전 Product로 대신 실행하지 않는다.
-Save는 source 저장이고 `Publish after Save` 또는 `Retry Publish`가 기존 publisher를 실행한다.
+Save는 source 저장이고 `Save & Publish` 또는 `Retry Publish`가 기존 publisher를 실행한다.
 Server 적용 절차가 요구되면 완료 후 Play Pattern을 사용한다. Server submit 성공 시 preview clone을
 해제하고 자동 재생성을 억제한다. submit 실패 시 기존 preview와 dirty 문서는 유지한다.
+
+clip occurrence에 연결된 V1 Effect의 `natural once` 박스는 실제 리소스 수명까지 표시한다.
+ONCE Effect의 양끝을 드래그해 자를 수 있다. 왼쪽은 호출 위치와 실제 재생 시작점
+`playbackOffsetMs`를 함께 바꾸고 오른쪽 끝을 유지한다. 오른쪽은 `sourceEndMs`와
+`cue_end`를 저장한다. Effect Detail의 `Effect In (ms)`로 실제 리소스 시작점을 직접 지정할
+수 있다. optional offset이 없으면 기존 Full Restore 원점을 유지하며 명시0은 리소스0초다.
+유한 Animation보다 긴 Effect도 자기 수명 안에서 편집하며, Effect tail 편집은 Animation이나
+Server Stage 길이를 바꾸지 않는다. Detail Position/Rotation/Scale은 유효한 입력 완료 시
+호출 draft와 현재 cursor의 Preview에 적용되고 Save로 저장한다. Effect 본체나 다른
+occurrence의 transform은 함께 바꾸지 않는다. 위치 입력 직후 바로 Save를 눌러도 선택된
+Detail의 마지막 유효값을 먼저 반영한다. 잘못된 입력이 남아 있으면 이전 값으로 저장하지
+않고 Save를 거부하며 입력을 유지한다.
+
+Sound 박스는 preview가 선택하는 variation의 실제 WAV 길이에서 잘린 앞부분을 빼고,
+명시적 종료가 있으면 그 구간까지 표시한다. ONCE Sound의 양끝을 드래그하면 음원 시작점
+`playbackOffsetMs`와 길이 `playbackDurationMs`를 저장한다. Animation 속도는 cue 시작
+시각에만 반영하고 음원 길이는 실제 재생 시간을 사용한다. Sound를 다른 Stage의 Animation
+위로 끌면 대상 Stage/action/clip이 함께 바뀌며 stable occurrence ID와 잘라 둔 음원 구간은
+유지한다. Duplicate도 현재 구간을 보존한 새 occurrence를 만든다. 시작점은 실제 Animation
+박스 안에 있어야 한다. `each_loop` 박스는 반복 전체와 tail을 표시하며 양끝 trim 대상이 아니다.
+WAV 길이를 읽을 수 없으면 `duration unavailable`을 표시한다.
+
+Shift 클릭으로 박스를 추가 선택하거나 선택 해제한다. V1 Effect와 Sound의 혼합 선택은
+함께 Move/Duplicate/Delete할 수 있고 하나라도 적용에 실패하면 전체 draft를 보존한다.
+다른 owner를 포함한 그룹 변경과 그룹 Copy는 지원하지 않으며 부분 적용하지 않는다.
+선택된 그룹을 그대로 끌면 함께 이동하고, 드래그하지 않고 클릭하면 단일 선택으로 돌아간다.
 
 Effect Resources는 Patterns의 Connected Effects/Full Restore, Common, Library로 묶고 이름·pattern·
 clip·ID·category 검색을 지원한다. V1/V2 leaf/group의 typed owner는 그대로 유지한다.
 Open Editor는 resource body, Append는 선택 Stage/animation occurrence의 invocation을 편집한다.
+
+`All Effects > Valtan > CINEMATIC EFFECTS`에는 `진입 / Entrance`, `2페이즈 / Phase 2`,
+`피자 / Roar`, `버러지 / Trash`, `사망 / Finale` 다섯 그룹을 표시한다. 현재 실제 sequence의
+87개 occurrence가 51개 공유 Effect body를 사용하며, 같은 body의 반복 track은 별도 occurrence로 보인다.
+`Open Editor`는 공유 body를 열고 `Preview`는 해당 Effect 하나를 재생한다. `Copy Resource`로 복사한
+리소스는 기존 Composition 붙여넣기로 추가할 수 있다. 같은 목록은 Composition의
+`Resources > Effect > V1 > Cinematics`에서도 선택하고 Append할 수 있다. 복사는 재사용 body를
+가리키는 리소스를 전달하며, 원래 sequence의 actor 배치·위치·시각을 자동으로 복사하지 않는다.
+
+V1 Append의 `Attach to Animation Box`는 지정한 clip, 선택 Animation 또는 선택 Effect의 owner clip,
+타임라인 cursor의 Animation, 대상 Stage의 첫 clip 순서로 유효한 대상을 제안한다. 표시된 combo에서
+다른 clip으로 바꿀 수 있다. `WAIT` Stage와 Animation이 없는 Stage에는 V1 Effect를 Append할 수 없다.
+
 Common의 네 방향 돌은 Effect를 네 번 붙이는 대신 Summon의 spawn count/radius/lifetime을 사용한다.
 실행 중 외부에서 새 V1 catalog 항목을 등록했다면 Workbench의 목록 Refresh만으로 runtime catalog가
 교체되지는 않는다. catalog를 다시 로드한 세션과 메모리 draft를 구분한다.
@@ -1778,3 +1822,8 @@ Play All은 Movie 카메라로 시작한다. 재생/일시정지 중 F6는 현�
 회수하지 않는다. 자유 모드에서 Stop은 위치를 유지하고 이후 F6는 플레이어 follow로 돌아간다.
 Focus selected는 선택 모델 bounds로 자유 카메라를 배치한다. Pick in scene는 다음 장면 클릭
 한 번을 소비하며 mouse look을 해제하므로 TAB으로 mouse look을 다시 켤 수 있다.
+
+
+### Valtan Full Restore의 사용자 반복 미리보기
+
+`Data/Effects/ValtanFullRestoreAnimations.json`의 원본 animationClips/previewWallMs는 추출 근거다. standalone Open Editor의 사용자 반복은 optional authoredPreview의 PROJECT_AUTHORED 표식과 loop/previewWallMs로 분리한다. Effect Tool의 Valtan standalone loader만 이를 명시적으로 선택하며 일반 pattern 매칭은 원본을 계속 읽는다. 원본 builder는 유효한 사용자 override를 보존한다. 실제 Pattern의 모델 반복·hidden window·Effect cue offset은 canonical presentation의 별도 계약이므로, standalone만 늘렸다고 Pattern의 접지 시각까지 맞아졌다고 설명하지 않는다.

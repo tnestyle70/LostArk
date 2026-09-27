@@ -1044,7 +1044,8 @@ def validate_cue_animation_join(
     if occurrence_play_ms:
         occurrence_end = occurrence_start + occurrence_play_ms
         if cue_start >= occurrence_end or (
-            cue_end is not None and cue_end > occurrence_end
+            cue.get("repeatPolicy") != "once"
+            and cue_end is not None and cue_end > occurrence_end
         ):
             raise PipelineError(
                 f"{context} source window escapes its saved animation occurrence"
@@ -1662,6 +1663,8 @@ def build_combat_authoring(product: dict[str, Any]) -> dict[str, Any]:
         }
         if "coverRadiusM" in source:
             authored_object["coverRadiusM"] = source["coverRadiusM"]
+        if "ownerHitChain" in source:
+            authored_object["ownerHitChain"] = copy.deepcopy(source["ownerHitChain"])
         if presentation_events or "coverRadiusM" in source:
             authored_object["lifetimeMs"] = source["lifeMs"]
         if presentation_events:
@@ -2310,6 +2313,20 @@ def validate_combat_authoring(document: dict[str, Any]) -> None:
         if "coverRadiusM" in obj:
             object_fields += ("coverRadiusM",)
             number(obj["coverRadiusM"], f"{context}.coverRadiusM", 0.000001, 100.0)
+        if "ownerHitChain" in obj:
+            object_fields += ("ownerHitChain",)
+            chain = obj["ownerHitChain"]
+            exact(chain, ("triggerActionId", "delayMs", "armedPresentationEventId"), f"{context}.ownerHitChain")
+            stable_id(chain["triggerActionId"], f"{context}.ownerHitChain.triggerActionId")
+            stable_id(chain["armedPresentationEventId"], f"{context}.ownerHitChain.armedPresentationEventId")
+            integer(chain["delayMs"], f"{context}.ownerHitChain.delayMs", 1, 600000)
+            if (obj.get("kind") != "FIXED_AREA" or obj.get("coverRadiusM", 0) <= 0
+                or len(obj.get("hits", [])) != 1 or obj.get("presentationEvents")
+                or obj["hits"][0].get("trigger", {}).get("kind") != "TIMED"
+                or obj["hits"][0].get("repeat", {}).get("count") != 1
+                or chain["delayMs"] >= obj.get("lifetimeMs", 0)
+                or chain["armedPresentationEventId"] == obj["hits"][0].get("hitId")):
+                raise PipelineError(f"{context}.ownerHitChain requires one fixed timed hit and explicit lifetime")
         if "presentationEvents" in obj:
             object_fields += ("presentationEvents",)
         exact(obj, object_fields, context)
@@ -3022,6 +3039,10 @@ def _migrate_effect_cue(
         "scalePolicy": copy.deepcopy(scale_policy),
         "mappingBasis": occurrence["mappingBasis"],
     }
+    if "playbackOffsetMs" in cue:
+        migrated["playbackOffsetMs"] = integer(
+            cue["playbackOffsetMs"], f"{context}.playbackOffsetMs", 0, 600000
+        )
     validate_cue_animation_join(migrated, occurrences_by_id, context)
     return migrated
 
@@ -5190,6 +5211,12 @@ def validate_v2_master(
                     "anchorSlotId", "followPolicy", "stopPolicy",
                     "repeatPolicy", "localTransform", "scalePolicy",
                 )
+                if isinstance(cue, dict) and "playbackOffsetMs" in cue:
+                    cue_common_fields += ("playbackOffsetMs",)
+                    integer(
+                        cue["playbackOffsetMs"],
+                        f"{pattern_id}/{stage_id}.effectCue.playbackOffsetMs", 0, 600000,
+                    )
                 if cue_timing_basis == CUE_TIMING_BASIS_STAGE_CLOCK:
                     exact(
                         cue,
@@ -6703,6 +6730,8 @@ def compile_binding(stage: dict[str, Any]) -> dict[str, Any]:
 
 
 def compile_cue(pattern_id: str, stage: dict[str, Any], cue: dict[str, Any]) -> dict[str, Any]:
+    # Preserve presence as well as value: explicit zero starts at resource age zero,
+    # while absent playbackOffsetMs keeps the legacy resource-origin contract.
     if cue.get(
         "timingBasis", CUE_TIMING_BASIS_CLIP_OCCURRENCE
     ) == CUE_TIMING_BASIS_STAGE_CLOCK:
@@ -6721,6 +6750,7 @@ def compile_cue(pattern_id: str, stage: dict[str, Any], cue: dict[str, Any]) -> 
             "repeatPolicy": cue["repeatPolicy"],
             "localTransform": copy.deepcopy(cue["localTransform"]),
             "scalePolicy": copy.deepcopy(cue["scalePolicy"]),
+            **({"playbackOffsetMs": cue["playbackOffsetMs"]} if "playbackOffsetMs" in cue else {}),
         }
     return {
         "bindingId": cue["cueId"],
@@ -6738,6 +6768,7 @@ def compile_cue(pattern_id: str, stage: dict[str, Any], cue: dict[str, Any]) -> 
         "sourceEndMs": cue["sourceEndMs"],
         "localTransform": copy.deepcopy(cue["localTransform"]),
         "scalePolicy": copy.deepcopy(cue["scalePolicy"]),
+        **({"playbackOffsetMs": cue["playbackOffsetMs"]} if "playbackOffsetMs" in cue else {}),
     }
 
 
@@ -7172,6 +7203,13 @@ def _compile_combat_products(
             ]
         if "coverRadiusM" in obj:
             product_object["coverRadiusM"] = obj["coverRadiusM"]
+        if "ownerHitChain" in obj:
+            chain = obj["ownerHitChain"]
+            matches = [stage for pattern in master["patterns"] if pattern["patternId"] == owner_pattern
+                for stage in pattern["stages"] if stage["actionId"] == chain["triggerActionId"]]
+            if len(matches) != 1 or matches[0]["hit"]["shape"].get("kind") != "CONE" or not matches[0]["hit"].get("schedule", {}).get("offsetsMs"):
+                raise PipelineError(f"{archetype}.ownerHitChain trigger must be an owner cone action with scheduled hits")
+            product_object["ownerHitChain"] = copy.deepcopy(chain)
         if presentation_events:
             product_object["presentationEvents"] = presentation_events
         rows.append(
@@ -8260,7 +8298,12 @@ def _validate_draft_effect_cue_payload(
     ordinal: int,
 ) -> dict[str, Any]:
     context = f"operations[{ordinal}].cue"
-    exact(cue, EFFECT_CUE_SOURCE_FIELDS, context)
+    cue_fields = EFFECT_CUE_SOURCE_FIELDS
+    if isinstance(cue, dict) and "playbackOffsetMs" in cue:
+        cue_fields += ("playbackOffsetMs",)
+    exact(cue, cue_fields, context)
+    if "playbackOffsetMs" in cue:
+        integer(cue["playbackOffsetMs"], f"{context}.playbackOffsetMs", 0, 600000)
     cue_id = stable_id(cue["cueId"], f"{context}.cueId")
     occurrence_id = stable_id(
         cue["occurrenceId"], f"{context}.occurrenceId"
@@ -8943,7 +8986,7 @@ def _validate_combat_object_visual_row(
     if not isinstance(visual, dict):
         raise PipelineError(f"{context} must be an object")
     fields = ("combatObjectArchetypeId", "clientVisualId", "effectAssetId")
-    for optional in ("effectV2Group", "hitEffectAssetId", "worldScale"):
+    for optional in ("effectV2Group", "hitEffectAssetId", "worldScale", "armedPresentationEventId", "armedEffectAssetId", "stopActiveOnHit"):
         if optional in visual:
             fields += (optional,)
     exact(visual, fields, context)
@@ -8965,7 +9008,15 @@ def _validate_combat_object_visual_row(
             if effect_id in effect_ids:
                 raise PipelineError(f"duplicate EffectCatalog effectAssetId: {effect_id}")
             effect_ids.add(effect_id)
-    for field in ("effectAssetId", "hitEffectAssetId"):
+    has_armed_id = "armedPresentationEventId" in visual
+    has_armed_asset = "armedEffectAssetId" in visual
+    if has_armed_id != has_armed_asset or (has_armed_id and "effectV2Group" in visual):
+        raise PipelineError(f"{context} armed presentation requires a paired V1 visual")
+    if has_armed_id:
+        stable_id(visual["armedPresentationEventId"], f"{context}.armedPresentationEventId")
+    if "stopActiveOnHit" in visual and not isinstance(visual["stopActiveOnHit"], bool):
+        raise PipelineError(f"{context}.stopActiveOnHit must be boolean")
+    for field in ("effectAssetId", "hitEffectAssetId", "armedEffectAssetId"):
         if field not in visual:
             continue
         effect_id = stable_id(visual[field], f"{context}.{field}")
@@ -9080,6 +9131,14 @@ def validate_combat_object_visual_closure(
             f"missingVisuals={missing} danglingVisuals={extra}"
         )
     for archetype_id, visual in by_archetype.items():
+        chain = definitions[archetype_id].get("ownerHitChain")
+        if chain:
+            if (visual.get("armedPresentationEventId") != chain["armedPresentationEventId"]
+                or not visual.get("armedEffectAssetId") or not visual.get("hitEffectAssetId")
+                or visual.get("stopActiveOnHit") is not True):
+                raise PipelineError(f"{archetype_id} ownerHitChain/armed visual join is invalid")
+        elif "armedPresentationEventId" in visual:
+            raise PipelineError(f"{archetype_id} has an armed visual without ownerHitChain")
         group = visual.get("effectV2Group")
         if not isinstance(group, dict) or "serverHitId" not in group:
             continue
@@ -9396,8 +9455,10 @@ def _sequence_source_slice_match_ends(
     A saved Composition may intentionally trim the beginning or end of a raw
     Sequence while retaining deterministic provenance for the boxes that
     remain.  Order and multiplicity are still exact: unrelated clips and a
-    reordered assembly do not form one returned slice.  Three-part HOLD
-    sources additionally admit a finite run of their exact loop clip.
+    reordered assembly do not form one returned slice. The editor may duplicate
+    an exact slice with new occurrence IDs; a finite run must repeat that same
+    slice, never assemble different slices as a set. Three-part HOLD sources
+    additionally admit a finite run of their exact loop clip.
     """
 
     if not 0 <= offset < len(clips) or not source_clips:
@@ -9415,6 +9476,14 @@ def _sequence_source_slice_match_ends(
                 source_offset : source_offset + length
             ]:
                 ends.add(end)
+                repeated_end = end + length
+                while (
+                    repeated_end <= len(clips)
+                    and clips[repeated_end - length : repeated_end]
+                    == clips[offset:end]
+                ):
+                    ends.add(repeated_end)
+                    repeated_end += length
 
     if (
         len(source_clips) == 3
@@ -9612,16 +9681,17 @@ def _prune_removed_manual_sequence_provenance(
                 source.get("role"),
             )
 
-        def retained_row_is_unchanged(occurrence_id: str) -> bool:
+        def retained_source_identity_is_unchanged(occurrence_id: str) -> bool:
             baseline = original_by_id.get(occurrence_id)
             candidate = candidate_by_id.get(occurrence_id)
             if baseline is None or candidate is None:
                 return False
-            normalized = copy.deepcopy(candidate)
-            if normalized.get("mappingBasis") != "SOURCE_REVIEWED_DELTA":
-                return False
-            normalized["mappingBasis"] = baseline.get("mappingBasis")
-            return normalized == baseline
+            # The typed Animation edit owns the time/rate fields. Pruning
+            # checks whether the same source clip still owns this stable box.
+            return (
+                candidate.get("mappingBasis") == "SOURCE_REVIEWED_DELTA"
+                and candidate.get("clip") == baseline.get("clip")
+            )
 
         reference_rows: list[tuple[dict[str, Any], list[str]]] = []
         exact_options: list[list[tuple[str, tuple[str, ...]]]] = []
@@ -9760,15 +9830,15 @@ def _prune_removed_manual_sequence_provenance(
                 or not consecutive_candidate_positions
                 or not exact_slice
                 or not all(
-                    retained_row_is_unchanged(occurrence_id)
+                    retained_source_identity_is_unchanged(occurrence_id)
                     for occurrence_id in survivors
                 )
             ):
                 raise _draft_error(
                     "declared Sequence source has no exact ordered Product "
                     f"occurrence slice: {source_action_id}/{sequence_index}; "
-                    "retained stable occurrence IDs must be one unchanged "
-                    "contiguous baseline slice",
+                    "retained stable occurrence IDs must preserve source clips "
+                    "in one contiguous baseline slice",
                     operation_ordinal=operation_ordinal,
                     pattern_id=pattern_id,
                     field="animation.occurrences",
@@ -12177,8 +12247,13 @@ def apply_draft_patch(
                     )
                     for index, row in enumerate(rows):
                         occurrence_id = row["clipOccurrenceId"]
+                        original_row = original_by_id.get(occurrence_id)
+                        # Source lineage is clip identity/order. Editing an
+                        # existing box's time/rate is already validated by the
+                        # typed Animation contract and needs no new Sequence.
                         if (
-                            original_by_id.get(occurrence_id) != row
+                            original_row is None
+                            or original_row["clip"] != row["clip"]
                             or occurrence_id in reordered_ids
                         ):
                             changed_positions.add((stage_id, index))
@@ -12746,7 +12821,7 @@ def _is_valtan_gameplay_row(row: str) -> bool:
         return owner.startswith("damage.valtan.")
     if kind in ("BOSS", "BOSSARMOR", "BOSSPART"):
         return owner in ("BOSS_VALTAN", "BOSS_VALTAN_GHOST")
-    if kind in ("BOSSCOMBATOBJECT", "BOSSCOMBATOBJECTHIT"):
+    if kind in ("BOSSCOMBATOBJECT", "BOSSCOMBATOBJECTHIT", "BOSSCOMBATOBJECTPRESENTATION", "BOSSCOMBATOBJECTOWNERHITCHAIN"):
         return owner == "ENCOUNTER_VALTAN"
     if kind == "ENCOUNTERINTRO" or kind.startswith("PATTERN"):
         return owner == "ENCOUNTER_VALTAN"

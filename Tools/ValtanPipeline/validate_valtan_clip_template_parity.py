@@ -25,6 +25,7 @@ GAMEPLAY_PATH = Path("Data/Valtan/Valtan.gameplay.json")
 PRESENTATION_PATH = Path("Data/Valtan/Valtan.presentation.json")
 V2_BINDINGS_PATH = Path("Data/Effects/V2/Bindings/BOSS_VALTAN.effectv2bindings.json")
 SOUND_CUES_PATH = Path("Data/Animation/Authored/Valtan/Valtan.patternsoundcues.json")
+FULL_RESTORE_ANIMATIONS_PATH = Path("Data/Effects/ValtanFullRestoreAnimations.json")
 
 STABLE_ID = re.compile(r"^[A-Za-z0-9_.-]{1,200}$")
 ROOT_FIELDS = {
@@ -45,6 +46,10 @@ ALLOWLIST_FIELDS = {
     "reason",
 }
 EXTRA_HIT_OFFSETS_FIELD = "extraHitOffsetsMs"
+EFFECT_REPLACEMENT_FIELD = "effectReplacement"
+EFFECT_REPLACEMENT_FIELDS = {
+    "templateEffect", "cueId", "effectAssetId", "clip", "sourceStartMs", "anchorSlotId",
+}
 ALLOWED_WAIVERS = {
     "HIT", "HIT_SHAPE", "HIT_RESPONSE", "EFFECT", "SOUND", "EXTRA_HIT",
 }
@@ -189,10 +194,12 @@ def validate_template_document(document: dict[str, Any]) -> None:
         has_extra_hit_offsets = (
             isinstance(row, dict) and EXTRA_HIT_OFFSETS_FIELD in row
         )
+        has_effect_replacement = isinstance(row, dict) and EFFECT_REPLACEMENT_FIELD in row
         _exact_fields(
             row,
             ALLOWLIST_FIELDS |
-            ({EXTRA_HIT_OFFSETS_FIELD} if has_extra_hit_offsets else set()),
+            ({EXTRA_HIT_OFFSETS_FIELD} if has_extra_hit_offsets else set()) |
+            ({EFFECT_REPLACEMENT_FIELD} if has_effect_replacement else set()),
             context,
         )
         key = tuple(_stable(row[field], f"{context}.{field}") for field in (
@@ -202,7 +209,7 @@ def validate_template_document(document: dict[str, Any]) -> None:
             raise ContractError(f"duplicate allowlist occurrence: {key}")
         allowlist_keys.add(key)
         waivers = row["waivers"]
-        if (not isinstance(waivers, list) or not waivers or
+        if (not isinstance(waivers, list) or (not waivers and not has_effect_replacement) or
                 any(value not in ALLOWED_WAIVERS for value in waivers) or
                 len(waivers) != len(set(waivers))):
             raise ContractError(f"{context}.waivers are invalid")
@@ -219,6 +226,25 @@ def validate_template_document(document: dict[str, Any]) -> None:
                 raise ContractError(
                     f"{context}.extraHitOffsetsMs must be sorted unique offsets"
                 )
+        if has_effect_replacement:
+            replacement = _exact_fields(row[EFFECT_REPLACEMENT_FIELD],
+                                        EFFECT_REPLACEMENT_FIELDS, context + ".effectReplacement")
+            expected = _exact_fields(replacement["templateEffect"], EFFECT_FIELDS,
+                                     context + ".effectReplacement.templateEffect")
+            if "EFFECT" in waivers:
+                raise ContractError("an exact effect replacement cannot also waive EFFECT")
+            if expected["resourceKind"] not in {"GROUP", "LEAF"}:
+                raise ContractError("effect replacement template resource kind is invalid")
+            for field in ("resourceId", "anchorSlotId"):
+                _stable(expected[field], context + ".templateEffect." + field)
+            _integer(expected["clipMs"], context + ".templateEffect.clipMs")
+            for field in ("cueId", "effectAssetId", "clip", "anchorSlotId"):
+                _stable(replacement[field], context + ".effectReplacement." + field)
+            _integer(replacement["sourceStartMs"], context + ".effectReplacement.sourceStartMs")
+            if (not re.fullmatch(r"effect\.valtan\.action\.[0-9]+\.stage[0-9]{3}\.full\.restore",
+                                 replacement["effectAssetId"]) or
+                    replacement["anchorSlotId"] != "root"):
+                raise ContractError("effect replacement must be an exact Full Restore root cue")
         reason = row["reason"]
         if not isinstance(reason, str) or len(reason.strip()) < 20:
             raise ContractError(f"{context}.reason must explain the exception")
@@ -307,7 +333,7 @@ def _occurrence_wall_duration_ms(occurrence: dict[str, Any]) -> int:
 
 def validate_parity(template_document: dict[str, Any], gameplay: dict[str, Any],
                     presentation: dict[str, Any], v2_bindings: dict[str, Any],
-                    sound_cues: dict[str, Any]) -> dict[str, int]:
+                    sound_cues: dict[str, Any], full_restore_animations: dict[str, Any] | None = None) -> dict[str, int]:
     """Validate loaded documents and return compact coverage statistics."""
     validate_template_document(template_document)
     if gameplay.get("schema") != "lostark.valtan-gameplay-authoring":
@@ -329,6 +355,7 @@ def validate_parity(template_document: dict[str, Any], gameplay: dict[str, Any],
             gameplay_stages[key] = stage
 
     occurrences: list[tuple[tuple[str, str, str], dict[str, Any], int]] = []
+    presentation_stages: dict[tuple[str, str, str], dict[str, Any]] = {}
     occurrence_ids: set[str] = set()
     for pattern in presentation.get("patterns", []):
         pattern_id = pattern.get("patternId")
@@ -336,6 +363,9 @@ def validate_parity(template_document: dict[str, Any], gameplay: dict[str, Any],
             key = (pattern_id, stage.get("stageId"), stage.get("actionId"))
             if key not in gameplay_stages:
                 raise ContractError(f"presentation stage does not resolve to gameplay: {key}")
+            if key in presentation_stages:
+                raise ContractError(f"duplicate presentation stage tuple: {key}")
+            presentation_stages[key] = stage
             offset = 0
             for occurrence in stage.get("animation", {}).get("occurrences", []):
                 occurrence_id = occurrence.get("clipOccurrenceId")
@@ -349,6 +379,7 @@ def validate_parity(template_document: dict[str, Any], gameplay: dict[str, Any],
     waivers: dict[tuple[str, str, str, str], set[str]] = {}
     waiver_reasons: dict[tuple[str, str, str, str], str] = {}
     extra_hit_offsets: dict[tuple[str, str, str, str], list[int]] = {}
+    replacements: dict[tuple[str, str, str, str], dict[str, Any]] = {}
     for row in template_document["allowlist"]:
         key = (row["patternId"], row["stageId"], row["actionId"], row["clipOccurrenceId"])
         if row["clipOccurrenceId"] not in occurrence_ids:
@@ -357,10 +388,13 @@ def validate_parity(template_document: dict[str, Any], gameplay: dict[str, Any],
         waiver_reasons[key] = row["reason"]
         if EXTRA_HIT_OFFSETS_FIELD in row:
             extra_hit_offsets[key] = list(row[EXTRA_HIT_OFFSETS_FIELD])
+        if EFFECT_REPLACEMENT_FIELD in row:
+            replacements[key] = row[EFFECT_REPLACEMENT_FIELD]
 
     binding_rows = v2_bindings.get("bindings", [])
     sound_rows = sound_cues.get("cues", [])
     used_waivers: set[tuple[tuple[str, str, str, str], str]] = set()
+    used_replacements: set[tuple[str, str, str, str]] = set()
     covered_occurrences = 0
     checked_hits = 0
     checked_effects = 0
@@ -424,6 +458,45 @@ def validate_parity(template_document: dict[str, Any], gameplay: dict[str, Any],
 
         for expected_effect in template["effects"]:
             expected_ms = _event_stage_ms(occurrence, occurrence_start, expected_effect["clipMs"])
+            replacement = replacements.get(occurrence_key)
+            if replacement is not None and replacement["templateEffect"] == expected_effect:
+                if expected_ms is None or occurrence.get("clip") != replacement["clip"]:
+                    raise ContractError(f"replacement clip/source span mismatch: {occurrence_key}")
+                source_ms = replacement["sourceStartMs"]
+                if _event_stage_ms(occurrence, occurrence_start, source_ms) is None:
+                    raise ContractError(f"replacement cue starts outside source span: {occurrence_key}")
+                cues = [cue for cue in presentation_stages[stage_key].get("effectCues", [])
+                        if cue.get("cueId") == replacement["cueId"]]
+                required = {
+                    "effectAssetId": replacement["effectAssetId"],
+                    "clipOccurrenceId": occurrence_id, "sourceStartMs": source_ms,
+                    "sourceEndMs": None, "anchorSlotId": replacement["anchorSlotId"],
+                    "followPolicy": "follow", "stopPolicy": "natural", "repeatPolicy": "once",
+                    "scalePolicy": {"kind": "ARENA_ABSOLUTE", "worldScale": [1, 1, 1]},
+                    "localTransform": {"position": [0, 0, 0], "rotationDegrees": [0, 0, 0], "scale": [1, 1, 1]},
+                }
+                if len(cues) != 1 or any(cues[0].get(k) != v for k, v in required.items()):
+                    raise ContractError(f"exact Full Restore replacement cue mismatch: {occurrence_key}")
+                # The source animation receipt must resolve the same action/stage and native clip.
+                metadata = [row for row in (full_restore_animations or {}).get("effects", [])
+                            if row.get("effectAssetId") == replacement["effectAssetId"]]
+                identity = re.fullmatch(r"effect\.valtan\.action\.([0-9]+)\.stage([0-9]{3})\.full\.restore",
+                                        replacement["effectAssetId"])
+                if (len(metadata) != 1 or
+                        metadata[0].get("sourceActionId") != int(identity[1]) or
+                        metadata[0].get("sourceStageIndex") != int(identity[2]) or
+                        len(metadata[0].get("animationClips", [])) != 1 or
+                        metadata[0]["animationClips"][0].get("clipName") != replacement["clip"]):
+                    raise ContractError(f"replacement lacks exact native source clip receipt: {occurrence_key}")
+                for binding in binding_rows:
+                    scope, resource = binding.get("scope", {}), binding.get("resource", {})
+                    if ((scope.get("patternId"), scope.get("stageId"), scope.get("actionId")) == stage_key and
+                            (resource.get("kind"), resource.get("id")) ==
+                            (expected_effect["resourceKind"], expected_effect["resourceId"])):
+                        raise ContractError(f"replaced generic V2 effect still duplicates Full Restore: {occurrence_key}")
+                used_replacements.add(occurrence_key)
+                checked_effects += 1
+                continue
             if expected_ms is None:
                 waive_or_fail(occurrence_key, "EFFECT", "truncated occurrence lacks EFFECT waiver")
                 continue
@@ -479,6 +552,8 @@ def validate_parity(template_document: dict[str, Any], gameplay: dict[str, Any],
 
     if not covered_occurrences:
         raise ContractError("no templated clip occurrence was found")
+    if set(replacements) != used_replacements:
+        raise ContractError(f"stale exact effect replacement: {set(replacements) - used_replacements}")
     for key, declared in waivers.items():
         for waiver in declared:
             if (key, waiver) not in used_waivers:
@@ -493,6 +568,7 @@ def validate_parity(template_document: dict[str, Any], gameplay: dict[str, Any],
         "effects": checked_effects,
         "sounds": checked_sounds,
         "waivers": len(used_waivers),
+        "effectReplacements": len(used_replacements),
     }
 
 
@@ -504,6 +580,7 @@ def validate_repository(repository_root: Path) -> dict[str, int]:
         _load(root / PRESENTATION_PATH),
         _load(root / V2_BINDINGS_PATH),
         _load(root / SOUND_CUES_PATH),
+        _load(root / FULL_RESTORE_ANIMATIONS_PATH),
     )
 
 

@@ -43,6 +43,34 @@
 #include "Transform.h"
 #include "EffectAuthoringSequencer.h"
 
+bool_t Client::CEffect_Tool::Try_CreateMarkedElementGroup()
+{
+    if (!m_ActiveDocument || Has_UnappliedDetailDraft() ||
+        (m_eActiveDocumentSource != EFFECT_DOCUMENT_SOURCE::AUTHORED && m_eActiveDocumentSource != EFFECT_DOCUMENT_SOURCE::NEW_DOCUMENT))
+    { m_strElementStatus = "Open an authored Effect and Apply or Revert the open Detail draft before grouping."; return false; }
+    auto staged = *m_ActiveDocument;
+    std::string groupId;
+    const std::vector<std::string> ids(m_MarkedElementIds.begin(), m_MarkedElementIds.end());
+    if (!Create_IndependentElementGroup(staged, ids, groupId, m_strElementStatus) || !Try_CommitDocument(std::move(staged))) return false;
+    Reset_DetailDraft();
+    m_strSelectedElementGroupId = std::move(groupId);
+    m_bCurrentEffectGroupByAnchor = true;
+    m_strElementStatus = m_strDocumentStatus = "Created an independent group from the marked Elements. Anchor Position, Anchor Rotation and Start edit only this group. Save Changes persists it.";
+    return true;
+}
+
+bool_t Client::CEffect_Tool::Try_SetAttachmentGroupStart(const std::string& groupKey, const float startSeconds)
+{
+    if (!m_ActiveDocument || Has_UnappliedDetailDraft() ||
+        (m_eActiveDocumentSource != EFFECT_DOCUMENT_SOURCE::AUTHORED && m_eActiveDocumentSource != EFFECT_DOCUMENT_SOURCE::NEW_DOCUMENT))
+    { m_strElementStatus = "Apply or Revert the open Detail draft before changing an authored group's start."; return false; }
+    auto staged = *m_ActiveDocument;
+    if (!Set_AttachmentGroupStart(staged, groupKey, startSeconds, m_strElementStatus) || !Try_CommitDocument(std::move(staged))) return false;
+    Reset_DetailDraft();
+    m_strElementStatus = m_strDocumentStatus = "Changed this group's start while preserving its relative timing and source motion phase. Save Changes persists it.";
+    return true;
+}
+
 bool_t Client::CEffect_Tool::Try_TranslateAttachmentGroup(const std::string& groupKey, const float3_t& delta)
 {
     if (!m_ActiveDocument || (m_eActiveDocumentSource != EFFECT_DOCUMENT_SOURCE::AUTHORED &&
@@ -95,7 +123,13 @@ bool_t Client::CEffect_Tool::Try_SetAttachmentGroupAnchor(const std::string& gro
 void Client::CEffect_Tool::Render_CurrentEffectAttachmentGroups()
 {
     const auto groups = Build_AttachmentElementGroups(*m_ActiveDocument);
-    std::string movedGroup, rotatedGroup, editedAnchor, rotatedElement;
+    std::unordered_map<std::string_view, const EFFECT_ELEMENT_DESC*> elementsById;
+    elementsById.reserve(m_ActiveDocument->Elements.size());
+    for (const auto& element : m_ActiveDocument->Elements)
+        elementsById.emplace(element.strElementId, &element);
+    std::string movedGroup, rotatedGroup, editedAnchor, rotatedElement, retimedGroup;
+    std::vector<std::string> duplicateGroup;
+    float groupStart = 0.f;
     float3_t translation{}, rotationDegrees{}, anchorPosition{}, anchorRotation{}, rotationPivot{};
     for (const auto& group : groups)
     {
@@ -112,8 +146,23 @@ void Client::CEffect_Tool::Render_CurrentEffectAttachmentGroups()
         ImGui::BeginDisabled(!m_bActiveDocumentDrawable || !m_pAuthoringSequencer);
         if (ImGui::SmallButton("Play Group")) (void)Try_PreviewElementsTimeline(group.elementIds, true);
         ImGui::EndDisabled();
+        if (group.manual)
+        {
+            ImGui::SameLine();
+            ImGui::BeginDisabled(Has_UnappliedDetailDraft());
+            if (ImGui::SmallButton("Duplicate Group")) duplicateGroup = group.elementIds;
+            ImGui::EndDisabled();
+        }
         if (opened)
         {
+            if (group.manual)
+            {
+                ImGui::BeginDisabled(Has_UnappliedDetailDraft());
+                auto start = group.startSeconds;
+                if (ImGui::DragFloat("Start (s)", &start, .01f, 0.f, 600.f, "%.3f"))
+                { retimedGroup = group.key; groupStart = start; }
+                ImGui::EndDisabled();
+            }
             if (group.anchorEditable)
             {
                 ImGui::BeginDisabled(Has_UnappliedDetailDraft());
@@ -121,7 +170,7 @@ void Client::CEffect_Tool::Render_CurrentEffectAttachmentGroups()
                 const bool moved = ImGui::DragFloat3("Anchor Position (bone-local m)", &position.x, .01f, -100000.f, 100000.f, "%.3f");
                 const bool rotated = ImGui::DragFloat3("Anchor Rotation (deg)", &rotation.x, .25f, -36000.f, 36000.f, "%.2f");
                 if (moved || rotated) { editedAnchor = group.key; anchorPosition = position; anchorRotation = rotation; }
-                ImGui::TextWrapped("Anchor Rotation turns the whole effect at its socket origin, including native particle motion. Element offsets stay unchanged.");
+                ImGui::TextWrapped("Anchor Rotation turns this group at its socket origin, including source tracks and native particle motion. Element offsets stay unchanged.");
                 ImGui::EndDisabled();
             }
             ImGui::BeginDisabled(!group.editable || Has_UnappliedDetailDraft());
@@ -152,8 +201,7 @@ void Client::CEffect_Tool::Render_CurrentEffectAttachmentGroups()
             auto angles = group.rotationDegrees;
             if (!edit.elementId.empty())
             {
-                const auto target = std::find_if(m_ActiveDocument->Elements.begin(), m_ActiveDocument->Elements.end(),
-                    [&](const auto& element) { return element.strElementId == edit.elementId; });
+                const auto* target = elementsById.at(edit.elementId);
                 angles = target->Detail.Transform.vRotationDegrees;
                 if (edit.pivotMode == 3) pivot = target->Detail.Transform.vPosition;
             }
@@ -185,16 +233,21 @@ void Client::CEffect_Tool::Render_CurrentEffectAttachmentGroups()
             }
             for (size_t i = 0; i < group.elementIds.size(); ++i)
             {
-                const auto found = std::find_if(m_ActiveDocument->Elements.begin(), m_ActiveDocument->Elements.end(),
-                    [&](const auto& element) { return element.strElementId == group.elementIds[i]; });
-                if (found != m_ActiveDocument->Elements.end()) Render_ActiveAuthoredElementRow(*found, i + 1u);
+                const auto found = elementsById.find(group.elementIds[i]);
+                if (found != elementsById.end()) Render_ActiveAuthoredElementRow(*found->second, i + 1u);
             }
             ImGui::TreePop();
         }
         ImGui::PopID();
     }
     // Commit only after the complete view releases every pointer into the old document.
-    if (!editedAnchor.empty()) (void)Try_SetAttachmentGroupAnchor(editedAnchor, anchorPosition, anchorRotation);
+    if (!duplicateGroup.empty())
+    {
+        m_MarkedElementIds = decltype(m_MarkedElementIds)(duplicateGroup.begin(), duplicateGroup.end());
+        (void)Try_DuplicateSelectedElement();
+    }
+    else if (!retimedGroup.empty()) (void)Try_SetAttachmentGroupStart(retimedGroup, groupStart);
+    else if (!editedAnchor.empty()) (void)Try_SetAttachmentGroupAnchor(editedAnchor, anchorPosition, anchorRotation);
     else if (!movedGroup.empty()) (void)Try_TranslateAttachmentGroup(movedGroup, translation);
     else if (!rotatedGroup.empty()) (void)Try_RotateAttachmentGroup(rotatedGroup, rotationDegrees, rotationPivot, rotatedElement);
 }
@@ -623,7 +676,8 @@ void Client::CEffect_Tool::Render_SkillSelectionDetail()
 		}
 	}
 	ImGui::Text("Skill Effect: %s",
-		m_ActiveDocument->strDisplayName.c_str());
+		FriendlyDocumentLabel(*m_ActiveDocument, m_ActiveDocument->strEffectAssetId,
+            &m_ValtanPatternTree, &m_ValtanFullRestoreSourceClips).c_str());
 	ImGui::TextDisabled("Stable ID: %s",
 		m_ActiveDocument->strEffectAssetId.c_str());
 	ImGui::TextDisabled(
@@ -1094,7 +1148,8 @@ void Client::CEffect_Tool::Render_EffectDetailWindow()
     if (ImGui::SliderFloat("Skill Bloom Intensity", &bloomIntensity, 0.f, 16.f, "%.3f", ImGuiSliderFlags_AlwaysClamp))
         (void)Try_SetDocumentBloomIntensity(bloomIntensity);
     ImGui::EndDisabled();
-    ImGui::TextDisabled("Whole Effect: %s", m_ActiveDocument->strDisplayName.c_str());
+    ImGui::TextDisabled("Whole Effect: %s", FriendlyDocumentLabel(*m_ActiveDocument, m_ActiveDocument->strEffectAssetId,
+            &m_ValtanPatternTree, &m_ValtanFullRestoreSourceClips).c_str());
     if (ImGui::IsItemHovered())
         ImGui::SetTooltip("0 removes this Effect's bloom contribution; 1.3 is the default. HDR color and other skills keep their own values.");
 	Render_SelectionPath();
@@ -1688,7 +1743,8 @@ void Client::CEffect_Tool::Render_ParticleSystemDetail()
     const PARTICLE_LAYER_SUMMARY Summary =
         Summarize_ParticleLayers(*m_ActiveDocument);
     ImGui::Text("Cascade System: %s",
-        m_ActiveDocument->strDisplayName.c_str());
+        FriendlyDocumentLabel(*m_ActiveDocument, m_ActiveDocument->strEffectAssetId,
+            &m_ValtanPatternTree, &m_ValtanFullRestoreSourceClips).c_str());
     ImGui::TextDisabled(
         "Source Systems %zu | Emitters %zu | Layers %zu",
         Summary.iSourceSystemCount,

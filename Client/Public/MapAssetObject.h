@@ -118,6 +118,10 @@ private:
 	f32_t m_fWorldCullRadius = {};
 	MAP_FRUSTUM_CULLING_POLICY m_FrustumCulling{};
 	MAP_FRUSTUM_RUNTIME_STATE m_FrustumState{};
+	// Final camera only; transient reject grace is never memoized.
+	uint64_t m_iCameraCullRevision = 0u;
+	bool_t m_bCameraCullCached = false;
+	bool_t m_bCameraCullShouldRender = true;
 
 	MAP_ASSET_RENDER_PROFILE m_RenderProfile;
 	Engine::MODEL_BAKED_LIGHTING_INSTANCE m_BakedLighting;
@@ -147,8 +151,12 @@ private:
 		bool_t hasVertexDisplacement = false;
 	};
 	mutable STATIC_SHADOW_SNAPSHOT m_StaticShadowSnapshot{};
-	mutable std::vector<uint32_t> m_StaticShadowMeshPasses;
-	mutable std::vector<uint32_t> m_StaticShadowCandidateMeshPasses;
+	// Material topology/profile is immutable after initialization. Runtime morph
+	// and texture overrides still leave the depth cache immediately.
+	const CModel* m_pStaticShadowInputModel = nullptr;
+	std::vector<uint8_t> m_StaticShadowCasterMeshes;
+	bool_t m_bStaticShadowMaterialInputs = false;
+	bool_t m_bStaticShadowVertexDisplacement = false;
 	mutable uint64_t m_iStaticShadowRevision = 0u;
 	mutable bool_t m_bStaticShadowSnapshotValid = false;
 
@@ -172,6 +180,8 @@ private:
 	   inherit another placement's water values. */
 	HRESULT Bind_WaterShaderResources(bool_t bEnabled);
 	//Frustum Culling
+	void Ready_StaticShadowInputs();
+	bool_t Should_CullCamera(const struct MAP_CAMERA_CULL_SNAPSHOT& snapshot);
 	void Ready_CullBounds();
 	void Update_WorldCullBounds();
 

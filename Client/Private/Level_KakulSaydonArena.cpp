@@ -6381,6 +6381,7 @@ bool Client::CLevel_KakulSaydonArena::Debug_PrepareCompletePlayResources(
                 if (effect.activeEffectKind == BOSS_COMBAT_OBJECT_ACTIVE_EFFECT_KIND::EFFECT_V1) v1.insert(effect.effectAssetId);
                 else v2.emplace("GROUP", effect.effectV2Group.groupId);
                 if (!effect.hitEffectAssetId.empty()) v1.insert(effect.hitEffectAssetId);
+                if (!effect.armedEffectAssetId.empty()) v1.insert(effect.armedEffectAssetId);
             }
         }
         staged.resources.V1EffectIds.assign(v1.begin(), v1.end()); staged.resources.V2Effects.assign(v2.begin(), v2.end());

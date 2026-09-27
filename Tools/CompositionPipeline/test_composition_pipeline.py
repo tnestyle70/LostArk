@@ -226,6 +226,43 @@ class CompositionPipelineTests(unittest.TestCase):
                 ):
                     pipeline.validate_boss_document(ROOT, descriptor, "kouku_saydon")
 
+    def test_saved_sound_playback_range_matches_native_contract(self) -> None:
+        animation = pipeline.read_json(ROOT / valtan.BINDINGS_REL)
+        sound_events = pipeline._load_valtan_sound_events(ROOT)
+        source = pipeline.read_json(ROOT / valtan.PATTERN_SOUND_CUES_REL)
+        source["cues"][0]["playbackOffsetMs"] = 0
+        source["cues"][0]["playbackDurationMs"] = 600_000
+        before = copy.deepcopy(source)
+        pipeline._validate_pattern_sound_document(source, animation, sound_events)
+        self.assertEqual(source, before)
+        for field, value in (("playbackOffsetMs", -1), ("playbackOffsetMs", True),
+                             ("playbackOffsetMs", 600_001), ("playbackDurationMs", 0),
+                             ("playbackDurationMs", 1.5), ("playbackDurationMs", 600_001)):
+            with self.subTest(field=field, value=value):
+                invalid = copy.deepcopy(source)
+                invalid["cues"][0][field] = value
+                with self.assertRaises(pipeline.CompositionError):
+                    pipeline._validate_pattern_sound_document(invalid, animation, sound_events)
+
+    def test_saved_effect_playback_offset_and_once_tail_match_native_contract(self) -> None:
+        source = pipeline.read_json(ROOT / valtan.CUES_REL)
+        animation = pipeline.read_json(ROOT / valtan.BINDINGS_REL)
+        cue = source["cues"][0]
+        binding = next(row for row in animation["bindings"] if row["actionId"] == cue["actionId"])
+        clip = next(row for row in binding["clips"] if row["clipOccurrenceId"] == cue["clipOccurrenceId"])
+        cue.update(playbackOffsetMs=0, stopPolicy="cue_end", repeatPolicy="once",
+                   sourceEndMs=clip["sourceStartMs"] + clip["playMs"] + 1000)
+        pipeline._validate_v1_effect_owners(ROOT, source)
+        for value in (-1, True, 600001):
+            invalid = copy.deepcopy(source)
+            invalid["cues"][0]["playbackOffsetMs"] = value
+            with self.subTest(offset=value), self.assertRaises(pipeline.CompositionError):
+                pipeline._validate_v1_effect_owners(ROOT, invalid)
+        invalid = copy.deepcopy(source)
+        invalid["cues"][0]["sourceEndMs"] = 600001
+        with self.assertRaises(pipeline.CompositionError):
+            pipeline._validate_v1_effect_owners(ROOT, invalid)
+
     def test_external_valtan_owner_contracts_fail_closed(self) -> None:
         animation = pipeline.read_json(ROOT / valtan.BINDINGS_REL)
         sound_events = pipeline._load_valtan_sound_events(ROOT)
@@ -691,8 +728,16 @@ class CompositionPipelineTests(unittest.TestCase):
         dash = next(row for row in graph if row["patternId"] == "VALTAN_DASH_CHARGE")
         windup = next(row for row in dash["stages"] if row["stageId"] == "WINDUP")
         animation = [row for row in windup["cues"] if row["kind"] == "ANIMATION"]
-        self.assertEqual([0, 600, 1200], [row["clock"]["startMs"] for row in animation])
-        self.assertEqual([600, 600, 2450], [row["payload"]["wallDurationMs"] for row in animation])
+        source = pipeline.read_json(ROOT / valtan.PRESENTATION_AUTHORING_REL)
+        authored_dash = next(row for row in source["patterns"] if row["patternId"] == "VALTAN_DASH_CHARGE")
+        authored_windup = next(row for row in authored_dash["stages"] if row["stageId"] == "WINDUP")
+        occurrences = authored_windup["animation"]["occurrences"]
+        self.assertEqual(len(occurrences), len(animation))
+        wall_cursor = 0
+        for authored, projected in zip(occurrences, animation):
+            self.assertEqual(authored, {key: projected["payload"][key] for key in authored})
+            self.assertEqual(wall_cursor, projected["clock"]["startMs"])
+            wall_cursor += projected["payload"]["wallDurationMs"]
 
         cue_kinds = {
             cue["kind"]
@@ -1249,11 +1294,131 @@ class WorldSequenceMaterialContractTests(unittest.TestCase):
             self.validate(self.document)
 
     def test_other_unsupported_template_fields_stay_rejected(self) -> None:
-        for lane in ("soundTracks", "subtitleTracks", "arbitraryTracks"):
+        for lane in ("subtitleTracks", "arbitraryTracks"):
             candidate = copy.deepcopy(self.document)
             candidate["templates"][0][lane] = []
             with self.subTest(lane=lane), self.assertRaisesRegex(pipeline.CompositionError, lane):
                 self.validate(candidate)
+
+
+class EffectV1TailProjectionTests(unittest.TestCase):
+    def make_stage(self) -> dict:
+        return {
+            "stageId": "TAIL", "actionId": "action.tail", "durationMs": 1000,
+            "animation": {"occurrences": [
+                {"clipOccurrenceId": "clip.prefix", "sourceStartMs": 0,
+                 "playMs": 400, "playRate": 2.0},
+                {"clipOccurrenceId": "clip.tail", "sourceStartMs": 1000,
+                 "playMs": 1600, "playRate": 2.0},
+            ]},
+            "effectCues": [{
+                "cueId": "cue.tail", "clipOccurrenceId": "clip.tail",
+                "sourceStartMs": 1100, "sourceEndMs": 4000,
+                "repeatPolicy": "once", "stopPolicy": "cue_end",
+                "effectAssetId": "effect.tail", "playbackOffsetMs": 73,
+            }],
+        }
+
+    def validate_cue(self, cue: dict, stage_duration: int = 1000) -> None:
+        pipeline._validate_projected_cue_invariants(
+            [{"stages": [{"durationMs": stage_duration, "cues": [cue]}]}], []
+        )
+
+    def test_once_tail_preserves_source_and_exact_stage_clock(self) -> None:
+        stage = self.make_stage()
+        before = copy.deepcopy(stage)
+        cue = pipeline._normalized_v1_cues("PATTERN", stage)[0]
+        self.assertEqual(cue["clock"]["startMs"], 250)
+        self.assertEqual(cue["endMs"], 1700)
+        self.assertEqual(cue["payload"]["sourceClock"], {
+            "basis": "CLIP_OCCURRENCE", "clipOccurrenceId": "clip.tail",
+            "startMs": 1100, "endMs": 4000,
+        })
+        self.assertEqual(cue["payload"]["playbackOffsetMs"], 73)
+        self.assertEqual(stage, before)
+        self.validate_cue(cue)
+        # The default start-clock consumer continues to clamp to its stage.
+        self.assertEqual(pipeline._resolve_clip_source_ms(stage, "clip.tail", 4000), 1000)
+
+    def test_tail_conversion_retains_half_up_rounding_and_slow_rate(self) -> None:
+        for rate, source_end, expected in ((2.0, 4001, 1701), (0.5, 2000, 2200)):
+            stage = self.make_stage()
+            stage["animation"]["occurrences"][1]["playRate"] = rate
+            stage["effectCues"][0]["sourceEndMs"] = source_end
+            with self.subTest(rate=rate):
+                cue = pipeline._normalized_v1_cues("PATTERN", stage)[0]
+                self.assertEqual(cue["endMs"], expected)
+                self.assertEqual(cue["payload"]["sourceClock"]["endMs"], source_end)
+                self.validate_cue(cue)
+
+    def test_other_policies_and_start_range_still_reject_stage_overflow(self) -> None:
+        cue = pipeline._normalized_v1_cues("PATTERN", self.make_stage())[0]
+        for kind, repeat, stop in (
+            ("EFFECT_V2", "ONCE", "CUE_END"),
+            ("SOUND", "ONCE", "CUE_END"),
+            ("EFFECT_V1", "EACH_LOOP", "CUE_END"),
+            ("EFFECT_V1", "ONCE", "STAGE_END"),
+            ("EFFECT_V1", "ONCE", "NATURAL"),
+        ):
+            invalid = copy.deepcopy(cue)
+            invalid.update(kind=kind, stopPolicy=stop)
+            invalid["clock"]["repeatPolicy"] = repeat
+            with self.subTest(kind=kind, repeat=repeat, stop=stop):
+                with self.assertRaisesRegex(pipeline.CompositionError, "ends after"):
+                    self.validate_cue(invalid)
+        cue["clock"]["startMs"] = 1001
+        with self.assertRaisesRegex(pipeline.CompositionError, "starts after"):
+            self.validate_cue(cue)
+        cue["clock"]["startMs"] = 250
+        cue["endMs"] = 249
+        with self.assertRaisesRegex(pipeline.CompositionError, "precedes"):
+            self.validate_cue(cue)
+
+    def test_natural_and_bounded_loop_projection_remain_unchanged(self) -> None:
+        stage = self.make_stage()
+        source = stage["effectCues"][0]
+        source.update(sourceEndMs=None, stopPolicy="natural")
+        natural = pipeline._normalized_v1_cues("PATTERN", stage)[0]
+        self.assertNotIn("endMs", natural)
+        self.assertNotIn("endMs", natural["payload"]["sourceClock"])
+        self.validate_cue(natural)
+        source.update(sourceEndMs=2600, stopPolicy="cue_end", repeatPolicy="each_loop")
+        loop = pipeline._normalized_v1_cues("PATTERN", stage)[0]
+        self.assertEqual(loop["endMs"], 1000)
+        self.validate_cue(loop)
+
+    def test_detached_tail_preserves_source_end_and_playback_offset(self) -> None:
+        row = self.make_stage()["effectCues"][0]
+        row.update(bindingId="binding.tail", patternId="PATTERN", stageId="TAIL",
+                   actionId="action.tail", anchorSlotId="root", followPolicy="follow",
+                   localTransform={"position": [0, 0, 0], "rotationDegrees": [0, 0, 0],
+                                   "scale": [1, 1, 1]})
+        before = copy.deepcopy(row)
+        cue = pipeline._normalized_detached_v1_cue(row)
+        self.assertEqual(cue["endMs"], 4000)
+        self.assertEqual(cue["payload"]["sourceClock"]["endMs"], 4000)
+        self.assertEqual(cue["payload"]["playbackOffsetMs"], 73)
+        self.assertEqual(cue["clock"]["basis"], "CLIP_OCCURRENCE")
+        self.assertEqual(row, before)
+        pipeline._validate_projected_cue_invariants([], [cue])
+
+
+class WorldSequenceSoundContractTests(unittest.TestCase):
+    def test_saved_sound_lane_preserves_payload_and_rejects_invalid_bounds(self) -> None:
+        template = {"durationMs": 1000, "soundTracks": [{"soundTrackId": "sound.one",
+                    "assetId": "Sound/World/sample.wav", "startMs": 900,
+                    "durationMs": 2000, "volume": 1.0, "loopToDuration": True}]}
+        before = copy.deepcopy(template)
+        pipeline._validate_world_sequence_sound_tracks(template, "test")
+        self.assertEqual(template, before)
+        for field, value in (("assetId", "Sound/../sample.wav"), ("startMs", 1001),
+                             ("durationMs", 0), ("durationMs", 600000), ("volume", 4.1),
+                             ("loopToDuration", 1)):
+            with self.subTest(field=field):
+                candidate = copy.deepcopy(template)
+                candidate["soundTracks"][0][field] = value
+                with self.assertRaises(pipeline.CompositionError):
+                    pipeline._validate_world_sequence_sound_tracks(candidate, "test")
 
 
 class WorldSequenceColliderContractTests(unittest.TestCase):

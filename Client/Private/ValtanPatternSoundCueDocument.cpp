@@ -167,6 +167,15 @@ namespace
 		return true;
 	}
 
+	bool_t Is_ExactSoundCueObject(const DATA_JSON_VALUE& Value,
+		const std::initializer_list<const char_t*> Keys)
+	{
+		const size_t optionalCount = (nullptr != Value.Find("playbackOffsetMs") ? 1u : 0u) +
+			(nullptr != Value.Find("playbackDurationMs") ? 1u : 0u);
+		return Value.Is_Object() && Value.Get_Object().size() == Keys.size() + optionalCount &&
+			std::all_of(Keys.begin(), Keys.end(), [&Value](const char_t* key) { return nullptr != Value.Find(key); });
+	}
+
 	bool_t Read_Unsigned(const DATA_JSON_VALUE& Parent,
 		const char_t* pKey, const uint32_t iMaximum, uint32_t& iOutValue)
 	{
@@ -295,6 +304,14 @@ namespace
 		return !Input.bad();
 	}
 
+	bool_t Read_PlaybackRange(const DATA_JSON_VALUE& Value, VALTAN_PATTERN_SOUND_CUE& Cue)
+	{
+		Cue.bHasPlaybackOffset = nullptr != Value.Find("playbackOffsetMs");
+		Cue.bHasPlaybackDuration = nullptr != Value.Find("playbackDurationMs");
+		return (!Cue.bHasPlaybackOffset || Read_Unsigned(Value, "playbackOffsetMs", 600000u, Cue.iPlaybackOffsetMs)) &&
+			(!Cue.bHasPlaybackDuration || (Read_Unsigned(Value, "playbackDurationMs", 600000u, Cue.iPlaybackDurationMs) && Cue.iPlaybackDurationMs > 0u));
+	}
+
 	std::string Serialize_Document(
 		const VALTAN_PATTERN_SOUND_CUE_DOCUMENT& Document)
 	{
@@ -330,8 +347,10 @@ namespace
 				"      \"repeatPolicy\": \"" <<
 				(VALTAN_PATTERN_SOUND_REPEAT_POLICY::EACH_LOOP ==
 					Cue.eRepeatPolicy ? "each_loop" : "once") << "\",\n"
-				"      \"startMs\": " << Cue.iStartMs << "\n"
-				"    }";
+				"      \"startMs\": " << Cue.iStartMs;
+			if (Cue.bHasPlaybackOffset) Output << ",\n      \"playbackOffsetMs\": " << Cue.iPlaybackOffsetMs;
+			if (Cue.bHasPlaybackDuration) Output << ",\n      \"playbackDurationMs\": " << Cue.iPlaybackDurationMs;
+			Output << "\n    }";
 			if (i + 1u != Document.Cues.size())
 				Output << ',';
 			Output << '\n';
@@ -607,7 +626,14 @@ namespace
 		return Current.strSoundBank == Draft.strSoundBank &&
 			Current.strSoundEvent == Draft.strSoundEvent &&
 			Current.eRepeatPolicy == Draft.eRepeatPolicy &&
-			Current.iStartMs == Draft.iStartMs;
+			Current.iStartMs == Draft.iStartMs &&
+			Current.strStageId == Draft.strStageId &&
+			Current.strActionId == Draft.strActionId &&
+			Current.strClipOccurrenceId == Draft.strClipOccurrenceId &&
+			Current.bHasPlaybackOffset == Draft.bHasPlaybackOffset &&
+			Current.iPlaybackOffsetMs == Draft.iPlaybackOffsetMs &&
+			Current.bHasPlaybackDuration == Draft.bHasPlaybackDuration &&
+			Current.iPlaybackDurationMs == Draft.iPlaybackDurationMs;
 	}
 
 	std::string Make_AuthoringBindingId(
@@ -660,10 +686,14 @@ namespace
 
 	bool_t Is_DeterministicAuthoringRowId(
 		const VALTAN_PATTERN_SOUND_CUE& Cue,
-		uint32_t& iOutOrdinal)
+		uint32_t& iOutOrdinal, std::string& OutCreationClipId)
 	{
-		const std::string Prefix =
-			"cue.sound.authoring." + Cue.strClipOccurrenceId + ".";
+		constexpr std::string_view RootPrefix = "cue.sound.authoring.";
+		const size_t LastDot = Cue.strBindingId.rfind('.');
+		if (!Cue.strBindingId.starts_with(RootPrefix) || LastDot <= RootPrefix.size()) return false;
+		OutCreationClipId = Cue.strBindingId.substr(RootPrefix.size(), LastDot - RootPrefix.size());
+		if (!Is_StableId(OutCreationClipId)) return false;
+		const std::string Prefix = std::string(RootPrefix) + OutCreationClipId + ".";
 		if (!Cue.strBindingId.starts_with(Prefix) ||
 			Cue.strOccurrenceId != Cue.strBindingId + ".occurrence.01")
 		{
@@ -683,7 +713,7 @@ namespace
 		for (const char_t Character : Suffix)
 			iOrdinal = iOrdinal * 10u + static_cast<uint32_t>(Character - '0');
 		if (0u == iOrdinal || iOrdinal > MAX_CUE_COUNT ||
-			Make_AuthoringBindingId(Cue.strClipOccurrenceId, iOrdinal) !=
+			Make_AuthoringBindingId(OutCreationClipId, iOrdinal) !=
 				Cue.strBindingId)
 		{
 			return false;
@@ -744,11 +774,11 @@ namespace
 		for (const auto& value : cues->Get_Array())
 		{
 			VALTAN_PATTERN_SOUND_CUE cue;
-			if (!Is_ExactObject(value, { "bindingId", "occurrenceId", "patternId", "stageId", "actionId", "clipOccurrenceId", "soundBank", "soundEvent", "repeatPolicy", "startMs" }) ||
+			if (!Is_ExactSoundCueObject(value, { "bindingId", "occurrenceId", "patternId", "stageId", "actionId", "clipOccurrenceId", "soundBank", "soundEvent", "repeatPolicy", "startMs" }) ||
 				!Read_String(value,"bindingId",cue.strBindingId) || !Read_String(value,"occurrenceId",cue.strOccurrenceId) || !Read_String(value,"patternId",cue.strPatternId) ||
 				!Read_String(value,"stageId",cue.strStageId) || !Read_String(value,"actionId",cue.strActionId) || !Read_String(value,"clipOccurrenceId",cue.strClipOccurrenceId) ||
 				!Read_String(value,"soundBank",cue.strSoundBank) || !Read_String(value,"soundEvent",cue.strSoundEvent) || !Read_RepeatPolicy(value,cue.eRepeatPolicy) ||
-				!Read_Unsigned(value,"startMs",CEncounterPatternReference::MAX_STAGE_DURATION_MS,cue.iStartMs) || !bindingIds.insert(cue.strBindingId).second || !occurrenceIds.insert(cue.strOccurrenceId).second)
+				!Read_Unsigned(value,"startMs",CEncounterPatternReference::MAX_STAGE_DURATION_MS,cue.iStartMs) || !Read_PlaybackRange(value, cue) || !bindingIds.insert(cue.strBindingId).second || !occurrenceIds.insert(cue.strOccurrenceId).second)
 			{ status = "Pattern Sound storage row has an invalid type, range or duplicate identity."; return false; }
 			staged.Cues.push_back(std::move(cue));
 		}
@@ -827,10 +857,7 @@ namespace
 				continue;
 			}
 			if (Found->second->strOccurrenceId != Cue.strOccurrenceId ||
-				Found->second->strPatternId != Cue.strPatternId ||
-				Found->second->strStageId != Cue.strStageId ||
-				Found->second->strActionId != Cue.strActionId ||
-				Found->second->strClipOccurrenceId != Cue.strClipOccurrenceId)
+				Found->second->strPatternId != Cue.strPatternId)
 			{
 				strOutStatus =
 					"Valtan pattern Sound cue stable identity changed: " +
@@ -844,14 +871,15 @@ namespace
 		for (const VALTAN_PATTERN_SOUND_CUE* pCue : Added)
 		{
 			uint32_t iOrdinal = 0u;
+			std::string CreationClipId;
 			if (nullptr == pCue ||
-				!Is_DeterministicAuthoringRowId(*pCue, iOrdinal))
+				!Is_DeterministicAuthoringRowId(*pCue, iOrdinal, CreationClipId))
 			{
 				strOutStatus =
 					"Added Valtan pattern Sound row has no deterministic authoring ID.";
 				return false;
 			}
-			AddedByClipOccurrence[pCue->strClipOccurrenceId].push_back(pCue);
+			AddedByClipOccurrence[CreationClipId].push_back(pCue);
 		}
 
 		VALTAN_PATTERN_SOUND_CUE_DOCUMENT AllocationInventory = Current;
@@ -1279,7 +1307,7 @@ bool_t Client::CValtanPatternSoundCueDocument::Parse_Text(
 	size_t iSkippedSuppressedAnimationCount = 0u;
 	for (const DATA_JSON_VALUE& CueValue : pCues->Get_Array())
 	{
-		if (!Is_ExactObject(CueValue,
+		if (!Is_ExactSoundCueObject(CueValue,
 				{ "bindingId", "occurrenceId", "patternId", "stageId",
 				  "actionId", "clipOccurrenceId", "soundBank", "soundEvent",
 				  "repeatPolicy", "startMs" }))
@@ -1301,6 +1329,7 @@ bool_t Client::CValtanPatternSoundCueDocument::Parse_Text(
 			!Read_Unsigned(CueValue, "startMs",
 				CEncounterPatternReference::MAX_STAGE_DURATION_MS,
 				Cue.iStartMs) ||
+			!Read_PlaybackRange(CueValue, Cue) ||
 			!BindingIds.insert(Cue.strBindingId).second ||
 			!OccurrenceIds.insert(Cue.strOccurrenceId).second)
 		{
@@ -1599,6 +1628,10 @@ bool_t Client::CValtanPatternSoundCueDocument::Add_AuthoringRow(
 	Added.strSoundEvent = Row.strSoundEvent;
 	Added.eRepeatPolicy = Row.eRepeatPolicy;
 	Added.iStartMs = Row.iStartMs;
+	Added.bHasPlaybackOffset = Row.bHasPlaybackOffset;
+	Added.iPlaybackOffsetMs = Row.iPlaybackOffsetMs;
+	Added.bHasPlaybackDuration = Row.bHasPlaybackDuration;
+	Added.iPlaybackDurationMs = Row.iPlaybackDurationMs;
 
 	VALTAN_PATTERN_SOUND_CUE_DOCUMENT Candidate = VerifiedCurrent;
 	Candidate.Cues.push_back(std::move(Added));
@@ -1704,6 +1737,8 @@ bool_t Client::CValtanPatternSoundCueDocument::Serialize_TransactionCandidate(
 			!Is_StableId(Cue.strActionId) ||
 			!Is_StableId(Cue.strClipOccurrenceId) ||
 			Cue.strSoundBank.empty() || Cue.strSoundEvent.empty() ||
+			(Cue.bHasPlaybackOffset && Cue.iPlaybackOffsetMs > 600000u) ||
+			(Cue.bHasPlaybackDuration && (!Cue.iPlaybackDurationMs || Cue.iPlaybackDurationMs > 600000u)) ||
 			(Cue.eRepeatPolicy != VALTAN_PATTERN_SOUND_REPEAT_POLICY::ONCE &&
 			 Cue.eRepeatPolicy !=
 				VALTAN_PATTERN_SOUND_REPEAT_POLICY::EACH_LOOP))

@@ -836,6 +836,8 @@ bool_t CLevel_Loading::Advance_TargetEffectPreparation()
 				}
 				if (!Visual.hitEffectAssetId.empty())
 					EffectAssetIds.push_back(Visual.hitEffectAssetId);
+				if (!Visual.armedEffectAssetId.empty())
+					EffectAssetIds.push_back(Visual.armedEffectAssetId);
 			}
 			if (!ProductAdmission.Validate_StillCurrent(Status))
 				return IsolateFailure(Status);
@@ -914,6 +916,8 @@ bool_t CLevel_Loading::Advance_TargetEffectPreparation()
 					}
 					if (!Visual.hitEffectAssetId.empty())
 						EffectAssetIds.push_back(Visual.hitEffectAssetId);
+					if (!Visual.armedEffectAssetId.empty())
+						EffectAssetIds.push_back(Visual.armedEffectAssetId);
 				}
 			}
 			std::sort(EffectAssetIds.begin(), EffectAssetIds.end());

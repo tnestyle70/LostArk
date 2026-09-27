@@ -62,6 +62,16 @@ namespace
 			});
 	}
 
+	bool_t Is_ExactCueObject(
+		const DATA_JSON_VALUE& Value,
+		const std::initializer_list<const char_t*> Keys)
+	{
+		const size_t optionalCount = nullptr != Value.Find("playbackOffsetMs") ? 1u : 0u;
+		return Value.Is_Object() && Value.Get_Object().size() == Keys.size() + optionalCount &&
+			std::all_of(Keys.begin(), Keys.end(),
+				[&Value](const char_t* key) { return nullptr != Value.Find(key); });
+	}
+
 	bool_t Is_StableId(const std::string_view Value)
 	{
 		return !Value.empty() && Value.size() <= 160u &&
@@ -590,34 +600,34 @@ bool_t Client::CValtanPatternEffectCueDocument::Parse_Text(
 		const bool_t bHasScalePolicy =
 			nullptr != CueValue.Find("scalePolicy");
 		if ((bStageClock && FORMAT_VERSION != iFormatVersion) ||
-			(bLegacy && !Is_ExactObject(CueValue,
+			(bLegacy && !Is_ExactCueObject(CueValue,
 				{ "bindingId", "patternId", "stageId", "actionId",
 				  "effectAssetId", "anchorSlotId", "followPolicy",
 				  "stopPolicy", "startMs", "endMs", "localTransform" })) ||
-			(V2_FORMAT_VERSION == iFormatVersion && !Is_ExactObject(CueValue,
+			(V2_FORMAT_VERSION == iFormatVersion && !Is_ExactCueObject(CueValue,
 				{ "bindingId", "occurrenceId", "patternId", "stageId",
 				  "actionId", "clipOccurrenceId", "effectAssetId",
 				  "anchorSlotId", "followPolicy", "stopPolicy", "repeatPolicy",
 				  "sourceStartMs", "sourceEndMs", "localTransform" })) ||
 			(bUsesScalePolicySchema && !bStageClock &&
-				((!bHasScalePolicy && !Is_ExactObject(CueValue,
+				((!bHasScalePolicy && !Is_ExactCueObject(CueValue,
 				{ "bindingId", "occurrenceId", "patternId", "stageId",
 				  "actionId", "clipOccurrenceId", "effectAssetId",
 				  "anchorSlotId", "followPolicy", "stopPolicy", "repeatPolicy",
 				  "sourceStartMs", "sourceEndMs", "localTransform" })) ||
-				 (bHasScalePolicy && !Is_ExactObject(CueValue,
+				 (bHasScalePolicy && !Is_ExactCueObject(CueValue,
 				{ "bindingId", "occurrenceId", "patternId", "stageId",
 				  "actionId", "clipOccurrenceId", "effectAssetId",
 				  "anchorSlotId", "followPolicy", "stopPolicy", "repeatPolicy",
 				  "sourceStartMs", "sourceEndMs", "localTransform",
 				  "scalePolicy" })))) ||
 			(FORMAT_VERSION == iFormatVersion && bStageClock &&
-				((!bHasScalePolicy && !Is_ExactObject(CueValue,
+				((!bHasScalePolicy && !Is_ExactCueObject(CueValue,
 				{ "bindingId", "occurrenceId", "patternId", "stageId",
 				  "actionId", "timingBasis", "stageOffsetMs",
 				  "effectAssetId", "anchorSlotId", "followPolicy",
 				  "stopPolicy", "repeatPolicy", "localTransform" })) ||
-				 (bHasScalePolicy && !Is_ExactObject(CueValue,
+				 (bHasScalePolicy && !Is_ExactCueObject(CueValue,
 				{ "bindingId", "occurrenceId", "patternId", "stageId",
 				  "actionId", "timingBasis", "stageOffsetMs",
 				  "effectAssetId", "anchorSlotId", "followPolicy",
@@ -661,6 +671,13 @@ bool_t Client::CValtanPatternEffectCueDocument::Parse_Text(
 		{
 			strOutStatus =
 				"Valtan pattern Effect cue identity, policy, or transform is invalid.";
+			return false;
+		}
+		Cue.bHasPlaybackOffset = nullptr != CueValue.Find("playbackOffsetMs");
+		if (Cue.bHasPlaybackOffset && !Read_Unsigned(
+			CueValue, "playbackOffsetMs", 600000u, Cue.iPlaybackOffsetMs))
+		{
+			strOutStatus = "Valtan Effect playbackOffsetMs must be an integer from 0 to 600000.";
 			return false;
 		}
 		if (bLegacy)
@@ -832,8 +849,7 @@ bool_t Client::CValtanPatternEffectCueDocument::Parse_Text(
 			Cue.bHasSourceEnd = false;
 		}
 		else if (nullptr == pEndMs || !Read_Unsigned(CueValue, pEndKey,
-				bLegacy ? Stage->iDurationMs :
-					CEncounterPatternReference::MAX_STAGE_DURATION_MS,
+				bLegacy ? Stage->iDurationMs : 600000u,
 				Cue.iEndMs) ||
 			Cue.iEndMs <= Cue.iStartMs)
 		{
@@ -854,7 +870,9 @@ bool_t Client::CValtanPatternEffectCueDocument::Parse_Text(
 			if (Cue.iStartMs < pAnimationClip->iSourceStartMs ||
 				(0u != pAnimationClip->iPlayMs &&
 				 (Cue.iStartMs >= iSegmentEndMs ||
-				  (Cue.bHasSourceEnd && Cue.iEndMs > iSegmentEndMs))))
+				  (Cue.bHasSourceEnd &&
+				   VALTAN_PATTERN_EFFECT_REPEAT_POLICY::EACH_LOOP == Cue.eRepeatPolicy &&
+				   Cue.iEndMs > iSegmentEndMs))))
 			{
 				strOutStatus =
 					"Valtan pattern Effect cue source window is outside its clip segment: " +

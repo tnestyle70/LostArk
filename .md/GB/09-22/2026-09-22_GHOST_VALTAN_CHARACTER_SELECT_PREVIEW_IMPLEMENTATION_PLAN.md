@@ -172,3 +172,18 @@ NONLIGHT의 성공이 다른 BLEND 실패를 지우지 않도록 두 render stat
 ### G06-03. 종료 증거
 
 현재 제품 build에서 WorldSequenceObject 헤더를 사용하는 TU를 증분 컴파일한다. native84의 program/pass/group 연결과 native88/18/equipment/static movie의 기존 분류, GBuffer와 BLEND 중복 배제, opaque/translucent 실패 상태 보존을 현재 코드로 확인한다. 기존 shader pass16의 blend/depth/native84 계약을 사용한다. Client/UI를 실행하지 않으며 사용자가 최후 컷신과 부활의 몸체 표시를 직접 비교한다.
+
+## G07. 09-28 원본 smooth basis와 유령 피부 반사 입력 복구
+
+사용자 첨부 전투 화면의 각진 몸체와 피부의 강한 반사를 복구한다. 설치 ghost WModel의 14,472개 삼각형은 세 corner normal이 모두 같고 14,470개는 face normal과 일치한다. native84 Light의 source specular override도 `specular * 1 + (1,1,1)`로 설정되어 원본에 없는 흰 반사를 더한다. 현재 ghost pass16은 맵 청록 pixel discard를 호출하지 않으므로 바닥의 mask나 scene rendering option을 수정할 근거가 없다.
+
+### 파일 역할과 변경 흐름
+
+1. 기존 `Tools/ModelAssetConverter/restore_skinned_source_basis.py`로 원본 `MN_RPBF_02/mn_rpbf_02_sk` glTF의 indexed corner NORMAL/TANGENT를 설치 `Character/Valtan/Ghost/MN_RPBF_02.wmodel`에 대응시킨 후보를 out에 만든다. position, UV, skin index/weight, material, skeleton, animation은 보존한다. 기존 runtime `CModel -> CMaterial`과 battle/preview/cinematic의 같은 asset ID를 유지한다.
+2. `Tools/VehiclePipeline/build_vehicle_source_material.py::emit_function`은 program84에서만 passValues[4]를 `(0,0,0,1)`로 생성한다. Engine/Client의 기존 `Shader_SourceCharacterBaseGroup084.hlsli`와 `Shader_SourceCharacterLightGroup084.hlsli` 첫 native84 함수도 같은 값으로 맞춘다. 나머지 source instruction, program, map shader는 그대로 둔다. 새 파일/프로젝트 항목은 없다.
+3. `Data/Actors/BossCatalog.json`의 해당 ghost model, `mn_rpbf_01-1_mi` 피부 slot만 `specular_color` RGB를0으로 지정한다. 이는 사용자의 피부 반사 제거 요청에 따른 PROJECT_AUTHORED 조정이다. 원본의 specular tint가0이었다고 기록하지 않는다. 두 장식 slot의 반사색, diffuse/cloud/rim/opacity, 기존 ghost 가시성 pass16/17은 유지한다.
+4. shader source는 검증 후 기존 build 배포 경로로 반영한다. 실행 중 tool의 데이터/Resources 교체는 후보 검증 완료 시 저장 상태와 반영 기준을 한 번 확인하고 최신 디스크 저장본에 해당 stable slot field만 병합한다. hash 확인, 백업, 원자적 교체와 자기 변경 rollback을 지킨다.
+
+### 검증과 완료 경계
+
+원본 glTF의 normal/tangent 대응, changed byte 범위, finite/unit/orthogonality와 원본의 smooth corner 비율을 확인한다. shader84 최소 FX compile과 generator 재생성 일치, Engine/Client mirror, 다른 program 무변경을 확인한다. 기존 out-only ghost GPU fixture를 사용해 실제 모델/3재질/consumer의 binding 및 draw와 RGBA/depth 수치를 대조한다. 피부 specular0에서 white override가 남지 않는지 확인하고 JSON parse 및 변경 범위 diff check를 수행한다. Client/UI를 실행하지 않으며 사용자의 전투/미리보기 화면 판정을 수치 검증과 구분한다.

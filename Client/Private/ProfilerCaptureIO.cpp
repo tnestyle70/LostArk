@@ -70,6 +70,7 @@ namespace
             "effectBoundsCandidates", "effectBoundsCulled",
             "effectMarkerSamples", "effectMarkerHistoryRequests",
             "effectAmbientSuspended", "effectAmbientAdvanced",
+            "imguiPresentAttempts", "imguiPresentBusy", "imguiPresentFailures", "imguiPresentOccluded",
 	};
 
 	const char* GpuStatusName(const Engine::EProfilerGpuFrameStatus Status)
@@ -358,6 +359,21 @@ bool SaveJsonImpl(
 		Stream << "        \"dsInvocations\": " << Frame.Pipeline.DSInvocations << ",\n";
 		Stream << "        \"csInvocations\": " << Frame.Pipeline.CSInvocations << "\n";
 		Stream << "      },\n";
+		Stream << "      \"droppedViewportPresents\": " << Frame.DroppedViewportPresents << ",\n";
+		Stream << "      \"viewportPresents\": [";
+		for (size_t i = 0; i < Frame.ViewportPresents.size(); ++i)
+		{
+			const auto& p = Frame.ViewportPresents[i];
+			if (!std::isfinite(p.CpuMs) || !std::isfinite(p.X) || !std::isfinite(p.Y) ||
+				!std::isfinite(p.Width) || !std::isfinite(p.Height))
+			{ SetError(pOutError, "Non-finite viewport presentation sample."); return false; }
+			if (i) Stream << ", ";
+			Stream << "{\"viewportId\": " << p.ViewportId << ", \"x\": " << p.X
+				<< ", \"y\": " << p.Y << ", \"width\": " << p.Width << ", \"height\": " << p.Height
+				<< ", \"cpuMs\": " << p.CpuMs << ", \"syncInterval\": " << p.SyncInterval
+				<< ", \"flags\": " << p.Flags << ", \"hresult\": " << p.Result << "}";
+		}
+		Stream << "],\n";
 		Stream << "      \"cpuScopes\": [\n";
 		for (size_t iScope = 0; iScope < Frame.CpuScopes.size(); ++iScope)
 		{

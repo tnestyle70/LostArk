@@ -7120,6 +7120,61 @@
       "effectAssetId": "effect.kouku.mario.flyingball.hit",
       "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
       "authoringPath": "Effects/Authored/effect.kouku.mario.flyingball.hit.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.six-pizza.rock.telegraph",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.valtan.six-pizza.rock.telegraph.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.six-pizza.rock.explosion.full",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.valtan.six-pizza.rock.explosion.full.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.action.420619.stage003.full.restore",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.valtan.action.420619.stage003.full.restore.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.action.400424.stage000.dash.full.restore",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.valtan.action.400424.stage000.dash.full.restore.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.action.420623.stage004.full.restore",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.valtan.action.420623.stage004.full.restore.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.action.420624.stage007.body.full.restore",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.valtan.action.420624.stage007.body.full.restore.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.action.420624.stage007.sectors.full.restore",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.valtan.action.420624.stage007.sectors.full.restore.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.dash-charge.source.shield",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.valtan.dash-charge.source.shield.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.ether.orb",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.valtan.ether.orb.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.sequence.four.sector",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.valtan.sequence.four.sector.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.tracking-axe.large-circle.warning",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.valtan.tracking-axe.large-circle.warning.effect.json"
     }
   ]
 }

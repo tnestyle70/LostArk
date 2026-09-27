@@ -1,4 +1,5 @@
 #include "CombatObjectRuntime.h"
+#include "ValtanBrain.h"
 
 #include "ServerCombatHitRuntime.h"
 
@@ -16,6 +17,7 @@ namespace
 	constexpr float DEGREES_TO_RADIANS = 0.0174532925f;
 	constexpr float RADIANS_TO_DEGREES = 57.2957795f;
 	constexpr float SECONDS_TO_MILLISECONDS = 1000.f;
+	constexpr std::uint32_t SERVER_TICK_HZ = 30u;
 	constexpr std::size_t MAX_SERVER_COMBAT_OBJECTS = 1024u;
 
 	std::uint32_t DamageOfSubHit(
@@ -520,6 +522,7 @@ bool LostArk::Server::CCombatObjectRuntime::Stage_BossCombatObject(
 		object.iMovementStartDelayMs = definition.iMovementStartDelayMs;
 		object.bExpireOnDistanceEnd = definition.bExpireOnDistanceEnd;
 		object.fCoverRadiusM = definition.fCoverRadiusM;
+		object.OwnerHitChain = definition.OwnerHitChain;
 		object.fRemainingDistanceM =
 			BOSS_COMBAT_OBJECT_KIND::MISSILE == definition.eKind ?
 			definition.fMaximumDistanceM : 0.f;
@@ -803,15 +806,84 @@ bool LostArk::Server::CCombatObjectRuntime::Commit(
 void LostArk::Server::CCombatObjectRuntime::Update(
 	std::map<LostArk::Shared::PLAYER_ID, SERVER_PLAYER>& players,
 	std::vector<SERVER_WORLD_ENTITY>& worldEntities,
+	const CGameplayCatalog& catalog, const float fixedDeltaSeconds,
+	const std::uint32_t serverTick,
+	std::vector<LostArk::Shared::DAMAGE_EVENT>& outDamageEvents)
+{
+	Update_Objects(players, worldEntities, catalog, fixedDeltaSeconds, serverTick, outDamageEvents, false);
+}
+
+void LostArk::Server::CCombatObjectRuntime::Apply_OwnerHits(
+	const std::vector<SERVER_BOSS_PATTERN_HIT>& hits,
+	std::map<LostArk::Shared::PLAYER_ID, SERVER_PLAYER>& players,
+	std::vector<SERVER_WORLD_ENTITY>& worldEntities,
+	const CGameplayCatalog& catalog, const std::uint32_t serverTick,
+	std::vector<LostArk::Shared::DAMAGE_EVENT>& outDamageEvents)
+{
+	bool armedAny = false;
+	for (const auto& hit : hits)
+	{
+		for (std::size_t seedIndex = 0u; seedIndex < m_Objects.size(); ++seedIndex)
+		{
+			const auto& seed = m_Objects[seedIndex];
+			if (seed.bOwnerHitChainArmed || seed.OwnerHitChain.strTriggerActionId.empty() ||
+				seed.eSourceKind != SERVER_COMBAT_OBJECT_SOURCE_KIND::WORLD_ENTITY ||
+				seed.iSourceNetEntityId != hit.iSourceNetEntityId ||
+				seed.LiveState.iOwnerPatternSequence != hit.iPatternSequence ||
+				seed.LiveState.strOwnerPatternId != hit.strPatternId ||
+				seed.OwnerHitChain.strTriggerActionId != hit.strActionId)
+				continue;
+			std::vector<std::size_t> indices;
+			std::vector<LostArk::Shared::CombatCollision::BODY_CIRCLE_XZ> circles;
+			for (std::size_t index = seedIndex; index < m_Objects.size(); ++index)
+			{
+				const auto& object = m_Objects[index];
+				if (!object.bOwnerHitChainArmed && object.iSourceNetEntityId == seed.iSourceNetEntityId &&
+					object.LiveState.iOwnerPatternSequence == seed.LiveState.iOwnerPatternSequence &&
+					object.strCombatObjectArchetypeId == seed.strCombatObjectArchetypeId &&
+					object.iSpawnTick == seed.iSpawnTick)
+				{
+					indices.push_back(index);
+					circles.push_back({object.LiveState.CurrentPose.fPositionX,
+						object.LiveState.CurrentPose.fPositionZ, object.fCoverRadiusM});
+				}
+			}
+			std::vector<std::uint32_t> delays;
+			if (!LostArk::Shared::CombatObjectHitChain::Resolve_ConeDelays(
+				hit.Cone, circles, seed.OwnerHitChain.iDelayMs, delays))
+				continue;
+			for (std::size_t ordinal = 0u; ordinal < indices.size(); ++ordinal)
+			{
+				auto& object = m_Objects[indices[ordinal]];
+				object.bOwnerHitChainArmed = true;
+				object.iOwnerHitChainArmedTick = serverTick;
+				object.iOwnerHitChainDelayMs = delays[ordinal];
+			}
+			armedAny = true;
+		}
+	}
+	if (armedAny)
+		Update_Objects(players, worldEntities, catalog, 0.f, serverTick, outDamageEvents, true);
+}
+
+void LostArk::Server::CCombatObjectRuntime::Update_Objects(
+	std::map<LostArk::Shared::PLAYER_ID, SERVER_PLAYER>& players,
+	std::vector<SERVER_WORLD_ENTITY>& worldEntities,
 	const CGameplayCatalog& catalog,
 	const float fixedDeltaSeconds,
 	const std::uint32_t serverTick,
-	std::vector<LostArk::Shared::DAMAGE_EVENT>& outDamageEvents)
+	std::vector<LostArk::Shared::DAMAGE_EVENT>& outDamageEvents,
+	const bool onlyNewlyArmed)
 {
 	const float deltaMilliseconds = fixedDeltaSeconds * SECONDS_TO_MILLISECONDS;
 	for (std::size_t objectIndex = 0u; objectIndex < m_Objects.size();)
 	{
 		SERVER_COMBAT_OBJECT& object = m_Objects[objectIndex];
+		if (onlyNewlyArmed && (!object.bOwnerHitChainArmed || object.iOwnerHitChainArmedTick != serverTick))
+		{
+			++objectIndex;
+			continue;
+		}
 		SERVER_PLAYER* sourcePlayer = nullptr;
 		SERVER_WORLD_ENTITY* sourceEntity = nullptr;
 		if (SERVER_COMBAT_OBJECT_SOURCE_KIND::PLAYER == object.eSourceKind)
@@ -944,6 +1016,13 @@ void LostArk::Server::CCombatObjectRuntime::Update(
 				if (0u == m_iNextPresentationEventSequence)
 					m_iNextPresentationEventSequence = 1u;
 			};
+
+		if (object.bOwnerHitChainArmed && !object.bOwnerHitChainWarningApplied)
+		{
+			object.bOwnerHitChainWarningApplied = true;
+			if (object.iOwnerHitChainDelayMs > 0u)
+				QueuePresentationPulse(object.OwnerHitChain.strArmedPresentationEventId, 0u);
+		}
 
 		bool contactTermination = false;
 		if (!object.strContactPresentationId.empty() && contactMotionActive)
@@ -1096,7 +1175,15 @@ void LostArk::Server::CCombatObjectRuntime::Update(
 				const float dueMilliseconds = static_cast<float>(hit.iAtMs) +
 					static_cast<float>(hit.iRepeatIntervalMs) *
 					static_cast<float>(hit.iAppliedTimedCount);
-				if (object.fElapsedMilliseconds < dueMilliseconds)
+				if (!object.OwnerHitChain.strTriggerActionId.empty())
+				{
+					const auto elapsedTicks = serverTick - object.iOwnerHitChainArmedTick;
+					if (!object.bOwnerHitChainArmed ||
+						static_cast<std::uint64_t>(elapsedTicks) * 1000u <
+						static_cast<std::uint64_t>(object.iOwnerHitChainDelayMs) * SERVER_TICK_HZ)
+						break;
+				}
+				else if (object.fElapsedMilliseconds < dueMilliseconds)
 					break;
 				firedFirstTimedPulse = true;
 				QueuePresentationPulse(hit.strHitId, hit.iAppliedTimedCount);
@@ -1201,7 +1288,10 @@ void LostArk::Server::CCombatObjectRuntime::Update(
 		}
 		if (firedFirstTimedPulse)
 			object.bTrackLockedTargetUntilFirstPulse = false;
-		if (expired || contactTermination)
+		// A completed chain has no live spawn to replay to late joiners.
+		// The reliable hit pulse owns the independent terminal visual tail.
+		if (expired || contactTermination ||
+			(firedFirstTimedPulse && !object.OwnerHitChain.strTriggerActionId.empty()))
 			Despawn_At(objectIndex);
 		else
 			++objectIndex;

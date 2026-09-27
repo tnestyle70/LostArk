@@ -347,6 +347,13 @@ namespace LostArk::Server
 		std::uint32_t iAtMs = 0;
 	};
 
+	struct BOSS_COMBAT_OBJECT_OWNER_HIT_CHAIN final
+	{
+		std::string strTriggerActionId;
+		std::string strArmedPresentationEventId;
+		std::uint32_t iDelayMs = 0u;
+	};
+
 	struct BOSS_COMBAT_OBJECT_DEFINITION final
 	{
 		std::string strEncounterId;
@@ -368,6 +375,7 @@ namespace LostArk::Server
 		float fCoverRadiusM = 0.f;
 		std::uint32_t iLifeMs = 0;
 		std::uint32_t iExpectedEventCount = 0;
+		BOSS_COMBAT_OBJECT_OWNER_HIT_CHAIN OwnerHitChain;
 		std::vector<BOSS_COMBAT_OBJECT_HIT> Hits;
 		std::vector<LostArk::Shared::ATTACK_HIT_TEMPLATE> AttackTemplates;
 		std::vector<BOSS_COMBAT_OBJECT_PRESENTATION_PULSE> PresentationPulses;

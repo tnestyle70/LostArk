@@ -54,6 +54,8 @@ struct COMBAT_OBJECT_PROJECTION_RECORD final
 	float fUniformScale = 1.f;
 	LostArk::Shared::COMBAT_OBJECT_SNAPSHOT Snapshot{};
 	COMBAT_OBJECT_PRESENTATION_HANDLE PresentationHandle;
+	// A terminal hit ends only this visual; snapshots must not respawn it.
+	bool_t bPresentationCompleted = false;
 };
 
 class CCombatObjectProjectionRuntime final
@@ -118,6 +120,11 @@ public:
 		for (size_t index = 0u; index < orderedIds.size(); ++index)
 		{
 			auto record = m_Records.find(orderedIds[index]);
+			if (record->second.bPresentationCompleted)
+			{
+				record->second.Snapshot = objects[index];
+				continue;
+			}
 			if (!record->second.PresentationHandle.Is_Valid() &&
 				record->second.iPresentationAttemptCount < 3u &&
 				Has_ReachedTick(
@@ -169,6 +176,20 @@ public:
 			"Applied full combat-object snapshot" :
 			"Combat-object root update failed; logical state was kept";
 		return true;
+	}
+
+	template<typename TPresentationSink>
+	void Complete_Presentation(
+		const LostArk::Shared::COMBAT_OBJECT_ID combatObjectId,
+		TPresentationSink& sink)
+	{
+		const auto record = m_Records.find(combatObjectId);
+		if (record == m_Records.end() || record->second.bPresentationCompleted)
+			return;
+		if (record->second.PresentationHandle.Is_Valid())
+			sink.Stop(record->second.PresentationHandle);
+		record->second.PresentationHandle.Reset();
+		record->second.bPresentationCompleted = true;
 	}
 
 	template<typename TPresentationSink>

@@ -366,7 +366,7 @@ walkable nav cell 경계와 별개로, 투사체·지연 장판·보스 이동 �
 
 ### 4.1 F1 아레나 카메라와 플레이어 위치 작업
 
-발탄 F1 `Valtan Arena`의 Start Position / Before Entrance / Arena Start는 기존 typed player teleport를 사용한다. `Despawn Valtan Boss`는 Debug/Release Server에서 ENCOUNTER_VALTAN primary와 owner 종속체만 제거하고 일반 NPC/웨이브 몬스터를 보존한다. 이후 Boss Play Pattern은 disabled placement `boss.valtan.center`를 Server에 준비 요청하고 replicated primary 도착 후 기존 revision/sound/presentation admission을 다시 통과해야 실행된다. spawn 대기는 local boss 생성으로 우회하지 않는다.
+발탄 F1 `Valtan Arena`의 Start Position / Before Entrance / Arena Start는 기존 typed player teleport를 사용한다. Debug/Release 공통의 벽·지형 상태 버튼은 전체 벽 복원, 외곽 벽 제거, 3시 붕괴, 9시 붕괴, 양쪽 붕괴를 기존 `Set_ServerArenaPreset` 명령으로 요청한다. 표시 상태는 Server replication을 따르고 요청 대기 중에는 중복 제출을 막는다. 벽·지형 preset은 Pattern의 source/Product 일치 여부와 별개로 Server가 승인하므로, 미게시 Pattern 수정으로 canonical graph가 미승인 상태여도 요청할 수 있다. Save·Publish 진행 잠금과 Server의 session/world·요청·보스 상태·destruction graph 검증은 유지한다. `Despawn Valtan Boss`는 Debug/Release Server에서 ENCOUNTER_VALTAN primary와 owner 종속체만 제거하고 일반 NPC/웨이브 몬스터를 보존한다. 이후 Boss Play Pattern은 disabled placement `boss.valtan.center`를 Server에 준비 요청하고 replicated primary 도착 후 기존 revision/sound/presentation admission을 다시 통과해야 실행된다. spawn 대기는 local boss 생성으로 우회하지 않는다.
 
 Debug/Release 공통 F1 `Camera`에서 자유 카메라 속도를 조절한다. 베른·발탄·쿠크 기본은
 20m/s이며 범위는 0.1~400m/s다. Shift는 30배 이동이다. Debug 발탄·쿠크의 설정은 아레나별
@@ -616,11 +616,19 @@ invocation은 `Data/Valtan/Valtan.presentation.json` source owner를 사용한�
 `Valtan.patternbindings.json`과 `Valtan.patterneffectcues.json`은 projector가 만드는 read-only Product다.
 Counter enable은 paired counterable flag, `COUNTER_HIT` branch, same-pattern GROGGY action 또는 typed
 cross-pattern GROGGY target과 paired groggy flag를 한 Server-authority 단위로 만들고 Animation notify가
-결과를 확정하지 않는다. Save는 split source와
-generated Product를 공통 writer generation으로 commit한 뒤 exact canonical reload까지 검사한다. 로컬 저장
-뒤에도 같은 immutable revision이 Server-active로 확인되기 전에는 Complete Play와 Restart를 실행하지 않는다.
-실제 seek/stop adapter가 연결된 lane만 local `PLAY`다. Effect invocation은 typed Details의
-`EDIT/SAVE`를 지원하지만 일반 timeline block drag와 local seek/stop은 지원하지 않는다.
+결과를 확정하지 않는다. `Save Source`는 split source만 저장한다. `Save & Publish`는 저장된
+source의 strict projection·dependency·revision 검증을 거쳐 Product를 게시하며, Source 저장 성공을
+Server 활성화 성공으로 표시하지 않는다. 실제 Server Play는 기존 exact revision admission을 유지한다.
+Effect invocation은 typed Details와 local preview의 공통 시계를 사용하며 Pause/Seek/Stop을 지원한다.
+Composition Resources는 All Effects와 같은 V1/V2 inventory를 읽고 Product/Full Restore를
+패턴별로 찾을 수 있다. Preview는 선택 리소스를 재생하며 Append는 선택한 animation occurrence 또는
+V2 stage binding에 연결한다. V1 목적지 clip이 하나면 자동 선택하고 여러 개면 정확한 clip을 선택한다.
+발탄 리소스는 두 목록과 Effect Editor 제목에 같은 한글 패턴·동작 순서 이름을 표시한다.
+원본 clip과 stable ID는 상세 및 검색에 유지하며 표시명 변경으로 저장 연결을 바꾸지 않는다.
+본 부착 검격의 일부 요소를 따로 편집할 때는 Effect Tool에서 요소를 표시 선택한 뒤
+`Create Group from Marked`를 누른다. 새 그룹의 `Duplicate Group`으로 복제하고 그룹별
+`Anchor Position`, `Anchor Rotation`, `Start (s)`를 조절한 뒤 `Save Changes`로 저장한다.
+원본 transform track과 particle 이동은 유지되며 불완전한 carrier/transform owner 선택은 거부한다.
 Camera/World lane은 owner file과 stable row를 표시하는 `INSPECT` 상태로 남긴다. Sound는 별도
 typed owner에서 `EDIT/SAVE`하되 local seek/stop transport는 `INSPECT`다.
 `Animation Sequence Intake`는 review 원본이고 promotion transaction 전에는 Product/Server pattern이 아니다.
@@ -761,11 +769,24 @@ NetEntityId, player/local 구분, current/max HP, shield, presentation의 weak �
 처음 생성한다. 표시 위치는 전달받은 weak presentation의 현재 머리/모델 경계에서 계산한다.
 
 Debug/Release F1의 광기 위치 조절 아래 `Health bar positions`에서 주황 기믹, 다른 아군 HP,
-적·보스 HP의 Y offset을 독립 조절한다. `Data/UI/KoukuSaydon/KoukuHudModes.json`의 optional
-`healthBarPositions`는 `mechanicOffsetY`, `allyOffsetY`, `enemyOffsetY`를 저장한다. 각 값은
-1280×720 기준 pixel, +Y 아래, finite -1280..1280이며 누락 시 0이다. frame/HP/shield를 함께
-이동하며 상단 기믹은 원래 저작 rect에서 offset을 적용한다. `CMainApp`의 Save/Reload는
-최신 디스크의 다른 field를 보존하고 동일 field 충돌·검증 실패 시 현재 preview를 유지한다.
+일반 몬스터·쿠크세이튼·쿠크·발탄 HP의 X/Y offset을 각각 조절한다.
+`Data/UI/KoukuSaydon/KoukuHudModes.json`의 optional `healthBarPositions`는
+`mechanicOffsetX/Y`, `allyOffsetX/Y`, `enemyOffsetX/Y`, `koukuSaydonOffsetX/Y`,
+`koukuOffsetX/Y`, `valtanOffsetX/Y`를 저장한다(각 X/Y는 별도 key다).
+같은 객체의 optional `mechanicWidthScale`, `mechanicHeightScale`은 주황 기믹 행만 조절하며
+각각 기본 1/3과 1, finite 0.1..3 배율이다. F1의 `Stagger width`/`Stagger thickness`에서
+즉시 조절하고 위치와 함께 저장·재로드한다. 원본 frame 중심 기준으로 frame/fill을 함께
+변환한 뒤 X/Y를 더하므로 크기 조절은 누적되지 않고 다른 HP·광기 바 크기에 영향을 주지 않는다.
+불투명 보라 `Boss_StaggerTrack`은 숨기며, 남은 값/최대값 비율로 주황 fill이 줄어든 자리에는
+`Boss_StaggerBg`의 빈 바가 보인다.
+1280×720 기준 pixel, +X 오른쪽/+Y 아래, finite -1280..1280이며 기본은 0이다. 이전 문서의
+누락된 보스별 값은 enemy X/Y를 상속한다. frame/HP/shield를 함께 이동하고 상단 기믹은
+원래 저작 rect에서 offset을 적용한다. Save/Reload는 최신 디스크의 다른 field와 기존 Y 튜닝을
+보존하며, 같은 축의 실제 충돌·검증 실패 시 디스크와 preview를 유지한다.
+World health read model의 stable archetype ID로 묶음을 선택하며, 거대 세이튼의 작은 HP는
+항상 숨긴다. 카드미로에서는 플레이어와 네 문양 카드 병정의 작은 HP를 숨긴다.
+발탄 마력구 active window는 기존 Server response/stagger 진행을 주황 무력화 게이지에
+표시하며, 쿠크 1관문·마리오 2페이즈·빙고와 같은 주황 fill 및 공통 기믹 X/Y를 소비한다.
 
 `Get_DamageEvents()`는 최근 128개 Server `DAMAGE_EVENT`를 server tick과 함께 보관한다. 실제 적용
 damage, target NetEntityId, world anchor, incoming/outgoing을 제공하며 UI가 HP 차이로 damage를
@@ -790,6 +811,22 @@ Gameplay bootstrap의 공통 용량은 `Shared/Public/GameplayDataRevision.h`의
 | `Data/Encounters/Valtan/ValtanEncounter.json` | state/action/pattern timing/range/damage 참조 | Server Valtan brain |
 | `Data/Encounters/Valtan/ValtanCombatObjects.json` | pattern stage가 생성하는 지연/이동 객체의 stable ID, motion, life, hit | Server room combat-object runtime |
 | `Data/Actors/BossCatalog.json`의 `combatObjectVisuals` | gameplay object ID + visual ID를 Product Effect ID에 연결 | Client replication/effect prewarm |
+
+발탄 combat object의 optional `ownerHitChain`은 `triggerActionId`, `delayMs`,
+`armedPresentationEventId`를 가진다. 지정 owner pattern/action의 실제 cone 타격이 돌의 cover
+circle과 겹칠 때, 같은 Server source / pattern sequence / spawn wave에서 맞은 돌은 즉시,
+나머지는 `delayMs` 뒤 기존 피해·`HIT_PULSE` 경로로 폭발한다. 정책이 없으면 기존 TIMED
+동작을 유지한다. 정책 객체는 arm 전 TIMED hit를 실행하지 않고, 첫 arm 이후 반복 타격으로
+시계를 덮어쓰지 않는다. 폭발 객체는 같은 tick에 despawn하여 늦게 입장한 Client에 재생성되지
+않는다. Client terminal tail은 self-contained presentation pulse가 소유한다.
+
+`combatObjectVisuals`의 optional `armedPresentationEventId` / `armedEffectAssetId`는 한 쌍이며
+정책의 event ID와 정확히 일치해야 한다. `stopActiveOnHit`는 실제 hit와 despawn에서 active
+외형을 정리하며 기본값은 false다. armed 전조를 실제 피해 이후의 hit 효과로 대신 재생하지 않는다.
+local Preview는 같은 Shared cone-circle 판정과 pattern clock을 소비한다. bootstrap의 optional
+`BOSSCOMBATOBJECTOWNERHITCHAIN` row는 기존 row/packet 형식을 변경하지 않으며 header 37을
+유지한다. 이 row를 모르는 구버전 Server는 unknown row로 로드를 거절하므로 게시 데이터와 새
+Server 실행물을 함께 배포하고 Server를 재시작한다.
 
 UI 담당자는 JSON을 매 프레임 읽지 않는다. `CCombatHUDViewModel::Initialize_Definitions()`가 정의를 준비하고 `CClientReplication`이 snapshot마다 runtime 상태를 적용한다. UI 코드에서 packet이나 socket을 사용하거나 Character·boss GameObject에서 gameplay 수치를 조회하지 않는다. 머리 위 체력바는 ViewModel이 제공한 weak presentation의 표시 위치만 읽는다.
 

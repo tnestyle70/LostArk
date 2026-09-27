@@ -11,6 +11,7 @@ WORKBENCH_H = ROOT / "Client/Public/ValtanActionWorkbench.h"
 WORKBENCH_CPP = ROOT / "Client/Private/ValtanActionWorkbench.cpp"
 BALANCE_H = ROOT / "Client/Public/BalanceTool.h"
 BALANCE_CPP = ROOT / "Client/Private/BalanceTool.cpp"
+SOUND_CPP = ROOT / "Client/Private/Animation_Tool_CompositionSounds.cpp"
 
 
 def body(source: str, signature: str) -> str:
@@ -28,7 +29,7 @@ def body(source: str, signature: str) -> str:
 
 
 def effect_right_trim_admitted(*, has_end: bool, stop: str, repeat: str) -> bool:
-    return has_end and stop == "cue_end" and repeat == "once"
+    return repeat == "once" and (stop == "natural" or (has_end and stop == "cue_end"))
 
 
 class ActionCompositionSequencerOccurrenceTimingContractTests(unittest.TestCase):
@@ -38,8 +39,9 @@ class ActionCompositionSequencerOccurrenceTimingContractTests(unittest.TestCase)
         cls.source = WORKBENCH_CPP.read_text(encoding="utf-8")
         cls.balance_header = BALANCE_H.read_text(encoding="utf-8")
         cls.balance_source = BALANCE_CPP.read_text(encoding="utf-8")
+        cls.sound_source = SOUND_CPP.read_text(encoding="utf-8")
 
-    def test_timeline_rows_keep_clip_qualified_effect_and_point_sound_semantics(self) -> None:
+    def test_timeline_rows_keep_clip_qualified_effect_and_sound_lifetime_semantics(self) -> None:
         timeline = body(
             self.source,
             "void Client::CValtanActionWorkbench::Build_Timeline(",
@@ -50,9 +52,9 @@ class ActionCompositionSequencerOccurrenceTimingContractTests(unittest.TestCase)
         self.assertIn(
             "DETAIL_OWNER::SOUND, TIMELINE_LANE::SOUND", timeline
         )
-        self.assertIn("iStageStartMs + iLocalMs, iStageStartMs + iLocalMs, true", timeline)
+        self.assertIn("iStageStartMs + iLocalMs, endMs, true", timeline)
         self.assertIn("0u, SOUND_EVENT_MINIMUM_WIDTH_PX", timeline)
-        self.assertIn("SOUND_EVENT_MINIMUM_WIDTH_PX = 180.f", self.source)
+        self.assertIn("SOUND_EVENT_MINIMUM_WIDTH_PX = CompositionTimeline::MinimumBoxWidth", self.source)
         self.assertIn('Cue.eRepeatPolicy ? " [each_loop]" : " [once]"', timeline)
 
     def test_dependency_preflight_is_full_join_and_fail_closed_for_all_three_lanes(self) -> None:
@@ -84,7 +86,7 @@ class ActionCompositionSequencerOccurrenceTimingContractTests(unittest.TestCase)
         self.assertNotIn("Is_PatternSoundDraftDirty", patch)
         self.assertIn("Candidate.iSourceStartMs = iSourceStartMs", patch)
         self.assertIn(
-            "Candidate.iSourceEndMs = Candidate.bHasSourceEnd ? iSourceEndMs : 0u",
+            "Candidate.bHasSourceEnd = iSourceEndMs != 0u",
             patch,
         )
         self.assertIn("Validate_TimelineDependencyWindows", patch)
@@ -95,7 +97,6 @@ class ActionCompositionSequencerOccurrenceTimingContractTests(unittest.TestCase)
             "Candidate.strClipOccurrenceId =",
             "Candidate.strEffectAssetId =",
             "Candidate.strAnchorSlotId =",
-            "Candidate.strStopPolicy =",
             "Candidate.strRepeatPolicy =",
         ):
             self.assertNotIn(preserved, patch)
@@ -137,8 +138,7 @@ class ActionCompositionSequencerOccurrenceTimingContractTests(unittest.TestCase)
             "m_iTimelineMoveSourceStartMs",
             "m_iTimelineMoveSourceEndMs",
             "Apply_EffectOccurrenceTiming",
-            "Resolve_ValtanCompositionPatternSoundWindow",
-            "Apply_PatternSoundOccurrenceTiming",
+            "Apply_SoundTimelinePlacement",
             "bAnimationMove",
             "Transfer_AnimationOccurrence",
         ):
@@ -155,6 +155,54 @@ class ActionCompositionSequencerOccurrenceTimingContractTests(unittest.TestCase)
 
         self.assertIn("bool_t bMutationAdmitted,", self.header)
         self.assertIn("bool_t bPatternMutationAdmitted);", self.header)
+
+        # Drag resolves the destination Stage/clip in the Workbench, then the
+        # Sound owner validates its source clock before committing one row.
+        placement = body(
+            self.source,
+            "bool_t Client::CValtanActionWorkbench::Apply_SoundTimelinePlacement(",
+        )
+        for token in (
+            "Can_MutateValtanView(m_eAdmission)",
+            "item.eLane == TIMELINE_LANE::ANIMATION",
+            "item.strPatternId == Pattern.strPatternId",
+            "row.strStageId == target->strStageId",
+            "row.strClipOccurrenceId == target->strStableId",
+            "clip->iSourceStartMs",
+            "double(clip->fPlayRate)",
+            "Patch_ValtanCompositionPatternSoundPlacement(Pattern, SourceStage, *stage",
+            "Current.strOccurrenceId, clip->strClipOccurrenceId",
+            "iPlaybackOffsetMs, PlaybackDurationMs, Current.eRepeatPolicy",
+        ):
+            self.assertIn(token, placement)
+        typed = body(
+            self.sound_source,
+            "bool_t Client::CAnimation_Tool::Patch_ValtanCompositionPatternSoundPlacement(",
+        )
+        for token in (
+            "Is_ValtanCompositionPatternTransactionActive()",
+            "Get_ValtanAuthoringState",
+            "Cue.strStageId == SourceStage.strStageId",
+            "Cue.strActionId == SourceStage.strActionId",
+            "Target == Pattern.Stages.end()",
+            "Resolve_ValtanCompositionPatternSoundWindow(TargetStage, strTargetClipOccurrenceId",
+            "iStartMs < iMinimumStartMs || iStartMs > iMaximumStartMs",
+            "VALTAN_PATTERN_SOUND_REPEAT_POLICY::EACH_LOOP && !bLoop",
+            "VALTAN_PATTERN_SOUND_CUE Candidate = *Current",
+            "Candidate.strStageId = TargetStage.strStageId",
+            "Candidate.strActionId = TargetStage.strActionId",
+            "Candidate.strClipOccurrenceId = strTargetClipOccurrenceId",
+            "Candidate.iPlaybackOffsetMs = iPlaybackOffsetMs",
+            "Candidate.iPlaybackDurationMs = iPlaybackDurationMs.value_or(0u)",
+        ):
+            self.assertIn(token, typed)
+        self.assertLess(typed.index("Resolve_ValtanCompositionPatternSoundWindow("),
+                        typed.index("VALTAN_PATTERN_SOUND_CUE Candidate = *Current"))
+        for preserved in ("strBindingId", "strOccurrenceId", "strPatternId", "strSoundBank", "strSoundEvent"):
+            self.assertNotIn("Candidate." + preserved + " =", typed)
+        for owner in (placement, typed):
+            self.assertNotIn("Save_ValtanCompositionPatternSounds", owner)
+            self.assertNotIn("Retry_ValtanCompositionPatternSoundRuntimeApply", owner)
 
     def test_animation_drag_routes_across_stage_clocks_as_one_transaction(self) -> None:
         timeline = body(
@@ -206,7 +254,7 @@ class ActionCompositionSequencerOccurrenceTimingContractTests(unittest.TestCase)
             atomic.index("Set_ValtanStageDraft("),
         )
 
-    def test_short_boxes_pack_labels_except_collider_semantic_width(self) -> None:
+    def test_short_boxes_keep_semantic_width_with_a_minimum_hit_target(self) -> None:
         timeline = body(
             self.source,
             "void Client::CValtanActionWorkbench::Render_Timeline(",
@@ -220,8 +268,8 @@ class ActionCompositionSequencerOccurrenceTimingContractTests(unittest.TestCase)
         self.assertIn("fSemanticEndX", timeline)
         self.assertIn("fStartX + fDisplayWidthPx", timeline)
         self.assertNotIn("fStartX + Item.fMinimumDisplayWidthPx", timeline)
-        self.assertIn("EFFECT_V2_LEAF_MINIMUM_WIDTH_PX = 180.f", self.source)
-        self.assertIn("EFFECT_V2_GROUP_MINIMUM_WIDTH_PX = 240.f", self.source)
+        self.assertIn("EFFECT_V2_LEAF_MINIMUM_WIDTH_PX = CompositionTimeline::MinimumBoxWidth", self.source)
+        self.assertIn("EFFECT_V2_GROUP_MINIMUM_WIDTH_PX = CompositionTimeline::MinimumBoxWidth", self.source)
 
     def test_selected_box_toolbar_dispatches_typed_duplicate_and_delete(self) -> None:
         timeline = body(
@@ -277,18 +325,12 @@ class ActionCompositionSequencerOccurrenceTimingContractTests(unittest.TestCase)
             self.source,
             "void Client::CValtanActionWorkbench::Render_Timeline(",
         )
-        self.assertIn(
-            'Preview.bPlaying && !Preview.bPaused ? "Pause" : "Play"',
-            timeline,
-        )
-        self.assertIn("Play_EffectivePreview(", timeline)
-        self.assertIn('ImGui::Button("Stop")', timeline)
+        self.assertIn('ImGui::Button("Play Preview")', timeline)
+        self.assertIn('ImGui::Button(Preview.bPaused ? "Resume" : "Pause")', timeline)
+        self.assertIn("Seek_EffectivePreview(", timeline)
+        self.assertIn('ImGui::Button("Reset")', timeline)
         self.assertIn("Stop_ValtanCompositionPattern(", timeline)
-        self.assertTrue(
-            'ImGui::Button("Restart")' in timeline
-            or 'ImGui::Button("Restart Preview")' in timeline,
-            "the Sequencer must expose a Restart transport action",
-        )
+        self.assertIn("m_iPlayheadMs = 0u", timeline)
 
     def test_ruler_active_drag_scrubs_the_effective_arena_preview(self) -> None:
         timeline = body(
@@ -358,11 +400,11 @@ class ActionCompositionSequencerOccurrenceTimingContractTests(unittest.TestCase)
         )
         self.assertLess(seek_call, seek_claim)
 
-    def test_natural_and_each_loop_effects_never_expose_right_trim(self) -> None:
+    def test_natural_once_can_be_trimmed_but_each_loop_stays_separate(self) -> None:
         self.assertTrue(
             effect_right_trim_admitted(has_end=True, stop="cue_end", repeat="once")
         )
-        self.assertFalse(
+        self.assertTrue(
             effect_right_trim_admitted(has_end=False, stop="natural", repeat="once")
         )
         self.assertFalse(

@@ -683,6 +683,17 @@ private:
 		f32_t fTime,
 		f32_t fRandomUnit,
 		const float3_t& Fallback) const;
+	f32_t Evaluate_SourceFloat(
+		const EFFECT_DISTRIBUTION_DESC* pDistribution,
+		std::string_view PropertyPath,
+		f32_t fTime,
+		f32_t fRandomUnit,
+		f32_t fFallback) const;
+	float3_t Evaluate_SourceVector(
+		const EFFECT_DISTRIBUTION_DESC* pDistribution,
+		f32_t fTime,
+		f32_t fRandomUnit,
+		const float3_t& Fallback) const;
 	void Sample_Trail(
 		const EFFECT_ELEMENT_DESC& Element,
 		ELEMENT_STATE& State,

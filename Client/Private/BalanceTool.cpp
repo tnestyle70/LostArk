@@ -1877,6 +1877,8 @@ namespace
 			left.bUsesStageClock == right.bUsesStageClock &&
 			left.iStageOffsetMs == right.iStageOffsetMs &&
 			left.iSourceStartMs == right.iSourceStartMs &&
+			left.bHasPlaybackOffset == right.bHasPlaybackOffset &&
+			(!left.bHasPlaybackOffset || left.iPlaybackOffsetMs == right.iPlaybackOffsetMs) &&
 			left.iSourceEndMs == right.iSourceEndMs &&
 			left.iStageDurationMs == right.iStageDurationMs &&
 			left.bHasSourceEnd == right.bHasSourceEnd &&
@@ -7258,9 +7260,9 @@ bool Client::CBalanceTool::ReloadValtanPatternAuthoring(
 {
 	VALTAN_PATTERN_TREE_VIEW stagedTree;
 	std::string treeStatus;
-	// Product enrichment is optional. Source edits remain available when the
-	// previously published animation/effect generation has not been rebuilt.
-	(void)CValtanPatternTree::Load_WhileAdmitted(canonicalAdmission, stagedTree, treeStatus);
+	// This owner consumes the source inventory. The source loader replaces the
+	// complete view, so a Product load here adds no data and delays every Save.
+	// Strict Product admission remains with the Boss/Effect playback owners.
 	if (!CValtanPatternTree::Load_Authoring_WhileAdmitted(
 			canonicalAdmission, stagedTree, treeStatus))
 	{
@@ -11223,12 +11225,14 @@ bool Client::CBalanceTool::BuildValtanDraftPatch(
 						return false;
 					}
 					std::ostringstream cueJson;
+					const std::string playbackOffset = cue.bHasPlaybackOffset ?
+						", \"playbackOffsetMs\": " + std::to_string(cue.iPlaybackOffsetMs) : "";
 					cueJson << "{ \"cueId\": " << Quote(cue.strBindingId)
 						<< ", \"occurrenceId\": " << Quote(cue.strOccurrenceId)
 						<< ", \"effectAssetId\": " << Quote(cue.strEffectAssetId)
 						<< ", \"clipOccurrenceId\": " <<
 							Quote(cue.strClipOccurrenceId)
-						<< ", \"sourceStartMs\": " << cue.iSourceStartMs
+						<< ", \"sourceStartMs\": " << cue.iSourceStartMs << playbackOffset
 						<< ", \"sourceEndMs\": " <<
 							(cue.bHasSourceEnd ? std::to_string(cue.iSourceEndMs) :
 								std::string("null"))

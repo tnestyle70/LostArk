@@ -228,6 +228,7 @@
     <ClInclude Include="..\Public\MapStaticBatchObject.h" />
     <ClInclude Include="..\Public\Body_Valtan.h" />
     <ClInclude Include="..\Public\ValtanPatternTree.h" />
+    <ClInclude Include="..\Public\ValtanCinematicEffectLibrary.h" />
     <ClInclude Include="..\Public\ValtanViewAdmission.h" />
     <ClInclude Include="..\Public\ValtanPresentationGenerationAdmission.h" />
     <ClInclude Include="..\Public\ValtanPatternAuditionService.h" />
@@ -527,6 +528,10 @@
     </ClCompile>
     <ClCompile Include="..\Private\Body_Valtan.cpp" />
     <ClCompile Include="..\Private\ValtanPatternTree.cpp" />
+    <ClCompile Include="..\Private\ValtanCinematicEffectLibrary.cpp">
+      <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
     <ClCompile Include="..\Private\ValtanPresentationGenerationAdmission.cpp" />
     <ClCompile Include="..\Private\ValtanPatternAuditionService.cpp" />
     <ClCompile Include="..\private\Camera_Free.cpp" />
@@ -557,7 +562,9 @@
     <ClCompile Include="..\Private\HUDLayoutTool.cpp" />
     <ClCompile Include="..\Private\Level_Loading.cpp" />
     <ClCompile Include="..\private\Loader.cpp" />
-    <ClCompile Include="..\Private\MainApp.cpp" />
+    <ClCompile Include="..\Private\MainApp.cpp">
+      <AdditionalOptions>/bigobj %(AdditionalOptions)</AdditionalOptions>
+    </ClCompile>
     <ClCompile Include="..\Private\MainApp_Dragon.cpp" />
     <ClCompile Include="..\Private\MainApp_ValtanAxe.cpp">
       <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
@@ -4291,5 +4298,20 @@
     <None Include="..\..\Data\Guide\DimensionMaster\Prompts.json" />
     <None Include="..\..\Data\Guide\DimensionMaster\Triggers.json" />
     <None Include="..\..\Data\Guide\DimensionMaster\Combat.json" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.action.420619.stage003.full.restore.effect.json" />
+      <None Include="..\..\Data\Effects\Authored\effect.valtan.six-pizza.rock.telegraph.effect.json"></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.six-pizza.rock.explosion.full.effect.json"></None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.action.400424.stage000.dash.full.restore.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.action.420623.stage004.full.restore.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.action.420624.stage007.body.full.restore.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.action.420624.stage007.sectors.full.restore.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.dash-charge.source.shield.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.ether.orb.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.sequence.four.sector.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.tracking-axe.large-circle.warning.effect.json" />
   </ItemGroup>
 </Project>

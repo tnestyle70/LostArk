@@ -1,5 +1,293 @@
 # 발탄 Composition 저작 흐름 정리 구현 계획서
 
+## G30. 2026-09-28 추가 — 같은 frame의 Effect trim과 Detail 저장 일치
+
+현재 Sequencer는 frame 시작의 immutable Pattern을 소비한다. Effect trim이 typed Balance draft를 바꾸고 Detail identity를 비운 뒤 같은 frame의 `Render_Details`가 이전 Pattern 값으로 Detail draft를 다시 채운다. 다음 Save는 최신 Balance cue와 다른 이 값을 미확정 Detail 편집으로 오인해 trim 이전 수치로 되돌릴 수 있다. `Save 19 is running`은 비동기 저장 job 상태이며 이 stale overwrite와 같은 원인으로 단정하지 않는다.
+
+`Client/Private/ValtanActionWorkbench.cpp`의 `Render_Details` 진입에서 frame이 활성 상태이고 그 frame의 draft generation과 현재 Balance generation이 다른 경우에만 최신 `Get_ValtanPatternDraft`를 함수 안의 local snapshot으로 읽는다. 현재 selected stage를 그 snapshot에서 찾고 Detail의 초기화·검증·Apply는 모두 같은 최신 값으로 수행한다. 다른 pane이 참조 중인 shared immutable frame/cache를 교체하거나 캐시 포인터를 무효화하지 않는다. 세대가 같은 idle frame에는 재조회·문서 복사를 추가하지 않는다. 조회 실패는 상태 메시지와 기존 Detail draft를 보존하며 오래된 값을 재초기화하지 않는다.
+
+Animation 삭제는 기존 Sound cascade만 호출하고 V2 clip reference를 검사하지 않아 orphan을 만들 수 있었다. 현재 V2 catalog에는 stable ID와 baseline/dirty/revision을 함께 원복하는 transaction API가 없으며 Append는 새 ID를 할당한다. 이번에는 삭제 전에 complete authoring V2 snapshot의 exact Pattern/Stage/action/clip reference를 검사해 연결이 남으면 binding ID와 선행 삭제 안내를 표시하고 아무 owner도 바꾸지 않는다. snapshot을 확인할 수 없을 때도 삭제를 진행하지 않는다. 이미 존재하는 별도 V2 삭제와 한 번의 Source Save를 사용하며 자동 다중 owner cascade API는 추가하지 않는다.
+
+기존 dirty bytes/hash와 인코딩을 보존한다. 실제 production 함수·조건을 추출한 비UI regression에서 trim→같은 frame Detail→Save의 전후, left/move/group owner 갱신, 세대가 같은 사용자 Detail 값 보존, 최신 조회 실패 보존 및 V2 참조 exact-match/무관한 참조/no-snapshot의 변경0을 확인한다. 해당 CPP 최소 컴파일과 diff check를 수행한다. Source freshness/CAS, 비동기 job 상태, publisher와 사용자 파일은 이 수정에서 변경하지 않는다. public H 계약과 프로젝트 등록은 추가하지 않는다.
+
+## G29. 2026-09-28 추가 — Effect 양끝 편집·위치 저장·Shift 선택
+
+현재 SECOND_SMASH의 500ms Animation에 붙인 natural Effect를 오른쪽에서 줄이면
+종료가 Animation 끝으로 clamp되어 긴 박스가 약401ms로 축소된다. ONCE Effect의 종료는
+자기 수명으로 검증하고 시작 호출만 정확한 Animation/Stage에 연결한다. 왼쪽 grip은
+호출 시각과 실제 Effect resource age를 함께 옮겨 잘린 앞부분을 다시 재생하지 않는다.
+optional `playbackOffsetMs`는 resource age의 명시적 시작값이다. 누락은 기존 Full Restore
+원점을 유지하고 명시0은0초를 뜻한다. Source/typed tree/Save/Product parser/preview/runtime
+전체에서 값과 존재 여부를 보존한다. 기존 source 파일을 일괄 변환하지 않는다.
+
+Effect Detail의 transform은 유효한 편집이 끝나면 typed Balance draft에 반영하고 같은
+cursor의 preview를 갱신한다. Source Save가 실제 draft를 직렬화하고 실패는 기존 상태를
+보존한다. Shift 클릭은 stable box identity별 선택을 누적·해제하며 기존 단일 선택과
+clipboard/선택 명령을 연결한다. 작은 박스의 좌우 grip이 겹쳐도 클릭 위치로 구분한다.
+
+검증은 실제500ms clip과 긴Effect의 소폭 right trim, 앞trim 후 resource age, 저장/재읽기,
+transform의 typed draft/runtime 전달, Shift 선택과 실패 보존을 기존 focused probe로 한다.
+Sound도 optional `playbackOffsetMs`와 `playbackDurationMs`로 실제 음원 구간을 저장한다.
+Animation cue 시각은 호출 위치만 정하며 음원 수명은 clip 재생률로 줄이지 않는다. SPIN에서
+WINDUP 또는 다른 Stage로 이동할 때 target Stage/action/clip을 원자적으로 교체하고 기존
+binding/occurrence ID는 유지한다. 복제는 새 ID에 현재 음원 구간을 보존한다. 기존 Sound
+manager의 age/stop 경로를 확장하고 Preview·제품 소비를 같은 계약으로 연결한다.
+
+3회 땅 치기 후 돌진 검색에서 누락된 exact V1 N/S `par_*_rpbf_dash_01_1` 원본은
+본문을 복제하지 않고 기존 library leaf에 한국어 패턴 검색 alias를 연결한다. 실제 runtime
+cue 연결과 편집용 검색 분류를 구분한다. 확장 원형 예고(native2614)와 추적 도끼 원본02
+(native2599)는 기존 쿠크 GroundEffect receiver 필터를 재사용해 actor GBuffer 수신을
+제외한다. projection 높이·Bloom·색·크기·사용자 저장본은 바꾸지 않는다.
+
+사용자 Data/Bloom과 실행 중 draft는 교체하지 않는다. 변경 TU 컴파일 및 가능한 정상 증분
+Product build 후 실제 UI 확인은 사용자에게 남긴다. 새 C++ 파일은 계획하지 않는다.
+
+## G28. 2026-09-28 추가 — 컷씬 Effect를 All Effects에 노출하고 Append 대상 연결
+
+`ValtanCinematicEffectLibrary.h/.cpp`에서 기존 WorldSequence document loader를 사용해 실제
+source-preview instance/template의 effectTracks를 Sequence별로 읽는다. 진입·버러지·2페이즈·
+피자·사망의 실제 연결과 stable resource ID를 보존하고 asset ID 목록을 하드코딩하지 않는다.
+새 두 파일은 Client 프로젝트와 filters의 물리 소스 위치에 등록한다. 신규 UTF-8 TU는
+기존 CP949 PCH와 섞이지 않게 해당 항목에 `PrecompiledHeader=NotUsing`을 명시한다.
+MainApp의 객체 섹션 한도는 해당 TU의 `/bigobj`로 처리한다. All Effects와 Composition
+Resources는 같은 library를 사용하며 source 문서와 게시 runtime의 역할을 구분한다. 목록은
+초기화/명시적 Refresh 때만 갱신하며 매 프레임 JSON을 읽지 않는다.
+
+Effect Tool의 기존 resource Open Editor/Preview/Copy 명령을 연결한다. 반복 occurrence는
+Sequence별 실제 start/duration/track ID로 식별하고 다른 asset으로 대체하지 않는다. 재사용
+Effect 본체를 추가하는 명령과 컷씬의 배치·시각을 복사하는 명령을 혼동하지 않는다.
+
+`ValtanActionWorkbench`의 Append 대상은 선택한 Animation/Effect의 owner clip, 현재 cursor의
+Animation, Stage의 첫 Animation 순서로 유효한 대상을 제안하고 선택값을 화면에 표시한다.
+사용자가 dropdown에서 지정한 대상은 유지한다. 여러 clip이 있다는 이유만으로 빈 대상 상태에
+머무르지 않으며, WAIT/Animation 없음·stale admission은 계속 거부한다. 추가는 기존 typed
+Balance draft 경로로 수행하며 이미 있는 cue를 덮어쓰지 않는다.
+
+사용자가 방금 저장한 Bloom 값과 모든 Data 원본은 수정하지 않는다. 실제 sequence inventory와
+catalog join, 새 소스 등록, 최소 native/컴파일 검증 및 최종 Product 빌드로 확인한다. UI 조작과
+최종 화면 판정은 사용자가 수행한다.
+
+## G25. 2026-09-28 추가 — 연속 스크럽·Effect 끝점·Sound 수명
+
+`ValtanActionWorkbench.cpp`의 NATURAL/ONCE 오른쪽 grip을 활성화한다. 끝을 끌면 기존
+`sourceEndMs`와 `cue_end`를 함께 stage하고 stable cue/occurrence와 다른 필드를 보존한다.
+반복 clip의 ONCE는 시작 시점은 Stage 안에서 검증하되 종료는 누적 source clock으로 표현해
+Stage 뒤의 자연 tail도 자를 수 있게 한다. 명시적 종료까지 이어지는 해당 발탄 tail만
+`EFFECT_SPAWN_DESC`의 기본 false인 `bPreserveBossActionTail`로 전달한다. 실제 duration expiry와
+owner reset은 유지한다. 새로운 저장 schema나 별도 Effect runtime은 추가하지 않는다.
+
+`Animation_Tool_ValtanPlayback.cpp`의 reset seek는 앞 Stage의 아직 살아 있는 표현을 복원한다.
+UI Render에서 생성한 V1 pending을 다음 프레임 Late_Update 전에 해당 preview owner에 한해
+commit/sample하여 연속 스크럽이 새 객체를 표시 전에 제거하는 순서를 해소한다.
+`Effect_PresentationService`는 기존 spawn/age/follow 경로를 사용한다.
+
+Sound box는 Preview와 동일한 occurrence/loop hash로 WAV variant를 선택하고 기존
+`Get_SoundDurationMs`로 끝을 구한다. native clip clock은 시작/반복 시점에만 쓰고 WAV 길이를
+clip playRate로 나누지 않는다. EACH_LOOP 및 Stage 뒤 tail도 표시 범위에 포함한다.
+신규 C++ 파일은 없으며 기존 프로젝트 등록을 유지한다. 실제 소스 함수/설치 리소스 기반
+비UI seek·종료·저장 경계 검증과 정상 Debug Product Build를 수행한다. 화면 판정은 사용자 담당이다.
+
+## G26. 2026-09-28 추가 — Source Save 이후 재개 지연
+
+현재 SourceOnly writer 뒤의 manifest 중복 실행과 Workbench Product reopen 비용을 측정한다.
+`Reload_Canonical`, `Reload_AfterPendingSave`, `Mark_SourceCommitted` 및 실제 source save job
+소비에서 저장 이후 불필요한 Product 재검사를 제거한다. Source 저장의 typed validation,
+writer admission, 최신 저장본 CAS, atomic replace/rollback은 유지하며 Product 준비와
+Server 적용은 명시적 Publish에 남긴다. 저장 완료 문구와 source-only 상태를 정확히 갱신하고,
+실패 시 draft와 이전 snapshot을 보존한다. 데이터는 사용자가 Save할 때만 변경된다.
+
+
+## G27. 2026-09-28 추가 — 벽 preset과 컷씬 저속 조사
+
+`CValtanBossTool::Set_ServerArenaPreset`의 Pattern canonical gate만 분리하고 기존 publisher
+barrier, active Valtan arena 및 typed Server preset 검증을 유지한다. 미게시 패턴 편집이
+환경 상태 변경을 막는 원인과 실제 Server 실패보존 경계를 대조한다.
+
+사용자가 저장한 `2페이즈컷씬캡쳐_20260928_042931_170_frame141_70404_1.json`과 직전
+캡처의 CPU scope·draw/cull counter를 읽어 Composition Build, DebugTools Update와
+Deploy draw 비용을 분리한다. 컬링 누락이나 동일 cue 중복은 실제 소비 경로와 수치로 확인하고
+카메라·Bloom·렌더링 옵션을 임의로 바꾸지 않는다. 실제 성능 개선량은 수정 후 사용자 캡처로 확인한다.
+카메라 문서는 Stage별 action/occurrence가 아닌 actor preview 세션에서 재사용하고 Stop에서
+해제한다. 성공 Save/Reload는 snapshot을 갱신한다. 기존 CPU scope에 camera/document 및
+cinematic/destruction 구간을 추가해 남은 프레임 지연을 분해한다.
+
+## G23. 2026-09-28 추가 — Full Restore Preview와 실제 수명 박스
+
+사용자는 6방향 후 전멸의 Full Restore를 Append·Save한 뒤 Preview에서 보이지 않는 현상과
+Effect 박스가 점으로 표시되는 현상을 수정하도록 요청했다. V2 6방향의 재생은 사용자가 확인했고,
+후속으로 V2 박스도 드래그가 막힌다고 제보했다. 현재 5개 V1 cue는 WINDUP 반복 clip에
+342/950/1475/2067/3358ms로 저장되어 있다. Native clip은833ms, Stage는1800ms이며
+runtime의 source window 검사와 저작 시계 해석이 불일치한다.
+
+`ValtanActionWorkbench.cpp`의 Build_Timeline은 NATURAL을 end=start로 만드는 분기를 제거한다.
+`CEffectPlayback::Calculate_ElementEndSeconds`와 기존 ModelCue·OwnerControl 종료 규칙으로
+resource 수명을 구하고, NATURAL tail은 Stage 끝에서 자르지 않는다. V2도 Snapshot의 실제 leaf와
+group stop·particle/trail tail을 따르며 최소 픽셀 너비를 재생 수명으로 대신하지 않는다.
+`ValtanActionWorkbench.h`의 timeline cache는 V1 catalog revision도 검사해 Effect Save 뒤 갱신한다.
+
+Preview는 저장·미저장 draft의 기존 cue 전달 경로를 유지하고, 독립 Append된 Full Restore의
+trigger와 effect 내부 source 시계를 분리한다. 저장만 한 V1은 기존 priority preparation queue로
+준비하고, 해당 generation이 준비되면 같은 draft와 요청 cursor에서 자동 시작한다. 준비 실패나
+selection·draft 변경은 이전 preview를 보존하며 취소한다. 애니메이션 마지막 pose를 유지하는
+기존 preview tail 경로를 사용해 Effect 종료까지 재생하고 Server Stage 길이는 변경하지 않는다.
+
+V1과 V2 드래그는 전체 Pattern의 박스 시작 시각을 목적 Stage/clip 시계로 변환한다. 기존 Stage
+끝으로 clamp하지 않는다. V1은 기존 typed transaction의 Remove+Add, V2는 scope 이동 전용
+typed API로 asset·anchor·stop·repeat를 보존한다. 이전 원본 cue의 source trim은 유지한다.
+잘못 저장된 V1 두 건은 전체 시각2067/3358ms를 보존한 최신 source patch로 교정한다.
+원래 유효한 세 건과 무관한 사용자 편집은 보존하며 자동 Reload하지 않는다.
+
+새 C++ 파일은 추가하지 않는다. 기존 native probe로 실제 자산 수명·tail·박스 구간·dispatch·
+Stage 이동과 실패 보존을 검사하고 변경 TU 컴파일과 제품 링크를 수행한다. Client/UI와 최종
+화면 판정은 사용자가 수행한다.
+
+## G24. 2026-09-28 추가 — F1 벽 상태와 저장 버튼 배치
+
+`MainApp.cpp/h`의 기존 Server Arena Active > Valtan에 있던 다섯 지형 preset 본문을 공통
+helper로 옮겨 F1의 Valtan Arena 아래에 직접 노출한다. 기존 typed Server 요청·응답과 pending
+잠금을 재사용하며 Client의 맵 상태를 로컬로 우회 변경하지 않는다. Debug의 기존 탭도 같은
+helper를 호출한다. Debug/Release 각 TU 컴파일로 공통 F1 노출을 확인한다.
+
+Composition Sequencer의 왼쪽 저장 버튼 표시는 Save로 바꾸고, Save & Publish는 같은 줄의
+가장 오른쪽으로 이동한다. Save와 Publish의 기존 기능·검증·상태 및 Ctrl+S 의미는 유지한다.
+
+## G16. 2026-09-28 추가 — All Effects 목록 동기화와 4방향 sector 분리
+
+사용자는 `VALTAN_SEQUENCE_FOUR`의 부채꼴 내부 채움이 멈춘 현상과 Resources의
+Product/Full Restore 누락, V1/V2 미분류, Preview/Append 비활성을 함께 수정하도록 요청했다.
+후속 결정에 따라 원본 Full Restore는 보존하고 sector를 제외한 본체 복원본과 독립 sector를
+분리한다. 기존 네 개 V2 impact occurrence는 유지하며 sector의 시각·방향은 독립적으로 편집한다.
+
+실측 대상은 `effect.valtan.action.420624.stage007.full.restore`, 원본 clip
+`mesh_att_battle_19_01`이다. 248개 element 중 native2615 GroundEffect 네 개의 `inner=0.5`는
+고정값이며 시간 track이 없다. 쿠크 원형 장판이 사용하는 기존 material parameter track을
+재사용한다. 현재 V2 Group은 LEAF/GROUP만 지원하고 쿠크 Composition의 V1_ELEMENT와는 별개다.
+따라서 원본 native2615 재질을 유지하는 독립 V1 sector cue를 현재 V2 타격과 병행하는 후보로
+준비한다. 전체 projector scale이나 모든 재질의 회전을 바꾸지 않는다.
+
+`ValtanActionWorkbench`의 Resources는 All Effects가 소비하는 공용 inventory와 실제 owner를
+기준으로 Product/Full Restore/V2 leaf/group을 빠짐없이 표시한다. V1/V2를 명시적으로 분류하고,
+Preview는 기존 Effect Tool·authoring sequencer를 MainApp 요청 소비자에 연결한다. Append는 기존
+V1 clip occurrence 및 V2 stage binding writer를 사용한다. 단일 animation clip은 자동 선택할 수
+있지만 여러 clip의 목적지를 임의로 정하지 않는다. Server Sound 준비 상태는 로컬 리소스
+Preview/Append의 선행조건으로 사용하지 않는다. Save/CAS 및 Product Publish의 검증은 유지한다.
+
+sector 분리 생성기는 원본 element·재질·resource를 보존하고 새 후보만 준비한다. 최신 저장본 기준
+승인 후 stable ID와 변경 field로 병합하며 교체 직전 freshness·backup·원자 교체·실패 rollback을
+유지한다. 새 Data JSON은 Client `96.DataFiles` None 항목에 등록한다. 새 C++ 파일은 계획하지 않는다.
+
+검증은 실제 목록의 ID 집합 비교, 새 V1/V2 codec·resource closure, sector 시간별 inner·alpha·방향
+수치, 변경 C++ 최소 컴파일, JSON/XML parse와 diff 검사다. 현재 실행 중인 Client의 미저장 draft를
+자동 Reload하지 않는다. 실행 파일 링크가 실제 점유 때문에 막히면 그 단계만 사용자 종료 후
+정상 Product Build로 완료한다. Client/UI 실행과 최종 아레나 화면 판정은 사용자 전용이다.
+
+### Full Restore 분리본의 원본 clip 계약
+
+`ValtanPatternTree::Load_FullRestoreSourceClips`와 기존 Python metadata writer에 optional
+`variantId`를 연결한다. 값이 없으면 기존 action/stage ID가 그대로 유효하며, 있으면 검증한
+action/stage 뒤의 단일 variant token과 `.full.restore`로 ID를 구성한다. `body`와 `sectors`
+분리본은 원본 `mesh_att_battle_19_01`의 시간과 clip을 공유한다. 원본 mapping을 교체하지 않으며
+잘못된 variant, ID 불일치, 중복이 있으면 기존 읽기 snapshot을 보존한다.
+
+## G17. 2026-09-28 추가 — 추적 도끼 원본 전수 대조
+
+사용자가 추가로 요청한 `점프 후 플레이어 추적 도끼`의 원본 action420610 전체46 Stage를
+조사한다. PlayParticleEffect, PlayDecalEffect, Trails와 현재 Product/Full Restore/V2 연결을
+clip·notify별로 대조한다. 큰 원형8회, 작은 원형4회, 도넛6회는 서로 다른 크기·시계·형상이며
+이름만으로 같은 프리셋을 적용하지 않는다. 큰 원형의 native2614 재사용 후보를 준비하고
+source 크기·fade와 프로젝트가 추가한 inner 보간을 분리해서 기록한다.
+
+## G18. 2026-09-28 추가 — Source Save와 게시 상태, 실제 V2 타임라인
+
+사용자가 4방향 V1을 삭제한 현재 저작 저장본은 `effectCues=[]`이며 그 삭제를 보존한다.
+기존 게시본에는 삭제 전 cue가 남아 있다. Save와 Publish를 명확히 구분하는 버튼·상태를
+기존 writer에 연결하고 Source 저장만으로 Server 반영 완료를 표시하지 않는다.
+`VALTAN_SIX_PIZZA_106`의 V2 Stage05/07/11 바인딩과 실제 Sequencer projection을 대조해
+서버에서 사용하는 연결이 저작 타임라인에서 누락되는 원인을 수정한다. 연결 자체를 없애거나
+이전 게시본으로 저작본을 덮어쓰는 방식은 사용하지 않는다.
+
+## G19. 2026-09-28 추가 — 구르기 후 돌진 복원과 반복 클립 저장
+
+사용자가 `VALTAN_DASH_CHARGE` 편집 저장에서 제공한 실제 실패 patch는 원본
+`400424/0`의 `mesh_att_battle_4_01`을 두 번 붙인 편집이다. 원본 Sequence 선언을
+한 번만 사용할 수 있는 provenance coverage와 기존 clip의 시간 편집까지 새 source로
+계산하는 부분을 조사한다. 원본 tuple·clip 순서·역할 검증을 유지하면서 유효한 반복과
+기존 occurrence 시간 편집이 저장되도록 수정하고 실제 실패 patch 및 잘못된 source 거부를
+검증한다. 미저장 UI draft를 Reload하거나 디스크 저장본으로 대체하지 않는다.
+
+동일 패턴의 원본 action·clip·Full Restore·Product 연결과 화면의 cyan ring을 대조한다.
+다른 정상 effect에 전역 회전·크기 보정을 전파하지 않고, 확인된 carrier 원인에만 복구 후보를
+준비한다. 데이터 후보의 최종 반영은 기존 편집 중 데이터 반영 절차로 수행한다.
+
+## G20. 2026-09-28 추가 — 6방향 후 전멸 원본 확인
+
+표시명 `6방향 후 전멸 패턴`은 `VALTAN_FLOOR_WIPE_130` / action420630이다.
+`VALTAN_SIX_PIZZA_106`의 중앙 이동 후6방향·피자와 구분한다. 원본 animation notify의
+부채꼴·원형과 현재 V1/V2/Full Restore의 실제 연결을 조사한다. 사용자 요청은 이 항목의
+원본 확인이므로 새 리소스나 자동 패턴 연결을 추가하지 않는다.
+
+## G21. 2026-09-28 추가 — 선택 검격의 독립 그룹과 복제
+
+사용자가 선택한420609/stage008의 첫 검격9요소를 기존 source animation·particle 흐름을
+유지한 채 독립 그룹으로 만들 수 있게 한다. group by anchor의35요소 전체를 변경하지 않고,
+선택 stable element ID만 manual group 및 고유 runtime anchor slot으로 분리한다. 기존 원본
+source slot과 실제 bone은 유지한다. 그룹 Duplicate는 기존 element 복제 codec과 내부 참조
+remap을 재사용하며 복제본끼리 anchor 편집이 전파되지 않게 한다.
+
+source transform track이 있는 요소의 Detail Transform 제한을 제거하지 않는다. 기존 Anchor
+Position/Rotation 경로로 source particle의 이동 방향까지 그룹과 함께 변환하며, 검격별 시작
+시각 조정은 기존 source clock offset 계약을 따른다. 실제 선택9요소의 복제·독립 anchor·시간
+이동과 실제 Playback 수치를 검증한다. 사용자 현재 Effect 문서와 미저장 선택을 자동 교체하지
+않고 새 UI 기능으로 사용자가 그룹을 생성·복제하도록 연결한다. 새 C++ 파일은 추가하지 않는다.
+
+## G22. 2026-09-28 추가 — 발탄 한글 리소스 이름과 에테르의 구슬
+
+발탄 All Effects와 Composition Resources에서 기술적인 asset/clip 이름 대신 패턴 이름과
+원본 동작 순서로 리소스를 찾게 한다. 기존 ValtanPatternTree의 공용 표시 helper를 두 목록이
+소비하며 stable ID, 저장 경로, clip과 cue 연결은 바꾸지 않는다. 정확한 동작 의미가 검증되지
+않은 항목은 원본 이펙트와 순번으로 표시하고 원본 clip/ID는 상세와 검색에서 유지한다.
+Product, Full Restore, V1/V2 및 공유 리소스의 현재 분류·Preview·Append 소비자를 재사용한다.
+
+잡아채기 후 불어날리기의 현재 Full Restore는21_01과21_03 두 개다. 마지막21_04의 원본
+visual을 확인해 누락된 복원본 한 개를 별도 후보로 추가하고 기존 두 복원본과 Product를
+보존한다. 에테르의 구슬은 사용자가 제공한 파란 구체를 원본/기존 리소스에서 식별해
+한글 표시명의 독립 이펙트로 분리한다. 추측한 새 shader나 임의의 대체 구체는 만들지 않는다.
+새 Data 문서는 catalog/tree/96.DataFiles 및 필요할 경우 원본 clip metadata에 함께 등록한다.
+
+사용자가 EXE를 종료하고 다시 실행하겠다고 요청했으므로 최종 제품 Build를 수행한다.
+최신 디스크 반영 승인, backup/CAS/atomic 교체와 사용자 직접 화면 확인 경계는 유지한다.
+
+## G14. 2026-09-27 추가 — 안내 네 줄 제거와 타임라인 글자 높이 확보
+
+`ValtanActionWorkbench.cpp`의 타임라인에서 드래그 안내, 전체 길이 요약, 길이 계산 설명과
+Stage Gap 편집 불가 안내를 제거해 canvas가 사용하는 세로 공간을 늘린다. 선택 label과
+Duplicate/Delete 버튼, 가능한 Stage Gap 및 Animation timing 입력은 유지한다.
+텍스트만 출력하던 `Render_PatternDurationControl`은 CPP 정의·호출과 H 선언을 함께 제거한다.
+새 파일·project/filter 등록과 데이터 변경은 없다. 변경 TU 컴파일과 diff 검사를 수행하며,
+제품 실행 파일은 사용자가 나중에 직접 정규 Debug 빌드로 반영한다.
+
+추가 제공 화면은 폰트 높이가 고정 22px box보다 커서 Stage/Animation/Camera 글자 하단이
+잘린다. `CompositionTimeline.h`에 현재 폰트·style padding을 반영하는 높이 helper를 추가하고
+발탄 `Render_Timeline`의 ruler·lane·box·hit-test가 매 frame 같은 높이를 소비하도록 한다.
+box 최소 32px, row 최소 38px이며 더 큰 폰트에서는 필요한 만큼 증가한다. 공통 기존 상수와
+다른 도구의 높이, 시간에 대응하는 가로폭, 저장 duration과 row 수는 변경하지 않는다.
+
+## G15. 2026-09-27 추가 — 가로 스크롤과 Preview 이펙트의 같은 시계
+
+사용자는 줌 배율 차이가 자신의 DPI 변경 때문이라고 정정했다. DPI·줌 범위·배율·Fit은
+변경하지 않는다. 하단 가로 scrollbar에서 전체 sequence를 좌우 탐색할 수 있도록 canvas의
+실제 content extent와 scrollbar 영역을 연결한다. 저장 시간·box 배치와 row 수는 유지한다.
+
+`Animation_Tool`의 Pause는 master clock을 멈추지만 현재 발탄 V1 cue와 V2 Stage authoring
+spawn은 최초 age를 받은 뒤 각 object의 frame clock으로 진행한다. 이미 외부 시계를 쓰는
+combat object와 마찬가지로 기존 Effect presentation/V2 경로의 external sampling을 사용한다.
+`Valtan`의 local authoring preview만 전체 timeline age로 V1/V2 occurrence age를 sample하고,
+Pause·Resume·seek·Stop과 Stage를 넘는 natural tail의 시계를 연결한다. Server 제품 재생의
+기존 clock은 유지하며 두 번째 runtime은 만들지 않는다.
+
+사용자가 제품 빌드는 나중에 직접 하겠다고 확정했다. 이번에는 변경 소비자 최소 컴파일과
+필요한 clock 검증을 수행하고 새 EXE 링크·Client/UI 실행·최종 화면 확인은 수행하지 않는다.
+
 ## G13. 2026-09-27 추가 — 세이튼과 같은 재생·저작 표면
 
 사용자 확정: Preview는 자유로운 Pause/Seek를 유지하는 로컬 표현 재생이며 Server와 같은

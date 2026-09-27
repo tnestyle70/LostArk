@@ -145,3 +145,61 @@ WorldSequenceObject.h/cpp에만 표시 경로를 연결했다. native84의 resol
 - Hide 이후 NONLIGHT 호출도 추가 draw0. windows0, failures0, process exit0.
 
 이 fixture는 synthetic 방향광과 검사 카메라를 쓴 body consumer 검증이다. 장비 draw, 실제 장면 전체 가림/색감, RGB readback, 스크린샷, Client/UI 실행 또는 사용자 최종 화면 판정을 포함하지 않는다. 기존처럼 direct shader만 호출한 결과가 아니라 누락되었던 실제 WorldSequenceObject의 등록→group dispatch→model draw를 확인했다. 로그·compile/link·source/product 입력 hash는 `out/GhostWorldSequence20260926/{compile.log,archive.log,link.log,run.log,result.json}`이다. 오래된 이전 archive의 signature로 생긴 초기 probe 링크 실패는 현재 Product OBJ archive로 해결했고 제품 source에 ABI 우회를 추가하지 않았다.
+
+## G07. 09-28 각진 몸체와 피부 백색 반사의 원인 분리
+
+사용자 첨부 전투 화면과 원작 비교 이미지에서 각진 면과 강한 피부 반사를 확인했다. 현재 body/preview/cinematic native84/pass16은 map cyan mask를 호출하지 않는다. 이전 opaque 변경은 alpha를 우회해 몸체를 보이게 했고, 잘못 쿠킹된 basis와 기존 specular 입력까지 복구한 변경은 아니었다.
+
+### 원본 모델 복구 후보
+
+설치 `Character/Valtan/Ghost/MN_RPBF_02.wmodel`의 SHA256은 `ec69f9e46b73a65c949048b1d7ff0acfd1fd65670e7feb117a8e4e6c732af0a1`이다. WINT1.0의14,472 triangles 모두 corner normal이 같고14,470 faces는 face normal과 절대 dot>0.99999다. 피부6,203 faces도 전부 flat이다. 동일 package/LOD0의 UModel glTF는 피부6개만 flat이고 다른 두 slot은0개다.
+
+기존 `restore_skinned_source_basis.py`로 원본43,416 indexed corners를 위치/UV에 대응했다. 위치 최대오차2.384e-7, UV0exact다. 후보 N/T의 원본 대비 최대오차는 각각2.98e-8 미만, handedness 차이0이다. 각 mesh의 index, vertex position/UV/skin, material/skeleton/140animation section, bone palette/bounds는 byte-identical이고 vertex 증감0이다. 원본 seam/hard edge를 보존하며 임의 smooth 평균이나 subdivision은 없다.
+
+후보 WINT1.5 `out/GhostSourceBasis20260928/MN_RPBF_02.source-basis.wmodel`의 SHA256은 `c196b093151f13b93f6286708495f79569adbf05763a5c32b31e090805edcfba`다. 실제 native decoder는43,040vertices/sign+15,835/-27,205로 PASS했다. 첫 stale harness는 현재 DLL과 맞지 않아 실패했으며 harness TU를 현재 코드로 재컴파일한 뒤 통과했다. 처음 실패를 제품 모델 오류로 분류하지 않는다.
+
+원본 PSK는 N/T channel이 없지만14,472 faces의 smoothingGroup이 모두1이다. 현재 ActorX→FBX 경로는 원본 glTF basis를 감사하지 않는다. 당시 Blender3.0/FBX 중간물이 이 PC에 없으므로 어떤 이전 단계가 flat로 덮었는지는 확정하지 않는다. 근거는 해당 out의 `MN_RPBF_02.source-basis.json`, `independent-audit.json`, `native-harness.log`다.
+
+### 반사 입력 교정과 사용자 피부 정책
+
+native84 Light instruction104는 `specular * passValues[4].w + passValues[4].rgb`다. 기존 `(1,1,1,1)`은 material specular_color가0이어도 흰 반사를 남긴다. Base의 specular MRT도 같은 잘못된 offset을 가진다. Engine/Client BaseGroup084/LightGroup084와 기존 generator에서84만 `(0,0,0,1)`로 교정했다. 나머지 함수/native instruction과 다른 program의 상수는 그대로 보존한다.
+
+원본3slot의 specular tint는0이 아니다. 피부 `mn_rpbf_01-1_mi`의 specular_color RGB0 후보는 사용자 요청에 따른 PROJECT_AUTHORED 값이다. `out/GhostSurface20260928/BossCatalog.candidate.json`에서 해당 field만 달라짐을 parse/deep comparison으로 확인했다. 두 장식 slot, diffuse/cloud/rim/opacity와 pass16/17은 변경하지 않는다. 독립 검토에서 skin spec0은 Light[11]/Base[14] specular 항만 바꾸며 rim 등의 입력과 독립임을 확인했다.
+
+### 소비자와 반영 경계
+
+전투 `CBody_Valtan`, generic `CPart_Body`, 최후 컷신 `CWorldSequenceObject`는 모두 같은 ghost asset/catalog/native84/pass16을 사용한다. 이번 변경은 두 번째 runtime 경로를 추가하지 않는다. shader source 교정과 Resources/data 실제 교체는 구분하며 후속 검증·배포 기록을 아래에 이어 쓴다. 이 시점에 후보 model/catalog는 아직 설치하지 않았고 Client/UI 실행·조작·캡처 또는 사용자의 화면 판정을 대신하지 않았다.
+
+
+### G07 실제 GPU와 컴파일 검증
+
+animated/static/deferred SourceGroup084의3 FX를 제품 Debug와 같은 FX5/O1으로 컴파일했다. 모두 성공이며 `out/GhostShader20260928/compile-receipt.json`이 각 CSO hash를 기록한다. 기존 공통 프로그램의 compiler warning이 있으며 이번 변경에서 무관한 shader 연산을 수정하지 않았다. generator의84/다른 프로그램14stagecases, 실제 native 지시문 보존, Engine/Client mirror와 인코딩 보존을 확인했다.
+
+현재 Product OBJ와 Engine DLL을 사용하는 기존 out-only CWorldSequence probe로 실제 ghost3mesh/14,472triangles와 cinematic donor를 로드하고512×512 WARP에서 실제 NONLIGHT consumer를 실행했다. 합성 광원/검사 카메라 fixture이므로 실제 아레나의 전체 조명·가림·원작 화면 판정은 아니다. 모든 조건은 DrawIndexed3, covered/colored/depth12,397, alpha1, nonfinite0이었다. BLEND/GBuffer에 중복 제출되지 않고 hidden owner는 draw하지 않았다.
+
+| 모델/재질/셰이더 | RGB sum | RGB max |
+|---|---:|---:|
+| 설치 flat / 원본 spec / 기존 제품 shader | 6001.764214 | 1.982481 |
+| 원본 smooth / 피부 spec0 / 같은 현재 소스의 기존 white offset | 5681.336944 | 1.980175 |
+| 원본 smooth / 피부 spec0 / neutral offset 최종 후보 | 4331.743754 | 1.158448 |
+
+같은 smooth geometry/skin0에서 offset만 바꾼 비교로, 재질값을0으로 하는 것만으로는 기존 흰 반사가 사라지지 않는 결함을 확인했다. 이 RGB 수치를 원작 밝기 일치나 향상률로 해석하지 않는다. 후보에서는 피부 spec 항이0이고 원본 diffuse/cloud/rim과 장식 slot 반사가 유지된다. 근거는 `out/GhostShader20260928/readback`, 각 조건 log 및 product-inputs.json이다.
+
+
+### G07 현재 반영 상태
+
+전체 buffer 비교6쌍은 alpha/depth bitwise identical이었다. 같은 현재 shader 소스에서 기존 specular offset만 되돌린 baseline과 neutral 후보의 제거 RGB합은 세 채널 모두 약449.8644로, 강제 백색 반사 제거와 일치한다. 피부 slot spec0 추가 변경은1,409pixels의 색에만 영향을 주고 alpha/depth는 동일하다. generator14cases는 현재 emit_function의 좁은 회귀 검증이며 보존된 원본 material dump 전체 재생성을 수행했다는 뜻은 아니다.
+
+기존 Engine/Client vcxproj의 선택 파일 FxCompile로 Debug84 shader3종을 실제 제품 경로에 생성하고 `DeployClientCompiledShaders` target으로 Engine deferred를 Client에 배포했다. 제품3CSO가 검증된 후보와 byte-identical하고 deferred 소비 복사본 및 현재 source hash도 일치한다. EXE/DLL 링크·프로세스 종료·Client/UI 실행은 하지 않았다. Release 출력은 갱신하지 않았다. 로그/receipt는 `out/GhostSurface20260928/*product-build.log`, `product-shader-receipt.json`, `deployment-verification.json`이다.
+
+모델과 BossCatalog의 피부 slot은 검증된 후보 상태이며 실제 파일 교체는 아직 하지 않았다. AGENTS의 편집 중 최종 데이터 교체 절차에 따라 현재 디스크 저장본 기준 적용 여부를 사용자에게 한 번 확인했다. 응답 전까지 데이터 교체를 대기한다. `apply_data.py`는 최신 catalog에서 stable model/material의 specular_color만 병합하고 동일 field 충돌을 거절한다. 각 파일의 직전 hash, 백업, 원자적 교체와 실패 시 자기 변경 rollback을 준비했다. 최종 사용자 화면 판정도 남아 있다.
+
+
+사용자가 후속 메시지에서 아직 편집 중이라고 확인했다. 유령 모델·BossCatalog 피부 값 교체는 계속 보류하며, 저장 완료 또는 현재 저장본 기준 반영 지시 전에는 적용하지 않는다. 이후 요청인 피자 V1 재생과 컷신 프레임 드랍 조사는 별도 아레나 성능 PLAN/RESULT에서 계속한다.
+
+
+### G07 최종 적용 — 2026-09-28 저장·종료 승인 이후
+
+사용자가 모든 편집을 Save하고 종료한 뒤 전체 반영을 명시적으로 승인했다. 앞의 대기 기록은 해소됐다. apply_data.py가 최신 BossCatalog와 installed WModel hash를 다시 확인하고 백업/원자 교체로 두 파일을 적용했다. 모델 최종 SHA-256은 `c196b093151f13b93f6286708495f79569adbf05763a5c32b31e090805edcfba`, BossCatalog는 `500efc94cd332f26e6f1e3a834097ff36beff529631f50d59f40c51b541989c4`다. 기존 사용자 skin 외 재질값과 mesh/animation 내용은 앞의 검증대로 보존했다. 적용 receipt/백업은 `out/GhostSurface20260928/apply-receipt.json`과 그 backupDirectory에 있다.
+
+Debug Product의 Engine→Shared→Server→Client Build/링크/배포가 PASS했다(`out/BuildPipeline/runs/20260927T224408763Z-debug-product.json`). shader는 앞서 실제 제품으로 컴파일한 동일 바이트를 사용한다. 실제 게임 창을 실행하거나 화면 판정을 대신하지 않았다. Release 산출물을 갱신했다는 뜻은 아니다.

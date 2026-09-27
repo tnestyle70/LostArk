@@ -2075,7 +2075,12 @@ function Read-WorldSequenceDocument {
         if ($totalTracks -gt 64) { throw 'World sequence exceeds the combined 64-track limit' }
         $soundIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
         foreach ($row in @($template.soundTracks | Where-Object { $null -ne $_ })) {
-            Assert-ExactJsonProperties $row @('soundTrackId','assetId','startMs','durationMs','volume') 'World sound track'
+            $soundFields = @('soundTrackId','assetId','startMs','durationMs','volume')
+            if ($row.PSObject.Properties['loopToDuration']) {
+                if ($row.loopToDuration -isnot [bool]) { throw 'World sound loopToDuration must be boolean' }
+                $soundFields += 'loopToDuration'
+            }
+            Assert-ExactJsonProperties $row $soundFields 'World sound track'
             if ($row.soundTrackId -isnot [string] -or $row.soundTrackId -cnotmatch $stableId -or -not $soundIds.Add($row.soundTrackId) -or
                 $row.assetId -isnot [string] -or -not $row.assetId.StartsWith('Sound/', [StringComparison]::Ordinal) -or
                 -not $row.assetId.EndsWith('.wav', [StringComparison]::Ordinal)) { throw 'Invalid World sound identity or asset ID' }

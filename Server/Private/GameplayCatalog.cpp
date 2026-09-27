@@ -2654,6 +2654,25 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 				return false;
 			}
 		}
+		else if (!fields.empty() && "BOSSCOMBATOBJECTOWNERHITCHAIN" == fields[0])
+		{
+			std::uint32_t delayMs = 0u;
+			if (6u != fields.size() || !IsStableId(fields[1]) || !IsStableId(fields[2]) ||
+				!IsStableId(fields[3]) || !ParseNumber(fields[4], delayMs) ||
+				delayMs == 0u || delayMs > 600000u || !IsStableId(fields[5]))
+			{
+				m_strStatus = "Boss combat object owner hit chain row is invalid";
+				return false;
+			}
+			const auto owner = m_BossCombatObjects.find(std::string(fields[2]));
+			if (owner == m_BossCombatObjects.end() || owner->second.strEncounterId != fields[1] ||
+				!owner->second.OwnerHitChain.strTriggerActionId.empty())
+			{
+				m_strStatus = "Boss combat object owner hit chain has no unique owner";
+				return false;
+			}
+			owner->second.OwnerHitChain = {std::string(fields[3]), std::string(fields[5]), delayMs};
+		}
 		else if (!fields.empty() && "BOSSCOMBATOBJECTHIT" == fields[0])
 		{
 			BOSS_COMBAT_OBJECT_HIT hit{};
@@ -7686,6 +7705,28 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 		{
 			m_strStatus = "Boss combat object event count or visual ID is invalid";
 			return false;
+		}
+		if (!combatObject.OwnerHitChain.strTriggerActionId.empty())
+		{
+			const auto* patterns = Find_BossPatterns(combatObject.strEncounterId);
+			const BOSS_PATTERN_STAGE_DEFINITION* triggerStage = nullptr;
+			if (patterns != nullptr)
+				for (const auto& pattern : *patterns)
+					if (pattern.strPatternId == combatObject.strOwnerPatternId)
+						for (const auto& stage : pattern.Stages)
+							if (stage.strActionId == combatObject.OwnerHitChain.strTriggerActionId)
+								triggerStage = &stage;
+			if (combatObject.eKind != BOSS_COMBAT_OBJECT_KIND::FIXED_AREA || combatObject.fCoverRadiusM <= 0.f ||
+				combatObject.Hits.size() != 1u || combatObject.Hits[0].iRepeatCount != 1u ||
+				combatObject.Hits[0].eTrigger != BOSS_COMBAT_OBJECT_HIT_TRIGGER::TIMED ||
+				!combatObject.PresentationPulses.empty() || triggerStage == nullptr ||
+				triggerStage->eHitShape != BOSS_PATTERN_HIT_SHAPE::CONE || triggerStage->iHitCount == 0u ||
+				combatObject.OwnerHitChain.iDelayMs >= combatObject.iLifeMs ||
+				combatObject.OwnerHitChain.strArmedPresentationEventId == combatObject.Hits[0].strHitId)
+			{
+				m_strStatus = "Boss combat object owner hit chain requires one timed hit and an owner cone action";
+				return false;
+			}
 		}
 		for (const BOSS_COMBAT_OBJECT_HIT& hit : combatObject.Hits)
 		{

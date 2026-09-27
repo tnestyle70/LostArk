@@ -21,6 +21,26 @@ namespace
 		"Health_Frame", "Health_EnemyFill", "Health_PlayerFill", "Health_ShieldFill" };
 	constexpr f32_t HEAD_GAP = 3.f;
 
+	size_t HealthBarPositionGroup(const Client::HUD_WORLD_HEALTH_BAR_STATE& state)
+	{
+		if (state.isPlayer) return 0u;
+		const auto& id = state.strArchetypeId;
+		if (id == "BOSS_KAKULSAYDON_G1_SAYDON" || id == "BOSS_KAKULSAYDON_G3_SAYDON" ||
+			id == "BOSS_KAKULSAYDON_BINGO_SAYDON") return 2u;
+		if (id == "BOSS_KAKULSAYDON_G1_KOUKU" || id == "BOSS_KAKULSAYDON_G2_KOUKU") return 3u;
+		if (id == "BOSS_VALTAN" || id == "BOSS_VALTAN_GHOST") return 4u;
+		return 1u;
+	}
+
+	bool HealthBarHidden(const Client::HUD_WORLD_HEALTH_BAR_STATE& state, const bool cardMazeActive)
+	{
+		const auto& id = state.strArchetypeId;
+		if (id == "BOSS_KAKULSAYDON_G2_BIG_SAYDON") return true;
+		const bool cardSoldier = id == "MONSTER_KOUKU_CARD_HEART" || id == "MONSTER_KOUKU_CARD_DIAMOND" ||
+			id == "MONSTER_KOUKU_CARD_CLUB" || id == "MONSTER_KOUKU_CARD_SPADE";
+		return cardMazeActive && (state.isPlayer || cardSoldier);
+	}
+
 	bool IsFinite(const float3_t& value)
 	{
 		return std::isfinite(value.x) && std::isfinite(value.y) && std::isfinite(value.z);
@@ -49,6 +69,19 @@ namespace
 			high.y = (std::max)(high.y, point.y); high.z = (std::max)(high.z, point.z);
 		}
 		position = float3_t((low.x + high.x) * 0.5f, high.y + 0.05f, (low.z + high.z) * 0.5f);
+		return IsFinite(position);
+	}
+
+	bool NpcHead(const std::shared_ptr<Engine::CModel>& model,
+		const float4x4_t& world, float3_t& position)
+	{
+		// Skinned NPC bind vertices can use a different basis/scale from the
+		// animated pose. Anchor to the same head bone that draws the actor.
+		if (!model || !model->Has_Bone("bip001-head"))
+			return BoundsHead(model, world, position);
+		// CModel's combined bone matrix already includes the model preScale.
+		XMStoreFloat3(&position, XMVector3TransformCoord(
+			model->Get_BoneMatrix("bip001-head").r[3], XMLoadFloat4x4(&world)));
 		return IsFinite(position);
 	}
 }
@@ -92,7 +125,7 @@ bool Client::CWorldHealthBarView::Try_GetHeadAnchor(
 			CWorldPlayerNameplateView::Try_GetHeadAnchor(*character, position);
 	if (const auto npc = std::dynamic_pointer_cast<CNpc>(actor))
 		return npc->Is_PresentationVisible() && npc->Get_Transform() &&
-			BoundsHead(npc->Get_Model(), *npc->Get_Transform()->Get_WorldMatrixPtr(), position);
+			NpcHead(npc->Get_Model(), *npc->Get_Transform()->Get_WorldMatrixPtr(), position);
 	if (const auto valtan = std::dynamic_pointer_cast<CValtan>(actor))
 	{
 		float4x4_t root{};
@@ -102,16 +135,17 @@ bool Client::CWorldHealthBarView::Try_GetHeadAnchor(
 	return false;
 }
 
-bool Client::CWorldHealthBarView::Set_YOffsets(const f32_t allyOffsetY, const f32_t enemyOffsetY)
+bool Client::CWorldHealthBarView::Set_Offsets(const std::array<float2_t, 5>& offsets)
 {
-	if (!std::isfinite(allyOffsetY) || !std::isfinite(enemyOffsetY) ||
-		std::abs(allyOffsetY) > 1280.f || std::abs(enemyOffsetY) > 1280.f) return false;
-	m_fAllyOffsetY = allyOffsetY; m_fEnemyOffsetY = enemyOffsetY;
+	for (const auto& offset : offsets)
+		if (!std::isfinite(offset.x) || !std::isfinite(offset.y) ||
+			std::abs(offset.x) > 1280.f || std::abs(offset.y) > 1280.f) return false;
+	m_Offsets = offsets;
 	return true;
 }
 
 void Client::CWorldHealthBarView::Update(const f32_t timeDelta,
-	const std::vector<HUD_WORLD_HEALTH_BAR_STATE>& states, const bool allowed)
+	const std::vector<HUD_WORLD_HEALTH_BAR_STATE>& states, const bool allowed, const bool cardMazeActive)
 {
 	/* Hide before sampling so offscreen, dead and rejected actors cannot leave a
 	last-frame image behind. Missing entities release only this view's own sprites. */
@@ -130,7 +164,7 @@ void Client::CWorldHealthBarView::Update(const f32_t timeDelta,
 	if (!view || !projection || viewport.x <= 0.f || viewport.y <= 0.f) return;
 	for (const auto& state : states)
 	{
-		if (state.isLocal || state.iNetEntityId == LostArk::Shared::INVALID_NET_ENTITY_ID ||
+		if (HealthBarHidden(state, cardMazeActive) || state.isLocal || state.iNetEntityId == LostArk::Shared::INVALID_NET_ENTITY_ID ||
 			state.iMaximumHp == 0u || state.iCurrentHp == 0u) continue;
 		float3_t head{};
 		float2_t screen{};
@@ -145,10 +179,11 @@ void Client::CWorldHealthBarView::Update(const f32_t timeDelta,
 		}
 		auto& bar = *found->second;
 		const auto& frame = bar.rects[0];
-		const f32_t x = screen.x * bar.view->Get_ResolutionWidth() / viewport.x - frame.width * 0.5f;
+		const auto& offset = m_Offsets[HealthBarPositionGroup(state)];
+		const f32_t x = screen.x * bar.view->Get_ResolutionWidth() / viewport.x - frame.width * 0.5f + offset.x;
 		const f32_t y = screen.y * bar.view->Get_ResolutionHeight() / viewport.y - frame.height - HEAD_GAP -
 			(state.isPlayer ? CWorldPlayerNameplateView::Stack_Top_RefPx() : 0.f) +
-			(state.isPlayer ? m_fAllyOffsetY : m_fEnemyOffsetY);
+			offset.y;
 		for (size_t index = 0u; index < bar.rects.size(); ++index)
 			bar.view->Set_SlotPosition(SLOTS[index], x + bar.rects[index].x - frame.x,
 				y + bar.rects[index].y - frame.y);

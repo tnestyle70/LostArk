@@ -1196,6 +1196,7 @@ std::size_t Client::CKoukuSaydonPresentationPlayer::Light_SkippedByBudget() cons
 
 void Client::CKoukuSaydonPresentationPlayer::Collect_FrameLights()
 {
+    Engine::CProfilerScope scope(CGameInstance::Get().Get_Profiler(), "Kouku.Presentation.FrameLights");
     if (!m_LightProvider) m_LightProvider = std::make_shared<FRAME_LIGHT_PROVIDER>();
     m_LightProvider->lights.clear();
     if (!m_pLightResources) return;
@@ -2941,6 +2942,27 @@ void Client::CKoukuSaydonPresentationPlayer::Sample(SESSION& session,
         PLAYING_ROW& row = found->second;
         if (row.failed) return;
         const auto& listener = CCombatHUDViewModel::Get().Get_Player();
+        if (row.suppressedForLocalMario) return;
+        if (resource.eKind == KIND::EFFECT && resource.strAssetId == "boss.kouku.curtain_1" &&
+            !previewSession && listener.isValid && !listener.isPreview &&
+            listener.iMarioStage >= 1u && listener.iMarioStage <= 4u &&
+            std::any_of(pattern.LogicOccurrences.begin(), pattern.LogicOccurrences.end(), [&](const auto& occurrence) {
+                if (!occurrence.bEnabled) return false;
+                const auto logic = std::find_if(document.Logics.begin(), document.Logics.end(),
+                    [&](const auto& value) { return value.strLogicId == occurrence.strLogicId; });
+                return logic != document.Logics.end() && logic->strLogicType == "TRIGGER" &&
+                    logic->strTriggerKind == "MARIO_PHASE2_PLAYERS";
+            }))
+        {
+            // This full-screen curtain belongs to the outside phase-two arena.
+            // The local Server-admitted Mario entrant must retain an unobscured view.
+            if (row.effectHandle) CEffectV2Runtime::Stop_Group(row.effectHandle);
+            if (row.v1EffectHandle) CEffectPresentationService::Stop_WorldRoot({row.v1EffectHandle});
+            row.effectHandle = 0u;
+            row.v1EffectHandle = 0u;
+            row.suppressedForLocalMario = true;
+            return;
+        }
         if (resource.eKind == KIND::SOUND && !previewSession && listener.isValid &&
             !listener.isPreview && listener.iMarioStage != 0u)
         {
@@ -3472,6 +3494,7 @@ void Client::CKoukuSaydonPresentationPlayer::Restore_Scene()
 
 void Client::CKoukuSaydonPresentationPlayer::Refresh_SharedPresentation()
 {
+    Engine::CProfilerScope scope(CGameInstance::Get().Get_Profiler(), "Kouku.Presentation.SharedPresentation");
     Collect_FrameLights();
     const PLAYING_ROW* scene = nullptr;
     const PLAYING_ROW* camera = nullptr;
@@ -3670,9 +3693,10 @@ void Client::CKoukuSaydonPresentationPlayer::Update(float dt,
     const std::vector<KOUKU_BOSS_PRESENTATION_VIEW>& bosses,
     const std::vector<KOUKU_CARD_PRESENTATION_VIEW>& players)
 {
+    Engine::CProfilerScope updateScope(CGameInstance::Get().Get_Profiler(), "Kouku.Presentation.Update");
     m_LogicPreviewPlayers = players;
     if (!std::isfinite(dt) || dt < 0.f) return;
-    Sync_PreviewSourceVisibility();
+    Sync_PreviewSourceVisibility(bosses);
     m_LightPlayerPivots.clear();
     m_LightBossFollowers.clear();
     for (const auto& view : bosses)
@@ -4010,12 +4034,15 @@ void Client::CKoukuSaydonPresentationPlayer::Update(float dt,
         if (card->second.handle) CEffectV2Runtime::Stop_Group(card->second.handle);
         card = m_Cards.erase(card);
     }
-    Update_DiceBindVisuals(dt, bosses, players);
-    Update_MazeMarks(players);
-    Update_MarioMarks(players);
-    Update_BingoBombs(dt, players);
-    Update_BingoMarks(dt);
-    Update_FearPresentation(dt, players);
+    {
+        Engine::CProfilerScope scope(CGameInstance::Get().Get_Profiler(), "Kouku.Presentation.EncounterVisuals");
+        Update_DiceBindVisuals(dt, bosses, players);
+        Update_MazeMarks(players);
+        Update_MarioMarks(players);
+        Update_BingoBombs(dt, players);
+        Update_BingoMarks(dt);
+        Update_FearPresentation(dt, players);
+    }
     if (m_bPreviewPlaying && m_bOwnPreviewClock && m_bPreviewPivotReady)
     {
         // Begin runs after this Update; the next delta includes synchronous WORLD
@@ -5190,6 +5217,7 @@ bool Client::CKoukuSaydonPresentationPlayer::Sample_BundlePreviewPose(
 
 bool Client::CKoukuSaydonPresentationPlayer::Prepare_PreviewEffects()
 {
+    Engine::CProfilerScope scope(CGameInstance::Get().Get_Profiler(), "Kouku.Presentation.PreviewPreparation");
     if (!m_bPreviewPreparationQueued)
     {
         std::set<std::string> targets;
@@ -5263,10 +5291,17 @@ Client::CKoukuSaydonPresentationPlayer::Resolve_PreviewAnimation(
 
 void Client::CKoukuSaydonPresentationPlayer::Sync_PreviewSourceVisibility()
 {
+    if (m_BundlePreviewMembers.empty()) return;
     auto* level = CLevel_KakulSaydonArena::Get_Active();
     std::vector<KOUKU_BOSS_PRESENTATION_VIEW> bosses;
     std::vector<KOUKU_CARD_PRESENTATION_VIEW> players;
     if (level) level->Collect_KoukuPresentationViews(bosses, players);
+    Sync_PreviewSourceVisibility(bosses);
+}
+
+void Client::CKoukuSaydonPresentationPlayer::Sync_PreviewSourceVisibility(
+    const std::vector<KOUKU_BOSS_PRESENTATION_VIEW>& bosses)
+{
     for (auto& member : m_BundlePreviewMembers)
     {
         std::shared_ptr<CNpc> replacement;
@@ -5285,6 +5320,7 @@ void Client::CKoukuSaydonPresentationPlayer::Sync_PreviewSourceVisibility()
 
 void Client::CKoukuSaydonPresentationPlayer::Sample_BundlePreview()
 {
+    Engine::CProfilerScope scope(CGameInstance::Get().Get_Profiler(), "Kouku.Presentation.BundleSample");
     auto* level = CLevel_KakulSaydonArena::Get_Active();
     Sync_PreviewSourceVisibility();
     if (!level || !m_bPreviewPlaying || !Prepare_PreviewEffects()) return;

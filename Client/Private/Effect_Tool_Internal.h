@@ -25,10 +25,16 @@ namespace EffectToolDetail
         bool editable = false;
         bool rootLocal = false;
         bool anchorEditable = false;
+        bool manual = false;
+        float startSeconds = 0.f;
         float3_t anchorPosition{}, anchorRotationDegrees{};
     };
     std::vector<ATTACHMENT_ELEMENT_GROUP> Build_AttachmentElementGroups(const Client::EFFECT_DOCUMENT_DESC& document,
         const std::string& elementId = {});
+    bool Create_IndependentElementGroup(Client::EFFECT_DOCUMENT_DESC& document,
+        const std::vector<std::string>& elementIds, std::string& groupId, std::string& error);
+    bool Set_AttachmentGroupStart(Client::EFFECT_DOCUMENT_DESC& document,
+        const std::string& groupKey, float startSeconds, std::string& error);
     bool Set_AttachmentGroupAnchor(Client::EFFECT_DOCUMENT_DESC& document,
         const std::string& groupKey, const float3_t& position, const float3_t& rotationDegrees, std::string& error);
     bool Translate_AttachmentElementGroup(Client::EFFECT_DOCUMENT_DESC& document,
@@ -371,7 +377,9 @@ namespace EffectToolDetail
 
 	std::string FriendlyDocumentLabel(
 		const Client::EFFECT_DOCUMENT_DESC& Document,
-		const std::string_view strFallback);
+		const std::string_view strFallback,
+		const Client::VALTAN_PATTERN_TREE_VIEW* pValtanView = nullptr,
+		const Client::VALTAN_FULL_RESTORE_CLIP_INDEX* pValtanClips = nullptr);
 
 
 	std::string StableUnifiedElementId(

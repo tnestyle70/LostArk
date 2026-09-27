@@ -19,6 +19,21 @@ inline constexpr float LaneHeight = 24.f;
 inline constexpr float LabelWidth = 180.f;
 inline constexpr float MinimumBoxWidth = 8.f;
 inline constexpr float BoxHeight = 22.f;
+
+// Keep the legacy constants for editors that own their own row geometry.
+// Font-aware callers use the same dimensions for drawing and hit testing.
+inline float GetBoxHeight()
+{
+	const float padding = (std::max)(4.f, ImGui::GetStyle().FramePadding.y);
+	return std::ceil((std::max)(32.f, ImGui::GetTextLineHeight() + padding * 2.f));
+}
+
+inline float GetLaneHeight()
+{
+	const float spacing = (std::max)(6.f, ImGui::GetStyle().ItemSpacing.y);
+	return std::ceil((std::max)(38.f, GetBoxHeight() + spacing));
+}
+
 inline constexpr ImU32 StageColor = IM_COL32(96, 96, 112, 255);
 inline constexpr ImU32 AnimationColor = IM_COL32(72, 128, 200, 255);
 inline constexpr ImU32 LogicColor = IM_COL32(196, 118, 64, 255);

@@ -2,6 +2,7 @@
 
 #include "GameplayCatalog.h"
 #include "Gameplay/CombatCollisionContract.h"
+#include "Gameplay/CombatObjectHitChain.h"
 #include "ServerNavigation.h"
 #include "ServerPlayer.h"
 #include "ServerWorldEntity.h"
@@ -154,6 +155,14 @@ namespace LostArk::Server
 			SERVER_BOSS_GRAB_CLASSIFICATION::NONE;
 	};
 
+	struct SERVER_BOSS_PATTERN_HIT final
+	{
+		LostArk::Shared::NET_ENTITY_ID iSourceNetEntityId = LostArk::Shared::INVALID_NET_ENTITY_ID;
+		std::uint32_t iPatternSequence = 0u;
+		std::string strPatternId, strActionId;
+		LostArk::Shared::CombatObjectHitChain::CONE_HIT Cone;
+	};
+
 	class CValtanBrain final
 	{
 	public:
@@ -240,7 +249,8 @@ namespace LostArk::Server
 			std::vector<SERVER_PLAYER_CAPTURE_REQUEST>* outCaptureRequests =
 				nullptr,
 			const BOSS_PATTERN_SEQUENCE_DEFINITION*
-				automaticSequenceOverride = nullptr) const;
+				automaticSequenceOverride = nullptr,
+			std::vector<SERVER_BOSS_PATTERN_HIT>* outOwnerHits = nullptr) const;
 		bool Try_BuildStageMotion(
 			const SERVER_WORLD_ENTITY& boss,
 			float fixedDeltaSeconds,

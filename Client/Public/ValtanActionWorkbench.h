@@ -14,6 +14,7 @@
 #include "ValtanPatternShakeCueDocument.h"
 #include "ValtanPatternSoundCueDocument.h"
 #include "ValtanPatternTree.h"
+#include "ValtanCinematicEffectLibrary.h"
 #include "ValtanViewAdmission.h"
 
 #include <array>
@@ -124,6 +125,7 @@ public:
 		std::string strStageId;
 		DETAIL_OWNER eDetailOwner = DETAIL_OWNER::GAMEPLAY_STAGE;
 		std::string strStableId;
+		bool_t bOpenSequencer = false;
 	};
 
 	enum class PENDING_PATTERN_SELECTION_DECISION : uint8_t
@@ -191,8 +193,9 @@ public:
 	bool_t Consume_EffectToolOpenRequest(
 		EFFECT_TOOL_VALTAN_PRODUCT_OPEN_REQUEST& OutRequest);
 	bool_t Consume_EffectResourceOpenRequest(EFFECT_RESOURCE_KEY& OutKey);
-	/* Set by a committed Save so All Effects reopens exactly that durable
-	   source receipt. MainApp consumes this independently of window visibility;
+	bool_t Consume_EffectResourcePreviewRequest(EFFECT_RESOURCE_KEY& OutKey);
+	/* Set by a completed Publish so All Effects reopens exactly that durable
+	   Product receipt. MainApp consumes this independently of window visibility;
 	   if the Effect owner has not been constructed yet, the request remains
 	   pending here. */
 	bool_t Consume_EffectGraphRefreshRequest(
@@ -270,7 +273,7 @@ private:
 	std::optional<PENDING_RESOURCE_APPEND> m_PendingResourceAppend;
 	bool_t m_bCompositionResourceDraftReady = false;
 	bool_t m_bWorkbenchBossLoadAttempted = false;
-	bool_t Reload_Canonical();
+	bool_t Reload_Canonical(bool_t bReuseCommittedSource = false);
 	bool_t Stage_ProductFallback(
 		const CValtanCanonicalProductReadAdmission& Admission,
 		const std::string& strStrictFailure);
@@ -311,7 +314,8 @@ private:
 		const VALTAN_PATTERN_VIEW& Pattern,
 		const std::string& strStageId = {},
 		DETAIL_OWNER eDetailOwner = DETAIL_OWNER::GAMEPLAY_STAGE,
-		const std::string& strStableId = {});
+		const std::string& strStableId = {},
+		bool_t bOpenSequencer = false);
 	void Render_PendingPatternSelectionModal();
 	void Resolve_PendingPatternSelection();
 	void Select_Pattern(const VALTAN_PATTERN_VIEW& Pattern);
@@ -319,7 +323,8 @@ private:
 		const VALTAN_PATTERN_VIEW& Pattern,
 		const VALTAN_STAGE_VIEW& Stage,
 		DETAIL_OWNER eOwner = DETAIL_OWNER::GAMEPLAY_STAGE,
-		const std::string& strStableId = {});
+		const std::string& strStableId = {},
+		bool_t bPreserveTimelineSelection = false);
 	const VALTAN_PATTERN_VIEW* Find_SelectedPattern() const;
 	const VALTAN_PATTERN_VIEW* Find_PatternById(
 		const std::string& strPatternId) const;
@@ -390,6 +395,19 @@ private:
 		const std::string& strClipOccurrenceId,
 		std::size_t iTargetIndex,
 		std::string& strOutStatus);
+	enum class TIMELINE_GROUP_EDIT : uint8_t { MOVE_BOXES, DUPLICATE_BOXES, DELETE_BOXES };
+	struct TIMELINE_SELECTION final
+	{
+		std::string strPatternId, strStageId, strStableId;
+		DETAIL_OWNER eOwner = DETAIL_OWNER::GAMEPLAY_STAGE;
+		bool operator==(const TIMELINE_SELECTION&) const = default;
+	};
+	static TIMELINE_SELECTION Timeline_SelectionKey(const TIMELINE_ITEM& Item);
+	bool_t Is_TimelineBoxSelected(const TIMELINE_ITEM& Item) const;
+	void Select_TimelineBox(const TIMELINE_ITEM& Item, bool_t bToggle);
+	void Prune_TimelineSelection();
+	bool_t Apply_TimelineGroupEdit(const VALTAN_PATTERN_VIEW& Pattern,
+		TIMELINE_GROUP_EDIT edit, int64_t iWallDeltaMs, std::string& status);
 	bool_t Duplicate_SelectedTimelineBox(
 		const VALTAN_PATTERN_VIEW& Pattern,
 		const VALTAN_STAGE_VIEW& Stage,
@@ -457,9 +475,6 @@ private:
 		bool_t bLocalPreviewAdmitted,
 		bool_t bMutationAdmitted,
 		bool_t bPatternMutationAdmitted);
-	void Render_PatternDurationControl(
-		const VALTAN_PATTERN_VIEW& Pattern,
-		bool_t bPatternMutationAdmitted);
 	void Render_SelectedStageGapControl(
 		const VALTAN_PATTERN_VIEW& Pattern,
 		bool_t bPatternMutationAdmitted);
@@ -469,6 +484,11 @@ private:
 		const VALTAN_PRODUCT_EFFECT_CUE_VIEW* pEffectOverride,
 		const VALTAN_PATTERN_SOUND_CUE* pSoundOverride,
 		std::string& strOutStatus) const;
+	bool_t Has_PendingSelectedEffectDetails(const VALTAN_PATTERN_VIEW* Pattern) const;
+	bool_t Apply_EffectOccurrenceDetails(
+        const VALTAN_PATTERN_VIEW& Pattern, const VALTAN_STAGE_VIEW& Stage,
+        const VALTAN_PRODUCT_EFFECT_CUE_VIEW& Current,
+        const VALTAN_PRODUCT_EFFECT_CUE_VIEW& Candidate, std::string& status);
 	bool_t Apply_EffectOccurrenceTiming(
 		const VALTAN_PATTERN_VIEW& Pattern,
 		const VALTAN_STAGE_VIEW& Stage,
@@ -476,6 +496,13 @@ private:
 		uint32_t iSourceStartMs,
 		uint32_t iSourceEndMs,
 		std::string& strOutStatus);
+	bool_t Apply_SoundTimelinePlacement(
+		const VALTAN_PATTERN_VIEW& Pattern,
+		const VALTAN_STAGE_VIEW& SourceStage,
+		const VALTAN_PATTERN_SOUND_CUE& Current,
+		uint32_t iPatternStartMs, uint32_t iPlaybackOffsetMs,
+		std::optional<uint32_t> PlaybackDurationMs,
+		std::string& strOutStatus, bool_t bRefreshPreview = true);
 	bool_t Apply_PatternSoundOccurrenceTiming(
 		const VALTAN_PATTERN_VIEW& Pattern,
 		const VALTAN_STAGE_VIEW& Stage,
@@ -489,7 +516,7 @@ private:
 		const VALTAN_PATTERN_VIEW& Pattern,
 		const VALTAN_STAGE_VIEW& Stage,
 		const VALTAN_PRODUCT_EFFECT_CUE_VIEW& Cue);
-	void Reload_SemanticValtanEffects();
+	void Reload_SemanticValtanEffects(bool_t bReloadCatalog = true);
 	void Reset_EffectCueEditor();
 	void Render_WindowMenu();
 	bool_t Render_SessionWindow(
@@ -618,9 +645,9 @@ private:
 	bool_t m_bPreviewOwnerClaimRequested = false;
 	bool_t m_bPreviewOwnerActive = false;
 	std::string m_strCinematicPreviewStatus;
-	/* After a fully reloaded Save: publish the candidate/apply it to the live
-	   Server (Valtan Boss Tool Flow Save path) and refresh the on-disk runtime set. */
-	bool_t m_bAutoPublishAfterSave = false;
+	/* One explicit Save & Publish request. Source Save consumes and clears it;
+	   the existing publisher and Server revision admission remain separate. */
+	bool_t m_bPublishWithPendingSave = false;
 	bool_t m_bProductSourceReady = false;
 	std::string m_strProductReadiness;
 	bool_t m_bOpenAnimationToolRequested = false;
@@ -645,6 +672,8 @@ private:
 	uint32_t m_iTimelineMoveSourceStartMs = 0u;
 	uint32_t m_iTimelineMoveSourceEndMs = 0u;
 
+	std::vector<TIMELINE_SELECTION> m_TimelineSelection;
+	int m_iTimelineGroupMoveMs = 0;
 	std::string m_strSelectedPatternId;
 	std::string m_strSelectedStageId;
 	std::string m_strSelectedStableId;
@@ -724,6 +753,7 @@ private:
 	std::uint64_t m_iTimelineCacheDraftGeneration = ~std::uint64_t{ 0u };
 	std::uint64_t m_iTimelineCacheSoundGeneration = ~std::uint64_t{ 0u };
 	std::uint64_t m_iTimelineCacheEffectV2Revision = ~std::uint64_t{ 0u };
+	std::uint64_t m_iTimelineCacheEffectV1Revision = ~std::uint64_t{ 0u };
 	uint32_t m_iTimelineDurationMs = 0u;
 	uint32_t m_iPlayheadMs = 0u;
 	f32_t m_fTimelinePixelsPerSecond = 120.f;
@@ -737,6 +767,16 @@ private:
 	std::uint64_t m_iEffectivePatternCacheDraftGeneration =
 		~std::uint64_t{ 0u };
 	bool_t m_bEffectivePatternCacheReady = false;
+	struct PENDING_LOCAL_PREVIEW final
+	{
+		std::string patternId;
+		std::vector<std::string> effectIds;
+		uint64_t draftGeneration = 0u, canonicalGeneration = 0u, v1Revision = 0u, v2Revision = 0u;
+		VALTAN_PATTERN_PREVIEW_PATH path = VALTAN_PATTERN_PREVIEW_PATH::NORMAL;
+		uint32_t positionMs = 0u;
+		bool pause = false;
+	};
+	std::optional<PENDING_LOCAL_PREVIEW> m_PendingLocalPreview;
 
 	ACTION_COMPOSITION_GRAPH_SNAPSHOT m_BossPatternGraphSnapshot;
 	ACTION_COMPOSITION_GRAPH_ERROR m_BossPatternGraphError;
@@ -764,7 +804,9 @@ private:
 	{
 		std::string displayName;
 		std::string searchText;
+		std::string status;
 		std::vector<std::string> categories;
+		std::vector<std::vector<std::string>> patternCategories;
 	};
 	struct EFFECT_RESOURCE_ITEM final
 	{
@@ -773,7 +815,11 @@ private:
 	};
 	std::vector<EFFECT_RESOURCE_ITEM> m_EffectResourceRows;
 	std::map<std::string, EFFECT_RESOURCE_LABEL, std::less<>> m_EffectResourceLabels;
+	VALTAN_CINEMATIC_EFFECT_LIBRARY m_CinematicEffectLibrary;
+	std::string m_strCinematicEffectLibraryStatus;
+	bool_t m_bCinematicEffectLibraryLoadAttempted = false;
 	std::optional<EFFECT_RESOURCE_KEY> m_PendingEffectResourceOpen;
+	std::optional<EFFECT_RESOURCE_KEY> m_PendingEffectResourcePreview;
 	bool_t m_bShowOtherEffectOwners = false;
 	std::vector<std::string> m_SemanticValtanEffectAssetIds;
 	std::vector<std::size_t> m_FilteredEffectAssetIndices;

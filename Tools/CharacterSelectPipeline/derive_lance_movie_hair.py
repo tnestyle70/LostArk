@@ -1,8 +1,9 @@
 """Derive an intentional FT43 hairstyle for the existing Lance Movie actor.
 
-Keep the Movie's skeleton prefix and cinematic keys, preserve every donor
-positive weight, and append the donor's otherwise absent hair chain. This is
-an appearance change, not a claim that the original FT06 asset was corrupt.
+Keep the Movie's skeleton prefix and cinematic keys. Attach the FT43 hair
+geometry to the animated head so FT06 neck/spine motion cannot fold a different
+hairstyle into the head. Donor positions, topology, and weight values stay intact.
+This is an intentional appearance change with no secondary hair motion.
 Outputs are candidates under out; installation is a separate reviewed step.
 """
 from __future__ import annotations
@@ -66,7 +67,8 @@ def derive(resources: Path, output: Path):
                 missing.add(index)
                 index = donor.skeleton_bones[index].parent
                 assert index >= 0, "Donor weighted ancestry has no Movie parent"
-    # Preserve the complete terminal hair chain even though its tip is unweighted.
+    # Keep the established derived skeleton layout; the head binding below does
+    # not animate these donor-only chain bones.
     for index, bone in enumerate(donor.skeleton_bones):
         if bone.name.startswith("b_add_hair01_b_"):
             missing.add(index)
@@ -75,6 +77,7 @@ def derive(resources: Path, output: Path):
         "b_add_hair01_b_11", "b_add_hair01_b_12", "b_add_hair01_b_13", "b_add_hair01_b_14"]
     target_names += [donor.skeleton_bones[i].name for i in extras]
     target_index = {name: i for i, name in enumerate(target_names)}
+    head_index = target_index["bip001-head"]
     parents = [b.parent for b in movie.skeleton_bones]
     for index in extras:
         parents.append(target_index[donor.skeleton_bones[donor.skeleton_bones[index].parent].name])
@@ -92,8 +95,10 @@ def derive(resources: Path, output: Path):
         if h[4] == 80:
             value = struct.unpack_from("<f", mesh, at + 76)[0]
             struct.pack_into("<f", mesh, at + 76, -value)
-        mapped = [target_index[donor.skeleton_bones[i].name] if w > 0 else 0
-                  for i, w in zip(vertex.indices, vertex.weights)]
+        # FT43 has no Movie hair simulation. Reusing the FT06 body weights
+        # rotates long locks with the torso instead of preserving their head pose.
+        # Keep each original weight, but bind every positive influence to the head.
+        mapped = [head_index if weight > 0 else 0 for weight in vertex.weights]
         struct.pack_into("<4I", mesh, at + 44, *mapped)
         assert struct.unpack_from("<4f", mesh, at + 60) == vertex.weights
     code = "<H" if h[7] == 2 else "<I"
@@ -181,15 +186,15 @@ def derive(resources: Path, output: Path):
         assert old.weights == new.weights
         for oi, ni, weight in zip(old.indices, new.indices, old.weights):
             if weight > 0:
-                assert donor.skeleton_bones[oi].name == parsed.skeleton_bones[ni].name
+                assert parsed.skeleton_bones[ni].name == "bip001-head"
     return dict(intent="User-requested fuller FT43 appearance; not source restoration",
         donor=DONOR, donorSha256=digest(donor_bytes), movie=MOVIE, movieSha256=digest(movie_bytes),
         targetAssetId=TARGET, output=str(output), outputSha256=digest(result),
         vertexCount=len(parsed.vertices), skeletonCount=len(nodes), moviePrefixBones=len(movie.skeleton_bones),
-        extraBones=target_names[len(movie.skeleton_bones):], positiveInfluencesPreserved=positive_influences,
-        droppedPositiveInfluences=0, weightsByteIdentical=True, clips=clips,
+        extraBones=target_names[len(movie.skeleton_bones):], positiveInfluenceCount=positive_influences,
+        positiveInfluencesBoundToHead=positive_influences, weightsByteIdentical=True, clips=clips,
         basis=BASIS.tolist(), modelPreScale=.01,
-        boundary="Extra hair chain follows animated neck with its original local rest; no invented secondary motion.")
+        boundary="FT43 silhouette follows animated Movie head rigidly; no secondary hair motion. Original Movie clips and skeleton prefix remain unchanged.")
 
 
 def main():

@@ -422,22 +422,16 @@ bool_t CMapStaticBatchObject::Try_GetStaticShadowRevision(uint64_t& outRevision)
 		!CGameInstance::Get().Get_MaterialRenderSettings().bUseSourceMaterials)
 		return false;
 
-	// Surface/profile constants are immutable after the batch is staged. Mutable
-	// texture overrides and morph clones must leave the cache before it is reused.
-	bool_t hasShadowCaster = false;
-	for (uint32_t mesh = 0u; mesh < m_pModelCom->Get_NumMeshes(); ++mesh)
-	{
-		const auto* surface = m_pModelCom->Get_MaterialSurface(mesh);
-		if (surface && !surface->castsShadow)
-			continue;
-		if (m_pModelCom->Has_MorphBaseVertices(mesh) ||
-			m_pModelCom->Has_MaterialTextureOverrides(mesh) ||
-			!CMapAssetRenderUtils::Uses_StaticShadowInputs(surface, m_RenderProfile, true))
-			return false;
-		hasShadowCaster = true;
-	}
-	if (!hasShadowCaster)
+	if (!m_bStaticShadowMaterialInputs)
 		return false;
+	// Surface/profile constants were admitted when this model was staged.
+	// Mutable texture overrides and morph clones still invalidate cache use.
+	for (const uint32_t mesh : m_StaticShadowCasterMeshes)
+	{
+		if (m_pModelCom->Has_MorphBaseVertices(mesh) ||
+			m_pModelCom->Has_MaterialTextureOverrides(mesh))
+			return false;
+	}
 
 	outRevision = m_iStaticShadowRevision;
 	return true;
@@ -586,6 +580,19 @@ HRESULT CMapStaticBatchObject::Ready_Components(
 	{
 		return E_FAIL;
 	}
+
+	m_StaticShadowCasterMeshes.clear();
+	m_bStaticShadowMaterialInputs = true;
+	for (uint32_t mesh = 0u; mesh < m_pModelCom->Get_NumMeshes(); ++mesh)
+	{
+		const auto* surface = m_pModelCom->Get_MaterialSurface(mesh);
+		if (surface && !surface->castsShadow)
+			continue;
+		m_StaticShadowCasterMeshes.push_back(mesh);
+		m_bStaticShadowMaterialInputs &=
+			CMapAssetRenderUtils::Uses_StaticShadowInputs(surface, m_RenderProfile, true);
+	}
+	m_bStaticShadowMaterialInputs &= !m_StaticShadowCasterMeshes.empty();
 
 	// Small or unsimplifiable meshes never consume tight LOD bounds. Keep the
 	// ordinary world envelope/culling and profiler draw denominators unchanged.

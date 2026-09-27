@@ -101,6 +101,10 @@ struct BOSS_COMBAT_OBJECT_VISUAL_ENTRY final
 	   The Server sends only the stable combat-object/hit identity and pose;
 	   presentation assets remain a typed Client catalog concern. */
 	std::string hitEffectAssetId;
+	// Optional exact Server lifecycle marker -> warning visual mapping.
+	std::string armedPresentationEventId;
+	std::string armedEffectAssetId;
+	bool_t stopActiveOnHit = false;
 	// Presentation scale relative to the authoritative combat-object root.
 	float3_t worldScale = { 1.f, 1.f, 1.f };
 

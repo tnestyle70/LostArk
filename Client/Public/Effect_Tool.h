@@ -19,6 +19,7 @@
 #include "ValtanPatternAuthoringEffectDocument.h"
 #include "ValtanPatternTree.h"
 #include "ValtanViewAdmission.h"
+#include "ValtanCinematicEffectLibrary.h"
 
 #include <array>
 #include <filesystem>
@@ -543,6 +544,7 @@ public:
     bool Update_AuthoringPlacementInput(bool active);
     void Deactivate_AuthoringWorkspace();
     bool Open_AuthoringResource(const EFFECT_RESOURCE_KEY& key);
+    bool Preview_AuthoringResource(const EFFECT_RESOURCE_KEY& key, std::string& status);
     bool Consume_AuthoringInteraction();
     struct CLASS_MOVIE_RESOURCE_ROW final { std::string classId, label; };
     // The active Level supplies its admitted list; the browser owns only an open request.
@@ -613,6 +615,8 @@ private:
     void Render_CurrentEffectAttachmentGroups();
     void Render_OwnerControlEditor();
     bool_t Try_TranslateAttachmentGroup(const std::string& groupKey, const float3_t& delta);
+    bool_t Try_CreateMarkedElementGroup();
+    bool_t Try_SetAttachmentGroupStart(const std::string& groupKey, float startSeconds);
     bool_t Try_SetAttachmentGroupAnchor(const std::string& groupKey, const float3_t& position, const float3_t& rotationDegrees);
     bool_t Try_RotateAttachmentGroup(const std::string& groupKey, const float3_t& rotationDegrees,
         const float3_t& pivot, const std::string& elementId);
@@ -644,6 +648,8 @@ private:
 	void Render_ValtanExactAuthoredSourceSection(
 		const std::string& strSearch);
 	void Render_ValtanEffectResourceSection(const std::string& strSearch);
+	void Render_ValtanCinematicEffectSection(const std::string& strSearch);
+	bool_t Refresh_ValtanCinematicEffectLibrary();
 	bool_t Refresh_ValtanEffectResourceSnapshot();
 	bool_t Open_ValtanEffectResource(
 		const EFFECT_RESOURCE_DESCRIPTOR& Resource);
@@ -1254,6 +1260,9 @@ private:
 		VALTAN_VIEW_ADMISSION::UNLOADED;
 	std::string m_strValtanEffectResourceStatus;
 	bool_t m_bValtanEffectResourceLoadAttempted = false;
+	VALTAN_CINEMATIC_EFFECT_LIBRARY m_ValtanCinematicEffectLibrary;
+	std::string m_strValtanCinematicEffectStatus;
+	bool_t m_bValtanCinematicEffectLoadAttempted = false;
 	std::optional<EFFECT_RESOURCE_KEY> m_PendingTypedEffectResourceOpen;
     std::vector<CLASS_MOVIE_RESOURCE_ROW> m_ClassMovieResources;
     std::optional<std::string> m_PendingClassMovieEditor;

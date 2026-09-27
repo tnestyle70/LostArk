@@ -278,12 +278,15 @@ World Tool, Effect Composition resolver, Map publisher와 Composition validator�
 상한을 소비한다. template당 모든 lane을 합한 track 64개, track당 key 4096개와 문서 16 MiB 제한은 별도로
 유지한다. JSON array와 stable ID 계약은 그대로이며 template 수를 늘려도 wire 형식은 바뀌지 않는다.
 
-WorldSequence v3의 optional `soundTracks`는 `{ soundTrackId, assetId, startMs, durationMs, volume }`을
-저장한다. ID는 lane 안에서 유일한 stable ID이며 asset은 Resources-relative `Sound/*.wav`다.
+WorldSequence v3의 optional `soundTracks`는 `{ soundTrackId, assetId, startMs, durationMs, volume }`과
+optional boolean `loopToDuration`(기본 false)을 저장한다. ID는 lane 안에서 유일한 stable ID이며 asset은 Resources-relative `Sound/*.wav`다.
 `startMs`는 0..template duration, `durationMs`는 양수, 합은 최대 600000ms이며 volume은 finite
 0..4다. 원본 사운드의 끝이 visual duration을 넘어도 `PresentationSpanMs`와 `CycleSpanMs`,
 카메라 종료 시간은 늘리지 않는다. 자연 종료 후 남은 소리는 기존 sound handle로 관리하며 명시적
-Stop, Seek, Level 정리는 해당 handle을 함께 종료한다.
+Stop, Seek, Level 정리는 해당 handle을 함께 종료한다. `loopToDuration=true`는 원본 미디어 길이의 modulo로
+반복 구간을 재생하되 track duration, motion 전환·cutoff, visual 종료, Stop에서 즉시 끝낸다.
+반복음은 자연 종료 후 one-shot tail로 넘기지 않는다. 시작음과 반복 layer가 함께 있는 원본은
+각 layer를 별도 sound track으로 연결해 시작음을 매 cycle마다 재생하지 않는다.
 
 optional `subtitleTracks`는 `{ subtitleTrackId, stringId, text, position, slotId, startMs, durationMs }`다.
 `text`는 1..4096-byte valid UTF-8 plain text이며 LF만 허용하고 다른 제어 문자와 `<`, `>`는 거부한다.

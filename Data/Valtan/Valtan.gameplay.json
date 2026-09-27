@@ -718,7 +718,8 @@
       "invulnerableWhileRunning": false,
       "sourceActionIds": [
         420604,
-        400430
+        400430,
+        400424
       ],
       "serverMotion": null,
       "reactions": [],
@@ -727,7 +728,7 @@
           "stageId": "WINDUP",
           "actionId": "valtan.attack.dash-charge.windup",
           "stageKind": "WINDUP",
-          "durationMs": 3650,
+          "durationMs": 7350,
           "defaultNextActionId": "valtan.attack.dash-charge.active",
           "hit": {
             "shape": {
@@ -782,7 +783,7 @@
           "stageId": "GROGGY",
           "actionId": "valtan.attack.dash-charge.recovery",
           "stageKind": "GROGGY",
-          "durationMs": 6833,
+          "durationMs": 6897,
           "defaultNextActionId": null,
           "hit": {
             "shape": {
@@ -2709,7 +2710,7 @@
           "stageId": "STEP_01",
           "actionId": "valtan.authoring.bind-slot.step-01",
           "stageKind": "ACTIVE",
-          "durationMs": 5000,
+          "durationMs": 4107,
           "defaultNextActionId": "valtan.authoring.bind-slot.recovery",
           "hit": {
             "shape": {
@@ -2735,7 +2736,7 @@
               "trigger": "ENTER",
               "kind": "SET_PLAYER_BIND",
               "heightM": 5.0,
-              "durationMs": 5000
+              "durationMs": 4107
             },
             {
               "eventId": "event.valtan.bind-slot.step-01.exit",

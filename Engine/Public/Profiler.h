@@ -85,6 +85,10 @@ enum class EProfilerCounter : uint16_t
     EffectMarkerHistoryRequests,
     EffectAmbientSuspended,
     EffectAmbientAdvanced,
+    ImGuiPresentAttempts,
+    ImGuiPresentBusy,
+    ImGuiPresentFailures,
+    ImGuiPresentOccluded,
     Count
 };
 
@@ -143,6 +147,16 @@ struct FProfilerModelAnimationToken final
     uint64_t FrameNumber = 0;
 };
 
+// Secondary window presentation only. Main-thread capture; bounded per frame.
+struct FProfilerViewportPresent final
+{
+    uint32_t ViewportId = 0;
+    float X = 0, Y = 0, Width = 0, Height = 0;
+    double CpuMs = 0;
+    uint32_t SyncInterval = 0, Flags = 0;
+    int32_t Result = 0;
+};
+
 struct FProfilerFrame final
 {
     uint64_t FrameNumber = 0;
@@ -152,6 +166,8 @@ struct FProfilerFrame final
     double CpuFrameMs = 0.0;
     double FrameIntervalMs = 0.0;
     FProfilerAnimationStats Animation{};
+    std::vector<FProfilerViewportPresent> ViewportPresents;
+    uint32_t DroppedViewportPresents = 0;
     double GpuFrameMs = 0.0;
     bool GpuValid = false;
     uint32_t GpuLatencyFrames = 0;
@@ -281,6 +297,7 @@ public:
     FProfilerModelAnimationToken Begin_ModelAnimation() const noexcept;
     void End_ModelAnimation(const void* model, FProfilerModelAnimationToken token);
     void Record_ModelSubmitted(const void* model);
+    void Record_ViewportPresent(const FProfilerViewportPresent& sample);
 
     void Add_Counter(EProfilerCounter counter, uint64_t value = 1) noexcept;
     void Set_Counter(EProfilerCounter counter, uint64_t value) noexcept;

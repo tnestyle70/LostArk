@@ -411,8 +411,11 @@ private:
 	void Hide_BossHealthBar();
 	/* Replicated enemies and other players; current pose projected after camera update. */
 	void Update_WorldHealthBars(f32_t fTimeDelta);
-	std::array<f32_t, 3> Get_HealthBarPositions() const;
-	bool_t Set_HealthBarPositions(const std::array<f32_t, 3>& offsets);
+	std::array<f32_t, 12> Get_HealthBarPositions() const;
+	bool_t Set_HealthBarPositions(const std::array<f32_t, 12>& offsets);
+	std::array<f32_t, 2> Get_MechanicBarScale() const;
+	bool_t Set_MechanicBarScale(const std::array<f32_t, 2>& scale);
+	void Apply_MechanicBarRect();
 	bool_t Save_HealthBarPositions(std::string& status);
 	bool_t Reload_HealthBarPositions(std::string& status);
 	void RenderHUDBarPositionControls();
@@ -520,6 +523,7 @@ private:
 	/* F1 "Valtan Arena": the "Normal Monster 1/2" buttons that ask the Server to
 	   re-summon the Stage_1 / Stage_2 corridor waves. Shown only inside the arena. */
 	void RenderValtanArenaControls();
+	void RenderValtanArenaStateControls();
 	void RenderValtanAxeEditor();
 	void OpenDebugResourceFile(size_t iFile);
 	void RefreshCompletePlayPatternOptions();
@@ -686,9 +690,12 @@ private:
 	   Level rather than inside the arena. */
 	unique_ptr<CDungeonTimerView> m_pDungeonTimerView;
 	unique_ptr<CWorldHealthBarView> m_pWorldHealthBarView = { nullptr };
-	/* mechanic / ally / enemy Y offsets, relative to the original authored positions. */
-	std::array<f32_t, 3> m_HealthBarOffsets{}, m_SavedHealthBarOffsets{};
-	std::array<float2_t, 3> m_MechanicBarBasePositions{};
+	/* X/Y pairs: mechanic, ally, normal monster, KoukuSaydon, Kouku, Valtan. */
+	std::array<f32_t, 12> m_HealthBarOffsets{}, m_SavedHealthBarOffsets{};
+	/* Width/height scales apply only to the mechanic row; original rects never change. */
+	std::array<f32_t, 2> m_MechanicBarScale{ 1.f / 3.f, 1.f };
+	std::array<f32_t, 2> m_SavedMechanicBarScale{ 1.f / 3.f, 1.f };
+	std::array<float4_t, 3> m_MechanicBarBaseRects{};
 	std::array<bool_t, 3> m_MechanicBarHasBase{};
 	std::string m_strHealthBarPositionStatus;
 	/* UI/Esther/EstherUI.json's runtime consumer (Update_EstherGauge) -- real CUI_Sprite

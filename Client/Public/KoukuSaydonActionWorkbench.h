@@ -813,6 +813,9 @@ namespace Client
 		void Render_PatternsAndResources();
 		bool_t Render_AppendPatternButton();
 		void Render_PatternTree(bool_t resourcePicker);
+		void Rebuild_PatternTreeView();
+		const KOUKU_SAYDON_COMPOSITION_PRESENTATION_RESOURCE* Find_DraftPresentationResource(
+			const std::string& resourceId);
 		void Render_PatternResources();
 		bool_t Resolve_PatternResourceAppend(std::string& ownerId, std::uint32_t& startMs,
 			std::uint32_t& durationMs, std::string& status) const;
@@ -1125,6 +1128,38 @@ namespace Client
 		std::optional<TIMELINE_CLIPBOARD> m_TimelineClipboard;
         bool m_CompositionResourcesFocused = false;
 		KOUKU_SAYDON_COMPOSITION_DOCUMENT m_Draft;
+		// This view owns labels and stable IDs, never pointers into a replaced draft.
+		struct PATTERN_TREE_LEAF
+		{
+			std::string patternId, label;
+			bool exists = false, matchesGate = false;
+		};
+		struct PATTERN_TREE_LEAVES
+		{
+			std::vector<PATTERN_TREE_LEAF> rows;
+			bool hasMultilineLabel = false;
+		};
+		struct PATTERN_TREE_BUNDLE
+		{
+			std::string id, label;
+			PATTERN_TREE_LEAVES leaves;
+		};
+		struct PATTERN_TREE_FOLDER
+		{
+			std::string id, label, timelinePatternId;
+			std::vector<PATTERN_TREE_BUNDLE> bundles;
+			PATTERN_TREE_LEAVES leaves;
+		};
+		struct PATTERN_TREE_GATE
+		{
+			std::string id, label;
+			std::vector<PATTERN_TREE_FOLDER> folders;
+			PATTERN_TREE_LEAVES leaves;
+		};
+		std::vector<PATTERN_TREE_GATE> m_PatternTreeView;
+		std::uint64_t m_iPatternTreeViewGeneration = UINT64_MAX;
+		std::unordered_map<std::string, std::size_t> m_DraftPresentationResourceIndices;
+		std::uint64_t m_iDraftPresentationIndexGeneration = UINT64_MAX;
 		KOUKU_PATTERN_SELECTION m_ePatternSelection = KOUKU_PATTERN_SELECTION::GATE;
 		std::string m_strSelectedGateId = "GATE1";
 		std::string m_strModelViewProfile;

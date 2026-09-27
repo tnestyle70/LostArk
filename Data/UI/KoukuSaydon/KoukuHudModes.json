@@ -1,9 +1,20 @@
 {
   "formatVersion": 1,
   "healthBarPositions": {
-    "mechanicOffsetY": 0,
+    "allyOffsetX": 0,
     "allyOffsetY": 0,
-    "enemyOffsetY": 0
+    "enemyOffsetX": 0,
+    "enemyOffsetY": -40,
+    "koukuOffsetX": 0,
+    "koukuOffsetY": 0,
+    "koukuSaydonOffsetX": 0,
+    "koukuSaydonOffsetY": -92,
+    "mechanicHeightScale": 1,
+    "mechanicOffsetX": 0,
+    "mechanicOffsetY": 7,
+    "mechanicWidthScale": 0.3333333432674408,
+    "valtanOffsetX": -20,
+    "valtanOffsetY": -227
   },
   "madness": {
     "feetOffsetMeters": 1.2999999523162842,
