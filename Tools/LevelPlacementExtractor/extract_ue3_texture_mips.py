@@ -22,6 +22,11 @@ from typing import Any
 import extract_ue3_placements as up
 from source_extraction_io import write_pair
 
+# LightMapTexture2D and ShadowMapTexture2D are UTexture2D subclasses and serialise the same tagged
+# property list and inline native mip table, which was verified by parsing real exports of both.
+# Any other class is still refused by name rather than assumed compatible.
+TEXTURE2D_CLASSES = ("texture2d", "lightmaptexture2d", "shadowmaptexture2d")
+
 
 class MipExtractionError(ValueError):
     pass
@@ -126,7 +131,7 @@ def resolve_texture(source: str, source_package: Path, package_root: Path,
         package = packages[key]
         index = package.find(object_path)
         if package.cls(index) != "objectredirector":
-            require(package.cls(index) == "texture2d", f"unsupported source class {package.cls(index)}")
+            require(package.cls(index) in TEXTURE2D_CLASSES, f"unsupported source class {package.cls(index)}")
             return package, index, identity, redirects, packages
         serial = package.raw(index)
         # These cooked redirectors contain an object prefix, an empty property

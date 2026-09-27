@@ -182,6 +182,14 @@ namespace LostArk::Server
 		admit it, and Enforce_VehicleRidingState clears it before the snapshot
 		whenever the player can no longer ride. */
 		LostArk::Shared::VEHICLE_ID iVehicleId = LostArk::Shared::INVALID_VEHICLE_ID;
+		/* Bern ship voyage (server only, never replicated). A ship carries the player out to the sea
+		   navigation region and the pier position it left is kept here until the player leaves the ship. */
+		bool bShipDockValid = false;
+		float fShipDockX = 0.f, fShipDockY = 0.f, fShipDockZ = 0.f, fShipDockYawDegrees = 0.f;
+		/* Fast sail: the tick the current boost expires on, 0 when none is running.
+		   It is server only and never replicated as its own field, because the boosted speed
+		   already reaches the Client through SNAPSHOT_PLAYER's existing fMoveSpeed. */
+		std::uint32_t iShipBoostEndTick = 0u;
 		LostArk::Shared::VEHICLE_FLIGHT_PHASE eVehicleFlightPhase = LostArk::Shared::VEHICLE_FLIGHT_PHASE::GROUNDED;
 		std::uint32_t iVehicleFlightPhaseStartTick = 0u;
 		float fVehicleFlightPhaseSeconds = 0.f;

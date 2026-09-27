@@ -10,6 +10,7 @@
 #include <cstdint>
 #include <iostream>
 #include <memory>
+#include <vector>
 
 using namespace LostArk::Server;
 using namespace LostArk::Shared;
@@ -448,6 +449,9 @@ int LostArk::Server::Run_ServerVehicleRidingContractTests()
                 std::abs(raider.fPositionY - floor.y) <= 1.f,
                 "Forced dismount reprojects a collapsed last-safe floor onto surviving ground on the same deck");
         }
+        tests.Require(VEHICLE_RIDING_RESULT::REJECTED_WORLD_NOT_ALLOWED == valtan->Apply_SetVehicleRiding(raider,
+            Make_VehicleRequest(3u, WORLD_ID::VALTAN_ARENA, 8200u)).eResult,
+            "A raid arena refuses ships too");
 	}
 
     auto kouku = std::make_unique<CGameRoom>(WORLD_ID::KAKULSAYDON_ARENA);
@@ -463,6 +467,162 @@ int LostArk::Server::Run_ServerVehicleRidingContractTests()
             WORLD_ID::KAKULSAYDON_ARENA, ANCIENT_SEA_VEHICLE_ID)).eResult == VEHICLE_RIDING_RESULT::ACCEPTED,
             "Kouku admits Ancient Sea");
     }
+	/* Bern3 voyage ships (EFTable_VoyageShip 8200..8208) ride like any vehicle: Bern only, at the
+	speed the publisher derives from the table (MoveSpeed / 100) times the authored projectTuning
+	moveSpeedMultiplier, with SPACE fast sail at the tuned boost multiple of that speed. */
+	struct SHIP_EXPECTATION { VEHICLE_ID iId; float fSpeed; float fBoostSpeed; };
+	constexpr SHIP_EXPECTATION SHIPS[] = {
+		{ 8200u, 4.00f, 12.0f }, { 8201u, 3.80f, 11.4f }, { 8202u, 4.40f, 13.2f },
+		{ 8203u, 3.60f, 10.8f }, { 8204u, 3.66f, 10.98f }, { 8205u, 3.70f, 11.1f },
+		{ 8206u, 3.60f, 10.8f }, { 8207u, 4.20f, 12.6f }, { 8208u, 4.00f, 12.0f } };
+	for (const SHIP_EXPECTATION& ship : SHIPS)
+	{
+		const SERVER_VEHICLE_DEFINITION* definition = bern->m_VehicleCatalog.Find_Vehicle(ship.iId);
+		tests.Require(nullptr != definition && Near(definition->fMoveSpeed, ship.fSpeed),
+			"A voyage ship publishes its tuned EFTable_VoyageShip MoveSpeed as metres per second");
+		tests.Require(nullptr != definition && Near(definition->fBoostMoveSpeed, ship.fBoostSpeed),
+			"A voyage ship publishes SPACE fast sail at the tuned multiple of its move speed");
+	}
+	SERVER_PLAYER& sailor = bern->m_Players[2u];
+	sailor.iPlayerId = 2u;
+	sailor.iNetEntityId = 102u;
+	sailor.iSessionId = RIDER_SESSION + 1u;
+	sailor.eCharacterClass = CHARACTER_CLASS_ID::WARLORD;
+	sailor.eStance = PLAYER_STANCE_ID::WARLORD_NORMAL;
+	sailor.iCurrentHp = sailor.iMaximumHp = 50000u;
+	sailor.fMoveSpeed = 2.8f;
+	/* Ships sail from a harbour: the sailor stands on the Bern3 pier of the harbour master the map owner
+	   placed. Boarding carries the player out to the BernSea navigation region. */
+	constexpr float PIER_X = 264.41f, PIER_Y = 11.79f, PIER_Z = -204.03f;
+	constexpr float SEA_LEVEL = 10.95f;
+	sailor.fPositionX = PIER_X;
+	sailor.fPositionY = PIER_Y;
+	sailor.fPositionZ = PIER_Z;
+	sailor.fYawDegrees = 33.f;
+	bern->m_PlayerIdBySessionId[RIDER_SESSION + 1u] = 2u;
+	tests.Require(VEHICLE_RIDING_RESULT::ACCEPTED == bern->Apply_SetVehicleRiding(
+		sailor, Make_VehicleRequest(1u, WORLD_ID::BERN, 8200u)).eResult &&
+		8200u == sailor.iVehicleId && Near(bern->Resolve_PlayerMoveSpeed(sailor), 4.f),
+		"Boarding a ship in Bern commits it and moves at the ship speed");
+	const float seaX = sailor.fPositionX, seaY = sailor.fPositionY, seaZ = sailor.fPositionZ;
+	tests.Require(sailor.bShipDockValid && Near(sailor.fShipDockX, PIER_X) &&
+		Near(sailor.fShipDockY, PIER_Y) && Near(sailor.fShipDockZ, PIER_Z) &&
+		Near(sailor.fShipDockYawDegrees, 33.f),
+	"Boarding a ship keeps the pier position the player stood on");
+	tests.Require(std::abs(seaY - SEA_LEVEL) < 0.01f &&
+		std::hypot(seaX - PIER_X, seaZ - PIER_Z) > 3.f &&
+		bern->m_ServerNavigation.Is_PointWalkableInRegion("BernSea", seaX, seaZ, SEA_LEVEL),
+	"Boarding a ship carries the player out onto open sea navigation, away from the pier");
+	std::cout << "[test] sea departure (" << seaX << ", " << seaY << ", " << seaZ << ") from the pier, distance "
+		<< std::hypot(seaX - PIER_X, seaZ - PIER_Z) << " m\n";
+	{
+		/* A right-click on the water becomes a server path on the sea region at the ship speed. */
+		bool foundGoal = false;
+		std::vector<SERVER_NAV_POINT> path;
+		SERVER_NAV_POINT goal{};
+		for (const float offset : { 20.f, -20.f, 30.f, -30.f, 12.f, -12.f })
+			for (int axis = 0; axis < 2 && !foundGoal; ++axis)
+			{
+				const float goalX = seaX + (0 == axis ? offset : 0.f);
+				const float goalZ = seaZ + (1 == axis ? offset : 0.f);
+				if (!bern->m_ServerNavigation.Is_PointWalkableInRegion("BernSea", goalX, goalZ, SEA_LEVEL))
+					continue;
+				path.clear();
+				if (bern->m_ServerNavigation.Find_Path(seaX, seaZ, goalX, goalZ, path, seaY) && !path.empty())
+				{
+					goal = { goalX, SEA_LEVEL, goalZ };
+					foundGoal = true;
+				}
+			}
+		tests.Require(foundGoal && std::abs(path.back().y - SEA_LEVEL) < 0.6f &&
+			std::hypot(path.back().x - goal.x, path.back().z - goal.z) < 1.5f,
+		"A click on the water finds a path on the sea region from the departure point");
+	}
+	tests.Require(VEHICLE_RIDING_RESULT::ACCEPTED == bern->Apply_SetVehicleRiding(
+		sailor, Make_VehicleRequest(2u, WORLD_ID::BERN, 8207u)).eResult &&
+		8207u == sailor.iVehicleId && Near(bern->Resolve_PlayerMoveSpeed(sailor), 4.2f),
+		"Switching ship changes the movement speed to the new ship");
+	tests.Require(sailor.bShipDockValid && Near(sailor.fPositionX, seaX) && Near(sailor.fPositionZ, seaZ) &&
+		Near(sailor.fShipDockX, PIER_X),
+	"Switching ship at sea keeps the sea position and the pier the player left");
+	tests.Require(VEHICLE_RIDING_RESULT::ACCEPTED == bern->Apply_SetVehicleRiding(
+		sailor, Make_VehicleRequest(3u, WORLD_ID::BERN, INVALID_VEHICLE_ID)).eResult &&
+		INVALID_VEHICLE_ID == sailor.iVehicleId && Near(bern->Resolve_PlayerMoveSpeed(sailor), 2.8f),
+		"Leaving the ship restores the walking speed");
+	tests.Require(!sailor.bShipDockValid && Near(sailor.fPositionX, PIER_X) && Near(sailor.fPositionY, PIER_Y) &&
+		Near(sailor.fPositionZ, PIER_Z) && Near(sailor.fYawDegrees, 33.f),
+	"Leaving the ship returns the player to the pier position it left");
+	tests.Require(VEHICLE_RIDING_RESULT::ACCEPTED == bern->Apply_SetVehicleRiding(
+		sailor, Make_VehicleRequest(4u, WORLD_ID::BERN, 8200u)).eResult && sailor.bShipDockValid,
+	"A sailor can board again from the pier");
+	sailor.iCurrentHp = 0u;
+	bern->Enforce_VehicleRidingState();
+	tests.Require(INVALID_VEHICLE_ID == sailor.iVehicleId, "A dead sailor leaves the ship");
+	tests.Require(!sailor.bShipDockValid && Near(sailor.fPositionX, PIER_X) && Near(sailor.fPositionZ, PIER_Z),
+	"A dead sailor is brought back to the pier");
+	{
+		/* A ship is a harbour service: from the city spawn there is no open sea within reach. */
+		SERVER_PLAYER& landlubber = bern->m_Players[3u];
+		landlubber.iPlayerId = 3u;
+		landlubber.iNetEntityId = 103u;
+		landlubber.iSessionId = RIDER_SESSION + 2u;
+		landlubber.eCharacterClass = CHARACTER_CLASS_ID::WARLORD;
+		landlubber.eStance = PLAYER_STANCE_ID::WARLORD_NORMAL;
+		landlubber.iCurrentHp = landlubber.iMaximumHp = 50000u;
+		landlubber.fMoveSpeed = 2.8f;
+		landlubber.fPositionX = spawn->fPositionX;
+		landlubber.fPositionY = spawn->fPositionY;
+		landlubber.fPositionZ = spawn->fPositionZ;
+		bern->m_PlayerIdBySessionId[RIDER_SESSION + 2u] = 3u;
+		tests.Require(VEHICLE_RIDING_RESULT::REJECTED_PLAYER_STATE == bern->Apply_SetVehicleRiding(
+			landlubber, Make_VehicleRequest(1u, WORLD_ID::BERN, 8200u)).eResult &&
+			INVALID_VEHICLE_ID == landlubber.iVehicleId && !landlubber.bShipDockValid &&
+			Near(landlubber.fPositionX, spawn->fPositionX) && Near(landlubber.fPositionZ, spawn->fPositionZ),
+		"Boarding a ship away from a harbour is refused and the player stays put");
+		tests.Require(VEHICLE_RIDING_RESULT::ACCEPTED == bern->Apply_SetVehicleRiding(
+			landlubber, Make_VehicleRequest(2u, WORLD_ID::BERN, GOLDEN_TERPEION)).eResult &&
+			GOLDEN_TERPEION == landlubber.iVehicleId && !landlubber.bShipDockValid &&
+			Near(landlubber.fPositionX, spawn->fPositionX),
+		"A land mount never moves the player and never stores a pier position");
+	}
+	{
+		/* The three Bern3 ship NPC placements the map owner chose: published, enabled, spawned as world
+		   entities in the Bern room and standing on walkable Bern3 ground. A shipwright and a harbour
+		   master that the room does not hold, or that stand off the navigation, can never be reached. */
+		struct SHIP_NPC_EXPECTATION { const char* placementId; const char* archetypeId; float x, y, z; };
+		constexpr SHIP_NPC_EXPECTATION SHIP_NPCS[] = {
+			{ "npc.bern.ship.shipwright.1", "NPC_SHIP_SHIPWRIGHT", 271.59f, 12.43f, -196.7f },
+			{ "npc.bern.ship.shipwright.2", "NPC_SHIP_SHIPWRIGHT", 229.61f, 12.47f, -196.5f },
+			{ "npc.bern.ship.harbormaster.1", "NPC_SHIP_HARBORMASTER", 264.41f, 11.79f, -204.03f } };
+		for (const SHIP_NPC_EXPECTATION& expected : SHIP_NPCS)
+		{
+			const auto placement = std::find_if(placements.begin(), placements.end(),
+				[&expected](const WORLD_BOOTSTRAP_PLACEMENT& candidate)
+				{
+					return candidate.strPlacementId == expected.placementId;
+				});
+			tests.Require(placements.end() != placement && placement->isEnabled &&
+				WORLD_BOOTSTRAP_KIND::NPC == placement->eKind &&
+				placement->strArchetypeId == expected.archetypeId &&
+				std::abs(placement->fPositionX - expected.x) < 0.001f &&
+				std::abs(placement->fPositionY - expected.y) < 0.001f &&
+				std::abs(placement->fPositionZ - expected.z) < 0.001f,
+				"The published Bern world places this ship NPC at the map owner's Bern3 position");
+			const auto spawned = std::find_if(bern->m_WorldEntities.begin(), bern->m_WorldEntities.end(),
+				[&expected](const SERVER_WORLD_ENTITY& entity)
+				{
+					return entity.strPlacementId == expected.placementId;
+				});
+			tests.Require(bern->m_WorldEntities.end() != spawned &&
+				WORLD_BOOTSTRAP_KIND::NPC == spawned->eKind &&
+				spawned->strArchetypeId == expected.archetypeId &&
+				std::abs(spawned->fPositionX - expected.x) < 0.5f &&
+				std::abs(spawned->fPositionZ - expected.z) < 0.5f,
+				"The Bern room spawns this ship NPC as a world entity");
+			tests.Require(bern->m_ServerNavigation.Is_PointWalkableExact(expected.x, expected.z, expected.y),
+				"This ship NPC stands on walkable Bern3 navigation");
+		}
+	}
 	std::cout << "vehicle riding failures: " << tests.failures << '\n';
 	return 0 == tests.failures ? 0 : 1;
 }

@@ -1202,6 +1202,74 @@
     {
       "assetId": "MAP_FEC7A85A40AA_BG_PAP_NIATOWN_CARPET02_SM_NX",
       "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_3B0C9DE5BEA5_LV_PAP_SCOAST_FOLIAGE04_SM_01",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_5911C52F9870_BG_RHD_FOLIAGE_GLOWPLANT03_SM_KSY",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_6F65943F770A_LV_PAP_SCOAST_FOLIAGE01_SM",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_CAE7FEB44994_BG_FAT_FOLIAGE_REDPLANT02A_SM_KSY_02",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_D1B8FF4EA5B8_FG_TR_B05_SM",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_DB8952FDD61B_LV_PAP_TICAC_FOLIAGE02_SM",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_F918703D4597_FG_TR_B04_SM",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_3394CA48094A_LV_OCN_EVENTIS_MHP_WATER02_SM_OVR_53F9EEC1FCA4",
+      "renderMode": "Water"
+    },
+    {
+      "assetId": "MAP_4C8A5424422D_BG_FAT_STONE_ROCK03_SM_OVR_1A2629364329",
+      "renderMode": "Water"
+    },
+    {
+      "assetId": "MAP_557CAE338ABF_BG_FAT_STONE_ROCK02_SM_OVR_1A2629364329",
+      "renderMode": "Water"
+    },
+    {
+      "assetId": "MAP_7BA4AC84CD3A_LV_MODULE_WATER02_512_OVR_3CB26CF55D22",
+      "renderMode": "Water"
+    },
+    {
+      "assetId": "MAP_7BA4AC84CD3A_LV_MODULE_WATER02_512_OVR_53F9EEC1FCA4",
+      "renderMode": "Water"
+    },
+    {
+      "assetId": "MAP_7BA4AC84CD3A_LV_MODULE_WATER02_512_OVR_E67B61F41453",
+      "renderMode": "Water"
+    },
+    {
+      "assetId": "MAP_A98778E158B2_BG_FAT_STONE_ROCK01_SM_OVR_1A2629364329",
+      "renderMode": "Water"
+    },
+    {
+      "assetId": "MAP_C1B966AD13A1_LV_OCN_EVENTIS_MHP_WATER03_SM_OVR_53F9EEC1FCA4",
+      "renderMode": "Water"
+    },
+    {
+      "assetId": "MAP_EA9C52CC4464_LV_BER_BERNILF_FLOOR01_SM_OVR_53F9EEC1FCA4",
+      "renderMode": "Water"
+    },
+    {
+      "assetId": "MAP_EB275526D3D5_LV_OCN_EVENTIS_MHP_FLOOR02_SM_OVR_53F9EEC1FCA4",
+      "renderMode": "Water"
     }
   ],
   "visibilityOverrides": []

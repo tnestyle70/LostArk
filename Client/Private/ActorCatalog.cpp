@@ -25,6 +25,7 @@ namespace
 	ModelMaterials g_BossModelMaterials;
 	ModelMaterials g_EquipmentModelMaterials;
 	std::vector<NPC_ACTOR_ENTRY> g_Npcs;
+	ModelMaterials g_NpcModelMaterials;
 	std::vector<MONSTER_ACTOR_ENTRY> g_Monsters;
 	std::vector<VEHICLE_ACTOR_ENTRY> g_Vehicles;
 	ModelMaterials g_VehicleModelMaterials;
@@ -888,6 +889,15 @@ namespace
 			}
 			staged.push_back(std::move(entry));
 		}
+		ModelMaterials stagedMaterials;
+		if (!ParseModelMaterialOverrides(root, stagedMaterials)) return false;
+		for (const auto& [model, overrides] : stagedMaterials)
+		{
+			if (std::none_of(staged.begin(), staged.end(), [&model](const auto& npc) {
+				return npc.modelAssetId == model;
+			})) return false;
+		}
+		g_NpcModelMaterials = std::move(stagedMaterials);
 		g_Npcs = std::move(staged);
 		return !g_Npcs.empty();
 	}
@@ -1190,7 +1200,12 @@ namespace
 			body turns the rider with the seat bone instead of only moving them. */
 			const DATA_JSON_VALUE* pSeatRotation = value.Is_Object() ?
 				value.Find("seatBoneRotatesRider") : nullptr;
+			const DATA_JSON_VALUE* pShip = value.Is_Object() ? value.Find("ship") : nullptr;
+			const DATA_JSON_VALUE* pSeatOffset = value.Is_Object() ? value.Find("seatOffset") : nullptr;
+			const DATA_JSON_VALUE* pModelYaw = value.Is_Object() ? value.Find("modelYawDegrees") : nullptr;
+			const DATA_JSON_VALUE* pModelLift = value.Is_Object() ? value.Find("modelLiftMeters") : nullptr;
             const std::size_t optionalCount = (pSeatRotation ? 1u : 0u) +
+                (pShip ? 1u : 0u) + (pSeatOffset ? 1u : 0u) + (pModelYaw ? 1u : 0u) + (pModelLift ? 1u : 0u) +
                 (hasLocomotionCues && value.Find("locomotionSoundCues") ? 1u : 0u) +
                 (hasLocomotionCues && value.Find("ambientEffectCues") ? 1u : 0u) +
                 (hasLocomotionCues && value.Find("mountEffectCues") ? 1u : 0u) +
@@ -1202,6 +1217,41 @@ namespace
 			VEHICLE_ACTOR_ENTRY entry;
 			entry.seatBoneRotatesRider =
 				nullptr != pSeatRotation && pSeatRotation->Get_Boolean();
+			if (nullptr != pShip)
+			{
+				if (!pShip->Is_Boolean())
+					return false;
+				entry.isShip = pShip->Get_Boolean();
+			}
+			if (nullptr != pSeatOffset)
+			{
+				if (!pSeatOffset->Is_Array() || 3u != pSeatOffset->Get_Array().size())
+					return false;
+				f32_t offset[3] = {};
+				for (std::size_t axis = 0u; axis < 3u; ++axis)
+				{
+					const DATA_JSON_VALUE& component = pSeatOffset->Get_Array()[axis];
+					if (!component.Is_Number() || !std::isfinite(component.Get_Number()) ||
+						std::abs(component.Get_Number()) > 20.0)
+						return false;
+					offset[axis] = static_cast<f32_t>(component.Get_Number());
+				}
+				entry.seatOffset = float3_t(offset[0], offset[1], offset[2]);
+			}
+			if (nullptr != pModelYaw)
+			{
+				if (!pModelYaw->Is_Number() || !std::isfinite(pModelYaw->Get_Number()) ||
+					std::abs(pModelYaw->Get_Number()) > 360.0)
+					return false;
+				entry.modelYawDegrees = static_cast<f32_t>(pModelYaw->Get_Number());
+			}
+			if (nullptr != pModelLift)
+			{
+				if (!pModelLift->Is_Number() || !std::isfinite(pModelLift->Get_Number()) ||
+					std::abs(pModelLift->Get_Number()) > 20.0)
+					return false;
+				entry.modelLiftMeters = static_cast<f32_t>(pModelLift->Get_Number());
+			}
 			if (hasLocomotionCues && !ParseVehicleLocomotionCues(value, entry))
 				return false;
             if (hasLocomotionCues &&
@@ -1360,6 +1410,7 @@ bool_t Client::CActorCatalog::Initialize()
 		g_BossModelMaterials.clear();
 		g_EquipmentModelMaterials.clear();
 		g_Npcs.clear();
+		g_NpcModelMaterials.clear();
 		g_Monsters.clear();
 		g_Vehicles.clear();
 		g_VehicleModelMaterials.clear();
@@ -1426,9 +1477,11 @@ bool_t Client::CActorCatalog::Build_ModelLoadDescription(
         const auto found = g_BossModelMaterials.find(asset);
         const auto vehicle = g_VehicleModelMaterials.find(asset);
         const auto equipment = g_EquipmentModelMaterials.find(asset);
+        const auto npc = g_NpcModelMaterials.find(asset);
         const unsigned int owners = unsigned(found != g_BossModelMaterials.end()) +
             unsigned(vehicle != g_VehicleModelMaterials.end()) +
-            unsigned(equipment != g_EquipmentModelMaterials.end());
+            unsigned(equipment != g_EquipmentModelMaterials.end()) +
+            unsigned(npc != g_NpcModelMaterials.end());
         if (owners > 1u)
         {
             outStatus = "Model material ownership is ambiguous: " + asset;
@@ -1440,6 +1493,8 @@ bool_t Client::CActorCatalog::Build_ModelLoadDescription(
             staged.materialOverrides = vehicle->second;
         else if (equipment != g_EquipmentModelMaterials.end())
             staged.materialOverrides = equipment->second;
+        else if (npc != g_NpcModelMaterials.end())
+            staged.materialOverrides = npc->second;
     }
 	outDesc = std::move(staged);
 	outStatus.clear();

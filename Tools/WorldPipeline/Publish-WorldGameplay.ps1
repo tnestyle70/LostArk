@@ -6,7 +6,7 @@ param(
     # Client-side World outputs of the same transaction. Pointing both roots at
     # a scratch folder stages a publish without touching live outputs.
     [string]$ClientOutputRoot = 'Client/Bin/DataFiles/World',
-    [ValidateSet('ALL', 'BERN', 'KAKULSAYDON_ARENA', 'VALTAN_ARENA')]
+    [ValidateSet('ALL', 'BERN', 'KAKULSAYDON_ARENA', 'VALTAN_ARENA', 'MAHARAKA')]
     [string]$WorldId = 'ALL',
 	[ValidateRange(0, 12)]
 	[int]$FailureAfterPromote = 0,
@@ -186,6 +186,7 @@ function Format-InvariantFloat {
 }
 
 function Get-EncounterProfiles {
+    param([string[]]$EncounterIds)
     $documents = @(
         (Read-ProjectJson 'Data/Encounters/Valtan/ValtanEncounter.json'),
         (Read-ProjectJson `
@@ -208,6 +209,8 @@ function Get-EncounterProfiles {
     }
     $profiles = @{}
     foreach ($document in $documents) {
+        if ($PSBoundParameters.ContainsKey('EncounterIds') -and
+            [string]$document.encounterId -cnotin $EncounterIds) { continue }
 		$isKoukuSaydon = [string]$document.encounterId -ceq
 			'ENCOUNTER_KAKULSAYDON_G1'
 		$encounterProperties = @(
@@ -1560,7 +1563,11 @@ function Convert-KakulStageMarkersDocument {
 }
 
 $actorIds = Get-ActorIds
-$encounterProfiles = Get-EncounterProfiles
+$encounterProfiles = if ($WorldId -eq 'MAHARAKA') {
+    $selectedWorld = Read-ProjectJson 'Data/Worlds/LV_OCN_EVENTIS_MHP/Gameplay.world.json'
+    $selectedEncounters = @($selectedWorld.placements | Where-Object { $null -ne $_.encounterId } | ForEach-Object { [string]$_.encounterId } | Sort-Object -Unique)
+    Get-EncounterProfiles -EncounterIds $selectedEncounters
+} else { Get-EncounterProfiles }
 $monsterProfiles = Get-MonsterProfiles
 $kakulStageMarkers = Convert-KakulStageMarkersDocument
 if ($WorldId -eq 'BERN') {
@@ -1572,6 +1579,11 @@ elseif ($WorldId -eq 'KAKULSAYDON_ARENA') {
     $spawnDocuments = @((Convert-SpawnGroupsDocument -AreaId 'LV_LUT_MIDNIGHTC_ED' -WorldId $WorldId -ActorIds $actorIds -MonsterProfiles $monsterProfiles))
     $encounterPropDocuments = @((Convert-EncounterPropsDocument -AreaId 'LV_LUT_MIDNIGHTC_ED' -WorldId $WorldId))
     $worlds = @((Convert-WorldDocument -AreaId 'LV_LUT_MIDNIGHTC_ED' -WorldId $WorldId -ActorIds $actorIds -EncounterProfiles $encounterProfiles -SpawnGroupIds $spawnDocuments[0].GroupIds))
+}
+elseif ($WorldId -eq 'MAHARAKA') {
+    $spawnDocuments = @((Convert-SpawnGroupsDocument -AreaId 'LV_OCN_EVENTIS_MHP' -WorldId $WorldId -ActorIds $actorIds -MonsterProfiles $monsterProfiles))
+    $encounterPropDocuments = @((Convert-EncounterPropsDocument -AreaId 'LV_OCN_EVENTIS_MHP' -WorldId $WorldId))
+    $worlds = @((Convert-WorldDocument -AreaId 'LV_OCN_EVENTIS_MHP' -WorldId $WorldId -ActorIds $actorIds -EncounterProfiles $encounterProfiles -SpawnGroupIds $spawnDocuments[0].GroupIds))
 }
 elseif ($WorldId -eq 'VALTAN_ARENA') {
     # Valtan only: its world, spawn-group and encounter-prop bootstraps plus its

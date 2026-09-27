@@ -345,6 +345,17 @@ struct VEHICLE_ACTOR_ENTRY final
     std::vector<CHARACTER_MATERIAL_PARAMETERS> modelMaterialParameters;
 	std::string runtimeStatus;
 	bool_t seatBoneRotatesRider = false;
+	/* Ships (EFTable_VoyageShip) are listed only by the ship NPC window. */
+	bool_t isShip = false;
+	/* Metres in the vehicle root frame, added to the seat bone: a ship has no seat bone above
+	the waterline, so the rider stands on the deck at this offset. */
+	float3_t seatOffset = { 0.f, 0.f, 0.f };
+	/* Yaw (degrees) baked into the model prototype. -90 turns the cooked +X forward axis onto +Z. */
+	f32_t modelYawDegrees = -90.f;
+	/* Metres added along +Y in the model prototype pre-transform (after scale, so bones and mesh move
+	   together). A ship WModel's origin is its keel; this lifts the hull so its lowest vertex sits at the
+	   root, which the Server keeps at the sea navigation level. 0 for every other vehicle. */
+	f32_t modelLiftMeters = 0.f;
 
 	const VEHICLE_RIDER_ENTRY* Find_Rider(
 		const LostArk::Shared::CHARACTER_CLASS_ID characterClass) const

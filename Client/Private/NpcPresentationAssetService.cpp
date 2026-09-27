@@ -2,6 +2,7 @@
 
 #include "ActorCatalog.h"
 #include "EffectV2_Runtime.h"
+#include "EffectFailureDiagnostic.h"
 #include "GameInstance.h"
 #include "Model.h"
 #include "Npc.h"
@@ -73,6 +74,31 @@ namespace
 			return {};
 		return Engine::wstring_t(TEXT("Prototype_Component_Model_AnimSet_")) +
 			stem;
+	}
+}
+
+namespace
+{
+	constexpr float NPC_MODEL_PRESCALE_ROOT_CHAIN = 0.0001f;
+	constexpr float NPC_MODEL_PRESCALE_CENTIMETRE = 0.01f;
+
+	/* Every retail NPC WModel starts with RootNode -> a child node that carries a x100 scale (and
+	   the Z-up to Y-up turn), so the fixed 0.0001 pre-scale below turns centimetre vertices into
+	   metres. A composite NPC cooked without that node (the Bern3 ship NPCs) is plain centimetres
+	   and needs 0.01; with 0.0001 it would stand 1.3 cm tall and never be seen. The choice is read
+	   from the model itself: no RootNode bone at all and a unit-scale bone under the root. A model that
+	   still has RootNode always keeps 0.0001, so no retail NPC can switch even if bone order differed. */
+	float Resolve_NpcModelPreScale(const Engine::CModel& model, float& outRootChildScale)
+	{
+		outRootChildScale = 0.f;
+		if (model.Find_BoneIndex("RootNode") >= 0)
+			return NPC_MODEL_PRESCALE_ROOT_CHAIN;
+		Engine::matrix_t rootChild{};
+		if (!model.Get_BoneRestLocalMatrix(1u, rootChild))
+			return NPC_MODEL_PRESCALE_ROOT_CHAIN;
+		outRootChildScale = DirectX::XMVectorGetX(DirectX::XMVector3Length(rootChild.r[0]));
+		return (outRootChildScale > 0.5f && outRootChildScale < 2.f) ?
+			NPC_MODEL_PRESCALE_CENTIMETRE : NPC_MODEL_PRESCALE_ROOT_CHAIN;
 	}
 }
 
@@ -299,8 +325,15 @@ HRESULT Client::CNpcPresentationAssetService::Ensure_Prototypes(
 		CRuntimeAssetRoot::Resolve(actor->modelAssetId);
 	if (modelPath.empty())
 		return E_FAIL;
+	Engine::MODEL_ASSET_LOAD_DESC modelLoad;
+	std::string materialStatus;
+	if (!CActorCatalog::Build_ModelLoadDescription(actor->modelAssetId, modelLoad, materialStatus))
+	{
+		Write_EffectFailureDiagnostic("npc.model.material", materialStatus);
+		return E_FAIL;
+	}
 
-	const matrix_t preTransform =
+	matrix_t preTransform =
 		XMMatrixScaling(0.0001f, 0.0001f, 0.0001f) *
 		XMMatrixRotationY(XMConvertToRadians(-90.f));
 
@@ -308,10 +341,36 @@ HRESULT Client::CNpcPresentationAssetService::Ensure_Prototypes(
 		pDevice,
 		pContext,
 		MODEL::ANIM,
-		modelPath.string().c_str(),
+		modelLoad,
 		preTransform);
 	if (nullptr == bodyModel)
 		return E_FAIL;
+
+	/* Pick the pre-scale from the model's own root node (see Resolve_NpcModelPreScale). Only a
+	   model without the retail x100 root node is loaded a second time. */
+	{
+		float rootChildScale = 0.f;
+		const float preScale = Resolve_NpcModelPreScale(*bodyModel, rootChildScale);
+		if (preScale != NPC_MODEL_PRESCALE_ROOT_CHAIN)
+		{
+			preTransform =
+				XMMatrixScaling(preScale, preScale, preScale) *
+				XMMatrixRotationY(XMConvertToRadians(-90.f));
+			bodyModel = CModel::Create(
+				pDevice,
+				pContext,
+				MODEL::ANIM,
+				modelLoad,
+				preTransform);
+			if (nullptr == bodyModel)
+				return E_FAIL;
+			Write_EffectFailureDiagnostic("npc.model.unit",
+				"archetype=" + std::string(archetypeId) + " model=" + actor->modelAssetId +
+				" rootChildScale=" + std::to_string(rootChildScale) +
+				" preScale=" + std::to_string(preScale) +
+				" (centimetre WModel without the retail x100 root node)");
+		}
+	}
 
 	wstring_t animSetTag;
 	unique_ptr<CModel> newAnimSet;

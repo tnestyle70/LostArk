@@ -6,6 +6,7 @@
 
 #include "ActorCatalog.h"
 #include "Character.h"
+#include "EffectFailureDiagnostic.h"
 #include "CombatHUDViewModel.h"
 #include "GameInstance.h"
 #include "PlayerCommandSink.h"
@@ -70,6 +71,13 @@ namespace
 	constexpr std::chrono::milliseconds MOVE_GOAL_RESEND_INTERVAL{ 50 };
 	constexpr f32_t MOVE_GOAL_DEADZONE_RADIUS = 0.5f;
 	constexpr f32_t MOVE_GOAL_RESEND_EPSILON = 0.25f;
+
+	/* Ship on the sea. The water is a translucent surface, so a cursor ray over it passes through and the
+	   pick reports the seabed far below, at a different XZ than the water the player sees. The ship root
+	   keeps the lifted hull keel this far above the water surface (-SHIP_DRAFT_M of
+	   Tools/ShipPipeline/build_sea_nav.py), so the click goal is the point where the ray meets that plane. */
+	constexpr f32_t SHIP_WATER_BELOW_ROOT_M = 0.15f;
+
 	constexpr std::chrono::milliseconds SKILL_AIM_RESEND_INTERVAL{ 50 };
 	constexpr f32_t SKILL_AIM_RESEND_EPSILON = 0.1f;
 
@@ -473,7 +481,15 @@ void Client::CPlayerController::Update(
 			   navigation set, while the Client Character currently owns only
 			   the Area base grid.  The typed move command remains subject to
 			   Server navigation validation. */
-			if (CGameInstance::Get().Picking(pickedSurface) &&
+			const VEHICLE_ACTOR_ENTRY* const pMountedVehicle =
+				0u == CCombatHUDViewModel::Get().Get_Player().iVehicleId ? nullptr :
+				CActorCatalog::Find_Vehicle(CCombatHUDViewModel::Get().Get_Player().iVehicleId);
+			if (nullptr != pMountedVehicle && pMountedVehicle->isShip)
+			{
+				hasMoveGoal = Try_PickGroundPlane(groundY - SHIP_WATER_BELOW_ROOT_M, goal);
+				hasExactClickSurface = hasMoveGoal;
+			}
+			else if (CGameInstance::Get().Picking(pickedSurface) &&
 				std::isfinite(pickedSurface.x) &&
 				std::isfinite(pickedSurface.y) &&
 				std::isfinite(pickedSurface.z))
@@ -887,6 +903,7 @@ namespace
 {
 	void Log_VehicleRiding(const char* status)
 	{
+		Write_EffectFailureDiagnostic("vehicle.riding", status);
 		OutputDebugStringA((std::string("[Client][VehicleRiding] ") + status + "\n").c_str());
 	}
 }
@@ -974,11 +991,23 @@ void Client::CPlayerController::Update_VehicleRiding(
 bool_t Client::CPlayerController::Request_VehicleRiding(const std::uint32_t vehicleId)
 {
 	if (nullptr == m_pCommandSink || 0u != m_pendingVehicleRidingSequence)
+	{
+		Write_EffectFailureDiagnostic("vehicle.riding", nullptr == m_pCommandSink ?
+			"request refused: no command sink" :
+			"request refused: the previous riding request is still pending");
 		return false;
+	}
 	const HUD_PLAYER_STATE& player = CCombatHUDViewModel::Get().Get_Player();
 	if (!player.isValid || player.isPreview || vehicleId == player.iVehicleId ||
 		nullptr == m_pLocalCharacter.lock())
+	{
+		Write_EffectFailureDiagnostic("vehicle.riding",
+			"request refused: vehicleId=" + std::to_string(vehicleId) + " valid=" + std::to_string(player.isValid) +
+			" preview=" + std::to_string(player.isPreview) + " alreadyOnIt=" +
+			std::to_string(vehicleId == player.iVehicleId) + " localCharacter=" +
+			std::to_string(nullptr != m_pLocalCharacter.lock()));
 		return false;
+	}
 	return Send_VehicleRidingRequest(vehicleId);
 }
 
@@ -990,6 +1019,9 @@ bool_t Client::CPlayerController::Send_VehicleRidingRequest(const std::uint32_t 
 		return false;
 	}
 	m_pendingVehicleRidingSequence = m_nextVehicleRidingSequence;
+	Write_EffectFailureDiagnostic("vehicle.riding",
+		"request sent vehicleId=" + std::to_string(vehicleId) + " sequence=" +
+		std::to_string(m_nextVehicleRidingSequence));
 	m_vehicleRidingSentAt = std::chrono::steady_clock::now();
 	if (0u == ++m_nextVehicleRidingSequence)
 		m_nextVehicleRidingSequence = 1u;

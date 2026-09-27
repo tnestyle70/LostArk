@@ -541,6 +541,12 @@ void CMainApp::Play_UIButtonClickSound()
 	CGameInstance::Get().Play_Sound(soundPath.wstring(), 1.f);
 }
 
+void CMainApp::Open_ShipWindow()
+{
+	if (nullptr != m_pVehicleWindowView)
+		m_pVehicleWindowView->Open_Ships();
+}
+
 void CMainApp::Open_ItemUpgradeWindow()
 {
 	if (nullptr == m_pItemUpgradeView || m_bItemUpgradePreviewVisible)
@@ -3513,6 +3519,20 @@ void CMainApp::Update(const f32_t fTimeDelta)
     const bool_t marioStage = cinematicArena &&
         CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::KAKULSAYDON_ARENA) &&
         cinematicArena->Is_LocalMarioStageActive();
+    /* Riding a ship is the only non-cinematic owner of the presentation fog. The ride's lens
+    sits 40 m back and Bern's fog takes the source-exponential branch, which accumulates over
+    camera-to-pixel distance past startDistance, so the same authored fog that stayed invisible
+    behind the 16 m map camera washes the whole frame. Data/Camera/Bern.camera.json "shipFog"
+    tunes it without a rebuild; with no block the fog is simply off while riding. */
+    const ARENA_SHIP_FOG* pShipFog = CLevel_Bern::Get_ActiveShipFog();
+    PRESENTATION_FOG_TUNING shipFogTuning{};
+    const bool_t shipFogThinned = nullptr != pShipFog && !pShipFog->disable;
+    if (shipFogThinned)
+    {
+        shipFogTuning.fDensityScale = pShipFog->densityScale;
+        shipFogTuning.fStartDistanceMeters = pShipFog->startDistanceMeters;
+        shipFogTuning.fMaximumOpacity = pShipFog->maximumOpacity;
+    }
     const auto localCharacter = CAnimationTargetService::Resolve_SceneCharacter();
     float vehicleBrightness = localCharacter ? localCharacter->Get_VehicleDirectionalBrightness() : 1.f;
     float controlsBrightness=1.f;float4_t controlsColor{};
@@ -3521,7 +3541,8 @@ void CMainApp::Update(const f32_t fTimeDelta)
         localCharacter->Get_PresentationDirectionalControl(controlsBrightness,controlsColor);
     vehicleBrightness=std::clamp(vehicleBrightness*controlsBrightness,0.f,16.f);
     if (!m_RenderingProfiles.Apply_CameraEnvironment(fTimeDelta, environmentStatus,
-        koukuCinematic || valtanCinematic || marioStage, nullptr, vehicleBrightness, &controlsColor))
+        koukuCinematic || valtanCinematic || marioStage || nullptr != pShipFog, nullptr,
+        vehicleBrightness, &controlsColor, shipFogThinned ? &shipFogTuning : nullptr))
         OutputDebugStringA((environmentStatus + "\n").c_str());
 	}
 
@@ -8110,7 +8131,7 @@ void CMainApp::RenderDeadSceneText()
 	DeadScene_TitleTextMarker/_ReviveButton/_SpectateButton/_ReviveMessageMarker slot rects out of
 	its own m_pDeadSceneView every frame -- moving any of those in the HUD Layout Tool moves this
 	text with them, instead of a hand-copied constant here drifting out of sync the way it just did. */
-	const wstring strTitle = L"\xC0AC\xB9DD\xD558\xC600\xC2B5\xB2C8\xB2E4"; // 사망하였습니다
+	const wstring strTitle = L"\xC0AC\xB9DD\xD558\xC600\xC2B5\xB2C8\xB2E4"; // 사망하였습니다 
 	const float2_t vTitleMeasured =
 		CGameInstance::Get().Measure_Text(TEXT("Font_YoonGasiIIM"), strTitle.c_str());
 	const f32_t fTitleScale = (vTitleMeasured.y > 0.f) ?
@@ -8120,7 +8141,7 @@ void CMainApp::RenderDeadSceneText()
 			(rects.fTitleY + rects.fTitleHeight * 0.5f) * textScaleY),
 		Colors::White, 0.f, float2_t(0.5f, 0.5f), fTitleScale * textUiScale);
 
-	const wstring strReviveLabel = L"\xBD80\xD65C"; // 부활
+	const wstring strReviveLabel = L"\xBD80\xD65C"; // 부활 
 	const float2_t vReviveMeasured =
 		CGameInstance::Get().Measure_Text(TEXT("Font_YoonGasiIIM"), strReviveLabel.c_str());
 	const f32_t fReviveScale = (vReviveMeasured.y > 0.f) ?
@@ -8130,7 +8151,7 @@ void CMainApp::RenderDeadSceneText()
 			(rects.fReviveTextY + rects.fReviveTextHeight * 0.5f) * textScaleY),
 		Colors::White, 0.f, float2_t(0.5f, 0.5f), fReviveScale * textUiScale);
 
-	const wstring strSpectateLabel = L"\xAD00\xC804\xD558\xAE30"; // 관전하기
+	const wstring strSpectateLabel = L"\xAD00\xC804\xD558\xAE30"; // 관전하기 
 	const float2_t vSpectateMeasured =
 		CGameInstance::Get().Measure_Text(TEXT("Font_YoonGasiIIM"), strSpectateLabel.c_str());
 	const f32_t fSpectateScale = (vSpectateMeasured.y > 0.f) ?
@@ -8174,7 +8195,7 @@ void CMainApp::RenderRaidClearText()
 		/* Real loc key traced from epicgatecommonclear.gfx's clearTF field (fontClass=$YoonGasiIIM,
 		white, initialText="[$]commander.dungeon_clear") -- this project has no loc-key table, so
 		the real Korean string it resolves to in the reference screenshot is used directly. */
-		const wstring strTitle = L"\xB358\xC804 \xD074\xB9AC\xC5B4"; // 던전 클리어
+		const wstring strTitle = L"\xB358\xC804 \xD074\xB9AC\xC5B4"; // 던전 클리어 
 		const float2_t vTitleMeasured =
 			CGameInstance::Get().Measure_Text(TEXT("Font_YoonGasiIIM"), strTitle.c_str());
 		const f32_t fTitleScale = (vTitleMeasured.y > 0.f) ?
@@ -8191,7 +8212,7 @@ void CMainApp::RenderRaidClearText()
 	// overlay itself has finished (isButtonValid), never together with isValid.
 	if (rects.isButtonValid)
 	{
-		const wstring strReturnLabel = L"\xB3CC\xC544\xAC00\xAE30"; // 돌아가기
+		const wstring strReturnLabel = L"\xB3CC\xC544\xAC00\xAE30"; // 돌아가기 
 		const float2_t vReturnMeasured =
 			CGameInstance::Get().Measure_Text(TEXT("Font_YoonGasiIIM"), strReturnLabel.c_str());
 		const f32_t fScaleByHeight = (vReturnMeasured.y > 0.f) ?

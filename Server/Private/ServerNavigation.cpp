@@ -463,6 +463,7 @@ bool LostArk::Server::CServerNavigation::Load_Regions(const std::string& areaId)
 				return false;
 			}
 		}
+		region.m_strRegionId = regionId;
 		regions.push_back(std::move(region));
 		loadedRegionIds.push_back(regionId);
 	}
@@ -634,6 +635,13 @@ bool LostArk::Server::CServerNavigation::Is_InSameNavigationGrid(
 	if (region != Select_Region(otherX, otherZ))
 		return false;
 	return nullptr != region || (Contains_Point(x, z) && Contains_Point(otherX, otherZ));
+}
+
+bool LostArk::Server::CServerNavigation::Is_PointWalkableInRegion(
+	const std::string& regionId, const float x, const float z, const float hintY) const
+{
+	const CServerNavigation* region = Select_Region(x, z, hintY);
+	return nullptr != region && region->m_strRegionId == regionId && region->Is_PointWalkableExact(x, z, hintY);
 }
 
 bool LostArk::Server::CServerNavigation::Contains_Point(

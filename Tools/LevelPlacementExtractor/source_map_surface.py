@@ -38,9 +38,13 @@ def build_surface(source, terminal, values, switches, texture, *, asset_id, mate
     def emission():
         path, space = texture('texture_emissive')
         flicker = enabled('use_flicker') or enabled('use_flicker_linear')
+        # emissive_intensitymin is a base-material scalar parameter whose DefaultValue
+        # property is omitted from the source property stream, so the class default 0
+        # applies. This is the same rule the uv_rotate/uv_move_x/uv_move_y reads below
+        # already use; a strict lookup here dropped the whole material instead.
         row['emissive'] = dict(texture=path, color=v['emissive_color'], intensity=v['emissive_intensity'],
             uvTiling=v.get('emissive_uv_tiling', [1, 1])[:2], colorSpace=space,
-            flicker=dict(minimum=v['emissive_intensitymin'] if flicker else 0,
+            flicker=dict(minimum=(v.get('emissive_intensitymin', 0) if flicker else 0),
                          speed=v['emissive_flicker_speed'] if flicker else 0, phaseOffset=0))
 
     opaque_bg = simple or terminal.endswith(('.bg_base_opa', '.bg_base_msk', '.bg_seamless-specular_opa'))

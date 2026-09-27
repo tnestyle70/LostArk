@@ -10832,6 +10832,28 @@
         "Sound/Mario/Events/JumpClown1_Damage1.variant03.wav",
         "Sound/Mario/Events/JumpClown1_Damage1.variant04.wav"
       ]
+    },
+    "Maharaka": {
+      "s_mob_mococowater1.mococowater1_attack01_cast1": [
+        "Sound/Maharaka/S_MOB_MOCOCOWATER1/mococowater1_attack01_cast1__884290698.wav",
+        "Sound/Maharaka/S_MOB_MOCOCOWATER1/mococowater1_attack01_cast1__1068667522.wav",
+        "Sound/Maharaka/S_MOB_MOCOCOWATER1/mococowater1_attack01_cast1__883323926.wav"
+      ],
+      "s_mob_mococowater1.mococowater1_attack01_shot1": [
+        "Sound/Maharaka/S_MOB_MOCOCOWATER1/mococowater1_attack01_shot1__170625403.wav",
+        "Sound/Maharaka/S_MOB_MOCOCOWATER1/mococowater1_attack01_shot1__224393252.wav",
+        "Sound/Maharaka/S_MOB_MOCOCOWATER1/mococowater1_attack01_shot1__605718293.wav"
+      ],
+      "s_mob_mococowater1.mococowater2_attack01_cast1": [
+        "Sound/Maharaka/S_MOB_MOCOCOWATER1/mococowater2_attack01_cast1__884290698.wav",
+        "Sound/Maharaka/S_MOB_MOCOCOWATER1/mococowater2_attack01_cast1__1068667522.wav",
+        "Sound/Maharaka/S_MOB_MOCOCOWATER1/mococowater2_attack01_cast1__883323926.wav"
+      ],
+      "s_mob_mococowater1.mococowater2_attack01_shot1": [
+        "Sound/Maharaka/S_MOB_MOCOCOWATER1/mococowater2_attack01_shot1__224393252.wav",
+        "Sound/Maharaka/S_MOB_MOCOCOWATER1/mococowater2_attack01_shot1__170625403.wav",
+        "Sound/Maharaka/S_MOB_MOCOCOWATER1/mococowater2_attack01_shot1__605718293.wav"
+      ]
     }
   }
 }

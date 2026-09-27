@@ -35,6 +35,13 @@ import build_maptool_scene as scene  # noqa: E402
 DEFAULT_AREA_ID = "LV_LUT_MIDNIGHTC_ED"
 DEFAULT_LEVEL_PREFIX = "LV_LUT_MIDNIGHTC_ED_"
 INSTALL_RECEIPT_NAME = ".lostark-area-install.receipt.json"
+# install_runtime_area replaces the whole area directory, so any installed asset the runtime
+# manifest omits is destroyed on commit. Dropping assets therefore needs --prune-missing, and
+# even then stays under both caps below. The absolute cap keeps a routine retirement small
+# enough to eyeball; the fraction cap keeps a small area (a handful of assets) from being
+# gutted by a cap that was chosen for large ones. A manifest/area mismatch trips both.
+PRUNE_ABSOLUTE_LIMIT = 10
+PRUNE_FRACTION_LIMIT = 0.20
 MATERIAL_CLASSES = frozenset({"material", "materialinstanceconstant"})
 
 
@@ -1400,7 +1407,9 @@ def export_exact_texture_source(
     physical_package = str(texture["physicalPackage"])
     object_name = str(texture["objectName"])
     package_relative = safe_relative_path(physical_package)
-    if len(package_relative.parts) != 1 or package_relative.suffix.casefold() != ".upk":
+    # Engine-common texture packages are recorded as "Packages/<name>.upk"; safe_relative_path
+    # already rejects absolute paths, drives and "..", so one nested folder stays in package_root.
+    if len(package_relative.parts) not in (1, 2) or package_relative.suffix.casefold() != ".upk":
         raise VariantError(f"invalid physical texture package: {physical_package}")
     physical_path = package_root / package_relative
     if not physical_path.is_file():
@@ -2025,6 +2034,23 @@ def _area_actual_files(area: Path) -> dict[str, str]:
     return rows
 
 
+def _receipt_asset_ids(receipt: dict[str, Any] | None) -> set[str]:
+    """Top-level asset directories a validated ownership receipt declares."""
+    if not receipt:
+        return set()
+    rows = receipt.get("ownedFiles")
+    if not isinstance(rows, list):
+        return set()
+    assets: set[str] = set()
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        relative = safe_relative_path(str(row.get("path", "")))
+        if relative.parts:
+            assets.add(relative.parts[0])
+    return assets
+
+
 def validate_owned_area(
     area: Path, expected_area_id: str | None = None
 ) -> dict[str, Any]:
@@ -2071,6 +2097,7 @@ def install_runtime_area(
     area_id: str = DEFAULT_AREA_ID,
     expect_variants: int = 292,
     allow_partial_material_preview: bool = False,
+    prune_missing: bool = False,
     fail_after: str | None = None,
 ) -> dict[str, Any]:
     area_id = area_token(area_id)
@@ -2175,6 +2202,27 @@ def install_runtime_area(
                     raise VariantError(f"staged runtime file hash mismatch: {target}")
                 staged_files[destination_key] = expected_hash
 
+        previous_assets = _receipt_asset_ids(previous_receipt)
+        dropped_assets = sorted(previous_assets - seen_assets)
+        fraction_cap = len(previous_assets) * PRUNE_FRACTION_LIMIT
+        if dropped_assets and not prune_missing:
+            raise VariantError(
+                f"install would drop {len(dropped_assets)} of {len(previous_assets)} "
+                "installed assets the runtime manifest does not list; pass "
+                "--prune-missing to retire them deliberately. "
+                f"dropped={dropped_assets}"
+            )
+        if dropped_assets and (
+            len(dropped_assets) > PRUNE_ABSOLUTE_LIMIT
+            or len(dropped_assets) > fraction_cap
+        ):
+            raise VariantError(
+                f"install prune of {len(dropped_assets)} of {len(previous_assets)} "
+                f"installed assets exceeds the safety cap "
+                f"({PRUNE_ABSOLUTE_LIMIT} absolute, {PRUNE_FRACTION_LIMIT:.0%} of the area); "
+                "retire assets in smaller batches. "
+                f"dropped={dropped_assets}"
+            )
         if sha256_file(runtime_manifest_path) != manifest_hash:
             raise VariantError("runtime manifest changed during install staging")
         receipt = {
@@ -2199,6 +2247,13 @@ def install_runtime_area(
                 "materialComplete": material_complete_count,
                 "materialIncomplete": len(assets) - material_complete_count,
                 "assetsWithSourceOnlyUnsupported": unsupported_asset_count,
+            },
+            "installPrune": {
+                "previousAssetCount": len(previous_assets),
+                "preservedAssetCount": len(previous_assets & seen_assets),
+                "droppedAssetCount": len(dropped_assets),
+                "droppedAssets": dropped_assets,
+                "pruneMissingRequested": bool(prune_missing),
             },
             "ownedFiles": [
                 {"path": path, "sha256": file_hash}
@@ -2328,6 +2383,7 @@ def parse_args(argv: Iterable[str] | None = None) -> argparse.Namespace:
     install.add_argument("--area-id", default=DEFAULT_AREA_ID)
     install.add_argument("--expect-variants", type=int, default=292)
     install.add_argument("--allow-partial-material-preview", action="store_true")
+    install.add_argument("--prune-missing", action="store_true")
     return parser.parse_args(argv)
 
 
@@ -2551,6 +2607,7 @@ def main(argv: Iterable[str] | None = None) -> int:
             area_id=args.area_id,
             expect_variants=args.expect_variants,
             allow_partial_material_preview=args.allow_partial_material_preview,
+            prune_missing=args.prune_missing,
         )
         print(json.dumps(receipt, ensure_ascii=False, indent=2))
         return 0

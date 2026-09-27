@@ -574,7 +574,10 @@ def render_profile_text(profile: dict[str, Any] | None) -> str:
     profile = {} if profile is None else profile
     render_mode = str(profile.get("renderMode", "Opaque"))
     cull_mode = str(profile.get("cullMode", "Back"))
-    if render_mode not in ("Opaque", "Alpha", "Sky", "Additive"):
+    # "Water" is accepted by the map publisher for the catalog renderMode token and is the
+    # value the water material family needs; without it a catalog rebuild silently demotes
+    # those rows to "Opaque". Unknown values are still rejected.
+    if render_mode not in ("Opaque", "Alpha", "Sky", "Additive", "Water"):
         raise ValueError(f"invalid renderMode: {render_mode}")
     if cull_mode not in ("Back", "Front", "None"):
         raise ValueError(f"invalid cullMode: {cull_mode}")

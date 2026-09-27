@@ -70,6 +70,7 @@ HRESULT CPart_Vehicle::Initialize(void* pArg)
 	m_strIdleClip = pDesc->strIdleClip;
 	m_strRunClip = pDesc->strRunClip;
 	m_strSeatBone = pDesc->strSeatBone;
+	m_vSeatOffset = pDesc->vSeatOffset;
 
 	if (FAILED(__super::Initialize(pArg)) || FAILED(Ready_Components(pDesc)) ||
 		!m_pModelCom->Has_Bone(m_strSeatBone.c_str()) ||
@@ -423,7 +424,11 @@ bool_t CPart_Vehicle::Try_Get_SeatWorldPosition(float3_t& outPosition) const
 		XMLoadFloat4x4(m_pTransformCom->Get_WorldMatrixPtr()) *
 		XMLoadFloat4x4(m_pParentMatrix);
 	float3_t staged{};
-	XMStoreFloat3(&staged, seat.r[3]);
+	/* The offset is in the vehicle root frame (metres), so it turns with the vehicle. */
+	const matrix_t rootFrame = XMLoadFloat4x4(m_pTransformCom->Get_WorldMatrixPtr()) *
+		XMLoadFloat4x4(m_pParentMatrix);
+	XMStoreFloat3(&staged, XMVectorAdd(seat.r[3],
+		XMVector3TransformNormal(XMLoadFloat3(&m_vSeatOffset), rootFrame)));
 	if (!std::isfinite(staged.x) || !std::isfinite(staged.y) || !std::isfinite(staged.z))
 		return false;
 	outPosition = staged;

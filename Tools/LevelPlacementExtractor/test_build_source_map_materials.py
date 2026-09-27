@@ -102,6 +102,37 @@ class SourceMapMaterialTests(unittest.TestCase):
         material['values']['metallic_brightness']=2
         with self.assertRaisesRegex(ValueError,'cannot be folded exactly'): self.compile()
 
+    def test_absent_flicker_minimum_default_and_override(self):
+        material = self.parameter['materials'][self.source]
+        material['switches'].update({'1.use_emissive': True, '1.use_flicker': True})
+        material['textures']['texture_emissive'] = 'source.texture.dds'
+        material['values'].update(emissive_color=[1, 1, 1, 1], emissive_intensity=2,
+            emissive_uv_tiling=[1, 1, 1, 1], emissive_flicker_speed=0.75)
+        # emissive_intensitymin is absent because the base material omits its DefaultValue
+        # property, so the class default 0 applies and the material still compiles.
+        flicker = self.compile()[0]['materials'][0]['emissive']['flicker']
+        self.assertEqual(flicker, dict(minimum=0, speed=0.75, phaseOffset=0))
+        material['values']['emissive_intensitymin'] = 0.3
+        self.assertEqual(self.compile()[0]['materials'][0]['emissive']['flicker']['minimum'], 0.3)
+
+    def test_opaque_flicker_minimum_uses_absent_default(self):
+        import source_map_surface
+        values = {key: 1.0 for key in ('diffuse_brightness', 'normal_intensity', 'specular_intensity',
+            'specular_power', 'diffuse_saturation', 'uv_tiling', 'emissive_intensity')}
+        values.update(diffuse_color=[1, 1, 1, 1], specular_color=[1, 1, 1, 1],
+            reflection_color=[1, 1, 1, 1], reflection_contrast=0.5, reflection_tiling=1,
+            reflection_intensity=0, bump_offset=0, bump_intensity=0, bump_brightness=1,
+            emissive_color=[1, 1, 1, 1], emissive_flicker_speed=0.75)
+        row = source_map_surface.build_surface('pkg.mat.sign', 'graph.bg.base.bg_base_opa', values,
+            {'1.use_emissive': True, '1.use_flicker': True},
+            lambda parameter: ('Map/source.dds', 'srgb'), asset_id='MODEL', material_name='SLOT')
+        self.assertEqual(row['emissive']['flicker'], dict(minimum=0, speed=0.75, phaseOffset=0))
+        values['emissive_intensitymin'] = 2.0
+        row = source_map_surface.build_surface('pkg.mat.sign', 'graph.bg.base.bg_base_opa', values,
+            {'1.use_emissive': True, '1.use_flicker': True},
+            lambda parameter: ('Map/source.dds', 'srgb'), asset_id='MODEL', material_name='SLOT')
+        self.assertEqual(row['emissive']['flicker']['minimum'], 2.0)
+
     def test_invalid_scalar_bounds_and_normal_colorspace_fail(self):
         self.manifest['slots'][0]['component']['minimumRoughness'] = -1
         with self.assertRaisesRegex(ValueError, 'non-negative'):

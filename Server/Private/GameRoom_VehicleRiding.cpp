@@ -8,6 +8,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <iostream>
 #include <limits>
 #include <memory>
 
@@ -19,6 +20,25 @@ namespace
 {
 	constexpr std::uint32_t VEHICLE_SKILL_TICK_HZ = 30u;
 	constexpr float VEHICLE_SKILL_DEGREES_TO_RADIANS = 0.0174532925f;
+
+	/* EFTable_VoyageShip primary keys (the nine base ships). */
+	constexpr LostArk::Shared::VEHICLE_ID SHIP_VEHICLE_ID_FIRST = 8200u;
+	constexpr LostArk::Shared::VEHICLE_ID SHIP_VEHICLE_ID_LAST = 8208u;
+	/* Navigation level of the BernSea region: water surface 10.8 m plus 0.15 m of clearance, so a hull
+	   lifted to its keel (Client modelLiftMeters) floats just above the surface. Both values are written by
+	   Tools/ShipPipeline/build_sea_nav.py (SEA_SURFACE_Y - SHIP_DRAFT_M); change them together. */
+	constexpr char SHIP_SEA_REGION_ID[] = "BernSea";
+	constexpr float SHIP_SEA_NAV_LEVEL_Y = 10.95f;
+	constexpr float SHIP_SEA_LEVEL_TOLERANCE_M = 0.6f;
+	constexpr float SHIP_DEPARTURE_FIRST_RING_M = 4.f;
+	constexpr float SHIP_DEPARTURE_RING_STEP_M = 2.f;
+	constexpr float SHIP_DEPARTURE_MAX_SEARCH_M = 100.f;
+	constexpr float SHIP_RADIANS_TO_DEGREES = 57.2957795f;
+
+	bool Is_ShipVehicleId(const LostArk::Shared::VEHICLE_ID vehicleId)
+	{
+		return vehicleId >= SHIP_VEHICLE_ID_FIRST && vehicleId <= SHIP_VEHICLE_ID_LAST;
+	}
 
 	bool Is_VehicleRidingWorld(const LostArk::Shared::WORLD_ID worldId, const LostArk::Shared::VEHICLE_ID vehicleId)
 	{
@@ -77,6 +97,14 @@ float LostArk::Server::CGameRoom::Resolve_PlayerMoveSpeed(
 		if (const SERVER_VEHICLE_DEFINITION* vehicle =
 			m_VehicleCatalog.Find_Vehicle(player.iVehicleId))
 		{
+			/* Fast sail raises the authoritative speed until the boost tick passes. Movement and
+			   the replicated SNAPSHOT_PLAYER fMoveSpeed both read this one resolver, so the boost
+			   reaches the Client without a protocol field of its own. */
+			if (vehicle->Has_Boost() && 0u != player.iShipBoostEndTick &&
+				static_cast<std::int32_t>(player.iShipBoostEndTick - m_iServerTick) > 0)
+			{
+				return vehicle->fBoostMoveSpeed;
+			}
 			return vehicle->fMoveSpeed;
 		}
 	}
@@ -117,7 +145,12 @@ void LostArk::Server::CGameRoom::Handle_SetVehicleRiding(
 	const auto player = binding == m_PlayerIdBySessionId.end() ?
 		m_Players.end() : m_Players.find(binding->second);
 	if (player != m_Players.end() && player->second.iSessionId == sessionId)
+	{
 		result = Apply_SetVehicleRiding(player->second, request);
+		std::cout << "[VehicleRiding] player=" << static_cast<unsigned>(player->second.iPlayerId)
+			<< " requested=" << request.iVehicleId << " result=" << static_cast<unsigned>(result.eResult)
+			<< " active=" << result.iActiveVehicleId << " world=" << static_cast<unsigned>(m_eWorldId) << "\n";
+	}
 	CPacketWriter writer;
 	if (!Write_Message(writer, result) || !session->Send_Frame(
 		PACKET_TYPE::S2C_SET_VEHICLE_RIDING_RESULT, writer.Get_Buffer()))
@@ -164,6 +197,7 @@ LostArk::Server::CGameRoom::Apply_SetVehicleRiding(
 	if (INVALID_VEHICLE_ID == request.iVehicleId)
 	{
 		End_VehicleSkill(player);
+		End_ShipVoyage(player, "left the ship");
 		player.iVehicleId = INVALID_VEHICLE_ID;
 		return commit(VEHICLE_RIDING_RESULT::ACCEPTED);
 	}
@@ -173,9 +207,88 @@ LostArk::Server::CGameRoom::Apply_SetVehicleRiding(
 		return commit(VEHICLE_RIDING_RESULT::REJECTED_UNKNOWN_VEHICLE);
 	if (!Can_RideVehicle(player))
 		return commit(VEHICLE_RIDING_RESULT::REJECTED_PLAYER_STATE);
+	/* A ship is an avatar of the sea: it only exists in Bern, and boarding carries the player to the
+	   sea region. Any other vehicle taken from a ship first brings the player back to the pier. */
+	const bool wasShip = Is_ShipVehicleId(player.iVehicleId);
+	const bool nowShip = Is_ShipVehicleId(request.iVehicleId);
+	if (nowShip && WORLD_ID::BERN != m_eWorldId)
+		return commit(VEHICLE_RIDING_RESULT::REJECTED_WORLD_NOT_ALLOWED);
 	End_VehicleSkill(player);
+	if (nowShip && !wasShip && !Begin_ShipVoyage(player, request.iVehicleId))
+		return commit(VEHICLE_RIDING_RESULT::REJECTED_PLAYER_STATE);
+	if (wasShip && !nowShip)
+		End_ShipVoyage(player, "changed to another vehicle");
 	player.iVehicleId = request.iVehicleId;
 	return commit(VEHICLE_RIDING_RESULT::ACCEPTED);
+}
+
+bool LostArk::Server::CGameRoom::Begin_ShipVoyage(
+	SERVER_PLAYER& player,
+	const LostArk::Shared::VEHICLE_ID vehicleId)
+{
+	if (player.bShipDockValid)
+		return true;
+	const float startX = player.fPositionX;
+	const float startZ = player.fPositionZ;
+	for (float radius = SHIP_DEPARTURE_FIRST_RING_M; radius <= SHIP_DEPARTURE_MAX_SEARCH_M;
+		radius += SHIP_DEPARTURE_RING_STEP_M)
+	{
+		/* The nearest ring that holds an open sea cell wins; inside a ring the closest cell to the
+		   straight-out direction of the first hit is not needed because the region is one open water body. */
+		const int samples = (std::max)(12, static_cast<int>(2.f * 3.14159265f * radius / 2.f));
+		for (int sample = 0; sample < samples; ++sample)
+		{
+			const float angle = 2.f * 3.14159265f * static_cast<float>(sample) / static_cast<float>(samples);
+			const float candidateX = startX + std::sin(angle) * radius;
+			const float candidateZ = startZ + std::cos(angle) * radius;
+			if (!m_ServerNavigation.Is_PointWalkableInRegion(
+				SHIP_SEA_REGION_ID, candidateX, candidateZ, SHIP_SEA_NAV_LEVEL_Y))
+				continue;
+			SERVER_NAV_POINT sea{};
+			if (!m_ServerNavigation.Sample_Position(candidateX, candidateZ, sea, SHIP_SEA_NAV_LEVEL_Y) ||
+				std::abs(sea.y - SHIP_SEA_NAV_LEVEL_Y) > SHIP_SEA_LEVEL_TOLERANCE_M)
+				continue;
+			const float yaw = std::atan2(sea.x - startX, sea.z - startZ) * SHIP_RADIANS_TO_DEGREES;
+			player.bShipDockValid = true;
+			player.fShipDockX = startX;
+			player.fShipDockY = player.fPositionY;
+			player.fShipDockZ = startZ;
+			player.fShipDockYawDegrees = player.fYawDegrees;
+			Reset_PlayerForDebugTeleport(player);
+			player.fPositionX = sea.x;
+			player.fPositionY = sea.y;
+			player.fPositionZ = sea.z;
+			player.fYawDegrees = yaw;
+			std::cout << "[ShipBoard] player=" << static_cast<unsigned>(player.iPlayerId)
+				<< " ship=" << vehicleId << " pier=(" << player.fShipDockX << ", " << player.fShipDockY << ", "
+				<< player.fShipDockZ << ") sea=(" << sea.x << ", " << sea.y << ", " << sea.z << ") yaw=" << yaw
+				<< " distance=" << radius << "\n";
+			return true;
+		}
+	}
+	std::cout << "[ShipBoard] player=" << static_cast<unsigned>(player.iPlayerId) << " ship=" << vehicleId
+		<< " refused: no open sea within " << SHIP_DEPARTURE_MAX_SEARCH_M << " m of ("
+		<< startX << ", " << startZ << ")\n";
+	return false;
+}
+
+void LostArk::Server::CGameRoom::End_ShipVoyage(SERVER_PLAYER& player, const char* reason)
+{
+	// Leaving the ship ends the fast sail; the walk back up the pier keeps the on-foot speed.
+	player.iShipBoostEndTick = 0u;
+	if (!player.bShipDockValid)
+		return;
+	const float seaX = player.fPositionX;
+	const float seaZ = player.fPositionZ;
+	Reset_PlayerForDebugTeleport(player);
+	player.fPositionX = player.fShipDockX;
+	player.fPositionY = player.fShipDockY;
+	player.fPositionZ = player.fShipDockZ;
+	player.fYawDegrees = player.fShipDockYawDegrees;
+	player.bShipDockValid = false;
+	std::cout << "[ShipBoard] player=" << static_cast<unsigned>(player.iPlayerId) << " back to pier=("
+		<< player.fPositionX << ", " << player.fPositionY << ", " << player.fPositionZ << ") from sea=("
+		<< seaX << ", " << seaZ << ") reason=" << (nullptr == reason ? "" : reason) << "\n";
 }
 
 void LostArk::Server::CGameRoom::Enforce_VehicleRidingState()
@@ -190,6 +303,7 @@ void LostArk::Server::CGameRoom::Enforce_VehicleRidingState()
 			!Can_RideVehicle(player))
 		{
 			End_VehicleSkill(player);
+			End_ShipVoyage(player, "forced dismount");
 			player.iVehicleId = LostArk::Shared::INVALID_VEHICLE_ID;
 		}
 	}
@@ -225,6 +339,36 @@ bool LostArk::Server::CGameRoom::Try_StartVehicleSkill(
 		player.fVehicleFlightPhaseSeconds = 0.f;
 		player.fVehicleFlightStartHeight = (std::max)(0.f, player.fPositionY - player.fVehicleFlightGroundY);
 		player.fVehicleFlightInputX = player.fVehicleFlightInputZ = player.fVehicleFlightInputY = 0.f;
+		return true;
+	}
+	/* Fast sail is a sailing speed change, not a mount action: the ship is steered by
+	   click-to-move, so unlike the generic branch below it must not enter VEHICLE_SKILL nor clear
+	   the move goal and path. It only moves the boost's end tick and takes the skill's cooldown,
+	   so pressing SPACE again refreshes the window instead of stacking a second multiplier. */
+	const bool shipBoost = vehicle && vehicle->Has_Boost() && skill &&
+		VEHICLE_SKILL_SLOT::SPACE == skill->eSlot;
+	if (shipBoost)
+	{
+		if (!Is_VehicleRidingWorld(m_eWorldId, player.iVehicleId) ||
+			PLAYER_ACTION_STATE::NONE != player.eAction || !Can_RideVehicle(player) ||
+			!Is_NewerSequence(command.iClientSequence, player.iLastSkillSequence))
+		{
+			return false;
+		}
+		const std::uint32_t boostStartTick =
+			(std::numeric_limits<std::uint32_t>::max)() == m_iServerTick ? 1u : m_iServerTick + 1u;
+		const auto boostCooldown = player.CooldownEndTickBySkillId.find(skill->iSkillId);
+		if (boostCooldown != player.CooldownEndTickBySkillId.end() &&
+			static_cast<std::int32_t>(boostCooldown->second - boostStartTick) > 0)
+		{
+			return false;
+		}
+		player.iLastSkillSequence = command.iClientSequence;
+		player.iShipBoostEndTick =
+			boostStartTick + Vehicle_TicksFromMs(skill->iActionDurationMs);
+		if (0u == player.iShipBoostEndTick) player.iShipBoostEndTick = 1u;
+		player.CooldownEndTickBySkillId.insert_or_assign(
+			skill->iSkillId, boostStartTick + Vehicle_TicksFromMs(skill->iCooldownMs));
 		return true;
 	}
 	if (nullptr == skill || !Is_VehicleRidingWorld(m_eWorldId, player.iVehicleId) ||

@@ -1482,6 +1482,10 @@ void Client::CMapPlacementRuntime::Sample_SelfMotions(
 {
 	if (motions.empty() || !std::isfinite(elapsedSeconds))
 		return;
+	// MotionArr may contain both translation and rotation (or several axes).
+	// Reset each placement to its authored base once, then compose all its rows.
+	std::unordered_map<size_t, MAP_PLACEMENT_RECORD> sampledPlacements;
+	sampledPlacements.reserve(motions.size());
 	for (const MAP_RUNTIME_SELF_MOTION_ENTRY& entry : motions)
 	{
 		if (entry.placementIndex >= placements.size())
@@ -1511,9 +1515,15 @@ void Client::CMapPlacementRuntime::Sample_SelfMotions(
 		if (!std::isfinite(amount))
 			continue;
 
-		MAP_PLACEMENT_RECORD sampled = placed.record;
-		sampled.position = entry.basePosition;
-		sampled.rotationQuaternion = entry.baseRotation;
+		auto sampledIter = sampledPlacements.find(entry.placementIndex);
+		if (sampledIter == sampledPlacements.end())
+		{
+			MAP_PLACEMENT_RECORD base = placed.record;
+			base.position = entry.basePosition;
+			base.rotationQuaternion = entry.baseRotation;
+			sampledIter = sampledPlacements.emplace(entry.placementIndex, base).first;
+		}
+		MAP_PLACEMENT_RECORD& sampled = sampledIter->second;
 		const bool_t isRotation =
 			MAP_SELF_MOTION_KIND::ROTATION_CYCLIC == motion.kind ||
 			MAP_SELF_MOTION_KIND::ROTATION_ACYCLIC == motion.kind;
@@ -1528,14 +1538,14 @@ void Client::CMapPlacementRuntime::Sample_SelfMotions(
 					: XMVectorSet(0.f, 0.f, 1.f, 0.f));
 			const vector_t swing = XMQuaternionRotationAxis(axis, radians);
 			const vector_t base = XMVectorSet(
-				entry.baseRotation.x, entry.baseRotation.y,
-				entry.baseRotation.z, entry.baseRotation.w);
+				sampled.rotationQuaternion.x, sampled.rotationQuaternion.y,
+				sampled.rotationQuaternion.z, sampled.rotationQuaternion.w);
 			XMStoreFloat4(&sampled.rotationQuaternion,
 				XMQuaternionNormalize(XMQuaternionMultiply(base, swing)));
 		}
 		else
 		{
-			float3_t offset = entry.basePosition;
+			float3_t offset = sampled.position;
 			if (MAP_SELF_MOTION_AXIS::X == motion.axis)
 				offset.x += amount;
 			else if (MAP_SELF_MOTION_AXIS::Y == motion.axis)
@@ -1544,7 +1554,12 @@ void Client::CMapPlacementRuntime::Sample_SelfMotions(
 				offset.z += amount;
 			sampled.position = offset;
 		}
+	}
 
+	for (auto& sampledEntry : sampledPlacements)
+	{
+		MAP_RUNTIME_PLACED_ENTRY& placed = placements[sampledEntry.first];
+		MAP_PLACEMENT_RECORD& sampled = sampledEntry.second;
 		if (nullptr != placed.object)
 		{
 			placed.object->Set_PlacementTransform(sampled.position,

@@ -498,3 +498,49 @@ powershell -ExecutionPolicy Bypass -File Tools\MapPipeline\Publish-MapAuthoring.
 `build_source_map_materials.py` preserves the source emissive texture, tint, intensity and UV tiling. For PBR with `use_emissive=true` and `use_flicker=false`, it emits `emissive.flicker.mode: "none"` with zero phase inputs. Runtime uses the existing `sourceBgFlicker=3` carrier value only for this explicit PBR mode. Old PBR documents without `mode`, typed zero-initialized surfaces and BG flicker modes keep their previous behavior; `"nested"` explicitly selects the old PBR behavior.
 
 The PBR metallic-mask diffuse branch is admitted only when both diffuse tints match, diffuse saturation is 1, masked saturation and reflection are disabled, and the outer nonmetallic/metallic brightness factors match. Under those conditions the compiler folds the two source diffuse brightnesses into the existing nonmetallic/metallic brightness inputs. Other combinations fail; this is not general metallic-mask graph support. Explicit source AO/brightness zero remains zero. Native null emissive defaults still require an exact referenced-texture expression receipt. These branches do not establish original scene SH, BRDF, dynamic MIC values or visual fidelity.
+
+## 스테이징 Area의 재질 입력 manifest 만들기 (마하라카)
+
+`build_source_map_materials.py`가 요구하는 입력 manifest를 이미 추출·재쿡한 스테이징 산출물에서 만드는 어댑터가
+`build_source_map_material_inputs.py`다. 입력은 공용 parameter 추출 결과(`parameters.json`), 재쿡 runtime manifest,
+재쿡 mip 카탈로그와 mip 회수 결과·receipt, Area 카탈로그(`.mapassets`, cull 모드), 설치된 Resources다.
+
+```powershell
+python Tools\LevelPlacementExtractor\build_source_map_material_inputs.py `
+  --area-id LV_OCN_EVENTIS_MHP `
+  --parameters <Restore>\params\parameters.json `
+  --runtime-manifest <cook>\manifests\map_material_runtime_assets.json `
+  --mip-catalog <Restore>\recook\admitted.mip-catalog.json `
+  --mip-results <Restore>\mips\batch.results.json --mip-chains <Restore>\mips\chains `
+  --asset-inventory <staging>\admitted.inventory.json `
+  --imported-catalog Data\Maps\Imported\LV_OCN_EVENTIS_MHP\LV_OCN_EVENTIS_MHP.mapassets `
+  --resources-root Client\Bin\Resources `
+  --new-resources-root out\MaharakaMaterials\newres --output-dir out\MaharakaMaterials
+```
+
+- deferred surface builder가 표현하는 slot만 내보내고, 그 asset의 모든 slot이 내보내진 경우에만 asset을 묶는다(scene 승인은 asset 단위로 묶는다).
+  안 묶인 slot과 이유는 `slot_report.json`에 남는다. 이름으로 재질을 추정하지 않는다.
+- 텍스처 색공간은 원본 Texture2D의 `SRGB` 속성(mip 회수 receipt)을 따르고 없으면 UE3 기본값(true)이다.
+- 엔진 기본 텍스처 `efmaster_material_prologue.tex.{normal,flat_gray,flat_normalmap,flat_white,null}`는 설치본이 PNG라 컴파일러가 받지 못한다.
+  원본 패키지에서 확인한 같은 값(2×2 균일색, 밉 2단, SRGB 플래그)으로 DDS를 만들어 `--new-resources-root`에 쓴다. 사용자가
+  `--resources-root/Map/<AreaId>_SOURCE_MATERIALS/EngineDefaults`로 설치한다.
+- ShadowMap2D·RNM 조명은 소비하지 않는다. 컴파일러가 요구하는 `lightingEvidence`에는 운반용 `source-absent`를 쓰고 receipt의
+  `projectApproximations`에 그 사실을 적는다. 원본에 조명이 없다는 뜻이 아니다.
+
+그다음 `build_source_map_materials.py` → `build_maptool_scene.py --source-materials-receipt … --materials-output …`(`--allow-partial-material-preview`) →
+Area publisher 순서는 위 공통 순서와 같다.
+
+### 마하라카 ocean_trn 수면 재질
+
+`specialresource.mat.ocean_trn`용 기존 pixel 프로그램은 `source.map.water-42.v1`이다.
+`author_ocean_water_rows.py`는 source parameter 추출값 30개와 7개 texture expression을 보존하는 별도 후보 파일을 만든다.
+입력과 출력 경로가 같으면 거부하며, 기존 41/42 행은 asset ID와 material name으로 교체하고 없는 행만 추가한다.
+바위 모양의 메시도 원본 MIC가 ocean_trn이면 포함한다. 이름이나 형상만 보고 물 대상에서 빼지 않는다.
+
+텍스처 순서는 normal, detail normal, sky, reflection, fresnel, diffuse, diffuse mask다.
+sky/fresnel 값을 diffuse/reflection으로 대입하거나 임의 타일 크기를 만들지 않는다.
+원본 Texture2D SRGB와 복원한 mip를 사용하며, 후보 검증 후 최신 저작 문서에 필요한 행만 병합하고 Area publisher로 게시한다.
+`mapwater`는 catalog의 양방향 검사에 필요하므로 유지한다. 실제 표면의 translucent 설정은 레거시 Water pass보다 우선한다.
+
+이 연결은 pixel 재질 입력의 복구다. MIC별 static switch, vertex wave와 원본 장면 조명까지 같은 것은 아니며,
+30개 값·파일 존재·게시 성공을 원본 최종 외형의 완료 증거로 삼지 않는다.

@@ -38,6 +38,11 @@ namespace LostArk::Server
 		float fFlightHoverHeight = 0.f, fFlightMaximumHeight = 0.f;
 		float fFlightSpeed = 0.f, fFlightVerticalSpeed = 0.f;
 		bool Has_Flight() const { return fFlightTakeoffSeconds > 0.f; }
+		/* Optional fast-sail boost speed in m/s, from EFTable_VoyageShip MoveSpeed + BoostSpeed
+		   over the same divisor. Absence keeps the plain single-speed vehicle contract; the
+		   boost's length and cooldown come from its SPACE skill row. */
+		float fBoostMoveSpeed = 0.f;
+		bool Has_Boost() const { return fBoostMoveSpeed > 0.f; }
 		std::vector<SERVER_VEHICLE_SKILL> Skills;
 
 		const SERVER_VEHICLE_SKILL* Find_Skill(const LostArk::Shared::SKILL_ID skillId) const

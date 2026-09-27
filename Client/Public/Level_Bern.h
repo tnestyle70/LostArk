@@ -65,6 +65,14 @@ public:
 		m_PartyInteraction.Render_ContextMenuText();
 	}
 	static CLevel_Bern* Get_Active() { return s_pActiveInstance; }
+	/* Non-null only while the ship follow pose is the active camera, so CMainApp can hand the
+	   ride's fog tuning to the presentation environment and nothing else needs to know about
+	   ships. Every other level and the map camera keep the authored scene fog untouched. */
+	static const ARENA_SHIP_FOG* Get_ActiveShipFog()
+	{
+		return (nullptr != s_pActiveInstance && s_pActiveInstance->m_bShipCameraActive) ?
+			&s_pActiveInstance->m_FollowCameraProfile.shipFog : nullptr;
+	}
 	const ARENA_CAMERA_PROFILE& Get_FollowCameraProfile() const
 	{ return m_FollowCameraProfile; }
 	const std::string& Get_FollowCameraProfileStatus() const
@@ -168,6 +176,16 @@ private:
 	modal, unlike Advance_ValtanEntryWalk. */
 	void Advance_ItemUpgradeNpcWalk();
 
+	/* Ship NPCs (Bern3 harbor): every enabled NPC placement whose archetype starts with NPC_SHIP_.
+	Right-click one, walk to it, and the vehicle window opens in its ship-only mode
+	(CMainApp::Open_ShipWindow). Same pick and walk pattern as the Item Upgrade NPC above, over a list. */
+	bool_t Ready_ShipNpcs(const std::string& areaId);
+	void Update_ShipNpcInteraction();
+	void Advance_ShipNpcWalk();
+	/* While the local player rides a ship the follow camera takes the retail voyage pose
+	(EFTable_CameraSetting 1001 step 1: FOV 60, 17 m); it returns to the map profile on dismount. */
+	void Update_ShipCamera();
+
 	/* Optional entrance cinematic: one authored camera cue from
 	Data/Encounters/Bern/BernEntranceCamera.json plays exactly once right after
 	entry through the same public product sampler the Valtan cinematics use.
@@ -238,6 +256,11 @@ private:
 	float3_t m_vItemUpgradeNpcPosition{};
 	bool_t m_isWalkingToItemUpgradeNpc = false;
 	bool_t m_wasRightMouseDownForItemUpgradeNpcInteract = false;
+
+	std::vector<float3_t> m_ShipNpcPositions;
+	int32_t m_iWalkingToShipNpc = -1;
+	bool_t m_wasRightMouseDownForShipNpcInteract = false;
+	bool_t m_bShipCameraActive = false;
 
 	VALTAN_CINEMATIC_CAMERA_CUE m_EntranceCameraCue;
 	bool_t m_hasEntranceCameraCue = false;

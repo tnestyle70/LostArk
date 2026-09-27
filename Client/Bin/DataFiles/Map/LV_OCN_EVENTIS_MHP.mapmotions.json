@@ -1,0 +1,528 @@
+{
+  "schema": "lostark.map-self-motions",
+  "formatVersion": 1,
+  "areaId": "LV_OCN_EVENTIS_MHP",
+  "revision": 1,
+  "motions": [
+    {
+      "placementId": "9738770649100242276",
+      "kind": "LOCATION_CYCLIC",
+      "axis": "Y",
+      "cycleSeconds": 20.0,
+      "range": 0.4,
+      "startPhaseSeconds": 16.538040161132812
+    },
+    {
+      "placementId": "14431163395955544544",
+      "kind": "LOCATION_CYCLIC",
+      "axis": "Y",
+      "cycleSeconds": 15.0,
+      "range": 0.3,
+      "startPhaseSeconds": 10.903241157531738
+    },
+    {
+      "placementId": "14890553021120447484",
+      "kind": "LOCATION_CYCLIC",
+      "axis": "Y",
+      "cycleSeconds": 20.0,
+      "range": 0.15,
+      "startPhaseSeconds": 1.0235655307769775
+    },
+    {
+      "placementId": "9711516560426546177",
+      "kind": "ROTATION_CYCLIC",
+      "axis": "X",
+      "cycleSeconds": 5.0,
+      "range": 1.0,
+      "startPhaseSeconds": 3.8085741996765137
+    },
+    {
+      "placementId": "9711516560426546177",
+      "kind": "ROTATION_CYCLIC",
+      "axis": "Z",
+      "cycleSeconds": 10.0,
+      "range": -1.0,
+      "startPhaseSeconds": 3.7758803367614746
+    },
+    {
+      "placementId": "17880988462358453408",
+      "kind": "ROTATION_CYCLIC",
+      "axis": "X",
+      "cycleSeconds": 5.0,
+      "range": 1.0,
+      "startPhaseSeconds": 3.922083854675293
+    },
+    {
+      "placementId": "17880988462358453408",
+      "kind": "ROTATION_CYCLIC",
+      "axis": "Z",
+      "cycleSeconds": 10.0,
+      "range": -1.0,
+      "startPhaseSeconds": 3.8896021842956543
+    },
+    {
+      "placementId": "10135039416298566996",
+      "kind": "LOCATION_CYCLIC",
+      "axis": "Y",
+      "cycleSeconds": 20.0,
+      "range": 0.2,
+      "startPhaseSeconds": 18.36243438720703
+    },
+    {
+      "placementId": "11723759529024192055",
+      "kind": "LOCATION_CYCLIC",
+      "axis": "Y",
+      "cycleSeconds": 20.0,
+      "range": 0.25,
+      "startPhaseSeconds": 6.444397926330566
+    },
+    {
+      "placementId": "16670107369334141889",
+      "kind": "LOCATION_CYCLIC",
+      "axis": "Y",
+      "cycleSeconds": 20.0,
+      "range": 0.2,
+      "startPhaseSeconds": 10.458717346191406
+    },
+    {
+      "placementId": "9883094777190491428",
+      "kind": "LOCATION_CYCLIC",
+      "axis": "Y",
+      "cycleSeconds": 20.0,
+      "range": 0.15,
+      "startPhaseSeconds": 13.119490623474121
+    },
+    {
+      "placementId": "9264236956607051027",
+      "kind": "LOCATION_CYCLIC",
+      "axis": "Y",
+      "cycleSeconds": 20.0,
+      "range": 0.4,
+      "startPhaseSeconds": 16.538040161132812
+    },
+    {
+      "placementId": "10288890613051388345",
+      "kind": "LOCATION_CYCLIC",
+      "axis": "Y",
+      "cycleSeconds": 15.0,
+      "range": 0.3,
+      "startPhaseSeconds": 10.903241157531738
+    },
+    {
+      "placementId": "14619882812559586426",
+      "kind": "LOCATION_CYCLIC",
+      "axis": "Y",
+      "cycleSeconds": 15.0,
+      "range": 0.35,
+      "startPhaseSeconds": 14.149982452392578
+    },
+    {
+      "placementId": "11589574623427632772",
+      "kind": "LOCATION_CYCLIC",
+      "axis": "Y",
+      "cycleSeconds": 20.0,
+      "range": 0.25,
+      "startPhaseSeconds": 14.535198211669922
+    },
+    {
+      "placementId": "16521871448752408906",
+      "kind": "LOCATION_CYCLIC",
+      "axis": "Y",
+      "cycleSeconds": 20.0,
+      "range": 0.4,
+      "startPhaseSeconds": 16.171642303466797
+    },
+    {
+      "placementId": "16106068390598014111",
+      "kind": "LOCATION_CYCLIC",
+      "axis": "Y",
+      "cycleSeconds": 15.0,
+      "range": 0.3,
+      "startPhaseSeconds": 10.53588581085205
+    },
+    {
+      "placementId": "12230008109973092431",
+      "kind": "LOCATION_CYCLIC",
+      "axis": "Y",
+      "cycleSeconds": 15.0,
+      "range": 0.35,
+      "startPhaseSeconds": 13.782720565795898
+    },
+    {
+      "placementId": "12000945393844975783",
+      "kind": "LOCATION_CYCLIC",
+      "axis": "Y",
+      "cycleSeconds": 20.0,
+      "range": 0.25,
+      "startPhaseSeconds": 14.169130325317383
+    },
+    {
+      "placementId": "16872424153046737515",
+      "kind": "LOCATION_CYCLIC",
+      "axis": "Y",
+      "cycleSeconds": 15.0,
+      "range": 0.35,
+      "startPhaseSeconds": 14.149982452392578
+    },
+    {
+      "placementId": "16166258036374137252",
+      "kind": "LOCATION_CYCLIC",
+      "axis": "Y",
+      "cycleSeconds": 20.0,
+      "range": 0.25,
+      "startPhaseSeconds": 14.204931259155273
+    },
+    {
+      "placementId": "15361299121956751325",
+      "kind": "LOCATION_CYCLIC",
+      "axis": "Y",
+      "cycleSeconds": 20.0,
+      "range": 0.2,
+      "startPhaseSeconds": 18.214336395263672
+    },
+    {
+      "placementId": "12619526926170373373",
+      "kind": "LOCATION_CYCLIC",
+      "axis": "Y",
+      "cycleSeconds": 20.0,
+      "range": 0.15,
+      "startPhaseSeconds": 0.8757596611976624
+    },
+    {
+      "placementId": "15606160721788643213",
+      "kind": "LOCATION_CYCLIC",
+      "axis": "Y",
+      "cycleSeconds": 20.0,
+      "range": 0.2,
+      "startPhaseSeconds": 18.214336395263672
+    },
+    {
+      "placementId": "10056374988263781496",
+      "kind": "LOCATION_CYCLIC",
+      "axis": "Y",
+      "cycleSeconds": 5.0,
+      "range": 0.05,
+      "startPhaseSeconds": 1.8411307334899902
+    },
+    {
+      "placementId": "18411437402095024732",
+      "kind": "LOCATION_CYCLIC",
+      "axis": "Y",
+      "cycleSeconds": 5.0,
+      "range": 0.05,
+      "startPhaseSeconds": 1.5991499423980713
+    },
+    {
+      "placementId": "16747172995385250908",
+      "kind": "LOCATION_CYCLIC",
+      "axis": "Y",
+      "cycleSeconds": 5.0,
+      "range": 0.05,
+      "startPhaseSeconds": 0.48746851086616516
+    },
+    {
+      "placementId": "15425794940595054312",
+      "kind": "LOCATION_CYCLIC",
+      "axis": "Y",
+      "cycleSeconds": 20.0,
+      "range": 0.25,
+      "startPhaseSeconds": 14.535198211669922
+    },
+    {
+      "placementId": "11962424664225329599",
+      "kind": "LOCATION_CYCLIC",
+      "axis": "Y",
+      "cycleSeconds": 5.0,
+      "range": 0.05,
+      "startPhaseSeconds": 4.6641998291015625
+    },
+    {
+      "placementId": "10723443053778210600",
+      "kind": "LOCATION_CYCLIC",
+      "axis": "Y",
+      "cycleSeconds": 5.0,
+      "range": 0.05,
+      "startPhaseSeconds": 1.5697200298309326
+    },
+    {
+      "placementId": "10607777690086922882",
+      "kind": "LOCATION_CYCLIC",
+      "axis": "Y",
+      "cycleSeconds": 5.0,
+      "range": 0.05,
+      "startPhaseSeconds": 1.5778710842132568
+    },
+    {
+      "placementId": "14912245671535723909",
+      "kind": "LOCATION_CYCLIC",
+      "axis": "Y",
+      "cycleSeconds": 5.0,
+      "range": 0.05,
+      "startPhaseSeconds": 1.6773724555969238
+    },
+    {
+      "placementId": "12473330657237751460",
+      "kind": "LOCATION_CYCLIC",
+      "axis": "Y",
+      "cycleSeconds": 5.0,
+      "range": 0.05,
+      "startPhaseSeconds": 1.6773724555969238
+    },
+    {
+      "placementId": "13020932835154272311",
+      "kind": "LOCATION_CYCLIC",
+      "axis": "Y",
+      "cycleSeconds": 5.0,
+      "range": 0.05,
+      "startPhaseSeconds": 1.7390093803405762
+    },
+    {
+      "placementId": "16683476100251869043",
+      "kind": "LOCATION_CYCLIC",
+      "axis": "Y",
+      "cycleSeconds": 5.0,
+      "range": 0.05,
+      "startPhaseSeconds": 1.735936164855957
+    },
+    {
+      "placementId": "13470430972859000464",
+      "kind": "LOCATION_CYCLIC",
+      "axis": "Y",
+      "cycleSeconds": 5.0,
+      "range": 0.05,
+      "startPhaseSeconds": 3.1858463287353516
+    },
+    {
+      "placementId": "18306266516870492182",
+      "kind": "LOCATION_CYCLIC",
+      "axis": "Y",
+      "cycleSeconds": 5.0,
+      "range": 0.05,
+      "startPhaseSeconds": 3.1858463287353516
+    },
+    {
+      "placementId": "17444196728894884624",
+      "kind": "LOCATION_CYCLIC",
+      "axis": "Y",
+      "cycleSeconds": 5.0,
+      "range": 0.05,
+      "startPhaseSeconds": 3.1858463287353516
+    },
+    {
+      "placementId": "14802945803882789363",
+      "kind": "LOCATION_CYCLIC",
+      "axis": "Y",
+      "cycleSeconds": 20.0,
+      "range": 0.25,
+      "startPhaseSeconds": 14.535198211669922
+    },
+    {
+      "placementId": "11884498696873147009",
+      "kind": "LOCATION_CYCLIC",
+      "axis": "Y",
+      "cycleSeconds": 5.0,
+      "range": 0.05,
+      "startPhaseSeconds": 3.1858463287353516
+    },
+    {
+      "placementId": "15677720384515294210",
+      "kind": "LOCATION_CYCLIC",
+      "axis": "Y",
+      "cycleSeconds": 5.0,
+      "range": 0.05,
+      "startPhaseSeconds": 3.1858463287353516
+    },
+    {
+      "placementId": "13381269825093016735",
+      "kind": "LOCATION_CYCLIC",
+      "axis": "Y",
+      "cycleSeconds": 5.0,
+      "range": 0.05,
+      "startPhaseSeconds": 3.1858463287353516
+    },
+    {
+      "placementId": "11625710491504100813",
+      "kind": "LOCATION_CYCLIC",
+      "axis": "Y",
+      "cycleSeconds": 5.0,
+      "range": 0.05,
+      "startPhaseSeconds": 3.1858463287353516
+    },
+    {
+      "placementId": "11446676712493092376",
+      "kind": "LOCATION_CYCLIC",
+      "axis": "Y",
+      "cycleSeconds": 5.0,
+      "range": 0.05,
+      "startPhaseSeconds": 3.5040318965911865
+    },
+    {
+      "placementId": "9918547976602258210",
+      "kind": "LOCATION_CYCLIC",
+      "axis": "Y",
+      "cycleSeconds": 5.0,
+      "range": 0.05,
+      "startPhaseSeconds": 3.1858463287353516
+    },
+    {
+      "placementId": "14910286830111838548",
+      "kind": "LOCATION_CYCLIC",
+      "axis": "Y",
+      "cycleSeconds": 5.0,
+      "range": 0.05,
+      "startPhaseSeconds": 3.1858463287353516
+    },
+    {
+      "placementId": "12195082182227624962",
+      "kind": "LOCATION_CYCLIC",
+      "axis": "Y",
+      "cycleSeconds": 5.0,
+      "range": 0.05,
+      "startPhaseSeconds": 0.9291558861732483
+    },
+    {
+      "placementId": "11465426593395562444",
+      "kind": "LOCATION_CYCLIC",
+      "axis": "Y",
+      "cycleSeconds": 5.0,
+      "range": 0.05,
+      "startPhaseSeconds": 0.6420215964317322
+    },
+    {
+      "placementId": "12959049290855263028",
+      "kind": "LOCATION_CYCLIC",
+      "axis": "Y",
+      "cycleSeconds": 20.0,
+      "range": 0.2,
+      "startPhaseSeconds": 18.545494079589844
+    },
+    {
+      "placementId": "14955335954876486431",
+      "kind": "LOCATION_CYCLIC",
+      "axis": "Y",
+      "cycleSeconds": 5.0,
+      "range": 0.05,
+      "startPhaseSeconds": 3.1858463287353516
+    },
+    {
+      "placementId": "15032231309200479821",
+      "kind": "LOCATION_CYCLIC",
+      "axis": "Y",
+      "cycleSeconds": 5.0,
+      "range": 0.05,
+      "startPhaseSeconds": 0.6420215964317322
+    },
+    {
+      "placementId": "14680880113619229839",
+      "kind": "LOCATION_CYCLIC",
+      "axis": "Y",
+      "cycleSeconds": 5.0,
+      "range": 0.05,
+      "startPhaseSeconds": 3.1858463287353516
+    },
+    {
+      "placementId": "10665890361789913451",
+      "kind": "LOCATION_CYCLIC",
+      "axis": "Y",
+      "cycleSeconds": 5.0,
+      "range": 0.05,
+      "startPhaseSeconds": 3.1858463287353516
+    },
+    {
+      "placementId": "15638682928260250329",
+      "kind": "LOCATION_CYCLIC",
+      "axis": "Y",
+      "cycleSeconds": 20.0,
+      "range": 0.15,
+      "startPhaseSeconds": 1.2067673206329346
+    },
+    {
+      "placementId": "14999499299578625077",
+      "kind": "LOCATION_CYCLIC",
+      "axis": "Y",
+      "cycleSeconds": 20.0,
+      "range": 0.2,
+      "startPhaseSeconds": 18.545494079589844
+    },
+    {
+      "placementId": "11277205157404347428",
+      "kind": "LOCATION_CYCLIC",
+      "axis": "Y",
+      "cycleSeconds": 20.0,
+      "range": 0.25,
+      "startPhaseSeconds": 14.352380752563477
+    },
+    {
+      "placementId": "16551569977837463732",
+      "kind": "LOCATION_CYCLIC",
+      "axis": "Y",
+      "cycleSeconds": 20.0,
+      "range": 0.2,
+      "startPhaseSeconds": 18.36243438720703
+    },
+    {
+      "placementId": "16867034076321529842",
+      "kind": "ROTATION_CYCLIC",
+      "axis": "X",
+      "cycleSeconds": 5.0,
+      "range": 1.0,
+      "startPhaseSeconds": 4.070284366607666
+    },
+    {
+      "placementId": "16867034076321529842",
+      "kind": "ROTATION_CYCLIC",
+      "axis": "Z",
+      "cycleSeconds": 10.0,
+      "range": -1.0,
+      "startPhaseSeconds": 4.037812232971191
+    },
+    {
+      "placementId": "16463350758263295816",
+      "kind": "ROTATION_CYCLIC",
+      "axis": "X",
+      "cycleSeconds": 5.0,
+      "range": 1.0,
+      "startPhaseSeconds": 3.92586612701416
+    },
+    {
+      "placementId": "16463350758263295816",
+      "kind": "ROTATION_CYCLIC",
+      "axis": "Z",
+      "cycleSeconds": 10.0,
+      "range": -1.0,
+      "startPhaseSeconds": 3.893245220184326
+    },
+    {
+      "placementId": "17128050747250820337",
+      "kind": "ROTATION_CYCLIC",
+      "axis": "X",
+      "cycleSeconds": 5.0,
+      "range": 1.0,
+      "startPhaseSeconds": 3.922083854675293
+    },
+    {
+      "placementId": "17128050747250820337",
+      "kind": "ROTATION_CYCLIC",
+      "axis": "Z",
+      "cycleSeconds": 10.0,
+      "range": -1.0,
+      "startPhaseSeconds": 3.8896021842956543
+    },
+    {
+      "placementId": "11063795535363243715",
+      "kind": "ROTATION_CYCLIC",
+      "axis": "X",
+      "cycleSeconds": 5.0,
+      "range": 1.0,
+      "startPhaseSeconds": 4.070284366607666
+    },
+    {
+      "placementId": "11063795535363243715",
+      "kind": "ROTATION_CYCLIC",
+      "axis": "Z",
+      "cycleSeconds": 10.0,
+      "range": -1.0,
+      "startPhaseSeconds": 4.037812232971191
+    }
+  ]
+}
