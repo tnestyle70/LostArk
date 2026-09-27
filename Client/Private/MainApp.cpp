@@ -75,6 +75,8 @@
 #include "SongCastGaugeView.h"
 #include "Network/PacketMessages.h"
 #include "InventoryView.h"
+#include "RepairWindowView.h"
+#include "DurabilityHudView.h"
 #include "QuickSlotDragView.h"
 #include "SkillWindowView.h"
 #include "SkillGroundTargetPreview.h"
@@ -625,6 +627,12 @@ void CMainApp::Open_ShipWindow()
 {
 	if (nullptr != m_pVehicleWindowView)
 		m_pVehicleWindowView->Open_Ships();
+}
+
+void CMainApp::Open_RepairWindow()
+{
+	if (nullptr != m_pRepairWindowView)
+		m_pRepairWindowView->Open();
 }
 
 void CMainApp::Open_ItemUpgradeWindow()
@@ -1202,6 +1210,8 @@ HRESULT CMainApp::Initialize()
 	nothing. Every "skillWindowOpen" gate already null-checks it. The class/files stay for a
 	future real re-introduction. */
 	m_pInventoryView = std::make_unique<CInventoryView>(m_pDevice, m_pContext);
+	m_pRepairWindowView = std::make_unique<CRepairWindowView>(m_pDevice, m_pContext);
+	m_pDurabilityHudView = std::make_unique<CDurabilityHudView>(m_pDevice, m_pContext);
 	m_pChatWindowView = std::make_unique<CChatWindowView>(m_pDevice, m_pContext);
 	m_pPartyWindowView = std::make_unique<CPartyWindowView>(m_pDevice, m_pContext);
 	m_pMinimapView = std::make_unique<CMinimapView>(m_pDevice, m_pContext, ETOUI(LEVEL::STATIC));
@@ -1855,6 +1865,7 @@ void CMainApp::Sync_KoukuCinematicUI()
 	{
 		// Release may arrive while updates are hidden; no gesture may commit after the cutscene.
 		if (m_pInventoryView) m_pInventoryView->Cancel_Interaction();
+		if (m_pRepairWindowView) m_pRepairWindowView->Cancel_Interaction();
 		if (m_pCharacterInfoView) m_pCharacterInfoView->Cancel_Interaction();
 		if (m_pAvatarBookView) m_pAvatarBookView->Cancel_Interaction();
 		if (m_pVehicleWindowView) m_pVehicleWindowView->Cancel_Interaction();
@@ -3651,6 +3662,8 @@ void CMainApp::Register_UITextOccluders()
 	/* Windows stack in the order CMainApp builds their sprites; each gets its own step. */
 	if (nullptr != m_pInventoryView && m_pInventoryView->Get_ScreenRect(fX, fY, fWidth, fHeight))
 		Occlusion.Add_Occluder(UI_TEXT_LAYER::WINDOW_INVENTORY, fX, fY, fWidth, fHeight);
+	if (nullptr != m_pRepairWindowView && m_pRepairWindowView->Get_ScreenRect(fX, fY, fWidth, fHeight))
+		Occlusion.Add_Occluder(UI_TEXT_LAYER::WINDOW_REPAIR, fX, fY, fWidth, fHeight);
 	if (nullptr != m_pCharacterInfoView && m_pCharacterInfoView->Get_ScreenRect(fX, fY, fWidth, fHeight))
 		Occlusion.Add_Occluder(UI_TEXT_LAYER::WINDOW_CHARACTER_INFO, fX, fY, fWidth, fHeight);
 	if (nullptr != m_pAvatarBookView && m_pAvatarBookView->Get_ScreenRect(fX, fY, fWidth, fHeight))
@@ -4262,6 +4275,11 @@ HRESULT CMainApp::Render()
 			m_pInventoryView->Render_Text();
 	}
 	{
+		CUITextLayerScope WindowText(UI_TEXT_LAYER::WINDOW_REPAIR);
+		if (nullptr != m_pRepairWindowView)
+			m_pRepairWindowView->Render_Text();
+	}
+	{
 		CUITextLayerScope HudText(UI_TEXT_LAYER::HUD);
 		RenderLobbyButtonText();
 		RenderCharacterSelectWindowText();
@@ -4451,6 +4469,10 @@ void CMainApp::Update_CombatHUD(const f32_t fTimeDelta)
 		last state across a level change unless told otherwise, same as this HUD's own. */
 		if (nullptr != m_pInventoryView)
 			m_pInventoryView->Hide();
+		if (nullptr != m_pRepairWindowView)
+			m_pRepairWindowView->Hide();
+		if (nullptr != m_pDurabilityHudView)
+			m_pDurabilityHudView->Hide();
 		if (nullptr != m_pCharacterInfoView)
 			m_pCharacterInfoView->Hide();
 		if (nullptr != m_pAvatarBookView)
@@ -4837,6 +4859,22 @@ void CMainApp::Update_CombatHUD(const f32_t fTimeDelta)
 	Update_VehicleHud();
 	Update_SpecialSlot();
 	Update_BuffBar();
+	if (nullptr != m_pRepairWindowView)
+	{
+		m_pRepairWindowView->Update();
+		bool_t bRepairAllSlots = false;
+		if (m_pRepairWindowView->Try_Consume_RepairRequest(bRepairAllSlots))
+		{
+			/* No Server contract for repair yet: this slice is the window only. The press is
+			consumed here so the button cannot latch, and this is the single place the later
+			vertical slice hooks the typed command into. */
+		}
+	}
+	/* Part of the combat HUD: shown for as long as this function runs, which is already gated
+	on a valid player in a supported Level. Every part reads NORMAL until a Server message
+	carries item durability, so only the silhouette draws. */
+	if (nullptr != m_pDurabilityHudView)
+		m_pDurabilityHudView->Update();
 	if (nullptr != m_pInventoryView)
 	{
 		m_pInventoryView->Update(CCombatHUDViewModel::Get().Get_Inventory().Items);
@@ -5942,6 +5980,7 @@ void CMainApp::Close_RuntimeWindowsForLoading()
 	m_bLobbyWasActive = false;
 	if (nullptr != m_pCharacterSelectWindowView) m_pCharacterSelectWindowView->Close();
 	if (nullptr != m_pInventoryView) m_pInventoryView->Close();
+	if (nullptr != m_pRepairWindowView) m_pRepairWindowView->Close();
 	if (nullptr != m_pCharacterInfoView) m_pCharacterInfoView->Close();
 	if (nullptr != m_pAvatarBookView) m_pAvatarBookView->Close();
 	if (nullptr != m_pVehicleWindowView) m_pVehicleWindowView->Close();
@@ -5963,6 +6002,7 @@ bool_t CMainApp::Is_AnyRuntimeWindowOpen() const
 	itself is deliberately not in this list: Update_SystemOptionWindow owns its Escape edge. */
 	const bool_t bOpen =
 		(nullptr != m_pInventoryView && m_pInventoryView->Is_Open()) ||
+		(nullptr != m_pRepairWindowView && m_pRepairWindowView->Is_Open()) ||
 		(nullptr != m_pCharacterInfoView && m_pCharacterInfoView->Is_Open()) ||
 		(nullptr != m_pAvatarBookView && m_pAvatarBookView->Is_Open()) ||
 		(nullptr != m_pVehicleWindowView && m_pVehicleWindowView->Is_Open()) ||
@@ -5980,6 +6020,7 @@ bool_t CMainApp::Is_EscapeWindowOpen(const ESCAPE_WINDOW eWindow) const
 	switch (eWindow)
 	{
 	case ESCAPE_WINDOW::INVENTORY: return nullptr != m_pInventoryView && m_pInventoryView->Is_Open();
+	case ESCAPE_WINDOW::REPAIR: return nullptr != m_pRepairWindowView && m_pRepairWindowView->Is_Open();
 	case ESCAPE_WINDOW::CHARACTER_INFO: return nullptr != m_pCharacterInfoView && m_pCharacterInfoView->Is_Open();
 	case ESCAPE_WINDOW::AVATAR_BOOK: return nullptr != m_pAvatarBookView && m_pAvatarBookView->Is_Open();
 	case ESCAPE_WINDOW::HONOR_TITLE: return nullptr != m_pHonorTitleWindowView && m_pHonorTitleWindowView->Is_Open();
@@ -6022,6 +6063,7 @@ bool_t CMainApp::Close_TopEscapeWindow()
 	switch (eTop)
 	{
 	case ESCAPE_WINDOW::INVENTORY: m_pInventoryView->Close(); break;
+	case ESCAPE_WINDOW::REPAIR: m_pRepairWindowView->Close(); break;
 	case ESCAPE_WINDOW::CHARACTER_INFO: m_pCharacterInfoView->Close(); break;
 	case ESCAPE_WINDOW::AVATAR_BOOK: m_pAvatarBookView->Close(); break;
 	case ESCAPE_WINDOW::HONOR_TITLE: m_pHonorTitleWindowView->Close(); break;
@@ -13367,6 +13409,17 @@ void CMainApp::RenderBalanceTestLauncher()
 		m_strToolStatus = SUCCEEDED(EnsureDebugTool(DEBUG_TOOL::BALANCE)) ?
 			"Balance Test opened." : "Balance Test initialization failed.";
 	ImGui::TextWrapped("Player / Skill / Damage / Boss tuning and room cooldown: Debug (3s) or Release (Retail).");
+
+	/* Temporary opener for the item repair window. Retail opens it from a repair NPC and which
+	NPC that is has not been decided, so until then this is the only way in. Delete this block
+	when the NPC interaction calls Open() instead. */
+	if (nullptr != m_pRepairWindowView)
+	{
+		ImGui::SeparatorText("Item Repair");
+		bool_t bRepairOpen = m_pRepairWindowView->Is_Open();
+		if (ImGui::Checkbox("Item Repair Window", &bRepairOpen))
+			bRepairOpen ? m_pRepairWindowView->Open() : m_pRepairWindowView->Close();
+	}
 }
 
 void CMainApp::RenderDeveloperTools()

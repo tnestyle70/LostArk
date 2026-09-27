@@ -175,6 +175,13 @@ private:
 	live position is back within interaction range of Schmidt -- no confirm
 	modal, unlike Advance_ValtanEntryWalk. */
 	void Advance_ItemUpgradeNpcWalk();
+	/* Bern's two repair NPCs (npc.bern.src.31 / npc.bern.src.48 -- the pair carrying
+	the anvil symbol in Data/UI/WorldMap/WorldMapNpcSymbols.json). Loaded, picked and
+	walked to exactly like the Schmidt NPC above; there are two of them, so the picked
+	one is remembered by placement id the way the Valtan guides are. */
+	bool_t Ready_RepairNpcs(const std::string& areaId);
+	void Update_RepairNpcInteraction();
+	void Advance_RepairNpcWalk();
 
 	/* Ship NPCs (Bern3 harbor): every enabled NPC placement whose archetype starts with NPC_SHIP_.
 	Right-click one, walk to it, and the vehicle window opens in its ship-only mode
@@ -256,6 +263,15 @@ private:
 	float3_t m_vItemUpgradeNpcPosition{};
 	bool_t m_isWalkingToItemUpgradeNpc = false;
 	bool_t m_wasRightMouseDownForItemUpgradeNpcInteract = false;
+	struct REPAIR_NPC
+	{
+		std::string strPlacementId;
+		float3_t vPosition{};
+	};
+	std::vector<REPAIR_NPC> m_RepairNpcs;
+	bool_t m_isWalkingToRepairNpc = false;
+	std::string m_strRepairNpcPlacementId;
+	bool_t m_wasRightMouseDownForRepairNpcInteract = false;
 
 	std::vector<float3_t> m_ShipNpcPositions;
 	int32_t m_iWalkingToShipNpc = -1;

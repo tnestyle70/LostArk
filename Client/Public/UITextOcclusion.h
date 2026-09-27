@@ -41,6 +41,7 @@ namespace UI_TEXT_LAYER
 	constexpr int32_t WINDOW_WORLD_MAP = WINDOW + 5;
 	constexpr int32_t WINDOW_SYSTEM_OPTION = WINDOW + 6;
 	constexpr int32_t WINDOW_ITEM_UPGRADE = WINDOW + 7;
+	constexpr int32_t WINDOW_REPAIR = WINDOW + 8;
 }
 
 class CUITextOcclusion final

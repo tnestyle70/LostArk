@@ -40,15 +40,30 @@ private:
 		string		strImage;
 		f32_t		fWorldMinX = 0.f, fWorldMinY = 0.f;	/* retail cm */
 		f32_t		fWorldMaxX = 0.f, fWorldMaxY = 0.f;
+		/* Optional: the Data/Worlds area whose NPC placements carry world map symbols.
+		Empty for an area with none, which then draws no NPC markers. */
+		string		strWorldAreaId;
 	};
 
 	HRESULT Load_Areas();
+	/* NPC placements of strWorldAreaId joined with Data/UI/WorldMap/WorldMapNpcSymbols.json,
+	the same pair CWorldMapWindowView draws on the M map. Loaded once per area change; the
+	symbols are static authored placements, so there is nothing to refresh per frame. */
+	void Load_AreaNpcSymbols(const AREA& Area);
 	const AREA* Find_Area(LEVEL eLevel) const;
 	void Hide_All();
 
 private:
 	unique_ptr<CUILayoutRuntime>	m_pView;
 	vector<AREA>					m_Areas;
+	struct NPC_SYMBOL
+	{
+		string	strIconPath;
+		f32_t	fWorldX = 0.f;
+		f32_t	fWorldZ = 0.f;
+	};
+	vector<NPC_SYMBOL>				m_NpcSymbols;
+	string							m_strLoadedNpcAreaId;
 	const AREA*						m_pActiveArea = nullptr;
 	int32_t							m_iZoomLevel = 2;
 	bool_t							m_bSliderOpen = false;
