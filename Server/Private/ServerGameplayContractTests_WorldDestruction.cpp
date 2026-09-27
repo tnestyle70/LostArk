@@ -1625,8 +1625,9 @@ void LostArk::Server::CServerGameplayContractRunner::Run_InannaProtection(
     room->m_KoukuBingoDuration.bLastLineCompletionSucceeded = false;
     BOSS_PATTERN_MECHANIC_TRIGGER detonation; detonation.eKind = BOSS_PATTERN_MECHANIC_TRIGGER_KIND::BINGO_DETONATION;
     room->m_PendingKoukuMechanicTriggers.push_back({owner.iNetEntityId, owner.iPatternSequence, detonation});
+    const auto protectedCasterHp = caster.iCurrentHp;
     room->Commit_KoukuMechanicTriggers(endTick - 1u);
-    tests.Require(caster.iCurrentHp == 100u && peer.iCurrentHp == 100u && owner.iCurrentHp == 10000u &&
+    tests.Require(caster.iCurrentHp == protectedCasterHp && peer.iCurrentHp == 100u && owner.iCurrentHp == 10000u &&
         room->m_KoukuBingo.Get_RedMask() == 0u,
         "Inanna survives the Bingo black hole with zero red lines until the last protected tick without earning boss damage");
     tests.Require(caster.iInvulnerabilityZonePulseTick == endTick - 1u && peer.iInvulnerabilityZonePulseTick == endTick - 1u &&
@@ -1652,4 +1653,31 @@ void LostArk::Server::CServerGameplayContractRunner::Run_InannaProtection(
     tests.Require(caster.iCurrentHp == 0u && peer.iCurrentHp == 0u && caster.iShield == 0u && peer.iShield == 0u &&
         owner.iCurrentHp == 7400u && room->m_Players.at(4u).iCurrentHp == 100u,
         "An earlier successful line reward cannot let shields survive the black hole after Inanna's protection expires");
+
+    // A new gate must not inherit a previous gate's delayed strike or aura.
+    auto& resetPlayer = otherRoom->m_Players.at(4u);
+    resetPlayer.iCurrentHp = 50u; resetPlayer.iEstherGuardEndTick = zoneEndTick;
+    resetPlayer.iEstherGuardDamageTakenPercent = -50;
+    otherRoom->Open_EstherZone(*zone, 0.f, 0.f, zoneTick);
+    auto& pending = otherRoom->m_PendingEstherSummons.emplace_back();
+    pending.pRosterEntry = Find_EstherDefinition(ESTHER_ID::INANNA);
+    pending.iCasterPlayerId = 4u;
+    SERVER_WORLD_ENTITY priorSummon;
+    priorSummon.iNetEntityId = 99001u; priorSummon.eKind = WORLD_BOOTSTRAP_KIND::NPC;
+    priorSummon.isEstherSummon = true; priorSummon.strArchetypeId = "NPC_59620";
+    otherRoom->m_WorldEntities.push_back(std::move(priorSummon));
+    const auto hasPriorSummon = [&]() { return std::any_of(otherRoom->m_WorldEntities.begin(),
+        otherRoom->m_WorldEntities.end(), [](const auto& entity) { return entity.iNetEntityId == 99001u; }); };
+    tests.Require(otherRoom->Despawn_KoukuSaydonArenaDebugEntities(true, true) && hasPriorSummon() &&
+        otherRoom->m_PendingEstherSummons.size() == 1u && otherRoom->m_EstherZones.size() == 1u &&
+        resetPlayer.iEstherGuardEndTick == zoneEndTick,
+        "Gate preflight preserves active, delayed and support Esther state");
+    tests.Require(otherRoom->Despawn_KoukuSaydonArenaDebugEntities(true) && !hasPriorSummon() &&
+        otherRoom->m_PendingEstherSummons.empty() && otherRoom->m_EstherZones.empty() &&
+        resetPlayer.iEstherGuardEndTick == 0u && resetPlayer.iEstherGuardDamageTakenPercent == 0,
+        "Committed gate reset ends all previous Esther strikes and protection");
+    otherRoom->Update_EstherZones(zoneEndTick);
+    otherRoom->Update_PendingEstherSummons(2.f);
+    tests.Require(resetPlayer.iCurrentHp == 50u && !hasPriorSummon() && otherRoom->m_TickDamageEvents.empty(),
+        "Reset Esther cannot heal, strike or respawn in the next encounter");
 }

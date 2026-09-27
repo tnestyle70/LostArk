@@ -1328,6 +1328,8 @@ LostArk::Server::CGameRoom::Apply_CharacterClassChange(
 		}
 	}
 
+	staged.iEstherGuardEndTick = 0u;
+	staged.iEstherGuardDamageTakenPercent = 0;
 	staged.eCharacterClass = request.eCharacterClass;
 	staged.iLastClassChangeSequence = request.iClientSequence;
 	staged.fMoveGoalX = 0.f;
