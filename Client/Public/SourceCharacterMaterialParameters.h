@@ -10061,6 +10061,198 @@ inline bool Configure(const std::string& family, const PARAMETER_VALUES& paramet
         staged.lightConstants[19] = float4_t(parameter("pbr_specular_intensity")[0],0.f,0.f,0.f);
         }();
     }
+    if (staged.program == 0u && family == "source.character.maharaka-itr02453-01.v1")
+    {
+        [&]() {
+        staged.program = 1528u;
+        staged.baseConstants[63] = vector(parameter("constantoutline_blink"));
+        staged.lightConstants[63] = vector(parameter("constantoutline_blink"));
+        staged.baseTextureMask = 3u;
+        staged.baseConstants[0] = vector(parameter("selectioncolor"));
+        staged.baseConstants[1] = vector(parameter("hit_color"));
+        staged.baseConstants[2] = vector(parameter("fx_color_intensity_buffsettool"));
+        staged.baseConstants[3] = vector(parameter("fx_color_intensity_actiontool"));
+        staged.baseConstants[4] = vector(parameter("transcolor"));
+        staged.baseConstants[5] = vector(parameter("constantoutline_color"));
+        staged.baseConstants[6] = vector(parameter("diffusecolor"));
+        staged.baseConstants[7] = float4_t(parameter("fx_color_desaturation_actiontool")[0],parameter("fx_color_desaturation_buffsettool")[0],parameter("transcolor_rimlight ")[0],parameter("trans_rim_inradius")[0]);
+        staged.baseConstants[8] = float4_t(parameter("trans_rim_hard")[0],parameter("constantoutline")[0],multiply(parameter("constantoutline"),Value{2.f,0.f,0.f,0.f})[0],Value{}[0]);
+        staged.baseConstants[9] = float4_t(add(Value{1.5f,0.f,0.f,0.f},wave(multiply(multiply(parameter("constantoutline_blink"),Value{}),Value{6.28318548f,0.f,0.f,0.f}),false))[0],multiply(add(Value{1.5f,0.f,0.f,0.f},wave(multiply(multiply(parameter("constantoutline_blink"),Value{}),Value{6.28318548f,0.f,0.f,0.f}),false)),Value{0.400000006f,0.f,0.f,0.f})[0],parameter("diffuse_brightness")[0],parameter("specular_intensity")[0]);
+        staged.lightTextureMask = 7u;
+        staged.lightConstants[0] = vector(parameter("fx_color_intensity_buffsettool"));
+        staged.lightConstants[1] = vector(parameter("fx_color_intensity_actiontool"));
+        staged.lightConstants[2] = vector(parameter("diffusecolor"));
+        staged.lightConstants[3] = float4_t(parameter("fx_color_desaturation_actiontool")[0],parameter("fx_color_desaturation_buffsettool")[0],parameter("transcolor_rimlight ")[0],parameter("trans_rim_inradius")[0]);
+        staged.lightConstants[4] = float4_t(add(Value{1.5f,0.f,0.f,0.f},wave(multiply(multiply(parameter("constantoutline_blink"),Value{}),Value{6.28318548f,0.f,0.f,0.f}),false))[0],multiply(add(Value{1.5f,0.f,0.f,0.f},wave(multiply(multiply(parameter("constantoutline_blink"),Value{}),Value{6.28318548f,0.f,0.f,0.f}),false)),Value{0.400000006f,0.f,0.f,0.f})[0],parameter("diffuse_brightness")[0],parameter("specular_intensity")[0]);
+        staged.lightConstants[5] = float4_t(parameter("specular_power")[0],0.f,0.f,0.f);
+        }();
+    }
+    if (staged.program == 0u && family == "source.character.maharaka-itr02453-02.v1")
+    {
+        [&]() {
+        staged.program = 1529u;
+        staged.baseConstants[63] = vector(parameter("constantoutline_blink"));
+        staged.lightConstants[63] = vector(parameter("constantoutline_blink"));
+        staged.baseTextureMask = 3u;
+        staged.baseConstants[0] = vector(parameter("selectioncolor"));
+        staged.baseConstants[1] = vector(parameter("hit_color"));
+        staged.baseConstants[2] = vector(parameter("fx_color_intensity_buffsettool"));
+        staged.baseConstants[3] = vector(parameter("fx_color_intensity_actiontool"));
+        staged.baseConstants[4] = vector(parameter("transcolor"));
+        staged.baseConstants[5] = vector(parameter("constantoutline_color"));
+        staged.baseConstants[6] = vector(parameter("diffusecolor"));
+        staged.baseConstants[7] = float4_t(parameter("fx_color_desaturation_actiontool")[0],parameter("fx_color_desaturation_buffsettool")[0],parameter("transcolor_rimlight ")[0],parameter("trans_rim_inradius")[0]);
+        staged.baseConstants[8] = float4_t(parameter("trans_rim_hard")[0],parameter("constantoutline")[0],multiply(parameter("constantoutline"),Value{2.f,0.f,0.f,0.f})[0],Value{}[0]);
+        staged.baseConstants[9] = float4_t(add(Value{1.5f,0.f,0.f,0.f},wave(multiply(multiply(parameter("constantoutline_blink"),Value{}),Value{6.28318548f,0.f,0.f,0.f}),false))[0],multiply(add(Value{1.5f,0.f,0.f,0.f},wave(multiply(multiply(parameter("constantoutline_blink"),Value{}),Value{6.28318548f,0.f,0.f,0.f}),false)),Value{0.400000006f,0.f,0.f,0.f})[0],parameter("constantoutline_power")[0],parameter("diffuse_brightness")[0]);
+        staged.lightTextureMask = 3u;
+        staged.lightConstants[0] = vector(parameter("fx_color_intensity_buffsettool"));
+        staged.lightConstants[1] = vector(parameter("fx_color_intensity_actiontool"));
+        staged.lightConstants[2] = vector(parameter("diffusecolor"));
+        staged.lightConstants[3] = float4_t(parameter("fx_color_desaturation_actiontool")[0],parameter("fx_color_desaturation_buffsettool")[0],parameter("transcolor_rimlight ")[0],parameter("trans_rim_inradius")[0]);
+        staged.lightConstants[4] = float4_t(add(Value{1.5f,0.f,0.f,0.f},wave(multiply(multiply(parameter("constantoutline_blink"),Value{}),Value{6.28318548f,0.f,0.f,0.f}),false))[0],multiply(add(Value{1.5f,0.f,0.f,0.f},wave(multiply(multiply(parameter("constantoutline_blink"),Value{}),Value{6.28318548f,0.f,0.f,0.f}),false)),Value{0.400000006f,0.f,0.f,0.f})[0],parameter("constantoutline_power")[0],parameter("diffuse_brightness")[0]);
+        staged.lightConstants[5] = float4_t(parameter("specular_saturation")[0],subtract(Value{1.f,0.f,0.f,0.f},parameter("specular_saturation"))[0],parameter("specular_intensity")[0],parameter("specular_power")[0]);
+        }();
+    }
+    if (staged.program == 0u && family == "source.character.maharaka-itr02453-03.v1")
+    {
+        [&]() {
+        staged.program = 1530u;
+        staged.baseConstants[63] = vector(parameter("constantoutline_blink"));
+        staged.lightConstants[63] = vector(parameter("constantoutline_blink"));
+        staged.baseTextureMask = 3u;
+        staged.baseConstants[0] = vector(parameter("selectioncolor"));
+        staged.baseConstants[1] = vector(parameter("hit_color"));
+        staged.baseConstants[2] = vector(parameter("fx_color_intensity_buffsettool"));
+        staged.baseConstants[3] = vector(parameter("fx_color_intensity_actiontool"));
+        staged.baseConstants[4] = vector(parameter("transcolor"));
+        staged.baseConstants[5] = vector(parameter("constantoutline_color"));
+        staged.baseConstants[6] = vector(parameter("diffusecolor"));
+        staged.baseConstants[7] = float4_t(parameter("fx_color_desaturation_actiontool")[0],parameter("fx_color_desaturation_buffsettool")[0],parameter("transcolor_rimlight ")[0],parameter("trans_rim_inradius")[0]);
+        staged.baseConstants[8] = float4_t(parameter("trans_rim_hard")[0],parameter("constantoutline")[0],multiply(parameter("constantoutline"),Value{2.f,0.f,0.f,0.f})[0],Value{}[0]);
+        staged.baseConstants[9] = float4_t(add(Value{1.5f,0.f,0.f,0.f},wave(multiply(multiply(parameter("constantoutline_blink"),Value{}),Value{6.28318548f,0.f,0.f,0.f}),false))[0],multiply(add(Value{1.5f,0.f,0.f,0.f},wave(multiply(multiply(parameter("constantoutline_blink"),Value{}),Value{6.28318548f,0.f,0.f,0.f}),false)),Value{0.400000006f,0.f,0.f,0.f})[0],parameter("diffuse_brightness")[0],parameter("specular_saturation")[0]);
+        staged.lightTextureMask = 3u;
+        staged.lightConstants[0] = vector(parameter("fx_color_intensity_buffsettool"));
+        staged.lightConstants[1] = vector(parameter("fx_color_intensity_actiontool"));
+        staged.lightConstants[2] = vector(parameter("diffusecolor"));
+        staged.lightConstants[3] = float4_t(parameter("fx_color_desaturation_actiontool")[0],parameter("fx_color_desaturation_buffsettool")[0],parameter("transcolor_rimlight ")[0],parameter("trans_rim_inradius")[0]);
+        staged.lightConstants[4] = float4_t(add(Value{1.5f,0.f,0.f,0.f},wave(multiply(multiply(parameter("constantoutline_blink"),Value{}),Value{6.28318548f,0.f,0.f,0.f}),false))[0],multiply(add(Value{1.5f,0.f,0.f,0.f},wave(multiply(multiply(parameter("constantoutline_blink"),Value{}),Value{6.28318548f,0.f,0.f,0.f}),false)),Value{0.400000006f,0.f,0.f,0.f})[0],parameter("diffuse_brightness")[0],parameter("specular_saturation")[0]);
+        staged.lightConstants[5] = float4_t(subtract(Value{1.f,0.f,0.f,0.f},parameter("specular_saturation"))[0],parameter("specular_intensity")[0],parameter("specular_power")[0],0.f);
+        }();
+    }
+    if (staged.program == 0u && family == "source.character.maharaka-itr02453-04.v1")
+    {
+        [&]() {
+        staged.program = 1531u;
+        staged.baseTextureMask = 7u;
+        staged.baseConstants[0] = vector(parameter("selectioncolor"));
+        staged.baseConstants[1] = vector(parameter("hit_color"));
+        staged.baseConstants[2] = vector(parameter("diffuse_color"));
+        staged.baseConstants[3] = vector(parameter("transmission_color"));
+        staged.baseConstants[4] = float4_t(parameter("normal_intensity")[0],parameter("diffuse_brightness")[0],parameter("specular_intensity")[0],parameter("specular_power")[0]);
+        staged.baseConstants[5] = float4_t(parameter("transmission_intensity")[0],0.f,0.f,0.f);
+        staged.lightTextureMask = 15u;
+        staged.lightConstants[0] = vector(parameter("diffuse_color"));
+        staged.lightConstants[1] = vector(parameter("specular_color"));
+        staged.lightConstants[2] = vector(parameter("transmission_color"));
+        staged.lightConstants[3] = float4_t(parameter("normal_intensity")[0],parameter("diffuse_brightness")[0],parameter("specular_intensity")[0],parameter("specular_power")[0]);
+        staged.lightConstants[4] = float4_t(parameter("transmission_intensity")[0],0.f,0.f,0.f);
+        }();
+    }
+    if (staged.program == 0u && family == "source.character.maharaka-resident-female.v1")
+    {
+        [&]() {
+        staged.program = 1474u;
+        staged.baseConstants[63] = vector(parameter("constantoutline_blink"));
+        staged.lightConstants[63] = vector(parameter("constantoutline_blink"));
+        staged.baseTextureMask = 47u;
+        staged.baseConstants[2] = vector(parameter("selectioncolor"));
+        staged.baseConstants[3] = vector(parameter("hit_color"));
+        staged.baseConstants[4] = vector(parameter("fx_color_intensity_buffsettool"));
+        staged.baseConstants[5] = vector(parameter("fx_color_intensity_actiontool"));
+        staged.baseConstants[6] = vector(parameter("transcolor"));
+        staged.baseConstants[7] = vector(parameter("buffcolor"));
+        staged.baseConstants[8] = vector(parameter("constantoutline_color"));
+        staged.baseConstants[9] = vector(parameter("diffusecolor"));
+        staged.baseConstants[10] = vector(parameter("diffusecolor_a"));
+        staged.baseConstants[11] = vector(parameter("diffusecolor_b"));
+        staged.baseConstants[12] = vector(parameter("diffusecolor_c"));
+        staged.baseConstants[13] = vector(parameter("state"));
+        staged.baseConstants[14] = vector(append(Value{},Value{},1u));
+        staged.baseConstants[15] = vector(parameter("state_noise"));
+        staged.baseConstants[16] = vector(append(wave(multiply(Value{},Value{0.100000001f,0.f,0.f,0.f}),true),multiply(Value{-1.f,0.f,0.f,0.f},wave(multiply(Value{},Value{0.100000001f,0.f,0.f,0.f}),false)),1u));
+        staged.baseConstants[17] = vector(append(wave(multiply(Value{},Value{0.100000001f,0.f,0.f,0.f}),false),wave(multiply(Value{},Value{0.100000001f,0.f,0.f,0.f}),true),1u));
+        staged.baseConstants[18] = vector(parameter("mask_variation_visible"));
+        staged.baseConstants[19] = float4_t(parameter("fx_color_desaturation_actiontool")[0],parameter("fx_color_desaturation_buffsettool")[0],parameter("transcolor_rimlight ")[0],parameter("trans_rim_inradius")[0]);
+        staged.baseConstants[20] = float4_t(parameter("trans_rim_hard")[0],parameter("constantoutline")[0],multiply(parameter("constantoutline"),Value{2.f,0.f,0.f,0.f})[0],Value{}[0]);
+        staged.baseConstants[21] = float4_t(add(Value{1.5f,0.f,0.f,0.f},wave(multiply(multiply(parameter("constantoutline_blink"),Value{}),Value{6.28318548f,0.f,0.f,0.f}),false))[0],multiply(add(Value{1.5f,0.f,0.f,0.f},wave(multiply(multiply(parameter("constantoutline_blink"),Value{}),Value{6.28318548f,0.f,0.f,0.f}),false)),Value{0.400000006f,0.f,0.f,0.f})[0],parameter("constantoutline_power")[0],parameter("diffuse_brightness")[0]);
+        staged.lightTextureMask = 63u;
+        staged.lightConstants[2] = vector(parameter("fx_color_intensity_buffsettool"));
+        staged.lightConstants[3] = vector(parameter("fx_color_intensity_actiontool"));
+        staged.lightConstants[4] = vector(parameter("diffusecolor"));
+        staged.lightConstants[5] = vector(parameter("diffusecolor_a"));
+        staged.lightConstants[6] = vector(parameter("diffusecolor_b"));
+        staged.lightConstants[7] = vector(parameter("diffusecolor_c"));
+        staged.lightConstants[8] = vector(parameter("state"));
+        staged.lightConstants[9] = vector(append(Value{},Value{},1u));
+        staged.lightConstants[10] = vector(parameter("state_noise"));
+        staged.lightConstants[11] = vector(append(wave(multiply(Value{},Value{0.100000001f,0.f,0.f,0.f}),true),multiply(Value{-1.f,0.f,0.f,0.f},wave(multiply(Value{},Value{0.100000001f,0.f,0.f,0.f}),false)),1u));
+        staged.lightConstants[12] = vector(append(wave(multiply(Value{},Value{0.100000001f,0.f,0.f,0.f}),false),wave(multiply(Value{},Value{0.100000001f,0.f,0.f,0.f}),true),1u));
+        staged.lightConstants[13] = vector(parameter("mask_variation_visible"));
+        staged.lightConstants[14] = vector(parameter("rimlight_color"));
+        staged.lightConstants[15] = float4_t(parameter("fx_color_desaturation_actiontool")[0],parameter("fx_color_desaturation_buffsettool")[0],parameter("transcolor_rimlight ")[0],parameter("trans_rim_inradius")[0]);
+        staged.lightConstants[16] = float4_t(parameter("trans_rim_hard")[0],parameter("constantoutline")[0],multiply(parameter("constantoutline"),Value{2.f,0.f,0.f,0.f})[0],Value{}[0]);
+        staged.lightConstants[17] = float4_t(add(Value{1.5f,0.f,0.f,0.f},wave(multiply(multiply(parameter("constantoutline_blink"),Value{}),Value{6.28318548f,0.f,0.f,0.f}),false))[0],multiply(add(Value{1.5f,0.f,0.f,0.f},wave(multiply(multiply(parameter("constantoutline_blink"),Value{}),Value{6.28318548f,0.f,0.f,0.f}),false)),Value{0.400000006f,0.f,0.f,0.f})[0],parameter("constantoutline_power")[0],parameter("diffuse_brightness")[0]);
+        staged.lightConstants[18] = float4_t(parameter("specular_intensity")[0],parameter("specular_power")[0],parameter("rimlight_intensity")[0],parameter("rimlight_power")[0]);
+        }();
+    }
+    if (staged.program == 0u && family == "source.character.maharaka-resident-male.v1")
+    {
+        [&]() {
+        staged.program = 1475u;
+        staged.baseConstants[63] = vector(parameter("constantoutline_blink"));
+        staged.lightConstants[63] = vector(parameter("constantoutline_blink"));
+        staged.baseTextureMask = 47u;
+        staged.baseConstants[2] = vector(parameter("selectioncolor"));
+        staged.baseConstants[3] = vector(parameter("hit_color"));
+        staged.baseConstants[4] = vector(parameter("fx_color_intensity_buffsettool"));
+        staged.baseConstants[5] = vector(parameter("fx_color_intensity_actiontool"));
+        staged.baseConstants[6] = vector(parameter("transcolor"));
+        staged.baseConstants[7] = vector(parameter("buffcolor"));
+        staged.baseConstants[8] = vector(parameter("constantoutline_color"));
+        staged.baseConstants[9] = vector(parameter("diffusecolor"));
+        staged.baseConstants[10] = vector(parameter("diffusecolor_a"));
+        staged.baseConstants[11] = vector(parameter("diffusecolor_b"));
+        staged.baseConstants[12] = vector(parameter("diffusecolor_c"));
+        staged.baseConstants[13] = vector(parameter("state"));
+        staged.baseConstants[14] = vector(append(Value{},Value{},1u));
+        staged.baseConstants[15] = vector(parameter("state_noise"));
+        staged.baseConstants[16] = vector(append(wave(multiply(Value{},Value{0.100000001f,0.f,0.f,0.f}),true),multiply(Value{-1.f,0.f,0.f,0.f},wave(multiply(Value{},Value{0.100000001f,0.f,0.f,0.f}),false)),1u));
+        staged.baseConstants[17] = vector(append(wave(multiply(Value{},Value{0.100000001f,0.f,0.f,0.f}),false),wave(multiply(Value{},Value{0.100000001f,0.f,0.f,0.f}),true),1u));
+        staged.baseConstants[18] = vector(parameter("mask_variation_visible"));
+        staged.baseConstants[19] = float4_t(parameter("fx_color_desaturation_actiontool")[0],parameter("fx_color_desaturation_buffsettool")[0],parameter("transcolor_rimlight ")[0],parameter("trans_rim_inradius")[0]);
+        staged.baseConstants[20] = float4_t(parameter("trans_rim_hard")[0],parameter("constantoutline")[0],multiply(parameter("constantoutline"),Value{2.f,0.f,0.f,0.f})[0],Value{}[0]);
+        staged.baseConstants[21] = float4_t(add(Value{1.5f,0.f,0.f,0.f},wave(multiply(multiply(parameter("constantoutline_blink"),Value{}),Value{6.28318548f,0.f,0.f,0.f}),false))[0],multiply(add(Value{1.5f,0.f,0.f,0.f},wave(multiply(multiply(parameter("constantoutline_blink"),Value{}),Value{6.28318548f,0.f,0.f,0.f}),false)),Value{0.400000006f,0.f,0.f,0.f})[0],parameter("constantoutline_power")[0],parameter("diffuse_brightness")[0]);
+        staged.lightTextureMask = 63u;
+        staged.lightConstants[2] = vector(parameter("fx_color_intensity_buffsettool"));
+        staged.lightConstants[3] = vector(parameter("fx_color_intensity_actiontool"));
+        staged.lightConstants[4] = vector(parameter("diffusecolor"));
+        staged.lightConstants[5] = vector(parameter("diffusecolor_a"));
+        staged.lightConstants[6] = vector(parameter("diffusecolor_b"));
+        staged.lightConstants[7] = vector(parameter("diffusecolor_c"));
+        staged.lightConstants[8] = vector(parameter("state"));
+        staged.lightConstants[9] = vector(append(Value{},Value{},1u));
+        staged.lightConstants[10] = vector(parameter("state_noise"));
+        staged.lightConstants[11] = vector(append(wave(multiply(Value{},Value{0.100000001f,0.f,0.f,0.f}),true),multiply(Value{-1.f,0.f,0.f,0.f},wave(multiply(Value{},Value{0.100000001f,0.f,0.f,0.f}),false)),1u));
+        staged.lightConstants[12] = vector(append(wave(multiply(Value{},Value{0.100000001f,0.f,0.f,0.f}),false),wave(multiply(Value{},Value{0.100000001f,0.f,0.f,0.f}),true),1u));
+        staged.lightConstants[13] = vector(parameter("mask_variation_visible"));
+        staged.lightConstants[14] = vector(parameter("rimlight_color"));
+        staged.lightConstants[15] = float4_t(parameter("fx_color_desaturation_actiontool")[0],parameter("fx_color_desaturation_buffsettool")[0],parameter("transcolor_rimlight ")[0],parameter("trans_rim_inradius")[0]);
+        staged.lightConstants[16] = float4_t(parameter("trans_rim_hard")[0],parameter("constantoutline")[0],multiply(parameter("constantoutline"),Value{2.f,0.f,0.f,0.f})[0],Value{}[0]);
+        staged.lightConstants[17] = float4_t(add(Value{1.5f,0.f,0.f,0.f},wave(multiply(multiply(parameter("constantoutline_blink"),Value{}),Value{6.28318548f,0.f,0.f,0.f}),false))[0],multiply(add(Value{1.5f,0.f,0.f,0.f},wave(multiply(multiply(parameter("constantoutline_blink"),Value{}),Value{6.28318548f,0.f,0.f,0.f}),false)),Value{0.400000006f,0.f,0.f,0.f})[0],parameter("constantoutline_power")[0],parameter("diffuse_brightness")[0]);
+        staged.lightConstants[18] = float4_t(parameter("specular_intensity")[0],parameter("specular_power")[0],multiply(parameter("specular_intensity"),Value{0.333332986f,0.f,0.f,0.f})[0],parameter("rimlight_intensity")[0]);
+        staged.lightConstants[19] = float4_t(parameter("rimlight_power")[0],0.f,0.f,0.f);
+        }();
+    }
     if (staged.program == 0u) return false;
     if (staged.program == 80u)
     {
@@ -10297,9 +10489,14 @@ inline bool Patch_NamedVector(Engine::MODEL_SOURCE_CHARACTER_PARAMETERS& materia
         {1158u, 0x0000000000000040ull, 0x0000000000000040ull, 0x0000000000000000ull, 0x0000000000000000ull},
         {1160u, 0x0000000000000040ull, 0x0000000000000040ull, 0x0000000000000000ull, 0x0000000000000000ull},
         {1161u, 0x0000000000000020ull, 0x0000000000000020ull, 0x0000000000000000ull, 0x0000000000000000ull},
+        {1474u, 0x0000000000000040ull, 0x0000000000000000ull, 0x0000000000000080ull, 0x0000000000000000ull},
+        {1475u, 0x0000000000000040ull, 0x0000000000000000ull, 0x0000000000000080ull, 0x0000000000000000ull},
         {1518u, 0x0000000000000080ull, 0x0000000000000080ull, 0x0000000000000100ull, 0x0000000000000100ull},
         {1526u, 0x0000000000000200ull, 0x0000000000000000ull, 0x0000000000000400ull, 0x0000000000000000ull},
         {1527u, 0x0000000000000200ull, 0x0000000000000000ull, 0x0000000000000400ull, 0x0000000000000000ull},
+        {1528u, 0x0000000000000010ull, 0x0000000000000000ull, 0x0000000000000000ull, 0x0000000000000000ull},
+        {1529u, 0x0000000000000010ull, 0x0000000000000000ull, 0x0000000000000000ull, 0x0000000000000000ull},
+        {1530u, 0x0000000000000010ull, 0x0000000000000000ull, 0x0000000000000000ull, 0x0000000000000000ull},
     };
     for (const auto& binding : bindings) {
         if (binding.program != material.program) continue;

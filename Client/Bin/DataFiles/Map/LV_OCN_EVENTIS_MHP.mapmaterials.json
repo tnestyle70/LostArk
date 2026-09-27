@@ -69878,6 +69878,1309 @@
     "directionalTexture": "Map/Lighting/Maharaka/lv_ocn_eventis_mhp_sl01_directionalmaxcomponent0_75.dds",
     "colorSpace": "linear"
    }
+  },
+  {
+   "assetId": "MAP_MHP_RECON_SUPPORT_COLUMN",
+   "materialName": "SLOT_000_bg_pap_niatown_column01_mi_khb",
+   "sourceMaterial": "bg_pap_niatown_b.mat.bg_pap_niatown_column01_mi_khb",
+   "castsShadow": true,
+   "renderMode": "deferred",
+   "cullMode": "back",
+   "textureColorSpace": {
+    "diffuse": "srgb",
+    "normal": "linear",
+    "specular": "linear",
+    "reflection": "linear"
+   },
+   "diffuseBrightness": 1.0,
+   "normalIntensity": 1.0,
+   "diffuseColor": [
+    1.0,
+    1.0,
+    1.0,
+    1.0
+   ],
+   "specularIntensity": 0.0,
+   "specularPower": 60.0,
+   "specularColor": [
+    1.0,
+    1.0,
+    1.0,
+    1.0
+   ],
+   "diffuseSaturation": 1,
+   "uvTiling": [
+    1,
+    1
+   ],
+   "sourceUV": [
+    0.0,
+    1.0,
+    0,
+    0
+   ],
+   "diffuseTexture": "Map/LV_OCN_EVENTIS_MHP/MAP_45CFCC4B82EE_BG_PAP_NIATOWN_COLUMN01_SM/textures/7d05e3b3a699_bg_pap_niatown_column01_d_khb.dds",
+   "family": "bg-source-opaque-masked",
+   "sourceFlags": 133,
+   "sourceBump": [
+    0.5,
+    0.05000000074505806,
+    0.30000001192092896,
+    0
+   ],
+   "flickerMode": 0,
+   "addressU": "WRAP",
+   "normalTexture": "Map/LV_OCN_EVENTIS_MHP/MAP_45CFCC4B82EE_BG_PAP_NIATOWN_COLUMN01_SM/textures/a604bda6db47_bg_pap_niatown_column01_n_khb.dds",
+   "reflectionContrast": 0.5,
+   "reflectionTiling": 1.0,
+   "reflectionColor": [
+    1.0,
+    1.0,
+    1.0,
+    1.0
+   ],
+   "reflectionIntensity": 0,
+   "reflectionOriginOffset": [
+    0,
+    0
+   ],
+   "sourceSpecularSaturation": 1
+  },
+  {
+   "assetId": "MAP_MHP_RECON_SUPPORT_TIMBER",
+   "materialName": "SLOT_000_bg_pap_niatown_bridge02_mi_khb",
+   "sourceMaterial": "bg_pap_niatown_a.mat.bg_pap_niatown_bridge02_mi_khb",
+   "castsShadow": true,
+   "renderMode": "deferred",
+   "cullMode": "back",
+   "textureColorSpace": {
+    "diffuse": "srgb",
+    "normal": "linear",
+    "specular": "linear",
+    "reflection": "linear"
+   },
+   "diffuseBrightness": 1.0,
+   "normalIntensity": 1.0,
+   "diffuseColor": [
+    1.0,
+    1.0,
+    1.0,
+    1.0
+   ],
+   "specularIntensity": 0.20000000298023224,
+   "specularPower": 60.0,
+   "specularColor": [
+    1.0,
+    1.0,
+    1.0,
+    1.0
+   ],
+   "diffuseSaturation": 1,
+   "uvTiling": [
+    1,
+    1
+   ],
+   "sourceUV": [
+    0.0,
+    1.0,
+    0,
+    0
+   ],
+   "diffuseTexture": "Map/LV_OCN_EVENTIS_MHP/MAP_45482AB0E41E_BG_PAP_NIATOWN_BRIDGE02C_SM/textures/d6a9849ff469_bg_pap_niatown_bridge02_d_khb.dds",
+   "family": "bg-source-opaque-masked",
+   "sourceFlags": 133,
+   "sourceBump": [
+    0.5,
+    0.05000000074505806,
+    0.30000001192092896,
+    0
+   ],
+   "flickerMode": 0,
+   "addressU": "WRAP",
+   "normalTexture": "Map/LV_OCN_EVENTIS_MHP/MAP_45482AB0E41E_BG_PAP_NIATOWN_BRIDGE02C_SM_OVR_442DB163DD9E/textures/3860505dcf50_bg_pap_niatown_bridge02_n_khb.dds",
+   "reflectionContrast": 0.5,
+   "reflectionTiling": 1.0,
+   "reflectionColor": [
+    1.0,
+    1.0,
+    1.0,
+    1.0
+   ],
+   "reflectionIntensity": 0,
+   "reflectionOriginOffset": [
+    0,
+    0
+   ],
+   "sourceSubspecular": [
+    1.0,
+    60.0
+   ],
+   "sourceSpecularSaturation": 1
+  },
+  {
+   "assetId": "MAP_MHP_RECON_CENTRAL_PILLAR",
+   "materialName": "SLOT_000_bg_ber_raniat_house01g_mi_psy",
+   "sourceMaterial": "lv_ocn_eventis_mhp.mat.bg_ber_raniat_house01g_mi_psy",
+   "castsShadow": true,
+   "renderMode": "deferred",
+   "cullMode": "back",
+   "textureColorSpace": {
+    "diffuse": "srgb",
+    "normal": "linear",
+    "specular": "srgb",
+    "reflection": "linear"
+   },
+   "diffuseBrightness": 1.5,
+   "normalIntensity": 1.0,
+   "diffuseColor": [
+    1.0,
+    0.6161692142486572,
+    0.4626043438911438,
+    1.0
+   ],
+   "specularIntensity": 1.0,
+   "specularPower": 60.0,
+   "specularColor": [
+    1.0,
+    1.0,
+    1.0,
+    1.0
+   ],
+   "diffuseSaturation": 1.0,
+   "uvTiling": [
+    1,
+    1
+   ],
+   "sourceUV": [
+    0.0,
+    1.0,
+    0,
+    0
+   ],
+   "diffuseTexture": "Map/LV_OCN_EVENTIS_MHP/MAP_12CD7B3924ED_BG_BER_RANIAT_PILLAR04_SM_PSY_OVR_6109C9D9F804/textures/6276d908fd9d_bg_ber_raniat_house01g_da_psy.dds",
+   "family": "bg-source-opaque-masked",
+   "sourceFlags": 205,
+   "sourceBump": [
+    0.5,
+    0.05000000074505806,
+    0.30000001192092896,
+    0
+   ],
+   "flickerMode": 0,
+   "addressU": "WRAP",
+   "normalTexture": "Map/LV_OCN_EVENTIS_MHP/MAP_12CD7B3924ED_BG_BER_RANIAT_PILLAR04_SM_PSY_OVR_6109C9D9F804/textures/05b2b2c4a172_bg_ber_raniat_house01g_n_psy.dds",
+   "specularTexture": "Map/LV_OCN_EVENTIS_MHP/MAP_12CD7B3924ED_BG_BER_RANIAT_PILLAR04_SM_PSY_OVR_6109C9D9F804/textures/5dafe4fb3374_bg_ber_raniat_house01g_s_psy.dds",
+   "reflectionContrast": 0.5,
+   "reflectionTiling": 1.0,
+   "reflectionColor": [
+    1.0,
+    1.0,
+    1.0,
+    1.0
+   ],
+   "reflectionIntensity": 0,
+   "reflectionOriginOffset": [
+    0,
+    0
+   ],
+   "sourceSpecularSaturation": 1
+  },
+  {
+   "assetId": "MAP_3A4C03E6C6F7_BG_PAP_NIATOWN_HOUSE03_SM_MSJ_OVR_4847A14960DB",
+   "materialName": "SLOT_001_bg_pap_niatown_bridge02_mi_khb",
+   "sourceMaterial": "lv_ocn_eventis_mhp.mat.bg_pap_niatown_bridge02_mi_khb",
+   "castsShadow": true,
+   "renderMode": "deferred",
+   "cullMode": "back",
+   "textureColorSpace": {
+    "diffuse": "srgb",
+    "normal": "linear",
+    "specular": "linear",
+    "reflection": "linear"
+   },
+   "diffuseBrightness": 2.5,
+   "normalIntensity": 1.0,
+   "diffuseColor": [
+    1.0,
+    0.7532896995544434,
+    0.542288064956665,
+    1.0
+   ],
+   "specularIntensity": 0.20000000298023224,
+   "specularPower": 60.0,
+   "specularColor": [
+    1.0,
+    1.0,
+    1.0,
+    1.0
+   ],
+   "diffuseSaturation": 1,
+   "uvTiling": [
+    1,
+    1
+   ],
+   "sourceUV": [
+    0.0,
+    1.0,
+    0,
+    0
+   ],
+   "diffuseTexture": "Map/LV_OCN_EVENTIS_MHP/MAP_45482AB0E41E_BG_PAP_NIATOWN_BRIDGE02C_SM/textures/d6a9849ff469_bg_pap_niatown_bridge02_d_khb.dds",
+   "family": "bg-source-opaque-masked",
+   "sourceFlags": 133,
+   "sourceBump": [
+    0.5,
+    0.05000000074505806,
+    0.30000001192092896,
+    0
+   ],
+   "flickerMode": 0,
+   "addressU": "WRAP",
+   "normalTexture": "Map/LV_OCN_EVENTIS_MHP/MAP_45482AB0E41E_BG_PAP_NIATOWN_BRIDGE02C_SM_OVR_442DB163DD9E/textures/3860505dcf50_bg_pap_niatown_bridge02_n_khb.dds",
+   "reflectionContrast": 0.5,
+   "reflectionTiling": 1.0,
+   "reflectionColor": [
+    1.0,
+    1.0,
+    1.0,
+    1.0
+   ],
+   "reflectionIntensity": 0,
+   "reflectionOriginOffset": [
+    0,
+    0
+   ],
+   "sourceSubspecular": [
+    1.0,
+    60.0
+   ],
+   "sourceSpecularSaturation": 1
+  },
+  {
+   "assetId": "MAP_3A4C03E6C6F7_BG_PAP_NIATOWN_HOUSE03_SM_MSJ_OVR_4847A14960DB",
+   "materialName": "SLOT_002_bg_pap_niatown_house01_mi_msj",
+   "sourceMaterial": "lv_ocn_eventis_mhp.mat.bg_pap_niatown_house01_mi_msj",
+   "castsShadow": true,
+   "renderMode": "deferred",
+   "cullMode": "back",
+   "textureColorSpace": {
+    "diffuse": "srgb",
+    "normal": "linear",
+    "specular": "linear",
+    "reflection": "linear"
+   },
+   "diffuseBrightness": 2.0,
+   "normalIntensity": 1.0,
+   "diffuseColor": [
+    1.0,
+    0.6737256050109863,
+    0.451299786567688,
+    1.0
+   ],
+   "specularIntensity": 2.0,
+   "specularPower": 60.0,
+   "specularColor": [
+    1.0,
+    1.0,
+    1.0,
+    1.0
+   ],
+   "diffuseSaturation": 1.0,
+   "uvTiling": [
+    1,
+    1
+   ],
+   "sourceUV": [
+    0.0,
+    1.0,
+    0,
+    0
+   ],
+   "diffuseTexture": "Map/LV_OCN_EVENTIS_MHP/MAP_3A4C03E6C6F7_BG_PAP_NIATOWN_HOUSE03_SM_MSJ_OVR_4847A14960DB/textures/f7af0e61ec18_bg_pap_niatown_house01_d_msj.dds",
+   "family": "bg-source-opaque-masked",
+   "sourceFlags": 197,
+   "sourceBump": [
+    0.5,
+    0.05000000074505806,
+    0.30000001192092896,
+    0
+   ],
+   "flickerMode": 0,
+   "addressU": "WRAP",
+   "normalTexture": "Map/LV_OCN_EVENTIS_MHP/MAP_3A4C03E6C6F7_BG_PAP_NIATOWN_HOUSE03_SM_MSJ_OVR_4847A14960DB/textures/f7fd724318c7_bg_pap_niatown_house01_n_msj.dds",
+   "reflectionContrast": 0.5,
+   "reflectionTiling": 1.0,
+   "reflectionColor": [
+    1.0,
+    1.0,
+    1.0,
+    1.0
+   ],
+   "reflectionIntensity": 0,
+   "reflectionOriginOffset": [
+    0,
+    0
+   ],
+   "sourceSpecularSaturation": 1
+  },
+  {
+   "assetId": "MAP_5CEC06090055_BG_PAP_ETC_FRUITBASKET02_SM_OVR_2E27CDFEFB29",
+   "materialName": "SLOT_001_bg_pap_etc_basket02_mi",
+   "sourceMaterial": "lv_pap_niatown.mat.lv_pap_etc_basket02_mi",
+   "castsShadow": true,
+   "renderMode": "deferred",
+   "cullMode": "back",
+   "textureColorSpace": {
+    "diffuse": "srgb",
+    "normal": "linear",
+    "specular": "linear",
+    "reflection": "linear"
+   },
+   "diffuseBrightness": 2.0,
+   "normalIntensity": 1.0,
+   "diffuseColor": [
+    1.0,
+    1.0,
+    1.0,
+    1.0
+   ],
+   "specularIntensity": 0.10000000149011612,
+   "specularPower": 30.0,
+   "specularColor": [
+    1.0,
+    1.0,
+    1.0,
+    1.0
+   ],
+   "diffuseSaturation": 1.5,
+   "uvTiling": [
+    1,
+    1
+   ],
+   "sourceUV": [
+    0.0,
+    1.0,
+    0,
+    0
+   ],
+   "diffuseTexture": "Map/LV_OCN_EVENTIS_MHP/MAP_5CEC06090055_BG_PAP_ETC_FRUITBASKET02_SM_OVR_2E27CDFEFB29/textures/a7b8f3a3c4c1_itr_02104_d.dds",
+   "family": "bg-source-opaque-masked",
+   "sourceFlags": 133,
+   "sourceBump": [
+    0.5,
+    0.05000000074505806,
+    0.30000001192092896,
+    0
+   ],
+   "flickerMode": 0,
+   "addressU": "WRAP",
+   "normalTexture": "Map/LV_OCN_EVENTIS_MHP/MAP_5CEC06090055_BG_PAP_ETC_FRUITBASKET02_SM_OVR_2E27CDFEFB29/textures/300aa7dd4901_itr_02104_n.dds",
+   "reflectionContrast": 0.5,
+   "reflectionTiling": 1.0,
+   "reflectionColor": [
+    1.0,
+    1.0,
+    1.0,
+    1.0
+   ],
+   "reflectionIntensity": 0,
+   "reflectionOriginOffset": [
+    0,
+    0
+   ],
+   "sourceSpecularSaturation": 1
+  },
+  {
+   "assetId": "MAP_7CC6CE9AB9CA_BG_LUT_LUCASTLE_HOUSEINSTAIR02A_SM_MSJ_OVR_975B41755FA7",
+   "materialName": "SLOT_000_bg_lut_lucastle_table09_mi_artree",
+   "sourceMaterial": "lv_ocn_eventis_mhp.mat.bg_lut_lucastle_table09_mi_artree",
+   "castsShadow": true,
+   "renderMode": "deferred",
+   "cullMode": "back",
+   "textureColorSpace": {
+    "diffuse": "srgb",
+    "normal": "linear",
+    "specular": "linear",
+    "reflection": "linear"
+   },
+   "diffuseBrightness": 2.0,
+   "normalIntensity": 1.0,
+   "diffuseColor": [
+    1.0,
+    0.8999999761581421,
+    0.699999988079071,
+    1.0
+   ],
+   "specularIntensity": 0.0,
+   "specularPower": 0.0,
+   "specularColor": [
+    1.0,
+    1.0,
+    1.0,
+    1.0
+   ],
+   "diffuseSaturation": 1,
+   "uvTiling": [
+    1,
+    1
+   ],
+   "sourceUV": [
+    0.0,
+    1.0,
+    0,
+    0
+   ],
+   "diffuseTexture": "Map/LV_OCN_EVENTIS_MHP/MAP_8965326762D0_BG_LUT_LUCASTLE_HOUSEINFENCE01_SM_ARTREE_OVR_E315365ACD83/textures/93a7dff50611_bg_lut_lucastle_table04_d_artree.dds",
+   "family": "bg-source-opaque-masked",
+   "sourceFlags": 133,
+   "sourceBump": [
+    0.5,
+    0.05000000074505806,
+    0.30000001192092896,
+    0
+   ],
+   "flickerMode": 0,
+   "addressU": "WRAP",
+   "normalTexture": "Map/LV_OCN_EVENTIS_MHP/MAP_8965326762D0_BG_LUT_LUCASTLE_HOUSEINFENCE01_SM_ARTREE_OVR_E315365ACD83/textures/4c5f5cacfe04_bg_lut_lucastle_table04_n_artree.dds",
+   "reflectionContrast": 0.5,
+   "reflectionTiling": 1.0,
+   "reflectionColor": [
+    1.0,
+    1.0,
+    1.0,
+    1.0
+   ],
+   "reflectionIntensity": 0,
+   "reflectionOriginOffset": [
+    0,
+    0
+   ],
+   "sourceSpecularSaturation": 1
+  },
+  {
+   "assetId": "MAP_D14D9217F05B_LV_OCN_PEYTO_SHIP15_SM_OVR_159469611338",
+   "materialName": "SLOT_000_lv_ocn_peyto_ship02a_mi_rsh",
+   "sourceMaterial": "lv_ocn_eventis_mhp.mat.bg_lut_etc_ship02a_mi_kbw",
+   "castsShadow": true,
+   "renderMode": "deferred",
+   "cullMode": "back",
+   "textureColorSpace": {
+    "diffuse": "srgb",
+    "normal": "linear",
+    "specular": "srgb",
+    "reflection": "linear"
+   },
+   "diffuseBrightness": 2.5,
+   "normalIntensity": 1.0,
+   "diffuseColor": [
+    1.0,
+    0.6000000238418579,
+    0.4000000059604645,
+    1.0
+   ],
+   "specularIntensity": 0.5,
+   "specularPower": 100.0,
+   "specularColor": [
+    1.0,
+    1.0,
+    1.0,
+    1.0
+   ],
+   "diffuseSaturation": 1,
+   "uvTiling": [
+    1,
+    1
+   ],
+   "sourceUV": [
+    0.0,
+    1.0,
+    0,
+    0
+   ],
+   "diffuseTexture": "Map/LV_OCN_EVENTIS_MHP/MAP_95AC1A725E3B_BG_OCN_ETC_PEYTOSHIP01C_SM_KBW_OVR_D3115C89E1C4/textures/fad99821bc06_bg_lut_etc_ship02_d_kbw.dds",
+   "family": "bg-source-opaque-masked",
+   "sourceFlags": 141,
+   "sourceBump": [
+    0.5,
+    0.05000000074505806,
+    0.30000001192092896,
+    0
+   ],
+   "flickerMode": 0,
+   "addressU": "WRAP",
+   "normalTexture": "Map/LV_OCN_EVENTIS_MHP/MAP_95AC1A725E3B_BG_OCN_ETC_PEYTOSHIP01C_SM_KBW_OVR_D3115C89E1C4/textures/9ab44904c55d_bg_lut_etc_ship02_n_kbw.dds",
+   "specularTexture": "Map/LV_OCN_EVENTIS_MHP/MAP_95AC1A725E3B_BG_OCN_ETC_PEYTOSHIP01C_SM_KBW_OVR_D3115C89E1C4/textures/095f28a397a9_bg_lut_etc_ship02_s_kbw.dds",
+   "reflectionContrast": 0.5,
+   "reflectionTiling": 1.0,
+   "reflectionColor": [
+    1.0,
+    1.0,
+    1.0,
+    1.0
+   ],
+   "reflectionIntensity": 0,
+   "reflectionOriginOffset": [
+    0,
+    0
+   ],
+   "sourceSpecularSaturation": 1
+  },
+  {
+   "assetId": "MAP_D14D9217F05B_LV_OCN_PEYTO_SHIP15_SM_OVR_159469611338",
+   "materialName": "SLOT_001_lv_ocn_peyto_bhd01_mi_rsh",
+   "sourceMaterial": "lv_ocn_eventis_mhp.mat.bg_shs_common_box01_mi_ksy",
+   "castsShadow": true,
+   "renderMode": "deferred",
+   "cullMode": "back",
+   "textureColorSpace": {
+    "diffuse": "srgb",
+    "normal": "linear",
+    "specular": "linear",
+    "reflection": "linear"
+   },
+   "diffuseBrightness": 2.0,
+   "normalIntensity": 1.0,
+   "diffuseColor": [
+    0.8999999761581421,
+    0.6000000238418579,
+    0.4000000059604645,
+    1.0
+   ],
+   "specularIntensity": 1.0,
+   "specularPower": 60.0,
+   "specularColor": [
+    1.0,
+    1.0,
+    1.0,
+    1.0
+   ],
+   "diffuseSaturation": 1,
+   "uvTiling": [
+    1,
+    1
+   ],
+   "sourceUV": [
+    0.0,
+    1.0,
+    0,
+    0
+   ],
+   "diffuseTexture": "Map/LV_OCN_EVENTIS_MHP/MAP_95AC1A725E3B_BG_OCN_ETC_PEYTOSHIP01C_SM_KBW_OVR_D3115C89E1C4/textures/a954b86d50ba_bg_shs_common_box01_d_ksy.dds",
+   "family": "bg-source-opaque-masked",
+   "sourceFlags": 129,
+   "sourceBump": [
+    0.5,
+    0.05000000074505806,
+    0.30000001192092896,
+    0
+   ],
+   "flickerMode": 0,
+   "addressU": "WRAP",
+   "normalTexture": "Map/LV_OCN_EVENTIS_MHP/MAP_95AC1A725E3B_BG_OCN_ETC_PEYTOSHIP01C_SM_KBW_OVR_D3115C89E1C4/textures/95b4157ce947_bg_shs_common_box01_n_ksy.dds",
+   "reflectionContrast": 0.5,
+   "reflectionTiling": 1.0,
+   "reflectionColor": [
+    1.0,
+    1.0,
+    1.0,
+    1.0
+   ],
+   "reflectionIntensity": 0,
+   "reflectionOriginOffset": [
+    0,
+    0
+   ],
+   "sourceSpecularSaturation": 1
+  },
+  {
+   "assetId": "MAP_D14D9217F05B_LV_OCN_PEYTO_SHIP15_SM_OVR_159469611338",
+   "materialName": "SLOT_002_lv_ocn_peyto_peytoship04_mi_rsh",
+   "sourceMaterial": "lv_ocn_eventis_mhp.mat.lv_ocn_peyto_peytoship04_mi_rsh",
+   "castsShadow": true,
+   "renderMode": "deferred",
+   "cullMode": "back",
+   "textureColorSpace": {
+    "diffuse": "srgb",
+    "normal": "linear",
+    "specular": "srgb",
+    "reflection": "linear"
+   },
+   "diffuseBrightness": 2.0,
+   "normalIntensity": 1.0,
+   "diffuseColor": [
+    1.0,
+    1.0,
+    1.0,
+    1.0
+   ],
+   "specularIntensity": 5.0,
+   "specularPower": 30.0,
+   "specularColor": [
+    1.0,
+    1.0,
+    1.0,
+    1.0
+   ],
+   "diffuseSaturation": 1,
+   "uvTiling": [
+    1,
+    1
+   ],
+   "sourceUV": [
+    0.0,
+    1.0,
+    0,
+    0
+   ],
+   "diffuseTexture": "Map/LV_OCN_EVENTIS_MHP/MAP_95AC1A725E3B_BG_OCN_ETC_PEYTOSHIP01C_SM_KBW_OVR_D3115C89E1C4/textures/667ff101aacc_bg_ocn_etc_peytoship04_d_kbw.dds",
+   "family": "bg-source-opaque-masked",
+   "sourceFlags": 141,
+   "sourceBump": [
+    0.5,
+    0.05000000074505806,
+    0.30000001192092896,
+    0
+   ],
+   "flickerMode": 0,
+   "addressU": "WRAP",
+   "normalTexture": "Map/LV_OCN_EVENTIS_MHP/MAP_95AC1A725E3B_BG_OCN_ETC_PEYTOSHIP01C_SM_KBW_OVR_D3115C89E1C4/textures/5f2c59e9aa09_bg_ocn_etc_peytoship04_n_kbw.dds",
+   "specularTexture": "Map/LV_OCN_EVENTIS_MHP/MAP_95AC1A725E3B_BG_OCN_ETC_PEYTOSHIP01C_SM_KBW_OVR_D3115C89E1C4/textures/9a8e71f3e72e_bg_ocn_etc_peytoship04_s_kbw.dds",
+   "reflectionContrast": 0.5,
+   "reflectionTiling": 1.0,
+   "reflectionColor": [
+    1.0,
+    1.0,
+    1.0,
+    1.0
+   ],
+   "reflectionIntensity": 0,
+   "reflectionOriginOffset": [
+    0,
+    0
+   ],
+   "sourceSpecularSaturation": 1
+  },
+  {
+   "assetId": "MAP_D14D9217F05B_LV_OCN_PEYTO_SHIP15_SM_OVR_159469611338",
+   "materialName": "SLOT_004_lv_ocn_peyto_peytoship01_mi_rsh",
+   "sourceMaterial": "lv_ocn_eventis_mhp.mat.bg_ocn_etc_peytoship01_mi_kbw",
+   "castsShadow": true,
+   "renderMode": "deferred",
+   "cullMode": "back",
+   "textureColorSpace": {
+    "diffuse": "srgb",
+    "normal": "linear",
+    "specular": "linear",
+    "reflection": "linear"
+   },
+   "diffuseBrightness": 2.5,
+   "normalIntensity": 1.0,
+   "diffuseColor": [
+    1.0,
+    0.699999988079071,
+    0.5,
+    1.0
+   ],
+   "specularIntensity": 5.0,
+   "specularPower": 30.0,
+   "specularColor": [
+    1.0,
+    1.0,
+    1.0,
+    1.0
+   ],
+   "diffuseSaturation": 1,
+   "uvTiling": [
+    1,
+    1
+   ],
+   "sourceUV": [
+    0.0,
+    1.0,
+    0,
+    0
+   ],
+   "diffuseTexture": "Map/LV_OCN_EVENTIS_MHP/MAP_95AC1A725E3B_BG_OCN_ETC_PEYTOSHIP01C_SM_KBW_OVR_D3115C89E1C4/textures/3690f07b16a2_bg_ocn_etc_peytoship01_d_kbw.dds",
+   "family": "bg-source-opaque-masked",
+   "sourceFlags": 133,
+   "sourceBump": [
+    0.5,
+    0.05000000074505806,
+    0.30000001192092896,
+    0
+   ],
+   "flickerMode": 0,
+   "addressU": "WRAP",
+   "normalTexture": "Map/LV_OCN_EVENTIS_MHP/MAP_95AC1A725E3B_BG_OCN_ETC_PEYTOSHIP01C_SM_KBW_OVR_D3115C89E1C4/textures/f0c9b517d6ce_bg_ocn_etc_peytoship01_n_kbw.dds",
+   "reflectionContrast": 0.5,
+   "reflectionTiling": 1.0,
+   "reflectionColor": [
+    1.0,
+    1.0,
+    1.0,
+    1.0
+   ],
+   "reflectionIntensity": 0,
+   "reflectionOriginOffset": [
+    0,
+    0
+   ],
+   "sourceSpecularSaturation": 1
+  },
+  {
+   "assetId": "MAP_D9E5DCA22740_LV_ATT_STERN_FENCE06_SM_OVR_E01ED32C11B7",
+   "materialName": "SLOT_000_bg_att_common_pipe01_mi_pjh",
+   "sourceMaterial": "lv_ocn_eventis_mhp.mat.lv_ocn_eventis_mhp_color03_mi",
+   "castsShadow": true,
+   "renderMode": "deferred",
+   "cullMode": "back",
+   "textureColorSpace": {
+    "diffuse": "srgb",
+    "normal": "linear",
+    "specular": "linear",
+    "reflection": "srgb"
+   },
+   "diffuseBrightness": 2.0,
+   "normalIntensity": 1.0,
+   "diffuseColor": [
+    1.0,
+    0.24726134538650513,
+    0.20444917678833008,
+    1.0
+   ],
+   "specularIntensity": 2.0,
+   "specularPower": 20.0,
+   "specularColor": [
+    1.0,
+    1.0,
+    1.0,
+    1.0
+   ],
+   "diffuseSaturation": 1,
+   "uvTiling": [
+    1,
+    1
+   ],
+   "sourceUV": [
+    0.0,
+    1.0,
+    0,
+    0
+   ],
+   "diffuseTexture": "Map/LV_OCN_EVENTIS_MHP/MAP_6CD1FC6D6BB1_BG_ANH_FOLIAGE_TE_B49_SM_OLD_OVR_BC68E989CFB7/textures/9934688136d4_diffuse.dds",
+   "family": "bg-source-opaque-masked",
+   "sourceFlags": 181,
+   "sourceBump": [
+    0.5,
+    0.05000000074505806,
+    0.30000001192092896,
+    0
+   ],
+   "flickerMode": 0,
+   "addressU": "WRAP",
+   "normalTexture": "Map/LV_OCN_EVENTIS_MHP_SOURCE_MATERIALS/EngineDefaults/ef8bb9743550_normal.dds",
+   "reflectionTexture": "Map/LV_OCN_EVENTIS_MHP/MAP_6F681C6D4512_BG_ATT_COMMON_CRANEDECO01C_SM_LDY_OVR_68CFBCB5D7C2/textures/41b630d4d0b3_ambientreflection_13.dds",
+   "reflectionContrast": 1.0,
+   "reflectionTiling": 1.0,
+   "reflectionColor": [
+    1.0,
+    1.0,
+    1.0,
+    1.0
+   ],
+   "reflectionIntensity": 0.10000000149011612,
+   "reflectionOriginOffset": [
+    0,
+    0
+   ],
+   "sourceSpecularSaturation": 1
+  },
+  {
+   "materialName": "itr_02453_04_mi",
+   "sourceMaterial": "itr_02453.mat.itr_02453_04_mi",
+   "family": "source.character.maharaka-itr02453-04.v1",
+   "parameters": {
+    "diffuse_brightness": [
+     1.0,
+     1.0,
+     1.0,
+     1.0
+    ],
+    "diffuse_color": [
+     1.0,
+     1.0,
+     1.0,
+     1.0
+    ],
+    "hit_color": [
+     0.0,
+     0.0,
+     0.0,
+     1.0
+    ],
+    "normal_intensity": [
+     1.0,
+     1.0,
+     1.0,
+     1.0
+    ],
+    "selectioncolor": [
+     0.0,
+     0.0,
+     0.0,
+     1.0
+    ],
+    "specular_color": [
+     1.0,
+     1.0,
+     1.0,
+     1.0
+    ],
+    "specular_intensity": [
+     2.0,
+     2.0,
+     2.0,
+     2.0
+    ],
+    "specular_power": [
+     60.0,
+     60.0,
+     60.0,
+     60.0
+    ],
+    "transmission_color": [
+     0.5,
+     0.5,
+     0.5,
+     1.0
+    ],
+    "transmission_intensity": [
+     1.0,
+     1.0,
+     1.0,
+     1.0
+    ]
+   },
+   "textures": [
+    {
+     "expressionIndex": 0,
+     "assetId": "Map/LV_OCN_EVENTIS_MHP/MAP_65096D72C5C9_ITR_02453_SK/textures/itr_02453_04_n.dds",
+     "colorSpace": "linear"
+    },
+    {
+     "expressionIndex": 1,
+     "assetId": "Map/LV_OCN_EVENTIS_MHP/MAP_65096D72C5C9_ITR_02453_SK/textures/itr_02453_04_da.dds",
+     "colorSpace": "srgb"
+    },
+    {
+     "expressionIndex": 2,
+          "assetId": "Map/LV_OCN_EVENTIS_MHP_SOURCE_MATERIALS/EngineDefaults/726b99cf1d98_flat_white.dds",
+     "colorSpace": "srgb"
+    },
+    {
+     "expressionIndex": 3,
+     "assetId": "Map/LV_OCN_EVENTIS_MHP/MAP_65096D72C5C9_ITR_02453_SK/textures/itr_02453_04_s.dds",
+     "colorSpace": "srgb"
+    }
+   ],
+   "assetId": "MAP_65096D72C5C9_ITR_02453_SK",
+   "renderMode": "deferred",
+   "cullMode": "back"
+  },
+  {
+   "materialName": "itr_02453_01_mi",
+   "sourceMaterial": "itr_02453.mat.itr_02453_01_mi",
+   "family": "source.character.maharaka-itr02453-01.v1",
+   "parameters": {
+    "constantoutline": [
+     0.0,
+     0.0,
+     0.0,
+     0.0
+    ],
+    "constantoutline_blink": [
+     0.0,
+     0.0,
+     0.0,
+     0.0
+    ],
+    "constantoutline_color": [
+     0.4230642020702362,
+     0.7928890585899353,
+     0.8507974147796631,
+     1.0
+    ],
+    "diffuse_brightness": [
+     1.0,
+     1.0,
+     1.0,
+     1.0
+    ],
+    "diffusecolor": [
+     1.0,
+     1.0,
+     1.0,
+     1.0
+    ],
+    "fx_color_desaturation_actiontool": [
+     0.0,
+     0.0,
+     0.0,
+     0.0
+    ],
+    "fx_color_desaturation_buffsettool": [
+     0.0,
+     0.0,
+     0.0,
+     0.0
+    ],
+    "fx_color_intensity_actiontool": [
+     0.0,
+     0.0,
+     0.0,
+     1.0
+    ],
+    "fx_color_intensity_buffsettool": [
+     0.0,
+     0.0,
+     0.0,
+     1.0
+    ],
+    "hit_color": [
+     0.0,
+     0.0,
+     0.0,
+     0.0
+    ],
+    "selectioncolor": [
+     0.0,
+     0.0,
+     0.0,
+     1.0
+    ],
+    "specular_intensity": [
+     3.0,
+     3.0,
+     3.0,
+     3.0
+    ],
+    "specular_power": [
+     45.0,
+     45.0,
+     45.0,
+     45.0
+    ],
+    "trans_rim_hard": [
+     1.0,
+     1.0,
+     1.0,
+     1.0
+    ],
+    "trans_rim_inradius": [
+     0.0,
+     0.0,
+     0.0,
+     0.0
+    ],
+    "transcolor": [
+     0.0,
+     0.0,
+     0.0,
+     1.0
+    ],
+    "transcolor_rimlight ": [
+     1.0,
+     1.0,
+     1.0,
+     1.0
+    ]
+   },
+   "textures": [
+    {
+     "expressionIndex": 0,
+     "assetId": "Map/LV_OCN_EVENTIS_MHP/MAP_65096D72C5C9_ITR_02453_SK/textures/itr_02453_01_n.dds",
+     "colorSpace": "linear"
+    },
+    {
+     "expressionIndex": 1,
+     "assetId": "Map/LV_OCN_EVENTIS_MHP/MAP_65096D72C5C9_ITR_02453_SK/textures/itr_02453_01_d.dds",
+     "colorSpace": "srgb"
+    },
+    {
+     "expressionIndex": 2,
+     "assetId": "Map/LV_OCN_EVENTIS_MHP/MAP_65096D72C5C9_ITR_02453_SK/textures/itr_02453_01_s.dds",
+     "colorSpace": "srgb"
+    }
+   ],
+   "assetId": "MAP_65096D72C5C9_ITR_02453_SK",
+   "renderMode": "deferred",
+   "cullMode": "back"
+  },
+  {
+   "materialName": "itr_02453_02_mi",
+   "sourceMaterial": "itr_02453.mat.itr_02453_02_mi",
+   "family": "source.character.maharaka-itr02453-02.v1",
+   "parameters": {
+    "constantoutline": [
+     0.0,
+     0.0,
+     0.0,
+     0.0
+    ],
+    "constantoutline_blink": [
+     0.0,
+     0.0,
+     0.0,
+     0.0
+    ],
+    "constantoutline_color": [
+     0.4230642020702362,
+     0.7928890585899353,
+     0.8507974147796631,
+     1.0
+    ],
+    "constantoutline_power": [
+     1.0,
+     1.0,
+     1.0,
+     1.0
+    ],
+    "diffuse_brightness": [
+     1.0,
+     1.0,
+     1.0,
+     1.0
+    ],
+    "diffusecolor": [
+     1.0,
+     1.0,
+     1.0,
+     1.0
+    ],
+    "fx_color_desaturation_actiontool": [
+     0.0,
+     0.0,
+     0.0,
+     0.0
+    ],
+    "fx_color_desaturation_buffsettool": [
+     0.0,
+     0.0,
+     0.0,
+     0.0
+    ],
+    "fx_color_intensity_actiontool": [
+     0.0,
+     0.0,
+     0.0,
+     1.0
+    ],
+    "fx_color_intensity_buffsettool": [
+     0.0,
+     0.0,
+     0.0,
+     1.0
+    ],
+    "hit_color": [
+     0.0,
+     0.0,
+     0.0,
+     0.0
+    ],
+    "selectioncolor": [
+     0.0,
+     0.0,
+     0.0,
+     1.0
+    ],
+    "specular_intensity": [
+     1.5,
+     1.5,
+     1.5,
+     1.5
+    ],
+    "specular_power": [
+     60.0,
+     60.0,
+     60.0,
+     60.0
+    ],
+    "specular_saturation": [
+     1.0,
+     1.0,
+     1.0,
+     1.0
+    ],
+    "trans_rim_hard": [
+     1.0,
+     1.0,
+     1.0,
+     1.0
+    ],
+    "trans_rim_inradius": [
+     0.0,
+     0.0,
+     0.0,
+     0.0
+    ],
+    "transcolor": [
+     0.0,
+     0.0,
+     0.0,
+     1.0
+    ],
+    "transcolor_rimlight ": [
+     1.0,
+     1.0,
+     1.0,
+     1.0
+    ]
+   },
+   "textures": [
+    {
+     "expressionIndex": 0,
+     "assetId": "Map/LV_OCN_EVENTIS_MHP/MAP_65096D72C5C9_ITR_02453_SK/textures/itr_02453_02_n.dds",
+     "colorSpace": "linear"
+    },
+    {
+     "expressionIndex": 1,
+     "assetId": "Map/LV_OCN_EVENTIS_MHP/MAP_65096D72C5C9_ITR_02453_SK/textures/itr_02453_02_da.dds",
+     "colorSpace": "srgb"
+    }
+   ],
+   "assetId": "MAP_65096D72C5C9_ITR_02453_SK",
+   "renderMode": "deferred",
+   "cullMode": "back"
+  },
+  {
+   "materialName": "itr_02453_03_mi",
+   "sourceMaterial": "itr_02453.mat.itr_02453_03_mi",
+   "family": "source.character.maharaka-itr02453-03.v1",
+   "parameters": {
+    "constantoutline": [
+     0.0,
+     0.0,
+     0.0,
+     0.0
+    ],
+    "constantoutline_blink": [
+     0.0,
+     0.0,
+     0.0,
+     0.0
+    ],
+    "constantoutline_color": [
+     0.4230642020702362,
+     0.7928890585899353,
+     0.8507974147796631,
+     1.0
+    ],
+    "diffuse_brightness": [
+     1.0,
+     1.0,
+     1.0,
+     1.0
+    ],
+    "diffusecolor": [
+     1.0,
+     1.0,
+     1.0,
+     1.0
+    ],
+    "fx_color_desaturation_actiontool": [
+     0.0,
+     0.0,
+     0.0,
+     0.0
+    ],
+    "fx_color_desaturation_buffsettool": [
+     0.0,
+     0.0,
+     0.0,
+     0.0
+    ],
+    "fx_color_intensity_actiontool": [
+     0.0,
+     0.0,
+     0.0,
+     1.0
+    ],
+    "fx_color_intensity_buffsettool": [
+     0.0,
+     0.0,
+     0.0,
+     1.0
+    ],
+    "hit_color": [
+     0.0,
+     0.0,
+     0.0,
+     0.0
+    ],
+    "selectioncolor": [
+     0.0,
+     0.0,
+     0.0,
+     1.0
+    ],
+    "specular_intensity": [
+     1.5,
+     1.5,
+     1.5,
+     1.5
+    ],
+    "specular_power": [
+     60.0,
+     60.0,
+     60.0,
+     60.0
+    ],
+    "specular_saturation": [
+     1.0,
+     1.0,
+     1.0,
+     1.0
+    ],
+    "trans_rim_hard": [
+     1.0,
+     1.0,
+     1.0,
+     1.0
+    ],
+    "trans_rim_inradius": [
+     0.0,
+     0.0,
+     0.0,
+     0.0
+    ],
+    "transcolor": [
+     0.0,
+     0.0,
+     0.0,
+     1.0
+    ],
+    "transcolor_rimlight ": [
+     1.0,
+     1.0,
+     1.0,
+     1.0
+    ]
+   },
+   "textures": [
+    {
+     "expressionIndex": 0,
+     "assetId": "Map/LV_OCN_EVENTIS_MHP/MAP_65096D72C5C9_ITR_02453_SK/textures/itr_02453_03_n.dds",
+     "colorSpace": "linear"
+    },
+    {
+     "expressionIndex": 1,
+     "assetId": "Map/LV_OCN_EVENTIS_MHP/MAP_65096D72C5C9_ITR_02453_SK/textures/itr_02453_03_d.dds",
+     "colorSpace": "srgb"
+    }
+   ],
+   "assetId": "MAP_65096D72C5C9_ITR_02453_SK",
+   "renderMode": "deferred",
+   "cullMode": "back"
   }
  ],
  "placementLighting": [

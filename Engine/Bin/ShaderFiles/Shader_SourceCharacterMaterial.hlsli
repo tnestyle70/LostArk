@@ -78,7 +78,9 @@ SOURCE_CHARACTER_NATIVE_INPUT MakeSourceCharacterInput(float2 uv, float4 extraUV
         input.values[7] = clipPosition;
     }
     if (g_SourceCharacterProgram == 12u || g_SourceCharacterProgram == 22u || g_SourceCharacterProgram == 84u ||
-        g_SourceCharacterProgram == 92u || g_SourceCharacterProgram == 93u || g_SourceCharacterProgram == 109u || (g_SourceCharacterProgram >= 80u && g_SourceCharacterProgram <= 83u))
+        g_SourceCharacterProgram == 92u || g_SourceCharacterProgram == 93u || g_SourceCharacterProgram == 109u ||
+        g_SourceCharacterProgram == 1474u || g_SourceCharacterProgram == 1475u ||
+        (g_SourceCharacterProgram >= 80u && g_SourceCharacterProgram <= 83u))
     {
         // The legacy head direct VS packs UV/light/view/position into 2/3/5/6.
         // Its base pass uses the common layout above.

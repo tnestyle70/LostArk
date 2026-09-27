@@ -2732,6 +2732,8 @@ def write_component_gltf(
     destination: Path,
     asset_id: str,
     cliff_layer: dict[str, Any],
+    *,
+    source_painted_surface: bool = False,
 ) -> dict[str, Any]:
     grid_size = component.component_size_quads + 1
     positions = component_positions(component, proxy)
@@ -2857,7 +2859,11 @@ def write_component_gltf(
                         subtract3(triangle_positions[2], triangle_positions[0]),
                     )
                 )
-                if triangle_is_cliff(face_normal):
+                # A slope is not an authored layer assignment. When the caller
+                # has baked the verified source layer contract, every face must
+                # retain its component UV and that same painted material.
+                # Preserve the legacy derivative mode for existing callers.
+                if not source_painted_surface and triangle_is_cliff(face_normal):
                     append_cliff_triangle(triangle)
                 else:
                     top_indices.extend(triangle)
@@ -2865,6 +2871,24 @@ def write_component_gltf(
         raise LandscapeError("Landscape component requires 32-bit indices")
     if cliff_indices and max(cliff_indices) > 65535:
         raise LandscapeError("Landscape cliff primitive requires 32-bit indices")
+
+    # Geometry above is in Client LH space (UE X,Z,-Y). glTF is RH and the
+    # existing converter reflects Z when importing it. Serializing Client
+    # positions directly therefore mirrors each tile around its own anchor.
+    # Convert the complete basis, including handedness and winding, at this
+    # serialization boundary only. UVs and source height samples are unchanged.
+    client_minimum = [min(item[axis] for item in positions) for axis in range(3)]
+    client_maximum = [max(item[axis] for item in positions) for axis in range(3)]
+    reflect = lambda values: [(x, y, -z) for x, y, z in values]
+    positions = reflect(positions)
+    normals = reflect(normals)
+    tangents = [(x, y, -z, -w) for x, y, z, w in tangents]
+    cliff_positions = reflect(cliff_positions)
+    cliff_normals = reflect(cliff_normals)
+    cliff_tangents = [(x, y, -z, -w) for x, y, z, w in cliff_tangents]
+    for indices in (top_indices, cliff_indices):
+        for offset in range(0, len(indices), 3):
+            indices[offset + 1], indices[offset + 2] = indices[offset + 2], indices[offset + 1]
 
     binary = bytearray()
     buffer_views: list[dict[str, Any]] = []
@@ -3061,14 +3085,14 @@ def write_component_gltf(
         "accessors": accessors,
         "extras": {
             "source": f"{component.logical_package}:export:{component.export_index}",
-            "coordinateSystem": "Client (UE X,Z,-Y), meters",
+            "coordinateSystem": "glTF RH (UE X,Z,Y), meters; converter produces Client (UE X,Z,-Y)",
             "proxyScaleBakedIntoVertices": True,
             "holesAppliedToTopology": True,
             "holeOwnership": "top-left-sample",
             "holeThreshold": UE3_LANDSCAPE_HOLE_THRESHOLD,
-            "cliffMaterial": CLIFF_MATERIAL_NAME,
-            "cliffProjection": "dominant-axis-world-height",
-            "cliffFaceUpThreshold": CLIFF_BLEND_FLAT_UP,
+            "cliffMaterial": None if source_painted_surface else CLIFF_MATERIAL_NAME,
+            "cliffProjection": "source-painted-component-uv" if source_painted_surface else "dominant-axis-world-height",
+            "cliffFaceUpThreshold": None if source_painted_surface else CLIFF_BLEND_FLAT_UP,
         },
     }
     atomic_write_bytes(destination.with_suffix(".bin"), bytes(binary))
@@ -3080,10 +3104,12 @@ def write_component_gltf(
         "triangleCount": (len(top_indices) + len(cliff_indices)) // 3,
         "topTriangleCount": len(top_indices) // 3,
         "cliffTriangleCount": len(cliff_indices) // 3,
+        "sourcePaintedSurface": source_painted_surface,
         "holeQuadCount": hole_quad_count,
         "normalSource": "UE3 Heightmap B/A packed normal",
-        "boundsMin": minimum,
-        "boundsMax": maximum,
+        "boundsMin": client_minimum,
+        "boundsMax": client_maximum,
+        "gltfRightHanded": True,
         "gltf": destination.name,
         "binary": binary_name,
     }

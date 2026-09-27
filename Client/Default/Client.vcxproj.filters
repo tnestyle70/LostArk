@@ -1885,6 +1885,9 @@
 	<None Include="..\..\Data\Actors\NpcCatalog.json">
 	  <Filter>96.DataFiles\Actors</Filter>
 	</None>
+	<None Include="..\..\Data\Actors\MaharakaResidents.source.json">
+	  <Filter>96.DataFiles\Actors</Filter>
+	</None>
 	<None Include="..\..\Data\Actors\MonsterCatalog.json">
 	  <Filter>96.DataFiles\Actors</Filter>
 	</None>
@@ -3006,6 +3009,9 @@
       <Filter>97.ShaderFiles</Filter>
     </None>
     <None Include="..\Bin\ShaderFiles\Shader_SourceFoliageWind.hlsli">
+      <Filter>97.ShaderFiles</Filter>
+    </None>
+    <None Include="..\Bin\ShaderFiles\Shader_SourceMaharakaStandWind.hlsli">
       <Filter>97.ShaderFiles</Filter>
     </None>
     <None Include="..\Bin\ShaderFiles\Shader_SourceFoliageSurface.hlsli">
@@ -5749,6 +5755,14 @@
       <Filter>96.DataFiles</Filter>
     </None>
     <None Include="..\..\Data\Effects\Authored\effect.kouku.mario.marker.yellow.effect.json">
+      <Filter>96.DataFiles</Filter>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\Data\Maps\Authoring\LV_OCN_EVENTIS_MHP\LV_OCN_EVENTIS_MHP.camerashots.json">
+      <Filter>96.DataFiles</Filter>
+    </None>
+    <None Include="..\..\Data\Maps\Authoring\LV_OCN_EVENTIS_MHP\LV_OCN_EVENTIS_MHP.worldsequences.json">
       <Filter>96.DataFiles</Filter>
     </None>
   </ItemGroup>

@@ -4,14 +4,28 @@
 bool IsSourceMovieStatic(uint program)
 {
     return (program >= 1100u && program <= 1166u) ||
-        (program >= 1400u && program <= 1413u) || (program >= 1500u && program <= 1525u);
+        (program >= 1400u && program <= 1413u) || (program >= 1500u && program <= 1525u) ||
+        (program >= 1528u && program <= 1531u);
 }
-void PackSourceMovieBaseInput(inout SOURCE_CHARACTER_NATIVE_INPUT input,
+void PackSourceMovieBaseInput(inout SOURCE_CHARACTER_NATIVE_INPUT input,
     float4 tangentX, float4 tangentZ, float4 color, float2 uv,
     float4 view, float4 light, float4 up, float4 clip, float4 fog)
 {
     if (!IsSourceMovieStatic(g_SourceCharacterProgram)) return;
-    [unroll] for (uint lane=0u;lane<10u;++lane) input.values[lane]=0.f;
+    [unroll] for (uint lane=0u;lane<10u;++lane) input.values[lane]=0.f;
+
+    // ITR_02453 LocalVertexFactory: exact 0c1413bd/86a842b8 output registers.
+    if (g_SourceCharacterProgram >= 1528u && g_SourceCharacterProgram <= 1531u)
+    {
+        input.values[0] = tangentX;
+        input.values[1] = tangentZ;
+        input.values[2] = color;
+        input.values[4] = float4(uv, 0.f, 0.f);
+        input.values[5] = view;
+        input.values[6].xyz = up.xyz;
+        input.values[7] = clip;
+        return;
+    }
     if (g_SourceCharacterProgram==1100u || g_SourceCharacterProgram==1103u || g_SourceCharacterProgram==1104u || g_SourceCharacterProgram==1105u || g_SourceCharacterProgram==1108u || g_SourceCharacterProgram==1110u || g_SourceCharacterProgram==1111u || g_SourceCharacterProgram==1112u || g_SourceCharacterProgram==1115u || g_SourceCharacterProgram==1116u || g_SourceCharacterProgram==1118u || g_SourceCharacterProgram==1119u || g_SourceCharacterProgram==1120u || g_SourceCharacterProgram==1121u || g_SourceCharacterProgram==1122u || g_SourceCharacterProgram==1123u || g_SourceCharacterProgram==1124u || g_SourceCharacterProgram==1125u || g_SourceCharacterProgram==1126u || g_SourceCharacterProgram==1127u || g_SourceCharacterProgram==1128u || g_SourceCharacterProgram==1129u || g_SourceCharacterProgram==1130u || g_SourceCharacterProgram==1131u || g_SourceCharacterProgram==1132u || g_SourceCharacterProgram==1133u || g_SourceCharacterProgram==1134u || g_SourceCharacterProgram==1135u || g_SourceCharacterProgram==1136u || g_SourceCharacterProgram==1137u || g_SourceCharacterProgram==1138u || g_SourceCharacterProgram==1139u || g_SourceCharacterProgram==1144u || g_SourceCharacterProgram==1145u || g_SourceCharacterProgram==1146u || g_SourceCharacterProgram==1147u || g_SourceCharacterProgram==1148u || g_SourceCharacterProgram==1149u || g_SourceCharacterProgram==1151u || g_SourceCharacterProgram==1152u || g_SourceCharacterProgram==1154u || g_SourceCharacterProgram==1155u || g_SourceCharacterProgram==1157u || g_SourceCharacterProgram==1158u || g_SourceCharacterProgram==1160u || g_SourceCharacterProgram==1161u || g_SourceCharacterProgram==1162u || g_SourceCharacterProgram==1163u || g_SourceCharacterProgram==1164u || g_SourceCharacterProgram==1165u || g_SourceCharacterProgram==1402u || g_SourceCharacterProgram==1404u || g_SourceCharacterProgram==1408u || g_SourceCharacterProgram==1409u || g_SourceCharacterProgram==1410u || g_SourceCharacterProgram==1504u || g_SourceCharacterProgram==1514u || g_SourceCharacterProgram==1518u || g_SourceCharacterProgram==1521u || g_SourceCharacterProgram==1408u || g_SourceCharacterProgram==1166u || g_SourceCharacterProgram==1103u)
     {
         input.values[0].xyzw=(tangentX).xyzw;
@@ -72,12 +86,23 @@ void PackSourceMovieBaseInput(inout SOURCE_CHARACTER_NATIVE_INPUT input,
         return;
     }
 }
-void PackSourceMovieLightInput(inout SOURCE_CHARACTER_NATIVE_INPUT input,
+void PackSourceMovieLightInput(inout SOURCE_CHARACTER_NATIVE_INPUT input,
     float4 tangentX, float4 tangentZ, float4 color, float2 uv,
     float4 view, float4 light, float4 up, float4 clip, float4 fog)
 {
     if (!IsSourceMovieStatic(g_SourceCharacterProgram)) return;
-    [unroll] for (uint lane=0u;lane<10u;++lane) input.values[lane]=0.f;
+    [unroll] for (uint lane=0u;lane<10u;++lane) input.values[lane]=0.f;
+
+    // ITR_02453 directional LocalVertexFactory: 4795e016/b344afcf registers.
+    if (g_SourceCharacterProgram >= 1528u && g_SourceCharacterProgram <= 1531u)
+    {
+        input.values[0] = color;
+        input.values[2] = float4(uv, 0.f, 0.f);
+        input.values[3].xyz = light.xyz;
+        input.values[5] = view;
+        input.values[6] = clip;
+        return;
+    }
     if (g_SourceCharacterProgram==1100u || g_SourceCharacterProgram==1101u || g_SourceCharacterProgram==1102u || g_SourceCharacterProgram==1103u || g_SourceCharacterProgram==1104u || g_SourceCharacterProgram==1105u || g_SourceCharacterProgram==1106u || g_SourceCharacterProgram==1107u || g_SourceCharacterProgram==1108u || g_SourceCharacterProgram==1109u || g_SourceCharacterProgram==1110u || g_SourceCharacterProgram==1111u || g_SourceCharacterProgram==1117u || g_SourceCharacterProgram==1118u || g_SourceCharacterProgram==1119u || g_SourceCharacterProgram==1120u || g_SourceCharacterProgram==1121u || g_SourceCharacterProgram==1122u || g_SourceCharacterProgram==1123u || g_SourceCharacterProgram==1124u || g_SourceCharacterProgram==1125u || g_SourceCharacterProgram==1126u || g_SourceCharacterProgram==1127u || g_SourceCharacterProgram==1128u || g_SourceCharacterProgram==1129u || g_SourceCharacterProgram==1130u || g_SourceCharacterProgram==1131u || g_SourceCharacterProgram==1132u || g_SourceCharacterProgram==1133u || g_SourceCharacterProgram==1134u || g_SourceCharacterProgram==1135u || g_SourceCharacterProgram==1136u || g_SourceCharacterProgram==1137u || g_SourceCharacterProgram==1138u || g_SourceCharacterProgram==1139u || g_SourceCharacterProgram==1140u || g_SourceCharacterProgram==1141u || g_SourceCharacterProgram==1142u || g_SourceCharacterProgram==1143u || g_SourceCharacterProgram==1144u || g_SourceCharacterProgram==1145u || g_SourceCharacterProgram==1146u || g_SourceCharacterProgram==1147u || g_SourceCharacterProgram==1148u || g_SourceCharacterProgram==1149u || g_SourceCharacterProgram==1152u || g_SourceCharacterProgram==1154u || g_SourceCharacterProgram==1155u || g_SourceCharacterProgram==1158u || g_SourceCharacterProgram==1159u || g_SourceCharacterProgram==1160u || g_SourceCharacterProgram==1161u || g_SourceCharacterProgram==1162u || g_SourceCharacterProgram==1163u || g_SourceCharacterProgram==1164u || g_SourceCharacterProgram==1402u || g_SourceCharacterProgram==1404u || g_SourceCharacterProgram==1408u || g_SourceCharacterProgram==1409u || g_SourceCharacterProgram==1411u || g_SourceCharacterProgram==1412u || g_SourceCharacterProgram==1413u || g_SourceCharacterProgram==1518u || g_SourceCharacterProgram==1521u || g_SourceCharacterProgram==1408u || g_SourceCharacterProgram==1166u || g_SourceCharacterProgram==1103u)
     {
         input.values[0].xyzw=(tangentX).xyzw;

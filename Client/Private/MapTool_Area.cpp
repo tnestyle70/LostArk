@@ -8,6 +8,7 @@
 #include "MapEditorWorkspaceService.h"
 #include "Level_Bern.h"
 #include "Level_CharacterSelect.h"
+#include "Level_Development.h"
 #include "Level_KakulSaydonArena.h"
 #include "Level_ValtanArena.h"
 #include "MapAssetPreview.h"
@@ -232,13 +233,14 @@ bool_t Client::CMapTool::Load_EditorAreaRegistry()
 		return false;
 	}
 
-	const std::array<std::pair<const char_t*, const char_t*>, 5> targets =
+	const std::array<std::pair<const char_t*, const char_t*>, 6> targets =
 	{{
 		{ "LV_LOBBY_CLASSSELECT_SL00", "Character Select" },
 		{ "LV_BER_BERNCASTLE", "Bern" },
 		{ "LV_LUT_HEARTRB_ED", "Valtan" },
 		{ "LV_LUT_MIDNIGHTC_ED", "KoukuSaydon / MidnightC ED" },
 		{ "LV_SHS_RCARENA_D", "Training Map" },
+		{ "LV_OCN_EVENTIS_MHP", "Maharaka Paradise" },
 	}};
 	std::vector<EDITOR_AREA_DESCRIPTOR> staged;
 	staged.reserve(targets.size());
@@ -430,7 +432,8 @@ bool_t Client::CMapTool::Load_EditorAreaRegistry()
 		if (descriptor.areaId == "LV_LOBBY_CLASSSELECT_SL00" ||
 			descriptor.areaId == "LV_BER_BERNCASTLE" ||
 			descriptor.areaId == "LV_LUT_HEARTRB_ED" ||
-			descriptor.areaId == "LV_LUT_MIDNIGHTC_ED")
+			descriptor.areaId == "LV_LUT_MIDNIGHTC_ED" ||
+			descriptor.areaId == "LV_OCN_EVENTIS_MHP")
 		{
 			std::string gameplay;
 			if (!ReadRequiredString(*selected, "gameplayDocument", gameplay))
@@ -478,6 +481,20 @@ CWorldSequencePlayer::TARGET_SET Client::CMapTool::Runtime_AuthoringTargets() co
 {
 #ifdef _DEBUG
 	const uint32_t levelIndex = CGameInstance::Get().Get_CurrentLevelID();
+	if (levelIndex == ETOUI(LEVEL::MAHARAKA))
+	{
+		if (auto* level = CLevel_Development::Get_Active(LEVEL::MAHARAKA))
+		{
+			CWorldSequencePlayer::TARGET_SET targets;
+			targets.levelIndex = levelIndex;
+			targets.pCatalog = &level->Get_MapAuthoringRuntime().Get_Catalog();
+			targets.pPlacements = &level->Get_MapAuthoringRuntime().Get_MutablePlacements();
+			targets.pDeployRuntime = &level->Get_MapAuthoringDeploy();
+			targets.device = level->Get_MapAuthoringDevice();
+			targets.context = level->Get_MapAuthoringContext();
+			return targets;
+		}
+	}
 	if (levelIndex == ETOUI(LEVEL::KAKULSAYDON_ARENA))
 		if (auto* arena = CLevel_KakulSaydonArena::Get_Active())
 			return arena->Get_CompositionWorldTargets();
@@ -554,6 +571,9 @@ vector<Client::CMapTool::STATIC_BATCH_ENTRY>& Client::CMapTool::Authoring_Batche
 #ifdef _DEBUG
 	if (m_bRuntimeAuthoring && Runtime_AuthoringTargets().pPlacements)
 	{
+		if (auto* maharaka = CLevel_Development::Get_Active(LEVEL::MAHARAKA))
+			if (CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::MAHARAKA))
+				return maharaka->Get_MapAuthoringRuntime().Get_AuthoringBatches();
 		if (auto* kouku = CLevel_KakulSaydonArena::Get_Active())
 			if (CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::KAKULSAYDON_ARENA))
 				return kouku->Get_MapAuthoringBatches();
@@ -608,10 +628,11 @@ bool_t Client::CMapTool::Can_ReplaceRuntimeAuthoringTargets() const
 		auto* arena = CLevel_KakulSaydonArena::Get_Active();
 		return nullptr != arena && arena->Can_ReplaceMapAuthoringTargets();
 	}
-	/* Valtan, Bern and Character Select have no level-owned World Sequence or
+	/* Valtan, Bern, Character Select and Maharaka have no level-owned World Sequence or
 	   Composition preview to stop before the tool replaces placements. */
 	const uint32_t levelIndex = CGameInstance::Get().Get_CurrentLevelID();
 	return levelIndex == ETOUI(LEVEL::VALTAN_ARENA) ||
+		levelIndex == ETOUI(LEVEL::MAHARAKA) ||
 		levelIndex == ETOUI(LEVEL::BERN) ||
 		levelIndex == ETOUI(LEVEL::CHARACTER_SELECT);
 #else
@@ -622,8 +643,13 @@ bool_t Client::CMapTool::Can_ReplaceRuntimeAuthoringTargets() const
 void Client::CMapTool::Apply_RuntimeAuthoringActive(const bool_t active)
 {
 #ifdef _DEBUG
-	/* Only the Kouku arena drives map self motions, so only it has to stop
-	   them while the tool owns the placements. */
+	if (CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::MAHARAKA))
+	{
+		if (auto* level = CLevel_Development::Get_Active(LEVEL::MAHARAKA))
+			level->Set_MapAuthoringActive(active);
+		return;
+	}
+	/* Both Maharaka and Kouku stop self motions while the tool owns poses. */
 	if (CGameInstance::Get().Get_CurrentLevelID() != ETOUI(LEVEL::KAKULSAYDON_ARENA))
 		return;
 	if (auto* arena = CLevel_KakulSaydonArena::Get_Active())
@@ -666,6 +692,10 @@ void Client::CMapTool::Forget_RuntimePlacement(uint64_t placementId)
 void Client::CMapTool::Rebase_RuntimeMotions()
 {
 #ifdef _DEBUG
+	if (m_bRuntimeAuthoring && Runtime_AuthoringTargets().pPlacements &&
+		CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::MAHARAKA))
+		if (auto* level = CLevel_Development::Get_Active(LEVEL::MAHARAKA))
+			level->Rebase_MapAuthoringSelfMotions(m_RuntimePlacementDraft);
 	if (m_bRuntimeAuthoring && Runtime_AuthoringTargets().pPlacements &&
 		CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::KAKULSAYDON_ARENA))
 		if (auto* arena = CLevel_KakulSaydonArena::Get_Active())
