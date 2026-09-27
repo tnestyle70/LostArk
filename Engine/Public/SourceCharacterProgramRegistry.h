@@ -6,7 +6,7 @@
 namespace Engine
 {
     // Generated registration describes available programs, never renderer semantics.
-    inline constexpr std::array<std::uint32_t, 122> SourceCharacterAddedPrograms = {
+    inline constexpr std::array<std::uint32_t, 128> SourceCharacterAddedPrograms = {
         // BEGIN REGISTERED SOURCE CHARACTER PROGRAMS
         600u,
         601u,
@@ -101,6 +101,8 @@ namespace Engine
         1411u,
         1412u,
         1413u,
+        1474u,
+        1475u,
         1500u,
         1501u,
         1502u,
@@ -130,6 +132,10 @@ namespace Engine
         1526u,
         1527u,
         1528u,
+        1529u,
+        1530u,
+        1531u,
+        1532u,
         // END REGISTERED SOURCE CHARACTER PROGRAMS
     };
 

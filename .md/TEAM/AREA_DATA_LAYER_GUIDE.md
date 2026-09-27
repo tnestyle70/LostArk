@@ -160,7 +160,7 @@ Lighting Workbench는 현재 Level/Area가 일치할 때 저작 preview와 publi
 
 Debug Lobby에서 `Test`를 누르면 기존 `TRAINING_GROUND` 서버 승인을 거친 뒤
 `LEVEL::DEVELOPMENT`를 socket, player, replication이 없는 Map Editor Workspace shell로
-연다. 진입 후 F1은 공통 Developer Tools만 토글하며, 그 안의 `Map Tool`에서 다음 네 Area
+연다. 진입 후 F1은 공통 Developer Tools만 토글하며, 그 안의 `Map Tool`에서 다음 Area
 중 하나를 선택한다. F1이나 Map Tool 버튼 자체는 Level을 전환하지 않는다.
 
 | 선택 | visual source | navigation | gameplay |
@@ -168,6 +168,8 @@ Debug Lobby에서 `Test`를 누르면 기존 `TRAINING_GROUND` 서버 승인을 
 | Character Select | `LV_LOBBY_CLASSSELECT_SL00` | source/paint, Nav Bounds bootstrap 허용 | exact `gameplayDocument` 필수 |
 | Bern | `LV_BER_BERNCASTLE` | source/paint Nav Bounds bootstrap 허용 | exact `gameplayDocument` 필수 |
 | Valtan | `LV_LUT_HEARTRB_ED` | source/paint/blockers 필수 | exact `gameplayDocument` 필수 |
+| KoukuSaydon | `LV_LUT_MIDNIGHTC_ED` | source/paint | exact `gameplayDocument` 필수 |
+| Maharaka Paradise | `LV_OCN_EVENTIS_MHP` | 편집 disabled (제품 uniform grid 유지) | exact `gameplayDocument` 필수 |
 | Training Map | `LV_SHS_RCARENA_D` | disabled | disabled |
 
 Training Map은 원본 302 assets / 7,856 placements인 `LV_SHS_RCARENA_D`다. Release 제품
@@ -193,9 +195,16 @@ ID·asset 집합이 일치하지 않으면 연결하지 않고 오류를 표시�
 `LV_LOBBY_CLASSSELECT_SL00`은 catalog에 DeployProp pair를 선언하지 않으므로
 연결에 쓰는 Deploy runtime은 비어 있고 animated prop 저작은 그 Area에서 열리지
 않는다. Bern과 Character Select는 arena가 아니어서 정지시킬 World Sequence나
-Composition 재생이 없고, 맵 self motion도 쿠크만 가진다. 세 제품 Level의 연결은
+Composition 재생이 없다. 이 제품 Level의 연결은
 Debug 전용이며 Release에는 열리지 않는다. Server collision/navigation/전투 상태와
 Server gameplay는 이 경로로 바뀌지 않는다.
+
+`LEVEL::MAHARAKA`도 `CLevel_Development`가 소유한 실제 섬 placement/batch를 같은 경로로
+빌려준다. Deploy pair는 없으므로 Level 소유 빈 Deploy runtime을 사용한다. 편집 중에는
+마하라카 self-motion 갱신을 멈추고 닫으면 저작 baseline으로 rebase한 뒤 재개한다.
+Camera의 일반 컷신 목록에서 Area의 camerashots/worldsequences를 편집·재생한다.
+`통합 컷신 편집`은 별도의 발탄·쿠크 Composition UI이므로 마하라카에서는 끈다.
+Maharaka의 uniform navigation JSON을 source/paint 문서로 읽거나 임의 bake하지 않는다.
 
 MapTool의 저장 대상은 Data 원본뿐이다.
 

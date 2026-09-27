@@ -17,6 +17,7 @@ inline bool Needs_SceneColor(uint32_t program)
 }
 inline bool Is_Static(uint32_t program)
 {
-    return (program>=1100u && program<=1166u) || (program>=1400u && program<=1413u) || (program>=1500u && program<=1525u);
+    return (program>=1100u && program<=1166u) || (program>=1400u && program<=1413u) ||
+        (program>=1500u && program<=1525u) || (program>=1529u && program<=1532u);
 }
 }

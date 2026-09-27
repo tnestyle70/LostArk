@@ -381,6 +381,12 @@ Server는 `CHARACTER_SELECT_ARENA` 진입 session마다 독립된 `CGameRoom` si
 
 2026-09-30 23:59 KST까지 공유 LAN Server는 `Framework.slnLaunch`의 `Server + Client` profile로 `0.0.0.0:7777`에 수신하고, 같은 팀 LAN의 Client는 `192.168.200.113:7777`에 접속한다. `Tools/Network/TeamLanEndpoint.json`이 endpoint와 만료일 정본이며 모든 에이전트는 pull 후 `Tools/Network/Sync-TeamLanEndpoint.ps1`을 실행해 Git 제외 debugger 설정을 동기화한다. 공유 x64 debugger 설정과 코드 기본값도 같은 endpoint를 사용하며, 실제 `Ctrl+F5` 시작은 사용자가 수행한다. Visual Studio가 이전 값을 캐시하면 project Reload 또는 IDE 재시작이 필요하다. `0.0.0.0`은 Server bind 주소이지 Client 접속 주소가 아니다. 세부 설정, 동일 revision/build/resource 준비와 `10049` 진단은 `.md/TEAM/TEAM_GAMEPLAY_INTERFACE_HANDBOOK.md`의 `서로 다른 장소에서 Server와 Client 연결`을 따른다.
 
+개인 로컬 F5 테스트는 `Sync-TeamLanEndpoint.ps1 -EndpointMode Local`로 명시적으로 선택한다.
+Client 접속과 Server bind는 `127.0.0.1:7777`이고 개인 `.vcxproj.user` 선택은 다음 기본 sync에도
+보존된다. 팀 기본값으로 돌아가려면 `-EndpointMode Team`을 사용한다. 공유 JSON과 C++ 기본값은
+바꾸지 않는다. VS Reload/재시작 후 `Debug / x64`, `Server + Client`를 선택해 F5로 시작한다.
+연결 실패 시 자동 fallback이 아니라 사용자가 선택한 실제 로컬 Server를 사용하는 경로다.
+
 Lobby fallback은 Client의 first-terminal reason과 semantic recovery를 실행 파일 옆 process별 JSONL에
 보존하고 Lobby에 표시한다. direct LAN의 한 connection은 Client `localEndpoint`와 Server
 `peerAddress:peerPort`로 대조하며 Server도 session close reason, world/player, packet/error와 outbound

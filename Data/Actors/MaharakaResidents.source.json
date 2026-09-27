@@ -1,0 +1,4290 @@
+{
+  "schema": "lostark.maharaka-source-residents",
+  "formatVersion": 1,
+  "sourceAuditSha256": "1b5a78d28b59593aab6bf8ecca5bff1f533ec95409f398942054521ec30282fa",
+  "selection": "28 source scene residents under 30-NPC cap; no guide identity inference",
+  "animationBoundary": "First original full-body loop, or original AnimSet idle; not entire Matinee playback.",
+  "maskEvidence": {
+    "package": "NU1V7NCQ4YAE9ZPJVNOQS.u",
+    "sha256": "b4f22272519b8100ee6a2d1f7b07e1219de001d2647f27e9bc16e834d0b607a9",
+    "exportIndex": 3103,
+    "propertyBytesConsumed": 336,
+    "defaultVisibility": [
+      true,
+      true,
+      true,
+      true
+    ],
+    "conversion": "true=1; false=0; source CDO and native shader channel visibility",
+    "boundary": "Native C++ assignment unavailable; original CDO, MIC and shader semantics agree."
+  },
+  "actors": [
+    {
+      "sourceActorId": "LV_OCN_EVENTIS_MHP_SCENE06A:export:67",
+      "lookInfo": "EFDLChar_MN_ISNF_00-8.MN_ISNF_00-8",
+      "sourceTransform": {
+        "location": {
+          "x": 8118.77587890625,
+          "y": 99588.6328125,
+          "z": 1982.6026611328125
+        },
+        "rotation": {
+          "pitch": 0,
+          "yaw": -11648,
+          "roll": 0,
+          "degrees": {
+            "pitch": 0.0,
+            "yaw": -63.984375,
+            "roll": 0.0
+          }
+        },
+        "drawscale": null,
+        "drawscale3d": null,
+        "base": null,
+        "bhidden": null
+      },
+      "body": "mn_isnf_00.mesh.mn_isnf_00_sk_loc_int",
+      "head": "mn_head_fe02_029.mesh.mn_head_fe02_029_sk",
+      "animSets": [
+        "hm_fe02.ani_0000.hm_fe02_0000_00a_com_ani",
+        "hm_fe02.ani_0000.hm_fe02_0000_12a_nor_ani",
+        "mn_isnf_00.ani.mn_isnf_00_ani"
+      ],
+      "materials": [
+        {
+          "sourceMaterial": "mn_isnf_00-1.mat.mn_isnf_00-1_mi",
+          "variation": {
+            "diffusecolor": {
+              "r": 1.0,
+              "g": 1.0,
+              "b": 1.0,
+              "a": 1.0
+            },
+            "diffusecolor_a": {
+              "r": 1.0,
+              "g": 1.0,
+              "b": 1.0,
+              "a": 1.0
+            },
+            "diffusecolor_b": {
+              "r": 1.0,
+              "g": 1.0,
+              "b": 1.0,
+              "a": 1.0
+            },
+            "diffusecolor_c": {
+              "r": 0.7753000259399414,
+              "g": 0.6707000136375427,
+              "b": 0.5357000231742859,
+              "a": 1.0
+            },
+            "maskvariation_1": false,
+            "maskvariation_2": false,
+            "maskvariation_3": false,
+            "maskvariation_4": false
+          }
+        },
+        {
+          "sourceMaterial": "mn_head_fe02_029.mat.mn_head_fe02_029_mi",
+          "variation": {
+            "diffusecolor": {
+              "r": 1.0,
+              "g": 1.0,
+              "b": 1.0,
+              "a": 1.0
+            },
+            "diffusecolor_a": {
+              "r": 0.8090000152587891,
+              "g": 0.6227999925613403,
+              "b": 0.4318000078201294,
+              "a": 1.0
+            },
+            "diffusecolor_b": {
+              "r": 0.3427000045776367,
+              "g": 0.3037000000476837,
+              "b": 0.2599000036716461,
+              "a": 1.0
+            },
+            "diffusecolor_c": {
+              "r": 0.8596000075340271,
+              "g": 0.7968000173568726,
+              "b": 0.6801999807357788,
+              "a": 1.0
+            },
+            "maskvariation_1": false,
+            "maskvariation_2": false,
+            "maskvariation_3": true,
+            "maskvariation_4": false
+          }
+        }
+      ],
+      "idleClip": "idle_normal_1",
+      "playbackRate": 1,
+      "motionBasis": "SOURCE_ANIMSET_IDLE_SELECTION",
+      "numericNpcId": null,
+      "guideRole": null,
+      "modelAssetId": "Character/NPC/Maharaka/Residents/MHP_RESIDENT_8FC2DB56F0AA5175/MHP_RESIDENT_8FC2DB56F0AA5175.wmodel",
+      "archetypeId": "NPC_MHP_RESIDENT_8FC2DB56F0AA5175",
+      "clientPresentationId": "npc.maharaka.resident.8fc2db56f0aa5175.v1",
+      "placementId": "npc.maharaka.scene06a.source67"
+    },
+    {
+      "sourceActorId": "LV_OCN_EVENTIS_MHP_SCENE06A:export:68",
+      "lookInfo": "EFDLChar_MN_ISNF_00-1.MN_ISNF_00-1",
+      "sourceTransform": {
+        "location": {
+          "x": 8197.2607421875,
+          "y": 99416.2890625,
+          "z": 1982.4100341796875
+        },
+        "rotation": {
+          "pitch": 0,
+          "yaw": 25312,
+          "roll": 0,
+          "degrees": {
+            "pitch": 0.0,
+            "yaw": 139.04296875,
+            "roll": 0.0
+          }
+        },
+        "drawscale": null,
+        "drawscale3d": null,
+        "base": null,
+        "bhidden": null
+      },
+      "body": "mn_isnf_00.mesh.mn_isnf_00_sk_loc_int",
+      "head": "mn_head_fe02_029.mesh.mn_head_fe02_029_sk",
+      "animSets": [
+        "hm_fe02.ani_0000.hm_fe02_0000_00a_com_ani",
+        "hm_fe02.ani_0000.hm_fe02_0000_12a_nor_ani",
+        "mn_isnf_00.ani.mn_isnf_00_ani"
+      ],
+      "materials": [
+        {
+          "sourceMaterial": "mn_isnf_00.mat.mn_isnf_00_mi",
+          "variation": {
+            "diffusecolor": {
+              "r": 1.0,
+              "g": 1.0,
+              "b": 1.0,
+              "a": 1.0
+            },
+            "diffusecolor_a": {
+              "r": 1.0,
+              "g": 1.0,
+              "b": 1.0,
+              "a": 1.0
+            },
+            "diffusecolor_b": {
+              "r": 0.1104929968714714,
+              "g": 0.07148300111293793,
+              "b": 0.05189099907875061,
+              "a": 1.0
+            },
+            "diffusecolor_c": {
+              "r": 0.6909999847412109,
+              "g": 0.5925999879837036,
+              "b": 0.48249998688697815,
+              "a": 1.0
+            },
+            "maskvariation_1": false,
+            "maskvariation_2": false,
+            "maskvariation_3": false,
+            "maskvariation_4": false
+          }
+        },
+        {
+          "sourceMaterial": "mn_head_fe02_029.mat.mn_head_fe02_029_mi",
+          "variation": {
+            "diffusecolor": {
+              "r": 1.0,
+              "g": 1.0,
+              "b": 1.0,
+              "a": 1.0
+            },
+            "diffusecolor_a": {
+              "r": 1.0,
+              "g": 1.0,
+              "b": 1.0,
+              "a": 1.0
+            },
+            "diffusecolor_b": {
+              "r": 1.3382999897003174,
+              "g": 0.7001000046730042,
+              "b": 0.5659999847412109,
+              "a": 1.0
+            },
+            "diffusecolor_c": {
+              "r": 0.8371000289916992,
+              "g": 0.7361000180244446,
+              "b": 0.6348999738693237,
+              "a": 1.0
+            },
+            "maskvariation_1": false,
+            "maskvariation_2": false,
+            "maskvariation_3": false,
+            "maskvariation_4": true
+          }
+        }
+      ],
+      "idleClip": "idle_normal_1",
+      "playbackRate": 1,
+      "motionBasis": "SOURCE_ANIMSET_IDLE_SELECTION",
+      "numericNpcId": null,
+      "guideRole": null,
+      "modelAssetId": "Character/NPC/Maharaka/Residents/MHP_RESIDENT_7D37CE489AF57466/MHP_RESIDENT_7D37CE489AF57466.wmodel",
+      "archetypeId": "NPC_MHP_RESIDENT_7D37CE489AF57466",
+      "clientPresentationId": "npc.maharaka.resident.7d37ce489af57466.v1",
+      "placementId": "npc.maharaka.scene06a.source68"
+    },
+    {
+      "sourceActorId": "LV_OCN_EVENTIS_MHP_SCENE06A:export:69",
+      "lookInfo": "EFDLChar_MN_ISNM_00-4.MN_ISNM_00-4",
+      "sourceTransform": {
+        "location": {
+          "x": 6937.609375,
+          "y": 97733.046875,
+          "z": 1985.7174072265625
+        },
+        "rotation": {
+          "pitch": 0,
+          "yaw": 44672,
+          "roll": 0,
+          "degrees": {
+            "pitch": 0.0,
+            "yaw": 245.390625,
+            "roll": 0.0
+          }
+        },
+        "drawscale": null,
+        "drawscale3d": null,
+        "base": null,
+        "bhidden": null
+      },
+      "body": "mn_isnm_00.mesh.mn_isnm_00_sk",
+      "head": "mn_head_ma02_058.mesh.mn_head_ma02_058_sk",
+      "animSets": [
+        "hm_ma02.ani_0000.hm_ma02_0000_00a_com_ani",
+        "hm_ma02.ani_0000.hm_ma02_0000_00a_evt2_ani",
+        "hm_ma02.ani_0000.hm_ma02_0000_00a_nor_ani"
+      ],
+      "materials": [
+        {
+          "sourceMaterial": "mn_isnm_00.mat.mn_isnm_00_mi",
+          "variation": {
+            "diffusecolor": {
+              "r": 1.0,
+              "g": 1.0,
+              "b": 1.0,
+              "a": 1.0
+            },
+            "diffusecolor_a": {
+              "r": 0.22470000386238098,
+              "g": 0.22470000386238098,
+              "b": 0.22470000386238098,
+              "a": 1.0
+            },
+            "diffusecolor_b": {
+              "r": 0.2363000065088272,
+              "g": 0.637499988079071,
+              "b": 0.7246999740600586,
+              "a": 1.0
+            },
+            "diffusecolor_c": {
+              "r": 0.6741999983787537,
+              "g": 0.5383999943733215,
+              "b": 0.43560001254081726,
+              "a": 1.0
+            },
+            "maskvariation_1": true,
+            "maskvariation_2": false,
+            "maskvariation_3": true,
+            "maskvariation_4": false
+          }
+        },
+        {
+          "sourceMaterial": "mn_head_ma02_058.mat.mn_head_ma02_058_mi",
+          "variation": {
+            "diffusecolor": {
+              "r": 1.0,
+              "g": 1.0,
+              "b": 1.0,
+              "a": 1.0
+            },
+            "diffusecolor_a": {
+              "r": 0.5112000107765198,
+              "g": 0.44519999623298645,
+              "b": 0.44519999623298645,
+              "a": 1.0
+            },
+            "diffusecolor_b": {
+              "r": 6.846199989318848,
+              "g": 1.8680000305175781,
+              "b": 0.8266000151634216,
+              "a": 1.0
+            },
+            "diffusecolor_c": {
+              "r": 0.741599977016449,
+              "g": 0.6662999987602234,
+              "b": 0.5568000078201294,
+              "a": 1.0
+            },
+            "maskvariation_1": false,
+            "maskvariation_2": true,
+            "maskvariation_3": false,
+            "maskvariation_4": false
+          }
+        }
+      ],
+      "idleClip": "sc_laughing_loop_1",
+      "playbackRate": 0.9610000252723694,
+      "motionBasis": "FIRST_ORIGINAL_FULL_BODY_LOOP",
+      "numericNpcId": null,
+      "guideRole": null,
+      "modelAssetId": "Character/NPC/Maharaka/Residents/MHP_RESIDENT_6C0BF3F0C656EBAB/MHP_RESIDENT_6C0BF3F0C656EBAB.wmodel",
+      "archetypeId": "NPC_MHP_RESIDENT_6C0BF3F0C656EBAB",
+      "clientPresentationId": "npc.maharaka.resident.6c0bf3f0c656ebab.v1",
+      "placementId": "npc.maharaka.scene06a.source69"
+    },
+    {
+      "sourceActorId": "LV_OCN_EVENTIS_MHP_SCENE06A:export:70",
+      "lookInfo": "EFDLChar_MN_ISNF_00-2.MN_ISNF_00-2",
+      "sourceTransform": {
+        "location": {
+          "x": 8002.25830078125,
+          "y": 99396.875,
+          "z": 1982.8841552734375
+        },
+        "rotation": {
+          "pitch": 0,
+          "yaw": -1824,
+          "roll": 0,
+          "degrees": {
+            "pitch": 0.0,
+            "yaw": -10.01953125,
+            "roll": 0.0
+          }
+        },
+        "drawscale": null,
+        "drawscale3d": null,
+        "base": null,
+        "bhidden": null
+      },
+      "body": "mn_isnf_00.mesh.mn_isnf_00_sk_loc_int",
+      "head": "mn_head_fe02_029.mesh.mn_head_fe02_029_sk",
+      "animSets": [
+        "hm_fe02.ani_0000.hm_fe02_0000_00a_com_ani",
+        "hm_fe02.ani_0000.hm_fe02_0000_12a_nor_ani",
+        "mn_isnf_00.ani.mn_isnf_00_ani"
+      ],
+      "materials": [
+        {
+          "sourceMaterial": "mn_isnf_00.mat.mn_isnf_00_mi",
+          "variation": {
+            "diffusecolor": {
+              "r": 1.0,
+              "g": 1.0,
+              "b": 1.0,
+              "a": 1.0
+            },
+            "diffusecolor_a": {
+              "r": 1.5084999799728394,
+              "g": 1.2049000263214111,
+              "b": 1.0084999799728394,
+              "a": 1.0
+            },
+            "diffusecolor_b": {
+              "r": 0.7303000092506409,
+              "g": 0.24660000205039978,
+              "b": 0.13539999723434448,
+              "a": 1.0
+            },
+            "diffusecolor_c": {
+              "r": 0.7472000122070312,
+              "g": 0.6328999996185303,
+              "b": 0.5246999859809875,
+              "a": 1.0
+            },
+            "maskvariation_1": true,
+            "maskvariation_2": true,
+            "maskvariation_3": false,
+            "maskvariation_4": true
+          }
+        },
+        {
+          "sourceMaterial": "mn_head_fe02_029.mat.mn_head_fe02_029_mi",
+          "variation": {
+            "diffusecolor": {
+              "r": 1.0,
+              "g": 1.0,
+              "b": 1.0,
+              "a": 1.0
+            },
+            "diffusecolor_a": {
+              "r": 1.0,
+              "g": 0.43869999051094055,
+              "b": 0.0786999985575676,
+              "a": 1.0
+            },
+            "diffusecolor_b": {
+              "r": 1.6330000162124634,
+              "g": 1.5715999603271484,
+              "b": 1.5046000480651855,
+              "a": 1.0
+            },
+            "diffusecolor_c": {
+              "r": 0.8314999938011169,
+              "g": 0.7192000150680542,
+              "b": 0.6399000287055969,
+              "a": 1.0
+            },
+            "maskvariation_1": false,
+            "maskvariation_2": true,
+            "maskvariation_3": false,
+            "maskvariation_4": false
+          }
+        }
+      ],
+      "idleClip": "idle_normal_1",
+      "playbackRate": 1,
+      "motionBasis": "SOURCE_ANIMSET_IDLE_SELECTION",
+      "numericNpcId": null,
+      "guideRole": null,
+      "modelAssetId": "Character/NPC/Maharaka/Residents/MHP_RESIDENT_48E52BAC20260E4C/MHP_RESIDENT_48E52BAC20260E4C.wmodel",
+      "archetypeId": "NPC_MHP_RESIDENT_48E52BAC20260E4C",
+      "clientPresentationId": "npc.maharaka.resident.48e52bac20260e4c.v1",
+      "placementId": "npc.maharaka.scene06a.source70"
+    },
+    {
+      "sourceActorId": "LV_OCN_EVENTIS_MHP_SCENE06A:export:71",
+      "lookInfo": "EFDLChar_MN_ISNF_00-5.MN_ISNF_00-5",
+      "sourceTransform": {
+        "location": {
+          "x": 5818.8525390625,
+          "y": 98902.03125,
+          "z": 2051.62548828125
+        },
+        "rotation": {
+          "pitch": 0,
+          "yaw": -52064,
+          "roll": 0,
+          "degrees": {
+            "pitch": 0.0,
+            "yaw": -285.99609375,
+            "roll": 0.0
+          }
+        },
+        "drawscale": null,
+        "drawscale3d": null,
+        "base": null,
+        "bhidden": null
+      },
+      "body": "mn_isnf_00.mesh.mn_isnf_00_sk_loc_int",
+      "head": "mn_head_fe02_029.mesh.mn_head_fe02_029_sk",
+      "animSets": [
+        "hm_fe02.ani_0000.hm_fe02_0000_00a_com_ani",
+        "hm_fe02.ani_0000.hm_fe02_0000_12a_nor_ani",
+        "mn_isnf_00.ani.mn_isnf_00_ani"
+      ],
+      "materials": [
+        {
+          "sourceMaterial": "mn_isnf_00.mat.mn_isnf_00_mi",
+          "variation": {
+            "diffusecolor": {
+              "r": 1.0,
+              "g": 1.0,
+              "b": 1.0,
+              "a": 1.0
+            },
+            "diffusecolor_a": {
+              "r": 0.5842999815940857,
+              "g": 0.20000000298023224,
+              "b": 0.17069999873638153,
+              "a": 1.0
+            },
+            "diffusecolor_b": {
+              "r": 0.7978000044822693,
+              "g": 0.566100001335144,
+              "b": 0.3203999996185303,
+              "a": 1.0
+            },
+            "diffusecolor_c": {
+              "r": 0.7639999985694885,
+              "g": 0.6498000025749207,
+              "b": 0.5713000297546387,
+              "a": 1.0
+            },
+            "maskvariation_1": true,
+            "maskvariation_2": true,
+            "maskvariation_3": false,
+            "maskvariation_4": true
+          }
+        },
+        {
+          "sourceMaterial": "mn_head_fe02_029.mat.mn_head_fe02_029_mi",
+          "variation": {
+            "diffusecolor": {
+              "r": 1.0,
+              "g": 1.0,
+              "b": 1.0,
+              "a": 1.0
+            },
+            "diffusecolor_a": {
+              "r": 0.2809000015258789,
+              "g": 0.03790000081062317,
+              "b": 0.03790000081062317,
+              "a": 1.0
+            },
+            "diffusecolor_b": {
+              "r": 1.3284000158309937,
+              "g": 0.939300000667572,
+              "b": 0.6241000294685364,
+              "a": 1.0
+            },
+            "diffusecolor_c": {
+              "r": 0.8651999831199646,
+              "g": 0.7628999948501587,
+              "b": 0.6237000226974487,
+              "a": 1.0
+            },
+            "maskvariation_1": true,
+            "maskvariation_2": false,
+            "maskvariation_3": false,
+            "maskvariation_4": false
+          }
+        }
+      ],
+      "idleClip": "idle_normal_1",
+      "playbackRate": 1,
+      "motionBasis": "SOURCE_ANIMSET_IDLE_SELECTION",
+      "numericNpcId": null,
+      "guideRole": null,
+      "modelAssetId": "Character/NPC/Maharaka/Residents/MHP_RESIDENT_10EDE2D93F10BF30/MHP_RESIDENT_10EDE2D93F10BF30.wmodel",
+      "archetypeId": "NPC_MHP_RESIDENT_10EDE2D93F10BF30",
+      "clientPresentationId": "npc.maharaka.resident.10ede2d93f10bf30.v1",
+      "placementId": "npc.maharaka.scene06a.source71"
+    },
+    {
+      "sourceActorId": "LV_OCN_EVENTIS_MHP_SCENE06A:export:72",
+      "lookInfo": "EFDLChar_MN_ISNF_00-8.MN_ISNF_00-8",
+      "sourceTransform": {
+        "location": {
+          "x": 6316.71826171875,
+          "y": 97118.359375,
+          "z": 2048.9345703125
+        },
+        "rotation": {
+          "pitch": 0,
+          "yaw": 21408,
+          "roll": 0,
+          "degrees": {
+            "pitch": 0.0,
+            "yaw": 117.59765625,
+            "roll": 0.0
+          }
+        },
+        "drawscale": null,
+        "drawscale3d": null,
+        "base": null,
+        "bhidden": null
+      },
+      "body": "mn_isnf_00.mesh.mn_isnf_00_sk_loc_int",
+      "head": "mn_head_fe02_029.mesh.mn_head_fe02_029_sk",
+      "animSets": [
+        "hm_fe02.ani_0000.hm_fe02_0000_00a_com_ani",
+        "hm_fe02.ani_0000.hm_fe02_0000_12a_nor_ani",
+        "mn_isnf_00.ani.mn_isnf_00_ani"
+      ],
+      "materials": [
+        {
+          "sourceMaterial": "mn_isnf_00-1.mat.mn_isnf_00-1_mi",
+          "variation": {
+            "diffusecolor": {
+              "r": 1.0,
+              "g": 1.0,
+              "b": 1.0,
+              "a": 1.0
+            },
+            "diffusecolor_a": {
+              "r": 1.0,
+              "g": 1.0,
+              "b": 1.0,
+              "a": 1.0
+            },
+            "diffusecolor_b": {
+              "r": 1.0,
+              "g": 1.0,
+              "b": 1.0,
+              "a": 1.0
+            },
+            "diffusecolor_c": {
+              "r": 0.7753000259399414,
+              "g": 0.6707000136375427,
+              "b": 0.5357000231742859,
+              "a": 1.0
+            },
+            "maskvariation_1": false,
+            "maskvariation_2": false,
+            "maskvariation_3": false,
+            "maskvariation_4": false
+          }
+        },
+        {
+          "sourceMaterial": "mn_head_fe02_029.mat.mn_head_fe02_029_mi",
+          "variation": {
+            "diffusecolor": {
+              "r": 1.0,
+              "g": 1.0,
+              "b": 1.0,
+              "a": 1.0
+            },
+            "diffusecolor_a": {
+              "r": 0.8090000152587891,
+              "g": 0.6227999925613403,
+              "b": 0.4318000078201294,
+              "a": 1.0
+            },
+            "diffusecolor_b": {
+              "r": 0.3427000045776367,
+              "g": 0.3037000000476837,
+              "b": 0.2599000036716461,
+              "a": 1.0
+            },
+            "diffusecolor_c": {
+              "r": 0.8596000075340271,
+              "g": 0.7968000173568726,
+              "b": 0.6801999807357788,
+              "a": 1.0
+            },
+            "maskvariation_1": false,
+            "maskvariation_2": false,
+            "maskvariation_3": true,
+            "maskvariation_4": false
+          }
+        }
+      ],
+      "idleClip": "idle_normal_1",
+      "playbackRate": 1,
+      "motionBasis": "SOURCE_ANIMSET_IDLE_SELECTION",
+      "numericNpcId": null,
+      "guideRole": null,
+      "modelAssetId": "Character/NPC/Maharaka/Residents/MHP_RESIDENT_8FC2DB56F0AA5175/MHP_RESIDENT_8FC2DB56F0AA5175.wmodel",
+      "archetypeId": "NPC_MHP_RESIDENT_8FC2DB56F0AA5175",
+      "clientPresentationId": "npc.maharaka.resident.8fc2db56f0aa5175.v1",
+      "placementId": "npc.maharaka.scene06a.source72"
+    },
+    {
+      "sourceActorId": "LV_OCN_EVENTIS_MHP_SCENE06A:export:73",
+      "lookInfo": "EFDLChar_MN_ISNM_00.MN_ISNM_00",
+      "sourceTransform": {
+        "location": {
+          "x": 6185.83251953125,
+          "y": 97252.921875,
+          "z": 2047.3099365234375
+        },
+        "rotation": {
+          "pitch": 0,
+          "yaw": 24928,
+          "roll": 0,
+          "degrees": {
+            "pitch": 0.0,
+            "yaw": 136.93359375,
+            "roll": 0.0
+          }
+        },
+        "drawscale": null,
+        "drawscale3d": null,
+        "base": null,
+        "bhidden": null
+      },
+      "body": "mn_isnm_00.mesh.mn_isnm_00_sk",
+      "head": "mn_head_ma02_058.mesh.mn_head_ma02_058_sk",
+      "animSets": [
+        "hm_ma02.ani_0000.hm_ma02_0000_00a_com_ani",
+        "hm_ma02.ani_0000.hm_ma02_0000_00a_nor_ani"
+      ],
+      "materials": [
+        {
+          "sourceMaterial": "mn_isnm_00.mat.mn_isnm_00_mi",
+          "variation": {
+            "diffusecolor": {
+              "r": 1.0,
+              "g": 1.0,
+              "b": 1.0,
+              "a": 1.0
+            },
+            "diffusecolor_a": {
+              "r": 1.0,
+              "g": 1.0,
+              "b": 1.0,
+              "a": 1.0
+            },
+            "diffusecolor_b": {
+              "r": 0.23199999332427979,
+              "g": 0.1582999974489212,
+              "b": 0.10339999943971634,
+              "a": 1.0
+            },
+            "diffusecolor_c": {
+              "r": 0.5745999813079834,
+              "g": 0.4681999981403351,
+              "b": 0.34529998898506165,
+              "a": 1.0
+            },
+            "maskvariation_1": false,
+            "maskvariation_2": false,
+            "maskvariation_3": false,
+            "maskvariation_4": false
+          }
+        },
+        {
+          "sourceMaterial": "mn_head_ma02_058.mat.mn_head_ma02_058_mi",
+          "variation": {
+            "diffusecolor": {
+              "r": 1.0,
+              "g": 1.0,
+              "b": 1.0,
+              "a": 1.0
+            },
+            "diffusecolor_a": {
+              "r": 1.0,
+              "g": 1.0,
+              "b": 1.0,
+              "a": 1.0
+            },
+            "diffusecolor_b": {
+              "r": 1.0,
+              "g": 1.0,
+              "b": 1.0,
+              "a": 1.0
+            },
+            "diffusecolor_c": {
+              "r": 0.7236999869346619,
+              "g": 0.5867999792098999,
+              "b": 0.4343999922275543,
+              "a": 1.0
+            },
+            "maskvariation_1": false,
+            "maskvariation_2": false,
+            "maskvariation_3": false,
+            "maskvariation_4": false
+          }
+        }
+      ],
+      "idleClip": "idle_normal_1",
+      "playbackRate": 1,
+      "motionBasis": "SOURCE_ANIMSET_IDLE_SELECTION",
+      "numericNpcId": null,
+      "guideRole": null,
+      "modelAssetId": "Character/NPC/Maharaka/Residents/MHP_RESIDENT_26DDEADDA1171460/MHP_RESIDENT_26DDEADDA1171460.wmodel",
+      "archetypeId": "NPC_MHP_RESIDENT_26DDEADDA1171460",
+      "clientPresentationId": "npc.maharaka.resident.26ddeadda1171460.v1",
+      "placementId": "npc.maharaka.scene06a.source73"
+    },
+    {
+      "sourceActorId": "LV_OCN_EVENTIS_MHP_SCENE06A:export:74",
+      "lookInfo": "EFDLChar_MN_ISNM_00-1.MN_ISNM_00-1",
+      "sourceTransform": {
+        "location": {
+          "x": 5769.62548828125,
+          "y": 97990.5546875,
+          "z": 2041.5064697265625
+        },
+        "rotation": {
+          "pitch": 0,
+          "yaw": -46560,
+          "roll": 0,
+          "degrees": {
+            "pitch": 0.0,
+            "yaw": -255.76171875,
+            "roll": 0.0
+          }
+        },
+        "drawscale": null,
+        "drawscale3d": null,
+        "base": null,
+        "bhidden": null
+      },
+      "body": "mn_isnm_00.mesh.mn_isnm_00_sk",
+      "head": "mn_head_ma02_058.mesh.mn_head_ma02_058_sk",
+      "animSets": [
+        "hm_ma02.ani_0000.hm_ma02_0000_00a_com_ani",
+        "hm_ma02.ani_0000.hm_ma02_0000_00a_nor_ani"
+      ],
+      "materials": [
+        {
+          "sourceMaterial": "mn_isnm_00.mat.mn_isnm_00_mi",
+          "variation": {
+            "diffusecolor": {
+              "r": 1.0,
+              "g": 1.0,
+              "b": 1.0,
+              "a": 1.0
+            },
+            "diffusecolor_a": {
+              "r": 1.0,
+              "g": 1.0,
+              "b": 1.0,
+              "a": 1.0
+            },
+            "diffusecolor_b": {
+              "r": 0.569100022315979,
+              "g": 1.0,
+              "b": 0.8029999732971191,
+              "a": 1.0
+            },
+            "diffusecolor_c": {
+              "r": 0.573199987411499,
+              "g": 0.46470001339912415,
+              "b": 0.3440000116825104,
+              "a": 1.0
+            },
+            "maskvariation_1": false,
+            "maskvariation_2": false,
+            "maskvariation_3": false,
+            "maskvariation_4": false
+          }
+        },
+        {
+          "sourceMaterial": "mn_head_ma02_058.mat.mn_head_ma02_058_mi",
+          "variation": {
+            "diffusecolor": {
+              "r": 1.0,
+              "g": 1.0,
+              "b": 1.0,
+              "a": 1.0
+            },
+            "diffusecolor_a": {
+              "r": 1.0,
+              "g": 1.0,
+              "b": 1.0,
+              "a": 1.0
+            },
+            "diffusecolor_b": {
+              "r": 1.0,
+              "g": 1.0,
+              "b": 1.0,
+              "a": 1.0
+            },
+            "diffusecolor_c": {
+              "r": 0.7569000124931335,
+              "g": 0.630299985408783,
+              "b": 0.489300012588501,
+              "a": 1.0
+            },
+            "maskvariation_1": false,
+            "maskvariation_2": false,
+            "maskvariation_3": false,
+            "maskvariation_4": true
+          }
+        }
+      ],
+      "idleClip": "idle_normal_1",
+      "playbackRate": 1,
+      "motionBasis": "SOURCE_ANIMSET_IDLE_SELECTION",
+      "numericNpcId": null,
+      "guideRole": null,
+      "modelAssetId": "Character/NPC/Maharaka/Residents/MHP_RESIDENT_89CB90C3ACEED873/MHP_RESIDENT_89CB90C3ACEED873.wmodel",
+      "archetypeId": "NPC_MHP_RESIDENT_89CB90C3ACEED873",
+      "clientPresentationId": "npc.maharaka.resident.89cb90c3aceed873.v1",
+      "placementId": "npc.maharaka.scene06a.source74"
+    },
+    {
+      "sourceActorId": "LV_OCN_EVENTIS_MHP_SCENE06A:export:75",
+      "lookInfo": "EFDLChar_MN_ISNF_00.MN_ISNF_00",
+      "sourceTransform": {
+        "location": {
+          "x": 5758.83837890625,
+          "y": 98031.359375,
+          "z": 2045.7867431640625
+        },
+        "rotation": {
+          "pitch": 0,
+          "yaw": -38720,
+          "roll": 0,
+          "degrees": {
+            "pitch": 0.0,
+            "yaw": -212.6953125,
+            "roll": 0.0
+          }
+        },
+        "drawscale": null,
+        "drawscale3d": null,
+        "base": null,
+        "bhidden": null
+      },
+      "body": "mn_isnf_00.mesh.mn_isnf_00_sk_loc_int",
+      "head": "mn_head_fe02_029.mesh.mn_head_fe02_029_sk",
+      "animSets": [
+        "hm_fe02.ani_0000.hm_fe02_0000_00a_com_ani",
+        "hm_fe02.ani_0000.hm_fe02_0000_12a_nor_ani",
+        "mn_isnf_00.ani.mn_isnf_00_ani"
+      ],
+      "materials": [
+        {
+          "sourceMaterial": "mn_isnf_00-1.mat.mn_isnf_00-1_mi",
+          "variation": {
+            "diffusecolor": {
+              "r": 1.0,
+              "g": 1.0,
+              "b": 1.0,
+              "a": 1.0
+            },
+            "diffusecolor_a": {
+              "r": 1.0,
+              "g": 1.0,
+              "b": 1.0,
+              "a": 1.0
+            },
+            "diffusecolor_b": {
+              "r": 0.6909999847412109,
+              "g": 0.2644999921321869,
+              "b": 0.06989999860525131,
+              "a": 1.0
+            },
+            "diffusecolor_c": {
+              "r": 0.6348000168800354,
+              "g": 0.5224000215530396,
+              "b": 0.42080000042915344,
+              "a": 1.0
+            },
+            "maskvariation_1": false,
+            "maskvariation_2": false,
+            "maskvariation_3": false,
+            "maskvariation_4": false
+          }
+        },
+        {
+          "sourceMaterial": "mn_head_fe02_029.mat.mn_head_fe02_029_mi",
+          "variation": {
+            "diffusecolor": {
+              "r": 1.0,
+              "g": 1.0,
+              "b": 1.0,
+              "a": 1.0
+            },
+            "diffusecolor_a": {
+              "r": 1.0,
+              "g": 1.0,
+              "b": 1.0,
+              "a": 1.0
+            },
+            "diffusecolor_b": {
+              "r": 0.7527999877929688,
+              "g": 0.4352000057697296,
+              "b": 0.359499990940094,
+              "a": 1.0
+            },
+            "diffusecolor_c": {
+              "r": 0.6854000091552734,
+              "g": 0.5878000259399414,
+              "b": 0.47859999537467957,
+              "a": 1.0
+            },
+            "maskvariation_1": false,
+            "maskvariation_2": false,
+            "maskvariation_3": false,
+            "maskvariation_4": true
+          }
+        }
+      ],
+      "idleClip": "idle_normal_1",
+      "playbackRate": 1,
+      "motionBasis": "SOURCE_ANIMSET_IDLE_SELECTION",
+      "numericNpcId": null,
+      "guideRole": null,
+      "modelAssetId": "Character/NPC/Maharaka/Residents/MHP_RESIDENT_48ACE37281B6DF04/MHP_RESIDENT_48ACE37281B6DF04.wmodel",
+      "archetypeId": "NPC_MHP_RESIDENT_48ACE37281B6DF04",
+      "clientPresentationId": "npc.maharaka.resident.48ace37281b6df04.v1",
+      "placementId": "npc.maharaka.scene06a.source75"
+    },
+    {
+      "sourceActorId": "LV_OCN_EVENTIS_MHP_SCENE06A:export:76",
+      "lookInfo": "EFDLChar_MN_ISNM_00-3.MN_ISNM_00-3",
+      "sourceTransform": {
+        "location": {
+          "x": 5851.63623046875,
+          "y": 98992.40625,
+          "z": 2048.38134765625
+        },
+        "rotation": {
+          "pitch": 0,
+          "yaw": -20864,
+          "roll": 0,
+          "degrees": {
+            "pitch": 0.0,
+            "yaw": -114.609375,
+            "roll": 0.0
+          }
+        },
+        "drawscale": null,
+        "drawscale3d": null,
+        "base": null,
+        "bhidden": null
+      },
+      "body": "mn_isnm_00.mesh.mn_isnm_00_sk",
+      "head": "mn_head_ma02_058.mesh.mn_head_ma02_058_sk",
+      "animSets": [
+        "hm_ma02.ani_0000.hm_ma02_0000_00a_com_ani",
+        "hm_ma02.ani_0000.hm_ma02_0000_00a_nor_ani"
+      ],
+      "materials": [
+        {
+          "sourceMaterial": "mn_isnm_00.mat.mn_isnm_00_mi",
+          "variation": {
+            "diffusecolor": {
+              "r": 1.0,
+              "g": 1.0,
+              "b": 1.0,
+              "a": 1.0
+            },
+            "diffusecolor_a": {
+              "r": 1.0,
+              "g": 1.0,
+              "b": 1.0,
+              "a": 1.0
+            },
+            "diffusecolor_b": {
+              "r": 0.7921000123023987,
+              "g": 0.31150001287460327,
+              "b": 0.14890000224113464,
+              "a": 1.0
+            },
+            "diffusecolor_c": {
+              "r": 0.453000009059906,
+              "g": 0.36730000376701355,
+              "b": 0.2718999981880188,
+              "a": 1.0
+            },
+            "maskvariation_1": false,
+            "maskvariation_2": false,
+            "maskvariation_3": true,
+            "maskvariation_4": false
+          }
+        },
+        {
+          "sourceMaterial": "mn_head_ma02_058.mat.mn_head_ma02_058_mi",
+          "variation": {
+            "diffusecolor": {
+              "r": 1.0,
+              "g": 1.0,
+              "b": 1.0,
+              "a": 1.0
+            },
+            "diffusecolor_a": {
+              "r": 1.0,
+              "g": 1.0,
+              "b": 1.0,
+              "a": 1.0
+            },
+            "diffusecolor_b": {
+              "r": 3.8696000576019287,
+              "g": 3.5555999279022217,
+              "b": 2.511399984359741,
+              "a": 1.0
+            },
+            "diffusecolor_c": {
+              "r": 0.5248000025749207,
+              "g": 0.42559999227523804,
+              "b": 0.3149999976158142,
+              "a": 1.0
+            },
+            "maskvariation_1": false,
+            "maskvariation_2": false,
+            "maskvariation_3": true,
+            "maskvariation_4": false
+          }
+        }
+      ],
+      "idleClip": "idle_normal_1",
+      "playbackRate": 1,
+      "motionBasis": "SOURCE_ANIMSET_IDLE_SELECTION",
+      "numericNpcId": null,
+      "guideRole": null,
+      "modelAssetId": "Character/NPC/Maharaka/Residents/MHP_RESIDENT_61FC7F0DBCF46112/MHP_RESIDENT_61FC7F0DBCF46112.wmodel",
+      "archetypeId": "NPC_MHP_RESIDENT_61FC7F0DBCF46112",
+      "clientPresentationId": "npc.maharaka.resident.61fc7f0dbcf46112.v1",
+      "placementId": "npc.maharaka.scene06a.source76"
+    },
+    {
+      "sourceActorId": "LV_OCN_EVENTIS_MHP_SCENE06A:export:77",
+      "lookInfo": "EFDLChar_MN_ISNM_00.MN_ISNM_00",
+      "sourceTransform": {
+        "location": {
+          "x": 8316.1181640625,
+          "y": 99312.453125,
+          "z": 1907.8863525390625
+        },
+        "rotation": {
+          "pitch": 0,
+          "yaw": -12800,
+          "roll": 0,
+          "degrees": {
+            "pitch": 0.0,
+            "yaw": -70.3125,
+            "roll": 0.0
+          }
+        },
+        "drawscale": null,
+        "drawscale3d": null,
+        "base": null,
+        "bhidden": null
+      },
+      "body": "mn_isnm_00.mesh.mn_isnm_00_sk",
+      "head": "mn_head_ma02_058.mesh.mn_head_ma02_058_sk",
+      "animSets": [
+        "hm_ma02.ani_0000.hm_ma02_0000_00a_com_ani",
+        "hm_ma02.ani_0000.hm_ma02_0000_00a_evt2_ani",
+        "hm_ma02.ani_0000.hm_ma02_0000_00a_nor_ani"
+      ],
+      "materials": [
+        {
+          "sourceMaterial": "mn_isnm_00.mat.mn_isnm_00_mi",
+          "variation": {
+            "diffusecolor": {
+              "r": 1.0,
+              "g": 1.0,
+              "b": 1.0,
+              "a": 1.0
+            },
+            "diffusecolor_a": {
+              "r": 1.0,
+              "g": 1.0,
+              "b": 1.0,
+              "a": 1.0
+            },
+            "diffusecolor_b": {
+              "r": 0.23199999332427979,
+              "g": 0.1582999974489212,
+              "b": 0.10339999943971634,
+              "a": 1.0
+            },
+            "diffusecolor_c": {
+              "r": 0.5745999813079834,
+              "g": 0.4681999981403351,
+              "b": 0.34529998898506165,
+              "a": 1.0
+            },
+            "maskvariation_1": false,
+            "maskvariation_2": false,
+            "maskvariation_3": false,
+            "maskvariation_4": false
+          }
+        },
+        {
+          "sourceMaterial": "mn_head_ma02_058.mat.mn_head_ma02_058_mi",
+          "variation": {
+            "diffusecolor": {
+              "r": 1.0,
+              "g": 1.0,
+              "b": 1.0,
+              "a": 1.0
+            },
+            "diffusecolor_a": {
+              "r": 1.0,
+              "g": 1.0,
+              "b": 1.0,
+              "a": 1.0
+            },
+            "diffusecolor_b": {
+              "r": 1.0,
+              "g": 1.0,
+              "b": 1.0,
+              "a": 1.0
+            },
+            "diffusecolor_c": {
+              "r": 0.7236999869346619,
+              "g": 0.5867999792098999,
+              "b": 0.4343999922275543,
+              "a": 1.0
+            },
+            "maskvariation_1": false,
+            "maskvariation_2": false,
+            "maskvariation_3": false,
+            "maskvariation_4": false
+          }
+        }
+      ],
+      "idleClip": "evt2_float_1_01",
+      "playbackRate": 1.0,
+      "motionBasis": "FIRST_ORIGINAL_FULL_BODY_LOOP",
+      "numericNpcId": null,
+      "guideRole": null,
+      "modelAssetId": "Character/NPC/Maharaka/Residents/MHP_RESIDENT_78752C684EEEF29B/MHP_RESIDENT_78752C684EEEF29B.wmodel",
+      "archetypeId": "NPC_MHP_RESIDENT_78752C684EEEF29B",
+      "clientPresentationId": "npc.maharaka.resident.78752c684eeef29b.v1",
+      "placementId": "npc.maharaka.scene06a.source77"
+    },
+    {
+      "sourceActorId": "LV_OCN_EVENTIS_MHP_SCENE06A:export:78",
+      "lookInfo": "EFDLChar_MN_ISNM_00.MN_ISNM_00",
+      "sourceTransform": {
+        "location": {
+          "x": 6645.85498046875,
+          "y": 97942.5,
+          "z": 1904.0931396484375
+        },
+        "rotation": {
+          "pitch": 0,
+          "yaw": 17408,
+          "roll": 0,
+          "degrees": {
+            "pitch": 0.0,
+            "yaw": 95.625,
+            "roll": 0.0
+          }
+        },
+        "drawscale": null,
+        "drawscale3d": null,
+        "base": null,
+        "bhidden": null
+      },
+      "body": "mn_isnm_00.mesh.mn_isnm_00_sk",
+      "head": "mn_head_ma02_058.mesh.mn_head_ma02_058_sk",
+      "animSets": [
+        "hm_ma02.ani_0000.hm_ma02_0000_00a_com_ani",
+        "hm_ma02.ani_0000.hm_ma02_0000_00a_evt2_ani",
+        "hm_ma02.ani_0000.hm_ma02_0000_00a_nor_ani"
+      ],
+      "materials": [
+        {
+          "sourceMaterial": "mn_isnm_00.mat.mn_isnm_00_mi",
+          "variation": {
+            "diffusecolor": {
+              "r": 1.0,
+              "g": 1.0,
+              "b": 1.0,
+              "a": 1.0
+            },
+            "diffusecolor_a": {
+              "r": 1.0,
+              "g": 1.0,
+              "b": 1.0,
+              "a": 1.0
+            },
+            "diffusecolor_b": {
+              "r": 0.23199999332427979,
+              "g": 0.1582999974489212,
+              "b": 0.10339999943971634,
+              "a": 1.0
+            },
+            "diffusecolor_c": {
+              "r": 0.5745999813079834,
+              "g": 0.4681999981403351,
+              "b": 0.34529998898506165,
+              "a": 1.0
+            },
+            "maskvariation_1": false,
+            "maskvariation_2": false,
+            "maskvariation_3": false,
+            "maskvariation_4": false
+          }
+        },
+        {
+          "sourceMaterial": "mn_head_ma02_058.mat.mn_head_ma02_058_mi",
+          "variation": {
+            "diffusecolor": {
+              "r": 1.0,
+              "g": 1.0,
+              "b": 1.0,
+              "a": 1.0
+            },
+            "diffusecolor_a": {
+              "r": 1.0,
+              "g": 1.0,
+              "b": 1.0,
+              "a": 1.0
+            },
+            "diffusecolor_b": {
+              "r": 1.0,
+              "g": 1.0,
+              "b": 1.0,
+              "a": 1.0
+            },
+            "diffusecolor_c": {
+              "r": 0.7236999869346619,
+              "g": 0.5867999792098999,
+              "b": 0.4343999922275543,
+              "a": 1.0
+            },
+            "maskvariation_1": false,
+            "maskvariation_2": false,
+            "maskvariation_3": false,
+            "maskvariation_4": false
+          }
+        }
+      ],
+      "idleClip": "evt2_float_1_01",
+      "playbackRate": 1.0,
+      "motionBasis": "FIRST_ORIGINAL_FULL_BODY_LOOP",
+      "numericNpcId": null,
+      "guideRole": null,
+      "modelAssetId": "Character/NPC/Maharaka/Residents/MHP_RESIDENT_78752C684EEEF29B/MHP_RESIDENT_78752C684EEEF29B.wmodel",
+      "archetypeId": "NPC_MHP_RESIDENT_78752C684EEEF29B",
+      "clientPresentationId": "npc.maharaka.resident.78752c684eeef29b.v1",
+      "placementId": "npc.maharaka.scene06a.source78"
+    },
+    {
+      "sourceActorId": "LV_OCN_EVENTIS_MHP_SCENE06A:export:79",
+      "lookInfo": "EFDLChar_MN_ISNF_00-6.MN_ISNF_00-6",
+      "sourceTransform": {
+        "location": {
+          "x": 6795.32958984375,
+          "y": 97713.96875,
+          "z": 1976.50341796875
+        },
+        "rotation": {
+          "pitch": 0,
+          "yaw": -8000,
+          "roll": 0,
+          "degrees": {
+            "pitch": 0.0,
+            "yaw": -43.9453125,
+            "roll": 0.0
+          }
+        },
+        "drawscale": null,
+        "drawscale3d": null,
+        "base": null,
+        "bhidden": null
+      },
+      "body": "mn_isnf_00.mesh.mn_isnf_00_sk_loc_int",
+      "head": "mn_head_fe02_029.mesh.mn_head_fe02_029_sk",
+      "animSets": [
+        "hm_fe02.ani_0000.hm_fe02_0000_00a_com_ani",
+        "hm_fe02.ani_0000.hm_fe02_0000_12a_nor_ani",
+        "mn_isnf_00.ani.mn_isnf_00_ani"
+      ],
+      "materials": [
+        {
+          "sourceMaterial": "mn_isnf_00.mat.mn_isnf_00_mi",
+          "variation": {
+            "diffusecolor": {
+              "r": 1.0,
+              "g": 1.0,
+              "b": 1.0,
+              "a": 1.0
+            },
+            "diffusecolor_a": {
+              "r": 0.2921000123023987,
+              "g": 0.9666000008583069,
+              "b": 1.0,
+              "a": 1.0
+            },
+            "diffusecolor_b": {
+              "r": 0.07734499871730804,
+              "g": 0.055991001427173615,
+              "b": 0.03333299979567528,
+              "a": 1.0
+            },
+            "diffusecolor_c": {
+              "r": 0.8314999938011169,
+              "g": 0.7279999852180481,
+              "b": 0.6419000029563904,
+              "a": 1.0
+            },
+            "maskvariation_1": true,
+            "maskvariation_2": false,
+            "maskvariation_3": false,
+            "maskvariation_4": false
+          }
+        },
+        {
+          "sourceMaterial": "mn_head_fe02_029.mat.mn_head_fe02_029_mi",
+          "variation": {
+            "diffusecolor": {
+              "r": 1.0,
+              "g": 1.0,
+              "b": 1.0,
+              "a": 1.0
+            },
+            "diffusecolor_a": {
+              "r": 0.6067000031471252,
+              "g": 0.4828000068664551,
+              "b": 0.38769999146461487,
+              "a": 1.0
+            },
+            "diffusecolor_b": {
+              "r": 0.38199999928474426,
+              "g": 0.3208000063896179,
+              "b": 0.30219998955726624,
+              "a": 1.0
+            },
+            "diffusecolor_c": {
+              "r": 0.8596000075340271,
+              "g": 0.7907000184059143,
+              "b": 0.6872000098228455,
+              "a": 1.0
+            },
+            "maskvariation_1": false,
+            "maskvariation_2": false,
+            "maskvariation_3": true,
+            "maskvariation_4": false
+          }
+        }
+      ],
+      "idleClip": "idle_normal_1",
+      "playbackRate": 1,
+      "motionBasis": "SOURCE_ANIMSET_IDLE_SELECTION",
+      "numericNpcId": null,
+      "guideRole": null,
+      "modelAssetId": "Character/NPC/Maharaka/Residents/MHP_RESIDENT_54BF58EB38EF4477/MHP_RESIDENT_54BF58EB38EF4477.wmodel",
+      "archetypeId": "NPC_MHP_RESIDENT_54BF58EB38EF4477",
+      "clientPresentationId": "npc.maharaka.resident.54bf58eb38ef4477.v1",
+      "placementId": "npc.maharaka.scene06a.source79"
+    },
+    {
+      "sourceActorId": "LV_OCN_EVENTIS_MHP_SCENE06A:export:80",
+      "lookInfo": "EFDLChar_MN_ISNF_00-1.MN_ISNF_00-1",
+      "sourceTransform": {
+        "location": {
+          "x": 10584.40234375,
+          "y": 99731.7578125,
+          "z": 2048.099853515625
+        },
+        "rotation": {
+          "pitch": 0,
+          "yaw": 26112,
+          "roll": 0,
+          "degrees": {
+            "pitch": 0.0,
+            "yaw": 143.4375,
+            "roll": 0.0
+          }
+        },
+        "drawscale": null,
+        "drawscale3d": null,
+        "base": null,
+        "bhidden": null
+      },
+      "body": "mn_isnf_00.mesh.mn_isnf_00_sk_loc_int",
+      "head": "mn_head_fe02_029.mesh.mn_head_fe02_029_sk",
+      "animSets": [
+        "hm_fe02.ani_0000.hm_fe02_0000_00a_com_ani",
+        "hm_fe02.ani_0000.hm_fe02_0000_00b_evt2_ani",
+        "hm_fe02.ani_0000.hm_fe02_0000_12a_nor_ani",
+        "mn_isnf_00.ani.mn_isnf_00_ani"
+      ],
+      "materials": [
+        {
+          "sourceMaterial": "mn_isnf_00.mat.mn_isnf_00_mi",
+          "variation": {
+            "diffusecolor": {
+              "r": 1.0,
+              "g": 1.0,
+              "b": 1.0,
+              "a": 1.0
+            },
+            "diffusecolor_a": {
+              "r": 1.0,
+              "g": 1.0,
+              "b": 1.0,
+              "a": 1.0
+            },
+            "diffusecolor_b": {
+              "r": 0.1104929968714714,
+              "g": 0.07148300111293793,
+              "b": 0.05189099907875061,
+              "a": 1.0
+            },
+            "diffusecolor_c": {
+              "r": 0.6909999847412109,
+              "g": 0.5925999879837036,
+              "b": 0.48249998688697815,
+              "a": 1.0
+            },
+            "maskvariation_1": false,
+            "maskvariation_2": false,
+            "maskvariation_3": false,
+            "maskvariation_4": false
+          }
+        },
+        {
+          "sourceMaterial": "mn_head_fe02_029.mat.mn_head_fe02_029_mi",
+          "variation": {
+            "diffusecolor": {
+              "r": 1.0,
+              "g": 1.0,
+              "b": 1.0,
+              "a": 1.0
+            },
+            "diffusecolor_a": {
+              "r": 1.0,
+              "g": 1.0,
+              "b": 1.0,
+              "a": 1.0
+            },
+            "diffusecolor_b": {
+              "r": 1.3382999897003174,
+              "g": 0.7001000046730042,
+              "b": 0.5659999847412109,
+              "a": 1.0
+            },
+            "diffusecolor_c": {
+              "r": 0.8371000289916992,
+              "g": 0.7361000180244446,
+              "b": 0.6348999738693237,
+              "a": 1.0
+            },
+            "maskvariation_1": false,
+            "maskvariation_2": false,
+            "maskvariation_3": false,
+            "maskvariation_4": true
+          }
+        }
+      ],
+      "idleClip": "evt2_lie_1_01",
+      "playbackRate": 1.0,
+      "motionBasis": "FIRST_ORIGINAL_FULL_BODY_LOOP",
+      "numericNpcId": null,
+      "guideRole": null,
+      "modelAssetId": "Character/NPC/Maharaka/Residents/MHP_RESIDENT_2268E0E6350783ED/MHP_RESIDENT_2268E0E6350783ED.wmodel",
+      "archetypeId": "NPC_MHP_RESIDENT_2268E0E6350783ED",
+      "clientPresentationId": "npc.maharaka.resident.2268e0e6350783ed.v1",
+      "placementId": "npc.maharaka.scene06a.source80"
+    },
+    {
+      "sourceActorId": "LV_OCN_EVENTIS_MHP_SCENE06A:export:81",
+      "lookInfo": "EFDLChar_MN_ISNF_00-1.MN_ISNF_00-1",
+      "sourceTransform": {
+        "location": {
+          "x": 5746.26953125,
+          "y": 98720.796875,
+          "z": 2048.103271484375
+        },
+        "rotation": {
+          "pitch": 0,
+          "yaw": -2048,
+          "roll": 0,
+          "degrees": {
+            "pitch": 0.0,
+            "yaw": -11.25,
+            "roll": 0.0
+          }
+        },
+        "drawscale": null,
+        "drawscale3d": null,
+        "base": null,
+        "bhidden": null
+      },
+      "body": "mn_isnf_00.mesh.mn_isnf_00_sk_loc_int",
+      "head": "mn_head_fe02_029.mesh.mn_head_fe02_029_sk",
+      "animSets": [
+        "hm_fe02.ani_0000.hm_fe02_0000_00a_com_ani",
+        "hm_fe02.ani_0000.hm_fe02_0000_00b_evt2_ani",
+        "hm_fe02.ani_0000.hm_fe02_0000_12a_nor_ani",
+        "mn_isnf_00.ani.mn_isnf_00_ani"
+      ],
+      "materials": [
+        {
+          "sourceMaterial": "mn_isnf_00.mat.mn_isnf_00_mi",
+          "variation": {
+            "diffusecolor": {
+              "r": 1.0,
+              "g": 1.0,
+              "b": 1.0,
+              "a": 1.0
+            },
+            "diffusecolor_a": {
+              "r": 1.0,
+              "g": 1.0,
+              "b": 1.0,
+              "a": 1.0
+            },
+            "diffusecolor_b": {
+              "r": 0.1104929968714714,
+              "g": 0.07148300111293793,
+              "b": 0.05189099907875061,
+              "a": 1.0
+            },
+            "diffusecolor_c": {
+              "r": 0.6909999847412109,
+              "g": 0.5925999879837036,
+              "b": 0.48249998688697815,
+              "a": 1.0
+            },
+            "maskvariation_1": false,
+            "maskvariation_2": false,
+            "maskvariation_3": false,
+            "maskvariation_4": false
+          }
+        },
+        {
+          "sourceMaterial": "mn_head_fe02_029.mat.mn_head_fe02_029_mi",
+          "variation": {
+            "diffusecolor": {
+              "r": 1.0,
+              "g": 1.0,
+              "b": 1.0,
+              "a": 1.0
+            },
+            "diffusecolor_a": {
+              "r": 1.0,
+              "g": 1.0,
+              "b": 1.0,
+              "a": 1.0
+            },
+            "diffusecolor_b": {
+              "r": 1.3382999897003174,
+              "g": 0.7001000046730042,
+              "b": 0.5659999847412109,
+              "a": 1.0
+            },
+            "diffusecolor_c": {
+              "r": 0.8371000289916992,
+              "g": 0.7361000180244446,
+              "b": 0.6348999738693237,
+              "a": 1.0
+            },
+            "maskvariation_1": false,
+            "maskvariation_2": false,
+            "maskvariation_3": false,
+            "maskvariation_4": true
+          }
+        }
+      ],
+      "idleClip": "evt2_lie_1_01",
+      "playbackRate": 1.0,
+      "motionBasis": "FIRST_ORIGINAL_FULL_BODY_LOOP",
+      "numericNpcId": null,
+      "guideRole": null,
+      "modelAssetId": "Character/NPC/Maharaka/Residents/MHP_RESIDENT_2268E0E6350783ED/MHP_RESIDENT_2268E0E6350783ED.wmodel",
+      "archetypeId": "NPC_MHP_RESIDENT_2268E0E6350783ED",
+      "clientPresentationId": "npc.maharaka.resident.2268e0e6350783ed.v1",
+      "placementId": "npc.maharaka.scene06a.source81"
+    },
+    {
+      "sourceActorId": "LV_OCN_EVENTIS_MHP_SCENE06A:export:82",
+      "lookInfo": "EFDLChar_MN_ISNM_00.MN_ISNM_00",
+      "sourceTransform": {
+        "location": {
+          "x": 6801.45947265625,
+          "y": 97894.5,
+          "z": 2007.7005615234375
+        },
+        "rotation": {
+          "pitch": 0,
+          "yaw": -15008,
+          "roll": 0,
+          "degrees": {
+            "pitch": 0.0,
+            "yaw": -82.44140625,
+            "roll": 0.0
+          }
+        },
+        "drawscale": null,
+        "drawscale3d": null,
+        "base": null,
+        "bhidden": null
+      },
+      "body": "mn_isnm_00.mesh.mn_isnm_00_sk",
+      "head": "mn_head_ma02_058.mesh.mn_head_ma02_058_sk",
+      "animSets": [
+        "hm_ma02.ani_0000.hm_ma02_0000_00a_com_ani",
+        "hm_ma02.ani_0000.hm_ma02_0000_00a_evt2_ani",
+        "hm_ma02.ani_0000.hm_ma02_0000_00a_nor_ani"
+      ],
+      "materials": [
+        {
+          "sourceMaterial": "mn_isnm_00.mat.mn_isnm_00_mi",
+          "variation": {
+            "diffusecolor": {
+              "r": 1.0,
+              "g": 1.0,
+              "b": 1.0,
+              "a": 1.0
+            },
+            "diffusecolor_a": {
+              "r": 1.0,
+              "g": 1.0,
+              "b": 1.0,
+              "a": 1.0
+            },
+            "diffusecolor_b": {
+              "r": 0.23199999332427979,
+              "g": 0.1582999974489212,
+              "b": 0.10339999943971634,
+              "a": 1.0
+            },
+            "diffusecolor_c": {
+              "r": 0.5745999813079834,
+              "g": 0.4681999981403351,
+              "b": 0.34529998898506165,
+              "a": 1.0
+            },
+            "maskvariation_1": false,
+            "maskvariation_2": false,
+            "maskvariation_3": false,
+            "maskvariation_4": false
+          }
+        },
+        {
+          "sourceMaterial": "mn_head_ma02_058.mat.mn_head_ma02_058_mi",
+          "variation": {
+            "diffusecolor": {
+              "r": 1.0,
+              "g": 1.0,
+              "b": 1.0,
+              "a": 1.0
+            },
+            "diffusecolor_a": {
+              "r": 1.0,
+              "g": 1.0,
+              "b": 1.0,
+              "a": 1.0
+            },
+            "diffusecolor_b": {
+              "r": 1.0,
+              "g": 1.0,
+              "b": 1.0,
+              "a": 1.0
+            },
+            "diffusecolor_c": {
+              "r": 0.7236999869346619,
+              "g": 0.5867999792098999,
+              "b": 0.4343999922275543,
+              "a": 1.0
+            },
+            "maskvariation_1": false,
+            "maskvariation_2": false,
+            "maskvariation_3": false,
+            "maskvariation_4": false
+          }
+        }
+      ],
+      "idleClip": "evt2_water_tube",
+      "playbackRate": 1.2450000047683716,
+      "motionBasis": "FIRST_ORIGINAL_FULL_BODY_LOOP",
+      "numericNpcId": null,
+      "guideRole": null,
+      "modelAssetId": "Character/NPC/Maharaka/Residents/MHP_RESIDENT_C755E440F130CAB9/MHP_RESIDENT_C755E440F130CAB9.wmodel",
+      "archetypeId": "NPC_MHP_RESIDENT_C755E440F130CAB9",
+      "clientPresentationId": "npc.maharaka.resident.c755e440f130cab9.v1",
+      "placementId": "npc.maharaka.scene06a.source82"
+    },
+    {
+      "sourceActorId": "LV_OCN_EVENTIS_MHP_SCENE06A:export:83",
+      "lookInfo": "EFDLChar_MN_ISNM_00-1.MN_ISNM_00-1",
+      "sourceTransform": {
+        "location": {
+          "x": 7782.71728515625,
+          "y": 99625.3359375,
+          "z": 1987.319580078125
+        },
+        "rotation": {
+          "pitch": 0,
+          "yaw": -48608,
+          "roll": 0,
+          "degrees": {
+            "pitch": 0.0,
+            "yaw": -267.01171875,
+            "roll": 0.0
+          }
+        },
+        "drawscale": null,
+        "drawscale3d": null,
+        "base": null,
+        "bhidden": null
+      },
+      "body": "mn_isnm_00.mesh.mn_isnm_00_sk",
+      "head": "mn_head_ma02_058.mesh.mn_head_ma02_058_sk",
+      "animSets": [
+        "hm_ma02.ani_0000.hm_ma02_0000_00a_com_ani",
+        "hm_ma02.ani_0000.hm_ma02_0000_00a_evt2_ani",
+        "hm_ma02.ani_0000.hm_ma02_0000_00a_nor_ani"
+      ],
+      "materials": [
+        {
+          "sourceMaterial": "mn_isnm_00.mat.mn_isnm_00_mi",
+          "variation": {
+            "diffusecolor": {
+              "r": 1.0,
+              "g": 1.0,
+              "b": 1.0,
+              "a": 1.0
+            },
+            "diffusecolor_a": {
+              "r": 1.0,
+              "g": 1.0,
+              "b": 1.0,
+              "a": 1.0
+            },
+            "diffusecolor_b": {
+              "r": 0.569100022315979,
+              "g": 1.0,
+              "b": 0.8029999732971191,
+              "a": 1.0
+            },
+            "diffusecolor_c": {
+              "r": 0.573199987411499,
+              "g": 0.46470001339912415,
+              "b": 0.3440000116825104,
+              "a": 1.0
+            },
+            "maskvariation_1": false,
+            "maskvariation_2": false,
+            "maskvariation_3": false,
+            "maskvariation_4": false
+          }
+        },
+        {
+          "sourceMaterial": "mn_head_ma02_058.mat.mn_head_ma02_058_mi",
+          "variation": {
+            "diffusecolor": {
+              "r": 1.0,
+              "g": 1.0,
+              "b": 1.0,
+              "a": 1.0
+            },
+            "diffusecolor_a": {
+              "r": 1.0,
+              "g": 1.0,
+              "b": 1.0,
+              "a": 1.0
+            },
+            "diffusecolor_b": {
+              "r": 1.0,
+              "g": 1.0,
+              "b": 1.0,
+              "a": 1.0
+            },
+            "diffusecolor_c": {
+              "r": 0.7569000124931335,
+              "g": 0.630299985408783,
+              "b": 0.489300012588501,
+              "a": 1.0
+            },
+            "maskvariation_1": false,
+            "maskvariation_2": false,
+            "maskvariation_3": false,
+            "maskvariation_4": true
+          }
+        }
+      ],
+      "idleClip": "evt2_wplay04_loop",
+      "playbackRate": 1.0,
+      "motionBasis": "FIRST_ORIGINAL_FULL_BODY_LOOP",
+      "numericNpcId": null,
+      "guideRole": null,
+      "modelAssetId": "Character/NPC/Maharaka/Residents/MHP_RESIDENT_831DA55F38AA2078/MHP_RESIDENT_831DA55F38AA2078.wmodel",
+      "archetypeId": "NPC_MHP_RESIDENT_831DA55F38AA2078",
+      "clientPresentationId": "npc.maharaka.resident.831da55f38aa2078.v1",
+      "placementId": "npc.maharaka.scene06a.source83"
+    },
+    {
+      "sourceActorId": "LV_OCN_EVENTIS_MHP_SCENE06A:export:84",
+      "lookInfo": "EFDLChar_MN_ISNF_00.MN_ISNF_00",
+      "sourceTransform": {
+        "location": {
+          "x": 7759.7392578125,
+          "y": 100191.3359375,
+          "z": 1991.5997314453125
+        },
+        "rotation": {
+          "pitch": 0,
+          "yaw": -15872,
+          "roll": 0,
+          "degrees": {
+            "pitch": 0.0,
+            "yaw": -87.1875,
+            "roll": 0.0
+          }
+        },
+        "drawscale": null,
+        "drawscale3d": null,
+        "base": null,
+        "bhidden": null
+      },
+      "body": "mn_isnf_00.mesh.mn_isnf_00_sk_loc_int",
+      "head": "mn_head_fe02_029.mesh.mn_head_fe02_029_sk",
+      "animSets": [
+        "hm_fe02.ani_0000.hm_fe02_0000_00a_com_ani",
+        "hm_fe02.ani_0000.hm_fe02_0000_00a_evt2_ani",
+        "hm_fe02.ani_0000.hm_fe02_0000_12a_nor_ani",
+        "mn_isnf_00.ani.mn_isnf_00_ani"
+      ],
+      "materials": [
+        {
+          "sourceMaterial": "mn_isnf_00-1.mat.mn_isnf_00-1_mi",
+          "variation": {
+            "diffusecolor": {
+              "r": 1.0,
+              "g": 1.0,
+              "b": 1.0,
+              "a": 1.0
+            },
+            "diffusecolor_a": {
+              "r": 1.0,
+              "g": 1.0,
+              "b": 1.0,
+              "a": 1.0
+            },
+            "diffusecolor_b": {
+              "r": 0.6909999847412109,
+              "g": 0.2644999921321869,
+              "b": 0.06989999860525131,
+              "a": 1.0
+            },
+            "diffusecolor_c": {
+              "r": 0.6348000168800354,
+              "g": 0.5224000215530396,
+              "b": 0.42080000042915344,
+              "a": 1.0
+            },
+            "maskvariation_1": false,
+            "maskvariation_2": false,
+            "maskvariation_3": false,
+            "maskvariation_4": false
+          }
+        },
+        {
+          "sourceMaterial": "mn_head_fe02_029.mat.mn_head_fe02_029_mi",
+          "variation": {
+            "diffusecolor": {
+              "r": 1.0,
+              "g": 1.0,
+              "b": 1.0,
+              "a": 1.0
+            },
+            "diffusecolor_a": {
+              "r": 1.0,
+              "g": 1.0,
+              "b": 1.0,
+              "a": 1.0
+            },
+            "diffusecolor_b": {
+              "r": 0.7527999877929688,
+              "g": 0.4352000057697296,
+              "b": 0.359499990940094,
+              "a": 1.0
+            },
+            "diffusecolor_c": {
+              "r": 0.6854000091552734,
+              "g": 0.5878000259399414,
+              "b": 0.47859999537467957,
+              "a": 1.0
+            },
+            "maskvariation_1": false,
+            "maskvariation_2": false,
+            "maskvariation_3": false,
+            "maskvariation_4": true
+          }
+        }
+      ],
+      "idleClip": "evt2_wplay02_loop",
+      "playbackRate": 1.0,
+      "motionBasis": "FIRST_ORIGINAL_FULL_BODY_LOOP",
+      "numericNpcId": null,
+      "guideRole": null,
+      "modelAssetId": "Character/NPC/Maharaka/Residents/MHP_RESIDENT_8ADD9FB6193A0920/MHP_RESIDENT_8ADD9FB6193A0920.wmodel",
+      "archetypeId": "NPC_MHP_RESIDENT_8ADD9FB6193A0920",
+      "clientPresentationId": "npc.maharaka.resident.8add9fb6193a0920.v1",
+      "placementId": "npc.maharaka.scene06a.source84"
+    },
+    {
+      "sourceActorId": "LV_OCN_EVENTIS_MHP_SCENE06A:export:85",
+      "lookInfo": "EFDLChar_MN_ISNF_00-7.MN_ISNF_00-7",
+      "sourceTransform": {
+        "location": {
+          "x": 6990.7568359375,
+          "y": 97583.5078125,
+          "z": 1980.857177734375
+        },
+        "rotation": {
+          "pitch": 0,
+          "yaw": 23488,
+          "roll": 0,
+          "degrees": {
+            "pitch": 0.0,
+            "yaw": 129.0234375,
+            "roll": 0.0
+          }
+        },
+        "drawscale": null,
+        "drawscale3d": null,
+        "base": null,
+        "bhidden": null
+      },
+      "body": "mn_isnf_00.mesh.mn_isnf_00_sk_loc_int",
+      "head": "mn_head_fe02_029.mesh.mn_head_fe02_029_sk",
+      "animSets": [
+        "hm_fe02.ani_0000.hm_fe02_0000_00a_com_ani",
+        "hm_fe02.ani_0000.hm_fe02_0000_12a_nor_ani",
+        "mn_isnf_00.ani.mn_isnf_00_ani"
+      ],
+      "materials": [
+        {
+          "sourceMaterial": "mn_isnf_00.mat.mn_isnf_00_mi",
+          "variation": {
+            "diffusecolor": {
+              "r": 1.0,
+              "g": 1.0,
+              "b": 1.0,
+              "a": 1.0
+            },
+            "diffusecolor_a": {
+              "r": 0.6455000042915344,
+              "g": 0.7190999984741211,
+              "b": 0.28279998898506165,
+              "a": 1.0
+            },
+            "diffusecolor_b": {
+              "r": 0.6741999983787537,
+              "g": 0.17870000004768372,
+              "b": 0.16369999945163727,
+              "a": 1.0
+            },
+            "diffusecolor_c": {
+              "r": 0.7978000044822693,
+              "g": 0.6715999841690063,
+              "b": 0.5677000284194946,
+              "a": 1.0
+            },
+            "maskvariation_1": false,
+            "maskvariation_2": true,
+            "maskvariation_3": false,
+            "maskvariation_4": true
+          }
+        },
+        {
+          "sourceMaterial": "mn_head_fe02_029.mat.mn_head_fe02_029_mi",
+          "variation": {
+            "diffusecolor": {
+              "r": 1.0,
+              "g": 1.0,
+              "b": 1.0,
+              "a": 1.0
+            },
+            "diffusecolor_a": {
+              "r": 1.0,
+              "g": 0.4862000048160553,
+              "b": 0.08429999649524689,
+              "a": 1.0
+            },
+            "diffusecolor_b": {
+              "r": 1.2898999452590942,
+              "g": 1.2898999452590942,
+              "b": 1.2898999452590942,
+              "a": 1.0
+            },
+            "diffusecolor_c": {
+              "r": 0.8371000289916992,
+              "g": 0.753600001335144,
+              "b": 0.6660000085830688,
+              "a": 1.0
+            },
+            "maskvariation_1": false,
+            "maskvariation_2": true,
+            "maskvariation_3": false,
+            "maskvariation_4": false
+          }
+        }
+      ],
+      "idleClip": "idle_normal_1",
+      "playbackRate": 1,
+      "motionBasis": "SOURCE_ANIMSET_IDLE_SELECTION",
+      "numericNpcId": null,
+      "guideRole": null,
+      "modelAssetId": "Character/NPC/Maharaka/Residents/MHP_RESIDENT_1FB0662AC0EED5E5/MHP_RESIDENT_1FB0662AC0EED5E5.wmodel",
+      "archetypeId": "NPC_MHP_RESIDENT_1FB0662AC0EED5E5",
+      "clientPresentationId": "npc.maharaka.resident.1fb0662ac0eed5e5.v1",
+      "placementId": "npc.maharaka.scene06a.source85"
+    },
+    {
+      "sourceActorId": "LV_OCN_EVENTIS_MHP_SCENE06A:export:86",
+      "lookInfo": "EFDLChar_MN_ISNF_00-5.MN_ISNF_00-5",
+      "sourceTransform": {
+        "location": {
+          "x": 10345.7333984375,
+          "y": 99467.2734375,
+          "z": 2051.61767578125
+        },
+        "rotation": {
+          "pitch": 0,
+          "yaw": -38752,
+          "roll": 0,
+          "degrees": {
+            "pitch": 0.0,
+            "yaw": -212.87109375,
+            "roll": 0.0
+          }
+        },
+        "drawscale": null,
+        "drawscale3d": null,
+        "base": null,
+        "bhidden": null
+      },
+      "body": "mn_isnf_00.mesh.mn_isnf_00_sk_loc_int",
+      "head": "mn_head_fe02_029.mesh.mn_head_fe02_029_sk",
+      "animSets": [
+        "hm_fe02.ani_0000.hm_fe02_0000_00a_com_ani",
+        "hm_fe02.ani_0000.hm_fe02_0000_12a_nor_ani",
+        "mn_isnf_00.ani.mn_isnf_00_ani"
+      ],
+      "materials": [
+        {
+          "sourceMaterial": "mn_isnf_00.mat.mn_isnf_00_mi",
+          "variation": {
+            "diffusecolor": {
+              "r": 1.0,
+              "g": 1.0,
+              "b": 1.0,
+              "a": 1.0
+            },
+            "diffusecolor_a": {
+              "r": 0.5842999815940857,
+              "g": 0.20000000298023224,
+              "b": 0.17069999873638153,
+              "a": 1.0
+            },
+            "diffusecolor_b": {
+              "r": 0.7978000044822693,
+              "g": 0.566100001335144,
+              "b": 0.3203999996185303,
+              "a": 1.0
+            },
+            "diffusecolor_c": {
+              "r": 0.7639999985694885,
+              "g": 0.6498000025749207,
+              "b": 0.5713000297546387,
+              "a": 1.0
+            },
+            "maskvariation_1": true,
+            "maskvariation_2": true,
+            "maskvariation_3": false,
+            "maskvariation_4": true
+          }
+        },
+        {
+          "sourceMaterial": "mn_head_fe02_029.mat.mn_head_fe02_029_mi",
+          "variation": {
+            "diffusecolor": {
+              "r": 1.0,
+              "g": 1.0,
+              "b": 1.0,
+              "a": 1.0
+            },
+            "diffusecolor_a": {
+              "r": 0.2809000015258789,
+              "g": 0.03790000081062317,
+              "b": 0.03790000081062317,
+              "a": 1.0
+            },
+            "diffusecolor_b": {
+              "r": 1.3284000158309937,
+              "g": 0.939300000667572,
+              "b": 0.6241000294685364,
+              "a": 1.0
+            },
+            "diffusecolor_c": {
+              "r": 0.8651999831199646,
+              "g": 0.7628999948501587,
+              "b": 0.6237000226974487,
+              "a": 1.0
+            },
+            "maskvariation_1": true,
+            "maskvariation_2": false,
+            "maskvariation_3": false,
+            "maskvariation_4": false
+          }
+        }
+      ],
+      "idleClip": "idle_normal_1",
+      "playbackRate": 1,
+      "motionBasis": "SOURCE_ANIMSET_IDLE_SELECTION",
+      "numericNpcId": null,
+      "guideRole": null,
+      "modelAssetId": "Character/NPC/Maharaka/Residents/MHP_RESIDENT_10EDE2D93F10BF30/MHP_RESIDENT_10EDE2D93F10BF30.wmodel",
+      "archetypeId": "NPC_MHP_RESIDENT_10EDE2D93F10BF30",
+      "clientPresentationId": "npc.maharaka.resident.10ede2d93f10bf30.v1",
+      "placementId": "npc.maharaka.scene06a.source86"
+    },
+    {
+      "sourceActorId": "LV_OCN_EVENTIS_MHP_SCENE06A:export:87",
+      "lookInfo": "EFDLChar_MN_ISNF_00-8.MN_ISNF_00-8",
+      "sourceTransform": {
+        "location": {
+          "x": 10641.5,
+          "y": 99905.0,
+          "z": 2047.41796875
+        },
+        "rotation": {
+          "pitch": 0,
+          "yaw": -25184,
+          "roll": 0,
+          "degrees": {
+            "pitch": 0.0,
+            "yaw": -138.33984375,
+            "roll": 0.0
+          }
+        },
+        "drawscale": null,
+        "drawscale3d": null,
+        "base": null,
+        "bhidden": null
+      },
+      "body": "mn_isnf_00.mesh.mn_isnf_00_sk_loc_int",
+      "head": "mn_head_fe02_029.mesh.mn_head_fe02_029_sk",
+      "animSets": [
+        "hm_fe02.ani_0000.hm_fe02_0000_00a_com_ani",
+        "hm_fe02.ani_0000.hm_fe02_0000_12a_nor_ani",
+        "mn_isnf_00.ani.mn_isnf_00_ani"
+      ],
+      "materials": [
+        {
+          "sourceMaterial": "mn_isnf_00-1.mat.mn_isnf_00-1_mi",
+          "variation": {
+            "diffusecolor": {
+              "r": 1.0,
+              "g": 1.0,
+              "b": 1.0,
+              "a": 1.0
+            },
+            "diffusecolor_a": {
+              "r": 1.0,
+              "g": 1.0,
+              "b": 1.0,
+              "a": 1.0
+            },
+            "diffusecolor_b": {
+              "r": 1.0,
+              "g": 1.0,
+              "b": 1.0,
+              "a": 1.0
+            },
+            "diffusecolor_c": {
+              "r": 0.7753000259399414,
+              "g": 0.6707000136375427,
+              "b": 0.5357000231742859,
+              "a": 1.0
+            },
+            "maskvariation_1": false,
+            "maskvariation_2": false,
+            "maskvariation_3": false,
+            "maskvariation_4": false
+          }
+        },
+        {
+          "sourceMaterial": "mn_head_fe02_029.mat.mn_head_fe02_029_mi",
+          "variation": {
+            "diffusecolor": {
+              "r": 1.0,
+              "g": 1.0,
+              "b": 1.0,
+              "a": 1.0
+            },
+            "diffusecolor_a": {
+              "r": 0.8090000152587891,
+              "g": 0.6227999925613403,
+              "b": 0.4318000078201294,
+              "a": 1.0
+            },
+            "diffusecolor_b": {
+              "r": 0.3427000045776367,
+              "g": 0.3037000000476837,
+              "b": 0.2599000036716461,
+              "a": 1.0
+            },
+            "diffusecolor_c": {
+              "r": 0.8596000075340271,
+              "g": 0.7968000173568726,
+              "b": 0.6801999807357788,
+              "a": 1.0
+            },
+            "maskvariation_1": false,
+            "maskvariation_2": false,
+            "maskvariation_3": true,
+            "maskvariation_4": false
+          }
+        }
+      ],
+      "idleClip": "idle_normal_1",
+      "playbackRate": 1,
+      "motionBasis": "SOURCE_ANIMSET_IDLE_SELECTION",
+      "numericNpcId": null,
+      "guideRole": null,
+      "modelAssetId": "Character/NPC/Maharaka/Residents/MHP_RESIDENT_8FC2DB56F0AA5175/MHP_RESIDENT_8FC2DB56F0AA5175.wmodel",
+      "archetypeId": "NPC_MHP_RESIDENT_8FC2DB56F0AA5175",
+      "clientPresentationId": "npc.maharaka.resident.8fc2db56f0aa5175.v1",
+      "placementId": "npc.maharaka.scene06a.source87"
+    },
+    {
+      "sourceActorId": "LV_OCN_EVENTIS_MHP_SCENE06A:export:88",
+      "lookInfo": "EFDLChar_MN_ISNM_00-1.MN_ISNM_00-1",
+      "sourceTransform": {
+        "location": {
+          "x": 10695.1669921875,
+          "y": 100270.875,
+          "z": 2041.4986572265625
+        },
+        "rotation": {
+          "pitch": 0,
+          "yaw": -16864,
+          "roll": 0,
+          "degrees": {
+            "pitch": 0.0,
+            "yaw": -92.63671875,
+            "roll": 0.0
+          }
+        },
+        "drawscale": null,
+        "drawscale3d": null,
+        "base": null,
+        "bhidden": null
+      },
+      "body": "mn_isnm_00.mesh.mn_isnm_00_sk",
+      "head": "mn_head_ma02_058.mesh.mn_head_ma02_058_sk",
+      "animSets": [
+        "hm_ma02.ani_0000.hm_ma02_0000_00a_com_ani",
+        "hm_ma02.ani_0000.hm_ma02_0000_00a_nor_ani"
+      ],
+      "materials": [
+        {
+          "sourceMaterial": "mn_isnm_00.mat.mn_isnm_00_mi",
+          "variation": {
+            "diffusecolor": {
+              "r": 1.0,
+              "g": 1.0,
+              "b": 1.0,
+              "a": 1.0
+            },
+            "diffusecolor_a": {
+              "r": 1.0,
+              "g": 1.0,
+              "b": 1.0,
+              "a": 1.0
+            },
+            "diffusecolor_b": {
+              "r": 0.569100022315979,
+              "g": 1.0,
+              "b": 0.8029999732971191,
+              "a": 1.0
+            },
+            "diffusecolor_c": {
+              "r": 0.573199987411499,
+              "g": 0.46470001339912415,
+              "b": 0.3440000116825104,
+              "a": 1.0
+            },
+            "maskvariation_1": false,
+            "maskvariation_2": false,
+            "maskvariation_3": false,
+            "maskvariation_4": false
+          }
+        },
+        {
+          "sourceMaterial": "mn_head_ma02_058.mat.mn_head_ma02_058_mi",
+          "variation": {
+            "diffusecolor": {
+              "r": 1.0,
+              "g": 1.0,
+              "b": 1.0,
+              "a": 1.0
+            },
+            "diffusecolor_a": {
+              "r": 1.0,
+              "g": 1.0,
+              "b": 1.0,
+              "a": 1.0
+            },
+            "diffusecolor_b": {
+              "r": 1.0,
+              "g": 1.0,
+              "b": 1.0,
+              "a": 1.0
+            },
+            "diffusecolor_c": {
+              "r": 0.7569000124931335,
+              "g": 0.630299985408783,
+              "b": 0.489300012588501,
+              "a": 1.0
+            },
+            "maskvariation_1": false,
+            "maskvariation_2": false,
+            "maskvariation_3": false,
+            "maskvariation_4": true
+          }
+        }
+      ],
+      "idleClip": "idle_normal_1",
+      "playbackRate": 1,
+      "motionBasis": "SOURCE_ANIMSET_IDLE_SELECTION",
+      "numericNpcId": null,
+      "guideRole": null,
+      "modelAssetId": "Character/NPC/Maharaka/Residents/MHP_RESIDENT_89CB90C3ACEED873/MHP_RESIDENT_89CB90C3ACEED873.wmodel",
+      "archetypeId": "NPC_MHP_RESIDENT_89CB90C3ACEED873",
+      "clientPresentationId": "npc.maharaka.resident.89cb90c3aceed873.v1",
+      "placementId": "npc.maharaka.scene06a.source88"
+    },
+    {
+      "sourceActorId": "LV_OCN_EVENTIS_MHP_SCENE06A:export:89",
+      "lookInfo": "EFDLChar_MN_ISNF_00.MN_ISNF_00",
+      "sourceTransform": {
+        "location": {
+          "x": 10693.654296875,
+          "y": 100228.703125,
+          "z": 2045.7789306640625
+        },
+        "rotation": {
+          "pitch": 0,
+          "yaw": -9024,
+          "roll": 0,
+          "degrees": {
+            "pitch": 0.0,
+            "yaw": -49.5703125,
+            "roll": 0.0
+          }
+        },
+        "drawscale": null,
+        "drawscale3d": null,
+        "base": null,
+        "bhidden": null
+      },
+      "body": "mn_isnf_00.mesh.mn_isnf_00_sk_loc_int",
+      "head": "mn_head_fe02_029.mesh.mn_head_fe02_029_sk",
+      "animSets": [
+        "hm_fe02.ani_0000.hm_fe02_0000_00a_com_ani",
+        "hm_fe02.ani_0000.hm_fe02_0000_12a_nor_ani",
+        "mn_isnf_00.ani.mn_isnf_00_ani"
+      ],
+      "materials": [
+        {
+          "sourceMaterial": "mn_isnf_00-1.mat.mn_isnf_00-1_mi",
+          "variation": {
+            "diffusecolor": {
+              "r": 1.0,
+              "g": 1.0,
+              "b": 1.0,
+              "a": 1.0
+            },
+            "diffusecolor_a": {
+              "r": 1.0,
+              "g": 1.0,
+              "b": 1.0,
+              "a": 1.0
+            },
+            "diffusecolor_b": {
+              "r": 0.6909999847412109,
+              "g": 0.2644999921321869,
+              "b": 0.06989999860525131,
+              "a": 1.0
+            },
+            "diffusecolor_c": {
+              "r": 0.6348000168800354,
+              "g": 0.5224000215530396,
+              "b": 0.42080000042915344,
+              "a": 1.0
+            },
+            "maskvariation_1": false,
+            "maskvariation_2": false,
+            "maskvariation_3": false,
+            "maskvariation_4": false
+          }
+        },
+        {
+          "sourceMaterial": "mn_head_fe02_029.mat.mn_head_fe02_029_mi",
+          "variation": {
+            "diffusecolor": {
+              "r": 1.0,
+              "g": 1.0,
+              "b": 1.0,
+              "a": 1.0
+            },
+            "diffusecolor_a": {
+              "r": 1.0,
+              "g": 1.0,
+              "b": 1.0,
+              "a": 1.0
+            },
+            "diffusecolor_b": {
+              "r": 0.7527999877929688,
+              "g": 0.4352000057697296,
+              "b": 0.359499990940094,
+              "a": 1.0
+            },
+            "diffusecolor_c": {
+              "r": 0.6854000091552734,
+              "g": 0.5878000259399414,
+              "b": 0.47859999537467957,
+              "a": 1.0
+            },
+            "maskvariation_1": false,
+            "maskvariation_2": false,
+            "maskvariation_3": false,
+            "maskvariation_4": true
+          }
+        }
+      ],
+      "idleClip": "idle_normal_1",
+      "playbackRate": 1,
+      "motionBasis": "SOURCE_ANIMSET_IDLE_SELECTION",
+      "numericNpcId": null,
+      "guideRole": null,
+      "modelAssetId": "Character/NPC/Maharaka/Residents/MHP_RESIDENT_48ACE37281B6DF04/MHP_RESIDENT_48ACE37281B6DF04.wmodel",
+      "archetypeId": "NPC_MHP_RESIDENT_48ACE37281B6DF04",
+      "clientPresentationId": "npc.maharaka.resident.48ace37281b6df04.v1",
+      "placementId": "npc.maharaka.scene06a.source89"
+    },
+    {
+      "sourceActorId": "LV_OCN_EVENTIS_MHP_SCENE06A:export:90",
+      "lookInfo": "EFDLChar_MN_ISNM_00-3.MN_ISNM_00-3",
+      "sourceTransform": {
+        "location": {
+          "x": 10268.7548828125,
+          "y": 99524.859375,
+          "z": 2048.37353515625
+        },
+        "rotation": {
+          "pitch": 0,
+          "yaw": -7552,
+          "roll": 0,
+          "degrees": {
+            "pitch": 0.0,
+            "yaw": -41.484375,
+            "roll": 0.0
+          }
+        },
+        "drawscale": null,
+        "drawscale3d": null,
+        "base": null,
+        "bhidden": null
+      },
+      "body": "mn_isnm_00.mesh.mn_isnm_00_sk",
+      "head": "mn_head_ma02_058.mesh.mn_head_ma02_058_sk",
+      "animSets": [
+        "hm_ma02.ani_0000.hm_ma02_0000_00a_com_ani",
+        "hm_ma02.ani_0000.hm_ma02_0000_00a_nor_ani"
+      ],
+      "materials": [
+        {
+          "sourceMaterial": "mn_isnm_00.mat.mn_isnm_00_mi",
+          "variation": {
+            "diffusecolor": {
+              "r": 1.0,
+              "g": 1.0,
+              "b": 1.0,
+              "a": 1.0
+            },
+            "diffusecolor_a": {
+              "r": 1.0,
+              "g": 1.0,
+              "b": 1.0,
+              "a": 1.0
+            },
+            "diffusecolor_b": {
+              "r": 0.7921000123023987,
+              "g": 0.31150001287460327,
+              "b": 0.14890000224113464,
+              "a": 1.0
+            },
+            "diffusecolor_c": {
+              "r": 0.453000009059906,
+              "g": 0.36730000376701355,
+              "b": 0.2718999981880188,
+              "a": 1.0
+            },
+            "maskvariation_1": false,
+            "maskvariation_2": false,
+            "maskvariation_3": true,
+            "maskvariation_4": false
+          }
+        },
+        {
+          "sourceMaterial": "mn_head_ma02_058.mat.mn_head_ma02_058_mi",
+          "variation": {
+            "diffusecolor": {
+              "r": 1.0,
+              "g": 1.0,
+              "b": 1.0,
+              "a": 1.0
+            },
+            "diffusecolor_a": {
+              "r": 1.0,
+              "g": 1.0,
+              "b": 1.0,
+              "a": 1.0
+            },
+            "diffusecolor_b": {
+              "r": 3.8696000576019287,
+              "g": 3.5555999279022217,
+              "b": 2.511399984359741,
+              "a": 1.0
+            },
+            "diffusecolor_c": {
+              "r": 0.5248000025749207,
+              "g": 0.42559999227523804,
+              "b": 0.3149999976158142,
+              "a": 1.0
+            },
+            "maskvariation_1": false,
+            "maskvariation_2": false,
+            "maskvariation_3": true,
+            "maskvariation_4": false
+          }
+        }
+      ],
+      "idleClip": "idle_normal_1",
+      "playbackRate": 1,
+      "motionBasis": "SOURCE_ANIMSET_IDLE_SELECTION",
+      "numericNpcId": null,
+      "guideRole": null,
+      "modelAssetId": "Character/NPC/Maharaka/Residents/MHP_RESIDENT_61FC7F0DBCF46112/MHP_RESIDENT_61FC7F0DBCF46112.wmodel",
+      "archetypeId": "NPC_MHP_RESIDENT_61FC7F0DBCF46112",
+      "clientPresentationId": "npc.maharaka.resident.61fc7f0dbcf46112.v1",
+      "placementId": "npc.maharaka.scene06a.source90"
+    },
+    {
+      "sourceActorId": "LV_OCN_EVENTIS_MHP_SCENE07A:export:127",
+      "lookInfo": "EFDLChar_MN_ISNF_00-4.MN_ISNF_00-4",
+      "sourceTransform": {
+        "location": {
+          "x": 12004.9150390625,
+          "y": 99195.2734375,
+          "z": 2562.914794921875
+        },
+        "rotation": {
+          "pitch": 0,
+          "yaw": 2080,
+          "roll": 0,
+          "degrees": {
+            "pitch": 0.0,
+            "yaw": 11.42578125,
+            "roll": 0.0
+          }
+        },
+        "drawscale": null,
+        "drawscale3d": null,
+        "base": null,
+        "bhidden": null
+      },
+      "body": "mn_isnf_00.mesh.mn_isnf_00_sk_loc_int",
+      "head": "mn_head_fe02_029.mesh.mn_head_fe02_029_sk",
+      "animSets": [
+        "hm_fe02.ani_0000.hm_fe02_0000_00a_com_ani",
+        "hm_fe02.ani_0000.hm_fe02_0000_12a_nor_ani",
+        "mn_isnf_00.ani.mn_isnf_00_ani"
+      ],
+      "materials": [
+        {
+          "sourceMaterial": "mn_isnf_00.mat.mn_isnf_00_mi",
+          "variation": {
+            "diffusecolor": {
+              "r": 1.0,
+              "g": 1.0,
+              "b": 1.0,
+              "a": 1.0
+            },
+            "diffusecolor_a": {
+              "r": 0.5128999948501587,
+              "g": 0.2930999994277954,
+              "b": 0.5336999893188477,
+              "a": 1.0
+            },
+            "diffusecolor_b": {
+              "r": 0.6161999702453613,
+              "g": 0.37209999561309814,
+              "b": 0.6966000199317932,
+              "a": 1.0
+            },
+            "diffusecolor_c": {
+              "r": 0.7639999985694885,
+              "g": 0.6431999802589417,
+              "b": 0.5436999797821045,
+              "a": 1.0
+            },
+            "maskvariation_1": true,
+            "maskvariation_2": false,
+            "maskvariation_3": true,
+            "maskvariation_4": true
+          }
+        },
+        {
+          "sourceMaterial": "mn_head_fe02_029.mat.mn_head_fe02_029_mi",
+          "variation": {
+            "diffusecolor": {
+              "r": 1.0,
+              "g": 1.0,
+              "b": 1.0,
+              "a": 1.0
+            },
+            "diffusecolor_a": {
+              "r": 1.0,
+              "g": 1.0,
+              "b": 1.0,
+              "a": 1.0
+            },
+            "diffusecolor_b": {
+              "r": 0.38199999928474426,
+              "g": 0.24250000715255737,
+              "b": 0.24250000715255737,
+              "a": 1.0
+            },
+            "diffusecolor_c": {
+              "r": 0.8371000289916992,
+              "g": 0.7675999999046326,
+              "b": 0.6912000179290771,
+              "a": 1.0
+            },
+            "maskvariation_1": false,
+            "maskvariation_2": false,
+            "maskvariation_3": false,
+            "maskvariation_4": true
+          }
+        }
+      ],
+      "idleClip": "act_sitdown_m_loop_1",
+      "playbackRate": 1.0,
+      "motionBasis": "FIRST_ORIGINAL_FULL_BODY_LOOP",
+      "numericNpcId": null,
+      "guideRole": null,
+      "modelAssetId": "Character/NPC/Maharaka/Residents/MHP_RESIDENT_B385E1ED1AED883B/MHP_RESIDENT_B385E1ED1AED883B.wmodel",
+      "archetypeId": "NPC_MHP_RESIDENT_B385E1ED1AED883B",
+      "clientPresentationId": "npc.maharaka.resident.b385e1ed1aed883b.v1",
+      "placementId": "npc.maharaka.scene07a.source127"
+    },
+    {
+      "sourceActorId": "LV_OCN_EVENTIS_MHP_SCENE07A:export:128",
+      "lookInfo": "EFDLChar_MN_ISNF_00-3.MN_ISNF_00-3",
+      "sourceTransform": {
+        "location": {
+          "x": 12577.205078125,
+          "y": 99051.7890625,
+          "z": 2562.107666015625
+        },
+        "rotation": {
+          "pitch": 0,
+          "yaw": -22400,
+          "roll": 0,
+          "degrees": {
+            "pitch": 0.0,
+            "yaw": -123.046875,
+            "roll": 0.0
+          }
+        },
+        "drawscale": null,
+        "drawscale3d": null,
+        "base": null,
+        "bhidden": null
+      },
+      "body": "mn_isnf_00.mesh.mn_isnf_00_sk_loc_int",
+      "head": "mn_head_fe02_029.mesh.mn_head_fe02_029_sk",
+      "animSets": [
+        "hm_fe02.ani_0000.hm_fe02_0000_00a_com_ani",
+        "hm_fe02.ani_0000.hm_fe02_0000_12a_nor_ani",
+        "mn_isnf_00.ani.mn_isnf_00_ani"
+      ],
+      "materials": [
+        {
+          "sourceMaterial": "mn_isnf_00.mat.mn_isnf_00_mi",
+          "variation": {}
+        },
+        {
+          "sourceMaterial": "mn_head_fe02_029.mat.mn_head_fe02_029_mi",
+          "variation": {}
+        }
+      ],
+      "idleClip": "act_sitdown_m_loop_1",
+      "playbackRate": 1.0,
+      "motionBasis": "FIRST_ORIGINAL_FULL_BODY_LOOP",
+      "numericNpcId": null,
+      "guideRole": null,
+      "modelAssetId": "Character/NPC/Maharaka/Residents/MHP_RESIDENT_FC457647A29AFCCD/MHP_RESIDENT_FC457647A29AFCCD.wmodel",
+      "archetypeId": "NPC_MHP_RESIDENT_FC457647A29AFCCD",
+      "clientPresentationId": "npc.maharaka.resident.fc457647a29afccd.v1",
+      "placementId": "npc.maharaka.scene07a.source128"
+    },
+    {
+      "sourceActorId": "LV_OCN_EVENTIS_MHP_SCENE07A:export:168",
+      "lookInfo": "EFDLChar_MN_ISNM_00-3.MN_ISNM_00-3",
+      "sourceTransform": {
+        "location": {
+          "x": 9914.0068359375,
+          "y": 96997.796875,
+          "z": 2773.676025390625
+        },
+        "rotation": {
+          "pitch": 0,
+          "yaw": -55680,
+          "roll": 0,
+          "degrees": {
+            "pitch": 0.0,
+            "yaw": -305.859375,
+            "roll": 0.0
+          }
+        },
+        "drawscale": null,
+        "drawscale3d": null,
+        "base": null,
+        "bhidden": null
+      },
+      "body": "mn_isnm_00.mesh.mn_isnm_00_sk",
+      "head": "mn_head_ma02_058.mesh.mn_head_ma02_058_sk",
+      "animSets": [
+        "hm_ma02.ani_0000.hm_ma02_0000_00a_com_ani",
+        "hm_ma02.ani_0000.hm_ma02_0000_00a_nor_ani"
+      ],
+      "materials": [
+        {
+          "sourceMaterial": "mn_isnm_00.mat.mn_isnm_00_mi",
+          "variation": {
+            "diffusecolor": {
+              "r": 1.0,
+              "g": 1.0,
+              "b": 1.0,
+              "a": 1.0
+            },
+            "diffusecolor_a": {
+              "r": 1.0,
+              "g": 1.0,
+              "b": 1.0,
+              "a": 1.0
+            },
+            "diffusecolor_b": {
+              "r": 0.7921000123023987,
+              "g": 0.31150001287460327,
+              "b": 0.14890000224113464,
+              "a": 1.0
+            },
+            "diffusecolor_c": {
+              "r": 0.453000009059906,
+              "g": 0.36730000376701355,
+              "b": 0.2718999981880188,
+              "a": 1.0
+            },
+            "maskvariation_1": false,
+            "maskvariation_2": false,
+            "maskvariation_3": true,
+            "maskvariation_4": false
+          }
+        },
+        {
+          "sourceMaterial": "mn_head_ma02_058.mat.mn_head_ma02_058_mi",
+          "variation": {
+            "diffusecolor": {
+              "r": 1.0,
+              "g": 1.0,
+              "b": 1.0,
+              "a": 1.0
+            },
+            "diffusecolor_a": {
+              "r": 1.0,
+              "g": 1.0,
+              "b": 1.0,
+              "a": 1.0
+            },
+            "diffusecolor_b": {
+              "r": 3.8696000576019287,
+              "g": 3.5555999279022217,
+              "b": 2.511399984359741,
+              "a": 1.0
+            },
+            "diffusecolor_c": {
+              "r": 0.5248000025749207,
+              "g": 0.42559999227523804,
+              "b": 0.3149999976158142,
+              "a": 1.0
+            },
+            "maskvariation_1": false,
+            "maskvariation_2": false,
+            "maskvariation_3": true,
+            "maskvariation_4": false
+          }
+        }
+      ],
+      "idleClip": "idle_normal_1",
+      "playbackRate": 1.0,
+      "motionBasis": "FIRST_ORIGINAL_FULL_BODY_LOOP",
+      "numericNpcId": null,
+      "guideRole": null,
+      "modelAssetId": "Character/NPC/Maharaka/Residents/MHP_RESIDENT_AF831B6831888E6A/MHP_RESIDENT_AF831B6831888E6A.wmodel",
+      "archetypeId": "NPC_MHP_RESIDENT_AF831B6831888E6A",
+      "clientPresentationId": "npc.maharaka.resident.af831b6831888e6a.v1",
+      "placementId": "npc.maharaka.scene07a.source168"
+    },
+    {
+      "sourceActorId": "LV_OCN_EVENTIS_MHP_SCENE07A:export:169",
+      "lookInfo": "EFDLChar_MN_ISNF_00-8.MN_ISNF_00-8",
+      "sourceTransform": {
+        "location": {
+          "x": 10804.7236328125,
+          "y": 96022.265625,
+          "z": 2767.7978515625
+        },
+        "rotation": {
+          "pitch": 0,
+          "yaw": -9792,
+          "roll": 0,
+          "degrees": {
+            "pitch": 0.0,
+            "yaw": -53.7890625,
+            "roll": 0.0
+          }
+        },
+        "drawscale": null,
+        "drawscale3d": null,
+        "base": null,
+        "bhidden": null
+      },
+      "body": "mn_isnf_00.mesh.mn_isnf_00_sk_loc_int",
+      "head": "mn_head_fe02_029.mesh.mn_head_fe02_029_sk",
+      "animSets": [
+        "hm_fe02.ani_0000.hm_fe02_0000_00a_com_ani",
+        "hm_fe02.ani_0000.hm_fe02_0000_12a_nor_ani",
+        "mn_isnf_00.ani.mn_isnf_00_ani"
+      ],
+      "materials": [
+        {
+          "sourceMaterial": "mn_isnf_00-1.mat.mn_isnf_00-1_mi",
+          "variation": {
+            "diffusecolor": {
+              "r": 1.0,
+              "g": 1.0,
+              "b": 1.0,
+              "a": 1.0
+            },
+            "diffusecolor_a": {
+              "r": 1.0,
+              "g": 1.0,
+              "b": 1.0,
+              "a": 1.0
+            },
+            "diffusecolor_b": {
+              "r": 1.0,
+              "g": 1.0,
+              "b": 1.0,
+              "a": 1.0
+            },
+            "diffusecolor_c": {
+              "r": 0.7753000259399414,
+              "g": 0.6707000136375427,
+              "b": 0.5357000231742859,
+              "a": 1.0
+            },
+            "maskvariation_1": false,
+            "maskvariation_2": false,
+            "maskvariation_3": false,
+            "maskvariation_4": false
+          }
+        },
+        {
+          "sourceMaterial": "mn_head_fe02_029.mat.mn_head_fe02_029_mi",
+          "variation": {
+            "diffusecolor": {
+              "r": 1.0,
+              "g": 1.0,
+              "b": 1.0,
+              "a": 1.0
+            },
+            "diffusecolor_a": {
+              "r": 0.8090000152587891,
+              "g": 0.6227999925613403,
+              "b": 0.4318000078201294,
+              "a": 1.0
+            },
+            "diffusecolor_b": {
+              "r": 0.3427000045776367,
+              "g": 0.3037000000476837,
+              "b": 0.2599000036716461,
+              "a": 1.0
+            },
+            "diffusecolor_c": {
+              "r": 0.8596000075340271,
+              "g": 0.7968000173568726,
+              "b": 0.6801999807357788,
+              "a": 1.0
+            },
+            "maskvariation_1": false,
+            "maskvariation_2": false,
+            "maskvariation_3": true,
+            "maskvariation_4": false
+          }
+        }
+      ],
+      "idleClip": "idle_normal_1",
+      "playbackRate": 1.0,
+      "motionBasis": "FIRST_ORIGINAL_FULL_BODY_LOOP",
+      "numericNpcId": null,
+      "guideRole": null,
+      "modelAssetId": "Character/NPC/Maharaka/Residents/MHP_RESIDENT_C000BE24B1224786/MHP_RESIDENT_C000BE24B1224786.wmodel",
+      "archetypeId": "NPC_MHP_RESIDENT_C000BE24B1224786",
+      "clientPresentationId": "npc.maharaka.resident.c000be24b1224786.v1",
+      "placementId": "npc.maharaka.scene07a.source169"
+    }
+  ],
+  "models": [
+    {
+      "modelAssetId": "Character/NPC/Maharaka/Residents/MHP_RESIDENT_8FC2DB56F0AA5175/MHP_RESIDENT_8FC2DB56F0AA5175.wmodel",
+      "sha256": "e09625e27d09c181dbc6c12ae0352b1f6cb5d57aee2b30d843bf82b22b24f7de",
+      "motion": {
+        "sourcePsa": "C:\\LostArkExtract\\MaharakaNpcSource20260927\\raw\\HM_FE02\\ani_0000\\hm_fe02_0000_12a_nor_ani.psa",
+        "sourcePsaSha256": "5f28f3511dfb26b1bd653fd2b36b27501cac266454c6b930d775120bdf2c9fbd",
+        "clip": "idle_normal_1",
+        "frames": 477,
+        "sourceRate": 30.0,
+        "playbackRate": 1,
+        "seconds": 15.866666666666667,
+        "scaleKeysPreserved": true
+      },
+      "materialSlots": [
+        "mn_isnf_00_mi",
+        "mn_head_fe02_029_mi"
+      ],
+      "merge": {
+        "joints": 124,
+        "headBindDeltaM": 0.0,
+        "headMaterials": [
+          "mn_head_fe02_029_mi"
+        ],
+        "bodyMaterials": [
+          "mn_isnf_00_mi"
+        ]
+      },
+      "basis": {
+        "formatVersion": "1.5",
+        "sourceVertexJoinOwnedByCaller": true,
+        "coordinateConversionApplied": false,
+        "originalVertex76BytesPreserved": true,
+        "indicesBonesBoundsPreserved": true,
+        "nonMeshSectionsPreserved": true,
+        "submeshes": [
+          {
+            "submeshIndex": 0,
+            "vertexCount": 5075,
+            "positiveHandedness": 2236,
+            "negativeHandedness": 2839,
+            "handednessSha256": "c1b57efc8021e143b2a4a72bcf05e72fbef2242de9966c075571648cc03ab919"
+          },
+          {
+            "submeshIndex": 1,
+            "vertexCount": 3768,
+            "positiveHandedness": 1733,
+            "negativeHandedness": 2035,
+            "handednessSha256": "cdce65492ab620d7ba9d8ac8b0241fc8ee9b259d033bf41f5644972462d9e3bb"
+          }
+        ],
+        "uv": null,
+        "sourceGltfSha256": "1d69556d8133db43a055b560bb6a5c9cdea145040905147726a674e611f12b60",
+        "joinedVertices": 8843,
+        "maxGeometryDelta": 0.0,
+        "join": "All P/N/T reflected Z, unchanged UV0, weighted bone names/weights; no positional nearest match",
+        "tangentSign": "negative source glTF TANGENT.w: Z reflection, no UV flip"
+      }
+    },
+    {
+      "modelAssetId": "Character/NPC/Maharaka/Residents/MHP_RESIDENT_7D37CE489AF57466/MHP_RESIDENT_7D37CE489AF57466.wmodel",
+      "sha256": "f894ca5b829ba54f490d04e62d6d50a6268a8449e832afb68576cb822205ab7f",
+      "motion": {
+        "sourcePsa": "C:\\LostArkExtract\\MaharakaNpcSource20260927\\raw\\HM_FE02\\ani_0000\\hm_fe02_0000_12a_nor_ani.psa",
+        "sourcePsaSha256": "5f28f3511dfb26b1bd653fd2b36b27501cac266454c6b930d775120bdf2c9fbd",
+        "clip": "idle_normal_1",
+        "frames": 477,
+        "sourceRate": 30.0,
+        "playbackRate": 1,
+        "seconds": 15.866666666666667,
+        "scaleKeysPreserved": true
+      },
+      "materialSlots": [
+        "mn_isnf_00_mi",
+        "mn_head_fe02_029_mi"
+      ],
+      "merge": {
+        "joints": 124,
+        "headBindDeltaM": 0.0,
+        "headMaterials": [
+          "mn_head_fe02_029_mi"
+        ],
+        "bodyMaterials": [
+          "mn_isnf_00_mi"
+        ]
+      },
+      "basis": {
+        "formatVersion": "1.5",
+        "sourceVertexJoinOwnedByCaller": true,
+        "coordinateConversionApplied": false,
+        "originalVertex76BytesPreserved": true,
+        "indicesBonesBoundsPreserved": true,
+        "nonMeshSectionsPreserved": true,
+        "submeshes": [
+          {
+            "submeshIndex": 0,
+            "vertexCount": 5075,
+            "positiveHandedness": 2236,
+            "negativeHandedness": 2839,
+            "handednessSha256": "c1b57efc8021e143b2a4a72bcf05e72fbef2242de9966c075571648cc03ab919"
+          },
+          {
+            "submeshIndex": 1,
+            "vertexCount": 3768,
+            "positiveHandedness": 1733,
+            "negativeHandedness": 2035,
+            "handednessSha256": "cdce65492ab620d7ba9d8ac8b0241fc8ee9b259d033bf41f5644972462d9e3bb"
+          }
+        ],
+        "uv": null,
+        "sourceGltfSha256": "1d69556d8133db43a055b560bb6a5c9cdea145040905147726a674e611f12b60",
+        "joinedVertices": 8843,
+        "maxGeometryDelta": 0.0,
+        "join": "All P/N/T reflected Z, unchanged UV0, weighted bone names/weights; no positional nearest match",
+        "tangentSign": "negative source glTF TANGENT.w: Z reflection, no UV flip"
+      }
+    },
+    {
+      "modelAssetId": "Character/NPC/Maharaka/Residents/MHP_RESIDENT_6C0BF3F0C656EBAB/MHP_RESIDENT_6C0BF3F0C656EBAB.wmodel",
+      "sha256": "e2b4dc4dda3ee4e6e1091ffff3e34f939471e04fb866b91b0480a71486c54fa3",
+      "motion": {
+        "sourcePsa": "C:\\LostArkExtract\\MaharakaNpcSource20260927\\raw\\HM_MA02\\AnimSet\\hm_ma02_0000_00a_com_ani.psa",
+        "sourcePsaSha256": "eb04c3c03b6ba3f9493184b462e465e588a58ab103de12c0769f442ba05fd492",
+        "clip": "sc_laughing_loop_1",
+        "frames": 75,
+        "sourceRate": 30.0,
+        "playbackRate": 0.9610000252723694,
+        "seconds": 2.5667706574383877,
+        "scaleKeysPreserved": true
+      },
+      "materialSlots": [
+        "mn_isnm_00_mi",
+        "mn_head_ma02_058_mi"
+      ],
+      "merge": {
+        "joints": 124,
+        "headBindDeltaM": 0.00638,
+        "headMaterials": [
+          "mn_head_ma02_058_mi"
+        ],
+        "bodyMaterials": [
+          "mn_isnm_00_mi"
+        ]
+      },
+      "basis": {
+        "formatVersion": "1.5",
+        "sourceVertexJoinOwnedByCaller": true,
+        "coordinateConversionApplied": false,
+        "originalVertex76BytesPreserved": true,
+        "indicesBonesBoundsPreserved": true,
+        "nonMeshSectionsPreserved": true,
+        "submeshes": [
+          {
+            "submeshIndex": 0,
+            "vertexCount": 8179,
+            "positiveHandedness": 3107,
+            "negativeHandedness": 5072,
+            "handednessSha256": "3d1b87ac890e09d3e157609e12454f8225778b7365f2d608bea0fec2725cb63c"
+          },
+          {
+            "submeshIndex": 1,
+            "vertexCount": 3174,
+            "positiveHandedness": 1277,
+            "negativeHandedness": 1897,
+            "handednessSha256": "310b7a86a782224c74ff61ab31077f0c4a5a0227416e16bef99875b7784122ed"
+          }
+        ],
+        "uv": null,
+        "sourceGltfSha256": "5286e4f97d107736959aa4ab4a6dc3319aa0abd278809dd868e3de543f2ac5b9",
+        "joinedVertices": 11353,
+        "maxGeometryDelta": 0.0,
+        "join": "All P/N/T reflected Z, unchanged UV0, weighted bone names/weights; no positional nearest match",
+        "tangentSign": "negative source glTF TANGENT.w: Z reflection, no UV flip"
+      }
+    },
+    {
+      "modelAssetId": "Character/NPC/Maharaka/Residents/MHP_RESIDENT_48E52BAC20260E4C/MHP_RESIDENT_48E52BAC20260E4C.wmodel",
+      "sha256": "f894ca5b829ba54f490d04e62d6d50a6268a8449e832afb68576cb822205ab7f",
+      "motion": {
+        "sourcePsa": "C:\\LostArkExtract\\MaharakaNpcSource20260927\\raw\\HM_FE02\\ani_0000\\hm_fe02_0000_12a_nor_ani.psa",
+        "sourcePsaSha256": "5f28f3511dfb26b1bd653fd2b36b27501cac266454c6b930d775120bdf2c9fbd",
+        "clip": "idle_normal_1",
+        "frames": 477,
+        "sourceRate": 30.0,
+        "playbackRate": 1,
+        "seconds": 15.866666666666667,
+        "scaleKeysPreserved": true
+      },
+      "materialSlots": [
+        "mn_isnf_00_mi",
+        "mn_head_fe02_029_mi"
+      ],
+      "merge": {
+        "joints": 124,
+        "headBindDeltaM": 0.0,
+        "headMaterials": [
+          "mn_head_fe02_029_mi"
+        ],
+        "bodyMaterials": [
+          "mn_isnf_00_mi"
+        ]
+      },
+      "basis": {
+        "formatVersion": "1.5",
+        "sourceVertexJoinOwnedByCaller": true,
+        "coordinateConversionApplied": false,
+        "originalVertex76BytesPreserved": true,
+        "indicesBonesBoundsPreserved": true,
+        "nonMeshSectionsPreserved": true,
+        "submeshes": [
+          {
+            "submeshIndex": 0,
+            "vertexCount": 5075,
+            "positiveHandedness": 2236,
+            "negativeHandedness": 2839,
+            "handednessSha256": "c1b57efc8021e143b2a4a72bcf05e72fbef2242de9966c075571648cc03ab919"
+          },
+          {
+            "submeshIndex": 1,
+            "vertexCount": 3768,
+            "positiveHandedness": 1733,
+            "negativeHandedness": 2035,
+            "handednessSha256": "cdce65492ab620d7ba9d8ac8b0241fc8ee9b259d033bf41f5644972462d9e3bb"
+          }
+        ],
+        "uv": null,
+        "sourceGltfSha256": "1d69556d8133db43a055b560bb6a5c9cdea145040905147726a674e611f12b60",
+        "joinedVertices": 8843,
+        "maxGeometryDelta": 0.0,
+        "join": "All P/N/T reflected Z, unchanged UV0, weighted bone names/weights; no positional nearest match",
+        "tangentSign": "negative source glTF TANGENT.w: Z reflection, no UV flip"
+      }
+    },
+    {
+      "modelAssetId": "Character/NPC/Maharaka/Residents/MHP_RESIDENT_10EDE2D93F10BF30/MHP_RESIDENT_10EDE2D93F10BF30.wmodel",
+      "sha256": "f894ca5b829ba54f490d04e62d6d50a6268a8449e832afb68576cb822205ab7f",
+      "motion": {
+        "sourcePsa": "C:\\LostArkExtract\\MaharakaNpcSource20260927\\raw\\HM_FE02\\ani_0000\\hm_fe02_0000_12a_nor_ani.psa",
+        "sourcePsaSha256": "5f28f3511dfb26b1bd653fd2b36b27501cac266454c6b930d775120bdf2c9fbd",
+        "clip": "idle_normal_1",
+        "frames": 477,
+        "sourceRate": 30.0,
+        "playbackRate": 1,
+        "seconds": 15.866666666666667,
+        "scaleKeysPreserved": true
+      },
+      "materialSlots": [
+        "mn_isnf_00_mi",
+        "mn_head_fe02_029_mi"
+      ],
+      "merge": {
+        "joints": 124,
+        "headBindDeltaM": 0.0,
+        "headMaterials": [
+          "mn_head_fe02_029_mi"
+        ],
+        "bodyMaterials": [
+          "mn_isnf_00_mi"
+        ]
+      },
+      "basis": {
+        "formatVersion": "1.5",
+        "sourceVertexJoinOwnedByCaller": true,
+        "coordinateConversionApplied": false,
+        "originalVertex76BytesPreserved": true,
+        "indicesBonesBoundsPreserved": true,
+        "nonMeshSectionsPreserved": true,
+        "submeshes": [
+          {
+            "submeshIndex": 0,
+            "vertexCount": 5075,
+            "positiveHandedness": 2236,
+            "negativeHandedness": 2839,
+            "handednessSha256": "c1b57efc8021e143b2a4a72bcf05e72fbef2242de9966c075571648cc03ab919"
+          },
+          {
+            "submeshIndex": 1,
+            "vertexCount": 3768,
+            "positiveHandedness": 1733,
+            "negativeHandedness": 2035,
+            "handednessSha256": "cdce65492ab620d7ba9d8ac8b0241fc8ee9b259d033bf41f5644972462d9e3bb"
+          }
+        ],
+        "uv": null,
+        "sourceGltfSha256": "1d69556d8133db43a055b560bb6a5c9cdea145040905147726a674e611f12b60",
+        "joinedVertices": 8843,
+        "maxGeometryDelta": 0.0,
+        "join": "All P/N/T reflected Z, unchanged UV0, weighted bone names/weights; no positional nearest match",
+        "tangentSign": "negative source glTF TANGENT.w: Z reflection, no UV flip"
+      }
+    },
+    {
+      "modelAssetId": "Character/NPC/Maharaka/Residents/MHP_RESIDENT_26DDEADDA1171460/MHP_RESIDENT_26DDEADDA1171460.wmodel",
+      "sha256": "c1c237ba439364e1186a3c2b2961e060e2b98db08597600182a6e326f64e1d0e",
+      "motion": {
+        "sourcePsa": "C:\\LostArkExtract\\MaharakaNpcSource20260927\\raw\\HM_MA02\\ani_0000\\hm_ma02_0000_00a_nor_ani.psa",
+        "sourcePsaSha256": "51c4ef058bd2bbc35547aacd581ae39a8a6526061448f5d2fd8f805fbeb74ca3",
+        "clip": "idle_normal_1",
+        "frames": 116,
+        "sourceRate": 30.0,
+        "playbackRate": 1,
+        "seconds": 3.8333333333333335,
+        "scaleKeysPreserved": true
+      },
+      "materialSlots": [
+        "mn_isnm_00_mi",
+        "mn_head_ma02_058_mi"
+      ],
+      "merge": {
+        "joints": 124,
+        "headBindDeltaM": 0.00638,
+        "headMaterials": [
+          "mn_head_ma02_058_mi"
+        ],
+        "bodyMaterials": [
+          "mn_isnm_00_mi"
+        ]
+      },
+      "basis": {
+        "formatVersion": "1.5",
+        "sourceVertexJoinOwnedByCaller": true,
+        "coordinateConversionApplied": false,
+        "originalVertex76BytesPreserved": true,
+        "indicesBonesBoundsPreserved": true,
+        "nonMeshSectionsPreserved": true,
+        "submeshes": [
+          {
+            "submeshIndex": 0,
+            "vertexCount": 8179,
+            "positiveHandedness": 3107,
+            "negativeHandedness": 5072,
+            "handednessSha256": "3d1b87ac890e09d3e157609e12454f8225778b7365f2d608bea0fec2725cb63c"
+          },
+          {
+            "submeshIndex": 1,
+            "vertexCount": 3174,
+            "positiveHandedness": 1277,
+            "negativeHandedness": 1897,
+            "handednessSha256": "310b7a86a782224c74ff61ab31077f0c4a5a0227416e16bef99875b7784122ed"
+          }
+        ],
+        "uv": null,
+        "sourceGltfSha256": "756e8812dc5840103a1502427300ad290c935e7f06ed91427e8ed554c5c3a725",
+        "joinedVertices": 11353,
+        "maxGeometryDelta": 0.0,
+        "join": "All P/N/T reflected Z, unchanged UV0, weighted bone names/weights; no positional nearest match",
+        "tangentSign": "negative source glTF TANGENT.w: Z reflection, no UV flip"
+      }
+    },
+    {
+      "modelAssetId": "Character/NPC/Maharaka/Residents/MHP_RESIDENT_89CB90C3ACEED873/MHP_RESIDENT_89CB90C3ACEED873.wmodel",
+      "sha256": "c1c237ba439364e1186a3c2b2961e060e2b98db08597600182a6e326f64e1d0e",
+      "motion": {
+        "sourcePsa": "C:\\LostArkExtract\\MaharakaNpcSource20260927\\raw\\HM_MA02\\ani_0000\\hm_ma02_0000_00a_nor_ani.psa",
+        "sourcePsaSha256": "51c4ef058bd2bbc35547aacd581ae39a8a6526061448f5d2fd8f805fbeb74ca3",
+        "clip": "idle_normal_1",
+        "frames": 116,
+        "sourceRate": 30.0,
+        "playbackRate": 1,
+        "seconds": 3.8333333333333335,
+        "scaleKeysPreserved": true
+      },
+      "materialSlots": [
+        "mn_isnm_00_mi",
+        "mn_head_ma02_058_mi"
+      ],
+      "merge": {
+        "joints": 124,
+        "headBindDeltaM": 0.00638,
+        "headMaterials": [
+          "mn_head_ma02_058_mi"
+        ],
+        "bodyMaterials": [
+          "mn_isnm_00_mi"
+        ]
+      },
+      "basis": {
+        "formatVersion": "1.5",
+        "sourceVertexJoinOwnedByCaller": true,
+        "coordinateConversionApplied": false,
+        "originalVertex76BytesPreserved": true,
+        "indicesBonesBoundsPreserved": true,
+        "nonMeshSectionsPreserved": true,
+        "submeshes": [
+          {
+            "submeshIndex": 0,
+            "vertexCount": 8179,
+            "positiveHandedness": 3107,
+            "negativeHandedness": 5072,
+            "handednessSha256": "3d1b87ac890e09d3e157609e12454f8225778b7365f2d608bea0fec2725cb63c"
+          },
+          {
+            "submeshIndex": 1,
+            "vertexCount": 3174,
+            "positiveHandedness": 1277,
+            "negativeHandedness": 1897,
+            "handednessSha256": "310b7a86a782224c74ff61ab31077f0c4a5a0227416e16bef99875b7784122ed"
+          }
+        ],
+        "uv": null,
+        "sourceGltfSha256": "756e8812dc5840103a1502427300ad290c935e7f06ed91427e8ed554c5c3a725",
+        "joinedVertices": 11353,
+        "maxGeometryDelta": 0.0,
+        "join": "All P/N/T reflected Z, unchanged UV0, weighted bone names/weights; no positional nearest match",
+        "tangentSign": "negative source glTF TANGENT.w: Z reflection, no UV flip"
+      }
+    },
+    {
+      "modelAssetId": "Character/NPC/Maharaka/Residents/MHP_RESIDENT_48ACE37281B6DF04/MHP_RESIDENT_48ACE37281B6DF04.wmodel",
+      "sha256": "e09625e27d09c181dbc6c12ae0352b1f6cb5d57aee2b30d843bf82b22b24f7de",
+      "motion": {
+        "sourcePsa": "C:\\LostArkExtract\\MaharakaNpcSource20260927\\raw\\HM_FE02\\ani_0000\\hm_fe02_0000_12a_nor_ani.psa",
+        "sourcePsaSha256": "5f28f3511dfb26b1bd653fd2b36b27501cac266454c6b930d775120bdf2c9fbd",
+        "clip": "idle_normal_1",
+        "frames": 477,
+        "sourceRate": 30.0,
+        "playbackRate": 1,
+        "seconds": 15.866666666666667,
+        "scaleKeysPreserved": true
+      },
+      "materialSlots": [
+        "mn_isnf_00_mi",
+        "mn_head_fe02_029_mi"
+      ],
+      "merge": {
+        "joints": 124,
+        "headBindDeltaM": 0.0,
+        "headMaterials": [
+          "mn_head_fe02_029_mi"
+        ],
+        "bodyMaterials": [
+          "mn_isnf_00_mi"
+        ]
+      },
+      "basis": {
+        "formatVersion": "1.5",
+        "sourceVertexJoinOwnedByCaller": true,
+        "coordinateConversionApplied": false,
+        "originalVertex76BytesPreserved": true,
+        "indicesBonesBoundsPreserved": true,
+        "nonMeshSectionsPreserved": true,
+        "submeshes": [
+          {
+            "submeshIndex": 0,
+            "vertexCount": 5075,
+            "positiveHandedness": 2236,
+            "negativeHandedness": 2839,
+            "handednessSha256": "c1b57efc8021e143b2a4a72bcf05e72fbef2242de9966c075571648cc03ab919"
+          },
+          {
+            "submeshIndex": 1,
+            "vertexCount": 3768,
+            "positiveHandedness": 1733,
+            "negativeHandedness": 2035,
+            "handednessSha256": "cdce65492ab620d7ba9d8ac8b0241fc8ee9b259d033bf41f5644972462d9e3bb"
+          }
+        ],
+        "uv": null,
+        "sourceGltfSha256": "1d69556d8133db43a055b560bb6a5c9cdea145040905147726a674e611f12b60",
+        "joinedVertices": 8843,
+        "maxGeometryDelta": 0.0,
+        "join": "All P/N/T reflected Z, unchanged UV0, weighted bone names/weights; no positional nearest match",
+        "tangentSign": "negative source glTF TANGENT.w: Z reflection, no UV flip"
+      }
+    },
+    {
+      "modelAssetId": "Character/NPC/Maharaka/Residents/MHP_RESIDENT_61FC7F0DBCF46112/MHP_RESIDENT_61FC7F0DBCF46112.wmodel",
+      "sha256": "c1c237ba439364e1186a3c2b2961e060e2b98db08597600182a6e326f64e1d0e",
+      "motion": {
+        "sourcePsa": "C:\\LostArkExtract\\MaharakaNpcSource20260927\\raw\\HM_MA02\\ani_0000\\hm_ma02_0000_00a_nor_ani.psa",
+        "sourcePsaSha256": "51c4ef058bd2bbc35547aacd581ae39a8a6526061448f5d2fd8f805fbeb74ca3",
+        "clip": "idle_normal_1",
+        "frames": 116,
+        "sourceRate": 30.0,
+        "playbackRate": 1,
+        "seconds": 3.8333333333333335,
+        "scaleKeysPreserved": true
+      },
+      "materialSlots": [
+        "mn_isnm_00_mi",
+        "mn_head_ma02_058_mi"
+      ],
+      "merge": {
+        "joints": 124,
+        "headBindDeltaM": 0.00638,
+        "headMaterials": [
+          "mn_head_ma02_058_mi"
+        ],
+        "bodyMaterials": [
+          "mn_isnm_00_mi"
+        ]
+      },
+      "basis": {
+        "formatVersion": "1.5",
+        "sourceVertexJoinOwnedByCaller": true,
+        "coordinateConversionApplied": false,
+        "originalVertex76BytesPreserved": true,
+        "indicesBonesBoundsPreserved": true,
+        "nonMeshSectionsPreserved": true,
+        "submeshes": [
+          {
+            "submeshIndex": 0,
+            "vertexCount": 8179,
+            "positiveHandedness": 3107,
+            "negativeHandedness": 5072,
+            "handednessSha256": "3d1b87ac890e09d3e157609e12454f8225778b7365f2d608bea0fec2725cb63c"
+          },
+          {
+            "submeshIndex": 1,
+            "vertexCount": 3174,
+            "positiveHandedness": 1277,
+            "negativeHandedness": 1897,
+            "handednessSha256": "310b7a86a782224c74ff61ab31077f0c4a5a0227416e16bef99875b7784122ed"
+          }
+        ],
+        "uv": null,
+        "sourceGltfSha256": "756e8812dc5840103a1502427300ad290c935e7f06ed91427e8ed554c5c3a725",
+        "joinedVertices": 11353,
+        "maxGeometryDelta": 0.0,
+        "join": "All P/N/T reflected Z, unchanged UV0, weighted bone names/weights; no positional nearest match",
+        "tangentSign": "negative source glTF TANGENT.w: Z reflection, no UV flip"
+      }
+    },
+    {
+      "modelAssetId": "Character/NPC/Maharaka/Residents/MHP_RESIDENT_78752C684EEEF29B/MHP_RESIDENT_78752C684EEEF29B.wmodel",
+      "sha256": "9abcbaf4c162771b5f45e1b2383092a94b726c16d8f35a7adc10d15648c8d8d5",
+      "motion": {
+        "sourcePsa": "C:\\LostArkExtract\\MaharakaNpcSource20260927\\raw\\HM_MA02\\AnimSet\\hm_ma02_0000_00a_evt2_ani.psa",
+        "sourcePsaSha256": "2fe5d02521d688a2a63db52333caab9e7a19e40b38d724a5ecd2ec1095a4fc51",
+        "clip": "evt2_float_1_01",
+        "frames": 51,
+        "sourceRate": 30.0,
+        "playbackRate": 1.0,
+        "seconds": 1.6666666666666667,
+        "scaleKeysPreserved": true
+      },
+      "materialSlots": [
+        "mn_isnm_00_mi",
+        "mn_head_ma02_058_mi"
+      ],
+      "merge": {
+        "joints": 124,
+        "headBindDeltaM": 0.00638,
+        "headMaterials": [
+          "mn_head_ma02_058_mi"
+        ],
+        "bodyMaterials": [
+          "mn_isnm_00_mi"
+        ]
+      },
+      "basis": {
+        "formatVersion": "1.5",
+        "sourceVertexJoinOwnedByCaller": true,
+        "coordinateConversionApplied": false,
+        "originalVertex76BytesPreserved": true,
+        "indicesBonesBoundsPreserved": true,
+        "nonMeshSectionsPreserved": true,
+        "submeshes": [
+          {
+            "submeshIndex": 0,
+            "vertexCount": 8179,
+            "positiveHandedness": 3107,
+            "negativeHandedness": 5072,
+            "handednessSha256": "3d1b87ac890e09d3e157609e12454f8225778b7365f2d608bea0fec2725cb63c"
+          },
+          {
+            "submeshIndex": 1,
+            "vertexCount": 3174,
+            "positiveHandedness": 1277,
+            "negativeHandedness": 1897,
+            "handednessSha256": "310b7a86a782224c74ff61ab31077f0c4a5a0227416e16bef99875b7784122ed"
+          }
+        ],
+        "uv": null,
+        "sourceGltfSha256": "74c410bef9d29f4423dd86251511863de4978b937786def914453978db3c1335",
+        "joinedVertices": 11353,
+        "maxGeometryDelta": 0.0,
+        "join": "All P/N/T reflected Z, unchanged UV0, weighted bone names/weights; no positional nearest match",
+        "tangentSign": "negative source glTF TANGENT.w: Z reflection, no UV flip"
+      }
+    },
+    {
+      "modelAssetId": "Character/NPC/Maharaka/Residents/MHP_RESIDENT_54BF58EB38EF4477/MHP_RESIDENT_54BF58EB38EF4477.wmodel",
+      "sha256": "f894ca5b829ba54f490d04e62d6d50a6268a8449e832afb68576cb822205ab7f",
+      "motion": {
+        "sourcePsa": "C:\\LostArkExtract\\MaharakaNpcSource20260927\\raw\\HM_FE02\\ani_0000\\hm_fe02_0000_12a_nor_ani.psa",
+        "sourcePsaSha256": "5f28f3511dfb26b1bd653fd2b36b27501cac266454c6b930d775120bdf2c9fbd",
+        "clip": "idle_normal_1",
+        "frames": 477,
+        "sourceRate": 30.0,
+        "playbackRate": 1,
+        "seconds": 15.866666666666667,
+        "scaleKeysPreserved": true
+      },
+      "materialSlots": [
+        "mn_isnf_00_mi",
+        "mn_head_fe02_029_mi"
+      ],
+      "merge": {
+        "joints": 124,
+        "headBindDeltaM": 0.0,
+        "headMaterials": [
+          "mn_head_fe02_029_mi"
+        ],
+        "bodyMaterials": [
+          "mn_isnf_00_mi"
+        ]
+      },
+      "basis": {
+        "formatVersion": "1.5",
+        "sourceVertexJoinOwnedByCaller": true,
+        "coordinateConversionApplied": false,
+        "originalVertex76BytesPreserved": true,
+        "indicesBonesBoundsPreserved": true,
+        "nonMeshSectionsPreserved": true,
+        "submeshes": [
+          {
+            "submeshIndex": 0,
+            "vertexCount": 5075,
+            "positiveHandedness": 2236,
+            "negativeHandedness": 2839,
+            "handednessSha256": "c1b57efc8021e143b2a4a72bcf05e72fbef2242de9966c075571648cc03ab919"
+          },
+          {
+            "submeshIndex": 1,
+            "vertexCount": 3768,
+            "positiveHandedness": 1733,
+            "negativeHandedness": 2035,
+            "handednessSha256": "cdce65492ab620d7ba9d8ac8b0241fc8ee9b259d033bf41f5644972462d9e3bb"
+          }
+        ],
+        "uv": null,
+        "sourceGltfSha256": "1d69556d8133db43a055b560bb6a5c9cdea145040905147726a674e611f12b60",
+        "joinedVertices": 8843,
+        "maxGeometryDelta": 0.0,
+        "join": "All P/N/T reflected Z, unchanged UV0, weighted bone names/weights; no positional nearest match",
+        "tangentSign": "negative source glTF TANGENT.w: Z reflection, no UV flip"
+      }
+    },
+    {
+      "modelAssetId": "Character/NPC/Maharaka/Residents/MHP_RESIDENT_2268E0E6350783ED/MHP_RESIDENT_2268E0E6350783ED.wmodel",
+      "sha256": "940a35d3b702d3bede908d20c5de74ab74a70d77c3897a2a3caf5f996e386df2",
+      "motion": {
+        "sourcePsa": "C:\\LostArkExtract\\MaharakaNpcSource20260927\\raw\\HM_FE02\\AnimSet\\hm_fe02_0000_00b_evt2_ani.psa",
+        "sourcePsaSha256": "a48b0b7c86810d001bc869007f01cf46946ce3f2b33b000ed88eb812739fa459",
+        "clip": "evt2_lie_1_01",
+        "frames": 361,
+        "sourceRate": 30.0,
+        "playbackRate": 1.0,
+        "seconds": 12.0,
+        "scaleKeysPreserved": true
+      },
+      "materialSlots": [
+        "mn_isnf_00_mi",
+        "mn_head_fe02_029_mi"
+      ],
+      "merge": {
+        "joints": 124,
+        "headBindDeltaM": 0.0,
+        "headMaterials": [
+          "mn_head_fe02_029_mi"
+        ],
+        "bodyMaterials": [
+          "mn_isnf_00_mi"
+        ]
+      },
+      "basis": {
+        "formatVersion": "1.5",
+        "sourceVertexJoinOwnedByCaller": true,
+        "coordinateConversionApplied": false,
+        "originalVertex76BytesPreserved": true,
+        "indicesBonesBoundsPreserved": true,
+        "nonMeshSectionsPreserved": true,
+        "submeshes": [
+          {
+            "submeshIndex": 0,
+            "vertexCount": 5075,
+            "positiveHandedness": 2236,
+            "negativeHandedness": 2839,
+            "handednessSha256": "c1b57efc8021e143b2a4a72bcf05e72fbef2242de9966c075571648cc03ab919"
+          },
+          {
+            "submeshIndex": 1,
+            "vertexCount": 3768,
+            "positiveHandedness": 1733,
+            "negativeHandedness": 2035,
+            "handednessSha256": "cdce65492ab620d7ba9d8ac8b0241fc8ee9b259d033bf41f5644972462d9e3bb"
+          }
+        ],
+        "uv": null,
+        "sourceGltfSha256": "61cdd073143ffd561ed1e703a2133c4a27dd16da7437f6f7d9a82140e24c2168",
+        "joinedVertices": 8843,
+        "maxGeometryDelta": 0.0,
+        "join": "All P/N/T reflected Z, unchanged UV0, weighted bone names/weights; no positional nearest match",
+        "tangentSign": "negative source glTF TANGENT.w: Z reflection, no UV flip"
+      }
+    },
+    {
+      "modelAssetId": "Character/NPC/Maharaka/Residents/MHP_RESIDENT_C755E440F130CAB9/MHP_RESIDENT_C755E440F130CAB9.wmodel",
+      "sha256": "5707605fad9981c27e520d84d67f70f0058702f92d7efc9935c160621f4a2c6a",
+      "motion": {
+        "sourcePsa": "C:\\LostArkExtract\\MaharakaNpcSource20260927\\raw\\HM_MA02\\AnimSet\\hm_ma02_0000_00a_evt2_ani.psa",
+        "sourcePsaSha256": "2fe5d02521d688a2a63db52333caab9e7a19e40b38d724a5ecd2ec1095a4fc51",
+        "clip": "evt2_water_tube",
+        "frames": 481,
+        "sourceRate": 30.0,
+        "playbackRate": 1.2450000047683716,
+        "seconds": 12.851405573268854,
+        "scaleKeysPreserved": true
+      },
+      "materialSlots": [
+        "mn_isnm_00_mi",
+        "mn_head_ma02_058_mi"
+      ],
+      "merge": {
+        "joints": 124,
+        "headBindDeltaM": 0.00638,
+        "headMaterials": [
+          "mn_head_ma02_058_mi"
+        ],
+        "bodyMaterials": [
+          "mn_isnm_00_mi"
+        ]
+      },
+      "basis": {
+        "formatVersion": "1.5",
+        "sourceVertexJoinOwnedByCaller": true,
+        "coordinateConversionApplied": false,
+        "originalVertex76BytesPreserved": true,
+        "indicesBonesBoundsPreserved": true,
+        "nonMeshSectionsPreserved": true,
+        "submeshes": [
+          {
+            "submeshIndex": 0,
+            "vertexCount": 8179,
+            "positiveHandedness": 3107,
+            "negativeHandedness": 5072,
+            "handednessSha256": "3d1b87ac890e09d3e157609e12454f8225778b7365f2d608bea0fec2725cb63c"
+          },
+          {
+            "submeshIndex": 1,
+            "vertexCount": 3174,
+            "positiveHandedness": 1277,
+            "negativeHandedness": 1897,
+            "handednessSha256": "310b7a86a782224c74ff61ab31077f0c4a5a0227416e16bef99875b7784122ed"
+          }
+        ],
+        "uv": null,
+        "sourceGltfSha256": "2f96b8569236f014a066ab6cc723496c8b85613d77b45aa1995ebf6d23b50aa6",
+        "joinedVertices": 11353,
+        "maxGeometryDelta": 0.0,
+        "join": "All P/N/T reflected Z, unchanged UV0, weighted bone names/weights; no positional nearest match",
+        "tangentSign": "negative source glTF TANGENT.w: Z reflection, no UV flip"
+      }
+    },
+    {
+      "modelAssetId": "Character/NPC/Maharaka/Residents/MHP_RESIDENT_831DA55F38AA2078/MHP_RESIDENT_831DA55F38AA2078.wmodel",
+      "sha256": "20e0a3a67b9a832fd294bb7c2d1fb1e7a8ce25725eefa04700cd867981a433db",
+      "motion": {
+        "sourcePsa": "C:\\LostArkExtract\\MaharakaNpcSource20260927\\raw\\HM_MA02\\AnimSet\\hm_ma02_0000_00a_evt2_ani.psa",
+        "sourcePsaSha256": "2fe5d02521d688a2a63db52333caab9e7a19e40b38d724a5ecd2ec1095a4fc51",
+        "clip": "evt2_wplay04_loop",
+        "frames": 31,
+        "sourceRate": 30.0,
+        "playbackRate": 1.0,
+        "seconds": 1.0,
+        "scaleKeysPreserved": true
+      },
+      "materialSlots": [
+        "mn_isnm_00_mi",
+        "mn_head_ma02_058_mi"
+      ],
+      "merge": {
+        "joints": 124,
+        "headBindDeltaM": 0.00638,
+        "headMaterials": [
+          "mn_head_ma02_058_mi"
+        ],
+        "bodyMaterials": [
+          "mn_isnm_00_mi"
+        ]
+      },
+      "basis": {
+        "formatVersion": "1.5",
+        "sourceVertexJoinOwnedByCaller": true,
+        "coordinateConversionApplied": false,
+        "originalVertex76BytesPreserved": true,
+        "indicesBonesBoundsPreserved": true,
+        "nonMeshSectionsPreserved": true,
+        "submeshes": [
+          {
+            "submeshIndex": 0,
+            "vertexCount": 8179,
+            "positiveHandedness": 3107,
+            "negativeHandedness": 5072,
+            "handednessSha256": "3d1b87ac890e09d3e157609e12454f8225778b7365f2d608bea0fec2725cb63c"
+          },
+          {
+            "submeshIndex": 1,
+            "vertexCount": 3174,
+            "positiveHandedness": 1277,
+            "negativeHandedness": 1897,
+            "handednessSha256": "310b7a86a782224c74ff61ab31077f0c4a5a0227416e16bef99875b7784122ed"
+          }
+        ],
+        "uv": null,
+        "sourceGltfSha256": "077de076d6d10c533aee2e1d32cbcf65ecc7f3f4a587202002a77b8dc8428c3f",
+        "joinedVertices": 11353,
+        "maxGeometryDelta": 0.0,
+        "join": "All P/N/T reflected Z, unchanged UV0, weighted bone names/weights; no positional nearest match",
+        "tangentSign": "negative source glTF TANGENT.w: Z reflection, no UV flip"
+      }
+    },
+    {
+      "modelAssetId": "Character/NPC/Maharaka/Residents/MHP_RESIDENT_8ADD9FB6193A0920/MHP_RESIDENT_8ADD9FB6193A0920.wmodel",
+      "sha256": "ad6beb360e48b6d64645d2bbe23ca5bb80e7eadb4081e3ac38d88ee67df0b6db",
+      "motion": {
+        "sourcePsa": "C:\\LostArkExtract\\MaharakaNpcSource20260927\\raw\\HM_FE02\\AnimSet\\hm_fe02_0000_00a_evt2_ani.psa",
+        "sourcePsaSha256": "ff62b04540b9347098683a789eca536d1ce2300ee5bcfee47a08d46521e0dfa8",
+        "clip": "evt2_wplay02_loop",
+        "frames": 31,
+        "sourceRate": 30.0,
+        "playbackRate": 1.0,
+        "seconds": 1.0,
+        "scaleKeysPreserved": true
+      },
+      "materialSlots": [
+        "mn_isnf_00_mi",
+        "mn_head_fe02_029_mi"
+      ],
+      "merge": {
+        "joints": 124,
+        "headBindDeltaM": 0.0,
+        "headMaterials": [
+          "mn_head_fe02_029_mi"
+        ],
+        "bodyMaterials": [
+          "mn_isnf_00_mi"
+        ]
+      },
+      "basis": {
+        "formatVersion": "1.5",
+        "sourceVertexJoinOwnedByCaller": true,
+        "coordinateConversionApplied": false,
+        "originalVertex76BytesPreserved": true,
+        "indicesBonesBoundsPreserved": true,
+        "nonMeshSectionsPreserved": true,
+        "submeshes": [
+          {
+            "submeshIndex": 0,
+            "vertexCount": 5075,
+            "positiveHandedness": 2236,
+            "negativeHandedness": 2839,
+            "handednessSha256": "c1b57efc8021e143b2a4a72bcf05e72fbef2242de9966c075571648cc03ab919"
+          },
+          {
+            "submeshIndex": 1,
+            "vertexCount": 3768,
+            "positiveHandedness": 1733,
+            "negativeHandedness": 2035,
+            "handednessSha256": "cdce65492ab620d7ba9d8ac8b0241fc8ee9b259d033bf41f5644972462d9e3bb"
+          }
+        ],
+        "uv": null,
+        "sourceGltfSha256": "fbb4d2eb47a40245d641ee39d2cf5db9a379845ba1d537c06c60c0a871b59ae8",
+        "joinedVertices": 8843,
+        "maxGeometryDelta": 0.0,
+        "join": "All P/N/T reflected Z, unchanged UV0, weighted bone names/weights; no positional nearest match",
+        "tangentSign": "negative source glTF TANGENT.w: Z reflection, no UV flip"
+      }
+    },
+    {
+      "modelAssetId": "Character/NPC/Maharaka/Residents/MHP_RESIDENT_1FB0662AC0EED5E5/MHP_RESIDENT_1FB0662AC0EED5E5.wmodel",
+      "sha256": "f894ca5b829ba54f490d04e62d6d50a6268a8449e832afb68576cb822205ab7f",
+      "motion": {
+        "sourcePsa": "C:\\LostArkExtract\\MaharakaNpcSource20260927\\raw\\HM_FE02\\ani_0000\\hm_fe02_0000_12a_nor_ani.psa",
+        "sourcePsaSha256": "5f28f3511dfb26b1bd653fd2b36b27501cac266454c6b930d775120bdf2c9fbd",
+        "clip": "idle_normal_1",
+        "frames": 477,
+        "sourceRate": 30.0,
+        "playbackRate": 1,
+        "seconds": 15.866666666666667,
+        "scaleKeysPreserved": true
+      },
+      "materialSlots": [
+        "mn_isnf_00_mi",
+        "mn_head_fe02_029_mi"
+      ],
+      "merge": {
+        "joints": 124,
+        "headBindDeltaM": 0.0,
+        "headMaterials": [
+          "mn_head_fe02_029_mi"
+        ],
+        "bodyMaterials": [
+          "mn_isnf_00_mi"
+        ]
+      },
+      "basis": {
+        "formatVersion": "1.5",
+        "sourceVertexJoinOwnedByCaller": true,
+        "coordinateConversionApplied": false,
+        "originalVertex76BytesPreserved": true,
+        "indicesBonesBoundsPreserved": true,
+        "nonMeshSectionsPreserved": true,
+        "submeshes": [
+          {
+            "submeshIndex": 0,
+            "vertexCount": 5075,
+            "positiveHandedness": 2236,
+            "negativeHandedness": 2839,
+            "handednessSha256": "c1b57efc8021e143b2a4a72bcf05e72fbef2242de9966c075571648cc03ab919"
+          },
+          {
+            "submeshIndex": 1,
+            "vertexCount": 3768,
+            "positiveHandedness": 1733,
+            "negativeHandedness": 2035,
+            "handednessSha256": "cdce65492ab620d7ba9d8ac8b0241fc8ee9b259d033bf41f5644972462d9e3bb"
+          }
+        ],
+        "uv": null,
+        "sourceGltfSha256": "1d69556d8133db43a055b560bb6a5c9cdea145040905147726a674e611f12b60",
+        "joinedVertices": 8843,
+        "maxGeometryDelta": 0.0,
+        "join": "All P/N/T reflected Z, unchanged UV0, weighted bone names/weights; no positional nearest match",
+        "tangentSign": "negative source glTF TANGENT.w: Z reflection, no UV flip"
+      }
+    },
+    {
+      "modelAssetId": "Character/NPC/Maharaka/Residents/MHP_RESIDENT_B385E1ED1AED883B/MHP_RESIDENT_B385E1ED1AED883B.wmodel",
+      "sha256": "079445304d9bdd1a26c8c52da7197c1b85536ffce2568fb8c8b201e912c356f1",
+      "motion": {
+        "sourcePsa": "C:\\LostArkExtract\\MaharakaNpcSource20260927\\raw\\HM_FE02\\AnimSet\\hm_fe02_0000_00a_com_ani.psa",
+        "sourcePsaSha256": "b61c435359f0333d7ac9792e1aa477600b413631ed1504a450822248cd6df457",
+        "clip": "act_sitdown_m_loop_1",
+        "frames": 165,
+        "sourceRate": 30.0,
+        "playbackRate": 1.0,
+        "seconds": 5.466666666666667,
+        "scaleKeysPreserved": true
+      },
+      "materialSlots": [
+        "mn_isnf_00_mi",
+        "mn_head_fe02_029_mi"
+      ],
+      "merge": {
+        "joints": 124,
+        "headBindDeltaM": 0.0,
+        "headMaterials": [
+          "mn_head_fe02_029_mi"
+        ],
+        "bodyMaterials": [
+          "mn_isnf_00_mi"
+        ]
+      },
+      "basis": {
+        "formatVersion": "1.5",
+        "sourceVertexJoinOwnedByCaller": true,
+        "coordinateConversionApplied": false,
+        "originalVertex76BytesPreserved": true,
+        "indicesBonesBoundsPreserved": true,
+        "nonMeshSectionsPreserved": true,
+        "submeshes": [
+          {
+            "submeshIndex": 0,
+            "vertexCount": 5075,
+            "positiveHandedness": 2236,
+            "negativeHandedness": 2839,
+            "handednessSha256": "c1b57efc8021e143b2a4a72bcf05e72fbef2242de9966c075571648cc03ab919"
+          },
+          {
+            "submeshIndex": 1,
+            "vertexCount": 3768,
+            "positiveHandedness": 1733,
+            "negativeHandedness": 2035,
+            "handednessSha256": "cdce65492ab620d7ba9d8ac8b0241fc8ee9b259d033bf41f5644972462d9e3bb"
+          }
+        ],
+        "uv": null,
+        "sourceGltfSha256": "17ccca6569ee54c1452c6449de7cb468e7326c8c058fc4a419525433b1b19ac5",
+        "joinedVertices": 8843,
+        "maxGeometryDelta": 0.0,
+        "join": "All P/N/T reflected Z, unchanged UV0, weighted bone names/weights; no positional nearest match",
+        "tangentSign": "negative source glTF TANGENT.w: Z reflection, no UV flip"
+      }
+    },
+    {
+      "modelAssetId": "Character/NPC/Maharaka/Residents/MHP_RESIDENT_FC457647A29AFCCD/MHP_RESIDENT_FC457647A29AFCCD.wmodel",
+      "sha256": "079445304d9bdd1a26c8c52da7197c1b85536ffce2568fb8c8b201e912c356f1",
+      "motion": {
+        "sourcePsa": "C:\\LostArkExtract\\MaharakaNpcSource20260927\\raw\\HM_FE02\\AnimSet\\hm_fe02_0000_00a_com_ani.psa",
+        "sourcePsaSha256": "b61c435359f0333d7ac9792e1aa477600b413631ed1504a450822248cd6df457",
+        "clip": "act_sitdown_m_loop_1",
+        "frames": 165,
+        "sourceRate": 30.0,
+        "playbackRate": 1.0,
+        "seconds": 5.466666666666667,
+        "scaleKeysPreserved": true
+      },
+      "materialSlots": [
+        "mn_isnf_00_mi",
+        "mn_head_fe02_029_mi"
+      ],
+      "merge": {
+        "joints": 124,
+        "headBindDeltaM": 0.0,
+        "headMaterials": [
+          "mn_head_fe02_029_mi"
+        ],
+        "bodyMaterials": [
+          "mn_isnf_00_mi"
+        ]
+      },
+      "basis": {
+        "formatVersion": "1.5",
+        "sourceVertexJoinOwnedByCaller": true,
+        "coordinateConversionApplied": false,
+        "originalVertex76BytesPreserved": true,
+        "indicesBonesBoundsPreserved": true,
+        "nonMeshSectionsPreserved": true,
+        "submeshes": [
+          {
+            "submeshIndex": 0,
+            "vertexCount": 5075,
+            "positiveHandedness": 2236,
+            "negativeHandedness": 2839,
+            "handednessSha256": "c1b57efc8021e143b2a4a72bcf05e72fbef2242de9966c075571648cc03ab919"
+          },
+          {
+            "submeshIndex": 1,
+            "vertexCount": 3768,
+            "positiveHandedness": 1733,
+            "negativeHandedness": 2035,
+            "handednessSha256": "cdce65492ab620d7ba9d8ac8b0241fc8ee9b259d033bf41f5644972462d9e3bb"
+          }
+        ],
+        "uv": null,
+        "sourceGltfSha256": "17ccca6569ee54c1452c6449de7cb468e7326c8c058fc4a419525433b1b19ac5",
+        "joinedVertices": 8843,
+        "maxGeometryDelta": 0.0,
+        "join": "All P/N/T reflected Z, unchanged UV0, weighted bone names/weights; no positional nearest match",
+        "tangentSign": "negative source glTF TANGENT.w: Z reflection, no UV flip"
+      }
+    },
+    {
+      "modelAssetId": "Character/NPC/Maharaka/Residents/MHP_RESIDENT_AF831B6831888E6A/MHP_RESIDENT_AF831B6831888E6A.wmodel",
+      "sha256": "c1c237ba439364e1186a3c2b2961e060e2b98db08597600182a6e326f64e1d0e",
+      "motion": {
+        "sourcePsa": "C:\\LostArkExtract\\MaharakaNpcSource20260927\\raw\\HM_MA02\\ani_0000\\hm_ma02_0000_00a_nor_ani.psa",
+        "sourcePsaSha256": "51c4ef058bd2bbc35547aacd581ae39a8a6526061448f5d2fd8f805fbeb74ca3",
+        "clip": "idle_normal_1",
+        "frames": 116,
+        "sourceRate": 30.0,
+        "playbackRate": 1.0,
+        "seconds": 3.8333333333333335,
+        "scaleKeysPreserved": true
+      },
+      "materialSlots": [
+        "mn_isnm_00_mi",
+        "mn_head_ma02_058_mi"
+      ],
+      "merge": {
+        "joints": 124,
+        "headBindDeltaM": 0.00638,
+        "headMaterials": [
+          "mn_head_ma02_058_mi"
+        ],
+        "bodyMaterials": [
+          "mn_isnm_00_mi"
+        ]
+      },
+      "basis": {
+        "formatVersion": "1.5",
+        "sourceVertexJoinOwnedByCaller": true,
+        "coordinateConversionApplied": false,
+        "originalVertex76BytesPreserved": true,
+        "indicesBonesBoundsPreserved": true,
+        "nonMeshSectionsPreserved": true,
+        "submeshes": [
+          {
+            "submeshIndex": 0,
+            "vertexCount": 8179,
+            "positiveHandedness": 3107,
+            "negativeHandedness": 5072,
+            "handednessSha256": "3d1b87ac890e09d3e157609e12454f8225778b7365f2d608bea0fec2725cb63c"
+          },
+          {
+            "submeshIndex": 1,
+            "vertexCount": 3174,
+            "positiveHandedness": 1277,
+            "negativeHandedness": 1897,
+            "handednessSha256": "310b7a86a782224c74ff61ab31077f0c4a5a0227416e16bef99875b7784122ed"
+          }
+        ],
+        "uv": null,
+        "sourceGltfSha256": "756e8812dc5840103a1502427300ad290c935e7f06ed91427e8ed554c5c3a725",
+        "joinedVertices": 11353,
+        "maxGeometryDelta": 0.0,
+        "join": "All P/N/T reflected Z, unchanged UV0, weighted bone names/weights; no positional nearest match",
+        "tangentSign": "negative source glTF TANGENT.w: Z reflection, no UV flip"
+      }
+    },
+    {
+      "modelAssetId": "Character/NPC/Maharaka/Residents/MHP_RESIDENT_C000BE24B1224786/MHP_RESIDENT_C000BE24B1224786.wmodel",
+      "sha256": "e09625e27d09c181dbc6c12ae0352b1f6cb5d57aee2b30d843bf82b22b24f7de",
+      "motion": {
+        "sourcePsa": "C:\\LostArkExtract\\MaharakaNpcSource20260927\\raw\\HM_FE02\\ani_0000\\hm_fe02_0000_12a_nor_ani.psa",
+        "sourcePsaSha256": "5f28f3511dfb26b1bd653fd2b36b27501cac266454c6b930d775120bdf2c9fbd",
+        "clip": "idle_normal_1",
+        "frames": 477,
+        "sourceRate": 30.0,
+        "playbackRate": 1.0,
+        "seconds": 15.866666666666667,
+        "scaleKeysPreserved": true
+      },
+      "materialSlots": [
+        "mn_isnf_00_mi",
+        "mn_head_fe02_029_mi"
+      ],
+      "merge": {
+        "joints": 124,
+        "headBindDeltaM": 0.0,
+        "headMaterials": [
+          "mn_head_fe02_029_mi"
+        ],
+        "bodyMaterials": [
+          "mn_isnf_00_mi"
+        ]
+      },
+      "basis": {
+        "formatVersion": "1.5",
+        "sourceVertexJoinOwnedByCaller": true,
+        "coordinateConversionApplied": false,
+        "originalVertex76BytesPreserved": true,
+        "indicesBonesBoundsPreserved": true,
+        "nonMeshSectionsPreserved": true,
+        "submeshes": [
+          {
+            "submeshIndex": 0,
+            "vertexCount": 5075,
+            "positiveHandedness": 2236,
+            "negativeHandedness": 2839,
+            "handednessSha256": "c1b57efc8021e143b2a4a72bcf05e72fbef2242de9966c075571648cc03ab919"
+          },
+          {
+            "submeshIndex": 1,
+            "vertexCount": 3768,
+            "positiveHandedness": 1733,
+            "negativeHandedness": 2035,
+            "handednessSha256": "cdce65492ab620d7ba9d8ac8b0241fc8ee9b259d033bf41f5644972462d9e3bb"
+          }
+        ],
+        "uv": null,
+        "sourceGltfSha256": "1d69556d8133db43a055b560bb6a5c9cdea145040905147726a674e611f12b60",
+        "joinedVertices": 8843,
+        "maxGeometryDelta": 0.0,
+        "join": "All P/N/T reflected Z, unchanged UV0, weighted bone names/weights; no positional nearest match",
+        "tangentSign": "negative source glTF TANGENT.w: Z reflection, no UV flip"
+      }
+    }
+  ],
+  "preservedPlacements": [
+    {
+      "placementId": "player.spawn.maharaka.party01",
+      "kind": "playerSpawn",
+      "archetypeId": null,
+      "encounterId": null,
+      "position": [
+        61.18,
+        20.48,
+        -975.7
+      ],
+      "yawDegrees": 0.0,
+      "enabled": true
+    },
+    {
+      "placementId": "player.spawn.maharaka.party02",
+      "kind": "playerSpawn",
+      "archetypeId": null,
+      "encounterId": null,
+      "position": [
+        68.36,
+        20.48,
+        -968.82
+      ],
+      "yawDegrees": 0.0,
+      "enabled": true
+    },
+    {
+      "placementId": "player.spawn.maharaka.party03",
+      "kind": "playerSpawn",
+      "archetypeId": null,
+      "encounterId": null,
+      "position": [
+        63.81,
+        20.48,
+        -971.06
+      ],
+      "yawDegrees": 0.0,
+      "enabled": true
+    },
+    {
+      "placementId": "player.spawn.maharaka.party04",
+      "kind": "playerSpawn",
+      "archetypeId": null,
+      "encounterId": null,
+      "position": [
+        57.55,
+        20.48,
+        -982.72
+      ],
+      "yawDegrees": 0.0,
+      "enabled": true
+    },
+    {
+      "placementId": "npc.maharaka.source57009.actor100",
+      "kind": "npc",
+      "archetypeId": "NPC_MAHARAKA_MOKOMOKO",
+      "encounterId": null,
+      "idleClip": null,
+      "behavior": null,
+      "position": [
+        75.179,
+        25.19908152,
+        -1007.262
+      ],
+      "yawDegrees": 0.0,
+      "enabled": true
+    },
+    {
+      "placementId": "npc.maharaka.source57009.actor188",
+      "kind": "npc",
+      "archetypeId": "NPC_MAHARAKA_WATERCANNON",
+      "encounterId": null,
+      "idleClip": null,
+      "behavior": null,
+      "position": [
+        75.05,
+        23.66841349,
+        -984.32
+      ],
+      "yawDegrees": -46.1,
+      "enabled": true
+    }
+  ],
+  "removedPlacementIds": [
+    "npc.maharaka.reconstructed.guide.viking-restaurant",
+    "npc.maharaka.reconstructed.guide.mokomoko",
+    "npc.maharaka.reconstructed.guide.rainbow-express",
+    "npc.maharaka.reconstructed.guide.waterpang",
+    "npc.maharaka.reconstructed.guide.racing-entry",
+    "npc.maharaka.reconstructed.visitor.source57009.actor154",
+    "npc.maharaka.reconstructed.visitor.source57009.actor32",
+    "npc.maharaka.reconstructed.visitor.source57009.actor110",
+    "npc.maharaka.reconstructed.visitor.source57009.actor47",
+    "npc.maharaka.reconstructed.visitor.source57009.actor153",
+    "npc.maharaka.reconstructed.visitor.source57009.actor157",
+    "npc.maharaka.reconstructed.visitor.source57009.actor36",
+    "npc.maharaka.reconstructed.visitor.source57009.actor146",
+    "npc.maharaka.reconstructed.visitor.source57009.actor173",
+    "npc.maharaka.reconstructed.visitor.source57009.actor35",
+    "npc.maharaka.reconstructed.visitor.source57009.actor151",
+    "npc.maharaka.reconstructed.visitor.source57009.actor105",
+    "npc.maharaka.reconstructed.visitor.source57009.actor111",
+    "npc.maharaka.reconstructed.visitor.source57009.actor53",
+    "npc.maharaka.reconstructed.visitor.source57009.actor113",
+    "npc.maharaka.reconstructed.visitor.source57009.actor60",
+    "npc.maharaka.reconstructed.visitor.source57009.actor40",
+    "npc.maharaka.reconstructed.visitor.source57009.actor165",
+    "npc.maharaka.reconstructed.visitor.source57009.actor108",
+    "npc.maharaka.reconstructed.visitor.source57009.actor166",
+    "npc.maharaka.reconstructed.visitor.source57009.actor149",
+    "npc.maharaka.reconstructed.visitor.source57009.actor172",
+    "npc.maharaka.reconstructed.visitor.source57009.actor37"
+  ]
+}

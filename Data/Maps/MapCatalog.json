@@ -152,7 +152,11 @@
       "sourceLights": "Data/Maps/Authoring/LV_OCN_EVENTIS_MHP/LV_OCN_EVENTIS_MHP.maplights.json",
       "lights": "Client/Bin/DataFiles/Map/LV_OCN_EVENTIS_MHP.maplights.json",
       "sourceMaterials": "Data/Maps/Authoring/LV_OCN_EVENTIS_MHP/LV_OCN_EVENTIS_MHP.mapmaterials.json",
-      "materials": "Client/Bin/DataFiles/Map/LV_OCN_EVENTIS_MHP.mapmaterials.json"
+      "materials": "Client/Bin/DataFiles/Map/LV_OCN_EVENTIS_MHP.mapmaterials.json",
+      "sourceSequences": "Data/Maps/Authoring/LV_OCN_EVENTIS_MHP/LV_OCN_EVENTIS_MHP.worldsequences.json",
+      "sequences": "Client/Bin/DataFiles/Map/LV_OCN_EVENTIS_MHP.worldsequences.json",
+      "sourceCameraShots": "Data/Maps/Authoring/LV_OCN_EVENTIS_MHP/LV_OCN_EVENTIS_MHP.camerashots.json",
+      "cameraShots": "Client/Bin/DataFiles/Map/LV_OCN_EVENTIS_MHP.camerashots.json"
     },
     {
       "id": "LV_LOBBY_CLASSSELECT_SL10",

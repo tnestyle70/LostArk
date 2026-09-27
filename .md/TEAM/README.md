@@ -36,6 +36,10 @@ endpoint와 만료일 정본은 `../../Tools/Network/TeamLanEndpoint.json`, 실�
 동기화한 뒤 출력이 `server-host`이면 Visual Studio의 `Server + Client` profile, `client`이면
 Client project를 사용자가 `Ctrl+F5`로 시작할 대상으로 안내한다.
 
+개인 로컬 F5 테스트는 sync의 `-EndpointMode Local`로 선택하고 `Server + Client`를 사용한다.
+선택은 Git 제외 debugger 설정에 저장되어 다음 sync에도 유지된다. 팀 접속으로 돌아갈 때만
+`-EndpointMode Team`을 명시한다. 자세한 순서는 네트워크 연결 가이드의 개인 로컬 F5 절을 따른다.
+
 ## 모든 세션의 사용자 전용 화면 검증 경계
 
 - Artist F, Character Select와 모든 Client Effect 시각 결과는 사용자가 직접 조작하고 최종 visual fidelity를 판정한다.

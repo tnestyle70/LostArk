@@ -700,6 +700,7 @@
     <None Include="..\..\Data\Actors\EquipmentLoadoutPresets.json" />
     <None Include="..\..\Data\Actors\EquipmentPresentationCatalog.json" />
     <None Include="..\..\Data\Actors\NpcCatalog.json" />
+    <None Include="..\..\Data\Actors\MaharakaResidents.source.json" />
     <None Include="..\..\Data\Actors\MonsterCatalog.json" />
     <None Include="..\..\Data\Actors\VehicleCatalog.json" />
 	<None Include="..\..\Data\Sound\CharacterSoundCatalog.json" />
@@ -1089,6 +1090,7 @@
     <None Include="..\Bin\ShaderFiles\Shader_SourceSpecialSurface.hlsli" />
     <None Include="..\Bin\ShaderFiles\Shader_SourceFoliageSurface.hlsli" />
     <None Include="..\Bin\ShaderFiles\Shader_SourceFoliageWind.hlsli" />
+    <None Include="..\Bin\ShaderFiles\Shader_SourceMaharakaStandWind.hlsli" />
     <None Include="..\..\Data\Maps\Authoring\LV_LUT_HEARTRB_ED\LV_LUT_HEARTRB_ED.mapmaterials.json" />
     <None Include="..\..\Data\Maps\Authoring\LV_LOBBY_CLASSSELECT_SL00\LV_LOBBY_CLASSSELECT_SL00.mapmaterials.json" />
     <None Include="..\..\Data\Maps\Authoring\LV_BER_BERNCASTLE\LV_BER_BERNCASTLE.maplights.json" />
@@ -4274,6 +4276,8 @@
     <None Include="..\..\Data\Effects\Authored\effect.kouku.mario.marker.yellow.effect.json" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="..\..\Data\Maps\Authoring\LV_OCN_EVENTIS_MHP\LV_OCN_EVENTIS_MHP.camerashots.json" />
+    <None Include="..\..\Data\Maps\Authoring\LV_OCN_EVENTIS_MHP\LV_OCN_EVENTIS_MHP.worldsequences.json" />
     <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectMeshKouku5120.hlsl">
       <DisableOptimizations Condition="'$(Platform)'=='x64'">false</DisableOptimizations>
       <AdditionalOptions Condition="'$(Platform)'=='x64'">/O1 %(AdditionalOptions)</AdditionalOptions>

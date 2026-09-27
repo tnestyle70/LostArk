@@ -927,6 +927,14 @@ float4 EvaluateSourceMapWater(float2 uv,float3 worldPosition,float3 tangent,floa
     input.values[6]=float4(tangentView,1.f);
     input.values[7]=up;
     input.values[8]=g_SourceCharacterProgram==40u?clipPosition*100.f:sourcePosition;
+    if(g_SourceCharacterProgram==42u)
+    {
+        // Ocean PS expects translated-world position and its world-space origin.
+        const float3 sourceCamera=float3(cameraPosition.x,-cameraPosition.z,cameraPosition.y)*100.f;
+        input.values[8]=float4(sourcePosition.xyz-sourceCamera,1.f);
+        input.values[9]=float4(sourceCamera,1.f);
+        input.projection[3]=mul(float4(cameraPosition,1.f),vp)*100.f;
+    }
     if(g_SourceCharacterProgram<=39u)input.values[7]=clipPosition*100.f;
     if(g_SourceCharacterProgram==43u)
     {

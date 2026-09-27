@@ -2,6 +2,9 @@
 
 #include "Client_Defines.h"
 #include "ClientReplication.h"
+#ifdef _DEBUG
+#include "DeployPropRuntime.h"
+#endif
 #include "Level.h"
 #include "MapPlacementRuntime.h"
 #include "PlayerController.h"
@@ -36,6 +39,16 @@ public:
 			s_pActiveInstance : nullptr;
 	}
 	shared_ptr<CCamera_Free> Get_DebugCamera() const { return m_pCamera.lock(); }
+#ifdef _DEBUG
+	// Borrow the existing Maharaka map; the Level remains its owner.
+	CMapPlacementRuntime& Get_MapAuthoringRuntime() { return m_MapRuntime; }
+	CDeployPropRuntime& Get_MapAuthoringDeploy() { return m_MapAuthoringDeploy; }
+	const ComPtr<ID3D11Device>& Get_MapAuthoringDevice() const { return m_pDevice; }
+	const ComPtr<ID3D11DeviceContext>& Get_MapAuthoringContext() const { return m_pContext; }
+	void Set_MapAuthoringActive(bool_t active) { m_bMapAuthoringActive = active; }
+	void Rebase_MapAuthoringSelfMotions(const std::vector<MAP_PLACEMENT_RECORD>& records)
+	{ m_MapRuntime.Rebase_AuthoringSelfMotions(records); }
+#endif
 
 private:
 	HRESULT Ready_Lights();
@@ -46,6 +59,11 @@ private:
 	// Registry entry this instance plays; only DEVELOPMENT may open the Map Editor.
 	LEVEL m_eLevel = LEVEL::DEVELOPMENT;
 	CMapPlacementRuntime m_MapRuntime;
+#ifdef _DEBUG
+	// Maharaka has no Deploy source pair. Runtime attach still needs a live owner.
+	CDeployPropRuntime m_MapAuthoringDeploy;
+	bool_t m_bMapAuthoringActive = false;
+#endif
 	// Maharaka only: the published source lights of the island, submitted every frame.
 	shared_ptr<CMapLightPresentationRuntime> m_pMapLightPresentation;
 	bool_t m_bMapLightSubmissionFailureReported = false;

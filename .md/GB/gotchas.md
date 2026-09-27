@@ -150,6 +150,24 @@ Append는 표시된 Animation 대상을 자동 제안하되 사용자 dropdown �
 - 좌표 `(47, 10, -63.77)`의 배치 43/44와 1 cm 분리 근거는
   [발탄 진입로 결과](09-27/2026-09-27_VALTAN_FLOOR_TEXTURE_RESULT.md)에 기록했다.
 
+
+### 개인 로컬 F5 선택은 LAN 동기화에서도 유지해야 한다
+
+- `.vcxproj.user`의 host만 로컬로 고치면 다음 세션의 LAN sync가 팀 주소로 덮어쓴다.
+  명시적 개인 테스트는 `Sync-TeamLanEndpoint.ps1 -EndpointMode Local`로 저장한다.
+  기본 Saved는 선택을 보존하고, `-EndpointMode Team`만 공유 endpoint로 되돌린다.
+  VS가 설정을 캐시하면 Reload/재시작 뒤 `Server + Client`를 선택한다. Client만 시작하고
+  localhost 연결 실패를 Server 데이터 오류로 판단하지 않는다.
+
+### 제품 Area의 MapTool 연결과 Camera 목록은 별도 등록이다
+
+- MapCatalog와 camerashots가 있어도 MapTool의 editor registry와 runtime target resolver에
+  제품 Level이 없으면 NO MAP AREA / Catalog NOT READY가 된다. 마하라카가 이 경우였다.
+  기존 Level 소유 placement/batch/catalog/camera를 빌리고 self-motion pause/rebase까지
+  연결한다. 화면 문구만 바꾸거나 Test로 강제 전환하지 않는다.
+- Camera의 일반 컷신 목록과 `통합 컷신 편집`은 다른 소비자다. 후자는 발탄·쿠크
+  Composition 세션 전용이다. 마하라카 worldsequence/camerashots는 전자에서 확인한다.
+
 ### 발탄 Composition Preview의 Stage 간 수명과 Full Restore 진입
 
 - Resources는 All Effects와 같은 물리 inventory를 소비한다. runtime catalog admission만으로 목록을
@@ -4372,6 +4390,26 @@ source 실패를 매프레임 재파싱하지 않으며 기존 재생 cache를 �
   종료 위치를 ledger에서 한 번 저장하고, 이후 stage retarget이 덮지 않도록 occurrence로
   소유한다. 다음 선택·완료·취소·새 패턴 시작은 원래 yaw를 복구해야 한다. 사용자 타이밍과
   원본 무기 궤적을 바꾸지 않고 실제 다음 공격 stage까지 고정되는지 검사한다.
+
+### ocean-42의 월드 위치와 카메라 상대 위치
+
+원본 PS가 translated-world 입력에 origin을 더해 UV 위치를 복구하고 origin에서 그 위치를
+빼서 시선을 만들 때, 절대 위치와 0 origin의 조합은 월드 원점을 카메라로 오인한다.
+program 42의 baked/non-baked 입력은 source 축·cm 단위의 camera-relative 위치와 실제
+camera origin을 함께 전달한다. 투영의 마지막 행도 같은 origin을 반영해 깊이를 보존한다.
+높이나 Fresnel 색을 먼저 바꾸지 말고 원점에서 멀리 떨어진 같은 장면의 평행이동 불변성을 검사한다.
+추출 DDS와 설치 DDS의 mipCount는 별도로 확인한다. 추출 receipt의 성공이 Resources에
+원본 mip 체인이 설치됐다는 증거는 아니다. 09-27 MAHARAKA_MAP_RESTORATION_RESULT 참조.
+
+### Landscape glTF와 최종 WModel의 좌표계를 따로 검사한다
+
+Client `(UE X,Z,-Y)` 정점을 glTF에 그대로 기록하면 converter의 RH->LH 변환이
+타일 local Z를 다시 뒤집는다. anchor가 정확해도 높이/painted layer가 엉뚱한 위치에
+나타나 육지가 침수된다. 직렬화 시 position/normal/tangent Z, tangent handedness,
+winding을 함께 RH로 변환하고 최종 WModel+placement를 원본 grid/height/collision과
+대조한다. 기존 WModel과 triangle count/positions가 같다는 검사는 원본 일치 검사가 아니다.
+마하라카 16개만 재cook했으며 기존 베른 설치 리소스에 일괄 보정을 전파하지 않았다.
+09-27 MAHARAKA_MAP_RESTORATION_RESULT G06 참조.
 - 클래스 무비의 머리카락이 사라지면 geometry 존재와 material texture 검사만으로 끝내지 않는다.
   원본 PS의 leading unowned CB prefix가 primitive opacity/environment를 곱하는지 확인한다.
   FT06 native600은 material pack 앞 cb0[0..1]의 Base 환경 배율과 Base/Light opacity를
