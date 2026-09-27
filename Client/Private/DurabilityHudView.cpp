@@ -3,6 +3,8 @@
 #include "UITextOcclusion.h"
 #include "UILayoutRuntime.h"
 
+#include <cmath>
+
 namespace
 {
 	/* One row per part: the layout slot, and for each state the Resources-relative art and its
@@ -130,13 +132,19 @@ void Client::CDurabilityHudView::Apply_Part(const PART ePart)
 			GLOVES_PLAIN_DESTROYED_HEIGHT : GLOVES_PLAIN_DAMAGED_HEIGHT;
 	}
 
-	/* The document authored this slot at the damaged frame's source size, already converted to
-	the reference resolution. Recovering that conversion from the authored width keeps the other
-	frames at their own real proportions without repeating the stage scale here. */
+	/* Capture the authored scale before this class first resizes the part. Later frames must
+	not derive it from the previous state's output, or different-sized art scales repeatedly. */
 	f32_t fSlotX = 0.f, fSlotY = 0.f, fSlotWidth = 0.f, fSlotHeight = 0.f;
 	if (!m_pView->Get_SlotRect(Art.pSlotId, fSlotX, fSlotY, fSlotWidth, fSlotHeight))
 		return;
-	const f32_t fScale = (Art.fDamagedWidth > 0.f) ? (fSlotWidth / Art.fDamagedWidth) : 1.f;
+	if (0.f == m_PartAuthoredScales[iPart])
+	{
+		const f32_t fAuthoredScale = fSlotWidth / Art.fDamagedWidth;
+		if (!std::isfinite(fAuthoredScale) || fAuthoredScale <= 0.f)
+			return;
+		m_PartAuthoredScales[iPart] = fAuthoredScale;
+	}
+	const f32_t fScale = m_PartAuthoredScales[iPart];
 	m_pView->Set_SlotTexture(Art.pSlotId, pAsset);
 	m_pView->Set_SlotRect(Art.pSlotId, fSlotX, fSlotY,
 		fSourceWidth * fScale, fSourceHeight * fScale);

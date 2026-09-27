@@ -48,6 +48,8 @@ private:
 private:
 	unique_ptr<CUILayoutRuntime> m_pView;
 	PART_STATE m_PartStates[ETOUI(PART::END)] = {};
+	/* Zero until the first successful read of the unmodified authored rectangle. */
+	f32_t m_PartAuthoredScales[ETOUI(PART::END)] = {};
 	bool_t m_bBracerEnabled = true;
 };
 
