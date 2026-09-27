@@ -4629,3 +4629,7 @@ Full Restore의 원본 animationClips/clipDuration/source-stage receipt를 사�
 
 ### 2026-09-28 저작 V2와 Sound의 역할·시각 receipt
 새로 연결한 V2 Library 그룹은 EffectRoles exact coverage에도 등록해야 한다. 역할 누락을 gameplay hit 추가나 저장한 cue 시각 원복으로 메우지 않는다. 공격 resource를 피해 없는 PROJECT_AUTHORED 연출에 재사용할 때는 shared 역할을 바꾸지 않고 검토한 binding/scope/resource/clock의 exact presentation-only receipt로 제한한다. 의도적으로 편집한 Sound와 contact 차이는 해당 scope의 hit offsets, Sound payload와 실제 wall clock를 결정하는 animation occurrence 전체를 함께 고정한다. Sound source 시각만 고정하면 playRate·선행 clip 길이 변경이 예외를 통해 새 timing drift를 숨긴다. unknown/stale receipt와 이후 drift는 계속 거절한다.
+
+### 생성 돌과 폭발 파편의 복구 표면 연결
+
+standing rock과 explosion debris가 다른 source material을 사용할 수 있다. 생성 돌을 복원해도 별도 hit 문서와 내용을 복사한 편집용 composite는 자동 갱신되지 않는다. 같은 표면을 요청받으면 실제 WModel geometry·UV/N/T·sampler와 material dynamic 채널을 대조한다. 기둥 mesh를 작은 파편에 통째로 치환해 크기·실루엣을 바꾸지 않고, 기존 파편 수명·탄도·색·저작 파동을 보존한 표면 연결과 원본 폭발 전체 복원 주장을 구분한다. 구체 적용과 native 비교는 09-28 VALTAN_PR_INTEGRATION RESULT에 기록한다.
