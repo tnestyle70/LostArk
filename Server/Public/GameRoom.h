@@ -486,6 +486,12 @@ namespace LostArk::Server
 		/* Dismounts every player the world, catalog or current state no longer
 		lets ride. Runs once per tick before the snapshot is committed. */
 		void Enforce_VehicleRidingState();
+		/* Bern voyage ships (EFTable_VoyageShip 8200..8208) sail on the BernSea navigation region. Boarding
+		   moves the player to the nearest open sea cell and keeps the pier position; leaving the ship, or any
+		   forced dismount, brings the player back to that pier position. Begin returns false when no sea cell
+		   lies within reach (the player is not at a harbour). */
+		bool Begin_ShipVoyage(SERVER_PLAYER& player, LostArk::Shared::VEHICLE_ID vehicleId);
+		void End_ShipVoyage(SERVER_PLAYER& player, const char* reason);
 		/* A skill press while mounted. Only a skill of the ridden vehicle starts,
 		from an idle mount, off cooldown and with a newer sequence; it faces the
 		player's current yaw. */

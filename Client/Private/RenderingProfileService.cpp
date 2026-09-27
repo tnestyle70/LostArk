@@ -583,7 +583,8 @@ bool_t CRenderingProfileService::Restore_PresentationEnvironment(string& status)
 
 bool_t CRenderingProfileService::Apply_CameraEnvironment(f32_t deltaSeconds, string& status,
     const bool_t suppressFog, const LIGHT_DESC* directionalOverride,
-    const f32_t directionalBrightnessMultiplier, const float4_t* directionalColor)
+    const f32_t directionalBrightnessMultiplier, const float4_t* directionalColor,
+    const PRESENTATION_FOG_TUNING* fogTuning)
 {
     // Region transitions must sample the underlying scene, never last frame's
     // cinematic light/fog. Ending or cancelling a shot restores that same scene.
@@ -604,7 +605,22 @@ bool_t CRenderingProfileService::Apply_CameraEnvironment(f32_t deltaSeconds, str
     if (overrideLight && lights.size() != 1u)
     { status = "Presentation directional override requires one scene light."; return false; }
     auto presentationFog = fog;
-    presentationFog.bEnabled = false;
+    if (nullptr == fogTuning || !(fogTuning->fDensityScale > 0.f))
+        presentationFog.bEnabled = false;
+    else
+    {
+        // A tuned owner keeps the authored fog and only thins it, so the distance still
+        // reads as air instead of cutting to a hard edge where the override begins.
+        presentationFog.fDensity = fog.fDensity * fogTuning->fDensityScale;
+        if (fogTuning->fStartDistanceMeters >= 0.f)
+            presentationFog.fStartDistance = fogTuning->fStartDistanceMeters;
+        if (fogTuning->fMaximumOpacity >= 0.f)
+            presentationFog.fMaximumOpacity = fogTuning->fMaximumOpacity;
+        if (!std::isfinite(presentationFog.fDensity) ||
+            !std::isfinite(presentationFog.fStartDistance) ||
+            !std::isfinite(presentationFog.fMaximumOpacity))
+        { status = "Presentation fog tuning is not finite; current scene preserved."; return false; }
+    }
     if (suppressFog && FAILED(game.Apply_HeightFog(presentationFog)))
     { status = "Presentation fog override rejected; current scene preserved."; return false; }
     const auto light = overrideLight ? lights.front() : LIGHT_DESC{};

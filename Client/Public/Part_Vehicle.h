@@ -28,6 +28,7 @@ public:
 		std::string strIdleClip;
 		std::string strRunClip;
 		std::string strSeatBone;
+		float3_t vSeatOffset = { 0.f, 0.f, 0.f };
 	} PART_VEHICLE_DESC;
 
 private:
@@ -88,6 +89,7 @@ private:
 	std::string m_strIdleClip;
 	std::string m_strRunClip;
 	std::string m_strSeatBone;
+	float3_t m_vSeatOffset = { 0.f, 0.f, 0.f };
 	bool_t m_isMoving = { false };
 	bool_t m_isPlayingSkill = { false };
 	bool_t m_hasTranslucentMeshes = { false };

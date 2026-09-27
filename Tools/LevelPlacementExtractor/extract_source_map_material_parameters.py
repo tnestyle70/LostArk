@@ -78,11 +78,11 @@ class MapStaticSetDecoder:
                 source_offsets[len(converted)] = cursor, number
                 converted.extend(struct.pack("<ii", len(expanded_names), 0))
                 expanded_names.append(rendered)
-                if array_name == "normalParameters":
-                    converted.extend(struct.pack("<I", raw[8]))
-                    converted.extend(raw[9:])
-                else:
-                    converted.extend(raw[8:])
+                # Every array keeps its native payload after the rewritten FName. The shared
+                # oracle table declares normalParameters entry_size 29 and reads the one-byte
+                # compression field at +8 with the expression GUID at +13, so widening that
+                # byte here would write 32 bytes per entry and drift the reader by 3 each time.
+                converted.extend(raw[8:])
                 cursor += stride
         converted.extend(tail[cursor:])
         decoded = shader_maps.decode_static_set_from_tail(
@@ -120,6 +120,36 @@ def assign(result: dict[str, Any], field: str, name: str, value: Any, evidence: 
     result["parameterSources"][field][name] = evidence
     result["unresolvedDefaults"] = [row for row in result["unresolvedDefaults"]
                                     if (row["field"], row["name"]) != (field, name)]
+
+def apply_mic_texture_override(result: dict[str, Any], source_material: str, name: str,
+                               package_index: int, reference: str | None,
+                               evidence: dict[str, Any]) -> None:
+    """Apply one MaterialInstanceConstant textureParameters row.
+
+    packageIndex 0 is a serialized NULL object reference, meaning this instance supplies no
+    texture for the slot. The parent Material is resolved first, so an inherited
+    MATERIAL_EXPRESSION_DEFAULT is already present and must survive: the cooked runtime resolves
+    the same way (published Areas carry the parent expression default textures per asset), and
+    erasing it makes the slot unbuildable downstream. The ignored override is recorded on the
+    inherited provenance so the NULL is still visible. When nothing was inherited the NULL is
+    assigned as before, keeping the slot visibly unresolved rather than silently absent.
+    """
+    key = name.casefold()
+    if package_index != 0:
+        # package_ref_path() stops at an out-of-range import/export index and returns the
+        # pieces collected so far, so a corrupt reference arrives as "" or a trailing-dot
+        # name. That is a decode failure, not a source value, and must not be assigned.
+        require(isinstance(reference, str) and reference and not reference.endswith("."),
+                f"unresolvable MIC texture reference {source_material}:{name} "
+                f"packageIndex={package_index}")
+    if reference is None and key in result["textures"]:
+        inherited = result["parameterSources"]["textures"][key]
+        ignored = list(inherited.get("micNullOverridesIgnored", ()))
+        ignored.append({"sourceMaterial": source_material, "packageIndex": package_index})
+        result["parameterSources"]["textures"][key] = {**inherited, "micNullOverridesIgnored": ignored}
+        return
+    assign(result, "textures", name, reference,
+           {**evidence, "kind": "MIC_SERIALIZED_OVERRIDE", "packageIndex": package_index})
 
 
 class MaterialResolver:
@@ -233,8 +263,9 @@ class MaterialResolver:
                             value = [checked_float(item, f"{full}:{row['name']}") for item in value]
                         assign(result, "values", row["name"], value, {**evidence, "kind": "MIC_SERIALIZED_OVERRIDE"})
                 for row in instance["textureParameters"]:
-                    assign(result, "textures", row["name"], source_reference(package, logical_name, row["packageIndex"]),
-                           {**evidence, "kind": "MIC_SERIALIZED_OVERRIDE", "packageIndex": row["packageIndex"]})
+                    apply_mic_texture_override(
+                        result, full, row["name"], row["packageIndex"],
+                        source_reference(package, logical_name, row["packageIndex"]), evidence)
             else:
                 raise ValueError(f"unsupported source Material class {class_name}: {full}")
             self.materials[full] = result

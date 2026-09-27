@@ -137,6 +137,8 @@ public:
 	Used by CLevel_Bern's Schmidt NPC right-click interaction; P itself still
 	toggles (open when closed, close when open). */
 	void Open_ItemUpgradeWindow();
+	/* Ship NPC interaction (CLevel_Bern): opens the vehicle window in its ship-only mode. */
+	void Open_ShipWindow();
 
 	static void Update_DebugWindowTitleWithFps(const wchar_t* pBaseTitle);
 	/* Every domain tool writes one stable Pattern ID into this process-wide

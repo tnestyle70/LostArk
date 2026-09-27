@@ -144,9 +144,15 @@
       "navigationSource": "Data/Navigation/LV_OCN_EVENTIS_MHP.navgrid.json",
       "navigationRuntime": "Client/Bin/DataFiles/Navigation/LV_OCN_EVENTIS_MHP.navgrid",
       "gameplayDocument": "Data/Worlds/LV_OCN_EVENTIS_MHP/Gameplay.world.json",
-      "placementCount": 3839,
-      "assetCount": 398,
-      "runtimeAssetRoot": "Map/LV_OCN_EVENTIS_MHP"
+      "placementCount": 4651,
+      "assetCount": 406,
+      "runtimeAssetRoot": "Map/LV_OCN_EVENTIS_MHP",
+      "sourceWater": "Data/Maps/Authoring/LV_OCN_EVENTIS_MHP/LV_OCN_EVENTIS_MHP.mapwater.json",
+      "water": "Client/Bin/DataFiles/Map/LV_OCN_EVENTIS_MHP.mapwater.json",
+      "sourceLights": "Data/Maps/Authoring/LV_OCN_EVENTIS_MHP/LV_OCN_EVENTIS_MHP.maplights.json",
+      "lights": "Client/Bin/DataFiles/Map/LV_OCN_EVENTIS_MHP.maplights.json",
+      "sourceMaterials": "Data/Maps/Authoring/LV_OCN_EVENTIS_MHP/LV_OCN_EVENTIS_MHP.mapmaterials.json",
+      "materials": "Client/Bin/DataFiles/Map/LV_OCN_EVENTIS_MHP.mapmaterials.json"
     },
     {
       "id": "LV_LOBBY_CLASSSELECT_SL10",

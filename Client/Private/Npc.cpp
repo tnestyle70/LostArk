@@ -39,6 +39,7 @@ CNpc::CNpc(ComPtr<ID3D11Device> pDevice, ComPtr<ID3D11DeviceContext> pContext)
 
 CNpc::~CNpc()
 {
+	Release_ActionEffectCues();
 }
 
 HRESULT CNpc::Initialize_Prototype()
@@ -393,6 +394,9 @@ bool_t CNpc::Play_NetworkAction(
 
 void CNpc::Arm_ActionEffectCues(const char_t* pClipName)
 {
+	/* A new action edge is an explicit kill of the previous occurrence: its
+	infinite emitters and uncut sounds do not belong to this one. */
+	Release_ActionEffectCues();
 	m_NpcActionEffectState.Reset();
 	m_strNpcActionEffectArchetype.clear();
 	if (nullptr == pClipName || '\0' == pClipName[0])
@@ -518,14 +522,111 @@ void CNpc::Update_HitReactionSound()
 	(void)CGameInstance::Get().Play_Sound(path.wstring(), 1.f);
 }
 
+void CNpc::Release_ActionEffectCues()
+{
+	for (const NPC_ACTION_EFFECT_LIVE_CUE& live : m_NpcActionEffectState.LiveCues)
+	{
+		if (0u != live.iEffectHandle)
+			CEffectPresentationService::Stop_WorldRoot({ live.iEffectHandle });
+		if (0u != live.iSoundHandle)
+			CGameInstance::Get().Stop_SoundCue(live.iSoundHandle);
+	}
+	m_NpcActionEffectState.LiveCues.clear();
+}
+
+void CNpc::Play_ActionEffectCueSound(const NPC_ACTION_EFFECT_CUE& cue,
+	const f32_t fDueSeconds, const f32_t fAgeSeconds,
+	NPC_ACTION_EFFECT_LIVE_CUE& live)
+{
+	/* The source chooses between two events by the actor's DLChar. The model
+	tag carries that identity here, so the alternate event wins only when the
+	tag ends with the recorded suffix. Exactly one of the two ever plays. */
+	const std::string* pEvent = &cue.strSoundEvent;
+	if (!cue.strSoundEventAlternate.empty() &&
+		!cue.strSoundAlternateModelTagSuffix.empty())
+	{
+		std::wstring wide;
+		wide.reserve(cue.strSoundAlternateModelTagSuffix.size());
+		for (const char_t character : cue.strSoundAlternateModelTagSuffix)
+		{
+			wide.push_back(static_cast<wchar_t>(
+				static_cast<unsigned char>(character)));
+		}
+		if (m_strModelTag.size() >= wide.size() && !wide.empty() &&
+			0 == m_strModelTag.compare(m_strModelTag.size() - wide.size(),
+				wide.size(), wide))
+		{
+			pEvent = &cue.strSoundEventAlternate;
+		}
+	}
+	const auto& variants =
+		CSoundCueCatalog::Find_Variants(cue.strSoundClass, *pEvent);
+	if (variants.empty())
+		return;
+	/* Equal weight, avoid repeat 1, keyed by asset id so catalog reordering
+	never leaves a stale index behind. */
+	std::vector<size_t> eligible;
+	for (size_t i = 0u; i < variants.size(); ++i)
+	{
+		if (variants[i] != m_strLastActionEffectSoundAsset)
+			eligible.push_back(i);
+	}
+	if (eligible.empty())
+	{
+		for (size_t i = 0u; i < variants.size(); ++i)
+			eligible.push_back(i);
+	}
+	static std::mt19937 random(std::random_device{}());
+	std::uniform_int_distribution<size_t> choose(0u, eligible.size() - 1u);
+	const size_t variant = eligible[choose(random)];
+	m_strLastActionEffectSoundAsset = variants[variant];
+	/* A frame that overshot the notify starts the cue already aged, so a late
+	join never replays a one-shot from its beginning. */
+	const f32_t fClampedAge = std::clamp(fAgeSeconds, 0.f, 600.f);
+	const uint32_t iAgeMs = static_cast<uint32_t>(fClampedAge * 1000.f);
+	const auto path = CRuntimeAssetRoot::Resolve(variants[variant]);
+	live.iSoundHandle =
+		CGameInstance::Get().Play_SoundCue(path.wstring(), 1.f, iAgeMs);
+	/* The source duration is min(media length, action remainder): a positive
+	value cuts the sound at the action edge instead of letting it run on. */
+	if (0u != live.iSoundHandle && 0u != cue.iDurationMs)
+	{
+		live.fSoundStopAtSeconds =
+			fDueSeconds + static_cast<f32_t>(cue.iDurationMs) * 0.001f;
+	}
+}
+
 void CNpc::Update_ActionEffectCues(const f32_t fTimeDelta)
 {
-	if (!m_NpcActionEffectState.bActive || nullptr == m_pTransformCom ||
-		!std::isfinite(fTimeDelta) || fTimeDelta < 0.f)
-	{
+	if (!std::isfinite(fTimeDelta) || fTimeDelta < 0.f)
 		return;
+	const bool_t bCursorActive =
+		m_NpcActionEffectState.bActive && nullptr != m_pTransformCom;
+	/* A sound cut age can fall after the last notify of the clip, so the clock
+	keeps running while any stop is still pending even once the cursor is
+	exhausted. Without this the final sound would never be cut. */
+	bool_t bPendingStop = false;
+	for (const NPC_ACTION_EFFECT_LIVE_CUE& live : m_NpcActionEffectState.LiveCues)
+	{
+		if (0u != live.iSoundHandle && live.fSoundStopAtSeconds > 0.f)
+			bPendingStop = true;
 	}
+	if (!bCursorActive && !bPendingStop)
+		return;
 	m_NpcActionEffectState.fElapsedSeconds += fTimeDelta;
+	for (NPC_ACTION_EFFECT_LIVE_CUE& live : m_NpcActionEffectState.LiveCues)
+	{
+		if (0u == live.iSoundHandle || live.fSoundStopAtSeconds <= 0.f ||
+			m_NpcActionEffectState.fElapsedSeconds < live.fSoundStopAtSeconds)
+		{
+			continue;
+		}
+		CGameInstance::Get().Stop_SoundCue(live.iSoundHandle);
+		live.iSoundHandle = 0u;
+		live.fSoundStopAtSeconds = 0.f;
+	}
+	if (!bCursorActive)
+		return;
 	const auto& cues =
 		CNpcActionEffectCueDocument::Get_Cues(m_strNpcActionEffectArchetype);
 	const uint32_t iLevel = CGameInstance::Get().Get_CurrentLevelID();
@@ -541,25 +642,49 @@ void CNpc::Update_ActionEffectCues(const f32_t fTimeDelta)
 		if (m_NpcActionEffectState.fElapsedSeconds < fDue)
 			break;
 		++m_NpcActionEffectState.iNextCue;
-		EFFECT_LEVEL_PLACEMENT_SPAWN_DESC desc;
-		desc.iLevelIndex = iLevel;
-		desc.strPlacementId = cue.strCueId + ":" +
-			std::to_string(m_iNpcActionEffectOccurrence);
-		desc.strEffectAssetId = cue.strEffectAssetId;
-		desc.RootWorld = *m_pTransformCom->Get_WorldMatrixPtr();
-		desc.pAnchorOwner = static_pointer_cast<CNpc>(shared_from_this());
 		/* Catch a cue the frame overshot so a long frame still starts it at
 		its authored phase instead of from zero. */
-		desc.fInitialSampleTimeSeconds =
-			m_NpcActionEffectState.fElapsedSeconds - fDue;
-		EFFECT_WORLD_ROOT_HANDLE handle;
-		std::string status;
-		if (!CEffectPresentationService::Spawn_LevelPlacement(desc, handle, status))
+		const f32_t fAge = m_NpcActionEffectState.fElapsedSeconds - fDue;
+		NPC_ACTION_EFFECT_LIVE_CUE live;
+		if (!cue.strEffectAssetId.empty())
 		{
-			OutputDebugStringA(
-				("[Npc] Action Effect cue isolated: " + cue.strCueId + " " +
-				 status + "\n").c_str());
+			EFFECT_LEVEL_PLACEMENT_SPAWN_DESC desc;
+			desc.iLevelIndex = iLevel;
+			desc.strPlacementId = cue.strCueId + ":" +
+				std::to_string(m_iNpcActionEffectOccurrence);
+			desc.strEffectAssetId = cue.strEffectAssetId;
+			desc.RootWorld = *m_pTransformCom->Get_WorldMatrixPtr();
+			desc.pAnchorOwner = static_pointer_cast<CNpc>(shared_from_this());
+			desc.fInitialSampleTimeSeconds = fAge;
+			/* The source notify duration is the owner's stop order for an
+			emitter that loops forever. A zero duration is the opposite
+			instruction: the emitter ends itself and keeps authored timing. */
+			if (0u != cue.iDurationMs)
+			{
+				desc.bOwnerSustainedSourceLoops = true;
+				desc.fSourceLoopEndSeconds =
+					static_cast<f32_t>(cue.iDurationMs) * 0.001f;
+			}
+			EFFECT_WORLD_ROOT_HANDLE handle;
+			std::string status;
+			if (!CEffectPresentationService::Spawn_LevelPlacement(
+				desc, handle, status))
+			{
+				OutputDebugStringA(
+					("[Npc] Action Effect cue isolated: " + cue.strCueId + " " +
+					 status + "\n").c_str());
+			}
+			else
+			{
+				live.iEffectHandle = handle.iValue;
+			}
 		}
+		if (!cue.strSoundEvent.empty())
+			Play_ActionEffectCueSound(cue, fDue, fAge, live);
+		/* Only a cue that actually started something is tracked, so teardown
+		never stops a handle it does not own. */
+		if (0u != live.iEffectHandle || 0u != live.iSoundHandle)
+			m_NpcActionEffectState.LiveCues.push_back(live);
 	}
 	if (m_NpcActionEffectState.iNextCue >= cues.size())
 		m_NpcActionEffectState.bActive = false;

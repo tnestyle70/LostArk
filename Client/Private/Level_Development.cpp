@@ -5,10 +5,12 @@
 #include "Character.h"
 #include "CharacterSelectionState.h"
 #include "CombatHUDViewModel.h"
+#include "EffectFailureDiagnostic.h"
 #include "GameInstance.h"
 #include "LevelRegistry.h"
 #include "LevelTransitionService.h"
 #include "MainApp.h"
+#include "MapLightPresentationRuntime.h"
 #include "NetworkManager.h"
 #include "NetworkPlayerCommandSink.h"
 #include "Transform.h"
@@ -81,7 +83,45 @@ HRESULT CLevel_Development::Initialize()
 	{
 		OutputDebugStringA((
 			"[Level_Development] " + m_MapRuntime.Get_Status() + "\n").c_str());
+		Write_EffectFailureDiagnostic("map.area.load-failed",
+			m_MapRuntime.Get_Status());
 		return E_FAIL;
+	}
+
+	// Report what the Maharaka documents delivered: WATER assets and their water rows,
+	// and assets that carry source material rows. Written once per level entry.
+	if (LEVEL::MAHARAKA == m_eLevel)
+	{
+		const CMapAssetCatalog& catalog = m_MapRuntime.Get_Catalog();
+		size_t waterAssets = 0u;
+		size_t waterRows = 0u;
+		size_t materialAssets = 0u;
+		for (const MAP_ASSET_ENTRY& entry : catalog.Get_Entries())
+		{
+			if (MAP_ASSET_RENDER_MODE::WATER == entry.renderProfile.renderMode)
+			{
+				++waterAssets;
+				if (nullptr != catalog.Find_Water(entry.id))
+					++waterRows;
+			}
+			if (!entry.materialOverrides.empty())
+				++materialAssets;
+		}
+		Write_EffectFailureDiagnostic("map.water.loaded",
+			"area=" + catalog.Get_AreaId() +
+			" assets=" + std::to_string(catalog.Get_Entries().size()) +
+			" waterAssets=" + std::to_string(waterAssets) +
+			" waterRows=" + std::to_string(waterRows) +
+			" materialAssets=" + std::to_string(materialAssets));
+	}
+
+	// The island's EFActorMotion rows (turning and rocking props). An absent
+	// document is not an error; a rejected one is reported and the island stays static.
+	if (LEVEL::MAHARAKA == m_eLevel &&
+		!m_MapRuntime.Load_SelfMotions(pEntry->pMapAreaId))
+	{
+		OutputDebugStringA(
+			"[Level_Development] Self-motion document was rejected.\n");
 	}
 
 	if (FAILED(Ready_Lights()) ||
@@ -126,6 +166,19 @@ void CLevel_Development::Update(const f32_t fTimeDelta)
 
 	if (m_isMapEditorWorkspace)
 		return;
+
+	if (LEVEL::MAHARAKA == m_eLevel)
+	{
+		m_MapRuntime.Update_SelfMotions(fTimeDelta);
+		if (m_pMapLightPresentation &&
+			!m_pMapLightPresentation->Submit_Frame() &&
+			!m_bMapLightSubmissionFailureReported)
+		{
+			m_bMapLightSubmissionFailureReported = true;
+			OutputDebugStringA(("[Level_Development][MapLight] " +
+				m_pMapLightPresentation->Get_Status() + "\n").c_str());
+		}
+	}
 
 	if (!m_Replication.Update())
 	{
@@ -175,6 +228,22 @@ HRESULT CLevel_Development::Render()
 
 HRESULT CLevel_Development::Ready_Lights()
 {
+	if (LEVEL::MAHARAKA != m_eLevel)
+		return S_OK;
+
+	// The island's Area declares a light pair, so a missing or rejected document
+	// fails the load like Character Select does instead of showing an unlit island.
+	const CLIENT_LEVEL_DESCRIPTOR* pEntry = CLevelRegistry::Find(m_eLevel);
+	auto staged = make_shared<CMapLightPresentationRuntime>();
+	if (nullptr == pEntry || nullptr == pEntry->pMapAreaId ||
+		!staged->Load_Runtime(pEntry->pMapAreaId))
+	{
+		OutputDebugStringA(("[Level_Development][MapLight] " +
+			staged->Get_Status() + "\n").c_str());
+		return E_FAIL;
+	}
+	m_pMapLightPresentation = std::move(staged);
+	m_bMapLightSubmissionFailureReported = false;
 	return S_OK;
 }
 

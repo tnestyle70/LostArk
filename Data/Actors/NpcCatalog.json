@@ -1068,6 +1068,1660 @@
       "animationSetId": null,
       "idleClip": "np_sjwd_00_sk.ao_idle_normal_1",
       "runtimeStatus": "supported"
+    },
+    {
+      "archetypeId": "NPC_SHIP_SHIPWRIGHT",
+      "clientPresentationId": "npc.bern.ship.shipwright.client.v1",
+      "modelAssetId": "Character/NPC/Npc_MN_RHKP_02_2/Npc_MN_RHKP_02_2.wmodel",
+      "animationSetId": null,
+      "idleClip": "idle_normal_1_1",
+      "runtimeStatus": "supported"
+    },
+    {
+      "archetypeId": "NPC_SHIP_HARBORMASTER",
+      "clientPresentationId": "npc.bern.ship.harbormaster.client.v1",
+      "modelAssetId": "Character/NPC/Npc_NP_LRKK_01/Npc_NP_LRKK_01.wmodel",
+      "animationSetId": null,
+      "idleClip": "idle_normal_1",
+      "runtimeStatus": "supported"
+    },
+    {
+      "archetypeId": "NPC_MAHARAKA_MOKOMOKO",
+      "clientPresentationId": "npc_maharaka_mokomoko.client.v1",
+      "modelAssetId": "Character/NPC/Maharaka/MN_ISMP_00/MN_ISMP_00.wmodel",
+      "animationSetId": null,
+      "idleClip": "idle_normal_1",
+      "runtimeStatus": "supported",
+      "actionClips": {
+        "att_battle_1_01": "att_battle_1_01",
+        "att_battle_2_01": "att_battle_2_01",
+        "att_battle_2_02": "att_battle_2_02",
+        "att_battle_2_03": "att_battle_2_03",
+        "att_battle_3_01": "att_battle_3_01",
+        "att_battle_3_02": "att_battle_3_02",
+        "att_battle_3_03": "att_battle_3_03",
+        "att_battle_3_04": "att_battle_3_04"
+      }
+    },
+    {
+      "archetypeId": "NPC_MAHARAKA_WATERCANNON",
+      "clientPresentationId": "npc_maharaka_watercannon.client.v1",
+      "modelAssetId": "Character/NPC/Maharaka/MN_ISMP_00-1/MN_ISMP_00-1.wmodel",
+      "animationSetId": null,
+      "idleClip": "idle_normal_1",
+      "runtimeStatus": "supported",
+      "actionClips": {
+        "att_battle_1_01": "att_battle_1_01",
+        "att_battle_2_01": "att_battle_2_01",
+        "att_battle_2_02": "att_battle_2_02",
+        "att_battle_2_03": "att_battle_2_03",
+        "att_battle_3_01": "att_battle_3_01",
+        "att_battle_3_02": "att_battle_3_02",
+        "att_battle_3_03": "att_battle_3_03",
+        "att_battle_3_04": "att_battle_3_04"
+      }
+    }
+  ],
+  "modelMaterialOverrides": [
+    {
+      "modelAssetId": "Character/NPC/Maharaka/MN_ISMP_00/MN_ISMP_00.wmodel",
+      "materialName": "mn_ismp_00_mi",
+      "sourceMaterial": "mn_ismp_00.mat.mn_ismp_00_mi",
+      "family": "source.character.monster-6ff78ae19259.v1",
+      "parameters": {
+        "1.use_dyeing_sp": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "beckmannspecular_constant_max": [
+          3.3499999046325684,
+          3.3499999046325684,
+          3.3499999046325684,
+          3.3499999046325684
+        ],
+        "buffcolor": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "constantoutline": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "constantoutline_blink": [
+          0.5,
+          0.5,
+          0.5,
+          0.5
+        ],
+        "constantoutline_color": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "diffusecolor": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "fresnel_radius": [
+          0.949999988079071,
+          0.949999988079071,
+          0.949999988079071,
+          0.949999988079071
+        ],
+        "fresnel_rimlightintensity": [
+          0.5,
+          0.5,
+          0.5,
+          0.5
+        ],
+        "fx_color_desaturation_actiontool": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "fx_color_desaturation_buffsettool": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "fx_color_intensity_actiontool": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "fx_color_intensity_buffsettool": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "hit_color": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "ibl_color_bottom": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "ibl_color_top": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "ibl_exposer": [
+          5,
+          5,
+          5,
+          5
+        ],
+        "ibl_intensity": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "ibl_normal_smooth": [
+          0.699999988079071,
+          0.699999988079071,
+          0.699999988079071,
+          0.699999988079071
+        ],
+        "ibl_reflect_lodbias": [
+          80,
+          80,
+          80,
+          80
+        ],
+        "metalicness_power": [
+          0.20000000298023224,
+          0.20000000298023224,
+          0.20000000298023224,
+          0.20000000298023224
+        ],
+        "normaltex_intensity": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "orennayar": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "orennayar_brightness": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "pbr_specular_intensity": [
+          10,
+          10,
+          10,
+          10
+        ],
+        "pbr_specular_power": [
+          6,
+          6,
+          6,
+          6
+        ],
+        "roughness_power": [
+          3,
+          3,
+          3,
+          3
+        ],
+        "selectioncolor": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "shadowfactor": [
+          0.5,
+          0.5,
+          0.5,
+          0.5
+        ],
+        "specular_power_limit": [
+          0.9200000166893005,
+          0.9200000166893005,
+          0.9200000166893005,
+          0.9200000166893005
+        ],
+        "state": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "state_noise": [
+          1,
+          0,
+          0,
+          1
+        ],
+        "trans_rim_hard": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "trans_rim_inradius": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "transcolor": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "transcolor_rimlight ": [
+          1,
+          1,
+          1,
+          1
+        ]
+      },
+      "textures": [
+        {
+          "expressionIndex": 0,
+          "assetId": "Character/NPC/Maharaka/Textures/mn_ismp_00_n.dds",
+          "colorSpace": "linear"
+        },
+        {
+          "expressionIndex": 1,
+          "assetId": "Character/NPC/Maharaka/Textures/mn_ismp_00_d.dds",
+          "colorSpace": "srgb"
+        },
+        {
+          "expressionIndex": 2,
+          "assetId": "Character/NPC/Maharaka/Textures/mn_ismp_00_s.dds",
+          "colorSpace": "srgb"
+        },
+        {
+          "expressionIndex": 3,
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.dds",
+          "colorSpace": "srgb"
+        },
+        {
+          "expressionIndex": 4,
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/flat_black.dds",
+          "colorSpace": "srgb"
+        },
+        {
+          "expressionIndex": 5,
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/statefx_default.dds",
+          "colorSpace": "srgb"
+        },
+        {
+          "expressionIndex": 6,
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+          "colorSpace": "linear"
+        }
+      ]
+    },
+    {
+      "modelAssetId": "Character/NPC/Maharaka/MN_ISMP_00/MN_ISMP_00.wmodel",
+      "materialName": "mn_ismp_00-1_mi",
+      "sourceMaterial": "mn_ismp_00.mat.mn_ismp_00-1_mi",
+      "family": "source.character.maharaka-ismp-1.v1",
+      "parameters": {
+        "1.use_dyeing_sp": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "beckmannspecular_constant_max": [
+          3.3499999046325684,
+          3.3499999046325684,
+          3.3499999046325684,
+          3.3499999046325684
+        ],
+        "buffcolor": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "constantoutline": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "constantoutline_blink": [
+          0.5,
+          0.5,
+          0.5,
+          0.5
+        ],
+        "constantoutline_color": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "diffusecolor": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "fresnel_radius": [
+          0.949999988079071,
+          0.949999988079071,
+          0.949999988079071,
+          0.949999988079071
+        ],
+        "fresnel_rimlightintensity": [
+          0.5,
+          0.5,
+          0.5,
+          0.5
+        ],
+        "fx_color_desaturation_actiontool": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "fx_color_desaturation_buffsettool": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "fx_color_intensity_actiontool": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "fx_color_intensity_buffsettool": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "hit_color": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "ibl_color_bottom": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "ibl_color_top": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "ibl_exposer": [
+          5,
+          5,
+          5,
+          5
+        ],
+        "ibl_intensity": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "ibl_normal_smooth": [
+          0.699999988079071,
+          0.699999988079071,
+          0.699999988079071,
+          0.699999988079071
+        ],
+        "ibl_reflect_lodbias": [
+          80,
+          80,
+          80,
+          80
+        ],
+        "mask_variation_visible": [
+          0,
+          1,
+          1,
+          1
+        ],
+        "metalicness_power": [
+          0.5,
+          0.5,
+          0.5,
+          0.5
+        ],
+        "normaltex_intensity": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "orennayar": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "orennayar_brightness": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "pbr_specular_intensity": [
+          10,
+          10,
+          10,
+          10
+        ],
+        "pbr_specular_power": [
+          6,
+          6,
+          6,
+          6
+        ],
+        "roughness_power": [
+          3,
+          3,
+          3,
+          3
+        ],
+        "selectioncolor": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "shadowfactor": [
+          0.5,
+          0.5,
+          0.5,
+          0.5
+        ],
+        "specular_power_limit": [
+          0.9200000166893005,
+          0.9200000166893005,
+          0.9200000166893005,
+          0.9200000166893005
+        ],
+        "state": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "state_noise": [
+          1,
+          0,
+          0,
+          1
+        ],
+        "trans_rim_hard": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "trans_rim_inradius": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "transcolor": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "transcolor_rimlight ": [
+          1,
+          1,
+          1,
+          1
+        ]
+      },
+      "textures": [
+        {
+          "expressionIndex": 0,
+          "assetId": "Character/NPC/Maharaka/Textures/mn_ismp_00-1_n.dds",
+          "colorSpace": "linear"
+        },
+        {
+          "expressionIndex": 1,
+          "assetId": "Character/NPC/Maharaka/Textures/mn_ismp_00-1_d.dds",
+          "colorSpace": "srgb"
+        },
+        {
+          "expressionIndex": 2,
+          "assetId": "Character/NPC/Maharaka/Textures/mn_ismp_00-1_s.dds",
+          "colorSpace": "srgb"
+        },
+        {
+          "expressionIndex": 3,
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.dds",
+          "colorSpace": "srgb"
+        },
+        {
+          "expressionIndex": 4,
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/flat_black.dds",
+          "colorSpace": "srgb"
+        },
+        {
+          "expressionIndex": 5,
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/statefx_default.dds",
+          "colorSpace": "srgb"
+        },
+        {
+          "expressionIndex": 6,
+          "assetId": "Character/NPC/Maharaka/Textures/mn_ismp_00-1_m.dds",
+          "colorSpace": "srgb"
+        },
+        {
+          "expressionIndex": 7,
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+          "colorSpace": "linear"
+        }
+      ]
+    },
+    {
+      "modelAssetId": "Character/NPC/Maharaka/MN_ISMP_00/MN_ISMP_00.wmodel",
+      "materialName": "mn_ismp_00-2_mi",
+      "sourceMaterial": "mn_ismp_00.mat.mn_ismp_00-2_mi",
+      "family": "source.character.maharaka-ismp-2.v1",
+      "parameters": {
+        "1.use_dyeing_sp": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "beckmannspecular_constant_max": [
+          3.3499999046325684,
+          3.3499999046325684,
+          3.3499999046325684,
+          3.3499999046325684
+        ],
+        "buffcolor": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "constantoutline": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "constantoutline_blink": [
+          0.5,
+          0.5,
+          0.5,
+          0.5
+        ],
+        "constantoutline_color": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "diffusecolor": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "fresnel_radius": [
+          0.949999988079071,
+          0.949999988079071,
+          0.949999988079071,
+          0.949999988079071
+        ],
+        "fresnel_rimlightintensity": [
+          0.5,
+          0.5,
+          0.5,
+          0.5
+        ],
+        "fx_color_desaturation_actiontool": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "fx_color_desaturation_buffsettool": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "fx_color_intensity_actiontool": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "fx_color_intensity_buffsettool": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "hit_color": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "ibl_color_bottom": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "ibl_color_top": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "ibl_exposer": [
+          5,
+          5,
+          5,
+          5
+        ],
+        "ibl_intensity": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "ibl_normal_smooth": [
+          0.699999988079071,
+          0.699999988079071,
+          0.699999988079071,
+          0.699999988079071
+        ],
+        "ibl_reflect_lodbias": [
+          80,
+          80,
+          80,
+          80
+        ],
+        "metalicness_power": [
+          0.5,
+          0.5,
+          0.5,
+          0.5
+        ],
+        "normaltex_intensity": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "opacity_intensity": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "orennayar": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "orennayar_brightness": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "pbr_specular_intensity": [
+          10,
+          10,
+          10,
+          10
+        ],
+        "pbr_specular_power": [
+          6,
+          6,
+          6,
+          6
+        ],
+        "roughness_power": [
+          3,
+          3,
+          3,
+          3
+        ],
+        "selectioncolor": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "shadowfactor": [
+          0.5,
+          0.5,
+          0.5,
+          0.5
+        ],
+        "specular_power_limit": [
+          0.9200000166893005,
+          0.9200000166893005,
+          0.9200000166893005,
+          0.9200000166893005
+        ],
+        "state": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "state_noise": [
+          1,
+          0,
+          0,
+          1
+        ],
+        "trans_rim_hard": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "trans_rim_inradius": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "transcolor": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "transcolor_rimlight ": [
+          1,
+          1,
+          1,
+          1
+        ]
+      },
+      "textures": [
+        {
+          "expressionIndex": 0,
+          "assetId": "Character/NPC/Maharaka/Textures/mn_ismp_00-2_n.dds",
+          "colorSpace": "linear"
+        },
+        {
+          "expressionIndex": 1,
+          "assetId": "Character/NPC/Maharaka/Textures/mn_ismp_00-2_d.dds",
+          "colorSpace": "srgb"
+        },
+        {
+          "expressionIndex": 2,
+          "assetId": "Character/NPC/Maharaka/Textures/mn_ismp_00-2_s.dds",
+          "colorSpace": "srgb"
+        },
+        {
+          "expressionIndex": 3,
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.dds",
+          "colorSpace": "srgb"
+        },
+        {
+          "expressionIndex": 4,
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/flat_black.dds",
+          "colorSpace": "srgb"
+        },
+        {
+          "expressionIndex": 5,
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/statefx_default.dds",
+          "colorSpace": "srgb"
+        },
+        {
+          "expressionIndex": 6,
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+          "colorSpace": "linear"
+        }
+      ]
+    },
+    {
+      "modelAssetId": "Character/NPC/Maharaka/MN_ISMP_00-1/MN_ISMP_00-1.wmodel",
+      "materialName": "mn_ismp_00_mi",
+      "sourceMaterial": "mn_ismp_00.mat.mn_ismp_00_mi",
+      "family": "source.character.monster-6ff78ae19259.v1",
+      "parameters": {
+        "1.use_dyeing_sp": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "beckmannspecular_constant_max": [
+          3.3499999046325684,
+          3.3499999046325684,
+          3.3499999046325684,
+          3.3499999046325684
+        ],
+        "buffcolor": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "constantoutline": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "constantoutline_blink": [
+          0.5,
+          0.5,
+          0.5,
+          0.5
+        ],
+        "constantoutline_color": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "diffusecolor": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "fresnel_radius": [
+          0.949999988079071,
+          0.949999988079071,
+          0.949999988079071,
+          0.949999988079071
+        ],
+        "fresnel_rimlightintensity": [
+          0.5,
+          0.5,
+          0.5,
+          0.5
+        ],
+        "fx_color_desaturation_actiontool": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "fx_color_desaturation_buffsettool": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "fx_color_intensity_actiontool": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "fx_color_intensity_buffsettool": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "hit_color": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "ibl_color_bottom": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "ibl_color_top": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "ibl_exposer": [
+          5,
+          5,
+          5,
+          5
+        ],
+        "ibl_intensity": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "ibl_normal_smooth": [
+          0.699999988079071,
+          0.699999988079071,
+          0.699999988079071,
+          0.699999988079071
+        ],
+        "ibl_reflect_lodbias": [
+          80,
+          80,
+          80,
+          80
+        ],
+        "metalicness_power": [
+          0.20000000298023224,
+          0.20000000298023224,
+          0.20000000298023224,
+          0.20000000298023224
+        ],
+        "normaltex_intensity": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "orennayar": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "orennayar_brightness": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "pbr_specular_intensity": [
+          10,
+          10,
+          10,
+          10
+        ],
+        "pbr_specular_power": [
+          6,
+          6,
+          6,
+          6
+        ],
+        "roughness_power": [
+          3,
+          3,
+          3,
+          3
+        ],
+        "selectioncolor": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "shadowfactor": [
+          0.5,
+          0.5,
+          0.5,
+          0.5
+        ],
+        "specular_power_limit": [
+          0.9200000166893005,
+          0.9200000166893005,
+          0.9200000166893005,
+          0.9200000166893005
+        ],
+        "state": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "state_noise": [
+          1,
+          0,
+          0,
+          1
+        ],
+        "trans_rim_hard": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "trans_rim_inradius": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "transcolor": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "transcolor_rimlight ": [
+          1,
+          1,
+          1,
+          1
+        ]
+      },
+      "textures": [
+        {
+          "expressionIndex": 0,
+          "assetId": "Character/NPC/Maharaka/Textures/mn_ismp_00_n.dds",
+          "colorSpace": "linear"
+        },
+        {
+          "expressionIndex": 1,
+          "assetId": "Character/NPC/Maharaka/Textures/mn_ismp_00_d.dds",
+          "colorSpace": "srgb"
+        },
+        {
+          "expressionIndex": 2,
+          "assetId": "Character/NPC/Maharaka/Textures/mn_ismp_00_s.dds",
+          "colorSpace": "srgb"
+        },
+        {
+          "expressionIndex": 3,
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.dds",
+          "colorSpace": "srgb"
+        },
+        {
+          "expressionIndex": 4,
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/flat_black.dds",
+          "colorSpace": "srgb"
+        },
+        {
+          "expressionIndex": 5,
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/statefx_default.dds",
+          "colorSpace": "srgb"
+        },
+        {
+          "expressionIndex": 6,
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+          "colorSpace": "linear"
+        }
+      ]
+    },
+    {
+      "modelAssetId": "Character/NPC/Maharaka/MN_ISMP_00-1/MN_ISMP_00-1.wmodel",
+      "materialName": "mn_ismp_00-1_mi",
+      "sourceMaterial": "mn_ismp_00.mat.mn_ismp_00-1_mi",
+      "family": "source.character.maharaka-ismp-1.v1",
+      "parameters": {
+        "1.use_dyeing_sp": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "beckmannspecular_constant_max": [
+          3.3499999046325684,
+          3.3499999046325684,
+          3.3499999046325684,
+          3.3499999046325684
+        ],
+        "buffcolor": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "constantoutline": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "constantoutline_blink": [
+          0.5,
+          0.5,
+          0.5,
+          0.5
+        ],
+        "constantoutline_color": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "diffusecolor": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "fresnel_radius": [
+          0.949999988079071,
+          0.949999988079071,
+          0.949999988079071,
+          0.949999988079071
+        ],
+        "fresnel_rimlightintensity": [
+          0.5,
+          0.5,
+          0.5,
+          0.5
+        ],
+        "fx_color_desaturation_actiontool": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "fx_color_desaturation_buffsettool": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "fx_color_intensity_actiontool": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "fx_color_intensity_buffsettool": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "hit_color": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "ibl_color_bottom": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "ibl_color_top": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "ibl_exposer": [
+          5,
+          5,
+          5,
+          5
+        ],
+        "ibl_intensity": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "ibl_normal_smooth": [
+          0.699999988079071,
+          0.699999988079071,
+          0.699999988079071,
+          0.699999988079071
+        ],
+        "ibl_reflect_lodbias": [
+          80,
+          80,
+          80,
+          80
+        ],
+        "mask_variation_visible": [
+          0,
+          1,
+          1,
+          1
+        ],
+        "metalicness_power": [
+          0.5,
+          0.5,
+          0.5,
+          0.5
+        ],
+        "normaltex_intensity": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "orennayar": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "orennayar_brightness": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "pbr_specular_intensity": [
+          10,
+          10,
+          10,
+          10
+        ],
+        "pbr_specular_power": [
+          6,
+          6,
+          6,
+          6
+        ],
+        "roughness_power": [
+          3,
+          3,
+          3,
+          3
+        ],
+        "selectioncolor": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "shadowfactor": [
+          0.5,
+          0.5,
+          0.5,
+          0.5
+        ],
+        "specular_power_limit": [
+          0.9200000166893005,
+          0.9200000166893005,
+          0.9200000166893005,
+          0.9200000166893005
+        ],
+        "state": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "state_noise": [
+          1,
+          0,
+          0,
+          1
+        ],
+        "trans_rim_hard": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "trans_rim_inradius": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "transcolor": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "transcolor_rimlight ": [
+          1,
+          1,
+          1,
+          1
+        ]
+      },
+      "textures": [
+        {
+          "expressionIndex": 0,
+          "assetId": "Character/NPC/Maharaka/Textures/mn_ismp_00-1_n.dds",
+          "colorSpace": "linear"
+        },
+        {
+          "expressionIndex": 1,
+          "assetId": "Character/NPC/Maharaka/Textures/mn_ismp_00-1_d.dds",
+          "colorSpace": "srgb"
+        },
+        {
+          "expressionIndex": 2,
+          "assetId": "Character/NPC/Maharaka/Textures/mn_ismp_00-1_s.dds",
+          "colorSpace": "srgb"
+        },
+        {
+          "expressionIndex": 3,
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.dds",
+          "colorSpace": "srgb"
+        },
+        {
+          "expressionIndex": 4,
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/flat_black.dds",
+          "colorSpace": "srgb"
+        },
+        {
+          "expressionIndex": 5,
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/statefx_default.dds",
+          "colorSpace": "srgb"
+        },
+        {
+          "expressionIndex": 6,
+          "assetId": "Character/NPC/Maharaka/Textures/mn_ismp_00-1_m.dds",
+          "colorSpace": "srgb"
+        },
+        {
+          "expressionIndex": 7,
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+          "colorSpace": "linear"
+        }
+      ]
+    },
+    {
+      "modelAssetId": "Character/NPC/Maharaka/MN_ISMP_00-1/MN_ISMP_00-1.wmodel",
+      "materialName": "mn_ismp_00-2_mi",
+      "sourceMaterial": "mn_ismp_00.mat.mn_ismp_00-2_mi",
+      "family": "source.character.maharaka-ismp-2.v1",
+      "parameters": {
+        "1.use_dyeing_sp": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "beckmannspecular_constant_max": [
+          3.3499999046325684,
+          3.3499999046325684,
+          3.3499999046325684,
+          3.3499999046325684
+        ],
+        "buffcolor": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "constantoutline": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "constantoutline_blink": [
+          0.5,
+          0.5,
+          0.5,
+          0.5
+        ],
+        "constantoutline_color": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "diffusecolor": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "fresnel_radius": [
+          0.949999988079071,
+          0.949999988079071,
+          0.949999988079071,
+          0.949999988079071
+        ],
+        "fresnel_rimlightintensity": [
+          0.5,
+          0.5,
+          0.5,
+          0.5
+        ],
+        "fx_color_desaturation_actiontool": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "fx_color_desaturation_buffsettool": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "fx_color_intensity_actiontool": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "fx_color_intensity_buffsettool": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "hit_color": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "ibl_color_bottom": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "ibl_color_top": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "ibl_exposer": [
+          5,
+          5,
+          5,
+          5
+        ],
+        "ibl_intensity": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "ibl_normal_smooth": [
+          0.699999988079071,
+          0.699999988079071,
+          0.699999988079071,
+          0.699999988079071
+        ],
+        "ibl_reflect_lodbias": [
+          80,
+          80,
+          80,
+          80
+        ],
+        "metalicness_power": [
+          0.5,
+          0.5,
+          0.5,
+          0.5
+        ],
+        "normaltex_intensity": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "opacity_intensity": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "orennayar": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "orennayar_brightness": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "pbr_specular_intensity": [
+          10,
+          10,
+          10,
+          10
+        ],
+        "pbr_specular_power": [
+          6,
+          6,
+          6,
+          6
+        ],
+        "roughness_power": [
+          3,
+          3,
+          3,
+          3
+        ],
+        "selectioncolor": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "shadowfactor": [
+          0.5,
+          0.5,
+          0.5,
+          0.5
+        ],
+        "specular_power_limit": [
+          0.9200000166893005,
+          0.9200000166893005,
+          0.9200000166893005,
+          0.9200000166893005
+        ],
+        "state": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "state_noise": [
+          1,
+          0,
+          0,
+          1
+        ],
+        "trans_rim_hard": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "trans_rim_inradius": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "transcolor": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "transcolor_rimlight ": [
+          1,
+          1,
+          1,
+          1
+        ]
+      },
+      "textures": [
+        {
+          "expressionIndex": 0,
+          "assetId": "Character/NPC/Maharaka/Textures/mn_ismp_00-2_n.dds",
+          "colorSpace": "linear"
+        },
+        {
+          "expressionIndex": 1,
+          "assetId": "Character/NPC/Maharaka/Textures/mn_ismp_00-2_d.dds",
+          "colorSpace": "srgb"
+        },
+        {
+          "expressionIndex": 2,
+          "assetId": "Character/NPC/Maharaka/Textures/mn_ismp_00-2_s.dds",
+          "colorSpace": "srgb"
+        },
+        {
+          "expressionIndex": 3,
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.dds",
+          "colorSpace": "srgb"
+        },
+        {
+          "expressionIndex": 4,
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/flat_black.dds",
+          "colorSpace": "srgb"
+        },
+        {
+          "expressionIndex": 5,
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/statefx_default.dds",
+          "colorSpace": "srgb"
+        },
+        {
+          "expressionIndex": 6,
+          "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+          "colorSpace": "linear"
+        }
+      ]
     }
   ]
 }

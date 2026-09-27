@@ -18,6 +18,7 @@
 #include "UITextOcclusion.h"
 #include "UILayoutRuntime.h"
 
+#include <algorithm>
 #include <cmath>
 #include <fstream>
 
@@ -183,6 +184,8 @@ void Client::CVehicleWindowView::Load_Catalog()
 		ReadText(*pStrings, "close", m_strClose);
 		ReadText(*pStrings, "mountedSuffix", m_strMountedSuffix);
 		ReadText(*pStrings, "quickslotHint", m_strHint);
+		ReadText(*pStrings, "shipTitle", m_strShipTitle);
+		ReadText(*pStrings, "shipHint", m_strShipHint);
 	}
 	const DATA_JSON_VALUE* pVehicles = Root.Find("vehicles");
 	if (nullptr == pVehicles || !pVehicles->Is_Array())
@@ -225,10 +228,9 @@ void Client::CVehicleWindowView::Load_Catalog()
 			}
 		}
 		stagedRows.push_back(std::move(Row));
-		if (static_cast<int32_t>(stagedRows.size()) >= m_iLayoutRowCount)
-			break;
 	}
-    m_Rows = std::move(stagedRows);
+	m_AllRows = std::move(stagedRows);
+	Rebuild_VisibleRows();
 }
 
 void Client::CVehicleWindowView::Update(const f32_t fTimeDelta,
@@ -254,6 +256,19 @@ void Client::CVehicleWindowView::Update(const f32_t fTimeDelta,
 	Update_Chrome();
 	Update_Rows(pLocalCharacter, Player);
 	Update_Buttons(Player);
+	{
+		/* Ship list: more ships than the layout has rows, so the wheel pages it while the cursor is
+		over the window. */
+		f32_t fWheelX = 0.f, fWheelY = 0.f, fWheelW = 0.f, fWheelH = 0.f;
+		const int32_t iWheel = CGameInstance::Get().Get_DIMouseMove(DIMM::WHEEL);
+		if (0 != iWheel && m_pView->Get_SlotRect("VH_WinBg", fWheelX, fWheelY, fWheelW, fWheelH) &&
+			CUIInputRouter::Get().Is_Hovered(fWheelX, fWheelY, fWheelW, fWheelH,
+				m_pView->Get_ResolutionWidth(), m_pView->Get_ResolutionHeight()))
+		{
+			m_iScroll += iWheel > 0 ? -1 : 1;
+			Rebuild_VisibleRows();
+		}
+	}
 
 	/* Anything over the window belongs to the window -- keeps a click on the panel from
 	turning into a gameplay move command underneath. */
@@ -318,11 +333,13 @@ void Client::CVehicleWindowView::Update_Rows(const std::shared_ptr<CCharacter>& 
 				CMainApp::Play_UIButtonClickSound();
 				m_iSelectedRow = iRow;
 				/* The H key mounts the window's current choice too. */
-				CPlayerController::Set_PreferredVehicleId(Row.iVehicleId);
+				if (!m_bShipMode)
+					CPlayerController::Set_PreferredVehicleId(Row.iVehicleId);
 			}
 			/* A click on the icon itself also picks the vehicle up for a quick slot. */
 			f32_t fIconX = 0.f, fIconY = 0.f, fIconWidth = 0.f, fIconHeight = 0.f;
 			if (m_pView->Get_SlotRect(Row_Slot(iRow, "Slot"), fIconX, fIconY, fIconWidth, fIconHeight) &&
+				!m_bShipMode &&
 				Router.Is_Clicked(fIconX, fIconY, fIconWidth, fIconHeight, fRefWidth, fRefHeight))
 			{
 				m_bIconPicked = true;
@@ -368,6 +385,8 @@ void Client::CVehicleWindowView::Update_Buttons(const HUD_PLAYER_STATE& Player)
 			m_bRidingRequested = true;
 			m_iRequestedVehicleId = m_bSelectedIsMounted ?
 				0u : m_Rows[static_cast<size_t>(m_iSelectedRow)].iVehicleId;
+			if (m_bShipMode)
+				Close();
 		}
 	}
 	if (m_pView->Get_SlotRect("VH_CloseBtn", fX, fY, fWidth, fHeight))
@@ -404,7 +423,7 @@ bool_t Client::CVehicleWindowView::Take_IconPick(uint32_t& outVehicleId, string&
 
 const string* Client::CVehicleWindowView::Find_IconAsset(const uint32_t iVehicleId) const
 {
-	for (const VEHICLE_ROW& Row : m_Rows)
+	for (const VEHICLE_ROW& Row : m_AllRows)
 	{
 		if (Row.iVehicleId == iVehicleId)
 			return &Row.strIconAsset;
@@ -414,7 +433,7 @@ const string* Client::CVehicleWindowView::Find_IconAsset(const uint32_t iVehicle
 
 const std::vector<VEHICLE_SKILL_UI>* Client::CVehicleWindowView::Find_Skills(const uint32_t iVehicleId) const
 {
-	for (const VEHICLE_ROW& Row : m_Rows)
+	for (const VEHICLE_ROW& Row : m_AllRows)
 	{
 		if (Row.iVehicleId == iVehicleId)
 			return &Row.Skills;
@@ -435,7 +454,8 @@ void Client::CVehicleWindowView::Render_Text()
 	const float2_t vCenter(0.5f, 0.5f);
 
 	Refit_Descriptions();
-	Draw_Label(FONT_YOON, m_strTitle, WINDOW_WIDTH * 0.5f, TITLE_Y, TITLE_PX, COLOR_TITLE, vTopCenter);
+	Draw_Label(FONT_YOON, (m_bShipMode && !m_strShipTitle.empty()) ? m_strShipTitle : m_strTitle,
+		WINDOW_WIDTH * 0.5f, TITLE_Y, TITLE_PX, COLOR_TITLE, vTopCenter);
 
 	for (size_t i = 0; i < m_Rows.size(); ++i)
 	{
@@ -454,7 +474,8 @@ void Client::CVehicleWindowView::Render_Text()
 
     const f32_t HINT_Y = ROW_Y0 + ROW_PITCH * static_cast<f32_t>(m_iLayoutRowCount) + 10.f;
     const f32_t BUTTON_Y = HINT_Y + 30.f;
-	Draw_Label(FONT_YG760, m_strHint, HINT_X, HINT_Y, ROW_FONT_PX, COLOR_DESC, vTopLeft);
+	Draw_Label(FONT_YG760, (m_bShipMode && !m_strShipHint.empty()) ? m_strShipHint : m_strHint,
+		HINT_X, HINT_Y, ROW_FONT_PX, COLOR_DESC, vTopLeft);
 	Draw_Label(FONT_YOON, m_bSelectedIsMounted ? m_strDismount : m_strMount,
 		MOUNT_BUTTON_X + BUTTON_W * 0.5f, BUTTON_Y + BUTTON_H * 0.5f, BUTTON_PX,
 		m_bMountEnabled ? Colors::White : COLOR_DISABLED, vCenter);
@@ -467,6 +488,61 @@ void Client::CVehicleWindowView::Hide()
 {
 	for (const string& strId : m_SlotIds)
 		m_pView->Set_SlotVisible(strId, false);
+}
+
+void Client::CVehicleWindowView::Toggle()
+{
+	if (m_bOpen && m_bShipMode)
+	{
+		m_bOpen = false;
+		return;
+	}
+	m_bOpen = !m_bOpen;
+	Set_ShipMode(false);
+}
+
+void Client::CVehicleWindowView::Open_Ships()
+{
+	Set_ShipMode(true);
+	m_bOpen = true;
+}
+
+void Client::CVehicleWindowView::Set_ShipMode(const bool_t bShip)
+{
+	if (m_bShipMode == bShip)
+		return;
+	m_bShipMode = bShip;
+	m_iScroll = 0;
+	m_iSelectedRow = 0;
+	Rebuild_VisibleRows();
+}
+
+void Client::CVehicleWindowView::Rebuild_VisibleRows()
+{
+	const uint32_t iSelectedVehicle = (m_iSelectedRow >= 0 &&
+		m_iSelectedRow < static_cast<int32_t>(m_Rows.size())) ?
+		m_Rows[static_cast<size_t>(m_iSelectedRow)].iVehicleId : 0u;
+	vector<const VEHICLE_ROW*> Matching;
+	for (const VEHICLE_ROW& Row : m_AllRows)
+	{
+		const VEHICLE_ACTOR_ENTRY* pVehicle = CActorCatalog::Find_Vehicle(Row.iVehicleId);
+		if (nullptr != pVehicle && pVehicle->isShip == m_bShipMode)
+			Matching.push_back(&Row);
+	}
+	const int32_t iMaxScroll = (std::max)(0,
+		static_cast<int32_t>(Matching.size()) - m_iLayoutRowCount);
+	m_iScroll = (std::clamp)(m_iScroll, 0, iMaxScroll);
+	m_Rows.clear();
+	for (size_t i = static_cast<size_t>(m_iScroll);
+		i < Matching.size() && static_cast<int32_t>(m_Rows.size()) < m_iLayoutRowCount; ++i)
+		m_Rows.push_back(*Matching[i]);
+	/* Keep the chosen vehicle selected when it is still on the page; otherwise the first row. */
+	m_iSelectedRow = m_Rows.empty() ? -1 : 0;
+	for (size_t i = 0; 0u != iSelectedVehicle && i < m_Rows.size(); ++i)
+		if (m_Rows[i].iVehicleId == iSelectedVehicle)
+			m_iSelectedRow = static_cast<int32_t>(i);
+	/* The description column was fitted for the previous page. */
+	m_vFitViewport = float2_t(0.f, 0.f);
 }
 
 bool_t Client::CVehicleWindowView::Get_WindowOrigin(f32_t& fX, f32_t& fY) const

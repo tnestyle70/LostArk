@@ -12,6 +12,7 @@
 #include "Effect_PresentationService.h"
 #include "EffectV2_Catalog.h"
 #include "EffectV2_Runtime.h"
+#include "EffectFailureDiagnostic.h"
 #include "EstherActionSoundCueDocument.h"
 #include "GameInstance.h"
 #include "MapNavigationContract.h"
@@ -2440,6 +2441,13 @@ bool Client::CClientReplication::Apply_WorldEntitySpawn(
 			/* A silent return hid every failed NPC: the placement never
 			appeared and no status named it. Report the placement, archetype
 			and the failing step so a missing NPC is diagnosable. */
+			Write_EffectFailureDiagnostic("npc.presentation.unavailable",
+				"placement=" + spawned.strPlacementId + " archetype=" + spawned.strArchetypeId +
+				" reason=" + (nullptr == actor ?
+					"no catalog entry: " + CActorCatalog::Get_Status() :
+					modelTag.empty() ?
+						std::string("no model prototype tag") :
+						std::string("model prototype preparation failed (model admission, see npc.model.unit)")));
 			OutputDebugStringA(("[NpcPresentation] placement " +
 				spawned.strPlacementId + " archetype " +
 				spawned.strArchetypeId + " is unavailable (" +
@@ -2491,6 +2499,9 @@ bool Client::CClientReplication::Apply_WorldEntitySpawn(
 			&desc,
 			&gameObject)))
 		{
+			Write_EffectFailureDiagnostic("npc.presentation.unavailable",
+				"placement=" + spawned.strPlacementId + " archetype=" + spawned.strArchetypeId +
+				" reason=object creation failed");
 			return false;
 		}
 		const std::shared_ptr<CNpc> npc =
@@ -2498,6 +2509,9 @@ bool Client::CClientReplication::Apply_WorldEntitySpawn(
 		if (nullptr == npc || !npc->Apply_NetworkState(
 			desc.vPosition, spawned.fYawDegrees))
 		{
+			Write_EffectFailureDiagnostic("npc.presentation.unavailable",
+				"placement=" + spawned.strPlacementId + " archetype=" + spawned.strArchetypeId +
+				" reason=network state apply failed");
 			CGameInstance::Get().Remove_GameObject_from_Layer(
 				m_Desc.iLayerLevelIndex,
 				m_Desc.strWorldEntityLayerTag,
@@ -2517,6 +2531,12 @@ bool Client::CClientReplication::Apply_WorldEntitySpawn(
 		presentation.PinnedDefinitionRevision =
 			spawned.PinnedDefinitionRevision;
 		presentation.pNpc = npc;
+		/* A missing Bern3 ship NPC has been invisible before: name each one that really got a body. */
+		if (0 == spawned.strArchetypeId.rfind("NPC_SHIP_", 0))
+			Write_EffectFailureDiagnostic("npc.ship.spawned",
+				"placement=" + spawned.strPlacementId + " archetype=" + spawned.strArchetypeId +
+				" pos=" + std::to_string(spawned.fPositionX) + "," + std::to_string(spawned.fPositionY) + "," +
+				std::to_string(spawned.fPositionZ) + " idleClip=" + resolvedIdle);
 		/* An entity that spawns mid-action (a raid Esther summon) must show
 		its action clip from the very first rendered frame; waiting for the
 		next snapshot leaves it one interval in the idle pose at the caster's

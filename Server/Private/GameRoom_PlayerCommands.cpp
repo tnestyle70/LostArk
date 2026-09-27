@@ -1155,6 +1155,7 @@ LostArk::Server::CGameRoom::Apply_CharacterClassChange(
 	staged.eMadnessForm = PLAYER_MADNESS_FORM::NORMAL;
 	End_VehicleSkill(staged);
 	staged.iVehicleId = INVALID_VEHICLE_ID;
+	staged.bShipDockValid = false;
 	staged.Clear_KoukuInteractionState();
 	staged.eAction = PLAYER_ACTION_STATE::NONE;
 	staged.eStance = profile->eDefaultStance;

@@ -35,6 +35,15 @@ NPC는 네 계층으로 나뉘고 각 계층의 정본이 다르다. 어떤 작�
             -> CNpc  (Prototype_GameObject_Npc, Server transform/action 표현)
 ```
 
+09-26 확장: catalog format 2는 optional root `modelMaterialOverrides`를 지원한다.
+각 행의 `modelAssetId`는 같은 catalog에 정의된 NPC 모델이어야 한다. 기존 공용 material
+parser가 실제 family/parameter/texture를 stage하고 `Build_ModelLoadDescription`이
+`CNpcPresentationAssetService -> CModel::Create`에 전달한다. fallback unit-scale 재로드도
+같은 descriptor를 사용한다. 다른 actor catalog와 같은 모델의 override 소유권이 겹치면
+실패하며 unknown 모델을 기본 재질로 묵살하지 않는다. 재질이 없는 기존 NPC는 그대로다.
+마하라카 단독 게시 명령은 `Publish-WorldGameplay.ps1 -WorldId MAHARAKA -Mode Publish`다.
+모델·clip 등록은 물 발사 같은 원본 AI/event 실행 계약과 별개다.
+
 핵심 규칙 세 가지다.
 
 - catalog는 "정의", placement는 "인스턴스"다. 섞지 않는다.
@@ -266,3 +275,13 @@ Server pre-build가 같은 스크립트를 강제로 돌리므로 Server 빌드 
 
 커밋 기준 원작성자는 catalog·Map Tool·애니셋이 JS(2026-08-12~13), 발탄 입장 확인창이
 Taejun(0de73b08, 2026-08-20)이다. 세부 구현 의도는 위 문서와 커밋을 먼저 읽는다.
+
+## 9. NPC 모델 크기 계약 (2026-09-25)
+
+Client는 모든 NPC 모델을 배율 0.0001과 Y축 -90도로 불러온다. 이 값이 미터가 되려면 WModel이 `RootNode` 아래에
+크기 x100 노드(와 Z-up을 Y-up으로 돌리는 회전)를 가져야 한다. 저장소 밖 `build_npc.py`가 만드는 모델은 이 구조다.
+`Tools/ShipPipeline/cook_npc.py`처럼 이 노드를 만들지 않는 조립 경로의 모델은 정점이 센티미터라서, 로더가
+`RootNode`가 없고 첫 자식 뼈대 크기가 1인 것을 확인하면 배율 0.01로 다시 불러온다. 새 NPC 모델은 조립 뒤
+`Tools/ModelAssetConverter/verify_dimensionmaster_summon_bind_pose.py`의 `read_wmodel`로 뼈대 이름·크기와 정점 높이를
+재고, 예상 키(약 1.2~1.6 m)와 맞는지 확인한 뒤 카탈로그에 올린다. 근거와 측정은
+`.md/GB/09-25/2026-09-25_BERN3_SHIP_NPC_VISIBILITY_RESULT.md`.

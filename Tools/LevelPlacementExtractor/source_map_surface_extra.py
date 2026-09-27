@@ -18,7 +18,7 @@ def build_surface(source, terminal, values, switches, texture, *, asset_id, mate
         path,space=texture('texture_emissive')
         row['emissive']=dict(texture=path,color=v['emissive_color'],intensity=v['emissive_intensity'],
             uvTiling=(v['emissive_uv_tiling'] if pbr else v.get('emissive_uv_tiling',[1,1]))[:2],colorSpace=space,
-            flicker=dict(minimum=v['emissive_intensitymin'] if flicker else (0 if pbr else 1),
+            flicker=dict(minimum=(v.get('emissive_intensitymin', 0) if flicker else (0 if pbr else 1)),
                          speed=v['emissive_flicker_speed'] if flicker else 0,phaseOffset=0))
         if pbr and not flicker: row['emissive']['flicker']['mode']='none'
     if terminal.endswith(('.bg_base_pbr_opa','.bg_base_pbr_seamless_opa','.bg_base_pbr_msk')):

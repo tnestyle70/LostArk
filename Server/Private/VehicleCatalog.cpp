@@ -143,7 +143,7 @@ bool LostArk::Server::CVehicleCatalog::Load()
 	std::uint32_t version = 0u;
 	std::uint32_t rowCount = 0u;
 	if (3u != header.size() || "LOSTARK_VEHICLE_BOOTSTRAP" != header[0] ||
-		!ParseNumber(header[1], version) || (2u != version && 3u != version) ||
+		!ParseNumber(header[1], version) || (2u != version && 3u != version && 4u != version) ||
 		!ParseNumber(header[2], rowCount) || 0u == rowCount || rowCount > 4096u)
 	{
 		m_strStatus = "Vehicle bootstrap header is invalid";
@@ -161,7 +161,7 @@ bool LostArk::Server::CVehicleCatalog::Load()
 		const std::vector<std::string_view> fields = SplitTabs(line);
 		SERVER_VEHICLE_DEFINITION vehicle{};
 		std::uint32_t skillCount = 0u;
-		if ((version == 3u ? 10u : 4u) != fields.size() || "VEHICLE" != fields[0] ||
+		if ((version >= 4u ? 11u : (version == 3u ? 10u : 4u)) != fields.size() || "VEHICLE" != fields[0] ||
 			!ParseNumber(fields[1], vehicle.iVehicleId) ||
 			LostArk::Shared::INVALID_VEHICLE_ID == vehicle.iVehicleId ||
 			!ParseNumber(fields[2], vehicle.fMoveSpeed) ||
@@ -173,7 +173,7 @@ bool LostArk::Server::CVehicleCatalog::Load()
 			m_strStatus = "Vehicle bootstrap row is invalid";
 			return false;
 		}
-		if (version == 3u)
+		if (version >= 3u)
 		{
 			float* flight[] = { &vehicle.fFlightTakeoffSeconds, &vehicle.fFlightLandingSeconds,
 				&vehicle.fFlightHoverHeight, &vehicle.fFlightMaximumHeight,
@@ -187,6 +187,16 @@ bool LostArk::Server::CVehicleCatalog::Load()
 				vehicle.fFlightSpeed <= 0.f || vehicle.fFlightVerticalSpeed <= 0.f ||
 				vehicle.fFlightMaximumHeight / vehicle.fFlightVerticalSpeed > 600.f)) return false;
 			if (!vehicle.Has_Flight()) for (const auto field : flight) if (*field != 0.f) return false;
+		}
+		if (version >= 4u)
+		{
+			/* Fast sail speed. It replaces the plain speed for the boost's length, so it has to be
+			   faster than it, and a flying vehicle has no sailing boost. Zero means no boost. */
+			if (!ParseNumber(fields[10], vehicle.fBoostMoveSpeed) ||
+				!std::isfinite(vehicle.fBoostMoveSpeed) ||
+				vehicle.fBoostMoveSpeed < 0.f || vehicle.fBoostMoveSpeed > 30.f) return false;
+			if (vehicle.Has_Boost() &&
+				(vehicle.fBoostMoveSpeed <= vehicle.fMoveSpeed || vehicle.Has_Flight())) return false;
 		}
 		std::uint8_t usedSlots = 0u;
 		std::vector<LostArk::Shared::SKILL_ID> skillIds;
