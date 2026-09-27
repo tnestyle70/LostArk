@@ -1829,6 +1829,23 @@ PS_OUT_BACKBUFFER PS_MAIN_FINAL(PS_IN In)
     return Out;
 }
 
+/* The portrait resolve is the Final tone curve with the background dropped. Its destination is a
+UI texture, so a pixel the subject never wrote has to stay transparent instead of taking the
+scene's fog and ambient. Target_Depth clears its marker lane to zero, which is exactly that test,
+and the lane is read per pixel so a resampled portrait still reads the full size G-buffer. */
+float4 PS_MAIN_PORTRAIT_RESOLVE(PS_IN In) : SV_TARGET0
+{
+    uint iDepthWidth = 1u;
+    uint iDepthHeight = 1u;
+    g_DepthTexture.GetDimensions(iDepthWidth, iDepthHeight);
+    const int2 vPixel = int2(saturate(In.vTexcoord) *
+        float2((float)iDepthWidth, (float)iDepthHeight));
+    if (0.f == g_DepthTexture.Load(int3(vPixel, 0)).w)
+        return float4(0.f, 0.f, 0.f, 0.f);
+
+    return float4(Resolve_FinalFXAA(In.vTexcoord), 1.f);
+}
+
 
 // Source light rows already reject every other marker. Stencil performs that
 // same rejection before PS invocation without touching the scene outline stencil.
@@ -2291,6 +2308,17 @@ technique11 DefaultTechnique
         VertexShader = DeferredSourceLutBakeVS;
         GeometryShader = NULL;
         PixelShader = compile ps_5_0 PS_SOURCE_LUT_BAKE_NEUTRAL();
+    }
+
+    /* DEFERRED::PORTRAIT_RESOLVE == 30. Appended last so every existing index holds. */
+    pass PortraitResolve
+    {
+        SetRasterizerState(RS_Default);
+        SetDepthStencilState(DSS_ZNone, 0);
+        SetBlendState(BS_Default, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
+        VertexShader = DeferredVS;
+        GeometryShader = NULL;
+        PixelShader = compile ps_5_0 PS_MAIN_PORTRAIT_RESOLVE();
     }
 
 }

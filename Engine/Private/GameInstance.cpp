@@ -492,6 +492,25 @@ HRESULT CGameInstance::Add_RenderObject(RENDERGROUP eRenderGroupID, shared_ptr<C
 	return m_pRenderer->Add_RenderObject(eRenderGroupID, std::move(pRenderObject));
 }
 
+HRESULT CGameInstance::Request_Portrait(ComPtr<ID3D11RenderTargetView> pDestination,
+	uint32_t iWidth, uint32_t iHeight,
+	const float4x4_t& ViewMatrix, const float4x4_t& ProjMatrix,
+	function<HRESULT()> DrawSubject)
+{
+	if (nullptr == m_pRenderer)
+		return E_FAIL;
+
+	CRenderer::PORTRAIT_REQUEST		Request{};
+	Request.pDestination = std::move(pDestination);
+	Request.iWidth = iWidth;
+	Request.iHeight = iHeight;
+	Request.ViewMatrix = ViewMatrix;
+	Request.ProjMatrix = ProjMatrix;
+	Request.DrawSubject = std::move(DrawSubject);
+
+	return m_pRenderer->Request_Portrait(std::move(Request));
+}
+
 void CGameInstance::Request_SceneColorSnapshot()
 {
 	if (m_pRenderer)
