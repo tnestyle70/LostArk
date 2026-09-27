@@ -142,6 +142,8 @@ def sample_bone(sequence, resource, slot, age, bone, load_model):
         raise ColliderBakeError("Object collider attachment bone is absent or ambiguous: " + bone)
     local = [list(b.transform) for b in model.skeleton_bones]
     selected = [r for r in tracks if r.get("startMs",0) <= age]
+    if not selected and tracks:
+        selected = tracks[:1]  # Match runtime's held source-in pose before the first clip.
     if selected:
         track = selected[-1]
         animation = next((a for a in model.animations if a.name == track["clipName"]), None)

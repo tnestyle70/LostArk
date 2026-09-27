@@ -65,7 +65,11 @@ public:
        integrated cutscene Save cannot also run the Area publisher or the
        linked battle pattern publish. The default keeps the standalone Save. */
     bool Save_Source(bool publishRuntime = true);
+    bool Edit_AnimationTimeline(const std::string& instanceId, const std::string& slotId,
+        const std::string& clipName, uint32_t expectedStartMs, uint32_t startMs,
+        uint32_t sourceInMs, uint32_t sourceOutMs, std::string& status);
     [[nodiscard]] bool Is_Dirty() const noexcept { return m_Dirty; }
+    [[nodiscard]] const std::string& Get_Status() const noexcept { return m_Status; }
 
 private:
     bool Load_Source();

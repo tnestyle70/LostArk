@@ -1,0 +1,127 @@
+{
+  "schema": "lostark.effect-v2",
+  "formatVersion": 1,
+  "effectId": "kouku.bingo.ending.fade.black",
+  "displayName": "빙고 최종엔딩 / 원본 암전",
+  "effectType": "ScreenPost",
+  "slots": {
+    "mesh": "",
+    "base": "Effect/KoukuSaydon/Textures/FX_TEX_00/fx_a_blankwhite_01.dds",
+    "noise": "",
+    "mask": "",
+    "emissive": "",
+    "dissolve": ""
+  },
+  "params": {
+    "lifetime": 55.275,
+    "loop": false,
+    "playRate": 1.0,
+    "alphaInEnd": 0.0,
+    "alphaOutStart": 1.0,
+    "screenPost": {
+      "profile": "TexturedOverlay",
+      "intensityStart": 1.0,
+      "intensityEnd": 1.0,
+      "intensityLerp": false,
+      "intensitySmoothstep": false,
+      "intensityKeys": [
+        {
+          "timeSeconds": 0.0,
+          "intensity": 0.0
+        },
+        {
+          "timeSeconds": 47.17316608012383,
+          "intensity": 0.00039441500091562344
+        },
+        {
+          "timeSeconds": 47.35316608012383,
+          "intensity": 0.01151657885021468
+        },
+        {
+          "timeSeconds": 47.55316608012383,
+          "intensity": 0.04029244470315147
+        },
+        {
+          "timeSeconds": 47.77316608012383,
+          "intensity": 0.08926427042474482
+        },
+        {
+          "timeSeconds": 47.99316608012383,
+          "intensity": 0.1534264392662873
+        },
+        {
+          "timeSeconds": 48.19316608012383,
+          "intensity": 0.22237511337033028
+        },
+        {
+          "timeSeconds": 48.41316608012383,
+          "intensity": 0.3070815272524493
+        },
+        {
+          "timeSeconds": 49.213166080123834,
+          "intensity": 0.645926567205132
+        },
+        {
+          "timeSeconds": 49.533166080123834,
+          "intensity": 0.7721123258160348
+        },
+        {
+          "timeSeconds": 49.69316608012383,
+          "intensity": 0.828515850762042
+        },
+        {
+          "timeSeconds": 49.85316608012383,
+          "intensity": 0.8788980397321853
+        },
+        {
+          "timeSeconds": 50.01316608012383,
+          "intensity": 0.9220875679242964
+        },
+        {
+          "timeSeconds": 50.15316608012383,
+          "intensity": 0.9530573586868267
+        },
+        {
+          "timeSeconds": 50.37316608012383,
+          "intensity": 0.9868987439505936
+        },
+        {
+          "timeSeconds": 50.57316608012383,
+          "intensity": 0.9996977111382725
+        },
+        {
+          "timeSeconds": 52.31616608012383,
+          "intensity": 1.0
+        },
+        {
+          "timeSeconds": 55.275,
+          "intensity": 1.0
+        }
+      ],
+      "tint": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "overlayPositionStart": [
+        0.5,
+        0.5
+      ],
+      "overlayPositionHold": [
+        0.5,
+        0.5
+      ],
+      "overlayPositionEnd": [
+        0.5,
+        0.5
+      ],
+      "overlayScale": [
+        1,
+        1
+      ],
+      "displaySpace": true
+    }
+  },
+  "parts": []
+}

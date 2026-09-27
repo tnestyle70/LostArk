@@ -431,6 +431,9 @@ bool_t Client::CEffectDocumentCodec::Parse_Value(
             !Read_String(*value, "gateId", preview.strGateId, strOutError) ||
             !Read_String(*value, "actorProfileId", preview.strActorProfileId, strOutError) ||
             !Read_String(*value, "targetBossPlacementId", preview.strTargetBossPlacementId, strOutError)) return false;
+        // Older source recoveries called Bingo ENCORE. Keep one runtime gate
+        // identity so the saved Effect and its model/prop preview agree.
+        if (preview.strGateId == "ENCORE") preview.strGateId = "BINGO";
         const auto* animations = value->Find("animations");
         if (!animations || !animations->Is_Array() || animations->Get_Array().empty() || animations->Get_Array().size() > 256u)
         { strOutError = "Effect source model preview needs 1-256 animation windows."; return false; }

@@ -961,7 +961,7 @@ MAP spawn은 exact walkable과 authored Y의 navigation 지면 오차 1m 이내�
 Box Detail의 `Create two rows: 5 left + 5 right`는 빈 목록에 중심·좌우 거리·행 간격·layout yaw로
 10개 MAP 배치를 만든다. 생성 뒤 각 위치와 방향을 조정할 수 있고 child 전체 길이에 맞춰 Summon과
 부모 수명을 늘린다. Publisher는 `SUMMON_PATTERNS` trigger와 `PATTERNSUMMONSPAWN` 행으로 연결한다.
-네 방향 중 본체를 고르는 Parent는 Summon occurrence 하나를 사용한다. 재사용 Summon definition에 `summonKind=CROSS_DIRECTION_CLONES`, 전방/후방/왼쪽/오른쪽 순서의 `directionPatternIds` 네 개와 `cloneEndStageId`를 설정한다. occurrence의 start/duration이 유일한 실행 시계이고 별도 Logic이나 Pattern row는 필요 없다. 기분나빠·십자 화염폭발·3갈래 불뿜기는 서로 다른 패턴 세트를 같은 정책으로 재사용한다. 이름만 있는 기존 Summon은 여전히 동작을 추측하지 않는다. typed Summon과 독립 patternSpawns 또는 같은 Summon을 참조하는 CROSS Logic을 함께 사용하면 거부한다. 이전 저작 데이터의 DURATION `CROSS_DIRECTION_CLONES` 연결도 호환한다. `directionPatternIds`는 전방/후방/왼쪽/오른쪽 순서의 네 animation+Effect leaf Pattern, `cloneEndStageId`는 분신이 끝낼 Stage, `summonOccurrenceId`는 같은 Pattern의 이름 있는 Summon 박스를 참조한다. Summon과 Logic 시작은 같고 Summon 수명은 Logic 전체를 포함하며 독립 patternSpawns를 겹치지 않는다. 네 child의 explicit duration은 기존 fixedTimeline으로 게시되고 Logic 창 안에 끝나야 한다. 서버는 현재 본체 위치·yaw와 cutoff까지의 실제 root motion으로 네 목적지를 계산하고 원래 arena boss spawn XZ에 가장 가까운 방향을 한 번 선택한다. 동률은 배열 순서다.
+네 방향 중 본체를 고르는 Parent는 Summon occurrence 하나를 사용한다. 재사용 Summon definition에 `summonKind=CROSS_DIRECTION_CLONES`, 전방/후방/왼쪽/오른쪽 순서의 `directionPatternIds` 네 개와 `cloneEndStageId`를 설정한다. occurrence의 start/duration이 유일한 실행 시계이고 별도 Logic이나 Pattern row는 필요 없다. 기분나빠·십자 화염폭발·3갈래 불뿜기는 서로 다른 패턴 세트를 같은 정책으로 재사용한다. 이름만 있는 기존 Summon은 여전히 동작을 추측하지 않는다. typed Summon과 독립 patternSpawns 또는 같은 Summon을 참조하는 CROSS Logic을 함께 사용하면 거부한다. 이전 저작 데이터의 DURATION `CROSS_DIRECTION_CLONES` 연결도 호환한다. `directionPatternIds`는 전방/후방/왼쪽/오른쪽 순서의 네 animation+Effect leaf Pattern, `cloneEndStageId`는 분신이 끝낼 Stage, `summonOccurrenceId`는 같은 Pattern의 이름 있는 Summon 박스를 참조한다. Summon과 Logic 시작은 같고 Summon 수명은 Logic 전체를 포함하며 독립 patternSpawns를 겹치지 않는다. 네 child의 explicit duration은 기존 fixedTimeline으로 게시되고 Logic 창 안에 끝나야 한다. optional `realPatternId`를 네 `directionPatternIds` 중 하나로 지정하면 그 방향이 본체다. 생략하면 서버는 현재 본체 위치·yaw와 cutoff까지의 실제 root motion으로 네 목적지를 계산하고 원래 arena boss spawn XZ에 가장 가까운 방향을 한 번 선택한다. 동률은 배열 순서다. Workbench, 로컬 미리보기와 Server가 같은 stable ID 정책을 소비한다.
 
 Parent의 identity/clock/뒤쪽 Logic은 유지한다. 선택한 하나만 같은 실제 boss entity의 child animation/root motion/Effect를 재생하고 나머지 세 개는 기존 dependent Summon으로 생성하여 cutoff에서 종료한다. Parent의 Animation/Pattern/이동 Logic과 창이 겹치면 거절한다. Shared snapshot의 optional presentation pattern/action 및 시작 tick/stage는 이 child를 나타내며 parent gameplay snapshot을 대체하지 않는다. Client와 Server는 동일 protocol로 함께 빌드·재시작한다. 일반 Play는 기존 Preview 배우로 같은 네 방향 구성을 보여 주고, Complete Play는 Server의 확정 결과를 사용한다. 일반 Summon의 explicit patternSpawns도 Play에서 독립 배우를 재생한다.
 
@@ -1061,18 +1061,18 @@ MOTION_END tail까지 WORLD box 구간과 함께 확인한다.
 WORLD cue는 run epoch·member·cue ID와 시작 tick을 함께 전달한다. Client는 전달 지연만큼 시계를 맞추고,
 STOP_OWNER는 취소·실패·restart에 사용하고, 정상 완료의 FINISH_OWNER는 이미 생성한 공과 Effect의
 남은 수명을 보존한다. 두 명령 모두 해당 run/member가 만든 객체에만 적용한다.
-Server/Shared/Client는 같은 protocol 84로 함께 빌드·재시작한다. FEAR snapshot 상태와
+Server/Shared/Client는 같은 protocol114로 함께 빌드·재시작한다. FEAR snapshot 상태와
 빙고·마리오·갈고리 attachment wire, 마리오 원본 공의 `iMarioPoppedBallMask`(u16)·
-`iMarioCurseReleasedMask`(u8)와 카드미로 ENTRY_HIDDEN을 함께 포함한다. 두 기능이 별도 branch에서
-각각 79를 사용했으므로 두 종류의 v79 및 이전73/77/78 실행 파일과 혼용하지 않는다.
+`iMarioCurseReleasedMask`(u8), `iMarioMarkerColor`(u8)와 카드미로 ENTRY_HIDDEN을 함께 포함한다.
+이전 protocol 실행 파일과 혼용하지 않는다.
 마리오 진행 횟수는 Server 방 상태가 소유한다. 시작·초기화는1이며, `ENTER_AREA`의 단일
 `MARIO_ENTER` 결과가 실제 입장 commit에 성공했을 때만1..4단계를 소비한다. UI 이름이나
 Client collider가 횟수를 증가시키지 않는다. `MARIO_ENTER`는 Gate 3 Pattern의 ENTER_AREA box
 (Collider region 필요)의 sole Success이며 completion chain은 선택이다. optional `marioStage` 0..4는
 0=live counter, 1..4=저작 단계(요청 test stage 우선)이고 0이 아닐 때만 문서·projection·
 `PATTERNLOGICOUTCOME` 11번째 field로 실려 기존 행과 bootstrap은 byte 동일하다. chain 없는 입장은
-`startMs+durationMs`와 패턴 완료에서 portal을 닫고 Client hold를 게시하지 않는다. protocol 85는
-그대로지만 bootstrap 행과 문서 key가 바뀌므로 Server/Client를 함께 빌드·재시작한다.
+`startMs+durationMs`와 패턴 완료에서 portal을 닫고 Client hold를 게시하지 않는다. bootstrap
+행과 문서 key를 바꿀 때는 Server/Client를 함께 빌드·재시작한다.
 `PATTERN_COMPLETION_COUNT` duration은 같은
 관문의1..16개 패턴 pool과 완료 개수를 저장하고, Server가 중복 없이 선택한 실제 패턴의
 `PATTERN_COMPLETED`만 센다. Success는 비워 두거나 FOLLOWUP_PATTERN 하나를 연결한다.
@@ -1169,6 +1169,15 @@ Sequence 전용 `TRIGGER / ROOM_PLAYER_ARRIVAL`은 Logic occurrence의 optional
 다른 World와 Release Server는 실행하지 않는다. Pause·scrub은 이동 요청을 만들지 않고,
 같은 재생의 occurrence는 한 번만 보낸다. 거절·5초 응답 부재는 전투 진입을 막는다.
 Sequence의 `Complete Play`와 `Complete Play - Sequences + Pattern Flow`는 같은 Server Raid START를 사용한다.
+
+쿠크 컷신은 복제 플레이어 숨김을 기본으로 하며1관문 입장·카드미로·3관문 입장만
+표시한다. Level의 컷신 억제는 Server/source 가시성과 별도 상태로 합성하고
+몸체·장비·탈것·그림자가 같은 owner 상태를 소비한다. 종료/취소/Level이탈에서
+컷신 억제만 해제한다. Complete Play READY는 동일 source의 전체 presentation
+파싱까지 포함하며 실패하면 기존 clip cache와 실행 상태를 보존한다.
+2관문 클리어·3관문 입장이 결합된 P5는 앞 클리어 camera1~10을 숨기고 뒤 입장
+camera11~18만 표시한다. P5의 camera 공백은 기본 숨김이며 별도 시계를 만들지 않는다.
+
 F1 Complete Play 패널은 전체 Raid phase와 개별 Pattern 상태를 구분한다. 준비 인원은
 START 때 고정한 ParticipantPlayerIds와 Server iReadyMask의 x/N이며 최대4명이 항상
 분모가 되는 것은 아니다. 참가자별 READY 수신 여부, 로컬 리소스 단계·실패 이유·통지
@@ -1215,8 +1224,14 @@ Kouku FEAR Result는 durationMs와 optional sceneProfileId/lightResourceId/effec
 맞춰 재생하고 종료하면 기존 표현을 복원한다. 화면 Effect는 등록된 V1 원본 또는 V2 ScreenPost 경로를 사용한다.
 soundResourceId는 SOUND 리소스만 참조하며 얼굴의 effectDelayMs 시점에 같은 FEAR session에서 한 번 재생한다.
 같은 snapshot과 반복 얼굴이 보이스를 중첩 시작하지 않고 FEAR 종료·사망·연결 정리 시 기존 SoundCue handle을 해제한다.
-GAZE_REAL_BOSS의 Fail에 FEAR를 연결하면 시야 밖 보스에 대한 공포가 되고, ENTER_AREA의 Success에
-연결하면 따라가는 Collider 접촉 공포가 된다. OBJECT_CONTACT는 World Object 접촉에 사용한다.
+GAZE_REAL_BOSS는 플레이어 yaw와 플레이어→실제 보스 방향의 차이를 halfAngleDegrees와
+비교한다. insideOutcome이 SUCCESS면 시야 밖에서 Fail이고, FAIL이면 시야 안에서 Fail이다.
+기본은 DURATION 종료 시점 판정이다. optional gazeDuringWindow=true는 insideOutcome=FAIL과
+Fail 결과만 허용하며, 활성 구간 [start,start+duration)에 바라본 플레이어마다 한 번만 Fail을
+적용한다. 종료 뒤 판정하거나 같은 창에서 공포를 연장하지 않는다. 메두사는 진짜 세이튼 찾기와
+같은 플레이어 정면±45°/30m를 쓰며 얼굴 Effect 구간에 이 옵션과 FEAR 3초를 연결한다.
+ENTER_AREA의 Success에 FEAR를 연결하면 따라가는 Collider 접촉 공포가 된다.
+OBJECT_CONTACT는 World Object 접촉에 사용한다.
 COUNTER_WINDOW는 실제 Server counter hit를 소비하며 Success의 FOLLOWUP_PATTERN과
 endsPatternOnSuccess로 그로기 후속 재생을 연결한다.
 ENTER_AREA의 optional bossChargeDistanceM은 Trigger 시작 시 살아 있는 target의 방향을 한 번 확정해
@@ -2083,7 +2098,7 @@ Logic Box Detail은 연결된 Success/Fail/Timeout Result의 typed 수치를 편
 - Attack template의 optional `riseHeightM`/`pushMs`는 생략·0/0이면 기존 반응이다. 양수 높이(최대100m)는100~5000ms 비행 시간과 짝을 이루며 기존 TIMED/CONTACT 피해에 수평0의 상승·하강을 연결한다. `PATTERNATTACKHIT`는 기존25열과 높이·시간을 덧붙인27열을 모두 받는다.
 - `PURSUIT_PROJECTILES.cardSymbols`는 `visualIds`와 같은 개수의 HEART/SPADE/CLUB/DIAMOND를 순서대로 지정한다. 각 카드와 같은 문양인 플레이어는 그 카드의 접촉 피해에서 제외하며 색상은 비교하지 않는다. 생략하면 기존 접촉 규칙을 유지한다.
 - `BOSS_CURRENT` bone track은 `OBJECT_CONTACT`와 플레이어 `ENTER_AREA`에 허용한다. 두 소비자 모두 정확한 Trigger 시작·수명·양 끝 key와 identity baseline, 고정 회전·크기 검증을 요구한다.
-- GATE1·GATE3는 `pushCanLeaveArena`와 관계없이 지지면 경계를 막아 낙사를 금지한다. GATE2·BINGO는 지지면을 이탈한 뒤 최초 지지 높이보다5m 아래로 내려가면 Server가 사망을 확정한다. 공중 재피격은 기준 높이를 바꾸지 않으며, 부활은 현재 관문의 검증된 시작 위치로 복귀한다.
+- GATE1·GATE3는 `pushCanLeaveArena`와 관계없이 지지면 경계를 막아 낙사를 금지한다. GATE2 카지노 전투 영역은 최초 지지 높이보다1m 아래에서 Server가 낙사를 확정해 낮은 의자 착지를 생존으로 처리하지 않는다. BINGO와 나머지 낙사 허용 영역은 기존5m 깊이를 유지한다. 공중 재피격은 기준 높이를 바꾸지 않으며, 부활은 현재 관문의 검증된 시작 위치로 복귀한다.
 
 카드 비로 생성한 병정은 생성 Pattern 종료와30초 제한으로 제거하지 않는다. 기존 Server
 몬스터 AI가 플레이어 추적·공격을 계속하며 자기 사망·소환자 소멸·방 정리에서 제거한다.
@@ -2200,3 +2215,38 @@ INVULNERABILITY_ZONE의 기존 threshold필드는0이면인원제한없음,1~4�
 정확한판정가능생존플레이어수다. Server가매tick각영역을독립집계하고조건이맞는영역의
 보호대상만합집합으로적용한다. 부족·초과·퇴장시지속buff를남기지않으며별도이난나/빙고
 무적은보존한다. 파1빨2는파랑1명·빨강2명으로저장하며Client는Server pulse만표현한다.
+
+아이언 메이든 등 일반 `isPatternBound`는 행동 입력을 잠그며 피해 대상 자격은 유지한다. 주사위 카드 속박 연출은 게시 Pattern의 optional `diceBindVisual=true`에서만 시작한다. 이 값은 publisher가 enabled `CARD_DICE_BIND`에서 투영하며 아이언 메이든에는 붙이지 않는다. 실제 카드 속박의 해제 효과는 기존 bind deadline과 snapshot 해제를 따른다.
+
+주사위의 판정 가능한 참가자는 1명일 때 자유 1명, 2~4명일 때 자유 1명과 속박 N−1명이다.
+카드는 자유 참가자를 추적하지만 속박된 참가자도 가로막을 수 있다. 같은 문양은 피해가
+없고 카드의 boss owner와 pattern sequence가 같은 속박을 즉시 해제한다. 다른 문양은
+최대 HP 90% 피해를 받는다. 오래된 카드로 다른 보스나 이후 패턴의 속박을 해제하지 않는다.
+
+마지막 참가자가 퇴장하면 Kouku/Valtan 방의 관문 진행·클리어·투표와 레이드 기믹 상태를 초기화한다. 참가자가 남은 방의 진행은 유지한다.
+
+
+### 쿠크 후속 판정·표시 계약
+
+현재 protocol114의 player snapshot은 iMarioMarkerColor(0없음,1빨강,2파랑,3노랑)를
+표시 대상에게 보낸다. Server가 마리오 진입 때 지정 색과 대상을 정하고1인은 진입자,
+2~4인은 바깥 참가자 중 한 명에게 표시한다. 표식 대상이 사망해도 진입자가 살아
+있는 동안 유지한다. 지정 색 공3개를 파괴해야 terminal 이동과 typed0키 복귀가
+허용되며 Mario4의4개 배치도 목표는3개다. 표식은3개 달성만으로 지우지 않고 실제
+복귀 완료·진입자 사망·취소에서 제거한다.1~2인 아이언 메이든0명,3~4인1명이며
+표식과 메이든 대상은 겹칠 수 있다. 기존 pop mask와 Server 이동 승인 경로를 사용한다.
+
+BINGO_BOARD는 WORLD hammer collider head × 저장 Object scale에서 투영한
+hammerHalfExtentsM(진행축·가로축)을 PATTERNBINGOHAMMER 행으로 읽는다.4방향의
+동일 footprint와20 anchor 경로 및 활성 시간[4400,6000)ms를 검증한다. 누락·불일치는
+게시를 거절하며 Server 판정과 Debug/Release F1 망치 Collider 표시가 같은 값을 쓴다.
+
+조커의 BOSS_RANDOM_TARGET DURATION은 BOSS_RANDOM_TARGET_PRESENTATION mechanic
+행으로 게시한다. Server가 표적을 고르고 Client는 저작 구간에만 머리 표식과 지정
+노란 시선 Effect를 추적한다. 구간 중 본체 yaw는 유지하고 정확한 종료 tick에 동일
+표적의 현재 좌표를 조준점으로 확정한다. 이후 원본 망치 궤적·사거리의 공격은 고정 yaw를
+사용하며 표적이 이동해도 다시 추적하지 않는다. 다음 선택과 패턴 종료/중단은 원래 yaw를
+복구한다. 표적 사망·퇴장은 다른 플레이어로 재선정하지 않고 마지막 유효 좌표를 사용한다.
+카드미로 입장에는 사망자 위치도 포함하되 HP0/DEAD/빈 interaction slot을 보존한다.
+카드미로·댄스 모드는 사망 관전자도 HUD를 숨기며 기믹 입력이나 사망 복귀창을
+전역 UI suppression으로 차단하지 않는다.

@@ -9,6 +9,7 @@
 
 #include <cstdint>
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -552,6 +553,21 @@ namespace LostArk::Server
 		float fPatternTargetLastPositionX = 0.f;
 		float fPatternTargetLastPositionY = 0.f;
 		float fPatternTargetLastPositionZ = 0.f;
+		// A presentation target Duration pins its aim only at END. Restore the
+		// preceding body basis before the next selection or pattern termination.
+		std::optional<float> KoukuPresentationAimRestoreYawDegrees;
+		std::uint32_t iKoukuPresentationAimSequence = 0u;
+		[[nodiscard]] bool Has_KoukuPresentationAim() const noexcept
+		{
+			return KoukuPresentationAimRestoreYawDegrees.has_value() &&
+				iKoukuPresentationAimSequence == iPatternSequence;
+		}
+		void Restore_KoukuPresentationAim() noexcept
+		{
+			if (Has_KoukuPresentationAim()) fYawDegrees = *KoukuPresentationAimRestoreYawDegrees;
+			KoukuPresentationAimRestoreYawDegrees.reset();
+			iKoukuPresentationAimSequence = 0u;
+		}
 		float fLastPathGoalX = 0.f;
 		float fLastPathGoalZ = 0.f;
 		std::vector<SERVER_NAV_POINT> MovePath;

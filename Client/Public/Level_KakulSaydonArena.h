@@ -314,7 +314,7 @@ public:
 	// MainApp calls once after the final camera, before Render.World.
 	void Submit_EntranceTriggerMarkers();
     void Set_TargetedCombatPresentationPlayer(CKoukuSaydonPresentationPlayer* player)
-    { m_Replication.Set_TargetedCombatPresentationPlayer(player); }
+    { m_pTargetedCombatPresentationPlayer = player; m_Replication.Set_TargetedCombatPresentationPlayer(player); }
 	void Collect_KoukuPresentationViews(std::vector<KOUKU_BOSS_PRESENTATION_VIEW>& bosses,
 		std::vector<KOUKU_CARD_PRESENTATION_VIEW>& cards) const
 	{ m_Replication.Collect_KoukuPresentationViews(bosses, cards); }
@@ -323,6 +323,8 @@ public:
 	bool_t Sample_CompositionCamera(std::string_view shotId, float seconds, const float3_t& offset, std::string_view ownerKey, uint32_t durationMs, bool_t preview);
 	bool_t Is_CompositionCameraEnabled() const;
 	bool_t Is_CinematicPresentationActive() const;
+	bool_t Should_HideCinematicPlayers() const;
+	void Sync_CinematicPlayerVisibility();
 	bool_t Is_LocalMarioStageActive() const;
 	void Trace_CinematicPresentation(std::string_view renderingProfile);
 	void Stop_CompositionCamera(bool_t force = false);
@@ -358,6 +360,7 @@ public:
 	void Debug_StopWorldObjectPreview();
 	void Debug_DrawWorldObjectColliderPreview() const;
 #endif
+	void Debug_DrawBingoHammerColliders() const;
 	const std::vector<KAKUL_CAMERA_SHOT>& Get_PublishedCameraShots() const { return m_CameraShots; }
 	bool_t Reload_PublishedCameraShots(std::string& outStatus) { return Load_CameraShots(outStatus); }
 	bool_t Ensure_CameraShotAuthoring(std::string& outStatus);
@@ -420,6 +423,7 @@ private:
 	   snapshots only; it never decides that a status is on. */
 	void Update_StatusEffectText(f32_t fTimeDelta);
 	void Update_CardMazePresentation(f32_t fTimeDelta);
+    CKoukuSaydonPresentationPlayer* m_pTargetedCombatPresentationPlayer = nullptr;
 	void Submit_JokerTargetMarker();
 	void Clear_JokerTargetMarker();
 	struct JOKER_TARGET_MARKER final

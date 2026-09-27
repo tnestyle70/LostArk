@@ -1395,6 +1395,9 @@ bool LostArk::Server::CGameRoom::Commit_KoukuMarioPhasePlayers(
 		{ m_strStatus = "Mario formation preserved all players: authored destination is blocked"; return false; }
 		auto copy = player;
 		Cancel_PlayerActionForPatternStatus(copy);
+		// Cancelling movement is not a damage-immunity state. Preserve the
+		// admitted readiness before the captive saves its restore state.
+		copy.isCombatReady = player.isCombatReady;
 		copy.fPositionX = x; copy.fPositionY = ground.y; copy.fPositionZ = z;
 		copy.Clear_PatternBindStatus();
 		staged.emplace_back(id, std::move(copy));
@@ -1424,11 +1427,16 @@ bool LostArk::Server::CGameRoom::Commit_KoukuMarioPhasePlayers(
 }
 
 void LostArk::Server::CGameRoom::Complete_KoukuMarioReturn(
-	const SERVER_PLAYER& player, const std::string& sourcePlacementId, const std::uint32_t updateTick)
+	SERVER_PLAYER& player, const std::string& sourcePlacementId, const std::uint32_t updateTick)
 {
 	using namespace LostArk::Shared;
 	if (m_eWorldId != WORLD_ID::KAKULSAYDON_ARENA || player.TriggerMove.isActive || player.iMarioStage ||
 		!player.iCurrentHp || player.eAction != PLAYER_ACTION_STATE::NONE) return;
+	const bool terminalReturn = std::any_of(MARIO_LANES.begin(), MARIO_LANES.end(), [&](const auto& lane) {
+		return sourcePlacementId == lane.exit && std::none_of(MARIO_LANES.begin(), MARIO_LANES.end(),
+			[&](const auto& next) { return next.stage == lane.stage && std::string_view(next.arrival) == lane.exit; });
+	});
+	if (terminalReturn) player.Clear_MarioBallChallenge();
 	for (auto& member : m_KoukuSaydonPatternAudition.Members)
 	{
 		if (!member.bMarioSoloReturnRequired || member.bMarioReturnCompleted || member.bCompletionChainSuccessQueued ||

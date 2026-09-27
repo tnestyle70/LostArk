@@ -75,7 +75,7 @@ public:
         std::function<bool(std::string&)> beginAuthoring, saveAuthoring, reloadAuthoring;
         std::function<bool(const std::string&, bool, const std::string&, const std::string&, CLASS_MOVIE_AUTHORING_BOX&, std::string&)> editableBox;
         std::function<bool(const CLASS_MOVIE_AUTHORING_BOX&, const DATA_JSON_VALUE&, std::string&)> applyBox;
-        std::function<bool(const std::string&, std::string&)> openEffectEditor;
+        std::function<bool(const std::string&, bool, const std::string&, std::string&)> openEffectEditor;
     };
 
     CSequencerTool(

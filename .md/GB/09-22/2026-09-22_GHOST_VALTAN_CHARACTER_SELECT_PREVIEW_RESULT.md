@@ -121,3 +121,27 @@ native84의29개 Light case가 제거됐고 non84는4개 명령의 discard stub�
 후보 base를 새로 컴파일하기 전에는 Product base로 위 비교를 했고, 새 base를 넣은 뒤 pass16/17 draw를 다시 실행해 같은 수치와 depth 동일성을 확인했다. 서로 다른 O1/Od 최적화 수준의 작은 float 차이를 완전한 RGB byte 일치로 표현하지 않는다. 원본 pass10 회귀도 동일 coverage와 허용한 수치 오차 안이다. 기록은 pixel-comparison.json, bytecode-comparison.json, product-inputs.json, full readback buffer와 각 probe 로그다.
 
 전체 Product 빌드·설치, 다른12개 cohort 재컴파일, Client 실행·종료·UI 조작·사용자 화면 재판정은 하지 않았다. 새 source는 다음 승인된 제품 빌드에서 반영된다. 기존에 사용자가 성공 확인한 실행본을 이 최적화 산출물로 교체하지 않았다. 두 shader와 대응 PLAN/RESULT의 git diff --check 및 evidence JSON parse는 PASS다.
+
+## G06. 09-26 최후 컷신의 누락된 opaque ghost consumer 연결
+
+현재 `VALTAN_GHOST_RESPAWN_AUDITION`은 phase3과 `mesh_respawn_1`을 선택해 CBody_Valtan의 NONLIGHT/native84/pass16을 사용한다. 이미 같은 표시로 고친 generic CPart_Body와 달리, 최후 원본 컷신의 CWorldSequenceObject는 native84만 여전히 BLEND/pass10이었다. `world.sequence.instance.valtan.source-preview.finale`의 actor는 `world.object.valtan.source-preview.ghost`이며 `Admit_PresentationBossModel`이 동일 `BOSS_VALTAN_GHOST` prototype·WModel·AnimSet·재질을 재사용한다. 모델을 새로 추출하거나 색을 올려야 하는 차이가 아니라 실제 렌더 consumer에 앞선 opaque 변경이 빠진 차이다.
+
+WorldSequenceObject.h/cpp에만 표시 경로를 연결했다. native84의 resolver를16으로 맞추고 초기화에서 opaque ghost를 구분해 기존 NONLIGHT에 등록한다. 나머지 translucent mesh는 기존 BLEND를 유지하며 두 그룹이 같은 forward material/light/bone 바인딩 함수에서 자기 mesh만 제출한다. default GBuffer에는 계속 forward mesh를 제출하지 않는다. NONLIGHT 성공이 BLEND 실패 진단을 덮지 않도록 상태를 분리했다. source shader·DDS·색/opacity·조명·WorldSequence 문서·전투 부활·일반 preview의 값은 변경하지 않았다.
+
+`CRenderer::Render_NonLight`의 실제 `Render_Group(NONLIGHT)` 호출과 SceneHDR에서 BLEND 전 실행되는 순서, CBody_Valtan의 pass16 및 shader의 alpha1/blend0/depth-write 계약을 대조했다. WorldSequenceObject는 원래 SHADOW 그룹을 등록하지 않으므로 이 수정에서 새 shadow owner를 만들지 않았다. native88은10, native18과 장비 translucent는9, static movie의 기존 selector는 유지한다. sampled world/visibility/animation/장비·소켓·반사 transform 및 clone pool 수명은 기존 경로를 사용한다.
+
+변경 CPP/H의 UTF-8 no BOM/CRLF, 기존 vcxproj/filter 등록, 변경 범위 `git diff --check`를 확인했다. 별도 shader 재컴파일 입력이나 JSON/XML 수정은 없다. 제품 컴파일·설치는 통합 작업에서 수행하며 그 결과를 별도로 기록한다. Client/UI 실행·조작·캡처·최종 사용자 화면 판정은 수행하지 않았다. 부활과 최후 컷신의 화면을 같다고 승인한 것은 아니며, 최후 컷신의 유령 몸체가 부활과 같은 실제 shader pass를 사용하도록 연결한 상태다.
+### G06 실제 WorldSequenceObject 제출 검증
+
+부모 통합의 Debug Product 증분 build가 성공했다(`out/BuildPipeline/runs/20260926T001506546Z-debug-product.json`, exit0). 첫 실행은 다른 동시 작업의 `WorldObjectTool::Get_Status` 선언 불일치로 실패했으나 해당 소유 세션의 선언 반영 뒤 같은 Product 증분 재실행이 통과했다. 유령 source 변경과 무관한 파일을 이 작업에서 교정하지 않았다.
+
+기존 ClassMovieMaterialFix out-only probe를 재사용해 현재 CWorldSequenceObject.cpp와 좁은 의존 TU를 별도로 컴파일하고, 방금 완료된 Client OBJ를 out-only archive로 묶었다. 현재 배포 Engine DLL과 animated base/전체 cohort CSO 복사본, 실제 BossCatalog, 설치된 ghost WModel·3 native84 재질과 cinematic donor를 사용했다. `valtan.cinematic.finale`을 실제 모델에서 resolve해 sampled world를 전달한 뒤 실제 `CWorldSequenceObject::Late_Update`와 `Render_Group`을 실행했다.
+
+- Late_Update: NONLIGHT 객체1개, BLEND 객체0개.
+- NONBLEND/GBuffer: draw0. NONLIGHT: material/light/bone/shader/mesh 모두 성공, render status 비어 있음.
+- 기존 `CVIBuffer::Render`의 실제 Profiler counter: DrawIndexed3회, ghost3mesh.
+- D3D11 WARP pipeline: IA primitives14,472, VS invocations43,063, PS invocations2,968.
+- 실제 GPU state: blend OFF, depth test/write ON. 이후 BLEND 호출은 추가 draw0.
+- Hide 이후 NONLIGHT 호출도 추가 draw0. windows0, failures0, process exit0.
+
+이 fixture는 synthetic 방향광과 검사 카메라를 쓴 body consumer 검증이다. 장비 draw, 실제 장면 전체 가림/색감, RGB readback, 스크린샷, Client/UI 실행 또는 사용자 최종 화면 판정을 포함하지 않는다. 기존처럼 direct shader만 호출한 결과가 아니라 누락되었던 실제 WorldSequenceObject의 등록→group dispatch→model draw를 확인했다. 로그·compile/link·source/product 입력 hash는 `out/GhostWorldSequence20260926/{compile.log,archive.log,link.log,run.log,result.json}`이다. 오래된 이전 archive의 signature로 생긴 초기 probe 링크 실패는 현재 Product OBJ archive로 해결했고 제품 source에 ABI 우회를 추가하지 않았다.

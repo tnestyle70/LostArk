@@ -74,10 +74,17 @@ namespace Client
 	   bound map placement lets a roulette Logic copy its centre. */
 	struct KOUKU_WORLD_ANIMATION_INFO final
 	{
-		std::string strClipName, strSlotId;
+		std::string strClipName, strSlotId, strDisplayName;
+		std::uint32_t iLocalStartMs = 0u;
+		double fInstanceSpeed = 1., fTrackPlaybackRate = 1.;
 		double fStartMs = 0., fEndMs = 0., fPlaybackRate = 1.;
 		std::uint32_t iSourceStartMs = 0u, iSourceEndMs = 0u;
 		bool bLoop = false, bHoldLastFrame = false;
+	};
+	struct KOUKU_WORLD_ANIMATION_EDIT final
+	{
+		std::string instanceId, slotId, clipName;
+		std::uint32_t expectedStartMs = 0u, startMs = 0u, sourceInMs = 0u, sourceOutMs = 0u;
 	};
 	struct KOUKU_WORLD_SEQUENCE_RESOURCE final
 	{
@@ -189,6 +196,10 @@ namespace Client
 			return !m_bSequenceWorkspace && requested;
 		}
 		bool_t Consume_PresentationPreviewRequest(KOUKU_PRESENTATION_PREVIEW_REQUEST& outRequest);
+		void Set_WorldAnimationCallbacks(
+			std::function<bool_t(const KOUKU_WORLD_ANIMATION_EDIT&, std::string&)> edit,
+			std::function<bool_t(std::string&)> save)
+		{ m_EditWorldAnimation = std::move(edit); m_SaveWorldAnimation = std::move(save); }
 		bool_t Consume_WorldObjectEditRequest(KOUKU_WORLD_OBJECT_EDIT_REQUEST& outRequest);
 		void Notify_WorldObjectEditResult(std::string status) { m_strStatus = std::move(status); }
 		/* MainApp supplies admitted camera/audio rows from the existing readers;
@@ -263,7 +274,9 @@ namespace Client
 		[[nodiscard]] bool_t Has_Composition() const noexcept {
 			return m_bHasDraft;
 		}
-		[[nodiscard]] bool_t Is_Dirty() const noexcept { return m_bDirty || !m_StagedPresentationGeometry.empty(); }
+		[[nodiscard]] bool_t Is_CompositionDirty() const noexcept { return m_bDirty || !m_StagedPresentationGeometry.empty(); }
+		[[nodiscard]] bool_t Is_Dirty() const noexcept { return Is_CompositionDirty() || m_WorldAnimationEditsPending; }
+		void Notify_WorldAnimationSaved() noexcept { m_WorldAnimationEditsPending = false; }
 		[[nodiscard]] std::uint64_t Get_DraftGeneration() const noexcept { return m_iDraftGeneration; }
 		[[nodiscard]] const KOUKU_SAYDON_COMPOSITION_DOCUMENT&
 			Get_Composition() const noexcept { return m_Draft; }
@@ -1028,6 +1041,11 @@ namespace Client
 		std::string m_strPresentationGeometryPreviewPatternId;
 		std::string m_strPresentationGeometryPreviewOccurrenceId;
 		KOUKU_WORLD_OBJECT_EDIT_REQUEST m_PendingWorldObjectEditRequest;
+		std::function<bool_t(const KOUKU_WORLD_ANIMATION_EDIT&, std::string&)> m_EditWorldAnimation;
+		std::function<bool_t(std::string&)> m_SaveWorldAnimation;
+		bool m_WorldAnimationEditsPending = false;
+		std::string m_SelectedWorldAnimationId;
+		int m_WorldAnimationDragMode = -1;
 		KOUKU_PRESENTATION_PREVIEW_REQUEST m_PendingPresentationPreviewRequest;
 		bool_t m_bPresentationPreviewRequestPending = false;
 		bool_t m_bPresentationResourceRefreshRequested = true;

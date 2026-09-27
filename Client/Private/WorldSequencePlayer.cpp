@@ -485,6 +485,13 @@ CWorldSequencePlayer::Find_AnimationTrackAt(
 			outWindowEndMs = static_cast<f32_t>(sequence.durationMs);
 			continue;
 		}
+		if (nullptr == found)
+		{
+			// Before a delayed first clip, deterministically hold its source-in pose.
+			// The shared tick sampler clamps negative elapsed time to zero.
+			found = &track;
+			continue;
+		}
 		if (nullptr != found)
 		{
 			outWindowEndMs = startMs;

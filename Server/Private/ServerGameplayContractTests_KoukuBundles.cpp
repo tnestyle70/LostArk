@@ -124,6 +124,12 @@ void LostArk::Server::CServerGameplayContractRunner::Run_KoukuBundles(TESTS& tes
 				bytes += "PATTERNSTAGEACTION\t" + encounter + "\t" + retargetId + "\t" + actionId + "\t0\tENTER\tRETARGET_RANDOM_ALIVE\tboss.target.pattern\t1\t0\n";
 		}
 		const std::string randomTriggerId = "KAKULSAYDON_G1_RANDOM_TARGET_TRIGGER_CONTRACT";
+        const std::string randomPresentationId = randomTriggerId + "_PRESENTATION";
+        appendPattern(randomPresentationId, "BOSS_KAKULSAYDON_G2_BIG_SAYDON", "boss.kakulsaydon.g2.big-saydon", 1000u);
+        for (unsigned index = 0u; index < 3u; ++index)
+            bytes += "PATTERNMECHANICTRIGGER\t" + encounter + "\t" + randomPresentationId + "\trandom.presentation." +
+                std::to_string(index) + "\tBOSS_RANDOM_TARGET_PRESENTATION\t" + std::to_string(index * 200u) +
+                "\t150\t0\t0\t0\t0\t-\t0\t0\t0\t1\t0\t0\t0\t0\t0\t0\t0\t0\t0\n";
 		appendPattern(randomTriggerId, "BOSS_KAKULSAYDON_G2_BIG_SAYDON", "boss.kakulsaydon.g2.big-saydon", 1000u);
 		for (unsigned index = 0u; index < 3u; ++index)
 			bytes += "PATTERNMECHANICTRIGGER\t" + encounter + "\t" + randomTriggerId + "\trandom.target." +
@@ -266,6 +272,33 @@ void LostArk::Server::CServerGameplayContractRunner::Run_KoukuBundles(TESTS& tes
 				rotated.fPositionZ = 0.f;
 				tests.Require(CKoukuSaydonBrain::Select_CrossDirection(rotated, *crossParent, trigger, *generation, selected, durations, status) && selected == 0u,
 					"Cross direction center tie retains authored direction order");
+                auto fixed = trigger; fixed.strRealPatternId = crossIds[2];
+                for (float x : {-10.f, 0.f, 10.f})
+                {
+                    rotated.fPositionX = x;
+                    tests.Require(CKoukuSaydonBrain::Select_CrossDirection(rotated, *crossParent, fixed, *generation, selected, durations, status) && selected == 2u,
+                        "Authored real Pattern keeps the left body independent of the boss position and center tie");
+                }
+                fixed.strRealPatternId = "not.a.direction"; selected = 77u;
+                tests.Require(!CKoukuSaydonBrain::Select_CrossDirection(rotated, *crossParent, fixed, *generation, selected, durations, status) && selected == 77u,
+                    "An invalid fixed real Pattern fails without committing a selection");
+                for (const auto& real : {crossIds[2], std::string("not.a.direction")})
+                {
+                    auto fixedBytes = bytes;
+                    const std::string end = crossIds[3] + "\tSTAGE_1\n";
+                    fixedBytes.replace(fixedBytes.find(end), end.size(), crossIds[3] + "\tSTAGE_1\t" + real + "\n");
+                    { std::ofstream output(path, std::ios::binary | std::ios::trunc); output.write(fixedBytes.data(), static_cast<std::streamsize>(fixedBytes.size())); }
+                    GameplayDataRevision fixedRevision; CGameplayCatalog fixedCatalog;
+                    const bool admitted = CServerApp::Hash_GameplayFileForAdmission(path, fixedRevision, status) && fixedCatalog.Load_FromBootstrap(fs::canonical(path), fixedRevision, fixedRevision);
+                    tests.Require(admitted == (real == crossIds[2]), "Bootstrap admits only fixed real Patterns named among the four candidates");
+                    if (admitted)
+                    {
+                        const auto* fixedParent = CKoukuSaydonBrain::Find_AnimationOnlyPattern(fixedCatalog, crossParentId, status);
+                        tests.Require(fixedParent && fixedParent->MechanicTriggers.front().strRealPatternId == real,
+                            "Bootstrap preserves the authored real Pattern through catalog admission");
+                    }
+                }
+                { std::ofstream output(path, std::ios::binary | std::ios::trunc); output.write(bytes.data(), static_cast<std::streamsize>(bytes.size())); }
 				auto invalid = trigger; invalid.strCloneEndStageId = "STAGE_2"; selected = 77u;
 				tests.Require(!CKoukuSaydonBrain::Select_CrossDirection(rotated, *crossParent, invalid, *generation, selected, durations, status) && selected == 77u,
 					"Cross direction rejects terminal clone cutoff without changing selection");
@@ -701,10 +734,11 @@ void LostArk::Server::CServerGameplayContractRunner::Run_KoukuBundles(TESTS& tes
 				tests.Require(failedMotion->Evaluate_KoukuSaydonPatternAudition(921u, motionRequest, motionResult) == KOUKUSAYDON_PATTERN_AUDITION_RESULT::REJECTED_UNSUPPORTED_PATTERN &&
 					getBoss(*failedMotion, false)->fPositionX == oldX && failedMotion->m_KoukuSaydonPatternAudition.Members.empty(), "Off-navigation Boss Motion fails before moving or reserving the actor");
 			}
+			for (const bool presentationOnly : {false, true})
 			{
 				auto randomRoom = makeRoom(); auto randomRequest = requestFor(*randomRoom, 0u);
 				randomRequest.eOperation = KOUKUSAYDON_PATTERN_AUDITION_OPERATION::PLAY_SELECTED;
-				randomRequest.strBundleId.clear(); randomRequest.strPatternId = randomTriggerId;
+				randomRequest.strBundleId.clear(); randomRequest.strPatternId = presentationOnly ? randomPresentationId : randomTriggerId;
 				randomRequest.Scope.strBossPlacementId = "boss.kakulsaydon.g2.big-saydon";
 				randomRequest.Scope.strBossArchetypeId = "BOSS_KAKULSAYDON_G2_BIG_SAYDON";
 				auto* boss = getBoss(*randomRoom, true);
@@ -722,19 +756,55 @@ void LostArk::Server::CServerGameplayContractRunner::Run_KoukuBundles(TESTS& tes
 					KOUKUSAYDON_PATTERN_AUDITION_RESULT::QUEUED;
 				std::vector<std::uint32_t> changeTicks;
 				NET_ENTITY_ID previous = INVALID_NET_ENTITY_ID;
-				bool aliveTargets = true, capturedPose = true;
+				bool aliveTargets = true, capturedPose = true, durationYawPreserved = true;
+                bool endPosePinned = true, fixedAimHeld = true;
+                float initialYaw = 0.f, pinnedYaw = 0.f, pinnedX = 0.f, pinnedY = 0.f, pinnedZ = 0.f;
 				for (unsigned step = 0u; step < 29u; ++step)
 				{
+                    if (presentationOnly && (step == 4u || step == 8u || step == 18u))
+                        for (auto& [id, player] : randomRoom->m_Players) { player.fPositionX += 2.f; player.fPositionZ += 5.f; }
 					tick(*randomRoom);
+                    if (!step) initialYaw = boss->fYawDegrees;
 					if (boss->iPatternTargetEntityId != previous)
 					{ changeTicks.push_back(randomRoom->m_iServerTick); previous = boss->iPatternTargetEntityId; }
 					aliveTargets = aliveTargets && (previous == 970u || previous == 971u);
 					const auto target = randomRoom->m_Players.find(previous);
+                    if (presentationOnly)
+                    {
+                        const bool inDuration = step < 5u || (step >= 6u && step < 11u) || (step >= 12u && step < 17u);
+                        if (inDuration) durationYawPreserved &= std::abs(boss->fYawDegrees - initialYaw) < .0001f;
+                        if (step == 5u || step == 11u || step == 17u)
+                        {
+                            endPosePinned &= target != randomRoom->m_Players.end();
+                            if (target != randomRoom->m_Players.end())
+                            {
+                                pinnedX = target->second.fPositionX; pinnedY = target->second.fPositionY; pinnedZ = target->second.fPositionZ;
+                                pinnedYaw = std::atan2(pinnedX - boss->fPositionX, pinnedZ - boss->fPositionZ) * 57.29577951308232f - 90.f;
+                                endPosePinned &= std::abs(boss->fPatternTargetLastPositionX - pinnedX) < .0001f &&
+                                    std::abs(boss->fPatternTargetLastPositionY - pinnedY) < .0001f &&
+                                    std::abs(boss->fPatternTargetLastPositionZ - pinnedZ) < .0001f &&
+                                    std::abs(boss->fYawDegrees - pinnedYaw) < .0001f;
+                            }
+                        }
+                        if (!inDuration) fixedAimHeld &= std::abs(boss->fYawDegrees - pinnedYaw) < .0001f &&
+                            std::abs(boss->fPatternTargetLastPositionX - pinnedX) < .0001f &&
+                            std::abs(boss->fPatternTargetLastPositionY - pinnedY) < .0001f &&
+                            std::abs(boss->fPatternTargetLastPositionZ - pinnedZ) < .0001f;
+                    }
 					capturedPose = capturedPose && target != randomRoom->m_Players.end() && boss->bHasPatternTargetLastPosition &&
-						boss->iTargetEntityId == previous && boss->fPatternTargetLastPositionX == target->second.fPositionX;
+						boss->iTargetEntityId == previous && (presentationOnly || boss->fPatternTargetLastPositionX == target->second.fPositionX);
 				}
 				tests.Require(admitted && aliveTargets && capturedPose && changeTicks == std::vector<std::uint32_t>{1u, 7u, 13u},
 					"Three random target Triggers select at start and twice later, hold between ticks, and exclude dead/falling/previous targets");
+                if (presentationOnly)
+                {
+                    tests.Require(durationYawPreserved, "Random target Duration keeps original body yaw while the eye follows its selected player");
+                    tests.Require(endPosePinned, "Random target Duration captures the current player position and fixes boss aim on each authored END tick");
+                    tests.Require(fixedAimHeld, "Random target hammer aim keeps the pinned END position after the selected player moves");
+                    for (unsigned step = 29u; step < 32u; ++step) tick(*randomRoom);
+                    tests.Require(boss->strPatternId.empty() && std::abs(boss->fYawDegrees - initialYaw) < .0001f,
+                        "Random target Duration completion restores original body yaw before the next pattern");
+                }
 				for (auto& [id, player] : randomRoom->m_Players) if (id != previous) player.iCurrentHp = 0u;
 				const auto* sole = randomRoom->Select_BossRandomAliveTarget(*boss, "solo", "boss.target.random.next", 30u);
 				tests.Require(sole && sole->iNetEntityId == previous,
@@ -742,7 +812,7 @@ void LostArk::Server::CServerGameplayContractRunner::Run_KoukuBundles(TESTS& tes
 				for (auto& [id, player] : randomRoom->m_Players) player.iCurrentHp = 0u;
 				tests.Require(!randomRoom->Select_BossRandomAliveTarget(*boss, "empty", "boss.target.random.next", 31u),
 					"A random target Trigger cannot select a dead room member");
-				const auto* definition = CKoukuSaydonBrain::Find_AnimationOnlyPattern(*generation, randomTriggerId, status);
+				const auto* definition = CKoukuSaydonBrain::Find_AnimationOnlyPattern(*generation, presentationOnly ? randomPresentationId : randomTriggerId, status);
 				if (definition)
 				{
 					auto invalid = *definition; invalid.MechanicTriggers.front().fFollowSpeedScale = 1.f;

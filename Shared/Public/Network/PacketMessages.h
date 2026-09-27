@@ -1694,8 +1694,10 @@ namespace LostArk::Shared
 		/* Source balls of that layout the Server has popped, bit = the layout's
 		binding slot (9 on stages 1-3, 12 on stage 4). Zero outside Mario. */
 		std::uint16_t iMarioPoppedBallMask = 0u;
-		// Bit 0 red, 1 blue, 2 yellow: every ball of that colour is popped.
+		// Bit 0 red, 1 blue, 2 yellow: three balls of the assigned colour are popped.
 		std::uint8_t iMarioCurseReleasedMask = 0u;
+		// Marker over this player: 0 none, 1 red, 2 blue, 3 yellow. May be outside Mario.
+		std::uint8_t iMarioMarkerColor = 0u;
 		/* Card maze truth. NONE carries suit NONE and zero counts; a HUNTER
 		carries the suit it was dealt and kills <= the kill target. */
 		CARD_MAZE_ROLE eCardMazeRole = CARD_MAZE_ROLE::NONE;

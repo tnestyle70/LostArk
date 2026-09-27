@@ -259,7 +259,7 @@ class ObjectColliderTests(unittest.TestCase):
         load = lambda asset, clips: model
         def position(age):
             return subject.sample_bone(sequence, resource, "object", age, "b_tip", load)[12]
-        for age, expected in ((100, 20), (200, 40), (300, 20), (999, 39.8), (1000, 60)):
+        for age, expected in ((0, 20), (99, 20), (100, 20), (200, 40), (300, 20), (999, 39.8), (1000, 60)):
             with self.subTest(age=age): self.assertAlmostEqual(expected, position(age))
         track["loop"] = False
         self.assertAlmostEqual(60, position(900))

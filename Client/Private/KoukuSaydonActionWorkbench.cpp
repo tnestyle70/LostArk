@@ -1757,7 +1757,7 @@ Client::CKoukuSaydonActionWorkbench::~CKoukuSaydonActionWorkbench()
 bool_t Client::CKoukuSaydonActionWorkbench::Reload(std::string& outStatus)
 {
 	m_bLoadAttempted = true;
-	if (Is_Dirty())
+	if (Is_CompositionDirty())
 	{
 		outStatus = "KoukuSaydon composition Reload requires an explicit draft discard.";
 		m_strStatus = outStatus;
@@ -1816,7 +1816,14 @@ bool_t Client::CKoukuSaydonActionWorkbench::Save(std::string& outStatus)
 		outStatus = m_strStatus = !m_bHasDraft ? "No composition is loaded." : "Publish is reading the saved source. Keep editing the draft; Save is available after publish finishes.";
 		return false;
 	}
-	if (Is_Dirty())
+	const auto saveWorldAnimations = [&]() {
+		if (!m_WorldAnimationEditsPending) return true;
+		if (!m_SaveWorldAnimation || !m_SaveWorldAnimation(outStatus))
+		{ m_strStatus = outStatus.empty() ? "World animation Save is unavailable. Edits are preserved." : outStatus; return false; }
+		m_WorldAnimationEditsPending = false;
+		return true;
+	};
+	if (Is_CompositionDirty())
 	{
 		auto candidate = m_Draft;
 		for (const auto& edit : m_StagedPresentationGeometry)
@@ -1856,11 +1863,13 @@ bool_t Client::CKoukuSaydonActionWorkbench::Save(std::string& outStatus)
 		Synchronize_EditorFields();
 		if (Has_StaleLocalPreviewSnapshot())
 		{
+			if (!saveWorldAnimations()) return false;
 			Stop_StaleLocalPreview("Saved changes. The previous preview was reset; Play uses the saved timeline from this cursor.");
 			outStatus = m_strStatus;
 			return true;
 		}
 	}
+	if (!saveWorldAnimations()) return false;
 	outStatus = m_strStatus = m_bSequenceWorkspace ?
 		"Saved all Sequence changes to the independent Sequencer workspace." :
 		"Saved all Composition changes. Use Publish All Patterns to synchronize the F1 tree.";
@@ -8696,12 +8705,23 @@ void Client::CKoukuSaydonActionWorkbench::Render_Timeline()
 			lanes[animationLane].intervals.push_back({ box.strOccurrenceId, stageBaseMs + box.iStartOffsetMs, box.iPlayMs });
 		stageBaseMs += stage.iDurationMs;
 	}
-	// World actors already own these clips. Display their saved windows on the
-	// Animation lane without adding another boss or another playback owner.
+	// Each occurrence/slot owns its display rows even when another actor fits
+	// inside a gap. Visual neighbors must not imply cross-actor clip ownership.
+	struct WORLD_CLIP_LANE
+	{
+		std::string occurrenceId, slotId, label;
+		std::vector<TIMELINE_DISPLAY_INTERVAL> intervals;
+		std::size_t firstRow = 0u;
+	};
+	std::vector<WORLD_CLIP_LANE> worldClipLanes;
+	const bool hasBossAnimations = !lanes[animationLane].intervals.empty();
 	struct WORLD_CLIP_ROW
 	{
-		std::string id, occurrenceId, label;
+		std::string id, occurrenceId, label, actorLabel;
 		std::uint32_t startMs = 0u, durationMs = 0u;
+		KOUKU_WORLD_ANIMATION_EDIT edit;
+		double localSpeed = 1., nativeSpeed = 1., trackRate = 1.;
+		bool editable = false;
 	};
 	std::vector<WORLD_CLIP_ROW> worldClipRows;
 	for (const auto& box : pattern->WorldOccurrences)
@@ -8720,9 +8740,26 @@ void Client::CKoukuSaydonActionWorkbench::Render_Timeline()
 			if (end <= start) continue;
 			WORLD_CLIP_ROW row;
 			row.id = box.strOccurrenceId + ".clip-info." + std::to_string(index);
-			row.occurrenceId = box.strOccurrenceId; row.label = "World: " + clip.strClipName;
+			row.occurrenceId = box.strOccurrenceId;
+			row.label = clip.strDisplayName.empty() ? clip.strClipName : clip.strDisplayName;
+			row.actorLabel = !source->strObjectDisplayName.empty() ? source->strObjectDisplayName :
+				(!world->strDisplayName.empty() ? world->strDisplayName : source->strDisplayName);
+			row.edit = {source->strInstanceId, clip.strSlotId, clip.strClipName,
+				clip.iLocalStartMs, clip.iLocalStartMs, clip.iSourceStartMs, clip.iSourceEndMs};
+			row.localSpeed = clip.fInstanceSpeed * box.fPlaybackSpeed;
+			row.nativeSpeed = clip.fPlaybackRate * box.fPlaybackSpeed;
+			row.trackRate = clip.fTrackPlaybackRate;
+			row.editable = !clip.bLoop && clip.iSourceEndMs > clip.iSourceStartMs &&
+				row.localSpeed > 0. && row.nativeSpeed > 0. && bool(m_EditWorldAnimation);
 			row.startMs = box.iStartMs + start; row.durationMs = end - start;
-			lanes[animationLane].intervals.push_back({row.id, row.startMs, row.durationMs});
+			auto actorLane = std::find_if(worldClipLanes.begin(), worldClipLanes.end(),
+				[&](const auto& lane) { return lane.occurrenceId == box.strOccurrenceId && lane.slotId == clip.strSlotId; });
+			if (actorLane == worldClipLanes.end())
+			{
+				worldClipLanes.push_back({box.strOccurrenceId, clip.strSlotId, row.actorLabel});
+				actorLane = std::prev(worldClipLanes.end());
+			}
+			actorLane->intervals.push_back({row.id, row.startMs, row.durationMs});
 			worldClipRows.push_back(std::move(row));
 		}
 	}
@@ -8754,6 +8791,18 @@ void Client::CKoukuSaydonActionWorkbench::Render_Timeline()
 	{
 		if (!hasPatternLane && &lane == &lanes[patternLane]) { lane.firstRow = nextRow; lane.rowCount = 0u; continue; }
 		lane.layout = Allocate_TimelineDisplayRows(std::move(lane.intervals), minimumBoxMs);
+		if (&lane == &lanes[animationLane] && !worldClipLanes.empty())
+		{
+			if (!hasBossAnimations) lane.layout.rowCount = 0u;
+			for (auto& actorLane : worldClipLanes)
+			{
+				actorLane.firstRow = lane.layout.rowCount;
+				const auto actorLayout = Allocate_TimelineDisplayRows(std::move(actorLane.intervals), minimumBoxMs);
+				for (const auto& [id, row] : actorLayout.occurrenceRows)
+					lane.layout.occurrenceRows.emplace(id, actorLane.firstRow + row);
+				lane.layout.rowCount += actorLayout.rowCount;
+			}
+		}
 		lane.rowCount = lane.layout.rowCount;
 		lane.firstRow = nextRow;
 		nextRow += lane.rowCount;
@@ -8855,8 +8904,24 @@ void Client::CKoukuSaydonActionWorkbench::Render_Timeline()
 			(patternPreview || serverPlayback) ? IM_COL32(255, 220, 72, 230) : IM_COL32(200, 200, 200, 140), 1.5f);
 	}
 	draw->AddText(ImVec2(origin.x + 4.f, origin.y + rulerHeight + 4.f), IM_COL32_WHITE, "Stages");
-	draw->AddText(ImVec2(origin.x + 4.f, laneY(animationLane) + 4.f),
-		IM_COL32(240, 188, 98, 255), "Animation");
+	if (hasBossAnimations || worldClipLanes.empty())
+		draw->AddText(ImVec2(origin.x + 4.f, laneY(animationLane) + 4.f),
+			IM_COL32(240, 188, 98, 255), "Animation");
+	for (const auto& actorLane : worldClipLanes)
+	{
+		const float y = laneY(animationLane) + TIMELINE_LANE_HEIGHT * static_cast<float>(actorLane.firstRow);
+		std::string label = actorLane.label;
+		if (const auto separator = label.rfind(" / "); separator != std::string::npos)
+			label.erase(0u, separator + 3u);
+		label = "Anim: " + label;
+		if (actorLane.slotId != "actor") label += " / " + actorLane.slotId;
+		draw->PushClipRect(ImVec2(origin.x, y), ImVec2(origin.x + labelWidth - 4.f, y + TIMELINE_LANE_HEIGHT), true);
+		draw->AddText(ImVec2(origin.x + 4.f, y + 4.f), IM_COL32(240, 188, 98, 255), label.c_str());
+		draw->PopClipRect();
+		if (ImGui::IsMouseHoveringRect(ImVec2(origin.x, y), ImVec2(origin.x + labelWidth, y + TIMELINE_LANE_HEIGHT)))
+			ImGui::SetTooltip("Animation: %s\nWorld occurrence: %s\nSlot: %s\nClips keep this actor's own timing.",
+				actorLane.label.c_str(), actorLane.occurrenceId.c_str(), actorLane.slotId.c_str());
+	}
 	draw->AddText(ImVec2(origin.x + 4.f, laneY(logicLane) + 4.f),
 		IM_COL32(236, 170, 110, 255), "Logic");
 
@@ -9226,20 +9291,72 @@ void Client::CKoukuSaydonActionWorkbench::Render_Timeline()
 	for (const auto& row : worldClipRows)
 	{
 		const ImVec2 top(origin.x + labelWidth + row.startMs * scale, boxY(animationLane, row.id));
-		const ImVec2 bottom(top.x + (std::max)(8.f, row.durationMs * scale), top.y + 22.f);
+		const float width = (std::max)(8.f, row.durationMs * scale);
 		ImGui::PushID(row.id.c_str());
 		ImGui::SetCursorScreenPos(top);
-		ImGui::InvisibleButton("##WorldClipInfo", ImVec2(bottom.x - top.x, 22.f));
-		if (canInteract && !m_bTimelineMarqueeActive && ImGui::IsItemClicked())
-			Select_TimelineBox({}, row.occurrenceId, false);
-		if (canInteract && !m_bTimelineMarqueeActive && ImGui::IsItemHovered() &&
-			ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
-			Queue_WorldObjectEdit(patternId, row.occurrenceId, {}, true);
+		ImGui::InvisibleButton("##WorldAnimationClip", ImVec2(width, 22.f));
+		if (canInteract && !m_bTimelineMarqueeActive && ImGui::IsItemActivated())
+		{
+			m_TimelineSelectedStageIds.clear(); m_TimelineSelectedOccurrenceIds.clear();
+			m_SelectedWorldAnimationId = row.id;
+			const auto gesture = CompositionTimeline::HitBoxGesture(ImGui::GetIO().MousePos.x,
+				top.x, top.x + width, 6.f, true, true);
+			m_WorldAnimationDragMode = !row.editable ? -1 :
+				(gesture == CompositionTimeline::BoxGesture::TRIM_START ? 1 :
+				 gesture == CompositionTimeline::BoxGesture::TRIM_END ? 2 : 0);
+		}
+		float shownX = top.x, shownWidth = width;
+		if (canInteract && row.editable && !m_bTimelineMarqueeActive &&
+			m_WorldAnimationDragMode >= 0 && m_SelectedWorldAnimationId == row.id &&
+			(ImGui::IsItemActive() || ImGui::IsItemDeactivated()))
+		{
+			auto changed = row.edit;
+			const double deltaMs = ImGui::GetMouseDragDelta().x / scale;
+			if (m_WorldAnimationDragMode == 1)
+			{
+				const int64_t minimum = -(std::min)(int64_t(changed.startMs),
+					static_cast<int64_t>(std::floor(changed.sourceInMs / row.trackRate)));
+				const int64_t maximum = static_cast<int64_t>(std::floor((changed.sourceOutMs - changed.sourceInMs - 1u) / row.trackRate));
+				const int64_t delta = std::clamp(static_cast<int64_t>(std::llround(deltaMs * row.localSpeed)), minimum, maximum);
+				changed.startMs = static_cast<uint32_t>(int64_t(changed.startMs) + delta);
+				changed.sourceInMs = static_cast<uint32_t>(std::clamp(int64_t(changed.sourceInMs) +
+					static_cast<int64_t>(std::llround(delta * row.trackRate)), int64_t{0}, int64_t(changed.sourceOutMs) - 1));
+			}
+			else if (m_WorldAnimationDragMode == 2)
+				changed.sourceOutMs = static_cast<uint32_t>(std::clamp(int64_t(changed.sourceOutMs) +
+					static_cast<int64_t>(std::llround(deltaMs * row.nativeSpeed)), int64_t(changed.sourceInMs) + 1, int64_t{600000}));
+			else
+				changed.startMs = static_cast<uint32_t>(std::clamp(int64_t(changed.startMs) +
+					static_cast<int64_t>(std::llround(deltaMs * row.localSpeed)), int64_t{0}, int64_t{599999}));
+			shownX += static_cast<float>((int64_t(changed.startMs) - row.edit.startMs) / row.localSpeed) * scale;
+			shownWidth = (std::max)(8.f, static_cast<float>((changed.sourceOutMs - changed.sourceInMs) / row.nativeSpeed) * scale);
+			if (ImGui::IsItemDeactivated())
+			{
+				if (changed.startMs != row.edit.startMs || changed.sourceInMs != row.edit.sourceInMs || changed.sourceOutMs != row.edit.sourceOutMs)
+				{
+					std::string status;
+					if (m_EditWorldAnimation(changed, status))
+					{ m_WorldAnimationEditsPending = true; ++m_iDraftGeneration; }
+					m_strStatus = std::move(status);
+				}
+				m_WorldAnimationDragMode = -1;
+			}
+		}
 		if (ImGui::IsItemHovered())
-			ImGui::SetTooltip("%s\nPlayback window %u - %u ms\nClick to select its World box. Double-click to edit Animation Clips.",
-				row.label.c_str(), row.startMs, row.startMs + row.durationMs);
-		CompositionTimeline::DrawBox(draw, top, bottom, IM_COL32(105, 151, 186, 220),
-			contains(m_TimelineSelectedOccurrenceIds, row.occurrenceId), row.label.c_str());
+		{
+			ImGui::SetMouseCursor(row.editable ? ImGuiMouseCursor_ResizeEW : ImGuiMouseCursor_Arrow);
+			ImGui::SetTooltip("%s\nActor: %s\nWorld occurrence: %s | Slot: %s\n%u - %u ms | Source %u - %u ms\n%s",
+				row.label.c_str(), row.actorLabel.c_str(), row.occurrenceId.c_str(), row.edit.slotId.c_str(),
+				row.startMs, row.startMs + row.durationMs, row.edit.sourceInMs, row.edit.sourceOutMs,
+				row.editable ? "Drag center: move. Drag either edge: trim this clip. Save commits the animation." : "This legacy clip has no explicit Source Out.");
+		}
+		CompositionTimeline::DrawBox(draw, ImVec2(shownX, top.y), ImVec2(shownX + shownWidth, top.y + 22.f),
+			IM_COL32(105, 151, 186, 240), m_SelectedWorldAnimationId == row.id, row.label.c_str());
+		if (row.editable)
+		{
+			draw->AddLine(ImVec2(shownX + 3.f, top.y + 4.f), ImVec2(shownX + 3.f, top.y + 18.f), IM_COL32(235, 245, 255, 210), 2.f);
+			draw->AddLine(ImVec2(shownX + shownWidth - 3.f, top.y + 4.f), ImVec2(shownX + shownWidth - 3.f, top.y + 18.f), IM_COL32(235, 245, 255, 210), 2.f);
+		}
 		ImGui::PopID();
 	}
 	/* World boxes: the sequence starts at the left edge; the width is the
@@ -9461,7 +9578,11 @@ void Client::CKoukuSaydonActionWorkbench::Render_Timeline()
 				editedPresentationBox = box;
 				editedPresentationBox.iStartMs = static_cast<std::uint32_t>(start);
 				editedPresentationBox.iDurationMs = static_cast<std::uint32_t>(length);
-				if (effect) editedPresentationBox.iEffectSourceStartMs = mediaWindow.iEffectSourceStartMs;
+				if (effect)
+                {
+                    editedPresentationBox.iEffectSourceStartMs = mediaWindow.iEffectSourceStartMs;
+                    editedPresentationBox.EffectSourceTimeKeys = mediaWindow.EffectSourceTimeKeys;
+                }
 				else if (sound) editedPresentationBox.iSoundSourceStartMs = mediaWindow.iSoundSourceStartMs;
 				editedPresentationBox.iFadeInMs = (std::min)(box.iFadeInMs, editedPresentationBox.iDurationMs);
 				editedPresentationBox.iFadeOutMs = (std::min)(box.iFadeOutMs,
@@ -9903,7 +10024,7 @@ bool_t Client::CKoukuSaydonActionWorkbench::Set_LogicBoxOutcomes(
 		return false;
 	}
 	if (!Kouku_LogicOutcomeKind(*owner).empty() && !resultLogicIds.empty() &&
-		!Kouku_IsOutcomeSlotAllowed(Kouku_LogicOutcomeKind(*owner), slot))
+		!Kouku_IsOutcomeSlotAllowed(Kouku_LogicOutcomeKind(*owner), slot, owner->bGazeDuringWindow))
 	{
 		outStatus = m_strStatus = std::string(Outcome_SlotLabel(slot)) +
 			" is not an outcome of " + owner->strJudgementKind + ".";
@@ -10212,7 +10333,7 @@ bool_t Client::CKoukuSaydonActionWorkbench::Render_SummonPolicy(
     if (ImGui::BeginCombo("Behavior##SummonPolicy", cross ? "Four directions: one real body" : "Explicit spawned Patterns"))
     {
         if (ImGui::Selectable("Explicit spawned Patterns", !cross))
-        { draft.strSummonKind.clear(); draft.DirectionPatternIds.clear(); draft.strCloneEndStageId.clear(); }
+        { draft.strSummonKind.clear(); draft.DirectionPatternIds.clear(); draft.strCloneEndStageId.clear(); draft.strRealPatternId.clear(); }
         if (ImGui::Selectable("Four directions: one real body", cross))
         { draft.strSummonKind = "CROSS_DIRECTION_CLONES"; draft.DirectionPatternIds.resize(4u); }
         ImGui::EndCombo();
@@ -10258,6 +10379,17 @@ bool_t Client::CKoukuSaydonActionWorkbench::Render_SummonPolicy(
                 return true;
             }
         }
+        const auto* realPattern = Find_Pattern(m_Draft, draft.strRealPatternId);
+        if (ImGui::BeginCombo("Real body##SummonPolicy", realPattern ? realPattern->strDisplayName.c_str() : "Automatic: nearest arena center"))
+        {
+            if (ImGui::Selectable("Automatic: nearest arena center", draft.strRealPatternId.empty()))
+                draft.strRealPatternId.clear();
+            for (const auto& id : draft.DirectionPatternIds)
+                if (const auto* child = Find_Pattern(m_Draft, id))
+                    if (ImGui::Selectable((child->strDisplayName + "##real-" + id).c_str(), draft.strRealPatternId == id))
+                        draft.strRealPatternId = id;
+            ImGui::EndCombo();
+        }
         if (ImGui::BeginCombo("Clones play through##SummonPolicy", draft.strCloneEndStageId.empty() ? "(select Stage)" : draft.strCloneEndStageId.c_str()))
         {
             if (const auto* first = Find_Pattern(m_Draft, draft.DirectionPatternIds.front()))
@@ -10272,7 +10404,7 @@ bool_t Client::CKoukuSaydonActionWorkbench::Render_SummonPolicy(
                 }
             ImGui::EndCombo();
         }
-        ImGui::TextWrapped("At the Summon start, the direction ending nearest the arena center becomes the real body and plays its full animation and Effects. The other three clones disappear after the selected Stage. The Summon lifetime must cover all four Patterns.");
+        ImGui::TextWrapped("The selected real body plays its full animation and Effects. Automatic chooses the direction ending nearest the arena center. The other three clones disappear after the selected Stage. The Summon lifetime must cover all four Patterns.");
     }
     else ImGui::TextWrapped("Each Summon box configures its own spawned Pattern rows. A name alone creates no actors.");
     ImGui::BeginDisabled(draft == summon || !m_bHasDraft);
@@ -10286,6 +10418,7 @@ bool_t Client::CKoukuSaydonActionWorkbench::Render_SummonPolicy(
             found->strSummonKind = draft.strSummonKind;
             found->DirectionPatternIds = draft.DirectionPatternIds;
             found->strCloneEndStageId = draft.strCloneEndStageId;
+            found->strRealPatternId = draft.strRealPatternId;
             std::string status;
             (void)Commit_Candidate(std::move(candidate), "Updated Summon playback. Save to keep the changes.", status);
         }
@@ -11442,6 +11575,20 @@ void Client::CKoukuSaydonActionWorkbench::Trim_PresentationWindow(
 	const bool_t trimStart, const std::uint32_t timelineDurationMs,
 	const std::uint32_t sourceDurationMs, const bool_t effect)
 {
+    if (effect && !row.EffectSourceTimeKeys.empty())
+    {
+        const double first = trimStart ? double(std::clamp<std::int64_t>(deltaMs, 0, row.iDurationMs - 1u)) : 0.;
+        const double last = trimStart ? double(row.iDurationMs) :
+            double(std::clamp<std::int64_t>(std::int64_t(row.iDurationMs) + deltaMs, 1, row.iDurationMs));
+        std::vector<std::array<double, 2u>> keys{{0., row.Effect_SourceTimeMs(first)}};
+        for (const auto& key : row.EffectSourceTimeKeys)
+            if (key[0] > first && key[0] < last) keys.push_back({key[0] - first, key[1]});
+        keys.push_back({last - first, row.Effect_SourceTimeMs(last)});
+        row.iStartMs += static_cast<std::uint32_t>(first);
+        row.iDurationMs = static_cast<std::uint32_t>(last - first);
+        row.EffectSourceTimeKeys = std::move(keys);
+        return;
+    }
 	std::int64_t start = row.iStartMs, length = row.iDurationMs;
 	std::int64_t source = effect ? row.iEffectSourceStartMs : row.iSoundSourceStartMs;
 	if (length < 1 || (sourceDurationMs && source >= sourceDurationMs)) return;
@@ -13718,8 +13865,13 @@ void Client::CKoukuSaydonActionWorkbench::Render_PresentationBoxDetails(
 	const auto placementBeforeControls = edit;
 	int start = static_cast<int>(edit.iStartMs), duration = static_cast<int>(edit.iDurationMs);
 	if (ImGui::InputInt("Start ms##PresentationBox", &start)) edit.iStartMs = static_cast<std::uint32_t>((std::max)(0, start));
-	if (ImGui::InputInt(cameraBox ? "Entry + hold ms##PresentationBox" : "Lifetime ms##PresentationBox", &duration)) edit.iDurationMs = static_cast<std::uint32_t>((std::max)(1, duration));
-	if (definition.eKind == KOUKU_SAYDON_PRESENTATION_KIND::EFFECT)
+	if (ImGui::InputInt(cameraBox ? "Entry + hold ms##PresentationBox" : "Lifetime ms##PresentationBox", &duration))
+    {
+        if (edit.EffectSourceTimeKeys.empty()) edit.iDurationMs = static_cast<std::uint32_t>((std::max)(1, duration));
+        else Trim_PresentationWindow(edit, std::int64_t(duration) - edit.iDurationMs, false,
+            Pattern_DurationMs(pattern), definition.iDurationMs, true);
+    }
+	if (definition.eKind == KOUKU_SAYDON_PRESENTATION_KIND::EFFECT && edit.EffectSourceTimeKeys.empty())
 	{
 		const auto sourceLimit = (std::max)(1u, (std::min)(definition.iDurationMs, MAX_EDITOR_TIME_MS));
 		int sourceIn = static_cast<int>(edit.iEffectSourceStartMs);
@@ -13732,9 +13884,13 @@ void Client::CKoukuSaydonActionWorkbench::Render_PresentationBoxDetails(
 		ImGui::TextDisabled("Source %u ms. Source In skips the beginning of this whole Effect, keeping the box start.", definition.iDurationMs);
 		ImGui::TextWrapped("Drag the left edge to trim the Effect source; drag the middle to move without trimming. Apply and Save keep this box's source segment.");
 	}
+    if (!edit.EffectSourceTimeKeys.empty())
+        ImGui::TextWrapped("Original scene speed curve: %.3f..%.3f ms of Effect source. Move this box or trim its edges to preserve synchronization.",
+            edit.EffectSourceTimeKeys.front()[1], edit.EffectSourceTimeKeys.back()[1]);
 	if (definition.eKind == KOUKU_SAYDON_PRESENTATION_KIND::EFFECT &&
 		(definition.strResourceKind == "V1_EFFECT" || definition.strResourceKind == "V1_ELEMENT"))
 	{
+		ImGui::BeginDisabled(!edit.EffectSourceTimeKeys.empty());
 		if (ImGui::Checkbox("Fit Effect lifetime to box", &edit.bFitEffectToDuration) && edit.bFitEffectToDuration)
 			edit.bLoopEffectToDuration = false;
 		if (edit.bFitEffectToDuration)
@@ -13755,6 +13911,7 @@ void Client::CKoukuSaydonActionWorkbench::Render_PresentationBoxDetails(
 			if (ImGui::Button("Match remaining animation time")) edit.iDurationMs = animationEnd - edit.iStartMs;
 			ImGui::EndDisabled();
 		}
+		ImGui::EndDisabled();
 	}
 	const auto vectorControl = [](const char* label, std::array<double, 3u>& values, const float minimum, const float maximum) {
 		float v[3] = { static_cast<float>(values[0]), static_cast<float>(values[1]), static_cast<float>(values[2]) };
@@ -13838,6 +13995,7 @@ void Client::CKoukuSaydonActionWorkbench::Render_PresentationBoxDetails(
 	if (definition.eKind == KOUKU_SAYDON_PRESENTATION_KIND::EFFECT)
 	{
 		if (!Same_PresentationPlacement(placementBeforeControls, edit, true)) previewGeometry();
+		ImGui::BeginDisabled(!edit.EffectSourceTimeKeys.empty());
 		int fadeIn = static_cast<int>(edit.iFadeInMs), fadeOut = static_cast<int>(edit.iFadeOutMs);
 		if (ImGui::InputInt("Fade in ms", &fadeIn)) edit.iFadeInMs = static_cast<std::uint32_t>((std::max)(0, fadeIn));
 		if (ImGui::InputInt("Fade out ms", &fadeOut)) edit.iFadeOutMs = static_cast<std::uint32_t>((std::max)(0, fadeOut));
@@ -13847,6 +14005,7 @@ void Client::CKoukuSaydonActionWorkbench::Render_PresentationBoxDetails(
 		if (ImGui::SliderFloat("Dissolve out end", &endRatio, 0.f, 1.f)) edit.fDissolveEnd = endRatio;
 		ImGui::EndDisabled();
 		ImGui::TextDisabled("Fade 0 keeps authored alpha/dissolve. Positive fades override; dissolve-out follows Fade Out.");
+		ImGui::EndDisabled();
 	}
 	if (definition.eKind == KOUKU_SAYDON_PRESENTATION_KIND::SOUND)
 	{
@@ -14137,7 +14296,7 @@ void Client::CKoukuSaydonActionWorkbench::Render_WorldBoxDetails(
 					else ImGui::TextDisabled("  Source Out: native clip end");
 					ImGui::TextDisabled("  %s", clip.bLoop ? "Loop" : (clip.bHoldLastFrame ? "Hold last frame" : "Stop at clip end"));
 				}
-				ImGui::TextWrapped("Use Edit Animation Clips above, or double-click an Animation lane row to edit these saved World clips.");
+				ImGui::TextWrapped("Drag the Animation lane clips directly: center moves, left/right edges trim. Save commits these edits.");
 			}
 			if (initial->bUntilDestroyed)
 				ImGui::TextWrapped("HP: %u | Server lifetime: until destroyed", initial->iMaximumHp);
@@ -14720,6 +14879,24 @@ void Client::CKoukuSaydonActionWorkbench::Render_LogicDefinitionValues(
             }
             ImGui::TextWrapped("The Server compares each direction's movement endpoint with the arena center. One real body plays its full Pattern; three Summon clones stop after the selected Stage. Duration must cover all four complete Patterns.");
         }
+        else if ("BOSS_RANDOM_TARGET" == draft.strJudgementKind)
+        {
+            const auto* pattern = Find_Pattern(m_Draft, colliderPatternId.empty() ? m_strSelectedPatternId : colliderPatternId);
+            if (ImGui::BeginCombo("Target-facing Effect", draft.strTrackingPresentationOccurrenceId.empty() ? "(select Effect)" : draft.strTrackingPresentationOccurrenceId.c_str()))
+            {
+                if (pattern) for (const auto& box : pattern->PresentationOccurrences)
+                {
+                    const auto* resource = Find_PresentationResource(m_Draft, box.strResourceId);
+                    if (!resource || resource->eKind != KOUKU_SAYDON_PRESENTATION_KIND::EFFECT || box.strAnchorKind != "BOSS" ||
+                        !box.bFollowBoss || !box.strBone.empty() || !box.strAnchorPresentationOccurrenceId.empty()) continue;
+                    const auto label = resource->strDisplayName + "##" + box.strOccurrenceId;
+                    if (ImGui::Selectable(label.c_str(), draft.strTrackingPresentationOccurrenceId == box.strOccurrenceId))
+                        draft.strTrackingPresentationOccurrenceId = box.strOccurrenceId;
+                }
+                ImGui::EndCombo();
+            }
+            ImGui::TextWrapped("Selects one living player when this Duration starts. The head marker and selected Effect follow that target until the Duration ends. The boss body keeps its authored direction.");
+        }
 		else if ("BOSS_TRACK_TARGET" == draft.strJudgementKind)
 		{
 			float followSpeed = static_cast<float>(draft.fFollowSpeedScale);
@@ -14809,7 +14986,14 @@ void Client::CKoukuSaydonActionWorkbench::Render_LogicDefinitionValues(
 					if (ImGui::Selectable(outcome, draft.strInsideOutcome == outcome)) draft.strInsideOutcome = outcome;
 				ImGui::EndCombo();
 			}
-			ImGui::TextDisabled("At the window end, the real boss inside this cone runs the selected Result slot; outside runs the opposite slot.");
+            if (ImGui::Checkbox("Judge gaze during window", &draft.bGazeDuringWindow) && draft.bGazeDuringWindow)
+                draft.strInsideOutcome = "FAIL";
+            if (draft.bGazeDuringWindow)
+            {
+                draft.strInsideOutcome = "FAIL";
+                ImGui::TextWrapped("During this Duration, looking at the real boss runs Fail once per player. Facing uses the player's view direction. Success and Timeout are unused.");
+            }
+            else ImGui::TextDisabled("At the window end, the real boss inside this cone runs the selected Result slot; outside runs the opposite slot.");
 		}
 		else if ("POSE_INPUT" == draft.strJudgementKind)
 		{
@@ -15693,7 +15877,7 @@ bool_t Client::CKoukuSaydonActionWorkbench::Render_LogicOutcomeSlots(
 			KOUKU_SAYDON_OUTCOME_SLOT::TIMEOUT })
 		{
 			const bool_t allowed = Kouku_LogicOutcomeKind(*logic).empty() ||
-				Kouku_IsOutcomeSlotAllowed(Kouku_LogicOutcomeKind(*logic), slot);
+				Kouku_IsOutcomeSlotAllowed(Kouku_LogicOutcomeKind(*logic), slot, logic->bGazeDuringWindow);
 			std::vector<std::string> targets = box->Outcomes(slot);
 			ImGui::PushID(static_cast<int32_t>(slot));
 			ImGui::BeginDisabled(!allowed);

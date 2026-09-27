@@ -476,6 +476,14 @@ Debug x64는 외부 ImGui core/backend 여섯 소스와 `Profiler.cpp`, `Shader.
 
 F1의 `Character Select Movie`와 Action Workbench의 `World → Character Select`는 `Data/Rendering/Authored/CharacterSelectFloorSwap.json`의 11개 바닥 Category와 같은 Level 선택을 사용한다. 초기값은 입장 class이며, Play는 현재 Category의 class를 검증해 재생한다. 영화 선택은 Server 캐릭터 class와 독립이고 미연결·준비 실패는 해당 Category의 이유를 표시한다. Guardian은 `10 Dragon Human`에서 선택한다. 사용자가 옮긴 바닥은 유지하고 영화는 배우·카메라·FX와 원본 WORLD 무대를 사용한다. `Data/Camera/ClassSelection.cinematics.json`의 scene별 optional `backgroundAreaId`가 배경을 정하며, 생략하면 registry의 기존 presentation Area(SL10)를 사용한다. 배경은 고유 Area별로 한 번 준비하고 현재 재생 scene의 배경만 표시한다. 한 배경 실패는 다른 class의 Play를 막지 않는다. Pause·시간 탐색·Stop은 현재 재생을 제어하고, 다음 Play는 새 선택을 사용한다.
 
+Character Select의 `Effect Tool V1 → All Effects → World → Character Selection Movies → Open Editor`는
+Movie Effect의 Element를 같은 배우 애니메이션과 함께 편집한다. `Model View`의 Intro/Loop Effect
+목록과 `Play All`·Pause·Stop·시간 탐색은 기존 Movie owner를 사용한다. `Timeline / Camera`의
+Camera Box Detail에서 Eye·Look at·Up·FOV를 입력하고 `Apply camera live`로 현재 시각에 반영한다.
+camera box 구간이 같으면 재생을 유지하며, `Save movie`와 Effect의 `Save Changes`는 각각의 정본을
+저장한다. 임시 preview·저장·게시와 사용자 화면 확인의 세부 경계는
+`.md/TEAM/ANIMATION_TOOL_OWNER_HANDOFF.md`의 World Movie 계약을 따른다.
+
 F1의 `Balance Test`는 공용 Players/Skills/Damage/Bosses/Madness 숫자 scalar 편집과 Server HP/tick 진단을
 제공한다. `Save + Validate`는 stable ID/field의 이전값으로 최신 `Data/Balance` 저장본에 병합하고,
 candidate provenance/gameplay 검증 뒤 freshness 확인과 원자 교체를 수행한다. `Publish Server Data`

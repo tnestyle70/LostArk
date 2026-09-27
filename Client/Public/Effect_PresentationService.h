@@ -15,6 +15,7 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <utility>
 #include <vector>
 
 NS_BEGIN(Client)
@@ -24,6 +25,7 @@ class CAssetPreparationBatch;
 class CCamera_Free;
 class CEffectLoadPreparationJob;
 struct EFFECT_PRODUCT_CAMERA_PREPARATION;
+struct EFFECT_WORLD_PREVIEW_TARGET;
 class CEffectObject;
 class CEffectScreenOverlayPresentation;
 class CNpc;
@@ -93,6 +95,8 @@ struct EFFECT_SPAWN_DESC final
 	std::optional<float4x4_t> ExternalPresentationPostTransform;
 	std::optional<std::vector<EFFECT_PARAMETER_INPUT>> ExternalPresentationParameters;
 	std::string strLevelPlacementId;
+    // Prepared by the authoring service and consumed only by external level clocks.
+    std::shared_ptr<const EFFECT_WORLD_PREVIEW_TARGET> pAuthoringPreview;
 };
 
 struct EFFECT_WORLD_ROOT_HANDLE final
@@ -131,6 +135,7 @@ struct EFFECT_LEVEL_PLACEMENT_SPAWN_DESC final
 	bool_t bExternalModelCueAnchors = false;
 	// Source socket follow anchors read this NPC's body model each frame.
 	std::weak_ptr<CNpc> pAnchorOwner;
+    std::shared_ptr<const EFFECT_WORLD_PREVIEW_TARGET> pAuthoringPreview;
 };
 
 struct EFFECT_SOURCE_BONE_ANCHOR_BUILD_DESC final
@@ -393,6 +398,15 @@ public:
 		const EFFECT_LEVEL_PLACEMENT_SPAWN_DESC& Desc,
 		EFFECT_WORLD_ROOT_HANDLE& OutHandle,
 		std::string& strOutStatus);
+    static bool_t Prepare_WorldPreviewTarget(
+        ComPtr<ID3D11Device> device, ComPtr<ID3D11DeviceContext> context,
+        const EFFECT_DOCUMENT_DESC& document,
+        std::shared_ptr<const EFFECT_WORLD_PREVIEW_TARGET>& target, std::string& status);
+    // Null target restores the current catalog snapshot. All handles stage first.
+    static bool_t Replace_WorldRootPreviews(
+        const std::vector<std::pair<EFFECT_WORLD_ROOT_HANDLE,
+            std::shared_ptr<const EFFECT_WORLD_PREVIEW_TARGET>>>& replacements,
+        std::string& status);
 	static bool_t Update_WorldRoot(
 		EFFECT_WORLD_ROOT_HANDLE Handle,
 		const float4x4_t& RootWorld);

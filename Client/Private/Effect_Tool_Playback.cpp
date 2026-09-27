@@ -757,6 +757,7 @@ bool_t Client::CEffect_Tool::Stage_WorldPreview(
 	const EFFECT_DOCUMENT_DESC& Document,
 	const bool_t bAllowReadOnlySourceProjection)
 {
+    if (Has_ClassMovieContext()) return Stage_ClassMovieEffect(Document);
     if (m_pAuthoringSequencer && m_pAuthoringSequencer->Is_Active())
     {
         struct CANDIDATE_SCOPE
@@ -2110,6 +2111,8 @@ void Client::CEffect_Tool::Reset_ProductCueSnapshot()
 
 void Client::CEffect_Tool::Start_WorldPreviewFromBeginning()
 {
+    // Detail Apply/Save also uses this helper. Movie edits must keep its cursor.
+    if (Has_ClassMovieContext()) return;
     // Resource preparation in the UI frame must not consume a short Solo
     // effect's lifetime before its first playback update.
     m_bSkipNextWorldPreviewDelta = true;

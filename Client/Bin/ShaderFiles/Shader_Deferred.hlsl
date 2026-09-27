@@ -512,7 +512,8 @@ PS_OUT_LIGHT Resolve_MapSourceFoliageLight(PS_IN input, float3 worldPosition,
 }
 
 PS_OUT_LIGHT Resolve_MapSourceStoneLight(PS_IN input, float3 worldPosition,
-    float3 lightDirection, float attenuation, float directShadow, DEFERRED_LIGHT_INPUT light)
+    float3 lightDirection, float attenuation, float directShadow, DEFERRED_LIGHT_INPUT light,
+    bool applySceneAmbient)
 {
     PS_OUT_LIGHT output = (PS_OUT_LIGHT)0;
     const int3 pixel = int3(int2(input.vPosition.xy), 0);
@@ -524,10 +525,17 @@ PS_OUT_LIGHT Resolve_MapSourceStoneLight(PS_IN input, float3 worldPosition,
         baseNormal, mixedNormal, g_vCamPosition.xyz - worldPosition,
         lightDirection, g_DepthTexture.Load(pixel).z, light.diffuse.rgb,
         directShadow.xxx, float4(0.f, 0.f, 0.f, 1.f));
-    // RT4 already holds source baked diffuse AND baked specular. Source scene
-    // hemisphere/ambient remains explicitly unbound, not duplicated per light.
-    // Direct carries albedo, so the combined pass must add it without RT0.
-    output.vSpecular = float4(radiance * attenuation, 0.f);
+    // Static stone already receives its indirect light in RT4. Unbaked
+    // Deploy stone instead consumes the existing scene ambient adapter once,
+    // from the scene directional light, independently of direct visibility.
+    // This is not a reconstruction of UE3's dynamic LightEnvironment.
+    const bool hasBakedLighting = (asuint(g_GeometricNormalTexture.Load(pixel).w) &
+        0x00400000u) != 0u;
+    const float3 ambient = applySceneAmbient && !hasBakedLighting ?
+        diffuse * light.diffuse.rgb * light.ambient.rgb * g_vMtrlAmbient.rgb *
+        Resolve_AmbientOcclusion(input.vTexcoord) : 0.f;
+    // Both terms carry HDR albedo; do not multiply the UNORM RT0 again.
+    output.vSpecular = float4(radiance * attenuation + ambient, 0.f);
     return output;
 }
 
@@ -655,7 +663,7 @@ PS_OUT_LIGHT Resolve_DirectionalLight(PS_IN In, DEFERRED_LIGHT_INPUT light)
     if (g_SourceCharacterRow != 0u)
         return Resolve_SourceCharacterLight(In, -light.direction.xyz, 1.f, fDirectionalShadow, light);
     if (sourceDepth.w == 7.f)
-        return Resolve_MapSourceStoneLight(In, vWorldPos.xyz, -light.direction.xyz, 1.f, fDirectionalShadow, light);
+        return Resolve_MapSourceStoneLight(In, vWorldPos.xyz, -light.direction.xyz, 1.f, fDirectionalShadow, light, true);
     if (sourceDepth.w == 9.f || sourceDepth.w == 10.f)
         return Resolve_MapSourceFoliageLight(In, vWorldPos.xyz, -light.direction.xyz, 1.f, fDirectionalShadow, light);
     if (sourceDepth.w == 4.f || sourceDepth.w == 8.f || (sourceDepth.w >= 11.f && sourceDepth.w <= 13.f))
@@ -768,7 +776,7 @@ PS_OUT_LIGHT Resolve_LocalLight(PS_IN In, bool bSpot, DEFERRED_LIGHT_INPUT light
     if (g_SourceCharacterRow != 0u)
         return Resolve_SourceCharacterLight(In, -vLightDir.xyz, fAtt, staticShadow, light);
     if (sourceDepth.w == 7.f)
-        return Resolve_MapSourceStoneLight(In, vWorldPos.xyz, -vLightDir.xyz, fAtt, staticShadow, light);
+        return Resolve_MapSourceStoneLight(In, vWorldPos.xyz, -vLightDir.xyz, fAtt, staticShadow, light, false);
     if (sourceDepth.w == 9.f || sourceDepth.w == 10.f)
         return Resolve_MapSourceFoliageLight(In, vWorldPos.xyz, -vLightDir.xyz, fAtt, staticShadow, light);
     if (sourceDepth.w == 4.f || sourceDepth.w == 8.f || (sourceDepth.w >= 11.f && sourceDepth.w <= 13.f))

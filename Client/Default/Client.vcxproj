@@ -4159,4 +4159,12 @@
     <None Include="..\Bin\ShaderFiles\Shader_EffectArtistNativeSelectedGroup5056.hlsli" />
     <None Include="..\Bin\ShaderFiles\Shader_EffectArtistNativeSelectedGroup5120.hlsli" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\Data\Effects\V2\Authored\kouku.bingo.ending.fade.black.effectv2.json" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.mario.marker.red.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.mario.marker.blue.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.mario.marker.yellow.effect.json" />
+  </ItemGroup>
 </Project>

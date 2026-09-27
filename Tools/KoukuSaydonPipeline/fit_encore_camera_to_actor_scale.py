@@ -45,7 +45,7 @@ SOURCE_ACTOR_PRESCALE = 0.01   # native cm -> m; the source actor has no DrawSca
 DEFAULT_RATIO = PROJECT_BODY_PRESCALE / SOURCE_ACTOR_PRESCALE
 NEAR_ACTOR_METRES = 10.0       # the actor counts as "with the camera" once its root is this close to the eye
 SIMPLIFY_TOLERANCE_M = 0.005   # linear interpolation of the kept keys may deviate this much from A(t)
-MAX_KEYFRAMES = 64             # CLevel_KakulSaydonArena CAMERA_TRACK_MAX_KEYFRAMES / CameraTool limit
+MAX_KEYFRAMES = 128            # CLevel_KakulSaydonArena CAMERA_TRACK_MAX_KEYFRAMES / CameraTool limit
 CRLF = '\r\n'
 
 

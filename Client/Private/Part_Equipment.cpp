@@ -1,4 +1,5 @@
 #include "Part_Equipment.h"
+#include "Character.h"
 #include "BinaryAsset/ModelAssetData.h"
 #include "SourceEquipmentMaterialPrograms.h"
 
@@ -121,6 +122,12 @@ void CPart_Equipment::Update(f32_t fTimeDelta)
 	}
 
 	__super::Update_CombinedWorldMatrix(ChildMatrix);
+}
+
+bool_t CPart_Equipment::Is_CharacterPresentationHidden() const
+{
+	const auto owner = m_pCharacterPresentationOwner.lock();
+	return owner && owner->Is_WorldPresentationHidden();
 }
 
 void CPart_Equipment::Late_Update(f32_t fTimeDelta)

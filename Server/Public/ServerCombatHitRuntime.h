@@ -63,7 +63,22 @@ namespace LostArk::Server
 		bool bIgnoreCounter = false;
 		// Server encounter failure verdict; bypasses all personal damage protection.
 		bool bEncounterWipe = false;
+		// A contact window may hurt the player held by this exact boss action.
+		LostArk::Shared::NET_ENTITY_ID iCaptureOwnerId = LostArk::Shared::INVALID_NET_ENTITY_ID;
+		std::uint32_t iCapturePatternSequence = 0u;
 	};
+
+	[[nodiscard]] inline bool Is_CurrentBossHandCapture(const SERVER_PLAYER& player,
+		const LostArk::Shared::NET_ENTITY_ID ownerId, const std::uint32_t patternSequence,
+		const std::uint32_t serverTick) noexcept
+	{
+		using namespace LostArk::Shared;
+		return ownerId != INVALID_NET_ENTITY_ID && patternSequence != 0u && player.iCurrentHp != 0u &&
+			player.eAction == PLAYER_ACTION_STATE::GRABBED &&
+			player.eAttachmentSlot == PLAYER_ATTACHMENT_SLOT::BOSS_LEFT_HAND &&
+			player.iAttachmentOwnerNetEntityId == ownerId && player.iAttachmentPatternSequence == patternSequence &&
+			player.iAttachmentEndTick != 0u && static_cast<std::int32_t>(serverTick - player.iAttachmentEndTick) < 0;
+	}
 
 	// Mario hazards share the normal authoritative knockdown/landing path.
 	inline void Configure_MarioHazardLaunch(SERVER_WORLD_TO_PLAYER_HIT& hit)

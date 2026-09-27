@@ -2,6 +2,8 @@
 #include "ProjectDataRoot.h"
 #include "MapAssetCatalog.h"
 
+#include <algorithm>
+#include <cmath>
 #include <fstream>
 #include <iomanip>
 #include <iterator>
@@ -407,6 +409,53 @@ bool CClassSelectionPresentation::Apply_AuthoringBox(const CLASS_MOVIE_AUTHORING
     if (!Resolve(m_Authoring->manifest, m_Authoring->world, m_Authoring->document, before, world, path) ||
         !Equal(before.value, ReadRow(world ? m_Authoring->world : m_Authoring->manifest, path, before.kind)) || Identity(before.value) != Identity(replacement))
     { status = "Movie row identity changed; the existing draft was preserved."; return false; }
+    // A camera key edit has no model or Effect resource changes. Validate only
+    // its row when the span is unchanged, preserving the admitted phase coverage.
+    if (before.kind == "Camera" && !world)
+    {
+        std::vector<EFFECT_CAMERA_ROW> rows;
+        if (!CEffectRecoveryCamera::Parse(Json::Object({{"cameras", Json::Array({replacement})}}), true, rows, status)) return false;
+        const auto scene = std::find_if(m_Authoring->scenes.begin(), m_Authoring->scenes.end(),
+            [&](const SCENE& value) { return value.classId == before.classId; });
+        const auto current = std::find_if(m_Scenes.begin(), m_Scenes.end(),
+            [&](const SCENE& value) { return value.classId == before.classId; });
+        if (scene == m_Authoring->scenes.end() || current == m_Scenes.end())
+        { status = "The camera movie is no longer available; the existing draft and playback were preserved."; return false; }
+        auto& phase = before.loop ? scene->loop : scene->intro;
+        auto& currentPhase = before.loop ? current->loop : current->intro;
+        const auto row = std::find_if(phase.cameras.begin(), phase.cameras.end(),
+            [&](const EFFECT_CAMERA_ROW& value) { return value.id == before.boxId; });
+        const auto currentRow = std::find_if(currentPhase.cameras.begin(), currentPhase.cameras.end(),
+            [&](const EFFECT_CAMERA_ROW& value) { return value.id == before.boxId; });
+        const auto& candidate = rows.front();
+        if (row == phase.cameras.end() || currentRow == currentPhase.cameras.end())
+        { status = "The camera row is no longer available; the existing draft and playback were preserved."; return false; }
+        if (!candidate.muted && !candidate.modelRelative && candidate.startMs == row->startMs &&
+            candidate.cue.iDurationMs == row->cue.iDurationMs && candidate.startMs == currentRow->startMs &&
+            candidate.cue.iDurationMs == currentRow->cue.iDurationMs)
+        {
+            auto manifest = Replace(m_Authoring->manifest, path, 0u, replacement);
+            auto previous = *currentRow;
+            *currentRow = candidate;
+            if (m_Active && m_Scene == &*current && m_Looping == before.loop)
+            {
+                const float sampleMs = (std::min)(static_cast<float>(currentPhase.SourceTimeMs(m_ElapsedMs)),
+                    std::nextafter(static_cast<float>(currentPhase.durationMs), 0.f));
+                if (!Sample_Camera(currentPhase, sampleMs))
+                { *currentRow = std::move(previous); status = m_Status; return false; }
+            }
+            *row = candidate;
+            m_Authoring->manifest = std::move(manifest);
+            m_Authoring->dirty = !Equal(m_Authoring->manifest, m_Authoring->manifestBase) ||
+                !Equal(m_Authoring->world, m_Authoring->worldBase);
+            ++m_Authoring->generation; m_Timelines.clear();
+            status = "Camera keys applied. Playback time and pause state were preserved. Save movie keeps these keys.";
+            m_Authoring->status = status;
+            return true;
+        }
+        // Camera span edits still use complete movie admission below. They may
+        // change phase coverage, so they keep the existing stop-and-apply flow.
+    }
     Json manifest = m_Authoring->manifest, worldJson = m_Authoring->world;
     auto& target = world ? worldJson : manifest; target = Replace(target, path, 0u, replacement);
     std::vector<SCENE> scenes; CWorldSequenceDocument document;

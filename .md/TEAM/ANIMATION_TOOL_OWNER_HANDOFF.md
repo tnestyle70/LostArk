@@ -14,6 +14,8 @@ Preview와 toolbar는 공통 shell이 소유하고 각 세션은 자기 문서·
 
 - Boss는 기존 Valtan과 Kouku 관문·Parent·Pattern을 사용한다. Sequence는 독립 저장 문서와 기존
   Complete Play의 `enterCombatOnFinish`/전투 handoff를 유지한다. Boss와 Sequence의 관문 선택은 독립이다.
+- Kouku의 WORLD Animation 표시 행은 World occurrence+slot별로 고정하고 label/tooltip에 배우를 표시한다.
+  이동·trim은 같은 배우의 이웃 clip과 Motion 범위를 검증하며 다른 배우나 lane의 시계를 자동 이동하지 않는다.
 - Character는 `PlayerSkills.json`의 일곱 class(GuardianKnight 포함)와 LMB/SPACE/ALT_V/ACTIVE 입력을 나열한다. action
   Parent와 combo stage에서 실제 clip, Effect/Sound/Shake cue, Collider → AREA_OVERLAP Logic → Result
   행을 본다. animation은 source start/length/rate와 순서를 기존 skillbindings에 저장한다.
@@ -31,21 +33,30 @@ Preview와 toolbar는 공통 shell이 소유하고 각 세션은 자기 문서·
   `ClassSelection.cinematics.json`의 optional `scenes[].backgroundAreaId`는 원본 배경 Area이며
   생략 시 registry의 기존 presentation Area를 사용한다. 같은 Area를 한 번 준비하고 활성 scene만
   표시하며 배경 실패는 해당 class에 격리한다. 11개 바닥의 사용자 배치를 영화 재생으로 수정하지 않는다.
-- Character Select 입장 후 `All Effects → World → Character Selection Movies → Open Editor`도
-  같은 World 세션을 연다. 목록은 현재 Level이 준비한 class만 사용한다. Intro/Loop 타임라인의
-  박스를 선택하면 Box Detail에서 actor transform, animation clip/offset/rate, camera, Effect,
-  material, light, sound, clock의 기존 행과 키를 편집한다. 시간 입력은 source ms이고 타임라인은
-  원본 slow-motion을 반영한 movie ms다. `Apply row`는 검증 후 현재 재생을 중지하고 초안에 적용한다.
-  박스를 열어 조회하는 동작은 재생을 중지하지 않는다. `Revert row`는 아직 적용하지 않은 행을 되돌린다.
+- Character Select 입장 후 `Effect Tool V1 → All Effects → World → Character Selection Movies`에서
+  `Open Editor`는 해당 Movie의 원본 Effect를 V1 `Current Effect`에 연다. `Model View`의 Intro/Loop
+  목록에서 Effect를 선택하고 기존 Element Detail을 편집한다. `Play All`·Pause·Stop·시간 탐색은
+  Level의 같은 Movie owner에 전달되며 원본 배우 애니메이션·Effect·카메라가 같은 시계를 사용한다.
+  검증된 Element 초안은 이 Movie의 해당 Effect 인스턴스에만 임시 반영한다. Product catalog를
+  덮지 않고, 편집 종료 시 최신 저장 정의로 복원한다. 다른 Effect를 열 때 미저장 초안 보호를 유지한다.
+- `Timeline / Camera`는 기존 World 세션을 연다. Intro/Loop 박스의 Box Detail에서 actor transform,
+  animation clip/offset/rate, camera, Effect, material, light, sound, clock의 행과 키를 편집한다.
+  시간 입력은 source ms이고 타임라인은 원본 slow-motion을 반영한 movie ms다. Camera key의
+  Eye·Look at·Up·FOV는 `Apply camera live`로 같은 재생 시각에 적용하며 기본으로 입력 종료 때
+  적용한다. 같은 box 구간의 camera 편집은 재생 token·pause와 배우·Effect를 유지한다.
+  box 시작/길이 변경과 다른 행의 `Apply row`는 기존 전체 검증 후 재생을 중지하고 적용한다.
+  박스 조회는 재생을 중지하지 않으며 `Revert row`는 아직 적용하지 않은 행을 되돌린다.
 - `Save movie`는 `Data/Camera/ClassSelection.cinematics.json`과 SL00의 authoring WorldSequences를
   각 stable ID/변경 필드 기준으로 최신 저장본과 병합한다. 실제 모델 clip과 source offset,
   문서 구조 검증을 통과해야 교체하며 같은 필드 충돌은 초안을 보존하고 거절한다.
   World 변경은 기존 Area publisher의 `WorldSequences` 범위로 비동기 게시한다. 저장 성공과
   게시 완료/실패를 따로 표시하고 게시 실패는 다음 Save로 재시도한다. Camera 문서는 기존 Data
   정본을 직접 소비한다. `Reload saved movie`는 미저장 초안이 있으면 확인 후 유효한 저장본만 적용한다.
-  Effect 박스의 `Open Effect Editor`는 실제 V1 Effect owner를 열며, 그 창에서 Save 후 무비를
-  다시 Play하면 기존 prepared-resource 갱신 경로로 반영한다. 영화 저장이 Effect 내부 문서를 대신
-  저장하지 않는다. 구현/검증 경계는 `../GB/09-25/2026-09-25_FOUR_CLASS_SELECTION_MOVIES_IMPLEMENTATION_RESULT.md`를 따른다.
+  Effect 박스의 `Open Effect Editor`도 Movie를 유지한 채 같은 V1 owner에 연결한다. Effect의
+  `Save Changes`는 기존 원자 저장과 다음-spawn prepared target 갱신을 사용하며 `Save movie`가
+  Effect 내부 문서를 대신 저장하지 않는다. 기존 저장 계약의 검증은
+  `../GB/09-25/2026-09-25_FOUR_CLASS_SELECTION_MOVIES_IMPLEMENTATION_RESULT.md`, V1 연결과
+  camera live 편집의 검증은 `../GB/09-26/2026-09-26_WORLD_MOVIE_EFFECT_EDITOR_RESULT.md`에 구분한다.
 - Object Parent는 연결 Motion의 Transform/Animation/Effect overview를 보여 주고 row 선택으로 기존
   Motion 편집에 들어간다. 저장은 기존 World Sequence atomic save와 Area publish, 열린 Composition의
   dirty/외부 변경 검사를 유지한다.
@@ -1700,3 +1711,9 @@ rotate-only Duration의 선택적 폭탄 설정은 `bombPresentationOccurrenceId
 그 뒤의 보스 회전을 따라가지 않는다. 예고/폭발 각각 follow만 끄면 서로 다른 시각의 보스
 방향을 캡처하므로 위치가 벌어질 수 있다. 같은 예고 기준을 연결하고 self/chain/future
 참조는 거부한다. 원래 MAP 배치는 저장된 절대 위치를 유지한다.
+
+원본 Slomo를 가진 fixed MAP Effect occurrence는 선택적 `effectSourceTimeKeys`로 box elapsed ms를
+공유 asset source ms에 대응한다. 키는2..4096개, time/source가 유한·엄격 증가하고 box0..duration을
+덮는다. source-in·fit·loop·follow·bone·fade override와 혼용하지 않는다. body 이동은 곡선을
+유지하고 양끝 trim은 보존된 원본 시각 구간만 잘라낸다. 다른 occurrence와 asset 내부 element
+저장은 기존 계약을 유지하며, live anchor preview도 저장과 같은 제한을 적용한다.
