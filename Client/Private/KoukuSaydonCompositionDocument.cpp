@@ -478,8 +478,11 @@ namespace
 		/* BOSS_TRACK_TARGET reuses the SHOWTIME player-speed multiplier to translate the
 		   body it already rotates. Zero keeps every saved rotate-only window unchanged. */
 		const bool_t trackTarget = logic.strLogicType == "DURATION" && logic.strJudgementKind == "BOSS_TRACK_TARGET";
+		const bool_t randomTarget = logic.strLogicType == "DURATION" && logic.strJudgementKind == "BOSS_RANDOM_TARGET";
+		if (randomTarget && !Is_StableId(logic.strTrackingPresentationOccurrenceId))
+		{ outStatus = "Random target Duration needs a following Boss Effect occurrence."; return false; }
 		const bool_t hasShowtimeValues = hasRandomValues || !logic.strFixedSelectionGroupId.empty() ||
-			!logic.strTrackingPresentationOccurrenceId.empty() || (!pursuit && logic.iSpawnIntervalMs != 0u) ||
+			(!randomTarget && !logic.strTrackingPresentationOccurrenceId.empty()) || (!pursuit && logic.iSpawnIntervalMs != 0u) ||
 			(!trackTarget && logic.fFollowSpeedScale != 0.0);
 		const bool_t showtime = logic.strLogicType == "DURATION" && logic.strJudgementKind == "SHOWTIME_PLAYER_TARGETS";
 		if ((hasShowtimeValues && !showtime) || (showtime &&
@@ -511,11 +514,14 @@ namespace
 			0u != logic.iSectorCount || !logic.SectorSymbols.empty() || !logic.RegionIds.empty() ||
 			0.0 != logic.fCenterX || 0.0 != logic.fCenterZ || 0.0 != logic.fOuterRadiusM ||
 			!logic.strWorldSequenceInstanceId.empty() || 0.0 != logic.fHalfAngleDegrees ||
-			0.0 != logic.fMaxDistanceM || 0u != logic.iPoseIndex || 0u != logic.iThreshold ||
+			0.0 != logic.fMaxDistanceM || logic.bGazeDuringWindow || 0u != logic.iPoseIndex || 0u != logic.iThreshold ||
 			0.0 != logic.fShieldArcDegrees || logic.bEndsPatternOnSuccess || logic.fNormalYawOffsetDegrees != 0.0 || logic.strInsideOutcome != "SUCCESS" || (logic.fTargetRadiusM != 0.0 && logic.strTriggerKind != "OBJECT_CONTACT");
 		if ((logic.strInsideOutcome != "SUCCESS" && logic.strInsideOutcome != "FAIL") ||
 			(logic.strInsideOutcome != "SUCCESS" && (logic.strLogicType != "DURATION" || (logic.strJudgementKind != "AREA_OVERLAP" && logic.strJudgementKind != "OBJECT_OVERLAP" && logic.strJudgementKind != "GAZE_REAL_BOSS"))))
 		{ outStatus = "Only AREA_OVERLAP/OBJECT_OVERLAP/GAZE_REAL_BOSS takes an inside outcome of SUCCESS or FAIL: " + logic.strLogicId; return false; }
+        if (logic.bGazeDuringWindow && (logic.strLogicType != "DURATION" ||
+            logic.strJudgementKind != "GAZE_REAL_BOSS" || logic.strInsideOutcome != "FAIL"))
+        { outStatus = "Gaze during window requires DURATION GAZE_REAL_BOSS with facing outcome FAIL."; return false; }
 		const bool_t hasResultValues = !logic.strOutcomeKind.empty() ||
 			0u != logic.iDamageAmount || 0u != logic.iPercent || 0u != logic.iDurationMs || logic.fPushRangeM != 0.0 || logic.fPushHeightM != 0.0 || logic.iPushMs != 0u || logic.bForcePush || logic.bPushCanLeaveArena || logic.bPushBallistic || logic.fPushYawOffsetDegrees != 0.0 || !logic.strFollowupPatternId.empty() ||
 			(!logic.strTargetWorldInstanceId.empty() && logic.strJudgementKind != "OBJECT_OVERLAP") || !logic.strMotionInstanceId.empty() ||
@@ -1046,7 +1052,7 @@ namespace
 	{
 		if (!Has_Properties(value, { "occurrenceId", "resourceId", "startMs", "durationMs" },
 			{ "positionOffset", "rotationDegrees", "scale", "fadeInMs", "fadeOutMs",
-			  "dissolveStart", "dissolveEnd", "volume", "soundSourceStartMs", "effectSourceStartMs", "followBoss", "bone", "boneTarget",
+			  "dissolveStart", "dissolveEnd", "volume", "soundSourceStartMs", "effectSourceStartMs", "effectSourceTimeKeys", "followBoss", "bone", "boneTarget",
 			  "regionId", "cardSymbol", "cardColor", "anchorKind", "worldId", "logicOccurrenceId", "debugRender", "worldOccurrenceId", "brightnessMultiplier",
 			  "worldEmissionIndex", "selectionGroupId", "fitEffectToDuration", "loopEffectToDuration",
 			  "boneRotation", "colliderMotion", "colliderEndPositionOffset", "colliderEndScale", "anchorPresentationOccurrenceId" })) return false;
@@ -1062,6 +1068,20 @@ namespace
 			if (!loop->Is_Boolean()) return false;
 			row.bLoopEffectToDuration = loop->Get_Boolean();
 		}
+        if (const auto* clock = value.Find("effectSourceTimeKeys"))
+        {
+            // Absent and normalized empty clocks both use the ordinary Effect timeline.
+            if (!clock->Is_Array() || clock->Get_Array().size() == 1u || clock->Get_Array().size() > 4096u) return false;
+            for (const auto& key : clock->Get_Array())
+            {
+                std::array<double, 2u> sample{};
+                if (!Has_ExactProperties(key, {"timeMs", "sourceMs"}) ||
+                    !key.Find("timeMs") || !key.Find("sourceMs") ||
+                    !Read_PresentationNumber(key, "timeMs", sample[0], 0., MAX_TIME_MS) ||
+                    !Read_PresentationNumber(key, "sourceMs", sample[1], 0., MAX_TIME_MS)) return false;
+                row.EffectSourceTimeKeys.push_back(sample);
+            }
+        }
 		const auto* debugRender = value.Find("debugRender");
 		if (nullptr != debugRender)
 		{
@@ -2127,6 +2147,12 @@ namespace
                 if (row.iEffectSourceStartMs && (resource->eKind != KOUKU_SAYDON_PRESENTATION_KIND::EFFECT ||
                     row.iEffectSourceStartMs >= resource->iDurationMs || row.iEffectSourceStartMs > MAX_TIME_MS))
                 { outStatus = "Effect Source In must be inside an Effect resource lifetime."; return false; }
+                if (!row.EffectSourceTimeKeys.empty() &&
+                    (resource->eKind != KOUKU_SAYDON_PRESENTATION_KIND::EFFECT ||
+                    (resource->strResourceKind != "GROUP" && resource->strResourceKind != "LEAF" &&
+                     resource->strResourceKind != "V1_EFFECT" && resource->strResourceKind != "V1_ELEMENT") ||
+                    !row.Has_ValidEffectSourceTimeKeys(resource->iDurationMs)))
+                { outStatus = "Effect source clock requires monotonic keys covering a fixed MAP occurrence."; return false; }
                 if (!row.strAnchorPresentationOccurrenceId.empty())
                 {
                     const auto source = std::find_if(pattern.PresentationOccurrences.begin(), pattern.PresentationOccurrences.end(),
@@ -2359,6 +2385,25 @@ namespace
                             { outStatus = "Bomb Effect references require one exclusive Logic window owner."; return false; }
                     }
                 }
+                if (owner.strJudgementKind == "BOSS_RANDOM_TARGET")
+                {
+                    const auto tracking = std::find_if(pattern.PresentationOccurrences.begin(), pattern.PresentationOccurrences.end(),
+                        [&](const auto& row) { return row.strOccurrenceId == owner.strTrackingPresentationOccurrenceId; });
+                    if (tracking == pattern.PresentationOccurrences.end() ||
+                        presentationResources.at(tracking->strResourceId)->eKind != KOUKU_SAYDON_PRESENTATION_KIND::EFFECT ||
+                        tracking->strAnchorKind != "BOSS" || !tracking->bFollowBoss || !tracking->strBone.empty() ||
+                        !tracking->strAnchorPresentationOccurrenceId.empty() || tracking->iStartMs > box.iStartMs ||
+                        std::uint64_t(tracking->iStartMs) + tracking->iDurationMs < std::uint64_t(box.iStartMs) + box.iDurationMs)
+                    { outStatus = "Random target Duration requires a following, bone-free Boss Effect covering its window."; return false; }
+                    if (box.bEnabled) for (const auto& other : pattern.LogicOccurrences)
+                    {
+                        const auto* otherLogic = findLogic(other.strLogicId);
+                        if (&other != &box && other.bEnabled && otherLogic && otherLogic->strJudgementKind == "BOSS_RANDOM_TARGET" &&
+                            box.iStartMs < std::uint64_t(other.iStartMs) + other.iDurationMs &&
+                            other.iStartMs < std::uint64_t(box.iStartMs) + box.iDurationMs)
+                        { outStatus = "Random target Duration windows cannot overlap."; return false; }
+                    }
+                }
                 if (!owner.strTrackingPresentationOccurrenceId.empty())
                 {
                     const auto tracking = std::find_if(pattern.PresentationOccurrences.begin(), pattern.PresentationOccurrences.end(),
@@ -2503,7 +2548,7 @@ namespace
 						return false;
 					}
 					if (!targets.empty() && !Kouku_LogicOutcomeKind(owner).empty() &&
-						!Kouku_IsOutcomeSlotAllowed(Kouku_LogicOutcomeKind(owner), slot))
+						!Kouku_IsOutcomeSlotAllowed(Kouku_LogicOutcomeKind(owner), slot, owner.bGazeDuringWindow))
 					{
 						outStatus = "KoukuSaydon Logic box wires an outcome slot its judgement kind never ends in: " +
 							box.strOccurrenceId;
@@ -3351,7 +3396,7 @@ bool_t Client::CKoukuSaydonCompositionDocument::Parse_Text(
                       "bombPresentationOccurrenceId", "bombExplosionPresentationOccurrenceId", "bombSectorPresentationOccurrenceId", "bombSectorRadiusM", "bombSectorHalfAngleDegrees",
                       "visualIds", "cardSymbols", "contactVisualId", "speedMps", "contactRadiusM", "spawnRadiusM", "lifetimeMs", "homing", "countPerWave",
 					  "randomVolleyOccurrenceSets", "randomSpawnIntervalMs", "randomArenaRadiusM", "randomArenaHeightToleranceM", "randomAnchorKind", "randomScaleMin", "randomScaleMax", "insideOutcome", "sectorCount", "sectorSymbols", "regionIds", "centerX", "centerZ",
-					  "outerRadiusM", "worldSequenceInstanceId", "halfAngleDegrees",
+					  "outerRadiusM", "worldSequenceInstanceId", "halfAngleDegrees", "gazeDuringWindow",
 					  "maxDistanceM", "poseIndex", "threshold", "shieldArcDegrees",
 					  "endsPatternOnSuccess", "normalYawOffsetDegrees", "faceCenterYawOffsetDegrees", "outcomeKind", "percent", "damageAmount", "durationMs", "pushRangeM", "pushMs", "pushDirection", "forcePush", "pushCanLeaveArena", "pushBallistic", "pushHeightM", "pushYawOffsetDegrees", "targetWorldInstanceId", "motionInstanceId", "targetRadiusM",
 					  "directionPatternIds", "cloneEndStageId", "summonOccurrenceId", "airbornePhase", "airborneHeightM", "airborneDurationMs", "airborneTargetPositionPolicy", "selectedEffectGroupId", "selectedFlightMs", "selectedFlightArcHeightM", "selectedFlightSourceOffset", "patternIds", "completionCount", "followupPatternId", "marioStage", "triggerKind", "playerEntryEffectOccurrenceIds", "countPerPlayer", "radiusM", "effectLifetimeMs",
@@ -3589,6 +3634,12 @@ bool_t Client::CKoukuSaydonCompositionDocument::Parse_Text(
                 { outStatus = "PURSUIT_PROJECTILES fields must be supplied together on that judgement kind."; return false; }
             if (logicValue.Find("countPerWave") && (!pursuit || stagedLogic.iCountPerWave == 0u))
             { outStatus = "countPerWave requires PURSUIT_PROJECTILES and a count of 1..16."; return false; }
+            if (const auto* gaze = logicValue.Find("gazeDuringWindow"))
+            {
+                if (!gaze->Is_Boolean() || stagedLogic.strLogicType != "DURATION" || stagedLogic.strJudgementKind != "GAZE_REAL_BOSS")
+                { outStatus = "gazeDuringWindow is Boolean and belongs only to GAZE_REAL_BOSS."; return false; }
+                stagedLogic.bGazeDuringWindow = gaze->Get_Boolean();
+            }
             if (homing) stagedLogic.bPursuitHoming = homing->Get_Boolean();
             const bool cross = stagedLogic.strLogicType == "DURATION" && stagedLogic.strJudgementKind == "CROSS_DIRECTION_CLONES";
             if ((cross != (logicValue.Find("directionPatternIds") != nullptr)) ||
@@ -4986,6 +5037,8 @@ std::string Client::CKoukuSaydonCompositionDocument::Serialize(
                         << ",\n      \"randomScaleMax\": " << logic.fRandomScaleMax;
 				}
 			}
+			else if ("BOSS_RANDOM_TARGET" == logic.strJudgementKind)
+				output << ",\n      \"trackingPresentationOccurrenceId\": \"" << CDataJson::Escape(logic.strTrackingPresentationOccurrenceId) << "\"";
 			else if ("BOSS_TRACK_TARGET" == logic.strJudgementKind)
 			{
 				// A rotate-only window stays byte-identical to its saved form.
@@ -5041,6 +5094,7 @@ std::string Client::CKoukuSaydonCompositionDocument::Serialize(
 				output << ",\n      \"halfAngleDegrees\": " << logic.fHalfAngleDegrees
 					<< ",\n      \"maxDistanceM\": " << logic.fMaxDistanceM
 					<< ",\n      \"insideOutcome\": \"" << logic.strInsideOutcome << "\"";
+                if (logic.bGazeDuringWindow) output << ",\n      \"gazeDuringWindow\": true";
 			}
 			else if ("POSE_INPUT" == logic.strJudgementKind)
 			{
@@ -5488,6 +5542,17 @@ std::string Client::CKoukuSaydonCompositionDocument::Serialize(
                 }
 			if (!row.strAnchorPresentationOccurrenceId.empty()) output << ", \"anchorPresentationOccurrenceId\": \"" << CDataJson::Escape(row.strAnchorPresentationOccurrenceId) << "\"";
 			if (row.iEffectSourceStartMs) output << ", \"effectSourceStartMs\": " << row.iEffectSourceStartMs;
+                if (!row.EffectSourceTimeKeys.empty())
+                {
+                    output << ", \"effectSourceTimeKeys\": [";
+                    for (std::size_t i = 0; i < row.EffectSourceTimeKeys.size(); ++i)
+                    {
+                        if (i) output << ", ";
+                        output << "{\"timeMs\": " << row.EffectSourceTimeKeys[i][0]
+                            << ", \"sourceMs\": " << row.EffectSourceTimeKeys[i][1] << '}';
+                    }
+                    output << ']';
+                }
 			if (row.bFitEffectToDuration) output << ", \"fitEffectToDuration\": true";
 			if (row.bLoopEffectToDuration) output << ", \"loopEffectToDuration\": true";
 			output << ", \"fadeInMs\": " << row.iFadeInMs << ", \"fadeOutMs\": " << row.iFadeOutMs
@@ -5572,6 +5637,17 @@ std::string Client::CKoukuSaydonCompositionDocument::Serialize(
                     output << ", \"colliderEndScale\": "; Write_PresentationVector(output, row.ColliderEndScale);
                 }
                 if (row.iEffectSourceStartMs) output << ", \"effectSourceStartMs\": " << row.iEffectSourceStartMs;
+                if (!row.EffectSourceTimeKeys.empty())
+                {
+                    output << ", \"effectSourceTimeKeys\": [";
+                    for (std::size_t i = 0; i < row.EffectSourceTimeKeys.size(); ++i)
+                    {
+                        if (i) output << ", ";
+                        output << "{\"timeMs\": " << row.EffectSourceTimeKeys[i][0]
+                            << ", \"sourceMs\": " << row.EffectSourceTimeKeys[i][1] << '}';
+                    }
+                    output << ']';
+                }
                 if (row.bFitEffectToDuration) output << ", \"fitEffectToDuration\": true";
                 if (row.bLoopEffectToDuration) output << ", \"loopEffectToDuration\": true";
                 output << ", \"fadeInMs\": " << row.iFadeInMs << ", \"fadeOutMs\": " << row.iFadeOutMs
@@ -6432,5 +6508,50 @@ bool_t Client::CKoukuSaydonCompositionDocument::Try_ResolveAnimationBlendWindows
     std::sort(staged.begin(), staged.end(), [](const auto& a, const auto& b) { return a.iStartMs < b.iStartMs; });
     outWindows = std::move(staged);
     status.clear();
+    return true;
+}
+
+double Client::KOUKU_SAYDON_COMPOSITION_PRESENTATION_OCCURRENCE::Effect_SourceTimeMs(
+    const double elapsedMs) const noexcept
+{
+    if (EffectSourceTimeKeys.empty()) return iEffectSourceStartMs + (std::max)(0., elapsedMs);
+    if (elapsedMs <= EffectSourceTimeKeys.front()[0]) return EffectSourceTimeKeys.front()[1];
+    const auto right = std::upper_bound(EffectSourceTimeKeys.begin(), EffectSourceTimeKeys.end(), elapsedMs,
+        [](const double time, const auto& key) { return time < key[0]; });
+    if (right == EffectSourceTimeKeys.end()) return EffectSourceTimeKeys.back()[1];
+    const auto& left = *(right - 1);
+    return left[1] + (right->at(1) - left[1]) * (elapsedMs - left[0]) / (right->at(0) - left[0]);
+}
+
+double Client::KOUKU_SAYDON_COMPOSITION_PRESENTATION_OCCURRENCE::Effect_ElapsedTimeMs(
+    const double sourceMs) const noexcept
+{
+    if (EffectSourceTimeKeys.empty()) return sourceMs - iEffectSourceStartMs;
+    auto right = std::upper_bound(EffectSourceTimeKeys.begin(), EffectSourceTimeKeys.end(), sourceMs,
+        [](const double time, const auto& key) { return time < key[1]; });
+    // Preserve out-of-window capture boundaries instead of clamping them into a visible frame.
+    if (right == EffectSourceTimeKeys.begin()) ++right;
+    if (right == EffectSourceTimeKeys.end()) --right;
+    const auto& left = *(right - 1);
+    return left[0] + (right->at(0) - left[0]) * (sourceMs - left[1]) / (right->at(1) - left[1]);
+}
+
+bool Client::KOUKU_SAYDON_COMPOSITION_PRESENTATION_OCCURRENCE::Has_ValidEffectSourceTimeKeys(
+    const std::uint32_t resourceDurationMs) const noexcept
+{
+    if (EffectSourceTimeKeys.empty()) return true;
+    if (EffectSourceTimeKeys.size() < 2u || EffectSourceTimeKeys.size() > 4096u ||
+        strAnchorKind != "MAP" || bFollowBoss || !strBone.empty() || !strWorldId.empty() ||
+        !strAnchorPresentationOccurrenceId.empty() || iEffectSourceStartMs || bFitEffectToDuration ||
+        bLoopEffectToDuration || iFadeInMs || iFadeOutMs ||
+        EffectSourceTimeKeys.front()[0] != 0. || EffectSourceTimeKeys.back()[0] != iDurationMs ||
+        EffectSourceTimeKeys.back()[1] > resourceDurationMs) return false;
+    for (std::size_t i = 0; i < EffectSourceTimeKeys.size(); ++i)
+    {
+        const auto& key = EffectSourceTimeKeys[i];
+        if (!std::isfinite(key[0]) || !std::isfinite(key[1]) || key[0] < 0. || key[1] < 0. ||
+            key[0] > 600000. || key[1] > 600000. ||
+            (i && (key[0] <= EffectSourceTimeKeys[i-1][0] || key[1] <= EffectSourceTimeKeys[i-1][1]))) return false;
+    }
     return true;
 }

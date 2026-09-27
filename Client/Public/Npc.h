@@ -410,6 +410,16 @@ private:
 	bool_t m_bNpcActionEffectTargetsQueued = false;
 	void Arm_ActionEffectCues(const char_t* pClipName);
 	void Update_ActionEffectCues(f32_t fTimeDelta);
+	/* Stops every presentation this NPC still owns for the current action
+	occurrence. A new occurrence and teardown both go through here, so a
+	native infinite emitter can never outlive the action that started it. */
+	void Release_ActionEffectCues();
+	void Play_ActionEffectCueSound(const NPC_ACTION_EFFECT_CUE& cue,
+		f32_t fDueSeconds, f32_t fAgeSeconds,
+		NPC_ACTION_EFFECT_LIVE_CUE& live);
+	/* Equal-weight avoid-repeat-1 over this NPC's action cue sounds, the same
+	selection the native hit-reaction containers already use. */
+	std::string m_strLastActionEffectSoundAsset;
 	// Native MN_RPCZ_00 BEHIT notify, owned by one successful action entry.
 	uint32_t m_iPendingHitReactionSoundClip = UINT32_MAX;
 	uint32_t m_iPendingHitReactionSoundEvent = UINT32_MAX;

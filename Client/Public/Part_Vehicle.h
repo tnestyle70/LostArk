@@ -15,6 +15,8 @@ NS_END
 
 NS_BEGIN(Client)
 
+class CCharacter;
+
 class CPart_Vehicle final : public CPartObject
 {
 public:
@@ -26,6 +28,7 @@ public:
 		std::string strIdleClip;
 		std::string strRunClip;
 		std::string strSeatBone;
+		float3_t vSeatOffset = { 0.f, 0.f, 0.f };
 	} PART_VEHICLE_DESC;
 
 private:
@@ -34,6 +37,8 @@ public:
 	virtual ~CPart_Vehicle();
 
 public:
+	void Set_CharacterPresentationOwner(const std::shared_ptr<CCharacter>& owner)
+	{ m_pCharacterPresentationOwner = owner; }
 	bool_t Set_Moving(bool_t isMoving);
 	bool_t Try_Get_SeatWorldPosition(float3_t& outPosition) const;
 	/* How far the seat bone has turned from the pose it had when the vehicle was
@@ -77,11 +82,14 @@ public:
 	virtual HRESULT Render_Shadow() override;
 
 private:
+	std::weak_ptr<CCharacter> m_pCharacterPresentationOwner;
+	bool_t Is_CharacterPresentationHidden() const;
 	shared_ptr<CShader> m_pShaderCom = { nullptr };
 	shared_ptr<CModel> m_pModelCom = { nullptr };
 	std::string m_strIdleClip;
 	std::string m_strRunClip;
 	std::string m_strSeatBone;
+	float3_t m_vSeatOffset = { 0.f, 0.f, 0.f };
 	bool_t m_isMoving = { false };
 	bool_t m_isPlayingSkill = { false };
 	bool_t m_hasTranslucentMeshes = { false };

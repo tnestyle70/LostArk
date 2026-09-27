@@ -223,6 +223,11 @@ bool_t Client::CEffect_Tool::Try_RemoveCinematicLeadingDelay()
 
 bool_t Client::CEffect_Tool::Try_CreateDocument()
 {
+    if (Has_ClassMovieContext())
+    {
+        m_strDocumentStatus = "End Movie Editing before creating a new Effect. Save Changes updates the current Movie Effect.";
+        return false;
+    }
     if (Has_UnsavedWork())
     {
         m_strDocumentStatus =
@@ -3238,15 +3243,15 @@ bool_t Client::CEffect_Tool::Try_CommitDocument(
         m_bActiveDocumentMatchesRuntime = false;
         Recalculate_PreviewDuration();
         Release_WorldPreview(true);
-        m_strPreviewStatus =
-            "Document draft committed; preview hidden until required resources bind: " +
-            DrawableError;
+        m_strPreviewStatus = (Has_ClassMovieContext() ?
+            "Document draft committed; previous Movie Effect preserved until required resources bind: " :
+            "Document draft committed; preview hidden until required resources bind: ") + DrawableError;
         return true;
     }
     // Open is CPU-only. Editing that document must not require a preview model,
     // source bones, or GPU resources until the user explicitly starts playback.
     // A live preview still stages before commit and preserves the old state on failure.
-    const bool_t bRefreshPreview = m_bPreviewVisibleRequested ||
+    const bool_t bRefreshPreview = Has_ClassMovieContext() || m_bPreviewVisibleRequested ||
         (m_pAuthoringSequencer && m_pAuthoringSequencer->Is_Active());
     if (bRefreshPreview && !Stage_WorldPreview(Staged))
     {
@@ -3270,6 +3275,11 @@ bool_t Client::CEffect_Tool::Try_CommitDocument(
 bool_t Client::CEffect_Tool::Try_SetPreviewFilter(
     const EFFECT_PREVIEW_FILTER eFilter)
 {
+    if (Has_ClassMovieContext())
+    {
+        m_strPreviewStatus = "Use Movie Play All, Element Solo or Play Group while editing a Movie.";
+        return false;
+    }
     if (m_pAuthoringSequencer && m_pAuthoringSequencer->Is_Active()) m_pAuthoringSequencer->Stop();
     if (EFFECT_PREVIEW_FILTER::END == eFilter)
         return false;

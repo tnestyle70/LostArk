@@ -395,10 +395,11 @@ bool LostArk::Server::CKoukuSaydonBrain::Validate_AnimationOnlyPattern(
 			 !std::isfinite(trigger.fFollowSpeedScale) || trigger.fFollowSpeedScale < .01f || trigger.fFollowSpeedScale > 10.f))
 		{ status = "Showtime player-target visual or timing contract is invalid"; return false; }
 		if ((trigger.eKind == BOSS_PATTERN_MECHANIC_TRIGGER_KIND::BOSS_TRACK_TARGET ||
-			trigger.eKind == BOSS_PATTERN_MECHANIC_TRIGGER_KIND::BOSS_RANDOM_TARGET) &&
+			trigger.eKind == BOSS_PATTERN_MECHANIC_TRIGGER_KIND::BOSS_RANDOM_TARGET ||
+			trigger.eKind == BOSS_PATTERN_MECHANIC_TRIGGER_KIND::BOSS_RANDOM_TARGET_PRESENTATION) &&
 			(trigger.iDurationMs > 600000u || !trigger.strFixedVisualId.empty() || !trigger.strTrackingVisualId.empty() ||
 			 trigger.iFixedLifetimeMs != 0u || trigger.iSpawnIntervalMs != 0u ||
-			 (trigger.eKind == BOSS_PATTERN_MECHANIC_TRIGGER_KIND::BOSS_RANDOM_TARGET && trigger.fFollowSpeedScale != 0.f) ||
+			 (trigger.eKind != BOSS_PATTERN_MECHANIC_TRIGGER_KIND::BOSS_TRACK_TARGET && trigger.fFollowSpeedScale != 0.f) ||
 			 // Zero rotates only; an authored scale walks the body at the tracked player's speed.
 			 !std::isfinite(trigger.fFollowSpeedScale) || trigger.fFollowSpeedScale < 0.f ||
 			 (trigger.fFollowSpeedScale != 0.f && (trigger.fFollowSpeedScale < .01f || trigger.fFollowSpeedScale > 10.f)) ||
@@ -451,6 +452,9 @@ bool LostArk::Server::CKoukuSaydonBrain::Validate_AnimationOnlyPattern(
 			static_cast<std::uint64_t>(window.iStartMs) + window.iDurationMs;
 		const bool endTickKind =
 			BOSS_PATTERN_LOGIC_KIND::GAZE_REAL_BOSS == window.eKind;
+        if (window.bGazeDuringWindow && (window.eKind != BOSS_PATTERN_LOGIC_KIND::GAZE_REAL_BOSS ||
+            !window.bInsideIsFail || !window.OnSuccess.empty() || !window.OnTimeout.empty()))
+        { status = "Gaze during window requires facing FAIL and only Fail outcomes"; return false; }
 		bool valuesValid = true;
 		if (((window.bRearmOnExit || window.bRepeatAfterKnockback) && window.eKind != BOSS_PATTERN_LOGIC_KIND::ENTER_AREA) ||
 			(window.iRepeatIntervalMs && window.eKind != BOSS_PATTERN_LOGIC_KIND::ENTER_AREA && window.eKind != BOSS_PATTERN_LOGIC_KIND::AREA_OVERLAP) ||
@@ -932,6 +936,7 @@ bool LostArk::Server::CKoukuSaydonBrain::Begin_Pattern(
 			status = "KoukuSaydon pattern cannot begin from the current boss state";
 		return false;
 	}
+	boss.Restore_KoukuPresentationAim();
 	boss.PinnedDefinitionRevision = revision;
 	boss.KoukuContactLedger.reset();
 	boss.KoukuDirectionPlayback.reset();
@@ -964,6 +969,7 @@ void LostArk::Server::CKoukuSaydonBrain::Finish_Pattern(
 		boss.PatternTerminalReceipt.iRootPatternSequence = boss.iPatternSequence;
 		boss.PatternTerminalReceipt.eResult = result;
 	}
+	boss.Restore_KoukuPresentationAim();
 	boss.PatternStageRootMotion.clear();
 	boss.KoukuContactLedger.reset();
 	boss.bPatternRootGrounded = false;

@@ -1,5 +1,25 @@
 # LostArk merge 회귀 방지 정본
 
+### World Movie의 V1 편집과 camera live 적용
+
+- Movie Effect를 V1에서 열 때 원본 WORLD 배우·카메라·시계의 owner를 유지한다. 일반 Effect의
+  별도 모델 preview나 Element Solo 시계를 함께 실행하지 않는다. 실제 Movie class/phase/Effect ID로
+  연결하고 창 전환·편집 종료·Level 이탈의 임시 override 정리를 확인한다.
+- Element 초안은 기존 Effect renderer로 먼저 준비하고 활성·pending occurrence 모두 성공한 뒤
+  같은 handle의 인스턴스를 교체한다. 준비 실패는 이전 재생과 Product catalog를 보존한다.
+  Product Save·임시 preview·다음 spawn을 동일한 완료 상태로 기록하지 않는다.
+- prepared Effect의 Build_ResourceSignature는 Document 주소와 stable asset ID를 함께 사용한다.
+  caller 문서를 prepare한 뒤 내용이 같은 복사본을 attach하면 signature가 달라 거절된다.
+  불변 shared Document를 먼저 만들고 같은 객체를 prepare부터 active/pending attach까지 유지한다.
+  이 주소는 process 내부 cache identity이며 저장 ID가 아니다. prepare 통과를 attach 성공으로 대신하지 않는다.
+- Movie A의 Solo/Play Group 뒤 B로 전환할 때 isolation ID만 지우면 A의 filtered target이 남는다.
+  새 문서 검증 후 이전 A의 전체 draft를 먼저 복원하고, 실패하면 isolation과 문서 선택을 유지한다.
+  같은 asset의 Load Saved/Discard도 필터 없는 전체 저장본으로 복원한다. New/Save As는
+  End Movie Editing 뒤에 수행하며, End는 임시 target 복원 후 isolation ID와 filter를 초기화한다.
+- camera pose/FOV만 바뀌면 같은 Movie 시각에서 camera만 다시 평가하고 배우·Effect를 재시작하지
+  않는다. camera box 시작/길이를 바꿀 때는 기존 전체 Apply 경로를 유지한다. key의 source 시각과
+  현재 보간 sample, source horizontal FOV와 적용 vertical FOV를 구분한다.
+
 ### 스킨 모델 호버의 빈 공간 판정과 배경 덮임
 
 - pose 전체 AABB는 broad phase일 뿐이다. 몸 사이 빈 공간도 선택되면 현재 palette로 변형한
@@ -2598,7 +2618,12 @@ lease에 연결한다. 저장된 DURATION은 timing 존재와 PRODUCT 의미의 
 - capture의 scope drop이 있으면 최초182초 프레임의 원인을 세부 수치로 꾸미지 않는다. 이번 사용자 capture에는 timeline ms가 없어44299/55637ms의 정확 대응은 사용자 관찰이다. 구현·수치 검증과 사용자 FPS 확인은 대응 KOUKU_PATTERN_RUNTIME_REPAIR_RESULT에서 구분한다.
 
 - 단독 EffectAuthoringSequencer도 loopEffectToDuration의 finite/loop0 구분을 소비해야 한다. Composition만 고치면 공통 불25개 finite emitter가 단독 Preview에서 계속 거절된다. cycle을 되감을 때 provider의 owner/bone 시각에 cycle 시작을 다시 더한다.
-- 컷신의 Animation lane이 비어 있어도 World sequence의 animationTracks와 설치 WModel clip을 먼저 확인한다. 이미 World 배우가 소유한 clip은 정보 행으로 투영하고 같은 보스 Animation을 중복 생성하지 않는다.
+- 컷신의 Animation lane이 비어 있어도 World sequence의 animationTracks와 설치 WModel clip을 먼저 확인한다. 이미 World 배우가 소유한 clip은 기존 WORLD 편집 경계로 투영하고 같은 보스 Animation을 중복 생성하지 않는다.
+- WORLD Animation 표시 행을 시간 구간만으로 채우면 서로 다른 배우의 clip이 같은 행에 섞인다.
+  World occurrence+slot별로 행을 고정하고 배우를 표시한다. 공백과 이웃은 같은 owner의 source
+  구간·속도·끝 시각으로 판단하며 화면상의 빈칸만으로 validator를 풀거나 다른 clip을 밀지 않는다.
+  편집 거절은 이웃 충돌과 Motion 범위 초과를 구분하고 사용자 dirty 문서와 고정 시계를 보존한다.
+  같은 mesh를 쓰는 원본 actor도 별도 UObject·visibility·본 부착을 가질 수 있으므로 mesh 이름만으로 중복이라 판정해 삭제·병합하지 않는다.
 
 ### Show Navigation 오버레이는 main viewport background list에 명시적으로 그린다 (2026-09-18)
 
@@ -2789,7 +2814,7 @@ lease에 연결한다. 저장된 DURATION은 timing 존재와 PRODUCT 의미의 
 - **컷신 항목(패턴) 하나를 Boss 탭과 Sequence 탭에 추가하는 절차와 함정 (2026-09-20 `앵콜컷신`)**: 두 탭은 별개 문서다. Boss 탭은 `Data/KoukuSaydon/Gate1/KoukuSaydonComposition.json`, Sequence 탭은 `Data/Compositions/Sequences/KoukuSaydonSequenceComposition.json`이고, 같은 컷신도 각 문서에 패턴이 따로 있으며(ID 접두사만 다르다) 둘 다 `camerashots.json`의 shot과 `Data/Effects/V2`의 페이드 이펙트를 참조한다. 게이트별 트리는 `KoukuSaydonActionWorkbench.cpp`의 `Render_PatternTree`가 gateId와 folder/bundle 유무로 만들며, 폴더 없는 패턴은 게이트 바로 아래 `표시이름 [Actor]`로 나온다. `Tools/KoukuSaydonPipeline/build_gate_cutscenes_g12.py`는 CONFIGS 전체를 다시 만들고 id가 지금 문서와 어긋나 있어(id=8이 현재는 `1관문_연출`) 새 컷신을 위해 다시 돌리지 않는다. 컷신 하나만 추가할 때는 `Tools/KoukuSaydonPipeline/build_encore_cutscene.py`처럼 기존 `빙고_최종엔딩씬` 패턴을 복제하고 쓰기 직전에 baseline을 다시 확인한 뒤 원자 교체한다. Composition 두 문서는 파이썬 indent=2 + CRLF로 다시 써도 바이트가 같지만 `camerashots.json`은 실수 표기가 섞여 있어 텍스트 삽입으로만 고친다. 자막·가짜 클리어 UI·깨진 유리·배우 굽기(slot a/b 밖의 skelcontrolstrength 무시)는 이 파이프라인이 표현하지 못하므로, 패턴이 생겼다고 그 요소가 들어간 것이 아니다. 근거와 미포함 목록은 `2026-09-20_KOUKU_ENCORE_COMPOSITION_ENTRY_RESULT.md`에 있다.
 - **원본 컷신 배우(Matinee 그룹)를 World Sequence로 옮길 때 조용히 어긋나는 세 가지 (2026-09-20 앵콜컷신 세이튼)**: ① `build_source_sequences.actor_world`가 쓰는 `base.source_times`는 `cim_constant` 계단을 `round(ms)`와 `ms-1`에서 `world_pose(ms/1000)`로 샘플한다. 원본 키 시각이 7833.34ms처럼 정수 ms 바로 위면 `round`가 내림해 그 시각에는 아직 옛 값이 나오고, 새 값은 다음 200ms 경계에 도착해 배우가 계단 대신 167ms 동안 약 44m를 미끄러진다(앵콜 후보에서 실측). 계단 다음의 첫 정수 ms(`floor(t)+1`)를 키에 더한다(`build_encore_cutscene.add_step_keys`). 기존 baker는 고치지 않았고 다른 컷신에 같은 미끄러짐이 있는지는 확인하지 못했다. ② baker의 `rotationQuaternion`은 scipy가 w<0 부호로 줄 수 있는데 Composition/World Sequence 검증기는 정규화된 w≥0을 요구한다(`must be normalized with non-negative w`). q와 -q는 같은 회전이므로 부호를 뒤집어 저장한다. ③ Boss 문서 `worlds[].worldId`는 `kakulsaydon.g1.world.<N>`(N<nextWorldOrdinal)만 투영기 `_validate_catalog`가 받는다(`world.kouku.gate2.intro.*`만 예외). `world.kouku.bingo.encore.saydon`을 넣으면 `project_kouku_saydon_composition.py --check`가 `worldId must use kakulsaydon.g1.world.<N> below nextWorldOrdinal`로 실패했다(Sequence 문서 선례의 `world.kouku.*` 형식을 그대로 복사하면 안 된다). 또 baked wmodel 폴더에는 원본 `textures/`가 함께 있어야 한다. `write_clip`이 복사하지만 후보 Resources root에서 구우면 빠지므로 설치 때 같이 옮긴다. 근거: 09-20/2026-09-20_KOUKU_ENCORE_COMPOSITION_ENTRY_RESULT.md 10절.
 - **베른 castle↔castle.2 / library↔library.2 왕복 트리거는 예외적으로 밟자마자 발동하고, 화면이 어두워진 뒤에 이동한다 (2026-09-20).** 플레이어가 스스로 움직이는 movePlayer 상자는 기본이 G키 대기라서 `AUTO_ENTRY_RULES`에 `{BERN, MOVE_PLAYER, "castle"}`, `{BERN, MOVE_PLAYER, "library"}` 행이 있어야 G 없이 발동한다(id 접두어라 `castle.2`, `library.2`도 포함, Bern의 다른 movePlayer 상자는 계속 G). 도착 자리가 짝 상자 안이라 서버가 새로 밟은 것으로 보고 곧바로 되쏘는 무한 반복을 막으려고, Bern에서만 `Evaluate_Entries`가 방금 착지한 플레이어를 그 틱의 진입 발동에서 뺀다(`m_TriggerMoveInFlight`로 TRIGGER_MOVE가 끝난 틱을 안다. 나갔다 다시 들어와야 발동). 어두워진 뒤 이동은 서버가 `TriggerMove.fHoldSeconds`(Shared `BERN_TRAVEL_HOLD_MS`=500)만큼 제자리에 묶고 그 뒤 이동시키며, 클라는 `CSongCastGaugeView`의 전역 암전을 Bern 레벨에서만 TRIGGER_MOVE 동안 `BERN_TRAVEL_FADE_OUT_MS`(300)로 검게 만든다. 쿠크 아레나의 속도 휴리스틱 암전은 그대로이며 Bern 레벨에서만 켜지므로 이중 암전은 없다. 스퀘어홀은 TRIGGER_MOVE가 아니라 SQUAREHOLE_SONG 액션이라 겹치지 않는다. 이동 이벤트의 `durationSeconds`는 게시기 최소값 0.05이고 targetPosition의 Y는 짝 자리의 서버 네비 높이를 썼다(트리거 상자 Y와 최대 0.13m 차이). 프로토콜 94는 그대로지만 Shared 헤더가 바뀌므로 Server와 Client를 함께 빌드·재시작한다. 게시기 검증은 스크래치 루트(`Publish-WorldGameplay.ps1`의 repoRoot는 스크립트 상위 2단계)에 `Data` junction을 만들고 후보 파일만 복사해 저장소를 건드리지 않고 할 수 있다. 이때 junction은 `cmd /c rmdir`로만 지운다(`Remove-Item -Recurse`는 링크 대상까지 지울 수 있다). 자세한 검증 범위는 `.md/GB/09-20/2026-09-20_BERN_CASTLE_LIBRARY_TRAVEL_RESULT.md`.
-- **쿠크 앵콜컷신은 프로젝트 배우가 원본보다 1.7배 커서 카메라를 배우 루트 기준 1.7배 멀리 둔다 (2026-09-20).** 원본 SCENE07A의 배우 `쿠크세이튼_03`(export 24)과 컴포넌트(export 224)에는 DrawScale/Scale 속성이 없어 메시를 기본 크기(wmodel 단위 × 0.01)로 그린다. 프로젝트 몸체 `MN_RPCT_05`는 `bodyModelPreScale 0.017`이라 구운 배우가 1.7배 크다. 원본 카메라(위치·시선·FOV 29.395°)는 맞았고 발이 화면 아래 끝에 오는 것도 원본 영상과 같았다. 틀어진 것은 머리·몸통이 화면 위로 나가는 것뿐이었다. 세계를 배우 루트 A 기준으로 균등 배율하면 화면이 같으므로 배우를 줄이지 않고 `eye' = A + k(eye - A)`, `lookAt' = A + k(lookAt - A)`(k=1.7, up·FOV 유지)로 카메라 키를 배우 위치 키 시각에 맞춰 다시 만든다(`Tools/KoukuSaydonPipeline/fit_encore_camera_to_actor_scale.py`, 26키, 멱등이며 `--ratio`로 재조정). 다른 컷신에 배율을 옮기기 전에 그 배우의 원본 Actor/Component에 DrawScale이 있는지 UPK 속성(`Tools/.../encore_upk_props.py` 방식)으로 먼저 본다. 09-18 쇼타임의 1.4167(=0.017/(0.01×1.2))은 그 배우에 drawscale 1.2가 명시돼 있었기 때문이다. 배율은 이론값(0.017/0.01), 클로즈업에서 원본의 빨간 코가 화면 중앙에 오는 조건(눈 높이 2.36m ÷ 카메라 축 높이 1.373m = 1.72), 전신 구간 정점 범위 대조(1.4~1.8)가 겹쳐 정했다. 카메라 키는 shot당 최대 64개(`CAMERA_TRACK_MAX_KEYFRAMES`, CameraTool)이므로 배우 위치 키를 5mm 오차로 줄여 쓴다. 영상과 컷신의 시간 대응은 눈대중(+5.4초)이 아니라 프레임 차이 최대점으로 잡는다: 유리 파열 섬광 v=9.80초 = 컷신 15.433초로 오프셋 5.63초. 카메라를 옮기면 원본과 달리 배경이 움직이므로(원본은 카메라 고정, 배우가 카메라에 붙음) 배우 위치 키가 뛰는 8.167·20.4·20.933초에 카메라가 각각 약 2.1m·1.9m·0.6m 순간 이동해 배경이 튄다. 카메라는 원본보다 약 3m 뒤·위(높이 12.26m → 14.81~14.93m)로 가므로 천막·천장 지오메트리와 겹치는지는 화면에서 확인해야 한다. 화면 확인은 사용자 몫이며 이 항목은 수치 검증(스킨 메시 정점 투영, 등가성 NDC 차이 4e-4 이하)만 끝난 상태다. 근거: 09-20/2026-09-20_ENCORE_CAMERA_FIT_RESULT.md.
+- **쿠크 앵콜컷신은 프로젝트 배우가 원본보다 1.7배 커서 카메라를 배우 루트 기준 1.7배 멀리 둔다 (2026-09-20).** 원본 SCENE07A의 배우 `쿠크세이튼_03`(export 24)과 컴포넌트(export 224)에는 DrawScale/Scale 속성이 없어 메시를 기본 크기(wmodel 단위 × 0.01)로 그린다. 프로젝트 몸체 `MN_RPCT_05`는 `bodyModelPreScale 0.017`이라 구운 배우가 1.7배 크다. 원본 카메라(위치·시선·FOV 29.395°)는 맞았고 발이 화면 아래 끝에 오는 것도 원본 영상과 같았다. 틀어진 것은 머리·몸통이 화면 위로 나가는 것뿐이었다. 세계를 배우 루트 A 기준으로 균등 배율하면 화면이 같으므로 배우를 줄이지 않고 `eye' = A + k(eye - A)`, `lookAt' = A + k(lookAt - A)`(k=1.7, up·FOV 유지)로 카메라 키를 배우 위치 키 시각에 맞춰 다시 만든다(`Tools/KoukuSaydonPipeline/fit_encore_camera_to_actor_scale.py`, 26키, 멱등이며 `--ratio`로 재조정). 다른 컷신에 배율을 옮기기 전에 그 배우의 원본 Actor/Component에 DrawScale이 있는지 UPK 속성(`Tools/.../encore_upk_props.py` 방식)으로 먼저 본다. 09-18 쇼타임의 1.4167(=0.017/(0.01×1.2))은 그 배우에 drawscale 1.2가 명시돼 있었기 때문이다. 배율은 이론값(0.017/0.01), 클로즈업에서 원본의 빨간 코가 화면 중앙에 오는 조건(눈 높이 2.36m ÷ 카메라 축 높이 1.373m = 1.72), 전신 구간 정점 범위 대조(1.4~1.8)가 겹쳐 정했다. 카메라 키는 shot당 최대 128개(`CAMERA_TRACK_MAX_KEYFRAMES`, CameraTool)이므로 배우 위치 키를 5mm 오차로 줄여 쓴다. 영상과 컷신의 시간 대응은 눈대중(+5.4초)이 아니라 프레임 차이 최대점으로 잡는다: 유리 파열 섬광 v=9.80초 = 컷신 15.433초로 오프셋 5.63초. 카메라를 옮기면 원본과 달리 배경이 움직이므로(원본은 카메라 고정, 배우가 카메라에 붙음) 배우 위치 키가 뛰는 8.167·20.4·20.933초에 카메라가 각각 약 2.1m·1.9m·0.6m 순간 이동해 배경이 튄다. 카메라는 원본보다 약 3m 뒤·위(높이 12.26m → 14.81~14.93m)로 가므로 천막·천장 지오메트리와 겹치는지는 화면에서 확인해야 한다. 화면 확인은 사용자 몫이며 이 항목은 수치 검증(스킨 메시 정점 투영, 등가성 NDC 차이 4e-4 이하)만 끝난 상태다. 근거: 09-20/2026-09-20_ENCORE_CAMERA_FIT_RESULT.md.
 
 - **main과 병합할 때 두 브랜치가 같은 "다음 번호"를 쓰면 ID가 조용히 겹친다 (2026-09-20 쿠크 `PATTERN_94`, `world.40`).** 쿠크 Composition은 저장할 때 `nextPatternOrdinal`/`nextWorldOrdinal`을 올리므로, 같은 기준에서 갈라진 두 브랜치가 각자 새 패턴·월드를 만들면 서로 다른 내용이 같은 ID(`KAKULSAYDON_G1_PATTERN_94` 메두사공포 대 앵콜컷신, `kakulsaydon.g1.world.40` 뿅망치 대 앵콜 세이튼)를 갖는다. git은 텍스트 충돌만 보여 주므로 JSON을 ID 기준으로 비교해 "양쪽이 같은 ID를 추가했고 내용이 다름"부터 찾고, 한쪽을 새 번호로 옮기면서 그 ID를 참조하는 모든 파일(Composition, Encounter, patternbindings)을 함께 바꾼다. 생성 출력물(`KoukuSaydonEncounter.json`, `KoukuSaydon.patternbindings.json`)은 손으로 합치지 말고 병합된 Composition으로 재생성한다. 재생성 전에는 `sourceRevision`이 Composition `revision`보다 낮은 오래된 상태다.
 - **병합 충돌 해결 때의 함정 세 가지 (2026-09-20).** (1) 해결 스크립트가 실패해도 `;`로 이어 둔 `git add`는 실행되어 충돌 마커가 남은 파일이 "해결됨"으로 스테이징된다. 해결 명령은 `&&`로만 잇고 스테이징 뒤 `git show :0:<파일> | grep -c "^<<<<<<<"`로 0개를 확인한다. (2) autocrlf 때문에 작업 사본은 CRLF, 인덱스 blob은 LF라 바이트 앵커를 쓰는 해결 스크립트는 줄끝부터 감지해야 한다. main의 `gotchas.md`처럼 `CR CR LF`로 저장된 파일은 main 원본 바이트를 그대로 두고 우리 줄만 같은 줄끝으로 붙인다. (3) `git status`가 내용이 같은 파일을 계속 M으로 표시할 수 있다. `git update-index --refresh` 뒤에도 남으면 blob 해시와 `cmp`로 같음을 확인한 뒤 `git checkout -- <파일>`로 정리한다.
@@ -3951,8 +3976,197 @@ F1 안의 Bingo Size 같은 embedded tuner 준비에 창을 여는 EnsureDebugTo
 bShowWindow=false를 사용하고 기존 창의 선택·입력 owner·preview를 보존한다. 준비 뒤
 Hide로 되돌리는 방식은 Deactivate/Stop을 일으키므로 사용하지 않는다.
 
+
+### 원본 마스터가 brightness 4.0 인 Landscape 레이어는 8bit bake 에서 형광 단색이 된다
+
+UE3 Landscape 마스터는 HDR 조명 패스를 전제로 레이어 brightness 를 4.0 까지 저작한다.
+`extract_ue3_landscape.py` 는 평범한 8bit albedo PNG 를 굽기 때문에 weightmap 이 그 레이어에
+1.0 에 가까운 가중치를 주는 넓은 구역에서 텍셀 대부분이 같은 바이트 천장에 붙고, 질감이
+사라진 형광 단색 덩어리가 된다. 마하라카 `lv_ocn_eventis_mhp_land_01_mi` 의 layer03
+(노랑 tint) 과 layer04 (초록 tint) 가 그 사례다.
+
+레이어별 hard clamp `min(1, max(0, x))` 는 이 증상을 고치지 못한다. clamp 는 포화된 색상비를
+그대로 보존하므로 형광 색이 남는다. 실측으로 확인할 것: 255 클립 픽셀 비율과 노랑/초록
+픽셀 비율을 타일별로 재고, clamp 전후가 같으면 그 수정은 실패다.
+레이어별 headroom scale은 8bit clipping을 줄이는 표시용 근사일 뿐 원본 복원이 아니다.
+레이어 사이의 상대 밝기를 변경하며, 클립 픽셀 0%도 올바른 레이어 혼합을 증명하지 않는다.
+09-26 원본 재조사에서 `landscape_base`의 layer01은 AlphaBlend, layer02~07은 diffuse alpha를
+높이 입력으로 사용하는 HeightBlend임을 확인했다. 기존 baker는 이를 일반 가중 평균으로
+처리한다. 원본 static normal switch와 색공간·HDR 출력도 별도 확인해야 한다. 밝기 조절만
+반복하거나 기존 베이크를 원본 shader 결과라고 기록하지 않는다.
+
+지형 타일의 diffuse 소비 경로는 재질 문서가 아니다. `.wmodel` 안의 UTF-16LE 경로 문자열이
+`textures/baked_diffuse.png` 를 직접 가리키고, `Engine/Private/Material.cpp` 가 확장자가
+`.dds`/`.tga` 가 아니면 WIC 로 읽는다. `mapmaterials.json` 에는 LAND01 행이 아예 없다.
+타일을 다시 구웠으면 Resources 물리 폴더의 그 PNG 를 실제로 교체해야 화면이 바뀐다.
+
+
+### 물 자산은 renderMode=Water 여도 재질 surface 의 renderMode 가 이긴다
+
+`.mapassets` 의 `renderMode=Water` 는 `mapwater.json` 행을 강제하지만, 실제 draw 는
+`CMapAssetObject::Get_MaterialRenderProfile` 이 재질 surface 의 renderMode 로 덮어쓴 값으로
+결정된다. `mapmaterials.json` 행이 `renderMode: translucent` 면 `bWater` 가 false 가 되어
+레거시 물 패스(`fx_c_water_001` 거품을 수면 전체 diffuse 로 그림)를 타지 않고
+`source.map.water-4x` program 을 탄다. 즉 그 자산의 `mapwater.json` 값은 불활성이다.
+물 색을 고칠 때 어느 문서가 소비되는지 먼저 확정하고, 양방향 검사 때문에 `mapwater.json`
+행 자체는 지우지 말 것.
+
+`specialresource.mat.ocean_trn` 의 정확한 program 은 `source.map.water-42.v1` 이다.
+이전 `Tools/LevelPlacementExtractor/author_ocean_water_rows.py` 는 "ocean_trn has no native
+program in this project" 라는 틀린 전제로 `FAMILY = 'source.map.water-41.v1'` 근사를 썼고,
+그 과정에서 `reflection_power`·`sky_*`·`fresnel_color` 를 버리고 `diffuse_color` 에
+`sky_color*sky_intensity` 를, `reflection_color` 에 `fresnel_color` 를 바꿔 넣는다.
+`fresnel_intensity` 가 0 인 수영장 물은 거의 흰 `reflection_color`(0.87,0.87,1.0) 와
+`reflection_intensity` 20 이 감쇠 없이 들어가 카메라 방향으로 흰 번짐이 생긴다.
+베른 `MAP_6D4F71329FE9_BG_SCD_RHD_FLOOR07_SM_KHB` 가 같은 `ocean_trn` props 파일
+(`A643D1D45E9B`) 로 water-42 를 쓰는 것이 증거이며, water-42 의 텍스처 expressionIndex 순서는
+`0 texture_normal / 1 detail_texture_normal / 2 texture_sky / 3 texture_reflection /
+4 texture_fresnel / 5 texture_diffuse / 6 texture_diffuse_mask` 다.
+09-26 재조사 수정본은 water-42 후보만 만들고 원본 30개 값과 7개 texture lane을 유지한다.
+이전에 제외했던 river-rock 3종도 ocean_trn source chain이면 포함한다. 같은 부모 재질이어도
+static wave/distortion/world-position 분기는 다를 수 있으므로 pixel 프로그램 연결만으로
+vertex wave와 전체 원본 외형까지 복원됐다고 판정하지 않는다.
+
+### SelfMotion 다중 행은 같은 배치를 한 번 초기화한 뒤 합성한다
+
+한 placement의 MotionArr에 여러 회전/이동 축이 있을 수 있다. 매 행에서 원본 transform으로
+되돌린 후 적용하면 앞 행의 결과가 사라진다. `Sample_SelfMotions`는 placement별 base를 한 번
+준비하고 원본 행 순서대로 누적한 뒤 한 번 반영한다. Sequence가 관리하는 현재 visibility는
+유지한다. 마하라카 게시본은 65행/59배치이며 6배치가 두 축을 가진다.
+
+### 원본 테이블에서 정의가 없다는 것은 모델 삭제 증거가 아니다
+
+정적 레벨 목록, Deploy NPC/Prop ID, LookInfo와 UPK mesh/AnimSet을 구분한다. 마하라카의
+모코모코 `MN_ISMP_00`은 정적 메시 검색에서 누락됐지만 NPC 570910의 LookInfo와 실제
+skeletal mesh 두 종류·애니메이션 10개 및 Deploy 좌표가 남아 있다. 키워드나 테이블 한 벌의
+미발견을 전체 원본 삭제로 확대하지 않는다. 추출 성공과 런타임 재질·배치·동작 연결도 구분한다.
+
+### Landscape는 레벨별 packed ShaderCache도 검색한다
+
+공용 RefShaderCache에서 컴포넌트 static key를 못 찾아도 native 프로그램이 없는 것이 아니다.
+마하라카는 별도 `sc_lv_ocn_eventis_mhp_land01` cache에서 설치 지형 16/16 key가 일치했다.
+packed cache는 descriptor 수와 code blob 수가 다르므로 단순 1:1 parser를 쓰지 않는다.
+원본 top UV는 section 좌표 * .1, 회전 후 tiling이며 HeightBlend는
+`saturate(2*paint-1+diffuseAlpha)`다. diffuse와 normal의 layer별 blend/static enable도 다르다.
+선택적 source-layer bake와 전체 HDR/RNM/GPU material 복원은 구분한다.
+
+Prop 배치의 ID를 Npc 테이블에서 조회해 얻은 동명 번호는 소품의 모델이 아니다.
+실제 EFTable_Prop와 LookInfo 연결을 사용한다. 57011의 300004는 모델 없는 collision Prop다.
+
+`build_map_material_variants.py install`은 파일 단위 동기화가 아니라 Area 디렉터리 전체 교체다.
+manifest에 없는 자산은 commit 때 `bounded_rmtree`로 사라진다. 2026-09-26에 자산 2종 manifest로
+실행해 `Client/Bin/Resources/Map/LV_OCN_EVENTIS_MHP`의 기존 382개가 전부 삭제됐고 09-19 cook
+staging에서 복구했다. ownership receipt는 소유 확인만 하고 규모 축소를 막지 않았다.
+이제 manifest가 기존 자산을 버리면 기본 거부이며 `--prune-missing`과 안전 상한
+(절대 10개, 면적 20%)을 함께 통과해야 한다. receipt의 `installPrune`이 결정을 기록한다.
+`LV_LUT_MIDNIGHTC_ED`(292자산)와 `LV_OCN_EVENTIS_MHP_FOLIAGE`(9자산)도 receipt 소유 Area이므로
+같은 위험을 가진다. Resources는 Git 비추적 팀장 입력이라 삭제되면 git으로 되돌릴 수 없다.
+
+위 Prop 항목 정정 (2026-09-26 원본 DB 실측). 57011의 300004는 모델 없는 collision Prop이 아니다.
+`EFTable_Prop.db`의 Prop PrimaryKey 300004는 Model이 빈 문자열이지만, `EFTable_Npc.db`의
+Npc PrimaryKey 300004는 Model이 `EFDLChar_MN_KZDW_02-1.MN_KZDW_02-1`이다.
+57011의 Prop 레코드는 NPC ID를 들고 있으므로 이 zone에서는 Npc 테이블이 올바른 모델 출처다.
+Prop 행이 비었다는 사실만으로 모델 부재라고 단정하지 말고 두 테이블을 모두 조회한다.
+같은 이유로 57011의 Prop ID 필드는 ints_0x30_0x68[13]이며 그 값도 NPC 테이블 ID다.
+
+## MainApp.cpp 한글 주석 끝의 공백은 지우면 안 된다
+
+`git diff --check`가 `Client/Private/MainApp.cpp`의 한글 주석 5줄(7962, 7972, 7982, 8026, 8043)을
+trailing whitespace로 경고한다. 이 공백은 **지우면 빌드가 깨진다.** 2026-09-27에 실제로 깨뜨렸다.
+
+- 파일은 UTF-8(BOM 없음)인데 MSVC는 이 파일을 CP949로 읽는다. UTF-8 한글 한 자는 3바이트라
+  줄 끝 바이트가 CP949 2바이트 짝에서 홀수로 남는다.
+- 그 마지막 바이트(예: `0xA4`, `0x9C`, `0xB0`)가 뒤따르는 개행 `0x0A`와 짝을 이루면서 개행이
+  주석에 먹힌다. 그러면 다음 줄이 `//` 주석의 연속으로 사라지고, 그 줄이 선언하던 변수가
+  `C2065 선언되지 않은 식별자` / `C2737 const 개체를 초기화해야 합니다`로 터진다.
+- 끝 공백 한 칸이 그 짝을 맞춰서 개행을 살려 준다. 장식이 아니라 기능이다.
+
+**규칙:** 이 파일의 한글 주석 줄 끝 공백을 `git diff --check` 경고를 없애려고 지우지 않는다.
+완료 보고에 그 5건 경고는 의도된 것으로 적는다. 인코딩 일괄 변환은 별도 합의 작업이다.
+
+## .wmodel의 텍스처 경로는 UTF-16이라 ASCII 검색으로는 0건이 나온다
+
+리소스 의존 closure를 계산할 때 `.wmodel`을 ASCII로 훑어 `.dds`가 0건이면 **모델이 텍스처를
+안 들고 있다는 뜻이 아니다.** 2026-09-27에 이걸로 Drive 전달 목록에서 텍스처 727개를 빠뜨렸다.
+
+- `MODEL_MATERIAL_DATA`(`Engine/Public/BinaryAsset/ModelAssetData.h`)의 `diffusePath`,
+  `normalPath`, `specularPath` 등은 `std::filesystem::path`이고 Windows에서 `wchar_t`다.
+  그래서 `.wmodel` 안에 **UTF-16LE**로 직렬화되어 있고 `WModelDecoder`가 그걸 채운다.
+- 경로는 Resources 루트 상대가 아니라 **그 모델 폴더 상대**다. 예: `textures/<hash>_<name>.dds`.
+  따라서 모델의 디렉터리에 붙여서 해석해야 한다.
+- 확장자는 `.dds`뿐이 아니다. `Engine/Private/Material.cpp`의 `LoadTexture`가 `.dds` → DDS,
+  `.tga` → 전용 리더, 그 외 → WIC로 보내므로 `.png`도 실제 런타임 입력이다.
+
+**검색 패턴:** `(?:[ -~]\x00){3,}?(?:\.\x00)(?:d\x00d\x00s\x00|t\x00g\x00a\x00|p\x00n\x00g\x00)`
+
+**규칙:** 맵·캐릭터 자산의 전달 목록은 `시각 기준 델타`가 아니라 **참조 closure**로 만든다.
+게시 문서(catalog/mapmaterials/mapwater) + 카탈로그 + 각 모델 내장 경로까지 합쳐야 완전하다.
+`converter.log.txt`, `.gltf`, `.bin`, 변환 영수증 `.json`은 런타임 입력이 아니므로 제외한다.
 ### 쿠크 Bingo preview와 포박 판정 경계
 
 - Effect sourceModelPreview의 관문 정본은 `BINGO`다. legacy `ENCORE`는 codec decode에서 정규화한다. Effect Load/Drawable 성공만으로 재생 성공을 판단하지 말고 metadata → SourceProp → Composition model selection까지 검사한다.
 - `isPatternBound`는 입력 잠금이다. 매틱 처리나 formation 취소에서 `isCombatReady=false`를 남기면 즉사 칼날을 포함한 피해 판정에서 제외된다. 검증 fixture도 readiness를 강제로 복구하지 말고 실제 room update를 거친다.
 - WORLD JSON은 Client16MiB 제한이 있다. 필드 병합 시 숫자 vector를 원본처럼 한 줄로 보존하며, 전체 pretty-print 팽창을 데이터 증가로 오인하지 않는다.
+
+### 원본 Matinee의 시간과 배우·부착 소유권
+
+- Slomo가 있는 Matinee는 source 시각과 실제 경과 시각이 다르다. 카메라·WORLD·가시성·
+  애니메이션·자막·cue를 하나의 적분/역변환으로 맞춘다. 오디오 샘플 속도와 Stop 시각은
+  구분하고, 파티클 lifetime 꼬리를 Matinee 길이로 잘랐다고 원본 복원으로 기록하지 않는다.
+- 동일 mesh의1/2 배우를 이름만 보고 합치지 않는다. Matinee variablelink→actor/component→
+  visibility/baseBone을 확인한다. 새 부착물을 만들기 전에 World clone의 native hat/weapon
+  자동 부착까지 확인한다. 재질 트랙은 원본 대상 component에만 적용한다.
+- constant 변환 키는 정확한 소수 source 시각을 확인한다. 반올림 양쪽이 이전 자세를
+  샘플하면 다음30Hz frame까지 가짜 이동을 만든다. 본 부착 reduction은 저장 frame뿐 아니라
+  실제 재생 구간 중간 표본을 대조한다. full을 retime한 뒤 같은 결과에서 split을 잘라야 한다.
+- `effectSourceTimeKeys`는 원본 Effect 내부 시각을 보존한다. 일반 occurrence와 SCENE_PROFILE
+  투영 모두 absent일 때 빈 배열을 쓰지 않는다. Save 검증과 live anchor preview 검증이 같은
+  fixed MAP 제약을 쓰고 V2 trim이 normalized lifetime을 압축하지 않도록 한다.
+- WORLD authoring·Map publisher·Composition dependency validator는64 track/4096 key와
+  optional materialTracks/BOX·CYLINDER를 같은 strict 계약으로 검증한다. 한 소비자만 오래된
+  필드/키 상한을 유지하면 파일 저장은 성공해도 공식 게시가 막힌다.
+
+### Complete Play의 선택적 Effect 시계와 전체 Product 준비
+
+추적 폭탄은 occurrence 기본값을 채운 복사본을 targetedCombatVisuals에 투영한다.
+기본값에서 뺀 필드도 복사본에 이미 있으면 다시 출력될 수 있다. 미사용
+effectSourceTimeKeys=[]는 최종 occurrence 투영에서도 생략하고 reader는 absent와
+같게 읽는다.1개 키·비배열·잘못된 순서/범위는 계속 거절한다. Animation binding과
+Effect resource 준비만 성공해도 전체 presentation parser가 실패할 수 있으므로
+새 READY 준비 identity에서 전체 native Product parser를 한 번 검증한다. 같은
+source 실패를 매프레임 재파싱하지 않으며 기존 재생 cache를 보존한다.
+
+방향성 warning은 mesh/root의 관습적인 전방을 그대로 쓰지 않는다. DDS의 문양
+방향→quad UV→source StartRotation/axis lock→WORLD occurrence 회전으로 실제
+전방을 구한 뒤 이동 곡선과 내적을 검사한다. 공유 asset 크기/재질은 유지하고
+해당 occurrence 회전만 고친다.09-26 PLAYTEST_RECOVERY G07 결과에 수치를 둔다.
+
+
+### 쿠크 게시 schema·고정 장판 높이·피해 소유
+
+- 공식 Kouku owner는 Gameplay보다 앞서 World encounter metadata도 읽는다. 새 optional
+  pattern 필드는 양쪽 schema 경계에 연결해야 한다. trackBombs처럼 한 검증기에만 빠지면
+  저작 저장은 성공해도 owner 전체가 rollback된다. 검증 자체를 제거하지 않는다.
+- 같은 Effect가 Append에서는 보이고 group에서 숨으면 먼저 실제 occurrence Y와
+  source local Y를 지면에 대조한다. STATIC MAP은 절대 배치이고 Showtime의
+  Server-controlled template은 navigation ground에 상대 Y를 더한다. 두 값을 일괄
+  변경하면 이미 지면 기준인 서버 그룹이 뜬다. group 이름만으로 carrier 결함을 가정하지 않는다.
+- 망치 충돌은 모델의 진행축/가로축과 배율을 각각 확인한다. WORLD collider head와
+  저장 Object scale이 Server typed geometry와 Debug/Release 표시의 같은 정본이다.
+  새 필수 geometry를 연결할 때 timeline trigger뿐 아니라 entry idle의 자동 보드 시작도
+  현재 pinned flow의 실제 BINGO_BOARD 정의를 소비해야 한다. 빈 synthetic trigger는
+  보드 시작을 건너뛰어 원래 폭탄·망치 deadline까지 밀리게 한다.
+- GRABBED는 일반 공격에서 제외된다. 잡기 전용 저작 피해만 허용할 때는 같은 boss ID,
+  pattern sequence, BOSS_LEFT_HAND 및 활성 hold를 모두 검사하고 전역 면역을 풀지 않는다.
+- 주사위는 동문양 피해 면제와 속박 해제가 별도 소비다. 실제 CombatObject 접촉에서
+  owner/sequence가 일치하는 속박까지 해제해야 하며, 피해 0만 확인하면 구조상 누락을 놓친다.
+  자유 1명 선정, 실제 이동 명령, 속박된 플레이어의 카드 가로막기와 다음 tick 해제 유지까지
+  대조한다. 이 누락의 재현만으로 과거 전원 고정·GPU 이펙트 누락의 원인을 확정하지 않는다.
+- 지속 source 링이 몇 초 뒤 꺼지면 Required EmitterLoops의 생략값을 완전한 CDO chain에서
+  확인한다. 기본값0을 provisional1로 저장한 자산은 원본 근거가 있는 element만 복원한다.
+  외부 시각으로 재생하는 occurrence는 기존 loop-to-duration과 bounded source end도 함께
+  연결해야 한다. loopCount만0으로 고친 CPU 후보가 계속 사라지는 경우를 성공으로 기록하지 않는다.
+- 랜덤 표적 Duration은 시작 cue의 선택과 종료 시 조준 확정을 나눠 연결한다. 같은 선택 ID의
+  종료 위치를 ledger에서 한 번 저장하고, 이후 stage retarget이 덮지 않도록 occurrence로
+  소유한다. 다음 선택·완료·취소·새 패턴 시작은 원래 yaw를 복구해야 한다. 사용자 타이밍과
+  원본 무기 궤적을 바꾸지 않고 실제 다음 공격 stage까지 고정되는지 검사한다.

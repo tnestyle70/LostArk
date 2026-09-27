@@ -430,6 +430,9 @@ namespace LostArk::Server
 			std::uint32_t actionStartTick);
 		void Update_MarioControlState(SERVER_PLAYER& player);
 		std::uint8_t Begin_MarioStageObjects(std::uint8_t stage);
+		void Begin_MarioBallChallenge(SERVER_PLAYER& player);
+		std::uint8_t Mario_MatchingBallCount(const SERVER_PLAYER& player) const;
+		std::uint8_t Mario_MarkerColor(LostArk::Shared::NET_ENTITY_ID targetId) const;
 		void Reset_MarioStageObjects(std::uint8_t stage);
 		void Cleanup_EmptyMarioStages();
 		void Update_MarioMoveGoal(SERVER_PLAYER& player, std::uint32_t updateTick);
@@ -488,6 +491,12 @@ namespace LostArk::Server
 		/* Dismounts every player the world, catalog or current state no longer
 		lets ride. Runs once per tick before the snapshot is committed. */
 		void Enforce_VehicleRidingState();
+		/* Bern voyage ships (EFTable_VoyageShip 8200..8208) sail on the BernSea navigation region. Boarding
+		   moves the player to the nearest open sea cell and keeps the pier position; leaving the ship, or any
+		   forced dismount, brings the player back to that pier position. Begin returns false when no sea cell
+		   lies within reach (the player is not at a harbour). */
+		bool Begin_ShipVoyage(SERVER_PLAYER& player, LostArk::Shared::VEHICLE_ID vehicleId);
+		void End_ShipVoyage(SERVER_PLAYER& player, const char* reason);
 		/* A skill press while mounted. Only a skill of the ridden vehicle starts,
 		from an idle mount, off cooldown and with a newer sequence; it faces the
 		player's current yaw. */
@@ -750,7 +759,7 @@ namespace LostArk::Server
 		void Update_KoukuMarioEntry(KOUKUSAYDON_PATTERN_AUDITION_MEMBER& member, std::uint32_t serverTick);
 		void Commit_KoukuMarioEntries();
 		bool Commit_KoukuMarioPhasePlayers(SERVER_WORLD_ENTITY& boss, const BOSS_PATTERN_MECHANIC_TRIGGER& trigger, std::uint32_t serverTick);
-		void Complete_KoukuMarioReturn(const SERVER_PLAYER& player,
+		void Complete_KoukuMarioReturn(SERVER_PLAYER& player,
 			const std::string& sourcePlacementId, std::uint32_t updateTick);
 		void Queue_KoukuCompletionChainSuccess(KOUKUSAYDON_PATTERN_AUDITION_MEMBER& member,
 			std::uint32_t serverTick);
@@ -1745,6 +1754,7 @@ namespace LostArk::Server
             std::uint32_t iPatternSequence = 0u, iEndTick = 0u;
             std::uint32_t iNextBombTick = 0u, iNextHammerTick = 0u, iNextMadnessTick = 0u;
             std::uint32_t iMarkedBombCount = 0u;
+            float fHammerHalfForwardM = 0.f, fHammerHalfWidthM = 0.f;
             bool bEncounterOwned = false, bSpecialPatternPending = false;
             bool bLastLineCompletionSucceeded = false;
             bool bLineRewardSinceLastJudgement = false;

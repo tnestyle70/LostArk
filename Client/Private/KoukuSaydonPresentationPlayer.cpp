@@ -159,6 +159,37 @@ bool Charge_AfterimageActive(const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern, co
     return false;
 }
 
+const KOUKU_SAYDON_COMPOSITION_LOGIC_OCCURRENCE* Random_TargetWindow(
+    const KOUKU_SAYDON_COMPOSITION_DOCUMENT& document, const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern,
+    const float clockMs, const std::string_view effectId = {}, bool* controlled = nullptr)
+{
+    if (controlled) *controlled = false;
+    const KOUKU_SAYDON_COMPOSITION_LOGIC_OCCURRENCE* active = nullptr;
+    for (const auto& box : pattern.LogicOccurrences)
+    {
+        if (!box.bEnabled) continue;
+        const auto definition = std::find_if(document.Logics.begin(), document.Logics.end(),
+            [&](const auto& logic) { return logic.strLogicId == box.strLogicId; });
+        if (definition == document.Logics.end() || definition->strJudgementKind != "BOSS_RANDOM_TARGET" ||
+            (!effectId.empty() && definition->strTrackingPresentationOccurrenceId != effectId)) continue;
+        if (controlled) *controlled = true;
+        if (clockMs >= box.iStartMs && clockMs < double(box.iStartMs) + box.iDurationMs) active = &box;
+    }
+    return active;
+}
+
+bool Random_TargetPivot(const float4x4_t& owner, const float3_t& target, const float forwardYawOffset, float4x4_t& output)
+{
+    const float dx = target.x - owner._41, dz = target.z - owner._43;
+    if (!std::isfinite(dx) || !std::isfinite(dz) || dx * dx + dz * dz <= .000001f) return false;
+    const auto matrix = XMLoadFloat4x4(&owner);
+    // Preserve the body profile basis used by source bone attachments.
+    XMStoreFloat4x4(&output, XMMatrixScaling(XMVectorGetX(XMVector3Length(matrix.r[0])),
+        XMVectorGetX(XMVector3Length(matrix.r[1])), XMVectorGetX(XMVector3Length(matrix.r[2]))) *
+        XMMatrixRotationY(std::atan2(dx, dz) - XMConvertToRadians(forwardYawOffset)) * XMMatrixTranslation(owner._41, owner._42, owner._43));
+    return true;
+}
+
 bool Validate_EffectAnchor(const KOUKU_SAYDON_COMPOSITION_DOCUMENT& document,
     const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern, const OCCURRENCE& box, std::string& status)
 {
@@ -166,6 +197,13 @@ bool Validate_EffectAnchor(const KOUKU_SAYDON_COMPOSITION_DOCUMENT& document,
         status = std::string(reason) + ": " + box.strOccurrenceId;
         return false;
     };
+    if (!box.EffectSourceTimeKeys.empty())
+    {
+        const auto resource = std::find_if(document.PresentationResources.begin(), document.PresentationResources.end(),
+            [&](const auto& value) { return value.strResourceId == box.strResourceId; });
+        if (resource == document.PresentationResources.end() || !box.Has_ValidEffectSourceTimeKeys(resource->iDurationMs))
+            return reject("Original scene Effect clock requires its fixed MAP owner and retained source window");
+    }
     const auto stableId = [](const std::string& value) {
         return !value.empty() && value.size() <= 128u && value != "." && value != ".." &&
             std::all_of(value.begin(), value.end(), [](const unsigned char c) {
@@ -437,6 +475,19 @@ OCCURRENCE Read_Occurrence(const DATA_JSON_VALUE& row, std::uint32_t durationMs,
             (Field(row, "resourceKind").Get_String() != "V1_EFFECT" && Field(row, "resourceKind").Get_String() != "V1_ELEMENT")))
             throw std::runtime_error("Loop Effect lifetime requires a V1 Effect without time stretching.");
     }
+    if (const auto* clock = row.Find("effectSourceTimeKeys"))
+    {
+        // Normalized conditional templates may serialize an unused clock as [].
+        if (!clock->Is_Array() || clock->Get_Array().size() == 1u || clock->Get_Array().size() > 4096u)
+            throw std::runtime_error("Effect source clock requires an empty array or 2..4096 keys.");
+        for (const auto& key : clock->Get_Array())
+        {
+            if (!key.Is_Object() || key.Get_Object().size() != 2u)
+                throw std::runtime_error("Effect source clock key requires timeMs and sourceMs.");
+            box.EffectSourceTimeKeys.push_back({Number(key, "timeMs", 0., MAX_TIMELINE_MS),
+                Number(key, "sourceMs", 0., MAX_TIMELINE_MS)});
+        }
+    }
     if (const auto* debug = row.Find("debugRender"))
     {
         if (!debug->Is_Boolean()) throw std::runtime_error("debugRender must be Boolean.");
@@ -482,13 +533,20 @@ OCCURRENCE Read_Occurrence(const DATA_JSON_VALUE& row, std::uint32_t durationMs,
         (!worldBoneCollider && ((kind != KIND::EFFECT && kind != KIND::COLLIDER) ||
             box.strAnchorKind != "BOSS" || box.strBone.empty() || (kind == KIND::COLLIDER && !box.bFollowBoss)))))
         throw std::runtime_error("Bone rotation needs a Boss Effect or following Collider and a named bone: " + box.strOccurrenceId);
+    if (!box.EffectSourceTimeKeys.empty() && (kind != KIND::EFFECT ||
+        (Text(row, "resourceKind") != "GROUP" && Text(row, "resourceKind") != "LEAF" &&
+         Text(row, "resourceKind") != "V1_EFFECT" && Text(row, "resourceKind") != "V1_ELEMENT") ||
+        !box.Has_ValidEffectSourceTimeKeys(UInt(row, "resourceDurationMs", 1u, MAX_TIMELINE_MS))))
+        throw std::runtime_error("Invalid fixed MAP Effect source clock.");
     return box;
 }
 
 DATA_JSON_VALUE Read_ProductPresentationRoot(const std::string* supplied = nullptr)
 {
-    const auto admitted = CKoukuSaydonPresentationAssetService::Get_AdmittedDraftProduct();
-    if (!supplied && admitted) supplied = &admitted->PresentationJson;
+    // Explicit preparation bytes are immutable and must not re-enter the asset-service mutex.
+    const auto admitted = supplied ? std::shared_ptr<const KOUKU_SAYDON_DRAFT_PRODUCT>{} :
+        CKoukuSaydonPresentationAssetService::Get_AdmittedDraftProduct();
+    if (admitted) supplied = &admitted->PresentationJson;
     std::string text;
     if (supplied)
     {
@@ -1916,6 +1974,38 @@ Client::CKoukuSaydonPresentationPlayer::Parse_ProductRoot(const DATA_JSON_VALUE&
                     occurrence.strAnchorKind != "BOSS" || occurrence.bFollowBoss || !occurrence.strBone.empty() || occurrence.strBoneTarget != "BODY")
                     throw std::runtime_error("Product occurrence has an invalid fixed Effect birth anchor.");
             }
+            if (const auto* windows = value.Find("randomTargetWindows"))
+            {
+                if (!windows->Is_Array() || windows->Get_Array().size() > 64u)
+                    throw std::runtime_error("Random target windows require a bounded array.");
+                std::set<std::string> windowIds;
+                uint64_t previousEnd = 0u;
+                for (const auto& row : windows->Get_Array())
+                {
+                    KOUKU_SAYDON_COMPOSITION_LOGIC_OCCURRENCE window;
+                    window.strOccurrenceId = window.strLogicId = Text(row, "occurrenceId");
+                    window.iStartMs = UInt(row, "startMs", 0u, item.durationMs - 1u);
+                    window.iDurationMs = UInt(row, "durationMs", 1u, item.durationMs - window.iStartMs);
+                    KOUKU_SAYDON_COMPOSITION_LOGIC_DEFINITION logic;
+                    logic.strLogicId = window.strLogicId; logic.strLogicType = "DURATION";
+                    logic.strJudgementKind = "BOSS_RANDOM_TARGET";
+                    logic.strTrackingPresentationOccurrenceId = Text(row, "trackingPresentationOccurrenceId");
+                    const auto effect = std::find_if(item.pattern.PresentationOccurrences.begin(), item.pattern.PresentationOccurrences.end(),
+                        [&](const auto& box) { return box.strOccurrenceId == logic.strTrackingPresentationOccurrenceId; });
+                    const auto resource = effect == item.pattern.PresentationOccurrences.end() ? item.document.PresentationResources.end() :
+                        std::find_if(item.document.PresentationResources.begin(), item.document.PresentationResources.end(),
+                            [&](const auto& definition) { return definition.strResourceId == effect->strResourceId; });
+                    if (!windowIds.insert(window.strOccurrenceId).second || window.iStartMs < previousEnd ||
+                        resource == item.document.PresentationResources.end() || resource->eKind != KIND::EFFECT ||
+                        effect->strAnchorKind != "BOSS" || !effect->bFollowBoss || !effect->strBone.empty() ||
+                        !effect->strAnchorPresentationOccurrenceId.empty() || effect->iStartMs > window.iStartMs ||
+                        uint64_t(effect->iStartMs) + effect->iDurationMs < uint64_t(window.iStartMs) + window.iDurationMs)
+                        throw std::runtime_error("Random target windows overlap or reference an invalid Boss Effect.");
+                    previousEnd = uint64_t(window.iStartMs) + window.iDurationMs;
+                    item.pattern.LogicOccurrences.push_back(std::move(window));
+                    item.document.Logics.push_back(std::move(logic));
+                }
+            }
             const std::string key = item.pattern.strPatternId;
             if (!staged.emplace(key, std::move(item)).second)
                 throw std::runtime_error("Duplicate Product pattern identity.");
@@ -2065,13 +2155,20 @@ Client::CKoukuSaydonPresentationPlayer::Parse_ProductRoot(const DATA_JSON_VALUE&
 bool Client::CKoukuSaydonPresentationPlayer::Validate_DraftProductJson(
     const std::string& text, const std::uint32_t sourceRevision, std::string& status)
 {
+    return Validate_ProductJson(text, sourceRevision, status, false);
+}
+
+bool Client::CKoukuSaydonPresentationPlayer::Validate_ProductJson(
+    const std::string& text, const std::uint32_t sourceRevision, std::string& status,
+    const bool allowIsolatedResources)
+{
     try
     {
         const auto root = Read_ProductPresentationRoot(&text);
         if (!sourceRevision || UInt(root, "sourceRevision", 1u, UINT32_MAX) != sourceRevision)
             throw std::runtime_error("Draft presentation source revision mismatch.");
         const auto staged = Parse_ProductRoot(root);
-        if (staged.isolatedLights || staged.isolatedSceneProfiles)
+        if (!allowIsolatedResources && (staged.isolatedLights || staged.isolatedSceneProfiles))
             throw std::runtime_error("Draft presentation contains invalid isolated resource rows.");
         status.clear(); return true;
     }
@@ -2465,6 +2562,15 @@ void Client::CKoukuSaydonPresentationPlayer::Update_ProductTails(const float dt,
     }
 }
 
+bool Client::CKoukuSaydonPresentationPlayer::Is_RandomTargetActive(const std::string& patternId,
+    const std::uint32_t serverTick, const std::uint32_t startTick) const
+{
+    const auto product = m_Product.find(patternId);
+    float seconds = 0.f;
+    return product != m_Product.end() && CActionPresentationTimeline::Try_ResolveActionAgeSeconds(serverTick, startTick, 30.f, seconds) &&
+        Random_TargetWindow(product->second.document, product->second.pattern, seconds * 1000.f);
+}
+
 void Client::CKoukuSaydonPresentationPlayer::Stop_Session(SESSION& session)
 {
     // The session owns Layer_UI membership as well as the CUILayoutRuntime object.
@@ -2482,6 +2588,61 @@ void Client::CKoukuSaydonPresentationPlayer::Stop_Session(SESSION& session)
     session.effectAnchorHistories.clear();
     session.rootRecordedSeconds = -1.f;
     session.lastClockMs = -1.f;
+}
+
+void Client::CKoukuSaydonPresentationPlayer::Update_MarioMarks(
+    const std::vector<KOUKU_CARD_PRESENTATION_VIEW>& players)
+{
+    static const char* assets[] = { "", "effect.kouku.mario.marker.red",
+        "effect.kouku.mario.marker.blue", "effect.kouku.mario.marker.yellow" };
+    std::set<std::uint32_t> live;
+    for (const auto& view : players)
+    {
+        const auto character = view.pCharacter.lock();
+        const auto colour = view.Snapshot.iMarioMarkerColor;
+        if (!character || !character->Get_Transform() || !colour || colour > 3u) continue;
+        const auto id = view.Snapshot.iNetEntityId;
+        live.insert(id);
+        auto& mark = m_MarioMarks[id];
+        if (mark.colour != colour)
+        {
+            Stop_Session(mark.session);
+            mark = {};
+            mark.colour = colour;
+            mark.session.key = "mario-marker:" + std::to_string(id) + ":" + std::to_string(colour);
+            auto& resource = mark.document.PresentationResources.emplace_back();
+            resource.strResourceId = "mario.marker";
+            resource.strResourceKind = "V1_EFFECT";
+            resource.strAssetId = assets[colour];
+            resource.iDurationMs = 60000u;
+            mark.pattern.strPatternId = "mario.marker";
+            mark.pattern.iDurationMs = resource.iDurationMs;
+            auto& occurrence = mark.pattern.PresentationOccurrences.emplace_back();
+            occurrence.strOccurrenceId = "mario.marker";
+            occurrence.strResourceId = resource.strResourceId;
+            occurrence.iDurationMs = resource.iDurationMs;
+            occurrence.bFollowBoss = true;
+        }
+        const matrix_t world = XMLoadFloat4x4(character->Get_Transform()->Get_WorldMatrixPtr());
+        vector_t position = world.r[3];
+        const auto body = character->Get_BodyModel();
+        if (body && body->Has_Bone("bip001-head"))
+            position = (body->Get_BoneMatrix("bip001-head") * world).r[3];
+        else
+            position = XMVectorSetY(position, XMVectorGetY(position) + 1.7f);
+        position = XMVectorSetY(position, XMVectorGetY(position) + .75f);
+        float4x4_t pivot;
+        XMStoreFloat4x4(&pivot, XMMatrixTranslationFromVector(position));
+        // A persistent image samples the native local-space source's settled
+        // frame. Only the Server marker state ends it, including outside Mario.
+        Sample(mark.session, mark.document, mark.pattern, 1500.f, false, pivot, nullptr);
+    }
+    for (auto it = m_MarioMarks.begin(); it != m_MarioMarks.end();)
+    {
+        if (live.contains(it->first)) { ++it; continue; }
+        Stop_Session(it->second.session);
+        it = m_MarioMarks.erase(it);
+    }
 }
 
 void Client::CKoukuSaydonPresentationPlayer::Update_DiceBindVisuals(float dt,
@@ -2539,6 +2700,7 @@ void Client::CKoukuSaydonPresentationPlayer::Update_DiceBindVisuals(float dt,
             // The original floor lives at the actor origin; player yaw/scale
             // must not rotate or scale the circular ground projection.
             box.bFollowBoss = true;
+            box.bLoopEffectToDuration = !visual.releasing;
         }
         else visual.clockMs += dt * 1000.f;
         if (visual.releasing && visual.clockMs >= visual.pattern.iDurationMs)
@@ -2686,23 +2848,42 @@ void Client::CKoukuSaydonPresentationPlayer::Sample(SESSION& session,
         return level->Try_GetCompositionWorldPivot(world->strSequenceInstanceId, anchor, box.strWorldOccurrenceId, box.iWorldEmissionIndex,
             box.strBone, box.strBoneRotation == "BONE");
     };
+    const float targetForwardYawOffset = pattern.strActorProfileId == "MN_RPCT_06" ? 90.f : 0.f;
+    std::optional<float3_t> presentationTarget = session.presentationTarget;
+    if (previewSession)
+    {
+        const auto* level = CLevel_KakulSaydonArena::Get_Active();
+        const auto player = level ? level->Get_LocalCharacter() : nullptr;
+        if (player && player->Get_Transform())
+        {
+            const auto* world = player->Get_Transform()->Get_WorldMatrixPtr();
+            presentationTarget = float3_t{world->_41, world->_42, world->_43};
+        }
+    }
     // Observe future anchored cues as well as active ones. Their first emission
     // can then interpolate the real samples bracketing the box start even when
     // a render frame crosses that start by more than one fixed step.
     for (const auto& box : pattern.PresentationOccurrences)
     {
-        if (!box.bFollowBoss || (box.strAnchorKind != "WORLD" && box.strBone.empty()) ||
+        bool randomTarget = false;
+        (void)Random_TargetWindow(document, pattern, clockMs, box.strOccurrenceId, &randomTarget);
+        if (!box.bFollowBoss || (!randomTarget && box.strAnchorKind != "WORLD" && box.strBone.empty()) ||
             clockMs > double(box.iStartMs) + box.iDurationMs) continue;
         const auto resource = std::find_if(document.PresentationResources.begin(),
             document.PresentationResources.end(), [&box](const auto& row)
             { return row.strResourceId == box.strResourceId && row.eKind == KIND::EFFECT; });
         if (resource == document.PresentationResources.end()) continue;
         auto& history = session.effectAnchorHistories[box.strOccurrenceId];
+        if (randomTarget && history.recordedSeconds >= 0.f &&
+            Random_TargetWindow(document, pattern, clockMs, box.strOccurrenceId) !=
+            Random_TargetWindow(document, pattern, history.recordedSeconds * 1000.f, box.strOccurrenceId)) history = {};
         if (!history.samples) history.samples = std::make_shared<EFFECT_V2_PIVOT_HISTORY>();
         // Rewinding retains observed poses; it never appends fabricated history.
         if (rootSeconds < history.recordedSeconds) continue;
         auto sampledBox = box;
         float4x4_t anchor = pivot;
+        if (randomTarget && (!presentationTarget || !Random_TargetPivot(pivot, *presentationTarget, targetForwardYawOffset, anchor)))
+        { history.missingSinceSample = true; continue; }
         auto anchorModel = model;
         float3_t anchorScale{1.f, 1.f, 1.f};
         if (box.strAnchorKind == "WORLD")
@@ -2729,7 +2910,7 @@ void Client::CKoukuSaydonPresentationPlayer::Sample(SESSION& session,
         // A named World may become visible only after its resource preparation.
         // Seed just its initial birth interval from the first resolved pose. All
         // subsequent samples, gaps and teleports retain strict history semantics.
-        if (!previewSession && history.recordedSeconds < 0.f)
+        if ((!previewSession || randomTarget) && history.recordedSeconds < 0.f)
             history.samples->Record((std::min)(rootSeconds, box.iStartMs / 1000.f),
                 recorded, false, historyStatus);
         if (history.samples->Record(rootSeconds, recorded, discontinuity, historyStatus))
@@ -2743,6 +2924,16 @@ void Client::CKoukuSaydonPresentationPlayer::Sample(SESSION& session,
     std::set<std::string> active;
     const auto sampleOne = [&](const RESOURCE& resource, const OCCURRENCE& box)
     {
+        bool randomTarget = false;
+        (void)Random_TargetWindow(document, pattern, clockMs, box.strOccurrenceId, &randomTarget);
+        auto rowExactRoot = exactRoot;
+        if (randomTarget)
+        {
+            const auto history = session.effectAnchorHistories.find(box.strOccurrenceId);
+            if (!presentationTarget || history == session.effectAnchorHistories.end() || !history->second.samples) return;
+            rowExactRoot = [samples = history->second.samples](float seconds, float4x4_t& output, std::string& error)
+                { return samples->Sample(seconds, output, error); };
+        }
         if (clockMs < box.iStartMs || clockMs >= double(box.iStartMs) + box.iDurationMs) return;
         const auto& birthSource = box.strAnchorPresentationOccurrenceId.empty() ? box.strOccurrenceId : box.strAnchorPresentationOccurrenceId;
         if (sharedBirthSources.contains(birthSource) && !session.fixedPresentationAnchors.contains(birthSource)) return;
@@ -2774,7 +2965,9 @@ void Client::CKoukuSaydonPresentationPlayer::Sample(SESSION& session,
         const float effectRate = Effect_SourceClockRate(resource, box);
         const float effectSourceStart = box.iEffectSourceStartMs / 1000.f;
         float effectCycleStart = Effect_SourceCycleStartSeconds(age, row.v1FiniteLoopSeconds);
-        float effectAge = effectSourceStart + (std::max)(0.f, age - effectCycleStart) * effectRate;
+        float effectAge = box.EffectSourceTimeKeys.empty() ?
+            effectSourceStart + (std::max)(0.f, age - effectCycleStart) * effectRate :
+            static_cast<float>(box.Effect_SourceTimeMs(age * 1000.) * .001);
         if (row.v1EffectHandle && effectCycleStart != row.v1CycleStartSeconds)
         {
             CEffectPresentationService::Stop_WorldRoot({row.v1EffectHandle});
@@ -2806,6 +2999,7 @@ void Client::CKoukuSaydonPresentationPlayer::Sample(SESSION& session,
             OCCURRENCE placedBox = sampledBox;
             const bool frozenAnchor = resource.eKind == KIND::COLLIDER && !box.bFollowBoss && row.hasPlacementAnchor;
             float4x4_t anchor = frozenAnchor ? row.placementAnchor : pivot;
+            if (randomTarget && !Random_TargetPivot(pivot, *presentationTarget, targetForwardYawOffset, anchor)) return;
             const auto sharedBirth = session.fixedPresentationAnchors.find(box.strAnchorPresentationOccurrenceId.empty() ?
                 box.strOccurrenceId : box.strAnchorPresentationOccurrenceId);
             if (!frozenAnchor && sharedBirth != session.fixedPresentationAnchors.end()) anchor = sharedBirth->second;
@@ -2925,9 +3119,11 @@ void Client::CKoukuSaydonPresentationPlayer::Sample(SESSION& session,
                     }
                     if (!box.bLoopEffectToDuration || nativeInfiniteLoop) row.v1FiniteLoopSeconds = 0.f;
                     effectCycleStart = Effect_SourceCycleStartSeconds(age, row.v1FiniteLoopSeconds);
-                    effectAge = effectSourceStart + (std::max)(0.f, age - effectCycleStart) * effectRate;
+                    effectAge = box.EffectSourceTimeKeys.empty() ?
+                        effectSourceStart + (std::max)(0.f, age - effectCycleStart) * effectRate :
+                        static_cast<float>(box.Effect_SourceTimeMs(age * 1000.) * .001);
                     row.sourceAnchorSampler = Make_SourceAnchorSampler(resource, pattern, model, pivot, box.iStartMs,
-                        exactRoot, effectRate, effectCycleStart, effectSourceStart);
+                        rowExactRoot, effectRate, effectCycleStart, effectSourceStart);
                     EFFECT_LEVEL_PLACEMENT_SPAWN_DESC spawn;
                     spawn.iLevelIndex = CGameInstance::Get().Get_CurrentLevelID();
                     spawn.strPlacementId = "kouku:" + session.key + ":" + box.strOccurrenceId;
@@ -2959,7 +3155,9 @@ void Client::CKoukuSaydonPresentationPlayer::Sample(SESSION& session,
                     playback.fEnvelopeSourceStartSeconds = effectSourceStart;
                     playback.fEnvelopeDurationSeconds = box.iDurationMs / 1000.f;
                 }
-                playback.fDurationSeconds = effectSourceStart + box.iDurationMs / 1000.f;
+                // A trimmed original clock changes the sampled interval, not the leaf's normalized lifetime.
+                playback.fDurationSeconds = box.EffectSourceTimeKeys.empty() ?
+                    effectSourceStart + box.iDurationMs / 1000.f : -1.f;
                 // Workbench Fade 0 retains the leaf envelope via the runtime's -1 sentinel.
                 playback.fFadeInSeconds = box.iFadeInMs > 0u ? box.iFadeInMs / 1000.f : -1.f;
                 playback.fFadeOutSeconds = box.iFadeOutMs > 0u ? box.iFadeOutMs / 1000.f : -1.f;
@@ -2969,7 +3167,7 @@ void Client::CKoukuSaydonPresentationPlayer::Sample(SESSION& session,
                 // MainApp's general Effect clock cannot advance it a second time.
                 playback.bProductOwned = true;
                 playback.bExternalClock = true;
-                playback.PivotSampler = Effect_V2PivotSampler(box, session.rootHistory, row.effectPivotHistory, exactRoot);
+                playback.PivotSampler = Effect_V2PivotSampler(box, session.rootHistory, row.effectPivotHistory, rowExactRoot);
                 if (resource.strResourceKind == "GROUP")
                 {
                     const auto* group = effects->Find_Group(resource.strAssetId);
@@ -3069,9 +3267,10 @@ void Client::CKoukuSaydonPresentationPlayer::Sample(SESSION& session,
             if (!CEffectPresentationService::Update_WorldRoot({row.v1EffectHandle}, row.pivot) ||
                 !CEffectPresentationService::Seek_WorldRoot({row.v1EffectHandle}, effectAge,
                     Effect_V1TransformProvider(box, row.pivot, session.rootHistory, row.effectPivotHistory,
-                        row.sourceAnchorSampler, effectRate, exactRoot, effectCycleStart),
-                    false, effectSourceStart + ((std::min)(box.iDurationMs / 1000.f - effectCycleStart,
-                        row.v1FiniteLoopSeconds > 0.f ? row.v1FiniteLoopSeconds : box.iDurationMs / 1000.f)) * effectRate) || (captureSample && FAILED(
+                        row.sourceAnchorSampler, effectRate, rowExactRoot, effectCycleStart),
+                    false, box.EffectSourceTimeKeys.empty() ? effectSourceStart + ((std::min)(box.iDurationMs / 1000.f - effectCycleStart,
+                        row.v1FiniteLoopSeconds > 0.f ? row.v1FiniteLoopSeconds : box.iDurationMs / 1000.f)) * effectRate :
+                        static_cast<float>(box.EffectSourceTimeKeys.back()[1] * .001)) || (captureSample && FAILED(
                         CEffectPresentationService::Commit_WorldRootCaptureSample({row.v1EffectHandle}))))
             {
                 CEffectPresentationService::Stop_WorldRoot({row.v1EffectHandle});
@@ -3107,7 +3306,21 @@ void Client::CKoukuSaydonPresentationPlayer::Sample(SESSION& session,
         const auto resource = std::find_if(document.PresentationResources.begin(),
             document.PresentationResources.end(), [&box](const auto& row)
             { return row.strResourceId == box.strResourceId; });
-        if (resource != document.PresentationResources.end()) sampleOne(*resource, box);
+        if (resource != document.PresentationResources.end())
+        {
+            bool controlled = false;
+            const auto* window = Random_TargetWindow(document, pattern, clockMs, box.strOccurrenceId, &controlled);
+            if (controlled)
+            {
+                if (!window) continue;
+                auto timed = box;
+                timed.iStartMs = window->iStartMs; timed.iDurationMs = window->iDurationMs;
+                timed.iFadeInMs = (std::min)(timed.iFadeInMs, timed.iDurationMs);
+                timed.iFadeOutMs = (std::min)(timed.iFadeOutMs, timed.iDurationMs - timed.iFadeInMs);
+                sampleOne(*resource, timed);
+            }
+            else sampleOne(*resource, box);
+        }
     }
     for (const auto& sceneBox : pattern.SceneProfileOccurrences)
     {
@@ -3620,6 +3833,12 @@ void Client::CKoukuSaydonPresentationPlayer::Update(float dt,
             session.patternStartTick = view.Snapshot.iPatternStartTick;
             if (owner) { session.runEpoch = run->iRunEpoch; session.memberId = owner->strMemberId; }
         }
+        session.presentationTarget.reset();
+        const auto target = std::find_if(players.begin(), players.end(), [&](const auto& player) {
+            return player.Snapshot.iNetEntityId == view.Snapshot.iPatternTargetNetEntityId && player.Snapshot.iCurrentHp &&
+                player.Snapshot.eAction != LostArk::Shared::PLAYER_ACTION_STATE::DEAD; });
+        if (target != players.end()) session.presentationTarget = float3_t{
+            target->Snapshot.fPositionX, target->Snapshot.fPositionY, target->Snapshot.fPositionZ};
         // Interpolate between snapshots without rewinding/restarting effects every network tick.
         const float clock = session.lastClockMs < 0.f ? seconds * 1000.f :
             (std::max)(seconds * 1000.f, session.lastClockMs + dt * 1000.f);
@@ -3783,6 +4002,7 @@ void Client::CKoukuSaydonPresentationPlayer::Update(float dt,
     }
     Update_DiceBindVisuals(dt, bosses, players);
     Update_MazeMarks(players);
+    Update_MarioMarks(players);
     Update_BingoBombs(dt, players);
     Update_BingoMarks(dt);
     Update_FearPresentation(dt, players);
@@ -5283,9 +5503,13 @@ bool Client::CKoukuSaydonPresentationPlayer::Resolve_PreviewCaptureClock(
                     EFFECT_SCREEN_POST_PROFILE::SCENE_COLLAPSE_CAPTURE_V1 ||
                 (!resource->strElementId.empty() && resource->strElementId != element.strElementId)) continue;
             const double effectRate = Effect_SourceClockRate(*resource, box);
-            const double sourceDelayMs = (double(element.Detail.Timing.fStartDelaySeconds) * 1000.0 - box.iEffectSourceStartMs) / effectRate;
+            const double sourceBeginMs = double(element.Detail.Timing.fStartDelaySeconds) * 1000.0;
+            const double sourceFinishMs = sourceBeginMs + double(element.Detail.Timing.fLifeTimeSeconds) * 1000.0;
+            const double sourceDelayMs = box.EffectSourceTimeKeys.empty() ?
+                (sourceBeginMs - box.iEffectSourceStartMs) / effectRate : box.Effect_ElapsedTimeMs(sourceBeginMs);
             const double delayMs = (std::max)(0.0, sourceDelayMs);
-            const double sourceEndMs = sourceDelayMs + double(element.Detail.Timing.fLifeTimeSeconds) * 1000.0 / effectRate;
+            const double sourceEndMs = box.EffectSourceTimeKeys.empty() ?
+                (sourceFinishMs - box.iEffectSourceStartMs) / effectRate : box.Effect_ElapsedTimeMs(sourceFinishMs);
             if (!std::isfinite(sourceDelayMs) || sourceEndMs <= 0.0 || delayMs >= box.iDurationMs) continue;
             // Float seconds can put an authored integer millisecond a fraction
             // of a microsecond above itself; retain that cursor before rounding up.
@@ -5883,6 +6107,8 @@ void Client::CKoukuSaydonPresentationPlayer::Reset()
     m_Cards.clear();
     for (auto& [id, visual] : m_DiceBindVisuals) Stop_Session(visual.session);
     m_DiceBindVisuals.clear();
+    for (auto& [id, mark] : m_MarioMarks) Stop_Session(mark.session);
+    m_MarioMarks.clear();
     m_BingoMarks.clear();
     m_BingoWorldDocument.reset();
     m_BingoBombs.clear();
@@ -6227,12 +6453,14 @@ bool Client::CKoukuSaydonPresentationPlayer::Preview_PresentationGeometry(
             if (resource->eKind == KIND::EFFECT && active->second.v1EffectHandle &&
                 (!CEffectPresentationService::Update_WorldRoot({active->second.v1EffectHandle}, pivot) ||
                  !CEffectPresentationService::Seek_WorldRoot({active->second.v1EffectHandle},
-                    edited.iEffectSourceStartMs / 1000.f + (std::max)(0.f, active->second.lastAge - active->second.v1CycleStartSeconds) * Effect_SourceClockRate(*resource, edited),
+                    edited.EffectSourceTimeKeys.empty() ? edited.iEffectSourceStartMs / 1000.f + (std::max)(0.f, active->second.lastAge - active->second.v1CycleStartSeconds) * Effect_SourceClockRate(*resource, edited) :
+                        static_cast<float>(edited.Effect_SourceTimeMs(active->second.lastAge * 1000.) * .001),
                     Effect_V1TransformProvider(edited, pivot, session.rootHistory, active->second.effectPivotHistory,
                         active->second.sourceAnchorSampler, Effect_SourceClockRate(*resource, edited), {}, active->second.v1CycleStartSeconds), true,
-                    edited.iEffectSourceStartMs / 1000.f + ((std::min)(edited.iDurationMs / 1000.f - active->second.v1CycleStartSeconds,
+                    edited.EffectSourceTimeKeys.empty() ? edited.iEffectSourceStartMs / 1000.f +
+                        ((std::min)(edited.iDurationMs / 1000.f - active->second.v1CycleStartSeconds,
                         active->second.v1FiniteLoopSeconds > 0.f ? active->second.v1FiniteLoopSeconds : edited.iDurationMs / 1000.f)) *
-                        Effect_SourceClockRate(*resource, edited))))
+                        Effect_SourceClockRate(*resource, edited) : static_cast<float>(edited.EffectSourceTimeKeys.back()[1] * .001))))
             {
                 m_strStatus = "V1 Effect geometry preview lost its active handle: " +
                     CEffectPresentationService::Get_Status();

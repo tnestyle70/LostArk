@@ -619,7 +619,7 @@ bool_t Client::CWorldSequenceDocument::Load_Text(const std::string_view text,
 				  "interpolation", "tracks" }) :
 			Is_ObjectShape(templateValue,
 				{ "sequenceId", "displayName", "category", "durationMs",
-				  "interpolation", "tracks", "animationTracks" }, { "objectMotion", "effectTracks", "colliderTracks", "soundTracks", "subtitleTracks" });
+				  "interpolation", "tracks", "animationTracks" }, { "objectMotion", "effectTracks", "colliderTracks", "soundTracks", "subtitleTracks", "materialTracks" });
 		if (!validTemplateShape)
 		{
 			outStatus = "World sequence template shape is invalid";
@@ -801,6 +801,49 @@ bool_t Client::CWorldSequenceDocument::Load_Text(const std::string_view text,
 				parsedTemplate.animationTracks.push_back(std::move(parsedTrack));
 			}
 		}
+        if (const auto* materials = templateValue.Find("materialTracks"))
+        {
+            if (parsedFormatVersion < 3u || !materials->Is_Array() || materials->Get_Array().size() > MAX_TRACK_COUNT)
+            { outStatus = "World materialTracks must be a bounded v3 array"; return false; }
+            for (const auto& row : materials->Get_Array())
+            {
+                WORLD_SEQUENCE_MATERIAL_TRACK track;
+                if (!Is_ObjectShape(row, {"slotId", "materialName", "curves"}, {}) ||
+                    !row.Find("slotId")->Is_String() || !row.Find("materialName")->Is_String() ||
+                    !row.Find("curves")->Is_Array() || row.Find("curves")->Get_Array().size() > 64u)
+                { outStatus = "World material track fields are invalid"; return false; }
+                track.slotId = row.Find("slotId")->Get_String();
+                track.materialName = row.Find("materialName")->Get_String();
+                for (const auto& curve : row.Find("curves")->Get_Array())
+                {
+                    WORLD_SEQUENCE_MATERIAL_CURVE parsed;
+                    if (!Is_ObjectShape(curve, {"parameter", "keys"}, {}) ||
+                        !curve.Find("parameter")->Is_String() || !curve.Find("keys")->Is_Array() ||
+                        curve.Find("keys")->Get_Array().size() > 4096u)
+                    { outStatus = "World material curve fields are invalid"; return false; }
+                    parsed.parameter = curve.Find("parameter")->Get_String();
+                    for (const auto& key : curve.Find("keys")->Get_Array())
+                    {
+                        WORLD_SEQUENCE_MATERIAL_KEY sample;
+                        if (!Is_ObjectShape(key, {"timeMs", "value", "interpolation"}, {}) ||
+                            !Read_Uint32(key.Find("timeMs"), sample.timeMs, MAX_DURATION_MS) ||
+                            !key.Find("interpolation")->Is_String() || !key.Find("value")->Is_Array() ||
+                            key.Find("value")->Get_Array().size() != 4u)
+                        { outStatus = "World material key fields are invalid"; return false; }
+                        const auto& mode = key.Find("interpolation")->Get_String();
+                        if (mode != "LINEAR" && mode != "CONSTANT")
+                        { outStatus = "World material interpolation is invalid"; return false; }
+                        sample.constant = mode == "CONSTANT";
+                        for (size_t axis = 0u; axis < 4u; ++axis)
+                            if (!Read_FiniteFloat(&key.Find("value")->Get_Array()[axis], sample.value[axis]))
+                            { outStatus = "World material value is not finite"; return false; }
+                        parsed.keys.push_back(sample);
+                    }
+                    track.curves.push_back(std::move(parsed));
+                }
+                parsedTemplate.materialTracks.push_back(std::move(track));
+            }
+        }
 		if (const auto* effects = templateValue.Find("effectTracks"))
 		{
 			if (parsedFormatVersion < 3u || !effects->Is_Array() || effects->Get_Array().size() > MAX_TRACK_COUNT)
@@ -1287,6 +1330,31 @@ bool_t Client::CWorldSequenceDocument::Save(
 				<< (track.holdLastFrame ? "true" : "false") << " }";
 		}
 		output << (value.animationTracks.empty() ? "]" : "\n      ]");
+        if (!value.materialTracks.empty())
+        {
+            output << ",\n      \"materialTracks\": [";
+            for (size_t index = 0u; index < value.materialTracks.size(); ++index)
+            {
+                const auto& track = value.materialTracks[index];
+                output << (index ? "," : "") << "{\"slotId\":\"" << CDataJson::Escape(track.slotId)
+                    << "\",\"materialName\":\"" << CDataJson::Escape(track.materialName) << "\",\"curves\":[";
+                for (size_t curveIndex = 0u; curveIndex < track.curves.size(); ++curveIndex)
+                {
+                    const auto& curve = track.curves[curveIndex];
+                    output << (curveIndex ? "," : "") << "{\"parameter\":\"" << CDataJson::Escape(curve.parameter) << "\",\"keys\":[";
+                    for (size_t keyIndex = 0u; keyIndex < curve.keys.size(); ++keyIndex)
+                    {
+                        const auto& key = curve.keys[keyIndex];
+                        output << (keyIndex ? "," : "") << "{\"timeMs\":" << key.timeMs << ",\"value\":[";
+                        for (size_t axis = 0u; axis < 4u; ++axis) output << (axis ? "," : "") << key.value[axis];
+                        output << "],\"interpolation\":\"" << (key.constant ? "CONSTANT" : "LINEAR") << "\"}";
+                    }
+                    output << "]}";
+                }
+                output << "]}";
+            }
+            output << "]";
+        }
 		if (!value.effectTracks.empty())
 		{
 			output << ",\n      \"effectTracks\": [";
@@ -1620,7 +1688,7 @@ bool_t Client::CWorldSequenceDocument::Validate(
 			(WORLD_SEQUENCE_INTERPOLATION::LINEAR != value.interpolation &&
 				WORLD_SEQUENCE_INTERPOLATION::SMOOTH_STEP != value.interpolation) ||
 			(value.tracks.empty() && value.animationTracks.empty()) ||
-			value.tracks.size() + value.animationTracks.size() + value.effectTracks.size() + value.colliderTracks.size() +
+			value.tracks.size() + value.animationTracks.size() + value.effectTracks.size() + value.colliderTracks.size() + value.materialTracks.size() +
                 value.soundTracks.size() + value.subtitleTracks.size() > MAX_TRACK_COUNT)
 		{
 			outStatus = "Invalid or duplicate world sequence template: " +
@@ -1739,6 +1807,31 @@ bool_t Client::CWorldSequenceDocument::Validate(
 				}
 			}
 		}
+        std::unordered_set<std::string> materialTargets;
+        for (const auto& track : value.materialTracks)
+        {
+            if (!Is_ValidStableId(track.slotId) || track.materialName.empty() || track.materialName.size() > 256u ||
+                !Is_ValidUtf8DisplayText(track.materialName) || !materialTargets.insert(track.slotId + ":" + track.materialName).second ||
+                track.curves.empty() || track.curves.size() > 64u ||
+                (std::none_of(value.tracks.begin(), value.tracks.end(), [&](const auto& row) { return row.slotId == track.slotId; }) &&
+                 std::none_of(value.animationTracks.begin(), value.animationTracks.end(), [&](const auto& row) { return row.slotId == track.slotId; })))
+            { outStatus = "Invalid World material track target: " + value.sequenceId; return false; }
+            std::unordered_set<std::string> parameters;
+            for (const auto& curve : track.curves)
+            {
+                if (curve.parameter.empty() || curve.parameter.size() > 128u || !Is_ValidUtf8DisplayText(curve.parameter) ||
+                    !parameters.insert(curve.parameter).second || curve.keys.empty() || curve.keys.size() > 4096u ||
+                    curve.keys.front().timeMs != 0u || curve.keys.back().timeMs != value.durationMs)
+                { outStatus = "World material curve must cover its motion: " + value.sequenceId; return false; }
+                for (size_t index = 0u; index < curve.keys.size(); ++index)
+                {
+                    const auto& key = curve.keys[index];
+                    if (key.timeMs > value.durationMs || (index && key.timeMs <= curve.keys[index - 1u].timeMs) ||
+                        std::any_of(key.value.begin(), key.value.end(), [](float v) { return !std::isfinite(v) || std::abs(v) > 1000000.f; }))
+                    { outStatus = "Invalid World material key: " + value.sequenceId; return false; }
+                }
+            }
+        }
 		/* An animation slot may carry an ordered clip chain, so its rows are
 		   checked against the slot's previous start instead of a plain unique
 		   set. A slot still may not be both a transform and an animation slot. */
@@ -1845,6 +1938,26 @@ bool_t Client::CWorldSequenceDocument::Validate(
 				{
 					return track.slotId == binding.slotId;
 				});
+            for (const auto& material : targetTemplate->materialTracks)
+                if (material.slotId == binding.slotId)
+                {
+                    const auto* resource = binding.targetKind == WORLD_SEQUENCE_TARGET_KIND::OBJECT_RESOURCE ?
+                        Find_ObjectResource(binding.targetId) : nullptr;
+                    if (!resource || !resource->materialProfile || resource->materialProfile->materialName != material.materialName)
+                    { outStatus = "World material track requires its exact Object material profile: " + value.instanceId; return false; }
+                    for (const auto& curve : material.curves)
+                    {
+                        if (!resource->materialProfile->parameters.contains(curve.parameter))
+                        { outStatus = "World material curve parameter is absent from its profile: " + curve.parameter; return false; }
+                        for (const auto& key : curve.keys)
+                        {
+                            auto profile = *resource->materialProfile;
+                            profile.parameters[curve.parameter] = key.value;
+                            if (!Validate_MaterialProfile(profile))
+                            { outStatus = "World material curve key is outside its native profile: " + curve.parameter; return false; }
+                        }
+                    }
+                }
 			const bool colliderSlot = std::any_of(targetTemplate->colliderTracks.begin(), targetTemplate->colliderTracks.end(),
 				[&](const auto& collider) { return collider.slotId == binding.slotId; });
 			if (colliderSlot && binding.targetKind != WORLD_SEQUENCE_TARGET_KIND::OBJECT_RESOURCE)
@@ -2168,6 +2281,7 @@ bool_t Client::CWorldSequenceDocument::Is_Equivalent(
 			left.effectTracks.size() != right.effectTracks.size() ||
 			left.colliderTracks.size() != right.colliderTracks.size() ||
             left.soundTracks != right.soundTracks || left.subtitleTracks != right.subtitleTracks ||
+            left.materialTracks != right.materialTracks ||
 			!sameFloat3(left.objectMotion.velocity, right.objectMotion.velocity) ||
 			!sameFloat3(left.objectMotion.acceleration, right.objectMotion.acceleration) ||
 			!sameFloat3(left.objectMotion.angularVelocityDegrees, right.objectMotion.angularVelocityDegrees) ||
@@ -2340,6 +2454,29 @@ bool_t Client::CWorldSequenceDocument::Resize_TimelineDuration(const std::string
             if (track.keys.size() < 2u) return reject("Stage shortening would remove a required Transform endpoint.");
         }
     }
+    for (auto& material : edited->materialTracks)
+        for (auto& curve : material.curves)
+        {
+            if (curve.keys.size() < 2u) return reject("Stage requires valid material endpoints.");
+            if (durationMs > edited->durationMs)
+            {
+                if (curve.keys.size() >= MAX_KEY_COUNT) return reject("Stage extension exceeds the material key limit.");
+                auto endpoint = curve.keys.back(); endpoint.timeMs = durationMs;
+                curve.keys.push_back(endpoint);
+            }
+            else
+            {
+                while (curve.keys.size() > 1u && curve.keys.back().timeMs > durationMs)
+                {
+                    if (curve.keys.back().value != curve.keys[curve.keys.size() - 2u].value)
+                        return reject("Stage shortening would cut a material change. Existing rows preserved.");
+                    auto endpoint = curve.keys.back(); curve.keys.pop_back();
+                    if (curve.keys.back().timeMs < durationMs)
+                    { endpoint.timeMs = durationMs; curve.keys.push_back(endpoint); break; }
+                }
+                if (curve.keys.size() < 2u) return reject("Stage shortening would remove a required material endpoint.");
+            }
+        }
     bool pinnedMotionEnd = false;
     for (auto& effect : edited->effectTracks)
         if (effect.timing == "MOTION_END")
@@ -2479,6 +2616,30 @@ bool_t Client::CWorldSequenceDocument::Is_ValidStableId(
 		});
 }
 
+bool_t Client::CWorldSequenceDocument::Try_SampleMaterialParameters(
+    const WORLD_SEQUENCE_MATERIAL_PROFILE& profile, const WORLD_SEQUENCE_MATERIAL_TRACK& track,
+    const f32_t timeMs, Engine::MODEL_SOURCE_CHARACTER_PARAMETERS& out)
+{
+    if (!std::isfinite(timeMs) || track.materialName != profile.materialName) return false;
+    auto values = profile.parameters;
+    for (const auto& curve : track.curves)
+    {
+        if (curve.keys.empty() || !values.contains(curve.parameter)) return false;
+        auto right = std::upper_bound(curve.keys.begin(), curve.keys.end(), timeMs,
+            [](float time, const auto& key) { return time < key.timeMs; });
+        const auto left = right == curve.keys.begin() ? right : right - 1;
+        const float fraction = right == curve.keys.end() || left == right || left->constant ? 0.f :
+            (timeMs - left->timeMs) / (right->timeMs - left->timeMs);
+        auto& value = values.at(curve.parameter);
+        for (size_t axis = 0u; axis < 4u; ++axis)
+            value[axis] = left->value[axis] + (fraction ? (right->value[axis] - left->value[axis]) * fraction : 0.f);
+    }
+    Engine::MODEL_SOURCE_CHARACTER_PARAMETERS staged;
+    if (!SourceCharacterMaterial::Configure(profile.family, values, staged)) return false;
+    out = std::move(staged);
+    return true;
+}
+
 bool_t Client::CWorldSequenceDocument::Is_ValidMaterialProfile(const WORLD_SEQUENCE_MATERIAL_PROFILE& profile)
 {
     return Validate_MaterialProfile(profile);
@@ -2513,7 +2674,7 @@ bool_t CWorldSequenceDocument::Duplicate_TimelineBox(const std::string& sequence
     auto candidate = *this;
     auto* staged = candidate.Find_Template(sequence.sequenceId);
     if (!staged) return false;
-    if (staged->tracks.size() + staged->animationTracks.size() + staged->effectTracks.size() + staged->colliderTracks.size() >= CWorldSequenceDocument::MAX_TRACK_COUNT)
+    if (staged->tracks.size() + staged->animationTracks.size() + staged->effectTracks.size() + staged->colliderTracks.size() + staged->materialTracks.size() >= CWorldSequenceDocument::MAX_TRACK_COUNT)
     { outStatus = "Duplicate refused: Motion track limit reached. Existing draft preserved."; return false; }
     const uint32_t oldDuration = staged->durationMs;
     uint32_t duration = oldDuration;
@@ -2580,7 +2741,7 @@ bool_t CWorldSequenceDocument::Duplicate_ColliderTrack(const std::string& sequen
     { outStatus = "Collider row is unavailable: " + sequenceId; return false; }
     auto candidate = *this;
     auto* staged = candidate.Find_Template(sequenceId);
-    if (staged->tracks.size() + staged->animationTracks.size() + staged->effectTracks.size() + staged->colliderTracks.size() >= MAX_TRACK_COUNT)
+    if (staged->tracks.size() + staged->animationTracks.size() + staged->effectTracks.size() + staged->colliderTracks.size() + staged->materialTracks.size() >= MAX_TRACK_COUNT)
     { outStatus = "Duplicate refused: Motion track limit reached. Existing draft preserved."; return false; }
     auto duplicate = staged->colliderTracks[index];
     uint32_t serial = 1u;

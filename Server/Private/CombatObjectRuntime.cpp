@@ -953,7 +953,7 @@ void LostArk::Server::CCombatObjectRuntime::Update(
 			contact.Shape.eKind = SERVER_COMBAT_SHAPE_KIND::CIRCLE;
 			contact.Shape.fOuterRadius = object.fContactPresentationRadiusM;
 			bool contacted = false;
-			for (const auto& [id, player] : players)
+			for (auto& [id, player] : players)
 			{
 				// Card pursuit selects only its steering target. Every player can intercept
 				// the card; its suit-specific damage immunity is evaluated below.
@@ -961,6 +961,14 @@ void LostArk::Server::CCombatObjectRuntime::Update(
 					object.eDamageImmuneCardSymbol == LostArk::Shared::MECHANIC_CARD_SYMBOL::NONE;
 				if (!IsDamageable(player) || (targetOnly && player.iNetEntityId != object.iLockedTargetNetEntityId) ||
 					!ContactOverlaps(object, contact, BodyOf(player))) continue;
+				// A matching interception rescues this card occurrence's captive. Other
+				// owners and later binds must survive an older card reaching the player.
+				if (player.bPatternBound &&
+					object.eDamageImmuneCardSymbol != LostArk::Shared::MECHANIC_CARD_SYMBOL::NONE &&
+					player.eMechanicCardSymbol == object.eDamageImmuneCardSymbol &&
+					player.iPatternBindOwnerNetEntityId == object.iSourceNetEntityId &&
+					player.iPatternBindSequence == object.LiveState.iOwnerPatternSequence)
+					player.Clear_PatternBindStatus();
 				// A swept hit can cross the whole body in one tick. Anchor its contact
 				// burst on the hit player's authoritative pose, never the overshot endpoint.
 				object.LiveState.CurrentPose.fPositionX = player.fPositionX;

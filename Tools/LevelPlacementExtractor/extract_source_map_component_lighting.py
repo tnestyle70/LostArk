@@ -67,8 +67,14 @@ def decode_native_lighting(tail: bytes, reference: Callable[[int], dict]) -> dic
     shadow_vertices = reader.i32()
     require(0 <= shadow_vertices <= 20_000_000, "invalid vertex shadow count")
     header["vertexShadowCount"] = shadow_vertices
-    if shadows or shadow_vertices:
-        raise UnsupportedNative("shadow-map or vertex-shadow payload is not implemented", reader.offset, header)
+    if shadow_vertices:
+        raise UnsupportedNative("vertex-shadow payload is not implemented", reader.offset, header)
+    if shadows:
+        # The ShadowMap2D payload itself is still not decoded; only the reference list above is
+        # recorded. The RNM lightmap is serialized after that reference, so the parse continues.
+        # The terminal check at the end of this function still requires the native tail to end
+        # exactly, which is what keeps a mis-read from passing silently.
+        header["shadowPayloadDecoded"] = False
     kind = reader.i32()
     header["lightMapKind"] = kind
     if kind == 0 and len(tail) == 21 and tail[reader.offset:] == bytes(5):

@@ -26,6 +26,12 @@ def rnm_tail(color=b"", third=0, coordinates=(0.25, 0.5, 0.125, 0.25)):
     return bytes(value)
 
 
+def shadowed(body, shadow_index=3):
+    """Wrap an RNM body with one ShadowMap2D reference and no vertex shadows."""
+    head = struct.pack("<3i", 1, 1, shadow_index) + struct.pack("<i", 0)
+    return head + body[12:]
+
+
 class ComponentLightingTests(unittest.TestCase):
     def test_rnm_all_coefficients_guids_uv_and_native_color_are_exact(self):
         color = bytes([0, 1, 2, 3, 254, 253, 252, 251])
@@ -93,6 +99,49 @@ class ComponentLightingTests(unittest.TestCase):
         self.assertEqual(result["angleDegrees"]["status"], "INSTANCE_PROPERTY_ABSENT")
         self.assertEqual(result["cubeInputs"][0]["minimumRoughness"]["status"], "EXTERNAL_TEXTURE_PROPERTY_NOT_READ")
         self.assertIsNone(result["cubeInputs"][0]["minimumRoughness"]["propertyPresent"])
+
+    def test_shadow_reference_still_reads_the_rnm_lightmap_that_follows_it(self):
+        # A ShadowMap2D reference is serialized before the FLightMap. The shadow payload itself is
+        # not decoded, but the lightmap after it is, so the component is not reported as absent.
+        tail = shadowed(rnm_tail())
+        result = subject.decode_native_lighting(tail, reference)
+        self.assertEqual(result["status"], "RNM_TEXTURE_LIGHTMAP")
+        self.assertEqual(result["shadowReferences"], [reference(3)])
+        self.assertEqual(result["vertexShadowCount"], 0)
+        self.assertFalse(result["shadowPayloadDecoded"])
+        self.assertEqual(result["averageTexture"], "MAP.normalizedaveragecolor0_12")
+        self.assertEqual(result["coordinateScale"], [0.25, 0.5])
+        self.assertTrue(result["nativeTailCompletelyConsumed"])
+
+    def test_shadow_reference_with_inexact_tail_is_still_unsupported(self):
+        for broken in (shadowed(rnm_tail()) + b"new ABI tail", shadowed(rnm_tail())[:-1],
+                       shadowed(b"unknown shadow stream")):
+            with self.subTest(tail=broken[-12:]):
+                with self.assertRaises((subject.UnsupportedNative, ValueError,
+                                        subject.ue.ExtractionError)):
+                    subject.decode_native_lighting(broken, reference)
+
+    def test_vertex_shadow_payload_is_still_refused_even_with_a_valid_lightmap(self):
+        body = rnm_tail()[12:]
+        tail = struct.pack("<3i", 1, 0, 4) + body
+        with self.assertRaises(subject.UnsupportedNative) as context:
+            subject.decode_native_lighting(tail, reference)
+        self.assertIn("vertex-shadow", str(context.exception))
+        self.assertEqual(context.exception.decoded["vertexShadowCount"], 4)
+        self.assertNotIn("shadowPayloadDecoded", context.exception.decoded)
+
+    def test_components_without_shadows_do_not_gain_the_shadow_marker(self):
+        plain = subject.decode_native_lighting(rnm_tail(), reference)
+        self.assertEqual(plain["status"], "RNM_TEXTURE_LIGHTMAP")
+        self.assertEqual(plain["shadowReferences"], [])
+        self.assertNotIn("shadowPayloadDecoded", plain)
+        no_lightmap = struct.pack("<4i", 1, 0, 0, 0) + bytes(5)
+        null = subject.decode_native_lighting(no_lightmap, reference)
+        self.assertEqual(null["status"], "NULL_LIGHTMAP")
+        self.assertNotIn("shadowPayloadDecoded", null)
+        empty = subject.decode_native_lighting(bytes(4), reference)
+        self.assertEqual(empty["status"], "NO_LOD_LIGHTING_DATA")
+        self.assertNotIn("shadowPayloadDecoded", empty)
 
 
 if __name__ == "__main__":

@@ -120,6 +120,8 @@ $rows = [Collections.Generic.List[string]]::new()
 foreach ($vehicle in $vehicles) {
     $profileFields = @('vehicleId', 'moveSpeed', 'source', 'skills')
     if ($null -ne $vehicle.flight) { $profileFields += 'flight' }
+    if ($null -ne $vehicle.boost) { $profileFields += 'boost' }
+    if ($null -ne $vehicle.projectTuning) { $profileFields += 'projectTuning' }
     Assert-ExactProperties $vehicle $profileFields 'vehicle profile'
     $flightFields = @('hoverHeight', 'maximumHeight', 'speed', 'verticalSpeed')
     $flightValues = @(0, 0, 0, 0, 0, 0)
@@ -162,11 +164,37 @@ foreach ($vehicle in $vehicles) {
     Assert-JsonInteger $vehicle.source.value "vehicle $($vehicle.vehicleId) source value" 1 100000
     Assert-JsonInteger $vehicle.source.divisor "vehicle $($vehicle.vehicleId) source divisor" 1 100000
     $speed = [double]$vehicle.moveSpeed
-    if ($vehicle.source.table -cne 'EFTable_Vehicle' -or $vehicle.source.column -cne 'MoveSpeed' -or
+    # Ships (Bern3 voyage) take their speed from EFTable_VoyageShip.MoveSpeed, everything else from EFTable_Vehicle.
+    if (@('EFTable_Vehicle', 'EFTable_VoyageShip') -cnotcontains $vehicle.source.table -or $vehicle.source.column -cne 'MoveSpeed' -or
         [uint32]$vehicle.source.primaryKey -ne [uint32]$vehicle.vehicleId -or
         [Math]::Abs(([double]$vehicle.source.value / [double]$vehicle.source.divisor) - $speed) -gt 0.000001 -or
         $speed -le 0.0 -or $speed -gt 30.0) {
-        throw "Vehicle $($vehicle.vehicleId) speed does not match its EFTable_Vehicle source."
+        throw "Vehicle $($vehicle.vehicleId) speed does not match its EFTable_Vehicle / EFTable_VoyageShip source."
+    }
+    # Project tuning. The source check above still holds the original EFTable numbers; this is the
+    # only place that scales them, so the published speed stays traceable to both.
+    $tunedSpeed = $speed
+    $boostMultiplier = 0.0
+    if ($null -ne $vehicle.projectTuning) {
+        $context = "vehicle $($vehicle.vehicleId) projectTuning"
+        Assert-ExactProperties $vehicle.projectTuning @('moveSpeedMultiplier',
+            'boostSpeedMultiplierOfMoveSpeed') $context
+        Assert-JsonNumber $vehicle.projectTuning.moveSpeedMultiplier "$context moveSpeedMultiplier"
+        Assert-JsonNumber $vehicle.projectTuning.boostSpeedMultiplierOfMoveSpeed "$context boostSpeedMultiplierOfMoveSpeed"
+        if ([uint32]$vehicle.vehicleId -lt 8200 -or [uint32]$vehicle.vehicleId -gt 8208) {
+            throw "$context is supported only for Bern voyage ships 8200-8208."
+        }
+        if ($null -eq $vehicle.boost) { throw "$context needs the boost block it scales." }
+        $moveMultiplier = [double]$vehicle.projectTuning.moveSpeedMultiplier
+        $boostMultiplier = [double]$vehicle.projectTuning.boostSpeedMultiplierOfMoveSpeed
+        if ($moveMultiplier -lt 1.0 -or $moveMultiplier -gt 10.0 -or
+            $boostMultiplier -lt 1.0 -or $boostMultiplier -gt 10.0) {
+            throw "$context multipliers must each be between 1 and 10."
+        }
+        $tunedSpeed = [Math]::Round($speed * $moveMultiplier, 4)
+        if ($tunedSpeed -le 0.0 -or $tunedSpeed -gt 30.0) {
+            throw "$context tuned move speed is outside the Server range of 30 m/s."
+        }
     }
     if (-not $vehicleIds.Add([uint32]$vehicle.vehicleId)) {
         throw "Duplicate vehicle ID: $($vehicle.vehicleId)"
@@ -175,7 +203,50 @@ foreach ($vehicle in $vehicles) {
     if ($skills.Count -gt $skillSlots.Count) {
         throw "Vehicle $($vehicle.vehicleId) has more skills than slots."
     }
-    $rows.Add((@('VEHICLE', [uint32]$vehicle.vehicleId, (Format-Invariant $speed), $skills.Count) + $flightValues -join "`t"))
+    # Optional fast sail (EFTable_VoyageShip BoostSpeed). Ships only, and the boosted speed must be
+    # the authored MoveSpeed plus BoostSpeed over the same divisor, so the provenance stays checkable.
+    # The boost's length and cooldown are not repeated here: they are its SPACE skill's row.
+    $boostValues = @(0)
+    if ($null -ne $vehicle.boost) {
+        $context = "vehicle $($vehicle.vehicleId) boost"
+        Assert-ExactProperties $vehicle.boost @('moveSpeed', 'source') $context
+        Assert-JsonNumber $vehicle.boost.moveSpeed "$context moveSpeed"
+        Assert-ExactProperties $vehicle.boost.source @('table', 'primaryKey', 'secondaryKey', 'column',
+            'baseValue', 'value', 'divisor') "$context source"
+        Assert-JsonInteger $vehicle.boost.source.primaryKey "$context source primaryKey" 1 ([uint32]::MaxValue)
+        Assert-JsonInteger $vehicle.boost.source.secondaryKey "$context source secondaryKey" 1 100
+        Assert-JsonInteger $vehicle.boost.source.baseValue "$context source baseValue" 1 100000
+        Assert-JsonInteger $vehicle.boost.source.value "$context source value" 1 100000
+        Assert-JsonInteger $vehicle.boost.source.divisor "$context source divisor" 1 100000
+        if ([uint32]$vehicle.vehicleId -lt 8200 -or [uint32]$vehicle.vehicleId -gt 8208) {
+            throw "$context is supported only for Bern voyage ships 8200-8208."
+        }
+        $boostSpeed = [double]$vehicle.boost.moveSpeed
+        $boostSum = ([double]$vehicle.boost.source.baseValue + [double]$vehicle.boost.source.value) /
+            [double]$vehicle.boost.source.divisor
+        if ($vehicle.boost.source.table -cne 'EFTable_VoyageShip' -or $vehicle.boost.source.column -cne 'BoostSpeed' -or
+            [uint32]$vehicle.boost.source.primaryKey -ne [uint32]$vehicle.vehicleId -or
+            [uint32]$vehicle.boost.source.baseValue -ne [uint32]$vehicle.source.value -or
+            [uint32]$vehicle.boost.source.divisor -ne [uint32]$vehicle.source.divisor -or
+            [Math]::Abs($boostSum - $boostSpeed) -gt 0.000001) {
+            throw "$context does not match its EFTable_VoyageShip MoveSpeed + BoostSpeed source."
+        }
+        if ($boostSpeed -le $speed -or $boostSpeed -gt 30.0) {
+            throw "$context speed must be faster than the plain speed and at most 30 m/s."
+        }
+        if ($null -ne $vehicle.flight) { throw "$context cannot be combined with flight." }
+        $boostSkills = @($skills | Where-Object { $_.inputSlot -ceq 'SPACE' })
+        if ($boostSkills.Count -ne 1) { throw "$context needs exactly one SPACE skill to trigger it." }
+        $publishedBoost = $boostSpeed
+        if (0.0 -ne $boostMultiplier) {
+            $publishedBoost = [Math]::Round($tunedSpeed * $boostMultiplier, 4)
+            if ($publishedBoost -le $tunedSpeed -or $publishedBoost -gt 30.0) {
+                throw "$context tuned boost must beat the tuned plain speed and stay at most 30 m/s."
+            }
+        }
+        $boostValues = @((Format-Invariant $publishedBoost))
+    }
+    $rows.Add((@('VEHICLE', [uint32]$vehicle.vehicleId, (Format-Invariant $tunedSpeed), $skills.Count) + $flightValues + $boostValues -join "`t"))
     $usedSlots = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
     $skillIds = [Collections.Generic.HashSet[uint32]]::new()
     foreach ($skill in $skills) {
@@ -189,7 +260,7 @@ foreach ($vehicle in $vehicles) {
             throw "$context inputSlot is invalid or repeated: $($skill.inputSlot)"
         }
         if ($skill.source.skillTable -cne 'EFTable_Skill' -or $skill.source.cooldownColumn -cne 'Cooltime' -or
-            @('MovingSkill', 'SkillId0', 'SkillId1', 'SkillId2') -cnotcontains $skill.source.vehicleColumn) {
+            @('MovingSkill', 'SkillId0', 'SkillId1', 'SkillId2', 'BoostSkillId') -cnotcontains $skill.source.vehicleColumn) {
             throw "$context source is invalid."
         }
         if (-not $skillIds.Add([uint32]$skill.skillId)) {
@@ -240,7 +311,7 @@ if (-not $outputDirectory.StartsWith($repoPrefix, [StringComparison]::OrdinalIgn
 [IO.Directory]::CreateDirectory($outputDirectory) | Out-Null
 
 $lines = [Collections.Generic.List[string]]::new()
-$lines.Add("LOSTARK_VEHICLE_BOOTSTRAP`t3`t$($rows.Count)")
+$lines.Add("LOSTARK_VEHICLE_BOOTSTRAP`t4`t$($rows.Count)")
 foreach ($row in $rows) { $lines.Add($row) }
 
 $destination = Join-Path $outputDirectory 'Vehicles.bootstrap'

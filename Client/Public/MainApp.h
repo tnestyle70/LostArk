@@ -137,6 +137,8 @@ public:
 	Used by CLevel_Bern's Schmidt NPC right-click interaction; P itself still
 	toggles (open when closed, close when open). */
 	void Open_ItemUpgradeWindow();
+	/* Ship NPC interaction (CLevel_Bern): opens the vehicle window in its ship-only mode. */
+	void Open_ShipWindow();
 
 	static void Update_DebugWindowTitleWithFps(const wchar_t* pBaseTitle);
 	/* Every domain tool writes one stable Pattern ID into this process-wide
@@ -294,6 +296,7 @@ private:
 	screen between Levels. Every runtime HUD/window sprite and every Draw_Text this class
 	drives is gated on this one answer, because each surface deciding for itself is what
 	let a minimap zone label and the combat analyzer letter the loading art. */
+	bool_t Is_KoukuMinigameHUDHidden() const;
 	bool_t Is_RuntimeUIScreenSuppressed() const;
 	/* The toggle windows one Escape press closes one at a time, newest first. */
 	enum class ESCAPE_WINDOW : uint8_t { INVENTORY, CHARACTER_INFO, AVATAR_BOOK, HONOR_TITLE, VEHICLE, WORLD_MAP, END };
@@ -990,6 +993,7 @@ private:
 	/* KoukuSaydon Complete Play: inventory comes from the Kouku Boss Tool; the
 	   gate combo only filters the list. Stable pattern ID is the selection. */
 	bool_t m_bKoukuCompletePlayLoadAttempted = false;
+	bool_t m_bKoukuBingoHammerColliders = false;
 	int32_t m_iKoukuCompletePlayGate = 0;
 	int32_t m_iKoukuCompletePlayCategory = 0;
 	uint32_t m_iKoukuCompletePlayFlowRevision = 0u;

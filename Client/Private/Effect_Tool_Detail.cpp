@@ -876,9 +876,8 @@ void Client::CEffect_Tool::Render_AuthoringSessionBar()
 		m_pSelectedVisualSourceProjection->Get_ProjectionKind() ==
 			EFFECT_VISUAL_PROGRAM_PROJECTION_KIND::ADAPTER_PACKET_V1;
 	const bool_t bDrawable = m_bActiveDocumentDrawable;
-	const bool_t bLivePreview = bDrawable &&
-		m_bPreviewVisibleRequested &&
-		nullptr != m_pWorldPreviewObject.lock();
+	const bool_t bLivePreview = bDrawable && (Has_ClassMovieContext() ||
+		(m_bPreviewVisibleRequested && nullptr != m_pWorldPreviewObject.lock()));
 	ImGui::SeparatorText("Editing Session");
 	ImGui::Text("Source: %s | Draft: %s | Document: %s | Preview: %s",
 		Source_Label(m_eActiveDocumentSource),
@@ -1034,6 +1033,12 @@ bool_t Client::CEffect_Tool::Try_SetDocumentBloomIntensity(const f32_t value)
         EFFECT_DOCUMENT_SOURCE::AUTHORED != m_eActiveDocumentSource ||
         !Is_ValidEffectBloomIntensity(value))
     { m_strDocumentStatus = "Select an authored Effect and use Bloom Intensity from 0 to 16."; return false; }
+    if (Has_ClassMovieContext())
+    {
+        EFFECT_DOCUMENT_DESC staged = *m_ActiveDocument;
+        staged.fBloomIntensity = value;
+        return Try_CommitDocument(std::move(staged));
+    }
     const auto& assetId = m_ActiveDocument->strEffectAssetId;
     const EFFECT_RESOURCE_KEY key{EFFECT_RESOURCE_OWNER_KIND::V1_DOCUMENT, assetId};
     std::string error;

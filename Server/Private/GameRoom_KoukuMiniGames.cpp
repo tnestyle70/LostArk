@@ -191,6 +191,42 @@ void LostArk::Server::CGameRoom::Update_MarioBombContacts(
     }
 }
 
+void LostArk::Server::CGameRoom::Begin_MarioBallChallenge(SERVER_PLAYER& player)
+{
+	using namespace LostArk::Shared;
+	player.iMarioRequiredColor = static_cast<std::uint8_t>(
+		std::uniform_int_distribution<unsigned>{1u, 3u}(m_MarioLayoutRandom));
+	std::vector<NET_ENTITY_ID> outside;
+	for (const auto& [id, other] : m_Players)
+		if (id != player.iPlayerId && other.iCurrentHp && other.isCombatReady && !other.iMarioStage)
+			outside.push_back(other.iNetEntityId);
+	player.iMarioMarkerNetEntityId = outside.empty() ? player.iNetEntityId :
+		outside[std::uniform_int_distribution<std::size_t>{0u, outside.size() - 1u}(m_MarioLayoutRandom)];
+}
+
+std::uint8_t LostArk::Server::CGameRoom::Mario_MatchingBallCount(const SERVER_PLAYER& player) const
+{
+	if (player.iMarioStage < 1u || player.iMarioStage > 4u ||
+		player.iMarioRequiredColor < 1u || player.iMarioRequiredColor > 3u) return 0u;
+	std::uint8_t count = 0u;
+	for (const auto& ball : m_WorldBootstrap.Get_MarioBalls())
+		if (ball.stage == player.iMarioStage && ball.layout == player.iMarioLayoutVariant &&
+			ball.color + 1u == player.iMarioRequiredColor && (m_MarioPoppedBalls[player.iMarioStage] & (1u << ball.slot))) ++count;
+	return count;
+}
+
+std::uint8_t LostArk::Server::CGameRoom::Mario_MarkerColor(const LostArk::Shared::NET_ENTITY_ID targetId) const
+{
+	for (const auto& [id, entrant] : m_Players)
+	{
+		(void)id;
+		if (entrant.iCurrentHp && entrant.iMarioMarkerNetEntityId == targetId &&
+			(entrant.iMarioStage || entrant.TriggerMove.isActive))
+			return entrant.iMarioRequiredColor;
+	}
+	return 0u;
+}
+
 void LostArk::Server::CGameRoom::Resolve_MarioHammerHit(
 	SERVER_PLAYER& player, const std::uint32_t updateTick)
 {
@@ -249,15 +285,14 @@ std::uint8_t LostArk::Server::CGameRoom::Mario_CurseReleasedMask(
 	const std::uint8_t stage, const std::uint8_t layout) const
 {
 	if (stage < 1u || stage > 4u) return 0u;
-	std::uint8_t present = 0u, remaining = 0u;
+	std::uint8_t poppedByColour[3] = {};
 	for (const auto& ball : m_WorldBootstrap.Get_MarioBalls())
-	{
-		if (ball.stage != stage || ball.layout != layout) continue;
-		present |= static_cast<std::uint8_t>(1u << ball.color);
-		if (!(m_MarioPoppedBalls[stage] & (1u << ball.slot)))
-			remaining |= static_cast<std::uint8_t>(1u << ball.color);
-	}
-	return static_cast<std::uint8_t>(present & ~remaining);
+		if (ball.stage == stage && ball.layout == layout &&
+			(m_MarioPoppedBalls[stage] & (1u << ball.slot))) ++poppedByColour[ball.color];
+	std::uint8_t released = 0u;
+	for (std::uint8_t colour = 0u; colour < 3u; ++colour)
+		if (poppedByColour[colour] >= 3u) released |= static_cast<std::uint8_t>(1u << colour);
+	return released;
 }
 
 void LostArk::Server::CGameRoom::Resolve_CardMazeHammerHit(

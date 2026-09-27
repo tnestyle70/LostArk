@@ -79,6 +79,8 @@ namespace
         std::vector<std::string> archetypes;
         std::size_t nextArchetype = 0u;
         bool reusesActive = false;
+        bool presentationValid = false;
+        std::string presentationStatus;
         decltype(g_ActionPresentationsByArchetype) actions;
         decltype(g_AttachmentGripsByArchetype) grips;
         decltype(g_BindingSourceRevisions) revisions;
@@ -919,6 +921,10 @@ bool Client::CKoukuSaydonPresentationAssetService::Prepare_ProductBindings(
         auto staged = std::make_unique<BINDING_PREPARATION>();
         staged->levelIndex = levelIndex; staged->sourceRevision = sourceRevision;
         staged->source = source; staged->draft = draft; staged->archetypes = archetypes;
+        // Animation/resource readiness must not admit a Product that its actual Effect reader rejects.
+        // Cache this result per preparation, including failure, rather than parsing every READY frame.
+        staged->presentationValid = CKoukuSaydonPresentationPlayer::Validate_ProductJson(
+            *source, sourceRevision, staged->presentationStatus, !draft);
         staged->reusesActive = !draft && Have_PreparedCanonicalBindings(levelIndex, sourceRevision, *source);
         if (staged->reusesActive) staged->nextArchetype = archetypes.size();
         else
@@ -931,6 +937,8 @@ bool Client::CKoukuSaydonPresentationAssetService::Prepare_ProductBindings(
     auto& staged = *g_BindingPreparation;
     if (!draft && *source != *staged.source)
     { status = "Canonical animation source changed during preparation. Prepare the saved Product again."; return false; }
+    if (!staged.presentationValid)
+    { status = "Product presentation preparation preserved the active cache: " + staged.presentationStatus; return false; }
     if (staged.nextArchetype < staged.archetypes.size())
     {
         // Reusing a GPU model does not make its old revision's clip cache ready.
@@ -981,7 +989,8 @@ bool Client::CKoukuSaydonPresentationAssetService::Admit_RunProduct(
         g_BindingPreparation->sourceRevision == sourceRevision && g_BindingPreparation->draft == candidate)
     {
         auto& prepared = *g_BindingPreparation;
-        if (prepared.nextArchetype != prepared.archetypes.size() || Ready_CanonicalBindingArchetypes(levelIndex) != prepared.archetypes)
+        if (!prepared.presentationValid || prepared.nextArchetype != prepared.archetypes.size() ||
+            Ready_CanonicalBindingArchetypes(levelIndex) != prepared.archetypes)
             return fail("Animation Product reached admission before its preparation barrier completed.");
         // Draft bytes are owned by the exact immutable pointer whose hash/epoch
         // was authorized above. Canonical files also need a final freshness read.

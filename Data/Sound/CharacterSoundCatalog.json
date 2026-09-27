@@ -5364,7 +5364,7 @@
         "Sound/KoukuSaton/Events/event.7a14e8764345d9f18db0.wav"
       ],
       "s_bgm_commanderraid.bgm_midnightc_ed_m20_scene_finish": [
-        "Sound/KoukuSaton/Events/bgm_midnightc_ed_m20_scene_finish.source-stop.wav"
+        "Sound/KoukuSaton/Events/bgm_midnightc_ed_m20_scene_finish.source-clock-stop.wav"
       ],
       "s_mob_g_bigsatan1.g_bigsatan1_attack01_cast1": [
         "Sound/KoukuSaton/S_MOB_G_BIGSATAN1/g_bigsatan1_attack01_cast1__40119513.wav"
@@ -10771,6 +10771,28 @@
         "Sound/Character/GuardianKnight/PC_DragonKnight_F_SK_WingStinger1_FX005_2__438687282.wav",
         "Sound/Character/GuardianKnight/PC_DragonKnight_F_SK_WingStinger1_FX005_2__73541323.wav",
         "Sound/Character/GuardianKnight/PC_DragonKnight_F_SK_WingStinger1_FX005_2__62824419.wav"
+      ]
+    },
+    "Maharaka": {
+      "s_mob_mococowater1.mococowater1_attack01_cast1": [
+        "Sound/Maharaka/S_MOB_MOCOCOWATER1/mococowater1_attack01_cast1__884290698.wav",
+        "Sound/Maharaka/S_MOB_MOCOCOWATER1/mococowater1_attack01_cast1__1068667522.wav",
+        "Sound/Maharaka/S_MOB_MOCOCOWATER1/mococowater1_attack01_cast1__883323926.wav"
+      ],
+      "s_mob_mococowater1.mococowater1_attack01_shot1": [
+        "Sound/Maharaka/S_MOB_MOCOCOWATER1/mococowater1_attack01_shot1__170625403.wav",
+        "Sound/Maharaka/S_MOB_MOCOCOWATER1/mococowater1_attack01_shot1__224393252.wav",
+        "Sound/Maharaka/S_MOB_MOCOCOWATER1/mococowater1_attack01_shot1__605718293.wav"
+      ],
+      "s_mob_mococowater1.mococowater2_attack01_cast1": [
+        "Sound/Maharaka/S_MOB_MOCOCOWATER1/mococowater2_attack01_cast1__884290698.wav",
+        "Sound/Maharaka/S_MOB_MOCOCOWATER1/mococowater2_attack01_cast1__1068667522.wav",
+        "Sound/Maharaka/S_MOB_MOCOCOWATER1/mococowater2_attack01_cast1__883323926.wav"
+      ],
+      "s_mob_mococowater1.mococowater2_attack01_shot1": [
+        "Sound/Maharaka/S_MOB_MOCOCOWATER1/mococowater2_attack01_shot1__224393252.wav",
+        "Sound/Maharaka/S_MOB_MOCOCOWATER1/mococowater2_attack01_shot1__170625403.wav",
+        "Sound/Maharaka/S_MOB_MOCOCOWATER1/mococowater2_attack01_shot1__605718293.wav"
       ]
     }
   }

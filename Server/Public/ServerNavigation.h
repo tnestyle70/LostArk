@@ -215,6 +215,14 @@ namespace LostArk::Server
 		/* Includes the base grid, for an explicitly admitted stage without a
 		separate refinement grid. Neither point may lie outside loaded grids. */
 		bool Is_InSameNavigationGrid(float x, float z, float otherX, float otherZ) const;
+		/* True only when the detail region named by its manifest id answers a query at (x, z, hintY) and
+		has walkable ground there. A rule that must stand on one particular grid (a ship on the harbour
+		sea) uses this instead of accepting any ground of a similar height. */
+		bool Is_PointWalkableInRegion(
+			const std::string& regionId,
+			float x,
+			float z,
+			float hintY = NAVIGATION_HEIGHT_UNKNOWN) const;
 		float Get_MaximumTraversalStepHeight() const
 		{
 			return m_fMaximumTraversalStepHeight;
@@ -290,6 +298,8 @@ namespace LostArk::Server
 		std::vector<std::uint16_t> m_VoidCounts;
 		std::uint64_t m_iRevision = 0u;
 		std::string m_strStatus;
+		/* Manifest id of this grid when it is a detail region; empty for the base grid. */
+		std::string m_strRegionId;
 		/* Owner container of the detail regions in manifest order. Each entry is
 		a fully loaded grid whose own m_Regions stays empty. */
 		std::vector<CServerNavigation> m_Regions;

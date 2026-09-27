@@ -283,6 +283,73 @@ class DecodeDdsTests(unittest.TestCase):
             decode_dds_bytes(dds_file(b"DXT1", 8, 8, bytes(8)))
 
 
+class LinearColourBakeTests(unittest.TestCase):
+    def layer(self, srgb=True):
+        return {
+            "diffuse": extract_ue3_landscape.ImageRgba(
+                2, 1, [(0, 0, 0, 0), (255, 255, 255, 255)]),
+            "linearColorBake": True,
+            "diffuseSrgb": srgb,
+        }
+
+    def test_srgb_round_trip_all_byte_values(self):
+        for value in range(256):
+            linear = extract_ue3_landscape.srgb_to_linear(value / 255.0)
+            self.assertAlmostEqual(
+                extract_ue3_landscape.linear_to_srgb(linear), value / 255.0)
+
+    def test_decode_before_filter_and_keep_alpha_linear(self):
+        sample = extract_ue3_landscape.sample_layer_diffuse(self.layer(), .5, .5)
+        self.assertEqual(sample, (.5, .5, .5, .5))
+        self.assertGreater(extract_ue3_landscape.linear_to_srgb(sample[0]), .73)
+
+    def test_linear_input_is_not_srgb_decoded(self):
+        layer = self.layer(False)
+        layer['diffuse'] = extract_ue3_landscape.ImageRgba(1, 1, [(128, 128, 128, 128)])
+        self.assertEqual(extract_ue3_landscape.sample_layer_diffuse(layer, 0, 0),
+                         (128 / 255.0,) * 4)
+
+    def test_repeat_filter_wraps_negative_and_integer_uvs(self):
+        sample = extract_ue3_landscape.sample_layer_diffuse
+        for u in [-1.25, -.75, 0, .25, .5, 1, 1.25]:
+            self.assertEqual(sample(self.layer(), u, .5), sample(self.layer(), u + 2, .5))
+
+    def test_legacy_sampling_is_unchanged(self):
+        layer = self.layer()
+        layer['linearColorBake'] = False
+        self.assertEqual(extract_ue3_landscape.sample_layer_diffuse(layer, .5, .5),
+                         (1.0, 1.0, 1.0, 1.0))
+
+    def test_source_brightness_is_not_peak_normalized(self):
+        layer = dict(linearColorBake=True, desaturation=0, color=(1, .5, .25),
+                     brightness=4, headroomScale=.1)
+        self.assertEqual(extract_ue3_landscape.adjusted_layer_diffuse((.5, .5, .5, 1), layer),
+                         (2.0, 1.0, .5))
+
+    def test_source_height_blend_uses_alpha_before_normalization(self):
+        # Native mad(2,-1), add_sat(height), sum, max(.0001), divide.
+        blend = extract_ue3_landscape.source_landscape_weights
+        self.assertEqual(blend([.5, .5], [1, 0], ['weight', 'height']), [1.0, 0.0])
+        self.assertEqual(blend([.25, .75], [0, .5], ['weight', 'height']), [.2, .8])
+        self.assertEqual(blend([0, 0], [0, 0], ['height', 'height']), [0.0, 0.0])
+        with self.assertRaises(extract_ue3_landscape.LandscapeError):
+            blend([.5], [], ['height'])
+        with self.assertRaises(extract_ue3_landscape.LandscapeError):
+            blend([.5], [.5], ['guess'])
+
+    def test_source_uv_rotates_before_tiling_around_half(self):
+        uv = extract_ue3_landscape.source_landscape_uv
+        self.assertEqual(uv(10, 20, dict(rotation=0, tiling=5), .1), (5.0, 10.0))
+        u, v = uv(10, 5, dict(rotation=90, tiling=2), .1)
+        self.assertAlmostEqual(u, 1.0)
+        self.assertAlmostEqual(v, 2.0)
+
+    def test_source_uv_rejects_invalid_scale(self):
+        for scale in (0, -1, float('nan'), float('inf')):
+            with self.assertRaises(extract_ue3_landscape.LandscapeError):
+                extract_ue3_landscape.source_landscape_uv(0, 0, dict(rotation=0, tiling=1), scale)
+
+
 def decode_dds_bytes(data: bytes):
     with tempfile.TemporaryDirectory() as directory:
         path = Path(directory) / "sample.dds"

@@ -713,9 +713,20 @@ void LostArk::Server::CGameRoom::Update_KoukuRaid(const std::uint32_t tick)
         { Stop_KoukuRaid("Gate boss was removed without a death event"); return; }
         if (run.State.strGateId == "BINGO" && !m_KoukuBingoDuration.iOwnerId)
         {
-            BOSS_PATTERN_MECHANIC_TRIGGER board;
-            board.eKind = BOSS_PATTERN_MECHANIC_TRIGGER_KIND::BINGO_BOARD; board.iDurationMs = 600000u;
-            Begin_KoukuBingoDuration(*primary, board, tick);
+            const BOSS_PATTERN_MECHANIC_TRIGGER* board = nullptr;
+            std::string status;
+            for (const auto& entry : gate->Entries)
+            {
+                if (entry.bBundle) continue;
+                const auto* pattern = CKoukuSaydonBrain::Find_AnimationOnlyPattern(*run.pCatalog, entry.strTargetId, status);
+                if (!pattern) continue;
+                const auto found = std::find_if(pattern->MechanicTriggers.begin(), pattern->MechanicTriggers.end(),
+                    [](const auto& trigger) { return trigger.eKind == BOSS_PATTERN_MECHANIC_TRIGGER_KIND::BINGO_BOARD; });
+                if (found != pattern->MechanicTriggers.end()) { board = &*found; break; }
+            }
+            if (!board || !board->BingoHammerHalfExtentsM)
+            { Stop_KoukuRaid("Pinned Bingo flow has no authored board geometry"); return; }
+            Begin_KoukuBingoDuration(*primary, *board, tick);
         }
         if (run.State.strGateId == "BINGO" && m_KoukuBingoDuration.bSpecialPatternPending && !run.bBingoSpecialRunning)
         {

@@ -2,16 +2,16 @@
   "schemaVersion": 1,
   "areaId": "LV_OCN_EVENTIS_MHP",
   "outputScope": "all",
-  "assetCount": 382,
-  "exactAssetCount": 382,
-  "outputExactAssetCount": 382,
-  "overlayAssetCount": 0,
-  "sourcePlacementCount": 3823,
-  "overlayPlacementCount": 0,
-  "renderProfileCount": 300,
+  "assetCount": 392,
+  "exactAssetCount": 384,
+  "outputExactAssetCount": 384,
+  "overlayAssetCount": 8,
+  "sourcePlacementCount": 3841,
+  "overlayPlacementCount": 812,
+  "renderProfileCount": 307,
   "visibilityOverrideCount": 0,
   "sourceVisibilityBasisCounts": {
-    "ue3-instance-archetype-cdo": 3823
+    "ue3-instance-archetype-cdo": 3841
   },
   "assetNameHintsDiagnosticOnly": {
     "module-package": 14,
@@ -58,9 +58,12 @@
           "slot": 0,
           "fields": [
             "texture:texture_dead",
+            "texture:texture_emissive",
             "texture:texture_fx_panning",
+            "texture:texture_opacity",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:specular_intensity",
             "scalar:specular_power",
@@ -76,6 +79,7 @@
           "slot": 1,
           "fields": [
             "texture:texture_diffuse_1",
+            "texture:texture_specular",
             "texture:texture_specular_1",
             "scalar:specular_intensity",
             "scalar:specular_power",
@@ -90,6 +94,7 @@
           "slot": 2,
           "fields": [
             "texture:texture_diffuse_1",
+            "texture:texture_specular",
             "texture:texture_specular_1",
             "scalar:specular_intensity",
             "scalar:specular_power",
@@ -110,7 +115,9 @@
           "slot": 0,
           "fields": [
             "texture:texture_dead",
+            "texture:texture_emissive",
             "texture:texture_fx_panning",
+            "texture:texture_opacity",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
             "scalar:diffuse_brightness",
@@ -132,8 +139,10 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:specular_intensity",
             "scalar:specular_power",
@@ -154,8 +163,10 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:specular_intensity",
             "scalar:specular_power",
@@ -177,7 +188,9 @@
           "slot": 0,
           "fields": [
             "texture:texture_dead",
+            "texture:texture_emissive",
             "texture:texture_fx_panning",
+            "texture:texture_opacity",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
             "scalar:specular_intensity",
@@ -192,6 +205,7 @@
         {
           "slot": 1,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
             "scalar:opacity_intensity",
@@ -238,6 +252,7 @@
           "slot": 0,
           "fields": [
             "texture:texture_diffuse_1",
+            "texture:texture_specular",
             "texture:texture_specular_1",
             "scalar:specular_intensity",
             "scalar:specular_power",
@@ -257,6 +272,7 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
             "scalar:specular_intensity",
@@ -277,8 +293,10 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:diffuse_saturation",
             "renderFlag:blendMode",
@@ -305,8 +323,11 @@
         {
           "slot": 2,
           "fields": [
+            "texture:texture_emissive",
+            "texture:texture_opacity",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:opacity_falloff",
             "scalar:opacity_intensity",
             "scalar:reflection_contrast",
@@ -329,6 +350,7 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
             "scalar:diffuse_brightness",
@@ -356,8 +378,10 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:normal_intensity",
             "scalar:specular_intensity",
@@ -379,8 +403,10 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:reflection_intensity",
             "scalar:reflection_tiling",
@@ -404,6 +430,7 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
             "scalar:diffuse_brightness",
@@ -427,6 +454,7 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
             "scalar:diffuse_brightness",
@@ -466,8 +494,10 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:specular_intensity",
             "scalar:specular_power",
@@ -510,6 +540,7 @@
           "slot": 0,
           "fields": [
             "texture:texture_diffuse_1",
+            "texture:texture_specular",
             "texture:texture_specular_1",
             "scalar:specular_intensity",
             "scalar:specular_power",
@@ -529,8 +560,10 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_foliagemask",
             "texture:texture_rainnoise",
+            "texture:texture_specular",
             "scalar:affectdistance",
             "scalar:angle",
             "scalar:diffuse_brightness",
@@ -562,6 +595,7 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_specular",
             "scalar:specular_intensity",
             "renderFlag:blendMode",
             "renderFlag:disableDepthTest",
@@ -580,7 +614,9 @@
           "slot": 0,
           "fields": [
             "texture:texture_dead",
+            "texture:texture_emissive",
             "texture:texture_fx_panning",
+            "texture:texture_opacity",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
             "scalar:diffuse_brightness",
@@ -602,6 +638,7 @@
           "slot": 0,
           "fields": [
             "texture:texture_diffuse_1",
+            "texture:texture_specular",
             "texture:texture_specular_1",
             "scalar:specular_intensity",
             "renderFlag:blendMode",
@@ -620,8 +657,10 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:diffuse_saturation",
             "scalar:specular_intensity",
@@ -643,9 +682,12 @@
           "slot": 0,
           "fields": [
             "texture:texture_dead",
+            "texture:texture_emissive",
             "texture:texture_fx_panning",
+            "texture:texture_opacity",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:specular_intensity",
             "scalar:specular_power",
@@ -683,10 +725,37 @@
         {
           "slot": 1,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
             "scalar:specular_intensity",
             "scalar:specular_power",
+            "renderFlag:blendMode",
+            "renderFlag:disableDepthTest",
+            "renderFlag:isMasked",
+            "renderFlag:opacityMaskClipValue",
+            "renderFlag:twoSided"
+          ]
+        }
+      ],
+      "originalVisualFidelityVerified": false
+    },
+    "MAP_167F91F6940F_BG_OCN_ETC_FLOOR01A_SM_LNH_OVR_0636FCF08A2E": {
+      "mode": "geometry-preview-partial-material",
+      "sourceOnlyUnsupported": [
+        {
+          "slot": 0,
+          "fields": [
+            "texture:texture_overlay_diffuse",
+            "texture:texture_reflection",
+            "scalar:diffuse_brightness",
+            "scalar:normal_intensity",
+            "scalar:reflection_contrast",
+            "scalar:reflection_intensity",
+            "scalar:specular_intensity",
+            "scalar:specular_power",
+            "vector:diffuse_color",
+            "vector:reflection_color",
             "renderFlag:blendMode",
             "renderFlag:disableDepthTest",
             "renderFlag:isMasked",
@@ -704,7 +773,9 @@
           "slot": 0,
           "fields": [
             "texture:texture_dead",
+            "texture:texture_emissive",
             "texture:texture_fx_panning",
+            "texture:texture_opacity",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
             "scalar:specular_intensity",
@@ -719,8 +790,11 @@
         {
           "slot": 1,
           "fields": [
+            "texture:texture_emissive",
+            "texture:texture_opacity",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:opacity_intensity",
             "scalar:reflection_intensity",
             "scalar:rimlight_intensity",
@@ -737,6 +811,7 @@
         {
           "slot": 2,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
             "scalar:specular_intensity",
@@ -757,6 +832,7 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
             "scalar:diffuse_brightness",
@@ -779,6 +855,7 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
             "scalar:diffuse_brightness",
@@ -805,6 +882,7 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
             "scalar:occludedopacity",
@@ -828,6 +906,7 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
             "scalar:specular_intensity",
@@ -848,6 +927,7 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
             "scalar:specular_intensity",
@@ -868,8 +948,10 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:diffuse_saturation",
             "scalar:specular_intensity",
@@ -887,9 +969,12 @@
           "slot": 1,
           "fields": [
             "texture:texture_dead",
+            "texture:texture_emissive",
             "texture:texture_fx_panning",
+            "texture:texture_opacity",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:specular_intensity",
             "scalar:specular_power",
@@ -930,6 +1015,7 @@
           "fields": [
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:emissive_intensity",
             "scalar:specular_intensity",
@@ -951,6 +1037,7 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
             "scalar:diffuse_brightness",
@@ -979,7 +1066,9 @@
           "slot": 0,
           "fields": [
             "texture:texture_dead",
+            "texture:texture_emissive",
             "texture:texture_fx_panning",
+            "texture:texture_opacity",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
             "scalar:reflection_contrast",
@@ -1003,6 +1092,7 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
             "scalar:diffuse_brightness",
@@ -1046,8 +1136,11 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
+            "texture:texture_opacity",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:opacity_falloff",
             "scalar:opacity_intensity",
             "scalar:reflection_contrast",
@@ -1084,8 +1177,10 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:diffuse_saturation",
             "scalar:reflection_contrast",
@@ -1112,6 +1207,7 @@
           "fields": [
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:emissive_intensity",
             "scalar:reflection_intensity",
@@ -1152,6 +1248,7 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
             "scalar:diffuse_brightness",
@@ -1174,8 +1271,10 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:specular_intensity",
             "scalar:specular_power",
@@ -1196,8 +1295,10 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:diffuse_saturation",
             "scalar:normal_intensity",
@@ -1220,6 +1321,7 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
             "scalar:diffuse_brightness",
@@ -1242,6 +1344,7 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_foliagemask",
             "texture:texture_rainnoise",
             "scalar:affectdistance",
@@ -1273,6 +1376,7 @@
         {
           "slot": 1,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_foliagemask",
             "texture:texture_rainnoise",
             "scalar:affectdistance",
@@ -1308,8 +1412,10 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:specular_intensity",
             "scalar:specular_power",
@@ -1330,8 +1436,10 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:reflection_contrast",
             "scalar:reflection_intensity",
@@ -1354,8 +1462,10 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:reflection_contrast",
             "scalar:reflection_intensity",
@@ -1378,6 +1488,7 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
             "scalar:specular_intensity",
@@ -1399,9 +1510,12 @@
           "slot": 0,
           "fields": [
             "texture:texture_dead",
+            "texture:texture_emissive",
             "texture:texture_fx_panning",
+            "texture:texture_opacity",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:specular_intensity",
             "scalar:specular_power",
@@ -1423,7 +1537,9 @@
           "slot": 0,
           "fields": [
             "texture:texture_dead",
+            "texture:texture_emissive",
             "texture:texture_fx_panning",
+            "texture:texture_opacity",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
             "scalar:normal_intensity",
@@ -1446,7 +1562,9 @@
           "slot": 0,
           "fields": [
             "texture:texture_dead",
+            "texture:texture_emissive",
             "texture:texture_fx_panning",
+            "texture:texture_opacity",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
             "scalar:diffuse_brightness",
@@ -1471,6 +1589,7 @@
             "texture:detail_texture_normal",
             "texture:texture_diffuse_mask",
             "texture:texture_fresnel",
+            "texture:texture_opacity",
             "texture:texture_reflection",
             "texture:texture_sky",
             "scalar:depth_bias",
@@ -1516,8 +1635,10 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:specular_intensity",
             "scalar:specular_power",
@@ -1538,6 +1659,8 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
+            "texture:texture_opacity",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
             "scalar:diffuse_brightness",
@@ -1564,7 +1687,9 @@
           "slot": 0,
           "fields": [
             "texture:texture_dead",
+            "texture:texture_emissive",
             "texture:texture_fx_panning",
+            "texture:texture_opacity",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
             "scalar:diffuse_brightness",
@@ -1599,6 +1724,7 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
             "scalar:specular_intensity",
@@ -1621,6 +1747,7 @@
           "fields": [
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:emissive_intensity",
             "scalar:reflection_intensity",
@@ -1643,6 +1770,7 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
             "scalar:diffuse_brightness",
@@ -1666,6 +1794,7 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
             "scalar:specular_intensity",
@@ -1698,8 +1827,10 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:specular_intensity",
             "scalar:specular_power",
@@ -1720,6 +1851,7 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
             "scalar:diffuse_brightness",
@@ -1749,8 +1881,10 @@
         {
           "slot": 1,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:specular_intensity",
             "scalar:specular_power",
@@ -1766,9 +1900,12 @@
           "slot": 2,
           "fields": [
             "texture:texture_dead",
+            "texture:texture_emissive",
             "texture:texture_fx_panning",
+            "texture:texture_opacity",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:specular_intensity",
             "scalar:specular_power",
@@ -1784,6 +1921,7 @@
           "slot": 3,
           "fields": [
             "texture:texture_diffuse_1",
+            "texture:texture_specular",
             "texture:texture_specular_1",
             "scalar:specular_intensity",
             "scalar:specular_power",
@@ -1858,8 +1996,10 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "renderFlag:blendMode",
             "renderFlag:disableDepthTest",
@@ -1877,8 +2017,10 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:reflection_intensity",
             "scalar:reflection_tiling",
@@ -1902,8 +2044,10 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:normal_intensity",
             "scalar:reflection_contrast",
@@ -1966,6 +2110,7 @@
         {
           "slot": 1,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
             "scalar:diffuse_brightness",
@@ -1988,6 +2133,7 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_foliagemask",
             "texture:texture_rainnoise",
             "scalar:affectdistance",
@@ -2025,6 +2171,7 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_foliagemask",
             "texture:texture_rainnoise",
             "scalar:affectdistance",
@@ -2061,6 +2208,7 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_foliagemask",
             "texture:texture_rainnoise",
             "scalar:affectdistance",
@@ -2092,8 +2240,10 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:diffuse_saturation",
             "scalar:specular_intensity",
@@ -2115,8 +2265,10 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:specular_intensity",
             "scalar:specular_power",
             "vector:diffuse_color",
@@ -2149,8 +2301,10 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:specular_intensity",
             "scalar:specular_power",
@@ -2165,6 +2319,7 @@
         {
           "slot": 1,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
             "scalar:diffuse_brightness",
@@ -2186,8 +2341,10 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:specular_intensity",
             "renderFlag:blendMode",
             "renderFlag:disableDepthTest",
@@ -2205,8 +2362,10 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:specular_intensity",
             "scalar:specular_power",
@@ -2229,6 +2388,7 @@
           "fields": [
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:emissive_flicker_speed",
             "scalar:emissive_intensity",
@@ -2251,8 +2411,10 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_foliagemask",
             "texture:texture_rainnoise",
+            "texture:texture_specular",
             "scalar:affectdistance",
             "scalar:angle",
             "scalar:diffuse_brightness",
@@ -2284,8 +2446,10 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_foliagemask",
             "texture:texture_rainnoise",
+            "texture:texture_specular",
             "scalar:affectdistance",
             "scalar:angle",
             "scalar:diffuse_brightness",
@@ -2321,9 +2485,12 @@
           "slot": 0,
           "fields": [
             "texture:texture_dead",
+            "texture:texture_emissive",
             "texture:texture_fx_panning",
+            "texture:texture_opacity",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:specular_intensity",
             "scalar:specular_power",
@@ -2339,9 +2506,12 @@
           "slot": 1,
           "fields": [
             "texture:texture_dead",
+            "texture:texture_emissive",
             "texture:texture_fx_panning",
+            "texture:texture_opacity",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:specular_intensity",
             "scalar:specular_power",
@@ -2369,6 +2539,7 @@
           "slot": 3,
           "fields": [
             "texture:texture_diffuse_1",
+            "texture:texture_specular",
             "texture:texture_specular_1",
             "scalar:specular_intensity",
             "scalar:specular_power",
@@ -2388,8 +2559,10 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:normal_intensity",
             "scalar:reflection_contrast",
@@ -2408,6 +2581,7 @@
         {
           "slot": 1,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
             "scalar:specular_intensity",
@@ -2428,8 +2602,10 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:reflection_contrast",
             "scalar:reflection_intensity",
@@ -2452,8 +2628,10 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:diffuse_saturation",
             "scalar:specular_intensity",
@@ -2473,8 +2651,10 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:reflection_intensity",
             "scalar:reflection_tiling",
@@ -2498,8 +2678,10 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:reflection_contrast",
             "scalar:reflection_intensity",
@@ -2522,8 +2704,10 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:reflection_contrast",
             "scalar:reflection_intensity",
@@ -2546,8 +2730,10 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:reflection_contrast",
             "scalar:reflection_intensity",
@@ -2570,8 +2756,10 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:normal_intensity",
             "scalar:reflection_contrast",
@@ -2596,6 +2784,7 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
             "vector:diffuse_color",
@@ -2609,8 +2798,10 @@
         {
           "slot": 1,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:specular_intensity",
             "scalar:specular_power",
@@ -2631,6 +2822,7 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
             "scalar:diffuse_brightness",
@@ -2657,6 +2849,7 @@
             "texture:detail_texture_normal",
             "texture:texture_diffuse_mask",
             "texture:texture_fresnel",
+            "texture:texture_opacity",
             "texture:texture_reflection",
             "texture:texture_sky",
             "scalar:base_distortion_intensity",
@@ -2703,8 +2896,10 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:normal_intensity",
             "scalar:specular_intensity",
@@ -2726,8 +2921,10 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:normal_intensity",
             "scalar:specular_intensity",
@@ -2749,6 +2946,7 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
             "scalar:specular_intensity",
@@ -2770,7 +2968,9 @@
           "slot": 0,
           "fields": [
             "texture:texture_dead",
+            "texture:texture_emissive",
             "texture:texture_fx_panning",
+            "texture:texture_opacity",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
             "scalar:normal_intensity",
@@ -2792,8 +2992,10 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:specular_intensity",
             "scalar:specular_power",
             "vector:specular_color",
@@ -2813,6 +3015,7 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
             "scalar:diffuse_brightness",
@@ -2837,8 +3040,10 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:reflection_contrast",
             "scalar:reflection_intensity",
@@ -2856,6 +3061,7 @@
           "slot": 1,
           "fields": [
             "texture:texture_diffuse_1",
+            "texture:texture_specular",
             "texture:texture_specular_1",
             "renderFlag:blendMode",
             "renderFlag:disableDepthTest",
@@ -2868,6 +3074,7 @@
           "slot": 2,
           "fields": [
             "texture:texture_diffuse_1",
+            "texture:texture_specular",
             "texture:texture_specular_1",
             "renderFlag:blendMode",
             "renderFlag:disableDepthTest",
@@ -2880,6 +3087,7 @@
           "slot": 3,
           "fields": [
             "texture:texture_diffuse_1",
+            "texture:texture_specular",
             "texture:texture_specular_1",
             "renderFlag:blendMode",
             "renderFlag:disableDepthTest",
@@ -2897,8 +3105,10 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:reflection_contrast",
             "scalar:reflection_intensity",
@@ -2916,6 +3126,7 @@
           "slot": 1,
           "fields": [
             "texture:texture_diffuse_1",
+            "texture:texture_specular",
             "texture:texture_specular_1",
             "renderFlag:blendMode",
             "renderFlag:disableDepthTest",
@@ -2928,6 +3139,7 @@
           "slot": 2,
           "fields": [
             "texture:texture_diffuse_1",
+            "texture:texture_specular",
             "texture:texture_specular_1",
             "renderFlag:blendMode",
             "renderFlag:disableDepthTest",
@@ -2940,6 +3152,7 @@
           "slot": 3,
           "fields": [
             "texture:texture_diffuse_1",
+            "texture:texture_specular",
             "texture:texture_specular_1",
             "renderFlag:blendMode",
             "renderFlag:disableDepthTest",
@@ -2957,8 +3170,10 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:reflection_contrast",
             "scalar:reflection_intensity",
@@ -2976,6 +3191,7 @@
           "slot": 1,
           "fields": [
             "texture:texture_diffuse_1",
+            "texture:texture_specular",
             "texture:texture_specular_1",
             "renderFlag:blendMode",
             "renderFlag:disableDepthTest",
@@ -2988,6 +3204,7 @@
           "slot": 2,
           "fields": [
             "texture:texture_diffuse_1",
+            "texture:texture_specular",
             "texture:texture_specular_1",
             "renderFlag:blendMode",
             "renderFlag:disableDepthTest",
@@ -2999,8 +3216,10 @@
         {
           "slot": 3,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:reflection_intensity",
             "scalar:reflection_tiling",
@@ -3024,8 +3243,10 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:reflection_contrast",
             "scalar:reflection_intensity",
@@ -3043,6 +3264,7 @@
           "slot": 1,
           "fields": [
             "texture:texture_diffuse_1",
+            "texture:texture_specular",
             "texture:texture_specular_1",
             "renderFlag:blendMode",
             "renderFlag:disableDepthTest",
@@ -3055,6 +3277,7 @@
           "slot": 2,
           "fields": [
             "texture:texture_diffuse_1",
+            "texture:texture_specular",
             "texture:texture_specular_1",
             "renderFlag:blendMode",
             "renderFlag:disableDepthTest",
@@ -3066,8 +3289,10 @@
         {
           "slot": 3,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:reflection_intensity",
             "scalar:reflection_tiling",
@@ -3091,8 +3316,10 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:reflection_contrast",
             "scalar:reflection_intensity",
@@ -3110,6 +3337,7 @@
           "slot": 1,
           "fields": [
             "texture:texture_diffuse_1",
+            "texture:texture_specular",
             "texture:texture_specular_1",
             "renderFlag:blendMode",
             "renderFlag:disableDepthTest",
@@ -3122,6 +3350,7 @@
           "slot": 2,
           "fields": [
             "texture:texture_diffuse_1",
+            "texture:texture_specular",
             "texture:texture_specular_1",
             "renderFlag:blendMode",
             "renderFlag:disableDepthTest",
@@ -3134,6 +3363,7 @@
           "slot": 3,
           "fields": [
             "texture:texture_diffuse_1",
+            "texture:texture_specular",
             "texture:texture_specular_1",
             "renderFlag:blendMode",
             "renderFlag:disableDepthTest",
@@ -3151,8 +3381,10 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:reflection_contrast",
             "scalar:reflection_intensity",
@@ -3170,6 +3402,7 @@
           "slot": 1,
           "fields": [
             "texture:texture_diffuse_1",
+            "texture:texture_specular",
             "texture:texture_specular_1",
             "renderFlag:blendMode",
             "renderFlag:disableDepthTest",
@@ -3182,6 +3415,7 @@
           "slot": 2,
           "fields": [
             "texture:texture_diffuse_1",
+            "texture:texture_specular",
             "texture:texture_specular_1",
             "renderFlag:blendMode",
             "renderFlag:disableDepthTest",
@@ -3193,8 +3427,10 @@
         {
           "slot": 3,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:reflection_intensity",
             "scalar:reflection_tiling",
@@ -3218,6 +3454,7 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
             "scalar:diffuse_brightness",
@@ -3245,6 +3482,7 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
             "scalar:specular_intensity",
@@ -3265,6 +3503,7 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
             "scalar:diffuse_brightness",
@@ -3292,6 +3531,7 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_foliagemask",
             "texture:texture_rainnoise",
             "scalar:affectdistance",
@@ -3328,8 +3568,10 @@
           "slot": 0,
           "fields": [
             "texture:texture_detail_normal",
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:detail_normal_intensity",
             "scalar:detail_normal_tiling",
             "scalar:diffuse_brightness",
@@ -3346,8 +3588,10 @@
         {
           "slot": 1,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:occludedopacity",
             "renderFlag:blendMode",
             "renderFlag:disableDepthTest",
@@ -3359,6 +3603,7 @@
         {
           "slot": 2,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
             "scalar:occludedopacity",
@@ -3382,9 +3627,11 @@
           "fields": [
             "texture:texture_dead",
             "texture:texture_detail_normal",
+            "texture:texture_emissive",
             "texture:texture_fx_panning",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:detail_normal_intensity",
             "scalar:detail_normal_tiling",
             "scalar:diffuse_brightness",
@@ -3406,8 +3653,10 @@
         {
           "slot": 1,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "renderFlag:blendMode",
             "renderFlag:disableDepthTest",
             "renderFlag:isMasked",
@@ -3418,6 +3667,7 @@
         {
           "slot": 2,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
             "scalar:specular_intensity",
@@ -3439,7 +3689,9 @@
           "slot": 0,
           "fields": [
             "texture:texture_dead",
+            "texture:texture_emissive",
             "texture:texture_fx_panning",
+            "texture:texture_opacity",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
             "scalar:diffuse_brightness",
@@ -3463,6 +3715,7 @@
           "slot": 0,
           "fields": [
             "texture:texture_diffuse_1",
+            "texture:texture_specular",
             "texture:texture_specular_1",
             "scalar:specular_intensity",
             "scalar:specular_power",
@@ -3482,6 +3735,7 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
             "scalar:specular_intensity",
@@ -3498,6 +3752,7 @@
         {
           "slot": 1,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
             "scalar:specular_intensity",
@@ -3518,6 +3773,7 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
             "scalar:occludedopacity",
@@ -3535,6 +3791,7 @@
         {
           "slot": 1,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
             "scalar:occludedopacity",
@@ -3556,6 +3813,7 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
             "scalar:occludedopacity",
@@ -3573,6 +3831,7 @@
         {
           "slot": 1,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
             "scalar:specular_intensity",
@@ -3593,8 +3852,10 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:normal_intensity",
             "scalar:reflection_contrast",
@@ -3613,6 +3874,7 @@
         {
           "slot": 1,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
             "scalar:specular_intensity",
@@ -3656,6 +3918,7 @@
             "texture:detail_texture_normal",
             "texture:texture_diffuse_mask",
             "texture:texture_fresnel",
+            "texture:texture_opacity",
             "texture:texture_reflection",
             "texture:texture_sky",
             "scalar:base_distortion_intensity",
@@ -3702,8 +3965,10 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:normal_intensity",
             "scalar:specular_intensity",
@@ -3725,8 +3990,10 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:normal_intensity",
             "scalar:specular_intensity",
@@ -3748,8 +4015,10 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:specular_intensity",
             "scalar:specular_power",
@@ -3770,8 +4039,10 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:specular_intensity",
             "scalar:specular_power",
@@ -3792,6 +4063,7 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_foliagemask",
             "texture:texture_rainnoise",
             "scalar:affectdistance",
@@ -3823,6 +4095,7 @@
         {
           "slot": 1,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_foliagemask",
             "texture:texture_rainnoise",
             "scalar:affectdistance",
@@ -3859,6 +4132,7 @@
           "slot": 0,
           "fields": [
             "texture:texture_diffuse_1",
+            "texture:texture_specular",
             "texture:texture_specular_1",
             "scalar:specular_intensity",
             "scalar:specular_power",
@@ -3878,6 +4152,7 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
             "scalar:specular_intensity",
@@ -3892,6 +4167,7 @@
         {
           "slot": 1,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
             "scalar:specular_intensity",
@@ -3912,6 +4188,7 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
             "scalar:diffuse_brightness",
@@ -3928,6 +4205,7 @@
         {
           "slot": 1,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
             "scalar:diffuse_brightness",
@@ -3950,8 +4228,10 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:specular_intensity",
             "scalar:specular_power",
             "vector:diffuse_color",
@@ -3971,8 +4251,11 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
+            "texture:texture_opacity",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:opacity_intensity",
             "scalar:specular_intensity",
@@ -3994,6 +4277,7 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_foliagemask",
             "texture:texture_rainnoise",
             "scalar:affectdistance",
@@ -4037,8 +4321,10 @@
         {
           "slot": 1,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:diffuse_saturation",
             "scalar:specular_intensity",
@@ -4059,8 +4345,10 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "renderFlag:blendMode",
             "renderFlag:disableDepthTest",
@@ -4072,8 +4360,10 @@
         {
           "slot": 1,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:specular_intensity",
             "scalar:specular_power",
@@ -4094,7 +4384,9 @@
           "slot": 0,
           "fields": [
             "texture:texture_dead",
+            "texture:texture_emissive",
             "texture:texture_fx_panning",
+            "texture:texture_opacity",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
             "scalar:specular_intensity",
@@ -4116,7 +4408,9 @@
           "slot": 0,
           "fields": [
             "texture:texture_dead",
+            "texture:texture_emissive",
             "texture:texture_fx_panning",
+            "texture:texture_opacity",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
             "scalar:reflection_contrast",
@@ -4171,6 +4465,7 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_specular",
             "scalar:specular_intensity",
             "scalar:specular_power",
             "renderFlag:blendMode",
@@ -4201,6 +4496,7 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
             "scalar:specular_intensity",
@@ -4242,7 +4538,9 @@
           "slot": 0,
           "fields": [
             "texture:texture_dead",
+            "texture:texture_emissive",
             "texture:texture_fx_panning",
+            "texture:texture_opacity",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
             "scalar:diffuse_brightness",
@@ -4301,8 +4599,10 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:reflection_intensity",
             "scalar:reflection_tiling",
@@ -4338,6 +4638,7 @@
         {
           "slot": 2,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_foliagemask",
             "texture:texture_rainnoise",
             "scalar:affectdistance",
@@ -4387,6 +4688,7 @@
         {
           "slot": 2,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_foliagemask",
             "texture:texture_rainnoise",
             "scalar:affectdistance",
@@ -4440,8 +4742,10 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "renderFlag:blendMode",
             "renderFlag:disableDepthTest",
@@ -4496,8 +4800,10 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:reflection_contrast",
             "scalar:reflection_intensity",
@@ -4520,8 +4826,10 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:reflection_intensity",
             "scalar:reflection_tiling",
@@ -4545,8 +4853,10 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:reflection_contrast",
             "scalar:reflection_intensity",
@@ -4569,8 +4879,11 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
+            "texture:texture_normal",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:diffuse_saturation",
             "scalar:normal_intensity",
@@ -4601,8 +4914,10 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:reflection_contrast",
             "scalar:reflection_intensity",
@@ -4625,8 +4940,11 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
+            "texture:texture_normal",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:diffuse_saturation",
             "scalar:normal_intensity",
@@ -4657,8 +4975,11 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
+            "texture:texture_normal",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:diffuse_saturation",
             "scalar:normal_intensity",
@@ -4690,7 +5011,9 @@
           "slot": 0,
           "fields": [
             "texture:texture_dead",
+            "texture:texture_emissive",
             "texture:texture_fx_panning",
+            "texture:texture_opacity",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
             "scalar:diffuse_brightness",
@@ -4713,8 +5036,10 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_foliagemask",
             "texture:texture_rainnoise",
+            "texture:texture_specular",
             "scalar:affectdistance",
             "scalar:angle",
             "scalar:diffuse_brightness",
@@ -4748,9 +5073,12 @@
           "slot": 0,
           "fields": [
             "texture:texture_dead",
+            "texture:texture_emissive",
             "texture:texture_fx_panning",
+            "texture:texture_opacity",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:specular_intensity",
             "scalar:specular_power",
@@ -4795,7 +5123,9 @@
           "slot": 0,
           "fields": [
             "texture:texture_dead",
+            "texture:texture_emissive",
             "texture:texture_fx_panning",
+            "texture:texture_opacity",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
             "scalar:diffuse_brightness",
@@ -4818,7 +5148,9 @@
           "slot": 0,
           "fields": [
             "texture:texture_dead",
+            "texture:texture_emissive",
             "texture:texture_fx_panning",
+            "texture:texture_opacity",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
             "scalar:bump_brightness",
@@ -4839,8 +5171,10 @@
         {
           "slot": 1,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:diffuse_saturation",
             "scalar:normal_intensity",
@@ -4863,8 +5197,10 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:specular_intensity",
             "scalar:specular_power",
@@ -4879,6 +5215,7 @@
         {
           "slot": 1,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
             "scalar:diffuse_brightness",
@@ -4900,8 +5237,10 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:specular_intensity",
             "scalar:specular_power",
@@ -4922,8 +5261,10 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:reflection_intensity",
             "scalar:reflection_tiling",
@@ -4947,8 +5288,10 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:normal_intensity",
             "scalar:reflection_contrast",
@@ -4974,6 +5317,7 @@
           "slot": 0,
           "fields": [
             "texture:texture_diffuse_1",
+            "texture:texture_emissive",
             "texture:texture_reflection",
             "texture:texture_specular_1",
             "scalar:flag_vertical_direction",
@@ -4996,7 +5340,9 @@
           "slot": 1,
           "fields": [
             "texture:texture_dead",
+            "texture:texture_emissive",
             "texture:texture_fx_panning",
+            "texture:texture_opacity",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
             "scalar:specular_intensity",
@@ -5019,9 +5365,11 @@
           "fields": [
             "texture:texture_color_fx_skin",
             "texture:texture_dead",
+            "texture:texture_emissive",
             "texture:texture_fx_panning",
             "texture:texture_mask_variation",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:dead_texture_tiling",
             "scalar:reflection_intensity",
             "scalar:specular_intensity",
@@ -5043,8 +5391,10 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:specular_intensity",
             "scalar:specular_power",
@@ -5085,8 +5435,10 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:specular_intensity",
             "vector:diffuse_color",
@@ -5100,8 +5452,10 @@
         {
           "slot": 1,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:specular_intensity",
             "vector:diffuse_color",
@@ -5116,9 +5470,12 @@
           "slot": 2,
           "fields": [
             "texture:texture_dead",
+            "texture:texture_emissive",
             "texture:texture_fx_panning",
+            "texture:texture_opacity",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:diffuse_saturation",
             "scalar:specular_intensity",
@@ -5132,8 +5489,10 @@
         {
           "slot": 3,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:specular_intensity",
             "vector:diffuse_color",
@@ -5153,8 +5512,10 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_foliagemask",
             "texture:texture_rainnoise",
+            "texture:texture_specular",
             "scalar:affectdistance",
             "scalar:angle",
             "scalar:diffuse_brightness",
@@ -5206,6 +5567,7 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
             "scalar:diffuse_brightness",
@@ -5233,6 +5595,7 @@
             "texture:detail_texture_normal",
             "texture:texture_diffuse_mask",
             "texture:texture_fresnel",
+            "texture:texture_opacity",
             "texture:texture_reflection",
             "texture:texture_sky",
             "scalar:depth_bias",
@@ -5282,6 +5645,7 @@
             "texture:detail_texture_normal",
             "texture:texture_diffuse_mask",
             "texture:texture_fresnel",
+            "texture:texture_opacity",
             "texture:texture_reflection",
             "texture:texture_sky",
             "scalar:depth_bias",
@@ -5327,8 +5691,10 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:diffuse_saturation",
             "scalar:overlay_amount",
@@ -5361,6 +5727,7 @@
             "texture:detail_texture_normal",
             "texture:texture_diffuse_mask",
             "texture:texture_fresnel",
+            "texture:texture_opacity",
             "texture:texture_reflection",
             "texture:texture_sky",
             "scalar:depth_bias",
@@ -5407,6 +5774,7 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_foliagemask",
             "texture:texture_rainnoise",
             "scalar:affectdistance",
@@ -5444,8 +5812,10 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:specular_intensity",
             "scalar:specular_power",
@@ -5466,6 +5836,7 @@
         {
           "slot": 2,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
             "scalar:diffuse_brightness",
@@ -5493,6 +5864,7 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
             "scalar:reflection_contrast",
@@ -5519,9 +5891,12 @@
           "slot": 0,
           "fields": [
             "texture:texture_dead",
+            "texture:texture_emissive",
             "texture:texture_fx_panning",
+            "texture:texture_opacity",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:specular_intensity",
             "scalar:specular_power",
             "renderFlag:blendMode",
@@ -5534,6 +5909,7 @@
         {
           "slot": 1,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_foliagemask",
             "texture:texture_rainnoise",
             "scalar:affectdistance",
@@ -5589,6 +5965,7 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
             "scalar:normal_intensity",
@@ -5613,6 +5990,7 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
             "scalar:diffuse_brightness",
@@ -5640,8 +6018,10 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:specular_intensity",
             "scalar:specular_power",
             "vector:diffuse_color",
@@ -5661,8 +6041,10 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:overlay_brightness",
             "scalar:overlay_sharpeness",
@@ -5681,9 +6063,12 @@
           "slot": 1,
           "fields": [
             "texture:texture_dead",
+            "texture:texture_emissive",
             "texture:texture_fx_panning",
+            "texture:texture_opacity",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:specular_intensity",
             "scalar:specular_power",
             "renderFlag:blendMode",
@@ -5703,7 +6088,9 @@
           "slot": 0,
           "fields": [
             "texture:texture_dead",
+            "texture:texture_emissive",
             "texture:texture_fx_panning",
+            "texture:texture_opacity",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
             "scalar:specular_intensity",
@@ -5745,6 +6132,7 @@
             "texture:detail_texture_normal",
             "texture:texture_diffuse_mask",
             "texture:texture_fresnel",
+            "texture:texture_opacity",
             "texture:texture_reflection",
             "texture:texture_sky",
             "scalar:base_distortion_intensity",
@@ -5788,6 +6176,7 @@
             "texture:detail_texture_normal",
             "texture:texture_diffuse_mask",
             "texture:texture_fresnel",
+            "texture:texture_opacity",
             "texture:texture_reflection",
             "texture:texture_sky",
             "scalar:base_distortion_intensity",
@@ -5834,8 +6223,10 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:normal_intensity",
             "scalar:specular_intensity",
@@ -5851,8 +6242,10 @@
         {
           "slot": 1,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:normal_intensity",
             "scalar:specular_intensity",
@@ -5874,8 +6267,10 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:diffuse_saturation",
             "scalar:specular_intensity",
@@ -5891,8 +6286,10 @@
         {
           "slot": 1,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:diffuse_saturation",
             "scalar:specular_intensity",
@@ -5947,8 +6344,10 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_foliagemask",
             "texture:texture_rainnoise",
+            "texture:texture_specular",
             "scalar:affectdistance",
             "scalar:angle",
             "scalar:foliage_wind_frequency",
@@ -5979,6 +6378,7 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
             "scalar:specular_intensity",
@@ -6000,9 +6400,12 @@
           "slot": 0,
           "fields": [
             "texture:texture_dead",
+            "texture:texture_emissive",
             "texture:texture_fx_panning",
+            "texture:texture_opacity",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:specular_intensity",
             "scalar:specular_power",
@@ -6018,9 +6421,12 @@
           "slot": 1,
           "fields": [
             "texture:texture_dead",
+            "texture:texture_emissive",
             "texture:texture_fx_panning",
+            "texture:texture_opacity",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:diffuse_saturation",
             "scalar:specular_intensity",
@@ -6041,9 +6447,12 @@
           "slot": 0,
           "fields": [
             "texture:texture_dead",
+            "texture:texture_emissive",
             "texture:texture_fx_panning",
+            "texture:texture_opacity",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:specular_intensity",
             "scalar:specular_power",
@@ -6059,6 +6468,7 @@
           "slot": 1,
           "fields": [
             "texture:texture_diffuse_1",
+            "texture:texture_specular",
             "texture:texture_specular_1",
             "scalar:specular_intensity",
             "scalar:specular_power",
@@ -6078,8 +6488,11 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
+            "texture:texture_opacity",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:opacity_intensity",
             "scalar:specular_intensity",
@@ -6101,6 +6514,7 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
             "scalar:reflection_contrast",
@@ -6123,9 +6537,12 @@
           "slot": 0,
           "fields": [
             "texture:texture_dead",
+            "texture:texture_emissive",
             "texture:texture_fx_panning",
+            "texture:texture_opacity",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:specular_intensity",
             "scalar:specular_power",
@@ -6145,6 +6562,7 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_specular",
             "scalar:specular_intensity",
             "scalar:specular_power",
             "renderFlag:blendMode",
@@ -6163,6 +6581,7 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_foliagemask",
             "texture:texture_rainnoise",
             "scalar:affectdistance",
@@ -6200,8 +6619,10 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:reflection_contrast",
             "scalar:reflection_intensity",
             "renderFlag:blendMode",
@@ -6232,6 +6653,7 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
             "scalar:specular_intensity",
@@ -6252,6 +6674,7 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
             "scalar:specular_intensity",
@@ -6272,8 +6695,10 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:specular_intensity",
             "scalar:specular_power",
@@ -6294,6 +6719,7 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
             "scalar:specular_intensity",
@@ -6315,6 +6741,7 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
             "scalar:diffuse_brightness",
@@ -6338,9 +6765,11 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_overlay_normal",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:diffuse_saturation",
             "scalar:overlay_brightness",
@@ -6368,6 +6797,7 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
             "scalar:diffuse_brightness",
@@ -6385,6 +6815,7 @@
         {
           "slot": 1,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
             "scalar:diffuse_brightness",
@@ -6407,8 +6838,11 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
+            "texture:texture_opacity",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:opacity_intensity",
             "scalar:specular_intensity",
@@ -6430,6 +6864,7 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
             "scalar:reflection_contrast",
@@ -6454,6 +6889,7 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
             "scalar:diffuse_brightness",
@@ -6476,6 +6912,7 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
             "scalar:specular_intensity",
@@ -6492,6 +6929,7 @@
         {
           "slot": 1,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
             "scalar:specular_intensity",
@@ -6512,6 +6950,7 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
             "scalar:diffuse_brightness",
@@ -6604,8 +7043,10 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:specular_intensity",
             "scalar:specular_power",
@@ -6627,9 +7068,12 @@
           "slot": 0,
           "fields": [
             "texture:texture_dead",
+            "texture:texture_emissive",
             "texture:texture_fx_panning",
+            "texture:texture_opacity",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:diffuse_saturation",
             "scalar:specular_intensity",
@@ -6651,9 +7095,12 @@
           "slot": 0,
           "fields": [
             "texture:texture_dead",
+            "texture:texture_emissive",
             "texture:texture_fx_panning",
+            "texture:texture_opacity",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:diffuse_saturation",
             "scalar:normal_intensity",
@@ -6677,6 +7124,7 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_specular",
             "scalar:specular_intensity",
             "scalar:specular_power",
             "renderFlag:blendMode",
@@ -6695,6 +7143,7 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
             "scalar:diffuse_brightness",
@@ -6722,6 +7171,7 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
             "scalar:diffuse_brightness",
@@ -6738,8 +7188,10 @@
         {
           "slot": 1,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:normal_intensity",
             "scalar:specular_intensity",
@@ -6754,6 +7206,7 @@
         {
           "slot": 2,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
             "scalar:diffuse_brightness",
@@ -6770,6 +7223,7 @@
         {
           "slot": 3,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
             "scalar:diffuse_brightness",
@@ -6787,8 +7241,10 @@
         {
           "slot": 4,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:specular_intensity",
             "scalar:specular_power",
@@ -6803,8 +7259,10 @@
         {
           "slot": 5,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "vector:diffuse_color",
             "renderFlag:blendMode",
@@ -6817,6 +7275,7 @@
         {
           "slot": 6,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
             "scalar:diffuse_brightness",
@@ -6863,6 +7322,7 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_foliagemask",
             "texture:texture_rainnoise",
             "scalar:affectdistance",
@@ -6894,6 +7354,7 @@
         {
           "slot": 1,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_foliagemask",
             "texture:texture_rainnoise",
             "scalar:affectdistance",
@@ -6929,6 +7390,7 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_foliagemask",
             "texture:texture_rainnoise",
             "scalar:affectdistance",
@@ -6960,6 +7422,7 @@
         {
           "slot": 1,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_foliagemask",
             "texture:texture_rainnoise",
             "scalar:affectdistance",
@@ -7023,8 +7486,10 @@
         {
           "slot": 1,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:diffuse_saturation",
             "scalar:specular_intensity",
@@ -7079,7 +7544,9 @@
           "slot": 0,
           "fields": [
             "texture:texture_dead",
+            "texture:texture_emissive",
             "texture:texture_fx_panning",
+            "texture:texture_opacity",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
             "scalar:reflection_intensity",
@@ -7104,6 +7571,7 @@
           "fields": [
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:emissive_intensity",
             "scalar:reflection_intensity",
@@ -7127,7 +7595,9 @@
           "slot": 0,
           "fields": [
             "texture:texture_dead",
+            "texture:texture_emissive",
             "texture:texture_fx_panning",
+            "texture:texture_opacity",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
             "scalar:specular_intensity",
@@ -7142,8 +7612,11 @@
         {
           "slot": 1,
           "fields": [
+            "texture:texture_emissive",
+            "texture:texture_opacity",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:opacity_intensity",
             "scalar:reflection_intensity",
             "scalar:rimlight_intensity",
@@ -7160,6 +7633,7 @@
         {
           "slot": 2,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
             "scalar:specular_intensity",
@@ -7180,8 +7654,10 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:specular_intensity",
             "scalar:specular_power",
@@ -7196,8 +7672,10 @@
         {
           "slot": 1,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:normal_intensity",
             "scalar:specular_intensity",
@@ -7221,6 +7699,7 @@
           "fields": [
             "texture:texture_dead",
             "texture:texture_fx_panning",
+            "texture:texture_opacity",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
             "scalar:diffuse_brightness",
@@ -7251,6 +7730,7 @@
           "fields": [
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:emissive_intensity",
             "scalar:reflection_intensity",
@@ -7267,8 +7747,10 @@
         {
           "slot": 1,
           "fields": [
+            "texture:texture_opacity",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:emissive_intensity",
             "scalar:opacity_intensity",
             "scalar:reflection_intensity",
@@ -7291,8 +7773,10 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "vector:diffuse_color",
             "renderFlag:blendMode",
@@ -7305,6 +7789,7 @@
         {
           "slot": 1,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
             "scalar:specular_intensity",
@@ -7325,6 +7810,7 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_foliagemask",
             "texture:texture_rainnoise",
             "scalar:affectdistance",
@@ -7359,9 +7845,11 @@
           "fields": [
             "texture:texture_color_fx_skin",
             "texture:texture_dead",
+            "texture:texture_emissive",
             "texture:texture_fx_panning",
             "texture:texture_mask_variation",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:dead_texture_tiling",
             "scalar:reflection_intensity",
             "scalar:specular_intensity",
@@ -7383,6 +7871,7 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
             "scalar:diffuse_brightness",
@@ -7408,7 +7897,9 @@
           "slot": 0,
           "fields": [
             "texture:texture_dead",
+            "texture:texture_emissive",
             "texture:texture_fx_panning",
+            "texture:texture_opacity",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
             "scalar:specular_intensity",
@@ -7430,7 +7921,9 @@
           "slot": 0,
           "fields": [
             "texture:texture_dead",
+            "texture:texture_emissive",
             "texture:texture_fx_panning",
+            "texture:texture_opacity",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
             "scalar:foliage_wind_frequency",
@@ -7458,6 +7951,7 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_specular",
             "scalar:specular_intensity",
             "renderFlag:blendMode",
             "renderFlag:disableDepthTest",
@@ -7517,6 +8011,7 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
             "scalar:specular_intensity",
@@ -7538,7 +8033,9 @@
           "slot": 0,
           "fields": [
             "texture:texture_dead",
+            "texture:texture_emissive",
             "texture:texture_fx_panning",
+            "texture:texture_opacity",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
             "scalar:diffuse_brightness",
@@ -7564,6 +8061,7 @@
             "texture:detail_texture_normal",
             "texture:texture_diffuse_mask",
             "texture:texture_fresnel",
+            "texture:texture_opacity",
             "texture:texture_reflection",
             "texture:texture_sky",
             "scalar:base_distortion_intensity",
@@ -7610,8 +8108,10 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:normal_intensity",
             "scalar:specular_intensity",
@@ -7633,8 +8133,10 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:normal_intensity",
             "scalar:specular_intensity",
@@ -7656,6 +8158,7 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
             "scalar:specular_intensity",
@@ -7700,9 +8203,12 @@
           "slot": 0,
           "fields": [
             "texture:texture_dead",
+            "texture:texture_emissive",
             "texture:texture_fx_panning",
+            "texture:texture_opacity",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:specular_intensity",
             "vector:diffuse_color",
@@ -7717,9 +8223,12 @@
           "slot": 1,
           "fields": [
             "texture:texture_dead",
+            "texture:texture_emissive",
             "texture:texture_fx_panning",
+            "texture:texture_opacity",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:diffuse_saturation",
             "scalar:specular_intensity",
@@ -7741,7 +8250,9 @@
           "slot": 0,
           "fields": [
             "texture:texture_dead",
+            "texture:texture_emissive",
             "texture:texture_fx_panning",
+            "texture:texture_opacity",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
             "scalar:specular_intensity",
@@ -7762,6 +8273,7 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
             "scalar:diffuse_brightness",
@@ -7815,8 +8327,10 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:normal_intensity",
             "scalar:specular_intensity",
@@ -7839,8 +8353,10 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:specular_intensity",
             "scalar:specular_power",
@@ -7861,6 +8377,7 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
             "scalar:diffuse_brightness",
@@ -7879,6 +8396,7 @@
         {
           "slot": 1,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
             "scalar:diffuse_brightness",
@@ -7896,7 +8414,9 @@
           "slot": 2,
           "fields": [
             "texture:texture_dead",
+            "texture:texture_emissive",
             "texture:texture_fx_panning",
+            "texture:texture_opacity",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
             "scalar:diffuse_brightness",
@@ -7913,8 +8433,10 @@
         {
           "slot": 3,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:specular_intensity",
             "scalar:specular_power",
@@ -7929,6 +8451,7 @@
         {
           "slot": 4,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
             "scalar:diffuse_brightness",
@@ -7945,6 +8468,7 @@
         {
           "slot": 5,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
             "scalar:diffuse_brightness",
@@ -7968,8 +8492,10 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:reflection_intensity",
             "scalar:reflection_tiling",
@@ -7987,8 +8513,11 @@
         {
           "slot": 1,
           "fields": [
+            "texture:texture_emissive",
+            "texture:texture_normal",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:normal_intensity",
             "scalar:specular_intensity",
@@ -8022,6 +8551,32 @@
       ],
       "originalVisualFidelityVerified": false
     },
+    "MAP_AF1951C8B827_BG_OCN_ETC_FLOOR01B_SM_LNH": {
+      "mode": "geometry-preview-partial-material",
+      "sourceOnlyUnsupported": [
+        {
+          "slot": 0,
+          "fields": [
+            "texture:texture_overlay_diffuse",
+            "texture:texture_reflection",
+            "scalar:diffuse_brightness",
+            "scalar:normal_intensity",
+            "scalar:reflection_contrast",
+            "scalar:reflection_intensity",
+            "scalar:specular_intensity",
+            "scalar:specular_power",
+            "vector:diffuse_color",
+            "vector:reflection_color",
+            "renderFlag:blendMode",
+            "renderFlag:disableDepthTest",
+            "renderFlag:isMasked",
+            "renderFlag:opacityMaskClipValue",
+            "renderFlag:twoSided"
+          ]
+        }
+      ],
+      "originalVisualFidelityVerified": false
+    },
     "MAP_AF443EB27795_BG_PAP_NIATOWN_HOUSE04_SM_MSJ_OVR_D27FADAA8509": {
       "mode": "geometry-preview-partial-material",
       "sourceOnlyUnsupported": [
@@ -8029,9 +8584,12 @@
           "slot": 0,
           "fields": [
             "texture:texture_dead",
+            "texture:texture_emissive",
             "texture:texture_fx_panning",
+            "texture:texture_opacity",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:specular_intensity",
             "scalar:specular_power",
@@ -8053,9 +8611,12 @@
           "slot": 0,
           "fields": [
             "texture:texture_dead",
+            "texture:texture_emissive",
             "texture:texture_fx_panning",
+            "texture:texture_opacity",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:normal_intensity",
             "renderFlag:blendMode",
@@ -8074,8 +8635,10 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_foliagemask",
             "texture:texture_rainnoise",
+            "texture:texture_specular",
             "scalar:affectdistance",
             "scalar:angle",
             "scalar:diffuse_brightness",
@@ -8108,9 +8671,12 @@
           "slot": 0,
           "fields": [
             "texture:texture_dead",
+            "texture:texture_emissive",
             "texture:texture_fx_panning",
+            "texture:texture_opacity",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:specular_intensity",
             "scalar:specular_power",
             "vector:diffuse_color",
@@ -8130,8 +8696,11 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
+            "texture:texture_opacity",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:opacity_intensity",
             "scalar:specular_intensity",
@@ -8153,6 +8722,7 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "scalar:affectdistance",
             "scalar:angle",
             "scalar:diffuse_brightness",
@@ -8183,6 +8753,7 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_foliagemask",
             "texture:texture_rainnoise",
             "scalar:affectdistance",
@@ -8217,8 +8788,10 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:reflection_contrast",
             "scalar:reflection_intensity",
@@ -8236,9 +8809,12 @@
           "slot": 1,
           "fields": [
             "texture:texture_dead",
+            "texture:texture_emissive",
             "texture:texture_fx_panning",
+            "texture:texture_opacity",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:specular_intensity",
             "scalar:specular_power",
@@ -8254,6 +8830,7 @@
         {
           "slot": 2,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
             "scalar:diffuse_brightness",
@@ -8296,6 +8873,7 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
             "scalar:diffuse_brightness",
@@ -8339,7 +8917,9 @@
           "slot": 0,
           "fields": [
             "texture:texture_dead",
+            "texture:texture_emissive",
             "texture:texture_fx_panning",
+            "texture:texture_opacity",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
             "scalar:diffuse_brightness",
@@ -8362,6 +8942,7 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
             "scalar:diffuse_brightness",
@@ -8406,9 +8987,12 @@
           "slot": 0,
           "fields": [
             "texture:texture_dead",
+            "texture:texture_emissive",
             "texture:texture_fx_panning",
+            "texture:texture_opacity",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:specular_intensity",
             "scalar:specular_power",
@@ -8424,6 +9008,7 @@
           "slot": 1,
           "fields": [
             "texture:texture_diffuse_1",
+            "texture:texture_specular",
             "texture:texture_specular_1",
             "scalar:specular_intensity",
             "scalar:specular_power",
@@ -8444,9 +9029,12 @@
           "slot": 0,
           "fields": [
             "texture:texture_dead",
+            "texture:texture_emissive",
             "texture:texture_fx_panning",
+            "texture:texture_opacity",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:specular_intensity",
             "scalar:specular_power",
@@ -8462,6 +9050,7 @@
           "slot": 1,
           "fields": [
             "texture:texture_diffuse_1",
+            "texture:texture_specular",
             "texture:texture_specular_1",
             "scalar:specular_intensity",
             "scalar:specular_power",
@@ -8481,8 +9070,10 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "renderFlag:blendMode",
             "renderFlag:disableDepthTest",
@@ -8500,8 +9091,10 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:specular_intensity",
             "scalar:specular_power",
@@ -8524,6 +9117,7 @@
           "fields": [
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:emissive_flicker_speed",
             "scalar:emissive_intensity",
@@ -8546,8 +9140,10 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:reflection_intensity",
             "scalar:reflection_tiling",
@@ -8571,8 +9167,10 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:specular_intensity",
             "scalar:specular_power",
@@ -8589,6 +9187,7 @@
           "fields": [
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:emissive_flicker_speed",
             "scalar:emissive_intensity",
@@ -8605,8 +9204,10 @@
         {
           "slot": 2,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:specular_intensity",
             "scalar:specular_power",
@@ -8627,8 +9228,10 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:reflection_intensity",
             "scalar:reflection_tiling",
@@ -8653,7 +9256,9 @@
           "slot": 0,
           "fields": [
             "texture:texture_dead",
+            "texture:texture_emissive",
             "texture:texture_fx_panning",
+            "texture:texture_opacity",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
             "scalar:diffuse_brightness",
@@ -8668,6 +9273,7 @@
         {
           "slot": 1,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
             "scalar:overlay_amount",
@@ -8693,8 +9299,10 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:specular_intensity",
             "scalar:specular_power",
@@ -8715,8 +9323,10 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:normal_intensity",
             "scalar:overlay_amount",
@@ -8744,6 +9354,7 @@
             "texture:detail_texture_normal",
             "texture:texture_diffuse_mask",
             "texture:texture_fresnel",
+            "texture:texture_opacity",
             "texture:texture_reflection",
             "texture:texture_sky",
             "scalar:depth_bias",
@@ -8789,8 +9400,10 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:specular_intensity",
             "scalar:specular_power",
@@ -8811,6 +9424,7 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_foliagemask",
             "texture:texture_rainnoise",
             "scalar:affectdistance",
@@ -8839,6 +9453,7 @@
         {
           "slot": 1,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
             "scalar:foliage_wind_frequency",
@@ -8866,6 +9481,7 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
             "scalar:diffuse_brightness",
@@ -8891,8 +9507,10 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:normal_intensity",
             "scalar:overlay_amount",
@@ -8918,9 +9536,12 @@
           "slot": 0,
           "fields": [
             "texture:texture_dead",
+            "texture:texture_emissive",
             "texture:texture_fx_panning",
+            "texture:texture_opacity",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:normal_intensity",
             "scalar:specular_intensity",
@@ -8958,8 +9579,10 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:specular_intensity",
             "scalar:specular_power",
@@ -8982,7 +9605,9 @@
           "slot": 0,
           "fields": [
             "texture:texture_dead",
+            "texture:texture_emissive",
             "texture:texture_fx_panning",
+            "texture:texture_opacity",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
             "scalar:specular_intensity",
@@ -9003,8 +9628,10 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:diffuse_saturation",
             "scalar:normal_intensity",
@@ -9027,8 +9654,10 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "renderFlag:blendMode",
             "renderFlag:disableDepthTest",
             "renderFlag:isMasked",
@@ -9045,6 +9674,7 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
             "scalar:diffuse_brightness",
@@ -9069,6 +9699,7 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
             "scalar:diffuse_brightness",
@@ -9091,6 +9722,7 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_specular",
             "scalar:specular_intensity",
             "renderFlag:blendMode",
             "renderFlag:disableDepthTest",
@@ -9110,6 +9742,7 @@
           "fields": [
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:emissive_intensity",
             "scalar:specular_intensity",
             "scalar:specular_power",
@@ -9130,9 +9763,12 @@
           "slot": 0,
           "fields": [
             "texture:texture_dead",
+            "texture:texture_emissive",
             "texture:texture_fx_panning",
+            "texture:texture_opacity",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:diffuse_saturation",
             "scalar:specular_intensity",
@@ -9160,8 +9796,10 @@
         {
           "slot": 1,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_foliagemask",
             "texture:texture_rainnoise",
+            "texture:texture_specular",
             "scalar:affectdistance",
             "scalar:angle",
             "scalar:diffuse_brightness",
@@ -9198,8 +9836,10 @@
         {
           "slot": 1,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_foliagemask",
             "texture:texture_rainnoise",
+            "texture:texture_specular",
             "scalar:affectdistance",
             "scalar:angle",
             "scalar:diffuse_brightness",
@@ -9248,8 +9888,10 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:specular_intensity",
             "scalar:specular_power",
@@ -9283,6 +9925,7 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
             "scalar:specular_intensity",
@@ -9316,6 +9959,7 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
             "scalar:specular_intensity",
@@ -9354,8 +9998,10 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:specular_intensity",
             "scalar:specular_power",
@@ -9378,6 +10024,7 @@
           "fields": [
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:emissive_flicker_speed",
             "scalar:emissive_intensity",
@@ -9400,8 +10047,10 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:specular_intensity",
             "scalar:specular_power",
@@ -9422,8 +10071,10 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:specular_intensity",
             "scalar:specular_power",
@@ -9444,6 +10095,7 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
             "scalar:diffuse_brightness",
@@ -9460,8 +10112,10 @@
         {
           "slot": 1,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "vector:diffuse_color",
             "renderFlag:blendMode",
@@ -9474,6 +10128,7 @@
         {
           "slot": 2,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
             "scalar:diffuse_brightness",
@@ -9496,8 +10151,10 @@
         {
           "slot": 4,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:specular_intensity",
             "scalar:specular_power",
@@ -9518,6 +10175,7 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
             "scalar:diffuse_brightness",
@@ -9534,8 +10192,10 @@
         {
           "slot": 1,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "vector:diffuse_color",
             "renderFlag:blendMode",
@@ -9548,6 +10208,7 @@
         {
           "slot": 2,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
             "scalar:diffuse_brightness",
@@ -9564,6 +10225,7 @@
         {
           "slot": 3,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
             "scalar:diffuse_brightness",
@@ -9581,8 +10243,10 @@
         {
           "slot": 4,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:specular_intensity",
             "scalar:specular_power",
@@ -9603,6 +10267,7 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_foliagemask",
             "texture:texture_rainnoise",
             "scalar:affectdistance",
@@ -9637,8 +10302,10 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_saturation",
             "scalar:normal_intensity",
             "scalar:specular_intensity",
@@ -9653,6 +10320,7 @@
         {
           "slot": 1,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_foliagemask",
             "texture:texture_rainnoise",
             "scalar:affectdistance",
@@ -9686,8 +10354,10 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:diffuse_saturation",
             "scalar:normal_intensity",
@@ -9710,8 +10380,10 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:diffuse_saturation",
             "scalar:normal_intensity",
@@ -9734,8 +10406,10 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:specular_intensity",
             "scalar:specular_power",
@@ -9762,8 +10436,10 @@
         {
           "slot": 1,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:normal_intensity",
             "scalar:overlay_sharpeness",
@@ -9785,8 +10461,10 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:reflection_intensity",
             "scalar:reflection_tiling",
@@ -9804,8 +10482,10 @@
         {
           "slot": 1,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:reflection_intensity",
             "scalar:reflection_tiling",
@@ -9830,7 +10510,9 @@
           "slot": 0,
           "fields": [
             "texture:texture_dead",
+            "texture:texture_emissive",
             "texture:texture_fx_panning",
+            "texture:texture_opacity",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
             "scalar:diffuse_brightness",
@@ -9853,9 +10535,12 @@
           "slot": 0,
           "fields": [
             "texture:texture_dead",
+            "texture:texture_emissive",
             "texture:texture_fx_panning",
+            "texture:texture_opacity",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:specular_intensity",
             "scalar:specular_power",
@@ -9871,9 +10556,12 @@
           "slot": 1,
           "fields": [
             "texture:texture_dead",
+            "texture:texture_emissive",
             "texture:texture_fx_panning",
+            "texture:texture_opacity",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:specular_intensity",
             "scalar:specular_power",
@@ -9889,9 +10577,12 @@
           "slot": 2,
           "fields": [
             "texture:texture_dead",
+            "texture:texture_emissive",
             "texture:texture_fx_panning",
+            "texture:texture_opacity",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:specular_intensity",
             "scalar:specular_power",
@@ -9912,6 +10603,7 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
             "scalar:diffuse_brightness",
@@ -9935,6 +10627,7 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
             "scalar:diffuse_brightness",
@@ -9964,6 +10657,7 @@
           "fields": [
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:emissive_intensity",
             "scalar:reflection_contrast",
             "scalar:reflection_intensity",
@@ -9984,6 +10678,7 @@
           "slot": 0,
           "fields": [
             "texture:texture_diffuse_1",
+            "texture:texture_specular",
             "texture:texture_specular_1",
             "scalar:specular_intensity",
             "scalar:specular_power",
@@ -10003,8 +10698,10 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:reflection_contrast",
             "scalar:reflection_intensity",
@@ -10021,8 +10718,10 @@
         {
           "slot": 1,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:diffuse_saturation",
             "scalar:normal_intensity",
@@ -10053,6 +10752,7 @@
           "fields": [
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:emissive_intensity",
             "scalar:reflection_intensity",
@@ -10075,6 +10775,7 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
             "scalar:specular_intensity",
@@ -10095,8 +10796,10 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_foliagemask",
             "texture:texture_rainnoise",
+            "texture:texture_specular",
             "scalar:affectdistance",
             "scalar:angle",
             "scalar:diffuse_brightness",
@@ -10120,8 +10823,10 @@
         {
           "slot": 1,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_foliagemask",
             "texture:texture_rainnoise",
+            "texture:texture_specular",
             "scalar:affectdistance",
             "scalar:angle",
             "scalar:diffuse_brightness",
@@ -10153,7 +10858,9 @@
           "slot": 0,
           "fields": [
             "texture:texture_dead",
+            "texture:texture_emissive",
             "texture:texture_fx_panning",
+            "texture:texture_opacity",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
             "scalar:normal_intensity",
@@ -10175,6 +10882,7 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
             "scalar:diffuse_brightness",
@@ -10198,6 +10906,7 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
             "scalar:diffuse_brightness",
@@ -10221,6 +10930,7 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
             "scalar:diffuse_brightness",
@@ -10248,6 +10958,7 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
             "scalar:diffuse_brightness",
@@ -10275,6 +10986,7 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
             "scalar:diffuse_brightness",
@@ -10314,6 +11026,7 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
             "scalar:reflection_contrast",
@@ -10338,8 +11051,10 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:reflection_intensity",
             "scalar:reflection_tiling",
@@ -10363,8 +11078,10 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:normal_intensity",
             "scalar:specular_intensity",
@@ -10390,6 +11107,7 @@
             "texture:detail_texture_normal",
             "texture:texture_diffuse_mask",
             "texture:texture_fresnel",
+            "texture:texture_opacity",
             "texture:texture_reflection",
             "texture:texture_sky",
             "scalar:depth_bias",
@@ -10435,8 +11153,10 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:specular_intensity",
             "scalar:specular_power",
@@ -10457,8 +11177,10 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:normal_intensity",
             "scalar:specular_intensity",
@@ -10481,8 +11203,10 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:normal_intensity",
             "scalar:specular_intensity",
@@ -10505,8 +11229,10 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:diffuse_saturation",
             "scalar:specular_intensity",
@@ -10528,6 +11254,7 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
             "scalar:diffuse_brightness",
@@ -10553,6 +11280,7 @@
             "texture:detail_texture_normal",
             "texture:texture_diffuse_mask",
             "texture:texture_fresnel",
+            "texture:texture_opacity",
             "texture:texture_reflection",
             "texture:texture_sky",
             "scalar:depth_bias",
@@ -10598,8 +11326,10 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:specular_intensity",
             "scalar:specular_power",
@@ -10626,6 +11356,7 @@
         {
           "slot": 1,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_foliagemask",
             "texture:texture_rainnoise",
             "scalar:affectdistance",
@@ -10657,6 +11388,7 @@
         {
           "slot": 2,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_foliagemask",
             "texture:texture_rainnoise",
             "scalar:affectdistance",
@@ -10698,6 +11430,7 @@
         {
           "slot": 1,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_foliagemask",
             "texture:texture_rainnoise",
             "scalar:affectdistance",
@@ -10727,6 +11460,7 @@
         {
           "slot": 2,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_foliagemask",
             "texture:texture_rainnoise",
             "scalar:affectdistance",
@@ -10762,8 +11496,10 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "renderFlag:blendMode",
             "renderFlag:disableDepthTest",
             "renderFlag:isMasked",
@@ -10780,8 +11516,10 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:specular_intensity",
             "scalar:specular_power",
             "renderFlag:blendMode",
@@ -10833,7 +11571,9 @@
           "slot": 0,
           "fields": [
             "texture:texture_dead",
+            "texture:texture_emissive",
             "texture:texture_fx_panning",
+            "texture:texture_opacity",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
             "scalar:diffuse_brightness",
@@ -10863,7 +11603,9 @@
           "slot": 0,
           "fields": [
             "texture:texture_dead",
+            "texture:texture_emissive",
             "texture:texture_fx_panning",
+            "texture:texture_opacity",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
             "scalar:specular_intensity",
@@ -10884,6 +11626,7 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
             "scalar:diffuse_brightness",
@@ -10899,6 +11642,7 @@
         {
           "slot": 1,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
             "scalar:diffuse_brightness",
@@ -10920,6 +11664,7 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_specular",
             "scalar:specular_intensity",
             "scalar:specular_power",
             "renderFlag:blendMode",
@@ -10938,6 +11683,7 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
             "scalar:diffuse_brightness",
@@ -10954,6 +11700,7 @@
         {
           "slot": 1,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_foliagemask",
             "texture:texture_rainnoise",
             "scalar:affectdistance",
@@ -11008,6 +11755,7 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
             "scalar:diffuse_brightness",
@@ -11025,8 +11773,10 @@
         {
           "slot": 1,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:specular_intensity",
             "scalar:specular_power",
@@ -11047,8 +11797,10 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:diffuse_saturation",
             "scalar:specular_intensity",
@@ -11073,9 +11825,12 @@
           "slot": 0,
           "fields": [
             "texture:texture_dead",
+            "texture:texture_emissive",
             "texture:texture_fx_panning",
+            "texture:texture_opacity",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:specular_intensity",
             "scalar:specular_power",
@@ -11098,9 +11853,12 @@
           "slot": 0,
           "fields": [
             "texture:texture_dead",
+            "texture:texture_emissive",
             "texture:texture_fx_panning",
+            "texture:texture_opacity",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:foliage_wind_frequency",
             "scalar:foliage_wind_intensity",
@@ -11128,8 +11886,10 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:overlay_amount",
             "scalar:overlay_brightness",
@@ -11154,6 +11914,7 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
             "scalar:specular_intensity",
@@ -11174,6 +11935,7 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_foliagemask",
             "texture:texture_rainnoise",
             "scalar:affectdistance",
@@ -11208,8 +11970,10 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:specular_intensity",
             "scalar:specular_power",
@@ -11224,8 +11988,10 @@
         {
           "slot": 1,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:normal_intensity",
             "scalar:specular_intensity",
@@ -11247,6 +12013,7 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
             "scalar:diffuse_brightness",
@@ -11275,9 +12042,12 @@
           "slot": 0,
           "fields": [
             "texture:texture_dead",
+            "texture:texture_emissive",
             "texture:texture_fx_panning",
+            "texture:texture_opacity",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:specular_intensity",
             "scalar:specular_power",
@@ -11321,8 +12091,10 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "renderFlag:blendMode",
             "renderFlag:disableDepthTest",
@@ -11340,8 +12112,10 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:normal_intensity",
             "scalar:reflection_contrast",
@@ -11366,8 +12140,10 @@
         {
           "slot": 0,
           "fields": [
+            "texture:texture_emissive",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:diffuse_brightness",
             "scalar:diffuse_saturation",
             "scalar:specular_intensity",
@@ -11389,9 +12165,12 @@
           "slot": 0,
           "fields": [
             "texture:texture_dead",
+            "texture:texture_emissive",
             "texture:texture_fx_panning",
+            "texture:texture_opacity",
             "texture:texture_overlay_diffuse",
             "texture:texture_reflection",
+            "texture:texture_specular",
             "scalar:specular_intensity",
             "vector:specular_color",
             "renderFlag:blendMode",
@@ -11406,7 +12185,7 @@
     }
   },
   "sourceMaterialBuild": null,
-  "placementCount": 3823,
+  "placementCount": 4653,
   "sourceAnyNegativeScaleCount": 1113,
   "sourceReflectedCount": 1109,
   "sourceHiddenHelperCount": 0,
@@ -11422,25 +12201,27 @@
   "sourceLevelCounts": {
     "LV_OCN_EVENTIS_MHP_LAND01": 2,
     "LV_OCN_EVENTIS_MHP_PS": 1,
+    "LV_OCN_EVENTIS_MHP_SCENE03B": 18,
     "LV_OCN_EVENTIS_MHP_SL01": 3820
   },
   "goldenPlacement": null,
   "inputs": {
-    "assetManifest": "39726BEE4B0390129C467955F1D922414740F4A3B64E1C2EE8AB2A5881805A96",
-    "runtimeManifest": "CC082BFBE8F792C53D8761F0BBA6FBAD7B7A766739EF5F9ADD97AF093CE1F191",
+    "assetManifest": "7FD4BE05E677E9CBC3F25F8FE33ECCD3B4DB77E02EFAED039E02C4602C7991C4",
+    "runtimeManifest": "4A986295BA8844AF49B28A7050FCC1E4638CF2C0F068ADFB535A1EFF61D57094",
     "placementDirectories": [
-      "C:/LostArkExtract/LV_OCN_EVENTIS_MHP_20260919/Placements_Admitted"
+      "out/MaharakaContinuation_20260926_193455/Scene03bPlacements/Placements_Admitted"
     ],
     "placements": {
       "LV_OCN_EVENTIS_MHP_LAND01.placements.json": "51B69A4C16667C2BC2FF47FECEEC7E75B49F257B40D7841F3C74914A67CA37AC",
       "LV_OCN_EVENTIS_MHP_PS.placements.json": "13E291325FC0F0D6E1F5E873AB57AB90B2527567A972B0B30A820F0F627FA3B4",
+      "LV_OCN_EVENTIS_MHP_SCENE03B.placements.json": "2CCB41DCDB63FC014530FC39312F8173FD95DAF25681361ED4DC1EE73FA17CF8",
       "LV_OCN_EVENTIS_MHP_SL01.placements.json": "49AB3E5D6260441EA2065C31F9FAC75F95FC422C6A4CEC825276636151043437"
     },
-    "overlayManifest": null,
-    "renderProfileManifest": "55AB363BED5D0605DFAF308B6D2D298CA3CDC107DE83D12EA3C6905A30165262"
+    "overlayManifest": "5C08119EE93D31F669979CFEEB7756D433B0735A64647C2A9A95F9B382D1B263",
+    "renderProfileManifest": "33B2EBE4FA0636AC741BFB704B14F2786ED4204C1648BA3FBA4F5A189FD1EDA0"
   },
   "outputs": {
-    "catalog": "a901b2fc5b65902f9ed5378afe2ee82022dd9472b8e066687f8a99042dd50c32",
-    "placements": "732f9e9d96da9c5a56f85fd378667a053eb70b5f648ebd7a296ed1470fd20ff7"
+    "catalog": "b75e25a0730fe5e361afd85b9555ceb9b6126b317fdde6a60e06e76e337a5381",
+    "placements": "c546f29fb2932c5b3028fc5628a4ae50a1b752cc98f577eccc94e06cf2d31057"
   }
 }

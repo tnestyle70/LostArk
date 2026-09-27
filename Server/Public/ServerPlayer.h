@@ -179,6 +179,14 @@ namespace LostArk::Server
 		admit it, and Enforce_VehicleRidingState clears it before the snapshot
 		whenever the player can no longer ride. */
 		LostArk::Shared::VEHICLE_ID iVehicleId = LostArk::Shared::INVALID_VEHICLE_ID;
+		/* Bern ship voyage (server only, never replicated). A ship carries the player out to the sea
+		   navigation region and the pier position it left is kept here until the player leaves the ship. */
+		bool bShipDockValid = false;
+		float fShipDockX = 0.f, fShipDockY = 0.f, fShipDockZ = 0.f, fShipDockYawDegrees = 0.f;
+		/* Fast sail: the tick the current boost expires on, 0 when none is running.
+		   It is server only and never replicated as its own field, because the boosted speed
+		   already reaches the Client through SNAPSHOT_PLAYER's existing fMoveSpeed. */
+		std::uint32_t iShipBoostEndTick = 0u;
 		LostArk::Shared::VEHICLE_FLIGHT_PHASE eVehicleFlightPhase = LostArk::Shared::VEHICLE_FLIGHT_PHASE::GROUNDED;
 		std::uint32_t iVehicleFlightPhaseStartTick = 0u;
 		float fVehicleFlightPhaseSeconds = 0.f;
@@ -194,6 +202,15 @@ namespace LostArk::Server
 		std::uint8_t iMarioBombContactStage = 0u;
 		std::map<std::pair<std::uint32_t, std::uint32_t>, std::int64_t> MarioBombHitBirths;
 		std::uint8_t iMarioLayoutVariant = 0u;
+		// The entrant owns the challenge until death/cancellation or the return landing.
+		// 0 inactive, 1 red, 2 blue, 3 yellow; the marker may belong to an outside player.
+		std::uint8_t iMarioRequiredColor = 0u;
+		LostArk::Shared::NET_ENTITY_ID iMarioMarkerNetEntityId = LostArk::Shared::INVALID_NET_ENTITY_ID;
+		void Clear_MarioBallChallenge()
+		{
+			iMarioRequiredColor = 0u;
+			iMarioMarkerNetEntityId = LostArk::Shared::INVALID_NET_ENTITY_ID;
+		}
 		// Pinned by the entry pattern; survives the arena phase and terminal move start.
 		std::optional<std::array<float, 3u>> MarioReturnPosition;
 		// Safe arena revive point retained through the fall's below-floor death pose.
@@ -224,7 +241,11 @@ namespace LostArk::Server
 				MovePath.clear();
 				iMovePathIndex = 0u;
 			}
-			if (!preserveReturnPosition) MarioReturnPosition.reset();
+			if (!preserveReturnPosition)
+			{
+				MarioReturnPosition.reset();
+				Clear_MarioBallChallenge();
+			}
 			iMarioStage = 0u;
 			iMarioBombContactStage = 0u;
 			MarioBombHitBirths.clear();

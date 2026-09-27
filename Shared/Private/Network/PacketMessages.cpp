@@ -233,6 +233,7 @@ namespace
 			(snapshot.iMarioStage != 0u || snapshot.iMarioLayoutVariant == 0u) &&
 			snapshot.iMarioPoppedBallMask <= 0x0FFFu &&
 			snapshot.iMarioCurseReleasedMask <= 7u &&
+			snapshot.iMarioMarkerColor <= 3u &&
 			(snapshot.iMarioStage != 0u ||
 			 (snapshot.iMarioPoppedBallMask == 0u && snapshot.iMarioCurseReleasedMask == 0u)) &&
 			snapshot.CardMaze.flags <= LostArk::Shared::CARD_MAZE_VALID_FLAGS &&
@@ -3200,6 +3201,7 @@ bool LostArk::Shared::Write_Message(CPacketWriter& writer, const S2C_WORLD_SNAPS
 		writer.Write_U8(player.iMarioLayoutVariant);
 		writer.Write_U16(player.iMarioPoppedBallMask);
 		writer.Write_U8(player.iMarioCurseReleasedMask);
+		writer.Write_U8(player.iMarioMarkerColor);
 		writer.Write_U8(static_cast<std::uint8_t>(player.eCardMazeRole));
 		writer.Write_U8(static_cast<std::uint8_t>(player.eCardMazeSuit));
 		writer.Write_U8(player.iCardMazeKills);
@@ -3492,6 +3494,7 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader, S2C_WORLD_SNAPSHOT& me
 			(player.iMarioStage == 0u && player.iMarioLayoutVariant != 0u) ||
 			!reader.Read_U16(player.iMarioPoppedBallMask) || player.iMarioPoppedBallMask > 0x0FFFu ||
 			!reader.Read_U8(player.iMarioCurseReleasedMask) || player.iMarioCurseReleasedMask > 7u ||
+			!reader.Read_U8(player.iMarioMarkerColor) || player.iMarioMarkerColor > 3u ||
 			(player.iMarioStage == 0u &&
 			 (player.iMarioPoppedBallMask != 0u || player.iMarioCurseReleasedMask != 0u)) ||
 			!reader.Read_U8(rawCardMazeRole) ||

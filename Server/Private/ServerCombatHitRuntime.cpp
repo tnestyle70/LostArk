@@ -491,10 +491,12 @@ LostArk::Server::CServerCombatHitRuntime::Apply_WorldToPlayer(
 	if (hit.bUsePushDirection && (!std::isfinite(hit.fPushDirectionX) || !std::isfinite(hit.fPushDirectionZ) ||
 		hit.fPushDirectionX * hit.fPushDirectionX + hit.fPushDirectionZ * hit.fPushDirectionZ < .000001f))
 		return SERVER_COMBAT_HIT_RESULT::NOT_ADMITTED;
-	if (0u == target.iCurrentHp || (!hit.bEncounterWipe && !target.isCombatReady) ||
+	const bool ownedCapture = Is_CurrentBossHandCapture(target, hit.iCaptureOwnerId,
+		hit.iCapturePatternSequence, hit.iServerTick);
+	if (0u == target.iCurrentHp || (!hit.bEncounterWipe && !ownedCapture && !target.isCombatReady) ||
 		PLAYER_ACTION_STATE::DEAD == target.eAction ||
 		(!hit.bEncounterWipe && (PLAYER_ACTION_STATE::FALLING == target.eAction ||
-		PLAYER_ACTION_STATE::GRABBED == target.eAction)))
+		(PLAYER_ACTION_STATE::GRABBED == target.eAction && !ownedCapture))))
 	{
 		return SERVER_COMBAT_HIT_RESULT::NOT_ADMITTED;
 	}

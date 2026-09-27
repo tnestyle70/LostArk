@@ -2988,6 +2988,22 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 			}
 			owner->LogicWindows.push_back(std::move(window));
 		}
+        else if (!fields.empty() && "PATTERNLOGICGAZE" == fields[0])
+        {
+            if (fields.size() != 4u || !IsStableId(fields[1]) || !IsStableId(fields[2]) || !IsStableId(fields[3]))
+            { m_strStatus = "Gaze window policy row is invalid"; return false; }
+            const auto owners = m_BossPatterns.find(std::string(fields[1]));
+            if (owners == m_BossPatterns.end()) { m_strStatus = "Gaze window encounter is missing"; return false; }
+            const auto pattern = std::find_if(owners->second.begin(), owners->second.end(),
+                [&](const auto& row) { return row.strPatternId == fields[2]; });
+            if (pattern == owners->second.end()) { m_strStatus = "Gaze window pattern is missing"; return false; }
+            const auto window = std::find_if(pattern->LogicWindows.begin(), pattern->LogicWindows.end(),
+                [&](const auto& row) { return row.strWindowId == fields[3]; });
+            if (window == pattern->LogicWindows.end() || window->eKind != BOSS_PATTERN_LOGIC_KIND::GAZE_REAL_BOSS ||
+                !window->bInsideIsFail || window->bGazeDuringWindow)
+            { m_strStatus = "Gaze window policy requires one facing-is-fail gaze"; return false; }
+            window->bGazeDuringWindow = true;
+        }
 		else if (!fields.empty() && "PATTERNLOGICCANCEL" == fields[0])
 		{
 			if (fields.size() != 4u || !IsStableId(fields[1]) || !IsStableId(fields[2]) || !IsStableId(fields[3]))
@@ -3673,9 +3689,10 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
                     trigger.fTeleportX != 0.f || trigger.fTeleportY != 0.f || trigger.fTeleportZ != 0.f || trigger.fFaceCenterYawOffsetDegrees != 0.f)
                 { m_strStatus = "Bingo duration carries unrelated values"; return false; }
 			}
-			else if (fields[4] == "BOSS_TRACK_TARGET" || fields[4] == "BOSS_RANDOM_TARGET")
+			else if (fields[4] == "BOSS_TRACK_TARGET" || fields[4] == "BOSS_RANDOM_TARGET" || fields[4] == "BOSS_RANDOM_TARGET_PRESENTATION")
 			{
-				trigger.eKind = fields[4] == "BOSS_RANDOM_TARGET" ? BOSS_PATTERN_MECHANIC_TRIGGER_KIND::BOSS_RANDOM_TARGET :
+				trigger.eKind = fields[4] == "BOSS_RANDOM_TARGET_PRESENTATION" ? BOSS_PATTERN_MECHANIC_TRIGGER_KIND::BOSS_RANDOM_TARGET_PRESENTATION :
+					fields[4] == "BOSS_RANDOM_TARGET" ? BOSS_PATTERN_MECHANIC_TRIGGER_KIND::BOSS_RANDOM_TARGET :
 					BOSS_PATTERN_MECHANIC_TRIGGER_KIND::BOSS_TRACK_TARGET;
 				if (mode != 0u || trigger.iDurationMs > 600000u || fields[11] != "-" ||
 					fields[12] != "0" || fields[13] != "0" || fields[14] != "0" ||
@@ -3736,6 +3753,23 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 			{ m_strStatus = "Card rain tuning owner is missing or duplicated"; return false; }
 			trigger->SoldierCounts = counts; trigger->fSoldierSpawnRadiusMinM = radiusMin;
 			trigger->fSoldierSpawnRadiusMaxM = radiusMax; trigger->bHasSoldierTuning = true;
+		}
+		else if (!fields.empty() && "PATTERNBINGOHAMMER" == fields[0])
+		{
+			std::array<float, 2u> half{};
+			if (fields.size() != 6u || !IsStableId(fields[1]) || !IsStableId(fields[2]) || !IsStableId(fields[3]))
+			{ m_strStatus = "Bingo hammer row identity is invalid"; return false; }
+			for (std::size_t axis = 0; axis < half.size(); ++axis)
+				if (!ParseNumber(fields[4u + axis], half[axis]) || !std::isfinite(half[axis]) || half[axis] <= 0.f || half[axis] > 100.f)
+				{ m_strStatus = "Bingo hammer half extent is invalid"; return false; }
+			const auto encounter = m_BossPatterns.find(std::string(fields[1]));
+			if (encounter == m_BossPatterns.end()) return false;
+			const auto pattern = std::find_if(encounter->second.begin(), encounter->second.end(), [&](const auto& row) { return row.strPatternId == fields[2]; });
+			if (pattern == encounter->second.end()) return false;
+			const auto trigger = std::find_if(pattern->MechanicTriggers.begin(), pattern->MechanicTriggers.end(), [&](const auto& row) { return row.strTriggerId == fields[3]; });
+			if (trigger == pattern->MechanicTriggers.end() || trigger->eKind != BOSS_PATTERN_MECHANIC_TRIGGER_KIND::BINGO_BOARD || trigger->BingoHammerHalfExtentsM)
+			{ m_strStatus = "Bingo hammer owner or duplicate is invalid"; return false; }
+			trigger->BingoHammerHalfExtentsM = half;
 		}
 		else if (!fields.empty() && "PATTERNCARDMAZESTAGING" == fields[0])
 		{
@@ -7669,6 +7703,9 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 	{
 		(void)encounterId;
 		patternCount += patterns.size();
+		for (const auto& pattern : patterns) for (const auto& trigger : pattern.MechanicTriggers)
+			if (trigger.eKind == BOSS_PATTERN_MECHANIC_TRIGGER_KIND::BINGO_BOARD && !trigger.BingoHammerHalfExtentsM)
+			{ m_strStatus = "Bingo board is missing its published WORLD head geometry"; return false; }
         for (const auto& parent : patterns) if (!parent.ParentChildren.empty())
         {
             const auto failParent = [&](const char* reason) { m_strStatus = "Parent " + parent.strPatternId + ": " + reason; return false; };

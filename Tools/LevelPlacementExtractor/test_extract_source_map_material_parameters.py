@@ -112,5 +112,73 @@ class SourceMapMaterialTests(unittest.TestCase):
             resolver.inherited_static(full, parent, package, serial, b"", props, resolved)
 
 
+class MicNullTextureOverrideTest(unittest.TestCase):
+    """packageIndex 0 is a serialized NULL reference and must not erase an inherited texture."""
+
+    @staticmethod
+    def inherited():
+        return {
+            "textures": {"texture_diffuse": "efmaster_material_prologue.tex.diffuse"},
+            "parameterSources": {"textures": {"texture_diffuse": {"kind": "MATERIAL_EXPRESSION_DEFAULT"}}},
+            "unresolvedDefaults": [],
+        }
+
+    def test_null_override_keeps_parent_default_and_records_provenance(self):
+        result = self.inherited()
+        subject.apply_mic_texture_override(result, "pkg.mat.child_mi", "Texture_Diffuse", 0, None,
+                                           {"sourceMaterial": "pkg.mat.child_mi"})
+        self.assertEqual(result["textures"]["texture_diffuse"],
+                         "efmaster_material_prologue.tex.diffuse")
+        source = result["parameterSources"]["textures"]["texture_diffuse"]
+        self.assertEqual(source["kind"], "MATERIAL_EXPRESSION_DEFAULT")
+        self.assertEqual(source["micNullOverridesIgnored"],
+                         [{"sourceMaterial": "pkg.mat.child_mi", "packageIndex": 0}])
+
+    def test_repeated_null_overrides_accumulate_in_chain_order(self):
+        result = self.inherited()
+        for material in ("pkg.mat.mid_mi", "pkg.mat.leaf_mi"):
+            subject.apply_mic_texture_override(result, material, "texture_diffuse", 0, None, {})
+        recorded = result["parameterSources"]["textures"]["texture_diffuse"]["micNullOverridesIgnored"]
+        self.assertEqual([row["sourceMaterial"] for row in recorded],
+                         ["pkg.mat.mid_mi", "pkg.mat.leaf_mi"])
+
+    def test_null_override_without_inherited_value_stays_unresolved(self):
+        result = {"textures": {}, "parameterSources": {"textures": {}}, "unresolvedDefaults": []}
+        subject.apply_mic_texture_override(result, "pkg.mat.child_mi", "texture_specular", 0, None,
+                                           {"sourceMaterial": "pkg.mat.child_mi"})
+        self.assertIsNone(result["textures"]["texture_specular"])
+        source = result["parameterSources"]["textures"]["texture_specular"]
+        self.assertEqual(source["kind"], "MIC_SERIALIZED_OVERRIDE")
+        self.assertEqual(source["packageIndex"], 0)
+        self.assertNotIn("micNullOverridesIgnored", source)
+
+    def test_real_override_replaces_the_inherited_value(self):
+        result = self.inherited()
+        subject.apply_mic_texture_override(result, "pkg.mat.child_mi", "texture_diffuse", 43,
+                                           "pkg.tex.floor_d", {"sourceMaterial": "pkg.mat.child_mi"})
+        self.assertEqual(result["textures"]["texture_diffuse"], "pkg.tex.floor_d")
+        source = result["parameterSources"]["textures"]["texture_diffuse"]
+        self.assertEqual(source["kind"], "MIC_SERIALIZED_OVERRIDE")
+        self.assertEqual(source["packageIndex"], 43)
+
+    def test_unresolvable_reference_is_an_error_not_a_partial_name(self):
+        for bad in ("", "pkg.", None):
+            with self.subTest(reference=bad):
+                result = self.inherited()
+                with self.assertRaisesRegex(ValueError, "unresolvable MIC texture reference"):
+                    subject.apply_mic_texture_override(result, "pkg.mat.child_mi",
+                                                      "texture_diffuse", 7, bad, {})
+                self.assertEqual(result["textures"]["texture_diffuse"],
+                                 "efmaster_material_prologue.tex.diffuse")
+
+    def test_override_clears_a_pending_unresolved_default(self):
+        result = {"textures": {}, "parameterSources": {"textures": {}},
+                  "unresolvedDefaults": [{"field": "textures", "name": "texture_diffuse",
+                                          "reason": "DEFAULT_PROPERTY_ABSENT"}]}
+        subject.apply_mic_texture_override(result, "pkg.mat.child_mi", "texture_diffuse", 43,
+                                           "pkg.tex.floor_d", {})
+        self.assertEqual(result["unresolvedDefaults"], [])
+
+
 if __name__ == "__main__":
     unittest.main()

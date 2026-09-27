@@ -1168,6 +1168,15 @@ bool_t Client::CEffect_Tool::Try_PreviewElementsTimeline(
         (m_bDetailDraftDirty && !Apply_DetailDraft(draft)) ||
         (m_bModelCueDraftDirty && !Apply_ModelCueDraft(draft)))
     { m_strPreviewStatus = "Element preview could not apply the current draft."; return false; }
+    if (Has_ClassMovieContext())
+    {
+        const auto previous = m_PreviewIsolationElementIds;
+        m_PreviewIsolationElementIds = elementIds;
+        if (!Stage_ClassMovieEffect(draft)) { m_PreviewIsolationElementIds = previous; return false; }
+        if (m_ClassMovieCallbacks.pause) m_ClassMovieCallbacks.pause(false);
+        m_strPreviewStatus = "Selected Effect elements isolated in the Movie. Actors and other Movie Effects keep their timeline; Play All restores every element.";
+        return true;
+    }
     EFFECT_DOCUMENT_DESC preview;
     if (!Build_ElementsPreviewDocument(draft, elementIds, preview, m_strPreviewStatus)) return false;
     uint32_t focus = 0u, duration = 0u;
@@ -1286,6 +1295,7 @@ void Client::CEffect_Tool::Render_RecoveryEffectForProduct(const std::string& st
 
 bool_t Client::CEffect_Tool::Try_PlayActiveUnifiedEffect()
 {
+    if (Has_ClassMovieContext()) return Play_ClassMovie();
 	if (!m_ActiveDocument.has_value())
 	{
 		m_strPreviewStatus = "No saved Effect is loaded for preview.";

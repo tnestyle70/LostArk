@@ -54,7 +54,10 @@ public:
 	/* Screen-pixel rect of the panel while open: CMainApp clips the labels of the windows drawn
 	underneath out of it, so no text ever shows through a window on top. */
 	bool_t Get_ScreenRect(f32_t& fX, f32_t& fY, f32_t& fWidth, f32_t& fHeight) const;
-	void Toggle() { m_bOpen = !m_bOpen; }
+	/* N key: the vehicle list (never the ship list). Closes the ship list too. */
+	void Toggle();
+	/* Ship NPC: opens the same retail window listing only the ships (catalog "ship": true). */
+	void Open_Ships();
 	void Close() { m_bOpen = false; }
 
 	/* Per frame from Update_CombatHUD while its level/player gate passes. Hover / selected
@@ -94,6 +97,10 @@ private:
 
 private:
 	void Load_Catalog();
+	/* m_Rows = the rows the list currently shows: one catalog kind (vehicles or ships) starting at
+	m_iScroll, at most one layout page. m_AllRows keeps every catalog row. */
+	void Rebuild_VisibleRows();
+	void Set_ShipMode(bool_t bShip);
 	void Update_Rows(const std::shared_ptr<CCharacter>& pLocalCharacter,
 		const HUD_PLAYER_STATE& Player);
 	void Update_Buttons(const HUD_PLAYER_STATE& Player);
@@ -116,6 +123,11 @@ private:
 	unique_ptr<CUILayoutRuntime>	m_pView;
 	vector<string>					m_SlotIds;
 	vector<VEHICLE_ROW>				m_Rows;
+	vector<VEHICLE_ROW>				m_AllRows;
+	int32_t						m_iScroll = 0;
+	bool_t						m_bShipMode = false;
+	wstring							m_strShipTitle;
+	wstring							m_strShipHint;
     int32_t m_iLayoutRowCount = 0;
 	/* Retail px -> reference px, read back from the VH_WinBg slot (the layout document owns
 	how large the window is drawn). */

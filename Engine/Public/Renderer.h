@@ -36,6 +36,30 @@ public:
 	HRESULT Initialize();
 	HRESULT Add_RenderObject(RENDERGROUP eRenderGroupID, shared_ptr<CGameObject> pRenderObject);
 	HRESULT Draw();
+
+	/* One off-screen portrait to draw through the deferred path before the world fills the
+	G-buffer this frame. The caller owns the destination texture and the draw itself: Engine
+	never learns what a character is, it only binds the portrait camera, runs the callback
+	against the same G-buffer the world uses and resolves the same lighting, so a portrait
+	cannot drift away from the field look when a material program is added. */
+	struct PORTRAIT_REQUEST final
+	{
+		/* Receives the tone-mapped colour. Render_Final resolves the scene into it through a
+		full-screen quad, so the portrait is a resample of the scene rather than a crop and the
+		destination may be any size. Must outlive Draw. */
+		ComPtr<ID3D11RenderTargetView>		pDestination = { nullptr };
+		uint32_t							iWidth = 0u;
+		uint32_t							iHeight = 0u;
+		/* The portrait camera, already built by the caller. */
+		float4x4_t							ViewMatrix{};
+		float4x4_t							ProjMatrix{};
+		/* Draws the subject with the G-buffer bound. A failure skips only this request. */
+		function<HRESULT()>					DrawSubject;
+	};
+
+	/* Queued for the next Draw and cleared by it, so a window that stops asking stops being
+	drawn with no teardown of its own. */
+	HRESULT Request_Portrait(PORTRAIT_REQUEST Request);
 	// A visible refractive occurrence requests the pre-translucency colour once.
 	void Request_SceneColorSnapshot() { m_bSceneColorSnapshotRequested = true; }
 	HRESULT Refresh_SceneColorSnapshot();
@@ -65,6 +89,8 @@ private:
 	ComPtr<ID3D11Texture2D>				m_pShadowDepthTexture = { nullptr };
 	ComPtr<ID3D11DepthStencilView>			m_pShadowDSV = { nullptr };
 	ComPtr<ID3D11ShaderResourceView>		m_pShadowSRV = { nullptr };
+	/* Frame queue, not a lookup: filled by Request_Portrait and emptied by Draw. */
+	vector<PORTRAIT_REQUEST>				m_PortraitRequests;
     struct STATIC_SHADOW_CASTER final
     {
         weak_ptr<CGameObject> Owner;
@@ -140,6 +166,7 @@ private:
 	HRESULT Render_SSAO();
 	HRESULT Render_SSAOPass(const wstring_t& strMRTTag, DEFERRED ePass);
 	HRESULT Render_Lights();
+	HRESULT Render_Portraits();
 	HRESULT Render_Combined();
 	HRESULT Render_NonLight();
 	HRESULT Render_Blend();
@@ -158,7 +185,7 @@ private:
 	HRESULT Render_Bloom();
 	HRESULT Render_BloomPass(const wstring_t& strMRTTag,
 		ComPtr<ID3D11ShaderResourceView> pSourceSRV, DEFERRED ePass);
-	HRESULT Render_Final();
+	HRESULT Render_Final(bool_t bPortrait = false);
 	HRESULT Render_UI();
 	HRESULT Capture_PickingDepth();
 	HRESULT Render_Picking();

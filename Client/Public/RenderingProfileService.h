@@ -85,6 +85,19 @@ struct RENDERING_COMPARISON_OPTIONS final
     f32_t fExposureMultiplier = 1.f;
 };
 
+// Transient fog tuning for the frames a presentation owns. It is applied to whatever
+// fog survives the camera regions, so a region transition keeps its own authored values
+// and nothing accumulates across frames. Passing suppressFog with no tuning switches the
+// fog off outright, which is what the cinematic callers already relied on.
+struct PRESENTATION_FOG_TUNING final
+{
+    // Zero or less switches the fog off; above zero it scales the scene density.
+    f32_t fDensityScale = 0.f;
+    // Negative keeps the scene value.
+    f32_t fStartDistanceMeters = -1.f;
+    f32_t fMaximumOpacity = -1.f;
+};
+
 class CRenderingProfileService final
 {
 public:
@@ -99,7 +112,8 @@ public:
     // Transient presentation inputs are applied after camera regions and never saved.
     bool_t Apply_CameraEnvironment(f32_t deltaSeconds, string& status,
         bool_t suppressFog = false, const LIGHT_DESC* directionalOverride = nullptr,
-        f32_t directionalBrightnessMultiplier = 1.f, const float4_t* directionalColor = nullptr);
+        f32_t directionalBrightnessMultiplier = 1.f, const float4_t* directionalColor = nullptr,
+        const PRESENTATION_FOG_TUNING* fogTuning = nullptr);
 	bool_t Reload_Runtime(string& strOutStatus);
 	bool_t Has_Profile(string_view strProfileId) const;
 	std::vector<std::string> Collect_ProfileIds() const

@@ -918,6 +918,13 @@ bool CClassSelectionPresentation::Sample_Frame()
     for (const auto& id : phase.instanceIds)
         if (!m_Active->Seek_InstanceToMs(id, static_cast<float>(sampleMs), m_Targets, false))
         { m_Status = "Class selection world sample failed: " + id + "; " + m_Active->Get_Status(); return false; }
+    return Sample_Camera(phase, sampleMs) && Sample_MaterialsAndLights(phase, sampleMs) && Sample_Effects(phase, sampleMs);
+}
+
+bool CClassSelectionPresentation::Sample_Camera(const PHASE& phase, const float sampleMs)
+{
+    const auto camera = m_Camera.lock();
+    if (!camera) { m_Status = "Class selection camera was released."; return false; }
     const uint32_t timeMs = static_cast<uint32_t>(sampleMs);
     const auto row = std::find_if(phase.cameras.begin(), phase.cameras.end(),
         [timeMs](const EFFECT_CAMERA_ROW& value)
@@ -932,7 +939,7 @@ bool CClassSelectionPresentation::Sample_Frame()
         up, pose.fFovYDegrees))
     { m_Status = "Class selection camera ownership was lost."; return false; }
     m_CameraSample = {true, row->id, m_ElapsedMs, static_cast<double>(timeMs), camera->Get_AspectRatio(), pose, up};
-    return Sample_MaterialsAndLights(phase, sampleMs) && Sample_Effects(phase, sampleMs);
+    return true;
 }
 
 bool CClassSelectionPresentation::Sample_Effects(const PHASE& phase, const float sampleMs)
@@ -971,6 +978,8 @@ bool CClassSelectionPresentation::Sample_Effects(const PHASE& phase, const float
             desc.fInitialSampleTimeSeconds = age;
             desc.bExternallySampled = true;
             desc.fSourceLoopEndSeconds = end;
+            if (const auto preview = m_EffectPreviews.find(track.assetId); preview != m_EffectPreviews.end())
+                desc.pAuthoringPreview = preview->second;
             ACTIVE_EFFECT value;
             value.assetId = track.assetId;
             if (!CEffectPresentationService::Spawn_LevelPlacement(desc, value.handle, m_Status)) return false;
@@ -1012,6 +1021,43 @@ bool CClassSelectionPresentation::Sample_Effects(const PHASE& phase, const float
     }
     return true;
 }
+
+bool CClassSelectionPresentation::Preview_EffectDocument(
+    const EFFECT_DOCUMENT_DESC& document, std::string& status)
+{
+    const auto& scenes = m_Authoring ? m_Authoring->scenes : m_Scenes;
+    bool used = false;
+    for (const auto& scene : scenes)
+        for (const auto* phase : {&scene.intro, &scene.loop})
+            for (const auto& effect : phase->effects)
+                used |= effect.assetId == document.strEffectAssetId;
+    if (!used || !m_Targets.Is_Complete())
+    { status = "This Effect does not belong to an admitted class-selection Movie."; return false; }
+    std::shared_ptr<const EFFECT_WORLD_PREVIEW_TARGET> target;
+    if (!CEffectPresentationService::Prepare_WorldPreviewTarget(m_Targets.device,
+        m_Targets.context, document, target, status)) return false;
+    std::vector<std::pair<EFFECT_WORLD_ROOT_HANDLE,
+        std::shared_ptr<const EFFECT_WORLD_PREVIEW_TARGET>>> replacements;
+    for (const auto& [id, active] : m_Effects)
+        if (active.assetId == document.strEffectAssetId) replacements.emplace_back(active.handle, target);
+    if (!CEffectPresentationService::Replace_WorldRootPreviews(replacements, status)) return false;
+    m_EffectPreviews.insert_or_assign(document.strEffectAssetId, std::move(target));
+    status = "Movie Effect draft applied; character animation and Movie time are preserved. Save Changes persists the Effect.";
+    return true;
+}
+
+bool CClassSelectionPresentation::Clear_EffectPreviews(std::string& status)
+{
+    std::vector<std::pair<EFFECT_WORLD_ROOT_HANDLE,
+        std::shared_ptr<const EFFECT_WORLD_PREVIEW_TARGET>>> replacements;
+    for (const auto& [id, active] : m_Effects)
+        if (m_EffectPreviews.contains(active.assetId)) replacements.emplace_back(active.handle, nullptr);
+    if (!CEffectPresentationService::Replace_WorldRootPreviews(replacements, status)) return false;
+    m_EffectPreviews.clear();
+    status = "Movie Effect preview returned to the latest saved runtime definitions.";
+    return true;
+}
+
 
 void CClassSelectionPresentation::Stop_Effects()
 {
@@ -1143,6 +1189,7 @@ void CClassSelectionPresentation::Clear()
 {
     Stop();
     m_Authoring.reset();
+    m_EffectPreviews.clear();
     m_Resources.Clear();
     m_Targets = {};
     m_Camera.reset();

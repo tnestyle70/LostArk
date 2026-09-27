@@ -2,7 +2,7 @@
   "schema": "lostark.world-gameplay",
   "formatVersion": 6,
   "areaId": "LV_BER_BERNCASTLE",
-  "revision": 921,
+  "revision": 922,
   "placements": [
     {
       "placementId": "castle",
@@ -962,6 +962,39 @@
       "behavior": null,
       "position": [189.815994, 49.1100006, -146.669006],
       "yawDegrees": 276.859985,
+      "enabled": true
+    },
+    {
+      "placementId": "npc.bern.ship.shipwright.1",
+      "kind": "npc",
+      "archetypeId": "NPC_SHIP_SHIPWRIGHT",
+      "encounterId": null,
+      "idleClip": null,
+      "behavior": null,
+      "position": [271.59, 12.43, -196.7],
+      "yawDegrees": 259.6,
+      "enabled": true
+    },
+    {
+      "placementId": "npc.bern.ship.shipwright.2",
+      "kind": "npc",
+      "archetypeId": "NPC_SHIP_SHIPWRIGHT",
+      "encounterId": null,
+      "idleClip": null,
+      "behavior": null,
+      "position": [229.61, 12.47, -196.5],
+      "yawDegrees": 259.6,
+      "enabled": true
+    },
+    {
+      "placementId": "npc.bern.ship.harbormaster.1",
+      "kind": "npc",
+      "archetypeId": "NPC_SHIP_HARBORMASTER",
+      "encounterId": null,
+      "idleClip": null,
+      "behavior": null,
+      "position": [264.41, 11.79, -204.03],
+      "yawDegrees": 2.4,
       "enabled": true
     },
     {

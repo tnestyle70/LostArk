@@ -1,4 +1,5 @@
 #include "Part_Vehicle.h"
+#include "Character.h"
 #include "BinaryAsset/ModelAssetData.h"
 
 #include "DeferredMaterialRenderUtils.h"
@@ -69,6 +70,7 @@ HRESULT CPart_Vehicle::Initialize(void* pArg)
 	m_strIdleClip = pDesc->strIdleClip;
 	m_strRunClip = pDesc->strRunClip;
 	m_strSeatBone = pDesc->strSeatBone;
+	m_vSeatOffset = pDesc->vSeatOffset;
 
 	if (FAILED(__super::Initialize(pArg)) || FAILED(Ready_Components(pDesc)) ||
 		!m_pModelCom->Has_Bone(m_strSeatBone.c_str()) ||
@@ -415,7 +417,11 @@ bool_t CPart_Vehicle::Try_Get_SeatWorldPosition(float3_t& outPosition) const
 		XMLoadFloat4x4(m_pTransformCom->Get_WorldMatrixPtr()) *
 		XMLoadFloat4x4(m_pParentMatrix);
 	float3_t staged{};
-	XMStoreFloat3(&staged, seat.r[3]);
+	/* The offset is in the vehicle root frame (metres), so it turns with the vehicle. */
+	const matrix_t rootFrame = XMLoadFloat4x4(m_pTransformCom->Get_WorldMatrixPtr()) *
+		XMLoadFloat4x4(m_pParentMatrix);
+	XMStoreFloat3(&staged, XMVectorAdd(seat.r[3],
+		XMVector3TransformNormal(XMLoadFloat3(&m_vSeatOffset), rootFrame)));
 	if (!std::isfinite(staged.x) || !std::isfinite(staged.y) || !std::isfinite(staged.z))
 		return false;
 	outPosition = staged;
@@ -450,8 +456,15 @@ void CPart_Vehicle::Update(f32_t fTimeDelta)
 	if (flight) Apply_FlightHeadIK(fTimeDelta);
 }
 
+bool_t CPart_Vehicle::Is_CharacterPresentationHidden() const
+{
+	const auto owner = m_pCharacterPresentationOwner.lock();
+	return owner && owner->Is_WorldPresentationHidden();
+}
+
 void CPart_Vehicle::Late_Update(f32_t fTimeDelta)
 {
+	if (Is_CharacterPresentationHidden()) return;
 	CGameInstance::Get().Add_RenderObject(
 		RENDERGROUP::NONBLEND,
 		static_pointer_cast<CGameObject>(shared_from_this()));
@@ -471,6 +484,7 @@ void CPart_Vehicle::Late_Update(f32_t fTimeDelta)
 
 HRESULT CPart_Vehicle::Render()
 {
+	if (Is_CharacterPresentationHidden()) return S_OK;
 	if (FAILED(Bind_ShaderResources()))
 		return E_FAIL;
 
@@ -504,6 +518,7 @@ HRESULT CPart_Vehicle::Render_Group(RENDERGROUP group)
 
 HRESULT CPart_Vehicle::Render_Translucent()
 {
+	if (Is_CharacterPresentationHidden()) return S_OK;
 	if (FAILED(Bind_ShaderResources()) ||
 		FAILED(CMapAssetRenderUtils::Bind_SourceCharacterForwardLights(m_pShaderCom)))
 		return E_FAIL;
@@ -527,6 +542,7 @@ HRESULT CPart_Vehicle::Render_Translucent()
 
 HRESULT CPart_Vehicle::Render_Shadow()
 {
+	if (Is_CharacterPresentationHidden()) return S_OK;
 	constexpr uint32_t ANIMATED_SHADOW_PASS = 1u;
 	if (FAILED(Bind_ShadowShaderResources()))
 		return E_FAIL;

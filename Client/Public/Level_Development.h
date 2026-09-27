@@ -10,6 +10,7 @@ NS_BEGIN(Client)
 
 class CCamera_Free;
 class CCharacter;
+class CMapLightPresentationRuntime;
 class IPlayerCommandSink;
 
 class CLevel_Development final : public CLevel
@@ -45,6 +46,9 @@ private:
 	// Registry entry this instance plays; only DEVELOPMENT may open the Map Editor.
 	LEVEL m_eLevel = LEVEL::DEVELOPMENT;
 	CMapPlacementRuntime m_MapRuntime;
+	// Maharaka only: the published source lights of the island, submitted every frame.
+	shared_ptr<CMapLightPresentationRuntime> m_pMapLightPresentation;
+	bool_t m_bMapLightSubmissionFailureReported = false;
 	bool_t m_isMapEditorWorkspace = false;
 	weak_ptr<CCamera_Free> m_pCamera;
 	weak_ptr<CCharacter> m_pCameraTarget;

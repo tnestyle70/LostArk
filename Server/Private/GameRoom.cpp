@@ -716,6 +716,11 @@ LostArk::Server::CGameRoom::Begin_MarioTriggerMove(
 		});
 	if (terminal)
 	{
+		if (Mario_MatchingBallCount(player) < 3u)
+		{
+			m_strStatus = "Break three balls of the marked colour before leaving Mario";
+			return Result::RETRY_WHILE_INSIDE;
+		}
 		SERVER_NAV_POINT ground{};
 		if (!Resolve_MarioReturnDestination(player, ground)) return Result::RETRY_WHILE_INSIDE;
 		Refresh_PlayerBlockingBodies();

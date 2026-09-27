@@ -202,6 +202,7 @@ public:
 	void Set_ScreenPostCaptureAllowed(bool_t allowed);
 	void Set_ScreenPostPlaybackEnd(f32_t endSeconds);
 	void Set_Visible(bool_t bVisible);
+    bool_t Is_Visible() const { return m_bVisible; }
 	void Reset();
 	bool_t Enable_OwnerSustainedSourceLoops(std::string& strOutError)
 	{

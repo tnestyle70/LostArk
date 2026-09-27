@@ -131,6 +131,76 @@
 
 namespace
 {
+#ifdef _DEBUG
+    void ConfigureClassMovieEditor(Client::CEffect_Tool& tool)
+    {
+        CEffect_Tool::CLASS_MOVIE_CALLBACKS movieCallbacks;
+        movieCallbacks.state = [](const std::string& classId) {
+            CEffect_Tool::CLASS_MOVIE_STATE state;
+            auto* level = CLevel_CharacterSelect::Get_Active();
+            if (!level || CGameInstance::Get().Get_CurrentLevelID() != ETOUI(LEVEL::CHARACTER_SELECT))
+            { state.status = "Enter Character Select to edit this Movie."; return state; }
+            const auto& preview = level->Get_ClassSelectionPresentation();
+            state.available = level->Can_PlayClassCinematic() && preview.Has_Class(classId);
+            state.active = preview.Is_Active() && preview.Get_ActiveClass() == classId;
+            state.paused = preview.Is_Paused(); state.loop = preview.Is_Looping();
+            state.clockMs = preview.Get_ClockMs(); state.durationMs = preview.Get_DurationMs();
+            state.status = level->Get_ClassCinematicStatus();
+            return state;
+        };
+        movieCallbacks.timeline = [](const std::string& classId, bool loop) -> std::shared_ptr<const CLASS_MOVIE_TIMELINE> {
+            auto* level = CLevel_CharacterSelect::Get_Active();
+            return level && CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::CHARACTER_SELECT) ?
+                level->Get_ClassSelectionPresentation().Get_Timeline(classId, loop) : nullptr;
+        };
+        movieCallbacks.play = [](const std::string& classId, std::string& status) {
+            auto* level = CLevel_CharacterSelect::Get_Active();
+            if (!level || CGameInstance::Get().Get_CurrentLevelID() != ETOUI(LEVEL::CHARACTER_SELECT))
+            { status = "Enter Character Select to play this Movie."; return false; }
+            const auto& options = level->Get_ClassMovieOptions();
+            const auto option = std::find_if(options.begin(), options.end(), [&](const auto& value) { return value.classId == classId; });
+            const bool played = option != options.end() && level->Select_ClassMovieCategory(static_cast<size_t>(std::distance(options.begin(), option))) &&
+                level->Can_PlayClassCinematic() && level->Play_ClassCinematic(classId);
+            status = level->Get_ClassCinematicStatus();
+            return played;
+        };
+        movieCallbacks.seek = [](const std::string& classId, bool loop, double timeMs, std::string& status) {
+            auto* level = CLevel_CharacterSelect::Get_Active();
+            if (!level || CGameInstance::Get().Get_CurrentLevelID() != ETOUI(LEVEL::CHARACTER_SELECT) || !level->Can_PlayClassCinematic())
+            { status = "Wait for Character Select admission and close other character previews."; return false; }
+            const auto& options = level->Get_ClassMovieOptions();
+            const auto option = std::find_if(options.begin(), options.end(), [&](const auto& value) { return value.classId == classId; });
+            if (option == options.end() || !level->Select_ClassMovieCategory(static_cast<size_t>(std::distance(options.begin(), option))))
+            { status = "This Movie category is no longer available."; return false; }
+            auto& preview = level->Get_ClassSelectionPresentation();
+            // Level Play establishes the selected background before the shared seek.
+            if ((!preview.Is_Active() || preview.Get_ActiveClass() != classId) && !level->Play_ClassCinematic(classId))
+            { status = level->Get_ClassCinematicStatus(); return false; }
+            const bool sampled = preview.Seek(classId, loop, timeMs);
+            if (sampled) preview.Set_Paused(true);
+            status = level->Get_ClassCinematicStatus();
+            return sampled;
+        };
+        movieCallbacks.pause = [](bool paused) {
+            if (auto* level = CLevel_CharacterSelect::Get_Active()) level->Get_ClassSelectionPresentation().Set_Paused(paused);
+        };
+        movieCallbacks.stop = [] {
+            if (auto* level = CLevel_CharacterSelect::Get_Active()) level->Get_ClassSelectionPresentation().Stop();
+        };
+        movieCallbacks.preview = [](const EFFECT_DOCUMENT_DESC& document, std::string& status) {
+            auto* level = CLevel_CharacterSelect::Get_Active();
+            if (!level || CGameInstance::Get().Get_CurrentLevelID() != ETOUI(LEVEL::CHARACTER_SELECT))
+            { status = "Movie Effect preview requires Character Select."; return false; }
+            return level->Get_ClassSelectionPresentation().Preview_EffectDocument(document, status);
+        };
+        movieCallbacks.clearPreviews = [](std::string& status) {
+            auto* level = CLevel_CharacterSelect::Get_Active();
+            return !level || CGameInstance::Get().Get_CurrentLevelID() != ETOUI(LEVEL::CHARACTER_SELECT) ||
+                level->Get_ClassSelectionPresentation().Clear_EffectPreviews(status);
+        };
+        tool.Set_ClassMovieCallbacks(std::move(movieCallbacks));
+    }
+#endif
     void WriteStartupDiagnostic(const char* stage, const HRESULT result,
         const std::string& status)
     {
@@ -419,6 +489,12 @@ void CMainApp::Play_UIButtonClickSound()
 	const filesystem::path soundPath = CRuntimeAssetRoot::Resolve(
 		L"Sound/UI/Select/ui_default_button_click2__59426200.wav");
 	CGameInstance::Get().Play_Sound(soundPath.wstring(), 1.f);
+}
+
+void CMainApp::Open_ShipWindow()
+{
+	if (nullptr != m_pVehicleWindowView)
+		m_pVehicleWindowView->Open_Ships();
 }
 
 void CMainApp::Open_ItemUpgradeWindow()
@@ -1630,7 +1706,10 @@ void CMainApp::UpdateKoukuGateCompletePlay()
 
 void CMainApp::Sync_KoukuCinematicUI()
 {
-	const auto* arena = CLevel_KakulSaydonArena::Get_Active();
+	auto* arena = CLevel_KakulSaydonArena::Get_Active();
+	// Composition camera sampling follows Engine.Late_Update; refresh the
+	// character owner before queued body/equipment/shadow draws consume it.
+	if (arena) arena->Sync_CinematicPlayerVisibility();
 	const bool_t suppressed = arena &&
 		CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::KAKULSAYDON_ARENA) &&
 		arena->Is_CinematicPresentationActive();
@@ -2227,6 +2306,7 @@ void CMainApp::Update(const f32_t fTimeDelta)
                 for (const auto& option : level->Get_ClassMovieOptions())
                     movies.push_back({option.classId, option.label});
             m_pEffectTool->Set_ClassMovieResources(std::move(movies));
+
             m_pEffectTool->Set_AuthoringCamera(effectCamera);
             {
                 Engine::CProfilerScope toolScope(CGameInstance::Get().Get_Profiler(), "ImGui.Tool.EffectV1.Update_AuthoringWorkspace");
@@ -3378,6 +3458,20 @@ void CMainApp::Update(const f32_t fTimeDelta)
     const bool_t marioStage = cinematicArena &&
         CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::KAKULSAYDON_ARENA) &&
         cinematicArena->Is_LocalMarioStageActive();
+    /* Riding a ship is the only non-cinematic owner of the presentation fog. The ride's lens
+    sits 40 m back and Bern's fog takes the source-exponential branch, which accumulates over
+    camera-to-pixel distance past startDistance, so the same authored fog that stayed invisible
+    behind the 16 m map camera washes the whole frame. Data/Camera/Bern.camera.json "shipFog"
+    tunes it without a rebuild; with no block the fog is simply off while riding. */
+    const ARENA_SHIP_FOG* pShipFog = CLevel_Bern::Get_ActiveShipFog();
+    PRESENTATION_FOG_TUNING shipFogTuning{};
+    const bool_t shipFogThinned = nullptr != pShipFog && !pShipFog->disable;
+    if (shipFogThinned)
+    {
+        shipFogTuning.fDensityScale = pShipFog->densityScale;
+        shipFogTuning.fStartDistanceMeters = pShipFog->startDistanceMeters;
+        shipFogTuning.fMaximumOpacity = pShipFog->maximumOpacity;
+    }
     const auto localCharacter = CAnimationTargetService::Resolve_SceneCharacter();
     float vehicleBrightness = localCharacter ? localCharacter->Get_VehicleDirectionalBrightness() : 1.f;
     float controlsBrightness=1.f;float4_t controlsColor{};
@@ -3386,7 +3480,8 @@ void CMainApp::Update(const f32_t fTimeDelta)
         localCharacter->Get_PresentationDirectionalControl(controlsBrightness,controlsColor);
     vehicleBrightness=std::clamp(vehicleBrightness*controlsBrightness,0.f,16.f);
     if (!m_RenderingProfiles.Apply_CameraEnvironment(fTimeDelta, environmentStatus,
-        koukuCinematic || valtanCinematic || marioStage, nullptr, vehicleBrightness, &controlsColor))
+        koukuCinematic || valtanCinematic || marioStage || nullptr != pShipFog, nullptr,
+        vehicleBrightness, &controlsColor, shipFogThinned ? &shipFogTuning : nullptr))
         OutputDebugStringA((environmentStatus + "\n").c_str());
 	}
 
@@ -3920,6 +4015,8 @@ HRESULT CMainApp::Render()
             }
         }
 		{
+			if (m_bKoukuBingoHammerColliders)
+				if (auto* arena = CLevel_KakulSaydonArena::Get_Active()) arena->Debug_DrawBingoHammerColliders();
 			Engine::CProfilerScope cpuPhaseScope(CGameInstance::Get().Get_Profiler(), "ImGui.BackendSubmit");
 		Engine::CProfilerGpuScope gpuPhaseScope(CGameInstance::Get().Get_Profiler(), "ImGui.BackendSubmit");
 			m_pImGuiLayer->EndFrame();
@@ -3960,7 +4057,7 @@ HRESULT CMainApp::Render()
 		(ETOUI(LEVEL::CHARACTER_SELECT) == CGameInstance::Get().Get_CurrentLevelID() &&
 			nullptr != CLevel_CharacterSelect::Get_Active() &&
 			CLevel_CharacterSelect::Get_Active()->Is_ProductPresentationOpen());
-	if (!isCharSelectOverlayOpen && !Is_MvpResultPageOpen())
+	if (!isCharSelectOverlayOpen && !Is_MvpResultPageOpen() && !Is_KoukuMinigameHUDHidden())
 	{
 		CUITextLayerScope HudText(UI_TEXT_LAYER::HUD);
 		RenderCombatHUDText();
@@ -4133,6 +4230,14 @@ void CMainApp::Update_CombatHUD(const f32_t fTimeDelta)
 	Engine::CProfilerScope scope(CGameInstance::Get().Get_Profiler(), "UI.Runtime.CombatHUD.Update");
 	if (nullptr == m_pHUDRuntimeView)
 		return;
+
+	if (Is_KoukuMinigameHUDHidden())
+	{
+		Hide_CombatHUD();
+		if (m_pCombatAnalysisView) m_pCombatAnalysisView->Hide();
+		if (m_pQuickSlotDragView) { m_pQuickSlotDragView->Cancel(); m_pQuickSlotDragView->Hide(); }
+		return;
+	}
 
 	const uint32_t currentLevel = CGameInstance::Get().Get_CurrentLevelID();
 	const bool_t isSupportedLevel =
@@ -5643,6 +5748,16 @@ void CMainApp::Update_LobbyButtons(const f32_t fTimeDelta)
 	m_pLobbyBackgroundView->Update(fTimeDelta);
 }
 
+bool_t CMainApp::Is_KoukuMinigameHUDHidden() const
+{
+	if (ETOUI(LEVEL::KAKULSAYDON_ARENA) != CGameInstance::Get().Get_CurrentLevelID())
+		return false;
+	const auto gimmick = CCombatHUDViewModel::Get().Get_KoukuGimmick();
+	return gimmick.isValid &&
+		(gimmick.eHudMode == HUD_KOUKU_HUD_MODE::MAZE ||
+		 gimmick.eHudMode == HUD_KOUKU_HUD_MODE::DANCE);
+}
+
 bool_t CMainApp::Is_RuntimeUIScreenSuppressed() const
 {
 	return CUIInputRouter::Get().Is_CinematicSuppressed() ||
@@ -5927,7 +6042,7 @@ void CMainApp::Update_Minimap(const f32_t fTimeDelta)
 	}
 	/* Part of the in-game HUD, so it clears for the award page like the rest.
 	   A null snapshot is this view's own documented "hide every slot". */
-	if (Is_MvpResultPageOpen())
+	if (Is_MvpResultPageOpen() || Is_KoukuMinigameHUDHidden())
 		bHasSnapshot = false;
 	m_pMinimapView->Update(fTimeDelta, eLevel, bHasSnapshot ? &Snapshot : nullptr);
 	/* The world map window reads the same marker snapshot; it hides itself without one. */
@@ -7538,7 +7653,7 @@ void CMainApp::Update_BossImmuneGauge(const f32_t fTimeDelta)
 	const bool_t skillWindowOpen =
 		nullptr != m_pSkillWindowView && m_pSkillWindowView->Is_Open();
 	m_pBossImmuneGaugeView->Update(fTimeDelta,
-		CCombatHUDViewModel::Get().Get_Boss(), isSupportedLevel && !skillWindowOpen);
+		CCombatHUDViewModel::Get().Get_Boss(), isSupportedLevel && !skillWindowOpen && !Is_KoukuMinigameHUDHidden());
 }
 
 void CMainApp::Update_BossHealthBar()
@@ -7578,7 +7693,7 @@ void CMainApp::Update_BossHealthBar()
 			CLevel_CharacterSelect::Get_Active()->Is_ProductPresentationOpen());
 
 	const HUD_BOSS_STATE& boss = CCombatHUDViewModel::Get().Get_Boss();
-	if (!isSupportedLevel || skillWindowOpen || isCharSelectOverlayOpen ||
+	if (!isSupportedLevel || skillWindowOpen || isCharSelectOverlayOpen || Is_KoukuMinigameHUDHidden() ||
 		Is_MvpResultPageOpen() ||
 		!boss.isValid || 0u == boss.iMaximumHp)
 	{
@@ -7938,7 +8053,7 @@ void CMainApp::RenderDeadSceneText()
 	DeadScene_TitleTextMarker/_ReviveButton/_SpectateButton/_ReviveMessageMarker slot rects out of
 	its own m_pDeadSceneView every frame -- moving any of those in the HUD Layout Tool moves this
 	text with them, instead of a hand-copied constant here drifting out of sync the way it just did. */
-	const wstring strTitle = L"\xC0AC\xB9DD\xD558\xC600\xC2B5\xB2C8\xB2E4"; // 사망하였습니다
+	const wstring strTitle = L"\xC0AC\xB9DD\xD558\xC600\xC2B5\xB2C8\xB2E4"; // 사망하였습니다 
 	const float2_t vTitleMeasured =
 		CGameInstance::Get().Measure_Text(TEXT("Font_YoonGasiIIM"), strTitle.c_str());
 	const f32_t fTitleScale = (vTitleMeasured.y > 0.f) ?
@@ -7948,7 +8063,7 @@ void CMainApp::RenderDeadSceneText()
 			(rects.fTitleY + rects.fTitleHeight * 0.5f) * textScaleY),
 		Colors::White, 0.f, float2_t(0.5f, 0.5f), fTitleScale * textUiScale);
 
-	const wstring strReviveLabel = L"\xBD80\xD65C"; // 부활
+	const wstring strReviveLabel = L"\xBD80\xD65C"; // 부활 
 	const float2_t vReviveMeasured =
 		CGameInstance::Get().Measure_Text(TEXT("Font_YoonGasiIIM"), strReviveLabel.c_str());
 	const f32_t fReviveScale = (vReviveMeasured.y > 0.f) ?
@@ -7958,7 +8073,7 @@ void CMainApp::RenderDeadSceneText()
 			(rects.fReviveTextY + rects.fReviveTextHeight * 0.5f) * textScaleY),
 		Colors::White, 0.f, float2_t(0.5f, 0.5f), fReviveScale * textUiScale);
 
-	const wstring strSpectateLabel = L"\xAD00\xC804\xD558\xAE30"; // 관전하기
+	const wstring strSpectateLabel = L"\xAD00\xC804\xD558\xAE30"; // 관전하기 
 	const float2_t vSpectateMeasured =
 		CGameInstance::Get().Measure_Text(TEXT("Font_YoonGasiIIM"), strSpectateLabel.c_str());
 	const f32_t fSpectateScale = (vSpectateMeasured.y > 0.f) ?
@@ -8002,7 +8117,7 @@ void CMainApp::RenderRaidClearText()
 		/* Real loc key traced from epicgatecommonclear.gfx's clearTF field (fontClass=$YoonGasiIIM,
 		white, initialText="[$]commander.dungeon_clear") -- this project has no loc-key table, so
 		the real Korean string it resolves to in the reference screenshot is used directly. */
-		const wstring strTitle = L"\xB358\xC804 \xD074\xB9AC\xC5B4"; // 던전 클리어
+		const wstring strTitle = L"\xB358\xC804 \xD074\xB9AC\xC5B4"; // 던전 클리어 
 		const float2_t vTitleMeasured =
 			CGameInstance::Get().Measure_Text(TEXT("Font_YoonGasiIIM"), strTitle.c_str());
 		const f32_t fTitleScale = (vTitleMeasured.y > 0.f) ?
@@ -8019,7 +8134,7 @@ void CMainApp::RenderRaidClearText()
 	// overlay itself has finished (isButtonValid), never together with isValid.
 	if (rects.isButtonValid)
 	{
-		const wstring strReturnLabel = L"\xB3CC\xC544\xAC00\xAE30"; // 돌아가기
+		const wstring strReturnLabel = L"\xB3CC\xC544\xAC00\xAE30"; // 돌아가기 
 		const float2_t vReturnMeasured =
 			CGameInstance::Get().Measure_Text(TEXT("Font_YoonGasiIIM"), strReturnLabel.c_str());
 		const f32_t fScaleByHeight = (vReturnMeasured.y > 0.f) ?
@@ -8378,7 +8493,7 @@ void CMainApp::Update_EstherGauge(const f32_t fTimeDelta)
 	const bool_t isRaidArena =
 		ETOUI(LEVEL::VALTAN_ARENA) == currentLevel ||
 		ETOUI(LEVEL::KAKULSAYDON_ARENA) == currentLevel;
-	if (!isRaidArena || 0u == maximum || skillWindowOpen ||
+	if (!isRaidArena || 0u == maximum || skillWindowOpen || Is_KoukuMinigameHUDHidden() ||
 		!CCombatHUDViewModel::Get().Get_Player().isValid)
 	{
 		Hide_EstherUI();
@@ -9982,6 +10097,7 @@ HRESULT CMainApp::EnsureDebugTool(const DEBUG_TOOL eTool, const bool_t bShowWind
 			}
 		}
         m_pEffectTool->Configure_AuthoringWorkspace(m_pKoukuPresentationPlayer.get());
+                ConfigureClassMovieEditor(*m_pEffectTool);
         m_pEffectTool->Set_KoukuPatternPreviewProvider(
             [this](const std::string& effectId, EFFECT_TOOL_KOUKU_PATTERN_PREVIEW& context, std::string& status)
             {
@@ -10121,6 +10237,7 @@ HRESULT CMainApp::EnsureDebugTool(const DEBUG_TOOL eTool, const bool_t bShowWind
 				m_pEffectTool = make_unique<CEffect_Tool>(m_pDevice, m_pContext,
 					m_pCharacterPreviewPanel, m_pBalanceTool.get());
 				m_pEffectTool->Configure_AuthoringWorkspace(m_pKoukuPresentationPlayer.get());
+                ConfigureClassMovieEditor(*m_pEffectTool);
 			}
 			m_pCharacterActionWorkbench = make_unique<CCharacterActionWorkbench>(m_pCharacterPreviewPanel,
 				m_pEffectTool->Create_CompositionSequencer("character.actions"), m_pAnimationTool.get());
@@ -10246,12 +10363,12 @@ HRESULT CMainApp::EnsureDebugTool(const DEBUG_TOOL eTool, const bool_t bShowWind
                 auto* level = CLevel_CharacterSelect::Get_Active();
                 return level && level->Get_ClassSelectionPresentation().Reload_Authoring(status);
             };
-            classSelection.openEffectEditor = [this](const std::string& assetId, std::string& status) {
-                EnsureDebugTool(DEBUG_TOOL::EFFECT);
-                if (!m_pEffectTool || !m_pEffectTool->Open_AuthoringResource({EFFECT_RESOURCE_OWNER_KIND::V1_DOCUMENT, assetId}))
-                { status = "The selected Effect could not be opened; its existing editor draft was preserved."; return false; }
-                if (auto* level = CLevel_CharacterSelect::Get_Active()) level->Get_ClassSelectionPresentation().Stop();
-                status = "Edit and Save this Effect, then return to the Movie and Play. Save refreshes the same prepared Effect target.";
+            classSelection.openEffectEditor = [this](const std::string& classId, bool loop, const std::string& assetId, std::string& status) {
+                if (FAILED(EnsureDebugTool(DEBUG_TOOL::EFFECT)) || !m_pEffectTool ||
+                    !m_pEffectTool->Open_ClassMovie(classId, loop, assetId))
+                { status = "The Movie Effect could not be opened. Inspect V1 Movie status; current unsaved work is preserved."; return false; }
+                m_eDebugInputOwner = DEBUG_TOOL::EFFECT;
+                status = "Movie Effect opened in V1. Edit Elements with the Movie actors; Play All replays the complete Movie.";
                 return true;
             };
             m_pSequencerTool->Set_ClassSelectionPreviewCallbacks(std::move(classSelection));
@@ -12041,6 +12158,7 @@ void CMainApp::RenderKoukuSaydonCompletePlayControls()
 		bodyVisibility.bBossBodyCollider = showBodyColliders;
 		CClientReplication::Set_GlobalCombatDebugVisibility(bodyVisibility);
 	}
+	ImGui::Checkbox("Bingo Hammer Colliders##KoukuCompletePlay", &m_bKoukuBingoHammerColliders);
 	static const char* labels[] = { "\x31\xEA\xB4\x80\xEB\xAC\xB8", "\x32\xEA\xB4\x80\xEB\xAC\xB8", "\x33\xEA\xB4\x80\xEB\xAC\xB8", "\xEB\xB9\x99\xEA\xB3\xA0" };
 	static const char* gates[] = { "GATE1", "GATE2", "GATE3", "BINGO" };
 	m_iKoukuCompletePlayGate = (std::clamp)(m_iKoukuCompletePlayGate, 0, 3);

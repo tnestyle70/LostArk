@@ -415,6 +415,22 @@ Save와 Map publisher는 같은 field를 보존·검사하며 추출 generator�
 객체의 원본 shader 복원이 완료됐음을 뜻하지도 않는다. 공통 추출 절차는
 [렌더링·이펙트 복원 V2](../GB/렌더링이펙트복원V2.md#오브젝트-추출에서-재질환경-입력을-보존하는-공통-절차)를 따른다.
 
+WorldSequence v3 template의 optional `materialTracks`는 기존 Object의 원본 재질 상수를 같은
+Motion 시계에서 바꾼다. 각 행은 `{ slotId, materialName, curves }`이며 curve는
+`{ parameter, keys }`, key는 `{ timeMs, value: [x,y,z,w], interpolation }`이다.
+`interpolation`은 `LINEAR` 또는 왼쪽 값을 유지하는 `CONSTANT`다. 첫 key는0ms, 마지막 key는
+Motion duration이며 시간은 엄격히 증가한다. 행당 curve1..64개, curve당 key1..4096개이고,
+material 행도 template 전체64행 예산에 포함된다. 대상은 같은 슬롯의 `OBJECT_RESOURCE`이며
+그 resource의 inline `materialProfile.materialName`과 정확히 일치해야 한다. curve parameter는
+그 profile에 이미 정의된 named parameter만 허용한다. 재질 family·기본값·texture는 profile이
+소유하고 track은 이를 복제하지 않는다.
+
+`CWorldSequencePlayer`는 기존 emission의 나이로 원본 `SOURCE_CHARACTER` constants를 packing하고
+현재 clone에만 적용한다. seek/rewind는 profile 기본값부터 다시 계산하며 prototype이나 다른
+객체에 전파하지 않는다. Save/Load·동등성·publisher가 같은 field를 보존·검사하고 잘못된 입력은
+기존 문서를 보존한다. Stage duration 연장은 held material tail을 늘리고, 재질 전환을 잘라내는
+축소는 거부한다. 별도 재질 renderer나 전역 rendering profile 변경은 없다.
+
 optional `mapMaterialBindings`는 최대 64개 `{ materialName, sourceAssetId, sourceMaterialName,
 diffuseTextureAssetId?, unlit? }`다. target `materialName`은 새 WModel의 실제 slot이고 source는 해당
 Area catalog에서 승인한 `SOURCE_BG_OPAQUE_MASKED` 재질 행이다. optional diffuse만 별도로
@@ -853,7 +869,7 @@ Area 진입 시 여섯 class binary를 모두 선로드하지 않는다. Lobby�
 `cameraTrack.keyframes[]`는 기존 `eye`, `lookAt`, `fovYDegrees`, `timeMs`에 optional
 `up` 3성분을 허용한다. `up`은 유한하고 길이가 0이 아니며 view 방향과 평행하지 않아야
 한다. 명시 방향이 있는 구간은 quaternion 최단 회전으로 roll까지 보간하고, 기존 up이
-없는 문서는 기존 eye/lookAt 보간을 유지한다. 첫 key는 0ms, 최대 64개, 시간은 엄격히
+없는 문서는 기존 eye/lookAt 보간을 유지한다. 첫 key는 0ms, 최대 128개, 시간은 엄격히
 증가하며 전체 track은 최대 120000ms다. 잘못된 편집이나 저장 충돌은 기존 shot을
 보존하고 실패 이유를 표시한다. 제품 재생은 기존 camera cue/sampler와 typed presentation
 경로를 사용하며 별도 camera runtime이나 저장 domain을 만들지 않는다.
@@ -867,7 +883,7 @@ World Object Tool → Object Resources에서 통합 묶음은 자식 없는 한 
 
 ### Object Motion의 Collider 행
 
-WorldSequence v3 template의 optional `colliderTracks`는 stable `colliderTrackId`, Transform `slotId`, `startMs`, `durationMs`, `positionOffset`, `halfExtents`, `yawDegrees`, `behavior`, `damagePercent`, `gripLocalOffset`을 저장한다. `attachmentBone`은 선택 필드다. 모든 Transform/Animation/Effect/Collider/Sound/Subtitle 행을 합해 64개 이하이며, 시간 창은 Motion 내부여야 한다. Collider가 있는 instance는 같은 슬롯에 WORLD Object Resource 하나를 바인딩한다.
+WorldSequence v3 template의 optional `colliderTracks`는 stable `colliderTrackId`, Transform `slotId`, `startMs`, `durationMs`, `positionOffset`, `halfExtents`, `yawDegrees`, `behavior`, `damagePercent`, `gripLocalOffset`을 저장한다. `attachmentBone`은 선택 필드다. 모든 Transform/Animation/Effect/Collider/Sound/Subtitle/Material 행을 합해 64개 이하이며, 시간 창은 Motion 내부여야 한다. Collider가 있는 instance는 같은 슬롯에 WORLD Object Resource 하나를 바인딩한다.
 
 optional `shape`는 생략하면 수평 BOX이며 CYLINDER도 지원한다. CYLINDER의 `halfExtents`는 `[radius, halfHeight, radius]`이고 X/Z 반경은 같아야 한다. Object/placement와 Motion scale을 적용하며 비균등 X/Z scale의 원통 반경은 큰 축을 사용한다. DAMAGE는 정수 1~100의 최대 HP 비율을 사용하고, INSTANT_DEATH와 HOOK_CAPTURE는 damagePercent 0을 사용한다. HOOK_CAPTURE는 BOX만 사용한다. 본과 grip은 HOOK_CAPTURE만 사용하며 본이 있으면 실제 animated CModel에서 존재해야 한다. 본 offset은 모델 import scale 적용 후, Object/placement scale 적용 전의 미터 단위다. 칼날의 시각적 자전이나 메시를 세우는 회전은 수평 판정의 방향을 바꾸지 않는다.
 

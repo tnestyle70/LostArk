@@ -1755,7 +1755,7 @@ function Read-WorldSequenceDocument {
         if ($document.formatVersion -eq 3 -and $null -ne $template.PSObject.Properties['objectMotion']) { $templateProperties += 'objectMotion' }
         if ($document.formatVersion -eq 3 -and $null -ne $template.PSObject.Properties['effectTracks']) { $templateProperties += 'effectTracks' }
         if ($document.formatVersion -eq 3 -and $null -ne $template.PSObject.Properties['colliderTracks']) { $templateProperties += 'colliderTracks' }
-        foreach ($lane in @('soundTracks','subtitleTracks')) {
+        foreach ($lane in @('soundTracks','subtitleTracks','materialTracks')) {
             if ($document.formatVersion -eq 3 -and $null -ne $template.PSObject.Properties[$lane]) { $templateProperties += $lane }
         }
         Assert-ExactJsonProperties $template $templateProperties 'World sequence template'
@@ -2061,11 +2061,11 @@ function Read-WorldSequenceDocument {
             }
         }
         $totalTracks = 0
-        foreach ($lane in @('tracks','animationTracks','effectTracks','colliderTracks','soundTracks','subtitleTracks')) {
+        foreach ($lane in @('tracks','animationTracks','effectTracks','colliderTracks','soundTracks','subtitleTracks','materialTracks')) {
             if ($null -ne $template.PSObject.Properties[$lane]) {
                 if ($template.$lane -isnot [System.Array]) { throw "World $lane must be an array" }
                 $totalTracks += @($template.$lane).Count
-                if ($lane -in @('soundTracks','subtitleTracks')) {
+                if ($lane -in @('soundTracks','subtitleTracks','materialTracks')) {
                     for ($rowIndex = 0; $rowIndex -lt $template.$lane.Count; ++$rowIndex) {
                         if ($null -eq $template.$lane[$rowIndex]) { throw "World $lane cannot contain null rows" }
                     }
@@ -2105,6 +2105,34 @@ function Read-WorldSequenceDocument {
                 if (-not (Test-JsonNumber $row.$field) -or [double]$row.$field -ne [math]::Floor([double]$row.$field)) { throw "Subtitle $field must be integer milliseconds" }
             }
             if ($row.startMs -lt 0 -or $row.durationMs -lt 1 -or [double]$row.startMs + [double]$row.durationMs -gt $template.durationMs) { throw 'World subtitle exceeds its template clock' }
+        }
+        $materialTargets = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+        foreach ($row in @($template.materialTracks | Where-Object { $null -ne $_ })) {
+            Assert-ExactJsonProperties $row @('slotId','materialName','curves') 'World material track'
+            if ($row.slotId -isnot [string] -or -not $slotIds.Contains($row.slotId) -or
+                $row.materialName -isnot [string] -or [Text.Encoding]::UTF8.GetByteCount($row.materialName) -notin 1..256 -or
+                $row.materialName -match '[\x00-\x1f\x7f]' -or -not $materialTargets.Add("$($row.slotId):$($row.materialName)") -or
+                $row.curves -isnot [System.Array] -or $row.curves.Count -notin 1..64) { throw 'Invalid World material target or curves' }
+            $parameters = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+            foreach ($curve in $row.curves) {
+                Assert-ExactJsonProperties $curve @('parameter','keys') 'World material curve'
+                if ($curve.parameter -isnot [string] -or [Text.Encoding]::UTF8.GetByteCount($curve.parameter) -notin 1..128 -or
+                    $curve.parameter -match '[\x00-\x1f\x7f]' -or -not $parameters.Add($curve.parameter) -or
+                    $curve.keys -isnot [System.Array] -or $curve.keys.Count -notin 1..4096) { throw 'Invalid World material curve' }
+                $previous = -1
+                foreach ($key in $curve.keys) {
+                    Assert-ExactJsonProperties $key @('timeMs','value','interpolation') 'World material key'
+                    if (-not (Test-JsonNumber $key.timeMs) -or $key.timeMs -ne [math]::Floor([double]$key.timeMs) -or
+                        $key.timeMs -le $previous -or $key.timeMs -gt $template.durationMs -or
+                        $key.value -isnot [System.Array] -or $key.value.Count -ne 4 -or
+                        $key.interpolation -cnotin @('LINEAR','CONSTANT')) { throw 'Invalid World material key time or interpolation' }
+                    foreach ($value in $key.value) {
+                        if (-not (Test-JsonNumber $value) -or [math]::Abs([double]$value) -gt 1000000) { throw 'Invalid World material key value' }
+                    }
+                    $previous = $key.timeMs
+                }
+                if ($curve.keys[0].timeMs -ne 0 -or $curve.keys[-1].timeMs -ne $template.durationMs) { throw 'World material curve must cover its motion' }
+            }
         }
         # One binding per slot, so a chained slot and a slot that also carries
         # a transform track each still count once.
@@ -2227,6 +2255,14 @@ function Read-WorldSequenceDocument {
             $template = $templateRows[$instance.templateId]
             $transformTracks = @($template.tracks | Where-Object { $_.slotId -ceq $binding.slotId })
             $animationTracks = @($template.animationTracks | Where-Object { $_.slotId -ceq $binding.slotId })
+            foreach ($material in @($template.materialTracks | Where-Object { $null -ne $_ -and $_.slotId -ceq $binding.slotId })) {
+                if ($binding.targetKind -cne 'OBJECT_RESOURCE' -or -not $objectResources.ContainsKey($binding.targetId)) { throw 'World material track requires an Object Resource' }
+                $profile = $objectResources[$binding.targetId].materialProfile
+                if ($null -eq $profile -or $profile.materialName -cne $material.materialName) { throw 'World material track requires its exact Object material profile' }
+                foreach ($curve in $material.curves) {
+                    if ($null -eq $profile.parameters.PSObject.Properties[$curve.parameter]) { throw "World material parameter is absent: $($curve.parameter)" }
+                }
+            }
             if ($binding.targetKind -eq 'OBJECT_RESOURCE') {
                 if (-not $objectResources.ContainsKey($binding.targetId)) { throw 'Unknown world object binding resource' }
                 $resource = $objectResources[$binding.targetId]

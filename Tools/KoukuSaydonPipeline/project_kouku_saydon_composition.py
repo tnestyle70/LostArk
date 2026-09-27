@@ -152,7 +152,7 @@ LOGIC_KIND_VALUE_KEYS = {
         "sectorCount", "sectorSymbols", "centerX", "centerZ", "outerRadiusM",
         "worldSequenceInstanceId", "regionIds",
     },
-    "GAZE_REAL_BOSS": {"halfAngleDegrees", "maxDistanceM", "insideOutcome"},
+    "GAZE_REAL_BOSS": {"halfAngleDegrees", "maxDistanceM", "insideOutcome", "gazeDuringWindow"},
     "POSE_INPUT": {"poseIndex"},
     "CARD_DICE_BIND": set(),
     "STAGGER_WINDOW": {"threshold", "shieldArcDegrees", "endsPatternOnSuccess", "normalYawOffsetDegrees"},
@@ -164,6 +164,7 @@ LOGIC_KIND_VALUE_KEYS = {
     "ATTACHMENT_HOLD": set(),
     "BOSS_TRACK_TARGET": {"followSpeedScale", "bombPresentationOccurrenceId", "bombExplosionPresentationOccurrenceId",
                           "bombSectorPresentationOccurrenceId", "bombSectorRadiusM", "bombSectorHalfAngleDegrees"},
+    "BOSS_RANDOM_TARGET": {"trackingPresentationOccurrenceId"},
     "BINGO_BOARD": set(),
     "BINGO_COMPLETED_LINES": {"threshold"},
     "PURSUIT_PROJECTILES": {"projectileHits", "visualIds", "cardSymbols", "contactVisualId", "speedMps", "contactRadiusM", "spawnRadiusM", "lifetimeMs", "spawnIntervalMs", "homing", "countPerWave", "maxDistanceM"},
@@ -601,6 +602,8 @@ def _validate_logic_definition(
             definition["directionPatternIds"] = [_stable_id(item, f"{context} directionPatternId") for item in candidates]
             definition["cloneEndStageId"] = _stable_id(logic.get("cloneEndStageId", ""), f"{context} cloneEndStageId")
             definition["summonOccurrenceId"] = _stable_id(logic.get("summonOccurrenceId", ""), f"{context} summonOccurrenceId")
+        elif kind == "BOSS_RANDOM_TARGET":
+            definition["trackingPresentationOccurrenceId"] = _stable_id(logic.get("trackingPresentationOccurrenceId", ""), f"{context} trackingPresentationOccurrenceId")
         elif kind == "BOSS_TRACK_TARGET":
             # Absent keeps the saved rotate-only window. A present scale multiplies the
             # tracked player's own move speed into the forward step the Server owns.
@@ -644,6 +647,10 @@ def _validate_logic_definition(
                 logic.get("worldSequenceInstanceId", ""), f"{context} worldSequenceInstanceId"
             )
         elif kind == "GAZE_REAL_BOSS":
+            during = logic.get("gazeDuringWindow", False)
+            if not isinstance(during, bool) or (during and logic.get("insideOutcome", "SUCCESS") != "FAIL"):
+                raise CompositionError(f"{context} gazeDuringWindow requires Boolean and facing outcome FAIL")
+            definition["gazeDuringWindow"] = during
             if logic.get("insideOutcome", "SUCCESS") not in {"SUCCESS", "FAIL"}:
                 raise CompositionError(f"{context} insideOutcome must be SUCCESS or FAIL")
             definition["halfAngleDegrees"] = _number(
@@ -2226,6 +2233,8 @@ def _validate_document(document: dict[str, Any], root: Path = REPOSITORY_ROOT) -
                 linked = [row for row in pattern.get("presentationOccurrences", []) if row.get("logicOccurrenceId") == box_id]
                 if not 1 <= len(linked) <= 64:
                     raise CompositionError(f"{box_context} INVULNERABILITY_ZONE needs 1..64 linked Colliders")
+            if owner.get("gazeDuringWindow", False) and outcomes["Success"]:
+                raise CompositionError(f"{box_context} gazeDuringWindow accepts only Fail outcomes")
             if kind in END_TICK_KINDS and outcomes["Timeout"]:
                 raise CompositionError(
                     f"{box_context} {kind} judges once at the window end and has no Timeout slot"
@@ -2556,6 +2565,7 @@ def _validate_document(document: dict[str, Any], root: Path = REPOSITORY_ROOT) -
                 _showtime_visual_template(document, pattern, [by_presentation[i] for i in identities], "fixed", random_mixed=True)
         _project_airborne_selected_effects(document, pattern)
         _project_track_bombs(document, pattern)
+        _random_target_windows(document, pattern)
         if status == "PRODUCT":
             _project_showtime_targets(document, pattern)
             _project_pursuit_projectiles(document, pattern)
@@ -3020,6 +3030,61 @@ def load_world_sequences(root: Path, area_id: str) -> dict[str, Any]:
     if path.stat().st_size > 16 * 1024 * 1024:
         raise CompositionError("World sequence source exceeds the Client 16 MiB admission limit")
     return load_json(path)
+
+
+def _project_bingo_hammer_geometry(sequences: dict[str, Any]) -> list[float]:
+    """Publish the same grounded head box sampled by WORLD collider preview."""
+    resource = next((r for r in sequences.get("objectResources", [])
+                     if r.get("objectId") == "world.object.kouku.bingo_hammer"), None)
+    if resource is None:
+        raise CompositionError("Bingo hammer WORLD resource is missing")
+    scale = resource.get("scale", [])
+    if len(scale) != 3 or any(not isinstance(v, (int, float)) or not math.isfinite(v) or v <= 0 for v in scale):
+        raise CompositionError("Bingo hammer Object scale must be positive and finite")
+    result = None
+    templates = {t["sequenceId"]: t for t in sequences.get("templates", [])}
+    for suffix, yaw, delta in (("x_plus", 0, [18.24, 0, 0]), ("x_minus", 0, [-18.24, 0, 0]),
+                               ("z_plus", 90, [0, 0, 18.24]), ("z_minus", 90, [0, 0, -18.24])):
+        template = templates.get("sequence.kouku.bingo.hammer." + suffix, {})
+        colliders = [r for r in template.get("colliderTracks", []) if r.get("colliderTrackId") == "collider.bingo.hammer.head"]
+        if len(colliders) != 1:
+            raise CompositionError("Bingo hammer requires one published head Collider in every direction")
+        collider = colliders[0]
+        half = collider.get("halfExtents", [])
+        if (collider.get("slotId") != "object" or collider.get("shape") != "BOX" or
+            collider.get("behavior") != "INSTANT_DEATH" or collider.get("attachmentBone", "") or
+            collider.get("startMs") != 4400 or collider.get("durationMs") != 1600 or
+            collider.get("yawDegrees") != yaw or collider.get("positionOffset") != [0, 1, 0] or
+            len(half) != 3 or any(not isinstance(v, (int, float)) or not math.isfinite(v) or v <= 0 for v in half)):
+            raise CompositionError("Bingo hammer head must match the grounded Server sweep contract")
+        tracks = [r for r in template.get("tracks", []) if r.get("slotId") == "object"]
+        keys = tracks[0].get("keys", []) if len(tracks) == 1 else []
+        if (template.get("durationMs") != 6000 or template.get("interpolation") != "LINEAR" or not keys or
+            any(k.get("scaleMultiplier") != [1, 1, 1] for k in keys)):
+            raise CompositionError("Bingo hammer sweep requires a constant unit key scale")
+        for key in (k for k in keys if k["timeMs"] >= 4400):
+            expected = [v * (key["timeMs"] - 4400) / 1600 for v in delta]
+            if any(abs(a - b) > .001 for a, b in zip(key["positionOffset"], expected)):
+                raise CompositionError("Bingo hammer WORLD path differs from the Server sweep")
+        current = [float(half[0] * scale[0]), float(half[2] * scale[2])]
+        if any(v > 100 for v in current) or (result is not None and current != result):
+            raise CompositionError("Bingo hammer directions must publish identical bounded head dimensions")
+        result = current
+    for anchor in range(20):
+        instance = next((r for r in sequences.get("instances", [])
+                         if r.get("instanceId") == f"world.sequence.instance.kouku.bingo.hammer.anchor.{anchor}"), {})
+        suffix = ("x_plus", "x_minus", "z_plus", "z_minus")[(anchor // 10) * 2 + anchor % 2]
+        position = ([(-9.12 if anchor % 2 == 0 else 9.12), 0, 1140.8 + (anchor // 2) * 3.04]
+                    if anchor < 10 else [-6.08 + ((anchor - 10) // 2) * 3.04, 0, (1137.76 if anchor % 2 == 0 else 1156)])
+        if (instance.get("templateId") != "sequence.kouku.bingo.hammer." + suffix or
+            instance.get("bindings") != [{"slotId": "object", "targetKind": "OBJECT_RESOURCE", "targetId": resource["objectId"]}] or
+            instance.get("playbackSpeed") != 1 or instance.get("startDelayMs") != 0 or
+            instance.get("anchorKind") != "WORLD" or not instance.get("enabled") or
+            instance.get("motionEnd") != "STOP" or instance.get("nextMotionId") or
+            len(instance.get("position", [])) != 3 or any(abs(a - b) > .001 for a, b in zip(instance["position"], position))):
+            raise CompositionError("Bingo hammer anchor differs from the Server board path")
+    assert result is not None
+    return result
 
 
 def derive_roulette_stop_yaw(
@@ -4760,6 +4825,7 @@ def _project_logic_window(
         **({"repeatAfterKnockback": True} if logic.get("repeatAfterKnockback", False) else {}),
         **({"repeatIntervalMs": logic["repeatIntervalMs"]} if logic.get("repeatIntervalMs", 0) else {}),
         "kind": kind,
+        **({"gazeDuringWindow": True} if logic.get("gazeDuringWindow", False) else {}),
         "startMs": box["startMs"],
         "durationMs": box["durationMs"],
         "sectorCount": int(logic.get("sectorCount", 0)) if kind == "ROULETTE_CARD_MATCH" else 0,
@@ -4886,7 +4952,7 @@ def project_encounter(document: dict[str, Any], root: Path = REPOSITORY_ROOT) ->
                 continue
             logic = logics[box["logicId"]]
             kind = logic.get("judgementKind", logic.get("triggerKind"))
-            if kind in {"SHOWTIME_PLAYER_TARGETS", "BOSS_TRACK_TARGET", "CROSS_DIRECTION_CLONES", "PURSUIT_PROJECTILES", "BINGO_BOARD"}:
+            if kind in {"SHOWTIME_PLAYER_TARGETS", "BOSS_TRACK_TARGET", "BOSS_RANDOM_TARGET", "CROSS_DIRECTION_CLONES", "PURSUIT_PROJECTILES", "BINGO_BOARD"}:
                 continue
             if logic["logicType"] != "DURATION" and kind not in {"ENTER_AREA", "OBJECT_CONTACT"}:
                 continue
@@ -4939,14 +5005,17 @@ def project_encounter(document: dict[str, Any], root: Path = REPOSITORY_ROOT) ->
                 continue
             logic = logics[box["logicId"]]
             kind = logic.get("judgementKind") if logic["logicType"] == "DURATION" else logic.get("triggerKind")
-            if kind not in {"BOSS_TRACK_TARGET", "CROSS_DIRECTION_CLONES", "BINGO_BOARD"} and (logic["logicType"] != "TRIGGER" or kind in {None, "ENTER_AREA", "OBJECT_CONTACT", "ANIMATION_BLEND", "PURSUIT_PROJECTILES"}):
+            if kind not in {"BOSS_TRACK_TARGET", "BOSS_RANDOM_TARGET", "CROSS_DIRECTION_CLONES", "BINGO_BOARD"} and (logic["logicType"] != "TRIGGER" or kind in {None, "ENTER_AREA", "OBJECT_CONTACT", "ANIMATION_BLEND", "PURSUIT_PROJECTILES"}):
                 continue
             clone_id = logic.get("clonePatternId", "")
             if clone_id and not any(p["patternId"] == clone_id and p["authoringStatus"] == "PRODUCT"
                                     for p in document["patterns"]):
                 raise CompositionError(f"{box['occurrenceId']} clone pattern must be PRODUCT: {clone_id}")
             mechanic_triggers.append({
-                "triggerId": box["occurrenceId"], "kind": kind,
+                "triggerId": box["occurrenceId"], "kind": "BOSS_RANDOM_TARGET_PRESENTATION" if kind == "BOSS_RANDOM_TARGET" and logic["logicType"] == "DURATION" else kind,
+                **({"hammerHalfExtentsM": _project_bingo_hammer_geometry(
+                    world_sequences if world_sequences is not None else load_world_sequences(root, document["areaId"]))}
+                   if kind == "BINGO_BOARD" else {}),
                 **({"soldierCounts": list(logic.get("soldierCounts", [1, 1, 1])),
                     "spawnRadiusMinM": float(logic.get("spawnRadiusMinM", 3.0)),
                     "spawnRadiusMaxM": float(logic.get("spawnRadiusMaxM", 6.0))}
@@ -5117,7 +5186,7 @@ PRESENTATION_OCCURRENCE_DEFAULTS = {
     "positionOffset": [0.0, 0.0, 0.0], "rotationDegrees": [0.0, 0.0, 0.0], "scale": [1.0, 1.0, 1.0],
     "fadeInMs": 0, "fadeOutMs": 0, "dissolveStart": 0.85, "dissolveEnd": 1.0,
     "fitEffectToDuration": False, "loopEffectToDuration": False,
-    "volume": 1.0, "soundSourceStartMs": 0, "effectSourceStartMs": 0, "followBoss": True, "bone": "", "boneTarget": "BODY", "brightnessMultiplier": 1.0,
+    "volume": 1.0, "soundSourceStartMs": 0, "effectSourceStartMs": 0, "effectSourceTimeKeys": [], "followBoss": True, "bone": "", "boneTarget": "BODY", "brightnessMultiplier": 1.0,
     "regionId": "", "cardSymbol": "NONE", "cardColor": "NONE",
     "anchorKind": "BOSS", "worldId": "", "logicOccurrenceId": "", "debugRender": True, "worldOccurrenceId": "",
     "worldEmissionIndex": 0, "boneRotation": "TARGET_YAW",
@@ -5279,6 +5348,31 @@ def _validate_presentation_occurrences(pattern: dict[str, Any], resources: dict[
         if effect_source and (resources[box["resourceId"]]["kind"] != "EFFECT" or
                 effect_source >= resources[box["resourceId"]].get("durationMs", PRESENTATION_RESOURCE_DEFAULTS["durationMs"])):
             raise CompositionError("Effect Source In must be inside an Effect resource lifetime")
+        clock = normalized["effectSourceTimeKeys"]
+        if clock:
+            resource = resources[box["resourceId"]]
+            if (not isinstance(clock, list) or not 2 <= len(clock) <= 4096 or resource["kind"] != "EFFECT" or
+                    resource.get("resourceKind", "GROUP") not in {"GROUP", "LEAF", "V1_EFFECT", "V1_ELEMENT"} or
+                    normalized["anchorKind"] != "MAP" or normalized["followBoss"] or normalized["bone"] or
+                    normalized["worldId"] or normalized["anchorPresentationOccurrenceId"] or effect_source or
+                    normalized["fitEffectToDuration"] or normalized["loopEffectToDuration"] or
+                    normalized["fadeInMs"] or normalized["fadeOutMs"]):
+                raise CompositionError("Effect source clock requires a fixed MAP occurrence")
+            previous = None
+            for key in clock:
+                _keys(key, {"timeMs", "sourceMs"}, set(), "Effect source clock key")
+                values = [key["timeMs"], key["sourceMs"]]
+                if any(isinstance(v, bool) or not isinstance(v, (int, float)) or not math.isfinite(v) or
+                       not 0 <= v <= MAX_TIMELINE_MS for v in values):
+                    raise CompositionError("Effect source clock keys must be finite and bounded")
+                if previous and (values[0] <= previous[0] or values[1] <= previous[1]):
+                    raise CompositionError("Effect source clock keys must increase strictly")
+                previous = values
+            if (clock[0]["timeMs"] != 0 or clock[-1]["timeMs"] != normalized["durationMs"] or
+                    clock[-1]["sourceMs"] > resource.get("durationMs", 1000)):
+                raise CompositionError("Effect source clock must cover its box inside the resource lifetime")
+        elif not isinstance(clock, list):
+            raise CompositionError("Effect source clock must be an array")
         _integer(normalized["soundSourceStartMs"], "Sound Source In", 0, MAX_TIMELINE_MS)
         if normalized["soundSourceStartMs"] and resources[box["resourceId"]]["kind"] != "SOUND":
             raise CompositionError("Sound Source In belongs only to SOUND occurrences")
@@ -5628,8 +5722,9 @@ def _project_presentation_resource(resource: dict[str, Any]) -> dict[str, Any]:
 def _project_presentation_occurrence(document: dict[str, Any], pattern: dict[str, Any], box: dict[str, Any], resource: dict[str, Any]) -> dict[str, Any]:
     return {
         **_project_presentation_resource(resource),
-        **{key: value for key, value in PRESENTATION_OCCURRENCE_DEFAULTS.items() if key not in {"effectSourceStartMs", "brightnessMultiplier", "boneTarget", "fitEffectToDuration", "loopEffectToDuration", "boneRotation", "colliderMotion", "colliderEndPositionOffset", "colliderEndScale", "anchorPresentationOccurrenceId"}},
-        **{key: value for key, value in box.items() if key not in PRESENTATION_OCCURRENCE_EDITOR_KEYS},
+        **{key: value for key, value in PRESENTATION_OCCURRENCE_DEFAULTS.items() if key not in {"effectSourceStartMs", "effectSourceTimeKeys", "brightnessMultiplier", "boneTarget", "fitEffectToDuration", "loopEffectToDuration", "boneRotation", "colliderMotion", "colliderEndPositionOffset", "colliderEndScale", "anchorPresentationOccurrenceId"}},
+        **{key: value for key, value in box.items() if key not in PRESENTATION_OCCURRENCE_EDITOR_KEYS
+           and (key != "effectSourceTimeKeys" or value != [])},
         **({"brightnessMultiplier": box.get("brightnessMultiplier", 1.0)} if resource["kind"] == "LIGHT" else {}),
         "worldSequenceInstanceId": next((w["sequenceInstanceId"] for w in document.get("worlds", []) if w["worldId"] == box.get("worldId", "")), ""),
         **({"worldOccurrenceId": _resolve_collider_world_occurrence(pattern, box)["occurrenceId"]}
@@ -5789,6 +5884,30 @@ def _project_showtime_targets(document: dict[str, Any], pattern: dict[str, Any])
     return rows, templates, controlled
 
 
+def _random_target_windows(document, pattern):
+    definitions = {row["logicId"]: row for row in document.get("logics", [])}
+    presentations = {row["occurrenceId"]: row for row in pattern.get("presentationOccurrences", [])}
+    resources = {row["resourceId"]: row for row in document.get("presentationResources", [])}
+    windows = []
+    for box in pattern.get("logicOccurrences", []):
+        logic = definitions[box["logicId"]]
+        if logic.get("judgementKind") != "BOSS_RANDOM_TARGET": continue
+        effect_id = logic.get("trackingPresentationOccurrenceId", "")
+        effect = presentations.get(effect_id)
+        if (not effect or resources[effect["resourceId"]]["kind"] != "EFFECT" or
+            effect.get("anchorKind", "BOSS") != "BOSS" or not effect.get("followBoss", True) or effect.get("bone", "") or
+            effect.get("anchorPresentationOccurrenceId", "") or effect["startMs"] > box["startMs"] or
+            effect["startMs"] + effect["durationMs"] < box["startMs"] + box["durationMs"]):
+            raise CompositionError("Random target Duration requires a following, bone-free Boss Effect covering its window")
+        if box.get("enabled", True):
+            windows.append({"occurrenceId": box["occurrenceId"], "startMs": box["startMs"], "durationMs": box["durationMs"],
+                            "trackingPresentationOccurrenceId": effect_id})
+    windows.sort(key=lambda row: (row["startMs"], row["occurrenceId"]))
+    if any(a["startMs"] + a["durationMs"] > b["startMs"] for a, b in zip(windows, windows[1:])):
+        raise CompositionError("Random target Duration windows cannot overlap")
+    return windows
+
+
 def _project_pattern_presentation(document: dict[str, Any], pattern: dict[str, Any], suppress_root_motion=False) -> dict[str, Any]:
     blend_windows = resolve_animation_blend_windows(document, pattern)
     resources = {resource["resourceId"]: resource for resource in document.get("presentationResources", [])}
@@ -5803,7 +5922,7 @@ def _project_pattern_presentation(document: dict[str, Any], pattern: dict[str, A
     for box in pattern.get("sceneProfileOccurrences", []):
         occurrences.append({
             **{key: value for key, value in PRESENTATION_RESOURCE_DEFAULTS.items() if key not in {"durationMs", "defaultAnchorKind"}},
-            **{key: value for key, value in PRESENTATION_OCCURRENCE_DEFAULTS.items() if key not in {"brightnessMultiplier", "boneTarget", "fitEffectToDuration", "loopEffectToDuration", "boneRotation", "colliderMotion", "colliderEndPositionOffset", "colliderEndScale", "anchorPresentationOccurrenceId"}},
+            **{key: value for key, value in PRESENTATION_OCCURRENCE_DEFAULTS.items() if key not in {"effectSourceTimeKeys", "brightnessMultiplier", "boneTarget", "fitEffectToDuration", "loopEffectToDuration", "boneRotation", "colliderMotion", "colliderEndPositionOffset", "colliderEndScale", "anchorPresentationOccurrenceId"}},
             "occurrenceId": box["occurrenceId"], "resourceId": box["sceneProfileId"],
             "kind": "SCENE_PROFILE", "worldSequenceInstanceId": "", "assetId": profiles[box["sceneProfileId"]]["renderingProfileId"],
             "resourceDurationMs": box["durationMs"], "startMs": box["startMs"], "durationMs": box["durationMs"],
@@ -5840,6 +5959,7 @@ def _project_pattern_presentation(document: dict[str, Any], pattern: dict[str, A
         for box in pattern.get("logicOccurrences", []))
     return {"patternId": pattern["patternId"], **_pattern_target_metadata(pattern), "durationMs": _pattern_duration(pattern),
             **({"diceBindVisual": True} if dice_bind_visual else {}),
+            **({"randomTargetWindows": _random_target_windows(document, pattern)} if _random_target_windows(document, pattern) else {}),
             **({"stageDurationMs": sum(stage["durationMs"] for stage in pattern["stages"])}
                if _pattern_duration(pattern) > sum(stage["durationMs"] for stage in pattern["stages"]) else {}),
             **({"bossMotion": copy.deepcopy(pattern["bossMotion"])} if "bossMotion" in pattern else {}),
