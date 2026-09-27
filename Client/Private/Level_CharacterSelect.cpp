@@ -359,9 +359,7 @@ void CLevel_CharacterSelect::Update(const f32_t fTimeDelta)
 		m_ClassSelectionPresentation.Stop();
 	else
 		m_ClassSelectionPresentation.Update(fTimeDelta);
-	if (m_ClassSelectionPresentation.Is_Active() &&
-		CGameInstance::Get().Get_DIKeyPressed(DIK_F6))
-		m_ClassSelectionPresentation.Stop();
+	m_ClassSelectionPresentation.Update_InspectionPicking(Is_ProductPointerHovered());
 	Update_ClassCinematicBackgroundVisibility();
 }
 
@@ -1202,7 +1200,7 @@ void CLevel_CharacterSelect::Update_ServerArena()
 		return;
 	}
 	Advance_ClassAssetPreparation();
-	if (Is_ProductPointerHovered())
+	if (Is_ProductPointerHovered() || m_ClassSelectionPresentation.Is_InspectionPickArmed())
 		CGameInstance::Get().SetMouseButtonBlocked(DIM::LB, true);
 	if (!m_isCreateCharacterModalOpen && !Is_ProductPresentationOpen() &&
 		!Is_AuthoritativeClassReplacementPending())
@@ -1908,7 +1906,8 @@ bool_t CLevel_CharacterSelect::Check_ClassCinematicBackground(const std::string&
 
 void CLevel_CharacterSelect::Update_ClassCinematicBackgroundVisibility()
 {
-	const auto activeArea = m_ClassSelectionPresentation.Is_Active() ?
+	const auto activeArea = m_ClassSelectionPresentation.Is_Active() &&
+		m_ClassSelectionPresentation.Is_InspectionBackgroundVisible() ?
 		Resolve_ClassCinematicBackgroundArea(m_ClassSelectionPresentation.Get_ActiveClass()) : std::string{};
 	for (auto& background : m_ClassCinemaBackgrounds)
 	{
@@ -2067,7 +2066,7 @@ bool_t CLevel_CharacterSelect::Select_ClassCinematic(
 	return false;
 }
 
-bool_t CLevel_CharacterSelect::Play_ClassCinematic(const std::string& classId)
+bool_t CLevel_CharacterSelect::Validate_ClassCinematicPlay(const std::string& classId)
 {
 	m_strClassMovieRequestFailure.clear();
 	std::string backgroundFailure;
@@ -2086,14 +2085,30 @@ bool_t CLevel_CharacterSelect::Play_ClassCinematic(const std::string& classId)
 		m_strClassMovieRequestFailure = "No prepared movie for " + selected + " (" + classId + "). " + m_ClassSelectionPresentation.Get_Status();
 	else if (!Check_ClassCinematicBackground(classId, backgroundFailure))
 		m_strClassMovieRequestFailure = "Cannot play " + selected + " (" + classId + "): " + backgroundFailure;
-	else if (!m_ClassSelectionPresentation.Play(classId))
-		m_strClassMovieRequestFailure = "Cannot play " + selected + " (" + classId + "): " + m_ClassSelectionPresentation.Get_Status();
-	else
-	{
-		Update_ClassCinematicBackgroundVisibility();
-		return true;
-	}
+	else return true;
 	return false;
+}
+
+bool_t CLevel_CharacterSelect::Play_ClassCinematic(const std::string& classId)
+{
+    if (!Validate_ClassCinematicPlay(classId)) return false;
+    if (!m_ClassSelectionPresentation.Play(classId))
+    { m_strClassMovieRequestFailure = m_ClassSelectionPresentation.Get_Status(); return false; }
+    Update_ClassCinematicBackgroundVisibility();
+    return true;
+}
+
+bool_t CLevel_CharacterSelect::Play_ClassCinematicSelection(const std::string& classId, const bool loop,
+    const EFFECT_DOCUMENT_DESC& full, const EFFECT_DOCUMENT_DESC& selected,
+    const std::vector<std::string>& drawElementIds, const double startAgeMs, const double endAgeMs, const bool repeat, std::string& status)
+{
+    if (!Validate_ClassCinematicPlay(classId))
+    { status = m_strClassMovieRequestFailure; return false; }
+    if (!m_ClassSelectionPresentation.Play_EffectSelection(classId, loop, full, selected,
+        drawElementIds, startAgeMs, endAgeMs, repeat, status))
+    { m_strClassMovieRequestFailure = status; return false; }
+    Update_ClassCinematicBackgroundVisibility();
+    return true;
 }
 
 void CLevel_CharacterSelect::Render_ClassSelectMovieControls()
@@ -2331,6 +2346,8 @@ void CLevel_CharacterSelect::Apply_CustomizingHair()
 	own order is the table's, so cell N really is hairstyle N. */
 	const std::vector<std::string>* const pSetIds =
 		m_HairstyleDocument.Find(pSpec->pAssetName);
+	m_pCustomizingView->Configure_HairDefault(pSpec->pAssetName,
+		m_HairstyleDocument.Get_DefaultIndex(pSpec->pAssetName));
 	const int32_t iSelected = m_pCustomizingView->Get_SelectedHair();
 	if (nullptr == pSetIds || iSelected < 0 ||
 		static_cast<size_t>(iSelected) >= pSetIds->size())
@@ -2433,6 +2450,13 @@ void CLevel_CharacterSelect::Update_Customizing(const f32_t fTimeDelta)
 	if (m_isCreateCharacterModalOpen)
 		return;
 
+	if (m_pActiveCharacter && Ensure_EquipmentPresentation())
+	{
+		const auto* spec = m_pActiveCharacter->Get_Spec();
+		if (spec && spec->pAssetName)
+			m_pCustomizingView->Configure_HairDefault(spec->pAssetName,
+				m_HairstyleDocument.Get_DefaultIndex(spec->pAssetName));
+	}
 	m_pCustomizingView->Update(fTimeDelta, m_pActiveCharacter);
 	/* The drag gesture turns the model, so the offset is pushed every frame -- the character
 	rewrites its rotation from the replicated yaw on each network update. */

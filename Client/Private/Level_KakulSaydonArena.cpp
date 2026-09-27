@@ -22,6 +22,7 @@
 #include "MapTool.h"
 #include "Character.h"
 #include "CombatHUDViewModel.h"
+#include "EstherActionSoundCueDocument.h"
 #include "DataJson.h"
 #include "GameInstance.h"
 #include "RuntimeAssetRoot.h"
@@ -332,6 +333,19 @@ namespace
 		const auto& player = CCombatHUDViewModel::Get().Get_Player();
 		return player.isValid && !player.isPreview && player.iMarioStage >= 1u && player.iMarioStage <= 4u;
 	}
+
+	bool Is_SequenceSoundAudience(const std::string& instanceId)
+    {
+        const auto& listener = CCombatHUDViewModel::Get().Get_Player();
+        if (!listener.isValid || listener.isPreview) return true;
+        constexpr std::array<std::string_view, 4> marioIntros = {
+            "world.sequence.instance.mario_m1_intro", "world.sequence.instance.mario_m2_intro",
+            "world.sequence.instance.mario_m3_intro", "world.sequence.instance.mario_m4_intro" };
+        const auto intro = std::find(marioIntros.begin(), marioIntros.end(), instanceId);
+        if (intro != marioIntros.end())
+            return listener.iMarioStage == static_cast<std::uint8_t>(intro - marioIntros.begin() + 1u);
+        return listener.iMarioStage == 0u;
+    }
 
 	bool_t Is_SequenceCameraAudience(const std::string_view instanceId, const std::uint8_t localMarioStage)
 	{
@@ -1350,6 +1364,7 @@ bool_t Client::CLevel_KakulSaydonArena::Debug_SampleCompositionWorldPreview(
 
 HRESULT Client::CLevel_KakulSaydonArena::Initialize()
 {
+    m_SequencePlayer.Set_SoundAudience(Is_SequenceSoundAudience);
 	const auto arenaStarted = GetTickCount64();
 	const EFFECT_SLOW_SCOPE_DIAGNOSTIC arenaTiming{"Kouku.Arena.Initialize", {}, {}};
 	CProfiler* const pProfiler = CGameInstance::Get().Get_Profiler();
@@ -1784,6 +1799,7 @@ void Client::CLevel_KakulSaydonArena::Update(const f32_t fTimeDelta)
 		OutputDebugStringA(
 			"[Level_KakulSaydonArena] Failed to apply replication event.\n");
 	}
+	CEstherActionSoundCueDocument::Update_SoundAudience();
 	m_Replication.Collect_PlayerViews(m_NameplatePlayers);
 	m_InteractKeyPrompt.Update(fTimeDelta, m_Replication.Get_LocalCharacter(),
 		CCombatHUDViewModel::Get().Get_InteractPromptTriggerId(),
@@ -2135,7 +2151,34 @@ void Client::CLevel_KakulSaydonArena::Update(const f32_t fTimeDelta)
 	if (!m_bMapAuthoringActive)
 #endif
 		m_MapRuntime.Update_SelfMotions(fTimeDelta);
+	// Gate progress is room-wide and survives Return to Start. Use each player's
+	// Server position so the waiting platform stays hidden on initial entry and return.
+	std::vector<KOUKU_BOSS_PRESENTATION_VIEW> madnessBosses;
+	std::vector<KOUKU_CARD_PRESENTATION_VIEW> madnessPlayers;
+	m_Replication.Collect_KoukuPresentationViews(madnessBosses, madnessPlayers);
+	const bool_t gateEntered = m_bGateProgressKnown && 0u != m_GateProgress.iCurrentGate;
+	const auto& gates = Get_DebugGates();
+	const bool_t playerOnlyEntry = m_iActiveDebugGate < gates.size() &&
+		nullptr == gates[m_iActiveDebugGate].BossPlacementIds[0];
+	const auto canShowMadnessGauge = [&madnessPlayers, &localCharacter, gateEntered, playerOnlyEntry](
+		const shared_ptr<CCharacter>& character)
+	{
+		if (!character) return false;
+		for (const auto& view : madnessPlayers)
+		{
+			if (view.pCharacter.lock() != character) continue;
+			const auto& player = view.Snapshot;
+			// Server-approved player-only Debug entry and Mario have no boss gate.
+			if (!gateEntered && LostArk::Shared::KOUKU_HUD_MODE::MARIO != player.eKoukuHudMode &&
+				!(playerOnlyEntry && character == localCharacter))
+				return false;
+			return !LostArk::Shared::Is_KoukuArenaStartArea(
+				player.fPositionX, player.fPositionY, player.fPositionZ);
+		}
+		return false;
+	};
 	HUD_KOUKU_GIMMICK_STATE madnessState = CCombatHUDViewModel::Get().Get_KoukuGimmick();
+	madnessState.isValid = madnessState.isValid && canShowMadnessGauge(localCharacter);
 	if (LostArk::Shared::KOUKU_HUD_MODE::MAZE == CCombatHUDViewModel::Get().Get_Player().eKoukuHudMode)
 		madnessState.eHudMode = HUD_KOUKU_HUD_MODE::MAZE;
 	if (nullptr != m_pMadnessGaugeView)
@@ -2150,11 +2193,12 @@ void Client::CLevel_KakulSaydonArena::Update(const f32_t fTimeDelta)
 			const REPLICATED_PLAYER_HEALTH Health = m_Replication.Get_PlayerHealth().Find(Player.iNetEntityId);
 			// Keep the local maze presentation policy for every world-space gauge.
 			HUD_KOUKU_GIMMICK_STATE State = madnessState;
-			State.isValid = Health.Has_Madness();
+			const auto character = Player.pCharacter.lock();
+			State.isValid = Health.Has_Madness() && canShowMadnessGauge(character);
 			State.iMadnessGauge = Health.iCurrentMadness;
 			State.iMadnessMaximum = Health.iMaximumMadness;
 			if (nullptr != m_OtherMadnessGaugeViews[iOther])
-				m_OtherMadnessGaugeViews[iOther]->Update(fTimeDelta, Player.pCharacter.lock(), State);
+				m_OtherMadnessGaugeViews[iOther]->Update(fTimeDelta, character, State);
 			++iOther;
 		}
 		for (; iOther < m_OtherMadnessGaugeViews.size(); ++iOther)
@@ -6173,6 +6217,7 @@ void Client::CLevel_KakulSaydonArena::Consume_OwnedWorldCue(
     { defer(); return; }
     BindCompositionGroupOrigin(m_SequencePlayer.Get_Document(), play.strSequenceInstanceId, cueTargets);
     auto player = std::make_shared<CWorldSequencePlayer>();
+    player->Set_SoundAudience(Is_SequenceSoundAudience);
     const auto placement = WorldPlacementFromCue(play);
     CWorldSequenceDocument playback;
     if (!m_SequencePlayer.Get_Document().Build_PlaybackSubset({play.strSequenceInstanceId}, playback, status) ||

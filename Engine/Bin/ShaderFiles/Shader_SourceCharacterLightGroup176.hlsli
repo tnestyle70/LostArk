@@ -1,3 +1,4 @@
+#ifndef SOURCE_CHARACTER_LIGHT_DISPATCH_CASES
 SOURCE_CHARACTER_NATIVE_OUTPUT SourceCharacterLight176(SOURCE_CHARACTER_NATIVE_INPUT input)
 {
     SOURCE_CHARACTER_NATIVE_OUTPUT output = (SOURCE_CHARACTER_NATIVE_OUTPUT)0;
@@ -8842,3 +8843,21 @@ SOURCE_CHARACTER_NATIVE_OUTPUT SourceCharacterLight191(SOURCE_CHARACTER_NATIVE_I
 }
 
 // source.character.equipment-native-192.v1 / source program 275d8c40a741a9468b9d366278929ce2
+#else // SOURCE_CHARACTER_LIGHT_DISPATCH_CASES
+    case 176u: return SourceCharacterLight176(input);
+    case 177u: return SourceCharacterLight177(input);
+    case 178u: return SourceCharacterLight178(input);
+    case 179u: return SourceCharacterLight179(input);
+    case 180u: return SourceCharacterLight180(input);
+    case 181u: return SourceCharacterLight181(input);
+    case 182u: return SourceCharacterLight182(input);
+    case 183u: return SourceCharacterLight183(input);
+    case 184u: return SourceCharacterLight184(input);
+    case 185u: return SourceCharacterLight185(input);
+    case 186u: return SourceCharacterLight186(input);
+    case 187u: return SourceCharacterLight187(input);
+    case 188u: return SourceCharacterLight188(input);
+    case 189u: return SourceCharacterLight189(input);
+    case 190u: return SourceCharacterLight190(input);
+    case 191u: return SourceCharacterLight191(input);
+#endif // SOURCE_CHARACTER_LIGHT_DISPATCH_CASES

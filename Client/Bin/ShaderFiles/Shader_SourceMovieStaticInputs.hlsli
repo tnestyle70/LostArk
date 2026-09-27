@@ -8,7 +8,7 @@ bool IsSourceMovieStatic(uint program)
 }
 void PackSourceMovieBaseInput(inout SOURCE_CHARACTER_NATIVE_INPUT input,
     float4 tangentX, float4 tangentZ, float4 color, float2 uv,
-    float4 view, float4 light, float4 up, float4 clip, float4 fog)
+    float4 view, float4 light, float4 up, float4 clip, float4 fog, float4 world)
 {
     if (!IsSourceMovieStatic(g_SourceCharacterProgram)) return;
     [unroll] for (uint lane=0u;lane<10u;++lane) input.values[lane]=0.f;
@@ -22,6 +22,7 @@ void PackSourceMovieBaseInput(inout SOURCE_CHARACTER_NATIVE_INPUT input,
         input.values[5].xyzw=(view).xyzw;
         input.values[6].xyz=(up).xyz;
         input.values[7].xyzw=(clip).xyzw;
+        if (g_SourceCharacterProgram==1518u) input.values[7]=world; // Original VS world position in source cm.
         return;
     }
     if (g_SourceCharacterProgram==1101u || g_SourceCharacterProgram==1102u || g_SourceCharacterProgram==1106u || g_SourceCharacterProgram==1107u || g_SourceCharacterProgram==1109u || g_SourceCharacterProgram==1113u || g_SourceCharacterProgram==1114u || g_SourceCharacterProgram==1117u || g_SourceCharacterProgram==1140u || g_SourceCharacterProgram==1141u || g_SourceCharacterProgram==1142u || g_SourceCharacterProgram==1143u || g_SourceCharacterProgram==1150u || g_SourceCharacterProgram==1153u || g_SourceCharacterProgram==1159u || g_SourceCharacterProgram==1400u || g_SourceCharacterProgram==1401u || g_SourceCharacterProgram==1403u || g_SourceCharacterProgram==1405u || g_SourceCharacterProgram==1406u || g_SourceCharacterProgram==1407u || g_SourceCharacterProgram==1411u || g_SourceCharacterProgram==1412u || g_SourceCharacterProgram==1413u || g_SourceCharacterProgram==1509u || g_SourceCharacterProgram==1513u || g_SourceCharacterProgram==1517u || g_SourceCharacterProgram==1522u || g_SourceCharacterProgram==1523u || g_SourceCharacterProgram==1525u)
@@ -35,6 +36,7 @@ void PackSourceMovieBaseInput(inout SOURCE_CHARACTER_NATIVE_INPUT input,
         input.values[6].xyzw=(view).xyzw;
         input.values[7].xyz=(up).xyz;
         input.values[8].xyzw=(clip).xyzw;
+        if (g_SourceCharacterProgram==1523u) input.values[8]=world; // Original VS world position in source cm.
         return;
     }
     if (g_SourceCharacterProgram==1156u || g_SourceCharacterProgram==1500u || g_SourceCharacterProgram==1501u || g_SourceCharacterProgram==1502u || g_SourceCharacterProgram==1503u || g_SourceCharacterProgram==1505u || g_SourceCharacterProgram==1506u || g_SourceCharacterProgram==1507u || g_SourceCharacterProgram==1508u || g_SourceCharacterProgram==1510u || g_SourceCharacterProgram==1511u || g_SourceCharacterProgram==1516u || g_SourceCharacterProgram==1519u || g_SourceCharacterProgram==1520u || g_SourceCharacterProgram==1524u)
@@ -74,7 +76,7 @@ void PackSourceMovieBaseInput(inout SOURCE_CHARACTER_NATIVE_INPUT input,
 }
 void PackSourceMovieLightInput(inout SOURCE_CHARACTER_NATIVE_INPUT input,
     float4 tangentX, float4 tangentZ, float4 color, float2 uv,
-    float4 view, float4 light, float4 up, float4 clip, float4 fog)
+    float4 view, float4 light, float4 up, float4 clip, float4 fog, float4 world)
 {
     if (!IsSourceMovieStatic(g_SourceCharacterProgram)) return;
     [unroll] for (uint lane=0u;lane<10u;++lane) input.values[lane]=0.f;
@@ -89,6 +91,7 @@ void PackSourceMovieLightInput(inout SOURCE_CHARACTER_NATIVE_INPUT input,
         input.values[6].xyzw=(float4(0.f,0.f,0.f,0.f)).xyzw;
         input.values[7].xyzw=(view).xyzw;
         input.values[8].xyzw=(clip).xyzw;
+        if (g_SourceCharacterProgram==1518u) input.values[8]=world; // Original VS world position in source cm.
         return;
     }
     if (g_SourceCharacterProgram==1112u || g_SourceCharacterProgram==1113u || g_SourceCharacterProgram==1114u || g_SourceCharacterProgram==1115u || g_SourceCharacterProgram==1116u || g_SourceCharacterProgram==1150u || g_SourceCharacterProgram==1151u || g_SourceCharacterProgram==1153u || g_SourceCharacterProgram==1157u || g_SourceCharacterProgram==1165u || g_SourceCharacterProgram==1400u || g_SourceCharacterProgram==1401u || g_SourceCharacterProgram==1403u || g_SourceCharacterProgram==1405u || g_SourceCharacterProgram==1406u || g_SourceCharacterProgram==1407u || g_SourceCharacterProgram==1410u || g_SourceCharacterProgram==1504u || g_SourceCharacterProgram==1509u || g_SourceCharacterProgram==1513u || g_SourceCharacterProgram==1514u || g_SourceCharacterProgram==1517u || g_SourceCharacterProgram==1522u || g_SourceCharacterProgram==1523u || g_SourceCharacterProgram==1525u)
@@ -100,6 +103,7 @@ void PackSourceMovieLightInput(inout SOURCE_CHARACTER_NATIVE_INPUT input,
         input.values[4].xyzw=(float4(0.f,0.f,0.f,0.f)).xyzw;
         input.values[5].xyzw=(view).xyzw;
         input.values[6].xyzw=(clip).xyzw;
+        if (g_SourceCharacterProgram==1523u) input.values[6]=world; // Original VS world position in source cm.
         return;
     }
     if (g_SourceCharacterProgram==1512u)

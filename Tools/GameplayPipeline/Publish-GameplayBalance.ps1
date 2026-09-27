@@ -235,6 +235,30 @@ function Assert-EffectTextureAssetId([string]$Value, [string]$Context) {
 
 
 
+function Assert-BossWeaponSocketTransform($Boss) {
+    if (-not $Boss.PSObject.Properties['weaponSocketTransform']) { return }
+    if ([string]$Boss.archetypeId -cnotin @('BOSS_VALTAN','BOSS_VALTAN_GHOST') -or
+        $null -eq $Boss.weaponModel) {
+        throw 'weaponSocketTransform requires a Valtan socketed weapon.'
+    }
+    $transform = $Boss.weaponSocketTransform
+    Assert-ExactProperties $transform @('positionMeters','rotationDegrees') 'boss weapon socket transform'
+    foreach ($field in @('positionMeters','rotationDegrees')) {
+        $values = $transform.$field
+        if ($values -isnot [Array] -or @($values).Count -ne 3) {
+            throw "weaponSocketTransform.$field must hold three numbers."
+        }
+        $bound = if ($field -ceq 'positionMeters') { 10.0 } else { 360.0 }
+        foreach ($value in $values) {
+            Assert-JsonNumber $value "weaponSocketTransform.$field"
+            if ([double]::IsNaN([double]$value) -or [double]::IsInfinity([double]$value) -or
+                [math]::Abs([double]$value) -gt $bound) {
+                throw "weaponSocketTransform.$field is out of range."
+            }
+        }
+    }
+}
+
 function Assert-BossDefaultParticles([object]$Boss) {
     # Match ActorCatalog::ReadDefaultParticles. These are Client presentation
     # inputs; validation must not add effect or bone paths to Server rows.
@@ -1621,6 +1645,10 @@ foreach ($presentationBoss in @($bossCatalogDocument.bosses)) {
 	if ($presentationBoss.PSObject.Properties['defaultParticles']) {
 		$presentationBossProperties += 'defaultParticles'
 		Assert-BossDefaultParticles $presentationBoss
+	}
+	if ($presentationBoss.PSObject.Properties['weaponSocketTransform']) {
+		$presentationBossProperties += 'weaponSocketTransform'
+		Assert-BossWeaponSocketTransform $presentationBoss
 	}
 	Assert-ExactProperties $presentationBoss $presentationBossProperties 'boss presentation row'
 	# v8: a weapon row carries three finite pitch/yaw/roll degrees that turn the

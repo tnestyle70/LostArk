@@ -130,6 +130,7 @@ namespace
 		record.iNetEntityId = spawned.iNetEntityId;
 
 		record.eCharacterClass = spawned.eCharacterClass;
+		record.eControlKind = spawned.eControlKind;
 
 		record.strNickName = spawned.strNickName;
 
@@ -151,6 +152,7 @@ namespace
 			left.iPlayerId == right.iPlayerId &&
 			left.iNetEntityId == right.iNetEntityId &&
 			left.eCharacterClass == right.eCharacterClass &&
+			left.eControlKind == right.eControlKind &&
 			left.strNickName == right.strNickName &&
 			left.fPositionX == right.fPositionX &&
 			left.fPositionY == right.fPositionY &&
@@ -398,6 +400,12 @@ bool Client::CClientReplication::Update()
 			m_hasPendingRaidEntryVote = true;
 			break;
 
+		case CLIENT_REPLICATION_EVENT_TYPE::GUIDE_PROMPT:
+			Apply_GuidePrompt(event.GuidePrompt);
+			break;
+		case CLIENT_REPLICATION_EVENT_TYPE::GUIDE_STATE:
+			Apply_GuideState(event.GuideState);
+			break;
 		case CLIENT_REPLICATION_EVENT_TYPE::CHAT_RECEIVED:
 			Apply_ChatReceived(event.ChatReceived);
 			break;
@@ -469,6 +477,7 @@ bool Client::CClientReplication::Update()
 	}
 
 	allSucceeded = Advance_PlayerAssetPreparation() && allSucceeded;
+	Advance_GuideBubbles();
 	Update_DeathPresentations();
 #ifdef _DEBUG
 	if (m_CombatDebugVisibility.bCombatObjectHit)
@@ -581,6 +590,8 @@ void Client::CClientReplication::Apply_PartyRoster(
 	// Apply_EncounterPropSync -- the Server always sends the whole current
 	// membership, never a delta.
 	m_PartyRoster = roster;
+	if (m_GuideState && (!roster.GuideCompanion ||
+		roster.GuideCompanion->iNetEntityId != m_GuideState->iGuideNetEntityId)) m_GuideState.reset();
 }
 
 bool Client::CClientReplication::Try_Consume_PartyTransferResult(
@@ -611,6 +622,55 @@ bool Client::CClientReplication::Try_Consume_RaidEntryVote(
 	outVote = m_PendingRaidEntryVote;
 	m_hasPendingRaidEntryVote = false;
 	return true;
+}
+
+void Client::CClientReplication::Apply_GuidePrompt(const LostArk::Shared::S2C_GUIDE_PROMPT& prompt)
+{
+    using namespace LostArk::Shared;
+    // Spawn and dialogue use the same reliable ordered event queue. A staged body
+    // may still be loading its assets; the authoritative identity is already known.
+    const auto* record = m_Registry.Find_Record(prompt.iGuideNetEntityId);
+    const auto pending = m_PendingPlayerSpawns.find(prompt.iGuideNetEntityId);
+    const bool committed = record && record->eControlKind == PLAYER_CONTROL_KIND::GUIDE_AI;
+    const bool staged = pending != m_PendingPlayerSpawns.end() && pending->second.eControlKind == PLAYER_CONTROL_KIND::GUIDE_AI;
+    if (!committed && !staged) return;
+    auto& lastSequence = m_GuidePromptSequences[prompt.iGuideNetEntityId];
+    if (prompt.iEventSequence <= lastSequence) return;
+    lastSequence = prompt.iEventSequence;
+    auto& pendingBubbles = m_PendingGuideBubbles[prompt.iGuideNetEntityId];
+    if (pendingBubbles.size() >= 16u) pendingBubbles.pop_front();
+    pendingBubbles.push_back(prompt);
+    if (m_PendingChatLines.size() >= MAX_PENDING_CHAT_LINES) m_PendingChatLines.erase(m_PendingChatLines.begin());
+    m_PendingChatLines.push_back(CHAT_LINE{ committed ? record->strNickName : pending->second.strNickName, prompt.strText });
+}
+
+void Client::CClientReplication::Advance_GuideBubbles()
+{
+    const auto now = std::chrono::steady_clock::now();
+    for (auto& [entityId, queue] : m_PendingGuideBubbles)
+    {
+        if (queue.empty()) continue;
+        OBJECT_HANDLE handle{};
+        if (!m_Registry.Find_Handle(entityId, handle) || !m_Registry.Resolve(handle)) continue;
+        const auto active = m_ChatBubblesByNetEntityId.find(entityId);
+        if (active != m_ChatBubblesByNetEntityId.end() && active->second.ExpireAt > now) continue;
+        // Begin the display lifetime only once the actual Character is ready.
+        const auto& prompt = queue.front();
+        m_ChatBubblesByNetEntityId[entityId] = CHAT_BUBBLE_ENTRY{
+            prompt.strText, now + std::chrono::milliseconds(prompt.iDurationMs) };
+        queue.pop_front();
+    }
+}
+
+void Client::CClientReplication::Apply_GuideState(const LostArk::Shared::S2C_GUIDE_STATE& state)
+{
+    const auto* record = m_Registry.Find_Record(state.iGuideNetEntityId);
+    const auto pending = m_PendingPlayerSpawns.find(state.iGuideNetEntityId);
+    if ((!record || record->eControlKind != LostArk::Shared::PLAYER_CONTROL_KIND::GUIDE_AI) &&
+        (pending == m_PendingPlayerSpawns.end() || pending->second.eControlKind != LostArk::Shared::PLAYER_CONTROL_KIND::GUIDE_AI)) return;
+    if (m_GuideState && m_GuideState->iGuideNetEntityId == state.iGuideNetEntityId &&
+        state.iServerTick < m_GuideState->iServerTick) return;
+    m_GuideState = state;
 }
 
 void Client::CClientReplication::Apply_ChatReceived(
@@ -1705,7 +1765,8 @@ void Client::CClientReplication::Collect_MinimapMarkers(
 		MINIMAP_MARKER marker{};
 		if (!ReadGroundXZ(player.pCharacter->Get_Transform(), marker.fX, marker.fZ))
 			continue;
-		marker.bParty = std::any_of(
+		marker.bParty = (m_PartyRoster.GuideCompanion &&
+			m_PartyRoster.GuideCompanion->iNetEntityId == player.Record.iNetEntityId) || std::any_of(
 			m_PartyRoster.Members.begin(), m_PartyRoster.Members.end(),
 			[&](const LostArk::Shared::PARTY_ROSTER_MEMBER& member)
 			{
@@ -1801,6 +1862,7 @@ void Client::CClientReplication::Collect_PlayerViews(
 		target.iPlayerId = source.Record.iPlayerId;
 		target.iNetEntityId = source.Record.iNetEntityId;
 		target.eCharacterClass = source.Record.eCharacterClass;
+		target.eControlKind = source.Record.eControlKind;
 		target.strNickname = source.Record.strNickName;
 		if (const auto title = m_HonorTitleByNetEntityId.find(source.Record.iNetEntityId);
 			m_HonorTitleByNetEntityId.end() != title)
@@ -1854,6 +1916,11 @@ void Client::CClientReplication::Apply_CombatDebugVisibility(
 				boss->Set_CombatColliderDebugVisible(Visibility.bBossBodyCollider);
 		}
 #ifdef _DEBUG
+		if (LostArk::Shared::WORLD_ENTITY_KIND::NPC == presentation.eKind)
+		{
+			if (const std::shared_ptr<CNpc> npc = presentation.pNpc.lock())
+				npc->Set_SkillHitAreaDebugVisible(Visibility.bPlayerSkillHitGeometry);
+		}
 		if (std::shared_ptr<CValtan> valtan = presentation.pValtan.lock())
 		{
 			valtan->Set_CombatDebugVisibility(
@@ -2312,10 +2379,15 @@ bool Client::CClientReplication::Commit_PlayerSpawn(
 bool Client::CClientReplication::Apply_Despawn(
 	const LostArk::Shared::S2C_PLAYER_DESPAWNED& despawned)
 {
+	CCombatHUDViewModel::Get().Remove_WorldHealthBar(despawned.iNetEntityId);
 	m_PendingPlayerSpawns.erase(despawned.iNetEntityId);
 	m_PendingPlayerPresentations.erase(despawned.iNetEntityId);
 	m_FailedPlayerSpawnClasses.erase(despawned.iNetEntityId);
 	m_PlayerHealth.Erase(despawned.iNetEntityId);
+	m_ChatBubblesByNetEntityId.erase(despawned.iNetEntityId);
+	m_GuidePromptSequences.erase(despawned.iNetEntityId);
+	m_PendingGuideBubbles.erase(despawned.iNetEntityId);
+	if (m_GuideState && m_GuideState->iGuideNetEntityId == despawned.iNetEntityId) m_GuideState.reset();
 	OBJECT_HANDLE handle{};
 
 	if (!m_Registry.Find_Handle(
@@ -2530,6 +2602,9 @@ bool Client::CClientReplication::Apply_WorldEntitySpawn(
 		presentation.fCollisionRadius = spawned.fCollisionRadius;
 		presentation.PinnedDefinitionRevision =
 			spawned.PinnedDefinitionRevision;
+#ifdef _DEBUG
+		npc->Set_SkillHitAreaDebugVisible(m_CombatDebugVisibility.bPlayerSkillHitGeometry);
+#endif
 		presentation.pNpc = npc;
 		/* A missing Bern3 ship NPC has been invisible before: name each one that really got a body. */
 		if (0 == spawned.strArchetypeId.rfind("NPC_SHIP_", 0))
@@ -3036,6 +3111,7 @@ bool Client::CClientReplication::Apply_WorldEntityDespawn(
 	{
 		return false;
 	}
+	CCombatHUDViewModel::Get().Remove_WorldHealthBar(despawned.iNetEntityId);
 	const auto iter = m_WorldEntities.find(despawned.iNetEntityId);
 	if (m_WorldEntities.end() == iter)
 		return true;
@@ -3546,8 +3622,16 @@ bool Client::CClientReplication::Apply_WorldSnapshot(
 
 	bool allSucceeded = true;
 
+	// Admit the Kouku listener before remote action cues inspect its Mario audience.
+	// Network array order must not leak a remote skill on the Mario-entry snapshot.
+	const auto localFirst = m_Desc.iLayerLevelIndex == ETOUI(LEVEL::KAKULSAYDON_ARENA) ?
+		CNetworkManager::Get().Get_LocalEntityId() : INVALID_NET_ENTITY_ID;
 	for (const PLAYER_SNAPSHOT& player : snapshot.Players)
-		allSucceeded = Apply_PlayerSnapshot(player, snapshot.iServerTick, snapshot.Entities) && allSucceeded;
+		if (player.iNetEntityId == localFirst)
+			allSucceeded = Apply_PlayerSnapshot(player, snapshot.iServerTick, snapshot.Entities) && allSucceeded;
+	for (const PLAYER_SNAPSHOT& player : snapshot.Players)
+		if (player.iNetEntityId != localFirst)
+			allSucceeded = Apply_PlayerSnapshot(player, snapshot.iServerTick, snapshot.Entities) && allSucceeded;
 	if (m_Desc.iLayerLevelIndex == ETOUI(LEVEL::KAKULSAYDON_ARENA)) m_KoukuCardSnapshots = snapshot.Players;
 	std::vector<NET_ENTITY_ID> deadBossOwners;
 	for (const WORLD_ENTITY_SNAPSHOT& entity : snapshot.Entities)
@@ -4081,6 +4165,47 @@ bool Client::CClientReplication::Apply_WorldSnapshot(
 		snapshot.iEstherGaugeMaximum);
 	CCombatHUDViewModel::Get().Apply_BingoBoard(snapshot.Bingo);
 
+	// Replace the complete read model only after the accepted snapshot has
+	// resolved its presentations. No UI owns a replicated object's lifetime.
+	std::vector<HUD_WORLD_HEALTH_BAR_STATE> healthBars;
+	healthBars.reserve(snapshot.Players.size() + snapshot.Entities.size());
+	const auto localEntityId = CNetworkManager::Get().Get_LocalEntityId();
+	for (const auto& player : snapshot.Players)
+	{
+		if (player.iNetEntityId == localEntityId || !player.iCurrentHp || !player.iMaximumHp)
+			continue;
+		OBJECT_HANDLE handle{};
+		if (!m_Registry.Find_Handle(player.iNetEntityId, handle)) continue;
+		const auto character = m_Registry.Resolve(handle);
+		if (!character) continue;
+		HUD_WORLD_HEALTH_BAR_STATE state;
+		state.iNetEntityId = player.iNetEntityId;
+		state.isPlayer = true;
+		state.iCurrentHp = player.iCurrentHp;
+		state.iMaximumHp = player.iMaximumHp;
+		state.iShield = player.iShield;
+		state.pPresentation = character;
+		healthBars.push_back(std::move(state));
+	}
+	for (const auto& entity : snapshot.Entities)
+	{
+		if (!entity.iCurrentHp || !entity.iMaximumHp) continue;
+		const auto found = m_WorldEntities.find(entity.iNetEntityId);
+		if (found == m_WorldEntities.end() || found->second.bPresentationIsolated) continue;
+		const auto& presentation = found->second;
+		if (presentation.eKind != WORLD_ENTITY_KIND::MONSTER && presentation.eKind != WORLD_ENTITY_KIND::BOSS)
+			continue;
+		HUD_WORLD_HEALTH_BAR_STATE state;
+		state.iNetEntityId = entity.iNetEntityId;
+		state.iCurrentHp = entity.iCurrentHp;
+		state.iMaximumHp = entity.iMaximumHp;
+		state.iShield = entity.hasBossCombatState ? entity.BossCombat.iCurrentShield : 0u;
+		if (const auto npc = presentation.pNpc.lock()) state.pPresentation = npc;
+		else if (const auto boss = presentation.pValtan.lock()) state.pPresentation = boss;
+		if (!state.pPresentation.expired()) healthBars.push_back(std::move(state));
+	}
+	CCombatHUDViewModel::Get().Apply_WorldHealthBars(std::move(healthBars));
+
 	m_iLastServerTick = snapshot.iServerTick;
 	return allSucceeded;
 }
@@ -4311,6 +4436,9 @@ void Client::CClientReplication::Reset_World()
 	m_hasPendingRaidEntryVote = false;
 	m_PendingRaidEntryVote = {};
 	m_ChatBubblesByNetEntityId.clear();
+	m_GuideState.reset();
+	m_GuidePromptSequences.clear();
+	m_PendingGuideBubbles.clear();
 	m_HonorTitleByNetEntityId.clear();
 	++m_iWorldDestructionPresentationGeneration;
 	if (0u == m_iWorldDestructionPresentationGeneration)
@@ -4335,6 +4463,7 @@ bool Client::CClientReplication::Apply_PlayerSnapshot(
 	}
 	const NET_PLAYER_RECORD* record =
 		m_Registry.Find_Record(player.iNetEntityId);
+	if (record && record->eControlKind != player.eControlKind) return false;
 	const bool_t isLocallyControlled = player.iNetEntityId ==
 		CNetworkManager::Get().Get_LocalEntityId();
 	if (nullptr != record &&

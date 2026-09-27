@@ -1,6 +1,9 @@
 #include "ClassSelectionPresentation.h"
 
 #include "Camera_Free.h"
+#include "Animation.h"
+#include "BinaryAsset/WModelDecoder.h"
+#include "RuntimeAssetRoot.h"
 #include "ProjectDataRoot.h"
 #include "WorldSequenceObject.h"
 #include "GameInstance.h"
@@ -14,6 +17,7 @@
 #include <iterator>
 #include <set>
 #include <tuple>
+#include <utility>
 
 namespace Client
 {
@@ -462,6 +466,18 @@ double CClassSelectionPresentation::Get_SourceRate() const
     return (right->sourceMs - left.sourceMs) / (right->timeMs - left.timeMs);
 }
 
+double CClassSelectionPresentation::Map_TimelineTime(const std::string& classId, const bool loop,
+    const double timeMs, const bool toSource) const
+{
+    if (!std::isfinite(timeMs)) return -1.;
+    const auto& scenes = m_Authoring ? m_Authoring->scenes : m_Scenes;
+    const auto scene = std::find_if(scenes.begin(), scenes.end(),
+        [&](const auto& value) { return value.classId == classId; });
+    if (scene == scenes.end()) return -1.;
+    const auto& phase = loop ? scene->loop : scene->intro;
+    return toSource ? phase.SourceTimeMs(timeMs) : phase.MovieTimeMs(timeMs);
+}
+
 std::shared_ptr<const CLASS_MOVIE_TIMELINE> CClassSelectionPresentation::Get_Timeline(
     const std::string& classId, const bool loop) const
 {
@@ -484,7 +500,10 @@ std::shared_ptr<const CLASS_MOVIE_TIMELINE> CClassSelectionPresentation::Get_Tim
         return value;
     };
     auto add = [&timeline](const char* kind, std::string id, std::string label, CLASS_MOVIE_TIMELINE_BOX&& value) {
-        timeline->rows.push_back({kind, std::move(id), std::move(label), {std::move(value)}});
+        const auto row = std::find_if(timeline->rows.begin(), timeline->rows.end(),
+            [&](const auto& item) { return item.kind == kind && item.id == id; });
+        if (row != timeline->rows.end()) row->boxes.push_back(std::move(value));
+        else timeline->rows.push_back({kind, std::move(id), std::move(label), {std::move(value)}});
     };
     add("World Model", "background", "Background", box("background", scene->backgroundAreaId,
         scene->backgroundAreaId, 0., phase.durationMs));
@@ -511,10 +530,34 @@ std::shared_ptr<const CLASS_MOVIE_TIMELINE> CClassSelectionPresentation::Get_Tim
             double end = sequence->durationMs;
             for (const auto& next : sequence->animationTracks)
                 if (next.slotId == track.slotId && next.startMs > track.startMs) end = (std::min)(end, double(next.startMs));
+            const double holdEnd = end;
+            double nativeMs = 0.;
+            const auto binding = std::find_if(instance->bindings.begin(), instance->bindings.end(),
+                [&](const auto& value) { return value.slotId == track.slotId; });
+            const auto* resource = binding == instance->bindings.end() ? nullptr : document.Find_ObjectResource(binding->targetId);
+            if (resource)
+            {
+                const auto [entry, added] = m_AnimationDurations.try_emplace(resource->modelAssetId);
+                if (added)
+                {
+                    std::vector<Engine::MODEL_ANIMATION_CATALOG_ENTRY> catalog; std::string error;
+                    const auto path = CRuntimeAssetRoot::Resolve(resource->modelAssetId);
+                    if (!path.empty() && Engine::CWModelDecoder::Read_AnimationCatalog(path, catalog, error))
+                        for (const auto& clip : catalog)
+                            entry->second.emplace(clip.name, double(clip.durationTicks) / Engine::CAnimation::COOKED_TICK_RATE * 1000.);
+                }
+                const auto clip = entry->second.find(track.clipName);
+                if (clip != entry->second.end()) nativeMs = clip->second;
+            }
+            const double sourceOut = track.sourceEndMs ? double(track.sourceEndMs) : nativeMs;
+            if (!track.loop && sourceOut > track.sourceStartMs)
+                end = (std::min)(end, track.startMs + (sourceOut - track.sourceStartMs) / track.playbackRate);
             auto value = box(id + ".animation." + std::to_string(i), track.displayName.empty() ? track.clipName : track.displayName,
                 track.clipName, track.startMs, end);
             value.playbackRate = track.playbackRate; value.sourceOffsetMs = track.sourceStartMs;
-            add("Animation", value.id, sequence->displayName + " / " + track.slotId, std::move(value));
+            value.nativeDurationMs = nativeMs; value.sourceClipEndMs = sourceOut;
+            value.loopAnimation = track.loop; value.movieHoldEndMs = phase.MovieTimeMs(holdEnd);
+            add("Animation", id + ".animation-slot." + track.slotId, sequence->displayName + " / " + track.slotId, std::move(value));
         }
         for (const auto& track : sequence->soundTracks)
             add("Sound", id + "." + track.soundTrackId, sequence->displayName,
@@ -701,6 +744,19 @@ bool CClassSelectionPresentation::Parse(const DATA_JSON_VALUE& root, const std::
         }
         if (!ParsePhase(value.Find("intro"), scene.intro, error) ||
             !ParsePhase(value.Find("loop"), scene.loop, error)) return false;
+        if (const auto* excluded = value.Find("excludedWorldObjectIds"))
+        {
+            if (!excluded->Is_Array() || excluded->Get_Array().size() > 4096u)
+            { error = "Movie WORLD exclusions must be a bounded array of stable object IDs."; return false; }
+            std::set<std::string> unique;
+            for (const auto& id : excluded->Get_Array())
+            {
+                if (!id.Is_String() || !CWorldSequenceDocument::Is_ValidStableId(id.Get_String()) ||
+                    !unique.insert(id.Get_String()).second)
+                { error = "Invalid or duplicate Movie WORLD exclusion."; return false; }
+                scene.excludedWorldObjectIds.push_back(id.Get_String());
+            }
+        }
         staged.push_back(std::move(scene));
     }
     out = std::move(staged);
@@ -761,6 +817,7 @@ bool CClassSelectionPresentation::Initialize(const std::string& areaId,
     if (!m_Resources.Load_PreparedArea(areaId, targets))
     { m_Status = m_Resources.Get_Status(); return false; }
     const auto& document = m_Resources.Get_Document();
+    if (!Validate_WorldExclusions(scenes, document, m_Status)) return false;
     for (const auto& scene : scenes)
         for (const auto* phase : { &scene.intro, &scene.loop })
             for (const auto& id : phase->instanceIds)
@@ -822,7 +879,10 @@ bool CClassSelectionPresentation::Play(const std::string& classId)
         [&classId](const SCENE& value) { return value.classId == classId; });
     if (scene == m_Scenes.end())
     { m_Status = "No admitted class selection cinematic for " + classId + "."; return false; }
+    const auto previousSelection = std::exchange(m_Selection, std::nullopt);
+    const bool previousFreeCamera = std::exchange(m_InspectionFreeCamera, false);
     const bool started = Start_Phase(*scene, false, 0., 0u, false);
+    if (!started) { m_Selection = previousSelection; m_InspectionFreeCamera = previousFreeCamera; }
     if (started)
     { m_DeferAdvance = true; m_PlaybackToken = ++g_NextPlaybackToken; }
     return started;
@@ -849,7 +909,14 @@ bool CClassSelectionPresentation::Seek(const std::string& classId, const bool lo
     // Normal forward camera loops below retain both actors and Effect handles.
     const double sample = (std::min)(wallMs, std::nextafter(
         (loop ? scene->loop : scene->intro).WallDurationMs(), 0.));
-    if (!Start_Phase(*scene, loop, sample, 0u, true, true)) return false;
+    const auto previousSelection = m_Selection;
+    if (m_Selection)
+    {
+        if (m_Selection->classId != classId || m_Selection->loop != loop) m_Selection.reset();
+        else m_Selection->bounded = false;
+    }
+    if (!Start_Phase(*scene, loop, sample, 0u, true, true))
+    { m_Selection = previousSelection; return false; }
     m_PlaybackToken = ++g_NextPlaybackToken;
     m_DeferAdvance = true;
     return true;
@@ -860,10 +927,10 @@ bool CClassSelectionPresentation::Start_Phase(const SCENE& scene, const bool loo
 {
     const auto camera = m_Camera.lock();
     if (!camera) { m_Status = "Class selection camera is unavailable."; return false; }
-    if (!camera->Begin_PresentationOverride(CAMERA_OWNER))
+    if (!m_InspectionFreeCamera && !camera->Begin_PresentationOverride(CAMERA_OWNER))
     { m_Status = "Another presentation owns the camera."; return false; }
-    const bool acquiredCamera = !m_OwnsCamera;
-    m_OwnsCamera = true;
+    const bool acquiredCamera = !m_InspectionFreeCamera && !m_OwnsCamera;
+    m_OwnsCamera = !m_InspectionFreeCamera;
     const auto& phase = loop ? scene.loop : scene.intro;
     auto staged = std::make_unique<CWorldSequencePlayer>();
     if (!staged->Set_Document(m_Resources.Get_Document(), m_Targets, m_Status))
@@ -890,11 +957,18 @@ bool CClassSelectionPresentation::Start_Phase(const SCENE& scene, const bool loo
     if (rebuildEffects || !loop || m_Scene != &scene) Stop_Effects();
     if (m_Active) m_Active->Stop_All(m_Targets, true);
     m_Active = std::move(staged);
+    if (m_Selection && (m_Selection->classId != scene.classId || m_Selection->loop != loop))
+        m_Selection.reset();
     m_Scene = &scene;
     m_Looping = loop;
     m_ElapsedMs = elapsedMs;
     m_LoopCycle = loopCycle;
-    if (!Sample_Frame()) { Fail(m_Status); return false; }
+    // Acquire the override before enabling follow: it must not snap to the
+    // replicated player while entering the Movie or returning from inspection.
+    const bool previousFollow = camera->Is_FollowRequested();
+    if (!m_InspectionFreeCamera) camera->Set_FollowEnabled(true);
+    if (!Sample_Frame())
+    { Fail(m_Status); camera->Set_FollowEnabled(previousFollow); return false; }
     Set_Paused(desiredPaused);
     m_Status = loop ? "Class selection cinematic looping." : "Class selection cinematic intro.";
     return true;
@@ -904,6 +978,46 @@ void CClassSelectionPresentation::Set_Paused(const bool paused)
 {
     m_Paused = paused;
     if (m_Active) m_Active->Set_Paused(paused);
+}
+
+bool CClassSelectionPresentation::Set_InspectionFreeCamera(const bool free, std::string& status)
+{
+    if (!m_Active || !m_Scene)
+    { status = "Play a Movie before changing its inspection camera."; return false; }
+    const auto camera = m_Camera.lock();
+    if (!camera)
+    { status = "The Movie camera is unavailable; playback was preserved."; return false; }
+    if (free == m_InspectionFreeCamera)
+    { status = free ? "Movie free inspection is already active." : "Movie camera is already active."; return true; }
+    if (free)
+    {
+        if (!camera->End_PresentationOverrideAtCurrentPose(CAMERA_OWNER))
+        { status = "Another presentation owns the camera; Movie inspection was preserved."; return false; }
+        camera->Set_FollowEnabled(false);
+        m_OwnsCamera = false;
+        m_InspectionFreeCamera = true;
+        status = "Free camera inspects the current Movie. F6 returns to its camera without restarting.";
+        return true;
+    }
+    if (!camera->Begin_PresentationOverride(CAMERA_OWNER))
+    { status = "Another presentation owns the camera; free inspection was preserved."; return false; }
+    m_OwnsCamera = true;
+    m_InspectionFreeCamera = false;
+    const auto& phase = m_Looping ? m_Scene->loop : m_Scene->intro;
+    const float sampleMs = (std::min)(static_cast<float>(phase.SourceTimeMs(m_ElapsedMs)),
+        std::nextafter(static_cast<float>(phase.durationMs), 0.f));
+    if (!Sample_Camera(phase, sampleMs))
+    {
+        status = m_Status;
+        camera->End_PresentationOverride(CAMERA_OWNER);
+        camera->Set_FollowEnabled(false);
+        m_OwnsCamera = false;
+        m_InspectionFreeCamera = true;
+        return false;
+    }
+    camera->Set_FollowEnabled(true);
+    status = "Movie camera resumed at the current playback time.";
+    return true;
 }
 
 bool CClassSelectionPresentation::Sample_Frame()
@@ -918,7 +1032,9 @@ bool CClassSelectionPresentation::Sample_Frame()
     for (const auto& id : phase.instanceIds)
         if (!m_Active->Seek_InstanceToMs(id, static_cast<float>(sampleMs), m_Targets, false))
         { m_Status = "Class selection world sample failed: " + id + "; " + m_Active->Get_Status(); return false; }
-    return Sample_Camera(phase, sampleMs) && Sample_MaterialsAndLights(phase, sampleMs) && Sample_Effects(phase, sampleMs);
+    const bool sampled = Sample_Camera(phase, sampleMs) && Sample_MaterialsAndLights(phase, sampleMs) && Sample_Effects(phase, sampleMs);
+    if (sampled) Apply_WorldInspection();
+    return sampled;
 }
 
 bool CClassSelectionPresentation::Sample_Camera(const PHASE& phase, const float sampleMs)
@@ -935,7 +1051,7 @@ bool CClassSelectionPresentation::Sample_Camera(const PHASE& phase, const float 
     float3_t up{};
     if (row == phase.cameras.end() || !CEffectRecoveryCamera::Sample(*row, timeMs, identity,
         camera->Get_AspectRatio(), pose, up, m_Status)) return false;
-    if (!camera->Apply_PresentationPoseWithUp(CAMERA_OWNER, pose.vEye, pose.vLookAt,
+    if (!m_InspectionFreeCamera && !camera->Apply_PresentationPoseWithUp(CAMERA_OWNER, pose.vEye, pose.vLookAt,
         up, pose.fFovYDegrees))
     { m_Status = "Class selection camera ownership was lost."; return false; }
     m_CameraSample = {true, row->id, m_ElapsedMs, static_cast<double>(timeMs), camera->Get_AspectRatio(), pose, up};
@@ -947,6 +1063,8 @@ bool CClassSelectionPresentation::Sample_Effects(const PHASE& phase, const float
     std::set<std::string> visible;
     for (const auto& track : phase.effects)
     {
+        if (m_Selection && (m_Selection->classId != m_Scene->classId ||
+            m_Selection->loop != m_Looping || m_Selection->occurrenceId != track.effectId)) continue;
         if (sampleMs < track.startMs || sampleMs >= track.endMs) continue;
         visible.insert(track.effectId);
         const double ageOffset = m_Looping ? m_LoopCycle * track.loopAgeDeltaMs : 0.;
@@ -978,7 +1096,9 @@ bool CClassSelectionPresentation::Sample_Effects(const PHASE& phase, const float
             desc.fInitialSampleTimeSeconds = age;
             desc.bExternallySampled = true;
             desc.fSourceLoopEndSeconds = end;
-            if (const auto preview = m_EffectPreviews.find(track.assetId); preview != m_EffectPreviews.end())
+            if (m_Selection && m_Selection->occurrenceId == track.effectId)
+                desc.pAuthoringPreview = m_Selection->target;
+            else if (const auto preview = m_EffectPreviews.find(track.assetId); preview != m_EffectPreviews.end())
                 desc.pAuthoringPreview = preview->second;
             ACTIVE_EFFECT value;
             value.assetId = track.assetId;
@@ -1042,9 +1162,136 @@ bool CClassSelectionPresentation::Preview_EffectDocument(
         if (active.assetId == document.strEffectAssetId) replacements.emplace_back(active.handle, target);
     if (!CEffectPresentationService::Replace_WorldRootPreviews(replacements, status)) return false;
     m_EffectPreviews.insert_or_assign(document.strEffectAssetId, std::move(target));
+    if (m_Selection && m_Selection->assetId == document.strEffectAssetId) m_Selection.reset();
     status = "Movie Effect draft applied; character animation and Movie time are preserved. Save Changes persists the Effect.";
     return true;
 }
+
+bool CClassSelectionPresentation::Prepare_SelectionTargets(const EFFECT_DOCUMENT_DESC& full,
+    const EFFECT_DOCUMENT_DESC& selected, const std::vector<std::string>& drawElementIds,
+    std::shared_ptr<const EFFECT_WORLD_PREVIEW_TARGET>& fullTarget,
+    std::shared_ptr<const EFFECT_WORLD_PREVIEW_TARGET>& selectedTarget, std::string& status)
+{
+    if (full.strEffectAssetId != selected.strEffectAssetId || selected.Elements.empty() || drawElementIds.empty() ||
+        std::any_of(selected.Elements.begin(), selected.Elements.end(), [&](const auto& element) {
+            return std::none_of(full.Elements.begin(), full.Elements.end(), [&](const auto& source) {
+                return source.strElementId == element.strElementId;
+            });
+        }))
+    { status = "Movie selection must refer to elements of the same complete Effect draft."; return false; }
+    bool used = false;
+    for (const auto& scene : m_Scenes)
+        for (const auto* phase : {&scene.intro, &scene.loop})
+            for (const auto& effect : phase->effects) used |= effect.assetId == full.strEffectAssetId;
+    if (!used || !m_Targets.Is_Complete())
+    { status = "Movie selection has no admitted Effect owner."; return false; }
+    return CEffectPresentationService::Prepare_WorldPreviewTarget(m_Targets.device,
+        m_Targets.context, full, fullTarget, status) &&
+        CEffectPresentationService::Prepare_WorldPreviewTarget(m_Targets.device,
+            m_Targets.context, selected, selectedTarget, status, &drawElementIds);
+}
+
+bool CClassSelectionPresentation::Preview_EffectSelection(const EFFECT_DOCUMENT_DESC& full,
+    const EFFECT_DOCUMENT_DESC& selected, const std::vector<std::string>& drawElementIds, const double startAgeMs, const double endAgeMs, std::string& status)
+{
+    if (!m_Selection || m_Selection->assetId != full.strEffectAssetId)
+    { status = "Play the selected Movie elements before refreshing their isolated preview."; return false; }
+    if (!std::isfinite(startAgeMs) || !std::isfinite(endAgeMs) || startAgeMs < 0. || endAgeMs <= startAgeMs)
+    { status = "Movie element preview needs a finite, positive source-age window."; return false; }
+    const auto scene = std::find_if(m_Scenes.begin(), m_Scenes.end(),
+        [&](const auto& value) { return value.classId == m_Selection->classId; });
+    if (scene == m_Scenes.end()) { status = "The selected Movie was removed."; return false; }
+    const auto& phase = m_Selection->loop ? scene->loop : scene->intro;
+    const auto track = std::find_if(phase.effects.begin(), phase.effects.end(),
+        [&](const auto& value) { return value.effectId == m_Selection->occurrenceId && value.assetId == full.strEffectAssetId; });
+    if (track == phase.effects.end()) { status = "The selected Movie occurrence was removed."; return false; }
+    double sourceStart = (std::max)(track->startMs, track->PhaseTimeMs(startAgeMs));
+    double sourceEnd = (std::min)(track->endMs, track->PhaseTimeMs(endAgeMs));
+    if (sourceEnd <= sourceStart && track->clockKeys.front().sourceMs >= endAgeMs)
+    { sourceStart = track->startMs; sourceEnd = track->endMs; }
+    const double movieStart = phase.MovieTimeMs(sourceStart), movieEnd = phase.MovieTimeMs(sourceEnd);
+    if (movieEnd <= movieStart) { status = "Edited elements have no interval in this Movie occurrence."; return false; }
+    std::shared_ptr<const EFFECT_WORLD_PREVIEW_TARGET> fullTarget, selectedTarget;
+    if (!Prepare_SelectionTargets(full, selected, drawElementIds, fullTarget, selectedTarget, status)) return false;
+    std::vector<std::pair<EFFECT_WORLD_ROOT_HANDLE,
+        std::shared_ptr<const EFFECT_WORLD_PREVIEW_TARGET>>> replacements;
+    for (const auto& [id, active] : m_Effects)
+        if (active.assetId == full.strEffectAssetId)
+            replacements.emplace_back(active.handle, id == m_Selection->occurrenceId ? selectedTarget : fullTarget);
+    if (!CEffectPresentationService::Replace_WorldRootPreviews(replacements, status)) return false;
+    m_EffectPreviews.insert_or_assign(full.strEffectAssetId, std::move(fullTarget));
+    m_Selection->target = std::move(selectedTarget);
+    m_Selection->startMs = movieStart; m_Selection->endMs = movieEnd;
+    status = "Selected Movie elements updated at the current time. Play All restores the complete draft.";
+    return true;
+}
+
+bool CClassSelectionPresentation::Play_EffectSelection(const std::string& classId, const bool loop,
+    const EFFECT_DOCUMENT_DESC& full, const EFFECT_DOCUMENT_DESC& selected,
+    const std::vector<std::string>& drawElementIds, const double startAgeMs, const double endAgeMs, const bool repeat, std::string& status)
+{
+    if (!std::isfinite(startAgeMs) || !std::isfinite(endAgeMs) || startAgeMs < 0. || endAgeMs <= startAgeMs)
+    { status = "Movie element preview needs a finite, positive source-age window."; return false; }
+    const auto scene = std::find_if(m_Scenes.begin(), m_Scenes.end(),
+        [&](const auto& value) { return value.classId == classId; });
+    if (scene == m_Scenes.end())
+    { status = "The selected Movie is no longer available."; return false; }
+    const auto& phase = loop ? scene->loop : scene->intro;
+    const EFFECT_TRACK* track = nullptr;
+    const double currentSource = phase.SourceTimeMs(m_ElapsedMs);
+    for (const auto& candidate : phase.effects)
+    {
+        if (candidate.assetId != full.strEffectAssetId) continue;
+        if (!track) track = &candidate;
+        if (m_Scene == &*scene && m_Looping == loop && currentSource >= candidate.startMs && currentSource < candidate.endMs)
+        { track = &candidate; break; }
+    }
+    if (!track || track->clockKeys.empty())
+    { status = "This Effect has no occurrence in the selected Movie phase."; return false; }
+    // Effect age is neither phase-source time nor Movie time. Invert both clocks
+    // and retain the original age when a Loop phase continues an Intro emitter.
+    double sourceStart = (std::max)(track->startMs, track->PhaseTimeMs(startAgeMs));
+    double sourceEnd = (std::min)(track->endMs, track->PhaseTimeMs(endAgeMs));
+    if (sourceEnd <= sourceStart)
+    {
+        // A continuous emitter may already be older than the first authored
+        // lifetime. Preview its actual admitted phase instead of resetting age.
+        if (track->clockKeys.front().sourceMs >= endAgeMs)
+        { sourceStart = track->startMs; sourceEnd = track->endMs; }
+        else { status = "The selected elements have no playback interval in this Movie phase."; return false; }
+    }
+    EFFECT_SELECTION selection;
+    selection.classId = classId; selection.assetId = full.strEffectAssetId;
+    selection.occurrenceId = track->effectId; selection.loop = loop; selection.repeat = repeat;
+    selection.startMs = phase.MovieTimeMs(sourceStart);
+    selection.endMs = phase.MovieTimeMs(sourceEnd);
+    if (selection.endMs <= selection.startMs)
+    { status = "The selected Movie source interval maps to an empty Movie interval."; return false; }
+    std::shared_ptr<const EFFECT_WORLD_PREVIEW_TARGET> fullTarget;
+    if (!Prepare_SelectionTargets(full, selected, drawElementIds, fullTarget, selection.target, status)) return false;
+    const auto previousSelection = m_Selection;
+    const auto previousPreviews = m_EffectPreviews;
+    const auto* previousScene = m_Scene;
+    const auto previousTime = m_ElapsedMs;
+    const auto previousCycle = m_LoopCycle;
+    const auto previousToken = m_PlaybackToken;
+    const bool previousLoop = m_Looping, previousPaused = m_Paused;
+    m_EffectPreviews.insert_or_assign(full.strEffectAssetId, std::move(fullTarget));
+    m_Selection = selection;
+    if (!Start_Phase(*scene, loop, selection.startMs, 0u, false, true))
+    {
+        const auto failure = m_Status;
+        m_EffectPreviews = previousPreviews; m_Selection = previousSelection;
+        if (previousScene && Start_Phase(*previousScene, previousLoop, previousTime, previousCycle, previousPaused, true))
+            m_PlaybackToken = previousToken;
+        status = failure; return false;
+    }
+    m_DeferAdvance = true; m_PlaybackToken = ++g_NextPlaybackToken;
+    status = m_Status = repeat ? "Movie group preview repeats its selected interval." :
+        "Movie element preview plays once and pauses at its interval end.";
+    return true;
+}
+
 
 bool CClassSelectionPresentation::Clear_EffectPreviews(std::string& status)
 {
@@ -1054,6 +1301,7 @@ bool CClassSelectionPresentation::Clear_EffectPreviews(std::string& status)
         if (m_EffectPreviews.contains(active.assetId)) replacements.emplace_back(active.handle, nullptr);
     if (!CEffectPresentationService::Replace_WorldRootPreviews(replacements, status)) return false;
     m_EffectPreviews.clear();
+    m_Selection.reset();
     status = "Movie Effect preview returned to the latest saved runtime definitions.";
     return true;
 }
@@ -1126,6 +1374,17 @@ void CClassSelectionPresentation::Update(const float deltaSeconds)
 {
     Poll_AuthoringPublish();
     if (!m_Active || !m_Scene) return;
+    // Camera_Free owns the F6 shortcut. Consume its requested mode once instead
+    // of reading the key a second time or stopping the Movie.
+    if (const auto camera = m_Camera.lock(); camera)
+    {
+        const bool requestedFree = !camera->Is_FollowRequested();
+        if (m_InspectionFreeCamera != requestedFree)
+        {
+            std::string cameraStatus;
+            if (!Set_InspectionFreeCamera(requestedFree, cameraStatus)) m_Status = cameraStatus;
+        }
+    }
     if (!std::isfinite(deltaSeconds) || deltaSeconds < 0.f)
     { Fail("Invalid class selection frame time."); return; }
     // This is a visual preview clock. Loading/debugger stalls pause it instead of
@@ -1135,6 +1394,22 @@ void CClassSelectionPresentation::Update(const float deltaSeconds)
     m_DeferAdvance = false;
     m_Active->Update_SoundTails(static_cast<float>(deltaMs * .001));
     m_ElapsedMs += deltaMs;
+    if (!m_Paused && deltaMs > 0. && m_Selection && m_Selection->bounded && m_ElapsedMs >= m_Selection->endMs)
+    {
+        if (m_Selection->repeat)
+        {
+            const double next = m_Selection->startMs + std::fmod(m_ElapsedMs - m_Selection->startMs,
+                m_Selection->endMs - m_Selection->startMs);
+            if (!Start_Phase(*m_Scene, m_Looping, next, 0u, false, true)) Fail(m_Status);
+        }
+        else
+        {
+            m_ElapsedMs = (std::max)(m_Selection->startMs, m_Selection->endMs - .1);
+            if (!Sample_Frame()) Fail(m_Status);
+            else Set_Paused(true);
+        }
+        return;
+    }
     const auto& phase = m_Looping ? m_Scene->loop : m_Scene->intro;
     if (m_ElapsedMs >= phase.WallDurationMs())
     {
@@ -1158,6 +1433,7 @@ void CClassSelectionPresentation::Update(const float deltaSeconds)
 void CClassSelectionPresentation::Stop()
 {
     const bool wasActive = Is_Active();
+    m_InspectionPickArmed = false;
     Stop_Effects();
     // A provider may already be queued for this frame; clear its payload in place.
     if (m_LightFrame) m_LightFrame->lights.clear();
@@ -1166,6 +1442,7 @@ void CClassSelectionPresentation::Stop()
     if (m_OwnsCamera)
         if (const auto camera = m_Camera.lock()) camera->End_PresentationOverride(CAMERA_OWNER);
     m_OwnsCamera = false;
+    m_InspectionFreeCamera = false;
     m_Scene = nullptr;
     m_ElapsedMs = 0.;
     m_LoopCycle = 0u;
@@ -1190,12 +1467,16 @@ void CClassSelectionPresentation::Clear()
     Stop();
     m_Authoring.reset();
     m_EffectPreviews.clear();
+    m_Selection.reset();
     m_Resources.Clear();
     m_Targets = {};
     m_Camera.reset();
     m_LightFrame.reset();
     m_Scenes.clear();
-    m_Timelines.clear();
+    m_Timelines.clear(); m_AnimationDurations.clear();
     m_PlaybackRate = 1.;
+    m_InspectionClass.clear(); m_InspectionSelectedObject.clear(); m_InspectionSoloObject.clear();
+    m_InspectionMutedObjects.clear(); m_InspectionStatus.clear(); m_InspectionPickedMesh = UINT32_MAX;
+    m_InspectionShowBackground = m_InspectionShowEffects = true;
 }
 }

@@ -1,3 +1,4 @@
+#ifndef SOURCE_CHARACTER_BASE_DISPATCH_CASES
 SOURCE_CHARACTER_NATIVE_OUTPUT SourceMapMonsterBaked1400(SOURCE_CHARACTER_NATIVE_INPUT input)
 {
     SOURCE_CHARACTER_NATIVE_OUTPUT output=(SOURCE_CHARACTER_NATIVE_OUTPUT)0;
@@ -3379,3 +3380,13 @@ SOURCE_CHARACTER_NATIVE_OUTPUT SourceCharacterBase1407(SOURCE_CHARACTER_NATIVE_I
 }
 
 // source.character.static-map-native-1408.v1 / source program c232cafc31ed0449b63072a6f092e36d
+#else // SOURCE_CHARACTER_BASE_DISPATCH_CASES
+    case 1400u: return SourceCharacterBase1400(input);
+    case 1401u: return SourceCharacterBase1401(input);
+    case 1402u: return SourceCharacterBase1402(input);
+    case 1403u: return SourceCharacterBase1403(input);
+    case 1404u: return SourceCharacterBase1404(input);
+    case 1405u: return SourceCharacterBase1405(input);
+    case 1406u: return SourceCharacterBase1406(input);
+    case 1407u: return SourceCharacterBase1407(input);
+#endif // SOURCE_CHARACTER_BASE_DISPATCH_CASES

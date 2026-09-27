@@ -157,6 +157,11 @@ namespace LostArk::Server
 	class CValtanBrain final
 	{
 	public:
+        // Read-only planning query; uses the same shape and stage hit clock as damage.
+        [[nodiscard]] static float Predict_ContactRisk(const SERVER_WORLD_ENTITY& boss,
+            const BOSS_PATTERN_DEFINITION& pattern, const SERVER_PLAYER& probe,
+            std::uint32_t serverTick, std::uint32_t horizonMs);
+
 		static constexpr std::size_t MAX_DECISION_TRACE_COUNT = 32u;
 		static constexpr std::size_t MAX_DECISION_CANDIDATE_COUNT = 64u;
 		static constexpr std::size_t MAX_MECHANIC_OCCURRENCE_COUNT = 64u;

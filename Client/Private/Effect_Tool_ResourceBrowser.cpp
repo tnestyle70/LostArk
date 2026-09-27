@@ -1970,6 +1970,7 @@ void Client::CEffect_Tool::Render_ActiveAuthoredEffectTree()
 	const std::string CurrentDisplayName = FriendlyDocumentLabel(
 		*m_ActiveDocument, "Current Effect");
 	ImGui::TextWrapped("Editing and saving: %s", CurrentDisplayName.c_str());
+    if (Has_ClassMovieContext()) Render_ClassMovieControls(false);
     Render_ProjectileDestinationControls();
     if (m_pAuthoringSequencer && !Has_ClassMovieContext() && Is_SceneAnchoredEffectAssetId(m_ActiveDocument->strEffectAssetId))
         m_pAuthoringSequencer->Render_PreviewPlacementControls();
@@ -1984,13 +1985,16 @@ void Client::CEffect_Tool::Render_ActiveAuthoredEffectTree()
 		Prune_MissingElementMarks(*m_ActiveDocument, m_MarkedElementIds);
 		m_bMarkedElementIdsNeedPrune = false;
 	}
-	ImGui::BeginDisabled(!m_bActiveDocumentDrawable);
-	if (ImGui::SmallButton("Play All##active-authored"))
-		(void)Try_PlayActiveUnifiedEffect();
-	ImGui::EndDisabled();
-	if (!m_bActiveDocumentDrawable && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
-		ImGui::SetTooltip("%s", m_strActiveDocumentDrawableError.c_str());
-    ImGui::SameLine();
+    if (!Has_ClassMovieContext())
+    {
+	    ImGui::BeginDisabled(!m_bActiveDocumentDrawable);
+	    if (ImGui::SmallButton("Play All##active-authored"))
+		    (void)Try_PlayActiveUnifiedEffect();
+	    ImGui::EndDisabled();
+	    if (!m_bActiveDocumentDrawable && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+		    ImGui::SetTooltip("%s", m_strActiveDocumentDrawableError.c_str());
+        ImGui::SameLine();
+    }
     ImGui::BeginDisabled(!m_bActiveDocumentDrawable || !m_pAuthoringSequencer || m_MarkedElementIds.empty());
     if (ImGui::SmallButton("Play Group")) (void)Try_PlayMarkedElementGroup();
     ImGui::EndDisabled();

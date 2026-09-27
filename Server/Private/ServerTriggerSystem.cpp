@@ -613,6 +613,7 @@ void LostArk::Server::CServerTriggerSystem::Evaluate_Entries(
 	{
 		for (const auto& [playerId, player] : players)
 		{
+			if (player.Is_Guide()) continue;
 				if (LostArk::Shared::PLAYER_ACTION_STATE::TRIGGER_MOVE == player.eAction ||
 					LostArk::Shared::PLAYER_ACTION_STATE::WALL_CLIMB == player.eAction)
 				m_TriggerMoveInFlight.insert(playerId);
@@ -640,6 +641,7 @@ void LostArk::Server::CServerTriggerSystem::Evaluate_Entries(
 		std::unordered_set<LostArk::Shared::PLAYER_ID> currentInside;
 		for (auto& [playerId, player] : players)
 		{
+			if (player.Is_Guide()) continue;
 			if (0u == player.iCurrentHp || !Contains(trigger, player))
 				continue;
 			currentInside.insert(playerId);

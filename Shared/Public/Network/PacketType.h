@@ -110,7 +110,10 @@ namespace LostArk::Shared
 	// 112 maps owned WORLD cues to their Server combat body for hit/hover presentation.
 	// 113 adds validated same-room ground ping intent and reliable room broadcast.
 	// 114 carries the Server-selected Mario colour marker over the assigned player.
-	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 114;
+	// 115 appends authoritative stagger success and Mario hit-source presentation to DAMAGE_EVENT.
+	// 116 carries explicit guide actors, a separate companion roster, dialogue and decision traces.
+	// 117 carries the Server-selected mechanic gauge mode and remaining/maximum.
+	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 117;
 
 	enum class WORLD_ID : std::uint16_t
 	{
@@ -182,6 +185,11 @@ namespace LostArk::Shared
 			CHARACTER_CLASS_ID::WARLORD == characterClass ||
 			CHARACTER_CLASS_ID::GUARDIANKNIGHT == characterClass;
 	}
+
+	// v116: server-owned companion identity, separate party companion, prompt and trace.
+	enum class PLAYER_CONTROL_KIND : std::uint8_t { HUMAN = 0, GUIDE_AI = 1 };
+	constexpr bool Is_Known_Player_Control_Kind(PLAYER_CONTROL_KIND kind)
+	{ return kind == PLAYER_CONTROL_KIND::HUMAN || kind == PLAYER_CONTROL_KIND::GUIDE_AI; }
 
 	enum class PACKET_TYPE : std::uint16_t
 	{
@@ -414,7 +422,9 @@ namespace LostArk::Shared
 		C2S_SET_COOLDOWN_MODE,
 		S2C_SET_COOLDOWN_MODE_RESULT,
 		C2S_ROOM_PING,
-		S2C_ROOM_PING
+		S2C_ROOM_PING,
+		S2C_GUIDE_PROMPT,
+		S2C_GUIDE_STATE
 	};
 
 	//TCP는 메시지 경계를 보존하지 않기 때문에, payload앞에 header를 둔다.
@@ -459,6 +469,8 @@ namespace LostArk::Shared
 		case PACKET_TYPE::C2S_ROOM_PING:
 		case PACKET_TYPE::S2C_ROOM_PING:
 		case PACKET_TYPE::C2S_CHAT:
+		case PACKET_TYPE::S2C_GUIDE_PROMPT:
+		case PACKET_TYPE::S2C_GUIDE_STATE:
 		case PACKET_TYPE::S2C_CHAT:
 		case PACKET_TYPE::S2C_PLAYER_DESPAWNED:
 		case PACKET_TYPE::S2C_WORLD_ENTITY_DESPAWNED:

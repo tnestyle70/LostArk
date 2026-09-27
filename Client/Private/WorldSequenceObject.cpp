@@ -155,6 +155,7 @@ bool_t CWorldSequenceObject::Sample(const float4x4_t& world, const bool_t visibl
     m_SampleTimeSeconds = (std::max)(0.f, localMs) * 0.001f;
     m_World = world;
     m_Visible = visible;
+    Refresh_InspectionHighlight();
     if (!visible) Hide();
     // Parts follow this exact pose: the weapon reads its grip bone from the body now.
     for (const auto& part : m_Parts) part->Update(0.f);
@@ -189,9 +190,34 @@ bool_t CWorldSequenceObject::Try_GetAttachmentWorld(const std::string& bone, flo
 }
 #endif
 
+void CWorldSequenceObject::Refresh_InspectionHighlight()
+{
+    m_CombatPresentation.isCombatHovered = m_Visible && m_InspectionDrawEnabled &&
+        (m_CombatHovered || m_InspectionSelected);
+}
+
+void CWorldSequenceObject::Set_InspectionState(const bool_t drawEnabled, const bool_t selected)
+{
+    m_InspectionDrawEnabled = drawEnabled;
+    m_InspectionSelected = selected;
+    Refresh_InspectionHighlight();
+    // Parts can already be in a render queue when the inspection selection changes.
+    for (const auto& part : m_Parts)
+        if (part) part->Set_PresentationSuppressed(!drawEnabled);
+}
+
+bool_t CWorldSequenceObject::Try_PickInspection(const float3_t& rayOrigin,
+    const float3_t& rayDirection, f32_t& distance, uint32_t& meshIndex) const
+{
+    if (!m_Visible || !m_InspectionDrawEnabled || !m_Model) return false;
+    return m_Model->Try_PickCurrentPose(m_World, rayOrigin, rayDirection, distance, meshIndex);
+}
+
 bool_t CWorldSequenceObject::Reset_ForReuse()
 {
     Hide();
+    m_CombatHovered = false;
+    Set_InspectionState(true, false);
     m_CombatPresentation = {};
     m_HitFlashSeconds = 0.f;
     if (!m_Model || !Get_RenderStatus().empty()) return false;
@@ -224,13 +250,16 @@ void CWorldSequenceObject::Late_Update(f32_t deltaSeconds)
 {
     // Apply_Objects temporarily hides each object before resampling it. Only a
     // still-hidden object at the render boundary has actually left presentation.
-    if (!m_Visible) { m_CombatPresentation = {}; m_HitFlashSeconds = 0.f; return; }
+    if (!m_Visible)
+    { m_CombatHovered = false; m_CombatPresentation = {}; m_HitFlashSeconds = 0.f; return; }
+    Refresh_InspectionHighlight();
     if (std::isfinite(deltaSeconds) && deltaSeconds > 0.f && m_HitFlashSeconds > 0.f)
     {
         m_HitFlashSeconds = (std::max)(0.f, m_HitFlashSeconds - deltaSeconds);
         m_CombatPresentation.fIntensity = 4.f * m_HitFlashSeconds / .12f;
         m_CombatPresentation.isEnabled = m_HitFlashSeconds > 0.f;
     }
+    if (!m_InspectionDrawEnabled) return;
     const auto self = static_pointer_cast<CGameObject>(shared_from_this());
     CGameInstance::Get().Add_RenderObject(RENDERGROUP::NONBLEND, self);
     if (m_HasOpaqueGhostMeshes) CGameInstance::Get().Add_RenderObject(RENDERGROUP::NONLIGHT, self);
@@ -248,6 +277,7 @@ void CWorldSequenceObject::Late_Update(f32_t deltaSeconds)
 
 HRESULT CWorldSequenceObject::Render_Group(RENDERGROUP group)
 {
+    if (!m_Visible || !m_InspectionDrawEnabled) return S_OK;
     if (RENDERGROUP::NONLIGHT == group) return Render_ForwardSource(true);
     return RENDERGROUP::BLEND == group ? Render_ForwardSource(false) : Render();
 }
@@ -278,7 +308,7 @@ HRESULT CWorldSequenceObject::Render_Mesh(uint32_t mesh)
 
 HRESULT CWorldSequenceObject::Render()
 {
-    if (!m_Visible) return S_OK;
+    if (!m_Visible || !m_InspectionDrawEnabled) return S_OK;
     const auto failed = [this](const std::string& stage)
     { m_RenderStatus = "World Object render failed: " + stage; return E_FAIL; };
     if (FAILED(m_Shader->Bind_Matrix("g_WorldMatrix", &m_World)) ||
@@ -328,7 +358,7 @@ HRESULT CWorldSequenceObject::Render()
 
 HRESULT CWorldSequenceObject::Render_ForwardSource(bool opaqueGhost)
 {
-    if (!m_Visible) return S_OK;
+    if (!m_Visible || !m_InspectionDrawEnabled) return S_OK;
     std::string& status = opaqueGhost ? m_OpaqueGhostRenderStatus : m_TranslucentRenderStatus;
     const auto failed = [&status, opaqueGhost](const std::string& stage)
     {
@@ -379,6 +409,9 @@ HRESULT CWorldSequenceObject::Render_ForwardSource(bool opaqueGhost)
             return failed("bone matrix binding" + meshLabel);
         if (FAILED(m_Shader->Begin(pass))) return failed("shader pass" + meshLabel);
         if (FAILED(Render_Mesh(mesh))) return failed("mesh submission" + meshLabel);
+        // Reuse the existing forward outline pass; native material constants stay unchanged.
+        (void)Render_CombatHoverMesh(*m_Model, m_Shader, mesh, &m_CombatPresentation, animated, true,
+            XMVectorGetX(XMMatrixDeterminant(XMLoadFloat4x4(&m_World))) < 0.f);
     }
     status.clear();
     return S_OK;

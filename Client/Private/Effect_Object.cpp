@@ -1052,6 +1052,8 @@ HRESULT Client::CEffectObject::Submit_RenderGroups()
 		++m_iRenderSubmissionSerial;
 	if (m_bRenderFailureIsolated)
 		return m_hRenderFailure;
+	if (!m_bInspectionVisible)
+		return S_FALSE;
 	if (m_bReconstructedDiagnosticActive)
 	{
 		if (!m_bVisible)
@@ -1178,7 +1180,7 @@ HRESULT Client::CEffectObject::Submit_Presentation()
 		m_strStatus = std::move(GateStatus);
 		return Complete(E_FAIL);
 	}
-	if (!m_bVisible)
+	if (!m_bVisible || !m_bInspectionVisible)
 		return Complete(S_OK);
 	const EFFECT_EVALUATED_FRAME& Frame = Get_PresentationFrame();
 	const uint64_t iVisibleLightCount = static_cast<uint64_t>(std::count_if(
@@ -1353,7 +1355,7 @@ void Client::CEffectObject::Finalize_PresentationSubmission(
 
 HRESULT Client::CEffectObject::Render_Shadow()
 {
-	if (m_bRenderFailureIsolated || m_bReconstructedDiagnosticActive || !m_bVisible)
+	if (m_bRenderFailureIsolated || m_bReconstructedDiagnosticActive || !m_bVisible || !m_bInspectionVisible)
 		return S_FALSE;
 	std::string GateStatus;
 	if (!m_bReconstructedSourceRuntimeActive &&
@@ -1369,7 +1371,7 @@ HRESULT Client::CEffectObject::Render_Shadow()
 
 HRESULT Client::CEffectObject::Render_NonBlendModelCues()
 {
-	if (m_bRenderFailureIsolated)
+	if (m_bRenderFailureIsolated || !m_bInspectionVisible)
 		return S_FALSE;
 	if (m_bReconstructedDiagnosticActive || !m_bVisible)
 		return S_FALSE;
@@ -1389,7 +1391,7 @@ HRESULT Client::CEffectObject::Render_NonBlendModelCues()
 
 HRESULT Client::CEffectObject::Render_WorldMarks()
 {
-	if (m_bRenderFailureIsolated)
+	if (m_bRenderFailureIsolated || !m_bInspectionVisible)
 		return S_FALSE;
 	if (m_bReconstructedDiagnosticActive || !m_bVisible)
 		return S_FALSE;
@@ -1423,7 +1425,7 @@ HRESULT Client::CEffectObject::Render()
 		m_bWorldMarkPassPending = false;
 		return Render_WorldMarks();
 	}
-	if (m_bRenderFailureIsolated)
+	if (m_bRenderFailureIsolated || !m_bInspectionVisible)
 		return S_FALSE;
 	if (m_bReconstructedDiagnosticActive)
 	{

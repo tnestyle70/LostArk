@@ -16,6 +16,8 @@ struct ARTIST_NATIVE_INPUT
     float3 sourceWorldPosition;
     float3 sourceBasisX;
     float3 sourceBasisZ;
+    float3 sourceDecalTangent;
+    float3 sourceDecalBinormal;
     float handedness;
     float4 vertexColor;
     float2 screenUV;

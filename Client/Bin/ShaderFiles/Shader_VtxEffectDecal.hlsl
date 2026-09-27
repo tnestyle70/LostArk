@@ -156,6 +156,18 @@ EFFECT_PS_OUT PS_MATERIAL(VS_OUT input)
         nativeInput.tangentUp = normalize(float3(localUp.x, -localUp.z, localUp.y));
         nativeInput.ambientColor = g_KoukuDecalAmbient.xyz;
         nativeInput.skyIntensity = g_KoukuDecalAmbient.w;
+        // Exact original impact PS consumes receiver normal and both projector axes.
+        // Other installed decal programs retain their existing inputs.
+        if (g_SourceMaterialProfile == 5140u)
+        {
+            const float3 normal = Resolve_DecalReceiverNormalV1(worldPosition.xyz,
+                g_NormalTexture.Sample(PointSampler, input.uv).xyz);
+            const float3 axisX = normalize(float3(g_DecalWorldInverse[0][0], g_DecalWorldInverse[1][0], g_DecalWorldInverse[2][0]));
+            const float3 axisY = -normalize(float3(g_DecalWorldInverse[0][2], g_DecalWorldInverse[1][2], g_DecalWorldInverse[2][2]));
+            nativeInput.sourceBasisX = float3(normal.x, -normal.z, normal.y);
+            nativeInput.sourceDecalTangent = float3(axisX.x, -axisX.z, axisX.y);
+            nativeInput.sourceDecalBinormal = float3(axisY.x, -axisY.z, axisY.y);
+        }
         nativeInput.frontFace = true;
         output = Shade_EffectArtistNative(g_SourceMaterialProfile, nativeInput);
     }

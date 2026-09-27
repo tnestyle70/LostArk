@@ -3737,9 +3737,12 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 		{
 			std::array<std::uint32_t, 3u> counts{};
 			float radiusMin = 0.f, radiusMax = 0.f;
-			if (fields.size() != 9u || !IsStableId(fields[1]) || !IsStableId(fields[2]) || !IsStableId(fields[3]) ||
+			std::uint32_t maxHp = 0u, damage = 0u;
+			if ((fields.size() != 9u && fields.size() != 11u) || !IsStableId(fields[1]) || !IsStableId(fields[2]) || !IsStableId(fields[3]) ||
 				!ParseNumber(fields[4], counts[0]) || !ParseNumber(fields[5], counts[1]) || !ParseNumber(fields[6], counts[2]) ||
 				!ParseNumber(fields[7], radiusMin) || !ParseNumber(fields[8], radiusMax) ||
+				(fields.size() == 11u && (!ParseNumber(fields[9], maxHp) || !ParseNumber(fields[10], damage) ||
+				 maxHp > 2000000000u || damage > 2000000000u)) ||
 				std::any_of(counts.begin(), counts.end(), [](auto count) { return count > 32u; }) ||
 				counts[0] + counts[1] + counts[2] == 0u || counts[0] + counts[1] + counts[2] > 64u ||
 				!std::isfinite(radiusMin) || !std::isfinite(radiusMax) || radiusMin < 0.f || radiusMax > 100.f || radiusMin > radiusMax)
@@ -3753,6 +3756,7 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 			{ m_strStatus = "Card rain tuning owner is missing or duplicated"; return false; }
 			trigger->SoldierCounts = counts; trigger->fSoldierSpawnRadiusMinM = radiusMin;
 			trigger->fSoldierSpawnRadiusMaxM = radiusMax; trigger->bHasSoldierTuning = true;
+			trigger->iSoldierMaxHp = maxHp; trigger->iSoldierDamage = damage;
 		}
 		else if (!fields.empty() && "PATTERNBINGOHAMMER" == fields[0])
 		{

@@ -205,3 +205,44 @@ Server의 기존 target position과 boss yaw snapshot 경계를 우선 사용한
 시선은 기존 Duration 동안만 추적하며 실제 망치 mesh·Effect·Collider가 같은 고정 yaw를
 소비하는지 확인한다. 종료 직전 이동·정확한 종료·종료 후 이동·다음 window/패턴 전환을
 집중 검사하고 마지막 변경까지 Debug/Release 일반 빌드를 다시 완료한다.
+
+## G12. 카운터·무력화 성공의 폰트 표시
+
+Server가 확정한 성공만 기존 DAMAGE_EVENT와 CombatHUDViewModel을 통해 전달한다.
+카운터는 기존 isCounterSuccess, 무력화는 일반 stagger gauge와 쿠크 STAGGER_WINDOW의
+성공 edge를 사용한다. HP 피해0이어도 성공을 유지하고 파란색 카운터·노란색 무력화를
+기존 Font_EventDamage로 해당 보스 위치 위에 표시한다. 무력화 애니메이션 진입으로
+성공을 추측하지 않으며 피해량·DPS에 가짜 피해를 더하지 않는다. wire 확장은 protocol115로
+묶고 writer/reader 검증과 기존 회귀 하네스로 성공·실패 packet을 확인한다.
+
+## G13. 문양 출생 위치·마리오 표식·중앙 포탈 앵커
+
+현재 P47 presentation.2/.3은 MAP 절대좌표이고 활성 SELECT 장판 Logic은 없다.
+두 occurrence를 bone 없는 BOSS/followBoss=false로 바꿔 시작 시점의 보스 root 위치를
+기록한 뒤 world에 고정한다. 기존 크기·시간·source in은 보존한다. 마리오 머리 표식은
+Server의 표시 대상·색을 유지하면서 세 색 모두 준비하고 actor 위치에 고정 높이를 더해
+본 애니메이션을 배제한다. 사용자가 추가 요청한 P88/P91/P92/P93의 진입 포탈은 각3개,
+총12개를 같은 패턴 presentation.2의 큰 중앙 오망성 좌표로 맞추고 MAP/followBoss=false로
+저장한다. latest disk field 병합·직전 hash 확인·백업·원자 교체를 유지한다.
+
+## G14. 알비온 타겟과 마리오 청취 범위
+
+공용 boss random target과 Kouku의 기존 선택·추적 대상 재조회에서 iMarioStage가 있는
+참가자를 제외한다. 알비온 SELECT/APPEAR/BLUE_CIRCLE은 전장에 대상이 없으면 보스
+위치의 navigation ground를 고정 표적으로 사용해 다음 phase를 진행한다. 마리오 입장 시
+Composition SOUND와 WORLD soundTracks 및 종료 tail의 전장 소리를 정리한다. WORLD
+시각·서버 시계는 계속 유지하며 마리오 자체 공격·피격·BGM은 해당 audience에서 재생한다.
+후속 사용자 확인에 따라 다른 플레이어의 일반 스킬·탑승 전투음과 에스더 시전/NPC 음원도
+포함한다. 기존 음원의 handle을 소유해 진입 전부터 재생 중인 tail까지 중단하고, cue 시계는
+계속 소비한다. 입장 snapshot의 player 배열 순서와 초기 network state가 차단을 우회하지
+않도록 로컬 상태 반영 순서를 확인한다.
+
+## G15. 독립 원본 트리거 사운드와 마리오 원본 공격·피격
+
+SCENE03A의 별도 trigger37081_113→Matinee7/InterpData862→Track1239는 팝업북 Matinee0보다
+먼저 문·배경을 재생한다. 해당 circus_finale WORLD owner에 원본200ms soundTrack을
+연결하고 기존 컷신 시계를 보존한다. 마리오 뿅망치·세 색 공 파괴·비행 공 피격은 실제
+원본 action/FX/sound event를 찾아 기존 Effect·Character·WORLD 소비자로 연결한다.
+새 Resources는 설치본과 Desktop/GBResources의 같은 상대경로로 전달한다. 실제 Data·
+publisher 출력과 C++를 통합해 Debug/Release Product Build, 관련 focused tests 및
+JSON/XML parse·diff 검사를 수행한다. 화면·소리의 최종 판정과 Client 실행은 사용자 몫이다.

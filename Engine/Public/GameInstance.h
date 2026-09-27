@@ -115,7 +115,8 @@ public: /* Renderer */
 	HRESULT Request_Portrait(ComPtr<ID3D11RenderTargetView> pDestination,
 		uint32_t iWidth, uint32_t iHeight,
 		const float4x4_t& ViewMatrix, const float4x4_t& ProjMatrix,
-		function<HRESULT()> DrawSubject);
+		function<HRESULT()> DrawSubject,
+		function<HRESULT(RENDERGROUP, ID3D11BlendState*)> DrawForward = {});
 	void Request_SceneColorSnapshot();
     void Request_SceneEnvironmentReplacement();
     bool_t Is_SceneEnvironmentReplaced() const;

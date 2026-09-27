@@ -1168,20 +1168,26 @@ bool_t Client::CEffect_Tool::Try_PreviewElementsTimeline(
         (m_bDetailDraftDirty && !Apply_DetailDraft(draft)) ||
         (m_bModelCueDraftDirty && !Apply_ModelCueDraft(draft)))
     { m_strPreviewStatus = "Element preview could not apply the current draft."; return false; }
-    if (Has_ClassMovieContext())
-    {
-        const auto previous = m_PreviewIsolationElementIds;
-        m_PreviewIsolationElementIds = elementIds;
-        if (!Stage_ClassMovieEffect(draft)) { m_PreviewIsolationElementIds = previous; return false; }
-        if (m_ClassMovieCallbacks.pause) m_ClassMovieCallbacks.pause(false);
-        m_strPreviewStatus = "Selected Effect elements isolated in the Movie. Actors and other Movie Effects keep their timeline; Play All restores every element.";
-        return true;
-    }
     EFFECT_DOCUMENT_DESC preview;
     if (!Build_ElementsPreviewDocument(draft, elementIds, preview, m_strPreviewStatus)) return false;
     uint32_t focus = 0u, duration = 0u;
     std::string label;
     if (!Resolve_ElementsPreviewWindow(preview, elementIds, focus, duration, label, m_strPreviewStatus)) return false;
+    if (Has_ClassMovieContext())
+    {
+        if (!m_ClassMovieCallbacks.playSelection ||
+            !m_ClassMovieCallbacks.playSelection(m_strClassMovieId, m_bClassMovieLoop,
+                draft, preview, elementIds, focus, duration, loop, m_strPreviewStatus)) return false;
+        m_PreviewIsolationElementIds = elementIds;
+        m_ClassMovieFilterTargetIds = elementIds;
+        m_strPreviewIsolationElementId = elementIds.size() == 1u ? elementIds.front() : std::string{};
+        m_strPreviewIsolationGroupId.clear();
+        m_ePreviewFilter = (loop || elementIds.size() > 1u) ? EFFECT_PREVIEW_FILTER::SOLO_SELECTED_GROUP : EFFECT_PREVIEW_FILTER::SOLO_SELECTED;
+        m_bClassMovieSelectionRepeat = loop;
+        m_bClassMovieScrubbing = false;
+        m_strClassMovieStatus = m_strPreviewStatus;
+        return true;
+    }
     const bool valtanSource = preview.strEffectAssetId.starts_with("effect.valtan.action.") &&
         preview.strEffectAssetId.ends_with(".full.restore");
     if (valtanSource && !Prepare_RecoveryPreviewTarget()) return false;

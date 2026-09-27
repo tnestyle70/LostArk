@@ -4,12 +4,15 @@ import shutil
 import tempfile
 import unittest
 import sys
+from unittest import mock
 
 from native_shader_dispatch import (
     SOURCE_CHARACTER_PROGRAM_GROUPS,
+    SOURCE_CHARACTER_REGISTERED_PROGRAMS,
     expand_source_character_stage,
     partition_source_character_stage,
     write_partitioned_source_character_stage,
+    write_if_changed,
 )
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -65,6 +68,62 @@ class SourceCharacterProgramGroups(unittest.TestCase):
             write_partitioned_source_character_stage(path, source)
             changed = [item.name for item in target.iterdir() if item.read_bytes() != before[item.name]]
             self.assertEqual(['Shader_SourceCharacterBaseGroup009.hlsli'], changed)
+
+    def test_registration_in_existing_cohort_changes_only_its_two_leaves(self):
+        sys.path.insert(0, str(ROOT / 'Tools/VehiclePipeline'))
+        import build_vehicle_source_material as vehicle
+        with tempfile.TemporaryDirectory() as directory:
+            target = Path(directory)
+            for path in SHADERS.glob('Shader_SourceCharacter*.hlsli'):
+                shutil.copyfile(path, target / path.name)
+            # Exercise the installer's sparse insertion and the actual stage
+            # writer, including a new exact ID inside the final installed group.
+            number = max(SOURCE_CHARACTER_REGISTERED_PROGRAMS) + 1
+            cohort = next(first for first, last in SOURCE_CHARACTER_PROGRAM_GROUPS
+                          if first <= number <= last)
+            registered = (*SOURCE_CHARACTER_REGISTERED_PROGRAMS, number)
+            before = {item.name: (item.read_bytes(), item.stat().st_mtime_ns)
+                      for item in target.iterdir()}
+            for stage in ('Base', 'Light'):
+                path = target / f'Shader_SourceCharacter{stage}Programs.hlsli'
+                function = (f'SOURCE_CHARACTER_NATIVE_OUTPUT SourceCharacter{stage}{number}'
+                            '(SOURCE_CHARACTER_NATIVE_INPUT input)\n'
+                            '{ return (SOURCE_CHARACTER_NATIVE_OUTPUT)0; }\n')
+                with mock.patch.object(vehicle, f'{stage.upper()}_PROGRAMS', path):
+                    source = vehicle.install_program(path, function, number, stage.lower())
+                facade, leaves = partition_source_character_stage(source, stage, target,
+                                                                  registered=registered)
+                for name, text in {path.name: facade, **leaves}.items():
+                    write_if_changed(target / name, text)
+                self.assertEqual(source, expand_source_character_stage(
+                    path.read_text(encoding='utf8'), target))
+            changed = sorted(item.name for item in target.iterdir()
+                             if before[item.name] != (item.read_bytes(), item.stat().st_mtime_ns))
+            self.assertEqual([f'Shader_SourceCharacterBaseGroup{cohort:03d}.hlsli',
+                              f'Shader_SourceCharacterLightGroup{cohort:03d}.hlsli'], changed)
+
+    def test_light_material_edit_changes_its_leaf_only(self):
+        with tempfile.TemporaryDirectory() as directory:
+            target = Path(directory)
+            for path in SHADERS.glob('Shader_SourceCharacter*.hlsli'):
+                shutil.copyfile(path, target / path.name)
+            path = target / 'Shader_SourceCharacterLightPrograms.hlsli'
+            source = expand_source_character_stage(path.read_text(encoding='utf8'), target)
+            source = source.replace('SourceCharacterLight9(SOURCE_CHARACTER_NATIVE_INPUT input)\n{',
+                                    'SourceCharacterLight9(SOURCE_CHARACTER_NATIVE_INPUT input)\n{\n    // editor fixture', 1)
+            before = {item.name: item.read_bytes() for item in target.iterdir()}
+            write_partitioned_source_character_stage(path, source)
+            changed = [item.name for item in target.iterdir() if item.read_bytes() != before[item.name]]
+            self.assertEqual(['Shader_SourceCharacterLightGroup009.hlsli'], changed)
+
+    def test_reordered_cohort_cases_are_rejected(self):
+        path = SHADERS / 'Shader_SourceCharacterBasePrograms.hlsli'
+        source = expand_source_character_stage(path.read_text(encoding='utf8'), SHADERS)
+        first = '    case 1u: return SourceCharacterBase1(input);\n'
+        later = '    case 9u: return SourceCharacterBase9(input);\n'
+        source = source.replace(first, '', 1).replace(later, later + first, 1)
+        with self.assertRaisesRegex(ValueError, 'Non-contiguous.*case cohort'):
+            partition_source_character_stage(source, 'Base', SHADERS)
 
     def test_unregistered_program_is_rejected_before_writing(self):
         path = SHADERS / 'Shader_SourceCharacterBasePrograms.hlsli'

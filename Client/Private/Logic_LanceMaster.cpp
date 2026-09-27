@@ -34,8 +34,8 @@ namespace
 		  0u, false, EQUIPMENT_SLOT_KIND::DEFAULT,
 		  EQUIPMENT_PRESENTATION_SLOT::UPPER },
 		/* The hairstyle is a part, not something the body draws: character creation
-		picks one and swaps this out for it. Style 0 of this class's list is what a
-		character that has never been through that screen wears. */
+		picks one and swaps this out for it. CharacterCatalog owns this default model;
+		CustomizingHairstyles names the same starting visual set without reordering saved indices. */
 		{ TEXT("Part_10_Equip_Hair"),     TEXT("Prototype_Component_Model_LanceMaster_Hair"),
 		  0u, false, EQUIPMENT_SLOT_KIND::DEFAULT,
 		  EQUIPMENT_PRESENTATION_SLOT::HEAD },

@@ -2,7 +2,7 @@
   "schema": "lostark.world-sequences",
   "formatVersion": 3,
   "areaId": "LV_LUT_MIDNIGHTC_ED",
-  "revision": 2283,
+  "revision": 2284,
   "objectResources": [
     {
       "objectId": "world.object.kouku.card",
@@ -10244,7 +10244,10 @@
           ]
         }
       ],
-      "animationTracks": []
+      "animationTracks": [],
+      "soundTracks": [
+        {"soundTrackId": "sound.kouku.source.circusfinale.circuspopup", "assetId": "Sound/KoukuSaton/Events/scene_midnightc_ed_circuspopup.source.wav", "startMs": 200, "durationMs": 10267, "volume": 1}
+      ]
     },
     {
       "sequenceId": "sequence.LV_LUT_MIDNIGHTC_ED.5",

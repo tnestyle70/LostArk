@@ -21,6 +21,8 @@ class CServerGameplayContractRunner final
 public:
     static int Run(ServerGameplayContractDetail::CONTRACT_TEST_RUN_CONTEXT& context);
     static int Run_KoukuRaid();
+    static int Run_GuideAI();
+    static int Run_CharacterAdmissionOnly();
     static int Run_RoomPing();
     static int Run_ShowtimeBombs();
     static void Run_InannaProtection(TESTS& tests, const CGameplayCatalog& catalog);

@@ -571,6 +571,9 @@ namespace
 			soldierTotal < 1u || soldierTotal > 64u ||
 			(!cardSoldiers && (logic.SoldierCounts != std::array<std::uint32_t, 3u>{1u, 1u, 1u} || logic.fSpawnRadiusMinM != 3.0 || logic.fSpawnRadiusMaxM != 6.0)))
 		{ outStatus = "Card soldier counts need 0..32 each / 1..64 total and an ordered 0..100 m spawn radius."; return false; }
+		if (logic.iSoldierMaxHp > 2000000000u || logic.iSoldierDamage > 2000000000u ||
+			(!cardSoldiers && (logic.iSoldierMaxHp || logic.iSoldierDamage)))
+		{ outStatus = "Card soldier HP/damage overrides require CARD_RAIN_SOLDIERS and 0..2000000000."; return false; }
 		const bool_t hasTriggerValues = !logic.PlayerEntryEffectOccurrenceIds.empty() || hasPlayerEffectValues || logic.bRearmOnExit || logic.bRepeatAfterKnockback || (logic.iRepeatIntervalMs != 0u && !areaPulse) || logic.fBossChargeDistanceM != 0.0 || hasContactValues || !logic.strTriggerKind.empty() || !logic.strHudMode.empty() ||
 			!logic.strClonePatternId.empty() || !logic.ClockHours.empty() || logic.fFaceCenterYawOffsetDegrees != 0.0 ||
 			std::any_of(logic.TeleportPosition.begin(), logic.TeleportPosition.end(), [](double x) { return x != 0.0; });
@@ -3401,7 +3404,7 @@ bool_t Client::CKoukuSaydonCompositionDocument::Parse_Text(
 					  "endsPatternOnSuccess", "normalYawOffsetDegrees", "faceCenterYawOffsetDegrees", "outcomeKind", "percent", "damageAmount", "durationMs", "pushRangeM", "pushMs", "pushDirection", "forcePush", "pushCanLeaveArena", "pushBallistic", "pushHeightM", "pushYawOffsetDegrees", "targetWorldInstanceId", "motionInstanceId", "targetRadiusM",
 					  "directionPatternIds", "cloneEndStageId", "summonOccurrenceId", "airbornePhase", "airborneHeightM", "airborneDurationMs", "airborneTargetPositionPolicy", "selectedEffectGroupId", "selectedFlightMs", "selectedFlightArcHeightM", "selectedFlightSourceOffset", "patternIds", "completionCount", "followupPatternId", "marioStage", "triggerKind", "playerEntryEffectOccurrenceIds", "countPerPlayer", "radiusM", "effectLifetimeMs",
 					  "arenaRandomCount", "arenaRandomRadiusM", "arenaHeightToleranceM", "arenaMinimumSpacingM", "randomPlayerOnly",
-					  "rearmOnExit", "repeatAfterKnockback", "repeatIntervalMs", "soldierCounts", "spawnRadiusMinM", "spawnRadiusMaxM", "bossChargeDistanceM", "chargeYawOffsetDegrees", "hudMode", "teleportPosition", "clonePatternId", "clockHours",
+					  "rearmOnExit", "repeatAfterKnockback", "repeatIntervalMs", "soldierCounts", "soldierMaxHp", "soldierDamage", "spawnRadiusMinM", "spawnRadiusMaxM", "bossChargeDistanceM", "chargeYawOffsetDegrees", "hudMode", "teleportPosition", "clonePatternId", "clockHours",
 					  "targetWorldOccurrenceIds", "contactGroupId", "contactPriority", "contactMotions", "targetLogicOccurrenceId", "contactTargetWorldOccurrenceId", "sceneProfileId", "effectResourceId", "lightResourceId", "soundResourceId", "effectDelayMs", "attachmentSlot", "gripLocalOffset" }))
 			{
 				outStatus = "KoukuSaydon Logic definition has unexpected properties.";
@@ -3552,6 +3555,8 @@ bool_t Client::CKoukuSaydonCompositionDocument::Parse_Text(
 				!optionalFinite("pushRangeM", 0.0, 100.0, stagedLogic.fPushRangeM) ||
 				!optionalFinite("pushHeightM", 0.0, 100.0, stagedLogic.fPushHeightM) ||
 				!optionalUnsigned("repeatIntervalMs", MAX_TIME_MS, stagedLogic.iRepeatIntervalMs) ||
+				!optionalUnsigned("soldierMaxHp", 2000000000u, stagedLogic.iSoldierMaxHp) ||
+				!optionalUnsigned("soldierDamage", 2000000000u, stagedLogic.iSoldierDamage) ||
 				!optionalFinite("spawnRadiusMinM", 0.0, 100.0, stagedLogic.fSpawnRadiusMinM) ||
 				!optionalFinite("spawnRadiusMaxM", 0.0, 100.0, stagedLogic.fSpawnRadiusMaxM) ||
 				!optionalUnsigned("pushMs", MAX_TIME_MS, stagedLogic.iPushMs) ||
@@ -3598,7 +3603,7 @@ bool_t Client::CKoukuSaydonCompositionDocument::Parse_Text(
 				outStatus = "KoukuSaydon Logic definition typed value is invalid: " + stagedLogic.strLogicId;
 				return false;
 			}
-            const bool soldierFields = logicValue.Find("soldierCounts") || logicValue.Find("spawnRadiusMinM") || logicValue.Find("spawnRadiusMaxM");
+            const bool soldierFields = logicValue.Find("soldierMaxHp") || logicValue.Find("soldierDamage") || logicValue.Find("soldierCounts") || logicValue.Find("spawnRadiusMinM") || logicValue.Find("spawnRadiusMaxM");
             if (soldierFields && (stagedLogic.strLogicType != "TRIGGER" || stagedLogic.strTriggerKind != "CARD_RAIN_SOLDIERS"))
             { outStatus = "Card soldier fields belong only to CARD_RAIN_SOLDIERS."; return false; }
             if (const auto* counts = logicValue.Find("soldierCounts"))
@@ -3610,8 +3615,8 @@ bool_t Client::CKoukuSaydonCompositionDocument::Parse_Text(
                     { outStatus = "Card soldier count must be 0..32."; return false; }
             }
             if (stagedLogic.strTriggerKind == "CARD_RAIN_SOLDIERS" && !Has_Properties(logicValue,
-                { "logicId", "displayName", "logicType", "triggerKind" }, { "soldierCounts", "spawnRadiusMinM", "spawnRadiusMaxM" }))
-            { outStatus = "CARD_RAIN_SOLDIERS only accepts soldier counts and spawn radius."; return false; }
+                { "logicId", "displayName", "logicType", "triggerKind" }, { "soldierCounts", "soldierMaxHp", "soldierDamage", "spawnRadiusMinM", "spawnRadiusMaxM" }))
+            { outStatus = "CARD_RAIN_SOLDIERS only accepts soldier counts, HP/damage overrides and spawn radius."; return false; }
             const bool stagePlayers = stagedLogic.strLogicType == "TRIGGER" && stagedLogic.strTriggerKind == "CARD_MAZE_STAGE_PLAYERS";
             if (const auto* ids = logicValue.Find("playerEntryEffectOccurrenceIds"); ids &&
                 ids->Get_Array().size() != stagedLogic.PlayerEntryEffectOccurrenceIds.size())
@@ -5170,7 +5175,9 @@ std::string Client::CKoukuSaydonCompositionDocument::Serialize(
 			if (logic.strTriggerKind == "CARD_RAIN_SOLDIERS")
 				output << ",\n      \"soldierCounts\": [" << logic.SoldierCounts[0] << ", " << logic.SoldierCounts[1] << ", " << logic.SoldierCounts[2] << "]"
 					<< ",\n      \"spawnRadiusMinM\": " << logic.fSpawnRadiusMinM
-					<< ",\n      \"spawnRadiusMaxM\": " << logic.fSpawnRadiusMaxM;
+					<< ",\n      \"spawnRadiusMaxM\": " << logic.fSpawnRadiusMaxM
+					<< ",\n      \"soldierMaxHp\": " << logic.iSoldierMaxHp
+					<< ",\n      \"soldierDamage\": " << logic.iSoldierDamage;
 			if (logic.strTriggerKind == "ENTER_AREA" && logic.bRearmOnExit)
 				output << ",\n      \"rearmOnExit\": true";
 			if (logic.iRepeatIntervalMs) output << ",\n      \"repeatIntervalMs\": " << logic.iRepeatIntervalMs;

@@ -659,3 +659,39 @@ particle age0.25초의 history RGBA는(1.25,6,0.25,0.4), 같은 age를 유지한
 C++ 소비자 구현·최소 Debug 빌드·자동 검증은 완료했다. 네 class 추가 Data/Resources의 설치와
 최종 scene 검증은 해당 데이터 담당 작업이 이어간다. 이 작업의 native 검사는 제품 문서나
 리소스를 바꾸지 않았고 Client/UI·GPU draw·오디오 청취·사용자의 최종 화면 판정은 미실행이다.
+
+## G17. 2026-09-27 사용자 Movie 회전·위치·유리 제보 재검사
+
+사용자가 캐릭터 선택 Movie로 범위를 확정했고, 근거 없는 수정은 하지 말도록 요청했다.
+이번 검사는 Guardian 제품 데이터·shader·rotation·position·alpha를 변경하지 않았다.
+
+`out/GuardianMovieAudit20260928/source-audit.receipt.json`은 원본 PSC actor의 FRotator,
+scale와 WORLD root를 독립 계산해 Intro5·Loop4 occurrence의 최대오차2.22e-16을 확인했다.
+25요소의 TypeData rotation과 저장된 typed 값도 일치한다. 이 값의 일치만으로 최종 draw가
+맞는다고 판정하지 않고 실제 CEffectObject fixed-step과 WARP 제출 경로를 추가 실행했다.
+
+`runtime-matrix.receipt.json`과 `draw-run.log`는 원본 source8초 카메라에서 검격3요소와
+물방울3요소의 실제 particle state를 사용한다. UE Euler/basis를 독립 재조립한 최종 matrix의
+최대오차는 mesh3.98e-7, sprite6.45e-5다. TypeData와 StartRotation, root는 각각 한 번만
+적용되며 mesh의 실제 CModel preScale0.01과 bounds도 확인했다. 물방울은 burst2/3/5와
+PS invocation37,172/13,664/88,940을 확인했다. 검격3개는 제출되었지만 해당 카메라에서
+두 개의 PS invocation은0이었다. 이를 보정이 필요한 회전 결함으로 해석하지 않는다.
+
+이 검사는 원본 확률 모듈 전체를 별도로 구현한 검사가 아니며, 실제 화면의 opaque depth,
+배경 및 최종 색상 readback도 포함하지 않는다. 따라서 사용자가 본 특정 프레임의 가려짐과
+유리 표현이 정상이라는 화면 판정은 하지 않았다. 지금 근거로 일괄 회전·위치·알파 보정은
+적용하지 않는다.
+
+원본 crack7은 Intro·Loop에서 hidden=false이며 move track을 갖는 별도 WORLD 소품이다.
+021/022/024의 원본 geometry와 공통 MIC `fx_m_mi_00.fx_mi.fx_d_me_master_01_043_ma`를
+다시 추출했다. 근거는 `crack-source/actor-tracks.json`, `mesh-materials.json`,
+`material-parameters.receipt.json`이다. 현재 WORLD 미연결은 확인했으나, 이 소품을 사용자가
+말한 유리 물방울과 동일하다고 단정하거나 임의 재질로 추가하지 않았다. G05의 미복원 경계는
+유지한다.
+
+G07의 "watersplash native distortion" 표현은 교정한다. 원본 RefShaderCache를 다시 읽어
+native4645/4646/4647의 map identity와 선택된 pixel shader가 현재 shader와 정확히 일치함을
+확인했다. 해당 원본 particle VF와 global reference에는 별도 distortion shader가 없다.
+현재 세 프로그램의 needsSceneColor=false와 companion 부재를 누락 결함으로 취급하지 않는다.
+4646의 재질 내부 UV 변형과 SceneColor distortion pass는 서로 다르다. 재추출 근거는
+`out/GuardianMovieAudit20260928/water-source-map-audit.json`이며 이 역시 최종 화면 판정은 아니다.

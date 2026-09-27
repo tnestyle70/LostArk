@@ -414,15 +414,17 @@ bool LostArk::Server::CGameRoom::Despawn_KoukuSaydonArenaDebugEntities(const boo
 
 bool LostArk::Server::CGameRoom::Despawn_KoukuSaydonArenaDebugEntities(const bool allArenaBosses, const bool preflightOnly)
 {
-	/* The KoukuSaydon arena keeps its statically enabled Gate 1 Kouku and any
-	Esther summon. Only entities raised from a disabled bootstrap placement
-	(the Debug gate buttons) and the dependents they own are removed. An
-	audition owned by one of those removed bosses is aborted explicitly. */
+	/* Esther summons now carry damage and protection. A gate reset must end
+	them along with the old encounter, including delayed summons and zones.
+	Preflight below only validates this removal; it never changes live state. */
 	std::vector<LostArk::Shared::NET_ENTITY_ID> removedIds;
 	for (const SERVER_WORLD_ENTITY& entity : m_WorldEntities)
 	{
 		if (entity.isEstherSummon)
+		{
+			removedIds.push_back(entity.iNetEntityId);
 			continue;
+		}
 		const WORLD_BOOTSTRAP_PLACEMENT* placement =
 			Find_Placement(entity.strPlacementId);
 		const bool debugActivated =
@@ -437,7 +439,7 @@ bool LostArk::Server::CGameRoom::Despawn_KoukuSaydonArenaDebugEntities(const boo
 	if (allArenaBosses)
 	{
 		// Ownership can precede the owner in storage. Close the dependency set
-		// without removing unrelated NPCs, monsters or Esther summons.
+		// without removing unrelated NPCs or monsters.
 		bool added = true;
 		while (added)
 		{
@@ -495,6 +497,14 @@ bool LostArk::Server::CGameRoom::Despawn_KoukuSaydonArenaDebugEntities(const boo
 			return false;
 		Broadcast_WorldEntityDespawned(entity->iNetEntityId);
 		m_WorldEntities.erase(entity);
+	}
+	m_PendingEstherSummons.clear();
+	m_EstherZones.clear();
+	for (auto& [id, player] : m_Players)
+	{
+		(void)id;
+		player.iEstherGuardEndTick = 0u;
+		player.iEstherGuardDamageTakenPercent = 0;
 	}
 	m_strStatus = "KoukuSaydon arena Debug entities despawned: " +
 		std::to_string(removedIds.size());
@@ -628,7 +638,8 @@ void LostArk::Server::CGameRoom::Handle_ConfirmNpcEntry(
 				guideIter->eTargetWorldId, PARTY_TRANSFER_RESULT::REJECTED_MEMBER_UNAVAILABLE);
 			return;
 		}
-		if (batchMemberIds.size() > 1u)
+		if (batchMemberIds.size() > 1u ||
+            (partyIdIter != m_PartyIdByPlayerId.end() && m_Guides.contains(partyIdIter->second)))
 			transfer.PartyBatchSessionIds.push_back(memberIter->second.iSessionId);
 	}
 	m_PendingWorldTransfers.push_back(std::move(transfer));

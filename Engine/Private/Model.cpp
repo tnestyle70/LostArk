@@ -2562,6 +2562,13 @@ bool_t CModel::Try_GetBindGeometryBounds(float3_t& minimum, float3_t& maximum) c
 bool_t CModel::Try_PickCurrentPose(const float4x4_t& world, const float3_t& rayOrigin,
     const float3_t& rayDirection, f32_t& distance) const
 {
+    uint32_t meshIndex = 0u;
+    return Try_PickCurrentPose(world, rayOrigin, rayDirection, distance, meshIndex);
+}
+
+bool_t CModel::Try_PickCurrentPose(const float4x4_t& world, const float3_t& rayOrigin,
+    const float3_t& rayDirection, f32_t& distance, uint32_t& meshIndex) const
+{
     const auto finite = [](vector_t value) { return !XMVector3IsNaN(value) && !XMVector3IsInfinite(value); };
     const vector_t ray = XMLoadFloat3(&rayDirection);
     const float rayLength = XMVectorGetX(XMVector3Length(ray));
@@ -2585,8 +2592,10 @@ bool_t CModel::Try_PickCurrentPose(const float4x4_t& world, const float3_t& rayO
     if (!bounds.Intersects(origin, direction, boundDistance)) return false;
     float closest = (std::numeric_limits<float>::max)();
     bool hit = false;
-    for (const auto& mesh : m_Meshes)
+    uint32_t closestMesh = 0u;
+    for (uint32_t meshOrdinal = 0u; meshOrdinal < m_Meshes.size(); ++meshOrdinal)
     {
+        const auto& mesh = m_Meshes[meshOrdinal];
         if (!mesh || mesh->m_hasUniqueVertexBuffer || !mesh->m_PickGeometry) continue;
         const auto& geometry = *mesh->m_PickGeometry;
         vector<float4x4_t> palette;
@@ -2625,12 +2634,15 @@ bool_t CModel::Try_PickCurrentPose(const float4x4_t& world, const float3_t& rayO
             float candidate;
             if (TriangleTests::Intersects(origin, direction, XMLoadFloat3(&positions[a]),
                 XMLoadFloat3(&positions[b]), XMLoadFloat3(&positions[c]), candidate) && candidate < closest)
-            { closest = candidate; hit = true; }
+            { closest = candidate; closestMesh = meshOrdinal; hit = true; }
         }
     }
     if (!hit) return false;
-    distance = closest / localLength;
-    return std::isfinite(distance);
+    const float worldDistance = closest / localLength;
+    if (!std::isfinite(worldDistance)) return false;
+    distance = worldDistance;
+    meshIndex = closestMesh;
+    return true;
 }
 
 bool_t CModel::Try_GetCurrentPoseBounds(float3_t& minimum, float3_t& maximum) const

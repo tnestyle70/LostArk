@@ -1,3 +1,4 @@
+#ifndef SOURCE_CHARACTER_BASE_DISPATCH_CASES
 SOURCE_CHARACTER_NATIVE_OUTPUT SourceCharacterBase192(SOURCE_CHARACTER_NATIVE_INPUT input)
 {
     SOURCE_CHARACTER_NATIVE_OUTPUT output = (SOURCE_CHARACTER_NATIVE_OUTPUT)0;
@@ -6348,3 +6349,14 @@ SOURCE_CHARACTER_NATIVE_OUTPUT SourceCharacterBase200(SOURCE_CHARACTER_NATIVE_IN
 }
 
 // source.character.static-map-color-mask.v1 / source program 52d02377bfee2249bb1a7fb96f803686
+#else // SOURCE_CHARACTER_BASE_DISPATCH_CASES
+    case 192u: return SourceCharacterBase192(input);
+    case 193u: return SourceCharacterBase193(input);
+    case 194u: return SourceCharacterBase194(input);
+    case 195u: return SourceCharacterBase195(input);
+    case 196u: return SourceCharacterBase196(input);
+    case 197u: return SourceCharacterBase197(input);
+    case 198u: return SourceCharacterBase198(input);
+    case 199u: return SourceCharacterBase199(input);
+    case 200u: return SourceCharacterBase200(input);
+#endif // SOURCE_CHARACTER_BASE_DISPATCH_CASES

@@ -1,3 +1,4 @@
+#ifndef SOURCE_CHARACTER_BASE_DISPATCH_CASES
 SOURCE_CHARACTER_NATIVE_OUTPUT SourceCharacterBase901(SOURCE_CHARACTER_NATIVE_INPUT input)
 {
     SOURCE_CHARACTER_NATIVE_OUTPUT output = (SOURCE_CHARACTER_NATIVE_OUTPUT)0;
@@ -2368,3 +2369,9 @@ SOURCE_CHARACTER_NATIVE_OUTPUT SourceCharacterBase904(SOURCE_CHARACTER_NATIVE_IN
 }
 
 // source.character.static-map-native-1100.v1 / source program 247fd3b3462a9548b081b5174f7a2f8a
+#else // SOURCE_CHARACTER_BASE_DISPATCH_CASES
+    case 901u: return SourceCharacterBase901(input);
+    case 902u: return SourceCharacterBase902(input);
+    case 903u: return SourceCharacterBase903(input);
+    case 904u: return SourceCharacterBase904(input);
+#endif // SOURCE_CHARACTER_BASE_DISPATCH_CASES

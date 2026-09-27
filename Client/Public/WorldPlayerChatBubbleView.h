@@ -15,7 +15,7 @@ class CUILayoutRuntime;
 headstatus.gfx normalBG art (72x50, tail bottom-left) stretched as a 9-slice through nine
 CUI_Sprite slots per bubble (Data/UI/HeadStatus/ChatBubble_Layout.json, level-owned like the
 nameplate gauges) with the text in $YG760 12 px #EEEEEE, wrapped at the retail 200 px, sitting
-right above the name plate the way BaseHeadStatus::alignHeadStatus stacks it. Up to four bubbles
+right above the name plate the way BaseHeadStatus::alignHeadStatus stacks it. Up to five bubbles
 a frame; the projection is CWorldPlayerNameplateView::Try_ProjectWorldPosition. */
 class CWorldPlayerChatBubbleView final
 {

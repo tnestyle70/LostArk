@@ -39,6 +39,16 @@
 using namespace LostArk::Server;
 using namespace LostArk::Shared;
 
+int LostArk::Server::CServerGameplayContractRunner::Run_CharacterAdmissionOnly()
+{
+    TESTS tests;
+    CGameplayCatalog catalog;
+    if (!catalog.Load()) { std::cout << catalog.Get_Status() << '\n'; return 1; }
+    Run_CharacterAdmission(tests, catalog);
+    std::cout << "character admission failures: " << tests.failures << '\n';
+    return tests.failures ? 1 : 0;
+}
+
 void LostArk::Server::CServerGameplayContractRunner::Run_CharacterAdmission(TESTS& tests, CGameplayCatalog& catalog)
 {
 
@@ -570,7 +580,7 @@ void LostArk::Server::CServerGameplayContractRunner::Run_CharacterAdmission(TEST
 			CServerApp::SESSION_WORLD_TRANSFER_FAILURE failure{};
 			const bool committed = leaderBatch && fixture->App->Transfer_SessionWorld(
 				fixture->Source, fixture->Request, failure);
-			bool exactRoster = committed && fixture->Source->m_Players.empty() &&
+			bool exactRoster = committed && (fixture->Source->Count_HumanPlayers() == 0u) &&
 				fixture->Source->m_PartyMembersByPartyId.empty() &&
 				count == fixture->Target->m_Players.size() &&
 				1u == fixture->Target->m_PartyMembersByPartyId.size();
@@ -768,7 +778,7 @@ void LostArk::Server::CServerGameplayContractRunner::Run_CharacterAdmission(TEST
 					fixture->Source->Tick(1.f / 30.f);
 					fixture->Target->Tick(1.f / 30.f);
 				}
-				committed = committed && fixture->Source->m_Players.empty() &&
+				committed = committed && (fixture->Source->Count_HumanPlayers() == 0u) &&
 					fixture->Source->m_PartyMembersByPartyId.empty() && count == fixture->Target->m_Players.size() &&
 					fixture->Target->m_PartyMembersByPartyId.size() == (count > 1u ? 1u : 0u) &&
 					!fixture->Target->Is_KoukuRaidRunning();

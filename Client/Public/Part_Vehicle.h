@@ -53,6 +53,7 @@ public:
 		f32_t phaseAge, f32_t phaseDuration, f32_t loopStart, f32_t loopEnd, f32_t landingStart);
 	void Clear_FlightPlayback();
 	f32_t Get_FlightClipSeconds() const;
+	f32_t Get_FlightBobOffset() const { return m_fFlightBobOffset; }
 	bool Pose_FlightRider(const shared_ptr<CModel>& model, uint32_t animation) const;
 	/* Start and length of one chain clip on the same clock Seek_SkillChain uses. */
 	bool_t Try_Get_SkillClipWindow(const std::vector<std::string>& clips, std::size_t clipIndex,
@@ -102,6 +103,8 @@ private:
 	f32_t m_fFlightSteerYaw = 0.f, m_fFlightSteerPitch = 0.f;
 	f32_t m_fFlightPreviousHeading = 0.f, m_fFlightPreviousY = 0.f;
 	bool m_bFlightSteeringInitialized = false;
+	f32_t m_fFlightBobOffset = 0.f;
+	f32_t m_fFlightAgeCorrection = 0.f;
 
 private:
 	HRESULT Ready_Components(const PART_VEHICLE_DESC* pDesc);

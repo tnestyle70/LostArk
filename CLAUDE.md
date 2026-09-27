@@ -166,6 +166,14 @@ runner의 `-MaxCompilerProcesses`로 한 실행만 지정할 수 있다.
 헤더를 직접 포함한다. `GameInstance.h`의 렌더 반환값을 실제로 소비하는 CPP도 렌더 타입
 정의를 포함한다. 헤더 대응표와 신규 CPP/PCH 사용 규칙은 `Tools/Build/README.md`를 따른다.
 
+SourceCharacter 재질 packing의 공개 API는 `Client/Public/SourceCharacterMaterialParameters.h`,
+구현 정본은 `Client/Private/SourceCharacterMaterialParameters_Generated.inl`이며 대응 CPP가
+한 번 컴파일한다. 생성기·publisher는 구현 정본을 읽고 공개 헤더에 큰 inline 함수를 다시
+생성하지 않는다. SourceCharacter HLSL의 함수와 dispatch case는 같은 Base/Light Group leaf가
+소유한다. 기존 그룹의 새 program은 해당 leaf만 바꾸며, 새 그룹은
+`SourceCharacterProgramRegistry.h`와 `source_character_registration.py`의 같은 범위 정책,
+FX producer·프로젝트·배포를 함께 갱신한다.
+
 일반 Product 결과는 OBJ/PCH/CSO의 크기·수정 시각 변화와 설정 변화를 기록한다. 이 수치는
 실제 출력 쓰기이며 실패한 컴파일 시도 수나 내용 hash가 아니다. 빌드 실패도 실행한 단계와
 실패 이유를 같은 결과 JSON에 남긴다. 병합 후에는 정상 Build의 의존성 추적을 사용한다.
@@ -396,6 +404,27 @@ Lobby에는 Lance Master, Gunslinger, Slayer, Artist, DimensionMaster, Warlord �
 
 Area Loader는 여섯 class binary를 전부 선로드하지 않는다. `CPlayableCharacterAssetService`가 선택 class를 먼저 admission하고 `CClientReplication`이 다른 class의 최초 spawn을 받을 때 같은 경로로 한 번만 추가한다. 이 경계를 우회하는 두 번째 model loader나 silent fallback을 만들지 않는다.
 
+### Guide AI Tool과 가이드 차원술사
+
+Debug F1의 `Guide AI` 또는 World Level Tool의 `Guide AI`에서 저작 창을 연다.
+Position/Rotation Y, 베른·발탄·쿠크세이튼 대사, Guide Box와 패턴 연결, 콤보/도움 별칭을
+편집한다. `Combat Detail`은 상황 가중치와 실제 Server 판단을 보여주는 별도 창이다.
+`Rewrite`는 저장된 대사를 수정하는 기능이다.
+
+정본은 `Data/Guide/GuideCatalog.json`과 `DimensionMaster/{Placement,Prompts,Triggers,Combat}.json`이다.
+Save는 이 원본만 변경하고 Publish는 `Tools/GuidePipeline/Publish-Guide.ps1 -Mode Publish`로
+Client/Server의 `Bin/DataFiles/Guide/Guide.runtime.json`만 교체한다. `-Mode Validate`와
+`-Mode CheckPublished`로 검증한다. Publish 전에는 draft를 Save해야 하고, 실행 중 Server는
+시작 때 읽은 revision을 유지하므로 재시작 후 새 정의를 소비한다. Client 재시작/Reload를
+도구가 강제로 실행하지 않는다.
+
+Bern 시작 위치의 가이드를 우클릭해 초대하면 자동으로 파티에 동행한다. 인간 최대 4명과
+별도 가이드 1명을 표시하며 leader/입장 인원/투표는 인간 roster를 사용한다.
+`도움!`·`도와줘`·`도와줘!`는 기본 콤보, `살려줘`·`살려줘!`는 ALT_V로 시작하는 콤보,
+`그만`·`그만!`·`멈춰`는 보조 중단이다. 기존 player/vehicle 실행기가 이동과 스킬을 승인한다.
+가이드는 boss target/쿠크 기믹 배정에서 제외하지만 장판·갈고리·즉사칼날의 공간 접촉은 받는다.
+Guide actor/별도 roster/대사/진단과 보스 기믹 게이지는 protocol 117을 사용하므로 Server와 Client를 함께 빌드한다.
+
 ### 바이너리 에셋 파이프라인
 
 런타임 모델 입구는 `CModel` 하나로 통합한다. `CModel::Create()`는 FBX를 Assimp로 읽고, `.wmodel`은 `CWModelDecoder`로 읽은 뒤 모두 기존 `CMesh / CMaterial / CBone / CAnimation`으로 변환한다.
@@ -421,13 +450,21 @@ Area Loader는 여섯 class binary를 전부 선로드하지 않는다. `CPlayab
 ### 디버그 툴 (ImGui / MapTool)
 
 `CMainApp`이 Debug/Release 공통 Developer Tools 허브를 소유하고 F1로 토글한다. Release 허브는 Balance Test, Profiler, Valtan/Kouku Boss Tool과 아레나 Load/Complete Play/Kill Boss를 제공하며 기본은 닫힘이다. F6는 gameplay camera의 follow/free mode를 전환한다. Free camera는 WASD 이동, Tab mouse-look 전환을 사용하며 그동안 `CPlayerController`는 물리 key/mouse edge만 동기화하고 gameplay command는 제출하지 않는다. follow 복귀 뒤 새 press부터 제출한다. F7은 Debug/Release 공통 Profiler 창만 열고 닫는다. F2~F5와 F8~F12를 레벨/도구 전환에 사용하지 않는다. ImGui가 입력을 가져갈 때는 `CGameInstance::SetInputBlocked()`로 DirectInput 폴링을 막되 Character Select Server gameplay는 text input이 아닐 때만 명시적 keyboard passthrough를 사용한다. Client 실행 인자와 `CMainApp` 내부 runtime harness를 검증 경로로 다시 만들지 않는다.
-발탄·쿠크 자유 카메라의 기본 속도는 20m/s다. F1 `Arena Camera / Player`에서 현재 아레나 속도를
-0.1~400m/s로 조절하며 값은 아레나별 process-session에서 유지한다. Shift는 현재 속도의 30배다.
+베른·발탄·쿠크 자유 카메라의 기본 속도는 20m/s다. Debug/Release 공통 F1 `Camera`에서
+0.1~400m/s로 조절한다. Debug 발탄·쿠크는 같은 아레나의 process-session 값을 유지하고,
+베른과 Release 조절값은 현재 맵 방문 동안 적용한다. Shift는 현재 속도의 30배다.
+Debug F1 `Dragon`은 고대의 바다 탑승·하차, 비행 카메라 거리·pitch·주시 높이·방향 추종,
+지상·비행·상하 속도를 조절한다. 지상 탑승은 기존 캐릭터 시점을 유지하며 E로 이륙한 뒤에만
+비행 카메라를 적용한다. 속도 Save는 `Data/Vehicles/VehicleProfiles.json`의 해당 필드만 저장하고,
+Save + Publish는 `Server/Bin/DataFiles/Vehicles/Vehicles.bootstrap`도 갱신한다. 이동 수치는 Server 재시작 후 적용된다.
+고대의 바다는 지상10m/s(원본 moveSpeed5와 프로젝트 override10), 비행16m/s, 상하8m/s다.
+비행 중 Server는 실제 고도의 충돌을 검사하며 걷기 nav 밖 이동을 허용한다. 착륙은 현재 XZ의
+walkable 지면과 충돌 검사를 요구하고, 실패하면 비행을 유지한다. 강제 하차는 마지막 안전 지면으로 복귀한다.
 F6 자유 카메라에서 `Move Player`를 누르면 mouse-look을 끄고 지면 한 번 선택을 대기한다.
 Esc/우클릭/follow 복귀는 미제출 선택을 취소하고 Tab으로 mouse-look을 다시 켠다.
 이 명시적 Debug 저작 명령은 Server의 navigation 높이·walkability·collision 검증과 typed 응답을 거치며
 일반 gameplay 입력을 다시 활성화하지 않는다. Server/Client는 같은 protocol로 빌드·재시작해야 한다.
-F1의 `Arena Camera / Player` 바로 아래 `Show Navigation`은 현재 제품 Level의 게시 navgrid를
+F1의 `Map Camera / Player` 바로 아래 `Show Navigation`은 현재 제품 Level의 게시 navgrid를
 읽는 Debug 오버레이다. 녹색은 이동 가능, 주황은 바닥이 있는 막힌 셀, 자홍은 베이크에서 바닥을
 찾지 못한 셀이다. 원본/paint와 게시본이 다르면 막힘 원인을 추정하지 않고 빨간색으로 표시한다.
 `Reload Navigation`으로 디스크 표시본을 다시 읽고 `Camera range (m)`로 표시 범위를 조절한다.
@@ -679,6 +716,12 @@ Open/Play 전까지 지연한다.
 사용하려면 gameplay bootstrap v26과 현재 protocol v102의 Server/Client를 함께 빌드·배포해야 한다.
 중앙 cue anchor, 유령 Resources 상대 경로, 포탈·잡기·사망 lifecycle은
 `.md/TEAM/발탄인수인계서.md` 11.9~11.10에 정리한다.
+Debug F1 `Valtan Arena`의 위치 이동 버튼 아래 `Axe Transform`에서 본체/유령 도끼의 위치와 회전을
+즉시 조절한다. Save는 `Data/Actors/BossCatalog.json` v8의 optional `weaponSocketTransform`에
+`positionMeters`와 `rotationDegrees`(pitch/yaw/roll)를 저장한다. 없는 값은 영점이며 기존 모습을 유지한다.
+저장은 최신 문서에 변경 축만 병합하고 같은 축의 동시 수정은 거절한다. Save + Publish는 기존 Balance
+publisher로 Server presentation generation까지 갱신한다. Server 재시작·재입장 전 기존 generation은 유지되며,
+편집 중인 Client 도끼는 즉시 반영된다. 이 값은 표현용 socket 보정이며 Server 피해 판정은 바꾸지 않는다.
 phase band는 Server encounter 메타데이터이며 All Effects의 반복 tree나 stage 숨김 filter로 사용하지
 않는다. 두 owner는 같은 Mesh, Sprite, Mesh Particle, Sprite Particle, Local Decal, Trail/Ribbon family를
 사용한다.

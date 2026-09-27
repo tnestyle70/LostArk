@@ -799,7 +799,7 @@ namespace
 		{
 			0x01, 0x00, 0x00, 0x00,
 			0x64, 0x00, 0x00, 0x00,
-			0x05,
+			0x05, 0x00, // class, human control kind
 			0x06, 0x00,
 			0xEA, 0xB1, 0xB4,
 			0xEB, 0xB3, 0xB4,
@@ -810,7 +810,7 @@ namespace
 		};
 
 		testRunner.Require(
-			payload.size() == 33,
+			payload.size() == 34,
 			"Player Spawned Payload Size");
 
 		testRunner.Require(
@@ -2234,11 +2234,11 @@ namespace
         killed.eResult = DEBUG_KILL_GATE_BOSSES_RESULT::DISABLED; CPacketWriter rejectedKill;
         testRunner.Require(!Write_Message(rejectedKill, killed), "Rejected Gate Kill cannot claim a kill count");
 
-		testRunner.Require(NETWORK_PROTOCOL_VERSION == 114u &&
+		testRunner.Require(NETWORK_PROTOCOL_VERSION == 117u &&
 			Is_Known_Packet_Type(PACKET_TYPE::C2S_DEBUG_USE_ESTHER) &&
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_DEBUG_USE_ESTHER) ==
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_DEBUG_RESUMMON_WAVE_MONSTERS) + 1u,
-			"Protocol 114 combines flight and Debug Esther without renumbering packets");
+			"Protocol 117 combines flight and Debug Esther without renumbering packets");
 		for (const auto esther : { ESTHER_ID::SILLIAN, ESTHER_ID::WEI,
 			ESTHER_ID::BAHUNTUR, ESTHER_ID::NINAV, ESTHER_ID::INANNA })
 		{
@@ -2422,10 +2422,10 @@ namespace
 				unchanged.eDirection == request.eDirection,
 				"Malformed Mario direction or stop preserves output");
 		}
-		testRunner.Require(NETWORK_PROTOCOL_VERSION == 114u && Is_Known_Packet_Type(PACKET_TYPE::C2S_MARIO_MOVE) &&
+		testRunner.Require(NETWORK_PROTOCOL_VERSION == 117u && Is_Known_Packet_Type(PACKET_TYPE::C2S_MARIO_MOVE) &&
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_MARIO_MOVE) ==
 			static_cast<std::uint16_t>(PACKET_TYPE::S2C_DEBUG_MARIO_JUMP_RESULT) + 1u,
-			"Mario direction packet retains its appended identity in protocol 114");
+			"Mario direction packet retains its appended identity in protocol 117");
 	}
 
     void Test_FearSnapshotProtocol(TEST_RUNNER& testRunner)
@@ -2575,6 +2575,102 @@ namespace
 		snapshot.Players[0].iMarioLayoutVariant = 0u;
 		CPacketWriter orphanPopped;
 		testRunner.Require(!Write_Message(orphanPopped, snapshot), "Mario popped mask cannot survive leaving the stage");
+	}
+
+	void Test_CombatSuccessSnapshotProtocol(TEST_RUNNER& testRunner)
+	{
+		S2C_WORLD_SNAPSHOT snapshot{};
+		snapshot.iServerTick = 11u; snapshot.eWorldId = WORLD_ID::KAKULSAYDON_ARENA;
+		snapshot.ActiveGameplayRevision = Make_GameplayDataRevision(1u);
+		PLAYER_SNAPSHOT player{}; player.iNetEntityId = 101u; player.eCharacterClass = CHARACTER_CLASS_ID::LANCE_MASTER;
+		snapshot.Players.push_back(player);
+		DAMAGE_EVENT event{}; event.iTargetNetEntityId = 900u; event.iAmount = 1u; event.isOutgoing = true;
+		snapshot.DamageEvents.push_back(event);
+		std::vector<std::uint8_t> baseline, successWire;
+		const bool baselineValid = Build_WorldSnapshotPayload(snapshot, baseline);
+		snapshot.DamageEvents.front().isStaggerSuccess = true;
+		const bool successValid = Build_WorldSnapshotPayload(snapshot, successWire);
+		std::vector<std::size_t> changed;
+		if (baselineValid && successValid && baseline.size() == successWire.size())
+			for (std::size_t index = 0u; index < baseline.size(); ++index)
+				if (baseline[index] != successWire[index]) changed.push_back(index);
+		testRunner.Require(changed.size() == 1u, "Stagger success owns one independently encoded boolean byte");
+		if (changed.size() != 1u) return;
+		const auto staggerOffset = changed.front();
+		const auto marioSourceOffset = staggerOffset + 1u;
+		const auto hitFlagOffset = marioSourceOffset + 1u;
+		for (const bool counter : {false, true})
+		{
+			snapshot.DamageEvents.front().iAmount = 0u;
+			snapshot.DamageEvents.front().isCounterSuccess = counter;
+			std::vector<std::uint8_t> payload; S2C_WORLD_SNAPSHOT decoded;
+			bool valid = Build_WorldSnapshotPayload(snapshot, payload);
+			if (valid) { CPacketReader reader{payload}; valid = Read_Message(reader, decoded) && !reader.Get_RemainingSize(); }
+			testRunner.Require(valid && decoded.DamageEvents.size() == 1u && decoded.DamageEvents.front().isStaggerSuccess &&
+				decoded.DamageEvents.front().isCounterSuccess == counter && decoded.DamageEvents.front().iAmount == 0u &&
+				decoded.DamageEvents.front().iStaggerAmount == 0u && decoded.DamageEvents.front().isOutgoing &&
+				decoded.DamageEvents.front().iSourcePlayerId == INVALID_PLAYER_ID,
+				"Zero-damage stagger success and an independent counter flag survive the complete snapshot round trip");
+		}
+		auto malformed = successWire; malformed[staggerOffset] = 2u;
+		S2C_WORLD_SNAPSHOT retained = snapshot; retained.iServerTick = 777u;
+		CPacketReader malformedReader{malformed};
+		testRunner.Require(!Read_Message(malformedReader, retained) && retained.iServerTick == 777u,
+			"An invalid stagger boolean rejects the snapshot while preserving the caller's prior state");
+		for (const auto flag : {DAMAGE_HIT_FLAG::HEAL, DAMAGE_HIT_FLAG::ABSORB})
+		{
+			snapshot.DamageEvents.front() = event;
+			snapshot.DamageEvents.front().isStaggerSuccess = true;
+			snapshot.DamageEvents.front().eHitFlag = flag;
+			CPacketWriter invalidWriter;
+			malformed = successWire; malformed[hitFlagOffset] = static_cast<std::uint8_t>(flag);
+			CPacketReader invalidReader{malformed};
+			testRunner.Require(!Write_Message(invalidWriter, snapshot) && invalidWriter.Get_Buffer().empty() &&
+				!Read_Message(invalidReader, retained) && retained.iServerTick == 777u,
+				"Healing and shield absorption reject stagger-success bookkeeping on both write and read");
+		}
+		snapshot.DamageEvents.front() = event; snapshot.DamageEvents.front().isOutgoing = false;
+		std::vector<std::uint8_t> incoming; const bool incomingValid = Build_WorldSnapshotPayload(snapshot, incoming);
+		snapshot.DamageEvents.front().isStaggerSuccess = true;
+		CPacketWriter incomingWriter;
+		if (incomingValid) incoming[staggerOffset] = 1u;
+		CPacketReader incomingReader{incoming};
+		testRunner.Require(incomingValid && !Write_Message(incomingWriter, snapshot) && incomingWriter.Get_Buffer().empty() &&
+			!Read_Message(incomingReader, retained) && retained.iServerTick == 777u,
+			"Incoming damage cannot carry a player-to-boss stagger success on either wire boundary");
+		for (const auto flag : {DAMAGE_HIT_FLAG::NORMAL, DAMAGE_HIT_FLAG::ABSORB})
+		{
+			snapshot.DamageEvents.front() = event; snapshot.DamageEvents.front().isOutgoing = false;
+			snapshot.DamageEvents.front().eMarioHitSource = MARIO_HIT_SOURCE::FLYING_BALL;
+			snapshot.DamageEvents.front().eHitFlag = flag;
+			std::vector<std::uint8_t> payload; S2C_WORLD_SNAPSHOT decoded;
+			bool valid = Build_WorldSnapshotPayload(snapshot, payload);
+			if (valid) { CPacketReader reader{payload}; valid = Read_Message(reader, decoded) && !reader.Get_RemainingSize(); }
+			testRunner.Require(valid && decoded.DamageEvents.size() == 1u && !decoded.DamageEvents.front().isOutgoing &&
+				decoded.DamageEvents.front().eMarioHitSource == MARIO_HIT_SOURCE::FLYING_BALL &&
+				decoded.DamageEvents.front().eHitFlag == flag && decoded.DamageEvents.front().iAmount == 1u &&
+				!decoded.DamageEvents.front().isStaggerSuccess,
+				"Mario flying-ball HP damage and shield absorption preserve their authoritative presentation source");
+		}
+		snapshot.DamageEvents.front() = event; snapshot.DamageEvents.front().isOutgoing = false;
+		snapshot.DamageEvents.front().eMarioHitSource = MARIO_HIT_SOURCE::END;
+		CPacketWriter unknownMarioWriter;
+		malformed = baseline; malformed[marioSourceOffset] = static_cast<std::uint8_t>(MARIO_HIT_SOURCE::END);
+		CPacketReader unknownMarioReader{malformed};
+		testRunner.Require(!Write_Message(unknownMarioWriter, snapshot) && unknownMarioWriter.Get_Buffer().empty() &&
+			!Read_Message(unknownMarioReader, retained) && retained.iServerTick == 777u,
+			"Unknown Mario hit sources reject the complete snapshot on write and read");
+		snapshot.DamageEvents.front() = event; snapshot.DamageEvents.front().eMarioHitSource = MARIO_HIT_SOURCE::FLYING_BALL;
+		CPacketWriter outgoingMarioWriter;
+		malformed = baseline; malformed[marioSourceOffset] = static_cast<std::uint8_t>(MARIO_HIT_SOURCE::FLYING_BALL);
+		CPacketReader outgoingMarioReader{malformed};
+		testRunner.Require(!Write_Message(outgoingMarioWriter, snapshot) && outgoingMarioWriter.Get_Buffer().empty() &&
+			!Read_Message(outgoingMarioReader, retained) && retained.iServerTick == 777u,
+			"A Mario flying-ball source cannot be forged onto outgoing player damage");
+		snapshot.DamageEvents.front().isOutgoing = false; snapshot.DamageEvents.front().iAmount = 0u;
+		CPacketWriter zeroMarioWriter;
+		testRunner.Require(!Write_Message(zeroMarioWriter, snapshot) && zeroMarioWriter.Get_Buffer().empty(),
+			"A Mario hit presentation requires a positive damage or absorbed amount");
 	}
 
 	void Test_CardMazeSnapshotProtocol(TEST_RUNNER& testRunner)
@@ -2881,11 +2977,11 @@ namespace
 				unchanged.eWorldId == WORLD_ID::BERN && unchanged.eResult == MARIO_RETURN_RESULT::REJECTED_DESTINATION,
 				"Invalid Mario return verdict preserves caller output");
 		}
-		testRunner.Require(NETWORK_PROTOCOL_VERSION == 114u &&
+		testRunner.Require(NETWORK_PROTOCOL_VERSION == 117u &&
 			Is_Known_Packet_Type(PACKET_TYPE::C2S_MARIO_RETURN) && Is_Known_Packet_Type(PACKET_TYPE::S2C_MARIO_RETURN_RESULT) &&
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_MARIO_RETURN) == static_cast<std::uint16_t>(PACKET_TYPE::S2C_SET_VEHICLE_RIDING_RESULT) + 1u &&
 			static_cast<std::uint16_t>(PACKET_TYPE::S2C_MARIO_RETURN_RESULT) == static_cast<std::uint16_t>(PACKET_TYPE::C2S_MARIO_RETURN) + 1u,
-			"Protocol 114 preserves Mario return packet identities");
+			"Protocol 117 preserves Mario return packet identities");
 	}
 
 	void Test_DebugMarioJumpProtocol(TEST_RUNNER& testRunner)
@@ -3002,14 +3098,14 @@ namespace
 				unchanged.eResult == DEBUG_MARIO_JUMP_RESULT::REJECTED_DISABLED,
 				"Mario invalid or truncated verdict preserves caller output");
 		}
-		testRunner.Require(NETWORK_PROTOCOL_VERSION == 114u &&
+		testRunner.Require(NETWORK_PROTOCOL_VERSION == 117u &&
 			Is_Known_Packet_Type(PACKET_TYPE::C2S_DEBUG_MARIO_JUMP) &&
 			Is_Known_Packet_Type(PACKET_TYPE::S2C_DEBUG_MARIO_JUMP_RESULT) &&
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_DEBUG_MARIO_JUMP) ==
 			static_cast<std::uint16_t>(PACKET_TYPE::S2C_SCENE_PROFILE_APPLY) + 1u &&
 			static_cast<std::uint16_t>(PACKET_TYPE::S2C_DEBUG_MARIO_JUMP_RESULT) ==
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_DEBUG_MARIO_JUMP) + 1u,
-			"Protocol 114 preserves Mario jump packet identities without renumbering existing peers");
+			"Protocol 117 preserves Mario jump packet identities without renumbering existing peers");
 	}
 
 	void Test_DebugMadnessFormProtocol(TEST_RUNNER& testRunner)
@@ -3187,14 +3283,14 @@ namespace
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_DEBUG_BINGO_HAMMER) + 1u &&
 			static_cast<std::uint16_t>(PACKET_TYPE::S2C_SET_VEHICLE_RIDING_RESULT) ==
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_SET_VEHICLE_RIDING) + 1u &&
-			NETWORK_PROTOCOL_VERSION == 114u,
+			NETWORK_PROTOCOL_VERSION == 117u,
 			"Riding packet identities append without renumbering peers");
 	}
 
 	void Test_WorldObjectMotionProtocol(TEST_RUNNER& testRunner)
 	{
 		using namespace LostArk::Shared;
-		testRunner.Require(NETWORK_PROTOCOL_VERSION == 114u, "World Object owner lifecycle, fear, zone pulse, wave re-summon, wall climb and ember use protocol 114");
+		testRunner.Require(NETWORK_PROTOCOL_VERSION == 117u, "World Object owner lifecycle, fear, zone pulse, wave re-summon, wall climb and ember use protocol 117");
 		testRunner.Require(
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_DEBUG_MARIO_JUMP) == 72u &&
 			static_cast<std::uint16_t>(PACKET_TYPE::S2C_DEBUG_MARIO_JUMP_RESULT) == 73u &&
@@ -3566,8 +3662,8 @@ namespace
 			static_cast<std::uint16_t>(PACKET_TYPE::S2C_INTERACT_PROMPT) + 1u &&
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_INTERACTION_SLOT) ==
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_INTERACT_TRIGGER) + 1u &&
-			NETWORK_PROTOCOL_VERSION == 114u,
-			"Protocol 114 preserves main trigger identities with WORLD occurrence placement");
+			NETWORK_PROTOCOL_VERSION == 117u,
+			"Protocol 117 preserves main trigger identities with WORLD occurrence placement");
 	}
 
 	void Test_KakulAuthoringCommandProtocol(TEST_RUNNER& testRunner)
@@ -3683,8 +3779,8 @@ namespace
 	void Test_PartyInviteProtocol(TEST_RUNNER& testRunner)
 	{
 		{
-			testRunner.Require(113u == NETWORK_PROTOCOL_VERSION,
-				"KoukuSaydon Source Pin And Existing Contracts Use Protocol 114");
+			testRunner.Require(117u == NETWORK_PROTOCOL_VERSION,
+				"KoukuSaydon Source Pin And Existing Contracts Use Protocol 117");
 			C2S_ENTER_WORLD oldPeer{};
 			oldPeer.iProtocolVersion = 40u;
 			oldPeer.eWorldId = WORLD_ID::BERN;
@@ -3833,6 +3929,104 @@ namespace
 				"Reject Oversized Party Roster");
 		}
 	}
+
+    void Test_GuideCompanionProtocol(TEST_RUNNER& testRunner)
+    {
+        S2C_PLAYER_SPAWNED spawn;
+        spawn.iPlayerId = 900u; spawn.iNetEntityId = 901u;
+        spawn.eCharacterClass = CHARACTER_CLASS_ID::DIMENSIONMASTER;
+        spawn.strNickName = "Guide"; spawn.eControlKind = PLAYER_CONTROL_KIND::GUIDE_AI;
+        CPacketWriter spawnWriter; S2C_PLAYER_SPAWNED spawnDecoded;
+        const bool wroteSpawn = Write_Message(spawnWriter, spawn);
+        CPacketReader spawnReader{spawnWriter.Get_Buffer()};
+        testRunner.Require(wroteSpawn && Read_Message(spawnReader, spawnDecoded) &&
+            spawnDecoded.eControlKind == PLAYER_CONTROL_KIND::GUIDE_AI && spawnReader.Get_RemainingSize() == 0u,
+            "Guide Spawn Preserves Server-Owned Actor Kind");
+        auto invalidSpawn = spawnWriter.Get_Buffer();
+        if (invalidSpawn.size() > 9u) invalidSpawn[9] = 0xffu;
+        CPacketReader invalidSpawnReader{invalidSpawn};
+        spawnDecoded.strNickName = "unchanged";
+        testRunner.Require(!Read_Message(invalidSpawnReader, spawnDecoded) && spawnDecoded.strNickName == "unchanged",
+            "Unknown Actor Kind Rejected Before Spawn Commit");
+
+        S2C_PARTY_ROSTER roster;
+        for (std::uint32_t id = 1u; id <= 4u; ++id)
+            roster.Members.push_back({id, "Human", CHARACTER_CLASS_ID::ARTIST});
+        roster.GuideCompanion = PARTY_ROSTER_MEMBER{901u, "Guide", CHARACTER_CLASS_ID::DIMENSIONMASTER, PLAYER_CONTROL_KIND::GUIDE_AI};
+        CPacketWriter rosterWriter; S2C_PARTY_ROSTER rosterDecoded;
+        const bool wroteRoster = Write_Message(rosterWriter, roster);
+        CPacketReader rosterReader{rosterWriter.Get_Buffer()};
+        testRunner.Require(wroteRoster && Read_Message(rosterReader, rosterDecoded) &&
+            rosterDecoded.Members.size() == 4u && rosterDecoded.GuideCompanion &&
+            rosterDecoded.GuideCompanion->eControlKind == PLAYER_CONTROL_KIND::GUIDE_AI &&
+            rosterReader.Get_RemainingSize() == 0u, "Four Human Seats Plus One Separate Guide Round Trip");
+        auto invalidRoster = roster;
+        invalidRoster.Members[0].eControlKind = PLAYER_CONTROL_KIND::GUIDE_AI;
+        CPacketWriter rejectSeat;
+        testRunner.Require(!Write_Message(rejectSeat, invalidRoster), "Guide Cannot Occupy Human Roster Seat");
+        invalidRoster = roster; invalidRoster.GuideCompanion->iNetEntityId = 1u;
+        CPacketWriter rejectDuplicate;
+        testRunner.Require(!Write_Message(rejectDuplicate, invalidRoster), "Companion Cannot Duplicate Human Entity");
+        invalidRoster = roster; invalidRoster.Members.clear();
+        CPacketWriter rejectOrphan;
+        testRunner.Require(!Write_Message(rejectOrphan, invalidRoster), "Companion Requires Human Party Owner");
+        auto truncatedRoster = rosterWriter.Get_Buffer(); truncatedRoster.pop_back();
+        CPacketReader truncatedRosterReader{truncatedRoster}; rosterDecoded = roster;
+        testRunner.Require(!Read_Message(truncatedRosterReader, rosterDecoded) && rosterDecoded.Members.size() == 4u &&
+            rosterDecoded.GuideCompanion->iNetEntityId == 901u, "Truncated Companion Preserves Previous Roster");
+
+        S2C_GUIDE_PROMPT prompt;
+        prompt.iGuideNetEntityId = 901u; prompt.iEventSequence = 7u;
+        prompt.iRevision = 0x123456789abcu; prompt.strPromptId = "guide.kouku.real-saydon";
+        prompt.strText = std::string(300u, 'a') + "\n" + "\xea\xb0\x80";
+        prompt.iDurationMs = 9000u;
+        CPacketWriter promptWriter; S2C_GUIDE_PROMPT promptDecoded;
+        const bool wrotePrompt = Write_Message(promptWriter, prompt);
+        CPacketReader promptReader{promptWriter.Get_Buffer()};
+        testRunner.Require(wrotePrompt && Read_Message(promptReader, promptDecoded) &&
+            promptDecoded.strText == prompt.strText && promptDecoded.iRevision == prompt.iRevision &&
+            promptDecoded.iDurationMs == 9000u && promptReader.Get_RemainingSize() == 0u,
+            "Long UTF-8 Guide Prompt Preserves Revision Event And Duration");
+        auto invalidPrompt = prompt; invalidPrompt.strText = "\xed\xa0\x80";
+        CPacketWriter rejectUtf8;
+        testRunner.Require(!Write_Message(rejectUtf8, invalidPrompt), "Guide Prompt Rejects UTF-8 Surrogate");
+        invalidPrompt = prompt; invalidPrompt.strText.assign(MAX_GUIDE_PROMPT_TEXT_BYTES + 1u, 'x');
+        CPacketWriter rejectSize;
+        testRunner.Require(!Write_Message(rejectSize, invalidPrompt), "Guide Prompt Is Bounded");
+        invalidPrompt = prompt; invalidPrompt.iDurationMs = 0u;
+        CPacketWriter rejectDuration;
+        testRunner.Require(!Write_Message(rejectDuration, invalidPrompt), "Guide Prompt Rejects Zero Lifetime");
+        auto truncatedPrompt = promptWriter.Get_Buffer(); truncatedPrompt.pop_back();
+        CPacketReader truncatedPromptReader{truncatedPrompt}; promptDecoded.strText = "keep";
+        testRunner.Require(!Read_Message(truncatedPromptReader, promptDecoded) && promptDecoded.strText == "keep",
+            "Truncated Guide Prompt Preserves Existing Value");
+
+        S2C_GUIDE_STATE state;
+        state.iGuideNetEntityId = 901u; state.iOwnerNetEntityId = 1u; state.iRevision = prompt.iRevision;
+        state.iServerTick = 80u; state.iContext = 1u; state.iAction = 2u;
+        state.fFollowScore = .2f; state.fEvadeScore = .8f; state.fCombatScore = .4f;
+        state.fThreat = .9f; state.fAnchorDistance = 8.5f; state.fHpRatio = .3f; state.bSurvivalOverride = true;
+        state.strReason = "incoming hazard"; state.strComboId = "combo.1"; state.iComboStep = 3u;
+        CPacketWriter stateWriter; S2C_GUIDE_STATE stateDecoded;
+        const bool wroteState = Write_Message(stateWriter, state);
+        CPacketReader stateReader{stateWriter.Get_Buffer()};
+        testRunner.Require(wroteState && Read_Message(stateReader, stateDecoded) &&
+            stateDecoded.iOwnerNetEntityId == 1u && stateDecoded.strReason == state.strReason &&
+            stateDecoded.fEvadeScore == state.fEvadeScore && stateDecoded.iComboStep == 3u &&
+            stateDecoded.fThreat == state.fThreat && stateDecoded.fAnchorDistance == state.fAnchorDistance &&
+            stateDecoded.fHpRatio == state.fHpRatio && stateDecoded.bSurvivalOverride && stateReader.Get_RemainingSize() == 0u,
+            "Guide Authoritative Decision Trace Round Trip");
+        auto badState = state; badState.fThreat = -1.f; CPacketWriter rejectThreat;
+        testRunner.Require(!Write_Message(rejectThreat, badState), "Guide Trace Rejects Negative Threat");
+        badState = state; badState.fAnchorDistance = -1.f; CPacketWriter rejectDistance;
+        testRunner.Require(!Write_Message(rejectDistance, badState), "Guide Trace Rejects Negative Anchor Distance");
+        badState = state; badState.fHpRatio = 1.01f; CPacketWriter rejectHp;
+        testRunner.Require(!Write_Message(rejectHp, badState), "Guide Trace Rejects HP Outside Unit Interval");
+        state.fEvadeScore = std::numeric_limits<float>::quiet_NaN(); CPacketWriter rejectNan;
+        testRunner.Require(!Write_Message(rejectNan, state), "Guide Trace Rejects Nonfinite Scores");
+        testRunner.Require(NETWORK_PROTOCOL_VERSION == 117u && Is_Known_Packet_Type(PACKET_TYPE::S2C_GUIDE_PROMPT) &&
+            Is_Known_Packet_Type(PACKET_TYPE::S2C_GUIDE_STATE), "Guide Protocol Requires Matching v117 Peers");
+    }
 
 	void Test_ChatProtocol(TEST_RUNNER& testRunner)
 	{
@@ -4149,6 +4343,9 @@ namespace
 		entity.BossCombat.iMaximumShield = 0u;
 		entity.BossCombat.iResponseProgress = 600u;
 		entity.BossCombat.iResponseThreshold = 1000u;
+		entity.BossCombat.eMechanicGaugeKind = BOSS_MECHANIC_GAUGE_KIND::STAGGER;
+		entity.BossCombat.iCurrentMechanicGauge = 700u;
+		entity.BossCombat.iMaximumMechanicGauge = 1000u;
 		entity.BossCombat.iGameplayPhase = 1u;
 		entity.PinnedDefinitionRevision = source.ActiveGameplayRevision;
 		source.Entities.push_back(entity);
@@ -4193,8 +4390,8 @@ namespace
 		the eight mode-skill slot indices to every player row. */
 		constexpr std::size_t playerInteractionBytes = 1 + 1 + 1 + KOUKU_HUD_SLOT_COUNT;
 		// Protocol 62 adds the Mario stage; protocol 76 adds its source layout.
-		// Protocol 80 adds the popped-ball U16 and curse-release U8 masks.
-		constexpr std::size_t playerMarioStageBytes = 1 + 1 + 2 + 1;
+		// Protocol 80 adds the popped-ball U16 and curse-release U8 masks; 114 adds marker colour.
+		constexpr std::size_t playerMarioStageBytes = 1 + 1 + 2 + 1 + 1;
         constexpr std::size_t playerCardMazeBytes = 5 + (4 * 6);
 		// Protocol 78 adds a fear deadline and the empty presentation string length.
         constexpr std::size_t playerFearBytes = 4 + 2;
@@ -4211,7 +4408,7 @@ namespace
 			4 + 1 + (4 * 4) + 1 + 1 + 1 + (4 * 8) + 1 + (4 * 3) + 3 +
 			1 + 1 + 1 + playerAttachmentBytes + playerPatternStatusBytes +
 			playerMadnessBytes + playerInteractionBytes + playerMarioStageBytes + playerCardMazeBytes + playerFearBytes + playerZonePulseBytes + playerPredictionBytes +
-			playerVehicleBytes + playerHonorTitleBytes + 5 + 1 + 1; // shield, buff count, room mode, airborne knockback
+			playerVehicleBytes + playerHonorTitleBytes + 5 + 1 + 1 + 1; // shield, buff count, room mode, airborne knockback
 		constexpr std::size_t cooldownBytes = 4 + 4 + 4;
 		/* The first trailing 1 is the optional Portal rush route flag.
 		   The final 1 + 1 + 1 is iPhase, iBrokenArmorMask and the
@@ -4220,10 +4417,12 @@ namespace
 		// Retained presentation has its own IDs and pattern/action/stage clocks.
         const std::size_t entityPresentationBytes =
             2 + entity.strPresentationPatternId.size() + 2 + entity.strPresentationActionId.size() + (4 * 3);
+		// Protocol 117 adds the gauge kind and remaining/maximum U32 pair.
+		constexpr std::size_t mechanicGaugeBytes = 1 + (4 * 2);
 		const std::size_t entityBytes =
 			4 + 1 + 2 + entity.strPatternId.size() + 2 +
 			entity.strActionId.size() + (4 * 4) + 1 + (4 * 7) + 1 + 1 + 1 +
-			4 + 4 + 2 + (4 * 6) + 1 + GAMEPLAY_DATA_REVISION_BYTES + entityPresentationBytes + 1; // boss buff count
+			4 + 4 + 2 + (4 * 6) + mechanicGaugeBytes + 1 + GAMEPLAY_DATA_REVISION_BYTES + entityPresentationBytes + 1; // boss buff count
 		constexpr std::size_t bossCombatEventBytes =
 			8 + 4 + 4 + 1 + 4;
 		constexpr std::size_t combatObjectBytes =
@@ -4470,6 +4669,9 @@ namespace
 			decoded.Entities[0].BossCombat.iMaximumStagger == 1000u &&
 			decoded.Entities[0].BossCombat.iResponseProgress == 600u &&
 			decoded.Entities[0].BossCombat.iResponseThreshold == 1000u &&
+			decoded.Entities[0].BossCombat.eMechanicGaugeKind == BOSS_MECHANIC_GAUGE_KIND::STAGGER &&
+			decoded.Entities[0].BossCombat.iCurrentMechanicGauge == 700u &&
+			decoded.Entities[0].BossCombat.iMaximumMechanicGauge == 1000u &&
 			decoded.Entities[0].BossCombat.iGameplayPhase == 1u,
 			"World Snapshot Entities Round Trip");
 
@@ -4869,7 +5071,7 @@ namespace
 				4u + 2u + 2u + 2u + 1u + 1u + 1u + 4u + 4u;
 			constexpr std::size_t playerAttachmentSlotByte =
 				worldSnapshotHeaderBytes +
-				4u + 1u + (4u * 4u) + 1u + 1u + 1u + 4u + 4u + 1u + 4u;
+				4u + 1u + 1u + (4u * 4u) + 1u + 1u + 1u + 4u + 4u + 1u + 4u;
 			if (wroteInvalidSlotFixture &&
 				playerAttachmentSlotByte < invalidSlotPayload.size())
 			{
@@ -7052,8 +7254,8 @@ namespace
 		}
 
 		testRunner.Require(
-			113u == NETWORK_PROTOCOL_VERSION,
-			"Session Diagnostics Use Current Protocol Version 112");
+			117u == NETWORK_PROTOCOL_VERSION,
+			"Session Diagnostics Use Current Protocol Version 117");
 		testRunner.Require(
 			allReasonsAreKnown && allValuesAreContiguous,
 			"Every Session Diagnostic Reason Is Known And Append Only");
@@ -7080,8 +7282,8 @@ namespace
 	void Test_DataRevisionHotReloadProtocol(TEST_RUNNER& testRunner)
 	{
 		testRunner.Require(
-			113u == NETWORK_PROTOCOL_VERSION,
-			"World Spawn Pin Complete Play And Two-Revision Restart CAS Use Protocol 114");
+			117u == NETWORK_PROTOCOL_VERSION,
+			"World Spawn Pin Complete Play And Two-Revision Restart CAS Use Protocol 117");
 		const GameplayDataRevision base = Make_GameplayDataRevision(10u);
 		const GameplayDataRevision candidate = Make_GameplayDataRevision(40u);
 		const std::uint32_t required =
@@ -8380,6 +8582,7 @@ int main(const int argumentCount, char* arguments[])
 		Test_FearSnapshotProtocol(testRunner);
 	Test_MarioStageSnapshotProtocol(testRunner);
 		Test_CardMazeSnapshotProtocol(testRunner);
+	Test_CombatSuccessSnapshotProtocol(testRunner);
 		Test_DebugMarioJumpProtocol(testRunner);
 		Test_MarioReturnProtocol(testRunner);
 		return 0u == testRunner.iFailureCount ? 0 : 1;
@@ -8432,6 +8635,7 @@ int main(const int argumentCount, char* arguments[])
 	Test_FearSnapshotProtocol(testRunner);
 	Test_MarioStageSnapshotProtocol(testRunner);
 	Test_CardMazeSnapshotProtocol(testRunner);
+	Test_CombatSuccessSnapshotProtocol(testRunner);
 	Test_WorldEntitySpawnCommandRoundTrip(testRunner);
 	Test_MovePredictionSnapshotProtocol(testRunner);
 	Test_WorldSnapshotRoundTrip(testRunner);
@@ -8450,6 +8654,7 @@ int main(const int argumentCount, char* arguments[])
 	Test_PartyInviteProtocol(testRunner);
 	Test_RaidEntryVoteProtocol(testRunner);
 	Test_KoukuSaydonPatternAuditionProtocol(testRunner);
+	Test_GuideCompanionProtocol(testRunner);
 	Test_ChatProtocol(testRunner);
 
 	Test_StreamFraming(testRunner);

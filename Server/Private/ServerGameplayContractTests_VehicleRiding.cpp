@@ -134,6 +134,14 @@ int LostArk::Server::Run_ServerVehicleRidingContractTests()
 	bern->Enforce_VehicleRidingState();
 	tests.Require(GOLDEN_TERPEION == rider.iVehicleId,
 		"A running vehicle skill keeps the player mounted");
+	SERVER_PLAYER refusedSailor = rider;
+	tests.Require(VEHICLE_RIDING_RESULT::REJECTED_PLAYER_STATE == bern->Apply_SetVehicleRiding(
+		refusedSailor, Make_VehicleRequest(3u, WORLD_ID::BERN, 8200u)).eResult &&
+		GOLDEN_TERPEION == refusedSailor.iVehicleId && PLAYER_ACTION_STATE::VEHICLE_SKILL == refusedSailor.eAction &&
+		96000u == refusedSailor.iCurrentSkillId && rider.iActionStartTick == refusedSailor.iActionStartTick &&
+		Near(rider.fActionElapsedSeconds, refusedSailor.fActionElapsedSeconds) &&
+		rider.CooldownEndTickBySkillId == refusedSailor.CooldownEndTickBySkillId && !refusedSailor.bShipDockValid,
+		"A refused ship request preserves the current mount skill and cooldowns");
 	runVehicleSkill(120u);
 	tests.Require(PLAYER_ACTION_STATE::NONE == rider.eAction &&
 		INVALID_SKILL_ID == rider.iCurrentSkillId,
@@ -271,11 +279,43 @@ int LostArk::Server::Run_ServerVehicleRidingContractTests()
             movedHorizontally = std::hypot(rider.fPositionX - startX, rider.fPositionZ - startZ) > .02f;
         }
         tests.Require(movedHorizontally && turnWasBounded,
-            "Typed WASD moves along authoritative walkable ground with bounded heading turns");
+            "Typed WASD moves through authoritative airspace with bounded heading turns");
         input.fGoalX = input.fGoalZ = 0.f;
         ++input.iClientSequence; bern->Handle_Move(RIDER_SESSION, input); flyTicks(30u);
-        const float landingGround = rider.fVehicleFlightGroundY;
+        const auto lastSafeLanding = rider.VehicleFlightSafeLanding;
+        // No nav cell exists at this finite airborne point. Input must still advance XZ.
+        rider.fPositionX = 100000.f; rider.fPositionZ = 100000.f;
+        rider.fPositionY = ground + sea->fFlightMaximumHeight;
+        tests.Require(!bern->m_ServerNavigation.Is_PointWalkableExact(rider.fPositionX, rider.fPositionZ),
+            "Flight regression fixture has no walkable ground");
+        input.fGoalX = 1.f; input.fGoalZ = input.fVerticalInput = 0.f;
+        ++input.iClientSequence; bern->Handle_Move(RIDER_SESSION, input); flyTicks(5u);
+        tests.Require(rider.fPositionX > 100000.1f && rider.eVehicleFlightPhase == VEHICLE_FLIGHT_PHASE::FLYING,
+            "Server flight advances beyond navigation coverage");
         toggle.iClientSequence = 21u;
+        tests.Require(!bern->Try_StartVehicleSkill(rider, toggle) && rider.eVehicleFlightPhase == VEHICLE_FLIGHT_PHASE::FLYING,
+            "E refuses landing over a nav gap without ending flight");
+        SERVER_PLAYER refusedFlyingSailor = rider;
+        tests.Require(VEHICLE_RIDING_RESULT::REJECTED_PLAYER_STATE == bern->Apply_SetVehicleRiding(
+            refusedFlyingSailor, Make_VehicleRequest(rider.LastVehicleRidingResult.iRequestSequence + 1u,
+                WORLD_ID::BERN, 8200u)).eResult && refusedFlyingSailor.iVehicleId == rider.iVehicleId &&
+            refusedFlyingSailor.eVehicleFlightPhase == VEHICLE_FLIGHT_PHASE::FLYING &&
+            Near(refusedFlyingSailor.fPositionX, rider.fPositionX) &&
+            Near(refusedFlyingSailor.fPositionY, rider.fPositionY) &&
+            Near(refusedFlyingSailor.fPositionZ, rider.fPositionZ) &&
+            refusedFlyingSailor.iActionStartTick == rider.iActionStartTick &&
+            Near(refusedFlyingSailor.fVehicleFlightVelocityX, rider.fVehicleFlightVelocityX),
+            "A refused ship request over a nav gap preserves airborne position and flight");
+        rider.eAction = PLAYER_ACTION_STATE::KNOCKDOWN;
+        bern->Enforce_VehicleRidingState();
+        tests.Require(rider.iVehicleId == INVALID_VEHICLE_ID && Near(rider.fPositionX, lastSafeLanding.x) &&
+            Near(rider.fPositionY, lastSafeLanding.y) && Near(rider.fPositionZ, lastSafeLanding.z),
+            "Forced dismount over a nav gap returns to the last validated landing XYZ");
+        rider.eAction = PLAYER_ACTION_STATE::NONE;
+        bern->Apply_SetVehicleRiding(rider, Make_VehicleRequest(8u, WORLD_ID::BERN, ANCIENT_SEA_VEHICLE_ID));
+        toggle.iClientSequence = 22u; bern->Try_StartVehicleSkill(rider, toggle); flyTicks(60u);
+        const float landingGround = rider.VehicleFlightSafeLanding.y;
+        toggle.iClientSequence = 23u;
         tests.Require(bern->Try_StartVehicleSkill(rider, toggle) && rider.eVehicleFlightPhase == VEHICLE_FLIGHT_PHASE::LANDING,
             "A second E starts landing without an old skill cooldown blocking it");
         tests.Require(!bern->Try_StartVehicleSkill(rider, toggle), "A duplicate E cannot restart the landing clock");
@@ -283,7 +323,7 @@ int LostArk::Server::Run_ServerVehicleRidingContractTests()
         tests.Require(rider.eVehicleFlightPhase == VEHICLE_FLIGHT_PHASE::GROUNDED &&
             rider.eAction == PLAYER_ACTION_STATE::NONE && Near(rider.fPositionY, landingGround) &&
             rider.iVehicleFlightPhaseStartTick == 0u, "Landing commits the validated ground and clears flight state");
-        toggle.iClientSequence = 22u;
+        toggle.iClientSequence = 24u;
         bern->Try_StartVehicleSkill(rider, toggle); flyTicks(60u);
         rider.eAction = PLAYER_ACTION_STATE::KNOCKDOWN;
         bern->Enforce_VehicleRidingState();
@@ -291,6 +331,60 @@ int LostArk::Server::Run_ServerVehicleRidingContractTests()
             rider.eVehicleFlightPhase == VEHICLE_FLIGHT_PHASE::GROUNDED &&
             rider.eAction == PLAYER_ACTION_STATE::KNOCKDOWN && Near(rider.fPositionY, landingGround),
             "Forced dismount restores ground without erasing the Server forced action");
+
+        WORLD_BOOTSTRAP_PLACEMENT wall{};
+        wall.strPlacementId = "collision.contract.dragon.wall";
+        wall.eKind = WORLD_BOOTSTRAP_KIND::COLLISION_BOX; wall.isEnabled = true;
+        wall.fPositionX = 50003.f; wall.fPositionY = 2.f; wall.fPositionZ = 50000.f;
+        wall.fHalfExtentX = .5f; wall.fHalfExtentY = 2.f; wall.fHalfExtentZ = 5.f;
+        std::string flightCollisionStatus;
+        const bool collisionReady = bern->m_ServerCollisionSystem.Initialize({wall}, flightCollisionStatus);
+        const auto flightProbe = [&](float altitude)
+        {
+            SERVER_PLAYER probe = rider;
+            probe.eAction = PLAYER_ACTION_STATE::VEHICLE_SKILL;
+            probe.iVehicleId = ANCIENT_SEA_VEHICLE_ID; probe.iCurrentSkillId = 98523u;
+            probe.eVehicleFlightPhase = VEHICLE_FLIGHT_PHASE::FLYING;
+            probe.fPositionX = 50000.f; probe.fPositionY = altitude; probe.fPositionZ = 50000.f;
+            probe.fVehicleFlightGroundY = 0.f; probe.fVehicleFlightInputX = 1.f;
+            probe.fVehicleFlightInputZ = probe.fVehicleFlightInputY = 0.f;
+            probe.fVehicleFlightVelocityX = sea->fFlightSpeed;
+            probe.fVehicleFlightVelocityZ = probe.fVehicleFlightVelocityY = 0.f;
+            for (unsigned tick = 0u; tick < 15u; ++tick)
+            { probe.fVehicleFlightInputAge = 0.f; bern->Update_VehicleSkill(probe, TICK_SECONDS); }
+            return probe;
+        };
+        const auto lowFlight = flightProbe(1.f), highFlight = flightProbe(10.f);
+        tests.Require(collisionReady && lowFlight.fPositionX < wall.fPositionX &&
+            highFlight.fPositionX > wall.fPositionX + wall.fHalfExtentX + 1.f,
+            "Actual-altitude flight stops at a low wall and passes above the same wall without ground-mirror collision");
+
+        bern->m_ServerCollisionSystem.Initialize({}, flightCollisionStatus);
+        SERVER_BLOCKING_BODY body{};
+        body.fX = 50000.f; body.fZ = 50000.f; body.fRadius = 1.f;
+        body.fCenterY = 3.f; body.fHalfHeight = 1.f; body.iNetEntityId = 999u;
+        bern->m_ServerCollisionSystem.Set_BlockingBodies({body});
+        SERVER_PLAYER descending = highFlight;
+        descending.fPositionX = body.fX; descending.fPositionZ = body.fZ; descending.fPositionY = 8.f;
+        descending.fVehicleFlightInputX = descending.fVehicleFlightInputZ = 0.f;
+        descending.fVehicleFlightInputY = -1.f;
+        descending.fVehicleFlightVelocityX = descending.fVehicleFlightVelocityZ = 0.f;
+        descending.fVehicleFlightVelocityY = -sea->fFlightVerticalSpeed;
+        for (unsigned tick = 0u; tick < 45u; ++tick)
+        { descending.fVehicleFlightInputAge = 0.f; bern->Update_VehicleSkill(descending, TICK_SECONDS); }
+        tests.Require(descending.eVehicleFlightPhase == VEHICLE_FLIGHT_PHASE::FLYING &&
+            descending.fPositionY > body.fCenterY + body.fHalfHeight &&
+            bern->m_ServerCollisionSystem.Is_PlayerPositionClear(descending.fPositionX, descending.fPositionY,
+                descending.fPositionZ, descending.iNetEntityId),
+            "Straight vertical flight descent stops above a finite body at identical XZ");
+        SERVER_PLAYER sweepProbe = descending;
+        sweepProbe.fPositionY = 8.f;
+        float sweptX = sweepProbe.fPositionX, sweptY = 0.f, sweptZ = sweepProbe.fPositionZ;
+        bool sweptBlocked = false;
+        tests.Require(bern->m_ServerCollisionSystem.Resolve_PlayerMove(sweepProbe, sweptX, 0.f, sweptZ,
+            sweptX, sweptY, sweptZ, sweptBlocked) && sweptBlocked && sweptY > 4.f,
+            "A vertical sweep crossing a complete finite body stops even when its endpoint is clear");
+        bern->m_ServerCollisionSystem.Set_BlockingBodies({});
     }
 
 	auto valtan = std::make_unique<CGameRoom>(WORLD_ID::VALTAN_ARENA);
@@ -314,6 +408,66 @@ int LostArk::Server::Run_ServerVehicleRidingContractTests()
             "Valtan admits only the explicit Ancient Sea exception");
         valtan->Enforce_VehicleRidingState();
         tests.Require(raider.iVehicleId == ANCIENT_SEA_VEHICLE_ID, "Valtan snapshot enforcement retains Ancient Sea");
+        // Use an actual published Valtan floor condition, with unrelated wall
+        // bodies removed so this fixture isolates a floor disappearing mid-descent.
+        std::string collapseStatus;
+        // Published collapse sectors overlap intact wall navigation regions.
+        // Apply the real wall-destroyed conditions before testing disappearing ground.
+        std::vector<SERVER_NAVIGATION_CONDITION_CHANGE> wallChanges;
+        for (const auto& mutation : valtan->m_WorldDestructionBootstrap.Get_DescriptorGraph().Mutations)
+        {
+            if (mutation.bRemovesGround || mutation.strNavigationStateId.empty()) continue;
+            if (std::none_of(wallChanges.begin(), wallChanges.end(), [&](const auto& change)
+                { return change.strConditionId == mutation.strNavigationStateId; }))
+                wallChanges.push_back({mutation.strNavigationStateId, true});
+        }
+        SERVER_NAVIGATION_CONDITION_STAGE wallStage{};
+        const bool wallsOpened = valtan->m_ServerNavigation.Prepare_ConditionChanges(wallChanges, wallStage, collapseStatus);
+        if (wallsOpened) valtan->m_ServerNavigation.Commit_ConditionChanges(std::move(wallStage));
+        SERVER_NAV_POINT floor{};
+        const bool floorReady = wallsOpened && valtan->m_ServerCollisionSystem.Initialize({}, collapseStatus) &&
+            valtan->m_ServerNavigation.Is_PointWalkableExact(161.75f, -113.75f) &&
+            valtan->m_ServerNavigation.Sample_Position(161.75f, -113.75f, floor);
+        tests.Require(floorReady, "Published Valtan collapse sector initially supports a dragon landing");
+        if (floorReady)
+        {
+            raider.iNetEntityId = 202u;
+            raider.fPositionX = floor.x; raider.fPositionY = floor.y; raider.fPositionZ = floor.z;
+            C2S_USE_SKILL toggle{}; toggle.iSkillId = 98523u; toggle.iClientSequence = 1u;
+            const bool tookOff = valtan->Try_StartVehicleSkill(raider, toggle);
+            for (unsigned tick = 0u; tick < 60u; ++tick)
+            { ++valtan->m_iServerTick; valtan->Update_VehicleSkill(raider, TICK_SECONDS); }
+            // Simulate reaching this lower deck from a higher launch surface.
+            const auto* raidDragon = valtan->m_VehicleCatalog.Find_Vehicle(ANCIENT_SEA_VEHICLE_ID);
+            raider.fPositionY = floor.y + raidDragon->fFlightMaximumHeight + 8.f;
+            raider.fVehicleFlightGroundY = floor.y + 8.f;
+            toggle.iClientSequence = 2u;
+            const bool beganLanding = valtan->Try_StartVehicleSkill(raider, toggle);
+            const float beforeCollapseY = raider.fPositionY;
+            std::vector<SERVER_NAVIGATION_CONDITION_CHANGE> changes;
+            for (const auto& mutation : valtan->m_WorldDestructionBootstrap.Get_DescriptorGraph().Mutations)
+                if (mutation.bRemovesGround) changes.push_back({mutation.strNavigationStateId, true});
+            SERVER_NAVIGATION_CONDITION_STAGE stage{};
+            const bool collapsed = valtan->m_ServerNavigation.Prepare_ConditionChanges(changes, stage, collapseStatus);
+            if (collapsed) valtan->m_ServerNavigation.Commit_ConditionChanges(std::move(stage));
+            ++valtan->m_iServerTick; valtan->Update_VehicleSkill(raider, TICK_SECONDS);
+            tests.Require(tookOff && beganLanding && collapsed &&
+                valtan->m_ServerNavigation.Is_PointInVoidRegion(floor.x, floor.z) &&
+                raider.eVehicleFlightPhase == VEHICLE_FLIGHT_PHASE::FLYING && Near(raider.fPositionY, beforeCollapseY),
+                "A floor collapsing during landing resumes flight at the current altitude");
+            ++valtan->m_iServerTick; valtan->Update_VehicleSkill(raider, TICK_SECONDS);
+            tests.Require(Near(raider.fPositionY, beforeCollapseY),
+                "An aborted lower-deck landing preserves altitude on the next bounded flight tick");
+            raider.eAction = PLAYER_ACTION_STATE::KNOCKDOWN;
+            valtan->Enforce_VehicleRidingState();
+            tests.Require(raider.iVehicleId == INVALID_VEHICLE_ID &&
+                raider.eVehicleFlightPhase == VEHICLE_FLIGHT_PHASE::GROUNDED &&
+                raider.eAction == PLAYER_ACTION_STATE::KNOCKDOWN &&
+                valtan->m_ServerNavigation.Is_PointWalkableExact(raider.fPositionX, raider.fPositionZ, raider.fPositionY) &&
+                !valtan->m_ServerNavigation.Is_PointInVoidRegion(raider.fPositionX, raider.fPositionZ) &&
+                std::abs(raider.fPositionY - floor.y) <= 1.f,
+                "Forced dismount reprojects a collapsed last-safe floor onto surviving ground on the same deck");
+        }
         tests.Require(VEHICLE_RIDING_RESULT::REJECTED_WORLD_NOT_ALLOWED == valtan->Apply_SetVehicleRiding(raider,
             Make_VehicleRequest(3u, WORLD_ID::VALTAN_ARENA, 8200u)).eResult,
             "A raid arena refuses ships too");

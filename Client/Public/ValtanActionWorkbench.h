@@ -8,6 +8,7 @@
 #include "CompositionResourceTree.h"
 #include "CompositionWorkbenchSession.h"
 #include "EffectV2_Document.h"
+#include "EffectResourceCatalog.h"
 #include "EncounterPatternReference.h"
 #include "ValtanCombatObjectSoundCueDocument.h"
 #include "ValtanPatternShakeCueDocument.h"
@@ -18,6 +19,7 @@
 #include <array>
 #include <cstdint>
 #include <optional>
+#include <map>
 #include <string>
 #include <vector>
 
@@ -188,6 +190,7 @@ public:
 		bool asNewStage, std::string& status) override;
 	bool_t Consume_EffectToolOpenRequest(
 		EFFECT_TOOL_VALTAN_PRODUCT_OPEN_REQUEST& OutRequest);
+	bool_t Consume_EffectResourceOpenRequest(EFFECT_RESOURCE_KEY& OutKey);
 	/* Set by a committed Save so All Effects reopens exactly that durable
 	   source receipt. MainApp consumes this independently of window visibility;
 	   if the Effect owner has not been constructed yet, the request remains
@@ -757,6 +760,21 @@ private:
 	std::string m_strEffectStageId;
 	std::string m_strEffectOccurrenceId;
 	std::string m_strEffectAssetId;
+	struct EFFECT_RESOURCE_LABEL final
+	{
+		std::string displayName;
+		std::string searchText;
+		std::vector<std::string> categories;
+	};
+	struct EFFECT_RESOURCE_ITEM final
+	{
+		EFFECT_RESOURCE_KIND kind = EFFECT_RESOURCE_KIND::V1_PATTERN;
+		std::string assetId;
+	};
+	std::vector<EFFECT_RESOURCE_ITEM> m_EffectResourceRows;
+	std::map<std::string, EFFECT_RESOURCE_LABEL, std::less<>> m_EffectResourceLabels;
+	std::optional<EFFECT_RESOURCE_KEY> m_PendingEffectResourceOpen;
+	bool_t m_bShowOtherEffectOwners = false;
 	std::vector<std::string> m_SemanticValtanEffectAssetIds;
 	std::vector<std::size_t> m_FilteredEffectAssetIndices;
 	std::vector<std::string> m_EffectV2DocumentIds;
@@ -764,9 +782,7 @@ private:
 	std::vector<std::string> m_EffectV2GroupIds;
 	std::vector<std::size_t> m_FilteredEffectV2DocumentIndices;
 	std::vector<std::size_t> m_FilteredEffectV2GroupIndices;
-	COMPOSITION_RESOURCE_TREE_NODE m_EffectV1ResourceTree;
-	COMPOSITION_RESOURCE_TREE_NODE m_EffectV2DocumentResourceTree;
-	COMPOSITION_RESOURCE_TREE_NODE m_EffectV2GroupResourceTree;
+	COMPOSITION_RESOURCE_TREE_NODE m_EffectResourceTree;
 	std::string m_strEffectFilterQuery;
 	bool_t m_bEffectFilterDirty = true;
 	bool_t m_bSemanticValtanEffectLoadAttempted = false;
@@ -784,6 +800,7 @@ private:
 	uint64_t m_iEffectV2BindingEditRevision = 0u;
 	std::array<char_t, 160u> m_EffectV2AnchorSlot{};
 	std::array<char_t, 160u> m_WorldObjectSearch{};
+	std::array<char_t, 160u> m_SummonResourceSearch{};
 	std::vector<std::string> m_SceneProfileResourceIds;
 	std::vector<std::string> m_LightResourceIds;
 	std::string m_strEffectEditIdentity;

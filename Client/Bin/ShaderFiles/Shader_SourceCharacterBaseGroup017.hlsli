@@ -1,3 +1,4 @@
+#ifndef SOURCE_CHARACTER_BASE_DISPATCH_CASES
 SOURCE_CHARACTER_NATIVE_OUTPUT SourceCharacterBase17(SOURCE_CHARACTER_NATIVE_INPUT input)
 {
     SOURCE_CHARACTER_NATIVE_OUTPUT output = (SOURCE_CHARACTER_NATIVE_OUTPUT)0;
@@ -4332,3 +4333,13 @@ SOURCE_CHARACTER_NATIVE_OUTPUT SourceCharacterBase24(SOURCE_CHARACTER_NATIVE_INP
 }
 
 // source.character.monster-be5bc0ded311.v1 / source program ab0d30ff2ccc914b84c29564ae10ccd8
+#else // SOURCE_CHARACTER_BASE_DISPATCH_CASES
+    case 17u: return SourceCharacterBase17(input);
+    case 18u: return SourceCharacterBase18(input);
+    case 19u: return SourceCharacterBase19(input);
+    case 20u: return SourceCharacterBase20(input);
+    case 21u: return SourceCharacterBase21(input);
+    case 22u: return SourceCharacterBase22(input);
+    case 23u: return SourceCharacterBase23(input);
+    case 24u: return SourceCharacterBase24(input);
+#endif // SOURCE_CHARACTER_BASE_DISPATCH_CASES

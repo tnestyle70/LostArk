@@ -1,3 +1,4 @@
+#ifndef SOURCE_CHARACTER_BASE_DISPATCH_CASES
 SOURCE_CHARACTER_NATIVE_OUTPUT SourceCharacterBase208(SOURCE_CHARACTER_NATIVE_INPUT input)
 {
     SOURCE_CHARACTER_NATIVE_OUTPUT output = (SOURCE_CHARACTER_NATIVE_OUTPUT)0;
@@ -2309,3 +2310,10 @@ SOURCE_CHARACTER_NATIVE_OUTPUT SourceCharacterBase213(SOURCE_CHARACTER_NATIVE_IN
 
 
 // source.character.selection-native-235.v1 / source program 350d50f47aaa5943b8544d1085614d22
+#else // SOURCE_CHARACTER_BASE_DISPATCH_CASES
+    case 208u: return SourceCharacterBase208(input);
+    case 210u: return SourceCharacterBase210(input);
+    case 211u: return SourceCharacterBase211(input);
+    case 212u: return SourceCharacterBase212(input);
+    case 213u: return SourceCharacterBase213(input);
+#endif // SOURCE_CHARACTER_BASE_DISPATCH_CASES

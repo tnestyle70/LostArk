@@ -7,6 +7,7 @@
 #include "DataJson.h"
 #include "EffectEditingSession.h"
 #include "Effect_Object.h"
+#include "Effect_PresentationService.h"
 #include "GameInstance.h"
 #include "ProjectDataRoot.h"
 #include "ValtanCinematicCameraController.h"
@@ -119,9 +120,16 @@ void CEffectAuthoringSequencer::Write_CameraRows(std::ostream& out) const
             out << (j ? ", " : "") << "{\"keyId\": \"" << CDataJson::Escape(key.strSceneId) << "\", \"timeMs\": " << key.iTimeMs
                 << ", \"eye\": [" << key.vEye.x << ", " << key.vEye.y << ", " << key.vEye.z << "], \"lookAt\": ["
                 << key.vLookAt.x << ", " << key.vLookAt.y << ", " << key.vLookAt.z << "], \"up\": ["
-                << up.x << ", " << up.y << ", " << up.z << "], \"fovDegrees\": " << key.fFovYDegrees << "}";
+                << up.x << ", " << up.y << ", " << up.z << "], \"fovDegrees\": " << key.fFovYDegrees;
+            if (key.cutBefore) out << ", \"cutBefore\": true";
+            out << "}";
         }
-        out << "]}";
+        out << "]";
+        if (!row.sourceEffectId.empty())
+            out << ", \"sourceCamera\": {\"effectId\": \"" << CDataJson::Escape(row.sourceEffectId)
+                << "\", \"cameraId\": \"" << CDataJson::Escape(row.sourceCameraId) << "\", \"clockAtStartMs\": "
+                << row.sourceClockAtStartMs << ", \"playRate\": " << row.sourcePlayRate << "}";
+        out << "}";
     }
     out << "\n  ]";
 }
@@ -139,6 +147,8 @@ bool CEffectAuthoringSequencer::Read_RecoveryCameras(const EFFECT_RESOURCE_KEY& 
     const auto& root = recovery.document;
     const auto version = recovery.version, duration = recovery.durationMs;
     auto staged = std::move(recovery.rows);
+    for (auto& camera : staged)
+    { camera.sourceEffectId = key.strStableId; camera.sourceCameraId = camera.id; camera.sourceClockAtStartMs = camera.startMs; }
     if (!staged.empty() && (m_UseKouku || !m_ModelRoot || m_DefaultAnchorSlotId != "root"))
     { m_Status = "Select Model root / root anchor to preview this character camera preset."; return false; }
     if (version == 4u)
@@ -254,6 +264,14 @@ void CEffectAuthoringSequencer::Render_CameraEditor()
     }
     auto found = std::find_if(rows.begin(), rows.end(), [&](const auto& row) { return row.id == m_SelectedCamera; });
     if (found == rows.end()) return;
+    if (!found->sourceEffectId.empty())
+    {
+        if (ImGui::Button("Open Sequence Camera Tool")) (void)Open_RecoveryCameraTool(*found);
+        ImGui::TextWrapped("Edit and save this camera in its original recovery sequence. Action arrangement Save does not replace the Product camera source.");
+        return;
+    }
+    if (found->id.starts_with("character.camera.preview."))
+        ImGui::TextWrapped("This saved arrangement has no exact original camera link. Reopen the Product action to edit its canonical camera; these arrangement keys remain separate.");
     ImGui::PushID("CameraRowEditor");
     auto draft = *found; bool changed = false;
     int start = static_cast<int>(draft.startMs), duration = static_cast<int>(draft.cue.iDurationMs);
@@ -302,25 +320,182 @@ void CEffectAuthoringSequencer::Render_CameraEditor()
     }
     ImGui::PopID();
 }
+bool CEffectAuthoringSequencer::Ensure_RecoveryCameraSaved(std::string& status)
+{
+    if (!m_RecoveryCameraSession.Is_Dirty()) return true;
+    m_RecoveryCameraOpen = true;
+    status = "Save camera source in Sequence Camera Tool first. Arrangement Save does not commit the Product camera.";
+    m_RecoveryCameraStatus = status; return false;
+}
+bool CEffectAuthoringSequencer::Open_RecoveryCameraTool(const CAMERA_ROW& row)
+{
+    if (row.sourceEffectId.empty()) { m_Status = "The selected row has no canonical recovery camera owner."; return false; }
+    if (m_RecoveryCameraSession.EffectId() != row.sourceEffectId)
+    {
+        if (m_RecoveryCameraDraft && m_RecoveryCameraSession.Is_Dirty())
+        { m_Status = "Save the current Sequence Camera Tool draft before opening another source."; return false; }
+        if (!m_RecoveryCameraSession.Open(row.sourceEffectId, m_RecoveryCameraStatus)) { m_Status = m_RecoveryCameraStatus; return false; }
+        m_RecoveryCameraDraft.reset(); m_RecoveryCameraPending = false;
+    }
+    if (!m_RecoveryCameraDraft || m_RecoveryCameraDraft->id != row.sourceCameraId)
+    {
+        if (m_RecoveryCameraDraft && !m_RecoveryCameraSession.Apply(*m_RecoveryCameraDraft, m_RecoveryCameraStatus)) return false;
+        const auto& cameras = m_RecoveryCameraSession.Rows();
+        const auto camera = std::find_if(cameras.begin(), cameras.end(), [&](const auto& value) { return value.id == row.sourceCameraId; });
+        if (camera == cameras.end()) { m_Status = "Original camera cut is no longer present."; return false; }
+        m_RecoveryCameraDraft = *camera; m_RecoveryCameraEditor = {};
+    }
+    m_RecoveryCameraOpen = true; return true;
+}
+bool CEffectAuthoringSequencer::Refresh_RecoveryCameraDraft()
+{
+    auto saved = m_CameraRows, transient = m_TransientCameraRows;
+    const auto project = [&](std::vector<CAMERA_ROW>& rows, const bool directPreview) {
+        for (auto& row : rows)
+        {
+            if (row.sourceEffectId != m_RecoveryCameraSession.EffectId()) continue;
+            const auto& canonical = m_RecoveryCameraSession.Rows();
+            const auto original = std::find_if(canonical.begin(), canonical.end(), [&](const auto& value) { return value.id == row.sourceCameraId; });
+            if (original == canonical.end()) { m_RecoveryCameraStatus = "Projected camera source disappeared."; return false; }
+            if (directPreview && row.id == row.sourceCameraId)
+            {
+                const auto effect = row.sourceEffectId; row = *original;
+                row.sourceEffectId = effect; row.sourceCameraId = row.id; row.sourceClockAtStartMs = row.startMs; continue;
+            }
+            if (row.sourceClockAtStartMs < original->startMs || !std::isfinite(row.sourcePlayRate) || row.sourcePlayRate <= 0.f) return false;
+            const auto begin = row.sourceClockAtStartMs - original->startMs;
+            const auto end = (std::min)(original->cue.iDurationMs, begin + static_cast<std::uint32_t>(std::llround(row.cue.iDurationMs * row.sourcePlayRate)));
+            auto sample = *original; sample.modelRelative = false; sample.horizontalFov = false; sample.startMs = 0u; sample.muted = false; ++sample.cue.iDurationMs;
+            std::set<std::uint32_t> times{begin, end};
+            for (const auto& key : original->cue.Keyframes) if (key.iTimeMs > begin && key.iTimeMs < end) times.insert(key.iTimeMs);
+            row.cue.Keyframes.clear(); row.upVectors.clear(); row.cue.eInterpolation = original->cue.eInterpolation; row.cue.eEasing = original->cue.eEasing;
+            row.horizontalFov = original->horizontalFov; row.modelRelative = original->modelRelative; row.source = original->source;
+            float4x4_t identity; XMStoreFloat4x4(&identity, XMMatrixIdentity());
+            for (const auto time : times)
+            {
+                VALTAN_CINEMATIC_CAMERA_POSE pose; float3_t up;
+                if (!CEffectRecoveryCamera::Sample(sample, time, identity, 1.f, pose, up, m_RecoveryCameraStatus)) return false;
+                VALTAN_CINEMATIC_CAMERA_KEYFRAME key;
+                key.iTimeMs = time == end ? row.cue.iDurationMs : static_cast<std::uint32_t>((time - begin) / row.sourcePlayRate);
+                key.strSceneId = row.id + ".key." + std::to_string(key.iTimeMs);
+                key.vEye = pose.vEye; key.vLookAt = pose.vLookAt; key.fFovYDegrees = pose.fFovYDegrees;
+                const auto exact = std::find_if(original->cue.Keyframes.begin(), original->cue.Keyframes.end(), [&](const auto& value) { return value.iTimeMs == time; });
+                key.cutBefore = exact != original->cue.Keyframes.end() && exact->cutBefore;
+                if (!row.cue.Keyframes.empty() && row.cue.Keyframes.back().iTimeMs == key.iTimeMs)
+                { row.cue.Keyframes.back() = key; row.upVectors.back() = up; }
+                else { row.cue.Keyframes.push_back(std::move(key)); row.upVectors.push_back(up); }
+            }
+        }
+        return CEffectRecoveryCamera::Validate(rows, m_RecoveryCameraStatus);
+    };
+    if (!project(saved, false) || !project(transient, true)) return false;
+    m_CameraRows = std::move(saved); m_TransientCameraRows = std::move(transient);
+    if (m_Active && !Sample()) return false;
+    return true;
+}
+void CEffectAuthoringSequencer::Render_RecoveryCameraTool()
+{
+    if (!m_RecoveryCameraOpen || !m_RecoveryCameraDraft) return;
+    ImGui::SetNextWindowSize({820.f, 720.f}, ImGuiCond_FirstUseEver);
+    ImGui::PushID(this);
+    if (ImGui::Begin("Sequence Camera Tool##Recovery", &m_RecoveryCameraOpen))
+    {
+        ImGui::TextWrapped("%s", m_RecoveryCameraSession.EffectId().c_str());
+        const auto apply = [&]() {
+            if (!m_RecoveryCameraSession.Apply(*m_RecoveryCameraDraft, m_RecoveryCameraStatus)) return false;
+            if (!Refresh_RecoveryCameraDraft()) m_RecoveryCameraStatus =
+                "Camera draft is valid; current preview could not refresh: " + m_RecoveryCameraStatus;
+            return true;
+        };
+        const auto save = [&]() {
+            if (!apply() || !m_RecoveryCameraSession.Save(m_RecoveryCameraStatus)) return false;
+            const auto& rows = m_RecoveryCameraSession.Rows();
+            const auto selected = std::find_if(rows.begin(), rows.end(), [&](const auto& row) { return row.id == m_RecoveryCameraDraft->id; });
+            if (selected != rows.end()) m_RecoveryCameraDraft = *selected;
+            m_RecoveryCameraPending = true;
+            const auto savedStatus = m_RecoveryCameraStatus;
+            if (!Refresh_RecoveryCameraDraft()) m_RecoveryCameraStatus = savedStatus + " Preview refresh: " + m_RecoveryCameraStatus;
+            return true;
+        };
+        if (ImGui::Button("Save camera source")) (void)save();
+        ImGui::SameLine();
+        if (ImGui::Button("Publish saved cameras"))
+        {
+            if (m_RecoveryCameraSession.Is_Dirty())
+                m_RecoveryCameraStatus = "Save the camera source before Publish. Unsaved keys were preserved.";
+            else if (CEffectPresentationService::Reload_ProductCamera(m_RecoveryCameraSession.EffectId(), m_RecoveryCameraStatus))
+                m_RecoveryCameraPending = false;
+        }
+        ImGui::SameLine(); ImGui::TextDisabled("%s", m_RecoveryCameraSession.Is_Dirty() ? "Unsaved" : m_RecoveryCameraPending ? "Saved; Publish pending" : "Saved");
+        ImGui::TextWrapped("Save keeps canonical camera keys. Publish updates Client camera playback; Server skill timing remains with the existing action owner.");
+        if (ImGui::BeginCombo("Cut", m_RecoveryCameraDraft->label.c_str()))
+        {
+            // Copy the list because committing the current draft replaces it.
+            const auto rows = m_RecoveryCameraSession.Rows();
+            for (const auto& row : rows) if (ImGui::Selectable((row.label + "###" + row.id).c_str(), row.id == m_RecoveryCameraDraft->id))
+            { if (apply()) { m_RecoveryCameraDraft = row; m_RecoveryCameraEditor = {}; } }
+            ImGui::EndCombo();
+        }
+        const auto& previews = m_Transient ? m_TransientCameraRows : m_CameraRows;
+        const auto preview = std::find_if(previews.begin(), previews.end(), [&](const auto& row) {
+            return row.sourceEffectId == m_RecoveryCameraSession.EffectId() && row.sourceCameraId == m_RecoveryCameraDraft->id; });
+        std::uint32_t localMs = 0u;
+        if (preview != previews.end() && ClockMs() >= preview->startMs)
+        {
+            const auto sourceMs = preview->sourceClockAtStartMs + static_cast<std::uint32_t>((ClockMs() - preview->startMs) * preview->sourcePlayRate);
+            if (sourceMs >= m_RecoveryCameraDraft->startMs) localMs = (std::min)(sourceMs - m_RecoveryCameraDraft->startMs, m_RecoveryCameraDraft->cue.iDurationMs);
+        }
+        const auto edit = CSequenceCameraEditor::Render(*m_RecoveryCameraDraft, m_RecoveryCameraEditor, localMs);
+        // Resolve seek before Apply replaces the projected row vectors.
+        std::optional<std::uint32_t> seek;
+        if (edit.seekLocalMs && preview != previews.end())
+        {
+            const auto sourceMs = m_RecoveryCameraDraft->startMs + *edit.seekLocalMs;
+            if (sourceMs >= preview->sourceClockAtStartMs)
+            {
+                const auto target = preview->startMs + static_cast<std::uint32_t>((sourceMs - preview->sourceClockAtStartMs) / preview->sourcePlayRate);
+                if (target <= preview->startMs + preview->cue.iDurationMs) seek = (std::min)(target, DurationMs());
+            }
+            if (!seek) m_RecoveryCameraStatus = "This key is outside the selected Action clip window; its canonical value remains editable.";
+        }
+        if (edit.changed) { m_RecoveryCameraPending = true; (void)apply(); }
+        if (seek) { Pause(true); (void)Seek(*seek); }
+        ImGui::TextWrapped("%s", m_RecoveryCameraStatus.c_str());
+    }
+    ImGui::End(); ImGui::PopID();
+}
 void CEffectAuthoringSequencer::Draw_CameraRows(const float labels, const float rowHeight, const float width)
 {
     auto& rows = m_Transient ? m_TransientCameraRows : m_CameraRows;
+    std::vector<CompositionTimeline::DISPLAY_INTERVAL> intervals;
+    for (const auto& row : rows) intervals.push_back({row.id, double(row.startMs), double(row.cue.iDurationMs), 0., {}});
+    const auto layout = CompositionTimeline::AllocateDisplayRows(std::move(intervals), 8. * 1000. / (std::max)(m_Zoom, .001f));
+    const auto origin = ImGui::GetCursorScreenPos();
+    for (std::size_t lane = 0; lane < layout.rowCount; ++lane)
+        ImGui::GetWindowDrawList()->AddText({origin.x + 5.f, origin.y + lane * rowHeight + 4.f}, IM_COL32(180,170,210,255), "Camera");
     for (auto& row : rows)
     {
-        const auto top = ImGui::GetCursorScreenPos(); ImGui::PushID(row.id.c_str());
-        bool muted = row.muted;
-        if (ImGui::Checkbox("M", &muted))
+        ImGui::PushID(row.id.c_str());
+        const float top = origin.y + layout.occurrenceRows.at(row.id) * rowHeight;
+        const float left = origin.x + labels + row.startMs * m_Zoom * .001f;
+        const float right = (std::max)(left + 8.f, origin.x + labels + (row.startMs + row.cue.iDurationMs) * m_Zoom * .001f);
+        CompositionTimeline::DrawBox(ImGui::GetWindowDrawList(), {left, top}, {right, top + rowHeight - 3.f},
+            row.muted ? IM_COL32(73,75,81,200) : IM_COL32(115,80,185,230), m_SelectedCamera == row.id, row.label.c_str(), false, false);
+        ImGui::SetCursorScreenPos({left, top}); ImGui::InvisibleButton("Camera cut", {right - left, rowHeight - 3.f});
+        if (ImGui::IsItemActivated()) { Select_TimelineRow(TRACK_KIND::CAMERA, row.id); m_Interaction = true; }
+        if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) (void)Open_RecoveryCameraTool(row);
+        if (ImGui::BeginPopupContextItem("Camera menu"))
         {
-            auto staged = rows; staged[static_cast<std::size_t>(&row - rows.data())].muted = muted;
-            if (Validate_CameraRows(staged)) { row.muted = muted; m_Dirty = true; }
+            if (ImGui::MenuItem("Open Sequence Camera Tool")) (void)Open_RecoveryCameraTool(row);
+            if (row.sourceEffectId.empty() && ImGui::MenuItem(row.muted ? "Unmute" : "Mute"))
+            {
+                auto staged = rows; staged[static_cast<std::size_t>(&row - rows.data())].muted = !row.muted;
+                if (Validate_CameraRows(staged)) { row.muted = !row.muted; m_Dirty = true; }
+            }
+            ImGui::EndPopup();
         }
-        ImGui::SameLine(); const std::string label = "Camera / " + row.label;
-        if (ImGui::Selectable(label.c_str(), m_SelectedCamera == row.id, 0, {labels - 45.f, rowHeight - 3.f}))
-        { m_SelectedCamera = row.id; m_SelectedEffect.clear(); }
-        CompositionTimeline::DrawBox(ImGui::GetWindowDrawList(), {top.x + labels + row.startMs * m_Zoom * .001f, top.y},
-            {top.x + labels + (row.startMs + row.cue.iDurationMs) * m_Zoom * .001f, top.y + rowHeight - 3.f},
-            IM_COL32(115, 80, 185, 230), m_SelectedCamera == row.id, label.c_str(), false, false);
-        ImGui::SetCursorScreenPos({top.x, top.y + rowHeight}); ImGui::Dummy({width, 1.f}); ImGui::PopID();
+        ImGui::PopID();
     }
+    ImGui::SetCursorScreenPos({origin.x, origin.y + layout.rowCount * rowHeight}); ImGui::Dummy({width, 1.f});
 }
 }

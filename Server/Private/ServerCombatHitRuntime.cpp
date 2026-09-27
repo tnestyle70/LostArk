@@ -68,10 +68,12 @@ namespace
 		const std::uint32_t staggerAmount = 0u,
 		const bool counterSuccess = false,
 		const bool critical = false,
-		const LostArk::Shared::DAMAGE_HIT_FLAG hitFlag = LostArk::Shared::DAMAGE_HIT_FLAG::NORMAL)
+		const LostArk::Shared::DAMAGE_HIT_FLAG hitFlag = LostArk::Shared::DAMAGE_HIT_FLAG::NORMAL,
+		const bool staggerSuccess = false,
+		const LostArk::Shared::MARIO_HIT_SOURCE marioHitSource = LostArk::Shared::MARIO_HIT_SOURCE::NONE)
 	{
 		/* A counter or stagger-only hit still reaches the combat analyzer. */
-		if ((0u == amount && 0u == staggerAmount && !counterSuccess) ||
+		if ((0u == amount && 0u == staggerAmount && !counterSuccess && !staggerSuccess) ||
 			events.size() >= LostArk::Shared::MAX_DAMAGE_EVENTS)
 			return;
 		LostArk::Shared::DAMAGE_EVENT event{};
@@ -84,6 +86,8 @@ namespace
 		event.iSourcePlayerId = sourcePlayerId;
 		event.iStaggerAmount = staggerAmount;
 		event.isCounterSuccess = counterSuccess;
+		event.isStaggerSuccess = staggerSuccess;
+		event.eMarioHitSource = marioHitSource;
 		event.eHitFlag = hitFlag;
 		if (critical && 0u != amount && hitFlag == LostArk::Shared::DAMAGE_HIT_FLAG::NORMAL)
 			event.eHitFlag = LostArk::Shared::DAMAGE_HIT_FLAG::CRITICAL;
@@ -339,6 +343,7 @@ LostArk::Server::CServerCombatHitRuntime::Apply_PlayerToWorld(
 	std::uint32_t damage = 0u;
 	std::uint32_t staggerDealt = 0u;
 	bool counterTriggered = false;
+	bool staggerBroken = false;
 	if (WORLD_BOOTSTRAP_KIND::BOSS == target.eKind)
 	{
 		/* Product Valtan still carries the original armour plates because pattern
@@ -357,9 +362,9 @@ LostArk::Server::CServerCombatHitRuntime::Apply_PlayerToWorld(
 			CGameplayCatalog::Apply_Defense(
 				hit.iRawDamage, SumIntactLegacyArmorDefense(target)) :
 			hit.iRawDamage;
-		incoming.iStaggerDamage = hit.iStaggerDamage;
-		incoming.iPartDamage = hasTypedParts ? hit.iPartDamage : 0u;
-		incoming.iCounterPower = hit.iCounterPower;
+		incoming.iStaggerDamage = hit.bGuideSource ? 0u : hit.iStaggerDamage;
+		incoming.iPartDamage = hasTypedParts && !hit.bGuideSource ? hit.iPartDamage : 0u;
+		incoming.iCounterPower = hit.bGuideSource ? 0u : hit.iCounterPower;
 		incoming.iServerTick = hit.iServerTick;
 		incoming.bHealthDamagePreResolved = hasLegacyArmor || hit.bHealthDamagePreResolved;
 		incoming.fSourceX = hit.fSourceX;
@@ -372,7 +377,8 @@ LostArk::Server::CServerCombatHitRuntime::Apply_PlayerToWorld(
 			hit.iSourcePlayerId, 0u, false, false, LostArk::Shared::DAMAGE_HIT_FLAG::ABSORB);
 		staggerDealt = bossHit.iStaggerDamage;
 		counterTriggered = bossHit.bCounterTriggered;
-		if (LostArk::Shared::INVALID_PLAYER_ID != hit.iSourcePlayerId &&
+		staggerBroken = bossHit.bStaggerBroken;
+		if (!hit.bGuideSource && LostArk::Shared::INVALID_PLAYER_ID != hit.iSourcePlayerId &&
 			(0u != damage || 0u != staggerDealt || counterTriggered || 0u != bossHit.iPartDamage))
 		{
 			SERVER_MVP_LEDGER_ROW& row =
@@ -404,7 +410,7 @@ LostArk::Server::CServerCombatHitRuntime::Apply_PlayerToWorld(
 			target.bPatternGroggy = false;
 			target.bPendingArmorBreakReaction = true;
 		}
-		else if (!hasTypedParts && target.bPatternGroggy &&
+		else if (!hit.bGuideSource && !hasTypedParts && target.bPatternGroggy &&
 			ConsumeLegacyArmorDurability(target, damage))
 		{
 			/* Compatibility for bosses/fixtures that have not authored typed parts.
@@ -430,7 +436,8 @@ LostArk::Server::CServerCombatHitRuntime::Apply_PlayerToWorld(
 			target.iNetEntityId, damage,
 			target.fPositionX, target.fPositionY, target.fPositionZ,
 			true, outDamageEvents,
-			hit.iSourcePlayerId, staggerDealt, counterTriggered, hit.bCritical);
+			hit.iSourcePlayerId, staggerDealt, counterTriggered, hit.bCritical,
+			LostArk::Shared::DAMAGE_HIT_FLAG::NORMAL, staggerBroken);
 	}
 
 	const float pushDistance = 0u == hit.iPushMs ?
@@ -471,7 +478,7 @@ void LostArk::Server::CServerCombatHitRuntime::Add_MadnessGauge(
 	SERVER_PLAYER& target, const double gain)
 {
 	using namespace LostArk::Shared;
-	if (!target.iMaximumMadness || !target.iCurrentHp || !target.isCombatReady ||
+	if (target.Is_Guide() || !target.iMaximumMadness || !target.iCurrentHp || !target.isCombatReady ||
 		target.eMadnessForm != PLAYER_MADNESS_FORM::NORMAL ||
 		!std::isfinite(gain) || gain <= 0.) return;
 	const double total = target.iCurrentMadness + target.dMadnessRemainder + gain;
@@ -493,7 +500,7 @@ LostArk::Server::CServerCombatHitRuntime::Apply_WorldToPlayer(
 		return SERVER_COMBAT_HIT_RESULT::NOT_ADMITTED;
 	const bool ownedCapture = Is_CurrentBossHandCapture(target, hit.iCaptureOwnerId,
 		hit.iCapturePatternSequence, hit.iServerTick);
-	if (0u == target.iCurrentHp || (!hit.bEncounterWipe && !ownedCapture && !target.isCombatReady) ||
+	if ((target.Is_Guide() && hit.bEncounterWipe) || 0u == target.iCurrentHp || (!hit.bEncounterWipe && !ownedCapture && !target.isCombatReady) ||
 		PLAYER_ACTION_STATE::DEAD == target.eAction ||
 		(!hit.bEncounterWipe && (PLAYER_ACTION_STATE::FALLING == target.eAction ||
 		(PLAYER_ACTION_STATE::GRABBED == target.eAction && !ownedCapture))))
@@ -501,6 +508,9 @@ LostArk::Server::CServerCombatHitRuntime::Apply_WorldToPlayer(
 		return SERVER_COMBAT_HIT_RESULT::NOT_ADMITTED;
 	}
 	if (!hit.bEncounterWipe && hit.iServerTick < target.iInvulnerableEndTick)
+		return SERVER_COMBAT_HIT_RESULT::ABSORBED;
+	const bool estherGuarded = !hit.bEncounterWipe && hit.iServerTick < target.iEstherGuardEndTick;
+	if (estherGuarded && hit.bEstherGuardBlockable)
 		return SERVER_COMBAT_HIT_RESULT::ABSORBED;
 	if (!hit.bEncounterWipe && !hit.bIgnoreCounter &&
 		CPlayerSkillSystem::Try_Counter(target, catalog, hit.iServerTick))
@@ -514,7 +524,8 @@ LostArk::Server::CServerCombatHitRuntime::Apply_WorldToPlayer(
 	/* A guardian's protection reduces what the hit finally takes off. */
 	const std::uint32_t damage = hit.bEncounterWipe ? target.iCurrentHp : CServerBuffRuntime::Scale_Damage(
 		mitigated,
-		CServerBuffRuntime::Damage_TakenPercent(catalog, target.ActiveBuffs));
+		CServerBuffRuntime::Damage_TakenPercent(catalog, target.ActiveBuffs) +
+			(estherGuarded ? target.iEstherGuardDamageTakenPercent : 0));
 	/* The shield takes the hit first and only what it cannot hold reaches HP. */
 	std::uint32_t throughShield = damage;
 	if (!hit.bEncounterWipe && 0u != target.iShield && 0u != throughShield)
@@ -524,7 +535,7 @@ LostArk::Server::CServerCombatHitRuntime::Apply_WorldToPlayer(
 		throughShield -= absorbed;
 		PushDamageEvent(target.iNetEntityId, absorbed,
 			target.fPositionX, target.fPositionY, target.fPositionZ, false, outDamageEvents,
-			INVALID_PLAYER_ID, 0u, false, false, DAMAGE_HIT_FLAG::ABSORB);
+			INVALID_PLAYER_ID, 0u, false, false, DAMAGE_HIT_FLAG::ABSORB, false, hit.eMarioHitSource);
 	}
 	if (!hit.bEncounterWipe && throughShield >= target.iCurrentHp &&
 		0u != Death_DenyInvulnerableMs(catalog, target))
@@ -549,7 +560,7 @@ LostArk::Server::CServerCombatHitRuntime::Apply_WorldToPlayer(
 	PushDamageEvent(
 		target.iNetEntityId, hpBefore - target.iCurrentHp,
 		target.fPositionX, target.fPositionY, target.fPositionZ,
-		false, outDamageEvents);
+		false, outDamageEvents, INVALID_PLAYER_ID, 0u, false, false, DAMAGE_HIT_FLAG::NORMAL, false, hit.eMarioHitSource);
 	if (0u == target.iCurrentHp)
 	{
 		if (hit.bEncounterWipe)
@@ -557,6 +568,7 @@ LostArk::Server::CServerCombatHitRuntime::Apply_WorldToPlayer(
 			target.iShield = 0u; target.iInvulnerableEndTick = 0u;
 			target.ActiveBuffs.clear(); target.Clear_Attachment();
 		}
+		target.iEstherGuardEndTick = 0u;
 		target.eAction = PLAYER_ACTION_STATE::DEAD;
 		target.iCurrentSkillId = INVALID_SKILL_ID;
 		target.Clear_SkillTarget();
@@ -565,6 +577,8 @@ LostArk::Server::CServerCombatHitRuntime::Apply_WorldToPlayer(
 		target.MovePath.clear();
 		return SERVER_COMBAT_HIT_RESULT::KILLED;
 	}
+	if (estherGuarded)
+		return SERVER_COMBAT_HIT_RESULT::LANDED;
 	CPlayerSkillSystem::Arm_PlayerHitReaction(
 		target,
 		hit.bUsePushDirection ? target.fPositionX - hit.fPushDirectionX : hit.fSourceX,

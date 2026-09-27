@@ -74,10 +74,15 @@ public:
 		ESTHER_ACTION_SOUND_PLAYBACK_STATE& State,
 		std::string& strOutStatus);
 
+	/* Called after the local replicated listener state changes. Only this
+	   service's Esther cues are stopped when Mario owns the listener. */
+	static void Update_SoundAudience();
+
 	static std::size_t Preload_Sounds();
 
 private:
 	static std::vector<ESTHER_ACTION_SOUND_CUE> s_Cues;
+	static std::vector<std::uint64_t> s_PlayingSoundHandles;
 	static std::uint32_t s_iFixedTickHz;
 	static bool_t s_bLoaded;
 };

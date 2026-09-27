@@ -342,6 +342,7 @@ CValtan::CValtan(ComPtr<ID3D11Device> pDevice,
 
 CValtan::~CValtan()
 {
+	Stop_LocalPatternCombatObjectPreview();
 	Stop_DefaultParticles();
 	// The finite M09 asset contains the source Stop event and fade; actor
     // retirement must not truncate it. The level still stops music on exit.
@@ -1283,7 +1284,6 @@ bool_t CValtan::Apply_LocalPatternPresentationSample(
 		{
 			const std::shared_ptr<CValtan> Owner =
 				static_pointer_cast<CValtan>(shared_from_this());
-			Stop_LocalPatternCombatObjectPreview();
 			if (bClockRewind)
 			{
 				CEffectPresentationService::Stop_BossOwner(Owner);
@@ -1531,97 +1531,75 @@ void CValtan::Stop_LocalPatternCombatObjectPreview()
 		}
 	}
 	m_LocalPreviewCombatObjectInstances.clear();
-	m_strLocalPreviewCombatObjectActionId.clear();
+	m_strLocalPreviewCombatObjectScopeId.clear();
 }
 
 bool_t CValtan::Sync_LocalPatternCombatObjectPreview(
 	const std::string_view actionId,
 	const f32_t fActionAgeSeconds,
-	std::string& strOutStatus)
+	std::string& strOutStatus,
+	const bool_t bIndependentOwnerOnly)
 {
 	strOutStatus.clear();
+	const auto StageStart = m_LocalPreviewStageStartMsByActionId.find(std::string(actionId));
 	if (m_isServerAuthoritative || !m_bLocalPatternAuthoringPreview ||
 		nullptr == m_pTransformCom || actionId.empty() ||
+		m_LocalPreviewStageStartMsByActionId.end() == StageStart ||
 		!std::isfinite(fActionAgeSeconds) || fActionAgeSeconds < 0.f)
 	{
 		strOutStatus = "Local combat-object preview clock is invalid.";
 		return false;
 	}
 
-	const auto Found = m_LocalPreviewCombatObjectsByActionId.find(
-		std::string(actionId));
-	if (m_LocalPreviewCombatObjectsByActionId.end() == Found)
-	{
-		if (!m_LocalPreviewCombatObjectInstances.empty())
-			Stop_LocalPatternCombatObjectPreview();
-		return true;
-	}
-
-	if (m_strLocalPreviewCombatObjectActionId != actionId)
+	const std::string Scope = bIndependentOwnerOnly ?
+		"action:" + std::string(actionId) : "pattern:" + m_strLocalPreviewPatternId;
+	if (m_strLocalPreviewCombatObjectScopeId != Scope)
 	{
 		Stop_LocalPatternCombatObjectPreview();
-		float3_t BossPosition{};
-		XMStoreFloat3(&BossPosition,
-			m_pTransformCom->Get_State(STATE::POSITION));
-		if (!std::isfinite(BossPosition.x) ||
-			!std::isfinite(BossPosition.y) ||
-			!std::isfinite(BossPosition.z) ||
-			!std::isfinite(m_fPresentationYawDegrees))
-		{
-			strOutStatus =
-				"Local combat-object preview has no finite stage-enter boss pose.";
-			return false;
-		}
-
 		std::vector<LOCAL_PATTERN_COMBAT_OBJECT_INSTANCE> StagedInstances;
-		for (const LOCAL_PATTERN_COMBAT_OBJECT_TEMPLATE& Template : Found->second)
+		for (const auto& [OwnerActionId, Templates] : m_LocalPreviewCombatObjectsByActionId)
 		{
-			/* BOSS_RELATIVE mirrors the Server: live boss pose and yaw-relative
-			   angles. ARENA_CENTER mirrors boss.fSpawnPosition through the pattern's
-			   admitted landing anchor and uses world-absolute angles. */
-			float3_t Origin = BossPosition;
-			f32_t fYawBasisDegrees = m_fPresentationYawDegrees;
-			if (Template.bArenaCenterOrigin)
+			if (bIndependentOwnerOnly && OwnerActionId != actionId)
+				continue;
+			for (const LOCAL_PATTERN_COMBAT_OBJECT_TEMPLATE& Template : Templates)
 			{
-				const auto Anchor = m_LocalPreviewArenaCenterAnchors.find(
-					m_strLocalPreviewPatternId);
-				if (m_LocalPreviewArenaCenterAnchors.end() == Anchor)
+				// Local audition has a fixed admitted boss root. ARENA_CENTER uses
+				// the authored landing anchor and world-absolute radial angles.
+				float3_t Origin = m_vLocalPreviewCombatObjectBossPosition;
+				f32_t fYawBasisDegrees = m_fLocalPreviewCombatObjectBossYawDegrees;
+				if (Template.bArenaCenterOrigin)
 				{
-					strOutStatus =
-						"Local combat-object preview has no admitted arena-center anchor.";
-					return false;
+					const auto Anchor = m_LocalPreviewArenaCenterAnchors.find(m_strLocalPreviewPatternId);
+					if (m_LocalPreviewArenaCenterAnchors.end() == Anchor)
+					{
+						strOutStatus = "Local combat-object preview has no admitted arena-center anchor.";
+						return false;
+					}
+					Origin = Anchor->second;
+					fYawBasisDegrees = 0.f;
 				}
-				Origin = Anchor->second;
-				fYawBasisDegrees = 0.f;
-			}
-			for (uint32_t iOrdinal = 0u; iOrdinal < Template.iCount; ++iOrdinal)
-			{
-				const f32_t fRelativeDegrees = Template.fStartAngleDegrees +
-					Template.fAngleStepDegrees * static_cast<f32_t>(iOrdinal);
-				const f32_t fWorldDegrees =
-					fYawBasisDegrees + fRelativeDegrees;
-				const f32_t fRadians = XMConvertToRadians(fWorldDegrees);
-				LOCAL_PATTERN_COMBAT_OBJECT_INSTANCE Instance;
-				Instance.Template = Template;
-				Instance.iOrdinal = iOrdinal;
-				Instance.vPosition = {
-					Origin.x + std::sin(fRadians) * Template.fRadiusM,
-					Origin.y,
-					Origin.z + std::cos(fRadians) * Template.fRadiusM };
-				Instance.fYawDegrees = fWorldDegrees;
-				Instance.TerminalHandles.resize(
-					Template.PresentationEvents.size(), 0u);
-				Instance.TerminalAttempts.resize(
-					Template.PresentationEvents.size(), false);
-				StagedInstances.push_back(std::move(Instance));
+				for (uint32_t iOrdinal = 0u; iOrdinal < Template.iCount; ++iOrdinal)
+				{
+					const f32_t fWorldDegrees = fYawBasisDegrees + Template.fStartAngleDegrees +
+						Template.fAngleStepDegrees * static_cast<f32_t>(iOrdinal);
+					const f32_t fRadians = XMConvertToRadians(fWorldDegrees);
+					LOCAL_PATTERN_COMBAT_OBJECT_INSTANCE Instance;
+					Instance.Template = Template;
+					Instance.iOrdinal = iOrdinal;
+					Instance.vPosition = {
+						Origin.x + std::sin(fRadians) * Template.fRadiusM,
+						Origin.y,
+						Origin.z + std::cos(fRadians) * Template.fRadiusM };
+					Instance.fYawDegrees = fWorldDegrees;
+					Instance.TerminalHandles.resize(Template.PresentationEvents.size(), 0u);
+					StagedInstances.push_back(std::move(Instance));
+				}
 			}
 		}
 		m_LocalPreviewCombatObjectInstances = std::move(StagedInstances);
-		m_strLocalPreviewCombatObjectActionId.assign(actionId);
+		m_strLocalPreviewCombatObjectScopeId = Scope;
 	}
 
-	const std::shared_ptr<CValtan> Owner =
-		std::static_pointer_cast<CValtan>(shared_from_this());
 	const auto Rollback = [this, &strOutStatus](const std::string& Status)
 	{
 		Stop_LocalPatternCombatObjectPreview();
@@ -1629,150 +1607,89 @@ bool_t CValtan::Sync_LocalPatternCombatObjectPreview(
 		m_strLocalPreviewCombatObjectStatus = Status;
 		return false;
 	};
-	const f32_t fStageAgeMs = fActionAgeSeconds * 1000.f;
-	for (LOCAL_PATTERN_COMBAT_OBJECT_INSTANCE& Instance :
-		m_LocalPreviewCombatObjectInstances)
+	const auto StopHandle = [](uint64_t& value)
 	{
-		if (fStageAgeMs <
-			static_cast<f32_t>(Instance.Template.iFirstSpawnOffsetMs))
+		if (0u != value)
+			CEffectPresentationService::Stop_WorldRoot({ value });
+		value = 0u;
+	};
+	// The exact selected Preview path supplies the stage offset. Its clock
+	// continues across stage edges, including objects born in a previous stage.
+	const double fPatternAgeMs = static_cast<double>(StageStart->second) +
+		static_cast<double>(fActionAgeSeconds) * 1000.0;
+	for (LOCAL_PATTERN_COMBAT_OBJECT_INSTANCE& Instance : m_LocalPreviewCombatObjectInstances)
+	{
+		const double fObjectAgeMs = fPatternAgeMs -
+			static_cast<double>(Instance.Template.iOwnerStageStartMs) -
+			static_cast<double>(Instance.Template.iFirstSpawnOffsetMs);
+		if (fObjectAgeMs + 0.01 < 0.0)
 		{
-			if (0u != Instance.iActiveHandle)
-			{
-				EFFECT_WORLD_ROOT_HANDLE Handle;
-				Handle.iValue = Instance.iActiveHandle;
-				CEffectPresentationService::Stop_WorldRoot(Handle);
-				Instance.iActiveHandle = 0u;
-			}
-			Instance.bActiveAttempted = false;
-			for (uint64_t& iTerminalHandle : Instance.TerminalHandles)
-			{
-				if (0u == iTerminalHandle)
-					continue;
-				EFFECT_WORLD_ROOT_HANDLE Handle;
-				Handle.iValue = iTerminalHandle;
-				CEffectPresentationService::Stop_WorldRoot(Handle);
-				iTerminalHandle = 0u;
-			}
-			std::fill(Instance.TerminalAttempts.begin(),
-				Instance.TerminalAttempts.end(), false);
+			StopHandle(Instance.iActiveHandle);
+			for (uint64_t& Handle : Instance.TerminalHandles)
+				StopHandle(Handle);
 			continue;
 		}
-		const f32_t fObjectAgeSeconds = fActionAgeSeconds -
-			static_cast<f32_t>(Instance.Template.iFirstSpawnOffsetMs) * 0.001f;
-		const f32_t fObjectAgeMs = fObjectAgeSeconds * 1000.f;
-		const BOSS_COMBAT_OBJECT_VISUAL_ENTRY* Visual =
-			CActorCatalog::Find_BossCombatObjectVisual(
-				m_strArchetypeId,
-				Instance.Template.strCombatObjectArchetypeId,
-				Instance.Template.strClientVisualId);
-		if (nullptr == Visual ||
-			Visual->effectAssetId != Instance.Template.strActiveEffectAssetId ||
-			Visual->hitEffectAssetId !=
-				Instance.Template.strTerminalEffectAssetId)
+		const f32_t fObjectAgeSeconds = static_cast<f32_t>((std::max)(0.0, fObjectAgeMs) * 0.001);
+		const BOSS_COMBAT_OBJECT_VISUAL_ENTRY* Visual = CActorCatalog::Find_BossCombatObjectVisual(
+			m_strArchetypeId, Instance.Template.strCombatObjectArchetypeId, Instance.Template.strClientVisualId);
+		if (nullptr == Visual || Visual->effectAssetId != Instance.Template.strActiveEffectAssetId ||
+			Visual->hitEffectAssetId != Instance.Template.strTerminalEffectAssetId)
+			return Rollback("Local combat-object preview catalog visual changed after staging.");
+		const float4x4_t Root = Visual->Make_WorldRoot(Instance.vPosition, Instance.fYawDegrees);
+		const std::string Occurrence = "valtan:local-preview:combat-object:owner:" +
+			std::to_string(reinterpret_cast<uintptr_t>(this)) + "/generation:" +
+			std::to_string(m_iLocalPreviewEffectGeneration) + "/action:" +
+			Instance.Template.strOwnerActionId + "/template:" +
+			std::to_string(Instance.Template.iTemplateOrdinal) + "/ordinal:" +
+			std::to_string(Instance.iOrdinal);
+		const auto SampleRoot = [&](const std::string& AssetId, const std::string& Suffix,
+			const f32_t fAgeSeconds, uint64_t& HandleValue) -> bool_t
 		{
-			return Rollback(
-				"Local combat-object preview catalog visual changed after staging.");
-		}
-		const float4x4_t Root = Visual->Make_WorldRoot(
-			Instance.vPosition, Instance.fYawDegrees);
-		/* The Server despawn at iLifetimeMs releases the root without cutting the
-		   visual, so the active root keeps its authored NATURAL lifetime here too.
-		   A vanished handle after the first spawn is natural completion, not a
-		   preview failure, and stays consumed until an explicit rewind. */
-		if (!Instance.bActiveAttempted)
-		{
-			Instance.bActiveAttempted = true;
-			EFFECT_WORLD_ROOT_SPAWN_DESC Desc;
-			Desc.strEffectAssetId = Visual->effectAssetId;
-			Desc.pBossBudgetAndLifetimeOwner = Owner;
-			Desc.RootWorld = Root;
-			Desc.strOccurrenceId =
-				"valtan:local-preview:combat-object:generation:" +
-				std::to_string(m_iLocalPreviewEffectGeneration) + "/stage:" +
-				std::to_string(m_iLocalPreviewStageIndex) + "/archetype:" +
-				Instance.Template.strCombatObjectArchetypeId + "/ordinal:" +
-				std::to_string(Instance.iOrdinal) + "/active";
-			Desc.iSpawnTick = m_iLocalPreviewEffectGeneration;
-			Desc.fInitialSampleTimeSeconds = fObjectAgeSeconds;
-			EFFECT_WORLD_ROOT_HANDLE Handle;
-			std::string Status;
-			if (!CEffectPresentationService::Spawn_WorldRoot(
-					Desc, Handle, Status) ||
-				!CEffectPresentationService::Seek_WorldRoot(
-					Handle, fObjectAgeSeconds))
+			if (0u == HandleValue)
 			{
-				CEffectPresentationService::Stop_WorldRoot(Handle);
-				return Rollback(Status.empty() ?
-					"Local combat-object active Effect seek failed." : Status);
-			}
-			Instance.iActiveHandle = Handle.iValue;
-		}
-		else if (0u != Instance.iActiveHandle)
-		{
-			EFFECT_WORLD_ROOT_HANDLE Handle;
-			Handle.iValue = Instance.iActiveHandle;
-			if (!CEffectPresentationService::Seek_WorldRoot(
-					Handle, fObjectAgeSeconds))
-			{
-				Instance.iActiveHandle = 0u;
-			}
-		}
-
-		for (size_t iEvent = 0u;
-			iEvent < Instance.Template.PresentationEvents.size(); ++iEvent)
-		{
-			const LOCAL_PATTERN_COMBAT_OBJECT_EVENT& Event =
-				Instance.Template.PresentationEvents[iEvent];
-			if (fObjectAgeMs < static_cast<f32_t>(Event.iAtMs))
-				continue;
-			const f32_t fTerminalAgeSeconds = fObjectAgeSeconds -
-				static_cast<f32_t>(Event.iAtMs) * 0.001f;
-			if (!Instance.TerminalAttempts[iEvent])
-			{
-				Instance.TerminalAttempts[iEvent] = true;
-				EFFECT_WORLD_ROOT_SPAWN_DESC Desc;
-				Desc.strEffectAssetId = Visual->hitEffectAssetId;
-				Desc.pBossBudgetAndLifetimeOwner = Owner;
+				EFFECT_LEVEL_PLACEMENT_SPAWN_DESC Desc;
+				Desc.iLevelIndex = CGameInstance::Get().Get_CurrentLevelID();
+				Desc.strEffectAssetId = AssetId;
+				Desc.strPlacementId = Occurrence + Suffix;
 				Desc.RootWorld = Root;
-				Desc.strOccurrenceId =
-					"valtan:local-preview:combat-object:generation:" +
-					std::to_string(m_iLocalPreviewEffectGeneration) + "/stage:" +
-					std::to_string(m_iLocalPreviewStageIndex) + "/archetype:" +
-					Instance.Template.strCombatObjectArchetypeId + "/ordinal:" +
-					std::to_string(Instance.iOrdinal) + "/event:" +
-					Event.strPresentationEventId;
 				Desc.iSpawnTick = m_iLocalPreviewEffectGeneration;
-				Desc.fInitialSampleTimeSeconds = fTerminalAgeSeconds;
+				Desc.fInitialSampleTimeSeconds = fAgeSeconds;
+				Desc.bExternallySampled = true;
 				EFFECT_WORLD_ROOT_HANDLE Handle;
-				std::string Status;
-				if (!CEffectPresentationService::Spawn_WorldRoot(
-						Desc, Handle, Status) ||
-					!CEffectPresentationService::Seek_WorldRoot(
-						Handle, fTerminalAgeSeconds))
-				{
-					CEffectPresentationService::Stop_WorldRoot(Handle);
-					return Rollback(Status.empty() ?
-						"Local combat-object terminal Effect seek failed." : Status);
-				}
-				Instance.TerminalHandles[iEvent] = Handle.iValue;
+				if (!CEffectPresentationService::Spawn_LevelPlacement(Desc, Handle, strOutStatus))
+					return false;
+				HandleValue = Handle.iValue;
 			}
-			else if (0u != Instance.TerminalHandles[iEvent])
+			// External handles retain finished objects for reverse seeking and never
+			// advance on a second wall clock while the composition is paused.
+			if (!CEffectPresentationService::Seek_WorldRoot({ HandleValue }, fAgeSeconds))
 			{
-				EFFECT_WORLD_ROOT_HANDLE Handle;
-				Handle.iValue = Instance.TerminalHandles[iEvent];
-				/* A missing terminal handle means its authored NATURAL lifetime has
-				   completed. Keep the attempt consumed until an explicit rewind. */
-				if (!CEffectPresentationService::Seek_WorldRoot(
-						Handle, fTerminalAgeSeconds))
-				{
-					Instance.TerminalHandles[iEvent] = 0u;
-				}
+				strOutStatus = "Local combat-object external Effect sample lost its handle.";
+				return false;
 			}
+			return true;
+		};
+		// Product despawn releases a natural visual tail. Sample the same authored
+		// Effect lifetime rather than truncating it at the owning Stage boundary.
+		if (!SampleRoot(Visual->effectAssetId, "/active", fObjectAgeSeconds,
+				Instance.iActiveHandle))
+			return Rollback(strOutStatus);
+		for (size_t iEvent = 0u; iEvent < Instance.Template.PresentationEvents.size(); ++iEvent)
+		{
+			const LOCAL_PATTERN_COMBAT_OBJECT_EVENT& Event = Instance.Template.PresentationEvents[iEvent];
+			if (fObjectAgeMs + 0.01 < static_cast<double>(Event.iAtMs))
+			{
+				StopHandle(Instance.TerminalHandles[iEvent]);
+				continue;
+			}
+			if (!SampleRoot(Visual->hitEffectAssetId, "/event:" + Event.strPresentationEventId,
+					static_cast<f32_t>((std::max)(0.0, fObjectAgeMs - Event.iAtMs) * 0.001),
+					Instance.TerminalHandles[iEvent]))
+				return Rollback(strOutStatus);
 		}
 	}
-	strOutStatus = "Mirrored " +
-		std::to_string(m_LocalPreviewCombatObjectInstances.size()) +
-		" local combat-object Effect root(s).";
+	strOutStatus = "Mirrored " + std::to_string(m_LocalPreviewCombatObjectInstances.size()) +
+		" local combat-object root(s) on the selected Pattern clock.";
 	m_strLocalPreviewCombatObjectStatus = strOutStatus;
 	return true;
 }
@@ -1780,7 +1697,8 @@ bool_t CValtan::Sync_LocalPatternCombatObjectPreview(
 bool_t CValtan::Stage_LocalPatternAuthoringPreview(
 	const Client::VALTAN_PATTERN_VIEW& Pattern,
 	std::string& strOutStatus,
-	const bool_t selectAuthoredPhasePresentation)
+	const bool_t selectAuthoredPhasePresentation,
+	const std::optional<VALTAN_PATTERN_PREVIEW_PATH> previewPath)
 {
 	if (m_isServerAuthoritative || nullptr == m_pBodyModelCom ||
 		nullptr == m_pTransformCom ||
@@ -1796,6 +1714,40 @@ bool_t CValtan::Stage_LocalPatternAuthoringPreview(
 	std::unordered_map<std::string,
 		std::vector<Client::VALTAN_PATTERN_EFFECT_CUE>> StagedEffectCues;
 	std::unordered_map<std::string, uint32_t> StagedStageIndices;
+	std::unordered_map<std::string, uint32_t> StagedStageStarts;
+	std::vector<const VALTAN_STAGE_VIEW*> StagePath;
+	if (previewPath.has_value())
+	{
+		if (!CValtanPatternTree::Build_PreviewStagePath(
+				Pattern, *previewPath, StagePath, strOutStatus))
+			return false;
+	}
+	else
+	{
+		// Standalone combat-object audition may select a non-NORMAL branch owner.
+		for (const VALTAN_STAGE_VIEW& Stage : Pattern.Stages)
+			StagePath.push_back(&Stage);
+	}
+	uint64_t iPatternClockMs = 0u;
+	for (const VALTAN_STAGE_VIEW* Stage : StagePath)
+	{
+		if (0u == Stage->iDurationMs || iPatternClockMs + Stage->iDurationMs >
+			(std::numeric_limits<uint32_t>::max)())
+		{
+			strOutStatus = "Local Pattern draft preview rejected an invalid selected-path clock.";
+			return false;
+		}
+		StagedStageStarts.emplace(Stage->strActionId, static_cast<uint32_t>(iPatternClockMs));
+		iPatternClockMs += Stage->iDurationMs;
+	}
+	float3_t PreviewBossPosition{};
+	XMStoreFloat3(&PreviewBossPosition, m_pTransformCom->Get_State(STATE::POSITION));
+	if (!std::isfinite(PreviewBossPosition.x) || !std::isfinite(PreviewBossPosition.y) ||
+		!std::isfinite(PreviewBossPosition.z) || !std::isfinite(m_fPresentationYawDegrees))
+	{
+		strOutStatus = "Local Pattern draft preview requires a finite boss root.";
+		return false;
+	}
 	std::unordered_map<std::string, PATTERN_BODY_VISIBILITY_WINDOW>
 		StagedBodyVisibility;
 	std::unordered_map<std::string, float3_t> StagedArenaCenters;
@@ -2014,7 +1966,8 @@ bool_t CValtan::Stage_LocalPatternAuthoringPreview(
 					Source.strClientVisualId);
 			if (nullptr == Visual || Visual->effectAssetId.empty() ||
 				Visual->effectAssetId != Source.strEffectAssetId ||
-				(!Source.PresentationEvents.empty() &&
+				((!Source.PresentationEvents.empty() || std::any_of(Source.Hits.begin(), Source.Hits.end(),
+					[](const VALTAN_COMBAT_OBJECT_HIT_VIEW& Hit) { return "TIMED" == Hit.strTriggerKind; })) &&
 				 Visual->hitEffectAssetId.empty()))
 			{
 				strOutStatus =
@@ -2023,6 +1976,12 @@ bool_t CValtan::Stage_LocalPatternAuthoringPreview(
 				return false;
 			}
 			LOCAL_PATTERN_COMBAT_OBJECT_TEMPLATE Template;
+			Template.strOwnerActionId = Stage.strActionId;
+			const auto PathStage = StagedStageStarts.find(Stage.strActionId);
+			if (StagedStageStarts.end() == PathStage)
+				continue;
+			Template.iOwnerStageStartMs = PathStage->second;
+			Template.iTemplateOrdinal = static_cast<uint32_t>(StagedCombatObjects[Stage.strActionId].size());
 			Template.strCombatObjectArchetypeId =
 				Source.strCombatObjectArchetypeId;
 			Template.strClientVisualId = Source.strClientVisualId;
@@ -2052,6 +2011,31 @@ bool_t CValtan::Stage_LocalPatternAuthoringPreview(
 					Event.strPresentationEventId;
 				StagedEvent.iAtMs = Event.iAtMs;
 				Template.PresentationEvents.push_back(std::move(StagedEvent));
+			}
+			// Server HIT_PULSE is emitted for each TIMED hit even with no target.
+			// CONTACT requires authoritative contact and cannot be fabricated here.
+			for (const VALTAN_COMBAT_OBJECT_HIT_VIEW& Hit : Source.Hits)
+			{
+				if ("TIMED" != Hit.strTriggerKind)
+					continue;
+				if (Hit.strHitId.empty() || 0u == Hit.iRepeatCount || Hit.iRepeatCount > 256u ||
+					(Hit.iRepeatCount > 1u && 0u == Hit.iRepeatIntervalMs))
+				{
+					strOutStatus = "Local combat-object preview rejected a TIMED hit clock: " + Hit.strHitId;
+					return false;
+				}
+				for (uint32_t iRepeat = 0u; iRepeat < Hit.iRepeatCount; ++iRepeat)
+				{
+					const uint64_t iAtMs = static_cast<uint64_t>(Hit.iAtMs) +
+						static_cast<uint64_t>(iRepeat) * Hit.iRepeatIntervalMs;
+					if (iAtMs > Source.iLifetimeMs)
+					{
+						strOutStatus = "Local combat-object preview rejected a hit past despawn: " + Hit.strHitId;
+						return false;
+					}
+					Template.PresentationEvents.push_back({
+						Hit.strHitId + "/repeat:" + std::to_string(iRepeat), static_cast<uint32_t>(iAtMs) });
+				}
 			}
 			StagedCombatObjects[Stage.strActionId].push_back(
 				std::move(Template));
@@ -2163,6 +2147,9 @@ bool_t CValtan::Stage_LocalPatternAuthoringPreview(
     Register_StageEnvironmentOwner();
 	m_LocalPreviewEffectCuesByActionId = std::move(StagedEffectCues);
 	m_LocalPreviewStageIndexByActionId = std::move(StagedStageIndices);
+	m_LocalPreviewStageStartMsByActionId = std::move(StagedStageStarts);
+	m_vLocalPreviewCombatObjectBossPosition = PreviewBossPosition;
+	m_fLocalPreviewCombatObjectBossYawDegrees = m_fPresentationYawDegrees;
 	m_LocalPreviewBodyVisibilityByActionId =
 		std::move(StagedBodyVisibility);
 	m_LocalPreviewArenaCenterAnchors = std::move(StagedArenaCenters);
@@ -2214,7 +2201,7 @@ bool_t CValtan::Apply_LocalCombatObjectAuthoringPreviewSample(
     m_fLocalStageEnvironmentClockMs = fActionAgeSeconds * 1000.f;
 	m_iLocalPreviewStageIndex = Stage->second;
 	return Sync_LocalPatternCombatObjectPreview(
-		actionId, fActionAgeSeconds, strOutStatus);
+		actionId, fActionAgeSeconds, strOutStatus, true);
 }
 
 void CValtan::Reset_LocalPatternPreviewTransport()
@@ -2254,13 +2241,14 @@ void CValtan::Reset_LocalPatternPresentationSample()
 	m_LocalPreviewClipByActionId.clear();
 	m_LocalPreviewEffectCuesByActionId.clear();
 	m_LocalPreviewStageIndexByActionId.clear();
+	m_LocalPreviewStageStartMsByActionId.clear();
 	m_LocalPreviewBodyVisibilityByActionId.clear();
 	m_LocalPreviewArenaCenterAnchors.clear();
 	m_LocalPreviewPortalRushDistanceByActionId.clear();
 	m_PortalRushRoute = {};
 	m_LocalPreviewCombatObjectsByActionId.clear();
 	m_LocalPreviewCombatObjectInstances.clear();
-	m_strLocalPreviewCombatObjectActionId.clear();
+	m_strLocalPreviewCombatObjectScopeId.clear();
 	m_strLocalPreviewCombatObjectStatus.clear();
 	m_strLocalPreviewPatternId.clear();
 	m_strLocalPreviewActionId.clear();
@@ -3566,6 +3554,15 @@ void CValtan::Update_GhostPortalRoutePresentation(const f32_t fTimeDelta)
 
 void CValtan::Update(f32_t fTimeDelta)
 {
+	if (!m_isReplicationDormant)
+	{
+		const auto* actor = CActorCatalog::Find_Boss(m_strPresentationPartArchetypeId.empty() ?
+			m_strArchetypeId : m_strPresentationPartArchetypeId);
+		if (actor)
+			if (auto* weapon = dynamic_cast<CPart_Equipment*>(Find_PartObject(WEAPON_PART_TAG)))
+				(void)weapon->Set_SocketTransform(actor->weaponSocketTransform.positionMeters,
+					actor->weaponSocketTransform.rotationDegrees);
+	}
     if (std::isfinite(fTimeDelta) && fTimeDelta > 0.f)
         m_fRaidBgmNaturalTailRemainingSeconds = (std::max)(0.f, m_fRaidBgmNaturalTailRemainingSeconds - fTimeDelta);
 	if (m_isReplicationDormant)

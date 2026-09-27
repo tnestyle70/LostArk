@@ -299,6 +299,8 @@ Client::CAnimation_Tool::Get_ValtanCompositionPreviewState() const
 			iPositionMs, static_cast<uint64_t>(State.iDurationMs)));
 	}
 	State.strStatus = m_strValtanPatternMasterStatus;
+	if (State.bPlaying && !m_strValtanPreviewSoundStatus.empty())
+		State.strStatus += " | " + m_strValtanPreviewSoundStatus;
 	State.strSourceSequenceStatus = m_strValtanPatternPreviewStatus;
 	if (m_bValtanPatternPreviewPlaying &&
 		m_iValtanPatternPreviewItem < m_ValtanPatternPreviewPlaylist.size())

@@ -6,6 +6,7 @@
 #include "DeferredMaterialRenderUtils.h"
 #include "GameInstance.h"
 #include "MapAssetRenderUtils.h"
+#include <cmath>
 
 namespace
 {
@@ -99,6 +100,19 @@ void CPart_Equipment::Priority_Update(f32_t fTimeDelta)
 {
 }
 
+bool_t CPart_Equipment::Set_SocketTransform(const float3_t& positionMeters, const float3_t& rotationDegrees)
+{
+	const auto finiteBounded = [](const float3_t& value, const float bound) {
+		return std::isfinite(value.x) && std::isfinite(value.y) && std::isfinite(value.z) &&
+			std::abs(value.x) <= bound && std::abs(value.y) <= bound && std::abs(value.z) <= bound;
+	};
+	if (m_strSocketBoneName.empty() || !finiteBounded(positionMeters, 10.f) ||
+		!finiteBounded(rotationDegrees, 360.f)) return false;
+	m_vSocketPositionMeters = positionMeters;
+	m_vSocketRotationDegrees = rotationDegrees;
+	return true;
+}
+
 void CPart_Equipment::Update(f32_t fTimeDelta)
 {
 	matrix_t ChildMatrix = XMLoadFloat4x4(m_pTransformCom->Get_WorldMatrixPtr());
@@ -112,8 +126,25 @@ void CPart_Equipment::Update(f32_t fTimeDelta)
 		ChildMatrix =
 			XMMatrixRotationY(XMConvertToRadians(m_fSocketYawDegrees)) *
 			ChildMatrix;
-		ChildMatrix = ChildMatrix *
-			m_pSkeletonModelCom->Get_BoneMatrix(m_strSocketBoneName.c_str());
+		const matrix_t socket = m_pSkeletonModelCom->Get_BoneMatrix(m_strSocketBoneName.c_str());
+		if (m_vSocketRotationDegrees.x != 0.f || m_vSocketRotationDegrees.y != 0.f || m_vSocketRotationDegrees.z != 0.f)
+			ChildMatrix = XMMatrixRotationRollPitchYaw(XMConvertToRadians(m_vSocketRotationDegrees.x),
+				XMConvertToRadians(m_vSocketRotationDegrees.y), XMConvertToRadians(m_vSocketRotationDegrees.z)) * ChildMatrix;
+		ChildMatrix = ChildMatrix * socket;
+		// Bone matrices already contain model preScale. Metre offsets use its
+		// normalized axes so the Valtan .0001 import scale is not applied twice.
+		if (m_vSocketPositionMeters.x != 0.f || m_vSocketPositionMeters.y != 0.f || m_vSocketPositionMeters.z != 0.f)
+		{
+			matrix_t axes = socket;
+			bool_t valid = true;
+			for (size_t i = 0u; i < 3u; ++i)
+			{
+				const float length = XMVectorGetX(XMVector3Length(axes.r[i]));
+				if (!std::isfinite(length) || length <= 0.00000001f) { valid = false; break; }
+				axes.r[i] = XMVectorSetW(axes.r[i] / length, 0.f);
+			}
+			if (valid) ChildMatrix.r[3] += XMVector3TransformNormal(XMLoadFloat3(&m_vSocketPositionMeters), axes);
+		}
 	}
 
 	if (nullptr != m_pSocketRootMatrix)
@@ -161,7 +192,7 @@ HRESULT CPart_Equipment::Render_Group(RENDERGROUP group)
 	return RENDERGROUP::BLEND == group ? Render_Translucent() : Render();
 }
 
-HRESULT CPart_Equipment::Render_Translucent()
+HRESULT CPart_Equipment::Render_Translucent(ID3D11BlendState* pCoverageBlend)
 {
 	if (!Is_Visible())
 		return S_OK;
@@ -195,8 +226,11 @@ HRESULT CPart_Equipment::Render_Translucent()
 				*m_pModelCom, m_pShaderCom, i, Profile,
 				m_pEmissiveOverride)) ||
 			FAILED(m_pModelCom->Bind_SourceCharacterForwardLight(m_pShaderCom, i)) ||
-			FAILED(m_pShaderCom->Begin(m_strSocketBoneName.empty() ? pass : 24u)) ||
-			FAILED(m_pModelCom->Render(i)))
+			FAILED(m_pShaderCom->Begin(m_strSocketBoneName.empty() ? pass : 24u)))
+			return E_FAIL;
+		if (pCoverageBlend)
+			m_pContext->OMSetBlendState(pCoverageBlend, nullptr, 0xffffffffu);
+		if (FAILED(m_pModelCom->Render(i)))
 			return E_FAIL;
 	}
 	return S_OK;
@@ -235,8 +269,7 @@ HRESULT CPart_Equipment::Render_Pass(
 
 		uint32_t materialPass = iPassIndex;
 		const auto* surface = m_pModelCom->Get_MaterialSurface(i);
-		/* The BLEND group draws these forward; the portrait's explicit passes
-		still take every mesh so the second draw keeps its own look. */
+		/* BLEND draws these forward in both field and portrait captures. */
 		if (iPassIndex == 0u && 0u != Resolve_TranslucentSourcePass(surface))
 			continue;
 		if (m_strSocketBoneName.empty() && iPassIndex == 0u && surface &&

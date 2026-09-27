@@ -1,0 +1,81 @@
+{
+  "schema": "lostark.head-health-resources.receipt",
+  "formatVersion": 1,
+  "createdAtUtc": "2026-09-27T10:01:37.9075593Z",
+  "source": {
+    "logicalPackage": "EFUI_STATUS",
+    "physicalPackage": "C:\\ProgramData\\Smilegate\\Games\\LOSTARK\\EFGame\\ReleasePC\\Packages\\OVSG0AELWLSED62YWO161E.upk",
+    "packageSha256": "9f87c51800a113eacd0389079fac8b2a3346a83ef3c4a65cd7511a1b919e7383",
+    "object": "headstatus_i6",
+    "extractedAtlas": "C:\\Users\\user\\Desktop\\LostArk\\out\\HeadHealth20260927\\tex\\EFUI_STATUS\\Texture2D\\headstatus_i6.dds",
+    "atlasSha256": "b82d5d0c2927b94b8e3ecfd720978115c3757520c3c5e9532756ab4a1c07d4cd",
+    "atlasSize": [
+      1024,
+      128
+    ],
+    "sourceSymbol": "progress_PlayerHP_PickingHead",
+    "cropXYWH": [
+      763,
+      53,
+      78,
+      5
+    ],
+    "operation": "Direct RGBA decode and pixel crop only; no recolor, resample or alpha edits",
+    "provenanceDocument": ".md/TJ/09-14/2026-09-14_이름표_PLAN.md",
+    "ownPlayerVisible": false,
+    "consumer": "Other allied player HP",
+    "tint": [
+      1,
+      1,
+      1,
+      1
+    ]
+  },
+  "assets": [
+    {
+      "assetId": "UI/HeadStatus/HS_Fill_Player.png",
+      "bytes": 168,
+      "sha256": "89eef7fedae217bc7523d127323958fb03b2b916a9c8e215b033dc1a798094b2",
+      "installedPath": "C:\\Users\\user\\Desktop\\LostArk\\Client\\Bin\\Resources\\UI\\HeadStatus\\HS_Fill_Player.png",
+      "deliveryPath": "C:\\Users\\user\\Desktop\\GBResources\\UI\\HeadStatus\\HS_Fill_Player.png",
+      "deliveryPreviouslyExisted": false,
+      "action": "copied-new"
+    },
+    {
+      "assetId": "UI/BossUI/ImmuneGauge/immune_frame.png",
+      "bytes": 300,
+      "sha256": "11b9777180a51d510a8518d40e27511de94f7ffbe961560a95e84b1152cf72a1",
+      "installedPath": "C:\\Users\\user\\Desktop\\LostArk\\Client\\Bin\\Resources\\UI\\BossUI\\ImmuneGauge\\immune_frame.png",
+      "deliveryPath": "C:\\Users\\user\\Desktop\\GBResources\\UI\\BossUI\\ImmuneGauge\\immune_frame.png",
+      "deliveryPreviouslyExisted": false,
+      "action": "copied-new"
+    },
+    {
+      "assetId": "UI/BossUI/ImmuneGauge/immune_track.png",
+      "bytes": 225,
+      "sha256": "67c993ddaa644fab6cfdee28ea5f696f555fb1ef8db814c2e4c0b74816dd2211",
+      "installedPath": "C:\\Users\\user\\Desktop\\LostArk\\Client\\Bin\\Resources\\UI\\BossUI\\ImmuneGauge\\immune_track.png",
+      "deliveryPath": "C:\\Users\\user\\Desktop\\GBResources\\UI\\BossUI\\ImmuneGauge\\immune_track.png",
+      "deliveryPreviouslyExisted": false,
+      "action": "copied-new"
+    },
+    {
+      "assetId": "UI/BossUI/ImmuneGauge/immune_shield_track.png",
+      "bytes": 222,
+      "sha256": "fbbf7baed5fac25c7e5cd8aa57709b3de70e28e695880628c744c76950d98704",
+      "installedPath": "C:\\Users\\user\\Desktop\\LostArk\\Client\\Bin\\Resources\\UI\\BossUI\\ImmuneGauge\\immune_shield_track.png",
+      "deliveryPath": "C:\\Users\\user\\Desktop\\GBResources\\UI\\BossUI\\ImmuneGauge\\immune_shield_track.png",
+      "deliveryPreviouslyExisted": false,
+      "action": "copied-new"
+    },
+    {
+      "assetId": "UI/BossUI/boss_bar_fill_orange.png",
+      "bytes": 8826,
+      "sha256": "d883057b0d398de9413408a84d1ec0ba10ca033a126328c8c43aafbc52fa8679",
+      "installedPath": "C:\\Users\\user\\Desktop\\LostArk\\Client\\Bin\\Resources\\UI\\BossUI\\boss_bar_fill_orange.png",
+      "deliveryPath": "C:\\Users\\user\\Desktop\\GBResources\\UI\\BossUI\\boss_bar_fill_orange.png",
+      "deliveryPreviouslyExisted": false,
+      "action": "copied-new"
+    }
+  ]
+}

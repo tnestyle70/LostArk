@@ -65,3 +65,95 @@ Engine/Client의 FX worker 설정은 공통 props에서 일치시키고 여러 �
 leaf의 caller-controlled 변수 모두에 대해 owner의 동일 이름·Class/Type/Elements/Rows/Columns/Members/UnpackedSize/resource를 검사하고 기존 revision 복사를 사용한다. 명시 pass-name mapping과 IA signature를 비교하며 중복·모호한 selector 범위, 잘못된 selector 타입, 알 수 없는 pass, self/nested registry를 거부한다. owner만 사용하는 입력은 leaf에 강요하지 않는다. 전체 staging 성공 뒤 한 번만 commit하고 실패 시 기존 shader와 clone 공유 상태를 보존한다.
 
 pass별 fallback 허용을 명시하고 필수 leaf 누락 또는 범위 밖 selector를 빈 PS 성공으로 처리하지 않는다. native ModelCue는 g_ArtistModelCueProfile, 표면·광원은 g_SourceCharacterProgram, 독립 잔상은 무조건 route로 선택한다. ALTV178 capture·Lance1360 depth 단위·Vehicle 조명·bloom의 원본 입력/계산 순서를 유지한다. 새 C++ 파일은 최소화하고 기존 public Bind/Begin 호출자는 유지한다.
+
+## G12. 09-27 재개: 프로그램 등록의 그룹 단위 변경
+
+사용자가 전체 셰이더·C++ 빌드 병목 조사와 수정을 다시 요청했다. 현재 완료된 Debug는
+33분07.884초이며 C++ OBJ20개/PCH0개, 실제 FXC 출력은 Engine24개와 Client48개다.
+Client receipt의 CSO72개 중24개는 Engine 배포 복사다. 이번1526 등록은 공통 Base/Light
+Programs에 각각 case3줄을 추가했고 실제 tlog의 공통 include 소비자는 Client48개,
+Engine Light24개다. leaf 분리와 기존4-worker FXC는 유지되지만 이 등록 전파는 남아 있다.
+
+기존 Base/Light Group leaf 안에 본문과 dispatch case의 두 모드를 둔다. stage별
+`SOURCE_CHARACTER_BASE_DISPATCH_CASES` 또는 `SOURCE_CHARACTER_LIGHT_DISPATCH_CASES`
+macro가 없는 첫 include는 기존 함수 본문, switch 안의 두 번째 include는 기존 case를
+제공한다. 공통 facade는 안정된 그룹 include 목록만 가지므로 기존 그룹의 신규 ID 등록과
+수식 수정은 그 그룹의 Base/Light leaf만 변경한다. 새 그룹 자체의 추가는 여전히 공통
+목록·registry·FX producer를 갱신해야 하며 이를 무관한 단일 leaf 변경으로 표현하지 않는다.
+
+`Tools/EffectPipeline/native_shader_dispatch.py`의 실제 경로를 조사하여 해당 helper의
+expand/partition writer와 기존 source-character group test를 함께 갱신한다. 기존
+Vehicle installer도 동일 writer를 소비한다. Engine 정본과 Client mirror, 함수/case의
+토큰·순서, missing ID 거부, native600/1526 보정, uniform/pass ABI를 보존한다. 기존 leaf를
+사용하므로 신규 HLSLI/C++ 및 프로젝트·필터 등록은 없다. 현재 Product 빌드가 완료되기
+전에는 out 후보만 작성하며 제품 파일을 바꾸지 않는다.
+
+검증은 모든 그룹과 기본 selector의 전처리 동치, 전체 expand roundtrip, 재적용 write0,
+기존 그룹에 신규 ID 등록 시 해당 stage leaf만 변경, 한 수식 수정의 무관한 파일 보존,
+Engine/Client 정합과 정규 Product Debug/Release다. 실제 재컴파일 수와 no-change 시간은
+동일 runner·toolchain의 receipt/diagnostic 로그로 측정하고 이전 다른 조건의 총시간을
+곧바로 단축률로 사용하지 않는다. G09~G11의 큰 runtime 재설계는 이 작은 수정으로 완료된
+것으로 처리하지 않으며, 이후 실제 비용과 보존 검증을 확보한 범위만 추가한다.
+
+## G13. 비기본 Static 그룹의 사용하지 않는 map 함수 본문
+
+현재 Static 그룹24개는 `Shader_SourceMapForwardPrograms.hlsli`를 통해29,334줄의
+MovieStaticForward를 읽는다. 실제 MapForward 평가 호출은 기본 group0에만 있다.
+Engine/Client의 SourceMapForwardPrograms와 Client SourceMapDirectPrograms에서
+Texture/Sampler/상수/LightConstants cbuffer의 이름·순서·타입·기본값은 그대로 유지하고,
+비0 그룹이 사용하지 않는 함수 본문과 순수 함수 include만 기존 group0 조건으로 제한한다.
+새 shader 입력이나 renderer 분기는 만들지 않는다.
+
+실제 호출자를 전수 검색하고 전처리 후보에서 기본 group0의 함수·pass 토큰 보존과
+비0 그룹의 uniform/resource 선언 보존을 확인한다. 실제 FXC 후 Effects11 변수/pass/input
+signature와 프로그램 bytecode를 기준 CSO와 비교한다. 원래 함수의 호출이 남아 있거나
+ABI가 달라진 경우 해당 guard를 확대 적용하지 않는다. 그룹별 선택 포함은 compiler의
+파싱 입력을 줄이는 변경이며 실제 Movie PS가 모든 그룹에서 반복 생성됐다고 표현하지 않는다.
+
+같은 선언 보존 절차를 Client SourceMapWaterPrograms에도 적용한다. Texture/Sampler 선언은
+유지하며 실제 물 계산 함수만 같은 조건으로 제한한다. 최종 변경 대상은4개 기존 HLSLI다.
+
+## G14. 큰084/1088 그룹의 기존 variant 경로 내 분할
+
+완료 빌드의 마지막 대기에는52개 Base 함수를 가진1088 그룹이 남았다. 현재 registry의
+84~112를84~95/96~107/108~112로,1088~1151을1088~1103/1104~1119/1120~1135/1136~1151로
+분할한다. 기존2그룹에서7그룹으로 바뀌며 Anim/Static/Deferred producer는15개 증가한다.
+SourceCharacter stable program ID와 재질 수식은 유지한다. CShader가 이미 registry의
+first/last와 first가 포함된 shader 파일명을 사용하므로 새 런타임 경로를 만들지 않는다.
+
+`source_character_registration.py`의64-ID 자동 범위 선택도 같은 분할 정책을 소비하게
+하고 registry/header·Base/Light facade/leaf·wrapper·Engine/Client 프로젝트/filter와
+Engine CSO 배포 목록을 함께 갱신한다. 기존 helper·installer 재적용이 큰 범위를 다시
+생성하거나 overlapping range를 허용하지 않게 검사한다. 프로그램84의 ghost 특례는84가
+첫 그룹에 남는 조건과 실제 전처리/caller를 확인해 보존한다.
+
+검증은 모든 기존 ID의 unique range와 함수/case 보존,새 group wrapper/프로젝트 producer/
+배포 정합,프로그램별 variant 선택 및 stale selector/native pass fallback,실제 CShader
+Create/Clone의 pass/input/변수 ABI와 실패 rollback이다. eager-load 그룹 수가 늘어나므로
+기준과 변경본의 CSO 총크기·load/clone 시간도 함께 비교한다. 기존 성공본72개 CSO와 Engine
+DLL을 out에 독립 보존하고 후보의 실제 GPU/ABI 검증에 사용한다. 런타임 비용이 악화하는
+수준의 분할은 그대로 확대하지 않으며 실제 FXC 시간·변경 범위와 함께 결과를 판단한다.
+
+## G15. ScreenPost에서 도달하지 않는 legacy 함수 묶음
+
+09-27 마무리 요청으로 제품 반영을 보류했다. 아래 내용은 다음 작업의 후보이며 현재
+완료 항목이 아니다. out 후보 검증과 임시 helper 회수는 RESULT G16에 기록했다.
+
+전체233개 shader target의 후속 실제 전처리에서 ScreenPost는7.62MB인 반면 Decal/Trail은
+각각1.32/1.34MB이고 이미 carrier별 guard가 적용돼 있다. 후자의 기존 bloom용3회 계산은
+F(scene)/F(bloom)/F(0) 계약이므로 줄이지 않는다. Source 파일 총bytes만으로 모두 같은
+큰 컴파일 본문이라고 해석하지 않는다.
+
+Client Shader_EffectArtistNativePrograms의 group448/512/768/1664 순수 함수 include와
+Shader_EffectDimensionMasterALTVNative의64/192 함수 묶음·미사용 일반 dispatch만
+`EFFECT_NATIVE_SCREEN_POST_CARRIER`에 한정해 제외하는 작은 후보를 검증한다.
+ScreenPost가 쓰는 ALTV155/156의128 그룹은 유지한다. 기존 ALTV_NATIVE_CAPTURE_ONLY는
+178 전용이므로 이 용도로 재사용하지 않는다. 전역 선언·default·pass·compile 옵션을 보존한다.
+
+native_shader_dispatch.py의 Artist selected-programs 처리도 같은 조건을 이해하게 하여
+전체 expand/partition/재생성이 후보 guard를 지우지 않게 한다. 다른 작업의 같은 helper
+변경을 최신 본문에 병합한다. 실제 `/P`의 retained 함수 closure·선언·pass 토큰,원문 수식,
+생성기 roundtrip/no-op를 검증하고 실패하면 후보를 제품에 적용하지 않는다. 실제 의존성은
+ScreenPost 외 Anim/Decal/Trail/ALTV wrapper에도 있으므로 정상 tracking에 따른 필요한
+재컴파일을 허용하며 ScreenPost 한 FX만 재컴파일된다고 표현하지 않는다. 최종 CSO와
+Effects11 ABI 비교로 branch가 바뀌지 않은 소비자를 포함한 실제 결과를 확인한다.

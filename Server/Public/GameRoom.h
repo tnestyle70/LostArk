@@ -8,6 +8,7 @@
 #include "ItemCatalog.h"
 #include "HonorTitleCatalog.h"
 #include "VehicleCatalog.h"
+#include "GuideCatalog.h"
 #include "ValtanClearRewards.h"
 #include "PlayerSkillSystem.h"
 #include "CombatObjectRuntime.h"
@@ -23,6 +24,7 @@
 #include "KoukuSaydonLogicRuntime.h"
 #include "EncounterPropRuntime.h"
 #include "EstherSkillSystem.h"
+#include "Gameplay/EstherStrikeContract.h"
 #include "WorldDestructionBootstrap.h"
 #include "WorldDestructionRuntime.h"
 #include "Network/PacketFrame.h"
@@ -275,13 +277,28 @@ namespace LostArk::Server
 		bool Transfer_PartyTo(CGameRoom& target,
 			const std::vector<SESSION_ID>& leaderFirstSessionIds,
 			LostArk::Shared::PARTY_TRANSFER_RESULT& outResult, std::string& status,
-			const std::string& raidReturnNpcPlacementId = {});
+			const std::string& raidReturnNpcPlacementId = {},
+            const std::string& spawnPlacementOverrideId = {});
 		void Notify_PartyTransferFailure(SESSION_ID sessionId,
 			std::uint32_t requestSequence, LostArk::Shared::WORLD_ID targetWorldId,
 			LostArk::Shared::PARTY_TRANSFER_RESULT result);
 
 	private:
 		void Mark_RuntimeFailure(std::string_view source);
+		std::size_t Count_HumanPlayers() const;
+		void Initialize_Guide();
+		bool Build_GuidePlayer(LostArk::Shared::PLAYER_ID playerId, LostArk::Shared::NET_ENTITY_ID entityId,
+			float x, float y, float z, SERVER_PLAYER& outPlayer) const;
+		bool Find_GuideLanding(const SERVER_PLAYER& guide, float x, float y, float z, SERVER_NAV_POINT& point) const;
+		bool Invite_Guide(const SERVER_PLAYER& inviter, LostArk::Shared::NET_ENTITY_ID target);
+		void Update_Guides(float seconds);
+        float Predict_GuideContactRisk(const SERVER_PLAYER& guide, float x, float z);
+		void Guide_AnchorArrived(const SERVER_PLAYER& anchor);
+		void Guide_ChatCommand(const SERVER_PLAYER& sender, const std::string& text);
+		void Remove_Guide(std::uint32_t partyId, bool publish = true);
+		void Queue_GuidePrompt(std::uint32_t partyId, const std::string& promptId);
+		void Execute_PlayerMove(SERVER_PLAYER& player, const LostArk::Shared::C2S_MOVE& move);
+		bool Execute_PlayerSkill(SERVER_PLAYER& player, const LostArk::Shared::C2S_USE_SKILL& skill);
 		struct STAGED_PLAYER_ENTRY final
 		{
 			std::shared_ptr<CClientSession> pSession;
@@ -374,11 +391,15 @@ namespace LostArk::Server
 		void Finish_SquareHoleSong(SERVER_PLAYER& player);
 		bool Spawn_EstherSummon(
 			const ESTHER_ROSTER_ENTRY& rosterEntry,
+			LostArk::Shared::PLAYER_ID casterPlayerId,
 			float positionX,
 			float positionY,
 			float positionZ,
 			float yawDegrees);
 		void Update_PendingEstherSummons(float fixedDeltaSeconds);
+		void Apply_EstherStrikeHits(SERVER_WORLD_ENTITY& summon, std::uint32_t serverTick);
+		void Open_EstherZone(const LostArk::Shared::EstherStrike::ZONE& zone, float positionX, float positionZ, std::uint32_t serverTick);
+		void Update_EstherZones(std::uint32_t serverTick);
 		void Handle_RevivePlayer(
 			SESSION_ID sessionId,
 			const LostArk::Shared::C2S_REVIVE_PLAYER& revivePlayer);
@@ -1657,6 +1678,7 @@ namespace LostArk::Server
 		struct PENDING_ESTHER_SUMMON final
 		{
 			const ESTHER_ROSTER_ENTRY* pRosterEntry = nullptr;
+			LostArk::Shared::PLAYER_ID iCasterPlayerId = LostArk::Shared::INVALID_PLAYER_ID;
 			float fPositionX = 0.f;
 			float fPositionY = 0.f;
 			float fPositionZ = 0.f;
@@ -1664,9 +1686,37 @@ namespace LostArk::Server
 			float fRemainingSeconds = 0.f;
 		};
 		std::vector<PENDING_ESTHER_SUMMON> m_PendingEstherSummons;
+		struct ESTHER_ZONE_RUNTIME final
+		{
+			const LostArk::Shared::EstherStrike::ZONE* pZone = nullptr;
+			float fPositionX = 0.f;
+			float fPositionZ = 0.f;
+			std::uint32_t iEndTick = 0u;
+			std::uint32_t iNextPulseTick = 0u;
+		};
+		std::vector<ESTHER_ZONE_RUNTIME> m_EstherZones;
 
 		std::unordered_map<SESSION_ID, std::weak_ptr<CClientSession>> m_Sessions;
 		std::map<LostArk::Shared::PLAYER_ID, SERVER_PLAYER> m_Players;
+		struct GUIDE_RUNTIME
+		{
+			LostArk::Shared::PLAYER_ID PlayerId = 0, AnchorId = 0;
+			std::string ComboId, PendingComboId, Reason;
+			std::size_t ComboStep = 0;
+			float ThinkElapsed = 0.f, ComboElapsed = 0.f, StepElapsed = 0.f, FarElapsed = 0.f, HoldElapsed = 0.f, PromptRemaining = 0.f;
+			std::uint32_t Sequence = 0, EventSequence = 0;
+            std::map<std::string, std::uint32_t> CommandTicks;
+			std::uint8_t Action = 0;
+            float FollowScore = 0.f, EvadeScore = 0.f, CombatScore = 0.f;
+			std::deque<std::pair<std::string, std::size_t>> PromptQueue;
+			std::map<std::string, std::uint32_t> TriggerTicks;
+			std::unordered_set<std::string> InsideBoxes;
+			std::map<LostArk::Shared::NET_ENTITY_ID, std::uint32_t> PatternSequences;
+		};
+		CGuideCatalog m_GuideCatalog;
+		std::map<std::uint32_t, GUIDE_RUNTIME> m_Guides;
+		LostArk::Shared::PLAYER_ID m_iGuideReceptionId = 0;
+        LostArk::Shared::PLAYER_ID m_iNextGuidePlayerId = 0x80000000u;
 		/* Grants what a started skill buffs, to the caster, the party in this room
 		or the entities it targets. */
 		void Apply_SkillBuffs(SERVER_PLAYER& caster, std::uint32_t skillId,

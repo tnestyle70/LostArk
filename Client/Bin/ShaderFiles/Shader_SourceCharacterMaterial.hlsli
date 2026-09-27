@@ -242,10 +242,10 @@ SOURCE_CHARACTER_NATIVE_INPUT MakeSourceCharacterInput(float2 uv, float4 extraUV
         input.projection[2] = viewProjection[1]; input.projection[3] = viewProjection[3] * 100.f;
 #ifdef SOURCE_CHARACTER_LIGHT_PASS
         PackSourceMovieLightInput(input, tangentX, tangentZ, extraUV, uv, rawView,
-            float4(tangentLight, 1.f), float4(up, 0.f), clipPosition * 100.f, float4(0.f,0.f,0.f,1.f));
+            float4(tangentLight, 1.f), float4(up, 0.f), clipPosition * 100.f, float4(0.f,0.f,0.f,1.f), sourcePosition);
 #else
         PackSourceMovieBaseInput(input, tangentX, tangentZ, extraUV, uv, rawView,
-            float4(tangentLight, 1.f), float4(up, 0.f), clipPosition * 100.f, float4(0.f,0.f,0.f,1.f));
+            float4(tangentLight, 1.f), float4(up, 0.f), clipPosition * 100.f, float4(0.f,0.f,0.f,1.f), sourcePosition);
 #endif
     }
     input.sourceCameraPosition = float3(cameraPosition.x,-cameraPosition.z,cameraPosition.y)*100.f;

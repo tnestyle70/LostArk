@@ -1341,15 +1341,29 @@ HRESULT CRenderer::Render_Portraits()
 
 	const float4x4_t PreviousView = *CGameInstance::Get().Get_Transform(D3DTS::VIEW);
 	const float4x4_t PreviousProjection = *CGameInstance::Get().Get_Transform(D3DTS::PROJ);
-	uint32_t iPreviousViewportCount = 1u;
-	D3D11_VIEWPORT PreviousViewport{};
-	m_pContext->RSGetViewports(&iPreviousViewportCount, &PreviousViewport);
+	if (!m_pPortraitBlendState)
+	{
+		D3D11_BLEND_DESC Blend{};
+		auto& Target = Blend.RenderTarget[0];
+		Target.BlendEnable = TRUE;
+		Target.SrcBlend = D3D11_BLEND_SRC_ALPHA;
+		Target.DestBlend = D3D11_BLEND_INV_SRC_ALPHA;
+		Target.BlendOp = D3D11_BLEND_OP_ADD;
+		Target.SrcBlendAlpha = D3D11_BLEND_ONE;
+		Target.DestBlendAlpha = D3D11_BLEND_INV_SRC_ALPHA;
+		Target.BlendOpAlpha = D3D11_BLEND_OP_ADD;
+		Target.RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_ALL;
+		if (FAILED(m_pDevice->CreateBlendState(&Blend, &m_pPortraitBlendState))) return E_FAIL;
+	}
+	uint32_t iPreviousViewportCount = D3D11_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE;
+	D3D11_VIEWPORT PreviousViewports[D3D11_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE]{};
+	m_pContext->RSGetViewports(&iPreviousViewportCount, PreviousViewports);
 	/* The last resolve leaves a portrait target bound. Begin_MRT saves whatever is bound as the
 	target it restores on End_MRT, so the world pass that follows would adopt the portrait
 	texture as its back buffer and draw the rest of the frame into it. */
-	ComPtr<ID3D11RenderTargetView> pPreviousRTV;
+	ID3D11RenderTargetView* PreviousRTVs[D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT]{};
 	ComPtr<ID3D11DepthStencilView> pPreviousDSV;
-	m_pContext->OMGetRenderTargets(1u, &pPreviousRTV, &pPreviousDSV);
+	m_pContext->OMGetRenderTargets(_countof(PreviousRTVs), PreviousRTVs, &pPreviousDSV);
 	/* Target_SSAOBlur still holds the world's occlusion, computed from a G-buffer the portrait
 	is about to overwrite, and a portrait is too small for its own SSAO pass to be worth a frame.
 	The lighting pass reads this flag, so it is cleared for the duration. */
@@ -1359,6 +1373,10 @@ HRESULT CRenderer::Render_Portraits()
 	HRESULT hLastFailure = S_OK;
 	for (const PORTRAIT_REQUEST& Request : m_PortraitRequests)
 	{
+		// Every request borrows the full-size targets. The preceding resolve changed
+		// both viewport and depth binding to the small portrait destination.
+		m_pContext->OMSetRenderTargets(_countof(PreviousRTVs), PreviousRTVs, pPreviousDSV.Get());
+		SetUp_ViewportDesc(m_iScenePostWidth, m_iScenePostHeight);
 		CGameInstance::Get().Set_Transform(D3DTS::VIEW, XMLoadFloat4x4(&Request.ViewMatrix));
 		CGameInstance::Get().Set_Transform(D3DTS::PROJ, XMLoadFloat4x4(&Request.ProjMatrix));
 		/* Lighting and the combine rebuild world position from the inverse matrices and the
@@ -1400,7 +1418,13 @@ HRESULT CRenderer::Render_Portraits()
 			hLastFailure = E_FAIL;
 			continue;
 		}
-		const HRESULT hCombined = Render_Combined();
+		HRESULT hCombined = Render_Combined(true);
+		// Use the same opaque-forward and translucent material programs as the field,
+		// with the subject depth still bound. SceneHDR alpha accumulates UI coverage.
+		if (SUCCEEDED(hCombined) && Request.DrawForward)
+			hCombined = Request.DrawForward(RENDERGROUP::NONLIGHT, nullptr);
+		if (SUCCEEDED(hCombined) && Request.DrawForward)
+			hCombined = Request.DrawForward(RENDERGROUP::BLEND, m_pPortraitBlendState.Get());
 		const HRESULT hEndScene = CGameInstance::Get().End_MRT();
 		if (FAILED(hCombined) || FAILED(hEndScene))
 		{
@@ -1432,10 +1456,10 @@ HRESULT CRenderer::Render_Portraits()
 	CGameInstance::Get().Set_Transform(D3DTS::VIEW, XMLoadFloat4x4(&PreviousView));
 	CGameInstance::Get().Set_Transform(D3DTS::PROJ, XMLoadFloat4x4(&PreviousProjection));
 	CGameInstance::Get().Refresh_CameraState();
-	ID3D11RenderTargetView* pRestoredRTV = pPreviousRTV.Get();
-	m_pContext->OMSetRenderTargets(1u, &pRestoredRTV, pPreviousDSV.Get());
-	if (0u != iPreviousViewportCount)
-		m_pContext->RSSetViewports(1u, &PreviousViewport);
+	m_pContext->OMSetRenderTargets(_countof(PreviousRTVs), PreviousRTVs, pPreviousDSV.Get());
+	for (auto* pTarget : PreviousRTVs) if (pTarget) pTarget->Release();
+	m_pContext->RSSetViewports(iPreviousViewportCount,
+		iPreviousViewportCount ? PreviousViewports : nullptr);
 	/* The world starts its own depth from scratch. Begin_MRT does not clear a depth buffer it
 	was not handed, so the last subject would otherwise reject the geometry standing behind it. */
 	if (pPreviousDSV)
@@ -1560,8 +1584,10 @@ HRESULT CRenderer::Render_Lights()
 	return hResult;
 }
 
-HRESULT CRenderer::Render_Combined()
+HRESULT CRenderer::Render_Combined(bool_t bPortrait)
 {
+	const uint32_t portrait = bPortrait ? 1u : 0u;
+	if (FAILED(m_pShader->Bind_RawValue("g_iPortraitCapture", &portrait, sizeof(portrait)))) return E_FAIL;
     CProfiler* const profiler = CGameInstance::Get().Get_Profiler();
     CProfilerScope cpuScope(profiler, "Render.Combined");
     CProfilerGpuScope gpuScope(profiler, "Render.Combined");
@@ -2298,6 +2324,8 @@ directly because the screen post chain has not run for it, drops bloom and any m
 view, and selects the pass that leaves the background transparent. */
 HRESULT CRenderer::Render_Final(bool_t bPortrait)
 {
+	const uint32_t portrait = bPortrait ? 1u : 0u;
+	if (FAILED(m_pShader->Bind_RawValue("g_iPortraitCapture", &portrait, sizeof(portrait)))) return E_FAIL;
 	const uint32_t materialView = bPortrait ? 0u :
 		static_cast<uint32_t>(m_MaterialRenderSettings.eDebugView);
 	if (FAILED(CGameInstance::Get().Bind_RT_SRV(TEXT("Target_Shade"), m_pShader, "g_ShadeTexture"))) return E_FAIL;

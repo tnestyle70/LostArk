@@ -13,6 +13,15 @@ from pathlib import Path
 BASE = 'tbasepassvertexshaderfnolightmappolicyfnodensitypolicy'
 LIGHT = 'tlightvertexshaderfdirectionallightpolicyfnostaticshadowingpolicy'
 
+# TEXCOORD numbers alone do not distinguish world position from clip position.
+# These original LocalVF instructions export the unprojected local-to-world row.
+WORLD_POSITION_OUTPUTS = {
+    (1518, 'Base'): ('239396ffe9f57b47a19ee2955207d2e8', 7, 'mov o7.xyzw, r3.xyzw'),
+    (1518, 'Light'): ('8b4317e05c02a1499fd230ff26e7e0ea', 8, 'mov o8.xyzw, r3.xyzw'),
+    (1523, 'Base'): ('520ba8522a929f49bed4a7b1e7088c26', 8, 'mov o8.xyzw, r0.xyzw'),
+    (1523, 'Light'): ('b763054422c97445804647381a99e406', 6, 'mov o6.xyzw, r3.xyzw'),
+}
+
 
 def read(path):
     return json.loads(path.read_bytes())
@@ -41,6 +50,13 @@ def generate(evidence, receipts):
                 if len(signatures) != 1:
                     raise ValueError(f'Pixel group {row["program"]} has incompatible {stage} VS layouts')
                 sig = next(iter(signatures))
+                world_output = WORLD_POSITION_OUTPUTS.get((row['program'], stage))
+                if world_output:
+                    sid, register, instruction = world_output
+                    if ids != {sid} or instruction not in evidence['programs'][sid]['disassembly']['instructions']:
+                        raise ValueError(f'Unreviewed movie world-position VS: {row["program"]} {stage}')
+                    if not any(s[2] == register and s[3] == 15 for s in sig):
+                        raise ValueError(f'Movie world-position register changed: {row["program"]} {stage}')
                 groups[stage, sig].append(row['program'])
                 proof.append(dict(program=row['program'], stage=stage, vertexShaders=sorted(ids), signature=sig))
     out = ['// Generated from original local-factory VS output signatures.',
@@ -51,7 +67,7 @@ def generate(evidence, receipts):
     for stage in ['Base', 'Light']:
         out += [f'void PackSourceMovie{stage}Input(inout SOURCE_CHARACTER_NATIVE_INPUT input,',
                 '    float4 tangentX, float4 tangentZ, float4 color, float2 uv,',
-                '    float4 view, float4 light, float4 up, float4 clip, float4 fog)', '{',
+                '    float4 view, float4 light, float4 up, float4 clip, float4 fog, float4 world)', '{',
                 '    if (!IsSourceMovieStatic(g_SourceCharacterProgram)) return;',
                 '    [unroll] for (uint lane=0u;lane<10u;++lane) input.values[lane]=0.f;']
         for (which, sig), programs in groups.items():
@@ -72,6 +88,10 @@ def generate(evidence, receipts):
                 swizzle = ''.join(c for i, c in enumerate('xyzw') if mask & (1 << i))
                 value = values[key]
                 out.append(f'        input.values[{register}].{swizzle}=({value}).{swizzle};')
+            for program in programs:
+                world_output = WORLD_POSITION_OUTPUTS.get((program, stage))
+                if world_output:
+                    out.append(f'        if (g_SourceCharacterProgram=={program}u) input.values[{world_output[1]}]=world; // Original VS world position in source cm.')
             out += ['        return;', '    }']
         out += ['}']
     out += ['#endif', '']

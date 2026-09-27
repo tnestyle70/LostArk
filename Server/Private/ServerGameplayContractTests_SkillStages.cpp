@@ -36,6 +36,32 @@ using namespace LostArk::Shared;
 void LostArk::Server::CServerGameplayContractRunner::Run_SkillStages(TESTS& tests, CGameplayCatalog& catalog)
 {
 	{
+		SERVER_WORLD_ENTITY boss{};
+		boss.eKind = WORLD_BOOTSTRAP_KIND::BOSS; boss.strArchetypeId = "BOSS_KAKULSAYDON_G1_SAYDON";
+		boss.iNetEntityId = 99801u; boss.iCurrentHp = boss.iMaximumHp = 1000u;
+		boss.iPatternSequence = 1u; boss.strPatternId = "test.combat.success"; boss.strActionId = "test.combat.window";
+		CBossCombatRuntime::Set_StaggerGauge(boss.BossCombat, 100u);
+		CBossCombatRuntime::Set_Flag(boss.BossCombat, SERVER_BOSS_COMBAT_FLAG::COUNTERABLE, true);
+		SERVER_PLAYER_TO_WORLD_HIT hit{}; hit.iSkillId = 34040u; hit.iSourcePlayerId = 1u; hit.iServerTick = 1u;
+		hit.iStaggerDamage = 99u;
+		std::vector<DAMAGE_EVENT> events;
+		(void)CServerCombatHitRuntime::Apply_PlayerToWorld(boss, hit, events);
+		tests.Require(events.size() == 1u && !events.front().isStaggerSuccess && !events.front().isCounterSuccess &&
+			events.front().iAmount == 0u && events.front().iStaggerAmount == 99u,
+			"A hit below the boss stagger threshold carries gauge contribution without a success notification");
+		hit.iStaggerDamage = 1u; hit.iCounterPower = 1u; hit.iServerTick = 2u;
+		(void)CServerCombatHitRuntime::Apply_PlayerToWorld(boss, hit, events);
+		tests.Require(events.size() == 2u && events.back().isStaggerSuccess && events.back().isCounterSuccess &&
+			events.back().isOutgoing && events.back().iSourcePlayerId == 1u && events.back().iAmount == 0u &&
+			boss.iCurrentHp == 1000u && boss.BossCombat.iStaggerCurrent == 100u,
+			"The authoritative hit publishes independent counter and stagger success with zero HP damage");
+		hit.iRawDamage = 1u; hit.iServerTick = 3u;
+		(void)CServerCombatHitRuntime::Apply_PlayerToWorld(boss, hit, events);
+		tests.Require(events.size() == 3u && !events.back().isStaggerSuccess && !events.back().isCounterSuccess &&
+			std::count_if(events.begin(), events.end(), [](const auto& event) { return event.isStaggerSuccess; }) == 1,
+			"Later hits cannot repeat the closed counter or completed stagger success notification");
+	}
+	{
 		SERVER_WORLD_ENTITY largeSaydon{};
 		largeSaydon.eKind = WORLD_BOOTSTRAP_KIND::BOSS;
 		largeSaydon.strArchetypeId = "BOSS_KAKULSAYDON_G2_BIG_SAYDON";

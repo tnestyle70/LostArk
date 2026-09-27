@@ -5065,7 +5065,7 @@ bool LostArk::Server::CServerApp::Transfer_SessionWorld(
 		std::string status;
 		if (!sourceSimulation->Transfer_PartyTo(*targetSimulation,
 			transfer.PartyBatchSessionIds, outFailure.ePartyResult, status,
-			transfer.strRaidReturnNpcPlacementId))
+			transfer.strRaidReturnNpcPlacementId, transfer.strSpawnPlacementOverrideId))
 		{
 			setFailure(SESSION_DIAGNOSTIC_REASON::SERVER_JOIN_PREFLIGHT_FAILED,
 				WSAEINVAL, status);

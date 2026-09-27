@@ -3,6 +3,7 @@
 #include "AnimationTargetService.h"
 #include "AnimationSkillBindingDocument.h"
 #include "Client_Defines.h"
+#include "ClassMovieInspector.h"
 #include "Effect_AuthoringDocument.h"
 #include "Effect_ComponentDocument.h"
 #include "Effect_DirectAuthoredSourceIndex.h"
@@ -551,7 +552,8 @@ public:
     struct CLASS_MOVIE_STATE final
     {
         bool available = false, active = false, paused = false, loop = false;
-        double clockMs = 0., durationMs = 0.;
+        double clockMs = 0., durationMs = 0., playbackRate = 1.;
+        bool selectionActive = false, selectionRepeat = false;
         std::string status;
     };
     struct CLASS_MOVIE_CALLBACKS final
@@ -563,11 +565,18 @@ public:
         std::function<void(bool)> pause;
         std::function<void()> stop;
         std::function<bool(const EFFECT_DOCUMENT_DESC&, std::string&)> preview;
+        // The Level owns occurrence selection, source/movie conversion and repeat time.
+        std::function<bool(const std::string&, bool, const EFFECT_DOCUMENT_DESC&,
+            const EFFECT_DOCUMENT_DESC&, const std::vector<std::string>&, double, double, bool, std::string&)> playSelection;
+        std::function<bool(const EFFECT_DOCUMENT_DESC&, const EFFECT_DOCUMENT_DESC&, const std::vector<std::string>&, double, double, std::string&)> previewSelection;
+        std::function<bool(double)> setPlaybackRate;
         std::function<bool(std::string&)> clearPreviews;
+        CLASS_MOVIE_INSPECTION_CALLBACKS inspection;
     };
     void Set_ClassMovieCallbacks(CLASS_MOVIE_CALLBACKS callbacks) { m_ClassMovieCallbacks = std::move(callbacks); }
     bool Open_ClassMovie(const std::string& classId, bool loop = false, const std::string& effectId = {});
     bool Play_ClassMovie();
+    bool Is_EditingClassMovie(const std::string& classId) const { return m_strClassMovieId == classId && !classId.empty(); }
     bool End_ClassMovieEditing();
     void Update(f32_t fTimeDelta);
     void Render();
@@ -587,7 +596,10 @@ public:
 private:
     bool Has_ClassMovieContext() const { return !m_strClassMovieId.empty(); }
     bool Is_ClassMovieEffect(const std::string& assetId) const;
-    void Render_ClassMovieControls();
+    void Render_ClassMovieControls(bool showEffects = true);
+    bool Restart_ClassMoviePreview();
+    void Sync_ClassMovieSelection();
+    bool Try_SetClassMoviePreviewFilter(EFFECT_PREVIEW_FILTER filter);
     bool Stage_ClassMovieEffect(const EFFECT_DOCUMENT_DESC& document);
     void Render_EffectToolWindow();
     void Render_ModelViewWindow();
@@ -1246,8 +1258,11 @@ private:
     std::vector<CLASS_MOVIE_RESOURCE_ROW> m_ClassMovieResources;
     std::optional<std::string> m_PendingClassMovieEditor;
     CLASS_MOVIE_CALLBACKS m_ClassMovieCallbacks;
+    CClassMovieInspector m_ClassMovieInspector;
     std::string m_strClassMovieId;
     bool m_bClassMovieLoop = false;
+    bool m_bClassMovieSelectionRepeat = false;
+    std::vector<std::string> m_ClassMovieFilterTargetIds;
     bool m_bClassMovieScrubbing = false;
     float m_fClassMovieSeekSeconds = 0.f;
     std::string m_strClassMovieStatus;

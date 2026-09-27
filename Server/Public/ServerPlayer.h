@@ -146,6 +146,9 @@ namespace LostArk::Server
 
 	struct SERVER_PLAYER
 	{
+		LostArk::Shared::PLAYER_CONTROL_KIND eControlKind = LostArk::Shared::PLAYER_CONTROL_KIND::HUMAN;
+		bool Is_Guide() const noexcept { return eControlKind == LostArk::Shared::PLAYER_CONTROL_KIND::GUIDE_AI; }
+		bool Is_Human() const noexcept { return !Is_Guide(); }
 		SESSION_ID iSessionId = INVALID_SESSION_ID;
 		LostArk::Shared::PLAYER_ID iPlayerId =
 			LostArk::Shared::INVALID_PLAYER_ID;
@@ -191,6 +194,7 @@ namespace LostArk::Server
 		std::uint32_t iVehicleFlightPhaseStartTick = 0u;
 		float fVehicleFlightPhaseSeconds = 0.f;
 		float fVehicleFlightGroundY = 0.f;
+		SERVER_NAV_POINT VehicleFlightSafeLanding{};
 		float fVehicleFlightStartHeight = 0.f;
 		float fVehicleFlightInputX = 0.f, fVehicleFlightInputZ = 0.f, fVehicleFlightInputY = 0.f;
 		float fVehicleFlightInputAge = 0.f;
@@ -346,6 +350,8 @@ namespace LostArk::Server
 		std::uint32_t iShield = 0;
 		/* Set while a death-deny buff has already spent itself on a lethal hit. */
 		std::uint32_t iInvulnerableEndTick = 0;
+		std::uint32_t iEstherGuardEndTick = 0;
+		std::int32_t iEstherGuardDamageTakenPercent = 0;
 		// Room policy gates damage gain; fractional units survive small admitted hits.
 		std::uint32_t iMadnessDamageGainPercent = 0u;
 		double dMadnessRemainder = 0.;

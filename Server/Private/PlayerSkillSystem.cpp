@@ -130,6 +130,7 @@ namespace
 	void ApplyPlayerHitDamage(
 		LostArk::Server::SERVER_WORLD_ENTITY& target,
 		const LostArk::Shared::PLAYER_ID sourcePlayerId,
+        const bool guideSource,
 		const LostArk::Shared::SKILL_ID skillId,
 		const std::uint32_t staggerDamage,
 		const std::uint32_t partDamage,
@@ -153,6 +154,7 @@ namespace
 		const std::uint32_t kind = nullptr == pHit ? 0u : pHit->iResultKind;
 		SERVER_PLAYER_TO_WORLD_HIT incoming{};
 		incoming.iSourcePlayerId = sourcePlayerId;
+        incoming.bGuideSource = guideSource;
 		incoming.iSkillId = skillId;
 		incoming.iRawDamage = kind <= 1u ? rawDamage : 0u;
 		const auto* skill = catalog.Find_Skill(skillId);
@@ -925,7 +927,7 @@ void LostArk::Server::CPlayerSkillSystem::Update_Projectiles(
 						continue;
 					}
 					ApplyPlayerHitDamage(entity,
-						player.iPlayerId, projectile.iSkillId,
+						player.iPlayerId, player.Is_Guide(), projectile.iSkillId,
 						skill->iStaggerDamage, skill->iPartDamage,
 						skill->iCounterPower,
 						ownsDamage ? DamageOfSubHit(projectile.iTotalDamage, projectile.iSubHitTotal,
@@ -982,7 +984,7 @@ void LostArk::Server::CPlayerSkillSystem::Update_Projectiles(
 				for (auto& [distanceSquared, target] : targets)
 				{
 					ApplyPlayerHitDamage(*target,
-						player.iPlayerId, projectile.iSkillId,
+						player.iPlayerId, player.Is_Guide(), projectile.iSkillId,
 						skill->iStaggerDamage, skill->iPartDamage,
 						skill->iCounterPower,
 						ownsDamage ? DamageOfSubHit(projectile.iTotalDamage, projectile.iSubHitTotal,
@@ -1315,7 +1317,7 @@ void LostArk::Server::CPlayerSkillSystem::Update(
 			return;
 		}
 		ApplyPlayerHitDamage(target,
-			player.iPlayerId, skill->iSkillId,
+			player.iPlayerId, player.Is_Guide(), skill->iSkillId,
 			skill->iStaggerDamage, skill->iPartDamage, skill->iCounterPower,
 			rawDamage, catalog, player.ActiveBuffs,
 			catalog.Find_Player(player.eCharacterClass), pHit,

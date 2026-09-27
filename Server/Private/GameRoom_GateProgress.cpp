@@ -157,6 +157,7 @@ void LostArk::Server::CGameRoom::Tick_MvpLedgers()
 			continue;
 		for (const auto& [playerId, player] : m_Players)
 		{
+			if (player.Is_Guide()) continue;
 			SERVER_MVP_LEDGER_ROW& row = Find_Or_Add_MvpLedgerRow(entity.MvpLedger, playerId);
 			++row.iFightTicks;
 			if (0u != player.iCurrentHp && LostArk::Shared::PLAYER_ACTION_STATE::DEAD != player.eAction)
@@ -218,6 +219,7 @@ void LostArk::Server::CGameRoom::Broadcast_RaidMvpResult(const std::uint8_t iGat
 	{
 		for (const auto& [playerId, player] : m_Players)
 		{
+			if (player.Is_Guide()) continue;
 			if (Is_KoukuRaidRunning() && std::find(m_KoukuRaid.State.ParticipantPlayerIds.begin(),
 				m_KoukuRaid.State.ParticipantPlayerIds.end(), playerId) == m_KoukuRaid.State.ParticipantPlayerIds.end())
 				continue;
@@ -228,7 +230,7 @@ void LostArk::Server::CGameRoom::Broadcast_RaidMvpResult(const std::uint8_t iGat
 	for (const SERVER_MVP_LEDGER_ROW& row : m_GateMvpLedger)
 	{
 		const auto playerIter = m_Players.find(row.iPlayerId);
-		if (playerIter == m_Players.end() || message.Participants.size() >= MAX_RAID_MVP_PARTICIPANTS)
+		if (playerIter == m_Players.end() || playerIter->second.Is_Guide() || message.Participants.size() >= MAX_RAID_MVP_PARTICIPANTS)
 			continue;
 		RAID_MVP_PARTICIPANT participant{};
 		participant.iPlayerId = row.iPlayerId;
@@ -323,7 +325,7 @@ void LostArk::Server::CGameRoom::Handle_GateProgressPropose(
     if (raid && std::any_of(voters.begin(), voters.end(), [&](const auto id) { return !m_Players.contains(id); })) return;
 	/* Only voters still in this room count. */
 	voters.erase(std::remove_if(voters.begin(), voters.end(),
-		[this](const PLAYER_ID id) { return !m_Players.contains(id); }), voters.end());
+		[this](const PLAYER_ID id) { const auto player = m_Players.find(id); return player == m_Players.end() || player->second.Is_Guide(); }), voters.end());
 	if (voters.empty())
 		return;
 
@@ -554,6 +556,7 @@ bool LostArk::Server::CGameRoom::Enter_KoukuRaidCombat(const std::uint8_t gateIn
         Broadcast_KoukuRaidState(); Broadcast_GateProgressState(false, GATE_PROGRESS_VOTE_RESULT::NONE);
         return false;
     }
+    for (const auto& [id, ground] : destinations) Guide_AnchorArrived(m_Players.at(id));
     if (gateIndex == 3u) run.bGate3CombatEntered = true;
     return true;
 }
@@ -648,6 +651,7 @@ bool LostArk::Server::CGameRoom::Advance_Gate(const std::uint8_t nextGate,
 	}
 	for (auto& [playerId, player] : m_Players)
 	{
+		if (player.Is_Guide()) continue;
 		SERVER_NAV_POINT ground{};
 		if (participants)
 		{
@@ -665,6 +669,7 @@ bool LostArk::Server::CGameRoom::Advance_Gate(const std::uint8_t nextGate,
 		player.fPositionZ = ground.z;
 		Update_MarioControlState(player);
 	}
+	for (const auto& [id, player] : m_Players) if (player.Is_Human()) Guide_AnchorArrived(player);
 	/* The gate is up again: fought from the start, whether it is the next one or a restart. */
 	m_GateProgress.iCurrentGate = nextGate;
 	m_GateProgress.iClearedMask &= static_cast<std::uint8_t>(~(1u << (nextGate - 1u)));

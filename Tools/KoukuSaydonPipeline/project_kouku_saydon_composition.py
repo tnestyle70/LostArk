@@ -178,7 +178,7 @@ LOGIC_RESULT_VALUE_KEYS = {"outcomeKind", "percent", "damageAmount", "durationMs
                            "contactMotions", "targetLogicOccurrenceId", "contactTargetWorldOccurrenceId", "sceneProfileId", "effectResourceId", "lightResourceId", "soundResourceId", "effectDelayMs", "attachmentSlot", "gripLocalOffset", "pushRangeM", "pushMs", "pushDirection", "forcePush", "pushCanLeaveArena", "pushBallistic", "pushHeightM", "pushYawOffsetDegrees", "marioStage"}
 LOGIC_TRIGGER_VALUE_KEYS = {"fixedHits", "countPerPlayer", "radiusM", "effectLifetimeMs", "arenaRandomCount", "arenaRandomRadiusM", "arenaHeightToleranceM", "arenaMinimumSpacingM", "randomPlayerOnly", "triggerKind", "hudMode", "teleportPosition", "clonePatternId", "clockHours", "faceCenterYawOffsetDegrees",
                             "targetWorldOccurrenceIds", "targetRadiusM", "contactGroupId", "contactPriority", "bossChargeDistanceM", "chargeYawOffsetDegrees", "rearmOnExit", "repeatAfterKnockback", "repeatIntervalMs",
-                            "airbornePhase", "airborneHeightM", "airborneDurationMs", "airborneTargetPositionPolicy", "selectedEffectGroupId", "selectedFlightMs", "selectedFlightArcHeightM", "selectedFlightSourceOffset", "playerEntryEffectOccurrenceIds", "soldierCounts", "spawnRadiusMinM", "spawnRadiusMaxM"}
+                            "airbornePhase", "airborneHeightM", "airborneDurationMs", "airborneTargetPositionPolicy", "selectedEffectGroupId", "selectedFlightMs", "selectedFlightArcHeightM", "selectedFlightSourceOffset", "playerEntryEffectOccurrenceIds", "soldierCounts", "spawnRadiusMinM", "spawnRadiusMaxM", "soldierMaxHp", "soldierDamage"}
 LOGIC_OPTIONAL_KEYS = LOGIC_DURATION_VALUE_KEYS | LOGIC_RESULT_VALUE_KEYS | LOGIC_TRIGGER_VALUE_KEYS | {"colliderDamageContactRole"}
 JUDGEMENT_KINDS = set(LOGIC_KIND_VALUE_KEYS)
 # End-tick kinds judge once when the window closes: Success or Fail, never
@@ -777,7 +777,7 @@ def _validate_logic_definition(
             if not targets or len(set(targets)) != len(targets):
                 raise CompositionError(f"{context} staging needs 1..4 distinct Effect occurrences")
         elif kind == "CARD_RAIN_SOLDIERS":
-            if extra - {"soldierCounts", "spawnRadiusMinM", "spawnRadiusMaxM"} != {"triggerKind"}:
+            if extra - {"soldierCounts", "spawnRadiusMinM", "spawnRadiusMaxM", "soldierMaxHp", "soldierDamage"} != {"triggerKind"}:
                 raise CompositionError(f"{context} card soldiers carry unrelated values")
             counts = _array(logic.get("soldierCounts", [1, 1, 1]), f"{context} soldierCounts", 3)
             if len(counts) != 3:
@@ -787,7 +787,10 @@ def _validate_logic_definition(
                 raise CompositionError(f"{context} soldier counts need a total of 1..64")
             low = _number(logic.get("spawnRadiusMinM", 3.0), f"{context} minimum spawn radius", 0, 100)
             high = _number(logic.get("spawnRadiusMaxM", 6.0), f"{context} maximum spawn radius", low, 100)
-            definition.update(soldierCounts=counts, spawnRadiusMinM=low, spawnRadiusMaxM=high)
+            max_hp = _integer(logic.get("soldierMaxHp", 0), f"{context} soldier maximum HP", 0, 2000000000)
+            damage = _integer(logic.get("soldierDamage", 0), f"{context} soldier fixed damage", 0, 2000000000)
+            definition.update(soldierCounts=counts, spawnRadiusMinM=low, spawnRadiusMaxM=high,
+                              soldierMaxHp=max_hp, soldierDamage=damage)
         elif kind == "CARD_MAZE_HIDE_NEXT":
             if extra != {"triggerKind"}:
                 raise CompositionError(f"{context} {kind} carries unrelated values")
@@ -5018,7 +5021,9 @@ def project_encounter(document: dict[str, Any], root: Path = REPOSITORY_ROOT) ->
                    if kind == "BINGO_BOARD" else {}),
                 **({"soldierCounts": list(logic.get("soldierCounts", [1, 1, 1])),
                     "spawnRadiusMinM": float(logic.get("spawnRadiusMinM", 3.0)),
-                    "spawnRadiusMaxM": float(logic.get("spawnRadiusMaxM", 6.0))}
+                    "spawnRadiusMaxM": float(logic.get("spawnRadiusMaxM", 6.0)),
+                    "soldierMaxHp": int(logic.get("soldierMaxHp", 0)),
+                    "soldierDamage": int(logic.get("soldierDamage", 0))}
                    if kind == "CARD_RAIN_SOLDIERS" else {}),
                 **({"directionPatternIds": list(logic["directionPatternIds"]), "cloneEndStageId": logic["cloneEndStageId"]}
                    if kind == "CROSS_DIRECTION_CLONES" else {}),

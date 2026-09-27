@@ -20,6 +20,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Public\ClientSession.h" />
+    <ClInclude Include="..\Public\GuideCatalog.h" />
     <ClInclude Include="..\Public\GameRoom.h" />
     <ClInclude Include="..\Public\RoomCommand.h" />
     <ClInclude Include="..\Public\ServerApp.h" />
@@ -58,6 +59,10 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\Private\ClientSession.cpp" />
+    <ClCompile Include="..\Private\GuideCatalog.cpp" />
+    <ClCompile Include="..\Private\GameRoom_Guide.cpp" />
+    <ClCompile Include="..\Private\GameRoom_GuideThreat.cpp" />
+    <ClCompile Include="..\Private\ServerGameplayContractTests_Guide.cpp" />
     <ClCompile Include="..\Private\GameRoom.cpp" />
     <ClCompile Include="..\Private\Main.cpp" />
     <ClCompile Include="..\Private\ServerApp.cpp" />

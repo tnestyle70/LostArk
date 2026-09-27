@@ -476,6 +476,37 @@ bool LostArk::Server::CServerCollisionSystem::Sweep_CircleAgainstBody(
 	const float deltaX = proposedX - startX;
 	const float deltaZ = proposedZ - startZ;
 	const float startDistanceSquared = toBodyX * toBodyX + toBodyZ * toBodyZ;
+	if (std::abs(endCenterY - startCenterY) > SWEEP_EPSILON)
+	{
+		// A flying body can enter from above/below with no XZ displacement.
+		// Intersect both time intervals instead of treating XZ overlap as an
+		// existing 3D overlap. Keep the legacy flat-ground path unchanged.
+		const float expandedY = body.fHalfHeight + halfHeight;
+		const float closingXZ = deltaX * toBodyX + deltaZ * toBodyZ;
+		if (startDistanceSquared < combinedRadius * combinedRadius &&
+			std::abs(startCenterY - body.fCenterY) < expandedY && closingXZ <= 0.f)
+			return false; // Preserve escape from an existing overlap.
+		float enter = 0.f, exit = 1.f;
+		if (!Update_Slab(startCenterY - body.fCenterY, endCenterY - startCenterY,
+			expandedY, enter, exit)) return false;
+		const float lengthSquared = deltaX * deltaX + deltaZ * deltaZ;
+		const float c = startDistanceSquared - combinedRadius * combinedRadius;
+		if (lengthSquared <= SWEEP_EPSILON * SWEEP_EPSILON)
+		{
+			if (c > 0.f) return false;
+		}
+		else
+		{
+			const float discriminant = closingXZ * closingXZ - lengthSquared * c;
+			if (discriminant < 0.f) return false;
+			const float root = std::sqrt(discriminant);
+			enter = (std::max)(enter, (closingXZ - root) / lengthSquared);
+			exit = (std::min)(exit, (closingXZ + root) / lengthSquared);
+		}
+		if (enter > exit || exit < 0.f || enter > 1.f) return false;
+		outHitRatio = std::clamp(enter, 0.f, 1.f);
+		return true;
+	}
 	if (startDistanceSquared < combinedRadius * combinedRadius)
 	{
 		/* Already inside: block only the part of the step that closes in. */

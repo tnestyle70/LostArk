@@ -64,7 +64,7 @@ Mario/Dance/Card Maze는 각각 `MARIO/DANCE/MAZE`를 사용한다. 모든 inter
 슈퍼맨, 양팔 벌리기, 한 다리 올리기다. 첫 오답은 fail, 유효 입력 없이 창 종료는 timeout이다.
 F1의 mode 선택은 typed Debug 명령으로 실제 모델·HUD·스킬을 바꾸고 Return to Player는 원래
 class로 복귀한다. 별도 `Kouku UI Preview`는 표시 전용 override이며 해제하면 실제 snapshot으로 돌아간다.
-F1 `Kouku UI Preview -> Madness gauge position`에서 위치를 조절한다. `screenOffsetX/Y`는 1280×720 기준 픽셀(+Y 아래), `headOffsetMeters`는 월드 높이다. Save는 `Data/UI/KoukuSaydon/KoukuHudModes.json`의 변경한 위치 필드만 최신 저장본에 병합하고 충돌 시 기존 저장본과 preview를 보존한다. 카드 미로에서는 본인과 동료의 광기 게이지를 모두 숨긴다.
+F1 `Kouku UI Preview -> Madness gauge position`에서 위치를 조절한다. `screenOffsetX/Y`는 1280×720 기준 픽셀(+Y 아래), `feetOffsetMeters`는 캐릭터 발 Transform에서 더하는 월드 높이다. 새 view도 같은 저장본을 읽는다. Save는 `Data/UI/KoukuSaydon/KoukuHudModes.json`의 변경한 위치 필드만 최신 저장본에 병합하고 충돌 시 기존 저장본과 preview를 보존한다. 광기 게이지는 Server gate-progress 수신 전/관문 0에서 숨기고 관문 활성화 후 표시한다(보스 관문 없는 MARIO snapshot과 Server 승인된 F1 player-only 진입의 본인은 표시 허용). 쿠크 시작 발판에서도 각 플레이어의 Server snapshot 위치와 `Is_KoukuArenaStartArea`로 본인·동료의 게이지를 숨긴다. 시작점 복귀도 같은 조건을 따른다. 카드 미로에서는 본인과 동료의 광기 게이지를 모두 숨긴다.
 Mario1의 `Mario1_go`/`Mario1_Trigger_5`는 이동 도착 시에만 mode를 전환한다. movePlayer event의
 optional `koukuHudMode`는 `MARIO/MAZE/NONE`이고 Server가 이동 성공 후 적용한다. Card Maze Debug gate는
 `(0.09,-0.01,1351.48)`에 플레이어만 이동시키고 보스를 생성하지 않는다. Mario2~4 진입점은 미등록이다.
@@ -235,6 +235,29 @@ roster와 leader를 재구성한다. 실제 commit 뒤 발생하는 연결 종�
 받지 못했으면 이름은 유지하되 체력을 100%로 꾸미지 않는다. 파티/NPC 메뉴에서 소비한
 마우스 버튼은 물리적으로 놓을 때까지 이동·공격 입력으로 다시 해석하지 않는다.
 
+### 1.3 가이드 차원술사 companion
+
+Guide는 인간 최대 4명에 별도 1명이다. 인간 `Members` 배열을 늘리지 않고
+`S2C_PARTY_ROSTER::GuideCompanion`을 optional로 보낸다. `PLAYER_CONTROL_KIND::GUIDE_AI`가
+Server spawn/snapshot에 유지되며 nickname이나 class로 bot 여부를 추측하지 않는다.
+공용 Bern 초대용 actor와 파티 소유 companion은 서로 다른 identity다. Guide에 TCP session을
+할당하지 않고 기존 `CGameRoom` 이동/스킬/vehicle 실행기와 `CClientReplication` 표현을 재사용한다.
+파티 이동은 companion의 target admission과 초기 복제도 함께 준비한다.
+
+Guide는 boss target·카드·광기·마리오·빙고 머리 표식·인간 인원·MVP에서 제외한다.
+Guide가 넣는 HP 피해는 허용하지만 counter/stagger/part contribution은 제외한다.
+Guide가 받는 물리 collision damage/CC/갈고리/칼날은 일반 player 경로를 유지한다.
+참여하지 않는 기믹의 미응답/전멸 결과와 공간 접촉을 구분한다.
+
+`Data/Guide`가 가이드 저작 정본이다. Save는 stable ID/필드 단위 병합을 하고
+`Tools/GuidePipeline/Publish-Guide.ps1`만 Client/Server Guide runtime을 게시한다.
+다른 gameplay domain의 값은 Guide Publish가 변경하지 않는다.
+`S2C_GUIDE_PROMPT`는 prompt ID/revision/event sequence/UTF-8 segment/수명을 전송한다.
+Client 채팅과 말풍선은 이 서버 이벤트를 소비하며 외부 언어 모델이나 local trigger로 대사를 만들지 않는다.
+`S2C_GUIDE_STATE`는 실제 서버 점수·입력 변수·선택 이유를 Combat Detail에 전달하는 읽기 전용 자료다.
+도구 draft와 적용 revision을 구분하고 게시 후 Server가 새 revision을 소비했는지 확인한다.
+현재 wire는 protocol 117이며 이전 Server/Client와 혼용하지 않는다.
+
 ## 2. 팀원이 먼저 읽을 파일
 
 | 담당 | 시작 파일 | 데이터 정본 |
@@ -345,9 +368,18 @@ walkable nav cell 경계와 별개로, 투사체·지연 장판·보스 이동 �
 
 발탄 F1 `Valtan Arena`의 Start Position / Before Entrance / Arena Start는 기존 typed player teleport를 사용한다. `Despawn Valtan Boss`는 Debug/Release Server에서 ENCOUNTER_VALTAN primary와 owner 종속체만 제거하고 일반 NPC/웨이브 몬스터를 보존한다. 이후 Boss Play Pattern은 disabled placement `boss.valtan.center`를 Server에 준비 요청하고 replicated primary 도착 후 기존 revision/sound/presentation admission을 다시 통과해야 실행된다. spawn 대기는 local boss 생성으로 우회하지 않는다.
 
-발탄·쿠크 아레나에서 F1 `Arena Camera / Player`는 현재 아레나의 자유 카메라 속도를 조절한다.
-기본은 모두 20m/s이며 범위는 0.1~400m/s다. Shift는 30배 이동이다. 설정은 아레나별로 이번
-프로세스에서 유지되고 같은 아레나에 재입장해도 보존하며 프로그램 종료 후 디스크에 저장하지 않는다.
+Debug/Release 공통 F1 `Camera`에서 자유 카메라 속도를 조절한다. 베른·발탄·쿠크 기본은
+20m/s이며 범위는 0.1~400m/s다. Shift는 30배 이동이다. Debug 발탄·쿠크의 설정은 아레나별
+process-session에 보관돼 재입장에도 유지한다. 베른과 Release는 현재 맵 방문 동안 적용한다.
+
+Debug F1 `Valtan Arena`의 위치 버튼 아래 `Axe Transform`은 본체/유령 도끼의 socket 위치·회전을
+즉시 적용한다. BossCatalog v8의 optional `weaponSocketTransform.positionMeters`와
+`rotationDegrees`(pitch/yaw/roll)는 각각 유한한 3축 값이며 ±10m, ±360도 범위다. 생략은 영점이다.
+position은 정규화된 socket 축의 미터 단위이며 이후 부모 scale을 적용한다. Save는 최신 원본에
+변경 축만 병합하고 같은 축의 동시 변경·transaction lock·파일 교체 실패 시 기존 데이터와 draft를 보존한다.
+Save + Publish는 기존 Valtan source reload와 Balance publisher를 사용해 BossCatalog를 Server
+presentation generation에 포함한다. Balance의 미저장 draft가 있으면 publish를 진행하지 않는다.
+표현 보정은 Server hitbox를 바꾸지 않으며, 게시 수신 측은 Server 재시작·재입장 경계를 따른다.
 
 플레이어 위치를 바꾸려면 F6 자유 카메라 → F1 `Move Player` → UI 밖의 지면을 한 번 클릭한다.
 버튼을 누르면 mouse-look이 꺼지고, Esc/우클릭/F6 follow 복귀는 아직 제출하지 않은 선택을 취소한다.
@@ -369,9 +401,9 @@ F1 Sequence Viewer는 모든 Debug Level에서 쿠크/발탄 목록을 읽고, �
 player·오래된 request sequence는 실행하지 않는다. 표시 이름은 실행 ID가 아니다.
 사용법과 저작/배포 경계는 `AREA_DATA_LAYER_GUIDE.md`의 F1 Sequence Viewer 항목을 따른다.
 
-F1의 카메라 편집 패널을 제거하고 같은 위치에 `Open Balance Test`를 배치했다.
+F1의 카메라 profile 수치 편집 패널 대신 `Open Balance Test`를 제공한다.
 버튼은 기존 공용 `Balance Test` 독립 창을 열며 Debug/Release에서 함께 사용한다.
-F6 follow/free 전환과 맵별 카메라 profile 소비는 유지한다.
+별도 `Camera` 패널은 자유 이동 속도를 조절한다. F6 follow/free 전환과 맵별 카메라 profile 소비는 유지한다.
 
 정본은 `Data/Camera/{CharacterSelect,Bern,Valtan,KoukuSaydon}.camera.json`이며 publisher 없이
 직접 읽는다. `CArenaCameraProfile`의 schema/version/areaId·유한 범위 검증을 통과한 profile만
@@ -427,7 +459,7 @@ Release Server는 예전처럼 플레이어가 밟으면 그룹을 시작한다.
 결과 메시지는 없고 monster는 world snapshot으로 온다. 거절 사유는 Server 콘솔의 `[WaveMonsters]` 줄에 남는다.
 
 Release Server는 이 명령을 무시한다. `Stage_MiniBoss_Spawn`, `Stage_3`, `Stage_Boss`, 다른 월드의 트리거는 Debug에서도
-예전처럼 동작한다. 다른 protocol의 Server/Client를 섞어 실행하지 않는다. 현재 wire 정본은 `PacketType.h`의 `NETWORK_PROTOCOL_VERSION` 110이다. 위 protocol 99 표기는 해당 명령이 도입된 버전이며 현재 실행 파일의 호환 버전으로 사용하지 않는다.
+예전처럼 동작한다. 다른 protocol의 Server/Client를 섞어 실행하지 않는다. 현재 wire 정본은 `PacketType.h`의 `NETWORK_PROTOCOL_VERSION` 115이다. 위 protocol 99 표기는 해당 명령이 도입된 버전이며 현재 실행 파일의 호환 버전으로 사용하지 않는다.
 
 ### 4.2 마리오 변신·방향키 조작·Debug 점프
 
@@ -711,6 +743,22 @@ UI가 바로 사용할 읽기 경계는 `CCombatHUDViewModel`이다.
 - current/max HP
 - phase
 - server action과 action ID
+- `eMechanicGaugeKind`, `iCurrentMechanicGauge`, `iMaximumMechanicGauge`: protocol117의
+  서버 기믹 게이지 종류와 남은 값/최대값. `NONE`이면 상단 기믹 행 전체를 숨긴다.
+  `STAGGER`는 쿠크 1관문 무력화·3관문 마리오 2단계의 열린 판정 구간만 표시하고,
+  `BOSS_HP`는 빙고 블랙홀 13초 동안 실제 보스 current/max HP를 표시한다.
+  `Boss_StaggerFill`은 `UI/BossUI/boss_bar_fill_orange.png`를 사용하며 일반 누적 stagger나
+  response 값으로 대체하지 않는다. 기존 상단 보스 HP 여러 줄 표시는 유지한다.
+
+`Get_WorldHealthBars()`는 `HUD_WORLD_HEALTH_BAR_STATE` 목록을 제공한다. 각 항목은 stable
+NetEntityId, player/local 구분, current/max HP, shield, presentation의 weak 참조를 가진다.
+`CClientReplication`이 수락한 snapshot으로 목록을 교체하고 reliable despawn·runtime reset에서
+제거한다. 모든 몬스터·보스는 빨강, 자기 캐릭터를 제외한 다른 플레이어는 청록 HP와 흰 보호막을
+`CWorldHealthBarView`로 표시한다. 비전투 NPC는 제외한다. `Data/UI/HeadStatus/HealthBar_Layout.json`은
+원본 `headstatus_i6`의 Player HP 영역을 그대로 추출한 `UI/HeadStatus/HS_Fill_Player.png`와
+기존 적·보호막 이미지를 중립 tint로 `CUILayoutRuntime -> CUI_Sprite`에 연결하며, HP와 보호막은
+`max(maxHP, HP + shield)`를 공통 분모로 사용한다. 살아 있고 화면에 투영되는 대상만 layout을
+처음 생성한다. 표시 위치는 전달받은 weak presentation의 현재 머리/모델 경계에서 계산한다.
 
 `Get_DamageEvents()`는 최근 128개 Server `DAMAGE_EVENT`를 server tick과 함께 보관한다. 실제 적용
 damage, target NetEntityId, world anchor, incoming/outgoing을 제공하며 UI가 HP 차이로 damage를
@@ -736,7 +784,7 @@ Gameplay bootstrap의 공통 용량은 `Shared/Public/GameplayDataRevision.h`의
 | `Data/Encounters/Valtan/ValtanCombatObjects.json` | pattern stage가 생성하는 지연/이동 객체의 stable ID, motion, life, hit | Server room combat-object runtime |
 | `Data/Actors/BossCatalog.json`의 `combatObjectVisuals` | gameplay object ID + visual ID를 Product Effect ID에 연결 | Client replication/effect prewarm |
 
-UI 담당자는 JSON을 매 프레임 읽지 않는다. `CCombatHUDViewModel::Initialize_Definitions()`가 정의를 준비하고 `CClientReplication`이 snapshot마다 runtime 상태를 적용한다. UI 코드에서 packet, socket, Character, boss GameObject를 직접 조회하지 않는다.
+UI 담당자는 JSON을 매 프레임 읽지 않는다. `CCombatHUDViewModel::Initialize_Definitions()`가 정의를 준비하고 `CClientReplication`이 snapshot마다 runtime 상태를 적용한다. UI 코드에서 packet이나 socket을 사용하거나 Character·boss GameObject에서 gameplay 수치를 조회하지 않는다. 머리 위 체력바는 ViewModel이 제공한 weak presentation의 표시 위치만 읽는다.
 
 Debug/Release F1의 `Open Balance Test`는 공용 수치 편집용 독립 창을 연다. `Players / Skills /
 Damage / Bosses / Madness`에서 실제 소비하는 수치를 편집하며 일반 수치 panel은 Valtan pattern source를
@@ -1061,7 +1109,7 @@ MOTION_END tail까지 WORLD box 구간과 함께 확인한다.
 WORLD cue는 run epoch·member·cue ID와 시작 tick을 함께 전달한다. Client는 전달 지연만큼 시계를 맞추고,
 STOP_OWNER는 취소·실패·restart에 사용하고, 정상 완료의 FINISH_OWNER는 이미 생성한 공과 Effect의
 남은 수명을 보존한다. 두 명령 모두 해당 run/member가 만든 객체에만 적용한다.
-Server/Shared/Client는 같은 protocol114로 함께 빌드·재시작한다. FEAR snapshot 상태와
+Server/Shared/Client는 같은 protocol115로 함께 빌드·재시작한다. FEAR snapshot 상태와
 빙고·마리오·갈고리 attachment wire, 마리오 원본 공의 `iMarioPoppedBallMask`(u16)·
 `iMarioCurseReleasedMask`(u8), `iMarioMarkerColor`(u8)와 카드미로 ENTRY_HIDDEN을 함께 포함한다.
 이전 protocol 실행 파일과 혼용하지 않는다.
@@ -2026,7 +2074,7 @@ SHOWTIME_PLAYER_TARGETS의 random volley는 fixed/tracking template 없이 단�
 
 유한 random volley에는 MAP SOUND occurrence를 함께 포함할 수 있다. 최소 한 개의 MAP EFFECT가 위치 기준을 소유하며 SOUND만 있는 세트, BOSS-follow SOUND 및 looping targeted SOUND는 거부한다. Sound도 같은 content-addressed visual ID와 Server birth clock에 속하므로 각 투하에서 한 번 재생하고 늦은 입장에서는 이미 지난 음원 구간을 다시 시작하지 않는다. 기존 SoundCueCatalog의 variant는 해당 CombatObject ID/spawn tick/occurrence로 고정되며, 원본 Wwise avoid-repeat 메모리 전체를 재구현한 계약은 아니다.
 
-`CARD_RAIN_SOLDIERS`는 typed trigger이며 optional `soldierCounts`는 CLUB·HEART·DIAMOND 순서의 정수3개(각0..32, 합계1..64, 기본1/1/1), `spawnRadiusMinM/MaxM`는 정렬된 finite0..100m(기본3..6m)를 받는다. Box Detail에서 편집하며 publisher의 `PATTERNCARDRAINSOLDIERS` supplemental row를 Server가 소비한다. Server는 보스 기준 반경의 navigation 위치를 전부 확보한 뒤 MonsterCatalog의 세 archetype을 Spawn_Monster로 생성하며 maze 진행 상태에는 등록하지 않는다. MonsterProfiles의 전투 수치와 기존 MonsterBrain·navigation으로 플레이어를 추적·공격한다. 같은 profile을 쓰는 미로 target은 생성 직후 maze에 등록하고 generic Brain에서 제외해 미로가 위치와 접촉을 계속 소유한다. 카드비 병정은 패턴 종료와30초 이후에도 유지되며, 병정 사망·owner 사망/제거 때 정리된다.
+`CARD_RAIN_SOLDIERS`는 typed trigger이며 optional `soldierCounts`는 CLUB·HEART·DIAMOND 순서의 정수3개(각0..32, 합계1..64, 기본1/1/1), `spawnRadiusMinM/MaxM`는 정렬된 finite0..100m(기본3..6m)를 받는다. Box Detail에서 편집하며 publisher의 `PATTERNCARDRAINSOLDIERS` supplemental row를 Server가 소비한다. Server는 보스 기준 반경의 navigation 위치를 전부 확보한 뒤 MonsterCatalog의 세 archetype을 Spawn_Monster로 생성하며 maze 진행 상태에는 등록하지 않는다. optional `soldierMaxHp/soldierDamage`는 0..2,000,000,000 정수이며 0 또는 누락은 MonsterProfiles를 유지한다. HP override는 해당 카드비 spawn에만 적용하고, damage override는 방어력 재감산 없이 기존 무적·보호막·받는 피해 보정을 소비한다. 게시된 카드비 기준은 HP 69,000과 피해 13,200이다. 기존 MonsterBrain·navigation으로 플레이어를 추적·공격한다. 같은 profile을 쓰는 미로 target은 생성 직후 maze에 등록하고 generic Brain에서 제외해 미로가 위치와 접촉을 계속 소유한다. 카드비 병정은 패턴 종료와30초 이후에도 유지되며, 병정 사망·owner 사망/제거 때 정리된다.
 
 쿠크 Level의 단일 BGM owner가 Ready Terrace·GATE1/2/3·Mario1~4·Card Maze·Bingo를 승인된 player/raid 상태에서 선택한다. 시퀀스와컷씬/카메라 재생 중에는 BGM을 중지하고 같은 state의 반복 snapshot은 음악을 재시작하지 않는다. 원본 intro/loop 구간은 WAV smpl metadata를 소비한다. cue sound는 기존 pattern presentation 경로를 사용한다.
 
@@ -2051,7 +2099,9 @@ Gate3 진입 오라는 원본 Prop300010 사각형의 회전과 실측 크기를
 vehicle9523 고대의 바다는 `CPlayerController -> IPlayerCommandSink -> C2S_MOVE`의
 typed flight intent와 Server snapshot phase/startTick/duration을 사용한다(Shared protocol105). 동일 protocol에는 F1 에스더 지정 소환 command도 포함되므로 Client/Server를 함께 갱신한다.
 E는 이륙/착륙 전환, WASD는 비행 이동, Space/Ctrl hold는 상승/하강이며 서버가 고도와
-XZ navigation/collision을 확정한다. WASD 조합을 유지하는 동안 카메라 기준을 고정해
+실제 고도의 3D collision을 확정한다. 비행 중 걷기 navigation 밖의 XZ 이동을 허용하고,
+착륙은 현재 XZ의 walkable 지면과 collision 검사를 통과해야 한다. 실패하면 비행을 유지하며
+강제 하차는 마지막 안전 지면으로 복귀한다. WASD 조합을 유지하는 동안 카메라 기준을 고정해
 용 회전과 카메라 추종이 서로 입력을 되먹이지 않게 한다. UI/free-camera/focus 전환은
 입력을 중지하고 키 해제 뒤 재입력을 요구한다. 좌클릭 drag 공전은 presentation 입력이다.
 
@@ -2060,6 +2110,15 @@ Valtan/Kouku의 탑승 예외는9523만 허용한다. takeoff/loop/landing 표�
 clip 길이와 함께 Vehicle publisher가 Server phase duration으로 변환한다. Action Workbench
 Save Flight Logic은 해당 subtree만 최신 저장본에 병합하며 다른 effect/sound draft를 버리지 않는다.
 `Data/Vehicles/VehicleProfiles.json`의 `flight`는 hoverHeight/maximumHeight/speed/verticalSpeed 물리 입력을 소유한다.
+고대의 바다 지상 속도는 원본 `moveSpeed`5를 보존하고 `moveSpeedOverride`10을 적용하며,
+비행16·상하8m/s다. Debug F1 `Dragon`은 typed 탑승/하차, 즉시 적용하는 비행 카메라 조절과
+속도 Save/Save + Publish를 제공한다. 속도는 publisher가 최신 데이터의 해당 필드를 검증·저장하고
+bootstrap을 게시한 뒤 Server 재시작으로 적용한다. 지상 탑승은 기존 캐릭터 시점이며 비행 phase에서만
+전용 카메라를 적용한다. F6 free camera는 기존 입력 차단 계약을 유지한다.
+착륙 중에도 지면을 매 tick 재검사하며 지형이 사라지면 현재 고도를 유지해 비행으로 돌아간다.
+마지막 안전 지면도 사라졌다면 같은 층의 유효 지면, 유효한 저작 spawn 순서로 회복을 시도한다.
+공중 동적 몸체 충돌은 높이 구간과 XZ 원형 구간의 겹치는 이동 시간을 검사해 수직 관통을 막는다.
+기존 평지 이동·몸체 접선 미끄러짐 경로는 유지한다.
 기존 Server authority와 CModel animation/IK, follow camera를 사용하며 두 번째 이동 runtime은 없다.
 
 
@@ -2088,7 +2147,7 @@ BOSS_TRACK_TARGET/회전 Logic으로 먼저 설정하고, Collider는 그 순간
 
 Logic Box Detail은 연결된 Success/Fail/Timeout Result의 typed 수치를 편집한다. 같은 stable Logic ID를 공유하는 창은 같은 값을 소비하며 표시 이름에 피해·넉백 수치를 고정하지 않는다. BOSS/WORLD 본 Collider는 실제 모델의 전체 bone basis에 local XYZ TRS를 먼저 합성한 뒤 최종 XZ 중심·yaw를 얻는다. damageable WORLD의 `ownerWorldOccurrenceId`는 body 사망·취소·만료와 contact ledger의 수명을 묶고, 명시적 전체 수명 광기의 `authoredMadness`만 기존 aura를 대체한다.
 
-빙고는 각 실제 폭탄 폭발의 바닥 반전·줄 승격 뒤 아직 보상에 쓰지 않은 빨간 가로·세로 줄을 집계한다. pinned `bingoSpecialPatternId`의 `BINGO_COMPLETED_LINES` threshold(1..10, 현재1) 단위로 새 줄을 사용 처리하고 기존 Success의 `PLAYER_INVULNERABILITY` Result(현재30000ms)를 같은 레이드 생존 참가자에게 즉시 적용한다. 현재 규칙은 새1줄마다30초이며 같은 폭발에서 완성된 여러 새 줄도 모두 사용 처리한다. 사용한 줄은 다음 집계에서 제외하고 빨간 바닥 자체는 유지한다. 다른 새 줄이 완성되면 그 시점부터30초로 갱신한다. 세 번째 폭탄의 Parent 판정은 해당 주기의 보상 성공을 소비하며 이미 지급한 무적 시간을 다시 연장하지 않는다. 후속 `BINGO_DETONATION`은 해당 주기 성공이면 보스13줄 피해를 주고, 플레이어는 성공·실패와 관계없이 폭발 시점의 유효 무적으로만 생존한다. 쿠크 이난나 소환 승인은 같은 레이드 생존 참가자에게30초 무적을 부여하여 새 빨간 줄 없이도 블랙홀을 피하게 한다. Bingo 폭발만 이 무적을 존중하며 다른 encounter wipe의 기존 무적 우회 계약은 유지한다. 보드·폭탄은 encounter가 유지하고, 이동→첫 클립→메두사→블랙홀13초의 작은 Parent는 일반 반복 Flow에 삽입한다. 폭탄의 표식6초+대기2초+fuse4초는 Parent 애니메이션 길이와 독립이다.
+빙고는 각 실제 폭탄 폭발의 바닥 반전·줄 승격 뒤 아직 보상에 쓰지 않은 빨간 가로·세로 줄을 집계한다. pinned `bingoSpecialPatternId`의 `BINGO_COMPLETED_LINES` threshold(1..10, 현재1) 단위로 새 줄을 사용 처리하고 기존 Success의 `PLAYER_INVULNERABILITY` Result(현재30000ms)를 같은 레이드 생존 참가자에게 즉시 적용한다. 현재 규칙은 새1줄마다30초이며 같은 폭발에서 완성된 여러 새 줄도 모두 사용 처리한다. 사용한 줄은 다음 집계에서 제외하고 빨간 바닥 자체는 유지한다. 다른 새 줄이 완성되면 그 시점부터30초로 갱신한다. 세 번째 폭탄의 Parent 판정은 해당 주기의 보상 성공을 소비하며 이미 지급한 무적 시간을 다시 연장하지 않는다. 후속 `BINGO_DETONATION`은 해당 주기 성공이면 보스13줄 피해를 주고, 플레이어는 성공·실패와 관계없이 폭발 시점의 유효 무적으로만 생존한다. 쿠크 이난나는 소환 2초 뒤 이난나 위치 반경7m 보호 지대를10초 동안 열고, 그 안의 레이드 생존 참가자에게 무적과 초당 광기10% 감소를 주며 해제 순간 안에 있던 참가자의 생명력을 최대치의35% 회복시킨다. 블랙홀 시점에 지대 안에 있으면 새 빨간 줄 없이도 생존한다. Bingo 폭발만 이 무적을 존중하며 다른 encounter wipe의 기존 무적 우회 계약은 유지한다. 보드·폭탄은 encounter가 유지하고, 이동→첫 클립→메두사→블랙홀13초의 작은 Parent는 일반 반복 Flow에 삽입한다. 폭탄의 표식6초+대기2초+fuse4초는 Parent 애니메이션 길이와 독립이다.
 
 빙고 전투 묶음은 `patternFlows`의 일반 entry/loop와 `bingoSpecialPatternId`의 특수 Parent를 함께 저장한다. 이 참조는 제품 BINGO에 필수이며 같은 gate·encounter·boss와 유일한 폭발을 가진 유효 Parent만 게시한다. `RAIDBINGOSPECIAL` supplemental 행을 Server gate definition에 고정하고 이름 검색이나 전체 패턴 추론으로 선택하지 않는다. 빙고 페이즈 진입 때 encounter 시계를 시작하며 매 세 번째 머리 표식에 현재 일반 occurrence를 정리하고 특수 Parent를 실행한다. 완료 뒤 중단했던 일반 entry를 처음부터 재생한다. 보드·폭탄 시계와 raid owner는 유지하며 동시에 두 패턴이 보스를 제어하지 않는다. 기존 다중 actor 동시 재생 Bundle 계약은 유지한다.
 
@@ -2228,7 +2287,7 @@ INVULNERABILITY_ZONE의 기존 threshold필드는0이면인원제한없음,1~4�
 
 ### 쿠크 후속 판정·표시 계약
 
-현재 protocol114의 player snapshot은 iMarioMarkerColor(0없음,1빨강,2파랑,3노랑)를
+현재 protocol115의 player snapshot은 iMarioMarkerColor(0없음,1빨강,2파랑,3노랑)를
 표시 대상에게 보낸다. Server가 마리오 진입 때 지정 색과 대상을 정하고1인은 진입자,
 2~4인은 바깥 참가자 중 한 명에게 표시한다. 표식 대상이 사망해도 진입자가 살아
 있는 동안 유지한다. 지정 색 공3개를 파괴해야 terminal 이동과 typed0키 복귀가
@@ -2250,3 +2309,67 @@ hammerHalfExtentsM(진행축·가로축)을 PATTERNBINGOHAMMER 행으로 읽는�
 카드미로 입장에는 사망자 위치도 포함하되 HP0/DEAD/빈 interaction slot을 보존한다.
 카드미로·댄스 모드는 사망 관전자도 HUD를 숨기며 기믹 입력이나 사망 복귀창을
 전역 UI suppression으로 차단하지 않는다.
+
+### 성공 문구와 마리오 전장 분리
+
+protocol115의 DAMAGE_EVENT는 isStaggerSuccess를 명시적으로 전달한다. 일반 stagger gauge
+완료와 쿠크 STAGGER_WINDOW 성공 모두 Server edge이며 피해0 성공도 유효하다. Client는
+기존 isCounterSuccess와 함께 CombatHUDViewModel을 거쳐 파란 카운터·노란 무력화 폰트를
+표시하고 가짜 피해나 Client 판정을 생성하지 않는다. 비행 공 피격은 typed Mario source로
+구분하며 일반 incoming damage를 공 충돌로 추측하지 않는다. Server/Client는 같은 버전으로
+교체·재시작한다.
+
+알비온과 보스 선택·추적은 마리오 참가자를 제외한다. 유효 전장 참가자가 없으면 현재
+보스의 navigation ground를 고정 표적으로 사용해 단계 진행을 유지한다. 마리오의 로컬
+청취 범위에서는 전장 보스 SOUND와 WORLD soundTracks·tail을 재생하지 않는다. 각자
+마리오의 자체 공격·피격·BGM은 유지하며 source/renderer나 gameplay clock을 멈추지 않는다.
+다른 플레이어의 Character skill/vehicle 및 Esther PLAYER_ACTION/NPC_ACTION 음원도
+같은 청취 범위에서 제외한다. 소유 handle로 진행 중 tail을 중단하고 mute 중 cue는
+소비하므로 복귀 시 밀린 음원이 재생되지 않는다. Kouku snapshot은 로컬 player를 먼저
+반영해 같은 입장 tick의 remote action도 현재 Mario 상태를 읽는다.
+
+Clown.interactionbindings.json의 각 skill은 optional soundCues를 가질 수 있다. 각 행은
+Mario sound catalog의 event 이름과 clip source 시계의 정수 startMs이며 최대16개다.
+Character가 clip/effect/sound를 함께 검증해 교체하고 Server가 승인한 로컬 interaction의
+actionStartTick과 playRate로 한 번만 재생한다. 잘못된 행은 기존 binding을 유지한다.
+공 파괴는 기존 Server pop mask, 비행 공 피격은 DAMAGE_EVENT.eMarioHitSource의
+FLYING_BALL을 소비하며 Client가 전투 판정을 새로 만들지 않는다.
+
+## Sequence Camera와 World/Object 저작 원본
+
+Sequence Camera Tool은 Movie와 Character Action의 기존 camera owner를 편집한다. World Movie는
+`Data/Camera/ClassSelection.cinematics.json`, ALT V camera는 `Data/Effects/Sequences`의 실제
+Product 입력을 Save한다. 두 경로의 XYZ/FOV/키는 Client 표현 데이터이며 Server 전투 판정이나
+simulation clock으로 전송하지 않는다. 원본 source clock과 Movie time의 변환은 기존 owner가
+소유하고 타임라인 표시 행 번호를 저장 ID로 사용하지 않는다.
+
+World/Object Save는 `Data/Maps/Authoring` 및 필요한 연결 문서의 저작 원본을 저장한다.
+별도 Publish는 기존 WorldSequences publisher로 Client 실행 데이터를 만들고, 연결된
+Pattern/Collider/Logic에 필요하면 기존 Pattern 게시 경로를 이어 사용한다. Data가 편집 정본이며
+Client/Server의 `Bin/DataFiles`는 각 소비자용 게시 결과다. 로컬 Publish 성공을 LAN 서버 전달이나
+실행 중 Server 메모리 갱신 완료로 해석하지 않는다. 버튼별 작업과 저장 충돌 보존 절차는
+`ANIMATION_TOOL_OWNER_HANDOFF.md`의 World Movie/Object 항목을 따른다.
+
+### Movie WORLD 검사 데이터 계약
+
+Effect Tool과 WORLD Action Workbench/Sequencer는 기존 `CClassSelectionPresentation`의 같은
+clock·선택·draw filter를 사용한다. `CLASS_MOVIE_INSPECTION_CALLBACKS`는 stable instance/slot/
+object ID로만 명령을 제출한다. Solo/Mute/선택 강조는 임시 draw 상태이며 authored visibility와
+bone provider를 변경하지 않는다. F6 자유 카메라에서도 Movie clock은 같은 owner가 유지한다.
+
+`ClassSelection.cinematics.json`의 각 scene은 optional `excludedWorldObjectIds` 배열을 가진다.
+Delete from Movie / Restore to Movie는 해당 클래스의 Intro/Loop에 실제 바인딩된 object ID만
+이 배열에서 편집하며 Save Movie로 영구 저장한다. 공유 WORLD 리소스·WModel·서버 플레이어
+좌표는 삭제하거나 수정하지 않는다. Camera manifest와 같은 Client 직접 소비 경로이며, 이
+필드만 바뀌면 WorldSequences 재게시는 필요 없다. 미지원/중복/외부 클래스 ID는 검증 실패로
+기존 상태를 보존한다. 자세한 버튼 흐름은 `ANIMATION_TOOL_OWNER_HANDOFF.md`를 따른다.
+
+### 커스터마이징 기본 헤어와 저장 선택
+
+`Data/UI/Customizing/CustomizingHairstyles.json`의 class 항목은 optional `defaultVisualSetId`로
+해당 class의 기존 hairstyle stable ID 하나를 초기·Reset 기본값으로 지정할 수 있다. 생략하면
+기존 index0이다. reader는 실제 목록에 정확히 하나 존재하는 ID인지 검증하고 실패하면 이전
+문서를 유지한다. 목록을 재정렬하지 않으며 기존 preset의 명시적 `hair` index가 기본값보다
+우선한다. View에서 class를 왕복해도 직접 선택한 헤어를 보존한다. 일반 기본 장착과 헤어 재질의
+소유권은 `CharacterCatalog`의 해당 character가 소유하며 같은 모델의 global lazy override를
+중복 등록하지 않는다.

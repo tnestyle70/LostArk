@@ -15,8 +15,11 @@
 #include "Valtan.h"
 #include "BalanceTool.h"
 #include "ValtanBossTool.h"
+#include "ValtanPatternAuditionService.h"
+#include "ValtanPatternFlowService.h"
 #include "CameraTool.h"
 #include "Effect_Catalog.h"
+#include "EffectAuthoringResourceTree.h"
 #include "Effect_Tool.h"
 #include "EffectV2_Catalog.h"
 #include "MainApp.h"
@@ -35,6 +38,13 @@
 
 namespace
 {
+	bool IsValtanServerPlaybackBusy(const Client::CValtanBossTool* boss)
+	{
+		return (boss && boss->Is_PlayPreparationPending()) ||
+			Client::CValtanPatternAuditionService::Get().Has_PlaybackOwnership() ||
+			Client::CValtanPatternFlowService::Get().Has_PlaybackOwnership();
+	}
+
 	struct VALTAN_EDIT_TRANSFER final : Client::COMPOSITION_TRANSFER_SNAPSHOT
 	{
 		std::string_view Type() const noexcept override { return "valtan.occurrence.v1"; }
@@ -78,17 +88,17 @@ namespace
 
 	constexpr float TIMELINE_LANE_LABEL_WIDTH = CompositionTimeline::LabelWidth;
 	/* The visual box stays compact while hit-testing uses the complete subrow.
-	   This keeps dense authoring readable without making a 20 px box the only
+	   This keeps dense authoring readable without making a 22 px box the only
 	   place from which a designer can select or begin a body drag. */
 	constexpr float TIMELINE_ROW_HEIGHT = CompositionTimeline::LaneHeight;
-	constexpr float TIMELINE_BLOCK_VERTICAL_PADDING = 2.f;
-	constexpr float TIMELINE_POINT_MINIMUM_WIDTH_PX = 4.f;
+	constexpr float TIMELINE_BLOCK_HEIGHT = CompositionTimeline::BoxHeight;
+	constexpr float TIMELINE_POINT_MINIMUM_WIDTH_PX = CompositionTimeline::MinimumBoxWidth;
 	/* Point and natural-lifetime rows retain their semantic clock. The common
 	   compact footprint matches other Composition editors; hover shows the ID. */
 	constexpr float SOUND_EVENT_MINIMUM_WIDTH_PX = CompositionTimeline::MinimumBoxWidth;
 	constexpr float EFFECT_V2_LEAF_MINIMUM_WIDTH_PX = CompositionTimeline::MinimumBoxWidth;
 	constexpr float EFFECT_V2_GROUP_MINIMUM_WIDTH_PX = CompositionTimeline::MinimumBoxWidth;
-	constexpr float TIMELINE_LABEL_MAXIMUM_WIDTH_PX = 360.f;
+	constexpr float TIMELINE_CANVAS_END_PADDING_PX = 24.f;
 	constexpr double CANONICAL_RELOAD_RETRY_SECONDS = 0.25;
 	constexpr float COMPOSITION_LEFT_COLUMN_WIDTH_RATIO = 0.18f;
 	constexpr float COMPOSITION_RIGHT_COLUMN_WIDTH_RATIO = 0.20f;
@@ -338,15 +348,10 @@ namespace
 		const std::string_view strLabel,
 		const float fMinimumWidthPx)
 	{
-		if (fMinimumWidthPx <= TIMELINE_POINT_MINIMUM_WIDTH_PX)
-			return TIMELINE_POINT_MINIMUM_WIDTH_PX;
-		const float fEstimatedLabelWidthPx = 20.f +
-			static_cast<float>((std::min)(strLabel.size(), std::size_t{ 45u })) *
-			8.f;
-		return (std::clamp)(
-			(std::max)(fMinimumWidthPx, fEstimatedLabelWidthPx),
-			TIMELINE_POINT_MINIMUM_WIDTH_PX,
-			TIMELINE_LABEL_MAXIMUM_WIDTH_PX);
+		// Box width follows authored time, as in the other Composition editor.
+		// Full labels remain in the hover detail instead of inflating a short cue.
+		(void)strLabel;
+		return (std::max)(fMinimumWidthPx, TIMELINE_POINT_MINIMUM_WIDTH_PX);
 	}
 
 	uint32_t ResolveEffectV2GroupSpanMs(
@@ -1352,6 +1357,91 @@ void Client::CValtanActionWorkbench::Reload_SemanticValtanEffects()
 			m_SemanticValtanEffectAssetIds.end()),
 		m_SemanticValtanEffectAssetIds.end());
 
+	// Read small saved headers/category metadata only on refresh, never full
+	// Effect payloads while rendering or filtering the resource list.
+	VALTAN_FULL_RESTORE_CLIP_INDEX restoreClips;
+	std::string restoreStatus;
+	const bool restoreReady = CValtanPatternTree::Load_FullRestoreSourceClips(
+		CProjectDataRoot::Resolve("Effects/ValtanFullRestoreAnimations.json"), restoreClips, restoreStatus);
+	std::vector<CEffectAuthoringResourceTree::RESOURCE> inventory, organization;
+	std::string inventoryStatus, organizationStatus;
+	const bool inventoryReady = CEffectAuthoringResourceTree::Read_V1Inventory(inventory, inventoryStatus);
+	const bool organizationReady = CEffectAuthoringResourceTree::Read_V1Organization(organization, organizationStatus);
+	auto labels = m_EffectResourceLabels;
+	for (const auto& id : m_SemanticValtanEffectAssetIds)
+	{
+		auto& label = labels[id];
+		if (inventoryReady)
+		{
+			label.displayName = id;
+			label.categories.clear();
+		}
+		if (label.displayName.empty()) label.displayName = id;
+	}
+	if (inventoryReady)
+		for (const auto& row : inventory)
+			if (auto entry = labels.find(row.strAssetId); entry != labels.end() && !row.strDisplayName.empty())
+				entry->second.displayName = row.strDisplayName;
+	if (organizationReady)
+		for (const auto& row : organization)
+			if (auto entry = labels.find(row.strAssetId); entry != labels.end())
+			{
+				if (!row.strDisplayName.empty()) entry->second.displayName = row.strDisplayName;
+				entry->second.categories = row.CategoryPath;
+			}
+	for (const auto& id : m_SemanticValtanEffectAssetIds)
+	{
+		auto& label = labels[id];
+		const bool valtan = id.starts_with("effect.valtan.");
+		const bool restored = valtan && id.ends_with(".full.restore");
+		label.searchText = id + " " + label.displayName;
+		std::string patternName;
+		size_t patternCount = 0u;
+		bool combatObject = false;
+		const auto joinPattern = [&](const VALTAN_PATTERN_VIEW& pattern)
+		{
+			bool matches = restored && restoreReady && CValtanPatternTree::Matches_FullRestoreSource(pattern, id, restoreClips);
+			for (const auto& stage : pattern.Stages)
+			{
+				for (const auto& cue : stage.ProductCues)
+					if (cue.strEffectAssetId == id) matches = true;
+				for (const auto& object : stage.CombatObjectEffects)
+					if (object.strEffectAssetId == id) { matches = true; combatObject = true; }
+			}
+			if (!matches) return;
+			++patternCount;
+			label.searchText += " " + pattern.strPatternId + " " + pattern.strDisplayName;
+			if (patternName.empty()) patternName = pattern.strDisplayName.empty() ? pattern.strPatternId : pattern.strDisplayName;
+		};
+		for (const auto& pattern : m_CanonicalView.Gimmicks) joinPattern(pattern);
+		for (const auto& pattern : m_CanonicalView.Rotation) joinPattern(pattern);
+		bool independent = false;
+		for (const auto& row : m_CanonicalView.IndependentEffects)
+			if (row.strEffectAssetId == id)
+			{
+				independent = true;
+				label.searchText += " " + row.strDisplayName + " " + row.strOwnerPatternId;
+			}
+		if (valtan)
+		{
+			if (independent || combatObject || patternCount > 1u)
+				label.categories = { "Common", combatObject ? "Combat Objects" : restored ? "Full Restore" : "Effects" };
+			else if (patternCount == 1u)
+				label.categories = { "Patterns", patternName, restored ? "Full Restore" : "Connected Effects" };
+			else if (!label.categories.empty())
+			{
+				if (label.categories.front() == "Valtan") label.categories.erase(label.categories.begin());
+				if (label.categories.empty()) label.categories = { "Library", "Saved Effects" };
+			}
+			else label.categories = { "Library", restored ? "Full Restore" : "Saved Effects" };
+			if (const auto source = restoreClips.find(id); source != restoreClips.end())
+				for (const auto& clip : source->second) label.searchText += " " + clip.strClipName;
+		}
+		else if (label.categories.empty()) label.categories = { "Other Effects" };
+		for (const auto& category : label.categories) label.searchText += " " + category;
+	}
+	m_EffectResourceLabels = std::move(labels);
+
 	std::string V2Status;
 	const bool_t bV2Reloaded =
 		CEffectV2Catalog::Get().Reload_BossValtan(V2Status);
@@ -1359,6 +1449,36 @@ void Client::CValtanActionWorkbench::Reload_SemanticValtanEffects()
 		CEffectV2Catalog::Get().Get_Snapshot();
 	if (nullptr != pV2Snapshot && pV2Snapshot->Is_Ready())
 	{
+		const auto describeTypedEffect = [&](const std::string& id, const std::string& name)
+		{
+			auto& label = m_EffectResourceLabels[id];
+			label.displayName = name.empty() ? id : name;
+			label.searchText = id + " " + name;
+			size_t patternCount = 0u;
+			bool combatObject = false;
+			std::string patternName;
+			const auto join = [&](const VALTAN_PATTERN_VIEW& pattern)
+			{
+				bool used = std::any_of(pV2Snapshot->Get_BossValtanBindings().begin(), pV2Snapshot->Get_BossValtanBindings().end(),
+					[&](const auto& row) { return row.strResourceId == id && row.strPatternId == pattern.strPatternId; });
+				for (const auto& stage : pattern.Stages)
+					for (const auto& object : stage.CombatObjectEffects)
+						if (object.strEffectV2GroupId == id) { used = true; combatObject = true; }
+				if (used)
+				{
+					++patternCount;
+					label.searchText += " " + pattern.strPatternId + " " + pattern.strDisplayName;
+					if (patternName.empty()) patternName = pattern.strDisplayName.empty() ? pattern.strPatternId : pattern.strDisplayName;
+				}
+			};
+			for (const auto& pattern : m_CanonicalView.Gimmicks) join(pattern);
+			for (const auto& pattern : m_CanonicalView.Rotation) join(pattern);
+			if (!id.starts_with("boss.valtan.")) label.categories = { "Other Effects" };
+			else if (combatObject || patternCount > 1u) label.categories = { "Common", combatObject ? "Combat Objects" : "Effects" };
+			else if (patternCount == 1u) label.categories = { "Patterns", patternName, "Connected Effects" };
+			else label.categories = { "Library", "Saved Effects" };
+			for (const auto& category : label.categories) label.searchText += " " + category;
+		};
 		m_EffectV2DocumentIds.clear();
 		m_EffectV2DocumentTypes.clear();
 		m_EffectV2GroupIds.clear();
@@ -1370,6 +1490,7 @@ void Client::CValtanActionWorkbench::Reload_SemanticValtanEffects()
 			pV2Snapshot->Get_Documents())
 		{
 			m_EffectV2DocumentIds.push_back(Document.strEffectId);
+			describeTypedEffect(Document.strEffectId, Document.strDisplayName);
 			m_EffectV2DocumentTypes.push_back(
 				static_cast<int32_t>(Document.eType));
 		}
@@ -1377,6 +1498,7 @@ void Client::CValtanActionWorkbench::Reload_SemanticValtanEffects()
 		for (const EFFECT_V2_GROUP& Group : pV2Snapshot->Get_Groups())
 		{
 			m_EffectV2GroupIds.push_back(Group.strGroupId);
+			describeTypedEffect(Group.strGroupId, Group.strDisplayName);
 		}
 		m_iEffectV2CatalogRevision = pV2Snapshot->Get_Revision();
 	}
@@ -1395,6 +1517,10 @@ void Client::CValtanActionWorkbench::Reload_SemanticValtanEffects()
 	if (!bV2Reloaded && !V2Status.empty())
 		m_strEffectCatalogStatus += " | V2 reload preserved previous snapshot: " +
 			V2Status;
+
+	if (!restoreReady) m_strEffectCatalogStatus += " | Full Restore: " + restoreStatus;
+	if (!inventoryReady) m_strEffectCatalogStatus += " | Saved names: " + inventoryStatus;
+	if (!organizationReady) m_strEffectCatalogStatus += " | Categories: " + organizationStatus;
 
 	bool_t bSelectedExists = m_strEffectAddAssetId.empty();
 	if (!bSelectedExists)
@@ -1574,7 +1700,7 @@ const char_t* Client::CValtanActionWorkbench::Lane_Label(
 {
 	switch (eLane)
 	{
-	case TIMELINE_LANE::STAGE: return "Stage";
+	case TIMELINE_LANE::STAGE: return "Stages";
 	case TIMELINE_LANE::ANIMATION: return "Animation";
 	case TIMELINE_LANE::EFFECT: return "Effect";
 	case TIMELINE_LANE::SOUND: return "Sound";
@@ -1594,17 +1720,17 @@ uint32_t Client::CValtanActionWorkbench::Lane_Color(
 {
 	switch (eLane)
 	{
-	case TIMELINE_LANE::STAGE: return IM_COL32(98, 112, 132, 255);
-	case TIMELINE_LANE::ANIMATION: return IM_COL32(76, 128, 224, 255);
-	case TIMELINE_LANE::EFFECT: return IM_COL32(166, 94, 224, 255);
-	case TIMELINE_LANE::SOUND: return IM_COL32(64, 178, 112, 255);
-	case TIMELINE_LANE::LOGIC: return IM_COL32(210, 86, 92, 255);
-	case TIMELINE_LANE::COLLIDER: return IM_COL32(76, 176, 184, 255);
-	case TIMELINE_LANE::CAMERA: return IM_COL32(224, 156, 66, 255);
-	case TIMELINE_LANE::WORLD: return IM_COL32(84, 132, 196, 255);
-	case TIMELINE_LANE::SUMMON: return IM_COL32(88, 156, 116, 255);
-	case TIMELINE_LANE::SCENE_PROFILE: return IM_COL32(156, 108, 196, 255);
-	case TIMELINE_LANE::LIGHT: return IM_COL32(216, 196, 88, 255);
+	case TIMELINE_LANE::STAGE: return CompositionTimeline::StageColor;
+	case TIMELINE_LANE::ANIMATION: return CompositionTimeline::AnimationColor;
+	case TIMELINE_LANE::EFFECT: return CompositionTimeline::PresentationColor;
+	case TIMELINE_LANE::SOUND: return CompositionTimeline::PresentationColor;
+	case TIMELINE_LANE::LOGIC: return CompositionTimeline::LogicColor;
+	case TIMELINE_LANE::COLLIDER: return CompositionTimeline::PresentationColor;
+	case TIMELINE_LANE::CAMERA: return CompositionTimeline::PresentationColor;
+	case TIMELINE_LANE::WORLD: return CompositionTimeline::WorldColor;
+	case TIMELINE_LANE::SUMMON: return CompositionTimeline::SummonColor;
+	case TIMELINE_LANE::SCENE_PROFILE: return CompositionTimeline::SceneProfileColor;
+	case TIMELINE_LANE::LIGHT: return CompositionTimeline::PresentationColor;
 	default: return IM_COL32(116, 126, 138, 255);
 	}
 }
@@ -3623,6 +3749,11 @@ bool_t Client::CValtanActionWorkbench::Seek_EffectivePreview(
 	const bool_t bPause,
 	std::string& status)
 {
+	if (IsValtanServerPlaybackBusy(m_pValtanBossTool))
+	{
+		status = "Preview is unavailable while a Server Pattern owns playback.";
+		return false;
+	}
 	if (nullptr == m_pAnimationTool)
 	{
 		status = "Animation preview owner is unavailable.";
@@ -3651,6 +3782,11 @@ bool_t Client::CValtanActionWorkbench::Play_EffectivePreview(
 	const VALTAN_PATTERN_VIEW& Pattern,
 	std::string& status)
 {
+	if (IsValtanServerPlaybackBusy(m_pValtanBossTool))
+	{
+		status = "Preview is unavailable while a Server Pattern is preparing or running.";
+		return false;
+	}
     m_BoneEditor.Stop();
 	if (nullptr == m_pAnimationTool)
 	{
@@ -3700,6 +3836,21 @@ bool_t Client::CValtanActionWorkbench::Play_ServerVerification(
 	std::string& status)
 {
 #ifdef _DEBUG
+	if (m_bAuthoringDraftDirty || m_bPatternSoundDependencyDirty || CEffectV2Catalog::Get().Has_BossValtanBindingDraft())
+	{
+		status = "Save and publish the Pattern before Play Pattern. Play Preview uses the current draft.";
+		return false;
+	}
+	if (!m_bProductSourceReady)
+	{
+		status = "Play Pattern requires the saved source and published Product to agree. Publish, then reload the Pattern. " + m_strProductReadiness;
+		return false;
+	}
+	if (IsValtanServerPlaybackBusy(m_pValtanBossTool))
+	{
+		status = "Another Server Pattern or preparation owns playback.";
+		return false;
+	}
 	CMainApp* const app = CMainApp::Get_Active();
 	if (nullptr == app)
 	{
@@ -4593,6 +4744,12 @@ void Client::CValtanActionWorkbench::Pack_TimelineSubrows()
 		{
 			if (m_TimelineItems[iItem].eLane == eLane)
 				LaneItems.push_back(iItem);
+		}
+		// Stages are one ordered strip; zoom never changes their lane ownership.
+		if (eLane == TIMELINE_LANE::STAGE)
+		{
+			for (const std::size_t iItem : LaneItems) m_TimelineItems[iItem].iSubrow = 0u;
+			continue;
 		}
 		std::stable_sort(
 			LaneItems.begin(), LaneItems.end(),
@@ -6304,15 +6461,18 @@ void Client::CValtanActionWorkbench::Render_Preview(
 	ImGui::SeparatorText("Server-Exact Pattern Verification");
 	ImGui::TextWrapped(
 		"Use this Play for Pattern order verification. It resets the authoritative Valtan from boss.valtan.center and runs the saved Server stages, movement, combat objects, animation, Effect, Sound, camera and world events.");
-	ImGui::BeginDisabled(nullptr == pPattern || !bServerVerificationAdmitted);
-	if (ImGui::Button("Play (Server Exact)", ImVec2(-1.f, 0.f)))
+	ImGui::BeginDisabled(nullptr == pPattern || !bServerVerificationAdmitted || !m_bProductSourceReady ||
+		m_bAuthoringDraftDirty || m_bPatternSoundDependencyDirty || CEffectV2Catalog::Get().Has_BossValtanBindingDraft() ||
+		IsValtanServerPlaybackBusy(m_pValtanBossTool));
+	if (ImGui::Button("Play Pattern##PreviewPanel", ImVec2(-1.f, 0.f)))
 	{
 		std::string Status;
 		(void)Play_ServerVerification(*pPattern, Status);
 		m_strStatus = std::move(Status);
 	}
 	ImGui::EndDisabled();
-	if (!bServerVerificationAdmitted)
+	if (!bServerVerificationAdmitted || !m_bProductSourceReady || m_bAuthoringDraftDirty ||
+		m_bPatternSoundDependencyDirty || CEffectV2Catalog::Get().Has_BossValtanBindingDraft())
 	{
 		ImGui::TextDisabled(
 			"Save and publish the selected Pattern, start the Debug Server, enter Valtan, and keep a living combat-ready player in the arena.");
@@ -6332,7 +6492,8 @@ void Client::CValtanActionWorkbench::Render_Preview(
 	}
 	const bool_t bSourcePreview = Preview.bSourceSequencePlaying;
 	const bool_t bTransportReady = nullptr != m_pAnimationTool &&
-		bLocalPreviewAdmitted && (bSourcePreview || nullptr != pPattern);
+		!IsValtanServerPlaybackBusy(m_pValtanBossTool) && bLocalPreviewAdmitted &&
+		(bSourcePreview || nullptr != pPattern);
 	ImGui::TextColored(
 		Preview.bModelReady ? ImVec4(0.35f, 0.86f, 0.45f, 1.f) :
 			ImVec4(1.f, 0.72f, 0.24f, 1.f),
@@ -6360,7 +6521,7 @@ void Client::CValtanActionWorkbench::Render_Preview(
 	ImGui::TextColored(ImVec4(0.35f, 0.86f, 0.45f, 1.f),
 		"LIVE transport: effective Animation slots + collider mirror + V1 Effect cue timing/yaw + Product V2 stage bindings.");
 	ImGui::TextDisabled(
-		"Pattern preview samples Camera, Scene Profile and Light from the Stage clock. Sound seeking and Server World actions remain separate from model pose transport.");
+		"Preview samples Animation, Effects, Sound, Camera and object lifetimes on the selected Stage path. Preview Outcome selects conditional Logic results; live collisions, player decisions and damage run in Play Pattern.");
 	int32_t iPreviewPath = static_cast<int32_t>(m_ePreviewPath);
 	ImGui::SetNextItemWidth(260.f);
 	if (ImGui::Combo(
@@ -6392,7 +6553,7 @@ void Client::CValtanActionWorkbench::Render_Preview(
 	ImGui::SameLine();
 	ImGui::BeginDisabled(!bTransportReady);
 	if (ImGui::Button(Preview.bPlaying && !Preview.bPaused ?
-			"Pause Local Timeline" : "Play Local Timeline"))
+			"Pause Preview" : "Play Preview"))
 	{
 		std::string Status;
 		if (bSourcePreview)
@@ -6411,7 +6572,7 @@ void Client::CValtanActionWorkbench::Render_Preview(
 		}
 		else
 		{
-			(void)Play_EffectivePreview(*pPattern, Status);
+			(void)Seek_EffectivePreview(*pPattern, m_iPlayheadMs >= m_iTimelineDurationMs ? 0u : m_iPlayheadMs, false, Status);
 		}
 		m_strStatus = std::move(Status);
 	}
@@ -6421,10 +6582,12 @@ void Client::CValtanActionWorkbench::Render_Preview(
 	   already-running local preview and must remain available after admission
 	   flips to STALE_PRESERVED. */
 	ImGui::BeginDisabled(nullptr == m_pAnimationTool || !Preview.bPlaying);
-	if (ImGui::Button("Stop Local Timeline"))
+	if (ImGui::Button("Reset##PreviewPanel"))
 	{
 		std::string Status;
 		m_pAnimationTool->Stop_ValtanCompositionPattern(Status);
+		m_iPlayheadMs = 0u;
+		m_iPreviewDraftGeneration = 0u;
 		m_strStatus = std::move(Status);
 	}
 	ImGui::EndDisabled();
@@ -6445,7 +6608,9 @@ void Client::CValtanActionWorkbench::Render_Preview(
 		ImGui::TextWrapped("Preview status: %s", m_strStatus.c_str());
 	}
 
-	if (Preview.bPlaying && (bSourcePreview ||
+	if (m_pAnimationTool)
+		Preview = m_pAnimationTool->Get_ValtanCompositionPreviewState();
+	if (Preview.bPlaying && (Preview.bSourceSequencePlaying ||
 		(Preview.strPatternId == m_strSelectedPatternId && m_eStagedPreviewPath == m_ePreviewPath)))
 		m_iPlayheadMs = Preview.iPositionMs;
 	const uint32_t iDurationMs = (std::max)(bSourcePreview ? Preview.iDurationMs : m_iTimelineDurationMs, 1u);
@@ -10188,40 +10353,59 @@ void Client::CValtanActionWorkbench::Render_Timeline(
 		Preview = m_pAnimationTool->Get_ValtanCompositionPreviewState();
 	}
 	const bool sourcePreview = Preview.bSourceSequencePlaying;
-	if (Preview.bPlaying && (sourcePreview || (pPattern && Preview.strPatternId == pPattern->strPatternId)))
-		m_iPlayheadMs = Preview.iPositionMs;
+	const bool serverPlayback = IsValtanServerPlaybackBusy(m_pValtanBossTool);
+	const bool matchingPreview = Preview.bPlaying &&
+		(sourcePreview || (pPattern && Preview.strPatternId == pPattern->strPatternId));
+	if (matchingPreview) m_iPlayheadMs = Preview.iPositionMs;
+	const uint32_t duration = sourcePreview ? Preview.iDurationMs : m_iTimelineDurationMs;
+	const bool canPreview = m_pAnimationTool && !serverPlayback &&
+		(sourcePreview || (pPattern && bLocalPreviewAdmitted));
 	ImGui::SameLine();
-	ImGui::BeginDisabled(!m_pAnimationTool || (!sourcePreview && (!pPattern || !bLocalPreviewAdmitted)));
-	if (ImGui::Button(Preview.bPlaying && !Preview.bPaused ? "Pause" : "Play"))
+	ImGui::BeginDisabled(!canPreview);
+	if (ImGui::Button("Play Preview"))
 	{
+		const uint32_t cursor = m_iPlayheadMs >= duration ? 0u : m_iPlayheadMs;
 		if (sourcePreview)
-        {
-            m_BoneEditor.Stop();
-			(void)m_pAnimationTool->Seek_ValtanCompositionSourceSequence(Preview.bPaused && Preview.iPositionMs >= Preview.iDurationMs ? 0u : Preview.iPositionMs, !Preview.bPaused, m_strStatus);
-        }
-		else if (Preview.bPlaying)
-			(void)Seek_EffectivePreview(*pPattern, Preview.iPositionMs, !Preview.bPaused, m_strStatus);
-		else
-			(void)Play_EffectivePreview(*pPattern, m_strStatus);
+		{
+			m_BoneEditor.Stop();
+			(void)m_pAnimationTool->Seek_ValtanCompositionSourceSequence(cursor, false, m_strStatus);
+		}
+		else (void)Seek_EffectivePreview(*pPattern, cursor, false, m_strStatus);
+	}
+	if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+		ImGui::SetTooltip("Preview the current draft from the cursor using the selected Server Stage path. Pause and seek inspect presentation; damage and live player decisions require Play Pattern.");
+	ImGui::EndDisabled();
+	ImGui::SameLine();
+	ImGui::BeginDisabled(!canPreview || !matchingPreview);
+	if (ImGui::Button(Preview.bPaused ? "Resume" : "Pause"))
+	{
+		const uint32_t cursor = Preview.bPaused && m_iPlayheadMs >= duration ? 0u : m_iPlayheadMs;
+		if (sourcePreview) (void)m_pAnimationTool->Seek_ValtanCompositionSourceSequence(cursor, !Preview.bPaused, m_strStatus);
+		else (void)Seek_EffectivePreview(*pPattern, cursor, !Preview.bPaused, m_strStatus);
 	}
 	ImGui::EndDisabled();
 	ImGui::SameLine();
-	ImGui::BeginDisabled(!m_pAnimationTool || !Preview.bPlaying);
+	ImGui::BeginDisabled(!m_pAnimationTool || serverPlayback);
 	if (ImGui::Button("Reset"))
 	{
-		if (sourcePreview) (void)m_pAnimationTool->Seek_ValtanCompositionSourceSequence(0u, true, m_strStatus);
-		else if (pPattern) (void)Seek_EffectivePreview(*pPattern, 0u, true, m_strStatus);
+		m_pAnimationTool->Stop_ValtanCompositionPattern(m_strStatus);
 		m_iPlayheadMs = 0u;
+		m_iPreviewDraftGeneration = 0u;
 	}
+	ImGui::EndDisabled();
 	ImGui::SameLine();
-	if (ImGui::Button("Stop")) m_pAnimationTool->Stop_ValtanCompositionPattern(m_strStatus);
+	ImGui::BeginDisabled(!pPattern || !bPatternMutationAdmitted || !m_bProductSourceReady || bSaveJobBlocking || bHasUnsavedChanges || serverPlayback);
+	if (ImGui::Button("Play Pattern"))
+		(void)Play_ServerVerification(*pPattern, m_strStatus);
+	if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+		ImGui::SetTooltip("Run the saved, published Pattern on the Server. Save/Publish and the active Server revision must agree; no older Pattern is substituted for this draft.");
 	ImGui::EndDisabled();
 	ImGui::SameLine();
 	ImGui::Checkbox("Loop", &m_bLoopPreview);
 	ImGui::SameLine();
-	ImGui::TextDisabled("%.3f / %.3f s%s%s", m_iPlayheadMs * 0.001,
-		(sourcePreview ? Preview.iDurationMs : m_iTimelineDurationMs) * 0.001,
-		bHasUnsavedChanges ? " | unsaved" : " | saved", sourcePreview ? " | source sequence" : "");
+	ImGui::TextDisabled("%s | %.3f / %.3f s%s%s", bHasUnsavedChanges ? "Unsaved changes" : "Saved",
+		m_iPlayheadMs * 0.001, duration * 0.001, matchingPreview && Preview.bPaused ? " (paused)" : "",
+		serverPlayback ? " | Server Pattern" : sourcePreview ? " | source clip" : "");
 	if (ImGui::TreeNode("Save / Publish status"))
 	{
 		ImGui::BeginDisabled(bSaveJobBlocking);
@@ -10257,7 +10441,7 @@ void Client::CValtanActionWorkbench::Render_Timeline(
 		m_iTimelineDurationMs, MAX_TIMELINE_RENDER_DURATION_MS);
 	const float fFitClockWidth = (std::max)(
 		1.f, ImGui::GetContentRegionAvail().x -
-			TIMELINE_LANE_LABEL_WIDTH - TIMELINE_LABEL_MAXIMUM_WIDTH_PX -
+			TIMELINE_LANE_LABEL_WIDTH - TIMELINE_CANVAS_END_PADDING_PX -
 			ImGui::GetStyle().ScrollbarSize -
 			ImGui::GetStyle().ChildBorderSize * 2.f);
 	ImGui::SetNextItemWidth(220.f);
@@ -10539,21 +10723,30 @@ void Client::CValtanActionWorkbench::Render_Timeline(
 		1.f,
 		static_cast<float>((std::max)(iRenderDurationMs, 1u)) *
 			m_fTimelinePixelsPerSecond * 0.001f);
-	/* Keep a point occurrence at the end of the Stage fully clickable without
-	   changing its authored clock or extending the ruler's semantic duration. */
-	const float fCanvasWidth = fClockCanvasWidth +
-		TIMELINE_LABEL_MAXIMUM_WIDTH_PX;
-	const float fDesiredCanvasHeight = TIMELINE_ROW_HEIGHT *
+	/* Match the shared timeline's 24 px tail. Extend it only when an actual
+	   point/label box needs more space; label allowance must not shrink Fit. */
+	float fCanvasWidth = fClockCanvasWidth + TIMELINE_CANVAS_END_PADDING_PX;
+	for (const TIMELINE_ITEM& Item : m_TimelineItems)
+	{
+		if (Item.iStartMs > iRenderDurationMs)
+			continue;
+		const bool_t bColliderTimelineItem =
+			DETAIL_OWNER::GAMEPLAY_STAGE == Item.eOwner &&
+			TIMELINE_LANE::COLLIDER == Item.eLane;
+		const float fDisplayWidthPx = bColliderTimelineItem ?
+			TIMELINE_POINT_MINIMUM_WIDTH_PX :
+			ResolveTimelineDisplayWidthPx(Item.strLabel, Item.fMinimumDisplayWidthPx);
+		const float fDisplayEndX = static_cast<float>(Item.iStartMs) *
+			m_fTimelinePixelsPerSecond * 0.001f + fDisplayWidthPx;
+		fCanvasWidth = (std::max)(fCanvasWidth,
+			fDisplayEndX + TIMELINE_CANVAS_END_PADDING_PX);
+	}
+	const float fTimelineHeight = TIMELINE_ROW_HEIGHT *
 		(1.f + static_cast<float>(std::accumulate(
 			m_TimelineLaneSubrowCounts.begin(),
-			m_TimelineLaneSubrowCounts.end(), std::size_t{ 0u }))) +
-		ImGui::GetStyle().ItemSpacing.y *
-			static_cast<float>(m_TimelineLaneSubrowCounts.size()) +
-		ImGui::GetStyle().ScrollbarSize;
-	const float fAvailableHeight = (std::max)(
-		1.f, (std::min)(fDesiredCanvasHeight, ImGui::GetContentRegionAvail().y));
+			m_TimelineLaneSubrowCounts.end(), std::size_t{ 0u })));
 	if (!ImGui::BeginChild(
-			"##ActionCompositionTimelineCanvas", ImVec2(0.f, fAvailableHeight),
+			"##ActionCompositionTimelineCanvas", ImVec2(0.f, 0.f),
 			ImGuiChildFlags_Borders,
 			ImGuiWindowFlags_HorizontalScrollbar))
 	{
@@ -10561,8 +10754,8 @@ void Client::CValtanActionWorkbench::Render_Timeline(
 		return;
 	}
 
-	ImGui::Dummy(ImVec2(TIMELINE_LANE_LABEL_WIDTH, TIMELINE_ROW_HEIGHT));
-	ImGui::SameLine(0.f, 0.f);
+	const ImVec2 CanvasOrigin = ImGui::GetCursorScreenPos();
+	ImGui::SetCursorScreenPos(ImVec2(CanvasOrigin.x + TIMELINE_LANE_LABEL_WIDTH, CanvasOrigin.y));
 	ImGui::InvisibleButton(
 		"##TimelineRuler", ImVec2(fCanvasWidth, TIMELINE_ROW_HEIGHT));
 	const ImVec2 RulerMin = ImGui::GetItemRectMin();
@@ -10634,16 +10827,26 @@ void Client::CValtanActionWorkbench::Render_Timeline(
 	const bool_t bLaneColliderExists = bLaneColliderDraftReady ?
 		"NONE" != LaneColliderDraft.hitShape :
 		(nullptr != pLaneStage && pLaneStage->Has_HitShape());
-	std::size_t iLaneOrdinal = 0u;
+	float fLaneY = CanvasOrigin.y + TIMELINE_ROW_HEIGHT;
 	for (const TIMELINE_LANE eLane : TIMELINE_LANE_ORDER)
 	{
 		const std::size_t iSubrowCount =
 			m_TimelineLaneSubrowCounts[static_cast<std::size_t>(eLane)];
 		const float fLaneHeight = TIMELINE_ROW_HEIGHT *
 			static_cast<float>(iSubrowCount);
-		ImGui::AlignTextToFramePadding();
-		ImGui::TextUnformatted(Lane_Label(eLane));
-		ImGui::SameLine(TIMELINE_LANE_LABEL_WIDTH - 28.f, 0.f);
+		ImU32 labelColor = CompositionTimeline::PresentationLabelColor;
+		switch (eLane)
+		{
+		case TIMELINE_LANE::STAGE: labelColor = CompositionTimeline::StageLabelColor; break;
+		case TIMELINE_LANE::ANIMATION: labelColor = CompositionTimeline::AnimationLabelColor; break;
+		case TIMELINE_LANE::LOGIC: labelColor = CompositionTimeline::LogicLabelColor; break;
+		case TIMELINE_LANE::SUMMON: labelColor = CompositionTimeline::SummonLabelColor; break;
+		case TIMELINE_LANE::WORLD: labelColor = CompositionTimeline::WorldLabelColor; break;
+		case TIMELINE_LANE::SCENE_PROFILE: labelColor = CompositionTimeline::SceneProfileLabelColor; break;
+		default: break;
+		}
+		pDrawList->AddText(ImVec2(CanvasOrigin.x + 4.f, fLaneY + 4.f), labelColor, Lane_Label(eLane));
+		ImGui::SetCursorScreenPos(ImVec2(CanvasOrigin.x + TIMELINE_LANE_LABEL_WIDTH - 28.f, fLaneY));
 		ImGui::PushID(static_cast<int32_t>(eLane));
 		const bool_t bColliderLaneButtonAdmitted =
 			TIMELINE_LANE::COLLIDER != eLane || bLaneColliderExists ||
@@ -10705,16 +10908,14 @@ void Client::CValtanActionWorkbench::Render_Timeline(
 			}
 		}
 		ImGui::PopID();
-		ImGui::SameLine(TIMELINE_LANE_LABEL_WIDTH, 0.f);
+		ImGui::SetCursorScreenPos(ImVec2(CanvasOrigin.x + TIMELINE_LANE_LABEL_WIDTH, fLaneY));
 		ImGui::PushID(static_cast<int32_t>(eLane));
 		ImGui::InvisibleButton(
 			"##TimelineLaneRow", ImVec2(fCanvasWidth, fLaneHeight));
 		const bool_t bLaneRowHovered = ImGui::IsItemHovered();
 		const ImVec2 RowMin = ImGui::GetItemRectMin();
 		const ImVec2 RowMax = ImGui::GetItemRectMax();
-		pDrawList->AddRectFilled(RowMin, RowMax,
-			0u == (iLaneOrdinal & 1u) ? IM_COL32(24, 27, 32, 255) :
-				IM_COL32(29, 32, 38, 255));
+
 		for (std::size_t iItem = 0u; iItem < TimelineItems.size(); ++iItem)
 		{
 			const TIMELINE_ITEM& Item = TimelineItems[iItem];
@@ -10744,12 +10945,9 @@ void Client::CValtanActionWorkbench::Render_Timeline(
 			fSemanticEndX);
 		const float fSubrowY = RowMin.y + TIMELINE_ROW_HEIGHT *
 			static_cast<float>(Item.iSubrow);
-		const ImVec2 BlockMin(
-			fStartX, fSubrowY + TIMELINE_BLOCK_VERTICAL_PADDING);
+		const ImVec2 BlockMin(fStartX, fSubrowY);
 		const ImVec2 BlockMax(
-			(std::min)(fEndX, RowMax.x),
-			fSubrowY + TIMELINE_ROW_HEIGHT -
-				TIMELINE_BLOCK_VERTICAL_PADDING);
+			(std::min)(fEndX, RowMax.x), fSubrowY + TIMELINE_BLOCK_HEIGHT);
 		const ImVec2 HitMin(fStartX, fSubrowY);
 		const ImVec2 HitMax(
 			(std::min)(fEndX, RowMax.x),
@@ -10757,8 +10955,9 @@ void Client::CValtanActionWorkbench::Render_Timeline(
 		const bool_t bSelectedBlock =
 			Item.strPatternId == m_strSelectedPatternId &&
 			Item.strStageId == m_strSelectedStageId &&
-			Item.eOwner == m_eDetailOwner &&
-			Item.strStableId == m_strSelectedStableId;
+			((Item.eOwner == m_eDetailOwner && Item.strStableId == m_strSelectedStableId) ||
+			 (Item.eLane == TIMELINE_LANE::ANIMATION && m_eDetailOwner == DETAIL_OWNER::GAMEPLAY_STAGE &&
+			  m_strSelectedStableId == m_strSelectedStageId));
 		const bool_t bBlockHovered = bLaneRowHovered &&
 			ImGui::IsMouseHoveringRect(HitMin, HitMax, true);
 		if (bBlockHovered)
@@ -10839,8 +11038,10 @@ void Client::CValtanActionWorkbench::Render_Timeline(
 			DETAIL_OWNER::ANIMATION == Item.eOwner || bEffectRightTrim || bAuxiliaryTimed;
 		const bool_t bTrimMutationAdmitted = bPatternMutationAdmitted &&
 			nullptr != m_pBalanceTool;
+		const std::string& boxLabel = Item.eLane == TIMELINE_LANE::STAGE ? Item.strStageId :
+			(Item.eLane == TIMELINE_LANE::ANIMATION && !Item.strAssetId.empty() ? Item.strAssetId : Item.strLabel);
 		CompositionTimeline::DrawBox(pDrawList, BlockMin, BlockMax,
-			Lane_Color(Item.eLane), bSelectedBlock, Item.strLabel.c_str(),
+			Lane_Color(Item.eLane), bSelectedBlock, boxLabel.c_str(),
 			bStartTrimOwner && bTrimMutationAdmitted,
 			Item.bEditable && bTrimOwner && bTrimMutationAdmitted);
 		const float fEndTrimHandleX = bColliderSchedule ?
@@ -11463,7 +11664,7 @@ void Client::CValtanActionWorkbench::Render_Timeline(
 			ImVec2(fPlayheadX, RowMin.y), ImVec2(fPlayheadX, RowMax.y),
 			IM_COL32(255, 220, 72, 220), 1.5f);
 		ImGui::PopID();
-		++iLaneOrdinal;
+		fLaneY += fLaneHeight;
 	}
 	if (m_bTimelineTrimActive &&
 		!ImGui::IsMouseDown(ImGuiMouseButton_Left))
@@ -11487,6 +11688,8 @@ void Client::CValtanActionWorkbench::Render_Timeline(
 		m_iTimelineMoveSourceStartMs = 0u;
 		m_iTimelineMoveSourceEndMs = 0u;
 	}
+	ImGui::SetCursorScreenPos(CanvasOrigin);
+	ImGui::Dummy(ImVec2(TIMELINE_LANE_LABEL_WIDTH + fCanvasWidth, fTimelineHeight + 48.f));
 	ImGui::EndChild();
 }
 
@@ -12365,14 +12568,21 @@ void Client::CValtanActionWorkbench::Render_SupplementalResources(
 	}
 	if (domain == RESOURCE_DOMAIN::SUMMON)
 	{
+		ImGui::SetNextItemWidth(-1.f);
+		ImGui::InputTextWithHint("##ValtanSummonSearch", "Search Summon, Pattern or Effect...",
+			m_SummonResourceSearch.data(), m_SummonResourceSearch.size());
 		std::set<std::string> seen;
 		for (const auto* source : Collect_Patterns())
 			for (const auto& sourceStage : source->Stages)
 				for (const auto& object : sourceStage.CombatObjectEffects)
 				{
-					if (!seen.insert(object.strCombatObjectArchetypeId).second) continue;
+					const std::string search = object.strCombatObjectArchetypeId + " " + object.strEffectAssetId + " " +
+						object.strEffectV2GroupId + " " + source->strPatternId + " " + source->strDisplayName;
+					if (!ContainsInsensitive(search, m_SummonResourceSearch.data()) ||
+						!seen.insert(object.strCombatObjectArchetypeId).second) continue;
 					ImGui::PushID(object.strCombatObjectArchetypeId.c_str());
-					ImGui::TextWrapped("%s", object.strCombatObjectArchetypeId.c_str());
+					ImGui::TextWrapped("%s | %s", source->strDisplayName.c_str(), object.strCombatObjectArchetypeId.c_str());
+					ImGui::TextDisabled("Spawn count %u | lifetime %u ms", object.iSpawnValue, object.iLifetimeMs);
 					const auto capture = [&, source, object](std::string& message) -> COMPOSITION_TRANSFER {
 						auto value = std::make_shared<VALTAN_EDIT_TRANSFER>(); value->owner = DETAIL_OWNER::COMBAT_OBJECT;
 						value->summon = object; value->patternId = source->strPatternId; value->stageId = sourceStage.strStageId;
@@ -12529,11 +12739,14 @@ void Client::CValtanActionWorkbench::Render_ResourcesPane(
 				ImGui::TextWrapped("%s", m_strEffectCatalogStatus.c_str());
 			ImGui::SetNextItemWidth(-1.f);
 			if (ImGui::InputTextWithHint(
-				"##CompositionResourceEffectSearch", "Search V1/V2 Effect or group...",
+				"##CompositionResourceEffectSearch", "Search pattern name, saved Effect, group or ID...",
 				m_EffectSearch.data(), m_EffectSearch.size()))
 			{
 				m_bEffectFilterDirty = true;
 			}
+			if (ImGui::Checkbox("Show other owners", &m_bShowOtherEffectOwners))
+				m_bEffectFilterDirty = true;
+			ImGui::TextWrapped("Open Editor edits the reusable Effect. Append adds a separate Pattern box; it does not replace existing Effects. Rock spawns belong to Summon, hit geometry to Collider.");
 			const std::string Query = m_EffectSearch.data();
 			if (m_bEffectFilterDirty || m_strEffectFilterQuery != Query)
 			{
@@ -12545,58 +12758,38 @@ void Client::CValtanActionWorkbench::Render_ResourcesPane(
 				for (std::size_t i = 0u;
 					i < m_SemanticValtanEffectAssetIds.size(); ++i)
 				{
-					if (ContainsInsensitive(
-							m_SemanticValtanEffectAssetIds[i], Query))
+					const auto& id = m_SemanticValtanEffectAssetIds[i];
+					const auto label = m_EffectResourceLabels.find(id);
+					if ((m_bShowOtherEffectOwners || id.starts_with("effect.valtan.")) && ContainsInsensitive(
+							label == m_EffectResourceLabels.end() ? id : label->second.searchText, Query))
 					{
 						m_FilteredEffectAssetIndices.push_back(i);
 					}
 				}
 				for (std::size_t i = 0u; i < m_EffectV2DocumentIds.size(); ++i)
 				{
-					if (ContainsInsensitive(m_EffectV2DocumentIds[i], Query))
+					if ((m_bShowOtherEffectOwners || m_EffectV2DocumentIds[i].starts_with("boss.valtan.")) && ContainsInsensitive(m_EffectResourceLabels.at(m_EffectV2DocumentIds[i]).searchText, Query))
 						m_FilteredEffectV2DocumentIndices.push_back(i);
 				}
 				for (std::size_t i = 0u; i < m_EffectV2GroupIds.size(); ++i)
 				{
-					if (ContainsInsensitive(m_EffectV2GroupIds[i], Query))
+					if ((m_bShowOtherEffectOwners || m_EffectV2GroupIds[i].starts_with("boss.valtan.")) && ContainsInsensitive(m_EffectResourceLabels.at(m_EffectV2GroupIds[i]).searchText, Query))
 						m_FilteredEffectV2GroupIndices.push_back(i);
 				}
 
-				m_EffectV1ResourceTree = {};
-				for (const std::size_t i : m_FilteredEffectAssetIndices)
-				{
-					std::vector<std::string> Segments =
-						SplitResourcePath(m_SemanticValtanEffectAssetIds[i]);
-					if (!Segments.empty())
-						Segments.pop_back();
-					InsertResourceTree(m_EffectV1ResourceTree, Segments, i);
-				}
-				(void)FinalizeResourceTree(m_EffectV1ResourceTree);
-				m_EffectV2DocumentResourceTree = {};
-				for (const std::size_t i : m_FilteredEffectV2DocumentIndices)
-				{
-					std::vector<std::string> Segments{
-						EffectV2TypeLabel(m_EffectV2DocumentTypes[i]) };
-					std::vector<std::string> IdSegments =
-						SplitResourcePath(m_EffectV2DocumentIds[i]);
-					if (!IdSegments.empty())
-						IdSegments.pop_back();
-					Segments.insert(
-						Segments.end(), IdSegments.begin(), IdSegments.end());
-					InsertResourceTree(
-						m_EffectV2DocumentResourceTree, Segments, i);
-				}
-				(void)FinalizeResourceTree(m_EffectV2DocumentResourceTree);
-				m_EffectV2GroupResourceTree = {};
-				for (const std::size_t i : m_FilteredEffectV2GroupIndices)
-				{
-					std::vector<std::string> Segments =
-						SplitResourcePath(m_EffectV2GroupIds[i]);
-					if (!Segments.empty())
-						Segments.pop_back();
-					InsertResourceTree(m_EffectV2GroupResourceTree, Segments, i);
-				}
-				(void)FinalizeResourceTree(m_EffectV2GroupResourceTree);
+				m_EffectResourceRows.clear();
+				for (const auto index : m_FilteredEffectAssetIndices)
+					m_EffectResourceRows.push_back({ EFFECT_RESOURCE_KIND::V1_PATTERN, m_SemanticValtanEffectAssetIds[index] });
+				for (const auto index : m_FilteredEffectV2DocumentIndices)
+					m_EffectResourceRows.push_back({ EFFECT_RESOURCE_KIND::V2_LEAF, m_EffectV2DocumentIds[index] });
+				for (const auto index : m_FilteredEffectV2GroupIndices)
+					m_EffectResourceRows.push_back({ EFFECT_RESOURCE_KIND::V2_GROUP, m_EffectV2GroupIds[index] });
+				std::stable_sort(m_EffectResourceRows.begin(), m_EffectResourceRows.end(), [&](const auto& left, const auto& right)
+					{ return m_EffectResourceLabels.at(left.assetId).displayName < m_EffectResourceLabels.at(right.assetId).displayName; });
+				m_EffectResourceTree = {};
+				for (size_t index = 0u; index < m_EffectResourceRows.size(); ++index)
+					InsertResourceTree(m_EffectResourceTree, m_EffectResourceLabels.at(m_EffectResourceRows[index].assetId).categories, index);
+				(void)FinalizeResourceTree(m_EffectResourceTree);
 				m_strEffectFilterQuery = Query;
 				m_bEffectFilterDirty = false;
 			}
@@ -12610,6 +12803,14 @@ void Client::CValtanActionWorkbench::Render_ResourcesPane(
 				m_strEffectAddAssetId.empty() ?
 					"Select one Effect below." :
 					m_strEffectAddAssetId.c_str());
+			if (!m_strEffectAddAssetId.empty() && ImGui::Button("Open Editor##ResourceEffect"))
+			{
+				m_PendingEffectResourceOpen = EFFECT_RESOURCE_KEY{
+					m_eEffectAddResourceKind == EFFECT_RESOURCE_KIND::V1_PATTERN ? EFFECT_RESOURCE_OWNER_KIND::V1_DOCUMENT :
+					m_eEffectAddResourceKind == EFFECT_RESOURCE_KIND::V2_LEAF ? EFFECT_RESOURCE_OWNER_KIND::V2_LEAF : EFFECT_RESOURCE_OWNER_KIND::V2_GROUP,
+					m_strEffectAddAssetId };
+			}
+			if (!m_strEffectAddAssetId.empty()) ImGui::SameLine();
 			if (!m_strEffectAddAssetId.empty() && ImGui::Button("Copy Selected Effect Resource"))
 			{
 				CCompositionClipboard::Get().Write(CaptureEffectResource(m_strEffectAddAssetId,
@@ -12666,7 +12867,7 @@ void Client::CValtanActionWorkbench::Render_ResourcesPane(
 				"WAIT" != pResourceStage->strSequenceRole &&
 				!m_strEffectAddAssetId.empty() && bV1Selection;
 			ImGui::BeginDisabled(!bEffectAppendAdmitted);
-			if (ImGui::Button("Append V1 Effect to Pattern Draft") &&
+			if (ImGui::Button("Append Effect to Pattern Draft") &&
 				bEffectAppendAdmitted)
 			{
 				VALTAN_PRODUCT_EFFECT_CUE_VIEW Cue;
@@ -12755,73 +12956,36 @@ void Client::CValtanActionWorkbench::Render_ResourcesPane(
 					"V2 changes stay in this Composition draft. The Sequencer Save commits Pattern, Sound and V2 as one rollback-safe transaction.");
 			}
 
-			ImGui::SeparatorText("All Effect Resources");
-			if (ImGui::TreeNodeEx(
-					"V1 Pattern Effects", ImGuiTreeNodeFlags_SpanAvailWidth))
+			ImGui::SeparatorText("Effect Resources");
+			ImGui::TextDisabled("Patterns: exact clip / connected Effects | Common: shared and independent Effects | Library: unassigned");
+			const auto renderEffect = [this](size_t index)
 			{
-				RenderResourceTree(
-					m_EffectV1ResourceTree,
-					[this](const std::size_t i)
-					{
-						const std::string& AssetId =
-							m_SemanticValtanEffectAssetIds[i];
-						const bool_t bSelected =
-							EFFECT_RESOURCE_KIND::V1_PATTERN ==
-								m_eEffectAddResourceKind &&
-							AssetId == m_strEffectAddAssetId;
-						if (ImGui::Selectable(AssetId.c_str(), bSelected))
-						{
-							m_eEffectAddResourceKind =
-								EFFECT_RESOURCE_KIND::V1_PATTERN;
-							m_strEffectAddAssetId = AssetId;
-						}
-						Offer_CompositionResourceDrag(AssetId.c_str(), [AssetId]() { return CaptureEffectResource(AssetId, "V1_EFFECT"); });
-					});
-				ImGui::TreePop();
-			}
-			if (ImGui::TreeNodeEx(
-					"V2 Authored Effects", ImGuiTreeNodeFlags_SpanAvailWidth))
+				const auto& resource = m_EffectResourceRows[index];
+				const auto& metadata = m_EffectResourceLabels.at(resource.assetId);
+				const char* kind = resource.kind == EFFECT_RESOURCE_KIND::V1_PATTERN ? "Effect" :
+					resource.kind == EFFECT_RESOURCE_KIND::V2_GROUP ? "Group" : "Leaf";
+				const std::string label = metadata.displayName + " [" + kind + "]##" + resource.assetId;
+				const bool selected = m_eEffectAddResourceKind == resource.kind && m_strEffectAddAssetId == resource.assetId;
+				if (ImGui::Selectable(label.c_str(), selected))
+				{
+					m_eEffectAddResourceKind = resource.kind;
+					m_strEffectAddAssetId = resource.assetId;
+				}
+				if (ImGui::IsItemHovered())
+				{
+					std::string path;
+					for (const auto& category : metadata.categories) path += (path.empty() ? "" : " / ") + category;
+					ImGui::SetTooltip("%s\n%s", resource.assetId.c_str(), path.c_str());
+				}
+				Offer_CompositionResourceDrag(metadata.displayName.c_str(), [resource]()
+					{ return CaptureEffectResource(resource.assetId, resource.kind == EFFECT_RESOURCE_KIND::V1_PATTERN ? "V1_EFFECT" :
+						resource.kind == EFFECT_RESOURCE_KIND::V2_GROUP ? "GROUP" : "LEAF"); });
+			};
+			if (Query.empty()) RenderResourceTree(m_EffectResourceTree, renderEffect, "No matching saved Effects.");
+			else
 			{
-				RenderResourceTree(
-					m_EffectV2DocumentResourceTree,
-					[this](const std::size_t i)
-					{
-						const std::string& AssetId = m_EffectV2DocumentIds[i];
-						const bool_t bSelected =
-							EFFECT_RESOURCE_KIND::V2_LEAF ==
-								m_eEffectAddResourceKind &&
-							AssetId == m_strEffectAddAssetId;
-						if (ImGui::Selectable(AssetId.c_str(), bSelected))
-						{
-							m_eEffectAddResourceKind =
-								EFFECT_RESOURCE_KIND::V2_LEAF;
-							m_strEffectAddAssetId = AssetId;
-						}
-						Offer_CompositionResourceDrag(AssetId.c_str(), [AssetId]() { return CaptureEffectResource(AssetId, "LEAF"); });
-					});
-				ImGui::TreePop();
-			}
-			if (ImGui::TreeNodeEx(
-					"V2 Effect Groups", ImGuiTreeNodeFlags_SpanAvailWidth))
-			{
-				RenderResourceTree(
-					m_EffectV2GroupResourceTree,
-					[this](const std::size_t i)
-					{
-						const std::string& AssetId = m_EffectV2GroupIds[i];
-						const bool_t bSelected =
-							EFFECT_RESOURCE_KIND::V2_GROUP ==
-								m_eEffectAddResourceKind &&
-							AssetId == m_strEffectAddAssetId;
-						if (ImGui::Selectable(AssetId.c_str(), bSelected))
-						{
-							m_eEffectAddResourceKind =
-								EFFECT_RESOURCE_KIND::V2_GROUP;
-							m_strEffectAddAssetId = AssetId;
-						}
-						Offer_CompositionResourceDrag(AssetId.c_str(), [AssetId]() { return CaptureEffectResource(AssetId, "GROUP"); });
-					});
-				ImGui::TreePop();
+				ImGui::TextDisabled("%zu matching Effects", m_EffectResourceRows.size());
+				for (size_t index = 0u; index < m_EffectResourceRows.size(); ++index) renderEffect(index);
 			}
 		}
 		if (domain == RESOURCE_DOMAIN::SOUND)
@@ -13798,6 +13962,14 @@ void Client::CValtanActionWorkbench::Render()
 			pPattern, pStage, bMutationAdmitted, bPatternMutationAdmitted);
 	}
 	End_WorkbenchFrame();
+}
+
+bool_t Client::CValtanActionWorkbench::Consume_EffectResourceOpenRequest(EFFECT_RESOURCE_KEY& OutKey)
+{
+	if (!m_PendingEffectResourceOpen) return false;
+	OutKey = std::move(*m_PendingEffectResourceOpen);
+	m_PendingEffectResourceOpen.reset();
+	return true;
 }
 
 bool_t Client::CValtanActionWorkbench::Consume_EffectToolOpenRequest(

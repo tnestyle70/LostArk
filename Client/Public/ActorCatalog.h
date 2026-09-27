@@ -127,6 +127,13 @@ struct BOSS_DEFAULT_PARTICLE_ENTRY final
 	float3_t scale{ 1.f, 1.f, 1.f };
 };
 
+struct BOSS_WEAPON_SOCKET_TRANSFORM final
+{
+	// Metres in normalized socket axes, before the boss presentation scale.
+	float3_t positionMeters{};
+	float3_t rotationDegrees{};
+};
+
 struct BOSS_ACTOR_ENTRY final
 {
 	struct PRESENTATION_CLIPS final
@@ -152,6 +159,7 @@ struct BOSS_ACTOR_ENTRY final
 	turning the authored weapon axes onto the socket bone. Zero without a
 	weapon. */
 	float3_t weaponModelPreRotationDegrees = {};
+	BOSS_WEAPON_SOCKET_TRANSFORM weaponSocketTransform;
 	std::string bodyModel;
 	std::string weaponModel;
 	/* Skinned armour pieces the boss wears on the body rig. They share the
@@ -424,6 +432,10 @@ public:
 		LostArk::Shared::CHARACTER_CLASS_ID networkClassId);
 	static const BOSS_ACTOR_ENTRY* Find_Boss(std::string_view archetypeId);
 	static const std::vector<BOSS_ACTOR_ENTRY>& Get_Bosses();
+	static bool_t Validate_BossWeaponSocketTransform(const BOSS_WEAPON_SOCKET_TRANSFORM& value);
+	// Main-thread presentation tuning only; no gameplay command or disk mutation.
+	static bool_t Set_ValtanWeaponSocketTransform(std::string_view archetypeId,
+		const BOSS_WEAPON_SOCKET_TRANSFORM& value, std::string& status);
 	static const BOSS_COMBAT_OBJECT_VISUAL_ENTRY*
 		Find_BossCombatObjectVisual(
 			std::string_view bossArchetypeId,

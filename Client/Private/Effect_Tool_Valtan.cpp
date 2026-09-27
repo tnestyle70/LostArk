@@ -43,119 +43,6 @@
 #include "CharacterPreviewPanel.h"
 #include "BalanceTool.h"
 
-namespace
-{
-	using VALTAN_RESTORE_CLIP_INDEX = std::unordered_map<std::string,
-		std::vector<Client::VALTAN_CLIP_OCCURRENCE_VIEW>>;
-
-	bool_t Load_ValtanFullRestoreSourceClips(
-		const std::filesystem::path& Path,
-		VALTAN_RESTORE_CLIP_INDEX& OutIndex, std::string& OutError)
-	{
-		using namespace Client;
-		std::ifstream Input(Path, std::ios::binary);
-		if (!Input)
-		{
-			OutError = "Full Restore source animation index could not be read.";
-			return false;
-		}
-		const std::string Text{ std::istreambuf_iterator<char>(Input), {} };
-		DATA_JSON_VALUE Root;
-		if (!CDataJson::Parse(Text, Root, OutError))
-			return false;
-		const auto StringIs = [](const DATA_JSON_VALUE* Value, std::string_view Expected)
-			{ return Value && Value->Is_String() && Value->Get_String() == Expected; };
-		const auto Unsigned = [](const DATA_JSON_VALUE* Value, uint32_t& Out)
-		{
-			if (!Value || !Value->Is_Number() || !std::isfinite(Value->Get_Number()) ||
-				Value->Get_Number() < 0.0 || Value->Get_Number() > UINT32_MAX ||
-				std::floor(Value->Get_Number()) != Value->Get_Number())
-				return false;
-			Out = static_cast<uint32_t>(Value->Get_Number());
-			return true;
-		};
-		uint32_t Version = 0u;
-		const auto* Effects = Root.Find("effects");
-		if (!StringIs(Root.Find("schema"), "lostark.valtan-full-restore-animations") ||
-			!StringIs(Root.Find("bossArchetypeId"), "BOSS_VALTAN") ||
-			!Unsigned(Root.Find("formatVersion"), Version) || Version != 1u ||
-			!Effects || !Effects->Is_Array())
-		{
-			OutError = "Full Restore source animation index has an invalid schema.";
-			return false;
-		}
-		VALTAN_RESTORE_CLIP_INDEX Staged;
-		OutError = "Full Restore source animation index has an invalid action/stage/clip.";
-		for (const auto& Effect : Effects->Get_Array())
-		{
-			uint32_t Action = 0u, Stage = 0u;
-			const auto* Clips = Effect.Find("animationClips");
-			if (!Unsigned(Effect.Find("sourceActionId"), Action) || !Action ||
-				!Unsigned(Effect.Find("sourceStageIndex"), Stage) || Stage > 999u ||
-				!Clips || !Clips->Is_Array() || Clips->Get_Array().size() != 1u)
-				return false;
-			std::ostringstream Id;
-			Id << "effect.valtan.action." << Action << ".stage" << std::setw(3)
-				<< std::setfill('0') << Stage << ".full.restore";
-			if (!StringIs(Effect.Find("effectAssetId"), Id.str()) || Staged.contains(Id.str()))
-				return false;
-			std::vector<VALTAN_CLIP_OCCURRENCE_VIEW> SourceClips;
-			for (const auto& Source : Clips->Get_Array())
-			{
-				const auto* Name = Source.Find("clipName");
-				const auto* Loop = Source.Find("loop");
-				VALTAN_CLIP_OCCURRENCE_VIEW Clip;
-				if (!Name || !Name->Is_String() || !Name->Get_String().starts_with("mesh_") ||
-					!Unsigned(Source.Find("playMs"), Clip.iPlayMs) || !Clip.iPlayMs ||
-					!Loop || !Loop->Is_Boolean() ||
-					!Unsigned(Source.Find("previewWallMs"), Clip.iAuthoringWallMs) ||
-					!Clip.iAuthoringWallMs || Clip.iAuthoringWallMs > 600000u ||
-					(!StringIs(Source.Find("previewWallBasis"), "SOURCE_UNCONDITIONAL_STAGE_TRANSITION") &&
-					 !StringIs(Source.Find("previewWallBasis"), "PREVIEW_COVERS_SOURCE_CONDITIONAL_CHECK") &&
-					 !StringIs(Source.Find("previewWallBasis"), "SOURCE_ANIMATION_WINDOW")))
-					return false;
-				Clip.strClipName = Name->Get_String();
-				Clip.bLoop = Loop->Get_Boolean();
-				Clip.strClipOccurrenceId = "editor.full-restore." + Id.str();
-				SourceClips.push_back(std::move(Clip));
-			}
-			Staged.emplace(Id.str(), std::move(SourceClips));
-		}
-		OutIndex = std::move(Staged);
-		OutError.clear();
-		return true;
-	}
-
-	bool_t Is_ValtanPatternFullRestoreSource(
-		const Client::VALTAN_PATTERN_VIEW& Pattern,
-		const Client::EFFECT_DIRECT_AUTHORED_SOURCE_ENTRY& Source,
-		const VALTAN_RESTORE_CLIP_INDEX& Index)
-	{
-		const auto Entry = Index.find(Source.strEffectAssetId);
-		if (Entry == Index.end())
-			return false;
-		const bool_t ActionMatches = std::ranges::any_of(Pattern.SourceActionIds,
-			[&Source](const uint32_t Id)
-			{ return Source.strEffectAssetId.starts_with(
-				"effect.valtan.action." + std::to_string(Id) + ".stage"); });
-		// An explicitly authored Product cue can join a reviewed original Action
-		// even when the animation promotion retains a legacy action alias.
-		const bool_t CueMatches = std::ranges::any_of(Pattern.Stages,
-			[&Source](const auto& Stage)
-			{ return std::ranges::any_of(Stage.ProductCues,
-				[&Source](const auto& Cue)
-				{ return Cue.strEffectAssetId == Source.strEffectAssetId; }); });
-		if (!ActionMatches && !CueMatches)
-			return false;
-		for (const auto& Stage : Pattern.Stages)
-			for (const auto& Clip : Stage.ClipOccurrences)
-				if (std::ranges::find(Entry->second, Clip.strClipName,
-					&Client::VALTAN_CLIP_OCCURRENCE_VIEW::strClipName) != Entry->second.end())
-					return true;
-		return false;
-	}
-}
-
 bool_t Client::CEffect_Tool::Play_ValtanClipOccurrence(
 	const VALTAN_CLIP_OCCURRENCE_VIEW& Clip)
 {
@@ -770,8 +657,8 @@ bool_t Client::CEffect_Tool::Refresh_ValtanPatternTree()
 	/* A busy publisher is retried without rebuilding the catalog or parsing
 	   the source animation index on every retry. Keep the prior indexes intact. */
 	Initialize_CatalogMetadataView();
-	VALTAN_RESTORE_CLIP_INDEX SourceClips;
-	if (Load_ValtanFullRestoreSourceClips(CProjectDataRoot::Resolve(
+	VALTAN_FULL_RESTORE_CLIP_INDEX SourceClips;
+	if (CValtanPatternTree::Load_FullRestoreSourceClips(CProjectDataRoot::Resolve(
 		"Effects/ValtanFullRestoreAnimations.json"),
 		SourceClips, m_strValtanFullRestoreSourceStatus))
 		m_ValtanFullRestoreSourceClips = std::move(SourceClips);
@@ -1169,7 +1056,7 @@ bool_t Client::CEffect_Tool::Matches_ValtanPatternSearch(
 	for (const EFFECT_DIRECT_AUTHORED_SOURCE_ENTRY& Source :
 		m_ValtanExactAuthoredSources)
 	{
-		if (Is_ValtanPatternFullRestoreSource(Pattern, Source,
+		if (CValtanPatternTree::Matches_FullRestoreSource(Pattern, Source.strEffectAssetId,
 			m_ValtanFullRestoreSourceClips) &&
 			(Contains_NoCase(Source.strEffectAssetId, strSearch) ||
 			 Contains_NoCase("FULL RESTORE", strSearch)))
@@ -1946,8 +1833,8 @@ bool_t Client::CEffect_Tool::Try_OpenValtanStandaloneEffect(
 	{
 		/* Library entry uses the restored source clip even without a Product
 		   pattern owner. Its effect notifies already use this source clock. */
-		VALTAN_RESTORE_CLIP_INDEX SourceClips;
-		if (!Load_ValtanFullRestoreSourceClips(CProjectDataRoot::Resolve(
+		VALTAN_FULL_RESTORE_CLIP_INDEX SourceClips;
+		if (!CValtanPatternTree::Load_FullRestoreSourceClips(CProjectDataRoot::Resolve(
 			"Effects/ValtanFullRestoreAnimations.json"), SourceClips,
 			m_strValtanFullRestoreSourceStatus))
 		{
@@ -3262,6 +3149,7 @@ void Client::CEffect_Tool::Render_ValtanPatternNode(
 	if (bPatternOpen)
 	{
 		ImGui::SeparatorText("Saved Pattern Effects");
+		ImGui::TextWrapped("Product: Effects currently linked to this Pattern, including its combat-object visuals. Edit their appearance with Open Editor; arrange Pattern timing in Action Workbench.");
 		if (RuntimeRows.empty() && !bSourceCinematic)
 		{
 			ImGui::TextDisabled(
@@ -3573,11 +3461,13 @@ void Client::CEffect_Tool::Render_ValtanPatternNode(
 
 		/* This is an editor-only source clip join; no Product cue is persisted. */
 		ImGui::SeparatorText("Full Restore");
+		ImGui::TextWrapped("Reusable original Effects matched to this Pattern's source clips. Opening or saving one does not replace the Product links above. Add the saved Effect through Action Workbench > Composition Resources.");
+		ImGui::TextWrapped("Open Editor > Current Effect > Play All plays the Effect with its source animation. Scrub the Effect Sequencer, use Element Solo, edit Element Detail, then Save Changes.");
 		if (!m_strValtanFullRestoreSourceStatus.empty())
 			ImGui::TextWrapped("%s", m_strValtanFullRestoreSourceStatus.c_str());
 		std::vector<const EFFECT_DIRECT_AUTHORED_SOURCE_ENTRY*> FullRestoreSources;
 		for (const auto& Source : m_ValtanExactAuthoredSources)
-			if (Is_ValtanPatternFullRestoreSource(Pattern, Source,
+			if (CValtanPatternTree::Matches_FullRestoreSource(Pattern, Source.strEffectAssetId,
 				m_ValtanFullRestoreSourceClips))
 				FullRestoreSources.push_back(&Source);
 		std::ranges::sort(FullRestoreSources, {},
@@ -3593,7 +3483,8 @@ void Client::CEffect_Tool::Render_ValtanPatternNode(
 			const bool_t Active = m_ActiveDocument.has_value() &&
 				m_eActiveDocumentSource == EFFECT_DOCUMENT_SOURCE::AUTHORED &&
 				m_ActiveDocument->strEffectAssetId == Source->strEffectAssetId;
-			const std::string Label = "[FULL RESTORE] " + Source->strEffectAssetId;
+			const auto& SourceClips = m_ValtanFullRestoreSourceClips.at(Source->strEffectAssetId);
+			const std::string Label = "[FULL RESTORE] " + SourceClips.front().strClipName;
 			const bool_t Open = ImGui::TreeNodeEx(Label.c_str(),
 				ImGuiTreeNodeFlags_OpenOnArrow | (Active ? ImGuiTreeNodeFlags_Selected : 0));
 			const auto SelectSource = [this, &Pattern]()
@@ -3606,12 +3497,13 @@ void Client::CEffect_Tool::Render_ValtanPatternNode(
 				SelectSource();
 			if (Open)
 			{
+				ImGui::TextWrapped("Effect: %s", Source->strEffectAssetId.c_str());
 				ImGui::TextWrapped("Path: %s", Source->Path.generic_string().c_str());
-				const auto& SourceClips = m_ValtanFullRestoreSourceClips.at(Source->strEffectAssetId);
 				for (const auto& Clip : SourceClips)
 				{
 					ImGui::PushID(Clip.strClipOccurrenceId.c_str());
-					ImGui::TextWrapped("Source animation: %s", Clip.strClipName.c_str());
+					ImGui::TextWrapped("Source animation: %s | clip %u ms | preview %u ms",
+						Clip.strClipName.c_str(), Clip.iPlayMs, Clip.iAuthoringWallMs);
 					std::string EditableStatus;
 					const auto* EditablePath = Observe_DirectAuthoredEditablePath(
 						Source->strEffectAssetId, EditableStatus);

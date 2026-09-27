@@ -46,7 +46,7 @@ void LostArk::Server::CGameRoom::Rollback_Join(const SESSION_ID sessionId)
 bool LostArk::Server::CGameRoom::Is_PlayerAdmissionFull() const
 {
 	if (LostArk::Shared::WORLD_ID::VALTAN_ARENA == m_eWorldId &&
-		m_Players.size() >= LostArk::Shared::MAX_VALTAN_RAID_PLAYERS)
+		Count_HumanPlayers() >= LostArk::Shared::MAX_VALTAN_RAID_PLAYERS)
 	{
 		return true;
 	}
@@ -361,7 +361,7 @@ bool LostArk::Server::CGameRoom::Reset_ReplayableArenaWhenEmpty()
 	using LostArk::Shared::WORLD_ID;
 	if ((WORLD_ID::CHARACTER_SELECT_ARENA != m_eWorldId &&
 		WORLD_ID::VALTAN_ARENA != m_eWorldId &&
-		WORLD_ID::KAKULSAYDON_ARENA != m_eWorldId) || !m_Players.empty())
+		WORLD_ID::KAKULSAYDON_ARENA != m_eWorldId) || Count_HumanPlayers() != 0u)
 		return true;
 
 	Clear_KoukuSaydonPatternAudition();
@@ -420,7 +420,7 @@ bool LostArk::Server::CGameRoom::Reset_ReplayableArenaWhenEmpty()
 bool LostArk::Server::CGameRoom::Reset_ValtanArenaWhenEmpty()
 {
 	using LostArk::Shared::WORLD_ID;
-	if (WORLD_ID::VALTAN_ARENA != m_eWorldId || !m_Players.empty())
+	if (WORLD_ID::VALTAN_ARENA != m_eWorldId || Count_HumanPlayers() != 0u)
 		return true;
 
 	std::string resetStatus;
@@ -466,6 +466,7 @@ bool LostArk::Server::CGameRoom::Reset_ValtanArenaWhenEmpty()
 	// already discarded with the entity rebuild above, and a summon still in
 	// its landing delay has no party left to land for.
 	m_PendingEstherSummons.clear();
+	m_EstherZones.clear();
 	m_EstherSkillSystem.Reset();
 	m_bValtanRaidCleared = false;
 	m_strStatus = "Valtan arena reset after the room became empty";

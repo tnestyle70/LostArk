@@ -24471,6 +24471,7 @@ SOURCE_CHARACTER_NATIVE_OUTPUT SourceMovieBase1500(SOURCE_CHARACTER_NATIVE_INPUT
     float4 source[64]; [unroll] for(uint i=0u;i<64u;++i) source[i]=0.f;
     source[1]=g_SourceCharacterBaseConstants[0];
     source[2]=g_SourceCharacterBaseConstants[1];
+    source[0].x=1.f; // Native external primitive opacity.
     float4 projection[4]; [unroll] for(uint i=0u;i<4u;++i)projection[i]=input.projection[i];
     float4 passValues[5]={float4(.5,-.5,.5,.5),float4(0,0,1.f/(g_ProjMatrix._43*100.f),g_ProjMatrix._33/(g_ProjMatrix._43*100.f)),float4(0,0,0,0),float4(0,0,0,1),float4(1,1,1,1)};
     float4 v0=input.values[0], v1=input.values[1], v2=input.values[2], v3=input.values[3], v4=input.values[4], v5=input.values[5], v6=input.values[6], v7=input.values[7], v8=input.values[8], v9=input.values[9];
@@ -24533,6 +24534,7 @@ SOURCE_CHARACTER_NATIVE_OUTPUT SourceMovieBase1501(SOURCE_CHARACTER_NATIVE_INPUT
     float4 source[64]; [unroll] for(uint i=0u;i<64u;++i) source[i]=0.f;
     source[1]=g_SourceCharacterBaseConstants[0];
     source[2]=g_SourceCharacterBaseConstants[1];
+    source[0].x=1.f; // Native external primitive opacity.
     float4 projection[4]; [unroll] for(uint i=0u;i<4u;++i)projection[i]=input.projection[i];
     float4 passValues[5]={float4(.5,-.5,.5,.5),float4(0,0,1.f/(g_ProjMatrix._43*100.f),g_ProjMatrix._33/(g_ProjMatrix._43*100.f)),float4(0,0,0,0),float4(0,0,0,1),float4(1,1,1,1)};
     float4 v0=input.values[0], v1=input.values[1], v2=input.values[2], v3=input.values[3], v4=input.values[4], v5=input.values[5], v6=input.values[6], v7=input.values[7], v8=input.values[8], v9=input.values[9];
@@ -24606,6 +24608,7 @@ SOURCE_CHARACTER_NATIVE_OUTPUT SourceMovieBase1502(SOURCE_CHARACTER_NATIVE_INPUT
     source[10]=g_SourceCharacterBaseConstants[9];
     source[11]=g_SourceCharacterBaseConstants[10];
     source[12]=g_SourceCharacterBaseConstants[11];
+    source[0].x=1.f; // Native external primitive opacity.
     float4 projection[4]; [unroll] for(uint i=0u;i<4u;++i)projection[i]=input.projection[i];
     float4 passValues[5]={float4(.5,-.5,.5,.5),float4(0,0,1.f/(g_ProjMatrix._43*100.f),g_ProjMatrix._33/(g_ProjMatrix._43*100.f)),float4(0,0,0,0),float4(0,0,0,1),float4(1,1,1,1)};
     float4 v0=input.values[0], v1=input.values[1], v2=input.values[2], v3=input.values[3], v4=input.values[4], v5=input.values[5], v6=input.values[6], v7=input.values[7], v8=input.values[8], v9=input.values[9];
@@ -25094,6 +25097,8 @@ SOURCE_CHARACTER_NATIVE_OUTPUT SourceMovieBase1506(SOURCE_CHARACTER_NATIVE_INPUT
     source[9].x=((sign(((g_SourceCharacterBaseConstants[11]*g_SourceCharacterTime.xxxx)*float4(0,0,0,0)))*frac(abs(((g_SourceCharacterBaseConstants[11]*g_SourceCharacterTime.xxxx)*float4(0,0,0,0)))))).x;
     source[10]=g_SourceCharacterBaseConstants[9];
     source[11]=g_SourceCharacterBaseConstants[10];
+    source[0].x=1.f; // Native external primitive opacity.
+    source[1]=1.f; // World primitive RGBA identity; MIC colors are unchanged.
     float4 projection[4]; [unroll] for(uint i=0u;i<4u;++i)projection[i]=input.projection[i];
     float4 passValues[5]={float4(.5,-.5,.5,.5),float4(0,0,1.f/(g_ProjMatrix._43*100.f),g_ProjMatrix._33/(g_ProjMatrix._43*100.f)),float4(0,0,0,0),float4(0,0,0,1),float4(1,1,1,1)};
     float4 v0=input.values[0], v1=input.values[1], v2=input.values[2], v3=input.values[3], v4=input.values[4], v5=input.values[5], v6=input.values[6], v7=input.values[7], v8=input.values[8], v9=input.values[9];
@@ -26900,6 +26905,7 @@ SOURCE_CHARACTER_NATIVE_OUTPUT SourceMovieBase1516(SOURCE_CHARACTER_NATIVE_INPUT
     float4 source[64]; [unroll] for(uint i=0u;i<64u;++i) source[i]=0.f;
     source[1]=g_SourceCharacterBaseConstants[0];
     source[2]=g_SourceCharacterBaseConstants[1];
+    source[0].x=1.f; // Native external primitive opacity.
     float4 projection[4]; [unroll] for(uint i=0u;i<4u;++i)projection[i]=input.projection[i];
     float4 passValues[5]={float4(.5,-.5,.5,.5),float4(0,0,1.f/(g_ProjMatrix._43*100.f),g_ProjMatrix._33/(g_ProjMatrix._43*100.f)),float4(0,0,0,0),float4(0,0,0,1),float4(1,1,1,1)};
     float4 v0=input.values[0], v1=input.values[1], v2=input.values[2], v3=input.values[3], v4=input.values[4], v5=input.values[5], v6=input.values[6], v7=input.values[7], v8=input.values[8], v9=input.values[9];
@@ -27500,6 +27506,7 @@ SOURCE_CHARACTER_NATIVE_OUTPUT SourceMovieBase1520(SOURCE_CHARACTER_NATIVE_INPUT
     source[11]=g_SourceCharacterBaseConstants[10];
     source[12]=g_SourceCharacterBaseConstants[11];
     source[13]=g_SourceCharacterBaseConstants[12];
+    source[0].x=1.f; // Native external primitive opacity.
     float4 projection[4]; [unroll] for(uint i=0u;i<4u;++i)projection[i]=input.projection[i];
     float4 passValues[5]={float4(.5,-.5,.5,.5),float4(0,0,1.f/(g_ProjMatrix._43*100.f),g_ProjMatrix._33/(g_ProjMatrix._43*100.f)),float4(0,0,0,0),float4(0,0,0,1),float4(1,1,1,1)};
     float4 v0=input.values[0], v1=input.values[1], v2=input.values[2], v3=input.values[3], v4=input.values[4], v5=input.values[5], v6=input.values[6], v7=input.values[7], v8=input.values[8], v9=input.values[9];
@@ -28826,6 +28833,8 @@ SOURCE_CHARACTER_NATIVE_OUTPUT SourceMovieBase1524(SOURCE_CHARACTER_NATIVE_INPUT
     source[12]=g_SourceCharacterBaseConstants[10];
     source[13]=g_SourceCharacterBaseConstants[11];
     source[14]=g_SourceCharacterBaseConstants[12];
+    source[0].x=1.f; // Native external primitive opacity.
+    source[1]=1.f; // World primitive RGBA identity; MIC colors are unchanged.
     float4 projection[4]; [unroll] for(uint i=0u;i<4u;++i)projection[i]=input.projection[i];
     float4 passValues[5]={float4(.5,-.5,.5,.5),float4(0,0,1.f/(g_ProjMatrix._43*100.f),g_ProjMatrix._33/(g_ProjMatrix._43*100.f)),float4(0,0,0,0),float4(0,0,0,1),float4(1,1,1,1)};
     float4 v0=input.values[0], v1=input.values[1], v2=input.values[2], v3=input.values[3], v4=input.values[4], v5=input.values[5], v6=input.values[6], v7=input.values[7], v8=input.values[8], v9=input.values[9];

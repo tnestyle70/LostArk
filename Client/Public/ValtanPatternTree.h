@@ -13,6 +13,7 @@
 #include <optional>
 #include <string>
 #include <string_view>
+#include <unordered_map>
 #include <vector>
 
 NS_BEGIN(Client)
@@ -89,6 +90,10 @@ struct VALTAN_COMBAT_OBJECT_PRESENTATION_EVENT_VIEW final
 struct VALTAN_COMBAT_OBJECT_HIT_VIEW final
 {
 	std::string strHitId;
+	std::string strTriggerKind;
+	uint32_t iAtMs = 0u;
+	uint32_t iRepeatCount = 1u;
+	uint32_t iRepeatIntervalMs = 0u;
 	std::string strHitShape;
 	f32_t fInnerRadiusM = 0.f;
 	f32_t fOuterRadiusM = 0.f;
@@ -172,6 +177,10 @@ struct VALTAN_CLIP_OCCURRENCE_VIEW final
 	bool_t bLoop = false;
 	std::vector<VALTAN_PRODUCT_EFFECT_CUE_VIEW> ProductCues;
 };
+
+/* Shared read-only source animation metadata for Effect and Pattern browsers. */
+using VALTAN_FULL_RESTORE_CLIP_INDEX = std::unordered_map<std::string,
+	std::vector<VALTAN_CLIP_OCCURRENCE_VIEW>>;
 
 struct VALTAN_STAGE_MOTION_VIEW final
 {
@@ -756,6 +765,17 @@ private:
 class CValtanPatternTree final
 {
 public:
+	/* Refresh-time metadata only; failure preserves the previous index. The
+	   pure matcher requires both an admitted action/cue and an exact clip. */
+	static bool_t Load_FullRestoreSourceClips(
+		const std::filesystem::path& Path,
+		VALTAN_FULL_RESTORE_CLIP_INDEX& OutIndex,
+		std::string& strOutStatus);
+	static bool_t Matches_FullRestoreSource(
+		const VALTAN_PATTERN_VIEW& Pattern,
+		const std::string& strEffectAssetId,
+		const VALTAN_FULL_RESTORE_CLIP_INDEX& Index);
+
 	/* Source inventory is independent of generated Product parity. It retains
 	   the existing split schema/type/identity checks; resource and native
 	   readiness belongs to Preview/Publish. Failed reads preserve OutView. */

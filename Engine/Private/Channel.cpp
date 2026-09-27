@@ -20,9 +20,20 @@ namespace
 		const size_t count = keys.size();
 		if (leftIndex && count > 1u && static_cast<size_t>(*leftIndex) < count - 1u)
 		{
-			const TKey* const left = begin + *leftIndex;
-			if (left->timeTicks <= time && time < (left + 1)->timeTicks)
-				return left + 1;
+			const TKey* left = begin + *leftIndex;
+			if (left->timeTicks <= time)
+			{
+				// Normal playback crosses only a few keys per frame. Bound the
+				// cursor walk so random seeks keep logarithmic worst-case work.
+				for (size_t step = 0u; step < 4u && left + 1 < begin + count; ++step, ++left)
+				{
+					if (time < (left + 1)->timeTicks)
+					{
+						*leftIndex = static_cast<uint32_t>(left - begin);
+						return left + 1;
+					}
+				}
+			}
 		}
 		// A clone owns its cursors. Channels and their compact tracks stay immutable.
 		// Random seeks and reversed playback use a bounded search of the same keys.

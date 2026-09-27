@@ -13,6 +13,7 @@ float4x4    g_LightViewMatrix, g_LightProjMatrix;
 texture2D   g_Texture;
 texture2D   g_DiffuseTexture, g_ShadeTexture;
 texture2D   g_DepthTexture;
+uint g_iPortraitCapture = 0u;
 texture2D   g_SpecularTexture;
 texture2D   g_MaterialSpecularTexture;
 texture2D   g_GeometricNormalTexture;
@@ -1123,6 +1124,7 @@ PS_OUT_BACKBUFFER PS_MAIN_COMBINED(PS_IN In)
     /* Emissive and Effect HDR energy are light sources, not receivers.  They
        must remain available to bloom even when the carrier is in shadow. */
     Out.vBackBuffer = vLitColor + vEmissive;
+    if (g_iPortraitCapture != 0u) Out.vBackBuffer.a = 1.f;
     // Source-character GBuffer normal.a is otherwise unused by its typed lighting.
     // Preserve the document multiplier through the deferred model-cue path.
     const float bloomMarker = g_NormalTexture.Load(pixel).a;
@@ -1628,8 +1630,12 @@ float3 Sample_SourceGradingLut(float3 color)
 
 float3 Resolve_FinalLDR(float2 vTexcoord)
 {
-    float3 vScene = Sanitize_HDR(g_SceneHDRTexture.Sample(
-        PostProcessSampler, clamp(vTexcoord, 0.f, 1.f)).rgb);
+    const float4 sceneSample = g_SceneHDRTexture.Sample(
+        PostProcessSampler, clamp(vTexcoord, 0.f, 1.f));
+    // The UI consumes straight alpha. Undo capture's black-background alpha-over
+    // before applying the field tone curve, otherwise a hair edge is dimmed twice.
+    float3 vScene = Sanitize_HDR(g_iPortraitCapture != 0u ?
+        sceneSample.rgb / max(saturate(sceneSample.a), 1e-4f) : sceneSample.rgb);
     float3 vBloom = float3(0.f, 0.f, 0.f);
     if (0u != g_iBloomEnabled)
     {
@@ -1829,21 +1835,14 @@ PS_OUT_BACKBUFFER PS_MAIN_FINAL(PS_IN In)
     return Out;
 }
 
-/* The portrait resolve is the Final tone curve with the background dropped. Its destination is a
-UI texture, so a pixel the subject never wrote has to stay transparent instead of taking the
-scene's fog and ambient. Target_Depth clears its marker lane to zero, which is exactly that test,
-and the lane is read per pixel so a resampled portrait still reads the full size G-buffer. */
+/* Both deferred surfaces and forward-only hair contribute coverage in SceneHDR.
+Depth markers alone cannot represent translucent pixels outside the body silhouette. */
 float4 PS_MAIN_PORTRAIT_RESOLVE(PS_IN In) : SV_TARGET0
 {
-    uint iDepthWidth = 1u;
-    uint iDepthHeight = 1u;
-    g_DepthTexture.GetDimensions(iDepthWidth, iDepthHeight);
-    const int2 vPixel = int2(saturate(In.vTexcoord) *
-        float2((float)iDepthWidth, (float)iDepthHeight));
-    if (0.f == g_DepthTexture.Load(int3(vPixel, 0)).w)
-        return float4(0.f, 0.f, 0.f, 0.f);
-
-    return float4(Resolve_FinalFXAA(In.vTexcoord), 1.f);
+    const float coverage = saturate(g_SceneHDRTexture.Sample(
+        PostProcessSampler, saturate(In.vTexcoord)).a);
+    if (coverage <= 1e-4f) return float4(0.f, 0.f, 0.f, 0.f);
+    return float4(Resolve_FinalFXAA(In.vTexcoord), coverage);
 }
 
 

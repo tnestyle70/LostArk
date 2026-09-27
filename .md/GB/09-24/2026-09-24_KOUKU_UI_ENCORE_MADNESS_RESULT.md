@@ -98,3 +98,48 @@ Object에는 중복 ID가 없고 해당 ID도 없다. 따라서 화면의 미저
 맵 배치 Save는 별도로 Area scope Publish가 필요하며 C++ Build가 이를 대신하지 않는다.
 이번 별표 제거는 첨부 저장 오류를 해결한 변경이 아니다. 미저장 편집이 있으므로 최종
 링크를 위한 사용자 종료보다 저장 오류 해결이 먼저임을 안내했다.
+
+## G06. 시작 발판 광기 게이지와 1.3m 저장 확인 (2026-09-27)
+
+### 실제 소스 반영
+
+`Level_KakulSaydonArena::Update`가 각 플레이어의 Server snapshot 위치를 기존 Shared
+`Is_KoukuArenaStartArea`에 전달하여 시작 발판이면 광기 게이지를 숨긴다. snapshot 수신
+전에도 숨기며 관문으로 이동한 뒤 기존 게이지 표시를 적용한다. 본인과 동료 각각 판정하여
+시작점에 남은 동료와 이미 이동한 플레이어를 구분한다. 미로·춤의 기존 숨김은 유지한다.
+
+초기 접근 jump.2는 발판 영역 밖이므로 발판 검사만으로 최초 진입을 판정하지 않는다.
+Server currentGate가 0이거나 수신 전이면 계속 숨기고, G1 인트로 종료 뒤 전투 관문이
+활성화되면 표시한다. 보스 관문 없는 MARIO snapshot은 표시를 허용한다. F1 Mario2~4는
+기존 mode=NONE 경로이므로 Server 승인된 player-only gate의 본인 표시도 보존한다.
+Return to Start 뒤 currentGate가 남으므로 플레이어별 시작 발판 검사도 함께 적용한다.
+Server gameplay와 데이터는 변경하지 않았다. 새 C++ 파일이나 project/filter 등록은 없다.
+
+### 저장값과 자동 검증
+
+사용자 저장 JSON의 `madness.feetOffsetMeters`는 `1.2999999523162842`다. 이는
+`1.3f`의 정확한 JSON 직렬화이며 발 Transform origin의 월드 Y에 더하는 1.3m다.
+화면 X/Y offset은 생략되어 0이다. 사용자 Save backup과 leaf 값 비교에서 높이 0→1.3m
+외의 HUD 값은 보존되어 있었다. source JSON은 수정하지 않았다.
+
+현재 `CDataJson`, `CProjectDataRoot`와 `CKoukuMadnessGaugeView`의 Load_Config,
+Get/Set/Save/Reload_Position 본문을 사용하는 격리 console에서 사용자 JSON의 복사본에만
+Save를 수행했다. 저장·새 인스턴스 로드 15개와 별도 새 프로세스 재로드 2개 assertion이
+PASS했다. 실제 ProjectDataRoot도 repository Data를 resolve했다. 저장된 위치는 이후
+생성되는 view에서도 동일하게 읽으며, GPU 투영 결과 자체를 실행 검증한 것은 아니다.
+증거: `out/KoukuGaugeSavedPosition20260927/run.log`.
+
+현재 `Level_KakulSaydonArena.cpp`와 `KoukuMadnessGaugeView.cpp`를 MSVC 14.44.35207의
+Debug 옵션으로 out에 격리 컴파일하여 exit 0을 확인했다. 컴파일 전후 소스 hash 동일,
+기존 C++ UTF-8/BOM/CRLF 보존과 JSON parse를 확인했다.
+증거: `out/KoukuMadnessVisibility20260927/debug-compile.log`, `validation.json`.
+Save 정본의 전후 SHA256은
+`27e33cf895c86fcf91e5bde1ed44c102034c09a2e5dc702efeb8bf8ab12eb1fa`로 같다.
+
+### 남은 실행 확인
+
+사용자가 Debug Client PID 14032와 Server PID 66672로 검증 중이어서 표준 Product
+링크·EXE 교체는 수행하지 않았다. 이번 compile은 설치된 EXE 갱신을 뜻하지 않는다.
+다음 Debug Product Build와 재실행 후 시작 발판 숨김→G1 도착 표시, 시작점 복귀 숨김,
+1.3m 실제 화면 위치를 사용자가 확인해야 한다. Client/Server/UI를 실행·조작·종료하지
+않았다. 현재 사용자 실행본에 표시 수정이 반영되었다고 주장하지 않는다.
