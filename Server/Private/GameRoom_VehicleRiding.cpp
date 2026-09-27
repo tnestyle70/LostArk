@@ -213,9 +213,14 @@ LostArk::Server::CGameRoom::Apply_SetVehicleRiding(
 	const bool nowShip = Is_ShipVehicleId(request.iVehicleId);
 	if (nowShip && WORLD_ID::BERN != m_eWorldId)
 		return commit(VEHICLE_RIDING_RESULT::REJECTED_WORLD_NOT_ALLOWED);
-	End_VehicleSkill(player);
-	if (nowShip && !wasShip && !Begin_ShipVoyage(player, request.iVehicleId))
-		return commit(VEHICLE_RIDING_RESULT::REJECTED_PLAYER_STATE);
+	if (nowShip && !wasShip)
+	{
+		// The voyage validates a sea destination before ending the current mount action.
+		if (!Begin_ShipVoyage(player, request.iVehicleId))
+			return commit(VEHICLE_RIDING_RESULT::REJECTED_PLAYER_STATE);
+	}
+	else
+		End_VehicleSkill(player);
 	if (wasShip && !nowShip)
 		End_ShipVoyage(player, "changed to another vehicle");
 	player.iVehicleId = request.iVehicleId;
@@ -249,10 +254,13 @@ bool LostArk::Server::CGameRoom::Begin_ShipVoyage(
 				std::abs(sea.y - SHIP_SEA_NAV_LEVEL_Y) > SHIP_SEA_LEVEL_TOLERANCE_M)
 				continue;
 			const float yaw = std::atan2(sea.x - startX, sea.z - startZ) * SHIP_RADIANS_TO_DEGREES;
+			// No rejection remains after this point. A refused voyage must retain
+			// the running mount skill/flight and its position as well as its vehicle ID.
+			End_VehicleSkill(player);
 			player.bShipDockValid = true;
-			player.fShipDockX = startX;
+			player.fShipDockX = player.fPositionX;
 			player.fShipDockY = player.fPositionY;
-			player.fShipDockZ = startZ;
+			player.fShipDockZ = player.fPositionZ;
 			player.fShipDockYawDegrees = player.fYawDegrees;
 			Reset_PlayerForDebugTeleport(player);
 			player.fPositionX = sea.x;

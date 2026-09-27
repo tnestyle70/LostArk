@@ -134,6 +134,14 @@ int LostArk::Server::Run_ServerVehicleRidingContractTests()
 	bern->Enforce_VehicleRidingState();
 	tests.Require(GOLDEN_TERPEION == rider.iVehicleId,
 		"A running vehicle skill keeps the player mounted");
+	SERVER_PLAYER refusedSailor = rider;
+	tests.Require(VEHICLE_RIDING_RESULT::REJECTED_PLAYER_STATE == bern->Apply_SetVehicleRiding(
+		refusedSailor, Make_VehicleRequest(3u, WORLD_ID::BERN, 8200u)).eResult &&
+		GOLDEN_TERPEION == refusedSailor.iVehicleId && PLAYER_ACTION_STATE::VEHICLE_SKILL == refusedSailor.eAction &&
+		96000u == refusedSailor.iCurrentSkillId && rider.iActionStartTick == refusedSailor.iActionStartTick &&
+		Near(rider.fActionElapsedSeconds, refusedSailor.fActionElapsedSeconds) &&
+		rider.CooldownEndTickBySkillId == refusedSailor.CooldownEndTickBySkillId && !refusedSailor.bShipDockValid,
+		"A refused ship request preserves the current mount skill and cooldowns");
 	runVehicleSkill(120u);
 	tests.Require(PLAYER_ACTION_STATE::NONE == rider.eAction &&
 		INVALID_SKILL_ID == rider.iCurrentSkillId,
@@ -287,6 +295,17 @@ int LostArk::Server::Run_ServerVehicleRidingContractTests()
         toggle.iClientSequence = 21u;
         tests.Require(!bern->Try_StartVehicleSkill(rider, toggle) && rider.eVehicleFlightPhase == VEHICLE_FLIGHT_PHASE::FLYING,
             "E refuses landing over a nav gap without ending flight");
+        SERVER_PLAYER refusedFlyingSailor = rider;
+        tests.Require(VEHICLE_RIDING_RESULT::REJECTED_PLAYER_STATE == bern->Apply_SetVehicleRiding(
+            refusedFlyingSailor, Make_VehicleRequest(rider.LastVehicleRidingResult.iRequestSequence + 1u,
+                WORLD_ID::BERN, 8200u)).eResult && refusedFlyingSailor.iVehicleId == rider.iVehicleId &&
+            refusedFlyingSailor.eVehicleFlightPhase == VEHICLE_FLIGHT_PHASE::FLYING &&
+            Near(refusedFlyingSailor.fPositionX, rider.fPositionX) &&
+            Near(refusedFlyingSailor.fPositionY, rider.fPositionY) &&
+            Near(refusedFlyingSailor.fPositionZ, rider.fPositionZ) &&
+            refusedFlyingSailor.iActionStartTick == rider.iActionStartTick &&
+            Near(refusedFlyingSailor.fVehicleFlightVelocityX, rider.fVehicleFlightVelocityX),
+            "A refused ship request over a nav gap preserves airborne position and flight");
         rider.eAction = PLAYER_ACTION_STATE::KNOCKDOWN;
         bern->Enforce_VehicleRidingState();
         tests.Require(rider.iVehicleId == INVALID_VEHICLE_ID && Near(rider.fPositionX, lastSafeLanding.x) &&
