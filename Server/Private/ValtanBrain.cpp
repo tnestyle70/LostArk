@@ -2,6 +2,7 @@
 
 #include "BossCombatRuntime.h"
 #include "Gameplay/CombatCollisionContract.h"
+#include "Gameplay/EstherStrikeContract.h"
 #include "Gameplay/WorldCollisionContract.h"
 #include "PlayerSkillSystem.h"
 #include "ServerCombatHitRuntime.h"
@@ -2597,6 +2598,8 @@ namespace
 			incoming.bKnockdown = boss.bPatternKnockdown;
 			incoming.iDownMs = boss.iPatternDownMs;
 			incoming.iServerTick = serverTick;
+			incoming.bEstherGuardBlockable =
+				LostArk::Shared::EstherStrike::Is_GuardBlockedDamageProfile(boss.strDamageProfileId.c_str());
 			const SERVER_COMBAT_HIT_RESULT hitResult =
 				CServerCombatHitRuntime::Apply_WorldToPlayer(
 					player, incoming, catalog, outDamageEvents);

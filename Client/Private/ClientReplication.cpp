@@ -1916,6 +1916,11 @@ void Client::CClientReplication::Apply_CombatDebugVisibility(
 				boss->Set_CombatColliderDebugVisible(Visibility.bBossBodyCollider);
 		}
 #ifdef _DEBUG
+		if (LostArk::Shared::WORLD_ENTITY_KIND::NPC == presentation.eKind)
+		{
+			if (const std::shared_ptr<CNpc> npc = presentation.pNpc.lock())
+				npc->Set_SkillHitAreaDebugVisible(Visibility.bPlayerSkillHitGeometry);
+		}
 		if (std::shared_ptr<CValtan> valtan = presentation.pValtan.lock())
 		{
 			valtan->Set_CombatDebugVisibility(
@@ -2596,6 +2601,9 @@ bool Client::CClientReplication::Apply_WorldEntitySpawn(
 		presentation.fCollisionRadius = spawned.fCollisionRadius;
 		presentation.PinnedDefinitionRevision =
 			spawned.PinnedDefinitionRevision;
+#ifdef _DEBUG
+		npc->Set_SkillHitAreaDebugVisible(m_CombatDebugVisibility.bPlayerSkillHitGeometry);
+#endif
 		presentation.pNpc = npc;
 		/* A missing Bern3 ship NPC has been invisible before: name each one that really got a body. */
 		if (0 == spawned.strArchetypeId.rfind("NPC_SHIP_", 0))

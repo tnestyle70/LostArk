@@ -41,3 +41,20 @@ Product 빌드에 포함해 검증하며, 현재 빌드 완료로 기록하지 �
 2개와 Maharaka 모델·텍스처·사운드가 로컬에 누락되어 있었다. 각 작업의 Drive pack을
 설치해야 해당 표시를 사용할 수 있다. Server bootstrap 게시와 실행 중 Server 재시작은
 별도이며, 초상·선박·마하라카 최종 화면은 사용자가 확인한다.
+
+## PR #469 추가 통합
+
+`5d0ca1f98`의 에스더 판정과 플레이어 반복 타격을 위 병합 기준선에 결합했다. C++는
+자동 병합되었으며 local Guide·피격 경로의 기존 변경을 유지했다. 유일한 명시적 충돌은
+`Gameplay.bootstrap`의 Valtan presentation generation으로, 양쪽 hash 중 하나를 선택하지
+않고 공식 `Publish-GameplayBalance.ps1 -Mode Publish`로 현재 결합된 정본에서 재생성했다.
+146개 artifact의 generation은 `0a7c328f0e8a257119a9715035a01238f31b406dd6308a261b52e71ff1e398da`다.
+
+- Kouku 정본 검증 114 patterns/577 stages, Valtan projection·template parity·alignment PASS.
+- 공식 Gameplay Publish 성공: 109686 rows, hit-shape coverage 95/95.
+- Artist·DimensionMaster·GuardianKnight·LanceMaster·Warlord animevents/hitshapes
+  두 생성기의 `--check` 모두 unchanged.
+- incoming 변경 JSON 8개, Shared project/filter XML 2개 parse 성공.
+- Kouku authoring·published 문서와 effect V2 정본은 local `5fc2f940a`와 변경 0이다.
+  이번 publish가 변경한 파일은 Gameplay.bootstrap과 새 Valtan generation manifest뿐이다.
+- C++/FXC Product 빌드는 후속 기능 통합 검증에 남겨 두었다. Client/UI/Server는 실행하지 않았다.

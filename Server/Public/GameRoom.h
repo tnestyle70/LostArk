@@ -24,6 +24,7 @@
 #include "KoukuSaydonLogicRuntime.h"
 #include "EncounterPropRuntime.h"
 #include "EstherSkillSystem.h"
+#include "Gameplay/EstherStrikeContract.h"
 #include "WorldDestructionBootstrap.h"
 #include "WorldDestructionRuntime.h"
 #include "Network/PacketFrame.h"
@@ -390,11 +391,15 @@ namespace LostArk::Server
 		void Finish_SquareHoleSong(SERVER_PLAYER& player);
 		bool Spawn_EstherSummon(
 			const ESTHER_ROSTER_ENTRY& rosterEntry,
+			LostArk::Shared::PLAYER_ID casterPlayerId,
 			float positionX,
 			float positionY,
 			float positionZ,
 			float yawDegrees);
 		void Update_PendingEstherSummons(float fixedDeltaSeconds);
+		void Apply_EstherStrikeHits(SERVER_WORLD_ENTITY& summon, std::uint32_t serverTick);
+		void Open_EstherZone(const LostArk::Shared::EstherStrike::ZONE& zone, float positionX, float positionZ, std::uint32_t serverTick);
+		void Update_EstherZones(std::uint32_t serverTick);
 		void Handle_RevivePlayer(
 			SESSION_ID sessionId,
 			const LostArk::Shared::C2S_REVIVE_PLAYER& revivePlayer);
@@ -1673,6 +1678,7 @@ namespace LostArk::Server
 		struct PENDING_ESTHER_SUMMON final
 		{
 			const ESTHER_ROSTER_ENTRY* pRosterEntry = nullptr;
+			LostArk::Shared::PLAYER_ID iCasterPlayerId = LostArk::Shared::INVALID_PLAYER_ID;
 			float fPositionX = 0.f;
 			float fPositionY = 0.f;
 			float fPositionZ = 0.f;
@@ -1680,6 +1686,15 @@ namespace LostArk::Server
 			float fRemainingSeconds = 0.f;
 		};
 		std::vector<PENDING_ESTHER_SUMMON> m_PendingEstherSummons;
+		struct ESTHER_ZONE_RUNTIME final
+		{
+			const LostArk::Shared::EstherStrike::ZONE* pZone = nullptr;
+			float fPositionX = 0.f;
+			float fPositionZ = 0.f;
+			std::uint32_t iEndTick = 0u;
+			std::uint32_t iNextPulseTick = 0u;
+		};
+		std::vector<ESTHER_ZONE_RUNTIME> m_EstherZones;
 
 		std::unordered_map<SESSION_ID, std::weak_ptr<CClientSession>> m_Sessions;
 		std::map<LostArk::Shared::PLAYER_ID, SERVER_PLAYER> m_Players;

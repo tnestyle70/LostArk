@@ -509,6 +509,9 @@ LostArk::Server::CServerCombatHitRuntime::Apply_WorldToPlayer(
 	}
 	if (!hit.bEncounterWipe && hit.iServerTick < target.iInvulnerableEndTick)
 		return SERVER_COMBAT_HIT_RESULT::ABSORBED;
+	const bool estherGuarded = !hit.bEncounterWipe && hit.iServerTick < target.iEstherGuardEndTick;
+	if (estherGuarded && hit.bEstherGuardBlockable)
+		return SERVER_COMBAT_HIT_RESULT::ABSORBED;
 	if (!hit.bEncounterWipe && !hit.bIgnoreCounter &&
 		CPlayerSkillSystem::Try_Counter(target, catalog, hit.iServerTick))
 		return SERVER_COMBAT_HIT_RESULT::ABSORBED;
@@ -521,7 +524,8 @@ LostArk::Server::CServerCombatHitRuntime::Apply_WorldToPlayer(
 	/* A guardian's protection reduces what the hit finally takes off. */
 	const std::uint32_t damage = hit.bEncounterWipe ? target.iCurrentHp : CServerBuffRuntime::Scale_Damage(
 		mitigated,
-		CServerBuffRuntime::Damage_TakenPercent(catalog, target.ActiveBuffs));
+		CServerBuffRuntime::Damage_TakenPercent(catalog, target.ActiveBuffs) +
+			(estherGuarded ? target.iEstherGuardDamageTakenPercent : 0));
 	/* The shield takes the hit first and only what it cannot hold reaches HP. */
 	std::uint32_t throughShield = damage;
 	if (!hit.bEncounterWipe && 0u != target.iShield && 0u != throughShield)
@@ -564,6 +568,7 @@ LostArk::Server::CServerCombatHitRuntime::Apply_WorldToPlayer(
 			target.iShield = 0u; target.iInvulnerableEndTick = 0u;
 			target.ActiveBuffs.clear(); target.Clear_Attachment();
 		}
+		target.iEstherGuardEndTick = 0u;
 		target.eAction = PLAYER_ACTION_STATE::DEAD;
 		target.iCurrentSkillId = INVALID_SKILL_ID;
 		target.Clear_SkillTarget();
@@ -572,6 +577,8 @@ LostArk::Server::CServerCombatHitRuntime::Apply_WorldToPlayer(
 		target.MovePath.clear();
 		return SERVER_COMBAT_HIT_RESULT::KILLED;
 	}
+	if (estherGuarded)
+		return SERVER_COMBAT_HIT_RESULT::LANDED;
 	CPlayerSkillSystem::Arm_PlayerHitReaction(
 		target,
 		hit.bUsePushDirection ? target.fPositionX - hit.fPushDirectionX : hit.fSourceX,

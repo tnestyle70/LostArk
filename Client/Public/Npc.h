@@ -7,6 +7,7 @@
 #include "KoukuSaydonCompositionDocument.h"
 #include "NpcActionEffectCueDocument.h"
 #include "SkeletalAfterimage.h"
+#include "Gameplay/EstherStrikeContract.h"
 
 #include <algorithm>
 #include <cstddef>
@@ -340,6 +341,7 @@ public:
 		m_isCombatColliderDebugVisible = isVisible;
 	}
 #ifdef _DEBUG
+	void Set_SkillHitAreaDebugVisible(bool_t isVisible) { m_isSkillHitAreaDebugVisible = isVisible; }
 	/* F1 tuning only. The scale multiplies the drawn body transform, the
 	offset shifts the drawn body from its replicated position, and the weapon
 	multiplier scales the socketed weapon. None of them reaches the Server or
@@ -465,6 +467,12 @@ private:
 	float4_t m_vOutlineColor = { 1.f, 1.f, 1.f, 1.f };
 	bool_t m_isCombatColliderDebugVisible = { false };
 #ifdef _DEBUG
+	bool_t m_isSkillHitAreaDebugVisible = { false };
+	const LostArk::Shared::EstherStrike::DEFINITION* m_pDebugEstherStrike = nullptr;
+	const LostArk::Shared::EstherStrike::GUARD* m_pDebugEstherGuard = nullptr;
+	const LostArk::Shared::EstherStrike::ZONE* m_pDebugEstherZone = nullptr;
+	f32_t m_fDebugEstherStrikeAgeSeconds = 0.f;
+	void Draw_EstherStrikeDebug(f32_t fTimeDelta);
 	f32_t m_fDebugPresentationScale = 1.f;
 	float3_t m_vDebugPresentationOffset = {};
 	float3_t m_vDebugUnadjustedPosition = {};

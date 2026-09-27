@@ -466,6 +466,7 @@ bool LostArk::Server::CGameRoom::Reset_ValtanArenaWhenEmpty()
 	// already discarded with the entity rebuild above, and a summon still in
 	// its landing delay has no party left to land for.
 	m_PendingEstherSummons.clear();
+	m_EstherZones.clear();
 	m_EstherSkillSystem.Reset();
 	m_bValtanRaidCleared = false;
 	m_strStatus = "Valtan arena reset after the room became empty";

@@ -604,7 +604,7 @@ LOSTARK_ANIM_EVENTS 6 "GuardianKnight" 2240
 "ddk_sk_deadlockpierce_03" EFFECT startms=0 payload="FX_CM_02.Light.Par_MP_Light_02_sine" src=orig
 "ddk_sk_deadlockpierce_03" EFFECT startms=0 payload="FX_CM_02.Light.Par_MP_Light_04" src=orig
 "ddk_sk_deadlockpierce_03" EFFECT startms=0 payload="FX_Post.FX_Par.Par_J_RGBNoise_01" src=orig
-"ddk_sk_deadlockpierce_03" HIT startms=0 endms=100 rep=1 repms=0 fz=450 fzin=150 fzout=250 push=100 pushr=-40 area=1 ar=250 aa=0 ah=200 ax=190 arem=0 maxt=0 src=orig
+"ddk_sk_deadlockpierce_03" HIT startms=0 endms=100 rep=3 repms=200 fz=450 fzin=150 fzout=250 push=100 pushr=-40 area=1 ar=250 aa=0 ah=200 ax=190 arem=0 maxt=0 src=orig
 "ddk_sk_deadlockpierce_03" HIT startms=750 endms=850 rep=1 repms=0 fz=450 fzin=150 fzout=250 push=0 pushr=0 area=1 ar=250 aa=0 ah=200 ax=190 arem=0 maxt=0 src=orig
 "ddk_sk_deadlockpierce_03" SUPERARMOR startms=0 endms=1020 payload="" src=orig
 "ddk_sk_deadlockpierce_03" SOUND startms=1 payload="PC_DRAGONKNIGHT_F.PC_DragonKnight_F_Stop1" src=orig
@@ -1126,7 +1126,7 @@ LOSTARK_ANIM_EVENTS 6 "GuardianKnight" 2240
 "ddk_sk_eurosloof_02" EFFECT startms=0 payload="FX_PC_DDK_04.Par_M_DDK_EurosLoop_Decal_Pierce_01" src=orig
 "ddk_sk_eurosloof_02" EFFECT startms=0 payload="FX_PC_DDK_04.Par_M_DDK_EurosFlash_Dust_01" src=orig
 "ddk_sk_eurosloof_02" EFFECT startms=0 payload="FX_CM_02.Light.Par_MP_Light_04" src=orig
-"ddk_sk_eurosloof_02" HIT startms=50 endms=150 rep=1 repms=0 fz=325 fzin=125 fzout=200 push=100 pushr=40 area=2 ar=220 aa=150 ah=180 ax=0 arem=0 maxt=0 src=orig
+"ddk_sk_eurosloof_02" HIT startms=50 endms=150 rep=3 repms=190 fz=325 fzin=125 fzout=200 push=100 pushr=40 area=2 ar=220 aa=150 ah=180 ax=0 arem=0 maxt=0 src=orig
 "ddk_sk_eurosloof_02" SHAKE startms=0 payload="dur=0.7;in=0;out=0.6;x=3,50;y=3,50;z=6,50;fov=0,0" src=orig
 "ddk_sk_eurosloof_02" SOUND startms=0 payload="PC_DRAGONKNIGHT_F.PC_DragonKnight_F_SK_EurosLoop1_FX000_2" src=orig
 "ddk_sk_eurosloof_02" SUPERARMOR startms=0 endms=500 payload="" src=orig
@@ -1692,7 +1692,7 @@ LOSTARK_ANIM_EVENTS 6 "GuardianKnight" 2240
 "ddk_sk_prayforembereth_02" SHAKE startms=0 payload="dur=0.4;in=0.05;out=0.25;x=6,30;y=6,30;z=10,40;fov=0,0" src=orig
 "ddk_sk_prayforembereth_02" SUPERARMOR startms=0 endms=1533 payload="" src=orig
 "ddk_sk_prayforembereth_02" HIT startms=200 endms=300 rep=1 repms=0 fz=450 fzin=150 fzout=250 push=0 pushr=0 area=2 ar=500 aa=350 ah=225 ax=-300 arem=0 maxt=0 src=orig
-"ddk_sk_prayforembereth_02" HIT startms=500 endms=600 rep=1 repms=0 fz=450 fzin=150 fzout=250 push=0 pushr=0 area=2 ar=375 aa=350 ah=225 ax=-100 arem=0 maxt=0 src=orig
+"ddk_sk_prayforembereth_02" HIT startms=500 endms=600 rep=4 repms=280 fz=450 fzin=150 fzout=250 push=0 pushr=0 area=2 ar=375 aa=350 ah=225 ax=-100 arem=0 maxt=0 src=orig
 "ddk_sk_prayforembereth_02" SHAKE startms=200 payload="dur=0.3;in=0;out=0.2;x=3,40;y=3,40;z=6,60;fov=0,0" src=orig
 "ddk_sk_prayforembereth_02" SOUND startms=200 payload="PC_DRAGONKNIGHT_F.PC_DragonKnight_F_SK_PrayForEmbereth1_FX000_2" src=orig
 "ddk_sk_prayforembereth_02" EFFECT startms=300 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
@@ -2229,7 +2229,7 @@ LOSTARK_ANIM_EVENTS 6 "GuardianKnight" 2240
 "ddk_sk_dragonicresonance_01" EFFECT startms=0 payload="effect.guardianknight.skill.49220.source.49290.clip.0.full.restore" effectref=asset anchor="skill_target" follow=snapshot stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
 "ddk_sk_dragonicresonance_02" EFFECT startms=0 payload="effect.guardianknight.skill.49220.source.49290.clip.1.full.restore" effectref=asset anchor="skill_target" follow=snapshot stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
 "ddk_sk_dragonicresonance_02" HIT startms=580 endms=680 rep=1 repms=0 fz=600 fzin=200 fzout=300 push=0 pushr=0 area=1 ar=280 aa=0 ah=180 ax=200 arem=0 maxt=0 src=orig
-"ddk_sk_brutalmarch_02" HIT startms=100 endms=200 rep=1 repms=0 fz=375 fzin=125 fzout=200 push=80 pushr=10 area=2 ar=280 aa=190 ah=180 ax=0 arem=0 maxt=0 src=orig
+"ddk_sk_brutalmarch_02" HIT startms=100 endms=200 rep=7 repms=300 fz=375 fzin=125 fzout=200 push=80 pushr=10 area=2 ar=280 aa=190 ah=180 ax=0 arem=0 maxt=0 src=orig
 "ddk_sk_catchingfire_03" HIT startms=680 endms=780 rep=1 repms=0 fz=450 fzin=150 fzout=250 push=0 pushr=0 area=1 ar=275 aa=0 ah=180 ax=160 arem=0 maxt=0 src=orig
 "ddk_sk_deadlockpierce_custom_4_04" HIT startms=200 endms=300 rep=1 repms=0 fz=450 fzin=150 fzout=250 push=0 pushr=0 area=1 ar=250 aa=0 ah=200 ax=190 arem=0 maxt=0 src=orig
 "ddk_sk_deadlockpierce_custom_5" HIT startms=300 endms=400 rep=1 repms=0 fz=450 fzin=150 fzout=250 push=0 pushr=0 area=1 ar=250 aa=0 ah=200 ax=190 arem=0 maxt=0 src=orig

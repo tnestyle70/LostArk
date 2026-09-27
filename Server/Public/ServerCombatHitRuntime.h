@@ -66,6 +66,7 @@ namespace LostArk::Server
 		bool bIgnoreCounter = false;
 		// Server encounter failure verdict; bypasses all personal damage protection.
 		bool bEncounterWipe = false;
+		bool bEstherGuardBlockable = false;
 		// A contact window may hurt the player held by this exact boss action.
 		LostArk::Shared::NET_ENTITY_ID iCaptureOwnerId = LostArk::Shared::INVALID_NET_ENTITY_ID;
 		std::uint32_t iCapturePatternSequence = 0u;

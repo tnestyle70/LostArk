@@ -1614,8 +1614,8 @@
           "hits": [
             {
               "timeMs": 100,
-              "repeatCount": 1,
-              "repeatMs": 0,
+              "repeatCount": 5,
+              "repeatMs": 300,
               "areaType": 2,
               "range": 2.8,
               "angle": 0,
@@ -1642,8 +1642,8 @@
             },
             {
               "timeMs": 100,
-              "repeatCount": 1,
-              "repeatMs": 0,
+              "repeatCount": 5,
+              "repeatMs": 300,
               "areaType": 2,
               "range": 2.8,
               "angle": 0,
@@ -1670,8 +1670,8 @@
             },
             {
               "timeMs": 100,
-              "repeatCount": 1,
-              "repeatMs": 0,
+              "repeatCount": 5,
+              "repeatMs": 300,
               "areaType": 2,
               "range": 2.8,
               "angle": 0,
@@ -1972,8 +1972,8 @@
       "hits": [
         {
           "timeMs": 550,
-          "repeatCount": 1,
-          "repeatMs": 0,
+          "repeatCount": 3,
+          "repeatMs": 190,
           "areaType": 2,
           "range": 2.2,
           "angle": 0,
@@ -2000,8 +2000,8 @@
         },
         {
           "timeMs": 550,
-          "repeatCount": 1,
-          "repeatMs": 0,
+          "repeatCount": 3,
+          "repeatMs": 190,
           "areaType": 2,
           "range": 2.2,
           "angle": 0,
@@ -2028,8 +2028,8 @@
         },
         {
           "timeMs": 550,
-          "repeatCount": 1,
-          "repeatMs": 0,
+          "repeatCount": 3,
+          "repeatMs": 190,
           "areaType": 2,
           "range": 2.2,
           "angle": 0,
@@ -2501,8 +2501,8 @@
         },
         {
           "timeMs": 1167,
-          "repeatCount": 1,
-          "repeatMs": 0,
+          "repeatCount": 4,
+          "repeatMs": 280,
           "areaType": 2,
           "range": 3.75,
           "angle": 0,
@@ -2529,8 +2529,8 @@
         },
         {
           "timeMs": 1167,
-          "repeatCount": 1,
-          "repeatMs": 0,
+          "repeatCount": 4,
+          "repeatMs": 280,
           "areaType": 2,
           "range": 3.75,
           "angle": 0,
@@ -2557,8 +2557,8 @@
         },
         {
           "timeMs": 1167,
-          "repeatCount": 1,
-          "repeatMs": 0,
+          "repeatCount": 4,
+          "repeatMs": 280,
           "areaType": 2,
           "range": 3.75,
           "angle": 0,
