@@ -4,6 +4,7 @@
   "areas": [
     {
       "level": "BERN",
+      "worldAreaId": "LV_BER_BERNCASTLE",
       "areaName": "베른 성",
       "image": "UI/Minimap/Maps/BernCastle.png",
       "imageSize": [
