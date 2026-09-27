@@ -398,7 +398,7 @@ bool_t CNpc::Play_NetworkAction(
 void CNpc::Arm_ActionEffectCues(const char_t* pClipName)
 {
 	/* A new action edge is an explicit kill of the previous occurrence: its
-	infinite emitters and uncut sounds do not belong to this one. */
+	uncut sounds do not belong to this one. */
 	Release_ActionEffectCues();
 	m_NpcActionEffectState.Reset();
 	m_strNpcActionEffectArchetype.clear();
@@ -549,8 +549,6 @@ void CNpc::Release_ActionEffectCues()
 {
 	for (const NPC_ACTION_EFFECT_LIVE_CUE& live : m_NpcActionEffectState.LiveCues)
 	{
-		if (0u != live.iEffectHandle)
-			CEffectPresentationService::Stop_WorldRoot({ live.iEffectHandle });
 		if (0u != live.iSoundHandle)
 			CGameInstance::Get().Stop_SoundCue(live.iSoundHandle);
 	}
@@ -679,15 +677,6 @@ void CNpc::Update_ActionEffectCues(const f32_t fTimeDelta)
 			desc.RootWorld = *m_pTransformCom->Get_WorldMatrixPtr();
 			desc.pAnchorOwner = static_pointer_cast<CNpc>(shared_from_this());
 			desc.fInitialSampleTimeSeconds = fAge;
-			/* The source notify duration is the owner's stop order for an
-			emitter that loops forever. A zero duration is the opposite
-			instruction: the emitter ends itself and keeps authored timing. */
-			if (0u != cue.iDurationMs)
-			{
-				desc.bOwnerSustainedSourceLoops = true;
-				desc.fSourceLoopEndSeconds =
-					static_cast<f32_t>(cue.iDurationMs) * 0.001f;
-			}
 			EFFECT_WORLD_ROOT_HANDLE handle;
 			std::string status;
 			if (!CEffectPresentationService::Spawn_LevelPlacement(
@@ -697,16 +686,12 @@ void CNpc::Update_ActionEffectCues(const f32_t fTimeDelta)
 					("[Npc] Action Effect cue isolated: " + cue.strCueId + " " +
 					 status + "\n").c_str());
 			}
-			else
-			{
-				live.iEffectHandle = handle.iValue;
-			}
 		}
 		if (!cue.strSoundEvent.empty())
 			Play_ActionEffectCueSound(cue, fDue, fAge, live);
 		/* Only a cue that actually started something is tracked, so teardown
 		never stops a handle it does not own. */
-		if (0u != live.iEffectHandle || 0u != live.iSoundHandle)
+		if (0u != live.iSoundHandle)
 			m_NpcActionEffectState.LiveCues.push_back(live);
 	}
 	if (m_NpcActionEffectState.iNextCue >= cues.size())

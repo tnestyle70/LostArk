@@ -410,9 +410,9 @@ private:
 	bool_t m_bNpcActionEffectTargetsQueued = false;
 	void Arm_ActionEffectCues(const char_t* pClipName);
 	void Update_ActionEffectCues(f32_t fTimeDelta);
-	/* Stops every presentation this NPC still owns for the current action
-	occurrence. A new occurrence and teardown both go through here, so a
-	native infinite emitter can never outlive the action that started it. */
+	/* Stops the cue sounds this NPC still owns for the current action
+	occurrence. Cue Effects are level-owned and keep their authored lifetime
+	after the NPC despawns. */
 	void Release_ActionEffectCues();
 	void Play_ActionEffectCueSound(const NPC_ACTION_EFFECT_CUE& cue,
 		f32_t fDueSeconds, f32_t fAgeSeconds,
