@@ -474,7 +474,8 @@ namespace
 		for (const DATA_JSON_VALUE& value : pEntries->Get_Array())
 		{
 			if (!value.Is_Object() ||
-				value.Get_Object().size() != (value.Find("defaultParticles") ? 17u : 16u))
+				value.Get_Object().size() != (16u + (value.Find("defaultParticles") ? 1u : 0u) +
+					(value.Find("weaponSocketTransform") ? 1u : 0u)))
 				return false;
 			BOSS_ACTOR_ENTRY entry;
 			const DATA_JSON_VALUE* pClips = value.Find("presentationClips");
@@ -585,6 +586,27 @@ namespace
 				!hasSeparateWeapon)
 			{
 				return false;
+			}
+			if (const auto* socket = value.Find("weaponSocketTransform"))
+			{
+				if ((entry.archetypeId != "BOSS_VALTAN" && entry.archetypeId != "BOSS_VALTAN_GHOST") ||
+					!socket->Is_Object() || socket->Get_Object().size() != 2u)
+					return false;
+				const auto readVector = [](const DATA_JSON_VALUE* vector, float3_t& out) {
+					if (!vector || !vector->Is_Array() || vector->Get_Array().size() != 3u) return false;
+					f32_t* axes[] = { &out.x, &out.y, &out.z };
+					for (size_t i = 0u; i < 3u; ++i)
+					{
+						const auto& value = vector->Get_Array()[i];
+						if (!value.Is_Number() || !std::isfinite(value.Get_Number()) ||
+							std::abs(value.Get_Number()) > 360.0) return false;
+						*axes[i] = static_cast<f32_t>(value.Get_Number());
+					}
+					return true;
+				};
+				if (!readVector(socket->Find("positionMeters"), entry.weaponSocketTransform.positionMeters) ||
+					!readVector(socket->Find("rotationDegrees"), entry.weaponSocketTransform.rotationDegrees) ||
+					!CActorCatalog::Validate_BossWeaponSocketTransform(entry.weaponSocketTransform)) return false;
 			}
 			for (const DATA_JSON_VALUE& armor : pArmor->Get_Array())
 			{
@@ -1572,6 +1594,32 @@ Client::CActorCatalog::Find_BossCombatObjectVisual(
 		}
 	}
 	return nullptr;
+}
+
+bool_t Client::CActorCatalog::Validate_BossWeaponSocketTransform(const BOSS_WEAPON_SOCKET_TRANSFORM& value)
+{
+	const auto valid = [](const float3_t& v, const float bound) {
+		return std::isfinite(v.x) && std::isfinite(v.y) && std::isfinite(v.z) &&
+			std::abs(v.x) <= bound && std::abs(v.y) <= bound && std::abs(v.z) <= bound;
+	};
+	return valid(value.positionMeters, 10.f) && valid(value.rotationDegrees, 360.f);
+}
+
+bool_t Client::CActorCatalog::Set_ValtanWeaponSocketTransform(const std::string_view archetypeId,
+	const BOSS_WEAPON_SOCKET_TRANSFORM& value, std::string& status)
+{
+	if ((archetypeId != "BOSS_VALTAN" && archetypeId != "BOSS_VALTAN_GHOST") ||
+		!Validate_BossWeaponSocketTransform(value) || !Initialize())
+	{ status = "Axe transform requires Valtan, finite position +/-10 m and rotation +/-360 degrees."; return false; }
+	for (auto& actor : g_Bosses)
+	{
+		if (actor.archetypeId != archetypeId) continue;
+		actor.weaponSocketTransform = value;
+		status = "Applied axe transform to this Client presentation; Save persists it.";
+		return true;
+	}
+	status = "Valtan weapon owner is unavailable.";
+	return false;
 }
 
 const std::string& Client::CActorCatalog::Get_Status()

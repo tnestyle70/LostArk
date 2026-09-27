@@ -1,3 +1,4 @@
+#ifndef SOURCE_CHARACTER_LIGHT_DISPATCH_CASES
 SOURCE_CHARACTER_NATIVE_OUTPUT SourceCharacterLight80(SOURCE_CHARACTER_NATIVE_INPUT input)
 {
     SOURCE_CHARACTER_NATIVE_OUTPUT output = (SOURCE_CHARACTER_NATIVE_OUTPUT)0;
@@ -1163,3 +1164,9 @@ SOURCE_CHARACTER_NATIVE_OUTPUT SourceCharacterLight83(SOURCE_CHARACTER_NATIVE_IN
 
 
 // source.character.monster-8d18db0756e4.v1 / source program 3d121fd2c1f7524da32c33b18452083e
+#else // SOURCE_CHARACTER_LIGHT_DISPATCH_CASES
+    case 80u: return SourceCharacterLight80(input);
+    case 81u: return SourceCharacterLight81(input);
+    case 82u: return SourceCharacterLight82(input);
+    case 83u: return SourceCharacterLight83(input);
+#endif // SOURCE_CHARACTER_LIGHT_DISPATCH_CASES

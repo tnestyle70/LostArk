@@ -838,8 +838,7 @@ HRESULT CLevel_Bern::Ready_Layer_Camera(
 	cameraDesc.fFar =
 		(std::max)(2000.f, span * 8.f);
 
-	cameraDesc.fSpeedPerSec =
-		(std::max)(20.f, span * 0.08f);
+	cameraDesc.fSpeedPerSec = CCamera_Free::DEFAULT_ARENA_MOVE_SPEED;
 
 	cameraDesc.fRotationPerSec = 90.f;
 	cameraDesc.fMouseSensor = 0.1f;

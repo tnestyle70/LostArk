@@ -11,6 +11,7 @@
 #include <random>
 #include <string>
 #include <utility>
+#include <unordered_map>
 #include <vector>
 
 NS_BEGIN(Client)
@@ -76,6 +77,8 @@ public:
 	bool_t Try_Consume_CostumeChange();
 	/* Which hairstyle cell the hair tab is showing, and its one-shot change edge. */
 	int32_t Get_SelectedHair() const { return m_iSelectedHair; }
+	/* Seed only a class first visited in this view; explicit selections and saved slots win. */
+	void Configure_HairDefault(const std::string& classAssetId, int32_t defaultIndex);
 	/* Degrees the drag gesture has turned the subject. The camera stays where the retail
 	framing puts it; the model is what rotates, so its cloth chains react. */
 	f32_t Get_SubjectYawOffsetDegrees() const { return -m_fOrbitYaw; }
@@ -269,6 +272,9 @@ private:
 	int32_t m_iSelectedCostume = COSTUME_NONE;
 	bool_t m_bCostumeChanged = false;
 	int32_t m_iSelectedHair = 0;
+	int32_t m_iDefaultHair = 0;
+	std::string m_strHairClassAssetId;
+	std::unordered_map<std::string, int32_t> m_HairSelectionsByClass;
 	int32_t m_iFacePresetScrollRow = 0;
 	int32_t m_iHairScrollRow = 0;
 	int32_t m_iEyeIrisScrollRow = 0;

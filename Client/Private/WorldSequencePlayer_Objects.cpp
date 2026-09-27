@@ -1795,3 +1795,31 @@ void Client::CWorldSequencePlayer::Collect_VisibleObjects(
     collect(m_Active);
     collect(m_Held);
 }
+
+void Client::CWorldSequencePlayer::Collect_ObjectInspectionSamples(
+    std::vector<OBJECT_INSPECTION_SAMPLE>& out) const
+{
+    const auto collect = [&](const auto& instances) {
+        for (const auto& active : instances)
+        {
+            const auto* instance = m_Document.Find_Instance(active.instanceId);
+            if (!instance) continue;
+            for (const auto& entry : active.objects)
+            {
+                if (!entry.object) continue;
+                const auto binding = std::find_if(instance->bindings.begin(), instance->bindings.end(),
+                    [&entry](const auto& value) {
+                        return value.slotId == entry.slotId &&
+                            value.targetKind == WORLD_SEQUENCE_TARGET_KIND::OBJECT_RESOURCE;
+                    });
+                if (binding == instance->bindings.end()) continue;
+                const auto* resource = m_Document.Find_ObjectResource(binding->targetId);
+                if (!resource) continue;
+                out.push_back({active.instanceId, entry.slotId, resource->objectId,
+                    resource->modelAssetId, entry.emissionIndex, entry.object});
+            }
+        }
+    };
+    collect(m_Active);
+    collect(m_Held);
+}

@@ -14,6 +14,8 @@ struct CLASS_MOVIE_TIMELINE_BOX final
     std::string id, label, resource;
     double movieStartMs = 0., movieEndMs = 0., sourceStartMs = 0., sourceEndMs = 0.;
     double playbackRate = 1., sourceOffsetMs = 0.;
+    double nativeDurationMs = 0., sourceClipEndMs = 0., movieHoldEndMs = 0.;
+    bool loopAnimation = false;
     std::vector<double> keyMovieTimes;
     std::optional<EFFECT_CAMERA_ROW> camera;
 };
@@ -30,6 +32,8 @@ struct CLASS_MOVIE_TIMELINE final
     std::vector<CLASS_MOVIE_TIMELINE_ROW> rows;
 };
 // A copied row draft; identities address the source, never a saved vector index.
+enum class CLASS_MOVIE_TIMING_EDIT { MOVE, TRIM_START, TRIM_END };
+
 struct CLASS_MOVIE_AUTHORING_BOX final
 {
     std::string classId, kind, boxId;

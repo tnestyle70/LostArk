@@ -316,7 +316,7 @@ namespace
 	   state on adjacent fixed ticks. */
 	bool IsEngageablePlayer(const SERVER_PLAYER& player)
 	{
-		return 0u != player.iCurrentHp && player.isCombatReady &&
+		return player.Is_Human() && 0u != player.iCurrentHp && player.isCombatReady &&
 			LostArk::Shared::PLAYER_ACTION_STATE::DEAD != player.eAction &&
 			LostArk::Shared::PLAYER_ACTION_STATE::FALLING != player.eAction;
 	}
@@ -585,7 +585,7 @@ namespace
 
 	bool IsTargetable(const SERVER_PLAYER& player)
 	{
-		return 0u != player.iCurrentHp && player.isCombatReady &&
+		return player.Is_Human() && 0u != player.iCurrentHp && player.isCombatReady &&
 			LostArk::Shared::PLAYER_ACTION_STATE::DEAD != player.eAction &&
 			LostArk::Shared::PLAYER_ACTION_STATE::FALLING != player.eAction &&
 			LostArk::Shared::PLAYER_ACTION_STATE::GRABBED != player.eAction;
@@ -2223,7 +2223,7 @@ namespace
 		for (auto& [playerId, player] : players)
 		{
 			(void)playerId;
-			if (0u == player.iCurrentHp || !player.isCombatReady ||
+			if (player.Is_Guide() || 0u == player.iCurrentHp || !player.isCombatReady ||
 				!std::isfinite(player.fPositionX) ||
 				!std::isfinite(player.fPositionZ))
 			{
@@ -2583,7 +2583,7 @@ namespace
 			{
 				continue;
 			}
-			if (CPlayerSkillSystem::Try_Counter(player, catalog, serverTick))
+			if (player.Is_Human() && CPlayerSkillSystem::Try_Counter(player, catalog, serverTick))
 			{
 				(void)CBossCombatRuntime::Try_TriggerCounter(boss, serverTick);
 				continue;
@@ -2619,6 +2619,71 @@ namespace
 	}
 }
 
+float LostArk::Server::CValtanBrain::Predict_ContactRisk(
+    const SERVER_WORLD_ENTITY& boss, const BOSS_PATTERN_DEFINITION& pattern,
+    const SERVER_PLAYER& probe, const std::uint32_t serverTick, const std::uint32_t horizonMs)
+{
+    if (!boss.iCurrentHp || boss.strPatternId != pattern.strPatternId ||
+        boss.iPatternStageIndex >= pattern.Stages.size() || !boss.iActionStartTick) return 0.f;
+    // Future stage roots use the currently committed boss pose. This is a threat
+    // estimate; only ApplyPatternHit can decide actual contact and damage.
+    SERVER_WORLD_ENTITY sampled;
+    sampled.fPositionX = boss.fPositionX; sampled.fPositionZ = boss.fPositionZ;
+    sampled.fYawDegrees = boss.fYawDegrees;
+    const float ageMs = static_cast<float>(serverTick - boss.iActionStartTick) * 1000.f / SERVER_TICK_HZ;
+    float startMs = -ageMs, risk = 0.f;
+    for (std::size_t index = boss.iPatternStageIndex; index < pattern.Stages.size() && startMs <= horizonMs; ++index)
+    {
+        const auto& stage = pattern.Stages[index];
+        bool impending = false;
+        if (stage.eHitActivationKind == BOSS_PATTERN_HIT_ACTIVATION_KIND::ACTIVE_WINDOW)
+        {
+            const float begin = startMs + stage.iHitActivationStartMs;
+            impending = begin <= horizonMs && begin + stage.iHitActivationLifetimeMs >= 0.f;
+        }
+        else
+        {
+            const auto first = index == boss.iPatternStageIndex ? boss.iAppliedPatternHitCount : 0u;
+            for (std::uint32_t hit = first; hit < stage.iHitCount; ++hit)
+            {
+                const float at = startMs + (hit < stage.HitOffsetsMs.size() ? stage.HitOffsetsMs[hit] :
+                    stage.iHitDelayMs + hit * stage.iHitIntervalMs);
+                if (at >= 0.f && at <= horizonMs) { impending = true; break; }
+            }
+        }
+        if (impending && stage.eHitShape != BOSS_PATTERN_HIT_SHAPE::NONE && !stage.strDamageProfileId.empty())
+        {
+            if (index == boss.iPatternStageIndex)
+            {
+                const auto& hitTargets = stage.eHitActivationKind == BOSS_PATTERN_HIT_ACTIVATION_KIND::ACTIVE_WINDOW ?
+                    boss.PatternActiveWindowHitTargets : boss.PortalStageHitTargets;
+                const bool consumed = (stage.eHitActivationKind == BOSS_PATTERN_HIT_ACTIVATION_KIND::ACTIVE_WINDOW || boss.bPortalMotionActive) &&
+                    std::find(hitTargets.begin(), hitTargets.end(), probe.iNetEntityId) != hitTargets.end();
+                if (!consumed && ContainsPatternHit(boss, probe, ResolvePatternHitTransform(boss))) risk += 1.f;
+            }
+            else
+            {
+                sampled.ePatternHitShape = stage.eHitShape;
+                sampled.fPatternHitOuterRadius = stage.fHitOuterRadius;
+                sampled.fPatternHitInnerRadius = stage.fHitInnerRadius;
+                sampled.fPatternHitAngleDegrees = stage.fHitAngleDegrees;
+                sampled.fPatternHitLength = stage.fHitLength;
+                sampled.fPatternHitHalfWidth = stage.fHitHalfWidth;
+                sampled.ePatternHitAnchorKind = stage.eHitAnchorKind;
+                sampled.fPatternHitAnchorForwardOffsetM = stage.fHitAnchorForwardOffsetM;
+                sampled.fPatternHitAnchorRightOffsetM = stage.fHitAnchorRightOffsetM;
+                sampled.fPatternHitAnchorYawOffsetDegrees = stage.fHitAnchorYawOffsetDegrees;
+                sampled.fPatternStageOriginX = boss.fPositionX;
+                sampled.fPatternStageOriginZ = boss.fPositionZ;
+                sampled.fPatternStageOriginYawDegrees = boss.fYawDegrees;
+                if (ContainsPatternHit(sampled, probe, ResolvePatternHitTransform(sampled))) risk += 1.f;
+            }
+        }
+        startMs += stage.iDurationMs;
+    }
+    return risk;
+}
+
 LostArk::Server::SERVER_BOSS_GRAB_ROSTER
 LostArk::Server::CValtanBrain::Classify_GrabbedPlayers(
 	const SERVER_WORLD_ENTITY& boss,
@@ -2628,6 +2693,7 @@ LostArk::Server::CValtanBrain::Classify_GrabbedPlayers(
 	SERVER_BOSS_GRAB_ROSTER result{};
 	for (const auto& [playerId, player] : players)
 	{
+		if (player.Is_Guide()) continue;
 		(void)playerId;
 		const bool alive = 0u != player.iCurrentHp &&
 			PLAYER_ACTION_STATE::DEAD != player.eAction &&

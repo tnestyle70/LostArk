@@ -645,7 +645,9 @@ bool LostArk::Server::CGameRoom::Try_KoukuWalkOffFloor(
 {
 	using namespace LostArk::Shared;
 	if (m_eWorldId != WORLD_ID::KAKULSAYDON_ARENA || !m_ServerNavigation.Is_Loaded() ||
-		!player.iCurrentHp || player.TriggerMove.isActive || player.bArenaEjectionActive) return false;
+		!player.iCurrentHp || player.TriggerMove.isActive || player.bArenaEjectionActive ||
+		(player.iVehicleId == ANCIENT_SEA_VEHICLE_ID && player.eAction == PLAYER_ACTION_STATE::VEHICLE_SKILL &&
+		 player.eVehicleFlightPhase != VEHICLE_FLIGHT_PHASE::GROUNDED)) return false;
 	const auto* gate2 = Resolve_KoukuFallCenter(player);
 	const bool casino = nullptr != gate2;
 	if (!player.iMarioStage && !casino) return false;
@@ -723,7 +725,9 @@ bool LostArk::Server::CGameRoom::Update_PlayerFall(
 		return true;
 	}
 	// Authored jumps and entry/exit transfers own their airborne trajectory.
-	if (player.TriggerMove.isActive) return false;
+	if (player.TriggerMove.isActive ||
+		(player.iVehicleId == ANCIENT_SEA_VEHICLE_ID && player.eAction == PLAYER_ACTION_STATE::VEHICLE_SKILL &&
+		 player.eVehicleFlightPhase != VEHICLE_FLIGHT_PHASE::GROUNDED)) return false;
 	if (gateFence || !m_ServerNavigation.Is_Loaded() ||
 		0u == player.iCurrentHp ||
 		PLAYER_ACTION_STATE::DEAD == player.eAction ||
@@ -745,6 +749,7 @@ void LostArk::Server::CGameRoom::Update_Players(const float fixedDeltaSeconds)
 	for (auto& [playerId, player] : m_Players)
 	{
 		(void)playerId;
+		if (playerId == m_iGuideReceptionId) continue;
 		if (player.CardMaze.transferStartTick && player.iCurrentHp) continue;
 		const auto ownsLivePatternOccurrence =
 			[this](const LostArk::Shared::NET_ENTITY_ID ownerEntityId,
@@ -856,6 +861,7 @@ void LostArk::Server::CGameRoom::Update_Players(const float fixedDeltaSeconds)
 			Update_MarioControlState(player);
 			if (!player.TriggerMove.isActive && !authoredMoveSource.empty())
 				Complete_KoukuMarioReturn(player, authoredMoveSource, updateTick);
+            if (!player.TriggerMove.isActive && player.Is_Human()) Guide_AnchorArrived(player);
 			continue;
 		}
 		const bool wasKnockbackActive =

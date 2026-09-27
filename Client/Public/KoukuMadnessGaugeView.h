@@ -17,8 +17,8 @@ class CUILayoutRuntime;
 BaseIndicator.madnessGauge): a 3-state clown-face frame, a black track, a coloured
 fill strip and a white section-pass flash, all authored in
 Data/UI/KoukuSaydon/MadnessGauge_Layout.json relative to the "Madness_Anchor" slot.
-Every frame the anchor is re-projected from the character's nameplate head point
-and the whole group is moved with Set_SlotPosition, so the authored rects stay the
+Every frame the anchor is re-projected from the character's feet plus the saved
+world-height offset. The whole group moves with Set_SlotPosition, preserving the
 retail offsets. The view owns no gameplay value: gauge/maximum come from
 HUD_KOUKU_GIMMICK_STATE and the state thresholds from KoukuHudModes.json. */
 class CKoukuMadnessGaugeView final
@@ -37,7 +37,7 @@ public:
 		const shared_ptr<CCharacter>& pLocalCharacter,
 		const HUD_KOUKU_GIMMICK_STATE& State);
 	void Hide();
-	/* Reference pixels after projection; head height remains in world meters. */
+	/* Reference pixels after projection; feet offset remains in world meters. */
 	void Get_Position(float2_t& screenOffset, f32_t& feetOffsetMeters) const;
 	bool_t Set_Position(const float2_t& screenOffset, f32_t feetOffsetMeters);
 	bool_t Save_Position(string& status);

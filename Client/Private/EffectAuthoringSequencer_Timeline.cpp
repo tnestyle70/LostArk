@@ -595,20 +595,17 @@ void CEffectAuthoringSequencer::Render_Sequencer(const char* title, const bool i
             for (std::size_t lane = 0; lane < (embedded ? lanes.size() : 6u); ++lane)
             {
                 auto& boxes = lanes[lane];
-                std::vector<std::uint32_t> rowEnds;
-                std::vector<std::size_t> positions;
+                CompositionTimeline::DISPLAY_LAYOUT layout;
                 {
                     Engine::CProfilerScope LayoutProfile(CGameInstance::Get().Get_Profiler(), "EffectSequencer.LaneLayout");
-                    std::stable_sort(boxes.begin(), boxes.end(), [](const auto& a, const auto& b) { return a.start < b.start; });
+                    std::vector<CompositionTimeline::DISPLAY_INTERVAL> intervals;
+                    intervals.reserve(boxes.size());
                     for (const auto& box : boxes)
-                    {
-                        std::size_t row = 0;
-                        while (row < rowEnds.size() && rowEnds[row] > box.start) ++row;
-                        if (row == rowEnds.size()) rowEnds.push_back(0u);
-                        rowEnds[row] = box.start + box.duration; positions.push_back(row);
-                    }
+                        intervals.push_back({box.id, double(box.start), double(box.duration)});
+                    layout = CompositionTimeline::AllocateDisplayRows(std::move(intervals),
+                        CompositionTimeline::MinimumBoxWidth / (m_Zoom * .001));
                 }
-                const auto rowCount = (std::max)(std::size_t{1}, rowEnds.size());
+                const auto rowCount = layout.rowCount;
                 const float height = rowHeight * static_cast<float>(rowCount);
                 draw->AddRectFilled({origin.x, y}, {origin.x + width, y + height},
                     lane % 2 ? IM_COL32(31,34,41,255) : IM_COL32(38,41,49,255));
@@ -621,9 +618,9 @@ void CEffectAuthoringSequencer::Render_Sequencer(const char* title, const bool i
                     const bool dragging = m_DragRowId == box.id && m_DragTrack == box.kind;
                     const auto startMs = dragging ? m_DragPreviewStartMs : box.start;
                     const auto durationMs = dragging ? m_DragPreviewDurationMs : box.duration;
-                    const float top = y + positions[i] * rowHeight + 2.f;
+                    const float top = y + layout.occurrenceRows.at(box.id) * rowHeight + 2.f;
                     const float left = origin.x + labels + startMs * m_Zoom * .001f;
-                    const float right = (std::max)(left + 6.f, left + durationMs * m_Zoom * .001f);
+                    const float right = (std::max)(left + CompositionTimeline::MinimumBoxWidth, left + durationMs * m_Zoom * .001f);
                     // Keep the active item alive while dragging beyond the viewport.
                     // The final Dummy below still owns the full scrollable layout.
                     if (!dragging && !ImGui::IsRectVisible({left - 2.f, top - 2.f}, {right + 2.f, top + rowHeight - 3.f}))
@@ -633,6 +630,12 @@ void CEffectAuthoringSequencer::Render_Sequencer(const char* title, const bool i
                         m_SelectedTrack == box.kind && m_SelectedRowId == box.id, box.label.c_str(), box.editable, box.editable);
                     ImGui::SetCursorScreenPos({left, top}); ImGui::PushID(static_cast<int>(lane)); ImGui::PushID(box.id.c_str());
                     ImGui::InvisibleButton("Occurrence", {right - left, rowHeight - 5.f});
+                    if (box.kind == TRACK_KIND::CAMERA && ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
+                    {
+                        const auto& cameras = m_Transient ? m_TransientCameraRows : m_CameraRows;
+                        const auto camera = FindRow(cameras, box.id);
+                        if (camera != cameras.end()) Open_RecoveryCameraTool(*camera);
+                    }
                     if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s\n%u ms / %u ms%s", box.label.c_str(), startMs, durationMs, box.muted ? " / Muted" : "");
                     if (ImGui::IsItemActivated())
                     {
@@ -724,6 +727,8 @@ void CEffectAuthoringSequencer::Render_Sequencer(const char* title, const bool i
                     auto candidate = m_CameraRows; auto found = FindRow(candidate, m_DragRowId);
                     if (found != candidate.end())
                     {
+                        if (!found->sourceEffectId.empty())
+                            found->sourcePlayRate *= float(found->cue.iDurationMs) / m_DragPreviewDurationMs;
                         for (auto& key : found->cue.Keyframes) key.iTimeMs = static_cast<std::uint32_t>(
                             std::llround(double(key.iTimeMs) * m_DragPreviewDurationMs / found->cue.iDurationMs));
                         found->startMs = m_DragPreviewStartMs; found->cue.iDurationMs = m_DragPreviewDurationMs;
@@ -744,5 +749,6 @@ void CEffectAuthoringSequencer::Render_Sequencer(const char* title, const bool i
         if (m_BoxDetailOpen) Render_BoxDetail();
     }
     Render_Colliders();
+    Render_RecoveryCameraTool();
 }
 }

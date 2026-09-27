@@ -240,6 +240,12 @@
     <ClCompile Include="..\Private\MainApp.cpp">
       <Filter>00.MainApp</Filter>
     </ClCompile>
+    <ClCompile Include="..\Private\MainApp_Dragon.cpp">
+      <Filter>00.MainApp</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\MainApp_ValtanAxe.cpp">
+      <Filter>00.MainApp</Filter>
+    </ClCompile>
     <ClCompile Include="..\Private\MainApp_SequenceViewer.cpp">
       <Filter>00.MainApp</Filter>
     </ClCompile>
@@ -655,6 +661,12 @@
       <Filter>03. Tools\06. Effect V2</Filter>
     </ClCompile>
     <ClCompile Include="..\Private\EffectRecoveryCamera.cpp">
+      <Filter>03. Tools\06. Effect V2</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\RecoveryCameraAuthoringSession.cpp">
+      <Filter>03. Tools\06. Effect V2</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\SequenceCameraEditor.cpp">
       <Filter>03. Tools\06. Effect V2</Filter>
     </ClCompile>
     <ClCompile Include="..\Private\EffectAuthoringSequencer_Timeline.cpp">
@@ -1358,6 +1370,12 @@
       <Filter>03. Tools\06. Effect V2</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\EffectRecoveryCamera.h">
+      <Filter>03. Tools\06. Effect V2</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\RecoveryCameraAuthoringSession.h">
+      <Filter>03. Tools\06. Effect V2</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\SequenceCameraEditor.h">
       <Filter>03. Tools\06. Effect V2</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\EffectAuthoringV2Pane.h">
@@ -3134,6 +3152,18 @@
       <UniqueIdentifier>{6ff4c424-008e-4768-834e-edbf0d14909d}</UniqueIdentifier>
     </Filter>
     <ClInclude Include="..\Public\ClassSelectionTimeline.h" />
+    <ClInclude Include="..\Public\ClassMovieInspection.h">
+      <Filter>02.GameObjects\06. Camera</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\ClassMovieInspector.h">
+      <Filter>02.GameObjects\06. Camera</Filter>
+    </ClInclude>
+    <ClCompile Include="..\Private\ClassMovieInspector.cpp">
+      <Filter>02.GameObjects\06. Camera</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\ClassSelectionPresentation_Inspection.cpp">
+      <Filter>02.GameObjects\06. Camera</Filter>
+    </ClCompile>
     <ClInclude Include="..\Public\ClassSelectionPresentation.h">
       <Filter>02.GameObjects\06. Camera</Filter>
     </ClInclude>
@@ -4146,6 +4176,8 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="..\Private\SourceCharacterMaterialParameters.cpp"><Filter>02.GameObjects\00. Character</Filter></ClCompile>
+    <None Include="..\Private\SourceCharacterMaterialParameters_Generated.inl"><Filter>02.GameObjects\00. Character</Filter></None>
     <ClCompile Include="..\Private\Effect_ArtistMaterial.cpp"><Filter>03. Tools\02. Effect</Filter></ClCompile>
     <None Include="..\Private\Effect_ArtistMaterial_Tables.inl"><Filter>03. Tools\02. Effect</Filter></None>
     <ClCompile Include="..\Private\Effect_LanceMasterVAMaterial.cpp"><Filter>03. Tools\02. Effect</Filter></ClCompile>
@@ -4279,6 +4311,21 @@
     <None Include="..\Bin\ShaderFiles\Shader_SourceCharacterBaseGroup237.hlsli">
       <Filter>97.ShaderFiles</Filter>
     </None>
+    <None Include="..\Bin\ShaderFiles\Shader_SourceCharacterBaseGroup1136.hlsli">
+      <Filter>97.ShaderFiles</Filter>
+    </None>
+    <None Include="..\Bin\ShaderFiles\Shader_SourceCharacterBaseGroup1120.hlsli">
+      <Filter>97.ShaderFiles</Filter>
+    </None>
+    <None Include="..\Bin\ShaderFiles\Shader_SourceCharacterBaseGroup1104.hlsli">
+      <Filter>97.ShaderFiles</Filter>
+    </None>
+    <None Include="..\Bin\ShaderFiles\Shader_SourceCharacterBaseGroup108.hlsli">
+      <Filter>97.ShaderFiles</Filter>
+    </None>
+    <None Include="..\Bin\ShaderFiles\Shader_SourceCharacterBaseGroup096.hlsli">
+      <Filter>97.ShaderFiles</Filter>
+    </None>
     <None Include="..\Bin\ShaderFiles\Shader_SourceCharacterBaseGroup1472.hlsli">
       <Filter>97.ShaderFiles</Filter>
     </None>
@@ -4346,6 +4393,21 @@
       <Filter>97.ShaderFiles</Filter>
     </None>
     <None Include="..\Bin\ShaderFiles\Shader_SourceCharacterLightGroup237.hlsli">
+      <Filter>97.ShaderFiles</Filter>
+    </None>
+    <None Include="..\Bin\ShaderFiles\Shader_SourceCharacterLightGroup1136.hlsli">
+      <Filter>97.ShaderFiles</Filter>
+    </None>
+    <None Include="..\Bin\ShaderFiles\Shader_SourceCharacterLightGroup1120.hlsli">
+      <Filter>97.ShaderFiles</Filter>
+    </None>
+    <None Include="..\Bin\ShaderFiles\Shader_SourceCharacterLightGroup1104.hlsli">
+      <Filter>97.ShaderFiles</Filter>
+    </None>
+    <None Include="..\Bin\ShaderFiles\Shader_SourceCharacterLightGroup108.hlsli">
+      <Filter>97.ShaderFiles</Filter>
+    </None>
+    <None Include="..\Bin\ShaderFiles\Shader_SourceCharacterLightGroup096.hlsli">
       <Filter>97.ShaderFiles</Filter>
     </None>
     <None Include="..\Bin\ShaderFiles\Shader_SourceCharacterLightGroup1472.hlsli">
@@ -4417,6 +4479,21 @@
     <None Include="..\Bin\ShaderFiles\Shader_Deferred_SourceGroup237.hlsl">
       <Filter>97.ShaderFiles</Filter>
     </None>
+    <None Include="..\Bin\ShaderFiles\Shader_Deferred_SourceGroup1136.hlsl">
+      <Filter>97.ShaderFiles</Filter>
+    </None>
+    <None Include="..\Bin\ShaderFiles\Shader_Deferred_SourceGroup1120.hlsl">
+      <Filter>97.ShaderFiles</Filter>
+    </None>
+    <None Include="..\Bin\ShaderFiles\Shader_Deferred_SourceGroup1104.hlsl">
+      <Filter>97.ShaderFiles</Filter>
+    </None>
+    <None Include="..\Bin\ShaderFiles\Shader_Deferred_SourceGroup108.hlsl">
+      <Filter>97.ShaderFiles</Filter>
+    </None>
+    <None Include="..\Bin\ShaderFiles\Shader_Deferred_SourceGroup096.hlsl">
+      <Filter>97.ShaderFiles</Filter>
+    </None>
     <None Include="..\Bin\ShaderFiles\Shader_Deferred_SourceGroup1472.hlsl">
       <Filter>97.ShaderFiles</Filter>
     </None>
@@ -4486,6 +4563,21 @@
     <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxAnimMeshBinary_SourceGroup237.hlsl">
       <Filter>97.ShaderFiles</Filter>
     </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxAnimMeshBinary_SourceGroup1136.hlsl">
+      <Filter>97.ShaderFiles</Filter>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxAnimMeshBinary_SourceGroup1120.hlsl">
+      <Filter>97.ShaderFiles</Filter>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxAnimMeshBinary_SourceGroup1104.hlsl">
+      <Filter>97.ShaderFiles</Filter>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxAnimMeshBinary_SourceGroup108.hlsl">
+      <Filter>97.ShaderFiles</Filter>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxAnimMeshBinary_SourceGroup096.hlsl">
+      <Filter>97.ShaderFiles</Filter>
+    </FxCompile>
     <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxAnimMeshBinary_SourceGroup1472.hlsl">
       <Filter>97.ShaderFiles</Filter>
     </FxCompile>
@@ -4553,6 +4645,21 @@
       <Filter>97.ShaderFiles</Filter>
     </FxCompile>
     <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxMeshBinary_SourceGroup237.hlsl">
+      <Filter>97.ShaderFiles</Filter>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxMeshBinary_SourceGroup1136.hlsl">
+      <Filter>97.ShaderFiles</Filter>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxMeshBinary_SourceGroup1120.hlsl">
+      <Filter>97.ShaderFiles</Filter>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxMeshBinary_SourceGroup1104.hlsl">
+      <Filter>97.ShaderFiles</Filter>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxMeshBinary_SourceGroup108.hlsl">
+      <Filter>97.ShaderFiles</Filter>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxMeshBinary_SourceGroup096.hlsl">
       <Filter>97.ShaderFiles</Filter>
     </FxCompile>
     <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxMeshBinary_SourceGroup1472.hlsl">
@@ -4659,6 +4766,9 @@
     <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectMeshKouku2496.hlsl"><Filter>97.ShaderFiles</Filter></FxCompile>
   </ItemGroup>
   <ItemGroup>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.six-pizza.sectors.effect.json">
+      <Filter>96.DataFiles</Filter>
+    </None>
     <None Include="..\..\Data\Effects\Authored\effect.valtan.action.400440.stage000.full.restore.effect.json"><Filter>96.DataFiles</Filter></None>
     <None Include="..\..\Data\Effects\Authored\effect.valtan.action.420618.stage000.full.restore.effect.json"><Filter>96.DataFiles</Filter></None>
     <None Include="..\..\Data\Effects\Authored\effect.valtan.action.420622.stage001.full.restore.effect.json"><Filter>96.DataFiles</Filter></None>
@@ -5769,5 +5879,17 @@
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectMeshKouku5120.hlsl"><Filter>97.ShaderFiles</Filter></FxCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\Public\GuideAIDocument.h"><Filter>03. Tools\00. Map</Filter></ClInclude>
+    <ClInclude Include="..\Public\GuideAITool.h"><Filter>03. Tools\00. Map</Filter></ClInclude>
+    <ClCompile Include="..\Private\GuideAIDocument.cpp"><Filter>03. Tools\00. Map</Filter></ClCompile>
+    <ClCompile Include="..\Private\GuideAITool.cpp"><Filter>03. Tools\00. Map</Filter></ClCompile>
+    <ClCompile Include="..\Private\GuideAITool_Combat.cpp"><Filter>03. Tools\00. Map</Filter></ClCompile>
+    <None Include="..\..\Data\Guide\GuideCatalog.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Guide\DimensionMaster\Placement.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Guide\DimensionMaster\Prompts.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Guide\DimensionMaster\Triggers.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Guide\DimensionMaster\Combat.json"><Filter>96.DataFiles</Filter></None>
   </ItemGroup>
 </Project>

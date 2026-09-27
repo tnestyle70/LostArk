@@ -306,7 +306,11 @@ void CMainApp::RenderWorldLevelTool()
     WORLD_LEVEL_TOOL_REQUEST request;
     if (!m_pWorldLevelTool->Consume_Request(request)) return;
     std::string status;
-    if (request.kind == WORLD_LEVEL_REQUEST_KIND::FOCUS)
+    if (request.kind == WORLD_LEVEL_REQUEST_KIND::OPEN_GUIDE)
+    {
+        status = SUCCEEDED(EnsureDebugTool(DEBUG_TOOL::GUIDE_AI)) ? "Guide AI Tool opened." : "Guide AI Tool could not open.";
+    }
+    else if (request.kind == WORLD_LEVEL_REQUEST_KIND::FOCUS)
     {
         if (request.areaId != GetWorldLevelAreaId()) status = "Enter this Area before focusing its world position.";
         else (void)FocusWorldLevelPosition(request.position, 8.f, status);

@@ -889,7 +889,7 @@ void LostArk::Server::CGameRoom::Update_KoukuPursuitProjectiles(
 			if (binding.bOpened && !binding.bClosed && binding.iFreePlayerNetEntityId != INVALID_NET_ENTITY_ID)
 			{ requiredTarget = binding.iFreePlayerNetEntityId; diceBinding = true; break; }
 	for (auto& [id, player] : m_Players)
-		if (player.iNetEntityId == requiredTarget && (!diceBinding || !player.bPatternBound) && player.isCombatReady && player.iCurrentHp && !player.iMarioStage &&
+		if (player.Is_Human() && player.iNetEntityId == requiredTarget && (!diceBinding || !player.bPatternBound) && player.isCombatReady && player.iCurrentHp && !player.iMarioStage &&
 			player.eAction != PLAYER_ACTION_STATE::DEAD && player.eAction != PLAYER_ACTION_STATE::FALLING &&
 			player.eAction != PLAYER_ACTION_STATE::GRABBED) { target = &player; break; }
 	if (!target && !diceBinding) target = Select_BossRandomAliveTarget(boss, trigger.strTriggerId, "pursuit.target", serverTick);
@@ -970,7 +970,7 @@ void LostArk::Server::CGameRoom::Update_KoukuPlayerTargets(
 	// Every other tracking window preserves its attack, landing and flow clocks.
 	const bool completeOnPlayerContact = pattern.strPatternId == "KAKULSAYDON_G1_PATTERN_104";
 	const auto eligible = [](const SERVER_PLAYER& player) {
-		return player.isCombatReady && player.iCurrentHp != 0u && player.iMarioStage == 0u &&
+		return player.Is_Human() && player.isCombatReady && player.iCurrentHp != 0u && player.iMarioStage == 0u &&
 			player.eAction != PLAYER_ACTION_STATE::DEAD && player.eAction != PLAYER_ACTION_STATE::FALLING;
 	};
 	for (auto& window : ledger.PlayerTargetWindows)
@@ -1353,7 +1353,7 @@ bool LostArk::Server::CGameRoom::Commit_KoukuAlbionAirborne(
 	auto& state = staged->AlbionAirborne;
 	if (state.iPatternSequence != boss.iPatternSequence) { state = {}; state.iPatternSequence = boss.iPatternSequence; }
 	const auto eligible = [](const SERVER_PLAYER& player) {
-	 return player.isCombatReady && player.iCurrentHp && player.iMarioStage == 0u && player.eAction != PLAYER_ACTION_STATE::DEAD &&
+	 return player.Is_Human() && player.isCombatReady && player.iCurrentHp && player.iMarioStage == 0u && player.eAction != PLAYER_ACTION_STATE::DEAD &&
 	  player.eAction != PLAYER_ACTION_STATE::FALLING && player.eAction != PLAYER_ACTION_STATE::GRABBED;
 	};
 	const auto selectedPlayer = [&]() -> SERVER_PLAYER* {
@@ -1862,7 +1862,7 @@ void LostArk::Server::CGameRoom::Commit_KoukuMechanicTriggers(const std::uint32_
 			}
 			const auto eligiblePlayer = [](const SERVER_PLAYER& player)
 			{
-				return player.isCombatReady && player.iCurrentHp != 0u && player.iMarioStage == 0u &&
+				return player.Is_Human() && player.isCombatReady && player.iCurrentHp != 0u && player.iMarioStage == 0u &&
 					player.eAction != PLAYER_ACTION_STATE::DEAD && player.eAction != PLAYER_ACTION_STATE::FALLING;
 			};
 			PLAYER_ID selectedPlayerId = INVALID_PLAYER_ID;

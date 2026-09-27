@@ -13,6 +13,19 @@ GROUP_BEGIN = '// BEGIN REGISTERED SOURCE CHARACTER GROUPS'
 GROUP_END = '// END REGISTERED SOURCE CHARACTER GROUPS'
 
 
+def registered_program_group(program):
+    """Keep the dense movie cohort bounded without changing source program IDs."""
+    if 1088 <= program <= 1151:
+        first = program // 16 * 16
+        return first, first + 15
+    first = program // 64 * 64
+    return first, first + 63
+
+
+def registered_groups(programs):
+    return tuple(sorted({registered_program_group(program) for program in programs}))
+
+
 def _section(text, begin, end):
     if text.count(begin) != 1 or text.count(end) != 1:
         raise ValueError('SourceCharacter registry markers changed')
@@ -41,7 +54,7 @@ def registry_groups(text):
     for index, (a, b) in enumerate(groups):
         if any(a <= other_b and other_a <= b for other_a, other_b in groups[:index]):
             raise ValueError('SourceCharacter cohorts overlap')
-    expected = {(value // 64 * 64, value // 64 * 64 + 63) for value in registered_programs(text)}
+    expected = set(registered_groups(registered_programs(text)))
     actual = {(int(a), int(b)) for a, b in re.findall(r'\{(\d+)u,\s*(\d+)u\}', _section(text, GROUP_BEGIN, GROUP_END))}
     if actual != expected:
         raise ValueError('SourceCharacter exact IDs and cohorts disagree')
@@ -61,7 +74,7 @@ def extend_registry(text, programs):
         old = _section(source, begin, end)
         return source.replace(begin + old + end, begin + '\n' + body + '        ' + end, 1)
     text = replace_section(text, PROGRAM_BEGIN, PROGRAM_END, ''.join(f'        {value}u,\n' for value in values))
-    groups = sorted({(value // 64 * 64, value // 64 * 64 + 63) for value in values})
+    groups = registered_groups(values)
     text = replace_section(text, GROUP_BEGIN, GROUP_END, ''.join(f'        {{{a}u, {b}u}},\n' for a, b in groups))
     text, count = re.subn(r'std::array<std::uint32_t, \d+> SourceCharacterAddedPrograms',
                          f'std::array<std::uint32_t, {len(values)}> SourceCharacterAddedPrograms', text)
@@ -119,7 +132,9 @@ def stage_registration(root, programs, base_source, light_source, configure_sour
         if before != after:
             staged[path] = before, after
     stage(REGISTRY, header)
-    groups = sorted({value // 64 * 64 for value in registered_programs(header)})
+    # Both historical and generated cohorts must get the same wrappers, project
+    # items and deployment. Registry ranges are the runtime routing authority.
+    groups = sorted(first for first, _last in registry_groups(header))
     projects = {}
     for name in ('Engine', 'Client'):
         for suffix in ('.vcxproj', '.vcxproj.filters'):

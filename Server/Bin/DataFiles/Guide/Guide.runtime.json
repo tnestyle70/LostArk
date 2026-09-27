@@ -1,0 +1,291 @@
+{
+    "schema":  "lostark.guide-runtime",
+    "formatVersion":  1,
+    "revision":  128350564805445,
+    "guideId":  "guide.dimensionmaster",
+    "characterClass":  "DIMENSIONMASTER",
+    "displayName":  "가이드 차원술사",
+    "categories":  [
+                       {
+                           "categoryId":  "bern",
+                           "displayName":  "베른",
+                           "worldId":  "BERN",
+                           "areaId":  "LV_BER_BERNCASTLE"
+                       },
+                       {
+                           "categoryId":  "valtan",
+                           "displayName":  "발탄",
+                           "worldId":  "VALTAN_ARENA",
+                           "areaId":  "LV_LUT_HEARTRB_ED"
+                       },
+                       {
+                           "categoryId":  "koukusaydon",
+                           "displayName":  "쿠크세이튼",
+                           "worldId":  "KAKULSAYDON_ARENA",
+                           "areaId":  "LV_LUT_MIDNIGHTC_ED"
+                       }
+                   ],
+    "placement":  {
+                      "anchorPolicy":  "INVITER_THEN_LEADER",
+                      "categoryId":  "bern",
+                      "placementId":  "guide.dimensionmaster.bern.reception",
+                      "position":  [
+                                       137.586334,
+                                       42.2498169,
+                                       -22.4640217
+                                   ],
+                      "yawDegrees":  0
+                  },
+    "prompts":  [
+                    {
+                        "promptId":  "guide.bern.party.first_invite",
+                        "categoryId":  "bern",
+                        "topic":  "PARTY",
+                        "title":  "처음 파티 초대",
+                        "segments":  [
+                                         {
+                                             "text":  "안녕, 난 이번에 가이드를 맡게 된 가이드 차원술사야.",
+                                             "durationMs":  6000
+                                         }
+                                     ]
+                    },
+                    {
+                        "promptId":  "guide.bern.npc.honing",
+                        "categoryId":  "bern",
+                        "topic":  "NPC",
+                        "title":  "장비 제련",
+                        "segments":  [
+                                         {
+                                             "text":  "여기는 장비를 제련하는 곳이야. 재료와 성공 확률을 확인하고 진행해 봐.",
+                                             "durationMs":  6500
+                                         }
+                                     ]
+                    },
+                    {
+                        "promptId":  "guide.bern.npc.raid",
+                        "categoryId":  "bern",
+                        "topic":  "NPC",
+                        "title":  "레이드 입장",
+                        "segments":  [
+                                         {
+                                             "text":  "여기는 레이드에 진입할 수 있는 곳이야. 파티원들과 준비를 마친 뒤 입장해 보자.",
+                                             "durationMs":  6500
+                                         }
+                                     ]
+                    },
+                    {
+                        "promptId":  "guide.koukusaydon.boss.find_real_saydon",
+                        "categoryId":  "koukusaydon",
+                        "topic":  "BOSS_PATTERN",
+                        "title":  "진짜 세이튼 찾기",
+                        "segments":  [
+                                         {
+                                             "text":  "진짜 세이튼 패턴이야. 1시, 5시, 7시, 10시에 분신을 포함한 세이튼 넷이 나타나.",
+                                             "durationMs":  6500
+                                         },
+                                         {
+                                             "text":  "진짜 세이튼은 하트를 발사하고, 가짜 세이튼 셋은 총을 쏴.",
+                                             "durationMs":  5000
+                                         },
+                                         {
+                                             "text":  "진짜 세이튼을 찾아서 바라봐야 해. 바라보지 않으면 즉사해.",
+                                             "durationMs":  6000
+                                         }
+                                     ]
+                    }
+                ],
+    "triggers":  [
+                     {
+                         "triggerId":  "guide.trigger.bern.first_invite",
+                         "categoryId":  "bern",
+                         "enabled":  true,
+                         "event":  {
+                                       "type":  "PARTY_JOINED"
+                                   },
+                         "promptId":  "guide.bern.party.first_invite",
+                         "comboId":  "",
+                         "cooldownMs":  0,
+                         "priority":  100
+                     },
+                     {
+                         "triggerId":  "guide.trigger.bern.raid",
+                         "categoryId":  "bern",
+                         "enabled":  true,
+                         "event":  {
+                                       "type":  "SPACE_ENTER",
+                                       "boxId":  "guide.box.bern.raid",
+                                       "position":  [
+                                                        144.238007,
+                                                        43.8576393,
+                                                        -68.1880035
+                                                    ],
+                                       "yawDegrees":  0,
+                                       "halfExtents":  [
+                                                           4,
+                                                           3,
+                                                           4
+                                                       ],
+                                       "anchorPlacementId":  "npc.bern.beda.guide"
+                                   },
+                         "promptId":  "guide.bern.npc.raid",
+                         "comboId":  "",
+                         "cooldownMs":  30000,
+                         "priority":  10
+                     },
+                     {
+                         "triggerId":  "guide.trigger.bern.honing",
+                         "categoryId":  "bern",
+                         "enabled":  true,
+                         "event":  {
+                                       "type":  "SPACE_ENTER",
+                                       "boxId":  "guide.box.bern.honing",
+                                       "position":  [
+                                                        143.069,
+                                                        46.8328629,
+                                                        -104.165001
+                                                    ],
+                                       "yawDegrees":  -93.5,
+                                       "halfExtents":  [
+                                                           4,
+                                                           3,
+                                                           4
+                                                       ],
+                                       "anchorPlacementId":  "npc.bern.schmidt"
+                                   },
+                         "promptId":  "guide.bern.npc.honing",
+                         "comboId":  "",
+                         "cooldownMs":  30000,
+                         "priority":  10
+                     },
+                     {
+                         "triggerId":  "guide.trigger.kouku.real",
+                         "categoryId":  "koukusaydon",
+                         "enabled":  true,
+                         "event":  {
+                                       "type":  "BOSS_PATTERN_STARTED",
+                                       "patternId":  "KAKULSAYDON_G1_PATTERN_2"
+                                   },
+                         "promptId":  "guide.koukusaydon.boss.find_real_saydon",
+                         "comboId":  "",
+                         "cooldownMs":  0,
+                         "priority":  80
+                     }
+                 ],
+    "combat":  {
+                   "combos":  [
+                                  {
+                                      "comboId":  "combo.dimensionmaster.assist.01",
+                                      "displayName":  "콤보 1",
+                                      "inputSlots":  [
+                                                         "W",
+                                                         "A",
+                                                         "S",
+                                                         "D",
+                                                         "F",
+                                                         "V",
+                                                         "T",
+                                                         "ALT_V"
+                                                     ],
+                                      "repeat":  false,
+                                      "stepWaitMs":  5000,
+                                      "timeoutMs":  45000,
+                                      "resolvedSkillIds":  [
+                                                               2050120,
+                                                               2050210,
+                                                               2050220,
+                                                               2050240,
+                                                               2050230,
+                                                               2050520,
+                                                               2050500,
+                                                               2050540
+                                                           ]
+                                  },
+                                  {
+                                      "comboId":  "combo.dimensionmaster.rescue.02",
+                                      "displayName":  "콤보 2",
+                                      "inputSlots":  [
+                                                         "ALT_V",
+                                                         "V",
+                                                         "W",
+                                                         "A"
+                                                     ],
+                                      "repeat":  false,
+                                      "stepWaitMs":  5000,
+                                      "timeoutMs":  45000,
+                                      "resolvedSkillIds":  [
+                                                               2050540,
+                                                               2050520,
+                                                               2050120,
+                                                               2050210
+                                                           ]
+                                  }
+                              ],
+                   "commands":  [
+                                    {
+                                        "aliases":  [
+                                                        "도움!",
+                                                        "도와줘",
+                                                        "도와줘!"
+                                                    ],
+                                        "comboId":  "combo.dimensionmaster.assist.01",
+                                        "commandId":  "guide.command.help",
+                                        "cooldownMs":  3000,
+                                        "displayName":  "일반 도움",
+                                        "enabled":  true,
+                                        "stop":  false
+                                    },
+                                    {
+                                        "aliases":  [
+                                                        "살려줘",
+                                                        "살려줘!"
+                                                    ],
+                                        "comboId":  "combo.dimensionmaster.rescue.02",
+                                        "commandId":  "guide.command.rescue",
+                                        "cooldownMs":  3000,
+                                        "displayName":  "긴급 도움",
+                                        "enabled":  true,
+                                        "stop":  false
+                                    },
+                                    {
+                                        "aliases":  [
+                                                        "그만",
+                                                        "그만!",
+                                                        "멈춰"
+                                                    ],
+                                        "comboId":  "",
+                                        "commandId":  "guide.command.stop",
+                                        "cooldownMs":  0,
+                                        "displayName":  "보조 중단",
+                                        "enabled":  true,
+                                        "stop":  true
+                                    }
+                                ],
+                   "decision":  {
+                                    "horizonMs":  1500,
+                                    "lethalHpFraction":  0.85,
+                                    "minimumHoldMs":  300,
+                                    "switchMargin":  0.08,
+                                    "thinkIntervalMs":  100
+                                },
+                   "follow":  {
+                                  "desiredDistanceM":  3,
+                                  "maximumDistanceM":  4,
+                                  "minimumDistanceM":  2,
+                                  "recoverDelayMs":  3000,
+                                  "recoverDistanceM":  30,
+                                  "resumeDistanceM":  6
+                              },
+                   "weights":  {
+                                   "ASSIST":  {
+                                                  "attack":  0.5,
+                                                  "avoid":  0.35,
+                                                  "follow":  0.15
+                                              },
+                                   "FOLLOW":  {
+                                                  "attack":  0,
+                                                  "avoid":  0.4,
+                                                  "follow":  0.6
+                                              }
+                               }
+               }
+}

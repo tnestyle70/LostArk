@@ -1,3 +1,4 @@
+#ifndef SOURCE_CHARACTER_LIGHT_DISPATCH_CASES
 SOURCE_CHARACTER_NATIVE_OUTPUT SourceCharacterLight600(SOURCE_CHARACTER_NATIVE_INPUT input)
 {
     SOURCE_CHARACTER_NATIVE_OUTPUT output = (SOURCE_CHARACTER_NATIVE_OUTPUT)0;
@@ -7,6 +8,8 @@ SOURCE_CHARACTER_NATIVE_OUTPUT SourceCharacterLight600(SOURCE_CHARACTER_NATIVE_I
     source[13]=SourceCharacterAppend(cos((g_SourceCharacterTime.xxxx*float4(0.100000001,0,0,0))),(float4(-1,0,0,0)*sin((g_SourceCharacterTime.xxxx*float4(0.100000001,0,0,0)))),1u);
     source[14]=SourceCharacterAppend(sin((g_SourceCharacterTime.xxxx*float4(0.100000001,0,0,0))),cos((g_SourceCharacterTime.xxxx*float4(0.100000001,0,0,0))),1u);
     source[21].w=(g_SourceCharacterTime.xxxx).x;
+    // Original engine primitive environment/opacity identity.
+    source[1].w = 1.f;
     source[23]=float4(input.lightColor,1.0);
     source[29].x=1.0;
     float4 projection[4]; [unroll] for(uint p=0u;p<4u;++p) projection[p]=input.projection[p];
@@ -631,3 +634,7 @@ SOURCE_CHARACTER_NATIVE_OUTPUT SourceCharacterLight601(SOURCE_CHARACTER_NATIVE_I
 }
 
 // source.character.selection-native-700.v1 / source program 5262375c2e4ee34d8b51f43c41173a05
+#else // SOURCE_CHARACTER_LIGHT_DISPATCH_CASES
+    case 600u: return SourceCharacterLight600(input);
+    case 601u: return SourceCharacterLight601(input);
+#endif // SOURCE_CHARACTER_LIGHT_DISPATCH_CASES

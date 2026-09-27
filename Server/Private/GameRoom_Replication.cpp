@@ -70,6 +70,7 @@ bool LostArk::Server::CGameRoom::Send_Spawned(
 	message.iPlayerId = player.iPlayerId;
 	message.iNetEntityId = player.iNetEntityId;
 	message.eCharacterClass = player.eCharacterClass;
+	message.eControlKind = player.eControlKind;
 	message.strNickName = player.strNickName;
 	message.fPositionX = player.fPositionX;
 	message.fPositionY = player.fPositionY;
@@ -508,6 +509,7 @@ void LostArk::Server::CGameRoom::Broadcast_WorldSnapshot()
 		PLAYER_SNAPSHOT snapshot{};
 		snapshot.iNetEntityId = player.iNetEntityId;
 		snapshot.eCharacterClass = player.eCharacterClass;
+		snapshot.eControlKind = player.eControlKind;
 		snapshot.fPositionX = player.fPositionX;
 		snapshot.fPositionY = player.fPositionY;
 		snapshot.fPositionZ = player.fPositionZ;

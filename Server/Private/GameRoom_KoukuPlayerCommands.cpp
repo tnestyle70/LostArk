@@ -377,7 +377,7 @@ void LostArk::Server::CGameRoom::Update_KoukuBingo(const std::uint32_t tick)
 									return result.eKind == BOSS_PATTERN_LOGIC_RESULT_KIND::PLAYER_INVULNERABILITY && result.iDurationMs; }))
 								reward = &window;
 			const auto eligible = [&](const PLAYER_ID id, const SERVER_PLAYER& player) {
-				return player.iCurrentHp && player.eAction != PLAYER_ACTION_STATE::DEAD &&
+				return player.Is_Human() && player.iCurrentHp && player.eAction != PLAYER_ACTION_STATE::DEAD &&
 					(!Is_KoukuRaidRunning() || std::find(m_KoukuRaid.PlayerIds.begin(), m_KoukuRaid.PlayerIds.end(), id) != m_KoukuRaid.PlayerIds.end());
 			};
 			bool claimed = false;
@@ -417,7 +417,7 @@ void LostArk::Server::CGameRoom::Update_KoukuBingo(const std::uint32_t tick)
 		const SERVER_PLAYER* carrier = nullptr;
 		for (const auto& entry : m_Players)
 		{
-			if (entry.second.iNetEntityId == bombs[slot].iCarrierNetEntityId &&
+			if (entry.second.Is_Human() && entry.second.iNetEntityId == bombs[slot].iCarrierNetEntityId &&
 				0u != entry.second.iCurrentHp)
 			{
 				carrier = &entry.second;
@@ -445,7 +445,7 @@ void LostArk::Server::CGameRoom::Update_KoukuBingo(const std::uint32_t tick)
     {
         std::vector<NET_ENTITY_ID> alive;
         for (const auto& [id, player] : m_Players)
-            if (player.iCurrentHp && player.eAction != PLAYER_ACTION_STATE::DEAD &&
+            if (player.Is_Human() && player.iCurrentHp && player.eAction != PLAYER_ACTION_STATE::DEAD &&
                 Is_KoukuBingoCell(Kouku_BingoCellAt(player.fPositionX, player.fPositionZ))) alive.push_back(player.iNetEntityId);
         if (!alive.empty())
         {
@@ -774,7 +774,7 @@ void LostArk::Server::CGameRoom::Apply_KoukuGateEntryCard(
 	std::uint8_t used = 0u;
 	for (const auto& [id, other] : m_Players)
 	{
-		if (id == player.iPlayerId) continue;
+		if (other.Is_Guide() || id == player.iPlayerId) continue;
 		const auto symbol = static_cast<std::uint8_t>(other.eMechanicCardSymbol);
 		if (symbol >= 1u && symbol <= 4u) used |= static_cast<std::uint8_t>(1u << (symbol - 1u));
 	}
@@ -1067,6 +1067,7 @@ LostArk::Server::CGameRoom::Apply_DebugTeleportToPosition(
 	player.fPositionZ = ground.z;
 	result.eResult = DEBUG_TELEPORT_RESULT::ACCEPTED;
 	Update_MarioControlState(player);
+	Guide_AnchorArrived(player);
 	result.fPositionX = ground.x;
 	result.fPositionY = ground.y;
 	result.fPositionZ = ground.z;
@@ -1154,7 +1155,7 @@ std::uint8_t LostArk::Server::CGameRoom::Begin_MarioStageObjects(const std::uint
 	for (const auto& [id, participant] : m_Players)
 	{
 		(void)id;
-		if (participant.iMarioStage == stage && participant.iCurrentHp && participant.iMarioLayoutVariant)
+		if (participant.Is_Human() && participant.iMarioStage == stage && participant.iCurrentHp && participant.iMarioLayoutVariant)
 			return participant.iMarioLayoutVariant;
 	}
 	const std::string groupId = "spawn.mario" + std::to_string(stage) + ".source";
@@ -1212,7 +1213,7 @@ void LostArk::Server::CGameRoom::Cleanup_EmptyMarioStages()
 	for (std::uint8_t stage = 1u; stage <= 4u; ++stage)
 	{
 		const bool occupied = std::any_of(m_Players.begin(), m_Players.end(), [stage](const auto& pair) {
-			return pair.second.iMarioStage == stage && pair.second.iCurrentHp;
+			return pair.second.Is_Human() && pair.second.iMarioStage == stage && pair.second.iCurrentHp;
 		});
 		if (!occupied && m_SpawnGroupRuntime.Is_ActiveOrCompleted("spawn.mario" + std::to_string(stage) + ".source"))
 			Reset_MarioStageObjects(stage);

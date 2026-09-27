@@ -214,6 +214,8 @@ Client::PLAYER_RELATION Client::CWorldPlayerNameplateView::Resolve_Relation(
 		for (const LostArk::Shared::PARTY_ROSTER_MEMBER& Member : pPartyRoster->Members)
 			if (Member.iNetEntityId == Player.iNetEntityId)
 				return PLAYER_RELATION::PARTY;
+	if (pPartyRoster && pPartyRoster->GuideCompanion &&
+		pPartyRoster->GuideCompanion->iNetEntityId == Player.iNetEntityId) return PLAYER_RELATION::PARTY;
 	return PLAYER_RELATION::OTHER;
 }
 

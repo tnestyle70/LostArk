@@ -995,8 +995,9 @@
       "costume": [
         "UI/Customizing/Icons/GuardianKnight/costume_class_select_hr00.png",
         "UI/Items/GuardianKnight/honorwhisper_top.png",
-        "UI/Items/GuardianKnight/honorwhisper_weapon.png",
-        "UI/Items/GuardianKnight/honorwhisper_weapon.png"
+        "UI/Customizing/Icons/GuardianKnight/costume_source_ddk_01.png",
+        "UI/Customizing/Icons/GuardianKnight/costume_source_ddk_02.png",
+        "UI/Customizing/Icons/GuardianKnight/costume_source_ddk_03.png"
       ]
     }
   }

@@ -65,6 +65,7 @@ public:
        integrated cutscene Save cannot also run the Area publisher or the
        linked battle pattern publish. The default keeps the standalone Save. */
     bool Save_Source(bool publishRuntime = true);
+    bool Publish_Source();
     bool Edit_AnimationTimeline(const std::string& instanceId, const std::string& slotId,
         const std::string& clipName, uint32_t expectedStartMs, uint32_t startMs,
         uint32_t sourceInMs, uint32_t sourceOutMs, std::string& status);
@@ -79,9 +80,11 @@ private:
         bool duplicate, std::string& status);
     bool Insert_CompositionEffects(const COMPOSITION_EFFECT_TRANSFER& transfer, std::string& status);
     bool Render_SaveButton();
+    void Render_PublishButton();
     void Render_SaveStatus() const;
     void Render_ColliderPreview();
     bool Matches_SourceBaseline();
+    bool Refresh_LinkedPublication();
     void Start_Publish();
     void Poll_Publish();
     void Mark_Dirty();
@@ -149,6 +152,12 @@ private:
     void Render_GroupSequence(const WORLD_SEQUENCE_OBJECT_RESOURCE& resource, bool parentOverview = false);
     void Render_SelectedSequence();
     void Render_Sequence(WORLD_SEQUENCE_TEMPLATE& sequence);
+    float Render_TimelineRows(WORLD_SEQUENCE_TEMPLATE& sequence, const std::string& instanceId,
+        float originX, float startY, float width, float pixelsPerMs,
+        float timeOffsetMs = 0.f, float playbackRate = 1.f);
+    void Commit_TimelineDrag();
+    double Timeline_AnimationDuration(const std::string& instanceId, const std::string& slotId,
+        const std::string& clipName);
     bool Animation_EndMs(const WORLD_SEQUENCE_TEMPLATE& sequence, bool preserveWindows, uint32_t& outEnd);
     bool Resize_Stage(WORLD_SEQUENCE_TEMPLATE& sequence, uint32_t durationMs);
     void Render_KeyEditor(WORLD_SEQUENCE_TEMPLATE& sequence);
@@ -238,6 +247,18 @@ private:
     size_t m_SelectedAnimationRow = 0;
     int m_SelectedBoxKind = 0; // 0 Transform, 1 Animation, 2 Effect, 3 Collider, 4 Stage.
     bool m_TimelineFitRequested = false;
+    // Session-only display state: folding never changes preview or authored visibility.
+    std::map<std::string, bool> m_TimelineLaneOpen;
+    struct TIMELINE_DRAG
+    {
+        std::string instanceId, sequenceId, boxId, slotId, clipName;
+        int kind = 0, gesture = 0;
+        uint32_t revision = 0, originalStart = 0, originalEnd = 0, start = 0, end = 0;
+        uint32_t sourceIn = 0, sourceOut = 0, nativeEnd = 0;
+        float sourceRate = 1.f, pixelsPerLocalMs = 1.f;
+        bool pending = false, changed = false;
+    };
+    std::optional<TIMELINE_DRAG> m_TimelineDrag;
     std::string m_StageResizeSequence;
     uint32_t m_StageResizeOriginalMs = 0, m_StageResizeDurationMs = 0;
     float m_StageResizePixelsPerMs = 1.f;
@@ -255,6 +276,7 @@ private:
         double durationMs = 0.;
     };
     std::vector<ANIMATION_RESOURCE> m_AnimationResources;
+    std::map<std::string, std::vector<ANIMATION_RESOURCE>> m_TimelineAnimationCatalogs;
     std::string m_AnimationObjectId;
     std::string m_AnimationModelAssetId;
     std::string m_AnimationCandidateModelAssetId;
@@ -287,6 +309,7 @@ private:
     int m_PhysicalSlot = 0;
     HANDLE m_PublishProcess = nullptr;
     std::filesystem::path m_PublishLog;
+    std::string m_RuntimePublishStatus = "Publication has not been checked in this session.";
 };
 }
 #endif

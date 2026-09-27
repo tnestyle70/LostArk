@@ -15,6 +15,12 @@ struct EFFECT_CAMERA_ROW final
     bool muted = false, modelRelative = true, horizontalFov = false;
     VALTAN_CINEMATIC_CAMERA_CUE cue;
     std::vector<float3_t> upVectors;
+    // Optional arrangement-only provenance, never authored into Product data. A
+    // projected Action row opens its canonical camera instead of inverse-saving
+    // rounded/resampled preview keys.
+    std::string sourceEffectId, sourceCameraId;
+    std::uint32_t sourceClockAtStartMs = 0u;
+    float sourcePlayRate = 1.f;
 };
 
 struct EFFECT_RECOVERY_CAMERA_DOCUMENT final
@@ -32,6 +38,12 @@ class CEffectRecoveryCamera final
 {
 public:
     static bool Load(const std::string& effectId, EFFECT_RECOVERY_CAMERA_DOCUMENT& out, std::string& error);
+    static bool Parse_Document(const std::string& effectId, const DATA_JSON_VALUE& document,
+        EFFECT_RECOVERY_CAMERA_DOCUMENT& out, std::string& error);
+    static DATA_JSON_VALUE Write_Row(const EFFECT_CAMERA_ROW& row, const DATA_JSON_VALUE* baseline = nullptr,
+        bool authoringProvenance = false);
+    static void Restore_AuthoringProvenance(std::vector<EFFECT_CAMERA_ROW>& rows,
+        const std::vector<EFFECT_CAMERA_ROW>& admittedProjection);
     static bool Parse(const DATA_JSON_VALUE& document, bool required, std::vector<EFFECT_CAMERA_ROW>& out, std::string& error);
     static bool Validate(const std::vector<EFFECT_CAMERA_ROW>& rows, std::string& error);
     static bool Sample(const EFFECT_CAMERA_ROW& row, std::uint32_t clockMs, const float4x4_t& root,

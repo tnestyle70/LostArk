@@ -134,3 +134,88 @@ Client 화면·effect fidelity는 사용자가 확인한다. 에이전트의 bui
 - headless: `headless-contract-run/results.json`, 원문 baseline 비교 `server-monolith-baseline/comparison.json`.
 
 후속 최적화의 성공 기준은 파일 수 감소나 무변경 빌드 시간만이 아니다. 팀이 실제로 하는 CPP 편집, public header 변경, native material 추가, 공통 셰이더 수정, 새 PC/캐시 없는 빌드를 구분해 compiler/link/검사 시간과 재생성 대상을 측정해야 한다. 이번 결과는 첫 세 경로의 변경 범위를 줄인 근거이며, 공통 셰이더의 큰 컴파일 비용까지 해결했다는 근거는 아니다.
+
+## G08. 09-27 전체 C++ 입력 조사와 재질 packing 후보
+
+MSBuild의 실제 Debug ClCompile 평가 대상은 Engine79/Client339/Shared8/Server90의516개다.
+450개가 PCH Use,4개가 Create,62개가 기존 조건에 따른 NotUsing이다. 현재 CL.read 입력과
+모든 등록 CPP의 크기·public header fanout은 `out/BernValtan20260927/cpp-inventory.json`,
+packing 소비자와 큰 CPP/헤더 목록은 `out/CppBuildAudit20260927/inventory.json`에 있다.
+헤더 크기와 fanout은 실제 컴파일 시간이 아니며, 필요한 API 의존성까지 제거할 대상으로
+해석하지 않는다. 기존 PCH·MP8·증분 계약은 유지한다.
+
+SourceCharacterMaterialParameters의1,183,645bytes/10,276줄 inline 구현은7개 TU가 함께
+컴파일했다. public818bytes 선언과 단일 owner CPP/generated INL로 분리한 후보를 out에서
+같은 flags/PCH 독립 복사본으로 비교했다. 실제20개 Data 문서의815개 고유 입력에288개
+synthetic 입력을 더한1,103입력/290family에서11,044검사가 PASS다. 상수128float4의 bit,
+프로그램·마스크·두 Configure overload·NamedVector·누락/추가/unknown/비정상 JSON 처리와
+실패 시 이전 결과 보존을 대조했다. 결과는 semantic/equivalence-report.json에 있다.
+
+| 동일7개 실제 TU의 단독 순차 컴파일 | 기준 | 분리 후보(새 owner 포함) |
+|---|---:|---:|
+| 1회 |50.476초|30.308초|
+| 순서를 바꾼 2회 |52.046초|30.368초|
+
+이7개 범위의 평균 컴파일 합계는 약40.8% 감소했다. 전체 Product 빌드 단축률이 아니다.
+MapAssetCatalog는24.72/26.46→8.94/9.06초이며 새 owner는2.15/2.11초다. 기준 MapAssetCatalog의
+후단 optimizer21.17초가 후보6.32초로 줄어 큰 inline Configure의 중복 최적화 비용이 확인된다.
+`timing/results.json`과 summary.json에 명령·출력·시간을 보존했다.
+
+파일 크기 상위의 실제 단독 컴파일도 측정했다. MainApp8.176초,KoukuWorkbench7.495초,
+ValtanWorkbench6.076초,Balance4.090초,PreparedDocument4.428초다. 이 값만으로 함수 의미를
+다시 쪼개거나 공용 헤더 파싱을 늘리는 분할은 하지 않았다. largest-timing/results.json이
+근거다. 제품 반영·생성기 연결과 최종 Debug/Release 링크 및 증분 범위는 뒤에서 구분한다.
+
+## G09. packing 제품 반영과 생성기·publisher 연결
+
+현재 API 헤더는 CRLF를 유지해840bytes이며,새 owner CPP866bytes와 generated INL
+1,173,377bytes는 UTF-8 BOM 없는 파일이다. 기존 함수 본문은 private Detail namespace 이동
+외에 normalized bytes가 같다. Client 프로젝트·filters에 필요한 두 항목만 등록하고 기존
+7개 소비자의 컴파일 옵션/PCH 설정은 보존했다.
+
+Vehicle writer,customizing reader,Map publisher의 구현 읽기 경로를 같은 generated INL로
+연결했다. named-vector generator8개 검사,face reader259family 전후 동일,실제 PowerShell
+publisher의289family 중251개의 파라미터/texture mask와38개 거부 문구가 동일함을 확인했다.
+publisher 비교는 AST로 함수만 호출했으며 Data/runtime을 다시 게시하지 않았다. 증거는
+`out/CppBuildAudit20260927/publisher-equivalence.json`과 해당 reader 결과다.
+
+사용자가 현재 범위를 마무리한 뒤 방향을 다시 정하도록 요청하여 추가 구조 변경은 중단했다.
+최종 Product와 실제 CL.read의 단일 owner 경계 확인만 남긴 상태에서 소스를 동결했다.
+
+## G10. 최적화 반영 Debug 제품과 실제 의존성
+
+정규 Debug Product `20260926T231700570Z-debug-product.json`은 전체23분46.122초에
+PASS다. Engine OBJ2/Client OBJ62,PCH0이며 Shared/Server 출력 변경은0이다. 이번 최초
+적용 빌드에는 재질 packing 외에 shader registry와 공통 입력 변경도 포함되므로7개 TU
+단독 A/B의40.8%를 이 전체 시간의 C++ 단축률로 사용하지 않는다.
+
+Client의 실제 `CL.read.1.tlog`340개 TU 중 generated INL 소비자는 새
+SourceCharacterMaterialParameters.cpp 한 개뿐이다. 기존7개 TU는 작은 public API를
+참조하고 generated INL 및 source map packing 본문을 더 이상 참조하지 않는다.
+읽는 동안 tlog 크기·mtime 불변도 확인했다. 증거는
+`out/CppBuildAudit20260927/debug-product-dependency-proof.json`이다.
+Release 제품과 무변경 반복은 별도 완료 결과를 기록한다.
+
+정식 binlog의 실제 target 시작·종료를 읽으면 전체 C++ ClCompile은69.656초이고
+Engine7.152초/Client62.341초,Shared·Server는 각각0.047/0.116초다. 반면 FxCompile은
+1347.018초로 전체94.45%다. C++ packing의 반복 최적화 비용은 줄었지만 이번 긴 대기의
+주원인을 애니메이션 C++ 빌드로 설명하지 않는다. `out/build-phase-timings.json`에
+원시 timestamp·각 binlog SHA·중첩 확인 결과가 있다.
+
+## G11. 최종 Release와 완료 범위
+
+정규 Release Product `20260926T234347878Z-release-product.json`은25분31.568초에 PASS다.
+Engine OBJ2/Client OBJ77,PCH0이며 Shared/Server 출력 변경은0이다. 실제 Release
+CL.read340개 TU에서도 대형 generated INL 소비자는 새 owner 한 개이고,기존7개 TU는
+public API만 읽는다. `out/CppBuildAudit20260927/release-product-dependency-proof.json`에
+전체 소비자·tlog SHA·읽기 안정성 검사를 기록했다.
+
+Release binlog의 FxCompile1425.985초(93.11%),ClCompile52.620초(3.44%),Link48.701초
+(3.18%)를 확인했다. Engine/Client C++는 각각3.891/48.524초다. 근거는
+`out/build-phase-timings-release.json`이다. 후반에 다른 Client Debug 빌드가 동시에
+실행되고 같은 workspace의 별도 발탄/무비 소스 변경도 들어왔으므로 통제된 A/B가 아니다.
+
+현재 작업의 소스·생성기 동치,Debug/Release compile/link,단일 INL owner 의존 경계는
+검증 완료다. 공유 폴더의 다른 작업이 진행 중이므로 전체 Product 무변경 반복은 추가하지
+않았고 출력0 성공으로 기록하지 않는다. 다른 작업의 CPP 변경이나 /CL_MPCount=2 빌드
+명령을 되돌리지 않았다. C++ 추가 분할이나 새로운 빌드 시스템 변경은 이번 범위에 없다.

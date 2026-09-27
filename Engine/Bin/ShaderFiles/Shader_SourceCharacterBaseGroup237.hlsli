@@ -1,3 +1,4 @@
+#ifndef SOURCE_CHARACTER_BASE_DISPATCH_CASES
 SOURCE_CHARACTER_NATIVE_OUTPUT SourceMapMonsterBaked237(SOURCE_CHARACTER_NATIVE_INPUT input)
 {
     SOURCE_CHARACTER_NATIVE_OUTPUT output = (SOURCE_CHARACTER_NATIVE_OUTPUT)0;
@@ -1248,3 +1249,7 @@ SOURCE_CHARACTER_NATIVE_OUTPUT SourceCharacterBase238(SOURCE_CHARACTER_NATIVE_IN
 }
 
 // source.character.selection-native-600.v1 / source program 040a63ec2e3e5e42a8f2194c6622723a
+#else // SOURCE_CHARACTER_BASE_DISPATCH_CASES
+    case 237u: if(input.hasBakedLighting) return SourceMapMonsterBaked237(input); return SourceCharacterBase237(input);
+    case 238u: return SourceCharacterBase238(input);
+#endif // SOURCE_CHARACTER_BASE_DISPATCH_CASES

@@ -1,5 +1,56 @@
 # 발탄 Composition 저작 흐름 정리 구현 계획서
 
+## G13. 2026-09-27 추가 — 세이튼과 같은 재생·저작 표면
+
+사용자 확정: Preview는 자유로운 Pause/Seek를 유지하는 로컬 표현 재생이며 Server와 같은
+Stage 시간·선택 Logic 결과·오브젝트 수명을 재현한다. Play Pattern은 실제 Server 권위 실행이다.
+발탄용 두 번째 Composition runtime이나 쿠크 문서 복사본을 만들지 않는다.
+
+`CompositionTimeline.h`에 세이튼의 기존 palette/box 높이를 공용 상수로 두고 두 Boss에서
+소비한다. Stage와 Animation clip의 별도 row·stable identity를 유지하며 색·폰트·여백·선택 표시를
+같이 쓴다. `ValtanActionWorkbench.cpp`의 toolbar는 Save/Play Preview/Pause/Reset/Play Pattern과
+현재 실행 상태를 분명히 표시하고 기존 source Save와 Server audition 경계를 유지한다.
+
+Resources는 실제 Pattern 연결과 Full Restore의 exact source action/clip join으로 `Patterns`를
+만든다. 여러 Pattern이 쓰거나 독립 combat object가 소유한 자원은 `Common`, 미연결 저장 자원은
+`Library`에서 찾는다. V1/V2 저장 codec은 그대로 두고 같은 목록에서 각각의 owner로 dispatch한다.
+Full Restore metadata join은 `ValtanPatternTree.h/.cpp`의 공용 helper를 Tool/Workbench가 공유한다.
+새 `effect.valtan.six-pizza.sectors`는 원본 composite의 네 요소를 복사한 독립 resource이며
+기존 Pattern 연결을 자동 교체하지 않는다. 원본 요소의11초 지연을 제거하고 모든 입자 수명은 보존한다.
+EffectCatalog 및 Client 프로젝트/필터의96.DataFiles None 항목으로 등록한다.
+
+`Valtan.cpp`의 local combat-object preview는 현재 action이 바뀔 때 이전 돌을 종료하는 결함이
+있다. 전체 Pattern clock에서 spawn을 재구성하고 각각의 lifetime/terminal event까지 유지하도록
+기존 preview 경로를 고친다. 이동·엄폐·피해는 기존 Server가 계속 소유한다. Sound/Logic은 실제
+기존 transport 소비자를 조사해 Pause/Seek/Stop과 같은 시계를 소비하게 연결하며 결과는
+source/data-only 검사, 실제 컴파일, 사용자 화면 확인을 구분한다.
+
+## G12. 2026-09-27 재개 — 복원본 검색과 발탄 Sequencer 표시
+
+사용자는 휠윈드·피자 Full Restore를 Effect Editor에서 Play All/Timeline/Solo로 편집하고,
+Action Workbench에서 기존 sector·돌·collider와 함께 조립하려 한다. 현재 Full Restore의
+원본 clip 재생과 element 편집은 이미 연결돼 있다. Product는 현재 패턴 invocation이며
+Full Restore 목록에 있다는 사실만으로 제품 패턴에 연결되지는 않는다.
+
+`Client/Private/ValtanActionWorkbench.cpp`의 Effect Resources는 현재 모든 direct-authored
+ID를 분해해 나열하고 ID만 검색한다. 기존 saved Effect organization/inventory의 이름과
+category를 함께 사용해 복원본과 기존 resource를 검색·선택할 수 있게 한다. 기존 typed
+Append/Save/Publish와 stable ID를 유지하며 목록을 그리기 위해 대형 Effect 본문을 decode하지 않는다.
+필요한 검색용 session metadata는 `Client/Public/ValtanActionWorkbench.h`가 소유한다.
+
+같은 CPP의 `Render_Timeline`은 공통 row 높이24/label 폭180을 이미 사용하지만 Fit에서
+추가360px를 빼고 있다. Saydon의24px 여백과 box 안쪽 padding1px로 맞추며, canvas 끝은
+실제 box의 끝으로 계산해 point 클릭 영역을 보존한다.
+
+`Client/Private/Effect_Tool_Valtan.cpp`는 Product/Full Restore의 역할과 실제 source clip을
+명시하고 기존 Open/Play/Save 경로를 유지한다. 새 renderer·runtime·정본 복사본은 만들지 않는다.
+피자 sector와 돌은 현재 Server spawn/판정 owner를 먼저 실측하고 resource 종류를 구분한다.
+사용자 저작 데이터의 최종 교체가 필요하면 후보 검증을 끝낸 뒤 최신 저장본 기준 승인 절차를 따른다.
+
+검증은 변경 TU 최소 컴파일, 관련 metadata/ID join 검사와 `git diff --check`다. 새 C++ 파일이나
+project/filter 등록은 계획하지 않는다. 다른 실행 중 빌드와 IntDir를 공유하지 않는다.
+Client/UI 실행과 최종 화면 판정은 사용자가 수행한다.
+
 작성일: 2026-09-09
 
 상태: 2026-09-18 구현 재개. 아래 기존 G의 미구현 범위와 실제 구현 범위는 RESULT에서 구분한다.

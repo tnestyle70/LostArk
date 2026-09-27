@@ -210,6 +210,7 @@ LostArk::Server::CGameRoom::CGameRoom(
 	}
 
 	m_isReady = true;
+	Initialize_Guide();
 	m_strStatus = m_WorldBootstrap.Get_Status();
 }
 
@@ -1051,6 +1052,7 @@ void LostArk::Server::CGameRoom::Tick(const float fixedDeltaSeconds,
 	for (const auto& [id, player] : m_Players)
 		if (player.eCardMazeRole != LostArk::Shared::CARD_MAZE_ROLE::NONE)
 			m_CardMazePreviousPositions[id] = {player.fPositionX, player.fPositionZ};
+	Update_Guides(fixedDeltaSeconds);
 	Update_Players(fixedDeltaSeconds);
 	Update_KoukuCardRainSoldiers(updateTick);
 	Update_CardMaze(updateTick);
@@ -1121,7 +1123,7 @@ void LostArk::Server::CGameRoom::Tick(const float fixedDeltaSeconds,
 			return Spawn_Monster(
 				spawnGroupId, entry, anchor, profile, ordinal);
 		});
-	m_EstherSkillSystem.Update(fixedDeltaSeconds, !m_Players.empty());
+	m_EstherSkillSystem.Update(fixedDeltaSeconds, Count_HumanPlayers() != 0u);
 	// Player/Esther hits may have destroyed an owned WORLD body this tick.
 	// Retire its contact windows before any boss Logic can charge damage or madness.
 	Update_KoukuWorldBodies(updateTick);
@@ -1187,7 +1189,7 @@ void LostArk::Server::CGameRoom::Tick(const float fixedDeltaSeconds,
 	m_iServerTick = updateTick;
 	Expire_RaidEntryProposals();
 	Expire_GateProgressVote();
-	if (!m_Players.empty())
+	if (Count_HumanPlayers() != 0u)
 		Broadcast_WorldSnapshot();
 	std::vector<LostArk::Shared::GameplayDataRevision> liveGenerationPins;
 	if (!Build_RequiredPinnedGameplayRevisions(liveGenerationPins))

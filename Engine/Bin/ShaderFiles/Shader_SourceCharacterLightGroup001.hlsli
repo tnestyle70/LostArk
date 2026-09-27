@@ -1,3 +1,4 @@
+#ifndef SOURCE_CHARACTER_LIGHT_DISPATCH_CASES
 
 // source.character.classic-skin.v1 / source program c9cc424f33404648b77b8413ec31eb75
 SOURCE_CHARACTER_NATIVE_OUTPUT SourceCharacterLight1(SOURCE_CHARACTER_NATIVE_INPUT input)
@@ -4070,3 +4071,13 @@ SOURCE_CHARACTER_NATIVE_OUTPUT SourceCharacterLight8(SOURCE_CHARACTER_NATIVE_INP
 }
 
 // source.character.realpbr-weapon-variation.v1 / source program 5ed916e69e1c4940b3b55037c283930f
+#else // SOURCE_CHARACTER_LIGHT_DISPATCH_CASES
+    case 1u: return SourceCharacterLight1(input);
+    case 2u: return SourceCharacterLight2(input);
+    case 3u: return SourceCharacterLight3(input);
+    case 4u: return SourceCharacterLight4(input);
+    case 5u: return SourceCharacterLight5(input);
+    case 6u: return SourceCharacterLight6(input);
+    case 7u: return SourceCharacterLight7(input);
+    case 8u: return SourceCharacterLight8(input);
+#endif // SOURCE_CHARACTER_LIGHT_DISPATCH_CASES

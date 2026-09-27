@@ -1,6 +1,7 @@
 #pragma once
 #include "CompositionResourceTree.h"
 #include "ClassSelectionTimeline.h"
+#include "ClassMovieInspection.h"
 
 #include "Client_Defines.h"
 #include "Engine_Defines.h"
@@ -44,6 +45,7 @@ public:
         std::string selectedClassId, activeClassId, selectedLabel;
         bool authoringDirty = false, authoringPublishPending = false;
         std::string authoringStatus;
+        std::uint64_t authoringGeneration = 0;
         bool available = false;
         bool active = false;
         bool paused = false;
@@ -72,10 +74,13 @@ public:
         std::function<bool(bool, double)> seek;
         std::function<bool(double)> setPlaybackRate;
         std::function<std::shared_ptr<const CLASS_MOVIE_TIMELINE>(const std::string&, bool)> timeline;
-        std::function<bool(std::string&)> beginAuthoring, saveAuthoring, reloadAuthoring;
+        std::function<bool(std::string&)> beginAuthoring, saveAuthoring, reloadAuthoring, publishAuthoring;
+        std::function<double(const std::string&, bool, double, bool)> mapTime;
         std::function<bool(const std::string&, bool, const std::string&, const std::string&, CLASS_MOVIE_AUTHORING_BOX&, std::string&)> editableBox;
         std::function<bool(const CLASS_MOVIE_AUTHORING_BOX&, const DATA_JSON_VALUE&, std::string&)> applyBox;
+        std::function<bool(const CLASS_MOVIE_AUTHORING_BOX&, double, double, CLASS_MOVIE_TIMING_EDIT, std::string&)> editTiming;
         std::function<bool(const std::string&, bool, const std::string&, std::string&)> openEffectEditor;
+        CLASS_MOVIE_INSPECTION_CALLBACKS inspection;
     };
 
     CSequencerTool(

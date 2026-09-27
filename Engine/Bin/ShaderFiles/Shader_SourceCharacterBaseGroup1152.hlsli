@@ -1,3 +1,4 @@
+#ifndef SOURCE_CHARACTER_BASE_DISPATCH_CASES
 SOURCE_CHARACTER_NATIVE_OUTPUT SourceMapMonsterBaked1152(SOURCE_CHARACTER_NATIVE_INPUT input)
 {
     SOURCE_CHARACTER_NATIVE_OUTPUT output=(SOURCE_CHARACTER_NATIVE_OUTPUT)0;
@@ -11473,3 +11474,20 @@ SOURCE_CHARACTER_NATIVE_OUTPUT SourceCharacterBase1166(SOURCE_CHARACTER_NATIVE_I
 }
 
 // source.character.static-map-native-1400.v1 / source program 34d101656e12f1449b346b9e5ae789b3
+#else // SOURCE_CHARACTER_BASE_DISPATCH_CASES
+    case 1152u: return SourceCharacterBase1152(input);
+    case 1153u: return SourceCharacterBase1153(input);
+    case 1154u: return SourceCharacterBase1154(input);
+    case 1155u: return SourceCharacterBase1155(input);
+    case 1156u: return SourceCharacterBase1156(input);
+    case 1157u: return SourceCharacterBase1157(input);
+    case 1158u: return SourceCharacterBase1158(input);
+    case 1159u: return SourceCharacterBase1159(input);
+    case 1160u: return SourceCharacterBase1160(input);
+    case 1161u: return SourceCharacterBase1161(input);
+    case 1162u: return SourceCharacterBase1162(input);
+    case 1163u: return SourceCharacterBase1163(input);
+    case 1164u: return SourceCharacterBase1164(input);
+    case 1165u: return SourceCharacterBase1165(input);
+    case 1166u: return SourceCharacterBase1166(input);
+#endif // SOURCE_CHARACTER_BASE_DISPATCH_CASES

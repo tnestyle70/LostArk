@@ -265,7 +265,13 @@ bool CPart_Vehicle::Set_FlightPlayback(const std::vector<std::string>& clips,
         (phase != VEHICLE_FLIGHT_PHASE::FLYING && phaseDuration <= 0.f)) return false;
     if (!Seek_SkillChain(clips, 0.f)) return false;
     m_iFlightAnimation = m_pModelCom->Get_CurrentAnimIndex();
-    m_FlightPhase = phase; m_fFlightAge = phaseAge; m_fFlightDuration = phaseDuration;
+    // Preserve the render clock across normal 30 Hz snapshots. Large corrections or
+    // phase transitions still seek immediately; tiny age jitter must not reverse a wing stroke.
+    if (m_FlightPhase == phase && std::abs(m_fFlightAge - phaseAge) < .25f)
+        m_fFlightAgeCorrection = (phaseAge - m_fFlightAge) * .2f;
+    else
+    { m_fFlightAge = phaseAge; m_fFlightAgeCorrection = 0.f; }
+    m_FlightPhase = phase; m_fFlightDuration = phaseDuration;
     m_fFlightClipDuration = duration; m_fFlightLoopStart = loopStart;
     m_fFlightLoopEnd = loopEnd; m_fFlightLandingStart = landingStart;
     return Pose_FlightRider(m_pModelCom, m_iFlightAnimation);
@@ -292,6 +298,7 @@ void CPart_Vehicle::Resolve_FlightPoseTimes(f32_t& source, f32_t& target, f32_t&
         {
             target = m_fFlightLoopStart + time - (span - overlap);
             blend = (time - (span - overlap)) / overlap;
+            blend = blend * blend * (3.f - 2.f * blend);
         }
     }
     source = std::clamp(source, 0.f, m_fFlightClipDuration - .0001f);
@@ -429,10 +436,16 @@ void CPart_Vehicle::Priority_Update(f32_t fTimeDelta)
 
 void CPart_Vehicle::Update(f32_t fTimeDelta)
 {
+	const f32_t previousBob = m_fFlightBobOffset;
 	const bool flight = m_FlightPhase != LostArk::Shared::VEHICLE_FLIGHT_PHASE::GROUNDED;
 	if (flight)
 	{
-		if (std::isfinite(fTimeDelta) && fTimeDelta > 0.f) m_fFlightAge += fTimeDelta;
+		if (std::isfinite(fTimeDelta) && fTimeDelta > 0.f)
+		{
+			const f32_t correction = std::clamp(m_fFlightAgeCorrection, -.5f * fTimeDelta, .5f * fTimeDelta);
+			m_fFlightAge += fTimeDelta + correction;
+			m_fFlightAgeCorrection -= correction;
+		}
 		(void)Pose_FlightRider(m_pModelCom, m_iFlightAnimation);
 		// The Server owns altitude. Remove only this clip's authored body lift, whose
 		// installed skeleton uses local Z; retaining it would add the ascent twice.
@@ -447,7 +460,18 @@ void CPart_Vehicle::Update(f32_t fTimeDelta)
 		}
 	}
 	else m_pModelCom->Update_Animation(fTimeDelta);
+	if (std::isfinite(fTimeDelta) && fTimeDelta > 0.f)
+	{
+		const f32_t span = m_fFlightLoopEnd - m_fFlightLoopStart;
+		const f32_t period = (std::max)(.2f, span - (std::min)(.12f, span * .2f));
+		const f32_t targetBob = m_FlightPhase == LostArk::Shared::VEHICLE_FLIGHT_PHASE::FLYING ?
+			.16f * std::sin(XM_2PI * m_fFlightAge / period) : 0.f;
+		m_fFlightBobOffset += (targetBob - m_fFlightBobOffset) * (1.f - std::exp(-10.f * fTimeDelta));
+	}
 	__super::Update_CombinedWorldMatrix(XMLoadFloat4x4(m_pTransformCom->Get_WorldMatrixPtr()));
+	// Character supplies the previous bob before part update, then refreshes the
+	// rider root afterward. Apply this frame's delta so mount, seat and anchors agree.
+	m_CombinedWorldMatrix._42 += m_fFlightBobOffset - previousBob;
 	if (flight) Apply_FlightHeadIK(fTimeDelta);
 }
 

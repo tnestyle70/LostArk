@@ -1,3 +1,4 @@
+#ifndef SOURCE_CHARACTER_BASE_DISPATCH_CASES
 SOURCE_CHARACTER_NATIVE_OUTPUT SourceCharacterBase700(SOURCE_CHARACTER_NATIVE_INPUT input)
 {
     SOURCE_CHARACTER_NATIVE_OUTPUT output = (SOURCE_CHARACTER_NATIVE_OUTPUT)0;
@@ -1663,3 +1664,9 @@ SOURCE_CHARACTER_NATIVE_OUTPUT SourceCharacterBase703(SOURCE_CHARACTER_NATIVE_IN
 }
 
 // source.character.equipment-native-800.v1 / source program e95dd62780e50244ba30af26a3184188
+#else // SOURCE_CHARACTER_BASE_DISPATCH_CASES
+    case 700u: return SourceCharacterBase700(input);
+    case 701u: return SourceCharacterBase701(input);
+    case 702u: return SourceCharacterBase702(input);
+    case 703u: return SourceCharacterBase703(input);
+#endif // SOURCE_CHARACTER_BASE_DISPATCH_CASES

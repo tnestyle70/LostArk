@@ -1887,6 +1887,7 @@ bool_t Client::CEffect_Tool::Try_SoloElement(
 			"Element Solo is unavailable while the authored Element is hidden.";
 		return false;
 	}
+    if (Has_ClassMovieContext()) return Try_PreviewElementTimeline(strElementId);
 	if (m_pAuthoringSequencer && !m_ProductPreview &&
 		(Is_SequencerRecoveryEffectAssetId(m_ActiveDocument->strEffectAssetId) ||
 		 Is_SceneAnchoredEffectAssetId(m_ActiveDocument->strEffectAssetId)))
@@ -2178,6 +2179,7 @@ bool_t Client::CEffect_Tool::Try_AuditionParticleSystem()
         return false;
     }
 
+    if (Has_ClassMovieContext()) return Try_SetPreviewFilter(EFFECT_PREVIEW_FILTER::SOLO_PARTICLE_SYSTEM);
     EFFECT_DOCUMENT_DESC Staged = *m_ActiveDocument;
     if (m_bParticleSystemDraftDirty &&
         !Apply_ParticleSystemDraft(Staged))
@@ -3275,11 +3277,7 @@ bool_t Client::CEffect_Tool::Try_CommitDocument(
 bool_t Client::CEffect_Tool::Try_SetPreviewFilter(
     const EFFECT_PREVIEW_FILTER eFilter)
 {
-    if (Has_ClassMovieContext())
-    {
-        m_strPreviewStatus = "Use Movie Play All, Element Solo or Play Group while editing a Movie.";
-        return false;
-    }
+    if (Has_ClassMovieContext()) return Try_SetClassMoviePreviewFilter(eFilter);
     if (m_pAuthoringSequencer && m_pAuthoringSequencer->Is_Active()) m_pAuthoringSequencer->Stop();
     if (EFFECT_PREVIEW_FILTER::END == eFilter)
         return false;

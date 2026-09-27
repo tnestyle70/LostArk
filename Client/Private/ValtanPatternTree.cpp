@@ -13,6 +13,7 @@
 #include <functional>
 #include <iomanip>
 #include <initializer_list>
+#include <iterator>
 #include <limits>
 #include <locale>
 #include <map>
@@ -7629,6 +7630,113 @@ bool_t Client::VALTAN_TOOL_AUDITION_INVENTORY::Contains(
 		ContainsIn(DerivedPatternIds);
 }
 
+bool_t Client::CValtanPatternTree::Load_FullRestoreSourceClips(
+	const std::filesystem::path& Path,
+	VALTAN_FULL_RESTORE_CLIP_INDEX& OutIndex, std::string& OutError)
+{
+	using namespace Client;
+	std::ifstream Input(Path, std::ios::binary);
+	if (!Input)
+	{
+		OutError = "Full Restore source animation index could not be read.";
+		return false;
+	}
+	const std::string Text{ std::istreambuf_iterator<char>(Input), {} };
+	DATA_JSON_VALUE Root;
+	if (!CDataJson::Parse(Text, Root, OutError))
+		return false;
+	const auto StringIs = [](const DATA_JSON_VALUE* Value, std::string_view Expected)
+		{ return Value && Value->Is_String() && Value->Get_String() == Expected; };
+	const auto Unsigned = [](const DATA_JSON_VALUE* Value, uint32_t& Out)
+	{
+		if (!Value || !Value->Is_Number() || !std::isfinite(Value->Get_Number()) ||
+			Value->Get_Number() < 0.0 || Value->Get_Number() > UINT32_MAX ||
+			std::floor(Value->Get_Number()) != Value->Get_Number())
+			return false;
+		Out = static_cast<uint32_t>(Value->Get_Number());
+		return true;
+	};
+	uint32_t Version = 0u;
+	const auto* Effects = Root.Find("effects");
+	if (!StringIs(Root.Find("schema"), "lostark.valtan-full-restore-animations") ||
+		!StringIs(Root.Find("bossArchetypeId"), "BOSS_VALTAN") ||
+		!Unsigned(Root.Find("formatVersion"), Version) || Version != 1u ||
+		!Effects || !Effects->Is_Array())
+	{
+		OutError = "Full Restore source animation index has an invalid schema.";
+		return false;
+	}
+	VALTAN_FULL_RESTORE_CLIP_INDEX Staged;
+	OutError = "Full Restore source animation index has an invalid action/stage/clip.";
+	for (const auto& Effect : Effects->Get_Array())
+	{
+		uint32_t Action = 0u, Stage = 0u;
+		const auto* Clips = Effect.Find("animationClips");
+		if (!Unsigned(Effect.Find("sourceActionId"), Action) || !Action ||
+			!Unsigned(Effect.Find("sourceStageIndex"), Stage) || Stage > 999u ||
+			!Clips || !Clips->Is_Array() || Clips->Get_Array().size() != 1u)
+			return false;
+		std::ostringstream Id;
+		Id << "effect.valtan.action." << Action << ".stage" << std::setw(3)
+			<< std::setfill('0') << Stage << ".full.restore";
+		if (!StringIs(Effect.Find("effectAssetId"), Id.str()) || Staged.contains(Id.str()))
+			return false;
+		std::vector<VALTAN_CLIP_OCCURRENCE_VIEW> SourceClips;
+		for (const auto& Source : Clips->Get_Array())
+		{
+			const auto* Name = Source.Find("clipName");
+			const auto* Loop = Source.Find("loop");
+			VALTAN_CLIP_OCCURRENCE_VIEW Clip;
+			if (!Name || !Name->Is_String() || !Name->Get_String().starts_with("mesh_") ||
+				!Unsigned(Source.Find("playMs"), Clip.iPlayMs) || !Clip.iPlayMs ||
+				!Loop || !Loop->Is_Boolean() ||
+				!Unsigned(Source.Find("previewWallMs"), Clip.iAuthoringWallMs) ||
+				!Clip.iAuthoringWallMs || Clip.iAuthoringWallMs > 600000u ||
+				(!StringIs(Source.Find("previewWallBasis"), "SOURCE_UNCONDITIONAL_STAGE_TRANSITION") &&
+				 !StringIs(Source.Find("previewWallBasis"), "PREVIEW_COVERS_SOURCE_CONDITIONAL_CHECK") &&
+				 !StringIs(Source.Find("previewWallBasis"), "SOURCE_ANIMATION_WINDOW")))
+				return false;
+			Clip.strClipName = Name->Get_String();
+			Clip.bLoop = Loop->Get_Boolean();
+			Clip.strClipOccurrenceId = "editor.full-restore." + Id.str();
+			SourceClips.push_back(std::move(Clip));
+		}
+		Staged.emplace(Id.str(), std::move(SourceClips));
+	}
+	OutIndex = std::move(Staged);
+	OutError.clear();
+	return true;
+}
+
+bool_t Client::CValtanPatternTree::Matches_FullRestoreSource(
+	const Client::VALTAN_PATTERN_VIEW& Pattern,
+	const std::string& strEffectAssetId,
+	const VALTAN_FULL_RESTORE_CLIP_INDEX& Index)
+{
+	const auto Entry = Index.find(strEffectAssetId);
+	if (Entry == Index.end())
+		return false;
+	const bool_t ActionMatches = std::ranges::any_of(Pattern.SourceActionIds,
+		[&strEffectAssetId](const uint32_t Id)
+		{ return strEffectAssetId.starts_with(
+			"effect.valtan.action." + std::to_string(Id) + ".stage"); });
+	// An explicitly authored Product cue can join a reviewed original Action
+	// even when the animation promotion retains a legacy action alias.
+	const bool_t CueMatches = std::ranges::any_of(Pattern.Stages,
+		[&strEffectAssetId](const auto& Stage)
+		{ return std::ranges::any_of(Stage.ProductCues,
+			[&strEffectAssetId](const auto& Cue)
+			{ return Cue.strEffectAssetId == strEffectAssetId; }); });
+	if (!ActionMatches && !CueMatches)
+		return false;
+	for (const auto& Stage : Pattern.Stages)
+		for (const auto& Clip : Stage.ClipOccurrences)
+			if (std::ranges::find(Entry->second, Clip.strClipName,
+				&Client::VALTAN_CLIP_OCCURRENCE_VIEW::strClipName) != Entry->second.end())
+				return true;
+	return false;
+}
+
 bool_t Client::CValtanPatternTree::Build_PlayablePatternInventory(
 	const VALTAN_PATTERN_TREE_VIEW& View,
 	VALTAN_TOOL_AUDITION_INVENTORY& OutInventory,
@@ -8179,6 +8287,10 @@ bool_t Client::CValtanPatternTree::Load_Authoring_WhileAdmitted(
                         row.HitIds.push_back(hitId);
                         if (const auto* trigger = hit.Find("trigger")) row.HitOffsetsMs.push_back(static_cast<uint32_t>(Read_Number(*trigger, "atMs")));
                         VALTAN_COMBAT_OBJECT_HIT_VIEW view; view.strHitId = hitId;
+                        if (const auto* trigger = hit.Find("trigger"))
+                        { view.strTriggerKind = Read_String(*trigger, "kind"); view.iAtMs = static_cast<uint32_t>(Read_Number(*trigger, "atMs")); }
+                        if (const auto* repeat = hit.Find("repeat"))
+                        { view.iRepeatCount = static_cast<uint32_t>(Read_Number(*repeat, "count")); view.iRepeatIntervalMs = static_cast<uint32_t>(Read_Number(*repeat, "intervalMs")); }
                         if (const auto* shape = hit.Find("shape"))
                         { view.strHitShape = Read_String(*shape, "kind"); view.fInnerRadiusM = static_cast<float>(Read_Number(*shape, "innerRadiusM")); view.fOuterRadiusM = static_cast<float>(Read_Number(*shape, "outerRadiusM")); }
                         row.Hits.push_back(std::move(view));
@@ -8687,6 +8799,14 @@ bool_t Client::CValtanPatternTree::Load_FromAuthoringPaths(
 			}
 			Client::VALTAN_COMBAT_OBJECT_HIT_VIEW HitView;
 			HitView.strHitId = strHitId;
+			HitView.strTriggerKind = Read_String(Hit, "trigger");
+			HitView.iAtMs = iHitOffsetMs;
+			if (!Read_RequiredUInt32(Hit, "repeatCount", HitView.iRepeatCount) ||
+				!Read_RequiredUInt32(Hit, "repeatIntervalMs", HitView.iRepeatIntervalMs))
+			{
+				strOutStatus = "Valtan combat-object Server hit repeat clock is invalid: " + strArchetypeId;
+				return false;
+			}
 			HitView.strHitShape = strHitShape;
 			if ("RING" == strHitShape &&
 				(!Read_RequiredFiniteFloat(

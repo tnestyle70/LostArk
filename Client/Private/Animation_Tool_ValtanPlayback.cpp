@@ -494,6 +494,7 @@ bool_t Client::CAnimation_Tool::Build_ValtanPatternMasterTimeline(
 			Item.iOccurrenceCount = static_cast<uint32_t>(
 				iPlayableOccurrenceCount);
 			Item.fPlayRate = Clip.fPlayRate;
+			Item.fModelSourceDurationSeconds = Timing.fModelSourceDurationSeconds;
 			Item.bRepeatUntilStageEnd = Clip.bLoop;
 			OutPlaylist.push_back(std::move(Item));
 
@@ -602,7 +603,7 @@ bool_t Client::CAnimation_Tool::Start_ValtanPatternMasterPreview(
 	if (m_bKoukuSaydonPatternPreviewPlaying)
 		Stop_KoukuSaydonPatternPreview(m_KoukuSaydonPatternPreviewModel.lock(),
 			"Preview handed to Valtan composition.");
-	if (!PreviewBoss->Stage_LocalPatternAuthoringPreview(Pattern, Status, true))
+	if (!PreviewBoss->Stage_LocalPatternAuthoringPreview(Pattern, Status, true, ePath))
 	{
 		m_strValtanPatternMasterStatus =
 			"Valtan Pattern Master play rejected; effective draft preview staging failed: " +
@@ -632,6 +633,7 @@ bool_t Client::CAnimation_Tool::Start_ValtanPatternMasterPreview(
 			"Source reference preview yielded to Valtan Pattern Master.");
 	}
 
+	Reset_ValtanPatternPreviewSounds();
 	m_ValtanPatternMasterPlaylist = std::move(StagedPlaylist);
 	m_iValtanPatternMasterItem = 0u;
 	m_fValtanPatternMasterItemElapsedSeconds = 0.f;
@@ -646,6 +648,10 @@ bool_t Client::CAnimation_Tool::Start_ValtanPatternMasterPreview(
 	m_strValtanPatternMasterStatus = Status;
 	if (Activate_ValtanPatternMasterItem(pModel, 0u, 0.f))
 	{
+		if (!m_bValtanPatternSoundCuesReady)
+			(void)Reload_ValtanPatternSoundCues();
+		Rebuild_ValtanPatternPreviewSounds();
+		Sample_ValtanPatternPreviewSounds();
 		Update_ValtanPatternMasterHitAreaPreview();
 		return true;
 	}
@@ -794,6 +800,7 @@ bool_t Client::CAnimation_Tool::Seek_ValtanPatternMasterPreview(
 				return false;
 			}
 			m_bValtanPatternMasterPaused = bPause;
+			Sample_ValtanPatternPreviewSounds(bResetPresentationTransport);
 			Update_ValtanPatternMasterHitAreaPreview();
 			return true;
 		}
@@ -855,6 +862,7 @@ void Client::CAnimation_Tool::Stop_ValtanPatternMasterPreview(
 void Client::CAnimation_Tool::Reset_ValtanPatternMasterPreviewState(
 	const std::string& status)
 {
+	Reset_ValtanPatternPreviewSounds();
 	const shared_ptr<Engine::CModel> PreviewModel =
 		m_ValtanPatternMasterModel.lock();
 	const shared_ptr<CValtan> PreviewBoss =
@@ -884,6 +892,164 @@ void Client::CAnimation_Tool::Reset_ValtanPatternMasterPreviewState(
 		PreviewBoss->Clear_PatternHitAreaPreview();
 	}
 #endif
+}
+
+void Client::CAnimation_Tool::Reset_ValtanPatternPreviewSounds()
+{
+	for (const auto& Sound : m_ValtanPreviewSounds)
+		if (Sound.iHandle) CGameInstance::Get().Stop_SoundCue(Sound.iHandle);
+	m_ValtanPreviewSounds.clear();
+	m_iValtanPreviewSoundGeneration = 0u;
+	m_fValtanPreviewSoundClockMs = -1.0;
+	m_bValtanPreviewSoundPaused = false;
+	m_strValtanPreviewSoundStatus.clear();
+}
+
+void Client::CAnimation_Tool::Rebuild_ValtanPatternPreviewSounds()
+{
+	Reset_ValtanPatternPreviewSounds();
+	m_iValtanPreviewSoundGeneration = m_iValtanPatternSoundDraftGeneration;
+	bool_t bDirty = false;
+	std::string Status;
+	const auto* Document = Get_ValtanCompositionPatternSoundDraft(bDirty, Status);
+	if (!Document)
+	{
+		m_strValtanPreviewSoundStatus = "Sound preview unavailable: " + Status;
+		return;
+	}
+	if (m_ValtanPatternMasterPlaylist.empty()) return;
+	CSoundCueCatalog::EVENT_VARIANTS Events;
+	if (!CSoundCueCatalog::Load_ClassSnapshot("Valtan", Events, Status))
+	{
+		m_strValtanPreviewSoundStatus = "Sound preview catalog rejected: " + Status;
+		return;
+	}
+	const auto& PatternId = m_ValtanPatternMasterPlaylist.front().strPatternId;
+	std::unordered_map<std::wstring, uint32_t> Durations;
+	const auto Reject = [this](const std::string& Reason) {
+		if (m_strValtanPreviewSoundStatus.empty())
+			m_strValtanPreviewSoundStatus = "Sound preview isolated: " + Reason;
+	};
+	for (const auto& Cue : Document->Cues)
+	{
+		if (Cue.strPatternId != PatternId) continue;
+		const auto Clip = std::find_if(m_ValtanPatternMasterPlaylist.begin(),
+			m_ValtanPatternMasterPlaylist.end(), [&Cue](const auto& Item) {
+				return Item.strStageId == Cue.strStageId && Item.strActionId == Cue.strActionId &&
+					Item.strClipOccurrenceId == Cue.strClipOccurrenceId && !Item.bSuppressAnimation;
+			});
+		// Cues on an unselected counter/wall branch are deliberately absent.
+		if (Clip == m_ValtanPatternMasterPlaylist.end()) continue;
+		std::vector<ACTION_PRESENTATION_CLIP_TIMING> Timings;
+		std::size_t iClip = 0u;
+		uint32_t iStageEndMs = Clip->iStageTimelineStartMs;
+		for (const auto& Item : m_ValtanPatternMasterPlaylist)
+		{
+			if (Item.strStageId != Clip->strStageId || Item.strActionId != Clip->strActionId) continue;
+			if (&Item == &*Clip) iClip = Timings.size();
+			Timings.push_back({ Item.fModelSourceDurationSeconds, Item.iPlayMs,
+				Item.fPlayRate, Item.bRepeatUntilStageEnd, Item.iSourceStartMs * .001f });
+			iStageEndMs = (std::max)(iStageEndMs, Item.iTimelineStartMs + Item.iAuthoringWallMs);
+		}
+		f32_t fFirstStartSeconds = 0.f;
+		if (!CActionPresentationTimeline::Resolve_CueWallOffset(Timings, iClip,
+			Cue.iStartMs * .001f, 0u, fFirstStartSeconds) ||
+			(Cue.eRepeatPolicy == VALTAN_PATTERN_SOUND_REPEAT_POLICY::EACH_LOOP && !Timings[iClip].bLoop))
+		{
+			Reject(Cue.strOccurrenceId + " has no valid source/Stage clock.");
+			continue;
+		}
+		const auto Variants = Events.find(Cue.strSoundEvent);
+		if (Variants == Events.end() || Variants->second.empty())
+		{
+			Reject(Cue.strOccurrenceId + " has no asset for " + Cue.strSoundEvent + ".");
+			continue;
+		}
+		for (uint64_t iLoop = 0u;; ++iLoop)
+		{
+			f32_t fStageStartSeconds = fFirstStartSeconds;
+			if (iLoop && !CActionPresentationTimeline::Resolve_CueWallOffset(Timings, iClip,
+				Cue.iStartMs * .001f, iLoop, fStageStartSeconds)) break;
+			const f64_t fStartMs = Clip->iStageTimelineStartMs + fStageStartSeconds * 1000.0;
+			if (fStartMs >= iStageEndMs) break;
+			// Bound malformed authoring loops before allocating or loading audio.
+			if (iLoop >= 16384u || m_ValtanPreviewSounds.size() >= 16384u)
+			{
+				Reject("the selected Stage exceeds the 16384 sound occurrence preview limit.");
+				break;
+			}
+			VALTAN_PREVIEW_SOUND_OCCURRENCE Sound;
+			Sound.strOccurrenceId = Cue.strOccurrenceId + "/loop:" + std::to_string(iLoop);
+			uint64_t iSelection = 14695981039346656037ull;
+			for (const unsigned char c : Sound.strOccurrenceId)
+				iSelection = (iSelection ^ c) * 1099511628211ull;
+			const auto& Asset = Variants->second[iSelection % Variants->second.size()];
+			Sound.Path = CRuntimeAssetRoot::Resolve(Asset).wstring();
+			const auto Duration = Durations.find(Sound.Path);
+			if (Duration != Durations.end()) Sound.iDurationMs = Duration->second;
+			else if (!Sound.Path.empty() &&
+				CGameInstance::Get().Get_SoundDurationMs(Sound.Path, Sound.iDurationMs))
+				Durations.emplace(Sound.Path, Sound.iDurationMs);
+			if (Sound.Path.empty() || !Sound.iDurationMs)
+				Reject(Cue.strOccurrenceId + " could not load WAV duration: " + Asset + ".");
+			else
+			{
+				Sound.fTimelineStartMs = fStartMs;
+				m_ValtanPreviewSounds.push_back(std::move(Sound));
+			}
+			if (Cue.eRepeatPolicy != VALTAN_PATTERN_SOUND_REPEAT_POLICY::EACH_LOOP) break;
+		}
+	}
+	if (m_strValtanPreviewSoundStatus.empty())
+		m_strValtanPreviewSoundStatus = std::string(bDirty ? "Draft Sound: " : "Sound: ") +
+			std::to_string(m_ValtanPreviewSounds.size()) + " occurrences on the Stage clock.";
+}
+
+void Client::CAnimation_Tool::Sample_ValtanPatternPreviewSounds(const bool_t bResetTransport)
+{
+	if (!m_bValtanPatternMasterPlaying ||
+		m_iValtanPatternMasterItem >= m_ValtanPatternMasterPlaylist.size()) return;
+	if (m_iValtanPreviewSoundGeneration != m_iValtanPatternSoundDraftGeneration)
+		Rebuild_ValtanPatternPreviewSounds();
+	const auto& Item = m_ValtanPatternMasterPlaylist[m_iValtanPatternMasterItem];
+	const f64_t fClockMs = Item.iTimelineStartMs +
+		static_cast<f64_t>(m_fValtanPatternMasterItemElapsedSeconds) * 1000.0;
+	const bool_t bReset = bResetTransport || fClockMs < m_fValtanPreviewSoundClockMs;
+	for (auto& Sound : m_ValtanPreviewSounds)
+	{
+		if (bReset)
+		{
+			if (Sound.iHandle) CGameInstance::Get().Stop_SoundCue(Sound.iHandle);
+			Sound.iHandle = 0u;
+			Sound.bAttempted = false;
+		}
+		const f64_t fAgeMs = fClockMs - Sound.fTimelineStartMs;
+		if (fAgeMs < -0.001 || fAgeMs >= Sound.iDurationMs)
+		{
+			if (Sound.iHandle) CGameInstance::Get().Stop_SoundCue(Sound.iHandle);
+			Sound.iHandle = 0u;
+			continue;
+		}
+		const uint32_t iAgeMs = static_cast<uint32_t>((std::max)(0.0, fAgeMs));
+		if (!Sound.bAttempted)
+		{
+			Sound.bAttempted = true;
+			Sound.iHandle = CGameInstance::Get().Play_SoundCue(Sound.Path, 1.f,
+				iAgeMs, m_bValtanPatternMasterPaused, m_fValtanPatternPreviewSpeed);
+			if (!Sound.iHandle)
+				m_strValtanPreviewSoundStatus = "Sound preview playback failed: " + Sound.strOccurrenceId + ".";
+		}
+		if (Sound.iHandle)
+		{
+			if (m_bValtanPatternMasterPaused && (!m_bValtanPreviewSoundPaused ||
+				fClockMs != m_fValtanPreviewSoundClockMs))
+				CGameInstance::Get().Seek_SoundCue(Sound.iHandle, iAgeMs);
+			CGameInstance::Get().Set_SoundCuePlaybackRate(Sound.iHandle, m_fValtanPatternPreviewSpeed);
+			CGameInstance::Get().Pause_SoundCue(Sound.iHandle, m_bValtanPatternMasterPaused);
+		}
+	}
+	m_fValtanPreviewSoundClockMs = fClockMs;
+	m_bValtanPreviewSoundPaused = m_bValtanPatternMasterPaused;
 }
 
 void Client::CAnimation_Tool::Update_ValtanPatternMasterHitAreaPreview()

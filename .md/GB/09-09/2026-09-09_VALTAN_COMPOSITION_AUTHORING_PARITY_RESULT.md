@@ -1,6 +1,130 @@
 # 발탄 Composition 저작 흐름 조사·계획 결과
 
-작성일: 2026-09-09. 갱신: 2026-09-18. 현재 구현 상태는 아래 재개 결과를 따른다.
+작성일: 2026-09-09. 갱신: 2026-09-27. 현재 구현 상태는 아래 재개 결과를 따른다.
+
+## 2026-09-27 G12~G13: 패턴별 리소스와 Saydon 편집 흐름
+
+이번 변경은 현재 Valtan source/Pattern owner와 CValtan presentation을 확장했다. 다른 보스 아래에
+새 Valtan runtime을 만들지 않았다. 기존 패턴의 effect binding, collider, damage, 돌 크기는 변경하지 않았다.
+작업 시작 LAN 설정은 client / 192.168.0.22:7777 / not-listening이었고 로컬 설정은 성공했다.
+기존 `codex/bern-dragon-camera-performance`의 다른 기능 미커밋 변경을 보존했다.
+
+### 리소스 검색과 Effect Tool
+
+- `Composition Resources → Effect`를 V1/V2 leaf/group가 함께 있는 Patterns/Common/Library로 묶었다.
+  이름, pattern ID/표시명, clip, category와 asset ID로 검색하고 다른 owner는 옵션으로 표시한다.
+- 연결된 Pattern이 하나면 Patterns, 공유 연결/Independent/combat-object visual은 Common으로 분류한다.
+  독립 저장 자원의 사용자 category는 유지하며 label로 저장 ID나 owner kind를 추론하지 않는다.
+- Full Restore의 action-or-Product-cue 및 clip 이름 exact join을 `CValtanPatternTree`에서 공유한다.
+  같은 clip을 공유하는 다른 원본 action을 잘못 묶지 않는다. index는 41개이고 기존 join 동작을 유지했다.
+- `Open Editor`는 stable typed resource를 MainApp에서 기존 Effect Tool owner로 전달한다.
+  V1 Full Restore는 cold entry에서도 source metadata를 준비하고 미저장 Save/Discard/Cancel을 유지한다.
+  Product는 현재 연결 cue이고 Full Restore는 독립 복원 자원이라는 설명을 표시한다.
+- 선택 Stage/Animation occurrence에 `Append Effect to Pattern Draft`로 붙이고 기존 Box Detail/Save를 쓴다.
+  Effect 내부의 Play All/Solo·Element timeline은 계속 Effect Tool이 소유한다.
+
+| 대상 | 실제 Full Restore asset |
+|---|---|
+| `VALTAN_WHIRLWIND` | `effect.valtan.action.420633.stage014.full.restore`, `stage015.full.restore` |
+| 피자 `VALTAN_SIX_PIZZA_106` | `effect.valtan.action.420629.stage006.full.restore`, `stage008.full.restore`, `effect.valtan.action.420620.stage004.full.restore` |
+
+휠윈드의 다른 패턴 `ATTACK_WHIRLWIND`/`SEQUENCE_WHIRLWIND`는 각각 다른 source action을 사용한다.
+피자 복원본은 현재 연결 기준 3종이며 clip 이름은 `mesh_att_battle_12_01`, `_12_03`, `_12_10`이다.
+
+### 기존 V1 피자 섹터의 재사용 자원
+
+`Data/Effects/Authored/effect.valtan.six-pizza.sectors.effect.json`을 새 direct-authored resource로 등록했다.
+EffectCatalog/EffectResourceTree와 Client project/filter의 `96.DataFiles`만 함께 등록했다.
+Common/Telegraphs의 `발탄 피자 / 기존 섹터 묶음`으로 검색할 수 있다.
+
+기존 `effect.valtan.project-tuned.sequence.six-pizza-106`의 12개 element 중 4개의 섹터/overlay를
+분리했다. ID·particle/reproduction payload·재질·transform을 유지하고 최소 delay 11초만 뺐다.
+새 자원의 element delay는 0/8.5/0/12초다. 기존 Pattern의 11초 위치와
+`arena.center.target-follow`, follow 및 root scale 1.5를 적용하면 원래 섹터 시각을 재현한다.
+원본과 신규 자원을 동시에 붙이면 이 4개가 중복되므로 기존 invocation과의 교체를 선택해야 한다.
+기존 composite의 나머지 8개 이펙트는 사용자가 조정한 별도 시각에 있어 자동 삭제하지 않았다.
+원본 SHA256 `ceff278cc5cf7ab4584c3198683eca1a6eb70bbac4910e41be1a62ddf6fb3e36`을 보존했다.
+
+실행 중 Client의 catalog 메모리는 파일 추가로 자동 바뀌지 않는다. 새 resource는 catalog를 다시 로드한
+세션에서 보이며 Workbench Refresh는 inventory refresh다. Pattern source/runtime publish는 이번에 하지 않았다.
+
+### Sequencer와 Preview
+
+- Saydon과 같은 공용 palette/DrawBox를 사용한다. 행 24px, box 22px, label 180px, text inset 4px.
+  Stage는 한 줄이고 Animation은 실제 clip 이름을 표시한다. 작은 box와 긴 label은 tooltip으로 보완한다.
+- 현재 Saydon 실제 색상은 Stage 회색, Animation 파랑, Logic 주황, Effect/Sound/Collider 등 표현 lane
+  청록 계열이다. 사용자 기억의 색을 별도로 하드코딩하지 않고 두 보스가 같은 상수를 소비하도록 했다.
+- `Save / Play Preview / Pause·Resume / Reset / Play Pattern`을 같은 Sequencer 위에 배치했다.
+  Play Preview는 현재 cursor에서 시작하며 dirty draft, 선택 Branch, Loop와 seek를 유지한다.
+- Sound는 실제 Stage/action/clip tuple과 공용 source-time 변환으로 시작점을 계산한다. managed Sound handle로
+  pause/resume, 앞뒤 seek, 반복, speed, 정지와 paused 상태의 Sound draft generation 변경을 처리한다.
+  누락 사운드는 진단을 남기고 animation preview를 유지한다. `NONE` Stage는 기존 pose hold를 유지한다.
+- combat object Preview는 선택 branch의 누적 Stage clock을 사용한다. 다음 Stage로 넘어가도 생성된 돌이
+  사라지지 않고 TIMED/repeat hit의 terminal visual을 기존 external sampler로 재생한다.
+  CONTACT를 임의 폭발로 만들지 않는다. Pause·역 seek·Stop·complete·대상 제거의 handle 정리를 연결했다.
+- Server pending-next/flow-stop도 playback ownership으로 확인해 local Preview와 겹치지 않게 한다.
+  Reset 후 이전 cursor가 다시 덮이는 Preview 패널 상태 갱신도 수정했다.
+
+Preview는 선택한 Logic 결과 분기와 animation/effect/sound/collider mirror/environment를 재현한다.
+실제 target 결정, counter 성공 여부, World action, 피해·엄폐 판정은 `Play Pattern`으로 확인한다.
+Valtan Play Pattern은 기존 저장·게시된 서버 revision을 사용한다. Kouku의 미저장 draft 임시 Server
+protocol은 추가하지 않았다. Dirty 상태에서 과거 Product를 대신 실행하지 않고 Save/Publish를 안내한다.
+Save는 기존 Pattern/Sound/V2 dirty-owner atomic transaction이고 Publish after Save/Retry Publish,
+Server active revision 검증은 기존 경로를 유지한다. 서버 재시작이 필요한 상태는 별도로 표시한다.
+
+### 돌과 피자 판정의 실제 저장 상태
+
+네 방향 돌은 Effect 4개가 아니라 Summon/combat-object 1개 호출의 count 4다.
+
+| 패턴 | Pattern 기준 생성/폭발/Server 소멸 | 배치 반경 |
+|---|---|---|
+| 땅구르기 후 사자후 | 0 / 5 / 6.2초 | 6.363961m, boss-relative |
+| 3페이즈 전 발악 | 5 / 10 / 11.2초 | 6.363961m, boss-relative |
+| 피자 | 1 / 20.5 / 21.7초 | 10m, arena-center |
+
+셋의 visual scale과 coverRadius 1.5m는 같다. 피자 돌이 2배 크기라는 가정은 현재 데이터와 다르다.
+`VALTAN_TRASH`(버러지) 계열은 rock spawn이 없으며 STRUGGLING(발악)과 별개다.
+피자의 19.45초 착지는 실제로 CIRCLE 25m hit이고, 살아 있는 돌 뒤 선분에 있으면 해당 피해·넉백이 차단된다.
+visual sector와 일치하는 damage shape는 아니다. Server 소멸과 authored NATURAL visual tail도 구분한다.
+이번 변경은 이 gameplay 수치와 기존 사용자가 튜닝한 타이밍을 변경하지 않았다.
+
+### 검증과 남은 확인
+
+- Workbench/Saydon, Valtan/Tree, Effect Tool entry, Animation Tool의 관련 CPP MSVC 14.44 `/Zs /Y-` 성공.
+- 실제 Sound handler 본문과 공용 ActionPresentationTimeline을 사용하는 console test PASS:
+  source offset/playRate/each_loop, variant 재현, pause/resume/역 seek, paused draft 변경과 cursor 보존,
+  정지·실패 격리 및 NONE pose hold. 오디오 장치를 통한 청음은 수행하지 않았다.
+- 실제 combat preview/selected path/Stage clock 본문 console probe PASS:
+  Stage 간 유지, Pause 동일시각, 정/역 seek, terminal/natural tail, rollback, 독립 action,
+  네 branch, overflow 및 TIMED repeat/CONTACT 구분. GPU/Server damage 실행은 수행하지 않았다.
+- 기존 metadata 검사 13건과 TIMED rock carrier focused unittest PASS.
+  과거 preflight source-shape assertion 1건은 HEAD에서도 동일 실패하여 이번 성공 근거에 포함하지 않았다.
+- 신규 sector의 실제 C++ codec Load/Validate_Drawable 성공, texture closure 4개 확인.
+  sourceModel을 전제하는 기존 전체 probe exit는 독립 sector에 적합하지 않아 전체 probe PASS로 기록하지 않는다.
+- 세부 로그/수치: `out/ValtanEditor20260927/`의 sound-handler-test, combat-preview-probe,
+  combat-object-audit, sector-candidate-report, sector-resource-install 및 full-restore-shared-index-check.
+- 최종 Client Debug x64 정규 `Build` exit0, compile/link/runtime dependency 배포 PASS.
+  `out/ValtanEditor20260927/client-debug-final.log`, 12분35.61초, 오류0/경고3,700(shader/C4819/DirectXTK PDB 등).
+  생성된 `Client/Bin/Debug/Client.exe`는 2026-09-27 08:52:42, 75,662,336bytes다.
+  처음 시도는 동시에 편집되던 Movie helper 미선언으로 실패했고, 담당 변경이 안정된 뒤 성공했다.
+  실패 로그도 보존하며 최종 성공을 모든 무비 기능의 시각 검증으로 확대하지 않는다.
+- 마지막 code snapshot 15개가 빌드 중 바뀌지 않았음을 확인했고 JSON3개/XML2개 parse,
+  원본 pizza composite와 신규 sector payload hash, 작업 파일 `git diff --check` PASS.
+  최종 receipt는 `out/ValtanEditor20260927/final-verification.json`이다.
+- 모든 Play Pattern 진입점은 dirty draft뿐 아니라 saved source/Product 준비 상태와 Server playback
+  ownership을 확인한다. 게시되지 않은 source를 과거 Product로 조용히 대신 실행하지 않는다.
+- 기존 빌드 최적화 반영본을 그대로 사용했다. 같은 feature branch의 CPP/INL 분리, 셰이더 그룹 분할,
+  PCH, FXC4-worker를 유지했다. 시작 당시 Release 빌드가 병행 중이어서 이번 Debug 명령에만
+  `CL_MPCount=2`를 적용했고 공유 기본 최대8-worker 값은 변경하지 않았다. Clean/Rebuild는 하지 않았다.
+  다른 변경의 기본 셰이더 재컴파일이 포함돼 12분35초를 최적화 전후 성능 비교로 사용하지 않는다.
+  앞 작업의 최적화 Debug/Release PASS는
+  [베른·발탄 최적화 결과 G08~G09](../09-27/2026-09-27_BERN_VALTAN_CAPTURE_OPTIMIZATION_RESULT.md)를 따른다.
+  이번 최종 delta의 직접 Product 검증은 Debug이며 Release 전체 재빌드를 추가하지 않았다.
+- Client/UI를 실행하거나 조작하지 않았다. 사용자 확인은 `Action Workbench → Boss Valtan →
+  휠윈드/피자 → Composition Resources 검색 → Open Editor → Play All/Solo`, 이어서 대상 Stage/Clip 선택→
+  Append→Preview/Pause/seek→Save/Publish→Play Pattern 순서다. 실제 화면·청음·Save/Reopen·Server cover 판정은 미확인이다.
+
+---
 
 ## 2026-09-18 구현 및 실행 반영
 

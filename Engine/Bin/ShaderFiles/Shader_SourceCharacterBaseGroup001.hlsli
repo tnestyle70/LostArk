@@ -1,3 +1,4 @@
+#ifndef SOURCE_CHARACTER_BASE_DISPATCH_CASES
 
 // source.character.classic-skin.v1 / source program 7d17844b3bb9a546828dcab0427fff0a
 SOURCE_CHARACTER_NATIVE_OUTPUT SourceCharacterBase1(SOURCE_CHARACTER_NATIVE_INPUT input)
@@ -4620,3 +4621,13 @@ SOURCE_CHARACTER_NATIVE_OUTPUT SourceCharacterBase8(SOURCE_CHARACTER_NATIVE_INPU
 }
 
 // source.character.realpbr-weapon-variation.v1 / source program 814e0fda0a51d94ab7b0e75d2e7ca814
+#else // SOURCE_CHARACTER_BASE_DISPATCH_CASES
+    case 1u: return SourceCharacterBase1(input);
+    case 2u: return SourceCharacterBase2(input);
+    case 3u: return SourceCharacterBase3(input);
+    case 4u: return SourceCharacterBase4(input);
+    case 5u: return SourceCharacterBase5(input);
+    case 6u: return SourceCharacterBase6(input);
+    case 7u: return SourceCharacterBase7(input);
+    case 8u: return SourceCharacterBase8(input);
+#endif // SOURCE_CHARACTER_BASE_DISPATCH_CASES

@@ -48,7 +48,16 @@ void LostArk::Server::CGameRoom::Handle_Move(
 		return;
 	}
 
-	SERVER_PLAYER& player = playerIter->second;
+	Execute_PlayerMove(playerIter->second, move);
+}
+
+void LostArk::Server::CGameRoom::Execute_PlayerMove(
+    SERVER_PLAYER& player, const LostArk::Shared::C2S_MOVE& move)
+{
+    const bool entryTerraceMove = Is_KoukuRaidRunning() &&
+        m_KoukuRaid.State.ePhase == LostArk::Shared::KOUKUSAYDON_RAID_PHASE::WAIT_ENTRY;
+    if (Is_KoukuRaidInputBlocked() && !entryTerraceMove) return;
+    const SESSION_ID sessionId = player.iSessionId;
 	if (entryTerraceMove &&
 		(move.eIntent != LostArk::Shared::PLAYER_MOVE_INTENT::GROUND_GOAL ||
 		 !LostArk::Shared::Is_KoukuGate3EntryTerrace(player.fPositionX, player.fPositionY, player.fPositionZ) ||
@@ -341,31 +350,37 @@ void LostArk::Server::CGameRoom::Handle_UseSkill(
 			sessionId, "C2S_USE_SKILL", "missing-player-state");
 		return;
 	}
+	(void)Execute_PlayerSkill(playerIter->second, useSkill);
+}
+
+bool LostArk::Server::CGameRoom::Execute_PlayerSkill(
+    SERVER_PLAYER& player, const LostArk::Shared::C2S_USE_SKILL& useSkill)
+{
+    if (Is_KoukuRaidInputBlocked()) return false;
 	/* A mounted player's quick slots belong to the vehicle; class skills never
 	start from the saddle. */
-	if (LostArk::Shared::INVALID_VEHICLE_ID != playerIter->second.iVehicleId)
+	if (LostArk::Shared::INVALID_VEHICLE_ID != player.iVehicleId)
 	{
-		(void)Try_StartVehicleSkill(playerIter->second, useSkill);
-		return;
+		return Try_StartVehicleSkill(player, useSkill);
 	}
 	/* While a KoukuSaydon interaction HUD is up only that HUD's slots act; the
 	class skills the Client no longer shows are refused here as well. */
-	if (0u != playerIter->second.iMarioStage || playerIter->second.bPatternBound ||
-		playerIter->second.fKnockbackRemainingSeconds > 0.f ||
-		LostArk::Shared::KOUKU_HUD_MODE::NONE != playerIter->second.eKoukuHudMode ||
-		(0u != playerIter->second.iSilenceEndTick &&
-		 !Has_ReachedServerTick(m_iServerTick, playerIter->second.iSilenceEndTick)))
-		return;
+	if (0u != player.iMarioStage || player.bPatternBound ||
+		player.fKnockbackRemainingSeconds > 0.f ||
+		LostArk::Shared::KOUKU_HUD_MODE::NONE != player.eKoukuHudMode ||
+		(0u != player.iSilenceEndTick &&
+		 !Has_ReachedServerTick(m_iServerTick, player.iSilenceEndTick)))
+		return false;
 
 	if (LostArk::Shared::WORLD_ID::VALTAN_ARENA == m_eWorldId &&
 		VALTAN_TIMELINE_AUDITION_PHASE::INACTIVE !=
 			m_ValtanTimelineAudition.ePhase &&
 		!(VALTAN_TIMELINE_AUDITION_PHASE::WAITING_PATTERN_FINISH ==
 				m_ValtanTimelineAudition.ePhase &&
-			playerIter->second.iPlayerId ==
+			player.iPlayerId ==
 				m_ValtanTimelineAudition.iOwnerPlayerId))
 	{
-		return;
+		return false;
 	}
 
 	const std::uint32_t actionStartTick =
@@ -379,31 +394,32 @@ void LostArk::Server::CGameRoom::Handle_UseSkill(
 	snapshot gates remain in CPlayerSkillSystem::Try_Start. */
 	if (LostArk::Shared::WORLD_ID::CHARACTER_SELECT_ARENA == m_eWorldId)
 	{
-		playerIter->second.iCurrentResource =
-			playerIter->second.iMaximumResource;
-		playerIter->second.iResourceAccumulator = 0u;
+		player.iCurrentResource =
+			player.iMaximumResource;
+		player.iResourceAccumulator = 0u;
 	}
 #endif
 	if (m_PlayerSkillSystem.Try_StagePendingSkill(
-			playerIter->second, useSkill, m_GameplayCatalog,
+			player, useSkill, m_GameplayCatalog,
 			&m_ServerNavigation))
 	{
-		playerIter->second.isCombatReady = true;
-		return;
+		player.isCombatReady = true;
+		return true;
 	}
 	// A valid but currently unavailable skill is rejected as gameplay state;
 	// malformed payloads are already closed at the ServerApp packet boundary.
 	if (m_PlayerSkillSystem.Try_Start(
-		playerIter->second,
+		player,
 		useSkill,
 		m_GameplayCatalog,
 		actionStartTick,
 		&m_ServerNavigation, m_eCooldownMode))
 	{
-		playerIter->second.isCombatReady = true;
-		Apply_SkillBuffs(playerIter->second, useSkill.iSkillId, actionStartTick);
+		player.isCombatReady = true;
+		Apply_SkillBuffs(player, useSkill.iSkillId, actionStartTick);
+		return true;
 	}
-
+	return false;
 }
 
 void LostArk::Server::CGameRoom::Apply_SkillBuffs(
@@ -853,6 +869,7 @@ void LostArk::Server::CGameRoom::Finish_SquareHoleSong(SERVER_PLAYER& player)
 	player.fPositionY = landing.y;
 	player.fPositionZ = landing.z;
 	Update_MarioControlState(player);
+	Guide_AnchorArrived(player);
 }
 
 LostArk::Server::SERVER_PLAYER* LostArk::Server::CGameRoom::Find_EstherCaster(

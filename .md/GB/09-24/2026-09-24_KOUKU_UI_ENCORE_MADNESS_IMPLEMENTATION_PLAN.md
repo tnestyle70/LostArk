@@ -47,3 +47,25 @@ CINEMATIC 진입으로 판정하며 곧장 combat 좌표로 teleport하지 않�
 dirty 여부와 관계없이 `Save`로 표시한다. 별도 `Unsaved local changes` 상태 문구와
 저장·검증·자동 Publish 동작은 기존 경로를 사용한다. 같은 파일에서 진행 중인 다른
 Object hierarchy 변경을 보존하고 두 버튼의 label 표현식만 바꾼다.
+
+## G06. 관문 진입 전 광기 게이지와 저장 위치 확인 (2026-09-27)
+
+`Level_KakulSaydonArena::Update`에서 Server가 복제한 각 player snapshot의 위치를
+기존 `Is_KoukuArenaStartArea`에 전달하여 시작 발판의 자신과 동료 광기 게이지를 숨긴다.
+관문으로 이동한 뒤에는 기존 madness snapshot과 미로·춤 숨김 정책을 소비한다. snapshot이
+아직 없으면 숨긴다. Client 예측 위치나 별도 진입 latch는 만들지 않는다.
+
+첫 접근의 jump.2부터는 시작 발판 영역 밖이므로 Server currentGate가 0이거나 아직
+수신 전이면 계속 숨긴다. Server가 관문을 활성화한 뒤 표시하되, 보스 관문 없이 진입하는
+MARIO snapshot과 Server 승인된 F1 player-only 진입의 본인은 기존 표시를 허용한다. currentGate는 시작점 복귀 때 유지되므로 각
+플레이어의 발판 영역 검사도 함께 적용한다. G3 테라스의 기존 표시는 유지한다.
+
+저장한 높이의 현재 정본은 `Data/UI/KoukuSaydon/KoukuHudModes.json`의
+`madness.feetOffsetMeters`다. Save와 생성자의 Load_Config가 같은 ProjectDataRoot를
+소비하는지 확인하고, 사용자 저장본 복사본으로 저장→새 인스턴스 로드와 다른 필드 보존을
+검증한다. 1.3m는 character Transform의 발 위치에 더하는 월드 높이다. 기존 G02의
+headOffsetMeters 설명은 이후 발 기준 전환 이전의 계약이다.
+
+기존 C++의 관문 조건과 위치 기준 주석만 수정하며 project/filter 추가는 없다. 변경된
+Client CPP를 격리 출력으로 컴파일하고 JSON parse·diff 검사를 수행한다. 실행 중인
+사용자의 Debug 검증을 유지하며 최종 Product 링크와 사용자 화면 판정은 별도로 기록한다.

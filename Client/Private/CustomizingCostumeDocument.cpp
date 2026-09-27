@@ -3,6 +3,7 @@
 #include "DataJson.h"
 #include "ProjectDataRoot.h"
 
+#include <algorithm>
 #include <filesystem>
 #include <fstream>
 #include <sstream>
@@ -50,6 +51,7 @@ bool_t Client::CCustomizingCostumeDocument::Load()
 	/* Staged, so a bad entry late in the document cannot leave half of the previous contents
 	replaced. */
 	std::unordered_map<std::string, std::vector<std::string>> staged;
+	std::unordered_map<std::string, int32_t> stagedDefaults;
 	for (const auto& [assetId, value] : pClasses->Get_Object())
 	{
 		const DATA_JSON_VALUE* pEntries =
@@ -91,12 +93,33 @@ bool_t Client::CCustomizingCostumeDocument::Load()
 			}
 			setIds.push_back(pSetId->Get_String());
 		}
+		int32_t defaultIndex = 0;
+		if (const auto* defaultSet = value.Find("defaultVisualSetId"))
+		{
+			if (!defaultSet->Is_String() || defaultSet->Get_String().empty() ||
+				std::count(setIds.begin(), setIds.end(), defaultSet->Get_String()) != 1)
+			{
+				m_strStatus = path.string() + " (" + assetId +
+					"): defaultVisualSetId must name exactly one existing entry";
+				return false;
+			}
+			defaultIndex = static_cast<int32_t>(std::distance(setIds.begin(),
+				std::find(setIds.begin(), setIds.end(), defaultSet->Get_String())));
+		}
+		stagedDefaults.emplace(assetId, defaultIndex);
 		staged.emplace(assetId, std::move(setIds));
 	}
 
 	m_Classes = std::move(staged);
+	m_DefaultIndices = std::move(stagedDefaults);
 	m_strStatus = "loaded " + std::to_string(m_Classes.size()) + " classes";
 	return true;
+}
+
+int32_t Client::CCustomizingCostumeDocument::Get_DefaultIndex(const std::string& strAssetId) const
+{
+	const auto found = m_DefaultIndices.find(strAssetId);
+	return found == m_DefaultIndices.end() ? 0 : found->second;
 }
 
 const std::vector<std::string>* Client::CCustomizingCostumeDocument::Find(

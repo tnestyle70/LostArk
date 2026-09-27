@@ -2158,12 +2158,13 @@ void CCharacter::Update_PresentationRootMatrix()
 	if (nullptr != m_pTransformCom)
 	{
 		m_VehicleRootMatrix = *m_pTransformCom->Get_WorldMatrixPtr();
+		if (m_pVehiclePart) m_VehicleRootMatrix._42 += m_pVehiclePart->Get_FlightBobOffset();
 		float3_t seat{};
 		if (nullptr != m_pVehiclePart && m_pVehiclePart->Try_Get_SeatWorldPosition(seat))
 		{
 			m_vVehicleSeatOffset = float3_t(
 				seat.x - m_VehicleRootMatrix._41,
-				seat.y - m_VehicleRootMatrix._42,
+				seat.y - m_pTransformCom->Get_WorldMatrixPtr()->_42,
 				seat.z - m_VehicleRootMatrix._43);
 		}
 		const VEHICLE_ACTOR_ENTRY* pVehicle = 0u == m_iVehicleId ? nullptr :

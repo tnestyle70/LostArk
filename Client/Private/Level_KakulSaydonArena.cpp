@@ -2151,7 +2151,34 @@ void Client::CLevel_KakulSaydonArena::Update(const f32_t fTimeDelta)
 	if (!m_bMapAuthoringActive)
 #endif
 		m_MapRuntime.Update_SelfMotions(fTimeDelta);
+	// Gate progress is room-wide and survives Return to Start. Use each player's
+	// Server position so the waiting platform stays hidden on initial entry and return.
+	std::vector<KOUKU_BOSS_PRESENTATION_VIEW> madnessBosses;
+	std::vector<KOUKU_CARD_PRESENTATION_VIEW> madnessPlayers;
+	m_Replication.Collect_KoukuPresentationViews(madnessBosses, madnessPlayers);
+	const bool_t gateEntered = m_bGateProgressKnown && 0u != m_GateProgress.iCurrentGate;
+	const auto& gates = Get_DebugGates();
+	const bool_t playerOnlyEntry = m_iActiveDebugGate < gates.size() &&
+		nullptr == gates[m_iActiveDebugGate].BossPlacementIds[0];
+	const auto canShowMadnessGauge = [&madnessPlayers, &localCharacter, gateEntered, playerOnlyEntry](
+		const shared_ptr<CCharacter>& character)
+	{
+		if (!character) return false;
+		for (const auto& view : madnessPlayers)
+		{
+			if (view.pCharacter.lock() != character) continue;
+			const auto& player = view.Snapshot;
+			// Server-approved player-only Debug entry and Mario have no boss gate.
+			if (!gateEntered && LostArk::Shared::KOUKU_HUD_MODE::MARIO != player.eKoukuHudMode &&
+				!(playerOnlyEntry && character == localCharacter))
+				return false;
+			return !LostArk::Shared::Is_KoukuArenaStartArea(
+				player.fPositionX, player.fPositionY, player.fPositionZ);
+		}
+		return false;
+	};
 	HUD_KOUKU_GIMMICK_STATE madnessState = CCombatHUDViewModel::Get().Get_KoukuGimmick();
+	madnessState.isValid = madnessState.isValid && canShowMadnessGauge(localCharacter);
 	if (LostArk::Shared::KOUKU_HUD_MODE::MAZE == CCombatHUDViewModel::Get().Get_Player().eKoukuHudMode)
 		madnessState.eHudMode = HUD_KOUKU_HUD_MODE::MAZE;
 	if (nullptr != m_pMadnessGaugeView)
@@ -2166,11 +2193,12 @@ void Client::CLevel_KakulSaydonArena::Update(const f32_t fTimeDelta)
 			const REPLICATED_PLAYER_HEALTH Health = m_Replication.Get_PlayerHealth().Find(Player.iNetEntityId);
 			// Keep the local maze presentation policy for every world-space gauge.
 			HUD_KOUKU_GIMMICK_STATE State = madnessState;
-			State.isValid = Health.Has_Madness();
+			const auto character = Player.pCharacter.lock();
+			State.isValid = Health.Has_Madness() && canShowMadnessGauge(character);
 			State.iMadnessGauge = Health.iCurrentMadness;
 			State.iMadnessMaximum = Health.iMaximumMadness;
 			if (nullptr != m_OtherMadnessGaugeViews[iOther])
-				m_OtherMadnessGaugeViews[iOther]->Update(fTimeDelta, Player.pCharacter.lock(), State);
+				m_OtherMadnessGaugeViews[iOther]->Update(fTimeDelta, character, State);
 			++iOther;
 		}
 		for (; iOther < m_OtherMadnessGaugeViews.size(); ++iOther)

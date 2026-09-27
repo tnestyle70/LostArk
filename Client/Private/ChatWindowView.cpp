@@ -139,9 +139,38 @@ void Client::CChatWindowView::Append_ReceivedLine(
 	snprintf(strTimestamp, sizeof(strTimestamp), "%02d:%02d",
 		localTime.tm_hour, localTime.tm_min);
 
-	m_LogLines.push_back(CHAT_LOG_LINE{ strTimestamp, strNickname, strText });
-	if (m_LogLines.size() > MAX_LOG_LINES)
-		m_LogLines.erase(m_LogLines.begin());
+    // Stored guide segments may exceed the player's input limit. Wrap on UTF-8
+    // boundaries before appending, so the existing line scrollback shows every word.
+    f32_t x = 0.f, y = 0.f, width = 320.f, height = 0.f;
+    if (m_pView) (void)m_pView->Get_SlotRect("Chat_LogTextBox", x, y, width, height);
+    const auto measure = [](const std::string& value) {
+        std::wstring wide;
+        if (!Convert_Utf8ToWide(value, wide)) return 0.f;
+        const auto size = CGameInstance::Get().Measure_Text(TEXT("Font_YG760"), wide.c_str());
+        return size.y > 0.f ? size.x * (CHAT_TEXT_STAGE_PX * STAGE_TO_REF / size.y) : 0.f;
+    };
+    const f32_t available = (std::max)(40.f, width - 16.f - measure(std::string("[") + strTimestamp + "] "));
+    std::string line;
+    bool first = true;
+    f32_t lineWidth = measure(strNickname + " : ");
+    const auto append = [&]() {
+        m_LogLines.push_back(CHAT_LOG_LINE{ strTimestamp, first ? strNickname : string{}, line });
+        if (m_LogLines.size() > MAX_LOG_LINES) m_LogLines.erase(m_LogLines.begin());
+        first = false; line.clear(); lineWidth = 0.f;
+    };
+    for (size_t offset = 0; offset < strText.size();)
+    {
+        const auto lead = static_cast<unsigned char>(strText[offset]);
+        const size_t length = lead < 0x80u ? 1u : lead < 0xe0u ? 2u : lead < 0xf0u ? 3u : 4u;
+        if (offset + length > strText.size()) break;
+        const std::string glyph = strText.substr(offset, length);
+        offset += length;
+        if (glyph == "\n") { append(); continue; }
+        const f32_t advance = measure(glyph);
+        if (!line.empty() && lineWidth + advance > available) append();
+        line += glyph; lineWidth += advance;
+    }
+    if (!line.empty() || first) append();
 	/* A new line pins the view back to the bottom, as the retail list does, and keeps the
 	window on screen so an arriving message is actually readable. */
 	m_iLogScrollBack = 0u;

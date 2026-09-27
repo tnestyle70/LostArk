@@ -77,6 +77,128 @@ Json Set(const Json& object, const std::string& key, Json value)
     return Json::Object(std::move(fields), object.Get_ObjectInsertionOrder());
 }
 
+// Split the original curve before moving its visible interval. Inserting a
+// Hermite value and its derivative preserves both halves of the original span.
+Json EffectCurveSample(const std::vector<Json>& keys, const double time)
+{
+    const auto at = [](const Json& key) { return key.Find("timeMs")->Get_Number(); };
+    const auto right = std::lower_bound(keys.begin(), keys.end(), time,
+        [&](const Json& key, double value) { return at(key) < value; });
+    if (right != keys.end() && at(*right) == time) return *right;
+    const auto& a = right == keys.begin() ? keys.front() : *(right - 1);
+    const auto& b = right == keys.end() ? keys.back() : *right;
+    const double seconds = (at(b) - at(a)) * .001;
+    const double u = seconds > 0. ? (time - at(a)) * .001 / seconds : 0.;
+    Json result = Json::Object({{"timeMs", Json::Number(time)}});
+    if (a.Find("sourceMs"))
+        return Set(result, "sourceMs", Json::Number(a.Find("sourceMs")->Get_Number() +
+            u * (b.Find("sourceMs")->Get_Number() - a.Find("sourceMs")->Get_Number())));
+    if (a.Find("position"))
+    {
+        for (const auto* field : {"position", "scale"})
+        {
+            auto values = a.Find(field)->Get_Array(); const auto& other = b.Find(field)->Get_Array();
+            for (size_t i = 0; i < values.size(); ++i)
+                values[i] = Json::Number(values[i].Get_Number() + u * (other[i].Get_Number() - values[i].Get_Number()));
+            result = Set(result, field, Json::Array(std::move(values)));
+        }
+        const auto quaternion = [](const Json& key) {
+            const auto& values = key.Find("rotationQuaternion")->Get_Array();
+            return XMQuaternionNormalize(XMVectorSet(static_cast<float>(values[0].Get_Number()),
+                static_cast<float>(values[1].Get_Number()), static_cast<float>(values[2].Get_Number()),
+                static_cast<float>(values[3].Get_Number())));
+        };
+        XMFLOAT4 rotation;
+        XMStoreFloat4(&rotation, XMQuaternionNormalize(XMQuaternionSlerp(quaternion(a), quaternion(b), static_cast<float>(u))));
+        return Set(result, "rotationQuaternion", Json::Array({Json::Number(rotation.x), Json::Number(rotation.y),
+            Json::Number(rotation.z), Json::Number(rotation.w)}));
+    }
+    const std::string mode = seconds > 0. ? Text(a, "interpolation") : "CONSTANT";
+    auto values = a.Find("value")->Get_Array(), tangents = values;
+    for (size_t i = 0; i < values.size(); ++i)
+    {
+        const double p = values[i].Get_Number(), q = b.Find("value")->Get_Array()[i].Get_Number();
+        double value = p, derivative = 0.;
+        if (mode == "LINEAR") { value += u * (q - p); derivative = (q - p) / seconds; }
+        else if (mode == "CUBIC")
+        {
+            const double leave = a.Find("leaveTangent")->Get_Array()[i].Get_Number();
+            const double arrive = b.Find("arriveTangent")->Get_Array()[i].Get_Number();
+            const double u2 = u * u, u3 = u2 * u;
+            value = (2. * u3 - 3. * u2 + 1.) * p + (u3 - 2. * u2 + u) * seconds * leave +
+                (-2. * u3 + 3. * u2) * q + (u3 - u2) * seconds * arrive;
+            derivative = ((6. * u2 - 6. * u) * p + (-6. * u2 + 6. * u) * q) / seconds +
+                (3. * u2 - 4. * u + 1.) * leave + (3. * u2 - 2. * u) * arrive;
+        }
+        values[i] = Json::Number(value); tangents[i] = Json::Number(derivative);
+    }
+    result = Set(Set(result, "value", Json::Array(std::move(values))), "interpolation", Json::String(mode));
+    result = Set(result, "arriveTangent", Json::Array(tangents));
+    return Set(result, "leaveTangent", Json::Array(std::move(tangents)));
+}
+
+bool RetimeEffectCurve(const Json& curve, const double oldStart, const double oldEnd,
+    const double start, const double end, const double duration, Json& result)
+{
+    const auto& original = curve.Get_Array();
+    auto keys = original;
+    const auto at = [](const Json& key) { return key.Find("timeMs")->Get_Number(); };
+    const bool parameter = original.front().Find("value") != nullptr;
+    for (const double time : {0., oldStart, oldEnd, duration})
+    {
+        const auto insertion = std::lower_bound(keys.begin(), keys.end(), time,
+            [&](const Json& key, double value) { return at(key) < value; });
+        if (insertion == keys.end() || at(*insertion) != time)
+            keys.insert(insertion, EffectCurveSample(original, time));
+    }
+    // The runtime holds a parameter's final value outside its authored keys.
+    if (parameter && at(original.back()) < duration)
+        for (auto& key : keys) if (at(key) == at(original.back())) key = Set(key, "interpolation", Json::String("CONSTANT"));
+    keys.erase(std::remove_if(keys.begin(), keys.end(), [&](const Json& key) {
+        return (start == 0. && at(key) < oldStart) || (end == duration && at(key) > oldEnd);
+    }), keys.end());
+    const auto map = [&](double time) {
+        if (time == oldStart) return start;
+        if (time == oldEnd) return end;
+        if (time == 0.) return 0.;
+        if (time == duration) return duration;
+        if (time < oldStart) return time * start / oldStart;
+        if (time <= oldEnd) return start + (time - oldStart) * (end - start) / (oldEnd - oldStart);
+        return end + (time - oldEnd) * (duration - end) / (duration - oldEnd);
+    };
+    const auto scaleTangent = [](Json& key, const char* field, const double scale) {
+        auto values = key.Find(field)->Get_Array();
+        for (auto& value : values) value = Json::Number(value.Get_Number() * scale);
+        key = Set(key, field, Json::Array(std::move(values)));
+    };
+    auto moved = keys;
+    for (size_t i = 0; i < keys.size(); ++i)
+    {
+        const double time = map(at(keys[i]));
+        if (!std::isfinite(time) || time < 0. || time > duration || (i && time <= at(moved[i - 1]))) return false;
+        moved[i] = Set(moved[i], "timeMs", Json::Number(time));
+        if (parameter)
+        {
+            scaleTangent(moved[i], "arriveTangent", i ? (at(keys[i]) - at(keys[i - 1])) / (time - map(at(keys[i - 1]))) : 0.);
+            scaleTangent(moved[i], "leaveTangent", i + 1 < keys.size() ?
+                (at(keys[i + 1]) - at(keys[i])) / (map(at(keys[i + 1])) - time) : 0.);
+        }
+    }
+    const auto plateau = [&](const Json& key, double time) {
+        // A new endpoint is a sample, not a second copy of a stable key ID.
+        auto value = EffectCurveSample(std::vector<Json>{key}, time);
+        return parameter ? Set(value, "interpolation", Json::String("CONSTANT")) : value;
+    };
+    if (at(moved.front()) > 0.) moved.insert(moved.begin(), plateau(moved.front(), 0.));
+    if (at(moved.back()) < duration)
+    {
+        auto final = plateau(moved.back(), duration);
+        if (parameter) moved.back() = Set(moved.back(), "interpolation", Json::String("CONSTANT"));
+        moved.push_back(std::move(final));
+    }
+    result = Json::Array(std::move(moved)); return true;
+}
+
 const Json* At(const Json& root, const Path& path)
 {
     const Json* result = &root;
@@ -278,6 +400,20 @@ std::array<std::filesystem::path, 2> SourcePaths(const std::string& area)
         CProjectDataRoot::Resolve(std::filesystem::path("Maps/Authoring") / area / (area + ".worldsequences.json"))};
 }
 
+bool SourcesMatch(const std::array<std::filesystem::path, 2>& paths,
+    const Json& manifest, const Json& world, std::string& status)
+{
+    const Json* expected[]{&manifest, &world};
+    for (size_t i = 0; i < 2; ++i)
+    {
+        std::string bytes; Json current;
+        if (!Read(paths[i], bytes, current, status)) return false;
+        if (!Equal(current, *expected[i]))
+        { status = "Movie sources changed on disk. Save to reconcile the source before publishing; the draft is preserved."; return false; }
+    }
+    return true;
+}
+
 bool MatchesPublishedWorld(const CWorldSequenceDocument& source, const CWorldSequencePlayer::TARGET_SET& targets)
 {
     const auto path = CMapAssetCatalog::Get_MapDataRoot() / (source.Get_AreaId() + ".worldsequences.json");
@@ -311,7 +447,8 @@ bool CClassSelectionPresentation::Validate_Authoring(const Json& manifest, const
     if (area.empty() || !m_Targets.Is_Complete()) { status = "Enter Character Select before editing the movie."; return false; }
     WORLD_SEQUENCE_PLACEMENT_MAP placements; WORLD_SEQUENCE_DEPLOY_MAP deploy;
     CWorldSequencePlayer::Collect_ValidationTargets(m_Targets, placements, deploy);
-    if (!Parse(manifest, area, scenes, status) || !document.Load_Text(Serialize(world), area, placements, deploy, status)) return false;
+    if (!Parse(manifest, area, scenes, status) || !document.Load_Text(Serialize(world), area, placements, deploy, status) ||
+        !Validate_WorldExclusions(scenes, document, status)) return false;
     for (const auto& scene : scenes)
         for (const auto* phase : {&scene.intro, &scene.loop})
             for (const auto& id : phase->instanceIds)
@@ -467,17 +604,204 @@ bool CClassSelectionPresentation::Apply_AuthoringBox(const CLASS_MOVIE_AUTHORING
     ++m_Authoring->generation; status = "Movie row applied. Save keeps the edited sources."; return true;
 }
 
-bool CClassSelectionPresentation::Save_Authoring(std::string& status)
+bool CClassSelectionPresentation::Edit_AuthoringTiming(const CLASS_MOVIE_AUTHORING_BOX& before,
+    double start, double end, const CLASS_MOVIE_TIMING_EDIT gesture, std::string& status)
+{
+    if (!m_Authoring || before.generation != m_Authoring->generation)
+    { status = "The movie changed during this gesture. Select the box again."; return false; }
+    bool world = false; Path path;
+    if (!Resolve(m_Authoring->manifest, m_Authoring->world, m_Authoring->document, before, world, path) ||
+        !Equal(before.value, ReadRow(world ? m_Authoring->world : m_Authoring->manifest, path, before.kind)))
+    { status = "The selected source changed. Its current draft was preserved."; return false; }
+    const auto timeline = Get_Timeline(before.classId, before.loop);
+    const CLASS_MOVIE_TIMELINE_BOX* selected = nullptr;
+    const CLASS_MOVIE_TIMELINE_ROW* selectedRow = nullptr;
+    if (timeline) for (const auto& row : timeline->rows) if (row.kind == before.kind)
+        for (const auto& box : row.boxes) if (box.id == before.boxId) { selected = &box; selectedRow = &row; }
+    if (!selected || !std::isfinite(start) || !std::isfinite(end) || start < 0. || end <= start || end > timeline->sourceDurationMs)
+    { status = "Box time must stay inside the movie phase with a positive duration."; return false; }
+
+    Json replacement = before.value;
+    if (before.kind == "Effect")
+    {
+        replacement = Set(Set(replacement, "startMs", Json::Number(start)), "endMs", Json::Number(end));
+        if (gesture == CLASS_MOVIE_TIMING_EDIT::MOVE)
+        {
+            // Preserve age, root pose and parameter samples inside the visible
+            // interval. A collapsed hidden tail is discarded; an expanded phase
+            // endpoint holds the boundary sample. Trimming changes visibility only.
+            const double oldStart = selected->sourceStartMs, oldEnd = selected->sourceEndMs;
+            const double duration = timeline->sourceDurationMs;
+            const auto retime = [&](Json& owner, const char* field) {
+                Json keys;
+                if (!RetimeEffectCurve(*owner.Find(field), oldStart, oldEnd, start, end, duration, keys))
+                { status = "Effect move would collapse curve keys. The current draft is preserved."; return false; }
+                owner = Set(owner, field, std::move(keys)); return true;
+            };
+            for (const auto* field : {"clockKeys", "rootKeys"})
+                if (replacement.Find(field) && !retime(replacement, field)) return false;
+            if (const auto* tracks = replacement.Find("parameterTracks"))
+            {
+                auto curves = tracks->Get_Array();
+                for (auto& curve : curves) if (!retime(curve, "keys")) return false;
+                replacement = Set(replacement, "parameterTracks", Json::Array(std::move(curves)));
+            }
+            if (const auto* delta = replacement.Find("loopAgeDeltaMs"); delta && delta->Get_Number() > 0.)
+            {
+                const auto& keys = replacement.Find("clockKeys")->Get_Array();
+                replacement = Set(replacement, "loopAgeDeltaMs", Json::Number(
+                    keys.back().Find("sourceMs")->Get_Number() - keys.front().Find("sourceMs")->Get_Number()));
+            }
+        }
+        return Apply_AuthoringBox(before, replacement, status);
+    }
+    // Reorder uses a cursor insertion point; it never stores that fractional
+    // position. Rounding it could make a valid drop near the phase end empty.
+    if (before.kind != "Camera" || gesture != CLASS_MOVIE_TIMING_EDIT::MOVE)
+    { start = std::round(start); end = std::round(end); }
+    if (end <= start) { status = "This box requires at least one source millisecond."; return false; }
+    if (before.kind == "Sound")
+    {
+        replacement = Set(Set(replacement, "startMs", Json::Number(start)), "durationMs", Json::Number(end - start));
+        return Apply_AuthoringBox(before, replacement, status);
+    }
+    if (before.kind == "Animation")
+    {
+        if (selected->loopAnimation || selected->nativeDurationMs <= 0.)
+        { status = "Use Box Detail for looping clips. Timeline trim requires a finite native clip."; return false; }
+        double sourceIn = selected->sourceOffsetMs, sourceOut = selected->sourceClipEndMs;
+        if (gesture == CLASS_MOVIE_TIMING_EDIT::TRIM_START)
+            sourceIn += (start - selected->sourceStartMs) * selected->playbackRate;
+        if (gesture == CLASS_MOVIE_TIMING_EDIT::TRIM_END)
+            sourceOut = sourceIn + (end - start) * selected->playbackRate;
+        sourceIn = std::round(sourceIn); sourceOut = std::round(sourceOut);
+        const double actualEnd = start + (sourceOut - sourceIn) / selected->playbackRate;
+        if (sourceIn < 0. || sourceOut <= sourceIn || sourceOut > selected->nativeDurationMs + 1. ||
+            actualEnd > timeline->sourceDurationMs + .001)
+        { status = "Source In/Out must remain within the native animation."; return false; }
+        for (const auto& other : selectedRow->boxes) if (other.id != selected->id &&
+            start < other.sourceEndMs - .001 && actualEnd > other.sourceStartMs + .001)
+        { status = "This edit overlaps another clip of the same actor and slot."; return false; }
+        replacement = Set(Set(Set(replacement, "startMs", Json::Number(start)),
+            "sourceStartMs", Json::Number(sourceIn)), "sourceEndMs", Json::Number(sourceOut));
+        return Apply_AuthoringBox(before, replacement, status);
+    }
+    if (before.kind != "Camera")
+    { status = "This track spans the phase. Edit its keys in Box Detail."; return false; }
+
+    // Camera cuts must tile the phase. Move reorders whole cuts; edge trim
+    // moves their shared boundary and scales each affected cut's local keys.
+    Path collection = path; collection.pop_back();
+    const auto* cameras = At(m_Authoring->manifest, collection);
+    auto rows = cameras->Get_Array();
+    std::sort(rows.begin(), rows.end(), [](const auto& a, const auto& b) {
+        return a.Find("startMs")->Get_Number() < b.Find("startMs")->Get_Number(); });
+    const auto found = std::find_if(rows.begin(), rows.end(), [&](const auto& row) { return Text(row, "cameraId") == before.boxId; });
+    const size_t index = static_cast<size_t>(found - rows.begin());
+    if (index == rows.size()) { status = "The camera cut is no longer available."; return false; }
+    const auto resize = [&](Json& row, double nextStart, double nextDuration) {
+        if (nextDuration < 1.) return false;
+        const double previousDuration = row.Find("durationMs")->Get_Number();
+        auto keys = row.Find("keys")->Get_Array();
+        double previous = -1.;
+        for (auto& key : keys)
+        {
+            const double next = std::round(key.Find("timeMs")->Get_Number() * nextDuration / previousDuration);
+            if (next <= previous) return false;
+            key = Set(key, "timeMs", Json::Number(next)); previous = next;
+        }
+        row = Set(Set(Set(row, "startMs", Json::Number(nextStart)), "durationMs", Json::Number(nextDuration)), "keys", Json::Array(std::move(keys)));
+        row = Set(row, "source", Json::String("PROJECT_TUNED"));
+        return true;
+    };
+    if (gesture == CLASS_MOVIE_TIMING_EDIT::MOVE)
+    {
+        size_t destination = 0;
+        for (size_t i = 0; i < rows.size(); ++i) if (i != index && start >= rows[i].Find("startMs")->Get_Number()) ++destination;
+        auto moved = rows[index]; rows.erase(rows.begin() + index);
+        rows.insert(rows.begin() + (std::min)(destination, rows.size()), std::move(moved));
+        double cursor = 0.;
+        for (auto& row : rows) { row = Set(row, "startMs", Json::Number(cursor)); cursor += row.Find("durationMs")->Get_Number(); }
+    }
+    else
+    {
+        const bool left = gesture == CLASS_MOVIE_TIMING_EDIT::TRIM_START;
+        if ((left && index == 0u) || (!left && index + 1u == rows.size()))
+        { status = "The first and last camera boundaries stay at the phase endpoints."; return false; }
+        const size_t a = left ? index - 1u : index, b = a + 1u;
+        const double boundary = left ? start : end;
+        const double begin = rows[a].Find("startMs")->Get_Number();
+        const double finish = rows[b].Find("startMs")->Get_Number() + rows[b].Find("durationMs")->Get_Number();
+        if (!resize(rows[a], begin, boundary - begin) || !resize(rows[b], boundary, finish - boundary))
+        { status = "The cut is too short for its existing keys or crosses the neighboring cut."; return false; }
+    }
+    Json manifest = Replace(m_Authoring->manifest, collection, 0u, Json::Array(std::move(rows)));
+    std::vector<SCENE> scenes; CWorldSequenceDocument document;
+    if (!Validate_Authoring(manifest, m_Authoring->world, scenes, document, status) ||
+        !Prepare_Authoring(scenes, document, status) || !Commit_Authoring(std::move(scenes), document, status)) return false;
+    m_Authoring->manifest = std::move(manifest); m_Authoring->scenes = m_Scenes;
+    m_Authoring->dirty = !Equal(m_Authoring->manifest, m_Authoring->manifestBase) || !Equal(m_Authoring->world, m_Authoring->worldBase);
+    ++m_Authoring->generation;
+    status = "Camera cut timing applied with complete phase coverage. Save keeps these changes.";
+    return true;
+}
+
+bool CClassSelectionPresentation::Set_WorldExcluded(const std::string& classId,
+    const std::string& objectId, const bool excluded, std::string& status)
+{
+    if (!Begin_Authoring(status)) return false;
+    if (Is_AuthoringPublishPending()) { status = "Wait for the current Movie publish before editing its sources."; return false; }
+    auto* scenesValue = m_Authoring->manifest.Find("scenes");
+    if (!scenesValue || !scenesValue->Is_Array()) { status = "Movie scene source is unavailable."; return false; }
+    auto rows = scenesValue->Get_Array();
+    const auto row = std::find_if(rows.begin(), rows.end(), [&](const Json& value) { return Text(value, "classId") == classId; });
+    const auto live = std::find_if(m_Scenes.begin(), m_Scenes.end(), [&](const SCENE& value) { return value.classId == classId; });
+    const auto authored = std::find_if(m_Authoring->scenes.begin(), m_Authoring->scenes.end(),
+        [&](const SCENE& value) { return value.classId == classId; });
+    if (row == rows.end() || live == m_Scenes.end() || authored == m_Authoring->scenes.end())
+    { status = "The Movie scene changed; its previous draft was preserved."; return false; }
+    bool belongs = false;
+    for (const auto* phase : {&authored->intro, &authored->loop})
+        for (const auto& id : phase->instanceIds)
+            if (const auto* instance = m_Authoring->document.Find_Instance(id))
+                for (const auto& binding : instance->bindings) belongs |= binding.targetId == objectId;
+    if (!belongs || !m_Authoring->document.Find_ObjectResource(objectId))
+    { status = "The selected WORLD object does not belong to this Movie."; return false; }
+    std::set<std::string> ids(authored->excludedWorldObjectIds.begin(), authored->excludedWorldObjectIds.end());
+    if (excluded) ids.insert(objectId); else ids.erase(objectId);
+    std::vector<Json> values;
+    for (const auto& id : ids) values.push_back(Json::String(id));
+    *row = Set(*row, "excludedWorldObjectIds", Json::Array(std::move(values)));
+    const auto manifest = Set(m_Authoring->manifest, "scenes", Json::Array(std::move(rows)));
+    std::vector<SCENE> scenes; CWorldSequenceDocument document;
+    if (!Validate_Authoring(manifest, m_Authoring->world, scenes, document, status)) return false;
+    // This edit changes only drawing. Do not Stop/rebuild actors or invalidate
+    // Effect bone providers, the current camera, pause, or the Movie clock.
+    live->excludedWorldObjectIds.assign(ids.begin(), ids.end());
+    authored->excludedWorldObjectIds = live->excludedWorldObjectIds;
+    m_Authoring->manifest = manifest;
+    m_Authoring->dirty = !Equal(m_Authoring->manifest, m_Authoring->manifestBase) ||
+        !Equal(m_Authoring->world, m_Authoring->worldBase);
+    ++m_Authoring->generation;
+    Apply_WorldInspection();
+    status = excluded ? "Deleted from this Movie preview (Intro and Loop). Save Movie persists this change; Restore brings it back." :
+        "WORLD item restored to this Movie preview. Save Movie persists this change.";
+    m_Authoring->status = status;
+    return true;
+}
+
+bool CClassSelectionPresentation::Save_Authoring(std::string& status, const bool publish)
 {
     if (!Begin_Authoring(status)) return false;
     if (Is_AuthoringPublishPending()) { status = "Movie runtime publishing is still running."; return false; }
-    if (!m_Authoring->dirty)
+    const auto paths = SourcePaths(m_Resources.Get_Document().Get_AreaId());
+    if (!m_Authoring->dirty && SourcesMatch(paths, m_Authoring->manifestBase, m_Authoring->worldBase, status))
     {
-        if (m_Authoring->needsPublish) { Start_AuthoringPublish(); status = m_Authoring->status; }
+        m_Authoring->needsPublish = !MatchesPublishedWorld(m_Authoring->document, m_Targets);
+        if (publish) return Publish_Authoring(status);
         else status = "Movie sources have no unsaved changes.";
         return true;
     }
-    const auto paths = SourcePaths(m_Resources.Get_Document().Get_AreaId());
     WriterLock locks[2];
     if (!locks[0].Open(paths[0]) || !locks[1].Open(paths[1])) { status = "Another movie source writer is active. The draft is preserved."; return false; }
     std::array<std::string, 2> baseline, output; std::array<Json, 2> latest, merged;
@@ -524,6 +848,9 @@ bool CClassSelectionPresentation::Save_Authoring(std::string& status)
         success = Read(paths[i], fresh, parsed, status) && fresh == baseline[i];
         if (success) success = ReplaceFileW(paths[i].c_str(), temporary[i].c_str(), backup[i].c_str(), 0u, nullptr, nullptr) != FALSE;
         committed[i] = success;
+        // ReplaceFile captures the actual replaced bytes. An external writer can
+        // race the preceding freshness read; restore that newer backup on failure.
+        if (success) success = Read(backup[i], fresh, parsed, status) && fresh == baseline[i];
     }
     if (success) success = Commit_Authoring(std::move(scenes), document, status);
     if (!success)
@@ -544,10 +871,30 @@ bool CClassSelectionPresentation::Save_Authoring(std::string& status)
     m_Authoring->manifest = merged[0]; m_Authoring->world = merged[1];
     m_Authoring->manifestBase = std::move(merged[0]); m_Authoring->worldBase = std::move(merged[1]);
     m_Authoring->dirty = false; ++m_Authoring->generation;
-    m_Authoring->needsPublish |= changed[1];
-    if (m_Authoring->needsPublish) Start_AuthoringPublish();
+    m_Authoring->needsPublish = !MatchesPublishedWorld(m_Authoring->document, m_Targets);
+    if (m_Authoring->needsPublish && publish) Start_AuthoringPublish();
+    else if (m_Authoring->needsPublish) m_Authoring->status = "Movie sources saved. Publish applies saved World data for the next entry.";
     else m_Authoring->status = "Movie sources saved and applied. Camera, Effect, light and clock edits also persist on the next entry.";
     status = m_Authoring->status;
+    return true;
+}
+
+bool CClassSelectionPresentation::Publish_Authoring(std::string& status)
+{
+    if (!Begin_Authoring(status)) return false;
+    if (m_Authoring->dirty) { status = "Save the movie before publishing. The unsaved draft is preserved."; return false; }
+    if (m_Authoring->publishProcess) { status = "Movie runtime publishing is still running."; return false; }
+    const auto paths = SourcePaths(m_Resources.Get_Document().Get_AreaId());
+    if (!SourcesMatch(paths, m_Authoring->manifestBase, m_Authoring->worldBase, status))
+    { m_Authoring->status = status; return false; }
+    m_Authoring->needsPublish = !MatchesPublishedWorld(m_Authoring->document, m_Targets);
+    if (m_Authoring->needsPublish)
+    {
+        Start_AuthoringPublish(); status = m_Authoring->status;
+        return m_Authoring->publishProcess != nullptr;
+    }
+    status = "Saved camera data is applied to Client playback. No World runtime changes are pending.";
+    m_Authoring->status = status;
     return true;
 }
 
@@ -558,9 +905,9 @@ void CClassSelectionPresentation::Start_AuthoringPublish()
     const auto root = CProjectDataRoot::Get().parent_path();
     const auto script = root / L"Tools/MapPipeline/Publish-MapAuthoring.ps1";
     const auto paths = SourcePaths(m_Resources.Get_Document().Get_AreaId());
-    Json current; std::string bytes, error;
-    if (!Read(paths[1], bytes, current, error) || !Equal(current, draft.worldBase))
-    { draft.status = "Movie sources saved; runtime publish was held because World sources changed. Save after reconciling the source to retry."; return; }
+    if (!SourcesMatch(paths, draft.manifestBase, draft.worldBase, draft.status)) return;
+    draft.needsPublish = !MatchesPublishedWorld(draft.document, m_Targets);
+    if (!draft.needsPublish) { draft.status = "Saved Movie sources already match the published World."; return; }
     if (!std::filesystem::is_regular_file(script))
     { draft.status = "Movie sources saved; runtime publisher is missing. Save to retry."; return; }
     wchar_t temporary[MAX_PATH]{};
@@ -598,7 +945,19 @@ void CClassSelectionPresentation::Poll_AuthoringPublish()
         m_Authoring->status = "Movie sources saved and current preview applied; runtime publish failed (" + std::to_string(code) +
             "). The previous published World remains. Save to retry. Log: " + m_Authoring->publishLog.string(); return;
     }
-    m_Authoring->needsPublish = false;
+    m_Authoring->needsPublish = !MatchesPublishedWorld(m_Authoring->document, m_Targets);
+    std::string freshness;
+    if (!SourcesMatch(SourcePaths(m_Resources.Get_Document().Get_AreaId()),
+        m_Authoring->manifestBase, m_Authoring->worldBase, freshness))
+    {
+        m_Authoring->needsPublish = true;
+        m_Authoring->status = "Publisher finished, but " + freshness + " Log: " + m_Authoring->publishLog.string(); return;
+    }
+    if (m_Authoring->needsPublish)
+    {
+        m_Authoring->status = "Publisher finished, but the published World does not match the saved movie. Publish to retry. Log: " +
+            m_Authoring->publishLog.string(); return;
+    }
     m_Authoring->status = "Movie saved, applied and published for Play and the next entry. Log: " + m_Authoring->publishLog.string();
 }
 }

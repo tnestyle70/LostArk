@@ -19,7 +19,7 @@ namespace
 
 	bool IsAvailableCombatTarget(const LostArk::Server::SERVER_PLAYER& player)
 	{
-		return 0u != player.iCurrentHp && player.isCombatReady &&
+		return player.Is_Human() && 0u != player.iCurrentHp && player.isCombatReady &&
 			LostArk::Shared::PLAYER_ACTION_STATE::DEAD != player.eAction &&
 			LostArk::Shared::PLAYER_ACTION_STATE::FALLING != player.eAction &&
 			LostArk::Shared::PLAYER_ACTION_STATE::GRABBED != player.eAction;

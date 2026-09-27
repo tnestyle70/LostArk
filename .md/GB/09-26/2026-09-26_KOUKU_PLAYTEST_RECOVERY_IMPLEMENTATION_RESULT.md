@@ -387,7 +387,8 @@ STATIC MAP8개만 정상 Append와 같은 Y1.320000052로 높였다. Server-cont
 제거한다. Mario4의 같은 색4개 배치도 목표는3개다. protocol114의 marker color를
 기존 replication으로 전달하고 Client의 실제 머리 본 위에 원본 계열 이펙트를 만든다.
 빨강·파랑·노랑 authored asset3개와 catalog/tree/프로젝트 None 등록을 추가했다.
-필요한 DDS3개가 기존 Resources에 있어 새 Resources/GBResources 추가 파일은 없다.
+필요한 DDS3개는 기존 Resources를 재사용하므로 새 binary 생성은 없다. 후속 전달 확인에서
+이 재사용 DDS3개도 GBResources에 추가했으며 아래 실물 전달 기록에 구분했다.
 Protocol232검사와 실제 source3색×3particle, 고정 source 시각의 이동 pivot 추종 검사를
 통과했다. 화면 검증으로 대신 기록하지 않는다. 증거는 out/KoukuMarioChallenge20260927이다.
 
@@ -525,6 +526,67 @@ protocol114 바이너리와 게시본으로 실행해야 하며 로컬 publish�
 것은 아니다. Client/Server/MSBuild 표준 제품 프로세스 점유가 없는 상태를 확인했다.
 최종4클라 화면·입력·망치/장판/링 표시 판정은 사용자 확인으로 남는다. 최종 확인서는
 같은 폴더의 final-ready-check.json, final-publication-check.json, final-file-validation.json이다.
+
+### GBResources 실물 전달 후속 확인
+
+사용자의 최종 전달 확인 요청에서 GBResources 실물을 다시 검사했다. 기존 모델2개와
+음원2개는 모두 현재 Client/Bin/Resources 설치본과 SHA-256이 일치했다. 마리오 표식은
+새 bitmap을 만들지 않아 재사용 DDS3개가 전달 폴더에는 없었으며, 같은 Resources 상대
+경로로3개/541056bytes를 추가했다. 추가된 fx_g_symbol_21, fx_x_symbol_014_1_cl,
+fx_l_symbol_63_cl DDS와 기존4개 모두 설치본 hash 일치다. 기존 파일은 변경하지 않았다.
+표식 authored JSON3개는 Git Data 소유를 유지하며 GBResources에 복사하지 않았다.
+코드·설치 Resources·게시본·빌드 산출물 변경은 없으므로 재빌드/재게시하지 않았다.
+증거는 out/KoukuResourcesDelivery20260927/delivery-receipt.json이다.
+
+### JS·TJ main 변경의 현재 브랜치 동기화
+
+사용자 요청으로 codex/world-movie-effect-editor를 유지한 채 a51596a18에서
+origin/main c77f1858e로 fast-forward했다. JS 에스더 PR460, TJ 광기 게이지 발 위치
+PR461과 현재 쿠크 수정 PR464가 포함된다. main checkout·새 merge commit·push·빌드는
+하지 않았다. safety/2026-09-27-before-main-sync-js-tj stash를 남기고 미커밋 결과 문서를
+바이트 그대로 복원했다. 기존 EXE/SDK/OBJ/PCH/tracking 출력4182개의 size·mtime은 불변,
+변경 JSON/XML12개 parse와 diff 검사도 PASS다. 증거는 out/MainSync20260927이다.
+
+컷신·MAZE/DANCE HUD 숨김·주사위·조커 수정은 보존된다. 새 에스더 참조 중 이 PC에는
+웨이 fx_m_mark_001.dds 1개와 Sound/Asther WAV62개가 없으며 JS의 Drive 전달본이 필요하다.
+검사한 바훈투르65개 참조·컷인575장·모델/animation10개는 존재한다. 앞서 기록한 최종
+Debug/Release PASS는 동기화 전 쿠크 수정본 기준이다. 새 main의 Engine/Client/셰이더
+변경은 일반 증분 Build가 필요하며 이번 동기화에서는 실행하지 않았다.
+
+사용자가 리소스를 수신한 뒤 다시 확인해 위 누락63개가 모두 해소됐다. 신규 WAV62개는
+RIFF/PCM 헤더와 전체 frame 길이를 읽었고, 웨이 DDS는256×256/65664byte의 유효한 DDS다.
+바훈투르65개·웨이132개 물리 참조도 누락0이다. 빌드·Client 실행은 하지 않았다.
+수신 확인서는 out/MainSync20260927/received-resources-check.json이다.
+
+
+### main 동기화 후 Debug·Release 제품 빌드 완료
+
+사용자 재요청 후 실행 중이던 Debug Client/Server 종료를 확인하고 현재 브랜치
+codex/world-movie-effect-editor와 HEAD c77f1858e를 유지해 공식 Product Build를
+Debug→Release 순서로 실행했다. 두 구성 모두 SkipBuild=false, 오류0으로 컴파일·
+링크·SDK/셰이더/DLL 배포를 완료했다. Debug694154ms, Release700137ms이며
+각 Client에서 OBJ200/CSO10이 갱신됐다. PCH는 재생성하지 않았다. 기존 인코딩·
+형변환·PDB·셰이더 경고는 남아 있으며 warning-free 결과로 기록하지 않는다.
+
+Debug receipt는 out/BuildPipeline/runs/20260926T183952303Z-debug-product.json,
+Release receipt는20260926T185142094Z-release-product.json이다. 두 구성의 기본
+runtime layout 및 Item/Valtan reward/Navigation 검사에서 missing/invalid 항목은0이다.
+EXE/DLL 존재·PE header, Engine 생산/Client 배포 DLL SHA 일치와 에스더4672/4736의
+Mesh/Particle CSO4종을 각각 확인했다. 최종 증거는
+out/MainSync20260927/final-build-ready.json과 build-debug/release-console.log다.
+
+이번 지연은 Shader_VtxAnimMeshBinary가 Shader_EffectArtistNativePrograms 공용
+include 변경으로 다시 컴파일된 영향이다. ARTIST_NATIVE_MODEL_ONLY 조건은 새
+Kouku 그룹을 제외하지만 include 파일 의존성이 갱신되어 기존 큰 FX를 재컴파일했다.
+
+쿠크 Action2442/WORLD2283/Sequence182/Camera94와 제품 join은 현재 디스크에서
+일치한다. gameplay 이전 게시 receipt는 JS presentation/catalog 입력4개가 달라
+전체 freshness PASS로 승계하지 않았다. 이번 요청에서는 추가 publish를 하지 않았다.
+세부 대조는 out/MainSync20260927/kouku-publication-current-disk-check.json이다.
+
+기존 Start-4Clients-Release.cmd는 Client/Default에서 새 Release EXE4개를 실행하며
+endpoint192.168.0.22를 사용한다. 최종 LAN probe는 not-listening으로 공유 Server
+기동이 필요하다. Client/UI는 에이전트가 실행하지 않았으며4클라 화면 검증은 사용자 확인이다.
 
 
 ## G12. 카운터·무력화 성공 폰트

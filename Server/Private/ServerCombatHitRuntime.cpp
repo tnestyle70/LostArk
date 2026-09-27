@@ -362,9 +362,9 @@ LostArk::Server::CServerCombatHitRuntime::Apply_PlayerToWorld(
 			CGameplayCatalog::Apply_Defense(
 				hit.iRawDamage, SumIntactLegacyArmorDefense(target)) :
 			hit.iRawDamage;
-		incoming.iStaggerDamage = hit.iStaggerDamage;
-		incoming.iPartDamage = hasTypedParts ? hit.iPartDamage : 0u;
-		incoming.iCounterPower = hit.iCounterPower;
+		incoming.iStaggerDamage = hit.bGuideSource ? 0u : hit.iStaggerDamage;
+		incoming.iPartDamage = hasTypedParts && !hit.bGuideSource ? hit.iPartDamage : 0u;
+		incoming.iCounterPower = hit.bGuideSource ? 0u : hit.iCounterPower;
 		incoming.iServerTick = hit.iServerTick;
 		incoming.bHealthDamagePreResolved = hasLegacyArmor || hit.bHealthDamagePreResolved;
 		incoming.fSourceX = hit.fSourceX;
@@ -378,7 +378,7 @@ LostArk::Server::CServerCombatHitRuntime::Apply_PlayerToWorld(
 		staggerDealt = bossHit.iStaggerDamage;
 		counterTriggered = bossHit.bCounterTriggered;
 		staggerBroken = bossHit.bStaggerBroken;
-		if (LostArk::Shared::INVALID_PLAYER_ID != hit.iSourcePlayerId &&
+		if (!hit.bGuideSource && LostArk::Shared::INVALID_PLAYER_ID != hit.iSourcePlayerId &&
 			(0u != damage || 0u != staggerDealt || counterTriggered || 0u != bossHit.iPartDamage))
 		{
 			SERVER_MVP_LEDGER_ROW& row =
@@ -410,7 +410,7 @@ LostArk::Server::CServerCombatHitRuntime::Apply_PlayerToWorld(
 			target.bPatternGroggy = false;
 			target.bPendingArmorBreakReaction = true;
 		}
-		else if (!hasTypedParts && target.bPatternGroggy &&
+		else if (!hit.bGuideSource && !hasTypedParts && target.bPatternGroggy &&
 			ConsumeLegacyArmorDurability(target, damage))
 		{
 			/* Compatibility for bosses/fixtures that have not authored typed parts.
@@ -478,7 +478,7 @@ void LostArk::Server::CServerCombatHitRuntime::Add_MadnessGauge(
 	SERVER_PLAYER& target, const double gain)
 {
 	using namespace LostArk::Shared;
-	if (!target.iMaximumMadness || !target.iCurrentHp || !target.isCombatReady ||
+	if (target.Is_Guide() || !target.iMaximumMadness || !target.iCurrentHp || !target.isCombatReady ||
 		target.eMadnessForm != PLAYER_MADNESS_FORM::NORMAL ||
 		!std::isfinite(gain) || gain <= 0.) return;
 	const double total = target.iCurrentMadness + target.dMadnessRemainder + gain;
@@ -500,7 +500,7 @@ LostArk::Server::CServerCombatHitRuntime::Apply_WorldToPlayer(
 		return SERVER_COMBAT_HIT_RESULT::NOT_ADMITTED;
 	const bool ownedCapture = Is_CurrentBossHandCapture(target, hit.iCaptureOwnerId,
 		hit.iCapturePatternSequence, hit.iServerTick);
-	if (0u == target.iCurrentHp || (!hit.bEncounterWipe && !ownedCapture && !target.isCombatReady) ||
+	if ((target.Is_Guide() && hit.bEncounterWipe) || 0u == target.iCurrentHp || (!hit.bEncounterWipe && !ownedCapture && !target.isCombatReady) ||
 		PLAYER_ACTION_STATE::DEAD == target.eAction ||
 		(!hit.bEncounterWipe && (PLAYER_ACTION_STATE::FALLING == target.eAction ||
 		(PLAYER_ACTION_STATE::GRABBED == target.eAction && !ownedCapture))))

@@ -1,5 +1,20 @@
 # LostArk merge 회귀 방지 정본
 
+### 발탄 Composition Preview의 Stage 간 수명과 Full Restore 진입
+
+- Full Restore의 Pattern 분류는 clip 이름만 비교하지 않는다. 원본 action 또는 실제 Product cue 연결과
+  clip 이름을 함께 확인한다. 같은 이름의 clip을 공유하는 휠윈드 계열을 다른 source action으로 묶지 않는다.
+- Composition Resources에서 바로 Open Editor할 때도 Effect Tool의 catalog/source metadata를 준비한다.
+  All Effects를 먼저 열었던 세션에서만 Play All이 되는 상태를 정상으로 판정하지 않는다.
+- combat object는 생성 Stage가 끝나도 살아 있다. 선택 Preview branch의 누적 Stage clock과 spawn offset으로
+  object age를 계산하고, 이전 Stage의 돌·timed terminal visual을 유지한다. CONTACT hit를 임의 timed 폭발로
+  취급하지 않으며 Product와 같은 natural visual tail을 사용한다.
+- Pause/seek 대상 Effect는 기존 externally sampled handle을 사용한다. 별도 wall clock으로 진행시키지 않고
+  역 seek·Stop·complete·대상 제거 때 handle을 정리한다. stage/action/clip-qualified Sound도 같은 clock과
+  managed handle을 사용하고 paused 상태의 draft generation 변경까지 반영한다.
+- Preview는 선택한 Logic 분기와 표현을 재현한다. 실제 player target·counter 결과·cover 피해 판정은
+  Play Pattern의 Server 권위다. Source Save, Publish와 Server의 active revision 일치를 구분한다.
+
 ### World Movie의 V1 편집과 camera live 적용
 
 - Movie Effect를 V1에서 열 때 원본 WORLD 배우·카메라·시계의 owner를 유지한다. 일반 Effect의
@@ -31,6 +46,10 @@
   09-25 KOUKU_RESULT_TUNING의 G23에 기록한다.
 
 ### 쿠크 광기 충전과 특수 오브젝트 판정
+
+- 광기 게이지는 최초 gate-progress 수신 전/관문 0에서 숨긴다. 보스 관문 없는 MARIO snapshot과 Server 승인된 F1 player-only 진입의 본인은 표시를 허용한다. Return to Start 뒤 이전 관문값이 남으므로 각 플레이어 Server snapshot 위치에 `Is_KoukuArenaStartArea`도 적용한다. 발판 검사만으로는 최초 jump.2부터 조기 표시된다. 타인 gauge의 `isValid = Health.Has_Madness()`에서도 같은 표시 조건을 적용한다.
+- 광기 게이지 높이 정본은 `madness.feetOffsetMeters`이며 발 Transform origin에 더한다. Save와 다음 실행 Load_Config의 ProjectDataRoot 일치를 확인한다. float 1.3의 JSON 값 `1.2999999523162842`는 정상이며 화면 픽셀 offset과 구분한다.
+
 
 - 최대 100인 게이지를 hit마다 정수 나눗셈하면 1% 미만 피해가 모두 소실된다. 실제 HP 전후 차와 소수 잔여량을 누적하고 변신·부활·관문 reset에서 잔여량을 지운다. 보호막 흡수량을 HP 피해로 세지 않는다.
 - World object의 시각 effect나 파괴 HP가 있다는 사실은 공격·광기 판정의 구현을 뜻하지 않는다. 실제 cue의 생성·취소·파괴·보스 소유 수명과 Server overlap 소비자를 확인한다. 원본에서 확인한 반경·주기·충전량과 프로젝트 배율을 구분한다.
@@ -1726,7 +1745,7 @@ Tool factory·Catalog 직접 로드·worker·Debug 등록/교체와 이전 cache
 - UV1을 요구하지 않는 program도 셰이더 안에서 `v4.zw`(TexCoord[1])를 샘플할 수 있다. 별빛의 가호 외피 program 88은 panning 발광을 UV1로 읽어, UV1이 0이면 텍스처 한 점이 ×10 발광으로 칠해져 진한 파랑이 된다. 생성 셰이더의 `v4.zw/wz` 사용을 확인하고, PSK에 EXTRAUVS0가 있으면 `Tools/VehiclePipeline/cook_psk_extra_uv1.py`로 삼각형 단위 join한다.
 - `build_npc.py`의 non-self-rigged 경로는 메시를 master armature에 rebind하므로 inverse bind가 master의 ref pose가 된다. 메시와 master의 본 translation이 다르면(모코보드 `b_body_00` 50cm vs `MN_PMSHB_00` 19.41cm) 메시만 그 차이만큼 떠서 좌석 본과 어긋난다. 메시 PSK와 master PSK의 REFSKELT를 비교하고, 다르면 같은 AnimSet으로 `master.selfRigged=true`(master file=메시 PSK) 재쿠킹한다.
 - 생성 SourceCharacter 셰이더의 leading/trailing unowned cb0 행과 varying 배치는 program마다 다르다. 반투명 88은 cb0[0].w 엔진 opacity, cb0[18..20] sky light, cb0[21].x 반투명 모드를 쓰고, v5=fog·v6=tangent view·v7=up(program 18 배치)이다. 새 program 설치 후 0으로 남은 엔진 행과 `MakeSourceCharacterInput` 배치를 사용처 기준으로 대조한다.
-- SourceCharacter program은 번호 구간별 CSO 변형(`*_SourceGroupNNN.hlsl`)으로 컴파일된다. 마지막 그룹 밖 번호를 `install`하면 `needs a registered CSO cohort`로 거부되고, 도구만 고치면 런타임 `CShader::Stage_ProgramVariants`가 그 program을 어떤 변형에도 배정하지 못한다. `Engine/Private/Shader.cpp` 범위, `native_shader_dispatch.py` 그룹 표, `Model.cpp` 상한, 변형 probe 반복 범위를 같은 변경에서 늘린다.
+- SourceCharacter program은 번호 구간별 CSO 변형(`*_SourceGroupNNN.hlsl`)으로 컴파일된다. `Engine/Public/SourceCharacterProgramRegistry.h`의 stable program/range와 `source_character_registration.py`의 분할 정책, Base/Light leaf, wrapper producer·배포를 함께 갱신한다. CModel/CShader는 이 등록을 소비하므로 도구만 고쳐 ID를 받아들이면 실제 변형이 빠진다. 모든 추가 범위를 무조건64-ID로 계산하지 않으며 큰84/1088 구간의 세분화 정책도 재등록 때 보존한다.
 
 - UE3 static parameter set의 `FNormalParameter`는 FName 8 + CompressionSettings 1 + bOverride 4 + GUID 16 = 29바이트다. 공용 shader cache oracle은 32바이트로 읽어 normal 파라미터가 있는 MIC(예: 랩터 `monster_base_msk_high`)에서 `ShaderCache FName index is invalid`로 실패한다. `Tools/VehiclePipeline/build_vehicle_source_material.py`는 도구 안에서만 29바이트로 보정한다. NPC 파이프라인 쿠킹본의 재질 슬롯 이름은 LookInfo 교체 MIC 이름이 아니라 메시 기본 이름이므로 catalog `materialName`은 `rows … @슬롯이름`으로 지정한다.
 
@@ -4067,3 +4086,148 @@ source 실패를 매프레임 재파싱하지 않으며 기존 재생 cache를 �
   종료 위치를 ledger에서 한 번 저장하고, 이후 stage retarget이 덮지 않도록 occurrence로
   소유한다. 다음 선택·완료·취소·새 패턴 시작은 원래 yaw를 복구해야 한다. 사용자 타이밍과
   원본 무기 궤적을 바꾸지 않고 실제 다음 공격 stage까지 고정되는지 검사한다.
+- 클래스 무비의 머리카락이 사라지면 geometry 존재와 material texture 검사만으로 끝내지 않는다.
+  원본 PS의 leading unowned CB prefix가 primitive opacity/environment를 곱하는지 확인한다.
+  FT06 native600은 material pack 앞 cb0[0..1]의 Base 환경 배율과 Base/Light opacity를
+  identity로 연결해야 한다. 실제 shader ID와 closure를 검사해 generator와 설치 shader를 함께 고친다.
+  다른 native program의 비슷한 row에 같은 값을 일괄 주입하지 않는다.
+- 탑승 ID와 비행 phase는 다르다. 드래곤 카메라는 GROUNDED를 제외한 비행 phase에서만 적용하고,
+  공중 이동에 걷기 nav projection 또는 ground-height mirror collision을 적용하지 않는다.
+  실제 고도의 충돌과 착륙 가능한 지면은 Server에서 따로 검사한다.
+- 원작 본 파티클이 긴 잔상처럼 보이면 skeletal afterimage로 단정하지 않는다. 실제 occurrence의
+  emitter lifetime·density·alpha를 확인하고 프로젝트 튜닝은 기존 sourceScale에 둔다.
+  sourceRecipe를 덮어쓰거나 같은 asset의 무관한 emitter에 보정을 전파하지 않는다.
+- 광원 배열 prefix만 setter에 보낼 때 모든 consumer가 count 안에서만 읽는지, count가0으로
+  줄어든 뒤 stale tail을 읽지 않는지, 캐시가 byte length도 비교하는지 함께 확인한다.
+  Effects11 setter bytes 감소를 실제 GPU cbuffer 업로드 감소나 FPS 개선으로 보고하지 않는다.
+- 비행에 기존 평면 body sweep을 그대로 쓰면 deltaXZ=0인 수직 하강이 몸체를 통과할 수 있다.
+  높이 변화가 있는 이동은 Y slab와 XZ 원형 진입·이탈 시간을 함께 검사하고, 몸체 전체를
+  통과해 끝점이 다시 빈 공간인 경우도 검증한다. 평지 접선 미끄러짐 계약은 별도로 보존한다.
+  착륙 시작 때의 nav 성공을 착륙 완료의 성공으로 사용하지 않는다. 동적 지형을 다시 검사하고,
+  낮은 층 착륙이 취소될 때 비행 최대 높이 clamp가 현재 Y를 갑자기 낮추지 않는지도 확인한다.
+
+- 눈 texture와 UV가 정상인데 흰색으로 덮이면 다른 class와 실제 native program·uniform·UV를
+  대조하고, 최종 scene의 여러 광원을 함께 재현한다. 가디언 native5는 별도 고장 난 shader가
+  아니라 정상 class와 같은 경로다. shadowfactor0.6의 최소 광량0.4가 광원마다 누적되는
+  경우 반사 강도만0으로 낮추어도 밝기가 남는다. 가디언 일반/movie 눈에만 저장한
+  shadowfactor1/tdspecular_intensity0.25는 사용자 요청 프로젝트 튜닝이며 원본 복원값과
+  구별한다. donor 재설치도 이 두 저작값을 보존하고 전역 조명·exposure를 바꾸지 않는다.
+
+- 원본 texture의 identity는 leaf 파일명이 아니라 package.object다. 같은 leaf를 전역 사전으로
+  합치면 다른 package의 의상 피부 texture가 잘못 연결될 수 있다. material별 source-qualified
+  ID에서 실제 byte/pixel까지 대조하고 Resources-relative 경로로 연결한다. GBResources 전달도
+  새 모델·texture뿐 아니라 새 catalog가 참조하는 기존 공용 의존성의 closure까지 검사한다.
+
+- native 재질의 함수 본문만 그룹으로 나누고 case를 공통 파일에 남기면 ID 한 개를 추가해도
+  모든 FX가 다시 컴파일된다. SourceCharacter는 Base/Light leaf에 본문과 case를 함께 두고
+  실제 generator의 재등록·수식 변경·no-op가 각각 필요한 파일만 쓰는지 검사한다.
+- SourceCharacter CPU packing은 공개 헤더의 inline 구현으로 복귀시키지 않는다. 단일 CPP와
+  `SourceCharacterMaterialParameters_Generated.inl`을 generator/publisher가 함께 소비한다.
+  헤더 선언과 private 구현을 나눈 뒤 모든 원래 소비자의 링크·실제 상수 결과를 확인한다.
+- shader 함수 본문을 조건부로 제외할 때 Texture/Sampler/cbuffer/default까지 같이 지우면
+  CShader의 variant ABI가 달라진다. 모든 선언과 실제 호출 closure를 보존하고 전처리·CSO의
+  pass/input/변수 계약을 따로 검사한다. 전처리 parser는 FXC의 함수명/괄호·case/colon 사이
+  공백을 허용하며 기대 program 집합이 빈 채 PASS하지 않도록 nonempty/count 검사를 둔다.
+
+### World Movie의 V1 Solo·Group과 원본 shader prefix
+
+- `effect.classselect.*` Movie 편집은 실제 Element Solo 진입점과 두 Play All 창을 같은
+  ClassSelectionPresentation owner로 연결한다. 전체 draft와 선택 target을 분리하고
+  dependency provider는 simulation에 남기되 draw ID는 선택 element로 제한한다.
+  PSC particle age, phase source time, Movie wall time을 구분해 구간을 구하며 외부
+  Play/다른 phase Seek 뒤에는 Tool의 남은 선택 ID를 실제 owner 상태에 맞춘다.
+- Original DXBC의 leading unowned cb0 row를 전부 0 또는 최종 `o0.w` 패턴만으로
+  결정하지 않는다. primitive opacity가 중간 register에서 곱해지는 경우와 masked
+  LocalVF가 row0 RGB/alpha를 함께 소비하는 경우를 구분한다. MIC row 소유 및
+  exact PS/VS를 검증한 program의 generator와 설치 HLSLI를 함께 수정한다.
+- source/texture/emitter 존재, finite CPU particle, shader 함수 출력, 실제 draw 제출과
+  최종 화면은 다른 증거다. 정상 A와 Movie가 같은 MIC를 써도 occurrence clock과
+  camera/frustum까지 비교하며 정상 A를 근거 없이 변경하지 않는다.
+
+### Sequence 카메라 저장 대상과 타임라인 표시 행
+
+- Object/World는 공통 box 그림만 공유해서는 Boss/Sequence와 같은 편집 UX가 되지 않는다.
+  겹침 기준 행 배치를 공유하고 actor/slot을 partition한다. 표시 lane index는 저장 ID가 아니며
+  접기는 객체 visibility나 재생을 바꾸지 않는다. 유한 animation의 실제 clip 구간과 hold tail을 구분한다.
+- ALT V의 action arrangement와 product recovery effectsequence는 서로 다른 저장 owner다.
+  preview camera를 편집할 때 원본 effect/camera ID·clip 시간 매핑을 보존하며 정본 편집은 원본 시간에서 한다.
+  camera-only stable ID 병합·CAS 저장과 실제 product camera cache 갱신까지 확인한다.
+- Movie camera cut은 phase 전체 coverage를 요구한다. 컷 순서를 바꿀 때 start를 다시 배치하고,
+  경계 trim은 두 이웃 cut을 함께 검증한다. 키 하나의 변경은 촘촘한 원본에서 매우 짧게 보일 수 있으므로
+  얼굴 구도 조정은 필요한 구간의 Eye/LookAt offset을 함께 사용한다.
+- Save/Data 저작 정본, Publish/검증된 실행 데이터, 실행 중 소비자의 reload를 구분한다.
+  Client 전용 카메라 수치를 Server에 복사하거나 local publish를 원격 Server 적용으로 표시하지 않는다.
+
+
+### World Movie 위치 입력과 회색 plane 판정
+
+- LocalVF의 TEXCOORD 번호만 보고 clip 위치를 전달하지 않는다. 원본 VS instruction/PS 소비를
+  대조하여 world-cm varying과 source camera prefix를 연결한다. 1518/1523의 네 경로 수정과
+  실제 clip 입력인 1509/1517 보존은 같은 회귀 검증에 둔다.
+- StaticMeshComponent가 near/far PS를 쓴다는 이유로 DecalComponent CDO를 상속시키지 않는다.
+  far=0의 `saturate(5*far/far)`를 1로 약분하는 것도 원본과 다르다. source draw-binding이
+  미확정이면 해당 object를 미복원으로 남기고 다른 정상 shader에 강제값을 전파하지 않는다.
+
+
+### Movie box 시간 이동과 저장 후 Publish 상태
+
+- Effect body 이동은 visibility start/end만 옮기지 않는다. 기존 clock/root/parameter의 경계
+  sample을 보존하고 구간별 시간 변환과 Hermite tangent를 함께 바꾼다. 원래 phase0에 붙은
+  occurrence를 옮길 때 endpoint를 그냥 고정하면 새 시작점의 particle age가 달라진다.
+- Camera 순서 이동은 컷 길이와 별개인 insertion point다. phase 끝으로의 이동을 기존 길이로
+  막거나 insertion point를 정수로 반올림해 빈 구간으로 만들지 않는다. 실제 저장 컷들은
+  기존 정수 duration을 누적해 phase를 덮으며 edge trim은 인접 두 컷을 함께 검증한다.
+- World animation 첫 clip의 지연 시작은 현재 owner가 지원한다. 오래된 first-start=0 주석으로
+  UI를 막지 않는다. MOTION_END Effect/Collider의 start=0 anchor 계약과 구분한다.
+- Save에서 내가 World 파일을 썼는지만으로 Publish 필요 여부를 판단하지 않는다. 외부 World
+  변경을 병합한 camera-only Save도 실제 게시본과 비교한다. Publish 직전 source freshness와
+  완료 뒤 게시본 일치를 확인하며, 재시작한 Object editor는 저장된 연결 문서에서 게시 연계를
+  복구한다. ReplaceFile 백업도 실제 baseline과 대조하여 freshness 확인 직후의 외부 수정을 보존한다.
+
+### WRL ComPtr 주소 차용은 std::addressof 사용
+
+`const ComPtr<T>* borrowed = &owner`는 C++ 객체 주소의 무해한 차용이 아니다. WRL의
+`ComPtr::operator&`가 반환한 `ComPtrRef::operator T*`는 owner를 nullptr로 만들고 기존 COM
+참조를 Release한다. 재질의 SRV 복사를 줄일 때는 `std::addressof(owner)` 또는 소유자를
+보존하는 명시적 참조를 사용한다. API가 새 COM 출력을 쓰는 경우의 `GetAddressOf`/
+`ReleaseAndGetAddressOf`와 구분한다. missing texture처럼 보여도 첫 Bind 전후의 SRV identity와
+반복 Bind를 확인하며, shadow pass만이 아니라 같은 material의 일반 draw도 검증한다.
+실제 Character Select 재현과 검증 근거는09-26 WORLD_MOVIE_EFFECT_EDITOR_RESULT의 G11을 따른다.
+
+### Movie 검사에서 visibility와 카메라 소유권
+
+- WORLD Solo/Mute/Delete 표시 제외는 draw gate로 처리한다. CWorldSequenceObject::Hide 또는
+  authored visibility 변경으로 임시 격리하면 Try_GetObjectPivot/본 부착 소비자가 사라질 수 있다.
+- 외부 샘플링 Effect의 임시 숨김은 Set_Visible(false)와 다르다. 후자는 owner controls/afterimage/
+  overlay 상태를 정리하므로 draw 전용 flag를 queued spawn, active root, preview replacement까지 유지한다.
+- Movie F6에서 Stop을 호출하지 않는다. Camera_Free의 follow requested 전환을 Movie owner가
+  소비하고 End_PresentationOverrideAtCurrentPose로 pose/FOV를 인계한다. 자유 모드에서 매 frame
+  base follow FOV를 복원하거나 Seek/Loop 때 camera override를 다시 잡지 않는다.
+- Movie Delete는 scene별 excludedWorldObjectIds의 stable object ID만 저장한다. Intro/Loop에 실제
+  바인딩된 리소스인지 검증하고 다른 Movie/전역 WModel을 삭제하지 않는다.
+
+### Movie 물방울의 distortion 근거
+
+Guardian Movie watersplash native4645~4647에는 원본 shader map에도 별도 distortion shader가
+없다. UV distortion 파라미터와 SceneColor 굴절 pass를 혼동해 companion을 추가하지 않는다.
+정확한 MIC static set·VF·shader ID를 먼저 대조하고, 미연결 WORLD crack과 particle 물방울을
+같은 대상으로 취급하지 않는다. 수치 draw 성공은 사용자가 본 특정 프레임의 가려짐 판정과 다르다.
+
+### 일반 헤어를 Movie 골격에 연결할 때
+
+- donor와 Movie의 본 수가 다르면 양의 weight가 사용하는 실제 본 이름부터 대조한다. 누락된
+  본을 버리거나 head에 몰아 붙이지 않고 Movie clip prefix를 유지한 호환 파생 골격을 만든다.
+- 좌표계 변환은 geometry와 local rest/inverse bind·normal·tangent·winding에 함께 적용한다.
+  원래 본의 실제 animated combined matrix와 weighted rest skin 오차를 별도로 확인한다.
+- 기본 헤어 변경은 stable defaultVisualSetId로 선택한다. 기존 배열을 재정렬하면 숫자로 저장된
+  사용자 preset이 다른 헤어를 가리키므로 순서를 유지하고 명시적 선택은 그대로 복원한다.
+
+
+## Guide AI: 인간 인원과 공간 접촉을 분리한다
+
+- `m_Players`에는 session 없는 초대용/동행 가이드가 들어간다. 인간 인원·기믹·MVP는 `Is_Human()` 또는 `Count_HumanPlayers()`로 판단하고 actor 수를 인간 수로 사용하지 않는다.
+- Guide를 보스 target에서 제외하기 위해 `isCombatReady=false`로 두면 피해도 차단된다. 실제 companion은 전투 가능 상태로 두고 target/gimmick eligibility만 분리한다.
+- `Is_Judgeable`의 인간 전용 기믹 판정과 `Can_ReceiveSpatialContact`의 물리 피격 판정을 구분한다. Guide의 outside 기믹 판정을 건너뛰어도 `InsidePlayers` 이탈 latch는 지워야 재진입 갈고리/장판이 다시 작동한다.
+- Guide skill 직접 적중뿐 아니라 projectile/combat-object의 `SERVER_PLAYER_TO_WORLD_HIT::bGuideSource`도 전파해야 counter/stagger/part/MVP 제외가 동일하게 적용된다.
+- Guide Save에서 PowerShell 함수 결과의 singleton 배열을 scalar로 풀면 무관한 필드 수정이 충돌로 오판된다. `File.Replace` rollback의 null backup 인자는 PS5에서 빈 문자열로 바뀔 수 있으므로 실제 복구 fixture를 유지한다.
+- Guide 신규 C++는 UTF-8 BOM 없음이며 한글 ImGui 문자열을 가진 TU는 프로젝트의 파일별 `/utf-8` 옵션을 유지한다. 기존 CP949 파일을 일괄 변환하지 않는다.

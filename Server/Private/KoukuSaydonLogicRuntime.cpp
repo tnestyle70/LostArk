@@ -103,6 +103,12 @@ bool LostArk::Server::CKoukuSaydonLogicRuntime::Has_ReachedTick(
 bool LostArk::Server::CKoukuSaydonLogicRuntime::Is_Judgeable(
 	const SERVER_PLAYER& player) noexcept
 {
+	return player.Is_Human() && Can_ReceiveSpatialContact(player);
+}
+
+bool LostArk::Server::CKoukuSaydonLogicRuntime::Can_ReceiveSpatialContact(
+	const SERVER_PLAYER& player) noexcept
+{
 	using namespace LostArk::Shared;
 	return 0u != player.iCurrentHp && player.isCombatReady &&
 		PLAYER_ACTION_STATE::DEAD != player.eAction &&
@@ -822,11 +828,75 @@ namespace
     }
 }
 
+float LostArk::Server::CKoukuSaydonLogicRuntime::Predict_ContactRisk(
+    const SERVER_WORLD_ENTITY& boss, const BOSS_PATTERN_DEFINITION& pattern,
+    const KOUKUSAYDON_LOGIC_LEDGER& ledger, const SERVER_PLAYER& probe,
+    const std::uint32_t serverTick, const std::uint32_t horizonMs)
+{
+    if (!ledger.Is_Active() || !boss.iCurrentHp || ledger.iPatternSequence != boss.iPatternSequence)
+        return 0.f;
+    float risk = 0.f;
+    const auto horizon = Ticks_FromMs((std::min)(horizonMs, 5000u));
+    for (const auto& state : ledger.Windows)
+    {
+        if (state.bClosed || state.iWindowIndex >= pattern.LogicWindows.size()) continue;
+        const auto& window = pattern.LogicWindows[state.iWindowIndex];
+        if (window.eKind != BOSS_PATTERN_LOGIC_KIND::ENTER_AREA &&
+            window.eKind != BOSS_PATTERN_LOGIC_KIND::AREA_OVERLAP) continue;
+        if (!window.strOwnerWorldOccurrenceId.empty() && ledger.RetiredWorldOccurrences.contains(window.strOwnerWorldOccurrenceId)) continue;
+        if (window.eKind == BOSS_PATTERN_LOGIC_KIND::ENTER_AREA && !window.bRearmOnExit &&
+            !window.bRepeatAfterKnockback && !window.iRepeatIntervalMs)
+        {
+            const auto answer = state.Answers.find(probe.iPlayerId);
+            if (answer != state.Answers.end() && answer->second == KOUKUSAYDON_LOGIC_ANSWER::SUCCESS) continue;
+        }
+        const auto& results = window.bInsideIsFail ? window.OnFail : window.OnSuccess;
+        float severity = 0.f;
+        for (const auto& result : results)
+        {
+            if (result.eKind == BOSS_PATTERN_LOGIC_RESULT_KIND::INSTANT_DEATH) severity = 5.f;
+            else if (result.eKind == BOSS_PATTERN_LOGIC_RESULT_KIND::FIXED_DAMAGE ||
+                result.eKind == BOSS_PATTERN_LOGIC_RESULT_KIND::MAX_HP_PERCENT_DAMAGE ||
+                result.eKind == BOSS_PATTERN_LOGIC_RESULT_KIND::FEAR ||
+                result.eKind == BOSS_PATTERN_LOGIC_RESULT_KIND::CAPTURE_PLAYER ||
+                result.eKind == BOSS_PATTERN_LOGIC_RESULT_KIND::GRAB_TO_WORLD_OBJECT)
+                severity = (std::max)(severity, 1.f);
+        }
+        if (!severity) continue;
+        bool contact = false;
+        for (std::uint32_t step = 0u; step <= horizon && !contact; ++step)
+        {
+            const auto tick = Add_Ticks(serverTick, step);
+            if (!Has_ReachedTick(tick, state.iStartTick)) continue;
+            const bool end = Has_ReachedTick(tick, state.iEndTick);
+            if (end && tick != state.iEndTick) break;
+            if (window.iRepeatIntervalMs && end) break;
+            if (window.eKind == BOSS_PATTERN_LOGIC_KIND::AREA_OVERLAP && !window.iRepeatIntervalMs && !end) continue;
+            const auto elapsed = tick - ledger.iPatternStartTick;
+            for (const auto& authored : window.CardRegions)
+            {
+                const auto& region = Window_Region(authored, state);
+                if (Contains_LogicRegion(region, boss, probe, elapsed) ||
+                    Swept_LinearColliderContainsPlayer(region, boss, probe, elapsed,
+                        state.iStartTick - ledger.iPatternStartTick, state.iEndTick - ledger.iPatternStartTick) ||
+                    Swept_CenteredWorldCircleContainsPlayer(region, boss, probe, elapsed,
+                        state.iStartTick - ledger.iPatternStartTick, state.iEndTick - ledger.iPatternStartTick) ||
+                    Swept_WorldBoxContainsPlayer(region, boss, probe, elapsed,
+                        state.iStartTick - ledger.iPatternStartTick, state.iEndTick - ledger.iPatternStartTick))
+                { contact = true; break; }
+            }
+        }
+        if (contact) risk += severity;
+    }
+    return risk;
+}
+
 void LostArk::Server::CKoukuSaydonLogicRuntime::Assign_EncounterCard(
 	SERVER_PLAYER& player, const LostArk::Shared::NET_ENTITY_ID encounterOwnerId,
 	const std::uint32_t serverTick, const std::uint8_t unavailableSymbols)
 {
 	using namespace LostArk::Shared;
+	if (player.Is_Guide()) return;
 	if (0u == player.iCurrentHp || PLAYER_ACTION_STATE::DEAD == player.eAction ||
 		INVALID_NET_ENTITY_ID == encounterOwnerId)
 		return;
@@ -884,7 +954,7 @@ void LostArk::Server::CKoukuSaydonLogicRuntime::Capture_CardMazeEntryRoster(
 	if (ledger.bCardMazeEntryRosterCaptured) return;
 	ledger.bCardMazeEntryRosterCaptured = true;
 	for (const auto& [id, player] : players)
-		if ((Is_Judgeable(player) || !player.iCurrentHp) && player.eCardMazeRole == LostArk::Shared::CARD_MAZE_ROLE::NONE)
+		if (player.Is_Human() && (Is_Judgeable(player) || !player.iCurrentHp) && player.eCardMazeRole == LostArk::Shared::CARD_MAZE_ROLE::NONE)
 			ledger.CardMazeEntryPlayers.push_back(id);
 	std::sort(ledger.CardMazeEntryPlayers.begin(), ledger.CardMazeEntryPlayers.end(), [&](auto left, auto right) {
 		const float lx = players.at(left).fPositionX, rx = players.at(right).fPositionX;
@@ -1299,7 +1369,7 @@ void LostArk::Server::CKoukuSaydonLogicRuntime::Transform_ToClown(
 	const std::uint32_t durationMs)
 {
 	using namespace LostArk::Shared;
-	if (0u == player.iCurrentHp || PLAYER_ACTION_STATE::DEAD == player.eAction)
+	if (player.Is_Guide() || 0u == player.iCurrentHp || PLAYER_ACTION_STATE::DEAD == player.eAction)
 		return;
 	const std::uint32_t holdMs = 0u != durationMs ? durationMs :
 		(nullptr != pMadnessPolicy && 0u != pMadnessPolicy->iClownHoldMs ?
@@ -1398,7 +1468,7 @@ void LostArk::Server::CKoukuSaydonLogicRuntime::Apply_Result(
 	}
 	case BOSS_PATTERN_LOGIC_RESULT_KIND::MADNESS_GAUGE_ADD_PERCENT:
 	{
-		if (0u == player.iMaximumMadness)
+		if (player.Is_Guide() || 0u == player.iMaximumMadness)
 			break;
 		const std::uint32_t gain = Percent_Of(player.iMaximumMadness, result.iPercent);
 		const std::uint64_t total =
@@ -1410,7 +1480,7 @@ void LostArk::Server::CKoukuSaydonLogicRuntime::Apply_Result(
 		break;
 	}
 	case BOSS_PATTERN_LOGIC_RESULT_KIND::FEAR:
-        if (Is_Judgeable(player) && !player.bPatternBound &&
+        if (Can_ReceiveSpatialContact(player) && !player.bPatternBound &&
             PLAYER_ACTION_STATE::GRABBED != player.eAction &&
 			PLAYER_ACTION_STATE::TRIGGER_MOVE != player.eAction &&
 			PLAYER_ACTION_STATE::WALL_CLIMB != player.eAction &&
@@ -1526,7 +1596,8 @@ void LostArk::Server::CKoukuSaydonLogicRuntime::Apply_Results(
 	std::vector<LostArk::Shared::DAMAGE_EVENT>& outDamageEvents,
 	KOUKUSAYDON_LOGIC_OUTPUT& outOutput,
 	const std::set<LostArk::Shared::PLAYER_ID>& invulnerablePlayers,
-	const std::array<float, 2u>* const pContactCenter)
+	const std::array<float, 2u>* const pContactCenter,
+	const bool spatialContact)
 {
 	const auto isDamage = [](const BOSS_PATTERN_LOGIC_RESULT& result) {
 		return result.eKind == BOSS_PATTERN_LOGIC_RESULT_KIND::INSTANT_DEATH ||
@@ -1550,9 +1621,14 @@ void LostArk::Server::CKoukuSaydonLogicRuntime::Apply_Results(
 	for (const auto* resultPointer : ordered)
 	{
 		const auto& result = *resultPointer;
+		// A companion may touch a hazard but cannot answer or complete a raid mechanic.
+		if (pPlayer && pPlayer->Is_Guide() && (!spatialContact ||
+			(!isDamage(result) && result.eKind != BOSS_PATTERN_LOGIC_RESULT_KIND::FEAR &&
+			 result.eKind != BOSS_PATTERN_LOGIC_RESULT_KIND::CAPTURE_PLAYER &&
+			 result.eKind != BOSS_PATTERN_LOGIC_RESULT_KIND::GRAB_TO_WORLD_OBJECT))) continue;
         if (BOSS_PATTERN_LOGIC_RESULT_KIND::CAPTURE_PLAYER == result.eKind)
         {
-            if (pPlayer && Is_Judgeable(*pPlayer) && pPlayer->eAction != LostArk::Shared::PLAYER_ACTION_STATE::FEAR && state.iHoldEndTick &&
+            if (pPlayer && Can_ReceiveSpatialContact(*pPlayer) && pPlayer->eAction != LostArk::Shared::PLAYER_ACTION_STATE::FEAR && state.iHoldEndTick &&
                 Has_ReachedTick(serverTick, state.iHoldStartTick) && !Has_ReachedTick(serverTick, state.iHoldEndTick) &&
                 std::none_of(outOutput.CaptureRequests.begin(), outOutput.CaptureRequests.end(), [&](const auto& request) {
                     return request.iPlayerNetEntityId == pPlayer->iNetEntityId;
@@ -2138,7 +2214,7 @@ void LostArk::Server::CKoukuSaydonLogicRuntime::Update(
 			{
 				const bool ownedCapture = captureContact && Is_CurrentBossHandCapture(
 					player, boss.iNetEntityId, boss.iPatternSequence, serverTick);
-				if ((!Is_Judgeable(player) && !ownedCapture) || (enter && !window.bRearmOnExit && !window.bRepeatAfterKnockback && !window.iRepeatIntervalMs &&
+				if ((!Can_ReceiveSpatialContact(player) && !ownedCapture) || (enter && !window.bRearmOnExit && !window.bRepeatAfterKnockback && !window.iRepeatIntervalMs &&
 					KOUKUSAYDON_LOGIC_ANSWER::SUCCESS == state.Answers[playerId]))
 					continue;
 				const auto caught = std::find_if(window.CardRegions.begin(), window.CardRegions.end(),
@@ -2154,6 +2230,8 @@ void LostArk::Server::CKoukuSaydonLogicRuntime::Update(
                                     state.iStartTick - ledger.iPatternStartTick, state.iEndTick - ledger.iPatternStartTick)));
 					});
 				const bool inside = window.CardRegions.end() != caught;
+				if (player.Is_Guide() && !inside)
+                { state.InsidePlayers.erase(playerId); continue; }
 				const bool captureCandidate = inside && enter && !window.OnSuccess.empty() &&
 					(window.OnSuccess.front().eKind == BOSS_PATTERN_LOGIC_RESULT_KIND::CAPTURE_PLAYER ||
 					 window.OnSuccess.front().eKind == BOSS_PATTERN_LOGIC_RESULT_KIND::GRAB_TO_WORLD_OBJECT);
@@ -2213,7 +2291,7 @@ void LostArk::Server::CKoukuSaydonLogicRuntime::Update(
 				if (hasContactCenter) contactCenter = { contactTransform.centerX, contactTransform.centerZ };
 				Apply_Results(answered, state, &player, players,
 					boss, catalog, pMadnessPolicy, serverTick, outDamageEvents, outOutput, invulnerablePlayers,
-					hasContactCenter ? &contactCenter : nullptr);
+					hasContactCenter ? &contactCenter : nullptr, true);
 				if (inside && window.iRepeatIntervalMs)
 					state.NextContactHitTicks[playerId] = Add_Ticks(serverTick, Ticks_FromMs(window.iRepeatIntervalMs));
 				if (inside && enter && window.bRepeatAfterKnockback && !answered.empty())
@@ -2340,6 +2418,15 @@ void LostArk::Server::CKoukuSaydonLogicRuntime::Update_PlayerModes(
 	for (auto& [playerId, player] : players)
 	{
 		(void)playerId;
+		if (player.Is_Guide())
+		{
+			player.Clear_KoukuInteractionState();
+			player.Clear_KoukuAssignedCard();
+			player.eMadnessForm = PLAYER_MADNESS_FORM::NORMAL;
+			player.iCurrentMadness = player.iMadnessDamageGainPercent = 0u;
+			player.dMadnessRemainder = 0.;
+			continue;
+		}
 		const KOUKU_HUD_MODE patternMode = nullptr != pActiveLedger &&
 			0u != player.iKoukuSuppressedPatternSequence &&
 			player.iKoukuSuppressedPatternSequence == pActiveLedger->iPatternSequence ?
@@ -2686,7 +2773,7 @@ bool LostArk::Server::CKoukuCardMazeRuntime::Plan(
 	m_PendingParticipants.clear();
 	m_iPendingTelescopeOwner = INVALID_PLAYER_ID;
 	const auto claimant = players.find(claimantId);
-	if (players.end() == claimant || 0u == claimant->second.iCurrentHp)
+	if (players.end() == claimant || claimant->second.Is_Guide() || 0u == claimant->second.iCurrentHp)
 	{
 		outStatus = "Card maze claimant is not a living player";
 		return false;
@@ -2701,7 +2788,7 @@ bool LostArk::Server::CKoukuCardMazeRuntime::Plan(
 	std::vector<PLAYER_ID> hunters;
 	for (const auto& [playerId, player] : players)
 	{
-		if (playerId != claimantId && 0u != player.iCurrentHp)
+		if (player.Is_Human() && playerId != claimantId && 0u != player.iCurrentHp)
 			hunters.push_back(playerId);
 	}
 	if (hunters.size() > 3u)
@@ -2709,7 +2796,7 @@ bool LostArk::Server::CKoukuCardMazeRuntime::Plan(
 	bool soloTest = false;
 #ifdef _DEBUG
 	// Only a genuinely one-player room opts into the combined test role.
-	soloTest = players.size() == 1u;
+	soloTest = std::count_if(players.begin(), players.end(), [](const auto& entry) { return entry.second.Is_Human(); }) == 1;
 #endif
 	if (hunters.empty() && !soloTest)
 	{

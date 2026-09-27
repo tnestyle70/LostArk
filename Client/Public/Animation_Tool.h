@@ -129,6 +129,7 @@ private:
 		f32_t fPlayRate = 1.f;
 		bool_t bRepeatUntilStageEnd = false;
 		bool_t bSuppressAnimation = false;
+		f32_t fModelSourceDurationSeconds = 0.f;
 	};
 
 	/* Window kinds own a start..end span; point kinds fire on one instant and
@@ -692,6 +693,9 @@ private:
 		const std::string& status);
 	void Reset_ValtanPatternMasterPreviewState(const std::string& status);
 	void Update_ValtanPatternMasterHitAreaPreview();
+	void Rebuild_ValtanPatternPreviewSounds();
+	void Sample_ValtanPatternPreviewSounds(bool_t bResetTransport = false);
+	void Reset_ValtanPatternPreviewSounds();
 	static const char_t* ValtanPatternMasterPathName(
 		VALTAN_PATTERN_PREVIEW_PATH ePath);
 	bool_t Start_ValtanSequencePreview(
@@ -967,6 +971,20 @@ private:
 	VALTAN_PATTERN_PREVIEW_PATH m_eValtanPatternMasterPath =
 		VALTAN_PATTERN_PREVIEW_PATH::NORMAL;
 	std::string m_strValtanPatternMasterStatus;
+	struct VALTAN_PREVIEW_SOUND_OCCURRENCE final
+	{
+		std::string strOccurrenceId;
+		std::wstring Path;
+		f64_t fTimelineStartMs = 0.0;
+		uint32_t iDurationMs = 0u;
+		uint64_t iHandle = 0u;
+		bool_t bAttempted = false;
+	};
+	std::vector<VALTAN_PREVIEW_SOUND_OCCURRENCE> m_ValtanPreviewSounds;
+	uint64_t m_iValtanPreviewSoundGeneration = 0u;
+	f64_t m_fValtanPreviewSoundClockMs = -1.0;
+	bool_t m_bValtanPreviewSoundPaused = false;
+	std::string m_strValtanPreviewSoundStatus;
 	VALTAN_PATTERN_SOUND_CUE_DOCUMENT m_ValtanPatternSoundCues;
 	bool_t m_bValtanPatternSoundCuesReady = false;
 	bool_t m_bValtanPatternSoundCuesDirty = false;

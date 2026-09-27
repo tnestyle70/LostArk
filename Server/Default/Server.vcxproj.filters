@@ -30,6 +30,7 @@
     <ClInclude Include="..\Public\RoomCommand.h">
       <Filter>Public</Filter>
     </ClInclude>
+    <ClInclude Include="..\Public\GuideCatalog.h"><Filter>Public</Filter></ClInclude>
     <ClInclude Include="..\Public\GameRoom.h">
       <Filter>Public</Filter>
     </ClInclude>
@@ -82,6 +83,10 @@
     <ClCompile Include="..\Private\ClientSession.cpp">
       <Filter>Private</Filter>
     </ClCompile>
+    <ClCompile Include="..\Private\GuideCatalog.cpp"><Filter>Private</Filter></ClCompile>
+    <ClCompile Include="..\Private\GameRoom_Guide.cpp"><Filter>Private</Filter></ClCompile>
+    <ClCompile Include="..\Private\GameRoom_GuideThreat.cpp"><Filter>Private</Filter></ClCompile>
+    <ClCompile Include="..\Private\ServerGameplayContractTests_Guide.cpp"><Filter>Private</Filter></ClCompile>
     <ClCompile Include="..\Private\GameRoom.cpp">
       <Filter>Private</Filter>
     </ClCompile>

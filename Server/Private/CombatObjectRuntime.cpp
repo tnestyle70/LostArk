@@ -847,7 +847,7 @@ void LostArk::Server::CCombatObjectRuntime::Update(
 			if (SERVER_PLAYER* target = FindPlayerByEntityId(
 				players, object.iLockedTargetNetEntityId))
 			{
-				if (IsDamageable(*target))
+				if (target->Is_Human() && IsDamageable(*target))
 				{
 					object.LiveState.CurrentPose.fPositionX =
 						target->fPositionX + object.fLockedTargetOffsetX;
@@ -866,7 +866,7 @@ void LostArk::Server::CCombatObjectRuntime::Update(
 		if (object.bHoming)
 		{
 			auto* target = FindPlayerByEntityId(players, object.iLockedTargetNetEntityId);
-			if (!target || !IsDamageable(*target)) { Despawn_At(objectIndex); continue; }
+			if (!target || target->Is_Guide() || !IsDamageable(*target)) { Despawn_At(objectIndex); continue; }
 			const float dx = target->fPositionX - object.LiveState.CurrentPose.fPositionX;
 			const float dz = target->fPositionZ - object.LiveState.CurrentPose.fPositionZ;
 			homingDistance = std::hypot(dx, dz);
@@ -1022,6 +1022,7 @@ void LostArk::Server::CCombatObjectRuntime::Update(
 							continue;
 						SERVER_PLAYER_TO_WORLD_HIT incoming{};
 						incoming.iSourcePlayerId = object.iSourcePlayerId;
+                        incoming.bGuideSource = sourcePlayer && sourcePlayer->Is_Guide();
 						incoming.iSkillId = object.iSourceSkillId;
 						incoming.iRawDamage =
 							hit.RepeatRawDamage[mark->iAppliedCount];
@@ -1136,6 +1137,7 @@ void LostArk::Server::CCombatObjectRuntime::Update(
 						(void)distanceSquared;
 						SERVER_PLAYER_TO_WORLD_HIT incoming{};
 						incoming.iSourcePlayerId = object.iSourcePlayerId;
+                        incoming.bGuideSource = sourcePlayer && sourcePlayer->Is_Guide();
 						incoming.iSkillId = object.iSourceSkillId;
 						incoming.iRawDamage = rawDamage;
 						incoming.iStaggerDamage = hit.iStaggerDamage;

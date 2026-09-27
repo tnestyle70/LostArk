@@ -42,6 +42,7 @@ class CSequencerTool;
 class CCharacterActionWorkbench;
 class CWorldObjectTool;
 class CWorldLevelTool;
+class CGuideAITool;
 struct WORLD_LEVEL_TOOL_REQUEST;
 struct KOUKU_MAP_EFFECT_PLACEMENT_REQUEST;
 struct KOUKU_SAYDON_COMPOSITION_DOCUMENT;
@@ -93,6 +94,7 @@ private:
 		PROFILER,
 		WORLD_OBJECT,
 		WORLD_LEVEL,
+		GUIDE_AI,
 		EFFECT_COMPOSITION,
 		COUNT
 	};
@@ -496,6 +498,8 @@ private:
 	void CloseAllDebugTools();
 	void RenderDebugLevelNavigation();
 	void RenderArenaCameraAndPlayerControls();
+	void RenderCameraSpeedControls();
+	void RenderDragonControls();
 	void RenderCharacterSelectFloorSwapControls();
 	/* F1 "Kouku UI Preview": the only writer of the KoukuSaydon gimmick read model
 	until the Server snapshot carries it. Madness slider, HUD mode combo, dance
@@ -509,6 +513,7 @@ private:
 	/* F1 "Valtan Arena": the "Normal Monster 1/2" buttons that ask the Server to
 	   re-summon the Stage_1 / Stage_2 corridor waves. Shown only inside the arena. */
 	void RenderValtanArenaControls();
+	void RenderValtanAxeEditor();
 	void OpenDebugResourceFile(size_t iFile);
 	void RefreshCompletePlayPatternOptions();
 	void RenderCompletePlayControls();
@@ -935,6 +940,7 @@ private:
 #ifdef _DEBUG
 	unique_ptr<CWorldObjectTool> m_pWorldObjectTool;
 	unique_ptr<CWorldLevelTool> m_pWorldLevelTool;
+	unique_ptr<CGuideAITool> m_pGuideAITool;
 	unique_ptr<WORLD_LEVEL_TOOL_REQUEST> m_pWorldLevelPendingMapRequest;
 #endif
 	std::chrono::steady_clock::time_point m_WorldLevelMapDeadline{};

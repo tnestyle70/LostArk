@@ -49,6 +49,7 @@ struct Client::EFFECT_WORLD_PREVIEW_TARGET final
     std::shared_ptr<const EFFECT_DOCUMENT_DESC> document;
     std::shared_ptr<const CEffectDocumentRenderer::PREPARED_DOCUMENT> prepared;
     EFFECT_SCENE_BUDGET_COST budget;
+    std::optional<std::vector<std::string>> drawElementIds;
 };
 
 struct Client::EFFECT_PRODUCT_CAMERA_PREPARATION final
@@ -264,6 +265,7 @@ namespace
 		float4x4_t WorldRoot{};
 		bool_t bLevelOwned = false;
 		bool_t bExternallySampled = false;
+		bool_t bInspectionVisible = true;
 		bool_t bDeferredAmbientPresentation = false;
 		bool_t bStaticAmbientBoundsValid = false;
 		bool_t bAmbientRecentlyVisible = false;
@@ -422,6 +424,7 @@ namespace
 		Client::EFFECT_SPAWN_DESC Desc;
 		uint32_t iLevelIndex = UINT32_MAX;
 		Client::EFFECT_SCENE_BUDGET_COST AdmissionCost;
+		bool_t bInspectionVisible = true;
 	};
 
 	std::vector<ACTIVE_EFFECT> g_ActiveEffects;
@@ -5264,13 +5267,26 @@ bool_t Client::CEffectPresentationService::Spawn_LevelPlacement(
 bool_t Client::CEffectPresentationService::Prepare_WorldPreviewTarget(
     ComPtr<ID3D11Device> device, ComPtr<ID3D11DeviceContext> context,
     const EFFECT_DOCUMENT_DESC& document,
-    std::shared_ptr<const EFFECT_WORLD_PREVIEW_TARGET>& target, std::string& status)
+    std::shared_ptr<const EFFECT_WORLD_PREVIEW_TARGET>& target, std::string& status,
+    const std::vector<std::string>* drawElementIds)
 {
     // A Movie's original world placement has no Character bone owner. Preserve
     // that boundary instead of silently dropping a newly edited bone attachment.
     if (document.strEffectAssetId.empty() || !Collect_SourceAnchorRequests(document).empty())
     { status = "Movie Effect preview requires WORLD elements without Character bone bindings."; return false; }
     auto staged = std::make_shared<EFFECT_WORLD_PREVIEW_TARGET>();
+    if (drawElementIds)
+    {
+        staged->drawElementIds = *drawElementIds;
+        auto& ids = *staged->drawElementIds;
+        std::sort(ids.begin(), ids.end());
+        if (std::adjacent_find(ids.begin(), ids.end()) != ids.end())
+        { status = "Element submission visibility contains duplicate IDs."; return false; }
+        for (const auto& id : ids)
+            if (id.empty() || std::none_of(document.Elements.begin(), document.Elements.end(),
+                [&id](const auto& element) { return element.strElementId == id; }))
+            { status = "Element submission visibility names a missing row."; return false; }
+    }
     // Prepared resource signatures include the immutable Document's address.
     // Prepare and attach the same owned object for the entire preview lifetime.
     staged->document = std::make_shared<const EFFECT_DOCUMENT_DESC>(document);
@@ -5369,7 +5385,8 @@ bool_t Client::CEffectPresentationService::Replace_WorldRootPreviews(
         const bool attached = projection ?
             value.object->Stage_PrevalidatedVisualProgramDocument(projection, prepared, status) :
             value.object->Stage_PreparedDocument(*document, prepared, status);
-        if (!attached)
+        if (!attached || (target && target->drawElementIds &&
+            !value.object->Set_SubmissionElementSet(*target->drawElementIds, status)))
         {
             CGameInstance::Get().Remove_GameObject_from_Layer(value.state.iLevelIndex, EFFECT_LAYER, value.object);
             status = "Movie Effect prepared attachment failed for " + value.state.strEffectAssetId + ": " + status;
@@ -5424,6 +5441,7 @@ bool_t Client::CEffectPresentationService::Replace_WorldRootPreviews(
             auto& active = g_ActiveEffects[value.active];
             const auto previous = active.pObject;
             active = std::move(value.state);
+            active.pObject->Set_InspectionVisible(active.bInspectionVisible);
             active.pObject->Set_Visible(value.visible);
             if (previous) CGameInstance::Get().Remove_GameObject_from_Layer(active.iLevelIndex, EFFECT_LAYER, previous);
         }
@@ -5591,6 +5609,31 @@ bool_t Client::CEffectPresentationService::Is_WorldPresentationVisible(
         policy, *camera, {}, {}, 0u, center, radius, state, decision) || decision.shouldRender;
     if (!visible && profiler) profiler->Add_Counter(EProfilerCounter::EffectBoundsCulled);
     return visible;
+}
+
+bool_t Client::CEffectPresentationService::Set_WorldRootInspectionVisible(
+	const EFFECT_WORLD_ROOT_HANDLE Handle, const bool_t visible)
+{
+	if (!Handle.Is_Valid()) return false;
+	const uint32_t currentLevel = CGameInstance::Get().Get_CurrentLevelID();
+	for (auto& effect : g_ActiveEffects)
+	{
+		if (effect.iWorldRootHandle != Handle.iValue) continue;
+		if (!effect.pObject || !effect.bLevelOwned || !effect.bExternallySampled ||
+			effect.iLevelIndex != currentLevel) return false;
+		effect.bInspectionVisible = visible;
+		effect.pObject->Set_InspectionVisible(visible);
+		return true;
+	}
+	for (auto& pending : g_PendingEffectSpawns)
+	{
+		if (pending.Desc.iWorldRootHandle != Handle.iValue) continue;
+		if (!pending.Desc.bLevelOwned || !pending.Desc.bExternallySampled ||
+			pending.iLevelIndex != currentLevel) return false;
+		pending.bInspectionVisible = visible;
+		return true;
+	}
+	return false;
 }
 
 HRESULT Client::CEffectPresentationService::Submit_LevelPlacementSample(
@@ -5768,6 +5811,8 @@ void Client::CEffectPresentationService::Commit_PendingSpawns()
 				"Deferred Effect spawn failed after Object Manager update: " +
 				Status + "\n").c_str());
 		}
+		else if (!Request.bInspectionVisible)
+			Set_WorldRootInspectionVisible({Request.Desc.iWorldRootHandle}, false);
 	}
 }
 
@@ -5828,6 +5873,8 @@ void Client::CEffectPresentationService::Commit_PendingWorldRootSpawns(
 				"Scoped world-root Effect spawn failed after admission: " +
 				Status + "\n").c_str());
 		}
+		else if (!Request.bInspectionVisible)
+			Set_WorldRootInspectionVisible({Request.Desc.iWorldRootHandle}, false);
 	}
 }
 
@@ -6075,6 +6122,12 @@ bool_t Client::CEffectPresentationService::Spawn_Immediate(
             return character->Collect_PresentationAfterimageModels(part, views);
         });
     }
+    if (Desc.pAuthoringPreview && Desc.pAuthoringPreview->drawElementIds &&
+        !pEffect->Set_SubmissionElementSet(*Desc.pAuthoringPreview->drawElementIds, strOutStatus))
+    {
+        CGameInstance::Get().Remove_GameObject_from_Layer(iLevelIndex, EFFECT_LAYER, pGameObject);
+        g_strStatus = strOutStatus; return false;
+    }
     if (Desc.bExternalModelCueAnchors) pEffect->Use_ExternalModelCueAnchors();
     if (!Desc.strElementId.empty() && !pEffect->Select_OccurrenceElement(Desc.strElementId, strOutStatus))
     {
@@ -6167,6 +6220,17 @@ bool_t Client::CEffectPresentationService::Spawn_Immediate(
     return true;
 }
 
+
+bool_t Client::CEffectPresentationService::Reload_ProductCamera(const std::string& effectAssetId, std::string& status)
+{
+    if (!effectAssetId.ends_with(".restore")) { status = "Camera Publish requires a recovery Effect identity."; return false; }
+    std::shared_ptr<const PRODUCT_CAMERA_PREPARED> candidate;
+    if (!Stage_ProductCamera(effectAssetId, candidate, status)) return false;
+    if (!candidate) { status = "The saved recovery Effect has no Product camera."; return false; }
+    g_ProductCameraCache[effectAssetId].value = std::move(candidate);
+    status = "Saved cameras applied to Client playback. Server action timing is unchanged.";
+    return true;
+}
 
 void Client::CEffectPresentationService::Set_FrameCamera(const std::shared_ptr<CCamera_Free>& camera)
 {

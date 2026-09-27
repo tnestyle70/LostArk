@@ -3,7 +3,7 @@
 The character-creation screen's skin and make-up controls are not a tint this project invents:
 they are named parameters of the retail head material, and the native program that consumes them
 is already compiled into ``Shader_SourceCharacterPrograms.hlsli`` (program 4, reached through the
-``source.character.classic-head.v1`` family in ``SourceCharacterMaterialParameters.h``).  What was
+``source.character.classic-head.v1`` family in ``SourceCharacterMaterialParameters_Generated.inl``).  What was
 missing is the per-class row that puts a class' face on that program with the retail values.
 
 Measured, all four playable faces sit on the same master chain, so one family covers them:
@@ -310,7 +310,7 @@ def rule_document_textures(data_root: Path, class_id: str):
 
 
 def required_parameters(header: Path, family: str):
-    """The parameter names Configure() reads for one family, from the header itself."""
+    """The parameter names Configure() reads for one family, from its generated source."""
     text = header.read_text(encoding="utf-8", errors="replace")
     start = text.index('family == "%s"' % family)
     following = re.search(r'\n    (?:else )?if \((?:staged\.program == 0u && )?family == "', text[start + 10:])
@@ -328,7 +328,8 @@ def main() -> int:
     parser.add_argument("--family", action="append",
                         help="one family; repeat, or omit for every family in the table")
     parser.add_argument("--header", type=Path,
-                        default=repo / "Client" / "Public" / "SourceCharacterMaterialParameters.h")
+                        default=repo / "Client" / "Private" / "SourceCharacterMaterialParameters_Generated.inl",
+                        help="generated C++ packing source (the public header contains declarations only)")
     parser.add_argument("--resources", type=Path,
                         default=repo / "Client" / "Bin" / "Resources")
     parser.add_argument("--data", type=Path, default=repo / "Data")

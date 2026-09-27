@@ -590,6 +590,8 @@ for ordinal, selection in enumerate(selections):
             'b0aebbf53cbd8249b28cd0b8fc7da17c': 'd17daa101dec2b4493fce2f510407f32',
             # Valtan cracked stone: mask alpha and final RGB both use CB0[0].
             '2232b9d7f30bd146afe89b9fc661279e': 'd17daa101dec2b4493fce2f510407f32',
+            # Class-select floating embers share the masked MeshEmitter RGBA prefix.
+            '2e7eee7f19865e458ea3ba440222259d': 'd17daa101dec2b4493fce2f510407f32',
         }.get(sid) if arguments.profile_domain == 'kouku' else None
         # Artist flowergarden's masked LocalVF uses the same row-0 RGBA ABI.
         if arguments.profile_domain == 'artist' and sid == '390b1fe8a7081c45bf96c8afc4bf11e9':

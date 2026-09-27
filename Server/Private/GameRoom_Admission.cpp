@@ -339,6 +339,7 @@ bool LostArk::Server::CGameRoom::Build_PlayerEntryFrames(
 		message.iPlayerId = player.iPlayerId;
 		message.iNetEntityId = player.iNetEntityId;
 		message.eCharacterClass = player.eCharacterClass;
+		message.eControlKind = player.eControlKind;
 		message.strNickName = player.strNickName;
 		message.fPositionX = player.fPositionX;
 		message.fPositionY = player.fPositionY;

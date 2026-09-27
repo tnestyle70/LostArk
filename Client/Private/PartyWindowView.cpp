@@ -106,6 +106,15 @@ void Client::CPartyWindowView::Sync_From_Roster(
 			health.hasSnapshot,
 			0 == index });
 	}
+    if (Roster.GuideCompanion)
+    {
+        const auto& guide = *Roster.GuideCompanion;
+        const char_t* folder = Get_ClassSelectFolderName(guide.eCharacterClass);
+        const auto health = Health.Find(guide.iNetEntityId);
+        m_Members.push_back(PARTY_MEMBER{ guide.strNickname + " (Guide)",
+            folder ? string("UI/ClassSelect/") + folder + "/IdentitySymbol.png" : string{},
+            health.Get_Ratio(), health.hasSnapshot, false, true });
+    }
 }
 
 void Client::CPartyWindowView::Render()
@@ -159,7 +168,7 @@ void Client::CPartyWindowView::Render()
 		}
 
 		m_pView->Set_SlotVisible(strHpBg, true);
-		m_pView->Set_SlotVisible(strNumber, true);
+		m_pView->Set_SlotVisible(strNumber, !Member.isGuide);
 
 		/* Before the accepted world snapshot (or outside the replicated world) there is no HP
 		to show, so the fill stays hidden over its own background art. */
@@ -283,7 +292,7 @@ void Client::CPartyWindowView::RenderText()
 		/* Nickname starts just past the join-order digit art, exactly as before -- the digit's
 		own slot rect supplies the width instead of a hardcoded per-digit table. */
 		f32_t fNumberX = 0.f, fNumberY = 0.f, fNumberW = 0.f, fNumberH = 0.f;
-		const f32_t fNameX = m_pView->Get_SlotRect(
+		const f32_t fNameX = !m_Members[iRow].isGuide && m_pView->Get_SlotRect(
 			Row_SlotId("PartyWindow_Number_", iRow),
 			fNumberX, fNumberY, fNumberW, fNumberH) ?
 			fNumberX + fNumberW + 4.f : fBarX + 6.f;

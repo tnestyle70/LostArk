@@ -1,3 +1,4 @@
+#ifndef SOURCE_CHARACTER_LIGHT_DISPATCH_CASES
 SOURCE_CHARACTER_NATIVE_OUTPUT SourceCharacterLight192(SOURCE_CHARACTER_NATIVE_INPUT input)
 {
     SOURCE_CHARACTER_NATIVE_OUTPUT output = (SOURCE_CHARACTER_NATIVE_OUTPUT)0;
@@ -5343,3 +5344,14 @@ SOURCE_CHARACTER_NATIVE_OUTPUT SourceCharacterLight200(SOURCE_CHARACTER_NATIVE_I
 }
 
 // source.character.static-map-color-mask.v1 / source program cd993bbcb1d322469e313d7f20ff8fe4
+#else // SOURCE_CHARACTER_LIGHT_DISPATCH_CASES
+    case 192u: return SourceCharacterLight192(input);
+    case 193u: return SourceCharacterLight193(input);
+    case 194u: return SourceCharacterLight194(input);
+    case 195u: return SourceCharacterLight195(input);
+    case 196u: return SourceCharacterLight196(input);
+    case 197u: return SourceCharacterLight197(input);
+    case 198u: return SourceCharacterLight198(input);
+    case 199u: return SourceCharacterLight199(input);
+    case 200u: return SourceCharacterLight200(input);
+#endif // SOURCE_CHARACTER_LIGHT_DISPATCH_CASES

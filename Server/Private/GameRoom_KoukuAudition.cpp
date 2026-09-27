@@ -835,7 +835,7 @@ void LostArk::Server::CGameRoom::Update_KoukuWorldBodies(const std::uint32_t ser
 				const float forwardX = std::sin(yaw), forwardZ = std::cos(yaw);
 				for (auto& [id, player] : m_Players)
 				{
-					if (!player.iCurrentHp || !player.isCombatReady || player.iMarioStage ||
+					if (!player.Is_Human() || !player.iCurrentHp || !player.isCombatReady || player.iMarioStage ||
 						player.eAction == PLAYER_ACTION_STATE::FALLING || player.eAction == PLAYER_ACTION_STATE::DEAD ||
 						player.eAction == PLAYER_ACTION_STATE::GRABBED || player.bPatternBound ||
 						player.eMadnessForm != PLAYER_MADNESS_FORM::NORMAL ||
@@ -1303,7 +1303,7 @@ void LostArk::Server::CGameRoom::Update_KoukuMarioEntry(
 			const auto anchor = *member.MarioEntryAnchor;
 			member.MarioEntryAnchor.reset();
 			for (auto& [id, player] : m_Players)
-				if (player.iCurrentHp && player.isCombatReady)
+				if (player.Is_Human() && player.iCurrentHp && player.isCombatReady)
 					for (const auto& result : failure->OnTimeout)
 						CKoukuSaydonLogicRuntime::Apply_Result(player, result, anchor, *catalog, nullptr, serverTick, m_TickDamageEvents);
 			m_strStatus = "Mario entry timed out; the authored raid failure was applied";
@@ -1349,7 +1349,7 @@ void LostArk::Server::CGameRoom::Commit_KoukuMarioEntries()
 		// A non-chain member that is already between patterns here had its entry pattern
 		// complete this tick; nothing else closes that portal after its last-tick entrant.
 		if (!member.bCompletionChainStarted && (member.bCompleted || member.ePhase == KOUKUSAYDON_PATTERN_AUDITION_PHASE::PENDING)) member.MarioEntryAnchor.reset();
-		member.bMarioSoloReturnRequired = std::count_if(m_Players.begin(), m_Players.end(), [](const auto& row) { return row.second.iCurrentHp && row.second.isCombatReady; }) == 1u;
+		member.bMarioSoloReturnRequired = std::count_if(m_Players.begin(), m_Players.end(), [](const auto& row) { return row.second.Is_Human() && row.second.iCurrentHp && row.second.isCombatReady; }) == 1u;
 		member.iMarioEntrantPlayerId = player->second.iPlayerId;
 		member.iMarioEntrantSessionId = player->second.iSessionId;
 		member.iMarioEntrantNetEntityId = player->second.iNetEntityId;
@@ -1382,10 +1382,10 @@ bool LostArk::Server::CGameRoom::Commit_KoukuMarioPhasePlayers(
 	const auto deadline = CKoukuSaydonLogicRuntime::Add_Ticks(boss.iPatternStartTick, CKoukuSaydonLogicRuntime::Ticks_FromMs(durationMs));
 	std::vector<std::pair<PLAYER_ID, SERVER_PLAYER>> staged;
 	std::size_t living = 0u;
-	for (const auto& [id, player] : m_Players) if (player.iCurrentHp && player.isCombatReady) ++living;
+	for (const auto& [id, player] : m_Players) if (player.Is_Human() && player.iCurrentHp && player.isCombatReady) ++living;
 	for (const auto& [id, player] : m_Players)
 	{
-		if (!player.iCurrentHp || !player.isCombatReady || player.iMarioStage || player.TriggerMove.isActive) continue;
+		if (!player.Is_Human() || !player.iCurrentHp || !player.isCombatReady || player.iMarioStage || player.TriggerMove.isActive) continue;
 		const float x = trigger.fTeleportX + static_cast<float>(staged.size()) * 1.25f;
 		const float z = trigger.fTeleportZ;
 		SERVER_NAV_POINT ground{};
@@ -1419,8 +1419,9 @@ bool LostArk::Server::CGameRoom::Commit_KoukuMarioPhasePlayers(
 		bound.bPatternBindRestoreCombatReady = bound.isCombatReady;
 	}
 	for (auto& [id, player] : staged) m_Players.at(id) = std::move(player);
+	for (const auto& [id, player] : staged) Guide_AnchorArrived(m_Players.at(id));
 	for (auto& [id, player] : m_Players)
-		if (player.iMarioStage) player.MarioReturnPosition = std::array<float, 3u>{trigger.fTeleportX, trigger.fTeleportY, trigger.fTeleportZ};
+		if (player.Is_Human() && player.iMarioStage) player.MarioReturnPosition = std::array<float, 3u>{trigger.fTeleportX, trigger.fTeleportY, trigger.fTeleportZ};
 	m_strStatus = "Mario non-entrants placed at the authored Iron Maiden anchor";
 	(void)serverTick;
 	return true;
@@ -1484,7 +1485,7 @@ void LostArk::Server::CGameRoom::Queue_KoukuCompletionChainSuccess(
 			if (window.eKind == BOSS_PATTERN_LOGIC_KIND::ENTER_AREA && window.OnSuccess.size() == 1u &&
 				window.OnSuccess.front().eKind == BOSS_PATTERN_LOGIC_RESULT_KIND::MARIO_ENTER && !window.OnTimeout.empty())
 			{
-				for (auto& [id, player] : m_Players) if (player.iCurrentHp && player.isCombatReady)
+				for (auto& [id, player] : m_Players) if (player.Is_Human() && player.iCurrentHp && player.isCombatReady)
 					for (const auto& result : window.OnTimeout)
 						CKoukuSaydonLogicRuntime::Apply_Result(player, result, *member.MarioEntryAnchor, *catalog, nullptr, serverTick, m_TickDamageEvents);
 				// A failed mechanic is a completed occurrence, not a runtime failure.
@@ -1709,7 +1710,7 @@ bool LostArk::Server::CGameRoom::Has_EngagedAuditionPlayer(
 	for (const auto& [playerId, player] : m_Players)
 	{
 		(void)playerId;
-		if (0u == player.iCurrentHp || !player.isCombatReady ||
+		if (!player.Is_Human() || 0u == player.iCurrentHp || !player.isCombatReady ||
 			LostArk::Shared::PLAYER_ACTION_STATE::DEAD == player.eAction ||
 			LostArk::Shared::PLAYER_ACTION_STATE::FALLING == player.eAction)
 		{

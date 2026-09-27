@@ -64,7 +64,7 @@ Mario/Dance/Card Maze는 각각 `MARIO/DANCE/MAZE`를 사용한다. 모든 inter
 슈퍼맨, 양팔 벌리기, 한 다리 올리기다. 첫 오답은 fail, 유효 입력 없이 창 종료는 timeout이다.
 F1의 mode 선택은 typed Debug 명령으로 실제 모델·HUD·스킬을 바꾸고 Return to Player는 원래
 class로 복귀한다. 별도 `Kouku UI Preview`는 표시 전용 override이며 해제하면 실제 snapshot으로 돌아간다.
-F1 `Kouku UI Preview -> Madness gauge position`에서 위치를 조절한다. `screenOffsetX/Y`는 1280×720 기준 픽셀(+Y 아래), `headOffsetMeters`는 월드 높이다. Save는 `Data/UI/KoukuSaydon/KoukuHudModes.json`의 변경한 위치 필드만 최신 저장본에 병합하고 충돌 시 기존 저장본과 preview를 보존한다. 카드 미로에서는 본인과 동료의 광기 게이지를 모두 숨긴다.
+F1 `Kouku UI Preview -> Madness gauge position`에서 위치를 조절한다. `screenOffsetX/Y`는 1280×720 기준 픽셀(+Y 아래), `feetOffsetMeters`는 캐릭터 발 Transform에서 더하는 월드 높이다. 새 view도 같은 저장본을 읽는다. Save는 `Data/UI/KoukuSaydon/KoukuHudModes.json`의 변경한 위치 필드만 최신 저장본에 병합하고 충돌 시 기존 저장본과 preview를 보존한다. 광기 게이지는 Server gate-progress 수신 전/관문 0에서 숨기고 관문 활성화 후 표시한다(보스 관문 없는 MARIO snapshot과 Server 승인된 F1 player-only 진입의 본인은 표시 허용). 쿠크 시작 발판에서도 각 플레이어의 Server snapshot 위치와 `Is_KoukuArenaStartArea`로 본인·동료의 게이지를 숨긴다. 시작점 복귀도 같은 조건을 따른다. 카드 미로에서는 본인과 동료의 광기 게이지를 모두 숨긴다.
 Mario1의 `Mario1_go`/`Mario1_Trigger_5`는 이동 도착 시에만 mode를 전환한다. movePlayer event의
 optional `koukuHudMode`는 `MARIO/MAZE/NONE`이고 Server가 이동 성공 후 적용한다. Card Maze Debug gate는
 `(0.09,-0.01,1351.48)`에 플레이어만 이동시키고 보스를 생성하지 않는다. Mario2~4 진입점은 미등록이다.
@@ -235,6 +235,29 @@ roster와 leader를 재구성한다. 실제 commit 뒤 발생하는 연결 종�
 받지 못했으면 이름은 유지하되 체력을 100%로 꾸미지 않는다. 파티/NPC 메뉴에서 소비한
 마우스 버튼은 물리적으로 놓을 때까지 이동·공격 입력으로 다시 해석하지 않는다.
 
+### 1.3 가이드 차원술사 companion
+
+Guide는 인간 최대 4명에 별도 1명이다. 인간 `Members` 배열을 늘리지 않고
+`S2C_PARTY_ROSTER::GuideCompanion`을 optional로 보낸다. `PLAYER_CONTROL_KIND::GUIDE_AI`가
+Server spawn/snapshot에 유지되며 nickname이나 class로 bot 여부를 추측하지 않는다.
+공용 Bern 초대용 actor와 파티 소유 companion은 서로 다른 identity다. Guide에 TCP session을
+할당하지 않고 기존 `CGameRoom` 이동/스킬/vehicle 실행기와 `CClientReplication` 표현을 재사용한다.
+파티 이동은 companion의 target admission과 초기 복제도 함께 준비한다.
+
+Guide는 boss target·카드·광기·마리오·빙고 머리 표식·인간 인원·MVP에서 제외한다.
+Guide가 넣는 HP 피해는 허용하지만 counter/stagger/part contribution은 제외한다.
+Guide가 받는 물리 collision damage/CC/갈고리/칼날은 일반 player 경로를 유지한다.
+참여하지 않는 기믹의 미응답/전멸 결과와 공간 접촉을 구분한다.
+
+`Data/Guide`가 가이드 저작 정본이다. Save는 stable ID/필드 단위 병합을 하고
+`Tools/GuidePipeline/Publish-Guide.ps1`만 Client/Server Guide runtime을 게시한다.
+다른 gameplay domain의 값은 Guide Publish가 변경하지 않는다.
+`S2C_GUIDE_PROMPT`는 prompt ID/revision/event sequence/UTF-8 segment/수명을 전송한다.
+Client 채팅과 말풍선은 이 서버 이벤트를 소비하며 외부 언어 모델이나 local trigger로 대사를 만들지 않는다.
+`S2C_GUIDE_STATE`는 실제 서버 점수·입력 변수·선택 이유를 Combat Detail에 전달하는 읽기 전용 자료다.
+도구 draft와 적용 revision을 구분하고 게시 후 Server가 새 revision을 소비했는지 확인한다.
+현재 wire는 protocol 116이며 이전 Server/Client와 혼용하지 않는다.
+
 ## 2. 팀원이 먼저 읽을 파일
 
 | 담당 | 시작 파일 | 데이터 정본 |
@@ -345,9 +368,18 @@ walkable nav cell 경계와 별개로, 투사체·지연 장판·보스 이동 �
 
 발탄 F1 `Valtan Arena`의 Start Position / Before Entrance / Arena Start는 기존 typed player teleport를 사용한다. `Despawn Valtan Boss`는 Debug/Release Server에서 ENCOUNTER_VALTAN primary와 owner 종속체만 제거하고 일반 NPC/웨이브 몬스터를 보존한다. 이후 Boss Play Pattern은 disabled placement `boss.valtan.center`를 Server에 준비 요청하고 replicated primary 도착 후 기존 revision/sound/presentation admission을 다시 통과해야 실행된다. spawn 대기는 local boss 생성으로 우회하지 않는다.
 
-발탄·쿠크 아레나에서 F1 `Arena Camera / Player`는 현재 아레나의 자유 카메라 속도를 조절한다.
-기본은 모두 20m/s이며 범위는 0.1~400m/s다. Shift는 30배 이동이다. 설정은 아레나별로 이번
-프로세스에서 유지되고 같은 아레나에 재입장해도 보존하며 프로그램 종료 후 디스크에 저장하지 않는다.
+Debug/Release 공통 F1 `Camera`에서 자유 카메라 속도를 조절한다. 베른·발탄·쿠크 기본은
+20m/s이며 범위는 0.1~400m/s다. Shift는 30배 이동이다. Debug 발탄·쿠크의 설정은 아레나별
+process-session에 보관돼 재입장에도 유지한다. 베른과 Release는 현재 맵 방문 동안 적용한다.
+
+Debug F1 `Valtan Arena`의 위치 버튼 아래 `Axe Transform`은 본체/유령 도끼의 socket 위치·회전을
+즉시 적용한다. BossCatalog v8의 optional `weaponSocketTransform.positionMeters`와
+`rotationDegrees`(pitch/yaw/roll)는 각각 유한한 3축 값이며 ±10m, ±360도 범위다. 생략은 영점이다.
+position은 정규화된 socket 축의 미터 단위이며 이후 부모 scale을 적용한다. Save는 최신 원본에
+변경 축만 병합하고 같은 축의 동시 변경·transaction lock·파일 교체 실패 시 기존 데이터와 draft를 보존한다.
+Save + Publish는 기존 Valtan source reload와 Balance publisher를 사용해 BossCatalog를 Server
+presentation generation에 포함한다. Balance의 미저장 draft가 있으면 publish를 진행하지 않는다.
+표현 보정은 Server hitbox를 바꾸지 않으며, 게시 수신 측은 Server 재시작·재입장 경계를 따른다.
 
 플레이어 위치를 바꾸려면 F6 자유 카메라 → F1 `Move Player` → UI 밖의 지면을 한 번 클릭한다.
 버튼을 누르면 mouse-look이 꺼지고, Esc/우클릭/F6 follow 복귀는 아직 제출하지 않은 선택을 취소한다.
@@ -369,9 +401,9 @@ F1 Sequence Viewer는 모든 Debug Level에서 쿠크/발탄 목록을 읽고, �
 player·오래된 request sequence는 실행하지 않는다. 표시 이름은 실행 ID가 아니다.
 사용법과 저작/배포 경계는 `AREA_DATA_LAYER_GUIDE.md`의 F1 Sequence Viewer 항목을 따른다.
 
-F1의 카메라 편집 패널을 제거하고 같은 위치에 `Open Balance Test`를 배치했다.
+F1의 카메라 profile 수치 편집 패널 대신 `Open Balance Test`를 제공한다.
 버튼은 기존 공용 `Balance Test` 독립 창을 열며 Debug/Release에서 함께 사용한다.
-F6 follow/free 전환과 맵별 카메라 profile 소비는 유지한다.
+별도 `Camera` 패널은 자유 이동 속도를 조절한다. F6 follow/free 전환과 맵별 카메라 profile 소비는 유지한다.
 
 정본은 `Data/Camera/{CharacterSelect,Bern,Valtan,KoukuSaydon}.camera.json`이며 publisher 없이
 직접 읽는다. `CArenaCameraProfile`의 schema/version/areaId·유한 범위 검증을 통과한 profile만
@@ -2051,7 +2083,9 @@ Gate3 진입 오라는 원본 Prop300010 사각형의 회전과 실측 크기를
 vehicle9523 고대의 바다는 `CPlayerController -> IPlayerCommandSink -> C2S_MOVE`의
 typed flight intent와 Server snapshot phase/startTick/duration을 사용한다(Shared protocol105). 동일 protocol에는 F1 에스더 지정 소환 command도 포함되므로 Client/Server를 함께 갱신한다.
 E는 이륙/착륙 전환, WASD는 비행 이동, Space/Ctrl hold는 상승/하강이며 서버가 고도와
-XZ navigation/collision을 확정한다. WASD 조합을 유지하는 동안 카메라 기준을 고정해
+실제 고도의 3D collision을 확정한다. 비행 중 걷기 navigation 밖의 XZ 이동을 허용하고,
+착륙은 현재 XZ의 walkable 지면과 collision 검사를 통과해야 한다. 실패하면 비행을 유지하며
+강제 하차는 마지막 안전 지면으로 복귀한다. WASD 조합을 유지하는 동안 카메라 기준을 고정해
 용 회전과 카메라 추종이 서로 입력을 되먹이지 않게 한다. UI/free-camera/focus 전환은
 입력을 중지하고 키 해제 뒤 재입력을 요구한다. 좌클릭 drag 공전은 presentation 입력이다.
 
@@ -2060,6 +2094,15 @@ Valtan/Kouku의 탑승 예외는9523만 허용한다. takeoff/loop/landing 표�
 clip 길이와 함께 Vehicle publisher가 Server phase duration으로 변환한다. Action Workbench
 Save Flight Logic은 해당 subtree만 최신 저장본에 병합하며 다른 effect/sound draft를 버리지 않는다.
 `Data/Vehicles/VehicleProfiles.json`의 `flight`는 hoverHeight/maximumHeight/speed/verticalSpeed 물리 입력을 소유한다.
+고대의 바다 지상 속도는 원본 `moveSpeed`5를 보존하고 `moveSpeedOverride`10을 적용하며,
+비행16·상하8m/s다. Debug F1 `Dragon`은 typed 탑승/하차, 즉시 적용하는 비행 카메라 조절과
+속도 Save/Save + Publish를 제공한다. 속도는 publisher가 최신 데이터의 해당 필드를 검증·저장하고
+bootstrap을 게시한 뒤 Server 재시작으로 적용한다. 지상 탑승은 기존 캐릭터 시점이며 비행 phase에서만
+전용 카메라를 적용한다. F6 free camera는 기존 입력 차단 계약을 유지한다.
+착륙 중에도 지면을 매 tick 재검사하며 지형이 사라지면 현재 고도를 유지해 비행으로 돌아간다.
+마지막 안전 지면도 사라졌다면 같은 층의 유효 지면, 유효한 저작 spawn 순서로 회복을 시도한다.
+공중 동적 몸체 충돌은 높이 구간과 XZ 원형 구간의 겹치는 이동 시간을 검사해 수직 관통을 막는다.
+기존 평지 이동·몸체 접선 미끄러짐 경로는 유지한다.
 기존 Server authority와 CModel animation/IK, follow camera를 사용하며 두 번째 이동 runtime은 없다.
 
 
@@ -2275,3 +2318,42 @@ Character가 clip/effect/sound를 함께 검증해 교체하고 Server가 승인
 actionStartTick과 playRate로 한 번만 재생한다. 잘못된 행은 기존 binding을 유지한다.
 공 파괴는 기존 Server pop mask, 비행 공 피격은 DAMAGE_EVENT.eMarioHitSource의
 FLYING_BALL을 소비하며 Client가 전투 판정을 새로 만들지 않는다.
+
+## Sequence Camera와 World/Object 저작 원본
+
+Sequence Camera Tool은 Movie와 Character Action의 기존 camera owner를 편집한다. World Movie는
+`Data/Camera/ClassSelection.cinematics.json`, ALT V camera는 `Data/Effects/Sequences`의 실제
+Product 입력을 Save한다. 두 경로의 XYZ/FOV/키는 Client 표현 데이터이며 Server 전투 판정이나
+simulation clock으로 전송하지 않는다. 원본 source clock과 Movie time의 변환은 기존 owner가
+소유하고 타임라인 표시 행 번호를 저장 ID로 사용하지 않는다.
+
+World/Object Save는 `Data/Maps/Authoring` 및 필요한 연결 문서의 저작 원본을 저장한다.
+별도 Publish는 기존 WorldSequences publisher로 Client 실행 데이터를 만들고, 연결된
+Pattern/Collider/Logic에 필요하면 기존 Pattern 게시 경로를 이어 사용한다. Data가 편집 정본이며
+Client/Server의 `Bin/DataFiles`는 각 소비자용 게시 결과다. 로컬 Publish 성공을 LAN 서버 전달이나
+실행 중 Server 메모리 갱신 완료로 해석하지 않는다. 버튼별 작업과 저장 충돌 보존 절차는
+`ANIMATION_TOOL_OWNER_HANDOFF.md`의 World Movie/Object 항목을 따른다.
+
+### Movie WORLD 검사 데이터 계약
+
+Effect Tool과 WORLD Action Workbench/Sequencer는 기존 `CClassSelectionPresentation`의 같은
+clock·선택·draw filter를 사용한다. `CLASS_MOVIE_INSPECTION_CALLBACKS`는 stable instance/slot/
+object ID로만 명령을 제출한다. Solo/Mute/선택 강조는 임시 draw 상태이며 authored visibility와
+bone provider를 변경하지 않는다. F6 자유 카메라에서도 Movie clock은 같은 owner가 유지한다.
+
+`ClassSelection.cinematics.json`의 각 scene은 optional `excludedWorldObjectIds` 배열을 가진다.
+Delete from Movie / Restore to Movie는 해당 클래스의 Intro/Loop에 실제 바인딩된 object ID만
+이 배열에서 편집하며 Save Movie로 영구 저장한다. 공유 WORLD 리소스·WModel·서버 플레이어
+좌표는 삭제하거나 수정하지 않는다. Camera manifest와 같은 Client 직접 소비 경로이며, 이
+필드만 바뀌면 WorldSequences 재게시는 필요 없다. 미지원/중복/외부 클래스 ID는 검증 실패로
+기존 상태를 보존한다. 자세한 버튼 흐름은 `ANIMATION_TOOL_OWNER_HANDOFF.md`를 따른다.
+
+### 커스터마이징 기본 헤어와 저장 선택
+
+`Data/UI/Customizing/CustomizingHairstyles.json`의 class 항목은 optional `defaultVisualSetId`로
+해당 class의 기존 hairstyle stable ID 하나를 초기·Reset 기본값으로 지정할 수 있다. 생략하면
+기존 index0이다. reader는 실제 목록에 정확히 하나 존재하는 ID인지 검증하고 실패하면 이전
+문서를 유지한다. 목록을 재정렬하지 않으며 기존 preset의 명시적 `hair` index가 기본값보다
+우선한다. View에서 class를 왕복해도 직접 선택한 헤어를 보존한다. 일반 기본 장착과 헤어 재질의
+소유권은 `CharacterCatalog`의 해당 character가 소유하며 같은 모델의 global lazy override를
+중복 등록하지 않는다.

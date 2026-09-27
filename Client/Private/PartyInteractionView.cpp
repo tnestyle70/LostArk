@@ -165,7 +165,8 @@ bool_t Client::CPartyInteractionView::Update_ContextMenuTrigger(
 		const bool_t bAlreadyMember = std::any_of(Roster.Members.begin(), Roster.Members.end(),
 			[&player](const LostArk::Shared::PARTY_ROSTER_MEMBER& Member)
 			{ return Member.iNetEntityId == player.iNetEntityId; });
-		if (bAlreadyMember)
+		if (bAlreadyMember || (Roster.GuideCompanion &&
+			Roster.GuideCompanion->iNetEntityId == player.iNetEntityId))
 			continue;
 		const std::shared_ptr<CCharacter> pCharacter = player.pCharacter.lock();
 		if (nullptr == pCharacter)

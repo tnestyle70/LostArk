@@ -199,7 +199,7 @@ void LostArk::Server::CGameRoom::Begin_MarioBallChallenge(SERVER_PLAYER& player)
 		std::uniform_int_distribution<unsigned>{1u, 3u}(m_MarioLayoutRandom));
 	std::vector<NET_ENTITY_ID> outside;
 	for (const auto& [id, other] : m_Players)
-		if (id != player.iPlayerId && other.iCurrentHp && other.isCombatReady && !other.iMarioStage)
+		if (other.Is_Human() && id != player.iPlayerId && other.iCurrentHp && other.isCombatReady && !other.iMarioStage)
 			outside.push_back(other.iNetEntityId);
 	player.iMarioMarkerNetEntityId = outside.empty() ? player.iNetEntityId :
 		outside[std::uniform_int_distribution<std::size_t>{0u, outside.size() - 1u}(m_MarioLayoutRandom)];
@@ -767,7 +767,7 @@ void LostArk::Server::CGameRoom::Update_CardMazeClownBox(const std::uint32_t tic
 	using Maze = CKoukuCardMazeRuntime;
 	const bool anyEntered = std::any_of(m_Players.begin(), m_Players.end(), [](const auto& entry) {
 		const SERVER_PLAYER& player = entry.second;
-		return KOUKU_HUD_MODE::MAZE == player.eKoukuHudMode && player.iCurrentHp > 0u &&
+		return player.Is_Human() && KOUKU_HUD_MODE::MAZE == player.eKoukuHudMode && player.iCurrentHp > 0u &&
 			player.fPositionX >= Maze::MAZE_MIN_X && player.fPositionX <= Maze::MAZE_MAX_X &&
 			player.fPositionZ >= Maze::MAZE_MIN_Z && player.fPositionZ <= Maze::MAZE_MAX_Z;
 	});

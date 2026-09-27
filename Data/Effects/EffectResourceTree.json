@@ -217,7 +217,10 @@
     {"id": "kouku.category.6b40cd40d436ca481b79", "parentId": "kouku.category.3e091ff8fbdf231618e6", "kind": "CATEGORY", "displayName": "파1빨2"},
     {"id": "kouku.category.6b60be807c01ec5694a2", "parentId": "kouku.category.f20d85c12b1f39e952da", "kind": "CATEGORY", "displayName": "메두사 공격"},
     {"id": "kouku.category.67dec3f19dcbca4bb613", "parentId": "kouku.category.f20d85c12b1f39e952da", "kind": "CATEGORY", "displayName": "블랙홀·폭발·그로기"},
-    {"id": "kouku.category.269040f204e0cec40579", "parentId": "kouku.category.f20d85c12b1f39e952da", "kind": "CATEGORY", "displayName": "블랙홀 중앙 구체·폭발"}
+    {"id": "kouku.category.269040f204e0cec40579", "parentId": "kouku.category.f20d85c12b1f39e952da", "kind": "CATEGORY", "displayName": "블랙홀 중앙 구체·폭발"},
+    {"id": "valtan.resources", "parentId": "root.v1", "kind": "CATEGORY", "displayName": "Valtan"},
+    {"id": "valtan.resources.common", "parentId": "valtan.resources", "kind": "CATEGORY", "displayName": "Common"},
+    {"id": "valtan.resources.common.telegraphs", "parentId": "valtan.resources.common", "kind": "CATEGORY", "displayName": "Telegraphs"}
   ],
   "references": [
     {"kind": "V1", "assetId": "effect.kouku.gate3.showtime.sector.warning.shot", "displayName": "부채꼴 예고·사격 (저작 조합)", "parentId": "kouku.category.d767402008919487db6b"},
@@ -1107,6 +1110,8 @@
     {"kind": "V1", "assetId": "effect.kouku.mario.ball.pop.red", "displayName": "Mario red ball original pop", "parentId": "kouku.category.mario.pattern"},
     {"kind": "V1", "assetId": "effect.kouku.mario.ball.pop.yellow", "displayName": "Mario yellow ball original pop", "parentId": "kouku.category.mario.pattern"},
     {"kind": "V1", "assetId": "effect.kouku.mario.player.hammer.impact", "displayName": "Mario original Q hammer (MN_REUP_07 / 42784)", "parentId": "kouku.category.mario.pattern"},
-    {"kind": "V1", "assetId": "effect.kouku.mario.flyingball.hit", "displayName": "Mario flying-ball contact (original RHCN explosion)", "parentId": "kouku.category.mario.pattern"}
+    {"kind": "V1", "assetId": "effect.kouku.mario.flyingball.hit", "displayName": "Mario flying-ball contact (original RHCN explosion)", "parentId": "kouku.category.mario.pattern"},
+    {"kind": "V1", "assetId": "effect.valtan.six-pizza.sectors", "displayName": "발탄 피자 / 기존 섹터 묶음", "parentId": "valtan.resources.common.telegraphs"},
+    {"kind": "V1", "assetId": "effect.classselect.guardianknight.fx_pc_ddk_04.par_m_ddk_guillotinespin_trail_01", "displayName": "Guardian class selection | par_m_ddk_guillotinespin_trail_01", "parentId": "root.v1"}
   ]
 }

@@ -207,6 +207,17 @@ bool LostArk::Server::CGameRoom::Try_StartVehicleSkill(
 	{
 		if (!Can_RideVehicle(player) || !Is_NewerSequence(command.iClientSequence, player.iLastSkillSequence) ||
 			player.eVehicleFlightPhase == VEHICLE_FLIGHT_PHASE::LANDING) return false;
+		// Flight may cross nav gaps; landing must still have walkable ground directly below.
+		SERVER_NAV_POINT landing{};
+		if (!m_ServerNavigation.Is_PointWalkableExact(player.fPositionX, player.fPositionZ, player.fPositionY) ||
+			!m_ServerNavigation.Sample_Position(player.fPositionX, player.fPositionZ, landing, player.fPositionY) ||
+			landing.y > player.fPositionY + .05f) return false;
+		float x = landing.x, y = landing.y, z = landing.z;
+		bool blocked = false;
+		if (!m_ServerCollisionSystem.Resolve_PlayerMove(player, landing.x, landing.y, landing.z, x, y, z, blocked) || blocked)
+			return false;
+		player.VehicleFlightSafeLanding = landing;
+		player.fVehicleFlightGroundY = landing.y;
 		player.iLastSkillSequence = command.iClientSequence;
 		player.eVehicleFlightPhase = VEHICLE_FLIGHT_PHASE::LANDING;
 		player.iVehicleFlightPhaseStartTick = m_iServerTick + 1u;
@@ -251,6 +262,7 @@ bool LostArk::Server::CGameRoom::Try_StartVehicleSkill(
 		player.iVehicleFlightPhaseStartTick = startTick;
 		player.fVehicleFlightPhaseSeconds = 0.f;
 		player.fVehicleFlightGroundY = player.fPositionY;
+		player.VehicleFlightSafeLanding = {player.fPositionX, player.fPositionY, player.fPositionZ};
 		player.fVehicleFlightStartHeight = 0.f;
 		player.fVehicleFlightInputAge = 0.f;
 		player.fVehicleFlightInputX = player.fVehicleFlightInputZ = player.fVehicleFlightInputY = 0.f;
@@ -295,6 +307,36 @@ void LostArk::Server::CGameRoom::Update_VehicleSkill(
 		}
 		else if (player.eVehicleFlightPhase == VEHICLE_FLIGHT_PHASE::LANDING)
 		{
+			// A raid floor or blocking body may change after E was accepted. Never
+			// finish a descent onto stale ground; hold altitude and resume flight.
+			SERVER_NAV_POINT landing{};
+			bool validLanding = m_ServerNavigation.Is_PointWalkableExact(
+				player.fPositionX, player.fPositionZ, player.fVehicleFlightGroundY) &&
+				m_ServerNavigation.Sample_Position(player.fPositionX, player.fPositionZ,
+					landing, player.fVehicleFlightGroundY) &&
+				std::abs(landing.y - player.fVehicleFlightGroundY) <= .05f &&
+				m_ServerCollisionSystem.Is_PlayerPositionClear(landing.x, landing.y, landing.z, player.iNetEntityId);
+			if (validLanding)
+			{
+				float x = landing.x, y = landing.y, z = landing.z;
+				bool blocked = false;
+				validLanding = m_ServerCollisionSystem.Resolve_PlayerMove(player, landing.x, landing.y,
+					landing.z, x, y, z, blocked) && !blocked;
+			}
+			if (!validLanding)
+			{
+				player.eVehicleFlightPhase = VEHICLE_FLIGHT_PHASE::FLYING;
+				player.iVehicleFlightPhaseStartTick = m_iServerTick + 1u;
+				if (!player.iVehicleFlightPhaseStartTick) player.iVehicleFlightPhaseStartTick = 1u;
+				player.fVehicleFlightPhaseSeconds = 0.f;
+				// E may have targeted a lower deck than the takeoff reference. Preserve
+				// this altitude when returning to the bounded cruise integrator.
+				player.fVehicleFlightGroundY = (std::max)(player.fVehicleFlightGroundY,
+					player.fPositionY - vehicle->fFlightMaximumHeight);
+				player.fVehicleFlightVelocityX = player.fVehicleFlightVelocityZ = player.fVehicleFlightVelocityY = 0.f;
+				return;
+			}
+			player.VehicleFlightSafeLanding = landing;
 			const float duration = (std::max)(vehicle->fFlightLandingSeconds,
 				player.fVehicleFlightStartHeight / vehicle->fFlightVerticalSpeed);
 			const float t = std::clamp(player.fVehicleFlightPhaseSeconds / duration, 0.f, 1.f);
@@ -313,26 +355,27 @@ void LostArk::Server::CGameRoom::Update_VehicleSkill(
 			player.fVehicleFlightVelocityY += (targetY - player.fVehicleFlightVelocityY) * blend;
 			const float nextX = player.fPositionX + player.fVehicleFlightVelocityX * fixedDeltaSeconds;
 			const float nextZ = player.fPositionZ + player.fVehicleFlightVelocityZ * fixedDeltaSeconds;
-			SERVER_NAV_POINT reachable{player.fPositionX, player.fVehicleFlightGroundY, player.fPositionZ};
-			bool clamped = false;
-			if (m_ServerNavigation.Is_Loaded())
-				CPlayerSkillSystem::Clamp_StepToWalkable(m_ServerNavigation, player.fPositionX, player.fPositionZ,
-					nextX, nextZ, reachable, clamped, player.fVehicleFlightGroundY);
-			float resolvedX = reachable.x, resolvedY = reachable.y, resolvedZ = reachable.z;
-			bool blocked = false;
-			// A ground-height mirror keeps walls/raid navigation authoritative while flight is cosmetic altitude.
-			const float airborneY = player.fPositionY;
-			player.fPositionY = player.fVehicleFlightGroundY;
-			const bool resolved = m_ServerCollisionSystem.Resolve_PlayerMove(player, reachable.x, reachable.y, reachable.z,
-				resolvedX, resolvedY, resolvedZ, blocked);
-			player.fPositionY = airborneY;
-			if (resolved)
-			{
-				player.fPositionX = resolvedX; player.fPositionZ = resolvedZ;
-				player.fVehicleFlightGroundY = resolvedY;
-			}
-			player.fPositionY = player.fVehicleFlightGroundY + std::clamp(
+			const float nextY = player.fVehicleFlightGroundY + std::clamp(
 				height + player.fVehicleFlightVelocityY * fixedDeltaSeconds, .1f, vehicle->fFlightMaximumHeight);
+			float resolvedX = nextX, resolvedY = nextY, resolvedZ = nextZ;
+			bool blocked = false;
+			// Airborne travel uses the actual 3D collision volume, independent of walkable XZ.
+			if (m_ServerCollisionSystem.Resolve_PlayerMove(player, nextX, nextY, nextZ,
+				resolvedX, resolvedY, resolvedZ, blocked))
+			{
+				player.fPositionX = resolvedX; player.fPositionY = resolvedY; player.fPositionZ = resolvedZ;
+			}
+			SERVER_NAV_POINT ground{};
+			if (m_ServerNavigation.Is_PointWalkableExact(player.fPositionX, player.fPositionZ, player.fPositionY) &&
+				m_ServerNavigation.Sample_Position(player.fPositionX, player.fPositionZ, ground, player.fPositionY) &&
+				ground.y <= player.fPositionY)
+			{
+				float x = ground.x, y = ground.y, z = ground.z;
+				bool landingBlocked = false;
+				if (m_ServerCollisionSystem.Resolve_PlayerMove(player, ground.x, ground.y, ground.z,
+					x, y, z, landingBlocked) && !landingBlocked)
+					player.VehicleFlightSafeLanding = ground;
+			}
 			if (targetX * targetX + targetZ * targetZ > .0001f)
 			{
 				const float desiredYaw = std::atan2(targetX, targetZ) / VEHICLE_SKILL_DEGREES_TO_RADIANS;
@@ -391,7 +434,43 @@ void LostArk::Server::CGameRoom::End_VehicleSkill(SERVER_PLAYER& player)
 	using namespace LostArk::Shared;
 	if (player.eVehicleFlightPhase != VEHICLE_FLIGHT_PHASE::GROUNDED)
 	{
-		player.fPositionY = player.fVehicleFlightGroundY;
+		// Forced dismount is a relocation, so validate the destination itself rather
+		// than sweeping through the intervening airspace. Historical safe ground
+		// can have collapsed or become occupied since the last flight snapshot.
+		SERVER_NAV_POINT landing{};
+		const auto resolveGround = [&](const SERVER_NAV_POINT& candidate)
+		{
+			return m_ServerNavigation.Is_PointWalkableExact(candidate.x, candidate.z, candidate.y) &&
+				m_ServerNavigation.Sample_Position(candidate.x, candidate.z, landing, candidate.y) &&
+				m_ServerCollisionSystem.Is_PlayerPositionClear(landing.x, landing.y, landing.z, player.iNetEntityId);
+		};
+		bool supported = resolveGround(player.VehicleFlightSafeLanding);
+		SERVER_NAV_POINT projected{};
+		if (!supported && m_ServerNavigation.Project_PointOnSameLevel(player.VehicleFlightSafeLanding.x,
+			player.VehicleFlightSafeLanding.z, projected, player.VehicleFlightSafeLanding.y))
+			supported = resolveGround(projected);
+		if (!supported)
+		{
+			for (const auto& spawn : m_WorldBootstrap.Get_Placements())
+			{
+				if (!spawn.isEnabled || spawn.eKind != WORLD_BOOTSTRAP_KIND::PLAYER_SPAWN) continue;
+				if (m_ServerNavigation.Project_Point(spawn.fPositionX, spawn.fPositionZ, projected, spawn.fPositionY) &&
+					resolveGround(projected)) { supported = true; break; }
+			}
+		}
+		if (supported)
+		{
+			player.fPositionX = landing.x;
+			player.fPositionY = landing.y;
+			player.fPositionZ = landing.z;
+			player.VehicleFlightSafeLanding = landing;
+		}
+		else if (player.iCurrentHp && player.eAction != PLAYER_ACTION_STATE::DEAD &&
+			player.eAction != PLAYER_ACTION_STATE::FALLING)
+		{
+			// An area with no valid recovery floor uses the existing authoritative fall.
+			Begin_PlayerFall(player, 0.f, m_iServerTick + 1u);
+		}
 		player.eVehicleFlightPhase = VEHICLE_FLIGHT_PHASE::GROUNDED;
 		player.iVehicleFlightPhaseStartTick = 0u;
 		player.fVehicleFlightPhaseSeconds = 0.f;

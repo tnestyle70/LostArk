@@ -882,6 +882,11 @@
       "authoringPath": "Effects/Authored/effect.valtan.ground-roar.rock.explode.effect.json"
     },
     {
+      "effectAssetId": "effect.valtan.six-pizza.sectors",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.valtan.six-pizza.sectors.effect.json"
+    },
+    {
       "effectAssetId": "effect.valtan.six-pizza.rock.active",
       "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
       "authoringPath": "Effects/Authored/effect.valtan.six-pizza.rock.active.effect.json"

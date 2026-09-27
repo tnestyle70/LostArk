@@ -1,3 +1,4 @@
+#ifndef SOURCE_CHARACTER_LIGHT_DISPATCH_CASES
 SOURCE_CHARACTER_NATIVE_OUTPUT SourceCharacterLight17(SOURCE_CHARACTER_NATIVE_INPUT input)
 {
     SOURCE_CHARACTER_NATIVE_OUTPUT output = (SOURCE_CHARACTER_NATIVE_OUTPUT)0;
@@ -4255,3 +4256,13 @@ SOURCE_CHARACTER_NATIVE_OUTPUT SourceCharacterLight24(SOURCE_CHARACTER_NATIVE_IN
 }
 
 // source.character.monster-be5bc0ded311.v1 / source program 9aee034d8132b443b793d2f5a72f49b4
+#else // SOURCE_CHARACTER_LIGHT_DISPATCH_CASES
+    case 17u: return SourceCharacterLight17(input);
+    case 18u: return SourceCharacterLight18(input);
+    case 19u: return SourceCharacterLight19(input);
+    case 20u: return SourceCharacterLight20(input);
+    case 21u: return SourceCharacterLight21(input);
+    case 22u: return SourceCharacterLight22(input);
+    case 23u: return SourceCharacterLight23(input);
+    case 24u: return SourceCharacterLight24(input);
+#endif // SOURCE_CHARACTER_LIGHT_DISPATCH_CASES

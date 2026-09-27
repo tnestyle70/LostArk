@@ -39,24 +39,32 @@ Preview와 toolbar는 공통 shell이 소유하고 각 세션은 자기 문서·
   Level의 같은 Movie owner에 전달되며 원본 배우 애니메이션·Effect·카메라가 같은 시계를 사용한다.
   검증된 Element 초안은 이 Movie의 해당 Effect 인스턴스에만 임시 반영한다. Product catalog를
   덮지 않고, 편집 종료 시 최신 저장 정의로 복원한다. 다른 Effect를 열 때 미저장 초안 보호를 유지한다.
-- `Timeline / Camera`는 기존 World 세션을 연다. Intro/Loop 박스의 Box Detail에서 actor transform,
-  animation clip/offset/rate, camera, Effect, material, light, sound, clock의 행과 키를 편집한다.
-  시간 입력은 source ms이고 타임라인은 원본 slow-motion을 반영한 movie ms다. Camera key의
-  Eye·Look at·Up·FOV는 `Apply camera live`로 같은 재생 시각에 적용하며 기본으로 입력 종료 때
-  적용한다. 같은 box 구간의 camera 편집은 재생 token·pause와 배우·Effect를 유지한다.
-  box 시작/길이 변경과 다른 행의 `Apply row`는 기존 전체 검증 후 재생을 중지하고 적용한다.
-  박스 조회는 재생을 중지하지 않으며 `Revert row`는 아직 적용하지 않은 행을 되돌린다.
-- `Save movie`는 `Data/Camera/ClassSelection.cinematics.json`과 SL00의 authoring WorldSequences를
-  각 stable ID/변경 필드 기준으로 최신 저장본과 병합한다. 실제 모델 clip과 source offset,
-  문서 구조 검증을 통과해야 교체하며 같은 필드 충돌은 초안을 보존하고 거절한다.
-  World 변경은 기존 Area publisher의 `WorldSequences` 범위로 비동기 게시한다. 저장 성공과
-  게시 완료/실패를 따로 표시하고 게시 실패는 다음 Save로 재시도한다. Camera 문서는 기존 Data
-  정본을 직접 소비한다. `Reload saved movie`는 미저장 초안이 있으면 확인 후 유효한 저장본만 적용한다.
-  Effect 박스의 `Open Effect Editor`도 Movie를 유지한 채 같은 V1 owner에 연결한다. Effect의
-  `Save Changes`는 기존 원자 저장과 다음-spawn prepared target 갱신을 사용하며 `Save movie`가
-  Effect 내부 문서를 대신 저장하지 않는다. 기존 저장 계약의 검증은
-  `../GB/09-25/2026-09-25_FOUR_CLASS_SELECTION_MOVIES_IMPLEMENTATION_RESULT.md`, V1 연결과
-  camera live 편집의 검증은 `../GB/09-26/2026-09-26_WORLD_MOVIE_EFFECT_EDITOR_RESULT.md`에 구분한다.
+- `Timeline / Camera`는 기존 World 세션을 연다. 같은 종류의 비중첩 box는 Boss/Sequence와 같은
+  공용 행 배치를 사용하며 Animation은 배우 occurrence/slot을 분리한다. World Model/Material/Light는
+  기본 접힌 그룹에서 유지 구간과 활성 개수를 표시하고 펼치기·검색·Active at cursor를 지원한다.
+  접기는 표시 상태이며 재생과 mute를 바꾸지 않는다. Effect·Sound·유한 Animation의 이동/trim은
+  source 시간으로 변환해 기존 문서 검증을 거친다. Camera 가운데 이동은 컷 재정렬, 경계 이동은
+  이웃 컷과 경계를 함께 변경해 전체 phase를 빈틈없이 유지한다. 고정·loop 행은 Box Detail을 사용한다.
+- Camera box의 `Open Sequence Camera Tool` 또는 더블클릭은 같은 Movie의 컷·키 편집창을 연다.
+  키별 Eye/LookAt/Up/FOV, 시간과 frame 표시, 보간, 추가·삭제와 구간 위치 보정을 지원한다.
+  frame은 표시·입력 단위이며 저장은 ms다. 현재 Movie의 source/movie clock과 WORLD 좌표를 유지한다.
+  key-only live 편집은 token·pause·시각을 유지하며 Save는 미적용 키 초안도 먼저 검증해 반영한다.
+  다른 row의 full admission과 실패 시 초안 보존은 유지한다.
+- World UI의 `Save movie`는 `Data/Camera/ClassSelection.cinematics.json`과 SL00 authoring WorldSequences를
+  stable ID/변경 필드 기준으로 최신 저장본과 병합한다. 같은 필드의 동시 수정은 초안을 보존하고 거절한다.
+  `Publish movie`는 미저장 수정이 없을 때 기존 Area publisher의 WorldSequences 범위로 Client runtime을
+  비동기 게시한다. 카메라는 기존 Data 정본을 직접 소비하며 Save 뒤 현재 owner에도 반영된다.
+  저장·게시 진행/실패를 구분하고 publish는 LAN Server 자동 전달이나 Server 메모리 갱신을 뜻하지 않는다.
+  `Reload saved movie`는 미저장 초안이 있으면 확인 후 유효한 저장본만 적용한다.
+- Character ALT V의 원본 camera box는 같은 Sequence Camera Tool에서 recovery effectsequence를 연다.
+  원본 effect/camera ID와 clip 시간 매핑을 보존하고 key 저장은 최신 원본의 camera 필드만 병합한다.
+  `Save camera source`는 Data/Effects/Sequences의 실제 Product 입력을 저장하고, `Publish saved cameras`는
+  저장본을 검증한 뒤 Client의 해당 camera cache만 교체한다. 서버 스킬 timing은 바꾸지 않는다.
+  일반 action arrangement의 Save와 원본 Product camera Save는 다른 owner다.
+- Effect 박스의 `Open Effect Editor`는 Movie를 유지한 채 같은 V1 owner에 연결한다. Effect의
+  `Save Changes`는 기존 원자 저장과 다음-spawn prepared target 갱신을 사용한다. Save movie는
+  Effect 내부 문서를 대신 저장하지 않는다. 구현·검증 상태는
+  `../GB/09-26/2026-09-26_WORLD_MOVIE_EFFECT_EDITOR_RESULT.md`를 따른다.
 - Object Parent는 연결 Motion의 Transform/Animation/Effect overview를 보여 주고 row 선택으로 기존
   Motion 편집에 들어간다. 저장은 기존 World Sequence atomic save와 Area publish, 열린 Composition의
   dirty/외부 변경 검사를 유지한다.
@@ -439,10 +447,22 @@ clock/occurrence, anchor/follow/rotation basis, local TRS와 repeat/stop 수정�
 반영한다. `Save`가 기존 owner transaction으로 저장하며 잘못된 입력이나 변경된 원본은 기존
 snapshot과 파일을 유지한다. Group의 child body는 계속 Effect Tool V2에서 수정한다.
 
-Valtan 전체 Effect/Sound/Camera/World 검증은 `Server Playback → Play on Server`를 사용한다.
-일반 `Play`는 지원 Animation/Effect의 local preview다. Server submit 성공 시 기존 발탄 preview
-clone을 해제하고 자동 재생성을 억제하며, 명시적 local Stage/Retry와 Level 변경에서 다시 허용한다.
-submit 실패 시 기존 preview와 dirty 문서는 유지한다.
+Valtan Sequencer는 `Save / Play Preview / Pause·Resume / Reset / Play Pattern`을 제공한다.
+Play Preview는 미저장 draft와 선택한 Preview Branch의 Stage 시간을 사용해 animation, Effect, Sound,
+collider mirror, camera/scene, combat-object visual 수명을 sample한다. Pause·seek·Loop가 가능하며
+실제 플레이어 선택·counter 결과·피해·cover 판정은 실행하지 않는다. `Play Pattern`은 저장·게시된
+Pattern의 서버 권위 실행이며 gameplay/presentation revision이 맞아야 한다. Valtan에는 Kouku의
+미저장 draft 임시 Server audition protocol이 없으므로 dirty draft를 예전 Product로 대신 실행하지 않는다.
+Save는 source 저장이고 `Publish after Save` 또는 `Retry Publish`가 기존 publisher를 실행한다.
+Server 적용 절차가 요구되면 완료 후 Play Pattern을 사용한다. Server submit 성공 시 preview clone을
+해제하고 자동 재생성을 억제한다. submit 실패 시 기존 preview와 dirty 문서는 유지한다.
+
+Effect Resources는 Patterns의 Connected Effects/Full Restore, Common, Library로 묶고 이름·pattern·
+clip·ID·category 검색을 지원한다. V1/V2 leaf/group의 typed owner는 그대로 유지한다.
+Open Editor는 resource body, Append는 선택 Stage/animation occurrence의 invocation을 편집한다.
+Common의 네 방향 돌은 Effect를 네 번 붙이는 대신 Summon의 spawn count/radius/lifetime을 사용한다.
+실행 중 외부에서 새 V1 catalog 항목을 등록했다면 Workbench의 목록 Refresh만으로 runtime catalog가
+교체되지는 않는다. catalog를 다시 로드한 세션과 메모리 draft를 구분한다.
 
 ## 8. Character Preview Panel이 소유하는 것
 
@@ -1277,9 +1297,11 @@ repeat=true로 참조한다. WORLD·Effect·Collider·Logic의 상대 시각과 
 `Open Source Pattern`에서 한 주기를 편집하고 기존 `Apply Pattern Window`로 반복창을 바꾼다.
 전체 반복 확장 검증에 실패하면 기존 draft와 미저장 Effect 배치를 보존한다.
 
-Object Tool Save는 source와 연결 placement의 외부 변경을 검사하고 원자 저장한 뒤, 기존 publisher의
-WorldSequences 전용 scope로 runtime을 비동기 반영한다. 별도 Publish 단계는 없다. 적용 실패는 저장본과
-기존 runtime을 보존하고 같은 Save로 재시도한다. 진행 중 재생은 시작한 revision을 유지한다.
+Object Tool Save는 source와 연결 placement의 외부 변경을 검사하고 저작 원본만 원자 저장한다.
+별도 Publish는 미저장 수정과 저장본의 freshness를 검사한 뒤 기존 WorldSequences 게시를 실행한다.
+연결된 Collider/Logic 수정에 Pattern 게시가 필요한 경우 기존 연계 게시도 같은 Publish 완료 경로에서
+처리한다. Save에서 이 연계 요구를 잃지 않는다. 실패는 저장본과 기존 runtime을 보존하며 Publish로
+재시도한다. 진행 중 재생은 시작한 revision을 유지한다. 로컬 게시와 LAN Server 전달·메모리 갱신은 별개다.
 Composition의 Toolbar/Boss Pattern/Sequencer Save는 모두 전체 Composition 수정분을 원자 저장한다.
 Save는 runtime을 게시하지 않는다. Boss Pattern 아래의 `Publish All Patterns`를 한 번 눌러
 선택·Gate·Model View 필터와 관계없이 모든 Parent/Bundle/Pattern을 F1에 동기화한다.
@@ -1717,3 +1739,42 @@ rotate-only Duration의 선택적 폭탄 설정은 `bombPresentationOccurrenceId
 덮는다. source-in·fit·loop·follow·bone·fade override와 혼용하지 않는다. body 이동은 곡선을
 유지하고 양끝 trim은 보존된 원본 시각 구간만 잘라낸다. 다른 occurrence와 asset 내부 element
 저장은 기존 계약을 유지하며, live anchor preview도 저장과 같은 제한을 적용한다.
+
+### World Movie V1 선택 재생 (2026-09-27)
+
+World Movie Open Editor에서 Element Solo는 해당 occurrence의 선택 구간을 한 번
+재생하고 끝에서 pause한다. marked/manual/anchor/Family/preview-filter Group은
+선택 구간을 반복한다. 배우·카메라는 동일 Movie clock을 소비하며 다른 Effect는
+선택 preview 동안 제외한다. 두 창의 Play All은 전체 편집 초안으로 Intro부터
+다시 시작하고 Stop은 초안 및 Restart에 필요한 선택을 보존한다. Movie 속도는
+0.05~2배이며 원본 slomo mapping 위에 적용된다.
+
+Element Detail·Particle·Model View의 pending 입력은 재생 전 같은 draft에 병합한다.
+V1 Save Changes는 Effect를, Timeline/Camera Save movie는 Movie 문서를 저장한다.
+새 ModelCue Solo는 Movie WORLD actor 행에서 다루며 기존 carrier별 transform 편집
+제한은 유지한다. 세부 검증과 사용자 화면 경계는09-26 WORLD_MOVIE_EFFECT_EDITOR_RESULT다.
+
+### Movie WORLD 항목 검사와 저장
+
+Effect Tool의 Movie controls와 WORLD Action Workbench Preview에는 같은 Movie owner의
+`Movie world models` 목록이 있다. 타임라인 World Model box 또는 목록/장면 Pick으로 선택하고
+instance·slot·object ID, WModel, 실제 sampled XYZ와 mesh/material을 확인한다. Pick은 현재
+표시된 posed triangle의 최근접 mesh를 찾으며 texture alpha pixel까지 판정하지 않는다.
+
+Mute는 선택 모델의 draw를 즉시 숨기고 Solo는 WORLD 모델 중 선택 항목만 그린다. 일시정지한
+프레임에서도 즉시 반영하며 Movie clock, 애니메이션 및 Effect의 bone provider는 유지한다.
+배경과 Effect는 각각 Show background / Show Effects로 임시 표시를 조절한다. 이러한 검사
+상태는 Save에 포함되지 않으며 Clear preview filters로 해제한다.
+
+Delete from Movie는 공유 WModel 삭제가 아니라 현재 클래스 Movie의 Intro/Loop에서 참조하는
+object ID를 `Data/Camera/ClassSelection.cinematics.json`의 scene별 optional
+`excludedWorldObjectIds`에 기록하는 저작 변경이다. Save Movie 후 재실행에도 표시 제외가
+유지된다. Show deleted models 목록에서 Restore to Movie 후 Save하면 복원한다. 잘못된 ID나
+다른 클래스의 리소스 참조는 admission 단계에서 거부한다. 원본 visibility/animation/bone 계산은
+삭제하지 않는다. Save는 기존 최신 디스크 병합·충돌 보존 경로를 사용한다.
+
+Play All은 Movie 카메라로 시작한다. 재생/일시정지 중 F6는 현재 pose와 FOV를 유지한 자유
+카메라와 현재 시각의 Movie 카메라를 전환한다. 자유 모드에서 Seek/Loop/Solo는 카메라를
+회수하지 않는다. 자유 모드에서 Stop은 위치를 유지하고 이후 F6는 플레이어 follow로 돌아간다.
+Focus selected는 선택 모델 bounds로 자유 카메라를 배치한다. Pick in scene는 다음 장면 클릭
+한 번을 소비하며 mouse look을 해제하므로 TAB으로 mouse look을 다시 켤 수 있다.

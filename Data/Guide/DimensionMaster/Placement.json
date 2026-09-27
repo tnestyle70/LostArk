@@ -1,0 +1,5 @@
+{
+  "schema":"lostark.guide-placement","formatVersion":1,"revision":1,"guideId":"guide.dimensionmaster",
+  "placementId":"guide.dimensionmaster.bern.reception","categoryId":"bern",
+  "position":[137.586334,42.2498169,-22.4640217],"yawDegrees":0,"anchorPolicy":"INVITER_THEN_LEADER"
+}

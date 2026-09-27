@@ -77,6 +77,10 @@ public:
 		const float3_t& vLookOffset, f32_t rollDegrees,
 		f32_t fovYDegrees, f32_t followResponse);
 	void Frame_Area(const float3_t& center, f32_t radius);
+	void Get_DragonCameraSettings(f32_t& distance, f32_t& pitch, f32_t& height,
+		bool_t& enabled, bool_t& followHeading) const;
+	bool_t Set_DragonCameraSettings(f32_t distance, f32_t pitch, f32_t height,
+		bool_t enabled, bool_t followHeading);
 	const float3_t& Get_PositionOffset() const
 	{
 		return m_vPositionOffset;
@@ -120,6 +124,11 @@ private:
 	f32_t m_fVehicleOrbitPitch = 0.f;
 	f32_t m_fVehicleOrbitRadius = 0.f;
 	f32_t m_fVehiclePreviousHeading = 0.f;
+	f32_t m_fDragonCameraDistance = 16.f;
+	f32_t m_fDragonCameraPitchDegrees = 24.f;
+	f32_t m_fDragonCameraLookHeight = 2.4f;
+	bool_t m_bDragonOrbitEnabled = true;
+	bool_t m_bDragonFollowHeading = true;
 
 public:
 	static unique_ptr<CCamera_Free> Create(ComPtr<ID3D11Device> pDevice, ComPtr<ID3D11DeviceContext> pContext);

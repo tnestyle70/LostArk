@@ -89,6 +89,7 @@ public:
     bool_t Is_IdentityPart() const { return m_isIdentityPart; }
     bool Is_Socketed() const { return !m_strSocketBoneName.empty(); }
     bool Get_AfterimageView(CSkeletalAfterimage::MODEL_VIEW& view);
+	bool_t Set_SocketTransform(const float3_t& positionMeters, const float3_t& rotationDegrees);
 
 private:
 	bool_t m_isVisible = true;
@@ -106,6 +107,8 @@ private:
 	bool_t m_hasOwnBones = false;
 	string m_strSocketBoneName;
 	f32_t m_fSocketYawDegrees = 0.f;
+	float3_t m_vSocketPositionMeters{};
+	float3_t m_vSocketRotationDegrees{};
 	const float4x4_t* m_pSocketRootMatrix = { nullptr };
 	string m_strMaterialProfileId;
 	const DEFERRED_EMISSIVE_OVERRIDE* m_pEmissiveOverride = { nullptr };

@@ -1,3 +1,4 @@
+#ifndef SOURCE_CHARACTER_LIGHT_DISPATCH_CASES
 SOURCE_CHARACTER_NATIVE_OUTPUT SourceCharacterLight208(SOURCE_CHARACTER_NATIVE_INPUT input)
 {
     SOURCE_CHARACTER_NATIVE_OUTPUT output = (SOURCE_CHARACTER_NATIVE_OUTPUT)0;
@@ -1523,3 +1524,10 @@ SOURCE_CHARACTER_NATIVE_OUTPUT SourceCharacterLight213(SOURCE_CHARACTER_NATIVE_I
 
 
 // source.character.selection-native-235.v1 / source program ed8272cdf0dc2d479786c2e23d2416a0
+#else // SOURCE_CHARACTER_LIGHT_DISPATCH_CASES
+    case 208u: return SourceCharacterLight208(input);
+    case 210u: return SourceCharacterLight210(input);
+    case 211u: return SourceCharacterLight211(input);
+    case 212u: return SourceCharacterLight212(input);
+    case 213u: return SourceCharacterLight213(input);
+#endif // SOURCE_CHARACTER_LIGHT_DISPATCH_CASES

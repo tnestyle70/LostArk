@@ -165,6 +165,15 @@ public:
 	std::string Get_ObjectSampleStatus(const std::string& instanceId) const;
 	// The admitted sequence retains object ownership; callers inspect the current visible pose only.
 	void Collect_VisibleObjects(std::vector<std::shared_ptr<CWorldSequenceObject>>& out) const;
+    struct OBJECT_INSPECTION_SAMPLE final
+    {
+        std::string instanceId, slotId, objectId, modelAssetId;
+        uint32_t emissionIndex = 0u;
+        std::shared_ptr<CWorldSequenceObject> object;
+    };
+    // Append the existing sampled clones, including authored-hidden and held objects.
+    // Reading inspection identity never advances a clock or creates a replacement model.
+    void Collect_ObjectInspectionSamples(std::vector<OBJECT_INSPECTION_SAMPLE>& out) const;
 	struct OBJECT_COLLIDER_SAMPLE
 	{
 		std::string instanceId, colliderTrackId, behavior;

@@ -628,7 +628,8 @@ void LostArk::Server::CGameRoom::Handle_ConfirmNpcEntry(
 				guideIter->eTargetWorldId, PARTY_TRANSFER_RESULT::REJECTED_MEMBER_UNAVAILABLE);
 			return;
 		}
-		if (batchMemberIds.size() > 1u)
+		if (batchMemberIds.size() > 1u ||
+            (partyIdIter != m_PartyIdByPlayerId.end() && m_Guides.contains(partyIdIter->second)))
 			transfer.PartyBatchSessionIds.push_back(memberIter->second.iSessionId);
 	}
 	m_PendingWorldTransfers.push_back(std::move(transfer));

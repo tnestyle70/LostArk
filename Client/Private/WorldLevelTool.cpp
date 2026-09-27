@@ -555,6 +555,12 @@ void CWorldLevelTool::Render()
     const bool focused = ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows);
     if (focused && (ImGui::IsMouseClicked(ImGuiMouseButton_Left) || ImGui::IsMouseClicked(ImGuiMouseButton_Right))) m_InteractionRequested = true;
     ImGui::Text("Active level: %s", m_ActiveAreaId.empty() ? "No world loaded" : m_ActiveAreaId.c_str());
+    ImGui::SameLine();
+    if (ImGui::Button("Guide AI"))
+    {
+        WORLD_LEVEL_TOOL_REQUEST request; request.kind = WORLD_LEVEL_REQUEST_KIND::OPEN_GUIDE;
+        m_Request = std::move(request); m_InteractionRequested = true;
+    }
     /* Browsing another Area while placements are bound would show a document
        the draft does not describe, so the inventory stays on the edited Area. */
     const bool sessionBound = m_pSession && m_pSession->Is_Bound();

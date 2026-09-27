@@ -111,6 +111,7 @@
 #include "EffectAuthoringSequencer.h"
 #include "WorldObjectTool.h"
 #include "WorldLevelTool.h"
+#include "GuideAITool.h"
 #include "ValtanPatternAuditionService.h"
 #include "ValtanPatternFlowService.h"
 #include "ValtanTuningCommandService.h"
@@ -132,6 +133,27 @@
 namespace
 {
 #ifdef _DEBUG
+    Client::CLASS_MOVIE_INSPECTION_CALLBACKS ClassMovieInspectionCallbacks()
+    {
+        Client::CLASS_MOVIE_INSPECTION_CALLBACKS callbacks;
+        callbacks.state = [](const std::string& classId, bool loop) {
+            auto* level = CLevel_CharacterSelect::Get_Active();
+            if (level && CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::CHARACTER_SELECT))
+                return level->Get_ClassSelectionPresentation().Get_WorldInspection(classId, loop);
+            Client::CLASS_MOVIE_INSPECTION_STATE state;
+            state.classId = classId; state.loop = loop;
+            state.status = "Enter Character Select to inspect Movie models.";
+            return state;
+        };
+        callbacks.command = [](const std::string& classId, bool loop,
+            const Client::CLASS_MOVIE_INSPECTION_COMMAND& command, std::string& status) {
+            auto* level = CLevel_CharacterSelect::Get_Active();
+            if (!level || CGameInstance::Get().Get_CurrentLevelID() != ETOUI(LEVEL::CHARACTER_SELECT))
+            { status = "Movie inspection requires Character Select."; return false; }
+            return level->Get_ClassSelectionPresentation().Inspect_World(classId, loop, command, status);
+        };
+        return callbacks;
+    }
     void ConfigureClassMovieEditor(Client::CEffect_Tool& tool)
     {
         CEffect_Tool::CLASS_MOVIE_CALLBACKS movieCallbacks;
@@ -145,6 +167,9 @@ namespace
             state.active = preview.Is_Active() && preview.Get_ActiveClass() == classId;
             state.paused = preview.Is_Paused(); state.loop = preview.Is_Looping();
             state.clockMs = preview.Get_ClockMs(); state.durationMs = preview.Get_DurationMs();
+            state.playbackRate = preview.Get_PlaybackRate();
+            state.selectionActive = preview.Is_SelectionActive();
+            state.selectionRepeat = preview.Is_SelectionRepeating();
             state.status = level->Get_ClassCinematicStatus();
             return state;
         };
@@ -193,11 +218,36 @@ namespace
             { status = "Movie Effect preview requires Character Select."; return false; }
             return level->Get_ClassSelectionPresentation().Preview_EffectDocument(document, status);
         };
+        movieCallbacks.playSelection = [](const std::string& classId, bool loop,
+            const EFFECT_DOCUMENT_DESC& full, const EFFECT_DOCUMENT_DESC& selected,
+            const std::vector<std::string>& drawElementIds, double startAgeMs, double endAgeMs, bool repeat, std::string& status) {
+            auto* level = CLevel_CharacterSelect::Get_Active();
+            if (!level || CGameInstance::Get().Get_CurrentLevelID() != ETOUI(LEVEL::CHARACTER_SELECT))
+            { status = "Enter Character Select to play Movie elements."; return false; }
+            const auto& options = level->Get_ClassMovieOptions();
+            const auto option = std::find_if(options.begin(), options.end(), [&](const auto& value) { return value.classId == classId; });
+            if (option == options.end() || !level->Select_ClassMovieCategory(static_cast<size_t>(std::distance(options.begin(), option))))
+            { status = "This Movie category is no longer available."; return false; }
+            return level->Play_ClassCinematicSelection(classId, loop, full, selected, drawElementIds, startAgeMs, endAgeMs, repeat, status);
+        };
+        movieCallbacks.previewSelection = [](const EFFECT_DOCUMENT_DESC& full,
+            const EFFECT_DOCUMENT_DESC& selected, const std::vector<std::string>& drawElementIds, double startAgeMs, double endAgeMs, std::string& status) {
+            auto* level = CLevel_CharacterSelect::Get_Active();
+            if (!level || CGameInstance::Get().Get_CurrentLevelID() != ETOUI(LEVEL::CHARACTER_SELECT))
+            { status = "Movie Effect preview requires Character Select."; return false; }
+            return level->Get_ClassSelectionPresentation().Preview_EffectSelection(full, selected, drawElementIds, startAgeMs, endAgeMs, status);
+        };
+        movieCallbacks.setPlaybackRate = [](double rate) {
+            auto* level = CLevel_CharacterSelect::Get_Active();
+            return level && CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::CHARACTER_SELECT) &&
+                level->Get_ClassSelectionPresentation().Set_PlaybackRate(rate);
+        };
         movieCallbacks.clearPreviews = [](std::string& status) {
             auto* level = CLevel_CharacterSelect::Get_Active();
             return !level || CGameInstance::Get().Get_CurrentLevelID() != ETOUI(LEVEL::CHARACTER_SELECT) ||
                 level->Get_ClassSelectionPresentation().Clear_EffectPreviews(status);
         };
+        movieCallbacks.inspection = ClassMovieInspectionCallbacks();
         tool.Set_ClassMovieCallbacks(std::move(movieCallbacks));
     }
 #endif
@@ -1727,6 +1777,9 @@ void CMainApp::Sync_KoukuCinematicUI()
 
 void CMainApp::Update(const f32_t fTimeDelta)
 {
+#ifdef _DEBUG
+	if (m_pGuideAITool) m_pGuideAITool->Update();
+#endif
 	// Commit last frame's request before this frame builds UI and render queues.
 	// The newly active Level must Update/Late_Update before its first Render.
 	Apply_LevelRequest();
@@ -2406,6 +2459,14 @@ void CMainApp::Update(const f32_t fTimeDelta)
 	}
 	if (nullptr != m_pValtanActionWorkbench)
 	{
+		EFFECT_RESOURCE_KEY resourceKey;
+		if (m_pValtanActionWorkbench->Consume_EffectResourceOpenRequest(resourceKey) &&
+			SUCCEEDED(EnsureDebugTool(DEBUG_TOOL::EFFECT)) && nullptr != m_pEffectTool)
+		{
+			const bool opened = m_pEffectTool->Open_AuthoringResource(resourceKey);
+			m_strToolStatus = opened ? "Opened the saved Composition resource in its Effect editor." :
+				"Effect editor preserved its draft; finish the pending edit or check its source status.";
+		}
 		EFFECT_TOOL_VALTAN_PRODUCT_OPEN_REQUEST effectRequest;
 		if (m_pValtanActionWorkbench->Consume_EffectToolOpenRequest(
 				effectRequest))
@@ -3765,6 +3826,23 @@ HRESULT CMainApp::Render()
 			};
 #ifdef _DEBUG
 			RenderWorldLevelTool();
+			if (m_pGuideAITool)
+			{
+				if (IsDebugToolVisible(DEBUG_TOOL::GUIDE_AI))
+				{
+					const LostArk::Shared::S2C_GUIDE_STATE* guideState = nullptr;
+					const auto guideLevel = static_cast<LEVEL>(CGameInstance::Get().Get_CurrentLevelID());
+					if (guideLevel == LEVEL::BERN) { if (auto* level = CLevel_Bern::Get_Active()) guideState = level->Get_GuideState(); }
+					else if (guideLevel == LEVEL::VALTAN_ARENA) { if (auto* level = CLevel_ValtanArena::Get_Active()) guideState = level->Get_GuideState(); }
+					else if (guideLevel == LEVEL::KAKULSAYDON_ARENA) { if (auto* level = CLevel_KakulSaydonArena::Get_Active()) guideState = level->Get_GuideState(); }
+					m_pGuideAITool->Set_RuntimeState(guideState);
+					m_pGuideAITool->Set_ActiveArea(GetWorldLevelAreaId());
+					focusNextWindow(DEBUG_TOOL::GUIDE_AI);
+					m_pGuideAITool->Render();
+					if (m_pGuideAITool->Consume_InteractionRequest()) m_eDebugInputOwner = DEBUG_TOOL::GUIDE_AI;
+					if (!m_pGuideAITool->Is_Open()) SetDebugToolVisible(DEBUG_TOOL::GUIDE_AI, false);
+				}
+			}
 			/* The Workbench shell renders one selected boss session. Other domain
 			   tools remain independent windows; every owner retains its own draft. */
 			if (IsDebugToolVisible(DEBUG_TOOL::MAP) && nullptr != m_pMapTool)
@@ -10056,6 +10134,10 @@ HRESULT CMainApp::EnsureDebugTool(const DEBUG_TOOL eTool, const bool_t bShowWind
 		if (!m_pWorldLevelTool) m_pWorldLevelTool = make_unique<CWorldLevelTool>();
 		m_pWorldLevelTool->Open(GetWorldLevelAreaId());
 		break;
+	case DEBUG_TOOL::GUIDE_AI:
+		if (!m_pGuideAITool) m_pGuideAITool = make_unique<CGuideAITool>();
+		m_pGuideAITool->Open();
+		break;
 	case DEBUG_TOOL::MAP:
 		if (nullptr == m_pMapTool)
 		{
@@ -10283,6 +10365,7 @@ HRESULT CMainApp::EnsureDebugTool(const DEBUG_TOOL eTool, const bool_t bShowWind
 				state.authoringDirty = preview.Has_AuthoringChanges();
                 state.authoringPublishPending = preview.Is_AuthoringPublishPending();
                 state.authoringStatus = preview.Get_AuthoringStatus();
+                state.authoringGeneration = preview.Get_AuthoringGeneration();
 				state.active = preview.Is_Active();
 				state.paused = preview.Is_Paused();
 				state.looping = preview.Is_Looping();
@@ -10308,12 +10391,14 @@ HRESULT CMainApp::EnsureDebugTool(const DEBUG_TOOL eTool, const bool_t bShowWind
 					CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::CHARACTER_SELECT))
 					(void)level->Select_ClassMovieCategory(category);
 			};
-			classSelection.play = [] {
-				auto* level = CLevel_CharacterSelect::Get_Active();
-				return level && level->Can_PlayClassCinematic() &&
-					CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::CHARACTER_SELECT) &&
-					level->Play_ClassCinematic(level->Get_ClassMovieId());
-			};
+            classSelection.play = [this] {
+                auto* level = CLevel_CharacterSelect::Get_Active();
+                if (!level || !level->Can_PlayClassCinematic() ||
+                    CGameInstance::Get().Get_CurrentLevelID() != ETOUI(LEVEL::CHARACTER_SELECT)) return false;
+                if (m_pEffectTool && m_pEffectTool->Is_EditingClassMovie(level->Get_ClassMovieId()))
+                    return m_pEffectTool->Play_ClassMovie();
+                return level->Play_ClassCinematic(level->Get_ClassMovieId());
+            };
 			classSelection.stop = [] {
 				if (auto* level = CLevel_CharacterSelect::Get_Active(); level &&
 					CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::CHARACTER_SELECT))
@@ -10356,7 +10441,20 @@ HRESULT CMainApp::EnsureDebugTool(const DEBUG_TOOL eTool, const bool_t bShowWind
             };
             classSelection.saveAuthoring = [](std::string& status) {
                 auto* level = CLevel_CharacterSelect::Get_Active();
-                return level && level->Get_ClassSelectionPresentation().Save_Authoring(status);
+                return level && level->Get_ClassSelectionPresentation().Save_Authoring(status, false);
+            };
+            classSelection.publishAuthoring = [](std::string& status) {
+                auto* level = CLevel_CharacterSelect::Get_Active();
+                return level && level->Get_ClassSelectionPresentation().Publish_Authoring(status);
+            };
+            classSelection.mapTime = [](const std::string& classId, bool loop, double timeMs, bool toSource) {
+                auto* level = CLevel_CharacterSelect::Get_Active();
+                return level ? level->Get_ClassSelectionPresentation().Map_TimelineTime(classId, loop, timeMs, toSource) : -1.;
+            };
+            classSelection.editTiming = [](const CLASS_MOVIE_AUTHORING_BOX& box, double start, double end,
+                CLASS_MOVIE_TIMING_EDIT gesture, std::string& status) {
+                auto* level = CLevel_CharacterSelect::Get_Active();
+                return level && level->Get_ClassSelectionPresentation().Edit_AuthoringTiming(box, start, end, gesture, status);
             };
             classSelection.reloadAuthoring = [](std::string& status) {
                 auto* level = CLevel_CharacterSelect::Get_Active();
@@ -10370,6 +10468,7 @@ HRESULT CMainApp::EnsureDebugTool(const DEBUG_TOOL eTool, const bool_t bShowWind
                 status = "Movie Effect opened in V1. Edit Elements with the Movie actors; Play All replays the complete Movie.";
                 return true;
             };
+            classSelection.inspection = ClassMovieInspectionCallbacks();
             m_pSequencerTool->Set_ClassSelectionPreviewCallbacks(std::move(classSelection));
 			/* The Map Tool hosts the same Sequence session for its integrated
 			   cutscene view. One owner and one draft, borrowed per frame. */
@@ -10683,12 +10782,6 @@ void CMainApp::RenderArenaCameraAndPlayerControls()
 	}
 	if (camera && ImGui::CollapsingHeader("Map Camera / Player", ImGuiTreeNodeFlags_DefaultOpen))
 	{
-		const auto setSpeed = [valtan, kouku, camera](const f32_t speed)
-		{
-			if (nullptr != valtan) valtan->Set_DebugCameraSpeed(speed);
-			else if (nullptr != kouku) kouku->Set_DebugCameraSpeed(speed);
-			else (void)camera->Set_FreeMoveSpeed(speed);
-		};
 		ImGui::Text("Current map: %s", mapName);
 		/* Where the local player actually stands and which interact box the Server is offering
 		there, so an authored trigger can be placed against real coordinates instead of guesses. */
@@ -10709,18 +10802,6 @@ void CMainApp::RenderArenaCameraAndPlayerControls()
 				CCombatHUDViewModel::Get().Get_InteractPromptTriggerId();
 			ImGui::Text("Interact offer: %s", offered.empty() ? "(none)" : offered.c_str());
 		}
-		f32_t speed = camera->Get_FreeMoveSpeed();
-		if (ImGui::DragFloat("Free camera speed (m/s)", &speed, 0.5f,
-			CCamera_Free::MIN_FREE_MOVE_SPEED, CCamera_Free::MAX_FREE_MOVE_SPEED,
-			"%.1f", ImGuiSliderFlags_AlwaysClamp))
-			setSpeed(speed);
-		if (ImGui::Button("Reset speed to 20 m/s"))
-			setSpeed(CCamera_Free::DEFAULT_ARENA_MOVE_SPEED);
-		ImGui::TextDisabled("Shift: x%.0f (%.1f m/s).",
-			CCamera_Free::FREE_MOVE_SPRINT_MULTIPLIER,
-			camera->Get_FreeMoveSpeed() * CCamera_Free::FREE_MOVE_SPRINT_MULTIPLIER);
-		ImGui::TextDisabled(valtan || kouku ? "Free-camera speed is saved per arena for this session." :
-			"Free-camera speed lasts for this map visit.");
 
 		// The Server projects every request onto this active world's authored navigation.
 		// Bern needs this same Debug-only path to inspect the separate Bern3 deck.
@@ -11717,6 +11798,7 @@ void CMainApp::RenderValtanArenaControls()
         (void)pArena->Debug_DespawnValtanBoss(status);
     }
     ImGui::EndDisabled();
+    RenderValtanAxeEditor();
     if (!pArena->Get_DebugValtanBossCommandStatus().empty())
         ImGui::TextWrapped("%s", pArena->Get_DebugValtanBossCommandStatus().c_str());
     if (ImGui::TreeNode("Valtan Presentation Status"))
@@ -13071,6 +13153,7 @@ void CMainApp::RenderDeveloperTools()
 		toolCell("Effect Tool V1", DEBUG_TOOL::EFFECT);
 		toolCell("Effect Tool V2", DEBUG_TOOL::EFFECT_V2);
 		toolCell("World Level Tool", DEBUG_TOOL::WORLD_LEVEL);
+		toolCell("Guide AI", DEBUG_TOOL::GUIDE_AI);
 		toolCell("Map Tool", DEBUG_TOOL::MAP);
 		toolCell("Rendering Workbench", DEBUG_TOOL::RENDERING);
 #endif
@@ -13086,11 +13169,12 @@ void CMainApp::RenderDeveloperTools()
 	if (ImGui::Button("Close All Tools"))
 		CloseAllDebugTools();
 #ifdef _DEBUG
-	constexpr std::array<std::pair<DEBUG_TOOL, const char_t*>, 16>
+	constexpr std::array<std::pair<DEBUG_TOOL, const char_t*>, 17>
 		TOOL_FOCUS_OPTIONS = {{
 			{ DEBUG_TOOL::MAP, "Map Tool" },
 			{ DEBUG_TOOL::WORLD_OBJECT, "Action Workbench / Object" },
 			{ DEBUG_TOOL::WORLD_LEVEL, "Open World Level Tool" },
+			{ DEBUG_TOOL::GUIDE_AI, "Guide AI Tool" },
 			{ DEBUG_TOOL::SEQUENCER, "Action Workbench" },
 			{ DEBUG_TOOL::SEQUENCER_BENCHMARK, "Action Workbench / Sequence" },
 			{ DEBUG_TOOL::ANIMATION, "Animation Clip Tool" },
@@ -13144,6 +13228,8 @@ void CMainApp::RenderDeveloperTools()
 #else
 	RenderBalanceTestLauncher();
 #endif
+	RenderCameraSpeedControls();
+	RenderDragonControls();
 	ImGui::TextWrapped("%s", m_strToolStatus.c_str());
 	if (ImGui::CollapsingHeader("Character Select Movie", ImGuiTreeNodeFlags_DefaultOpen))
 		CLevel_CharacterSelect::Render_ClassSelectMovieControls();
@@ -13931,6 +14017,7 @@ void CMainApp::Free()
 	m_pWorldLevelPendingMapRequest.reset();
 	m_pMapEffectPlacementRequest.reset();
 	m_pWorldLevelTool.reset();
+	m_pGuideAITool.reset();
 	m_pWorldObjectTool.reset();
 #endif
 #ifdef _DEBUG

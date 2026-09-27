@@ -1,5 +1,7 @@
 #pragma once
 #include "EffectRecoveryCamera.h"
+#include "SequenceCameraEditor.h"
+#include "RecoveryCameraAuthoringSession.h"
 
 #include "AnimationTargetService.h"
 #include "HitAreaWire.h"
@@ -60,7 +62,8 @@ public:
     void Set_V2SnapshotProvider(V2_SNAPSHOT_PROVIDER provider);
     void Render_WorkbenchDetail() { Render_BoxDetail(true); }
     void Render_WorkbenchResources() { Render_CompositionResources(true); }
-    bool Is_Dirty() const { return m_Dirty; }
+    bool Is_Dirty() const { return m_Dirty || m_RecoveryCameraSession.Is_Dirty(); }
+    bool Ensure_RecoveryCameraSaved(std::string& status);
     bool Open_CharacterModelSequence(const std::string& sequenceId, bool loadSaved = true);
     bool Export_CharacterModelAction(ANIMATION_SKILL_BINDING& binding,
         ANIMATION_EFFECT_CUE_DOCUMENT& cues, const std::string& soundOwner, std::string& status,
@@ -257,6 +260,9 @@ private:
     bool Capture_CameraKey(CAMERA_ROW& row, std::uint32_t time);
     void Release_Camera();
     void Render_CameraEditor();
+    void Render_RecoveryCameraTool();
+    bool Open_RecoveryCameraTool(const CAMERA_ROW& row);
+    bool Refresh_RecoveryCameraDraft();
     void Draw_CameraRows(float labels, float rowHeight, float width);
     bool Reload_ModelSequences();
     bool Select_ModelSequence(const std::string& id);
@@ -341,6 +347,11 @@ private:
     std::optional<EFFECT_ROW> m_Transient;
     std::weak_ptr<Engine::CCamera> m_Camera;
     std::vector<CAMERA_ROW> m_CameraRows, m_TransientCameraRows;
+    CRecoveryCameraAuthoringSession m_RecoveryCameraSession;
+    SEQUENCE_CAMERA_EDITOR_STATE m_RecoveryCameraEditor;
+    std::optional<CAMERA_ROW> m_RecoveryCameraDraft;
+    bool m_RecoveryCameraOpen = false, m_RecoveryCameraPending = false;
+    std::string m_RecoveryCameraStatus;
     std::string m_SelectedCamera;
     bool m_CameraOwned = false;
     std::string m_AssetName, m_SelectedSequence, m_AnchorMember, m_SelectedEffect, m_Status;
