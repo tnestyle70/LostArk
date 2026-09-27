@@ -1,4 +1,4 @@
-LOSTARK_ANIM_EVENTS 6 "Warlord" 1764
+LOSTARK_ANIM_EVENTS 6 "Warlord" 1765
 "wgl_att_battle_1_01" CANCEL startms=0 endms=1000 payload="방어태세해제" src=orig
 "wgl_att_battle_1_01" SOUND startms=0 payload="PC_GUNLANCER_M.PC_GunLancer_M_Att_Battle1_1" src=orig
 "wgl_att_battle_1_01" SOUND startms=50 payload="PC_GUNLANCER_M.PC_GunLancer_M_Att_Battle1_Vox1_1" src=orig
@@ -725,6 +725,7 @@ LOSTARK_ANIM_EVENTS 6 "Warlord" 1764
 "wgl_sk_hookchain" EFFECT startms=367 payload="fx_pc_wgl_00.Par_D_Chain_Attraction_31" src=orig
 "wgl_sk_hookchain" EFFECT startms=367 payload="fx_cm_03.Spark.Par_D_Spark_03" src=orig
 "wgl_sk_hookchain" HIT startms=420 endms=520 rep=1 repms=0 fz=430 fzin=180 fzout=250 push=0 pushr=0 area=3 ar=450 aa=60 ah=150 ax=-10 arem=0 maxt=0 src=orig
+"wgl_sk_hookchain" HIT startms=850 endms=950 rep=1 repms=0 fz=550 fzin=150 fzout=250 push=150 pushr=-450 area=3 ar=450 aa=60 ah=150 ax=-10 arem=0 maxt=0 src=orig
 "wgl_sk_hookchain" EFFECT startms=420 payload="" src=orig
 "wgl_sk_hookchain" SOUND startms=700 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_HookChain1_FX000_2" src=orig
 "wgl_sk_hookchain" EFFECT startms=850 payload="" src=orig
@@ -1192,7 +1193,7 @@ LOSTARK_ANIM_EVENTS 6 "Warlord" 1764
 "wgl_sk_shielddash_run" EFFECT startms=0 payload="FX_PC_WGL_01.Par_E_ShieldDash_06" src=orig
 "wgl_sk_shielddash_run" EFFECT startms=0 payload="FX_Post.FX_Par.Par_C_ZoomBlur_02" src=orig
 "wgl_sk_shielddash_run" EFFECT startms=0 payload="" src=orig
-"wgl_sk_shielddash_run" HIT startms=40 endms=70 rep=1 repms=0 fz=700 fzin=150 fzout=250 push=300 pushr=150 area=2 ar=160 aa=150 ah=150 ax=50 arem=0 maxt=0 src=orig
+"wgl_sk_shielddash_run" HIT startms=40 endms=70 rep=8 repms=300 fz=700 fzin=150 fzout=250 push=300 pushr=150 area=2 ar=160 aa=150 ah=150 ax=50 arem=0 maxt=0 src=orig
 "wgl_sk_shielddash_run" SUPERARMOR startms=0 endms=1600 payload="" src=orig
 "wgl_sk_shielddash_run" SOUND startms=10 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_ShieldDash1_FX000_2" src=orig
 "wgl_sk_shielddash_run" EFFECT startms=40 payload="" src=orig
@@ -1207,7 +1208,7 @@ LOSTARK_ANIM_EVENTS 6 "Warlord" 1764
 "wgl_sk_shielddash_run_re" EFFECT startms=0 payload="FX_Post.FX_Par.Par_C_ZoomBlur_01" src=orig
 "wgl_sk_shielddash_run_re" EFFECT startms=0 payload="FX_Post.FX_Par.Par_C_ZoomBlur_03" src=orig
 "wgl_sk_shielddash_run_re" EFFECT startms=0 payload="FX_PC_WGL_01.Par_E_ShieldDash_06" src=orig
-"wgl_sk_shielddash_run_re" HIT startms=40 endms=70 rep=1 repms=0 fz=80 fzin=30 fzout=50 push=150 pushr=120 area=2 ar=160 aa=150 ah=150 ax=50 arem=0 maxt=0 src=orig
+"wgl_sk_shielddash_run_re" HIT startms=40 endms=70 rep=8 repms=120 fz=80 fzin=30 fzout=50 push=150 pushr=120 area=2 ar=160 aa=150 ah=150 ax=50 arem=0 maxt=0 src=orig
 "wgl_sk_shielddash_run_re" SHAKE startms=0 payload="dur=0.9;in=0.5;out=0;x=5,60;y=5,60;z=5,60;fov=0,0" src=orig
 "wgl_sk_shielddash_run_re" SUPERARMOR startms=0 endms=933 payload="" src=orig
 "wgl_sk_shielddash_run_re" SOUND startms=1 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_ShieldDash1_Vox1_1" src=orig
@@ -1431,7 +1432,7 @@ LOSTARK_ANIM_EVENTS 6 "Warlord" 1764
 "wgl_sk_spearshot_01" SOUND startms=200 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_SpearShot1_FX000_2" src=orig
 "wgl_sk_spearshot_01" SOUND startms=200 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_SpearShot1_Vox1_1" src=orig
 "wgl_sk_spearshot_01" HIT startms=450 endms=550 rep=1 repms=0 fz=550 fzin=150 fzout=250 push=150 pushr=70 area=2 ar=400 aa=170 ah=150 ax=-20 arem=0 maxt=0 src=orig
-"wgl_sk_spearshot_01" HIT startms=800 endms=900 rep=2 repms=150 fz=550 fzin=150 fzout=200 push=200 pushr=-50 area=1 ar=150 aa=0 ah=150 ax=250 arem=0 maxt=0 src=orig
+"wgl_sk_spearshot_01" HIT startms=800 endms=900 rep=2 repms=300 fz=550 fzin=150 fzout=200 push=200 pushr=-50 area=1 ar=150 aa=0 ah=150 ax=250 arem=0 maxt=0 src=orig
 "wgl_sk_spearshot_01" EFFECT startms=425 payload="FX_PC_WGL_01.Par_K_WGL_SpearShot_Atk_01" src=orig
 "wgl_sk_spearshot_01" EFFECT startms=425 payload="FX_PC_WGL_01.Par_K_WGL_SpearShot_Atk_04_01" src=orig
 "wgl_sk_spearshot_01" SHAKE startms=425 payload="dur=0.3;in=0;out=0.2;x=3,55;y=3,55;z=3,55;fov=0,0" src=orig
@@ -1758,8 +1759,8 @@ LOSTARK_ANIM_EVENTS 6 "Warlord" 1764
 "wgl_sk_shieldstamp_custom_1_attack" HIT startms=30 endms=130 rep=1 repms=0 fz=430 fzin=150 fzout=250 push=30 pushr=30 area=1 ar=230 aa=0 ah=150 ax=80 arem=0 maxt=0 src=orig
 "wgl_sk_spearshot_02" HIT startms=0 endms=100 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=2 ar=500 aa=250 ah=150 ax=-20 arem=0 maxt=0 src=orig
 "wgl_sk_spearshot_custom_1_3" HIT startms=0 endms=100 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=2 ar=500 aa=250 ah=150 ax=-20 arem=0 maxt=0 src=orig
-"wgl_sk_spearshot_custom_2_2" HIT startms=100 endms=200 rep=2 repms=150 fz=550 fzin=150 fzout=200 push=200 pushr=-50 area=1 ar=150 aa=0 ah=150 ax=250 arem=0 maxt=0 src=orig
+"wgl_sk_spearshot_custom_2_2" HIT startms=100 endms=200 rep=3 repms=150 fz=550 fzin=150 fzout=200 push=200 pushr=-50 area=1 ar=150 aa=0 ah=150 ax=250 arem=0 maxt=0 src=orig
 "wgl_sk_spearshot_custom_2_3" HIT startms=0 endms=100 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=2 ar=500 aa=250 ah=150 ax=-20 arem=0 maxt=0 src=orig
-"wgl_sk_super_guardianofprotection_01" HIT startms=800 endms=900 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=1 ar=350 aa=0 ah=300 ax=0 arem=0 maxt=0 src=orig
+"wgl_sk_super_guardianofprotection_01" HIT startms=800 endms=900 rep=6 repms=200 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=1 ar=350 aa=0 ah=300 ax=0 arem=0 maxt=0 src=orig
 "wgl_sk_super_guardianofprotection_02" HIT startms=1050 endms=1150 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=1 ar=700 aa=0 ah=300 ax=0 arem=0 maxt=0 src=orig
 "wgl_sk_warspear" HIT startms=650 endms=700 rep=1 repms=0 fz=430 fzin=150 fzout=250 push=30 pushr=30 area=1 ar=500 aa=0 ah=150 ax=0 arem=0 maxt=0 src=orig

@@ -641,8 +641,8 @@
       "hits": [
         {
           "timeMs": 1000,
-          "repeatCount": 1,
-          "repeatMs": 0,
+          "repeatCount": 4,
+          "repeatMs": 100,
           "areaType": 1,
           "range": 1.5,
           "angle": 0,
@@ -669,8 +669,8 @@
         },
         {
           "timeMs": 1000,
-          "repeatCount": 1,
-          "repeatMs": 0,
+          "repeatCount": 4,
+          "repeatMs": 100,
           "areaType": 1,
           "range": 1.5,
           "angle": 0,
@@ -697,8 +697,8 @@
         },
         {
           "timeMs": 1000,
-          "repeatCount": 1,
-          "repeatMs": 0,
+          "repeatCount": 4,
+          "repeatMs": 100,
           "areaType": 1,
           "range": 1.5,
           "angle": 0,
@@ -2006,8 +2006,8 @@
       "hits": [
         {
           "timeMs": 250,
-          "repeatCount": 1,
-          "repeatMs": 0,
+          "repeatCount": 12,
+          "repeatMs": 200,
           "areaType": 1,
           "range": 3.0,
           "angle": 0,
@@ -2034,8 +2034,8 @@
         },
         {
           "timeMs": 250,
-          "repeatCount": 1,
-          "repeatMs": 0,
+          "repeatCount": 12,
+          "repeatMs": 200,
           "areaType": 1,
           "range": 3.0,
           "angle": 0,
@@ -2062,8 +2062,8 @@
         },
         {
           "timeMs": 250,
-          "repeatCount": 1,
-          "repeatMs": 0,
+          "repeatCount": 12,
+          "repeatMs": 200,
           "areaType": 1,
           "range": 3.0,
           "angle": 0,

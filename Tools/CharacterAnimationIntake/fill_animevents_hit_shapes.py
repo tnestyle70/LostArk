@@ -32,7 +32,35 @@ def parse_pairs(text):
     return out
 
 
+def load_base_hits(asset):
+    """Out-of-decade SkillEffect rows build_base_hit_rows.py proved are the skill's own."""
+    out = {}
+    path = os.path.join(REF, asset, asset + '.basehits')
+    if not os.path.exists(path):
+        return out
+    for line in read_lines(path)[1:]:
+        m = re.match(r'^(\d+) pk=(\d+)', line)
+        if m:
+            out.setdefault(int(m.group(1)), set()).add(int(m.group(2)))
+    return out
+
+
+def load_hit_repeats(asset):
+    """Repeat count and interval of each source Effect notify, from build_hit_repeats.py."""
+    out = {}
+    path = os.path.join(REF, asset, asset + '.hitrepeats')
+    if not os.path.exists(path):
+        return out
+    for line in read_lines(path)[1:]:
+        p = parse_pairs(line)
+        if 'pk' in p:
+            out[(int(p['pk']), int(p['t']))] = (int(p['rep']), int(p['repms']))
+    return out
+
+
 def load_notify(asset, clipmap):
+    base_hits = load_base_hits(asset)
+    repeats = load_hit_repeats(asset)
     clips = {}
     order = []
     cur = None
@@ -48,9 +76,15 @@ def load_notify(asset, clipmap):
         p = parse_pairs(line[4:])
         if p.get('kind') != 'HIT':
             continue
+        own = {k: int(p[k]) for k in SHAPE_KEYS if k in p}
+        if p.get('asset', '').isdigit() and own.get('area', 0) > 0:
+            start = to_ms(float(p['t']))
+            repeat = next((repeats[(int(p['asset']), start + d)] for d in (0, -1, 1)
+                           if (int(p['asset']), start + d) in repeats), None)
+            if repeat:
+                own['rep'], own['repms'] = repeat
         clips[cur].append((float(p['t']), float(p['d']), p.get('label', ''),
-                           p.get('src', ''), p.get('asset', ''),
-                           {k: int(p[k]) for k in SHAPE_KEYS if k in p}))
+                           p.get('src', ''), p.get('asset', ''), own))
     # A CEFActionNotify_Effect row carries the SkillEffect PK the clip applies:
     # that is the judgement. ParticleHit marks the visual impact and runs a few
     # tens of ms earlier, so keeping both would stamp every hit twice and split
@@ -62,8 +96,18 @@ def load_notify(asset, clipmap):
         # A clip carries a judgement for the base skill and one for every
         # tripod that reuses it; only the base variant is the product hit.
         owner = clipmap.get(clip, 0)
+        owned = base_hits.get(owner, set())
         base = [r for r in effect
                 if r[4].isdigit() and int(r[4]) // 10 == owner]
+        # A skill with more than ten effect rows spills into the next PK decade
+        # (34610 -> 346110..346112). Such a row is the skill's own hit when
+        # build_base_hit_rows.py matched it to the tooltip and no decade row
+        # already judges that moment (a tripod replaces a hit, it does not stack).
+        if base:
+            base += [r for r in effect
+                     if r[4].isdigit() and int(r[4]) in owned and
+                     all(abs(r[0] - b[0]) >= SAME_MOMENT_SECONDS for b in base)]
+            base.sort(key=lambda r: r[0])
         clips[clip] = base or effect
     clips = {k: [r[:3] + (r[5],) for r in v] for k, v in clips.items()}
     return clips, order
@@ -89,6 +133,8 @@ def load_clipseq(asset):
             chains.append(clips)
     return chains
 
+
+SAME_MOMENT_SECONDS = 0.034
 
 SHAPE_KEYS = ('rep', 'repms', 'fz', 'fzin', 'fzout', 'push', 'pushr',
               'area', 'ar', 'aa', 'ah', 'ax', 'arem', 'maxt')
