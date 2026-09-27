@@ -44,9 +44,15 @@ public:
     bool_t Sample(const float4x4_t& world, bool_t visible,
         const WORLD_SEQUENCE_ANIMATION_TRACK* animation, f32_t localMs, f32_t windowEndMs);
     bool_t Is_Visible() const { return m_Visible; }
-    void Hide() { m_Visible = false; }
+    void Hide() { m_Visible = false; m_CombatPresentation.isCombatHovered = false; }
+    // Inspection affects drawing only: the authored pose, visibility and bone providers keep sampling.
+    void Set_InspectionState(bool_t drawEnabled, bool_t selected);
+    bool_t Is_InspectionDrawEnabled() const { return m_InspectionDrawEnabled; }
+    bool_t Try_PickInspection(const float3_t& rayOrigin, const float3_t& rayDirection,
+        f32_t& distance, uint32_t& meshIndex) const;
     void Trigger_HitFlash();
-    void Set_CombatHovered(bool_t hovered) { m_CombatPresentation.isCombatHovered = hovered && m_Visible; }
+    void Set_CombatHovered(bool_t hovered)
+    { m_CombatHovered = hovered; Refresh_InspectionHighlight(); }
     // Return to the same rest-pose state as a new clone, without recreating it.
     bool_t Reset_ForReuse();
     const shared_ptr<Engine::CModel>& Get_Model() const { return m_Model; }
@@ -64,6 +70,7 @@ private:
     CWorldSequenceObject(ComPtr<ID3D11Device>, ComPtr<ID3D11DeviceContext>);
     HRESULT Render_ForwardSource(bool opaqueGhost);
     HRESULT Render_Mesh(uint32_t mesh);
+    void Refresh_InspectionHighlight();
     shared_ptr<Engine::CModel> m_Model;
     shared_ptr<Engine::CModel> m_SaydonHatModel;
     shared_ptr<Engine::CShader> m_Shader;
@@ -77,6 +84,9 @@ private:
     DEFERRED_EMISSIVE_OVERRIDE m_CombatPresentation;
     f32_t m_HitFlashSeconds = 0.f;
     bool_t m_Visible = false;
+    bool_t m_InspectionDrawEnabled = true;
+    bool_t m_InspectionSelected = false;
+    bool_t m_CombatHovered = false;
     bool_t m_HasTranslucentMeshes = false;
     bool_t m_HasOpaqueGhostMeshes = false;
     std::string m_RenderStatus;

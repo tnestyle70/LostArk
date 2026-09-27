@@ -411,11 +411,40 @@ _SOURCE_GROUP_GUARD = re.compile(
     r'|^#endif // SOURCE_CHARACTER_PROGRAM_GROUP\n', re.M)
 
 
+def _source_group_parts(text, stage):
+    """A cohort owns both its native functions and its switch cases."""
+    macro = f'SOURCE_CHARACTER_{stage.upper()}_DISPATCH_CASES'
+    begin = f'#ifndef {macro}\n'
+    alternate = f'#else // {macro}\n'
+    finish = f'#endif // {macro}\n'
+    if not text.startswith(begin):
+        return text, ''  # Accept the previous function-only leaf when migrating.
+    if text.count(alternate) != 1 or not text.endswith(finish):
+        raise ValueError(f'Incomplete SourceCharacter {stage} cohort sections')
+    functions, cases = text[len(begin):-len(finish)].split(alternate)
+    return functions, cases
+
+
+def _expand_source_character_stage(text, read_leaf):
+    def include(match, part):
+        stage = 'Light' if 'Light' in match[1] else 'Base'
+        return _source_group_parts(read_leaf(match[1]), stage)[part]
+
+    # A second include inside the switch emits cases only. Keeping them in the
+    # same leaf means adding an ID to an existing cohort cannot touch the facade.
+    for stage in ('Base', 'Light'):
+        macro = f'SOURCE_CHARACTER_{stage.upper()}_DISPATCH_CASES'
+        pattern = rf'^#define {macro}\n(.*?)^#undef {macro}\n'
+        text = re.sub(pattern, lambda match: _SOURCE_GROUP_INCLUDE.sub(
+            lambda leaf: include(leaf, 1), match[1]), text, flags=re.M | re.S)
+    expanded = _SOURCE_GROUP_INCLUDE.sub(lambda match: include(match, 0), text)
+    return _SOURCE_GROUP_GUARD.sub('', expanded)
+
+
 def expand_source_character_stage(text, shader_dir):
     """Recover the authored function/case text before a generator edits it."""
-    expanded = _SOURCE_GROUP_INCLUDE.sub(
-        lambda match: (Path(shader_dir) / match[1]).read_text(encoding='utf8'), text)
-    return _SOURCE_GROUP_GUARD.sub('', expanded)
+    return _expand_source_character_stage(text, lambda name:
+        (Path(shader_dir) / name).read_text(encoding='utf8'))
 
 
 def partition_source_character_stage(text, stage, shader_dir, *, groups=None, registered=None):
@@ -460,39 +489,38 @@ def partition_source_character_stage(text, stage, shader_dir, *, groups=None, re
     reconstructed = _SOURCE_GROUP_INCLUDE.sub(lambda match: files[match[1]], ''.join(output))
     if _SOURCE_GROUP_GUARD.sub('', reconstructed) != functions:
         raise ValueError(f'Non-contiguous SourceCharacter {stage} function cohort')
-    tail = re.sub(r'^(    case (\d+)u:.*\n)',
-                  lambda match: f'#if !defined(SOURCE_CHARACTER_PROGRAM_GROUP) || SOURCE_CHARACTER_PROGRAM_GROUP == {group(int(match[2]))}\n'
-                  + match[1] + '#endif // SOURCE_CHARACTER_PROGRAM_GROUP\n', tail, flags=re.M)
+    cases = list(re.finditer(r'^    case (\d+)u:.*\n', tail, re.M))
+    if not cases:
+        raise ValueError(f'No SourceCharacter {stage} dispatch cases')
+    # Preserve the authored text exactly. Reject a new layout instead of silently
+    # moving a comment, fallthrough, or statement across a case boundary.
+    if any(left.end() != right.start() for left, right in zip(cases, cases[1:])):
+        raise ValueError(f'Non-contiguous SourceCharacter {stage} dispatch cases')
+    case_files, case_includes = {}, []
+    for match in cases:
+        cohort = group(int(match[1]))
+        name = f'Shader_SourceCharacter{stage}Group{cohort:03d}.hlsli'
+        if name not in files:
+            raise ValueError(f'SourceCharacter {stage} case has no function cohort')
+        if name not in case_files:
+            case_files[name] = ''
+            case_includes.append(
+                f'#if !defined(SOURCE_CHARACTER_PROGRAM_GROUP) || SOURCE_CHARACTER_PROGRAM_GROUP == {cohort}\n'
+                f'#include "{name}"\n#endif // SOURCE_CHARACTER_PROGRAM_GROUP\n')
+        case_files[name] += match[0]
+    if ''.join(case_files.values()) != tail[cases[0].start():cases[-1].end()]:
+        raise ValueError(f'Non-contiguous SourceCharacter {stage} case cohort')
+    if files.keys() != case_files.keys():
+        raise ValueError(f'SourceCharacter {stage} function cohort has no cases')
+    macro = f'SOURCE_CHARACTER_{stage.upper()}_DISPATCH_CASES'
+    for name, body in files.items():
+        files[name] = (f'#ifndef {macro}\n' + body + f'#else // {macro}\n'
+                       + case_files[name] + f'#endif // {macro}\n')
+    tail = (tail[:cases[0].start()] + f'#define {macro}\n' + ''.join(case_includes)
+            + f'#undef {macro}\n' + tail[cases[-1].end():])
     result = ''.join(output) + tail
-    restored = _SOURCE_GROUP_INCLUDE.sub(lambda match: files[match[1]], result)
-    if _SOURCE_GROUP_GUARD.sub('', restored) != expanded:
+    if _expand_source_character_stage(result, files.__getitem__) != expanded:
         raise ValueError(f'SourceCharacter {stage} partition changed authored source')
-    # Existing cohorts may use a single guard for several adjacent cases. Keep
-    # that reviewed layout and its boundary comments whenever it represents the
-    # same expanded source; a material edit then touches only its own leaf.
-    original_path = Path(shader_dir) / f'Shader_SourceCharacter{stage}Programs.hlsli'
-    if original_path.is_file():
-        original = original_path.read_text(encoding='utf8')
-        original_dispatch = original.find(f'SOURCE_CHARACTER_NATIVE_OUTPUT Evaluate{prefix}(')
-        if original_dispatch >= 0:
-            original_prefix, original_tail = original[:original_dispatch], original[original_dispatch:]
-            proposed_files = dict(files)
-            def code_only(body):
-                return re.sub(r'\s+', '', re.sub(r'//[^\n]*', '', body))
-            for name, body in files.items():
-                prior = Path(shader_dir) / name
-                if prior.is_file():
-                    previous = prior.read_text(encoding='utf8')
-                    if previous in expanded and code_only(previous) == code_only(body):
-                        proposed_files[name] = previous
-            prior_names = {match[1] for match in _SOURCE_GROUP_INCLUDE.finditer(original_prefix)}
-            new_names = set(files) - prior_names
-            if not new_names and _SOURCE_GROUP_GUARD.sub('', original_tail) == _SOURCE_GROUP_GUARD.sub('', tail):
-                proposed = original_prefix + original_tail
-                proposed_expanded = _SOURCE_GROUP_GUARD.sub('', _SOURCE_GROUP_INCLUDE.sub(
-                    lambda match: proposed_files[match[1]], proposed))
-                if proposed_expanded == expanded:
-                    return proposed, proposed_files
     return result, files
 
 

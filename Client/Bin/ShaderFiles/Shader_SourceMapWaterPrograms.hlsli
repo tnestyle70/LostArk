@@ -5,6 +5,7 @@ Texture2D g_SourceMapSceneColor;
 SamplerState SourceMapColorSampler { Filter=MIN_MAG_MIP_LINEAR; AddressU=Clamp; AddressV=Clamp; };
 
 // source.map.water-38.v1: 8a7ffc3d78659f41a3aa7a4053b594ad
+#if !defined(SOURCE_CHARACTER_PROGRAM_GROUP) || SOURCE_CHARACTER_PROGRAM_GROUP == 0
 SOURCE_CHARACTER_NATIVE_OUTPUT SourceMapWater38(SOURCE_CHARACTER_NATIVE_INPUT input)
 {
     SOURCE_CHARACTER_NATIVE_OUTPUT output=(SOURCE_CHARACTER_NATIVE_OUTPUT)0;
@@ -3504,4 +3505,5 @@ SOURCE_CHARACTER_NATIVE_OUTPUT SourceMapWater43Baked(SOURCE_CHARACTER_NATIVE_INP
     return output;
 }
 
+#endif // SOURCE_CHARACTER_PROGRAM_GROUP map-forward bodies
 #endif

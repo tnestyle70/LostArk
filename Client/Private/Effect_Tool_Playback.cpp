@@ -1215,10 +1215,11 @@ bool_t Client::CEffect_Tool::Stage_ParticleSystemDraftPreview()
     }
 
     EFFECT_DOCUMENT_DESC Staged = *m_ActiveDocument;
-    if (!Apply_ParticleSystemDraft(Staged))
+    if (!Apply_ParticleSystemDraft(Staged) || (Has_ClassMovieContext() &&
+        ((m_bDetailDraftDirty && !Apply_DetailDraft(Staged)) || (m_bModelCueDraftDirty && !Apply_ModelCueDraft(Staged)))))
     {
         m_strPreviewStatus =
-            "Live Particle System preview rejected: draft is missing.";
+            "Live Particle System preview rejected: a pending draft could not be applied.";
         return false;
     }
     const f32_t fPreviousDuration = m_fPreviewDurationSeconds;
@@ -1241,10 +1242,11 @@ bool_t Client::CEffect_Tool::Stage_DetailDraftPreview()
         return false;
 
     EFFECT_DOCUMENT_DESC Staged = *m_ActiveDocument;
-    if (!Apply_DetailDraft(Staged))
+    if (!Apply_DetailDraft(Staged) || (Has_ClassMovieContext() &&
+        ((m_bParticleSystemDraftDirty && !Apply_ParticleSystemDraft(Staged)) || (m_bModelCueDraftDirty && !Apply_ModelCueDraft(Staged)))))
     {
         m_strPreviewStatus =
-            "Live Detail preview rejected: selected Element is missing.";
+            "Live Detail preview rejected: a pending draft could not be applied.";
         return false;
     }
 
@@ -1276,10 +1278,11 @@ bool_t Client::CEffect_Tool::Stage_ModelCueDraftPreview()
 	if (!m_ActiveDocument.has_value() || !m_ModelCueDraft.has_value())
 		return false;
 	EFFECT_DOCUMENT_DESC Staged = *m_ActiveDocument;
-	if (!Apply_ModelCueDraft(Staged))
+	if (!Apply_ModelCueDraft(Staged) || (Has_ClassMovieContext() &&
+        ((m_bParticleSystemDraftDirty && !Apply_ParticleSystemDraft(Staged)) || (m_bDetailDraftDirty && !Apply_DetailDraft(Staged)))))
 	{
 		m_strPreviewStatus =
-			"Live Model Cue preview rejected: selected Cue is missing.";
+			"Live Model Cue preview rejected: a pending draft could not be applied.";
 		return false;
 	}
 	const f32_t fPreviousDuration = m_fPreviewDurationSeconds;

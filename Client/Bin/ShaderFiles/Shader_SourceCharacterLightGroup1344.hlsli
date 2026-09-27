@@ -1,3 +1,4 @@
+#ifndef SOURCE_CHARACTER_LIGHT_DISPATCH_CASES
 SOURCE_CHARACTER_NATIVE_OUTPUT SourceCharacterLight1400(SOURCE_CHARACTER_NATIVE_INPUT input)
 {
     SOURCE_CHARACTER_NATIVE_OUTPUT output=(SOURCE_CHARACTER_NATIVE_OUTPUT)0;
@@ -1326,3 +1327,13 @@ SOURCE_CHARACTER_NATIVE_OUTPUT SourceCharacterLight1407(SOURCE_CHARACTER_NATIVE_
 }
 
 // source.character.static-map-native-1408.v1 / source program f3453c86658eb6478d0b461aef37ae42
+#else // SOURCE_CHARACTER_LIGHT_DISPATCH_CASES
+    case 1400u: return SourceCharacterLight1400(input);
+    case 1401u: return SourceCharacterLight1401(input);
+    case 1402u: return SourceCharacterLight1402(input);
+    case 1403u: return SourceCharacterLight1403(input);
+    case 1404u: return SourceCharacterLight1404(input);
+    case 1405u: return SourceCharacterLight1405(input);
+    case 1406u: return SourceCharacterLight1406(input);
+    case 1407u: return SourceCharacterLight1407(input);
+#endif // SOURCE_CHARACTER_LIGHT_DISPATCH_CASES

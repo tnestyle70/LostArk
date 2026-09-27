@@ -78,6 +78,9 @@ public:
     // only; distance is in world units. Unsupported/morphed geometry is not picked.
     bool_t Try_PickCurrentPose(const float4x4_t& world, const float3_t& rayOrigin,
         const float3_t& rayDirection, f32_t& distance) const;
+    // Also identify the nearest rendered submesh; both outputs are unchanged on failure.
+    bool_t Try_PickCurrentPose(const float4x4_t& world, const float3_t& rayOrigin,
+        const float3_t& rayDirection, f32_t& distance, uint32_t& meshIndex) const;
 	bool_t Has_SelfConsistentUnauthenticatedGeometryMetadata() const {
 		return m_bHasSelfConsistentUnauthenticatedGeometryMetadata;
 	}

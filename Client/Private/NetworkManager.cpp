@@ -954,6 +954,8 @@ bool CNetworkManager::Has_DispatchCapacity(
 	case PACKET_TYPE::S2C_PARTY_TRANSFER_RESULT:
 	case PACKET_TYPE::S2C_RAID_ENTRY_PROMPT:
 	case PACKET_TYPE::S2C_RAID_ENTRY_VOTE:
+	case PACKET_TYPE::S2C_GUIDE_PROMPT:
+	case PACKET_TYPE::S2C_GUIDE_STATE:
 	case PACKET_TYPE::S2C_CHAT:
 	case PACKET_TYPE::S2C_WORLD_DESTRUCTION_FULL_SYNC:
 	case PACKET_TYPE::S2C_ENCOUNTER_PROP_SYNC:
@@ -4634,6 +4636,36 @@ void CNetworkManager::Handle_Frame(const LostArk::Shared::PACKET_FRAME & frame)
 			return;
 		}
 		m_RoomPings.push_back(ping);
+		break;
+	}
+	case PACKET_TYPE::S2C_GUIDE_PROMPT:
+	{
+		S2C_GUIDE_PROMPT message{};
+		if (!Read_Message(reader, message) || reader.Get_RemainingSize() != 0u)
+		{
+			Fail_Protocol(WSAEINVAL, SESSION_DIAGNOSTIC_REASON::CLIENT_MESSAGE_DECODE_FAILED,
+				frame.ePacketType, "Guide payload decode or trailing-byte validation failed.");
+			return;
+		}
+		Client::CLIENT_REPLICATION_EVENT event{};
+		event.eType = Client::CLIENT_REPLICATION_EVENT_TYPE::GUIDE_PROMPT;
+		event.GuidePrompt = std::move(message);
+		Enqueue_ReplicationEvent(std::move(event));
+		break;
+	}
+	case PACKET_TYPE::S2C_GUIDE_STATE:
+	{
+		S2C_GUIDE_STATE message{};
+		if (!Read_Message(reader, message) || reader.Get_RemainingSize() != 0u)
+		{
+			Fail_Protocol(WSAEINVAL, SESSION_DIAGNOSTIC_REASON::CLIENT_MESSAGE_DECODE_FAILED,
+				frame.ePacketType, "Guide payload decode or trailing-byte validation failed.");
+			return;
+		}
+		Client::CLIENT_REPLICATION_EVENT event{};
+		event.eType = Client::CLIENT_REPLICATION_EVENT_TYPE::GUIDE_STATE;
+		event.GuideState = std::move(message);
+		Enqueue_ReplicationEvent(std::move(event));
 		break;
 	}
 	case PACKET_TYPE::S2C_CHAT:

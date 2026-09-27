@@ -30,7 +30,7 @@ class CKoukuSaydonPresentationPlayer;
 class CHUDLayoutTool;
 class CUILayoutRuntime;
 class CDungeonTimerView;
-class CBossImmuneGaugeView;
+class CWorldHealthBarView;
 class CBalanceTool;
 class CValtanBossTool;
 class CKoukuSaydonBossTool;
@@ -42,6 +42,7 @@ class CSequencerTool;
 class CCharacterActionWorkbench;
 class CWorldObjectTool;
 class CWorldLevelTool;
+class CGuideAITool;
 struct WORLD_LEVEL_TOOL_REQUEST;
 struct KOUKU_MAP_EFFECT_PLACEMENT_REQUEST;
 struct KOUKU_SAYDON_COMPOSITION_DOCUMENT;
@@ -93,6 +94,7 @@ private:
 		PROFILER,
 		WORLD_OBJECT,
 		WORLD_LEVEL,
+		GUIDE_AI,
 		EFFECT_COMPOSITION,
 		COUNT
 	};
@@ -406,9 +408,8 @@ private:
 	pass -- keeps showing its last state instead of simply not being drawn that frame. */
 	void Update_BossHealthBar();
 	void Hide_BossHealthBar();
-	/* Pattern check gauge under the boss (CBossImmuneGaugeView), same level/window gate as
-	Update_BossHealthBar; shown only while the Server reports a response threshold. */
-	void Update_BossImmuneGauge(f32_t fTimeDelta);
+	/* Replicated enemies and other players; current pose projected after camera update. */
+	void Update_WorldHealthBars(f32_t fTimeDelta);
 	/* Real HOLD skill (PLAYER_SKILL_KIND::HOLD) charge bar -- ChargeGauge_Bg/_Track/_Fill in
 	HUD_Layout.json (ownerClass:null, same as HealthBar). Progress is reconstructed client-side
 	from real Data/Balance/PlayerSkills.json comboStages[].actionDurationMs and the Server-owned
@@ -498,6 +499,8 @@ private:
 	void CloseAllDebugTools();
 	void RenderDebugLevelNavigation();
 	void RenderArenaCameraAndPlayerControls();
+	void RenderCameraSpeedControls();
+	void RenderDragonControls();
 	void RenderCharacterSelectFloorSwapControls();
 	/* F1 "Kouku UI Preview": the only writer of the KoukuSaydon gimmick read model
 	until the Server snapshot carries it. Madness slider, HUD mode combo, dance
@@ -511,6 +514,7 @@ private:
 	/* F1 "Valtan Arena": the "Normal Monster 1/2" buttons that ask the Server to
 	   re-summon the Stage_1 / Stage_2 corridor waves. Shown only inside the arena. */
 	void RenderValtanArenaControls();
+	void RenderValtanAxeEditor();
 	void OpenDebugResourceFile(size_t iFile);
 	void RefreshCompletePlayPatternOptions();
 	void RenderCompletePlayControls();
@@ -675,7 +679,7 @@ private:
 	   world-anchored like the madness gauge, so it lives here and draws in every
 	   Level rather than inside the arena. */
 	unique_ptr<CDungeonTimerView> m_pDungeonTimerView;
-	unique_ptr<CBossImmuneGaugeView> m_pBossImmuneGaugeView = { nullptr };
+	unique_ptr<CWorldHealthBarView> m_pWorldHealthBarView = { nullptr };
 	/* UI/Esther/EstherUI.json's runtime consumer (Update_EstherGauge) -- real CUI_Sprite
 	GameObjects under LEVEL::STATIC, same reasoning as m_pBossUIView: the Esther skill window is
 	shared across every class, not tied to Combat HUD or Screen UI, so it gets its own
@@ -796,6 +800,8 @@ private:
 		float3_t vWorldPosition = {};
 		uint32_t iAmount = 0;
 		bool_t isOutgoing = false;
+		// 0 = amount, 1 = counter, 2 = stagger success.
+		uint8_t iMechanicSuccess = 0u;
 		/* NONE draws iAmount as a damage number. A suit draws it as that
 		hunter's card maze shard count instead. */
 		LostArk::Shared::MECHANIC_CARD_SYMBOL eCardMazeSuit =
@@ -935,6 +941,7 @@ private:
 #ifdef _DEBUG
 	unique_ptr<CWorldObjectTool> m_pWorldObjectTool;
 	unique_ptr<CWorldLevelTool> m_pWorldLevelTool;
+	unique_ptr<CGuideAITool> m_pGuideAITool;
 	unique_ptr<WORLD_LEVEL_TOOL_REQUEST> m_pWorldLevelPendingMapRequest;
 #endif
 	std::chrono::steady_clock::time_point m_WorldLevelMapDeadline{};

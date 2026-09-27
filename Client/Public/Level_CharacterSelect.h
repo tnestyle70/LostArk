@@ -127,6 +127,7 @@ private:
 	bool_t Load_ClassCinematicBackgrounds(const std::string& primaryAreaId,
 		const std::string& fallbackAreaId, const MAP_LOAD_SCOPE& loadScope);
 	std::string Resolve_ClassCinematicBackgroundArea(const std::string& classId) const;
+	bool_t Validate_ClassCinematicPlay(const std::string& classId);
 	bool_t Check_ClassCinematicBackground(const std::string& classId, std::string& outFailure) const;
 	void Update_ClassCinematicBackgroundVisibility();
 	HRESULT Ready_Lights();
@@ -244,6 +245,9 @@ public:
 	bool_t Select_ClassMovieCategory(size_t index);
 	bool_t Select_ClassCinematic(LostArk::Shared::CHARACTER_CLASS_ID characterClass);
 	bool_t Play_ClassCinematic(const std::string& classId);
+    bool_t Play_ClassCinematicSelection(const std::string& classId, bool loop,
+        const EFFECT_DOCUMENT_DESC& full, const EFFECT_DOCUMENT_DESC& selected,
+        const std::vector<std::string>& drawElementIds, double startAgeMs, double endAgeMs, bool repeat, std::string& status);
 	// F1 reuses the active Level's cinematic owner in both Debug and Release.
 	static void Render_ClassSelectMovieControls();
 	bool_t Is_ProductPresentationOpen() const

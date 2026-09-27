@@ -1,6 +1,6 @@
 #include "imgui.h"
 
-#include "Effect_Tool.h"
+#include "Effect_Tool_Internal.h"
 #include "ClassSelectionTimeline.h"
 #include "EffectAuthoringResourceTree.h"
 #include "EffectAuthoringSequencer.h"
@@ -208,6 +208,17 @@ bool CEffect_Tool::Open_AuthoringResource(const EFFECT_RESOURCE_KEY& key)
         if (!Resolve_SavedKoukuEffectSource(key.strStableId, path, m_strDocumentStatus)) return false;
         return Try_LoadDocumentPath(path, EFFECT_DOCUMENT_SOURCE::AUTHORED, key.strStableId,
             EFFECT_DOCUMENT_PREVIEW_INTENT::SYNCHRONIZED_PRODUCT);
+    }
+    if (key.eOwnerKind == EFFECT_RESOURCE_OWNER_KIND::V1_DOCUMENT && key.strStableId.starts_with("effect.valtan."))
+    {
+        Initialize_CatalogMetadataView();
+        const auto* path = Resolve_DirectAuthoredEditablePath(key.strStableId, m_strDocumentStatus);
+        if (!path) return false;
+        // Full Restore loads its exact source clock before the unsaved guard,
+        // and carries it through the existing pending-document transaction.
+        const bool opened = Try_OpenValtanStandaloneEffect(*path, key.strStableId);
+        if (!opened && !m_strPreviewStatus.empty()) m_strDocumentStatus = m_strPreviewStatus;
+        return opened;
     }
     if (key.eOwnerKind == EFFECT_RESOURCE_OWNER_KIND::V1_DOCUMENT)
         return Try_LoadDocument(key.strStableId);
@@ -558,6 +569,10 @@ bool CEffect_Tool::End_ClassMovieEditing()
         return false;
     m_strClassMovieId.clear();
     m_PreviewIsolationElementIds.clear();
+    m_ClassMovieFilterTargetIds.clear();
+    m_strPreviewIsolationElementId.clear();
+    m_strPreviewIsolationGroupId.clear();
+    m_bClassMovieSelectionRepeat = false;
     m_ePreviewFilter = EFFECT_PREVIEW_FILTER::COMPLETE;
     m_bClassMovieScrubbing = false;
     return true;
@@ -588,6 +603,10 @@ bool CEffect_Tool::Open_ClassMovie(const std::string& classId, const bool loop, 
     m_bPreviewPlaying = false;
     m_strClassMovieId = classId;
     m_PreviewIsolationElementIds.clear();
+    m_ClassMovieFilterTargetIds.clear();
+    m_strPreviewIsolationElementId.clear();
+    m_strPreviewIsolationGroupId.clear();
+    m_bClassMovieSelectionRepeat = false;
     m_ePreviewFilter = EFFECT_PREVIEW_FILTER::COMPLETE;
     m_bClassMovieLoop = loop;
     m_bClassMovieScrubbing = false;
@@ -607,18 +626,40 @@ bool CEffect_Tool::Open_ClassMovie(const std::string& classId, const bool loop, 
     return true;
 }
 
+void CEffect_Tool::Sync_ClassMovieSelection()
+{
+    if (!Has_ClassMovieContext() || !m_ClassMovieCallbacks.state) return;
+    const auto state = m_ClassMovieCallbacks.state(m_strClassMovieId);
+    m_bClassMovieSelectionRepeat = state.selectionActive && state.selectionRepeat;
+    if (!state.selectionActive)
+    {
+        m_PreviewIsolationElementIds.clear();
+        m_ePreviewFilter = EFFECT_PREVIEW_FILTER::COMPLETE;
+    }
+}
+
 bool CEffect_Tool::Stage_ClassMovieEffect(const EFFECT_DOCUMENT_DESC& document)
 {
+    Sync_ClassMovieSelection();
     if (!Is_ClassMovieEffect(document.strEffectAssetId) || !m_ClassMovieCallbacks.preview)
     { m_strPreviewStatus = "This Effect is not part of the selected Movie. Open its Movie Effect again."; return false; }
     EFFECT_DOCUMENT_DESC filtered;
-    const EFFECT_DOCUMENT_DESC* candidate = &document;
-    if (!m_PreviewIsolationElementIds.empty())
-    {
-        if (!Build_ElementsPreviewDocument(document, m_PreviewIsolationElementIds, filtered, m_strPreviewStatus)) return false;
-        candidate = &filtered;
-    }
-    if (!m_ClassMovieCallbacks.preview(*candidate, m_strPreviewStatus)) return false;
+    auto ids = m_PreviewIsolationElementIds;
+    // Delete/visibility edits retire stale selection IDs only after the new target commits.
+    std::erase_if(ids, [&document](const auto& id) {
+        return std::none_of(document.Elements.begin(), document.Elements.end(), [&](const auto& element) {
+            return element.strElementId == id && EffectToolDetail::Is_ElementPreviewAdmitted(element);
+        });
+    });
+    uint32_t startMs = 0u, endMs = 0u;
+    std::string label;
+    if (!ids.empty() && (!Build_ElementsPreviewDocument(document, ids, filtered, m_strPreviewStatus) ||
+        !Resolve_ElementsPreviewWindow(filtered, ids, startMs, endMs, label, m_strPreviewStatus))) return false;
+    const bool applied = ids.empty() ? m_ClassMovieCallbacks.preview(document, m_strPreviewStatus) :
+        m_ClassMovieCallbacks.previewSelection && m_ClassMovieCallbacks.previewSelection(document, filtered, ids, startMs, endMs, m_strPreviewStatus);
+    if (!applied) return false;
+    m_PreviewIsolationElementIds = std::move(ids);
+    if (m_PreviewIsolationElementIds.empty()) m_ePreviewFilter = EFFECT_PREVIEW_FILTER::COMPLETE;
     m_strClassMovieStatus = m_strPreviewStatus;
     return true;
 }
@@ -626,22 +667,106 @@ bool CEffect_Tool::Stage_ClassMovieEffect(const EFFECT_DOCUMENT_DESC& document)
 bool CEffect_Tool::Play_ClassMovie()
 {
     if (!Has_ClassMovieContext() || !m_ClassMovieCallbacks.play) return false;
+    const auto previousFilter = m_ePreviewFilter;
     const auto previousIsolation = std::exchange(m_PreviewIsolationElementIds, {});
     if (m_ActiveDocument && Is_ClassMovieEffect(m_ActiveDocument->strEffectAssetId))
     {
         EFFECT_DOCUMENT_DESC document;
         if (!Resolve_AuthoringOccurrenceDocument({EFFECT_RESOURCE_OWNER_KIND::V1_DOCUMENT,
             m_ActiveDocument->strEffectAssetId}, document, m_strClassMovieStatus) || !Stage_ClassMovieEffect(document))
-        { m_PreviewIsolationElementIds = previousIsolation; if (!m_strPreviewStatus.empty()) m_strClassMovieStatus = m_strPreviewStatus; return false; }
+        { m_PreviewIsolationElementIds = previousIsolation; m_ePreviewFilter = previousFilter;
+          if (!m_strPreviewStatus.empty()) m_strClassMovieStatus = m_strPreviewStatus; return false; }
     }
     const bool played = m_ClassMovieCallbacks.play(m_strClassMovieId, m_strClassMovieStatus);
     m_strPreviewStatus = m_strClassMovieStatus;
-    if (played) { m_bClassMovieLoop = false; m_bClassMovieScrubbing = false; }
+    if (played)
+    {
+        m_ePreviewFilter = EFFECT_PREVIEW_FILTER::COMPLETE;
+        m_bClassMovieLoop = false; m_bClassMovieScrubbing = false;
+        m_bClassMovieSelectionRepeat = false;
+    }
+    else
+    {
+        m_PreviewIsolationElementIds = previousIsolation; m_ePreviewFilter = previousFilter;
+        Sync_ClassMovieSelection();
+    }
     return played;
 }
 
-void CEffect_Tool::Render_ClassMovieControls()
+bool CEffect_Tool::Restart_ClassMoviePreview()
 {
+    Sync_ClassMovieSelection();
+    const auto ids = m_PreviewIsolationElementIds;
+    return ids.empty() ? Play_ClassMovie() : Try_PreviewElementsTimeline(ids, m_bClassMovieSelectionRepeat);
+}
+
+bool CEffect_Tool::Try_SetClassMoviePreviewFilter(const EFFECT_PREVIEW_FILTER filter)
+{
+    Sync_ClassMovieSelection();
+    if (!m_ActiveDocument || filter == EFFECT_PREVIEW_FILTER::END) return false;
+    if (filter == EFFECT_PREVIEW_FILTER::COMPLETE) return Play_ClassMovie();
+    if (filter == EFFECT_PREVIEW_FILTER::SOLO_MODEL_CUE || filter == EFFECT_PREVIEW_FILTER::SOLO_MODEL_CUES)
+    { m_strPreviewStatus = "Movie actors use the WORLD animation rows. Select an Effect Element or group to audition."; return false; }
+    const auto previousElement = m_strPreviewIsolationElementId;
+    const auto previousGroup = m_strPreviewIsolationGroupId;
+    if ((filter == EFFECT_PREVIEW_FILTER::SOLO_SELECTED || filter == EFFECT_PREVIEW_FILTER::MUTE_SELECTED) &&
+        m_strPreviewIsolationElementId.empty()) m_strPreviewIsolationElementId = m_strSelectedElementId;
+    if ((filter == EFFECT_PREVIEW_FILTER::SOLO_SELECTED || filter == EFFECT_PREVIEW_FILTER::MUTE_SELECTED) &&
+        m_strPreviewIsolationElementId.empty())
+    { m_strPreviewStatus = "Select an Element before choosing Solo or Mute."; return false; }
+    if ((filter == EFFECT_PREVIEW_FILTER::SOLO_SELECTED_GROUP || filter == EFFECT_PREVIEW_FILTER::MUTE_SELECTED_GROUP) &&
+        m_strPreviewIsolationGroupId.empty() && m_ClassMovieFilterTargetIds.empty())
+    { m_strPreviewStatus = "Use Play Group to select the Movie group first."; return false; }
+    if (filter == EFFECT_PREVIEW_FILTER::SOLO_AUTHORING_FAMILY && m_ePreviewIsolationAuthoringFamily == EFFECT_AUTHORING_FAMILY::END)
+    { m_strPreviewStatus = "Use Play Family to select a Movie family first."; return false; }
+    EFFECT_DOCUMENT_DESC full;
+    if (!Resolve_AuthoringOccurrenceDocument({EFFECT_RESOURCE_OWNER_KIND::V1_DOCUMENT, m_ActiveDocument->strEffectAssetId},
+        full, m_strPreviewStatus)) return false;
+    const auto previousFilter = std::exchange(m_ePreviewFilter, filter);
+    const auto previousScope = m_PreviewIsolationElementIds;
+    auto filterTargets = m_ClassMovieFilterTargetIds;
+    std::erase_if(filterTargets, [&full](const auto& id) {
+        return std::none_of(full.Elements.begin(), full.Elements.end(), [&](const auto& element) {
+            return element.strElementId == id && EffectToolDetail::Is_ElementPreviewAdmitted(element);
+        });
+    });
+    if ((filter == EFFECT_PREVIEW_FILTER::SOLO_SELECTED_GROUP || filter == EFFECT_PREVIEW_FILTER::MUTE_SELECTED_GROUP) &&
+        m_strPreviewIsolationGroupId.empty() && filterTargets.empty())
+    { m_ePreviewFilter = previousFilter; m_strPreviewStatus = "The selected group no longer has visible Elements."; return false; }
+    if (filter == EFFECT_PREVIEW_FILTER::SOLO_SELECTED_GROUP || filter == EFFECT_PREVIEW_FILTER::MUTE_SELECTED_GROUP)
+        m_PreviewIsolationElementIds = filterTargets;
+    std::vector<std::string> ids;
+    const auto filtered = Build_PreviewDocument(full, &ids);
+    m_ePreviewFilter = previousFilter;
+    m_PreviewIsolationElementIds = previousScope;
+    if (ids.empty())
+        for (const auto& element : filtered.Elements)
+            if (EffectToolDetail::Is_ElementPreviewAdmitted(element)) ids.push_back(element.strElementId);
+    std::erase_if(ids, [&full](const auto& id) {
+        return std::none_of(full.Elements.begin(), full.Elements.end(), [&](const auto& element) {
+            return element.strElementId == id && EffectToolDetail::Is_ElementPreviewAdmitted(element);
+        });
+    });
+    const auto selectedElement = m_strPreviewIsolationElementId;
+    const auto selectedGroup = m_strPreviewIsolationGroupId;
+    if (!Try_PreviewElementsTimeline(ids, filter != EFFECT_PREVIEW_FILTER::SOLO_SELECTED))
+    {
+        m_strPreviewIsolationElementId = previousElement;
+        m_strPreviewIsolationGroupId = previousGroup;
+        return false;
+    }
+    // Filter labels identify the user's target; the ID set identifies the resulting draw scope.
+    m_ePreviewFilter = filter;
+    if (filter == EFFECT_PREVIEW_FILTER::SOLO_SELECTED_GROUP || filter == EFFECT_PREVIEW_FILTER::MUTE_SELECTED_GROUP)
+        m_ClassMovieFilterTargetIds = filterTargets;
+    m_strPreviewIsolationElementId = selectedElement;
+    m_strPreviewIsolationGroupId = selectedGroup;
+    return true;
+}
+
+void CEffect_Tool::Render_ClassMovieControls(const bool showEffects)
+{
+    Sync_ClassMovieSelection();
     const auto state = m_ClassMovieCallbacks.state ? m_ClassMovieCallbacks.state(m_strClassMovieId) : CLASS_MOVIE_STATE{};
     const auto movie = std::find_if(m_ClassMovieResources.begin(), m_ClassMovieResources.end(),
         [this](const auto& row) { return row.classId == m_strClassMovieId; });
@@ -660,6 +785,38 @@ void CEffect_Tool::Render_ClassMovieControls()
     ImGui::SameLine();
     if (ImGui::Button("Timeline / Camera")) m_PendingClassMovieEditor = m_strClassMovieId;
     ImGui::TextDisabled("Actors and Effects share Movie time. Element edits preview here; Save stores the Effect.");
+    ImGui::BeginDisabled(!state.available);
+    float playbackRate = static_cast<float>(state.playbackRate);
+    if (ImGui::SliderFloat("Movie playback rate", &playbackRate, .05f, 2.f, "%.2fx") && m_ClassMovieCallbacks.setPlaybackRate)
+        (void)m_ClassMovieCallbacks.setPlaybackRate(playbackRate);
+    if (!m_PreviewIsolationElementIds.empty())
+    {
+        if (ImGui::Button("Restart Selection")) (void)Restart_ClassMoviePreview();
+        ImGui::SameLine();
+        bool repeat = state.selectionActive ? state.selectionRepeat : m_bClassMovieSelectionRepeat;
+        if (ImGui::Checkbox("Repeat Selection", &repeat))
+        {
+            const auto ids = m_PreviewIsolationElementIds;
+            (void)Try_PreviewElementsTimeline(ids, repeat);
+        }
+        ImGui::TextDisabled("Selected occurrence: %zu Elements. Play All restores the complete Movie.", m_PreviewIsolationElementIds.size());
+    }
+    ImGui::EndDisabled();
+    const char* scopeNames[] = { "Complete Movie", "All Particles", "Standalone Mesh", "Mesh Particles",
+        "Standalone Sprite", "Sprite Particles", "Solo Element", "Mute Element", "Solo Group", "Mute Group" };
+    const EFFECT_PREVIEW_FILTER scopes[] = { EFFECT_PREVIEW_FILTER::COMPLETE, EFFECT_PREVIEW_FILTER::SOLO_PARTICLE_SYSTEM,
+        EFFECT_PREVIEW_FILTER::SOLO_STANDALONE_MESHES, EFFECT_PREVIEW_FILTER::SOLO_MESH_EMITTERS,
+        EFFECT_PREVIEW_FILTER::SOLO_STANDALONE_SPRITES, EFFECT_PREVIEW_FILTER::SOLO_SPRITE_EMITTERS,
+        EFFECT_PREVIEW_FILTER::SOLO_SELECTED, EFFECT_PREVIEW_FILTER::MUTE_SELECTED,
+        EFFECT_PREVIEW_FILTER::SOLO_SELECTED_GROUP, EFFECT_PREVIEW_FILTER::MUTE_SELECTED_GROUP };
+    const char* scopeLabel = "Selected Family";
+    for (size_t i = 0; i < std::size(scopes); ++i) if (scopes[i] == m_ePreviewFilter) scopeLabel = scopeNames[i];
+    if (ImGui::BeginCombo("Movie preview scope", scopeLabel))
+    {
+        for (size_t i = 0; i < std::size(scopes); ++i)
+            if (ImGui::Selectable(scopeNames[i], scopes[i] == m_ePreviewFilter)) (void)Try_SetPreviewFilter(scopes[i]);
+        ImGui::EndCombo();
+    }
     if (state.active) ImGui::Text("Playing %s: %.3f / %.3f s%s", state.loop ? "Loop" : "Intro",
         state.clockMs * .001, state.durationMs * .001, state.paused ? " (paused)" : "");
     if (ImGui::RadioButton("Intro Effects", !m_bClassMovieLoop)) { m_bClassMovieLoop = false; m_bClassMovieScrubbing = false; }
@@ -672,11 +829,17 @@ void CEffect_Tool::Render_ClassMovieControls()
             m_fClassMovieSeekSeconds = state.active && state.loop == m_bClassMovieLoop ? static_cast<float>(state.clockMs * .001) : 0.f;
         ImGui::BeginDisabled(!state.available);
         ImGui::SliderFloat("Movie time", &m_fClassMovieSeekSeconds, 0.f, static_cast<float>(timeline->movieDurationMs * .001), "%.3f s");
-        m_bClassMovieScrubbing = ImGui::IsItemActive();
-        if (ImGui::IsItemDeactivatedAfterEdit() && m_ClassMovieCallbacks.seek)
-            (void)m_ClassMovieCallbacks.seek(m_strClassMovieId, m_bClassMovieLoop,
-                m_fClassMovieSeekSeconds * 1000., m_strClassMovieStatus);
+        if (ImGui::IsItemActive()) m_bClassMovieScrubbing = true;
+        if (ImGui::IsItemDeactivated())
+        {
+            m_bClassMovieScrubbing = false;
+            if (ImGui::IsItemDeactivatedAfterEdit() && m_ClassMovieCallbacks.seek)
+                (void)m_ClassMovieCallbacks.seek(m_strClassMovieId, m_bClassMovieLoop,
+                    m_fClassMovieSeekSeconds * 1000., m_strClassMovieStatus);
+        }
         ImGui::EndDisabled();
+        if (showEffects)
+        {
         ImGui::SeparatorText("Movie Effects");
         std::set<std::string> shown;
         for (const auto& row : timeline->rows)
@@ -699,10 +862,12 @@ void CEffect_Tool::Render_ClassMovieControls()
                     }
                     ImGui::PopID();
                 }
+        }
     }
+    m_ClassMovieInspector.Render(m_ClassMovieCallbacks.inspection, m_strClassMovieId, m_bClassMovieLoop);
     if (!state.status.empty()) ImGui::TextWrapped("%s", state.status.c_str());
     if (!m_strClassMovieStatus.empty()) ImGui::TextWrapped("%s", m_strClassMovieStatus.c_str());
-    if (ImGui::Button("End Movie Editing")) (void)End_ClassMovieEditing();
+    if (showEffects && ImGui::Button("End Movie Editing")) (void)End_ClassMovieEditing();
 }
 
 

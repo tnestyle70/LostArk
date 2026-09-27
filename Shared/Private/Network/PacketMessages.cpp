@@ -160,6 +160,7 @@ namespace
     {
         return
             snapshot.iNetEntityId != LostArk::Shared::INVALID_NET_ENTITY_ID &&
+            LostArk::Shared::Is_Known_Player_Control_Kind(snapshot.eControlKind) &&
 			LostArk::Shared::Is_Supported_Playable_Character_Class(
 				snapshot.eCharacterClass) &&
             std::isfinite(snapshot.fPositionX) &&
@@ -268,7 +269,8 @@ namespace
 			  snapshot.eAction != LostArk::Shared::PLAYER_ACTION_STATE::GRABBED)) &&
 			(snapshot.isPatternBound ?
 				(snapshot.iPatternBindEndTick != 0u &&
-				 snapshot.iCurrentHp != 0u && !snapshot.isCombatReady &&
+				 snapshot.iCurrentHp != 0u &&
+				 // Binding locks input; combat readiness independently admits incoming hits.
 				 LostArk::Shared::PLAYER_LOCOMOTION_STATE::IDLE ==
 					snapshot.eLocomotionState &&
 				 LostArk::Shared::PLAYER_ACTION_STATE::NONE == snapshot.eAction &&
@@ -515,6 +517,8 @@ namespace
 			0u == snapshot.iMaximumShield &&
 			0u == snapshot.iResponseProgress &&
 			0u == snapshot.iResponseThreshold &&
+			LostArk::Shared::BOSS_MECHANIC_GAUGE_KIND::NONE == snapshot.eMechanicGaugeKind &&
+			0u == snapshot.iCurrentMechanicGauge && 0u == snapshot.iMaximumMechanicGauge &&
 			1u == snapshot.iGameplayPhase;
 	}
 
@@ -536,6 +540,12 @@ namespace
 			snapshot.iCurrentStagger <= snapshot.iMaximumStagger &&
 			snapshot.iCurrentShield <= snapshot.iMaximumShield &&
 			snapshot.iResponseProgress <= snapshot.iResponseThreshold &&
+			(snapshot.eMechanicGaugeKind == LostArk::Shared::BOSS_MECHANIC_GAUGE_KIND::NONE ?
+				(snapshot.iCurrentMechanicGauge == 0u && snapshot.iMaximumMechanicGauge == 0u) :
+				((snapshot.eMechanicGaugeKind == LostArk::Shared::BOSS_MECHANIC_GAUGE_KIND::STAGGER ||
+				  snapshot.eMechanicGaugeKind == LostArk::Shared::BOSS_MECHANIC_GAUGE_KIND::BOSS_HP) &&
+				 snapshot.iMaximumMechanicGauge > 0u &&
+				 snapshot.iCurrentMechanicGauge <= snapshot.iMaximumMechanicGauge)) &&
 			(hasShield == (0u != snapshot.iCurrentShield)) &&
 			(!isGhostHidden ||
 				(isInvulnerable && snapshot.iGameplayPhase >= 3u)) &&
@@ -603,26 +613,29 @@ namespace
 			snapshot.PinnedDefinitionRevision.Is_Valid();
 	}
 
-	// A zero amount is not a hit, so it must not reach presentation as one; the
-	// server clamps every resolved hit to at least 1.
+	// Zero HP damage is valid only for an explicit stagger contribution or
+	// mechanic-success pulse; ordinary hits still require a positive amount.
 	bool Is_Valid_DamageEvent(
 		const LostArk::Shared::DAMAGE_EVENT& damage)
 	{
 		return
 			damage.iTargetNetEntityId !=
 				LostArk::Shared::INVALID_NET_ENTITY_ID &&
-			(0 != damage.iAmount || 0 != damage.iStaggerAmount || damage.isCounterSuccess) &&
+			(0 != damage.iAmount || 0 != damage.iStaggerAmount || damage.isCounterSuccess || damage.isStaggerSuccess) &&
 			LostArk::Shared::Is_Valid_DamageHitFlag(damage.eHitFlag) &&
+			static_cast<std::uint8_t>(damage.eMarioHitSource) < static_cast<std::uint8_t>(LostArk::Shared::MARIO_HIT_SOURCE::END) &&
+			(damage.eMarioHitSource == LostArk::Shared::MARIO_HIT_SOURCE::NONE ||
+				(!damage.isOutgoing && damage.iAmount && damage.eHitFlag != LostArk::Shared::DAMAGE_HIT_FLAG::HEAL)) &&
 			/* A heal is the target's own gain and carries no combat bookkeeping. */
 			(LostArk::Shared::DAMAGE_HIT_FLAG::HEAL != damage.eHitFlag ||
 				(damage.isOutgoing && 0 == damage.iStaggerAmount &&
-					!damage.isCounterSuccess)) &&
+					!damage.isCounterSuccess && !damage.isStaggerSuccess)) &&
 			/* Shield absorption carries only its own positive amount. */
 			(LostArk::Shared::DAMAGE_HIT_FLAG::ABSORB != damage.eHitFlag ||
-				(0u != damage.iAmount && 0u == damage.iStaggerAmount && !damage.isCounterSuccess &&
+				(0u != damage.iAmount && 0u == damage.iStaggerAmount && !damage.isCounterSuccess && !damage.isStaggerSuccess &&
 					damage.eCardMazeSuit == LostArk::Shared::MECHANIC_CARD_SYMBOL::NONE)) &&
 			/* Stagger and counters are things a player did to a boss. */
-			((0 == damage.iStaggerAmount && !damage.isCounterSuccess) || damage.isOutgoing) &&
+			((0 == damage.iStaggerAmount && !damage.isCounterSuccess && !damage.isStaggerSuccess) || damage.isOutgoing) &&
 			LostArk::Shared::Is_Valid_MechanicCardSymbol(damage.eCardMazeSuit) &&
 			/* A shard is something a hunter earned, so it is always outgoing. */
 			(LostArk::Shared::MECHANIC_CARD_SYMBOL::NONE == damage.eCardMazeSuit ||
@@ -1323,7 +1336,7 @@ bool LostArk::Shared::Write_Message(CPacketWriter& writer,
     const S2C_PLAYER_SPAWNED& spawned)
 {
     //playerid가 유효한지 검사
-    if (spawned.iPlayerId == INVALID_PLAYER_ID)
+    if (!Is_Known_Player_Control_Kind(spawned.eControlKind) || spawned.iPlayerId == INVALID_PLAYER_ID)
         return false;
 
     //netid가 유효한지 검사
@@ -1357,6 +1370,7 @@ bool LostArk::Shared::Write_Message(CPacketWriter& writer,
     writer.Write_U32(spawned.iNetEntityId);
 
     writer.Write_U8(rawCharacterClass);
+    writer.Write_U8(static_cast<std::uint8_t>(spawned.eControlKind));
 
     if (!writer.Write_String(
         spawned.strNickName,
@@ -1383,6 +1397,7 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader,
         INVALID_NET_ENTITY_ID;
 
     std::uint8_t rawCharacterClass = {};
+    std::uint8_t rawControlKind = 0u;
     std::string nickName;
 
     float positionX = 0.f;
@@ -1396,7 +1411,8 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader,
     if (!reader.Read_U32(iNetEntityId))
         return false;
 
-    if (!reader.Read_U8(rawCharacterClass))
+    if (!reader.Read_U8(rawCharacterClass) || !reader.Read_U8(rawControlKind) ||
+        !Is_Known_Player_Control_Kind(static_cast<PLAYER_CONTROL_KIND>(rawControlKind)))
         return false;
 
     if (!reader.Read_String(
@@ -1447,6 +1463,7 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader,
     S2C_PLAYER_SPAWNED decoded{};
 
     decoded.iPlayerId = iPlayerId;
+    decoded.eControlKind = static_cast<PLAYER_CONTROL_KIND>(rawControlKind);
     decoded.iNetEntityId = iNetEntityId;
 
     decoded.eCharacterClass = static_cast<CHARACTER_CLASS_ID>(
@@ -3146,6 +3163,7 @@ bool LostArk::Shared::Write_Message(CPacketWriter& writer, const S2C_WORLD_SNAPS
     {
         writer.Write_U32(player.iNetEntityId);
 		writer.Write_U8(static_cast<std::uint8_t>(player.eCharacterClass));
+        writer.Write_U8(static_cast<std::uint8_t>(player.eControlKind));
         writer.Write_F32(player.fPositionX);
         writer.Write_F32(player.fPositionY);
         writer.Write_F32(player.fPositionZ);
@@ -3305,6 +3323,9 @@ bool LostArk::Shared::Write_Message(CPacketWriter& writer, const S2C_WORLD_SNAPS
 			writer.Write_U32(entity.BossCombat.iMaximumShield);
 			writer.Write_U32(entity.BossCombat.iResponseProgress);
 			writer.Write_U32(entity.BossCombat.iResponseThreshold);
+			writer.Write_U8(static_cast<std::uint8_t>(entity.BossCombat.eMechanicGaugeKind));
+			writer.Write_U32(entity.BossCombat.iCurrentMechanicGauge);
+			writer.Write_U32(entity.BossCombat.iMaximumMechanicGauge);
 			writer.Write_U8(entity.BossCombat.iGameplayPhase);
 		}
 		if (!Write_GameplayDataRevision(
@@ -3325,6 +3346,8 @@ bool LostArk::Shared::Write_Message(CPacketWriter& writer, const S2C_WORLD_SNAPS
 		writer.Write_U32(damage.iSourcePlayerId);
 		writer.Write_U32(damage.iStaggerAmount);
 		writer.Write_U8(damage.isCounterSuccess ? 1u : 0u);
+		writer.Write_U8(damage.isStaggerSuccess ? 1u : 0u);
+		writer.Write_U8(static_cast<std::uint8_t>(damage.eMarioHitSource));
 		writer.Write_U8(static_cast<std::uint8_t>(damage.eHitFlag));
 	}
 	writer.Write_U32(message.Bingo.iWhiteMask);
@@ -3424,6 +3447,7 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader, S2C_WORLD_SNAPSHOT& me
     for (std::uint16_t i = 0; i < playerCount; ++i)
     {
         PLAYER_SNAPSHOT player{};
+        std::uint8_t rawControlKind = 0u;
 		std::uint8_t rawCharacterClass = 0;
         std::uint8_t rawLocomotion = 0;
 		std::uint8_t rawAction = 0;
@@ -3443,7 +3467,7 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader, S2C_WORLD_SNAPSHOT& me
 		std::uint8_t cooldownCount = 0;
 
         if (!reader.Read_U32(player.iNetEntityId) ||
-			!reader.Read_U8(rawCharacterClass) ||
+			!reader.Read_U8(rawCharacterClass) || !reader.Read_U8(rawControlKind) ||
             !reader.Read_F32(player.fPositionX) ||
             !reader.Read_F32(player.fPositionY) ||
             !reader.Read_F32(player.fPositionZ) ||
@@ -3542,6 +3566,7 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader, S2C_WORLD_SNAPSHOT& me
             static_cast<PLAYER_LOCOMOTION_STATE>(
                 rawLocomotion);
 		player.eCharacterClass = static_cast<CHARACTER_CLASS_ID>(rawCharacterClass);
+        player.eControlKind = static_cast<PLAYER_CONTROL_KIND>(rawControlKind);
 		player.eAction = static_cast<PLAYER_ACTION_STATE>(rawAction);
 		player.isKnockbackAirborne = rawKnockbackAirborne != 0u;
 		player.eStance = static_cast<PLAYER_STANCE_ID>(rawStance);
@@ -3654,6 +3679,7 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader, S2C_WORLD_SNAPSHOT& me
 			return false;
 		}
 		entity.hasBossCombatState = 0u != rawHasBossCombatState;
+		std::uint8_t rawMechanicGaugeKind = 0u;
 		if (entity.hasBossCombatState &&
 			(!reader.Read_U32(entity.BossCombat.iStateRevision) ||
 			 !reader.Read_U32(entity.BossCombat.iAlivePartMask) ||
@@ -3664,6 +3690,9 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader, S2C_WORLD_SNAPSHOT& me
 			 !reader.Read_U32(entity.BossCombat.iMaximumShield) ||
 			 !reader.Read_U32(entity.BossCombat.iResponseProgress) ||
 			 !reader.Read_U32(entity.BossCombat.iResponseThreshold) ||
+			 !reader.Read_U8(rawMechanicGaugeKind) ||
+			 !reader.Read_U32(entity.BossCombat.iCurrentMechanicGauge) ||
+			 !reader.Read_U32(entity.BossCombat.iMaximumMechanicGauge) ||
 			 !reader.Read_U8(entity.BossCombat.iGameplayPhase)))
 		{
 			return false;
@@ -3673,6 +3702,7 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader, S2C_WORLD_SNAPSHOT& me
 		{
 			return false;
 		}
+		entity.BossCombat.eMechanicGaugeKind = static_cast<BOSS_MECHANIC_GAUGE_KIND>(rawMechanicGaugeKind);
 		entity.eAction = static_cast<WORLD_ENTITY_ACTION>(rawAction);
 		if (!Is_Valid_WorldEntitySnapshot(entity))
 			return false;
@@ -3684,6 +3714,8 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader, S2C_WORLD_SNAPSHOT& me
 		std::uint8_t rawOutgoing = 0;
 		std::uint8_t rawShardSuit = 0;
 		std::uint8_t rawCounter = 0;
+		std::uint8_t rawStagger = 0;
+		std::uint8_t rawMarioHit = 0;
 		std::uint8_t rawHitFlag = 0;
 		if (!reader.Read_U32(damage.iTargetNetEntityId) ||
 			!reader.Read_U32(damage.iAmount) ||
@@ -3698,6 +3730,8 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader, S2C_WORLD_SNAPSHOT& me
 			!reader.Read_U32(damage.iStaggerAmount) ||
 			!reader.Read_U8(rawCounter) ||
 			rawCounter > 1u ||
+			!reader.Read_U8(rawStagger) || rawStagger > 1u ||
+			!reader.Read_U8(rawMarioHit) || rawMarioHit >= static_cast<std::uint8_t>(MARIO_HIT_SOURCE::END) ||
 			!reader.Read_U8(rawHitFlag) ||
 			rawHitFlag >= static_cast<std::uint8_t>(DAMAGE_HIT_FLAG::END))
 		{
@@ -3706,6 +3740,8 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader, S2C_WORLD_SNAPSHOT& me
 		damage.isOutgoing = 0u != rawOutgoing;
 		damage.eCardMazeSuit = static_cast<MECHANIC_CARD_SYMBOL>(rawShardSuit);
 		damage.isCounterSuccess = 0u != rawCounter;
+		damage.isStaggerSuccess = 0u != rawStagger;
+		damage.eMarioHitSource = static_cast<MARIO_HIT_SOURCE>(rawMarioHit);
 		damage.eHitFlag = static_cast<DAMAGE_HIT_FLAG>(rawHitFlag);
 		if (!Is_Valid_DamageEvent(damage))
 			return false;
@@ -5961,58 +5997,65 @@ bool LostArk::Shared::Read_Message(
 	return true;
 }
 
-bool LostArk::Shared::Write_Message(
-	CPacketWriter& writer,
-	const S2C_PARTY_ROSTER& message)
+namespace
 {
-	if (message.Members.size() > MAX_PARTY_MEMBERS)
-		return false;
-	writer.Write_U8(static_cast<std::uint8_t>(message.Members.size()));
-	for (const PARTY_ROSTER_MEMBER& member : message.Members)
-	{
-		if (INVALID_NET_ENTITY_ID == member.iNetEntityId ||
-			!Is_Valid_PlayerNickname(member.strNickname) ||
-			!Is_Known_Character_Class(member.eCharacterClass))
-		{
-			return false;
-		}
-		writer.Write_U32(member.iNetEntityId);
-		if (!writer.Write_String(member.strNickname, MAX_NICKNAME_BYTES))
-			return false;
-		writer.Write_U8(static_cast<std::uint8_t>(member.eCharacterClass));
-	}
-	return true;
+    bool ValidRoster(const LostArk::Shared::S2C_PARTY_ROSTER& roster)
+    {
+        using namespace LostArk::Shared;
+        if (roster.Members.size() > MAX_PARTY_MEMBERS ||
+            (roster.GuideCompanion && roster.Members.empty())) return false;
+        const auto valid = [](const PARTY_ROSTER_MEMBER& member, PLAYER_CONTROL_KIND kind) {
+            return member.iNetEntityId != INVALID_NET_ENTITY_ID &&
+                Is_Valid_PlayerNickname(member.strNickname) && Is_Known_Character_Class(member.eCharacterClass) &&
+                member.eControlKind == kind;
+        };
+        for (std::size_t index = 0; index < roster.Members.size(); ++index)
+        {
+            if (!valid(roster.Members[index], PLAYER_CONTROL_KIND::HUMAN)) return false;
+            for (std::size_t prior = 0; prior < index; ++prior)
+                if (roster.Members[prior].iNetEntityId == roster.Members[index].iNetEntityId) return false;
+            if (roster.GuideCompanion && roster.GuideCompanion->iNetEntityId == roster.Members[index].iNetEntityId) return false;
+        }
+        return !roster.GuideCompanion || valid(*roster.GuideCompanion, PLAYER_CONTROL_KIND::GUIDE_AI);
+    }
 }
 
-bool LostArk::Shared::Read_Message(
-	CPacketReader& reader,
-	S2C_PARTY_ROSTER& message)
+bool LostArk::Shared::Write_Message(CPacketWriter& writer, const S2C_PARTY_ROSTER& message)
 {
-	S2C_PARTY_ROSTER decoded{};
-	std::uint8_t memberCount = 0u;
-	if (!reader.Read_U8(memberCount) || memberCount > MAX_PARTY_MEMBERS)
-		return false;
-	decoded.Members.reserve(memberCount);
-	for (std::uint8_t index = 0; index < memberCount; ++index)
-	{
-		PARTY_ROSTER_MEMBER member{};
-		std::uint8_t rawCharacterClass = 0u;
-		if (!reader.Read_U32(member.iNetEntityId) ||
-			!reader.Read_String(member.strNickname, MAX_NICKNAME_BYTES) ||
-			!reader.Read_U8(rawCharacterClass) ||
-			INVALID_NET_ENTITY_ID == member.iNetEntityId ||
-			!Is_Valid_PlayerNickname(member.strNickname))
-		{
-			return false;
-		}
-		member.eCharacterClass =
-			static_cast<CHARACTER_CLASS_ID>(rawCharacterClass);
-		if (!Is_Known_Character_Class(member.eCharacterClass))
-			return false;
-		decoded.Members.push_back(std::move(member));
-	}
-	message = std::move(decoded);
-	return true;
+    if (!ValidRoster(message)) return false;
+    const auto writeMember = [&writer](const PARTY_ROSTER_MEMBER& member) {
+        writer.Write_U32(member.iNetEntityId);
+        if (!writer.Write_String(member.strNickname, MAX_NICKNAME_BYTES)) return false;
+        writer.Write_U8(static_cast<std::uint8_t>(member.eCharacterClass));
+        writer.Write_U8(static_cast<std::uint8_t>(member.eControlKind));
+        return true;
+    };
+    writer.Write_U8(static_cast<std::uint8_t>(message.Members.size()));
+    for (const auto& member : message.Members) if (!writeMember(member)) return false;
+    writer.Write_U8(message.GuideCompanion ? 1u : 0u);
+    return !message.GuideCompanion || writeMember(*message.GuideCompanion);
+}
+
+bool LostArk::Shared::Read_Message(CPacketReader& reader, S2C_PARTY_ROSTER& message)
+{
+    S2C_PARTY_ROSTER decoded{};
+    std::uint8_t count = 0u, hasGuide = 0u;
+    const auto readMember = [&reader](PARTY_ROSTER_MEMBER& member) {
+        std::uint8_t characterClass = 0u, controlKind = 0u;
+        if (!reader.Read_U32(member.iNetEntityId) || !reader.Read_String(member.strNickname, MAX_NICKNAME_BYTES) ||
+            !reader.Read_U8(characterClass) || !reader.Read_U8(controlKind)) return false;
+        member.eCharacterClass = static_cast<CHARACTER_CLASS_ID>(characterClass);
+        member.eControlKind = static_cast<PLAYER_CONTROL_KIND>(controlKind);
+        return true;
+    };
+    if (!reader.Read_U8(count) || count > MAX_PARTY_MEMBERS) return false;
+    decoded.Members.resize(count);
+    for (auto& member : decoded.Members) if (!readMember(member)) return false;
+    if (!reader.Read_U8(hasGuide) || hasGuide > 1u) return false;
+    if (hasGuide) { decoded.GuideCompanion.emplace(); if (!readMember(*decoded.GuideCompanion)) return false; }
+    if (!ValidRoster(decoded)) return false;
+    message = std::move(decoded);
+    return true;
 }
 
 namespace
@@ -7273,4 +7316,87 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader, S2C_SET_COOLDOWN_MODE_
     staged.eWorldId = static_cast<WORLD_ID>(world); staged.eMode = static_cast<COOLDOWN_MODE>(mode);
     staged.eResult = static_cast<SET_COOLDOWN_MODE_RESULT>(result);
     CPacketWriter validation; if (!Write_Message(validation, staged)) return false; message = staged; return true;
+}
+
+namespace
+{
+    bool ValidGuideText(std::string_view text, std::size_t limit, bool emptyAllowed = false)
+    {
+        if (text.size() > limit || (!emptyAllowed && text.empty())) return false;
+        for (std::size_t offset = 0u; offset < text.size();)
+        {
+            const auto first = static_cast<unsigned char>(text[offset]);
+            if (first < 0x80u)
+            {
+                if ((first < 0x20u && first != '\n' && first != '\t') || first == 0x7fu) return false;
+                ++offset; continue;
+            }
+            const std::size_t width = first < 0xe0u ? 2u : first < 0xf0u ? 3u : 4u;
+            if (offset + width > text.size() || !LostArk::Shared::Is_Valid_PlayerNickname(text.substr(offset, width))) return false;
+            offset += width;
+        }
+        return true;
+    }
+    bool ValidGuidePrompt(const LostArk::Shared::S2C_GUIDE_PROMPT& value)
+    {
+        return value.iGuideNetEntityId != LostArk::Shared::INVALID_NET_ENTITY_ID && value.iEventSequence != 0u &&
+            value.iRevision != 0u && Is_Valid_StableId(value.strPromptId, false) &&
+            ValidGuideText(value.strText, LostArk::Shared::MAX_GUIDE_PROMPT_TEXT_BYTES) &&
+            value.iDurationMs >= 1000u && value.iDurationMs <= 20000u;
+    }
+    bool ValidGuideState(const LostArk::Shared::S2C_GUIDE_STATE& value)
+    {
+        return value.iGuideNetEntityId != LostArk::Shared::INVALID_NET_ENTITY_ID && value.iRevision != 0u &&
+            value.iContext <= 15u && value.iAction <= 15u && std::isfinite(value.fFollowScore) &&
+            std::isfinite(value.fEvadeScore) && std::isfinite(value.fCombatScore) &&
+            std::isfinite(value.fThreat) && value.fThreat >= 0.f &&
+            std::isfinite(value.fAnchorDistance) && value.fAnchorDistance >= 0.f &&
+            std::isfinite(value.fHpRatio) && value.fHpRatio >= 0.f && value.fHpRatio <= 1.f &&
+            ValidGuideText(value.strReason, 512u, true) && Is_Valid_StableId(value.strComboId, true);
+    }
+}
+
+bool LostArk::Shared::Write_Message(CPacketWriter& writer, const S2C_GUIDE_PROMPT& message)
+{
+    if (!ValidGuidePrompt(message)) return false;
+    writer.Write_U32(message.iGuideNetEntityId); writer.Write_U32(message.iEventSequence);
+    Write_U64(writer, message.iRevision); writer.Write_U32(message.iDurationMs);
+    return writer.Write_String(message.strPromptId, MAX_STABLE_NETWORK_ID_BYTES) &&
+        writer.Write_String(message.strText, MAX_GUIDE_PROMPT_TEXT_BYTES);
+}
+bool LostArk::Shared::Read_Message(CPacketReader& reader, S2C_GUIDE_PROMPT& message)
+{
+    S2C_GUIDE_PROMPT staged;
+    if (!reader.Read_U32(staged.iGuideNetEntityId) || !reader.Read_U32(staged.iEventSequence) ||
+        !Read_U64(reader, staged.iRevision) || !reader.Read_U32(staged.iDurationMs) ||
+        !reader.Read_String(staged.strPromptId, MAX_STABLE_NETWORK_ID_BYTES) ||
+        !reader.Read_String(staged.strText, MAX_GUIDE_PROMPT_TEXT_BYTES) || !ValidGuidePrompt(staged)) return false;
+    message = std::move(staged); return true;
+}
+bool LostArk::Shared::Write_Message(CPacketWriter& writer, const S2C_GUIDE_STATE& message)
+{
+    if (!ValidGuideState(message)) return false;
+    writer.Write_U32(message.iGuideNetEntityId); writer.Write_U32(message.iOwnerNetEntityId);
+    Write_U64(writer, message.iRevision); writer.Write_U32(message.iServerTick);
+    writer.Write_U8(message.iContext); writer.Write_U8(message.iAction);
+    writer.Write_F32(message.fFollowScore); writer.Write_F32(message.fEvadeScore); writer.Write_F32(message.fCombatScore);
+    writer.Write_F32(message.fThreat); writer.Write_F32(message.fAnchorDistance); writer.Write_F32(message.fHpRatio);
+    writer.Write_U8(message.bSurvivalOverride ? 1u : 0u);
+    writer.Write_U32(message.iComboStep);
+    return writer.Write_String(message.strReason, 512u) && writer.Write_String(message.strComboId, MAX_STABLE_NETWORK_ID_BYTES);
+}
+bool LostArk::Shared::Read_Message(CPacketReader& reader, S2C_GUIDE_STATE& message)
+{
+    S2C_GUIDE_STATE staged;
+    std::uint8_t survivalOverride = 0u;
+    if (!reader.Read_U32(staged.iGuideNetEntityId) || !reader.Read_U32(staged.iOwnerNetEntityId) ||
+        !Read_U64(reader, staged.iRevision) || !reader.Read_U32(staged.iServerTick) ||
+        !reader.Read_U8(staged.iContext) || !reader.Read_U8(staged.iAction) ||
+        !reader.Read_F32(staged.fFollowScore) || !reader.Read_F32(staged.fEvadeScore) || !reader.Read_F32(staged.fCombatScore) ||
+        !reader.Read_F32(staged.fThreat) || !reader.Read_F32(staged.fAnchorDistance) || !reader.Read_F32(staged.fHpRatio) ||
+        !reader.Read_U8(survivalOverride) || survivalOverride > 1u ||
+        !reader.Read_U32(staged.iComboStep) || !reader.Read_String(staged.strReason, 512u) ||
+        !reader.Read_String(staged.strComboId, MAX_STABLE_NETWORK_ID_BYTES) || !ValidGuideState(staged)) return false;
+    staged.bSurvivalOverride = survivalOverride != 0u;
+    message = std::move(staged); return true;
 }

@@ -1,4 +1,5 @@
 #include "Material.h"
+#include <memory>
 #pragma push_macro("new")
 #undef new
 #include "Engine_RenderTypes.h"
@@ -1065,7 +1066,7 @@ HRESULT CMaterial::Bind_SurfaceTexture(shared_ptr<CShader> pShader,
         for (const auto* name : { "g_SourceCharacterProgram", "g_SourceCharacterRow" })
             (void)pShader->Bind_RawValue(name, &zero, sizeof(zero));
     }
-	ComPtr<ID3D11ShaderResourceView> texture;
+	const ComPtr<ID3D11ShaderResourceView>* texture = nullptr;
 	/* The surface program reads slot 0 of the same type, so one override covers both paths. */
 	if (const auto found = m_TextureOverrides.find(Texture_OverrideKey(eType, 0u));
 		found != m_TextureOverrides.end())
@@ -1074,20 +1075,24 @@ HRESULT CMaterial::Bind_SurfaceTexture(shared_ptr<CShader> pShader,
 	}
 	switch (eType)
 	{
-	case aiTextureType_DIFFUSE: texture = m_SurfaceDiffuse; break;
-	case aiTextureType_SPECULAR: texture = m_SurfaceSpecular; break;
-	case aiTextureType_REFLECTION: texture = m_SurfaceReflection; break;
-	case aiTextureType_NORMALS: texture = m_SurfaceNormal; break;
-	case aiTextureType_HEIGHT: texture = m_SurfaceDetailNormal; break;
-	case aiTextureType_UNKNOWN: texture = m_SurfaceORM; break;
-	case aiTextureType_EMISSIVE: texture = m_SurfaceEmissive; break;
-    case aiTextureType_TRANSMISSION: texture = m_SourceFoliageMask; break;
+	case aiTextureType_DIFFUSE: texture = std::addressof(m_SurfaceDiffuse); break;
+	case aiTextureType_SPECULAR: texture = std::addressof(m_SurfaceSpecular); break;
+	case aiTextureType_REFLECTION: texture = std::addressof(m_SurfaceReflection); break;
+	case aiTextureType_NORMALS: texture = std::addressof(m_SurfaceNormal); break;
+	case aiTextureType_HEIGHT: texture = std::addressof(m_SurfaceDetailNormal); break;
+	case aiTextureType_UNKNOWN: texture = std::addressof(m_SurfaceORM); break;
+	case aiTextureType_EMISSIVE: texture = std::addressof(m_SurfaceEmissive); break;
+    case aiTextureType_TRANSMISSION: texture = std::addressof(m_SourceFoliageMask); break;
     // Surface-only roles, separate from the legacy color-mask texture array.
-    case aiTextureType_BASE_COLOR: texture = m_SurfaceOverlayDiffuse; break;
-    case aiTextureType_NORMAL_CAMERA: texture = m_SurfaceOverlayNormal; break;
+    case aiTextureType_BASE_COLOR: texture = std::addressof(m_SurfaceOverlayDiffuse); break;
+    case aiTextureType_NORMAL_CAMERA: texture = std::addressof(m_SurfaceOverlayNormal); break;
 	default: return E_INVALIDARG;
 	}
-	return texture ? pShader->Bind_Texture(pConstantName, texture) : E_FAIL;
+	// The material owns the SRV throughout this call; borrowing avoids a
+	// redundant COM AddRef/Release for every surface texture of every draw.
+	// ComPtr::operator& resets the owner through ComPtrRef; borrow its C++
+	// object address with std::addressof so the material keeps its SRV.
+	return texture && *texture ? pShader->Bind_Texture(pConstantName, *texture) : E_FAIL;
 }
 
 shared_ptr<CMaterial> CMaterial::Create(ComPtr<ID3D11Device> pDevice, ComPtr<ID3D11DeviceContext> pContext, const aiMaterial* pAIMaterial, const char_t* pModelFilePath)

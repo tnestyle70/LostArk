@@ -499,6 +499,21 @@ bool_t Client::CCustomizingView::Try_Consume_CostumeChange()
 	return bChanged;
 }
 
+void Client::CCustomizingView::Configure_HairDefault(
+	const std::string& classAssetId, const int32_t defaultIndex)
+{
+	if (classAssetId.empty() || defaultIndex < 0) return;
+	m_iDefaultHair = defaultIndex;
+	if (m_strHairClassAssetId == classAssetId) return;
+	if (!m_strHairClassAssetId.empty())
+		m_HairSelectionsByClass[m_strHairClassAssetId] = m_iSelectedHair;
+	m_strHairClassAssetId = classAssetId;
+	const auto previous = m_HairSelectionsByClass.find(classAssetId);
+	m_iSelectedHair = previous == m_HairSelectionsByClass.end() ? defaultIndex : previous->second;
+	m_iHairScrollRow = m_iSelectedHair / GRID_COLUMNS;
+	m_bHairChanged = true;
+}
+
 bool_t Client::CCustomizingView::Try_Consume_HairChange()
 {
 	const bool_t bChanged = m_bHairChanged;
@@ -1040,10 +1055,11 @@ bool_t Client::CCustomizingView::Load_Slot(
 		}
 	}
 	m_iSelectedEyeIris = static_cast<int32_t>(ReadNumber(root.Find("eyeIris"), -1.f));
-	const int32_t iHair = static_cast<int32_t>(ReadNumber(root.Find("hair"), 0.f));
+	const int32_t iHair = static_cast<int32_t>(ReadNumber(root.Find("hair"), static_cast<f32_t>(m_iDefaultHair)));
 	if (iHair != m_iSelectedHair)
 	{
 		m_iSelectedHair = iHair;
+		m_iHairScrollRow = (std::max)(0, iHair) / GRID_COLUMNS;
 		m_bHairChanged = true;
 	}
 	const int32_t iCostume = static_cast<int32_t>(
@@ -1182,12 +1198,12 @@ void Client::CCustomizingView::Reset_All(const shared_ptr<CCharacter>& pCharacte
 	m_iSelectedEyeIris = -1;
 	m_iSelectedAdornSub = 0;
 	m_iFacePresetScrollRow = 0;
-	m_iHairScrollRow = 0;
+	m_iHairScrollRow = m_iDefaultHair / GRID_COLUMNS;
 	m_iEyeIrisScrollRow = 0;
 	m_iAdornScrollRow = 0;
-	if (0 != m_iSelectedHair)
+	if (m_iDefaultHair != m_iSelectedHair)
 	{
-		m_iSelectedHair = 0;
+		m_iSelectedHair = m_iDefaultHair;
 		m_bHairChanged = true;
 	}
 	if (COSTUME_NONE != m_iSelectedCostume)

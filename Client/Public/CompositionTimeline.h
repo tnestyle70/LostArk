@@ -7,6 +7,10 @@
 #include <cstdint>
 #include <cstdio>
 #include <limits>
+#include <string>
+#include <unordered_map>
+#include <utility>
+#include <vector>
 
 namespace Client::CompositionTimeline
 {
@@ -14,6 +18,102 @@ namespace Client::CompositionTimeline
 inline constexpr float LaneHeight = 24.f;
 inline constexpr float LabelWidth = 180.f;
 inline constexpr float MinimumBoxWidth = 8.f;
+inline constexpr float BoxHeight = 22.f;
+inline constexpr ImU32 StageColor = IM_COL32(96, 96, 112, 255);
+inline constexpr ImU32 AnimationColor = IM_COL32(72, 128, 200, 255);
+inline constexpr ImU32 LogicColor = IM_COL32(196, 118, 64, 255);
+inline constexpr ImU32 SummonColor = IM_COL32(88, 156, 116, 255);
+inline constexpr ImU32 WorldColor = IM_COL32(84, 132, 196, 255);
+inline constexpr ImU32 SceneProfileColor = IM_COL32(156, 108, 196, 255);
+inline constexpr ImU32 PresentationColor = IM_COL32(94, 165, 151, 255);
+inline constexpr ImU32 StageLabelColor = IM_COL32_WHITE;
+inline constexpr ImU32 AnimationLabelColor = IM_COL32(240, 188, 98, 255);
+inline constexpr ImU32 LogicLabelColor = IM_COL32(236, 170, 110, 255);
+inline constexpr ImU32 SummonLabelColor = IM_COL32(150, 220, 180, 255);
+inline constexpr ImU32 WorldLabelColor = IM_COL32(150, 190, 240, 255);
+inline constexpr ImU32 SceneProfileLabelColor = IM_COL32(200, 170, 240, 255);
+inline constexpr ImU32 PresentationLabelColor = IM_COL32(180, 210, 200, 255);
+
+// Display rows never become authored identities. Callers partition actor/slot lanes.
+struct DISPLAY_INTERVAL
+{
+	std::string occurrenceId;
+	double startMs = 0., durationMs = 0.;
+	double tailMs = 0.;
+	std::string groupId;
+};
+struct DISPLAY_GROUP
+{
+	std::string groupId;
+	double startMs = 0., endMs = 0.;
+	std::size_t firstRow = 0u, rowCount = 0u;
+};
+struct DISPLAY_LAYOUT
+{
+	std::unordered_map<std::string, std::size_t> occurrenceRows;
+	std::vector<DISPLAY_GROUP> groups;
+	std::size_t rowCount = 1u;
+};
+
+inline DISPLAY_LAYOUT AllocateDisplayRows(
+	std::vector<DISPLAY_INTERVAL> intervals, const double minimumBoxMs)
+{
+	// A saved group reserves one contiguous row block for its complete span.
+	// Internal overlaps still get separate hit-test rows; no authored clock changes.
+	std::stable_sort(intervals.begin(), intervals.end(),
+		[](const auto& a, const auto& b) { return a.startMs < b.startMs; });
+	struct UNIT
+	{
+		DISPLAY_GROUP span;
+		std::vector<std::pair<std::string, std::size_t>> memberRows;
+		std::vector<double> rowEnds;
+	};
+	std::vector<UNIT> units;
+	std::unordered_map<std::string, std::size_t> groupUnits;
+	for (const auto& interval : intervals)
+	{
+		std::size_t unitIndex = units.size();
+		if (!interval.groupId.empty())
+		{
+			const auto [found, inserted] = groupUnits.emplace(interval.groupId, unitIndex);
+			unitIndex = found->second;
+		}
+		if (unitIndex == units.size())
+		{
+			UNIT unit;
+			unit.span.groupId = interval.groupId; unit.span.startMs = interval.startMs;
+			units.push_back(std::move(unit));
+		}
+		auto& unit = units[unitIndex];
+		const auto end = interval.startMs + (std::max)(interval.durationMs, minimumBoxMs) + interval.tailMs;
+		std::size_t row = 0u;
+		while (row < unit.rowEnds.size() && unit.rowEnds[row] > interval.startMs) ++row;
+		if (row == unit.rowEnds.size()) unit.rowEnds.push_back(end); else unit.rowEnds[row] = end;
+		unit.span.endMs = (std::max)(unit.span.endMs, end);
+		unit.memberRows.emplace_back(interval.occurrenceId, row);
+	}
+	DISPLAY_LAYOUT layout;
+	std::vector<double> rowEnds;
+	for (auto& unit : units)
+	{
+		unit.span.rowCount = unit.rowEnds.size();
+		std::size_t first = 0u;
+		for (;; ++first)
+		{
+			bool available = true;
+			for (std::size_t offset = 0u; offset < unit.span.rowCount && first + offset < rowEnds.size(); ++offset)
+				if (rowEnds[first + offset] > unit.span.startMs) { available = false; break; }
+			if (available) break;
+		}
+		rowEnds.resize((std::max)(rowEnds.size(), first + unit.span.rowCount), 0u);
+		for (std::size_t offset = 0u; offset < unit.span.rowCount; ++offset) rowEnds[first + offset] = unit.span.endMs;
+		for (const auto& [id, row] : unit.memberRows) layout.occurrenceRows.emplace(id, first + row);
+		unit.span.firstRow = first;
+		if (!unit.span.groupId.empty()) layout.groups.push_back(std::move(unit.span));
+	}
+	layout.rowCount = (std::max)(std::size_t{1u}, rowEnds.size());
+	return layout;
+}
 
 enum class BoxGesture : std::uint8_t
 {

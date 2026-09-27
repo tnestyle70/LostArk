@@ -932,7 +932,10 @@ void Client::CEffect_Tool::Render_AuthoringSessionBar()
 	}
 	ImGui::SameLine();
 	if (ImGui::Button("Restart Preview"))
-		Start_WorldPreviewFromBeginning();
+    {
+        if (Has_ClassMovieContext()) (void)Restart_ClassMoviePreview();
+        else Start_WorldPreviewFromBeginning();
+    }
 	if (m_bDiscardActiveDocumentDraftConfirmationRequested)
 	{
 		ImGui::OpenPopup("Discard Current Effect changes?");
@@ -1158,9 +1161,9 @@ void Client::CEffect_Tool::Render_EffectDetailWindow()
     }
 	ImGui::TextWrapped("Selected Element Solo: %s",
 		ElementPreviewAdmissionReason(*pCurrent));
-    if (m_pAuthoringSequencer && !m_ProductPreview &&
+    if (Has_ClassMovieContext() || (m_pAuthoringSequencer && !m_ProductPreview &&
         (Is_SequencerRecoveryEffectAssetId(m_ActiveDocument->strEffectAssetId) ||
-         Is_SceneAnchoredEffectAssetId(m_ActiveDocument->strEffectAssetId)))
+         Is_SceneAnchoredEffectAssetId(m_ActiveDocument->strEffectAssetId))))
     {
         if (ImGui::Button("Timeline Solo##SelectedElement"))
             (void)Try_PreviewElementTimeline(pCurrent->strElementId);

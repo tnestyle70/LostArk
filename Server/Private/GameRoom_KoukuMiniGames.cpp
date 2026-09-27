@@ -177,6 +177,7 @@ void LostArk::Server::CGameRoom::Update_MarioBombContacts(
                 {player.fPositionX, player.fPositionZ, WorldCollision::PLAYER_HALF_EXTENT_X + Bomb::RADIUS_M})) continue;
             SERVER_WORLD_TO_PLAYER_HIT hit{};
             hit.iRawDamage = (std::max)(1u, player.iMaximumHp / 10u);
+            hit.eMarioHitSource = LostArk::Shared::MARIO_HIT_SOURCE::FLYING_BALL;
             hit.bIgnoreDefense = hit.bIgnoreCounter = true;
             hit.fSourceX = x; hit.fSourceZ = z;
             hit.bUsePushDirection = true;
@@ -198,7 +199,7 @@ void LostArk::Server::CGameRoom::Begin_MarioBallChallenge(SERVER_PLAYER& player)
 		std::uniform_int_distribution<unsigned>{1u, 3u}(m_MarioLayoutRandom));
 	std::vector<NET_ENTITY_ID> outside;
 	for (const auto& [id, other] : m_Players)
-		if (id != player.iPlayerId && other.iCurrentHp && other.isCombatReady && !other.iMarioStage)
+		if (other.Is_Human() && id != player.iPlayerId && other.iCurrentHp && other.isCombatReady && !other.iMarioStage)
 			outside.push_back(other.iNetEntityId);
 	player.iMarioMarkerNetEntityId = outside.empty() ? player.iNetEntityId :
 		outside[std::uniform_int_distribution<std::size_t>{0u, outside.size() - 1u}(m_MarioLayoutRandom)];
@@ -523,7 +524,9 @@ bool LostArk::Server::CGameRoom::Spawn_KoukuCardRainSoldiers(
         SPAWN_GROUP_ENTRY entry{};
         entry.strArchetypeId = archetypes[families[index]]; entry.strAnchorId = anchors[index].strAnchorId; entry.iCount = 1u;
         const auto id = m_iNextNetEntityId;
-        if (!Spawn_Monster(group, entry, anchors[index], *profiles[index], index))
+        auto profile = *profiles[index];
+        if (tuning && tuning->iSoldierMaxHp) profile.iMaxHp = tuning->iSoldierMaxHp;
+        if (!Spawn_Monster(group, entry, anchors[index], profile, index))
         {
             for (auto it = m_WorldEntities.begin(); it != m_WorldEntities.end();)
             {
@@ -536,6 +539,7 @@ bool LostArk::Server::CGameRoom::Spawn_KoukuCardRainSoldiers(
             m_strStatus = "Card rain soldier batch rolled back";
             return false;
         }
+        m_WorldEntities.back().iAttackFixedDamage = tuning ? tuning->iSoldierDamage : 0u;
         m_KoukuCardRainSoldiers.emplace(id, KOUKU_CARD_RAIN_SOLDIER_STATE{
             ownerId, sequence, 0u });
     }
@@ -766,7 +770,7 @@ void LostArk::Server::CGameRoom::Update_CardMazeClownBox(const std::uint32_t tic
 	using Maze = CKoukuCardMazeRuntime;
 	const bool anyEntered = std::any_of(m_Players.begin(), m_Players.end(), [](const auto& entry) {
 		const SERVER_PLAYER& player = entry.second;
-		return KOUKU_HUD_MODE::MAZE == player.eKoukuHudMode && player.iCurrentHp > 0u &&
+		return player.Is_Human() && KOUKU_HUD_MODE::MAZE == player.eKoukuHudMode && player.iCurrentHp > 0u &&
 			player.fPositionX >= Maze::MAZE_MIN_X && player.fPositionX <= Maze::MAZE_MAX_X &&
 			player.fPositionZ >= Maze::MAZE_MIN_Z && player.fPositionZ <= Maze::MAZE_MAX_Z;
 	});

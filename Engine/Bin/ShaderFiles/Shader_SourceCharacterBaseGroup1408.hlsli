@@ -1,3 +1,4 @@
+#ifndef SOURCE_CHARACTER_BASE_DISPATCH_CASES
 SOURCE_CHARACTER_NATIVE_OUTPUT SourceMapMonsterBaked1408(SOURCE_CHARACTER_NATIVE_INPUT input)
 {
     SOURCE_CHARACTER_NATIVE_OUTPUT output=(SOURCE_CHARACTER_NATIVE_OUTPUT)0;
@@ -3090,4 +3091,12 @@ SOURCE_CHARACTER_NATIVE_OUTPUT SourceCharacterBase1413(SOURCE_CHARACTER_NATIVE_I
     return output;
 }
 
-// source.character.maharaka-resident-female.v1 / source program 2f16ebcbc8c16a46813a08c349d06891
+// source.character.static-map-native-1500.v1 / source program f0d24fec647e5c4195be3c40a23b612c
+#else // SOURCE_CHARACTER_BASE_DISPATCH_CASES
+    case 1408u: return SourceCharacterBase1408(input);
+    case 1409u: return SourceCharacterBase1409(input);
+    case 1410u: return SourceCharacterBase1410(input);
+    case 1411u: return SourceCharacterBase1411(input);
+    case 1412u: return SourceCharacterBase1412(input);
+    case 1413u: return SourceCharacterBase1413(input);
+#endif // SOURCE_CHARACTER_BASE_DISPATCH_CASES

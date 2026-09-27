@@ -2,11 +2,14 @@
 #ifndef LOSTARK_SOURCE_MAP_DIRECT_PROGRAMS
 #define LOSTARK_SOURCE_MAP_DIRECT_PROGRAMS
 float4 g_SourceCharacterLightConstants[64];
+#if !defined(SOURCE_CHARACTER_PROGRAM_GROUP) || SOURCE_CHARACTER_PROGRAM_GROUP == 0
 #include "Shader_SourceMapCharacterSelectDirect.hlsli"
 #include "Shader_SourceMapSL10Direct.hlsli"
+#endif // SOURCE_CHARACTER_PROGRAM_GROUP map-forward bodies
 SamplerState SourceMapDirectSkySampler{Filter=MIN_MAG_MIP_LINEAR;AddressU=Wrap;AddressV=Clamp;};
 
 // dad0c6b258a72a4ca16fdcb5ab7e94ce
+#if !defined(SOURCE_CHARACTER_PROGRAM_GROUP) || SOURCE_CHARACTER_PROGRAM_GROUP == 0
 SOURCE_CHARACTER_NATIVE_OUTPUT SourceMapDirect40(SOURCE_CHARACTER_NATIVE_INPUT input)
 {
     SOURCE_CHARACTER_NATIVE_OUTPUT output=(SOURCE_CHARACTER_NATIVE_OUTPUT)0;
@@ -4818,4 +4821,5 @@ SOURCE_CHARACTER_NATIVE_OUTPUT SourceMapDirect63(SOURCE_CHARACTER_NATIVE_INPUT i
     return output;
 }
 
+#endif // SOURCE_CHARACTER_PROGRAM_GROUP map-forward bodies
 #endif

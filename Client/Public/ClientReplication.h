@@ -26,6 +26,7 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <optional>
+#include <deque>
 #include <utility>
 #include <vector>
 
@@ -114,6 +115,7 @@ namespace Client
 		LostArk::Shared::HONOR_TITLE_ID iHonorTitleId = LostArk::Shared::INVALID_HONOR_TITLE_ID;
 		bool_t isLocal = false;
 		std::weak_ptr<CCharacter> pCharacter;
+		LostArk::Shared::PLAYER_CONTROL_KIND eControlKind = LostArk::Shared::PLAYER_CONTROL_KIND::HUMAN;
 	};
 
 	struct DEFERRED_LOCAL_CHARACTER_CLASS_REPLACEMENT_VIEW final
@@ -503,6 +505,8 @@ namespace Client
 		   the sender too, so this is also where your own line comes from -- the
 		   window keeps no separate local echo. */
 		void Drain_ChatLines(std::vector<CHAT_LINE>& outLines);
+		const LostArk::Shared::S2C_GUIDE_STATE* Get_GuideState() const
+		{ return m_GuideState ? &*m_GuideState : nullptr; }
 
 	private:
 		void Sync_GlobalCombatDebugVisibility();
@@ -601,6 +605,9 @@ namespace Client
 			const LostArk::Shared::S2C_PARTY_INVITE_RECEIVED& received);
 		void Apply_PartyRoster(
 			const LostArk::Shared::S2C_PARTY_ROSTER& roster);
+		void Advance_GuideBubbles();
+		void Apply_GuidePrompt(const LostArk::Shared::S2C_GUIDE_PROMPT& prompt);
+		void Apply_GuideState(const LostArk::Shared::S2C_GUIDE_STATE& state);
 		void Apply_ChatReceived(
 			const LostArk::Shared::S2C_CHAT& received);
 		enum class CHARACTER_REPLACE_RESULT
@@ -735,6 +742,9 @@ namespace Client
 		/* Bounded so a level that never drains (no chat window) cannot grow it. */
 		static constexpr size_t MAX_PENDING_CHAT_LINES = 64;
 		std::vector<CHAT_LINE> m_PendingChatLines;
+		std::optional<LostArk::Shared::S2C_GUIDE_STATE> m_GuideState;
+		std::unordered_map<LostArk::Shared::NET_ENTITY_ID, std::deque<LostArk::Shared::S2C_GUIDE_PROMPT>> m_PendingGuideBubbles;
+		std::unordered_map<LostArk::Shared::NET_ENTITY_ID, std::uint32_t> m_GuidePromptSequences;
 		/* Latest snapshot's worn honor title per player, read by Collect_PlayerViews. */
 		std::unordered_map<LostArk::Shared::NET_ENTITY_ID, LostArk::Shared::HONOR_TITLE_ID>
 			m_HonorTitleByNetEntityId;

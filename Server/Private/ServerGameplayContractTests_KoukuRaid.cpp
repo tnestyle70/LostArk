@@ -1944,6 +1944,133 @@ int CServerGameplayContractRunner::Run_KoukuDiceDamageContracts()
         tests.Require(room->m_Players.at(1u).iCurrentHp == 500u && events.size() == 5u,
             "Absent cardSymbols preserves ordinary damage even when players have card assignments");
 
+        // Complete Play keeps the real raid owner across P79 -> P78. Exercise
+        // two connected humans both with and without a sessionless guide.
+        for (const bool withGuide : {false, true})
+        {
+            auto flowRoom = std::make_unique<CGameRoom>(WORLD_ID::KAKULSAYDON_ARENA);
+            tests.Require(flowRoom->Is_Ready(), "Complete Play dice fixture admits the installed world");
+            if (!flowRoom->Is_Ready()) continue;
+            std::vector<std::shared_ptr<CClientSession>> sessions;
+            for (PLAYER_ID id = 1u; id <= (withGuide ? 3u : 2u); ++id)
+            {
+                auto& player = flowRoom->m_Players[id];
+                player.iPlayerId = id; player.iNetEntityId = 100u + id;
+                player.iCurrentHp = player.iMaximumHp = 100000000u;
+                player.isCombatReady = true; player.fMoveSpeed = 5.f;
+                player.eCharacterClass = CHARACTER_CLASS_ID::LANCE_MASTER;
+                player.fPositionX = 10.f + id; player.fPositionY = .45f; player.fPositionZ = -60.f;
+                if (id == 3u) { player.eControlKind = PLAYER_CONTROL_KIND::GUIDE_AI; continue; }
+                player.iSessionId = 500u + id;
+                flowRoom->m_PlayerIdBySessionId[player.iSessionId] = id;
+                auto connection = std::make_shared<CClientSession>(player.iSessionId, INVALID_SOCKET,
+                    CClientSession::FRAME_HANDLER{}, CClientSession::CLOSED_HANDLER{});
+                connection->m_isSendRunning.store(true);
+                flowRoom->m_Sessions.emplace(player.iSessionId, connection); sessions.push_back(connection);
+            }
+            C2S_DEBUG_KOUKUSAYDON_RAID_REQUEST request;
+            request.iRequestSequence = 1u; request.eWorldId = WORLD_ID::KAKULSAYDON_ARENA; request.strStartGateId = "GATE1";
+            request.ExpectedGameplayRevision = flowRoom->m_GameplayCatalog.Get_ActiveRevision();
+            request.iActionSourceRevision = CKoukuSaydonBrain::Resolve_ProductSourceRevision(flowRoom->m_GameplayCatalog.Active());
+            const auto* gate = flowRoom->m_GameplayCatalog.Active().Find_KoukuRaidGate("GATE1");
+            if (!gate) { tests.Require(false, "Complete Play fixture resolves Gate 1"); continue; }
+            request.iSequenceSourceRevision = gate->iSequenceRevision;
+            flowRoom->m_iServerTick = 10u;
+            std::string reason;
+            tests.Require(flowRoom->Begin_KoukuRaidPreparation(501u, request, reason),
+                "Complete Play uses real pinned preparation rather than a standalone pattern ledger");
+            auto& run = flowRoom->m_KoukuRaid;
+            if (run.State.ePhase != KOUKUSAYDON_RAID_PHASE::PREPARING) continue;
+            auto ready = request; ready.eOperation = KOUKUSAYDON_RAID_OPERATION::READY;
+            ready.iRequestSequence = 2u; ready.iExpectedRunEpoch = run.State.iRunEpoch;
+            for (const auto session : {501u, 502u})
+                tests.Require(flowRoom->Apply_KoukuRaidReadiness(session, ready, reason), "Both human clients acknowledge Complete Play");
+            flowRoom->m_iServerTick = 12u; flowRoom->Update_KoukuRaid(12u);
+            tests.Require(run.PlayerIds == std::vector<PLAYER_ID>{1u, 2u} && run.State.ePhase == KOUKUSAYDON_RAID_PHASE::CINEMATIC,
+                "A guide does not join the human roster or delay the Complete Play cinematic");
+            if (run.State.ePhase != KOUKUSAYDON_RAID_PHASE::CINEMATIC) continue;
+            flowRoom->m_iServerTick = run.State.iEndTick;
+            flowRoom->Update_KoukuRaid(flowRoom->m_iServerTick);
+            const auto previous = std::find_if(gate->Entries.begin(), gate->Entries.end(), [](const auto& entry) {
+                return entry.strTargetId == "KAKULSAYDON_G1_PATTERN_79"; });
+            tests.Require(run.State.ePhase == KOUKUSAYDON_RAID_PHASE::COMBAT && previous != gate->Entries.end() &&
+                std::next(previous) != gate->Entries.end() && std::next(previous)->strTargetId == "KAKULSAYDON_G1_PATTERN_78",
+                "The installed Complete Play flow transitions from P79 to the dice pattern");
+            if (run.State.ePhase != KOUKUSAYDON_RAID_PHASE::COMBAT || previous == gate->Entries.end()) continue;
+            // Skip earlier independent entries, then run all actual ticks of the
+            // predecessor, transition, dice opening and replicated bind state.
+            run.State.iFlowEntryIndex = static_cast<std::uint32_t>(previous - gate->Entries.begin());
+            flowRoom->m_iServerTick = run.iNextEntryTick - 1u;
+            bool sawPrevious = false, inspected = false;
+            for (unsigned step = 0u; step < 2000u && !inspected; ++step)
+            {
+                flowRoom->Tick(1.f / 30.f);
+                auto* liveBoss = flowRoom->Find_KoukuSaydonArenaBoss("boss.kakulsaydon.g1.saydon", "BOSS_KAKULSAYDON_G1_SAYDON");
+                if (!liveBoss || !flowRoom->Is_KoukuRaidRunning()) break;
+                sawPrevious |= liveBoss->strPatternId == "KAKULSAYDON_G1_PATTERN_79";
+                if (liveBoss->strPatternId != "KAKULSAYDON_G1_PATTERN_78") continue;
+                const auto* member = flowRoom->Find_KoukuAuditionMember(liveBoss->iNetEntityId, liveBoss->iPatternSequence);
+                if (!member || std::none_of(member->LogicLedger.Windows.begin(), member->LogicLedger.Windows.end(),
+                    [](const auto& window) { return window.bOpened && !window.bClosed && window.iFreePlayerNetEntityId; })) continue;
+                inspected = true;
+                unsigned bound = 0u, moving = 0u;
+                std::map<PLAYER_ID, std::array<float, 2u>> beforeMove;
+                for (const auto id : {1u, 2u})
+                {
+                    auto& player = flowRoom->m_Players.at(id); bound += player.bPatternBound ? 1u : 0u;
+                    beforeMove.emplace(id, std::array{player.fPositionX, player.fPositionZ});
+                    C2S_MOVE move; move.iClientSequence = 1u; move.fGoalX = player.fPositionX + 1.f; move.fGoalZ = player.fPositionZ;
+                    flowRoom->Handle_Move(500u + id, move); moving += player.hasMoveGoal ? 1u : 0u;
+                    std::cout << "[DiceCompletePlay] guide=" << withGuide << " player=" << id << " bound=" << player.bPatternBound
+                        << " ready=" << player.isCombatReady << " action=" << static_cast<unsigned>(player.eAction)
+                        << " move=" << player.hasMoveGoal << " free=" << liveBoss->iPatternTargetEntityId << '\n';
+                }
+                tests.Require(sawPrevious && run.State.ePhase == KOUKUSAYDON_RAID_PHASE::COMBAT &&
+                    !flowRoom->Is_KoukuRaidInputBlocked() && bound == 1u && moving == 1u &&
+                    (liveBoss->iPatternTargetEntityId == 101u || liveBoss->iPatternTargetEntityId == 102u) &&
+                    (!withGuide || !flowRoom->m_Players.at(3u).bPatternBound),
+                    "Complete Play P79-to-P78 admits one free human mover and one bound human, never the guide");
+                for (unsigned step = 0u; step < 4u; ++step) flowRoom->Tick(1.f / 30.f);
+                unsigned advanced = 0u; bool captiveStayed = true;
+                for (const auto id : {1u, 2u})
+                {
+                    const auto& player = flowRoom->m_Players.at(id);
+                    const auto& before = beforeMove.at(id);
+                    const bool changed = std::hypot(player.fPositionX - before[0], player.fPositionZ - before[1]) > .01f;
+                    advanced += changed ? 1u : 0u;
+                    captiveStayed = captiveStayed && (!player.bPatternBound || !changed);
+                }
+                tests.Require(advanced == 1u && captiveStayed,
+                    "Real Complete Play navigation and world collision advance only the free human across four ticks");
+                flowRoom->Broadcast_WorldSnapshot();
+                for (const auto& connection : sessions)
+                {
+                    const auto frame = std::find_if(connection->m_OutboundFrames.rbegin(), connection->m_OutboundFrames.rend(),
+                        [](const auto& item) { return item.ePacketType == PACKET_TYPE::S2C_WORLD_SNAPSHOT; });
+                    S2C_WORLD_SNAPSHOT decoded; bool parsed = frame != connection->m_OutboundFrames.rend();
+                    if (parsed) {
+                        CPacketReader reader{std::span<const std::uint8_t>(frame->Bytes.data() + PACKET_HEADER_BYTES,
+                            frame->Bytes.size() - PACKET_HEADER_BYTES)};
+                        parsed = Read_Message(reader, decoded);
+                    }
+                    std::cout << "[DiceCompletePlayWire] parsed=" << parsed << " snapshot=" << (frame != connection->m_OutboundFrames.rend())
+                        << " frames=" << connection->m_OutboundFrames.size() << " tick=" << decoded.iServerTick
+                        << " expected=" << flowRoom->m_iServerTick << " players=" << decoded.Players.size() << " entities=" << decoded.Entities.size() << '\n';
+                    for (const auto& player : decoded.Players) std::cout << "[DiceWirePlayer] id=" << player.iNetEntityId << " bound=" << player.isPatternBound << " kind=" << static_cast<unsigned>(player.eControlKind) << '\n';
+                    for (const auto& entity : decoded.Entities) if (entity.hasBossCombatState) std::cout << "[DiceWireBoss] id=" << entity.iNetEntityId << " pattern=" << entity.strPatternId << '\n';
+                    tests.Require(parsed && decoded.iServerTick == flowRoom->m_iServerTick &&
+                        std::count_if(decoded.Players.begin(), decoded.Players.end(), [](const auto& player) {
+                            return player.eControlKind == PLAYER_CONTROL_KIND::HUMAN && player.isPatternBound; }) == 1 &&
+                        std::any_of(decoded.Entities.begin(), decoded.Entities.end(), [](const auto& entity) {
+                            return entity.strPatternId == "KAKULSAYDON_G1_PATTERN_78"; }),
+                        "Both Client snapshots carry exactly one human bind and the live dice pattern for floor-effect admission");
+                }
+            }
+            tests.Require(inspected, "Real Complete Play ticks reach the authored dice bind window");
+            if (!inspected) std::cout << "[DiceCompletePlay] status=" << flowRoom->Get_Status() << " phase=" << static_cast<unsigned>(run.State.ePhase) << '\n';
+            for (const auto& connection : sessions) connection->Request_Close();
+        }
+
         // Use the installed P78 definition, its authored clock, actual player update and pursuit spawn.
         const auto* installed = catalog.Find_BossPatterns(boss.strEncounterId);
         const BOSS_PATTERN_DEFINITION* dice = nullptr;

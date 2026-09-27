@@ -66,7 +66,9 @@ namespace
         bool withAmbient = false)
     {
         constexpr size_t capacity = 400u; // Scene 16 + existing transient budget 384.
-        std::array<float4_t, capacity> positions{}, directions{}, colors{}, cones{}, ambients{};
+        // Only [0,count) is consumed by the forward shaders. Each appended
+        // record initializes every lane, so unused capacity needs no upload.
+        std::array<float4_t, capacity> positions, directions, colors, cones, ambients;
         uint32_t count = 0u;
         bool mainDirectionalConsumed = false;
         const auto append = [&](const Engine::LIGHT_DESC& light, bool scene) -> HRESULT
@@ -105,12 +107,14 @@ namespace
             if (FAILED(append(light, true))) return E_FAIL;
         for (const auto& light : Engine::CPresentation_Manager::Get().Get_TransientLights())
             if (FAILED(append(light, false))) return E_FAIL;
-        if (FAILED(shader->Bind_RawValue("g_SourceMapForwardLightCount", &count, sizeof(count))) ||
-            FAILED(shader->Bind_RawValue("g_SourceMapForwardLightPositionRange", positions.data(), sizeof(positions))) ||
-            FAILED(shader->Bind_RawValue("g_SourceMapForwardLightDirectionType", directions.data(), sizeof(directions))) ||
-            FAILED(shader->Bind_RawValue("g_SourceMapForwardLightColorExponent", colors.data(), sizeof(colors))) ||
-            FAILED(shader->Bind_RawValue("g_SourceMapForwardLightConeShadow", cones.data(), sizeof(cones))) ||
-            (withAmbient && FAILED(shader->Bind_RawValue("g_SourceMapForwardLightAmbient", ambients.data(), sizeof(ambients))))) return E_FAIL;
+        if (FAILED(shader->Bind_RawValue("g_SourceMapForwardLightCount", &count, sizeof(count)))) return E_FAIL;
+        if (count == 0u) return S_OK;
+        const uint32_t bytes = count * sizeof(float4_t);
+        if (FAILED(shader->Bind_RawValue("g_SourceMapForwardLightPositionRange", positions.data(), bytes)) ||
+            FAILED(shader->Bind_RawValue("g_SourceMapForwardLightDirectionType", directions.data(), bytes)) ||
+            FAILED(shader->Bind_RawValue("g_SourceMapForwardLightColorExponent", colors.data(), bytes)) ||
+            FAILED(shader->Bind_RawValue("g_SourceMapForwardLightConeShadow", cones.data(), bytes)) ||
+            (withAmbient && FAILED(shader->Bind_RawValue("g_SourceMapForwardLightAmbient", ambients.data(), bytes)))) return E_FAIL;
         return S_OK;
     }
 
@@ -1157,8 +1161,10 @@ HRESULT Client::CMapAssetRenderUtils::Bind_Material(
 		FAILED(shader->Bind_RawValue("g_SurfaceDebugView", &debugView, sizeof(debugView))))
 		return E_FAIL;
     const uint32_t hasBaked = (program == 3u || program == 4u || program == 5u || program == 7u || program == 8u || program == 9u || program == 10u || (program >= 11u && program <= 13u)) && surface->hasBakedLighting ? 1u : 0u;
-    const auto environmentState = Engine::CGameInstance::Get().Get_RenderEnvironment();
-    const bool sourceIndirectEnabled = surface && surface->hasSourceIndirect && environmentState.bUseSourcePBRIndirect;
+    // Most map surfaces have no source indirect input. Avoid copying the
+    // environment's cube reference and path string for those ordinary draws.
+    const bool sourceIndirectEnabled = surface && surface->hasSourceIndirect &&
+        Engine::CGameInstance::Get().Get_RenderEnvironment().bUseSourcePBRIndirect;
     const uint32_t hasEnvironment = (program == 3u || program == 4u) && surface->hasEnvironmentCube &&
         (surface->environmentLegacyEnabled || sourceIndirectEnabled) ? 1u : 0u;
     const Engine::MODEL_BAKED_LIGHTING_INSTANCE emptyLighting{};

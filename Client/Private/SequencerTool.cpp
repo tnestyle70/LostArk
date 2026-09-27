@@ -1,6 +1,9 @@
 #include "imgui.h"
 #include "SequencerTool.h"
 #include "CompositionTimeline.h"
+#include "SequenceCameraEditor.h"
+#include "ClassMovieInspector.h"
+#include <set>
 #include <cmath>
 
 #include <algorithm>
@@ -156,7 +159,7 @@ namespace
                 m_Callbacks.stop();
             m_OwnsPlayback = false;
             m_Scrubbing = false;
-            m_Pending = COMMAND::NONE;
+            m_Pending = COMMAND::NONE; m_Drag.reset();
         }
 
         void Begin_WorkbenchFrame() override
@@ -168,11 +171,17 @@ namespace
                 m_OpenedAuthoring = m_Callbacks.beginAuthoring(m_EditStatus);
                 m_State = Read_State();
             }
+            Refresh_RowSource();
             if (!m_State.active || m_State.ownerToken != m_OwnerToken) m_OwnsPlayback = false;
-            if (!m_RowDirty && m_FollowPlayback && m_State.active && m_State.activeClassId == m_State.selectedClassId)
-                m_ViewLoop = m_State.looping;
+            if (!m_RowDirty && m_FollowPlayback && m_State.active && m_State.activeClassId == m_State.selectedClassId && m_ViewLoop != m_State.looping)
+            {
+                m_ViewLoop = m_State.looping; m_SelectedBox.clear(); m_SelectedKind.clear(); m_SelectedRow.clear();
+                m_EditBox.reset(); m_CameraEditor = {}; m_Drag.reset();
+            }
             m_Timeline = m_Callbacks.timeline ? m_Callbacks.timeline(m_State.selectedClassId, m_ViewLoop) : nullptr;
             if (!m_Scrubbing) m_EditMs = MatchesPlayback() ? static_cast<float>(m_State.clockMs) : 0.f;
+            m_InspectedWorldId = m_Callbacks.inspection.state ?
+                m_Callbacks.inspection.state(m_State.selectedClassId, m_ViewLoop).selectedId : std::string{};
         }
 
         void Render_WorkbenchPane(const PANE pane) override
@@ -211,6 +220,7 @@ namespace
                 ImGui::TextWrapped("Play opens the selected class movie on its original stage.");
                 ImGui::TextWrapped("All rows use Movie time. Source time preserves the original slow-motion curve.");
                 ImGui::TextWrapped("Select a box to edit its rows and keys. Apply, Save, Reload and Play use the same F1 movie owner.");
+                m_WorldInspector.Render(m_Callbacks.inspection, m_State.selectedClassId, m_ViewLoop, m_RowDirty);
                 break;
             default: break;
             }
@@ -218,16 +228,24 @@ namespace
 
         void End_WorkbenchFrame() override
         {
+            // Inspector source commands run after the row panes. Refresh clean
+            // cached rows before the camera window can edit one this frame.
+            m_State = Read_State();
+            Refresh_RowSource();
+            Render_CameraWindow();
+            if (m_SaveRequested && m_RowDirty) m_ApplyRequested = true;
             if (m_RequestedRate && m_Callbacks.setPlaybackRate)
                 (void)m_Callbacks.setPlaybackRate(*m_RequestedRate);
             m_RequestedRate.reset();
             if (m_ApplyRequested && m_EditBox && m_Callbacks.applyBox)
             {
-                if (m_Callbacks.applyBox(*m_EditBox, m_EditValue, m_EditStatus))
+                if (!Row_SourceChanged() && m_Callbacks.applyBox(*m_EditBox, m_EditValue, m_EditStatus))
                 { m_EditBox.reset(); m_RowDirty = false; }
             }
             m_ApplyRequested = false;
-            if (m_SaveRequested && m_Callbacks.saveAuthoring && m_Callbacks.saveAuthoring(m_EditStatus)) m_EditBox.reset();
+            if (m_SaveRequested && !m_RowDirty && m_Callbacks.saveAuthoring && m_Callbacks.saveAuthoring(m_EditStatus)) m_EditBox.reset();
+            if (m_PublishRequested && !m_RowDirty && m_Callbacks.publishAuthoring) m_Callbacks.publishAuthoring(m_EditStatus);
+            m_PublishRequested = false;
             m_SaveRequested = false;
             if (m_ReloadRequested && m_Callbacks.reloadAuthoring && m_Callbacks.reloadAuthoring(m_EditStatus))
             { m_EditBox.reset(); m_RowDirty = false; }
@@ -310,7 +328,8 @@ namespace
                         m_Scrubbing = false;
                         m_Pending = COMMAND::NONE;
                         m_State = Read_State();
-                        m_SelectedBox.clear(); m_SelectedRow.clear(); m_ViewLoop = false;
+                        m_SelectedBox.clear(); m_SelectedRow.clear(); m_SelectedKind.clear(); m_ViewLoop = false;
+                        m_EditBox.reset(); m_CameraEditor = {}; m_Drag.reset();
                         m_Timeline = m_Callbacks.timeline ? m_Callbacks.timeline(m_State.selectedClassId, false) : nullptr;
                     }
                     if (selected) ImGui::SetItemDefaultFocus();
@@ -342,12 +361,16 @@ namespace
             if (ImGui::Button("Stop")) m_Pending = COMMAND::STOP;
             ImGui::EndDisabled();
             Render_RateControl();
-            ImGui::BeginDisabled(!m_OpenedAuthoring || m_RowDirty || m_State.authoringPublishPending);
+            ImGui::BeginDisabled(!m_OpenedAuthoring || m_State.authoringPublishPending);
             if (ImGui::Button("Save movie")) m_SaveRequested = true;
+            ImGui::SameLine();
+            ImGui::BeginDisabled(m_RowDirty || m_State.authoringDirty || !m_Callbacks.publishAuthoring);
+            if (ImGui::Button("Publish movie")) m_PublishRequested = true;
+            ImGui::EndDisabled();
             ImGui::SameLine();
             if (ImGui::Button("Reload saved movie"))
             {
-                if (m_State.authoringDirty) ImGui::OpenPopup("Discard movie draft?");
+                if (m_State.authoringDirty || m_RowDirty) ImGui::OpenPopup("Discard movie draft?");
                 else m_ReloadRequested = true;
             }
             ImGui::EndDisabled();
@@ -362,7 +385,9 @@ namespace
             if (m_State.authoringDirty) ImGui::TextUnformatted("Movie has unsaved changes.");
             if (m_RowDirty)
             {
-                ImGui::TextWrapped("Apply or revert this row before saving or selecting another movie row.");
+                ImGui::TextWrapped(Row_SourceChanged() ?
+                    "Movie sources changed in another editor. This pending row is preserved; discard it and reopen the current source before applying or saving." :
+                    "Save includes this pending row. Apply or revert before selecting another movie row.");
                 if (m_EditBox && ImGui::Button("Return to edited row"))
                 {
                     for (size_t i = 0; i < m_State.options.size(); ++i)
@@ -374,7 +399,8 @@ namespace
                             for (const auto& box : row.boxes) if (row.kind == m_SelectedKind && box.id == m_SelectedBox) m_SelectedRow = row.id;
                 }
                 ImGui::SameLine();
-                if (ImGui::Button("Revert pending row")) { m_RowDirty = false; m_EditBox.reset(); }
+                if (ImGui::Button(Row_SourceChanged() ? "Discard pending row and reopen" : "Revert pending row"))
+                { m_RowDirty = false; m_EditBox.reset(); m_CameraEditor = {}; m_EditStatus.clear(); }
             }
             if (!m_EditStatus.empty()) ImGui::TextWrapped("%s", m_EditStatus.c_str());
             if (!m_State.status.empty()) ImGui::TextWrapped("%s", m_State.status.c_str());
@@ -383,6 +409,21 @@ namespace
 
         inline static constexpr std::array<const char*, 8> ROW_KINDS = {
             "World Model", "Animation", "Camera", "Effect", "Material", "Light", "Sound", "Time Control"};
+
+        bool Row_SourceChanged() const
+        { return m_EditBox && m_EditBox->generation != m_State.authoringGeneration; }
+
+        void Refresh_RowSource()
+        {
+            if (m_Drag && m_Drag->before.generation != m_State.authoringGeneration) m_Drag.reset();
+            if (!Row_SourceChanged()) return;
+            if (m_RowDirty)
+            {
+                m_EditStatus = "Movie sources changed after this pending row was opened. Your edits are preserved. Discard the pending row and reopen it to use the current source.";
+                return;
+            }
+            m_EditBox.reset(); m_CameraEditor = {}; m_KeySelections.clear();
+        }
 
         bool MatchesPlayback() const
         { return m_State.active && m_State.activeClassId == m_State.selectedClassId && m_State.looping == m_ViewLoop; }
@@ -402,9 +443,9 @@ namespace
         {
             ImGui::Text("%s / %s", m_State.selectedLabel.c_str(), m_ViewLoop ? "Loop" : "Intro");
             ImGui::BeginDisabled(m_RowDirty);
-            if (ImGui::RadioButton("Intro", !m_ViewLoop)) { m_ViewLoop = false; m_FollowPlayback = false; }
+            if (ImGui::RadioButton("Intro", !m_ViewLoop)) { m_ViewLoop = false; m_FollowPlayback = false; m_EditBox.reset(); m_SelectedBox.clear(); m_SelectedKind.clear(); m_Drag.reset(); }
             ImGui::SameLine();
-            if (ImGui::RadioButton("Loop", m_ViewLoop)) { m_ViewLoop = true; m_FollowPlayback = false; }
+            if (ImGui::RadioButton("Loop", m_ViewLoop)) { m_ViewLoop = true; m_FollowPlayback = false; m_EditBox.reset(); m_SelectedBox.clear(); m_SelectedKind.clear(); m_Drag.reset(); }
             ImGui::SameLine(); ImGui::Checkbox("Follow playback", &m_FollowPlayback);
             ImGui::EndDisabled();
             m_Timeline = m_Callbacks.timeline ? m_Callbacks.timeline(m_State.selectedClassId, m_ViewLoop) : nullptr;
@@ -432,79 +473,192 @@ namespace
             m_RowFilter.Draw("Filter rows", 220.f);
             ImGui::SameLine(); ImGui::SetNextItemWidth(140.f);
             ImGui::SliderFloat("Zoom", &m_PixelsPerSecond, 20.f, 200.f, "%.0f px/s");
+            ImGui::SameLine(); ImGui::Checkbox("Active at cursor", &m_ActiveOnly);
             if (ImGui::BeginChild("MovieRows", ImVec2(0.f, 0.f), ImGuiChildFlags_Borders,
                 ImGuiWindowFlags_HorizontalScrollbar))
             {
                 using namespace Client::CompositionTimeline;
-                constexpr float labelWidth = 260.f;
+                const float labelWidth = 230.f;
                 const float width = (std::max)(400.f, duration * .001f * m_PixelsPerSecond);
                 auto* draw = ImGui::GetWindowDrawList();
                 const auto origin = ImGui::GetCursorScreenPos();
                 DrawRuler(draw, {origin.x + labelWidth, origin.y}, {origin.x + labelWidth + width, origin.y + LaneHeight},
-                    static_cast<uint32_t>(std::ceil(duration)), m_PixelsPerSecond);
+                    static_cast<uint32_t>(duration), m_PixelsPerSecond);
                 ImGui::Dummy({labelWidth + width, LaneHeight});
                 for (size_t family = 0; family < ROW_KINDS.size(); ++family)
                 {
-                    std::vector<const Client::CLASS_MOVIE_TIMELINE_ROW*> rows;
-                    for (const auto& row : m_Timeline->rows)
-                        if (row.kind == ROW_KINDS[family] &&
-                            (!m_RowFilter.IsActive() || m_RowFilter.PassFilter(row.label.c_str()) ||
-                                m_RowFilter.PassFilter(row.kind.c_str()))) rows.push_back(&row);
-                    if (rows.empty()) continue;
-                    const std::string heading = std::string(ROW_KINDS[family]) + " (" + std::to_string(rows.size()) + ")";
-                    if (!ImGui::CollapsingHeader(heading.c_str(), ImGuiTreeNodeFlags_DefaultOpen)) continue;
-                    ImGuiListClipper clipper;
-                    clipper.Begin(static_cast<int>(rows.size()), LaneHeight + ImGui::GetStyle().ItemSpacing.y);
-                    while (clipper.Step()) for (int i = clipper.DisplayStart; i < clipper.DisplayEnd; ++i)
-                    {
-                        const auto& row = *rows[i];
-                        ImGui::PushID(row.kind.c_str()); ImGui::PushID(row.id.c_str());
-                        const auto p = ImGui::GetCursorScreenPos();
-                        ImGui::InvisibleButton("lane", {labelWidth + width, LaneHeight});
-                        draw->AddRectFilled({p.x + labelWidth, p.y}, {p.x + labelWidth + width, p.y + LaneHeight},
-                            IM_COL32(32, 36, 44, 255));
-                        draw->PushClipRect(p, {p.x + labelWidth - 5.f, p.y + LaneHeight}, true);
-                        draw->AddText({p.x + 3.f, p.y + 3.f}, IM_COL32(220, 224, 230, 255), row.label.c_str());
-                        draw->PopClipRect();
+                    const std::string kind = ROW_KINDS[family];
+                    using REF = std::pair<const Client::CLASS_MOVIE_TIMELINE_ROW*, const Client::CLASS_MOVIE_TIMELINE_BOX*>;
+                    std::map<std::string, std::vector<REF>> partitions;
+                    size_t total = 0, active = 0;
+                    const double cursorMs = MatchesPlayback() ? m_State.clockMs : m_EditMs;
+                    for (const auto& row : m_Timeline->rows) if (row.kind == kind)
                         for (const auto& box : row.boxes)
                         {
-                            const float x = p.x + labelWidth + static_cast<float>(box.movieStartMs * .001 * m_PixelsPerSecond);
-                            const float endX = (std::max)(x + MinimumBoxWidth,
-                                p.x + labelWidth + static_cast<float>(box.movieEndMs * .001 * m_PixelsPerSecond));
-                            const ImVec2 min{x, p.y + 2.f}, max{endX, p.y + LaneHeight - 2.f};
-                            const bool selected = m_SelectedRow == row.id && m_SelectedKind == row.kind && m_SelectedBox == box.id;
-                            const ImU32 colors[] = {IM_COL32(62,94,130,255), IM_COL32(72,116,79,255),
-                                IM_COL32(105,77,154,255), IM_COL32(143,89,46,255), IM_COL32(120,100,61,255),
-                                IM_COL32(135,121,45,255), IM_COL32(59,121,122,255), IM_COL32(131,72,101,255)};
-                            DrawBox(draw, min, max, colors[family], selected, box.label.c_str(), false, false);
-                            float lastX = -1.e20f;
-                            for (double time : box.keyMovieTimes)
-                            {
-                                const float keyX = p.x + labelWidth + static_cast<float>(time * .001 * m_PixelsPerSecond);
-                                if (keyX - lastX < 4.f) continue;
-                                draw->AddLine({keyX, max.y - 3.f}, {keyX, max.y}, IM_COL32(224,225,230,190)); lastX = keyX;
-                            }
-                            if (ImGui::IsItemHovered() && ImGui::IsMouseHoveringRect(min, max))
-                            {
-                                ImGui::SetTooltip("%s\nMovie %.3f - %.3f s\nSource %.3f - %.3f s", box.label.c_str(),
-                                    box.movieStartMs * .001, box.movieEndMs * .001, box.sourceStartMs * .001, box.sourceEndMs * .001);
-                                if (ImGui::IsMouseClicked(ImGuiMouseButton_Left))
-                                {
-                                    if (m_RowDirty) m_EditStatus = "Apply or revert the edited row before selecting another box.";
-                                    else { m_SelectedKind = row.kind; m_SelectedRow = row.id; m_SelectedBox = box.id; m_CameraKey = 0; m_EditBox.reset(); }
-                                }
-                            }
+                            ++total;
+                            const bool alive = cursorMs >= box.movieStartMs && cursorMs < (std::max)(box.movieEndMs, box.movieHoldEndMs);
+                            if (alive) ++active;
+                            if (m_ActiveOnly && !alive) continue;
+                            if (!m_RowFilter.PassFilter((row.label + " " + box.label + " " + box.resource).c_str())) continue;
+                            partitions[kind == "Animation" ? row.id : kind].push_back({&row, &box});
                         }
-                        if (MatchesPlayback())
+                    if (total == 0) continue;
+                    const std::string heading = kind + " (" + std::to_string(total) + " boxes, " + std::to_string(active) + " active)";
+                    const bool compact = kind == "World Model" || kind == "Material" || kind == "Light";
+                    const bool expanded = ImGui::CollapsingHeader(heading.c_str(), compact ? ImGuiTreeNodeFlags_None : ImGuiTreeNodeFlags_DefaultOpen);
+                    if (!expanded)
+                    {
+                        const auto p = ImGui::GetCursorScreenPos();
+                        ImGui::Dummy({labelWidth + width, 8.f});
+                        for (const auto& [partition, refs] : partitions) for (const auto& ref : refs)
                         {
-                            const float cursor = p.x + labelWidth + static_cast<float>(m_State.clockMs * .001 * m_PixelsPerSecond);
-                            draw->AddLine({cursor, p.y}, {cursor, p.y + LaneHeight}, IM_COL32(255,210,80,255), 2.f);
+                            const auto& box = *ref.second;
+                            draw->AddRectFilled({p.x + labelWidth + float(box.movieStartMs * .001 * m_PixelsPerSecond), p.y},
+                                {p.x + labelWidth + float(box.movieEndMs * .001 * m_PixelsPerSecond), p.y + 5.f}, IM_COL32(73,95,120,100));
                         }
-                        ImGui::PopID(); ImGui::PopID();
+                        continue;
+                    }
+                    for (const auto& [partition, refs] : partitions)
+                    {
+                        if (kind == "Animation")
+                        {
+                            ImGui::PushID(partition.c_str());
+                            const bool show = ImGui::TreeNodeEx("actor", ImGuiTreeNodeFlags_DefaultOpen, "%s", refs.front().first->label.c_str());
+                            ImGui::PopID();
+                            if (!show) continue;
+                        }
+                        std::vector<DISPLAY_INTERVAL> intervals;
+                        for (const auto& [row, box] : refs)
+                            intervals.push_back({box->id, box->movieStartMs, box->movieEndMs - box->movieStartMs,
+                                (std::max)(0., box->movieHoldEndMs - box->movieEndMs), {}});
+                        const auto layout = AllocateDisplayRows(std::move(intervals), MinimumBoxWidth * 1000. / m_PixelsPerSecond);
+                        for (size_t lane = 0; lane < layout.rowCount; ++lane)
+                        {
+                            const auto p = ImGui::GetCursorScreenPos();
+                            ImGui::PushID(partition.c_str()); ImGui::PushID(static_cast<int>(lane));
+                            ImGui::InvisibleButton("lane", {labelWidth + width, LaneHeight});
+                            const bool hovered = ImGui::IsItemHovered();
+                            draw->AddRectFilled({p.x + labelWidth, p.y}, {p.x + labelWidth + width, p.y + LaneHeight}, IM_COL32(32,36,44,255));
+                            std::string label = kind + " " + std::to_string(lane + 1u);
+                            if (kind == "World Model" || kind == "Material" || kind == "Light")
+                                for (const auto& [row, box] : refs) if (layout.occurrenceRows.at(box->id) == lane) { label = row->label; break; }
+                            draw->PushClipRect(p, {p.x + labelWidth - 5.f, p.y + LaneHeight}, true);
+                            draw->AddText({p.x + 3.f, p.y + 3.f}, IM_COL32(220,224,230,255), label.c_str()); draw->PopClipRect();
+                            for (const auto& [row, box] : refs) if (layout.occurrenceRows.at(box->id) == lane)
+                                Render_TimelineBox(*row, *box, p, labelWidth, hovered, family);
+                            if (MatchesPlayback())
+                            {
+                                const float x = p.x + labelWidth + float(m_State.clockMs * .001 * m_PixelsPerSecond);
+                                draw->AddLine({x,p.y}, {x,p.y + LaneHeight}, IM_COL32(255,210,80,255), 2.f);
+                            }
+                            ImGui::PopID(); ImGui::PopID();
+                        }
+                        if (kind == "Animation") ImGui::TreePop();
                     }
                 }
             }
             ImGui::EndChild();
+            Update_TimelineGesture();
+        }
+
+        void Select_Box(const Client::CLASS_MOVIE_TIMELINE_ROW& row, const Client::CLASS_MOVIE_TIMELINE_BOX& box)
+        {
+            if (m_RowDirty) { m_EditStatus = "Apply or save the edited camera before selecting another box."; return; }
+            m_SelectedKind = row.kind; m_SelectedRow = row.id; m_SelectedBox = box.id;
+            if (row.kind == "World Model" && m_Callbacks.inspection.command)
+            {
+                Client::CLASS_MOVIE_INSPECTION_COMMAND command;
+                command.action = Client::CLASS_MOVIE_INSPECTION_ACTION::SELECT;
+                command.itemId = box.id;
+                if (m_Callbacks.inspection.command(m_State.selectedClassId, m_ViewLoop, command, m_EditStatus))
+                    m_InspectedWorldId = box.id;
+            }
+            m_CameraKey = 0; m_EditBox.reset(); m_CameraEditor = {}; m_FollowPlayback = false;
+        }
+
+        void Render_TimelineBox(const Client::CLASS_MOVIE_TIMELINE_ROW& row,
+            const Client::CLASS_MOVIE_TIMELINE_BOX& box, const ImVec2 p, float labelWidth, bool hovered, size_t family)
+        {
+            using namespace Client::CompositionTimeline;
+            auto* draw = ImGui::GetWindowDrawList();
+            double start = box.movieStartMs, end = box.movieEndMs;
+            if (m_Drag && m_Drag->before.boxId == box.id && m_Drag->before.kind == row.kind)
+            { start = m_Drag->startMovie; end = m_Drag->endMovie; }
+            const float x = p.x + labelWidth + float(start * .001 * m_PixelsPerSecond);
+            const float endX = (std::max)(x + MinimumBoxWidth, p.x + labelWidth + float(end * .001 * m_PixelsPerSecond));
+            const ImVec2 min{x, p.y + 2.f}, max{endX, p.y + LaneHeight - 2.f};
+            const bool selected = (m_SelectedKind == row.kind && m_SelectedBox == box.id) ||
+                (row.kind == "World Model" && m_InspectedWorldId == box.id);
+            const bool editable = row.kind == "Camera" || row.kind == "Effect" || row.kind == "Sound" ||
+                (row.kind == "Animation" && !box.loopAnimation && box.nativeDurationMs > 0.);
+            const ImU32 colors[] = {IM_COL32(62,94,130,255), IM_COL32(72,116,79,255), IM_COL32(105,77,154,255),
+                IM_COL32(143,89,46,255), IM_COL32(120,100,61,255), IM_COL32(135,121,45,255), IM_COL32(59,121,122,255), IM_COL32(131,72,101,255)};
+            DrawBox(draw, min, max, colors[family], selected, box.label.c_str(), editable, editable);
+            if (box.movieHoldEndMs > end)
+                draw->AddRectFilled({endX, p.y + 7.f}, {p.x + labelWidth + float(box.movieHoldEndMs * .001 * m_PixelsPerSecond), p.y + LaneHeight - 7.f}, IM_COL32(72,116,79,70));
+            if (hovered && ImGui::IsMouseHoveringRect(min, max))
+            {
+                ImGui::SetTooltip("%s\nMovie %.3f - %.3f s | Source %.3f - %.3f s\n%s", box.label.c_str(),
+                    start * .001, end * .001, box.sourceStartMs * .001, box.sourceEndMs * .001,
+                    editable ? (row.kind == "Camera" ? "Drag to reorder cuts; drag an edge to move the shared cut boundary. Double-click to edit camera." : "Drag to move; drag an edge to trim. Double-click to open the resource.") : "This track spans its phase. Select it to edit its keys.");
+                if (ImGui::IsMouseClicked(ImGuiMouseButton_Left) && !m_RowDirty)
+                {
+                    Select_Box(row, box);
+                    if (editable && m_Callbacks.editableBox && m_Callbacks.editTiming && !m_State.authoringPublishPending)
+                    {
+                        Client::CLASS_MOVIE_AUTHORING_BOX before;
+                        if (m_Callbacks.editableBox(m_State.selectedClassId, m_ViewLoop, row.kind, box.id, before, m_EditStatus))
+                        {
+                            const auto hit = HitBoxGesture(ImGui::GetIO().MousePos.x, x, endX, 6.f, true, true);
+                            m_Drag = DRAG{std::move(before), static_cast<Client::CLASS_MOVIE_TIMING_EDIT>(hit),
+                                ImGui::GetIO().MousePos.x, start, end, start, end};
+                        }
+                    }
+                }
+                if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left) && selected)
+                {
+                    m_Drag.reset();
+                    if (row.kind == "Camera") m_CameraWindow = true;
+                    if (row.kind == "Effect") m_OpenEffect = box.resource;
+                }
+            }
+        }
+
+        void Update_TimelineGesture()
+        {
+            if (!m_Drag || !m_Timeline) return;
+            const double delta = (ImGui::GetIO().MousePos.x - m_Drag->mouseX) * 1000. / m_PixelsPerSecond;
+            auto& drag = *m_Drag;
+            drag.startMovie = drag.originalStart; drag.endMovie = drag.originalEnd;
+            const double minimumSpan = (std::min)(.1, drag.originalEnd - drag.originalStart);
+            if (drag.gesture == Client::CLASS_MOVIE_TIMING_EDIT::MOVE)
+            {
+                // Camera body motion chooses an insertion point, independent of
+                // the moved cut's length. A long first cut can reach the last cut.
+                const bool reorder = drag.before.kind == "Camera";
+                const double limit = reorder ? m_Timeline->movieDurationMs - .1 : m_Timeline->movieDurationMs - (drag.originalEnd - drag.originalStart);
+                drag.startMovie = std::clamp(drag.originalStart + delta, 0., (std::max)(0., limit));
+                drag.endMovie = (std::min)(m_Timeline->movieDurationMs, drag.startMovie + drag.originalEnd - drag.originalStart);
+            }
+            else if (drag.gesture == Client::CLASS_MOVIE_TIMING_EDIT::TRIM_START)
+                drag.startMovie = std::clamp(drag.originalStart + delta, 0., drag.originalEnd - minimumSpan);
+            else drag.endMovie = std::clamp(drag.originalEnd + delta, drag.originalStart + minimumSpan, m_Timeline->movieDurationMs);
+            if (ImGui::IsMouseReleased(ImGuiMouseButton_Left))
+            {
+                if (std::abs(delta) >= 3. * 1000. / m_PixelsPerSecond && m_Callbacks.mapTime)
+                {
+                    const double start = m_Callbacks.mapTime(drag.before.classId, drag.before.loop, drag.startMovie, true);
+                    double end = m_Callbacks.mapTime(drag.before.classId, drag.before.loop, drag.endMovie, true);
+                    // Moving preserves source duration even across a slow-motion boundary.
+                    if (drag.gesture == Client::CLASS_MOVIE_TIMING_EDIT::MOVE && drag.before.kind != "Camera")
+                        end = start + m_Callbacks.mapTime(drag.before.classId, drag.before.loop, drag.originalEnd, true)
+                            - m_Callbacks.mapTime(drag.before.classId, drag.before.loop, drag.originalStart, true);
+                    if (m_Callbacks.editTiming(drag.before, start, end, drag.gesture, m_EditStatus))
+                    { m_EditBox.reset(); m_RowDirty = false; }
+                }
+                m_Drag.reset();
+            }
+            else if (!ImGui::IsMouseDown(ImGuiMouseButton_Left)) m_Drag.reset();
         }
 
         void Render_Details()
@@ -550,7 +704,9 @@ namespace
             ImGui::BeginDisabled(!canSeek);
             if (ImGui::Button("Seek to camera key")) Queue_Seek(m_ViewLoop, movieMs);
             ImGui::EndDisabled();
-            ImGui::SeparatorText("Applied camera sample");
+            const bool freeCamera = m_Callbacks.inspection.state &&
+                m_Callbacks.inspection.state(m_State.selectedClassId, m_ViewLoop).freeCamera;
+            ImGui::SeparatorText(freeCamera ? "Authored Movie camera sample (free view detached)" : "Applied camera sample");
             const auto& sample = m_State.cameraSample;
             if (!MatchesPlayback() || !sample.valid || sample.rowId != row.id)
             { ImGui::TextWrapped("This camera box is not currently applied. Seek to the box to compare."); return; }
@@ -558,8 +714,11 @@ namespace
             ImGui::Text("Eye (m): %.4f, %.4f, %.4f", sample.pose.vEye.x, sample.pose.vEye.y, sample.pose.vEye.z);
             ImGui::Text("Look at (m): %.4f, %.4f, %.4f", sample.pose.vLookAt.x, sample.pose.vLookAt.y, sample.pose.vLookAt.z);
             ImGui::Text("Up: %.4f, %.4f, %.4f", sample.up.x, sample.up.y, sample.up.z);
-            ImGui::Text("Applied vertical FOV: %.4f deg | aspect %.4f", sample.pose.fFovYDegrees, sample.aspect);
-            ImGui::TextWrapped("Applied values come from the movie's camera submission after interpolation and FOV conversion.");
+            ImGui::Text(freeCamera ? "Authored vertical FOV: %.4f deg | aspect %.4f" :
+                "Applied vertical FOV: %.4f deg | aspect %.4f", sample.pose.fFovYDegrees, sample.aspect);
+            ImGui::TextWrapped(freeCamera ?
+                "These are the authored Movie camera values at this time. The detached view uses the actual Camera XYZ shown in Movie world models." :
+                "Applied values come from the movie's camera submission after interpolation and FOV conversion.");
         }
 
         void Render_Authoring(const Client::CLASS_MOVIE_TIMELINE_BOX& box)
@@ -589,71 +748,112 @@ namespace
             ImGui::SameLine();
             if (ImGui::Button("Revert row")) { m_EditValue = m_EditBox->value; m_RowDirty = false; }
             ImGui::EndDisabled();
-            if (m_SelectedKind == "Camera") Render_CameraKeyEditor();
+            if (m_SelectedKind == "Camera")
+            {
+                if (ImGui::Button("Open Sequence Camera Tool")) m_CameraWindow = true;
+                ImGui::TextWrapped("Edit the ordered camera cuts and keys in Sequence Camera Tool. Save movie includes pending key edits.");
+            }
             if (m_SelectedKind != "Camera" || ImGui::CollapsingHeader("All camera row fields"))
                 if (EditMovieValue("Row values", m_EditValue, m_KeySelections, "movie-row"))
                 { m_RowDirty = true; m_FollowPlayback = false; }
         }
 
-        void Render_CameraKeyEditor()
+        void Render_CameraWindow()
         {
-            using Json = Client::DATA_JSON_VALUE;
-            const auto* keys = m_EditValue.Find("keys");
-            if (!keys || !keys->Is_Array() || keys->Get_Array().empty()) return;
-            ImGui::SeparatorText("Camera key position");
-            ImGui::SetNextItemWidth(140.f); ImGui::InputInt("Camera key", &m_CameraKey);
-            m_CameraKey = (std::clamp)(m_CameraKey, 0, static_cast<int>(keys->Get_Array().size()) - 1);
-            m_KeySelections["movie-row/keys"] = m_CameraKey;
-            const auto& key = keys->Get_Array()[m_CameraKey];
-            if (!key.Is_Object()) return;
-            auto fields = key.Get_Object();
-            const auto* id = key.Find("keyId"); const auto* time = key.Find("timeMs");
-            if (id && id->Is_String()) ImGui::TextWrapped("%s", id->Get_String().c_str());
-            if (time && time->Is_Number()) ImGui::Text("Box-local time: %.3f s", time->Get_Number() * .001);
-            ImGui::Checkbox("Apply camera when edit ends", &m_LiveCamera);
-            ImGui::TextWrapped("Play All, then Seek to camera key to tune that view. Drag the coordinates or Ctrl-click to type a value.");
-            bool changed = false, finishedEdit = false;
-            const auto editVector = [&](const char* field, const char* label, const float speed) {
-                const auto found = fields.find(field);
-                if (found == fields.end() || !found->second.Is_Array() || found->second.Get_Array().size() != 3u) return;
-                std::array<double, 3> values{};
-                for (size_t i = 0; i < values.size(); ++i)
+            if (!m_CameraWindow) return;
+            ImGui::SetNextWindowSize({1000.f, 650.f}, ImGuiCond_FirstUseEver);
+            if (!ImGui::Begin("Sequence Camera Tool###WorldMovieCamera", &m_CameraWindow)) { ImGui::End(); return; }
+            ImGui::Text("%s / %s", m_State.selectedLabel.c_str(), m_ViewLoop ? "Loop" : "Intro");
+            ImGui::BeginDisabled(!m_OpenedAuthoring || m_State.authoringPublishPending);
+            if (ImGui::Button("Save")) m_SaveRequested = true;
+            ImGui::SameLine();
+            ImGui::BeginDisabled(m_RowDirty || m_State.authoringDirty || !m_Callbacks.publishAuthoring);
+            if (ImGui::Button("Publish")) m_PublishRequested = true;
+            ImGui::EndDisabled();
+            ImGui::EndDisabled();
+            ImGui::SameLine(); ImGui::Checkbox("Live preview", &m_LiveCamera);
+            ImGui::TextWrapped("Camera keys are saved for Client playback. Publish applies saved World changes; server action timing is unchanged.");
+            if (!m_EditStatus.empty()) ImGui::TextWrapped("%s", m_EditStatus.c_str());
+            if (m_RowDirty && Row_SourceChanged() && ImGui::Button("Discard pending row and reopen"))
+            { m_RowDirty = false; m_EditBox.reset(); m_CameraEditor = {}; m_EditStatus.clear(); }
+            if (!m_State.authoringStatus.empty()) ImGui::TextWrapped("%s", m_State.authoringStatus.c_str());
+            m_Timeline = m_Callbacks.timeline ? m_Callbacks.timeline(m_State.selectedClassId, m_ViewLoop) : nullptr;
+            ImGui::BeginChild("CameraCuts", {260.f, 0.f}, ImGuiChildFlags_Borders);
+            if (m_Timeline) for (const auto& row : m_Timeline->rows) if (row.kind == "Camera")
+                for (size_t i = 0; i < row.boxes.size(); ++i)
                 {
-                    if (!found->second.Get_Array()[i].Is_Number()) return;
-                    values[i] = found->second.Get_Array()[i].Get_Number();
+                    const auto& box = row.boxes[i];
+                    ImGui::PushID(box.id.c_str());
+                    const std::string label = std::to_string(i + 1u) + ". " + box.label;
+                    if (ImGui::Selectable(label.c_str(), m_SelectedKind == "Camera" && m_SelectedBox == box.id)) Select_Box(row, box);
+                    ImGui::TextDisabled("%.3f - %.3f s", box.movieStartMs * .001, box.movieEndMs * .001);
+                    ImGui::PopID();
                 }
-                const bool edited = ImGui::DragScalarN(label, ImGuiDataType_Double, values.data(), 3, speed,
-                    nullptr, nullptr, "%.4f");
-                finishedEdit |= ImGui::IsItemDeactivatedAfterEdit();
-                if (edited && std::all_of(values.begin(), values.end(), [](double value) { return std::isfinite(value); }))
-                { found->second = Json::Array({Json::Number(values[0]), Json::Number(values[1]), Json::Number(values[2])}); changed = true; }
-            };
-            editVector("eye", "Eye position (m)", .05f);
-            editVector("lookAt", "Look at (m)", .05f);
-            editVector("up", "Up direction", .01f);
-            const auto fov = fields.find(fields.contains("fovDegrees") ? "fovDegrees" : "fovYDegrees");
-            if (fov != fields.end() && fov->second.Is_Number())
+            ImGui::EndChild(); ImGui::SameLine();
+            ImGui::BeginChild("CameraKeys", {0.f, 0.f}, ImGuiChildFlags_Borders);
+            if (m_SelectedKind != "Camera") ImGui::TextUnformatted("Select a camera cut on the left.");
+            else
             {
-                double value = fov->second.Get_Number();
-                const auto* axis = m_EditValue.Find("fovAxis");
-                const bool horizontal = axis && axis->Is_String() && axis->Get_String() == "HORIZONTAL";
-                const bool edited = ImGui::DragScalar(horizontal ? "Horizontal FOV (deg)" : "Vertical FOV (deg)",
-                    ImGuiDataType_Double, &value, .1f, nullptr, nullptr, "%.3f");
-                finishedEdit |= ImGui::IsItemDeactivatedAfterEdit();
-                if (edited && std::isfinite(value)) { fov->second = Json::Number(value); changed = true; }
+                if (!m_EditBox && m_Callbacks.editableBox)
+                {
+                    Client::CLASS_MOVIE_AUTHORING_BOX box;
+                    if (m_Callbacks.editableBox(m_State.selectedClassId, m_ViewLoop, "Camera", m_SelectedBox, box, m_EditStatus))
+                    { m_EditValue = box.value; m_EditBox = std::move(box); }
+                }
+                if (m_EditBox && m_EditBox->kind == "Camera")
+                {
+                    using Json = Client::DATA_JSON_VALUE;
+                    std::vector<Client::EFFECT_CAMERA_ROW> rows;
+                    std::string error;
+                    if (Client::CEffectRecoveryCamera::Parse(Json::Object({{"cameras", Json::Array({m_EditValue})}}), true, rows, error))
+                    {
+                        auto& row = rows.front();
+                        double sourceCursor = MatchesPlayback() ? m_State.sourceClockMs :
+                            m_Callbacks.mapTime ? m_Callbacks.mapTime(m_State.selectedClassId, m_ViewLoop, m_EditMs, true) : 0.;
+                        const auto local = static_cast<uint32_t>(std::clamp(sourceCursor - row.startMs, 0., double(row.cue.iDurationMs)));
+                        const auto result = Client::CSequenceCameraEditor::Render(row, m_CameraEditor, local);
+                        if (result.changed)
+                        {
+                            m_EditValue = Client::CEffectRecoveryCamera::Write_Row(row, &m_EditValue);
+                            m_RowDirty = true; m_FollowPlayback = false;
+                            if (m_LiveCamera) m_ApplyRequested = true;
+                        }
+                        for (size_t i = 0; i < row.cue.Keyframes.size(); ++i)
+                            if (row.cue.Keyframes[i].strSceneId == m_CameraEditor.selectedKeyId) m_CameraKey = static_cast<int>(i);
+                        if (result.seekLocalMs && m_Callbacks.mapTime)
+                        {
+                            const double movieMs = m_Callbacks.mapTime(m_State.selectedClassId, m_ViewLoop, row.startMs + *result.seekLocalMs, false);
+                            if (m_RowDirty) m_ApplyRequested = true;
+                            Queue_Seek(m_ViewLoop, movieMs);
+                        }
+                        ImGui::BeginDisabled(!m_RowDirty);
+                        if (ImGui::Button("Apply camera")) m_ApplyRequested = true;
+                        ImGui::SameLine();
+                        if (ImGui::Button("Revert pending key edits")) { m_EditValue = m_EditBox->value; m_RowDirty = false; }
+                        ImGui::EndDisabled();
+                    }
+                    else
+                    {
+                        ImGui::TextWrapped("%s", error.c_str());
+                        ImGui::BeginDisabled(!m_RowDirty);
+                        if (ImGui::Button("Revert invalid camera row")) { m_EditValue = m_EditBox->value; m_RowDirty = false; }
+                        ImGui::EndDisabled();
+                    }
+                }
             }
-            if (changed)
-            {
-                auto items = keys->Get_Array();
-                items[m_CameraKey] = Json::Object(std::move(fields), key.Get_ObjectInsertionOrder());
-                auto row = m_EditValue.Get_Object(); row["keys"] = Json::Array(std::move(items));
-                row["source"] = Json::String("PROJECT_TUNED");
-                m_EditValue = Json::Object(std::move(row), m_EditValue.Get_ObjectInsertionOrder());
-                m_RowDirty = true; m_FollowPlayback = false;
-            }
-            if (m_LiveCamera && finishedEdit && m_RowDirty) m_ApplyRequested = true;
+            ImGui::EndChild(); ImGui::End();
         }
 
+        struct DRAG
+        {
+            Client::CLASS_MOVIE_AUTHORING_BOX before;
+            Client::CLASS_MOVIE_TIMING_EDIT gesture;
+            float mouseX;
+            double originalStart, originalEnd, startMovie, endMovie;
+        };
+        std::optional<DRAG> m_Drag;
+        Client::SEQUENCE_CAMERA_EDITOR_STATE m_CameraEditor;
+        bool m_CameraWindow = false, m_ActiveOnly = false, m_PublishRequested = false;
         CALLBACKS m_Callbacks;
         STATE m_State;
         COMMAND m_Pending = COMMAND::NONE;
@@ -673,6 +873,8 @@ namespace
         std::optional<double> m_RequestedRate;
         std::shared_ptr<const Client::CLASS_MOVIE_TIMELINE> m_Timeline;
         std::string m_SelectedKind, m_SelectedRow, m_SelectedBox;
+        Client::CClassMovieInspector m_WorldInspector;
+        std::string m_InspectedWorldId;
         bool m_OpenedAuthoring = false, m_RowDirty = false;
         bool m_ApplyRequested = false, m_SaveRequested = false, m_ReloadRequested = false;
         std::optional<Client::CLASS_MOVIE_AUTHORING_BOX> m_EditBox;

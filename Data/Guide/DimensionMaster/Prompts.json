@@ -1,0 +1,9 @@
+{
+  "schema":"lostark.guide-prompts","formatVersion":1,"revision":1,"guideId":"guide.dimensionmaster",
+  "prompts":[
+    {"promptId":"guide.bern.party.first_invite","categoryId":"bern","topic":"PARTY","title":"처음 파티 초대","segments":[{"text":"안녕, 난 이번에 가이드를 맡게 된 가이드 차원술사야.","durationMs":6000}]},
+    {"promptId":"guide.bern.npc.honing","categoryId":"bern","topic":"NPC","title":"장비 제련","segments":[{"text":"여기는 장비를 제련하는 곳이야. 재료와 성공 확률을 확인하고 진행해 봐.","durationMs":6500}]},
+    {"promptId":"guide.bern.npc.raid","categoryId":"bern","topic":"NPC","title":"레이드 입장","segments":[{"text":"여기는 레이드에 진입할 수 있는 곳이야. 파티원들과 준비를 마친 뒤 입장해 보자.","durationMs":6500}]},
+    {"promptId":"guide.koukusaydon.boss.find_real_saydon","categoryId":"koukusaydon","topic":"BOSS_PATTERN","title":"진짜 세이튼 찾기","segments":[{"text":"진짜 세이튼 패턴이야. 1시, 5시, 7시, 10시에 분신을 포함한 세이튼 넷이 나타나.","durationMs":6500},{"text":"진짜 세이튼은 하트를 발사하고, 가짜 세이튼 셋은 총을 쏴.","durationMs":5000},{"text":"진짜 세이튼을 찾아서 바라봐야 해. 바라보지 않으면 즉사해.","durationMs":6000}]}
+  ]
+}

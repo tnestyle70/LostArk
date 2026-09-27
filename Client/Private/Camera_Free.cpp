@@ -371,6 +371,7 @@ void CCamera_Free::Update_VehicleOrbitInput()
 	const auto& ui = CUIInputRouter::Get();
 	const bool_t allowed = m_isVehicleOrbitActive && m_bFollowEnabled &&
 		player.isValid && player.iVehicleId == ANCIENT_SEA_VEHICLE_ID &&
+		player.eVehicleFlightPhase != LostArk::Shared::VEHICLE_FLIGHT_PHASE::GROUNDED &&
 		!Is_PresentationOverrideActive() && GetForegroundWindow() == g_hWnd &&
 		!CGameInstance::Get().IsMouseInputBlocked() &&
 		!ImGui::GetIO().WantCaptureMouse && !ImGui::GetIO().WantTextInput &&
@@ -397,7 +398,8 @@ void CCamera_Free::Update_VehicleOrbitOffsets(const f32_t fTimeDelta,
 	const shared_ptr<CTransform>& target, float3_t& positionOffset, float3_t& lookOffset)
 {
 	const auto& player = CCombatHUDViewModel::Get().Get_Player();
-	if (!player.isValid || player.iVehicleId != ANCIENT_SEA_VEHICLE_ID)
+	if (!player.isValid || player.iVehicleId != ANCIENT_SEA_VEHICLE_ID ||
+		player.eVehicleFlightPhase == LostArk::Shared::VEHICLE_FLIGHT_PHASE::GROUNDED || !m_bDragonOrbitEnabled)
 	{
 		m_isVehicleOrbitActive = false;
 		m_isVehicleOrbitDragging = false;
@@ -414,28 +416,47 @@ void CCamera_Free::Update_VehicleOrbitOffsets(const f32_t fTimeDelta,
 		const f32_t radius = XMVectorGetX(XMVector3Length(offset));
 		if (!std::isfinite(radius) || radius < 0.001f)
 			return;
-		m_fVehicleOrbitRadius = (std::max)(radius, 12.f);
+		m_fVehicleOrbitRadius = m_fDragonCameraDistance;
 		m_fVehicleOrbitYaw = std::atan2(XMVectorGetX(offset), XMVectorGetZ(offset));
-		m_fVehicleOrbitPitch = std::clamp(std::asin(std::clamp(
-			XMVectorGetY(offset) / radius, -1.f, 1.f)),
-			VEHICLE_ORBIT_MIN_PITCH, VEHICLE_ORBIT_MAX_PITCH);
+		m_fVehicleOrbitPitch = XMConvertToRadians(m_fDragonCameraPitchDegrees);
 		m_fVehiclePreviousHeading = heading;
 		m_isVehicleOrbitActive = true;
 	}
-	else if (!m_isVehicleOrbitDragging && std::isfinite(fTimeDelta) && fTimeDelta > 0.f)
+	else if (m_bDragonFollowHeading && !m_isVehicleOrbitDragging && std::isfinite(fTimeDelta) && fTimeDelta > 0.f)
 	{
 		// Keep the user's viewing side while following the dragon's shortest turn.
 		m_fVehicleOrbitYaw = std::remainder(m_fVehicleOrbitYaw +
 			std::remainder(heading - m_fVehiclePreviousHeading, XM_2PI), XM_2PI);
 	}
 	m_fVehiclePreviousHeading = heading;
-	lookOffset.y = (std::max)(lookOffset.y, 2.4f);
+	lookOffset.y = m_fDragonCameraLookHeight;
 	const f32_t horizontal = m_fVehicleOrbitRadius * std::cos(m_fVehicleOrbitPitch);
 	positionOffset = {
 		lookOffset.x + horizontal * std::sin(m_fVehicleOrbitYaw),
 		lookOffset.y + m_fVehicleOrbitRadius * std::sin(m_fVehicleOrbitPitch),
 		lookOffset.z + horizontal * std::cos(m_fVehicleOrbitYaw)
 	};
+}
+
+void CCamera_Free::Get_DragonCameraSettings(f32_t& distance, f32_t& pitch, f32_t& height,
+	bool_t& enabled, bool_t& followHeading) const
+{
+	distance = m_fDragonCameraDistance; pitch = m_fDragonCameraPitchDegrees;
+	height = m_fDragonCameraLookHeight; enabled = m_bDragonOrbitEnabled;
+	followHeading = m_bDragonFollowHeading;
+}
+
+bool_t CCamera_Free::Set_DragonCameraSettings(const f32_t distance, const f32_t pitch,
+	const f32_t height, const bool_t enabled, const bool_t followHeading)
+{
+	if (!std::isfinite(distance) || !std::isfinite(pitch) || !std::isfinite(height) ||
+		distance < 4.f || distance > 80.f || pitch < -8.f || pitch > 75.f || height < 0.f || height > 15.f)
+		return false;
+	m_fDragonCameraDistance = m_fVehicleOrbitRadius = distance;
+	m_fDragonCameraPitchDegrees = pitch; m_fVehicleOrbitPitch = XMConvertToRadians(pitch);
+	m_fDragonCameraLookHeight = height; m_bDragonOrbitEnabled = enabled;
+	m_bDragonFollowHeading = followHeading;
+	return true;
 }
 
 void CCamera_Free::Apply_FollowRoll()
@@ -520,7 +541,10 @@ void CCamera_Free::Remove_AppliedCameraShake()
 				1.f));
 		m_vAppliedShakeOffset = {};
 	}
-	m_fFovy = m_fBaseFovy;
+	// Free inspection retains a cinematic handoff's FOV. The authored follow
+	// profile becomes authoritative again when follow is requested.
+	if (m_bFollowEnabled)
+		m_fFovy = m_fBaseFovy;
 }
 
 void CCamera_Free::Apply_CameraShake(f32_t fTimeDelta)

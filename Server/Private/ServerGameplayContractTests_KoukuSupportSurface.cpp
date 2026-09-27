@@ -39,10 +39,114 @@ using namespace LostArk::Shared;
 
 
 
+namespace
+{
+    void Run_MechanicGaugeContracts(TESTS& tests)
+    {
+        CGameplayCatalog catalog;
+        if (!catalog.Load()) { tests.Require(false, "Load gameplay for mechanic gauge verdict contracts"); return; }
+        BOSS_PATTERN_DEFINITION pattern;
+        pattern.strPatternId = "KAKULSAYDON_GAUGE_CONTRACT";
+        BOSS_PATTERN_LOGIC_WINDOW window;
+        window.strWindowId = "gauge.stagger"; window.eKind = BOSS_PATTERN_LOGIC_KIND::STAGGER_WINDOW;
+        window.iStartMs = 1000u; window.iDurationMs = 2000u; window.iThreshold = 115000u;
+        window.bEndsPatternOnSuccess = true; pattern.LogicWindows.push_back(window);
+        SERVER_WORLD_ENTITY boss;
+        boss.iNetEntityId = 421u; boss.eKind = WORLD_BOOTSTRAP_KIND::BOSS;
+        boss.strPatternId = pattern.strPatternId; boss.iPatternSequence = 7u;
+        boss.iCurrentHp = boss.iMaximumHp = 1000000u;
+        KOUKUSAYDON_LOGIC_LEDGER ledger; BOSS_COMBAT_SNAPSHOT view;
+        CKoukuSaydonLogicRuntime::Build(pattern, boss, 100u, ledger);
+        std::map<PLAYER_ID, SERVER_PLAYER> players; std::vector<DAMAGE_EVENT> damage;
+        KOUKUSAYDON_LOGIC_OUTPUT output;
+        CKoukuSaydonLogicRuntime::Project_MechanicGauge(boss, pattern, ledger, 129u, view);
+        tests.Require(view.eMechanicGaugeKind == BOSS_MECHANIC_GAUGE_KIND::NONE,
+            "Stagger gauge stays hidden before the authoritative window opens");
+        CKoukuSaydonLogicRuntime::Update(boss, pattern, ledger, players, catalog, nullptr, 130u, damage, output);
+        CKoukuSaydonLogicRuntime::Project_MechanicGauge(boss, pattern, ledger, 130u, view);
+        tests.Require(view.eMechanicGaugeKind == BOSS_MECHANIC_GAUGE_KIND::STAGGER &&
+            view.iCurrentMechanicGauge == 115000u && view.iMaximumMechanicGauge == 115000u,
+            "Stagger starts at five nominal Lance Master basic hits");
+        boss.iCurrentHp -= 4u * 23000u;
+        CKoukuSaydonLogicRuntime::Update(boss, pattern, ledger, players, catalog, nullptr, 131u, damage, output);
+        CKoukuSaydonLogicRuntime::Project_MechanicGauge(boss, pattern, ledger, 131u, view);
+        tests.Require(view.iCurrentMechanicGauge == 23000u && !output.bStaggerSuccess,
+            "Four nominal hits leave exactly one hit and do not succeed early");
+        boss.iCurrentHp -= 23000u;
+        CKoukuSaydonLogicRuntime::Update(boss, pattern, ledger, players, catalog, nullptr, 132u, damage, output);
+        CKoukuSaydonLogicRuntime::Project_MechanicGauge(boss, pattern, ledger, 132u, view);
+        tests.Require(output.bStaggerSuccess && output.bEndPatternEarly &&
+            view.eMechanicGaugeKind == BOSS_MECHANIC_GAUGE_KIND::NONE,
+            "Fifth nominal hit closes the real stagger window and hides its gauge");
+
+        pattern.LogicWindows.clear();
+        for (const std::uint32_t detonationMs : {13000u, 24828u})
+        {
+            pattern.MechanicTriggers.clear();
+            BOSS_PATTERN_MECHANIC_TRIGGER detonation;
+            detonation.eKind = BOSS_PATTERN_MECHANIC_TRIGGER_KIND::BINGO_DETONATION;
+            detonation.iStartMs = detonationMs; pattern.MechanicTriggers.push_back(detonation);
+            boss.iCurrentHp = 700000u;
+            CKoukuSaydonLogicRuntime::Build(pattern, boss, 200u, ledger);
+            const auto start = 200u + CKoukuSaydonLogicRuntime::Ticks_FromMs(detonationMs - 13000u);
+            const auto end = 200u + CKoukuSaydonLogicRuntime::Ticks_FromMs(detonationMs);
+            CKoukuSaydonLogicRuntime::Project_MechanicGauge(boss, pattern, ledger, start - 1u, view);
+            tests.Require(view.eMechanicGaugeKind == BOSS_MECHANIC_GAUGE_KIND::NONE,
+                "Black-hole HP gauge is hidden before its exact standalone or parent interval");
+            CKoukuSaydonLogicRuntime::Project_MechanicGauge(boss, pattern, ledger, start, view);
+            tests.Require(view.eMechanicGaugeKind == BOSS_MECHANIC_GAUGE_KIND::BOSS_HP &&
+                view.iCurrentMechanicGauge == 700000u && view.iMaximumMechanicGauge == 1000000u,
+                "Black-hole gauge projects current boss HP against actual maximum HP");
+            boss.iCurrentHp -= 115000u; output = {}; damage.clear();
+            CKoukuSaydonLogicRuntime::Update(boss, pattern, ledger, players, catalog, nullptr, start + 1u, damage, output);
+            CKoukuSaydonLogicRuntime::Project_MechanicGauge(boss, pattern, ledger, start + 1u, view);
+            tests.Require(view.iCurrentMechanicGauge == 585000u && !output.bStaggerSuccess &&
+                !output.bEndPatternEarly && damage.empty(),
+                "Damage lowers black-hole boss HP and its bar without a stagger verdict or cancellation");
+            CKoukuSaydonLogicRuntime::Project_MechanicGauge(boss, pattern, ledger, end, view);
+            tests.Require(view.eMechanicGaugeKind == BOSS_MECHANIC_GAUGE_KIND::NONE &&
+                view.iCurrentMechanicGauge == 0u && view.iMaximumMechanicGauge == 0u,
+                "Black-hole gauge ends exactly at the detonation tick");
+        }
+        S2C_WORLD_SNAPSHOT message;
+        message.iServerTick = 1u; message.ActiveGameplayRevision = catalog.Get_ActiveRevision();
+        message.eWorldId = WORLD_ID::KAKULSAYDON_ARENA;
+        PLAYER_SNAPSHOT player; player.iNetEntityId = 42u;
+        player.eCharacterClass = CHARACTER_CLASS_ID::LANCE_MASTER;
+        message.Players.push_back(player);
+        WORLD_ENTITY_SNAPSHOT entity;
+        entity.iNetEntityId = 421u; entity.eAction = WORLD_ENTITY_ACTION::IDLE;
+        entity.iCurrentHp = 585000u; entity.iMaximumHp = 1000000u;
+        entity.hasBossCombatState = true; entity.BossCombat.iStateRevision = 1u;
+        entity.PinnedDefinitionRevision = message.ActiveGameplayRevision;
+        entity.BossCombat.eMechanicGaugeKind = BOSS_MECHANIC_GAUGE_KIND::BOSS_HP;
+        entity.BossCombat.iCurrentMechanicGauge = 585000u; entity.BossCombat.iMaximumMechanicGauge = 1000000u;
+        message.Entities.push_back(entity);
+        CPacketWriter writer; S2C_WORLD_SNAPSHOT decoded;
+        bool roundtrip = Write_Message(writer, message);
+        if (roundtrip)
+        {
+            CPacketReader reader(writer.Get_Buffer());
+            roundtrip = Read_Message(reader, decoded) && reader.Get_RemainingSize() == 0u && decoded.Entities.size() == 1u;
+        }
+        tests.Require(roundtrip && decoded.Entities.front().BossCombat.eMechanicGaugeKind == BOSS_MECHANIC_GAUGE_KIND::BOSS_HP &&
+            decoded.Entities.front().BossCombat.iCurrentMechanicGauge == 585000u &&
+            decoded.Entities.front().BossCombat.iMaximumMechanicGauge == 1000000u,
+            "Typed mechanic gauge mode and remaining/maximum survive the real snapshot wire");
+        for (const auto invalid : {BOSS_MECHANIC_GAUGE_KIND::NONE, static_cast<BOSS_MECHANIC_GAUGE_KIND>(255u)})
+        {
+            message.Entities.front().BossCombat.eMechanicGaugeKind = invalid;
+            CPacketWriter rejected;
+            tests.Require(!Write_Message(rejected, message), "Snapshot rejects unknown modes and hidden gauges carrying values");
+        }
+    }
+}
+
 int LostArk::Server::Run_ServerKoukuSupportSurfaceContractTests()
 {
 	using namespace LostArk::Shared;
 	TESTS tests;
+	Run_MechanicGaugeContracts(tests);
 	namespace fs = std::filesystem;
 	const auto fixture = fs::temp_directory_path() / (L"LostArkKoukuSupport-" + std::to_wstring(_getpid()));
 	fs::create_directories(fixture / L"Navigation");
@@ -192,6 +296,7 @@ REGION "blocked" "closed" 0 1
 		}
 		else if (withFollowup)
 			counterWindow.OnSuccess.push_back({BOSS_PATTERN_LOGIC_RESULT_KIND::FOLLOWUP_PATTERN, 0u, 0u, groggyId});
+		if (stagger) counterBoss.iCurrentHp = counterBoss.iMaximumHp = counterWindow.iThreshold + 1u;
 		counterPattern.LogicWindows = {counterWindow};
 		auto& counterLedger = room->m_KoukuSaydonPatternAudition.Members.front().LogicLedger;
 		KOUKUSAYDON_LOGIC_OUTPUT counterOutput; std::vector<DAMAGE_EVENT> counterDamage;
@@ -202,6 +307,19 @@ REGION "blocked" "closed" 0 1
 		const bool counterHit = stagger || CBossCombatRuntime::Try_TriggerCounter(counterBoss, 121u);
 		CKoukuSaydonLogicRuntime::Update(counterBoss, counterPattern, counterLedger, room->m_Players,
 			room->m_GameplayCatalog, nullptr, 121u, counterDamage, counterOutput, &room->m_ServerNavigation, &room->m_ServerCollisionSystem);
+		if (stagger)
+		{
+			const auto successCount = [&]() { return std::count_if(counterDamage.begin(), counterDamage.end(), [](const auto& event) { return event.isStaggerSuccess; }); };
+			tests.Require(successCount() == 1 && std::any_of(counterDamage.begin(), counterDamage.end(), [&](const auto& event) {
+				return event.isStaggerSuccess && event.isOutgoing && !event.isCounterSuccess && !event.iAmount && !event.iStaggerAmount &&
+					event.iTargetNetEntityId == counterBoss.iNetEntityId && event.iSourcePlayerId == INVALID_PLAYER_ID &&
+					event.fPositionX == counterBoss.fPositionX && event.fPositionY == counterBoss.fPositionY && event.fPositionZ == counterBoss.fPositionZ; }),
+				"The authored Mario stagger verdict emits one zero-damage success at its boss without inventing a player contribution");
+			KOUKUSAYDON_LOGIC_OUTPUT repeatedOutput;
+			CKoukuSaydonLogicRuntime::Update(counterBoss, counterPattern, counterLedger, room->m_Players,
+				room->m_GameplayCatalog, nullptr, 122u, counterDamage, repeatedOutput, &room->m_ServerNavigation, &room->m_ServerCollisionSystem);
+			tests.Require(successCount() == 1, "A closed authored stagger window never repeats its success notification on later ticks");
+		}
 		room->m_iServerTick = 121u;
 		const bool completed = counterHit && room->Apply_KoukuLogicOutput(counterOutput, counterBoss, 121u);
 		const auto& committed = room->m_KoukuSaydonPatternAudition.Members.front();
@@ -640,9 +758,16 @@ REGION "blocked" "closed" 0 1
 		"An impossible five-point spacing request rejects the whole Albion wave and preserves live IDs");
 	albion.fArenaRandomRadiusM = 6.f; albion.fArenaMinimumSpacingM = 3.2f;
 	room->m_Players[1u].isCombatReady = room->m_Players[2u].isCombatReady = false;
+	albionOwner.fPositionX = 6.f; albionOwner.fPositionZ = 6.f;
 	queueAlbion(1802u);
-	tests.Require(readPoses() == beforeRejectedWave && room->m_CombatObjectRuntime.Begin_Transaction().iNextCombatObjectId == beforeRejectedId,
-		"No eligible arena player preserves the entire previous Albion wave instead of spawning only its random supplement");
+	const auto fallbackPoses = readPoses();
+	const auto& fallbackObjects = room->m_CombatObjectRuntime.Get_LiveObjects();
+	tests.Require(fallbackPoses.size() == beforeRejectedWave.size() + 6u &&
+		std::equal(beforeRejectedWave.begin(), beforeRejectedWave.end(), fallbackPoses.begin()) &&
+		fallbackPoses[beforeRejectedWave.size()] == std::array<float, 3u>{6.f, 1.6f, 6.f} &&
+		std::all_of(fallbackObjects.begin() + beforeRejectedWave.size(), fallbackObjects.end(), [](const auto& object) {
+			return object.iLockedTargetNetEntityId == INVALID_NET_ENTITY_ID && !object.bTrackLockedTargetUntilFirstPulse; }),
+		"An empty arena adds one boss-ground circle and five random points while excluding its living Mario player and preserving the previous wave");
 
 	// Pursuit shares the actual room clock and combat-object lifecycle; it owns no damage.
 	{
@@ -1262,6 +1387,19 @@ REGION "blocked" "closed" 0 1
 		tests.Require(rootAt(12006u) && std::abs(albionOwner.fPositionY-14.6788133f)<.00001f && rootAt(12015u) && std::abs(albionOwner.fPositionY-14.6788133f)<.00001f,
 			"The 200ms ascent reaches the unchanged original height and holds after the shortened ramp");
 		phase.eAirbornePhase=Phase::SELECT_PLAYER; phase.fAirborneHeightM=0.f; phase.iAirborneDurationMs=0u;
+		const auto beforeMarioSelection = std::make_unique<SERVER_WORLD_ENTITY>(albionOwner);
+		for (std::uint8_t marioStage = 1u; marioStage <= 4u; ++marioStage)
+		{
+			room->m_Players[1u].iMarioStage = marioStage;
+			room->m_Players[1u].fPositionX = 10000.f;
+			tests.Require(room->Commit_KoukuAlbionAirborne(albionOwner,pattern,phase,12016u) &&
+				albionOwner.AlbionAirborne.iSelectedPlayer==INVALID_NET_ENTITY_ID && albionOwner.AlbionAirborne.bHasSelectedGround &&
+				albionOwner.AlbionAirborne.SelectedGround.x==6.f && albionOwner.AlbionAirborne.SelectedGround.y==1.f &&
+				albionOwner.AlbionAirborne.SelectedGround.z==6.f && albionOwner.AlbionAirborne.ePhase==Phase::JUMP,
+				"Albion excludes Mario stages 1 through 4 and captures boss ground without changing the jump phase");
+		}
+		room->m_Players[1u].iMarioStage = 0u; room->m_Players[1u].fPositionX = 10.f;
+		albionOwner = *beforeMarioSelection;
 		tests.Require(room->Commit_KoukuAlbionAirborne(albionOwner,pattern,phase,12016u) && albionOwner.AlbionAirborne.iSelectedPlayer==401u && albionOwner.AlbionAirborne.ePhase==Phase::JUMP,
 			"SELECT_PLAYER pins an alive server player without changing the active jump phase");
 		target.iPlayerId=2u; target.iNetEntityId=402u; target.fPositionX=12.f; target.fPositionZ=12.f; room->m_Players[2u]=target;
@@ -1271,17 +1409,21 @@ REGION "blocked" "closed" 0 1
 			"Appearance reuses the pinned player XZ and the original landing clip height");
 		tests.Require(rootAt(12019u) && albionOwner.fPositionX==10.f && albionOwner.fPositionZ==10.f,
 			"The next source root sample retains the teleported XZ instead of returning to the old stage origin");
-		room->m_Players[1u].iCurrentHp=0u;
+		room->m_Players[1u].iMarioStage=4u; room->m_Players[1u].fPositionX=10000.f;
 		tests.Require(room->Commit_KoukuAlbionAirborne(albionOwner,pattern,phase,12020u) && albionOwner.AlbionAirborne.iSelectedPlayer==402u && albionOwner.fPositionX==12.f,
-			"An invalid pinned target is replaced by the remaining living server player");
+			"A pinned target entering Mario is replaced by the remaining arena player instead of moving the boss into Mario");
+		room->m_Players[1u].iMarioStage=0u; room->m_Players[1u].iCurrentHp=0u; room->m_Players[1u].fPositionX=10.f;
 		phase.eAirbornePhase=Phase::DISAPPEAR; phase.fAirborneHeightM=0.f;
 		tests.Require(room->Commit_KoukuAlbionAirborne(albionOwner,pattern,phase,12021u) && std::abs(albionOwner.fPositionY-14.6788133f)<.00001f,
 			"Disappear restores the initial jump height rather than accumulating the landing offset");
 		room->m_Players[2u].iCurrentHp=0u; phase.eAirbornePhase=Phase::APPEAR_PLAYER; phase.fAirborneHeightM=3.2783114f;
 		const auto beforeNoPlayer=std::make_unique<SERVER_WORLD_ENTITY>(albionOwner);
-		tests.Require(!room->Commit_KoukuAlbionAirborne(albionOwner,pattern,phase,12022u) && albionOwner.fPositionY==beforeNoPlayer->fPositionY &&
-			albionOwner.fPositionX==beforeNoPlayer->fPositionX && albionOwner.AlbionAirborne.ePhase==Phase::DISAPPEAR,
-			"No selectable player preserves the high boss position and previous phase transactionally");
+		tests.Require(room->Commit_KoukuAlbionAirborne(albionOwner,pattern,phase,12022u) &&
+			std::abs(albionOwner.fPositionY-4.2783114f)<.00001f &&
+			albionOwner.fPositionX==beforeNoPlayer->fPositionX && albionOwner.fPositionZ==beforeNoPlayer->fPositionZ &&
+			albionOwner.AlbionAirborne.ePhase==Phase::APPEAR_PLAYER && albionOwner.AlbionAirborne.bHasSelectedGround &&
+			albionOwner.AlbionAirborne.iSelectedPlayer==INVALID_NET_ENTITY_ID && albionOwner.iPatternTargetEntityId==INVALID_NET_ENTITY_ID,
+			"No selectable player continues the landing phase at a captured boss-ground point and clears stale player identity");
 		phase.eAirbornePhase=Phase::CENTER; phase.fAirborneHeightM=0.f; phase.fTeleportX=6.f; phase.fTeleportY=1.f; phase.fTeleportZ=6.f;
 		tests.Require(room->Commit_KoukuAlbionAirborne(albionOwner,pattern,phase,12023u) && albionOwner.fPositionX==6.f && albionOwner.fPositionZ==6.f &&
 			std::abs(albionOwner.fPositionY-14.6788133f)<.00001f,

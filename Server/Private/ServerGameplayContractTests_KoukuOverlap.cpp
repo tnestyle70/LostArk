@@ -45,6 +45,78 @@ using namespace LostArk::Shared;
 
 namespace
 {
+    void Run_GuideHazardPolicyContracts(TESTS& tests, const CGameplayCatalog& catalog)
+    {
+        const auto makePlayer = [](PLAYER_ID id, bool guide) {
+            SERVER_PLAYER player;
+            player.iPlayerId = id; player.iNetEntityId = static_cast<NET_ENTITY_ID>(100u + id);
+            player.eControlKind = guide ? PLAYER_CONTROL_KIND::GUIDE_AI : PLAYER_CONTROL_KIND::HUMAN;
+            player.eCharacterClass = CHARACTER_CLASS_ID::DIMENSIONMASTER;
+            player.iCurrentHp = player.iMaximumHp = 1000u; player.isCombatReady = true;
+            return player;
+        };
+        auto boss = std::make_unique<SERVER_WORLD_ENTITY>();
+        boss->iNetEntityId = 300u; boss->iPatternSequence = 1u; boss->iCurrentHp = 1000u;
+        BOSS_PATTERN_DEFINITION pattern; pattern.strPatternId = "guide.contact.contract";
+        BOSS_PATTERN_LOGIC_WINDOW window;
+        window.strWindowId = "contact"; window.eKind = BOSS_PATTERN_LOGIC_KIND::ENTER_AREA;
+        window.iDurationMs = 1000u; window.bRearmOnExit = true;
+        BOSS_LOGIC_REGION region; region.bCircle = true; region.fRadiusM = 2.f;
+        region.eAnchor = BOSS_LOGIC_REGION_ANCHOR::BOSS_CURRENT;
+        window.CardRegions.push_back(region);
+        BOSS_PATTERN_LOGIC_RESULT damage; damage.eKind = BOSS_PATTERN_LOGIC_RESULT_KIND::FIXED_DAMAGE;
+        damage.iDamageAmount = 100u; window.OnSuccess.push_back(damage);
+        pattern.LogicWindows.push_back(window);
+        std::map<PLAYER_ID, SERVER_PLAYER> players{{1u, makePlayer(1u, false)}, {2u, makePlayer(2u, true)}};
+        KOUKUSAYDON_LOGIC_LEDGER ledger; KOUKUSAYDON_LOGIC_OUTPUT output;
+        std::vector<DAMAGE_EVENT> events;
+        CKoukuSaydonLogicRuntime::Build(pattern, *boss, 100u, ledger);
+        tests.Require(CKoukuSaydonLogicRuntime::Predict_ContactRisk(*boss, pattern, ledger, players.at(2u), 101u, 1000u) == 1.f,
+            "Guide anticipates a contact using the same Logic collider geometry");
+        CKoukuSaydonLogicRuntime::Update(*boss, pattern, ledger, players, catalog, nullptr, 101u, events, output);
+        tests.Require(players.at(1u).iCurrentHp == 900u && players.at(2u).iCurrentHp == 900u,
+            "Guide and human touching the same spatial collider take the same damage");
+
+        players.at(2u).fPositionX = 20.f;
+        CKoukuSaydonLogicRuntime::Update(*boss, pattern, ledger, players, catalog, nullptr, 102u, events, output);
+        players.at(2u).fPositionX = 0.f;
+        CKoukuSaydonLogicRuntime::Update(*boss, pattern, ledger, players, catalog, nullptr, 103u, events, output);
+        tests.Require(players.at(2u).iCurrentHp == 800u,
+            "Guide exiting and reentering a hazard rearms the physical contact");
+        players.at(2u) = makePlayer(2u, true);
+        pattern.LogicWindows.front().OnSuccess.front().eKind = BOSS_PATTERN_LOGIC_RESULT_KIND::INSTANT_DEATH;
+        CKoukuSaydonLogicRuntime::Build(pattern, *boss, 200u, ledger);
+        tests.Require(CKoukuSaydonLogicRuntime::Predict_ContactRisk(*boss, pattern, ledger, players.at(2u), 201u, 1000u) == 5.f,
+            "Guide prediction preserves the instant-death hazard priority");
+        CKoukuSaydonLogicRuntime::Update(*boss, pattern, ledger, players, catalog, nullptr, 201u, events, output);
+        tests.Require(players.at(2u).iCurrentHp == 0u && players.at(2u).eAction == PLAYER_ACTION_STATE::DEAD,
+            "Guide is not immune to an instant-death spatial collider");
+
+        players.at(1u) = makePlayer(1u, false); players.at(2u) = makePlayer(2u, true);
+        players.at(1u).fPositionX = players.at(2u).fPositionX = 20.f;
+        auto& verdict = pattern.LogicWindows.front(); verdict.eKind = BOSS_PATTERN_LOGIC_KIND::AREA_OVERLAP;
+        verdict.OnSuccess.clear(); verdict.OnTimeout = {damage};
+        CKoukuSaydonLogicRuntime::Build(pattern, *boss, 300u, ledger);
+        CKoukuSaydonLogicRuntime::Update(*boss, pattern, ledger, players, catalog, nullptr, 330u, events, output);
+        tests.Require(players.at(1u).iCurrentHp == 900u && players.at(2u).iCurrentHp == 1000u,
+            "Guide is excluded from a missed mechanic area verdict while humans still fail");
+
+        auto& guide = players.at(2u);
+        CKoukuSaydonLogicRuntime::Assign_EncounterCard(guide, boss->iNetEntityId, 0u);
+        CServerCombatHitRuntime::Add_MadnessGauge(guide, 1000.);
+        ledger.eHudMode = KOUKU_HUD_MODE::DANCE;
+        BOSS_ENCOUNTER_MADNESS_POLICY madness; madness.iMaximum = 100u;
+        CKoukuSaydonLogicRuntime::Update_PlayerModes(players, &ledger, &madness, 331u);
+        tests.Require(guide.eMechanicCardSymbol == MECHANIC_CARD_SYMBOL::NONE && guide.iCurrentMadness == 0u &&
+            guide.eMadnessForm == PLAYER_MADNESS_FORM::NORMAL && guide.eKoukuHudMode == KOUKU_HUD_MODE::NONE,
+            "Guide receives no card, madness, or mandatory dance form");
+        SERVER_WORLD_TO_PLAYER_HIT wipe; wipe.bEncounterWipe = true; wipe.iServerTick = 400u;
+        CServerCombatHitRuntime::Apply_WorldToPlayer(guide, wipe, catalog, events);
+        CServerCombatHitRuntime::Apply_WorldToPlayer(players.at(1u), wipe, catalog, events);
+        tests.Require(guide.iCurrentHp == 1000u && players.at(1u).iCurrentHp == 0u,
+            "Raid failure verdict remains human-only without disabling guide contact damage");
+    }
+
     void Run_SplitBallCylinderDamageContracts(TESTS& tests, const CGameplayCatalog& catalog)
     {
         auto boss = std::make_unique<SERVER_WORLD_ENTITY>();
@@ -1065,6 +1137,7 @@ int LostArk::Server::Run_ServerKoukuObjectOverlapContractTests()
 	Run_SplitBallCylinderDamageContracts(tests, catalog);
 	Run_ColliderMotionAndTickContracts(tests, catalog);
 	Run_KoukuObjectOverlapContracts(tests, catalog);
+	Run_GuideHazardPolicyContracts(tests, catalog);
 	Run_KoukuObjectContactContracts(tests, catalog);
 	Run_KoukuFearAndCounterContracts(tests, catalog);
 	Run_KoukuWorldPlacementContracts(tests, catalog);

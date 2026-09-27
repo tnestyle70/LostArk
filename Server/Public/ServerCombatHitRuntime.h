@@ -38,10 +38,13 @@ namespace LostArk::Server
 		std::uint32_t iServerTick = 0u;
 		// A typed boss health-bar amount bypasses armor, but not shields or immunity.
 		bool bHealthDamagePreResolved = false;
+		// Companions deal health damage without taking a human mechanic or MVP role.
+		bool bGuideSource = false;
 	};
 
 	struct SERVER_WORLD_TO_PLAYER_HIT final
 	{
+		LostArk::Shared::MARIO_HIT_SOURCE eMarioHitSource = LostArk::Shared::MARIO_HIT_SOURCE::NONE;
 		std::uint32_t iRawDamage = 0u;
 		float fSourceX = 0.f;
 		float fSourceZ = 0.f;
@@ -63,6 +66,7 @@ namespace LostArk::Server
 		bool bIgnoreCounter = false;
 		// Server encounter failure verdict; bypasses all personal damage protection.
 		bool bEncounterWipe = false;
+		bool bEstherGuardBlockable = false;
 		// A contact window may hurt the player held by this exact boss action.
 		LostArk::Shared::NET_ENTITY_ID iCaptureOwnerId = LostArk::Shared::INVALID_NET_ENTITY_ID;
 		std::uint32_t iCapturePatternSequence = 0u;

@@ -918,6 +918,15 @@ void LostArk::Server::CServerGameplayContractRunner::Run_KoukuProduct(TESTS& tes
                 completionTick && tick >= completionTick + 60u;
             if (!returnStarted && (returnEarly || returnAfter)) {
                 auto& entrant = room->m_Players.at(player.iPlayerId);
+                // This fixture owns chain/return ordering; ball-hit admission is covered
+                // by DebugTeleport. Complete the assigned published ball challenge before
+                // asking the real typed command to begin its authoritative return motion.
+                for (const auto& ball : room->m_WorldBootstrap.Get_MarioBalls())
+                    if (ball.stage == entrant.iMarioStage && ball.layout == entrant.iMarioLayoutVariant &&
+                        ball.color + 1u == entrant.iMarioRequiredColor && room->Mario_MatchingBallCount(entrant) < 3u)
+                        room->m_MarioPoppedBalls[entrant.iMarioStage] |= static_cast<std::uint16_t>(1u << ball.slot);
+                tests.Require(room->Mario_MatchingBallCount(entrant) == 3u,
+                    "Prepare three assigned-colour balls before the real Mario chain return command");
                 bool began = false;
                 if (returnEarly) {
                     C2S_MARIO_RETURN command{}; command.iClientSequence = 1u; command.eWorldId = WORLD_ID::KAKULSAYDON_ARENA;
@@ -1604,19 +1613,19 @@ void LostArk::Server::CServerGameplayContractRunner::Run_KoukuProduct(TESTS& tes
 					++arenaRoom->m_iNextNetEntityId;
 					arenaRoom->m_WorldEntities.push_back(std::move(originalKouku));
 				}
-				SERVER_WORLD_ENTITY protectedEsther{};
-				protectedEsther.iNetEntityId = arenaRoom->m_iNextNetEntityId++;
-				protectedEsther.eKind = WORLD_BOOTSTRAP_KIND::NPC;
-				protectedEsther.strPlacementId = "fixture.kouku.unrelated.esther";
-				protectedEsther.isEstherSummon = true;
-				protectedEsther.iCurrentHp = protectedEsther.iMaximumHp = 1u;
-				protectedEsther.iEstherStrikeMs = 600000u;
-				const NET_ENTITY_ID protectedEstherId = protectedEsther.iNetEntityId;
-				arenaRoom->m_WorldEntities.push_back(std::move(protectedEsther));
-				const auto estherPreserved = [&]() {
-					return std::any_of(arenaRoom->m_WorldEntities.begin(), arenaRoom->m_WorldEntities.end(),
-						[protectedEstherId](const SERVER_WORLD_ENTITY& entity) {
-							return entity.iNetEntityId == protectedEstherId && entity.isEstherSummon;
+				SERVER_WORLD_ENTITY gateEsther{};
+				gateEsther.iNetEntityId = arenaRoom->m_iNextNetEntityId++;
+				gateEsther.eKind = WORLD_BOOTSTRAP_KIND::NPC;
+				gateEsther.strPlacementId = "fixture.kouku.gate.esther";
+				gateEsther.isEstherSummon = true;
+				gateEsther.iCurrentHp = gateEsther.iMaximumHp = 1u;
+				gateEsther.iEstherStrikeMs = 600000u;
+				const NET_ENTITY_ID gateEstherId = gateEsther.iNetEntityId;
+				arenaRoom->m_WorldEntities.push_back(std::move(gateEsther));
+				const auto estherRemoved = [&]() {
+					return std::none_of(arenaRoom->m_WorldEntities.begin(), arenaRoom->m_WorldEntities.end(),
+						[gateEstherId](const SERVER_WORLD_ENTITY& entity) {
+							return entity.iNetEntityId == gateEstherId && entity.isEstherSummon;
 						});
 				};
 				SERVER_WORLD_ENTITY gateBoss{};
@@ -1868,7 +1877,7 @@ void LostArk::Server::CServerGameplayContractRunner::Run_KoukuProduct(TESTS& tes
 						arenaRoom->m_KoukuSaydonPatternAudition.ePhase &&
 					nullptr == arenaRoom->Find_KoukuSaydonArenaBoss(
 						secondRequest.Scope.strBossPlacementId, secondRequest.Scope.strBossArchetypeId) &&
-					nullptr == arenaRoom->Find_KoukuSaydonAuditionBoss() && estherPreserved() &&
+					nullptr == arenaRoom->Find_KoukuSaydonAuditionBoss() && estherRemoved() &&
 					std::any_of(lifecycle.begin(), lifecycle.end(),
 						[secondKoukuId, sequenceBeforeDespawn](const auto& entry)
 						{
@@ -1880,7 +1889,7 @@ void LostArk::Server::CServerGameplayContractRunner::Run_KoukuProduct(TESTS& tes
 								KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE_STATE::ABORTED == entry.Message.eState;
 						});
 				tests.Require(removedActive,
-					"Abort the active raised-boss Play All owner and remove disabled gate bosses while preserving Esther");
+					"Abort the active raised-boss Play All owner and remove disabled gate bosses and end the prior gate Esther summon");
 #endif
 
 				const bool reverted = built && idle &&
@@ -1892,9 +1901,9 @@ void LostArk::Server::CServerGameplayContractRunner::Run_KoukuProduct(TESTS& tes
 						{
 							return candidate.iNetEntityId == gateId;
 						}) &&
-					nullptr == arenaRoom->Find_KoukuSaydonAuditionBoss() && estherPreserved();
+					nullptr == arenaRoom->Find_KoukuSaydonAuditionBoss() && estherRemoved();
 				tests.Require(reverted,
-					"Despawn all Debug-activated gate bosses and preserve the unrelated Esther summon");
+					"Despawn all Debug-activated gate bosses and end the prior gate Esther summon");
 			}
 
 #ifdef _DEBUG

@@ -730,6 +730,7 @@ bool CWorldObjectTool::Edit_AnimationTimeline(const std::string& instanceId, con
 
 void CWorldObjectTool::Deactivate()
 {
+    m_TimelineDrag.reset();
     Stop_Preview();
     m_CompositionPreviewPlacement.reset();
     m_CompositionPreviewObjectId.clear();
@@ -761,6 +762,8 @@ bool CWorldObjectTool::Load_Source()
     { m_Status = "Linked authoring source changed during Reload; existing draft preserved."; return false; }
     Stop_Preview();
     m_Document = std::move(staged);
+    m_TimelineAnimationCatalogs.clear();
+    m_TimelineDrag.reset();
     m_SavedDocument = m_Document;
     m_TravelDraft.reset();
     m_MapTargets = std::move(map);
@@ -777,7 +780,8 @@ bool CWorldObjectTool::Load_Source()
     if (!m_Document.Find_ObjectResource(m_SelectedObject))
         m_SelectedObject = m_Document.Get_ObjectResources().empty() ? "" : m_Document.Get_ObjectResources().front().objectId;
     Select_Object(m_SelectedObject);
-    m_Status = "Source loaded. Save stores Object edits and applies them for the next play.";
+    m_RuntimePublishStatus = "Loaded Data; runtime publication status was not checked.";
+    m_Status = "Source loaded. Save writes Object edits to Data; Publish applies the saved runtime files.";
     return true;
 }
 
@@ -905,13 +909,14 @@ bool CWorldObjectTool::Save_Source(const bool publishRuntime)
     m_CompositionSavedPlacement = m_CompositionEditedPlacement; m_CompositionPlacementDirty = false;
     m_EmissionOrigins.clear(); m_EditedMotionIds.clear();
     m_PristinePatternId.clear();
-    m_LinkedSavePending = m_LinkedSavePending || (linked && publishRuntime);
-    m_PublishLinkedPatterns = m_PublishLinkedPatterns || (publishPatterns && publishRuntime);
+    m_LinkedSavePending = m_LinkedSavePending || linked;
+    m_PublishLinkedPatterns = m_PublishLinkedPatterns || publishPatterns;
     if (!publishRuntime)
     {
         /* Source-only: the authoring documents are on disk and the runtime
            keeps whatever the last explicit publish produced. */
-        m_Status = "Saved Object authoring sources. Runtime data was not published.";
+        m_RuntimePublishStatus = "Publish pending for the saved Data.";
+        m_Status = "Saved Object authoring sources to Data. Use Publish for WorldSequences and any linked Pattern updates.";
         return true;
     }
     m_Status = "Saved Object and linked Collider/Logic rows; applying World Object runtime data.";
@@ -928,17 +933,39 @@ bool CWorldObjectTool::Render_SaveButton()
     if (m_PublishProcess != nullptr)
     {
         ImGui::SameLine();
-        ImGui::TextDisabled("Publish in progress; Save again when it finishes.");
+        ImGui::TextDisabled("Publish in progress.");
     }
+    ImGui::SameLine(); Render_PublishButton();
     ImGui::PopID();
-    if (clicked) Save_Source();
+    if (clicked) Save_Source(false);
     // Save replaces m_Document: the caller must return before reading document references.
     return clicked;
 }
 
+bool CWorldObjectTool::Publish_Source()
+{
+    if (!m_Ready || m_PublishProcess) { m_Status = "Open an Object source and wait for the current Publish to finish."; return false; }
+    if (m_Dirty) { m_Status = "Save Object changes to Data before Publish. Draft preserved."; return false; }
+    if (!Matches_SourceBaseline() || !Refresh_LinkedPublication()) return false;
+    Start_Publish();
+    if (!m_PublishProcess) m_RuntimePublishStatus = m_Status;
+    return m_PublishProcess != nullptr;
+}
+
+void CWorldObjectTool::Render_PublishButton()
+{
+    ImGui::BeginDisabled(!m_Ready || m_Dirty || m_PublishProcess != nullptr);
+    if (ImGui::Button("Publish")) (void)Publish_Source();
+    if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+        ImGui::SetTooltip(m_Dirty ? "Save pending Object edits to Data first." :
+            "Publish saved WorldSequences, then any linked Pattern updates through their existing publishers.");
+    ImGui::EndDisabled();
+}
+
 void CWorldObjectTool::Render_SaveStatus() const
 {
-    ImGui::TextDisabled("%s", m_Dirty ? "Unsaved local changes" : "Local changes saved");
+    ImGui::TextDisabled("%s", m_Dirty ? "Data: unsaved local changes" : "Data: saved");
+    ImGui::TextWrapped("%s", m_RuntimePublishStatus.c_str());
     if (!m_Status.empty()) ImGui::TextWrapped("%s", m_Status.c_str());
 }
 
@@ -950,24 +977,64 @@ void CWorldObjectTool::Render_ColliderPreview()
     m_PreviewLevel->Debug_DrawWorldObjectColliderPreview();
 }
 
+bool CWorldObjectTool::Refresh_LinkedPublication()
+{
+    // Save-only publication requirements must survive a Client restart. Rebuild
+    // the relationship from saved source IDs, not a new flag file or UI selection.
+    bool linked = m_LinkedSavePending, publishPatterns = m_PublishLinkedPatterns;
+    const auto hasMotion = [&](const std::string& id) {
+        if (id.empty()) return false;
+        if (m_SavedDocument.Find_Instance(id)) return true;
+        const auto* group = m_SavedDocument.Find_ObjectResource(id);
+        return group && std::any_of(group->motionInstanceIds.begin(), group->motionInstanceIds.end(),
+            [&](const auto& member) { return m_SavedDocument.Find_Instance(member) != nullptr; });
+    };
+    const std::array paths{CKoukuSaydonCompositionDocument::Resolve_Path(), CKoukuSaydonCompositionDocument::Resolve_SequencePath()};
+    for (size_t index = 0u; index < paths.size(); ++index)
+    {
+        std::error_code error;
+        if (!std::filesystem::exists(paths[index], error) && !error) continue;
+        if (error) { m_Status = "Cannot inspect linked Composition source: " + error.message(); return false; }
+        CKoukuSaydonCompositionDocument owner(paths[index]);
+        if (!owner.Reload(m_Status)) return false;
+        const auto& source = owner.Get_LastGood();
+        bool references = std::any_of(source.Worlds.begin(), source.Worlds.end(),
+            [&](const auto& world) { return hasMotion(world.strSequenceInstanceId); });
+        for (const auto& logic : source.Logics)
+        {
+            references = references || hasMotion(logic.strWorldSequenceInstanceId) ||
+                hasMotion(logic.strTargetWorldInstanceId) || hasMotion(logic.strMotionInstanceId);
+            for (const auto& contact : logic.ContactMotions)
+                references = references || hasMotion(contact.strMotionInstanceId);
+        }
+        linked = linked || references;
+        publishPatterns = publishPatterns || (index == 0u && references);
+    }
+    if (linked && !m_CanSaveLinked)
+    { m_Status = "Linked Composition editor is unavailable. Saved sources and drafts preserved."; return false; }
+    if (linked && !m_CanSaveLinked(m_Status)) return false;
+    m_LinkedSavePending = linked; m_PublishLinkedPatterns = publishPatterns;
+    return true;
+}
+
 void CWorldObjectTool::Start_Publish()
 {
     if (!m_Ready || m_Dirty || m_PublishProcess) return;
     if (!Matches_SourceBaseline())
-    { m_Status = "Saved; apply stopped because linked source changed. Reload Source before retrying."; return; }
+    { m_Status = "Publish stopped because linked source changed. Reload Source before retrying."; return; }
     const auto root = CProjectDataRoot::Get().parent_path();
     const auto script = root / L"Tools/MapPipeline/Publish-MapAuthoring.ps1";
-    if (!std::filesystem::is_regular_file(script)) { m_Status = "Saved; apply failed: publisher is missing. Save to retry."; return; }
+    if (!std::filesystem::is_regular_file(script)) { m_Status = "Saved; apply failed: publisher is missing. Publish to retry."; return; }
     wchar_t temporary[MAX_PATH]{};
-    if (!GetTempPathW(MAX_PATH, temporary)) { m_Status = "Saved; apply failed: log folder is unavailable. Save to retry."; return; }
+    if (!GetTempPathW(MAX_PATH, temporary)) { m_Status = "Saved; apply failed: log folder is unavailable. Publish to retry."; return; }
     m_PublishLog = std::filesystem::path(temporary) / (L"LostArk-WorldObject-" + std::to_wstring(GetCurrentProcessId()) + L".log");
     SECURITY_ATTRIBUTES security{sizeof(SECURITY_ATTRIBUTES), nullptr, TRUE};
     const HANDLE log = CreateFileW(m_PublishLog.c_str(), GENERIC_WRITE, FILE_SHARE_READ,
         &security, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
-    if (INVALID_HANDLE_VALUE == log) { m_Status = "Saved; apply failed: cannot create log. Save to retry."; return; }
+    if (INVALID_HANDLE_VALUE == log) { m_Status = "Saved; apply failed: cannot create log. Publish to retry."; return; }
     const HANDLE input = CreateFileW(L"NUL", GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE,
         &security, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
-    if (INVALID_HANDLE_VALUE == input) { CloseHandle(log); m_Status = "Saved; apply failed: cannot prepare input. Save to retry."; return; }
+    if (INVALID_HANDLE_VALUE == input) { CloseHandle(log); m_Status = "Saved; apply failed: cannot prepare input. Publish to retry."; return; }
     std::wstring command = L"powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File \"" +
         script.wstring() + L"\" -AreaId LV_LUT_MIDNIGHTC_ED -Scope WorldSequences -Mode Publish";
     std::vector<wchar_t> arguments(command.begin(), command.end()); arguments.push_back(0);
@@ -977,9 +1044,10 @@ void CWorldObjectTool::Start_Publish()
     const bool started = !!CreateProcessW(nullptr, arguments.data(), nullptr, nullptr, TRUE,
         CREATE_NO_WINDOW, nullptr, root.c_str(), &startup, &process);
     CloseHandle(log); CloseHandle(input);
-    if (!started) { m_Status = "Saved; apply failed: cannot start publisher. Save to retry."; return; }
+    if (!started) { m_Status = "Saved; apply failed: cannot start publisher. Publish to retry."; return; }
     CloseHandle(process.hThread); m_PublishProcess = process.hProcess;
-    m_Status = "Saved; applying World Object runtime data. Log: " + m_PublishLog.string();
+    m_RuntimePublishStatus = "WorldSequences Publish is running.";
+    m_Status = "Publishing saved WorldSequences. Linked Pattern updates follow when required. Log: " + m_PublishLog.string();
 }
 
 void CWorldObjectTool::Poll_Publish()
@@ -988,8 +1056,10 @@ void CWorldObjectTool::Poll_Publish()
     DWORD code = 1; GetExitCodeProcess(m_PublishProcess, &code);
     CloseHandle(m_PublishProcess); m_PublishProcess = nullptr;
     if (code != 0)
-    { m_Status = "Saved; apply failed (" + std::to_string(code) + "). Previous runtime preserved. Save to retry. Log: " + m_PublishLog.string(); return; }
+    { m_RuntimePublishStatus = "WorldSequences Publish failed; the previous runtime files were preserved.";
+      m_Status = "Saved; apply failed (" + std::to_string(code) + "). Previous runtime preserved. Publish to retry. Log: " + m_PublishLog.string(); return; }
     ++m_SavedGeneration;
+    m_RuntimePublishStatus = "WorldSequences runtime files published.";
     std::string runtimeStatus;
     if (auto* level = CLevel_KakulSaydonArena::Get_Active())
     {
@@ -1001,6 +1071,9 @@ void CWorldObjectTool::Poll_Publish()
         std::string status;
         if (!m_ApplyLinkedSave || !m_ApplyLinkedSave(m_PublishLinkedPatterns, status))
         { m_Status = "Object sources and Map applied; linked Composition apply is pending: " + status + " " + runtimeStatus; return; }
+        m_RuntimePublishStatus = m_PublishLinkedPatterns ?
+            "WorldSequences published; linked Pattern publication started. Check its status in Composition." :
+            "WorldSequences published and linked Sequence source reloaded.";
         m_LinkedSavePending = false; m_PublishLinkedPatterns = false;
         m_Status = "Object and linked sources saved. " + status + " " + runtimeStatus;
         return;
@@ -1329,8 +1402,9 @@ void CWorldObjectTool::Render_QuickTransformTuning(const std::string& objectId, 
         { m_Document = std::move(candidate); Mark_Dirty(); }
         else m_Status = "Hammer transform refused: " + status + ". Existing draft preserved.";
     }
-    ImGui::TextWrapped("This changes the whirlwind Motion only. Save includes pending Object edits and publishes through the existing Object workflow.");
-    if (ImGui::Button("Save Object changes")) Save_Source();
+    ImGui::TextWrapped("This changes the whirlwind Motion only. Save writes pending Object edits to Data. Publish applies WorldSequences and any linked Pattern updates.");
+    if (ImGui::Button("Save Object changes")) Save_Source(false);
+    ImGui::SameLine(); Render_PublishButton();
     ImGui::EndDisabled();
     Render_SaveStatus();
     ImGui::PopID();
@@ -1375,12 +1449,13 @@ void CWorldObjectTool::Render_BingoSizeTuning()
         }
         else m_Status = "Bingo sizes refused: " + status + ". Existing draft preserved.";
     }
-    if (ImGui::Button("Save")) Save_Source();
+    if (ImGui::Button("Save")) Save_Source(false);
+    ImGui::SameLine(); Render_PublishButton();
     ImGui::SameLine();
     if (ImGui::Button("Reload Saved") && !m_Dirty) Load_Source();
     if (ImGui::IsItemHovered() && m_Dirty) ImGui::SetTooltip("Save pending Object edits before reloading.");
     ImGui::TextDisabled("Bomb hits stay on five cells. Save and Publish Kouku to update the Server hammer hit size.");
-    ImGui::TextDisabled("Save includes pending World Object edits and applies them for the next play.");
+    ImGui::TextDisabled("Save writes pending World Object edits to Data. Publish applies the saved files for the next play.");
     ImGui::EndDisabled();
     Render_SaveStatus();
     ImGui::PopID();
@@ -1784,6 +1859,8 @@ void CWorldObjectTool::Begin_WorkbenchFrame()
 
 void CWorldObjectTool::End_WorkbenchFrame()
 {
+    Commit_TimelineDrag();
+    if (m_TimelineDrag && !ImGui::IsMouseDown(0)) m_TimelineDrag.reset();
     const auto command = m_PendingCompositionEdit;
     auto transfer = std::move(m_PendingCompositionTransfer);
     m_PendingCompositionEdit.reset();
@@ -2164,7 +2241,8 @@ void CWorldObjectTool::Render_Toolbar()
         ImGui::EndPopup();
     }
     ImGui::SameLine(); ImGui::BeginDisabled(!m_Ready || m_PublishProcess);
-    if (ImGui::Button("Save")) Save_Source();
+    if (ImGui::Button("Save")) Save_Source(false);
+    ImGui::SameLine(); Render_PublishButton();
     ImGui::EndDisabled();
     if (m_CompositionPreviewPlacement)
     {
@@ -4024,6 +4102,272 @@ void CWorldObjectTool::Render_GroupDetail(WORLD_SEQUENCE_OBJECT_RESOURCE& resour
     ImGui::TextWrapped("All %zu motions stay in preview. The full editor below changes the selected row; Save keeps all rows.", resource.motionInstanceIds.size());
 }
 
+
+double CWorldObjectTool::Timeline_AnimationDuration(const std::string& instanceId,
+    const std::string& slotId, const std::string& clipName)
+{
+    const auto* instance = m_Document.Find_Instance(instanceId);
+    if (!instance) return 0.;
+    const auto binding = std::find_if(instance->bindings.begin(), instance->bindings.end(),
+        [&](const auto& row) { return row.slotId == slotId; });
+    const auto* resource = binding != instance->bindings.end() && binding->targetKind == WORLD_SEQUENCE_TARGET_KIND::OBJECT_RESOURCE ?
+        m_Document.Find_ObjectResource(binding->targetId) : nullptr;
+    if (!resource || !resource->sequenceInstanceId.empty() || resource->modelAssetId.empty()) return 0.;
+    const auto [cached, inserted] = m_TimelineAnimationCatalogs.try_emplace(resource->modelAssetId);
+    if (inserted)
+    {
+        std::vector<Engine::MODEL_ANIMATION_CATALOG_ENTRY> catalog;
+        std::string status;
+        const auto path = CRuntimeAssetRoot::Resolve(resource->modelAssetId);
+        if (!path.empty() && Engine::CWModelDecoder::Read_AnimationCatalog(path, catalog, status))
+            for (const auto& row : catalog)
+                cached->second.push_back({row.name, double(row.durationTicks) / Engine::CAnimation::COOKED_TICK_RATE * 1000.});
+    }
+    for (const auto& row : cached->second) if (row.clipName == clipName) return row.durationMs;
+    return 0.;
+}
+
+void CWorldObjectTool::Commit_TimelineDrag()
+{
+    if (!m_TimelineDrag || !m_TimelineDrag->pending) return;
+    const auto edit = *m_TimelineDrag;
+    m_TimelineDrag.reset();
+    if (!edit.changed) return;
+    if (m_PublishProcess || m_Document.Get_Revision() != edit.revision)
+    { m_Status = "Timeline changed during the drag. Existing draft preserved; drag the current box again."; return; }
+    if (edit.kind == 1)
+    {
+        (void)Edit_AnimationTimeline(edit.instanceId, edit.slotId, edit.clipName, edit.originalStart,
+            edit.start, edit.sourceIn, edit.sourceOut, m_Status);
+        return;
+    }
+    auto* sequence = m_Document.Find_Template(edit.sequenceId);
+    const auto* instance = m_Document.Find_Instance(edit.instanceId);
+    if (!sequence || !instance || instance->templateId != edit.sequenceId || edit.end <= edit.start) return;
+    auto candidate = m_Document;
+    auto* staged = candidate.Find_Template(edit.sequenceId);
+    bool found = false;
+    if (edit.kind == 2)
+        for (auto& row : staged->effectTracks)
+            if (row.effectTrackId == edit.boxId)
+            {
+                if (staged->EffectStartMs(row) != edit.originalStart || row.durationMs != edit.originalEnd - edit.originalStart) break;
+                if (row.timing == "MOTION_END" && edit.start != edit.originalStart) break;
+                if (row.timing != "MOTION_END") row.startMs = edit.start;
+                row.durationMs = edit.end - edit.start; found = true; break;
+            }
+    if (edit.kind == 3)
+        for (auto& row : staged->colliderTracks)
+            if (row.colliderTrackId == edit.boxId)
+            {
+                if (row.startMs != edit.originalStart || row.durationMs != edit.originalEnd - edit.originalStart) break;
+                row.startMs = edit.start; row.durationMs = edit.end - edit.start; found = true; break;
+            }
+    std::string validation;
+    if (!found || !candidate.Validate(m_MapTargets, m_DeployTargets, validation))
+    { m_Status = "Timeline edit refused: " + (found ? validation : "the selected box changed") + ". Existing draft preserved."; return; }
+    *sequence = std::move(*staged);
+    m_EditedMotionIds.insert(edit.sequenceId);
+    Mark_Dirty();
+    m_Status = "Timeline timing updated. Save commits the World draft.";
+}
+
+float CWorldObjectTool::Render_TimelineRows(WORLD_SEQUENCE_TEMPLATE& sequence, const std::string& instanceId,
+    const float originX, float y, const float width, const float pixelsPerMs,
+    const float timeOffsetMs, const float playbackRate)
+{
+    struct BOX
+    {
+        int kind = 0; size_t index = 0;
+        std::string id, slot, label, reason;
+        uint32_t start = 0, end = 0, windowEnd = 0, sourceIn = 0, sourceOut = 0, nativeEnd = 0;
+        float sourceRate = 1.f;
+        bool move = false, left = false, right = false, hold = false;
+    };
+    struct LANE { int kind; std::string slot; std::vector<BOX> boxes; };
+    std::vector<LANE> lanes;
+    const auto add = [&](BOX box) {
+        auto found = std::find_if(lanes.begin(), lanes.end(), [&](const auto& lane) { return lane.kind == box.kind && lane.slot == box.slot; });
+        if (found == lanes.end()) { lanes.push_back({box.kind, box.slot, {}}); found = lanes.end() - 1; }
+        found->boxes.push_back(std::move(box));
+    };
+    for (size_t index = 0; index < sequence.tracks.size(); ++index)
+    {
+        const auto& row = sequence.tracks[index];
+        BOX box; box.index = index; box.id = box.slot = box.label = row.slotId; box.end = sequence.durationMs;
+        box.reason = "Transform duration follows Stage. Drag an interior diamond to change a key time."; add(std::move(box));
+    }
+    for (size_t index = 0; index < sequence.animationTracks.size(); ++index)
+    {
+        const auto& row = sequence.animationTracks[index];
+        BOX box; box.kind = 1; box.index = index; box.slot = row.slotId;
+        box.id = row.slotId + "|" + row.clipName + "|" + std::to_string(row.startMs);
+        box.label = row.displayName.empty() ? row.clipName : row.displayName;
+        box.start = row.startMs; box.end = box.windowEnd = sequence.durationMs;
+        for (const auto& next : sequence.animationTracks)
+            if (next.slotId == row.slotId && next.startMs > row.startMs) box.end = box.windowEnd = (std::min)(box.end, next.startMs);
+        const double nativeMs = Timeline_AnimationDuration(instanceId, row.slotId, row.clipName);
+        box.nativeEnd = std::isfinite(nativeMs) && nativeMs > 0. ? static_cast<uint32_t>(std::ceil(nativeMs)) : 0u;
+        box.sourceIn = row.sourceStartMs; box.sourceOut = row.sourceEndMs ? row.sourceEndMs : box.nativeEnd;
+        box.sourceRate = row.playbackRate; box.hold = row.holdLastFrame;
+        const bool finite = !row.loop && box.nativeEnd && box.sourceOut > box.sourceIn && std::isfinite(row.playbackRate) && row.playbackRate > 0.f;
+        if (finite)
+        {
+            // The next clip/Stage may cut the native source before its natural end.
+            box.sourceOut = (std::min)(box.sourceOut, static_cast<uint32_t>(std::floor(
+                box.sourceIn + double(box.windowEnd - box.start) * row.playbackRate)));
+            if (box.sourceOut > box.sourceIn)
+                box.end = (std::min)(box.end, static_cast<uint32_t>(std::ceil(row.startMs + double(box.sourceOut - box.sourceIn) / row.playbackRate)));
+            box.move = box.left = box.sourceOut > box.sourceIn;
+            box.right = box.sourceOut > box.sourceIn;
+            if (!box.right) box.reason = "This window is shorter than one source millisecond; use Box Detail.";
+        }
+        else box.reason = row.loop ? "Range Loop owns this window. Turn it off in Box Detail before moving or trimming." : "Native clip range is unavailable; use Box Detail.";
+        add(std::move(box));
+    }
+    for (size_t index = 0; index < sequence.effectTracks.size(); ++index)
+    {
+        const auto& row = sequence.effectTracks[index];
+        BOX box; box.kind = 2; box.index = index; box.id = row.effectTrackId; box.slot = row.slotId; box.label = row.resourceId;
+        box.start = sequence.EffectStartMs(row); box.end = box.start + row.durationMs;
+        box.move = box.left = row.timing != "MOTION_END"; box.right = true;
+        if (!box.move) box.reason = "Start follows Motion End. Drag the right edge for duration, or change timing in Box Detail.";
+        add(std::move(box));
+    }
+    for (size_t index = 0; index < sequence.colliderTracks.size(); ++index)
+    {
+        const auto& row = sequence.colliderTracks[index];
+        BOX box; box.kind = 3; box.index = index; box.id = row.colliderTrackId; box.slot = row.slotId; box.label = row.behavior;
+        box.start = row.startMs; box.end = box.start + row.durationMs; box.move = box.left = box.right = true; add(std::move(box));
+    }
+    auto* draw = ImGui::GetWindowDrawList();
+    const auto timeX = [&](const double local) { return originX + float(timeOffsetMs + local / playbackRate) * pixelsPerMs; };
+    const char* names[] = {"Transform", "Animation", "Effect", "Collider"};
+    const ImU32 colors[] = {IM_COL32(61,107,141,255), IM_COL32(113,82,147,255), IM_COL32(167,95,51,255), IM_COL32(49,143,119,255)};
+    for (const auto& lane : lanes)
+    {
+        const auto key = instanceId + "|" + std::to_string(lane.kind) + "|" + lane.slot;
+        auto [state, inserted] = m_TimelineLaneOpen.try_emplace(key, lane.kind != 0);
+        ImGui::PushID(key.c_str());
+        ImGui::SetCursorScreenPos(ImVec2(originX, y));
+        ImGui::SetNextItemOpen(state->second, ImGuiCond_Always);
+        uint32_t laneStart = sequence.PresentationSpanMs(), laneEnd = 0u;
+        for (const auto& box : lane.boxes) { laneStart = (std::min)(laneStart, box.start); laneEnd = (std::max)(laneEnd, box.end); }
+        const bool open = ImGui::TreeNodeEx("Lane", ImGuiTreeNodeFlags_NoTreePushOnOpen | ImGuiTreeNodeFlags_SpanAvailWidth,
+            "%s / %s (%zu boxes, local %u..%u ms)", names[lane.kind], lane.slot.c_str(), lane.boxes.size(), laneStart, laneEnd);
+        state->second = open;
+        y += 24.f;
+        if (!open) { ImGui::PopID(); continue; }
+        std::vector<CompositionTimeline::DISPLAY_INTERVAL> intervals;
+        for (const auto& box : lane.boxes)
+            intervals.push_back({box.id, timeOffsetMs + box.start / double(playbackRate),
+                (box.end - box.start) / double(playbackRate),
+                box.hold && box.windowEnd > box.end ? (box.windowEnd - box.end) / double(playbackRate) : 0.});
+        const auto layout = CompositionTimeline::AllocateDisplayRows(std::move(intervals), CompositionTimeline::MinimumBoxWidth / pixelsPerMs);
+        for (const auto& box : lane.boxes)
+        {
+            const float top = y + 32.f * static_cast<float>(layout.occurrenceRows.at(box.id));
+            const float left = timeX(box.start), semanticRight = timeX(box.end);
+            const float right = (std::max)(left + CompositionTimeline::MinimumBoxWidth, semanticRight);
+            const bool selected = instanceId == m_SelectedInstance && m_SelectedBoxKind == box.kind &&
+                (box.kind == 0 ? m_SelectedTrack : box.kind == 1 ? m_SelectedAnimationRow : box.kind == 2 ? m_SelectedEffectRow : m_SelectedColliderRow) == box.index;
+            if (box.hold && box.windowEnd > box.end)
+            {
+                draw->AddRectFilled(ImVec2(semanticRight, top + 6.f), ImVec2(timeX(box.windowEnd), top + 19.f), IM_COL32(70,58,83,160));
+                draw->AddText(ImVec2(semanticRight + 4.f, top + 5.f), IM_COL32(160,155,170,255), "Hold");
+            }
+            CompositionTimeline::DrawBox(draw, ImVec2(left, top), ImVec2(right, top + 25.f), colors[box.kind], selected,
+                box.label.c_str(), box.left, box.right);
+            ImGui::PushID(box.id.c_str());
+            // Transform keys have their own hit items; do not let the bar capture them.
+            if (box.kind != 0)
+            {
+                ImGui::SetCursorScreenPos(ImVec2(left, top));
+                ImGui::InvisibleButton("Box", ImVec2(right - left, 25.f));
+                if (ImGui::IsItemActivated())
+                {
+                    if (m_SelectedInstance != instanceId) Select_State(instanceId);
+                    m_SelectedBoxKind = box.kind; m_DetailOpen = true;
+                    if (box.kind == 1) m_SelectedAnimationRow = box.index;
+                    else if (box.kind == 2) m_SelectedEffectRow = box.index;
+                    else m_SelectedColliderRow = box.index;
+                    const auto gesture = CompositionTimeline::HitBoxGesture(ImGui::GetIO().MousePos.x, left, right, 6.f, box.left, box.right);
+                    if (gesture != CompositionTimeline::BoxGesture::MOVE || box.move)
+                    {
+                        TIMELINE_DRAG edit;
+                        edit.instanceId = instanceId; edit.sequenceId = sequence.sequenceId; edit.boxId = box.id;
+                        edit.slotId = box.slot; edit.kind = box.kind; edit.gesture = static_cast<int>(gesture);
+                        if (box.kind == 1) edit.clipName = sequence.animationTracks[box.index].clipName;
+                        edit.revision = m_Document.Get_Revision(); edit.originalStart = edit.start = box.start; edit.originalEnd = edit.end = box.end;
+                        edit.sourceIn = box.sourceIn; edit.sourceOut = box.sourceOut; edit.nativeEnd = box.nativeEnd;
+                        edit.sourceRate = box.sourceRate; edit.pixelsPerLocalMs = pixelsPerMs / playbackRate;
+                        m_TimelineDrag = std::move(edit);
+                    }
+                }
+                const bool dragging = m_TimelineDrag && m_TimelineDrag->instanceId == instanceId && m_TimelineDrag->boxId == box.id && m_TimelineDrag->kind == box.kind;
+                if (dragging && ImGui::IsItemActive() && ImGui::IsMouseDragging(0))
+                {
+                    auto& edit = *m_TimelineDrag;
+                    auto delta = static_cast<int64_t>(std::llround(ImGui::GetMouseDragDelta(0).x / edit.pixelsPerLocalMs));
+                    const auto gesture = static_cast<CompositionTimeline::BoxGesture>(edit.gesture);
+                    const int64_t maximum = CWorldSequenceDocument::MAX_DURATION_MS;
+                    if (gesture == CompositionTimeline::BoxGesture::MOVE)
+                        delta = (std::clamp)(delta, -int64_t(edit.originalStart), maximum - edit.originalEnd);
+                    else if (gesture == CompositionTimeline::BoxGesture::TRIM_START)
+                        delta = (std::clamp)(delta, -int64_t(edit.originalStart), int64_t(edit.originalEnd) - edit.originalStart - 1);
+                    else delta = (std::clamp)(delta, int64_t(edit.originalStart) - edit.originalEnd + 1, maximum - edit.originalEnd);
+                    edit.start = static_cast<uint32_t>(int64_t(edit.originalStart) + (gesture != CompositionTimeline::BoxGesture::TRIM_END ? delta : 0));
+                    edit.end = static_cast<uint32_t>(int64_t(edit.originalEnd) + (gesture != CompositionTimeline::BoxGesture::TRIM_START ? delta : 0));
+                    if (box.kind == 1)
+                    {
+                        const auto sourceDelta = static_cast<int64_t>(std::llround(delta * edit.sourceRate));
+                        edit.sourceIn = static_cast<uint32_t>((std::clamp)(int64_t(box.sourceIn) + (gesture == CompositionTimeline::BoxGesture::TRIM_START ? sourceDelta : 0), int64_t{0}, int64_t(box.sourceOut) - 1));
+                        edit.sourceOut = static_cast<uint32_t>((std::clamp)(int64_t(box.sourceOut) + (gesture == CompositionTimeline::BoxGesture::TRIM_END ? sourceDelta : 0), int64_t(edit.sourceIn) + 1, int64_t(box.nativeEnd)));
+                        if (gesture == CompositionTimeline::BoxGesture::TRIM_START)
+                            edit.start = static_cast<uint32_t>((std::max)(0., std::round(edit.originalStart + (double(edit.sourceIn) - box.sourceIn) / edit.sourceRate)));
+                        edit.end = static_cast<uint32_t>(std::ceil(edit.start + double(edit.sourceOut - edit.sourceIn) / edit.sourceRate));
+                    }
+                    edit.changed = edit.start != edit.originalStart || edit.end != edit.originalEnd ||
+                        edit.sourceIn != box.sourceIn || edit.sourceOut != box.sourceOut;
+                    draw->AddRect(ImVec2(timeX(edit.start), top), ImVec2(timeX(edit.end), top + 25.f), IM_COL32(255,224,92,255), 3.f, 0, 2.f);
+                    if (ImGui::IsMouseDragging(0)) ImGui::SetTooltip("%u..%u ms (Motion local time; release to apply)", edit.start, edit.end);
+                }
+                if (dragging && ImGui::IsItemDeactivated()) m_TimelineDrag->pending = true;
+                if (ImGui::IsItemHovered())
+                    ImGui::SetTooltip("%s / %u..%u ms (Motion local)\n%s", box.label.c_str(), box.start, box.end,
+                        box.reason.empty() ? "Drag body to move; drag edges to trim. Save commits the draft." : box.reason.c_str());
+            }
+            else
+            {
+                auto& track = sequence.tracks[box.index];
+                if (ImGui::IsWindowHovered() && ImGui::IsMouseHoveringRect(ImVec2(left, top), ImVec2(right, top + 25.f)) && ImGui::IsMouseClicked(0))
+                { if (m_SelectedInstance != instanceId) Select_State(instanceId); m_SelectedBoxKind = 0; m_SelectedTrack = box.index; m_SelectedKey = 0; }
+                for (size_t keyIndex = 0; keyIndex < track.keys.size(); ++keyIndex)
+                {
+                    auto& key = track.keys[keyIndex]; const float x = timeX(key.timeMs), centre = top + 12.f;
+                    draw->AddQuadFilled(ImVec2(x, centre - 6), ImVec2(x + 6, centre), ImVec2(x, centre + 6), ImVec2(x - 6, centre),
+                        selected && m_SelectedKey == keyIndex ? IM_COL32(255,223,87,255) : IM_COL32_WHITE);
+                    ImGui::PushID(static_cast<int>(keyIndex)); ImGui::SetCursorScreenPos(ImVec2(x - 7.f, top + 4.f));
+                    ImGui::InvisibleButton("Key", ImVec2(14.f,18.f));
+                    if (ImGui::IsItemClicked()) { if (m_SelectedInstance != instanceId) Select_State(instanceId); m_SelectedTrack = box.index; m_SelectedKey = keyIndex; m_SelectedBoxKind = 0; }
+                    if (ImGui::IsItemActive() && ImGui::IsMouseDragging(0) && keyIndex > 0 && keyIndex + 1 < track.keys.size())
+                    {
+                        const float local = ((ImGui::GetIO().MousePos.x - originX) / pixelsPerMs - timeOffsetMs) * playbackRate;
+                        const auto time = static_cast<uint32_t>((std::clamp)(local, float(track.keys[keyIndex - 1].timeMs + 1), float(track.keys[keyIndex + 1].timeMs - 1)));
+                        if (key.timeMs != time) { key.timeMs = time; Mark_Dirty(); }
+                    }
+                    if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s / %u ms\nInterior keys can move; endpoints follow Stage.", track.slotId.c_str(), key.timeMs);
+                    ImGui::PopID();
+                }
+            }
+            ImGui::PopID();
+        }
+        y += 32.f * static_cast<float>(layout.rowCount);
+        ImGui::PopID();
+    }
+    return y;
+}
+
 void CWorldObjectTool::Render_GroupSequence(const WORLD_SEQUENCE_OBJECT_RESOURCE& resource, const bool parentOverview)
 {
     ImGui::SeparatorText(resource.displayName.c_str());
@@ -4108,90 +4452,19 @@ void CWorldObjectTool::Render_GroupSequence(const WORLD_SEQUENCE_OBJECT_RESOURCE
             if (!sequence) continue;
             ImGui::PushID(id.c_str());
             const float speed = (std::max)(.05f, instance->playbackSpeed);
-            const auto timeX = [&](float localMs) { return origin.x + (instance->startDelayMs + localMs / speed) * pixelsPerMs; };
+            const auto foldKey = "Motion|" + id;
+            auto [fold, inserted] = m_TimelineLaneOpen.try_emplace(foldKey, true);
             ImGui::SetCursorScreenPos(ImVec2(origin.x, y));
-            if (ImGui::Selectable(sequence->displayName.c_str(), id == m_SelectedInstance, 0, ImVec2(width, 22.f)))
-                Select_State(id);
+            ImGui::SetNextItemOpen(fold->second, ImGuiCond_Always);
+            fold->second = ImGui::TreeNodeEx("Motion", ImGuiTreeNodeFlags_NoTreePushOnOpen,
+                "%s / %.0f..%.0f ms", sequence->displayName.c_str(), float(instance->startDelayMs),
+                instance->startDelayMs + sequence->PresentationSpanMs() / speed);
+            ImGui::SameLine();
+            if (ImGui::SmallButton("Select")) Select_State(id);
             y += 24.f;
-            for (size_t trackIndex = 0; trackIndex < sequence->tracks.size(); ++trackIndex)
-            {
-                auto& track = sequence->tracks[trackIndex];
-                ImGui::PushID(track.slotId.c_str());
-                const ImVec2 row(timeX(0.f), y);
-                const ImVec2 end(timeX(static_cast<float>(sequence->durationMs)), y + 25.f);
-                CompositionTimeline::DrawBox(draw, row, end,
-                    instance->enabled ? IM_COL32(61, 107, 141, 255) : IM_COL32(65, 65, 65, 255),
-                    id == m_SelectedInstance && m_SelectedBoxKind == 0 && m_SelectedTrack == trackIndex, track.slotId.c_str(), false, false);
-                if (ImGui::IsWindowHovered() && ImGui::IsMouseHoveringRect(row, end) && ImGui::IsMouseClicked(0))
-                {
-                    if (m_SelectedInstance != id) Select_State(id);
-                    m_SelectedTrack = trackIndex; m_SelectedKey = 0; m_SelectedBoxKind = 0;
-                }
-                for (size_t keyIndex = 0; keyIndex < track.keys.size(); ++keyIndex)
-                {
-                    auto& key = track.keys[keyIndex];
-                    const float x = timeX(static_cast<float>(key.timeMs)), centreY = y + 12.f;
-                    const bool selected = id == m_SelectedInstance && m_SelectedBoxKind == 0 && m_SelectedTrack == trackIndex && m_SelectedKey == keyIndex;
-                    draw->AddQuadFilled(ImVec2(x, centreY - 6.f), ImVec2(x + 6.f, centreY),
-                        ImVec2(x, centreY + 6.f), ImVec2(x - 6.f, centreY), selected ? IM_COL32(255, 223, 87, 255) : IM_COL32_WHITE);
-                    ImGui::PushID(static_cast<int>(keyIndex));
-                    ImGui::SetCursorScreenPos(ImVec2((std::clamp)(x - 7.f, origin.x, origin.x + width - 14.f), y + 4.f));
-                    ImGui::InvisibleButton("Key", ImVec2(14.f, 18.f));
-                    if (ImGui::IsItemClicked())
-                    {
-                        if (m_SelectedInstance != id) Select_State(id);
-                        m_SelectedTrack = trackIndex; m_SelectedKey = keyIndex; m_SelectedBoxKind = 0;
-                    }
-                    if (ImGui::IsItemActive() && ImGui::IsMouseDragging(0) && keyIndex > 0 && keyIndex + 1 < track.keys.size())
-                    {
-                        const float local = ((ImGui::GetIO().MousePos.x - origin.x) / pixelsPerMs - instance->startDelayMs) * speed;
-                        const uint32_t time = static_cast<uint32_t>((std::clamp)(local,
-                            static_cast<float>(track.keys[keyIndex - 1].timeMs + 1), static_cast<float>(track.keys[keyIndex + 1].timeMs - 1)));
-                        if (time != key.timeMs) { key.timeMs = time; Mark_Dirty(); }
-                    }
-                    if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s / %u ms", track.slotId.c_str(), key.timeMs);
-                    ImGui::PopID();
-                }
-                ImGui::PopID();
-                y += 32.f;
-            }
-            for (size_t clipIndex = 0; clipIndex < sequence->animationTracks.size(); ++clipIndex)
-            {
-                const auto& clip = sequence->animationTracks[clipIndex];
-                uint32_t end = sequence->durationMs;
-                for (const auto& next : sequence->animationTracks)
-                    if (next.slotId == clip.slotId && next.startMs > clip.startMs) end = (std::min)(end, next.startMs);
-                const ImVec2 first(timeX(static_cast<float>(clip.startMs)), y);
-                const ImVec2 last(timeX(static_cast<float>(end)), y + 25.f);
-                CompositionTimeline::DrawBox(draw, first, last, IM_COL32(113, 82, 147, 255), id == m_SelectedInstance && m_SelectedBoxKind == 1 && m_SelectedAnimationRow == clipIndex,
-                    clip.displayName.empty() ? clip.clipName.c_str() : clip.displayName.c_str());
-                if (ImGui::IsWindowHovered() && ImGui::IsMouseHoveringRect(first, last) && ImGui::IsMouseClicked(0))
-                { if (m_SelectedInstance != id) Select_State(id); m_SelectedAnimationRow = clipIndex; m_SelectedBoxKind = 1; m_DetailOpen = true; }
-                y += 32.f;
-            }
-            for (size_t index = 0; index < sequence->effectTracks.size(); ++index)
-            {
-                const auto& effect = sequence->effectTracks[index];
-                const float start = static_cast<float>(sequence->EffectStartMs(effect));
-                const ImVec2 first(timeX(start), y), last(timeX(start + effect.durationMs), y + 25.f);
-                CompositionTimeline::DrawBox(draw, first, last, IM_COL32(167, 95, 51, 255),
-                    id == m_SelectedInstance && m_SelectedBoxKind == 2 && m_SelectedEffectRow == index, effect.resourceId.c_str());
-                if (ImGui::IsWindowHovered() && ImGui::IsMouseHoveringRect(first, last) && ImGui::IsMouseClicked(0))
-                { if (m_SelectedInstance != id) Select_State(id); m_SelectedEffectRow = index; m_SelectedBoxKind = 2; m_DetailOpen = true; }
-                y += 32.f;
-            }
-            for (size_t index = 0; index < sequence->colliderTracks.size(); ++index)
-            {
-                const auto& collider = sequence->colliderTracks[index];
-                const ImVec2 first(timeX(static_cast<float>(collider.startMs)), y);
-                const ImVec2 last(timeX(static_cast<float>(collider.startMs + collider.durationMs)), y + 25.f);
-                const auto title = "Collider / " + collider.behavior;
-                CompositionTimeline::DrawBox(draw, first, last, IM_COL32(49, 143, 119, 255),
-                    id == m_SelectedInstance && m_SelectedBoxKind == 3 && m_SelectedColliderRow == index, title.c_str());
-                if (ImGui::IsWindowHovered() && ImGui::IsMouseHoveringRect(first, last) && ImGui::IsMouseClicked(0))
-                { if (m_SelectedInstance != id) Select_State(id); m_SelectedColliderRow = index; m_SelectedBoxKind = 3; m_DetailOpen = true; }
-                y += 32.f;
-            }
+            if (fold->second)
+                y = Render_TimelineRows(*sequence, id, origin.x, y, width, pixelsPerMs,
+                    static_cast<float>(instance->startDelayMs), speed);
             ImGui::PopID();
             y += 8.f;
         }
@@ -4256,16 +4529,11 @@ void CWorldObjectTool::Render_Sequence(WORLD_SEQUENCE_TEMPLATE& sequence)
     ImGui::EndDisabled();
     const float rowHeight = 32.f;
     const float labelWidth = 110.f;
-    std::vector<std::string> animationSlots;
-    for (const auto& animation : sequence.animationTracks)
-        if (std::find(animationSlots.begin(), animationSlots.end(), animation.slotId) == animationSlots.end()) animationSlots.push_back(animation.slotId);
     const uint32_t timelineDuration = sequence.PresentationSpanMs();
     const float availableWidth = (std::max)(40.f, ImGui::GetContentRegionAvail().x - labelWidth - 24.f);
     float width = (std::max)(availableWidth, timelineDuration * m_Zoom * .001f);
     float pixelsPerMs = width / timelineDuration;
     const bool showPhysics = resource && resource->sequenceInstanceId.empty();
-    const float tracksHeight = rowHeight * static_cast<float>(1u + sequence.tracks.size() + animationSlots.size() + sequence.effectTracks.size() + sequence.colliderTracks.size());
-    const float height = 28.f + tracksHeight + (showPhysics ? 64.f : 0.f);
     if (ImGui::BeginChild("ObjectTimeline", ImVec2(0, (std::max)(110.f, ImGui::GetContentRegionAvail().y)), true, ImGuiWindowFlags_HorizontalScrollbar))
     {
         const auto labelOrigin = ImGui::GetCursorScreenPos();
@@ -4333,92 +4601,12 @@ void CWorldObjectTool::Render_Sequence(WORLD_SEQUENCE_TEMPLATE& sequence)
             m_StageResizeSequence.clear();
             (void)Resize_Stage(sequence, requested);
         }
-        for (size_t index = 0; index < sequence.tracks.size(); ++index)
-        {
-            auto& track = sequence.tracks[index]; ImGui::PushID(track.slotId.c_str());
-            const auto row = ImVec2(origin.x, origin.y + 28.f + rowHeight * (1u + index));
-            label("Transform", row.y);
-            CompositionTimeline::DrawBox(draw, row, ImVec2(row.x + sequence.durationMs * pixelsPerMs, row.y + 25.f),
-                IM_COL32(61, 107, 141, 255), m_SelectedBoxKind == 0 && m_SelectedTrack == index, track.slotId.c_str(), false, false);
-            if (ImGui::IsWindowHovered() && ImGui::IsMouseHoveringRect(row, ImVec2(row.x + width, row.y + 25.f)) && ImGui::IsMouseClicked(0))
-            { m_SelectedTrack = index; m_SelectedKey = 0; m_SelectedBoxKind = 0; }
-            for (size_t keyIndex = 0; keyIndex < track.keys.size(); ++keyIndex)
-            {
-                auto& key = track.keys[keyIndex]; const float x = row.x + key.timeMs * pixelsPerMs;
-                const float y = row.y + 12.f;
-                const ImU32 color = m_SelectedBoxKind == 0 && m_SelectedTrack == index && m_SelectedKey == keyIndex ? IM_COL32(255, 223, 87, 255) : IM_COL32_WHITE;
-                draw->AddQuadFilled(ImVec2(x, y - 6), ImVec2(x + 6, y), ImVec2(x, y + 6), ImVec2(x - 6, y), color);
-                ImGui::PushID(static_cast<int>(keyIndex)); ImGui::SetCursorScreenPos(ImVec2((std::clamp)(x - 7.f, row.x, row.x + width - 14.f), row.y + 4.f));
-                ImGui::InvisibleButton("Key", ImVec2(14, 18));
-                if (ImGui::IsItemClicked()) { m_SelectedTrack = index; m_SelectedKey = keyIndex; m_SelectedBoxKind = 0; }
-                if (ImGui::IsItemActive() && ImGui::IsMouseDragging(0) && keyIndex > 0 && keyIndex + 1 < track.keys.size())
-                {
-                    const auto moved = static_cast<int>((ImGui::GetIO().MousePos.x - row.x) / pixelsPerMs);
-                    const uint32_t time = static_cast<uint32_t>((std::clamp)(moved, static_cast<int>(track.keys[keyIndex - 1].timeMs + 1), static_cast<int>(track.keys[keyIndex + 1].timeMs - 1)));
-                    if (time != key.timeMs) { key.timeMs = time; Mark_Dirty(); }
-                }
-                if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s / %u ms", track.slotId.c_str(), key.timeMs);
-                ImGui::PopID();
-            }
-            ImGui::PopID();
-        }
-        for (size_t slot = 0; slot < animationSlots.size(); ++slot)
-            label("Animation", origin.y + 28.f + rowHeight * (1u + sequence.tracks.size() + slot));
-        for (size_t index = 0; index < sequence.animationTracks.size(); ++index)
-        {
-            const auto& track = sequence.animationTracks[index];
-            uint32_t end = sequence.durationMs;
-            for (const auto& next : sequence.animationTracks) if (next.slotId == track.slotId && next.startMs > track.startMs) end = (std::min)(end, next.startMs);
-            const auto slot = std::find(animationSlots.begin(), animationSlots.end(), track.slotId) - animationSlots.begin();
-            const float y = origin.y + 28.f + rowHeight * (1u + sequence.tracks.size() + slot);
-            const float x = origin.x + track.startMs * pixelsPerMs;
-            const float endX = origin.x + end * pixelsPerMs;
-            ImGui::PushID(static_cast<int>(index));
-            ImGui::SetCursorScreenPos(ImVec2(x, y));
-            ImGui::InvisibleButton("AnimationBox", ImVec2((std::max)(8.f, endX - x), 25.f));
-            if (ImGui::IsItemClicked()) { m_SelectedAnimationRow = index; m_SelectedBoxKind = 1; m_DetailOpen = true; }
-            CompositionTimeline::DrawBox(draw, ImVec2(x, y), ImVec2(endX, y + 25.f), IM_COL32(113, 82, 147, 255),
-                m_SelectedBoxKind == 1 && m_SelectedAnimationRow == index, track.displayName.empty() ? track.clipName.c_str() : track.displayName.c_str());
-            if (ImGui::IsItemHovered()) ImGui::SetTooltip("Animation: %s / %u..%u ms\nSelect to edit or duplicate in Box Detail.", track.clipName.c_str(), track.startMs, end);
-            ImGui::PopID();
-        }
-        for (size_t index = 0; index < sequence.effectTracks.size(); ++index)
-        {
-            const auto& effect = sequence.effectTracks[index];
-            const float y = origin.y + 28.f + rowHeight * (1u + sequence.tracks.size() + animationSlots.size() + index);
-            label("Effect", y);
-            const float x = origin.x + sequence.EffectStartMs(effect) * pixelsPerMs;
-            const float endX = x + effect.durationMs * pixelsPerMs;
-            ImGui::PushID(effect.effectTrackId.c_str());
-            ImGui::SetCursorScreenPos(ImVec2(x, y));
-            ImGui::InvisibleButton("EffectBox", ImVec2((std::max)(8.f, endX - x), 25.f));
-            if (ImGui::IsItemClicked()) { m_SelectedEffectRow = index; m_SelectedBoxKind = 2; m_DetailOpen = true; }
-            CompositionTimeline::DrawBox(draw, ImVec2(x, y), ImVec2(endX, y + 25.f),
-                IM_COL32(167, 95, 51, 255), m_SelectedBoxKind == 2 && m_SelectedEffectRow == index, effect.resourceId.c_str());
-            if (ImGui::IsItemHovered()) ImGui::SetTooltip("Effect: %s / %u..%u ms\nSelect to edit or duplicate in Box Detail.",
-                effect.resourceId.c_str(), sequence.EffectStartMs(effect), sequence.EffectStartMs(effect) + effect.durationMs);
-            ImGui::PopID();
-        }
-        for (size_t index = 0; index < sequence.colliderTracks.size(); ++index)
-        {
-            const auto& collider = sequence.colliderTracks[index];
-            const float y = origin.y + 28.f + rowHeight * (1u + sequence.tracks.size() + animationSlots.size() + sequence.effectTracks.size() + index);
-            label("Collider", y);
-            const float x = origin.x + collider.startMs * pixelsPerMs;
-            const float endX = x + collider.durationMs * pixelsPerMs;
-            ImGui::PushID(collider.colliderTrackId.c_str());
-            ImGui::SetCursorScreenPos(ImVec2(x, y));
-            ImGui::InvisibleButton("ColliderBox", ImVec2((std::max)(8.f, endX - x), 25.f));
-            if (ImGui::IsItemClicked()) { m_SelectedColliderRow = index; m_SelectedBoxKind = 3; m_DetailOpen = true; }
-            CompositionTimeline::DrawBox(draw, ImVec2(x, y), ImVec2(endX, y + 25.f), IM_COL32(49, 143, 119, 255),
-                m_SelectedBoxKind == 3 && m_SelectedColliderRow == index, collider.behavior.c_str());
-            if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s / %u..%u ms\nSelect to edit the rectangle or duplicate it in Box Detail.",
-                collider.colliderTrackId.c_str(), collider.startMs, collider.startMs + collider.durationMs);
-            ImGui::PopID();
-        }
+        const float rowsEnd = Render_TimelineRows(sequence, m_SelectedInstance, origin.x,
+            origin.y + 28.f + rowHeight, width, pixelsPerMs);
+        const float height = rowsEnd - origin.y + (showPhysics ? 64.f : 0.f);
         if (showPhysics)
         {
-            const float top = origin.y + 28.f + tracksHeight;
+            const float top = rowsEnd;
             draw->AddRectFilled(ImVec2(origin.x, top), ImVec2(origin.x + width, top + 60.f), IM_COL32(28, 49, 48, 255));
             draw->AddText(ImVec2(origin.x + 5.f, top + 3.f), IM_COL32(136, 227, 198, 255), "Physics Y offset / first emission");
             const auto& motion = sequence.objectMotion;

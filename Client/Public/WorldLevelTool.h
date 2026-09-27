@@ -13,7 +13,7 @@ class CMapPlacementEditSession;
 enum class WORLD_LEVEL_COMPOSITION_OWNER { ACTION, SEQUENCE };
 /* PICK_PLACEMENT asks MainApp for one viewport click; the tool's map edit
    session consumes the resolved world point. */
-enum class WORLD_LEVEL_REQUEST_KIND { OPEN_MAP, OPEN_WORLD_OBJECT, OPEN_COMPOSITION, OPEN_LIGHT, FOCUS, PICK_PLACEMENT };
+enum class WORLD_LEVEL_REQUEST_KIND { OPEN_MAP, OPEN_WORLD_OBJECT, OPEN_COMPOSITION, OPEN_LIGHT, FOCUS, PICK_PLACEMENT, OPEN_GUIDE };
 
 struct WORLD_LEVEL_TOOL_REQUEST final
 {

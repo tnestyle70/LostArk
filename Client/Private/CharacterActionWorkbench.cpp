@@ -689,6 +689,7 @@ bool CCharacterActionWorkbench::Load_Class(const int classIndex)
 bool CCharacterActionWorkbench::Select_Action(const int classIndex, const std::uint32_t skillId,
     const std::optional<std::uint32_t> stage)
 {
+    if (m_Sequencer && !m_Sequencer->Ensure_RecoveryCameraSaved(m_Status)) return false;
     if (!m_ModelMode && m_ClassIndex == classIndex && m_SkillId == skillId && m_Stage == stage && m_CompositionReady && Target_IsCurrent())
     { m_CompositionMode = true; m_ViewRequest.restoreSequencer = true; return true; }
     if (m_CompositionReady && m_Sequencer && m_Sequencer->Is_Dirty())

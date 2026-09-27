@@ -30,10 +30,13 @@ public:
 	bool_t Load();
 	/* The class's five visual set ids, indexed by Object_Unit. Null when the class is absent. */
 	const std::vector<std::string>* Find(const std::string& strAssetId) const;
+	/* Optional stable defaultVisualSetId resolves into this unchanged icon order. */
+	int32_t Get_DefaultIndex(const std::string& strAssetId) const;
 	const std::string& Get_Status() const { return m_strStatus; }
 
 private:
 	std::unordered_map<std::string, std::vector<std::string>> m_Classes;
+	std::unordered_map<std::string, int32_t> m_DefaultIndices;
 	std::string m_strSchema;
 	std::string m_strDocument;
 	std::string m_strArrayName;

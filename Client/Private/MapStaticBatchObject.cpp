@@ -10,6 +10,7 @@
 #include "Model.h"
 #include "MeshLod.h"
 #include "Profiler.h"
+#include "EffectFailureDiagnostic.h"
 #include "Shader.h"
 
 #include <algorithm>
@@ -17,6 +18,7 @@
 #include <limits>
 #include <cmath>
 #include <cfloat>
+#include <sstream>
 
 namespace
 {
@@ -331,27 +333,44 @@ HRESULT CMapStaticBatchObject::Render_Shadow()
 
 	if (!m_RenderProfile.castsShadow)
 		return S_OK;
+	// Keep the failing asset and operation; the renderer only knows the object type.
+	const auto fail = [this](const char* stage, HRESULT result,
+		uint32_t mesh = UINT_MAX, uint32_t pass = UINT_MAX) noexcept -> HRESULT
+	{
+		try
+		{
+			std::ostringstream detail;
+			detail << "stage=" << stage << " asset=" << std::quoted(m_AssetId)
+				<< " mesh=" << mesh << " pass=" << pass
+				<< " instances=" << m_ShadowInstances.size()
+				<< " hr=0x" << std::hex << static_cast<unsigned long>(result)
+				<< " device_hr=0x" << static_cast<unsigned long>(m_pDevice->GetDeviceRemovedReason());
+			Write_EffectFailureDiagnostic("Map.StaticBatch.Shadow", detail.str());
+		}
+		catch (...) { }
+		return result;
+	};
 	// Frame providers can change the light after Late_Update queued this batch.
-	if (FAILED(Upload_ShadowInstances()))
-		return E_FAIL;
+	HRESULT result = Upload_ShadowInstances();
+	if (FAILED(result))
+		return fail("UploadInstances", result);
 	if (m_ShadowInstances.empty())
 		return S_OK;
 	const bool_t useSourceMaterials =
 		CGameInstance::Get().Get_MaterialRenderSettings().bUseSourceMaterials;
 
-	if (FAILED(CGameInstance::Get().Bind_ShadowLight_ShaderResource(
-			m_pShaderCom, "g_ViewMatrix", D3DTS::VIEW)) ||
-		FAILED(CGameInstance::Get().Bind_ShadowLight_ShaderResource(
-			m_pShaderCom, "g_ProjMatrix", D3DTS::PROJ)))
-	{
-		return E_FAIL;
-	}
+	result = CGameInstance::Get().Bind_ShadowLight_ShaderResource(
+		m_pShaderCom, "g_ViewMatrix", D3DTS::VIEW);
+	if (FAILED(result)) return fail("BindLightView", result);
+	result = CGameInstance::Get().Bind_ShadowLight_ShaderResource(
+		m_pShaderCom, "g_ProjMatrix", D3DTS::PROJ);
+	if (FAILED(result)) return fail("BindLightProjection", result);
 
 	const uint32_t iCullPass =
 		CMapAssetRenderUtils::Select_Pass(
 			m_RenderProfile, m_bMirrored);
 	if (iCullPass > 2u)
-		return E_UNEXPECTED;
+		return fail("SelectPass", E_UNEXPECTED);
 
 	const uint32_t iInstanceCount =
 		static_cast<uint32_t>(m_ShadowInstances.size());
@@ -375,17 +394,20 @@ HRESULT CMapStaticBatchObject::Render_Shadow()
 				surface->family == Engine::MODEL_SURFACE_FAMILY::SOURCE_SPECULAR_OPAQUE)
 				shadowPassBase = 18u;
 			Engine::CProfilerDetailScope scope(CGameInstance::Get().Get_Profiler(), "Map.Shadow.Material.Bind");
-			if (FAILED(CMapAssetRenderUtils::Bind_ShadowMaterial(m_pModelCom, m_pShaderCom,
-				iMesh, m_RenderProfile, m_fElapsedTime))) return E_FAIL;
+			result = CMapAssetRenderUtils::Bind_ShadowMaterial(m_pModelCom, m_pShaderCom,
+				iMesh, m_RenderProfile, m_fElapsedTime);
+			if (FAILED(result)) return fail("BindMaterial", result, iMesh, shadowPassBase + iCullPass);
 		}
 		{
 			Engine::CProfilerDetailScope scope(CGameInstance::Get().Get_Profiler(), "Map.Shadow.Pass.Apply");
-			if (FAILED(m_pShaderCom->Begin(shadowPassBase + iCullPass))) return E_FAIL;
+			result = m_pShaderCom->Begin(shadowPassBase + iCullPass);
+			if (FAILED(result)) return fail("ApplyPass", result, iMesh, shadowPassBase + iCullPass);
 		}
 		{
 			Engine::CProfilerDetailScope scope(CGameInstance::Get().Get_Profiler(), "Map.Shadow.Mesh.Submit");
-			if (FAILED(m_pModelCom->Render_Instanced(iMesh, m_pShadowInstanceBuffer.Get(),
-				sizeof(VTXMESHINSTANCE), iInstanceCount))) return E_FAIL;
+			result = m_pModelCom->Render_Instanced(iMesh, m_pShadowInstanceBuffer.Get(),
+				sizeof(VTXMESHINSTANCE), iInstanceCount);
+			if (FAILED(result)) return fail("DrawMesh", result, iMesh, shadowPassBase + iCullPass);
 		}
 	}
 
@@ -896,14 +918,14 @@ HRESULT CMapStaticBatchObject::Upload_ShadowInstances()
 	if (!payloadUnchanged && !m_CandidateShadowInstances.empty())
 	{
 		Engine::CProfilerDetailScope uploadScope(CGameInstance::Get().Get_Profiler(), "Map.Batch.ShadowUpload");
-		if (FAILED(Ensure_ShadowInstanceCapacity(
-			static_cast<uint32_t>(m_CandidateShadowInstances.size()))))
-			return E_FAIL;
+		HRESULT result = Ensure_ShadowInstanceCapacity(
+			static_cast<uint32_t>(m_CandidateShadowInstances.size()));
+		if (FAILED(result)) return result;
 
 		D3D11_MAPPED_SUBRESOURCE mapped{};
-		if (FAILED(m_pContext->Map(m_pShadowInstanceBuffer.Get(), 0,
-			D3D11_MAP_WRITE_DISCARD, 0, &mapped)))
-			return E_FAIL;
+		result = m_pContext->Map(m_pShadowInstanceBuffer.Get(), 0,
+			D3D11_MAP_WRITE_DISCARD, 0, &mapped);
+		if (FAILED(result)) return result;
 
 		std::memcpy(mapped.pData, m_CandidateShadowInstances.data(),
 			m_CandidateShadowInstances.size() * sizeof(VTXMESHINSTANCE));

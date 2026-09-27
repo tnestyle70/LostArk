@@ -1,3 +1,4 @@
+#ifndef SOURCE_CHARACTER_BASE_DISPATCH_CASES
 SOURCE_CHARACTER_NATIVE_OUTPUT SourceCharacterBase9(SOURCE_CHARACTER_NATIVE_INPUT input)
 {
     SOURCE_CHARACTER_NATIVE_OUTPUT output = (SOURCE_CHARACTER_NATIVE_OUTPUT)0;
@@ -5058,3 +5059,13 @@ SOURCE_CHARACTER_NATIVE_OUTPUT SourceCharacterBase16(SOURCE_CHARACTER_NATIVE_INP
     return output;
 }
 
+#else // SOURCE_CHARACTER_BASE_DISPATCH_CASES
+    case 9u: return SourceCharacterBase9(input);
+    case 10u: return SourceCharacterBase10(input);
+    case 11u: return SourceCharacterBase11(input);
+    case 12u: return SourceCharacterBase12(input);
+    case 13u: return SourceCharacterBase13(input);
+    case 14u: return SourceCharacterBase14(input);
+    case 15u: return SourceCharacterBase15(input);
+    case 16u: return SourceCharacterBase16(input);
+#endif // SOURCE_CHARACTER_BASE_DISPATCH_CASES

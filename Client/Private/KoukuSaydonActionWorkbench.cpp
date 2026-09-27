@@ -153,10 +153,10 @@ namespace
 		result.push_back("Subtitle");
 		return result;
 	}();
-	constexpr ImU32 TIMELINE_LOGIC_COLOR = IM_COL32(196, 118, 64, 255);
-	constexpr ImU32 TIMELINE_SUMMON_COLOR = IM_COL32(88, 156, 116, 255);
-	constexpr ImU32 TIMELINE_WORLD_COLOR = IM_COL32(84, 132, 196, 255);
-	constexpr ImU32 TIMELINE_SCENE_PROFILE_COLOR = IM_COL32(156, 108, 196, 255);
+	constexpr ImU32 TIMELINE_LOGIC_COLOR = CompositionTimeline::LogicColor;
+	constexpr ImU32 TIMELINE_SUMMON_COLOR = CompositionTimeline::SummonColor;
+	constexpr ImU32 TIMELINE_WORLD_COLOR = CompositionTimeline::WorldColor;
+	constexpr ImU32 TIMELINE_SCENE_PROFILE_COLOR = CompositionTimeline::SceneProfileColor;
 	constexpr const char_t* DEFAULT_BOSS_VARIANT_LABEL = "\xEC\x84\xB8\xEC\x9D\xB4\xED\x8A\xBC - 1\xEA\xB4\x80\xEB\xAC\xB8";
 	/* Pose index -> the clip the Q/W/E/R slot plays before the dance shuffle. */
 	constexpr std::array<const char_t*, 4u> DANCE_POSE_LABELS = {
@@ -1493,85 +1493,8 @@ namespace
 		return true;
 	}
 
-	struct TIMELINE_DISPLAY_INTERVAL
-	{
-		std::string occurrenceId;
-		std::uint64_t startMs, durationMs;
-		std::uint32_t tailMs = 0u;
-		std::string groupId;
-	};
-	struct TIMELINE_DISPLAY_GROUP
-	{
-		std::string groupId;
-		std::uint64_t startMs = 0u, endMs = 0u;
-		std::size_t firstRow = 0u, rowCount = 0u;
-	};
-	struct TIMELINE_DISPLAY_LAYOUT
-	{
-		std::unordered_map<std::string, std::size_t> occurrenceRows;
-		std::vector<TIMELINE_DISPLAY_GROUP> groups;
-		std::size_t rowCount = 1u;
-	};
-
-	TIMELINE_DISPLAY_LAYOUT Allocate_TimelineDisplayRows(
-		std::vector<TIMELINE_DISPLAY_INTERVAL> intervals, const std::uint64_t minimumBoxMs)
-	{
-		// A saved group reserves one contiguous row block for its complete span.
-		// Internal overlaps still get separate hit-test rows; no authored clock changes.
-		std::stable_sort(intervals.begin(), intervals.end(),
-			[](const auto& a, const auto& b) { return a.startMs < b.startMs; });
-		struct UNIT
-		{
-			TIMELINE_DISPLAY_GROUP span;
-			std::vector<std::pair<std::string, std::size_t>> memberRows;
-			std::vector<std::uint64_t> rowEnds;
-		};
-		std::vector<UNIT> units;
-		std::unordered_map<std::string, std::size_t> groupUnits;
-		for (const auto& interval : intervals)
-		{
-			std::size_t unitIndex = units.size();
-			if (!interval.groupId.empty())
-			{
-				const auto [found, inserted] = groupUnits.emplace(interval.groupId, unitIndex);
-				unitIndex = found->second;
-			}
-			if (unitIndex == units.size())
-			{
-				UNIT unit;
-				unit.span.groupId = interval.groupId; unit.span.startMs = interval.startMs;
-				units.push_back(std::move(unit));
-			}
-			auto& unit = units[unitIndex];
-			const auto end = interval.startMs + (std::max)(interval.durationMs, minimumBoxMs) + interval.tailMs;
-			std::size_t row = 0u;
-			while (row < unit.rowEnds.size() && unit.rowEnds[row] > interval.startMs) ++row;
-			if (row == unit.rowEnds.size()) unit.rowEnds.push_back(end); else unit.rowEnds[row] = end;
-			unit.span.endMs = (std::max)(unit.span.endMs, end);
-			unit.memberRows.emplace_back(interval.occurrenceId, row);
-		}
-		TIMELINE_DISPLAY_LAYOUT layout;
-		std::vector<std::uint64_t> rowEnds;
-		for (auto& unit : units)
-		{
-			unit.span.rowCount = unit.rowEnds.size();
-			std::size_t first = 0u;
-			for (;; ++first)
-			{
-				bool available = true;
-				for (std::size_t offset = 0u; offset < unit.span.rowCount && first + offset < rowEnds.size(); ++offset)
-					if (rowEnds[first + offset] > unit.span.startMs) { available = false; break; }
-				if (available) break;
-			}
-			rowEnds.resize((std::max)(rowEnds.size(), first + unit.span.rowCount), 0u);
-			for (std::size_t offset = 0u; offset < unit.span.rowCount; ++offset) rowEnds[first + offset] = unit.span.endMs;
-			for (const auto& [id, row] : unit.memberRows) layout.occurrenceRows.emplace(id, first + row);
-			unit.span.firstRow = first;
-			if (!unit.span.groupId.empty()) layout.groups.push_back(std::move(unit.span));
-		}
-		layout.rowCount = (std::max)(std::size_t{1u}, rowEnds.size());
-		return layout;
-	}
+	using TIMELINE_DISPLAY_INTERVAL = CompositionTimeline::DISPLAY_INTERVAL;
+	using TIMELINE_DISPLAY_LAYOUT = CompositionTimeline::DISPLAY_LAYOUT;
 
 	void Remove_SingletonPresentationGroups(KOUKU_SAYDON_COMPOSITION_DOCUMENT& document)
 	{
@@ -8702,7 +8625,7 @@ void Client::CKoukuSaydonActionWorkbench::Render_Timeline()
 	for (const auto& stage : pattern->Stages)
 	{
 		for (const auto& box : stage.AnimationOccurrences)
-			lanes[animationLane].intervals.push_back({ box.strOccurrenceId, stageBaseMs + box.iStartOffsetMs, box.iPlayMs });
+			lanes[animationLane].intervals.push_back({ box.strOccurrenceId, double(stageBaseMs + box.iStartOffsetMs), double(box.iPlayMs) });
 		stageBaseMs += stage.iDurationMs;
 	}
 	// Each occurrence/slot owns its display rows even when another actor fits
@@ -8759,14 +8682,14 @@ void Client::CKoukuSaydonActionWorkbench::Render_Timeline()
 				worldClipLanes.push_back({box.strOccurrenceId, clip.strSlotId, row.actorLabel});
 				actorLane = std::prev(worldClipLanes.end());
 			}
-			actorLane->intervals.push_back({row.id, row.startMs, row.durationMs});
+			actorLane->intervals.push_back({row.id, double(row.startMs), double(row.durationMs)});
 			worldClipRows.push_back(std::move(row));
 		}
 	}
 	const auto appendIntervals = [&](const std::size_t lane, const auto& boxes)
 	{
 		for (const auto& box : boxes)
-			lanes[lane].intervals.push_back({ box.strOccurrenceId, box.iStartMs, box.iDurationMs });
+			lanes[lane].intervals.push_back({ box.strOccurrenceId, double(box.iStartMs), double(box.iDurationMs) });
 	};
 	appendIntervals(patternLane, pattern->PatternOccurrences);
 	appendIntervals(logicLane, pattern->LogicOccurrences);
@@ -8781,7 +8704,7 @@ void Client::CKoukuSaydonActionWorkbench::Render_Timeline()
 		if (resource->eKind == KOUKU_SAYDON_PRESENTATION_KIND::CAMERA)
 			if (const auto* shot = Find_AuthoringCamera(resource->strAssetId)) tailMs = shot->iBlendOutMs;
 		lanes[presentationLane(resource->eKind)].intervals.push_back(
-			{ box.strOccurrenceId, box.iStartMs, box.iDurationMs, tailMs, box.strSelectionGroupId });
+			{ box.strOccurrenceId, double(box.iStartMs), double(box.iDurationMs), double(tailMs), box.strSelectionGroupId });
 	}
 	// All box families use the same visual intervals and row allocation.
 	// Rows belong to their one named track; they do not create new saved tracks.
@@ -8790,14 +8713,14 @@ void Client::CKoukuSaydonActionWorkbench::Render_Timeline()
 	for (auto& lane : lanes)
 	{
 		if (!hasPatternLane && &lane == &lanes[patternLane]) { lane.firstRow = nextRow; lane.rowCount = 0u; continue; }
-		lane.layout = Allocate_TimelineDisplayRows(std::move(lane.intervals), minimumBoxMs);
+		lane.layout = CompositionTimeline::AllocateDisplayRows(std::move(lane.intervals), minimumBoxMs);
 		if (&lane == &lanes[animationLane] && !worldClipLanes.empty())
 		{
 			if (!hasBossAnimations) lane.layout.rowCount = 0u;
 			for (auto& actorLane : worldClipLanes)
 			{
 				actorLane.firstRow = lane.layout.rowCount;
-				const auto actorLayout = Allocate_TimelineDisplayRows(std::move(actorLane.intervals), minimumBoxMs);
+				const auto actorLayout = CompositionTimeline::AllocateDisplayRows(std::move(actorLane.intervals), minimumBoxMs);
 				for (const auto& [id, row] : actorLayout.occurrenceRows)
 					lane.layout.occurrenceRows.emplace(id, actorLane.firstRow + row);
 				lane.layout.rowCount += actorLayout.rowCount;
@@ -8903,10 +8826,10 @@ void Client::CKoukuSaydonActionWorkbench::Render_Timeline()
 		draw->AddLine(ImVec2(playheadX, origin.y), ImVec2(playheadX, origin.y + height),
 			(patternPreview || serverPlayback) ? IM_COL32(255, 220, 72, 230) : IM_COL32(200, 200, 200, 140), 1.5f);
 	}
-	draw->AddText(ImVec2(origin.x + 4.f, origin.y + rulerHeight + 4.f), IM_COL32_WHITE, "Stages");
+	draw->AddText(ImVec2(origin.x + 4.f, origin.y + rulerHeight + 4.f), CompositionTimeline::StageLabelColor, "Stages");
 	if (hasBossAnimations || worldClipLanes.empty())
 		draw->AddText(ImVec2(origin.x + 4.f, laneY(animationLane) + 4.f),
-			IM_COL32(240, 188, 98, 255), "Animation");
+			CompositionTimeline::AnimationLabelColor, "Animation");
 	for (const auto& actorLane : worldClipLanes)
 	{
 		const float y = laneY(animationLane) + TIMELINE_LANE_HEIGHT * static_cast<float>(actorLane.firstRow);
@@ -8916,14 +8839,14 @@ void Client::CKoukuSaydonActionWorkbench::Render_Timeline()
 		label = "Anim: " + label;
 		if (actorLane.slotId != "actor") label += " / " + actorLane.slotId;
 		draw->PushClipRect(ImVec2(origin.x, y), ImVec2(origin.x + labelWidth - 4.f, y + TIMELINE_LANE_HEIGHT), true);
-		draw->AddText(ImVec2(origin.x + 4.f, y + 4.f), IM_COL32(240, 188, 98, 255), label.c_str());
+		draw->AddText(ImVec2(origin.x + 4.f, y + 4.f), CompositionTimeline::AnimationLabelColor, label.c_str());
 		draw->PopClipRect();
 		if (ImGui::IsMouseHoveringRect(ImVec2(origin.x, y), ImVec2(origin.x + labelWidth, y + TIMELINE_LANE_HEIGHT)))
 			ImGui::SetTooltip("Animation: %s\nWorld occurrence: %s\nSlot: %s\nClips keep this actor's own timing.",
 				actorLane.label.c_str(), actorLane.occurrenceId.c_str(), actorLane.slotId.c_str());
 	}
 	draw->AddText(ImVec2(origin.x + 4.f, laneY(logicLane) + 4.f),
-		IM_COL32(236, 170, 110, 255), "Logic");
+		CompositionTimeline::LogicLabelColor, "Logic");
 
 	std::string editStageId, editOccurrenceId, editLogicBoxId, editPatternBoxId;
 	std::uint32_t newPatternStartMs = 0u, newPatternDurationMs = 0u;
@@ -8932,17 +8855,17 @@ void Client::CKoukuSaydonActionWorkbench::Render_Timeline()
 	std::uint32_t newLogicStartMs = 0u, newLogicDurationMs = 0u;
 	const f32_t summonLaneY = laneY(summonLane);
 	draw->AddText(ImVec2(origin.x + 4.f, summonLaneY + 4.f),
-		IM_COL32(150, 220, 180, 255), "Summon");
+		CompositionTimeline::SummonLabelColor, "Summon");
 	std::string editSummonBoxId;
 	std::uint32_t newSummonStartMs = 0u, newSummonDurationMs = 0u;
 	const f32_t worldLaneY = laneY(worldLane);
 	draw->AddText(ImVec2(origin.x + 4.f, worldLaneY + 4.f),
-		IM_COL32(150, 190, 240, 255), "World");
+		CompositionTimeline::WorldLabelColor, "World");
 	std::string editWorldBoxId;
 	std::uint32_t newWorldStartMs = 0u, newWorldDurationMs = 0u;
 	const f32_t sceneLaneY = laneY(sceneLane);
 	draw->AddText(ImVec2(origin.x + 4.f, sceneLaneY + 4.f),
-		IM_COL32(200, 170, 240, 255), "Scene Profile");
+		CompositionTimeline::SceneProfileLabelColor, "Scene Profile");
 	std::string editSceneBoxId;
 	std::uint32_t newSceneStartMs = 0u, newSceneDurationMs = 0u;
 	bool commitGroupMove = false;
@@ -8950,7 +8873,7 @@ void Client::CKoukuSaydonActionWorkbench::Render_Timeline()
 	KOUKU_SAYDON_COMPOSITION_PRESENTATION_OCCURRENCE editedPresentationBox;
 	for (int i = 0; i < 6; ++i)
 		draw->AddText(ImVec2(origin.x + 4.f, laneY(presentationLaneBegin + static_cast<std::size_t>(i)) + 4.f),
-			IM_COL32(180, 210, 200, 255), Presentation_Label(i == 5 ? KOUKU_SAYDON_PRESENTATION_KIND::SUBTITLE : static_cast<KOUKU_SAYDON_PRESENTATION_KIND>(i)));
+			CompositionTimeline::PresentationLabelColor, Presentation_Label(i == 5 ? KOUKU_SAYDON_PRESENTATION_KIND::SUBTITLE : static_cast<KOUKU_SAYDON_PRESENTATION_KIND>(i)));
 	int32_t moveStageDirection = 0;
 	std::uint32_t stageStartMs = 0u;
 	for (const auto& stage : pattern->Stages)
@@ -8987,7 +8910,7 @@ void Client::CKoukuSaydonActionWorkbench::Render_Timeline()
 			}
 		}
 		CompositionTimeline::DrawBox(draw, ImVec2(stageX, stageY),
-			ImVec2(stageX + shownStageWidth, stageY + 22.f), IM_COL32(96, 96, 112, 255),
+			ImVec2(stageX + shownStageWidth, stageY + 22.f), CompositionTimeline::StageColor,
 			contains(m_TimelineSelectedStageIds, stage.strStageId), stage.strStageId.c_str(), false, true);
 		hitBoxes.push_back({ stage.strStageId, {}, ImVec2(stageX, stageY),
 			ImVec2(stageX + shownStageWidth, stageY + 22.f) });
@@ -9051,7 +8974,7 @@ void Client::CKoukuSaydonActionWorkbench::Render_Timeline()
 					occurrence.iStartOffsetMs, occurrence.iSourceStartMs, occurrence.iPlayMs,
 					occurrence.fPlayRate, occurrence.strEndPolicy.c_str());
 			CompositionTimeline::DrawBox(draw, ImVec2(shownX, y),
-				ImVec2(shownX + shownWidth, y + 22.f), IM_COL32(72, 128, 200, 255),
+				ImVec2(shownX + shownWidth, y + 22.f), CompositionTimeline::AnimationColor,
 				contains(m_TimelineSelectedOccurrenceIds, occurrence.strOccurrenceId) ||
 				contains(m_TimelineSelectedStageIds, stage.strStageId), occurrence.strRuntimeClip.c_str());
 			hitBoxes.push_back({ stage.strStageId, occurrence.strOccurrenceId, ImVec2(shownX, y),
@@ -9613,7 +9536,7 @@ void Client::CKoukuSaydonActionWorkbench::Render_Timeline()
 				draw->AddText(ImVec2(endX + 3.f, presentationLaneY + 3.f), IM_COL32(154, 205, 191, 255), "return");
 			}
 		CompositionTimeline::DrawBox(draw, ImVec2(shownX, presentationLaneY),
-			ImVec2(shownX + shownWidth, presentationLaneY + 22.f), IM_COL32(94, 165, 151, 255),
+			ImVec2(shownX + shownWidth, presentationLaneY + 22.f), CompositionTimeline::PresentationColor,
 			contains(m_TimelineSelectedOccurrenceIds, box.strOccurrenceId), label.c_str());
 		hitBoxes.push_back({ {}, box.strOccurrenceId, ImVec2(shownX, presentationLaneY),
 			ImVec2(shownX + shownWidth, presentationLaneY + 22.f) });
@@ -15579,9 +15502,15 @@ void Client::CKoukuSaydonActionWorkbench::Render_LogicDefinitionValues(
 				int count = static_cast<int>(draft.SoldierCounts[i]);
 				if (ImGui::InputInt(labels[i], &count)) draft.SoldierCounts[i] = static_cast<std::uint32_t>(std::clamp(count, 0, 32));
 			}
+			int soldierMaxHp = static_cast<int>(draft.iSoldierMaxHp);
+			int soldierDamage = static_cast<int>(draft.iSoldierDamage);
+			if (ImGui::InputInt("Soldier HP (0 = profile)", &soldierMaxHp))
+				draft.iSoldierMaxHp = static_cast<std::uint32_t>(std::clamp(soldierMaxHp, 0, 2000000000));
+			if (ImGui::InputInt("Soldier fixed damage (0 = profile)", &soldierDamage))
+				draft.iSoldierDamage = static_cast<std::uint32_t>(std::clamp(soldierDamage, 0, 2000000000));
 			ImGui::InputDouble("Spawn radius minimum (m)", &draft.fSpawnRadiusMinM, .1, 1.0, "%.6f");
 			ImGui::InputDouble("Spawn radius maximum (m)", &draft.fSpawnRadiusMaxM, .1, 1.0, "%.6f");
-			ImGui::TextWrapped("The Server places the requested club, heart and diamond soldiers on navigation around the current boss. Counts total 1..64; radius is 0..100 m. Existing defaults are one of each, 3..6 m. They leave when the Pattern ends or after 30 seconds.");
+			ImGui::TextWrapped("The Server places the requested club, heart and diamond soldiers on navigation around the current boss. Counts total 1..64; radius is 0..100 m. Existing defaults are one of each, 3..6 m. They remain until killed or their owning boss is removed. Fixed damage bypasses defense but still respects protection and shields.");
 		}
 		else if (draft.strTriggerKind == "BOSS_TRACK_TARGET")
 			ImGui::TextWrapped("When this Trigger starts, the Server faces the nearest living player immediately. Subsequent boss-anchored effects use that direction.");

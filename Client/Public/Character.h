@@ -412,7 +412,8 @@ public:
 	state. Part visibility is re-derived for this draw and restored right after; the world
 	character is untouched -- real equip/unequip goes through Set_AvatarPartVisible. */
 	HRESULT Render_PreviewParts(uint32_t iSkinnedPassIndex, uint32_t iSocketedPassIndex,
-		uint32_t iAvatarOverrideKinds = 0u, uint32_t iAvatarHiddenKinds = 0u);
+		uint32_t iAvatarOverrideKinds = 0u, uint32_t iAvatarHiddenKinds = 0u,
+		RENDERGROUP group = RENDERGROUP::NONBLEND, ID3D11BlendState* pCoverageBlend = nullptr);
 
 private:
 	const CHARACTER_SPEC* m_pSpec = { nullptr };
@@ -628,6 +629,9 @@ private:
 	void Load_InteractionAnimationBindings();
 	std::array<std::vector<CLIP_STEP>, 5> m_InteractionClips;
 	std::array<std::vector<std::vector<ANIMATION_EFFECT_CUE>>, 5> m_InteractionEffectCues;
+	struct INTERACTION_SOUND_CUE { std::string event; std::uint32_t startMs = 0u; };
+	std::array<std::vector<std::vector<INTERACTION_SOUND_CUE>>, 5> m_InteractionSoundCues;
+	std::vector<bool_t> m_InteractionSoundsSubmitted;
 	/* Optional: a class whose base AnimSet has not been cooked yet keeps the
 	previous locomotion loop for a server movePlayer instead of failing. */
 	bool_t m_hasTerrainJumpClip = false;
@@ -661,7 +665,8 @@ private:
 		std::vector<ACTION_PRESENTATION_CLIP_TIMING>& OutTimings,
 		std::vector<std::uint32_t>* pOutAnimations = nullptr) const;
 	void Set_PartVisible(const tchar_t* pPartTag, bool_t isVisible);
-	HRESULT Render_PreviewPartsInternal(uint32_t iSkinnedPassIndex, uint32_t iSocketedPassIndex);
+	HRESULT Render_PreviewPartsInternal(uint32_t iSkinnedPassIndex, uint32_t iSocketedPassIndex,
+		RENDERGROUP group, ID3D11BlendState* pCoverageBlend);
 	void Apply_DefaultEquipmentVisibility(uint32_t occupiedSlotsMask);
 	void Restore_DefaultEquipmentVisibility();
 	void Sync_EquipmentPreviewStanceVisibility();
@@ -704,6 +709,10 @@ private:
 		f32_t fActionFacingYawDegrees);
 	void Update_EffectCues();
 	void Update_SoundCues();
+	bool_t Is_CombatSoundAudible() const;
+	void Update_CombatSoundAudience();
+	void Play_CombatSound(const std::wstring& path, f32_t volume);
+	std::vector<std::uint64_t> m_CombatSoundHandles;
 	void Update_CameraShakeCues();
 	void Update_VehicleSkillCues(const VEHICLE_SKILL_ENTRY& skill,
 		std::uint32_t actionStartTick, f32_t actionAgeSeconds);

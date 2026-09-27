@@ -8,6 +8,7 @@
 #include <string_view>
 #include <limits>
 #include <vector>
+#include <optional>
 //character의 class와 nickname용 packet
 namespace LostArk::Shared
 {
@@ -106,6 +107,7 @@ namespace LostArk::Shared
 		float fPositionZ = 0.f;
 		//서버 기준 Y축 회전 각도
 		float fYawDegrees = 0.f;
+		PLAYER_CONTROL_KIND eControlKind = PLAYER_CONTROL_KIND::HUMAN;
 	};
 
 	bool Write_Message(
@@ -1727,6 +1729,7 @@ namespace LostArk::Shared
 		std::vector<SKILL_COOLDOWN_SNAPSHOT> Cooldowns;
 		// Server ballistic hit reaction; false outside KNOCKDOWN, including after landing.
 		bool isKnockbackAirborne = false;
+		PLAYER_CONTROL_KIND eControlKind = PLAYER_CONTROL_KIND::HUMAN;
 	};
 
 	enum class BOSS_COMBAT_STATE_FLAG : std::uint16_t
@@ -1756,6 +1759,13 @@ namespace LostArk::Shared
 		return 0u != (flags & static_cast<std::uint16_t>(flag));
 	}
 
+	enum class BOSS_MECHANIC_GAUGE_KIND : std::uint8_t
+	{
+		NONE,
+		STAGGER,
+		BOSS_HP
+	};
+
 	struct BOSS_COMBAT_SNAPSHOT
 	{
 		std::uint32_t iStateRevision = 0;
@@ -1767,6 +1777,10 @@ namespace LostArk::Shared
 		std::uint32_t iMaximumShield = 0;
 		std::uint32_t iResponseProgress = 0;
 		std::uint32_t iResponseThreshold = 0;
+		// Server-owned visibility and remaining/maximum; NONE always carries zeroes.
+		BOSS_MECHANIC_GAUGE_KIND eMechanicGaugeKind = BOSS_MECHANIC_GAUGE_KIND::NONE;
+		std::uint32_t iCurrentMechanicGauge = 0;
+		std::uint32_t iMaximumMechanicGauge = 0;
 		std::uint8_t iGameplayPhase = 1;
 	};
 
@@ -1853,6 +1867,9 @@ namespace LostArk::Shared
 	// value to subtract it; this carries the same number rather than letting the
 	// client re-derive one it has no authority for. Like boss combat events below,
 	// a missed presentation edge never desynchronizes its persistent level state.
+	// Presentation evidence supplied only by the authoritative Mario contact.
+	enum class MARIO_HIT_SOURCE : std::uint8_t { NONE, FLYING_BALL, END };
+
 	struct DAMAGE_EVENT
 	{
 		// Whoever took the damage: a player or a world entity, both of which live
@@ -1880,6 +1897,9 @@ namespace LostArk::Shared
 		PLAYER_ID iSourcePlayerId = INVALID_PLAYER_ID;
 		std::uint32_t iStaggerAmount = 0;
 		bool isCounterSuccess = false;
+		// Server-confirmed threshold edge, independent of the later groggy animation.
+		bool isStaggerSuccess = false;
+		MARIO_HIT_SOURCE eMarioHitSource = MARIO_HIT_SOURCE::NONE;
 		/* Which of the retail damage-text styles this event is drawn in. The Server
 		decides it, exactly as retail's native side does. */
 		DAMAGE_HIT_FLAG eHitFlag = DAMAGE_HIT_FLAG::NORMAL;
@@ -3005,6 +3025,7 @@ namespace LostArk::Shared
 		NET_ENTITY_ID iNetEntityId = INVALID_NET_ENTITY_ID;
 		std::string strNickname;
 		CHARACTER_CLASS_ID eCharacterClass = CHARACTER_CLASS_ID::END;
+		PLAYER_CONTROL_KIND eControlKind = PLAYER_CONTROL_KIND::HUMAN;
 	};
 
 	// Replace-in-full, the same shape S2C_ENCOUNTER_PROP_SYNC/
@@ -3013,6 +3034,8 @@ namespace LostArk::Shared
 	struct S2C_PARTY_ROSTER
 	{
 		std::vector<PARTY_ROSTER_MEMBER> Members;
+		// Human seats remain capped at four; the companion never owns a human seat.
+		std::optional<PARTY_ROSTER_MEMBER> GuideCompanion;
 	};
 
 	bool Write_Message(
@@ -3070,6 +3093,37 @@ namespace LostArk::Shared
 	bool Read_Message(
 		CPacketReader& reader,
 		S2C_CHAT& message);
+
+	// Authored dialogue is a server event, independent of player chat's byte limit.
+	inline constexpr std::size_t MAX_GUIDE_PROMPT_TEXT_BYTES = 512u;
+	struct S2C_GUIDE_PROMPT
+	{
+		NET_ENTITY_ID iGuideNetEntityId = INVALID_NET_ENTITY_ID;
+		std::uint32_t iEventSequence = 0u;
+		std::uint64_t iRevision = 0u;
+		std::string strPromptId;
+		std::string strText;
+		std::uint32_t iDurationMs = 5000u;
+	};
+	// Read-only explanation of the latest authoritative decision. Never a command.
+	struct S2C_GUIDE_STATE
+	{
+		NET_ENTITY_ID iGuideNetEntityId = INVALID_NET_ENTITY_ID;
+		NET_ENTITY_ID iOwnerNetEntityId = INVALID_NET_ENTITY_ID;
+		std::uint64_t iRevision = 0u;
+		std::uint32_t iServerTick = 0u;
+		std::uint8_t iContext = 0u, iAction = 0u;
+		float fFollowScore = 0.f, fEvadeScore = 0.f, fCombatScore = 0.f;
+		float fThreat = 0.f, fAnchorDistance = 0.f, fHpRatio = 1.f;
+		bool bSurvivalOverride = false;
+		std::string strReason;
+		std::string strComboId;
+		std::uint32_t iComboStep = 0u;
+	};
+	bool Write_Message(CPacketWriter& writer, const S2C_GUIDE_PROMPT& message);
+	bool Read_Message(CPacketReader& reader, S2C_GUIDE_PROMPT& message);
+	bool Write_Message(CPacketWriter& writer, const S2C_GUIDE_STATE& message);
+	bool Read_Message(CPacketReader& reader, S2C_GUIDE_STATE& message);
 
 	enum class PARTY_TRANSFER_RESULT : std::uint8_t
 	{

@@ -1,0 +1,9 @@
+{
+  "schema":"lostark.guide-triggers","formatVersion":1,"revision":1,"guideId":"guide.dimensionmaster",
+  "triggers":[
+    {"triggerId":"guide.trigger.bern.first_invite","categoryId":"bern","enabled":true,"event":{"type":"PARTY_JOINED"},"promptId":"guide.bern.party.first_invite","comboId":"","cooldownMs":0,"priority":100},
+    {"triggerId":"guide.trigger.bern.raid","categoryId":"bern","enabled":true,"event":{"type":"SPACE_ENTER","boxId":"guide.box.bern.raid","position":[144.238007,43.8576393,-68.1880035],"yawDegrees":0,"halfExtents":[4,3,4],"anchorPlacementId":"npc.bern.beda.guide"},"promptId":"guide.bern.npc.raid","comboId":"","cooldownMs":30000,"priority":10},
+    {"triggerId":"guide.trigger.bern.honing","categoryId":"bern","enabled":true,"event":{"type":"SPACE_ENTER","boxId":"guide.box.bern.honing","position":[143.069,46.8328629,-104.165001],"yawDegrees":-93.5,"halfExtents":[4,3,4],"anchorPlacementId":"npc.bern.schmidt"},"promptId":"guide.bern.npc.honing","comboId":"","cooldownMs":30000,"priority":10},
+    {"triggerId":"guide.trigger.kouku.real","categoryId":"koukusaydon","enabled":true,"event":{"type":"BOSS_PATTERN_STARTED","patternId":"KAKULSAYDON_G1_PATTERN_2"},"promptId":"guide.koukusaydon.boss.find_real_saydon","comboId":"","cooldownMs":0,"priority":80}
+  ]
+}

@@ -6,6 +6,7 @@
 #include "ServerNavigation.h"
 #include "ServerCollisionSystem.h"
 #include "ServerCombatHitRuntime.h"
+#include "MonsterBrain.h"
 #include "WorldBootstrap.h"
 #include "WorldDestructionBootstrapContractTests.h"
 #include <Windows.h>
@@ -526,6 +527,7 @@ int LostArk::Server::Run_ServerCardMazeContractTests()
 				"Invalid card-rain owner preserves all existing entities");
 			BOSS_PATTERN_MECHANIC_TRIGGER trigger{}; trigger.eKind = BOSS_PATTERN_MECHANIC_TRIGGER_KIND::CARD_RAIN_SOLDIERS;
 			trigger.strTriggerId = "cardrain.contract.trigger";
+			trigger.iSoldierMaxHp = 69000u; trigger.iSoldierDamage = 13200u;
 			room->m_PendingKoukuMechanicTriggers.push_back({owner.iNetEntityId, owner.iPatternSequence, trigger});
 			room->Commit_KoukuMechanicTriggers(100u);
 			const bool spawned = room->m_KoukuCardRainSoldiers.size() == 3u;
@@ -541,6 +543,7 @@ int LostArk::Server::Run_ServerCardMazeContractTests()
 					if (entity == room->m_WorldEntities.end()) { grounded = false; continue; }
 					suits.insert(entity->strArchetypeId); SERVER_NAV_POINT ground{};
 					grounded = grounded && entity->eKind == WORLD_BOOTSTRAP_KIND::MONSTER && !room->m_KoukuCardMaze.Is_Target(id) &&
+						entity->iCurrentHp == 69000u && entity->iMaximumHp == 69000u && entity->iAttackFixedDamage == 13200u &&
 						room->m_ServerNavigation.Sample_Position(entity->fPositionX, entity->fPositionZ, ground) &&
 						std::abs(ground.y - entity->fPositionY) < .01f;
 				}
@@ -548,9 +551,38 @@ int LostArk::Server::Run_ServerCardMazeContractTests()
 					"All three source suits use navigation and do not enter the maze kill ledger");
                 SERVER_PLAYER target{}; target.iPlayerId = 77u; target.iNetEntityId = 7777u;
                 target.eCharacterClass = CHARACTER_CLASS_ID::LANCE_MASTER; target.isCombatReady = true;
-                target.iCurrentHp = target.iMaximumHp = 50000u;
+                target.iCurrentHp = target.iMaximumHp = 10000000u;
                 target.fPositionX = owner.fPositionX; target.fPositionY = owner.fPositionY; target.fPositionZ = owner.fPositionZ;
                 room->m_Players.emplace(target.iPlayerId, target);
+                const auto* profile = room->m_GameplayCatalog.Active().Find_Player(CHARACTER_CLASS_ID::LANCE_MASTER);
+                tests.Require(profile && profile->iDefense == 105u, "Rain hit fixture uses actual Lance Master defense 105");
+                const auto originalSoldier = std::find_if(room->m_WorldEntities.begin(), room->m_WorldEntities.end(),
+                    [&](const auto& entity) { return room->m_KoukuCardRainSoldiers.contains(entity.iNetEntityId); });
+                for (const std::uint32_t shield : {0u, 5000u})
+                {
+                    auto attacker = *originalSoldier;
+                    attacker.eAction = SERVER_ENTITY_ACTION::PATTERN_ACTIVE; attacker.hasAppliedPatternDamage = false;
+                    attacker.iTargetEntityId = target.iNetEntityId;
+                    attacker.fPositionX = target.fPositionX + 1.f; attacker.fPositionZ = target.fPositionZ;
+                    auto victim = target; victim.iShield = shield;
+                    std::map<PLAYER_ID, SERVER_PLAYER> victims{{victim.iPlayerId, victim}};
+                    std::vector<DAMAGE_EVENT> events;
+                    CMonsterBrain brain;
+                    brain.Update(attacker, victims, room->m_GameplayCatalog.Active(), room->m_ServerNavigation,
+                        room->m_ServerCollisionSystem, 1.f / 30.f, 100u, events);
+                    tests.Require(victims.at(victim.iPlayerId).iCurrentHp == victim.iCurrentHp - (13200u - shield) &&
+                        victims.at(victim.iPlayerId).iShield == 0u && !events.empty(),
+                        "A real rain-soldier circle hit deals 13200 after armor and consumes shields before HP");
+                    attacker.hasAppliedPatternDamage = false; attacker.fPositionX += 100.f;
+                    const auto before = victims.at(victim.iPlayerId).iCurrentHp;
+                    brain.Update(attacker, victims, room->m_GameplayCatalog.Active(), room->m_ServerNavigation,
+                        room->m_ServerCollisionSystem, 1.f / 30.f, 101u, events);
+                    tests.Require(victims.at(victim.iPlayerId).iCurrentHp == before,
+                        "The fixed rain hit still requires the real collision overlap");
+                }
+                const auto* mazeProfile = room->m_SpawnGroupBootstrap.Find_Profile("MONSTER_KOUKU_CARD_CLUB");
+                tests.Require(mazeProfile && mazeProfile->iMaxHp == 300u && mazeProfile->iAttackPower == 70u,
+                    "Rain-specific overrides preserve shared maze soldier profiles");
                 std::map<NET_ENTITY_ID, std::array<float, 2u>> birthPositions;
                 for (auto& entity : room->m_WorldEntities)
                 {

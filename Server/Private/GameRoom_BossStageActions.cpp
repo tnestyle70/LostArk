@@ -34,7 +34,7 @@ LostArk::Server::SERVER_PLAYER* LostArk::Server::CGameRoom::Select_BossRandomAli
 	candidates.reserve(m_Players.size());
 	for (auto& [playerId, player] : m_Players)
 	{
-		if (player.iCurrentHp == 0u || !player.isCombatReady ||
+		if (player.Is_Guide() || player.iCurrentHp == 0u || !player.isCombatReady || player.iMarioStage != 0u ||
 			player.eAction == PLAYER_ACTION_STATE::GRABBED || player.eAction == PLAYER_ACTION_STATE::DEAD ||
 			player.eAction == PLAYER_ACTION_STATE::FALLING) continue;
 		candidates.push_back(&player);
@@ -264,7 +264,7 @@ bool LostArk::Server::CGameRoom::Stage_BossPatternStageActions(
 			if (m_Players.end() == target ||
 				INVALID_NET_ENTITY_ID == boss.iPatternTargetEntityId ||
 				0u == target->second.iCurrentHp ||
-				!target->second.isCombatReady || target->second.bPatternBound ||
+				!target->second.isCombatReady || target->second.Is_Guide() || target->second.bPatternBound ||
 				PLAYER_ACTION_STATE::DEAD == target->second.eAction ||
 				PLAYER_ACTION_STATE::FALLING == target->second.eAction ||
 				PLAYER_ACTION_STATE::GRABBED == target->second.eAction ||
@@ -395,7 +395,7 @@ bool LostArk::Server::CGameRoom::Stage_BossPatternStageActions(
 					(void)playerId;
 					if (player.iNetEntityId == boss.iPatternTargetEntityId)
 					{
-						if (0u != player.iCurrentHp && player.isCombatReady &&
+						if (player.Is_Human() && 0u != player.iCurrentHp && player.isCombatReady &&
 							LostArk::Shared::PLAYER_ACTION_STATE::DEAD !=
 								player.eAction &&
 							LostArk::Shared::PLAYER_ACTION_STATE::FALLING !=
@@ -674,7 +674,7 @@ bool LostArk::Server::CGameRoom::Stage_BossPatternStageActions(
 				{
 					(void)volleyPlayerId;
 					if (0u == volleyPlayer.iCurrentHp ||
-						!volleyPlayer.isCombatReady ||
+						!volleyPlayer.isCombatReady || volleyPlayer.Is_Guide() ||
 						LostArk::Shared::PLAYER_ACTION_STATE::DEAD ==
 							volleyPlayer.eAction ||
 						LostArk::Shared::PLAYER_ACTION_STATE::FALLING ==
@@ -962,8 +962,16 @@ bool LostArk::Server::CGameRoom::Prepare_GrabbedPlayerImpact(
 		m_strStatus = "Grab execution requires every living participant in this occurrence";
 		return false;
 	}
+	const auto impactTargets = static_cast<std::size_t>(std::count_if(m_Players.begin(), m_Players.end(),
+        [&](const auto& entry) {
+            const auto& player = entry.second;
+            return player.eAction == PLAYER_ACTION_STATE::GRABBED && player.iCurrentHp &&
+                player.iAttachmentOwnerNetEntityId == boss.iNetEntityId &&
+                player.eAttachmentSlot == PLAYER_ATTACHMENT_SLOT::BOSS_LEFT_HAND &&
+                player.iAttachmentPatternSequence == boss.iPatternSequence;
+        }));
 	if (m_TickDamageEvents.size() > MAX_DAMAGE_EVENTS ||
-		roster.iGrabbedCount > MAX_DAMAGE_EVENTS - m_TickDamageEvents.size())
+		impactTargets > MAX_DAMAGE_EVENTS - m_TickDamageEvents.size())
 	{
 		m_strStatus = "Grabbed-player impact damage event capacity is exhausted";
 		return false;
@@ -1027,7 +1035,7 @@ bool LostArk::Server::CGameRoom::Prepare_GrabbedPlayerImpact(
 		event.isOutgoing = false;
 		stagedDamageEvents.push_back(event);
 	}
-	if (stagedPlayers.size() != roster.iGrabbedCount)
+	if (stagedPlayers.size() != impactTargets)
 	{
 		m_strStatus = "Grabbed-player impact roster changed during preparation";
 		return false;

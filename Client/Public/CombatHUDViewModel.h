@@ -4,12 +4,28 @@
 #include "Network/PacketMessages.h"
 
 #include <cstdint>
+#include <memory>
 #include <string>
 #include <unordered_map>
 #include <vector>
 
+namespace Engine { class CGameObject; }
+
 namespace Client
 {
+	/* Complete Server health projection. The weak actor is presentation-only and lets
+	the head bar follow the interpolated model without retaining a despawned entity. */
+	struct HUD_WORLD_HEALTH_BAR_STATE
+	{
+		LostArk::Shared::NET_ENTITY_ID iNetEntityId = LostArk::Shared::INVALID_NET_ENTITY_ID;
+		bool isPlayer = false;
+		bool isLocal = false;
+		std::uint32_t iCurrentHp = 0;
+		std::uint32_t iMaximumHp = 0;
+		std::uint32_t iShield = 0;
+		std::weak_ptr<Engine::CGameObject> pPresentation;
+	};
+
 	struct HUD_SKILL_STATE
 	{
 		LostArk::Shared::SKILL_ID iSkillId = LostArk::Shared::INVALID_SKILL_ID;
@@ -123,6 +139,10 @@ namespace Client
 		std::uint32_t iMaximumShield = 0;
 		std::uint32_t iResponseProgress = 0;
 		std::uint32_t iResponseThreshold = 0;
+		LostArk::Shared::BOSS_MECHANIC_GAUGE_KIND eMechanicGaugeKind =
+			LostArk::Shared::BOSS_MECHANIC_GAUGE_KIND::NONE;
+		std::uint32_t iCurrentMechanicGauge = 0;
+		std::uint32_t iMaximumMechanicGauge = 0;
 		/* Replicated ground position of the boss entity, for gauges drawn at the boss
 		in world space (CBossImmuneGaugeView). False for the Debug boss preview, which
 		has no entity. */
@@ -372,6 +392,12 @@ namespace Client
 			m_EstherCutinRequest.strArchetypeId = archetypeId;
 		}
 		void Reset_RuntimeState();
+		void Apply_WorldHealthBars(std::vector<HUD_WORLD_HEALTH_BAR_STATE>&& states);
+		void Remove_WorldHealthBar(LostArk::Shared::NET_ENTITY_ID entityId);
+		const std::vector<HUD_WORLD_HEALTH_BAR_STATE>& Get_WorldHealthBars() const
+		{
+			return m_WorldHealthBars;
+		}
 
 		void Set_DeadSceneTextRects(const HUD_DEADSCENE_TEXT_RECTS& rects)
 		{
@@ -558,6 +584,7 @@ namespace Client
 		bool m_bDungeonTimerRunning = false;
 		LostArk::Shared::BINGO_BOARD_SNAPSHOT m_BingoBoard;
 		HUD_BOSS_STATE m_Boss;
+		std::vector<HUD_WORLD_HEALTH_BAR_STATE> m_WorldHealthBars;
 		std::string m_strInteractPromptTriggerId;
 		bool m_bBossDeadRaw = false;
 		std::string m_strBossFocusArchetype;

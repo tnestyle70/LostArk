@@ -172,7 +172,7 @@ bool LostArk::Server::CGameRoom::Begin_KoukuRaidPreparation(const SESSION_ID ses
             }
         }
     }
-    if (!m_iNextKoukuRaidEpoch || m_Players.empty() || m_Players.size() > 4u)
+    if (!m_iNextKoukuRaidEpoch || Count_HumanPlayers() == 0u || Count_HumanPlayers() > 4u)
     { reason = "Complete Play requires one to four room participants and an available epoch"; return false; }
     KOUKU_RAID_RUN staged;
     staged.iOwnerSessionId = sessionId; staged.Request = request; staged.pCatalog = product; staged.State.eWorldId = m_eWorldId;
@@ -181,7 +181,7 @@ bool LostArk::Server::CGameRoom::Begin_KoukuRaidPreparation(const SESSION_ID ses
     staged.State.iActionSourceRevision = request.iActionSourceRevision; staged.State.iSequenceSourceRevision = request.iSequenceSourceRevision;
     staged.State.strReason.clear(); staged.State.iRunEpoch = m_iNextKoukuRaidEpoch;
     staged.State.iOwnerPlayerId = m_PlayerIdBySessionId.at(sessionId);
-    for (const auto& [id, player] : m_Players) staged.PlayerIds.push_back(id);
+    for (const auto& [id, player] : m_Players) if (player.Is_Human()) staged.PlayerIds.push_back(id);
     const auto receipt = m_KoukuSaydonPatternAuditionReceiptBySessionId.find(sessionId);
     if (receipt != m_KoukuSaydonPatternAuditionReceiptBySessionId.end())
     {
@@ -656,6 +656,7 @@ void LostArk::Server::CGameRoom::Update_KoukuRaid(const std::uint32_t tick)
             auto& player = m_Players.at(id); Reset_PlayerForDebugTeleport(player);
             player.fPositionX = ground.x; player.fPositionY = ground.y; player.fPositionZ = ground.z;
         }
+        for (const auto& [id, ground] : arrivals) Guide_AnchorArrived(m_Players.at(id));
         run.CompletedArrivals.insert(completedArrivals.begin(), completedArrivals.end());
         if (Has_ReachedServerTick(tick, run.State.iEndTick))
         {
@@ -738,9 +739,9 @@ void LostArk::Server::CGameRoom::Update_KoukuRaid(const std::uint32_t tick)
                 const auto& player = pair.second;
                 // P28 commits maze entry before the telescope assigns roles or starts HUNTING.
                 // The area owner is cleared only after the return transfer (or player death).
-                return player.eCardMazeRole != CARD_MAZE_ROLE::NONE ||
+                return player.Is_Human() && (player.eCardMazeRole != CARD_MAZE_ROLE::NONE ||
                     (player.iCurrentHp && player.eAction != PLAYER_ACTION_STATE::DEAD &&
-                        player.eKoukuAreaHudMode == KOUKU_HUD_MODE::MAZE);
+                        player.eKoukuAreaHudMode == KOUKU_HUD_MODE::MAZE));
             });
         const auto desired = mazeActive ? KOUKUSAYDON_RAID_PHASE::WAIT_MINIGAME : KOUKUSAYDON_RAID_PHASE::COMBAT;
         if (run.State.ePhase != desired) { run.State.ePhase = desired; run.State.iServerTick = tick; Broadcast_KoukuRaidState(); }

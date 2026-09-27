@@ -9,6 +9,7 @@ SamplerState SourceMapDepthSampler { Filter=MIN_MAG_MIP_POINT; AddressU=Clamp; A
 SamplerState SourceMapSkyCloudSampler { Filter=MIN_MAG_MIP_LINEAR; AddressU=Wrap; AddressV=Mirror; AddressW=Wrap; };
 
 // source.map.spotlight.v1: b45f2673af7b9b48b0ef92280aa46ad5
+#if !defined(SOURCE_CHARACTER_PROGRAM_GROUP) || SOURCE_CHARACTER_PROGRAM_GROUP == 0
 SOURCE_CHARACTER_NATIVE_OUTPUT SourceMapForward33(SOURCE_CHARACTER_NATIVE_INPUT input)
 {
     SOURCE_CHARACTER_NATIVE_OUTPUT output = (SOURCE_CHARACTER_NATIVE_OUTPUT)0;
@@ -902,8 +903,10 @@ SOURCE_CHARACTER_NATIVE_OUTPUT SourceMapForward37(SOURCE_CHARACTER_NATIVE_INPUT 
 
 #include "Shader_SourceMapCharacterSelectPrograms.hlsli"
 
+#endif // SOURCE_CHARACTER_PROGRAM_GROUP map-forward bodies
 #include "Shader_SourceMapWaterPrograms.hlsli"
 
+#if !defined(SOURCE_CHARACTER_PROGRAM_GROUP) || SOURCE_CHARACTER_PROGRAM_GROUP == 0
 float4 EvaluateSourceMapWater(float2 uv,float3 worldPosition,float3 tangent,float3 binormal,
     float3 normal,float4 clipPosition,float4 vertexColor,float2 lightmapUV,float3 cameraPosition)
 {
@@ -954,7 +957,9 @@ float4 EvaluateSourceMapWater(float2 uv,float3 worldPosition,float3 tangent,floa
 
 #include "Shader_SourceMapTranslucentPrograms.hlsli"
 #include "Shader_SourceMapSL10Forward.hlsli"
+#endif // SOURCE_CHARACTER_PROGRAM_GROUP map-forward bodies
 #include "Shader_SourceMapDirectPrograms.hlsli"
+#if !defined(SOURCE_CHARACTER_PROGRAM_GROUP) || SOURCE_CHARACTER_PROGRAM_GROUP == 0
 #include "Shader_SourceMovieStaticForward.hlsli"
 
 float4 EvaluateSourceMapTranslucent(float2 uv,float3 worldPosition,float3 tangent,float3 binormal,
@@ -983,7 +988,8 @@ float4 EvaluateSourceMapTranslucent(float2 uv,float3 worldPosition,float3 tangen
     {
         PackSourceMovieBaseInput(input, input.values[0], input.values[1], vertexColor, uv,
             float4(tangentView * 100.f, 1.f), 0.f, float4(t.y,b.y,n.y,0.f),
-            clipPosition * 100.f, EvaluateSceneFog(worldPosition,cameraPosition));
+            clipPosition * 100.f, EvaluateSceneFog(worldPosition,cameraPosition),
+            float4(worldPosition.x*100.f,-worldPosition.z*100.f,worldPosition.y*100.f,1.f));
         input.hasBakedLighting = g_HasBakedLighting != 0u;
         if (input.hasBakedLighting)
         {
@@ -1046,6 +1052,7 @@ float4 EvaluateSourceMapTranslucent(float2 uv,float3 worldPosition,float3 tangen
 }
 
 
+#endif // SOURCE_CHARACTER_PROGRAM_GROUP map-forward bodies
 cbuffer SourceMapForwardLighting
 {
     uint g_SourceMapForwardLightCount = 0u;
@@ -1055,6 +1062,7 @@ cbuffer SourceMapForwardLighting
     float4 g_SourceMapForwardLightConeShadow[400];
 };
 
+#if !defined(SOURCE_CHARACTER_PROGRAM_GROUP) || SOURCE_CHARACTER_PROGRAM_GROUP == 0
 float3 EvaluateSourceMapDirect(float2 uv,float4 extraUV,float3 worldPosition,float3 tangent,
     float3 binormal,float3 normal,float4 clipPosition,float4 vertexColor,float3 cameraPosition)
 {
@@ -1098,7 +1106,7 @@ float3 EvaluateSourceMapDirect(float2 uv,float4 extraUV,float3 worldPosition,flo
             PackSourceMovieLightInput(input, float4(t.x,b.x,n.x,0.f),
                 float4(t.y,b.y,n.y,dot(cross(t,b),n)<0.f?-1.f:1.f), vertexColor, uv,
                 float4(tangentView.xyz * 100.f, 1.f), tangentLight, float4(t.y,b.y,n.y,0.f),
-                clipPosition * 100.f, float4(0.f,0.f,0.f,1.f));
+                clipPosition * 100.f, float4(0.f,0.f,0.f,1.f), sourcePosition);
             output=EvaluateSourceMovieLight(input);
         }
         else switch(g_SourceCharacterProgram)
@@ -1395,4 +1403,5 @@ float4 EvaluateSourceMapForward(float2 uv,float3 worldPosition,float3 tangent,fl
     if(g_SourceCharacterProgram==33u) color.a=1.f;
     return color;
 }
+#endif // SOURCE_CHARACTER_PROGRAM_GROUP map-forward bodies
 #endif

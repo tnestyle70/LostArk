@@ -28,11 +28,65 @@
       "skills": [
         {
           "clip": "rpcz00p_project_tuned_hammer",
-          "playRate": 1.0
+          "playRate": 1.0,
+          "effectCues": [
+            {
+              "effectAssetId": "effect.kouku.mario.player.hammer.impact",
+              "anchorSlotId": "root",
+              "startMs": 0,
+              "endMs": 0,
+              "position": [
+                0,
+                0,
+                0
+              ],
+              "rotationDegrees": [
+                0,
+                0,
+                0
+              ],
+              "scale": [
+                1,
+                1,
+                1
+              ],
+              "followPolicy": "SNAPSHOT",
+              "stopPolicy": "NATURAL",
+              "orientationPolicy": "ACTION_FACING"
+            }
+          ],
+          "soundCues": [
+            {
+              "event": "JumpClown1_Attack1_Cast1",
+              "startMs": 8
+            },
+            {
+              "event": "JumpClown1_Attack1_CastVox1",
+              "startMs": 8
+            },
+            {
+              "event": "JumpClown1_Attack1_Shot1",
+              "startMs": 400
+            }
+          ]
         },
         {
           "clip": "rpcz00p_att_battle_3_01",
-          "playRate": 1.0
+          "playRate": 1.0,
+          "soundCues": [
+            {
+              "event": "JumpClown1_Attack2_Cast1",
+              "startMs": 10
+            },
+            {
+              "event": "JumpClown1_Attack2_CastVox1",
+              "startMs": 10
+            },
+            {
+              "event": "JumpClown1_Attack2_Shot1",
+              "startMs": 310
+            }
+          ]
         }
       ]
     },

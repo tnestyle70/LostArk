@@ -919,6 +919,8 @@ namespace LostArk::Server
 		bool bProjectileHoming = false;
 		std::array<std::uint32_t, 3u> SoldierCounts{ 1u, 1u, 1u };
 		float fSoldierSpawnRadiusMinM = 3.f, fSoldierSpawnRadiusMaxM = 6.f;
+		// Zero preserves the catalog profile; positive damage bypasses armor only.
+		std::uint32_t iSoldierMaxHp = 0u, iSoldierDamage = 0u;
 		bool bHasSoldierTuning = false;
 		std::optional<BOSS_SHOWTIME_BOMB_RESOLUTION> ShowtimeBomb;
 		// WORLD head box after authored Object scale: path-forward, transverse.

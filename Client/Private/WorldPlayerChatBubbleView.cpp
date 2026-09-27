@@ -45,7 +45,7 @@ namespace
 	constexpr f32_t TEXT_BOOST = 1.5f;
 	/* Balloon.as defaultStrLength: a message this short is centred, longer ones are left aligned. */
 	constexpr size_t CENTER_UP_TO_CHARS = 15;
-	constexpr size_t BUBBLE_SLOTS = 4;
+	constexpr size_t BUBBLE_SLOTS = 5;
 	constexpr const char* PIECES[9] = { "tl", "t", "tr", "l", "c", "r", "bl", "b", "br" };
 
 	const wstring_t FONT_YG760 = TEXT("Font_YG760");
@@ -155,9 +155,21 @@ void Client::CWorldPlayerChatBubbleView::Render(
 	m_strPlacedFont = strFont;
 	m_fPlacedFontScale = fFontScale;
 
+    // Shared Bern may contain reception actors and several parties. Reserve the
+    // first visible bubble for our companion so unrelated chat cannot hide guidance.
+    std::vector<const REPLICATED_PLAYER_VIEW*> ordered;
+    ordered.reserve(Players.size());
+    for (const auto& player : Players) ordered.push_back(&player);
+    const auto& roster = Replication.Get_PartyRoster();
+    const auto priority = [&roster](const REPLICATED_PLAYER_VIEW* player) {
+        if (roster.GuideCompanion && roster.GuideCompanion->iNetEntityId == player->iNetEntityId) return 0;
+        return player->eControlKind == LostArk::Shared::PLAYER_CONTROL_KIND::GUIDE_AI ? 1 : 2;
+    };
+    std::stable_sort(ordered.begin(), ordered.end(), [&](const auto* left, const auto* right) { return priority(left) < priority(right); });
 	size_t iBubble = 0;
-	for (const REPLICATED_PLAYER_VIEW& player : Players)
+	for (const auto* playerView : ordered)
 	{
+        const REPLICATED_PLAYER_VIEW& player = *playerView;
 		if (iBubble >= BUBBLE_SLOTS)
 			break;
 		std::string bubbleText;
@@ -183,7 +195,8 @@ void Client::CWorldPlayerChatBubbleView::Render(
 		if (!CWorldPlayerNameplateView::Try_ConvertUtf8(bubbleText, bubbleWide))
 			continue;
 
-		Wrap_Text(strFont, fFontScale, bubbleWide, MAX_TEXT_W * fS, m_Lines);
+		Wrap_Text(strFont, fFontScale, bubbleWide,
+            (player.eControlKind == LostArk::Shared::PLAYER_CONTROL_KIND::GUIDE_AI ? 360.f : MAX_TEXT_W) * fS, m_Lines);
 		f32_t fTextW = 0.f;
 		for (const std::wstring& strLine : m_Lines)
 			fTextW = (std::max)(fTextW, gameInstance.Measure_Text(strFont, strLine.c_str()).x * fFontScale);
@@ -195,9 +208,14 @@ void Client::CWorldPlayerChatBubbleView::Render(
 		const f32_t fTopH = GRID_Y0 * fS, fBottomH = (ART_H - GRID_Y1) * fS;
 		const f32_t fW = (std::max)(ART_W * fS, fTextW + PAD_X * 2.f * fS);
 		const f32_t fH = (std::max)(ART_H * fS, fTextH + (PAD_TOP + PAD_BOTTOM + TAIL_H) * fS);
-		const f32_t fLeft = std::round(vAnchor.x - fW * 0.5f);
+		f32_t fLeft = std::round(vAnchor.x - fW * 0.5f);
 		const f32_t fStackTop = CWorldPlayerNameplateView::Stack_Top_RefPx() * (vViewportSize.y / REFERENCE_HEIGHT);
-		const f32_t fTop = std::round(vAnchor.y - fStackTop - fH);
+		f32_t fTop = std::round(vAnchor.y - fStackTop - fH);
+        if (player.eControlKind == LostArk::Shared::PLAYER_CONTROL_KIND::GUIDE_AI)
+        {
+            fLeft = std::clamp(fLeft, 8.f, (std::max)(8.f, vViewportSize.x - fW - 8.f));
+            fTop = std::clamp(fTop, 8.f, (std::max)(8.f, vViewportSize.y - fH - 8.f));
+        }
 
 		if (nullptr != m_pView)
 		{

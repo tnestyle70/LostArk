@@ -1682,6 +1682,8 @@ void CWorldSequencePlayer::Update_SoundTails(const f32_t timeDelta)
     if (m_bPaused || !std::isfinite(timeDelta) || timeDelta < 0.f) return;
     for (auto at = m_RetiredSounds.begin(); at != m_RetiredSounds.end();)
     {
+        if (m_SoundAudience && !m_SoundAudience(at->ownerId))
+        { CGameInstance::Get().Stop_SoundCue(at->handle); at = m_RetiredSounds.erase(at); continue; }
         at->remainingMs -= timeDelta * 1000.f;
         if (at->remainingMs > 0.f && CGameInstance::Get().Is_SoundCueActive(at->handle)) { ++at; continue; }
         CGameInstance::Get().Stop_SoundCue(at->handle);
@@ -1701,6 +1703,13 @@ void CWorldSequencePlayer::Retire_InstanceSoundTails(const std::string& instance
 
 void CWorldSequencePlayer::Apply_Sounds(ACTIVE_INSTANCE& active)
 {
+    if (m_SoundAudience && !m_SoundAudience(active.instanceId))
+    {
+        for (const auto& sound : active.sounds) CGameInstance::Get().Stop_SoundCue(sound.handle);
+        active.sounds.clear();
+        active.seekSounds = false;
+        return;
+    }
     if (active.soundPlaybackFinished && !active.seekSounds) return;
     active.soundPlaybackFinished = false;
     std::unordered_set<std::string> wanted;
@@ -1782,6 +1791,34 @@ void Client::CWorldSequencePlayer::Collect_VisibleObjects(
         for (const auto& instance : instances)
             for (const auto& entry : instance.objects)
                 if (entry.object && entry.object->Is_Visible()) out.push_back(entry.object);
+    };
+    collect(m_Active);
+    collect(m_Held);
+}
+
+void Client::CWorldSequencePlayer::Collect_ObjectInspectionSamples(
+    std::vector<OBJECT_INSPECTION_SAMPLE>& out) const
+{
+    const auto collect = [&](const auto& instances) {
+        for (const auto& active : instances)
+        {
+            const auto* instance = m_Document.Find_Instance(active.instanceId);
+            if (!instance) continue;
+            for (const auto& entry : active.objects)
+            {
+                if (!entry.object) continue;
+                const auto binding = std::find_if(instance->bindings.begin(), instance->bindings.end(),
+                    [&entry](const auto& value) {
+                        return value.slotId == entry.slotId &&
+                            value.targetKind == WORLD_SEQUENCE_TARGET_KIND::OBJECT_RESOURCE;
+                    });
+                if (binding == instance->bindings.end()) continue;
+                const auto* resource = m_Document.Find_ObjectResource(binding->targetId);
+                if (!resource) continue;
+                out.push_back({active.instanceId, entry.slotId, resource->objectId,
+                    resource->modelAssetId, entry.emissionIndex, entry.object});
+            }
+        }
     };
     collect(m_Active);
     collect(m_Held);

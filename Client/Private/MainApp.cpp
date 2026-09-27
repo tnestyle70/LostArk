@@ -11,7 +11,7 @@
 #include "MainApp.h"
 #include "PlayableCharacterAssetService.h"
 #include "DungeonTimerView.h"
-#include "BossImmuneGaugeView.h"
+#include "WorldHealthBarView.h"
 
 #include "CharacterSelectionState.h"
 #include "CharacterSelectWindowView.h"
@@ -111,6 +111,7 @@
 #include "EffectAuthoringSequencer.h"
 #include "WorldObjectTool.h"
 #include "WorldLevelTool.h"
+#include "GuideAITool.h"
 #include "ValtanPatternAuditionService.h"
 #include "ValtanPatternFlowService.h"
 #include "ValtanTuningCommandService.h"
@@ -132,6 +133,27 @@
 namespace
 {
 #ifdef _DEBUG
+    Client::CLASS_MOVIE_INSPECTION_CALLBACKS ClassMovieInspectionCallbacks()
+    {
+        Client::CLASS_MOVIE_INSPECTION_CALLBACKS callbacks;
+        callbacks.state = [](const std::string& classId, bool loop) {
+            auto* level = CLevel_CharacterSelect::Get_Active();
+            if (level && CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::CHARACTER_SELECT))
+                return level->Get_ClassSelectionPresentation().Get_WorldInspection(classId, loop);
+            Client::CLASS_MOVIE_INSPECTION_STATE state;
+            state.classId = classId; state.loop = loop;
+            state.status = "Enter Character Select to inspect Movie models.";
+            return state;
+        };
+        callbacks.command = [](const std::string& classId, bool loop,
+            const Client::CLASS_MOVIE_INSPECTION_COMMAND& command, std::string& status) {
+            auto* level = CLevel_CharacterSelect::Get_Active();
+            if (!level || CGameInstance::Get().Get_CurrentLevelID() != ETOUI(LEVEL::CHARACTER_SELECT))
+            { status = "Movie inspection requires Character Select."; return false; }
+            return level->Get_ClassSelectionPresentation().Inspect_World(classId, loop, command, status);
+        };
+        return callbacks;
+    }
     void ConfigureClassMovieEditor(Client::CEffect_Tool& tool)
     {
         CEffect_Tool::CLASS_MOVIE_CALLBACKS movieCallbacks;
@@ -145,6 +167,9 @@ namespace
             state.active = preview.Is_Active() && preview.Get_ActiveClass() == classId;
             state.paused = preview.Is_Paused(); state.loop = preview.Is_Looping();
             state.clockMs = preview.Get_ClockMs(); state.durationMs = preview.Get_DurationMs();
+            state.playbackRate = preview.Get_PlaybackRate();
+            state.selectionActive = preview.Is_SelectionActive();
+            state.selectionRepeat = preview.Is_SelectionRepeating();
             state.status = level->Get_ClassCinematicStatus();
             return state;
         };
@@ -193,11 +218,36 @@ namespace
             { status = "Movie Effect preview requires Character Select."; return false; }
             return level->Get_ClassSelectionPresentation().Preview_EffectDocument(document, status);
         };
+        movieCallbacks.playSelection = [](const std::string& classId, bool loop,
+            const EFFECT_DOCUMENT_DESC& full, const EFFECT_DOCUMENT_DESC& selected,
+            const std::vector<std::string>& drawElementIds, double startAgeMs, double endAgeMs, bool repeat, std::string& status) {
+            auto* level = CLevel_CharacterSelect::Get_Active();
+            if (!level || CGameInstance::Get().Get_CurrentLevelID() != ETOUI(LEVEL::CHARACTER_SELECT))
+            { status = "Enter Character Select to play Movie elements."; return false; }
+            const auto& options = level->Get_ClassMovieOptions();
+            const auto option = std::find_if(options.begin(), options.end(), [&](const auto& value) { return value.classId == classId; });
+            if (option == options.end() || !level->Select_ClassMovieCategory(static_cast<size_t>(std::distance(options.begin(), option))))
+            { status = "This Movie category is no longer available."; return false; }
+            return level->Play_ClassCinematicSelection(classId, loop, full, selected, drawElementIds, startAgeMs, endAgeMs, repeat, status);
+        };
+        movieCallbacks.previewSelection = [](const EFFECT_DOCUMENT_DESC& full,
+            const EFFECT_DOCUMENT_DESC& selected, const std::vector<std::string>& drawElementIds, double startAgeMs, double endAgeMs, std::string& status) {
+            auto* level = CLevel_CharacterSelect::Get_Active();
+            if (!level || CGameInstance::Get().Get_CurrentLevelID() != ETOUI(LEVEL::CHARACTER_SELECT))
+            { status = "Movie Effect preview requires Character Select."; return false; }
+            return level->Get_ClassSelectionPresentation().Preview_EffectSelection(full, selected, drawElementIds, startAgeMs, endAgeMs, status);
+        };
+        movieCallbacks.setPlaybackRate = [](double rate) {
+            auto* level = CLevel_CharacterSelect::Get_Active();
+            return level && CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::CHARACTER_SELECT) &&
+                level->Get_ClassSelectionPresentation().Set_PlaybackRate(rate);
+        };
         movieCallbacks.clearPreviews = [](std::string& status) {
             auto* level = CLevel_CharacterSelect::Get_Active();
             return !level || CGameInstance::Get().Get_CurrentLevelID() != ETOUI(LEVEL::CHARACTER_SELECT) ||
                 level->Get_ClassSelectionPresentation().Clear_EffectPreviews(status);
         };
+        movieCallbacks.inspection = ClassMovieInspectionCallbacks();
         tool.Set_ClassMovieCallbacks(std::move(movieCallbacks));
     }
 #endif
@@ -1029,8 +1079,7 @@ HRESULT CMainApp::Initialize()
 	this Level::STATIC construction until the first Update_BossHealthBar() call finds a valid
 	boss. */
 	Hide_BossHealthBar();
-	m_pBossImmuneGaugeView = std::make_unique<CBossImmuneGaugeView>(
-		m_pDevice, m_pContext, ETOUI(LEVEL::STATIC));
+	m_pWorldHealthBarView = std::make_unique<CWorldHealthBarView>(m_pDevice, m_pContext);
 	m_pEstherUIView = std::make_unique<CUILayoutRuntime>(
 		m_pDevice, m_pContext, ETOUI(LEVEL::STATIC), TEXT("Layer_UI"),
 		L"UI/Esther/EstherUI.json");
@@ -1733,6 +1782,9 @@ void CMainApp::Sync_KoukuCinematicUI()
 
 void CMainApp::Update(const f32_t fTimeDelta)
 {
+#ifdef _DEBUG
+	if (m_pGuideAITool) m_pGuideAITool->Update();
+#endif
 	// Commit last frame's request before this frame builds UI and render queues.
 	// The newly active Level must Update/Late_Update before its first Render.
 	Apply_LevelRequest();
@@ -1869,7 +1921,6 @@ void CMainApp::Update(const f32_t fTimeDelta)
 	}
 	Update_ItemUpgrade(fTimeDelta);
 	Update_BossHealthBar();
-	Update_BossImmuneGauge(fTimeDelta);
 	Update_EstherGauge(fTimeDelta);
 	if (nullptr != m_pEstherCutinService)
 		m_pEstherCutinService->Update(fTimeDelta);
@@ -2412,6 +2463,14 @@ void CMainApp::Update(const f32_t fTimeDelta)
 	}
 	if (nullptr != m_pValtanActionWorkbench)
 	{
+		EFFECT_RESOURCE_KEY resourceKey;
+		if (m_pValtanActionWorkbench->Consume_EffectResourceOpenRequest(resourceKey) &&
+			SUCCEEDED(EnsureDebugTool(DEBUG_TOOL::EFFECT)) && nullptr != m_pEffectTool)
+		{
+			const bool opened = m_pEffectTool->Open_AuthoringResource(resourceKey);
+			m_strToolStatus = opened ? "Opened the saved Composition resource in its Effect editor." :
+				"Effect editor preserved its draft; finish the pending edit or check its source status.";
+		}
 		EFFECT_TOOL_VALTAN_PRODUCT_OPEN_REQUEST effectRequest;
 		if (m_pValtanActionWorkbench->Consume_EffectToolOpenRequest(
 				effectRequest))
@@ -3488,6 +3547,7 @@ void CMainApp::Update(const f32_t fTimeDelta)
 	/* Every shown runtime surface now declares where it covers the screen and on which layer,
 	so each text group can be hidden exactly where a surface above it covers it. */
 	Sync_KoukuCinematicUI();
+	Update_WorldHealthBars(fTimeDelta);
 	if (!CUIInputRouter::Get().Is_CinematicSuppressed()) Register_UITextOccluders();
 }
 
@@ -3786,6 +3846,23 @@ HRESULT CMainApp::Render()
 			};
 #ifdef _DEBUG
 			RenderWorldLevelTool();
+			if (m_pGuideAITool)
+			{
+				if (IsDebugToolVisible(DEBUG_TOOL::GUIDE_AI))
+				{
+					const LostArk::Shared::S2C_GUIDE_STATE* guideState = nullptr;
+					const auto guideLevel = static_cast<LEVEL>(CGameInstance::Get().Get_CurrentLevelID());
+					if (guideLevel == LEVEL::BERN) { if (auto* level = CLevel_Bern::Get_Active()) guideState = level->Get_GuideState(); }
+					else if (guideLevel == LEVEL::VALTAN_ARENA) { if (auto* level = CLevel_ValtanArena::Get_Active()) guideState = level->Get_GuideState(); }
+					else if (guideLevel == LEVEL::KAKULSAYDON_ARENA) { if (auto* level = CLevel_KakulSaydonArena::Get_Active()) guideState = level->Get_GuideState(); }
+					m_pGuideAITool->Set_RuntimeState(guideState);
+					m_pGuideAITool->Set_ActiveArea(GetWorldLevelAreaId());
+					focusNextWindow(DEBUG_TOOL::GUIDE_AI);
+					m_pGuideAITool->Render();
+					if (m_pGuideAITool->Consume_InteractionRequest()) m_eDebugInputOwner = DEBUG_TOOL::GUIDE_AI;
+					if (!m_pGuideAITool->Is_Open()) SetDebugToolVisible(DEBUG_TOOL::GUIDE_AI, false);
+				}
+			}
 			/* The Workbench shell renders one selected boss session. Other domain
 			   tools remain independent windows; every owner retains its own draft. */
 			if (IsDebugToolVisible(DEBUG_TOOL::MAP) && nullptr != m_pMapTool)
@@ -7638,10 +7715,10 @@ void CMainApp::Hide_BossHealthBar()
 		m_pBossUIView->Set_SlotVisible(pSlotId, false);
 }
 
-void CMainApp::Update_BossImmuneGauge(const f32_t fTimeDelta)
+void CMainApp::Update_WorldHealthBars(const f32_t fTimeDelta)
 {
-	Engine::CProfilerScope scope(CGameInstance::Get().Get_Profiler(), "UI.Runtime.BossImmuneGauge.Update");
-	if (nullptr == m_pBossImmuneGaugeView)
+	Engine::CProfilerScope scope(CGameInstance::Get().Get_Profiler(), "UI.Runtime.WorldHealthBars.Update");
+	if (nullptr == m_pWorldHealthBarView)
 		return;
 	const uint32_t currentLevel = CGameInstance::Get().Get_CurrentLevelID();
 	const bool_t isSupportedLevel =
@@ -7649,11 +7726,12 @@ void CMainApp::Update_BossImmuneGauge(const f32_t fTimeDelta)
 		currentLevel == ETOUI(LEVEL::VALTAN_ARENA) ||
 		currentLevel == ETOUI(LEVEL::DEVELOPMENT) ||
 		currentLevel == ETOUI(LEVEL::CHARACTER_SELECT) ||
+		currentLevel == ETOUI(LEVEL::MAHARAKA) ||
 		currentLevel == ETOUI(LEVEL::KAKULSAYDON_ARENA);
-	const bool_t skillWindowOpen =
-		nullptr != m_pSkillWindowView && m_pSkillWindowView->Is_Open();
-	m_pBossImmuneGaugeView->Update(fTimeDelta,
-		CCombatHUDViewModel::Get().Get_Boss(), isSupportedLevel && !skillWindowOpen && !Is_KoukuMinigameHUDHidden());
+	const bool_t characterPresentation = currentLevel == ETOUI(LEVEL::CHARACTER_SELECT) &&
+		CLevel_CharacterSelect::Get_Active() && CLevel_CharacterSelect::Get_Active()->Is_ProductPresentationOpen();
+	m_pWorldHealthBarView->Update(fTimeDelta, CCombatHUDViewModel::Get().Get_WorldHealthBars(),
+		isSupportedLevel && !Is_RuntimeUIScreenSuppressed() && !characterPresentation && !Is_MvpResultPageOpen());
 }
 
 void CMainApp::Update_BossHealthBar()
@@ -7761,12 +7839,9 @@ void CMainApp::Update_BossHealthBar()
 		Hide_BossHealthBar();
 		return;
 	}
-	/* Boss_Fill's own real visibility (healthRatio > 0.f) is set further below, once healthRatio
-	is known to be nonzero -- these three have no such data-driven condition, always on
-	whenever the bar itself is showing at all. */
+	/* The HP frame stays visible while a live boss owns the health bar. The
+	mechanic frame has a separate Server gate below. */
 	m_pBossUIView->Set_SlotVisible("Boss_Frame", true);
-	m_pBossUIView->Set_SlotVisible("Boss_StaggerBg", true);
-	m_pBossUIView->Set_SlotVisible("Boss_StaggerTrack", true);
 
 	/* Real EFUI_STATUS pieces -- see Resources/UI/BossUI. The boss_bar_fill_* set are solid-color
 	bar rows cropped directly from targetstatus_loc_int_i2.dds's top cluster (square left edge,
@@ -7823,25 +7898,18 @@ void CMainApp::Update_BossHealthBar()
 		m_pBossUIView->Set_SlotVisible("Boss_FillBehind", false);
 	}
 
-	/* Stagger/paralyzation gauge (real paralyzationGauge -- background + fill + hollow
-	purple-bordered track, char 473 in TargetGrade_Boss). The Server snapshot owns
-	current/maximum accumulated stagger damage. Presentation crops the authored CUI fill
-	to the remaining amount so admitted stagger damage visibly depletes toward the break. */
-	if (0u != boss.iMaximumStagger)
-	{
-		const f32_t fStaggerRatio = (std::clamp)(
-			static_cast<f32_t>(
-				boss.iMaximumStagger - (std::min)(
-					boss.iCurrentStagger, boss.iMaximumStagger)) /
-				static_cast<f32_t>(boss.iMaximumStagger),
-			0.f, 1.f);
-		m_pBossUIView->Set_SlotFillRatio("Boss_StaggerFill", fStaggerRatio);
-		m_pBossUIView->Set_SlotVisible("Boss_StaggerFill", true);
-	}
-	else
-	{
-		m_pBossUIView->Set_SlotVisible("Boss_StaggerFill", false);
-	}
+	/* Only an active Server mechanic owns this orange row. Blackhole reports
+	actual remaining boss HP; it never borrows ordinary accumulated stagger. */
+	const bool mechanicVisible = boss.iMaximumMechanicGauge > 0u &&
+		(boss.eMechanicGaugeKind == LostArk::Shared::BOSS_MECHANIC_GAUGE_KIND::STAGGER ||
+		 boss.eMechanicGaugeKind == LostArk::Shared::BOSS_MECHANIC_GAUGE_KIND::BOSS_HP);
+	m_pBossUIView->Set_SlotVisible("Boss_StaggerBg", mechanicVisible);
+	m_pBossUIView->Set_SlotVisible("Boss_StaggerTrack", mechanicVisible);
+	const f32_t mechanicRatio = mechanicVisible ? static_cast<f32_t>(
+		(std::min)(boss.iCurrentMechanicGauge, boss.iMaximumMechanicGauge)) /
+		static_cast<f32_t>(boss.iMaximumMechanicGauge) : 0.f;
+	m_pBossUIView->Set_SlotFillRatio("Boss_StaggerFill", mechanicRatio);
+	m_pBossUIView->Set_SlotVisible("Boss_StaggerFill", mechanicVisible && mechanicRatio > 0.f);
 
 	/* User-supplied boundary marker (HP seperate Bar.png -- a tiny 3x15 soft cream vertical glow
 	line, not an EFUI_STATUS extraction) drawn at the current fill/empty edge, matching the real
@@ -8869,6 +8937,12 @@ void CMainApp::RenderCombatHUDText()
 
 void CMainApp::RenderDamageNumbers()
 {
+	const auto& player = CCombatHUDViewModel::Get().Get_Player();
+	if (!player.isValid || player.iServerTick < m_iLastRenderedDamageServerTick)
+	{
+		m_iLastRenderedDamageServerTick = 0u;
+		m_FloatingDamageNumbers.clear();
+	}
 	const uint32_t currentLevel = CGameInstance::Get().Get_CurrentLevelID();
 	if (currentLevel != ETOUI(LEVEL::BERN) &&
 		currentLevel != ETOUI(LEVEL::VALTAN_ARENA) &&
@@ -8958,21 +9032,32 @@ void CMainApp::RenderDamageNumbers()
 			number.fScatterY = spreadY(scatterRandom);
 		}
 		m_dLastDamageSeconds = number.dSpawnSeconds;
-		m_FloatingDamageNumbers.push_back(number);
+		if (number.iAmount != 0u) m_FloatingDamageNumbers.push_back(number);
+		const auto appendSuccess = [&](const uint8_t kind, const f32_t offsetY)
+		{
+			auto success = number;
+			success.iMechanicSuccess = kind;
+			success.fScatterX = 0.f;
+			success.fScatterY = offsetY;
+			m_FloatingDamageNumbers.push_back(success);
+		};
+		if (damageEvent.Event.isCounterSuccess) appendSuccess(1u, -64.f);
+		if (damageEvent.Event.isStaggerSuccess) appendSuccess(2u,
+			damageEvent.Event.isCounterSuccess ? -104.f : -64.f);
 	}
 	/* System option "show damage": the events are still consumed above so switching it back
 	on does not replay a backlog. */
 	if (!CUserSettings::Get().Is_DamageNumberShown())
 	{
-		m_FloatingDamageNumbers.clear();
-		return;
+		std::erase_if(m_FloatingDamageNumbers, [](const auto& number) { return number.iMechanicSuccess == 0u; });
 	}
-	if (m_FloatingDamageNumbers.size() > MAX_FLOATING_DAMAGE_NUMBERS)
+	while (m_FloatingDamageNumbers.size() > MAX_FLOATING_DAMAGE_NUMBERS)
 	{
-		m_FloatingDamageNumbers.erase(
-			m_FloatingDamageNumbers.begin(),
-			m_FloatingDamageNumbers.begin() +
-				(m_FloatingDamageNumbers.size() - MAX_FLOATING_DAMAGE_NUMBERS));
+		// A same-tick burst must not evict the counter/stagger verdict before its first draw.
+		const auto amount = std::find_if(m_FloatingDamageNumbers.begin(), m_FloatingDamageNumbers.end(),
+			[](const auto& number) { return number.iMechanicSuccess == 0u; });
+		m_FloatingDamageNumbers.erase(amount == m_FloatingDamageNumbers.end() ?
+			m_FloatingDamageNumbers.begin() : amount);
 	}
 
 	const f64_t dNow = Product_Now_Seconds();
@@ -9056,10 +9141,11 @@ void CMainApp::RenderDamageNumbers()
 		const bool_t isShard =
 			LostArk::Shared::MECHANIC_CARD_SYMBOL::NONE != number.eCardMazeSuit;
 		/* INVINCIBLE is drawn by nothing in retail either. */
-		if (LostArk::Shared::DAMAGE_HIT_FLAG::INVINCIBLE == number.eHitFlag)
+		if (!number.iMechanicSuccess && LostArk::Shared::DAMAGE_HIT_FLAG::INVINCIBLE == number.eHitFlag)
 			continue;
 		const bool_t isAbsorb = LostArk::Shared::DAMAGE_HIT_FLAG::ABSORB == number.eHitFlag;
-		const wstring strAmount = isAbsorb ? L"\uD761\uC218" : isShard ?
+		const wstring strAmount = number.iMechanicSuccess == 1u ? L"\uCE74\uC6B4\uD130" :
+			number.iMechanicSuccess == 2u ? L"\uBB34\uB825\uD654" : isAbsorb ? L"\uD761\uC218" : isShard ?
 			shardText(number.eCardMazeSuit, number.iAmount) :
 			Format_ThousandsSeparated(number.iAmount);
 		const float2_t vMeasured =
@@ -9088,6 +9174,8 @@ void CMainApp::RenderDamageNumbers()
 		/* A shard is a pickup, not a hit, so it keeps the plain white. */
 		if (isShard)
 			vColor = XMVectorSet(1.f, 1.f, 1.f, fAlpha);
+		if (number.iMechanicSuccess == 1u) vColor = XMVectorSet(0.15f, 0.55f, 1.f, fAlpha);
+		if (number.iMechanicSuccess == 2u) vColor = XMVectorSet(1.f, 0.9f, 0.f, fAlpha);
 		const float2_t vDrawPosition(
 			XMVectorGetX(vProjected) + number.fScatterX * stageScale,
 			XMVectorGetY(vProjected) + number.fScatterY * stageScale);
@@ -10057,6 +10145,10 @@ HRESULT CMainApp::EnsureDebugTool(const DEBUG_TOOL eTool, const bool_t bShowWind
 		if (!m_pWorldLevelTool) m_pWorldLevelTool = make_unique<CWorldLevelTool>();
 		m_pWorldLevelTool->Open(GetWorldLevelAreaId());
 		break;
+	case DEBUG_TOOL::GUIDE_AI:
+		if (!m_pGuideAITool) m_pGuideAITool = make_unique<CGuideAITool>();
+		m_pGuideAITool->Open();
+		break;
 	case DEBUG_TOOL::MAP:
 		if (nullptr == m_pMapTool)
 		{
@@ -10284,6 +10376,7 @@ HRESULT CMainApp::EnsureDebugTool(const DEBUG_TOOL eTool, const bool_t bShowWind
 				state.authoringDirty = preview.Has_AuthoringChanges();
                 state.authoringPublishPending = preview.Is_AuthoringPublishPending();
                 state.authoringStatus = preview.Get_AuthoringStatus();
+                state.authoringGeneration = preview.Get_AuthoringGeneration();
 				state.active = preview.Is_Active();
 				state.paused = preview.Is_Paused();
 				state.looping = preview.Is_Looping();
@@ -10309,12 +10402,14 @@ HRESULT CMainApp::EnsureDebugTool(const DEBUG_TOOL eTool, const bool_t bShowWind
 					CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::CHARACTER_SELECT))
 					(void)level->Select_ClassMovieCategory(category);
 			};
-			classSelection.play = [] {
-				auto* level = CLevel_CharacterSelect::Get_Active();
-				return level && level->Can_PlayClassCinematic() &&
-					CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::CHARACTER_SELECT) &&
-					level->Play_ClassCinematic(level->Get_ClassMovieId());
-			};
+            classSelection.play = [this] {
+                auto* level = CLevel_CharacterSelect::Get_Active();
+                if (!level || !level->Can_PlayClassCinematic() ||
+                    CGameInstance::Get().Get_CurrentLevelID() != ETOUI(LEVEL::CHARACTER_SELECT)) return false;
+                if (m_pEffectTool && m_pEffectTool->Is_EditingClassMovie(level->Get_ClassMovieId()))
+                    return m_pEffectTool->Play_ClassMovie();
+                return level->Play_ClassCinematic(level->Get_ClassMovieId());
+            };
 			classSelection.stop = [] {
 				if (auto* level = CLevel_CharacterSelect::Get_Active(); level &&
 					CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::CHARACTER_SELECT))
@@ -10357,7 +10452,20 @@ HRESULT CMainApp::EnsureDebugTool(const DEBUG_TOOL eTool, const bool_t bShowWind
             };
             classSelection.saveAuthoring = [](std::string& status) {
                 auto* level = CLevel_CharacterSelect::Get_Active();
-                return level && level->Get_ClassSelectionPresentation().Save_Authoring(status);
+                return level && level->Get_ClassSelectionPresentation().Save_Authoring(status, false);
+            };
+            classSelection.publishAuthoring = [](std::string& status) {
+                auto* level = CLevel_CharacterSelect::Get_Active();
+                return level && level->Get_ClassSelectionPresentation().Publish_Authoring(status);
+            };
+            classSelection.mapTime = [](const std::string& classId, bool loop, double timeMs, bool toSource) {
+                auto* level = CLevel_CharacterSelect::Get_Active();
+                return level ? level->Get_ClassSelectionPresentation().Map_TimelineTime(classId, loop, timeMs, toSource) : -1.;
+            };
+            classSelection.editTiming = [](const CLASS_MOVIE_AUTHORING_BOX& box, double start, double end,
+                CLASS_MOVIE_TIMING_EDIT gesture, std::string& status) {
+                auto* level = CLevel_CharacterSelect::Get_Active();
+                return level && level->Get_ClassSelectionPresentation().Edit_AuthoringTiming(box, start, end, gesture, status);
             };
             classSelection.reloadAuthoring = [](std::string& status) {
                 auto* level = CLevel_CharacterSelect::Get_Active();
@@ -10371,6 +10479,7 @@ HRESULT CMainApp::EnsureDebugTool(const DEBUG_TOOL eTool, const bool_t bShowWind
                 status = "Movie Effect opened in V1. Edit Elements with the Movie actors; Play All replays the complete Movie.";
                 return true;
             };
+            classSelection.inspection = ClassMovieInspectionCallbacks();
             m_pSequencerTool->Set_ClassSelectionPreviewCallbacks(std::move(classSelection));
 			/* The Map Tool hosts the same Sequence session for its integrated
 			   cutscene view. One owner and one draft, borrowed per frame. */
@@ -10684,12 +10793,6 @@ void CMainApp::RenderArenaCameraAndPlayerControls()
 	}
 	if (camera && ImGui::CollapsingHeader("Map Camera / Player", ImGuiTreeNodeFlags_DefaultOpen))
 	{
-		const auto setSpeed = [valtan, kouku, camera](const f32_t speed)
-		{
-			if (nullptr != valtan) valtan->Set_DebugCameraSpeed(speed);
-			else if (nullptr != kouku) kouku->Set_DebugCameraSpeed(speed);
-			else (void)camera->Set_FreeMoveSpeed(speed);
-		};
 		ImGui::Text("Current map: %s", mapName);
 		/* Where the local player actually stands and which interact box the Server is offering
 		there, so an authored trigger can be placed against real coordinates instead of guesses. */
@@ -10710,18 +10813,6 @@ void CMainApp::RenderArenaCameraAndPlayerControls()
 				CCombatHUDViewModel::Get().Get_InteractPromptTriggerId();
 			ImGui::Text("Interact offer: %s", offered.empty() ? "(none)" : offered.c_str());
 		}
-		f32_t speed = camera->Get_FreeMoveSpeed();
-		if (ImGui::DragFloat("Free camera speed (m/s)", &speed, 0.5f,
-			CCamera_Free::MIN_FREE_MOVE_SPEED, CCamera_Free::MAX_FREE_MOVE_SPEED,
-			"%.1f", ImGuiSliderFlags_AlwaysClamp))
-			setSpeed(speed);
-		if (ImGui::Button("Reset speed to 20 m/s"))
-			setSpeed(CCamera_Free::DEFAULT_ARENA_MOVE_SPEED);
-		ImGui::TextDisabled("Shift: x%.0f (%.1f m/s).",
-			CCamera_Free::FREE_MOVE_SPRINT_MULTIPLIER,
-			camera->Get_FreeMoveSpeed() * CCamera_Free::FREE_MOVE_SPRINT_MULTIPLIER);
-		ImGui::TextDisabled(valtan || kouku ? "Free-camera speed is saved per arena for this session." :
-			"Free-camera speed lasts for this map visit.");
 
 		// The Server projects every request onto this active world's authored navigation.
 		// Bern needs this same Debug-only path to inspect the separate Bern3 deck.
@@ -11718,6 +11809,7 @@ void CMainApp::RenderValtanArenaControls()
         (void)pArena->Debug_DespawnValtanBoss(status);
     }
     ImGui::EndDisabled();
+    RenderValtanAxeEditor();
     if (!pArena->Get_DebugValtanBossCommandStatus().empty())
         ImGui::TextWrapped("%s", pArena->Get_DebugValtanBossCommandStatus().c_str());
     if (ImGui::TreeNode("Valtan Presentation Status"))
@@ -13072,6 +13164,7 @@ void CMainApp::RenderDeveloperTools()
 		toolCell("Effect Tool V1", DEBUG_TOOL::EFFECT);
 		toolCell("Effect Tool V2", DEBUG_TOOL::EFFECT_V2);
 		toolCell("World Level Tool", DEBUG_TOOL::WORLD_LEVEL);
+		toolCell("Guide AI", DEBUG_TOOL::GUIDE_AI);
 		toolCell("Map Tool", DEBUG_TOOL::MAP);
 		toolCell("Rendering Workbench", DEBUG_TOOL::RENDERING);
 #endif
@@ -13087,11 +13180,12 @@ void CMainApp::RenderDeveloperTools()
 	if (ImGui::Button("Close All Tools"))
 		CloseAllDebugTools();
 #ifdef _DEBUG
-	constexpr std::array<std::pair<DEBUG_TOOL, const char_t*>, 16>
+	constexpr std::array<std::pair<DEBUG_TOOL, const char_t*>, 17>
 		TOOL_FOCUS_OPTIONS = {{
 			{ DEBUG_TOOL::MAP, "Map Tool" },
 			{ DEBUG_TOOL::WORLD_OBJECT, "Action Workbench / Object" },
 			{ DEBUG_TOOL::WORLD_LEVEL, "Open World Level Tool" },
+			{ DEBUG_TOOL::GUIDE_AI, "Guide AI Tool" },
 			{ DEBUG_TOOL::SEQUENCER, "Action Workbench" },
 			{ DEBUG_TOOL::SEQUENCER_BENCHMARK, "Action Workbench / Sequence" },
 			{ DEBUG_TOOL::ANIMATION, "Animation Clip Tool" },
@@ -13145,6 +13239,8 @@ void CMainApp::RenderDeveloperTools()
 #else
 	RenderBalanceTestLauncher();
 #endif
+	RenderCameraSpeedControls();
+	RenderDragonControls();
 	ImGui::TextWrapped("%s", m_strToolStatus.c_str());
 	if (ImGui::CollapsingHeader("Character Select Movie", ImGuiTreeNodeFlags_DefaultOpen))
 		CLevel_CharacterSelect::Render_ClassSelectMovieControls();
@@ -13932,6 +14028,7 @@ void CMainApp::Free()
 	m_pWorldLevelPendingMapRequest.reset();
 	m_pMapEffectPlacementRequest.reset();
 	m_pWorldLevelTool.reset();
+	m_pGuideAITool.reset();
 	m_pWorldObjectTool.reset();
 #endif
 #ifdef _DEBUG
@@ -13974,6 +14071,7 @@ void CMainApp::Free()
 	m_pValtanBossTool.reset();
 	if (auto* profiler = CGameInstance::Get().Get_Profiler()) profiler->Set_Enabled(false);
 	m_pProfilerTool.reset();
+	m_pWorldHealthBarView.reset();
 	if (nullptr != m_pImGuiLayer)
 		m_pImGuiLayer->Shutdown();
 	m_pImGuiLayer.reset();

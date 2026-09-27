@@ -32,6 +32,8 @@ namespace Client
 		RAID_ENTRY_PROMPT,
 		RAID_ENTRY_VOTE,
 		CHAT_RECEIVED,
+		GUIDE_PROMPT,
+		GUIDE_STATE,
 		WORLD_SEQUENCE_PLAY,
 		KOUKUSAYDON_BUNDLE_STATE,
 		KOUKUSAYDON_RAID_STATE,
@@ -85,6 +87,8 @@ namespace Client
 		LostArk::Shared::S2C_RAID_ENTRY_PROMPT RaidEntryPrompt;
 		LostArk::Shared::S2C_RAID_ENTRY_VOTE RaidEntryVote;
 		LostArk::Shared::S2C_CHAT ChatReceived;
+		LostArk::Shared::S2C_GUIDE_PROMPT GuidePrompt;
+		LostArk::Shared::S2C_GUIDE_STATE GuideState;
 		LostArk::Shared::S2C_WORLD_SEQUENCE_PLAY WorldSequencePlay;
 		LostArk::Shared::S2C_KOUKUSAYDON_BUNDLE_STATE KoukuBundleState;
 		LostArk::Shared::S2C_KOUKUSAYDON_RAID_STATE KoukuRaidState;

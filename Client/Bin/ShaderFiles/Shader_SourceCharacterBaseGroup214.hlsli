@@ -1,3 +1,4 @@
+#ifndef SOURCE_CHARACTER_BASE_DISPATCH_CASES
 SOURCE_CHARACTER_NATIVE_OUTPUT SourceMapMonsterBaked214(SOURCE_CHARACTER_NATIVE_INPUT input)
 {
     SOURCE_CHARACTER_NATIVE_OUTPUT output = (SOURCE_CHARACTER_NATIVE_OUTPUT)0;
@@ -8175,3 +8176,15 @@ SOURCE_CHARACTER_NATIVE_OUTPUT SourceCharacterBase223(SOURCE_CHARACTER_NATIVE_IN
 }
 
 // source.character.static-map-native-224.v1 / source program 87c053efe3f0dc4e924d49533f0f4c74
+#else // SOURCE_CHARACTER_BASE_DISPATCH_CASES
+    case 214u: if(input.hasBakedLighting) return SourceMapMonsterBaked214(input); return SourceCharacterBase214(input);
+    case 215u: if(input.hasBakedLighting) return SourceMapMonsterBaked215(input); return SourceCharacterBase215(input);
+    case 216u: if(input.hasBakedLighting) return SourceMapMonsterBaked216(input); return SourceCharacterBase216(input);
+    case 217u: if(input.hasBakedLighting) return SourceMapMonsterBaked217(input); return SourceCharacterBase217(input);
+    case 218u: if(input.hasBakedLighting) return SourceMapMonsterBaked218(input); return SourceCharacterBase218(input);
+    case 219u: if(input.hasBakedLighting) return SourceMapMonsterBaked219(input); return SourceCharacterBase219(input);
+    case 220u: if(input.hasBakedLighting) return SourceMapMonsterBaked220(input); return SourceCharacterBase220(input);
+    case 221u: if(input.hasBakedLighting) return SourceMapMonsterBaked221(input); return SourceCharacterBase221(input);
+    case 222u: if(input.hasBakedLighting) return SourceMapMonsterBaked222(input); return SourceCharacterBase222(input);
+    case 223u: if(input.hasBakedLighting) return SourceMapMonsterBaked223(input); return SourceCharacterBase223(input);
+#endif // SOURCE_CHARACTER_BASE_DISPATCH_CASES

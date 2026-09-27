@@ -1,3 +1,4 @@
+#ifndef SOURCE_CHARACTER_LIGHT_DISPATCH_CASES
 SOURCE_CHARACTER_NATIVE_OUTPUT SourceCharacterLight9(SOURCE_CHARACTER_NATIVE_INPUT input)
 {
     SOURCE_CHARACTER_NATIVE_OUTPUT output = (SOURCE_CHARACTER_NATIVE_OUTPUT)0;
@@ -4931,3 +4932,13 @@ SOURCE_CHARACTER_NATIVE_OUTPUT SourceCharacterLight16(SOURCE_CHARACTER_NATIVE_IN
     return output;
 }
 
+#else // SOURCE_CHARACTER_LIGHT_DISPATCH_CASES
+    case 9u: return SourceCharacterLight9(input);
+    case 10u: return SourceCharacterLight10(input);
+    case 11u: return SourceCharacterLight11(input);
+    case 12u: return SourceCharacterLight12(input);
+    case 13u: return SourceCharacterLight13(input);
+    case 14u: return SourceCharacterLight14(input);
+    case 15u: return SourceCharacterLight15(input);
+    case 16u: return SourceCharacterLight16(input);
+#endif // SOURCE_CHARACTER_LIGHT_DISPATCH_CASES

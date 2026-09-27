@@ -401,6 +401,9 @@ void Client::CCombatHUDViewModel::Apply_Boss(
 	m_Boss.iMaximumShield = snapshot.BossCombat.iMaximumShield;
 	m_Boss.iResponseProgress = snapshot.BossCombat.iResponseProgress;
 	m_Boss.iResponseThreshold = snapshot.BossCombat.iResponseThreshold;
+	m_Boss.eMechanicGaugeKind = snapshot.BossCombat.eMechanicGaugeKind;
+	m_Boss.iCurrentMechanicGauge = snapshot.BossCombat.iCurrentMechanicGauge;
+	m_Boss.iMaximumMechanicGauge = snapshot.BossCombat.iMaximumMechanicGauge;
 	m_Boss.hasPosition = true;
 	m_Boss.fPositionX = snapshot.fPositionX;
 	m_Boss.fPositionY = snapshot.fPositionY;
@@ -494,8 +497,8 @@ void Client::CCombatHUDViewModel::Apply_DamageEvents(
 			if (event.isCounterSuccess)
 				++m_CombatAnalysis.iCounterSuccesses;
 		}
-		/* A stagger-only / counter-only event carries no number to float. */
-		if (0u == event.iAmount)
+		/* Successful mechanics remain visible even when the hit did no HP damage. */
+		if (0u == event.iAmount && !event.isCounterSuccess && !event.isStaggerSuccess)
 			continue;
 		HUD_DAMAGE_EVENT retained{};
 		retained.iServerTick = serverTick;
@@ -513,6 +516,7 @@ void Client::CCombatHUDViewModel::Apply_DamageEvents(
 
 void Client::CCombatHUDViewModel::Reset_RuntimeState()
 {
+	m_WorldHealthBars.clear();
 	m_Player = {};
 	m_KoukuGimmick = {};
 	m_Boss = {};
@@ -529,4 +533,18 @@ void Client::CCombatHUDViewModel::Reset_RuntimeState()
 	m_KoukuGimmickPreview = {};
 #endif
 	m_Inventory = {};
+}
+
+void Client::CCombatHUDViewModel::Apply_WorldHealthBars(
+	std::vector<HUD_WORLD_HEALTH_BAR_STATE>&& states)
+{
+	m_WorldHealthBars = std::move(states);
+}
+
+void Client::CCombatHUDViewModel::Remove_WorldHealthBar(
+	const LostArk::Shared::NET_ENTITY_ID entityId)
+{
+	m_WorldHealthBars.erase(std::remove_if(m_WorldHealthBars.begin(), m_WorldHealthBars.end(),
+		[entityId](const HUD_WORLD_HEALTH_BAR_STATE& state) { return state.iNetEntityId == entityId; }),
+		m_WorldHealthBars.end());
 }

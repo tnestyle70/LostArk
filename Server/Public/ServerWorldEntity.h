@@ -487,6 +487,8 @@ namespace LostArk::Server
 		float fCollisionRadius = 0.f;
 		float fAttackRange = 0.f;
 		std::uint32_t iAttackPower = 0;
+		// Encounter-owned fixed base hit; normal monsters retain zero and use attack power.
+		std::uint32_t iAttackFixedDamage = 0u;
 		std::uint32_t iDefense = 0;
 		std::uint32_t iDeadDespawnMs = 0;
 		/* Latches once this BOSS entity's Valtan clear rewards have been granted
@@ -518,6 +520,10 @@ namespace LostArk::Server
 		through the MONSTER dead sweep. */
 		bool isEstherSummon = false;
 		std::uint32_t iEstherStrikeMs = 0;
+		LostArk::Shared::ESTHER_ID eEstherId = LostArk::Shared::ESTHER_ID::NONE;
+		LostArk::Shared::PLAYER_ID iEstherCasterPlayerId = LostArk::Shared::INVALID_PLAYER_ID;
+		std::uint32_t iEstherAppliedHitMask = 0u;
+		bool bEstherSupportApplied = false;
 		std::uint32_t iNextPathReplanTick = 0;
 		BOSS_PHASE_POLICY PhasePolicy;
 		/* Deprecated fixture mirror retained until callers have migrated to the

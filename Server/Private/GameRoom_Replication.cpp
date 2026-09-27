@@ -70,6 +70,7 @@ bool LostArk::Server::CGameRoom::Send_Spawned(
 	message.iPlayerId = player.iPlayerId;
 	message.iNetEntityId = player.iNetEntityId;
 	message.eCharacterClass = player.eCharacterClass;
+	message.eControlKind = player.eControlKind;
 	message.strNickName = player.strNickName;
 	message.fPositionX = player.fPositionX;
 	message.fPositionY = player.fPositionY;
@@ -508,6 +509,7 @@ void LostArk::Server::CGameRoom::Broadcast_WorldSnapshot()
 		PLAYER_SNAPSHOT snapshot{};
 		snapshot.iNetEntityId = player.iNetEntityId;
 		snapshot.eCharacterClass = player.eCharacterClass;
+		snapshot.eControlKind = player.eControlKind;
 		snapshot.fPositionX = player.fPositionX;
 		snapshot.fPositionY = player.fPositionY;
 		snapshot.fPositionZ = player.fPositionZ;
@@ -769,6 +771,15 @@ void LostArk::Server::CGameRoom::Broadcast_WorldSnapshot()
 				snapshot.BossCombat.iResponseProgress = (std::min)(
 					entity.iPatternBossResponseAccumulatedHealthDamage,
 					entity.iPatternBossResponseThreshold);
+			}
+			if (const auto* member = Find_KoukuAuditionMember(entity.iNetEntityId, entity.iPatternSequence))
+			{
+				const auto* catalog = Resolve_KoukuProductCatalog();
+				std::string status;
+				const auto* pattern = catalog ? CKoukuSaydonBrain::Find_AnimationOnlyPattern(
+					*catalog, member->LogicLedger.strPatternId, status) : nullptr;
+				if (pattern) CKoukuSaydonLogicRuntime::Project_MechanicGauge(
+					entity, *pattern, member->LogicLedger, m_iServerTick, snapshot.BossCombat);
 			}
 			/* The existing gameplay phase remains the one authority. The boss
 			payload mirrors it rather than introducing a second phase clock. */

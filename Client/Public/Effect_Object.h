@@ -203,6 +203,9 @@ public:
 	void Set_ScreenPostPlaybackEnd(f32_t endSeconds);
 	void Set_Visible(bool_t bVisible);
     bool_t Is_Visible() const { return m_bVisible; }
+	// Inspection hides drawing without touching owner controls or sample history.
+	void Set_InspectionVisible(bool_t visible) { m_bInspectionVisible = visible; }
+	bool_t Is_InspectionVisible() const { return m_bInspectionVisible; }
 	void Reset();
 	bool_t Enable_OwnerSustainedSourceLoops(std::string& strOutError)
 	{
@@ -320,6 +323,7 @@ private:
 	HRESULT m_hRenderFailure = S_OK;
 	bool_t m_bPlaying = true;
 	bool_t m_bVisible = true;
+	bool_t m_bInspectionVisible = true;
 	bool_t m_bExplicitRenderSubmission = false;
 	bool_t m_bNonBlendModelCuePassPending = false;
 	bool_t m_bWorldMarkPassPending = false;

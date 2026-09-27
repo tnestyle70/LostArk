@@ -69,6 +69,7 @@ namespace Client
 		float fPositionZ = 0.f;
 
 		float fYawDegrees = 0.f;
+		LostArk::Shared::PLAYER_CONTROL_KIND eControlKind = LostArk::Shared::PLAYER_CONTROL_KIND::HUMAN;
 	};
 
 	// Server record와 실제 presentation을 잃지 않고 묶어 읽는 snapshot이다.

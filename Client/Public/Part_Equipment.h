@@ -79,6 +79,7 @@ public:
 	/* Same draw as Render() through explicit technique passes -- skinned pieces use the body
 	shader, socketed (weapon) pieces the static-mesh shader, whose pass tables differ. */
 	HRESULT Render_Pass(uint32_t iSkinnedPassIndex, uint32_t iSocketedPassIndex);
+	HRESULT Render_Translucent(ID3D11BlendState* pCoverageBlend = nullptr);
 
 public:
 	void Set_Visible(bool_t isVisible) { m_isVisible = isVisible; }
@@ -89,6 +90,7 @@ public:
     bool_t Is_IdentityPart() const { return m_isIdentityPart; }
     bool Is_Socketed() const { return !m_strSocketBoneName.empty(); }
     bool Get_AfterimageView(CSkeletalAfterimage::MODEL_VIEW& view);
+	bool_t Set_SocketTransform(const float3_t& positionMeters, const float3_t& rotationDegrees);
 
 private:
 	bool_t m_isVisible = true;
@@ -106,6 +108,8 @@ private:
 	bool_t m_hasOwnBones = false;
 	string m_strSocketBoneName;
 	f32_t m_fSocketYawDegrees = 0.f;
+	float3_t m_vSocketPositionMeters{};
+	float3_t m_vSocketRotationDegrees{};
 	const float4x4_t* m_pSocketRootMatrix = { nullptr };
 	string m_strMaterialProfileId;
 	const DEFERRED_EMISSIVE_OVERRIDE* m_pEmissiveOverride = { nullptr };
@@ -115,7 +119,6 @@ private:
 	HRESULT Ready_Components(const PART_EQUIPMENT_DESC* pDesc);
 	HRESULT Bind_ShaderResources();
 	HRESULT Bind_ShadowShaderResources();
-	HRESULT Render_Translucent();
 
 public:
 	static unique_ptr<CPart_Equipment> Create(ComPtr<ID3D11Device> pDevice,

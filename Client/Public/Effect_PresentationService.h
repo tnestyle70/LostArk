@@ -375,6 +375,9 @@ public:
 		const std::string& strEffectAssetId,
 		const std::filesystem::path& AuthoredPath,
 		std::string& strOutStatus);
+    // Explicit camera-only Publish. Stages the current canonical recovery
+    // sequence before replacing this Effect's Client camera cache.
+    static bool_t Reload_ProductCamera(const std::string& effectAssetId, std::string& status);
     static bool_t Reprepare_ProductTargets(
         ComPtr<ID3D11Device> pDevice,
         ComPtr<ID3D11DeviceContext> pContext,
@@ -401,7 +404,8 @@ public:
     static bool_t Prepare_WorldPreviewTarget(
         ComPtr<ID3D11Device> device, ComPtr<ID3D11DeviceContext> context,
         const EFFECT_DOCUMENT_DESC& document,
-        std::shared_ptr<const EFFECT_WORLD_PREVIEW_TARGET>& target, std::string& status);
+        std::shared_ptr<const EFFECT_WORLD_PREVIEW_TARGET>& target, std::string& status,
+        const std::vector<std::string>* drawElementIds = nullptr);
     // Null target restores the current catalog snapshot. All handles stage first.
     static bool_t Replace_WorldRootPreviews(
         const std::vector<std::pair<EFFECT_WORLD_ROOT_HANDLE,
@@ -433,6 +437,10 @@ public:
 	static bool_t Is_WorldPresentationVisible(const float3_t& center,
 		f32_t radius, bool_t recentlyVisible);
 	static HRESULT Submit_LevelPlacementSample(
+		EFFECT_WORLD_ROOT_HANDLE Handle, bool_t visible);
+	// Draw-only mask for current Level-owned external roots, including queued
+	// spawns. It preserves the handle, authored visibility and sampled history.
+	static bool_t Set_WorldRootInspectionVisible(
 		EFFECT_WORLD_ROOT_HANDLE Handle, bool_t visible);
 	// Completes only this external preview handle after its final WORLD sample.
 	static HRESULT Commit_WorldRootCaptureSample(EFFECT_WORLD_ROOT_HANDLE Handle);

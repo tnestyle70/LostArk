@@ -36,6 +36,7 @@ public:
 		f32_t fHpRatio = 0.f;
 		bool_t hasHealthSnapshot = false;
 		bool_t isLeader = false;
+		bool_t isGuide = false;
 	};
 
 public:
@@ -67,9 +68,8 @@ private:
 	CUIWindowDrag m_Drag;
 	string m_strPartyTitle;
 	vector<PARTY_MEMBER> m_Members;
-	/* Max rows the layout document authors (PartyWindow_*_0..3) -- the same 4-player party cap
-	   the Server room enforces. */
-	static constexpr size_t MAX_ROWS = 4u;
+	/* Four human seats and one separately owned companion presentation row. */
+	static constexpr size_t MAX_ROWS = 5u;
 };
 
 NS_END

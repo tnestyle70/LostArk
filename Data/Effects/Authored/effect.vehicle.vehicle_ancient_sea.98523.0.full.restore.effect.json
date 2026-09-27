@@ -411,12 +411,12 @@
           "billboard": true,
           "authoringApproximate": false,
           "sourceScale": {
-            "count": 1,
+            "count": 0.8,
             "size": 1,
-            "lifeTime": 1,
+            "lifeTime": 0.4,
             "speed": 1,
             "rotation": 1,
-            "alpha": 1,
+            "alpha": 0.6,
             "spawnDelay": 1
           }
         },
@@ -2509,12 +2509,12 @@
           "billboard": true,
           "authoringApproximate": false,
           "sourceScale": {
-            "count": 1,
+            "count": 0.8,
             "size": 1,
-            "lifeTime": 1,
+            "lifeTime": 0.4,
             "speed": 1,
             "rotation": 1,
-            "alpha": 1,
+            "alpha": 0.6,
             "spawnDelay": 1
           }
         },
@@ -4607,12 +4607,12 @@
           "billboard": true,
           "authoringApproximate": false,
           "sourceScale": {
-            "count": 1,
+            "count": 0.8,
             "size": 1,
-            "lifeTime": 1,
+            "lifeTime": 0.4,
             "speed": 1,
             "rotation": 1,
-            "alpha": 1,
+            "alpha": 0.6,
             "spawnDelay": 1
           }
         },
@@ -6705,12 +6705,12 @@
           "billboard": true,
           "authoringApproximate": false,
           "sourceScale": {
-            "count": 1,
+            "count": 0.8,
             "size": 1,
-            "lifeTime": 1,
+            "lifeTime": 0.4,
             "speed": 1,
             "rotation": 1,
-            "alpha": 1,
+            "alpha": 0.6,
             "spawnDelay": 1
           }
         },
@@ -8803,12 +8803,12 @@
           "billboard": true,
           "authoringApproximate": false,
           "sourceScale": {
-            "count": 1,
+            "count": 0.8,
             "size": 1,
-            "lifeTime": 1,
+            "lifeTime": 0.4,
             "speed": 1,
             "rotation": 1,
-            "alpha": 1,
+            "alpha": 0.6,
             "spawnDelay": 1
           }
         },
@@ -10901,12 +10901,12 @@
           "billboard": true,
           "authoringApproximate": false,
           "sourceScale": {
-            "count": 1,
+            "count": 0.8,
             "size": 1,
-            "lifeTime": 1,
+            "lifeTime": 0.4,
             "speed": 1,
             "rotation": 1,
-            "alpha": 1,
+            "alpha": 0.6,
             "spawnDelay": 1
           }
         },
@@ -12999,12 +12999,12 @@
           "billboard": true,
           "authoringApproximate": false,
           "sourceScale": {
-            "count": 1,
+            "count": 0.8,
             "size": 1,
-            "lifeTime": 1,
+            "lifeTime": 0.4,
             "speed": 1,
             "rotation": 1,
-            "alpha": 1,
+            "alpha": 0.6,
             "spawnDelay": 1
           }
         },
@@ -15097,12 +15097,12 @@
           "billboard": true,
           "authoringApproximate": false,
           "sourceScale": {
-            "count": 1,
+            "count": 0.8,
             "size": 1,
-            "lifeTime": 1,
+            "lifeTime": 0.4,
             "speed": 1,
             "rotation": 1,
-            "alpha": 1,
+            "alpha": 0.6,
             "spawnDelay": 1
           }
         },
@@ -17195,12 +17195,12 @@
           "billboard": true,
           "authoringApproximate": false,
           "sourceScale": {
-            "count": 1,
+            "count": 0.8,
             "size": 1,
-            "lifeTime": 1,
+            "lifeTime": 0.4,
             "speed": 1,
             "rotation": 1,
-            "alpha": 1,
+            "alpha": 0.6,
             "spawnDelay": 1
           }
         },
@@ -19293,12 +19293,12 @@
           "billboard": true,
           "authoringApproximate": false,
           "sourceScale": {
-            "count": 1,
+            "count": 0.8,
             "size": 1,
-            "lifeTime": 1,
+            "lifeTime": 0.4,
             "speed": 1,
             "rotation": 1,
-            "alpha": 1,
+            "alpha": 0.6,
             "spawnDelay": 1
           }
         },
@@ -21391,12 +21391,12 @@
           "billboard": true,
           "authoringApproximate": false,
           "sourceScale": {
-            "count": 1,
+            "count": 0.8,
             "size": 1,
-            "lifeTime": 1,
+            "lifeTime": 0.4,
             "speed": 1,
             "rotation": 1,
-            "alpha": 1,
+            "alpha": 0.6,
             "spawnDelay": 1
           }
         },
@@ -23489,12 +23489,12 @@
           "billboard": true,
           "authoringApproximate": false,
           "sourceScale": {
-            "count": 1,
+            "count": 0.8,
             "size": 1,
-            "lifeTime": 1,
+            "lifeTime": 0.4,
             "speed": 1,
             "rotation": 1,
-            "alpha": 1,
+            "alpha": 0.6,
             "spawnDelay": 1
           }
         },
@@ -25587,12 +25587,12 @@
           "billboard": true,
           "authoringApproximate": false,
           "sourceScale": {
-            "count": 1,
+            "count": 0.8,
             "size": 1,
-            "lifeTime": 1,
+            "lifeTime": 0.4,
             "speed": 1,
             "rotation": 1,
-            "alpha": 1,
+            "alpha": 0.6,
             "spawnDelay": 1
           }
         },
@@ -27685,12 +27685,12 @@
           "billboard": true,
           "authoringApproximate": false,
           "sourceScale": {
-            "count": 1,
+            "count": 0.8,
             "size": 1,
-            "lifeTime": 1,
+            "lifeTime": 0.4,
             "speed": 1,
             "rotation": 1,
-            "alpha": 1,
+            "alpha": 0.6,
             "spawnDelay": 1
           }
         },
@@ -29783,12 +29783,12 @@
           "billboard": true,
           "authoringApproximate": false,
           "sourceScale": {
-            "count": 1,
+            "count": 0.8,
             "size": 1,
-            "lifeTime": 1,
+            "lifeTime": 0.4,
             "speed": 1,
             "rotation": 1,
-            "alpha": 1,
+            "alpha": 0.6,
             "spawnDelay": 1
           }
         },
@@ -31881,12 +31881,12 @@
           "billboard": true,
           "authoringApproximate": false,
           "sourceScale": {
-            "count": 1,
+            "count": 0.8,
             "size": 1,
-            "lifeTime": 1,
+            "lifeTime": 0.4,
             "speed": 1,
             "rotation": 1,
-            "alpha": 1,
+            "alpha": 0.6,
             "spawnDelay": 1
           }
         },
@@ -33987,12 +33987,12 @@
           "billboard": true,
           "authoringApproximate": false,
           "sourceScale": {
-            "count": 1,
+            "count": 0.8,
             "size": 1,
-            "lifeTime": 1,
+            "lifeTime": 0.4,
             "speed": 1,
             "rotation": 1,
-            "alpha": 1,
+            "alpha": 0.6,
             "spawnDelay": 1
           }
         },
@@ -36093,12 +36093,12 @@
           "billboard": true,
           "authoringApproximate": false,
           "sourceScale": {
-            "count": 1,
+            "count": 0.8,
             "size": 1,
-            "lifeTime": 1,
+            "lifeTime": 0.4,
             "speed": 1,
             "rotation": 1,
-            "alpha": 1,
+            "alpha": 0.6,
             "spawnDelay": 1
           }
         },
@@ -38199,12 +38199,12 @@
           "billboard": true,
           "authoringApproximate": false,
           "sourceScale": {
-            "count": 1,
+            "count": 0.8,
             "size": 1,
-            "lifeTime": 1,
+            "lifeTime": 0.4,
             "speed": 1,
             "rotation": 1,
-            "alpha": 1,
+            "alpha": 0.6,
             "spawnDelay": 1
           }
         },
@@ -40305,12 +40305,12 @@
           "billboard": true,
           "authoringApproximate": false,
           "sourceScale": {
-            "count": 1,
+            "count": 0.8,
             "size": 1,
-            "lifeTime": 1,
+            "lifeTime": 0.4,
             "speed": 1,
             "rotation": 1,
-            "alpha": 1,
+            "alpha": 0.6,
             "spawnDelay": 1
           }
         },
@@ -42411,12 +42411,12 @@
           "billboard": true,
           "authoringApproximate": false,
           "sourceScale": {
-            "count": 1,
+            "count": 0.8,
             "size": 1,
-            "lifeTime": 1,
+            "lifeTime": 0.4,
             "speed": 1,
             "rotation": 1,
-            "alpha": 1,
+            "alpha": 0.6,
             "spawnDelay": 1
           }
         },
@@ -44517,12 +44517,12 @@
           "billboard": true,
           "authoringApproximate": false,
           "sourceScale": {
-            "count": 1,
+            "count": 0.8,
             "size": 1,
-            "lifeTime": 1,
+            "lifeTime": 0.4,
             "speed": 1,
             "rotation": 1,
-            "alpha": 1,
+            "alpha": 0.6,
             "spawnDelay": 1
           }
         },
@@ -46623,12 +46623,12 @@
           "billboard": true,
           "authoringApproximate": false,
           "sourceScale": {
-            "count": 1,
+            "count": 0.8,
             "size": 1,
-            "lifeTime": 1,
+            "lifeTime": 0.4,
             "speed": 1,
             "rotation": 1,
-            "alpha": 1,
+            "alpha": 0.6,
             "spawnDelay": 1
           }
         },
@@ -48729,12 +48729,12 @@
           "billboard": true,
           "authoringApproximate": false,
           "sourceScale": {
-            "count": 1,
+            "count": 0.8,
             "size": 1,
-            "lifeTime": 1,
+            "lifeTime": 0.4,
             "speed": 1,
             "rotation": 1,
-            "alpha": 1,
+            "alpha": 0.6,
             "spawnDelay": 1
           }
         },
@@ -50835,12 +50835,12 @@
           "billboard": true,
           "authoringApproximate": false,
           "sourceScale": {
-            "count": 1,
+            "count": 0.8,
             "size": 1,
-            "lifeTime": 1,
+            "lifeTime": 0.4,
             "speed": 1,
             "rotation": 1,
-            "alpha": 1,
+            "alpha": 0.6,
             "spawnDelay": 1
           }
         },
@@ -52941,12 +52941,12 @@
           "billboard": true,
           "authoringApproximate": false,
           "sourceScale": {
-            "count": 1,
+            "count": 0.8,
             "size": 1,
-            "lifeTime": 1,
+            "lifeTime": 0.4,
             "speed": 1,
             "rotation": 1,
-            "alpha": 1,
+            "alpha": 0.6,
             "spawnDelay": 1
           }
         },
@@ -55047,12 +55047,12 @@
           "billboard": true,
           "authoringApproximate": false,
           "sourceScale": {
-            "count": 1,
+            "count": 0.8,
             "size": 1,
-            "lifeTime": 1,
+            "lifeTime": 0.4,
             "speed": 1,
             "rotation": 1,
-            "alpha": 1,
+            "alpha": 0.6,
             "spawnDelay": 1
           }
         },
@@ -57153,12 +57153,12 @@
           "billboard": true,
           "authoringApproximate": false,
           "sourceScale": {
-            "count": 1,
+            "count": 0.8,
             "size": 1,
-            "lifeTime": 1,
+            "lifeTime": 0.4,
             "speed": 1,
             "rotation": 1,
-            "alpha": 1,
+            "alpha": 0.6,
             "spawnDelay": 1
           }
         },
@@ -59259,12 +59259,12 @@
           "billboard": true,
           "authoringApproximate": false,
           "sourceScale": {
-            "count": 1,
+            "count": 0.8,
             "size": 1,
-            "lifeTime": 1,
+            "lifeTime": 0.4,
             "speed": 1,
             "rotation": 1,
-            "alpha": 1,
+            "alpha": 0.6,
             "spawnDelay": 1
           }
         },
@@ -61365,12 +61365,12 @@
           "billboard": true,
           "authoringApproximate": false,
           "sourceScale": {
-            "count": 1,
+            "count": 0.8,
             "size": 1,
-            "lifeTime": 1,
+            "lifeTime": 0.4,
             "speed": 1,
             "rotation": 1,
-            "alpha": 1,
+            "alpha": 0.6,
             "spawnDelay": 1
           }
         },

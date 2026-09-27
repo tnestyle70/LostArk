@@ -97,6 +97,23 @@ def merge_rows(current, replacement, key):
     additions = {row[key]: row for row in replacement}
     if len(additions) != len(replacement) or len({row[key] for row in current}) != len(current):
         raise ValueError(f"Duplicate stable {key}")
+    # This eye's source defaults are deliberately tuned in the authoring document.
+    # A donor refresh may replace geometry/other source fields, but must keep the
+    # two saved lighting controls rather than reinstall the retail 0.6/2 values.
+    eye_id = "world.object.classselect.guardianknight.a12265.p2"
+    if key == "objectId" and eye_id in additions:
+        saved_eye = next((row for row in current if row[key] == eye_id), None)
+        incoming = additions[eye_id].get("materialProfile", {})
+        saved = (saved_eye or {}).get("materialProfile", {})
+        if (incoming.get("family") == saved.get("family") == "source.character.eye.v1" and
+                incoming.get("materialName") == saved.get("materialName") == "pc_dk_eye_00_mi"):
+            # Copy only the replacement node we adjust; caller candidates stay unchanged.
+            import copy
+            additions[eye_id] = copy.deepcopy(additions[eye_id])
+            parameters = additions[eye_id]["materialProfile"]["parameters"]
+            for name in ("shadowfactor", "tdspecular_intensity"):
+                if name in saved.get("parameters", {}):
+                    parameters[name] = copy.deepcopy(saved["parameters"][name])
     result = [additions.pop(row[key], row) for row in current]
     return result + list(additions.values())
 

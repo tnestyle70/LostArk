@@ -57,6 +57,7 @@ Client::CAnimation_Tool::CAnimation_Tool(
 
 Client::CAnimation_Tool::~CAnimation_Tool()
 {
+	Reset_ValtanPatternPreviewSounds();
 	Reset_KoukuCompositionEffects();
 	Apply_KoukuSaydonPreviewScale(m_KoukuScaledPreviewModel.lock(), 1.f);
 	if (nullptr != m_hValtanPatternCreateProcess)
@@ -188,7 +189,8 @@ void Client::CAnimation_Tool::Update(
 			m_ValtanPatternMasterPlaylist[m_iValtanPatternMasterItem];
 		const char_t* pCurrentClip = PreviewModel->Get_AnimationName(
 			PreviewModel->Get_CurrentAnimIndex());
-		if (nullptr == pCurrentClip || Item.strClipName != pCurrentClip)
+		if (!Item.bSuppressAnimation &&
+			(nullptr == pCurrentClip || Item.strClipName != pCurrentClip))
 		{
 			Stop_ValtanPatternMasterPreview(
 				PreviewModel,
@@ -217,6 +219,7 @@ void Client::CAnimation_Tool::Update(
 				return;
 			}
 		}
+		Sample_ValtanPatternPreviewSounds();
 		Update_ValtanPatternMasterHitAreaPreview();
 		return;
 	}
@@ -581,6 +584,7 @@ void Client::CAnimation_Tool::Adopt_AssetName(
 	m_bClipNotifyLoadAttempted = false;
 	m_bClipSeqLoadAttempted = false;
 	m_bSkillBindingLoadAttempted = false;
+	Reset_ValtanPatternPreviewSounds();
 	m_ValtanPatternMasterView = {};
 	m_ValtanPatternMasterPlaylist.clear();
 	m_bValtanPatternMasterLoadAttempted = false;

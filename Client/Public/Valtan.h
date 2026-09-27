@@ -32,6 +32,7 @@ NS_END
 NS_BEGIN(Client)
 
 struct VALTAN_PATTERN_VIEW;
+enum class VALTAN_PATTERN_PREVIEW_PATH : uint8_t;
 
 inline constexpr size_t VALTAN_MAX_PATTERN_EFFECT_OCCURRENCES_PER_SCAN = 256u;
 
@@ -336,7 +337,8 @@ public:
 	bool_t Stage_LocalPatternAuthoringPreview(
 		const VALTAN_PATTERN_VIEW& Pattern,
 		std::string& strOutStatus,
-		bool_t selectAuthoredPhasePresentation = false);
+		bool_t selectAuthoredPhasePresentation = false,
+		std::optional<VALTAN_PATTERN_PREVIEW_PATH> previewPath = std::nullopt);
 	bool_t Is_LocalPatternAuthoringPreview() const
 	{
 		return !m_isServerAuthoritative && m_bLocalPatternAuthoringPreview;
@@ -566,6 +568,8 @@ private:
 		m_LocalPreviewEffectCuesByActionId;
 	std::unordered_map<std::string, uint32_t>
 		m_LocalPreviewStageIndexByActionId;
+	std::unordered_map<std::string, uint32_t>
+		m_LocalPreviewStageStartMsByActionId;
 	std::unordered_map<std::string, PATTERN_BODY_VISIBILITY_WINDOW>
 		m_LocalPreviewBodyVisibilityByActionId;
 	std::unordered_map<std::string, f32_t>
@@ -579,6 +583,9 @@ private:
 	};
 	struct LOCAL_PATTERN_COMBAT_OBJECT_TEMPLATE final
 	{
+		std::string strOwnerActionId;
+		uint32_t iOwnerStageStartMs = 0u;
+		uint32_t iTemplateOrdinal = 0u;
 		std::string strCombatObjectArchetypeId;
 		std::string strClientVisualId;
 		std::string strActiveEffectAssetId;
@@ -601,18 +608,18 @@ private:
 		float3_t vPosition = {};
 		f32_t fYawDegrees = 0.f;
 		uint64_t iActiveHandle = 0u;
-		/* The active root spawns once per rewind and keeps its authored NATURAL
-		   lifetime past iLifetimeMs, mirroring the Server despawn Release path. */
-		bool_t bActiveAttempted = false;
+		/* The common externally sampled Effect runtime keeps this handle until
+		   Stop/Reset, including the authored natural tail after Server despawn. */
 		std::vector<uint64_t> TerminalHandles;
-		std::vector<bool_t> TerminalAttempts;
 	};
 	std::unordered_map<std::string,
 		std::vector<LOCAL_PATTERN_COMBAT_OBJECT_TEMPLATE>>
 		m_LocalPreviewCombatObjectsByActionId;
 	std::vector<LOCAL_PATTERN_COMBAT_OBJECT_INSTANCE>
 		m_LocalPreviewCombatObjectInstances;
-	std::string m_strLocalPreviewCombatObjectActionId;
+	std::string m_strLocalPreviewCombatObjectScopeId;
+	float3_t m_vLocalPreviewCombatObjectBossPosition = {};
+	f32_t m_fLocalPreviewCombatObjectBossYawDegrees = 0.f;
 	std::string m_strLocalPreviewCombatObjectStatus;
 	std::string m_strLocalPreviewPatternId;
 	std::string m_strLocalPreviewActionId;
@@ -746,7 +753,8 @@ private:
 	bool_t Sync_LocalPatternCombatObjectPreview(
 		std::string_view actionId,
 		f32_t fActionAgeSeconds,
-		std::string& strOutStatus);
+		std::string& strOutStatus,
+		bool_t bIndependentOwnerOnly = false);
 	void Stop_LocalPatternCombatObjectPreview();
 	void Load_PatternSoundCues();
 	bool_t Reload_PatternSoundCues_WhileAdmitted(std::string& strOutStatus);

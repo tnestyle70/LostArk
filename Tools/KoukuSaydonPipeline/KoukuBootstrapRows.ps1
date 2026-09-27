@@ -1810,13 +1810,18 @@ foreach ($koukuPattern in @($koukuEncounterDocument.patterns)) {
 			continue
 		}
 		$triggerOptionalProperties = @()
-		foreach ($field in @('soldierCounts','spawnRadiusMinM','spawnRadiusMaxM')) {
+		foreach ($field in @('soldierCounts','spawnRadiusMinM','spawnRadiusMaxM','soldierMaxHp','soldierDamage')) {
 			if ($null -ne $trigger.PSObject.Properties[$field]) { $triggerOptionalProperties += $field }
 		}
 		if ($trigger.kind -ceq 'CARD_RAIN_SOLDIERS') {
 			if ($trigger.soldierCounts -isnot [Array] -or @($trigger.soldierCounts).Count -ne 3) { throw 'Card rain needs three soldier counts' }
 			$totalSoldiers = 0
 			foreach ($count in $trigger.soldierCounts) { Assert-JsonInteger $count 'Card rain soldier count' 0 32; $totalSoldiers += $count }
+			foreach ($field in @('soldierMaxHp','soldierDamage')) {
+				if ($null -ne $trigger.PSObject.Properties[$field]) {
+					Assert-JsonInteger $trigger.$field "Card rain $field" 0 2000000000
+				}
+			}
 			Assert-JsonNumber $trigger.spawnRadiusMinM 'Card rain minimum radius'
 			Assert-JsonNumber $trigger.spawnRadiusMaxM 'Card rain maximum radius'
 			if ($totalSoldiers -lt 1 -or $totalSoldiers -gt 64 -or $trigger.spawnRadiusMinM -lt 0 -or
@@ -2007,7 +2012,9 @@ foreach ($koukuPattern in @($koukuEncounterDocument.patterns)) {
 			$patternRows.Add((@('PATTERNCARDRAINSOLDIERS', $koukuEncounterDocument.encounterId, $koukuPattern.patternId,
 				$trigger.triggerId, $trigger.soldierCounts[0], $trigger.soldierCounts[1], $trigger.soldierCounts[2],
 				(Format-InvariantSignedFloat $trigger.spawnRadiusMinM 'Card rain minimum radius'),
-				(Format-InvariantSignedFloat $trigger.spawnRadiusMaxM 'Card rain maximum radius')) -join "`t"))
+				(Format-InvariantSignedFloat $trigger.spawnRadiusMaxM 'Card rain maximum radius'),
+				$(if ($null -ne $trigger.PSObject.Properties['soldierMaxHp']) { [uint32]$trigger.soldierMaxHp } else { 0 }),
+				$(if ($null -ne $trigger.PSObject.Properties['soldierDamage']) { [uint32]$trigger.soldierDamage } else { 0 })) -join "`t"))
 		}
 		if ($airborneRow) { $patternRows.Add($airborneRow) }
 		if ($null -ne $trigger.PSObject.Properties['fixedHits']) {

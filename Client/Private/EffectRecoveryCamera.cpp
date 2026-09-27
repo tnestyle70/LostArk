@@ -6,6 +6,7 @@
 #include <fstream>
 #include <iterator>
 #include <set>
+#include <unordered_map>
 
 namespace Client
 {
@@ -74,6 +75,7 @@ bool Camera_SampleUp(const VALTAN_CINEMATIC_CAMERA_CUE& cue, const std::vector<f
     if (upper == cue.Keyframes.begin()) { out = ups.front(); return true; }
     if (upper == cue.Keyframes.end()) { out = ups.back(); return true; }
     const auto right = static_cast<std::size_t>(upper - cue.Keyframes.begin()), left = right - 1u;
+    if (cue.Keyframes[right].cutBefore) { out = ups[left]; return true; }
     float alpha = (std::clamp)((elapsedMs - cue.Keyframes[left].iTimeMs) /
         static_cast<float>(cue.Keyframes[right].iTimeMs - cue.Keyframes[left].iTimeMs), 0.f, 1.f);
     if (cue.eEasing == VALTAN_CINEMATIC_CAMERA_EASING::SMOOTHSTEP) alpha = alpha * alpha * (3.f - 2.f * alpha);
@@ -82,9 +84,9 @@ bool Camera_SampleUp(const VALTAN_CINEMATIC_CAMERA_CUE& cue, const std::vector<f
     if (cue.eInterpolation == VALTAN_CINEMATIC_CAMERA_INTERPOLATION::LINEAR)
         XMStoreFloat3(&out, XMVectorLerp(XMLoadFloat3(&ups[left]), XMLoadFloat3(&ups[right]), alpha));
     else if (cue.eInterpolation == VALTAN_CINEMATIC_CAMERA_INTERPOLATION::CATMULL_ROM)
-        XMStoreFloat3(&out, XMVectorCatmullRom(XMLoadFloat3(&ups[left ? left - 1u : left]),
+        XMStoreFloat3(&out, XMVectorCatmullRom(XMLoadFloat3(&ups[left && !cue.Keyframes[left].cutBefore ? left - 1u : left]),
             XMLoadFloat3(&ups[left]), XMLoadFloat3(&ups[right]),
-            XMLoadFloat3(&ups[(std::min)(right + 1u, ups.size() - 1u)]), alpha));
+            XMLoadFloat3(&ups[right + 1u < ups.size() && !cue.Keyframes[right + 1u].cutBefore ? right + 1u : right]), alpha));
     else return false;
     return true;
 }
@@ -98,6 +100,11 @@ bool CEffectRecoveryCamera::Validate(const std::vector<EFFECT_CAMERA_ROW>& rows,
     std::vector<std::pair<std::uint32_t, std::uint32_t>> spans;
     for (const auto& row : rows)
     {
+        if ((!row.sourceEffectId.empty() || !row.sourceCameraId.empty()) &&
+            (!CEffectV2Document::Is_ValidEffectId(row.sourceEffectId) || !row.sourceEffectId.ends_with(".restore") ||
+             !CEffectV2Document::Is_ValidEffectId(row.sourceCameraId) || row.sourceClockAtStartMs > MAX_CAMERA_MS ||
+             !std::isfinite(row.sourcePlayRate) || row.sourcePlayRate <= 0.f || row.sourcePlayRate > 10000.f))
+        { error = "Invalid original camera authoring reference."; return false; }
         if (!CEffectV2Document::Is_ValidEffectId(row.id) || !ids.insert(row.id).second || row.label.size() > 512u ||
             row.source.size() > 2048u || !row.cue.iDurationMs || row.cue.iDurationMs > MAX_CAMERA_MS ||
             row.startMs > MAX_CAMERA_MS - row.cue.iDurationMs || row.upVectors.size() != row.cue.Keyframes.size() || row.cue.Keyframes.empty() || row.cue.Keyframes.size() > 4096u ||
@@ -163,6 +170,15 @@ bool CEffectRecoveryCamera::Parse(const DATA_JSON_VALUE& document, const bool re
         else if (easing == "SMOOTHSTEP") row.cue.eEasing = VALTAN_CINEMATIC_CAMERA_EASING::SMOOTHSTEP;
         else if (easing == "HOLD") row.cue.eEasing = VALTAN_CINEMATIC_CAMERA_EASING::HOLD;
         else { error = "Unknown camera easing."; return false; }
+        if (const auto* origin = value.Find("sourceCamera"))
+        {
+            double rate = 0.;
+            if (!origin->Is_Object() || !Camera_Text(*origin, "effectId", row.sourceEffectId) ||
+                !Camera_Text(*origin, "cameraId", row.sourceCameraId) || !Camera_Ms(*origin, "clockAtStartMs", row.sourceClockAtStartMs) ||
+                !Camera_Number(*origin, "playRate", rate) || row.sourceEffectId.empty() || row.sourceCameraId.empty())
+            { error = "Malformed original camera authoring reference."; return false; }
+            row.sourcePlayRate = static_cast<float>(rate);
+        }
         for (const auto& entry : keys->Get_Array())
         {
             VALTAN_CINEMATIC_CAMERA_KEYFRAME key; double fov = 0;
@@ -174,12 +190,91 @@ bool CEffectRecoveryCamera::Parse(const DATA_JSON_VALUE& document, const bool re
                     (!axis || entry.Find("fovYDegrees") || !Camera_Number(entry, "fovDegrees", fov))) ||
                 ((axis || entry.Find("up")) && !Camera_Vector(entry, "up", up)))
             { error = "Malformed camera key; the current sequence is preserved."; return false; }
+            if (const auto* cut = entry.Find("cutBefore"))
+            { if (!cut->Is_Boolean()) { error = "Camera cutBefore must be boolean."; return false; } key.cutBefore = cut->Get_Boolean(); }
             key.fFovYDegrees = static_cast<float>(fov); row.cue.Keyframes.push_back(std::move(key)); row.upVectors.push_back(up);
         }
         staged.push_back(std::move(row));
     }
     if (!Validate(staged, error)) return false;
     out = std::move(staged); return true;
+}
+DATA_JSON_VALUE CEffectRecoveryCamera::Write_Row(const EFFECT_CAMERA_ROW& row, const DATA_JSON_VALUE* baseline, const bool authoringProvenance)
+{
+    using J = DATA_JSON_VALUE;
+    auto fields = baseline && baseline->Is_Object() ? baseline->Get_Object() : J::OBJECT{};
+    const auto vector = [](const float3_t& value) { return J::Array({J::Number(value.x), J::Number(value.y), J::Number(value.z)}); };
+    const auto keepFloat = [](const J* old, const J& value, const auto& self) -> J {
+        if (old && old->Is_Number() && value.Is_Number() && static_cast<float>(old->Get_Number()) == static_cast<float>(value.Get_Number())) return *old;
+        if (old && old->Is_Array() && value.Is_Array() && old->Get_Array().size() == value.Get_Array().size())
+        { J::ARRAY items; for (std::size_t i = 0; i < value.Get_Array().size(); ++i) items.push_back(self(&old->Get_Array()[i], value.Get_Array()[i], self)); return J::Array(std::move(items)); }
+        return value;
+    };
+    fields["cameraId"] = J::String(row.id); fields["displayName"] = J::String(row.label); fields["source"] = J::String(row.source);
+    fields["space"] = J::String(row.modelRelative ? "MODEL_ROOT" : "WORLD");
+    fields["startMs"] = J::Number(row.startMs); fields["durationMs"] = J::Number(row.cue.iDurationMs); fields["muted"] = J::Boolean(row.muted);
+    fields["interpolation"] = J::String(row.cue.eInterpolation == VALTAN_CINEMATIC_CAMERA_INTERPOLATION::CATMULL_ROM ? "CATMULL_ROM" : "LINEAR");
+    fields["easing"] = J::String(row.cue.eEasing == VALTAN_CINEMATIC_CAMERA_EASING::HOLD ? "HOLD" : row.cue.eEasing == VALTAN_CINEMATIC_CAMERA_EASING::SMOOTHSTEP ? "SMOOTHSTEP" : "LINEAR");
+    const bool legacy = baseline && !baseline->Find("fovAxis") && !row.horizontalFov;
+    if (!legacy) fields["fovAxis"] = J::String(row.horizontalFov ? "HORIZONTAL" : "VERTICAL");
+    const auto* oldKeys = baseline ? baseline->Find("keys") : nullptr;
+    std::unordered_map<std::string, const J*> originalKeys;
+    if (oldKeys && oldKeys->Is_Array())
+    {
+        originalKeys.reserve(oldKeys->Get_Array().size());
+        for (const auto& old : oldKeys->Get_Array())
+            if (const auto* id = old.Find("keyId"); id && id->Is_String()) originalKeys.emplace(id->Get_String(), &old);
+    }
+    J::ARRAY keys;
+    keys.reserve(row.cue.Keyframes.size());
+    for (std::size_t i = 0; i < row.cue.Keyframes.size(); ++i)
+    {
+        const auto& key = row.cue.Keyframes[i]; const J* original = nullptr;
+        if (const auto found = originalKeys.find(key.strSceneId); found != originalKeys.end()) original = found->second;
+        auto values = original ? original->Get_Object() : J::OBJECT{};
+        values["keyId"] = J::String(key.strSceneId); values["timeMs"] = J::Number(key.iTimeMs);
+        for (const auto& [name, value] : J::OBJECT{{"eye", vector(key.vEye)}, {"lookAt", vector(key.vLookAt)},
+            {"up", vector(i < row.upVectors.size() ? row.upVectors[i] : float3_t{0.f,1.f,0.f})},
+            {legacy ? "fovYDegrees" : "fovDegrees", J::Number(key.fFovYDegrees)}})
+            values[name] = keepFloat(original ? original->Find(name) : nullptr, value, keepFloat);
+        if (!legacy) values.erase("fovYDegrees");
+        if (key.cutBefore || (original && original->Find("cutBefore"))) values["cutBefore"] = J::Boolean(key.cutBefore);
+        keys.push_back(J::Object(std::move(values), original ? original->Get_ObjectInsertionOrder() : std::vector<std::string>{}));
+    }
+    fields["keys"] = J::Array(std::move(keys));
+    if (authoringProvenance && !row.sourceEffectId.empty()) fields["sourceCamera"] = J::Object({
+        {"effectId", J::String(row.sourceEffectId)}, {"cameraId", J::String(row.sourceCameraId)},
+        {"clockAtStartMs", J::Number(row.sourceClockAtStartMs)}, {"playRate", J::Number(row.sourcePlayRate)}});
+    return J::Object(std::move(fields), baseline ? baseline->Get_ObjectInsertionOrder() : std::vector<std::string>{});
+}
+void CEffectRecoveryCamera::Restore_AuthoringProvenance(std::vector<EFFECT_CAMERA_ROW>& rows,
+    const std::vector<EFFECT_CAMERA_ROW>& admitted)
+{
+    const auto sameVector = [](const float3_t& a, const float3_t& b) { return a.x == b.x && a.y == b.y && a.z == b.z; };
+    const auto same = [&](const EFFECT_CAMERA_ROW& a, const EFFECT_CAMERA_ROW& b) {
+        if (a.startMs != b.startMs || a.cue.iDurationMs != b.cue.iDurationMs || a.modelRelative != b.modelRelative ||
+            a.horizontalFov != b.horizontalFov || a.cue.eInterpolation != b.cue.eInterpolation || a.cue.eEasing != b.cue.eEasing ||
+            a.cue.Keyframes.size() != b.cue.Keyframes.size() || a.upVectors.size() != b.upVectors.size()) return false;
+        for (std::size_t i = 0; i < a.cue.Keyframes.size(); ++i)
+        {
+            const auto& x = a.cue.Keyframes[i]; const auto& y = b.cue.Keyframes[i];
+            if (x.iTimeMs != y.iTimeMs || x.fFovYDegrees != y.fFovYDegrees || x.cutBefore != y.cutBefore ||
+                !sameVector(x.vEye, y.vEye) || !sameVector(x.vLookAt, y.vLookAt) || !sameVector(a.upVectors[i], b.upVectors[i])) return false;
+        }
+        return true;
+    };
+    for (auto& row : rows)
+    {
+        if (!row.sourceEffectId.empty()) continue;
+        const EFFECT_CAMERA_ROW* unique = nullptr; bool ambiguous = false;
+        for (const auto& source : admitted) if (!source.sourceEffectId.empty() && same(row, source))
+        { if (unique) { ambiguous = true; break; } unique = &source; }
+        if (unique && !ambiguous)
+        {
+            row.sourceEffectId = unique->sourceEffectId; row.sourceCameraId = unique->sourceCameraId;
+            row.sourceClockAtStartMs = unique->sourceClockAtStartMs; row.sourcePlayRate = unique->sourcePlayRate;
+        }
+    }
 }
 bool CEffectRecoveryCamera::Load(const std::string& effectId, EFFECT_RECOVERY_CAMERA_DOCUMENT& out, std::string& error)
 {
@@ -194,9 +289,16 @@ bool CEffectRecoveryCamera::Load(const std::string& effectId, EFFECT_RECOVERY_CA
     std::ifstream input(path, std::ios::binary);
     if (!input) { error = "Cannot read recovery camera sequence."; return false; }
     const std::string text(std::istreambuf_iterator<char>(input), {});
+    DATA_JSON_VALUE document;
+    if (input.bad() || !CDataJson::Parse(text, document, error)) return false;
+    return Parse_Document(effectId, document, out, error);
+}
+bool CEffectRecoveryCamera::Parse_Document(const std::string& effectId, const DATA_JSON_VALUE& document,
+    EFFECT_RECOVERY_CAMERA_DOCUMENT& out, std::string& error)
+{
     EFFECT_RECOVERY_CAMERA_DOCUMENT staged; std::string schema, id;
-    auto& root = staged.document;
-    if (input.bad() || !CDataJson::Parse(text, root, error) || !Camera_Text(root, "schema", schema) ||
+    staged.document = document; const auto& root = staged.document;
+    if (!CEffectV2Document::Is_ValidEffectId(effectId) || !effectId.ends_with(".restore") || !Camera_Text(root, "schema", schema) ||
         schema != "lostark.effect-authoring-sequence" || !Camera_Ms(root, "formatVersion", staged.version) ||
         (staged.version != 3u && staged.version != 4u) || !Camera_Text(root, "sequenceId", id) || id != effectId)
     { error = "Invalid recovery camera sequence header; previous preview preserved."; return false; }

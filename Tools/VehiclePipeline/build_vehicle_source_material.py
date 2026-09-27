@@ -7,7 +7,7 @@ verify     regenerates an installed program from its original MIC and requires
            the installed Base/Light functions to match byte for byte.
 generate   writes one new Base/Light function pair and its CPU packing block.
 install    inserts a generated program into both SourceCharacter program files
-           and SourceCharacterMaterialParameters.h without renumbering others.
+           and its private C++ packing source without renumbering others.
 rows       emits the catalog modelMaterialOverrides rows for extracted MICs.
 textures   copies the exact source textures the rows reference into Resources.
 """
@@ -35,7 +35,9 @@ RELEASE = pathlib.Path('C:/ProgramData/Smilegate/Games/LOSTARK/EFGame/ReleasePC'
 BASE_PROGRAMS = ROOT / 'Engine/Bin/ShaderFiles/Shader_SourceCharacterBasePrograms.hlsli'
 LIGHT_PROGRAMS = ROOT / 'Engine/Bin/ShaderFiles/Shader_SourceCharacterLightPrograms.hlsli'
 CLIENT_SHADER_DIR = ROOT / 'Client/Bin/ShaderFiles'
-PARAMETER_HEADER = ROOT / 'Client/Public/SourceCharacterMaterialParameters.h'
+# Keep the historical helper name for tooling imports. The public API is stable;
+# generated packing is private to the single C++ implementation owner.
+PARAMETER_HEADER = ROOT / 'Client/Private/SourceCharacterMaterialParameters_Generated.inl'
 RESOURCES = ROOT / 'Client/Bin/Resources'
 
 
@@ -451,6 +453,19 @@ def emit_function(document, family, number, stage):
             lines.append(f'    source[{row}]={hlsl(node, time_parameter)};')
         else:
             lines.append(f'    source[{row}].{"xyzw"[lane]}=({hlsl(node, time_parameter)}).x;')
+    # The FT06 movie hair PS has two engine-owned primitive rows before the MIC.
+    # The base's environment multiplier and both passes' primitive opacity must
+    # be identity; a zero-initialized material pack otherwise erases this hair.
+    movie_hair_prefix = {
+        '040a63ec2e3e5e42a8f2194c6622723a': ('base', ['    source[0].x = 1.f;', '    source[1].w = 1.f;']),
+        'e36b84e020d38e408af80c720418b668': ('light', ['    source[1].w = 1.f;']),
+    }
+    if program['shaderId'] in movie_hair_prefix:
+        expected_stage, assignments = movie_hair_prefix[program['shaderId']]
+        leading = program['bindings']['constantBufferClosure']['leadingUnownedConstantBuffer0Slots']
+        if stage != expected_stage or leading != [0, 1]:
+            fail('Source FT06 hair primitive register evidence changed')
+        lines += ['    // Original engine primitive environment/opacity identity.'] + assignments
     # Same scene-owned reflection ABI as the existing SourceCharacter PBR families.
     environment_rows = {
         '14c753dc7e67da47b5fd1f7628119996': (36, 37),
@@ -494,6 +509,11 @@ def emit_function(document, family, number, stage):
             # not feed 1/0 followed by 0*INF into the entire surface colour. A valid nonzero
             # lookup retains the exact native reciprocal; no substitute LUT is invented.
             translated = 'r0.w = r13.w != 0.f ? 1.f / r13.w : 0.f;'
+        if (stage == 'base' and program['shaderId'] == 'a68bdca4b6e4b34bb222fafbd8cc25bd' and
+                instruction == 'div r2.y, l(1.000000, 1.000000, 1.000000, 1.000000), r2.z'):
+            # Guardian DDK01 emissive armour has the same unrecovered engine BRDF
+            # lookup as native198. Preserve its finite zero-reflection boundary.
+            translated = 'r2.y = r2.z != 0.f ? 1.f / r2.z : 0.f;'
         lines.append('    ' + translated)
     lines.append('}')
     return '\n'.join(lines) + '\n'
@@ -789,7 +809,7 @@ def command_install(arguments):
     if existing is None:
         anchor = '    if (staged.program == 0u) return false;\n    if (staged.program == 80u)\n'
         if header.count(anchor) != 1:
-            fail('SourceCharacterMaterialParameters.h family anchor changed')
+            fail('SourceCharacterMaterialParameters_Generated.inl family anchor changed')
         header = header.replace(anchor, configure + anchor)
     elif existing != configure:
         fail(f'{arguments.family} is already installed with a different packing')

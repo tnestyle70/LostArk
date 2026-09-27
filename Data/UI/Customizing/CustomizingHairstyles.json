@@ -828,7 +828,8 @@
           "setId": "pc_ft_56_hair",
           "visualSetId": "character.lance_master.pc_ft_56_hair.head"
         }
-      ]
+      ],
+      "defaultVisualSetId": "character.lance_master.pc_ft_43_hair.head"
     },
     "Warlord": {
       "hairstyle": [

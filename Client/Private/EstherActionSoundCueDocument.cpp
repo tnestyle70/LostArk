@@ -1,5 +1,6 @@
 #include "EstherActionSoundCueDocument.h"
 
+#include "CombatHUDViewModel.h"
 #include "DataJson.h"
 #include "GameInstance.h"
 #include "ProjectDataRoot.h"
@@ -17,12 +18,20 @@
 
 std::vector<Client::ESTHER_ACTION_SOUND_CUE>
 	Client::CEstherActionSoundCueDocument::s_Cues;
+std::vector<std::uint64_t>
+	Client::CEstherActionSoundCueDocument::s_PlayingSoundHandles;
 std::uint32_t Client::CEstherActionSoundCueDocument::s_iFixedTickHz = 30u;
 bool_t Client::CEstherActionSoundCueDocument::s_bLoaded = false;
 
 namespace
 {
 	using namespace Client;
+
+	bool_t IsEstherSoundAudience()
+	{
+		const auto& listener = CCombatHUDViewModel::Get().Get_Player();
+		return !listener.isValid || listener.isPreview || listener.iMarioStage == 0u;
+	}
 
 	bool_t IsStableId(const std::string& value)
 	{
@@ -239,6 +248,8 @@ bool_t Client::CEstherActionSoundCueDocument::Play_Due(
 	std::string& strOutStatus)
 {
 	strOutStatus.clear();
+	Update_SoundAudience();
+	const bool_t isAudience = IsEstherSoundAudience();
 	if (!s_bLoaded || ESTHER_ACTION_SOUND_OWNER_KIND::END == eOwnerKind ||
 		!IsStableId(strOwnerId) || !IsStableId(strActionId) ||
 		0u == iServerTick || 0u == iActionStartTick || 0u == s_iFixedTickHz)
@@ -277,6 +288,11 @@ bool_t Client::CEstherActionSoundCueDocument::Play_Due(
 			continue;
 		}
 		State.AttemptedCueIds.insert(cue.strCueId);
+		if (!isAudience)
+		{
+			++dropped;
+			continue;
+		}
 		if (ageMs > static_cast<std::uint64_t>(cue.iStartMs) +
 			cue.iLateToleranceMs)
 		{
@@ -298,18 +314,40 @@ bool_t Client::CEstherActionSoundCueDocument::Play_Due(
 			CRuntimeAssetRoot::Resolve(variants[variantIndex]);
 		std::error_code assetError;
 		if (soundPath.empty() ||
-			!std::filesystem::is_regular_file(soundPath, assetError) || assetError ||
-			FAILED(CGameInstance::Get().Play_Sound(
-				soundPath.wstring(), cue.fVolume)))
+			!std::filesystem::is_regular_file(soundPath, assetError) || assetError)
 		{
 			++dropped;
 			continue;
 		}
+		const std::uint64_t handle = CGameInstance::Get().Play_SoundCue(
+			soundPath.wstring(), cue.fVolume);
+		if (!handle)
+		{
+			++dropped;
+			continue;
+		}
+		s_PlayingSoundHandles.push_back(handle);
 		++played;
 	}
 	strOutStatus = "Esther action Sound occurrence played " +
 		std::to_string(played) + ", dropped " + std::to_string(dropped) + ".";
 	return true;
+}
+
+void Client::CEstherActionSoundCueDocument::Update_SoundAudience()
+{
+	const bool_t isAudience = IsEstherSoundAudience();
+	auto& audio = CGameInstance::Get();
+	for (auto iter = s_PlayingSoundHandles.begin(); iter != s_PlayingSoundHandles.end();)
+	{
+		if (!isAudience || !audio.Is_SoundCueActive(*iter))
+		{
+			audio.Stop_SoundCue(*iter);
+			iter = s_PlayingSoundHandles.erase(iter);
+		}
+		else
+			++iter;
+	}
 }
 
 std::size_t Client::CEstherActionSoundCueDocument::Preload_Sounds()

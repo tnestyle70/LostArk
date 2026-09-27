@@ -155,6 +155,11 @@ namespace LostArk::Server
 	class CKoukuSaydonLogicRuntime final
 	{
 	public:
+        // Only physical contact hazards are offered to companion avoidance.
+        [[nodiscard]] static float Predict_ContactRisk(const SERVER_WORLD_ENTITY& boss,
+            const BOSS_PATTERN_DEFINITION& pattern, const KOUKUSAYDON_LOGIC_LEDGER& ledger,
+            const SERVER_PLAYER& probe, std::uint32_t serverTick, std::uint32_t horizonMs);
+
 		static constexpr std::uint32_t DANCE_POSE_COUNT = 4u;
 
 		static void Assign_EncounterCard(SERVER_PLAYER& player,
@@ -174,6 +179,10 @@ namespace LostArk::Server
 		// Uses the same authored region transform and elliptic-sector boundary as contacts.
 		[[nodiscard]] static bool Is_PointInsideRegion(const BOSS_LOGIC_REGION& region,
 			const SERVER_WORLD_ENTITY& boss, float worldX, float worldZ) noexcept;
+		// Read-only projection of the exact active authoritative mechanic interval.
+		static void Project_MechanicGauge(const SERVER_WORLD_ENTITY& boss,
+			const BOSS_PATTERN_DEFINITION& pattern, const KOUKUSAYDON_LOGIC_LEDGER& ledger,
+			std::uint32_t serverTick, LostArk::Shared::BOSS_COMBAT_SNAPSHOT& snapshot);
 		static void Build(
 			const BOSS_PATTERN_DEFINITION& pattern,
 			const SERVER_WORLD_ENTITY& boss,
@@ -280,7 +289,8 @@ namespace LostArk::Server
 			std::vector<LostArk::Shared::DAMAGE_EVENT>& outDamageEvents,
 			KOUKUSAYDON_LOGIC_OUTPUT& outOutput,
 			const std::set<LostArk::Shared::PLAYER_ID>& invulnerablePlayers,
-			const std::array<float, 2u>* pContactCenter = nullptr);
+			const std::array<float, 2u>* pContactCenter = nullptr,
+			bool spatialContact = false);
 		static KOUKUSAYDON_LOGIC_ANSWER Judge_Roulette(
 			const BOSS_PATTERN_LOGIC_WINDOW& window,
 			const SERVER_WORLD_ENTITY& boss,
@@ -290,6 +300,7 @@ namespace LostArk::Server
 			const SERVER_WORLD_ENTITY& boss,
 			const SERVER_PLAYER& player) noexcept;
 		static bool Is_Judgeable(const SERVER_PLAYER& player) noexcept;
+		static bool Can_ReceiveSpatialContact(const SERVER_PLAYER& player) noexcept;
 	};
 
 	/* One card maze run: who claimed the telescope, the suit each hunter was

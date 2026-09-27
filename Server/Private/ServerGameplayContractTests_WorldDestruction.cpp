@@ -1553,31 +1553,59 @@ void LostArk::Server::CServerGameplayContractRunner::Run_InannaProtection(
     room->Handle_UseEstherSkill(casterSession, use);
     auto& caster = room->m_Players.at(1u);
     auto& peer = room->m_Players.at(2u);
-    tests.Require(caster.iInvulnerableEndTick == endTick && peer.iInvulnerableEndTick == endTick &&
+    tests.Require(caster.iInvulnerableEndTick == 0u && peer.iInvulnerableEndTick == 0u &&
         caster.eAction == PLAYER_ACTION_STATE::ESTHER_CAST && room->m_EstherSkillSystem.Get_Gauge() == 0u,
-        "Accepted Inanna gives every living raid participant thirty seconds immediately, independent of distance");
-    tests.Require(room->m_Players.at(3u).iCurrentHp == 0u && room->m_Players.at(3u).iInvulnerableEndTick == 0u &&
-        room->m_Players.at(4u).iInvulnerableEndTick == 0u && otherRoom->m_Players.at(4u).iInvulnerableEndTick == 0u,
-        "Inanna does not resurrect, grant outside the raid roster, or leak into another Server room");
+        "Accepted Inanna protects nobody until her zone opens");
     tests.Require(room->m_PendingEstherSummons.size() == 1u &&
         room->m_PendingEstherSummons.front().pRosterEntry->eEstherId == ESTHER_ID::INANNA &&
         room->m_PendingEstherSummons.front().pRosterEntry->iStrikeMs == 4100u,
-        "Inanna keeps the authored 4.1-second summon presentation separate from its thirty-second protection");
+        "Inanna keeps the authored 4.1-second summon presentation separate from her protection zone");
+    const auto* zone = LostArk::Shared::EstherStrike::Find_Zone(ESTHER_ID::INANNA);
+    tests.Require(nullptr != zone && 7.f == zone->fRadiusM && 10000u == zone->iDurationMs,
+        "Inanna's zone is the source 700 cm aura held for ten seconds");
+    if (nullptr == zone) return;
+    constexpr std::uint32_t zoneTick = callTick + 90u;
+    const std::uint32_t zoneEndTick = zoneTick + CKoukuSaydonLogicRuntime::Ticks_FromMs(zone->iDurationMs);
+    peer.fPositionX = 3.f;
+    room->m_Players.at(3u).fPositionX = 0.f;
+    room->m_Players.at(4u).fPositionX = 0.f;
+    caster.iMaximumMadness = 100u; caster.iCurrentMadness = 50u;
+    room->Open_EstherZone(*zone, 0.f, 0.f, zoneTick);
+    room->Update_EstherZones(zoneTick);
+    tests.Require(caster.iInvulnerableEndTick == zoneTick + 2u && peer.iInvulnerableEndTick == zoneTick + 2u &&
+        room->m_Players.at(3u).iInvulnerableEndTick == 0u && room->m_Players.at(4u).iInvulnerableEndTick == 0u &&
+        otherRoom->m_Players.at(4u).iInvulnerableEndTick == 0u,
+        "Inanna's zone protects only living raid participants inside it and never leaks into another Server room");
+    tests.Require(caster.iCurrentMadness == 40u, "Inanna's first pulse drains ten percent madness as the zone opens");
+    room->Update_EstherZones(zoneTick + 29u);
+    tests.Require(caster.iCurrentMadness == 40u, "Inanna's madness drain waits for the next one-second pulse");
+    room->Update_EstherZones(zoneTick + 30u);
+    tests.Require(caster.iCurrentMadness == 30u, "Inanna drains another ten percent madness every second");
     std::vector<DAMAGE_EVENT> events;
     SERVER_WORLD_TO_PLAYER_HIT hit; hit.iRawDamage = 10u; hit.bIgnoreDefense = true;
-    hit.iServerTick = callTick;
+    hit.iServerTick = zoneTick + 30u;
     tests.Require(CServerCombatHitRuntime::Apply_WorldToPlayer(caster, hit, catalog, events) == SERVER_COMBAT_HIT_RESULT::ABSORBED &&
         CServerCombatHitRuntime::Apply_WorldToPlayer(peer, hit, catalog, events) == SERVER_COMBAT_HIT_RESULT::ABSORBED &&
         caster.iCurrentHp == 100u && peer.iCurrentHp == 100u && events.empty(),
-        "Inanna absorbs ordinary Server damage for the caster and the other participant");
-    auto expired = peer; hit.iServerTick = endTick;
-    tests.Require(CServerCombatHitRuntime::Apply_WorldToPlayer(expired, hit, catalog, events) == SERVER_COMBAT_HIT_RESULT::LANDED && expired.iCurrentHp == 90u,
-        "Inanna ordinary-damage protection ends at exactly thirty seconds");
-    auto unrelatedWipe = peer; hit.iServerTick = callTick + 1u; hit.bEncounterWipe = true;
+        "Inanna's zone absorbs ordinary Server damage for everyone standing in it");
+    peer.fPositionX = 8.f;
+    room->Update_EstherZones(zoneTick + 31u);
+    auto left = peer; hit.iServerTick = zoneTick + 32u;
+    tests.Require(CServerCombatHitRuntime::Apply_WorldToPlayer(left, hit, catalog, events) == SERVER_COMBAT_HIT_RESULT::LANDED && left.iCurrentHp == 90u,
+        "Leaving Inanna's zone ends the protection within two ticks");
+    auto unrelatedWipe = caster; hit.iServerTick = zoneTick + 31u; hit.bEncounterWipe = true;
     tests.Require(CServerCombatHitRuntime::Apply_WorldToPlayer(unrelatedWipe, hit, catalog, events) == SERVER_COMBAT_HIT_RESULT::KILLED &&
         unrelatedWipe.iCurrentHp == 0u,
         "Other encounter wipes still bypass Inanna through the unchanged global damage arbiter");
-
+    events.clear();
+    room->m_TickDamageEvents.clear();
+    caster.iCurrentHp = 50u;
+    room->Update_EstherZones(zoneEndTick);
+    tests.Require(caster.iCurrentHp == 85u && peer.iCurrentHp == 100u && room->m_EstherZones.empty() &&
+        room->m_TickDamageEvents.size() == 1u && DAMAGE_HIT_FLAG::HEAL == room->m_TickDamageEvents.front().eHitFlag,
+        "Inanna's zone release heals thirty-five percent of maximum HP for the participants still inside");
+    caster.iInvulnerableEndTick = peer.iInvulnerableEndTick = endTick;
+    peer.fPositionX = 1000.f;
     auto& audition = room->m_KoukuSaydonPatternAudition;
     audition.ePhase = CGameRoom::KOUKUSAYDON_PATTERN_AUDITION_PHASE::ACTIVE;
     audition.iRoomAuditionEpoch = 741u;
@@ -1597,8 +1625,9 @@ void LostArk::Server::CServerGameplayContractRunner::Run_InannaProtection(
     room->m_KoukuBingoDuration.bLastLineCompletionSucceeded = false;
     BOSS_PATTERN_MECHANIC_TRIGGER detonation; detonation.eKind = BOSS_PATTERN_MECHANIC_TRIGGER_KIND::BINGO_DETONATION;
     room->m_PendingKoukuMechanicTriggers.push_back({owner.iNetEntityId, owner.iPatternSequence, detonation});
+    const auto protectedCasterHp = caster.iCurrentHp;
     room->Commit_KoukuMechanicTriggers(endTick - 1u);
-    tests.Require(caster.iCurrentHp == 100u && peer.iCurrentHp == 100u && owner.iCurrentHp == 10000u &&
+    tests.Require(caster.iCurrentHp == protectedCasterHp && peer.iCurrentHp == 100u && owner.iCurrentHp == 10000u &&
         room->m_KoukuBingo.Get_RedMask() == 0u,
         "Inanna survives the Bingo black hole with zero red lines until the last protected tick without earning boss damage");
     tests.Require(caster.iInvulnerabilityZonePulseTick == endTick - 1u && peer.iInvulnerabilityZonePulseTick == endTick - 1u &&
@@ -1623,5 +1652,32 @@ void LostArk::Server::CServerGameplayContractRunner::Run_InannaProtection(
     room->Commit_KoukuMechanicTriggers(endTick);
     tests.Require(caster.iCurrentHp == 0u && peer.iCurrentHp == 0u && caster.iShield == 0u && peer.iShield == 0u &&
         owner.iCurrentHp == 7400u && room->m_Players.at(4u).iCurrentHp == 100u,
-        "An earlier successful line reward cannot let shields survive the black hole after its thirty-second protection expires");
+        "An earlier successful line reward cannot let shields survive the black hole after Inanna's protection expires");
+
+    // A new gate must not inherit a previous gate's delayed strike or aura.
+    auto& resetPlayer = otherRoom->m_Players.at(4u);
+    resetPlayer.iCurrentHp = 50u; resetPlayer.iEstherGuardEndTick = zoneEndTick;
+    resetPlayer.iEstherGuardDamageTakenPercent = -50;
+    otherRoom->Open_EstherZone(*zone, 0.f, 0.f, zoneTick);
+    auto& pending = otherRoom->m_PendingEstherSummons.emplace_back();
+    pending.pRosterEntry = Find_EstherDefinition(ESTHER_ID::INANNA);
+    pending.iCasterPlayerId = 4u;
+    SERVER_WORLD_ENTITY priorSummon;
+    priorSummon.iNetEntityId = 99001u; priorSummon.eKind = WORLD_BOOTSTRAP_KIND::NPC;
+    priorSummon.isEstherSummon = true; priorSummon.strArchetypeId = "NPC_59620";
+    otherRoom->m_WorldEntities.push_back(std::move(priorSummon));
+    const auto hasPriorSummon = [&]() { return std::any_of(otherRoom->m_WorldEntities.begin(),
+        otherRoom->m_WorldEntities.end(), [](const auto& entity) { return entity.iNetEntityId == 99001u; }); };
+    tests.Require(otherRoom->Despawn_KoukuSaydonArenaDebugEntities(true, true) && hasPriorSummon() &&
+        otherRoom->m_PendingEstherSummons.size() == 1u && otherRoom->m_EstherZones.size() == 1u &&
+        resetPlayer.iEstherGuardEndTick == zoneEndTick,
+        "Gate preflight preserves active, delayed and support Esther state");
+    tests.Require(otherRoom->Despawn_KoukuSaydonArenaDebugEntities(true) && !hasPriorSummon() &&
+        otherRoom->m_PendingEstherSummons.empty() && otherRoom->m_EstherZones.empty() &&
+        resetPlayer.iEstherGuardEndTick == 0u && resetPlayer.iEstherGuardDamageTakenPercent == 0,
+        "Committed gate reset ends all previous Esther strikes and protection");
+    otherRoom->Update_EstherZones(zoneEndTick);
+    otherRoom->Update_PendingEstherSummons(2.f);
+    tests.Require(resetPlayer.iCurrentHp == 50u && !hasPriorSummon() && otherRoom->m_TickDamageEvents.empty(),
+        "Reset Esther cannot heal, strike or respawn in the next encounter");
 }

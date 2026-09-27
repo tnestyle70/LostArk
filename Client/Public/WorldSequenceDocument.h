@@ -201,7 +201,7 @@ struct WORLD_SEQUENCE_ANIMATION_TRACK
 	/* Several tracks may share one slot to play clips back to back. Each owns
 	   the window from its own startMs to the next one's, so a cutscene beat
 	   list stays one instance driving one target instead of several instances
-	   fighting over it. The first track of a slot must start at 0. */
+	   fighting over it. Slot starts must increase; the first may be delayed. */
 	uint32_t startMs = 0;
 	std::string clipName;
 	f32_t playbackRate = 1.f;

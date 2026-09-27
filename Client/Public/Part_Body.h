@@ -68,9 +68,9 @@ public:
 	virtual HRESULT Render() override;
 	virtual HRESULT Render_Group(RENDERGROUP group) override;
 	virtual HRESULT Render_Shadow() override;
-	/* Same draw as Render() through an explicit technique pass -- the character info window
-	portrait renders the live parts a second time with the forward ScreenCutin pass. */
+	/* Explicit pass for geometry previews; forward materials retain their own stage. */
 	HRESULT Render_Pass(uint32_t iPassIndex);
+	HRESULT Render_ForwardSource(bool opaqueGhost, ID3D11BlendState* pCoverageBlend = nullptr);
 
 private:
 	std::weak_ptr<CCharacter> m_pCharacterPresentationOwner;
@@ -88,7 +88,6 @@ private:
 	HRESULT Ready_Components(const PART_BODY_DESC* pDesc);
 	HRESULT Bind_ShaderResources();
 	HRESULT Bind_ShadowShaderResources();
-	HRESULT Render_ForwardSource(bool opaqueGhost);
 
 public:
 	static unique_ptr<CPart_Body> Create(ComPtr<ID3D11Device> pDevice,

@@ -1386,7 +1386,7 @@ function Get-SequenceNativeMaterialContract {
     # named inputs and texture expressions as CWorldSequenceDocument::Validate.
     if ($null -eq $script:sequenceNativeContracts) { $script:sequenceNativeContracts = @{} }
     if ($script:sequenceNativeContracts.ContainsKey($Family)) { return $script:sequenceNativeContracts[$Family] }
-    $header = Join-Path $ProjectRoot 'Client\Public\SourceCharacterMaterialParameters.h'
+    $header = Join-Path $ProjectRoot 'Client\Private\SourceCharacterMaterialParameters_Generated.inl'
     $source = [IO.File]::ReadAllText($header, [Text.Encoding]::UTF8)
     $pattern = '(?ms)^    if \(staged\.program == 0u && family == "' + [regex]::Escape($Family) + '"\)\s*\{(?<body>.*?)^    \}'
     $blocks = [regex]::Matches($source, $pattern)

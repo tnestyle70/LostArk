@@ -386,6 +386,7 @@ bool CEffectAuthoringSequencer::Stage_CharacterAction(const std::string& asset,
     const std::vector<CHARACTER_ACTION_COMBAT_ROW>& combat, const std::optional<std::uint32_t> stageIndex, const std::string& soundOwner,
     const ANIMATION_EFFECT_CUE_DOCUMENT* externalOwnerCues)
 {
+    if (!Ensure_RecoveryCameraSaved(m_Status)) return false;
     const auto model = CAnimationTargetService::Resolve_Model();
     const auto generation = CAnimationTargetService::Resolve_TargetGeneration();
     if (!model || !m_Panel || !m_Panel->Is_PreviewActive() || asset != CAnimationTargetService::Resolve_AssetName() ||
@@ -445,6 +446,8 @@ bool CEffectAuthoringSequencer::Stage_CharacterAction(const std::string& asset,
                             const auto end = (std::min)(sourceEnd, cameraStart + camera.cue.iDurationMs);
                             if (end <= begin) continue;
                             CAMERA_ROW staged = camera;
+                            staged.sourceEffectId = cue.strEffectAssetId; staged.sourceCameraId = camera.id;
+                            staged.sourceClockAtStartMs = begin - cue.iStartMs; staged.sourcePlayRate = source.fPlayRate;
                             staged.id = CEffectEditingSession::New_Id("character.camera.preview.");
                             staged.startMs = clock + local(begin);
                             staged.cue.iDurationMs = (std::max)(1u, static_cast<std::uint32_t>((end - begin) / source.fPlayRate));
@@ -468,6 +471,9 @@ bool CEffectAuthoringSequencer::Stage_CharacterAction(const std::string& asset,
                                 key.iTimeMs = time == end ? staged.cue.iDurationMs : static_cast<std::uint32_t>((time - begin) / source.fPlayRate);
                                 key.strSceneId = staged.id + ".key." + std::to_string(key.iTimeMs);
                                 key.vEye = pose.vEye; key.vLookAt = pose.vLookAt; key.fFovYDegrees = pose.fFovYDegrees;
+                                const auto exact = std::find_if(camera.cue.Keyframes.begin(), camera.cue.Keyframes.end(),
+                                    [&](const auto& value) { return value.iTimeMs == time - cameraStart; });
+                                key.cutBefore = exact != camera.cue.Keyframes.end() && exact->cutBefore;
                                 if (!staged.cue.Keyframes.empty() && staged.cue.Keyframes.back().iTimeMs == key.iTimeMs)
                                 { staged.cue.Keyframes.back() = key; staged.upVectors.back() = up; }
                                 else { staged.cue.Keyframes.push_back(key); staged.upVectors.push_back(up); }
@@ -543,6 +549,7 @@ bool CEffectAuthoringSequencer::Stage_CharacterAction(const std::string& asset,
 
 bool CEffectAuthoringSequencer::Open_CharacterModelSequence(const std::string& sequenceId, const bool loadSaved)
 {
+    if (!Ensure_RecoveryCameraSaved(m_Status)) return false;
     if (m_Dirty || !CEffectV2Document::Is_ValidEffectId(sequenceId) || sequenceId.size() >= sizeof(m_SequenceId))
     { m_Status = "Save the current sequence before selecting another action"; return false; }
     std::snprintf(m_SequenceId, sizeof(m_SequenceId), "%s", sequenceId.c_str());
@@ -562,6 +569,7 @@ bool CEffectAuthoringSequencer::Export_CharacterModelAction(ANIMATION_SKILL_BIND
     ANIMATION_EFFECT_CUE_DOCUMENT& cues, const std::string& soundOwner, std::string& status,
     const bool presentationOnly)
 {
+    if (!Ensure_RecoveryCameraSaved(status)) return false;
     if (!m_CustomAnimation || m_AnimationRows.empty() || !Validate_AnimationRows(m_AnimationRows))
     { status = "Select a valid model action before saving its Product binding"; return false; }
     if (!presentationOnly && (!m_Colliders.empty() || !m_CameraRows.empty()))
@@ -1765,6 +1773,7 @@ bool CEffectAuthoringSequencer::Append(const EFFECT_RESOURCE_KEY& key, const std
 }
 bool CEffectAuthoringSequencer::Preview(const EFFECT_RESOURCE_KEY& key, const std::uint32_t durationMs)
 {
+    if (key.strStableId != m_RecoveryCameraSession.EffectId() && !Ensure_RecoveryCameraSaved(m_Status)) return false;
     if (m_ValtanEffectPreview && m_ValtanEffectPreview->assetId != key.strStableId)
     {
         auto pending = std::move(m_PendingKoukuEffectPreview);
@@ -2316,6 +2325,7 @@ void CEffectAuthoringSequencer::Render_ModelView()
 
 bool CEffectAuthoringSequencer::Save_Sequence()
 {
+    if (!Ensure_RecoveryCameraSaved(m_Status)) return false;
     if (m_Transient)
     {
         m_Status = m_Transient->previewElementIds.empty() ? "Append the preview and camera rows before saving the sequence." :
@@ -2384,6 +2394,7 @@ bool CEffectAuthoringSequencer::Save_Sequence()
 }
 bool CEffectAuthoringSequencer::Load_Sequence(const bool discard)
 {
+    if (!Ensure_RecoveryCameraSaved(m_Status)) return false;
     if (m_Dirty && !discard) { m_Status = "Save the current timeline or use Revert sequence to discard its edits."; return false; }
     const std::string id = m_SequenceId;
     if (!CEffectV2Document::Is_ValidEffectId(id)) { m_Status = "Invalid sequence ID."; return false; }
@@ -2411,6 +2422,7 @@ bool CEffectAuthoringSequencer::Load_Sequence(const bool discard)
     }
     std::vector<CAMERA_ROW> cameras;
     if (!Parse_CameraRows(root, version >= 3u, cameras)) return false;
+    CEffectRecoveryCamera::Restore_AuthoringProvenance(cameras, m_CameraRows);
     std::vector<CLIP> animations; std::vector<SOUND_ROW> sounds; std::vector<COLLIDER_ROW> colliders; bool customAnimation = false;
     if (!Parse_AdditionalRows(root, version, animations, customAnimation, sounds, colliders)) return false;
     if (customAnimation && kind != "MODEL_SEQUENCE")

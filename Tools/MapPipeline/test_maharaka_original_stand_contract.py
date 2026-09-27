@@ -10,6 +10,31 @@ import source_character_registration as transaction
 
 
 class OriginalStandContractTests(unittest.TestCase):
+    def test_native_family_identity_does_not_collide_with_guardian_or_npc(self):
+        packing = (ROOT/'Client/Private/SourceCharacterMaterialParameters_Generated.inl').read_text(encoding='utf-8-sig')
+        expected = {
+            'source.character.equipment-native-1526.v1': 1526,
+            'source.character.maharaka-ismp-1.v1': 1528,
+            'source.character.maharaka-ismp-2.v1': 1527,
+            'source.character.maharaka-itr02453-01.v1': 1532,
+            'source.character.maharaka-itr02453-02.v1': 1529,
+            'source.character.maharaka-itr02453-03.v1': 1530,
+            'source.character.maharaka-itr02453-04.v1': 1531,
+            'source.character.maharaka-resident-female.v1': 1474,
+            'source.character.maharaka-resident-male.v1': 1475,
+        }
+        rows = re.findall(r'family == "([^"]+)"\)\s*\{\s*\[&\]\(\)\s*\{\s*staged.program = (\d+)u;', packing)
+        resolved = dict(rows)
+        for family, program in expected.items():
+            self.assertEqual(int(resolved[family]), program)
+        self.assertEqual(len(set(expected.values())), len(expected))
+        for phase in ('Base', 'Light'):
+            shader = (ROOT/f'Client/Bin/ShaderFiles/Shader_SourceCharacter{phase}Group1472.hlsli').read_text()
+            self.assertEqual(shader, (ROOT/f'Engine/Bin/ShaderFiles/Shader_SourceCharacter{phase}Group1472.hlsli').read_text())
+            for program in expected.values():
+                self.assertEqual(shader.count(f'SOURCE_CHARACTER_NATIVE_OUTPUT SourceCharacter{phase}{program}('), 1)
+                self.assertEqual(shader.count(f'case {program}u: return SourceCharacter{phase}{program}(input);'), 1)
+
     def test_cpu_and_shader_static_classification_agree(self):
         cpu = (ROOT/'Client/Public/SourceMovieMaterialPrograms.h').read_text()
         shader = (ROOT/'Client/Bin/ShaderFiles/Shader_SourceMovieStaticInputs.hlsli').read_text()
@@ -21,8 +46,8 @@ class OriginalStandContractTests(unittest.TestCase):
             return {n for a, b in pairs for n in range(int(a), int(b)+1)}
         supported = programs(cpu, 'Is_Static')
         self.assertEqual(supported, programs(shader, 'IsSourceMovieStatic'))
-        self.assertTrue({1528, 1529, 1530, 1531} <= supported)
-        self.assertTrue({1526, 1527, 1532}.isdisjoint(supported))
+        self.assertTrue({1529, 1530, 1531, 1532} <= supported)
+        self.assertTrue({1526, 1527, 1528}.isdisjoint(supported))
 
     def test_only_selected_old_rows_removed(self):
         before = b'LOSTARK_MAP_PLACEMENTS 2 "AREA" 3\r\nkeep central\r\nold stand\r\nkeep npc\r\n'

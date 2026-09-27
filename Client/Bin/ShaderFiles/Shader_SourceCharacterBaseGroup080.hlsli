@@ -1,3 +1,4 @@
+#ifndef SOURCE_CHARACTER_BASE_DISPATCH_CASES
 SOURCE_CHARACTER_NATIVE_OUTPUT SourceCharacterBase80(SOURCE_CHARACTER_NATIVE_INPUT input)
 {
     SOURCE_CHARACTER_NATIVE_OUTPUT output = (SOURCE_CHARACTER_NATIVE_OUTPUT)0;
@@ -2927,3 +2928,9 @@ SOURCE_CHARACTER_NATIVE_OUTPUT SourceMapMonsterBaked83(SOURCE_CHARACTER_NATIVE_I
 
 
 // source.character.monster-8d18db0756e4.v1 / source program dc0bd97d65a4484796b92f7deeb55fc5
+#else // SOURCE_CHARACTER_BASE_DISPATCH_CASES
+    case 80u: { if (input.hasBakedLighting) return SourceMapMonsterBaked80(input); return SourceCharacterBase80(input); }
+    case 81u: { if (input.hasBakedLighting) return SourceMapMonsterBaked81(input); return SourceCharacterBase81(input); }
+    case 82u: { if (input.hasBakedLighting) return SourceMapMonsterBaked82(input); return SourceCharacterBase82(input); }
+    case 83u: { if (input.hasBakedLighting) return SourceMapMonsterBaked83(input); return SourceCharacterBase83(input); }
+#endif // SOURCE_CHARACTER_BASE_DISPATCH_CASES

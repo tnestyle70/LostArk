@@ -1,0 +1,11 @@
+{
+  "schema": "lostark.guide-catalog",
+  "formatVersion": 1,
+  "revision": 1,
+  "categories": [
+    {"categoryId":"bern","displayName":"베른","worldId":"BERN","areaId":"LV_BER_BERNCASTLE"},
+    {"categoryId":"valtan","displayName":"발탄","worldId":"VALTAN_ARENA","areaId":"LV_LUT_HEARTRB_ED"},
+    {"categoryId":"koukusaydon","displayName":"쿠크세이튼","worldId":"KAKULSAYDON_ARENA","areaId":"LV_LUT_MIDNIGHTC_ED"}
+  ],
+  "guides": [{"guideId":"guide.dimensionmaster","characterClass":"DIMENSIONMASTER","displayName":"가이드 차원술사","placementDocument":"DimensionMaster/Placement.json","promptDocument":"DimensionMaster/Prompts.json","triggerDocument":"DimensionMaster/Triggers.json","combatDocument":"DimensionMaster/Combat.json"}]
+}

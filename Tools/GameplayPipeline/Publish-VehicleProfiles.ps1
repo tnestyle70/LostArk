@@ -1,8 +1,14 @@
 [CmdletBinding()]
 param(
-    [ValidateSet('Validate', 'Publish')]
+    [ValidateSet('Validate', 'Publish', 'Save', 'SaveAndPublish')]
     [string]$Mode = 'Validate',
-    [string]$OutputRoot = 'Server/Bin/DataFiles/Vehicles'
+    [string]$OutputRoot = 'Server/Bin/DataFiles/Vehicles',
+    [double]$AncientSeaGroundSpeed = -1,
+    [double]$AncientSeaFlightSpeed = -1,
+    [double]$AncientSeaVerticalSpeed = -1,
+    [double]$ExpectedGroundSpeed = -1,
+    [double]$ExpectedFlightSpeed = -1,
+    [double]$ExpectedVerticalSpeed = -1
 )
 
 $ErrorActionPreference = 'Stop'
@@ -104,6 +110,29 @@ function Get-VehicleClipSeconds([object]$Vehicle, [string]$Clip) {
 
 $presentation = Read-JsonDocument 'Data/Actors/VehicleCatalog.json'
 $document = Read-JsonDocument 'Data/Vehicles/VehicleProfiles.json'
+$saveSpeeds = $Mode -eq 'Save' -or $Mode -eq 'SaveAndPublish'
+if ($saveSpeeds) {
+    $dragon = @($document.vehicles | Where-Object { $_.vehicleId -eq 9523 })
+    if ($dragon.Count -ne 1 -or $null -eq $dragon[0].flight) { throw 'Ancient Sea flight profile is missing or ambiguous.' }
+    $dragon = $dragon[0]
+    $currentGround = if ($null -ne $dragon.moveSpeedOverride) { [double]$dragon.moveSpeedOverride } else { [double]$dragon.moveSpeed }
+    $pairs = @(@($currentGround, $ExpectedGroundSpeed), @([double]$dragon.flight.speed, $ExpectedFlightSpeed),
+        @([double]$dragon.flight.verticalSpeed, $ExpectedVerticalSpeed))
+    foreach ($pair in $pairs) {
+        if ([double]::IsNaN($pair[1]) -or [double]::IsInfinity($pair[1]) -or [Math]::Abs($pair[0] - $pair[1]) -gt .00001) {
+            throw 'Dragon speed changed in another editor. Reload before saving; the disk profile was preserved.'
+        }
+    }
+    foreach ($value in @($AncientSeaGroundSpeed, $AncientSeaFlightSpeed, $AncientSeaVerticalSpeed)) {
+        if ([double]::IsNaN($value) -or [double]::IsInfinity($value) -or $value -le 0 -or $value -gt 60) {
+            throw 'Dragon speeds must be finite and within (0, 60].'
+        }
+    }
+    if ($AncientSeaGroundSpeed -gt 30) { throw 'Ground speed must not exceed 30 m/s.' }
+    $dragon | Add-Member -NotePropertyName moveSpeedOverride -NotePropertyValue $AncientSeaGroundSpeed -Force
+    $dragon.flight.speed = $AncientSeaFlightSpeed
+    $dragon.flight.verticalSpeed = $AncientSeaVerticalSpeed
+}
 Assert-ExactProperties $document @('schema', 'formatVersion', 'vehicles') 'vehicle profile document'
 if ($document.schema -cne 'lostark.vehicle-profiles' -or $document.formatVersion -ne 2) {
     throw 'Vehicle profile header is invalid.'
@@ -120,6 +149,7 @@ $rows = [Collections.Generic.List[string]]::new()
 foreach ($vehicle in $vehicles) {
     $profileFields = @('vehicleId', 'moveSpeed', 'source', 'skills')
     if ($null -ne $vehicle.flight) { $profileFields += 'flight' }
+    if ($null -ne $vehicle.moveSpeedOverride) { $profileFields += 'moveSpeedOverride' }
     if ($null -ne $vehicle.boost) { $profileFields += 'boost' }
     if ($null -ne $vehicle.projectTuning) { $profileFields += 'projectTuning' }
     Assert-ExactProperties $vehicle $profileFields 'vehicle profile'
@@ -195,6 +225,14 @@ foreach ($vehicle in $vehicles) {
         if ($tunedSpeed -le 0.0 -or $tunedSpeed -gt 30.0) {
             throw "$context tuned move speed is outside the Server range of 30 m/s."
         }
+    }
+    # Keep the extracted EFTable source intact; explicit project tuning owns this optional override.
+    if ($null -ne $vehicle.moveSpeedOverride) {
+        Assert-JsonNumber $vehicle.moveSpeedOverride 'moveSpeedOverride'
+        if ($vehicle.vehicleId -ne 9523 -or $vehicle.moveSpeedOverride -le 0 -or $vehicle.moveSpeedOverride -gt 30) {
+            throw 'Only Ancient Sea accepts a project move speed override in (0, 30].'
+        }
+        $tunedSpeed = [double]$vehicle.moveSpeedOverride
     }
     if (-not $vehicleIds.Add([uint32]$vehicle.vehicleId)) {
         throw "Duplicate vehicle ID: $($vehicle.vehicleId)"
@@ -320,7 +358,31 @@ $transactionId = [Guid]::NewGuid().ToString('N')
 $staged = "$destination.staging.$transactionId"
 $rollback = "$destination.rollback.$transactionId"
 $hadPrevious = $false
+$sourcePath = Join-Path $repoRoot 'Data/Vehicles/VehicleProfiles.json'
+$sourceCommittedHash = ''
+$sourceBackup = ''
+$sourceStage = ''
+$sourceLock = $null
 try {
+    if ($saveSpeeds) {
+        $sourceLock = [IO.File]::Open("$sourcePath.writer.lock", 'OpenOrCreate', 'ReadWrite', 'None')
+        foreach ($inputPath in $inputHashes.Keys) {
+            if ($inputHashes[$inputPath] -cne (Get-FileFingerprint $inputPath)) { throw "Input changed while saving: $inputPath" }
+        }
+        $sourceStage = "$sourcePath.staging.$([Guid]::NewGuid().ToString('N'))"
+        $sourceBackup = "$sourcePath.previous"
+        [IO.File]::WriteAllText($sourceStage, ($document | ConvertTo-Json -Depth 100), [Text.UTF8Encoding]::new($false))
+        $null = [IO.File]::ReadAllText($sourceStage) | ConvertFrom-Json
+        $nextSourceHash = Get-FileFingerprint $sourceStage
+        if ($inputHashes[$sourcePath] -cne (Get-FileFingerprint $sourcePath)) { throw 'Vehicle profile changed before replacement.' }
+        [IO.File]::Replace($sourceStage, $sourcePath, $sourceBackup)
+        $sourceCommittedHash = $nextSourceHash
+        $inputHashes[$sourcePath] = $sourceCommittedHash
+        if ($Mode -eq 'Save') {
+            Write-Output 'Dragon speeds saved. Publish and restart the Server to apply them.'
+            return
+        }
+    }
     [IO.File]::WriteAllLines($staged, $lines, [Text.UTF8Encoding]::new($false))
     foreach ($inputPath in $inputHashes.Keys) {
         if (-not [IO.File]::Exists($inputPath) -or
@@ -331,17 +393,25 @@ try {
     $currentHash = if ([IO.File]::Exists($destination)) { (Get-FileFingerprint $destination) } else { '' }
     if ($currentHash -cne $previousHash) { throw 'Vehicle bootstrap changed before publish.' }
     if ([IO.File]::Exists($destination)) {
-        [IO.File]::Move($destination, $rollback)
+        [IO.File]::Replace($staged, $destination, $rollback)
         $hadPrevious = $true
+    } else {
+        [IO.File]::Move($staged, $destination)
     }
-    [IO.File]::Move($staged, $destination)
-    if ($hadPrevious) { [IO.File]::Delete($rollback) }
+    # The published pair is committed. Backup cleanup must not roll the source back alone.
+    if ($hadPrevious) { try { [IO.File]::Delete($rollback) } catch { Write-Warning "Publish backup retained: $rollback" } }
     Write-Output "Vehicle profile Publish succeeded: $($vehicleIds.Count) vehicles, $skillCount skills -> $destination"
 }
 catch {
+    if ($sourceStage -and [IO.File]::Exists($sourceStage)) { [IO.File]::Delete($sourceStage) }
     if ([IO.File]::Exists($staged)) { [IO.File]::Delete($staged) }
     if ($hadPrevious -and [IO.File]::Exists($rollback) -and -not [IO.File]::Exists($destination)) {
         [IO.File]::Move($rollback, $destination)
     }
+    if ($saveSpeeds -and $sourceCommittedHash -and [IO.File]::Exists($sourceBackup) -and
+        (Get-FileFingerprint $sourcePath) -ceq $sourceCommittedHash) {
+        [IO.File]::Replace($sourceBackup, $sourcePath, $null)
+    }
     throw
 }
+finally { if ($sourceLock) { $sourceLock.Dispose() } }
