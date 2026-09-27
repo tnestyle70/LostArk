@@ -80,7 +80,7 @@ Client/UI를 에이전트가 실행·조작하거나 화면을 캡처하지 않�
 - Network endpoint 계약 3개 통과. 변경 JSON/XML parse, 기존 HUD 설정 구조 일치, C++ UTF-8/CRLF 유지, `git diff --check` 통과.
 - 로비 진단을 원복한 최종 Debug 공식 Product 전체 PASS/exit0. `out/BuildPipeline/runs/20260927T110738350Z-debug-product.json`.
 - Release Engine, Shared, Server 정상 Build PASS. 최신 Release Server의 `--kouku-dice-hit-contract-test` 182 PASS/실패0/exit0. 실제 Complete Play 2인 및 2인+Guide에서 자유 인간 1명의 4tick 이동, 인간 1명 속박과 Guide 제외, 양쪽 snapshot tick2502 수신을 확인했다. `out/KoukuHudPositionFollowupRelease/server-dice.log`.
-- Release 공식 Product는 Client 빌드 진행 중이다. 첫 시도는 같은 시점의 짧은 Server 계약 검사 프로세스를 output guard가 감지해 컴파일 전 거절했다. 검사 정상 종료 뒤 다시 시작했으며 사용자 프로세스를 종료하지 않았다.
+- Release 공식 Product 전체 PASS/exit0. Client OBJ 342개, CSO 96개와 binary 2개를 생성·배포했고 Engine→Shared→Server→Client 모든 단계가 통과했다. 최종 증거는 `out/BuildPipeline/runs/20260927T113339928Z-release-product.json`이다. Debug/Release 모두 missing/invalid runtime inputs는 0이다. Release 첫 시도는 짧은 Server 계약 검사 프로세스를 output guard가 감지해 컴파일 전 거절했고, 검사 정상 종료 뒤 재실행했다. 사용자 프로세스를 종료하지 않았다.
 - 기존 `test_release_client_surface_contract.py` 전체 실행은 3개 통과/1개 실패였다. 실패는 무관한 Character Select modal fixture가 현재 코드에 없는 `m_hasCreateCharacterButtonClick = false`를 요구하는 항목이다. 해당 제품 코드와 fixture는 변경하지 않았다. 현재 작업의 Lobby focused 항목은 통과했다.
 
 Client/UI를 직접 실행하거나 GPU 화면을 확인하지 않았다. 위 Complete Play 증거는 실제 Server simulation·Shared snapshot·navigation 계약이며 화면 확인을 대신하지 않는다.
