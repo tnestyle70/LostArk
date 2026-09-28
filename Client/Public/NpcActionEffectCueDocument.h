@@ -36,7 +36,6 @@ struct NPC_ACTION_EFFECT_CUE final
    through fSourceLoopEndSeconds, while the sound cue is cut here. */
 struct NPC_ACTION_EFFECT_LIVE_CUE final
 {
-	std::uint64_t iEffectHandle = 0u;
 	std::uint64_t iSoundHandle = 0u;
 	f32_t fSoundStopAtSeconds = 0.f;
 };

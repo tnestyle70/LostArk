@@ -504,6 +504,9 @@
     <ClCompile Include="..\Private\ValtanPatternTree.cpp">
       <Filter>03. Tools\01. Boss</Filter>
     </ClCompile>
+    <ClCompile Include="..\Private\ValtanCinematicEffectLibrary.cpp">
+      <Filter>03. Tools\01. Boss</Filter>
+    </ClCompile>
     <ClCompile Include="..\Private\ValtanPresentationGenerationAdmission.cpp">
       <Filter>96.DataFiles</Filter>
     </ClCompile>
@@ -855,7 +858,13 @@
     <ClCompile Include="..\Private\CustomizingView.cpp">
       <Filter>02.GameObjects\04. UI</Filter>
     </ClCompile>
+    <ClCompile Include="..\Private\DurabilityHudView.cpp">
+      <Filter>02.GameObjects\04. UI</Filter>
+    </ClCompile>
     <ClCompile Include="..\Private\InventoryView.cpp">
+      <Filter>02.GameObjects\04. UI</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\RepairWindowView.cpp">
       <Filter>02.GameObjects\04. UI</Filter>
     </ClCompile>
     <ClCompile Include="..\Private\QuickSlotDragView.cpp">
@@ -1225,6 +1234,9 @@
     <ClInclude Include="..\Public\ValtanPatternTree.h">
       <Filter>03. Tools\01. Boss</Filter>
     </ClInclude>
+    <ClInclude Include="..\Public\ValtanCinematicEffectLibrary.h">
+      <Filter>03. Tools\01. Boss</Filter>
+    </ClInclude>
     <ClInclude Include="..\Public\ValtanViewAdmission.h">
       <Filter>96.DataFiles</Filter>
     </ClInclude>
@@ -1588,7 +1600,13 @@
     <ClInclude Include="..\Public\CustomizingView.h">
       <Filter>02.GameObjects\04. UI</Filter>
     </ClInclude>
+    <ClInclude Include="..\Public\DurabilityHudView.h">
+      <Filter>02.GameObjects\04. UI</Filter>
+    </ClInclude>
     <ClInclude Include="..\Public\InventoryView.h">
+      <Filter>02.GameObjects\04. UI</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\RepairWindowView.h">
       <Filter>02.GameObjects\04. UI</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\QuickSlotDragView.h">
@@ -1907,6 +1925,9 @@
       <Filter>96.DataFiles\Actors</Filter>
     </None>
 	<None Include="..\..\Data\Actors\NpcCatalog.json">
+	  <Filter>96.DataFiles\Actors</Filter>
+	</None>
+	<None Include="..\..\Data\Actors\MaharakaResidents.source.json">
 	  <Filter>96.DataFiles\Actors</Filter>
 	</None>
 	<None Include="..\..\Data\Actors\MonsterCatalog.json">
@@ -3033,6 +3054,9 @@
       <Filter>97.ShaderFiles</Filter>
     </None>
     <None Include="..\Bin\ShaderFiles\Shader_SourceFoliageWind.hlsli">
+      <Filter>97.ShaderFiles</Filter>
+    </None>
+    <None Include="..\Bin\ShaderFiles\Shader_SourceMaharakaStandWind.hlsli">
       <Filter>97.ShaderFiles</Filter>
     </None>
     <None Include="..\Bin\ShaderFiles\Shader_SourceFoliageSurface.hlsli">
@@ -5887,6 +5911,12 @@
     </None>
   </ItemGroup>
   <ItemGroup>
+    <None Include="..\..\Data\Maps\Authoring\LV_OCN_EVENTIS_MHP\LV_OCN_EVENTIS_MHP.camerashots.json">
+      <Filter>96.DataFiles</Filter>
+    </None>
+    <None Include="..\..\Data\Maps\Authoring\LV_OCN_EVENTIS_MHP\LV_OCN_EVENTIS_MHP.worldsequences.json">
+      <Filter>96.DataFiles</Filter>
+    </None>
     <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectMeshKouku5120.hlsl"><Filter>97.ShaderFiles</Filter></FxCompile>
   </ItemGroup>
   <ItemGroup>
@@ -5900,5 +5930,20 @@
     <None Include="..\..\Data\Guide\DimensionMaster\Prompts.json"><Filter>96.DataFiles</Filter></None>
     <None Include="..\..\Data\Guide\DimensionMaster\Triggers.json"><Filter>96.DataFiles</Filter></None>
     <None Include="..\..\Data\Guide\DimensionMaster\Combat.json"><Filter>96.DataFiles</Filter></None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.action.420619.stage003.full.restore.effect.json"><Filter>96.DataFiles</Filter></None>
+      <None Include="..\..\Data\Effects\Authored\effect.valtan.six-pizza.rock.telegraph.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.six-pizza.rock.explosion.full.effect.json"><Filter>96.DataFiles</Filter></None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.action.400424.stage000.dash.full.restore.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.action.420623.stage004.full.restore.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.action.420624.stage007.body.full.restore.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.action.420624.stage007.sectors.full.restore.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.dash-charge.source.shield.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.ether.orb.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.sequence.four.sector.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.tracking-axe.large-circle.warning.effect.json"><Filter>96.DataFiles</Filter></None>
   </ItemGroup>
 </Project>

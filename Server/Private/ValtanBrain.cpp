@@ -6,6 +6,7 @@
 #include "Gameplay/WorldCollisionContract.h"
 #include "PlayerSkillSystem.h"
 #include "ServerCombatHitRuntime.h"
+#include "ServerCombatGeometry.h"
 
 #include <algorithm>
 #include <cmath>
@@ -2538,6 +2539,34 @@ namespace
 		}
 	}
 
+	PATTERN_HIT_TRANSFORM ResolveContactTransform(PATTERN_HIT_TRANSFORM base,
+		const LostArk::Shared::ATTACK_HIT_TEMPLATE& contact)
+	{
+		const float yaw = base.fYawDegrees * DEGREES_TO_RADIANS;
+		base.fPositionX += std::sin(yaw) * float(contact.fOffsetForwardM) + std::cos(yaw) * float(contact.fOffsetRightM);
+		base.fPositionZ += std::cos(yaw) * float(contact.fOffsetForwardM) - std::sin(yaw) * float(contact.fOffsetRightM);
+		base.fYawDegrees += float(contact.fYawOffsetDegrees);
+		return base;
+	}
+
+	bool ContainsStageContact(const LostArk::Shared::ATTACK_HIT_TEMPLATE& contact,
+		const SERVER_PLAYER& player, const PATTERN_HIT_TRANSFORM& pose)
+	{
+		SERVER_COMBAT_SHAPE_XZ shape{};
+		shape.eKind = contact.strShape == "CIRCLE" ? SERVER_COMBAT_SHAPE_KIND::CIRCLE :
+			contact.strShape == "RING" ? SERVER_COMBAT_SHAPE_KIND::RING :
+			contact.strShape == "BOX" ? SERVER_COMBAT_SHAPE_KIND::FORWARD_BOX : SERVER_COMBAT_SHAPE_KIND::CONE;
+		if (contact.strShape == "CIRCLE" || contact.strShape == "RING") shape.fOuterRadius = float(contact.fRadiusM);
+		if (contact.strShape == "RING" || contact.strShape == "CONE") shape.fInnerRadius = float(contact.fInnerRadiusM);
+		if (contact.strShape == "BOX" || contact.strShape == "CONE") shape.fLength = float(contact.fLengthM);
+		if (contact.strShape == "BOX") shape.fHalfWidth = float(contact.fHalfWidthM);
+		if (contact.strShape == "CONE") shape.fAngleDegrees = float(contact.fAngleDegrees);
+		const float yaw = pose.fYawDegrees * DEGREES_TO_RADIANS;
+		return CServerCombatGeometry::Overlaps_Pose(shape, pose.fPositionX, pose.fPositionZ,
+			std::sin(yaw), std::cos(yaw), {player.fPositionX, player.fPositionZ,
+			LostArk::Shared::WorldCollision::PLAYER_HALF_EXTENT_X});
+	}
+
 	void ApplyPatternHit(
 		SERVER_WORLD_ENTITY& boss,
 		std::map<LostArk::Shared::PLAYER_ID, SERVER_PLAYER>& players,
@@ -2546,20 +2575,23 @@ namespace
 		const std::vector<LostArk::Shared::CombatCollision::CIRCLE_XZ>&
 			coverCircles,
 		std::vector<LostArk::Shared::DAMAGE_EVENT>& outDamageEvents,
-		std::vector<SERVER_PLAYER_CAPTURE_REQUEST>* outCaptureRequests)
+		std::vector<SERVER_PLAYER_CAPTURE_REQUEST>* outCaptureRequests,
+		const LostArk::Shared::ATTACK_HIT_TEMPLATE* contact = nullptr)
 	{
-		if (BOSS_PATTERN_HIT_SHAPE::NONE == boss.ePatternHitShape ||
-			boss.strDamageProfileId.empty())
+		if (nullptr == contact && (BOSS_PATTERN_HIT_SHAPE::NONE == boss.ePatternHitShape ||
+			boss.strDamageProfileId.empty()))
 		{
 			return;
 		}
 		const BOSS_RUNTIME_PROFILE* bossProfile =
 			catalog.Find_Boss(boss.strArchetypeId);
+		const auto& damageProfile = contact ? contact->strDamageProfileId : boss.strDamageProfileId;
+		const bool ignoreDefense = contact && contact->strDamageKind != "PROFILE";
 		const std::uint32_t rawDamage = CGameplayCatalog::Resolve_Damage(
 			nullptr == bossProfile ? 0u : bossProfile->iAttackPower,
-			catalog.Find_DamageRatePercent(boss.strDamageProfileId));
-		const PATTERN_HIT_TRANSFORM hitTransform =
-			ResolvePatternHitTransform(boss);
+			catalog.Find_DamageRatePercent(damageProfile));
+		const PATTERN_HIT_TRANSFORM hitTransform = contact ?
+			ResolveContactTransform(ResolvePatternHitTransform(boss), *contact) : ResolvePatternHitTransform(boss);
 		const bool activeWindow =
 			BOSS_PATTERN_HIT_ACTIVATION_KIND::ACTIVE_WINDOW ==
 				boss.ePatternHitActivationKind;
@@ -2578,28 +2610,44 @@ namespace
 			so it is consulted before any damage is resolved. */
 			if (0u == player.iCurrentHp || !player.isCombatReady ||
 				alreadyHit ||
-				!ContainsPatternHit(boss, player, hitTransform) ||
+				!(contact ? ContainsStageContact(*contact, player, hitTransform) : ContainsPatternHit(boss, player, hitTransform)) ||
 				(!boss.bPatternPiercesCover &&
 					IsShieldedByCover(hitTransform, player, coverCircles)))
 			{
 				continue;
 			}
-			if (player.Is_Human() && CPlayerSkillSystem::Try_Counter(player, catalog, serverTick))
+			if (!ignoreDefense && player.Is_Human() && CPlayerSkillSystem::Try_Counter(player, catalog, serverTick))
 			{
 				(void)CBossCombatRuntime::Try_TriggerCounter(boss, serverTick);
 				continue;
 			}
 			SERVER_WORLD_TO_PLAYER_HIT incoming{};
-			incoming.iRawDamage = rawDamage;
+			incoming.iRawDamage = !ignoreDefense ? rawDamage :
+				contact->strDamageKind == "INSTANT_DEATH" ? player.iMaximumHp :
+				(std::max)(1u, static_cast<std::uint32_t>(std::uint64_t(player.iMaximumHp) * contact->iDamagePercent / 100u));
+			incoming.bIgnoreDefense = ignoreDefense;
+			incoming.bIgnoreCounter = ignoreDefense;
 			incoming.fSourceX = hitTransform.fPositionX;
 			incoming.fSourceZ = hitTransform.fPositionZ;
 			incoming.fPushRangeM = boss.fPatternPushRangeM;
 			incoming.iPushMs = boss.iPatternPushMs;
 			incoming.bKnockdown = boss.bPatternKnockdown;
 			incoming.iDownMs = boss.iPatternDownMs;
+			if (contact)
+			{
+				incoming.fPushRangeM = float(contact->fPushRangeM);
+				incoming.iPushMs = contact->iPushMs;
+				incoming.fPushHeightM = float(contact->fRiseHeightM);
+				incoming.bPushBallistic = contact->fRiseHeightM > 0.0;
+				incoming.bForcePush = contact->ForcePush.value_or(contact->fRiseHeightM > 0.0);
+				incoming.bKnockdown = false;
+				incoming.iDownMs = 0u;
+				if (contact->strPushDirection == "AWAY_FROM_BOSS")
+				{ incoming.fSourceX = boss.fPositionX; incoming.fSourceZ = boss.fPositionZ; }
+			}
 			incoming.iServerTick = serverTick;
 			incoming.bEstherGuardBlockable =
-				LostArk::Shared::EstherStrike::Is_GuardBlockedDamageProfile(boss.strDamageProfileId.c_str());
+				LostArk::Shared::EstherStrike::Is_GuardBlockedDamageProfile(damageProfile.c_str());
 			const SERVER_COMBAT_HIT_RESULT hitResult =
 				CServerCombatHitRuntime::Apply_WorldToPlayer(
 					player, incoming, catalog, outDamageEvents);
@@ -2638,6 +2686,26 @@ float LostArk::Server::CValtanBrain::Predict_ContactRisk(
     for (std::size_t index = boss.iPatternStageIndex; index < pattern.Stages.size() && startMs <= horizonMs; ++index)
     {
         const auto& stage = pattern.Stages[index];
+        if (!stage.AttackContacts.empty())
+        {
+            sampled.ePatternHitAnchorKind = stage.eHitAnchorKind;
+            sampled.fPatternHitAnchorForwardOffsetM = stage.fHitAnchorForwardOffsetM;
+            sampled.fPatternHitAnchorRightOffsetM = stage.fHitAnchorRightOffsetM;
+            sampled.fPatternHitAnchorYawOffsetDegrees = stage.fHitAnchorYawOffsetDegrees;
+            sampled.fPatternStageOriginX = boss.fPositionX;
+            sampled.fPatternStageOriginZ = boss.fPositionZ;
+            sampled.fPatternStageOriginYawDegrees = boss.fYawDegrees;
+            const auto base = ResolvePatternHitTransform(index == boss.iPatternStageIndex ? boss : sampled);
+            const auto first = index == boss.iPatternStageIndex ? boss.iAppliedPatternHitCount : 0u;
+            for (std::size_t hit = first; hit < stage.AttackContacts.size(); ++hit)
+            {
+                const auto& contact = stage.AttackContacts[hit];
+                const float at = startMs + contact.iAtMs;
+                if (at >= 0.f && at <= horizonMs && ContainsStageContact(contact, probe, ResolveContactTransform(base, contact))) risk += 1.f;
+            }
+            startMs += stage.iDurationMs;
+            continue;
+        }
         bool impending = false;
         if (stage.eHitActivationKind == BOSS_PATTERN_HIT_ACTIVATION_KIND::ACTIVE_WINDOW)
         {
@@ -2780,7 +2848,8 @@ void LostArk::Server::CValtanBrain::Update(
 	const CGameplayCatalog* activeThresholdCatalog,
 	const std::uint16_t activeThresholdGenerationEpoch,
 	std::vector<SERVER_PLAYER_CAPTURE_REQUEST>* outCaptureRequests,
-	const BOSS_PATTERN_SEQUENCE_DEFINITION* automaticSequenceOverride) const
+	const BOSS_PATTERN_SEQUENCE_DEFINITION* automaticSequenceOverride,
+	std::vector<SERVER_BOSS_PATTERN_HIT>* outOwnerHits) const
 {
 	if (WORLD_BOOTSTRAP_KIND::BOSS != boss.eKind)
 		return;
@@ -3225,6 +3294,20 @@ void LostArk::Server::CValtanBrain::Update(
 		ApplyPatternHit(
 			boss, players, catalog, serverTick, coverCircles,
 			outDamageEvents, outCaptureRequests);
+		if (nullptr != outOwnerHits && BOSS_PATTERN_HIT_SHAPE::CONE == boss.ePatternHitShape)
+		{
+			const auto pose = ResolvePatternHitTransform(boss);
+			SERVER_BOSS_PATTERN_HIT hit;
+			hit.iSourceNetEntityId = boss.iNetEntityId;
+			hit.iPatternSequence = boss.iPatternSequence;
+			hit.strPatternId = boss.strPatternId;
+			hit.strActionId = currentStage.strActionId;
+			hit.Cone = {pose.fPositionX, pose.fPositionZ,
+				std::sin(pose.fYawDegrees * DEGREES_TO_RADIANS),
+				std::cos(pose.fYawDegrees * DEGREES_TO_RADIANS),
+				boss.fPatternHitLength, boss.fPatternHitAngleDegrees};
+			outOwnerHits->push_back(std::move(hit));
+		}
 	}
 	while (boss.iAppliedPatternHitCount < boss.iPatternHitCount)
 	{
@@ -3237,9 +3320,26 @@ void LostArk::Server::CValtanBrain::Update(
 		{
 			break;
 		}
+		const auto* contact = boss.iAppliedPatternHitCount < currentStage.AttackContacts.size() ?
+			&currentStage.AttackContacts[boss.iAppliedPatternHitCount] : nullptr;
 		ApplyPatternHit(
 			boss, players, catalog, serverTick, coverCircles,
-			outDamageEvents, outCaptureRequests);
+			outDamageEvents, outCaptureRequests, contact);
+		if (nullptr != outOwnerHits && (contact ? contact->strShape == "CONE" : BOSS_PATTERN_HIT_SHAPE::CONE == boss.ePatternHitShape))
+		{
+			const auto pose = contact ? ResolveContactTransform(ResolvePatternHitTransform(boss), *contact) : ResolvePatternHitTransform(boss);
+			SERVER_BOSS_PATTERN_HIT hit;
+			hit.iSourceNetEntityId = boss.iNetEntityId;
+			hit.iPatternSequence = boss.iPatternSequence;
+			hit.strPatternId = boss.strPatternId;
+			hit.strActionId = currentStage.strActionId;
+			hit.Cone = {pose.fPositionX, pose.fPositionZ,
+				std::sin(pose.fYawDegrees * DEGREES_TO_RADIANS),
+				std::cos(pose.fYawDegrees * DEGREES_TO_RADIANS),
+				contact ? float(contact->fLengthM) : boss.fPatternHitLength,
+				contact ? float(contact->fAngleDegrees) : boss.fPatternHitAngleDegrees};
+			outOwnerHits->push_back(std::move(hit));
+		}
 		if (boss.bPortalMotionActive)
 		{
 			boss.fPortalLastHitSampleX = boss.fPositionX;

@@ -419,7 +419,7 @@ void LostArk::Server::CServerGameplayContractRunner::Run_ValtanTimelines(TESTS& 
 				"VALTAN_SIX_PIZZA_106", "STEP_01",
 				"valtan.sequence.center-six-pizza-charge.step-01",
 				"combatobject.valtan.six-pizza.rock-pillar",
-				"hit.valtan.six-pizza.rock-pillar.explode", 30u, 19500u, 20700u,
+				"hit.valtan.six-pizza.rock-pillar.explode", 30u, 0u, 32000u,
 				10.f, true },
 			DELAYED_ROCK_PILLAR_CASE{
 				"VALTAN_STRUGGLING", "STEP_04",

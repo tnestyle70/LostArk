@@ -69,6 +69,7 @@ float4 g_DyeRegionC = 1.f;
 
 #include "Shader_MapMaterialSurface.hlsli"
 #include "Shader_SourceFoliageWind.hlsli"
+#include "Shader_SourceMaharakaStandWind.hlsli"
 #include "Shader_SourceCharacterMaterial.hlsli"
 #include "Shader_SourceMapForwardPrograms.hlsli"
 
@@ -134,6 +135,12 @@ VS_OUT VS_MAIN(VS_IN input)
             g_SourceCharacterTime*.09f)*6.283185f;
         output.vWorldPos.y+=(-sin(phase.x)-cos(phase.y))*
             g_SourceCharacterBaseConstants[63].x*input.vColor.b*.01f;
+        output.vPosition=mul(mul(output.vWorldPos,g_ViewMatrix),g_ProjMatrix);
+    }
+    if(g_SourceCharacterProgram==1531u)
+    {
+        output.vWorldPos.xyz += SourceMaharakaStandWorldOffset(output.vWorldPos.xyz,
+            input.vColor,g_WorldMatrix,g_SourceCharacterTime,g_SourceFoliageWindDirectionSpeed);
         output.vPosition=mul(mul(output.vWorldPos,g_ViewMatrix),g_ProjMatrix);
     }
     if(g_SurfaceProgram==9u && g_SourceFoliageWindEnabled!=0u)

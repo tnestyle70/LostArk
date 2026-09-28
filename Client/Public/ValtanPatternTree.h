@@ -5,6 +5,7 @@
 #include "Client_Defines.h"
 #include "Engine_Defines.h"
 #include "PlayerHandGripTransform.h"
+#include "Gameplay/AttackHitTemplate.h"
 
 #include <array>
 #include <cstddef>
@@ -17,6 +18,12 @@
 #include <vector>
 
 NS_BEGIN(Client)
+
+class DATA_JSON_VALUE;
+bool Parse_ValtanStageAttackContacts(const DATA_JSON_VALUE* value,
+	std::vector<LostArk::Shared::ATTACK_HIT_TEMPLATE>& contacts);
+std::string Serialize_ValtanStageAttackContacts(
+	const std::vector<LostArk::Shared::ATTACK_HIT_TEMPLATE>& contacts);
 
 /* Where a stage's editable Effect document came from. Product cue identity is
    authoritative for authoring; the evidence binding is recorded on that same
@@ -69,6 +76,9 @@ struct VALTAN_PRODUCT_EFFECT_CUE_VIEW final
 	uint32_t iStageOffsetMs = 0u;
 	uint32_t iSourceStartMs = 0u;
 	uint32_t iSourceEndMs = 0u;
+	// Explicit Effect resource age; absent preserves the legacy source origin.
+	uint32_t iPlaybackOffsetMs = 0u;
+	bool_t bHasPlaybackOffset = false;
 	uint32_t iStageDurationMs = 0u;
 	bool_t bHasSourceEnd = false;
 };
@@ -97,6 +107,13 @@ struct VALTAN_COMBAT_OBJECT_HIT_VIEW final
 	std::string strHitShape;
 	f32_t fInnerRadiusM = 0.f;
 	f32_t fOuterRadiusM = 0.f;
+};
+
+struct VALTAN_COMBAT_OBJECT_OWNER_HIT_CHAIN_VIEW final
+{
+	std::string strTriggerActionId;
+	uint32_t iDelayMs = 0u;
+	std::string strArmedPresentationEventId;
 };
 
 struct VALTAN_COMBAT_OBJECT_EFFECT_VIEW final
@@ -138,6 +155,8 @@ struct VALTAN_COMBAT_OBJECT_EFFECT_VIEW final
 	f32_t fSpeedMps = 0.f;
 	f32_t fMaximumDistanceM = 0.f;
 	uint32_t iLifetimeMs = 0u;
+	f32_t fCoverRadiusM = 0.f;
+	std::optional<VALTAN_COMBAT_OBJECT_OWNER_HIT_CHAIN_VIEW> OwnerHitChain;
 	/* Combat-object-local Server contact clocks.  These are joined from
 	   ValtanCombatObjects.json so Workbench coverage can report an impact with
 	   no Sound cue instead of merely showing that an object spawned. */
@@ -293,6 +312,7 @@ struct VALTAN_STAGE_VIEW final
 	/* Ordered stage-relative contacts. Empty means the authored stage uses
 	   iHitDelayMs + k * iHitIntervalMs. */
 	std::vector<uint32_t> HitOffsetsMs;
+	std::vector<LostArk::Shared::ATTACK_HIT_TEMPLATE> AttackContacts;
 	/* Optional typed Server hit authority.  BOSS_CURRENT preserves the
 	   existing pulse behavior; STAGE_ORIGIN pins the authored transform for
 	   the activation window.  These fields are a read-only Product mirror. */
@@ -617,6 +637,8 @@ struct VALTAN_PHASE_VIEW final
 
 struct VALTAN_PATTERN_TREE_VIEW final
 {
+	/* Display-only projection of saved resources. Never serialized or used as identity. */
+	std::unordered_map<std::string, std::string> EffectResourceDisplayLabels;
 	/* The physical gameplay authoring document owns both Pattern definitions
 	   and their ordered execution sequence.  Tool views consume this same
 	   staged sequence instead of joining a second saved-Flow document. */
@@ -770,11 +792,22 @@ public:
 	static bool_t Load_FullRestoreSourceClips(
 		const std::filesystem::path& Path,
 		VALTAN_FULL_RESTORE_CLIP_INDEX& OutIndex,
-		std::string& strOutStatus);
+		std::string& strOutStatus,
+		bool_t bUseAuthoredPreview = false);
 	static bool_t Matches_FullRestoreSource(
 		const VALTAN_PATTERN_VIEW& Pattern,
 		const std::string& strEffectAssetId,
 		const VALTAN_FULL_RESTORE_CLIP_INDEX& Index);
+
+	/* Display-only projection shared by both Effect pickers. Stable IDs, saved
+	   document names and playback/append ownership remain unchanged. */
+	static void Build_EffectResourceDisplayLabels(
+		VALTAN_PATTERN_TREE_VIEW& View,
+		const std::unordered_map<std::string, std::string>& SavedNames,
+		const VALTAN_FULL_RESTORE_CLIP_INDEX& SourceClips);
+	static std::string Describe_EffectResource(
+		const VALTAN_PATTERN_TREE_VIEW& View, const std::string& strEffectAssetId,
+		const std::string& strSavedName, const VALTAN_FULL_RESTORE_CLIP_INDEX& Index);
 
 	/* Source inventory is independent of generated Product parity. It retains
 	   the existing split schema/type/identity checks; resource and native

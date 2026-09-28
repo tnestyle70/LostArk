@@ -536,7 +536,8 @@ def _animation_occurrence_timing(
 
 
 def _resolve_clip_source_ms(
-    stage: Mapping[str, Any], clip_occurrence_id: str, source_ms: int
+    stage: Mapping[str, Any], clip_occurrence_id: str, source_ms: int,
+    *, clamp_to_stage: bool = True,
 ) -> int:
     timing = _animation_occurrence_timing(stage).get(clip_occurrence_id)
     if timing is None:
@@ -546,7 +547,8 @@ def _resolve_clip_source_ms(
     occurrence_start, _wall_ms, source_start, play_rate = timing
     local_source_ms = max(0, source_ms - source_start)
     local_wall_ms = int(math.floor((local_source_ms / play_rate) + 0.5))
-    return min(stage["durationMs"], occurrence_start + local_wall_ms)
+    stage_ms = occurrence_start + local_wall_ms
+    return min(stage["durationMs"], stage_ms) if clamp_to_stage else stage_ms
 
 
 def _normalized_v1_cues(
@@ -618,8 +620,9 @@ def _normalized_v1_cues(
             "payload": payload,
         }
         if cue.get("sourceEndMs") is not None:
+            payload["sourceClock"]["endMs"] = cue["sourceEndMs"]
             normalized["endMs"] = _resolve_clip_source_ms(
-                stage, clip_id, cue["sourceEndMs"]
+                stage, clip_id, cue["sourceEndMs"], clamp_to_stage=False
             )
         result.append(normalized)
     return result
@@ -840,6 +843,8 @@ def _normalized_detached_v1_cue(row: Mapping[str, Any]) -> dict[str, Any]:
         payload["sourceClock"]["clipOccurrenceId"] = clip_id
     if "scalePolicy" in row:
         payload["scalePolicy"] = copy.deepcopy(row["scalePolicy"])
+    if "playbackOffsetMs" in row:
+        payload["playbackOffsetMs"] = row["playbackOffsetMs"]
     result = {
         "cueId": cue_id,
         "kind": "EFFECT_V1",
@@ -878,6 +883,7 @@ def _normalized_detached_v1_cue(row: Mapping[str, Any]) -> dict[str, Any]:
         result["endMs"] = _require_nonnegative_int(
             source_end, f"{cue_id}.sourceEndMs"
         )
+        payload["sourceClock"]["endMs"] = result["endMs"]
     return result
 
 
@@ -995,9 +1001,16 @@ def _validate_pattern_sound_document(
                 "repeatPolicy",
                 "startMs",
             ),
-            (),
+            ("playbackOffsetMs", "playbackDurationMs"),
             context,
         )
+        for field, minimum in (("playbackOffsetMs", 0), ("playbackDurationMs", 1)):
+            if field in row:
+                value = _require_nonnegative_int(row[field], f"{context}.{field}")
+                if not minimum <= value <= 600_000:
+                    raise CompositionError(
+                        f"{context}.{field} must be within {minimum}..600000"
+                    )
         binding_id = _require_string(row["bindingId"], f"{context}.bindingId")
         occurrence_id = _require_string(
             row["occurrenceId"], f"{context}.occurrenceId"
@@ -1269,7 +1282,11 @@ def _validate_v1_effect_owners(
             if stage_clock
             else ("clipOccurrenceId", "sourceStartMs", "sourceEndMs")
         )
-        _require_exact_fields(row, required, ("scalePolicy",), context)
+        _require_exact_fields(row, required, ("scalePolicy", "playbackOffsetMs"), context)
+        if "playbackOffsetMs" in row:
+            offset = _require_nonnegative_int(row["playbackOffsetMs"], f"{context}.playbackOffsetMs")
+            if offset > 600_000:
+                raise CompositionError(f"{context}.playbackOffsetMs exceeds 600000")
         binding_id = _require_owner_stable_id(
             row.get("bindingId"), f"{context}.bindingId", 160
         )
@@ -1482,7 +1499,8 @@ def _validate_v1_effect_owners(
                 end_ms = _require_nonnegative_int(
                     source_end, f"{binding_id}.sourceEndMs"
                 )
-                if end_ms <= start_ms or (clip_play != 0 and end_ms > segment_end):
+                if (end_ms <= start_ms or end_ms > 600_000 or
+                        (repeat_policy == "each_loop" and clip_play != 0 and end_ms > segment_end)):
                     raise CompositionError(
                         f"{binding_id}.sourceEndMs is outside its clip window"
                     )
@@ -1961,7 +1979,13 @@ def _validate_projected_cue_invariants(
             raise CompositionError(f"{cue_id}.stopPolicy is invalid")
         if "endMs" in cue:
             end_ms = _require_nonnegative_int(cue["endMs"], f"{cue_id}.endMs")
-            if stage_duration_ms is not None and end_ms > stage_duration_ms:
+            allows_once_effect_tail = (
+                cue["kind"] == "EFFECT_V1"
+                and clock["repeatPolicy"] == "ONCE"
+                and cue["stopPolicy"] == "CUE_END"
+            )
+            if (stage_duration_ms is not None and end_ms > stage_duration_ms
+                    and not allows_once_effect_tail):
                 raise CompositionError(f"{cue_id} ends after its scoped Stage")
             if isinstance(start_ms, int) and end_ms < start_ms:
                 raise CompositionError(f"{cue_id}.endMs precedes startMs")
@@ -2692,6 +2716,34 @@ def _validate_world_sequence_collider_tracks(
             raise CompositionError(f"{row_context} only hook capture carries a grip or bone")
 
 
+def _validate_world_sequence_sound_tracks(
+    template: Mapping[str, Any], context: str
+) -> None:
+    """Keep the native World Sequence v3 sound lane in the published payload."""
+    identities: set[str] = set()
+    for ordinal, row in enumerate(template["soundTracks"]):
+        row_context = f"{context}.soundTracks[{ordinal}]"
+        if not isinstance(row, dict):
+            raise CompositionError(f"{row_context} must be an object")
+        _require_exact_fields(row, ("soundTrackId", "assetId", "startMs", "durationMs", "volume"),
+                              ("loopToDuration",), row_context)
+        identity = _require_owner_stable_id(row["soundTrackId"], f"{row_context}.soundTrackId", 128)
+        if identity in identities:
+            raise CompositionError(f"{row_context}.soundTrackId is duplicate")
+        identities.add(identity)
+        asset = _require_bounded_display_text(row["assetId"], f"{row_context}.assetId", 1024)
+        if (not asset.startswith("Sound/") or not asset.endswith(".wav") or
+                "\\" in asset or ":" in asset or any(part in ("", ".", "..") for part in asset.split("/"))):
+            raise CompositionError(f"{row_context}.assetId must be a Resources-relative Sound WAV path")
+        start = _require_nonnegative_int(row["startMs"], f"{row_context}.startMs")
+        duration = _require_positive_int(row["durationMs"], f"{row_context}.durationMs")
+        if start > template["durationMs"] or start + duration > WORLD_SEQUENCE_MAX_DURATION_MS:
+            raise CompositionError(f"{row_context} sound timing is outside its bounds")
+        _require_finite_number(row["volume"], f"{row_context}.volume", minimum=0, maximum=4)
+        if "loopToDuration" in row and not isinstance(row["loopToDuration"], bool):
+            raise CompositionError(f"{row_context}.loopToDuration must be boolean")
+
+
 def _validate_world_sequence_material_tracks(
     template: Mapping[str, Any], slots: Mapping[str, str], context: str
 ) -> None:
@@ -2813,7 +2865,7 @@ def _validate_world_sequence_source(
                 "tracks",
                 "animationTracks",
             ),
-            (("objectMotion", "effectTracks", "colliderTracks", "materialTracks") if document["formatVersion"] == 3
+            (("objectMotion", "effectTracks", "colliderTracks", "materialTracks", "soundTracks") if document["formatVersion"] == 3
              else ("objectMotion",)),
             template_context,
         )
@@ -2872,6 +2924,10 @@ def _validate_world_sequence_source(
             or total_tracks + len(effect_tracks) + len(collider_tracks) + len(material_tracks) > WORLD_SEQUENCE_MAX_TRACKS
         ):
             raise CompositionError(f"{template_context}.materialTracks must be a bounded array")
+        sound_tracks = template.get("soundTracks", [])
+        if (not isinstance(sound_tracks, list) or
+                total_tracks + len(effect_tracks) + len(collider_tracks) + len(material_tracks) + len(sound_tracks) > WORLD_SEQUENCE_MAX_TRACKS):
+            raise CompositionError(f"{template_context}.soundTracks must be a bounded array")
 
         # A slot may carry both a transform track and a clip chain so one
         # binding can walk an animated prop while it plays. Duplicates are a
@@ -3053,6 +3109,8 @@ def _validate_world_sequence_source(
             collider_template_ids.add(sequence_id)
         if "materialTracks" in template:
             _validate_world_sequence_material_tracks(template, slots, template_context)
+        if "soundTracks" in template:
+            _validate_world_sequence_sound_tracks(template, template_context)
         material_templates[sequence_id] = material_tracks
         template_slots[sequence_id] = slots
 

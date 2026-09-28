@@ -56,6 +56,9 @@ struct VALTAN_PATTERN_EFFECT_CUE final
 	occurrence.  The names remain source-compatible with the v1 readers. */
 	uint32_t iStartMs = 0u;
 	uint32_t iEndMs = 0u;
+	// Explicit Effect resource age; absent preserves the legacy source origin.
+	uint32_t iPlaybackOffsetMs = 0u;
+	bool_t bHasPlaybackOffset = false;
 	bool_t bHasSourceEnd = false;
 	bool_t bUsesLegacyStageWallTime = false;
 	/* Explicit Product timing measured from the owning Stage wall. It carries

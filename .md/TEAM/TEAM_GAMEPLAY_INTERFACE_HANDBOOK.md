@@ -53,7 +53,7 @@ Lobby의 `KoukuSaydon` 버튼은 기존 `CLobbyCommandService -> C2S_ENTER_WORLD
 
 Character Select의 `Create Character`는 선택 class와 공통 validator를 통과한 1~32-byte UTF-8 nickname을 `CCharacterSelectionState`의 pending identity로 stage한다. Lobby가 그 exact identity로 Bern entry를 승인받고 loading resource, rendering profile, 실제 `Change_Level(BERN)`까지 성공한 뒤에만 created identity로 commit한다. 중간 실패는 pending만 취소하고 기존 created identity는 유지한다. created identity가 없는 direct Bern, Character Select, Training, Valtan, KoukuSaydon entry는 process-local `Test-<process-id>` audition nickname을 사용한다. Bern은 pending 생성이 있으면 이를 우선하며, Lobby/F1의 직접 audition 입장은 생성 commit을 만들지 않는다. Server의 `SERVER_PLAYER::strNickName`과 world transfer가 session lifetime 동안 exact nickname을 보존하고 `S2C_PLAYER_SPAWNED`로 복제한다. nickname은 display text이며 player lookup, Party member ID, 고유성 검사 또는 Client 재실행 뒤 영구 저장에 사용하지 않는다. Bern과 Valtan은 `CClientReplication::Collect_PlayerViews`의 Server-replicated nickname과 weak character presentation을 `CWorldPlayerNameplateView`에 전달한다. projection, UTF-8 변환, font draw 실패는 gameplay와 replication을 건드리지 않고 해당 nameplate만 생략한다.
 
-2026-09-30 23:59 KST까지 공유 LAN Server는 같은 팀 LAN의 `192.168.0.22:7777`이다. Server PC는 현재 `Wi-Fi 2`에서 `192.168.0.22/24`를 소유한다. Server는 `0.0.0.0:7777`에 수신하고 Server PC와 다른 PC의 Client는 모두 concrete endpoint `192.168.0.22:7777`을 사용한다. `Tools/Network/TeamLanEndpoint.json`이 endpoint와 만료일 정본이다. 각 에이전트는 pull 후 `Tools/Network/Sync-TeamLanEndpoint.ps1`을 실행하고 출력된 역할에 맞는 target을 안내하며, 실제 `Ctrl+F5` 시작과 UI 조작은 사용자가 수행한다.
+2026-09-30 23:59 KST까지 공유 LAN Server는 같은 팀 LAN의 `192.168.200.113:7777`이다. Server PC는 현재 `Wi-Fi`에서 `192.168.200.113/24`를 소유한다. Server는 `0.0.0.0:7777`에 수신하고 Server PC와 다른 PC의 Client는 모두 concrete endpoint `192.168.200.113:7777`을 사용한다. `Tools/Network/TeamLanEndpoint.json`이 endpoint와 만료일 정본이다. 각 에이전트는 pull 후 `Tools/Network/Sync-TeamLanEndpoint.ps1`을 실행하고 출력된 역할에 맞는 target을 안내하며, 실제 `Ctrl+F5` 시작과 UI 조작은 사용자가 수행한다.
 
 쿠크 아레나의 광기와 네 HUD는 `CCombatHUDViewModel::Get_KoukuGimmick()`을 읽는다. v63
 `PLAYER_SNAPSHOT`의 madness, `eKoukuHudMode`, cooldown 종료 tick과 카드 문양·색이 실제 상태를 소유한다.
@@ -88,7 +88,7 @@ Server와 Client가 같은 PC, 같은 LAN, 서로 다른 네트워크 중 어디
 
 | 실행 위치 | Server `--bind-address` | Client `LOSTARK_SERVER_HOST` |
 |---|---|---|
-| 현재 팀 LAN 공유 Server | `0.0.0.0` | `192.168.0.22` |
+| 현재 팀 LAN 공유 Server | `0.0.0.0` | `192.168.200.113` |
 | 같은 PC 격리 harness | 명시적 `127.0.0.1` | 명시적 `127.0.0.1` |
 | 서로 다른 장소/VPN | `0.0.0.0` | Server PC가 실제 소유한 VPN IPv4와 별도 source CIDR 방화벽 규칙 |
 | 일반 NAT 공인 IPv4 | 현 단일 endpoint sync 미지원 | advertised endpoint와 Server owner address 분리 구현을 먼저 추가 |
@@ -117,10 +117,10 @@ Client project만 시작한다. 자동 판정이 예상과 다르면 IP 어댑�
 팀 계약을 갈라놓지 않는다.
 
 ```xml
-<LocalDebuggerEnvironment>LOSTARK_SERVER_HOST=192.168.0.22</LocalDebuggerEnvironment>
+<LocalDebuggerEnvironment>LOSTARK_SERVER_HOST=192.168.200.113</LocalDebuggerEnvironment>
 ```
 
-`0.0.0.0`은 Server의 수신 주소일 뿐 Client 접속 주소로 사용하지 않는다. 현재 Client 기본값은 `192.168.0.22`이다. 주소를 바꾸면 `Tools/Network/TeamLanEndpoint.json`, Server/Client 코드 기본값, 공유 debugger 설정과 이 사용서를 같은 변경 단위에서 갱신하고 `Sync-TeamLanEndpoint.ps1`, NetworkProtocolHarness, Server contract test로 검증한다.
+`0.0.0.0`은 Server의 수신 주소일 뿐 Client 접속 주소로 사용하지 않는다. 현재 Client 기본값은 `192.168.200.113`이다. 주소를 바꾸면 `Tools/Network/TeamLanEndpoint.json`, Server/Client 코드 기본값, 공유 debugger 설정과 이 사용서를 같은 변경 단위에서 갱신하고 `Sync-TeamLanEndpoint.ps1`, NetworkProtocolHarness, Server contract test로 검증한다.
 
 #### pull 후 공유 Server에 들어가는 순서
 
@@ -137,12 +137,12 @@ git rev-parse HEAD
 
 두 PC의 `git rev-parse HEAD`가 같아야 한다. `Client/Bin/Resources`의 `Fonts, Character, Deploy, Effect, Map, Sound, UI` 일곱 물리 폴더도 팀장이 전달한 같은 runtime 입력이어야 하며, Git에 없는 UI/Character/Map/Sound 리소스는 별도 전달을 먼저 완료한다. Debug configuration으로 공유할 때는 두 PC 모두 Debug 정본 빌드를 실행하고, Server를 중지한 상태에서 Server PC가 `Server/Bin/Debug/Server.exe --reset-valtan-runtime-to-packaged`를 한 번 통과시킨다. cross-PC Debug Hot Reload candidate 공유는 지원하지 않는다.
 
-동기화 뒤 Visual Studio project를 Reload하거나 IDE를 재시작한다. Server PC에서 `Machine role: server-host`를 확인하고 `Server + Client` profile을 시작한다. 다른 PC는 `Machine role: client`를 확인하고 `Client Only (Server Already Running)` profile을 시작한다. 직접 EXE를 실행할 때 shell의 오래된 `LOSTARK_SERVER_HOST`가 새 기본값보다 우선하므로 값이 `127.0.0.1`이면 제거하거나 `192.168.0.22`로 맞춘다.
+동기화 뒤 Visual Studio project를 Reload하거나 IDE를 재시작한다. Server PC에서 `Machine role: server-host`를 확인하고 `Server + Client` profile을 시작한다. 다른 PC는 `Machine role: client`를 확인하고 `Client Only (Server Already Running)` profile을 시작한다. 직접 EXE를 실행할 때 shell의 오래된 `LOSTARK_SERVER_HOST`가 새 기본값보다 우선하므로 값이 `127.0.0.1`이면 제거하거나 `192.168.200.113`로 맞춘다.
 
 Server가 `Listening on 0.0.0.0:7777`을 출력한 뒤 다른 PC에서 아래 probe가 성공해야 한다. Windows 네트워크가 `공용`이어도 repository sync가 검증하는 firewall rule은 `Profile Any`, `RemoteAddress LocalSubnet`이므로 직접 IPv4 접속에는 문제가 없다.
 
 ```powershell
-Test-NetConnection 192.168.0.22 -Port 7777
+Test-NetConnection 192.168.200.113 -Port 7777
 ```
 
 `TcpTestSucceeded: False`면 Server listener, endpoint 어댑터, TCP 7777 firewall, 공유기의 AP/client isolation 순서로 본다. `True`인데 Lobby에서 거부되거나 끊기면 서로 다른 commit/binary/protocol/gameplay bootstrap을 먼저 확인한다. 승인 뒤 `Stage loading failed`로 Lobby에 남으면 네트워크가 아니라 Client runtime Resources 또는 Loader 문제다. Bern과 Valtan은 player spawn이 네 개라 Server PC의 Client도 입장하면 다른 PC 세 대까지 같은 room에 들어갈 수 있다. Character Select는 session-private이므로 여러 PC가 같은 Server를 써도 서로 보이지 않으며, 동시 플레이 확인은 Bern 또는 Valtan에서 한다.
@@ -206,7 +206,7 @@ Server\Bin\Debug\Server.exe --bind-address 0.0.0.0 --smoke-timeout-ms 500
 profile을 정상 시작해 listener를 계속 유지한다. 그다음 Client PC에서 확인한다.
 
 ```powershell
-Test-NetConnection 192.168.0.22 -Port 7777
+Test-NetConnection 192.168.200.113 -Port 7777
 ```
 
 `Failed to open TCP listener ... Error=10049`는 `--bind-address`에 적은 주소가 현재 Server PC의 어느 어댑터에도 없다는 뜻이다. Client의 주소나 이전 Wi-Fi 주소를 Server bind 값으로 복사하지 말고 Server는 `0.0.0.0`, Client만 도달 가능한 endpoint를 사용한다.
@@ -366,7 +366,7 @@ walkable nav cell 경계와 별개로, 투사체·지연 장판·보스 이동 �
 
 ### 4.1 F1 아레나 카메라와 플레이어 위치 작업
 
-발탄 F1 `Valtan Arena`의 Start Position / Before Entrance / Arena Start는 기존 typed player teleport를 사용한다. `Despawn Valtan Boss`는 Debug/Release Server에서 ENCOUNTER_VALTAN primary와 owner 종속체만 제거하고 일반 NPC/웨이브 몬스터를 보존한다. 이후 Boss Play Pattern은 disabled placement `boss.valtan.center`를 Server에 준비 요청하고 replicated primary 도착 후 기존 revision/sound/presentation admission을 다시 통과해야 실행된다. spawn 대기는 local boss 생성으로 우회하지 않는다.
+발탄 F1 `Valtan Arena`의 Start Position / Before Entrance / Arena Start는 기존 typed player teleport를 사용한다. Debug/Release 공통의 벽·지형 상태 버튼은 전체 벽 복원, 외곽 벽 제거, 3시 붕괴, 9시 붕괴, 양쪽 붕괴를 기존 `Set_ServerArenaPreset` 명령으로 요청한다. 표시 상태는 Server replication을 따르고 요청 대기 중에는 중복 제출을 막는다. 벽·지형 preset은 Pattern의 source/Product 일치 여부와 별개로 Server가 승인하므로, 미게시 Pattern 수정으로 canonical graph가 미승인 상태여도 요청할 수 있다. Save·Publish 진행 잠금과 Server의 session/world·요청·보스 상태·destruction graph 검증은 유지한다. `Despawn Valtan Boss`는 Debug/Release Server에서 ENCOUNTER_VALTAN primary와 owner 종속체만 제거하고 일반 NPC/웨이브 몬스터를 보존한다. 이후 Boss Play Pattern은 disabled placement `boss.valtan.center`를 Server에 준비 요청하고 replicated primary 도착 후 기존 revision/sound/presentation admission을 다시 통과해야 실행된다. spawn 대기는 local boss 생성으로 우회하지 않는다.
 
 Debug/Release 공통 F1 `Camera`에서 자유 카메라 속도를 조절한다. 베른·발탄·쿠크 기본은
 20m/s이며 범위는 0.1~400m/s다. Shift는 30배 이동이다. Debug 발탄·쿠크의 설정은 아레나별
@@ -616,11 +616,19 @@ invocation은 `Data/Valtan/Valtan.presentation.json` source owner를 사용한�
 `Valtan.patternbindings.json`과 `Valtan.patterneffectcues.json`은 projector가 만드는 read-only Product다.
 Counter enable은 paired counterable flag, `COUNTER_HIT` branch, same-pattern GROGGY action 또는 typed
 cross-pattern GROGGY target과 paired groggy flag를 한 Server-authority 단위로 만들고 Animation notify가
-결과를 확정하지 않는다. Save는 split source와
-generated Product를 공통 writer generation으로 commit한 뒤 exact canonical reload까지 검사한다. 로컬 저장
-뒤에도 같은 immutable revision이 Server-active로 확인되기 전에는 Complete Play와 Restart를 실행하지 않는다.
-실제 seek/stop adapter가 연결된 lane만 local `PLAY`다. Effect invocation은 typed Details의
-`EDIT/SAVE`를 지원하지만 일반 timeline block drag와 local seek/stop은 지원하지 않는다.
+결과를 확정하지 않는다. `Save Source`는 split source만 저장한다. `Save & Publish`는 저장된
+source의 strict projection·dependency·revision 검증을 거쳐 Product를 게시하며, Source 저장 성공을
+Server 활성화 성공으로 표시하지 않는다. 실제 Server Play는 기존 exact revision admission을 유지한다.
+Effect invocation은 typed Details와 local preview의 공통 시계를 사용하며 Pause/Seek/Stop을 지원한다.
+Composition Resources는 All Effects와 같은 V1/V2 inventory를 읽고 Product/Full Restore를
+패턴별로 찾을 수 있다. Preview는 선택 리소스를 재생하며 Append는 선택한 animation occurrence 또는
+V2 stage binding에 연결한다. V1 목적지 clip이 하나면 자동 선택하고 여러 개면 정확한 clip을 선택한다.
+발탄 리소스는 두 목록과 Effect Editor 제목에 같은 한글 패턴·동작 순서 이름을 표시한다.
+원본 clip과 stable ID는 상세 및 검색에 유지하며 표시명 변경으로 저장 연결을 바꾸지 않는다.
+본 부착 검격의 일부 요소를 따로 편집할 때는 Effect Tool에서 요소를 표시 선택한 뒤
+`Create Group from Marked`를 누른다. 새 그룹의 `Duplicate Group`으로 복제하고 그룹별
+`Anchor Position`, `Anchor Rotation`, `Start (s)`를 조절한 뒤 `Save Changes`로 저장한다.
+원본 transform track과 particle 이동은 유지되며 불완전한 carrier/transform owner 선택은 거부한다.
 Camera/World lane은 owner file과 stable row를 표시하는 `INSPECT` 상태로 남긴다. Sound는 별도
 typed owner에서 `EDIT/SAVE`하되 local seek/stop transport는 `INSPECT`다.
 `Animation Sequence Intake`는 review 원본이고 promotion transaction 전에는 Product/Server pattern이 아니다.
@@ -634,6 +642,17 @@ geometry-only Remove는 C++ setter와 최종 `SET_STAGE_HIT` writer가 모두 �
 Gameplay/Logic/Collider Details를 열어 보는 것과 Stage topology 또는 Add/Remove 권한을 주는 것은 다른
 admission이다. Details를 열기 위해 Pattern을 `manualAuditions`로 승격하지 않는다. selection candidate와
 manual audition의 교집합은 publisher/pipeline admission 오류다.
+
+Valtan source `hit.contacts`는 한 Stage에서 시점별 geometry/damage/push가 다를 때 사용하는 optional
+`Shared::ATTACK_HIT_TEMPLATE` 배열이다. Product `attackContacts`와 bootstrap `PATTERNATTACKHIT`의 `STAGE`
+role로 게시하며 action stable ID에 연결한다. 모든 entry는 단일 TIMED pulse이고 기존 schedule offset과
+개수·순서·atMs가 같아야 한다. ACTIVE_WINDOW, CAPTURE, Stage motion과 함께 쓰지 않는다. contacts가 없으면
+기존 공통 Stage hit를 유지하며, 있으면 Server `CValtanBrain`의 같은 due-hit loop가 개별 contact를 적용한다.
+MAX_HP_PERCENT와 forcePush/riseHeight/pushRange/pushMs는 쿠크의 공용 전투 계약을 사용한다. 개별 contact의
+forward/right/yaw offset은 기존 Stage hit anchor 뒤에 한 번 적용한다. 공용 Stage Collider Details는 contacts
+소유 Stage의 geometry/timing/damage를 읽기 전용으로 표시하고 재저장 때 배열을 보존한다. 개별 contact 편집
+UI는 아직 없다. Client wire mirror는 BOSS_CURRENT contact를 같은 clock/shape로 표시한다. STAGE_ORIGIN은
+Server origin pose가 복제되지 않으므로 그 contact wire를 그리지 않으며 Client 위치를 정답으로 추측하지 않는다.
 
 hit timing은 pulse schedule과 `ACTIVE_WINDOW` 중 정확히 하나다. Active Window는 Stage-local 반열린 구간
 `[startMs, startMs + lifetimeMs)`이고 target당 한 번만 판정한다. `anchor`와 `activation`은 geometry Tune 때도
@@ -760,6 +779,26 @@ NetEntityId, player/local 구분, current/max HP, shield, presentation의 weak �
 `max(maxHP, HP + shield)`를 공통 분모로 사용한다. 살아 있고 화면에 투영되는 대상만 layout을
 처음 생성한다. 표시 위치는 전달받은 weak presentation의 현재 머리/모델 경계에서 계산한다.
 
+Debug/Release F1의 광기 위치 조절 아래 `Health bar positions`에서 주황 기믹, 다른 아군 HP,
+일반 몬스터·쿠크세이튼·쿠크·발탄 HP의 X/Y offset을 각각 조절한다.
+`Data/UI/KoukuSaydon/KoukuHudModes.json`의 optional `healthBarPositions`는
+`mechanicOffsetX/Y`, `allyOffsetX/Y`, `enemyOffsetX/Y`, `koukuSaydonOffsetX/Y`,
+`koukuOffsetX/Y`, `valtanOffsetX/Y`를 저장한다(각 X/Y는 별도 key다).
+같은 객체의 optional `mechanicWidthScale`, `mechanicHeightScale`은 주황 기믹 행만 조절하며
+각각 기본 1/3과 1, finite 0.1..3 배율이다. F1의 `Stagger width`/`Stagger thickness`에서
+즉시 조절하고 위치와 함께 저장·재로드한다. 원본 frame 중심 기준으로 frame/fill을 함께
+변환한 뒤 X/Y를 더하므로 크기 조절은 누적되지 않고 다른 HP·광기 바 크기에 영향을 주지 않는다.
+불투명 보라 `Boss_StaggerTrack`은 숨기며, 남은 값/최대값 비율로 주황 fill이 줄어든 자리에는
+`Boss_StaggerBg`의 빈 바가 보인다.
+1280×720 기준 pixel, +X 오른쪽/+Y 아래, finite -1280..1280이며 기본은 0이다. 이전 문서의
+누락된 보스별 값은 enemy X/Y를 상속한다. frame/HP/shield를 함께 이동하고 상단 기믹은
+원래 저작 rect에서 offset을 적용한다. Save/Reload는 최신 디스크의 다른 field와 기존 Y 튜닝을
+보존하며, 같은 축의 실제 충돌·검증 실패 시 디스크와 preview를 유지한다.
+World health read model의 stable archetype ID로 묶음을 선택하며, 거대 세이튼의 작은 HP는
+항상 숨긴다. 카드미로에서는 플레이어와 네 문양 카드 병정의 작은 HP를 숨긴다.
+발탄 마력구 active window는 기존 Server response/stagger 진행을 주황 무력화 게이지에
+표시하며, 쿠크 1관문·마리오 2페이즈·빙고와 같은 주황 fill 및 공통 기믹 X/Y를 소비한다.
+
 `Get_DamageEvents()`는 최근 128개 Server `DAMAGE_EVENT`를 server tick과 함께 보관한다. 실제 적용
 damage, target NetEntityId, world anchor, incoming/outgoing을 제공하며 UI가 HP 차이로 damage를
 재계산하지 않는다. F1 Balance Test는 이 경계로 최근 16개 event를 표시한다.
@@ -783,6 +822,22 @@ Gameplay bootstrap의 공통 용량은 `Shared/Public/GameplayDataRevision.h`의
 | `Data/Encounters/Valtan/ValtanEncounter.json` | state/action/pattern timing/range/damage 참조 | Server Valtan brain |
 | `Data/Encounters/Valtan/ValtanCombatObjects.json` | pattern stage가 생성하는 지연/이동 객체의 stable ID, motion, life, hit | Server room combat-object runtime |
 | `Data/Actors/BossCatalog.json`의 `combatObjectVisuals` | gameplay object ID + visual ID를 Product Effect ID에 연결 | Client replication/effect prewarm |
+
+발탄 combat object의 optional `ownerHitChain`은 `triggerActionId`, `delayMs`,
+`armedPresentationEventId`를 가진다. 지정 owner pattern/action의 실제 cone 타격이 돌의 cover
+circle과 겹칠 때, 같은 Server source / pattern sequence / spawn wave에서 맞은 돌은 즉시,
+나머지는 `delayMs` 뒤 기존 피해·`HIT_PULSE` 경로로 폭발한다. 정책이 없으면 기존 TIMED
+동작을 유지한다. 정책 객체는 arm 전 TIMED hit를 실행하지 않고, 첫 arm 이후 반복 타격으로
+시계를 덮어쓰지 않는다. 폭발 객체는 같은 tick에 despawn하여 늦게 입장한 Client에 재생성되지
+않는다. Client terminal tail은 self-contained presentation pulse가 소유한다.
+
+`combatObjectVisuals`의 optional `armedPresentationEventId` / `armedEffectAssetId`는 한 쌍이며
+정책의 event ID와 정확히 일치해야 한다. `stopActiveOnHit`는 실제 hit와 despawn에서 active
+외형을 정리하며 기본값은 false다. armed 전조를 실제 피해 이후의 hit 효과로 대신 재생하지 않는다.
+local Preview는 같은 Shared cone-circle 판정과 pattern clock을 소비한다. bootstrap의 optional
+`BOSSCOMBATOBJECTOWNERHITCHAIN` row는 기존 row/packet 형식을 변경하지 않으며 header 37을
+유지한다. 이 row를 모르는 구버전 Server는 unknown row로 로드를 거절하므로 게시 데이터와 새
+Server 실행물을 함께 배포하고 Server를 재시작한다.
 
 UI 담당자는 JSON을 매 프레임 읽지 않는다. `CCombatHUDViewModel::Initialize_Definitions()`가 정의를 준비하고 `CClientReplication`이 snapshot마다 runtime 상태를 적용한다. UI 코드에서 packet이나 socket을 사용하거나 Character·boss GameObject에서 gameplay 수치를 조회하지 않는다. 머리 위 체력바는 ViewModel이 제공한 weak presentation의 표시 위치만 읽는다.
 

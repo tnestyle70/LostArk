@@ -1247,6 +1247,7 @@ HRESULT CLoader::Ready_MapAuthoringCore(const uint32_t iLevelIndex)
 	/* Every level the Map Tool can author stages its trigger, collision and
 	   spawn anchor boxes as TriggerBox clones under that level's index. */
 	if ((iLevelIndex == ETOUI(LEVEL::DEVELOPMENT) ||
+		iLevelIndex == ETOUI(LEVEL::MAHARAKA) ||
 		iLevelIndex == ETOUI(LEVEL::CHARACTER_SELECT) ||
 		iLevelIndex == ETOUI(LEVEL::BERN) ||
 		iLevelIndex == ETOUI(LEVEL::VALTAN_ARENA) ||

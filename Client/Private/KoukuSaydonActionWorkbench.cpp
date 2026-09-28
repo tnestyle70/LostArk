@@ -4889,92 +4889,153 @@ void Client::CKoukuSaydonActionWorkbench::Render_PatternResources()
  }
 }
 
-void Client::CKoukuSaydonActionWorkbench::Render_PatternTree(const bool_t resourcePicker)
+void Client::CKoukuSaydonActionWorkbench::Rebuild_PatternTreeView()
 {
- ImGui::PushID(resourcePicker ? "PatternResourceTree" : "PatternEditorTree");
- ImGui::SeparatorText("Pattern Tree");
- const auto& selectedId = resourcePicker ? m_strAppendPatternId : m_strSelectedPatternId;
- const auto selectPattern = [&](const std::string& patternId, const std::string& bundleId)
- {
-  if (resourcePicker)
-  {
-   m_strAppendPatternId = patternId;
-   return;
-  }
-  m_strBundleReturnId = bundleId;
-  m_strCreateBundleId = bundleId;
-  std::string status;
-  (void)Select_PatternById(patternId, status);
- };
-		for (const auto* visibleGate : { "GATE1", "GATE2", "GATE3", "BINGO" })
-		{
-		if (!resourcePicker && m_bSequenceWorkspace && m_strSelectedGateId != visibleGate) continue;
-		const auto matches = [&](const auto& pattern) { return pattern.strGateId == visibleGate; };
-		const auto bundleMatches = [&](const auto& bundle) { return bundle.strGateId == visibleGate; };
-		const bool gateOpen = ImGui::TreeNodeEx((std::string(Gate_Label(visibleGate)) + "##" + visibleGate).c_str(),
-			ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_OpenOnArrow |
-			(!resourcePicker && m_ePatternSelection == KOUKU_PATTERN_SELECTION::GATE && m_strSelectedGateId == visibleGate ? ImGuiTreeNodeFlags_Selected : 0));
-		if (!resourcePicker && ImGui::IsItemClicked() && !ImGui::IsItemToggledOpen()) Select_Hierarchy(KOUKU_PATTERN_SELECTION::GATE, visibleGate);
-		if (!gateOpen) continue;
+	if (m_iPatternTreeViewGeneration == m_iDraftGeneration) return;
+	Engine::CProfilerScope rebuildScope(CGameInstance::Get().Get_Profiler(), "ImGui.Composition.PatternTree.Rebuild");
+	std::vector<PATTERN_TREE_GATE> view;
+	const auto append = [&](PATTERN_TREE_LEAVES& leaves,
+		const KOUKU_SAYDON_COMPOSITION_PATTERN* pattern, const std::string& patternId,
+		const std::string& widgetId, const std::string_view gate)
+	{
+		PATTERN_TREE_LEAF row;
+		row.patternId = patternId;
+		row.exists = pattern != nullptr;
+		row.matchesGate = pattern && pattern->strGateId == gate;
+		row.label = (pattern ? pattern->strDisplayName + " [" +
+			Actor_Label(pattern->strActorProfileId, pattern->strGateId) + "]" : patternId + " [Missing]") + "##" + widgetId;
+		leaves.hasMultilineLabel |= row.label.find('\n') != std::string::npos;
+		leaves.rows.push_back(std::move(row));
+	};
+	for (const auto* visibleGate : { "GATE1", "GATE2", "GATE3", "BINGO" })
+	{
+		PATTERN_TREE_GATE gate;
+		gate.id = visibleGate;
+		gate.label = std::string(Gate_Label(visibleGate)) + "##" + visibleGate;
 		for (const auto& folder : m_Draft.Folders)
 		{
 			if (folder.strGateId != visibleGate) continue;
-			const auto flags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_DefaultOpen |
-				(!resourcePicker && ((m_ePatternSelection == KOUKU_PATTERN_SELECTION::FOLDER && m_strSelectedFolderId == folder.strFolderId) || (!folder.strTimelinePatternId.empty() && m_strSelectedPatternId == folder.strTimelinePatternId)) ? ImGuiTreeNodeFlags_Selected : 0);
-			const bool open = ImGui::TreeNodeEx((folder.strDisplayName + " [Parent]##" + folder.strFolderId).c_str(), flags);
-			if (!resourcePicker && ImGui::IsItemClicked() && !ImGui::IsItemToggledOpen()) Select_Hierarchy(KOUKU_PATTERN_SELECTION::FOLDER, folder.strFolderId);
-			if (open)
+			PATTERN_TREE_FOLDER folderView;
+			folderView.id = folder.strFolderId;
+			folderView.label = folder.strDisplayName + " [Parent]##" + folder.strFolderId;
+			folderView.timelinePatternId = folder.strTimelinePatternId;
+			for (const auto& bundle : m_Draft.Bundles)
 			{
-				for (const auto& bundle : m_Draft.Bundles)
-				{
-					if (bundle.strFolderId != folder.strFolderId || !bundleMatches(bundle)) continue;
-					const bool childOpen = ImGui::TreeNodeEx((bundle.strDisplayName + " [Bundle]##" + bundle.strBundleId).c_str(),
-						ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_DefaultOpen | (!resourcePicker && m_ePatternSelection == KOUKU_PATTERN_SELECTION::BUNDLE && m_strSelectedBundleId == bundle.strBundleId ? ImGuiTreeNodeFlags_Selected : 0));
-					if (!resourcePicker && ImGui::IsItemClicked() && !ImGui::IsItemToggledOpen()) Select_Hierarchy(KOUKU_PATTERN_SELECTION::BUNDLE, bundle.strBundleId);
-					if (childOpen)
-					{
-						for (const auto& member : bundle.Members)
-						{
-							const auto* pattern = Find_Pattern(m_Draft, member.strPatternId);
-							const auto label = pattern ? pattern->strDisplayName + " [" + Actor_Label(pattern->strActorProfileId, pattern->strGateId) + "]" : member.strPatternId + " [Missing]";
-							if (!resourcePicker && pattern && !m_strModelViewProfile.empty() && matches(*pattern)) ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(.45f, .85f, 1.f, 1.f));
-							if (ImGui::Selectable((label + "##" + member.strMemberId).c_str(), selectedId == member.strPatternId))
-							{
-								selectPattern(member.strPatternId, bundle.strBundleId);
-							}
-							if (!resourcePicker && pattern) Render_PatternDeleteContext(member.strPatternId);
-							if (!resourcePicker && pattern && !m_strModelViewProfile.empty() && matches(*pattern)) ImGui::PopStyleColor();
-						}
-						ImGui::TreePop();
-					}
-				}
-				for (const auto& pattern : m_Draft.Patterns)
-				{
-					if (pattern.strFolderId != folder.strFolderId || pattern.strPatternId == folder.strTimelinePatternId || !matches(pattern)) continue;
-					const auto label = pattern.strDisplayName + " [" + Actor_Label(pattern.strActorProfileId, pattern.strGateId) + "]##" + pattern.strPatternId;
-					if (ImGui::Selectable(label.c_str(), selectedId == pattern.strPatternId))
-					{ selectPattern(pattern.strPatternId, {}); }
-					if (!resourcePicker) Render_PatternDeleteContext(pattern.strPatternId);
-				}
-				ImGui::TreePop();
+				if (bundle.strFolderId != folder.strFolderId || bundle.strGateId != visibleGate) continue;
+				PATTERN_TREE_BUNDLE bundleView;
+				bundleView.id = bundle.strBundleId;
+				bundleView.label = bundle.strDisplayName + " [Bundle]##" + bundle.strBundleId;
+				for (const auto& member : bundle.Members)
+					append(bundleView.leaves, Find_Pattern(m_Draft, member.strPatternId),
+						member.strPatternId, member.strMemberId, visibleGate);
+				folderView.bundles.push_back(std::move(bundleView));
 			}
+			for (const auto& pattern : m_Draft.Patterns)
+				if (pattern.strFolderId == folder.strFolderId && pattern.strPatternId != folder.strTimelinePatternId &&
+					pattern.strGateId == visibleGate)
+					append(folderView.leaves, &pattern, pattern.strPatternId, pattern.strPatternId, visibleGate);
+			gate.folders.push_back(std::move(folderView));
 		}
 		for (const auto& pattern : m_Draft.Patterns)
 		{
 			const auto* parent = Find_Folder(m_Draft, pattern.strFolderId);
-			if (!matches(pattern) || (parent && parent->strGateId == pattern.strGateId)) continue;
-			const bool linked = std::any_of(m_Draft.Bundles.begin(), m_Draft.Bundles.end(), [&](const auto& b) {
-				const auto* folder = Find_Folder(m_Draft, b.strFolderId);
-				return b.strGateId == visibleGate && folder && folder->strGateId == visibleGate &&
-					std::any_of(b.Members.begin(), b.Members.end(), [&](const auto& m) { return m.strPatternId == pattern.strPatternId; }); });
-			if (linked) continue;
-			if (ImGui::Selectable((pattern.strDisplayName + " [" + Actor_Label(pattern.strActorProfileId, pattern.strGateId) + "]##" + pattern.strPatternId).c_str(), selectedId == pattern.strPatternId))
-			{ selectPattern(pattern.strPatternId, {}); }
-			if (!resourcePicker) Render_PatternDeleteContext(pattern.strPatternId);
+			if (pattern.strGateId != visibleGate || (parent && parent->strGateId == pattern.strGateId)) continue;
+			const bool linked = std::any_of(m_Draft.Bundles.begin(), m_Draft.Bundles.end(), [&](const auto& bundle) {
+				const auto* folder = Find_Folder(m_Draft, bundle.strFolderId);
+				return bundle.strGateId == visibleGate && folder && folder->strGateId == visibleGate &&
+					std::any_of(bundle.Members.begin(), bundle.Members.end(), [&](const auto& member) {
+						return member.strPatternId == pattern.strPatternId; }); });
+			if (!linked) append(gate.leaves, &pattern, pattern.strPatternId, pattern.strPatternId, visibleGate);
 		}
+		view.push_back(std::move(gate));
+	}
+	m_PatternTreeView = std::move(view);
+	m_iPatternTreeViewGeneration = m_iDraftGeneration;
+}
+
+const Client::KOUKU_SAYDON_COMPOSITION_PRESENTATION_RESOURCE*
+Client::CKoukuSaydonActionWorkbench::Find_DraftPresentationResource(const std::string& resourceId)
+{
+	if (m_iDraftPresentationIndexGeneration != m_iDraftGeneration)
+	{
+		Engine::CProfilerScope indexScope(CGameInstance::Get().Get_Profiler(), "ImGui.Composition.PresentationIndex.Rebuild");
+		m_DraftPresentationResourceIndices.clear();
+		m_DraftPresentationResourceIndices.reserve(m_Draft.PresentationResources.size());
+		for (std::size_t i = 0u; i < m_Draft.PresentationResources.size(); ++i)
+			m_DraftPresentationResourceIndices.emplace(m_Draft.PresentationResources[i].strResourceId, i);
+		m_iDraftPresentationIndexGeneration = m_iDraftGeneration;
+	}
+	const auto found = m_DraftPresentationResourceIndices.find(resourceId);
+	return found == m_DraftPresentationResourceIndices.end() ? nullptr : &m_Draft.PresentationResources[found->second];
+}
+
+void Client::CKoukuSaydonActionWorkbench::Render_PatternTree(const bool_t resourcePicker)
+{
+	Engine::CProfilerScope treeScope(CGameInstance::Get().Get_Profiler(), "ImGui.Composition.PatternTree");
+	Rebuild_PatternTreeView();
+	ImGui::PushID(resourcePicker ? "PatternResourceTree" : "PatternEditorTree");
+	ImGui::SeparatorText("Pattern Tree");
+	const auto& selectedId = resourcePicker ? m_strAppendPatternId : m_strSelectedPatternId;
+	const auto selectPattern = [&](const std::string& patternId, const std::string& bundleId)
+	{
+		if (resourcePicker) { m_strAppendPatternId = patternId; return; }
+		m_strBundleReturnId = bundleId;
+		m_strCreateBundleId = bundleId;
+		std::string status;
+		(void)Select_PatternById(patternId, status);
+	};
+	const auto drawLeaves = [&](const PATTERN_TREE_LEAVES& leaves, const std::string& bundleId)
+	{
+		const auto drawRow = [&](const PATTERN_TREE_LEAF& row)
+		{
+			const bool highlight = !resourcePicker && !bundleId.empty() && row.exists &&
+				!m_strModelViewProfile.empty() && row.matchesGate;
+			if (highlight) ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(.45f, .85f, 1.f, 1.f));
+			if (ImGui::Selectable(row.label.c_str(), selectedId == row.patternId)) selectPattern(row.patternId, bundleId);
+			if (!resourcePicker && row.exists) Render_PatternDeleteContext(row.patternId);
+			if (highlight) ImGui::PopStyleColor();
+		};
+		// Retain the original widget/ID for an open context menu even after scrolling.
+		// Variable-height labels cannot use the constant-height list clipper.
+		if (leaves.hasMultilineLabel || ImGui::IsPopupOpen(nullptr, ImGuiPopupFlags_AnyPopupId | ImGuiPopupFlags_AnyPopupLevel))
+		{
+			for (const auto& row : leaves.rows) drawRow(row);
+			return;
+		}
+		ImGuiListClipper clipper;
+		clipper.Begin(static_cast<int>(leaves.rows.size()), ImGui::GetTextLineHeightWithSpacing());
+		while (clipper.Step())
+			for (int i = clipper.DisplayStart; i < clipper.DisplayEnd; ++i) drawRow(leaves.rows[i]);
+	};
+	for (const auto& gate : m_PatternTreeView)
+	{
+		if (!resourcePicker && m_bSequenceWorkspace && m_strSelectedGateId != gate.id) continue;
+		const bool gateOpen = ImGui::TreeNodeEx(gate.label.c_str(),
+			ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_OpenOnArrow |
+			(!resourcePicker && m_ePatternSelection == KOUKU_PATTERN_SELECTION::GATE && m_strSelectedGateId == gate.id ? ImGuiTreeNodeFlags_Selected : 0));
+		if (!resourcePicker && ImGui::IsItemClicked() && !ImGui::IsItemToggledOpen()) Select_Hierarchy(KOUKU_PATTERN_SELECTION::GATE, gate.id);
+		if (!gateOpen) continue;
+		for (const auto& folder : gate.folders)
+		{
+			const auto flags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_DefaultOpen |
+				(!resourcePicker && ((m_ePatternSelection == KOUKU_PATTERN_SELECTION::FOLDER && m_strSelectedFolderId == folder.id) || (!folder.timelinePatternId.empty() && m_strSelectedPatternId == folder.timelinePatternId)) ? ImGuiTreeNodeFlags_Selected : 0);
+			const bool open = ImGui::TreeNodeEx(folder.label.c_str(), flags);
+			if (!resourcePicker && ImGui::IsItemClicked() && !ImGui::IsItemToggledOpen()) Select_Hierarchy(KOUKU_PATTERN_SELECTION::FOLDER, folder.id);
+			if (!open) continue;
+			for (const auto& bundle : folder.bundles)
+			{
+				const bool childOpen = ImGui::TreeNodeEx(bundle.label.c_str(),
+					ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_DefaultOpen | (!resourcePicker && m_ePatternSelection == KOUKU_PATTERN_SELECTION::BUNDLE && m_strSelectedBundleId == bundle.id ? ImGuiTreeNodeFlags_Selected : 0));
+				if (!resourcePicker && ImGui::IsItemClicked() && !ImGui::IsItemToggledOpen()) Select_Hierarchy(KOUKU_PATTERN_SELECTION::BUNDLE, bundle.id);
+				if (childOpen) { drawLeaves(bundle.leaves, bundle.id); ImGui::TreePop(); }
+			}
+			drawLeaves(folder.leaves, {});
+			ImGui::TreePop();
+		}
+		drawLeaves(gate.leaves, {});
 		ImGui::TreePop();
-		}
- ImGui::PopID();
+	}
+	ImGui::PopID();
 }
 
 void Client::CKoukuSaydonActionWorkbench::Render_PatternsAndResources()
@@ -8397,7 +8458,7 @@ void Client::CKoukuSaydonActionWorkbench::Rebuild_PatternChildRows(
             for (std::size_t i = 0u; i < child->PresentationOccurrences.size(); ++i)
             {
                 const auto& row = child->PresentationOccurrences[i];
-                const auto* resource = Find_PresentationResource(m_Draft, row.strResourceId);
+                const auto* resource = Find_DraftPresentationResource(row.strResourceId);
                 const auto label = resource ? resource->strDisplayName : row.strResourceId;
                 add(scope + ".presentation." + std::to_string(i + 1u), {}, row.strOccurrenceId,
                     std::string(resource ? Presentation_Label(resource->eKind) : "Presentation") + " / " + label, IM_COL32(130, 100, 190, 255));
@@ -8583,6 +8644,8 @@ void Client::CKoukuSaydonActionWorkbench::Render_Timeline()
 		return;
 	}
 
+	std::optional<Engine::CProfilerScope> layoutScope;
+	layoutScope.emplace(CGameInstance::Get().Get_Profiler(), "ImGui.Composition.Timeline.Layout");
 	Rebuild_PatternChildRows(*pattern);
 	if (!pattern->PatternOccurrences.empty())
 	{
@@ -8601,7 +8664,7 @@ void Client::CKoukuSaydonActionWorkbench::Render_Timeline()
 	const f32_t scale = m_fPixelsPerSecond * 0.001f;
 	std::uint32_t cameraDisplayEnd = durationMs;
 	for (const auto& row : pattern->PresentationOccurrences)
-		if (const auto* resource = Find_PresentationResource(m_Draft, row.strResourceId);
+		if (const auto* resource = Find_DraftPresentationResource(row.strResourceId);
 			resource && resource->eKind == KOUKU_SAYDON_PRESENTATION_KIND::CAMERA)
 			if (const auto* shot = Find_AuthoringCamera(resource->strAssetId))
 				cameraDisplayEnd = (std::max)(cameraDisplayEnd, row.iStartMs + row.iDurationMs + shot->iBlendOutMs);
@@ -8698,7 +8761,7 @@ void Client::CKoukuSaydonActionWorkbench::Render_Timeline()
 	appendIntervals(sceneLane, pattern->SceneProfileOccurrences);
 	for (const auto& box : pattern->PresentationOccurrences)
 	{
-		const auto* resource = Find_PresentationResource(m_Draft, box.strResourceId);
+		const auto* resource = Find_DraftPresentationResource(box.strResourceId);
 		if (!resource) continue;
 		std::uint32_t tailMs = 0u;
 		if (resource->eKind == KOUKU_SAYDON_PRESENTATION_KIND::CAMERA)
@@ -8746,12 +8809,15 @@ void Client::CKoukuSaydonActionWorkbench::Render_Timeline()
             childDisplayRows[i] = lane->second;
         }
 	const f32_t height = rulerHeight + TIMELINE_LANE_HEIGHT * static_cast<f32_t>(nextRow);
+	layoutScope.reset();
 	if (!ImGui::BeginChild("##KoukuTimeline", ImVec2(0.f, 0.f), ImGuiChildFlags_Borders,
 		ImGuiWindowFlags_HorizontalScrollbar))
 	{
 		ImGui::EndChild();
 		return;
 	}
+	std::optional<Engine::CProfilerScope> drawScope;
+	drawScope.emplace(CGameInstance::Get().Get_Profiler(), "ImGui.Composition.Timeline.Draw");
 	const ImVec2 origin = ImGui::GetCursorScreenPos();
 	ImDrawList* draw = ImGui::GetWindowDrawList();
 	const auto laneY = [&](const std::size_t lane) {
@@ -9404,7 +9470,7 @@ void Client::CKoukuSaydonActionWorkbench::Render_Timeline()
 	}
 	for (const auto& box : pattern->PresentationOccurrences)
 	{
-		const auto* resource = Find_PresentationResource(m_Draft, box.strResourceId);
+		const auto* resource = Find_DraftPresentationResource(box.strResourceId);
 		if (nullptr == resource) continue;
 		const f32_t presentationLaneY = boxY(
 			presentationLane(resource->eKind), box.strOccurrenceId);
@@ -9430,7 +9496,7 @@ void Client::CKoukuSaydonActionWorkbench::Render_Timeline()
 				m_TimelineSelectedOccurrenceIds.size() > 1u &&
 				std::all_of(m_TimelineSelectedOccurrenceIds.begin(), m_TimelineSelectedOccurrenceIds.end(), [&](const auto& id) {
 					const auto* selectedBox = Find_PresentationBox(*pattern, id);
-					const auto* selectedResource = selectedBox ? Find_PresentationResource(m_Draft, selectedBox->strResourceId) : nullptr;
+					const auto* selectedResource = selectedBox ? Find_DraftPresentationResource(selectedBox->strResourceId) : nullptr;
 					return selectedResource && (selectedResource->eKind == KOUKU_SAYDON_PRESENTATION_KIND::EFFECT ||
 						selectedResource->eKind == KOUKU_SAYDON_PRESENTATION_KIND::SOUND); });
 			if (!keepPresentationSelection) Select_TimelineBox({}, box.strOccurrenceId, additiveSelection);
@@ -9637,6 +9703,7 @@ void Client::CKoukuSaydonActionWorkbench::Render_Timeline()
 	ImGui::SetCursorScreenPos(origin);
 	ImGui::Dummy(ImVec2(timelineWidth, height + 48.f));
 	ImGui::EndChild();
+	drawScope.reset();
 	std::string status;
 	if (deleteRequested)
 	{

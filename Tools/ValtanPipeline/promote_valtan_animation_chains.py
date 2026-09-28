@@ -1865,6 +1865,19 @@ def validate_and_project(
     return outputs
 
 
+PATTERN_SOUND_PLAYBACK_FIELDS = ("playbackOffsetMs", "playbackDurationMs")
+
+
+def _validate_pattern_sound_playback_window(cue: Mapping[str, Any], context: str) -> None:
+    # Source Save and Publish share storage bounds. WAV duration remains a
+    # resource/runtime concern; source clock and resource age are independent.
+    for field, minimum in (("playbackOffsetMs", 0), ("playbackDurationMs", 1)):
+        if field in cue:
+            value = _integer(cue[field], f"{context}.{field}", minimum)
+            if value > 600000:
+                raise PromotionError(f"{context}.{field} must be <= 600000")
+
+
 def _validate_pattern_sound_dependencies_against_candidate_products(
     repo_root: Path,
     outputs: Mapping[str, str],
@@ -2043,7 +2056,8 @@ def _validate_pattern_sound_dependencies_against_candidate_products(
     action_clip_occurrence_tuples: set[tuple[str, str, str]] = set()
     for cue_ordinal, cue in enumerate(cues):
         context = f"Valtan Pattern Sound cues[{cue_ordinal}]"
-        _exact(cue, cue_fields, context)
+        _required_with_optional(cue, cue_fields, PATTERN_SOUND_PLAYBACK_FIELDS, context)
+        _validate_pattern_sound_playback_window(cue, context)
         binding_id = _stable(cue["bindingId"], f"{context}.bindingId")
         occurrence_id = _stable(cue["occurrenceId"], f"{context}.occurrenceId")
         pattern_id = _stable(cue["patternId"], f"{context}.patternId")
@@ -3362,7 +3376,8 @@ def _validate_source_sidecar(owner: str, payload: bytes) -> None:
         rows=value['cues']; ids=set(); binding_ids=set()
         if not isinstance(rows,list) or len(rows)>1024: raise PromotionError('Pattern Sound rows invalid')
         for row in rows:
-            _exact(row, ('bindingId','occurrenceId','patternId','stageId','actionId','clipOccurrenceId','soundBank','soundEvent','repeatPolicy','startMs'), 'Sound row')
+            _required_with_optional(row, ('bindingId','occurrenceId','patternId','stageId','actionId','clipOccurrenceId','soundBank','soundEvent','repeatPolicy','startMs'), PATTERN_SOUND_PLAYBACK_FIELDS, 'Sound row')
+            _validate_pattern_sound_playback_window(row, 'Sound row')
             for key in ('bindingId','occurrenceId','patternId','stageId','actionId','clipOccurrenceId','soundBank','soundEvent'):
                 _stable(row.get(key),f'Sound {key}')
             if row['occurrenceId'] in ids: raise PromotionError('duplicate Sound occurrenceId')

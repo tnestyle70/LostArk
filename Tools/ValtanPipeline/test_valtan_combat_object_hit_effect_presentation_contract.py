@@ -36,7 +36,7 @@ class ValtanCombatObjectHitEffectPresentationContractTests(unittest.TestCase):
         )
         expected = {
             "combatobject.valtan.ground-roar.rock": (5000, 6200),
-            "combatobject.valtan.six-pizza.rock-pillar": (19500, 20700),
+            "combatobject.valtan.six-pizza.rock-pillar": (0, 32000),
             "combatobject.valtan.struggling.rock-pillar": (5000, 6200),
             "combatobject.valtan.part-break.rock": (5000, 6200),
         }

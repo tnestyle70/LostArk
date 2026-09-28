@@ -114,6 +114,8 @@ namespace LostArk::Server
 		bool bTrackUntilFirstPulse = false;
 	};
 
+	struct SERVER_BOSS_PATTERN_HIT;
+
 	struct SERVER_COMBAT_OBJECT final
 	{
 		LostArk::Shared::COMBAT_OBJECT_ID iCombatObjectId =
@@ -151,6 +153,9 @@ namespace LostArk::Server
 		std::uint32_t iMovementStartDelayMs = 0u;
 		bool bExpireOnDistanceEnd = true;
 		float fCoverRadiusM = 0.f;
+		BOSS_COMBAT_OBJECT_OWNER_HIT_CHAIN OwnerHitChain;
+		bool bOwnerHitChainArmed = false, bOwnerHitChainWarningApplied = false;
+		std::uint32_t iOwnerHitChainArmedTick = 0u, iOwnerHitChainDelayMs = 0u;
 		float fRemainingMilliseconds = 0.f;
 		float fElapsedMilliseconds = 0.f, fPreviousElapsedMilliseconds = 0.f;
 		std::vector<SERVER_COMBAT_OBJECT_HIT_RUNTIME> Hits;
@@ -215,6 +220,12 @@ namespace LostArk::Server
 			std::uint32_t serverTick,
 			std::vector<LostArk::Shared::DAMAGE_EVENT>& outDamageEvents);
 
+		void Apply_OwnerHits(const std::vector<SERVER_BOSS_PATTERN_HIT>& hits,
+			std::map<LostArk::Shared::PLAYER_ID, SERVER_PLAYER>& players,
+			std::vector<SERVER_WORLD_ENTITY>& worldEntities,
+			const CGameplayCatalog& catalog, std::uint32_t serverTick,
+			std::vector<LostArk::Shared::DAMAGE_EVENT>& outDamageEvents);
+
 		void Cancel_Source(LostArk::Shared::NET_ENTITY_ID sourceNetEntityId);
 		// Room-owned tracking updates only its exact typed occurrence and shared hit pose.
 		bool Set_OwnedVisualPosition(LostArk::Shared::COMBAT_OBJECT_ID objectId,
@@ -244,6 +255,11 @@ namespace LostArk::Server
 		}
 
 	private:
+		void Update_Objects(std::map<LostArk::Shared::PLAYER_ID, SERVER_PLAYER>& players,
+			std::vector<SERVER_WORLD_ENTITY>& worldEntities,
+			const CGameplayCatalog& catalog, float fixedDeltaSeconds,
+			std::uint32_t serverTick, std::vector<LostArk::Shared::DAMAGE_EVENT>& outDamageEvents,
+			bool onlyNewlyArmed);
 		bool Allocate_Id(
 			SERVER_COMBAT_OBJECT_TRANSACTION& transaction,
 			LostArk::Shared::COMBAT_OBJECT_ID& outId) const;

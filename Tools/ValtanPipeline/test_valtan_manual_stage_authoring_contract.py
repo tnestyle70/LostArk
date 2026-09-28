@@ -297,6 +297,94 @@ class ValtanManualStageAuthoringContractTests(unittest.TestCase):
     def test_sequence_source_rejects_unused_provenance(self) -> None:
         self.assert_provenance_rejected([self.sequence_source_operations()[0]])
 
+    def dash_charge_duplicate_operations(self) -> list[dict]:
+        # The saved failing Composition patch retained the old final windup
+        # occurrence and appended two boxes from the one-clip 400424/0 source.
+        dash = pattern(self.master, "VALTAN_DASH_CHARGE")
+        windup = copy.deepcopy(stage(dash, "WINDUP")["animation"])
+        source = next(row for row in windup["occurrences"]
+                      if row["clipOccurrenceId"] == "valtan.attack.dash-charge.windup.clip.01")
+        windup["occurrences"] = [source]
+        for ordinal in (1, 2):
+            windup["occurrences"].append({
+                **copy.deepcopy(source),
+                "clipOccurrenceId": f"VALTAN_DASH_CHARGE.WINDUP.composition.clip.{ordinal:02d}",
+            })
+        groggy = copy.deepcopy(stage(dash, "GROGGY")["animation"])
+        groggy["endPolicy"] = "HOLD_LAST_POSE"
+        return [
+            {"op": "ADD_PATTERN_SEQUENCE_SOURCE", "patternId": "VALTAN_DASH_CHARGE",
+             "sourceActionId": 400424, "sequenceIndex": 0, "role": "REFERENCE_400424_0"},
+            {"op": "SET_STAGE_DURATION", "patternId": "VALTAN_DASH_CHARGE",
+             "stageId": "WINDUP", "durationMs": 7350},
+            {"op": "SET_STAGE_ANIMATION", "patternId": "VALTAN_DASH_CHARGE",
+             "stageId": "WINDUP", "animation": windup},
+            {"op": "SET_STAGE_DURATION", "patternId": "VALTAN_DASH_CHARGE",
+             "stageId": "GROGGY", "durationMs": 6897},
+            {"op": "SET_STAGE_ANIMATION", "patternId": "VALTAN_DASH_CHARGE",
+             "stageId": "GROGGY", "animation": groggy},
+        ]
+
+    def dash_charge_before_source_append(self) -> dict:
+        # Keep this regression independent of a later user Save of the same
+        # source tuple. Reconstruct only the pre-append ownership in a copy.
+        owner = copy.deepcopy(self.master)
+        dash = pattern(owner, "VALTAN_DASH_CHARGE")
+        dash["sourceActionIds"] = [s for s in dash["sourceActionIds"] if s != 400424]
+        dash["presentationSources"] = [s for s in dash["presentationSources"]
+                                       if (s["sourceActionId"], s["sequenceIndex"]) != (400424, 0)]
+        windup = stage(dash, "WINDUP")["animation"]
+        windup["occurrences"] = [r for r in windup["occurrences"]
+                                 if r["clipOccurrenceId"] == "valtan.attack.dash-charge.windup.clip.01"]
+        return owner
+
+    def test_dash_charge_save_accepts_two_copies_from_one_source(self) -> None:
+        candidate = self.patch(self.dash_charge_duplicate_operations(), self.dash_charge_before_source_append())
+        dash = pattern(candidate, "VALTAN_DASH_CHARGE")
+        self.assertEqual(400424, dash["presentationSources"][-1]["sourceActionId"])
+        self.assertEqual(["mesh_att_battle_4_01"] * 3,
+                         [r["clip"] for r in stage(dash, "WINDUP")["animation"]["occurrences"]])
+        self.assertEqual(3, len({r["clipOccurrenceId"] for r in
+                               stage(dash, "WINDUP")["animation"]["occurrences"]}))
+
+    def test_source_append_allows_existing_clip_timing_edit_in_same_save(self) -> None:
+        operations = self.dash_charge_duplicate_operations()
+        operations[-1]["animation"]["occurrences"][0]["playMs"] = 1800
+        candidate = self.patch(operations, self.dash_charge_before_source_append())
+        groggy = stage(pattern(candidate, "VALTAN_DASH_CHARGE"), "GROGGY")
+        self.assertEqual(1800, groggy["animation"]["occurrences"][0]["playMs"])
+
+    def test_manual_reference_retains_source_when_existing_box_timing_changes(self) -> None:
+        owner = self.ground_roar_with_420617_append()
+        original = pattern(owner, "VALTAN_GROUND_ROAR")
+        animation = copy.deepcopy(stage(original, "STEP_01")["animation"])
+        animation["endPolicy"] = "HOLD_LAST_POSE"
+        animation["occurrences"][-1]["playMs"] -= 100
+        candidate = self.patch([
+            {"op": "SET_STAGE_ANIMATION", "patternId": "VALTAN_GROUND_ROAR",
+             "stageId": "STEP_01", "animation": animation},
+        ], owner)
+        saved = pattern(candidate, "VALTAN_GROUND_ROAR")
+        self.assertEqual(original["presentationSources"], saved["presentationSources"])
+        self.assertEqual(animation["occurrences"][-1]["playMs"],
+                         stage(saved, "STEP_01")["animation"]["occurrences"][-1]["playMs"])
+
+    def test_repeated_source_still_rejects_unrelated_clip_and_false_source_id(self) -> None:
+        operations = self.dash_charge_duplicate_operations()
+        operations[2]["animation"]["occurrences"][-1]["clip"] = "mesh_att_battle_19_01"
+        owner = self.dash_charge_before_source_append()
+        before = copy.deepcopy(owner)
+        with self.assertRaises(pipeline.DraftPatchError) as raised:
+            self.patch(operations, owner)
+        self.assertEqual("SOURCE_PROVENANCE_MISMATCH", raised.exception.error_code)
+        self.assertEqual(before, owner)
+        operations = self.dash_charge_duplicate_operations()
+        operations[0].update(sourceActionId=999999, role="REFERENCE_999999_0")
+        with self.assertRaises(pipeline.DraftPatchError) as raised:
+            self.patch(operations, owner)
+        self.assertEqual("SOURCE_SEQUENCE_NOT_FOUND", raised.exception.error_code)
+        self.assertEqual(before, owner)
+
     def test_sequence_source_accepts_an_exact_reused_occurrence_identity(self) -> None:
         owner = copy.deepcopy(self.master)
         source_animation = self.sequence_420617_animation()

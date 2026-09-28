@@ -539,6 +539,32 @@ namespace
 		return Iterator == pModule->Distributions.end() ? nullptr : &*Iterator;
 	}
 
+	const Client::EFFECT_DISTRIBUTION_DESC* Resolve_SourceDistribution(
+		const Client::EFFECT_ELEMENT_DESC& Element,
+		const char_t* pModuleClass,
+		const char_t* pPropertyPath)
+	{
+		const Client::EFFECT_SOURCE_MODULE_DESC* pModule =
+			Find_SourceModule(Element, pModuleClass);
+		if (nullptr == pModule)
+		{
+			const std::string strSeeded = std::string(pModuleClass) + "_seeded";
+			pModule = Find_SourceModule(Element, strSeeded.c_str());
+		}
+		if (nullptr == pModule && 0u == std::string_view(pModuleClass).find(
+			"particlemodule"))
+		{
+			const std::string strEffect = std::string("ef") + pModuleClass;
+			pModule = Find_SourceModule(Element, strEffect.c_str());
+			if (nullptr == pModule)
+			{
+				const std::string strEffectSeeded = strEffect + "_seeded";
+				pModule = Find_SourceModule(Element, strEffectSeeded.c_str());
+			}
+		}
+		return Find_SourceDistribution(pModule, pPropertyPath);
+	}
+
 	bool_t Uses_ImplicitAlphaIdentity(
 		const Client::EFFECT_DISTRIBUTION_DESC& Distribution,
 		const std::string_view PropertyPath)
@@ -7921,8 +7947,45 @@ bool_t Client::CEffectPlayback::Build_BakedAnimationTrail(
 	const float4x4_t ElementWorld = Evaluate_ElementWorld(
 		Element, m_fSampleTimeSeconds, RootWorld);
 	const matrix_t WorldMatrix = XMLoadFloat4x4(&ElementWorld);
+	/* Module identities, distributions and flags cannot change during this
+	   frame. Resolve once for all baked edges, including absent/seeded modules;
+	   per-edge age, random, WORLD parameters and curve evaluation stay live. */
+	std::array<const EFFECT_DISTRIBUTION_DESC*, 6u> ColorDistributions{};
+	std::array<const EFFECT_DISTRIBUTION_DESC*, 4u> DynamicDistributions{};
+	std::array<bool_t, 4u> DynamicSpawnTimeOnly{};
+	std::array<bool_t, 4u> DynamicUseEmitterTime{};
+	const EFFECT_SOURCE_MODULE_DESC* pDynamic = nullptr;
+	uint32_t iElementSeed = 0u;
+	if (bKoukuNative)
+	{
+		ColorDistributions = {
+			Resolve_SourceDistribution(Element, "particlemodulecolor", "startcolor"),
+			Resolve_SourceDistribution(Element, "particlemodulecoloroverlife", "coloroverlife"),
+			Resolve_SourceDistribution(Element, "particlemodulecolorscaleoverlife", "colorscaleoverlife"),
+			Resolve_SourceDistribution(Element, "particlemodulecolor", "startalpha"),
+			Resolve_SourceDistribution(Element, "particlemodulecoloroverlife", "alphaoverlife"),
+			Resolve_SourceDistribution(Element, "particlemodulecolorscaleoverlife", "alphascaleoverlife") };
+		iElementSeed = Hash_RuntimeRandomIdentity(Element) ^
+			Element.Detail.Particle.iRandomSeed;
+		pDynamic = Find_SourceModule(Element, "particlemoduleparameterdynamic");
+		if (nullptr != pDynamic)
+		{
+			for (uint32_t iParameter = 0u; iParameter < 4u; ++iParameter)
+			{
+				const auto& Paths = DYNAMIC_PARAMETER_PATHS[iParameter];
+				DynamicSpawnTimeOnly[iParameter] = SourceBool(*pDynamic,
+					Paths.strSpawnTimeOnly, false);
+				DynamicUseEmitterTime[iParameter] = SourceBool(*pDynamic,
+					Paths.strUseEmitterTime, false);
+				DynamicDistributions[iParameter] = Resolve_SourceDistribution(
+					Element, "particlemoduleparameterdynamic", Paths.strValue.data());
+			}
+		}
+	}
 	const auto AppendSample = [this, &Element, &OutTrail, &WorldMatrix,
-		fClampedTime, fLocalTime, bKoukuNative](
+		fClampedTime, fLocalTime, bKoukuNative, iElementSeed, pDynamic,
+		&ColorDistributions, &DynamicDistributions,
+		&DynamicSpawnTimeOnly, &DynamicUseEmitterTime](
 		const EFFECT_VISUAL_PROGRAM_ANIMATION_TRAIL_EDGE_SAMPLE& Sample)
 	{
 		EFFECT_EVALUATED_TRAIL_EDGE_PAIR Pair;
@@ -7964,27 +8027,23 @@ bool_t Client::CEffectPlayback::Build_BakedAnimationTrail(
 		{
 			// Baked geometry still owns the source point's module parameters.
 			// Keep the same deterministic draw when Seek rebuilds the frame.
-			uint32_t iSeed = Hash_RuntimeRandomIdentity(Element) ^
-				Element.Detail.Particle.iRandomSeed ^
+			uint32_t iSeed = iElementSeed ^
 				static_cast<uint32_t>(Sample.fRelativeTimeSeconds * 1000000.0);
 			const f32_t fRandom = UE_RandomFraction(iSeed);
 			const f32_t fSpawn = static_cast<f32_t>(Sample.fRelativeTimeSeconds);
 			const f32_t fLife = Pair.Payload.fNormalizedAge;
-			const float3_t Start = Evaluate_SourceVector(Element,
-				"particlemodulecolor", "startcolor", fSpawn, fRandom,
-				float3_t(1.f, 1.f, 1.f));
-			const float3_t Over = Evaluate_SourceVector(Element,
-				"particlemodulecoloroverlife", "coloroverlife", fLife, fRandom,
-				Start);
-			const float3_t Scale = Evaluate_SourceVector(Element,
-				"particlemodulecolorscaleoverlife", "colorscaleoverlife",
+			const float3_t Start = Evaluate_SourceVector(ColorDistributions[0u],
+				fSpawn, fRandom, float3_t(1.f, 1.f, 1.f));
+			const float3_t Over = Evaluate_SourceVector(ColorDistributions[1u],
+				fLife, fRandom, Start);
+			const float3_t Scale = Evaluate_SourceVector(ColorDistributions[2u],
 				fLife, fRandom, float3_t(1.f, 1.f, 1.f));
-			const f32_t fStartAlpha = Evaluate_SourceFloat(Element,
-				"particlemodulecolor", "startalpha", fSpawn, fRandom, 1.f);
-			const f32_t fAlpha = Evaluate_SourceFloat(Element,
-				"particlemodulecoloroverlife", "alphaoverlife", fLife, fRandom,
-				fStartAlpha) * Evaluate_SourceFloat(Element,
-				"particlemodulecolorscaleoverlife", "alphascaleoverlife",
+			const f32_t fStartAlpha = Evaluate_SourceFloat(ColorDistributions[3u],
+				"startalpha", fSpawn, fRandom, 1.f);
+			const f32_t fAlpha = Evaluate_SourceFloat(ColorDistributions[4u],
+				"alphaoverlife", fLife, fRandom,
+				fStartAlpha) * Evaluate_SourceFloat(ColorDistributions[5u],
+				"alphascaleoverlife",
 				fLife, fRandom, 1.f);
 			Pair.Payload.vSourceColor = {
 				Over.x * Scale.x * Color.vColorMultiply.x,
@@ -7994,19 +8053,16 @@ bool_t Client::CEffectPlayback::Build_BakedAnimationTrail(
 			Pair.Payload.iSourceColorComponentMask = 0x0fu;
 			Pair.Payload.vDynamicParameter = { 1.f, 1.f, 1.f, 1.f };
 			Pair.Payload.iDynamicParameterComponentMask = 0x0fu;
-			const EFFECT_SOURCE_MODULE_DESC* pDynamic = Find_SourceModule(
-				Element, "particlemoduleparameterdynamic");
 			if (nullptr != pDynamic)
 			{
 				for (uint32_t iParameter = 0u; iParameter < 4u; ++iParameter)
 				{
 					const auto& Paths = DYNAMIC_PARAMETER_PATHS[iParameter];
-					const f32_t fTime = SourceBool(*pDynamic,
-						Paths.strSpawnTimeOnly, false) ? fSpawn :
-						SourceBool(*pDynamic, Paths.strUseEmitterTime, false) ?
+					const f32_t fTime = DynamicSpawnTimeOnly[iParameter] ? fSpawn :
+						DynamicUseEmitterTime[iParameter] ?
 						static_cast<f32_t>(fLocalTime) : fLife;
 					(&Pair.Payload.vDynamicParameter.x)[iParameter] =
-						Evaluate_SourceFloat(Element, "particlemoduleparameterdynamic",
+						Evaluate_SourceFloat(DynamicDistributions[iParameter],
 							Paths.strValue.data(), fTime, fRandom, 1.f);
 				}
 			}
@@ -8278,26 +8334,18 @@ f32_t Client::CEffectPlayback::Evaluate_SourceFloat(
 	const f32_t fRandomUnit,
 	const f32_t fFallback) const
 {
-	const EFFECT_SOURCE_MODULE_DESC* pModule =
-		Find_SourceModule(Element, pModuleClass);
-	if (nullptr == pModule)
-	{
-		const std::string strSeeded = std::string(pModuleClass) + "_seeded";
-		pModule = Find_SourceModule(Element, strSeeded.c_str());
-	}
-	if (nullptr == pModule && 0u == std::string_view(pModuleClass).find(
-		"particlemodule"))
-	{
-		const std::string strEffect = std::string("ef") + pModuleClass;
-		pModule = Find_SourceModule(Element, strEffect.c_str());
-		if (nullptr == pModule)
-		{
-			const std::string strEffectSeeded = strEffect + "_seeded";
-			pModule = Find_SourceModule(Element, strEffectSeeded.c_str());
-		}
-	}
-	const EFFECT_DISTRIBUTION_DESC* pDistribution =
-		Find_SourceDistribution(pModule, pPropertyPath);
+	return Evaluate_SourceFloat(Resolve_SourceDistribution(
+		Element, pModuleClass, pPropertyPath), pPropertyPath,
+		fTime, fRandomUnit, fFallback);
+}
+
+f32_t Client::CEffectPlayback::Evaluate_SourceFloat(
+	const EFFECT_DISTRIBUTION_DESC* pDistribution,
+	const std::string_view PropertyPath,
+	const f32_t fTime,
+	const f32_t fRandomUnit,
+	const f32_t fFallback) const
+{
 	if (nullptr == pDistribution)
 		return fFallback;
 	if (pDistribution->eParameterBinding == EFFECT_DISTRIBUTION_PARAMETER_BINDING::WORLD_SAMPLE)
@@ -8305,7 +8353,7 @@ f32_t Client::CEffectPlayback::Evaluate_SourceFloat(
 		const auto value = m_WorldParameterValues.find(pDistribution);
 		return value == m_WorldParameterValues.end() ? std::numeric_limits<f32_t>::quiet_NaN() : value->second.x;
 	}
-	if (Uses_ImplicitAlphaIdentity(*pDistribution, pPropertyPath))
+	if (Uses_ImplicitAlphaIdentity(*pDistribution, PropertyPath))
 		return fFallback;
 	return CEffectDistribution::Evaluate(
 		*pDistribution, fTime, fRandomUnit).x;
@@ -8319,26 +8367,16 @@ float3_t Client::CEffectPlayback::Evaluate_SourceVector(
 	const f32_t fRandomUnit,
 	const float3_t& Fallback) const
 {
-	const EFFECT_SOURCE_MODULE_DESC* pModule =
-		Find_SourceModule(Element, pModuleClass);
-	if (nullptr == pModule)
-	{
-		const std::string strSeeded = std::string(pModuleClass) + "_seeded";
-		pModule = Find_SourceModule(Element, strSeeded.c_str());
-	}
-	if (nullptr == pModule && 0u == std::string_view(pModuleClass).find(
-		"particlemodule"))
-	{
-		const std::string strEffect = std::string("ef") + pModuleClass;
-		pModule = Find_SourceModule(Element, strEffect.c_str());
-		if (nullptr == pModule)
-		{
-			const std::string strEffectSeeded = strEffect + "_seeded";
-			pModule = Find_SourceModule(Element, strEffectSeeded.c_str());
-		}
-	}
-	const EFFECT_DISTRIBUTION_DESC* pDistribution =
-		Find_SourceDistribution(pModule, pPropertyPath);
+	return Evaluate_SourceVector(Resolve_SourceDistribution(
+		Element, pModuleClass, pPropertyPath), fTime, fRandomUnit, Fallback);
+}
+
+float3_t Client::CEffectPlayback::Evaluate_SourceVector(
+	const EFFECT_DISTRIBUTION_DESC* pDistribution,
+	const f32_t fTime,
+	const f32_t fRandomUnit,
+	const float3_t& Fallback) const
+{
 	if (nullptr == pDistribution)
 		return Fallback;
 	if (pDistribution->eParameterBinding == EFFECT_DISTRIBUTION_PARAMETER_BINDING::WORLD_SAMPLE)

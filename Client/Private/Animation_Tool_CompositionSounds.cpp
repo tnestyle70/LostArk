@@ -712,6 +712,92 @@ bool_t Client::CAnimation_Tool::Patch_ValtanCompositionPatternSound(
 	return true;
 }
 
+bool_t Client::CAnimation_Tool::Patch_ValtanCompositionPatternSoundPlacement(
+	const VALTAN_PATTERN_VIEW& Pattern,
+	const VALTAN_STAGE_VIEW& SourceStage,
+	const VALTAN_STAGE_VIEW& TargetStage,
+	const std::string& strOccurrenceId,
+	const std::string& strTargetClipOccurrenceId,
+	const uint32_t iStartMs,
+	const uint32_t iPlaybackOffsetMs,
+	const std::optional<uint32_t> iPlaybackDurationMs,
+	const VALTAN_PATTERN_SOUND_REPEAT_POLICY eRepeatPolicy,
+	std::string& strOutStatus)
+{
+	std::string AuthoringRevision, AuthoringStatus;
+	bool_t bCanonicalDraftDirty = false;
+	if (Is_ValtanCompositionPatternTransactionActive() || !m_pBalanceTool ||
+		!m_pBalanceTool->Get_ValtanAuthoringState(AuthoringRevision, bCanonicalDraftDirty, AuthoringStatus) ||
+		!m_bValtanPatternSoundCuesReady)
+	{
+		strOutStatus = "Pattern Sound placement requires the admitted authoring draft: " + AuthoringStatus;
+		return false;
+	}
+	const auto Current = std::find_if(m_ValtanPatternSoundCues.Cues.begin(), m_ValtanPatternSoundCues.Cues.end(),
+		[&](const auto& Cue) { return Cue.strOccurrenceId == strOccurrenceId && Cue.strPatternId == Pattern.strPatternId &&
+			Cue.strStageId == SourceStage.strStageId && Cue.strActionId == SourceStage.strActionId; });
+	const auto Target = std::find_if(Pattern.Stages.begin(), Pattern.Stages.end(), [&](const auto& Stage) {
+		return Stage.strStageId == TargetStage.strStageId && Stage.strActionId == TargetStage.strActionId; });
+	uint32_t iMinimumStartMs = 0u, iMaximumStartMs = 0u;
+	bool_t bLoop = false;
+	if (Current == m_ValtanPatternSoundCues.Cues.end() || Target == Pattern.Stages.end() ||
+		iPlaybackOffsetMs > 600000u || (iPlaybackDurationMs && (!*iPlaybackDurationMs || *iPlaybackDurationMs > 600000u)) ||
+		(eRepeatPolicy != VALTAN_PATTERN_SOUND_REPEAT_POLICY::ONCE && eRepeatPolicy != VALTAN_PATTERN_SOUND_REPEAT_POLICY::EACH_LOOP) ||
+		!Resolve_ValtanCompositionPatternSoundWindow(TargetStage, strTargetClipOccurrenceId,
+			iMinimumStartMs, iMaximumStartMs, bLoop, strOutStatus) ||
+		iStartMs < iMinimumStartMs || iStartMs > iMaximumStartMs ||
+		(eRepeatPolicy == VALTAN_PATTERN_SOUND_REPEAT_POLICY::EACH_LOOP && !bLoop))
+	{
+		strOutStatus = "Pattern Sound placement rejected an invalid selected row, target clip, playback range, or source clock.";
+		return false;
+	}
+	VALTAN_PATTERN_SOUND_CUE Candidate = *Current;
+	Candidate.strStageId = TargetStage.strStageId;
+	Candidate.strActionId = TargetStage.strActionId;
+	Candidate.strClipOccurrenceId = strTargetClipOccurrenceId;
+	Candidate.iStartMs = iStartMs;
+	Candidate.iStageDurationMs = TargetStage.iDurationMs;
+	Candidate.iStageIndex = static_cast<uint32_t>(Target - Pattern.Stages.begin());
+	Candidate.eRepeatPolicy = eRepeatPolicy;
+	Candidate.bHasPlaybackOffset = true;
+	Candidate.iPlaybackOffsetMs = iPlaybackOffsetMs;
+	Candidate.bHasPlaybackDuration = iPlaybackDurationMs.has_value();
+	Candidate.iPlaybackDurationMs = iPlaybackDurationMs.value_or(0u);
+	if (Candidate == *Current) { strOutStatus = "Pattern Sound placement is unchanged."; return true; }
+	*Current = std::move(Candidate);
+	m_bValtanPatternSoundCuesDirty = true;
+	++m_iValtanPatternSoundDraftGeneration;
+	m_strValtanPatternSoundCueStatus = "UNSAVED Pattern Sound placement: " + strOccurrenceId + ".";
+	strOutStatus = m_strValtanPatternSoundCueStatus;
+	return true;
+}
+
+bool_t Client::CAnimation_Tool::Apply_ValtanCompositionPatternSoundDraftTransaction(
+	const std::function<bool(std::string&)>& Mutation, std::string& strOutStatus)
+{
+	if (!Mutation) { strOutStatus = "Pattern Sound transaction requires a mutation."; return false; }
+	if (!Ensure_ValtanCompositionPatternSounds(strOutStatus)) return false;
+	const auto PreviousDraft = m_ValtanPatternSoundCues;
+	const bool_t bPreviousDirty = m_bValtanPatternSoundCuesDirty;
+	const auto Restore = [&]() {
+		m_ValtanPatternSoundCues = PreviousDraft;
+		m_bValtanPatternSoundCuesDirty = bPreviousDirty;
+		++m_iValtanPatternSoundDraftGeneration;
+		m_strValtanPatternSoundCueStatus = strOutStatus;
+	};
+	try
+	{
+		if (Mutation(strOutStatus)) return true;
+	}
+	catch (...)
+	{
+		Restore();
+		throw;
+	}
+	Restore();
+	return false;
+}
+
 bool_t Client::CAnimation_Tool::Add_ValtanCompositionPatternSound(
 	const VALTAN_PATTERN_VIEW& Pattern,
 	const VALTAN_STAGE_VIEW& Stage,
@@ -720,7 +806,9 @@ bool_t Client::CAnimation_Tool::Add_ValtanCompositionPatternSound(
 	const uint32_t iStartMs,
 	const VALTAN_PATTERN_SOUND_REPEAT_POLICY eRepeatPolicy,
 	VALTAN_PATTERN_SOUND_CUE_ROW_ID& OutCreatedRowId,
-	std::string& strOutStatus)
+	std::string& strOutStatus,
+	const std::optional<uint32_t> iPlaybackOffsetMs,
+	const std::optional<uint32_t> iPlaybackDurationMs)
 {
 	std::string AuthoringRevision;
 	std::string AuthoringStatus;
@@ -783,6 +871,10 @@ bool_t Client::CAnimation_Tool::Add_ValtanCompositionPatternSound(
 	Row.strSoundBank = std::string(ValtanSoundBankForEvent(strSoundEvent));
 	Row.eRepeatPolicy = eRepeatPolicy;
 	Row.iStartMs = iStartMs;
+	Row.bHasPlaybackOffset = iPlaybackOffsetMs.has_value();
+	Row.iPlaybackOffsetMs = iPlaybackOffsetMs.value_or(0u);
+	Row.bHasPlaybackDuration = iPlaybackDurationMs.has_value();
+	Row.iPlaybackDurationMs = iPlaybackDurationMs.value_or(0u);
 	const std::unordered_map<std::string, f32_t> Durations =
 		CollectModelClipSourceDurationSeconds(Resolve_Model());
 	VALTAN_PATTERN_SOUND_CUE_DOCUMENT Staged = m_ValtanPatternSoundCues;
@@ -961,7 +1053,7 @@ Restore_ValtanCompositionPatternSoundCascade(
 	m_bValtanPatternSoundCuesDirty = bPreviousDirty;
 	++m_iValtanPatternSoundDraftGeneration;
 	m_strValtanPatternSoundCueStatus =
-		"Pattern Sound cascade rolled back with the rejected Animation Delete.";
+		"Pattern Sound draft rolled back with the rejected composition edit.";
 	strOutStatus = m_strValtanPatternSoundCueStatus;
 	return true;
 }

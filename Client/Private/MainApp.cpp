@@ -75,6 +75,8 @@
 #include "SongCastGaugeView.h"
 #include "Network/PacketMessages.h"
 #include "InventoryView.h"
+#include "RepairWindowView.h"
+#include "DurabilityHudView.h"
 #include "QuickSlotDragView.h"
 #include "SkillWindowView.h"
 #include "SkillGroundTargetPreview.h"
@@ -129,9 +131,89 @@
 #include <cwchar>
 #include <fstream>
 #include <iomanip>
+#include <locale>
+#include <sstream>
 
 namespace
 {
+	constexpr const char* HUD_BAR_POSITION_KEYS[] = {
+		"mechanicOffsetX", "mechanicOffsetY", "allyOffsetX", "allyOffsetY", "enemyOffsetX", "enemyOffsetY",
+		"koukuSaydonOffsetX", "koukuSaydonOffsetY", "koukuOffsetX", "koukuOffsetY", "valtanOffsetX", "valtanOffsetY" };
+	constexpr const char* HUD_MECHANIC_SCALE_KEYS[] = { "mechanicWidthScale", "mechanicHeightScale" };
+	constexpr const char* HUD_MECHANIC_SLOTS[] = { "Boss_StaggerBg", "Boss_StaggerTrack", "Boss_StaggerFill" };
+
+	bool ReadHudBarText(const std::filesystem::path& path, std::string& text)
+	{
+		std::ifstream stream(path, std::ios::binary);
+		if (!stream.is_open()) return false;
+		text.assign(std::istreambuf_iterator<char>(stream), std::istreambuf_iterator<char>());
+		return !stream.bad();
+	}
+
+	bool ReadHudBarPositions(const Client::DATA_JSON_VALUE& root, std::array<f32_t, 12>& offsets,
+		std::array<f32_t, 2>& mechanicScale)
+	{
+		const auto* schema = root.Find("schema");
+		const auto* version = root.Find("formatVersion");
+		if (!root.Is_Object() || !schema || !schema->Is_String() ||
+			schema->Get_String() != "lostark.kouku-hud-modes" || !version ||
+			!version->Is_Number() || version->Get_Number() != 1.0) return false;
+		std::array<f32_t, 12> staged{};
+		std::array<f32_t, 2> stagedScale{ 1.f / 3.f, 1.f };
+		if (const auto* positions = root.Find("healthBarPositions"))
+		{
+			if (!positions->Is_Object()) return false;
+			for (size_t i = 0u; i < staged.size(); ++i)
+				if (const auto* value = positions->Find(HUD_BAR_POSITION_KEYS[i]))
+				{
+					if (!value->Is_Number() || !std::isfinite(value->Get_Number()) ||
+						std::abs(value->Get_Number()) > 1280.0) return false;
+					staged[i] = static_cast<f32_t>(value->Get_Number());
+				}
+			/* Old documents had one shared enemy Y. Missing category fields inherit
+			that saved position until individually authored; existing tuning is retained. */
+			for (size_t i = 6u; i < staged.size(); ++i)
+				if (!positions->Find(HUD_BAR_POSITION_KEYS[i])) staged[i] = staged[4u + i % 2u];
+			for (size_t i = 0u; i < stagedScale.size(); ++i)
+				if (const auto* value = positions->Find(HUD_MECHANIC_SCALE_KEYS[i]))
+				{
+					if (!value->Is_Number() || !std::isfinite(value->Get_Number()) ||
+						value->Get_Number() < 0.1 || value->Get_Number() > 3.0) return false;
+					stagedScale[i] = static_cast<f32_t>(value->Get_Number());
+				}
+		}
+		offsets = staged;
+		mechanicScale = stagedScale;
+		return true;
+	}
+
+	void WriteHudBarJson(std::ostream& out, const Client::DATA_JSON_VALUE& value, const size_t depth = 0u)
+	{
+		using Client::DATA_JSON_TYPE;
+		switch (value.Get_Type())
+		{
+		case DATA_JSON_TYPE::NULL_VALUE: out << "null"; break;
+		case DATA_JSON_TYPE::BOOLEAN: out << (value.Get_Boolean() ? "true" : "false"); break;
+		case DATA_JSON_TYPE::NUMBER: out << std::setprecision(17) << value.Get_Number(); break;
+		case DATA_JSON_TYPE::STRING: out << '"' << Client::CDataJson::Escape(value.Get_String()) << '"'; break;
+		case DATA_JSON_TYPE::ARRAY:
+			out << '[';
+			for (size_t i = 0u; i < value.Get_Array().size(); ++i)
+			{ if (i) out << ", "; WriteHudBarJson(out, value.Get_Array()[i], depth + 1u); }
+			out << ']'; break;
+		case DATA_JSON_TYPE::OBJECT:
+			out << '{';
+			{ bool first = true;
+			for (const auto& [key, item] : value.Get_Object())
+			{
+				out << (first ? "\n" : ",\n") << std::string((depth + 1u) * 2u, ' ') << '"'
+					<< Client::CDataJson::Escape(key) << "\": ";
+				WriteHudBarJson(out, item, depth + 1u); first = false;
+			} }
+			out << '\n' << std::string(depth * 2u, ' ') << '}'; break;
+		}
+	}
+
 #ifdef _DEBUG
     Client::CLASS_MOVIE_INSPECTION_CALLBACKS ClassMovieInspectionCallbacks()
     {
@@ -545,6 +627,12 @@ void CMainApp::Open_ShipWindow()
 {
 	if (nullptr != m_pVehicleWindowView)
 		m_pVehicleWindowView->Open_Ships();
+}
+
+void CMainApp::Open_RepairWindow()
+{
+	if (nullptr != m_pRepairWindowView)
+		m_pRepairWindowView->Open();
 }
 
 void CMainApp::Open_ItemUpgradeWindow()
@@ -1072,6 +1160,13 @@ HRESULT CMainApp::Initialize()
 	m_pBossUIView = std::make_unique<CUILayoutRuntime>(
 		m_pDevice, m_pContext, ETOUI(LEVEL::STATIC), TEXT("Layer_UI"),
 		L"UI/BossUI/BossUI.json");
+	for (size_t i = 0u; i < m_MechanicBarBaseRects.size(); ++i)
+	{
+		auto& base = m_MechanicBarBaseRects[i];
+		m_MechanicBarHasBase[i] = m_pBossUIView->Get_SlotRect(HUD_MECHANIC_SLOTS[i],
+			base.x, base.y, base.z, base.w);
+	}
+	Apply_MechanicBarRect();
 
 	m_pDungeonTimerView = std::make_unique<CDungeonTimerView>(
 		m_pDevice, m_pContext, ETOUI(LEVEL::STATIC));
@@ -1080,6 +1175,7 @@ HRESULT CMainApp::Initialize()
 	boss. */
 	Hide_BossHealthBar();
 	m_pWorldHealthBarView = std::make_unique<CWorldHealthBarView>(m_pDevice, m_pContext);
+	(void)Reload_HealthBarPositions(m_strHealthBarPositionStatus);
 	m_pEstherUIView = std::make_unique<CUILayoutRuntime>(
 		m_pDevice, m_pContext, ETOUI(LEVEL::STATIC), TEXT("Layer_UI"),
 		L"UI/Esther/EstherUI.json");
@@ -1114,6 +1210,8 @@ HRESULT CMainApp::Initialize()
 	nothing. Every "skillWindowOpen" gate already null-checks it. The class/files stay for a
 	future real re-introduction. */
 	m_pInventoryView = std::make_unique<CInventoryView>(m_pDevice, m_pContext);
+	m_pRepairWindowView = std::make_unique<CRepairWindowView>(m_pDevice, m_pContext);
+	m_pDurabilityHudView = std::make_unique<CDurabilityHudView>(m_pDevice, m_pContext);
 	m_pChatWindowView = std::make_unique<CChatWindowView>(m_pDevice, m_pContext);
 	m_pPartyWindowView = std::make_unique<CPartyWindowView>(m_pDevice, m_pContext);
 	m_pMinimapView = std::make_unique<CMinimapView>(m_pDevice, m_pContext, ETOUI(LEVEL::STATIC));
@@ -1767,6 +1865,7 @@ void CMainApp::Sync_KoukuCinematicUI()
 	{
 		// Release may arrive while updates are hidden; no gesture may commit after the cutscene.
 		if (m_pInventoryView) m_pInventoryView->Cancel_Interaction();
+		if (m_pRepairWindowView) m_pRepairWindowView->Cancel_Interaction();
 		if (m_pCharacterInfoView) m_pCharacterInfoView->Cancel_Interaction();
 		if (m_pAvatarBookView) m_pAvatarBookView->Cancel_Interaction();
 		if (m_pVehicleWindowView) m_pVehicleWindowView->Cancel_Interaction();
@@ -2464,6 +2563,11 @@ void CMainApp::Update(const f32_t fTimeDelta)
 	if (nullptr != m_pValtanActionWorkbench)
 	{
 		EFFECT_RESOURCE_KEY resourceKey;
+		if (m_pValtanActionWorkbench->Consume_EffectResourcePreviewRequest(resourceKey) &&
+			SUCCEEDED(EnsureDebugTool(DEBUG_TOOL::EFFECT)) && nullptr != m_pEffectTool)
+		{
+			(void)m_pEffectTool->Preview_AuthoringResource(resourceKey, m_strToolStatus);
+		}
 		if (m_pValtanActionWorkbench->Consume_EffectResourceOpenRequest(resourceKey) &&
 			SUCCEEDED(EnsureDebugTool(DEBUG_TOOL::EFFECT)) && nullptr != m_pEffectTool)
 		{
@@ -3558,6 +3662,8 @@ void CMainApp::Register_UITextOccluders()
 	/* Windows stack in the order CMainApp builds their sprites; each gets its own step. */
 	if (nullptr != m_pInventoryView && m_pInventoryView->Get_ScreenRect(fX, fY, fWidth, fHeight))
 		Occlusion.Add_Occluder(UI_TEXT_LAYER::WINDOW_INVENTORY, fX, fY, fWidth, fHeight);
+	if (nullptr != m_pRepairWindowView && m_pRepairWindowView->Get_ScreenRect(fX, fY, fWidth, fHeight))
+		Occlusion.Add_Occluder(UI_TEXT_LAYER::WINDOW_REPAIR, fX, fY, fWidth, fHeight);
 	if (nullptr != m_pCharacterInfoView && m_pCharacterInfoView->Get_ScreenRect(fX, fY, fWidth, fHeight))
 		Occlusion.Add_Occluder(UI_TEXT_LAYER::WINDOW_CHARACTER_INFO, fX, fY, fWidth, fHeight);
 	if (nullptr != m_pAvatarBookView && m_pAvatarBookView->Get_ScreenRect(fX, fY, fWidth, fHeight))
@@ -4169,6 +4275,11 @@ HRESULT CMainApp::Render()
 			m_pInventoryView->Render_Text();
 	}
 	{
+		CUITextLayerScope WindowText(UI_TEXT_LAYER::WINDOW_REPAIR);
+		if (nullptr != m_pRepairWindowView)
+			m_pRepairWindowView->Render_Text();
+	}
+	{
 		CUITextLayerScope HudText(UI_TEXT_LAYER::HUD);
 		RenderLobbyButtonText();
 		RenderCharacterSelectWindowText();
@@ -4358,6 +4469,10 @@ void CMainApp::Update_CombatHUD(const f32_t fTimeDelta)
 		last state across a level change unless told otherwise, same as this HUD's own. */
 		if (nullptr != m_pInventoryView)
 			m_pInventoryView->Hide();
+		if (nullptr != m_pRepairWindowView)
+			m_pRepairWindowView->Hide();
+		if (nullptr != m_pDurabilityHudView)
+			m_pDurabilityHudView->Hide();
 		if (nullptr != m_pCharacterInfoView)
 			m_pCharacterInfoView->Hide();
 		if (nullptr != m_pAvatarBookView)
@@ -4744,6 +4859,22 @@ void CMainApp::Update_CombatHUD(const f32_t fTimeDelta)
 	Update_VehicleHud();
 	Update_SpecialSlot();
 	Update_BuffBar();
+	if (nullptr != m_pRepairWindowView)
+	{
+		m_pRepairWindowView->Update();
+		bool_t bRepairAllSlots = false;
+		if (m_pRepairWindowView->Try_Consume_RepairRequest(bRepairAllSlots))
+		{
+			/* No Server contract for repair yet: this slice is the window only. The press is
+			consumed here so the button cannot latch, and this is the single place the later
+			vertical slice hooks the typed command into. */
+		}
+	}
+	/* Part of the combat HUD: shown for as long as this function runs, which is already gated
+	on a valid player in a supported Level. Every part reads NORMAL until a Server message
+	carries item durability, so only the silhouette draws. */
+	if (nullptr != m_pDurabilityHudView)
+		m_pDurabilityHudView->Update();
 	if (nullptr != m_pInventoryView)
 	{
 		m_pInventoryView->Update(CCombatHUDViewModel::Get().Get_Inventory().Items);
@@ -5849,6 +5980,7 @@ void CMainApp::Close_RuntimeWindowsForLoading()
 	m_bLobbyWasActive = false;
 	if (nullptr != m_pCharacterSelectWindowView) m_pCharacterSelectWindowView->Close();
 	if (nullptr != m_pInventoryView) m_pInventoryView->Close();
+	if (nullptr != m_pRepairWindowView) m_pRepairWindowView->Close();
 	if (nullptr != m_pCharacterInfoView) m_pCharacterInfoView->Close();
 	if (nullptr != m_pAvatarBookView) m_pAvatarBookView->Close();
 	if (nullptr != m_pVehicleWindowView) m_pVehicleWindowView->Close();
@@ -5870,6 +6002,7 @@ bool_t CMainApp::Is_AnyRuntimeWindowOpen() const
 	itself is deliberately not in this list: Update_SystemOptionWindow owns its Escape edge. */
 	const bool_t bOpen =
 		(nullptr != m_pInventoryView && m_pInventoryView->Is_Open()) ||
+		(nullptr != m_pRepairWindowView && m_pRepairWindowView->Is_Open()) ||
 		(nullptr != m_pCharacterInfoView && m_pCharacterInfoView->Is_Open()) ||
 		(nullptr != m_pAvatarBookView && m_pAvatarBookView->Is_Open()) ||
 		(nullptr != m_pVehicleWindowView && m_pVehicleWindowView->Is_Open()) ||
@@ -5887,6 +6020,7 @@ bool_t CMainApp::Is_EscapeWindowOpen(const ESCAPE_WINDOW eWindow) const
 	switch (eWindow)
 	{
 	case ESCAPE_WINDOW::INVENTORY: return nullptr != m_pInventoryView && m_pInventoryView->Is_Open();
+	case ESCAPE_WINDOW::REPAIR: return nullptr != m_pRepairWindowView && m_pRepairWindowView->Is_Open();
 	case ESCAPE_WINDOW::CHARACTER_INFO: return nullptr != m_pCharacterInfoView && m_pCharacterInfoView->Is_Open();
 	case ESCAPE_WINDOW::AVATAR_BOOK: return nullptr != m_pAvatarBookView && m_pAvatarBookView->Is_Open();
 	case ESCAPE_WINDOW::HONOR_TITLE: return nullptr != m_pHonorTitleWindowView && m_pHonorTitleWindowView->Is_Open();
@@ -5929,6 +6063,7 @@ bool_t CMainApp::Close_TopEscapeWindow()
 	switch (eTop)
 	{
 	case ESCAPE_WINDOW::INVENTORY: m_pInventoryView->Close(); break;
+	case ESCAPE_WINDOW::REPAIR: m_pRepairWindowView->Close(); break;
 	case ESCAPE_WINDOW::CHARACTER_INFO: m_pCharacterInfoView->Close(); break;
 	case ESCAPE_WINDOW::AVATAR_BOOK: m_pAvatarBookView->Close(); break;
 	case ESCAPE_WINDOW::HONOR_TITLE: m_pHonorTitleWindowView->Close(); break;
@@ -7715,6 +7850,171 @@ void CMainApp::Hide_BossHealthBar()
 		m_pBossUIView->Set_SlotVisible(pSlotId, false);
 }
 
+
+std::array<f32_t, 12> CMainApp::Get_HealthBarPositions() const
+{
+	return m_HealthBarOffsets;
+}
+
+bool_t CMainApp::Set_HealthBarPositions(const std::array<f32_t, 12>& offsets)
+{
+	for (const f32_t value : offsets)
+		if (!std::isfinite(value) || std::abs(value) > 1280.f) return false;
+	m_HealthBarOffsets = offsets;
+	if (m_pWorldHealthBarView)
+	{
+		std::array<float2_t, 5> groups{};
+		for (size_t i = 0u; i < groups.size(); ++i) groups[i] = float2_t(offsets[2u + i * 2u], offsets[3u + i * 2u]);
+		(void)m_pWorldHealthBarView->Set_Offsets(groups);
+	}
+	Apply_MechanicBarRect();
+	return true;
+}
+
+std::array<f32_t, 2> CMainApp::Get_MechanicBarScale() const
+{
+	return m_MechanicBarScale;
+}
+
+bool_t CMainApp::Set_MechanicBarScale(const std::array<f32_t, 2>& scale)
+{
+	for (const f32_t value : scale)
+		if (!std::isfinite(value) || value < 0.1f || value > 3.f) return false;
+	m_MechanicBarScale = scale;
+	Apply_MechanicBarRect();
+	return true;
+}
+
+void CMainApp::Apply_MechanicBarRect()
+{
+	if (!m_pBossUIView) return;
+	float2_t center{};
+	bool hasCenter = false;
+	for (size_t i = 0u; i < m_MechanicBarBaseRects.size(); ++i)
+		if (m_MechanicBarHasBase[i])
+		{
+			const auto& base = m_MechanicBarBaseRects[i];
+			center = float2_t(base.x + base.z * 0.5f, base.y + base.w * 0.5f);
+			hasCenter = true;
+			break;
+		}
+	if (!hasCenter) return;
+	// Scale the authored group about its frame center; never reuse a resized runtime rect.
+	for (size_t i = 0u; i < m_MechanicBarBaseRects.size(); ++i)
+		if (m_MechanicBarHasBase[i])
+		{
+			const auto& base = m_MechanicBarBaseRects[i];
+			m_pBossUIView->Set_SlotRect(HUD_MECHANIC_SLOTS[i],
+				center.x + (base.x - center.x) * m_MechanicBarScale[0] + m_HealthBarOffsets[0],
+				center.y + (base.y - center.y) * m_MechanicBarScale[1] + m_HealthBarOffsets[1],
+				base.z * m_MechanicBarScale[0], base.w * m_MechanicBarScale[1]);
+		}
+}
+
+bool_t CMainApp::Reload_HealthBarPositions(std::string& status)
+{
+	std::string text, error;
+	DATA_JSON_VALUE root;
+	std::array<f32_t, 12> staged{};
+	std::array<f32_t, 2> stagedScale{};
+	if (!ReadHudBarText(CProjectDataRoot::Resolve(L"UI/KoukuSaydon/KoukuHudModes.json"), text) ||
+		!CDataJson::Parse(text, root, error) || !ReadHudBarPositions(root, staged, stagedScale))
+	{ status = "Invalid health bar positions; current preview preserved. " + error; return false; }
+	(void)Set_HealthBarPositions(staged);
+	(void)Set_MechanicBarScale(stagedScale);
+	m_SavedHealthBarOffsets = staged;
+	m_SavedMechanicBarScale = stagedScale;
+	status = "Reloaded saved health bar positions and stagger size.";
+	return true;
+}
+
+bool_t CMainApp::Save_HealthBarPositions(std::string& status)
+{
+	const std::filesystem::path path = CProjectDataRoot::Resolve(L"UI/KoukuSaydon/KoukuHudModes.json");
+	// Share the document's existing madness-position lock, including saves from other clients.
+	const std::filesystem::path lockPath = path.wstring() + L".madness-position.lock";
+	const HANDLE lock = CreateFileW(lockPath.c_str(), GENERIC_READ | GENERIC_WRITE, 0u, nullptr,
+		OPEN_ALWAYS, FILE_ATTRIBUTE_TEMPORARY | FILE_FLAG_DELETE_ON_CLOSE, nullptr);
+	if (lock == INVALID_HANDLE_VALUE) { status = "HUD position save is already in progress."; return false; }
+	struct LOCK_GUARD { HANDLE handle; ~LOCK_GUARD() { CloseHandle(handle); } } guard{ lock };
+	std::string before, error;
+	DATA_JSON_VALUE root;
+	std::array<f32_t, 12> saved{};
+	std::array<f32_t, 2> savedScale{};
+	if (!ReadHudBarText(path, before) || !CDataJson::Parse(before, root, error) || !ReadHudBarPositions(root, saved, savedScale))
+	{ status = "HUD configuration could not be read; disk and preview preserved. " + error; return false; }
+	std::array<bool, 12> changed{};
+	bool anyChanged = false;
+	for (size_t i = 0u; i < changed.size(); ++i)
+	{
+		changed[i] = m_HealthBarOffsets[i] != m_SavedHealthBarOffsets[i];
+		anyChanged |= changed[i];
+		if (changed[i] && saved[i] != m_SavedHealthBarOffsets[i])
+		{ status = "Edited position field changed on disk. Reload saved positions before saving; preview preserved."; return false; }
+	}
+	std::array<bool, 2> scaleChanged{};
+	for (size_t i = 0u; i < scaleChanged.size(); ++i)
+	{
+		scaleChanged[i] = m_MechanicBarScale[i] != m_SavedMechanicBarScale[i];
+		anyChanged |= scaleChanged[i];
+		if (scaleChanged[i] && savedScale[i] != m_SavedMechanicBarScale[i])
+		{ status = "Edited stagger size field changed on disk. Reload before saving; preview preserved."; return false; }
+	}
+	if (!anyChanged)
+	{
+		(void)Set_HealthBarPositions(saved); m_SavedHealthBarOffsets = saved;
+		(void)Set_MechanicBarScale(savedScale); m_SavedMechanicBarScale = savedScale;
+		status = "No edits; refreshed health bar positions and stagger size from disk.";
+		return true;
+	}
+	auto fields = root.Get_Object();
+	const auto* previous = root.Find("healthBarPositions");
+	auto positions = previous ? previous->Get_Object() : DATA_JSON_VALUE::OBJECT{};
+	for (size_t i = 0u; i < changed.size(); ++i)
+		if (changed[i] || !positions.contains(HUD_BAR_POSITION_KEYS[i]))
+			positions[HUD_BAR_POSITION_KEYS[i]] = DATA_JSON_VALUE::Number(changed[i] ? m_HealthBarOffsets[i] : saved[i]);
+	for (size_t i = 0u; i < scaleChanged.size(); ++i)
+		if (scaleChanged[i] || !positions.contains(HUD_MECHANIC_SCALE_KEYS[i]))
+			positions[HUD_MECHANIC_SCALE_KEYS[i]] = DATA_JSON_VALUE::Number(scaleChanged[i] ? m_MechanicBarScale[i] : savedScale[i]);
+	fields["healthBarPositions"] = DATA_JSON_VALUE::Object(std::move(positions));
+	std::ostringstream serialized;
+	serialized.imbue(std::locale::classic());
+	WriteHudBarJson(serialized, DATA_JSON_VALUE::Object(std::move(fields)));
+	const std::string after = serialized.str() + "\n";
+	DATA_JSON_VALUE verified;
+	if (!CDataJson::Parse(after, verified, error) || !ReadHudBarPositions(verified, saved, savedScale))
+	{ status = "Position serialization rejected; disk and preview preserved."; return false; }
+	const auto suffix = std::to_wstring(GetCurrentProcessId()) + L"." + std::to_wstring(GetTickCount64());
+	const std::filesystem::path temporary = path.wstring() + L".tmp." + suffix;
+	const std::filesystem::path backup = path.wstring() + L".backup." + suffix;
+	{
+		std::ofstream stream(temporary, std::ios::binary | std::ios::trunc);
+		stream.write(after.data(), static_cast<std::streamsize>(after.size())); stream.flush();
+		if (!stream.good())
+		{ stream.close(); DeleteFileW(temporary.c_str()); status = "Position temporary write failed; source preserved."; return false; }
+	}
+	std::string current;
+	if (!ReadHudBarText(temporary, current) || current != after || !ReadHudBarText(path, current) || current != before)
+	{ DeleteFileW(temporary.c_str()); status = "HUD source changed during save; disk and preview preserved."; return false; }
+	if (!ReplaceFileW(path.c_str(), temporary.c_str(), backup.c_str(), 0u, nullptr, nullptr))
+	{ DeleteFileW(temporary.c_str()); status = "Position atomic replace failed; backup preserved at " + backup.string(); return false; }
+	std::string displaced;
+	if (!ReadHudBarText(backup, displaced) || displaced != before)
+	{
+		if (ReadHudBarText(path, current) && current == after)
+		{
+			const std::filesystem::path recovery = path.wstring() + L".conflict." + suffix;
+			(void)ReplaceFileW(path.c_str(), backup.c_str(), recovery.c_str(), 0u, nullptr, nullptr);
+		}
+		status = "Concurrent HUD save detected; recovery files preserved beside source. Reload before retrying.";
+		return false;
+	}
+	(void)Set_HealthBarPositions(saved); m_SavedHealthBarOffsets = saved;
+	(void)Set_MechanicBarScale(savedScale); m_SavedMechanicBarScale = savedScale;
+	status = "Saved health bar positions and stagger size. Backup: " + backup.string();
+	return true;
+}
+
 void CMainApp::Update_WorldHealthBars(const f32_t fTimeDelta)
 {
 	Engine::CProfilerScope scope(CGameInstance::Get().Get_Profiler(), "UI.Runtime.WorldHealthBars.Update");
@@ -7730,8 +8030,12 @@ void CMainApp::Update_WorldHealthBars(const f32_t fTimeDelta)
 		currentLevel == ETOUI(LEVEL::KAKULSAYDON_ARENA);
 	const bool_t characterPresentation = currentLevel == ETOUI(LEVEL::CHARACTER_SELECT) &&
 		CLevel_CharacterSelect::Get_Active() && CLevel_CharacterSelect::Get_Active()->Is_ProductPresentationOpen();
-	m_pWorldHealthBarView->Update(fTimeDelta, CCombatHUDViewModel::Get().Get_WorldHealthBars(),
-		isSupportedLevel && !Is_RuntimeUIScreenSuppressed() && !characterPresentation && !Is_MvpResultPageOpen());
+	const auto& hud = CCombatHUDViewModel::Get();
+	const auto gimmick = hud.Get_KoukuGimmick();
+	const bool cardMazeActive = LostArk::Shared::CARD_MAZE_ROLE::NONE != gimmick.eCardMazeRole ||
+		LostArk::Shared::KOUKU_HUD_MODE::MAZE == hud.Get_Player().eKoukuHudMode;
+	m_pWorldHealthBarView->Update(fTimeDelta, hud.Get_WorldHealthBars(),
+		isSupportedLevel && !Is_RuntimeUIScreenSuppressed() && !characterPresentation && !Is_MvpResultPageOpen(), cardMazeActive);
 }
 
 void CMainApp::Update_BossHealthBar()
@@ -7904,7 +8208,7 @@ void CMainApp::Update_BossHealthBar()
 		(boss.eMechanicGaugeKind == LostArk::Shared::BOSS_MECHANIC_GAUGE_KIND::STAGGER ||
 		 boss.eMechanicGaugeKind == LostArk::Shared::BOSS_MECHANIC_GAUGE_KIND::BOSS_HP);
 	m_pBossUIView->Set_SlotVisible("Boss_StaggerBg", mechanicVisible);
-	m_pBossUIView->Set_SlotVisible("Boss_StaggerTrack", mechanicVisible);
+	m_pBossUIView->Set_SlotVisible("Boss_StaggerTrack", false);
 	const f32_t mechanicRatio = mechanicVisible ? static_cast<f32_t>(
 		(std::min)(boss.iCurrentMechanicGauge, boss.iMaximumMechanicGauge)) /
 		static_cast<f32_t>(boss.iMaximumMechanicGauge) : 0.f;
@@ -11010,24 +11314,7 @@ void CMainApp::RenderKoukuUiPreviewControls()
 		m_KoukuUiPreview.iMadnessGauge = static_cast<uint32_t>(iGauge);
 		bChanged = true;
 	}
-	if (auto* arena = CLevel_KakulSaydonArena::Get_Active())
-	{
-		float2_t offset{}; f32_t head = 0.f;
-		static std::string positionStatus;
-		if (arena->Get_MadnessGaugePosition(offset, head))
-		{
-			ImGui::SeparatorText("Madness gauge position");
-			bool changed = ImGui::DragFloat2("Screen offset X / Y##KoukuMadness", &offset.x, 1.f, -1280.f, 1280.f, "%.1f");
-			changed |= ImGui::DragFloat("World height (m)##KoukuMadness", &head, 0.05f, -10.f, 10.f, "%.2f");
-			if (changed) (void)arena->Set_MadnessGaugePosition(offset, head);
-			if (ImGui::Button("Save position##KoukuMadness")) (void)arena->Save_MadnessGaugePosition(positionStatus);
-			ImGui::SameLine();
-			if (ImGui::Button("Reload saved position##KoukuMadness")) (void)arena->Reload_MadnessGaugePosition(positionStatus);
-			ImGui::TextDisabled("1280 x 720 reference pixels; +Y moves down. Applies to all player gauges.");
-			ImGui::TextDisabled("Save writes Data/UI/KoukuSaydon/KoukuHudModes.json. Card maze hides all gauges.");
-			if (!positionStatus.empty()) ImGui::TextWrapped("%s", positionStatus.c_str());
-		}
-	}
+	RenderHUDBarPositionControls();
 	constexpr const char* MODE_LABELS[] =
 		{ "None", "Clown", "Mario", "Dance", "Card maze" };
 	int32_t iMode = static_cast<int32_t>(m_KoukuUiPreview.eHudMode);
@@ -11779,6 +12066,93 @@ namespace
 
 #endif
 
+void CMainApp::RenderValtanArenaStateControls()
+{
+	ImGui::SeparatorText("\xEB\xB0\x9C\xED\x83\x84\x20\xEB\xB2\xBD\x20\x2F\x20\xEC\xA7\x80\xED\x98\x95\x20\xEC\x83\x81\xED\x83\x9C");
+	if (nullptr == m_pBalanceTool)
+		m_pBalanceTool = make_unique<CBalanceTool>();
+	if (nullptr == m_pValtanBossTool)
+	{
+		m_pValtanBossTool = make_unique<CValtanBossTool>(
+			make_shared<CNetworkPlayerCommandSink>(),
+			m_pBalanceTool.get());
+	}
+
+	CValtanBossTool::VALTAN_ARENA_ACTIVE_STATE state{};
+	std::string readStatus;
+	const bool_t ready = m_pValtanBossTool->Get_ServerArenaActiveState(
+		state, readStatus);
+	if (m_bServerArenaPresetStatusTracking)
+	{
+		m_strServerArenaActiveStatus =
+			m_pValtanBossTool->Get_ServerArenaPresetStatus();
+		m_bServerArenaPresetStatusTracking =
+			m_pValtanBossTool->Is_ServerArenaPresetPending();
+	}
+	const auto actualCheckbox = [](
+		const char_t* label, const bool_t actual)
+	{
+		bool_t value = actual;
+		ImGui::BeginDisabled(true);
+		ImGui::Checkbox(label, &value);
+		ImGui::EndDisabled();
+	};
+	actualCheckbox(
+		"Ordinary walls / debris sources Active##GlobalArena",
+		state.bOrdinaryWallsActive);
+	actualCheckbox(
+		"109 outer ring Active##GlobalArena",
+		state.bOuterRingActive);
+	actualCheckbox(
+		"3 o'clock floor / collision / Nav Active##GlobalArena",
+		state.bThreeOClockFloorActive);
+	actualCheckbox(
+		"9 o'clock floor / collision / Nav Active##GlobalArena",
+		state.bNineOClockFloorActive);
+	ImGui::TextDisabled(
+		"Active boxes are replicated facts. Arena mutations use exact Server presets because the encounter does not admit arbitrary wall/floor combinations.");
+	const auto presetButton = [this, ready](
+		const char_t* label,
+		const LostArk::Shared::VALTAN_ARENA_PRESET preset)
+	{
+		ImGui::BeginDisabled(!ready || m_pValtanBossTool->Is_ServerArenaPresetPending());
+		if (ImGui::SmallButton(label))
+		{
+			std::string submitStatus;
+			const bool_t submitted =
+				m_pValtanBossTool->Set_ServerArenaPreset(
+					preset, submitStatus);
+			m_strServerArenaActiveStatus = std::move(submitStatus);
+			if (submitted)
+				m_bServerArenaPresetStatusTracking = true;
+		}
+		ImGui::EndDisabled();
+	};
+	presetButton("\xEC\xA0\x84\xEC\xB2\xB4\x20\xEB\xB2\xBD\x20\xEB\xB3\xB5\xEC\x9B\x90\x23\x23\x47\x6C\x6F\x62\x61\x6C\x41\x72\x65\x6E\x61\x50\x72\x65\x73\x65\x74",
+		LostArk::Shared::VALTAN_ARENA_PRESET::FRESH);
+	ImGui::SameLine();
+	presetButton("\xEC\x99\xB8\xEA\xB3\xBD\x20\xEB\xB2\xBD\x20\xEC\xA0\x9C\xEA\xB1\xB0\x23\x23\x47\x6C\x6F\x62\x61\x6C\x41\x72\x65\x6E\x61\x50\x72\x65\x73\x65\x74",
+		LostArk::Shared::VALTAN_ARENA_PRESET::CIRCLE_WALLS_GONE);
+	presetButton("\x33\xEC\x8B\x9C\x20\xEC\xA7\x80\xED\x98\x95\x20\xEB\xB6\x95\xEA\xB4\xB4\x23\x23\x47\x6C\x6F\x62\x61\x6C\x41\x72\x65\x6E\x61\x50\x72\x65\x73\x65\x74",
+		LostArk::Shared::VALTAN_ARENA_PRESET::THREE_OCLOCK_BROKEN);
+	ImGui::SameLine();
+	presetButton("\x39\xEC\x8B\x9C\x20\xEC\xA7\x80\xED\x98\x95\x20\xEB\xB6\x95\xEA\xB4\xB4\x23\x23\x47\x6C\x6F\x62\x61\x6C\x41\x72\x65\x6E\x61\x50\x72\x65\x73\x65\x74",
+		LostArk::Shared::VALTAN_ARENA_PRESET::NINE_OCLOCK_BROKEN);
+	ImGui::SameLine();
+	presetButton("\xEC\xA0\x84\xEC\xB2\xB4\x20\xEB\xB6\x95\xEA\xB4\xB4\x20\x28\x33\xEC\x8B\x9C\x20\x2B\x20\x39\xEC\x8B\x9C\x29\x23\x23\x47\x6C\x6F\x62\x61\x6C\x41\x72\x65\x6E\x61\x50\x72\x65\x73\x65\x74",
+		LostArk::Shared::VALTAN_ARENA_PRESET::BOTH_SIDES_BROKEN);
+	ImGui::Text(
+		"Debris actors %u | active collision %u | active nav regions %u | nav revision %llu",
+		state.iDebrisActorCount,
+		state.iActiveCollisionCount,
+		state.iActiveNavigationRegionCount,
+		static_cast<unsigned long long>(state.iNavigationRevision));
+	if (!readStatus.empty())
+		ImGui::TextDisabled("%s", readStatus.c_str());
+	if (!m_strServerArenaActiveStatus.empty())
+		ImGui::TextWrapped("%s", m_strServerArenaActiveStatus.c_str());
+}
+
 void CMainApp::RenderValtanArenaControls()
 {
 	/* Hidden outside the arena so the hub does not carry an empty header there. */
@@ -11809,6 +12183,9 @@ void CMainApp::RenderValtanArenaControls()
         (void)pArena->Debug_DespawnValtanBoss(status);
     }
     ImGui::EndDisabled();
+    ImGui::PushID("ValtanArenaState");
+    RenderValtanArenaStateControls();
+    ImGui::PopID();
     RenderValtanAxeEditor();
     if (!pArena->Get_DebugValtanBossCommandStatus().empty())
         ImGui::TextWrapped("%s", pArena->Get_DebugValtanBossCommandStatus().c_str());
@@ -12718,88 +13095,9 @@ void CMainApp::RenderServerArenaActiveControls()
 		}
 		else
 		{
-			if (nullptr == m_pBalanceTool)
-				m_pBalanceTool = make_unique<CBalanceTool>();
-			if (nullptr == m_pValtanBossTool)
-			{
-				m_pValtanBossTool = make_unique<CValtanBossTool>(
-					make_shared<CNetworkPlayerCommandSink>(),
-					m_pBalanceTool.get());
-			}
-
-			CValtanBossTool::VALTAN_ARENA_ACTIVE_STATE state{};
-			std::string readStatus;
-			const bool_t ready = m_pValtanBossTool->Get_ServerArenaActiveState(
-				state, readStatus);
-			if (m_bServerArenaPresetStatusTracking)
-			{
-				m_strServerArenaActiveStatus =
-					m_pValtanBossTool->Get_ServerArenaPresetStatus();
-				m_bServerArenaPresetStatusTracking =
-					m_pValtanBossTool->Is_ServerArenaPresetPending();
-			}
-			const auto actualCheckbox = [](
-				const char_t* label, const bool_t actual)
-			{
-				bool_t value = actual;
-				ImGui::BeginDisabled(true);
-				ImGui::Checkbox(label, &value);
-				ImGui::EndDisabled();
-			};
-			actualCheckbox(
-				"Ordinary walls / debris sources Active##GlobalArena",
-				state.bOrdinaryWallsActive);
-			actualCheckbox(
-				"109 outer ring Active##GlobalArena",
-				state.bOuterRingActive);
-			actualCheckbox(
-				"3 o'clock floor / collision / Nav Active##GlobalArena",
-				state.bThreeOClockFloorActive);
-			actualCheckbox(
-				"9 o'clock floor / collision / Nav Active##GlobalArena",
-				state.bNineOClockFloorActive);
-			ImGui::TextDisabled(
-				"Active boxes are replicated facts. Arena mutations use exact Server presets because the encounter does not admit arbitrary wall/floor combinations.");
-			const auto presetButton = [this, ready](
-				const char_t* label,
-				const LostArk::Shared::VALTAN_ARENA_PRESET preset)
-			{
-				ImGui::BeginDisabled(!ready);
-				if (ImGui::SmallButton(label))
-				{
-					std::string submitStatus;
-					const bool_t submitted =
-						m_pValtanBossTool->Set_ServerArenaPreset(
-							preset, submitStatus);
-					m_strServerArenaActiveStatus = std::move(submitStatus);
-					if (submitted)
-						m_bServerArenaPresetStatusTracking = true;
-				}
-				ImGui::EndDisabled();
-			};
-			presetButton("Fresh / Restore Entire Arena##GlobalArenaPreset",
-				LostArk::Shared::VALTAN_ARENA_PRESET::FRESH);
-			ImGui::SameLine();
-			presetButton("Circle / Remove All Walls##GlobalArenaPreset",
-				LostArk::Shared::VALTAN_ARENA_PRESET::CIRCLE_WALLS_GONE);
-			presetButton("Break 3 O'Clock Floor##GlobalArenaPreset",
-				LostArk::Shared::VALTAN_ARENA_PRESET::THREE_OCLOCK_BROKEN);
-			ImGui::SameLine();
-			presetButton("Break 9 O'Clock Floor##GlobalArenaPreset",
-				LostArk::Shared::VALTAN_ARENA_PRESET::NINE_OCLOCK_BROKEN);
-			ImGui::SameLine();
-			presetButton("Final / Break 3 + 9 O'Clock Floors##GlobalArenaPreset",
-				LostArk::Shared::VALTAN_ARENA_PRESET::BOTH_SIDES_BROKEN);
-			ImGui::Text(
-				"Debris actors %u | active collision %u | active nav regions %u | nav revision %llu",
-				state.iDebrisActorCount,
-				state.iActiveCollisionCount,
-				state.iActiveNavigationRegionCount,
-				static_cast<unsigned long long>(state.iNavigationRevision));
-			if (!readStatus.empty())
-				ImGui::TextDisabled("%s", readStatus.c_str());
-			if (!m_strServerArenaActiveStatus.empty())
-				ImGui::TextWrapped("%s", m_strServerArenaActiveStatus.c_str());
+			ImGui::PushID("SharedValtanArenaState");
+			RenderValtanArenaStateControls();
+			ImGui::PopID();
 		}
 		ImGui::EndTabItem();
 	}
@@ -13059,6 +13357,51 @@ void CMainApp::RefreshWorldObjectResources()
 
 #endif
 
+void CMainApp::RenderHUDBarPositionControls()
+{
+	if (auto* arena = CLevel_KakulSaydonArena::Get_Active())
+	{
+		float2_t offset{}; f32_t head = 0.f;
+		static std::string positionStatus;
+		if (arena->Get_MadnessGaugePosition(offset, head))
+		{
+			ImGui::SeparatorText("Madness gauge position");
+			bool changed = ImGui::DragFloat2("Screen offset X / Y##KoukuMadness", &offset.x, 1.f, -1280.f, 1280.f, "%.1f");
+			changed |= ImGui::DragFloat("World height (m)##KoukuMadness", &head, 0.05f, -10.f, 10.f, "%.2f");
+			if (changed) (void)arena->Set_MadnessGaugePosition(offset, head);
+			if (ImGui::Button("Save position##KoukuMadness")) (void)arena->Save_MadnessGaugePosition(positionStatus);
+			ImGui::SameLine();
+			if (ImGui::Button("Reload saved position##KoukuMadness")) (void)arena->Reload_MadnessGaugePosition(positionStatus);
+			ImGui::TextDisabled("1280 x 720 reference pixels; +Y moves down. Applies to all player gauges.");
+			ImGui::TextDisabled("Save writes Data/UI/KoukuSaydon/KoukuHudModes.json. Card maze hides all gauges.");
+			if (!positionStatus.empty()) ImGui::TextWrapped("%s", positionStatus.c_str());
+		}
+	}
+
+	ImGui::SeparatorText("Health bar positions");
+	auto offsets = Get_HealthBarPositions();
+	bool changed = ImGui::DragFloat2("Stagger X / Y##HUDBar", &offsets[0], 1.f, -1280.f, 1280.f, "%.1f");
+	auto mechanicScale = Get_MechanicBarScale();
+	bool sizeChanged = ImGui::SliderFloat("Stagger width##HUDBar", &mechanicScale[0], 0.1f, 3.f, "%.3fx");
+	sizeChanged |= ImGui::SliderFloat("Stagger thickness##HUDBar", &mechanicScale[1], 0.1f, 3.f, "%.3fx");
+	if (sizeChanged && !Set_MechanicBarScale(mechanicScale))
+		m_strHealthBarPositionStatus = "Stagger size must be finite and between 0.1 and 3.";
+	changed |= ImGui::DragFloat2("Ally HP X / Y##HUDBar", &offsets[2], 1.f, -1280.f, 1280.f, "%.1f");
+	changed |= ImGui::DragFloat2("Normal monster HP X / Y##HUDBar", &offsets[4], 1.f, -1280.f, 1280.f, "%.1f");
+	changed |= ImGui::DragFloat2("KoukuSaydon HP X / Y##HUDBar", &offsets[6], 1.f, -1280.f, 1280.f, "%.1f");
+	changed |= ImGui::DragFloat2("Kouku HP X / Y##HUDBar", &offsets[8], 1.f, -1280.f, 1280.f, "%.1f");
+	changed |= ImGui::DragFloat2("Valtan HP X / Y##HUDBar", &offsets[10], 1.f, -1280.f, 1280.f, "%.1f");
+	if (changed && !Set_HealthBarPositions(offsets))
+		m_strHealthBarPositionStatus = "Offsets must be finite and between -1280 and 1280.";
+	if (ImGui::Button("Save positions and stagger size##HUDBar")) (void)Save_HealthBarPositions(m_strHealthBarPositionStatus);
+	ImGui::SameLine();
+	if (ImGui::Button("Reload saved positions and size##HUDBar")) (void)Reload_HealthBarPositions(m_strHealthBarPositionStatus);
+	ImGui::TextDisabled("1280 x 720 reference pixels; +Y moves down. Frames and shields move together.");
+	ImGui::TextDisabled("Stagger size uses the authored frame center. Default width 0.333x; thickness 1x.");
+	ImGui::TextDisabled("Save writes Data/UI/KoukuSaydon/KoukuHudModes.json. Applies across levels.");
+	if (!m_strHealthBarPositionStatus.empty()) ImGui::TextWrapped("%s", m_strHealthBarPositionStatus.c_str());
+}
+
 void CMainApp::RenderBalanceTestLauncher()
 {
 	ImGui::SeparatorText("Balance Test");
@@ -13066,6 +13409,17 @@ void CMainApp::RenderBalanceTestLauncher()
 		m_strToolStatus = SUCCEEDED(EnsureDebugTool(DEBUG_TOOL::BALANCE)) ?
 			"Balance Test opened." : "Balance Test initialization failed.";
 	ImGui::TextWrapped("Player / Skill / Damage / Boss tuning and room cooldown: Debug (3s) or Release (Retail).");
+
+	/* Temporary opener for the item repair window. Retail opens it from a repair NPC and which
+	NPC that is has not been decided, so until then this is the only way in. Delete this block
+	when the NPC interaction calls Open() instead. */
+	if (nullptr != m_pRepairWindowView)
+	{
+		ImGui::SeparatorText("Item Repair");
+		bool_t bRepairOpen = m_pRepairWindowView->Is_Open();
+		if (ImGui::Checkbox("Item Repair Window", &bRepairOpen))
+			bRepairOpen ? m_pRepairWindowView->Open() : m_pRepairWindowView->Close();
+	}
 }
 
 void CMainApp::RenderDeveloperTools()
@@ -13236,8 +13590,10 @@ void CMainApp::RenderDeveloperTools()
 
 	RenderDebugLevelNavigation();
 	RenderArenaCameraAndPlayerControls();
+	if (!CLevel_KakulSaydonArena::Get_Active()) RenderHUDBarPositionControls();
 #else
 	RenderBalanceTestLauncher();
+	RenderHUDBarPositionControls();
 #endif
 	RenderCameraSpeedControls();
 	RenderDragonControls();

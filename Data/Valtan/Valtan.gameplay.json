@@ -718,7 +718,8 @@
       "invulnerableWhileRunning": false,
       "sourceActionIds": [
         420604,
-        400430
+        400430,
+        400424
       ],
       "serverMotion": null,
       "reactions": [],
@@ -727,7 +728,7 @@
           "stageId": "WINDUP",
           "actionId": "valtan.attack.dash-charge.windup",
           "stageKind": "WINDUP",
-          "durationMs": 3650,
+          "durationMs": 7350,
           "defaultNextActionId": "valtan.attack.dash-charge.active",
           "hit": {
             "shape": {
@@ -782,7 +783,7 @@
           "stageId": "GROGGY",
           "actionId": "valtan.attack.dash-charge.recovery",
           "stageKind": "GROGGY",
-          "durationMs": 6833,
+          "durationMs": 6897,
           "defaultNextActionId": null,
           "hit": {
             "shape": {
@@ -976,16 +977,93 @@
             "schedule": {
               "kind": "EXPLICIT_OFFSETS",
               "offsetsMs": [
-                1790,
-                2560,
-                3330
+                1667,
+                2221,
+                3008
               ]
             },
             "serverDamageProfileId": "damage.valtan.four-slash",
             "pushRangeM": 2.0,
             "pushMs": 150,
             "knockdown": true,
-            "downMs": 1000
+            "downMs": 1000,
+            "contacts": [
+              {
+                "hitId": "hit.valtan.four-slash.slash-1",
+                "trigger": "TIMED",
+                "atMs": 1667,
+                "endMs": 0,
+                "repeatCount": 1,
+                "repeatIntervalMs": 0,
+                "shape": "CONE",
+                "radiusM": 0,
+                "innerRadiusM": 0,
+                "lengthM": 9,
+                "halfWidthM": 0,
+                "angleDegrees": 110,
+                "offsetForwardM": 0,
+                "offsetRightM": 0,
+                "yawOffsetDegrees": 0,
+                "damageKind": "MAX_HP_PERCENT",
+                "damagePercent": 10,
+                "damageProfileId": "",
+                "riseHeightM": 2,
+                "pushMs": 1200,
+                "pushRangeM": 1,
+                "forcePush": true,
+                "pushDirection": "AWAY_FROM_CONTACT"
+              },
+              {
+                "hitId": "hit.valtan.four-slash.slash-2",
+                "trigger": "TIMED",
+                "atMs": 2221,
+                "endMs": 0,
+                "repeatCount": 1,
+                "repeatIntervalMs": 0,
+                "shape": "CONE",
+                "radiusM": 0,
+                "innerRadiusM": 0,
+                "lengthM": 9,
+                "halfWidthM": 0,
+                "angleDegrees": 110,
+                "offsetForwardM": 0,
+                "offsetRightM": 0,
+                "yawOffsetDegrees": 0,
+                "damageKind": "MAX_HP_PERCENT",
+                "damagePercent": 10,
+                "damageProfileId": "",
+                "riseHeightM": 2,
+                "pushMs": 1200,
+                "pushRangeM": 1,
+                "forcePush": true,
+                "pushDirection": "AWAY_FROM_CONTACT"
+              },
+              {
+                "hitId": "hit.valtan.four-slash.slash-3",
+                "trigger": "TIMED",
+                "atMs": 3008,
+                "endMs": 0,
+                "repeatCount": 1,
+                "repeatIntervalMs": 0,
+                "shape": "CONE",
+                "radiusM": 0,
+                "innerRadiusM": 0,
+                "lengthM": 9,
+                "halfWidthM": 0,
+                "angleDegrees": 110,
+                "offsetForwardM": 0,
+                "offsetRightM": 0,
+                "yawOffsetDegrees": 0,
+                "damageKind": "MAX_HP_PERCENT",
+                "damagePercent": 10,
+                "damageProfileId": "",
+                "riseHeightM": 2,
+                "pushMs": 1200,
+                "pushRangeM": 1,
+                "forcePush": true,
+                "pushDirection": "AWAY_FROM_CONTACT"
+              }
+            ]
           },
           "motion": null,
           "events": [],
@@ -1006,14 +1084,93 @@
             "schedule": {
               "kind": "EXPLICIT_OFFSETS",
               "offsetsMs": [
-                600
+                600,
+                1640,
+                3000
               ]
             },
             "serverDamageProfileId": "damage.valtan.four-slash",
             "pushRangeM": 2.0,
             "pushMs": 150,
             "knockdown": true,
-            "downMs": 1000
+            "downMs": 1000,
+            "contacts": [
+              {
+                "hitId": "hit.valtan.four-slash.spin-contact",
+                "trigger": "TIMED",
+                "atMs": 600,
+                "endMs": 0,
+                "repeatCount": 1,
+                "repeatIntervalMs": 0,
+                "shape": "CONE",
+                "radiusM": 0,
+                "innerRadiusM": 0,
+                "lengthM": 9,
+                "halfWidthM": 0,
+                "angleDegrees": 110,
+                "offsetForwardM": 0,
+                "offsetRightM": 0,
+                "yawOffsetDegrees": 0,
+                "damageKind": "MAX_HP_PERCENT",
+                "damagePercent": 10,
+                "damageProfileId": "",
+                "riseHeightM": 2,
+                "pushMs": 1200,
+                "pushRangeM": 1,
+                "forcePush": true,
+                "pushDirection": "AWAY_FROM_CONTACT"
+              },
+              {
+                "hitId": "hit.valtan.four-slash.slash-4",
+                "trigger": "TIMED",
+                "atMs": 1640,
+                "endMs": 0,
+                "repeatCount": 1,
+                "repeatIntervalMs": 0,
+                "shape": "CONE",
+                "radiusM": 0,
+                "innerRadiusM": 0,
+                "lengthM": 9,
+                "halfWidthM": 0,
+                "angleDegrees": 110,
+                "offsetForwardM": 0,
+                "offsetRightM": 0,
+                "yawOffsetDegrees": 0,
+                "damageKind": "MAX_HP_PERCENT",
+                "damagePercent": 10,
+                "damageProfileId": "",
+                "riseHeightM": 2,
+                "pushMs": 1200,
+                "pushRangeM": 1,
+                "forcePush": true,
+                "pushDirection": "AWAY_FROM_CONTACT"
+              },
+              {
+                "hitId": "hit.valtan.four-slash.donut-explosion",
+                "trigger": "TIMED",
+                "atMs": 3000,
+                "endMs": 0,
+                "repeatCount": 1,
+                "repeatIntervalMs": 0,
+                "shape": "RING",
+                "radiusM": 10.8,
+                "innerRadiusM": 4.8,
+                "lengthM": 0,
+                "halfWidthM": 0,
+                "angleDegrees": 0,
+                "offsetForwardM": 0,
+                "offsetRightM": 0,
+                "yawOffsetDegrees": 0,
+                "damageKind": "MAX_HP_PERCENT",
+                "damagePercent": 10,
+                "damageProfileId": "",
+                "riseHeightM": 2,
+                "pushMs": 1200,
+                "pushRangeM": 1,
+                "forcePush": true,
+                "pushDirection": "AWAY_FROM_CONTACT"
+              }
+            ]
           },
           "motion": null,
           "events": [],
@@ -1265,19 +1422,46 @@
           "hit": {
             "shape": {
               "kind": "CIRCLE",
-              "outerRadiusM": 10.0
+              "outerRadiusM": 8.75
             },
             "schedule": {
-              "kind": "INTERVAL",
-              "count": 1,
-              "firstOffsetMs": 900,
-              "intervalMs": 0
+              "kind": "EXPLICIT_OFFSETS",
+              "offsetsMs": [
+                201
+              ]
             },
             "serverDamageProfileId": "damage.valtan.high-jump",
             "pushRangeM": 1.0,
             "pushMs": 150,
             "knockdown": true,
-            "downMs": 1000
+            "downMs": 1000,
+            "contacts": [
+              {
+                "hitId": "hit.valtan.high-jump.final-landing",
+                "trigger": "TIMED",
+                "atMs": 201,
+                "endMs": 0,
+                "repeatCount": 1,
+                "repeatIntervalMs": 0,
+                "shape": "CIRCLE",
+                "radiusM": 8.75,
+                "innerRadiusM": 0,
+                "lengthM": 0,
+                "halfWidthM": 0,
+                "angleDegrees": 0,
+                "offsetForwardM": 0,
+                "offsetRightM": 0,
+                "yawOffsetDegrees": 0,
+                "damageKind": "MAX_HP_PERCENT",
+                "damagePercent": 50,
+                "damageProfileId": "",
+                "riseHeightM": 2,
+                "pushMs": 1200,
+                "pushRangeM": 1,
+                "forcePush": true,
+                "pushDirection": "AWAY_FROM_CONTACT"
+              }
+            ]
           },
           "motion": null,
           "events": [],
@@ -2709,7 +2893,7 @@
           "stageId": "STEP_01",
           "actionId": "valtan.authoring.bind-slot.step-01",
           "stageKind": "ACTIVE",
-          "durationMs": 5000,
+          "durationMs": 4107,
           "defaultNextActionId": "valtan.authoring.bind-slot.recovery",
           "hit": {
             "shape": {
@@ -2735,7 +2919,7 @@
               "trigger": "ENTER",
               "kind": "SET_PLAYER_BIND",
               "heightM": 5.0,
-              "durationMs": 5000
+              "durationMs": 4107
             },
             {
               "eventId": "event.valtan.bind-slot.step-01.exit",

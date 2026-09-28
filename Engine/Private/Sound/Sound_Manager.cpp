@@ -255,14 +255,14 @@ HRESULT CSound_Manager::Play_Sound(const wstring_t& strSoundFilePath, f32_t fVol
 	return S_OK;
 }
 
-uint64_t CSound_Manager::Play_SoundCue(const wstring_t& path, f32_t volume, uint32_t ageMs, bool_t paused, f32_t playbackRate)
+uint64_t CSound_Manager::Play_SoundCue(const wstring_t& path, f32_t volume, uint32_t ageMs, bool_t paused, f32_t playbackRate, uint32_t endMs)
 {
 	if (!std::isfinite(playbackRate) || playbackRate <= 0.f || playbackRate > 16.f || !std::isfinite(volume) || volume < 0.f || volume > 4.f || !m_pSystem ||
 		!Update_ApplicationFocusMute()) return 0u;
 	auto* sound = Find_Or_LoadSound(path, false);
 	if (!sound) return 0u;
 	unsigned int length = 0;
-	if (sound->getLength(&length, FMOD_TIMEUNIT_MS) != FMOD_OK || ageMs >= length) return 0u;
+	if (sound->getLength(&length, FMOD_TIMEUNIT_MS) != FMOD_OK || ageMs >= length || (endMs && ageMs >= endMs)) return 0u;
 	FMOD::Channel* channel = nullptr;
 	if (m_pSystem->playSound(sound, Pick_OneShotGroup(path), true, &channel) != FMOD_OK || !channel) return 0u;
 	if (channel->setVolume(volume) != FMOD_OK || channel->setPosition(ageMs, FMOD_TIMEUNIT_MS) != FMOD_OK ||
@@ -271,6 +271,7 @@ uint64_t CSound_Manager::Play_SoundCue(const wstring_t& path, f32_t volume, uint
 	{ channel->stop(); return 0u; }
 	const uint64_t handle = m_iNextCueHandle++;
 	m_CueChannels.emplace(handle, channel);
+	if (endMs) m_CueEndPositionsMs.emplace(handle, endMs);
 	return handle;
 }
 bool_t CSound_Manager::Get_SoundDurationMs(const wstring_t& path, uint32_t& durationMs)
@@ -303,12 +304,18 @@ void CSound_Manager::Set_SoundCuePlaybackRate(uint64_t handle, f32_t rate)
 void CSound_Manager::Seek_SoundCue(uint64_t handle, uint32_t ageMs)
 {
 	const auto found = m_CueChannels.find(handle);
-	if (found != m_CueChannels.end()) found->second->setPosition(ageMs, FMOD_TIMEUNIT_MS);
+	if (found != m_CueChannels.end())
+	{
+		const auto End = m_CueEndPositionsMs.find(handle);
+		if (End != m_CueEndPositionsMs.end() && ageMs >= End->second) Stop_SoundCue(handle);
+		else found->second->setPosition(ageMs, FMOD_TIMEUNIT_MS);
+	}
 }
 void CSound_Manager::Stop_SoundCue(uint64_t handle)
 {
 	const auto found = m_CueChannels.find(handle);
 	if (found != m_CueChannels.end()) { found->second->stop(); m_CueChannels.erase(found); }
+	m_CueEndPositionsMs.erase(handle);
 }
 
 HRESULT CSound_Manager::Play_Music(const wstring_t& strSoundFilePath,
@@ -378,7 +385,16 @@ void CSound_Manager::Update()
 	for (auto it = m_CueChannels.begin(); it != m_CueChannels.end();)
 	{
 		bool playing = false;
-		if (it->second->isPlaying(&playing) != FMOD_OK || !playing) it = m_CueChannels.erase(it);
+		unsigned int positionMs = 0u;
+		const auto End = m_CueEndPositionsMs.find(it->first);
+		const bool_t bRangeEnded = End != m_CueEndPositionsMs.end() &&
+			it->second->getPosition(&positionMs, FMOD_TIMEUNIT_MS) == FMOD_OK && positionMs >= End->second;
+		if (bRangeEnded || it->second->isPlaying(&playing) != FMOD_OK || !playing)
+		{
+			if (bRangeEnded) it->second->stop();
+			m_CueEndPositionsMs.erase(it->first);
+			it = m_CueChannels.erase(it);
+		}
 		else ++it;
 	}
 	const FMOD_RESULT eResult = m_pSystem->update();

@@ -71,4 +71,22 @@ inline bool Validate_AttackHitTemplates(const std::vector<ATTACK_HIT_TEMPLATE>& 
     }
     return true;
 }
+// Optional stage contacts reuse the stage's one authoritative pulse schedule.
+inline bool Validate_StageAttackContacts(const std::vector<ATTACK_HIT_TEMPLATE>& hits,
+    const std::uint32_t lifetimeMs, const std::vector<std::uint32_t>& offsets,
+    const std::uint32_t count, const std::uint32_t delayMs, const std::uint32_t intervalMs)
+{
+    if (hits.empty()) return true;
+    if (!lifetimeMs || hits.size() != count || (!offsets.empty() && offsets.size() != count) ||
+        !Validate_AttackHitTemplates(hits, lifetimeMs - 1u)) return false;
+    for (std::size_t i = 0u; i < hits.size(); ++i)
+    {
+        const auto& hit = hits[i];
+        const std::uint64_t at = offsets.empty() ? std::uint64_t(delayMs) + i * intervalMs : offsets[i];
+        if (hit.strTrigger != "TIMED" || hit.iEndMs || hit.iRepeatCount != 1u ||
+            hit.iRepeatIntervalMs || hit.iAtMs != at) return false;
+    }
+    return true;
+}
+
 }

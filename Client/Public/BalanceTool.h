@@ -54,6 +54,7 @@ public:
 		std::uint32_t hitIntervalMs = 0;
 		std::uint32_t hitDelayMs = 0;
 		std::vector<std::uint32_t> hitOffsetsMs;
+		std::vector<LostArk::Shared::ATTACK_HIT_TEMPLATE> attackContacts;
 		bool hasHitAnchor = false;
 		std::string hitAnchorKind = "BOSS_CURRENT";
 		double hitAnchorForwardOffsetM = 0.0;

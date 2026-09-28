@@ -1191,8 +1191,8 @@ bool_t Client::CValtanBossTool::Set_ServerArenaPreset(
 	{
 		return false;
 	}
-	if (!Can_MutateCanonicalGraph(strOutStatus))
-		return false;
+	// Arena state has its own typed Server admission and destruction transaction.
+	// An unpublished Pattern draft must not block these environment presets.
 	CLevel_ValtanArena* const arena = CLevel_ValtanArena::Get_Active();
 	if (nullptr == arena)
 	{

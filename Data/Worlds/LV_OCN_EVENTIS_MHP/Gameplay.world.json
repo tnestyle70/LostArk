@@ -2,14 +2,18 @@
   "schema": "lostark.world-gameplay",
   "formatVersion": 6,
   "areaId": "LV_OCN_EVENTIS_MHP",
-  "revision": 2,
+  "revision": 6,
   "placements": [
     {
       "placementId": "player.spawn.maharaka.party01",
       "kind": "playerSpawn",
       "archetypeId": null,
       "encounterId": null,
-      "position": [61.18, 20.48, -975.7],
+      "position": [
+        61.18,
+        20.48,
+        -975.7
+      ],
       "yawDegrees": 0.0,
       "enabled": true
     },
@@ -18,7 +22,11 @@
       "kind": "playerSpawn",
       "archetypeId": null,
       "encounterId": null,
-      "position": [68.36, 20.48, -968.82],
+      "position": [
+        68.36,
+        20.48,
+        -968.82
+      ],
       "yawDegrees": 0.0,
       "enabled": true
     },
@@ -27,7 +35,11 @@
       "kind": "playerSpawn",
       "archetypeId": null,
       "encounterId": null,
-      "position": [63.81, 20.48, -971.06],
+      "position": [
+        63.81,
+        20.48,
+        -971.06
+      ],
       "yawDegrees": 0.0,
       "enabled": true
     },
@@ -36,7 +48,11 @@
       "kind": "playerSpawn",
       "archetypeId": null,
       "encounterId": null,
-      "position": [57.55, 20.48, -982.72],
+      "position": [
+        57.55,
+        20.48,
+        -982.72
+      ],
       "yawDegrees": 0.0,
       "enabled": true
     },
@@ -47,7 +63,11 @@
       "encounterId": null,
       "idleClip": null,
       "behavior": null,
-      "position": [75.179, 19.904, -1007.262],
+      "position": [
+        75.179,
+        25.19908152,
+        -1007.262
+      ],
       "yawDegrees": 0.0,
       "enabled": true
     },
@@ -58,8 +78,432 @@
       "encounterId": null,
       "idleClip": null,
       "behavior": null,
-      "position": [75.05, 22.36, -984.32],
+      "position": [
+        75.05,
+        23.66841349,
+        -984.32
+      ],
       "yawDegrees": -46.1,
+      "enabled": true
+    },
+    {
+      "placementId": "npc.maharaka.scene06a.source67",
+      "kind": "npc",
+      "archetypeId": "NPC_MHP_RESIDENT_8FC2DB56F0AA5175",
+      "encounterId": null,
+      "idleClip": null,
+      "behavior": null,
+      "position": [
+        81.1877587890625,
+        19.826026611328125,
+        -995.886328125
+      ],
+      "yawDegrees": 26.015625,
+      "enabled": true
+    },
+    {
+      "placementId": "npc.maharaka.scene06a.source68",
+      "kind": "npc",
+      "archetypeId": "NPC_MHP_RESIDENT_7D37CE489AF57466",
+      "encounterId": null,
+      "idleClip": null,
+      "behavior": null,
+      "position": [
+        81.972607421875,
+        19.824100341796875,
+        -994.162890625
+      ],
+      "yawDegrees": 229.04296875,
+      "enabled": true
+    },
+    {
+      "placementId": "npc.maharaka.scene06a.source69",
+      "kind": "npc",
+      "archetypeId": "NPC_MHP_RESIDENT_6C0BF3F0C656EBAB",
+      "encounterId": null,
+      "idleClip": null,
+      "behavior": null,
+      "position": [
+        69.37609375,
+        19.857174072265625,
+        -977.33046875
+      ],
+      "yawDegrees": 335.390625,
+      "enabled": true
+    },
+    {
+      "placementId": "npc.maharaka.scene06a.source70",
+      "kind": "npc",
+      "archetypeId": "NPC_MHP_RESIDENT_48E52BAC20260E4C",
+      "encounterId": null,
+      "idleClip": null,
+      "behavior": null,
+      "position": [
+        80.0225830078125,
+        19.828841552734374,
+        -993.96875
+      ],
+      "yawDegrees": 79.98046875,
+      "enabled": true
+    },
+    {
+      "placementId": "npc.maharaka.scene06a.source71",
+      "kind": "npc",
+      "archetypeId": "NPC_MHP_RESIDENT_10EDE2D93F10BF30",
+      "encounterId": null,
+      "idleClip": null,
+      "behavior": null,
+      "position": [
+        58.188525390625,
+        20.5162548828125,
+        -989.0203125
+      ],
+      "yawDegrees": 164.00390625,
+      "enabled": true
+    },
+    {
+      "placementId": "npc.maharaka.scene06a.source72",
+      "kind": "npc",
+      "archetypeId": "NPC_MHP_RESIDENT_8FC2DB56F0AA5175",
+      "encounterId": null,
+      "idleClip": null,
+      "behavior": null,
+      "position": [
+        63.1671826171875,
+        20.489345703125,
+        -971.18359375
+      ],
+      "yawDegrees": 207.59765625,
+      "enabled": true
+    },
+    {
+      "placementId": "npc.maharaka.scene06a.source73",
+      "kind": "npc",
+      "archetypeId": "NPC_MHP_RESIDENT_26DDEADDA1171460",
+      "encounterId": null,
+      "idleClip": null,
+      "behavior": null,
+      "position": [
+        61.8583251953125,
+        20.473099365234376,
+        -972.52921875
+      ],
+      "yawDegrees": 226.93359375,
+      "enabled": true
+    },
+    {
+      "placementId": "npc.maharaka.scene06a.source74",
+      "kind": "npc",
+      "archetypeId": "NPC_MHP_RESIDENT_89CB90C3ACEED873",
+      "encounterId": null,
+      "idleClip": null,
+      "behavior": null,
+      "position": [
+        57.6962548828125,
+        20.415064697265624,
+        -979.905546875
+      ],
+      "yawDegrees": 194.23828125,
+      "enabled": true
+    },
+    {
+      "placementId": "npc.maharaka.scene06a.source75",
+      "kind": "npc",
+      "archetypeId": "NPC_MHP_RESIDENT_48ACE37281B6DF04",
+      "encounterId": null,
+      "idleClip": null,
+      "behavior": null,
+      "position": [
+        57.5883837890625,
+        20.457867431640626,
+        -980.31359375
+      ],
+      "yawDegrees": 237.3046875,
+      "enabled": true
+    },
+    {
+      "placementId": "npc.maharaka.scene06a.source76",
+      "kind": "npc",
+      "archetypeId": "NPC_MHP_RESIDENT_61FC7F0DBCF46112",
+      "encounterId": null,
+      "idleClip": null,
+      "behavior": null,
+      "position": [
+        58.5163623046875,
+        20.4838134765625,
+        -989.9240625
+      ],
+      "yawDegrees": 335.390625,
+      "enabled": true
+    },
+    {
+      "placementId": "npc.maharaka.scene06a.source77",
+      "kind": "npc",
+      "archetypeId": "NPC_MHP_RESIDENT_78752C684EEEF29B",
+      "encounterId": null,
+      "idleClip": null,
+      "behavior": null,
+      "position": [
+        83.161181640625,
+        19.078863525390624,
+        -993.12453125
+      ],
+      "yawDegrees": 19.6875,
+      "enabled": true
+    },
+    {
+      "placementId": "npc.maharaka.scene06a.source78",
+      "kind": "npc",
+      "archetypeId": "NPC_MHP_RESIDENT_78752C684EEEF29B",
+      "encounterId": null,
+      "idleClip": null,
+      "behavior": null,
+      "position": [
+        66.4585498046875,
+        19.040931396484375,
+        -979.425
+      ],
+      "yawDegrees": 185.625,
+      "enabled": true
+    },
+    {
+      "placementId": "npc.maharaka.scene06a.source79",
+      "kind": "npc",
+      "archetypeId": "NPC_MHP_RESIDENT_54BF58EB38EF4477",
+      "encounterId": null,
+      "idleClip": null,
+      "behavior": null,
+      "position": [
+        67.9532958984375,
+        19.7650341796875,
+        -977.1396875
+      ],
+      "yawDegrees": 46.0546875,
+      "enabled": true
+    },
+    {
+      "placementId": "npc.maharaka.scene06a.source80",
+      "kind": "npc",
+      "archetypeId": "NPC_MHP_RESIDENT_2268E0E6350783ED",
+      "encounterId": null,
+      "idleClip": null,
+      "behavior": null,
+      "position": [
+        105.8440234375,
+        20.48099853515625,
+        -997.317578125
+      ],
+      "yawDegrees": 233.4375,
+      "enabled": true
+    },
+    {
+      "placementId": "npc.maharaka.scene06a.source81",
+      "kind": "npc",
+      "archetypeId": "NPC_MHP_RESIDENT_2268E0E6350783ED",
+      "encounterId": null,
+      "idleClip": null,
+      "behavior": null,
+      "position": [
+        57.4626953125,
+        20.48103271484375,
+        -987.20796875
+      ],
+      "yawDegrees": 78.75,
+      "enabled": true
+    },
+    {
+      "placementId": "npc.maharaka.scene06a.source82",
+      "kind": "npc",
+      "archetypeId": "NPC_MHP_RESIDENT_C755E440F130CAB9",
+      "encounterId": null,
+      "idleClip": null,
+      "behavior": null,
+      "position": [
+        68.0145947265625,
+        20.077005615234373,
+        -978.945
+      ],
+      "yawDegrees": 7.55859375,
+      "enabled": true
+    },
+    {
+      "placementId": "npc.maharaka.scene06a.source83",
+      "kind": "npc",
+      "archetypeId": "NPC_MHP_RESIDENT_831DA55F38AA2078",
+      "encounterId": null,
+      "idleClip": null,
+      "behavior": null,
+      "position": [
+        77.8271728515625,
+        19.87319580078125,
+        -996.253359375
+      ],
+      "yawDegrees": 182.98828125,
+      "enabled": true
+    },
+    {
+      "placementId": "npc.maharaka.scene06a.source84",
+      "kind": "npc",
+      "archetypeId": "NPC_MHP_RESIDENT_8ADD9FB6193A0920",
+      "encounterId": null,
+      "idleClip": null,
+      "behavior": null,
+      "position": [
+        77.597392578125,
+        19.915997314453126,
+        -1001.913359375
+      ],
+      "yawDegrees": 2.8125,
+      "enabled": true
+    },
+    {
+      "placementId": "npc.maharaka.scene06a.source85",
+      "kind": "npc",
+      "archetypeId": "NPC_MHP_RESIDENT_1FB0662AC0EED5E5",
+      "encounterId": null,
+      "idleClip": null,
+      "behavior": null,
+      "position": [
+        69.907568359375,
+        19.80857177734375,
+        -975.835078125
+      ],
+      "yawDegrees": 219.0234375,
+      "enabled": true
+    },
+    {
+      "placementId": "npc.maharaka.scene06a.source86",
+      "kind": "npc",
+      "archetypeId": "NPC_MHP_RESIDENT_10EDE2D93F10BF30",
+      "encounterId": null,
+      "idleClip": null,
+      "behavior": null,
+      "position": [
+        103.457333984375,
+        20.5161767578125,
+        -994.672734375
+      ],
+      "yawDegrees": 237.12890625,
+      "enabled": true
+    },
+    {
+      "placementId": "npc.maharaka.scene06a.source87",
+      "kind": "npc",
+      "archetypeId": "NPC_MHP_RESIDENT_8FC2DB56F0AA5175",
+      "encounterId": null,
+      "idleClip": null,
+      "behavior": null,
+      "position": [
+        106.415,
+        20.4741796875,
+        -999.05
+      ],
+      "yawDegrees": 311.66015625,
+      "enabled": true
+    },
+    {
+      "placementId": "npc.maharaka.scene06a.source88",
+      "kind": "npc",
+      "archetypeId": "NPC_MHP_RESIDENT_89CB90C3ACEED873",
+      "encounterId": null,
+      "idleClip": null,
+      "behavior": null,
+      "position": [
+        106.951669921875,
+        20.414986572265626,
+        -1002.70875
+      ],
+      "yawDegrees": 357.36328125,
+      "enabled": true
+    },
+    {
+      "placementId": "npc.maharaka.scene06a.source89",
+      "kind": "npc",
+      "archetypeId": "NPC_MHP_RESIDENT_48ACE37281B6DF04",
+      "encounterId": null,
+      "idleClip": null,
+      "behavior": null,
+      "position": [
+        106.93654296875,
+        20.457789306640624,
+        -1002.28703125
+      ],
+      "yawDegrees": 40.4296875,
+      "enabled": true
+    },
+    {
+      "placementId": "npc.maharaka.scene06a.source90",
+      "kind": "npc",
+      "archetypeId": "NPC_MHP_RESIDENT_61FC7F0DBCF46112",
+      "encounterId": null,
+      "idleClip": null,
+      "behavior": null,
+      "position": [
+        102.687548828125,
+        20.4837353515625,
+        -995.24859375
+      ],
+      "yawDegrees": 48.515625,
+      "enabled": true
+    },
+    {
+      "placementId": "npc.maharaka.scene07a.source127",
+      "kind": "npc",
+      "archetypeId": "NPC_MHP_RESIDENT_B385E1ED1AED883B",
+      "encounterId": null,
+      "idleClip": null,
+      "behavior": null,
+      "position": [
+        120.049150390625,
+        25.62914794921875,
+        -991.952734375
+      ],
+      "yawDegrees": 101.42578125,
+      "enabled": true
+    },
+    {
+      "placementId": "npc.maharaka.scene07a.source128",
+      "kind": "npc",
+      "archetypeId": "NPC_MHP_RESIDENT_FC457647A29AFCCD",
+      "encounterId": null,
+      "idleClip": null,
+      "behavior": null,
+      "position": [
+        125.77205078125,
+        25.62107666015625,
+        -990.517890625
+      ],
+      "yawDegrees": 326.953125,
+      "enabled": true
+    },
+    {
+      "placementId": "npc.maharaka.scene07a.source168",
+      "kind": "npc",
+      "archetypeId": "NPC_MHP_RESIDENT_AF831B6831888E6A",
+      "encounterId": null,
+      "idleClip": null,
+      "behavior": null,
+      "position": [
+        99.140068359375,
+        27.73676025390625,
+        -969.97796875
+      ],
+      "yawDegrees": 144.140625,
+      "enabled": true
+    },
+    {
+      "placementId": "npc.maharaka.scene07a.source169",
+      "kind": "npc",
+      "archetypeId": "NPC_MHP_RESIDENT_C000BE24B1224786",
+      "encounterId": null,
+      "idleClip": null,
+      "behavior": null,
+      "position": [
+        108.047236328125,
+        27.677978515625,
+        -960.22265625
+      ],
+      "yawDegrees": 36.2109375,
       "enabled": true
     }
   ]

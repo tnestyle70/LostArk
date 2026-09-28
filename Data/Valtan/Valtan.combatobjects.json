@@ -204,48 +204,7 @@
       ],
       "presentationEvents": []
     },
-    {
-      "combatObjectArchetypeId": "combatobject.valtan.six-pizza.rock-pillar",
-      "kind": "FIXED_AREA",
-      "lifetimeMs": 20700,
-      "coverRadiusM": 1.5,
-      "spawn": {
-        "origin": {
-          "kind": "BOSS_POSITION",
-          "forwardOffsetM": 0.0,
-          "rightOffsetM": 0.0
-        },
-        "direction": {
-          "kind": "NONE"
-        }
-      },
-      "movement": {
-        "kind": "STATIC"
-      },
-      "hits": [
-        {
-          "hitId": "hit.valtan.six-pizza.rock-pillar.explode",
-          "trigger": {
-            "kind": "TIMED",
-            "atMs": 19500
-          },
-          "repeat": {
-            "count": 1,
-            "intervalMs": 0
-          },
-          "shape": {
-            "kind": "CIRCLE",
-            "outerRadiusM": 3.0
-          },
-          "serverDamageProfileId": "damage.valtan.stomp",
-          "pushRangeM": 1.5,
-          "pushMs": 150,
-          "knockdown": true,
-          "downMs": 1000
-        }
-      ],
-      "presentationEvents": []
-    },
+    {"combatObjectArchetypeId": "combatobject.valtan.six-pizza.rock-pillar", "kind": "FIXED_AREA", "lifetimeMs": 32000, "coverRadiusM": 1.5, "spawn": {"origin": {"kind": "BOSS_POSITION", "forwardOffsetM": 0.0, "rightOffsetM": 0.0}, "direction": {"kind": "NONE"}}, "movement": {"kind": "STATIC"}, "hits": [{"hitId": "hit.valtan.six-pizza.rock-pillar.explode", "trigger": {"kind": "TIMED", "atMs": 0}, "repeat": {"count": 1, "intervalMs": 0}, "shape": {"kind": "CIRCLE", "outerRadiusM": 3.0}, "serverDamageProfileId": "damage.valtan.stomp", "pushRangeM": 1.5, "pushMs": 150, "knockdown": true, "downMs": 1000}], "presentationEvents": [], "ownerHitChain": {"triggerActionId": "valtan.sequence.center-six-pizza-charge.step-11", "delayMs": 1500, "armedPresentationEventId": "event.valtan.six-pizza.rock-pillar.armed"}},
     {
       "combatObjectArchetypeId": "combatobject.valtan.struggling.rock-pillar",
       "kind": "FIXED_AREA",

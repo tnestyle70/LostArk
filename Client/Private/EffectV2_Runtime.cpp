@@ -82,6 +82,9 @@ namespace
 		Client::EFFECT_V2_CHILD_STOP eStop = Client::EFFECT_V2_CHILD_STOP::KILL;
 		bool_t bStopApplied = false;
 		size_t iChildIndex = NO_CHILD;
+		// Authoring Stage children retain their absolute birth/stop across Stage tails.
+		f32_t fPreviewBirthSeconds = -1.f;
+		f32_t fPreviewStopSeconds = -1.f;
 	};
 
 	struct TARGET_STATE final
@@ -95,6 +98,7 @@ namespace
 		std::vector<PENDING_SPAWN> Pending;
 		std::string strStage;
 		f32_t fStageLastSeconds = -1.f;
+		f32_t fPreviewTimelineSeconds = -1.f;
 		std::vector<PENDING_SPAWN> StagePending;
 		std::vector<Client::EFFECT_V2_CLIP_OCCURRENCE_CLOCK> StageClocks;
 		std::vector<SPAWNED_EFFECT> Spawned;
@@ -781,7 +785,8 @@ namespace
 		for (auto it = State.Spawned.begin(); it != State.Spawned.end();)
 		{
 			if (!it->bStageBound) { ++it; continue; }
-			if (const auto object = it->pObject.lock(); object && !it->bStopApplied && it->fStopSeconds >= 0.f)
+			if (const auto object = it->pObject.lock(); object && it->fPreviewBirthSeconds < 0.f &&
+				!it->bStopApplied && it->fStopSeconds >= 0.f)
 			{
 				const f32_t remaining = (std::max)(0.f,
 					it->fStopSeconds - (std::max)(0.f, State.fStageLastSeconds));
@@ -797,14 +802,45 @@ namespace
 		for (auto& effect : State.StageTails)
 		{
 			const auto object = effect.pObject.lock();
-			if (!object || effect.bStopApplied || effect.fStopSeconds < 0.f ||
-				object->Elapsed_Seconds() < effect.fStopSeconds) continue;
+			if (!object || effect.fPreviewBirthSeconds >= 0.f || effect.bStopApplied ||
+				effect.fStopSeconds < 0.f || object->Elapsed_Seconds() < effect.fStopSeconds) continue;
 			effect.bStopApplied = true;
 			if (effect.eStop == Client::EFFECT_V2_CHILD_STOP::DEACTIVATE)
 				object->Stop_Emission();
 			else object->Finish();
 		}
 		Prune_List(State.StageTails, false, false);
+	}
+
+	void Sample_PreviewStageEffects(
+		std::vector<SPAWNED_EFFECT>& Effects, const f32_t fTimelineSeconds)
+	{
+		for (auto& effect : Effects)
+		{
+			if (effect.fPreviewBirthSeconds < 0.f) continue;
+			const auto object = effect.pObject.lock();
+			if (!object) continue;
+			// Sampling alone temporarily unpauses internally. Layer Update must stay held.
+			object->Set_PlaybackPaused(true);
+			if (!effect.bStopApplied && effect.fPreviewStopSeconds >= 0.f &&
+				fTimelineSeconds >= effect.fPreviewStopSeconds)
+			{
+				if (effect.eStop == Client::EFFECT_V2_CHILD_STOP::DEACTIVATE)
+				{
+					(void)object->Sample_ElapsedSeconds((std::max)(0.f,
+						effect.fPreviewStopSeconds - effect.fPreviewBirthSeconds));
+					object->Stop_Emission();
+				}
+				else object->Finish();
+				effect.bStopApplied = true;
+			}
+			if (!object->Is_Finished() && !object->Sample_ElapsedSeconds((std::max)(0.f,
+				fTimelineSeconds - effect.fPreviewBirthSeconds)))
+			{
+				Report(object->Status());
+				object->Finish();
+			}
+		}
 	}
 
 	void Remove_AllSpawned(TARGET_STATE& State)
@@ -1030,7 +1066,8 @@ namespace
 			ClipOccurrences,
 		std::shared_ptr<const Client::EFFECT_V2_CATALOG_SNAPSHOT> pSnapshot,
 		const ComPtr<ID3D11Device>& pDevice,
-		const ComPtr<ID3D11DeviceContext>& pContext)
+		const ComPtr<ID3D11DeviceContext>& pContext,
+		const f32_t fPreviewTimeSeconds = -1.f)
 	{
 		if (!Target.Is_Valid() || g_IgnoredTargets.contains(Target.pKey))
 			return;
@@ -1045,6 +1082,15 @@ namespace
 			Found->second : g_TargetStates[Target.pKey];
 		State.Target = Target;
 		State.strArchetypeId = *pArchetypeId;
+		const bool_t bPreviewClock = fPreviewTimeSeconds >= 0.f;
+		if (bPreviewClock && State.fPreviewTimelineSeconds >= 0.f &&
+			fPreviewTimeSeconds + 0.000001f < State.fPreviewTimelineSeconds)
+		{
+			Reset_StageLane(State);
+			for (auto& pending : State.StagePending) pending.iNextLoopEpoch = 0u;
+			State.fStageLastSeconds = -1.f;
+		}
+		State.fPreviewTimelineSeconds = fPreviewTimeSeconds;
 		const bool_t bSnapshotChanged = State.pAuthoringSnapshot != pSnapshot;
 		const bool_t bStageChanged = State.strStage != strActionId;
 		const bool_t bClocksChanged =
@@ -1093,6 +1139,11 @@ namespace
 					}
 				}
 			}
+		}
+		if (bPreviewClock)
+		{
+			Sample_PreviewStageEffects(State.StageTails, fPreviewTimeSeconds);
+			Prune_List(State.StageTails, false, false);
 		}
 		if (State.StagePending.empty() || !std::isfinite(fAgeSeconds) ||
 			fAgeSeconds < 0.f)
@@ -1161,20 +1212,33 @@ namespace
 				/* A late snapshot after a finite clip/group stop must not flash a
 				   just-created object for one frame. The epoch remains attempted. */
 				if (Clock.fStopSeconds >= 0.f &&
-					fAgeSeconds + 0.00001f >= Clock.fStopSeconds)
+					fAgeSeconds + 0.00001f >= Clock.fStopSeconds &&
+					(!bPreviewClock || Pending.eStop == Client::EFFECT_V2_CHILD_STOP::KILL))
 				{
 					continue;
 				}
 				Pending.fStopSeconds = Clock.fStopSeconds;
+				const size_t iBeforeSpawn = State.Spawned.size();
 				Spawn_OnTarget(
 					State, Pending, View, true, pDevice, pContext,
-					Clock.fPlaybackRate,
+					Clock.fPlaybackRate, bPreviewClock ? 0.f :
 					(std::max)(0.f, fAgeSeconds - Clock.fStartSeconds));
+				if (bPreviewClock && State.Spawned.size() > iBeforeSpawn)
+				{
+					auto& effect = State.Spawned.back();
+					const f32_t fStageStart = (std::max)(0.f, fPreviewTimeSeconds - fAgeSeconds);
+					effect.fPreviewBirthSeconds = fStageStart + Clock.fStartSeconds;
+					effect.fPreviewStopSeconds = Clock.fStopSeconds < 0.f ? -1.f :
+						fStageStart + Clock.fStopSeconds;
+				}
 				if (iEpoch == (std::numeric_limits<uint64_t>::max)())
 					break;
 			}
 		}
-		Apply_ChildStops(State.Spawned, fAgeSeconds, true, true);
+		if (bPreviewClock)
+			Sample_PreviewStageEffects(State.Spawned, fPreviewTimeSeconds);
+		else
+			Apply_ChildStops(State.Spawned, fAgeSeconds, true, true);
 		Prune_Spawned(State, false, false);
 	}
 
@@ -1525,11 +1589,20 @@ void Client::CEffectV2Runtime::Sync_StageAuthoring(
 	const std::span<const EFFECT_V2_CLIP_OCCURRENCE_CLOCK> ClipOccurrences,
 	std::shared_ptr<const EFFECT_V2_CATALOG_SNAPSHOT> pSnapshot,
 	const ComPtr<ID3D11Device>& pDevice,
-	const ComPtr<ID3D11DeviceContext>& pContext)
+	const ComPtr<ID3D11DeviceContext>& pContext,
+	const f32_t fPreviewTimeSeconds)
 {
+	const f32_t fTimeline = fPreviewTimeSeconds < 0.f ? fAgeSeconds : fPreviewTimeSeconds;
+	if (!std::isfinite(fPreviewTimeSeconds) || !std::isfinite(fTimeline) ||
+		!std::isfinite(fAgeSeconds) || fAgeSeconds < 0.f ||
+		fTimeline + 0.000001f < fAgeSeconds)
+	{
+		Report("Authoring Stage preview requires a finite absolute timeline at or after its Stage age.");
+		return;
+	}
 	Sync_Stage_Impl(
 		Target, pActionId, fAgeSeconds, ClipOccurrences, std::move(pSnapshot),
-		pDevice, pContext);
+		pDevice, pContext, fTimeline);
 }
 
 void Client::CEffectV2Runtime::Sync_StageAuthoring(
@@ -1538,11 +1611,12 @@ void Client::CEffectV2Runtime::Sync_StageAuthoring(
 	const f32_t fAgeSeconds,
 	std::shared_ptr<const EFFECT_V2_CATALOG_SNAPSHOT> pSnapshot,
 	const ComPtr<ID3D11Device>& pDevice,
-	const ComPtr<ID3D11DeviceContext>& pContext)
+	const ComPtr<ID3D11DeviceContext>& pContext,
+	const f32_t fPreviewTimeSeconds)
 {
 	Sync_StageAuthoring(Target, pActionId, fAgeSeconds,
 		std::span<const EFFECT_V2_CLIP_OCCURRENCE_CLOCK>{},
-		std::move(pSnapshot), pDevice, pContext);
+		std::move(pSnapshot), pDevice, pContext, fPreviewTimeSeconds);
 }
 
 void Client::CEffectV2Runtime::Reset_LocalPreviewTarget(

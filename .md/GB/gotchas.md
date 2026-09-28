@@ -1,7 +1,192 @@
 # LostArk merge 회귀 방지 정본
 
+### 한 Stage의 서로 다른 타격은 같은 pulse 시계의 contact로 보존한다
+
+검격·도넛처럼 도형과 피해가 다른 타격을 particle bounds나 단일 shape로 합치지 않는다.
+optional `hit.contacts`는 기존 pulse의 count/order/atMs와 정확히 일치시켜 source·Product·
+Server와 Client 저장을 함께 연결한다. 별도의 damage timer를 추가하면 중복 타격이 생긴다.
+`PATTERNATTACKHIT/STAGE` bootstrap은 owner Stage 뒤로 정렬해야 하며 실제 전체 정렬 결과를
+native Catalog로 읽어 검증한다. 구조체에 vector를 추가한 fixture는 ABI를 소비하는 모든 TU를
+다시 컴파일한다. 타격 시각을 고쳐 일반 허용오차 안에 들어온 Sound의 exact 예외는 제거한다.
+구현·검증은 [4연속·착지 판정 결과](09-28/2026-09-28_VALTAN_FOUR_SLASH_TRACKING_AXE_COLLIDER_RESULT.md)에 있다.
+
+### Sequencer 호출 위치와 Effect·Sound의 재생 구간을 분리한다
+
+ONCE Effect의 시작은 실제 Animation/Stage 안에서 검증하되 종료를 유한 Animation 끝으로
+clamp하지 않는다. 500ms Animation에 붙인 긴 Effect를 조금 줄일 때 약401ms로 축소되는
+회귀가 생긴다. 앞trim은 resource `playbackOffsetMs`까지 전달해야 앞부분이 다시 재생되지
+않는다. optional offset의 부재와 명시0을 구분하고 Full Restore의 기존 원점을 보존한다.
+Detail transform은 UI 임시값에서 끝내지 않고 typed draft와 같은 cursor의 Preview까지
+연결한다. Save는 그 draft를 직렬화한다.
+
+Composition publisher도 ONCE/CUE_END의 sourceClock.endMs를 보존하고 명시 종료를
+occurrence 누적 시작·sourceStartMs·playRate로 stage clock에 변환한다. stage 끝 clamp를
+재사용하면 native 저장은 성공해도 게시 시 잔여 수명이 잘린다. stage 초과 허용은
+EFFECT_V1/ONCE/CUE_END에 한정하고 시작 범위와 다른 정책의 검증은 유지한다.
+
+Sound의 WAV 구간은 Animation clip rate와 별개다. 앞뒤 편집은 offset/duration으로 저장하고,
+다른 Stage로 이동할 때 actual Stage/action/clip join을 함께 바꾼다. stable ID에 들어 있는
+생성 당시 clip 이름을 현재 owner로 다시 해석하면 복제·이동이 막힌다. 잘못된 실제 join은
+계속 거부한다. 혼합 V1/Sound 그룹 편집은 두 owner 모두 rollback하는 transaction을 사용한다.
+원본 library 검색 alias 복구는 asset 삭제/복원이나 gameplay cue 연결 변경과 구분한다.
+
+### 발탄 ground warning도 기존 actor receiver 제외를 공유한다
+
+native2614 확장원과 native2599 추적 도끼 원본02는 기존 쿠크 native3600군과 같은 volume
+decal 경로를 쓴다. projector 높이를 낮추거나 Bloom을 바꾸지 않고 기존 GBuffer marker0/5의
+actor bit8 및 source skin/equipment 필터에 정확한 native family를 연결한다. 정적 Map과
+다른 decal profile은 유지한다. FXC·WARP 수신 분류 검증을 실제 Arena 화면 확인으로 대신하지
+않는다. 구현·검증·설치 상태는 [Composition G29 결과](09-09/2026-09-09_VALTAN_COMPOSITION_AUTHORING_PARITY_RESULT.md)를 따른다.
+
+
+### 컷씬의 Effect는 선택된 Pattern 박스와 별도로 추적한다
+
+`Source cinematic`이 활성화된 장면은 선택된 takeoff 등의 Pattern cue와 별도 WorldSequence
+`effectTracks`를 재생할 수 있다. 화면 모양이나 선택 박스만 보고 body ID를 단정하지 않는다.
+실제 route → instance → template → effect track → asset ID를 추적한다. All Effects와 Resources는
+같은 `ValtanCinematicEffectLibrary`를 사용하며, 공유 body와 서로 다른 재생 occurrence를 구분한다.
+수정한 Bloom 등 body 값은 그대로 유지하고 목록 노출 때문에 asset을 복제하지 않는다.
+Append는 표시된 Animation 대상을 자동 제안하되 사용자 dropdown 지정을 우선한다.
+
+### Sequencer 연속 Seek는 다음 Late_Update 전에 해당 owner를 준비한다
+
+- ImGui Render 중 Seek가 기존 객체를 지운 뒤 V1 spawn을 다음 프레임 pending commit까지
+  미루면 그 객체는 Late_Update를 한 번도 통과하지 못하고 다음 Seek에서 제거될 수 있다.
+  local boss preview owner만 기존 spawn 경로로 즉시 commit·follow anchor·절대 age sample한다.
+- 직접 Seek는 앞 Stage에서 시작되어 아직 살아 있는 NATURAL 또는 명시적 tail도 복원한다.
+  loop ONCE의 `cue_end`는 누적 source 시각으로 자른 tail이며, Stage 뒤까지 남는 경우만
+  boss-action 종료 보존 flag를 사용한다. 명시 종료·owner reset·level cleanup은 유지한다.
+- Source Save 완료 뒤 Product graph와 모든 V2 payload를 다시 로드하지 않는다. 최신 source
+  revision 검증과 dirty-owner CAS는 유지하고 Product 갱신은 명시 Publish 경계에서 수행한다.
+- Arena preset의 Server admission은 Pattern source/Product 일치와 별개다. 미게시 Pattern
+  편집이 벽 복원·지형 preset을 잠그지 않으며 실제 session/world/상태 검증은 Server가 한다.
+- 수치·저장·컴파일 증거는 [Composition 결과 G25~G27](09-09/2026-09-09_VALTAN_COMPOSITION_AUTHORING_PARITY_RESULT.md)를 따른다.
+
+
+### Composition의 저장된 이펙트도 Preview 준비와 실제 수명을 확인한다
+
+- Source Save로 추가한 V1 cue는 게시된 Product의 선행 준비 목록에 없을 수 있다. local Preview는
+  선택한 Stage 경로의 실제 cue ID를 기존 preparation queue에 넣고 준비 완료 후 시작한다.
+  준비 중 선택·draft·catalog 변경, 창 비활성화와 Reset은 예약 재생을 취소한다. 준비 실패를
+  보이지 않는 재생 성공으로 처리하지 않는다. saved view의 generation과 live draft를 혼용하지 않는다.
+- Effect box의 끝은 cue 시작점이나 Stage 끝이 아니라 기존 Playback의 요소·model cue·owner
+  control과 particle/ribbon tail을 포함한 수명으로 계산한다. V2는 leaf/group의 rate와 stop policy를
+  적용하며 무한 반복은 유한 자연 수명으로 위장하지 않는다. Preview tail과 Server Stage는 별도다.
+- 다른 Stage로 drag할 때 기존 Stage 끝에 clamp하면 반복 입력이 unchanged가 된다. drop 위치의
+  실제 Stage·clip occurrence를 찾아 owner와 source clock을 함께 변경하고 stable binding ID 및
+  무관한 설정을 유지한다. 유효하지 않은 위치·stale draft는 이전 값을 보존한다.
+- loop clip의 ONCE cue는 Stage 안에서 누적된 source clock을 사용할 수 있다. native clip 한 주기만
+  검사하면 두 번째 주기 이후 cue가 누락된다. Composition에 독립 Append한 Full Restore는 cue
+  시작 때 document age 0으로 재생하며 원본 clip 정렬용 source seek와 구분한다.
+
+### 같은 리소스 표시명은 같은 source view로 만든다
+
+- 공통 이름 helper만 사용해도 입력 view가 다르면 표시명이 달라진다. 발탄의 strict Product
+  tree는 legacy alias를 포함하므로 Composition의 authoring view와 첫 owner가 다를 수 있다.
+  All Effects는 실제 선택·재생용 strict tree를 유지하고 표시 map만 같은 admission 아래의
+  authoring view에서 만든다. 두 실제 소비자 전체 inventory의 ID별 표시명을 대조한다.
+- Source Save 뒤 animation 길이를 변경했다면 기존 rootmotion과의 duration도 게시 전에
+  대조한다. 오래된 생성물은 현재 Encounter/Bindings로 기존 생성기를 실행해 갱신하며,
+  사용자 animation을 되돌리거나 gameplay 게시의 검증 조건을 완화하지 않는다.
+
+### 한글 UI 문자열은 실제 제품 컴파일의 문자 설정으로 검증한다
+
+- UTF-8 파일에 추가한 narrow 한글 literal은 CP949 제품 컴파일에서 깨질 수 있다.
+  최소 컴파일만 `/utf-8`로 강제하면 실제 빌드 실패를 숨긴다. 파일별 인코딩과 기존
+  프로젝트 설정을 유지하고 새 표시 문자열은 UTF-8 byte escape 등 기존 설정과 무관하게
+  동일 byte가 되는 방식으로 전달한다. ImGui에 전달할 UTF-8을 CP949로 바꾸지 않는다.
+- 병렬 native probe의 개별 TU 컴파일은 `/Fo`뿐 아니라 `/Fd`도 전용 out 경로로 지정한다.
+  제품 `vc143.pdb`를 공유하면 정규 빌드와 충돌해 C1041이 발생한다.
+- 개별 TU 검사와 제품 Build의 source/execution charset 차이를 확인하고 최종 제품 빌드를
+  통과한 뒤 성공으로 기록한다. 표시명 native 검사는 실제 byte와 검색·제목 일치도 확인한다.
+
+### 본 부착 이펙트 그룹 복제는 runtime anchor도 독립화한다
+
+- manual group ID만 바꾸고 runtime anchor slot을 공유하면 복제본의 socket 편집이 원본과
+  충돌하거나 같은 그룹으로 다시 합쳐진다. 원본 source slot·실제 bone은 유지하고 선택된
+  요소만 새 manual group 및 고유 runtime slot으로 분리한다. attached grouping key에도
+  manual group ID를 포함한다. slot별 import-scale 정책이 달라지는 분리는 거부한다.
+- source transform track이 있는 요소는 기존 Detail TRS 제한을 해제하지 않는다. 기존
+  Anchor Position/Rotation으로 이동 궤적까지 변환하고 시작 시각을 옮길 때는 delay 증가분만큼
+  sourceTimeOrigin을 반대로 이동해 원본 motion/material phase를 보존한다.
+- runtime carrier 또는 선택 밖 transform owner/dependent가 있는 불완전 그룹은 수정하지
+  않고 실패시킨다. 복제에는 기존 codec의 stable ID·내부 참조 remap을 사용한다.
+
+### 스킨 NPC의 머리 위 UI는 raw bind bounds를 머리 좌표로 쓰지 않는다
+
+- raw skinned vertex bounds는 inverse bind·현재 pose 적용 후 표시되는 몸체와 basis/크기가
+  다를 수 있다. 실제 head bone의 combined matrix와 표시 world를 연결하고 preScale를
+  중복 적용하지 않는다. bone 없는 모델의 fallback과 non-finite 실패 처리를 구분한다.
+- 카메라 이동에 따라 체력바가 보스에서 밀리면 X/Y offset부터 바꾸지 않는다. anchor 월드
+  위치와 실제 머리의 깊이, 현재 frame의 projection·최종 UI 변환을 함께 대조한다.
+- 쿠크의 root 근처 bind anchor와 실제 head 수치·수정은
+  [HUD 결과 G04 후속](09-27/2026-09-27_KOUKU_AUDIO_MARIO_HUD_POLISH_IMPLEMENTATION_RESULT.md)를 따른다.
+
+### Composition Pause는 이펙트 객체의 시계까지 멈춰야 한다
+
+- 모델과 timeline cursor만 멈춰서는 V1/V2 Effect layer의 frame delta가 멈추지 않는다.
+  local authoring occurrence는 시작 age 주입뿐 아니라 매 sample의 절대 timeline age와
+  layer의 자체 진행 차단을 함께 연결한다. pending spawn도 같은 age를 받아야 한다.
+- Stage를 넘어 남는 NATURAL tail은 Stage-local age가 아닌 전체 sequence clock에 붙인다.
+  새 Stage의 age가 0이 되는 것을 역 seek로 판단해 owner 전체를 지우지 않는다.
+- 현재 cursor의 Pause/Resume는 기존 handle과 tail을 유지한다. 실제 seek/reset과 구분하고
+  재생 target generation·owner 검증은 유지한다. Server 제품 clock은 local preview와 분리한다.
+- 발탄의 적용 범위와 컴파일·clock 검증은
+  [Composition 결과 G15](09-09/2026-09-09_VALTAN_COMPOSITION_AUTHORING_PARITY_RESULT.md)를 따른다.
+
+### 헤더 변경 후 일부 도구만 접근 위반이면 OBJ 배치와 의존성을 확인한다
+
+- 같은 클래스의 소비자 OBJ가 서로 다른 시점의 헤더로 컴파일되면 정상 null 검사도 잘못된
+  멤버를 읽는다. 소스에 방어 코드를 추가하기 전에 fault symbol, 해당 OBJ의 생성 시각과
+  멤버 offset, CL read tracking의 실제 헤더 dependency를 대조한다.
+- PCH만 추적하고 해당 클래스 헤더가 누락된 unit은 증분 빌드에서 남을 수 있다. 결함을 확인한
+  산출물만 백업·제거한 뒤 정상 Product 빌드로 재생성하고 헤더 추적과 실제 소비 경로를 검증한다.
+  전체 clean이나 무관한 shader/PCH 재생성을 진단 대신 사용하지 않는다.
+- CL.read block에 source CPP 한 줄만 남아 있는 경우도 같다. 인자를 추가한 함수의 이전 ABI
+  링크 오류가 나오면 같은 변경 header의 include closure와 OBJ 시각을 함께 검사해 다른
+  오래된 소비자까지 좁힌다. 재생성 뒤 해당 header가 CL.read에 실제 기록됐는지 확인한다.
+- 발탄 local Preview는 Server 보스 미스폰 상태에서도 자체 presentation을 생성한다. 미스폰을
+  종료의 원인으로 단정하지 않는다. 재현된 Debug 배치 불일치와 원래 WER의 확인 범위는
+  [Preview 종료 조사 결과](09-27/2026-09-27_VALTAN_PREVIEW_CRASH_RESULT.md)를 따른다.
+
+### 바닥의 삼각형 교차 무늬는 실제 배치의 공면부터 확인한다
+
+- 사용자 좌표의 XZ를 덮는 placement와 설치 WModel의 정점·인덱스, preScale 및 저장 TRS를 함께
+  측정한다. 다른 UV의 두 평면이 같은 깊이에 겹치면 정상 texture도 삼각형 단위로 깨져 보인다.
+- 같은 맵이라도 진입로 바닥과 파괴 아레나 균열은 다른 geometry다. asset 이름이나 과거 재질
+  복원 기록만으로 전역 shader·AA·조명 값을 바꾸지 않는다.
+- 겹친 연결 바닥은 stable placement ID의 필요한 transform 필드만 수정하고 인접 면의 교차도
+  확인한다. Placements 범위로 게시한 뒤 수치상 깊이 분리와 사용자의 화면 판정을 구분한다.
+- 좌표 `(47, 10, -63.77)`의 배치 43/44와 1 cm 분리 근거는
+  [발탄 진입로 결과](09-27/2026-09-27_VALTAN_FLOOR_TEXTURE_RESULT.md)에 기록했다.
+
+
+### 개인 로컬 F5 선택은 LAN 동기화에서도 유지해야 한다
+
+- `.vcxproj.user`의 host만 로컬로 고치면 다음 세션의 LAN sync가 팀 주소로 덮어쓴다.
+  명시적 개인 테스트는 `Sync-TeamLanEndpoint.ps1 -EndpointMode Local`로 저장한다.
+  기본 Saved는 선택을 보존하고, `-EndpointMode Team`만 공유 endpoint로 되돌린다.
+  VS가 설정을 캐시하면 Reload/재시작 뒤 `Server + Client`를 선택한다. Client만 시작하고
+  localhost 연결 실패를 Server 데이터 오류로 판단하지 않는다.
+
+### 제품 Area의 MapTool 연결과 Camera 목록은 별도 등록이다
+
+- MapCatalog와 camerashots가 있어도 MapTool의 editor registry와 runtime target resolver에
+  제품 Level이 없으면 NO MAP AREA / Catalog NOT READY가 된다. 마하라카가 이 경우였다.
+  기존 Level 소유 placement/batch/catalog/camera를 빌리고 self-motion pause/rebase까지
+  연결한다. 화면 문구만 바꾸거나 Test로 강제 전환하지 않는다.
+- Camera의 일반 컷신 목록과 `통합 컷신 편집`은 다른 소비자다. 후자는 발탄·쿠크
+  Composition 세션 전용이다. 마하라카 worldsequence/camerashots는 전자에서 확인한다.
+
 ### 발탄 Composition Preview의 Stage 간 수명과 Full Restore 진입
 
+- Resources는 All Effects와 같은 물리 inventory를 소비한다. runtime catalog admission만으로 목록을
+  만들거나 여러 Pattern에 속한 Full Restore를 Common에만 남기면 실제 저장 자원이 사라진 것처럼 보인다.
+  Product cue이기도 한 Full Restore는 두 경로를 유지하고 V1/V2 종류를 명시한다. 분리본 clip mapping의
+  optional variantId는 action/stage/ID 일치와 token을 검증하며 실패 시 이전 index를 보존한다.
+- 원본 Sequence의 서버 재생 owner와 Sequencer의 현재 Pattern 선택은 다르다. 실제 V2 누락을 판정하기
+  전에 source owner로 이동한 Pattern의 Build_Timeline을 확인한다. Server active revision 관찰은
+  현재 Source와 일치하는 admission이 아니므로 관찰값만으로 "active on this revision"을 표시하지 않는다.
 - Full Restore의 Pattern 분류는 clip 이름만 비교하지 않는다. 원본 action 또는 실제 Product cue 연결과
   clip 이름을 함께 확인한다. 같은 이름의 clip을 공유하는 휠윈드 계열을 다른 source action으로 묶지 않는다.
 - Composition Resources에서 바로 Open Editor할 때도 Effect Tool의 catalog/source metadata를 준비한다.
@@ -363,6 +548,9 @@ Server 소비자를 끝까지 확인한다. 이름 전용 TRIGGER/Summon은 실�
 - 원본 Projectile의 자식 callback·수명·거리 값이 있어도 실제 종료 우선순위·targeting까지 해독한 것은 아니다. 편집용 생성 시계·방향은 이름과 RESULT에서 구분한다. 원본 action의 disabled visual system을 사용자 요청으로 독립 조합해도 enabled cue 복원으로 기록하지 않는다.
 - LocalDecal의 크기 보간은 기존 Detail Life와 SourceRecipe의 입자 수명을 분리해 검사한다. Mesh Particle 전용 transformMotionDuration이나 Ring Fill을 강제로 넣지 않는다. XZ 직경·고정 중심·projector 깊이와 fade 끝을 실제 CPU 행으로 확인한다.
 - 쿠크 원형/도넛 native3600/3601은 고정 경계와 채움을 한 draw에서 계산한다. 발탄의 물리3요소와 같다고 native를 중복하거나 projector 전체 scale을 키우면 경계 합성·위치가 달라진다. `inner`만 원형0 또는 도넛의 고정 내경 비율에서1까지 보간하고 원본 lifetime·fade·thickness·drawscale을 보존한다. sourceTimeOrigin과 start delay를 포함한 native packet의 실제 시각별 값, 끝값 도달 시 양수 alpha, 실제 패턴이 사용하는 warning/impact까지 확인한다.
+
+- 발탄 native2614 원형의 inner는 row0/lane1이고 native2615 부채꼴은 row0/lane2다. 이름이 같아도 typed native binding의 실제 row/lane을 확인한다. source-clock key는 start delay와 `sourceTimeOriginSeconds`를 함께 반영하고, 독립화 시 둘을0 기준으로 맞춘다. shader 전체나 projector 크기를 바꾸지 않고 다른 native lane과 원본 fade를 보존한다.
+- PlayDecalEffect의 optionalName `Decal`이 있는193-byte payload는 기존187-byte 형식보다 뒤쪽 field offset이6바이트 밀린다. raw 길이·문자열 길이·내용·source hash를 확인하지 않고 SkillDecal/SkillEffect/fade를 고정 offset으로 읽지 않는다. 부착된 sector 방향은 notify TRS·snapshot source basis·projector 전방을 함께 검사하며 전체 asset 회전이나 배율을 강제하지 않는다. 후보와 설치·GPU 표시를 구분한 검증은 [발탄 G16 결과](09-09/2026-09-09_VALTAN_COMPOSITION_AUTHORING_PARITY_RESULT.md#2026-09-28-g16-4방향-부채꼴-분리와-추적-도끼-큰-원형-후보)를 따른다.
 
 실제 적용과 검증은 [도넛·분열·손 트레일 결과](09-13/2026-09-13_KOUKU_PATTERN_RADIAL_MOTION_RESULT.md)를 따른다.
 
@@ -4212,6 +4400,26 @@ source 실패를 매프레임 재파싱하지 않으며 기존 재생 cache를 �
   종료 위치를 ledger에서 한 번 저장하고, 이후 stage retarget이 덮지 않도록 occurrence로
   소유한다. 다음 선택·완료·취소·새 패턴 시작은 원래 yaw를 복구해야 한다. 사용자 타이밍과
   원본 무기 궤적을 바꾸지 않고 실제 다음 공격 stage까지 고정되는지 검사한다.
+
+### ocean-42의 월드 위치와 카메라 상대 위치
+
+원본 PS가 translated-world 입력에 origin을 더해 UV 위치를 복구하고 origin에서 그 위치를
+빼서 시선을 만들 때, 절대 위치와 0 origin의 조합은 월드 원점을 카메라로 오인한다.
+program 42의 baked/non-baked 입력은 source 축·cm 단위의 camera-relative 위치와 실제
+camera origin을 함께 전달한다. 투영의 마지막 행도 같은 origin을 반영해 깊이를 보존한다.
+높이나 Fresnel 색을 먼저 바꾸지 말고 원점에서 멀리 떨어진 같은 장면의 평행이동 불변성을 검사한다.
+추출 DDS와 설치 DDS의 mipCount는 별도로 확인한다. 추출 receipt의 성공이 Resources에
+원본 mip 체인이 설치됐다는 증거는 아니다. 09-27 MAHARAKA_MAP_RESTORATION_RESULT 참조.
+
+### Landscape glTF와 최종 WModel의 좌표계를 따로 검사한다
+
+Client `(UE X,Z,-Y)` 정점을 glTF에 그대로 기록하면 converter의 RH->LH 변환이
+타일 local Z를 다시 뒤집는다. anchor가 정확해도 높이/painted layer가 엉뚱한 위치에
+나타나 육지가 침수된다. 직렬화 시 position/normal/tangent Z, tangent handedness,
+winding을 함께 RH로 변환하고 최종 WModel+placement를 원본 grid/height/collision과
+대조한다. 기존 WModel과 triangle count/positions가 같다는 검사는 원본 일치 검사가 아니다.
+마하라카 16개만 재cook했으며 기존 베른 설치 리소스에 일괄 보정을 전파하지 않았다.
+09-27 MAHARAKA_MAP_RESTORATION_RESULT G06 참조.
 - 클래스 무비의 머리카락이 사라지면 geometry 존재와 material texture 검사만으로 끝내지 않는다.
   원본 PS의 leading unowned CB prefix가 primitive opacity/environment를 곱하는지 확인한다.
   FT06 native600은 material pack 앞 cb0[0..1]의 Base 환경 배율과 Base/Light opacity를
@@ -4385,3 +4593,91 @@ NONLIGHT/BLEND pass도 초상에 연결해야 한다. 이들 픽셀은 G-buffer 
 속박 검증은 N명 중 N-1명 선택만 확인하지 말고 실제 Complete Play 진입 뒤 두 session의
 snapshot tick 진행과 자유 플레이어의 실제 이동까지 확인한다. GUIDE_AI는 인간 인원에서 제외한다.
 근거: `.md/GB/09-27/2026-09-27_KOUKU_HEALTH_STAGGER_BARS_IMPLEMENTATION_RESULT.md`.
+
+
+### UI 게이지의 색 덮임과 반복 크기 조절
+
+- 특정 UI 바만 색이 다르면 전역 rendering option보다 실제 PNG alpha, slot 생성 순서와
+  같은 sort layer의 겹침을 먼저 확인한다. 불투명 보라 track이 주황 fill 뒤에 그려지면
+  fill 수치와 texture가 정상이어도 보이지 않는다. 빈 영역이 필요한 바는 빈 배경과 fill만 표시한다.
+- 크기와 위치를 따로 편집할 때는 원본 rect를 보관하고 공통 frame 중심 기준 scale 후
+  X/Y offset을 적용한다. runtime rect를 다시 축소하면 반복 편집·Reload마다 크기가 누적된다.
+  저장 배율도 최신 디스크의 필드별 병합·충돌·공유 lock과 원자 교체에 포함한다.
+- 광대 얼굴의 작은 바는 플레이어 광기 게이지다. 보스 머리 위 HP의 앵커 결함으로 진단하기
+  전에 stable slot과 presentation owner를 식별한다.
+- 근거: `09-27/2026-09-27_KOUKU_AUDIO_MARIO_HUD_POLISH_IMPLEMENTATION_RESULT.md` G04 후속.
+
+### 장판의 시작 앵커와 반복 사운드 수명
+
+- 보스 위치에서 발생한 고정 장판은 `BOSS + followBoss=false`로 시작 pose를 보존한다.
+  MAP으로만 바꾸면 local offset이 절대 맵 좌표가 된다. Collider는 해당 이펙트의
+  `anchorPresentationOccurrenceId`를 공유해야 Client 표시와 Server `captureStartMs`가 일치한다.
+- 사운드가 빠졌다고 애니메이션 notify만 검사하지 않는다. 원본 Projectile의 AkEvent와
+  실제 저장 occurrence/group 내부 clock을 대조한다. 사각 그룹 앞에 미사일 시간을 넣을 때
+  내부 폭발 clock 증가와 occurrence 시작 감소를 함께 적용해 사용자 폭발 시간을 유지한다.
+- 시작음+지연된 반복음으로 구성된 원본 event 전체를 loop하면 시작음이 반복된다.
+  각 native layer를 분리하고 반복 lane에만 World `loopToDuration`을 켠다. 수명뿐 아니라
+  motion 교체/NEXT/외부 cutoff에서도 이전 loop를 정리하고 one-shot tail과 구분한다.
+- Movie 헤어의 bind/rest·finite 성공은 포즈 중 머리 형태 보존을 뜻하지 않는다. 실제 움직임
+  key 구간과 중간 시각을 head 기준으로 비교한다. 긴 마지막 hold만 샘플하면 변형을 놓친다.
+  호환되지 않는 긴 모발 애니메이션을 대신해 head 추종형 외형을 선택한 경우에는 원본
+  hair dynamics 복원과 구분하고, 정점·재질·Movie clip 보존과 실제 소비자 연결을 확인한다.
+- 근거: `09-27/2026-09-27_KOUKU_AUDIO_MARIO_HUD_POLISH_IMPLEMENTATION_RESULT.md`.
+
+
+### 편집 창 Present·정적 맵·baked trail의 반복 비용
+
+- multi-viewport의 `Present(0,0)`은 VSync가0이어도 같은 device의 제출 queue에서 기다릴 수 있다. GPU elapsed와 CPU frame이 같다는 사실을 GPU 연산 포화로 해석하지 않는다. viewport별 ID/rect/HRESULT와 busy를 함께 기록하고, nonblocking secondary 제출은 순서를 순환해 특정 창의 지속적인 후순위 밀림을 막는다.
+- 정적 그림자 cache hit라도 매 caster의 불변 surface/profile을 다시 해석하면 비용이 남는다. material admission만 stage에 준비하고 morph/override/transform/visibility/source option은 매번 확인한다. frustum 재사용은 최종 camera revision과 transform, reject hysteresis까지 일치해야 한다.
+- baked trail의 점마다 같은 source module/distribution을 문자열로 찾지 않는다. 한 호출 동안 불변인 조회만 끌어올리고 per-point time/random/WORLD_SAMPLE 평가와 출력 bit 동등성을 검사한다.
+- Effect Tool 단일 Product와 패턴 전체가 다르면 shader 종류를 바꾸기 전에 stable cue 목록과 각 asset의 visible element를 비교한다. 저작 Product와 원본 복원 Product의 동시 연결을 공통 asset 삭제로 해결하지 않는다.
+- 근거: `09-27/2026-09-27_ARENA_WORKBENCH_PERFORMANCE_RESULT.md`.
+
+### 전조·폭발 분리의 원본 근거와 owner-hit 시계
+
+- 현재 손저작 전조·폭발의 element를 나누거나 조합한 결과는 `PROJECT_AUTHORED`다. 같은 mesh/material을 쓰거나 이름·이미지가 비슷하다는 사실로 원본 FullRestore라고 부르지 않는다. 원본 ParticleSystem과 실제 owner·호출 시각의 연결이 없으면 그 경계를 명시하고 저작값을 보존한다.
+- owner-hit/지연 연쇄로 바꿀 때 active 안의 고정 시각 전조·폭발도 분리한다. 별도 event와 effect ID를 join하고 local preview는 stage age가 아닌 동일 global timeline clock으로 armed/hit·pause/seek를 평가한다. terminal에는 active/armed handle을 정리한다.
+- 표시 수명을 늘릴 때 `detail.timing/particle`만 수정하면 sourceRecipe의 Required emitter duration 또는 Lifetime distribution이 먼저 끝날 수 있다. 실제 마지막 연쇄 시각 이후의 native sample까지 확인하고 owner terminal stop과 resource particle 수명을 구분한다.
+- 근거: `09-27/2026-09-27_ARENA_WORKBENCH_PERFORMANCE_RESULT.md` G06.
+
+
+### 2026-09-28 유령 발탄: 각진 면과 백색 반사를 투명도 문제로 묶지 않기
+
+- native84/pass16은 원본 alpha를 우회해 가시성을 확보한 정책이다. 맵 청록 pixel mask를 공유한다는 뜻이 아니며, 실제 호출 경로에 없는 map discard를 수정하지 않는다.
+- 설치 ghost WINT1.0의 모든 14,472 triangles에 face normal이 저장돼 있었다. 원본 glTF corner의 position/UV를 대응시킨 뒤 `restore_skinned_source_basis.py`로 NORMAL/TANGENT/sign만 복구한다. shader에서 normal을 normalize하거나 임의 평균내는 방식으로 원본 smooth basis를 대신하지 않는다. WINT1.5의 sign을 실제 native decoder/animated input까지 확인한다.
+- native84 passValues[4]는 `specular * w + rgb` 계약이다. `(1,1,1,1)`은 피부 specular_color를0으로 해도 흰 반사를 남긴다. 해당 program의 중립값은 `(0,0,0,1)`이며 generator와 Engine/Client Base/Light mirror를 함께 맞춘다. 다른 native program의 상수는 별도 ABI 근거 없이 바꾸지 않는다.
+- 원본 specular tint의 복원과 사용자가 요청한 피부 무반사 조정은 구분한다. 이번 skin slot RGB0은 PROJECT_AUTHORED이며 diffuse/cloud/rim을 끄는 설정이 아니다. 모델 복구·후보 GPU 검증·설치·사용자 화면 판정은 각각 기록한다.
+- 근거와 적용 상태: [유령 발탄 결과 G07](09-22/2026-09-22_GHOST_VALTAN_CHARACTER_SELECT_PREVIEW_RESULT.md).
+
+### V1 Effect Tool 그룹 표시의 반복 문자열 포맷
+
+- 큰 source Effect를 열어 둔 것만으로 Authoring/Detail 창이 느려지면 저장·parse를 원인으로 추측하지 말고 각 Render 소비자를 추적한다. 동일 attachment의16float를 모든 Element에서 hexfloat로 포맷하는 비용은 stable ID 선형 검색보다 클 수 있다. member 검색만 제거한 후보와 실제 key 생성 비용을 분리해 측정한다.
+- `Build_AttachmentElementGroups`는 호출 안의 typed attachment/manual group/inheritance identity와 member view를 재사용한다. 기존 문자열 key와 첫 등장 순서, 양수·음수0, 그룹 중심·회전 권한은 보존한다. 포인터와 string_view를 다음 frame이나 문서 교체 뒤까지 보관하지 않는다. Source/Detail 편집을 알지 못하는 cross-frame cache로 바꾸지 않는다.
+- 작은 cinematic Effect와 수백 Element의 source Effect를 함께 비교한다. 선택 asset ID가 없는 캡처에 임의 fixture ID를 붙이거나 helper 국소 시간을 전체 FPS 개선으로 보고하지 않는다. 근거는 `09-27/2026-09-27_ARENA_WORKBENCH_PERFORMANCE_RESULT.md` G10이다.
+
+### 같은 frame의 Timeline 변경과 Detail 초기화
+
+- Sequencer가 typed owner를 바꾸고 Detail identity를 비웠어도 다른 pane은 frame 시작의 immutable view를 가지고 있을 수 있다. 뒤 pane이 구값으로 draft를 다시 채우면 다음 Save의 pending Detail 적용이 정상 trim을 되돌린다. mutation이 허용되고 owner generation이 바뀐 frame에서만 Detail용 local 최신 snapshot을 사용하며 다른 pane의 공유 포인터는 교체하지 않는다. idle 재복사, readonly 조회 차단, 실제 사용자 Detail 값의 무조건 초기화를 피한다.
+- Animation clip 삭제의 Sound cascade를 V2까지 처리한 것으로 간주하지 않는다. exact V2 clip reference가 있으면 안정 ID·baseline·dirty/revision까지 복원 가능한 multiowner transaction이 필요하다. 현재 Valtan은 그 transaction 없이 V2를 일부 삭제하지 않고 binding ID와 함께 삭제를 선행 거절한다. Animation·Sound·V2의 변경0과 기존 자료 보존을 확인한다. 근거는 `09-09/2026-09-09_VALTAN_COMPOSITION_AUTHORING_PARITY_RESULT.md` G30이다.
+
+
+### Composition seek와 실시간 fixed-step 예산을 구분하기
+
+- 이전 stage 끝을 몇 번 샘플링하여 NATURAL tail을 재구성할 때 큰 delta를 일반 Effect Advance로 전달하지 않는다. 실시간 MAX_CATCH_UP_STEPS 제한은 입자 적분을 일부만 실행할 수 있는데 서비스의 요청 elapsed clock은 이미 목적 시각으로 이동해 입자 상태와 표시 시간이 어긋난다. Get_FixedStepClockSeconds도 남은 accumulator를 포함하므로 그 숫자만 비교하면 놓친다.
+- Valtan의 명시 seek/reset 재구성은 AnimationTool → local boss → Sample_LocalBossPreview로 rebuild 의미를 전달하여 기존 Set_SampleTime/Seek를 사용한다. 일반 forward, 자연 stage 경계와 pause/resume는 증분 경로를 유지한다. 큰 실시간 frame을 모두 seek로 바꾸는 성능 우회는 피한다.
+- 단독 Playback.Seek가 정상이어도 실제 AnimationTool/owner/service를 함께 확인한다. 같은 시점의 particle stable ID·count·world·alpha를 비교하고, target-follow 회전과 cinematic suppression은 별도로 측정한다. 근거는 `09-27/2026-09-27_ARENA_WORKBENCH_PERFORMANCE_RESULT.md` G13이다.
+
+
+### Full Restore 반복 저작과 고정 root의 절대 시계
+
+Full Restore의 원본 animationClips/clipDuration/source-stage receipt를 사용자 반복 길이로 덮어쓰지 않는다. standalone 편집용 반복은 검증된 optional authoredPreview(PROJECT_AUTHORED)로 따로 저장하고 해당 소비자만 opt-in한다. builder는 이 저작 override를 검증·보존하며 일반 pattern source matching은 원본 metadata를 계속 사용한다. 실제 패턴에 연결된 효과의 개수를 바꾸면 cue 시작, 반복 모델 phase, bodyVisibility를 함께 검사한다.
+
+고정 world root를 외부 절대 시각으로 매frame 표본화할 때 매번 particle Seek를 호출하면 누적 age 전체를 반복 적분한다. 기존 fixed-step history provider의 첫표본/불연속 Seek와 정상 전진/hold 분기를 사용한다. 상수 root provider는 실제로 고정된 오브젝트에만 사용하고 움직이는 owner의 transform 역사를 대신하지 않는다.
+
+
+### 2026-09-28 저작 V2와 Sound의 역할·시각 receipt
+새로 연결한 V2 Library 그룹은 EffectRoles exact coverage에도 등록해야 한다. 역할 누락을 gameplay hit 추가나 저장한 cue 시각 원복으로 메우지 않는다. 공격 resource를 피해 없는 PROJECT_AUTHORED 연출에 재사용할 때는 shared 역할을 바꾸지 않고 검토한 binding/scope/resource/clock의 exact presentation-only receipt로 제한한다. 의도적으로 편집한 Sound와 contact 차이는 해당 scope의 hit offsets, Sound payload와 실제 wall clock를 결정하는 animation occurrence 전체를 함께 고정한다. Sound source 시각만 고정하면 playRate·선행 clip 길이 변경이 예외를 통해 새 timing drift를 숨긴다. unknown/stale receipt와 이후 drift는 계속 거절한다.
+
+### 생성 돌과 폭발 파편의 복구 표면 연결
+
+standing rock과 explosion debris가 다른 source material을 사용할 수 있다. 생성 돌을 복원해도 별도 hit 문서와 내용을 복사한 편집용 composite는 자동 갱신되지 않는다. 같은 표면을 요청받으면 실제 WModel geometry·UV/N/T·sampler와 material dynamic 채널을 대조한다. 기둥 mesh를 작은 파편에 통째로 치환해 크기·실루엣을 바꾸지 않고, 기존 파편 수명·탄도·색·저작 파동을 보존한 표면 연결과 원본 폭발 전체 복원 주장을 구분한다. 구체 적용과 native 비교는 09-28 VALTAN_PR_INTEGRATION RESULT에 기록한다.

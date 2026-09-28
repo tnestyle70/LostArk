@@ -2654,6 +2654,25 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 				return false;
 			}
 		}
+		else if (!fields.empty() && "BOSSCOMBATOBJECTOWNERHITCHAIN" == fields[0])
+		{
+			std::uint32_t delayMs = 0u;
+			if (6u != fields.size() || !IsStableId(fields[1]) || !IsStableId(fields[2]) ||
+				!IsStableId(fields[3]) || !ParseNumber(fields[4], delayMs) ||
+				delayMs == 0u || delayMs > 600000u || !IsStableId(fields[5]))
+			{
+				m_strStatus = "Boss combat object owner hit chain row is invalid";
+				return false;
+			}
+			const auto owner = m_BossCombatObjects.find(std::string(fields[2]));
+			if (owner == m_BossCombatObjects.end() || owner->second.strEncounterId != fields[1] ||
+				!owner->second.OwnerHitChain.strTriggerActionId.empty())
+			{
+				m_strStatus = "Boss combat object owner hit chain has no unique owner";
+				return false;
+			}
+			owner->second.OwnerHitChain = {std::string(fields[3]), std::string(fields[5]), delayMs};
+		}
 		else if (!fields.empty() && "BOSSCOMBATOBJECTHIT" == fields[0])
 		{
 			BOSS_COMBAT_OBJECT_HIT hit{};
@@ -4044,6 +4063,18 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 			if (owners == m_BossPatterns.end()) { m_strStatus = "Attack encounter is missing"; return false; }
 			const auto pattern = std::find_if(owners->second.begin(), owners->second.end(), [&](const auto& row) { return row.strPatternId == fields[2]; });
 			if (pattern == owners->second.end()) { m_strStatus = "Attack pattern is missing"; return false; }
+			if (fields[4] == "STAGE")
+			{
+				const auto stage = std::find_if(pattern->Stages.begin(), pattern->Stages.end(),
+					[&](const auto& row) { return row.strActionId == fields[3]; });
+				if (set != 0u || stage == pattern->Stages.end() || stage->AttackContacts.size() != ordinal ||
+					(hit.strDamageKind == "PROFILE" && !Find_DamageRatePercent(hit.strDamageProfileId)))
+				{ m_strStatus = "Stage contact owner, order or profile is invalid"; return false; }
+				stage->AttackContacts.push_back(std::move(hit));
+				if (!stage->iDurationMs || !LostArk::Shared::Validate_AttackHitTemplates(stage->AttackContacts, stage->iDurationMs - 1u))
+				{ m_strStatus = "Stage contact shape, time or damage is invalid"; return false; }
+				continue;
+			}
 			const auto trigger = std::find_if(pattern->MechanicTriggers.begin(), pattern->MechanicTriggers.end(), [&](const auto& row) { return row.strTriggerId == fields[3]; });
 			if (trigger == pattern->MechanicTriggers.end()) { m_strStatus = "Attack dynamic owner is missing"; return false; }
 			std::vector<LostArk::Shared::ATTACK_HIT_TEMPLATE>* destination = nullptr;
@@ -6836,6 +6867,11 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 			{
 				const BOSS_PATTERN_STAGE_DEFINITION& stage =
 					pattern.Stages[stageIndex];
+				if (!LostArk::Shared::Validate_StageAttackContacts(stage.AttackContacts, stage.iDurationMs,
+					stage.HitOffsetsMs, stage.iHitCount, stage.iHitDelayMs, stage.iHitIntervalMs) ||
+					(!stage.AttackContacts.empty() && (stage.eHitActivationKind != BOSS_PATTERN_HIT_ACTIVATION_KIND::PULSE_SCHEDULE ||
+					 stage.ePlayerResponse != BOSS_PATTERN_PLAYER_RESPONSE::DAMAGE || stage.Motion.eKind != BOSS_PATTERN_STAGE_MOTION_KIND::NONE)))
+				{ m_strStatus = "Stage contacts do not match ordinary pulse authority"; return false; }
 				const bool zeroShapeValues =
 					0.f == stage.fHitOuterRadius &&
 					0.f == stage.fHitInnerRadius &&
@@ -7686,6 +7722,28 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 		{
 			m_strStatus = "Boss combat object event count or visual ID is invalid";
 			return false;
+		}
+		if (!combatObject.OwnerHitChain.strTriggerActionId.empty())
+		{
+			const auto* patterns = Find_BossPatterns(combatObject.strEncounterId);
+			const BOSS_PATTERN_STAGE_DEFINITION* triggerStage = nullptr;
+			if (patterns != nullptr)
+				for (const auto& pattern : *patterns)
+					if (pattern.strPatternId == combatObject.strOwnerPatternId)
+						for (const auto& stage : pattern.Stages)
+							if (stage.strActionId == combatObject.OwnerHitChain.strTriggerActionId)
+								triggerStage = &stage;
+			if (combatObject.eKind != BOSS_COMBAT_OBJECT_KIND::FIXED_AREA || combatObject.fCoverRadiusM <= 0.f ||
+				combatObject.Hits.size() != 1u || combatObject.Hits[0].iRepeatCount != 1u ||
+				combatObject.Hits[0].eTrigger != BOSS_COMBAT_OBJECT_HIT_TRIGGER::TIMED ||
+				!combatObject.PresentationPulses.empty() || triggerStage == nullptr ||
+				triggerStage->eHitShape != BOSS_PATTERN_HIT_SHAPE::CONE || triggerStage->iHitCount == 0u ||
+				combatObject.OwnerHitChain.iDelayMs >= combatObject.iLifeMs ||
+				combatObject.OwnerHitChain.strArmedPresentationEventId == combatObject.Hits[0].strHitId)
+			{
+				m_strStatus = "Boss combat object owner hit chain requires one timed hit and an owner cone action";
+				return false;
+			}
 		}
 		for (const BOSS_COMBAT_OBJECT_HIT& hit : combatObject.Hits)
 		{

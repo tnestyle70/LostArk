@@ -142,7 +142,7 @@ class ValtanRockPillarGroupContractTests(unittest.TestCase):
         expected = {
             "combatobject.valtan.ground-roar.rock": ("ground-roar", 6200, 5000),
             "combatobject.valtan.six-pizza.rock-pillar":
-                ("six-pizza", 20700, 19500),
+                ("six-pizza", 32000, 0),
             "combatobject.valtan.struggling.rock-pillar":
                 ("struggling", 6200, 5000),
         }
@@ -277,8 +277,8 @@ class ValtanRockPillarGroupContractTests(unittest.TestCase):
             "combatobject.valtan.six-pizza.rock-pillar",
         )
         self.assertEqual(1.5, six_pizza["coverRadiusM"])
-        self.assertEqual(19500, six_pizza["hits"][0]["atMs"])
-        self.assertEqual(20700, six_pizza["lifeMs"])
+        self.assertEqual(0, six_pizza["hits"][0]["atMs"])
+        self.assertEqual(32000, six_pizza["lifeMs"])
         self.assertNotIn("presentationEvents", six_pizza)
 
         pizza_pattern = row_by_id(
@@ -317,7 +317,7 @@ class ValtanRockPillarGroupContractTests(unittest.TestCase):
             "combatobject.valtan.six-pizza.rock-pillar",
         )
         self.assertEqual(1.5, rebuilt_six_pizza["coverRadiusM"])
-        self.assertEqual(20700, rebuilt_six_pizza["lifetimeMs"])
+        self.assertEqual(32000, rebuilt_six_pizza["lifetimeMs"])
 
     def test_cover_radius_requires_a_timed_fixed_area_hit(self) -> None:
         invalid = copy.deepcopy(self.combat)

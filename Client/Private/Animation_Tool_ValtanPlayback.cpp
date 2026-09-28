@@ -5,6 +5,10 @@
 #include "Character.h"
 #include "CharacterPreviewPanel.h"
 #include "GameInstance.h"
+#include "Effect_PresentationService.h"
+#ifdef _DEBUG
+#include "Level_ValtanArena.h"
+#endif
 #include "Model.h"
 #include "ProjectDataRoot.h"
 #include "RuntimeAssetRoot.h"
@@ -343,6 +347,7 @@ bool_t Client::CAnimation_Tool::Build_ValtanPatternMasterTimeline(
 	}
 
 	uint64_t iTimelineMs = 0u;
+	uint64_t iOwnerHitChainPreviewEndMs = 0u;
 	for (const VALTAN_STAGE_VIEW* pStage : StagePath)
 	{
 		if (nullptr == pStage || 0u == pStage->iDurationMs ||
@@ -364,6 +369,15 @@ bool_t Client::CAnimation_Tool::Build_ValtanPatternMasterTimeline(
 			return false;
 		}
 		const uint64_t iStageTimelineStartMs = iTimelineMs;
+		for (const auto& Object : Stage.CombatObjectEffects)
+		{
+			if (!Object.OwnerHitChain)
+				continue;
+			const uint64_t iLastWave = (std::max)(Object.iSpawnScheduleCount, 1u) - 1u;
+			const uint64_t iObjectEndMs = iStageTimelineStartMs + Object.iFirstSpawnOffsetMs +
+				iLastWave * Object.iSpawnIntervalMs + Object.iLifetimeMs;
+			iOwnerHitChainPreviewEndMs = (std::max)(iOwnerHitChainPreviewEndMs, iObjectEndMs);
+		}
 		if (Stage.bSuppressAnimation)
 		{
 			if (!Stage.ClipOccurrences.empty())
@@ -553,6 +567,22 @@ bool_t Client::CAnimation_Tool::Build_ValtanPatternMasterTimeline(
 		strOutStatus = "Master authoring timeline is empty.";
 		return false;
 	}
+	if (iOwnerHitChainPreviewEndMs > iTimelineMs)
+	{
+		const uint64_t iTailMs = iOwnerHitChainPreviewEndMs - iTimelineMs;
+		auto& LastItem = OutPlaylist.back();
+		if (iOwnerHitChainPreviewEndMs > (std::numeric_limits<uint32_t>::max)() ||
+			iTailMs > (std::numeric_limits<uint32_t>::max)() - LastItem.iAuthoringWallMs)
+		{
+			strOutStatus = "Master owner-hit presentation tail duration overflowed.";
+			return false;
+		}
+		// Only Preview keeps sampling after the final Server stage. The existing
+		// finite clip sampler holds the last pose while the same global clock
+		// completes delayed combat-object warnings and terminal effects.
+		LastItem.iAuthoringWallMs += static_cast<uint32_t>(iTailMs);
+		iTimelineMs = iOwnerHitChainPreviewEndMs;
+	}
 	iOutDurationMs = static_cast<uint32_t>(iTimelineMs);
 	strOutStatus = "Admitted " + Pattern.strPatternId + " / " +
 		ValtanPatternMasterPathName(ePath) + " / " +
@@ -673,7 +703,8 @@ bool_t Client::CAnimation_Tool::Apply_ValtanPatternMasterPose(
 	const shared_ptr<Engine::CModel>& pModel,
 	const VALTAN_PATTERN_MASTER_PLAY_ITEM& Item,
 	const f32_t fLocalWallSeconds,
-	const bool_t bForceAnimationEdge) const
+	const bool_t bForceAnimationEdge,
+	const bool_t bRebuildEffectHistory) const
 {
 	if (nullptr == pModel || !std::isfinite(fLocalWallSeconds) ||
 		fLocalWallSeconds < 0.f)
@@ -698,7 +729,7 @@ bool_t Client::CAnimation_Tool::Apply_ValtanPatternMasterPose(
 			ePatternAction,
 			Item.strActionId,
 			fStageWallSeconds,
-			bForceAnimationEdge))
+			bForceAnimationEdge, bRebuildEffectHistory))
 	{
 		return false;
 	}
@@ -706,13 +737,17 @@ bool_t Client::CAnimation_Tool::Apply_ValtanPatternMasterPose(
 	   pose explicitly. Pausing the model prevents a second local frame clock
 	   from drifting between those samples. */
 	pModel->Set_AnimPaused(true);
+	// Tool sampling runs after ObjectManager iteration. A UI scrub must commit
+	// its replacement now so the next Late_Update can submit it before rendering.
+	CEffectPresentationService::Commit_LocalBossPreviewSpawns(Boss);
 	return true;
 }
 
 bool_t Client::CAnimation_Tool::Activate_ValtanPatternMasterItem(
 	const shared_ptr<Engine::CModel>& pModel,
 	const std::size_t iItem,
-	const f32_t fLocalWallSeconds)
+	const f32_t fLocalWallSeconds,
+	const bool_t bRebuildEffectHistory)
 {
 	if (nullptr == pModel ||
 		iItem >= m_ValtanPatternMasterPlaylist.size())
@@ -738,7 +773,8 @@ bool_t Client::CAnimation_Tool::Activate_ValtanPatternMasterItem(
 	m_fValtanPatternMasterItemElapsedSeconds =
 		std::clamp(fLocalWallSeconds, 0.f, fDurationSeconds);
 	if (!Apply_ValtanPatternMasterPose(
-		pModel, Item, m_fValtanPatternMasterItemElapsedSeconds, true))
+		pModel, Item, m_fValtanPatternMasterItemElapsedSeconds, true,
+		bRebuildEffectHistory))
 	{
 		return false;
 	}
@@ -792,10 +828,33 @@ bool_t Client::CAnimation_Tool::Seek_ValtanPatternMasterPreview(
 					m_ValtanPatternMasterBoss.lock();
 				if (nullptr == PreviewBoss || PreviewBoss->Get_BodyModel() != pModel)
 					return false;
+				// Restore the cinematic's captured boss world before sampling an
+				// earlier Stage. The regular MainApp cinematic sampler will claim
+				// the destination interval again if it owns that requested clock.
+#ifdef _DEBUG
+				if (auto* Arena = CLevel_ValtanArena::Get_Active())
+					Arena->Debug_StopActionWorkbenchCinematic();
+#endif
 				PreviewBoss->Reset_LocalPatternPreviewTransport();
+				// Reconstruct the path up to the selected Stage. Sampling only the
+				// destination loses every NATURAL/timed tail born in an earlier Stage.
+				// One sample at each Stage end admits every still-live occurrence;
+				// the existing stage transition retires the other stop policies.
+				for (size_t iPrevious = 0u; iPrevious < iItem; ++iPrevious)
+				{
+					const auto& Previous = m_ValtanPatternMasterPlaylist[iPrevious];
+					const auto& Next = m_ValtanPatternMasterPlaylist[iPrevious + 1u];
+					if (Previous.strActionId == Next.strActionId)
+						continue;
+					const f32_t fPreviousEndSeconds = (std::max)(0.f,
+						static_cast<f32_t>(Previous.iAuthoringWallMs) * 0.001f - 0.0001f);
+					if (!Apply_ValtanPatternMasterPose(pModel, Previous,
+							fPreviousEndSeconds, true, true))
+						return false;
+				}
 			}
 			if (!Activate_ValtanPatternMasterItem(
-				pModel, iItem, fLocalSeconds))
+				pModel, iItem, fLocalSeconds, bResetPresentationTransport))
 			{
 				return false;
 			}
@@ -994,8 +1053,12 @@ void Client::CAnimation_Tool::Rebuild_ValtanPatternPreviewSounds()
 				Reject(Cue.strOccurrenceId + " could not load WAV duration: " + Asset + ".");
 			else
 			{
+				Sound.iPlaybackOffsetMs = Cue.bHasPlaybackOffset ? Cue.iPlaybackOffsetMs : 0u;
+				Sound.iDurationMs = Sound.iDurationMs > Sound.iPlaybackOffsetMs ?
+					Sound.iDurationMs - Sound.iPlaybackOffsetMs : 0u;
+				if (Cue.bHasPlaybackDuration) Sound.iDurationMs = (std::min)(Sound.iDurationMs, Cue.iPlaybackDurationMs);
 				Sound.fTimelineStartMs = fStartMs;
-				m_ValtanPreviewSounds.push_back(std::move(Sound));
+				if (Sound.iDurationMs) m_ValtanPreviewSounds.push_back(std::move(Sound));
 			}
 			if (Cue.eRepeatPolicy != VALTAN_PATTERN_SOUND_REPEAT_POLICY::EACH_LOOP) break;
 		}
@@ -1030,12 +1093,13 @@ void Client::CAnimation_Tool::Sample_ValtanPatternPreviewSounds(const bool_t bRe
 			Sound.iHandle = 0u;
 			continue;
 		}
-		const uint32_t iAgeMs = static_cast<uint32_t>((std::max)(0.0, fAgeMs));
+		const uint32_t iAgeMs = Sound.iPlaybackOffsetMs + static_cast<uint32_t>((std::max)(0.0, fAgeMs));
 		if (!Sound.bAttempted)
 		{
 			Sound.bAttempted = true;
 			Sound.iHandle = CGameInstance::Get().Play_SoundCue(Sound.Path, 1.f,
-				iAgeMs, m_bValtanPatternMasterPaused, m_fValtanPatternPreviewSpeed);
+				iAgeMs, m_bValtanPatternMasterPaused, m_fValtanPatternPreviewSpeed,
+				Sound.iPlaybackOffsetMs + Sound.iDurationMs);
 			if (!Sound.iHandle)
 				m_strValtanPreviewSoundStatus = "Sound preview playback failed: " + Sound.strOccurrenceId + ".";
 		}

@@ -5,6 +5,8 @@
 #include "ActionPresentationTimeline.h"
 #include "ActorCatalog.h"
 #include "AnimationSkillBindingDocument.h"
+#include "AnimationTargetService.h"
+#include "Character.h"
 #include "Body_Valtan.h"
 #include "Collider.h"
 #include "CameraShakeService.h"
@@ -13,6 +15,7 @@
 #include "Effect_PresentationService.h"
 #include "EncounterPatternReference.h"
 #include "GameInstance.h"
+#include "Gameplay/CombatObjectHitChain.h"
 #include "Model.h"
 #include "Navigation.h"
 #include "ProjectDataRoot.h"
@@ -50,6 +53,25 @@ namespace
 	bool Is_ArenaCenterTargetFollowCueAnchor(const std::string_view slot)
 	{
 		return slot == "arena.center.target-follow";
+	}
+
+	bool Try_ReadLocalPreviewTargetYaw(
+		const std::shared_ptr<CTransform>& Target,
+		const float3_t& Center,
+		f32_t& OutYawDegrees)
+	{
+		if (!Target)
+			return false;
+		float3_t Position{};
+		XMStoreFloat3(&Position, Target->Get_State(STATE::POSITION));
+		const f32_t dx = Position.x - Center.x;
+		const f32_t dz = Position.z - Center.z;
+		if (!std::isfinite(dx) || !std::isfinite(dz) ||
+			!std::isfinite(Position.y) || !std::isfinite(Center.y) ||
+			dx * dx + dz * dz <= 0.000001f)
+			return false;
+		OutYawDegrees = XMConvertToDegrees(std::atan2(dx, dz));
+		return true;
 	}
 
 	bool Is_PatternTargetSnapshotCueAnchor(const std::string_view slot)
@@ -478,6 +500,11 @@ void CValtan::Load_PatternHitAreaDebug()
 				area.iHitIntervalMs = stage.iHitIntervalMs;
 				area.iHitDelayMs = stage.iHitDelayMs;
 				area.HitOffsetsMs = stage.hitOffsetsMs;
+                area.AttackContacts = stage.AttackContacts;
+                area.bContactAnchorSupported = !stage.bHasHitAnchor || stage.hitAnchorKind == "BOSS_CURRENT";
+                area.fContactAnchorForwardM = stage.fHitAnchorForwardOffsetM;
+                area.fContactAnchorRightM = stage.fHitAnchorRightOffsetM;
+                area.fContactAnchorYawDegrees = stage.fHitAnchorYawOffsetDegrees;
 				area.iStageDurationMs = stage.iDurationMs;
 				area.bHasActivation = stage.bHasHitActivation;
 				area.iActivationStartMs = stage.iHitActivationStartMs;
@@ -611,7 +638,7 @@ void CValtan::Draw_PatternHitAreaDebug() const
 
 	HIT_AREA_SHAPE Shape{};
 	const bool_t bDrawHitGeometry =
-		bDrawHitPulse || bDrawStageGeometry;
+		area.AttackContacts.empty() && (bDrawHitPulse || bDrawStageGeometry);
 	const uint32_t iHitGeometryColor = bDrawHitPulse ?
 		PATTERN_HIT_COLOR_RGBA : PATTERN_AUTHORING_GEOMETRY_COLOR_RGBA;
 	if (bDrawHitGeometry &&
@@ -655,6 +682,46 @@ void CValtan::Draw_PatternHitAreaDebug() const
 			Draw_WithYawOffset(-60.f, 0.f, 0.f, Shape, iHitGeometryColor);
 		}
 	}
+    // Per-contact geometry supersedes the common legacy shape. The Server
+    // stage-origin transform is not replicated; never invent that anchor here.
+    if (area.bContactAnchorSupported)
+    {
+        const f32_t anchorYaw = XMConvertToRadians(area.fContactAnchorYawDegrees);
+        for (const auto& contact : area.AttackContacts)
+        {
+            const bool pulse = fAgeMs >= static_cast<f32_t>(contact.iAtMs) &&
+                fAgeMs <= static_cast<f32_t>(contact.iAtMs) + MIN_VISIBLE_HIT_WINDOW_MS &&
+                (isPreviewDriven || m_isPatternHitPulseDebugVisible);
+            if (!pulse && !bDrawStageGeometry) continue;
+            HIT_AREA_SHAPE contactShape{};
+            if (contact.strShape == "CIRCLE" || contact.strShape == "RING")
+            {
+                contactShape.iAreaType = 1;
+                contactShape.iAreaRange = ToUnits(static_cast<f32_t>(contact.fRadiusM));
+                contactShape.iAreaInner = ToUnits(static_cast<f32_t>(contact.fInnerRadiusM));
+            }
+            else if (contact.strShape == "CONE")
+            {
+                contactShape.iAreaType = 3;
+                contactShape.iAreaRange = ToUnits(static_cast<f32_t>(contact.fLengthM));
+                contactShape.iAreaInner = ToUnits(static_cast<f32_t>(contact.fInnerRadiusM));
+                contactShape.iAreaAngle = static_cast<int32_t>(contact.fAngleDegrees + 0.5);
+            }
+            else if (contact.strShape == "BOX")
+            {
+                contactShape.iAreaType = 2;
+                contactShape.iAreaRange = ToUnits(static_cast<f32_t>(contact.fLengthM));
+                contactShape.iAreaAngle = ToUnits(static_cast<f32_t>(contact.fHalfWidthM * 2.0));
+            }
+            else continue;
+            const f32_t forward = area.fContactAnchorForwardM + static_cast<f32_t>(
+                contact.fOffsetForwardM * std::cos(anchorYaw) - contact.fOffsetRightM * std::sin(anchorYaw));
+            const f32_t right = area.fContactAnchorRightM + static_cast<f32_t>(
+                contact.fOffsetForwardM * std::sin(anchorYaw) + contact.fOffsetRightM * std::cos(anchorYaw));
+            Draw_WithYawOffset(area.fContactAnchorYawDegrees + static_cast<f32_t>(contact.fYawOffsetDegrees),
+                forward / METERS_TO_UNITS, right / METERS_TO_UNITS, contactShape, pulse ? PATTERN_HIT_COLOR_RGBA : PATTERN_AUTHORING_GEOMETRY_COLOR_RGBA);
+        }
+    }
 	if (bDrawCounterProxy)
 	{
 		HIT_AREA_SHAPE CounterShape{};
@@ -1245,7 +1312,8 @@ bool_t CValtan::Apply_LocalPatternPresentationSample(
 	const LostArk::Shared::WORLD_ENTITY_ACTION patternAction,
 	const std::string_view actionId,
 	const f32_t fActionAgeSeconds,
-	const bool_t bForceAnimationEdge)
+	const bool_t bForceAnimationEdge,
+	const bool_t bRebuildEffectHistory)
 {
 	if (m_isServerAuthoritative || actionId.empty() ||
 		(LostArk::Shared::WORLD_ENTITY_ACTION::PATTERN_WINDUP != patternAction &&
@@ -1258,12 +1326,33 @@ bool_t CValtan::Apply_LocalPatternPresentationSample(
 	if (nullptr == pFallbackClip)
 		return false;
 
+	// Natural Effect tails keep the global preview clock moving after the final
+	// authored Stage. Hold its pose at the finite Stage boundary, including a
+	// LOOP_TO_STAGE_END clip, without rewinding Effect or combat-object clocks.
+	f32_t fPoseAgeSeconds = fActionAgeSeconds;
+	f32_t fAuthoringStageEndSeconds = -1.f;
+	const f32_t fPreviousV2StageAgeSeconds =
+		m_strLocalPreviewActionId == actionId && m_bPatternEffectCueScanAgeValid &&
+		m_fPatternEffectCueScanAgeSeconds <= fActionAgeSeconds ?
+			m_fPatternEffectCueScanAgeSeconds : -1.f;
+	if (m_bLocalPatternAuthoringPreview)
+	{
+		const auto StageDuration =
+			m_LocalPreviewStageDurationMsByActionId.find(std::string(actionId));
+		if (m_LocalPreviewStageDurationMsByActionId.end() != StageDuration)
+		{
+			fAuthoringStageEndSeconds =
+				static_cast<f32_t>(StageDuration->second) * 0.001f;
+			if (fPoseAgeSeconds >= fAuthoringStageEndSeconds)
+				fPoseAgeSeconds = std::nextafter(fAuthoringStageEndSeconds, 0.f);
+		}
+	}
 	std::size_t iAcceptedClipOccurrenceIndex =
 		m_iPatternPresentationClipOccurrenceIndex;
 	if (!Apply_PatternPresentationSample(
 			actionId,
 			*pFallbackClip,
-			fActionAgeSeconds,
+			fPoseAgeSeconds,
 			bForceAnimationEdge,
 			m_iPatternPresentationClipOccurrenceIndex,
 			iAcceptedClipOccurrenceIndex))
@@ -1274,19 +1363,22 @@ bool_t CValtan::Apply_LocalPatternPresentationSample(
 		iAcceptedClipOccurrenceIndex;
 	const auto LocalStage =
 		m_LocalPreviewStageIndexByActionId.find(std::string(actionId));
+	f32_t fPreviewTimelineSeconds = fActionAgeSeconds;
 	if (m_bLocalPatternAuthoringPreview &&
 		m_LocalPreviewStageIndexByActionId.end() != LocalStage)
 	{
 		const bool_t bStageEdge = m_strLocalPreviewActionId != actionId;
-		const bool_t bClockRewind = m_bPatternEffectCueScanAgeValid &&
+		const bool_t bClockRewind = !bStageEdge && m_bPatternEffectCueScanAgeValid &&
 			fActionAgeSeconds + 0.00001f < m_fPatternEffectCueScanAgeSeconds;
 		if (bStageEdge || bClockRewind)
 		{
+			m_bLocalPreviewV2StageRetired = false;
 			const std::shared_ptr<CValtan> Owner =
 				static_pointer_cast<CValtan>(shared_from_this());
 			if (bClockRewind)
 			{
 				CEffectPresentationService::Stop_BossOwner(Owner);
+				m_LocalPreviewTargetFollowEffectRoots.clear();
 			}
 			else
 			{
@@ -1303,6 +1395,11 @@ bool_t CValtan::Apply_LocalPatternPresentationSample(
 		m_strLocalPreviewActionId.assign(actionId);
         m_fLocalStageEnvironmentClockMs = fActionAgeSeconds * 1000.f;
 		m_iLocalPreviewStageIndex = LocalStage->second;
+		const auto StageStart = m_LocalPreviewStageStartMsByActionId.find(std::string(actionId));
+		if (StageStart == m_LocalPreviewStageStartMsByActionId.end())
+			return false;
+		fPreviewTimelineSeconds += static_cast<f32_t>(StageStart->second) * 0.001f;
+		Update_LocalPreviewTargetFollowEffectRoots(fPreviewTimelineSeconds);
 		std::string CombatObjectStatus;
 		if (!Sync_LocalPatternCombatObjectPreview(
 				actionId, fActionAgeSeconds, CombatObjectStatus))
@@ -1314,6 +1411,9 @@ bool_t CValtan::Apply_LocalPatternPresentationSample(
 			return false;
 		}
 		Spawn_DuePatternEffectCues(fActionAgeSeconds);
+		CEffectPresentationService::Sample_LocalBossPreview(
+			static_pointer_cast<CValtan>(shared_from_this()), fPreviewTimelineSeconds,
+			bRebuildEffectHistory);
 	}
 	m_PortalRushRoute = {};
 	if (m_bLocalPatternAuthoringPreview)
@@ -1380,11 +1480,38 @@ bool_t CValtan::Apply_LocalPatternPresentationSample(
 	}
 	if (m_bLocalPatternAuthoringPreview)
 	{
-		Client::CEffectV2Runtime::Sync_StageAuthoring(
-			EffectV2Target, StageActionId.c_str(), fActionAgeSeconds,
-			EffectV2Clocks,
-			Client::CEffectV2Catalog::Get().Get_Snapshot(),
-			m_pDevice, m_pContext);
+		const auto Snapshot = Client::CEffectV2Catalog::Get().Get_Snapshot();
+		if (fAuthoringStageEndSeconds > 0.f &&
+			fActionAgeSeconds >= fAuthoringStageEndSeconds)
+		{
+			if (!m_bLocalPreviewV2StageRetired)
+			{
+				// Reconstruct a direct seek into the tail at the last admitted
+				// Stage instant. Stay outside the cue-crossing epsilon so an
+				// EACH_LOOP epoch at the Stage boundary is never emitted.
+				const f32_t fLastStageSample = (std::max)(fPreviousV2StageAgeSeconds,
+					(std::max)(0.f, fAuthoringStageEndSeconds - 0.0001f));
+				const f32_t fStageTimelineStart =
+					fPreviewTimelineSeconds - fActionAgeSeconds;
+				Client::CEffectV2Runtime::Sync_StageAuthoring(
+					EffectV2Target, StageActionId.c_str(), fLastStageSample,
+					EffectV2Clocks, Snapshot, m_pDevice, m_pContext,
+					fStageTimelineStart + fLastStageSample);
+				m_bLocalPreviewV2StageRetired = true;
+			}
+			// Existing retirement kills Stage-bound children and keeps NATURAL
+			// tails on the global clock. Do not re-enter the old Stage each frame.
+			Client::CEffectV2Runtime::Sync_StageAuthoring(
+				EffectV2Target, "", 0.f, Snapshot,
+				m_pDevice, m_pContext, fPreviewTimelineSeconds);
+		}
+		else
+		{
+			Client::CEffectV2Runtime::Sync_StageAuthoring(
+				EffectV2Target, StageActionId.c_str(), fActionAgeSeconds,
+				EffectV2Clocks, Snapshot,
+				m_pDevice, m_pContext, fPreviewTimelineSeconds);
+		}
 	}
 	else
 	{
@@ -1520,6 +1647,12 @@ void CValtan::Stop_LocalPatternCombatObjectPreview()
 			CEffectPresentationService::Stop_WorldRoot(Handle);
 			Instance.iActiveHandle = 0u;
 		}
+		for (uint64_t* Handle : { &Instance.iArmedHandle, &Instance.iChainTerminalHandle })
+		{
+			if (*Handle != 0u)
+				CEffectPresentationService::Stop_WorldRoot({ *Handle });
+			*Handle = 0u;
+		}
 		for (uint64_t& iTerminalHandle : Instance.TerminalHandles)
 		{
 			if (0u == iTerminalHandle)
@@ -1532,6 +1665,79 @@ void CValtan::Stop_LocalPatternCombatObjectPreview()
 	}
 	m_LocalPreviewCombatObjectInstances.clear();
 	m_strLocalPreviewCombatObjectScopeId.clear();
+	m_fLocalPreviewCombatObjectSampleMs = -1.0;
+}
+
+void CValtan::Update_LocalPreviewCombatObjectHitChains(const double fPatternAgeMs)
+{
+	if (m_isServerAuthoritative || !m_bLocalPatternAuthoringPreview ||
+		!std::isfinite(fPatternAgeMs) || fPatternAgeMs < 0.0)
+		return;
+	if (std::abs(fPatternAgeMs - m_fLocalPreviewCombatObjectSampleMs) <= 0.01)
+		return;
+	if (fPatternAgeMs < m_fLocalPreviewCombatObjectSampleMs)
+	{
+		for (auto& Instance : m_LocalPreviewCombatObjectInstances)
+			Instance.fChainArmedPatternMs = Instance.fChainExplosionPatternMs = -1.0;
+		m_fLocalPreviewCombatObjectSampleMs = -1.0;
+	}
+	for (auto& Leader : m_LocalPreviewCombatObjectInstances)
+	{
+		const auto& Template = Leader.Template;
+		if (!Template.bOwnerHitChain || Leader.iOrdinal != 0u ||
+			Leader.fChainArmedPatternMs >= 0.0)
+			continue;
+		for (const uint32_t HitClockMs : Template.ChainHitPatternClocks)
+		{
+			if (HitClockMs <= m_fLocalPreviewCombatObjectSampleMs + 0.01 ||
+				HitClockMs > fPatternAgeMs + 0.01)
+				continue;
+			std::vector<LOCAL_PATTERN_COMBAT_OBJECT_INSTANCE*> Wave;
+			std::vector<LostArk::Shared::CombatCollision::BODY_CIRCLE_XZ> Bodies;
+			for (auto& Instance : m_LocalPreviewCombatObjectInstances)
+			{
+				const auto& Other = Instance.Template;
+				const uint64_t SpawnMs = static_cast<uint64_t>(Other.iOwnerStageStartMs) + Other.iFirstSpawnOffsetMs;
+				if (Other.strOwnerActionId == Template.strOwnerActionId &&
+					Other.iTemplateOrdinal == Template.iTemplateOrdinal &&
+					HitClockMs >= SpawnMs && HitClockMs < SpawnMs + Other.iLifetimeMs)
+				{
+					Wave.push_back(&Instance);
+					Bodies.push_back({ Instance.vPosition.x, Instance.vPosition.z, Other.fCoverRadiusM });
+				}
+			}
+			float3_t Origin = m_vLocalPreviewCombatObjectBossPosition;
+			if (const auto Center = m_LocalPreviewArenaCenterAnchors.find(m_strLocalPreviewPatternId);
+				Center != m_LocalPreviewArenaCenterAnchors.end())
+				Origin = Center->second;
+			f32_t yaw = m_fLocalPreviewCombatObjectBossYawDegrees;
+			const auto Target = m_LocalPreviewFollowTarget.lock();
+			if (m_bLocalPreviewUsesSceneTarget && !Target)
+				continue;
+			(void)Try_ReadLocalPreviewTargetYaw(Target, Origin, yaw);
+			const f32_t radians = XMConvertToRadians(yaw);
+			LostArk::Shared::CombatObjectHitChain::CONE_HIT Cone;
+			Cone.fOriginX = Origin.x + std::sin(radians) * Template.fChainForwardOffsetM +
+				std::cos(radians) * Template.fChainRightOffsetM;
+			Cone.fOriginZ = Origin.z + std::cos(radians) * Template.fChainForwardOffsetM -
+				std::sin(radians) * Template.fChainRightOffsetM;
+			Cone.fForwardX = std::sin(XMConvertToRadians(yaw + Template.fChainYawOffsetDegrees));
+			Cone.fForwardZ = std::cos(XMConvertToRadians(yaw + Template.fChainYawOffsetDegrees));
+			Cone.fLength = Template.fChainConeLength;
+			Cone.fAngleDegrees = Template.fChainConeAngleDegrees;
+			std::vector<uint32_t> Delays;
+			if (!LostArk::Shared::CombatObjectHitChain::Resolve_ConeDelays(
+					Cone, Bodies, Template.iChainDelayMs, Delays))
+				continue;
+			for (size_t i = 0u; i < Wave.size(); ++i)
+			{
+				Wave[i]->fChainArmedPatternMs = HitClockMs;
+				Wave[i]->fChainExplosionPatternMs = static_cast<double>(HitClockMs) + Delays[i];
+			}
+			break;
+		}
+	}
+	m_fLocalPreviewCombatObjectSampleMs = fPatternAgeMs;
 }
 
 bool_t CValtan::Sync_LocalPatternCombatObjectPreview(
@@ -1617,6 +1823,7 @@ bool_t CValtan::Sync_LocalPatternCombatObjectPreview(
 	// continues across stage edges, including objects born in a previous stage.
 	const double fPatternAgeMs = static_cast<double>(StageStart->second) +
 		static_cast<double>(fActionAgeSeconds) * 1000.0;
+	Update_LocalPreviewCombatObjectHitChains(fPatternAgeMs);
 	for (LOCAL_PATTERN_COMBAT_OBJECT_INSTANCE& Instance : m_LocalPreviewCombatObjectInstances)
 	{
 		const double fObjectAgeMs = fPatternAgeMs -
@@ -1625,6 +1832,8 @@ bool_t CValtan::Sync_LocalPatternCombatObjectPreview(
 		if (fObjectAgeMs + 0.01 < 0.0)
 		{
 			StopHandle(Instance.iActiveHandle);
+			StopHandle(Instance.iArmedHandle);
+			StopHandle(Instance.iChainTerminalHandle);
 			for (uint64_t& Handle : Instance.TerminalHandles)
 				StopHandle(Handle);
 			continue;
@@ -1633,7 +1842,10 @@ bool_t CValtan::Sync_LocalPatternCombatObjectPreview(
 		const BOSS_COMBAT_OBJECT_VISUAL_ENTRY* Visual = CActorCatalog::Find_BossCombatObjectVisual(
 			m_strArchetypeId, Instance.Template.strCombatObjectArchetypeId, Instance.Template.strClientVisualId);
 		if (nullptr == Visual || Visual->effectAssetId != Instance.Template.strActiveEffectAssetId ||
-			Visual->hitEffectAssetId != Instance.Template.strTerminalEffectAssetId)
+			Visual->hitEffectAssetId != Instance.Template.strTerminalEffectAssetId ||
+			(Instance.Template.bOwnerHitChain &&
+				(Visual->armedEffectAssetId != Instance.Template.strArmedEffectAssetId ||
+				 Visual->stopActiveOnHit != Instance.Template.bStopActiveOnHit)))
 			return Rollback("Local combat-object preview catalog visual changed after staging.");
 		const float4x4_t Root = Visual->Make_WorldRoot(Instance.vPosition, Instance.fYawDegrees);
 		const std::string Occurrence = "valtan:local-preview:combat-object:owner:" +
@@ -1642,6 +1854,16 @@ bool_t CValtan::Sync_LocalPatternCombatObjectPreview(
 			Instance.Template.strOwnerActionId + "/template:" +
 			std::to_string(Instance.Template.iTemplateOrdinal) + "/ordinal:" +
 			std::to_string(Instance.iOrdinal);
+		// The placement root is fixed for this preview instance. Reuse the external
+		// history path so forward/held samples do not replay the entire effect.
+		const EFFECT_FIXED_STEP_TRANSFORM_PROVIDER RootHistory = [Root](
+			const f32_t, EFFECT_FIXED_STEP_TRANSFORM_SAMPLE& Sample, std::string& Error)
+		{
+			Sample = {};
+			Sample.RootWorld = Root;
+			Error.clear();
+			return true;
+		};
 		const auto SampleRoot = [&](const std::string& AssetId, const std::string& Suffix,
 			const f32_t fAgeSeconds, uint64_t& HandleValue) -> bool_t
 		{
@@ -1662,13 +1884,40 @@ bool_t CValtan::Sync_LocalPatternCombatObjectPreview(
 			}
 			// External handles retain finished objects for reverse seeking and never
 			// advance on a second wall clock while the composition is paused.
-			if (!CEffectPresentationService::Seek_WorldRoot({ HandleValue }, fAgeSeconds))
+			if (!CEffectPresentationService::Seek_WorldRoot({ HandleValue }, fAgeSeconds, RootHistory))
 			{
 				strOutStatus = "Local combat-object external Effect sample lost its handle.";
 				return false;
 			}
 			return true;
 		};
+		if (Instance.Template.bOwnerHitChain)
+		{
+			const bool_t Armed = Instance.fChainArmedPatternMs >= 0.0;
+			const bool_t Exploded = Armed && fPatternAgeMs + 0.01 >= Instance.fChainExplosionPatternMs;
+			if (Exploded && Instance.Template.bStopActiveOnHit)
+				StopHandle(Instance.iActiveHandle);
+			else if (!SampleRoot(Visual->effectAssetId, "/active", fObjectAgeSeconds, Instance.iActiveHandle))
+				return Rollback(strOutStatus);
+			if (Armed && !Exploded && !Instance.Template.strArmedEffectAssetId.empty())
+			{
+				if (!SampleRoot(Instance.Template.strArmedEffectAssetId, "/armed",
+						static_cast<f32_t>((fPatternAgeMs - Instance.fChainArmedPatternMs) * 0.001), Instance.iArmedHandle))
+					return Rollback(strOutStatus);
+			}
+			else
+				StopHandle(Instance.iArmedHandle);
+			if (Exploded)
+			{
+				if (!SampleRoot(Visual->hitEffectAssetId, "/owner-hit-chain",
+						static_cast<f32_t>((std::max)(0.0, fPatternAgeMs - Instance.fChainExplosionPatternMs) * 0.001),
+						Instance.iChainTerminalHandle))
+					return Rollback(strOutStatus);
+			}
+			else
+				StopHandle(Instance.iChainTerminalHandle);
+			continue; // The owner-hit policy replaces legacy object-local fixed hits.
+		}
 		// Product despawn releases a natural visual tail. Sample the same authored
 		// Effect lifetime rather than truncating it at the owning Stage boundary.
 		if (!SampleRoot(Visual->effectAssetId, "/active", fObjectAgeSeconds,
@@ -1715,6 +1964,7 @@ bool_t CValtan::Stage_LocalPatternAuthoringPreview(
 		std::vector<Client::VALTAN_PATTERN_EFFECT_CUE>> StagedEffectCues;
 	std::unordered_map<std::string, uint32_t> StagedStageIndices;
 	std::unordered_map<std::string, uint32_t> StagedStageStarts;
+	std::unordered_map<std::string, uint32_t> StagedStageDurations;
 	std::vector<const VALTAN_STAGE_VIEW*> StagePath;
 	if (previewPath.has_value())
 	{
@@ -1738,6 +1988,7 @@ bool_t CValtan::Stage_LocalPatternAuthoringPreview(
 			return false;
 		}
 		StagedStageStarts.emplace(Stage->strActionId, static_cast<uint32_t>(iPatternClockMs));
+		StagedStageDurations.emplace(Stage->strActionId, Stage->iDurationMs);
 		iPatternClockMs += Stage->iDurationMs;
 	}
 	float3_t PreviewBossPosition{};
@@ -1922,6 +2173,8 @@ bool_t CValtan::Stage_LocalPatternAuthoringPreview(
 				Source.iStageOffsetMs : Source.iSourceStartMs;
 			Cue.iEndMs = Source.iSourceEndMs;
 			Cue.bHasSourceEnd = Source.bHasSourceEnd;
+			Cue.bHasPlaybackOffset = Source.bHasPlaybackOffset;
+			Cue.iPlaybackOffsetMs = Source.iPlaybackOffsetMs;
 			Cue.bUsesStageClock = Source.bUsesStageClock;
 			Cue.iStageIndex = static_cast<uint32_t>(iStage);
 			Cue.iStageDurationMs = Stage.iDurationMs;
@@ -1995,6 +2248,42 @@ bool_t CValtan::Stage_LocalPatternAuthoringPreview(
 			Template.iFirstSpawnOffsetMs = Source.iFirstSpawnOffsetMs;
 			Template.iLifetimeMs = Source.iLifetimeMs;
 			Template.bArenaCenterOrigin = bArenaCenterOrigin;
+			if (Source.OwnerHitChain)
+			{
+				const auto& Chain = *Source.OwnerHitChain;
+				const auto Trigger = std::find_if(Pattern.Stages.begin(), Pattern.Stages.end(),
+					[&](const auto& Candidate) { return Candidate.strActionId == Chain.strTriggerActionId; });
+				const auto TriggerStart = StagedStageStarts.find(Chain.strTriggerActionId);
+				if (Trigger == Pattern.Stages.end() || TriggerStart == StagedStageStarts.end() ||
+					Trigger->strHitShape != "CONE" || !std::isfinite(Source.fCoverRadiusM) || Source.fCoverRadiusM <= 0.f ||
+					Visual->hitEffectAssetId.empty() || Visual->armedEffectAssetId.empty() ||
+					Visual->armedPresentationEventId != Chain.strArmedPresentationEventId)
+				{
+					strOutStatus = "Local combat-object owner-hit chain has no matching cone/visual: " + Source.strCombatObjectArchetypeId;
+					return false;
+				}
+				Template.bOwnerHitChain = true;
+				Template.iChainDelayMs = Chain.iDelayMs;
+				Template.fCoverRadiusM = Source.fCoverRadiusM;
+				Template.fChainConeLength = Trigger->fHitLength;
+				Template.fChainConeAngleDegrees = Trigger->fHitAngleDegrees;
+				Template.fChainForwardOffsetM = Trigger->fHitAnchorForwardOffsetM;
+				Template.fChainRightOffsetM = Trigger->fHitAnchorRightOffsetM;
+				Template.fChainYawOffsetDegrees = Trigger->fHitAnchorYawOffsetDegrees;
+				Template.strArmedEffectAssetId = Visual->armedEffectAssetId;
+				Template.bStopActiveOnHit = Visual->stopActiveOnHit;
+				if (!Trigger->HitOffsetsMs.empty())
+					for (const uint32_t Offset : Trigger->HitOffsetsMs)
+						Template.ChainHitPatternClocks.push_back(TriggerStart->second + Offset);
+				else
+					for (uint32_t Hit = 0u; Hit < Trigger->iHitCount; ++Hit)
+						Template.ChainHitPatternClocks.push_back(TriggerStart->second + Trigger->iHitDelayMs + Hit * Trigger->iHitIntervalMs);
+				if (Template.ChainHitPatternClocks.empty())
+				{
+					strOutStatus = "Local combat-object owner-hit chain has no actual owner hit clock.";
+					return false;
+				}
+			}
 			for (const Client::VALTAN_COMBAT_OBJECT_PRESENTATION_EVENT_VIEW&
 				Event : Source.PresentationEvents)
 			{
@@ -2063,6 +2352,11 @@ bool_t CValtan::Stage_LocalPatternAuthoringPreview(
 				Area.iHitIntervalMs = Stage.iHitIntervalMs;
 				Area.iHitDelayMs = Stage.iHitDelayMs;
 				Area.HitOffsetsMs = Stage.HitOffsetsMs;
+                Area.AttackContacts = Stage.AttackContacts;
+                Area.bContactAnchorSupported = !Stage.bHasHitAnchor || Stage.strHitAnchorKind == "BOSS_CURRENT";
+                Area.fContactAnchorForwardM = Stage.fHitAnchorForwardOffsetM;
+                Area.fContactAnchorRightM = Stage.fHitAnchorRightOffsetM;
+                Area.fContactAnchorYawDegrees = Stage.fHitAnchorYawOffsetDegrees;
 				Area.iStageDurationMs = Stage.iDurationMs;
 				Area.bHasActivation = Stage.bHasHitActivation;
 				Area.iActivationStartMs = Stage.iHitActivationStartMs;
@@ -2148,16 +2442,28 @@ bool_t CValtan::Stage_LocalPatternAuthoringPreview(
 	m_LocalPreviewEffectCuesByActionId = std::move(StagedEffectCues);
 	m_LocalPreviewStageIndexByActionId = std::move(StagedStageIndices);
 	m_LocalPreviewStageStartMsByActionId = std::move(StagedStageStarts);
+	m_LocalPreviewStageDurationMsByActionId = std::move(StagedStageDurations);
 	m_vLocalPreviewCombatObjectBossPosition = PreviewBossPosition;
 	m_fLocalPreviewCombatObjectBossYawDegrees = m_fPresentationYawDegrees;
 	m_LocalPreviewBodyVisibilityByActionId =
 		std::move(StagedBodyVisibility);
 	m_LocalPreviewArenaCenterAnchors = std::move(StagedArenaCenters);
+	/* This is the authoring mirror's one scene target, not a replacement for
+	   the Server's random-alive target selection. Keep its identity through
+	   pause/seek and stage edges; never retarget a disappearing player. */
+	m_LocalPreviewFollowTarget = m_pTargetTransform;
+	m_bLocalPreviewUsesSceneTarget = m_LocalPreviewFollowTarget.expired();
+	if (m_bLocalPreviewUsesSceneTarget)
+	{
+		if (const auto Character = CAnimationTargetService::Resolve_SceneCharacter())
+			m_LocalPreviewFollowTarget = Character->Get_Transform();
+	}
 	m_LocalPreviewPortalRushDistanceByActionId =
 		std::move(StagedPortalRushDistances);
 	m_LocalPreviewCombatObjectsByActionId = std::move(StagedCombatObjects);
 	m_strLocalPreviewPatternId = Pattern.strPatternId;
 	m_strLocalPreviewActionId.clear();
+	m_bLocalPreviewV2StageRetired = false;
 	m_iLocalPreviewStageIndex = 0u;
 	m_isPatternBodyHidden = false;
 	m_iLocalPreviewEffectGeneration =
@@ -2208,9 +2514,15 @@ void CValtan::Reset_LocalPatternPreviewTransport()
 {
 	if (m_isServerAuthoritative || !m_bLocalPatternAuthoringPreview)
 		return;
+	// A source cinematic can still own the previous cursor when UI requests
+	// a rewind. Release its suppression before reconstructing prior cues;
+	// the destination cinematic interval is sampled separately by MainApp.
+	Set_CinematicPresentationSuppressed(false);
 	const std::shared_ptr<CValtan> Owner =
 		static_pointer_cast<CValtan>(shared_from_this());
 	Stop_LocalPatternCombatObjectPreview();
+	m_LocalPreviewTargetFollowEffectRoots.clear();
+	m_bLocalPreviewTargetFollowClockValid = false;
 	CEffectPresentationService::Stop_BossOwner(Owner);
 	Client::CEffectV2Runtime::Reset_LocalPreviewTarget(
 		Client::EFFECT_V2_TARGET::From_Valtan(
@@ -2221,6 +2533,7 @@ void CValtan::Reset_LocalPatternPreviewTransport()
 	m_isPatternBodyHidden = false;
 	m_PortalRushRoute = {};
 	m_strLocalPreviewActionId.clear();
+	m_bLocalPreviewV2StageRetired = false;
 	m_iLocalPreviewStageIndex = 0u;
 	if (nullptr != m_pBodyModelCom)
 	{
@@ -2242,8 +2555,11 @@ void CValtan::Reset_LocalPatternPresentationSample()
 	m_LocalPreviewEffectCuesByActionId.clear();
 	m_LocalPreviewStageIndexByActionId.clear();
 	m_LocalPreviewStageStartMsByActionId.clear();
+	m_LocalPreviewStageDurationMsByActionId.clear();
 	m_LocalPreviewBodyVisibilityByActionId.clear();
 	m_LocalPreviewArenaCenterAnchors.clear();
+	m_LocalPreviewFollowTarget.reset();
+	m_bLocalPreviewUsesSceneTarget = false;
 	m_LocalPreviewPortalRushDistanceByActionId.clear();
 	m_PortalRushRoute = {};
 	m_LocalPreviewCombatObjectsByActionId.clear();
@@ -2252,6 +2568,7 @@ void CValtan::Reset_LocalPatternPresentationSample()
 	m_strLocalPreviewCombatObjectStatus.clear();
 	m_strLocalPreviewPatternId.clear();
 	m_strLocalPreviewActionId.clear();
+	m_bLocalPreviewV2StageRetired = false;
 	m_iLocalPreviewStageIndex = 0u;
 #ifdef _DEBUG
 	m_LocalPreviewHitAreaByActionId.clear();
@@ -2390,33 +2707,51 @@ bool_t CValtan::Reload_PatternEffectCues_WhileAdmitted(
 			f32_t fSourceDurationSeconds = 0.f;
 			f32_t fWallDurationSeconds = 0.f;
 			f32_t fCueStartWallSeconds = 0.f;
+			// Match the live scan's unwrapped clock for dragged composition ONCE cues.
+			const bool_t bCompositionLoopOnce = iClipIndex < Timings->second.size() &&
+				Cue.strBindingId.starts_with("cue.valtan.composition.") &&
+				VALTAN_PATTERN_EFFECT_REPEAT_POLICY::ONCE == Cue.eRepeatPolicy &&
+				Timings->second[iClipIndex].bLoop;
+			const f32_t fCueSourceSeconds = static_cast<f32_t>(Cue.iStartMs) * 0.001f;
 			if (iClipIndex >= Timings->second.size() ||
 				!Client::CActionPresentationTimeline::Resolve_ClipDuration(
 					Timings->second[iClipIndex],
 					fSourceDurationSeconds, fWallDurationSeconds) ||
-				static_cast<f32_t>(Cue.iStartMs) * 0.001f >=
-					Timings->second[iClipIndex].fSourceStartSeconds +
-					fSourceDurationSeconds ||
+				fCueSourceSeconds < Timings->second[iClipIndex].fSourceStartSeconds ||
+				(!bCompositionLoopOnce && fCueSourceSeconds >=
+					Timings->second[iClipIndex].fSourceStartSeconds + fSourceDurationSeconds) ||
 				!Client::CActionPresentationTimeline::Resolve_CueWallOffset(
 					Timings->second, iClipIndex,
-					static_cast<f32_t>(Cue.iStartMs) * 0.001f,
-					0u, fCueStartWallSeconds) ||
-				fCueStartWallSeconds * 1000.f >=
-					static_cast<f32_t>(Cue.iStageDurationMs))
+					bCompositionLoopOnce ? Timings->second[iClipIndex].fSourceStartSeconds :
+						fCueSourceSeconds, 0u, fCueStartWallSeconds))
 			{
 				Status = "Valtan pattern Effect cue source start rejected: " +
 					Cue.strOccurrenceId;
 				return false;
 			}
+			if (bCompositionLoopOnce)
+				fCueStartWallSeconds +=
+					(fCueSourceSeconds - Timings->second[iClipIndex].fSourceStartSeconds) /
+					Timings->second[iClipIndex].fPlayRate;
+			if (fCueStartWallSeconds * 1000.f >= static_cast<f32_t>(Cue.iStageDurationMs))
+			{
+				Status = "Valtan pattern Effect cue source start rejected: " + Cue.strOccurrenceId;
+				return false;
+			}
 			if (Cue.bHasSourceEnd)
 			{
-				f32_t fCueEndWallSeconds = 0.f;
-				if (!Client::CActionPresentationTimeline::Resolve_CueEndWallOffset(
+				const bool_t bTimedOnceTail =
+					VALTAN_PATTERN_EFFECT_REPEAT_POLICY::ONCE == Cue.eRepeatPolicy;
+				f32_t fCueEndWallSeconds = bTimedOnceTail ? fCueStartWallSeconds +
+					(static_cast<f32_t>(Cue.iEndMs) - Cue.iStartMs) * .001f /
+					Timings->second[iClipIndex].fPlayRate : 0.f;
+				if ((!bTimedOnceTail && !Client::CActionPresentationTimeline::Resolve_CueEndWallOffset(
 						Timings->second, iClipIndex,
 						static_cast<f32_t>(Cue.iEndMs) * 0.001f,
-						0u, fCueEndWallSeconds) ||
+						0u, fCueEndWallSeconds)) ||
+					Cue.iEndMs > 600000u || !std::isfinite(fCueEndWallSeconds) ||
 					fCueEndWallSeconds <= fCueStartWallSeconds ||
-					(!Timings->second[iClipIndex].bLoop &&
+					(!bTimedOnceTail && !Timings->second[iClipIndex].bLoop &&
 					 fCueEndWallSeconds * 1000.f >
 						static_cast<f32_t>(Cue.iStageDurationMs) + 0.01f))
 				{
@@ -2469,6 +2804,14 @@ void CValtan::Spawn_DuePatternEffectCues(const f32_t fActionAgeSeconds)
 			(0u == m_iServerActionStartTick || 0u == m_iServerPatternSequence)))
 	{
 		return;
+	}
+	f32_t fPreviewTimelineSeconds = fActionAgeSeconds;
+	if (bLocalPreview)
+	{
+		const auto StageStart = m_LocalPreviewStageStartMsByActionId.find(ActionId);
+		if (StageStart == m_LocalPreviewStageStartMsByActionId.end())
+			return;
+		fPreviewTimelineSeconds += static_cast<f32_t>(StageStart->second) * 0.001f;
 	}
 	const bool_t bHasPreviousActionAge =
 		m_bPatternEffectCueScanAgeValid &&
@@ -2546,15 +2889,33 @@ void CValtan::Spawn_DuePatternEffectCues(const f32_t fActionAgeSeconds)
 		}
 		else
 		{
+			const bool_t bCompositionLoopOnce =
+				Cue.strBindingId.starts_with("cue.valtan.composition.") &&
+				VALTAN_PATTERN_EFFECT_REPEAT_POLICY::ONCE == Cue.eRepeatPolicy &&
+				Timings[iClipIndex].bLoop;
+			const f32_t fCueSourceSeconds = static_cast<f32_t>(Cue.iStartMs) * 0.001f;
 			if (!Client::CActionPresentationTimeline::Resolve_ClipDuration(
 					Timings[iClipIndex], fSourceDurationSeconds,
 					fLoopWallDurationSeconds) ||
 				!Client::CActionPresentationTimeline::Resolve_CueWallOffset(
 					Timings, iClipIndex,
-					static_cast<f32_t>(Cue.iStartMs) * 0.001f,
-					0u, fFirstOccurrenceWallSeconds))
+					bCompositionLoopOnce ? Timings[iClipIndex].fSourceStartSeconds :
+						fCueSourceSeconds, 0u, fFirstOccurrenceWallSeconds))
 			{
 				continue;
+			}
+			if (bCompositionLoopOnce)
+			{
+				// A dragged independent ONCE cue uses an unwrapped source clock:
+				// later loop epochs still trigger once at their authored Stage time.
+				if (fCueSourceSeconds < Timings[iClipIndex].fSourceStartSeconds)
+					continue;
+				fFirstOccurrenceWallSeconds +=
+					(fCueSourceSeconds - Timings[iClipIndex].fSourceStartSeconds) /
+					Timings[iClipIndex].fPlayRate;
+				if (fFirstOccurrenceWallSeconds >=
+					static_cast<f32_t>(Cue.iStageDurationMs) * 0.001f)
+					continue;
 			}
 			if (VALTAN_PATTERN_EFFECT_REPEAT_POLICY::EACH_LOOP ==
 					Cue.eRepeatPolicy && !Timings[iClipIndex].bLoop)
@@ -2565,6 +2926,14 @@ void CValtan::Spawn_DuePatternEffectCues(const f32_t fActionAgeSeconds)
 		const f32_t fPlaybackRate =
 			(Cue.bUsesStageClock || Cue.bUsesLegacyStageWallTime) ?
 			1.f : Timings[iClipIndex].fPlayRate;
+		// Explicit offsets preserve the resource clock while trimming or moving a cue.
+		// Older full-source rows keep their original clip-zero origin.
+		const uint32_t iSourceSeekOffsetMs = Cue.bHasPlaybackOffset ?
+			Cue.iPlaybackOffsetMs :
+			(!Cue.bUsesStageClock && !Cue.bUsesLegacyStageWallTime &&
+			 !Cue.strBindingId.starts_with("cue.valtan.composition.") &&
+			 pEffectAssetId->starts_with("effect.valtan.action.") &&
+			 pEffectAssetId->ends_with(".full.restore") ? Cue.iStartMs : 0u);
 		f32_t fLiveSourceDurationSeconds = 0.f;
 		if (Cue.bHasSourceEnd)
 		{
@@ -2580,6 +2949,9 @@ void CValtan::Spawn_DuePatternEffectCues(const f32_t fActionAgeSeconds)
 				*pEffectAssetId + "\n").c_str());
 			continue;
 		}
+		if (!Cue.bHasSourceEnd)
+			fLiveSourceDurationSeconds = (std::max)(0.f,
+				fLiveSourceDurationSeconds - static_cast<f32_t>(iSourceSeekOffsetMs) * 0.001f);
 
 		VALTAN_PATTERN_EFFECT_OCCURRENCE_SCAN_DESC ScanDesc;
 		ScanDesc.fPreviousActionAgeSeconds = fPreviousActionAgeSeconds;
@@ -2595,13 +2967,6 @@ void CValtan::Spawn_DuePatternEffectCues(const f32_t fActionAgeSeconds)
 		if (!Resolve_ValtanPatternEffectOccurrenceScan(ScanDesc, Samples))
 			continue;
 
-		// Full-source documents retain the original clip's zero-time origin.
-		// A trimmed occurrence starts at that source age; its stop clock uses
-		// the same origin as EffectPresentationService's initial sample.
-		const uint32_t iSourceSeekOffsetMs =
-			!Cue.bUsesStageClock && !Cue.bUsesLegacyStageWallTime &&
-			pEffectAssetId->starts_with("effect.valtan.action.") &&
-			pEffectAssetId->ends_with(".full.restore") ? Cue.iStartMs : 0u;
 		const uint32_t iCueDurationMs = Cue.bHasSourceEnd ?
 			Cue.iEndMs - Cue.iStartMs + iSourceSeekOffsetMs : 0u;
 		for (const VALTAN_PATTERN_EFFECT_OCCURRENCE_SAMPLE& Sample : Samples)
@@ -2626,6 +2991,12 @@ void CValtan::Spawn_DuePatternEffectCues(const f32_t fActionAgeSeconds)
 			Desc.vWorldScale = Cue.vWorldScale;
 			Desc.eStopPolicy = Cue.eStopPolicy;
 			Desc.iCueDurationMs = iCueDurationMs;
+			// A trimmed ONCE keeps its tail beyond the owning animation stage.
+			Desc.bPreserveBossActionTail = Cue.bHasSourceEnd &&
+				!Cue.bUsesStageClock && !Cue.bUsesLegacyStageWallTime &&
+				VALTAN_PATTERN_EFFECT_REPEAT_POLICY::ONCE == Cue.eRepeatPolicy &&
+				(fFirstOccurrenceWallSeconds + fLiveSourceDurationSeconds / fPlaybackRate) * 1000.f >
+					static_cast<f32_t>(Cue.iStageDurationMs);
 			Desc.iActionStartTick = bLocalPreview ?
 				m_iLocalPreviewEffectGeneration : m_iServerActionStartTick;
 			Desc.iCueStartMs = Cue.iStartMs;
@@ -2643,6 +3014,13 @@ void CValtan::Spawn_DuePatternEffectCues(const f32_t fActionAgeSeconds)
 			Desc.fPlaybackRate = fPlaybackRate;
 			Desc.fInitialSampleTimeSeconds = Sample.fInitialSampleSeconds +
 				static_cast<f32_t>(iSourceSeekOffsetMs) * 0.001f;
+			if (bLocalPreview)
+			{
+				Desc.bExternallySampled = true;
+				Desc.fLocalBossPreviewClockOffsetSeconds =
+					static_cast<f64_t>(Desc.fInitialSampleTimeSeconds) -
+					static_cast<f64_t>(fPreviewTimelineSeconds) * fPlaybackRate;
+			}
 			std::string Status;
 			bool_t spawned = false;
 			if (Is_PatternTargetSnapshotCueAnchor(Cue.strAnchorSlotId))
@@ -2705,8 +3083,13 @@ void CValtan::Spawn_DuePatternEffectCues(const f32_t fActionAgeSeconds)
 				if (center != ArenaCenters.end() &&
 					(!bTargetFollow || bHasAdmittedTargetFollowPose))
 				{
+					f32_t previewTargetYaw = m_fPresentationYawDegrees;
+					if (bLocalPreview && bTargetFollow)
+						(void)Try_ReadLocalPreviewTargetYaw(
+							m_LocalPreviewFollowTarget.lock(), center->second,
+							previewTargetYaw);
 					const f32_t yaw = bTargetFollow ?
-						(bLocalPreview ? m_fPresentationYawDegrees :
+						(bLocalPreview ? previewTargetYaw :
 							m_fServerPatternCurrentYawDegrees) +
 							VALTAN_TARGET_FOLLOW_ROOT_YAW_OFFSET_DEGREES :
 						(Cue.strAnchorSlotId == "arena.center.facing" ?
@@ -2723,7 +3106,7 @@ void CValtan::Spawn_DuePatternEffectCues(const f32_t fActionAgeSeconds)
 						EFFECT_WORLD_ROOT_HANDLE handle;
 						spawned = CEffectPresentationService::Spawn_WorldRoot(
 							Desc, root, handle, Status);
-						if (spawned && bTargetFollow && !bLocalPreview)
+						if (spawned && bTargetFollow)
 						{
 							PATTERN_TARGET_FOLLOW_EFFECT_ROOT FollowRoot;
 							FollowRoot.iWorldRootHandle = handle.iValue;
@@ -2734,8 +3117,10 @@ void CValtan::Spawn_DuePatternEffectCues(const f32_t fActionAgeSeconds)
 							FollowRoot.LocalTransform = Cue.LocalTransform;
 							FollowRoot.eScalePolicy = Cue.eScalePolicy;
 							FollowRoot.vWorldScale = Cue.vWorldScale;
-							m_PatternTargetFollowEffectRoots.push_back(
-								std::move(FollowRoot));
+							auto& FollowRoots = bLocalPreview ?
+								m_LocalPreviewTargetFollowEffectRoots :
+								m_PatternTargetFollowEffectRoots;
+							FollowRoots.push_back(std::move(FollowRoot));
 						}
 					}
 					else
@@ -2796,6 +3181,55 @@ void CValtan::Update_PatternTargetFollowEffectRoots()
 			/* Build/update is transactional.  The service still owns the last
 			   accepted matrix, so dropping only this updater preserves it. */
 			FollowRoot = m_PatternTargetFollowEffectRoots.erase(FollowRoot);
+			continue;
+		}
+		++FollowRoot;
+	}
+}
+
+void CValtan::Update_LocalPreviewTargetFollowEffectRoots(
+	const f32_t fPreviewTimelineSeconds)
+{
+	if (m_isServerAuthoritative || !m_bLocalPatternAuthoringPreview ||
+		!std::isfinite(fPreviewTimelineSeconds) || fPreviewTimelineSeconds < 0.f)
+		return;
+	if (m_bLocalPreviewTargetFollowClockValid &&
+		std::abs(fPreviewTimelineSeconds - m_fLocalPreviewTargetFollowClockSeconds) <= 0.00001f)
+		return;
+	m_bLocalPreviewTargetFollowClockValid = true;
+	m_fLocalPreviewTargetFollowClockSeconds = fPreviewTimelineSeconds;
+	const auto Target = m_LocalPreviewFollowTarget.lock();
+	const auto SceneCharacter = m_bLocalPreviewUsesSceneTarget ?
+		CAnimationTargetService::Resolve_SceneCharacter() : nullptr;
+	if (!Target || (m_bLocalPreviewUsesSceneTarget &&
+		(!SceneCharacter || SceneCharacter->Get_Transform() != Target)))
+	{
+		// Natural tails freeze after target loss or character replacement.
+		// The old transform can outlive its actor; identity must still match.
+		m_LocalPreviewFollowTarget.reset();
+		m_LocalPreviewTargetFollowEffectRoots.clear();
+		return;
+	}
+	auto FollowRoot = m_LocalPreviewTargetFollowEffectRoots.begin();
+	while (FollowRoot != m_LocalPreviewTargetFollowEffectRoots.end())
+	{
+		f32_t yaw = 0.f;
+		if (!Try_ReadLocalPreviewTargetYaw(Target, FollowRoot->vArenaCenter, yaw))
+		{
+			++FollowRoot;
+			continue;
+		}
+		float4x4_t Anchor{}, Root{};
+		if (!CValtanPatternEffectCueDocument::Try_BuildArenaCenterAnchor(
+				"arena.center.target-follow", FollowRoot->vArenaCenter,
+				yaw + VALTAN_TARGET_FOLLOW_ROOT_YAW_OFFSET_DEGREES, Anchor) ||
+			!CEffectPresentationService::Build_CueScalePolicyRoot(
+				FollowRoot->LocalTransform, FollowRoot->eScalePolicy,
+				FollowRoot->vWorldScale, Anchor, Root) ||
+			!CEffectPresentationService::Update_WorldRoot(
+				EFFECT_WORLD_ROOT_HANDLE{ FollowRoot->iWorldRootHandle }, Root))
+		{
+			FollowRoot = m_LocalPreviewTargetFollowEffectRoots.erase(FollowRoot);
 			continue;
 		}
 		++FollowRoot;
@@ -2953,16 +3387,6 @@ bool_t CValtan::Reload_PatternSoundCues_WhileAdmitted(
 
 void CValtan::Spawn_DuePatternSoundCues(const f32_t fActionAgeSeconds)
 {
-	/* No prepared-asset duration exists for a wav the way
-	CEffectPresentationService::Try_Get_PreparedProductDurationSeconds gives one
-	for a Product Effect (CSoundCueCatalog is a plain synchronous path lookup,
-	nothing is GPU-prepared ahead of time). A fixed conservative upper bound on
-	a boss voice/impact bark's real length is used instead, purely to gate the
-	same "already too stale to bother" catch-up case
-	Resolve_ValtanPatternEffectOccurrenceScan already handles for Effects --
-	every real Voltan1/Voltan2 bark sampled during authoring is well under this. */
-	constexpr f32_t ASSUMED_SOUND_DURATION_SECONDS = 4.f;
-
 	if (!m_isServerAuthoritative ||
 		!std::isfinite(fActionAgeSeconds) || fActionAgeSeconds < 0.f ||
 		m_strServerPatternId.empty() || m_strServerActionId.empty() ||
@@ -3032,13 +3456,27 @@ void CValtan::Spawn_DuePatternSoundCues(const f32_t fActionAgeSeconds)
 			continue;
 		}
 
+		const std::vector<std::string>& Variants = Cue.ResolvedAssetIds;
+		if (Variants.empty()) continue;
+		const uint32_t iPlaybackOffsetMs = Cue.bHasPlaybackOffset ? Cue.iPlaybackOffsetMs : 0u;
+		uint32_t iMaximumDurationMs = 0u;
+		for (const auto& AssetId : Variants)
+		{
+			uint32_t iAssetDurationMs = 0u;
+			if (CGameInstance::Get().Get_SoundDurationMs(CRuntimeAssetRoot::Resolve(AssetId).wstring(), iAssetDurationMs) &&
+				iAssetDurationMs > iPlaybackOffsetMs)
+				iMaximumDurationMs = (std::max)(iMaximumDurationMs, iAssetDurationMs - iPlaybackOffsetMs);
+		}
+		if (Cue.bHasPlaybackDuration) iMaximumDurationMs = (std::min)(iMaximumDurationMs, Cue.iPlaybackDurationMs);
+		if (!iMaximumDurationMs) continue;
+
 		VALTAN_PATTERN_EFFECT_OCCURRENCE_SCAN_DESC ScanDesc;
 		ScanDesc.fPreviousActionAgeSeconds = fPreviousActionAgeSeconds;
 		ScanDesc.fCurrentActionAgeSeconds = fActionAgeSeconds;
 		ScanDesc.fFirstOccurrenceWallSeconds = fFirstOccurrenceWallSeconds;
 		ScanDesc.fLoopWallDurationSeconds = fLoopWallDurationSeconds;
-		ScanDesc.fPlaybackRate = Timings[iClipIndex].fPlayRate;
-		ScanDesc.fLiveSourceDurationSeconds = ASSUMED_SOUND_DURATION_SECONDS;
+		ScanDesc.fPlaybackRate = 1.f;
+		ScanDesc.fLiveSourceDurationSeconds = iMaximumDurationMs * .001f;
 		ScanDesc.bHasPreviousActionAge = bHasPreviousActionAge;
 		ScanDesc.bEachLoop =
 			VALTAN_PATTERN_SOUND_REPEAT_POLICY::EACH_LOOP == Cue.eRepeatPolicy;
@@ -3046,10 +3484,6 @@ void CValtan::Spawn_DuePatternSoundCues(const f32_t fActionAgeSeconds)
 		if (!Resolve_ValtanPatternEffectOccurrenceScan(ScanDesc, Samples))
 			continue;
 		if (Samples.empty())
-			continue;
-
-		const std::vector<std::string>& Variants = Cue.ResolvedAssetIds;
-		if (Variants.empty())
 			continue;
 
 		for (const VALTAN_PATTERN_EFFECT_OCCURRENCE_SAMPLE& Sample : Samples)
@@ -3070,7 +3504,14 @@ void CValtan::Spawn_DuePatternSoundCues(const f32_t fActionAgeSeconds)
 				(static_cast<std::size_t>(std::rand()) % Variants.size());
 			const std::filesystem::path SoundPath =
 				CRuntimeAssetRoot::Resolve(Variants[iVariant]);
-			CGameInstance::Get().Play_Sound(SoundPath.wstring(), 1.f);
+			uint32_t iAssetDurationMs = 0u;
+			if (!CGameInstance::Get().Get_SoundDurationMs(SoundPath.wstring(), iAssetDurationMs)) continue;
+			const uint32_t iOffsetMs = Cue.bHasPlaybackOffset ? Cue.iPlaybackOffsetMs : 0u;
+			const uint32_t iEndMs = Cue.bHasPlaybackDuration ?
+				(std::min)(iAssetDurationMs, iOffsetMs + Cue.iPlaybackDurationMs) : iAssetDurationMs;
+			const uint32_t iAgeMs = iOffsetMs + static_cast<uint32_t>(Sample.fInitialSampleSeconds * 1000.f);
+			if (iAgeMs < iEndMs)
+				CGameInstance::Get().Play_SoundCue(SoundPath.wstring(), 1.f, iAgeMs, false, 1.f, iEndMs);
 		}
 	}
 }
@@ -3155,11 +3596,13 @@ bool_t CValtan::Apply_CombatObjectPresentationEvent(
 		if (actor->combatObjectVisuals.end() != visual &&
 			BOSS_COMBAT_OBJECT_ACTIVE_EFFECT_KIND::EFFECT_V1 ==
 				visual->activeEffectKind &&
-			!visual->hitEffectAssetId.empty())
+			(!visual->hitEffectAssetId.empty() || !visual->armedEffectAssetId.empty()))
 		{
-			hitEffectConfigured = true;
+
 			EFFECT_WORLD_ROOT_SPAWN_DESC desc;
-			desc.strEffectAssetId = visual->hitEffectAssetId;
+			const bool_t armed = !visual->armedPresentationEventId.empty() &&
+				event.strHitId == visual->armedPresentationEventId;
+			desc.strEffectAssetId = armed ? visual->armedEffectAssetId : visual->hitEffectAssetId;
 			desc.pBossBudgetAndLifetimeOwner =
 				std::static_pointer_cast<CValtan>(shared_from_this());
 			desc.RootWorld = visual->Make_WorldRoot(
@@ -3170,8 +3613,10 @@ bool_t CValtan::Apply_CombatObjectPresentationEvent(
 				std::to_string(event.iEventSequence);
 			desc.iSpawnTick = event.iServerTick;
 			EFFECT_WORLD_ROOT_HANDLE handle;
-			hitEffectSucceeded = CEffectPresentationService::Spawn_WorldRoot(
-				desc, handle, hitEffectStatus);
+			hitEffectConfigured = !desc.strEffectAssetId.empty();
+			if (hitEffectConfigured)
+				hitEffectSucceeded = CEffectPresentationService::Spawn_WorldRoot(
+					desc, handle, hitEffectStatus);
 		}
 	}
 

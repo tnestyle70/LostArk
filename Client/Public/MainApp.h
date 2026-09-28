@@ -10,6 +10,7 @@
 #include "AreaLightAuthoringSession.h"
 #include "CombatHUDViewModel.h"
 
+#include <array>
 #include <chrono>
 #include <filesystem>
 
@@ -51,6 +52,8 @@ class CWorldSequenceDocument;
 class CRenderingBenchmark;
 class CSkillWindowView;
 class CInventoryView;
+class CRepairWindowView;
+class CDurabilityHudView;
 class CCombatAnalysisFrameView;
 class CCharacterInfoWindowView;
 class CAvatarBookWindowView;
@@ -141,6 +144,9 @@ public:
 	void Open_ItemUpgradeWindow();
 	/* Ship NPC interaction (CLevel_Bern): opens the vehicle window in its ship-only mode. */
 	void Open_ShipWindow();
+	/* Same reverse direction for Bern's two repair NPCs (the anvil symbol on the
+	world map). Idempotent: a no-op when the window is already open. */
+	void Open_RepairWindow();
 
 	static void Update_DebugWindowTitleWithFps(const wchar_t* pBaseTitle);
 	/* Every domain tool writes one stable Pattern ID into this process-wide
@@ -301,7 +307,7 @@ private:
 	bool_t Is_KoukuMinigameHUDHidden() const;
 	bool_t Is_RuntimeUIScreenSuppressed() const;
 	/* The toggle windows one Escape press closes one at a time, newest first. */
-	enum class ESCAPE_WINDOW : uint8_t { INVENTORY, CHARACTER_INFO, AVATAR_BOOK, HONOR_TITLE, VEHICLE, WORLD_MAP, END };
+	enum class ESCAPE_WINDOW : uint8_t { INVENTORY, CHARACTER_INFO, AVATAR_BOOK, HONOR_TITLE, VEHICLE, WORLD_MAP, REPAIR, END };
 	bool_t Is_EscapeWindowOpen(ESCAPE_WINDOW eWindow) const;
 	/* Drops closed windows from m_EscapeWindowOrder and appends newly opened ones on top. */
 	void Sync_EscapeWindowOrder();
@@ -410,6 +416,14 @@ private:
 	void Hide_BossHealthBar();
 	/* Replicated enemies and other players; current pose projected after camera update. */
 	void Update_WorldHealthBars(f32_t fTimeDelta);
+	std::array<f32_t, 12> Get_HealthBarPositions() const;
+	bool_t Set_HealthBarPositions(const std::array<f32_t, 12>& offsets);
+	std::array<f32_t, 2> Get_MechanicBarScale() const;
+	bool_t Set_MechanicBarScale(const std::array<f32_t, 2>& scale);
+	void Apply_MechanicBarRect();
+	bool_t Save_HealthBarPositions(std::string& status);
+	bool_t Reload_HealthBarPositions(std::string& status);
+	void RenderHUDBarPositionControls();
 	/* Real HOLD skill (PLAYER_SKILL_KIND::HOLD) charge bar -- ChargeGauge_Bg/_Track/_Fill in
 	HUD_Layout.json (ownerClass:null, same as HealthBar). Progress is reconstructed client-side
 	from real Data/Balance/PlayerSkills.json comboStages[].actionDurationMs and the Server-owned
@@ -514,6 +528,7 @@ private:
 	/* F1 "Valtan Arena": the "Normal Monster 1/2" buttons that ask the Server to
 	   re-summon the Stage_1 / Stage_2 corridor waves. Shown only inside the arena. */
 	void RenderValtanArenaControls();
+	void RenderValtanArenaStateControls();
 	void RenderValtanAxeEditor();
 	void OpenDebugResourceFile(size_t iFile);
 	void RefreshCompletePlayPatternOptions();
@@ -680,6 +695,14 @@ private:
 	   Level rather than inside the arena. */
 	unique_ptr<CDungeonTimerView> m_pDungeonTimerView;
 	unique_ptr<CWorldHealthBarView> m_pWorldHealthBarView = { nullptr };
+	/* X/Y pairs: mechanic, ally, normal monster, KoukuSaydon, Kouku, Valtan. */
+	std::array<f32_t, 12> m_HealthBarOffsets{}, m_SavedHealthBarOffsets{};
+	/* Width/height scales apply only to the mechanic row; original rects never change. */
+	std::array<f32_t, 2> m_MechanicBarScale{ 1.f / 3.f, 1.f };
+	std::array<f32_t, 2> m_SavedMechanicBarScale{ 1.f / 3.f, 1.f };
+	std::array<float4_t, 3> m_MechanicBarBaseRects{};
+	std::array<bool_t, 3> m_MechanicBarHasBase{};
+	std::string m_strHealthBarPositionStatus;
 	/* UI/Esther/EstherUI.json's runtime consumer (Update_EstherGauge) -- real CUI_Sprite
 	GameObjects under LEVEL::STATIC, same reasoning as m_pBossUIView: the Esther skill window is
 	shared across every class, not tied to Combat HUD or Screen UI, so it gets its own
@@ -870,6 +893,12 @@ private:
 	unique_ptr<CSkillWindowView> m_pSkillWindowView = { nullptr };
 	/* Not _DEBUG-gated: I opens the inventory during real gameplay, in Release too. */
 	unique_ptr<CInventoryView> m_pInventoryView = { nullptr };
+	/* Retail's NPC item repair window. No toggle key: the NPC that opens it is not
+	chosen yet, so only Open/Close and Escape drive it today. */
+	unique_ptr<CRepairWindowView> m_pRepairWindowView = { nullptr };
+	/* Retail's durability indicator, under the minimap. Part of the combat HUD, not a
+	window: no open state and no Escape entry. */
+	unique_ptr<CDurabilityHudView> m_pDurabilityHudView = { nullptr };
 	bool_t m_bIDown = false;
 	/* Not _DEBUG-gated: P opens the retail character info window during real gameplay. Its
 	live portrait renders in Render() before the world pass (see Render_Portrait). */

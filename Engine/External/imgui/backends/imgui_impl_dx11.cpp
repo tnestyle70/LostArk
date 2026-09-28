@@ -54,6 +54,7 @@
 #pragma pop_macro("new")
 
 // DirectX
+#include <chrono>
 #include <stdio.h>
 #include <d3d11.h>
 #include <d3dcompiler.h>
@@ -894,7 +895,22 @@ static void ImGui_ImplDX11_SwapBuffers(ImGuiViewport* viewport, void*)
         Engine::CProfilerScope scope(bd->Profiler, "ImGui.PlatformViewport.Present");
         // Timestamp interval includes presentation scheduling; it is not GPU busy time.
         Engine::CProfilerGpuScope gpuScope(bd->Profiler, "ImGui.PlatformViewport.Present");
-        vd->SwapChain->Present(0, 0); // Present without vsync
+        // A detached tool must not block the game waiting for the shared
+        // device's presentation queue. On busy, keep its last displayed image;
+        // next frame supplies fresh draw data (no retry/spin or clock changes).
+        const auto begin = std::chrono::steady_clock::now();
+        const HRESULT result = vd->SwapChain->Present(0, DXGI_PRESENT_DO_NOT_WAIT);
+        if (bd->Profiler)
+        {
+            Engine::FProfilerViewportPresent sample{};
+            sample.ViewportId = viewport->ID;
+            sample.X = viewport->Pos.x; sample.Y = viewport->Pos.y;
+            sample.Width = viewport->Size.x; sample.Height = viewport->Size.y;
+            sample.CpuMs = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - begin).count();
+            sample.Flags = DXGI_PRESENT_DO_NOT_WAIT;
+            sample.Result = result;
+            bd->Profiler->Record_ViewportPresent(sample);
+        }
     }
 }
 

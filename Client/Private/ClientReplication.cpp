@@ -3322,9 +3322,29 @@ bool Client::CClientReplication::Apply_CombatObjectPresentationEvent(
 			"Combat-object presentation event boss projection expired.";
 		return false;
 	}
+	const auto* record = m_CombatObjectProjectionRuntime.Find(event.iCombatObjectId);
+	const BOSS_COMBAT_OBJECT_VISUAL_ENTRY* visual = nullptr;
+	if (record)
+	{
+		if (record->iSourceNetEntityId != event.iSourceNetEntityId ||
+			record->strCombatObjectArchetypeId != event.strCombatObjectArchetypeId ||
+			record->Snapshot.PinnedDefinitionRevision != event.PinnedDefinitionRevision)
+		{
+			m_strPendingPresentationFailure = "Combat-object event does not match its live occurrence.";
+			return false;
+		}
+		visual = CActorCatalog::Find_BossCombatObjectVisual(source->second.strArchetypeId,
+			record->strCombatObjectArchetypeId, record->strClientVisualId);
+	}
 	std::string status;
 	const bool_t applied =
 		boss->Apply_CombatObjectPresentationEvent(event, status);
+	if (applied && visual && visual->stopActiveOnHit &&
+		event.strHitId != visual->armedPresentationEventId)
+	{
+		COMBAT_OBJECT_PRESENTATION_SINK sink{ *this };
+		m_CombatObjectProjectionRuntime.Complete_Presentation(event.iCombatObjectId, sink);
+	}
 	if (!applied)
 		m_strPendingPresentationFailure = std::move(status);
 	return applied;
@@ -3334,6 +3354,19 @@ bool Client::CClientReplication::Apply_CombatObjectDespawn(
 	const LostArk::Shared::S2C_COMBAT_OBJECT_DESPAWNED& despawned)
 {
 	COMBAT_OBJECT_PRESENTATION_SINK sink{ *this };
+	// Terminal stone roots must also stop if the reliable despawn precedes the
+	// self-contained hit pulse, or if an armed sequence is cancelled.
+	if (const auto* record = m_CombatObjectProjectionRuntime.Find(despawned.iCombatObjectId))
+	{
+		const auto owner = m_WorldEntities.find(record->iSourceNetEntityId);
+		if (owner != m_WorldEntities.end())
+		{
+			const auto* visual = CActorCatalog::Find_BossCombatObjectVisual(
+				owner->second.strArchetypeId, record->strCombatObjectArchetypeId, record->strClientVisualId);
+			if (visual && visual->stopActiveOnHit)
+				m_CombatObjectProjectionRuntime.Complete_Presentation(despawned.iCombatObjectId, sink);
+		}
+	}
 	std::string status;
 	const bool_t applied = m_CombatObjectProjectionRuntime.Apply_Despawn(
 		despawned, sink, status);
@@ -4197,6 +4230,7 @@ bool Client::CClientReplication::Apply_WorldSnapshot(
 			continue;
 		HUD_WORLD_HEALTH_BAR_STATE state;
 		state.iNetEntityId = entity.iNetEntityId;
+		state.strArchetypeId = presentation.strArchetypeId;
 		state.iCurrentHp = entity.iCurrentHp;
 		state.iMaximumHp = entity.iMaximumHp;
 		state.iShield = entity.hasBossCombatState ? entity.BossCombat.iCurrentShield : 0u;

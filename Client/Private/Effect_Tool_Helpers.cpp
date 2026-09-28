@@ -29,6 +29,7 @@
 #include <algorithm>
 #include <array>
 #include <atomic>
+#include <bit>
 #include <cctype>
 #include <chrono>
 #include <cmath>
@@ -100,56 +101,95 @@ namespace EffectToolDetail
     {
         using namespace Client;
         std::vector<ATTACHMENT_ELEMENT_GROUP> groups;
-        std::map<std::string, size_t> indices;
+        // The view is scoped to this call: a draft mutation never leaves cached pointers.
+        // Numeric bits preserve the existing hexfloat key's signed-zero distinction.
+        using GROUP_IDENTITY = std::tuple<bool, bool, unsigned, std::string_view,
+            std::string_view, std::string_view, std::array<uint32_t, 16u>,
+            std::string_view, bool, std::string_view>;
+        std::map<GROUP_IDENTITY, size_t> indices;
+        std::vector<std::vector<const EFFECT_ELEMENT_DESC*>> members;
         for (const auto& element : document.Elements)
         {
             if (!elementId.empty() && element.strElementId != elementId) continue;
             const auto& attachment = element.ActionCueAttachment;
-            std::ostringstream key;
-            key << std::hexfloat;
-            const auto vectorKey = [&](const auto& v) { key << '|' << v.x << '|' << v.y << '|' << v.z; };
-            std::string label;
-            if (!attachment.bEnabled)
+            std::array<uint32_t, 16u> anchorBits{};
+            if (attachment.bEnabled)
             {
-                key << "unattached"; label = "Unattached / Effect root";
-                // Explicit manual groups share an anchor but retain independent
-                // edit centers. Native source groups keep the existing grouping.
-                if (Is_ManualElementGroupMember(element))
-                {
-                    key << "|manual|" << std::quoted(element.strGroupId);
-                    label = ManualGroup_Label(element.strGroupId) + " / Effect root";
-                }
+                size_t component = 0u;
+                const auto appendScalar = [&](float value) {
+                    anchorBits[component++] = std::bit_cast<uint32_t>(value);
+                };
+                const auto appendVector = [&](const auto& value) {
+                    appendScalar(value.x); appendScalar(value.y); appendScalar(value.z);
+                };
+                appendScalar(attachment.fSnapshotRootSourceBasisYawDegrees);
+                appendVector(attachment.SocketLocalTransform.vPosition);
+                appendVector(attachment.SocketLocalTransform.vRotationDegrees);
+                appendVector(attachment.SocketLocalTransform.vScale);
+                appendVector(attachment.SocketLocalTransform.vVelocityPerSecond);
+                appendVector(attachment.SocketLocalTransform.vRevolutionDegreesPerSecond);
             }
-            else
-            {
-                key << "attachment|" << attachment.bFollow << '|' << static_cast<unsigned>(attachment.eOrientation)
-                    << '|' << std::quoted(attachment.strModelCueId) << '|' << std::quoted(attachment.strRuntimeBoneName)
-                    << '|' << std::quoted(attachment.strRuntimeAnchorSlotId) << '|' << attachment.fSnapshotRootSourceBasisYawDegrees;
-                vectorKey(attachment.SocketLocalTransform.vPosition);
-                vectorKey(attachment.SocketLocalTransform.vRotationDegrees);
-                vectorKey(attachment.SocketLocalTransform.vScale);
-                vectorKey(attachment.SocketLocalTransform.vVelocityPerSecond);
-                vectorKey(attachment.SocketLocalTransform.vRevolutionDegreesPerSecond);
-                const std::string owner = attachment.strModelCueId.empty() ? "Source model" : "Model " + attachment.strModelCueId;
-                label = attachment.bFollow ?
-                    ((attachment.strRuntimeBoneName.empty() ? "Root" : attachment.strRuntimeBoneName) + " / " + owner) :
-                    "Captured root / " + owner;
-                if (document.SourceModelPreview && document.SourceModelPreview->strActorProfileId == "MN_RPCT_05" &&
-                    attachment.bFollow && attachment.strModelCueId.empty())
-                {
-                    if (attachment.strRuntimeBoneName == "b_wp_2") label = "Left hand / " + label;
-                    else if (attachment.strRuntimeBoneName == "b_wp_1") label = "Right hand / " + label;
-                }
-                if (attachment.eOrientation == EFFECT_ATTACHMENT_ORIENTATION::OWNER_YAW) label += " / Owner yaw";
-                if (attachment.eOrientation == EFFECT_ATTACHMENT_ORIENTATION::CAMERA_VIEW) label += " / Camera view";
-            }
-            key << "|inherit|" << element.TransformInheritance.bEnabled << '|' << std::quoted(element.TransformInheritance.strMasterElementId);
-            const auto groupKey = key.str();
-            auto [found, inserted] = indices.emplace(groupKey, groups.size());
+            const auto [found, inserted] = indices.emplace(GROUP_IDENTITY{
+                attachment.bEnabled, attachment.bEnabled && attachment.bFollow,
+                attachment.bEnabled ? static_cast<unsigned>(attachment.eOrientation) : 0u,
+                attachment.bEnabled ? std::string_view(attachment.strModelCueId) : std::string_view{},
+                attachment.bEnabled ? std::string_view(attachment.strRuntimeBoneName) : std::string_view{},
+                attachment.bEnabled ? std::string_view(attachment.strRuntimeAnchorSlotId) : std::string_view{},
+                anchorBits,
+                Is_ManualElementGroupMember(element) ? std::string_view(element.strGroupId) : std::string_view{},
+                element.TransformInheritance.bEnabled, element.TransformInheritance.strMasterElementId
+            }, groups.size());
             if (inserted)
             {
+                std::ostringstream key;
+                key << std::hexfloat;
+                const auto vectorKey = [&](const auto& v) { key << '|' << v.x << '|' << v.y << '|' << v.z; };
+                std::string label;
+                if (!attachment.bEnabled)
+                {
+                    key << "unattached"; label = "Unattached / Effect root";
+                    // Explicit manual groups share an anchor but retain independent
+                    // edit centers. Native source groups keep the existing grouping.
+                    if (Is_ManualElementGroupMember(element))
+                    {
+                        key << "|manual|" << std::quoted(element.strGroupId);
+                        label = ManualGroup_Label(element.strGroupId) + " / Effect root";
+                    }
+                }
+                else
+                {
+                    key << "attachment|" << attachment.bFollow << '|' << static_cast<unsigned>(attachment.eOrientation)
+                        << '|' << std::quoted(attachment.strModelCueId) << '|' << std::quoted(attachment.strRuntimeBoneName)
+                        << '|' << std::quoted(attachment.strRuntimeAnchorSlotId) << '|' << attachment.fSnapshotRootSourceBasisYawDegrees;
+                    vectorKey(attachment.SocketLocalTransform.vPosition);
+                    vectorKey(attachment.SocketLocalTransform.vRotationDegrees);
+                    vectorKey(attachment.SocketLocalTransform.vScale);
+                    vectorKey(attachment.SocketLocalTransform.vVelocityPerSecond);
+                    vectorKey(attachment.SocketLocalTransform.vRevolutionDegreesPerSecond);
+                    const std::string owner = attachment.strModelCueId.empty() ? "Source model" : "Model " + attachment.strModelCueId;
+                    label = attachment.bFollow ?
+                        ((attachment.strRuntimeBoneName.empty() ? "Root" : attachment.strRuntimeBoneName) + " / " + owner) :
+                        "Captured root / " + owner;
+                    if (document.SourceModelPreview && document.SourceModelPreview->strActorProfileId == "MN_RPCT_05" &&
+                        attachment.bFollow && attachment.strModelCueId.empty())
+                    {
+                        if (attachment.strRuntimeBoneName == "b_wp_2") label = "Left hand / " + label;
+                        else if (attachment.strRuntimeBoneName == "b_wp_1") label = "Right hand / " + label;
+                    }
+                    if (attachment.eOrientation == EFFECT_ATTACHMENT_ORIENTATION::OWNER_YAW) label += " / Owner yaw";
+                    if (attachment.eOrientation == EFFECT_ATTACHMENT_ORIENTATION::CAMERA_VIEW) label += " / Camera view";
+                }
+                if (attachment.bEnabled && Is_ManualElementGroupMember(element))
+                {
+                    key << "|manual|" << std::quoted(element.strGroupId);
+                    label = ManualGroup_Label(element.strGroupId) + " / " + label;
+                }
+                key << "|inherit|" << element.TransformInheritance.bEnabled << '|' << std::quoted(element.TransformInheritance.strMasterElementId);
+                const auto groupKey = key.str();
                 ATTACHMENT_ELEMENT_GROUP group;
                 group.key = groupKey; group.label = std::move(label);
+                group.manual = Is_ManualElementGroupMember(element);
+                group.startSeconds = element.Detail.Timing.fStartDelaySeconds;
                 group.rootLocal = !attachment.bEnabled;
                 group.anchorEditable = !document.bSourceContract && attachment.bEnabled && attachment.bFollow &&
                     !attachment.strRuntimeBoneName.empty() && attachment.eOrientation != EFFECT_ATTACHMENT_ORIENTATION::CAMERA_VIEW;
@@ -161,23 +201,25 @@ namespace EffectToolDetail
                 if (!group.editable) group.editReason = document.bSourceContract ? "SourceContract documents are read-only." :
                     "Group position editing requires an effect root, captured root or following bone attachment.";
                 groups.push_back(std::move(group));
+                members.emplace_back();
             }
             auto& group = groups[found->second];
             group.elementIds.push_back(element.strElementId);
+            members[found->second].push_back(&element);
+            group.startSeconds = (std::min)(group.startSeconds, element.Detail.Timing.fStartDelaySeconds);
             if (!element.RuntimeCarrier.Is_Empty() || element.SourceTransformTrack || element.TransformInheritance.bEnabled)
             {
                 group.editable = false;
                 group.editReason = "This group uses a runtime carrier, source transform track or master transform. Edit that transform owner instead.";
             }
         }
-        for (auto& group : groups)
+        for (size_t groupIndex = 0u; groupIndex < groups.size(); ++groupIndex)
         {
+            auto& group = groups[groupIndex];
             double x = 0., y = 0., z = 0.;
             const EFFECT_ELEMENT_DESC* first = nullptr;
-            for (const auto& id : group.elementIds)
+            for (const auto* found : members[groupIndex])
             {
-                const auto found = std::find_if(document.Elements.begin(), document.Elements.end(),
-                    [&](const auto& element) { return element.strElementId == id; });
                 if (!first) first = &*found;
                 const auto& position = found->Detail.Transform.vPosition;
                 x += position.x; y += position.y; z += position.z;
@@ -193,10 +235,8 @@ namespace EffectToolDetail
             group.rotationDegrees = first->Detail.Transform.vRotationDegrees;
             group.rotationEditable = group.editable;
             group.rotationEditReason = group.editReason;
-            for (const auto& id : group.elementIds)
+            for (const auto* member : members[groupIndex])
             {
-                const auto member = std::find_if(document.Elements.begin(), document.Elements.end(),
-                    [&](const auto& element) { return element.strElementId == id; });
                 const auto& detail = member->Detail;
                 const auto& spin = detail.Transform.vRevolutionDegreesPerSecond;
                 // The authored rotation curve interpolates Euler components. A
@@ -210,6 +250,100 @@ namespace EffectToolDetail
             }
         }
         return groups;
+    }
+
+    bool Create_IndependentElementGroup(Client::EFFECT_DOCUMENT_DESC& document,
+        const std::vector<std::string>& elementIds, std::string& groupId, std::string& error)
+    {
+        if (document.bSourceContract || elementIds.empty())
+        { error = "Select authored Elements before creating an independent group."; return false; }
+        const std::set<std::string> selected(elementIds.begin(), elementIds.end());
+        if (selected.size() != elementIds.size())
+        { error = "Group selection contains repeated Element IDs."; return false; }
+        std::set<std::string> usedGroups, usedSlots;
+        size_t found = 0u;
+        for (const auto& element : document.Elements)
+        {
+            usedGroups.insert(element.strGroupId);
+            usedSlots.insert(element.ActionCueAttachment.strRuntimeAnchorSlotId);
+            if (!selected.contains(element.strElementId)) continue;
+            ++found;
+            if (!element.RuntimeCarrier.Is_Empty() ||
+                (element.TransformInheritance.bEnabled && !selected.contains(element.TransformInheritance.strMasterElementId)))
+            { error = "Select a complete transform-owner group without a runtime carrier; the current selection is unchanged."; return false; }
+            const auto& attachment = element.ActionCueAttachment;
+            if (attachment.bEnabled && (!attachment.bFollow || attachment.strRuntimeBoneName.empty() ||
+                attachment.eOrientation == Client::EFFECT_ATTACHMENT_ORIENTATION::CAMERA_VIEW))
+            { error = "An independent attached group requires a following bone anchor."; return false; }
+        }
+        if (found != selected.size())
+        { error = "A marked Element is no longer present; nothing was grouped."; return false; }
+        for (const auto& element : document.Elements)
+            if (!selected.contains(element.strElementId) && element.TransformInheritance.bEnabled &&
+                selected.contains(element.TransformInheritance.strMasterElementId))
+            { error = "Another Element inherits this selection; include it before grouping."; return false; }
+        std::string nextGroup;
+        for (size_t i = 1u; ; ++i)
+        {
+            nextGroup = "manual.selection." + std::to_string(i);
+            if (!usedGroups.contains(nextGroup)) break;
+        }
+        auto staged = document;
+        std::map<std::string, std::string> slots;
+        size_t nextSlot = 1u;
+        for (auto& element : staged.Elements)
+        {
+            if (!selected.contains(element.strElementId)) continue;
+            element.strGroupId = nextGroup;
+            auto& attachment = element.ActionCueAttachment;
+            if (!attachment.bEnabled) continue;
+            auto foundSlot = slots.find(attachment.strRuntimeAnchorSlotId);
+            if (foundSlot == slots.end())
+            {
+                std::string slot;
+                do { slot = "manual.anchor." + std::to_string(nextSlot++); } while (usedSlots.contains(slot));
+                // Some older resources attach import-scale policy to an exact slot.
+                // A group cannot silently change that measured coordinate basis.
+                if (Client::CEffectPresentationService::Requires_SourceBoneImportScaleNormalization(
+                        document.strEffectAssetId, attachment.strRuntimeAnchorSlotId) !=
+                    Client::CEffectPresentationService::Requires_SourceBoneImportScaleNormalization(document.strEffectAssetId, slot))
+                { error = "This anchor has slot-specific import scaling; independent grouping would change its source basis."; return false; }
+                usedSlots.insert(slot);
+                foundSlot = slots.emplace(attachment.strRuntimeAnchorSlotId, std::move(slot)).first;
+            }
+            attachment.strRuntimeAnchorSlotId = foundSlot->second;
+        }
+        if (!Client::CEffectDocumentCodec::Validate(staged, error)) return false;
+        document = std::move(staged);
+        groupId = std::move(nextGroup);
+        error.clear();
+        return true;
+    }
+
+    bool Set_AttachmentGroupStart(Client::EFFECT_DOCUMENT_DESC& document,
+        const std::string& groupKey, const float startSeconds, std::string& error)
+    {
+        const auto groups = Build_AttachmentElementGroups(document);
+        const auto group = std::find_if(groups.begin(), groups.end(), [&](const auto& item) { return item.key == groupKey; });
+        if (group == groups.end() || !group->manual || !std::isfinite(startSeconds) || startSeconds < 0.f || startSeconds > 600.f)
+        { error = "Select an independent group and a start time between 0 and 600 seconds."; return false; }
+        const float delta = startSeconds - group->startSeconds;
+        auto staged = document;
+        for (auto& element : staged.Elements)
+        {
+            if (std::find(group->elementIds.begin(), group->elementIds.end(), element.strElementId) == group->elementIds.end()) continue;
+            if (!element.RuntimeCarrier.Is_Empty())
+            { error = "A runtime carrier owns this group's clock; timing was preserved."; return false; }
+            element.Detail.Timing.fStartDelaySeconds += delta;
+            // Source tracks sample effectTime + origin. Preserve each member's
+            // original motion/material phase at the newly placed group start.
+            if (element.SourceTransformTrack)
+                element.SourceTransformTrack->fSourceTimeOriginSeconds -= delta;
+        }
+        if (!Client::CEffectDocumentCodec::Validate(staged, error)) return false;
+        document = std::move(staged);
+        error.clear();
+        return true;
     }
 
     bool Set_AttachmentGroupAnchor(Client::EFFECT_DOCUMENT_DESC& document,
@@ -1596,8 +1730,13 @@ namespace EffectToolDetail
 
 	std::string FriendlyDocumentLabel(
 		const Client::EFFECT_DOCUMENT_DESC& Document,
-		const std::string_view strFallback)
+		const std::string_view strFallback,
+		const Client::VALTAN_PATTERN_TREE_VIEW* pValtanView,
+		const Client::VALTAN_FULL_RESTORE_CLIP_INDEX* pValtanClips)
 	{
+		if (pValtanView && pValtanClips && Document.strEffectAssetId.starts_with("effect.valtan."))
+			return Client::CValtanPatternTree::Describe_EffectResource(*pValtanView,
+				Document.strEffectAssetId, Document.strDisplayName, *pValtanClips);
 		if (!strFallback.empty() &&
 			(Document.strEffectAssetId == ARTIST_F_UNIFIED_EFFECT_ASSET_ID ||
 			 Document.strEffectAssetId ==

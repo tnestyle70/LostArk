@@ -4,6 +4,9 @@ import struct
 import sys
 import tempfile
 import unittest
+import json
+from types import SimpleNamespace
+from unittest.mock import patch
 from pathlib import Path
 
 SPEC = importlib.util.spec_from_file_location(
@@ -89,6 +92,87 @@ def landscape_component_with_hole_weight(weight: int):
         cached_local_box={"min": [0.0, 0.0, 0.0], "max": [0.0, 0.0, 0.0]},
         weight_textures=[texture],
     )
+
+
+class SourcePaintedSurfaceTests(unittest.TestCase):
+    def write_surface(self, directory, painted, hole=False):
+        component = landscape_component_with_hole_weight(171 if hole else 0)
+        proxy = SimpleNamespace(location=(0, 0, 0), draw_scale=100,
+                                draw_scale3d=(1, 1, 1))
+        # All eight triangles slope steeply; they still belong to the original
+        # painted layers, not an inferred separate cliff material.
+        positions = [(x, x * 4.0, -y) for y in range(3) for x in range(3)]
+        normals = [(0, 1, 0)] * 9
+        tangents = [(1, 0, 0, 1)] * 9
+        path = Path(directory) / ('painted.gltf' if painted else 'legacy.gltf')
+        with patch.object(extract_ue3_landscape, 'component_positions', return_value=positions), \
+             patch.object(extract_ue3_landscape, 'component_normals_and_tangents', return_value=(normals, tangents)):
+            result = extract_ue3_landscape.write_component_gltf(
+                component, proxy, path, 'TEST', dict(tiling=1, rotation=0),
+                source_painted_surface=painted)
+        return result, json.loads(path.read_text()), path.with_suffix('.bin').read_bytes()
+
+    def test_source_paint_keeps_steep_faces_in_component_uv(self):
+        with tempfile.TemporaryDirectory() as directory:
+            result, doc, binary = self.write_surface(directory, True)
+            self.assertEqual(result['triangleCount'], 8)
+            self.assertEqual(result['cliffTriangleCount'], 0)
+            self.assertEqual(result['vertexCount'], 9)
+            primitive = doc['meshes'][0]['primitives'][0]
+            self.assertEqual(primitive['material'], 0)
+            accessor = doc['accessors'][primitive['attributes']['TEXCOORD_0']]
+            offset = doc['bufferViews'][accessor['bufferView']]['byteOffset']
+            self.assertEqual(struct.unpack_from('<18f', binary, offset),
+                             tuple(v for y in range(3) for x in range(3) for v in (x/2, y/2)))
+
+    def test_legacy_default_still_splits_cliffs_with_same_bounds_and_topology_count(self):
+        with tempfile.TemporaryDirectory() as directory:
+            old, _, _ = self.write_surface(directory, False)
+            new, _, _ = self.write_surface(directory, True)
+            self.assertEqual(old['cliffTriangleCount'], 8)
+            for field in ('boundsMin', 'boundsMax', 'triangleCount', 'holeQuadCount'):
+                self.assertEqual(old[field], new[field])
+
+    def test_source_paint_preserves_holes(self):
+        with tempfile.TemporaryDirectory() as directory:
+            result, _, _ = self.write_surface(directory, True, hole=True)
+            self.assertEqual(result['triangleCount'], 0)
+            self.assertEqual(result['holeQuadCount'], 4)
+
+    def test_gltf_basis_survives_converter_z_reflection(self):
+        with tempfile.TemporaryDirectory() as directory:
+            result, doc, binary = self.write_surface(directory, True)
+            primitive = doc['meshes'][0]['primitives'][0]
+            def values(name, width, fmt='f'):
+                index = primitive['indices'] if name == 'indices' else primitive['attributes'][name]
+                a = doc['accessors'][index]
+                offset = doc['bufferViews'][a['bufferView']]['byteOffset']
+                return [struct.unpack_from('<'+fmt*width, binary,
+                    offset+i*width*struct.calcsize(fmt)) for i in range(a['count'])]
+            positions = values('POSITION', 3)
+            self.assertTrue(result['gltfRightHanded'])
+            self.assertEqual([(x, y, -z) for x, y, z in positions],
+                             [(x, x*4.0, -y) for y in range(3) for x in range(3)])
+            self.assertEqual(values('TANGENT', 4), [(1, 0, 0, -1)]*9)
+            self.assertEqual(values('NORMAL', 3), [(0, 1, 0)]*9)
+            indices = [v[0] for v in values('indices', 1, 'H')]
+            # glTF winding is reversed once here and once by the importer.
+            self.assertEqual(indices[:6], [0, 3, 1, 1, 3, 4])
+            accessor = doc['accessors'][primitive['attributes']['POSITION']]
+            self.assertEqual(accessor['min'], [0, 0, 0])
+            self.assertEqual(accessor['max'], [2, 8, 2])
+
+    def test_gltf_cliff_primitive_uses_the_same_right_handed_basis(self):
+        with tempfile.TemporaryDirectory() as directory:
+            result, doc, binary = self.write_surface(directory, False)
+            primitive, = doc['meshes'][0]['primitives']
+            self.assertEqual(primitive['material'], 1)
+            a = doc['accessors'][primitive['attributes']['POSITION']]
+            offset = doc['bufferViews'][a['bufferView']]['byteOffset']
+            positions = [struct.unpack_from('<3f', binary, offset+i*12) for i in range(a['count'])]
+            self.assertEqual(min(v[2] for v in positions), 0)
+            self.assertEqual(max(v[2] for v in positions), 2)
+            self.assertEqual(result['boundsMin'][2], -2)
 
 
 class LandscapeHoleContractTests(unittest.TestCase):

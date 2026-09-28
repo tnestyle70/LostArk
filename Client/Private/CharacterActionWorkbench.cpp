@@ -17,6 +17,7 @@
 #include "EffectAuthoringSequencer.h"
 #include "EffectEditingSession.h"
 #include "GameInstance.h"
+#include "Profiler.h"
 #include "Model.h"
 #include "PlayerSkillCatalog.h"
 #include "ProjectDataRoot.h"
@@ -157,6 +158,7 @@ void CCharacterActionWorkbench::Set_Camera(const std::shared_ptr<Engine::CCamera
 { if (m_Sequencer) m_Sequencer->Set_Camera(camera); }
 void CCharacterActionWorkbench::Update(const float dt, const bool active)
 {
+    Engine::CProfilerScope scope(CGameInstance::Get().Get_Profiler(), "ImGui.Tool.CharacterWorkbench.Update");
     if (!m_Sequencer) return;
     if (m_BoneEditor && m_BoneEditor->Is_Active() && m_Sequencer->Is_Active()) m_BoneEditor->Stop();
     m_Sequencer->Update(dt, active);

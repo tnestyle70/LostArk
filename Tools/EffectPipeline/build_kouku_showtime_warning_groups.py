@@ -220,13 +220,14 @@ def animate_radial_fill(element):
     """Retain native fixed boundaries and animate only the fill radius.
 
     GroundEffect supplied the material/area/fade, but no serialized inner curve
-    was recovered. The chosen timing is project authored. Native 3600/3601/3602 draw
+    was recovered. The chosen timing is project authored. Native 3600/3601/3602/2614/2615 draw
     their own boundaries, so cloning extra boundary elements would double blend.
     """
     profile = element['material']['sourceProfile']
     native = profile.get('runtimeShaderProfileId')
     assert native in ('effect.ue3.kouku-3600-native.v1', 'effect.ue3.kouku-3601-native.v1',
-                      'effect.ue3.kouku-3602-native.v1')
+                      'effect.ue3.kouku-3602-native.v1', 'effect.ue3.kouku-2614-native.v1',
+                      'effect.ue3.kouku-2615-native.v1')
     assert element['kind'] == 'decal' and element['sourceRecipe']['enabled']
     assert element['sourceRecipe']['rendererShape'] == 'decal'
     detail, track = element['detail'], element['sourceTransformTrack']

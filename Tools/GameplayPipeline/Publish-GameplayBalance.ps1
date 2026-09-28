@@ -1831,6 +1831,22 @@ foreach ($visual in @($bossCatalogOwners[0].combatObjectVisuals)) {
 	if ($null -ne $visual.PSObject.Properties['hitEffectAssetId']) {
 		$visualProperties += 'hitEffectAssetId'
 	}
+	$hasArmedId = $null -ne $visual.PSObject.Properties['armedPresentationEventId']
+	$hasArmedEffect = $null -ne $visual.PSObject.Properties['armedEffectAssetId']
+	if ($hasArmedId -ne $hasArmedEffect -or ($hasArmedId -and $hasEffectV2Group)) {
+		throw 'Boss combat object armed presentation requires a paired V1 visual.'
+	}
+	if ($hasArmedId) {
+		$visualProperties += @('armedPresentationEventId','armedEffectAssetId')
+		foreach ($field in @('armedPresentationEventId','armedEffectAssetId')) {
+			Assert-JsonString $visual.$field "boss combat visual $field"
+			Assert-StableId $visual.$field "boss combat visual $field"
+		}
+	}
+	if ($null -ne $visual.PSObject.Properties['stopActiveOnHit']) {
+		$visualProperties += 'stopActiveOnHit'
+		if ($visual.stopActiveOnHit -isnot [bool]) { throw 'stopActiveOnHit must be boolean.' }
+	}
 	if ($null -ne $visual.PSObject.Properties['worldScale']) {
 		$visualProperties += 'worldScale'
 		if ($visual.worldScale -isnot [Array] -or @($visual.worldScale).Count -ne 3) {
@@ -2391,6 +2407,7 @@ foreach ($pattern in @($encounterDocument.patterns)) {
 		$hasStageActions = $null -ne $stage.PSObject.Properties['actions']
 		$hasStageMotion = $null -ne $stage.PSObject.Properties['motion']
 		$hasHitOffsets = $null -ne $stage.PSObject.Properties['hitOffsetsMs']
+		$hasAttackContacts = $null -ne $stage.PSObject.Properties['attackContacts']
 		$hasHitAnchor = $null -ne $stage.PSObject.Properties['hitAnchor']
 		$hasHitActivation = $null -ne $stage.PSObject.Properties['hitActivation']
 		$hasPartDamagePolicy =
@@ -2415,6 +2432,7 @@ foreach ($pattern in @($encounterDocument.patterns)) {
 		if ($hasStageActions) { $stageProperties += 'actions' }
 		if ($hasStageMotion) { $stageProperties += 'motion' }
 		if ($hasHitOffsets) { $stageProperties += 'hitOffsetsMs' }
+		if ($hasAttackContacts) { $stageProperties += 'attackContacts' }
 		if ($hasHitAnchor) { $stageProperties += 'hitAnchor' }
 		if ($hasHitActivation) { $stageProperties += 'hitActivation' }
 		if ($hasPartDamagePolicy) { $stageProperties += 'partDamagePolicy' }
@@ -2718,6 +2736,22 @@ foreach ($pattern in @($encounterDocument.patterns)) {
 				'PATTERNSTAGEHITOFFSET', $encounterDocument.encounterId,
 				$pattern.patternId, $stage.actionId, [uint32]$hitOffsetIndex,
 				[uint32]$hitOffsetsMs[$hitOffsetIndex]) -join "`t"))
+		}
+		if ($hasAttackContacts) {
+			$contacts = @($stage.attackContacts)
+			if ($stage.attackContacts -isnot [Array] -or $contacts.Count -eq 0 -or
+				$contacts.Count -ne $hitCount -or $hasHitActivation -or $hasStageMotion -or $playerResponse -cne 'DAMAGE') {
+				throw 'Stage contacts require an ordinary pulse schedule with one contact per offset.'
+			}
+			for ($contactIndex = 0; $contactIndex -lt $contacts.Count; $contactIndex++) {
+				$contact = $contacts[$contactIndex]
+				$at = if ($hasHitOffsets) { $hitOffsetsMs[$contactIndex] } else { $hitDelayMs + $contactIndex * $hitIntervalMs }
+				if ($contact.trigger -cne 'TIMED' -or $contact.endMs -ne 0 -or $contact.repeatCount -ne 1 -or
+					$contact.repeatIntervalMs -ne 0 -or $contact.atMs -ne $at) { throw 'Stage contact does not match its pulse schedule.' }
+			}
+			foreach ($contactRow in @(New-KoukuAttackHitRows $contacts $encounterDocument.encounterId $pattern.patternId $stage.actionId 'STAGE' 0 ([uint32]$stage.durationMs - 1))) {
+				$patternRows.Add($contactRow)
+			}
 		}
 		if ($hasHitAnchor -or $hasHitActivation) {
 			$patternRows.Add((@(
@@ -3434,6 +3468,9 @@ foreach ($combatObject in @($combatObjectDocument.objects)) {
 	if ($null -ne $combatObject.PSObject.Properties['coverRadiusM']) {
 		$combatObjectProperties += 'coverRadiusM'
 	}
+	if ($null -ne $combatObject.PSObject.Properties['ownerHitChain']) {
+		$combatObjectProperties += 'ownerHitChain'
+	}
 	Assert-ExactProperties $combatObject $combatObjectProperties `
 		'Valtan combat object'
 	foreach ($field in @(
@@ -3627,6 +3664,36 @@ foreach ($combatObject in @($combatObjectDocument.objects)) {
 		(Format-InvariantFloat $coverRadiusM `
 			"combat object $combatObjectId coverRadiusM"),
 		$lifeMs, $eventCount) -join "`t"))
+
+
+	$chain = $null
+	if ($null -ne $combatObject.PSObject.Properties['ownerHitChain']) { $chain = $combatObject.ownerHitChain }
+	if ($null -ne $chain) {
+		Assert-ExactProperties $chain @('triggerActionId','delayMs','armedPresentationEventId') 'ownerHitChain'
+		foreach ($field in @('triggerActionId','armedPresentationEventId')) {
+			Assert-JsonString $chain.$field "ownerHitChain $field"
+			Assert-StableId $chain.$field "ownerHitChain $field"
+		}
+		Assert-JsonInteger $chain.delayMs 'ownerHitChain delayMs' 1 600000
+		$triggerStage = $stageOwnerByKey["$ownerPatternId`n$($chain.triggerActionId)"]
+		$chainHits = @($combatObject.hits)
+		if ($kind -cne 'FIXED_AREA' -or $coverRadiusM -le 0.0 -or $chainHits.Count -ne 1 -or
+			$chainHits[0].trigger -cne 'TIMED' -or $chainHits[0].repeatCount -ne 1 -or
+			($null -ne $combatObject.PSObject.Properties['presentationEvents'] -and @($combatObject.presentationEvents).Count -gt 0) -or $null -eq $triggerStage -or
+			$triggerStage.hitShape -cne 'CONE' -or $triggerStage.hitCount -lt 1 -or
+			$chain.delayMs -ge $lifeMs -or
+			$visual.armedPresentationEventId -cne $chain.armedPresentationEventId -or
+			[string]::IsNullOrEmpty($visual.armedEffectAssetId) -or
+			[string]::IsNullOrEmpty($visual.hitEffectAssetId) -or $visual.stopActiveOnHit -ne $true -or
+			$chain.armedPresentationEventId -ceq $chainHits[0].hitId) {
+			throw "Owner hit chain geometry or visual join is invalid: $combatObjectId"
+		}
+		$combatObjectRows.Add((@('BOSSCOMBATOBJECTOWNERHITCHAIN', $combatObjectDocument.encounterId,
+			$combatObjectId, $chain.triggerActionId, $chain.delayMs, $chain.armedPresentationEventId) -join "`t"))
+	}
+	elseif ($null -ne $visual.PSObject.Properties['armedPresentationEventId']) {
+		throw "Armed visual has no owner hit chain: $combatObjectId"
+	}
 
 	for ($hitIndex = 0; $hitIndex -lt @($combatObject.hits).Count;
 		++$hitIndex) {

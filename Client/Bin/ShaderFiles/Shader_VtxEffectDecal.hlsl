@@ -78,6 +78,9 @@ bool Reject_KoukuGroundWarningReceiver(uint materialProfile, float depthMarker,
     const bool groundWarning = materialProfile == 3600u ||
         materialProfile == 3601u || materialProfile == 3602u ||
         materialProfile == 3607u ||
+        // Valtan tracking-axe warning and impact ground decals share the
+        // same actor-exclusion policy; preserve their source projector depth.
+        materialProfile == 2614u || materialProfile == 2599u ||
         // Guardian Quake Smash's four source floor decals use the same
         // environment-only projector contract. Their 3m depth must not stamp
         // the character's head while the root is already 5cm above ground.

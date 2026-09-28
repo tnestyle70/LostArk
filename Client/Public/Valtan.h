@@ -7,6 +7,7 @@
 #include "DeferredMaterialRenderUtils.h"
 #include "NavPathFollower.h"
 #include "PlayerHandGripTransform.h"
+#include "Gameplay/AttackHitTemplate.h"
 #include "Network/PacketMessages.h"
 #include "ValtanPatternEffectCueDocument.h"
 #include "ValtanPatternShakeCueDocument.h"
@@ -331,7 +332,8 @@ public:
 		LostArk::Shared::WORLD_ENTITY_ACTION patternAction,
 		std::string_view actionId,
 		f32_t fActionAgeSeconds,
-		bool_t bForceAnimationEdge);
+		bool_t bForceAnimationEdge,
+		bool_t bRebuildEffectHistory = false);
 	/* Action Composition-only draft mirror. It never replaces Product caches
 	   and is accepted only by a non-authoritative preview boss. */
 	bool_t Stage_LocalPatternAuthoringPreview(
@@ -538,6 +540,13 @@ private:
 	};
 	std::vector<PATTERN_TARGET_FOLLOW_EFFECT_ROOT>
 		m_PatternTargetFollowEffectRoots;
+	// Authoring roots follow the pinned scene target only on timeline samples.
+	std::weak_ptr<CTransform> m_LocalPreviewFollowTarget;
+	bool_t m_bLocalPreviewUsesSceneTarget = false;
+	bool_t m_bLocalPreviewTargetFollowClockValid = false;
+	f32_t m_fLocalPreviewTargetFollowClockSeconds = 0.f;
+	std::vector<PATTERN_TARGET_FOLLOW_EFFECT_ROOT>
+		m_LocalPreviewTargetFollowEffectRoots;
 	std::size_t m_iPatternPresentationClipOccurrenceIndex =
 		(std::numeric_limits<std::size_t>::max)();
 	/* Presentation only: pattern stage actionId -> ordered original clip
@@ -570,6 +579,8 @@ private:
 		m_LocalPreviewStageIndexByActionId;
 	std::unordered_map<std::string, uint32_t>
 		m_LocalPreviewStageStartMsByActionId;
+	std::unordered_map<std::string, uint32_t>
+		m_LocalPreviewStageDurationMsByActionId;
 	std::unordered_map<std::string, PATTERN_BODY_VISIBILITY_WINDOW>
 		m_LocalPreviewBodyVisibilityByActionId;
 	std::unordered_map<std::string, f32_t>
@@ -590,6 +601,17 @@ private:
 		std::string strClientVisualId;
 		std::string strActiveEffectAssetId;
 		std::string strTerminalEffectAssetId;
+		std::string strArmedEffectAssetId;
+		bool_t bStopActiveOnHit = false;
+		bool_t bOwnerHitChain = false;
+		uint32_t iChainDelayMs = 0u;
+		f32_t fCoverRadiusM = 0.f;
+		f32_t fChainConeLength = 0.f;
+		f32_t fChainConeAngleDegrees = 0.f;
+		f32_t fChainForwardOffsetM = 0.f;
+		f32_t fChainRightOffsetM = 0.f;
+		f32_t fChainYawOffsetDegrees = 0.f;
+		std::vector<uint32_t> ChainHitPatternClocks;
 		uint32_t iCount = 0u;
 		f32_t fRadiusM = 0.f;
 		f32_t fStartAngleDegrees = 0.f;
@@ -608,6 +630,10 @@ private:
 		float3_t vPosition = {};
 		f32_t fYawDegrees = 0.f;
 		uint64_t iActiveHandle = 0u;
+		uint64_t iArmedHandle = 0u;
+		uint64_t iChainTerminalHandle = 0u;
+		double fChainArmedPatternMs = -1.0;
+		double fChainExplosionPatternMs = -1.0;
 		/* The common externally sampled Effect runtime keeps this handle until
 		   Stop/Reset, including the authored natural tail after Server despawn. */
 		std::vector<uint64_t> TerminalHandles;
@@ -618,11 +644,13 @@ private:
 	std::vector<LOCAL_PATTERN_COMBAT_OBJECT_INSTANCE>
 		m_LocalPreviewCombatObjectInstances;
 	std::string m_strLocalPreviewCombatObjectScopeId;
+	double m_fLocalPreviewCombatObjectSampleMs = -1.0;
 	float3_t m_vLocalPreviewCombatObjectBossPosition = {};
 	f32_t m_fLocalPreviewCombatObjectBossYawDegrees = 0.f;
 	std::string m_strLocalPreviewCombatObjectStatus;
 	std::string m_strLocalPreviewPatternId;
 	std::string m_strLocalPreviewActionId;
+	bool_t m_bLocalPreviewV2StageRetired = false;
 	uint32_t m_iLocalPreviewStageIndex = 0u;
 	uint32_t m_iLocalPreviewEffectGeneration = 0u;
 	/* Product presentation only: exact authoritative stage actionId -> Effect
@@ -682,6 +710,11 @@ private:
 		uint32_t iHitDelayMs = 0u;
 		uint32_t iStageDurationMs = 0u;
 		std::vector<uint32_t> HitOffsetsMs;
+        std::vector<LostArk::Shared::ATTACK_HIT_TEMPLATE> AttackContacts;
+        bool_t bContactAnchorSupported = true;
+        f32_t fContactAnchorForwardM = 0.f;
+        f32_t fContactAnchorRightM = 0.f;
+        f32_t fContactAnchorYawDegrees = 0.f;
 		bool_t bHasActivation = false;
 		uint32_t iActivationStartMs = 0u;
 		uint32_t iActivationLifetimeMs = 0u;
@@ -749,6 +782,7 @@ private:
 	bool_t Reload_PatternEffectCues_WhileAdmitted(std::string& strOutStatus);
 	void Spawn_DuePatternEffectCues(f32_t fActionAgeSeconds);
 	void Update_PatternTargetFollowEffectRoots();
+	void Update_LocalPreviewTargetFollowEffectRoots(f32_t fPreviewTimelineSeconds);
 	void Detach_PatternTargetFollowEffectRoots();
 	bool_t Sync_LocalPatternCombatObjectPreview(
 		std::string_view actionId,
@@ -756,6 +790,7 @@ private:
 		std::string& strOutStatus,
 		bool_t bIndependentOwnerOnly = false);
 	void Stop_LocalPatternCombatObjectPreview();
+	void Update_LocalPreviewCombatObjectHitChains(double fPatternAgeMs);
 	void Load_PatternSoundCues();
 	bool_t Reload_PatternSoundCues_WhileAdmitted(std::string& strOutStatus);
 	void Spawn_DuePatternSoundCues(f32_t fActionAgeSeconds);

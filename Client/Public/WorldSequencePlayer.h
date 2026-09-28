@@ -335,6 +335,9 @@ private:
         std::string key;
         uint64_t handle = 0u;
         f32_t endElapsedMs = 0.f;
+        uint32_t mediaDurationMs = 0u;
+        uint64_t mediaCycle = 0u;
+        bool_t loopToDuration = false;
     };
     struct RETIRED_SOUND
     {

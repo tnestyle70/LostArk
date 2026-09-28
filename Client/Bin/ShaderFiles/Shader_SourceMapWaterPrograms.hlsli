@@ -1139,7 +1139,7 @@ SOURCE_CHARACTER_NATIVE_OUTPUT SourceMapWater42(SOURCE_CHARACTER_NATIVE_INPUT in
 {
     SOURCE_CHARACTER_NATIVE_OUTPUT output=(SOURCE_CHARACTER_NATIVE_OUTPUT)0;
     float4 source[64]; [unroll] for(uint i=0u;i<64u;++i)source[i]=g_SourceCharacterBaseConstants[i];
-    source[0]=float4(0.f,0.f,0.f,1.f);
+    source[0]=float4(input.values[9].xyz,1.f);
     source[11].x=(float4(g_SourceCharacterTime,0.f,0.f,0.f)).x;
     source[18]=0.f;source[19]=0.f;source[20]=float4(g_SourceMapAmbient.rgb,1.f);
     source[17]=0.f; // Engine view-owned extra directional contribution is unbound.
@@ -2609,7 +2609,7 @@ SOURCE_CHARACTER_NATIVE_OUTPUT SourceMapWater42Baked(SOURCE_CHARACTER_NATIVE_INP
 {
     SOURCE_CHARACTER_NATIVE_OUTPUT output=(SOURCE_CHARACTER_NATIVE_OUTPUT)0;
     float4 source[64]; [unroll] for(uint i=0u;i<32u;++i)source[i]=g_SourceCharacterBaseConstants[i+32u]; [unroll] for(uint z=32u;z<64u;++z)source[z]=0.f;
-    source[0]=float4(0.f,0.f,0.f,1.f);
+    source[0]=float4(input.values[9].xyz,1.f);
     source[17]=0.f; // Native baked diffuse already includes scene indirect light.
     source[18]=0.f; // Native baked diffuse already includes scene indirect light.
     source[19]=0.f; // Native baked diffuse already includes scene indirect light.

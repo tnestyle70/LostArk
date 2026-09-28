@@ -213,6 +213,13 @@ bool CEffect_Tool::Open_AuthoringResource(const EFFECT_RESOURCE_KEY& key)
     {
         Initialize_CatalogMetadataView();
         const auto* path = Resolve_DirectAuthoredEditablePath(key.strStableId, m_strDocumentStatus);
+        if (!path)
+        {
+            // Composition shares the physical All Effects inventory, including
+            // documents saved after this Tool's first metadata snapshot.
+            if (!Refresh_DataFiles()) return false;
+            path = Resolve_DirectAuthoredEditablePath(key.strStableId, m_strDocumentStatus);
+        }
         if (!path) return false;
         // Full Restore loads its exact source clock before the unsaved guard,
         // and carries it through the existing pending-document transaction.
@@ -229,6 +236,42 @@ bool CEffect_Tool::Open_AuthoringResource(const EFFECT_RESOURCE_KEY& key)
     }
     m_strDocumentStatus = "Effect open rejected an invalid owner or ID.";
     return false;
+}
+
+bool CEffect_Tool::Preview_AuthoringResource(const EFFECT_RESOURCE_KEY& key, std::string& status)
+{
+    if (!key.Is_Valid() || !m_pAuthoringSequencer)
+    {
+        status = "Effect preview requires a valid saved resource and its authoring workspace.";
+        return false;
+    }
+    if (key.eOwnerKind == EFFECT_RESOURCE_OWNER_KIND::V1_DOCUMENT &&
+        (key.strStableId.starts_with("effect.kouku.") || key.strStableId.starts_with("effect.valtan.")))
+    {
+        const bool active = m_ActiveDocument && m_eActiveDocumentSource == EFFECT_DOCUMENT_SOURCE::AUTHORED &&
+            m_ActiveDocument->strEffectAssetId == key.strStableId;
+        if (active || Open_AuthoringResource(key))
+        {
+            const bool played = Try_PlayActiveUnifiedEffect();
+            status = m_strPreviewStatus;
+            return played;
+        }
+        if (m_PendingDocumentLoad && m_PendingDocumentLoad->strSelectionId == key.strStableId)
+        {
+            m_PendingDocumentLoad->strElementSelectionId.clear();
+            m_PendingDocumentLoad->strModelCueSelectionId.clear();
+            m_PendingDocumentLoad->bPlayCompleteAfterLoad = true;
+        }
+        status = m_strDocumentStatus;
+        return false;
+    }
+    const uint32_t duration = m_ActiveDocument && key.eOwnerKind == EFFECT_RESOURCE_OWNER_KIND::V1_DOCUMENT &&
+            m_ActiveDocument->strEffectAssetId == key.strStableId ?
+            static_cast<uint32_t>((std::max)(0.001f, m_fPreviewDurationSeconds) * 1000.f) : 3000u;
+    const bool played = m_pAuthoringSequencer->Preview(key, duration);
+    status = m_pAuthoringSequencer->Status();
+    if (played) Release_WorldPreview(true);
+    return played;
 }
 
 void CEffect_Tool::Render_AuthoringResourceTree()
@@ -281,29 +324,11 @@ void CEffect_Tool::Render_AuthoringResourceTree()
                 m_AuthoringParents[Parent_Key({command.eKind, createdId})] = command.strParentId;
             }
         }
-        else if (m_pAuthoringSequencer && command.eCommand == CEffectAuthoringResourceTree::COMMAND_KIND::PREVIEW &&
-            key.eOwnerKind == EFFECT_RESOURCE_OWNER_KIND::V1_DOCUMENT &&
-            (key.strStableId.starts_with("effect.kouku.") ||
-             (key.strStableId.starts_with("effect.valtan.action.") && key.strStableId.ends_with(".full.restore"))))
+        else if (command.eCommand == CEffectAuthoringResourceTree::COMMAND_KIND::PREVIEW)
         {
-            const bool active = m_ActiveDocument && m_eActiveDocumentSource == EFFECT_DOCUMENT_SOURCE::AUTHORED &&
-                m_ActiveDocument->strEffectAssetId == key.strStableId;
-            if (active || Open_AuthoringResource(key))
-            {
-                (void)Try_PlayActiveUnifiedEffect();
-                m_pAuthoringResources->Set_Status(m_strPreviewStatus);
-            }
-            else
-            {
-                if (m_PendingDocumentLoad && m_PendingDocumentLoad->strSelectionId == key.strStableId &&
-                    m_PendingDocumentLoad->ePreviewIntent == EFFECT_DOCUMENT_PREVIEW_INTENT::SYNCHRONIZED_PRODUCT)
-                {
-                    m_PendingDocumentLoad->strElementSelectionId.clear();
-                    m_PendingDocumentLoad->strModelCueSelectionId.clear();
-                    m_PendingDocumentLoad->bPlayCompleteAfterLoad = true;
-                }
-                m_pAuthoringResources->Set_Status(m_strDocumentStatus);
-            }
+            std::string status;
+            (void)Preview_AuthoringResource(key, status);
+            m_pAuthoringResources->Set_Status(std::move(status));
         }
         else if (m_pAuthoringSequencer)
         {

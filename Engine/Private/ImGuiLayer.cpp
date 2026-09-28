@@ -156,7 +156,25 @@ void CImGuiLayer::EndFrame()
 		if (nullptr != m_pContext)
 			m_pContext->OMGetRenderTargets(1, &pPreviousRTV, &pPreviousDSV);
 
-		ImGui::RenderPlatformWindowsDefault();
+		ImGuiPlatformIO& platform = ImGui::GetPlatformIO();
+		for (int32_t i = 1; i < viewportCount; ++i)
+		{
+			ImGuiViewport* viewport = platform.Viewports[i];
+			if (viewport->Flags & ImGuiViewportFlags_IsMinimized) continue;
+			if (platform.Platform_RenderWindow) platform.Platform_RenderWindow(viewport, nullptr);
+			if (platform.Renderer_RenderWindow) platform.Renderer_RenderWindow(viewport, nullptr);
+		}
+		// Rotate queue admission so a busy device cannot always reject the
+		// same last tool. The main viewport remains application-owned.
+		const int32_t secondaryCount = viewportCount - 1;
+		const int32_t first = ImGui::GetFrameCount() % secondaryCount;
+		for (int32_t offset = 0; offset < secondaryCount; ++offset)
+		{
+			ImGuiViewport* viewport = platform.Viewports[1 + (first + offset) % secondaryCount];
+			if (viewport->Flags & ImGuiViewportFlags_IsMinimized) continue;
+			if (platform.Platform_SwapBuffers) platform.Platform_SwapBuffers(viewport, nullptr);
+			if (platform.Renderer_SwapBuffers) platform.Renderer_SwapBuffers(viewport, nullptr);
+		}
 
 		if (nullptr != m_pContext)
 		{

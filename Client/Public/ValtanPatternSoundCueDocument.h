@@ -37,6 +37,10 @@ struct VALTAN_PATTERN_SOUND_CUE final
 	VALTAN_PATTERN_EFFECT_CUE::iStartMs -- validated against the clip's own
 	iSourceStartMs/iPlayMs segment window and the encounter stage's duration. */
 	uint32_t iStartMs = 0u;
+	uint32_t iPlaybackOffsetMs = 0u;
+	uint32_t iPlaybackDurationMs = 0u;
+	bool_t bHasPlaybackOffset = false;
+	bool_t bHasPlaybackDuration = false;
 	uint32_t iStageDurationMs = 0u;
 	/* Resolved once at Parse_Text time (index of strStageId within the pattern's
 	own stages array) so CValtan::Spawn_DuePatternSoundCues can match the live
@@ -60,6 +64,10 @@ struct VALTAN_PATTERN_SOUND_CUE final
 			strSoundEvent == Other.strSoundEvent &&
 			eRepeatPolicy == Other.eRepeatPolicy &&
 			iStartMs == Other.iStartMs &&
+			bHasPlaybackOffset == Other.bHasPlaybackOffset &&
+			iPlaybackOffsetMs == Other.iPlaybackOffsetMs &&
+			bHasPlaybackDuration == Other.bHasPlaybackDuration &&
+			iPlaybackDurationMs == Other.iPlaybackDurationMs &&
 			iStageDurationMs == Other.iStageDurationMs &&
 			iStageIndex == Other.iStageIndex;
 	}
@@ -86,6 +94,10 @@ struct VALTAN_PATTERN_SOUND_CUE_ADD_ROW final
 	VALTAN_PATTERN_SOUND_REPEAT_POLICY eRepeatPolicy =
 		VALTAN_PATTERN_SOUND_REPEAT_POLICY::ONCE;
 	uint32_t iStartMs = 0u;
+	uint32_t iPlaybackOffsetMs = 0u;
+	uint32_t iPlaybackDurationMs = 0u;
+	bool_t bHasPlaybackOffset = false;
+	bool_t bHasPlaybackDuration = false;
 };
 
 struct VALTAN_PATTERN_SOUND_CUE_ROW_ID final
@@ -214,7 +226,8 @@ public:
 		const VALTAN_PATTERN_SOUND_CUE_DOCUMENT& Document,
 		std::string& strOutSerialized,
 		std::string& strOutStatus);
-	/* Existing rows only expose soundBank, soundEvent, repeatPolicy, and startMs.
+	/* Existing rows expose soundBank, soundEvent, repeatPolicy, startMs, playback range,
+	   and the joined Stage/action/clip placement within their original Pattern.
 	   Inventory changes must come from Add_AuthoringRow/Remove_AuthoringRow;
 	   common stable rows cannot change identity. The exact baseline returned by
 	   Load_ForAuthoring must still match before staging and immediately before

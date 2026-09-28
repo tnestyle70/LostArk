@@ -40,6 +40,7 @@ below is a real Release-build feature, so the include is no longer guarded. */
 #include "EffectV2_Catalog.h"
 #include "EffectV2_Runtime.h"
 #include "ValtanPatternTree.h"
+#include "ValtanCinematicEffectLibrary.h"
 #include <set>
 #include "WorldGameplayDocument.h"
 
@@ -781,22 +782,10 @@ bool_t CLevel_ValtanArena::Debug_SampleActionWorkbenchCinematic(
 	const shared_ptr<CValtan>& previewBoss,
 	std::string& status)
 {
-	struct SOURCE_CINEMATIC_PREVIEW final
-	{
-		std::string_view patternId;
-		std::string_view suffix;
-		std::string_view firstStageId;
-		uint32_t stageOffsetMs;
-	};
-	static constexpr std::array<SOURCE_CINEMATIC_PREVIEW, 5u> PREVIEWS = {{
-		{ "VALTAN_ENTRANCE_CINEMATIC", "entrance", "ESTABLISH", 0u },
-		{ "VALTAN_ARENA_BREAK_109", "phase2", "IMPACT_HOLD", 600u },
-		{ "VALTAN_SIX_PIZZA_106", "roar", "STEP_04", 0u },
-		{ "VALTAN_TRASH", "trash", "STEP_05", 0u },
-		{ "VALTAN_GHOST_DEATH_AUDITION", "finale", "STEP_01", 0u },
-	}};
+	Engine::CProfilerScope sampleScope(CGameInstance::Get().Get_Profiler(), "Valtan.Workbench.CinematicSample");
+	const auto& PREVIEWS = VALTAN_SOURCE_CINEMATIC_ROUTES;
 	const auto preview = std::find_if(PREVIEWS.begin(), PREVIEWS.end(),
-		[&](const SOURCE_CINEMATIC_PREVIEW& value)
+		[&](const VALTAN_SOURCE_CINEMATIC_ROUTE& value)
 		{ return value.patternId == patternId; });
 	if (preview == PREVIEWS.end())
 	{
@@ -1175,6 +1164,7 @@ bool_t CLevel_ValtanArena::Debug_StopActionWorkbenchDestruction(std::string& sta
 bool_t CLevel_ValtanArena::Debug_SampleActionWorkbenchDestruction(
 	const std::string_view patternId, const uint32_t clockMs, std::string& status)
 {
+	Engine::CProfilerScope sampleScope(CGameInstance::Get().Get_Profiler(), "Valtan.Workbench.DestructionSample");
 	if (patternId != "VALTAN_ARENA_BREAK_109")
 		return Debug_StopActionWorkbenchDestruction(status);
 	if (!m_strWorkbenchDestructionFailure.empty())
@@ -3241,6 +3231,7 @@ bool_t CLevel_ValtanArena::Debug_PrepareCompletePlayResources(
                     v1.insert(visual->effectAssetId);
                 else v2.emplace("GROUP", visual->effectV2Group.groupId);
                 if (!visual->hitEffectAssetId.empty()) v1.insert(visual->hitEffectAssetId);
+                if (!visual->armedEffectAssetId.empty()) v1.insert(visual->armedEffectAssetId);
             }
         }
         // Both primary and ghost use these catalog attachments; the existing

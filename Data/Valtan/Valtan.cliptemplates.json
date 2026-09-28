@@ -382,11 +382,13 @@
   "allowlist": [
     {
       "patternId": "VALTAN_BIND_SLOT",
-      "stageId": "STEP_01",
-      "actionId": "valtan.authoring.bind-slot.step-01",
-      "clipOccurrenceId": "VALTAN_BIND_SLOT.STEP_01.composition.clip.05",
-      "waivers": ["HIT", "SOUND"],
-      "reason": "The occurrence ends at clip-local 900ms, so the 900ms contact lies on the exclusive Stage boundary."
+      "stageId": "RECOVERY",
+      "actionId": "valtan.authoring.bind-slot.recovery",
+      "clipOccurrenceId": "VALTAN_BIND_SLOT.RECOVERY.composition.clip.01",
+      "waivers": [
+        "SOUND"
+      ],
+      "reason": "PROJECT_AUTHORED: Preserve the user-saved 2026-09-28 RECOVERY sound G_Voltan2_Attack18_Shot7 at 100ms instead of the template 900ms. Gameplay hit and V2 shout remain at their existing 900ms/733ms clocks."
     },
     {
       "patternId": "VALTAN_CROSS",
@@ -452,6 +454,48 @@
       "clipOccurrenceId": "valtan.mechanic.arena-break-109.impact-hold.clip.01",
       "waivers": ["HIT", "EFFECT", "SOUND"],
       "reason": "The established arena-break pattern already owns its impact in the preceding IMPACT stage; a second unapproved landing hit would change the mechanic."
+    },
+    {
+      "patternId": "VALTAN_SIX_PIZZA_106",
+      "stageId": "STEP_03",
+      "actionId": "valtan.sequence.center-six-pizza-charge.step-03",
+      "clipOccurrenceId": "valtan.sequence.center-six-pizza-charge.step-03.clip-01",
+      "waivers": [],
+      "effectReplacement": {
+        "templateEffect": {
+          "resourceKind": "GROUP",
+          "resourceId": "boss.valtan.impact",
+          "clipMs": 267,
+          "anchorSlotId": "b_effectroot"
+        },
+        "cueId": "cue.valtan.six-pizza.full-restore.step-03",
+        "effectAssetId": "effect.valtan.action.420629.stage008.full.restore",
+        "clip": "mesh_att_battle_12_03",
+        "sourceStartMs": 0,
+        "anchorSlotId": "root"
+      },
+      "reason": "This reviewed occurrence replaces the generic V2 impact with the exact original Full Restore action-stage cue; native clip, root, source clock and absence of the old generic binding are enforced."
+    },
+    {
+      "patternId": "VALTAN_SIX_PIZZA_106",
+      "stageId": "STEP_04",
+      "actionId": "valtan.sequence.center-six-pizza-charge.step-04",
+      "clipOccurrenceId": "valtan.sequence.center-six-pizza-charge.step-04.clip-01",
+      "waivers": [],
+      "effectReplacement": {
+        "templateEffect": {
+          "resourceKind": "GROUP",
+          "resourceId": "boss.valtan.impact",
+          "clipMs": 2100,
+          "anchorSlotId": "b_effectroot"
+        },
+        "cueId": "cue.valtan.six-pizza.full-restore.step-04",
+        "effectAssetId": "effect.valtan.action.420619.stage003.full.restore",
+        "clip": "mesh_att_battle_12_04",
+        "sourceStartMs": 0,
+        "anchorSlotId": "root"
+      },
+      "reason": "This reviewed occurrence replaces the generic V2 impact with the exact original Full Restore action-stage cue; native clip, root, source clock and absence of the old generic binding are enforced."
     }
   ]
 }

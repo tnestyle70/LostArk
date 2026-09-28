@@ -15,7 +15,7 @@ SOURCE_CHARACTER_NATIVE_OUTPUT SourceCharacterLight84(SOURCE_CHARACTER_NATIVE_IN
     source[14].z=(((source[13].wwww*float4(2,0,0,0))*((float4(1.5,0,0,0)+sin(((float4(0.5,0,0,0)*g_SourceCharacterTime.xxxx)*float4(6.28318548,0,0,0))))*float4(0.400000006,0,0,0)))).x;
     source[16]=float4(input.lightColor,1.0);
     float4 projection[4]; [unroll] for(uint p=0u;p<4u;++p) projection[p]=input.projection[p];
-    float4 passValues[5] = {float4(0.5,-0.5,0.5,0.5),float4(0,0,0,0),float4(0,0,0,0),float4(0,0,0,1),float4(1,1,1,1)};
+    float4 passValues[5] = {float4(0.5,-0.5,0.5,0.5),float4(0,0,0,0),float4(0,0,0,0),float4(0,0,0,1),float4(0,0,0,1)};
     float4 v0 = input.values[0], v1 = input.values[1], v2 = input.values[2], v3 = input.values[3], v4 = input.values[4], v5 = input.values[5], v6 = input.values[6], v7 = input.values[7], v8 = input.values[8], v9 = input.values[9];
     float4 r0=0.0, r1=0.0, r2=0.0, r3=0.0, r4=0.0, r5=0.0, r6=0.0, r7=0.0, r8=0.0;
     // 1: add r0.x, -cb0[9].w, l(1.000000)

@@ -3,6 +3,7 @@
 #include "Client_Defines.h"
 #include "Engine_Defines.h"
 #include "PlayerHandGripTransform.h"
+#include "Gameplay/AttackHitTemplate.h"
 
 #include <cstdint>
 #include <array>
@@ -34,6 +35,7 @@ struct ENCOUNTER_STAGE_REFERENCE final
 	/* Optional stage-relative contacts for source clips whose hit cadence is
 	   not uniform. Empty preserves the legacy delay + interval schedule. */
 	std::vector<uint32_t> hitOffsetsMs;
+	std::vector<LostArk::Shared::ATTACK_HIT_TEMPLATE> AttackContacts;
 	bool_t bHasHitAnchor = false;
 	std::string hitAnchorKind;
 	f32_t fHitAnchorForwardOffsetM = 0.f;

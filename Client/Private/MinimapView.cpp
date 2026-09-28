@@ -32,6 +32,8 @@ namespace
 	const char* const PARTY_SLOTS[PARTY_MARKER_COUNT] =
 		{ "Minimap_Party_0", "Minimap_Party_1", "Minimap_Party_2", "Minimap_Party_3" };
 	const char* const BOSS_SLOTS[BOSS_MARKER_COUNT] = { "Minimap_Boss_0", "Minimap_Boss_1" };
+	/* Must match the Minimap_Npc_* slot count in Data/UI/Minimap/Minimap_Layout.json. */
+	constexpr size_t NPC_MARKER_COUNT = 40;
 
 	bool_t Convert_Utf8(const string& strUtf8, wstring_t& outWide)
 	{
@@ -104,6 +106,9 @@ HRESULT Client::CMinimapView::Load_Areas()
 		Area.strImage = pImage->Get_String();
 		if (nullptr != pName && pName->Is_String())
 			(void)Convert_Utf8(pName->Get_String(), Area.strAreaName);
+		const DATA_JSON_VALUE* pWorldAreaId = Value.Find("worldAreaId");
+		if (nullptr != pWorldAreaId && pWorldAreaId->Is_String())
+			Area.strWorldAreaId = pWorldAreaId->Get_String();
 		const auto Number = [](const DATA_JSON_VALUE& V, size_t i)
 		{
 			const DATA_JSON_VALUE& E = V.Get_Array()[i];
@@ -116,6 +121,72 @@ HRESULT Client::CMinimapView::Load_Areas()
 		m_Areas.push_back(std::move(Area));
 	}
 	return m_Areas.empty() ? E_FAIL : S_OK;
+}
+
+void Client::CMinimapView::Load_AreaNpcSymbols(const AREA& Area)
+{
+	if (m_strLoadedNpcAreaId == Area.strWorldAreaId)
+		return;
+	m_strLoadedNpcAreaId = Area.strWorldAreaId;
+	m_NpcSymbols.clear();
+	if (Area.strWorldAreaId.empty())
+		return;
+
+	/* placementId -> symbol image, the document CWorldMapWindowView draws the M map from. An
+	NPC without an entry has no service marker in retail either, so it is simply skipped. */
+	const auto ReadJson = [](const filesystem::path& Path, DATA_JSON_VALUE& outRoot)
+	{
+		ifstream Stream(Path, ios::binary);
+		if (!Stream.is_open())
+			return false;
+		const string Text((istreambuf_iterator<char>(Stream)), istreambuf_iterator<char>());
+		string Error;
+		return CDataJson::Parse(Text, outRoot, Error) && outRoot.Is_Object();
+	};
+
+	DATA_JSON_VALUE SymbolRoot;
+	if (!ReadJson(CProjectDataRoot::Resolve(L"UI/WorldMap/WorldMapNpcSymbols.json"), SymbolRoot))
+		return;
+	const DATA_JSON_VALUE* pPlacements = SymbolRoot.Find("placements");
+	if (nullptr == pPlacements || !pPlacements->Is_Object())
+		return;
+
+	DATA_JSON_VALUE WorldRoot;
+	const filesystem::path WorldPath = CProjectDataRoot::Resolve(
+		filesystem::path("Worlds") / Area.strWorldAreaId / "Gameplay.world.json");
+	if (!ReadJson(WorldPath, WorldRoot))
+		return;
+	const DATA_JSON_VALUE* pWorldPlacements = WorldRoot.Find("placements");
+	if (nullptr == pWorldPlacements || !pWorldPlacements->Is_Array())
+		return;
+
+	for (const DATA_JSON_VALUE& Placement : pWorldPlacements->Get_Array())
+	{
+		if (!Placement.Is_Object())
+			continue;
+		const DATA_JSON_VALUE* pKind = Placement.Find("kind");
+		const DATA_JSON_VALUE* pId = Placement.Find("placementId");
+		const DATA_JSON_VALUE* pPosition = Placement.Find("position");
+		if (nullptr == pKind || !pKind->Is_String() || "npc" != pKind->Get_String() ||
+			nullptr == pId || !pId->Is_String() ||
+			nullptr == pPosition || !pPosition->Is_Array() ||
+			pPosition->Get_Array().size() < 3)
+		{
+			continue;
+		}
+		const DATA_JSON_VALUE* pIcon = pPlacements->Find(pId->Get_String());
+		if (nullptr == pIcon || !pIcon->Is_String() || pIcon->Get_String().empty())
+			continue;
+		NPC_SYMBOL Symbol{};
+		Symbol.strIconPath = pIcon->Get_String();
+		const DATA_JSON_VALUE& X = pPosition->Get_Array()[0];
+		const DATA_JSON_VALUE& Z = pPosition->Get_Array()[2];
+		Symbol.fWorldX = X.Is_Number() ? static_cast<f32_t>(X.Get_Number()) : 0.f;
+		Symbol.fWorldZ = Z.Is_Number() ? static_cast<f32_t>(Z.Get_Number()) : 0.f;
+		m_NpcSymbols.push_back(std::move(Symbol));
+		if (m_NpcSymbols.size() >= NPC_MARKER_COUNT)
+			break;
+	}
 }
 
 const Client::CMinimapView::AREA* Client::CMinimapView::Find_Area(LEVEL eLevel) const
@@ -277,6 +348,27 @@ void Client::CMinimapView::Update(const f32_t fTimeDelta, LEVEL eLevel,
 		PlaceMarker(PARTY_SLOTS[iParty], nullptr);
 	for (size_t i = 0; i < BOSS_MARKER_COUNT; ++i)
 		PlaceMarker(BOSS_SLOTS[i], i < pSnapshot->Bosses.size() ? &pSnapshot->Bosses[i] : nullptr);
+
+	/* Service NPC symbols: the same authored placements and icons the M map shows, so the two
+	agree instead of only the full map carrying them. These are static world positions, not
+	replicated entities, so they go through the same projection as a marker but are read from
+	the area document rather than the snapshot. */
+	Load_AreaNpcSymbols(*m_pActiveArea);
+	for (size_t i = 0; i < NPC_MARKER_COUNT; ++i)
+	{
+		const string strSlotId = "Minimap_Npc_" + std::to_string(i);
+		if (i >= m_NpcSymbols.size())
+		{
+			m_pView->Set_SlotVisible(strSlotId, false);
+			continue;
+		}
+		const NPC_SYMBOL& Symbol = m_NpcSymbols[i];
+		CClientReplication::MINIMAP_MARKER Marker{};
+		Marker.fX = Symbol.fWorldX;
+		Marker.fZ = Symbol.fWorldZ;
+		m_pView->Set_SlotTexture(strSlotId, Symbol.strIconPath);
+		PlaceMarker(strSlotId.c_str(), &Marker);
+	}
 
 	/* Local arrow: centered, rotated to the character's facing. Character yaw is measured from
 	+Z (yaw 0 = +Z, 90 = +X); on the unturned image +X is up and +Z is left (yaw - 90), and the

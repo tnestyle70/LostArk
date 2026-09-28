@@ -1363,6 +1363,8 @@ bool_t CLevel_CharacterSelect::Request_SelectedArenaSpawn()
 			}
 			if (!Visual.hitEffectAssetId.empty())
 				EffectAssetIds.push_back(Visual.hitEffectAssetId);
+			if (!Visual.armedEffectAssetId.empty())
+				EffectAssetIds.push_back(Visual.armedEffectAssetId);
 		}
 		if (!ProductAdmission.Validate_StillCurrent(Status))
 		{

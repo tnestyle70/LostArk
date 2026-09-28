@@ -20,6 +20,7 @@ namespace Client
 		LostArk::Shared::NET_ENTITY_ID iNetEntityId = LostArk::Shared::INVALID_NET_ENTITY_ID;
 		bool isPlayer = false;
 		bool isLocal = false;
+		std::string strArchetypeId;
 		std::uint32_t iCurrentHp = 0;
 		std::uint32_t iMaximumHp = 0;
 		std::uint32_t iShield = 0;

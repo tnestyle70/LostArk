@@ -8,6 +8,8 @@
 #include "CombatHUDViewModel.h"
 #include "Effect_Catalog.h"
 #include "Effect_DocumentCodec.h"
+#include "EffectAuthoringResourceTree.h"
+#include "EffectV2_Catalog.h"
 #include "ValtanPatternAuditionService.h"
 #include "GameInstance.h"
 #include "Logic_DimensionMaster.h"
@@ -748,6 +750,28 @@ bool_t Client::CEffect_Tool::Refresh_ValtanPatternTree()
 				"Balance revision owner is unavailable." : ExactRevisionStatus);
 		return false;
 	}
+	// Header inventories are read only during refresh, never while drawing a row.
+	std::vector<CEffectAuthoringResourceTree::RESOURCE> FriendlyV1;
+	std::vector<EFFECT_V2_RESOURCE_SUMMARY> FriendlyV2;
+	std::unordered_map<std::string, std::string> FriendlySavedNames;
+	std::string FriendlyStatus;
+	if (CEffectAuthoringResourceTree::Read_V1Inventory(FriendlyV1, FriendlyStatus))
+		for (const auto& Row : FriendlyV1) FriendlySavedNames[Row.strAssetId] = Row.strDisplayName;
+	if (CEffectV2Catalog::Get().Read_Inventory(FriendlyV2, FriendlyStatus))
+		for (const auto& Row : FriendlyV2) FriendlySavedNames[Row.strResourceId] = Row.strDisplayName;
+	// Strict Product includes legacy aliases. Friendly names share Workbench's
+	// source projection, while selection/playback keep the admitted strict tree.
+	VALTAN_PATTERN_TREE_VIEW FriendlySourceView;
+	if (!CValtanPatternTree::Load_Authoring_WhileAdmitted(
+		CanonicalAdmission, FriendlySourceView, FriendlyStatus))
+	{
+		m_strValtanPatternTreeStatus =
+			"Valtan display-name reload preserved the previous tree: " + FriendlyStatus;
+		return false;
+	}
+	CValtanPatternTree::Build_EffectResourceDisplayLabels(
+		FriendlySourceView, FriendlySavedNames, m_ValtanFullRestoreSourceClips);
+	Staged.EffectResourceDisplayLabels = std::move(FriendlySourceView.EffectResourceDisplayLabels);
 	const std::string Status = Diagnostic.strStatus;
 	m_ValtanPatternTree = std::move(Staged);
 	m_ValtanToolAuditionInventory = std::move(StagedAuditionInventory);
@@ -1059,7 +1083,10 @@ bool_t Client::CEffect_Tool::Matches_ValtanPatternSearch(
 		if (CValtanPatternTree::Matches_FullRestoreSource(Pattern, Source.strEffectAssetId,
 			m_ValtanFullRestoreSourceClips) &&
 			(Contains_NoCase(Source.strEffectAssetId, strSearch) ||
-			 Contains_NoCase("FULL RESTORE", strSearch)))
+			 Contains_NoCase("FULL RESTORE", strSearch) ||
+			 Contains_NoCase(CValtanPatternTree::Describe_EffectResource(
+				m_ValtanPatternTree, Source.strEffectAssetId, {},
+				m_ValtanFullRestoreSourceClips), strSearch)))
 		{
 			return true;
 		}
@@ -1097,7 +1124,10 @@ bool_t Client::CEffect_Tool::Matches_ValtanPatternSearch(
 				if (Contains_NoCase(Cue.strBindingId, strSearch) ||
 					Contains_NoCase(Cue.strOccurrenceId, strSearch) ||
 					Contains_NoCase(Cue.strEffectAssetId, strSearch) ||
-					Contains_NoCase(Cue.strV1EffectAssetId, strSearch))
+					Contains_NoCase(Cue.strV1EffectAssetId, strSearch) ||
+                    Contains_NoCase(CValtanPatternTree::Describe_EffectResource(
+                        m_ValtanPatternTree, Cue.strEffectAssetId, {},
+                        m_ValtanFullRestoreSourceClips), strSearch))
 				{
 					return true;
 				}
@@ -1109,7 +1139,10 @@ bool_t Client::CEffect_Tool::Matches_ValtanPatternSearch(
 			if (Contains_NoCase(Cue.strBindingId, strSearch) ||
 				Contains_NoCase(Cue.strOccurrenceId, strSearch) ||
 				Contains_NoCase(Cue.strEffectAssetId, strSearch) ||
-				Contains_NoCase(Cue.strV1EffectAssetId, strSearch))
+				Contains_NoCase(Cue.strV1EffectAssetId, strSearch) ||
+                    Contains_NoCase(CValtanPatternTree::Describe_EffectResource(
+                        m_ValtanPatternTree, Cue.strEffectAssetId, {},
+                        m_ValtanFullRestoreSourceClips), strSearch))
 			{
 				return true;
 			}
@@ -1828,6 +1861,8 @@ bool_t Client::CEffect_Tool::Try_OpenValtanStandaloneEffect(
 		return false;
 	}
 
+	if (!m_bValtanPatternTreeLoadAttempted)
+		(void)Refresh_ValtanPatternTree();
 	if (strEffectAssetId.starts_with("effect.valtan.action.") &&
 		strEffectAssetId.ends_with(".full.restore"))
 	{
@@ -1836,14 +1871,14 @@ bool_t Client::CEffect_Tool::Try_OpenValtanStandaloneEffect(
 		VALTAN_FULL_RESTORE_CLIP_INDEX SourceClips;
 		if (!CValtanPatternTree::Load_FullRestoreSourceClips(CProjectDataRoot::Resolve(
 			"Effects/ValtanFullRestoreAnimations.json"), SourceClips,
-			m_strValtanFullRestoreSourceStatus))
+			m_strValtanFullRestoreSourceStatus, true))
 		{
 			m_strPreviewStatus = m_strValtanFullRestoreSourceStatus;
 			return false;
 		}
-		m_ValtanFullRestoreSourceClips = std::move(SourceClips);
-		const auto Entry = m_ValtanFullRestoreSourceClips.find(strEffectAssetId);
-		if (Entry == m_ValtanFullRestoreSourceClips.end() || Entry->second.size() != 1u)
+		// Keep this optional editor override out of the source-matching cache.
+		const auto Entry = SourceClips.find(strEffectAssetId);
+		if (Entry == SourceClips.end() || Entry->second.size() != 1u)
 		{
 			m_strPreviewStatus = "Full Restore requires one verified source animation clip: " + strEffectAssetId;
 			return false;
@@ -3295,10 +3330,8 @@ void Client::CEffect_Tool::Render_ValtanPatternNode(
 				ObservedCache->second.bObserved &&
 				ObservedCache->second.bValid &&
 				!ObservedCache->second.bDrawable;
-			const std::string RuntimeLabel =
-				(Row.bV1Alias ? "[V1] " :
-					(Row.ProductSources.empty() ? "[WORLD] " : "[PRODUCT] ")) +
-				Row.strEffectAssetId;
+			const std::string RuntimeLabel = CValtanPatternTree::Describe_EffectResource(
+				m_ValtanPatternTree, Row.strEffectAssetId, {}, m_ValtanFullRestoreSourceClips);
 			const bool_t bRuntimeRowSelected =
 				m_SelectedValtanPatternEffect.has_value() &&
 				m_SelectedValtanPatternEffect->eKind ==
@@ -3339,6 +3372,7 @@ void Client::CEffect_Tool::Render_ValtanPatternNode(
 				SelectRuntimeRow();
 			if (bRuntimeOpen)
 			{
+				ImGui::TextWrapped("Effect: %s", Row.strEffectAssetId.c_str());
 				for (const RUNTIME_VALTAN_PRODUCT_SOURCE& Source :
 					Row.ProductSources)
 				{
@@ -3470,8 +3504,9 @@ void Client::CEffect_Tool::Render_ValtanPatternNode(
 			if (CValtanPatternTree::Matches_FullRestoreSource(Pattern, Source.strEffectAssetId,
 				m_ValtanFullRestoreSourceClips))
 				FullRestoreSources.push_back(&Source);
-		std::ranges::sort(FullRestoreSources, {},
-			[](const auto* Source) { return std::string_view(Source->strEffectAssetId); });
+		std::ranges::sort(FullRestoreSources, {}, [this](const auto* Source)
+		{ return CValtanPatternTree::Describe_EffectResource(m_ValtanPatternTree,
+			Source->strEffectAssetId, {}, m_ValtanFullRestoreSourceClips); });
 		if (FullRestoreSources.empty())
 			ImGui::TextDisabled(bSourceCinematic ?
 				"Original cinematic effects are saved in the World Sequence and replayed by Complete Play." :
@@ -3484,7 +3519,9 @@ void Client::CEffect_Tool::Render_ValtanPatternNode(
 				m_eActiveDocumentSource == EFFECT_DOCUMENT_SOURCE::AUTHORED &&
 				m_ActiveDocument->strEffectAssetId == Source->strEffectAssetId;
 			const auto& SourceClips = m_ValtanFullRestoreSourceClips.at(Source->strEffectAssetId);
-			const std::string Label = "[FULL RESTORE] " + SourceClips.front().strClipName;
+			const std::string Label = CValtanPatternTree::Describe_EffectResource(
+				m_ValtanPatternTree, Source->strEffectAssetId,
+				{}, m_ValtanFullRestoreSourceClips);
 			const bool_t Open = ImGui::TreeNodeEx(Label.c_str(),
 				ImGuiTreeNodeFlags_OpenOnArrow | (Active ? ImGuiTreeNodeFlags_Selected : 0));
 			const auto SelectSource = [this, &Pattern]()
@@ -3611,8 +3648,9 @@ void Client::CEffect_Tool::Render_ValtanIndependentEffectNode(
 	const bool_t bActive = m_ActiveDocument.has_value() &&
 		m_eActiveDocumentSource == EFFECT_DOCUMENT_SOURCE::AUTHORED &&
 		m_ActiveDocument->strEffectAssetId == Effect.strEffectAssetId;
-	std::string Label = Effect.strIndependentEffectId + " | " +
-		Effect.strDisplayName + " | " + Effect.strEffectAssetId;
+	std::string Label = CValtanPatternTree::Describe_EffectResource(
+		m_ValtanPatternTree, Effect.strEffectAssetId, Effect.strDisplayName,
+		m_ValtanFullRestoreSourceClips);
 	ImGui::PushID(Effect.strIndependentEffectId.c_str());
 	if (!strSearch.empty())
 		ImGui::SetNextItemOpen(true, ImGuiCond_Always);

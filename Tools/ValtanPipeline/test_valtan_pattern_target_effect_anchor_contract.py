@@ -74,8 +74,8 @@ class ValtanPatternTargetEffectAnchorContractTests(unittest.TestCase):
             cue for cue in json.loads(projected[pipeline.CUES_REL])["cues"]
             if cue["patternId"] == "VALTAN_SIX_PIZZA_106"
         ]
-        self.assertEqual(1, len(source_cues))
-        self.assertEqual(1, len(product_cues))
+        self.assertEqual(5, len(source_cues))
+        self.assertEqual(5, len(product_cues))
         for pattern in (
             source_gameplay_pattern, joined_pattern, product_pattern
         ):
@@ -83,9 +83,26 @@ class ValtanPatternTargetEffectAnchorContractTests(unittest.TestCase):
                 ("LOCK_RANDOM_ALIVE_ON_START", "TRACK_TARGET_EACH_TICK"),
                 (pattern["targetPolicy"], pattern["aimPolicy"]),
             )
-        for cue in source_cues + product_cues:
-            self.assertEqual("arena.center.target-follow", cue["anchorSlotId"])
-            self.assertEqual("follow", cue["followPolicy"])
+        composite_id = "effect.valtan.project-tuned.sequence.six-pizza-106"
+        for cues in (source_cues, product_cues):
+            composite = [cue for cue in cues if cue["effectAssetId"] == composite_id]
+            self.assertEqual(1, len(composite))
+            self.assertEqual("arena.center.target-follow", composite[0]["anchorSlotId"])
+            self.assertEqual("follow", composite[0]["followPolicy"])
+        expected_restore = {
+            "cue.valtan.six-pizza.full-restore.step-01": "effect.valtan.action.420629.stage006.full.restore",
+            "cue.valtan.six-pizza.full-restore.step-03": "effect.valtan.action.420629.stage008.full.restore",
+            "cue.valtan.six-pizza.full-restore.step-04": "effect.valtan.action.420619.stage003.full.restore",
+            "cue.valtan.six-pizza.full-restore.step-10": "effect.valtan.action.420620.stage004.full.restore",
+        }
+        for cues in (source_cues, product_cues):
+            restored = {cue["effectAssetId"]: cue for cue in cues if cue["effectAssetId"] != composite_id}
+            self.assertEqual(set(expected_restore.values()), set(restored))
+            for cue in restored.values():
+                self.assertEqual("root", cue["anchorSlotId"])
+                self.assertEqual("follow", cue["followPolicy"])
+                self.assertEqual("ARENA_ABSOLUTE", cue["scalePolicy"]["kind"])
+                self.assertEqual([1, 1, 1], cue["scalePolicy"]["worldScale"])
 
     def test_high_jump_keeps_target_landing_but_places_takeoff_and_land_at_fixed_center(self) -> None:
         gameplay_pattern = next(
@@ -297,7 +314,9 @@ class ValtanPatternTargetEffectAnchorContractTests(unittest.TestCase):
             "FollowRoot.iWorldRootHandle = handle.iValue",
             "FollowRoot.iPatternSequence = m_iServerPatternSequence",
             "FollowRoot.iTargetNetEntityId =",
-            "m_PatternTargetFollowEffectRoots.push_back(",
+            "m_LocalPreviewTargetFollowEffectRoots :",
+            "m_PatternTargetFollowEffectRoots;",
+            "FollowRoots.push_back(std::move(FollowRoot))",
         ):
             self.assertIn(token, spawn)
         for token in (

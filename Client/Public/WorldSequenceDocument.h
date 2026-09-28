@@ -284,6 +284,7 @@ struct WORLD_SEQUENCE_SOUND_TRACK
     uint32_t startMs = 0u;
     uint32_t durationMs = 1u;
     f32_t volume = 1.f;
+    bool_t loopToDuration = false;
     bool operator==(const WORLD_SEQUENCE_SOUND_TRACK&) const = default;
 };
 

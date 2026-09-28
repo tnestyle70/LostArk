@@ -1714,6 +1714,47 @@ bool_t Client::CEffectV2Catalog::Stage_UpdateBossValtanBinding(
 	}
 }
 
+bool_t Client::CEffectV2Catalog::Stage_MoveBossValtanBinding(
+	const EFFECT_V2_STAGE_BINDING_KEY& SourceKey,
+	const std::string& strTargetStageId, const std::string& strTargetActionId,
+	const std::string& strTargetClipOccurrenceId, const uint32_t iTargetStartMs,
+	std::string& strOutError)
+{
+	if (!Validate_StageBindingIdentity(SourceKey, strOutError)) return false;
+	try
+	{
+		const std::lock_guard Lock(m_SnapshotMutex);
+		if (!m_pSnapshot || !m_pSnapshot->Is_Ready())
+			return Fail(strOutError, "Reload the Effect V2 catalog before moving a binding.");
+		std::vector<EFFECT_V2_BINDING> Bindings = m_pSnapshot->m_BossValtanBindings;
+		size_t Index = 0u;
+		if (!Resolve_UniqueStageBindingIndex(Bindings, SourceKey, Index, strOutError)) return false;
+		const auto& Source = Bindings[Index];
+		const auto CurrentKey = EFFECT_V2_STAGE_BINDING_KEY::From_Binding(Source);
+		if (CurrentKey.strPatternId != SourceKey.strPatternId ||
+			CurrentKey.strStageId != SourceKey.strStageId || CurrentKey.strActionId != SourceKey.strActionId ||
+			CurrentKey.strResourceId != SourceKey.strResourceId || CurrentKey.bGroup != SourceKey.bGroup ||
+			CurrentKey.iStartMs != SourceKey.iStartMs)
+			return Fail(strOutError, "Effect V2 move source changed; the existing draft was preserved.");
+		if ((Source.eClockBasis == EFFECT_V2_CLOCK_BASIS::STAGE && !strTargetClipOccurrenceId.empty()) ||
+			(Source.eClockBasis == EFFECT_V2_CLOCK_BASIS::CLIP_OCCURRENCE && strTargetClipOccurrenceId.empty()))
+			return Fail(strOutError, "Effect V2 move must preserve its Stage or Animation clock policy.");
+		auto Candidate = Source;
+		Candidate.strStageId = strTargetStageId;
+		Candidate.strActionId = strTargetActionId;
+		Candidate.strClipOccurrenceId = strTargetClipOccurrenceId;
+		Candidate.iStartMs = iTargetStartMs;
+		if (!Validate_StageBindingAppendRequest(
+			EFFECT_V2_STAGE_BINDING_KEY::From_Binding(Candidate), strOutError)) return false;
+		Bindings[Index] = std::move(Candidate);
+		return Commit_BossValtanBindingsLocked(std::move(Bindings), "move", strOutError);
+	}
+	catch (const std::exception& Error)
+	{ return Fail(strOutError, "Effect V2 move failed before commit: " + std::string(Error.what())); }
+	catch (...)
+	{ return Fail(strOutError, "Effect V2 move failed before commit."); }
+}
+
 bool_t Client::CEffectV2Catalog::Prepare_BossValtanBindingDraftSave(
 	std::string& strOutBaselineBytes,
 	std::string& strOutCandidateBytes,

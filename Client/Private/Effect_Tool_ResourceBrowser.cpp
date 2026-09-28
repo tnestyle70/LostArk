@@ -1968,7 +1968,7 @@ void Client::CEffect_Tool::Render_ActiveAuthoredEffectTree()
 		return;
 	}
 	const std::string CurrentDisplayName = FriendlyDocumentLabel(
-		*m_ActiveDocument, "Current Effect");
+		*m_ActiveDocument, "Current Effect", &m_ValtanPatternTree, &m_ValtanFullRestoreSourceClips);
 	ImGui::TextWrapped("Editing and saving: %s", CurrentDisplayName.c_str());
     if (Has_ClassMovieContext()) Render_ClassMovieControls(false);
     Render_ProjectileDestinationControls();
@@ -2049,6 +2049,10 @@ void Client::CEffect_Tool::Render_ActiveAuthoredEffectTree()
 	ImGui::BeginDisabled(!bCanDuplicateSelected);
 	if (ImGui::SmallButton(DuplicateLabel.c_str()))
 		Try_DuplicateSelectedElement();
+	ImGui::EndDisabled();
+	ImGui::SameLine();
+	ImGui::BeginDisabled(Has_UnappliedDetailDraft() || m_MarkedElementIds.empty());
+	if (ImGui::SmallButton("Create Group from Marked")) (void)Try_CreateMarkedElementGroup();
 	ImGui::EndDisabled();
 	const auto SelectedForOrder = std::find_if(
 		m_ActiveDocument->Elements.begin(), m_ActiveDocument->Elements.end(),
@@ -2618,6 +2622,7 @@ void Client::CEffect_Tool::Render_AllEffectsWindow()
             Refresh_ValtanEffectResourceSnapshot();
             Refresh_ValtanPatternTree();
             Refresh_ValtanAreaStaticEffects();
+            Refresh_ValtanCinematicEffectLibrary();
         }
 	}
 	if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
@@ -4296,8 +4301,8 @@ void Client::CEffect_Tool::Render_DataFilesWindow()
     }
     if (m_ActiveDocument.has_value())
     {
-        const std::string& CurrentName = m_ActiveDocument->strDisplayName.empty() ?
-            m_ActiveDocument->strEffectAssetId : m_ActiveDocument->strDisplayName;
+        const std::string CurrentName = FriendlyDocumentLabel(*m_ActiveDocument,
+            m_ActiveDocument->strEffectAssetId, &m_ValtanPatternTree, &m_ValtanFullRestoreSourceClips);
         ImGui::Text("Current: %s | %zu Elements%s", CurrentName.c_str(),
             m_ActiveDocument->Elements.size(), Has_UnsavedWork() ? " | DIRTY" : "");
     }

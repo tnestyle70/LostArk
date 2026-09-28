@@ -142,30 +142,30 @@
       "actionId": "valtan.attack.dash-charge.windup",
       "clips": [
         {
-          "clipOccurrenceId": "valtan.attack.dash-charge.windup.project-tuned.prep-repeat.clip.01",
-          "clip": "mesh_att_battle_4_01",
-          "mappingBasis": "PROJECT_AUTHORED",
-          "sourceStartMs": 0,
-          "playMs": 600,
-          "playRate": 1.0,
-          "loop": false
-        },
-        {
-          "clipOccurrenceId": "valtan.attack.dash-charge.windup.project-tuned.prep-repeat.clip.02",
-          "clip": "mesh_att_battle_4_01",
-          "mappingBasis": "PROJECT_AUTHORED",
-          "sourceStartMs": 0,
-          "playMs": 600,
-          "playRate": 1.0,
-          "loop": false
-        },
-        {
           "clipOccurrenceId": "valtan.attack.dash-charge.windup.clip.01",
           "clip": "mesh_att_battle_4_01",
           "mappingBasis": "PROJECT_AUTHORED",
           "sourceStartMs": 0,
           "playMs": 2450,
-          "playRate": 1.0,
+          "playRate": 1,
+          "loop": false
+        },
+        {
+          "clipOccurrenceId": "VALTAN_DASH_CHARGE.WINDUP.composition.clip.01",
+          "clip": "mesh_att_battle_4_01",
+          "mappingBasis": "PROJECT_AUTHORED",
+          "sourceStartMs": 0,
+          "playMs": 2450,
+          "playRate": 1,
+          "loop": false
+        },
+        {
+          "clipOccurrenceId": "VALTAN_DASH_CHARGE.WINDUP.composition.clip.02",
+          "clip": "mesh_att_battle_4_01",
+          "mappingBasis": "PROJECT_AUTHORED",
+          "sourceStartMs": 0,
+          "playMs": 2450,
+          "playRate": 1,
           "loop": false
         }
       ],
@@ -224,7 +224,7 @@
           "mappingBasis": "PROJECT_AUTHORED",
           "sourceStartMs": 0,
           "playMs": 1833,
-          "playRate": 1.0,
+          "playRate": 1,
           "loop": false
         },
         {
@@ -233,7 +233,7 @@
           "mappingBasis": "PROJECT_AUTHORED",
           "sourceStartMs": 0,
           "playMs": 1333,
-          "playRate": 1.0,
+          "playRate": 1,
           "loop": false
         },
         {
@@ -242,7 +242,7 @@
           "mappingBasis": "PROJECT_AUTHORED",
           "sourceStartMs": 0,
           "playMs": 1333,
-          "playRate": 1.0,
+          "playRate": 1,
           "loop": false
         },
         {
@@ -251,7 +251,7 @@
           "mappingBasis": "PROJECT_AUTHORED",
           "sourceStartMs": 0,
           "playMs": 334,
-          "playRate": 1.0,
+          "playRate": 1,
           "loop": false
         },
         {
@@ -260,7 +260,7 @@
           "mappingBasis": "PROJECT_AUTHORED",
           "sourceStartMs": 0,
           "playMs": 2000,
-          "playRate": 1.0,
+          "playRate": 1,
           "loop": false
         }
       ],
@@ -4549,7 +4549,7 @@
           "mappingBasis": "PROJECT_AUTHORED",
           "sourceStartMs": 0,
           "playMs": 1400,
-          "playRate": 1.0,
+          "playRate": 1,
           "loop": false
         },
         {
@@ -4558,7 +4558,7 @@
           "mappingBasis": "PROJECT_AUTHORED",
           "sourceStartMs": 0,
           "playMs": 900,
-          "playRate": 1.0,
+          "playRate": 1,
           "loop": false
         },
         {
@@ -4567,7 +4567,7 @@
           "mappingBasis": "PROJECT_AUTHORED",
           "sourceStartMs": 0,
           "playMs": 900,
-          "playRate": 1.0,
+          "playRate": 1,
           "loop": false
         },
         {
@@ -4576,16 +4576,7 @@
           "mappingBasis": "PROJECT_AUTHORED",
           "sourceStartMs": 0,
           "playMs": 900,
-          "playRate": 1.0,
-          "loop": false
-        },
-        {
-          "clipOccurrenceId": "VALTAN_BIND_SLOT.STEP_01.composition.clip.05",
-          "clip": "mesh_att_battle_5_01_end",
-          "mappingBasis": "PROJECT_AUTHORED",
-          "sourceStartMs": 0,
-          "playMs": 900,
-          "playRate": 1.0,
+          "playRate": 1,
           "loop": false
         }
       ],

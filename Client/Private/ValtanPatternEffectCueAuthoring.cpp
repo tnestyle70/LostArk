@@ -79,6 +79,8 @@ namespace
 			Left.bUsesStageClock == Right.bUsesStageClock &&
 			Left.iStageOffsetMs == Right.iStageOffsetMs &&
 			Left.iSourceStartMs == Right.iSourceStartMs &&
+			Left.bHasPlaybackOffset == Right.bHasPlaybackOffset &&
+			(!Left.bHasPlaybackOffset || Left.iPlaybackOffsetMs == Right.iPlaybackOffsetMs) &&
 			Left.iSourceEndMs == Right.iSourceEndMs &&
 			Left.iStageDurationMs == Right.iStageDurationMs &&
 			Left.bHasSourceEnd == Right.bHasSourceEnd &&
@@ -182,12 +184,13 @@ namespace
 		if (Stage.ClipOccurrences.end() == Clip ||
 			Cue.iSourceStartMs < Clip->iSourceStartMs ||
 			Cue.iSourceStartMs > 600000u || Cue.iSourceEndMs > 600000u ||
+			(Cue.bHasPlaybackOffset && Cue.iPlaybackOffsetMs > 600000u) ||
 			(Cue.bHasSourceEnd &&
 			 Cue.iSourceEndMs <= Cue.iSourceStartMs) ||
 			(!Cue.bHasSourceEnd && 0u != Cue.iSourceEndMs) ||
 			(0u != Clip->iPlayMs &&
 			 (Cue.iSourceStartMs >= Clip->iSourceStartMs + Clip->iPlayMs ||
-			  (Cue.bHasSourceEnd &&
+			  (Cue.bHasSourceEnd && Cue.strRepeatPolicy != "once" &&
 			   Cue.iSourceEndMs > Clip->iSourceStartMs + Clip->iPlayMs))))
 		{
 			strOutStatus =

@@ -183,7 +183,79 @@ def stage(output):
     print(json.dumps(entries, ensure_ascii=False))
 
 
+def stage_rectangle_missiles(output):
+    """Add three aligned source missiles to the current saved impact group.
+
+    This is an authored placement: remove the source horizontal scatter, use
+    one missile per impact, and stop its flight when the impact begins. Keep
+    the native mesh/material and -20 m/s^2 acceleration. Place the missile
+    at 10 m so its one-second flight reaches the floor; retain alpha until
+    impact instead of the source's pre-impact fade.
+    Shift the existing group by one second; the composition installer must
+    advance its occurrence by the same second to retain every impact time.
+    """
+    output = output.resolve()
+    assert output.is_relative_to((ROOT / 'out').resolve())
+    authored = ROOT / 'Data/Effects/Authored'
+    impact_path = authored / (PREFIX + 'impact.effect.json')
+    missile_path = authored / 'effect.kouku.gate3.showtime.airstrike.missile.effect.json'
+    original, missile = read(impact_path), read(missile_path)
+    doc = copy.deepcopy(original)
+    assert len(doc['elements']) == 48 and len(missile['elements']) == 1
+    assert not doc.get('modelCues') and not doc.get('sourceModelPreview')
+    groups = {}
+    for element in doc['elements']:
+        assert '.burst' in element['groupId'], 'Preserve a changed user grouping'
+        groups.setdefault(element['groupId'], []).append(element)
+        element['detail']['timing']['startDelaySeconds'] += 1.0
+    assert len(groups) == 3
+    flights = []
+    for index, (group_id, elements) in enumerate(groups.items(), 1):
+        timing = min(e['detail']['timing']['startDelaySeconds'] for e in elements)
+        position = elements[0]['detail']['transform']['position']
+        assert all(e['detail']['transform']['position'] == position for e in elements)
+        copied = warning.independent_document(missile, PREFIX + f'impact.missile{index}',
+                                               f'공습 미사일 {index}')['elements'][0]
+        copied['sourceNode'] = 'authored-copy:' + missile['elements'][0]['id']
+        copied['detail']['transform'] = copy.deepcopy(elements[0]['detail']['transform'])
+        copied['detail']['timing']['startDelaySeconds'] = timing - 1.0
+        copied['detail']['particle']['lifeTimeSeconds'] = [1, 1]
+        copied['detail']['particle']['initialPositionMin'] = [0, 10, 0]
+        copied['detail']['particle']['initialPositionMax'] = [0, 10, 0]
+        recipe = copied['sourceRecipe']
+        recipe['bursts'] = [dict(timeSeconds=0, countMinimum=1, countMaximum=1)]
+        for module in recipe['modules']:
+            for distribution in module['distributions']:
+                prop = distribution['propertyPath']
+                if prop == 'lifetime':
+                    distribution.update(warning.constant_distribution(prop, [1]))
+                elif prop == 'startlocation':
+                    value = [0, 0, 1000] if module['objectPath'].endswith('.particlemodulelocation_0') else [0, 0, 0]
+                    distribution.update(warning.constant_distribution(prop, value))
+                elif prop == 'alphascaleoverlife':
+                    distribution.update(warning.constant_distribution(prop, [1]))
+            for literal in module['literals']:
+                if literal['propertyPath'] in ('burstlist[0].count', 'burstlist[0].countlow'):
+                    literal['value'] = 1
+        doc['elements'].append(copied)
+        flights.append(dict(elementId=copied['id'], position=position,
+                            flightStartSeconds=timing - 1.0, impactStartSeconds=timing))
+    assert len({e['id'] for e in doc['elements']}) == 51
+    candidate = output / 'candidate' / impact_path.name
+    write(candidate, doc)
+    checked = inspect_document(doc)
+    write(output / 'rectangle-missiles.json', dict(stageOnly=True,
+        inputHashes={p.relative_to(ROOT).as_posix(): hashlib.sha256(p.read_bytes()).hexdigest()
+                     for p in (impact_path, missile_path)},
+        candidate=candidate.relative_to(ROOT).as_posix(), flights=flights,
+        compositionStartDeltaMs=-1000, compositionDurationDeltaMs=1000,
+        existingImpactClockDeltaMs=1000, **checked))
+    print(json.dumps(dict(candidate=str(candidate), flights=flights, **checked)))
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(__doc__)
     parser.add_argument('--output', type=Path, default=DEFAULT_OUTPUT)
-    stage(parser.parse_args().output)
+    parser.add_argument('--add-missiles', action='store_true')
+    args = parser.parse_args()
+    (stage_rectangle_missiles if args.add_missiles else stage)(args.output)

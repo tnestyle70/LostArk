@@ -1,0 +1,1338 @@
+{
+  "schema": "lostark.ui-layout",
+  "formatVersion": 1,
+  "resolution": {
+    "width": 1280,
+    "height": 720
+  },
+  "classes": [
+    "Default"
+  ],
+  "slots": [
+    {
+      "id": "Repair_PanelBg",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 475.0,
+        "y": 183.3333,
+        "width": 330.0,
+        "height": 353.3333
+      },
+      "rotation": 0.0,
+      "layers": [
+        {
+          "path": "UI/Repair/repair_window_bg.png",
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ]
+    },
+    {
+      "id": "Repair_TopDeco",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 477.0,
+        "y": 186.0,
+        "width": 327.3333,
+        "height": 16.0
+      },
+      "rotation": 0.0,
+      "layers": [
+        {
+          "path": "UI/Repair/repair_top_deco.png",
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ]
+    },
+    {
+      "id": "Repair_Title",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 475.0,
+        "y": 183.3333,
+        "width": 330.0,
+        "height": 26.6667
+      },
+      "rotation": 0.0,
+      "layers": [
+        {
+          "path": "UI/Repair/repair_top_deco.png",
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ]
+    },
+    {
+      "id": "Repair_CloseBtn",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 785.0,
+        "y": 190.0,
+        "width": 13.3333,
+        "height": 13.3333
+      },
+      "rotation": 0.0,
+      "layers": [
+        {
+          "path": "UI/Inventory/Retail/inv_close_btn.png",
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ]
+    },
+    {
+      "id": "Repair_EquipLabel",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 483.0,
+        "y": 210.6667,
+        "width": 133.3333,
+        "height": 14.6667
+      },
+      "rotation": 0.0,
+      "layers": [
+        {
+          "path": "UI/Repair/repair_cost_bar.png",
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ]
+    },
+    {
+      "id": "Repair_EquipCostBar",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 483.6667,
+        "y": 310.6667,
+        "width": 168.0,
+        "height": 22.0
+      },
+      "rotation": 0.0,
+      "layers": [
+        {
+          "path": "UI/Repair/repair_cost_bar.png",
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ]
+    },
+    {
+      "id": "Repair_EquipDiscount",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 641.6667,
+        "y": 320.0,
+        "width": 10.0,
+        "height": 10.0
+      },
+      "rotation": 0.0,
+      "layers": [
+        {
+          "path": "UI/Repair/repair_discount_icon.png",
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ]
+    },
+    {
+      "id": "Repair_EquipButton",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 657.6667,
+        "y": 310.0,
+        "width": 106.6667,
+        "height": 22.6667
+      },
+      "rotation": 0.0,
+      "layers": [
+        {
+          "path": "UI/Repair/repair_cost_bar.png",
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ]
+    },
+    {
+      "id": "Repair_InventoryLabel",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 482.3333,
+        "y": 342.0,
+        "width": 133.3333,
+        "height": 14.6667
+      },
+      "rotation": 0.0,
+      "layers": [
+        {
+          "path": "UI/Repair/repair_cost_bar.png",
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ]
+    },
+    {
+      "id": "Repair_AllCostBar",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 483.6667,
+        "y": 479.3333,
+        "width": 168.0,
+        "height": 22.0
+      },
+      "rotation": 0.0,
+      "layers": [
+        {
+          "path": "UI/Repair/repair_cost_bar.png",
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ]
+    },
+    {
+      "id": "Repair_AllDiscount",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 641.6667,
+        "y": 487.3333,
+        "width": 10.0,
+        "height": 10.0
+      },
+      "rotation": 0.0,
+      "layers": [
+        {
+          "path": "UI/Repair/repair_discount_icon.png",
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ]
+    },
+    {
+      "id": "Repair_AllButton",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 657.6667,
+        "y": 478.0,
+        "width": 106.6667,
+        "height": 22.6667
+      },
+      "rotation": 0.0,
+      "layers": [
+        {
+          "path": "UI/Repair/repair_cost_bar.png",
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ]
+    },
+    {
+      "id": "Repair_MoneyBar",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 483.6667,
+        "y": 512.6667,
+        "width": 301.3333,
+        "height": 18.6667
+      },
+      "rotation": 0.0,
+      "layers": [
+        {
+          "path": "UI/Repair/repair_cost_bar.png",
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ]
+    },
+    {
+      "id": "Repair_EquipSlot_0",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 485.6667,
+        "y": 236.6667,
+        "width": 30.6667,
+        "height": 30.6667
+      },
+      "rotation": 0.0,
+      "layers": [
+        {
+          "path": "UI/Inventory/Retail/inv_slot.png",
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ]
+    },
+    {
+      "id": "Repair_EquipSlot_1",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 517.6667,
+        "y": 236.6667,
+        "width": 30.6667,
+        "height": 30.6667
+      },
+      "rotation": 0.0,
+      "layers": [
+        {
+          "path": "UI/Inventory/Retail/inv_slot.png",
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ]
+    },
+    {
+      "id": "Repair_EquipSlot_2",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 549.6667,
+        "y": 236.6667,
+        "width": 30.6667,
+        "height": 30.6667
+      },
+      "rotation": 0.0,
+      "layers": [
+        {
+          "path": "UI/Inventory/Retail/inv_slot.png",
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ]
+    },
+    {
+      "id": "Repair_EquipSlot_3",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 581.6667,
+        "y": 236.6667,
+        "width": 30.6667,
+        "height": 30.6667
+      },
+      "rotation": 0.0,
+      "layers": [
+        {
+          "path": "UI/Inventory/Retail/inv_slot.png",
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ]
+    },
+    {
+      "id": "Repair_EquipSlot_4",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 613.6667,
+        "y": 236.6667,
+        "width": 30.6667,
+        "height": 30.6667
+      },
+      "rotation": 0.0,
+      "layers": [
+        {
+          "path": "UI/Inventory/Retail/inv_slot.png",
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ]
+    },
+    {
+      "id": "Repair_EquipSlot_5",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 645.6667,
+        "y": 236.6667,
+        "width": 30.6667,
+        "height": 30.6667
+      },
+      "rotation": 0.0,
+      "layers": [
+        {
+          "path": "UI/Inventory/Retail/inv_slot.png",
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ]
+    },
+    {
+      "id": "Repair_EquipSlot_6",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 677.6667,
+        "y": 236.6667,
+        "width": 30.6667,
+        "height": 30.6667
+      },
+      "rotation": 0.0,
+      "layers": [
+        {
+          "path": "UI/Inventory/Retail/inv_slot.png",
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ]
+    },
+    {
+      "id": "Repair_EquipSlot_7",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 709.6667,
+        "y": 236.6667,
+        "width": 30.6667,
+        "height": 30.6667
+      },
+      "rotation": 0.0,
+      "layers": [
+        {
+          "path": "UI/Inventory/Retail/inv_slot.png",
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ]
+    },
+    {
+      "id": "Repair_EquipSlot_8",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 485.6667,
+        "y": 268.6667,
+        "width": 30.6667,
+        "height": 30.6667
+      },
+      "rotation": 0.0,
+      "layers": [
+        {
+          "path": "UI/Inventory/Retail/inv_slot.png",
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ]
+    },
+    {
+      "id": "Repair_EquipSlot_9",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 517.6667,
+        "y": 268.6667,
+        "width": 30.6667,
+        "height": 30.6667
+      },
+      "rotation": 0.0,
+      "layers": [
+        {
+          "path": "UI/Inventory/Retail/inv_slot.png",
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ]
+    },
+    {
+      "id": "Repair_EquipSlot_10",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 549.6667,
+        "y": 268.6667,
+        "width": 30.6667,
+        "height": 30.6667
+      },
+      "rotation": 0.0,
+      "layers": [
+        {
+          "path": "UI/Inventory/Retail/inv_slot.png",
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ]
+    },
+    {
+      "id": "Repair_EquipSlot_11",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 581.6667,
+        "y": 268.6667,
+        "width": 30.6667,
+        "height": 30.6667
+      },
+      "rotation": 0.0,
+      "layers": [
+        {
+          "path": "UI/Inventory/Retail/inv_slot.png",
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ]
+    },
+    {
+      "id": "Repair_EquipSlot_12",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 613.6667,
+        "y": 268.6667,
+        "width": 30.6667,
+        "height": 30.6667
+      },
+      "rotation": 0.0,
+      "layers": [
+        {
+          "path": "UI/Inventory/Retail/inv_slot.png",
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ]
+    },
+    {
+      "id": "Repair_EquipSlot_13",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 645.6667,
+        "y": 268.6667,
+        "width": 30.6667,
+        "height": 30.6667
+      },
+      "rotation": 0.0,
+      "layers": [
+        {
+          "path": "UI/Inventory/Retail/inv_slot.png",
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ]
+    },
+    {
+      "id": "Repair_EquipSlot_14",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 677.6667,
+        "y": 268.6667,
+        "width": 30.6667,
+        "height": 30.6667
+      },
+      "rotation": 0.0,
+      "layers": [
+        {
+          "path": "UI/Inventory/Retail/inv_slot.png",
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ]
+    },
+    {
+      "id": "Repair_EquipSlot_15",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 709.6667,
+        "y": 268.6667,
+        "width": 30.6667,
+        "height": 30.6667
+      },
+      "rotation": 0.0,
+      "layers": [
+        {
+          "path": "UI/Inventory/Retail/inv_slot.png",
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ]
+    },
+    {
+      "id": "Repair_InventorySlot_0",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 485.0,
+        "y": 368.6667,
+        "width": 30.6667,
+        "height": 30.6667
+      },
+      "rotation": 0.0,
+      "layers": [
+        {
+          "path": "UI/Inventory/Retail/inv_slot.png",
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ]
+    },
+    {
+      "id": "Repair_InventorySlot_1",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 517.0,
+        "y": 368.6667,
+        "width": 30.6667,
+        "height": 30.6667
+      },
+      "rotation": 0.0,
+      "layers": [
+        {
+          "path": "UI/Inventory/Retail/inv_slot.png",
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ]
+    },
+    {
+      "id": "Repair_InventorySlot_2",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 549.0,
+        "y": 368.6667,
+        "width": 30.6667,
+        "height": 30.6667
+      },
+      "rotation": 0.0,
+      "layers": [
+        {
+          "path": "UI/Inventory/Retail/inv_slot.png",
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ]
+    },
+    {
+      "id": "Repair_InventorySlot_3",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 581.0,
+        "y": 368.6667,
+        "width": 30.6667,
+        "height": 30.6667
+      },
+      "rotation": 0.0,
+      "layers": [
+        {
+          "path": "UI/Inventory/Retail/inv_slot.png",
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ]
+    },
+    {
+      "id": "Repair_InventorySlot_4",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 613.0,
+        "y": 368.6667,
+        "width": 30.6667,
+        "height": 30.6667
+      },
+      "rotation": 0.0,
+      "layers": [
+        {
+          "path": "UI/Inventory/Retail/inv_slot.png",
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ]
+    },
+    {
+      "id": "Repair_InventorySlot_5",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 645.0,
+        "y": 368.6667,
+        "width": 30.6667,
+        "height": 30.6667
+      },
+      "rotation": 0.0,
+      "layers": [
+        {
+          "path": "UI/Inventory/Retail/inv_slot.png",
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ]
+    },
+    {
+      "id": "Repair_InventorySlot_6",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 677.0,
+        "y": 368.6667,
+        "width": 30.6667,
+        "height": 30.6667
+      },
+      "rotation": 0.0,
+      "layers": [
+        {
+          "path": "UI/Inventory/Retail/inv_slot.png",
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ]
+    },
+    {
+      "id": "Repair_InventorySlot_7",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 709.0,
+        "y": 368.6667,
+        "width": 30.6667,
+        "height": 30.6667
+      },
+      "rotation": 0.0,
+      "layers": [
+        {
+          "path": "UI/Inventory/Retail/inv_slot.png",
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ]
+    },
+    {
+      "id": "Repair_InventorySlot_8",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 485.0,
+        "y": 400.6667,
+        "width": 30.6667,
+        "height": 30.6667
+      },
+      "rotation": 0.0,
+      "layers": [
+        {
+          "path": "UI/Inventory/Retail/inv_slot.png",
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ]
+    },
+    {
+      "id": "Repair_InventorySlot_9",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 517.0,
+        "y": 400.6667,
+        "width": 30.6667,
+        "height": 30.6667
+      },
+      "rotation": 0.0,
+      "layers": [
+        {
+          "path": "UI/Inventory/Retail/inv_slot.png",
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ]
+    },
+    {
+      "id": "Repair_InventorySlot_10",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 549.0,
+        "y": 400.6667,
+        "width": 30.6667,
+        "height": 30.6667
+      },
+      "rotation": 0.0,
+      "layers": [
+        {
+          "path": "UI/Inventory/Retail/inv_slot.png",
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ]
+    },
+    {
+      "id": "Repair_InventorySlot_11",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 581.0,
+        "y": 400.6667,
+        "width": 30.6667,
+        "height": 30.6667
+      },
+      "rotation": 0.0,
+      "layers": [
+        {
+          "path": "UI/Inventory/Retail/inv_slot.png",
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ]
+    },
+    {
+      "id": "Repair_InventorySlot_12",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 613.0,
+        "y": 400.6667,
+        "width": 30.6667,
+        "height": 30.6667
+      },
+      "rotation": 0.0,
+      "layers": [
+        {
+          "path": "UI/Inventory/Retail/inv_slot.png",
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ]
+    },
+    {
+      "id": "Repair_InventorySlot_13",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 645.0,
+        "y": 400.6667,
+        "width": 30.6667,
+        "height": 30.6667
+      },
+      "rotation": 0.0,
+      "layers": [
+        {
+          "path": "UI/Inventory/Retail/inv_slot.png",
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ]
+    },
+    {
+      "id": "Repair_InventorySlot_14",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 677.0,
+        "y": 400.6667,
+        "width": 30.6667,
+        "height": 30.6667
+      },
+      "rotation": 0.0,
+      "layers": [
+        {
+          "path": "UI/Inventory/Retail/inv_slot.png",
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ]
+    },
+    {
+      "id": "Repair_InventorySlot_15",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 709.0,
+        "y": 400.6667,
+        "width": 30.6667,
+        "height": 30.6667
+      },
+      "rotation": 0.0,
+      "layers": [
+        {
+          "path": "UI/Inventory/Retail/inv_slot.png",
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ]
+    },
+    {
+      "id": "Repair_InventorySlot_16",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 485.0,
+        "y": 432.6667,
+        "width": 30.6667,
+        "height": 30.6667
+      },
+      "rotation": 0.0,
+      "layers": [
+        {
+          "path": "UI/Inventory/Retail/inv_slot.png",
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ]
+    },
+    {
+      "id": "Repair_InventorySlot_17",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 517.0,
+        "y": 432.6667,
+        "width": 30.6667,
+        "height": 30.6667
+      },
+      "rotation": 0.0,
+      "layers": [
+        {
+          "path": "UI/Inventory/Retail/inv_slot.png",
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ]
+    },
+    {
+      "id": "Repair_InventorySlot_18",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 549.0,
+        "y": 432.6667,
+        "width": 30.6667,
+        "height": 30.6667
+      },
+      "rotation": 0.0,
+      "layers": [
+        {
+          "path": "UI/Inventory/Retail/inv_slot.png",
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ]
+    },
+    {
+      "id": "Repair_InventorySlot_19",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 581.0,
+        "y": 432.6667,
+        "width": 30.6667,
+        "height": 30.6667
+      },
+      "rotation": 0.0,
+      "layers": [
+        {
+          "path": "UI/Inventory/Retail/inv_slot.png",
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ]
+    },
+    {
+      "id": "Repair_InventorySlot_20",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 613.0,
+        "y": 432.6667,
+        "width": 30.6667,
+        "height": 30.6667
+      },
+      "rotation": 0.0,
+      "layers": [
+        {
+          "path": "UI/Inventory/Retail/inv_slot.png",
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ]
+    },
+    {
+      "id": "Repair_InventorySlot_21",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 645.0,
+        "y": 432.6667,
+        "width": 30.6667,
+        "height": 30.6667
+      },
+      "rotation": 0.0,
+      "layers": [
+        {
+          "path": "UI/Inventory/Retail/inv_slot.png",
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ]
+    },
+    {
+      "id": "Repair_InventorySlot_22",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 677.0,
+        "y": 432.6667,
+        "width": 30.6667,
+        "height": 30.6667
+      },
+      "rotation": 0.0,
+      "layers": [
+        {
+          "path": "UI/Inventory/Retail/inv_slot.png",
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ]
+    },
+    {
+      "id": "Repair_InventorySlot_23",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 709.0,
+        "y": 432.6667,
+        "width": 30.6667,
+        "height": 30.6667
+      },
+      "rotation": 0.0,
+      "layers": [
+        {
+          "path": "UI/Inventory/Retail/inv_slot.png",
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ]
+    }
+  ]
+}

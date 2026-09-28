@@ -1,5 +1,21 @@
 {
   "formatVersion": 1,
+  "healthBarPositions": {
+    "allyOffsetX": 0,
+    "allyOffsetY": 0,
+    "enemyOffsetX": 0,
+    "enemyOffsetY": -40,
+    "koukuOffsetX": 0,
+    "koukuOffsetY": 0,
+    "koukuSaydonOffsetX": 0,
+    "koukuSaydonOffsetY": -92,
+    "mechanicHeightScale": 1,
+    "mechanicOffsetX": 0,
+    "mechanicOffsetY": 7,
+    "mechanicWidthScale": 0.3333333432674408,
+    "valtanOffsetX": -20,
+    "valtanOffsetY": -227
+  },
   "madness": {
     "feetOffsetMeters": 1.2999999523162842,
     "fillTextureByState": ["UI/KoukuSaydon/Madness/madness_fill_state_0.png", "UI/KoukuSaydon/Madness/madness_fill_state_1.png"],

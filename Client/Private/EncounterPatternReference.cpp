@@ -1,4 +1,5 @@
 #include "EncounterPatternReference.h"
+#include "ValtanPatternTree.h"
 
 #include "DataJson.h"
 
@@ -1101,7 +1102,7 @@ bool_t Client::CEncounterPatternReference::Load(
 					{ "hitOffsetsMs", "motion", "actions", "branches",
 					  "playerResponse", "attachmentSlot", "partDamagePolicy",
 					  "gripLocalOffset", "counterProxy", "bossResponse",
-					  "hitAnchor", "hitActivation", "verticalOffsetM" }))
+					  "hitAnchor", "hitActivation", "verticalOffsetM", "attackContacts" }))
 			{
 				outStatus = "Encounter stage has unexpected properties: " +
 					pattern.patternId;
@@ -1124,6 +1125,7 @@ bool_t Client::CEncounterPatternReference::Load(
 					MAX_STAGE_DURATION_MS, stage.iHitDelayMs) ||
 				!Read_OptionalOrderedUnsignedArray(stageEntry, "hitOffsetsMs",
 					1000u, MAX_STAGE_DURATION_MS, stage.hitOffsetsMs) ||
+				!Parse_ValtanStageAttackContacts(stageEntry.Find("attackContacts"), stage.AttackContacts) ||
 				!Read_String(stageEntry, "serverDamageProfileId", true,
 					stage.serverDamageProfileId) ||
 				!Read_Float(stageEntry, "hitOuterRadius",
@@ -1311,6 +1313,15 @@ bool_t Client::CEncounterPatternReference::Load(
 				}
 				stage.gripLocalOffset = gripOffset;
 			}
+            const auto* motion = stageEntry.Find("motion");
+            if (!LostArk::Shared::Validate_StageAttackContacts(stage.AttackContacts,
+                stage.iDurationMs, stage.hitOffsetsMs, stage.iHitCount, stage.iHitDelayMs, stage.iHitIntervalMs) ||
+                (!stage.AttackContacts.empty() && (stage.bHasHitActivation || stage.gripLocalOffset.has_value() ||
+                    (motion && !motion->Is_Null()) || stage.hitShape == "NONE")))
+            {
+                outStatus = "Encounter stage attackContacts contract is invalid: " + pattern.patternId + "/" + stage.stageId;
+                return false;
+            }
 			const bool_t hasExplicitHitOffsets = !stage.hitOffsetsMs.empty();
 			const bool_t validExplicitHitSchedule =
 				hasExplicitHitOffsets &&

@@ -220,7 +220,13 @@
     {"id": "kouku.category.269040f204e0cec40579", "parentId": "kouku.category.f20d85c12b1f39e952da", "kind": "CATEGORY", "displayName": "블랙홀 중앙 구체·폭발"},
     {"id": "valtan.resources", "parentId": "root.v1", "kind": "CATEGORY", "displayName": "Valtan"},
     {"id": "valtan.resources.common", "parentId": "valtan.resources", "kind": "CATEGORY", "displayName": "Common"},
-    {"id": "valtan.resources.common.telegraphs", "parentId": "valtan.resources.common", "kind": "CATEGORY", "displayName": "Telegraphs"}
+    {"id": "valtan.resources.common.telegraphs", "parentId": "valtan.resources.common", "kind": "CATEGORY", "displayName": "Telegraphs"},
+    {"id": "valtan.resources.pizza", "parentId": "valtan.resources", "kind": "CATEGORY", "displayName": "피자"},
+    {"id": "valtan.resources.four-direction", "parentId": "valtan.resources", "kind": "CATEGORY", "displayName": "2페이즈 4방향 공격"},
+    {"id": "valtan.resources.tracking-axe", "parentId": "valtan.resources", "kind": "CATEGORY", "displayName": "점프 후 플레이어 추적 도끼"},
+    {"id": "valtan.resources.dash-charge", "parentId": "valtan.resources", "kind": "CATEGORY", "displayName": "3회 구르기 후 돌진"},
+    {"id": "valtan.resources.catch-breath", "parentId": "valtan.resources", "kind": "CATEGORY", "displayName": "잡아채서 불어 날리기"},
+    {"id": "valtan.resources.independent", "parentId": "valtan.resources", "kind": "CATEGORY", "displayName": "개별 이펙트"}
   ],
   "references": [
     {"kind": "V1", "assetId": "effect.kouku.gate3.showtime.sector.warning.shot", "displayName": "부채꼴 예고·사격 (저작 조합)", "parentId": "kouku.category.d767402008919487db6b"},
@@ -1112,6 +1118,21 @@
     {"kind": "V1", "assetId": "effect.kouku.mario.player.hammer.impact", "displayName": "Mario original Q hammer (MN_REUP_07 / 42784)", "parentId": "kouku.category.mario.pattern"},
     {"kind": "V1", "assetId": "effect.kouku.mario.flyingball.hit", "displayName": "Mario flying-ball contact (original RHCN explosion)", "parentId": "kouku.category.mario.pattern"},
     {"kind": "V1", "assetId": "effect.valtan.six-pizza.sectors", "displayName": "발탄 피자 / 기존 섹터 묶음", "parentId": "valtan.resources.common.telegraphs"},
-    {"kind": "V1", "assetId": "effect.classselect.guardianknight.fx_pc_ddk_04.par_m_ddk_guillotinespin_trail_01", "displayName": "Guardian class selection | par_m_ddk_guillotinespin_trail_01", "parentId": "root.v1"}
+    {"kind": "V1", "assetId": "effect.classselect.guardianknight.fx_pc_ddk_04.par_m_ddk_guillotinespin_trail_01", "displayName": "Guardian class selection | par_m_ddk_guillotinespin_trail_01", "parentId": "root.v1"},
+    {"kind": "V1", "assetId": "effect.valtan.six-pizza.rock.active", "displayName": "피자 패턴 | 외곽 4개 돌", "parentId": "valtan.resources.pizza"},
+    {"kind": "V1", "assetId": "effect.valtan.six-pizza.rock.telegraph", "displayName": "돌 폭발 전조", "parentId": "valtan.resources.pizza"},
+    {"kind": "V1", "assetId": "effect.valtan.six-pizza.rock.explode", "displayName": "돌 폭발", "parentId": "valtan.resources.pizza"},
+    {"kind": "V1", "assetId": "effect.valtan.six-pizza.rock.explosion.full", "displayName": "돌 폭발 전체", "parentId": "valtan.resources.pizza"},
+    {"kind": "V1", "assetId": "effect.valtan.action.420609.stage008.full.restore", "displayName": "Valtan 420609 / Main [8] full restore", "parentId": "root.v1"},
+    {"kind": "V1", "assetId": "effect.valtan.action.420624.stage007.body.full.restore", "displayName": "2페이즈 4방향 공격 · 본체 원본 복원", "parentId": "valtan.resources.four-direction"},
+    {"kind": "V1", "assetId": "effect.valtan.action.420624.stage007.sectors.full.restore", "displayName": "2페이즈 4방향 공격 · 확장 부채꼴 4개", "parentId": "valtan.resources.four-direction"},
+    {"kind": "V1", "assetId": "effect.valtan.sequence.four.sector", "displayName": "2페이즈 4방향 공격 · 독립 확장 부채꼴", "parentId": "valtan.resources.four-direction"},
+    {"kind": "V1", "assetId": "effect.valtan.tracking-axe.large-circle.warning", "displayName": "추적 도끼 · 확장 원형 예고 장판", "parentId": "valtan.resources.tracking-axe"},
+    {"kind": "V1", "assetId": "effect.valtan.action.400424.stage000.dash.full.restore", "displayName": "3회 구르기 후 돌진 · 돌진 보호막 원본 복원", "parentId": "valtan.resources.dash-charge"},
+    {"kind": "V1", "assetId": "effect.valtan.dash-charge.source.shield", "displayName": "3회 구르기 후 돌진 · 독립 돌진 보호막", "parentId": "valtan.resources.dash-charge"},
+    {"kind": "V1", "assetId": "effect.valtan.action.420623.stage004.full.restore", "displayName": "잡아채서 불어 날리기 · 불어날리기 원본 복원", "parentId": "valtan.resources.catch-breath"},
+    {"kind": "V1", "assetId": "effect.valtan.ether.orb", "displayName": "에테르의 구슬", "parentId": "valtan.resources.independent"},
+    {"kind": "V1", "assetId": "effect.valtan.source.fx_mn_rpbf_00_o.par_o_rpbf_atk_01_07", "displayName": "Valtan phase2 cinematic source par_o_rpbf_atk_01_07", "parentId": "root.v1"},
+    {"kind": "V1", "assetId": "effect.valtan.action.420624.stage001.full.restore", "displayName": "Valtan 420624 / StageName [1] full restore", "parentId": "root.v1"}
   ]
 }

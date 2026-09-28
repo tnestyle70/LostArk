@@ -7,6 +7,7 @@
 #include "Bounding_Sphere.h"
 #include "Collider.h"
 #include "GameInstance.h"
+#include "Profiler.h"
 #include "MainApp.h"
 #include "Level_KakulSaydonArena.h"
 #include "ProjectDataRoot.h"
@@ -736,6 +737,7 @@ bool_t Client::CCameraTool::Save()
 	Remove_Temporary(replacedBackup);
 
 	m_LoadedDocument = std::move(temporaryDocument);
+	if (!m_strCompositionOwner.empty()) m_CompositionDocument = m_LoadedDocument;
 	m_strBaselineText = std::move(serialized);
 	m_DraftCues = m_LoadedDocument.Get_Cues();
 	m_hasDraftDeathCue = m_LoadedDocument.Has_DeathCue();
@@ -757,6 +759,7 @@ void Client::CCameraTool::Commit_LoadedDocument(
 	Stop_Preview(false);
 	m_Encounter = std::move(encounter);
 	m_LoadedDocument = std::move(document);
+	if (!m_strCompositionOwner.empty()) m_CompositionDocument = m_LoadedDocument;
 	m_DraftCues = m_LoadedDocument.Get_Cues();
 	m_hasDraftDeathCue = m_LoadedDocument.Has_DeathCue();
 	m_DraftDeathCue = m_hasDraftDeathCue ?
@@ -2309,6 +2312,7 @@ bool_t Client::CCameraTool::Delete_SelectedPos(
 bool_t Client::CCameraTool::Sample_CompositionPreview(
     const BOSS_STAGE_ENVIRONMENT_SAMPLE& sample, std::string& status)
 {
+    Engine::CProfilerScope sampleScope(CGameInstance::Get().Get_Profiler(), "Camera.Composition.Sample");
     const BOSS_STAGE_CAMERA_SAMPLE* active = nullptr;
     if (sample.bPreview && std::isfinite(sample.fClockMs) && sample.fClockMs >= 0.f)
         for (const auto& camera : sample.CameraInvocations)
@@ -2316,9 +2320,12 @@ bool_t Client::CCameraTool::Sample_CompositionPreview(
                 sample.fClockMs < static_cast<double>(camera.iStartMs) + camera.iDurationMs &&
                 (!active || camera.iStartMs >= active->iStartMs)) active = &camera;
     if (!active) { Stop_CompositionPreview(); return true; }
-    const std::string owner = sample.strOwnerKey + ":" + sample.strActionId + ":" + active->strOccurrenceId;
+    // The whole encounter shares one camera document. Stage action IDs change
+    // at each cut, so retain this snapshot for the actor preview session.
+    const std::string owner = sample.strOwnerKey;
     if (m_strCompositionOwner != owner)
     {
+        Engine::CProfilerScope loadScope(CGameInstance::Get().Get_Profiler(), "Camera.Composition.DocumentLoad");
         CEncounterPatternReference encounter;
         CValtanCinematicCameraDocument document;
         if (!encounter.Load(CProjectDataRoot::Resolve(L"Encounters/Valtan/ValtanEncounter.json"), status) ||
@@ -2365,4 +2372,5 @@ void Client::CCameraTool::Stop_CompositionPreview()
         (void)camera->End_PresentationOverride(COMPOSITION_OWNER_ID);
     m_pCompositionCamera.reset();
     m_strCompositionOwner.clear();
+    m_CompositionDocument = {};
 }

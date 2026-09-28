@@ -1724,6 +1724,7 @@ namespace
 		draft.hitIntervalMs = stage.iHitIntervalMs;
 		draft.hitDelayMs = stage.iHitDelayMs;
 		draft.hitOffsetsMs = stage.HitOffsetsMs;
+		draft.attackContacts = stage.AttackContacts;
 		draft.hasHitAnchor = stage.bHasHitAnchor;
 		draft.hitAnchorKind = stage.strHitAnchorKind;
 		draft.hitAnchorForwardOffsetM = stage.fHitAnchorForwardOffsetM;
@@ -1779,9 +1780,9 @@ namespace
 		const bool hasCollider = "NONE" != stage.strHitShape;
 		draft.colliderAddAdmitted = !isWaitStage &&
 			pattern.bManualServerAudition && !hasCollider;
-		draft.colliderTuneAdmitted = !isWaitStage && hasCollider;
+		draft.colliderTuneAdmitted = !isWaitStage && hasCollider && stage.AttackContacts.empty();
 		draft.colliderRemoveAdmitted = !isWaitStage &&
-			pattern.bManualServerAudition && hasCollider &&
+			pattern.bManualServerAudition && hasCollider && stage.AttackContacts.empty() &&
 			"CAPTURE" != stage.strPlayerResponse;
 		/* Compatibility for Animation Tool's existing in-place geometry editor.
 		   It must never inherit Add/Remove authority from this mirror. */
@@ -1877,6 +1878,8 @@ namespace
 			left.bUsesStageClock == right.bUsesStageClock &&
 			left.iStageOffsetMs == right.iStageOffsetMs &&
 			left.iSourceStartMs == right.iSourceStartMs &&
+			left.bHasPlaybackOffset == right.bHasPlaybackOffset &&
+			(!left.bHasPlaybackOffset || left.iPlaybackOffsetMs == right.iPlaybackOffsetMs) &&
 			left.iSourceEndMs == right.iSourceEndMs &&
 			left.iStageDurationMs == right.iStageDurationMs &&
 			left.bHasSourceEnd == right.bHasSourceEnd &&
@@ -4136,6 +4139,7 @@ bool Client::CBalanceTool::Set_ValtanStageDraft(
 		candidate.gripRightM != current.gripRightM;
 	if (candidate.stageId != current.stageId ||
 		candidate.actionId != current.actionId ||
+		candidate.attackContacts != current.attackContacts ||
 		candidate.motionKind != current.motionKind ||
 		candidate.stageKindEditable != current.stageKindEditable ||
 		candidate.durationEditable != current.durationEditable ||
@@ -4483,6 +4487,11 @@ bool Client::CBalanceTool::Set_ValtanStageDraft(
 		candidate.knockdown != current.knockdown ||
 		candidate.downMs != current.downMs || responseChanged ||
 		gripLocalOffsetChanged;
+    if (!current.attackContacts.empty() && hitChanged)
+    {
+        status = "Valtan per-contact Collider is read-only in the common Stage editor; edit its typed contact owner to change shape, timing, or damage.";
+        return false;
+    }
 	if (isWaitStage &&
 		(stageKindChanged || animationChanged || hitChanged ||
 		 portalRushMotionChanged || releaseChanged || effectYawChanged))
@@ -4690,6 +4699,15 @@ bool Client::CBalanceTool::Set_ValtanStageDraft(
 		}
 	}
 
+    if (!LostArk::Shared::Validate_StageAttackContacts(candidate.attackContacts,
+        candidate.durationMs, candidate.hitOffsetsMs, candidate.hitCount,
+        candidate.hitDelayMs, candidate.hitIntervalMs) ||
+        (!candidate.attackContacts.empty() && (candidate.hasHitActivation ||
+            candidate.playerResponse != "DAMAGE" || candidate.hitShape == "NONE")))
+    {
+        status = "Valtan stage edit rejected: preserve the admitted per-contact hit schedule and authority.";
+        return false;
+    }
 	if (!stageKindChanged && !durationChanged && !hitChanged &&
 		!portalRushMotionChanged &&
 		!releaseChanged &&
@@ -4710,6 +4728,7 @@ bool Client::CBalanceTool::Set_ValtanStageDraft(
 	stage->iHitIntervalMs = candidate.hitIntervalMs;
 	stage->iHitDelayMs = candidate.hitDelayMs;
 	stage->HitOffsetsMs = candidate.hitOffsetsMs;
+	stage->AttackContacts = candidate.attackContacts;
 	stage->bHasHitAnchor = candidate.hasHitAnchor;
 	stage->strHitAnchorKind = candidate.hitAnchorKind;
 	stage->fHitAnchorForwardOffsetM =
@@ -7258,9 +7277,9 @@ bool Client::CBalanceTool::ReloadValtanPatternAuthoring(
 {
 	VALTAN_PATTERN_TREE_VIEW stagedTree;
 	std::string treeStatus;
-	// Product enrichment is optional. Source edits remain available when the
-	// previously published animation/effect generation has not been rebuilt.
-	(void)CValtanPatternTree::Load_WhileAdmitted(canonicalAdmission, stagedTree, treeStatus);
+	// This owner consumes the source inventory. The source loader replaces the
+	// complete view, so a Product load here adds no data and delays every Save.
+	// Strict Product admission remains with the Boss/Effect playback owners.
 	if (!CValtanPatternTree::Load_Authoring_WhileAdmitted(
 			canonicalAdmission, stagedTree, treeStatus))
 	{
@@ -7768,7 +7787,8 @@ bool Client::CBalanceTool::RestoreValtanSavedAuthoring(
 				nullptr != hit->Find("activation") ||
 				nullptr != hit->Find("playerResponse") ||
 				nullptr != hit->Find("attachmentSlot") ||
-				nullptr != hit->Find("gripLocalOffset");
+				nullptr != hit->Find("gripLocalOffset") ||
+				nullptr != hit->Find("contacts");
 			if (!bJoinedTreeOwnsExtendedHit)
 			{
 				targetStage->fHitOuterRadius = 0.f;
@@ -11223,12 +11243,14 @@ bool Client::CBalanceTool::BuildValtanDraftPatch(
 						return false;
 					}
 					std::ostringstream cueJson;
+					const std::string playbackOffset = cue.bHasPlaybackOffset ?
+						", \"playbackOffsetMs\": " + std::to_string(cue.iPlaybackOffsetMs) : "";
 					cueJson << "{ \"cueId\": " << Quote(cue.strBindingId)
 						<< ", \"occurrenceId\": " << Quote(cue.strOccurrenceId)
 						<< ", \"effectAssetId\": " << Quote(cue.strEffectAssetId)
 						<< ", \"clipOccurrenceId\": " <<
 							Quote(cue.strClipOccurrenceId)
-						<< ", \"sourceStartMs\": " << cue.iSourceStartMs
+						<< ", \"sourceStartMs\": " << cue.iSourceStartMs << playbackOffset
 						<< ", \"sourceEndMs\": " <<
 							(cue.bHasSourceEnd ? std::to_string(cue.iSourceEndMs) :
 								std::string("null"))
@@ -11481,6 +11503,7 @@ bool Client::CBalanceTool::BuildValtanDraftPatch(
 					stage.iHitIntervalMs != loadedStage->iHitIntervalMs ||
 					stage.iHitDelayMs != loadedStage->iHitDelayMs ||
 					stage.HitOffsetsMs != loadedStage->HitOffsetsMs ||
+					stage.AttackContacts != loadedStage->AttackContacts ||
 					stage.bHasHitAnchor != loadedStage->bHasHitAnchor ||
 					stage.strHitAnchorKind != loadedStage->strHitAnchorKind ||
 					stage.fHitAnchorForwardOffsetM !=
@@ -11545,6 +11568,8 @@ bool Client::CBalanceTool::BuildValtanDraftPatch(
 							<< ", \"firstOffsetMs\": " << stage.iHitDelayMs
 							<< ", \"intervalMs\": " << stage.iHitIntervalMs << " }";
 					}
+					if (!stage.AttackContacts.empty())
+						hit << ", \"contacts\": " << Serialize_ValtanStageAttackContacts(stage.AttackContacts);
 					if (stage.bHasHitAnchor)
 					{
 						hit << ", \"anchor\": { \"kind\": " <<

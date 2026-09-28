@@ -552,7 +552,7 @@ function Get-BootstrapRowSortKey {
             $fields[4], $fields[6], $fields[7])) -join "`t"
     }
     if ($fields.Count -ge 5 -and $fields[0] -ceq 'PATTERNATTACKHIT') {
-        $parent = if ($fields[4] -ceq 'PROJECTILE') { 'PATTERNPURSUITPROJECTILES' } elseif ($fields[4] -ceq 'ALBION') { 'PATTERNMECHANICTRIGGER' } else { 'PATTERNSHOWTIMETARGETS' }
+        $parent = if ($fields[4] -ceq 'STAGE') { 'PATTERNSTAGECONTACT' } elseif ($fields[4] -ceq 'PROJECTILE') { 'PATTERNPURSUITPROJECTILES' } elseif ($fields[4] -ceq 'ALBION') { 'PATTERNMECHANICTRIGGER' } else { 'PATTERNSHOWTIMETARGETS' }
         $Row = (@($parent,$fields[1],$fields[2],$fields[3],2) + @($fields[4..($fields.Count - 1)])) -join "`t"
     }
     if ($fields.Count -ge 4 -and $fields[0] -ceq 'PATTERNPURSUITCARDS') {

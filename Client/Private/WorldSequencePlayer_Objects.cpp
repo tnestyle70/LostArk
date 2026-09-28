@@ -1671,7 +1671,7 @@ void CWorldSequencePlayer::Retire_Sounds(ACTIVE_INSTANCE& active)
     // Only handles survive natural visual completion. Camera, actor and control
     // clocks retain their authored duration and explicit Stop still owns cleanup.
     for (const auto& sound : active.sounds)
-        if (sound.handle && sound.endElapsedMs > active.elapsedMs)
+        if (!sound.loopToDuration && sound.handle && sound.endElapsedMs > active.elapsedMs)
             m_RetiredSounds.push_back({active.instanceId, sound.handle, sound.endElapsedMs - active.elapsedMs});
         else CGameInstance::Get().Stop_SoundCue(sound.handle);
     active.sounds.clear();
@@ -1731,6 +1731,7 @@ void CWorldSequencePlayer::Apply_Sounds(ACTIVE_INSTANCE& active)
             const bool loop = motion->motionEnd == WORLD_SEQUENCE_MOTION_END::LOOP;
             for (const auto& row : sequence->soundTracks)
             {
+                if (row.loopToDuration && (active.elapsedMs >= cutoffMs || (!loop && localMs >= period))) continue;
                 if (localMs < row.startMs) continue;
                 const uint64_t last = loop ? static_cast<uint64_t>(std::floor((localMs - row.startMs) / period)) : 0u;
                 const uint64_t first = loop ? static_cast<uint64_t>((std::max)(0.0,
@@ -1756,14 +1757,37 @@ void CWorldSequencePlayer::Apply_Sounds(ACTIVE_INSTANCE& active)
                     if (found == active.sounds.end())
                     {
                         const auto path = CRuntimeAssetRoot::Resolve(row.assetId);
-                        const auto handle = audio.Play_SoundCue(path.wstring(), row.volume,
-                            static_cast<uint32_t>(ageMs), m_bPaused, rate * m_ExternalSoundClockRate);
+                        uint32_t mediaDurationMs = 0u;
+                        const bool loopReady = !row.loopToDuration ||
+                            audio.Get_SoundDurationMs(path.wstring(), mediaDurationMs);
+                        const auto sampleMs = static_cast<uint32_t>(ageMs);
+                        const auto cycle = row.loopToDuration && mediaDurationMs ? sampleMs / mediaDurationMs : 0u;
+                        const auto offsetMs = row.loopToDuration && mediaDurationMs ? sampleMs % mediaDurationMs : sampleMs;
+                        const auto handle = loopReady ? audio.Play_SoundCue(path.wstring(), row.volume,
+                            offsetMs, m_bPaused, rate * m_ExternalSoundClockRate) : 0u;
                         // A missing cue is isolated and remembered, so a broken asset
                         // cannot retrigger file I/O or invalidate an otherwise valid scene.
-                        active.sounds.push_back({key, handle, birthMs + row.durationMs / rate});
+                        active.sounds.push_back({key, handle, birthMs + row.durationMs / rate,
+                            mediaDurationMs, cycle, row.loopToDuration});
                         if (!handle) m_Status = "World sequence sound unavailable: " + row.assetId;
                     }
-                    else audio.Set_SoundCuePlaybackRate(found->handle, rate * m_ExternalSoundClockRate);
+                    else
+                    {
+                        const auto sampleMs = static_cast<uint32_t>(ageMs);
+                        if (row.loopToDuration && found->mediaDurationMs &&
+                            sampleMs / found->mediaDurationMs != found->mediaCycle)
+                        {
+                            // Stop the previous cycle before starting the current one.
+                            // Clock modulo handles frame skips, seek and playback rate
+                            // without accumulating drift or overlapping loop voices.
+                            audio.Stop_SoundCue(found->handle);
+                            found->mediaCycle = sampleMs / found->mediaDurationMs;
+                            const auto path = CRuntimeAssetRoot::Resolve(row.assetId);
+                            found->handle = audio.Play_SoundCue(path.wstring(), row.volume,
+                                sampleMs % found->mediaDurationMs, m_bPaused, rate * m_ExternalSoundClockRate);
+                        }
+                        else audio.Set_SoundCuePlaybackRate(found->handle, rate * m_ExternalSoundClockRate);
+                    }
                 }
             }
             if (motion->motionEnd != WORLD_SEQUENCE_MOTION_END::NEXT) break;

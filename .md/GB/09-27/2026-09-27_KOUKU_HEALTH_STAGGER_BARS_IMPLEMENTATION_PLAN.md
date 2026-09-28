@@ -41,3 +41,17 @@ Server 중심 계약 검증은 실제 게이지 구간/종료/취소, 블랙홀�
 변경 JSON/XML parse와 `git diff --check`, Product 증분 컴파일을 수행한다. 실행 중 EXE/DLL의 실제 잠금이 확인되면 사용자 실행을 임의 종료하지 않는다. Client와 아레나 화면 확인은 사용자가 직접 한다. 자동 검증과 화면 미확인, 설치 데이터와 실행 중 Server 반영을 RESULT에서 구분한다.
 
 기능 코드·저작 데이터·publisher 생성물·검증 결과를 한 변경으로 commit/push하고 검토 가능한 PR을 만든다. 필요한 열린 PR을 사용자가 승인한 범위에서 병합한 뒤 main을 fast-forward 동기화하고 작업 트리 상태와 원격 일치를 확인한다. 무관한 변경을 버리거나 강제 push하지 않는다.
+
+## G05. F1 체력바 위치 조절과 두 구성 빌드
+
+기존 F1 광기 위치 조절 바로 아래에 무력화 주황 바, 다른 아군의 하늘색 HP, 적·보스의 빨간 HP Y offset을 각각 추가한다. 단위는 1280×720 기준 pixel이고 +Y는 아래다. 기본 0으로 기존 위치를 유지하며 finite -1280..1280만 허용한다. 머리 위 bar는 frame/HP/shield 전체가 같이 이동하고 무력화는 frame/track/fill 전체가 원래 rect+offset으로 이동해 매 프레임 누적되지 않는다.
+
+정본은 기존 `Data/UI/KoukuSaydon/KoukuHudModes.json`의 optional `healthBarPositions` block이다. `CMainApp`이 현재값과 마지막 저장값 및 Get/Set/Save/Reload를 소유하고 `CWorldHealthBarView`는 ally/enemy 두 Y값만 소비한다. 최신 디스크 문서에서 수정한 field만 병합하며 기존 madness/modes와 독립 축의 외부 편집을 보존한다. 같은 field 충돌·잘못된 JSON·동시 저장은 현재 미리보기와 저장본을 보존하고 오류를 표시한다. 기존 광기 저장 lock을 공유하고 임시 파일 검증, 교체 직전 freshness 확인, backup/atomic replacement를 유지한다.
+
+광기 및 세 bar 위치 control을 공통 helper로 묶어 Debug의 기존 자리와 Release F1에 노출한다. 새 C++ 파일과 project/filter 등록은 필요 없다. 사용자의 실행 중 Client는 조작하지 않는다. 변경 JSON parse·설정 입력/저장/재로드·실패 보존과 최소 Client 컴파일을 확인하고, 이어 Debug와 Release의 공식 Product 빌드 및 Release 주사위 Complete Play CPU 회귀를 확인한다.
+
+## G06. 현재 Server 주소와 기존 진단 표시 유지
+
+사용자의 접속 오류 화면은 192.168.0.22:7777 WSA10060이다. 현재 이 PC의 default-route Wi-Fi 주소는 192.168.200.113이고 이전 성공한 두 Client 기록도 이 주소를 사용했다. 사용자 요청에 따라 TeamLanEndpoint, compiled Client fallback, Debug/Release debugger 환경과 현재 팀 문서를 192.168.200.113:7777로 함께 변경한다. Server bind 0.0.0.0과 만료일은 유지하며 격리 localhost 검사는 바꾸지 않는다. Sync 스크립트는 실제 debugger 환경과 방화벽 상태를 확인하되 Client/UI나 Server를 자율 실행하지 않는다. 기존 Network endpoint 계약 검사를 실행한다.
+
+로비의 Initialize 자체에는 접속 호출이 없고 입장 명령이 접속을 시작한다. 사용자가 거슬렸다고 설명한 대상은 Server CMD의 ShipNpc 생성 로그이며 최종 지시는 무시하고 유지하는 것이다. Debug 로비 진단 패널의 기존 상시 표시와 Server CMD 로그를 그대로 유지한다. 임시로 추가한 F1 표시 조건과 이를 위한 getter는 제거한다.

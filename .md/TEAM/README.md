@@ -31,10 +31,14 @@ endpoint와 만료일 정본은 `../../Tools/Network/TeamLanEndpoint.json`, 실�
 `TEAM_GAMEPLAY_INTERFACE_HANDBOOK.md`의 `서로 다른 장소에서 Server와 Client 연결`이다.
 빠른 IP 교체, 실제 4인 LAN, Character Select loopback 독립 테스트는
 [네트워크연결가이드.md](네트워크연결가이드.md)의 실행 순서를 따른다.
-현재 공유 Server endpoint는 같은 팀 LAN의 `192.168.0.22:7777`이다.
+현재 공유 Server endpoint는 같은 팀 LAN의 `192.168.200.113:7777`이다.
 현재 Server가 꺼져 있으면 `not-listening`이 정상일 수 있으며, 스크립트가 로컬 debugger 설정을
 동기화한 뒤 출력이 `server-host`이면 Visual Studio의 `Server + Client` profile, `client`이면
 Client project를 사용자가 `Ctrl+F5`로 시작할 대상으로 안내한다.
+
+개인 로컬 F5 테스트는 sync의 `-EndpointMode Local`로 선택하고 `Server + Client`를 사용한다.
+선택은 Git 제외 debugger 설정에 저장되어 다음 sync에도 유지된다. 팀 접속으로 돌아갈 때만
+`-EndpointMode Team`을 명시한다. 자세한 순서는 네트워크 연결 가이드의 개인 로컬 F5 절을 따른다.
 
 ## 모든 세션의 사용자 전용 화면 검증 경계
 

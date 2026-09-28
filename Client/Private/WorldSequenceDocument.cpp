@@ -943,7 +943,7 @@ bool_t Client::CWorldSequenceDocument::Load_Text(const std::string_view text,
             for (const auto& row : sounds->Get_Array())
             {
                 WORLD_SEQUENCE_SOUND_TRACK sound;
-                if (!Is_ExactObject(row, { "soundTrackId", "assetId", "startMs", "durationMs", "volume" }) ||
+                if (!Is_ObjectShape(row, { "soundTrackId", "assetId", "startMs", "durationMs", "volume" }, { "loopToDuration" }) ||
                     !row.Find("soundTrackId")->Is_String() || !row.Find("assetId")->Is_String() || !row.Find("volume")->Is_Number() ||
                     !Read_Uint32(row.Find("startMs"), sound.startMs, MAX_DURATION_MS) ||
                     !Read_Uint32(row.Find("durationMs"), sound.durationMs, MAX_DURATION_MS))
@@ -951,6 +951,11 @@ bool_t Client::CWorldSequenceDocument::Load_Text(const std::string_view text,
                 sound.soundTrackId = row.Find("soundTrackId")->Get_String();
                 sound.assetId = row.Find("assetId")->Get_String();
                 sound.volume = static_cast<f32_t>(row.Find("volume")->Get_Number());
+                if (const auto* loop = row.Find("loopToDuration"))
+                {
+                    if (!loop->Is_Boolean()) { outStatus = "World sound loopToDuration must be boolean"; return false; }
+                    sound.loopToDuration = loop->Get_Boolean();
+                }
                 parsedTemplate.soundTracks.push_back(std::move(sound));
             }
         }
@@ -1408,7 +1413,9 @@ bool_t Client::CWorldSequenceDocument::Save(
                 output << (index ? ",\n" : "\n") << "        { \"soundTrackId\": \"" << CDataJson::Escape(sound.soundTrackId)
                     << "\", \"assetId\": \"" << CDataJson::Escape(sound.assetId)
                     << "\", \"startMs\": " << sound.startMs << ", \"durationMs\": " << sound.durationMs
-                    << ", \"volume\": " << sound.volume << " }";
+                    << ", \"volume\": " << sound.volume;
+                if (sound.loopToDuration) output << ", \"loopToDuration\": true";
+                output << " }";
             }
             output << "\n      ]";
         }

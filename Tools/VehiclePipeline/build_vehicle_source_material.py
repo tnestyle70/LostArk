@@ -493,7 +493,10 @@ def emit_function(document, family, number, stage):
         if len(trailing) > 1:
             lines.append(f'    source[{trailing[-1]}].x=1.0;')
     lines.append('    float4 projection[4]; [unroll] for(uint p=0u;p<4u;++p) projection[p]=input.projection[p];')
-    lines.append('    float4 passValues[5] = {float4(0.5,-0.5,0.5,0.5),float4(0,0,0,0),float4(0,0,0,0),float4(0,0,0,1),float4(1,1,1,1)};')
+    # Native84 uses a neutral specular scale/offset: material * 1 + 0.
+    # Preserve other programs until their pass-constant ABI is reviewed.
+    specular_override = 'float4(0,0,0,1)' if number == 84 else 'float4(1,1,1,1)'
+    lines.append('    float4 passValues[5] = {float4(0.5,-0.5,0.5,0.5),float4(0,0,0,0),float4(0,0,0,0),float4(0,0,0,1),' + specular_override + '};')
     lines.append('    float4 ' + ', '.join(f'v{i} = input.values[{i}]' for i in range(10)) + ';')
     temps = next(int(d.split()[1]) for d in program['disassembly']['declarations'] if d.startswith('dcl_temps'))
     lines.append('    float4 ' + ', '.join(f'r{i}=0.0' for i in range(temps)) + ';')

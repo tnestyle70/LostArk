@@ -169,6 +169,10 @@ void CLevel_Development::Update(const f32_t fTimeDelta)
 
 	if (LEVEL::MAHARAKA == m_eLevel)
 	{
+#ifdef _DEBUG
+		// MapTool owns sampled poses while editing; keep replication and lights live.
+		if (!m_bMapAuthoringActive)
+#endif
 		m_MapRuntime.Update_SelfMotions(fTimeDelta);
 		if (m_pMapLightPresentation &&
 			!m_pMapLightPresentation->Submit_Frame() &&

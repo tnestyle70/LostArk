@@ -290,8 +290,11 @@ int wmain(int argc, wchar_t** argv)
                 Require(SUCCEEDED(first->Bind_Matrices("g_BoneMatrices", bones.data(), static_cast<uint32_t>(bones.size()))), "bone matrix array bind failed");
             }
             ComPtr<ID3D11PixelShader> cohortShader;
-            for (uint32_t program = 1u; program <= 89u; ++program)
+            // Exercise both sides of the Maharaka/Guardian registry merge.
+            const std::array<uint32_t, 5> mergedPrograms{1474u, 1475u, 1526u, 1527u, 1528u};
+            for (uint32_t ordinal = 1u; ordinal <= 89u + mergedPrograms.size(); ++ordinal)
             {
+                const uint32_t program = ordinal <= 89u ? ordinal : mergedPrograms[ordinal - 90u];
                 if (program > 32u && program < 80u) continue;
                 for (size_t i = 0; i < constants.size(); ++i) constants[i] = 1000.125f + static_cast<float>(program * 300u + i);
                 Require(SUCCEEDED(first->Bind_RawValue(constantsName, constants.data(), sizeof(constants))) &&
@@ -442,6 +445,25 @@ int wmain(int argc, wchar_t** argv)
                 // Restore the expected shared clone fixture after the benchmark.
                 for (size_t i = 0; i < constants.size(); ++i) constants[i] = 80000.25f + static_cast<float>(i);
                 Require(SUCCEEDED(first->Bind_RawValue(constantsName, constants.data(), sizeof(constants))), "post-benchmark fixture restore failed");
+            }
+            if (!fixture.bones)
+            {
+                // The recovered Maharaka stand is a static mesh, including its leaf VS.
+                for (uint32_t standProgram : {1529u, 1530u, 1531u, 1532u})
+                {
+                    for (size_t i = 0; i < constants.size(); ++i)
+                        constants[i] = 90000.25f + static_cast<float>(i);
+                    Require(SUCCEEDED(first->Bind_RawValue(constantsName, constants.data(), sizeof(constants))) &&
+                        SUCCEEDED(first->Bind_Texture("g_SourceCharacterTexture0", view)) &&
+                        SUCCEEDED(first->Bind_RawValue("g_SourceCharacterProgram", &standProgram, sizeof(standProgram))),
+                        "Maharaka original stand material binding failed");
+                    Require(SUCCEEDED(first->Begin(fixture.pass)) &&
+                        ConstantsBound(device.Get(), context.Get(), false, constants.data(), sizeof(constants)) &&
+                        TextureBound(context.Get(), view.Get()), "Maharaka original stand cohort failed");
+                    Require(SUCCEEDED(second->Begin(fixture.pass)), "Maharaka original stand clone failed");
+                    ++programsChecked;
+                    ++clonesChecked;
+                }
             }
             program = 66u;
             Require(SUCCEEDED(first->Bind_RawValue("g_SourceCharacterProgram", &program, sizeof(program))) &&

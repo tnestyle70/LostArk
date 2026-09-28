@@ -650,7 +650,22 @@ namespace
 					visual.Is_Object() ? visual.Find("effectV2Group") : nullptr;
 				const DATA_JSON_VALUE* pHitEffectAssetId =
 					visual.Is_Object() ? visual.Find("hitEffectAssetId") : nullptr;
+				const DATA_JSON_VALUE* pArmedEventId =
+					visual.Is_Object() ? visual.Find("armedPresentationEventId") : nullptr;
+				const DATA_JSON_VALUE* pArmedEffectId =
+					visual.Is_Object() ? visual.Find("armedEffectAssetId") : nullptr;
+				const DATA_JSON_VALUE* pStopActiveOnHit =
+					visual.Is_Object() ? visual.Find("stopActiveOnHit") : nullptr;
+				if ((nullptr != pArmedEventId) != (nullptr != pArmedEffectId) ||
+					(nullptr != pArmedEventId &&
+						(!pArmedEventId->Is_String() || !IsStableId(pArmedEventId->Get_String()) ||
+						 !pArmedEffectId->Is_String() || !IsStableId(pArmedEffectId->Get_String()) ||
+						 nullptr != pEffectV2Group)) ||
+					(nullptr != pStopActiveOnHit && !pStopActiveOnHit->Is_Boolean()))
+					return false;
 				const size_t expectedVisualFields = 3u +
+					(nullptr != pArmedEventId ? 2u : 0u) +
+					(nullptr != pStopActiveOnHit ? 1u : 0u) +
 					(nullptr != pEffectV2Group ? 1u : 0u) +
 					(visual.Is_Object() && nullptr != visual.Find("worldScale") ? 1u : 0u) +
 					(nullptr != pHitEffectAssetId ? 1u : 0u);
@@ -732,6 +747,13 @@ namespace
 				if (nullptr != pHitEffectAssetId)
 					entryVisual.hitEffectAssetId =
 						pHitEffectAssetId->Get_String();
+				if (nullptr != pArmedEventId)
+				{
+					entryVisual.armedPresentationEventId = pArmedEventId->Get_String();
+					entryVisual.armedEffectAssetId = pArmedEffectId->Get_String();
+				}
+				entryVisual.stopActiveOnHit = nullptr != pStopActiveOnHit &&
+					pStopActiveOnHit->Get_Boolean();
 				entry.combatObjectVisuals.push_back(std::move(entryVisual));
 			}
 			staged.push_back(std::move(entry));
