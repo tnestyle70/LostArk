@@ -22,6 +22,7 @@ SOURCES = {
     "LanceMaster": "PC_FT_00", "GunSlinger": "PC_GN_F_00",
     "Slayer": "PC_WR_F_00", "Artist": "PC_SP_00",
     "DimensionMaster": "PC_SP_M_00", "Warlord": "PC_WR_00",
+    "GuardianKnight": "PC_DL_00",
 }
 CLIPS = {"wall_climb_loop": "act_creep_up_1",
          "wall_climb_end": "act_creep_up_end_1"}
@@ -64,7 +65,12 @@ def main():
     parser.add_argument("--resources", type=Path, required=True,
                         help="Client/Bin/Resources root")
     parser.add_argument("--receipt", type=Path, required=True)
+    parser.add_argument("--classes", nargs="*", default=[])
     args = parser.parse_args()
+    wanted = set(args.classes) if args.classes else set(SOURCES)
+    unknown = wanted - set(SOURCES)
+    if unknown:
+        raise SystemExit("Unknown classes: %s" % ", ".join(sorted(unknown)))
     catalog = json.loads((ROOT / "Data/Actors/CharacterCatalog.json").read_text(
         encoding="utf-8"))
     receipt = []
@@ -72,7 +78,7 @@ def main():
         scratch = Path(directory)
         for actor in catalog["characters"]:
             name = actor["assetId"]
-            if name not in SOURCES:
+            if name not in wanted:
                 continue
             package = SOURCES[name]
             source = args.warlord_source if name == "Warlord" else args.source
