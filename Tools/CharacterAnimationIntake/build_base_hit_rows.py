@@ -16,6 +16,10 @@ rows no Effect notify of the chain already judges), and the row carries that
 SkillEffect's shape so fill_animevents_hit_shapes.py stamps it instead of
 dropping the notify. A clip without any Effect judgement keeps that script's
 positional skilltiming rule and gets no particle row.
+
+A `pull=` row names a base-chain Effect judgement whose SkillEffect PushType is 1:
+the .animnotify extraction kept only the push range, so without it the source's
+pull toward the caster became a push away.
 """
 import io, os, re, sqlite3, sys
 
@@ -213,6 +217,21 @@ def particle_rows(asset, effects, messages):
     return lines
 
 
+def pull_rows(asset, effects):
+    chains = base_chains(asset)
+    lines = []
+    for skill in sorted(chains):
+        for clip, t, src, pk in chain_hit_notifies(asset, chains).get(skill, []):
+            if src != 'Effect':
+                continue
+            row = effects.execute(
+                'SELECT PushType FROM SkillEffect WHERE PrimaryKey = ? ORDER BY ABS(SecondaryKey - 10) LIMIT 1',
+                (pk,)).fetchone()
+            if row is not None and row[0] == 1:
+                lines.append('%d pull=%d' % (skill, pk))
+    return sorted(set(lines), key=lambda l: (int(l.split()[0]), l))
+
+
 def main(argv):
     check = '--check' in argv
     if '--table-root' not in argv:
@@ -225,6 +244,7 @@ def main(argv):
     for asset in assets:
         rows = build(asset, effects, messages)
         rows += particle_rows(asset, effects, messages)
+        rows += pull_rows(asset, effects)
         rows[0] = HEADER % (asset, len(rows) - 1)
         text = '\n'.join(rows) + '\n'
         path = os.path.join(REF, asset, asset + '.basehits')

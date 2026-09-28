@@ -61,6 +61,19 @@ def load_particle_hits(asset):
     return out
 
 
+def load_pull_effects(asset):
+    """SkillEffect PKs build_base_hit_rows.py marked PushType 1: the range pulls."""
+    out = set()
+    path = os.path.join(REF, asset, asset + '.basehits')
+    if not os.path.exists(path):
+        return out
+    for line in read_lines(path)[1:]:
+        m = re.match(r'^\d+ pull=(\d+)', line)
+        if m:
+            out.add(int(m.group(1)))
+    return out
+
+
 def load_hit_repeats(asset):
     """Repeat count and interval of each source Effect notify, from build_hit_repeats.py."""
     out = {}
@@ -77,6 +90,7 @@ def load_hit_repeats(asset):
 def load_notify(asset, clipmap):
     base_hits = load_base_hits(asset)
     particle_hits = load_particle_hits(asset)
+    pull_effects = load_pull_effects(asset)
     repeats = load_hit_repeats(asset)
     clips = {}
     order = []
@@ -96,6 +110,8 @@ def load_notify(asset, clipmap):
         own = {k: int(p[k]) for k in SHAPE_KEYS if k in p}
         if p.get('src') == 'ParticleHit' and (cur, to_ms(float(p['t']))) in particle_hits:
             own = dict(particle_hits[(cur, to_ms(float(p['t'])))])
+        if p.get('asset', '').isdigit() and int(p['asset']) in pull_effects and own.get('pushr', 0) > 0:
+            own['pushr'] = -own['pushr']
         if p.get('asset', '').isdigit() and own.get('area', 0) > 0:
             start = to_ms(float(p['t']))
             repeat = next((repeats[(int(p['asset']), start + d)] for d in (0, -1, 1)

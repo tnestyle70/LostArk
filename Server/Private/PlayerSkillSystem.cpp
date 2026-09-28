@@ -1435,14 +1435,15 @@ void LostArk::Server::CPlayerSkillSystem::Update(
 		std::uint32_t subHitIndex = 0;
 		std::size_t colliderRepeatIndex = 0u;
 		bool allFired = true;
+		/* Every action start clears the fire mask; a window ledger that outlives it is stale. */
+		if (player.iAppliedHitMask.none())
+			player.HitWindowTargets.clear();
 		for (const PLAYER_SKILL_HIT& hit : shapeHits)
 		{
 			const bool ownsDamage = OwnsHealthDamage(hit);
 			for (std::uint32_t repeat = 0; repeat < hit.iRepeatCount;
 				++repeat, subHitIndex += ownsDamage ? 1u : 0u, ++colliderRepeatIndex)
 			{
-				if (player.iAppliedHitMask.test(colliderRepeatIndex))
-					continue;
 				const float fireMs =
 					static_cast<float>(hit.iTimeMs + hit.iRepeatMs * repeat);
 				if (elapsedMs < fireMs)
@@ -1450,7 +1451,21 @@ void LostArk::Server::CPlayerSkillSystem::Update(
 					allFired = false;
 					continue;
 				}
+				/* The shape stays live for the authored notify window and moves
+				with the caster, so a lunge judges the targets it passes; each
+				target takes one window once. */
+				const float closeMs = fireMs + static_cast<float>(hit.iDurationMs);
+				if (player.iAppliedHitMask.test(colliderRepeatIndex) && elapsedMs > closeMs)
+					continue;
 				player.iAppliedHitMask.set(colliderRepeatIndex);
+				if (elapsedMs < closeMs)
+					allFired = false;
+				const std::uint8_t windowIndex = static_cast<std::uint8_t>(colliderRepeatIndex);
+				std::size_t windowHits = 0u;
+				for (const auto& entry : player.HitWindowTargets)
+					if (entry.first == windowIndex) ++windowHits;
+				if (0u != hit.iMaxTargets && windowHits >= hit.iMaxTargets)
+					continue;
 				const float hitOriginX = player.hasSkillTarget ?
 					player.fSkillTargetX : player.fPositionX;
 				const float hitOriginZ = player.hasSkillTarget ?
@@ -1459,6 +1474,12 @@ void LostArk::Server::CPlayerSkillSystem::Update(
 				for (SERVER_WORLD_ENTITY& entity : worldEntities)
 				{
 					if (!isDamageable(entity) ||
+						std::any_of(player.HitWindowTargets.begin(), player.HitWindowTargets.end(),
+							[&](const auto& entry)
+							{
+								return entry.first == windowIndex &&
+									entry.second == entity.iNetEntityId;
+							}) ||
 						!Hit_ShapeOverlaps(hit, hitOriginX, hitOriginZ,
 							player.fSkillAimDirectionX, player.fSkillAimDirectionZ,
 							targetBodyOf(entity)))
@@ -1474,11 +1495,14 @@ void LostArk::Server::CPlayerSkillSystem::Update(
 					{
 						return left.first < right.first;
 					});
-				if (0u != hit.iMaxTargets && targets.size() > hit.iMaxTargets)
-					targets.resize(hit.iMaxTargets);
+				if (0u != hit.iMaxTargets && targets.size() > hit.iMaxTargets - windowHits)
+					targets.resize(hit.iMaxTargets - windowHits);
 				for (auto& [distanceSquared, target] : targets)
+				{
 					applyDamage(*target, ownsDamage ? damageOfSubHit(subHitIndex) : 0u, &hit,
 						subHitTotal, subHitIndex);
+					player.HitWindowTargets.emplace_back(windowIndex, target->iNetEntityId);
+				}
 				if (!targets.empty())
 					Gain_EmberGauge(player, catalog);
 			}

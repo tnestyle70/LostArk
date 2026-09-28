@@ -410,6 +410,7 @@ void Cancel_PlayerActionForPatternStatus(SERVER_PLAYER& player)
 		player.fSkillAimDistance = 0.f;
 		player.hasAppliedSkillDamage = false;
 		player.iAppliedHitMask = 0u;
+		player.HitWindowTargets.clear();
 		player.iSpawnedProjectileMask = 0u;
 		player.Projectiles.clear();
 		player.iComboStage = 0u;
@@ -545,6 +546,7 @@ void Freeze_TimelineAuditionPlayer(SERVER_PLAYER& player)
 		player.fSkillAimDistance = 0.f;
 		player.hasAppliedSkillDamage = false;
 		player.iAppliedHitMask = 0u;
+		player.HitWindowTargets.clear();
 		player.iSpawnedProjectileMask = 0u;
 		player.Projectiles.clear();
 		player.iComboStage = 0u;

@@ -54,6 +54,7 @@ namespace LostArk::Server
 		range is metres away from the caster, negative pulling it closer. */
 		std::uint32_t iPushMs = 0;
 		float fPushRange = 0.f;
+		std::uint32_t iDurationMs = 0;
 	};
 
 	enum class PLAYER_PROJECTILE_KIND : std::uint8_t

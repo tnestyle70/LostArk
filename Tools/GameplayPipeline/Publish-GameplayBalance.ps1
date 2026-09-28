@@ -5270,6 +5270,13 @@ function Format-HitShapes {
         $hitFields = @('timeMs','repeatCount','repeatMs','areaType','range','angle',
             'width','height','offset','inner','maxTargets','pushMs','pushRange')
         if ($script:hitShapeVersion -eq 4) { $hitFields += @('colliderId','logic','result') }
+        # durationMs is optional: the source notify window the shape stays live for.
+        $durationMs = 0
+        if ($null -ne $hit.PSObject.Properties['durationMs']) {
+            $hitFields += 'durationMs'
+            Assert-JsonInteger $hit.durationMs "hit shape $SkillId durationMs" 0 10000
+            $durationMs = [int]$hit.durationMs
+        }
         Assert-ExactProperties $hit $hitFields 'hit shape'
         $resultKind = Get-HitResultKind $hit $SkillId
         Assert-JsonInteger $hit.timeMs "hit shape $SkillId timeMs" 0 $LimitMs
@@ -5287,12 +5294,14 @@ function Format-HitShapes {
         [uint64]$lastFireMs = [uint64][uint32]$hit.timeMs +
             ([uint64][uint32]$hit.repeatCount - 1) *
             [uint64][uint32]$hit.repeatMs
-        if ($lastFireMs -gt [uint64]$LimitMs) {
+        if ($lastFireMs + [uint64]$durationMs -gt [uint64]$LimitMs) {
             throw "Hit shape repeat exceeds its action/stage duration: $SkillId"
         }
         $subHits += [int]$hit.repeatCount
-        $packed.Add(('{0}:{1}:{2}:{3}:{4}' -f $timeMs,
-            [int]$hit.repeatCount, [int]$hit.repeatMs, (Format-HitShapeExtent $hit $SkillId), $resultKind))
+        $token = ('{0}:{1}:{2}:{3}:{4}' -f $timeMs,
+            [int]$hit.repeatCount, [int]$hit.repeatMs, (Format-HitShapeExtent $hit $SkillId), $resultKind)
+        if ($durationMs -gt 0) { $token += (':{0}' -f $durationMs) }
+        $packed.Add($token)
     }
     if ($subHits -gt 192) {
         throw "Hit shape sub-hit count exceeds 192: $SkillId"
