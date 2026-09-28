@@ -975,6 +975,7 @@ void LostArk::Server::CGameRoom::Reset_PlayerForDebugTeleport(SERVER_PLAYER& pla
 	player.fActionElapsedSeconds = 0.f;
 	player.hasAppliedSkillDamage = false;
 	player.iAppliedHitMask = 0u;
+	player.HitWindowTargets.clear();
 	player.iSpawnedProjectileMask = 0u;
 	player.Projectiles.clear();
 	m_CombatObjectRuntime.Cancel_Source(player.iNetEntityId);

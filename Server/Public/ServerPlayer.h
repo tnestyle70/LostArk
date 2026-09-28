@@ -568,6 +568,8 @@ namespace LostArk::Server
 		}
 		bool hasAppliedSkillDamage = false;
 		std::bitset<192u> iAppliedHitMask;
+		// (collider repeat index, target) pairs a still-open hit window already judged.
+		std::vector<std::pair<std::uint8_t, LostArk::Shared::NET_ENTITY_ID>> HitWindowTargets;
 		// Bit per projectile definition of the running stage already spawned.
 		std::uint16_t iSpawnedProjectileMask = 0;
 		std::vector<SERVER_SKILL_PROJECTILE> Projectiles;

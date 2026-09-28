@@ -1149,10 +1149,10 @@ bool LostArk::Server::CGameplayCatalog::Parse_SkillHits(
 		const std::string_view token{
 			packed.data() + cursor,
 			(std::string::npos == comma ? packed.size() : comma) - cursor };
-		std::string_view fields[15];
+		std::string_view fields[16];
 		std::size_t fieldCount = 0;
 		std::size_t start = 0;
-		while (fieldCount < 15)
+		while (fieldCount < 16)
 		{
 			const std::size_t colon = token.find(':', start);
 			fields[fieldCount++] = token.substr(start,
@@ -1162,8 +1162,9 @@ bool LostArk::Server::CGameplayCatalog::Parse_SkillHits(
 			start = colon + 1;
 		}
 		PLAYER_SKILL_HIT hit{};
-		if ((13u != fieldCount && 14u != fieldCount) ||
-			(14u == fieldCount && (!ParseNumber(fields[13], hit.iResultKind) || hit.iResultKind > 3u)) ||
+		if ((13u != fieldCount && 14u != fieldCount && 15u != fieldCount) ||
+			(fieldCount >= 14u && (!ParseNumber(fields[13], hit.iResultKind) || hit.iResultKind > 3u)) ||
+			(15u == fieldCount && (!ParseNumber(fields[14], hit.iDurationMs) || hit.iDurationMs > 10000u)) ||
 			!ParseNumber(fields[0], hit.iTimeMs) ||
 			!ParseNumber(fields[1], hit.iRepeatCount) ||
 			!ParseNumber(fields[2], hit.iRepeatMs) ||
@@ -1173,7 +1174,7 @@ bool LostArk::Server::CGameplayCatalog::Parse_SkillHits(
 			(hit.iRepeatCount > 1u && 0u == hit.iRepeatMs) ||
 			static_cast<std::uint64_t>(hit.iTimeMs) +
 				static_cast<std::uint64_t>(hit.iRepeatCount - 1u) *
-					hit.iRepeatMs > limitMs ||
+					hit.iRepeatMs + hit.iDurationMs > limitMs ||
 			(!outHits.empty() && hit.iTimeMs < outHits.back().iTimeMs))
 		{
 			m_strStatus = "Skill hit shape is invalid";

@@ -74,7 +74,7 @@ struct GUARD
 
 inline constexpr GUARD GUARDS[] =
 {
-    { ESTHER_ID::BAHUNTUR, "NPC_59060", 4000u, 7.f, 4.2f, 30000u, -50 },
+    { ESTHER_ID::BAHUNTUR, "NPC_59060", 1000u, 7.f, 4.2f, 30000u, -50 },
 };
 
 // Source: Projectile/531500.loa summons NPC 54050 at 2.0 s; its aura 555030 (700 cm, 1000 ms) carries 555032 (Immune 20)

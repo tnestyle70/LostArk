@@ -19643,7 +19643,8 @@
         "Character/GuardianKnight/AnimSets/GuardianKnight_RideTubeAnimSet.wmodel",
         "Character/GuardianKnight/AnimSets/GuardianKnight_RideDragon2AnimSet.wmodel",
         "Character/GuardianKnight/AnimSets/GuardianKnight_MazeHammerAnimSet.wmodel",
-        "Character/GuardianKnight/AnimSets/GuardianKnight_TerrainJumpAnimSet.wmodel"
+        "Character/GuardianKnight/AnimSets/GuardianKnight_TerrainJumpAnimSet.wmodel",
+        "Character/GuardianKnight/AnimSets/GuardianKnight_WallClimbAnimSet.wmodel"
       ],
       "animationSetId": "ANIM_GUARDIANKNIGHT",
       "runtimeStatus": "supported",

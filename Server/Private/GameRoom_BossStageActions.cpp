@@ -1042,6 +1042,7 @@ bool LostArk::Server::CGameRoom::Prepare_GrabbedPlayerImpact(
 		staged.Projectiles.clear();
 		staged.iSpawnedProjectileMask = 0u;
 		staged.iAppliedHitMask = 0u;
+		staged.HitWindowTargets.clear();
 		staged.hasAppliedSkillDamage = false;
 		staged.fFallVelocityY = 0.f;
 		staged.iFallDeathTick = 0u;
