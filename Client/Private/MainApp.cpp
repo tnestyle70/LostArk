@@ -76,6 +76,7 @@
 #include "Network/PacketMessages.h"
 #include "InventoryView.h"
 #include "RepairWindowView.h"
+#include "ShopWindowView.h"
 #include "DurabilityHudView.h"
 #include "QuickSlotDragView.h"
 #include "SkillWindowView.h"
@@ -633,6 +634,12 @@ void CMainApp::Open_RepairWindow()
 {
 	if (nullptr != m_pRepairWindowView)
 		m_pRepairWindowView->Open();
+}
+
+void CMainApp::Open_ShopWindow(const string& strNpcPlacementId)
+{
+	if (nullptr != m_pShopWindowView)
+		m_pShopWindowView->Open(strNpcPlacementId);
 }
 
 void CMainApp::Open_ItemUpgradeWindow()
@@ -1211,6 +1218,7 @@ HRESULT CMainApp::Initialize()
 	future real re-introduction. */
 	m_pInventoryView = std::make_unique<CInventoryView>(m_pDevice, m_pContext);
 	m_pRepairWindowView = std::make_unique<CRepairWindowView>(m_pDevice, m_pContext);
+	m_pShopWindowView = std::make_unique<CShopWindowView>(m_pDevice, m_pContext);
 	m_pDurabilityHudView = std::make_unique<CDurabilityHudView>(m_pDevice, m_pContext);
 	m_pChatWindowView = std::make_unique<CChatWindowView>(m_pDevice, m_pContext);
 	m_pPartyWindowView = std::make_unique<CPartyWindowView>(m_pDevice, m_pContext);
@@ -1866,6 +1874,7 @@ void CMainApp::Sync_KoukuCinematicUI()
 		// Release may arrive while updates are hidden; no gesture may commit after the cutscene.
 		if (m_pInventoryView) m_pInventoryView->Cancel_Interaction();
 		if (m_pRepairWindowView) m_pRepairWindowView->Cancel_Interaction();
+		if (m_pShopWindowView) m_pShopWindowView->Cancel_Interaction();
 		if (m_pCharacterInfoView) m_pCharacterInfoView->Cancel_Interaction();
 		if (m_pAvatarBookView) m_pAvatarBookView->Cancel_Interaction();
 		if (m_pVehicleWindowView) m_pVehicleWindowView->Cancel_Interaction();
@@ -3664,6 +3673,8 @@ void CMainApp::Register_UITextOccluders()
 		Occlusion.Add_Occluder(UI_TEXT_LAYER::WINDOW_INVENTORY, fX, fY, fWidth, fHeight);
 	if (nullptr != m_pRepairWindowView && m_pRepairWindowView->Get_ScreenRect(fX, fY, fWidth, fHeight))
 		Occlusion.Add_Occluder(UI_TEXT_LAYER::WINDOW_REPAIR, fX, fY, fWidth, fHeight);
+	if (nullptr != m_pShopWindowView && m_pShopWindowView->Get_ScreenRect(fX, fY, fWidth, fHeight))
+		Occlusion.Add_Occluder(UI_TEXT_LAYER::WINDOW_SHOP, fX, fY, fWidth, fHeight);
 	if (nullptr != m_pCharacterInfoView && m_pCharacterInfoView->Get_ScreenRect(fX, fY, fWidth, fHeight))
 		Occlusion.Add_Occluder(UI_TEXT_LAYER::WINDOW_CHARACTER_INFO, fX, fY, fWidth, fHeight);
 	if (nullptr != m_pAvatarBookView && m_pAvatarBookView->Get_ScreenRect(fX, fY, fWidth, fHeight))
@@ -4280,6 +4291,11 @@ HRESULT CMainApp::Render()
 			m_pRepairWindowView->Render_Text();
 	}
 	{
+		CUITextLayerScope WindowText(UI_TEXT_LAYER::WINDOW_SHOP);
+		if (nullptr != m_pShopWindowView)
+			m_pShopWindowView->Render_Text();
+	}
+	{
 		CUITextLayerScope HudText(UI_TEXT_LAYER::HUD);
 		RenderLobbyButtonText();
 		RenderCharacterSelectWindowText();
@@ -4471,6 +4487,8 @@ void CMainApp::Update_CombatHUD(const f32_t fTimeDelta)
 			m_pInventoryView->Hide();
 		if (nullptr != m_pRepairWindowView)
 			m_pRepairWindowView->Hide();
+		if (nullptr != m_pShopWindowView)
+			m_pShopWindowView->Hide();
 		if (nullptr != m_pDurabilityHudView)
 			m_pDurabilityHudView->Hide();
 		if (nullptr != m_pCharacterInfoView)
@@ -4869,6 +4887,16 @@ void CMainApp::Update_CombatHUD(const f32_t fTimeDelta)
 			consumed here so the button cannot latch, and this is the single place the later
 			vertical slice hooks the typed command into. */
 		}
+	}
+	if (nullptr != m_pShopWindowView)
+	{
+		m_pShopWindowView->Update();
+		/* The Server prices and applies the basket; its inventory answer updates the purse. */
+		string strShopNpcId;
+		vector<LostArk::Shared::SHOP_BASKET_ENTRY> BasketEntries;
+		if (m_pShopWindowView->Try_Consume_BuyRequest(strShopNpcId, BasketEntries))
+			(void)CNetworkManager::Get().Send_BuyItems(
+				m_iNextUseItemSequence++, strShopNpcId, BasketEntries);
 	}
 	/* Part of the combat HUD: shown for as long as this function runs, which is already gated
 	on a valid player in a supported Level. Every part reads NORMAL until a Server message
@@ -5981,6 +6009,7 @@ void CMainApp::Close_RuntimeWindowsForLoading()
 	if (nullptr != m_pCharacterSelectWindowView) m_pCharacterSelectWindowView->Close();
 	if (nullptr != m_pInventoryView) m_pInventoryView->Close();
 	if (nullptr != m_pRepairWindowView) m_pRepairWindowView->Close();
+	if (nullptr != m_pShopWindowView) m_pShopWindowView->Close();
 	if (nullptr != m_pCharacterInfoView) m_pCharacterInfoView->Close();
 	if (nullptr != m_pAvatarBookView) m_pAvatarBookView->Close();
 	if (nullptr != m_pVehicleWindowView) m_pVehicleWindowView->Close();
@@ -6003,6 +6032,7 @@ bool_t CMainApp::Is_AnyRuntimeWindowOpen() const
 	const bool_t bOpen =
 		(nullptr != m_pInventoryView && m_pInventoryView->Is_Open()) ||
 		(nullptr != m_pRepairWindowView && m_pRepairWindowView->Is_Open()) ||
+		(nullptr != m_pShopWindowView && m_pShopWindowView->Is_Open()) ||
 		(nullptr != m_pCharacterInfoView && m_pCharacterInfoView->Is_Open()) ||
 		(nullptr != m_pAvatarBookView && m_pAvatarBookView->Is_Open()) ||
 		(nullptr != m_pVehicleWindowView && m_pVehicleWindowView->Is_Open()) ||
@@ -6021,6 +6051,7 @@ bool_t CMainApp::Is_EscapeWindowOpen(const ESCAPE_WINDOW eWindow) const
 	{
 	case ESCAPE_WINDOW::INVENTORY: return nullptr != m_pInventoryView && m_pInventoryView->Is_Open();
 	case ESCAPE_WINDOW::REPAIR: return nullptr != m_pRepairWindowView && m_pRepairWindowView->Is_Open();
+	case ESCAPE_WINDOW::SHOP: return nullptr != m_pShopWindowView && m_pShopWindowView->Is_Open();
 	case ESCAPE_WINDOW::CHARACTER_INFO: return nullptr != m_pCharacterInfoView && m_pCharacterInfoView->Is_Open();
 	case ESCAPE_WINDOW::AVATAR_BOOK: return nullptr != m_pAvatarBookView && m_pAvatarBookView->Is_Open();
 	case ESCAPE_WINDOW::HONOR_TITLE: return nullptr != m_pHonorTitleWindowView && m_pHonorTitleWindowView->Is_Open();
@@ -6064,6 +6095,7 @@ bool_t CMainApp::Close_TopEscapeWindow()
 	{
 	case ESCAPE_WINDOW::INVENTORY: m_pInventoryView->Close(); break;
 	case ESCAPE_WINDOW::REPAIR: m_pRepairWindowView->Close(); break;
+	case ESCAPE_WINDOW::SHOP: m_pShopWindowView->Close(); break;
 	case ESCAPE_WINDOW::CHARACTER_INFO: m_pCharacterInfoView->Close(); break;
 	case ESCAPE_WINDOW::AVATAR_BOOK: m_pAvatarBookView->Close(); break;
 	case ESCAPE_WINDOW::HONOR_TITLE: m_pHonorTitleWindowView->Close(); break;

@@ -86,6 +86,7 @@ void LostArk::Server::CGameRoom::Handle_ReturnToBern(
 	// trip -- without this, Stage_PlayerEntry's default fresh-entry grant would
 	// silently reset the player back to just 3 starting potions.
 	transfer.CarriedInventory = player.Inventory;
+	transfer.CarriedPurse = player.Purse;
     if (const auto party = m_PartyIdByPlayerId.find(player.iPlayerId); party != m_PartyIdByPlayerId.end())
         if (const auto companion = m_Guides.find(party->second); companion != m_Guides.end() &&
             (companion->second.AnchorId == player.iPlayerId || m_PartyMembersByPartyId.at(party->second).size() == 1u))
@@ -1047,7 +1048,8 @@ bool LostArk::Server::CGameRoom::Transfer_PartyTo(
 		STAGED_PLAYER_ENTRY entry{};
 		SESSION_DIAGNOSTIC_REASON reason{};
 		if (!target.Stage_PlayerEntry(session, enter, entries, entry, reason, status,
-			spawnPlacementOverrideId, member->second.Inventory, member->second.iHonorTitleId, raidReturnNpcPlacementId))
+			spawnPlacementOverrideId, member->second.Inventory, member->second.iHonorTitleId, raidReturnNpcPlacementId,
+			member->second.Purse))
 		{
 			outResult = SESSION_DIAGNOSTIC_REASON::SERVER_EXPECTED_ROOM_FULL == reason ?
 				PARTY_TRANSFER_RESULT::REJECTED_ROOM_FULL : PARTY_TRANSFER_RESULT::REJECTED_ADMISSION_FAILED;

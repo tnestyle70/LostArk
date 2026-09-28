@@ -247,12 +247,14 @@ bool LostArk::Server::CGameRoom::Send_WorldEntitySpawnResult(
 bool LostArk::Server::CGameRoom::Send_InventorySnapshot(
 	const std::shared_ptr<CClientSession>& session,
 	const std::uint32_t requestSequence,
-	const std::vector<LostArk::Shared::INVENTORY_ITEM_SNAPSHOT>& inventory)
+	const SERVER_PLAYER& player)
 {
 	using namespace LostArk::Shared;
 	S2C_INVENTORY_SNAPSHOT message{};
 	message.iRequestSequence = requestSequence;
-	message.Items = inventory;
+	message.Items = player.Inventory;
+	message.iSilver = player.Purse.iSilver;
+	message.iGold = player.Purse.iGold;
 	CPacketWriter writer;
 	return nullptr != session && Write_Message(writer, message) &&
 		session->Send_Frame(

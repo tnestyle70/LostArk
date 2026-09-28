@@ -54,7 +54,7 @@ function Assert-Properties([object]$Value, [string[]]$Required, [string[]]$Optio
 }
 
 $itemDocument = Read-JsonDocument 'Data/Items/ItemCatalog.json'
-Assert-ExactProperties $itemDocument @('schema', 'formatVersion', 'items') 'item catalog document'
+Assert-Properties $itemDocument @('schema', 'formatVersion', 'items') @('currencies', 'shops') 'item catalog document'
 Assert-JsonString $itemDocument.schema 'item catalog schema'
 Assert-JsonInteger $itemDocument.formatVersion 'item catalog formatVersion' 2 2
 if ($itemDocument.schema -ne 'lostark.item-catalog' -or $itemDocument.formatVersion -ne 2) {
@@ -127,8 +127,56 @@ foreach ($item in $items) {
     $itemRows.Add((@('ITEM', $item.itemId, [uint32]$item.maxStack, [uint32]$item.healPercent, $equipSlotField, $classField, $startingField) -join "`t"))
 }
 
+# Currencies are the player's purse (실링, 골드), not bag items. The Server knows exactly these
+# two; startingAmount is what a fresh character is given.
+$currencyRows = [Collections.Generic.List[string]]::new()
+$currencyIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+foreach ($currency in @($itemDocument.currencies | Where-Object { $null -ne $_ })) {
+    Assert-ExactProperties $currency @('currencyId', 'displayName', 'iconPath', 'startingAmount') 'currency'
+    Assert-JsonString $currency.currencyId 'currency currencyId'
+    Assert-JsonString $currency.displayName 'currency displayName'
+    Assert-JsonString $currency.iconPath 'currency iconPath'
+    Assert-JsonInteger $currency.startingAmount 'currency startingAmount' 0 999999999
+    if (@('SILVER', 'GOLD') -cnotcontains $currency.currencyId) { throw "currency is unknown: $($currency.currencyId)" }
+    if (-not $currencyIds.Add([string]$currency.currencyId)) { throw "Duplicate currency: $($currency.currencyId)" }
+    $currencyRows.Add((@('CURRENCY', $currency.currencyId, [uint32]$currency.startingAmount) -join "`t"))
+}
+
+# NPC shops: which NPC placements run each shop, and what each sells for which currency item.
+# The shop window lays stock out on a ten-cell page, so a shop sells at most ten lines.
+$shopRows = [Collections.Generic.List[string]]::new()
+$shopIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+$shopNpcIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+foreach ($shop in @($itemDocument.shops | Where-Object { $null -ne $_ })) {
+    Assert-ExactProperties $shop @('shopId', 'npcPlacementIds', 'items') 'shop'
+    Assert-JsonString $shop.shopId 'shop shopId'
+    if ($shop.shopId -notmatch $stableIdPattern) { throw "shop shopId is not a stable ID: '$($shop.shopId)'" }
+    if (-not $shopIds.Add([string]$shop.shopId)) { throw "Duplicate shop ID: $($shop.shopId)" }
+    $npcIds = @($shop.npcPlacementIds)
+    if ($npcIds.Count -eq 0) { throw "shop names no NPC: $($shop.shopId)" }
+    foreach ($npcId in $npcIds) {
+        Assert-JsonString $npcId 'shop npcPlacementId'
+        if ($npcId -notmatch $stableIdPattern) { throw "shop npcPlacementId is not a stable ID: '$npcId'" }
+        if (-not $shopNpcIds.Add([string]$npcId)) { throw "NPC runs two shops: $npcId" }
+        $shopRows.Add((@('SHOPNPC', $shop.shopId, $npcId) -join "`t"))
+    }
+    $stock = @($shop.items)
+    if ($stock.Count -eq 0 -or $stock.Count -gt 10) { throw "shop stock count is out of range: $($shop.shopId)" }
+    $stockIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+    foreach ($line in $stock) {
+        Assert-ExactProperties $line @('itemId', 'currencyId', 'price') 'shop item'
+        Assert-JsonString $line.itemId 'shop item itemId'
+        Assert-JsonString $line.currencyId 'shop item currencyId'
+        Assert-JsonInteger $line.price 'shop item price' 1 999999999
+        if (-not $itemIds.Contains([string]$line.itemId)) { throw "shop sells an unknown item: $($line.itemId)" }
+        if (-not $currencyIds.Contains([string]$line.currencyId)) { throw "shop charges an unknown currency: $($line.currencyId)" }
+        if (-not $stockIds.Add([string]$line.itemId)) { throw "shop lists an item twice: $($shop.shopId) $($line.itemId)" }
+        $shopRows.Add((@('SHOPITEM', $shop.shopId, $line.itemId, $line.currencyId, [uint32]$line.price) -join "`t"))
+    }
+}
+
 if ($Mode -eq 'Validate') {
-    Write-Output "Item catalog Validate succeeded: $($itemRows.Count) items."
+    Write-Output "Item catalog Validate succeeded: $($itemRows.Count) items, $($currencyRows.Count) currencies, $($shopIds.Count) shops."
     return
 }
 
@@ -142,8 +190,10 @@ if (-not $outputDirectory.StartsWith($repoPrefix, [StringComparison]::OrdinalIgn
 }
 
 $lines = [Collections.Generic.List[string]]::new()
-$lines.Add("LOSTARK_ITEM_BOOTSTRAP`t4`t$($itemRows.Count)")
+$lines.Add("LOSTARK_ITEM_BOOTSTRAP`t5`t$($itemRows.Count + $currencyRows.Count + $shopRows.Count)")
 foreach ($row in $itemRows) { $lines.Add($row) }
+foreach ($row in $currencyRows) { $lines.Add($row) }
+foreach ($row in $shopRows) { $lines.Add($row) }
 
 $destination = Join-Path $outputDirectory 'Items.bootstrap'
 Write-PublishTextCatalog -Mode $Mode -Destination $destination -Lines $lines `

@@ -42,7 +42,8 @@ bool LostArk::Server::CGameRoom::Stage_PlayerEntry(
 	const std::string& spawnPlacementOverrideId,
 	const std::vector<LostArk::Shared::INVENTORY_ITEM_SNAPSHOT>& carriedInventory,
 	const LostArk::Shared::HONOR_TITLE_ID carriedHonorTitleId,
-	const std::string& raidReturnNpcPlacementId)
+	const std::string& raidReturnNpcPlacementId,
+	const SERVER_PURSE& carriedPurse)
 {
 	using namespace LostArk::Shared;
 	outReason = SESSION_DIAGNOSTIC_REASON::SERVER_JOIN_VALIDATION_FAILED;
@@ -171,6 +172,7 @@ bool LostArk::Server::CGameRoom::Stage_PlayerEntry(
 		// (e.g. Handle_ReturnToBern) replaces the default fresh-entry grant
 		// entirely -- Valtan clear rewards must survive the trip back to Bern.
 		player.Inventory = carriedInventory;
+		player.Purse = carriedPurse;
 	}
 	else
 	{
@@ -183,6 +185,7 @@ bool LostArk::Server::CGameRoom::Stage_PlayerEntry(
 			item.iQuantity = (std::min)(500u, definition->iMaxStack);
 			player.Inventory.push_back(std::move(item));
 		}
+		player.Purse = m_ItemCatalog.Get_StartingPurse();
 		/* A fresh character already wears the catalog's starting accessories. */
 		for (const auto& [itemId, slot] : m_ItemCatalog.Get_StartingEquipment())
 		{
@@ -229,6 +232,8 @@ bool LostArk::Server::CGameRoom::Build_PlayerEntryFrames(
 	if (!append(PACKET_TYPE::S2C_ENTER_ACCEPTED, accepted)) return false;
 	S2C_INVENTORY_SNAPSHOT inventory{};
 	inventory.Items = entry.Player.Inventory;
+	inventory.iSilver = entry.Player.Purse.iSilver;
+	inventory.iGold = entry.Player.Purse.iGold;
 	if (!append(PACKET_TYPE::S2C_INVENTORY_SNAPSHOT, inventory)) return false;
 	if (WORLD_ID::VALTAN_ARENA == m_eWorldId)
 	{
@@ -376,7 +381,8 @@ bool LostArk::Server::CGameRoom::Join(
 	const std::string& spawnPlacementOverrideId,
 	const std::vector<LostArk::Shared::INVENTORY_ITEM_SNAPSHOT>& carriedInventory,
 	const LostArk::Shared::HONOR_TITLE_ID carriedHonorTitleId,
-	const std::string& raidReturnNpcPlacementId)
+	const std::string& raidReturnNpcPlacementId,
+	const SERVER_PURSE& carriedPurse)
 {
 	using namespace LostArk::Shared;
 
@@ -494,7 +500,7 @@ bool LostArk::Server::CGameRoom::Join(
 	std::string status;
 	if (!Stage_PlayerEntry(session, enterWorld, {}, entry, reason, status,
 			spawnPlacementOverrideId, carriedInventory, carriedHonorTitleId,
-			raidReturnNpcPlacementId))
+			raidReturnNpcPlacementId, carriedPurse))
 	{
 		session->Request_Close(reason, WSAEINVAL, status);
 		return false;

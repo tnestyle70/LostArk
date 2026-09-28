@@ -86,7 +86,7 @@ void LostArk::Server::CGameRoom::Handle_DebugGiveItem(
 		return;
 
 	if (!Send_InventorySnapshot(
-		session, request.iRequestSequence, player.Inventory))
+		session, request.iRequestSequence, player))
 	{
 		session->Request_Close();
 	}
@@ -158,7 +158,7 @@ void LostArk::Server::CGameRoom::Handle_UseItem(
 		player.Inventory.erase(existing);
 
 	if (!Send_InventorySnapshot(
-		session, request.iRequestSequence, player.Inventory))
+		session, request.iRequestSequence, player))
 	{
 		session->Request_Close();
 	}
@@ -291,7 +291,92 @@ void LostArk::Server::CGameRoom::Handle_SetEquipment(
 	/* A refused move still answers, so the window drops any optimistic state. */
 	(void)Apply_SetEquipment(playerIter->second, request);
 	if (!Send_InventorySnapshot(
-		session, request.iRequestSequence, playerIter->second.Inventory))
+		session, request.iRequestSequence, playerIter->second))
+	{
+		session->Request_Close();
+	}
+}
+
+bool LostArk::Server::CGameRoom::Apply_BuyItems(
+	SERVER_PLAYER& player, const LostArk::Shared::C2S_BUY_ITEMS& request) const
+{
+	using namespace LostArk::Shared;
+	/* The window stays open while the player walks a little, so the check is a few metres
+	   wider than the 3 m the client stops at. */
+	constexpr float SHOP_INTERACTION_RADIUS = 6.f;
+	if (WORLD_ID::BERN != m_eWorldId || 0u == player.iCurrentHp)
+		return false;
+	const auto npc = std::find_if(m_WorldEntities.begin(), m_WorldEntities.end(),
+		[&request](const SERVER_WORLD_ENTITY& entity)
+		{
+			return WORLD_BOOTSTRAP_KIND::NPC == entity.eKind &&
+				entity.strPlacementId == request.strNpcPlacementId;
+		});
+	if (m_WorldEntities.end() == npc)
+		return false;
+	const float deltaX = player.fPositionX - npc->fPositionX;
+	const float deltaZ = player.fPositionZ - npc->fPositionZ;
+	if (deltaX * deltaX + deltaZ * deltaZ > SHOP_INTERACTION_RADIUS * SHOP_INTERACTION_RADIUS)
+		return false;
+
+	/* Price every line first; the basket is bought whole or not at all. */
+	std::vector<INVENTORY_ITEM_SNAPSHOT> staged = player.Inventory;
+	SERVER_PURSE stagedPurse = player.Purse;
+	const auto bagEntry = [&staged](const std::string& itemId)
+	{
+		return std::find_if(staged.begin(), staged.end(), [&itemId](const INVENTORY_ITEM_SNAPSHOT& item)
+			{ return item.strItemId == itemId && EQUIPMENT_SLOT::NONE == item.eEquippedSlot; });
+	};
+	for (const SHOP_BASKET_ENTRY& entry : request.Entries)
+	{
+		const SERVER_SHOP_ITEM* stock = m_ItemCatalog.Find_ShopItem(request.strNpcPlacementId, entry.strItemId);
+		const SERVER_ITEM_DEFINITION* definition = m_ItemCatalog.Find_Item(entry.strItemId);
+		if (nullptr == stock || nullptr == definition)
+			return false;
+		const std::uint64_t cost = static_cast<std::uint64_t>(stock->iPrice) * entry.iQuantity;
+		std::uint32_t& purse = stagedPurse.Amount(stock->eCurrency);
+		if (purse < cost)
+			return false;
+		purse -= static_cast<std::uint32_t>(cost);
+
+		/* No silent cap: a line that would overflow the stack refuses the basket. */
+		const auto owned = bagEntry(entry.strItemId);
+		if (staged.end() == owned)
+		{
+			if (staged.size() >= MAX_INVENTORY_ITEMS || entry.iQuantity > definition->iMaxStack)
+				return false;
+			INVENTORY_ITEM_SNAPSHOT item{};
+			item.strItemId = entry.strItemId;
+			item.iQuantity = entry.iQuantity;
+			staged.push_back(std::move(item));
+		}
+		else
+		{
+			if (static_cast<std::uint64_t>(owned->iQuantity) + entry.iQuantity > definition->iMaxStack)
+				return false;
+			owned->iQuantity += entry.iQuantity;
+		}
+	}
+	player.Inventory = std::move(staged);
+	player.Purse = stagedPurse;
+	return true;
+}
+
+void LostArk::Server::CGameRoom::Handle_BuyItems(
+	const SESSION_ID sessionId,
+	const LostArk::Shared::C2S_BUY_ITEMS& request)
+{
+	const std::shared_ptr<CClientSession> session = Find_Session(sessionId);
+	const auto sessionIter = m_PlayerIdBySessionId.find(sessionId);
+	if (nullptr == session || sessionIter == m_PlayerIdBySessionId.end())
+		return;
+	const auto playerIter = m_Players.find(sessionIter->second);
+	if (playerIter == m_Players.end())
+		return;
+	/* A refused basket still answers, so the window shows the unchanged purse. */
+	(void)Apply_BuyItems(playerIter->second, request);
+	if (!Send_InventorySnapshot(
+		session, request.iRequestSequence, playerIter->second))
 	{
 		session->Request_Close();
 	}

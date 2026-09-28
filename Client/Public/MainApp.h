@@ -53,6 +53,7 @@ class CRenderingBenchmark;
 class CSkillWindowView;
 class CInventoryView;
 class CRepairWindowView;
+class CShopWindowView;
 class CDurabilityHudView;
 class CCombatAnalysisFrameView;
 class CCharacterInfoWindowView;
@@ -147,6 +148,8 @@ public:
 	/* Same reverse direction for Bern's two repair NPCs (the anvil symbol on the
 	world map). Idempotent: a no-op when the window is already open. */
 	void Open_RepairWindow();
+	/* Bern's potion merchants: opens the shop the NPC placement runs. */
+	void Open_ShopWindow(const string& strNpcPlacementId);
 
 	static void Update_DebugWindowTitleWithFps(const wchar_t* pBaseTitle);
 	/* Every domain tool writes one stable Pattern ID into this process-wide
@@ -307,7 +310,7 @@ private:
 	bool_t Is_KoukuMinigameHUDHidden() const;
 	bool_t Is_RuntimeUIScreenSuppressed() const;
 	/* The toggle windows one Escape press closes one at a time, newest first. */
-	enum class ESCAPE_WINDOW : uint8_t { INVENTORY, CHARACTER_INFO, AVATAR_BOOK, HONOR_TITLE, VEHICLE, WORLD_MAP, REPAIR, END };
+	enum class ESCAPE_WINDOW : uint8_t { INVENTORY, CHARACTER_INFO, AVATAR_BOOK, HONOR_TITLE, VEHICLE, WORLD_MAP, REPAIR, SHOP, END };
 	bool_t Is_EscapeWindowOpen(ESCAPE_WINDOW eWindow) const;
 	/* Drops closed windows from m_EscapeWindowOrder and appends newly opened ones on top. */
 	void Sync_EscapeWindowOrder();
@@ -896,6 +899,7 @@ private:
 	/* Retail's NPC item repair window. No toggle key: the NPC that opens it is not
 	chosen yet, so only Open/Close and Escape drive it today. */
 	unique_ptr<CRepairWindowView> m_pRepairWindowView = { nullptr };
+	unique_ptr<CShopWindowView> m_pShopWindowView = { nullptr };
 	/* Retail's durability indicator, under the minimap. Part of the combat HUD, not a
 	window: no open state and no Escape entry. */
 	unique_ptr<CDurabilityHudView> m_pDurabilityHudView = { nullptr };

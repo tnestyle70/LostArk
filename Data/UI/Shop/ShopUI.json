@@ -1,0 +1,1838 @@
+{
+  "schema": "lostark.ui-layout",
+  "formatVersion": 1,
+  "resolution": {
+    "width": 1280,
+    "height": 720
+  },
+  "classes": [
+    "Default"
+  ],
+  "slots": [
+    {
+      "id": "Shop_PanelBg",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 393.6667,
+        "y": 160.0,
+        "width": 492.6667,
+        "height": 400.0
+      },
+      "rotation": 0.0,
+      "layers": [
+        {
+          "path": "UI/Repair/repair_window_bg.png",
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ]
+    },
+    {
+      "id": "Shop_TopDeco",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 395.6667,
+        "y": 162.6667,
+        "width": 490.0,
+        "height": 16.0
+      },
+      "rotation": 0.0,
+      "layers": [
+        {
+          "path": "UI/Repair/repair_top_deco.png",
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ]
+    },
+    {
+      "id": "Shop_Title",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 393.6667,
+        "y": 160.0,
+        "width": 492.6667,
+        "height": 25.3333
+      },
+      "rotation": 0.0,
+      "layers": [
+        {
+          "path": "UI/Repair/repair_top_deco.png",
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ]
+    },
+    {
+      "id": "Shop_CloseBtn",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 866.3333,
+        "y": 166.6667,
+        "width": 13.3333,
+        "height": 13.3333
+      },
+      "rotation": 0.0,
+      "layers": [
+        {
+          "path": "UI/Inventory/Retail/inv_close_btn.png",
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ]
+    },
+    {
+      "id": "Shop_Cell_0",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 401.6667,
+        "y": 189.3333,
+        "width": 228.0,
+        "height": 52.0
+      },
+      "rotation": 0.0,
+      "layers": [
+        {
+          "path": "UI/Shop/shop_cell.png",
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ]
+    },
+    {
+      "id": "Shop_CellSlot_0",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 401.6667,
+        "y": 189.3333,
+        "width": 37.3333,
+        "height": 37.3333
+      },
+      "rotation": 0.0,
+      "layers": [
+        {
+          "path": "UI/Inventory/Retail/inv_slot.png",
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ]
+    },
+    {
+      "id": "Shop_CellIcon_0",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 404.3333,
+        "y": 192.0,
+        "width": 32.0,
+        "height": 32.0
+      },
+      "rotation": 0.0,
+      "layers": [
+        {
+          "path": "UI/Common/White1x1.png",
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ]
+    },
+    {
+      "id": "Shop_CellCoin_0",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 612.3333,
+        "y": 225.3333,
+        "width": 16.6667,
+        "height": 16.0
+      },
+      "rotation": 0.0,
+      "layers": [
+        {
+          "path": "UI/Shop/shop_coin.png",
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ]
+    },
+    {
+      "id": "Shop_Cell_1",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 631.6667,
+        "y": 189.3333,
+        "width": 228.0,
+        "height": 52.0
+      },
+      "rotation": 0.0,
+      "layers": [
+        {
+          "path": "UI/Shop/shop_cell.png",
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ]
+    },
+    {
+      "id": "Shop_CellSlot_1",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 631.6667,
+        "y": 189.3333,
+        "width": 37.3333,
+        "height": 37.3333
+      },
+      "rotation": 0.0,
+      "layers": [
+        {
+          "path": "UI/Inventory/Retail/inv_slot.png",
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ]
+    },
+    {
+      "id": "Shop_CellIcon_1",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 634.3333,
+        "y": 192.0,
+        "width": 32.0,
+        "height": 32.0
+      },
+      "rotation": 0.0,
+      "layers": [
+        {
+          "path": "UI/Common/White1x1.png",
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ]
+    },
+    {
+      "id": "Shop_CellCoin_1",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 842.3333,
+        "y": 225.3333,
+        "width": 16.6667,
+        "height": 16.0
+      },
+      "rotation": 0.0,
+      "layers": [
+        {
+          "path": "UI/Shop/shop_coin.png",
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ]
+    },
+    {
+      "id": "Shop_Cell_2",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 401.6667,
+        "y": 242.6667,
+        "width": 228.0,
+        "height": 52.0
+      },
+      "rotation": 0.0,
+      "layers": [
+        {
+          "path": "UI/Shop/shop_cell.png",
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ]
+    },
+    {
+      "id": "Shop_CellSlot_2",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 401.6667,
+        "y": 242.6667,
+        "width": 37.3333,
+        "height": 37.3333
+      },
+      "rotation": 0.0,
+      "layers": [
+        {
+          "path": "UI/Inventory/Retail/inv_slot.png",
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ]
+    },
+    {
+      "id": "Shop_CellIcon_2",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 404.3333,
+        "y": 245.3333,
+        "width": 32.0,
+        "height": 32.0
+      },
+      "rotation": 0.0,
+      "layers": [
+        {
+          "path": "UI/Common/White1x1.png",
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ]
+    },
+    {
+      "id": "Shop_CellCoin_2",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 612.3333,
+        "y": 278.6667,
+        "width": 16.6667,
+        "height": 16.0
+      },
+      "rotation": 0.0,
+      "layers": [
+        {
+          "path": "UI/Shop/shop_coin.png",
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ]
+    },
+    {
+      "id": "Shop_Cell_3",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 631.6667,
+        "y": 242.6667,
+        "width": 228.0,
+        "height": 52.0
+      },
+      "rotation": 0.0,
+      "layers": [
+        {
+          "path": "UI/Shop/shop_cell.png",
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ]
+    },
+    {
+      "id": "Shop_CellSlot_3",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 631.6667,
+        "y": 242.6667,
+        "width": 37.3333,
+        "height": 37.3333
+      },
+      "rotation": 0.0,
+      "layers": [
+        {
+          "path": "UI/Inventory/Retail/inv_slot.png",
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ]
+    },
+    {
+      "id": "Shop_CellIcon_3",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 634.3333,
+        "y": 245.3333,
+        "width": 32.0,
+        "height": 32.0
+      },
+      "rotation": 0.0,
+      "layers": [
+        {
+          "path": "UI/Common/White1x1.png",
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ]
+    },
+    {
+      "id": "Shop_CellCoin_3",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 842.3333,
+        "y": 278.6667,
+        "width": 16.6667,
+        "height": 16.0
+      },
+      "rotation": 0.0,
+      "layers": [
+        {
+          "path": "UI/Shop/shop_coin.png",
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ]
+    },
+    {
+      "id": "Shop_Cell_4",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 401.6667,
+        "y": 296.0,
+        "width": 228.0,
+        "height": 52.0
+      },
+      "rotation": 0.0,
+      "layers": [
+        {
+          "path": "UI/Shop/shop_cell.png",
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ]
+    },
+    {
+      "id": "Shop_CellSlot_4",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 401.6667,
+        "y": 296.0,
+        "width": 37.3333,
+        "height": 37.3333
+      },
+      "rotation": 0.0,
+      "layers": [
+        {
+          "path": "UI/Inventory/Retail/inv_slot.png",
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ]
+    },
+    {
+      "id": "Shop_CellIcon_4",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 404.3333,
+        "y": 298.6667,
+        "width": 32.0,
+        "height": 32.0
+      },
+      "rotation": 0.0,
+      "layers": [
+        {
+          "path": "UI/Common/White1x1.png",
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ]
+    },
+    {
+      "id": "Shop_CellCoin_4",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 612.3333,
+        "y": 332.0,
+        "width": 16.6667,
+        "height": 16.0
+      },
+      "rotation": 0.0,
+      "layers": [
+        {
+          "path": "UI/Shop/shop_coin.png",
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ]
+    },
+    {
+      "id": "Shop_Cell_5",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 631.6667,
+        "y": 296.0,
+        "width": 228.0,
+        "height": 52.0
+      },
+      "rotation": 0.0,
+      "layers": [
+        {
+          "path": "UI/Shop/shop_cell.png",
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ]
+    },
+    {
+      "id": "Shop_CellSlot_5",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 631.6667,
+        "y": 296.0,
+        "width": 37.3333,
+        "height": 37.3333
+      },
+      "rotation": 0.0,
+      "layers": [
+        {
+          "path": "UI/Inventory/Retail/inv_slot.png",
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ]
+    },
+    {
+      "id": "Shop_CellIcon_5",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 634.3333,
+        "y": 298.6667,
+        "width": 32.0,
+        "height": 32.0
+      },
+      "rotation": 0.0,
+      "layers": [
+        {
+          "path": "UI/Common/White1x1.png",
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ]
+    },
+    {
+      "id": "Shop_CellCoin_5",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 842.3333,
+        "y": 332.0,
+        "width": 16.6667,
+        "height": 16.0
+      },
+      "rotation": 0.0,
+      "layers": [
+        {
+          "path": "UI/Shop/shop_coin.png",
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ]
+    },
+    {
+      "id": "Shop_Cell_6",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 401.6667,
+        "y": 349.3333,
+        "width": 228.0,
+        "height": 52.0
+      },
+      "rotation": 0.0,
+      "layers": [
+        {
+          "path": "UI/Shop/shop_cell.png",
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ]
+    },
+    {
+      "id": "Shop_CellSlot_6",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 401.6667,
+        "y": 349.3333,
+        "width": 37.3333,
+        "height": 37.3333
+      },
+      "rotation": 0.0,
+      "layers": [
+        {
+          "path": "UI/Inventory/Retail/inv_slot.png",
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ]
+    },
+    {
+      "id": "Shop_CellIcon_6",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 404.3333,
+        "y": 352.0,
+        "width": 32.0,
+        "height": 32.0
+      },
+      "rotation": 0.0,
+      "layers": [
+        {
+          "path": "UI/Common/White1x1.png",
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ]
+    },
+    {
+      "id": "Shop_CellCoin_6",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 612.3333,
+        "y": 385.3333,
+        "width": 16.6667,
+        "height": 16.0
+      },
+      "rotation": 0.0,
+      "layers": [
+        {
+          "path": "UI/Shop/shop_coin.png",
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ]
+    },
+    {
+      "id": "Shop_Cell_7",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 631.6667,
+        "y": 349.3333,
+        "width": 228.0,
+        "height": 52.0
+      },
+      "rotation": 0.0,
+      "layers": [
+        {
+          "path": "UI/Shop/shop_cell.png",
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ]
+    },
+    {
+      "id": "Shop_CellSlot_7",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 631.6667,
+        "y": 349.3333,
+        "width": 37.3333,
+        "height": 37.3333
+      },
+      "rotation": 0.0,
+      "layers": [
+        {
+          "path": "UI/Inventory/Retail/inv_slot.png",
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ]
+    },
+    {
+      "id": "Shop_CellIcon_7",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 634.3333,
+        "y": 352.0,
+        "width": 32.0,
+        "height": 32.0
+      },
+      "rotation": 0.0,
+      "layers": [
+        {
+          "path": "UI/Common/White1x1.png",
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ]
+    },
+    {
+      "id": "Shop_CellCoin_7",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 842.3333,
+        "y": 385.3333,
+        "width": 16.6667,
+        "height": 16.0
+      },
+      "rotation": 0.0,
+      "layers": [
+        {
+          "path": "UI/Shop/shop_coin.png",
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ]
+    },
+    {
+      "id": "Shop_Cell_8",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 401.6667,
+        "y": 402.6667,
+        "width": 228.0,
+        "height": 52.0
+      },
+      "rotation": 0.0,
+      "layers": [
+        {
+          "path": "UI/Shop/shop_cell.png",
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ]
+    },
+    {
+      "id": "Shop_CellSlot_8",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 401.6667,
+        "y": 402.6667,
+        "width": 37.3333,
+        "height": 37.3333
+      },
+      "rotation": 0.0,
+      "layers": [
+        {
+          "path": "UI/Inventory/Retail/inv_slot.png",
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ]
+    },
+    {
+      "id": "Shop_CellIcon_8",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 404.3333,
+        "y": 405.3333,
+        "width": 32.0,
+        "height": 32.0
+      },
+      "rotation": 0.0,
+      "layers": [
+        {
+          "path": "UI/Common/White1x1.png",
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ]
+    },
+    {
+      "id": "Shop_CellCoin_8",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 612.3333,
+        "y": 438.6667,
+        "width": 16.6667,
+        "height": 16.0
+      },
+      "rotation": 0.0,
+      "layers": [
+        {
+          "path": "UI/Shop/shop_coin.png",
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ]
+    },
+    {
+      "id": "Shop_Cell_9",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 631.6667,
+        "y": 402.6667,
+        "width": 228.0,
+        "height": 52.0
+      },
+      "rotation": 0.0,
+      "layers": [
+        {
+          "path": "UI/Shop/shop_cell.png",
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ]
+    },
+    {
+      "id": "Shop_CellSlot_9",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 631.6667,
+        "y": 402.6667,
+        "width": 37.3333,
+        "height": 37.3333
+      },
+      "rotation": 0.0,
+      "layers": [
+        {
+          "path": "UI/Inventory/Retail/inv_slot.png",
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ]
+    },
+    {
+      "id": "Shop_CellIcon_9",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 634.3333,
+        "y": 405.3333,
+        "width": 32.0,
+        "height": 32.0
+      },
+      "rotation": 0.0,
+      "layers": [
+        {
+          "path": "UI/Common/White1x1.png",
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ]
+    },
+    {
+      "id": "Shop_CellCoin_9",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 842.3333,
+        "y": 438.6667,
+        "width": 16.6667,
+        "height": 16.0
+      },
+      "rotation": 0.0,
+      "layers": [
+        {
+          "path": "UI/Shop/shop_coin.png",
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ]
+    },
+    {
+      "id": "Shop_PageBg_0",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 401.6667,
+        "y": 456.0,
+        "width": 228.0,
+        "height": 52.0
+      },
+      "rotation": 0.0,
+      "layers": [
+        {
+          "path": "UI/Shop/shop_cell.png",
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ]
+    },
+    {
+      "id": "Shop_PageBg_1",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 631.6667,
+        "y": 456.0,
+        "width": 228.0,
+        "height": 52.0
+      },
+      "rotation": 0.0,
+      "layers": [
+        {
+          "path": "UI/Shop/shop_cell.png",
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ]
+    },
+    {
+      "id": "Shop_BasketSlot_0",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 435.6667,
+        "y": 475.3333,
+        "width": 30.6667,
+        "height": 30.6667
+      },
+      "rotation": 0.0,
+      "layers": [
+        {
+          "path": "UI/Inventory/Retail/inv_slot.png",
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ]
+    },
+    {
+      "id": "Shop_BasketIcon_0",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 437.6667,
+        "y": 477.3333,
+        "width": 26.6667,
+        "height": 26.6667
+      },
+      "rotation": 0.0,
+      "layers": [
+        {
+          "path": "UI/Common/White1x1.png",
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ]
+    },
+    {
+      "id": "Shop_BasketSlot_1",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 473.6667,
+        "y": 475.3333,
+        "width": 30.6667,
+        "height": 30.6667
+      },
+      "rotation": 0.0,
+      "layers": [
+        {
+          "path": "UI/Inventory/Retail/inv_slot.png",
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ]
+    },
+    {
+      "id": "Shop_BasketIcon_1",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 475.6667,
+        "y": 477.3333,
+        "width": 26.6667,
+        "height": 26.6667
+      },
+      "rotation": 0.0,
+      "layers": [
+        {
+          "path": "UI/Common/White1x1.png",
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ]
+    },
+    {
+      "id": "Shop_BasketSlot_2",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 511.6667,
+        "y": 475.3333,
+        "width": 30.6667,
+        "height": 30.6667
+      },
+      "rotation": 0.0,
+      "layers": [
+        {
+          "path": "UI/Inventory/Retail/inv_slot.png",
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ]
+    },
+    {
+      "id": "Shop_BasketIcon_2",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 513.6667,
+        "y": 477.3333,
+        "width": 26.6667,
+        "height": 26.6667
+      },
+      "rotation": 0.0,
+      "layers": [
+        {
+          "path": "UI/Common/White1x1.png",
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ]
+    },
+    {
+      "id": "Shop_BasketSlot_3",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 549.6667,
+        "y": 475.3333,
+        "width": 30.6667,
+        "height": 30.6667
+      },
+      "rotation": 0.0,
+      "layers": [
+        {
+          "path": "UI/Inventory/Retail/inv_slot.png",
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ]
+    },
+    {
+      "id": "Shop_BasketIcon_3",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 551.6667,
+        "y": 477.3333,
+        "width": 26.6667,
+        "height": 26.6667
+      },
+      "rotation": 0.0,
+      "layers": [
+        {
+          "path": "UI/Common/White1x1.png",
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ]
+    },
+    {
+      "id": "Shop_BasketSlot_4",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 587.6667,
+        "y": 475.3333,
+        "width": 30.6667,
+        "height": 30.6667
+      },
+      "rotation": 0.0,
+      "layers": [
+        {
+          "path": "UI/Inventory/Retail/inv_slot.png",
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ]
+    },
+    {
+      "id": "Shop_BasketIcon_4",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 589.6667,
+        "y": 477.3333,
+        "width": 26.6667,
+        "height": 26.6667
+      },
+      "rotation": 0.0,
+      "layers": [
+        {
+          "path": "UI/Common/White1x1.png",
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ]
+    },
+    {
+      "id": "Shop_BasketSlot_5",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 625.6667,
+        "y": 475.3333,
+        "width": 30.6667,
+        "height": 30.6667
+      },
+      "rotation": 0.0,
+      "layers": [
+        {
+          "path": "UI/Inventory/Retail/inv_slot.png",
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ]
+    },
+    {
+      "id": "Shop_BasketIcon_5",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 627.6667,
+        "y": 477.3333,
+        "width": 26.6667,
+        "height": 26.6667
+      },
+      "rotation": 0.0,
+      "layers": [
+        {
+          "path": "UI/Common/White1x1.png",
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ]
+    },
+    {
+      "id": "Shop_BasketSlot_6",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 663.6667,
+        "y": 475.3333,
+        "width": 30.6667,
+        "height": 30.6667
+      },
+      "rotation": 0.0,
+      "layers": [
+        {
+          "path": "UI/Inventory/Retail/inv_slot.png",
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ]
+    },
+    {
+      "id": "Shop_BasketIcon_6",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 665.6667,
+        "y": 477.3333,
+        "width": 26.6667,
+        "height": 26.6667
+      },
+      "rotation": 0.0,
+      "layers": [
+        {
+          "path": "UI/Common/White1x1.png",
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ]
+    },
+    {
+      "id": "Shop_BasketSlot_7",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 701.6667,
+        "y": 475.3333,
+        "width": 30.6667,
+        "height": 30.6667
+      },
+      "rotation": 0.0,
+      "layers": [
+        {
+          "path": "UI/Inventory/Retail/inv_slot.png",
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ]
+    },
+    {
+      "id": "Shop_BasketIcon_7",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 703.6667,
+        "y": 477.3333,
+        "width": 26.6667,
+        "height": 26.6667
+      },
+      "rotation": 0.0,
+      "layers": [
+        {
+          "path": "UI/Common/White1x1.png",
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ]
+    },
+    {
+      "id": "Shop_BasketSlot_8",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 739.6667,
+        "y": 475.3333,
+        "width": 30.6667,
+        "height": 30.6667
+      },
+      "rotation": 0.0,
+      "layers": [
+        {
+          "path": "UI/Inventory/Retail/inv_slot.png",
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ]
+    },
+    {
+      "id": "Shop_BasketIcon_8",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 741.6667,
+        "y": 477.3333,
+        "width": 26.6667,
+        "height": 26.6667
+      },
+      "rotation": 0.0,
+      "layers": [
+        {
+          "path": "UI/Common/White1x1.png",
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ]
+    },
+    {
+      "id": "Shop_BasketSlot_9",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 777.6667,
+        "y": 475.3333,
+        "width": 30.6667,
+        "height": 30.6667
+      },
+      "rotation": 0.0,
+      "layers": [
+        {
+          "path": "UI/Inventory/Retail/inv_slot.png",
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ]
+    },
+    {
+      "id": "Shop_BasketIcon_9",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 779.6667,
+        "y": 477.3333,
+        "width": 26.6667,
+        "height": 26.6667
+      },
+      "rotation": 0.0,
+      "layers": [
+        {
+          "path": "UI/Common/White1x1.png",
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ]
+    },
+    {
+      "id": "Shop_BuyAmount",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 407.0,
+        "y": 518.0,
+        "width": 178.6667,
+        "height": 14.6667
+      },
+      "rotation": 0.0,
+      "layers": [
+        {
+          "path": "UI/Repair/repair_cost_bar.png",
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ]
+    },
+    {
+      "id": "Shop_BuyAmountCoin",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 587.0,
+        "y": 517.3333,
+        "width": 16.6667,
+        "height": 16.0
+      },
+      "rotation": 0.0,
+      "layers": [
+        {
+          "path": "UI/Shop/shop_coin.png",
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ]
+    },
+    {
+      "id": "Shop_Balance",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 407.0,
+        "y": 534.0,
+        "width": 178.6667,
+        "height": 14.6667
+      },
+      "rotation": 0.0,
+      "layers": [
+        {
+          "path": "UI/Repair/repair_cost_bar.png",
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ]
+    },
+    {
+      "id": "Shop_BalanceCoin",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 587.0,
+        "y": 533.3333,
+        "width": 16.6667,
+        "height": 16.0
+      },
+      "rotation": 0.0,
+      "layers": [
+        {
+          "path": "UI/Shop/shop_coin.png",
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ]
+    },
+    {
+      "id": "Shop_JunkBtn",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 657.6667,
+        "y": 513.3333,
+        "width": 65.3333,
+        "height": 26.6667
+      },
+      "rotation": 0.0,
+      "layers": [
+        {
+          "path": "UI/Repair/repair_cost_bar.png",
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ]
+    },
+    {
+      "id": "Shop_BuyBtn",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 725.6667,
+        "y": 513.3333,
+        "width": 65.3333,
+        "height": 26.6667
+      },
+      "rotation": 0.0,
+      "layers": [
+        {
+          "path": "UI/Repair/repair_cost_bar.png",
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ]
+    },
+    {
+      "id": "Shop_EmptyBtn",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 793.6667,
+        "y": 513.3333,
+        "width": 65.3333,
+        "height": 26.6667
+      },
+      "rotation": 0.0,
+      "layers": [
+        {
+          "path": "UI/Repair/repair_cost_bar.png",
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ]
+    }
+  ]
+}

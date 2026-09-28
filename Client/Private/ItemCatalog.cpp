@@ -8,6 +8,8 @@
 namespace
 {
 	std::vector<Client::ITEM_DEFINITION> g_Items;
+	std::vector<Client::SHOP_DEFINITION> g_Shops;
+	std::vector<Client::CURRENCY_DEFINITION> g_Currencies;
 
 	bool ReadDocument(
 		const std::filesystem::path& relativePath,
@@ -121,9 +123,107 @@ bool Client::CItemCatalog::Load(std::string& outStatus)
 		staged.push_back(std::move(definition));
 	}
 
+	/* Optional currencies and shops. Same all-or-nothing rule as the items: a bad entry keeps
+	every list on its previous contents. */
+	std::vector<CURRENCY_DEFINITION> stagedCurrencies;
+	if (const DATA_JSON_VALUE* currencies = root.Find("currencies"))
+	{
+		if (currencies->Get_Type() != DATA_JSON_TYPE::ARRAY)
+		{
+			outStatus = "ItemCatalog.json currencies is not an array";
+			return false;
+		}
+		for (const DATA_JSON_VALUE& value : currencies->Get_Array())
+		{
+			const DATA_JSON_VALUE* currencyId = Required(value, "currencyId", DATA_JSON_TYPE::STRING);
+			const DATA_JSON_VALUE* name = Required(value, "displayName", DATA_JSON_TYPE::STRING);
+			const DATA_JSON_VALUE* iconPath = Required(value, "iconPath", DATA_JSON_TYPE::STRING);
+			if (nullptr == currencyId || nullptr == name || nullptr == iconPath)
+			{
+				outStatus = "ItemCatalog.json has an invalid currency";
+				return false;
+			}
+			stagedCurrencies.push_back({ currencyId->Get_String(), name->Get_String(),
+				iconPath->Get_String() });
+		}
+	}
+
+	std::vector<SHOP_DEFINITION> stagedShops;
+	if (const DATA_JSON_VALUE* shops = root.Find("shops"))
+	{
+		if (shops->Get_Type() != DATA_JSON_TYPE::ARRAY)
+		{
+			outStatus = "ItemCatalog.json shops is not an array";
+			return false;
+		}
+		for (const DATA_JSON_VALUE& value : shops->Get_Array())
+		{
+			const DATA_JSON_VALUE* shopId = Required(value, "shopId", DATA_JSON_TYPE::STRING);
+			const DATA_JSON_VALUE* npcIds = Required(value, "npcPlacementIds", DATA_JSON_TYPE::ARRAY);
+			const DATA_JSON_VALUE* stock = Required(value, "items", DATA_JSON_TYPE::ARRAY);
+			if (nullptr == shopId || nullptr == npcIds || nullptr == stock)
+			{
+				outStatus = "ItemCatalog.json has an invalid shop";
+				return false;
+			}
+			SHOP_DEFINITION shop{};
+			shop.strShopId = shopId->Get_String();
+			for (const DATA_JSON_VALUE& npcId : npcIds->Get_Array())
+			{
+				if (npcId.Get_Type() != DATA_JSON_TYPE::STRING)
+				{
+					outStatus = "ItemCatalog.json has an invalid shop NPC";
+					return false;
+				}
+				shop.NpcPlacementIds.push_back(npcId.Get_String());
+			}
+			for (const DATA_JSON_VALUE& line : stock->Get_Array())
+			{
+				const DATA_JSON_VALUE* itemId = Required(line, "itemId", DATA_JSON_TYPE::STRING);
+				const DATA_JSON_VALUE* currency = Required(line, "currencyId", DATA_JSON_TYPE::STRING);
+				const DATA_JSON_VALUE* price = Required(line, "price", DATA_JSON_TYPE::NUMBER);
+				if (nullptr == itemId || nullptr == currency || nullptr == price ||
+					price->Get_Number() < 1.0)
+				{
+					outStatus = "ItemCatalog.json has an invalid shop item";
+					return false;
+				}
+				shop.Items.push_back({ itemId->Get_String(), currency->Get_String(),
+					static_cast<std::uint32_t>(price->Get_Number()) });
+			}
+			stagedShops.push_back(std::move(shop));
+		}
+	}
+
 	g_Items = std::move(staged);
+	g_Currencies = std::move(stagedCurrencies);
+	g_Shops = std::move(stagedShops);
 	outStatus = "Loaded " + std::to_string(g_Items.size()) + " items";
 	return true;
+}
+
+const Client::SHOP_DEFINITION* Client::CItemCatalog::Find_ShopByNpc(
+	const std::string& npcPlacementId)
+{
+	for (const SHOP_DEFINITION& shop : g_Shops)
+		for (const std::string& npcId : shop.NpcPlacementIds)
+			if (npcId == npcPlacementId)
+				return &shop;
+	return nullptr;
+}
+
+const std::vector<Client::SHOP_DEFINITION>& Client::CItemCatalog::Get_Shops()
+{
+	return g_Shops;
+}
+
+const Client::CURRENCY_DEFINITION* Client::CItemCatalog::Find_Currency(
+	const std::string& currencyId)
+{
+	for (const CURRENCY_DEFINITION& currency : g_Currencies)
+		if (currency.strCurrencyId == currencyId)
+			return &currency;
+	return nullptr;
 }
 
 const std::vector<Client::ITEM_DEFINITION>& Client::CItemCatalog::Get_Items()

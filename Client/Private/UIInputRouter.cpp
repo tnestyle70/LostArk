@@ -208,7 +208,10 @@ void Client::CUIInputRouter::End_Frame()
 		CGameInstance::Get().SetInputBlocked(false, true);
 
 	m_bMouseClaimedLastFrame = m_bMouseClaimedThisFrame;
-	m_bHasTopWindow = false;
+	/* The top window registration is not cleared here: Begin_Frame copies it into the
+	last-frame slot Is_Clicked arbitrates with and only then resets it. Clearing it here too
+	left that slot always empty, so a window updated earlier (the info window's portrait) took
+	presses that landed on the window drawn over it (the honor title list). */
 	CGameInstance::Get().Clear_TextClipOutRect();
 	if (!m_bLeftDownThisFrame) m_bLeftAwaitRelease = false;
 	m_bLeftDownLastFrame = m_bLeftDownThisFrame;

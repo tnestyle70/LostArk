@@ -162,6 +162,7 @@
     <ClInclude Include="..\Public\DurabilityHudView.h" />
     <ClInclude Include="..\Public\InventoryView.h" />
     <ClInclude Include="..\Public\RepairWindowView.h" />
+    <ClInclude Include="..\Public\ShopWindowView.h" />
     <ClInclude Include="..\Public\QuickSlotDragView.h" />
     <ClInclude Include="..\Public\CharacterInfoWindowView.h" />
     <ClInclude Include="..\Public\CharacterPortraitRenderer.h" />
@@ -459,6 +460,7 @@
     <ClCompile Include="..\Private\DurabilityHudView.cpp" />
     <ClCompile Include="..\Private\InventoryView.cpp" />
     <ClCompile Include="..\Private\RepairWindowView.cpp" />
+    <ClCompile Include="..\Private\ShopWindowView.cpp" />
     <ClCompile Include="..\Private\QuickSlotDragView.cpp" />
     <ClCompile Include="..\Private\CharacterInfoWindowView.cpp" />
     <ClCompile Include="..\Private\CharacterPortraitRenderer.cpp" />

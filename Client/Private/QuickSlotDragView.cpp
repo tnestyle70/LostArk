@@ -8,6 +8,7 @@ VehicleWindowView.cpp already use for the DIK_* constants. */
 #include "GameInstance.h"
 #include "UIInputRouter.h"
 #include "UILayoutRuntime.h"
+#include "UITextOcclusion.h"
 
 namespace
 {
@@ -20,6 +21,9 @@ Client::CQuickSlotDragView::CQuickSlotDragView(
 		pDevice, pContext, ETOUI(LEVEL::STATIC), TEXT("Layer_UI"),
 		L"UI/Common/QuickSlotDrag_Layout.json") }
 {
+	/* The carried icon draws above every window it is dragged out of or across; left at the
+	default WORLD layer it slid under the inventory it was picked up from. */
+	m_pView->Set_UISortLayer(UI_TEXT_LAYER::MODAL);
 	/* Same reason as the other LEVEL::STATIC documents: sprites are visible from construction. */
 	Hide();
 }

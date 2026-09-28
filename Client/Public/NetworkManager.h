@@ -324,6 +324,11 @@ public:
 	bool Send_UseItem(
 		std::uint32_t requestSequence,
 		std::string_view itemId);
+	/* NPC shop basket; the Server answers with an S2C_INVENTORY_SNAPSHOT. */
+	bool Send_BuyItems(
+		std::uint32_t requestSequence,
+		std::string_view npcPlacementId,
+		const std::vector<LostArk::Shared::SHOP_BASKET_ENTRY>& entries);
 	/* Right-click equip (bEquip, itemId into slot) or unequip (slot to the bag, no item id).
 	The Server answers with an S2C_INVENTORY_SNAPSHOT either way. */
 	bool Send_SetEquipment(

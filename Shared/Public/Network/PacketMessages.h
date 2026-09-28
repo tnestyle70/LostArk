@@ -2842,6 +2842,9 @@ namespace LostArk::Shared
 	{
 		std::uint32_t iRequestSequence = 0;
 		std::vector<INVENTORY_ITEM_SNAPSHOT> Items;
+		/* The purse (silver / gold). Currencies are not bag items, so they ride beside them. */
+		std::uint32_t iSilver = 0;
+		std::uint32_t iGold = 0;
 	};
 
 	bool Write_Message(
@@ -2873,6 +2876,24 @@ namespace LostArk::Shared
 	};
 	bool Write_Message(CPacketWriter& writer, const C2S_SET_EQUIPMENT& message);
 	bool Read_Message(CPacketReader& reader, C2S_SET_EQUIPMENT& message);
+
+	/* The shop window's basket: up to ten lines, each one catalog item and a count, bought
+	   from the named shop NPC in one go. */
+	inline constexpr std::size_t MAX_SHOP_BASKET_ENTRIES = 10;
+	inline constexpr std::uint32_t MAX_SHOP_BASKET_QUANTITY = 999;
+	struct SHOP_BASKET_ENTRY
+	{
+		std::string strItemId;
+		std::uint32_t iQuantity = 0;
+	};
+	struct C2S_BUY_ITEMS
+	{
+		std::uint32_t iRequestSequence = 0;
+		std::string strNpcPlacementId;
+		std::vector<SHOP_BASKET_ENTRY> Entries;
+	};
+	bool Write_Message(CPacketWriter& writer, const C2S_BUY_ITEMS& message);
+	bool Read_Message(CPacketReader& reader, C2S_BUY_ITEMS& message);
 
 	bool Write_Message(
 		CPacketWriter& writer,

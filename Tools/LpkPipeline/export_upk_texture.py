@@ -214,7 +214,11 @@ class Package:
             entry.i32()                         # super
             entry.i32()                         # outer
             name = self.name(entry.i32())
-            entry.i32()
+            # FName number: 0 is the bare name, n is "<name>_<n-1>" -- IconInfo's Etc_1 page
+            # and its Etc_0 sibling share the name "etc" and differ only here.
+            number = entry.i32()
+            if number:
+                name = '%s_%d' % (name, number - 1)
             entry.i32()                         # archetype
             entry.u64()                         # object flags
             size = entry.i32()
