@@ -2347,7 +2347,8 @@ namespace
 		}
 
 		const BOSS_RUNTIME_PROFILE* bossProfile =
-			catalog.Find_Boss(boss.strArchetypeId);
+			catalog.Find_Boss(boss.bGhostPhasePatternLoopActive && boss.strArchetypeId == "BOSS_VALTAN" ?
+                "BOSS_VALTAN_GHOST" : boss.strArchetypeId);
 		if (nullptr == bossProfile ||
 			!std::isfinite(bossProfile->fCollisionRadius) ||
 			bossProfile->fCollisionRadius <= 0.f)
@@ -2730,7 +2731,8 @@ namespace
 			return;
 		}
 		const BOSS_RUNTIME_PROFILE* bossProfile =
-			catalog.Find_Boss(boss.strArchetypeId);
+			catalog.Find_Boss(boss.bGhostPhasePatternLoopActive && boss.strArchetypeId == "BOSS_VALTAN" ?
+                "BOSS_VALTAN_GHOST" : boss.strArchetypeId);
 		const auto& damageProfile = contact ? contact->strDamageProfileId : boss.strDamageProfileId;
 		const bool ignoreDefense = contact && contact->strDamageKind != "PROFILE";
 		const std::uint32_t rawDamage = CGameplayCatalog::Resolve_Damage(
@@ -3053,7 +3055,8 @@ void LostArk::Server::CValtanBrain::Update(
 		return;
 	}
 	const BOSS_RUNTIME_PROFILE* bossProfile =
-		catalog.Find_Boss(boss.strArchetypeId);
+		catalog.Find_Boss(boss.bGhostPhasePatternLoopActive && boss.strArchetypeId == "BOSS_VALTAN" ?
+                "BOSS_VALTAN_GHOST" : boss.strArchetypeId);
 	const auto* patterns = catalog.Find_BossPatterns(boss.strEncounterId);
 	if (nullptr == bossProfile || nullptr == patterns || patterns->empty())
 	{

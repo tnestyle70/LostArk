@@ -5841,6 +5841,20 @@ if ($Mode -eq 'Publish') {
     $rollback = Join-Path $root ('.Gameplay.rollback.' + [Guid]::NewGuid().ToString('N'))
 	$publishMutex = $null
 	$publishFailure = $null
+    $promotionCompleted = $false
+    $hadDestination = [IO.File]::Exists($destination)
+    $numericReceipts = @()
+    foreach ($name in @('NumericBalance.active.json', 'BalanceNumeric.save.receipt.json')) {
+        $receiptPath = Join-Path $root $name
+        if ([IO.File]::Exists($receiptPath)) {
+            $numericReceipts += [pscustomobject]@{
+                Path = $receiptPath
+                Hash = Get-PublishFileSha256 $receiptPath
+                Backup = $receiptPath + '.retired.' + [Guid]::NewGuid().ToString('N')
+                Retired = $false
+            }
+        }
+    }
     try {
 		$mutexName = Get-PublishDestinationMutexName $destination
 		$publishMutex = Enter-PublishDestinationMutex $mutexName
@@ -5884,12 +5898,39 @@ if ($Mode -eq 'Publish') {
 				throw 'Gameplay balance bootstrap promotion did not commit.'
 			}
 		}
+        # A full source publication starts a new gameplay identity. Retain the
+        # previous numeric-only receipts as recoverable backups only after the
+        # bootstrap has committed, under the same canonical writer admission.
+        foreach ($receipt in $numericReceipts) {
+            if (-not (Test-PublishFileHash $receipt.Path $receipt.Hash 'Numeric receipt retirement')) {
+                throw 'Numeric receipt changed during gameplay publication.'
+            }
+            [IO.File]::Move($receipt.Path, $receipt.Backup)
+            $receipt.Retired = $true
+        }
     }
     catch {
 		$publishFailure = $_
+        for ($i = $numericReceipts.Count - 1; $i -ge 0; --$i) {
+            $receipt = $numericReceipts[$i]
+            if ($receipt.Retired -and -not [IO.File]::Exists($receipt.Path)) {
+                try { [IO.File]::Move($receipt.Backup, $receipt.Path) }
+                catch { Write-Warning "Numeric receipt rollback retained $($receipt.Backup): $($_.Exception.Message)" }
+            }
+        }
+        if ($promotionCompleted -and (Test-PublishFileHash $destination $stagedHash 'Numeric receipt rollback')) {
+            try {
+                if ($hadDestination -and [IO.File]::Exists($rollback)) {
+                    [IO.File]::Replace($rollback, $destination, $null)
+                }
+                elseif (-not $hadDestination) { [IO.File]::Delete($destination) }
+            }
+            catch { Write-Warning "Gameplay rollback retained $rollback`: $($_.Exception.Message)" }
+        }
     }
 	finally {
 		foreach ($temporaryPath in @($staged, $rollback)) {
+			if ($temporaryPath -eq $rollback -and $null -ne $publishFailure) { continue }
 			if (-not [IO.File]::Exists($temporaryPath)) { continue }
 			try {
 				[IO.File]::Delete($temporaryPath)

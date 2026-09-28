@@ -4509,7 +4509,7 @@ namespace
 			4 + 1 + (4 * 4) + 1 + 1 + 1 + (4 * 8) + 1 + (4 * 3) + 3 +
 			1 + 1 + 1 + playerAttachmentBytes + playerPatternStatusBytes +
 			playerMadnessBytes + playerInteractionBytes + playerMarioStageBytes + playerCardMazeBytes + playerFearBytes + playerZonePulseBytes + playerPredictionBytes +
-			playerVehicleBytes + playerHonorTitleBytes + 5 + 1 + 1 + 1; // shield, buff count, room mode, airborne knockback
+			playerVehicleBytes + playerHonorTitleBytes + 5 + 1 + 1 + 1 + 1; // shield, buffs, room mode, airborne knockback, Waterpang
 		constexpr std::size_t cooldownBytes = 4 + 4 + 4;
 		/* The first trailing 1 is the optional Portal rush route flag.
 		   The final 1 + 1 + 1 is iPhase, iBrokenArmorMask and the
@@ -5246,7 +5246,7 @@ namespace
 				4u + 2u + 2u + 2u + 1u + 1u + 1u + 4u + 4u;
 			constexpr std::size_t playerAttachmentSlotByte =
 				worldSnapshotHeaderBytes +
-				4u + 1u + 1u + (4u * 4u) + 1u + 1u + 1u + 4u + 4u + 1u + 4u;
+				4u + 1u + 1u + (4u * 4u) + 1u + 1u + 1u + 4u + 4u + 1u + 1u + 4u; // airborne + Waterpang flags before attachment
 			if (wroteInvalidSlotFixture &&
 				playerAttachmentSlotByte < invalidSlotPayload.size())
 			{
@@ -8729,9 +8729,61 @@ namespace
 	}
 }
 
+
+namespace
+{
+    void Test_NumericBalanceProtocol(TEST_RUNNER& tests)
+    {
+        using namespace LostArk::Shared;
+        GameplayDataRevision revision; revision.Bytes[0] = 7u;
+        C2S_BALANCE_PATCH patch{77u, revision, {
+            {BALANCE_DOMAIN::PLAYER, "ARTIST", "moveSpeed", 2.95, 3.125},
+            {BALANCE_DOMAIN::STAGGER, "ENCOUNTER_VALTAN|pattern|stage|0", "staggerGaugeMaximum", 12000., 16000.},
+            {BALANCE_DOMAIN::PATTERN_DAMAGE, "O|ENCOUNTER_KAKULSAYDON_G1|pattern|logic|SUCCESS|0", "maxHpDamagePercent", 10., 8.}}};
+        CPacketWriter writer; const bool wrote = Write_Message(writer, patch);
+        CPacketReader reader(writer.Get_Buffer()); C2S_BALANCE_PATCH decoded;
+        tests.Require(wrote && Read_Message(reader, decoded) && !reader.Get_RemainingSize() &&
+            decoded.Changes.size() == 3 && decoded.Changes[0].fBefore == 2.95 && decoded.Changes[0].fValue == 3.125 &&
+            decoded.Changes[2].eDomain == BALANCE_DOMAIN::PATTERN_DAMAGE && decoded.BaseNumericRevision == revision,
+            "Numeric patch preserves double precision, occurrence identity and version");
+        auto bytes = writer.Get_Buffer(); bytes.pop_back(); CPacketReader truncated(bytes);
+        decoded.iRequestSequence = 999u;
+        tests.Require(!Read_Message(truncated, decoded) && decoded.iRequestSequence == 999u,
+            "Truncated numeric patch preserves the prior destination");
+        auto duplicate = patch; duplicate.Changes.push_back(duplicate.Changes.front()); CPacketWriter duplicateWriter;
+        tests.Require(!Write_Message(duplicateWriter, duplicate) && duplicateWriter.Get_Buffer().empty(),
+            "Duplicate field patch is rejected before serialization");
+        auto invalid = patch; invalid.Changes[0].fValue = std::numeric_limits<double>::infinity(); CPacketWriter infinityWriter;
+        tests.Require(!Write_Message(infinityWriter, invalid), "Nonfinite numeric patch is rejected");
+        invalid = patch; invalid.Changes[0].strField = "../../file.json"; // Values name catalogue fields, never filesystem operations.
+        invalid.Changes[0].strId = "bad\\path"; CPacketWriter pathWriter;
+        tests.Require(!Write_Message(pathWriter, invalid), "Numeric identity rejects backslash and control paths");
+        invalid = patch; invalid.Changes.resize(MAX_BALANCE_CHANGES + 1u); CPacketWriter overflowWriter;
+        tests.Require(!Write_Message(overflowWriter, invalid), "Numeric patch is bounded to 128 changed fields");
+        S2C_BALANCE_SNAPSHOT snapshot{4u, revision, 0u, 2u, {
+            {BALANCE_DOMAIN::PLAYER, "ARTIST", "moveSpeed", 2.95, false},
+            {BALANCE_DOMAIN::PATTERN_DAMAGE, "O|encounter|pattern|logic|SUCCESS|0", "fixedDamage", 9876., true}}};
+        CPacketWriter pageWriter; const bool pageWrote = Write_Message(pageWriter, snapshot);
+        CPacketReader pageReader(pageWriter.Get_Buffer()); S2C_BALANCE_SNAPSHOT page;
+        tests.Require(pageWrote && Read_Message(pageReader, page) && page.Entries.size() == 2u && page.iPageCount == 2u &&
+            page.Entries.back().fValue == 9876., "Numeric page includes fixed damage and coherent revision");
+        snapshot.iPageIndex = snapshot.iPageCount; CPacketWriter rangeWriter;
+        tests.Require(!Write_Message(rangeWriter, snapshot), "Numeric page outside its versioned snapshot is rejected");
+        S2C_BALANCE_RESULT result{0u, BALANCE_APPLY_RESULT::APPLIED, revision, {}};
+        CPacketWriter resultWriter; const bool resultWrote = Write_Message(resultWriter, result);
+        CPacketReader resultReader(resultWriter.Get_Buffer()); S2C_BALANCE_RESULT ack;
+        tests.Require(resultWrote && Read_Message(resultReader, ack) && ack.iRequestSequence == 0u && ack.ActiveNumericRevision == revision,
+            "Unsolicited numeric apply result broadcasts the same active revision");
+        result.eResult = BALANCE_APPLY_RESULT::STALE_REVISION; CPacketWriter unsolicitedFailure;
+        tests.Require(!Write_Message(unsolicitedFailure, result), "Numeric failure requires a correlated request sequence");
+    }
+}
+
 int main(const int argumentCount, char* arguments[])
 {
 	TEST_RUNNER testRunner{};
+    if (argumentCount == 2 && std::string_view(arguments[1]) == "--numeric-balance-only")
+    { Test_NumericBalanceProtocol(testRunner); return testRunner.iFailureCount ? 1 : 0; }
 	if (argumentCount == 2 && std::string_view(arguments[1]) == "--move-prediction-only")
 	{
 		Test_MoveRoundTrip(testRunner);
@@ -8775,6 +8827,7 @@ int main(const int argumentCount, char* arguments[])
 		return 0u == testRunner.iFailureCount ? 0 : 1;
 	}
 
+    Test_NumericBalanceProtocol(testRunner);
 	Test_Integrated120ShopProtocol(testRunner);
 	Test_EnterWorldRoundTrip(testRunner);
 	Test_PlayerNicknameContract(testRunner);

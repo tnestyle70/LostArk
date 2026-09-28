@@ -12,7 +12,8 @@
 
 namespace
 {
-	std::vector<Client::PLAYER_SKILL_DEFINITION> g_Skills;
+	std::vector<Client::PLAYER_SKILL_DEFINITION> g_Skills, g_BaseSkills;
+	std::vector<LostArk::Shared::BALANCE_NUMERIC_ENTRY> g_ServerNumbers;
 
 	bool ReadDocument(
 		const std::filesystem::path& relativePath,
@@ -327,6 +328,7 @@ bool Client::CPlayerSkillCatalog::Load(std::string& outStatus)
 		definition.strInputSlot = slot->Get_String();
 		definition.strDisplayName = name->Get_String();
 		definition.strActionId = action->Get_String();
+		definition.strDamageProfileId = damageId->Get_String();
 		if (nullptr != effect)
 		{
 			if (!effect->Is_String() ||
@@ -643,7 +645,8 @@ bool Client::CPlayerSkillCatalog::Load(std::string& outStatus)
 		claimedTargetSkills.push_back(skillId);
 	}
 
-	g_Skills = std::move(skills);
+	g_BaseSkills = std::move(skills);
+	Apply_ServerNumericSnapshot(g_ServerNumbers);
 	outStatus = "Loaded " + std::to_string(g_Skills.size()) + " player skills";
 	return true;
 }
@@ -690,4 +693,44 @@ const Client::PLAYER_SKILL_DEFINITION* Client::CPlayerSkillCatalog::Find_ById(
 			return &definition;
 	}
 	return nullptr;
+}
+
+void Client::CPlayerSkillCatalog::Apply_ServerNumericSnapshot(
+    const std::vector<LostArk::Shared::BALANCE_NUMERIC_ENTRY>& entries)
+{
+    using namespace LostArk::Shared;
+    g_ServerNumbers = entries;
+    auto staged = g_BaseSkills;
+    for (auto& skill : staged)
+    {
+        const auto id = std::to_string(skill.iSkillId);
+        for (const auto& entry : entries)
+        {
+            if (!std::isfinite(entry.fValue) || entry.fValue < 0. ||
+                entry.fValue > static_cast<double>((std::numeric_limits<std::uint32_t>::max)())) continue;
+            if (entry.eDomain == BALANCE_DOMAIN::SKILL && entry.strId == id)
+            {
+                const auto number = static_cast<std::uint32_t>(entry.fValue);
+                if (entry.strField == "cooldownMs") skill.iCooldownMs = number;
+                else if (entry.strField == "resourceCost") skill.iResourceCost = number;
+                else if (entry.strField == "identityCost") skill.iIdentityCost = number;
+                else if (entry.strField == "staggerDamage") skill.iStaggerDamage = number;
+                else if (entry.strField == "partDamage") skill.iPartDamage = number;
+                else if (entry.strField == "maximumRange")
+                {
+                    skill.fMaximumRange = static_cast<float>(entry.fValue);
+                    if (skill.eTargetIntent == SKILL_TARGET_INTENT_KIND::GROUND_POINT)
+                    { skill.fTargetMaximumRange = skill.fMaximumRange; skill.RangePreview.fDiameter = skill.fMaximumRange * 2.f; }
+                }
+            }
+            else if (entry.eDomain == BALANCE_DOMAIN::DAMAGE && entry.strId == skill.strDamageProfileId)
+            {
+                const auto number = static_cast<std::uint32_t>(entry.fValue);
+                if (entry.strField == "damageRatePercent") skill.iDamageRatePercent = number;
+                else if (entry.strField == "attackCoefficientBp") skill.iAttackCoefficientBp = number;
+                else if (entry.strField == "damageAddend") skill.iDamageAddend = number;
+            }
+        }
+    }
+    g_Skills = std::move(staged);
 }

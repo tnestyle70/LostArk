@@ -103,4 +103,10 @@
     <ClCompile Include="..\Private\Shared_Pch.cpp" />
     <ClInclude Include="..\..\Tools\Build\CppStandardPch.h" />
   </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\Public\Gameplay\BalanceNumericContract.h"><Filter>Public\Gameplay</Filter></ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\Private\Gameplay\BalanceNumericContract.cpp"><Filter>Private\Gameplay</Filter></ClCompile>
+  </ItemGroup>
 </Project>

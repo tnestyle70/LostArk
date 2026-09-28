@@ -35,6 +35,7 @@
     <ClInclude Include="..\Public\MonsterBrain.h" />
 	<ClInclude Include="..\Public\NpcBehaviorRuntime.h" />
 	<ClInclude Include="..\Public\GameplayCatalog.h" />
+	<ClInclude Include="..\Public\ServerBalanceNumericStore.h" />
 	<ClInclude Include="..\Public\BossCombatRuntime.h" />
 	<ClInclude Include="..\Public\CombatObjectRuntime.h" />
 	<ClInclude Include="..\Public\ServerCombatGeometry.h" />
@@ -74,6 +75,7 @@
     <ClCompile Include="..\Private\MonsterBrain.cpp" />
 	<ClCompile Include="..\Private\NpcBehaviorRuntime.cpp" />
 	<ClCompile Include="..\Private\GameplayCatalog.cpp" />
+	<ClCompile Include="..\Private\ServerBalanceNumericStore.cpp" />
 	<ClCompile Include="..\Private\BossCombatRuntime.cpp" />
 	<ClCompile Include="..\Private\CombatObjectRuntime.cpp" />
 	<ClCompile Include="..\Private\ServerCombatGeometry.cpp" />

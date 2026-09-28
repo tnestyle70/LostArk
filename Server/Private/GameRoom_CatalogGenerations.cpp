@@ -67,7 +67,7 @@ bool LostArk::Server::CGameplayCatalogGenerations::Stage(
 	const std::shared_ptr<const CGameplayCatalog>& candidateGeneration,
 	std::string& status)
 {
-	if (0u == transactionSequence || nullptr == m_pActiveGeneration ||
+	if (0u == transactionSequence || m_iNumericTransactionSequence || nullptr == m_pActiveGeneration ||
 		(std::numeric_limits<std::uint16_t>::max)() ==
 			m_iActiveGenerationEpoch ||
 		m_pActiveGeneration->Get_ActiveRevision() != baseRevision ||
@@ -296,4 +296,52 @@ const std::string&
 LostArk::Server::CGameplayCatalogGenerations::Get_Status() const noexcept
 {
 	return m_strStatus.empty() ? Active().Get_Status() : m_strStatus;
+}
+
+
+bool LostArk::Server::CGameplayCatalogGenerations::Stage_NumericBalance(
+    const std::uint32_t transactionSequence,
+    const std::shared_ptr<const CGameplayCatalog>& candidate, std::string& status)
+{
+    if (!transactionSequence || !candidate || !m_pActiveGeneration || m_pStagedGeneration ||
+        m_iNumericTransactionSequence || candidate->Get_ActiveRevision() != m_pActiveGeneration->Get_ActiveRevision())
+    { status = "Numeric stage conflicts with the room's active or pending generation"; return false; }
+    std::vector<std::shared_ptr<const CGameplayCatalog>> staged;
+    staged.reserve(m_Generations.capacity());
+    for (const auto& generation : m_Generations)
+    {
+        if (generation == m_pActiveGeneration) staged.push_back(candidate);
+        else
+        {
+            auto updated = std::make_shared<CGameplayCatalog>();
+            if (!updated->Load_NumericBalanceValues(*generation, *candidate))
+            { status = "Retained occurrence rejects numeric balance: " + updated->Get_Status(); return false; }
+            staged.push_back(std::move(updated));
+        }
+    }
+    m_NumericStagedGenerations = std::move(staged);
+    m_pNumericStagedActive = candidate;
+    m_iNumericTransactionSequence = transactionSequence;
+    status.clear(); return true;
+}
+
+bool LostArk::Server::CGameplayCatalogGenerations::Commit_NumericBalance(
+    const std::uint32_t transactionSequence) noexcept
+{
+    if (!transactionSequence || transactionSequence != m_iNumericTransactionSequence ||
+        !m_pNumericStagedActive || m_NumericStagedGenerations.empty()) return false;
+    // Existing choreography revision pins resolve the updated numbers without
+    // retaining another generation for every scalar edit.
+    m_Generations.swap(m_NumericStagedGenerations);
+    m_pActiveGeneration = std::move(m_pNumericStagedActive);
+    m_NumericStagedGenerations.clear();
+    m_iNumericTransactionSequence = 0u;
+    return true;
+}
+
+void LostArk::Server::CGameplayCatalogGenerations::Abort_NumericBalance(
+    const std::uint32_t transactionSequence) noexcept
+{
+    if (transactionSequence && transactionSequence != m_iNumericTransactionSequence) return;
+    m_NumericStagedGenerations.clear(); m_pNumericStagedActive.reset(); m_iNumericTransactionSequence = 0u;
 }

@@ -264,6 +264,11 @@ public:
 	/* Answers the prompt the Server last offered. Carries only the box's own
 	   id -- the Server re-tests that this player is still inside it. */
 	bool Send_DebugKillGateBosses(const LostArk::Shared::C2S_DEBUG_KILL_GATE_BOSSES& request);
+	bool Request_BalanceRefresh();
+	bool Send_BalancePatch(const LostArk::Shared::C2S_BALANCE_PATCH& request);
+	bool Try_Consume_BalanceResult(LostArk::Shared::S2C_BALANCE_RESULT& result);
+	bool Copy_BalanceSnapshot(LostArk::Shared::GameplayDataRevision& revision,
+		std::vector<LostArk::Shared::BALANCE_NUMERIC_ENTRY>& entries) const;
 	bool Send_SetCooldownMode(const LostArk::Shared::C2S_SET_COOLDOWN_MODE& request);
 	bool Try_Consume_DebugKillGateBossesResult(LostArk::Shared::S2C_DEBUG_KILL_GATE_BOSSES_RESULT& result);
 	bool Try_Consume_SetCooldownModeResult(LostArk::Shared::S2C_SET_COOLDOWN_MODE_RESULT& result);
@@ -507,6 +512,9 @@ private:
 			LostArk::Shared::PACKET_TYPE::INVALID,
 		std::string_view detail = "Protocol validation failed.");
 	void Reset_WorldInboundState();
+	void Pump_BalanceSnapshot();
+	bool Send_BalanceQueryPage(std::uint32_t page);
+	void Receive_BalanceSnapshot(const LostArk::Shared::S2C_BALANCE_SNAPSHOT& snapshot);
 	bool Try_Recover_EntryPresentationBaseline(std::string& status);
 	void Record_WorldRevisionSet(
 		const LostArk::Shared::GameplayDataRevision& activeRevision,
@@ -563,6 +571,13 @@ public:
 #endif
 
 private:
+	LostArk::Shared::GameplayDataRevision m_BalanceNumericRevision{}, m_BalanceStagingRevision{}, m_BalanceExpectedRevision{};
+	std::vector<LostArk::Shared::BALANCE_NUMERIC_ENTRY> m_BalanceEntries, m_BalanceStagingEntries;
+	std::deque<LostArk::Shared::S2C_BALANCE_RESULT> m_BalanceResults;
+	std::uint32_t m_iBalanceQuerySequence = 0x80000000u, m_iBalancePendingQuery = 0u;
+	std::uint32_t m_iBalanceNextPage = 0u, m_iBalancePageCount = 0u;
+	std::uint64_t m_iBalanceQueryStarted = 0u;
+	bool m_bBalanceRefreshRequested = true;
 	SOCKET m_hServerSocket = INVALID_SOCKET;
 	//main thread�� Receive worker�� ���� �ڵ带 �Բ� �а� ���Ƿ� atomic���� ��ȣ�Ѵ�.
 	std::atomic<int> m_iLastErrorCode{ 0 };

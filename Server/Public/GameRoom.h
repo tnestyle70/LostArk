@@ -70,6 +70,11 @@ namespace LostArk::Server
 			const std::shared_ptr<const CGameplayCatalog>& candidateGeneration,
 			std::string& status);
 		bool Commit(std::uint32_t transactionSequence) noexcept;
+		bool Stage_NumericBalance(std::uint32_t transactionSequence,
+			const std::shared_ptr<const CGameplayCatalog>& candidate, std::string& status);
+		bool Commit_NumericBalance(std::uint32_t transactionSequence) noexcept;
+		void Abort_NumericBalance(std::uint32_t transactionSequence) noexcept;
+
 		void Abort(std::uint32_t transactionSequence) noexcept;
 		void Collect_Garbage(
 			const std::vector<LostArk::Shared::GameplayDataRevision>& livePins);
@@ -122,6 +127,10 @@ namespace LostArk::Server
 		std::uint32_t m_iStagedTransactionSequence = 0u;
 		std::uint16_t m_iActiveGenerationEpoch = 0u;
 		std::vector<std::shared_ptr<const CGameplayCatalog>> m_Generations;
+		std::vector<std::shared_ptr<const CGameplayCatalog>> m_NumericStagedGenerations;
+		std::shared_ptr<const CGameplayCatalog> m_pNumericStagedActive;
+		std::uint32_t m_iNumericTransactionSequence = 0u;
+
 		std::string m_strStatus;
 	};
 
@@ -241,6 +250,10 @@ namespace LostArk::Server
 		}
 		/* Room-thread only. Stage is allowed to fail before publication; Commit
 		   is a bounded pointer swap after every process room has staged. */
+		bool Stage_NumericBalance(std::uint32_t transactionSequence,
+			const std::shared_ptr<const CGameplayCatalog>& candidate, std::string& status);
+		bool Commit_NumericBalance(std::uint32_t transactionSequence) noexcept;
+		void Abort_NumericBalance(std::uint32_t transactionSequence) noexcept;
 		bool Stage_GameplayGeneration(
 			std::uint32_t transactionSequence,
 			const LostArk::Shared::GameplayDataRevision& baseRevision,
@@ -1786,6 +1799,9 @@ namespace LostArk::Server
 		LostArk::Shared::WORLD_ID m_eWorldId = LostArk::Shared::WORLD_ID::END;
 		CWorldBootstrap m_WorldBootstrap;
 		CGameplayCatalogGenerations m_GameplayCatalog;
+		std::vector<LostArk::Shared::BALANCE_NUMERIC_ENTRY> m_StagedNumericEntries;
+		std::vector<std::pair<std::shared_ptr<const CGameplayCatalog>, std::shared_ptr<const CGameplayCatalog>>>
+			m_StagedNumericCatalogRemaps;
 		CItemCatalog m_ItemCatalog;
 		CVehicleCatalog m_VehicleCatalog;
 		CHonorTitleCatalog m_HonorTitleCatalog;

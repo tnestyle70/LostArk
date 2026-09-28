@@ -2,6 +2,8 @@
 
 //Room 객체를 값으로 소유
 #include "GameRoom.h"
+#include "ServerBalanceNumericStore.h"
+#include <future>
 //sessionid 사용
 #include "ServerIds.h"
 //접속 수락
@@ -136,6 +138,11 @@ namespace LostArk::Server
 		void Tick_GameplaySimulations(float fixedDeltaSeconds,
 			const SERVER_ROOM_SCHEDULER_METRICS& schedulerMetrics = {});
 		void Advance_ServerControlTransactions();
+        void Advance_NumericBalanceTransaction();
+        void Process_NumericBalanceEvent(const SERVER_CONTROL_EVENT& event);
+        void Send_NumericBalanceResult(SESSION_ID sessionId, std::uint32_t sequence,
+            LostArk::Shared::BALANCE_APPLY_RESULT result, std::string reason);
+        void Finish_NumericBalanceTransaction(bool commit, std::string status);
 		void Process_ValtanDecisionTraceQuery(
 			SESSION_ID sessionId,
 			const LostArk::Shared::C2S_VALTAN_DECISION_TRACE_QUERY& request);
@@ -245,7 +252,8 @@ namespace LostArk::Server
 			DATA_REVISION_REQUEST,
 			DATA_REVISION_RESPONSE,
 			SESSION_DISCONNECTED,
-			VALTAN_DECISION_TRACE_QUERY
+			VALTAN_DECISION_TRACE_QUERY,
+            BALANCE_QUERY, BALANCE_PATCH, BALANCE_DEFERRED_ENTRY
 		};
 
 		struct SERVER_CONTROL_EVENT final
@@ -256,6 +264,9 @@ namespace LostArk::Server
 			LostArk::Shared::C2S_DATA_REVISION_PREPARE_REQUEST RevisionRequest{};
 			LostArk::Shared::C2S_DATA_REVISION_PREPARE_RESPONSE RevisionResponse{};
 			LostArk::Shared::C2S_VALTAN_DECISION_TRACE_QUERY DecisionTraceQuery{};
+            LostArk::Shared::C2S_BALANCE_QUERY BalanceQuery{};
+            LostArk::Shared::C2S_BALANCE_PATCH BalancePatch{};
+            LostArk::Shared::PACKET_FRAME DeferredEntry{};
 			std::shared_ptr<const CGameplayCatalog> pCandidateGeneration;
 			LostArk::Shared::GameplayDataRevision
 				BaseBootstrapContentRevision{};
@@ -363,6 +374,24 @@ namespace LostArk::Server
 		std::deque<SERVER_CONTROL_EVENT> m_ServerControlEvents;
 		std::mutex m_DataRevisionAdmissionMutex;
 		DATA_REVISION_TRANSACTION m_DataRevisionTransaction;
+        struct BALANCE_WORK_RESULT final
+        {
+            std::shared_ptr<SERVER_BALANCE_PREPARED> Prepared;
+            LostArk::Shared::GameplayDataRevision BootstrapRevision{}, NonValtanRevision{};
+            LostArk::Shared::BALANCE_APPLY_RESULT Failure = LostArk::Shared::BALANCE_APPLY_RESULT::INVALID_CHANGE;
+            bool Succeeded = false;
+            std::string Status;
+        };
+        CServerBalanceNumericStore m_NumericBalanceStore;
+        std::future<BALANCE_WORK_RESULT> m_NumericBalanceWorker;
+        BALANCE_WORK_RESULT m_NumericBalancePrepared;
+        std::vector<std::shared_ptr<CGameRoom>> m_NumericBalanceSimulations;
+        SESSION_ID m_NumericBalanceRequester = INVALID_SESSION_ID;
+        std::uint32_t m_NumericBalanceRequestSequence = 0u;
+        std::uint32_t m_NumericBalanceTransactionSequence = 0u;
+        bool m_NumericBalancePersisting = false;
+        // Guarded by m_DataRevisionAdmissionMutex; only blocks entry during disk commit.
+        bool m_NumericAdmissionPaused = false;
 		static constexpr std::size_t
 			MAX_DATA_REVISION_RESPONSE_TOMBSTONES = 1024u;
 		std::deque<DATA_REVISION_RESPONSE_TOMBSTONE>

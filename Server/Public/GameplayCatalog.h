@@ -1540,6 +1540,23 @@ namespace LostArk::Server
 	{
 	public:
 		bool Load();
+		/* Numeric-only publication keeps choreography/presentation identity while
+		   the separate numeric digest provides optimistic edit concurrency. */
+		bool Build_NumericBalanceSnapshot(
+			std::vector<LostArk::Shared::BALANCE_NUMERIC_ENTRY>& entries,
+			LostArk::Shared::GameplayDataRevision& numericRevision,
+			std::string& status) const;
+		bool Load_NumericBalancePatch(const CGameplayCatalog& active,
+			const std::vector<LostArk::Shared::BALANCE_NUMERIC_CHANGE>& changes,
+			std::string& bootstrapBytes);
+		bool Load_NumericBalanceValues(const CGameplayCatalog& choreography,
+			const CGameplayCatalog& numeric);
+		[[nodiscard]] std::string Export_BootstrapBytes() const;
+		bool Build_NumericBalanceReceiptHashes(
+			LostArk::Shared::GameplayDataRevision& bootstrapHash,
+			LostArk::Shared::GameplayDataRevision& nonNumericRowsHash,
+			std::string& status) const;
+
 		bool Load_PublishedKoukuProduct(const CGameplayCatalog& activeGameplay);
 		// Validated in memory and pinned only by one Debug audition; never published.
 		bool Load_DraftKoukuProduct(const CGameplayCatalog& activeGameplay,

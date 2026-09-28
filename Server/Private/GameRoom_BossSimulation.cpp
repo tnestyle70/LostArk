@@ -90,6 +90,10 @@ bool LostArk::Server::CGameRoom::Activate_ValtanGhostPhaseLoop(
 		sequence.iExpectedStepCount = static_cast<std::uint32_t>(sequence.PatternIds.size());
 	}
 	boss.iMaximumHp = ghostProfile->iMaximumHp;
+	boss.iAttackPower = ghostProfile->iAttackPower;
+	boss.fCollisionRadius = ghostProfile->fCollisionRadius;
+	boss.fEngageDistance = ghostProfile->fEngageDistance;
+	boss.fMoveSpeed = ghostProfile->fMoveSpeed;
 	boss.iCurrentHp = ghostProfile->iMaximumHp;
 	boss.iMaximumHealthBars = ghostProfile->iMaximumHealthBars;
 	boss.iLastEvaluatedHealthBar = ghostProfile->iMaximumHealthBars;

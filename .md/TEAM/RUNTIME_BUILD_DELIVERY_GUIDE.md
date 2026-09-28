@@ -19,7 +19,7 @@ portable 배포본은 압축 해제 폴더 안의 Client/Server와 Data/DataFile
 선택한 저장소에 EXE·DLL·Data를 설치하거나 덮어쓰지 않으며, 그 저장소의 실행 파일도 사용하지 않는다.
 Resources 폴더 자체를 선택할 수도 있다. 받는 PC의 portable 폴더에는 `Framework.sln`이나 Git checkout이 필요하지 않다.
 
-현재 v6는 사용자의 VS Release 빌드 산출물을 pin해 ZIP 생성·파일 검증을 완료했다.
+과거 v6는 사용자의 VS Release 빌드 산출물을 pin해 ZIP 생성·파일 검증을 완료했다.
 `LostArk-Release-20260919-v6-192.168.0.14.zip`의 크기·SHA256·빌드 출처·검증 근거와 실행 명령은
 [Release ZIP 안내](../../Release/zipRelease.md)에서 관리한다. 이번 VS 빌드 캡처를 새 Product pipeline
 실행 receipt로 대신 기록하지 않는다. ZIP 파일 검증과 실제 4인 화면·레이드 준비 성공은 구분한다.
@@ -27,6 +27,21 @@ Resources 폴더 자체를 선택할 수도 있다. 받는 PC의 portable 폴더
 현재 팀 LAN 정본은 사용자 데스크탑 `192.168.0.22:7777`이다. 위 v6 ZIP의 파일명·hash와
 launcher의 `192.168.0.14`는 당시 배포본의 기록이며, 문서 수정만으로 기존 ZIP/launcher가 갱신되지는 않는다.
 현재 소스 실행은 [네트워크 연결 가이드](네트워크연결가이드.md)의 endpoint sync와 빌드를 따른다.
+
+현재 배포 도구 정본은 `Tools/ReleasePackaging`이며 실행 방법은 그 폴더의 `README.md`를 따른다.
+2026-09-29 배포 목적지는 `C:\Users\user\Desktop\LostArk-Release-20260929.zip`이다.
+기존 `LostArk-Release-20260923.zip`과 위 v6 기록은 별도로 보존한다. 아래 명령은 최종 Release Product
+빌드와 필요한 레이드 검사 및 source binding 생성이 끝난 뒤 사용한다. 실제 ZIP 생성 성공·크기·SHA256은
+builder의 `out/ReleasePackaging/portable-delivery.receipt.json`과 해당 작업 RESULT에서 확인한다.
+
+```powershell
+python Tools/ReleasePackaging/build_portable.py --stage out/ReleasePackaging/20260929-final --output-zip C:\Users\user\Desktop\LostArk-Release-20260929.zip --build-receipt out/BuildPipeline/runs/<successful-release-product>.json
+```
+
+F1 `Save + Apply`로 변경한 Server numeric source·bootstrap·영수증은 같은 배포 폴더에 함께 남긴다.
+launcher는 `BalanceNumeric.save.receipt.json`의 허용 경로와 현재 hash 및 `NumericBalance.active.json`의
+세대를 검사하며, 그 밖의 실행 파일·데이터는 최초 배포 manifest hash를 유지해야 한다.
+수치 저장 성공 뒤 재시험에는 게임 안의 관문/레이드 재시작을 사용하며 EXE 재시작이 필요하지 않다.
 
 | 포함 경로 | 소비 계약 |
 |---|---|
@@ -50,7 +65,9 @@ Effect V1 catalog 참조 외에도 `Effects/V2/Authored`, `Groups`, `Bindings`, 
 
 `LostArk.exe`는 bundle의 Client를 `Client/Default`에서 시작하고 자식 프로세스에
 `LOSTARK_PROJECT_DATA_ROOT=<bundle>/Data`, `LOSTARK_RESOURCE_ROOT=<선택한 Resources>`,
-`LOSTARK_SERVER_HOST=192.168.0.14`를 지정한다. 시스템 환경 변수는 영구 변경하지 않는다.
+`LOSTARK_SERVER_HOST=192.168.0.22`를 지정한다. Server의 자식 프로세스에는
+`LOSTARK_SERVER_DATA_ROOT=<bundle>/Server/Bin/DataFiles`도 명시하여 이전 개발·테스트 환경 변수를
+상속해 외부 게시본을 읽지 않게 한다. 시스템 환경 변수는 영구 변경하지 않는다.
 외부 Resources에는 `Fonts, Character, Deploy, Effect, Map, Sound, UI`가 있어야 한다.
 manifest의 크기·hash 및 이 폴더들의 존재 검사와 전체 미디어 내용·화면 검증은 구분한다.
 

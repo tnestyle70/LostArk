@@ -1,6 +1,8 @@
 #include "NetworkManager.h"
 
 #include "DataJson.h"
+#include "PlayerSkillCatalog.h"
+#include "CombatHUDViewModel.h"
 #include "ProjectDataRoot.h"
 #include "ValtanPatternTree.h"
 
@@ -878,6 +880,7 @@ void CNetworkManager::Update()
 		if (m_hasProtocolFailure.load())
 			break;
 	}
+	Pump_BalanceSnapshot();
 }
 
 bool CNetworkManager::Has_DispatchCapacity(
@@ -2778,6 +2781,12 @@ void CNetworkManager::Reset_WorldInboundState()
 	m_RoomPings.clear();
 	m_DebugKillGateBossesResults.clear();
 	m_SetCooldownModeResults.clear();
+	m_BalanceResults.clear(); m_BalanceEntries.clear(); m_BalanceStagingEntries.clear();
+	m_BalanceNumericRevision = {}; m_BalanceStagingRevision = {}; m_BalanceExpectedRevision = {};
+	m_iBalancePendingQuery = m_iBalanceNextPage = m_iBalancePageCount = 0u;
+	m_bBalanceRefreshRequested = true;
+	Client::CPlayerSkillCatalog::Apply_ServerNumericSnapshot({});
+	Client::CCombatHUDViewModel::Get().Apply_ServerNumericSnapshot({});
 	m_DebugWorldPlaybackResults.clear();
 	m_DebugMadnessFormResults.clear();
 	m_VehicleRidingResults.clear();
@@ -4037,6 +4046,33 @@ void CNetworkManager::Handle_Frame(const LostArk::Shared::PACKET_FRAME & frame)
 		m_DebugKillGateBossesResults.push_back(result);
 		break;
 	}
+	case PACKET_TYPE::S2C_BALANCE_SNAPSHOT:
+	{
+		S2C_BALANCE_SNAPSHOT snapshot;
+		if (!Read_Message(reader, snapshot) || reader.Get_RemainingSize()) { Fail_Protocol(WSAEINVAL); return; }
+		Receive_BalanceSnapshot(snapshot);
+		break;
+	}
+	case PACKET_TYPE::S2C_BALANCE_RESULT:
+	{
+		S2C_BALANCE_RESULT result;
+		if (!Read_Message(reader, result) || reader.Get_RemainingSize()) { Fail_Protocol(WSAEINVAL); return; }
+		if (result.eResult == BALANCE_APPLY_RESULT::APPLIED)
+		{
+			m_BalanceExpectedRevision = result.ActiveNumericRevision;
+			m_bBalanceRefreshRequested = true;
+		}
+		if (result.iRequestSequence == m_iBalancePendingQuery)
+		{ m_iBalancePendingQuery = 0u; m_BalanceStagingEntries.clear(); m_bBalanceRefreshRequested = true; }
+		else if (result.iRequestSequence)
+		{
+			// Only locally requested Save replies enter this queue. A closed
+			// panel must never block the raw gameplay dispatch queue.
+			if (m_BalanceResults.size() == MAX_REVISION_CONTROL_QUEUE) m_BalanceResults.pop_front();
+			m_BalanceResults.push_back(std::move(result));
+		}
+		break;
+	}
 	case PACKET_TYPE::S2C_SET_COOLDOWN_MODE_RESULT:
 	{
 		S2C_SET_COOLDOWN_MODE_RESULT result{};
@@ -5013,4 +5049,90 @@ bool CNetworkManager::Try_Consume_SetCooldownModeResult(LostArk::Shared::S2C_SET
 {
  if (m_SetCooldownModeResults.empty()) return false;
  result = m_SetCooldownModeResults.front(); m_SetCooldownModeResults.pop_front(); return true;
+}
+
+bool CNetworkManager::Request_BalanceRefresh()
+{
+    if (!Is_Connected()) return false;
+    m_bBalanceRefreshRequested = true;
+    return true;
+}
+
+bool CNetworkManager::Send_BalancePatch(const LostArk::Shared::C2S_BALANCE_PATCH& request)
+{
+    using namespace LostArk::Shared;
+    if (!Is_Connected()) return false;
+    CPacketWriter writer; std::vector<std::uint8_t> frame;
+    return Write_Message(writer, request) &&
+        Build_Packet_Frame(PACKET_TYPE::C2S_BALANCE_PATCH, writer.Get_Buffer(), frame) && Send_All(frame);
+}
+
+bool CNetworkManager::Try_Consume_BalanceResult(LostArk::Shared::S2C_BALANCE_RESULT& result)
+{
+    if (m_BalanceResults.empty()) return false;
+    result = std::move(m_BalanceResults.front()); m_BalanceResults.pop_front(); return true;
+}
+
+bool CNetworkManager::Copy_BalanceSnapshot(LostArk::Shared::GameplayDataRevision& revision,
+    std::vector<LostArk::Shared::BALANCE_NUMERIC_ENTRY>& entries) const
+{
+    if (!m_BalanceNumericRevision.Is_Valid() || revision == m_BalanceNumericRevision) return false;
+    revision = m_BalanceNumericRevision; entries = m_BalanceEntries; return true;
+}
+
+bool CNetworkManager::Send_BalanceQueryPage(const std::uint32_t page)
+{
+    using namespace LostArk::Shared;
+    C2S_BALANCE_QUERY request; request.iRequestSequence = m_iBalancePendingQuery; request.iPageIndex = page;
+    CPacketWriter writer; std::vector<std::uint8_t> frame;
+    m_iBalanceQueryStarted = GetTickCount64();
+    return Write_Message(writer, request) &&
+        Build_Packet_Frame(PACKET_TYPE::C2S_BALANCE_QUERY, writer.Get_Buffer(), frame) && Send_All(frame);
+}
+
+void CNetworkManager::Pump_BalanceSnapshot()
+{
+    if (!Is_Connected() || m_iLocalPlayerId == LostArk::Shared::INVALID_PLAYER_ID) return;
+    if (m_iBalancePendingQuery && GetTickCount64() - m_iBalanceQueryStarted > 5000u)
+    {
+        m_iBalancePendingQuery = 0u; m_BalanceStagingEntries.clear(); m_bBalanceRefreshRequested = true;
+    }
+    if (m_iBalancePendingQuery || !m_bBalanceRefreshRequested) return;
+    if (++m_iBalanceQuerySequence < 0x80000000u) m_iBalanceQuerySequence = 0x80000001u;
+    m_iBalancePendingQuery = m_iBalanceQuerySequence;
+    m_iBalanceNextPage = m_iBalancePageCount = 0u;
+    m_BalanceStagingRevision = {}; m_BalanceStagingEntries.clear();
+    m_bBalanceRefreshRequested = false;
+    if (!Send_BalanceQueryPage(0u)) { m_iBalancePendingQuery = 0u; m_bBalanceRefreshRequested = true; }
+}
+
+void CNetworkManager::Receive_BalanceSnapshot(const LostArk::Shared::S2C_BALANCE_SNAPSHOT& snapshot)
+{
+    if (!m_iBalancePendingQuery || snapshot.iRequestSequence != m_iBalancePendingQuery) return;
+    if (snapshot.iPageIndex != m_iBalanceNextPage || !snapshot.iPageCount || snapshot.iPageCount > LostArk::Shared::MAX_BALANCE_PAGES ||
+        (m_iBalanceNextPage && (snapshot.NumericRevision != m_BalanceStagingRevision || snapshot.iPageCount != m_iBalancePageCount)))
+    {
+        // A concurrent accepted patch may change the next queried page. Keep
+        // the committed numeric view and restart the entire read transaction.
+        m_iBalancePendingQuery = 0u; m_BalanceStagingEntries.clear(); m_bBalanceRefreshRequested = true; return;
+    }
+    if (!m_iBalanceNextPage) { m_BalanceStagingRevision = snapshot.NumericRevision; m_iBalancePageCount = snapshot.iPageCount; }
+    m_BalanceStagingEntries.insert(m_BalanceStagingEntries.end(), snapshot.Entries.begin(), snapshot.Entries.end());
+    if (++m_iBalanceNextPage < m_iBalancePageCount)
+    {
+        if (!Send_BalanceQueryPage(m_iBalanceNextPage)) { m_iBalancePendingQuery = 0u; m_bBalanceRefreshRequested = true; }
+        return;
+    }
+    m_iBalancePendingQuery = 0u;
+    if (m_BalanceExpectedRevision.Is_Valid() && m_BalanceExpectedRevision != m_BalanceStagingRevision)
+    { m_BalanceStagingEntries.clear(); m_bBalanceRefreshRequested = true; return; }
+    std::unordered_set<std::string> identities;
+    for (const auto& entry : m_BalanceStagingEntries)
+        if (!identities.insert(std::to_string(static_cast<unsigned>(entry.eDomain)) + "|" + entry.strId + "|" + entry.strField).second)
+        { Fail_Protocol(WSAEINVAL); return; }
+    m_BalanceNumericRevision = m_BalanceStagingRevision;
+    m_BalanceExpectedRevision = {};
+    m_BalanceEntries = std::move(m_BalanceStagingEntries);
+    Client::CPlayerSkillCatalog::Apply_ServerNumericSnapshot(m_BalanceEntries);
+    Client::CCombatHUDViewModel::Get().Apply_ServerNumericSnapshot(m_BalanceEntries);
 }

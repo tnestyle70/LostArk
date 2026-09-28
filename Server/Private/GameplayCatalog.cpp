@@ -10,6 +10,10 @@
 #include <filesystem>
 #include <fstream>
 #include <iterator>
+#include <iomanip>
+#include <map>
+#include <locale>
+#include <tuple>
 #include <limits>
 #include <sstream>
 #include <string_view>
@@ -1412,8 +1416,53 @@ bool LostArk::Server::CGameplayCatalog::Load()
 		m_strStatus = "Gameplay data root could not be resolved";
 		return false;
 	}
-	return Load_BootstrapPath(
-		dataRoot / L"Gameplay" / L"Gameplay.bootstrap", nullptr, nullptr);
+	CGameplayCatalog staged;
+	if (!staged.Load_BootstrapPath(dataRoot / L"Gameplay" / L"Gameplay.bootstrap", nullptr, nullptr))
+	{ m_strStatus = staged.Get_Status(); return false; }
+	const auto receiptPath = dataRoot / L"Gameplay" / L"NumericBalance.active.json";
+	std::error_code error;
+	const bool hasReceipt = std::filesystem::exists(receiptPath, error);
+	if (error) { m_strStatus = "Numeric balance receipt cannot be inspected"; return false; }
+	if (hasReceipt)
+	{
+		// This bounded receipt is a publication identity, never a JSON gameplay fallback.
+		std::ifstream stream(receiptPath, std::ios::binary | std::ios::ate);
+		if (!stream || stream.tellg() <= 0 || stream.tellg() > 2048)
+		{ m_strStatus = "Numeric balance receipt size is invalid"; return false; }
+		stream.seekg(0);
+		std::map<std::string, std::string> fields;
+		char token = 0;
+		bool valid = bool(stream >> token) && token == '{';
+		while (valid)
+		{
+			std::string key, value;
+			stream >> std::ws;
+			if (stream.peek() != '"' || !(stream >> std::quoted(key) >> token) || token != ':') { valid = false; break; }
+			stream >> std::ws;
+			if (stream.peek() != '"' || !(stream >> std::quoted(value)) || !fields.emplace(key, value).second || fields.size() > 5u)
+			{ valid = false; break; }
+			if (!(stream >> token)) { valid = false; break; }
+			if (token == '}') break;
+			if (token != ',') { valid = false; break; }
+		}
+		stream >> std::ws;
+		LostArk::Shared::GameplayDataRevision parent, expectedBootstrap, expectedNumeric, expectedNonNumeric, actualBootstrap, actualNumeric, actualNonNumeric;
+		std::vector<LostArk::Shared::BALANCE_NUMERIC_ENTRY> entries;
+		if (!valid || stream.peek() != std::char_traits<char>::eof() || fields.size() != 5u ||
+			fields["schema"] != "lostark.numeric-balance-active" ||
+			!LostArk::Shared::Try_Parse_GameplayDataRevision(fields["parentGameplayRevision"], parent) ||
+			!LostArk::Shared::Try_Parse_GameplayDataRevision(fields["bootstrapContentSha256"], expectedBootstrap) ||
+			!LostArk::Shared::Try_Parse_GameplayDataRevision(fields["numericRevision"], expectedNumeric) ||
+			!LostArk::Shared::Try_Parse_GameplayDataRevision(fields["nonNumericRowsSha256"], expectedNonNumeric) ||
+			staged.Get_ActiveRevision() != expectedBootstrap ||
+			!staged.Build_NumericBalanceReceiptHashes(actualBootstrap, actualNonNumeric, m_strStatus) ||
+			!staged.Build_NumericBalanceSnapshot(entries, actualNumeric, m_strStatus) ||
+			actualBootstrap != expectedBootstrap || actualNumeric != expectedNumeric || actualNonNumeric != expectedNonNumeric)
+		{ m_strStatus = "Numeric balance receipt does not match the validated published bootstrap"; return false; }
+		staged.m_ActiveRevision = parent;
+	}
+	*this = std::move(staged);
+	return true;
 }
 
 bool LostArk::Server::CGameplayCatalog::Load_PublishedKoukuProduct(
@@ -4039,6 +4088,9 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 				!ParseNumber(fields[5], set) || !ParseNumber(fields[6], ordinal) || set >= 32u || ordinal >= 32u)
 			{ m_strStatus = "Attack template header is invalid"; return false; }
 			hit.strHitId = fields[7]; hit.strTrigger = fields[8]; hit.strShape = fields[13];
+            hit.strNumericBalanceId = "H|" + std::string(fields[1]) + "|" + std::string(fields[2]) + "|" +
+                std::string(fields[3]) + "|" + std::string(fields[4]) + "|" + std::string(fields[5]) + "|" + std::string(fields[6]);
+
 			hit.strDamageKind = fields[22]; if (fields[24] != "-") hit.strDamageProfileId = fields[24];
 			if (!ParseNumber(fields[9], hit.iAtMs) ||
 				!ParseNumber(fields[10], hit.iEndMs) ||
@@ -8757,4 +8809,247 @@ const LostArk::Server::KOUKU_RAID_GATE_DEFINITION* LostArk::Server::CGameplayCat
 {
 	const auto found = m_KoukuRaidGates.find(gateId);
 	return found == m_KoukuRaidGates.end() ? nullptr : &found->second;
+}
+
+
+namespace
+{
+    using NUMERIC_DOMAIN = LostArk::Shared::BALANCE_DOMAIN;
+    struct NUMERIC_COLUMN final
+    {
+        NUMERIC_DOMAIN domain;
+        std::string id;
+        const char* field;
+        std::size_t column;
+        bool integral;
+    };
+    std::vector<NUMERIC_COLUMN> Numeric_Columns(const std::vector<std::string_view>& fields)
+    {
+        std::vector<NUMERIC_COLUMN> columns;
+        if (fields.size() < 2u) return columns;
+        auto add = [&](NUMERIC_DOMAIN domain, const char* field, std::size_t column, bool integral = true)
+        {
+            if (column < fields.size()) columns.push_back({domain, std::string(fields[1]), field, column, integral});
+        };
+        if (fields[0] == "PLAYER")
+        {
+            add(NUMERIC_DOMAIN::PLAYER, "maximumHp", 2); add(NUMERIC_DOMAIN::PLAYER, "maximumResource", 3);
+            add(NUMERIC_DOMAIN::PLAYER, "resourceRegenPerSecond", 4); add(NUMERIC_DOMAIN::PLAYER, "attackPower", 5);
+            add(NUMERIC_DOMAIN::PLAYER, "defense", 6); add(NUMERIC_DOMAIN::PLAYER, "moveSpeed", 7, false);
+            add(NUMERIC_DOMAIN::PLAYER, "defenseStanceMoveSpeedScale", 8, false); add(NUMERIC_DOMAIN::PLAYER, "maximumIdentity", 9);
+            add(NUMERIC_DOMAIN::PLAYER, "identityRegenPerSecond", 10); add(NUMERIC_DOMAIN::PLAYER, "identityDrainPerSecond", 11);
+            add(NUMERIC_DOMAIN::PLAYER, "identityStanceSwitchCost", 12); add(NUMERIC_DOMAIN::PLAYER, "criticalChancePercent", 15);
+            add(NUMERIC_DOMAIN::PLAYER, "criticalDamagePercent", 16);
+        }
+        else if (fields[0] == "SKILL")
+        {
+            add(NUMERIC_DOMAIN::SKILL, "cooldownMs", 5); add(NUMERIC_DOMAIN::SKILL, "actionDurationMs", 6);
+            add(NUMERIC_DOMAIN::SKILL, "hitTimeMs", 7); add(NUMERIC_DOMAIN::SKILL, "resourceCost", 8);
+            add(NUMERIC_DOMAIN::SKILL, "identityCost", 9); add(NUMERIC_DOMAIN::SKILL, "movementDistance", 10, false);
+            add(NUMERIC_DOMAIN::SKILL, "maximumRange", 11, false);
+        }
+        else if (fields[0] == "SKILLCOMBATTRAITS")
+        {
+            add(NUMERIC_DOMAIN::SKILL, "staggerDamage", 2); add(NUMERIC_DOMAIN::SKILL, "partDamage", 3);
+        }
+        else if (fields[0] == "DAMAGE")
+        {
+            double coefficient = 0., addend = 0.;
+            if (fields.size() < 5u || (ParseNumber(fields[3], coefficient) && ParseNumber(fields[4], addend) && coefficient == 0. && addend == 0.))
+                add(NUMERIC_DOMAIN::DAMAGE, "damageRatePercent", 2);
+            add(NUMERIC_DOMAIN::DAMAGE, "attackCoefficientBp", 3); add(NUMERIC_DOMAIN::DAMAGE, "damageAddend", 4);
+            add(NUMERIC_DOMAIN::DAMAGE, "damageSpreadPercent", 5); add(NUMERIC_DOMAIN::DAMAGE, "bossHealthBarDamage", 6);
+        }
+        else if (fields[0] == "BOSS")
+        {
+            add(NUMERIC_DOMAIN::BOSS, "maximumHp", 3); add(NUMERIC_DOMAIN::BOSS, "maximumHealthBars", 4);
+            add(NUMERIC_DOMAIN::BOSS, "attackPower", 5); add(NUMERIC_DOMAIN::BOSS, "collisionRadius", 6, false);
+            add(NUMERIC_DOMAIN::BOSS, "engageDistance", 7, false); add(NUMERIC_DOMAIN::BOSS, "moveSpeed", 8, false);
+        }
+        else if (fields[0] == "KOUKUMADNESS")
+        {
+            add(NUMERIC_DOMAIN::MADNESS, "damageGainPercent", 4); add(NUMERIC_DOMAIN::MADNESS, "ballGainPercent", 5);
+            add(NUMERIC_DOMAIN::MADNESS, "ballMultiplierPercent", 6); add(NUMERIC_DOMAIN::MADNESS, "ballRadiusM", 7, false);
+            add(NUMERIC_DOMAIN::MADNESS, "dollGainPercent", 8); add(NUMERIC_DOMAIN::MADNESS, "dollMultiplierPercent", 9);
+            add(NUMERIC_DOMAIN::MADNESS, "dollRadiusM", 10, false); add(NUMERIC_DOMAIN::MADNESS, "specialIntervalMs", 11);
+            for (auto& column : columns) column.id = "KOUKUSAYDON";
+        }
+        else if (fields[0] == "PATTERNLOGICOUTCOME" && fields.size() >= 10u &&
+            (fields[6] == "MAX_HP_PERCENT_DAMAGE" || fields[6] == "FIXED_DAMAGE"))
+        {
+            add(NUMERIC_DOMAIN::PATTERN_DAMAGE, fields[6] == "FIXED_DAMAGE" ? "fixedDamage" : "maxHpDamagePercent",
+                fields[6] == "FIXED_DAMAGE" ? 10u : 7u);
+            if (!columns.empty()) columns.back().id = "O|" + std::string(fields[1]) + "|" + std::string(fields[2]) + "|" +
+                std::string(fields[3]) + "|" + std::string(fields[4]) + "|" + std::string(fields[5]);
+        }
+        else if (fields[0] == "PATTERNATTACKHIT" && fields.size() >= 25u && fields[22] == "MAX_HP_PERCENT")
+        {
+            add(NUMERIC_DOMAIN::PATTERN_DAMAGE, "maxHpDamagePercent", 23u);
+            columns.back().id = "H|" + std::string(fields[1]) + "|" + std::string(fields[2]) + "|" +
+                std::string(fields[3]) + "|" + std::string(fields[4]) + "|" + std::string(fields[5]) + "|" + std::string(fields[6]);
+        }
+        else if (fields[0] == "PATTERNSTAGEACTION" && fields.size() >= 10u && fields[6] == "SET_STAGGER_GAUGE" && fields[8] != "0")
+        {
+            add(NUMERIC_DOMAIN::STAGGER, "staggerGaugeMaximum", 8);
+            columns.back().id = std::string(fields[1]) + "|" + std::string(fields[2]) + "|" + std::string(fields[3]) + "|" + std::string(fields[4]);
+        }
+        return columns;
+    }
+    auto Numeric_Key(const NUMERIC_DOMAIN domain, const std::string& id, const std::string& field)
+    { return std::make_tuple(domain, id, field); }
+    std::string Numeric_Text(const double value)
+    {
+        std::ostringstream text; text.imbue(std::locale::classic());
+        text << std::setprecision(std::numeric_limits<double>::max_digits10) << value;
+        return text.str();
+    }
+}
+
+std::string LostArk::Server::CGameplayCatalog::Export_BootstrapBytes() const
+{
+    const std::string rows = m_NonKoukuBootstrapRows + m_KoukuBootstrapRows;
+    return "LOSTARK_GAMEPLAY_BOOTSTRAP\t" + std::to_string(GAMEPLAY_BOOTSTRAP_VERSION) + "\t" +
+        std::to_string(std::count(rows.begin(), rows.end(), '\n')) + "\n" + rows;
+}
+
+bool LostArk::Server::CGameplayCatalog::Build_NumericBalanceSnapshot(
+    std::vector<LostArk::Shared::BALANCE_NUMERIC_ENTRY>& entries,
+    LostArk::Shared::GameplayDataRevision& numericRevision, std::string& status) const
+{
+    std::vector<LostArk::Shared::BALANCE_NUMERIC_ENTRY> staged;
+    std::istringstream input(m_NonKoukuBootstrapRows + m_KoukuBootstrapRows);
+    std::string line;
+    while (std::getline(input, line))
+    {
+        StripCarriageReturn(line);
+        const auto fields = SplitTabs(line);
+        for (const auto& column : Numeric_Columns(fields))
+        {
+            double value = 0.;
+            if (!ParseNumber(fields[column.column], value) || !std::isfinite(value) || column.id.size() > 128u)
+            { status = "Published numeric field cannot be represented"; return false; }
+            staged.push_back({column.domain, column.id, column.field, value, column.integral});
+        }
+    }
+    std::sort(staged.begin(), staged.end(), [](const auto& a, const auto& b)
+    { return Numeric_Key(a.eDomain, a.strId, a.strField) < Numeric_Key(b.eDomain, b.strId, b.strField); });
+    std::string canonical;
+    for (std::size_t i = 0; i < staged.size(); ++i)
+    {
+        const auto& entry = staged[i];
+        if (i && Numeric_Key(entry.eDomain, entry.strId, entry.strField) ==
+            Numeric_Key(staged[i - 1].eDomain, staged[i - 1].strId, staged[i - 1].strField))
+        { status = "Published numeric field identity is duplicated"; return false; }
+        canonical += std::to_string(static_cast<unsigned>(entry.eDomain)) + "\t" + entry.strId + "\t" + entry.strField +
+            "\t" + Numeric_Text(entry.fValue) + "\t" + (entry.isIntegral ? "1\n" : "0\n");
+    }
+    if (staged.empty() || !Calculate_GameplayDataRevision(canonical, numericRevision))
+    { status = "Numeric revision could not be calculated"; return false; }
+    entries = std::move(staged); status.clear(); return true;
+}
+
+bool LostArk::Server::CGameplayCatalog::Load_NumericBalancePatch(
+    const CGameplayCatalog& active,
+    const std::vector<LostArk::Shared::BALANCE_NUMERIC_CHANGE>& changes,
+    std::string& bootstrapBytes)
+{
+    using KEY = std::tuple<NUMERIC_DOMAIN, std::string, std::string>;
+    std::map<KEY, const LostArk::Shared::BALANCE_NUMERIC_CHANGE*> pending;
+    if (changes.empty() || changes.size() > 4096u)
+    { m_strStatus = "Numeric patch is empty or exceeds the bounded catalogue field set"; return false; }
+    for (const auto& change : changes)
+    {
+        if (!std::isfinite(change.fBefore) || !std::isfinite(change.fValue) || change.fValue < 0. ||
+            !pending.emplace(Numeric_Key(change.eDomain, change.strId, change.strField), &change).second)
+        { m_strStatus = "Numeric patch contains a duplicate or invalid value"; return false; }
+    }
+    std::istringstream input(active.m_NonKoukuBootstrapRows + active.m_KoukuBootstrapRows);
+    std::string rows, line;
+    while (std::getline(input, line))
+    {
+        StripCarriageReturn(line);
+        const auto fields = SplitTabs(line);
+        std::map<std::size_t, std::string> replacements;
+        for (const auto& column : Numeric_Columns(fields))
+        {
+            const auto found = pending.find(Numeric_Key(column.domain, column.id, column.field));
+            if (found == pending.end()) continue;
+            const auto& change = *found->second;
+            double before = 0.;
+            if (!ParseNumber(fields[column.column], before) || before != change.fBefore ||
+                (column.domain == NUMERIC_DOMAIN::STAGGER && change.fValue <= 0.) ||
+                (column.integral && (std::floor(change.fValue) != change.fValue || change.fValue > (std::numeric_limits<std::uint32_t>::max)())))
+            { m_strStatus = "Numeric field changed since it was loaded, or requires a bounded whole number: " + change.strId + "." + change.strField; return false; }
+            replacements.emplace(column.column, Numeric_Text(change.fValue));
+            pending.erase(found);
+        }
+        if (replacements.empty()) rows += line;
+        else for (std::size_t column = 0; column < fields.size(); ++column)
+        {
+            if (column) rows += '\t';
+            const auto replacement = replacements.find(column);
+            rows += replacement == replacements.end() ? std::string(fields[column]) : replacement->second;
+        }
+        rows += '\n';
+    }
+    if (!pending.empty()) { m_strStatus = "Numeric patch names an unknown or noneditable field"; return false; }
+    const std::string stagedBytes = "LOSTARK_GAMEPLAY_BOOTSTRAP\t" + std::to_string(GAMEPLAY_BOOTSTRAP_VERSION) + "\t" +
+        std::to_string(std::count(rows.begin(), rows.end(), '\n')) + "\n" + rows;
+    CGameplayCatalog staged;
+    if (!staged.Load_BootstrapBytes(stagedBytes, nullptr, &active.m_ActiveRevision))
+    { m_strStatus = staged.Get_Status(); return false; }
+    if (staged.m_ValtanPresentationGenerationId != active.m_ValtanPresentationGenerationId)
+    { m_strStatus = "Numeric patch changed presentation identity"; return false; }
+    *this = std::move(staged); bootstrapBytes = stagedBytes;
+    m_strStatus = "Validated numeric balance against the existing gameplay catalogue";
+    return true;
+}
+
+bool LostArk::Server::CGameplayCatalog::Load_NumericBalanceValues(
+    const CGameplayCatalog& choreography, const CGameplayCatalog& numeric)
+{
+    std::vector<LostArk::Shared::BALANCE_NUMERIC_ENTRY> oldEntries, newEntries;
+    LostArk::Shared::GameplayDataRevision ignored;
+    if (!choreography.Build_NumericBalanceSnapshot(oldEntries, ignored, m_strStatus) ||
+        !numeric.Build_NumericBalanceSnapshot(newEntries, ignored, m_strStatus)) return false;
+    std::map<std::tuple<NUMERIC_DOMAIN, std::string, std::string>, double> values;
+    for (const auto& entry : newEntries) values.emplace(Numeric_Key(entry.eDomain, entry.strId, entry.strField), entry.fValue);
+    std::vector<LostArk::Shared::BALANCE_NUMERIC_CHANGE> changes;
+    for (const auto& entry : oldEntries)
+    {
+        const auto value = values.find(Numeric_Key(entry.eDomain, entry.strId, entry.strField));
+        if (value != values.end() && value->second != entry.fValue)
+            changes.push_back({entry.eDomain, entry.strId, entry.strField, entry.fValue, value->second});
+    }
+    if (changes.empty()) { *this = choreography; return true; }
+    std::string ignoredBytes;
+    return Load_NumericBalancePatch(choreography, changes, ignoredBytes);
+}
+
+
+bool LostArk::Server::CGameplayCatalog::Build_NumericBalanceReceiptHashes(
+    LostArk::Shared::GameplayDataRevision& bootstrapHash,
+    LostArk::Shared::GameplayDataRevision& nonNumericRowsHash, std::string& status) const
+{
+    const auto bootstrap = Export_BootstrapBytes();
+    std::istringstream input(bootstrap);
+    std::string line, masked;
+    while (std::getline(input, line))
+    {
+        StripCarriageReturn(line);
+        const auto fields = SplitTabs(line);
+        std::unordered_set<std::size_t> numeric;
+        for (const auto& column : Numeric_Columns(fields)) numeric.insert(column.column);
+        // The rate remains numeric when the coefficient/addend formula hides it in the UI.
+        if (!fields.empty() && fields[0] == "DAMAGE") numeric.insert(2u);
+        for (std::size_t i = 0; i < fields.size(); ++i)
+        {
+            if (i) masked += '\t';
+            masked += numeric.contains(i) ? "#numeric" : std::string(fields[i]);
+        }
+        masked += '\n';
+    }
+    if (!Calculate_GameplayDataRevision(bootstrap, bootstrapHash) || !Calculate_GameplayDataRevision(masked, nonNumericRowsHash))
+    { status = "Numeric receipt hashes could not be calculated"; return false; }
+    status.clear(); return true;
 }

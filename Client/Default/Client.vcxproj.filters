@@ -6025,4 +6025,7 @@
     <None Include="..\..\Data\Effects\Authored\effect.valtan.struggling.source-underfoot.active.effect.json"><Filter>96.DataFiles</Filter></None>
     <None Include="..\..\Data\Effects\Authored\effect.valtan.struggling.source-yellow-roar.warning.effect.json"><Filter>96.DataFiles</Filter></None>
   </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\Data\Balance\NumericSourceBindings.json"><Filter>96.DataFiles</Filter></None>
+  </ItemGroup>
 </Project>

@@ -1,48 +1,80 @@
 #include "imgui.h"
 #include "BalanceTestPanel.h"
 #include "CombatHUDViewModel.h"
-#include "DataJson.h"
 #include "GameInstance.h"
 #include "NetworkPlayerCommandSink.h"
-#include "ProjectDataRoot.h"
+#include "PlayerSkillCatalog.h"
 
 #include <Windows.h>
 #include <algorithm>
 #include <cmath>
-#include <fstream>
-#include <iomanip>
+#include <cctype>
 #include <iterator>
-#include <sstream>
-#include <string_view>
 
 using namespace Client;
+
 namespace
 {
-    struct BALANCE_DOMAIN { const char* file; const char* array; const char* key; const char* label; const char* fields; const char* profileArray; const char* profileFields; };
-    constexpr BALANCE_DOMAIN DOMAINS[] = {
-        { "PlayerProfiles.json", "players", "characterClass", "Players", "|maximumHp|maximumResource|resourceRegenPerSecond|attackPower|defense|moveSpeed|defenseStanceMoveSpeedScale|maximumIdentity|identityRegenPerSecond|identityDrainPerSecond|identityStanceSwitchCost|", "players", "|maximumHp|maximumResource|resourceRegenPerSecond|attackPower|defense|criticalChancePercent|criticalDamagePercent|" },
-        { "PlayerSkills.json", "skills", "skillId", "Skills", "|cooldownMs|resourceCost|identityCost|staggerDamage|partDamage|actionDurationMs|hitTimeMs|movementDistance|maximumRange|", "skills", "|cooldownMs|resourceCost|staggerDamage|partDamage|" },
-        { "DamageProfiles.json", "profiles", "damageProfileId", "Damage", "|damageRatePercent|", "damageProfiles", "|attackCoefficientBp|damageAddend|damageSpreadPercent|bossHealthBarDamage|" },
-        { "BossProfiles.json", "bosses", "archetypeId", "Bosses", "|maximumHp|maximumHealthBars|attackPower|collisionRadius|engageDistance|moveSpeed|", "bosses", "|maximumHp|maximumHealthBars|attackPower|" }
-    };
-    std::string ReadText(const std::filesystem::path& path)
+const char* ClassName(LostArk::Shared::CHARACTER_CLASS_ID value)
+{
+    using LostArk::Shared::CHARACTER_CLASS_ID;
+    switch (value)
     {
-        std::ifstream stream(path, std::ios::binary);
-        return { std::istreambuf_iterator<char>(stream), std::istreambuf_iterator<char>() };
+    case CHARACTER_CLASS_ID::LANCE_MASTER: return "LANCE_MASTER";
+    case CHARACTER_CLASS_ID::GUNSLINGER: return "GUNSLINGER";
+    case CHARACTER_CLASS_ID::SLAYER: return "SLAYER";
+    case CHARACTER_CLASS_ID::ARTIST: return "ARTIST";
+    case CHARACTER_CLASS_ID::DIMENSIONMASTER: return "DIMENSIONMASTER";
+    case CHARACTER_CLASS_ID::WARLORD: return "WARLORD";
+    case CHARACTER_CLASS_ID::GUARDIANKNIGHT: return "GUARDIANKNIGHT";
+    default: return "UNKNOWN";
     }
-    std::string JsonString(const std::string& text) { return "\"" + CDataJson::Escape(text) + "\""; }
+}
+const char* DomainName(LostArk::Shared::BALANCE_DOMAIN value)
+{
+    using LostArk::Shared::BALANCE_DOMAIN;
+    switch (value)
+    {
+    case BALANCE_DOMAIN::PLAYER: return "Players";
+    case BALANCE_DOMAIN::SKILL: return "Skills";
+    case BALANCE_DOMAIN::DAMAGE: return "Damage";
+    case BALANCE_DOMAIN::BOSS: return "Bosses";
+    case BALANCE_DOMAIN::MADNESS: return "Madness";
+    case BALANCE_DOMAIN::STAGGER: return "Stagger";
+    case BALANCE_DOMAIN::PATTERN_DAMAGE: return "Pattern damage";
+    default: return "Pattern damage";
+    }
+}
+const char* FieldHelp(const std::string& field)
+{
+    if (field == "maxHpDamagePercent") return "Target maximum-HP damage: 10 = 10% of maximum HP. Bypasses defense; invulnerability, shields and damage-taking buffs still affect the final HP loss.";
+    if (field == "fixedDamage") return "Fixed HP damage before invulnerability, shields and damage-taking buffs. Defense is bypassed; integer range 1 to 1,000,000,000.";
+    if (field == "attackCoefficientBp") return "Attack coefficient: 10000 basis points = 100% of attack power. Damage = attack x coefficient / 10000 + addend.";
+    if (field == "damageAddend") return "Flat raw damage added after the attack coefficient. Defense, spread and critical rules are resolved by the Server.";
+    if (field == "damageRatePercent") return "Legacy attack multiplier: 100 = 100%. Consumed only when coefficient and addend are both zero.";
+    if (field == "damageSpreadPercent") return "Random damage spread in percent, applied by the Server.";
+    if (field == "bossHealthBarDamage") return "Total boss health bars per ACTIVE cast, divided among its hits. ALT_V uses this separately from ordinary attack-power damage; missed, invulnerable or shielded hits still follow Server rules.";
+    if (field == "staggerGaugeMaximum") return "This pattern's stagger gauge threshold. A higher value needs more stagger damage; this is not a global multiplier. Some published Retail thresholds require increments of 400; invalid values are rejected without rounding.";
+    if (field == "staggerDamage") return "This skill's stagger contribution per admitted hit, consumed against the active pattern gauge.";
+    if (field == "partDamage") return "This skill's part-destruction contribution per admitted hit.";
+    if (field.find("Percent") != std::string::npos) return "Percent units: 10 = 10%, 100 = 100%.";
+    if (field.ends_with("Ms")) return "Milliseconds: 1000 = one second. Current in-flight actions keep their admitted timing.";
+    if (field == "maximumRange" || field == "movementDistance" || field.ends_with("RadiusM")) return "World distance in metres.";
+    return nullptr;
+}
+bool Matches(const std::string& label, const char* filter)
+{
+    std::string text = label, query = filter;
+    const auto lower = [](unsigned char c) { return static_cast<char>(std::tolower(c)); };
+    std::transform(text.begin(), text.end(), text.begin(), lower);
+    std::transform(query.begin(), query.end(), query.begin(), lower);
+    return text.find(query) != std::string::npos;
+}
 }
 
-struct CBalanceTestPanel::JOB
-{
-    HANDLE process = nullptr;
-    std::filesystem::path log;
-    bool publish = false;
-    // Closing a panel never cancels an atomic writer halfway through promotion.
-    ~JOB() { if (process) CloseHandle(process); }
-};
 
-CBalanceTestPanel::CBalanceTestPanel() { Reload(); }
+CBalanceTestPanel::CBalanceTestPanel() : m_sink(std::make_unique<CNetworkPlayerCommandSink>())
+{ m_status = "Connect to the Server to read its active numeric balance."; }
 CBalanceTestPanel::~CBalanceTestPanel() = default;
 
 bool CBalanceTestPanel::Is_Dirty() const
@@ -54,189 +86,108 @@ bool CBalanceTestPanel::Is_Dirty() const
     return false;
 }
 
+void CBalanceTestPanel::Install_Snapshot(const LostArk::Shared::GameplayDataRevision& revision,
+    const std::vector<LostArk::Shared::BALANCE_NUMERIC_ENTRY>& entries)
+{
+    using namespace LostArk::Shared;
+    std::vector<DOCUMENT> documents;
+    for (unsigned domain = 0; domain < static_cast<unsigned>(BALANCE_DOMAIN::END); ++domain)
+    {
+        DOCUMENT document; document.domain = static_cast<BALANCE_DOMAIN>(domain); document.label = DomainName(document.domain);
+        for (const auto& entry : entries)
+        {
+            if (entry.eDomain != document.domain) continue;
+            auto found = std::find_if(document.rows.begin(), document.rows.end(), [&](const auto& row) { return row.id == entry.strId; });
+            if (found == document.rows.end())
+            {
+                ROW row; row.id = row.label = entry.strId;
+                if (entry.eDomain == BALANCE_DOMAIN::SKILL)
+                    for (const auto& skill : CPlayerSkillCatalog::Get_Skills())
+                        if (std::to_string(skill.iSkillId) == entry.strId)
+                        {
+                            row.label = std::string(ClassName(skill.eCharacterClass)) + " [" + skill.strInputSlot + "] " + skill.strDisplayName + " (" + row.id + ")";
+                            row.damageProfileId = skill.strDamageProfileId; row.isAltV = skill.strInputSlot == "ALT_V";
+                        }
+                document.rows.push_back(std::move(row)); found = std::prev(document.rows.end());
+            }
+            found->fields.push_back({ entry.strField, entry.fValue, entry.fValue, entry.isIntegral });
+        }
+        if (!document.rows.empty()) documents.push_back(std::move(document));
+    }
+    m_documents = std::move(documents); m_revision = revision; m_observedRevision = revision;
+    if (m_document >= m_documents.size()) m_document = 0;
+    m_row = 0; m_appliedRevision = {};
+}
+
 bool CBalanceTestPanel::Reload()
 {
-    std::vector<DOCUMENT> staged;
-    constexpr const char* profilePath = "Data/Balance/Profiles/Retail.balanceprofile.json";
-    DATA_JSON_VALUE profile;
-    std::string profileError;
-    if (!CDataJson::Parse(ReadText(CProjectDataRoot::Resolve("Balance/Profiles/Retail.balanceprofile.json")), profile, profileError))
-    { m_status = "Retail profile load failed: " + profileError; return false; }
-    for (const auto& domain : DOMAINS)
-    {
-        DOCUMENT document;
-        document.path = "Data/Balance/" + std::string(domain.file);
-        document.label = domain.label;
-        DATA_JSON_VALUE root;
-        std::string error;
-        const auto path = CProjectDataRoot::Resolve(std::filesystem::path("Balance") / domain.file);
-        if (!CDataJson::Parse(ReadText(path), root, error))
-        { m_status = "Load failed: " + document.path + ": " + error; return false; }
-        const auto* rows = root.Find(domain.array);
-        if (!rows || !rows->Is_Array()) { m_status = "Missing rows: " + document.path; return false; }
-        for (const auto& source : rows->Get_Array())
-        {
-            const auto* identity = source.Find(domain.key);
-            if (!identity || (!identity->Is_String() && !identity->Is_Number()))
-            { m_status = "Missing stable identity: " + document.path; return false; }
-            ROW row;
-            row.id = identity->Is_String() ? identity->Get_String() : std::to_string(static_cast<std::uint32_t>(identity->Get_Number()));
-            row.label = row.id;
-            if (const auto* name = source.Find("displayName"); name && name->Is_String()) row.label += " | " + name->Get_String();
-            if (const auto* slot = source.Find("inputSlot"); slot && slot->Is_String()) row.label += " [" + slot->Get_String() + "]";
-            if (const auto* owner = source.Find("characterClass"); owner && owner->Is_String() && std::string_view(domain.key) != "characterClass")
-                row.label = owner->Get_String() + " | " + row.label;
-            const DATA_JSON_VALUE* overrideRow = nullptr;
-            if (const auto* overrides = profile.Find(domain.profileArray); overrides && overrides->Is_Array())
-                for (const auto& candidate : overrides->Get_Array())
-                {
-                    const auto* id = candidate.Find(domain.key);
-                    if (!id || (!id->Is_String() && !id->Is_Number())) continue;
-                    const auto identity = id->Is_String() ? id->Get_String() : std::to_string(static_cast<std::uint32_t>(id->Get_Number()));
-                    if (identity == row.id) { overrideRow = &candidate; break; }
-                }
-            for (const auto& [name, value] : source.Get_Object())
-            {
-                if (!value.Is_Number() || std::string_view(domain.fields).find("|" + name + "|") == std::string_view::npos) continue;
-                const bool integral = name != "moveSpeed" && name != "defenseStanceMoveSpeedScale" && name != "movementDistance" &&
-                    name != "maximumRange" && name != "collisionRadius" && name != "engageDistance";
-                const auto* effective = overrideRow && std::string_view(domain.profileFields).find("|" + name + "|") != std::string_view::npos ? overrideRow->Find(name) : nullptr;
-                if (name == "damageRatePercent" && overrideRow)
-                {
-                    const auto* coefficient = overrideRow->Find("attackCoefficientBp");
-                    const auto* addend = overrideRow->Find("damageAddend");
-                    if ((coefficient && coefficient->Get_Number() > 0) || (addend && addend->Get_Number() > 0)) continue;
-                }
-                const auto number = effective && effective->Is_Number() ? effective->Get_Number() : value.Get_Number();
-                row.fields.push_back({ name, number, number, integral,
-                    effective ? profilePath : document.path, effective ? domain.profileArray : domain.array });
-            }
-            if (overrideRow)
-                for (const auto& [name, value] : overrideRow->Get_Object())
-                {
-                    if (!value.Is_Number() || std::string_view(domain.profileFields).find("|" + name + "|") == std::string_view::npos ||
-                        std::any_of(row.fields.begin(), row.fields.end(), [&](const FIELD& field) { return field.name == name; })) continue;
-                    row.fields.push_back({ name, value.Get_Number(), value.Get_Number(), true, profilePath, domain.profileArray });
-                }
-            document.rows.push_back(std::move(row));
-        }
-        staged.push_back(std::move(document));
-    }
-    DOCUMENT madness;
-    madness.path = profilePath;
-    madness.label = "Madness";
-    const auto* madnessRows = profile.Find("madness");
-    if (!madnessRows || !madnessRows->Is_Array() || madnessRows->Get_Array().size() != 1u)
-    { m_status = "Retail Madness policy is missing. Install the matching saved balance profile."; return false; }
-    const auto& policy = madnessRows->Get_Array().front();
-    const auto* identity = policy.Find("policyId");
-    if (!identity || !identity->Is_String() || identity->Get_String() != "KOUKUSAYDON")
-    { m_status = "Retail Madness policy identity is invalid."; return false; }
-    ROW row;
-    row.id = "KOUKUSAYDON"; row.label = "KoukuSaydon | Damage / Mario ball / Odd doll";
-    for (const auto* name : { "damageGainPercent", "ballGainPercent", "ballMultiplierPercent", "ballRadiusM",
-        "dollGainPercent", "dollMultiplierPercent", "dollRadiusM", "specialIntervalMs" })
-    {
-        const auto* value = policy.Find(name);
-        if (!value || !value->Is_Number()) { m_status = "Missing Madness number: " + std::string(name); return false; }
-        row.fields.push_back({ name, value->Get_Number(), value->Get_Number(),
-            std::string_view(name) != "ballRadiusM" && std::string_view(name) != "dollRadiusM", profilePath, "madness" });
-    }
-    madness.rows.push_back(std::move(row));
-    staged.push_back(std::move(madness));
-    m_documents = std::move(staged);
-    m_row = 0;
-    m_status = "Saved authoring loaded. Runtime values change after Publish Server Data and a Server/Client restart.";
+    m_documents.clear(); m_revision = {}; m_observedRevision = {}; m_appliedRevision = {};
+    m_status = m_sink->Request_BalanceRefresh() ? "Reading active numbers from the Server..." : "Connect to the Server first.";
     return true;
 }
 
-void CBalanceTestPanel::Start_Job(const bool publish)
+void CBalanceTestPanel::Save_AndApply()
 {
-    if (m_job || (publish && Is_Dirty())) return;
-    const auto repository = CProjectDataRoot::Get().parent_path();
-    const auto directory = repository / "Intermediate" / "BalanceTest" /
-        (std::to_string(GetCurrentProcessId()) + "-" + std::to_string(GetTickCount64()));
-    std::error_code error;
-    std::filesystem::create_directories(directory, error);
-    if (error) { m_status = error.message(); return; }
-    const auto draft = directory / "draft.json";
-    if (!publish)
-    {
-        std::ofstream output(draft, std::ios::binary);
-        output << std::setprecision(17) << "{\"schema\":\"lostark.balance-test-draft\",\"formatVersion\":1,\"changes\":[";
-        bool first = true;
-        for (const auto& document : m_documents)
-            for (const auto& row : document.rows)
-                for (const auto& field : row.fields)
-                {
-                    if (field.original == field.value) continue;
-                    if (!std::isfinite(field.value) || (field.integral && std::floor(field.value) != field.value))
-                    { m_status = "A whole finite number is required for " + field.name; return; }
-                    if (!first) output << ',';
-                    first = false;
-                    output << "{\"document\":" << JsonString(field.sourcePath) << ",\"domain\":" << JsonString(field.sourceArray) << ",\"id\":" << JsonString(row.id)
-                        << ",\"field\":" << JsonString(field.name) << ",\"before\":" << field.original << ",\"value\":" << field.value << '}';
-                }
-        output << "]}\n";
-        output.close();
-        if (!output) { m_status = "Could not write the immutable numeric draft."; return; }
-    }
-    auto job = std::make_unique<JOB>();
-    job->publish = publish;
-    job->log = directory / "pipeline.log";
-    const auto script = repository / "Tools" / "GameplayPipeline" /
-        (publish ? "Publish-BalanceRuntimeSet.ps1" : "Save-BalanceTestDraft.ps1");
-    std::wstring command = L"powershell.exe -NoProfile -ExecutionPolicy Bypass -File \"" + script.wstring() + L"\"";
-    command += publish ? L" -Mode Publish -BalanceProfile Retail" : L" -DraftPath \"" + draft.wstring() + L"\"";
-    SECURITY_ATTRIBUTES security{ sizeof(SECURITY_ATTRIBUTES), nullptr, TRUE };
-    const HANDLE output = CreateFileW(job->log.c_str(), GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_DELETE,
-        &security, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
-    const HANDLE input = CreateFileW(L"NUL", GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE,
-        &security, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
-    if (output == INVALID_HANDLE_VALUE || input == INVALID_HANDLE_VALUE)
-    {
-        if (output != INVALID_HANDLE_VALUE) CloseHandle(output);
-        if (input != INVALID_HANDLE_VALUE) CloseHandle(input);
-        m_status = "Could not open pipeline log handles."; return;
-    }
-    STARTUPINFOW startup{};
-    startup.cb = sizeof(startup); startup.dwFlags = STARTF_USESTDHANDLES;
-    startup.hStdInput = input; startup.hStdOutput = startup.hStdError = output;
-    PROCESS_INFORMATION process{};
-    const bool started = CreateProcessW(nullptr, command.data(), nullptr, nullptr, TRUE, CREATE_NO_WINDOW,
-        nullptr, repository.c_str(), &startup, &process) != FALSE;
-    CloseHandle(input); CloseHandle(output);
-    if (!started) { m_status = "Could not start the balance pipeline."; return; }
-    CloseHandle(process.hThread);
-    job->process = process.hProcess;
-    m_job = std::move(job);
-    m_status = publish ? "Publishing saved Server data..." : "Validating the candidate and merging changed numeric fields...";
+    using namespace LostArk::Shared;
+    if (m_pending || !m_revision.Is_Valid() || !Is_Dirty()) return;
+    C2S_BALANCE_PATCH request;
+    if (++m_sequence == 0u || m_sequence >= 0x80000000u) m_sequence = 1u;
+    request.iRequestSequence = m_sequence; request.BaseNumericRevision = m_revision;
+    for (const auto& document : m_documents)
+        for (const auto& row : document.rows)
+            for (const auto& field : row.fields)
+            {
+                if (field.original == field.value) continue;
+                if (!std::isfinite(field.value) || (field.integral && std::floor(field.value) != field.value))
+                { m_status = "Enter a finite whole number for " + field.name; return; }
+                if (request.Changes.size() == MAX_BALANCE_CHANGES) { m_status = "Apply at most 128 edited fields at once."; return; }
+                BALANCE_NUMERIC_CHANGE value;
+                value.eDomain = document.domain; value.strId = row.id; value.strField = field.name;
+                value.fBefore = field.original; value.fValue = field.value; request.Changes.push_back(std::move(value));
+            }
+    if (!m_sink->Request_BalancePatch(request)) { m_status = "Save was not sent. Connect to the Server; your draft is preserved."; return; }
+    m_pending = request.iRequestSequence; m_submittedAt = GetTickCount64();
+    m_status = "APPLY PENDING: Server validating, saving, publishing and activating the numeric patch...";
 }
 
-void CBalanceTestPanel::Poll_Job()
+void CBalanceTestPanel::Update()
 {
-    if (!m_job) return;
-    const auto wait = WaitForSingleObject(m_job->process, 0u);
-    if (wait == WAIT_TIMEOUT) return;
-    DWORD code = 1;
-    if (wait != WAIT_OBJECT_0 || !GetExitCodeProcess(m_job->process, &code))
-    { m_status = "Pipeline observation failed. Keep the log and check the writer before retrying."; return; }
-    const bool publish = m_job->publish;
-    const auto log = m_job->log;
-    m_job.reset();
-    if (!code)
+    using namespace LostArk::Shared;
+    S2C_BALANCE_RESULT result;
+    while (m_sink->Consume_BalanceResult(result))
     {
-        if (!publish && !Reload()) return;
-        m_status = publish ? "PUBLISHED. Restart Server and Client to activate the saved balance." :
-            "SAVED AND VALIDATED. Publish Server Data, then restart Server and Client. Other tool drafts were preserved.";
+        if (result.iRequestSequence != m_pending) continue;
+        m_pending = 0;
+        if (result.eResult == BALANCE_APPLY_RESULT::APPLIED)
+        {
+            m_appliedRevision = result.ActiveNumericRevision; m_observedRevision = {};
+            for (auto& document : m_documents)
+                for (auto& row : document.rows)
+                    for (auto& field : row.fields) field.original = field.value;
+            m_status = "SAVED AND APPLIED on the Server. Refreshing the shared numeric view; no restart is needed.";
+        }
+        else m_status = "NOT APPLIED: " + result.strReason + " Your numeric draft is preserved.";
     }
-    else
+    if (m_pending && GetTickCount64() - m_submittedAt > 60000u)
     {
-        auto detail = ReadText(log);
-        if (detail.size() > 6000u) detail = detail.substr(detail.size() - 6000u);
-        m_status = "FAILED (" + std::to_string(code) + "): " + detail;
+        m_pending = 0; m_sink->Request_BalanceRefresh();
+        m_status = "Save result has not arrived. Refresh requested; your draft is preserved. Check Server diagnostics before retrying.";
     }
-    m_status += "\nLog: " + log.string();
+    auto observed = m_observedRevision;
+    std::vector<BALANCE_NUMERIC_ENTRY> entries;
+    if (m_sink->Copy_BalanceSnapshot(observed, entries))
+    {
+        m_observedRevision = observed;
+        if (!Is_Dirty() || (m_appliedRevision.Is_Valid() && observed == m_appliedRevision))
+        {
+            const bool applied = m_appliedRevision.Is_Valid();
+            Install_Snapshot(observed, entries);
+            if (!m_pending) m_status = applied ? "SAVED AND APPLIED: active Server values are shared by every connected player." :
+                "Active Server values loaded. Save + Apply validates and activates for every player without restarting.";
+        }
+        else if (!m_pending)
+            m_status = "The Server values changed while this draft was edited. Draft preserved; Reload Server Values before a fresh edit.";
+    }
 }
 
 void CBalanceTestPanel::Render_KillBossControl()
@@ -276,25 +227,18 @@ void CBalanceTestPanel::Render_KillBossControl()
     if (!status.empty()) ImGui::TextWrapped("%s", status.c_str());
 }
 
-void CBalanceTestPanel::Update()
-{
-    Poll_Job();
-}
-
 void CBalanceTestPanel::Render(bool& open)
 {
     Update();
     ImGui::SetNextWindowSize(ImVec2(1040.f, 720.f), ImGuiCond_FirstUseEver);
     if (!ImGui::Begin("Balance Test", &open)) { ImGui::End(); return; }
-    ImGui::TextWrapped("Retail player, skill, damage and boss numbers. Source fields show their effective profile values; Save and Publish prepare the next Server start.");
-    ImGui::BeginDisabled(m_job != nullptr);
-    if (ImGui::Button("Reload Saved")) { if (Is_Dirty()) m_confirmReload = true; else Reload(); }
+    ImGui::TextWrapped("Shared Server balance. Save + Apply validates, saves, publishes and activates numeric changes for every connected player. No restart is needed.");
+    ImGui::BeginDisabled(m_pending != 0u);
+    if (ImGui::Button("Reload Server Values")) { if (Is_Dirty()) m_confirmReload = true; else Reload(); }
     ImGui::SameLine(); ImGui::BeginDisabled(!Is_Dirty());
-    if (ImGui::Button("Save + Validate")) Start_Job(false);
-    ImGui::EndDisabled(); ImGui::SameLine(); ImGui::BeginDisabled(Is_Dirty());
-    if (ImGui::Button("Publish Server Data")) Start_Job(true);
+    if (ImGui::Button("Save + Apply")) Save_AndApply();
     ImGui::EndDisabled();
-    ImGui::SameLine(); ImGui::TextDisabled("%s", Is_Dirty() ? "UNSAVED" : "saved");
+    ImGui::SameLine(); ImGui::TextDisabled("%s", Is_Dirty() ? "UNSAVED" : "server values");
     if (m_confirmReload) { ImGui::OpenPopup("Discard numeric draft?"); m_confirmReload = false; }
     if (ImGui::BeginPopupModal("Discard numeric draft?", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
     {
@@ -313,9 +257,18 @@ void CBalanceTestPanel::Render(bool& open)
             { m_document = i; m_row = 0; }
         }
         auto& document = m_documents[m_document];
+        ImGui::InputTextWithHint("##BalanceFilter", "Search class, skill, slot, ID or pattern", m_filter, sizeof(m_filter));
+        if (document.domain == LostArk::Shared::BALANCE_DOMAIN::SKILL)
+        { ImGui::SameLine(); ImGui::SetNextItemWidth(150.f); ImGui::Combo("##SkillFilter", &m_skillFilter, "All skills\0Normal / V\0ALT_V only\0"); }
         ImGui::BeginChild("NumericTargets", ImVec2(400.f, -135.f), true);
         for (std::size_t i = 0; i < document.rows.size(); ++i)
-            if (ImGui::Selectable(document.rows[i].label.c_str(), i == m_row)) m_row = i;
+        {
+            const auto& candidate = document.rows[i];
+            if (!Matches(candidate.label, m_filter)) continue;
+            if (document.domain == LostArk::Shared::BALANCE_DOMAIN::SKILL &&
+                ((m_skillFilter == 1 && candidate.isAltV) || (m_skillFilter == 2 && !candidate.isAltV))) continue;
+            if (ImGui::Selectable(candidate.label.c_str(), i == m_row)) m_row = i;
+        }
         ImGui::EndChild(); ImGui::SameLine();
         ImGui::BeginChild("NumericFields", ImVec2(0.f, -135.f), true);
         if (m_row < document.rows.size())
@@ -331,12 +284,29 @@ void CBalanceTestPanel::Render(bool& open)
                 ImGui::TextWrapped("PROJECT_TUNED: damage conversion (100%%), doll charge (10%%), requested ball/doll x2. Doll uses two sectors in the saved object basis; this is not a bone-accurate flame collider.");
                 ImGui::Separator();
             }
-            for (auto& field : row.fields)
+            const auto renderFields = [](ROW& target)
             {
-                ImGui::InputDouble(field.name.c_str(), &field.value, field.integral ? 1.0 : 0.1, field.integral ? 100.0 : 1.0,
-                    field.integral ? "%.0f" : "%.4f");
-                if (field.value != field.original) ImGui::TextDisabled("Saved: %.6g", field.original);
-                if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", field.sourcePath.c_str());
+                ImGui::PushID(target.id.c_str());
+                for (auto& field : target.fields)
+                {
+                    ImGui::InputDouble(field.name.c_str(), &field.value, field.integral ? 1.0 : 0.1, field.integral ? 100.0 : 1.0,
+                        field.integral ? "%.0f" : "%.4f");
+                    if (const char* help = FieldHelp(field.name)) ImGui::TextWrapped("%s", help);
+                    if (field.value != field.original) ImGui::TextDisabled("Server baseline: %.6g", field.original);
+                }
+                ImGui::PopID();
+            };
+            if (document.domain == LostArk::Shared::BALANCE_DOMAIN::PATTERN_DAMAGE)
+                ImGui::TextWrapped("O | encounter | pattern | logic | result | ordinal; H | encounter | pattern | window | collider kind | set | hit. The selected damage mode and collider remain unchanged.");
+            renderFields(row);
+            if (document.domain == LostArk::Shared::BALANCE_DOMAIN::SKILL && !row.damageProfileId.empty())
+            {
+                ImGui::SeparatorText(row.isAltV ? "ALT_V damage profile" : "Connected damage profile");
+                ImGui::TextWrapped("%s (shared profile edits affect every skill using this ID)", row.damageProfileId.c_str());
+                for (auto& damageDocument : m_documents)
+                    if (damageDocument.domain == LostArk::Shared::BALANCE_DOMAIN::DAMAGE)
+                        for (auto& damageRow : damageDocument.rows)
+                            if (damageRow.id == row.damageProfileId) renderFields(damageRow);
             }
         }
         ImGui::EndChild();

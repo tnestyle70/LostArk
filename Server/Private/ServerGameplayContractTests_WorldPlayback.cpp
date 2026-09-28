@@ -127,8 +127,10 @@ int LostArk::Server::CServerGameplayContractRunner::Run_WorldPlayback(TESTS& tes
 		CWorldBootstrap bootstrap;
 		tests.Require(bootstrap.Load(WORLD_ID::KAKULSAYDON_ARENA) && !bootstrap.Get_SequenceInstanceIds().empty(),
 			"Viewer loads published Kouku sequence IDs with the world");
-		tests.Require(bootstrap.Load(WORLD_ID::VALTAN_ARENA) && bootstrap.Get_SequenceInstanceIds().empty(),
-			"Viewer switching to Valtan clears the previous world's sequence IDs");
+		CWorldBootstrap valtanOnly;
+		tests.Require(valtanOnly.Load(WORLD_ID::VALTAN_ARENA) && bootstrap.Load(WORLD_ID::VALTAN_ARENA) &&
+			bootstrap.Get_SequenceInstanceIds() == valtanOnly.Get_SequenceInstanceIds(),
+			"Viewer switching to Valtan replaces previous IDs with its published sequences");
 		CServerTriggerSystem triggers;
 		triggers.Set_HonourTriggerOnce(true);
 		WORLD_BOOTSTRAP_PLACEMENT box{};
@@ -193,7 +195,7 @@ int LostArk::Server::CServerGameplayContractRunner::Run_WorldPlayback(TESTS& tes
 				player.iMarioStage = 1u; player.ePreMarioForm = PLAYER_MADNESS_FORM::NORMAL;
 				player.eMadnessForm = PLAYER_MADNESS_FORM::CLOWN;
 				const bool accepted = room->Broadcast_WorldSequencePlay(
-					scenario == 4u ? "world.sequence.instance.circusfinale" : "world.sequence.instance.original_kouku",
+					scenario == 4u ? "world.sequence.instance.contract_ordinary" : "world.sequence.instance.original_kouku",
 					1.f, 0.f, 0.f, 0.f, 0u, scenario == 3u ? "world.existing.target" : "", operations[scenario]);
 				admissionMatches = admissionMatches && accepted == (scenario == 2u || scenario == 4u);
 				allPreserve = allPreserve &&

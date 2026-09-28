@@ -1709,3 +1709,16 @@ int LostArk::Server::CServerGameplayContractRunner::Run(
 	return 0 == tests.failures ? 0 : 1;
 
 }
+
+int CServerGameplayContractRunner::Run_NumericBalanceOnly()
+{
+    int result=1;
+    const auto execute=[](void* output) {
+        std::cout << std::unitbuf;
+        TESTS tests{};
+        Run_NumericBalanceProtocol(tests);
+        std::cout << "failures : " << tests.failures << '\n';
+        *static_cast<int*>(output)=tests.failures==0 ? 0 : 1;
+    };
+    return Run_WithContractWorkerStack(execute,&result) ? result : 1;
+}

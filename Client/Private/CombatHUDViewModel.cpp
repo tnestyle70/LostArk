@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <fstream>
 #include <set>
+#include <limits>
 
 namespace
 {
@@ -297,8 +298,11 @@ void Client::CCombatHUDViewModel::Build_PlayerSkills(
 	/* Same formula as the server's Resolve_Damage, for display only: the number a
 	tooltip shows has to match the number the snapshot will subtract. */
 	const auto ownProfile = m_PlayerProfiles.find(characterClass);
-	const std::uint64_t attackPower = m_PlayerProfiles.end() == ownProfile ?
+	std::uint64_t attackPower = m_PlayerProfiles.end() == ownProfile ?
 		0ull : ownProfile->second.iAttackPower;
+	for (const auto& entry : m_ServerNumbers)
+		if (entry.eDomain == LostArk::Shared::BALANCE_DOMAIN::PLAYER && entry.strField == "attackPower" &&
+			ParseCharacterClass(entry.strId) == characterClass) attackPower = static_cast<std::uint64_t>(entry.fValue);
 	for (const PLAYER_SKILL_DEFINITION& definition :
 		CPlayerSkillCatalog::Get_Skills())
 	{
@@ -321,8 +325,13 @@ void Client::CCombatHUDViewModel::Build_PlayerSkills(
 		state.strInputSlot = definition.strInputSlot;
 		state.strDisplayName = definition.strDisplayName;
 		state.strActionId = definition.strActionId;
-		state.iDamage = static_cast<std::uint32_t>(
-			attackPower * definition.iDamageRatePercent / 100ull);
+		std::uint64_t displayDamage = definition.iAttackCoefficientBp || definition.iDamageAddend ?
+			attackPower * definition.iAttackCoefficientBp / 10000ull + definition.iDamageAddend :
+			attackPower * definition.iDamageRatePercent / 100ull;
+		if (!displayDamage && (definition.iAttackCoefficientBp || definition.iDamageAddend ||
+			(attackPower && definition.iDamageRatePercent))) displayDamage = 1u;
+		state.iDamage = static_cast<std::uint32_t>((std::min)(displayDamage,
+			static_cast<std::uint64_t>((std::numeric_limits<std::uint32_t>::max)())));
 		state.iCooldownDurationTicks =
 			(definition.iCooldownMs * SERVER_TICK_HZ + 999u) / 1000u;
 		state.iCooldownEndTick = serverTick;
@@ -387,6 +396,10 @@ void Client::CCombatHUDViewModel::Apply_Boss(
 		archetypeId : profile->second.strDisplayName;
 	m_Boss.iMaximumHealthBars = m_BossProfiles.end() == profile ?
 		0u : profile->second.iMaximumHealthBars;
+	const std::string numericBossId = m_BossProfiles.end() == profile ? archetypeId : profile->first;
+	for (const auto& entry : m_ServerNumbers)
+		if (entry.eDomain == LostArk::Shared::BALANCE_DOMAIN::BOSS && entry.strId == numericBossId &&
+			entry.strField == "maximumHealthBars") m_Boss.iMaximumHealthBars = static_cast<std::uint32_t>(entry.fValue);
 	m_Boss.iActiveBuffCount = snapshot.iActiveBuffCount;
 	for (std::size_t buffIndex = 0;
 		buffIndex < LostArk::Shared::MAX_ACTIVE_BUFFS; ++buffIndex)
@@ -573,4 +586,11 @@ void Client::CCombatHUDViewModel::Remove_WorldHealthBar(
 	m_WorldHealthBars.erase(std::remove_if(m_WorldHealthBars.begin(), m_WorldHealthBars.end(),
 		[entityId](const HUD_WORLD_HEALTH_BAR_STATE& state) { return state.iNetEntityId == entityId; }),
 		m_WorldHealthBars.end());
+}
+
+void Client::CCombatHUDViewModel::Apply_ServerNumericSnapshot(
+	const std::vector<LostArk::Shared::BALANCE_NUMERIC_ENTRY>& entries)
+{
+	m_ServerNumbers = entries;
+	if (m_Player.isValid) Build_PlayerSkills(m_Player.eCharacterClass, m_Player.iServerTick, &m_Player.Cooldowns);
 }

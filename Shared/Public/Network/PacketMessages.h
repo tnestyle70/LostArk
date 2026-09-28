@@ -1,6 +1,7 @@
 #pragma once
 
 #include "GameplayDataRevision.h"
+#include "Gameplay/BalanceNumericContract.h"
 #include "Network/PacketType.h"
 #include "NetworkIds.h"
 

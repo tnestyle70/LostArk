@@ -2552,3 +2552,217 @@ void LostArk::Server::CServerGameplayContractRunner::Run_RevisionProtocol(TESTS&
 	}
 }
 
+
+
+void LostArk::Server::CServerGameplayContractRunner::Run_NumericBalanceProtocol(TESTS& tests)
+{
+    namespace fs=std::filesystem;
+    const auto environment=[](const wchar_t* name) {
+        std::array<wchar_t,32768> value{};
+        const auto length=GetEnvironmentVariableW(name,value.data(),static_cast<DWORD>(value.size()));
+        return length && length<value.size() ? std::wstring(value.data(),length) : std::wstring{};
+    };
+    const auto runtimeBefore=environment(L"LOSTARK_SERVER_DATA_ROOT");
+    const auto authoringBefore=environment(L"LOSTARK_PROJECT_DATA_ROOT");
+    std::array<wchar_t,32768> module{}; GetModuleFileNameW(nullptr,module.data(),static_cast<DWORD>(module.size()));
+    const auto runtimeSource=runtimeBefore.empty() ? fs::path(module.data()).parent_path().parent_path()/L"DataFiles" : fs::path(runtimeBefore);
+    fs::path authoringSource=authoringBefore;
+    if (authoringSource.empty())
+        for (auto at=runtimeSource; !at.empty(); at=at.parent_path())
+        {
+            if (fs::exists(at/L"Data"/L"Balance"/L"PlayerProfiles.json")) { authoringSource=at/L"Data"; break; }
+            if (at==at.root_path()) break;
+        }
+    const auto fixture=fs::temp_directory_path()/(L"lostark-numeric-contract-"+std::to_wstring(GetCurrentProcessId())+L"-"+std::to_wstring(GetTickCount64()));
+    struct CLEANUP final
+    {
+        fs::path root; std::wstring runtime,authoring;
+        ~CLEANUP() {
+            SetEnvironmentVariableW(L"LOSTARK_SERVER_DATA_ROOT",runtime.empty()?nullptr:runtime.c_str());
+            SetEnvironmentVariableW(L"LOSTARK_PROJECT_DATA_ROOT",authoring.empty()?nullptr:authoring.c_str());
+            std::error_code error;
+            const auto target=fs::absolute(root).lexically_normal();
+            if (target.parent_path()==fs::absolute(fs::temp_directory_path()).lexically_normal() &&
+                target.filename().wstring().starts_with(L"lostark-numeric-contract-")) fs::remove_all(target,error);
+        }
+    } cleanup{fixture,runtimeBefore,authoringBefore};
+    try
+    {
+        const auto runtime=fixture/L"Server"/L"Bin"/L"DataFiles";
+        const auto authoring=fixture/L"Data";
+        fs::create_directories(runtime.parent_path()); fs::create_directories(authoring);
+        fs::copy(runtimeSource,runtime,fs::copy_options::recursive);
+        fs::copy(authoringSource/L"Balance",authoring/L"Balance",fs::copy_options::recursive);
+        for (const auto* relative : {L"KoukuSaydon/Gate1/KoukuSaydonComposition.json",L"Encounters/KoukuSaydon/KoukuSaydonEncounter.json",
+            L"Maps/Authoring/LV_LUT_MIDNIGHTC_ED/LV_LUT_MIDNIGHTC_ED.worldsequences.json",L"Valtan/Valtan.legacy-compatibility.json",
+            L"Valtan/Valtan.gameplay.json",L"Encounters/Valtan/ValtanEncounter.json"})
+        {
+            const auto source=authoringSource/relative;
+            if (fs::exists(source)) { fs::create_directories((authoring/relative).parent_path()); fs::copy_file(source,authoring/relative); }
+        }
+        const fs::path worldMirror=L"Client/Bin/DataFiles/Map/LV_LUT_MIDNIGHTC_ED.worldsequences.json";
+        fs::create_directories((fixture/worldMirror).parent_path());
+        fs::copy_file(authoringSource.parent_path()/worldMirror,fixture/worldMirror);
+        SetEnvironmentVariableW(L"LOSTARK_SERVER_DATA_ROOT",runtime.c_str());
+        SetEnvironmentVariableW(L"LOSTARK_PROJECT_DATA_ROOT",authoring.c_str());
+        const auto read=[](const fs::path& path) { std::ifstream f(path,std::ios::binary); return std::string(std::istreambuf_iterator<char>(f),{}); };
+        auto initial=std::make_shared<CGameplayCatalog>();
+        const bool loaded=initial->Load();
+        tests.Require(loaded,"Load an isolated exact copy of the real published Server data for numeric network transactions");
+        if (!loaded) { std::cout<<initial->Get_Status()<<'\n'; return; }
+        auto room=std::make_shared<CGameRoom>(WORLD_ID::VALTAN_ARENA,initial);
+        auto extra=std::make_shared<CGameRoom>(WORLD_ID::TRAINING_GROUND,initial);
+        auto app=std::make_unique<CServerApp>();
+        app->m_pActiveGameplayGeneration=initial;
+        app->m_SharedGameRooms.emplace(WORLD_ID::VALTAN_ARENA,room);
+        app->m_SharedGameRooms.emplace(WORLD_ID::TRAINING_GROUND,extra);
+        std::string status;
+        tests.Require(room->Is_Ready() && extra->Is_Ready() && app->m_NumericBalanceStore.Initialize(initial,status),
+            "Initialize the shared room cohort and Server numeric store without a listener or Client process");
+        std::array<std::shared_ptr<CClientSession>,4> sessions;
+        std::array<std::vector<S2C_BALANCE_RESULT>,4> results;
+        std::array<std::vector<S2C_BALANCE_SNAPSHOT>,4> snapshots;
+        bool decoded=true,joined=true;
+        for (std::size_t i=0;i<sessions.size();++i)
+        {
+            const SESSION_ID id=99301u+i;
+            sessions[i]=std::make_shared<CClientSession>(id,INVALID_SOCKET,CClientSession::FRAME_HANDLER{},CClientSession::CLOSED_HANDLER{});
+            sessions[i]->m_isSendRunning.store(true); app->m_Sessions.emplace(id,sessions[i]); room->Handle_Register(sessions[i]);
+            C2S_ENTER_WORLD enter; enter.eWorldId=WORLD_ID::VALTAN_ARENA; enter.eCharacterClass=CHARACTER_CLASS_ID::LANCE_MASTER;
+            enter.strNickName="NumericContract"+std::to_string(i+1u); joined=room->Join(id,enter)&&joined;
+            CServerApp::SESSION_GAMEPLAY_BINDING binding; binding.eWorldId=WORLD_ID::VALTAN_ARENA; binding.pSimulation=room;
+            app->m_GameplayBindingBySessionId.emplace(id,std::move(binding));
+        }
+        tests.Require(joined && room->Count_HumanPlayers()==4u,"Admit four transport sessions into the same published raid room");
+        const auto collect=[&] {
+            for (std::size_t i=0;i<sessions.size();++i)
+            {
+                for (const auto& frame:sessions[i]->m_OutboundFrames)
+                {
+                    PACKET_HEADER header{};
+                    if (!Read_Packet_Header(frame.Bytes,header)) { decoded=false; continue; }
+                    CPacketReader reader(std::span<const std::uint8_t>(frame.Bytes).subspan(PACKET_HEADER_BYTES));
+                    if (header.ePacketType==PACKET_TYPE::S2C_BALANCE_RESULT)
+                    { S2C_BALANCE_RESULT value; decoded=Read_Message(reader,value)&&reader.Get_RemainingSize()==0u&&decoded; results[i].push_back(std::move(value)); }
+                    else if (header.ePacketType==PACKET_TYPE::S2C_BALANCE_SNAPSHOT)
+                    { S2C_BALANCE_SNAPSHOT value; decoded=Read_Message(reader,value)&&reader.Get_RemainingSize()==0u&&decoded; snapshots[i].push_back(std::move(value)); }
+                }
+                sessions[i]->m_OutboundFrames.clear(); sessions[i]->m_iQueuedOutboundBytes=0u;
+            }
+        };
+        const auto submit=[&](std::size_t owner,PACKET_TYPE type,const auto& value) {
+            CPacketWriter writer; if (!Write_Message(writer,value)) return false;
+            PACKET_FRAME frame; frame.ePacketType=type; const auto payload=writer.Get_Buffer(); frame.Payload.assign(payload.begin(),payload.end());
+            app->On_SessionFrame(sessions[owner]->Get_SessionId(),frame); return true;
+        };
+        const auto settle=[&] {
+            const auto until=std::chrono::steady_clock::now()+std::chrono::seconds(45);
+            do { app->Tick_GameplaySimulations(1.f/30.f,{}); collect();
+                if (app->m_NumericBalanceRequester==INVALID_SESSION_ID && !app->m_NumericBalanceWorker.valid()) return true;
+                std::this_thread::sleep_for(std::chrono::milliseconds(1));
+            } while (std::chrono::steady_clock::now()<until);
+            return false;
+        };
+        collect();
+        for (std::size_t i=0;i<4u;++i) submit(i,PACKET_TYPE::C2S_BALANCE_QUERY,C2S_BALANCE_QUERY{1u,0u});
+        app->Advance_ServerControlTransactions(); collect();
+        const auto originalNumeric=app->m_NumericBalanceStore.Get_NumericRevision();
+        bool pages=decoded;
+        for (const auto& set:snapshots) pages=pages && set.size()==1u && set.front().NumericRevision==originalNumeric &&
+            set.front().iPageIndex==0u && set.front().iPageCount>1u && set.front().Entries.size()==MAX_BALANCE_PAGE_ENTRIES;
+        tests.Require(pages,"All four sessions receive the same bounded authoritative numeric revision and page");
+        const auto* player=initial->Find_Player(CHARACTER_CLASS_ID::LANCE_MASTER);
+        C2S_BALANCE_PATCH patch; patch.iRequestSequence=2u; patch.BaseNumericRevision=originalNumeric;
+        patch.Changes={{BALANCE_DOMAIN::PLAYER,"LANCE_MASTER","maximumHp",double(player->iMaximumHp),double(player->iMaximumHp)+1000.},
+            {BALANCE_DOMAIN::SKILL,"34010","staggerDamage",double(initial->Find_Skill(34010u)->iStaggerDamage),17.},
+            {BALANCE_DOMAIN::BOSS,"BOSS_VALTAN","maximumHp",double(initial->Find_Boss("BOSS_VALTAN")->iMaximumHp),double(initial->Find_Boss("BOSS_VALTAN")->iMaximumHp)+160000.}};
+        std::vector<BALANCE_NUMERIC_ENTRY> initialNumbers; GameplayDataRevision initialNumeric;
+        initial->Build_NumericBalanceSnapshot(initialNumbers,initialNumeric,status);
+        const auto percentEntry=std::find_if(initialNumbers.begin(),initialNumbers.end(),[](const auto& entry) {
+            return entry.eDomain==BALANCE_DOMAIN::PATTERN_DAMAGE && entry.strId.starts_with("O|") &&
+                entry.strField=="maxHpDamagePercent" && entry.fValue==10.; });
+        tests.Require(percentEntry!=initialNumbers.end(),"Published Kouku includes an editable ten-percent damage outcome");
+        if (percentEntry==initialNumbers.end()) return;
+        const auto percentId=percentEntry->strId;
+        patch.Changes.push_back({BALANCE_DOMAIN::PATTERN_DAMAGE,percentId,"maxHpDamagePercent",10.,8.});
+        const auto* altV=initial->Find_DamageProfile("damage.player.34630");
+        patch.Changes.push_back({BALANCE_DOMAIN::DAMAGE,"damage.player.34630","bossHealthBarDamage",double(altV->iBossHealthBarDamage),34.});
+        const bool sent=submit(2u,PACKET_TYPE::C2S_BALANCE_PATCH,patch);
+        app->Advance_ServerControlTransactions();
+        auto competing=patch; competing.iRequestSequence=3u;
+        submit(1u,PACKET_TYPE::C2S_BALANCE_PATCH,competing); app->Advance_ServerControlTransactions(); collect();
+        const bool settled=settle();
+        const auto appliedNumeric=app->m_NumericBalanceStore.Get_NumericRevision();
+        bool sameResult=sent && settled && decoded && appliedNumeric!=originalNumeric;
+        for (std::size_t i=0;i<4u;++i) sameResult=sameResult && std::any_of(results[i].begin(),results[i].end(),[&](const auto& r) {
+            return r.eResult==BALANCE_APPLY_RESULT::APPLIED && r.ActiveNumericRevision==appliedNumeric && r.iRequestSequence==(i==2u?2u:0u); });
+        tests.Require(sameResult && std::any_of(results[1].begin(),results[1].end(),[](const auto& r){return r.eResult==BALANCE_APPLY_RESULT::BUSY;}),
+            "A nonleader session's typed save validates, persists and broadcasts one applied revision to all four; competing in-flight save is BUSY");
+        for (const auto& result:results[2]) if (result.eResult!=BALANCE_APPLY_RESULT::APPLIED) std::cout<<"[NUMERIC] "<<result.strReason<<'\n';
+        const auto committed=app->m_pActiveGameplayGeneration;
+        const auto expectedHp=player->iMaximumHp+1000u;
+        tests.Require(sameResult && room->Get_ActiveGameplayGeneration()==committed && extra->Get_ActiveGameplayGeneration()==committed &&
+            std::all_of(room->m_Players.begin(),room->m_Players.end(),[&](const auto& p){return p.second.iMaximumHp==expectedHp;}),
+            "Every live room commits before the next simulation tick and all four player maximum HP values agree");
+        const bool activated=room->Activate_Encounter("boss.valtan.center");
+        C2S_VALTAN_AUDITION_REQUEST play;
+        play.iRequestSequence=1u; play.eOperation=VALTAN_AUDITION_OPERATION::PLAY_PATTERN_ID;
+        play.strBossPlacementId="boss.valtan.center"; play.strPatternId="VALTAN_FIST_IN_OUT";
+        play.ExpectedDefinitionRevision=committed->Get_ActiveRevision();
+        room->Handle_ValtanAudition(sessions[2]->Get_SessionId(),play); room->Tick(1.f/30.f); collect();
+        auto* replayBoss=room->Find_AuditionBoss();
+        const auto savedBossHp=committed->Find_Boss("BOSS_VALTAN")->iMaximumHp;
+        const bool started=activated && replayBoss && replayBoss->strPatternId==play.strPatternId &&
+            replayBoss->iMaximumHp==savedBossHp && replayBoss->iCurrentHp==savedBossHp;
+        auto replay=play; replay.iRequestSequence=2u; replay.eOperation=VALTAN_AUDITION_OPERATION::RESTART_PATTERN_ID;
+        replay.iPredecessorRoomAuditionEpoch=room->m_ValtanPatternIdAudition.iRoomAuditionEpoch;
+        replay.iPredecessorPatternSequence=room->m_ValtanPatternIdAudition.iExpectedPatternSequence;
+        replay.ExpectedDefinitionRevision=room->m_ValtanPatternIdAudition.PinnedDefinitionRevision;
+        replay.ReplacementDefinitionRevision=committed->Get_ActiveRevision();
+        if (replayBoss) replayBoss->iCurrentHp/=2u;
+        room->Handle_ValtanAudition(sessions[2]->Get_SessionId(),replay); room->Tick(1.f/30.f); collect();
+        replayBoss=room->Find_AuditionBoss();
+        tests.Require(started && replayBoss && replayBoss->strPatternId==play.strPatternId &&
+            replayBoss->iPatternSequence>replay.iPredecessorPatternSequence &&
+            replayBoss->iMaximumHp==savedBossHp && replayBoss->iCurrentHp==savedBossHp &&
+            room->m_GameplayCatalog.Find_Skill(34010u)->iStaggerDamage==17u &&
+            room->Get_ActiveGameplayGeneration()==committed,
+            "Save then Complete Play and Restart reuse the new boss HP and skill values without an executable restart");
+        submit(0u,PACKET_TYPE::C2S_BALANCE_PATCH,competing); settle();
+        tests.Require(std::any_of(results[0].begin(),results[0].end(),[](const auto& r){return r.eResult==BALANCE_APPLY_RESULT::STALE_REVISION;}),
+            "A later competing draft is rejected as stale instead of silently overwriting saved numbers");
+        const auto disk=runtime/L"Gameplay"/L"Gameplay.bootstrap";
+        const auto source=authoring/L"Balance"/L"Profiles"/L"Retail.balanceprofile.json";
+        const auto saved=read(disk), savedSource=read(source);
+        auto invalid=patch; invalid.iRequestSequence=4u; invalid.BaseNumericRevision=appliedNumeric;
+        invalid.Changes={{BALANCE_DOMAIN::PLAYER,"LANCE_MASTER","maximumHp",double(expectedHp),0.}};
+        submit(3u,PACKET_TYPE::C2S_BALANCE_PATCH,invalid); settle();
+        tests.Require(app->m_pActiveGameplayGeneration==committed && read(disk)==saved && read(source)==savedSource &&
+            std::any_of(results[3].begin(),results[3].end(),[](const auto& r){return r.iRequestSequence==4u && r.eResult==BALANCE_APPLY_RESULT::INVALID_CHANGE;}),
+            "Invalid numeric candidates preserve both active memory and exact saved source/bootstrap bytes");
+        auto failing=invalid; failing.iRequestSequence=5u; failing.Changes.front().fValue=double(expectedHp)+1000.;
+        const HANDLE locked=CreateFileW(disk.c_str(),GENERIC_READ,FILE_SHARE_READ|FILE_SHARE_WRITE,nullptr,OPEN_EXISTING,FILE_ATTRIBUTE_NORMAL,nullptr);
+        submit(0u,PACKET_TYPE::C2S_BALANCE_PATCH,failing); const bool failedSettled=settle(); if (locked!=INVALID_HANDLE_VALUE) CloseHandle(locked);
+        tests.Require(locked!=INVALID_HANDLE_VALUE && failedSettled && app->m_pActiveGameplayGeneration==committed && read(disk)==saved && read(source)==savedSource &&
+            std::any_of(results[0].begin(),results[0].end(),[](const auto& r){return r.iRequestSequence==5u && r.eResult==BALANCE_APPLY_RESULT::SAVE_FAILED;}),
+            "A real Windows replacement lock yields SAVE_FAILED and rolls back prior source writes without changing any room");
+        CGameplayCatalog restarted; std::vector<BALANCE_NUMERIC_ENTRY> restartedEntries; GameplayDataRevision restartedNumeric;
+        const bool reload=restarted.Load() && restarted.Build_NumericBalanceSnapshot(restartedEntries,restartedNumeric,status);
+        tests.Require(reload && restartedNumeric==appliedNumeric && restarted.Get_ActiveRevision()==initial->Get_ActiveRevision() &&
+            restarted.Find_Player(CHARACTER_CLASS_ID::LANCE_MASTER)->iMaximumHp==expectedHp,
+            "Restart validates the durable numeric receipt and restores numbers with the same gameplay/presentation parent");
+        tests.Require(reload && restarted.Find_DamageProfile("damage.player.34630")->iBossHealthBarDamage==34u &&
+            std::any_of(restartedEntries.begin(),restartedEntries.end(),[&](const auto& entry) {
+                return entry.eDomain==BALANCE_DOMAIN::PATTERN_DAMAGE && entry.strId==percentId && entry.fValue==8.; }),
+            "Kouku ten-to-eight-percent damage and separate ALT_V boss-bar tuning are persisted and restored by the native Server");
+        auto newRoom=std::make_shared<CGameRoom>(WORLD_ID::CHARACTER_SELECT_ARENA,app->m_pActiveGameplayGeneration);
+        tests.Require(newRoom->Is_Ready() && newRoom->Get_ActiveGameplayGeneration()==committed &&
+            newRoom->m_GameplayCatalog.Find_Player(CHARACTER_CLASS_ID::LANCE_MASTER)->iMaximumHp==expectedHp,
+            "A newly created private room starts from the committed numeric generation");
+        for (const auto& session:sessions) session->Request_Close();
+        app->m_Sessions.clear(); app->m_GameplayBindingBySessionId.clear(); app->m_SharedGameRooms.clear();
+        std::cout<<"[NUMERIC_4P] revision="<<Format_GameplayDataRevision(appliedNumeric)<<" fixture="<<fixture.string()<<'\n';
+    }
+    catch (const std::exception& error)
+    { tests.Require(false,"Numeric transport fixture completed without unexpected filesystem/runtime exception"); std::cout<<error.what()<<'\n'; }
+}

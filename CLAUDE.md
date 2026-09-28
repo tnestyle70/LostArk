@@ -535,14 +535,16 @@ camera box 구간이 같으면 재생을 유지하며, `Save movie`와 Effect의
 저장한다. 임시 preview·저장·게시와 사용자 화면 확인의 세부 경계는
 `.md/TEAM/ANIMATION_TOOL_OWNER_HANDOFF.md`의 World Movie 계약을 따른다.
 
-F1의 `Balance Test`는 공용 Players/Skills/Damage/Bosses/Madness 숫자 scalar 편집과 Server HP/tick 진단을
-제공한다. `Save + Validate`는 stable ID/field의 이전값으로 최신 `Data/Balance` 저장본에 병합하고,
-candidate provenance/gameplay 검증 뒤 freshness 확인과 원자 교체를 수행한다. `Publish Server Data`
-뒤 Server와 Client를 재시작해야 적용된다. Valtan의 typed 패턴 저작 backend와 draft는 별도로 유지한다.
-`Data/Balance/Profiles/Retail.balanceprofile.json`이 가진 필드는 Retail 값으로 표시·저장하고 나머지는
-기존 Players/Skills/Damage/Bosses 원본의 해당 stable ID/field를 편집한다. 공식 Gameplay/World
-publisher와 `Publish-BalanceRuntimeSet.ps1`의 기본 profile은 Retail이다. 같은 서버 카탈로그를
-소비하는 모든 플레이어·레이드와 Debug/Release에 적용된다.
+F1 `Balance Test`는 Players/Skills/Damage/Bosses/Madness/Stagger/Pattern damage의 Server 실효 숫자를
+편집한다. class·slot·skill·pattern 검색과 ALT_V 필터를 제공하며 Skills의 연결 damage profile도 같은
+draft에서 편집한다. `Reload Server Values`는 명시적으로 draft를 버리고 Server 값을 다시 읽는다.
+`Save + Apply`는 typed command로 Server에 최대 128개 변경을 보내고 numeric revision/이전값 검증,
+canonical source·provenance·bootstrap 원자 저장과 전 room 활성화를 한 요청으로 수행한다.
+성공 시 모든 Client는 F1 창이 닫혀 있어도 numeric snapshot으로 skill 비용·범위와 HUD를 갱신한다.
+접속 Client에 Python/PowerShell이나 저작 파일 쓰기 권한이 필요하지 않으며 Server/Client를 재시작하지 않는다.
+Server PC의 `LOSTARK_PROJECT_DATA_ROOT`는 해당 배포의 `Data`여야 한다. 오류·stale revision은 저장본과
+활성값을 보존하고 draft를 남긴다. presentation/패턴 구조 편집은 기존 Valtan/Kouku 저작 경로를 유지한다.
+세부 단위와 영속 저장은 `.md/TEAM/BALANCE_TUNING_AND_HOT_RELOAD_CONTRACT.md`를 따른다.
 Retail Damage의 optional `bossHealthBarDamage`는 기본 0이며, 양수는 ACTIVE 스킬 한 번의
 보스 피해를 대상 최대 HP·전체 체력 줄 수 기준으로 고정하는 기믹 시험값이다. 다단히트에
 총량을 나누고 치명타·피해 편차·버프·방어 배율을 다시 적용하지 않는다. 명중·무적·실드는

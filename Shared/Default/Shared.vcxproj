@@ -171,6 +171,12 @@
     </ClCompile>
     <ClInclude Include="..\..\Tools\Build\CppStandardPch.h" />
   </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\Public\Gameplay\BalanceNumericContract.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\Private\Gameplay\BalanceNumericContract.cpp" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets" />
 </Project>

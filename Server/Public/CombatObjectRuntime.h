@@ -38,6 +38,7 @@ namespace LostArk::Server
 	struct SERVER_COMBAT_OBJECT_HIT_RUNTIME final
 	{
 		std::string strHitId;
+		std::string strDamageProfileId, strNumericBalanceId;
 		SERVER_COMBAT_OBJECT_HIT_TRIGGER eTrigger =
 			SERVER_COMBAT_OBJECT_HIT_TRIGGER::TIMED;
 		SERVER_COMBAT_OBJECT_CONTACT_SAMPLING eContactSampling =
@@ -134,6 +135,7 @@ namespace LostArk::Server
 			LostArk::Shared::INVALID_NET_ENTITY_ID;
 		std::uint32_t iSpawnTick = 0u;
 		std::string strCombatObjectArchetypeId;
+		std::string strSourceArchetypeId;
 		std::string strClientVisualId;
 		float fUniformScale = 1.f;
 		LostArk::Shared::GameplayDataRevision PinnedDefinitionRevision{};
@@ -236,6 +238,9 @@ namespace LostArk::Server
 		bool Cancel_OwnedVisualObject(LostArk::Shared::COMBAT_OBJECT_ID objectId,
 			LostArk::Shared::NET_ENTITY_ID sourceId, std::uint32_t patternSequence);
 		void Reset();
+		void Refresh_NumericBalance(const CGameplayCatalog& previous, const CGameplayCatalog& updated,
+			const std::vector<LostArk::Shared::BALANCE_NUMERIC_ENTRY>& entries) noexcept;
+
 		/* Empty-room reset has no observer. Discarding its lifecycle prevents a
 		later party from receiving spawn/despawn edges from the prior epoch. */
 		void Discard_PendingLifecycle();

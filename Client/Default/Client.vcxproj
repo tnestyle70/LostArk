@@ -4389,4 +4389,7 @@
     <None Include="..\..\Data\Effects\Authored\effect.valtan.struggling.source-underfoot.active.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.valtan.struggling.source-yellow-roar.warning.effect.json" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\Data\Balance\NumericSourceBindings.json" />
+  </ItemGroup>
 </Project>

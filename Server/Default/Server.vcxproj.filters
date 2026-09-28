@@ -45,6 +45,7 @@
     <ClInclude Include="..\Public\MonsterBrain.h"><Filter>Public</Filter></ClInclude>
 	<ClInclude Include="..\Public\NpcBehaviorRuntime.h"><Filter>Public</Filter></ClInclude>
 	<ClInclude Include="..\Public\GameplayCatalog.h"><Filter>Public</Filter></ClInclude>
+	<ClInclude Include="..\Public\ServerBalanceNumericStore.h"><Filter>Public</Filter></ClInclude>
 	<ClInclude Include="..\Public\BossCombatRuntime.h"><Filter>Public</Filter></ClInclude>
 	<ClInclude Include="..\Public\CombatObjectRuntime.h"><Filter>Public</Filter></ClInclude>
 	<ClInclude Include="..\Public\ServerCombatGeometry.h"><Filter>Public</Filter></ClInclude>
@@ -98,6 +99,7 @@
     <ClCompile Include="..\Private\MonsterBrain.cpp"><Filter>Private</Filter></ClCompile>
 	<ClCompile Include="..\Private\NpcBehaviorRuntime.cpp"><Filter>Private</Filter></ClCompile>
 	<ClCompile Include="..\Private\GameplayCatalog.cpp"><Filter>Private</Filter></ClCompile>
+	<ClCompile Include="..\Private\ServerBalanceNumericStore.cpp"><Filter>Private</Filter></ClCompile>
 	<ClCompile Include="..\Private\BossCombatRuntime.cpp"><Filter>Private</Filter></ClCompile>
 	<ClCompile Include="..\Private\CombatObjectRuntime.cpp"><Filter>Private</Filter></ClCompile>
 	<ClCompile Include="..\Private\ServerCombatGeometry.cpp"><Filter>Private</Filter></ClCompile>

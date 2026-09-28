@@ -37,6 +37,8 @@ int main(const int argumentCount, char** arguments)
 		return LostArk::Server::CServerGameplayContractRunner::Run_KoukuProductOnly();
 	if (2 == argumentCount && std::string_view(arguments[1]) == "--valtan-presentation-contract-test")
 		return LostArk::Server::CServerGameplayContractRunner::Run_ValtanPresentationOnly();
+	if (2 == argumentCount && std::string_view(arguments[1]) == "--numeric-balance-contract-test")
+		return LostArk::Server::CServerGameplayContractRunner::Run_NumericBalanceOnly();
 	if (2 == argumentCount && std::string_view(arguments[1]) == "--valtan-lifecycle-contract-test")
 		return LostArk::Server::CServerGameplayContractRunner::Run_ValtanLifecycleOnly();
 	if (2 == argumentCount && std::string_view(arguments[1]) == "--skill-stages-contract-test")

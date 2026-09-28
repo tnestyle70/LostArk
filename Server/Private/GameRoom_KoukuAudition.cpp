@@ -241,6 +241,8 @@ LostArk::Server::CGameRoom::Evaluate_KoukuSaydonPatternAudition(
 	if (!productGeneration) productGeneration = m_GameplayCatalog.Get_ActiveGeneration();
 	if (draftRequest && !controlsRun)
 	{
+		if (!m_StagedNumericEntries.empty())
+			return reject(RESULT::REJECTED_BUSY, "Balance numbers are being saved; retry the draft after the numeric result");
 		const auto found = m_KoukuDraftUploads.find(sessionId);
 		const auto now = static_cast<std::uint64_t>(std::chrono::duration_cast<std::chrono::milliseconds>(
 			std::chrono::steady_clock::now().time_since_epoch()).count());
@@ -262,6 +264,8 @@ LostArk::Server::CGameRoom::Evaluate_KoukuSaydonPatternAudition(
 	if (!draftRequest && !restart && request.Scope.iExpectedSourceRevision !=
 		CKoukuSaydonBrain::Resolve_ProductSourceRevision(*productGeneration))
 	{
+		if (!m_StagedNumericEntries.empty())
+			return reject(RESULT::REJECTED_BUSY, "Balance numbers are being saved; retry Product reload after the numeric result");
 		auto candidate = std::make_shared<CGameplayCatalog>();
 		if (!candidate->Load_PublishedKoukuProduct(m_GameplayCatalog.Active()))
 			return reject(RESULT::REJECTED_SOURCE_REVISION_MISMATCH,

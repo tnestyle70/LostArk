@@ -841,17 +841,20 @@ Server 실행물을 함께 배포하고 Server를 재시작한다.
 
 UI 담당자는 JSON을 매 프레임 읽지 않는다. `CCombatHUDViewModel::Initialize_Definitions()`가 정의를 준비하고 `CClientReplication`이 snapshot마다 runtime 상태를 적용한다. UI 코드에서 packet이나 socket을 사용하거나 Character·boss GameObject에서 gameplay 수치를 조회하지 않는다. 머리 위 체력바는 ViewModel이 제공한 weak presentation의 표시 위치만 읽는다.
 
-Debug/Release F1의 `Open Balance Test`는 공용 수치 편집용 독립 창을 연다. `Players / Skills /
-Damage / Bosses / Madness`에서 실제 소비하는 수치를 편집하며 일반 수치 panel은 Valtan pattern source를
-로드하지 않는다. `Retail.balanceprofile.json`이 덮는 field는 그 실효값을 읽고 같은 Retail row에
-저장하며, 덮지 않는 movement/timing 등은 base JSON에 저장한다. 별도 Valtan authoring backend는 유지한다.
+Debug/Release의 `F1 -> Balance Test -> Save + Apply`는 현재 Server의 실효 수치를 읽고
+`IPlayerCommandSink`의 typed numeric patch를 보낸다. Server가 base numeric revision과 field 이전값을
+검사하고 canonical source/provenance와 게시 bootstrap을 원자 저장한 뒤 모든 shared/private room의
+같은 tick 경계에서 활성화한다. 모든 접속 Client는 F1을 닫아도 새 numeric snapshot으로 표시·입력
+수치를 갱신한다. 이 경로에는 Client 로컬 JSON 저장, PowerShell 실행, Server/Client 재시작이 없다.
+실패·충돌은 기존 활성값과 편집 draft를 보존한다. 자세한 범위·단위·영속 저장은
+`BALANCE_TUNING_AND_HOT_RELOAD_CONTRACT.md`의 일반 수치 계약을 따른다.
 
-`Save + Validate`는 stable ID와 field 이전값으로 최신 저장본에 병합하고, 변경 field를
-`PROJECT_TUNED`로 동기화한 후보를 검증한 뒤 원자 교체한다. 실패하면 기존 저장본을 보존한다.
-`Publish Server Data`는 Gameplay/World/Items를 같은 Retail profile의 runtime set으로 게시한다.
-파일 저장·게시와 실행 반영은 별도이며 Server와 Client를 재시작한 뒤 Server snapshot/damage event로
-확인한다. 일반 수치 panel은 runtime Hot Reload를 수행하지 않는다. 세부 작업법은
-`BALANCE_TOOL_OWNER_HANDOFF.md`가 정본이다.
+숫자 domain은 Players/Skills/Damage/Bosses/Madness/Stagger/Pattern damage다. Skills는 class·slot·name과
+연결 damage profile을 함께 보여 주고 ALT_V를 따로 찾을 수 있다. `attackCoefficientBp` 10000은 100%,
+`bossHealthBarDamage`는 ACTIVE 한 번의 전체 체력줄 피해다. Stagger는 각 패턴의 실제 gauge threshold이며
+미소비 boss gauge나 전역 배율 UI로 위장하지 않는다. 비율 피해의 `maxHpDamagePercent` 10은 최대 HP 10%의
+원시 피해이며 무적·실드·받는 피해 buff 뒤 최종 HP 감소량과 구분한다. numeric revision은 presentation
+revision과 별개이며 새 패턴/이펙트/콜라이더 구조를 이 경로로 바꾸지 않는다.
 
 Madness는 Retail `madness[policyId=KOUKUSAYDON]`의 피해·공·인형 배율과 접촉 주기/영역을
 소유한다. 피해는 보호막·방어·무적을 처리한 실제 HP 감소 비율에서 계산하고 소수 잔여값을 누적한다.
@@ -938,7 +941,7 @@ rotation, unknown command, 겹침 시 topmost 선택, resolution/letterbox 보�
 factory와 router가 생기기 전까지는 authoring tool의 save 성공만으로 제품 UI 전환 완료를
 선언하지 않는다.
 
-Git 관리 대상 데이터는 Visual Studio Client 프로젝트의 `96.DataFiles` 필터에서 원본을 바로 연다. 이 항목들은 `None` 링크이며 복사본이나 runtime 배포본이 아니다. 수치 튜닝 절차와 무중단 reload를 아직 활성화하지 않은 이유는 `BALANCE_TUNING_AND_HOT_RELOAD_CONTRACT.md`를 따른다.
+Git 관리 대상 데이터는 Visual Studio Client 프로젝트의 `96.DataFiles` 필터에서 원본을 바로 연다. 이 항목들은 `None` 링크이며 복사본이나 runtime 배포본이 아니다. 일반 수치의 Server-owned 즉시 반영과 별도 패턴 저작 reload 범위는 `BALANCE_TUNING_AND_HOT_RELOAD_CONTRACT.md`를 따른다.
 
 ## 7. Valtan Boss
 

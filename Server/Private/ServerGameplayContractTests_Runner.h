@@ -31,6 +31,7 @@ public:
     static int Run_KoukuDraft();
     static int Run_KoukuProductOnly();
     static int Run_ValtanLifecycleOnly();
+    static int Run_NumericBalanceOnly();
     static int Run_ValtanPresentationOnly();
     static int Run_SkillStagesOnly();
     static int Run_ValtanArenaSupport();
@@ -52,6 +53,7 @@ private:
     static void Run_ValtanPinnedGeneration(TESTS& tests, CGameplayCatalog& catalog);
     static void Run_ValtanRevision(TESTS& tests, CGameplayCatalog& catalog);
     static void Run_RevisionProtocol(TESTS& tests);
+    static void Run_NumericBalanceProtocol(TESTS& tests);
     static void Run_GenerationRetention(TESTS& tests, CGameplayCatalog& catalog);
     static void Run_SessionTransport(TESTS& tests);
     static void Run_RoomIngress(TESTS& tests);

@@ -5,38 +5,17 @@
 
 ## 1. 지금 바로 기억할 결론
 
-Debug/Release Client에서 `F1 -> Balance Test`를 열면 `Players / Skills / Damage / Bosses / Madness`에서
-공용 수치를 편집하고 아래에서 실제 Server HP와 tick을 확인한다. 일반 수치 panel은 Valtan
-pattern source를 로드하지 않는다. Valtan Boss/Animation/Effect Tool이 소비하는 기존 typed
-authoring backend는 유지하며, `Valtan Authoring`의 패턴 편집과 공용 수치 draft는 서로 분리한다.
-스킬 기준은 level 10이다. 단, 원본 table이 SecondaryKey 1만 가진 fixed basic/awakening definition은
-명시적으로 level 1 row를 사용하며 Tool에서 source level을 바꾸지 않는다.
+Debug/Release `F1 -> Balance Test -> Save + Apply`의 현재 numeric 저장·반영 정본은
+[BALANCE_TUNING_AND_HOT_RELOAD_CONTRACT.md](BALANCE_TUNING_AND_HOT_RELOAD_CONTRACT.md)의 1절이다.
+Players/Skills/Damage/Bosses/Madness/Stagger/Pattern damage의 실제 Server 실효값을 읽고, stable ID·field
+이전값과 base numeric revision을 typed command sink로 보낸다. Server가 canonical source/provenance를
+검증·원자 저장하고 게시 bootstrap과 모든 shared/private room을 활성화한다. 모든 Client는 F1 창이 닫혀
+있어도 새 snapshot으로 수치를 갱신하며 Client 로컬 PowerShell 저장이나 프로세스 재시작은 필요하지 않다.
+실패·충돌은 현재 draft와 활성 catalog를 보존한다. 패턴 구조/이펙트/새 asset 편집은 기존 owning Tool의
+별도 publish/Debug candidate 경로이며 numeric Save로 변경하지 않는다.
 
-저장 흐름은 다음 한 방향이다.
-
-```text
-F1 Balance Test numeric draft
--> Save + Validate
--> stable ID + field 이전값으로 최신 base JSON / Retail profile 저장본과 병합
--> candidate overlay에서 provenance + gameplay 검증
--> Update-BalanceProvenanceReceipt.ps1
--> 바뀐 field만 PROJECT_TUNED로 분류
--> 입력 bytes 재확인 + 원자 교체 / 실패 시 자기 변경 rollback
--> Publish Server Data
--> gameplay bootstrap + world bootstrap 4종 + item bootstrap 1종을 한 rollback set으로 promotion
--> Server와 Client 재시작
--> Server snapshot / damage event로 실측
-```
-
-player/base balance는 `Publish Server Data` 뒤 Server를 재시작해야 적용된다. Valtan split gameplay candidate의
-typed hot reload는 별도 revision/2PC 계약을 사용하므로 아래 일반 balance publish와 섞지 않는다. 어느 경로에서도
-Client만 JSON을 다시 읽어 Server와 다른 수치를 보여 주지 않는다.
-
-`Save + Validate`는 `Save-BalanceTestDraft.ps1`을 비동기로 실행한다. 같은 field가 저장 후
-변경됐으면 충돌로 거부하고, 다른 field 변경과 미지원 schema field는 보존한다. 저장 중
-외부 파일 변경도 교체 직전 확인하며 실패하면 자기 변경만 되돌린다. 검증/저장과 게시를
-구분하고, 다른 도구의 미저장 draft나 실행 중 Server를 자동 갱신하지 않는다. 일반 수치의
-저장은 Valtan pattern Hot Reload 요청을 보내지 않는다.
+이 문서의 아래 provenance와 오프라인 publisher 절차는 외부 저작/게시용이다. 예전
+`Save-BalanceTestDraft.ps1`과 `Publish-BalanceRuntimeSet.ps1`은 F1의 현재 네트워크 저장 구현이 아니다.
 
 `Kill Current Gate Boss`는 Balance Test와 F1의 Valtan/KoukuSaydon Arena 영역에 같은
 typed 명령으로 표시한다. Server가 현재 관문 primary boss만 결정하고 정상 사망 처리로
@@ -51,11 +30,11 @@ Release 모드는 게시된 Retail 쿨타임(ALT_V 300초)을 사용한다. 아�
 같은 방의 모든 플레이어와 늦게 입장한 플레이어가 Server snapshot의 모드와 실제 duration을
 받는다. 파일 Save/Publish 및 Server 재시작과 별개의 즉시 정책이다.
 
-공용 숫자 editor는 Retail이 덮는 field를 profile에서 읽고 같은 profile row로 저장한다.
+Server numeric snapshot은 Retail이 덮는 field의 실효값을 보내고 Server 저장기는 같은 profile row로 저장한다.
 덮지 않는 이동/충돌/timing field는 base JSON에 저장한다. 현재 플레이어 치명타,
 damage coefficient/addend/spread도 편집한다. 프로필 계수가 쓰이는 damage의 base rate는 숨긴다.
 Retail이 새로 소유한 field에 대한 오래된 base draft는 저장을 거부한다. 통합 게시의 기본 및
-F1 게시 프로필은 Retail이며 Gameplay와 World에 같은 값을 전달한다.
+오프라인 게시 프로필은 Retail이며 Gameplay와 World에 같은 값을 전달한다. F1 numeric 저장 범위는 위 정본을 따른다.
 
 `Retail.balanceprofile.json`의 boss별 `staggerGaugeMaximum`은 현재 미소비 field다.
 실제 무력화는 저작 `SET_STAGGER_GAUGE`와 Retail 전역 배율을 사용하며 공용 panel은
@@ -81,7 +60,8 @@ F1 게시 프로필은 Retail이며 Gameplay와 World에 같은 값을 전달한
 | Tool 편집 후 receipt 동기화 | `Tools/GameplayPipeline/Update-BalanceProvenanceReceipt.ps1` |
 | domain 검증·cook | `Tools/GameplayPipeline/Publish-GameplayBalance.ps1`, `Tools/WorldPipeline/Publish-WorldGameplay.ps1` |
 | Balance/World/Items 통합 promotion | `Tools/GameplayPipeline/Publish-BalanceRuntimeSet.ps1` |
-| 공용 숫자 field 병합·검증·원자 저장 | `Tools/GameplayPipeline/Save-BalanceTestDraft.ps1` |
+| F1 Server numeric 저장 | `Server/Private/ServerBalanceNumericStore.cpp` |
+| 오프라인 숫자 draft 병합 도구 | `Tools/GameplayPipeline/Save-BalanceTestDraft.ps1` |
 
 `Data/Valtan/Valtan.pattern.json`은 migration fixture다. `Data/Encounters/Valtan/ValtanEncounter.json`, rotations,
 combat objects, world events, pattern bindings/cues와 `Server/Bin/DataFiles/Gameplay/Gameplay.bootstrap`은 생성물이다.
@@ -186,8 +166,9 @@ defense가 없으므로 Tool이 boss 방어력을 표시하거나 가정하지 �
 - boss HP/phase/action
 - 최근 128개 중 최신 16 damage event (`OUT`/`IN`, amount, target entity)
 
-검증할 때는 Server와 Client를 함께 실행하고 실제 스킬 또는 발탄 hit를 발생시킨다. 저장 후 Server를
-재시작하지 않았으면 새 authoring과 live event를 비교하지 않는다.
+검증할 때는 Server와 Client를 함께 실행하고 실제 스킬 또는 발탄 hit를 발생시킨다. F1 숫자 저장은
+`SAVED AND APPLIED`와 새 numeric snapshot을 확인한 뒤 재시작 없이 live event를 비교한다. 외부 publisher로
+게시한 패턴 구조는 해당 저작 경로의 Apply 또는 Server 재시작이 끝난 뒤 비교한다.
 
 ## 8. Map data와의 연결
 
@@ -276,4 +257,5 @@ Gameplay bootstrap v37의 publisher는 `KOUKUMADNESS` row의 최대/hold 뒤에 
 generation admission에서 거부한다. Server/Client는 Shared version/max-row(65536) 계약을 공유하고,
 Valtan generation parser도 같은 값을 사용한다. Server는 두 row variant를 검증하며 Sequence 메모리 draft가 활성
 Balance Test 수치를 projector 기본값으로 되돌리지 않도록 현재 수치 배율을 보존한다.
-게시 후 Server 재시작이 필요하며 Client는 snapshot만 소비한다.
+외부 publisher로 게시한 파일은 Server 재시작으로 적용한다. F1 `Save + Apply`의 Madness 숫자는
+Server 활성화 응답과 numeric snapshot 뒤 재시작 없이 반영되며 Client는 Server 상태를 소비한다.
