@@ -252,7 +252,8 @@ void CLevel_Development::Update(const f32_t fTimeDelta)
 		m_InteractPrompt->Update(fTimeDelta,localCharacter,CCombatHUDViewModel::Get().Get_InteractPromptTriggerId(),
 			!editing && camera && !camera->Is_PresentationOverrideActive());
 	m_PlayerController.Update(
-		nullptr != camera && camera->Is_FollowEnabled() && !camera->Is_PresentationOverrideActive());
+		nullptr != camera && camera->Is_FollowEnabled() &&
+		(LEVEL::MAHARAKA != m_eLevel || !camera->Is_PresentationOverrideActive()));
 }
 
 HRESULT CLevel_Development::Render()
