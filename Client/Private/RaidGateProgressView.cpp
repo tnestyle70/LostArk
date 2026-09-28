@@ -54,7 +54,6 @@ namespace
 	   sys.common.exit_btn, confirm / cancel, accept / decline. Wide hex escapes keep this file
 	   ASCII. */
 	constexpr const wchar_t* TEXT_PROGRESS = L"\xB358\xC804 \xC9C4\xD589";
-	constexpr const wchar_t* TEXT_RESTART = L"\xC7AC\xC2DC\xC791";
 	constexpr const wchar_t* TEXT_ENTER_GATE3 = L"3\xAD00\xBB38 \xC785\xC7A5";
 	constexpr const wchar_t* TEXT_ENTER_BINGO = L"\xBE59\xACE0 \xC785\xC7A5";
 	constexpr const wchar_t* TEXT_ASK_ENTER_BINGO = L"\xBE59\xACE0\xC5D0 \xC785\xC7A5\xD558\xC2DC\xACA0\xC2B5\xB2C8\xAE4C?";
@@ -63,6 +62,9 @@ namespace
 	constexpr const wchar_t* TEXT_APPLIED_ENTER_GATE3 = L"\xB2D8\xC774 3\xAD00\xBB38 \xC785\xC7A5\xC744 \xC2E0\xCCAD\xD558\xC600\xC2B5\xB2C8\xB2E4.";
 	constexpr const wchar_t* TEXT_RESTART_VOTE = L"\xC7AC\xC2DC\xC791 \xD22C\xD45C";
 	constexpr const wchar_t* TEXT_EXIT = L"\xB098\xAC00\xAE30";
+	constexpr const wchar_t* TEXT_EXIT_VOTE = L"\xB098\xAC00\xAE30 \xD22C\xD45C";
+	constexpr const wchar_t* TEXT_ASK_EXIT = L"\xB358\xC804\xC5D0\xC11C \xB098\xAC00\xC2DC\xACA0\xC2B5\xB2C8\xAE4C?";
+	constexpr const wchar_t* TEXT_APPLIED_EXIT = L"\xB2D8\xC774 \xB098\xAC00\xAE30 \xD22C\xD45C\xB97C \xC2E0\xCCAD\xD558\xC600\xC2B5\xB2C8\xB2E4.";
 	constexpr const wchar_t* TEXT_CONFIRM = L"\xD655\xC778";
 	constexpr const wchar_t* TEXT_CANCEL = L"\xCDE8\xC18C";
 	constexpr const wchar_t* TEXT_ACCEPT = L"\xC218\xB77D";
@@ -78,14 +80,20 @@ namespace
 	bool_t Is_RestartPrompt(const Client::CRaidGateProgressView::PROMPT ePrompt)
 	{
 		using PROMPT = Client::CRaidGateProgressView::PROMPT;
-		return PROMPT::CONFIRM_RESTART == ePrompt || PROMPT::VOTE_RESTART == ePrompt;
+		return PROMPT::VOTE_RESTART == ePrompt;
+	}
+
+	bool_t Is_ExitPrompt(const Client::CRaidGateProgressView::PROMPT ePrompt)
+	{
+		using PROMPT = Client::CRaidGateProgressView::PROMPT;
+		return PROMPT::CONFIRM_EXIT == ePrompt || PROMPT::VOTE_EXIT == ePrompt;
 	}
 
 	bool_t Is_VotePrompt(const Client::CRaidGateProgressView::PROMPT ePrompt)
 	{
 		using PROMPT = Client::CRaidGateProgressView::PROMPT;
 		return PROMPT::VOTE_ADVANCE == ePrompt || PROMPT::VOTE_RESTART == ePrompt ||
-            PROMPT::VOTE_ENTER_GATE3 == ePrompt;
+            PROMPT::VOTE_EXIT == ePrompt || PROMPT::VOTE_ENTER_GATE3 == ePrompt;
 	}
 
 	void Draw_Centered(const wstring_t& strFont, const wchar_t* pText, const f32_t fRefX, const f32_t fRefY,
@@ -183,7 +191,7 @@ const wchar_t* Client::CRaidGateProgressView::Button_Text() const
 	{
 	case BUTTON::ENTER_GATE3: return TEXT_ENTER_GATE3;
 	case BUTTON::ENTER_BINGO: return TEXT_ENTER_BINGO;
-	case BUTTON::RESTART: return TEXT_RESTART;
+	case BUTTON::LEAVE: return TEXT_EXIT;
 	case BUTTON::PROGRESS: return TEXT_PROGRESS;
 	case BUTTON::EXIT: return TEXT_EXIT;
 	default: return L"";
@@ -258,7 +266,7 @@ Client::CRaidGateProgressView::INTENT Client::CRaidGateProgressView::Update_Prom
 				eIntent = bConfirm ? INTENT::ACCEPT : INTENT::DECLINE;
 			else if (bConfirm)
 				eIntent = m_ePrompt == PROMPT::CONFIRM_ENTER_GATE3 ? INTENT::PROPOSE_ENTER_GATE3 :
-                    Is_RestartPrompt(m_ePrompt) ? INTENT::PROPOSE_RESTART : INTENT::PROPOSE_ADVANCE;
+                    Is_ExitPrompt(m_ePrompt) ? INTENT::PROPOSE_EXIT : INTENT::PROPOSE_ADVANCE;
 		}
 	}
 	if (bPressed)
@@ -293,8 +301,8 @@ Client::CRaidGateProgressView::INTENT Client::CRaidGateProgressView::Update_Butt
 	case BUTTON::ENTER_GATE3:
         Open_Prompt(PROMPT::CONFIRM_ENTER_GATE3, wstring_t());
         return INTENT::NONE;
-	case BUTTON::RESTART:
-		Open_Prompt(PROMPT::CONFIRM_RESTART, wstring_t());
+	case BUTTON::LEAVE:
+		Open_Prompt(PROMPT::CONFIRM_EXIT, wstring_t());
 		return INTENT::NONE;
 	case BUTTON::ENTER_BINGO:
 	case BUTTON::PROGRESS:
@@ -332,23 +340,24 @@ void Client::CRaidGateProgressView::Render_Text() const
 	CUITextLayerScope ModalText(UI_TEXT_LAYER::MODAL);
 
 	const bool_t bRestart = Is_RestartPrompt(m_ePrompt);
+	const bool_t bExit = Is_ExitPrompt(m_ePrompt);
 	const bool_t bEntry = m_ePrompt == PROMPT::CONFIRM_ENTER_GATE3 || m_ePrompt == PROMPT::VOTE_ENTER_GATE3;
-	const bool_t bBingoEntry = !bRestart && m_eButton == BUTTON::ENTER_BINGO;
+	const bool_t bBingoEntry = !bRestart && !bExit && m_eButton == BUTTON::ENTER_BINGO;
 	const bool_t bVote = Is_VotePrompt(m_ePrompt);
 	f32_t fX = 0.f, fY = 0.f, fW = 0.f, fH = 0.f;
 	if (m_pPrompt->Get_SlotRect("RGV_Panel", fX, fY, fW, fH))
 	{
 		/* Same title / description bands as the party invite modal on this panel art. */
-		Draw_Centered(FONT_YOON, bEntry ? TEXT_ENTER_GATE3 : bBingoEntry ? TEXT_ENTER_BINGO : bRestart ? TEXT_RESTART_VOTE : TEXT_PROGRESS, fX + fW * 0.5f, fY + 23.f,
+		Draw_Centered(FONT_YOON, bEntry ? TEXT_ENTER_GATE3 : bBingoEntry ? TEXT_ENTER_BINGO : bExit ? TEXT_EXIT_VOTE : bRestart ? TEXT_RESTART_VOTE : TEXT_PROGRESS, fX + fW * 0.5f, fY + 23.f,
 			PROMPT_TITLE_PX, DirectX::Colors::White);
-		const wchar_t* pAsk = bEntry ? TEXT_ASK_ENTER_GATE3 : bBingoEntry ? TEXT_ASK_ENTER_BINGO : bRestart ? TEXT_ASK_RESTART : TEXT_ASK_ADVANCE;
+		const wchar_t* pAsk = bEntry ? TEXT_ASK_ENTER_GATE3 : bBingoEntry ? TEXT_ASK_ENTER_BINGO : bExit ? TEXT_ASK_EXIT : bRestart ? TEXT_ASK_RESTART : TEXT_ASK_ADVANCE;
 		if (!bVote)
 		{
 			Draw_Centered(FONT_YOON, pAsk, fX + fW * 0.5f, fY + 66.f, PROMPT_DESC_PX, DirectX::Colors::White);
 		}
 		else
 		{
-			const wstring_t strApplied = m_strProposer + (bEntry ? TEXT_APPLIED_ENTER_GATE3 : bBingoEntry ? TEXT_APPLIED_ENTER_BINGO : bRestart ? TEXT_APPLIED_RESTART : TEXT_APPLIED_ADVANCE);
+			const wstring_t strApplied = m_strProposer + (bEntry ? TEXT_APPLIED_ENTER_GATE3 : bBingoEntry ? TEXT_APPLIED_ENTER_BINGO : bExit ? TEXT_APPLIED_EXIT : bRestart ? TEXT_APPLIED_RESTART : TEXT_APPLIED_ADVANCE);
 			Draw_Centered(FONT_YOON, strApplied.c_str(), fX + fW * 0.5f, fY + 56.f, PROMPT_DESC_PX, DirectX::Colors::White);
 			Draw_Centered(FONT_YOON, pAsk, fX + fW * 0.5f, fY + 74.f, PROMPT_DESC_PX, DirectX::Colors::White);
 		}

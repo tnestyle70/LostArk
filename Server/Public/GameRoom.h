@@ -1162,6 +1162,11 @@ namespace LostArk::Server
 		void Handle_ReturnToBern(
 			SESSION_ID sessionId,
 			const LostArk::Shared::C2S_RETURN_TO_BERN& request);
+		// Stages one player's world transfer back to Bern. Shared by the cleared-raid exit
+		// button and the gate progress EXIT vote; returns false when nothing was staged.
+		bool Stage_ReturnToBern(
+			LostArk::Shared::PLAYER_ID playerId,
+			std::uint32_t requestSequence);
 		/* Same-room-only: request.iTargetNetEntityId must resolve to a real
 		   player currently in this room's m_PlayerIdByEntityId. There is no
 		   cross-room player identity yet (nickname is display text only, see

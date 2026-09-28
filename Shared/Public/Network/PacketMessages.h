@@ -3292,12 +3292,14 @@ namespace LostArk::Shared
 	};
 
 	/* ADVANCE raises the next gate after a clear; RESTART raises the current gate again.
-	   ENTER_GATE3 admits the Gate 3 arrival deck independently of the currently raised gate. */
+	   ENTER_GATE3 admits the Gate 3 arrival deck independently of the currently raised gate.
+	   EXIT sends every voter back to Bern once the vote passes. */
 	enum class GATE_PROGRESS_KIND : std::uint8_t
 	{
 		ADVANCE = 0,
 		RESTART,
 		ENTER_GATE3,
+		EXIT,
 		END
 	};
 

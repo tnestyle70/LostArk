@@ -411,6 +411,20 @@ void LostArk::Server::CGameRoom::Close_GateProgressVote(
 					Advance_Gate(3u, &m_GateProgress.Voters);
 			}
 		}
+		else if (m_GateProgress.eKind == GATE_PROGRESS_KIND::EXIT)
+		{
+			/* Every voter still in the room goes back to Bern. The raid stops on its own
+			   once its participants have left (Stop_KoukuRaid). */
+			entered = !m_GateProgress.iRaidEpoch || (Is_KoukuRaidRunning() &&
+				m_GateProgress.iRaidEpoch == m_KoukuRaid.State.iRunEpoch);
+			if (entered)
+			{
+				bool staged = false;
+				for (const PLAYER_ID voterId : m_GateProgress.Voters)
+					staged = Stage_ReturnToBern(voterId, m_GateProgress.iRequestSequence) || staged;
+				entered = staged;
+			}
+		}
 		else
 		{
 			const std::uint8_t iTarget = GATE_PROGRESS_KIND::RESTART == m_GateProgress.eKind ?
