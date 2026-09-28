@@ -799,6 +799,42 @@ void LostArk::Server::CServerGameplayContractRunner::Run_SkillStages(TESTS& test
 		activeSkills.Update_Aim(activePlayer, activeAim, catalog);
 		tests.Require(activeAimX == activePlayer.fSkillAimDirectionX,
 			"Ignore an aim update on a skill that is not a HOLD");
+
+		/* Guardian Knight human-form S (49220) and Alt+V (49420) carry caster
+		shapes; an adjacent boss must take damage from both. */
+		for (const std::uint32_t knightSkillId : { 49220u, 49420u })
+		{
+			SERVER_WORLD_ENTITY knightTarget{};
+			knightTarget.eKind = WORLD_BOOTSTRAP_KIND::BOSS;
+			knightTarget.strArchetypeId = "BOSS_VALTAN";
+			knightTarget.iNetEntityId = 99810u;
+			knightTarget.iCurrentHp = knightTarget.iMaximumHp = 100000000u;
+			knightTarget.fPositionZ = 2.f;
+			std::vector<SERVER_WORLD_ENTITY> knightTargets{ knightTarget };
+			SERVER_PLAYER knight{};
+			knight.iPlayerId = 99811u;
+			knight.eCharacterClass = CHARACTER_CLASS_ID::GUARDIANKNIGHT;
+			knight.eStance = PLAYER_STANCE_ID::GUARDIANKNIGHT_HUMAN;
+			knight.iCurrentHp = knight.iMaximumHp = 10000u;
+			knight.iCurrentResource = knight.iMaximumResource = 10000u;
+			knight.iMaximumIdentity = 100u;
+			CPlayerSkillSystem::Reset_Gauges(knight, catalog);
+			CPlayerSkillSystem knightSkills;
+			C2S_USE_SKILL knightCommand{};
+			knightCommand.iClientSequence = 1u;
+			knightCommand.iSkillId = knightSkillId;
+			knightCommand.fAimX = 0.f;
+			knightCommand.fAimZ = 3.f;
+			std::vector<DAMAGE_EVENT> knightEvents;
+			const bool knightStarted = knightSkills.Try_Start(knight, knightCommand, catalog, 10u);
+			for (std::uint32_t tick = 11u; knightStarted && tick < 200u &&
+				PLAYER_ACTION_STATE::SKILL == knight.eAction; ++tick)
+				knightSkills.Update(knight, knightTargets, catalog, nullptr, nullptr, 1.f / 30.f, tick, knightEvents);
+			tests.Require(knightStarted && knightTargets[0].iCurrentHp < knightTarget.iCurrentHp &&
+				!knightEvents.empty(),
+				("Guardian Knight human-form skill " + std::to_string(knightSkillId) +
+					" lands its caster shape on an adjacent boss").c_str());
+		}
 	}
 }
 
