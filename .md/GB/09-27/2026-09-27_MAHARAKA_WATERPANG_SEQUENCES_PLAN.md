@@ -1,5 +1,84 @@
 # G01 — 마하라카 워터팡 원본 Camera·맵 발판 편집 등록
 
+## G05 — 아레나 입장·카운트다운·제품 컷신과 배우 유지
+
+전체 구현 전문: [G05 코드 부록](2026-09-28_MAHARAKA_WATERPANG_ENTRY_CODE.md).
+추가 조사에서 기본 navigation이 전 구역 20.48m인 것을 확인했다. 기존 무대 18타일과 중앙 원판,
+상단 통 2개의 정확한 placement/model geometry만 WaterpangEntry 0.25m region으로 굽는다.
+나머지는 기존 평면을 보존하며 dynamic collapse/낙사나 섬 전체 bake를 이 작업에 추가하지 않는다.
+사용자 jump 목적지 Y를 고치지 않고, 다음 이동의 ground query가 실제 22.4m 무대에 머무르게 한다.
+Client의 기존 Camera sampler 한도와 동일한 512키를 수용하고 카메라/World actor는 같은 서버 시계를 쓴다.
+MapTool 소유권을 넘기기 전에 제품 배우를 반환하며 닫은 뒤 예약의 현재 시각으로 재구성한다.
+NPC 준비 대기는 5초로 제한하고 실패 사유를 diagnostic에 남긴다.
+
+사용자가 저장한 jump1~3 위치와 jump1_1~3_1 도착점을 보존하여 출발점만 requiresInteract movePlayer로 활성화한다.
+별도 아레나 위 triggerBox는 기존 PLAY_SEQUENCE 경로를 사용한다. 서버가 도입15 stage instance의
+최초 진입만 받아 30Hz 기준 300tick 뒤 시작 시각을 확정한다. 기존 S2C_WORLD_SEQUENCE_PLAY의
+iStartTick/iServerTick으로 예약을 전달하고 늦은 입장에도 같은 예약을 전송한다. 빈 방에서만 초기화한다.
+카운트다운 중 플레이어가 나가더라도 방이 남아 있으면 예약은 유지한다. 재진입으로 타이머를 재시작하지 않는다.
+
+Client Level_Development의 마하라카 분기는 기존 replication queue를 소비한다.
+새 MaharakaWaterpangPresentation은 게시 CameraShots의 도입15와 연결된 WorldSequence를 읽고,
+기존 CValtanCinematicCameraController::Sample_Cue / CWorldSequencePlayer로만 재생한다.
+카메라만 종료하고 HOLD 배우/타워는 맵 퇴장까지 유지한다. G키 안내와 countdown 문구는
+기존 CInteractKeyPromptView / UILabelFont를 사용한다. UI가 서버 이동·시작을 판정하지 않는다.
+MapTool preview도 동일 배우 HOLD 문서를 사용하되 명시적인 Stop은 기존 rollback 의미를 유지한다.
+previewNpcPlacementId의 제한을 STOP/HOLD로 확장하고 서버 승인 Level owner도 resolver를 제공한다.
+
+새 Client C++ 파일은 Public/Private에 각각 추가하고 Client.vcxproj 및 filters에 등록한다.
+검증은 출발/도착 좌표 보존, 반복 진입 latch/늦은 입장, HOLD/Stop 소유권, 잘못된 문서 실패,
+World/Map publisher와 Product Debug 빌드다. 화면과 실제 G키·countdown 재생은 사용자 확인이다.
+
+## G04 — 평상시 배치 보존 / 경기 도입 배치 분리
+
+G03의 카메라 retarget은 평상시 섬57009의 배우 위치를 경기57011의 카메라에 맞춘 잘못된 기준이었다.
+도입15 두 cameraTrack은 G03 이전 원본 키로 복귀한다. NPC와 타워는 해당 컷신의 WorldSequence에서만 이동한다.
+permanent Gameplay.world.json과 mapplacements, 팀 렌더링 옵션은 수정하지 않는다.
+
+`Tools/MapPipeline/stage_maharaka_waterpang_match_layout.py`의 prepare는 최신 저작 문서를 읽고,
+57011 DeployData actor22/NPC570941의 정확한 XZ/yaw와 설치된 모델의 smile 면을 확인한다.
+현재 head/support 접촉을 유지한 rigid group 이동을 계산하며, 높이는 원본 Z라고 주장하지 않는
+PROJECT_FRAME_CONTACT_ADAPTER다. Prop570987의 모델 연결은 미확정이며 기존 SCENE04A export612
+ITR_02453 원본 타워를 사용자 요청대로 함께 옮긴다. main은 before/candidate/report를 보존하고
+명시적인 --apply에서 source freshness와 CAS를 검사한 뒤 두 저작 문서만 교체한다.
+
+새 tower instance는 기존 MAP_PLACEMENT baseline-relative TRS 경로를 소비한다.
+Stop_Instance의 기존 baseline 복원과 NPC preview suppression 해제로 평상시 상태로 돌아간다.
+새 C++ 및 project/filter 등록은 없으며 G03 최종 Debug EXE를 사용한다.
+서버의 전체 경기 시작/종료 상태머신 구현을 완료한 변경은 아니다. 우선 MapTool 경기 도입 편집 재생이다.
+
+전체 코드와 실제 JSON 변경 블록: [G04 코드 부록](2026-09-28_MAHARAKA_WATERPANG_MATCH_CODE.md).
+후보 보존/상대좌표 검사 → CameraShots/WorldSequences 정본 publisher 검증·게시·Check → 사용자 Play/Stop 순서다.
+
+## G03 — 2026-09-28 사용자 영상 대조 수정
+
+기존 G01/G02 기록을 지우지 않고 도입15의 카메라와 배우 표현을 확장한다.
+원본 카메라 키의 초점은 현재 배치된 큰 모코모코와 일치하지 않는다. 외부 rebase의 원인은
+확인되지 않았으므로 좌표 변환 버그로 단정하지 않는다. 카메라 -45도 heading, 실제 얼굴 위치
+기준 close-up 및 작은 모코모코 rise/hold 배치는 PROJECT_VIDEO_RETARGET으로 분리한다.
+원본 Matinee43 / group205 / track286 / MIC mn_ismp_00-2_mi의 opacity_intensity 전환은
+6501ms=0, 6602ms=1, 9502ms=0으로 기존 materialTracks에서 재생한다.
+
+### 소유권과 적용 순서
+
+1. `retarget_maharaka_waterpang_intro.py`가 원본 SHA와 설치 모델 clip을 검사하고 out 후보를 만든다.
+2. `WorldSequenceDocument`의 binding에 `previewNpcPlacementId`를 추가한다. Save/Load/equality/
+   validation/publisher를 함께 확장한다. 모델 import는 NPC와 같은 .01 및 yaw-90도다.
+3. `ClientReplication::Find_NpcPlacement`는 정확한 stable ID의 기존 NPC만 조회한다.
+   `Level_Development`와 `MapTool_Area`가 이 조회를 기존 WorldSequence TARGET_SET에 전달한다.
+   `MapTool_Cutscenes::Build_CutsceneTargets`도 이 callback을 전달한다. Camera Play는 별도
+   TARGET_SET을 구성하므로 World panel 연결만으로 이 소비자를 연결한 것으로 간주하지 않는다.
+4. `WorldSequencePlayer_Objects::Apply_Objects`는 성공적으로 보이는 clone에만 NPC render
+   suppression 토큰을 둔다. Release_Objects와 매 샘플 hide에서 토큰을 해제한다.
+5. 후보 publisher 검증 및 Debug Product 증분 빌드 후 저장 승인을 확인한다. 승인 시 최신 파일을
+   다시 읽고 stable ID/변경 field 단위로 병합한다. 같은 field 충돌은 거부하고 CAS/backup을 유지한다.
+6. WorldSequences와 CameraShots를 정본 publisher로 게시한다. 사용자 직접 Play/seek/Stop으로
+   얼굴 초점·표정·상승·복귀를 확인한다. 영상 fidelity는 자동 PASS로 처리하지 않는다.
+
+새 C++ 파일과 project/filter 등록은 없다. 기존 모델·재질·클립만 사용하며 전역 rendering 옵션,
+NPC gameplay 위치, intro20, 기존 발판 동작과 Foley는 유지한다. G03 전체 코드 스냅샷은
+같은 폴더의 `2026-09-28_MAHARAKA_WATERPANG_VIDEO_CODE.md`에 기계적으로 보존한다.
+
 ## 현재 반영 경계
 
 사용자가 제공한 2021 워터팡 영상과 설치본 SCENE03B를 대조한다.

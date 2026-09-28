@@ -1,8 +1,11 @@
 #include "ServerGameplayContractTests_Runner.h"
 #include "ServerGameplayContractTests.h"
+#include "ClientSession.h"
 #include "EncounterPropRuntime.h"
 #include "Gameplay/CombatCollisionContract.h"
 #include "GameplayCatalog.h"
+#include "Network/PacketReader.h"
+#include "Network/PacketWriter.h"
 #include "GameRoom.h"
 #include "PlayerSkillSystem.h"
 #include "ServerNavigation.h"
@@ -21,6 +24,7 @@
 #include <cstdlib>
 #include <filesystem>
 #include <fstream>
+#include <iomanip>
 #include <iostream>
 #include <iterator>
 #include <limits>
@@ -282,6 +286,436 @@ int LostArk::Server::CServerGameplayContractRunner::Run_ValtanArenaSupport()
 		!thrown.bArenaEjectionActive && thrown.fPositionX > wall.fPositionX + 2.f &&
 		thrown.iFallDeathTick > thrown.iActionStartTick,
 		"Rear-grab ARENA_EJECTION still crosses the wall and ends in the existing finite falling state");
+
+	{
+		// Keep Bahuntur's existing grant and mitigation while adding the wipe verdict text.
+		const CGameplayCatalog& catalog = room.m_GameplayCatalog.Active();
+		const auto* guard = EstherStrike::Find_Guard(ESTHER_ID::BAHUNTUR);
+		tests.Require(guard && guard->iGrantTimeMs == 4000u && guard->iDurationMs == 30000u &&
+			guard->fRadiusM == 7.f && guard->fOffsetForwardM == 4.2f && guard->iDamageTakenPercent == -50,
+			"Bahuntur retains the four-second, seven-metre, thirty-second protection contract");
+		if (!guard) return 1;
+		constexpr std::uint32_t grantTick = 1001u;
+		const std::uint32_t guardEnd = grantTick + 900u;
+		SERVER_PLAYER seed = playerAt(firstPlayer, core);
+		seed.iCurrentHp = seed.iMaximumHp = 100u;
+		room.m_Players.clear();
+		room.m_Players.emplace(firstPlayer, seed);
+		SERVER_PLAYER edge = seed;
+		edge.iPlayerId += 1u; edge.iNetEntityId += 1u;
+		edge.fPositionX = core.x + guard->fOffsetForwardM + guard->fRadiusM - .01f;
+		room.m_Players.emplace(edge.iPlayerId, edge);
+		std::array<PLAYER_ID, 4u> partyIds{firstPlayer, edge.iPlayerId, firstPlayer + 10u, firstPlayer + 11u};
+		for (size_t index = 2u; index < partyIds.size(); ++index)
+		{
+			SERVER_PLAYER member = seed;
+			member.iPlayerId = partyIds[index]; member.iNetEntityId += static_cast<NET_ENTITY_ID>(10u + index);
+			member.fPositionX += index == 2u ? 2.f : -2.f;
+			room.m_Players.emplace(member.iPlayerId, member);
+		}
+		SERVER_PLAYER outside = edge;
+		outside.iPlayerId += 1u; outside.iNetEntityId += 1u; outside.fPositionX += .02f;
+		room.m_Players.emplace(outside.iPlayerId, outside);
+		SERVER_PLAYER dead = seed;
+		dead.iPlayerId += 3u; dead.iNetEntityId += 3u;
+		dead.iCurrentHp = 0u; dead.eAction = PLAYER_ACTION_STATE::DEAD;
+		room.m_Players.emplace(dead.iPlayerId, dead);
+		SERVER_WORLD_ENTITY summon{};
+		summon.eEstherId = ESTHER_ID::BAHUNTUR;
+		summon.fPositionX = core.x; summon.fPositionZ = core.z; summon.fYawDegrees = 90.f;
+		summon.fActionElapsedSeconds = 3.999f;
+		room.Apply_EstherStrikeHits(summon, grantTick - 1u);
+		tests.Require(!summon.bEstherSupportApplied && !room.m_Players.at(firstPlayer).iEstherGuardEndTick,
+			"Bahuntur grants no protection before the actual four-second strike point");
+		summon.fActionElapsedSeconds = 4.f;
+		room.Apply_EstherStrikeHits(summon, grantTick);
+		auto& guarded = room.m_Players.at(firstPlayer);
+		tests.Require(summon.bEstherSupportApplied && guarded.iEstherGuardEndTick == guardEnd &&
+			guarded.iEstherGuardDamageTakenPercent == -50 && !guarded.iInvulnerableEndTick &&
+			std::all_of(partyIds.begin(), partyIds.end(), [&](const auto id) {
+				return room.m_Players.at(id).iEstherGuardEndTick == guardEnd; }) &&
+			!room.m_Players.at(outside.iPlayerId).iEstherGuardEndTick &&
+			!room.m_Players.at(dead.iPlayerId).iEstherGuardEndTick,
+			"Bahuntur grants thirty seconds to all four living party members inside the forward-offset circle");
+		room.Apply_EstherStrikeHits(summon, grantTick + 1u);
+		tests.Require(guarded.iEstherGuardEndTick == guardEnd,
+			"Later summon ticks never extend the one-time Bahuntur grant");
+
+		std::vector<DAMAGE_EVENT> events;
+		SERVER_WORLD_TO_PLAYER_HIT hit{};
+		hit.iRawDamage = 20u; hit.bIgnoreDefense = true; hit.bIgnoreCounter = true;
+		hit.iServerTick = grantTick + 2u;
+		hit.fSourceX = guarded.fPositionX - 1.f; hit.fSourceZ = guarded.fPositionZ;
+		hit.fPushRangeM = 2.f; hit.iPushMs = 250u; hit.bKnockdown = true; hit.iDownMs = 1000u;
+		tests.Require(CServerCombatHitRuntime::Apply_WorldToPlayer(guarded, hit, catalog, events) == SERVER_COMBAT_HIT_RESULT::LANDED &&
+			guarded.iCurrentHp == 90u && events.size() == 1u && events.front().iAmount == 10u &&
+			guarded.eAction == PLAYER_ACTION_STATE::NONE && guarded.fKnockbackRemainingSeconds == 0.f &&
+			!guarded.iInvulnerabilityZoneContactTick && !guarded.iInvulnerabilityZonePulseTick,
+			"Bahuntur keeps fifty-percent ordinary damage and hit-reaction immunity without false invulnerable text");
+		events.clear();
+		guarded.iShield = 50u;
+		hit.iServerTick += 1u; hit.bEstherGuardBlockable = true;
+		tests.Require(CServerCombatHitRuntime::Apply_WorldToPlayer(guarded, hit, catalog, events) == SERVER_COMBAT_HIT_RESULT::ABSORBED &&
+			guarded.iCurrentHp == 90u && guarded.iShield == 50u && events.empty() &&
+			guarded.iInvulnerabilityZoneContactTick == hit.iServerTick && guarded.iInvulnerabilityZonePulseTick == hit.iServerTick,
+			"A Bahuntur-blockable wipe preserves HP and shield and emits the existing invulnerable text pulse");
+		guarded.iInvulnerableEndTick = guardEnd + 100u;
+		hit.iServerTick += 1u;
+		tests.Require(CServerCombatHitRuntime::Apply_WorldToPlayer(guarded, hit, catalog, events) == SERVER_COMBAT_HIT_RESULT::ABSORBED &&
+			guarded.iInvulnerabilityZoneContactTick == hit.iServerTick && guarded.iInvulnerabilityZonePulseTick == hit.iServerTick &&
+			guarded.iInvulnerableEndTick == guardEnd + 100u && events.empty(),
+			"Overlapping ordinary invulnerability cannot hide or shorten Bahuntur's wipe verdict text");
+		SERVER_PLAYER expired = guarded;
+		expired.iInvulnerableEndTick = 0u; expired.iShield = 0u;
+		hit.iServerTick = guardEnd;
+		const auto previousPulse = expired.iInvulnerabilityZonePulseTick;
+		tests.Require(CServerCombatHitRuntime::Apply_WorldToPlayer(expired, hit, catalog, events) == SERVER_COMBAT_HIT_RESULT::LANDED &&
+			expired.iCurrentHp == 70u && expired.iInvulnerabilityZonePulseTick == previousPulse &&
+			expired.iInvulnerabilityZoneContactTick != guardEnd,
+			"The exact thirty-second expiry restores full damage and emits no new invulnerable text");
+		events.clear();
+		SERVER_PLAYER forcedWipe = guarded;
+		hit.iServerTick = guardEnd - 1u; hit.bEncounterWipe = true;
+		const auto wipePreviousPulse = forcedWipe.iInvulnerabilityZonePulseTick;
+		tests.Require(CServerCombatHitRuntime::Apply_WorldToPlayer(forcedWipe, hit, catalog, events) == SERVER_COMBAT_HIT_RESULT::KILLED &&
+			!forcedWipe.iCurrentHp && !forcedWipe.iShield && !forcedWipe.iEstherGuardEndTick &&
+			!forcedWipe.iInvulnerableEndTick && forcedWipe.iInvulnerabilityZonePulseTick == wipePreviousPulse,
+			"A forced encounter-failure wipe still bypasses Bahuntur and ordinary invulnerability without false protection text");
+
+		DAMAGE_EVENT bossInvincibleEvent{};
+		bool checkedBossInvulnerability = false;
+		// Run the published six-direction pattern so its real damage-profile mapping owns the verdict.
+		const auto* placement = room.Find_Placement("boss.valtan.center");
+		SERVER_WORLD_ENTITY floorBoss{};
+		const bool floorReady = placement && room.Build_WorldEntity(*placement, 29950u, floorBoss);
+		tests.Require(floorReady, "Load the actual Valtan boss for Bahuntur's six-direction wipe verdict");
+		if (floorReady)
+		{
+			std::map<PLAYER_ID, SERVER_PLAYER> targets;
+			SERVER_PLAYER protectedTarget = seed;
+			protectedTarget.iEstherGuardEndTick = guardEnd;
+			protectedTarget.iEstherGuardDamageTakenPercent = -50;
+			protectedTarget.fPositionX = floorBoss.fPositionX + 20.f;
+			protectedTarget.fPositionZ = floorBoss.fPositionZ;
+			std::array<NET_ENTITY_ID, 4u> protectedIds{};
+			for (size_t index = 0u; index < partyIds.size(); ++index)
+			{
+				auto member = protectedTarget;
+				member.iPlayerId = partyIds[index]; member.iNetEntityId += static_cast<NET_ENTITY_ID>(index);
+				protectedIds[index] = member.iNetEntityId;
+				targets.emplace(member.iPlayerId, member);
+			}
+			SERVER_PLAYER unprotectedTarget = protectedTarget;
+			unprotectedTarget.iPlayerId += 100u; unprotectedTarget.iNetEntityId += 100u;
+			unprotectedTarget.iEstherGuardEndTick = 0u; unprotectedTarget.iEstherGuardDamageTakenPercent = 0;
+			targets.emplace(unprotectedTarget.iPlayerId, unprotectedTarget);
+			floorBoss.bIntroPatternConsumed = true;
+			floorBoss.bAutomaticPatternSequenceAuditionOverride = true;
+			floorBoss.eAction = SERVER_ENTITY_ACTION::IDLE;
+			floorBoss.PendingPatternIds = { "VALTAN_FLOOR_WIPE_130" };
+			floorBoss.TriggeredPatternIds.push_back("VALTAN_FLOOR_WIPE_130");
+			CValtanBrain floorBrain;
+			bool observedWipe = false;
+			for (std::uint32_t tick = grantTick + 10u; tick < grantTick + 250u && !observedWipe; ++tick)
+			{
+				events.clear();
+				floorBrain.Update(floorBoss, targets, catalog, room.m_ServerNavigation, delta, tick, {}, events);
+				if (!checkedBossInvulnerability && floorBoss.strPatternId == "VALTAN_FLOOR_WIPE_130")
+				{
+					const auto hp = floorBoss.iCurrentHp;
+					const auto armor = floorBoss.ArmorPlates;
+					const auto combat = floorBoss.BossCombat;
+					SERVER_PLAYER_TO_WORLD_HIT attack{};
+					attack.iSourcePlayerId = firstPlayer; attack.iSkillId = 34010u;
+					attack.iRawDamage = 1000u; attack.iStaggerDamage = 50u; attack.iPartDamage = 20u;
+					attack.iCounterPower = 50u; attack.bCounterFromPrimarySlot = true; attack.iServerTick = tick;
+					std::vector<DAMAGE_EVENT> blockedEvents;
+					const auto verdict = CServerCombatHitRuntime::Apply_PlayerToWorld(floorBoss, attack, blockedEvents);
+					checkedBossInvulnerability = floorBoss.bPatternInvulnerable &&
+						verdict == SERVER_COMBAT_HIT_RESULT::ABSORBED && floorBoss.iCurrentHp == hp &&
+						floorBoss.MvpLedger.empty() && floorBoss.BossCombat.iShieldCurrent == combat.iShieldCurrent &&
+						floorBoss.BossCombat.iStaggerCurrent == combat.iStaggerCurrent &&
+						floorBoss.BossCombat.iStateRevision == combat.iStateRevision &&
+						std::equal(armor.begin(), armor.end(), floorBoss.ArmorPlates.begin(), floorBoss.ArmorPlates.end(),
+							[](const auto& before, const auto& after) { return before.iRemainingDurability == after.iRemainingDurability; }) &&
+						std::equal(combat.Parts.begin(), combat.Parts.end(), floorBoss.BossCombat.Parts.begin(), floorBoss.BossCombat.Parts.end(),
+							[](const auto& before, const auto& after) { return before.iCurrentDurability == after.iCurrentDurability; }) &&
+						blockedEvents.size() == 1u &&
+						blockedEvents.front().eHitFlag == DAMAGE_HIT_FLAG::INVINCIBLE && !blockedEvents.front().iAmount &&
+						!blockedEvents.front().iStaggerAmount && !blockedEvents.front().isCounterSuccess && !blockedEvents.front().isStaggerSuccess;
+					if (checkedBossInvulnerability) bossInvincibleEvent = blockedEvents.front();
+					tests.Require(checkedBossInvulnerability,
+						"The published 130-bar pattern blocks attacks without HP or MVP changes and emits the Server's zero-damage INVINCIBLE verdict");
+				}
+				if (targets.at(protectedTarget.iPlayerId).iInvulnerabilityZonePulseTick != tick) continue;
+				observedWipe = true;
+				tests.Require(floorBoss.strPatternId == "VALTAN_FLOOR_WIPE_130" && floorBoss.strPatternStageId == "SECOND_SMASH" &&
+					floorBoss.strDamageProfileId == "damage.valtan.omnidirectional-wipe-130" &&
+					std::all_of(partyIds.begin(), partyIds.end(), [&](const auto id) {
+						return targets.at(id).iCurrentHp == 100u && targets.at(id).iInvulnerabilityZonePulseTick == tick; }) &&
+					targets.at(protectedTarget.iPlayerId).iInvulnerabilityZoneContactTick == tick &&
+					targets.at(unprotectedTarget.iPlayerId).iCurrentHp < 100u &&
+					!targets.at(unprotectedTarget.iPlayerId).iInvulnerabilityZonePulseTick &&
+					std::none_of(events.begin(), events.end(), [&](const auto& event) {
+						return std::find(protectedIds.begin(), protectedIds.end(), event.iTargetNetEntityId) != protectedIds.end(); }),
+					"The published delayed SECOND_SMASH damages the control player and gives all four Bahuntur survivors invulnerable text without damage");
+			}
+			tests.Require(observedWipe, "The actual six-direction pattern reaches its Bahuntur-blockable wipe");
+		}
+
+		// The live send queue replaces pending snapshots; the occurrence must survive that replacement.
+		room.m_WorldEntities.clear();
+		room.m_TickDamageEvents.clear();
+		room.m_TickBossCombatEvents.clear();
+		room.m_Players.clear();
+		constexpr SESSION_ID snapshotSessionId = 29990u;
+		constexpr std::uint32_t pulseTick = 2000u;
+		SERVER_PLAYER snapshotSeed = seed;
+		snapshotSeed.iSessionId = snapshotSessionId;
+		snapshotSeed.iEstherGuardEndTick = pulseTick + 1u;
+		snapshotSeed.iEstherGuardDamageTakenPercent = -50;
+		SERVER_WORLD_TO_PLAYER_HIT blocked{};
+		blocked.iServerTick = pulseTick; blocked.iRawDamage = 100u; blocked.bEstherGuardBlockable = true;
+		events.clear();
+		const auto blockedResult = CServerCombatHitRuntime::Apply_WorldToPlayer(snapshotSeed, blocked, catalog, events);
+		room.m_Players.emplace(firstPlayer, snapshotSeed);
+		auto session = std::make_shared<CClientSession>(snapshotSessionId, INVALID_SOCKET,
+			CClientSession::FRAME_HANDLER{}, CClientSession::CLOSED_HANDLER{});
+		session->m_isSendRunning.store(true);
+		room.m_Sessions.emplace(snapshotSessionId, session);
+		room.m_PlayerIdBySessionId.emplace(snapshotSessionId, firstPlayer);
+		const auto snapshotHasPulse = [&](const std::uint32_t tick, const std::uint32_t expectedPulse)
+		{
+			room.m_iServerTick = tick;
+			room.Broadcast_WorldSnapshot();
+			if (session->m_OutboundFrames.size() != 1u ||
+				session->m_OutboundFrames.front().ePacketType != PACKET_TYPE::S2C_WORLD_SNAPSHOT)
+				return false;
+			const auto& bytes = session->m_OutboundFrames.front().Bytes;
+			if (bytes.size() <= PACKET_HEADER_BYTES) return false;
+			CPacketReader reader{ std::span<const std::uint8_t>(bytes).subspan(PACKET_HEADER_BYTES) };
+			S2C_WORLD_SNAPSHOT snapshot{};
+			return Read_Message(reader, snapshot) && !reader.Get_RemainingSize() && snapshot.iServerTick == tick &&
+				snapshot.eWorldId == room.m_eWorldId && snapshot.Players.size() == 1u &&
+				snapshot.Players.front().iNetEntityId == snapshotSeed.iNetEntityId &&
+				snapshot.Players.front().iInvulnerabilityZonePulseTick == expectedPulse;
+		};
+		tests.Require(blockedResult == SERVER_COMBAT_HIT_RESULT::ABSORBED && snapshotHasPulse(pulseTick, pulseTick),
+			"A blocked Bahuntur hit reaches the real world snapshot with its original occurrence tick");
+		if (checkedBossInvulnerability && !session->m_OutboundFrames.empty())
+		{
+			const auto& bytes = session->m_OutboundFrames.front().Bytes;
+			CPacketReader sourceReader{std::span<const std::uint8_t>(bytes).subspan(PACKET_HEADER_BYTES)};
+			S2C_WORLD_SNAPSHOT wire{};
+			const bool read = Read_Message(sourceReader, wire);
+			wire.DamageEvents = {bossInvincibleEvent};
+			CPacketWriter writer;
+			const bool written = read && Write_Message(writer, wire);
+			CPacketReader reader{writer.Get_Buffer()};
+			S2C_WORLD_SNAPSHOT decoded{};
+			tests.Require(written && Read_Message(reader, decoded) && !reader.Get_RemainingSize() &&
+				decoded.DamageEvents.size() == 1u && decoded.DamageEvents.front().eHitFlag == DAMAGE_HIT_FLAG::INVINCIBLE &&
+				!decoded.DamageEvents.front().iAmount,
+				"The zero-damage boss invulnerability verdict survives actual snapshot encode and decode");
+			bool rejectedContradictions = true;
+			for (int kind = 0; kind < 6; ++kind)
+			{
+				wire.DamageEvents = {bossInvincibleEvent};
+				auto& event = wire.DamageEvents.front();
+				if (kind == 0) event.iAmount = 1u;
+				if (kind == 1) event.iStaggerAmount = 1u;
+				if (kind == 2) event.isCounterSuccess = true;
+				if (kind == 3) event.isStaggerSuccess = true;
+				if (kind == 4) event.isOutgoing = false;
+				if (kind == 5) event.eHitFlag = DAMAGE_HIT_FLAG::NORMAL;
+				CPacketWriter rejected;
+				rejectedContradictions = !Write_Message(rejected, wire) && rejectedContradictions;
+			}
+			tests.Require(rejectedContradictions,
+				"Snapshot validation rejects nonzero, mechanic-credit, incoming, and untyped empty invulnerability verdicts");
+		}
+		tests.Require(snapshotHasPulse(pulseTick + 1u, pulseTick) && snapshotHasPulse(pulseTick + 29u, pulseTick) &&
+			session->Get_OutboundMetrics().iSnapshotCoalescedFrameCount == 2u &&
+			room.m_Players.at(firstPlayer).iEstherGuardEndTick == pulseTick + 1u,
+			"Latest-wins snapshot coalescing retains Bahuntur's same text occurrence for one second without extending protection");
+		tests.Require(snapshotHasPulse(pulseTick + 30u, 0u),
+			"The retained Bahuntur text occurrence expires at exactly thirty snapshot ticks");
+		auto& snapshotPlayer = room.m_Players.at(firstPlayer);
+		snapshotPlayer.iCurrentHp = 0u; snapshotPlayer.eAction = PLAYER_ACTION_STATE::DEAD;
+		snapshotPlayer.iActionStartTick = pulseTick + 1u;
+		tests.Require(snapshotHasPulse(pulseTick + 2u, 0u),
+			"A player who died after the block cannot retransmit its old invulnerable text occurrence");
+		snapshotPlayer = snapshotSeed;
+		snapshotPlayer.isCombatReady = false;
+		tests.Require(snapshotHasPulse(pulseTick + 2u, 0u),
+			"A player leaving combat readiness cannot retransmit its old invulnerable text occurrence");
+		snapshotPlayer = snapshotSeed;
+		room.m_eWorldId = WORLD_ID::KAKULSAYDON_ARENA;
+		tests.Require(snapshotHasPulse(pulseTick + 2u, 0u),
+			"The new Bahuntur retention window does not extend another world's one-tick protection pulse");
+		room.m_eWorldId = WORLD_ID::VALTAN_ARENA;
+		session->Request_Close();
+	}
+
+	{
+		auto orbStorage = std::make_unique<CGameRoom>(WORLD_ID::VALTAN_ARENA);
+		CGameRoom& orbRoom = *orbStorage;
+		tests.Require(orbRoom.Is_Ready() && !orbRoom.m_WorldPickups.empty(),
+			"World ether bootstrap resolves real destruction walls and navigable landing points");
+		if (orbRoom.Is_Ready() && !orbRoom.m_WorldPickups.empty())
+		{
+			const auto descriptor = orbRoom.m_WorldPickups.front().Descriptor;
+			const auto parserPath = std::filesystem::temp_directory_path() /
+				("lostark-world-pickups-" + std::to_string(GetCurrentProcessId()) + "-" +
+				 std::to_string(GetTickCount64()) + ".bootstrap");
+			const auto writePickupFile = [&](const int invalid)
+			{
+				std::ofstream output(parserPath, std::ios::binary | std::ios::trunc);
+				output << "LOSTARK_WORLD_PICKUPS 1 \"LV_LUT_HEARTRB_ED\" 30 " << (invalid == 3 ? 2 : 1) << '\n';
+				for (int row = 0; row < (invalid == 3 ? 2 : 1); ++row)
+					output << std::quoted(descriptor.strPlacementId) << ' ' << std::quoted(descriptor.strWallGroupId) <<
+						" 1 " << (invalid == 1 ? 0.f : 10.f) << " 2 1 0 2 " << (invalid == 2 ? 0u : 27u) <<
+						' ' << (invalid == 4 ? 0.0001f : 0.75f) << '\n';
+				if (invalid == 5) output << "unexpected trailing row\n";
+				return output.good();
+			};
+			std::vector<WORLD_PICKUP_DESCRIPTOR> parsedPickups;
+			tests.Require(writePickupFile(0) && Load_WorldPickupsFromFile(parserPath, parsedPickups, status) &&
+				parsedPickups.size() == 1u && parsedPickups.front().strPlacementId == descriptor.strPlacementId,
+				"World pickup bootstrap parser accepts the published quoted-ID format");
+			for (int invalid = 1; invalid <= 5; ++invalid)
+			{
+				tests.Require(writePickupFile(invalid) && !Load_WorldPickupsFromFile(parserPath, parsedPickups, status) &&
+					parsedPickups.size() == 1u && parsedPickups.front().fStartY == 10.f,
+					"Invalid drop height, duration, duplicate ID, radius or trailing row preserves prior pickup descriptors");
+			}
+			std::error_code removeError; std::filesystem::remove(parserPath, removeError);
+
+			const SERVER_NAV_POINT landing{descriptor.fLandingX, descriptor.fLandingY, descriptor.fLandingZ};
+			constexpr PLAYER_ID collectorId = 29801u, contenderId = 29802u;
+			orbRoom.m_Players.clear();
+			orbRoom.m_Players.emplace(collectorId, playerAt(collectorId, landing));
+			orbRoom.m_Players.emplace(contenderId, playerAt(contenderId, landing));
+			orbRoom.Update_WorldPickups(9u);
+			tests.Require(orbRoom.m_WorldPickups.front().Snapshot.eState == WORLD_PICKUP_STATE::WALL &&
+				!orbRoom.m_Players.at(collectorId).bRonaunGuard,
+				"A wall-mounted ether cannot be collected before its authoritative destruction commit");
+			const auto& graph = orbRoom.m_WorldDestructionBootstrap.Get_DescriptorGraph();
+			const WORLD_DESTRUCTION_BINDING_DESCRIPTOR* wallBinding = nullptr;
+			for (const auto& binding : graph.Bindings)
+			{
+				if (binding.eTriggerKind != WORLD_DESTRUCTION_TRIGGER_KIND::BOSS_IMPACT &&
+					binding.eTriggerKind != WORLD_DESTRUCTION_TRIGGER_KIND::COLLIDER_CONTACT) continue;
+				const auto mutation = std::find_if(graph.Mutations.begin(), graph.Mutations.end(),
+					[&](const auto& row) { return row.strMutationId == binding.strMutationId && row.strGroupId == descriptor.strWallGroupId; });
+				if (mutation != graph.Mutations.end()) { wallBinding = &binding; break; }
+			}
+			WORLD_DESTRUCTION_TRANSACTION wallTransaction{};
+			WORLD_DESTRUCTION_PREPARE_RESULT preparedWall = WORLD_DESTRUCTION_PREPARE_RESULT::REJECTED;
+			if (wallBinding)
+			{
+				WORLD_DESTRUCTION_ACTION_TUPLE action{};
+				action.strPatternId = wallBinding->strPatternId; action.strStageId = wallBinding->strStageId;
+				action.strActionId = wallBinding->strActionId; action.iStageIndex = wallBinding->iStageIndex;
+				preparedWall = wallBinding->eTriggerKind == WORLD_DESTRUCTION_TRIGGER_KIND::COLLIDER_CONTACT ?
+					orbRoom.m_WorldDestructionRuntime.Prepare_ContactTrigger(wallBinding->strImpactReceiverId, 991u, 1u, 10u, wallTransaction, status) :
+					orbRoom.m_WorldDestructionRuntime.Prepare_ImpactTrigger(action, wallBinding->strImpactReceiverId, 991u, 1u, 10u, wallTransaction, status);
+			}
+			const bool wallCommitted = preparedWall == WORLD_DESTRUCTION_PREPARE_RESULT::READY &&
+				orbRoom.Commit_WorldDestructionTransaction(wallTransaction, {}, 10u, status);
+			tests.Require(wallCommitted && orbRoom.m_WorldPickups.front().Snapshot.eState == WORLD_PICKUP_STATE::FALLING &&
+				orbRoom.m_WorldPickups.front().Snapshot.iStateStartTick == 10u,
+				"A real dash/contact destruction transaction releases only its wall's ether");
+			const std::uint32_t landingTick = 10u + descriptor.iFallDurationTicks;
+			orbRoom.Update_WorldPickups(landingTick - 1u);
+			tests.Require(orbRoom.m_WorldPickups.front().Snapshot.eState == WORLD_PICKUP_STATE::FALLING &&
+				!orbRoom.m_Players.at(collectorId).bRonaunGuard && !orbRoom.m_Players.at(contenderId).bRonaunGuard,
+				"An overlapping player cannot collect ether during its fall");
+			// Landing is a real collider query: a player above the orb must not collect it.
+			orbRoom.m_Players.at(collectorId).fPositionY += 100.f;
+			orbRoom.m_Players.at(contenderId).isCombatReady = false;
+			orbRoom.Update_WorldPickups(landingTick);
+			tests.Require(orbRoom.m_WorldPickups.front().Snapshot.eState == WORLD_PICKUP_STATE::GROUNDED &&
+				!orbRoom.m_Players.at(collectorId).bRonaunGuard,
+				"Grounded ether rejects vertical separation and a player who is not combat ready");
+			orbRoom.m_Players.at(collectorId).fPositionY = landing.y;
+			orbRoom.m_Players.at(contenderId).isCombatReady = true;
+			orbRoom.Update_WorldPickups(landingTick + 1u);
+			orbRoom.Update_WorldPickups(landingTick + 2u);
+			auto& collector = orbRoom.m_Players.at(collectorId);
+			tests.Require(collector.bRonaunGuard && collector.iRonaunGrantTick == landingTick + 1u &&
+				!orbRoom.m_Players.at(contenderId).bRonaunGuard &&
+				orbRoom.m_WorldPickups.front().Snapshot.eState == WORLD_PICKUP_STATE::COLLECTED,
+				"Simultaneous player collider contact commits exactly one ether grant and never re-grants the removed orb");
+			std::vector<DAMAGE_EVENT> etherEvents;
+			SERVER_WORLD_TO_PLAYER_HIT ordinary{};
+			ordinary.iRawDamage = 100u; ordinary.bIgnoreDefense = true; ordinary.iServerTick = landingTick + 3u;
+			const auto ordinaryResult = CServerCombatHitRuntime::Apply_WorldToPlayer(collector, ordinary, orbRoom.m_GameplayCatalog, etherEvents);
+			tests.Require(ordinaryResult == SERVER_COMBAT_HIT_RESULT::LANDED && collector.iCurrentHp == 4900u && collector.bRonaunGuard,
+				"Ronaun guard neither absorbs nor consumes itself on ordinary damage");
+			SERVER_WORLD_TO_PLAYER_HIT wipe = ordinary;
+			wipe.bEstherGuardBlockable = true; wipe.iRawDamage = 10000u; wipe.iServerTick += 1u;
+			const auto blocked = CServerCombatHitRuntime::Apply_WorldToPlayer(collector, wipe, orbRoom.m_GameplayCatalog, etherEvents);
+			tests.Require(blocked == SERVER_COMBAT_HIT_RESULT::ABSORBED && collector.iCurrentHp == 4900u &&
+				!collector.bRonaunGuard && collector.iRonaunGrantTick == landingTick + 1u &&
+				collector.iInvulnerabilityZonePulseTick == wipe.iServerTick,
+				"Ronaun spends its one wipe guard and emits the existing blue invulnerability occurrence");
+			constexpr SESSION_ID etherSessionId = 29890u;
+			collector.iSessionId = etherSessionId;
+			auto etherSession = std::make_shared<CClientSession>(etherSessionId, INVALID_SOCKET,
+				CClientSession::FRAME_HANDLER{}, CClientSession::CLOSED_HANDLER{});
+			etherSession->m_isSendRunning.store(true);
+			orbRoom.m_Sessions.emplace(etherSessionId, etherSession);
+			orbRoom.m_PlayerIdBySessionId.emplace(etherSessionId, collectorId);
+			orbRoom.m_iServerTick = wipe.iServerTick;
+			orbRoom.Broadcast_WorldSnapshot();
+			++orbRoom.m_iServerTick; orbRoom.Broadcast_WorldSnapshot();
+			bool latestPickupPreserved = false;
+			if (etherSession->m_OutboundFrames.size() == 1u)
+			{
+				const auto& bytes = etherSession->m_OutboundFrames.front().Bytes;
+				if (bytes.size() > PACKET_HEADER_BYTES)
+				{
+					CPacketReader reader{std::span<const std::uint8_t>(bytes).subspan(PACKET_HEADER_BYTES)};
+					S2C_WORLD_SNAPSHOT decoded{};
+					latestPickupPreserved = Read_Message(reader, decoded) && !decoded.WorldPickups.empty() &&
+						decoded.WorldPickups.front().eState == WORLD_PICKUP_STATE::COLLECTED &&
+						std::any_of(decoded.Players.begin(), decoded.Players.end(), [&](const auto& row)
+						{ return row.iNetEntityId == collector.iNetEntityId && !row.bRonaunGuard &&
+							row.iRonaunGrantTick == landingTick + 1u && row.iInvulnerabilityZonePulseTick == wipe.iServerTick; });
+				}
+			}
+			tests.Require(latestPickupPreserved,
+				"Coalesced actual World snapshots preserve ether removal, acquisition text and consumed-guard blue text");
+			etherSession->Request_Close(); orbRoom.m_Sessions.clear();
+			wipe.iServerTick += 1u;
+			tests.Require(CServerCombatHitRuntime::Apply_WorldToPlayer(collector, wipe, orbRoom.m_GameplayCatalog, etherEvents) ==
+				SERVER_COMBAT_HIT_RESULT::KILLED && collector.iRonaunGrantTick == 0u,
+				"A second wipe kills the spent guard holder and clears its acquisition occurrence");
+			collector = playerAt(collectorId, landing); collector.bRonaunGuard = true; collector.iRonaunGrantTick = landingTick;
+			wipe.bEncounterWipe = true;
+			tests.Require(CServerCombatHitRuntime::Apply_WorldToPlayer(collector, wipe, orbRoom.m_GameplayCatalog, etherEvents) ==
+				SERVER_COMBAT_HIT_RESULT::KILLED && !collector.bRonaunGuard,
+				"Ronaun cannot protect against a forced encounter failure verdict");
+			WORLD_DESTRUCTION_ACTION_TUPLE outerAction{};
+			outerAction.strPatternId = "VALTAN_ARENA_BREAK_109"; outerAction.strStageId = "IMPACT";
+			outerAction.strActionId = "valtan.mechanic.arena-break-109.impact"; outerAction.iStageIndex = 2u;
+			WORLD_DESTRUCTION_TRANSACTION outerTransaction{};
+			const bool outerCommitted = orbRoom.m_WorldDestructionRuntime.Prepare_StageTrigger(outerAction, 991u, 2u,
+				landingTick + 20u, outerTransaction, status) == WORLD_DESTRUCTION_PREPARE_RESULT::READY &&
+				orbRoom.Commit_WorldDestructionTransaction(outerTransaction, {}, landingTick + 20u, status);
+			tests.Require(outerCommitted && std::all_of(orbRoom.m_WorldPickups.begin(), orbRoom.m_WorldPickups.end(),
+				[](const auto& row) { return row.Snapshot.eState == WORLD_PICKUP_STATE::COLLECTED || row.Snapshot.eState == WORLD_PICKUP_STATE::REMOVED; }),
+				"Actual 109 arena-break stage commit removes all remaining ether while ordinary dash only releases its own");
+			collector = playerAt(collectorId, landing); collector.bRonaunGuard = true; collector.iRonaunGrantTick = landingTick;
+			const bool reset = orbRoom.m_WorldDestructionRuntime.Reset(status, landingTick + 30u);
+			orbRoom.Update_WorldPickups(landingTick + 30u, false);
+			tests.Require(reset && !collector.bRonaunGuard && collector.iRonaunGrantTick == 0u &&
+				std::all_of(orbRoom.m_WorldPickups.begin(), orbRoom.m_WorldPickups.end(), [](const auto& row)
+				{ return row.Snapshot.eState == WORLD_PICKUP_STATE::WALL && row.Snapshot.fPositionY == row.Descriptor.fStartY; }),
+				"Encounter reset restores every ether to its authored wall pose and clears previous Ronaun guards");
+		}
+	}
 	std::cout << "Valtan arena support failures : " << tests.failures << '\n';
 	return tests.failures == 0 ? 0 : 1;
 }

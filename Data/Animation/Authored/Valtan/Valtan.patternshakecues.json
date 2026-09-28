@@ -1410,6 +1410,116 @@
       "repeatPolicy": "once",
       "startMs": 22,
       "shake": "dur=3;in=0;out=0.1;x=4,40;y=3,40;z=3,40;fov=0,0"
+    },
+    {
+      "bindingId": "cue.shake.valtan.mechanic.terrain-destruction-3.combo.step-23.notify.00",
+      "occurrenceId": "cue.shake.valtan.mechanic.terrain-destruction-3.combo.step-23.notify.00.occurrence.01",
+      "patternId": "VALTAN_TERRAIN_DESTRUCTION_3_OCLOCK",
+      "stageId": "COMBO_STEP_23",
+      "actionId": "valtan.mechanic.terrain-destruction-3.combo.step-23",
+      "clipOccurrenceId": "valtan.mechanic.terrain-destruction-3.combo.step-23.clip-01",
+      "repeatPolicy": "once",
+      "startMs": 22,
+      "shake": "dur=3;in=0;out=0.1;x=4,40;y=3,40;z=3,40;fov=0,0"
+    },
+    {
+      "bindingId": "cue.shake.valtan.mechanic.terrain-destruction-3.combo.step-18.notify.00",
+      "occurrenceId": "cue.shake.valtan.mechanic.terrain-destruction-3.combo.step-18.notify.00.occurrence.01",
+      "patternId": "VALTAN_TERRAIN_DESTRUCTION_3_OCLOCK",
+      "stageId": "COMBO_STEP_18",
+      "actionId": "valtan.mechanic.terrain-destruction-3.combo.step-18",
+      "clipOccurrenceId": "valtan.mechanic.terrain-destruction-3.combo.step-18.clip-01",
+      "repeatPolicy": "once",
+      "startMs": 595,
+      "shake": "dur=0.3;in=0;out=0;x=4,55;y=4,55;z=6,55;fov=0,0"
+    },
+    {
+      "bindingId": "cue.shake.valtan.mechanic.terrain-destruction-3.combo.step-17.notify.00",
+      "occurrenceId": "cue.shake.valtan.mechanic.terrain-destruction-3.combo.step-17.notify.00.occurrence.01",
+      "patternId": "VALTAN_TERRAIN_DESTRUCTION_3_OCLOCK",
+      "stageId": "COMBO_STEP_17",
+      "actionId": "valtan.mechanic.terrain-destruction-3.combo.step-17",
+      "clipOccurrenceId": "valtan.mechanic.terrain-destruction-3.combo.step-17.clip-01",
+      "repeatPolicy": "once",
+      "startMs": 738,
+      "shake": "dur=1;in=0;out=0.2;x=3,60;y=3,60;z=3,60;fov=0,0"
+    },
+    {
+      "bindingId": "cue.shake.valtan.mechanic.terrain-destruction-3.combo.step-10.notify.00",
+      "occurrenceId": "cue.shake.valtan.mechanic.terrain-destruction-3.combo.step-10.notify.00.occurrence.01",
+      "patternId": "VALTAN_TERRAIN_DESTRUCTION_3_OCLOCK",
+      "stageId": "COMBO_STEP_10",
+      "actionId": "valtan.mechanic.terrain-destruction-3.combo.step-10",
+      "clipOccurrenceId": "valtan.mechanic.terrain-destruction-3.combo.step-10.clip-01",
+      "repeatPolicy": "once",
+      "startMs": 0,
+      "shake": "dur=5;in=3;out=0;x=1.5,70;y=1.5,70;z=1.5,70;fov=0,0"
+    },
+    {
+      "bindingId": "cue.shake.valtan.mechanic.terrain-destruction-3.combo.step-11.notify.00",
+      "occurrenceId": "cue.shake.valtan.mechanic.terrain-destruction-3.combo.step-11.notify.00.occurrence.01",
+      "patternId": "VALTAN_TERRAIN_DESTRUCTION_3_OCLOCK",
+      "stageId": "COMBO_STEP_11",
+      "actionId": "valtan.mechanic.terrain-destruction-3.combo.step-11",
+      "clipOccurrenceId": "valtan.mechanic.terrain-destruction-3.combo.step-11.clip-01",
+      "repeatPolicy": "once",
+      "startMs": 396,
+      "shake": "dur=0.5;in=0;out=0.1;x=8,50;y=8,50;z=8,50;fov=0,0"
+    },
+    {
+      "bindingId": "cue.shake.valtan.mechanic.terrain-destruction-9.combo.step-23.notify.00",
+      "occurrenceId": "cue.shake.valtan.mechanic.terrain-destruction-9.combo.step-23.notify.00.occurrence.01",
+      "patternId": "VALTAN_TERRAIN_DESTRUCTION_9_OCLOCK",
+      "stageId": "COMBO_STEP_23",
+      "actionId": "valtan.mechanic.terrain-destruction-9.combo.step-23",
+      "clipOccurrenceId": "valtan.mechanic.terrain-destruction-9.combo.step-23.clip-01",
+      "repeatPolicy": "once",
+      "startMs": 22,
+      "shake": "dur=3;in=0;out=0.1;x=4,40;y=3,40;z=3,40;fov=0,0"
+    },
+    {
+      "bindingId": "cue.shake.valtan.mechanic.terrain-destruction-9.combo.step-18.notify.00",
+      "occurrenceId": "cue.shake.valtan.mechanic.terrain-destruction-9.combo.step-18.notify.00.occurrence.01",
+      "patternId": "VALTAN_TERRAIN_DESTRUCTION_9_OCLOCK",
+      "stageId": "COMBO_STEP_18",
+      "actionId": "valtan.mechanic.terrain-destruction-9.combo.step-18",
+      "clipOccurrenceId": "valtan.mechanic.terrain-destruction-9.combo.step-18.clip-01",
+      "repeatPolicy": "once",
+      "startMs": 595,
+      "shake": "dur=0.3;in=0;out=0;x=4,55;y=4,55;z=6,55;fov=0,0"
+    },
+    {
+      "bindingId": "cue.shake.valtan.mechanic.terrain-destruction-9.combo.step-17.notify.00",
+      "occurrenceId": "cue.shake.valtan.mechanic.terrain-destruction-9.combo.step-17.notify.00.occurrence.01",
+      "patternId": "VALTAN_TERRAIN_DESTRUCTION_9_OCLOCK",
+      "stageId": "COMBO_STEP_17",
+      "actionId": "valtan.mechanic.terrain-destruction-9.combo.step-17",
+      "clipOccurrenceId": "valtan.mechanic.terrain-destruction-9.combo.step-17.clip-01",
+      "repeatPolicy": "once",
+      "startMs": 738,
+      "shake": "dur=1;in=0;out=0.2;x=3,60;y=3,60;z=3,60;fov=0,0"
+    },
+    {
+      "bindingId": "cue.shake.valtan.mechanic.terrain-destruction-9.combo.step-10.notify.00",
+      "occurrenceId": "cue.shake.valtan.mechanic.terrain-destruction-9.combo.step-10.notify.00.occurrence.01",
+      "patternId": "VALTAN_TERRAIN_DESTRUCTION_9_OCLOCK",
+      "stageId": "COMBO_STEP_10",
+      "actionId": "valtan.mechanic.terrain-destruction-9.combo.step-10",
+      "clipOccurrenceId": "valtan.mechanic.terrain-destruction-9.combo.step-10.clip-01",
+      "repeatPolicy": "once",
+      "startMs": 0,
+      "shake": "dur=5;in=3;out=0;x=1.5,70;y=1.5,70;z=1.5,70;fov=0,0"
+    },
+    {
+      "bindingId": "cue.shake.valtan.mechanic.terrain-destruction-9.combo.step-11.notify.00",
+      "occurrenceId": "cue.shake.valtan.mechanic.terrain-destruction-9.combo.step-11.notify.00.occurrence.01",
+      "patternId": "VALTAN_TERRAIN_DESTRUCTION_9_OCLOCK",
+      "stageId": "COMBO_STEP_11",
+      "actionId": "valtan.mechanic.terrain-destruction-9.combo.step-11",
+      "clipOccurrenceId": "valtan.mechanic.terrain-destruction-9.combo.step-11.clip-01",
+      "repeatPolicy": "once",
+      "startMs": 396,
+      "shake": "dur=0.5;in=0;out=0.1;x=8,50;y=8,50;z=8,50;fov=0,0"
     }
   ]
 }

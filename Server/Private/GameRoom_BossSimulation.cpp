@@ -42,6 +42,15 @@ bool LostArk::Server::CGameRoom::Activate_ValtanGhostPhaseLoop(
 		m_strStatus = "Valtan ghost phase activation owner is invalid";
 		return false;
 	}
+	// Revival reuses the authored ghost health profile on the same primary
+	// entity. This runs only after the canonical respawn pattern completes.
+	const BOSS_RUNTIME_PROFILE* ghostProfile = catalog.Find_Boss("BOSS_VALTAN_GHOST");
+	if (nullptr == ghostProfile || 0u == ghostProfile->iMaximumHp ||
+		0u == ghostProfile->iMaximumHealthBars)
+	{
+		m_strStatus = "Valtan ghost revival health profile is unavailable";
+		return false;
+	}
 	const auto* patterns = catalog.Find_BossPatterns(boss.strEncounterId);
 	if (nullptr == patterns)
 	{
@@ -54,7 +63,7 @@ bool LostArk::Server::CGameRoom::Activate_ValtanGhostPhaseLoop(
 		{ return "VALTAN_GHOST_FINALE" == definition.strPatternId; });
 	if (patterns->end() == finale ||
 		BOSS_PATTERN_FINALE_KIND::GHOST_PORTAL_LOOP != finale->Finale.eKind ||
-		6u != finale->Finale.GhostPatternIds.size())
+		(4u != finale->Finale.GhostPatternIds.size() && 6u != finale->Finale.GhostPatternIds.size()))
 	{
 		m_strStatus = "Valtan ghost phase loop definition is unavailable";
 		return false;
@@ -66,6 +75,28 @@ bool LostArk::Server::CGameRoom::Activate_ValtanGhostPhaseLoop(
 	sequence.iExpectedStepCount =
 		static_cast<std::uint32_t>(finale->Finale.GhostPatternIds.size());
 	sequence.PatternIds = finale->Finale.GhostPatternIds;
+	const auto* automatic = catalog.Find_BossPatternSequence(boss.strEncounterId);
+	if (nullptr != automatic && BOSS_PATTERN_SEQUENCE_MODE::HEALTH_BAR_ROTATIONS == automatic->eMode)
+	{
+		const auto* rotation = catalog.Find_BossPatternRotation(
+			boss.strEncounterId, 3u, ghostProfile->iMaximumHealthBars);
+		if (nullptr == rotation || BOSS_PATTERN_ROTATION_SELECTION_MODE::ORDERED_LOOP != rotation->eSelectionMode ||
+			rotation->PatternIds.empty())
+		{
+			m_strStatus = "Valtan ghost revival has no ordered health rotation";
+			return false;
+		}
+		sequence.PatternIds = rotation->PatternIds;
+		sequence.iExpectedStepCount = static_cast<std::uint32_t>(sequence.PatternIds.size());
+	}
+	boss.iMaximumHp = ghostProfile->iMaximumHp;
+	boss.iAttackPower = ghostProfile->iAttackPower;
+	boss.fCollisionRadius = ghostProfile->fCollisionRadius;
+	boss.fEngageDistance = ghostProfile->fEngageDistance;
+	boss.fMoveSpeed = ghostProfile->fMoveSpeed;
+	boss.iCurrentHp = ghostProfile->iMaximumHp;
+	boss.iMaximumHealthBars = ghostProfile->iMaximumHealthBars;
+	boss.iLastEvaluatedHealthBar = ghostProfile->iMaximumHealthBars;
 	boss.GhostPhasePatternSequence = std::move(sequence);
 	boss.bGhostPhasePatternLoopActive = true;
 	boss.iGhostAuxiliaryOccurrenceSequence = 0u;
@@ -116,7 +147,7 @@ bool LostArk::Server::CGameRoom::Begin_ValtanGhostRelocation(
 	const BOSS_RUNTIME_PROFILE* profile = catalog.Find_Boss(boss.strArchetypeId);
 	if (nullptr == finale ||
 		BOSS_PATTERN_FINALE_KIND::GHOST_PORTAL_LOOP != finale->Finale.eKind ||
-		6u != finale->Finale.GhostPatternIds.size() || nullptr == profile ||
+		(4u != finale->Finale.GhostPatternIds.size() && 6u != finale->Finale.GhostPatternIds.size()) || nullptr == profile ||
 		!std::isfinite(finale->Finale.fSpawnHalfExtentsX) ||
 		!std::isfinite(finale->Finale.fSpawnHalfExtentsZ) ||
 		finale->Finale.fSpawnHalfExtentsX <= 0.f ||
@@ -276,7 +307,6 @@ bool LostArk::Server::CGameRoom::Update_ValtanGhostPortalScheduler(
 	const std::uint32_t serverTick)
 {
 	using namespace LostArk::Shared;
-	constexpr std::uint32_t PORTAL_OCCURRENCE_INTERVAL_MS = 7900u;
 	constexpr std::uint32_t PORTAL_RUNNER_START_DELAY_MS = 300u;
 	constexpr float TRIANGLE_CIRCUMRADIUS_M = 13.5f;
 	constexpr float TRIANGLE_EDGE_LENGTH_M = 23.3826859022f;
@@ -293,10 +323,23 @@ bool LostArk::Server::CGameRoom::Update_ValtanGhostPortalScheduler(
 	{
 		return true;
 	}
+	const auto* patterns = catalog.Find_BossPatterns(boss.strEncounterId);
+	if (nullptr == patterns)
+	{
+		m_strStatus = "Valtan ghost portal occurrence definition is unavailable";
+		return false;
+	}
+	const auto finale = std::find_if(patterns->begin(), patterns->end(),
+		[](const BOSS_PATTERN_DEFINITION& p) { return p.strPatternId == "VALTAN_GHOST_FINALE"; });
+	if (patterns->end() == finale || BOSS_PATTERN_FINALE_KIND::GHOST_PORTAL_LOOP != finale->Finale.eKind)
+	{
+		m_strStatus = "Valtan ghost portal interval owner is unavailable";
+		return false;
+	}
 	if (0u != boss.iGhostPortalLastSpawnTick &&
 		Elapsed_ServerTicksSkippingReservedZero(
 			boss.iGhostPortalLastSpawnTick, serverTick) <
-			DurationMillisecondsToServerTicks(PORTAL_OCCURRENCE_INTERVAL_MS))
+			DurationMillisecondsToServerTicks(finale->Finale.iPortalSpawnIntervalMs))
 	{
 		return true;
 	}
@@ -310,12 +353,6 @@ bool LostArk::Server::CGameRoom::Update_ValtanGhostPortalScheduler(
 		});
 	if (runnerStillActive)
 		return true;
-	const auto* patterns = catalog.Find_BossPatterns(boss.strEncounterId);
-	if (nullptr == patterns)
-	{
-		m_strStatus = "Valtan ghost portal occurrence definition is unavailable";
-		return false;
-	}
 	const auto portal = std::find_if(
 		patterns->begin(), patterns->end(),
 		[](const BOSS_PATTERN_DEFINITION& definition)
@@ -596,10 +633,13 @@ bool LostArk::Server::CGameRoom::Update_DependentBosses(const std::uint32_t serv
 		}
 		if (ownerLive)
 		{
-			/* Make despawn and replacement distinct fixed-tick edges. The due tick
-			belongs only to the auxiliary lane and never stalls the primary loop. */
+			/* The authored delay starts when the auxiliary disappears; its selected
+			skill still owns its lifetime. Keep at least one separate fixed-tick edge. */
+			const auto* finale = finaleOf(*owner);
+			const std::uint32_t replacementDelayTicks = (std::max)(1u,
+				DurationMillisecondsToServerTicks(finale->iAuxiliarySpawnIntervalMs));
 			owner->iGhostAuxiliaryNextSpawnTick =
-				Add_ServerTicksSkippingReservedZero(serverTick, 1u);
+				Add_ServerTicksSkippingReservedZero(serverTick, replacementDelayTicks);
 		}
 		m_CombatObjectRuntime.Cancel_Source(child->iNetEntityId);
 		if (!Broadcast_CombatObjectLifecycle())
@@ -3075,7 +3115,7 @@ void LostArk::Server::CGameRoom::Update_WorldEntities(
 				Find_Session(sessionId);
 			if (nullptr != session &&
 				!Send_InventorySnapshot(
-					session, 0u, playerIter->second.Inventory))
+					session, 0u, playerIter->second))
 			{
 				session->Request_Close();
 			}

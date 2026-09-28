@@ -682,6 +682,15 @@ bool_t CLevel_Loading::Advance_TargetEffectPreparation()
         m_strEffectPreparationStatus = "Waiting for Valtan source cinematic metadata.";
         return false;
     }
+    /* Maharaka Waterpang attack sequences reference large source documents;
+       they join this Loader worker instead of preparing on the match clock. */
+    if (LEVEL::MAHARAKA == m_eNextLevelID && !m_isEffectPreparationRegistered &&
+        !CWorldSequencePlayer::Try_CollectPreparedAreaV1EffectTargets(
+            ETOUI(LEVEL::MAHARAKA), "LV_OCN_EVENTIS_MHP", sourceCinematicEffects))
+    {
+        m_strEffectPreparationStatus = "Waiting for Maharaka world sequence metadata.";
+        return false;
+    }
 	if (!m_isEffectPreparationRegistered)
 	{
 		std::string Status;
@@ -943,6 +952,15 @@ bool_t CLevel_Loading::Advance_TargetEffectPreparation()
 				m_EffectPreparationTargets.end());
 		}
 		}
+		if (LEVEL::MAHARAKA == m_eNextLevelID && !sourceCinematicEffects.empty())
+		{
+			std::vector<std::string> preparedSequenceEffects;
+			if (!CEffectPresentationService::Queue_ProductTargets_Priority(
+					sourceCinematicEffects, preparedSequenceEffects, Status))
+				return IsolateFailure(Status);
+			m_EffectPreparationTargets.insert(m_EffectPreparationTargets.end(),
+				preparedSequenceEffects.begin(), preparedSequenceEffects.end());
+		}
 		/* Every published Area world Effect joins the existing loader worker.
 		   The runtime document is optional outside the Valtan contract; malformed
 		   published data is an isolated preparation failure, never source fallback. */
@@ -1114,14 +1132,30 @@ void CLevel_Loading::Recover_FromFailure(const HRESULT result)
 	}
 	CCharacterSelectionState::Cancel_PendingCreation();
 	Cancel_LobbyCommand("target level loading failed");
-	/* The loader's live progress line names the stage that refused, and it is
-	the only record of it once the loading Level is torn down. */
+	HRESULT failureResult = result;
+	std::string failureDetail;
+	if (m_pLoader)
+	{
+		const auto Job = m_pLoader->Get_EffectLoadJob();
+		const auto Failure = Job ? Job->Get_FirstFailure() : std::nullopt;
+		if (Failure)
+		{
+			failureDetail = "[Loader Effect] " + Failure->strRootMessage +
+				" [asset=" + Failure->strEffectAssetId +
+				", epoch=" + std::to_string(Failure->iJobEpoch) +
+				", revision=" + std::to_string(Failure->iCatalogRevision) + "]";
+			if (FAILED(static_cast<HRESULT>(Failure->iRootCode)))
+				failureResult = static_cast<HRESULT>(Failure->iRootCode);
+		}
+	}
+	if (failureDetail.empty())
+	{
+		failureDetail = "[Loader] " + CLoader::Get_ActiveStatus() +
+			(m_strEffectPreparationStatus.empty() ? "" : " / " + m_strEffectPreparationStatus);
+	}
 	CLevelTransitionService::Report_Recovery(
 		LostArk::Shared::SESSION_DIAGNOSTIC_REASON::CLIENT_LOAD_FAILED,
-		"loading.target-resource-load",
-		"[Loader] " + CLoader::Get_ActiveStatus() +
-			(m_strEffectPreparationStatus.empty() ? "" : " / " + m_strEffectPreparationStatus),
-		result);
+		"loading.target-resource-load", failureDetail, failureResult);
 	CNetworkManager::Get().Close_ServerConnection();
 
 	if (FAILED(CGameInstance::Get().Clear_Resources(

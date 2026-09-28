@@ -185,6 +185,11 @@ public:
 		EFFECT_LOAD_JOB_RESULT Result);
 	bool Try_Pop_Result(EFFECT_LOAD_JOB_RESULT& OutResult);
 
+	// The first structural cause survives mailbox cancellation/closure. Only
+	// opening or rebasing an epoch clears it; progress text is not authority.
+	bool Record_FirstFailure(EFFECT_LOAD_FAILURE_RECEIPT Failure);
+	std::optional<EFFECT_LOAD_FAILURE_RECEIPT> Get_FirstFailure() const;
+
 	bool Publish_Progress(const EFFECT_LOAD_PROGRESS_SNAPSHOT& Progress);
 	EFFECT_LOAD_PROGRESS_SNAPSHOT Get_Progress() const;
 
@@ -201,6 +206,7 @@ private:
 	std::deque<EFFECT_LOAD_JOB_RESULT> m_Results;
 	std::optional<EFFECT_LOAD_JOB_COMMAND> m_Mailbox;
 	EFFECT_LOAD_PROGRESS_SNAPSHOT m_Progress;
+	std::optional<EFFECT_LOAD_FAILURE_RECEIPT> m_FirstFailure;
 	std::chrono::steady_clock::time_point m_ProgressPhaseStarted =
 		std::chrono::steady_clock::now();
 	EFFECT_LOAD_JOB_EPOCH m_iCurrentJobEpoch = 0u;

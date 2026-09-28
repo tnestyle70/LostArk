@@ -5165,6 +5165,27 @@
         "Sound/Valtan/retch_voice_damage1__698765214.wav",
         "Sound/Valtan/retch_voice_damage1__727158521.wav",
         "Sound/Valtan/retch_voice_damage1__823849935.wav"
+      ],
+      "G_Voltan2_Attack14_ProjExp1": [
+        "Sound/Valtan/Events/G_Voltan2_Attack14_ProjExp1.variant01.wav"
+      ],
+      "G_Voltan2_Attack18_ProjExp1": [
+        "Sound/Valtan/Events/G_Voltan2_Attack18_ProjExp1.variant01.wav"
+      ],
+      "G_Voltan2_Attack15_Cast4": [
+        "Sound/Valtan/Events/G_Voltan2_Attack15_Cast4.variant01.wav"
+      ],
+      "G_Voltan2_Attack15_Cast5": [
+        "Sound/Valtan/Events/G_Voltan2_Attack15_Cast5.variant01.wav"
+      ],
+      "G_Voltan2_Attack15_ShotVox3": [
+        "Sound/Valtan/Events/G_Voltan2_Attack15_ShotVox3.variant01.wav",
+        "Sound/Valtan/Events/G_Voltan2_Attack15_ShotVox3.variant02.wav",
+        "Sound/Valtan/Events/G_Voltan2_Attack15_ShotVox3.variant03.wav",
+        "Sound/Valtan/Events/G_Voltan2_Attack15_ShotVox3.variant04.wav"
+      ],
+      "G_Voltan2_Attack15_Shot5": [
+        "Sound/Valtan/Events/G_Voltan2_Attack15_Shot5.variant01.wav"
       ]
     },
     "Vehicle": {

@@ -2,6 +2,9 @@
 #include "ServerGameplayContractTests.h"
 #include "GameplayCatalog.h"
 #include "GameRoom.h"
+#include "ClientSession.h"
+#include "Network/PacketReader.h"
+#include "Gameplay/WorldCollisionContract.h"
 #include "ServerNavigation.h"
 #include "ValtanBrain.h"
 #include "WorldBootstrap.h"
@@ -37,12 +40,101 @@ using namespace LostArk::Shared;
 void LostArk::Server::CServerGameplayContractRunner::Run_ValtanLifecycle(TESTS& tests, CGameplayCatalog& catalog)
 {
 
+    {
+        std::vector<BALANCE_NUMERIC_ENTRY> entries, applied;
+        GameplayDataRevision beforeNumeric, afterNumeric, beforeBytes, afterBytes, beforeShape, afterShape;
+        std::string status, bytes, hitKey;
+        std::vector<BALANCE_NUMERIC_CHANGE> changes;
+        const bool enumerated = catalog.Build_NumericBalanceSnapshot(entries,beforeNumeric,status);
+        for (const auto& entry : entries)
+        {
+            double next=entry.fValue;
+            if (entry.eDomain==BALANCE_DOMAIN::PLAYER && entry.strId=="LANCE_MASTER" &&
+                (entry.strField=="maximumHp" || entry.strField=="attackPower")) next*=2.;
+            else if (entry.eDomain==BALANCE_DOMAIN::BOSS && entry.strField=="maximumHp" &&
+                (entry.strId=="BOSS_VALTAN" || entry.strId=="BOSS_VALTAN_GHOST")) next=std::floor(next/2.);
+            else if (entry.eDomain==BALANCE_DOMAIN::SKILL && entry.strId=="34010" && entry.strField=="staggerDamage") next=17.;
+            else if (entry.eDomain==BALANCE_DOMAIN::PATTERN_DAMAGE && entry.strId.starts_with("H|") && hitKey.empty())
+            { hitKey=entry.strId; next=entry.fValue==10. ? 20. : 10.; }
+            if (next!=entry.fValue) changes.push_back({entry.eDomain,entry.strId,entry.strField,entry.fValue,next});
+        }
+        auto candidate=std::make_shared<CGameplayCatalog>();
+        const bool prepared=enumerated && !hitKey.empty() && candidate->Load_NumericBalancePatch(catalog,changes,bytes);
+        tests.Require(prepared,"Validate numeric balance patches through the real Product catalogue parser");
+        if (prepared)
+        {
+            const bool receipt=catalog.Build_NumericBalanceReceiptHashes(beforeBytes,beforeShape,status) &&
+                candidate->Build_NumericBalanceReceiptHashes(afterBytes,afterShape,status) &&
+                candidate->Build_NumericBalanceSnapshot(applied,afterNumeric,status);
+            tests.Require(receipt && beforeNumeric!=afterNumeric && beforeBytes!=afterBytes && beforeShape==afterShape &&
+                candidate->Get_ActiveRevision()==catalog.Get_ActiveRevision() &&
+                candidate->Get_ValtanPresentationGenerationId()==catalog.Get_ValtanPresentationGenerationId(),
+                "Separate numeric hash changes while choreography and presentation admission identities remain exact");
+            CGameplayCatalog rejected=catalog;
+            auto stale=changes; stale.front().fBefore+=1.;
+            tests.Require(!rejected.Load_NumericBalancePatch(catalog,stale,bytes) &&
+                rejected.Get_ActiveRevision()==catalog.Get_ActiveRevision(),"Reject stale numeric CAS without replacing the catalogue");
+            const auto* initialBoss=catalog.Find_Boss("BOSS_VALTAN");
+            const std::vector<BALANCE_NUMERIC_CHANGE> invalidBars{{BALANCE_DOMAIN::BOSS,"BOSS_VALTAN","maximumHealthBars",double(initialBoss->iMaximumHealthBars),1.}};
+            tests.Require(!rejected.Load_NumericBalancePatch(catalog,invalidBars,bytes),"Reject maximum bars incompatible with the saved raid threshold program");
+            const auto h=std::find_if(entries.begin(),entries.end(),[&](const auto& e){return e.strId==hitKey;});
+            const std::vector<BALANCE_NUMERIC_CHANGE> invalidPercent{{BALANCE_DOMAIN::PATTERN_DAMAGE,hitKey,"maxHpDamagePercent",h->fValue,101.}};
+            tests.Require(!rejected.Load_NumericBalancePatch(catalog,invalidPercent,bytes),"Reject percentage damage above one hundred without changing the damage mode");
+            auto base=std::make_shared<CGameplayCatalog>(catalog);
+            auto room=std::make_unique<CGameRoom>(WORLD_ID::VALTAN_ARENA,base);
+            const bool ready=room->Is_Ready() && room->Activate_Encounter("boss.valtan.center");
+            auto* boss=ready ? room->Find_AuditionBoss() : nullptr;
+            tests.Require(boss!=nullptr,"Initialize the numeric migration fixture on the published Valtan room");
+            if (boss)
+            {
+                const auto* player=catalog.Find_Player(CHARACTER_CLASS_ID::LANCE_MASTER);
+                const auto* ghost=catalog.Find_Boss("BOSS_VALTAN_GHOST");
+                for (std::uint32_t id=1u;id<=4u;++id)
+                {
+                    SERVER_PLAYER state; state.iPlayerId=id; state.iNetEntityId=100u+id; state.eCharacterClass=CHARACTER_CLASS_ID::LANCE_MASTER;
+                    state.iMaximumHp=player->iMaximumHp; state.iCurrentHp=id==4u ? 0u : player->iMaximumHp/2u;
+                    state.iMaximumResource=player->iMaximumResource; state.iCurrentResource=player->iMaximumResource/2u;
+                    state.iMaximumIdentity=player->iMaximumIdentity; state.iCurrentIdentity=0u;
+                    SERVER_SKILL_PROJECTILE projectile; projectile.iSkillId=34010u; projectile.iTotalDamage=100u; projectile.iAppliedTimedMask.set(0u);
+                    state.Projectiles.push_back(projectile); room->m_Players.emplace(id,std::move(state));
+                }
+                boss->iPhase=3u; boss->bGhostPhasePatternLoopActive=true; boss->iMaximumHp=ghost->iMaximumHp;
+                boss->iCurrentHp=ghost->iMaximumHp/2u; boss->iMaximumHealthBars=ghost->iMaximumHealthBars; boss->iPatternSequence=77u;
+                const auto id=boss->iNetEntityId, hp=boss->iCurrentHp;
+                auto objectTx=room->m_CombatObjectRuntime.Begin_Transaction();
+                SERVER_COMBAT_OBJECT object; object.iCombatObjectId=17u; object.eSourceKind=SERVER_COMBAT_OBJECT_SOURCE_KIND::WORLD_ENTITY;
+                object.strSourceArchetypeId="BOSS_VALTAN_GHOST"; object.fElapsedMilliseconds=321.f;
+                SERVER_COMBAT_OBJECT_HIT_RUNTIME hit; hit.strNumericBalanceId=hitKey; hit.iDamagePercent=std::uint32_t(h->fValue);
+                hit.iAppliedTimedCount=1u; hit.RepeatRawDamage={1u,1u}; object.Hits.push_back(hit); objectTx.Objects.push_back(object);
+                const bool objectReady=room->m_CombatObjectRuntime.Commit(std::move(objectTx));
+                const auto generations=room->m_GameplayCatalog.Get_GenerationCount();
+                const bool staged=objectReady && room->Stage_NumericBalance(9001u,candidate,status);
+                room->m_Players.at(1u).iCurrentHp-=1u; const auto liveHp=room->m_Players.at(1u).iCurrentHp;
+                const bool committed=staged && room->Commit_NumericBalance(9001u);
+                const auto& live=room->m_CombatObjectRuntime.Get_LiveObjects();
+                tests.Require(committed && room->m_Players.size()==4u && room->m_Players.at(1u).iCurrentHp==liveHp*2u &&
+                    room->m_Players.at(4u).iCurrentHp==0u && room->m_Players.at(1u).Projectiles.front().iTotalDamage>=100u &&
+                    room->m_Players.at(1u).Projectiles.front().iAppliedTimedMask.test(0u),
+                    "Commit four players from their current HP ratio, preserving deaths and in-flight projectile hit history");
+                tests.Require(committed && boss->iNetEntityId==id && boss->iPatternSequence==77u && boss->iPhase==3u &&
+                    boss->iMaximumHp==ghost->iMaximumHp/2u && std::abs(double(boss->iCurrentHp)-hp/2.)<=1. &&
+                    room->m_GameplayCatalog.Get_GenerationCount()==generations && !live.empty() && live.front().fElapsedMilliseconds==321.f &&
+                    live.front().Hits.front().iAppliedTimedCount==1u && live.front().Hits.front().iDamagePercent==(h->fValue==10. ? 20u : 10u),
+                    "Preserve ghost identity/sequence and refresh next attack-object percent without replay or generation growth");
+                const bool restaged=room->Stage_NumericBalance(9002u,base,status); room->Abort_NumericBalance(9002u);
+                tests.Require(restaged && !room->Commit_NumericBalance(9002u) && room->Get_ActiveGameplayGeneration()==candidate,
+                    "Abort staged room numeric values without changing the active balance");
+            }
+        }
+    }
+
 	{
 		const BOSS_PATTERN_SEQUENCE_DEFINITION* sequence =
 			catalog.Find_BossPatternSequence("ENCOUNTER_VALTAN");
 		tests.Require(
 			nullptr != sequence && !sequence->strSequenceId.empty() &&
-			BOSS_PATTERN_SEQUENCE_MODE::ORDERED_ONCE_THEN_IDLE == sequence->eMode &&
+			(BOSS_PATTERN_SEQUENCE_MODE::ORDERED_ONCE_THEN_IDLE == sequence->eMode ||
+			 BOSS_PATTERN_SEQUENCE_MODE::HEALTH_BAR_ROTATIONS == sequence->eMode) &&
 			sequence->iInterStepPursuitMs >= 100u && sequence->iInterStepPursuitMs <= 10000u &&
 			sequence->iInterStepPursuitTicks ==
 				(sequence->iInterStepPursuitMs * 30u + 999u) / 1000u &&
@@ -68,180 +160,83 @@ void LostArk::Server::CServerGameplayContractRunner::Run_ValtanLifecycle(TESTS& 
 			"Exclude retired FRONT_BACK_FRONT and retain one FOUR definition while saved occurrences may repeat it");
 	}
 	{
-		/* The saved Product owns its order, including a terminal Ghost Death.
-		Check that real cursor separately from an in-memory Death -> Respawn pair
-		that keeps the original suppression/next-tick phase-transition contract.
-		An isolated Debug audition must keep its pre-existing hold bit. */
-		/* Heap-allocated: the contract frame already sits near the 1 MiB production stack. */
+		// The saved Death timeout owns its Respawn follow-up, before the next
+		// explicit Play All slot and without an inter-slot pursuit delay.
 		auto roomStorage = std::make_unique<CGameRoom>(WORLD_ID::VALTAN_ARENA);
 		CGameRoom& room = *roomStorage;
-		const bool activated = room.Is_Ready() &&
-			room.Activate_Encounter("boss.valtan.center");
-		const BOSS_PATTERN_SEQUENCE_DEFINITION* sequence =
-			room.m_GameplayCatalog.Active().Find_BossPatternSequence(
-				"ENCOUNTER_VALTAN");
-		const auto deathStep = nullptr == sequence ?
-			std::vector<std::string>::const_iterator{} :
-			std::find(sequence->PatternIds.cbegin(), sequence->PatternIds.cend(),
-				"VALTAN_GHOST_DEATH_AUDITION");
-		const bool savedDeathFound = nullptr != sequence &&
-			deathStep != sequence->PatternIds.cend();
-		const std::uint32_t savedNextIndex = savedDeathFound ?
-			static_cast<std::uint32_t>(
-				std::distance(sequence->PatternIds.cbegin(), deathStep) + 1) : 0u;
-		const std::string savedNextPattern = savedDeathFound &&
-			savedNextIndex < sequence->PatternIds.size() ?
-			sequence->PatternIds[savedNextIndex] : std::string{};
-		const auto* patterns =
-			room.m_GameplayCatalog.Find_BossPatterns("ENCOUNTER_VALTAN");
-		const auto findPattern = [patterns](const std::string_view patternId)
-			-> const BOSS_PATTERN_DEFINITION*
-			{
-				if (nullptr == patterns) return nullptr;
-				const auto found = std::find_if(
-					patterns->begin(), patterns->end(),
-					[patternId](const BOSS_PATTERN_DEFINITION& candidate)
-					{ return candidate.strPatternId == patternId; });
-				return patterns->end() == found ? nullptr : &*found;
-			};
-		const BOSS_PATTERN_DEFINITION* death =
-			findPattern("VALTAN_GHOST_DEATH_AUDITION");
-		const BOSS_PATTERN_DEFINITION* respawn =
-			findPattern("VALTAN_GHOST_RESPAWN_AUDITION");
-		const bool exactDeathSuppression = nullptr != death &&
-			1u == death->Stages.size() &&
-			1 == std::count_if(
-				death->Stages.front().Actions.begin(),
-				death->Stages.front().Actions.end(),
-				[](const BOSS_PATTERN_STAGE_ACTION& action)
-				{
-					return BOSS_PATTERN_STAGE_ACTION_TRIGGER::EXIT ==
-							action.eTrigger &&
-						BOSS_PATTERN_STAGE_ACTION_KIND::
-							SUPPRESS_INTER_STEP_PURSUIT == action.eKind &&
-						"boss.sequence.inter-step-pursuit" == action.strTargetId &&
-						0u == action.iValue && 0u == action.iDurationMs;
-				});
-		const bool exactRespawnPhase = nullptr != respawn &&
-			1u == respawn->Stages.size() &&
-			1 == std::count_if(
-				respawn->Stages.front().Actions.begin(),
-				respawn->Stages.front().Actions.end(),
-				[](const BOSS_PATTERN_STAGE_ACTION& action)
-				{
-					return BOSS_PATTERN_STAGE_ACTION_TRIGGER::ENTER ==
-							action.eTrigger &&
-						BOSS_PATTERN_STAGE_ACTION_KIND::SET_GAMEPLAY_PHASE ==
-							action.eKind &&
-						"boss.phase.gameplay" == action.strTargetId &&
-						3u == action.iValue;
-				});
-
-		SERVER_WORLD_ENTITY* admitted = room.Find_AuditionBoss();
-		SERVER_WORLD_ENTITY boss = nullptr == admitted ?
-			SERVER_WORLD_ENTITY{} : *admitted;
-		boss.eKind = WORLD_BOOTSTRAP_KIND::BOSS;
-		boss.eAction = SERVER_ENTITY_ACTION::IDLE;
-		boss.strArchetypeId = "BOSS_VALTAN";
-		boss.strEncounterId = "ENCOUNTER_VALTAN";
-		boss.strPlacementId = "boss.valtan.center";
-		boss.iCurrentHp = (std::max)(1u, boss.iMaximumHp);
-		boss.iMaximumHp = boss.iCurrentHp;
-		boss.iMaximumHealthBars = 160u;
-		boss.iPhase = 1u;
-		boss.bIntroPatternConsumed = true;
-		boss.strPatternId.clear();
-		boss.strPatternStageId.clear();
-		boss.strActionId.clear();
-		boss.iPatternSequence = 77u;
-		boss.PatternTerminalReceipt.iPatternSequence = boss.iPatternSequence;
-		boss.PatternTerminalReceipt.iRootPatternSequence = boss.iPatternSequence;
-		boss.PatternTerminalReceipt.eResult =
-			SERVER_BOSS_PATTERN_TERMINAL_RESULT::COMPLETED;
-		boss.iAutomaticPatternSequencePursuitTicksRemaining = 30u;
-		boss.iAutomaticPatternSequenceInterStepPursuitTicks = 30u;
-		boss.strRotationId = nullptr == sequence ? std::string{} :
-			sequence->strSequenceId;
-		boss.iRotationStepIndex = savedNextIndex;
-		const GameplayDataRevision revision =
-			room.m_GameplayCatalog.Get_ActiveRevision();
-		const bool suppressed = exactDeathSuppression &&
-			room.Apply_BossPatternStageTransition(
-				boss, "VALTAN_GHOST_DEATH_AUDITION",
-				"valtan.sequence.dead.step-01", {}, {}, revision, revision, 101u) &&
-			0u == boss.iAutomaticPatternSequencePursuitTicksRemaining &&
-			!boss.bAutomaticPatternSequenceAuditionHold;
-
-		SERVER_WORLD_ENTITY held = boss;
-		held.iAutomaticPatternSequencePursuitTicksRemaining = 30u;
-		held.bAutomaticPatternSequenceAuditionHold = true;
-		const bool isolatedHoldPreserved = exactDeathSuppression &&
-			room.Apply_BossPatternStageTransition(
-				held, "VALTAN_GHOST_DEATH_AUDITION",
-				"valtan.sequence.dead.step-01", {}, {}, revision, revision, 102u) &&
-			0u == held.iAutomaticPatternSequencePursuitTicksRemaining &&
-			held.bAutomaticPatternSequenceAuditionHold;
-
-		std::map<PLAYER_ID, SERVER_PLAYER> players;
-		SERVER_PLAYER player{};
-		player.iPlayerId = 991u;
-		player.iNetEntityId = 1991u;
-		player.iCurrentHp = 100000u;
-		player.iMaximumHp = player.iCurrentHp;
-		player.isCombatReady = true;
-		player.fPositionX = boss.fPositionX;
-		player.fPositionY = boss.fPositionY;
-		player.fPositionZ = boss.fPositionZ;
-		players.emplace(player.iPlayerId, player);
-		std::vector<DAMAGE_EVENT> damageEvents;
-		CValtanBrain brain;
-		SERVER_WORLD_ENTITY savedOrderBoss = boss;
-		if (suppressed && savedDeathFound)
+		const bool activated = room.Is_Ready() && room.Activate_Encounter("boss.valtan.center");
+		const auto* patterns = room.m_GameplayCatalog.Active().Find_BossPatterns("ENCOUNTER_VALTAN");
+		const auto findPattern = [patterns](const std::string_view id) -> const BOSS_PATTERN_DEFINITION*
 		{
-			brain.Update(savedOrderBoss, players, room.m_GameplayCatalog.Active(),
-				room.m_ServerNavigation, 1.f / 30.f, 103u, {}, damageEvents,
-				&room.m_GameplayCatalog.Active(),
-				room.m_GameplayCatalog.Get_ActiveGenerationEpoch(), nullptr, sequence);
-		}
-		tests.Require(activated && savedDeathFound && suppressed &&
-			savedOrderBoss.strPatternId == savedNextPattern &&
-			SERVER_ENTITY_ACTION::CHASE != savedOrderBoss.eAction &&
-			!savedOrderBoss.bMechanicLedgerRequiresReset &&
-			(savedNextPattern.empty() ?
-				(savedOrderBoss.iRotationStepIndex == sequence->PatternIds.size() &&
-				 SERVER_ENTITY_ACTION::IDLE == savedOrderBoss.eAction) : true),
-			"Ghost Death follows the saved next occurrence or stays idle at the actual Product boundary without fallback");
-
-		BOSS_PATTERN_SEQUENCE_DEFINITION transitionSequence{};
-		if (nullptr != sequence) transitionSequence = *sequence;
-		transitionSequence.PatternIds = {
-			"VALTAN_GHOST_DEATH_AUDITION", "VALTAN_GHOST_RESPAWN_AUDITION" };
-		transitionSequence.iExpectedStepCount = 2u;
-		transitionSequence.TransitionPursuitMs = { 0u };
-		transitionSequence.TransitionPursuitTicks = { 0u };
-		boss.iRotationStepIndex = 1u;
-		if (suppressed && savedDeathFound)
+			if (nullptr == patterns) return nullptr;
+			const auto found = std::find_if(patterns->begin(), patterns->end(),
+				[id](const auto& value) { return value.strPatternId == id; });
+			return patterns->end() == found ? nullptr : &*found;
+		};
+		const auto* death = findPattern("VALTAN_GHOST_DEATH_AUDITION");
+		const auto* respawn = findPattern("VALTAN_GHOST_RESPAWN_AUDITION");
+		const bool deathOwnsRespawn = nullptr != death && 1u == death->Stages.size() &&
+			1 == std::count_if(death->Stages.front().Branches.begin(), death->Stages.front().Branches.end(),
+				[](const auto& branch) { return BOSS_PATTERN_STAGE_OUTCOME::TIMEOUT == branch.eOutcome &&
+					branch.strNextActionId.empty() && "VALTAN_GHOST_RESPAWN_AUDITION" == branch.strNextPatternId; });
+		const bool respawnOwnsPhase = nullptr != respawn && 1u == respawn->Stages.size() &&
+			1 == std::count_if(respawn->Stages.front().Actions.begin(), respawn->Stages.front().Actions.end(),
+				[](const auto& action) { return BOSS_PATTERN_STAGE_ACTION_TRIGGER::ENTER == action.eTrigger &&
+					BOSS_PATTERN_STAGE_ACTION_KIND::SET_GAMEPLAY_PHASE == action.eKind &&
+					"boss.phase.gameplay" == action.strTargetId && 3u == action.iValue; });
+		tests.Require(activated && deathOwnsRespawn && respawnOwnsPhase,
+			"Load the saved Ghost Death TIMEOUT-to-Respawn branch and Respawn phase-3 entry action");
+		if (activated && deathOwnsRespawn && respawnOwnsPhase)
 		{
-			brain.Update(
-				boss, players, room.m_GameplayCatalog.Active(),
-				room.m_ServerNavigation, 1.f / 30.f, 103u, {}, damageEvents,
-				&room.m_GameplayCatalog.Active(),
-				room.m_GameplayCatalog.Get_ActiveGenerationEpoch(), nullptr,
-				&transitionSequence);
+			SERVER_WORLD_ENTITY boss = *room.Find_AuditionBoss();
+			boss.eAction = SERVER_ENTITY_ACTION::IDLE;
+			boss.bIntroPatternConsumed = true;
+			boss.iLastEvaluatedHealthBar = CValtanBrain::Calculate_HealthBar(boss);
+			SERVER_PLAYER player{};
+			player.iPlayerId = 991u; player.iNetEntityId = 1991u;
+			player.iCurrentHp = player.iMaximumHp = 100000u; player.isCombatReady = true;
+			player.fPositionX = boss.fPositionX; player.fPositionY = boss.fPositionY; player.fPositionZ = boss.fPositionZ;
+			std::map<PLAYER_ID, SERVER_PLAYER> players{{ player.iPlayerId, player }};
+			BOSS_PATTERN_SEQUENCE_DEFINITION audition{};
+			audition.strEncounterId = boss.strEncounterId;
+			audition.strSequenceId = "sequence.valtan.contract.death-followup";
+			audition.eMode = BOSS_PATTERN_SEQUENCE_MODE::ORDERED_ONCE_THEN_IDLE;
+			audition.PatternIds = { death->strPatternId, "VALTAN_WHIRLWIND" };
+			audition.iExpectedStepCount = 2u;
+			audition.iInterStepPursuitTicks = 30u;
+			CValtanBrain brain;
+			std::vector<DAMAGE_EVENT> damage;
+			const auto& active = room.m_GameplayCatalog.Active();
+			const auto update = [&](SERVER_WORLD_ENTITY& value, const std::uint32_t tick)
+			{ brain.Update(value, players, active, room.m_ServerNavigation, 1.f / 30.f,
+				tick, {}, damage, &active, room.m_GameplayCatalog.Get_ActiveGenerationEpoch(), nullptr, &audition); };
+			update(boss, 100u);
+			const std::uint32_t endTick = boss.iPatternStageFirstEvaluationTick +
+				(death->Stages.front().iDurationMs * 30u + 999u) / 1000u - 1u;
+			update(boss, endTick - 1u);
+			const bool heldUntilDeadline = death->strPatternId == boss.strPatternId && !boss.PendingPatternFollowup.Is_Pending();
+			update(boss, endTick);
+			const bool queuedAtDeadline = boss.strPatternId.empty() &&
+				"VALTAN_GHOST_RESPAWN_AUDITION" == boss.PendingPatternFollowup.strPatternId &&
+				SERVER_BOSS_PATTERN_TERMINAL_RESULT::COMPLETED == boss.PatternTerminalReceipt.eResult &&
+				1u == boss.iRotationStepIndex && 30u == boss.iAutomaticPatternSequencePursuitTicksRemaining;
+			tests.Require(heldUntilDeadline && queuedAtDeadline,
+				"Actual Death deadline completes its Play All slot and queues the authored Respawn follow-up");
+			SERVER_WORLD_ENTITY held = boss;
+			held.bAutomaticPatternSequenceAuditionHold = true;
+			update(held, endTick + 1u);
+			tests.Require(held.bAutomaticPatternSequenceAuditionHold && held.strPatternId.empty() &&
+				held.PendingPatternFollowup.Is_Pending(), "Debug hold preserves the queued Death follow-up without advancing it");
+			update(boss, endTick + 1u);
+			const bool started = respawn->strPatternId == boss.strPatternId &&
+				1u == boss.iPatternFollowupDepth && 1u == boss.iRotationStepIndex &&
+				SERVER_ENTITY_ACTION::CHASE != boss.eAction;
+			const bool phaseEntered = started && room.Apply_BossPatternStageTransition(boss, {}, {},
+				boss.strPatternId, boss.strActionId, active.Get_ActiveRevision(),
+				boss.PinnedDefinitionRevision, endTick + 1u) && 3u == boss.iPhase;
+			tests.Require(started && phaseEntered && !boss.bMechanicLedgerRequiresReset,
+				"Respawn follow-up starts on the next tick before Play All pursuit and enters phase 3");
 		}
-		const bool respawnStartedWithoutChase =
-			"VALTAN_GHOST_RESPAWN_AUDITION" == boss.strPatternId &&
-			SERVER_ENTITY_ACTION::CHASE != boss.eAction;
-		const bool respawnEnteredPhaseThree = respawnStartedWithoutChase &&
-			room.Apply_BossPatternStageTransition(
-				boss, {}, {}, boss.strPatternId, boss.strActionId,
-				revision, boss.PinnedDefinitionRevision, 103u) &&
-			3u == boss.iPhase;
-		tests.Require(
-			activated && savedDeathFound && exactDeathSuppression &&
-			exactRespawnPhase && suppressed && isolatedHoldPreserved &&
-			respawnStartedWithoutChase && respawnEnteredPhaseThree,
-			"An isolated Death-to-Respawn sequence suppresses only pursuit, preserves Debug hold and enters phase 3 on the next fixed tick");
 	}
 	{
 		const auto* patterns =
@@ -387,7 +382,7 @@ void LostArk::Server::CServerGameplayContractRunner::Run_ValtanLifecycle(TESTS& 
 		tests.Require(
 			nullptr != dash && 3u == dash->Stages.size() &&
 			nullptr != dashGroggy && &dash->Stages[2] == dashGroggy &&
-			6833u == dashGroggy->iDurationMs &&
+			0u < dashGroggy->iDurationMs &&
 			BOSS_PATTERN_PART_DAMAGE_POLICY::DESTROY_FIRST_ELIGIBLE ==
 				dashGroggy->ePartDamagePolicy &&
 			hasBossFlagAction(
@@ -396,7 +391,44 @@ void LostArk::Server::CServerGameplayContractRunner::Run_ValtanLifecycle(TESTS& 
 			hasBossFlagAction(
 				dashGroggy, BOSS_PATTERN_STAGE_ACTION_TRIGGER::EXIT,
 				"boss.flag.groggy", 0u),
-			"Load Dash and its saved 6833 ms GROGGY continuation as one three-stage pattern");
+			"Load Dash and its saved finite GROGGY continuation as one three-stage pattern");
+		if (nullptr != dash && 3u == dash->Stages.size() && nullptr != dashGroggy)
+		{
+			SERVER_WORLD_ENTITY boss{};
+			boss.eKind = WORLD_BOOTSTRAP_KIND::BOSS; boss.iNetEntityId = 19910u;
+			boss.strArchetypeId = "BOSS_VALTAN"; boss.strEncounterId = "ENCOUNTER_VALTAN";
+			boss.iCurrentHp = boss.iMaximumHp = 100000u; boss.iMaximumHealthBars = 160u;
+			boss.iLastEvaluatedHealthBar = 160u; boss.iPhase = 1u; boss.bIntroPatternConsumed = true;
+			boss.bScriptedPatternPlayback = true; boss.fEngageDistance = 100.f;
+			boss.PendingPatternIds.push_back(dash->strPatternId);
+			SERVER_PLAYER player{};
+			player.iPlayerId = 19911u; player.iNetEntityId = 19912u;
+			player.iCurrentHp = player.iMaximumHp = 100000u; player.isCombatReady = true;
+			player.fPositionZ = 50.f;
+			std::map<PLAYER_ID, SERVER_PLAYER> players{{ player.iPlayerId, player }};
+			CServerNavigation navigation;
+			CValtanBrain brain;
+			std::vector<DAMAGE_EVENT> damage;
+			const auto update = [&](const std::uint32_t tick)
+			{ brain.Update(boss, players, catalog, navigation, 1.f / 30.f, tick, {}, damage); };
+			const auto ticks = [](const BOSS_PATTERN_STAGE_DEFINITION& stage)
+			{ return (stage.iDurationMs * 30u + 999u) / 1000u; };
+			update(100u);
+			const auto chargeTick = boss.iPatternStageFirstEvaluationTick + ticks(dash->Stages[0]) - 1u;
+			update(chargeTick);
+			const bool chargeEntered = "CHARGE" == boss.strPatternStageId;
+			const auto groggyTick = boss.iPatternStageFirstEvaluationTick + ticks(dash->Stages[1]) - 1u;
+			update(groggyTick);
+			const bool groggyEntered = "GROGGY" == boss.strPatternStageId &&
+				boss.iPatternStageDurationMs == dashGroggy->iDurationMs;
+			const auto doneTick = boss.iPatternStageFirstEvaluationTick + ticks(*dashGroggy) - 1u;
+			update(doneTick - 1u);
+			const bool heldBeforeDeadline = "GROGGY" == boss.strPatternStageId;
+			update(doneTick);
+			tests.Require(chargeEntered && groggyEntered && heldBeforeDeadline && boss.strPatternId.empty() &&
+				SERVER_BOSS_PATTERN_TERMINAL_RESULT::COMPLETED == boss.PatternTerminalReceipt.eResult,
+				"Dash enters and completes GROGGY on the published stage durations, preserving the last pre-deadline tick");
+		}
 		tests.Require(
 			nullptr != catchBreath && nullptr != catchGrab &&
 			nullptr != catchRelease &&
@@ -746,23 +778,35 @@ void LostArk::Server::CServerGameplayContractRunner::Run_ValtanLifecycle(TESTS& 
 			positionsValid = placePlayer(19700u, 5.f, 0.f) &&
 				placePlayer(19701u, -15.f, 0.f) && positionsValid;
 			expectedYaw = yawToward(room.m_Players.at(19700u));
+			const float beforeRightError = std::abs(std::remainder(boss.fYawDegrees - expectedYaw, 360.f));
 			room.Tick(1.f / 30.f);
+			const float afterRightError = std::abs(std::remainder(boss.fYawDegrees - expectedYaw, 360.f));
 			const bool followedSameTargetRight = room.Is_Ready() &&
-				19800u == boss.iPatternTargetEntityId &&
-				sameYaw(boss.fYawDegrees, expectedYaw);
+				19800u == boss.iPatternTargetEntityId && afterRightError < beforeRightError && afterRightError > 0.001f;
 
 			positionsValid = placePlayer(19700u, 15.f, 0.f) &&
 				placePlayer(19701u, -5.f, 0.f) && positionsValid;
 			expectedYaw = yawToward(room.m_Players.at(19701u));
+			const float beforeLeftError = std::abs(std::remainder(boss.fYawDegrees - expectedYaw, 360.f));
 			room.Tick(1.f / 30.f);
+			float previousError = std::abs(std::remainder(boss.fYawDegrees - expectedYaw, 360.f));
 			const bool switchedToNearerTargetLeft = room.Is_Ready() &&
-				19801u == boss.iPatternTargetEntityId &&
-				sameYaw(boss.fYawDegrees, expectedYaw);
-
-			tests.Require(
-				chargeTracksNearest && positionsValid && enteredFacingLeft &&
-				followedSameTargetRight && switchedToNearerTargetLeft,
-				"Track Charge yaw across left-right movement and switch its Server target id to the nearest player each tick");
+				19801u == boss.iPatternTargetEntityId && previousError < beforeLeftError;
+			const float initialConvergenceError = previousError;
+			bool convergedMonotonically = true;
+			for (std::uint32_t tick = 0u; tick < 30u; ++tick)
+			{
+				room.Tick(1.f / 30.f);
+				const float error = std::abs(std::remainder(boss.fYawDegrees -
+					yawToward(room.m_Players.at(19701u)), 360.f));
+				convergedMonotonically = convergedMonotonically && room.Is_Ready() &&
+					19801u == boss.iPatternTargetEntityId && error <= previousError + 0.001f;
+				previousError = error;
+			}
+			tests.Require(chargeTracksNearest && positionsValid && enteredFacingLeft &&
+				followedSameTargetRight && switchedToNearerTargetLeft && convergedMonotonically &&
+				previousError < initialConvergenceError * 0.25f,
+				"Charge switches nearest target immediately while saved slow aim converges monotonically below a quarter of its initial error");
 		}
 	}
 	{
@@ -879,5 +923,235 @@ void LostArk::Server::CServerGameplayContractRunner::Run_ValtanLifecycle(TESTS& 
 			PLAYER_ATTACHMENT_SLOT::NONE == first.eAttachmentSlot,
 			"Release a captured player fail-closed when its boss owner disappears");
 	}
+	{
+		// Observe one continuous Product encounter. Only fixture player survival
+		// and incoming boss HP are controlled; Room owns every stage and phase.
+		auto room = std::make_unique<CGameRoom>(WORLD_ID::VALTAN_ARENA);
+		std::vector<std::shared_ptr<CClientSession>> sessions;
+		const auto drain = [&sessions]()
+		{
+			for (const auto& session : sessions)
+			{
+				session->m_OutboundFrames.clear();
+				session->m_iQueuedOutboundBytes = 0u;
+			}
+		};
+		const std::array classes{ CHARACTER_CLASS_ID::LANCE_MASTER, CHARACTER_CLASS_ID::ARTIST,
+			CHARACTER_CLASS_ID::WARLORD, CHARACTER_CLASS_ID::DIMENSIONMASTER };
+		bool joined = room->Is_Ready();
+		for (std::size_t index = 0u; index < classes.size() && joined; ++index)
+		{
+			const SESSION_ID sessionId = 98701u + index;
+			auto session = std::make_shared<CClientSession>(sessionId, INVALID_SOCKET,
+				CClientSession::FRAME_HANDLER{}, CClientSession::CLOSED_HANDLER{});
+			session->m_isSendRunning.store(true);
+			room->Handle_Register(session);
+			sessions.push_back(session);
+			C2S_ENTER_WORLD entry{};
+			entry.eWorldId = WORLD_ID::VALTAN_ARENA;
+			entry.eCharacterClass = classes[index];
+			entry.strNickName = "ValtanProgression" + std::to_string(index + 1u);
+			joined = room->Join(sessionId, entry);
+			drain();
+		}
+		tests.Require(joined && 4u == room->Count_HumanPlayers() && 4u == room->m_Players.size(),
+			"Four real session admissions share the published Valtan room");
+		const auto* trigger = room->Find_Placement("Stage_Boss");
+		const auto* arrival = room->Find_Placement("Stage_Boss_ArenaEntry");
+		bool entered = joined && trigger && arrival;
+		if (entered)
+		{
+			for (auto& [id, player] : room->m_Players)
+			{
+				(void)id;
+				player.fPositionX = trigger->fPositionX;
+				player.fPositionY = trigger->fPositionY - WorldCollision::PLAYER_CENTER_OFFSET_Y;
+				player.fPositionZ = trigger->fPositionZ;
+				player.iInvulnerableEndTick = 200000u;
+				// Real entrants walk to G; this accepted command marks admission combat-ready.
+				C2S_MOVE move{}; move.iClientSequence = 1u;
+				move.fGoalX = player.fPositionX; move.fGoalZ = player.fPositionZ;
+				room->Handle_Move(player.iSessionId, move);
+			}
+			room->Tick(1.f / 30.f);
+			drain();
+			for (const auto& session : sessions)
+			{
+				C2S_INTERACT_TRIGGER interact{};
+				interact.iRequestSequence = 1u;
+				interact.strTriggerPlacementId = "Stage_Boss";
+				room->Handle_InteractTrigger(session->Get_SessionId(), interact);
+			}
+			entered = room->Find_AuditionBoss() && std::all_of(room->m_Players.begin(), room->m_Players.end(),
+				[](const auto& pair) { return pair.second.TriggerMove.isActive; });
+		}
+		tests.Require(entered, "All four typed G requests enter the same encounter through authored movement");
+		if (entered)
+		{
+			struct WINDOW final { std::uint8_t phase; std::uint32_t bars; std::uint32_t gate; const char* mechanic; };
+			const std::array windows{
+				WINDOW{1,160,130,"VALTAN_FLOOR_WIPE_130"}, WINDOW{1,130,115,"VALTAN_ARENA_BREAK_109"},
+				WINDOW{2,115,105,"VALTAN_SIX_PIZZA_106"}, WINDOW{2,105,80,"VALTAN_TERRAIN_DESTRUCTION_3_OCLOCK"},
+				WINDOW{2,80,65,"VALTAN_TRASH"}, WINDOW{2,65,30,"VALTAN_TERRAIN_DESTRUCTION_9_OCLOCK"},
+				WINDOW{2,30,15,"VALTAN_STRUGGLING"}, WINDOW{3,40,0,""} };
+			const NET_ENTITY_ID primaryId = room->Find_AuditionBoss()->iNetEntityId;
+			const auto* ghostProfile = catalog.Find_Boss("BOSS_VALTAN_GHOST");
+			std::vector<std::string> entryOrder, cinematicStages, mechanics, revival;
+			std::array<std::vector<std::string>, 8> loops;
+			std::size_t windowIndex = 0u;
+			std::uint32_t previousSequence = 0u, synchronizedTicks = 0u, terminalSnapshots = 0u;
+			std::array<std::uint32_t, 4> clearPackets{}, rewardPackets{};
+			bool waitingForMechanic = false, mechanicStarted = false, ghostRestored = false;
+			bool stableIdentity = true, automatic = true, wireParity = true, allAlive = true;
+			bool arrivalChecked = false, allArrived = false, killIssued = false, killedByPlayer = false;
+			bool progressionComplete = false;
+			const auto consumeSnapshots = [&]()
+			{
+				std::vector<std::uint8_t> baseline;
+				std::size_t snapshots = 0u;
+				for (std::size_t index = 0u; index < sessions.size(); ++index)
+				{
+					for (const auto& frame : sessions[index]->m_OutboundFrames)
+					{
+						if (frame.ePacketType == PACKET_TYPE::S2C_RAID_MVP_RESULT) ++clearPackets[index];
+						if (frame.ePacketType == PACKET_TYPE::S2C_INVENTORY_SNAPSHOT) ++rewardPackets[index];
+						if (frame.ePacketType != PACKET_TYPE::S2C_WORLD_SNAPSHOT) continue;
+						++snapshots;
+						if (baseline.empty()) baseline = frame.Bytes;
+						else wireParity = wireParity && baseline == frame.Bytes;
+						CPacketReader reader{std::span<const std::uint8_t>(frame.Bytes).subspan(PACKET_HEADER_BYTES)};
+						S2C_WORLD_SNAPSHOT snapshot;
+						const bool decoded = Read_Message(reader, snapshot) && !reader.Get_RemainingSize();
+						wireParity = wireParity && decoded && snapshot.Players.size() == 4u;
+						if (!decoded) continue;
+						const auto entity = std::find_if(snapshot.Entities.begin(), snapshot.Entities.end(),
+							[primaryId](const auto& value) { return value.iNetEntityId == primaryId; });
+						const auto* boss = room->Find_AuditionBoss();
+						if (boss)
+							wireParity = wireParity && entity != snapshot.Entities.end() &&
+								entity->strPatternId == boss->strPatternId && entity->iPatternSequence == boss->iPatternSequence &&
+								entity->iPatternStageIndex == boss->iPatternStageIndex && entity->iPhase == boss->iPhase &&
+								entity->iCurrentHp == boss->iCurrentHp && entity->iMaximumHp == boss->iMaximumHp;
+						else if (killIssued && entity == snapshot.Entities.end()) ++terminalSnapshots;
+					}
+				}
+				wireParity = wireParity && snapshots == 4u;
+				if (snapshots == 4u) ++synchronizedTicks;
+				drain();
+			};
+			drain();
+			for (std::uint32_t iteration = 0u; iteration < 60000u && room->Is_Ready(); ++iteration)
+			{
+				room->Tick(1.f / 30.f);
+				consumeSnapshots();
+				auto* boss = room->Find_AuditionBoss();
+				allAlive = allAlive && std::all_of(room->m_Players.begin(), room->m_Players.end(),
+					[](const auto& pair) { return pair.second.iCurrentHp != 0u; });
+				for (const auto& hit : room->m_TickDamageEvents)
+					if (killIssued && hit.iTargetNetEntityId == primaryId && hit.iAmount > 0u) killedByPlayer = true;
+				if (!boss)
+				{
+					progressionComplete = killIssued && room->m_bValtanRaidCleared;
+					break;
+				}
+				stableIdentity = stableIdentity && boss->iNetEntityId == primaryId;
+				automatic = automatic && !boss->bScriptedPatternPlayback && !boss->bAutomaticPatternSequenceAuditionOverride &&
+					!boss->bAutomaticPatternSequenceAuditionHold && !boss->bMechanicLedgerRequiresReset;
+				if (boss->strPatternId == "VALTAN_ENTRANCE_CINEMATIC" &&
+					(cinematicStages.empty() || cinematicStages.back() != boss->strPatternStageId))
+					cinematicStages.push_back(boss->strPatternStageId);
+				if (boss->strPatternId.empty() || previousSequence == boss->iPatternSequence) continue;
+				previousSequence = boss->iPatternSequence;
+				std::cout << "[VALTAN_4P] tick=" << room->m_iServerTick << " pattern=" << boss->strPatternId
+					<< " phase=" << unsigned(boss->iPhase) << " bars=" << CValtanBrain::Calculate_HealthBar(*boss)
+					<< " sequence=" << boss->iPatternSequence << '\n';
+				if (entryOrder.size() < 3u) entryOrder.push_back(boss->strPatternId);
+				if (!arrivalChecked && boss->strPatternId == "VALTAN_WHIRLWIND")
+				{
+					arrivalChecked = true;
+					allArrived = std::all_of(room->m_Players.begin(), room->m_Players.end(), [&arrival](const auto& pair)
+					{ return !pair.second.TriggerMove.isActive && std::hypot(pair.second.fPositionX - arrival->fPositionX,
+						pair.second.fPositionZ - arrival->fPositionZ) < .05f; });
+					// Place the invulnerable observers inside the remaining central floor.
+					std::size_t index = 0u;
+					for (auto& [id, player] : room->m_Players)
+					{
+						(void)id; SERVER_NAV_POINT point{};
+						const float angle = float(index++) * 1.5707963268f;
+						const bool placed = room->m_ServerNavigation.Project_Point(boss->fSpawnPositionX + std::sin(angle) * 2.f,
+							boss->fSpawnPositionZ + std::cos(angle) * 2.f, point);
+						allArrived = allArrived && placed;
+						if (placed) { player.fPositionX = point.x; player.fPositionY = point.y; player.fPositionZ = point.z; }
+					}
+				}
+				if (waitingForMechanic)
+				{
+					if (boss->strPatternId == windows[windowIndex].mechanic)
+					{ mechanics.push_back(boss->strPatternId); mechanicStarted = true; continue; }
+					if (!mechanicStarted) continue;
+					if (windowIndex == 6u && (boss->strPatternId == "VALTAN_GHOST_DEATH_AUDITION" ||
+						boss->strPatternId == "VALTAN_GHOST_RESPAWN_AUDITION"))
+					{ revival.push_back(boss->strPatternId); continue; }
+					const auto& next = windows[windowIndex + 1u];
+					const auto* rotation = catalog.Find_BossPatternRotation("ENCOUNTER_VALTAN", next.phase, next.bars);
+					if (!rotation || rotation->PatternIds.empty() || boss->strPatternId != rotation->PatternIds.front()) continue;
+					++windowIndex; waitingForMechanic = false; mechanicStarted = false;
+					if (windowIndex == 7u)
+						ghostRestored = ghostProfile && boss->iMaximumHp == ghostProfile->iMaximumHp &&
+							boss->iCurrentHp == boss->iMaximumHp && 40u == CValtanBrain::Calculate_HealthBar(*boss) &&
+							boss->iPhase == 3u && boss->bGhostPhasePatternLoopActive;
+				}
+				const auto& window = windows[windowIndex];
+				const auto* rotation = catalog.Find_BossPatternRotation("ENCOUNTER_VALTAN", window.phase, window.bars);
+				if (!rotation || std::find(rotation->PatternIds.begin(), rotation->PatternIds.end(), boss->strPatternId) == rotation->PatternIds.end()) continue;
+				loops[windowIndex].push_back(boss->strPatternId);
+				if (loops[windowIndex].size() != rotation->PatternIds.size() + 1u) continue;
+				if (windowIndex < 7u)
+				{
+					boss->iCurrentHp = CValtanBrain::Resolve_HealthBarHp(*boss, window.gate);
+					waitingForMechanic = true;
+				}
+				else
+				{
+					// End with a real approved player skill, not the debug kill command.
+					boss->iCurrentHp = 1u;
+					auto& player = room->m_Players.at(sessions.front()->Get_PlayerId());
+					SERVER_NAV_POINT point{};
+					if (room->m_ServerNavigation.Project_Point(boss->fPositionX, boss->fPositionZ + 2.f, point))
+					{ player.fPositionX = point.x; player.fPositionY = point.y; player.fPositionZ = point.z; }
+					C2S_USE_SKILL skill{}; skill.iClientSequence = 1u; skill.iSkillId = 34010u;
+					skill.fAimX = boss->fPositionX; skill.fAimZ = boss->fPositionZ;
+					room->Handle_UseSkill(player.iSessionId, skill);
+					killIssued = player.iCurrentSkillId == skill.iSkillId;
+				}
+			}
+			tests.Require(entryOrder == std::vector<std::string>{"VALTAN_ENTRANCE_CINEMATIC", "VALTAN_ENTRANCE_WHIRLWIND", "VALTAN_WHIRLWIND"} &&
+				cinematicStages == std::vector<std::string>{"ESTABLISH", "ARENA_REVEAL", "HERO_HANDOFF"} && allArrived,
+				"Four-player entry completes every cinematic stage, arrival and mandatory intro before health loops");
+			for (std::size_t index = 0u; index < windows.size(); ++index)
+			{
+				const auto* rotation = catalog.Find_BossPatternRotation("ENCOUNTER_VALTAN", windows[index].phase, windows[index].bars);
+				std::vector<std::string> expected = rotation ? rotation->PatternIds : std::vector<std::string>{};
+				if (!expected.empty()) expected.push_back(expected.front());
+				tests.Require(!expected.empty() && loops[index] == expected,
+					"Continuous four-player room completes the published health-window order and wraps once");
+			}
+			std::vector<std::string> expectedMechanics;
+			for (std::size_t index = 0u; index < 7u; ++index) expectedMechanics.emplace_back(windows[index].mechanic);
+			tests.Require(mechanics == expectedMechanics && revival == std::vector<std::string>{"VALTAN_GHOST_DEATH_AUDITION", "VALTAN_GHOST_RESPAWN_AUDITION"} && ghostRestored,
+				"All seven health mechanics run once in order and real Death-to-Respawn restores the primary to forty bars");
+			tests.Require(room->Is_Ready() && stableIdentity && automatic && allAlive && progressionComplete && killedByPlayer,
+				"The uninterrupted four-player raid reaches ghost skill death and authoritative clear without reset or audition override");
+			tests.Require(wireParity && synchronizedTicks > 1000u && terminalSnapshots == 4u &&
+				std::all_of(clearPackets.begin(), clearPackets.end(), [](auto count) { return count == 1u; }) &&
+				std::all_of(rewardPackets.begin(), rewardPackets.end(), [](auto count) { return count >= 1u; }),
+				"All four sessions decode identical authoritative snapshots and each receives one raid-clear MVP and rewards");
+			std::cout << "[VALTAN_4P] complete=" << progressionComplete << " ticks=" << synchronizedTicks
+				<< " window=" << windowIndex << " mechanics=" << mechanics.size() << " parity=" << wireParity
+				<< " ready=" << room->Is_Ready() << " status=" << room->m_strStatus << '\n';
+		}
+		for (const auto& session : sessions) session->Request_Close();
+	}
+
 }
 

@@ -700,6 +700,7 @@ void LostArk::Server::CGameRoom::Handle_DebugEnterKakulSaydonArena(
 	transfer.iHonorTitleId = player.iHonorTitleId;
 	transfer.iPartyRequestSequence = request.iRequestSequence;
 	transfer.CarriedInventory = player.Inventory;
+	transfer.CarriedPurse = player.Purse;
 	m_PendingWorldTransfers.push_back(std::move(transfer));
 #endif
 }
@@ -1328,6 +1329,7 @@ LostArk::Server::CGameRoom::Apply_CharacterClassChange(
 		}
 	}
 
+	staged.bRonaunGuard = false; staged.iRonaunGrantTick = 0u;
 	staged.iEstherGuardEndTick = 0u;
 	staged.iEstherGuardDamageTakenPercent = 0;
 	staged.eCharacterClass = request.eCharacterClass;
@@ -1408,7 +1410,7 @@ void LostArk::Server::CGameRoom::Handle_ChangeCharacterClass(
 	}
 	/* The new class cannot wear another class's gear. */
 	if (Unequip_OtherClassItems(player) &&
-		!Send_InventorySnapshot(session, 0u, player.Inventory))
+		!Send_InventorySnapshot(session, 0u, player))
 	{
 		session->Request_Close();
 	}

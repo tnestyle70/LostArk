@@ -153,10 +153,12 @@ namespace
 	bool_t IsExactObject(
 		const DATA_JSON_VALUE& value,
 		const std::initializer_list<const char_t*> keys,
-		const char_t* optionalKey = nullptr)
+		const char_t* optionalKey = nullptr,
+		const char_t* secondOptionalKey = nullptr)
 	{
-		const size_t optionalCount = nullptr != optionalKey &&
-			nullptr != value.Find(optionalKey) ? 1u : 0u;
+		const size_t optionalCount =
+			(nullptr != optionalKey && nullptr != value.Find(optionalKey) ? 1u : 0u) +
+			(nullptr != secondOptionalKey && nullptr != value.Find(secondOptionalKey) ? 1u : 0u);
 		if (!value.Is_Object() || value.Get_Object().size() != keys.size() + optionalCount)
 			return false;
 		return std::all_of(keys.begin(), keys.end(),
@@ -325,6 +327,7 @@ namespace
 		case MAP_EFFECT_ACTIVATION_POLICY::LEVEL_ACTIVE: return "LEVEL_ACTIVE";
 		case MAP_EFFECT_ACTIVATION_POLICY::SERVER_PATTERN_WINDOW:
 			return "SERVER_PATTERN_WINDOW";
+		case MAP_EFFECT_ACTIVATION_POLICY::SERVER_PICKUP: return "SERVER_PICKUP";
 		default: return "";
 		}
 	}
@@ -414,6 +417,7 @@ bool_t Client::CMapEffectDocument::Parse(
 	std::unordered_set<std::string> independentIds;
 	std::unordered_set<std::string> placementIds;
 	std::unordered_set<uint64_t> surfacePlacementIds;
+	uint32_t pickupCount = 0u;
 	for (const DATA_JSON_VALUE& row : presentations->Get_Array())
 	{
 		std::string kind;
@@ -504,7 +508,7 @@ bool_t Client::CMapEffectDocument::Parse(
 				"placementId", "effectAssetId", "position",
 				"rotationQuaternion", "scale", "orientationPolicy",
 				"activationPolicy", "activationSetId", "activationWindows",
-				"playbackPolicy" }, "maxDrawDistanceMeters"))
+				"playbackPolicy" }, "maxDrawDistanceMeters", "pickup"))
 			{
 				outStatus = "Map Effect world row has unexpected properties";
 				return false;
@@ -565,12 +569,14 @@ bool_t Client::CMapEffectDocument::Parse(
 			else if (activation == "SERVER_PATTERN_WINDOW")
 				world.activationPolicy =
 					MAP_EFFECT_ACTIVATION_POLICY::SERVER_PATTERN_WINDOW;
+			else if (activation == "SERVER_PICKUP")
+				world.activationPolicy = MAP_EFFECT_ACTIVATION_POLICY::SERVER_PICKUP;
 			else
 			{
 				outStatus = "Map Effect activation policy is invalid";
 				return false;
 			}
-			if ((world.activationPolicy == MAP_EFFECT_ACTIVATION_POLICY::LEVEL_ACTIVE &&
+			if ((world.activationPolicy != MAP_EFFECT_ACTIVATION_POLICY::SERVER_PATTERN_WINDOW &&
 				 (!world.activationSetId.empty() ||
 				  !activationWindows->Get_Array().empty())) ||
 				(world.activationPolicy ==
@@ -630,6 +636,39 @@ bool_t Client::CMapEffectDocument::Parse(
 			{
 				outStatus = "Map Effect activation/playback policies do not match";
 				return false;
+			}
+			const DATA_JSON_VALUE* pickupValue = row.Find("pickup");
+			if ((nullptr != pickupValue) !=
+				(world.activationPolicy == MAP_EFFECT_ACTIVATION_POLICY::SERVER_PICKUP))
+			{
+				outStatus = "Map Effect pickup metadata requires SERVER_PICKUP activation";
+				return false;
+			}
+			if (nullptr != pickupValue)
+			{
+				if (++pickupCount > 16u)
+				{
+					outStatus = "Map Effect exceeds 16 Server pickups";
+					return false;
+				}
+				MAP_EFFECT_PICKUP pickup;
+				std::array<f32_t, 3u> landing{};
+				if (!IsExactObject(*pickupValue,
+					{ "wallGroupId", "landingPosition", "fallDurationMs", "pickupRadiusM" }) ||
+					!ReadString(*pickupValue, "wallGroupId", pickup.wallGroupId) ||
+					!IsStableId(pickup.wallGroupId, 160u) ||
+					!ReadVector(*pickupValue, "landingPosition", -100000.0, 100000.0, landing) ||
+					!ReadUInt32(*pickupValue, "fallDurationMs", 60000u, pickup.fallDurationMs) ||
+					0u == pickup.fallDurationMs || world.placementId.size() > 128u ||
+					static_cast<double>(position[1]) - landing[1] < 0.01 ||
+					!ReadFinite(*pickupValue, "pickupRadiusM", 0.001, 20.0, pickup.pickupRadiusM) ||
+					world.playbackPolicy != MAP_EFFECT_PLAYBACK_POLICY::SOURCE_LOOP)
+				{
+					outStatus = "Map Effect pickup requires a wall, finite landing, bounded fall/radius and SOURCE_LOOP";
+					return false;
+				}
+				pickup.landingPosition = { landing[0], landing[1], landing[2] };
+				world.pickup = std::move(pickup);
 			}
 			world.position = { position[0], position[1], position[2] };
 			world.rotationQuaternion =
@@ -739,8 +778,17 @@ std::string Client::CMapEffectDocument::Serialize() const
 		output << "      ],\n"
 			<< "      \"playbackPolicy\": \""
 			<< ToString(world.playbackPolicy) << "\",\n"
-			<< "      \"maxDrawDistanceMeters\": " << world.maxDrawDistanceMeters
-			<< "\n    }"
+			<< "      \"maxDrawDistanceMeters\": " << world.maxDrawDistanceMeters;
+		if (world.pickup.has_value())
+		{
+			const MAP_EFFECT_PICKUP& pickup = *world.pickup;
+			output << ",\n      \"pickup\": { \"wallGroupId\": \""
+				<< EscapeJson(pickup.wallGroupId) << "\", \"landingPosition\": ["
+				<< pickup.landingPosition.x << ", " << pickup.landingPosition.y << ", "
+				<< pickup.landingPosition.z << "], \"fallDurationMs\": "
+				<< pickup.fallDurationMs << ", \"pickupRadiusM\": " << pickup.pickupRadiusM << " }";
+		}
+		output << "\n    }"
 			<< (++emitted == total ? "\n" : ",\n");
 	}
 	output << "  ]\n}\n";

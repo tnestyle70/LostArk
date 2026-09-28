@@ -7,6 +7,9 @@
 #include <charconv>
 #include <cctype>
 #include <fstream>
+#include <cmath>
+#include <iomanip>
+#include <sstream>
 #include <limits>
 #include <map>
 #include <set>
@@ -418,5 +421,60 @@ bool LostArk::Server::CWorldDestructionBootstrap::Load_FromFile(
 	m_strStatus = groupCount ?
 		"World destruction bootstrap loaded" :
 		"Dormant world destruction bootstrap loaded";
+	return true;
+}
+
+
+bool LostArk::Server::Load_ValtanWorldPickups(
+	std::vector<WORLD_PICKUP_DESCRIPTOR>& descriptors, std::string& status)
+{
+	return Load_WorldPickupsFromFile(Resolve_DataRoot() / L"World" /
+		L"VALTAN_ARENA.worldpickupsbootstrap", descriptors, status);
+}
+
+bool LostArk::Server::Load_WorldPickupsFromFile(const std::filesystem::path& path,
+	std::vector<WORLD_PICKUP_DESCRIPTOR>& descriptors, std::string& status)
+{
+	std::ifstream input(path, std::ios::binary);
+	std::string line, magic, area;
+	std::uint32_t version = 0u, tickHz = 0u, count = 0u;
+	if (!input || !std::getline(input, line))
+	{ status = "Missing world pickups bootstrap: " + path.string(); return false; }
+	std::istringstream header(line);
+	if (!(header >> magic >> version >> std::quoted(area) >> tickHz >> count) ||
+		!(header >> std::ws).eof() || magic != "LOSTARK_WORLD_PICKUPS" || version != 1u ||
+		area != EXPECTED_AREA_ID || tickHz != 30u || count > 16u)
+	{ status = "Invalid world pickups bootstrap header"; return false; }
+	std::vector<WORLD_PICKUP_DESCRIPTOR> staged;
+	std::set<std::string> ids;
+	const auto finitePosition = [](const float value)
+	{ return std::isfinite(value) && std::fabs(value) <= 100000.f; };
+	for (std::uint32_t index = 0u; index < count; ++index)
+	{
+		WORLD_PICKUP_DESCRIPTOR row{};
+		if (!std::getline(input, line))
+		{ status = "World pickup row count is short"; return false; }
+		std::istringstream fields(line);
+		if (!(fields >> std::quoted(row.strPlacementId) >> std::quoted(row.strWallGroupId) >>
+			row.fStartX >> row.fStartY >> row.fStartZ >> row.fLandingX >> row.fLandingY >>
+			row.fLandingZ >> row.iFallDurationTicks >> row.fPickupRadiusM) ||
+			!(fields >> std::ws).eof() || !Is_StableId(row.strPlacementId) ||
+			row.strWallGroupId.empty() || row.strWallGroupId.size() > 160u ||
+			!std::all_of(row.strWallGroupId.begin(), row.strWallGroupId.end(),
+				[](const unsigned char c) { return std::isalnum(c) || c == '.' || c == '_' || c == '-'; }) ||
+			!ids.insert(row.strPlacementId).second ||
+			!finitePosition(row.fStartX) || !finitePosition(row.fStartY) || !finitePosition(row.fStartZ) ||
+			!finitePosition(row.fLandingX) || !finitePosition(row.fLandingY) || !finitePosition(row.fLandingZ) ||
+			row.fStartY - row.fLandingY < 0.01f || row.iFallDurationTicks == 0u || row.iFallDurationTicks > 1800u ||
+			!std::isfinite(row.fPickupRadiusM) || row.fPickupRadiusM < 0.001f || row.fPickupRadiusM > 20.f)
+		{ status = "Invalid world pickup row"; return false; }
+		staged.push_back(std::move(row));
+	}
+	if (!(input >> std::ws).eof())
+	{ status = "Unexpected trailing world pickup row"; return false; }
+	std::sort(staged.begin(), staged.end(), [](const auto& a, const auto& b)
+	{ return a.strPlacementId < b.strPlacementId; });
+	descriptors = std::move(staged);
+	status = "World pickups bootstrap loaded";
 	return true;
 }

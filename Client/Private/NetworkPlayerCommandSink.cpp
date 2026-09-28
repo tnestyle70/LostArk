@@ -397,3 +397,13 @@ bool Client::CNetworkPlayerCommandSink::Consume_SetCooldownModeResult(
 {
 	return CNetworkManager::Get().Try_Consume_SetCooldownModeResult(result);
 }
+
+bool Client::CNetworkPlayerCommandSink::Request_BalanceRefresh()
+{ return CNetworkManager::Get().Request_BalanceRefresh(); }
+bool Client::CNetworkPlayerCommandSink::Request_BalancePatch(const LostArk::Shared::C2S_BALANCE_PATCH& request)
+{ return CNetworkManager::Get().Send_BalancePatch(request); }
+bool Client::CNetworkPlayerCommandSink::Consume_BalanceResult(LostArk::Shared::S2C_BALANCE_RESULT& result)
+{ return CNetworkManager::Get().Try_Consume_BalanceResult(result); }
+bool Client::CNetworkPlayerCommandSink::Copy_BalanceSnapshot(LostArk::Shared::GameplayDataRevision& revision,
+	std::vector<LostArk::Shared::BALANCE_NUMERIC_ENTRY>& entries) const
+{ return CNetworkManager::Get().Copy_BalanceSnapshot(revision, entries); }

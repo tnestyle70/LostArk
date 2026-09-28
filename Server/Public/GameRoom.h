@@ -25,6 +25,7 @@
 #include "EncounterPropRuntime.h"
 #include "EstherSkillSystem.h"
 #include "Gameplay/EstherStrikeContract.h"
+#include "Gameplay/MaharakaWaterpangContract.h"
 #include "WorldDestructionBootstrap.h"
 #include "WorldDestructionRuntime.h"
 #include "Network/PacketFrame.h"
@@ -69,6 +70,11 @@ namespace LostArk::Server
 			const std::shared_ptr<const CGameplayCatalog>& candidateGeneration,
 			std::string& status);
 		bool Commit(std::uint32_t transactionSequence) noexcept;
+		bool Stage_NumericBalance(std::uint32_t transactionSequence,
+			const std::shared_ptr<const CGameplayCatalog>& candidate, std::string& status);
+		bool Commit_NumericBalance(std::uint32_t transactionSequence) noexcept;
+		void Abort_NumericBalance(std::uint32_t transactionSequence) noexcept;
+
 		void Abort(std::uint32_t transactionSequence) noexcept;
 		void Collect_Garbage(
 			const std::vector<LostArk::Shared::GameplayDataRevision>& livePins);
@@ -121,6 +127,10 @@ namespace LostArk::Server
 		std::uint32_t m_iStagedTransactionSequence = 0u;
 		std::uint16_t m_iActiveGenerationEpoch = 0u;
 		std::vector<std::shared_ptr<const CGameplayCatalog>> m_Generations;
+		std::vector<std::shared_ptr<const CGameplayCatalog>> m_NumericStagedGenerations;
+		std::shared_ptr<const CGameplayCatalog> m_pNumericStagedActive;
+		std::uint32_t m_iNumericTransactionSequence = 0u;
+
 		std::string m_strStatus;
 	};
 
@@ -240,6 +250,10 @@ namespace LostArk::Server
 		}
 		/* Room-thread only. Stage is allowed to fail before publication; Commit
 		   is a bounded pointer swap after every process room has staged. */
+		bool Stage_NumericBalance(std::uint32_t transactionSequence,
+			const std::shared_ptr<const CGameplayCatalog>& candidate, std::string& status);
+		bool Commit_NumericBalance(std::uint32_t transactionSequence) noexcept;
+		void Abort_NumericBalance(std::uint32_t transactionSequence) noexcept;
 		bool Stage_GameplayGeneration(
 			std::uint32_t transactionSequence,
 			const LostArk::Shared::GameplayDataRevision& baseRevision,
@@ -315,7 +329,8 @@ namespace LostArk::Server
 				carriedInventory = {},
 			LostArk::Shared::HONOR_TITLE_ID carriedHonorTitleId =
 				LostArk::Shared::INVALID_HONOR_TITLE_ID,
-			const std::string& raidReturnNpcPlacementId = {});
+			const std::string& raidReturnNpcPlacementId = {},
+			const SERVER_PURSE& carriedPurse = {});
 		bool Build_PlayerEntryFrames(STAGED_PLAYER_ENTRY& entry,
 			std::span<const STAGED_PLAYER_ENTRY> batch, std::string& status);
 		void Commit_PlayerEntry(const STAGED_PLAYER_ENTRY& entry);
@@ -329,7 +344,8 @@ namespace LostArk::Server
 				carriedInventory = {},
 			LostArk::Shared::HONOR_TITLE_ID carriedHonorTitleId =
 				LostArk::Shared::INVALID_HONOR_TITLE_ID,
-			const std::string& raidReturnNpcPlacementId = {});
+			const std::string& raidReturnNpcPlacementId = {},
+			const SERVER_PURSE& carriedPurse = {});
 		void Leave(
 			SESSION_ID sessionId,
 			LostArk::Shared::PLAYER_DESPAWN_REASON reason, bool publishDeparture = true);
@@ -1104,6 +1120,14 @@ namespace LostArk::Server
 			const LostArk::Shared::C2S_SET_EQUIPMENT& request) const;
 		/* After a class change: items bound to another class go back to the bag. */
 		bool Unequip_OtherClassItems(SERVER_PLAYER& player) const;
+		/* NPC shop basket. The player must stand by that shop NPC; every line must be in
+		   its stock, the total price must be covered and the bag must take every line, or
+		   nothing changes. Answers with the whole inventory either way. */
+		void Handle_BuyItems(
+			SESSION_ID sessionId,
+			const LostArk::Shared::C2S_BUY_ITEMS& request);
+		bool Apply_BuyItems(SERVER_PLAYER& player,
+			const LostArk::Shared::C2S_BUY_ITEMS& request) const;
 		// Debug Character Select Arena "되돌리기" -- despawns every world entity the
 		// debug spawn buttons created in this room (Broadcast_WorldEntityDespawned per
 		// entity) and resets the spawn group runtime so the same groups can be
@@ -1366,8 +1390,7 @@ namespace LostArk::Server
 		bool Send_InventorySnapshot(
 			const std::shared_ptr<CClientSession>& session,
 			std::uint32_t requestSequence,
-			const std::vector<LostArk::Shared::INVENTORY_ITEM_SNAPSHOT>&
-				inventory);
+			const SERVER_PLAYER& player);
 		bool Send_Despawned(
 			const std::shared_ptr<CClientSession>& session,
 			LostArk::Shared::NET_ENTITY_ID netEntityId,
@@ -1509,6 +1532,12 @@ namespace LostArk::Server
 			const SERVER_WORLD_ENTITY& boss,
 			std::uint32_t serverTick);
 		bool Commit_DueEncounterProps(std::uint32_t serverTick);
+		bool Initialize_WorldPickups();
+		void Reset_WorldPickups(std::uint32_t serverTick);
+		void Update_WorldPickups(std::uint32_t serverTick, bool allowCollection = true);
+		void Apply_WorldPickupDestruction(const WORLD_DESTRUCTION_TRANSACTION& transaction,
+			std::uint32_t serverTick);
+		void Remove_RemainingWorldPickups(std::uint32_t serverTick);
 		bool Send_EncounterPropSync(
 			const std::shared_ptr<CClientSession>& session);
 		void Broadcast_EncounterPropSync();
@@ -1567,6 +1596,14 @@ namespace LostArk::Server
 		void Resolve_CardMazeHammerHit(SERVER_PLAYER& player, std::uint32_t updateTick);
 		void Resolve_MarioHammerHit(SERVER_PLAYER& player, std::uint32_t updateTick);
 		void Update_MarioBombContacts(SERVER_PLAYER& player, std::uint32_t updateTick);
+		// Rotating cannon jets and the big mokoko waterfall of a live Waterpang match.
+		void Update_MaharakaWaterpangHazards(SERVER_PLAYER& player, std::uint32_t updateTick);
+		// The running Debug forced event first, else the match schedule; false when neither runs.
+		bool Sample_MaharakaWaterpangNow(std::uint32_t tick, LostArk::Shared::MAHARAKA_WATERPANG_EVENT_SAMPLE& out) const;
+		// The forced event plus a short tail, so its last push can still leave the deck.
+		bool Is_MaharakaWaterpangDebugEventLive(std::uint32_t tick) const;
+		// Debug F1 Waterpang pattern button: starts a forced event for the whole room.
+		LostArk::Shared::DEBUG_WORLD_PLAYBACK_RESULT Start_MaharakaWaterpangDebugEvent(const std::string& instanceId);
 		std::uint8_t Mario_CurseReleasedMask(std::uint8_t stage, std::uint8_t layout) const;
 		bool Spawn_CardMazeTarget(const CKoukuCardMazeRuntime::SPAWN_REQUEST& request);
 		void Remove_CardMazeTarget(LostArk::Shared::NET_ENTITY_ID id);
@@ -1762,6 +1799,9 @@ namespace LostArk::Server
 		LostArk::Shared::WORLD_ID m_eWorldId = LostArk::Shared::WORLD_ID::END;
 		CWorldBootstrap m_WorldBootstrap;
 		CGameplayCatalogGenerations m_GameplayCatalog;
+		std::vector<LostArk::Shared::BALANCE_NUMERIC_ENTRY> m_StagedNumericEntries;
+		std::vector<std::pair<std::shared_ptr<const CGameplayCatalog>, std::shared_ptr<const CGameplayCatalog>>>
+			m_StagedNumericCatalogRemaps;
 		CItemCatalog m_ItemCatalog;
 		CVehicleCatalog m_VehicleCatalog;
 		CHonorTitleCatalog m_HonorTitleCatalog;
@@ -1769,6 +1809,10 @@ namespace LostArk::Server
 		CServerNavigation m_ServerNavigation;
 		CServerCollisionSystem m_ServerCollisionSystem;
 		CServerTriggerSystem m_ServerTriggerSystem;
+		// One room-wide scheduled intro, retained for late join until the room empties.
+		std::optional<LostArk::Shared::S2C_WORLD_SEQUENCE_PLAY> m_MaharakaWaterpangIntro;
+		// Debug forced waterfall/cannon broadcast; replaced by the next press, kept for late join.
+		std::optional<LostArk::Shared::S2C_WORLD_SEQUENCE_PLAY> m_MaharakaWaterpangDebugEvent;
 		CSpawnGroupBootstrap m_SpawnGroupBootstrap;
 		CSpawnGroupRuntime m_SpawnGroupRuntime;
 		std::mt19937 m_MarioLayoutRandom{std::random_device{}()};
@@ -1821,6 +1865,13 @@ namespace LostArk::Server
 		CEstherSkillSystem m_EstherSkillSystem;
 		CWorldDestructionBootstrap m_WorldDestructionBootstrap;
 		CWorldDestructionRuntime m_WorldDestructionRuntime;
+		struct WORLD_PICKUP_RUNTIME final
+		{
+			WORLD_PICKUP_DESCRIPTOR Descriptor;
+			LostArk::Shared::WORLD_PICKUP_SNAPSHOT Snapshot;
+		};
+		std::vector<WORLD_PICKUP_RUNTIME> m_WorldPickups;
+		std::uint32_t m_iWorldPickupEncounterEpoch = 0u;
 		/* The four pillars come back four times in one fight, so they live in a
 		reversible prop runtime instead of a one-way destruction group. */
 		CEncounterPropRuntime m_EncounterPropRuntime;

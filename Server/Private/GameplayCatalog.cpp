@@ -10,6 +10,10 @@
 #include <filesystem>
 #include <fstream>
 #include <iterator>
+#include <iomanip>
+#include <map>
+#include <locale>
+#include <tuple>
 #include <limits>
 #include <sstream>
 #include <string_view>
@@ -234,6 +238,8 @@ namespace
 		using LostArk::Server::BOSS_PATTERN_ROTATION_SELECTION_MODE;
 		if ("WEIGHTED_POOL" == value)
 			output = BOSS_PATTERN_ROTATION_SELECTION_MODE::WEIGHTED_POOL;
+		else if ("ORDERED_LOOP" == value)
+			output = BOSS_PATTERN_ROTATION_SELECTION_MODE::ORDERED_LOOP;
 		else if ("ORDERED_INTRO_THEN_WEIGHTED" == value)
 			output = BOSS_PATTERN_ROTATION_SELECTION_MODE::
 				ORDERED_INTRO_THEN_WEIGHTED;
@@ -1147,10 +1153,10 @@ bool LostArk::Server::CGameplayCatalog::Parse_SkillHits(
 		const std::string_view token{
 			packed.data() + cursor,
 			(std::string::npos == comma ? packed.size() : comma) - cursor };
-		std::string_view fields[15];
+		std::string_view fields[16];
 		std::size_t fieldCount = 0;
 		std::size_t start = 0;
-		while (fieldCount < 15)
+		while (fieldCount < 16)
 		{
 			const std::size_t colon = token.find(':', start);
 			fields[fieldCount++] = token.substr(start,
@@ -1160,8 +1166,9 @@ bool LostArk::Server::CGameplayCatalog::Parse_SkillHits(
 			start = colon + 1;
 		}
 		PLAYER_SKILL_HIT hit{};
-		if ((13u != fieldCount && 14u != fieldCount) ||
-			(14u == fieldCount && (!ParseNumber(fields[13], hit.iResultKind) || hit.iResultKind > 3u)) ||
+		if ((13u != fieldCount && 14u != fieldCount && 15u != fieldCount) ||
+			(fieldCount >= 14u && (!ParseNumber(fields[13], hit.iResultKind) || hit.iResultKind > 3u)) ||
+			(15u == fieldCount && (!ParseNumber(fields[14], hit.iDurationMs) || hit.iDurationMs > 10000u)) ||
 			!ParseNumber(fields[0], hit.iTimeMs) ||
 			!ParseNumber(fields[1], hit.iRepeatCount) ||
 			!ParseNumber(fields[2], hit.iRepeatMs) ||
@@ -1171,7 +1178,7 @@ bool LostArk::Server::CGameplayCatalog::Parse_SkillHits(
 			(hit.iRepeatCount > 1u && 0u == hit.iRepeatMs) ||
 			static_cast<std::uint64_t>(hit.iTimeMs) +
 				static_cast<std::uint64_t>(hit.iRepeatCount - 1u) *
-					hit.iRepeatMs > limitMs ||
+					hit.iRepeatMs + hit.iDurationMs > limitMs ||
 			(!outHits.empty() && hit.iTimeMs < outHits.back().iTimeMs))
 		{
 			m_strStatus = "Skill hit shape is invalid";
@@ -1409,8 +1416,53 @@ bool LostArk::Server::CGameplayCatalog::Load()
 		m_strStatus = "Gameplay data root could not be resolved";
 		return false;
 	}
-	return Load_BootstrapPath(
-		dataRoot / L"Gameplay" / L"Gameplay.bootstrap", nullptr, nullptr);
+	CGameplayCatalog staged;
+	if (!staged.Load_BootstrapPath(dataRoot / L"Gameplay" / L"Gameplay.bootstrap", nullptr, nullptr))
+	{ m_strStatus = staged.Get_Status(); return false; }
+	const auto receiptPath = dataRoot / L"Gameplay" / L"NumericBalance.active.json";
+	std::error_code error;
+	const bool hasReceipt = std::filesystem::exists(receiptPath, error);
+	if (error) { m_strStatus = "Numeric balance receipt cannot be inspected"; return false; }
+	if (hasReceipt)
+	{
+		// This bounded receipt is a publication identity, never a JSON gameplay fallback.
+		std::ifstream stream(receiptPath, std::ios::binary | std::ios::ate);
+		if (!stream || stream.tellg() <= 0 || stream.tellg() > 2048)
+		{ m_strStatus = "Numeric balance receipt size is invalid"; return false; }
+		stream.seekg(0);
+		std::map<std::string, std::string> fields;
+		char token = 0;
+		bool valid = bool(stream >> token) && token == '{';
+		while (valid)
+		{
+			std::string key, value;
+			stream >> std::ws;
+			if (stream.peek() != '"' || !(stream >> std::quoted(key) >> token) || token != ':') { valid = false; break; }
+			stream >> std::ws;
+			if (stream.peek() != '"' || !(stream >> std::quoted(value)) || !fields.emplace(key, value).second || fields.size() > 5u)
+			{ valid = false; break; }
+			if (!(stream >> token)) { valid = false; break; }
+			if (token == '}') break;
+			if (token != ',') { valid = false; break; }
+		}
+		stream >> std::ws;
+		LostArk::Shared::GameplayDataRevision parent, expectedBootstrap, expectedNumeric, expectedNonNumeric, actualBootstrap, actualNumeric, actualNonNumeric;
+		std::vector<LostArk::Shared::BALANCE_NUMERIC_ENTRY> entries;
+		if (!valid || stream.peek() != std::char_traits<char>::eof() || fields.size() != 5u ||
+			fields["schema"] != "lostark.numeric-balance-active" ||
+			!LostArk::Shared::Try_Parse_GameplayDataRevision(fields["parentGameplayRevision"], parent) ||
+			!LostArk::Shared::Try_Parse_GameplayDataRevision(fields["bootstrapContentSha256"], expectedBootstrap) ||
+			!LostArk::Shared::Try_Parse_GameplayDataRevision(fields["numericRevision"], expectedNumeric) ||
+			!LostArk::Shared::Try_Parse_GameplayDataRevision(fields["nonNumericRowsSha256"], expectedNonNumeric) ||
+			staged.Get_ActiveRevision() != expectedBootstrap ||
+			!staged.Build_NumericBalanceReceiptHashes(actualBootstrap, actualNonNumeric, m_strStatus) ||
+			!staged.Build_NumericBalanceSnapshot(entries, actualNumeric, m_strStatus) ||
+			actualBootstrap != expectedBootstrap || actualNumeric != expectedNumeric || actualNonNumeric != expectedNonNumeric)
+		{ m_strStatus = "Numeric balance receipt does not match the validated published bootstrap"; return false; }
+		staged.m_ActiveRevision = parent;
+	}
+	*this = std::move(staged);
+	return true;
 }
 
 bool LostArk::Server::CGameplayCatalog::Load_PublishedKoukuProduct(
@@ -1815,6 +1867,7 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 	std::unordered_set<LostArk::Shared::SKILL_ID> emberSkillOwners;
 	std::unordered_set<std::string> patternPolicyOwners;
 	std::unordered_set<std::string> patternSourceOwners;
+	std::unordered_set<std::string> patternFinaleIntervalOwners;
 	std::unordered_set<std::string> patternVerticalOffsetOwners;
 	std::unordered_set<std::string> patternStageVerticalOffsetOwners;
 	std::unordered_set<std::string> patternStagePartDamageOwners;
@@ -2613,8 +2666,8 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 			const bool validFixedArea = fixedArea && (lockedOrigin || birthPoseOrigin) &&
 				BOSS_COMBAT_OBJECT_DIRECTION_POLICY::NONE ==
 					definition.eDirectionPolicy &&
-				0.f == definition.fOffsetForwardM &&
-				0.f == definition.fOffsetRightM && 0.f == definition.fSpeedMps &&
+				(birthPoseOrigin || (0.f == definition.fOffsetForwardM &&
+				 0.f == definition.fOffsetRightM)) && 0.f == definition.fSpeedMps &&
 				0.f == definition.fMaximumDistanceM &&
 				0u == definition.iMovementStartDelayMs &&
 				definition.bExpireOnDistanceEnd;
@@ -4035,6 +4088,9 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 				!ParseNumber(fields[5], set) || !ParseNumber(fields[6], ordinal) || set >= 32u || ordinal >= 32u)
 			{ m_strStatus = "Attack template header is invalid"; return false; }
 			hit.strHitId = fields[7]; hit.strTrigger = fields[8]; hit.strShape = fields[13];
+            hit.strNumericBalanceId = "H|" + std::string(fields[1]) + "|" + std::string(fields[2]) + "|" +
+                std::string(fields[3]) + "|" + std::string(fields[4]) + "|" + std::string(fields[5]) + "|" + std::string(fields[6]);
+
 			hit.strDamageKind = fields[22]; if (fields[24] != "-") hit.strDamageProfileId = fields[24];
 			if (!ParseNumber(fields[9], hit.iAtMs) ||
 				!ParseNumber(fields[10], hit.iEndMs) ||
@@ -4713,6 +4769,33 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 			finale.strGhostArchetypeId = std::string(fields[4]);
 			owner->Finale = std::move(finale);
 		}
+		else if (!fields.empty() && "PATTERNFINALEINTERVAL" == fields[0])
+		{
+			std::uint32_t auxiliaryMs = 0u, portalMs = 0u;
+			if (5u != fields.size() || !IsStableId(fields[1]) || !IsStableId(fields[2]) ||
+				!ParseNumber(fields[3], auxiliaryMs) || auxiliaryMs > 600000u ||
+				!ParseNumber(fields[4], portalMs) || portalMs < 1u || portalMs > 600000u ||
+				!patternFinaleIntervalOwners.emplace(std::string(fields[1]) + ":" + std::string(fields[2])).second)
+			{
+				m_strStatus = "Boss finale interval row is invalid or duplicated";
+				return false;
+			}
+			const auto ownerMap = m_BossPatterns.find(std::string(fields[1]));
+			if (m_BossPatterns.end() == ownerMap)
+			{
+				m_strStatus = "Boss finale interval has no encounter owner";
+				return false;
+			}
+			const auto owner = std::find_if(ownerMap->second.begin(), ownerMap->second.end(),
+				[&fields](const BOSS_PATTERN_DEFINITION& p) { return p.strPatternId == fields[2]; });
+			if (ownerMap->second.end() == owner || BOSS_PATTERN_FINALE_KIND::GHOST_PORTAL_LOOP != owner->Finale.eKind)
+			{
+				m_strStatus = "Boss finale interval has no declared finale owner";
+				return false;
+			}
+			owner->Finale.iAuxiliarySpawnIntervalMs = auxiliaryMs;
+			owner->Finale.iPortalSpawnIntervalMs = portalMs;
+		}
 		else if (!fields.empty() && "PATTERNMOTION" == fields[0])
 		{
 			BOSS_PATTERN_MOTION motion{};
@@ -5294,8 +5377,8 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 				[&fields](const BOSS_PATTERN_ROTATION_DEFINITION& candidate)
 				{ return candidate.strRotationId == fields[2]; });
 			if (rotationMap->second.end() == rotation ||
-				BOSS_PATTERN_ROTATION_SELECTION_MODE::
-					ORDERED_INTRO_THEN_WEIGHTED != rotation->eSelectionMode ||
+				(BOSS_PATTERN_ROTATION_SELECTION_MODE::ORDERED_INTRO_THEN_WEIGHTED != rotation->eSelectionMode &&
+				 BOSS_PATTERN_ROTATION_SELECTION_MODE::ORDERED_LOOP != rotation->eSelectionMode) ||
 				stepIndex != rotation->PatternIds.size() ||
 				stepIndex >= rotation->iExpectedStepCount)
 			{
@@ -5336,8 +5419,8 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 				[&fields](const BOSS_PATTERN_ROTATION_DEFINITION& candidate)
 				{ return candidate.strRotationId == fields[2]; });
 			if (rotationMap->second.end() == rotation ||
-				BOSS_PATTERN_ROTATION_SELECTION_MODE::WEIGHTED_POOL !=
-					rotation->eSelectionMode || rotation->Window.Is_Defined() ||
+				(BOSS_PATTERN_ROTATION_SELECTION_MODE::WEIGHTED_POOL != rotation->eSelectionMode &&
+				 BOSS_PATTERN_ROTATION_SELECTION_MODE::ORDERED_LOOP != rotation->eSelectionMode) || rotation->Window.Is_Defined() ||
 				fromBar != rotation->iFromHealthBar ||
 				toBar != rotation->iToHealthBar ||
 				candidateCount != rotation->iExpectedStepCount)
@@ -5489,9 +5572,10 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 		{
 			std::uint32_t interStepPursuitMs = 0u;
 			std::uint32_t stepCount = 0u;
-			if (6u != fields.size() || !IsStableId(fields[1]) ||
+			if ((6u != fields.size() && 7u != fields.size()) || !IsStableId(fields[1]) ||
 				!IsStableId(fields[2]) ||
-				"ORDERED_ONCE_THEN_IDLE" != fields[3] ||
+				(7u == fields.size() && "NONE" != fields[6] && !IsStableId(fields[6])) ||
+				("ORDERED_ONCE_THEN_IDLE" != fields[3] && "HEALTH_BAR_ROTATIONS" != fields[3]) ||
 				!ParseNumber(fields[4], interStepPursuitMs) ||
 				interStepPursuitMs < 100u || interStepPursuitMs > 10000u ||
 				!ParseNumber(fields[5], stepCount) ||
@@ -5505,7 +5589,10 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 			BOSS_PATTERN_SEQUENCE_DEFINITION sequence{};
 			sequence.strEncounterId = fields[1];
 			sequence.strSequenceId = fields[2];
-			sequence.eMode =
+			if (7u == fields.size() && "NONE" != fields[6])
+				sequence.strEntranceCinematicPatternId = fields[6];
+			sequence.eMode = "HEALTH_BAR_ROTATIONS" == fields[3] ?
+				BOSS_PATTERN_SEQUENCE_MODE::HEALTH_BAR_ROTATIONS :
 				BOSS_PATTERN_SEQUENCE_MODE::ORDERED_ONCE_THEN_IDLE;
 			sequence.iInterStepPursuitMs = interStepPursuitMs;
 			sequence.iInterStepPursuitTicks = static_cast<std::uint32_t>(
@@ -5893,6 +5980,54 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 			branch.strNextPatternId = std::string(fields[5]);
 			stage->Branches.push_back(std::move(branch));
 		}
+		else if (!fields.empty() && "PATTERNSTAGEAIM" == fields[0])
+		{
+			if ((5u != fields.size() && 7u != fields.size()) || !IsStableId(fields[1]) ||
+				!IsStableId(fields[2]) || !IsStableId(fields[3]) ||
+				("NEAREST_EACH_TICK" != fields[4] && "PATTERN_TARGET" != fields[4]))
+			{
+				m_strStatus = "Boss pattern stage aim row is invalid";
+				return false;
+			}
+			const auto ownerMap = m_BossPatterns.find(std::string(fields[1]));
+			if (m_BossPatterns.end() == ownerMap)
+			{
+				m_strStatus = "Boss pattern stage aim has no encounter";
+				return false;
+			}
+			const auto owner = std::find_if(ownerMap->second.begin(), ownerMap->second.end(),
+				[&fields](const BOSS_PATTERN_DEFINITION& pattern)
+				{ return pattern.strPatternId == fields[2]; });
+			if (ownerMap->second.end() == owner)
+			{
+				m_strStatus = "Boss pattern stage aim has no pattern owner";
+				return false;
+			}
+			const auto stage = std::find_if(owner->Stages.begin(), owner->Stages.end(),
+				[&fields](const BOSS_PATTERN_STAGE_DEFINITION& candidate)
+				{ return candidate.strActionId == fields[3]; });
+			if (owner->Stages.end() == stage || stage->bTrackNearestTarget || stage->bTrackPatternTarget)
+			{
+				m_strStatus = "Boss pattern stage aim has no stage owner or is duplicated";
+				return false;
+			}
+			stage->bTrackNearestTarget = "NEAREST_EACH_TICK" == fields[4];
+			stage->bTrackPatternTarget = "PATTERN_TARGET" == fields[4];
+			if (7u == fields.size())
+			{
+				stage->bHasAimEnd = fields[5] != "-";
+				stage->bHasAimResponseScale = fields[6] != "-";
+				if ((stage->bHasAimEnd && (!ParseNumber(fields[5], stage->iAimEndMs) ||
+					stage->iAimEndMs > stage->iDurationMs)) ||
+					(stage->bHasAimResponseScale && (!ParseNumber(fields[6], stage->fAimResponseScale) ||
+					!std::isfinite(stage->fAimResponseScale) || stage->fAimResponseScale < .01f ||
+					stage->fAimResponseScale > 10.f)))
+				{
+					m_strStatus = "Boss pattern stage aim window or response is invalid";
+					return false;
+				}
+			}
+		}
 		else if (!fields.empty() && "PATTERNSTAGEMOTION" == fields[0])
 		{
 			BOSS_PATTERN_STAGE_MOTION motion{};
@@ -5909,6 +6044,11 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 				motion.fDistance <= 1000.f)
 			{
 				motion.eKind = BOSS_PATTERN_STAGE_MOTION_KIND::FORWARD;
+			}
+			else if (6u == fields.size() && "TO_ARENA_CENTER" == fields[4] &&
+				"0" == fields[5])
+			{
+				motion.eKind = BOSS_PATTERN_STAGE_MOTION_KIND::TO_ARENA_CENTER;
 			}
 			else if (8u == fields.size() &&
 				"PORTAL_TARGET_RUSH" == fields[4] &&
@@ -6578,6 +6718,8 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 				pattern.bInvulnerableWhileRunning ||
 				pattern.Finale.iMaximumActiveGhosts < 1u ||
 				pattern.Finale.iMaximumActiveGhosts > 64u ||
+				pattern.Finale.iAuxiliarySpawnIntervalMs > 600000u ||
+				pattern.Finale.iPortalSpawnIntervalMs < 1u || pattern.Finale.iPortalSpawnIntervalMs > 600000u ||
 				pattern.Finale.GhostPatternIds.empty() ||
 				pattern.Finale.GhostPatternIds.size() > 64u)
 			{
@@ -6596,10 +6738,12 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 					"VALTAN_CHARGE",
 					"VALTAN_CHARGE_2"
 				};
-				if (pattern.Finale.GhostPatternIds != expectedGhostPatterns)
+				const std::vector<std::string> currentGhostPatterns(expectedGhostPatterns.begin(), expectedGhostPatterns.begin() + 4u);
+				if (pattern.Finale.GhostPatternIds != expectedGhostPatterns &&
+					pattern.Finale.GhostPatternIds != currentGhostPatterns)
 				{
 					m_strStatus =
-						"Valtan ghost finale primary-loop order is invalid";
+						"Valtan ghost finale auxiliary skill pool is invalid";
 					return false;
 				}
 			}
@@ -6806,6 +6950,19 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 				 isKoukuSaydonGateOne);
 			const bool validSelection = validNormalSelection ||
 				validHealthSelection || validAuditionSelection;
+			// Hand-authored audition clips have no extracted skill provenance.
+			// The publisher omits PATTERNSOURCE for these; normal encounter
+			// patterns and explicit malformed source rows remain strict.
+			const bool isAuthoredValtanAudition =
+				"ENCOUNTER_VALTAN" == pattern.strEncounterId && isAuditionOnly &&
+				!patternSourceOwners.contains(patternPolicyKey) &&
+				0u == pattern.iSourcePrimaryActionId &&
+				0u == pattern.iSourceShapeCount &&
+				0u == pattern.iSourceCooldownMs &&
+				0u == pattern.iSourceCooldownTicks &&
+				0u == pattern.iSourceRangeUnits &&
+				0u == pattern.iSourceApproachUnits &&
+				0u == pattern.iSourceTurnDegrees;
 			if (!validSelection || !validVerticalOffset ||
 				!patternPolicyOwners.contains(patternPolicyKey) ||
 				(BOSS_PATTERN_AIM_POLICY::FACE_MOTION_ANCHOR ==
@@ -6824,7 +6981,8 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 					pattern.Motion.iTravelEndMs ||
 				  pattern.Motion.iTravelEndMs >
 					pattern.Stages[pattern.Motion.iTravelStageIndex].iDurationMs)) ||
-				(0u == pattern.iSourcePrimaryActionId && !isKoukuSaydonGateOne) ||
+				(0u == pattern.iSourcePrimaryActionId && !isKoukuSaydonGateOne &&
+				 !isAuthoredValtanAudition) ||
 				pattern.Stages.size() != pattern.iExpectedStageCount)
 			{
 				m_strStatus = "Boss pattern selection or stage count is invalid";
@@ -6870,7 +7028,9 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 				if (!LostArk::Shared::Validate_StageAttackContacts(stage.AttackContacts, stage.iDurationMs,
 					stage.HitOffsetsMs, stage.iHitCount, stage.iHitDelayMs, stage.iHitIntervalMs) ||
 					(!stage.AttackContacts.empty() && (stage.eHitActivationKind != BOSS_PATTERN_HIT_ACTIVATION_KIND::PULSE_SCHEDULE ||
-					 stage.ePlayerResponse != BOSS_PATTERN_PLAYER_RESPONSE::DAMAGE || stage.Motion.eKind != BOSS_PATTERN_STAGE_MOTION_KIND::NONE)))
+					 stage.ePlayerResponse != BOSS_PATTERN_PLAYER_RESPONSE::DAMAGE ||
+					 (stage.Motion.eKind != BOSS_PATTERN_STAGE_MOTION_KIND::NONE &&
+					  stage.Motion.eKind != BOSS_PATTERN_STAGE_MOTION_KIND::TO_ARENA_CENTER))))
 				{ m_strStatus = "Stage contacts do not match ordinary pulse authority"; return false; }
 				const bool zeroShapeValues =
 					0.f == stage.fHitOuterRadius &&
@@ -7235,9 +7395,30 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 						const bool isVolley =
 							BOSS_PATTERN_STAGE_ACTION_KIND::
 								SPAWN_COMBAT_OBJECT_VOLLEY == action.eKind;
+						// Per-player volleys resolve their own fresh target poses at this
+						// Stage edge; they do not consume the Pattern's locked target.
+						const bool perPlayerFixedAreaVolley = fixedArea && isVolley &&
+							BOSS_COMBAT_OBJECT_VOLLEY_POLICY::PER_ALIVE_PLAYER == action.Volley.ePolicy &&
+							BOSS_COMBAT_OBJECT_ORIGIN_POLICY::LOCKED_TARGET_PER_ALIVE_PLAYER ==
+								combatObject->second.eOriginPolicy;
+						const bool isStrugglingUnderfootVolley = [&]()
+						{
+							if ("VALTAN_STRUGGLING" != pattern.strPatternId)
+								return false;
+							for (std::uint32_t ordinal = 1u; ordinal <= 6u; ++ordinal)
+							{
+								const std::string suffix = "0" + std::to_string(ordinal);
+								if ("STEP_06_TARGET_" + suffix == stage.strStageId &&
+									"valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-06.target-" + suffix == stage.strActionId &&
+									"combatobject.valtan.struggling.underfoot-" + suffix == action.strTargetId)
+									return true;
+							}
+							return false;
+						}();
 						const bool allowsIndependentInlineHitRockVolley =
 							isVolley && 1u == stage.Actions.size() &&
-							(("VALTAN_GROUND_ROAR" == pattern.strPatternId &&
+							(isStrugglingUnderfootVolley ||
+							 ("VALTAN_GROUND_ROAR" == pattern.strPatternId &&
 							  "STEP_01" == stage.strStageId &&
 							  "valtan.sequence.sequence.400440.0.step-01" ==
 								stage.strActionId &&
@@ -7248,7 +7429,19 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 							  "valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-04" ==
 								stage.strActionId &&
 							  "combatobject.valtan.struggling.rock-pillar" ==
-								action.strTargetId));
+								action.strTargetId) ||
+							 ("VALTAN_STRUGGLING" == pattern.strPatternId &&
+							  "STEP_08" == stage.strStageId &&
+							  "valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-08" == stage.strActionId &&
+							  "combatobject.valtan.struggling.rock-pillar" == action.strTargetId) ||
+							 ("VALTAN_TERRAIN_DESTRUCTION_3_OCLOCK" == pattern.strPatternId &&
+							  "COMBO_STEP_18" == stage.strStageId &&
+							  "valtan.mechanic.terrain-destruction-3.combo.step-18" == stage.strActionId &&
+							  "combatobject.valtan.terrain-3.combo-rock" == action.strTargetId) ||
+							 ("VALTAN_TERRAIN_DESTRUCTION_9_OCLOCK" == pattern.strPatternId &&
+							  "COMBO_STEP_18" == stage.strStageId &&
+							  "valtan.mechanic.terrain-destruction-9.combo.step-18" == stage.strActionId &&
+							  "combatobject.valtan.terrain-9.combo-rock" == action.strTargetId));
 						const bool isScheduledVolley = isVolley &&
 							(0u != action.Volley.iFirstSpawnOffsetMs ||
 							 action.Volley.iSpawnCount > 1u);
@@ -7374,7 +7567,7 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 							!spawnedBossCombatObjectIds.insert(
 								action.strTargetId).second ||
 							!validNextRadialSlotLayout ||
-							(fixedArea && !targetLocksOnStart &&
+							(fixedArea && !targetLocksOnStart && !perPlayerFixedAreaVolley &&
 								BOSS_COMBAT_OBJECT_ORIGIN_POLICY::BOSS_POSITION !=
 									combatObject->second.eOriginPolicy) ||
 							(isVolley &&
@@ -7396,7 +7589,8 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 								pattern.eAimPolicy))
 						{
 							m_strStatus =
-								"Boss combat object spawn action join is invalid";
+								"Boss combat object spawn action join is invalid: " +
+								pattern.strPatternId + "/" + stage.strStageId + "/" + action.strTargetId;
 							return false;
 						}
 						continue;
@@ -8044,8 +8238,8 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 		if (m_BossPatterns.end() == patterns ||
 			sequence.strEncounterId != sequenceEncounterId ||
 			sequence.strSequenceId.empty() ||
-			BOSS_PATTERN_SEQUENCE_MODE::ORDERED_ONCE_THEN_IDLE !=
-				sequence.eMode ||
+			(BOSS_PATTERN_SEQUENCE_MODE::ORDERED_ONCE_THEN_IDLE != sequence.eMode &&
+			 BOSS_PATTERN_SEQUENCE_MODE::HEALTH_BAR_ROTATIONS != sequence.eMode) ||
 			sequence.PatternIds.size() != sequence.iExpectedStepCount ||
 			sequence.TransitionPursuitMs.size() + 1u !=
 				sequence.PatternIds.size() ||
@@ -8054,6 +8248,22 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 		{
 			m_strStatus = "Boss pattern sequence tagged shape is incomplete";
 			return false;
+		}
+		if (!sequence.strEntranceCinematicPatternId.empty())
+		{
+			const auto cinematic = std::find_if(patterns->second.begin(), patterns->second.end(),
+				[&sequence](const auto& pattern)
+				{ return pattern.strPatternId == sequence.strEntranceCinematicPatternId; });
+			if (patterns->second.end() == cinematic ||
+				sequence.strEntranceCinematicPatternId == Find_IntroPatternId(sequenceEncounterId) ||
+				BOSS_PATTERN_SELECTION::NORMAL != cinematic->eSelection ||
+				BOSS_PATTERN_TARGET_POLICY::NONE != cinematic->eTargetPolicy ||
+				BOSS_PATTERN_AIM_POLICY::NONE != cinematic->eAimPolicy ||
+				!cinematic->bInvulnerableWhileRunning)
+			{
+				m_strStatus = "Boss entrance cinematic must be a separate invulnerable targetless normal pattern";
+				return false;
+			}
 		}
 		// Ordinals own occurrences: the same authored pattern may run again.
 		for (const std::string& patternId : sequence.PatternIds)
@@ -8113,6 +8323,18 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 					return false;
 				}
 			}
+			else if (BOSS_PATTERN_ROTATION_SELECTION_MODE::ORDERED_LOOP == rotation.eSelectionMode)
+			{
+				if (!rotation.Window.Is_Defined() || !rotation.Candidates.empty() ||
+					rotation.PatternIds.size() != rotation.iExpectedStepCount ||
+					rotation.Window.iExpectedCandidateCount != rotation.iExpectedStepCount ||
+					rotation.Window.iFromHealthBar != rotation.iFromHealthBar ||
+					rotation.Window.iToHealthBar != rotation.iToHealthBar)
+				{
+					m_strStatus = "Boss ordered loop rotation tagged shape is incomplete";
+					return false;
+				}
+			}
 			else if (rotation.Window.Is_Defined() ||
 				!rotation.Candidates.empty() ||
 				rotation.PatternIds.size() != rotation.iExpectedStepCount)
@@ -8134,10 +8356,7 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 					prior.iFromHealthBar > rotation.iToHealthBar;
 				if (!rangesOverlap) continue;
 				const bool bothManaged =
-					BOSS_PATTERN_ROTATION_SELECTION_MODE::WEIGHTED_POOL ==
-						rotation.eSelectionMode &&
-					BOSS_PATTERN_ROTATION_SELECTION_MODE::WEIGHTED_POOL ==
-						prior.eSelectionMode;
+					rotation.Window.Is_Defined() && prior.Window.Is_Defined();
 				if (!bothManaged || rotation.Window.iGameplayPhase ==
 					prior.Window.iGameplayPhase)
 				{
@@ -8196,11 +8415,15 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 		for (const BOSS_PATTERN_ROTATION_DEFINITION& rotation :
 			valtanRotations->second)
 		{
-			if (BOSS_PATTERN_ROTATION_SELECTION_MODE::WEIGHTED_POOL ==
-				rotation.eSelectionMode && 1u == rotation.Window.iGameplayPhase)
+			if (rotation.Window.Is_Defined() && 1u == rotation.Window.iGameplayPhase)
 			{
 				finalPhaseOneBoundary = (std::min)(
 					finalPhaseOneBoundary, rotation.Window.iToHealthBar);
+			}
+			else if (BOSS_PATTERN_ROTATION_SELECTION_MODE::ORDERED_LOOP == rotation.eSelectionMode &&
+				2u == rotation.Window.iGameplayPhase)
+			{
+				firstLegacyFromBar = (std::max)(firstLegacyFromBar, rotation.iFromHealthBar - 1u);
 			}
 			else if (BOSS_PATTERN_ROTATION_SELECTION_MODE::
 				ORDERED_INTRO_THEN_WEIGHTED == rotation.eSelectionMode)
@@ -8454,9 +8677,7 @@ LostArk::Server::CGameplayCatalog::Find_BossPatternRotation(
 		/* Managed windows are phase-owned. Legacy ORDERED rows predate that
 		contract and remain phase-agnostic so the post-109 phase-two script keeps
 		its authored order. */
-		if (BOSS_PATTERN_ROTATION_SELECTION_MODE::WEIGHTED_POOL ==
-			rotation.eSelectionMode && rotation.Window.iGameplayPhase !=
-			gameplayPhase)
+		if (rotation.Window.Is_Defined() && rotation.Window.iGameplayPhase != gameplayPhase)
 		{
 			continue;
 		}
@@ -8588,4 +8809,247 @@ const LostArk::Server::KOUKU_RAID_GATE_DEFINITION* LostArk::Server::CGameplayCat
 {
 	const auto found = m_KoukuRaidGates.find(gateId);
 	return found == m_KoukuRaidGates.end() ? nullptr : &found->second;
+}
+
+
+namespace
+{
+    using NUMERIC_DOMAIN = LostArk::Shared::BALANCE_DOMAIN;
+    struct NUMERIC_COLUMN final
+    {
+        NUMERIC_DOMAIN domain;
+        std::string id;
+        const char* field;
+        std::size_t column;
+        bool integral;
+    };
+    std::vector<NUMERIC_COLUMN> Numeric_Columns(const std::vector<std::string_view>& fields)
+    {
+        std::vector<NUMERIC_COLUMN> columns;
+        if (fields.size() < 2u) return columns;
+        auto add = [&](NUMERIC_DOMAIN domain, const char* field, std::size_t column, bool integral = true)
+        {
+            if (column < fields.size()) columns.push_back({domain, std::string(fields[1]), field, column, integral});
+        };
+        if (fields[0] == "PLAYER")
+        {
+            add(NUMERIC_DOMAIN::PLAYER, "maximumHp", 2); add(NUMERIC_DOMAIN::PLAYER, "maximumResource", 3);
+            add(NUMERIC_DOMAIN::PLAYER, "resourceRegenPerSecond", 4); add(NUMERIC_DOMAIN::PLAYER, "attackPower", 5);
+            add(NUMERIC_DOMAIN::PLAYER, "defense", 6); add(NUMERIC_DOMAIN::PLAYER, "moveSpeed", 7, false);
+            add(NUMERIC_DOMAIN::PLAYER, "defenseStanceMoveSpeedScale", 8, false); add(NUMERIC_DOMAIN::PLAYER, "maximumIdentity", 9);
+            add(NUMERIC_DOMAIN::PLAYER, "identityRegenPerSecond", 10); add(NUMERIC_DOMAIN::PLAYER, "identityDrainPerSecond", 11);
+            add(NUMERIC_DOMAIN::PLAYER, "identityStanceSwitchCost", 12); add(NUMERIC_DOMAIN::PLAYER, "criticalChancePercent", 15);
+            add(NUMERIC_DOMAIN::PLAYER, "criticalDamagePercent", 16);
+        }
+        else if (fields[0] == "SKILL")
+        {
+            add(NUMERIC_DOMAIN::SKILL, "cooldownMs", 5); add(NUMERIC_DOMAIN::SKILL, "actionDurationMs", 6);
+            add(NUMERIC_DOMAIN::SKILL, "hitTimeMs", 7); add(NUMERIC_DOMAIN::SKILL, "resourceCost", 8);
+            add(NUMERIC_DOMAIN::SKILL, "identityCost", 9); add(NUMERIC_DOMAIN::SKILL, "movementDistance", 10, false);
+            add(NUMERIC_DOMAIN::SKILL, "maximumRange", 11, false);
+        }
+        else if (fields[0] == "SKILLCOMBATTRAITS")
+        {
+            add(NUMERIC_DOMAIN::SKILL, "staggerDamage", 2); add(NUMERIC_DOMAIN::SKILL, "partDamage", 3);
+        }
+        else if (fields[0] == "DAMAGE")
+        {
+            double coefficient = 0., addend = 0.;
+            if (fields.size() < 5u || (ParseNumber(fields[3], coefficient) && ParseNumber(fields[4], addend) && coefficient == 0. && addend == 0.))
+                add(NUMERIC_DOMAIN::DAMAGE, "damageRatePercent", 2);
+            add(NUMERIC_DOMAIN::DAMAGE, "attackCoefficientBp", 3); add(NUMERIC_DOMAIN::DAMAGE, "damageAddend", 4);
+            add(NUMERIC_DOMAIN::DAMAGE, "damageSpreadPercent", 5); add(NUMERIC_DOMAIN::DAMAGE, "bossHealthBarDamage", 6);
+        }
+        else if (fields[0] == "BOSS")
+        {
+            add(NUMERIC_DOMAIN::BOSS, "maximumHp", 3); add(NUMERIC_DOMAIN::BOSS, "maximumHealthBars", 4);
+            add(NUMERIC_DOMAIN::BOSS, "attackPower", 5); add(NUMERIC_DOMAIN::BOSS, "collisionRadius", 6, false);
+            add(NUMERIC_DOMAIN::BOSS, "engageDistance", 7, false); add(NUMERIC_DOMAIN::BOSS, "moveSpeed", 8, false);
+        }
+        else if (fields[0] == "KOUKUMADNESS")
+        {
+            add(NUMERIC_DOMAIN::MADNESS, "damageGainPercent", 4); add(NUMERIC_DOMAIN::MADNESS, "ballGainPercent", 5);
+            add(NUMERIC_DOMAIN::MADNESS, "ballMultiplierPercent", 6); add(NUMERIC_DOMAIN::MADNESS, "ballRadiusM", 7, false);
+            add(NUMERIC_DOMAIN::MADNESS, "dollGainPercent", 8); add(NUMERIC_DOMAIN::MADNESS, "dollMultiplierPercent", 9);
+            add(NUMERIC_DOMAIN::MADNESS, "dollRadiusM", 10, false); add(NUMERIC_DOMAIN::MADNESS, "specialIntervalMs", 11);
+            for (auto& column : columns) column.id = "KOUKUSAYDON";
+        }
+        else if (fields[0] == "PATTERNLOGICOUTCOME" && fields.size() >= 10u &&
+            (fields[6] == "MAX_HP_PERCENT_DAMAGE" || fields[6] == "FIXED_DAMAGE"))
+        {
+            add(NUMERIC_DOMAIN::PATTERN_DAMAGE, fields[6] == "FIXED_DAMAGE" ? "fixedDamage" : "maxHpDamagePercent",
+                fields[6] == "FIXED_DAMAGE" ? 10u : 7u);
+            if (!columns.empty()) columns.back().id = "O|" + std::string(fields[1]) + "|" + std::string(fields[2]) + "|" +
+                std::string(fields[3]) + "|" + std::string(fields[4]) + "|" + std::string(fields[5]);
+        }
+        else if (fields[0] == "PATTERNATTACKHIT" && fields.size() >= 25u && fields[22] == "MAX_HP_PERCENT")
+        {
+            add(NUMERIC_DOMAIN::PATTERN_DAMAGE, "maxHpDamagePercent", 23u);
+            columns.back().id = "H|" + std::string(fields[1]) + "|" + std::string(fields[2]) + "|" +
+                std::string(fields[3]) + "|" + std::string(fields[4]) + "|" + std::string(fields[5]) + "|" + std::string(fields[6]);
+        }
+        else if (fields[0] == "PATTERNSTAGEACTION" && fields.size() >= 10u && fields[6] == "SET_STAGGER_GAUGE" && fields[8] != "0")
+        {
+            add(NUMERIC_DOMAIN::STAGGER, "staggerGaugeMaximum", 8);
+            columns.back().id = std::string(fields[1]) + "|" + std::string(fields[2]) + "|" + std::string(fields[3]) + "|" + std::string(fields[4]);
+        }
+        return columns;
+    }
+    auto Numeric_Key(const NUMERIC_DOMAIN domain, const std::string& id, const std::string& field)
+    { return std::make_tuple(domain, id, field); }
+    std::string Numeric_Text(const double value)
+    {
+        std::ostringstream text; text.imbue(std::locale::classic());
+        text << std::setprecision(std::numeric_limits<double>::max_digits10) << value;
+        return text.str();
+    }
+}
+
+std::string LostArk::Server::CGameplayCatalog::Export_BootstrapBytes() const
+{
+    const std::string rows = m_NonKoukuBootstrapRows + m_KoukuBootstrapRows;
+    return "LOSTARK_GAMEPLAY_BOOTSTRAP\t" + std::to_string(GAMEPLAY_BOOTSTRAP_VERSION) + "\t" +
+        std::to_string(std::count(rows.begin(), rows.end(), '\n')) + "\n" + rows;
+}
+
+bool LostArk::Server::CGameplayCatalog::Build_NumericBalanceSnapshot(
+    std::vector<LostArk::Shared::BALANCE_NUMERIC_ENTRY>& entries,
+    LostArk::Shared::GameplayDataRevision& numericRevision, std::string& status) const
+{
+    std::vector<LostArk::Shared::BALANCE_NUMERIC_ENTRY> staged;
+    std::istringstream input(m_NonKoukuBootstrapRows + m_KoukuBootstrapRows);
+    std::string line;
+    while (std::getline(input, line))
+    {
+        StripCarriageReturn(line);
+        const auto fields = SplitTabs(line);
+        for (const auto& column : Numeric_Columns(fields))
+        {
+            double value = 0.;
+            if (!ParseNumber(fields[column.column], value) || !std::isfinite(value) || column.id.size() > 128u)
+            { status = "Published numeric field cannot be represented"; return false; }
+            staged.push_back({column.domain, column.id, column.field, value, column.integral});
+        }
+    }
+    std::sort(staged.begin(), staged.end(), [](const auto& a, const auto& b)
+    { return Numeric_Key(a.eDomain, a.strId, a.strField) < Numeric_Key(b.eDomain, b.strId, b.strField); });
+    std::string canonical;
+    for (std::size_t i = 0; i < staged.size(); ++i)
+    {
+        const auto& entry = staged[i];
+        if (i && Numeric_Key(entry.eDomain, entry.strId, entry.strField) ==
+            Numeric_Key(staged[i - 1].eDomain, staged[i - 1].strId, staged[i - 1].strField))
+        { status = "Published numeric field identity is duplicated"; return false; }
+        canonical += std::to_string(static_cast<unsigned>(entry.eDomain)) + "\t" + entry.strId + "\t" + entry.strField +
+            "\t" + Numeric_Text(entry.fValue) + "\t" + (entry.isIntegral ? "1\n" : "0\n");
+    }
+    if (staged.empty() || !Calculate_GameplayDataRevision(canonical, numericRevision))
+    { status = "Numeric revision could not be calculated"; return false; }
+    entries = std::move(staged); status.clear(); return true;
+}
+
+bool LostArk::Server::CGameplayCatalog::Load_NumericBalancePatch(
+    const CGameplayCatalog& active,
+    const std::vector<LostArk::Shared::BALANCE_NUMERIC_CHANGE>& changes,
+    std::string& bootstrapBytes)
+{
+    using KEY = std::tuple<NUMERIC_DOMAIN, std::string, std::string>;
+    std::map<KEY, const LostArk::Shared::BALANCE_NUMERIC_CHANGE*> pending;
+    if (changes.empty() || changes.size() > 4096u)
+    { m_strStatus = "Numeric patch is empty or exceeds the bounded catalogue field set"; return false; }
+    for (const auto& change : changes)
+    {
+        if (!std::isfinite(change.fBefore) || !std::isfinite(change.fValue) || change.fValue < 0. ||
+            !pending.emplace(Numeric_Key(change.eDomain, change.strId, change.strField), &change).second)
+        { m_strStatus = "Numeric patch contains a duplicate or invalid value"; return false; }
+    }
+    std::istringstream input(active.m_NonKoukuBootstrapRows + active.m_KoukuBootstrapRows);
+    std::string rows, line;
+    while (std::getline(input, line))
+    {
+        StripCarriageReturn(line);
+        const auto fields = SplitTabs(line);
+        std::map<std::size_t, std::string> replacements;
+        for (const auto& column : Numeric_Columns(fields))
+        {
+            const auto found = pending.find(Numeric_Key(column.domain, column.id, column.field));
+            if (found == pending.end()) continue;
+            const auto& change = *found->second;
+            double before = 0.;
+            if (!ParseNumber(fields[column.column], before) || before != change.fBefore ||
+                (column.domain == NUMERIC_DOMAIN::STAGGER && change.fValue <= 0.) ||
+                (column.integral && (std::floor(change.fValue) != change.fValue || change.fValue > (std::numeric_limits<std::uint32_t>::max)())))
+            { m_strStatus = "Numeric field changed since it was loaded, or requires a bounded whole number: " + change.strId + "." + change.strField; return false; }
+            replacements.emplace(column.column, Numeric_Text(change.fValue));
+            pending.erase(found);
+        }
+        if (replacements.empty()) rows += line;
+        else for (std::size_t column = 0; column < fields.size(); ++column)
+        {
+            if (column) rows += '\t';
+            const auto replacement = replacements.find(column);
+            rows += replacement == replacements.end() ? std::string(fields[column]) : replacement->second;
+        }
+        rows += '\n';
+    }
+    if (!pending.empty()) { m_strStatus = "Numeric patch names an unknown or noneditable field"; return false; }
+    const std::string stagedBytes = "LOSTARK_GAMEPLAY_BOOTSTRAP\t" + std::to_string(GAMEPLAY_BOOTSTRAP_VERSION) + "\t" +
+        std::to_string(std::count(rows.begin(), rows.end(), '\n')) + "\n" + rows;
+    CGameplayCatalog staged;
+    if (!staged.Load_BootstrapBytes(stagedBytes, nullptr, &active.m_ActiveRevision))
+    { m_strStatus = staged.Get_Status(); return false; }
+    if (staged.m_ValtanPresentationGenerationId != active.m_ValtanPresentationGenerationId)
+    { m_strStatus = "Numeric patch changed presentation identity"; return false; }
+    *this = std::move(staged); bootstrapBytes = stagedBytes;
+    m_strStatus = "Validated numeric balance against the existing gameplay catalogue";
+    return true;
+}
+
+bool LostArk::Server::CGameplayCatalog::Load_NumericBalanceValues(
+    const CGameplayCatalog& choreography, const CGameplayCatalog& numeric)
+{
+    std::vector<LostArk::Shared::BALANCE_NUMERIC_ENTRY> oldEntries, newEntries;
+    LostArk::Shared::GameplayDataRevision ignored;
+    if (!choreography.Build_NumericBalanceSnapshot(oldEntries, ignored, m_strStatus) ||
+        !numeric.Build_NumericBalanceSnapshot(newEntries, ignored, m_strStatus)) return false;
+    std::map<std::tuple<NUMERIC_DOMAIN, std::string, std::string>, double> values;
+    for (const auto& entry : newEntries) values.emplace(Numeric_Key(entry.eDomain, entry.strId, entry.strField), entry.fValue);
+    std::vector<LostArk::Shared::BALANCE_NUMERIC_CHANGE> changes;
+    for (const auto& entry : oldEntries)
+    {
+        const auto value = values.find(Numeric_Key(entry.eDomain, entry.strId, entry.strField));
+        if (value != values.end() && value->second != entry.fValue)
+            changes.push_back({entry.eDomain, entry.strId, entry.strField, entry.fValue, value->second});
+    }
+    if (changes.empty()) { *this = choreography; return true; }
+    std::string ignoredBytes;
+    return Load_NumericBalancePatch(choreography, changes, ignoredBytes);
+}
+
+
+bool LostArk::Server::CGameplayCatalog::Build_NumericBalanceReceiptHashes(
+    LostArk::Shared::GameplayDataRevision& bootstrapHash,
+    LostArk::Shared::GameplayDataRevision& nonNumericRowsHash, std::string& status) const
+{
+    const auto bootstrap = Export_BootstrapBytes();
+    std::istringstream input(bootstrap);
+    std::string line, masked;
+    while (std::getline(input, line))
+    {
+        StripCarriageReturn(line);
+        const auto fields = SplitTabs(line);
+        std::unordered_set<std::size_t> numeric;
+        for (const auto& column : Numeric_Columns(fields)) numeric.insert(column.column);
+        // The rate remains numeric when the coefficient/addend formula hides it in the UI.
+        if (!fields.empty() && fields[0] == "DAMAGE") numeric.insert(2u);
+        for (std::size_t i = 0; i < fields.size(); ++i)
+        {
+            if (i) masked += '\t';
+            masked += numeric.contains(i) ? "#numeric" : std::string(fields[i]);
+        }
+        masked += '\n';
+    }
+    if (!Calculate_GameplayDataRevision(bootstrap, bootstrapHash) || !Calculate_GameplayDataRevision(masked, nonNumericRowsHash))
+    { status = "Numeric receipt hashes could not be calculated"; return false; }
+    status.clear(); return true;
 }

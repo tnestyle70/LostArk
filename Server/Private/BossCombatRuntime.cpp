@@ -24,7 +24,8 @@ namespace
 	bool ContainsCounterProxySource(
 		const LostArk::Server::SERVER_WORLD_ENTITY& boss,
 		const float sourceX,
-		const float sourceZ) noexcept
+		const float sourceZ,
+		const bool ignoreForwardDirection) noexcept
 	{
 		using LostArk::Server::BOSS_PATTERN_COUNTER_PROXY_KIND;
 		if (!boss.bPatternHasCounterProxy ||
@@ -52,7 +53,7 @@ namespace
 			}
 			const float deltaX = sourceX - boss.fPositionX;
 			const float deltaZ = sourceZ - boss.fPositionZ;
-			return deltaX * forwardX + deltaZ * forwardZ >= 0.f;
+			return ignoreForwardDirection || deltaX * forwardX + deltaZ * forwardZ >= 0.f;
 		}
 		if (BOSS_PATTERN_COUNTER_PROXY_KIND::BOSS_LOCAL_CIRCLE !=
 				boss.ePatternCounterProxyKind ||
@@ -63,6 +64,15 @@ namespace
 			boss.fPatternCounterProxyRadiusM <= 0.f)
 		{
 			return false;
+		}
+		if (ignoreForwardDirection)
+		{
+			// Rotate the authored local circle around the boss: preserve its closest
+			// and furthest reach while admitting that same reach from every direction.
+			const float sourceDistance = std::hypot(sourceX - boss.fPositionX, sourceZ - boss.fPositionZ);
+			const float offsetDistance = std::hypot(boss.fPatternCounterProxyForwardOffsetM,
+				boss.fPatternCounterProxyRightOffsetM);
+			return std::fabs(sourceDistance - offsetDistance) <= boss.fPatternCounterProxyRadiusM;
 		}
 		const float rightX = forwardZ;
 		const float rightZ = -forwardX;
@@ -212,9 +222,19 @@ LostArk::Server::CBossCombatRuntime::Apply_PlayerHit(
 		}
 	}
 
+	/* These authored counter windows accept Q/W/E/R hits and an admitted
+	   active COUNTER guard from every side. Other keys and patterns retain
+	   their proxy, while range, finite geometry and the counter clock still apply. */
+	const bool primarySlotCounter = (hit.bCounterFromPrimarySlot || hit.bCounterFromActiveGuard) &&
+		(("VALTAN_TRIPLE_COUNTER" == boss.strPatternId &&
+		  ("COUNTER_1" == boss.strPatternStageId || "COUNTER_2" == boss.strPatternStageId ||
+		   "COUNTER_3" == boss.strPatternStageId)) ||
+		 ("VALTAN_TRASH" == boss.strPatternId &&
+		  ("STEP_07" == boss.strPatternStageId || "RETRY_WINDUP_02" == boss.strPatternStageId ||
+		   "RETRY_WINDUP_03" == boss.strPatternStageId)));
 	if (0u != hit.iCounterPower &&
 		(!boss.bPatternHasCounterProxy ||
-		 ContainsCounterProxySource(boss, hit.fSourceX, hit.fSourceZ)))
+		 ContainsCounterProxySource(boss, hit.fSourceX, hit.fSourceZ, primarySlotCounter)))
 	{
 		result.bCounterTriggered = Try_TriggerCounter(boss, hit.iServerTick);
 	}

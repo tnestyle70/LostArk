@@ -3296,6 +3296,29 @@ void Client::CEffectPresentationService::Advance_LoadingProductCuePreparation(
 	const auto FailStructural =
 		[pJob, iJobEpoch, &WorkerResult, &Staged](const std::string& Status)
 	{
+		// Preserve the root cause before CANCEL clears the result mailbox and the
+		// Loader observes ERROR_CANCELLED instead of this structural rejection.
+		EFFECT_LOAD_FAILURE_RECEIPT Failure;
+		Failure.iJobEpoch = iJobEpoch;
+		Failure.iCatalogRevision = pJob->Get_CurrentCatalogRevision();
+		Failure.strEffectAssetId = WorkerResult.strEffectAssetId;
+		Failure.iRootCode = WorkerResult.Failure.has_value() ?
+			WorkerResult.Failure->iRootCode : E_FAIL;
+		Failure.strRootMessage = Status.empty() ?
+			"Product Effect loading commit failed without a diagnostic." : Status;
+		if (pJob->Record_FirstFailure(Failure))
+		{
+			try
+			{
+				Write_EffectFailureDiagnostic("V1.loading.structural",
+					"epoch=" + std::to_string(Failure.iJobEpoch) +
+					" revision=" + std::to_string(Failure.iCatalogRevision) +
+					" asset=" + Failure.strEffectAssetId +
+					" hr=" + std::to_string(Failure.iRootCode) +
+					" reason=" + Failure.strRootMessage);
+			}
+			catch (...) { }
+		}
 		/* Release every owner-thread reference before waking the Loader worker.
 		   The worker deliberately retains the other staged-bundle reference until
 		   ACK/cancel, so even structural failures destroy swapped-out renderer
@@ -4232,7 +4255,9 @@ bool_t Client::CEffectPresentationService::Requires_SourceBoneImportScaleNormali
 	// Normalize that basis once; preserve source StartSize and model geometry.
 	// Vehicle models (admission 0.0001, rig root 100) measure the same 0.01 basis.
 	// The Esther Silian NPC body is cooked through the same NPC pipeline.
+	// The Waterpang water gun rides bip001-prop3 on every class body (0.01 basis).
 	return strEffectAssetId.starts_with("effect.vehicle.") ||
+		strEffectAssetId.starts_with("effect.maharaka.watergun.") ||
 		strEffectAssetId.starts_with("effect.guardianknight.") ||
 		strEffectAssetId.starts_with("effect.esther.silian.") ||
 		strEffectAssetId.starts_with("effect.esther.inanna.") ||
@@ -6205,6 +6230,14 @@ bool_t Client::CEffectPresentationService::Spawn_Immediate(
 	Active.WorldRoot = Desc.WorldRoot;
 	Active.bLevelOwned = Desc.bLevelOwned;
 	Active.bExternallySampled = Desc.bExternallySampled;
+	if (!Desc.bLevelOwned && Owner.pBoss &&
+		((Desc.bExternallySampled && Owner.pBoss->Is_LocalPatternAuthoringPreview()) ||
+		 (!Desc.bExternallySampled && Desc.bPreserveBossActionTail &&
+		  Desc.eStopPolicy == EFFECT_STOP_POLICY::CUE_END && Desc.iCueDurationMs != 0u)))
+	{
+		Active.bInspectionVisible = !Owner.pBoss->Is_CinematicPresentationSuppressed();
+		pEffect->Set_InspectionVisible(Active.bInspectionVisible);
+	}
 	Active.fLocalBossPreviewClockOffsetSeconds = Desc.fLocalBossPreviewClockOffsetSeconds;
     Active.fSourceLoopEndSeconds = Desc.fSourceLoopEndSeconds;
     Active.fExternalPlaybackEndSeconds = Desc.fExternalPlaybackEndSeconds;
@@ -6754,6 +6787,62 @@ void Client::CEffectPresentationService::Commit_LocalBossPreviewSpawns(
 			Effect.fElapsedCueTimeSeconds * 1000.f >= Effect.iCueDurationMs;
 		if (bCueEnded || Effect.pObject->Is_Finished() || Effect.pObject->Is_RenderFailureIsolated())
 			Remove_At(iEffect);
+	}
+}
+
+void Client::CEffectPresentationService::Set_BossCinematicSuppressed(
+	const std::shared_ptr<CValtan>& pOwner, const bool_t suppressed)
+{
+	if (!pOwner || pOwner->Is_LocalPatternAuthoringPreview())
+		return;
+	// Only an authored finite tail may cross the cinematic. Normal action cues
+	// still stop, so the source cinematic never duplicates the boss-body effects.
+	const auto RetainTail = [](const auto& effect)
+	{
+		return !effect.bExternallySampled && !effect.bLevelOwned &&
+			effect.bPreserveBossActionTail &&
+			effect.eStopPolicy == EFFECT_STOP_POLICY::CUE_END &&
+			effect.iCueDurationMs != 0u;
+	};
+	g_PendingEffectSpawns.erase(std::remove_if(
+		g_PendingEffectSpawns.begin(), g_PendingEffectSpawns.end(),
+		[&](PENDING_EFFECT_SPAWN& pending)
+		{
+			if (pending.Desc.pBossOwner.lock() != pOwner)
+				return false;
+			if (!RetainTail(pending.Desc))
+				return suppressed;
+			pending.bInspectionVisible = !suppressed;
+			return false;
+		}), g_PendingEffectSpawns.end());
+	for (size_t index = g_ActiveEffects.size(); index-- > 0u;)
+	{
+		ACTIVE_EFFECT& effect = g_ActiveEffects[index];
+		if (effect.pBossOwner.lock() != pOwner)
+			continue;
+		if (!RetainTail(effect))
+		{
+			if (suppressed) Remove_At(index);
+			continue;
+		}
+		effect.bInspectionVisible = !suppressed;
+		if (effect.pObject)
+			effect.pObject->Set_InspectionVisible(!suppressed);
+	}
+}
+
+void Client::CEffectPresentationService::Set_LocalBossPreviewCinematicSuppressed(
+	const std::shared_ptr<CValtan>& pOwner, const bool_t suppressed)
+{
+	if (!pOwner || !pOwner->Is_LocalPatternAuthoringPreview())
+		return;
+	for (ACTIVE_EFFECT& Effect : g_ActiveEffects)
+	{
+		if (!Effect.bExternallySampled || Effect.bLevelOwned ||
+			Effect.pBossOwner.lock() != pOwner || !Effect.pObject)
+			continue;
+		Effect.bInspectionVisible = !suppressed;
+		Effect.pObject->Set_InspectionVisible(!suppressed);
 	}
 }
 

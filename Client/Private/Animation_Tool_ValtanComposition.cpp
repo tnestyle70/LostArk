@@ -49,6 +49,11 @@ bool_t Client::CAnimation_Tool::Stage_ValtanCompositionPreview(
 		m_strValtanPatternPreviewStatus = strOutStatus;
 		return false;
 	}
+	// Composition may run while Animation Tool is closed; refresh a saved owner
+	// lock here instead of waiting for its Render() to observe the clean state.
+	m_pPreviewPanel->Set_SessionLock(
+		CHARACTER_PREVIEW_LOCK_OWNER::ANIMATION_TOOL, Is_AnyDocumentDirty(),
+		"Save or discard Animation Events, Skill Bindings, Valtan Pattern Animation Bindings, Valtan Pattern Sound, KoukuSaydon Action Bindings/Patterns, and Workbench Sound bindings before changing target.");
 	/* Workbench transport is a programmatic request for the same typed Valtan
 	   target, not a user-driven target change.  Animation Tool already applies
 	   this same-owner exception during arena auto-stage; apply it here as well
@@ -631,7 +636,7 @@ void Client::CAnimation_Tool::Render_ValtanCompositionPatternCreator()
 	if (!m_bCustomChainLibraryLoadAttempted)
 	{
 		m_bCustomChainLibraryLoadAttempted = true;
-		(void)Load_CustomChainLibrary();
+		(void)Load_ValtanCustomChainLibrary();
 	}
 	if (!m_bValtanPatternMasterLoadAttempted)
 	{

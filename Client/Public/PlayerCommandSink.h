@@ -15,6 +15,13 @@ class IPlayerCommandSink
 {
 public:
 	virtual ~IPlayerCommandSink() = default;
+	// Server-owned numeric balance: remote clients never publish local Data.
+	virtual bool Request_BalanceRefresh() { return false; }
+	virtual bool Request_BalancePatch(const LostArk::Shared::C2S_BALANCE_PATCH&) { return false; }
+	virtual bool Consume_BalanceResult(LostArk::Shared::S2C_BALANCE_RESULT&) { return false; }
+	virtual bool Copy_BalanceSnapshot(LostArk::Shared::GameplayDataRevision&,
+		std::vector<LostArk::Shared::BALANCE_NUMERIC_ENTRY>&) const { return false; }
+
 	virtual bool Request_DebugKillGateBosses(const LostArk::Shared::C2S_DEBUG_KILL_GATE_BOSSES&) { return false; }
 	virtual bool Request_SetCooldownMode(const LostArk::Shared::C2S_SET_COOLDOWN_MODE&) { return false; }
 	virtual bool Consume_DebugKillGateBossesResult(LostArk::Shared::S2C_DEBUG_KILL_GATE_BOSSES_RESULT&) { return false; }

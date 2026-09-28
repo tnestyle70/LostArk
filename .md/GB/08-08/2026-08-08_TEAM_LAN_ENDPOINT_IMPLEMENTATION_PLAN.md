@@ -2,6 +2,19 @@
 
 작성일: 2026-08-08
 
+## G03. 2026-09-28 현재 Wi-Fi 2 주소와 발탄 입장 검증
+
+사용자 PC의 실제 Wi-Fi 2 주소는 `192.168.0.22/24`인데 Client 설정과 정본은
+`192.168.200.113`으로 남아 있었다. 현재 실행 중인 Server와 TCP 7777 listener도 없다.
+성공한 발탄 데이터 publish와 접속 endpoint 문제를 분리해 수정한다.
+
+endpoint JSON, Client compiled fallback, x64 Debug/Release debugger 환경과 활성 공용
+문서를 `.22`로 맞춘다. sync의 Team 모드로 개인 debugger 설정을 갱신하고 실제 주소 소유와
+기존 프로그램별 LocalSubnet 방화벽을 확인한다. Server bind는 `0.0.0.0`을 유지한다.
+JSON/XML 및 endpoint 계약 검사 뒤 현재 Server를 bounded headless로 실행해 concrete
+`.22:7777`의 발탄 입장 승인과 현재 gameplay revision을 확인한다. Client/UI는 실행하지 않는다.
+Client 기본값 변경은 후속 Workbench 변경과 함께 Debug Product 빌드로 반영한다.
+
 ## 목표
 
 서로 다른 PC에서 같은 LAN으로 검증할 때 팀원이 저장소를 pull하고 Visual Studio의 공유

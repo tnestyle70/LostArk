@@ -13,7 +13,7 @@ from native_shader_dispatch import (expand_dispatch_includes, insert_grouped_cas
                                     write_partitioned_dispatch, artist_wrapper_source)
 
 ROOT = Path(__file__).resolve().parents[2]
-FIRST_PROFILE, LAST_PROFILE = 2304, 5247
+FIRST_PROFILE, LAST_PROFILE = 2304, 5311
 
 
 def update(path, transform):

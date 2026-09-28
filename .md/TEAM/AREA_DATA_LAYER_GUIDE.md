@@ -158,6 +158,20 @@ Lighting Workbench는 현재 Level/Area가 일치할 때 저작 preview와 publi
 
 ## 4. MapTool이 지금 편집하는 것
 
+발탄의 `mapeffects.json`에는 선택적인 Server 획득형 World 이펙트를 저장할 수 있다.
+`SERVER_PICKUP`/`SOURCE_LOOP` row는 stable placementId와 벽 위 position, 기존 effectAssetId,
+`pickup.wallGroupId/landingPosition/fallDurationMs/pickupRadiusM`을 소유한다. Effect Tool의
+World `에테르 구슬` parent에서 개별 배치와 낙하 Preview를 조정한다. Preview는 Server
+벽 파괴나 버프를 변경하지 않는다. 제품 위치와 획득 상태는 protocol119 WorldPickups가
+결정한다. 현재 로나운의 기운은 전멸1회 보호이며 일반 피해 면역이나 시간제 버프가 아니다.
+
+`Publish-MapAuthoring.ps1 -AreaId LV_LUT_HEARTRB_ED -Scope Effects`는 해당 Client Map
+문서와 `Server/Bin/DataFiles/World/VALTAN_ARENA.worldpickupsbootstrap`을 함께 검증·게시한다.
+Validate는 쓰지 않고 Check는 게시 bytes 일치를 검사한다. wall ID, finite 값·범위, 낙하 방향과
+기본 nav 착지 가능 여부가 잘못되면 게시하지 않는다. Server는 초기화와 착지 때 현재 nav를
+재검사하며 실제 collider 접촉에서만 지급한다. Server는 새 bootstrap을 시작 때 읽으므로
+Source Save/Publish를 실행 중 Server 상태의 즉시 갱신으로 설명하지 않는다.
+
 Debug Lobby에서 `Test`를 누르면 기존 `TRAINING_GROUND` 서버 승인을 거친 뒤
 `LEVEL::DEVELOPMENT`를 socket, player, replication이 없는 Map Editor Workspace shell로
 연다. 진입 후 F1은 공통 Developer Tools만 토글하며, 그 안의 `Map Tool`에서 다음 Area
@@ -442,6 +456,33 @@ material 행도 template 전체64행 예산에 포함된다. 대상은 같은 �
 객체에 전파하지 않는다. Save/Load·동등성·publisher가 같은 field를 보존·검사하고 잘못된 입력은
 기존 문서를 보존한다. Stage duration 연장은 held material tail을 늘리고, 재질 전환을 잘라내는
 축소는 거부한다. 별도 재질 renderer나 전역 rendering profile 변경은 없다.
+
+WorldSequence v3 binding의 optional `previewNpcPlacementId`는 MapTool의 기존
+`OBJECT_RESOURCE` 배우가 대신 표시할 Area NPC의 stable placement ID다. 모델 정의가 아니라
+binding에 속한다. 한 animated 모델·한 binding·한 emission·WORLD anchor·STOP/HOLD motion만 허용하고
+alias, boss assembly, combat body, collider를 금지한다. Publisher는 enabled NPC placement와
+NpcCatalog의 정확한 modelAssetId를 대조한다. callback 소비자는 마하라카 MapTool과 서버 승인
+Waterpang Level presentation이다. 자연 종료 HOLD는 배우와 suppression을 유지하고 명시적 Stop은 반환한다.
+서버 NPC 자체의 위치·AI·network state는 수정하지 않는다. 대체 clone이 실제 표시되는 동안만
+기존 NPC render suppression을 획득하고, hide/seek/Stop/실패 정리/preview 해제에서 반환한다.
+해당 placement를 찾을 수 없는 실행 경로는 명시적으로 실패하며 다른 NPC로 대체하지 않는다.
+이 field 자체는 시작 권위가 아니다. Waterpang은 아레나 trigger의 PLAY_SEQUENCE를 서버가 받아
+기존 packet의 iStartTick을 300tick 뒤로 예약한다. 동일 방 재진입은 예약을 재시작하지 않으며
+늦은 입장은 같은 시작 tick을 받고 방이 비면 초기화한다. 도입15 CameraShots와 연결된 WorldSequence를
+같은 서버 시계로 재생하고 카메라만 종료한다. 승패/보상 기능은 이 계약에 포함하지 않는다.
+MapTool은 제품 배우를 잠시 반환한 뒤 preview를 소유하며 닫으면 현재 방 시각으로 재구성한다.
+Maharaka의 WaterpangEntry navregion은 실제 18개 타일·중앙 원판·통 2개 메시를 0.25m로 굽고
+그 외 영역은 기존 20.48m 바닥을 보존한다. 이 영역은 아직 무대 붕괴나 동적 낙사 navigation이 아니다.
+Waterpang 공격 연출은 같은 Area WorldSequence의 stable instance
+`world.sequence.instance.maharaka.waterpang.attack.{mokomoko, cannon.start, cannon.loop.cw, cannon.loop.ccw, cannon.end}`가
+소유한다. Client는 공용 계약 `Sample_MaharakaWaterpangEvent`의 서버 단계마다 이 instance를 골라 서버 시계로
+seek하고, loop instance의 이펙트에만 서버 판정선 각도(`S + 90 - 오브젝트 yaw`)의 회전을 곱한다. 클립, V1 이펙트
+트랙(사각·도넛 예고와 투사체 jet 포함)의 위치·회전·배율·시간과 사운드 트랙은 저작 데이터다.
+MapTool → Camera → `워터팡 / 공격 · … (공격 연출 미리보기)` 컷신(카메라 컷 없음)의 World 배우 편집에서
+키·클립·Effects·Sounds를 고치고 컷신 저장 뒤 `Publish-MapAuthoring.ps1 -AreaId LV_OCN_EVENTIS_MHP -Scope
+WorldSequences`(컷신은 `-Scope CameraShots`)로 게시한다. MapTool 미리보기에는 서버 회전이 없어 loop 물줄기는
+시작 방향에 머문다. `build_maharaka_waterpang_source_effects.py --sequences`는 없는 stable ID 행만 추가하고
+편집된 기존 행을 덮지 않는다.
 
 optional `mapMaterialBindings`는 최대 64개 `{ materialName, sourceAssetId, sourceMaterialName,
 diffuseTextureAssetId?, unlit? }`다. target `materialName`은 새 WModel의 실제 slot이고 source는 해당

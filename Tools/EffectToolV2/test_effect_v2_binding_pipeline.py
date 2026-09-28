@@ -441,7 +441,7 @@ class EffectV2BindingPipelineTests(unittest.TestCase):
         )
         self.validate(migrated)
 
-    def test_clip_migration_converts_absolute_source_clock_to_occurrence_local(self) -> None:
+    def test_clip_migration_preserves_absolute_source_clock(self) -> None:
         animation = copy.deepcopy(self.animation)
         animation["bindings"][0]["clips"][0]["sourceStartMs"] = 400
         legacy = {
@@ -467,8 +467,60 @@ class EffectV2BindingPipelineTests(unittest.TestCase):
             row["clock"]["clipOccurrenceId"]: row["clock"]["startMs"]
             for row in migrated["bindings"]
         }
-        self.assertEqual(250, by_occurrence["action.a.clip.01"])
+        self.assertEqual(650, by_occurrence["action.a.clip.01"])
         self.assertEqual(650, by_occurrence["action.legacy.clip.01"])
+        pipeline.validate_binding_document(
+            self.root, migrated, self.gameplay, animation, self.legacy_compatibility
+        )
+
+    def test_nonzero_source_cut_admits_source_clock_and_rejects_local_clock(self) -> None:
+        clip = self.animation["bindings"][0]["clips"][0]
+        clip.update(sourceStartMs=333, playMs=200, playRate=1.0)
+        self.gameplay["patterns"][0]["stages"][0]["durationMs"] = 200
+        for at in (333, 400, 532):
+            document = self.document([self.row(start_ms=at)])
+            with self.subTest(at=at):
+                self.assertEqual(document, self.validate(document))
+        for at in (0, 67, 332, 533, 600):
+            with self.subTest(at=at), self.assertRaisesRegex(
+                    pipeline.BindingContractError, "clip source window"):
+                self.validate(self.document([self.row(start_ms=at)]))
+
+    def test_source_to_wall_validation_applies_rate_and_preceding_clips(self) -> None:
+        clips = self.animation["bindings"][0]["clips"]
+        clips[0].update(sourceStartMs=100, playMs=600, playRate=2.0)
+        clips.append(dict(clips[0], clipOccurrenceId="action.a.clip.02",
+                          sourceStartMs=1000, playMs=1000, playRate=0.5))
+        self.gameplay["patterns"][0]["stages"][0]["durationMs"] = 1000
+        # Prefix is 300ms; (1349 - 1000)/0.5 adds 698ms.
+        valid = self.document([self.row(occurrence_id="action.a.clip.02", start_ms=1349)])
+        self.assertEqual(valid, self.validate(valid))
+        for at in (1350, 1400):
+            with self.subTest(at=at), self.assertRaisesRegex(
+                    pipeline.BindingContractError, "scoped Stage"):
+                self.validate(self.document([
+                    self.row(occurrence_id="action.a.clip.02", start_ms=at)]))
+
+    def test_stage_clock_is_independent_of_animation_source_cut(self) -> None:
+        self.animation["bindings"][0]["clips"][0].update(
+            sourceStartMs=1000, playMs=100, playRate=2.0)
+        self.gameplay["patterns"][0]["stages"][0]["durationMs"] = 100
+        valid = self.document([self.row(basis="STAGE", occurrence_id=None, start_ms=75)])
+        self.assertEqual(valid, self.validate(valid))
+        with self.assertRaisesRegex(pipeline.BindingContractError, "scoped Stage"):
+            self.validate(self.document([
+                self.row(basis="STAGE", occurrence_id=None, start_ms=101)]))
+
+    def test_invalid_animation_rate_and_cut_end_are_rejected(self) -> None:
+        clip = self.animation["bindings"][0]["clips"][0]
+        for rate in (0, -1, True, float("nan"), float("inf")):
+            clip["playRate"] = rate
+            with self.subTest(rate=rate), self.assertRaisesRegex(
+                    pipeline.BindingContractError, "playRate"):
+                self.validate(self.document())
+        clip.update(playRate=1.0, sourceStartMs=400, playMs=200)
+        with self.assertRaisesRegex(pipeline.BindingContractError, "clip source window"):
+            self.validate(self.document([self.row(start_ms=600)]))
 
     def test_group_v1_migration_preserves_order_stable_id_and_full_trs(self) -> None:
         legacy = {
@@ -625,7 +677,7 @@ class EffectV2BindingPipelineTests(unittest.TestCase):
                 resource_root=temporary_resource_root,
             ),
         )
-        asset_leaf["slots"]["base"] = "Effect/Test/missing.png"
+        asset_leaf["slots"]["base"] = "Effect/Test/missing.tga"
         with self.assertRaisesRegex(pipeline.BindingContractError, r"\.dds"):
             pipeline._validate_leaf_resource(
                 "boss.valtan.asset",
@@ -633,6 +685,26 @@ class EffectV2BindingPipelineTests(unittest.TestCase):
                 asset_leaf,
                 resource_root=temporary_resource_root,
             )
+
+    def test_leaf_png_texture_slots_match_runtime_loader(self) -> None:
+        leaf_id = "boss.valtan.png"
+        path = self.authored / f"{leaf_id}.effectv2.json"
+        leaf = self.leaf(leaf_id, effect_type="ScreenPost")
+        resource_root = self.root / "Client/Bin/Resources"
+        asset_id = "UI/KoukuSaydon/GameNote/dj_kouku_cardrain.PNG"
+        physical = resource_root / asset_id
+        physical.parent.mkdir(parents=True)
+        physical.write_bytes(b"png")
+        for slot in ("base", "noise", "mask", "emissive", "dissolve"):
+            leaf["slots"][slot] = asset_id
+        self.assertEqual(1000, pipeline._validate_leaf_resource(
+            leaf_id, path, leaf, resource_root=resource_root
+        ))
+        physical.unlink()
+        with self.assertRaisesRegex(pipeline.BindingContractError, "resource is missing"):
+            pipeline._validate_leaf_resource(leaf_id, path, leaf, resource_root=resource_root)
+        with self.assertRaisesRegex(pipeline.BindingContractError, r"\.wmodel"):
+            pipeline._asset_id(asset_id, leaf_id, slot="mesh", resource_root=resource_root)
 
     def test_missing_optional_particle_and_trail_payload_uses_runtime_tail_defaults(self) -> None:
         particle = self.leaf("boss.valtan.default-particle", effect_type="Particle")

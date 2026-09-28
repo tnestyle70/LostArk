@@ -2,6 +2,28 @@
 
 작성일: 2026-08-08
 
+## G03. 2026-09-28 현재 Wi-Fi 2 endpoint 반영과 입장 확인
+
+현재 Wi-Fi 2의 `192.168.0.22/24`와 이전 Client endpoint `192.168.200.113`이 달랐다.
+endpoint JSON, compiled fallback, x64 Debug/Release debugger 환경 및 활성 공용 문서를
+`.22`로 수정하고 Team sync로 개인 `Client.vcxproj.user`도 반영했다. 기존 firewall은
+Debug/Release Server의 TCP 7777 LocalSubnet 허용으로 정상이며 추가 권한이 필요 없었다.
+
+- endpoint 계약 검사 3개 PASS. JSON 및 project XML parse 포함.
+- sync: `server-host`, `0.0.0.0:7777`, Client `.22:7777`, `reachable`.
+- 사용자가 실행한 Debug Server를 유지하며 Client/UI 없이 `.22:7777`로 입장 요청했다.
+  `S2C_ENTER_ACCEPTED`, protocol 117, `VALTAN_ARENA`, 유효 player/entity를 수신했다.
+- active gameplay revision은 게시 bootstrap SHA256
+  `8e9811cfb206e9c060a6676ea1ff23da59e99203af359e31d3865c8154422e09`와 일치했다.
+  증거: `out/ValtanPublishRecovery20260928/lan-valtan-admission.json`.
+- 사용자도 실제 입장 성공을 확인했다. 에이전트는 Client/UI 실행·조작이나 사용자 프로세스
+  종료를 수행하지 않았다.
+- 사용자가 종료한 뒤 2026-09-28 16:07:58 KST Debug Product 빌드가 PASS해 `.22` compiled
+  fallback도 설치됐다. receipt: `out/BuildPipeline/runs/20260928T070758896Z-debug-product.json`.
+
+이번 접속 실패는 endpoint 불일치와 최초 검사 시 Server 미실행 상태였다. 앞서 완료한 발탄
+publish 실패가 재발한 것으로 확인되지 않았으며 현재 실행 Server의 게시 데이터 일치도 확인했다.
+
 대응 계획서:
 `.md/GB/08-08/2026-08-08_TEAM_LAN_ENDPOINT_IMPLEMENTATION_PLAN.md`
 

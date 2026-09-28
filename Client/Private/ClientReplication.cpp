@@ -41,6 +41,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstdio>
 #include <filesystem>
 #ifdef _DEBUG
 #include <fstream>
@@ -64,6 +65,40 @@ namespace
 		snapshot.hasMoveGoal = player.hasMoveGoal;
 		snapshot.nextWaypoint = { player.fMoveWaypointX, player.fMoveWaypointY, player.fMoveWaypointZ };
 		return snapshot;
+	}
+
+	/* Maharaka diagnostic (EffectFailure.user.log): records each Server action edge of
+	   the local player and, while the Server says NONE, a presented body that stays
+	   more than 1.5 m from the Server position. Presentation state is not changed. */
+	void Trace_MaharakaLocalPlayer(const Client::CCharacter& character,
+		const LostArk::Shared::PLAYER_SNAPSHOT& player, const std::uint32_t serverTick)
+	{
+		static std::uint32_t lastAction = UINT32_MAX, lastStartTick = 0u, lastLogTick = 0u, divergedLogs = 0u;
+		const auto transform = character.Get_Transform();
+		if (nullptr == transform) return;
+		float3_t visual{};
+		XMStoreFloat3(&visual, transform->Get_State(STATE::POSITION));
+		const float dx = visual.x - player.fPositionX, dy = visual.y - player.fPositionY, dz = visual.z - player.fPositionZ;
+		const float distance = std::sqrt(dx * dx + dy * dy + dz * dz);
+		const bool edge = static_cast<std::uint32_t>(player.eAction) != lastAction ||
+			player.iActionStartTick != lastStartTick;
+		if (edge) divergedLogs = 0u;
+		const bool diverged = LostArk::Shared::PLAYER_ACTION_STATE::NONE == player.eAction &&
+			distance > 1.5f && divergedLogs < 16u && serverTick - lastLogTick >= 30u;
+		if (!edge && !diverged) return;
+		if (diverged) ++divergedLogs;
+		lastAction = static_cast<std::uint32_t>(player.eAction);
+		lastStartTick = player.iActionStartTick;
+		lastLogTick = serverTick;
+		char detail[512]{};
+		std::snprintf(detail, sizeof(detail),
+			"kind=%s tick=%u action=%u start=%u canPredict=%d moveGoal=%d moveSeq=%u "
+			"server=(%.3f,%.3f,%.3f) visual=(%.3f,%.3f,%.3f) distance=%.3f",
+			edge ? "edge" : "diverged", serverTick, static_cast<unsigned>(player.eAction),
+			player.iActionStartTick, player.canPredictMove ? 1 : 0, player.hasMoveGoal ? 1 : 0,
+			player.iLastProcessedMoveSequence, player.fPositionX, player.fPositionY, player.fPositionZ,
+			visual.x, visual.y, visual.z, distance);
+		Client::Write_EffectFailureDiagnostic("maharaka.localplayer", detail);
 	}
 
 	using Client::CValtan;
@@ -1622,6 +1657,16 @@ std::shared_ptr<CNpc> Client::CClientReplication::Find_ArenaBossNpc(
 std::shared_ptr<CCharacter> Client::CClientReplication::Get_LocalCharacter() const
 {
 	return m_Registry.Resolve(m_LocalCharacterHandle);
+}
+
+std::shared_ptr<CNpc> Client::CClientReplication::Find_NpcPlacement(
+	const std::string_view placementId) const
+{
+	for (const auto& [id, presentation] : m_WorldEntities)
+		if (presentation.eKind == LostArk::Shared::WORLD_ENTITY_KIND::NPC &&
+			presentation.strPlacementId == placementId)
+			return presentation.pNpc.lock();
+	return nullptr;
 }
 
 bool_t Client::CClientReplication::Try_Get_DeferredLocalCharacterClassReplacement(
@@ -3337,10 +3382,12 @@ bool Client::CClientReplication::Apply_CombatObjectPresentationEvent(
 			record->strCombatObjectArchetypeId, record->strClientVisualId);
 	}
 	std::string status;
+	bool_t visualCommitted = false;
 	const bool_t applied =
-		boss->Apply_CombatObjectPresentationEvent(event, status);
-	if (applied && visual && visual->stopActiveOnHit &&
-		event.strHitId != visual->armedPresentationEventId)
+		boss->Apply_CombatObjectPresentationEvent(event, status, &visualCommitted);
+	if (visualCommitted && visual &&
+		((visual->stopActiveOnHit && event.strHitId != visual->armedPresentationEventId) ||
+		 (visual->stopActiveOnArmed && event.strHitId == visual->armedPresentationEventId)))
 	{
 		COMBAT_OBJECT_PRESENTATION_SINK sink{ *this };
 		m_CombatObjectProjectionRuntime.Complete_Presentation(event.iCombatObjectId, sink);
@@ -3652,6 +3699,7 @@ bool Client::CClientReplication::Apply_WorldSnapshot(
 		return true;
 	if (!m_PlayerHealth.Apply_Snapshot(snapshot))
 		return false;
+	m_WorldPickupSnapshots = snapshot.WorldPickups;
 
 	bool allSucceeded = true;
 
@@ -4077,7 +4125,8 @@ bool Client::CClientReplication::Apply_WorldSnapshot(
 				entity.iPatternSequence,
 				entity.iPatternStageIndex,
 				PatternTargetPose,
-				entity.PortalRushRoute) ||
+				entity.PortalRushRoute,
+				entity.PatternLanding) ||
 				!valtan->Apply_BossCombatState(entity.BossCombat) ||
 				!valtan->Apply_BrokenArmorMask(entity.iBrokenArmorMask))
 			{
@@ -4455,6 +4504,7 @@ void Client::CClientReplication::Reset_World()
 	m_CombatObjectHitAreasByArchetype.clear();
 #endif
 	m_ValtanPresentationState = {};
+	m_WorldPickupSnapshots.clear();
 	m_WorldDestructionProjectionRuntime.Reset();
 	m_WorldDestructionLiveEvents.clear();
 	m_EncounterPropState = {};
@@ -4593,7 +4643,10 @@ bool Client::CClientReplication::Apply_PlayerSnapshot(
 	}
 	character->Apply_NetworkStance(player.eStance);
 	character->Apply_NetworkVehicle(player.iVehicleId);
+	(void)character->Apply_WaterGunPresentation(player.isWaterpangArmed);
 	character->Apply_NetworkPresentationHidden((player.CardMaze.flags & LostArk::Shared::CARD_MAZE_ENTRY_HIDDEN) != 0u);
+	if (isLocallyControlled && m_Desc.iLayerLevelIndex == ETOUI(LEVEL::MAHARAKA))
+		Trace_MaharakaLocalPlayer(*character, player, serverTick);
 	if (PLAYER_ACTION_STATE::GRABBED == player.eAction)
 	{
 		// Both boss presentations expose the existing weak hand-socket interface.

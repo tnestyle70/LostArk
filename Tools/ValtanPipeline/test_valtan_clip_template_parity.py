@@ -39,6 +39,96 @@ class ValtanClipTemplateParityTests(unittest.TestCase):
         self.assertGreater(stats["effects"], 0)
         self.assertGreater(stats["sounds"], 0)
         self.assertEqual(2, stats["effectReplacements"])
+        self.assertEqual(2, stats["effectTimingOverrides"])
+
+    def test_exact_saved_effect_timing_keeps_independent_stage_cue(self) -> None:
+        override_row = next(row for row in self.templates["allowlist"]
+                            if "effectTimingOverride" in row)
+        self.assertEqual(("VALTAN_TRIPLE_COUNTER", "FAIL_3"),
+                         (override_row["patternId"], override_row["stageId"]))
+        self.assertEqual(1169, override_row["effectTimingOverride"]["stageStartMs"])
+        self.assertEqual(900, override_row["effectTimingOverride"]["templateEffect"]["clipMs"])
+        presentation = copy.deepcopy(self.presentation)
+        stage = next(stage for pattern in presentation["patterns"]
+                     if pattern["patternId"] == override_row["patternId"]
+                     for stage in pattern["stages"] if stage["stageId"] == override_row["stageId"])
+        cue = next(cue for cue in stage["effectCues"]
+                   if cue["cueId"] == "cue.valtan.composition.valtan_triple_counter.fail_3.01")
+        self.assertEqual(("STAGE_CLOCK", 891), (cue["timingBasis"], cue["stageOffsetMs"]))
+        stats = self.validate()
+        stage["effectCues"].remove(cue)
+        self.assertEqual(stats, self.validate(presentation=presentation))
+
+    def test_effect_timing_override_binding_identity_and_fields_fail_closed(self) -> None:
+        override = next(row["effectTimingOverride"] for row in self.templates["allowlist"]
+                        if "effectTimingOverride" in row)
+        for section, field, value in (
+            (None, "bindingId", "binding.fixture.wrong-id"),
+            ("scope", "patternId", "VALTAN_THREE"),
+            ("scope", "stageId", "FAIL_2"),
+            ("scope", "actionId", "valtan.fixture.wrong-action"),
+            ("resource", "id", "boss.valtan.shout"),
+            ("clock", "startMs", 1168),
+            ("clock", "startMs", 900),
+            ("clock", "basis", "CLIP_OCCURRENCE"),
+            ("clock", "clipOccurrenceId", "valtan.fixture.wrong-clip"),
+            ("clock", "repeatPolicy", "LOOP"),
+            ("anchor", "slotId", "root"),
+        ):
+            bindings = copy.deepcopy(self.bindings)
+            binding = next(row for row in bindings["bindings"]
+                           if row["bindingId"] == override["bindingId"])
+            (binding if section is None else binding[section])[field] = value
+            with self.subTest(section=section, field=field, value=value), self.assertRaisesRegex(
+                    validator.ContractError, "exact effect timing override binding mismatch"):
+                self.validate(bindings=bindings)
+
+    def test_effect_timing_override_missing_and_duplicate_binding_fail_closed(self) -> None:
+        override = next(row["effectTimingOverride"] for row in self.templates["allowlist"]
+                        if "effectTimingOverride" in row)
+        for duplicate_kind in ("missing", "same-id", "other-id", "original-stage", "original-clip"):
+            bindings = copy.deepcopy(self.bindings)
+            binding = next(row for row in bindings["bindings"]
+                           if row["bindingId"] == override["bindingId"])
+            if duplicate_kind == "missing":
+                bindings["bindings"].remove(binding)
+            else:
+                duplicate = copy.deepcopy(binding)
+                if duplicate_kind != "same-id":
+                    duplicate["bindingId"] = "binding.fixture.duplicate"
+                if duplicate_kind.startswith("original-"):
+                    duplicate["clock"]["startMs"] = override["templateEffect"]["clipMs"]
+                if duplicate_kind == "original-clip":
+                    duplicate["clock"]["basis"] = "CLIP_OCCURRENCE"
+                    duplicate["clock"]["clipOccurrenceId"] = \
+                        "valtan.reactive.triple-counter.third-fail.clip.01"
+                bindings["bindings"].append(duplicate)
+            with self.subTest(kind=duplicate_kind), self.assertRaisesRegex(
+                    validator.ContractError, "exact effect timing override binding mismatch"):
+                self.validate(bindings=bindings)
+
+    def test_effect_timing_override_is_exact_and_cannot_waive_validation(self) -> None:
+        for change in ("unknown-field", "waiver", "wrong-template", "unknown-binding",
+                       "unchanged-time", "outside-stage", "missing-override"):
+            templates = copy.deepcopy(self.templates)
+            row = next(row for row in templates["allowlist"] if "effectTimingOverride" in row)
+            override = row["effectTimingOverride"]
+            if change == "unknown-field":
+                override["unknown"] = 1
+            elif change == "waiver":
+                row["waivers"] = ["EFFECT"]
+            elif change == "wrong-template":
+                override["templateEffect"]["resourceId"] = "boss.valtan.shout"
+            elif change == "unknown-binding":
+                override["bindingId"] = "binding.fixture.unknown"
+            elif change == "unchanged-time":
+                override["stageStartMs"] = 900
+            elif change == "outside-stage":
+                override["stageStartMs"] = 999999
+            else:
+                templates["allowlist"].remove(row)
+            with self.subTest(change=change), self.assertRaises(validator.ContractError):
+                self.validate(templates=templates)
 
     def test_full_restore_replacements_keep_exact_source_cue_and_no_generic_duplicate(self) -> None:
         for stage_id in ("STEP_03", "STEP_04"):

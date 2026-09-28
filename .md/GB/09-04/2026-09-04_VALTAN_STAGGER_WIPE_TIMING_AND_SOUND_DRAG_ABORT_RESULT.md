@@ -99,3 +99,38 @@ JSON을 직접 수정한 경우에도 별도 publisher들을 연속으로 수동
 - Server는 published bootstrap을 읽도록 재시작해야 한다.
 - 에이전트는 Client/UI를 실행하거나 시각·청각 PASS를 대신 판정하지 않았다.
 - 기존 Kakul/Map/Composition dirty 변경을 보존했으며, 소유권이 섞인 worktree라 stage/commit/push하지 않았다.
+
+## 6. 09-29 마력구 약10만 피해·무력화 바 후속 수정
+
+현재 자동 health rotation이 사용하는 마력구는 VALTAN_STAGGER_SLOT이다. CHANNEL12초 동안
+확정 HP피해1000에 도달하면 Groggy, 실패하면 FINAL_ATTACK1초(전체13초)의 원형100m 공격1회다.
+이1000 성공 기준·12초·실패타이밍·사용자가 저장한 이펙트/사운드는 변경하지 않는다.
+
+Source BossProfiles의100만 보면 rate100000%가 raw100000처럼 보이지만 정식 게시자의
+Retail override가 발탄/유령 발탄 attackPower를2285로 바꾼다. 설치 bootstrap BOSS행과
+DAMAGE행, 실제 ValtanBrain의 Find_DamageRatePercent 소비를 대조하여 현재 raw2285000을 확인했다.
+이 경로는 DAMAGE_PROFILE coefficient/addend의 고정 피해를 소비하지 않는다.
+후보는 전용 damage.valtan.magic-orb-failure/rate4376 + FINAL_ATTACK의profile ID 교체다.
+현재 Retail 기준 raw99991이며, 실제 HP 감소는 기존 방어·보호·보호막·잔여HP 제한을 거친다.
+130줄 공유 wipe profile100000%는 그대로다. 새ID의 기존 guard alias를 추가해 바훈투르의
+일반50%감소·전멸차단 및 로나운의 같은 마력구 차단을 보존했다. 새로운 바훈 능력을 추가하지 않았다.
+Data 후보/정확2field PROJECT_TUNED 근거는
+`out/ValtanEffects20260929/stagger-hud/damage-field-ops.json`이며 실제 원자 병합·게시 담당자는 통합 root다.
+
+Server는 이미 iResponseThreshold/iResponseProgress를 snapshot으로 보내지만,
+CombatHUDViewModel::Apply_Boss가 옛 VALTAN_MAGIC_ORB_STAGGER_76/window만 처리하여
+STAGGER_SLOT/channel의 게이지가 NONE으로 남는 결함을 수정했다. 정확한 새 pattern/action 조합만
+기존 mapping에 추가했고, 새 채널에 response가 없으면 일반stagger를 대신 표시하지 않는다.
+MainApp의 기존 Boss_StaggerBg/Fill이 잔여량을 그리며 성공/Groggy·실패·취소에서 즉시 숨긴다.
+기존 위치·표시 옵션·다른 쿠크 typed gauge와 옛 마력구 fallback은 유지한다.
+
+실제 수정 전/후 CombatHUDViewModel.cpp를 각각 native compile/link/run했다.
+수정 전12건 중5건이 새 게이지 누락으로 실패했고 수정 후12/12 PASS였다.
+시작1000→progress250에서 잔여750, 초과clamp0, 실패/성공/취소숨김, response부재,
+재시작, 유령 발탄, 다른 archetype/legacy/쿠크 비영향을 확인했다.
+근거는 `out/ValtanEffects20260929/stagger-hud/verification.json`, `before-run.log`, `after-run.log`다.
+실제 Shared guard predicate native 검사도 기존-50/4초/7m/4.2m/30초와 두wipe ID 허용,
+ordinary profile 거부로 PASS했다. 기존 BossUI JSON의 두 슬롯과 설치 PNG2개도 확인했다.
+`guard-and-assets.json`과 `guard-run.log`에 기록했다. 이 검사는 GPU 화면 표시를 대신하지 않는다.
+변경 C++ UTF-8/CRLF, 기존 Python LF와 scoped diff check PASS다.
+최종 Data 게시/통합 Product·Server 결과는 통합 후 기록하며 Client/UI를 직접 실행하지 않았다.

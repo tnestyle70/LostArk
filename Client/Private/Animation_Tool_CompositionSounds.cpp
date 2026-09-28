@@ -1119,12 +1119,24 @@ bool_t Client::CAnimation_Tool::Accept_ValtanCompositionPatternSoundSave(
 			"Pattern Sound draft changed while the Composition Save transaction was running.";
 		return false;
 	}
+	// Stage index/duration are derived by placement/preview and are not saved.
+	// Compare the immutable storage candidate, while retaining generation and
+	// exact disk-byte checks, so a successful Save can accept its own draft.
+	std::string CurrentCandidateBytes;
+	if (!CValtanPatternSoundCueDocument::Serialize_TransactionCandidate(
+			m_ValtanPatternSoundCues, CurrentCandidateBytes, strOutStatus) ||
+		CurrentCandidateBytes != strExpectedCandidateBytes)
+	{
+		strOutStatus =
+			"Pattern Sound authored fields changed while the Composition Save transaction was running. " +
+			strOutStatus;
+		return false;
+	}
 	VALTAN_PATTERN_SOUND_CUE_DOCUMENT Reopened;
 	std::string ReopenedBytes;
 	if (!CValtanPatternSoundCueDocument::Load_ForAuthoring(
 			Reopened, ReopenedBytes, strOutStatus) ||
-		ReopenedBytes != strExpectedCandidateBytes ||
-		Reopened != m_ValtanPatternSoundCues)
+		ReopenedBytes != strExpectedCandidateBytes)
 	{
 		strOutStatus =
 			"The Composition transaction completed, but Pattern Sound did not reopen as the exact committed draft: " +

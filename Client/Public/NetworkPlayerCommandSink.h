@@ -17,6 +17,11 @@ public:
 	CNetworkPlayerCommandSink& operator=(
 		const CNetworkPlayerCommandSink&) = delete;
 
+	bool Request_BalanceRefresh() override;
+	bool Request_BalancePatch(const LostArk::Shared::C2S_BALANCE_PATCH&) override;
+	bool Consume_BalanceResult(LostArk::Shared::S2C_BALANCE_RESULT&) override;
+	bool Copy_BalanceSnapshot(LostArk::Shared::GameplayDataRevision&,
+		std::vector<LostArk::Shared::BALANCE_NUMERIC_ENTRY>&) const override;
 	static std::uint32_t Get_LiveInstanceCount();
 	bool Request_DebugKillGateBosses(const LostArk::Shared::C2S_DEBUG_KILL_GATE_BOSSES&) override;
 	bool Request_SetCooldownMode(const LostArk::Shared::C2S_SET_COOLDOWN_MODE&) override;

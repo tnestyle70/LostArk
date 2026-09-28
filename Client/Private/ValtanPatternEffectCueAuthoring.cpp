@@ -135,8 +135,7 @@ namespace
 		std::string& strOutStatus)
 	{
 		if (!Pattern.bAuthoringMasterManaged ||
-			"WAIT" == Stage.strSequenceRole || Stage.bSuppressAnimation ||
-			Stage.ClipOccurrences.empty())
+			(!Cue.bUsesStageClock && ("WAIT" == Stage.strSequenceRole || Stage.bSuppressAnimation || Stage.ClipOccurrences.empty())))
 		{
 			strOutStatus =
 				"Valtan Effect invocation requires one admitted non-WAIT animation Stage.";
@@ -145,11 +144,11 @@ namespace
 		if (!IsStableAuthoringId(Cue.strBindingId) ||
 			!IsStableAuthoringId(Cue.strOccurrenceId) ||
 			!IsStableAuthoringId(Cue.strEffectAssetId) ||
-			!IsStableAuthoringId(Cue.strClipOccurrenceId) ||
+			(Cue.bUsesStageClock ? !Cue.strClipOccurrenceId.empty() : !IsStableAuthoringId(Cue.strClipOccurrenceId)) ||
 			Cue.strPatternId != Pattern.strPatternId ||
 			Cue.strStageId != Stage.strStageId ||
-			Cue.strActionId != Stage.strActionId || Cue.bUsesStageClock ||
-			0u != Cue.iStageOffsetMs)
+			Cue.strActionId != Stage.strActionId ||
+			(!Cue.bUsesStageClock && 0u != Cue.iStageOffsetMs))
 		{
 			strOutStatus =
 				"Valtan Effect invocation stable Pattern/Stage/Action/clip identity is invalid.";
@@ -181,7 +180,16 @@ namespace
 			{
 				return Candidate.strClipOccurrenceId == Cue.strClipOccurrenceId;
 			});
-		if (Stage.ClipOccurrences.end() == Clip ||
+		if (Cue.bUsesStageClock &&
+			(Cue.iStageOffsetMs >= Stage.iDurationMs || Cue.iSourceStartMs != Cue.iStageOffsetMs ||
+			 (Cue.bHasSourceEnd && (Cue.iSourceEndMs <= Cue.iStageOffsetMs || Cue.iSourceEndMs > 600000u)) ||
+			 (!Cue.bHasSourceEnd && Cue.iSourceEndMs != 0u) ||
+			 (Cue.bHasPlaybackOffset && Cue.iPlaybackOffsetMs > 600000u)))
+		{
+			strOutStatus = "Independent Effect must start inside its Stage; its optional end must follow the start and remain within 600000 ms.";
+			return false;
+		}
+		if (!Cue.bUsesStageClock && (Stage.ClipOccurrences.end() == Clip ||
 			Cue.iSourceStartMs < Clip->iSourceStartMs ||
 			Cue.iSourceStartMs > 600000u || Cue.iSourceEndMs > 600000u ||
 			(Cue.bHasPlaybackOffset && Cue.iPlaybackOffsetMs > 600000u) ||
@@ -191,7 +199,7 @@ namespace
 			(0u != Clip->iPlayMs &&
 			 (Cue.iSourceStartMs >= Clip->iSourceStartMs + Clip->iPlayMs ||
 			  (Cue.bHasSourceEnd && Cue.strRepeatPolicy != "once" &&
-			   Cue.iSourceEndMs > Clip->iSourceStartMs + Clip->iPlayMs))))
+			   Cue.iSourceEndMs > Clip->iSourceStartMs + Clip->iPlayMs)))))
 		{
 			strOutStatus =
 				"Valtan Effect invocation source window escapes its exact animation occurrence.";
@@ -211,7 +219,7 @@ namespace
 			 Cue.eStopPolicy == EFFECT_STOP_POLICY::CUE_END &&
 			 Cue.bHasSourceEnd);
 		const bool_t bRepeatPolicyValid = "once" == Cue.strRepeatPolicy ||
-			("each_loop" == Cue.strRepeatPolicy && Clip->bLoop);
+			(!Cue.bUsesStageClock && "each_loop" == Cue.strRepeatPolicy && Clip->bLoop);
 		if (!bFollowPolicyValid || !bStopPolicyValid || !bRepeatPolicyValid)
 		{
 			strOutStatus =
@@ -235,24 +243,38 @@ namespace
 		const bool_t bHasCenterApproach = Pattern.ServerMotion.has_value() &&
 			"LEAP_TO_ANCHOR" == Pattern.ServerMotion->strKind &&
 			Pattern.ServerMotion->bMoveToAnchorBeforeTakeoff;
+		const auto StageOwner = std::find_if(Pattern.Stages.begin(), Pattern.Stages.end(),
+			[&Stage](const VALTAN_STAGE_VIEW& Candidate) { return Candidate.strActionId == Stage.strActionId; });
+		const bool_t bStageCenterFollow = StageOwner != Pattern.Stages.end() &&
+			"NEAREST_EACH_TICK" == Stage.strAimTargetPolicy &&
+			std::any_of(Pattern.Stages.begin(), StageOwner + 1u,
+				[](const VALTAN_STAGE_VIEW& Candidate) {
+					return Candidate.Motion.has_value() &&
+						"TO_ARENA_CENTER" == Candidate.Motion->strKind;
+				});
 		const bool_t bArenaCenterAnchor =
 			(bFixedArenaCenter ||
 			 "arena.center.facing" == Cue.strAnchorSlotId ||
 			 bArenaTargetFollow) &&
 			(bArenaTargetFollow ? "follow" : "snapshot") ==
 				Cue.strFollowPolicy &&
-			(bFixedArenaCenter ? bHasFixedCenterMotion : bHasCenterApproach) &&
+			(bFixedArenaCenter ? bHasFixedCenterMotion :
+			 (bHasCenterApproach || (bArenaTargetFollow && bStageCenterFollow))) &&
 			("arena.center.facing" != Cue.strAnchorSlotId ||
 			 ("LOCK_FACING_ON_START" == Pattern.strAimPolicy &&
 			  "LOCK_RANDOM_ALIVE_ON_START" == Pattern.strTargetPolicy)) &&
-			(!bArenaTargetFollow ||
+			(!bArenaTargetFollow || bStageCenterFollow ||
 			 ("TRACK_TARGET_EACH_TICK" == Pattern.strAimPolicy &&
 			  "LOCK_RANDOM_ALIVE_ON_START" == Pattern.strTargetPolicy));
-		if ("root" != Cue.strAnchorSlotId && !bTargetSnapshotAnchor &&
-			!bArenaCenterAnchor)
+		const bool_t bLandingSnapshotAnchor =
+			"pattern.landing.snapshot" == Cue.strAnchorSlotId &&
+			"snapshot" == Cue.strFollowPolicy && bHasFixedCenterMotion;
+		const bool_t bMapAnchor = "map" == Cue.strAnchorSlotId && "snapshot" == Cue.strFollowPolicy;
+		if ("root" != Cue.strAnchorSlotId && !bMapAnchor && !bTargetSnapshotAnchor &&
+			!bArenaCenterAnchor && !bLandingSnapshotAnchor)
 		{
 			strOutStatus =
-				"Valtan Effect invocation anchor must be root, an admitted pattern.target.snapshot, or an admitted arena.center fixed/follow root.";
+				"Valtan Effect invocation anchor must be root or an admitted target, landing, map, or arena-center anchor.";
 			return false;
 		}
 
@@ -371,7 +393,9 @@ bool_t Client::CValtanPatternEffectCueAuthoring::Validate_Mirrors(
 			}
 		}
 	}
-	if (iNestedCount != Stage.ProductCues.size())
+	const auto clipCueCount = std::count_if(Stage.ProductCues.begin(), Stage.ProductCues.end(),
+		[](const auto& cue) { return !cue.bUsesStageClock; });
+	if (iNestedCount != static_cast<std::size_t>(clipCueCount))
 	{
 		strOutStatus =
 			"Valtan Effect invocation mirror count is inconsistent.";
@@ -419,14 +443,14 @@ bool_t Client::CValtanPatternEffectCueAuthoring::Add(
 		{
 			return Candidate.strClipOccurrenceId == Cue.strClipOccurrenceId;
 		});
-	if (pStage->ClipOccurrences.end() == Clip)
+	if (!Cue.bUsesStageClock && pStage->ClipOccurrences.end() == Clip)
 	{
 		strOutStatus =
 			"Valtan Effect invocation add lost its exact clip occurrence while staging.";
 		return false;
 	}
 	pStage->ProductCues.push_back(Cue);
-	Clip->ProductCues.push_back(Cue);
+	if (!Cue.bUsesStageClock) Clip->ProductCues.push_back(Cue);
 	pStage->ProductCue = pStage->ProductCues.front();
 	if (!Validate_Mirrors(*pStage, strOutStatus))
 		return false;
@@ -520,7 +544,7 @@ bool_t Client::CValtanPatternEffectCueAuthoring::Update(
 			}
 		}
 	}
-	if (1u != iNestedMatches)
+	if ((Current->bUsesStageClock ? 0u : 1u) != iNestedMatches)
 	{
 		strOutStatus =
 			"Valtan Effect invocation update rejected: exact nested predecessor mirror is missing or duplicated.";
@@ -532,14 +556,14 @@ bool_t Client::CValtanPatternEffectCueAuthoring::Update(
 		{
 			return Candidate.strClipOccurrenceId == Cue.strClipOccurrenceId;
 		});
-	if (pStage->ClipOccurrences.end() == TargetClip)
+	if (!Cue.bUsesStageClock && pStage->ClipOccurrences.end() == TargetClip)
 	{
 		strOutStatus =
 			"Valtan Effect invocation update lost its selected clip while staging.";
 		return false;
 	}
 	*Current = Cue;
-	TargetClip->ProductCues.push_back(Cue);
+	if (!Cue.bUsesStageClock) TargetClip->ProductCues.push_back(Cue);
 	pStage->ProductCue = pStage->ProductCues.front();
 	if (!Validate_Mirrors(*pStage, strOutStatus))
 		return false;
@@ -576,8 +600,7 @@ bool_t Client::CValtanPatternEffectCueAuthoring::Remove(
 	VALTAN_STAGE_VIEW* const pStage = nullptr == pPattern ? nullptr :
 		FindStage(*pPattern, strStageId);
 	if (nullptr == pPattern || nullptr == pStage ||
-		pStage->strActionId != strActionId ||
-		"WAIT" == pStage->strSequenceRole)
+		pStage->strActionId != strActionId)
 	{
 		strOutStatus =
 			"Valtan Effect invocation remove rejected: Pattern/Stage/Action is stale or the Stage is WAIT.";
@@ -598,6 +621,7 @@ bool_t Client::CValtanPatternEffectCueAuthoring::Remove(
 			"Valtan Effect invocation remove rejected: exact cue predecessor CAS did not match.";
 		return false;
 	}
+	const bool_t stageClock = Current->bUsesStageClock;
 	pStage->ProductCues.erase(Current);
 
 	std::size_t iNestedMatches = 0u;
@@ -616,7 +640,7 @@ bool_t Client::CValtanPatternEffectCueAuthoring::Remove(
 			});
 		iNestedMatches += iBefore - Occurrence.ProductCues.size();
 	}
-	if (1u != iNestedMatches)
+	if ((stageClock ? 0u : 1u) != iNestedMatches)
 	{
 		strOutStatus =
 			"Valtan Effect invocation remove rejected: exact nested predecessor mirror is missing or duplicated.";

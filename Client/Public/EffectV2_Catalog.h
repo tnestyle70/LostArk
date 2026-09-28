@@ -4,6 +4,7 @@
 #include "EffectV2_Document.h"
 
 #include <cstdint>
+#include <functional>
 #include <memory>
 #include <mutex>
 #include <string>
@@ -143,6 +144,12 @@ public:
 	bool_t Stage_AppendBossValtanBindings(
 		const std::vector<EFFECT_V2_BINDING>& Sources,
 		std::vector<std::string>& OutBindingIds, std::string& strOutError);
+	// In-memory owner transaction; callbacks may invoke the existing staged mutations.
+	bool_t Apply_BossValtanBindingDraftTransaction(
+		const std::function<bool_t(std::string&)>& Mutation, std::string& strOutError);
+	bool_t Stage_RemoveBossValtanBindings(
+		const std::vector<EFFECT_V2_STAGE_BINDING_KEY>& Keys,
+		std::string& strOutError);
 	bool_t Stage_RemoveBossValtanStageBinding(
 		const EFFECT_V2_STAGE_BINDING_KEY& Key,
 		std::string& strOutError);
@@ -208,7 +215,7 @@ private:
 		std::string& strOutError);
 
 private:
-	mutable std::mutex m_SnapshotMutex;
+	mutable std::recursive_mutex m_SnapshotMutex;
 	std::shared_ptr<const EFFECT_V2_CATALOG_SNAPSHOT> m_pSnapshot;
 	std::shared_ptr<const EFFECT_V2_CATALOG_SNAPSHOT> m_pRuntimeSnapshot;
 	std::string m_strBossValtanBindingDraftBaselineBytes;

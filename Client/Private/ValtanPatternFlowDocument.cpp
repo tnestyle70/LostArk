@@ -888,7 +888,7 @@ bool_t Client::CValtanPatternFlowDocument::Load_CanonicalSequence(
 {
 	outStatus.clear();
 	if (!Is_StableId(sequenceId) ||
-		"ORDERED_ONCE_THEN_IDLE" != mode || patternIds.empty() ||
+		("ORDERED_ONCE_THEN_IDLE" != mode && "HEALTH_BAR_ROTATIONS" != mode) || patternIds.empty() ||
 		patternIds.size() > MAX_NODES ||
 		interStepPursuitMs < MIN_INTER_STEP_PURSUIT_MS ||
 		interStepPursuitMs > MAX_INTER_STEP_PURSUIT_MS ||

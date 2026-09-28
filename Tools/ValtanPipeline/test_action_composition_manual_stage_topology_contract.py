@@ -6,6 +6,10 @@ from __future__ import annotations
 import pathlib
 import unittest
 
+import sys
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1] / "Build"))
+from cpp_source_domains import cpp_function_body
+
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 BALANCE_H = ROOT / "Client/Public/BalanceTool.h"
@@ -18,17 +22,7 @@ WORKBENCH_BLUEPRINT_CPP = (
 
 
 def function_body(source: str, signature: str) -> str:
-    start = source.index(signature)
-    opening = source.index("{", start)
-    depth = 0
-    for cursor in range(opening, len(source)):
-        if source[cursor] == "{":
-            depth += 1
-        elif source[cursor] == "}":
-            depth -= 1
-            if depth == 0:
-                return source[opening : cursor + 1]
-    raise AssertionError(f"unterminated function: {signature}")
+    return cpp_function_body(source, signature)
 
 
 class ActionCompositionManualStageTopologyContractTests(unittest.TestCase):
@@ -183,42 +177,23 @@ class ActionCompositionManualStageTopologyContractTests(unittest.TestCase):
             topology_builder,
         )
 
-    def test_remove_rejects_dangling_typed_dependencies(self) -> None:
-        guard = function_body(
-            self.balance_cpp, "bool CanRemoveValtanManualStage("
-        )
-        for token in (
-            "branch.strNextActionId",
-            "pattern.ServerMotion",
-            "pattern.Reactions",
-            "pattern.WorldEventTriggerRefs",
-            "tree.CounterReactionLayers",
-            "tree.IndependentEffects",
-            "stage.Actions.empty()",
-            "stage.Branches.empty()",
-            "stage.CounterProxy.has_value()",
-            "stage.Motion.has_value()",
-            "stage.ProductCues.empty()",
-            "stage.CameraInvocations.empty()",
-        ):
+    def test_remove_rejects_dangling_typed_dependencies_and_cascades_owned_resources(self) -> None:
+        guard = function_body(self.balance_cpp, "bool CanRemoveValtanManualStage(")
+        for token in ("branch.strNextActionId", "pattern.ServerMotion", "pattern.Reactions",
+                      "pattern.WorldEventTriggerRefs", "tree.CounterReactionLayers", "tree.IndependentEffects",
+                      "stage.Actions.empty()", "stage.CounterProxy.has_value()", "ownsSharedGameplay"):
             self.assertIn(token, guard)
-        self.assertIn("IsValtanManualStageRole(stage.strSequenceRole)", guard)
-        self.assertIn("remainingStageCount", guard)
-
-        removal = function_body(
-            self.balance_cpp,
-            "bool Client::CBalanceTool::Remove_ValtanManualStage(",
-        )
-        self.assertIn("m_loadedValtanPatternTree", removal)
-        self.assertIn('"SOURCE_REVIEWED_DELTA"', removal)
-        self.assertIn(
-            "Save + Validate + Publish the Collider removal first",
-            removal,
-        )
-        self.assertLess(
-            removal.index("savedRemovalProvenance"),
-            removal.index("VALTAN_PATTERN_TREE_VIEW staged = m_valtanPatternTree"),
-        )
+        self.assertNotIn("SOURCE_REVIEWED_DELTA", guard)
+        removal = function_body(self.balance_cpp, "bool Client::CBalanceTool::Remove_ValtanManualStage(")
+        self.assertIn("clearLastStage", removal)
+        self.assertIn('occurrence.strMappingBasis = "SOURCE_REVIEWED_DELTA"', removal)
+        self.assertNotIn("savedRemovalProvenance", removal)
+        deletion = function_body(self.workbench_cpp, "bool_t Client::CValtanActionWorkbench::Delete_SelectedStage(")
+        for token in ("Apply_ValtanCompositionPatternSoundDraftTransaction", "Apply_ValtanCompositionDraftTransaction",
+                      "Remove_ValtanManualStage", "Remove_ValtanCompositionPatternSound", "Stage_RemoveBossValtanBindings"):
+            self.assertIn(token, deletion)
+        self.assertLess(deletion.index("Remove_ValtanCompositionPatternSound"), deletion.index("Stage_RemoveBossValtanBindings"))
+        self.assertIn('"Clear Stage" : "Delete Stage"', self.workbench_cpp)
 
     def test_cpp_topology_gate_matches_the_linear_timeout_contract(self) -> None:
         gate = function_body(
@@ -297,11 +272,7 @@ class ActionCompositionManualStageTopologyContractTests(unittest.TestCase):
         self.assertIn("Topology is read-only:", topology)
         self.assertIn("Insert_ValtanManualStageAfter", topology)
         self.assertIn("Move_ValtanManualStage", topology)
-        self.assertIn("Remove_ValtanManualStage", topology)
-        self.assertLess(
-            topology.index("Validate_ManualStageTopologySoundDependencies("),
-            topology.index("Remove_ValtanManualStage("),
-        )
+        self.assertIn("Delete_SelectedStage", topology)
         details = function_body(
             self.workbench_cpp,
             "void Client::CValtanActionWorkbench::Render_GameplayStageDetails(",
@@ -377,7 +348,7 @@ class ActionCompositionManualStageTopologyContractTests(unittest.TestCase):
 
         render = function_body(
             self.workbench_cpp,
-            "void Client::CValtanActionWorkbench::Render()",
+            "void Client::CValtanActionWorkbench::Begin_WorkbenchFrame()",
         )
         effective = render.index(
             "const VALTAN_PATTERN_VIEW* const pPattern = bEffectivePatternReady"
@@ -391,11 +362,10 @@ class ActionCompositionManualStageTopologyContractTests(unittest.TestCase):
         )
         self.assertLess(effective, effective_normalize)
         self.assertLess(effective_normalize, stage_lookup)
-        self.assertIn("Render_PatternsWindow(", render)
 
         patterns_window = function_body(
             self.workbench_cpp,
-            "void Client::CValtanActionWorkbench::Render_PatternsWindow(",
+            "void Client::CValtanActionWorkbench::Render_PatternsPane(",
         )
         self.assertIn("Render_Browser(pPattern)", patterns_window)
 
@@ -432,13 +402,13 @@ class ActionCompositionManualStageTopologyContractTests(unittest.TestCase):
         self.assertLess(generation, sequencer)
         self.assertLess(sequencer, graph)
         self.assertIn(
-            "m_iEffectivePatternCacheDraftGeneration : 0u", render[generation:sequencer]
+            "m_iWorkbenchFrameDraftGeneration", render[generation:sequencer]
         )
         self.assertIn("pPattern, iPatternViewDraftGeneration", render[graph:])
 
         window = function_body(
             self.workbench_blueprint_cpp,
-            "void Client::CValtanActionWorkbench::Render_BossPatternWindow(",
+            "void Client::CValtanActionWorkbench::Render_BossPatternPane(",
         )
         self.assertNotIn("Get_ValtanDraftGeneration", window)
         self.assertIn(
@@ -462,7 +432,7 @@ class ActionCompositionManualStageTopologyContractTests(unittest.TestCase):
 
         window = function_body(
             self.workbench_blueprint_cpp,
-            "void Client::CValtanActionWorkbench::Render_BossPatternWindow(",
+            "void Client::CValtanActionWorkbench::Render_BossPatternPane(",
         )
         self.assertIn('ImGui::SmallButton("Reset Route")', window)
         self.assertIn("bool_t bCanInteractSnapshot", window)

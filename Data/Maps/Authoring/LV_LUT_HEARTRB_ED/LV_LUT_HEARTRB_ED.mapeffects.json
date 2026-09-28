@@ -8,16 +8,263 @@
       "displayName": "발탄 바닥 균열 Emissive",
       "presentationKind": "DEPLOY_SURFACE_OVERLAY",
       "owners": [
-        { "groupId": "destroyable.group.valtan.floor30.brick.7000000000000000002", "placementId": "7000000000000000002" },
-        { "groupId": "destroyable.group.valtan.floor30.brick.7000000000000000003", "placementId": "7000000000000000003" },
-        { "groupId": "destroyable.group.valtan.floor84.brick.7000000000000000006", "placementId": "7000000000000000006" },
-        { "groupId": "destroyable.group.valtan.floor84.brick.7000000000000000007", "placementId": "7000000000000000007" }
+        {
+          "groupId": "destroyable.group.valtan.floor30.brick.7000000000000000002",
+          "placementId": "7000000000000000002"
+        },
+        {
+          "groupId": "destroyable.group.valtan.floor30.brick.7000000000000000003",
+          "placementId": "7000000000000000003"
+        },
+        {
+          "groupId": "destroyable.group.valtan.floor84.brick.7000000000000000006",
+          "placementId": "7000000000000000006"
+        },
+        {
+          "groupId": "destroyable.group.valtan.floor84.brick.7000000000000000007",
+          "placementId": "7000000000000000007"
+        }
       ],
-      "visibleStates": ["INTACT"],
+      "visibleStates": [
+        "INTACT"
+      ],
       "materialIndex": 1,
       "emissiveIntensity": 0,
-      "emissiveColor": [0.119999997, 1, 0.560000002, 1],
+      "emissiveColor": [
+        0.119999997,
+        1,
+        0.560000002,
+        1
+      ],
       "maskPower": 1
+    },
+    {
+      "independentEffectId": "valtan.independent-effect.ether.01",
+      "displayName": "에테르 구슬 1",
+      "presentationKind": "EFFECT_DOCUMENT",
+      "placementId": "world.valtan.ether.01",
+      "effectAssetId": "effect.valtan.ether.orb",
+      "position": [
+        172.132996,
+        28.108001,
+        -122.501999
+      ],
+      "rotationQuaternion": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "orientationPolicy": "WORLD",
+      "activationPolicy": "SERVER_PICKUP",
+      "activationSetId": "",
+      "activationWindows": [],
+      "playbackPolicy": "SOURCE_LOOP",
+      "pickup": {
+        "wallGroupId": "destroyable.group.valtan.outerwall109.1090000000000001",
+        "landingPosition": [
+          164.75,
+          23.390829,
+          -122.75
+        ],
+        "fallDurationMs": 900,
+        "pickupRadiusM": 0.75
+      }
+    },
+    {
+      "independentEffectId": "valtan.independent-effect.ether.02",
+      "displayName": "에테르 구슬 2",
+      "presentationKind": "EFFECT_DOCUMENT",
+      "placementId": "world.valtan.ether.02",
+      "effectAssetId": "effect.valtan.ether.orb",
+      "position": [
+        164.464279,
+        28.108001,
+        -108.335396
+      ],
+      "rotationQuaternion": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "orientationPolicy": "WORLD",
+      "activationPolicy": "SERVER_PICKUP",
+      "activationSetId": "",
+      "activationWindows": [],
+      "playbackPolicy": "SOURCE_LOOP",
+      "pickup": {
+        "wallGroupId": "destroyable.group.valtan.outerwall109.1090000000000006",
+        "landingPosition": [
+          160.25,
+          23.429047,
+          -114.75
+        ],
+        "fallDurationMs": 900,
+        "pickupRadiusM": 0.75
+      }
+    },
+    {
+      "independentEffectId": "valtan.independent-effect.ether.03",
+      "displayName": "에테르 구슬 3",
+      "presentationKind": "EFFECT_DOCUMENT",
+      "placementId": "world.valtan.ether.03",
+      "effectAssetId": "effect.valtan.ether.orb",
+      "position": [
+        151.474258,
+        28.108001,
+        -106.608551
+      ],
+      "rotationQuaternion": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "orientationPolicy": "WORLD",
+      "activationPolicy": "SERVER_PICKUP",
+      "activationSetId": "",
+      "activationWindows": [],
+      "playbackPolicy": "SOURCE_LOOP",
+      "pickup": {
+        "wallGroupId": "destroyable.group.valtan.outerwall109.1090000000000010",
+        "landingPosition": [
+          147.75,
+          23.329539,
+          -108.25
+        ],
+        "fallDurationMs": 900,
+        "pickupRadiusM": 0.75
+      }
+    },
+    {
+      "independentEffectId": "valtan.independent-effect.ether.04",
+      "displayName": "에테르 구슬 4",
+      "presentationKind": "EFFECT_DOCUMENT",
+      "placementId": "world.valtan.ether.04",
+      "effectAssetId": "effect.valtan.ether.orb",
+      "position": [
+        139.927002,
+        28.108001,
+        -121.617996
+      ],
+      "rotationQuaternion": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "orientationPolicy": "WORLD",
+      "activationPolicy": "SERVER_PICKUP",
+      "activationSetId": "",
+      "activationWindows": [],
+      "playbackPolicy": "SOURCE_LOOP",
+      "pickup": {
+        "wallGroupId": "destroyable.group.valtan.outerwall109.1090000000000012",
+        "landingPosition": [
+          147.75,
+          23.41746,
+          -120.75
+        ],
+        "fallDurationMs": 900,
+        "pickupRadiusM": 0.75
+      }
+    },
+    {
+      "independentEffectId": "valtan.independent-effect.ether.05",
+      "displayName": "에테르 구슬 5",
+      "presentationKind": "EFFECT_DOCUMENT",
+      "placementId": "world.valtan.ether.05",
+      "effectAssetId": "effect.valtan.ether.orb",
+      "position": [
+        147.595718,
+        28.108001,
+        -135.784607
+      ],
+      "rotationQuaternion": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "orientationPolicy": "WORLD",
+      "activationPolicy": "SERVER_PICKUP",
+      "activationSetId": "",
+      "activationWindows": [],
+      "playbackPolicy": "SOURCE_LOOP",
+      "pickup": {
+        "wallGroupId": "destroyable.group.valtan.outerwall109.1090000000000017",
+        "landingPosition": [
+          151.25,
+          23.409861,
+          -128.25
+        ],
+        "fallDurationMs": 900,
+        "pickupRadiusM": 0.75
+      }
+    },
+    {
+      "independentEffectId": "valtan.independent-effect.ether.06",
+      "displayName": "에테르 구슬 6",
+      "presentationKind": "EFFECT_DOCUMENT",
+      "placementId": "world.valtan.ether.06",
+      "effectAssetId": "effect.valtan.ether.orb",
+      "position": [
+        163.698715,
+        28.108001,
+        -136.226608
+      ],
+      "rotationQuaternion": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "orientationPolicy": "WORLD",
+      "activationPolicy": "SERVER_PICKUP",
+      "activationSetId": "",
+      "activationWindows": [],
+      "playbackPolicy": "SOURCE_LOOP",
+      "pickup": {
+        "wallGroupId": "destroyable.group.valtan.outerwall109.1090000000000030",
+        "landingPosition": [
+          159.25,
+          23.445454,
+          -130.25
+        ],
+        "fallDurationMs": 900,
+        "pickupRadiusM": 0.75
+      }
     }
   ]
 }

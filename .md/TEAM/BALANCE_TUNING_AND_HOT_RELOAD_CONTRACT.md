@@ -14,24 +14,51 @@ Visual Studio Client 프로젝트의
 `96.DataFiles/Balance` 필터는 이 원본을 직접 보여 줄 뿐 복사본을 만들지 않는다. Server 생성물인
 `Server/Bin/DataFiles/Gameplay/Gameplay.bootstrap`은 직접 편집하지 않는다.
 
-공용 숫자 편집은 `F1 -> Balance Test`의 `Save + Validate`를 사용한다. 변경 scalar만 stable
-row ID와 원래 값으로 최신 저장본에 병합하고, candidate provenance/gameplay 검증 뒤 bytes를
-재확인해 원자 저장한다. 이 경로는 Valtan pattern draft를 Reload하거나 live Apply하지 않는다.
-`Publish Server Data` 뒤 Server와 Client를 재시작해야 일반 수치 판정과 Client catalog 표시가
-같은 세대로 적용된다. Valtan 전용 typed authoring backend와 아래 Hot Reload 계약은 유지된다.
+공용 숫자 편집은 Debug/Release `F1 -> Balance Test -> Save + Apply`를 사용한다.
+패널은 Server 활성 catalog에서 `PLAYER / SKILL / DAMAGE / BOSS / MADNESS / STAGGER / PATTERN_DAMAGE`
+목록과 별도 numeric revision을 읽는다. 최대 128개 field의 stable ID·이전값·새 값만 typed command sink로
+제출하며 Client는 로컬 파일을 저장하거나 PowerShell을 실행하지 않는다. 접속한 파티원 누구나 요청할 수 있다.
 
 ```text
-Data/Balance JSON
--> Publish-GameplayBalance.ps1 parse/validate/stage/commit
--> Server/Bin/DataFiles/Gameplay/Gameplay.bootstrap
--> Server CGameplayCatalog
--> GameRoom 30 Hz 판정
--> S2C_WORLD_SNAPSHOT / damage event
--> CCombatHUDViewModel
+F1 numeric draft -> IPlayerCommandSink -> C2S_BALANCE_PATCH
+-> Server revision/field CAS + 기존 catalog validate + 모든 room stage
+-> Server canonical source/provenance + Gameplay.bootstrap + numeric receipt 원자 저장
+-> 모든 shared/private room의 같은 tick 경계에서 numeric commit
+-> 요청자 APPLIED + 모든 Client 새 snapshot 조회
+-> skill 비용/범위, HUD와 다음 Server 판정 반영
 ```
 
-Valtan 전용 candidate transaction에 포함되지 않는 Player/skill/item/world 일반 변경은 Publish 뒤 Server를
-재시작한다. Client HUD나 GameObject만 JSON을 다시 읽어 Server 판정과 다른 값을 표시하지 않는다.
+저장 중 다른 요청은 BUSY로 거부하며 늦은 신규 입장은 저장·commit 경계 뒤 승인한다. stale revision,
+미지원 field, 범위 오류, 파일 변경 충돌, 저장 실패는 기존 활성 catalog를 유지한다. 패널의 미저장 draft는
+다른 사람의 저장으로 덮어쓰지 않으며 `Reload Server Values`로 버릴지 사용자가 결정한다. 성공 응답 전에는
+`APPLY PENDING`, 활성 numeric snapshot 수신 후에는 `SAVED AND APPLIED`로 표시한다.
+
+Server가 실제 field 소유자인 base/Retail JSON을 갱신하고 해당 provenance를 `PROJECT_TUNED`로 바꾼다.
+Server 배포에는 `Data/Balance`의 Retail/provenance와 패턴 수치의 canonical source도 있어야 한다.
+`LOSTARK_PROJECT_DATA_ROOT`는 이 Server의 `Data`를 가리킨다. Client PC의 저작 파일 권한이나 Python,
+PowerShell 설치는 필요하지 않다. Server/Client 재시작도 필요하지 않다. 외부 publisher로 item/world/
+navigation/패턴 구조를 게시하는 절차는 그대로이며 파일 게시만으로 실행 중 소비가 갱신되지는 않는다.
+
+`NumericBalance.active.json`은 parent gameplay revision, 실제 bootstrap SHA256, numeric revision과
+non-numeric rows hash를 묶어 다음 Server 시작에서 numeric 저장을 검증한다. 저장이 presentation identity를
+바꾸지 않으며 Client world-entry의 immutable presentation admission은 그대로 유지한다.
+`BalanceNumeric.save.receipt.json`은 변경한 package-relative 파일의 누적 hash를 기록해 portable launcher가
+합법적인 numeric 저장을 기존 ZIP의 손상으로 오인하지 않게 한다. 미지원 경로와 hash 불일치는 거부한다.
+
+Skill의 일반 공격력 계수는 `attackCoefficientBp` 10000 = 100%, `damageAddend`는 고정 가산 피해,
+`damageSpreadPercent`는 편차다. coefficient/addend를 쓰는 profile의 미소비 legacy rate는 숨긴다.
+`bossHealthBarDamage`는 ACTIVE 한 번의 총 boss 체력줄 피해이며 다단 hit에 나누고 유효한 타격 판정을 따른다.
+Skills 검색은 class·slot·name·ID를 사용하고 ALT_V를 분리하며 연결 profile field를 같은 draft에서 편집한다.
+
+Stagger의 `staggerGaugeMaximum`은 패턴에 실제 게시된 `SET_STAGGER_GAUGE` threshold다. 높이면 필요한
+무력화량이 늘어난다. Retail 배율 400을 적용하는 원본 정수 threshold는 그 배수만 저장할 수 있고 임의 반올림하지 않는다.
+PATTERN_DAMAGE는 기존 mode를 유지한 채 outcome의 `maxHpDamagePercent`(1..100), `fixedDamage`
+(1..1,000,000,000 HP), 또는 hit의 기존 MAX_HP_PERCENT 수치를 편집한다. 최대 HP 10%는 방어를 우회하는
+원시 피해 비율이며 무적·실드·받는 피해 buff 뒤의 최종 HP 손실을 보장하는 표현이 아니다.
+
+HP/자원 최대치 변경은 살아 있음/사망 상태와 현재 비율을 보존한다. 현재 action·cooldown clock과 choreography
+pin은 유지하고 retained generation의 숫자만 갱신한다. 진행 중 객체의 scalar 갱신과 다음 hit 판정도 Server가
+소유한다. F1이 닫혀 있어도 Client network cache가 페이지 전체를 같은 revision으로 조립하여 원자 반영한다.
 
 `PlayerSkills.json`의 `staggerDamage`, `partDamage`는 각각 0..1,000,000 정수로 튜닝한다.
 Server가 승인한 적중마다 적용되므로 다단 히트는 승인된 각 히트가 기여한다. 피해 profile이 없는
@@ -61,7 +88,7 @@ selection-set weight 편집으로 함께 바꾸지 않는다. projector는 이 �
 formatVersion 21이 후보 ordinal 그대로 소비한다. post-109 legacy rotation 여섯 개는 `STEP` 순서와 의도적 중복을
 보존하는 read-only Product다.
 
-## 3. 현재 활성화한 Hot Reload 범위
+## 3. Debug Valtan 패턴 저작 Hot Reload 범위
 
 Debug Valtan authoring backend의 candidate와 Valtan Boss Tool의 canonical sequence Save/Restart는 같은
 `CValtanTuningCommandService`와 Server-authoritative Hot Reload 경로를 사용한다. 허용 범위는
@@ -92,7 +119,7 @@ Validate Draft
   다음 Server 시작은 그 pointer가 가리키는 exact immutable candidate를 재검증해 다시 admit하며, missing/corrupt
   candidate를 packaged baseline으로 조용히 대체하지 않는다.
 
-현재 다음 diff는 성공한 Hot Reload로 취급하지 않는다.
+다음 표는 Debug Valtan 패턴 candidate 경로의 제한이다. 위 F1 numeric scalar 경로는 별도 계약이다.
 
 | diff | 현재 처리 |
 |---|---|
@@ -105,7 +132,7 @@ Validate Draft
 multi-room controlled encounter reset과 실제 non-byte-identical presentation generation registry가 구현되기 전에는
 위 경계를 파일 watcher, Client-only reload, audition reset 호출로 우회하지 않는다.
 
-## 4. transaction 불변식
+## 4. Debug Valtan 패턴 transaction 불변식
 
 1. candidate revision은 canonical content hash이며 immutable directory와 hashed parent manifest를 가진다.
 2. Save/Validate/Publish는 authoring head CAS를 사용한다. stale editor는 새 head를 덮지 못한다.
@@ -145,8 +172,8 @@ Server/Bin/Debug/Server.exe --reset-valtan-runtime-to-packaged
 ```
 
 이 명령은 verified packaged bootstrap을 새 pointer로 원자 기록한다. 없어진 예전 candidate에서 빠져나오는 운영
-escape hatch일 뿐, 손상되거나 모호한 pointer/journal을 추측해 덮지 않는다. Release Server는 이 명령과 Hot Reload를
-명시적으로 거부한다. canonical Product는 rotation v3/bootstrap v21이며, v18은 offline migration fixture일 뿐
+escape hatch일 뿐, 손상되거나 모호한 pointer/journal을 추측해 덮지 않는다. Release Server는 이 명령과 Debug 패턴 candidate Hot Reload를
+명시적으로 거부한다. F1 numeric Save + Apply는 Debug/Release 모두 지원한다. canonical Product는 rotation v3/bootstrap v21이며, v18은 offline migration fixture일 뿐
 v21 Server의 live admission 대상이 아니다.
 
 실제 사용은 Server와 Debug Client를 사용자가 직접 시작한 뒤 Valtan owning Tool의

@@ -5,6 +5,7 @@
 #include "CharacterSpec.h"
 #include "CombatHUDViewModel.h"
 #include "Effect_Catalog.h"
+#include "Effect_DocumentCodec.h"
 #include "Effect_Object.h"
 #include "Effect_Playback.h"
 #include "Effect_PresentationService.h"
@@ -525,7 +526,8 @@ bool_t Client::CEffect_Tool::Prepare_ValtanBossPatternTransformHistory(
 		return false;
 	}
 
-	size_t iVisibleExecutionCount = 0u;
+	if (!CEffectDocumentCodec::Validate_Drawable(Document, strOutError))
+		return false;
 	size_t iFollowCarrierCount = 0u;
 	EFFECT_TRANSFORM_DESC SocketLocalTransform{};
 	bool_t bHasSocketLocalTransform = false;
@@ -536,7 +538,13 @@ bool_t Client::CEffect_Tool::Prepare_ValtanBossPatternTransformHistory(
 		{
 			continue;
 		}
-		++iVisibleExecutionCount;
+		// Baked edges own their animation geometry in the validated document;
+		// only source-follow carriers need the live B_EffectRoot pose history.
+		if (Element.RuntimeCarrier.eKind ==
+				EFFECT_AUTHORED_RUNTIME_CARRIER_KIND::ANIMATION_TRAIL_BAKED_EDGE_V1 ||
+			Element.RuntimeCarrier.eKind ==
+				EFFECT_AUTHORED_RUNTIME_CARRIER_KIND::LIGHT_BAKED_EDGE_ATTACHMENT_V1)
+			continue;
 		const EFFECT_ACTION_CUE_ATTACHMENT_DESC& Attachment =
 			Element.ActionCueAttachment;
 		if (!Attachment.bEnabled || !Attachment.bFollow ||
@@ -568,11 +576,7 @@ bool_t Client::CEffect_Tool::Prepare_ValtanBossPatternTransformHistory(
 		}
 		++iFollowCarrierCount;
 	}
-	const size_t iExpectedFollowCarrierCount =
-		Document.strEffectAssetId == VALTAN_EXACT_HISTORY_V1_EFFECT_ASSET_ID ?
-			5u : 3u;
-	if (iExpectedFollowCarrierCount != iVisibleExecutionCount ||
-		iExpectedFollowCarrierCount != iFollowCarrierCount ||
+	if (0u == iFollowCarrierCount ||
 		!bHasSocketLocalTransform ||
 		m_strValtanBossPatternAnchorSlotId != "B_EffectRoot" ||
 		m_strValtanBossPatternBoneName != "b_effectroot")

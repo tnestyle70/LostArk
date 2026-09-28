@@ -5,16 +5,13 @@
 Promotes the reference <Asset>.projectiles (objects a skill spawns: missiles,
 fixed areas, grenades, traces, with the SkillEffect hits the object itself
 applies) into Data/Animation/Authored/<Asset>/<Asset>.projectiles.json for the
-damage skills of the class. A spawn counts when it belongs to the skill's lowest
-clipseq group (the tripod-free chain) or when its effect PK names the base variant
-(pk // 10 == skillId), which is how an awakening skill owns its objects outright
-while its clipseq groups only describe alternate presentations. A base-variant
-object authored on a clip the roster does not play keeps its action-local time and
-moves to the bound clip that covers it, but only from its own base group: a spawn
-carried by a higher group belongs to that tripod's presentation, not the base
-chain, even when its PK names the base variant. The lowest PK of a same-time spawn is the
-base object, and an object without a damaging shaped hit (dmg > 0 against enemies,
-area > 0) is skipped.
+damage skills of the class. A spawn counts only when it belongs to the skill's
+lowest clipseq group (the tripod-free chain); a spawn carried by a higher group
+belongs to that tripod's presentation even when its effect PK names the base
+variant (pk // 10 == skillId). A base-variant object of the base group authored on
+a clip the roster does not play keeps its action-local time and moves to the bound
+clip that covers it. The lowest PK of a same-time spawn is the base object, and an
+object without a damaging shaped hit (dmg > 0 against enemies, area > 0) is skipped.
 """
 import io, json, os, re, sys
 
@@ -173,13 +170,12 @@ def build(asset):
         for row in reference:
             if row['skill'] != skill_id or row['kind'] not in KINDS or row['layout'] == 'none':
                 continue
-            base_owned = row['pk'] // 10 == skill_id
-            if not base_owned and row['seq'] != base_seq.get(skill_id, row['seq']):
+            if row['seq'] != base_seq.get(skill_id, row['seq']):
                 continue
             if row['clip'] in chain:
                 candidates.append(row)
                 continue
-            if not base_owned or row['seq'] != base_seq.get(skill_id, row['seq']):
+            if row['pk'] // 10 != skill_id:
                 continue
             if len(stages) != 1:
                 print('%s %d: base object %d sits on unbound clip %s of a staged skill, left out' % (

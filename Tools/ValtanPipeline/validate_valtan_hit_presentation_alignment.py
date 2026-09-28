@@ -22,6 +22,11 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Any
 
+if __package__:
+    from . import validate_valtan_clip_template_parity as clip_parity
+else:
+    import validate_valtan_clip_template_parity as clip_parity
+
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 ROLE_LEDGER_PATH = Path("Data/Effects/V2/EffectRoles.json")
@@ -53,6 +58,7 @@ ALLOWED_EXCEPTION_RULES = {
     "STAGE_HIT_SOUND_TRACK",
     "PROJECT_AUTHORED_PRESENTATION_ONLY",
     "PROJECT_AUTHORED_SOUND_TIMING",
+    "COMBAT_OBJECT_HIT_PATTERN_SOUND",
 }
 ATTACK_POLICIES = {
     "BINDING_START",
@@ -149,6 +155,7 @@ def _validate_allowlist(document: dict[str, Any]) -> tuple[
         dict[tuple[str, str, str], dict[str, Any]],
         dict[str, dict[str, Any]],
         dict[tuple[str, str, str], dict[str, Any]],
+        dict[tuple[str, str], dict[str, Any]],
 ]:
     _exact_fields(document, ALLOWLIST_ROOT_FIELDS, "hit alignment allowlist root")
     if document["schema"] != "lostark.valtan-hit-presentation-alignment-allowlist":
@@ -162,6 +169,7 @@ def _validate_allowlist(document: dict[str, Any]) -> tuple[
     by_stage: dict[tuple[str, str, str], dict[str, Any]] = {}
     presentation_only: dict[str, dict[str, Any]] = {}
     authored_sounds: dict[tuple[str, str, str], dict[str, Any]] = {}
+    combat_pattern_sounds: dict[tuple[str, str], dict[str, Any]] = {}
     exception_ids: set[str] = set()
     for index, row in enumerate(document["exceptions"]):
         context = f"hit alignment allowlist exceptions[{index}]"
@@ -173,6 +181,11 @@ def _validate_allowlist(document: dict[str, Any]) -> tuple[
             extra_fields = {"resource", "clock", "mappingBasis"}
         elif rule == "PROJECT_AUTHORED_SOUND_TIMING":
             extra_fields = {"expectedSoundCues", "expectedAnimation"}
+            if "expectedSoundStage" in row:
+                extra_fields.add("expectedSoundStage")
+        elif rule == "COMBAT_OBJECT_HIT_PATTERN_SOUND":
+            extra_fields = {"combatObjectArchetypeId", "hitId", "spawnEventId",
+                            "expectedSoundCue", "expectedAnimation"}
         _exact_fields(row, ALLOWLIST_FIELDS | extra_fields, context)
         exception_id = _stable(row["exceptionId"], f"{context}.exceptionId")
         if exception_id in exception_ids:
@@ -192,6 +205,19 @@ def _validate_allowlist(document: dict[str, Any]) -> tuple[
             raise ContractError(f"{context}.reason must explain the exception")
 
         binding_id = row["bindingId"]
+        if rule == "COMBAT_OBJECT_HIT_PATTERN_SOUND":
+            _stable(binding_id, f"{context}.bindingId")
+            key = tuple(_stable(row[field], f"{context}.{field}") for field in
+                        ("combatObjectArchetypeId", "hitId"))
+            _stable(row["spawnEventId"], f"{context}.spawnEventId")
+            if key in combat_pattern_sounds:
+                raise ContractError(f"duplicate combat-object pattern-sound alias: {key}")
+            if (len(offsets) != 1 or not isinstance(row["expectedSoundCue"], dict) or
+                    not isinstance(row["expectedAnimation"], dict) or
+                    row["expectedSoundCue"].get("bindingId") != binding_id):
+                raise ContractError(f"{context} needs one exact hit, sound cue, and animation")
+            combat_pattern_sounds[key] = row
+            continue
         if rule in {"EXTERNAL_V2_BINDING_SCOPE", "PROJECT_AUTHORED_PRESENTATION_ONLY"}:
             binding_id = _stable(binding_id, f"{context}.bindingId")
             if offsets:
@@ -235,8 +261,15 @@ def _validate_allowlist(document: dict[str, Any]) -> tuple[
                        for cue in cues]
             if len(cue_ids) != len(set(cue_ids)):
                 raise ContractError(f"{context}.expectedSoundCues has duplicate binding IDs")
+            if "expectedSoundStage" in row:
+                source = _exact_fields(row["expectedSoundStage"],
+                    {"stageId", "actionId", "expectedAnimation"}, f"{context}.expectedSoundStage")
+                _stable(source["stageId"], f"{context}.expectedSoundStage.stageId")
+                _stable(source["actionId"], f"{context}.expectedSoundStage.actionId")
+                if not isinstance(source["expectedAnimation"], dict):
+                    raise ContractError(f"{context} preceding animation must be an object")
             authored_sounds[scope] = row
-    return by_binding, by_stage, presentation_only, authored_sounds
+    return by_binding, by_stage, presentation_only, authored_sounds, combat_pattern_sounds
 
 
 def _validate_presentation_only_binding(
@@ -555,6 +588,35 @@ def _binding_has_template_contract(
     return False
 
 
+def _validated_effect_timing_overrides(clip_templates, template_effects, stages,
+                                       occurrences, bindings) -> dict[str, float]:
+    """Reuse parity's exact binding proof, retaining the original gameplay clock."""
+    result: dict[str, float] = {}
+    try:
+        clip_parity.validate_template_document(clip_templates)
+        for row in clip_templates["allowlist"]:
+            override = row.get(clip_parity.EFFECT_TIMING_OVERRIDE_FIELD)
+            if override is None:
+                continue
+            key = tuple(row[field] for field in
+                        ("patternId", "stageId", "actionId", "clipOccurrenceId"))
+            occurrence = occurrences.get(key)
+            if (occurrence is None or key[:3] not in stages or
+                    override["templateEffect"] not in
+                    template_effects.get(occurrence["row"]["clip"], [])):
+                raise ContractError(f"effect timing override owner/template drift: {key}")
+            binding_id = override["bindingId"]
+            if binding_id in result:
+                raise ContractError(f"effect timing override reuses one binding: {binding_id}")
+            result[binding_id] = clip_parity.validate_effect_timing_override(
+                override, key, occurrence["row"], occurrence["wallStartMs"],
+                stages[key[:3]]["stage"], bindings
+            )
+    except clip_parity.ContractError as exc:
+        raise ContractError(str(exc)) from exc
+    return result
+
+
 def _validate_pattern_sounds(
         document: dict[str, Any],
         stages: dict[tuple[str, str, str], dict[str, Any]],
@@ -630,9 +692,151 @@ def _validate_pattern_sounds(
     return result
 
 
+def _preceding_exact_stage(scope, stages):
+    """Resolve one finite predecessor by authority edges, never document order."""
+    pattern = {key: info for key, info in stages.items() if key[0] == scope[0]}
+    if scope not in pattern or pattern[scope]["stage"].get("branches"):
+        return None
+    actions = {key[2]: key for key in pattern}
+    if len(actions) != len(pattern):
+        return None
+    predecessors = [key for key, info in pattern.items()
+                    if info["stage"].get("defaultNextActionId") == scope[2]]
+    if len(predecessors) != 1 or predecessors[0] == scope:
+        return None
+    previous = predecessors[0]
+    if (pattern[previous]["stage"].get("branches") or
+            any(branch.get("nextActionId") in {previous[2], scope[2]}
+                for info in pattern.values() for branch in info["stage"].get("branches", []))):
+        return None
+    visited = set()
+    cursor = previous
+    while cursor is not None:
+        if cursor in visited:
+            return None
+        visited.add(cursor)
+        cursor = actions.get(pattern[cursor]["stage"].get("defaultNextActionId"))
+    for key in (previous, scope):
+        info = pattern[key]
+        animation = info.get("animation", {})
+        rows = animation.get("occurrences", [])
+        if (animation.get("endPolicy") != "EXACT" or animation.get("repeatCount") != 1 or
+                not rows or any(row.get("repeatUntilStageEnd") for row in rows)):
+            return None
+        duration = sum(row["playMs"] / row["playRate"] for row in rows)
+        if not math.isclose(duration, info["stage"]["durationMs"], abs_tol=1e-6):
+            return None
+    return previous
+
+
+def _stage_impact_candidates(scope, stages, impact_sounds):
+    candidates = list(impact_sounds.get(scope, []))
+    previous = _preceding_exact_stage(scope, stages)
+    if previous is not None:
+        duration = stages[previous]["stage"]["durationMs"]
+        candidates.extend(dict(cue, wallMs=cue["wallMs"] - duration)
+                          for cue in impact_sounds.get(previous, []))
+    return candidates
+
+
+def _validate_authored_sound_source(receipt, scope, stages, pattern_sounds, impact_sounds):
+    offsets = stages[scope]["hitOffsetsMs"]
+    if receipt["expectedHitOffsetsMs"] != offsets:
+        raise ContractError(f"authored sound exception hit offsets are stale: {receipt['exceptionId']}")
+    if (json.dumps(stages[scope]["animation"], sort_keys=True) !=
+            json.dumps(receipt["expectedAnimation"], sort_keys=True)):
+        raise ContractError(f"authored sound animation receipt drift: {receipt['exceptionId']}")
+    sound_scope = scope
+    if "expectedSoundStage" in receipt:
+        source = receipt["expectedSoundStage"]
+        sound_scope = (scope[0], source["stageId"], source["actionId"])
+        if (_preceding_exact_stage(scope, stages) != sound_scope or
+                any(tuple(cue[field] for field in ("patternId", "stageId", "actionId")) == scope
+                    for cue in pattern_sounds["cues"]) or
+                json.dumps(stages[sound_scope]["animation"], sort_keys=True) !=
+                json.dumps(source["expectedAnimation"], sort_keys=True)):
+            raise ContractError(f"authored sound preceding-stage receipt drift: {receipt['exceptionId']}")
+    source_cues = [cue for cue in pattern_sounds["cues"] if
+                   tuple(cue[field] for field in ("patternId", "stageId", "actionId")) == sound_scope]
+    by_id = lambda cue: cue["bindingId"]
+    actual_payload = json.dumps(sorted(source_cues, key=by_id), sort_keys=True)
+    expected_payload = json.dumps(sorted(receipt["expectedSoundCues"], key=by_id), sort_keys=True)
+    if actual_payload != expected_payload:
+        raise ContractError(f"authored sound receipt drift: {receipt['exceptionId']}")
+    if not impact_sounds.get(sound_scope):
+        raise ContractError(f"authored sound timing still needs an impact sound: {receipt['exceptionId']}")
+
+
+def _validate_combat_pattern_sound_aliases(
+        aliases: dict[tuple[str, str], dict[str, Any]],
+        combat_objects: dict[str, Any], pattern_sounds: dict[str, Any],
+        stages: dict[tuple[str, str, str], dict[str, Any]],
+        occurrences: dict[tuple[str, str, str, str], dict[str, Any]],
+) -> set[tuple[str, str]]:
+    """Prove one existing pattern sound already covers one owned object hit.
+
+    This audit alias never changes runtime playback. It is limited to a single
+    static object spawned on ENTER, a single timed pulse in that same stage,
+    and the exact saved sound/animation payload; no approximate-time waiver.
+    """
+    covered: set[tuple[str, str]] = set()
+    used_bindings: set[str] = set()
+    for key, receipt in aliases.items():
+        label = receipt["exceptionId"]
+        scope = tuple(receipt[field] for field in ("patternId", "stageId", "actionId"))
+        info = stages.get(scope)
+        rows = [row for row in combat_objects.get("objects", [])
+                if row.get("combatObjectArchetypeId") == key[0]]
+        if info is None or len(rows) != 1:
+            raise ContractError(f"combat pattern-sound alias owner is missing: {label}")
+        if info["stage"].get("branches"):
+            raise ContractError(f"combat pattern-sound alias stage has conditional branches: {label}")
+        owner = rows[0]
+        hits = [hit for hit in owner.get("hits", []) if hit.get("hitId") == key[1]]
+        if (owner.get("kind") != "FIXED_AREA" or
+                owner.get("movement") != {"kind": "STATIC"} or len(hits) != 1):
+            raise ContractError(f"combat pattern-sound alias hit owner drift: {label}")
+        hit = hits[0]
+        expected_ms = receipt["expectedHitOffsetsMs"][0]
+        if (hit.get("trigger") != {"kind": "TIMED", "atMs": expected_ms} or
+                hit.get("repeat") != {"count": 1, "intervalMs": 0} or
+                expected_ms >= info["stage"]["durationMs"] or
+                expected_ms >= owner.get("lifetimeMs", 0)):
+            raise ContractError(f"combat pattern-sound alias timed hit drift: {label}")
+        # Search all stage owners: a second spawn would need its own sound and
+        # cannot silently borrow a cue from this one scope.
+        spawns = [(candidate_scope, event) for candidate_scope, candidate in stages.items()
+                  for event in candidate["stage"].get("events", [])
+                  if event.get("combatObjectArchetypeId") == key[0]]
+        expected_spawn = dict(eventId=receipt["spawnEventId"], trigger="ENTER",
+                              kind="SPAWN_COMBAT_OBJECT", combatObjectArchetypeId=key[0], count=1)
+        if len(spawns) != 1 or spawns[0] != (scope, expected_spawn):
+            raise ContractError(f"combat pattern-sound alias spawn owner/clock drift: {label}")
+        cues = [cue for cue in pattern_sounds.get("cues", [])
+                if cue.get("bindingId") == receipt["bindingId"]]
+        if (len(cues) != 1 or json.dumps(cues[0], sort_keys=True) !=
+                json.dumps(receipt["expectedSoundCue"], sort_keys=True) or
+                json.dumps(info["animation"], sort_keys=True) !=
+                json.dumps(receipt["expectedAnimation"], sort_keys=True)):
+            raise ContractError(f"combat pattern-sound alias source receipt drift: {label}")
+        cue = cues[0]
+        cue_scope = tuple(cue.get(field) for field in ("patternId", "stageId", "actionId"))
+        occurrence = occurrences.get((*scope, cue.get("clipOccurrenceId")))
+        if (cue_scope != scope or occurrence is None or cue.get("repeatPolicy") != "once" or
+                cue.get("timingBasis", "CLIP_OCCURRENCE") != "CLIP_OCCURRENCE" or
+                abs(_event_wall_ms(occurrence, cue["startMs"], label) - expected_ms) > 1e-6):
+            raise ContractError(f"combat pattern-sound alias cue wall clock drift: {label}")
+        if cue["bindingId"] in used_bindings:
+            raise ContractError(f"combat pattern-sound alias reuses one sound: {label}")
+        used_bindings.add(cue["bindingId"])
+        covered.add(key)
+    return covered
+
+
 def _validate_combat_objects(
         combat_objects: dict[str, Any],
         combat_sounds: dict[str, Any],
+        pattern_sound_keys: set[tuple[str, str]] | None = None,
 ) -> tuple[dict[tuple[str, str], dict[str, Any]], int]:
     if (combat_objects.get("schema") != "lostark.valtan-combat-object-authoring" or
             combat_objects.get("formatVersion") != 1 or
@@ -678,7 +882,10 @@ def _validate_combat_objects(
     }
     for cue_index, cue in enumerate(combat_sounds["cues"]):
         context = f"combat-object sound cues[{cue_index}]"
-        _exact_fields(cue, cue_fields, context)
+        optional_fields = {"playbackOffsetMs"} if "playbackOffsetMs" in cue else set()
+        _exact_fields(cue, cue_fields | optional_fields, context)
+        if "playbackOffsetMs" in cue and _integer(cue["playbackOffsetMs"], f"{context}.playbackOffsetMs") > 600000:
+            raise ContractError(f"{context}.playbackOffsetMs must be <= 600000")
         binding_id = _stable(cue["bindingId"], f"{context}.bindingId")
         if binding_id in binding_ids:
             raise ContractError(f"duplicate combat-object sound bindingId: {binding_id}")
@@ -692,9 +899,13 @@ def _validate_combat_objects(
         sound_keys.add(key)
         _stable(cue["soundBank"], f"{context}.soundBank")
         _stable(cue["soundEvent"], f"{context}.soundEvent")
-    if set(hits) != sound_keys:
-        missing = sorted(set(hits) - sound_keys)
-        stale = sorted(sound_keys - set(hits))
+    aliases = pattern_sound_keys or set()
+    if sound_keys & aliases:
+        raise ContractError("combat pattern-sound alias duplicates runtime object audio")
+    covered_keys = sound_keys | aliases
+    if set(hits) != covered_keys:
+        missing = sorted(set(hits) - covered_keys)
+        stale = sorted(covered_keys - set(hits))
         raise ContractError(
             f"combat-object hit/sound key drift; missing={missing}, stale={stale}"
         )
@@ -765,7 +976,7 @@ def validate_alignment(
     """Validate already-loaded documents and return compact coverage counts."""
     roles = _validate_role_ledger(role_ledger)
     (external_allowlist, sound_track_allowlist, presentation_only_allowlist,
-     authored_sound_allowlist) = _validate_allowlist(allowlist)
+     authored_sound_allowlist, combat_pattern_sound_aliases) = _validate_allowlist(allowlist)
     stages, stage_ordinals, occurrences = _build_source_indexes(gameplay, presentation)
     bindings, binding_resources = _validate_bindings(v2_bindings)
     catalog_groups = _catalog_v2_groups(boss_catalog)
@@ -777,10 +988,19 @@ def validate_alignment(
         raise ContractError(f"effect role coverage drift; missing={missing}, stale={stale}")
 
     template_effects = _template_effect_index(clip_templates)
-    combat_hits, combat_sound_count = _validate_combat_objects(
-        combat_objects, combat_object_sounds
+    effect_timing_overrides = _validated_effect_timing_overrides(
+        clip_templates, template_effects, stages, occurrences, bindings
     )
-    used_exceptions: set[str] = set()
+    used_effect_timing_overrides: set[str] = set()
+    alias_keys = _validate_combat_pattern_sound_aliases(
+        combat_pattern_sound_aliases, combat_objects, pattern_sounds, stages, occurrences
+    )
+    combat_hits, combat_sound_count = _validate_combat_objects(
+        combat_objects, combat_object_sounds, alias_keys
+    )
+    used_exceptions: set[str] = {
+        row["exceptionId"] for row in combat_pattern_sound_aliases.values()
+    }
 
     combat_v2_contracts = 0
     for resource_key, role in roles.items():
@@ -865,6 +1085,15 @@ def validate_alignment(
             continue
 
         binding_wall = _binding_wall_ms(binding, occurrences)
+        if binding_id in effect_timing_overrides:
+            template_wall = effect_timing_overrides[binding_id]
+            if (policy not in {"BINDING_START", "CLIP_TEMPLATE", "CLIP_TEMPLATE_OR_BINDING_START"} or
+                    not any(abs(template_wall - offset) <= TICK_TOLERANCE_MS
+                            for offset in stages[scope]["hitOffsetsMs"])):
+                raise ContractError(f"effect timing override lost its template hit: {binding_id}")
+            used_effect_timing_overrides.add(binding_id)
+            aligned_attack_bindings += 1
+            continue
         template_match = _binding_has_template_contract(
             binding, binding_wall, occurrences, template_effects
         )
@@ -890,6 +1119,9 @@ def validate_alignment(
             )
         aligned_attack_bindings += 1
 
+    if set(effect_timing_overrides) != used_effect_timing_overrides:
+        raise ContractError("stale hit-alignment effect timing overrides")
+
     impact_sounds = _validate_pattern_sounds(
         pattern_sounds, stages, occurrences, clip_templates
     )
@@ -902,7 +1134,7 @@ def validate_alignment(
         if not offsets:
             continue
         stage_hit_points += len(offsets)
-        candidates = impact_sounds.get(scope, [])
+        candidates = _stage_impact_candidates(scope, stages, impact_sounds)
         unmatched = [
             offset for offset in offsets
             if not any(abs(candidate["wallMs"] - offset) <= TICK_TOLERANCE_MS
@@ -913,20 +1145,9 @@ def validate_alignment(
             continue
         authored_exception = authored_sound_allowlist.get(scope)
         if authored_exception is not None:
-            if authored_exception["expectedHitOffsetsMs"] != offsets:
-                raise ContractError(f"authored sound exception hit offsets are stale: {authored_exception['exceptionId']}")
-            if (json.dumps(stage_info["animation"], sort_keys=True) !=
-                    json.dumps(authored_exception["expectedAnimation"], sort_keys=True)):
-                raise ContractError(f"authored sound animation receipt drift: {authored_exception['exceptionId']}")
-            source_cues = [cue for cue in pattern_sounds["cues"] if
-                           tuple(cue[field] for field in ("patternId", "stageId", "actionId")) == scope]
-            by_id = lambda cue: cue["bindingId"]
-            actual_payload = json.dumps(sorted(source_cues, key=by_id), sort_keys=True)
-            expected_payload = json.dumps(sorted(authored_exception["expectedSoundCues"], key=by_id), sort_keys=True)
-            if actual_payload != expected_payload:
-                raise ContractError(f"authored sound receipt drift: {authored_exception['exceptionId']}")
-            if not candidates:
-                raise ContractError(f"authored sound timing still needs an impact sound: {authored_exception['exceptionId']}")
+            _validate_authored_sound_source(
+                authored_exception, scope, stages, pattern_sounds, impact_sounds
+            )
             used_exceptions.add(authored_exception["exceptionId"])
             authored_sound_exceptions += 1
             continue
@@ -970,6 +1191,7 @@ def validate_alignment(
         "attackBindings": attack_bindings,
         "alignedAttackBindings": aligned_attack_bindings,
         "templateDelegations": template_delegations,
+        "effectTimingOverrides": len(used_effect_timing_overrides),
         "externalBindings": external_bindings,
         "presentationOnlyBindings": presentation_only_bindings,
         "authoredSoundExceptions": authored_sound_exceptions,
@@ -978,6 +1200,7 @@ def validate_alignment(
         "soundTrackExceptions": sound_track_exceptions,
         "combatObjectHits": len(combat_hits),
         "combatObjectSoundCues": combat_sound_count,
+        "combatObjectPatternSoundAliases": len(alias_keys),
         "combatV2Contracts": combat_v2_contracts,
     }
 

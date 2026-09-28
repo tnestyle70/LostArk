@@ -77,6 +77,44 @@ void LostArk::Server::CServerGameplayContractRunner::Run_ValtanDash(TESTS& tests
 	}
 
 	{
+		CValtanBrain centerMotionBrain;
+		SERVER_WORLD_ENTITY centerBoss{};
+		centerBoss.ePatternStageMotionKind = BOSS_PATTERN_STAGE_MOTION_KIND::TO_ARENA_CENTER;
+		centerBoss.iPatternStageDurationMs = 1500u;
+		centerBoss.fPositionX = centerBoss.fPatternStageOriginX = 164.03f;
+		centerBoss.fPositionZ = centerBoss.fPatternStageOriginZ = -126.06f;
+		centerBoss.fSpawnPositionX = 156.03f;
+		centerBoss.fSpawnPositionZ = -122.06f;
+		// A residual imported curve must not add a second translation.
+		centerBoss.PatternStageRootMotion = {{0u, 0.f}, {1500u, 100.f}};
+		bool smooth = true;
+		for (std::uint32_t tick = 0u; tick < 45u; ++tick)
+		{
+			centerBoss.fActionElapsedSeconds = static_cast<float>(tick) / 30.f;
+			float x = 0.f, z = 0.f;
+			const bool proposed = centerMotionBrain.Try_BuildStageMotion(centerBoss, 1.f / 30.f, x, z);
+			smooth = smooth && proposed && std::isfinite(x) && std::isfinite(z) &&
+				x <= centerBoss.fPositionX && x >= centerBoss.fSpawnPositionX &&
+				z >= centerBoss.fPositionZ && z <= centerBoss.fSpawnPositionZ &&
+				std::hypot(x - centerBoss.fPositionX, z - centerBoss.fPositionZ) < 0.21f;
+			centerBoss.fPositionX = x;
+			centerBoss.fPositionZ = z;
+		}
+		tests.Require(smooth &&
+			std::abs(centerBoss.fPositionX - centerBoss.fSpawnPositionX) < 0.0001f &&
+			std::abs(centerBoss.fPositionZ - centerBoss.fSpawnPositionZ) < 0.0001f,
+			"Move toward the immutable arena center during the stage without adding clip travel or overshooting");
+		float x = 0.f, z = 0.f;
+		centerBoss.iPatternStageDurationMs = 0u;
+		const bool rejectedEmptyClock = !centerMotionBrain.Try_BuildStageMotion(centerBoss, 1.f / 30.f, x, z);
+		centerBoss.iPatternStageDurationMs = 1500u;
+		centerBoss.fSpawnPositionX = (std::numeric_limits<float>::quiet_NaN)();
+		tests.Require(rejectedEmptyClock &&
+			!centerMotionBrain.Try_BuildStageMotion(centerBoss, 1.f / 30.f, x, z),
+			"Reject an invalid center-move stage clock or nonfinite arena center without committing a position");
+	}
+
+	{
 		/* Valtan walks its own animation the way a player skill does. A stage
 		whose clip bakes travel carries that curve, and the stride is the
 		difference between the curve at two ticks, so the transform arrives with

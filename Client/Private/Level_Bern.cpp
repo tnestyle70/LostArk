@@ -17,6 +17,7 @@
 #include "DataJson.h"
 #include "GameInstance.h"
 #include "HUDRuntimeView.h"
+#include "ItemCatalog.h"
 #include "UIInputRouter.h"
 #include "UILayoutRuntime.h"
 #include "LevelRegistry.h"
@@ -459,10 +460,10 @@ HRESULT CLevel_Bern::Initialize()
 			"unavailable; right-click interaction is disabled.\n");
 	}
 	(void)Ready_ShipNpcs(pEntry->pMapAreaId);
-	if (!Ready_RepairNpcs(pEntry->pMapAreaId))
+	if (!Ready_ServiceNpcs(pEntry->pMapAreaId))
 	{
 		OutputDebugStringA(
-			"[Level_Bern] Repair NPC positions unavailable; right-click "
+			"[Level_Bern] Repair/shop NPC positions unavailable; right-click "
 			"interaction is disabled.\n");
 	}
 	m_pValtanEntryView = std::make_unique<CRaidEntryPreviewView>(
@@ -605,9 +606,9 @@ void CLevel_Bern::Update(f32_t fTimeDelta)
 	Advance_ItemUpgradeNpcWalk();
 	Update_ShipNpcInteraction();
 	Advance_ShipNpcWalk();
-	Update_ShipCamera();
-	Update_RepairNpcInteraction();
-	Advance_RepairNpcWalk();
+	Update_ShipCamera(fTimeDelta);
+	Update_ServiceNpcInteraction();
+	Advance_ServiceNpcWalk();
 	if (Is_ValtanEntryModalOpen())
 	{
 		CGameInstance::Get().SetMouseButtonBlocked(DIM::LB, true);
@@ -1145,7 +1146,7 @@ void CLevel_Bern::Advance_ValtanEntryWalk()
 #endif
 }
 
-bool_t CLevel_Bern::Ready_RepairNpcs(const std::string& areaId)
+bool_t CLevel_Bern::Ready_ServiceNpcs(const std::string& areaId)
 {
 	// The two placements carrying the anvil symbol (Minimap_Symbol_158) in
 	// Data/UI/WorldMap/WorldMapNpcSymbols.json -- retail's repair service marker, as opposed
@@ -1170,7 +1171,7 @@ bool_t CLevel_Bern::Ready_RepairNpcs(const std::string& areaId)
 	if (!document.Load(documentPath, areaId, status))
 		return false;
 
-	std::vector<REPAIR_NPC> staged;
+	std::vector<SERVICE_NPC> staged;
 	for (const WORLD_GAMEPLAY_PLACEMENT& placement : document.Get_Placements())
 	{
 		if (WORLD_PLACEMENT_KIND::NPC != placement.eKind)
@@ -1182,26 +1183,27 @@ bool_t CLevel_Bern::Ready_RepairNpcs(const std::string& areaId)
 			{
 				return placement.placementId == pId;
 			});
-		if (!isRepair)
-			continue;
-		staged.push_back({ placement.placementId, placement.position });
+		if (isRepair)
+			staged.push_back({ placement.placementId, placement.position, NPC_SERVICE::REPAIR });
+		else if (nullptr != CItemCatalog::Find_ShopByNpc(placement.placementId))
+			staged.push_back({ placement.placementId, placement.position, NPC_SERVICE::SHOP });
 	}
 
-	m_RepairNpcs = std::move(staged);
-	return !m_RepairNpcs.empty();
+	m_ServiceNpcs = std::move(staged);
+	return !m_ServiceNpcs.empty();
 }
 
-void CLevel_Bern::Update_RepairNpcInteraction()
+void CLevel_Bern::Update_ServiceNpcInteraction()
 {
 	const bool_t isRightMouseDown =
 		0 != (CGameInstance::Get().Get_DIMouseStateRaw(DIM::RB) & 0x80);
 	const bool_t isRightMousePressed =
-		isRightMouseDown && !m_wasRightMouseDownForRepairNpcInteract;
-	m_wasRightMouseDownForRepairNpcInteract = isRightMouseDown;
+		isRightMouseDown && !m_wasRightMouseDownForServiceNpcInteract;
+	m_wasRightMouseDownForServiceNpcInteract = isRightMouseDown;
 
 	const shared_ptr<CCharacter> localCharacter =
 		m_Replication.Get_LocalCharacter();
-	if (m_RepairNpcs.empty() || !isRightMousePressed ||
+	if (m_ServiceNpcs.empty() || !isRightMousePressed ||
 		0 == (CGameInstance::Get().Get_DIMouseState(DIM::RB) & 0x80) ||
 		nullptr == localCharacter ||
 		nullptr == m_pCamera || !m_pCamera->Is_FollowEnabled())
@@ -1216,8 +1218,8 @@ void CLevel_Bern::Update_RepairNpcInteraction()
 
 	constexpr f32_t NPC_CLICK_RADIUS = 1.5f;
 	f32_t fBestRayParameter = FLT_MAX;
-	const REPAIR_NPC* pHit = nullptr;
-	for (const REPAIR_NPC& npc : m_RepairNpcs)
+	const SERVICE_NPC* pHit = nullptr;
+	for (const SERVICE_NPC& npc : m_ServiceNpcs)
 	{
 		const vector_t vNpcPos = XMLoadFloat3(&npc.vPosition);
 		const f32_t fRayParameter = XMVectorGetX(XMVector3Dot(
@@ -1243,8 +1245,8 @@ void CLevel_Bern::Update_RepairNpcInteraction()
 
 	m_PlayerController.Suppress_MoveClickThisFrame();
 	CGameInstance::Get().SetMouseButtonBlocked(DIM::RB, true);
-	m_strRepairNpcPlacementId = pHit->strPlacementId;
-	m_isWalkingToRepairNpc = true;
+	m_strServiceNpcPlacementId = pHit->strPlacementId;
+	m_isWalkingToServiceNpc = true;
 
 	/* Stop just inside interaction range, on the side the character is already standing --
 	same approach as Update_ItemUpgradeNpcInteraction. */
@@ -1272,28 +1274,28 @@ void CLevel_Bern::Update_RepairNpcInteraction()
 	}
 }
 
-void CLevel_Bern::Advance_RepairNpcWalk()
+void CLevel_Bern::Advance_ServiceNpcWalk()
 {
-	if (!m_isWalkingToRepairNpc)
+	if (!m_isWalkingToServiceNpc)
 		return;
 
 	const shared_ptr<CCharacter> localCharacter = m_Replication.Get_LocalCharacter();
 	const auto npcIt = std::find_if(
-		m_RepairNpcs.begin(), m_RepairNpcs.end(),
-		[this](const REPAIR_NPC& npc)
+		m_ServiceNpcs.begin(), m_ServiceNpcs.end(),
+		[this](const SERVICE_NPC& npc)
 		{
-			return npc.strPlacementId == m_strRepairNpcPlacementId;
+			return npc.strPlacementId == m_strServiceNpcPlacementId;
 		});
-	if (nullptr == localCharacter || m_RepairNpcs.end() == npcIt)
+	if (nullptr == localCharacter || m_ServiceNpcs.end() == npcIt)
 	{
-		m_isWalkingToRepairNpc = false;
+		m_isWalkingToServiceNpc = false;
 		return;
 	}
 	const shared_ptr<CTransform> transform = localCharacter->Get_Transform();
 	if (nullptr == transform)
 		return;
 
-	// Same footprint Update_RepairNpcInteraction stops the character at.
+	// Same footprint Update_ServiceNpcInteraction stops the character at.
 	constexpr f32_t INTERACTION_RADIUS = 3.f;
 	const vector_t vCharacterPos = transform->Get_State(STATE::POSITION);
 	const vector_t vDelta = XMVectorSubtract(
@@ -1303,9 +1305,14 @@ void CLevel_Bern::Advance_RepairNpcWalk()
 	if (fDistanceSq > INTERACTION_RADIUS * INTERACTION_RADIUS)
 		return;
 
-	m_isWalkingToRepairNpc = false;
+	m_isWalkingToServiceNpc = false;
 	if (CMainApp* pMainApp = CMainApp::Get_Active())
-		pMainApp->Open_RepairWindow();
+	{
+		if (NPC_SERVICE::SHOP == npcIt->eService)
+			pMainApp->Open_ShopWindow(npcIt->strPlacementId);
+		else
+			pMainApp->Open_RepairWindow();
+	}
 }
 
 bool_t CLevel_Bern::Ready_ItemUpgradeNpc(const std::string& areaId)
@@ -1594,7 +1601,7 @@ void CLevel_Bern::Advance_ShipNpcWalk()
 	}
 }
 
-void CLevel_Bern::Update_ShipCamera()
+void CLevel_Bern::Update_ShipCamera(const f32_t fTimeDelta)
 {
 	if (nullptr == m_pCamera)
 		return;
@@ -1603,13 +1610,12 @@ void CLevel_Bern::Update_ShipCamera()
 	const VEHICLE_ACTOR_ENTRY* pVehicle = (player.isValid && 0u != player.iVehicleId) ?
 		CActorCatalog::Find_Vehicle(player.iVehicleId) : nullptr;
 	const bool_t onShip = nullptr != pVehicle && pVehicle->isShip;
-	if (onShip == m_bShipCameraActive)
-		return;
-
 	const ARENA_CAMERA_PROFILE& base = m_FollowCameraProfile;
-	const float3_t look = CArenaCameraProfile::LookOffset(base);
 	if (!onShip)
 	{
+		if (!m_bShipCameraActive)
+			return;
+		const float3_t look = CArenaCameraProfile::LookOffset(base);
 		if (m_pCamera->Set_FollowPose(base.positionOffset, look, base.rotationDegrees.z,
 			base.fovYDegrees, base.followResponse))
 		{
@@ -1621,40 +1627,95 @@ void CLevel_Bern::Update_ShipCamera()
 		return;
 	}
 
-	/* EFTable_CameraSetting 1001 step 1, the Camera_Ocean row of every EFTable_VoyageShip base ship,
-	   converted with the (x, z, -y) basis of the 2026-09-14 camera restoration. The lens lives in
-	   Data/Camera/Bern.camera.json "shipCamera" (defaults in ARENA_SHIP_CAMERA). Pitch and yaw are
-	   absolute like the map camera, the focus offset is the source RelativeZ, and the FOV is the
-	   horizontal one at 16:9 converted to the vertical FOV Set_FollowPose takes. */
+	/* EFTable_CameraSetting 1001 zoom steps (VoyageShip.Camera_Ocean of every base ship), kept in
+	   source units in Data/Camera/Bern.camera.json "shipCamera". The source draws each ship mesh at
+	   its LookInfo scale (0.26-0.5); this project draws it at 1, so ZoomDist and RelativeZ are divided
+	   by that scale and the retail framing of the ridden ship is kept. Pitch and yaw use the (x, z, -y)
+	   basis of the 2026-09-14 restoration and the FOV is horizontal at 16:9. */
 	const ARENA_SHIP_CAMERA& lens = base.shipCamera;
+	f32_t meshScale = 1.f;
+	for (const ARENA_SHIP_MESH_SCALE& row : lens.shipMeshScales)
+		if (row.vehicleId == player.iVehicleId)
+			meshScale = row.scale;
+	bool_t inAnchorVolume = false;
+	if (const shared_ptr<CTransform> pTarget = m_pCamera->Get_FollowTarget())
+	{
+		float3_t position{};
+		XMStoreFloat3(&position, pTarget->Get_State(STATE::POSITION));
+		inAnchorVolume = lens.anchorVolume.z > 0.f &&
+			std::abs(position.x - lens.anchorVolume.x) <= lens.anchorVolume.z &&
+			std::abs(position.z - lens.anchorVolume.y) <= lens.anchorVolume.z;
+	}
+	const bool_t boarding = !m_bShipCameraActive;
+	const uint32_t previousStep = m_iShipZoomStep;
+	const uint32_t stepCount = static_cast<uint32_t>(lens.zoomSteps.size());
+	// Crossing the anchor volume (and boarding) takes that region's step, as the retail
+	// view closes in near a port and opens out at sea; the wheel moves between steps.
+	if (boarding || inAnchorVolume != m_bShipInAnchorVolume)
+		m_iShipZoomStep = (std::min)((inAnchorVolume ? lens.anchorStep : lens.openSeaStep), stepCount) - 1u;
+	m_bShipInAnchorVolume = inAnchorVolume;
+	const int32_t wheel = CGameInstance::Get().Get_DIMouseMove(DIMM::WHEEL);
+	if (!boarding && 0 != wheel && GetForegroundWindow() == g_hWnd &&
+		!CGameInstance::Get().IsMouseInputBlocked() && !ImGui::GetIO().WantCaptureMouse &&
+		!CUIInputRouter::Get().Is_MouseClaimedThisFrame() && !m_pCamera->Is_PresentationOverrideActive())
+	{
+		// Wheel up is ZoomIn: step 1 open sea -> 2 coast -> 3 ship.
+		if (wheel > 0 && m_iShipZoomStep + 1u < stepCount)
+			++m_iShipZoomStep;
+		else if (wheel < 0 && m_iShipZoomStep > 0u)
+			--m_iShipZoomStep;
+	}
+
+	const ARENA_SHIP_CAMERA_STEP& step = lens.zoomSteps[m_iShipZoomStep];
+	const SHIP_LENS target{
+		step.zoomDistCm * 0.01f / meshScale,
+		-step.sourcePitchDegrees,
+		step.sourceYawDegrees + 90.f,
+		step.fovXDegrees,
+		step.relativeZCm * 0.01f / meshScale };
+	if (boarding)
+		m_ShipLens = target;
+	else if (std::isfinite(fTimeDelta) && fTimeDelta > 0.f)
+	{
+		// The source eases the view with its interpolation ratio; the target step's ratio drives it.
+		const f32_t alpha = -std::expm1(-step.interpolationRatio * fTimeDelta);
+		m_ShipLens.distanceMeters += (target.distanceMeters - m_ShipLens.distanceMeters) * alpha;
+		m_ShipLens.pitchDegrees += (target.pitchDegrees - m_ShipLens.pitchDegrees) * alpha;
+		m_ShipLens.yawDegrees += (target.yawDegrees - m_ShipLens.yawDegrees) * alpha;
+		m_ShipLens.fovXDegrees += (target.fovXDegrees - m_ShipLens.fovXDegrees) * alpha;
+		m_ShipLens.focusOffsetYMeters += (target.focusOffsetYMeters - m_ShipLens.focusOffsetYMeters) * alpha;
+	}
+
 	const f32_t fovY = XMConvertToDegrees(2.f * atanf(
-		tanf(XMConvertToRadians(lens.fovXDegrees) * 0.5f) * 9.f / 16.f));
+		tanf(XMConvertToRadians(m_ShipLens.fovXDegrees) * 0.5f) * 9.f / 16.f));
 	const auto rotation = XMMatrixRotationRollPitchYaw(
-		XMConvertToRadians(lens.pitchDegrees), XMConvertToRadians(lens.yawDegrees), 0.f);
+		XMConvertToRadians(m_ShipLens.pitchDegrees), XMConvertToRadians(m_ShipLens.yawDegrees), 0.f);
 	float3_t forward;
 	XMStoreFloat3(&forward, XMVector3TransformNormal(XMVectorSet(0.f, 0.f, 1.f, 0.f), rotation));
-	const float3_t shipLook(0.f, lens.focusOffsetYMeters, 0.f);
+	const float3_t shipLook(0.f, m_ShipLens.focusOffsetYMeters, 0.f);
 	const float3_t eye(
-		shipLook.x - forward.x * lens.distanceMeters,
-		shipLook.y - forward.y * lens.distanceMeters,
-		shipLook.z - forward.z * lens.distanceMeters);
-	const bool_t applied = m_pCamera->Set_FollowPose(
-		eye, shipLook, base.rotationDegrees.z, fovY, lens.followResponse);
-	/* One line per boarding. The lens that was asked for is readable from the diagnostic
-	   log, so a framing complaint can be told apart from a lens that never applied. */
-	Write_EffectFailureDiagnostic("ship.camera.applied",
-		"vehicle=" + std::to_string(player.iVehicleId) +
-		" applied=" + std::string(applied ? "1" : "0") +
-		" distance=" + std::to_string(lens.distanceMeters) +
-		" fovX=" + std::to_string(lens.fovXDegrees) +
-		" fovY=" + std::to_string(fovY) +
-		" mapDistance=" + std::to_string(base.focusDistance) +
-		" mapFovY=" + std::to_string(base.fovYDegrees) +
-		" pitch=" + std::to_string(lens.pitchDegrees) +
-		" yaw=" + std::to_string(lens.yawDegrees) +
-		" eye=" + std::to_string(eye.x) + "," + std::to_string(eye.y) +
-		"," + std::to_string(eye.z));
-	if (applied)
+		shipLook.x - forward.x * m_ShipLens.distanceMeters,
+		shipLook.y - forward.y * m_ShipLens.distanceMeters,
+		shipLook.z - forward.z * m_ShipLens.distanceMeters);
+	const bool_t applied = boarding ?
+		m_pCamera->Set_FollowPose(eye, shipLook, base.rotationDegrees.z, fovY, lens.followResponse) :
+		m_pCamera->Set_FollowLens(eye, shipLook, fovY);
+	/* One line per boarding and per step change, so a framing complaint can be told apart
+	   from a lens that never applied or a step the anchor volume never chose. */
+	if (boarding || previousStep != m_iShipZoomStep)
+	{
+		Write_EffectFailureDiagnostic("ship.camera.applied",
+			"vehicle=" + std::to_string(player.iVehicleId) +
+			" applied=" + std::string(applied ? "1" : "0") +
+			" step=" + std::to_string(m_iShipZoomStep + 1u) +
+			" anchorVolume=" + std::string(inAnchorVolume ? "1" : "0") +
+			" meshScale=" + std::to_string(meshScale) +
+			" targetDistance=" + std::to_string(target.distanceMeters) +
+			" targetPitch=" + std::to_string(target.pitchDegrees) +
+			" targetFovX=" + std::to_string(target.fovXDegrees) +
+			" fovY=" + std::to_string(fovY));
+	}
+	if (boarding && applied)
 		m_bShipCameraActive = true;
 }
 

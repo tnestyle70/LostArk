@@ -738,6 +738,13 @@ Authored `detail.sprite.twoSided`는 기본false인 carrier 옵션이다. 현재
 
 ### 화면 왜곡 MRT의 수신 표면 보호
 
+별도의 projected decal 수신 정책은 V1/V2 공통 `Shader_EffectDecalReceiver.hlsli`가 소유한다.
+재질 profile allowlist로 actor 제외 여부를 고르지 않고 기존 Depth marker0/5와
+RGBA32_FLOAT PickPos.W의 skinned bit8·native actor program을 사용한다. 두 decal 소비자가
+같은 exact Load 판정을 사용하며 V2도 Target_PickPos를 바인딩한다. 정적 Map 수신과
+volume/upward orientation은 보존한다. 이는 아래 왜곡 BA 경로나 mesh/sprite/trail을
+전역 제한하는 계약이 아니다. 상세 검증은09-29 발탄 장판·패턴 동기화 RESULT를 따른다.
+
 `Target_Distortion`의 RGBA16_FLOAT는 signed 화면 UV offset 두 쌍을 누적한다. RG는 기존 일반 왜곡이고 BA는 actor와 깊이 경계를 보호하는 왜곡이다. 현재 BA writer는 검토한 쿠크 native2461/2587/3682뿐이다. native source 식을 바꾸거나 JSON renderProfile을 새 값으로 위장하지 않는다. installer의 명시 routing도 같은 범위를 유지한다.
 
 V1 공통 Opaque/Alpha/Additive의 RT1은 RGBA 전체에 One+One을 적용한다. SceneColor와 Bloom의 원래 blend는 유지하며 RingFill/LinearReveal coverage와 distortionScale은 offset 네 채널에 적용한다. 일반 writer의 BA=0은 이미 누적한 BA를 지우지 않는다. compiled material adapter의 fixed-function 검사도 동일 RGBA write mask를 요구한다. V2의 별도 기존 RG 경로는 유지한다.

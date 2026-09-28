@@ -412,6 +412,7 @@ bool LostArk::Server::CGameRoom::Reset_ValtanAuditionState(
 	Clear_ValtanGhostRelocationState(boss);
 	boss = std::move(stagedBoss);
 	m_WorldDestructionRuntime = std::move(stagedDestruction);
+	Reset_WorldPickups(resetTick);
 	m_EncounterPropRuntime = std::move(stagedProps);
 	m_iPillarAuditionBreakTick = 0u;
 	m_bPillarAuditionCycleArmed = false;
@@ -990,6 +991,7 @@ bool LostArk::Server::CGameRoom::Start_ValtanFightPage(
 	(void)CBossCombatRuntime::Set_GameplayPhase(
 		boss, policy->iInitialGameplayPhase);
 	boss.bIntroPatternConsumed = !policy->bPlayEntrance;
+	boss.bEntranceCinematicConsumed = !policy->bPlayEntrance;
 	/* A fight page deliberately starts at an authored entrance/health boundary,
 	so let that one-shot queue run ahead of the Product ordered sequence. The
 	Brain clears this override as soon as it consumes the intro or pending
@@ -1640,8 +1642,8 @@ LostArk::Server::CGameRoom::Evaluate_ValtanPatternFlowStart(
 		savedCanonicalSequence =
 			pinnedCatalog->Find_BossPatternSequence(boss->strEncounterId);
 		const bool bMatchesSavedSequence = nullptr != savedCanonicalSequence &&
-			BOSS_PATTERN_SEQUENCE_MODE::ORDERED_ONCE_THEN_IDLE ==
-				savedCanonicalSequence->eMode &&
+			(BOSS_PATTERN_SEQUENCE_MODE::ORDERED_ONCE_THEN_IDLE == savedCanonicalSequence->eMode ||
+			 BOSS_PATTERN_SEQUENCE_MODE::HEALTH_BAR_ROTATIONS == savedCanonicalSequence->eMode) &&
 			!request.Slots.empty() &&
 			request.strStartSlotId == request.Slots.front().strSlotId &&
 			savedCanonicalSequence->iInterStepPursuitMs ==

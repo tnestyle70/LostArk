@@ -704,6 +704,19 @@ bool LostArk::Server::CGameRoom::Stage_BossPatternStageActions(
 					m_strStatus = "Boss combat object volley total is out of range";
 					return false;
 				}
+				/* A stationary single area is grounded at the player's actual footprint.
+				Collision resolution can leave an alive player on a surface cell that
+				is blocked for path finding. It is still a valid floor for a hazard;
+				radial layouts and moving objects retain exact walkability admission. */
+				const bool groundAtPlayerSurface = isTypedVolley &&
+					BOSS_COMBAT_OBJECT_LAYOUT_KIND::SINGLE == action.Volley.eLayout &&
+					1u == countPerTarget &&
+					BOSS_COMBAT_OBJECT_KIND::FIXED_AREA == definition->eKind &&
+					0.f == definition->fOffsetForwardM &&
+					0.f == definition->fOffsetRightM &&
+					0.f == definition->fSpeedMps &&
+					0.f == definition->fMaximumDistanceM;
+				std::map<NET_ENTITY_ID, SERVER_NAV_POINT> targetSurfaces;
 				struct VOLLEY_POINT final
 				{
 					float fX = 0.f;
@@ -738,13 +751,19 @@ bool LostArk::Server::CGameRoom::Stage_BossPatternStageActions(
 								x += std::sin(radians) * action.Volley.fRadiusM;
 								z += std::cos(radians) * action.Volley.fRadiusM;
 							}
-							if (!std::isfinite(x) || !std::isfinite(z) ||
-								!m_ServerNavigation.Is_PointWalkableExact(x, z))
+							SERVER_NAV_POINT surface{};
+							const bool supported = groundAtPlayerSurface ?
+								(m_ServerNavigation.Sample_SurfacePosition(x, z, surface) &&
+								 std::isfinite(surface.y)) :
+								m_ServerNavigation.Is_PointWalkableExact(x, z);
+							if (!std::isfinite(x) || !std::isfinite(z) || !supported)
 							{
 								m_strStatus =
 									"Boss combat object volley leaves navigable arena";
 								return false;
 							}
+							if (groundAtPlayerSurface)
+								targetSurfaces.emplace(volleyPlayer->iNetEntityId, surface);
 							resolvedPoints.push_back({ x, z });
 						}
 						/* Layout belongs to one resolved target. Players may legitimately
@@ -791,7 +810,8 @@ bool LostArk::Server::CGameRoom::Stage_BossPatternStageActions(
 					SERVER_COMBAT_OBJECT_LOCKED_TARGET volleyTarget{};
 					volleyTarget.iNetEntityId = volleyPlayer->iNetEntityId;
 					volleyTarget.fPositionX = volleyPlayer->fPositionX;
-					volleyTarget.fPositionY = volleyPlayer->fPositionY;
+					volleyTarget.fPositionY = groundAtPlayerSurface ?
+						targetSurfaces.at(volleyPlayer->iNetEntityId).y : volleyPlayer->fPositionY;
 					volleyTarget.fPositionZ = volleyPlayer->fPositionZ;
 					volleyTarget.bTrackUntilFirstPulse = false;
 					if (!m_CombatObjectRuntime.Stage_BossCombatObject(
@@ -1022,6 +1042,7 @@ bool LostArk::Server::CGameRoom::Prepare_GrabbedPlayerImpact(
 		staged.Projectiles.clear();
 		staged.iSpawnedProjectileMask = 0u;
 		staged.iAppliedHitMask = 0u;
+		staged.HitWindowTargets.clear();
 		staged.hasAppliedSkillDamage = false;
 		staged.fFallVelocityY = 0.f;
 		staged.iFallDeathTick = 0u;

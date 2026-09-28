@@ -184,7 +184,8 @@ void LostArk::Server::CServerGameplayContractRunner::Run_ValtanPinnedGeneration(
 				{
 					counter = true;
 					counterDamageLess = hpBeforeAdvance == boss.iCurrentHp &&
-						room->m_TickDamageEvents.empty();
+						room->m_TickDamageEvents.size() == 1u && room->m_TickDamageEvents.front().isCounterSuccess &&
+						room->m_TickDamageEvents.front().iAmount == 0u;
 				}
 				captured = captured || 0u != CValtanBrain::Classify_GrabbedPlayers(boss, room->m_Players).iGrabbedCount;
 				if ("CATCH_COUNTER" == boss.strPatternStageId && 0u == counterTick) counterTick = tick;
@@ -327,8 +328,8 @@ void LostArk::Server::CServerGameplayContractRunner::Run_ValtanPinnedGeneration(
 				{
 					insideAccepted = true;
 					insideResolutionDamageLess =
-						hpBeforeInsideCounter == boss.iCurrentHp &&
-						room->m_TickDamageEvents.empty();
+						hpBeforeInsideCounter == boss.iCurrentHp && room->m_TickDamageEvents.size() == 1u &&
+						room->m_TickDamageEvents.front().isCounterSuccess && room->m_TickDamageEvents.front().iAmount == 0u;
 				}
 				selectedAuthoredGroggy = selectedAuthoredGroggy ||
 					("GROGGY" == boss.strPatternStageId &&
@@ -426,9 +427,9 @@ void LostArk::Server::CServerGameplayContractRunner::Run_ValtanPinnedGeneration(
 			bool valid = true;
 			bool guardStarted = false;
 			bool remoteFrontRejected = false;
-			bool behindRejected = false;
+			bool rearAttempted = false;
 			bool secondGuardStarted = false;
-			bool frontAccepted = false;
+			bool rearAccepted = false;
 			bool damageLess = false;
 			bool singleCounterConsumer = false;
 			bool reachedSharedGroggy = false;
@@ -452,26 +453,19 @@ void LostArk::Server::CServerGameplayContractRunner::Run_ValtanPinnedGeneration(
 					guardStarted = counterSkills.Try_Start(
 						counterPlayer, counterCommand, catalog, tick);
 				}
-				else if (remoteFrontRejected && !behindRejected)
-				{
-					SERVER_PLAYER& counterPlayer = room->m_Players.at(19200u);
-					counterPlayer.fPositionX = boss.fPositionX;
-					counterPlayer.fPositionZ = boss.fPositionZ - 2.f;
-				}
-				else if (behindRejected && !frontAccepted)
+				else if (remoteFrontRejected && !rearAccepted)
 				{
 					SERVER_PLAYER& counterPlayer = room->m_Players.at(19200u);
 					SERVER_PLAYER& secondCounterPlayer = room->m_Players.at(19201u);
 					counterPlayer.fPositionX = boss.fPositionX;
-					counterPlayer.fPositionZ = boss.fPositionZ + 2.f;
-					C2S_USE_SKILL secondCounterCommand{};
-					secondCounterCommand.iClientSequence = 1u;
-					secondCounterCommand.iSkillId = 34580u;
-					secondCounterCommand.fAimX = boss.fPositionX;
-					secondCounterCommand.fAimZ = boss.fPositionZ;
-					secondGuardStarted = counterSkills.Try_Start(
-						secondCounterPlayer, secondCounterCommand, catalog, tick);
+					counterPlayer.fPositionZ = boss.fPositionZ - 2.f;
+					secondCounterPlayer.fPositionX = boss.fPositionX;
+					secondCounterPlayer.fPositionZ = boss.fPositionZ - 2.f;
+					C2S_USE_SKILL command{}; command.iClientSequence = 1u; command.iSkillId = 34580u;
+					command.fAimX = boss.fPositionX; command.fAimZ = boss.fPositionZ;
+					secondGuardStarted = counterSkills.Try_Start(secondCounterPlayer, command, catalog, tick);
 					hpBeforeCounter = boss.iCurrentHp;
+					rearAttempted = true; // The rear attempt is now an admitted case.
 				}
 
 				valid = advance(*room, tick);
@@ -484,22 +478,13 @@ void LostArk::Server::CServerGameplayContractRunner::Run_ValtanPinnedGeneration(
 							boss.BossCombat,
 							SERVER_BOSS_COMBAT_FLAG::COUNTERABLE);
 				}
-				else if (remoteFrontRejected && !behindRejected)
+				else if (rearAttempted && !rearAccepted && secondGuardStarted)
 				{
-					behindRejected =
-						"COUNTER_1" == boss.strPatternStageId &&
-						1u == room->m_Players.at(19200u).iComboStage &&
-						CBossCombatRuntime::Has_Flag(
-							boss.BossCombat,
-							SERVER_BOSS_COMBAT_FLAG::COUNTERABLE);
-				}
-				else if (behindRejected && !frontAccepted && secondGuardStarted)
-				{
-					frontAccepted = 2u ==
+					rearAccepted = 2u ==
 						room->m_Players.at(19200u).iComboStage;
-					damageLess = hpBeforeCounter == boss.iCurrentHp &&
-						room->m_TickDamageEvents.empty();
-					singleCounterConsumer = frontAccepted &&
+					damageLess = hpBeforeCounter == boss.iCurrentHp && room->m_TickDamageEvents.size() == 1u &&
+						room->m_TickDamageEvents.front().isCounterSuccess && room->m_TickDamageEvents.front().iAmount == 0u;
+					singleCounterConsumer = rearAccepted &&
 						1u == room->m_Players.at(19201u).iComboStage &&
 						boss.BossCombat.PendingOutcomes.empty() &&
 						!CBossCombatRuntime::Has_Flag(
@@ -516,10 +501,10 @@ void LostArk::Server::CServerGameplayContractRunner::Run_ValtanPinnedGeneration(
 					break;
 			}
 			tests.Require(
-				valid && guardStarted && remoteFrontRejected && behindRejected &&
-				secondGuardStarted && frontAccepted && damageLess &&
+				valid && guardStarted && remoteFrontRejected && rearAttempted &&
+				secondGuardStarted && rearAccepted && damageLess &&
 				singleCounterConsumer && reachedSharedGroggy,
-				"Triple Counter proxy rejects a remote front or in-range rear guard, accepts one in-range front guard without damage, consumes one player, and enters the shared Groggy follow-up");
+				"Triple Counter rejects a remote guard, accepts one nearby rear guard with blue zero-damage success, consumes one player, and enters shared Groggy");
 		}
 		{
 			auto room = prepareRoom();
@@ -1149,10 +1134,21 @@ void LostArk::Server::CServerGameplayContractRunner::Run_ValtanPinnedGeneration(
 				(void)playerId;
 				player.iCurrentHp = player.iMaximumHp = 1000000000u;
 			}
-			const std::vector<std::string> expectedPrimaryLoop{
-				"VALTAN_WHIRLWIND", "VALTAN_FOUR_SLASH",
-				"VALTAN_SEQUENCE_FOUR", "VALTAN_CROSS",
-				"VALTAN_CHARGE", "VALTAN_CHARGE_2" };
+			const auto observerSpawns = room->m_Players;
+			const auto* finalePatterns = catalog.Find_BossPatterns("ENCOUNTER_VALTAN");
+			const auto finale = std::find_if(finalePatterns->begin(), finalePatterns->end(),
+				[](const BOSS_PATTERN_DEFINITION& p) { return "VALTAN_GHOST_FINALE" == p.strPatternId; });
+			const auto& expectedAuxiliarySkills = finale->Finale.GhostPatternIds;
+			const auto durationTicks = [](const std::uint32_t ms)
+			{ return (std::max)(1u, static_cast<std::uint32_t>((static_cast<std::uint64_t>(ms) * 30u + 999u) / 1000u)); };
+			const std::uint32_t replacementDelayTicks = durationTicks(finale->Finale.iAuxiliarySpawnIntervalMs);
+			const std::uint32_t portalIntervalTicks = durationTicks(finale->Finale.iPortalSpawnIntervalMs);
+			const auto* automatic = catalog.Find_BossPatternSequence("ENCOUNTER_VALTAN");
+			const bool healthLoops = nullptr != automatic &&
+				BOSS_PATTERN_SEQUENCE_MODE::HEALTH_BAR_ROTATIONS == automatic->eMode;
+			const std::vector<std::string> expectedPrimaryLoop = healthLoops ?
+				std::vector<std::string>{ "VALTAN_FOUR_SLASH", "VALTAN_CATCH_BREATH",
+					"VALTAN_WHIRLWIND", "VALTAN_CROSS", "VALTAN_SEQUENCE_FOUR" } : expectedAuxiliarySkills;
 			std::vector<std::string> expectedTwoPrimaryCycles = expectedPrimaryLoop;
 			expectedTwoPrimaryCycles.insert(expectedTwoPrimaryCycles.end(),
 				expectedPrimaryLoop.begin(), expectedPrimaryLoop.end());
@@ -1174,8 +1170,16 @@ void LostArk::Server::CServerGameplayContractRunner::Run_ValtanPinnedGeneration(
 			bool visibleDamageAdmitted = false;
 			for (std::uint32_t tick = 1u; tick <= 6000u && room->Is_Ready(); ++tick)
 			{
+				// This observes two complete loops, so replace raiders eliminated by
+				// the requested rear-grab pattern. Its lethal/targetless behavior is
+				// covered separately above; the boss never receives a local reset.
+				for (auto& [id, player] : room->m_Players)
+					if (0u == player.iCurrentHp) player = observerSpawns.at(id);
 				room->m_iServerTick = tick - 1u;
 				room->m_TickDamageEvents.clear();
+				// Catch-breath now belongs to the primary loop; advance the real player
+				// recovery clock so its released targets can become engageable again.
+				room->Update_Players(1.f / 30.f);
 				room->Update_WorldEntities(1.f / 30.f);
 				const auto primary = std::find_if(
 					room->m_WorldEntities.begin(), room->m_WorldEntities.end(),
@@ -1283,9 +1287,9 @@ void LostArk::Server::CServerGameplayContractRunner::Run_ValtanPinnedGeneration(
 					const bool selectedOneUsableSkill =
 						1u == auxiliary->DependentPatternSequence.iExpectedStepCount &&
 						1u == auxiliary->DependentPatternSequence.PatternIds.size() &&
-						std::find(expectedPrimaryLoop.begin(), expectedPrimaryLoop.end(),
+						std::find(expectedAuxiliarySkills.begin(), expectedAuxiliarySkills.end(),
 							auxiliary->DependentPatternSequence.PatternIds.front()) !=
-							expectedPrimaryLoop.end();
+							expectedAuxiliarySkills.end();
 					auxiliaryContractExact = auxiliaryContractExact &&
 						SERVER_DEPENDENT_BOSS_ROLE::AUXILIARY ==
 							auxiliary->eDependentBossRole &&
@@ -1314,7 +1318,7 @@ void LostArk::Server::CServerGameplayContractRunner::Run_ValtanPinnedGeneration(
 						{
 							auxiliaryReplacementCadenceExact =
 								auxiliaryReplacementCadenceExact &&
-								tick == auxiliaryDespawnTick + 1u;
+								tick == auxiliaryDespawnTick + replacementDelayTicks;
 							auxiliaryDespawnTick = 0u;
 						}
 					}
@@ -1331,7 +1335,7 @@ void LostArk::Server::CServerGameplayContractRunner::Run_ValtanPinnedGeneration(
 					auxiliaryDespawnTick = tick;
 					auxiliaryReplacementCadenceExact =
 						auxiliaryReplacementCadenceExact &&
-						primary->iGhostAuxiliaryNextSpawnTick == tick + 1u;
+						primary->iGhostAuxiliaryNextSpawnTick == tick + replacementDelayTicks;
 					previousAuxiliaryId = INVALID_NET_ENTITY_ID;
 				}
 
@@ -1375,7 +1379,7 @@ void LostArk::Server::CServerGameplayContractRunner::Run_ValtanPinnedGeneration(
 				portalCadenceExact && index < portalSpawnTicks.size(); ++index)
 			{
 				portalCadenceExact =
-					237u == portalSpawnTicks[index] - portalSpawnTicks[index - 1u];
+					portalIntervalTicks == portalSpawnTicks[index] - portalSpawnTicks[index - 1u];
 			}
 			const auto primary = std::find_if(
 				room->m_WorldEntities.begin(), room->m_WorldEntities.end(),
@@ -1386,9 +1390,20 @@ void LostArk::Server::CServerGameplayContractRunner::Run_ValtanPinnedGeneration(
 				observedPrimaryLoop == expectedTwoPrimaryCycles &&
 				primaryNeverAutoRelocated && portalCadenceExact &&
 				portalRunnerContractExact;
+			if (!primaryLoopPassed)
+			{
+				std::cout << "[DIAGNOSTIC] Ghost primary ready=" << room->Is_Ready() << " activated=" << activated
+					<< " identity=" << primaryIdentityStable << " noRelocation=" << primaryNeverAutoRelocated
+					<< " portalCadence=" << portalCadenceExact << " portalContract=" << portalRunnerContractExact
+					<< " observed=";
+				for (const auto& patternId : observedPrimaryLoop) std::cout << patternId << ',';
+				if (primary != room->m_WorldEntities.end()) std::cout << " current=" << primary->strPatternId
+					<< " stage=" << primary->strPatternStageId << " reset=" << primary->bMechanicLedgerRequiresReset;
+				std::cout << '\n';
+			}
 			tests.Require(
 				primaryLoopPassed,
-				"Phase-three respawn keeps one primary Valtan identity visible, never enters the random-relocation lane, and continuously repeats the exact six-pattern loop");
+				"Phase-three respawn keeps one primary Valtan identity visible, never enters the random-relocation lane, and continuously repeats two exact published primary loops independently of auxiliary skills");
 			tests.Require(
 				visibleDamageAdmitted,
 				"The persistent phase-three primary remains a real health-damage target while its foreground loop is active");
@@ -1396,7 +1411,7 @@ void LostArk::Server::CServerGameplayContractRunner::Run_ValtanPinnedGeneration(
 				auxiliaryContractExact && observedAuxiliarySequence >= 3u &&
 				auxiliarySkills.size() >= 3u && observedAuxiliaryDespawn &&
 				auxiliaryReplacementCadenceExact,
-				"The auxiliary lane repeatedly spawns one ghost on exact walkable navigation, assigns exactly one usable finale skill, despawns it at completion, and replaces it on the next fixed tick");
+				"The auxiliary lane repeatedly spawns one ghost on exact walkable navigation, assigns exactly one usable finale skill, despawns it at completion, and replaces it after the published delay");
 			if (primary != room->m_WorldEntities.end()) primary->iCurrentHp = 0u;
 			room->m_iServerTick = 6001u;
 			room->Update_WorldEntities(1.f / 30.f);
@@ -1420,6 +1435,13 @@ void LostArk::Server::CServerGameplayContractRunner::Run_ValtanPinnedGeneration(
 			const float validSpawnZ = primary.fSpawnPositionZ;
 			const bool activated = room->Activate_ValtanGhostPhaseLoop(
 				primary, catalog);
+			const auto* ghostHealth = catalog.Find_Boss("BOSS_VALTAN_GHOST");
+			tests.Require(activated && nullptr != ghostHealth &&
+				primary.iCurrentHp == ghostHealth->iMaximumHp &&
+				primary.iMaximumHp == ghostHealth->iMaximumHp &&
+				primary.iMaximumHealthBars == ghostHealth->iMaximumHealthBars &&
+				primary.iLastEvaluatedHealthBar == ghostHealth->iMaximumHealthBars,
+				"Canonical ghost revival starts the primary with the authored ghost health and bar count");
 			/* The Product primary loop never calls this helper. Keep its explicit
 			   debug/recovery lifecycle isolated from a foreground attack here. */
 			primary.bAutomaticPatternSequenceAuditionHold = true;

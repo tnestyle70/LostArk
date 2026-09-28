@@ -1047,6 +1047,8 @@ private:
 	std::optional<WORLD_SEQUENCE_SUBTITLE_TRACK> m_CutsceneSubtitleDraft;
 	std::string m_CutsceneSoundSequenceId;
 	std::optional<WORLD_SEQUENCE_SOUND_TRACK> m_CutsceneSoundDraft;
+	std::string m_CutsceneEffectSequenceId;
+	std::optional<WORLD_SEQUENCE_EFFECT_TRACK> m_CutsceneEffectDraft;
 	/* Integrated cutscene view. The session and its documents stay with their
 	   existing owners; only the view state lives here. */
 	ICompositionWorkbenchSession* m_pSequenceCompositionSession = nullptr;

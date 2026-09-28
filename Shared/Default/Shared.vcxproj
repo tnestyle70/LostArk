@@ -23,6 +23,7 @@
 	<ClInclude Include="..\Public\Gameplay\CombatCollisionContract.h" />
 	<ClInclude Include="..\Public\Gameplay\CombatObjectHitChain.h" />
 	<ClInclude Include="..\Public\Gameplay\WorldCollisionContract.h" />
+	<ClInclude Include="..\Public\Gameplay\MaharakaWaterpangContract.h" />
 	<ClInclude Include="..\Public\Gameplay\AttackHitTemplate.h" />
 	<ClInclude Include="..\Public\Gameplay\KoukuMarioBombContract.h" />
 	<ClInclude Include="..\Public\Gameplay\EstherStrikeContract.h" />
@@ -169,6 +170,12 @@
       <ExcludedFromBuild Condition="'$(LostArkUsePch)'!='true' or '$(Platform)'!='x64'">true</ExcludedFromBuild>
     </ClCompile>
     <ClInclude Include="..\..\Tools\Build\CppStandardPch.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\Public\Gameplay\BalanceNumericContract.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\Private\Gameplay\BalanceNumericContract.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets" />

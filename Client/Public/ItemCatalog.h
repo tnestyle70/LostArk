@@ -34,6 +34,31 @@ namespace Client
 		std::string strGrade;
 	};
 
+	/* One stock line of an NPC shop (ItemCatalog.json "shops"). The Server's copy, published
+	into Items.bootstrap, is what prices a purchase; this one only fills the shop window. */
+	struct SHOP_ITEM_DEFINITION
+	{
+		std::string strItemId;
+		/* "SILVER" or "GOLD" -- a currencies entry, not an item. */
+		std::string strCurrencyId;
+		std::uint32_t iPrice = 0;
+	};
+
+	/* One ItemCatalog.json "currencies" entry: the player's purse, shown under the inventory. */
+	struct CURRENCY_DEFINITION
+	{
+		std::string strCurrencyId;
+		std::string strDisplayName;
+		std::string strIconPath;
+	};
+
+	struct SHOP_DEFINITION
+	{
+		std::string strShopId;
+		std::vector<std::string> NpcPlacementIds;
+		std::vector<SHOP_ITEM_DEFINITION> Items;
+	};
+
 	class CItemCatalog final
 	{
 	public:
@@ -44,5 +69,10 @@ namespace Client
 		static const std::vector<ITEM_DEFINITION>& Get_Items();
 
 		static const ITEM_DEFINITION* Find_ById(const std::string& itemId);
+
+		/* The shop the NPC placement runs, or null. */
+		static const SHOP_DEFINITION* Find_ShopByNpc(const std::string& npcPlacementId);
+		static const std::vector<SHOP_DEFINITION>& Get_Shops();
+		static const CURRENCY_DEFINITION* Find_Currency(const std::string& currencyId);
 	};
 }

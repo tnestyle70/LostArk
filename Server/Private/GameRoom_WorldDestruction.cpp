@@ -170,6 +170,9 @@ bool LostArk::Server::CGameRoom::Apply_WorldDestructionStageEntry(
 		WORLD_DESTRUCTION_PREPARE_RESULT::DUPLICATE_REQUEST == result ||
 		WORLD_DESTRUCTION_PREPARE_RESULT::NO_CHANGE == result)
 	{
+		if (result != WORLD_DESTRUCTION_PREPARE_RESULT::NO_MATCH &&
+			action.strPatternId == "VALTAN_ARENA_BREAK_109" && action.strStageId == "IMPACT")
+			Remove_RemainingWorldPickups(serverTick);
 		return true;
 	}
 	std::vector<LostArk::Shared::WORLD_DESTRUCTION_EVENT_WIRE> liveEvents;
@@ -364,6 +367,7 @@ bool LostArk::Server::CGameRoom::Commit_WorldDestructionTransaction(
 	}
 	m_ServerCollisionSystem.Commit_StateChanges(std::move(collisionStage));
 	m_ServerNavigation.Commit_ConditionChanges(std::move(navigationStage));
+	Apply_WorldPickupDestruction(transaction, serverTick);
 	if (!navigationChanges.empty())
 		Invalidate_DynamicNavigationPaths();
 	if (!Broadcast_WorldDestructionDelta(
@@ -708,4 +712,166 @@ std::uint32_t LostArk::Server::CGameRoom::Count_SpawnGroupEntities(
 			return entity.eKind == WORLD_BOOTSTRAP_KIND::MONSTER &&
 				entity.strSpawnGroupId == spawnGroupId;
 		}));
+}
+
+
+bool LostArk::Server::CGameRoom::Initialize_WorldPickups()
+{
+	std::vector<WORLD_PICKUP_DESCRIPTOR> descriptors;
+	if (!Load_ValtanWorldPickups(descriptors, m_strStatus))
+		return false;
+	std::vector<WORLD_PICKUP_RUNTIME> staged;
+	for (const WORLD_PICKUP_DESCRIPTOR& descriptor : descriptors)
+	{
+		WORLD_DESTRUCTION_GROUP_STATE wall{};
+		SERVER_NAV_POINT landing{};
+		if (!m_WorldDestructionRuntime.Find_GroupState(descriptor.strWallGroupId, wall) ||
+			!m_ServerNavigation.Is_PointWalkableExact(descriptor.fLandingX, descriptor.fLandingZ) ||
+			!m_ServerNavigation.Sample_Position(descriptor.fLandingX, descriptor.fLandingZ, landing) ||
+			std::fabs(landing.y - descriptor.fLandingY) > 1.5f)
+		{
+			m_strStatus = "World pickup wall or navigation landing is invalid: " + descriptor.strPlacementId;
+			return false;
+		}
+		WORLD_PICKUP_RUNTIME pickup{};
+		pickup.Descriptor = descriptor;
+		staged.push_back(std::move(pickup));
+	}
+	m_WorldPickups = std::move(staged);
+	Reset_WorldPickups(1u);
+	return true;
+}
+
+void LostArk::Server::CGameRoom::Reset_WorldPickups(const std::uint32_t serverTick)
+{
+	m_iWorldPickupEncounterEpoch = m_WorldDestructionRuntime.Get_EncounterEpoch();
+	for (WORLD_PICKUP_RUNTIME& pickup : m_WorldPickups)
+	{
+		pickup.Snapshot = {};
+		pickup.Snapshot.strPlacementId = pickup.Descriptor.strPlacementId;
+		pickup.Snapshot.fPositionX = pickup.Descriptor.fStartX;
+		pickup.Snapshot.fPositionY = pickup.Descriptor.fStartY;
+		pickup.Snapshot.fPositionZ = pickup.Descriptor.fStartZ;
+		pickup.Snapshot.iStateStartTick = serverTick == 0u ? 1u : serverTick;
+	}
+	for (auto& [playerId, player] : m_Players)
+	{
+		(void)playerId;
+		player.bRonaunGuard = false;
+		player.iRonaunGrantTick = 0u;
+	}
+}
+
+void LostArk::Server::CGameRoom::Remove_RemainingWorldPickups(const std::uint32_t serverTick)
+{
+	using LostArk::Shared::WORLD_PICKUP_STATE;
+	for (WORLD_PICKUP_RUNTIME& pickup : m_WorldPickups)
+	{
+		if (pickup.Snapshot.eState == WORLD_PICKUP_STATE::COLLECTED ||
+			pickup.Snapshot.eState == WORLD_PICKUP_STATE::REMOVED)
+			continue;
+		pickup.Snapshot.eState = WORLD_PICKUP_STATE::REMOVED;
+		pickup.Snapshot.iStateStartTick = serverTick == 0u ? 1u : serverTick;
+	}
+}
+
+void LostArk::Server::CGameRoom::Apply_WorldPickupDestruction(
+	const WORLD_DESTRUCTION_TRANSACTION& transaction, const std::uint32_t serverTick)
+{
+	using LostArk::Shared::WORLD_PICKUP_STATE;
+	if (m_iWorldPickupEncounterEpoch != m_WorldDestructionRuntime.Get_EncounterEpoch())
+		Reset_WorldPickups(serverTick);
+	// The same outer wall mutation is also used by a dash. Only the actual
+	// authored arena-break STAGE application retires every remaining pickup.
+	const auto& bindings = m_WorldDestructionBootstrap.Get_DescriptorGraph().Bindings;
+	for (const auto& application : transaction.BindingApplications)
+	{
+		const auto binding = std::find_if(bindings.begin(), bindings.end(),
+			[&](const auto& row) { return row.strBindingId == application.strBindingId; });
+		if (binding != bindings.end() && application.eTriggerKind == WORLD_DESTRUCTION_TRIGGER_KIND::STAGE &&
+			binding->strPatternId == "VALTAN_ARENA_BREAK_109" && binding->strStageId == "IMPACT")
+		{ Remove_RemainingWorldPickups(serverTick); return; }
+	}
+	for (const auto& transition : transaction.Transitions)
+	{
+		if (transition.ePreviousState != WORLD_DESTRUCTION_STATE::INTACT ||
+			transition.eNextState == WORLD_DESTRUCTION_STATE::INTACT)
+			continue;
+		for (WORLD_PICKUP_RUNTIME& pickup : m_WorldPickups)
+		{
+			if (pickup.Descriptor.strWallGroupId != transition.strGroupId ||
+				pickup.Snapshot.eState != WORLD_PICKUP_STATE::WALL)
+				continue;
+			pickup.Snapshot.eState = WORLD_PICKUP_STATE::FALLING;
+			pickup.Snapshot.iStateStartTick = serverTick == 0u ? 1u : serverTick;
+		}
+	}
+}
+
+void LostArk::Server::CGameRoom::Update_WorldPickups(
+	const std::uint32_t serverTick, const bool allowCollection)
+{
+	using namespace LostArk::Shared;
+	if (m_eWorldId == WORLD_ID::VALTAN_ARENA &&
+		m_iWorldPickupEncounterEpoch != m_WorldDestructionRuntime.Get_EncounterEpoch())
+		Reset_WorldPickups(serverTick);
+	for (auto& [playerId, player] : m_Players)
+	{
+		(void)playerId;
+		if (m_eWorldId != WORLD_ID::VALTAN_ARENA || player.iCurrentHp == 0u ||
+			player.eAction == PLAYER_ACTION_STATE::DEAD || player.Is_Guide())
+		{ player.bRonaunGuard = false; player.iRonaunGrantTick = 0u; }
+	}
+	if (m_eWorldId != WORLD_ID::VALTAN_ARENA || !allowCollection)
+		return;
+	for (WORLD_PICKUP_RUNTIME& pickup : m_WorldPickups)
+	{
+		const auto& descriptor = pickup.Descriptor;
+		auto& snapshot = pickup.Snapshot;
+		if (snapshot.eState == WORLD_PICKUP_STATE::FALLING)
+		{
+			if (static_cast<std::int32_t>(serverTick - snapshot.iStateStartTick) < 0) continue;
+			const std::uint32_t elapsed = serverTick - snapshot.iStateStartTick;
+			const float t = (std::min)(1.f, static_cast<float>(elapsed) / descriptor.iFallDurationTicks);
+			snapshot.fPositionX = descriptor.fStartX + (descriptor.fLandingX - descriptor.fStartX) * t;
+			snapshot.fPositionY = descriptor.fStartY + (descriptor.fLandingY - descriptor.fStartY) * t;
+			snapshot.fPositionZ = descriptor.fStartZ + (descriptor.fLandingZ - descriptor.fStartZ) * t;
+			if (elapsed < descriptor.iFallDurationTicks)
+				continue;
+			snapshot.eState = WORLD_PICKUP_STATE::GROUNDED;
+			snapshot.iStateStartTick = serverTick == 0u ? 1u : serverTick;
+		}
+		if (snapshot.eState != WORLD_PICKUP_STATE::GROUNDED)
+			continue;
+		SERVER_NAV_POINT ground{};
+		if (!m_ServerNavigation.Is_PointWalkableExact(descriptor.fLandingX, descriptor.fLandingZ) ||
+			!m_ServerNavigation.Sample_Position(descriptor.fLandingX, descriptor.fLandingZ, ground) ||
+			std::fabs(ground.y - descriptor.fLandingY) > 1.5f)
+		{
+			snapshot.eState = WORLD_PICKUP_STATE::REMOVED;
+			snapshot.iStateStartTick = serverTick == 0u ? 1u : serverTick;
+			continue;
+		}
+		for (auto& [playerId, player] : m_Players)
+		{
+			(void)playerId;
+			if (player.Is_Guide() || player.bRonaunGuard || player.iCurrentHp == 0u || !player.isCombatReady ||
+				player.eAction == PLAYER_ACTION_STATE::DEAD || player.eAction == PLAYER_ACTION_STATE::FALLING ||
+				player.eAction == PLAYER_ACTION_STATE::GRABBED || player.bKnockbackBallistic ||
+				!std::isfinite(player.fPositionX) || !std::isfinite(player.fPositionY) || !std::isfinite(player.fPositionZ))
+				continue;
+			// Sphere against the existing authoritative player AABB, including height.
+			const float dx = (std::max)(0.f, std::fabs(player.fPositionX - snapshot.fPositionX) - WorldCollision::PLAYER_HALF_EXTENT_X);
+			const float dy = (std::max)(0.f, std::fabs(player.fPositionY + WorldCollision::PLAYER_CENTER_OFFSET_Y - snapshot.fPositionY) - WorldCollision::PLAYER_HALF_EXTENT_Y);
+			const float dz = (std::max)(0.f, std::fabs(player.fPositionZ - snapshot.fPositionZ) - WorldCollision::PLAYER_HALF_EXTENT_Z);
+			if (!std::isfinite(dx) || !std::isfinite(dy) || !std::isfinite(dz) ||
+				dx * dx + dy * dy + dz * dz > descriptor.fPickupRadiusM * descriptor.fPickupRadiusM)
+				continue;
+			player.bRonaunGuard = true;
+			player.iRonaunGrantTick = serverTick == 0u ? 1u : serverTick;
+			snapshot.eState = WORLD_PICKUP_STATE::COLLECTED;
+			snapshot.iStateStartTick = player.iRonaunGrantTick;
+			break;
+		}
+	}
 }

@@ -17,6 +17,10 @@ struct REPLICATED_PLAYER_HEALTH final
 	   has no madness gauge (every other world). */
 	std::uint32_t iCurrentMadness = 0u;
 	std::uint32_t iMaximumMadness = 0u;
+	// Server-confirmed protection verdict; zero means no occurrence in this snapshot.
+	std::uint32_t iInvulnerabilityZonePulseTick = 0u;
+	bool bRonaunGuard = false;
+	std::uint32_t iRonaunGrantTick = 0u;
 
 	float Get_Ratio() const
 	{
@@ -50,7 +54,9 @@ public:
 				player.iCurrentHp > player.iMaximumHp ||
 				!staged.emplace(player.iNetEntityId, REPLICATED_PLAYER_HEALTH{
 					true, player.iCurrentHp, player.iMaximumHp,
-					player.iCurrentMadness, player.iMaximumMadness }).second)
+					player.iCurrentMadness, player.iMaximumMadness,
+					player.iInvulnerabilityZonePulseTick, player.bRonaunGuard,
+					player.iRonaunGrantTick }).second)
 			{
 				return false;
 			}

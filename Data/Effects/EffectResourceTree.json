@@ -226,7 +226,13 @@
     {"id": "valtan.resources.tracking-axe", "parentId": "valtan.resources", "kind": "CATEGORY", "displayName": "점프 후 플레이어 추적 도끼"},
     {"id": "valtan.resources.dash-charge", "parentId": "valtan.resources", "kind": "CATEGORY", "displayName": "3회 구르기 후 돌진"},
     {"id": "valtan.resources.catch-breath", "parentId": "valtan.resources", "kind": "CATEGORY", "displayName": "잡아채서 불어 날리기"},
-    {"id": "valtan.resources.independent", "parentId": "valtan.resources", "kind": "CATEGORY", "displayName": "개별 이펙트"}
+    {"id": "valtan.resources.independent", "parentId": "valtan.resources", "kind": "CATEGORY", "displayName": "개별 이펙트"},
+    {
+      "id": "valtan.resources.pizza.original",
+      "parentId": "valtan.resources.pizza",
+      "kind": "CATEGORY",
+      "displayName": "돌·피자 원본 복원"
+    }
   ],
   "references": [
     {"kind": "V1", "assetId": "effect.kouku.gate3.showtime.sector.warning.shot", "displayName": "부채꼴 예고·사격 (저작 조합)", "parentId": "kouku.category.d767402008919487db6b"},
@@ -1133,6 +1139,109 @@
     {"kind": "V1", "assetId": "effect.valtan.action.420623.stage004.full.restore", "displayName": "잡아채서 불어 날리기 · 불어날리기 원본 복원", "parentId": "valtan.resources.catch-breath"},
     {"kind": "V1", "assetId": "effect.valtan.ether.orb", "displayName": "에테르의 구슬", "parentId": "valtan.resources.independent"},
     {"kind": "V1", "assetId": "effect.valtan.source.fx_mn_rpbf_00_o.par_o_rpbf_atk_01_07", "displayName": "Valtan phase2 cinematic source par_o_rpbf_atk_01_07", "parentId": "root.v1"},
-    {"kind": "V1", "assetId": "effect.valtan.action.420624.stage001.full.restore", "displayName": "Valtan 420624 / StageName [1] full restore", "parentId": "root.v1"}
+    {"kind": "V1", "assetId": "effect.valtan.action.420624.stage001.full.restore", "displayName": "Valtan 420624 / StageName [1] full restore", "parentId": "root.v1"},
+    {"kind": "V1", "assetId": "effect.valtan.source.fx_mn_rpbf_00_n.par_n_rpbf_dash_01_1", "displayName": "Valtan source par_n_rpbf_dash_01_1", "parentId": "root.v1"},
+    {
+      "kind": "V1",
+      "assetId": "effect.valtan.action.420620.stage001.full.restore",
+      "displayName": "중앙 이동 후 6방향 피자 / 낙하 폭발 원본 (12_07)",
+      "parentId": "valtan.resources.pizza.original"
+    },
+    {
+      "kind": "V1",
+      "assetId": "effect.valtan.action.420620.stage005.full.restore",
+      "displayName": "중앙 이동 후 6방향 피자 / 모아치기 폭발 원본 (12_11)",
+      "parentId": "valtan.resources.pizza.original"
+    },
+    {
+      "kind": "V1",
+      "assetId": "effect.valtan.action.420620.stage006.full.restore",
+      "displayName": "중앙 이동 후 6방향 피자 / 부채꼴 바닥 예고 원본 (12_06 변형006)",
+      "parentId": "valtan.resources.pizza.original"
+    },
+    {
+      "kind": "V1",
+      "assetId": "effect.valtan.sequence.six-pizza.source-warnings",
+      "displayName": "중앙 이동 후 6방향 피자 / 노란·빨간 부채꼴 조합 (원본 자료 기반 저작)",
+      "parentId": "valtan.resources.pizza.original"
+    },
+    {
+      "kind": "V1",
+      "assetId": "effect.valtan.six-pizza.source.center-sector",
+      "displayName": "중앙 이동 후 6방향 피자 / 중앙 빨간 원 3회 (원본 자료 기반 저작)",
+      "parentId": "valtan.resources.pizza.original"
+    },
+    {
+      "kind": "V1",
+      "assetId": "effect.valtan.six-pizza.source.red-sector",
+      "displayName": "중앙 이동 후 6방향 피자 / 빨간 부채꼴 3회 (원본 자료 기반 저작)",
+      "parentId": "valtan.resources.pizza.original"
+    },
+    {
+      "kind": "V1",
+      "assetId": "effect.valtan.six-pizza.source.yellow-sector",
+      "displayName": "중앙 이동 후 6방향 피자 / 노란 부채꼴 3회 (원본 자료 기반 저작)",
+      "parentId": "valtan.resources.pizza.original"
+    },
+    {
+      "kind": "V1",
+      "assetId": "effect.valtan.source.fx_mn_rpbf_00_o.par_o_rpbf_atk_08_01",
+      "displayName": "중앙 이동 후 6방향 피자 / 낙하 폭발 본체 원본 PS (Atk_08_01)",
+      "parentId": "valtan.resources.pizza.original"
+    },
+    {
+      "kind": "V1",
+      "assetId": "effect.valtan.source.fx_mn_rpbf_00_o.par_o_rpbf_atk_08_02",
+      "displayName": "중앙 이동 후 6방향 피자 / 낙하 붉은 잔광 원본 PS (Atk_08_02)",
+      "parentId": "valtan.resources.pizza.original"
+    },
+    {
+      "kind": "V1",
+      "assetId": "effect.valtan.source.fx_mn_rpbf_00_o.par_o_rpbf_atk_08_04",
+      "displayName": "중앙 이동 후 6방향 피자 / 모아치기 폭발 본체 원본 PS (Atk_08_04)",
+      "parentId": "valtan.resources.pizza.original"
+    },
+    {
+      "kind": "V1",
+      "assetId": "effect.valtan.source.fx_mn_rpbf_00_o.par_o_rpbf_atk_08_07",
+      "displayName": "중앙 이동 후 6방향 피자 / 부채꼴 바닥 예고 본체 원본 PS (Atk_08_07)",
+      "parentId": "valtan.resources.pizza.original"
+    },
+    {
+      "kind": "V1",
+      "assetId": "effect.valtan.source.fx_itr_02326.par_l_itr_02326_off_01",
+      "displayName": "발탄 돌 | 원본 붉은 원형 폭발",
+      "parentId": "valtan.resources.pizza.original"
+    },
+    {
+      "kind": "V1",
+      "assetId": "effect.valtan.source.fx_itr_02326.par_l_itr_02326_off_02",
+      "displayName": "발탄 돌 | 원본 폭발 전조",
+      "parentId": "valtan.resources.pizza.original"
+    },
+    {
+      "kind": "V1",
+      "assetId": "effect.valtan.source.fx_itr_02326.par_l_itr_02326_on_01",
+      "displayName": "발탄 돌 | 원본 유지",
+      "parentId": "valtan.resources.pizza.original"
+    },
+    {
+      "kind": "V1",
+      "assetId": "effect.valtan.source.fx_itr_02326.par_l_itr_02326_spawn_01",
+      "displayName": "발탄 돌 | 원본 생성",
+      "parentId": "valtan.resources.pizza.original"
+    },
+    {
+      "kind": "V1",
+      "assetId": "effect.valtan.source.itr-02326.spawn-and-idle",
+      "displayName": "발탄 돌 원본 복원 | 등장·청록 대기",
+      "parentId": "valtan.resources.pizza.original"
+    },
+    {
+      "kind": "V1",
+      "assetId": "effect.valtan.source.itr-02326.off.full",
+      "displayName": "발탄 돌 원본 복원 | 붉은 충전·폭발 전체",
+      "parentId": "valtan.resources.pizza.original"
+    }
   ]
 }

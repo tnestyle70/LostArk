@@ -1,4 +1,4 @@
-LOSTARK_ANIM_EVENTS 5 "LanceMaster" 3114
+LOSTARK_ANIM_EVENTS 5 "LanceMaster" 3117
 "flm_att_battle_compete_1_loop" CANCEL startms=0 endms=5000 payload="입력끝" src=orig
 "flm_att_battle_compete_1_loop" CANCEL startms=0 endms=5000 payload="입력없음" src=orig
 "flm_att_battle_compete_1_loop" EFFECT startms=0 payload="FX_PC_Confront_00.Par_J_GuardHolding_04" src=orig
@@ -309,6 +309,9 @@ LOSTARK_ANIM_EVENTS 5 "LanceMaster" 3114
 "flm_sk_chestdestruction_04" EFFECT startms=298 payload="FX_CM_02.Light.Par_MP_Light_05_L" src=orig
 "flm_sk_chestdestruction_04" HIT startms=99 endms=150 rep=2 repms=120 fz=600 fzin=200 fzout=300 push=10 pushr=40 area=2 ar=160 aa=140 ah=150 ax=-20 arem=0 maxt=0 src=orig
 "flm_sk_chestdestruction_04" HIT startms=338 endms=389 rep=1 repms=0 fz=450 fzin=150 fzout=250 push=80 pushr=10 area=2 ar=220 aa=190 ah=150 ax=-10 arem=0 maxt=0 src=orig
+"flm_sk_chestdestruction_04" HIT startms=550 endms=700 rep=1 repms=0 fz=450 fzin=150 fzout=250 push=80 pushr=10 area=3 ar=220 aa=240 ah=150 ax=20 arem=0 maxt=0 src=orig
+"flm_sk_chestdestruction_04" HIT startms=750 endms=900 rep=1 repms=0 fz=450 fzin=150 fzout=250 push=80 pushr=10 area=3 ar=220 aa=240 ah=150 ax=20 arem=0 maxt=0 src=orig
+"flm_sk_chestdestruction_04" HIT startms=1100 endms=1250 rep=1 repms=0 fz=600 fzin=200 fzout=300 push=110 pushr=50 area=3 ar=220 aa=240 ah=150 ax=20 arem=0 maxt=0 src=orig
 "flm_sk_chestdestruction_04" EFFECT startms=338 payload="" src=orig
 "flm_sk_chestdestruction_04" CANCEL startms=348 endms=1458 payload="[선스]" src=orig
 "flm_sk_chestdestruction_04" CANCEL startms=401 endms=1504 payload="[선이]" src=orig
@@ -2130,7 +2133,7 @@ LOSTARK_ANIM_EVENTS 5 "LanceMaster" 3114
 "flm_sk_squalllance_01" EFFECT startms=900 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
 "flm_sk_squalllance_01" EFFECT startms=900 payload="FX_PC_FLM_00.Par_K_FLM_SquallLance_Spear_00" src=orig
 "flm_sk_squalllance_01" HIT startms=983 endms=1034 rep=1 repms=0 fz=450 fzin=150 fzout=250 push=80 pushr=50 area=2 ar=380 aa=180 ah=150 ax=-20 arem=0 maxt=0 src=orig
-"flm_sk_squalllance_01" HIT startms=1302 endms=1352 rep=1 repms=0 fz=600 fzin=200 fzout=300 push=60 pushr=450 area=2 ar=450 aa=200 ah=150 ax=-20 arem=0 maxt=0 src=orig
+"flm_sk_squalllance_01" HIT startms=1302 endms=1352 rep=1 repms=0 fz=600 fzin=200 fzout=300 push=60 pushr=-450 area=2 ar=450 aa=200 ah=150 ax=-20 arem=0 maxt=0 src=orig
 "flm_sk_squalllance_01" SHAKE startms=900 payload="dur=0.3;in=0;out=0.2;x=6,50;y=6,50;z=6,50;fov=0,0" src=orig
 "flm_sk_squalllance_01" EFFECT startms=950 payload="FX_PC_FLM_00.Par_K_FLM_SquallLance_Dust_00" src=orig
 "flm_sk_squalllance_01" EFFECT startms=983 payload="" src=orig
@@ -3103,7 +3106,7 @@ LOSTARK_ANIM_EVENTS 5 "LanceMaster" 3114
 "flm_sk_dragonsweep_01" HIT startms=420 endms=520 rep=1 repms=0 fz=600 fzin=200 fzout=300 push=110 pushr=50 area=1 ar=260 aa=0 ah=150 ax=0 arem=0 maxt=0 src=orig
 "flm_sk_dragonsweep_01" HIT startms=600 endms=700 rep=1 repms=0 fz=750 fzin=200 fzout=300 push=110 pushr=50 area=1 ar=260 aa=0 ah=150 ax=0 arem=0 maxt=0 src=orig
 "flm_sk_dragonsweep_02" HIT startms=900 endms=1000 rep=1 repms=0 fz=600 fzin=200 fzout=300 push=0 pushr=0 area=1 ar=320 aa=0 ah=150 ax=0 arem=0 maxt=0 src=orig
-"flm_sk_hurricaneswing_02" HIT startms=129 endms=179 rep=1 repms=0 fz=450 fzin=250 fzout=350 push=60 pushr=450 area=1 ar=220 aa=0 ah=150 ax=20 arem=0 maxt=0 src=orig
+"flm_sk_hurricaneswing_02" HIT startms=129 endms=179 rep=1 repms=0 fz=450 fzin=250 fzout=350 push=60 pushr=-450 area=1 ar=220 aa=0 ah=150 ax=20 arem=0 maxt=0 src=orig
 "flm_sk_hurricaneswing_custom_7" HIT startms=399 endms=503 rep=1 repms=0 fz=600 fzin=200 fzout=300 push=60 pushr=450 area=1 ar=300 aa=0 ah=150 ax=20 arem=0 maxt=0 src=orig
 "flm_sk_hurricaneswing_custom_8" HIT startms=821 endms=934 rep=1 repms=0 fz=600 fzin=200 fzout=300 push=180 pushr=450 area=3 ar=420 aa=80 ah=150 ax=0 arem=10 maxt=0 src=orig
 "flm_sk_lastwhisper_custom_5_end" HIT startms=326 endms=394 rep=1 repms=0 fz=600 fzin=200 fzout=300 push=210 pushr=300 area=2 ar=600 aa=160 ah=150 ax=-20 arem=0 maxt=0 src=orig

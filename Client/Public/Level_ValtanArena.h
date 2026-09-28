@@ -13,6 +13,7 @@
 #include "PlayerController.h"
 #include "InteractKeyPromptView.h"
 #include "RaidGateProgressView.h"
+#include "StatusEffectTextView.h"
 #include "WorldPlayerChatBubbleView.h"
 #include "ValtanCinematicCameraController.h"
 #include "ValtanCinematicCameraDocument.h"
@@ -34,6 +35,8 @@ NS_END
 NS_BEGIN(Client)
 
 struct VALTAN_PATTERN_VIEW;
+struct CLASS_MOVIE_TIMELINE;
+struct EFFECT_DOCUMENT_DESC;
 class EFFECT_V2_CATALOG_SNAPSHOT;
 class CCamera_Free;
 class CCharacter;
@@ -59,6 +62,13 @@ public:
 
 	static CLevel_ValtanArena* Get_Active() { return s_pActiveInstance; }
 	bool_t Is_CinematicCameraActive() const { return m_bCinematicCameraApplied; }
+	bool_t Is_CinematicHUDSuppressed() const
+	{
+		// Source actors can outlive camera cuts, and an exit blend can outlive
+		// the source. Both owners release their own part on completion or stop.
+		return m_strSourceCinematic == "entrance" || m_strSourceCinematic == "finale" ||
+			(m_bCinematicCameraApplied && m_bCinematicCameraHidesHUD);
+	}
     const std::string& Get_SourceCinematicPreparationStatus() const { return m_strSourceCinematicPreparationStatus; }
     void Collect_SourceCinematicSubtitles(std::vector<WORLD_SEQUENCE_SUBTITLE_SAMPLE>& out) const
     {
@@ -87,6 +97,31 @@ public:
         const shared_ptr<CValtan>& previewBoss,
         std::string& status);
     void Debug_StopActionWorkbenchCinematic();
+    // Effect Tool owns source-body edits; this Level supplies the original scene clock.
+    struct EFFECT_CINEMATIC_EDITOR_STATE final
+    {
+        bool available = false, active = false, paused = true, loop = false;
+        double clockMs = 0., durationMs = 0., playbackRate = 1.;
+        bool selectionActive = false, selectionRepeat = false;
+        std::string status;
+    };
+    std::shared_ptr<const CLASS_MOVIE_TIMELINE> Debug_GetEffectCinematicTimeline();
+    const EFFECT_CINEMATIC_EDITOR_STATE& Debug_GetEffectCinematicState() const { return m_EffectCinematicEditorState; }
+    bool_t Debug_PlayEffectCinematic(std::string& status);
+    bool_t Debug_SeekEffectCinematic(double timeMs, std::string& status);
+    void Debug_PauseEffectCinematic(bool paused);
+    void Debug_StopEffectCinematic();
+    bool_t Debug_PreviewCinematicEffect(const EFFECT_DOCUMENT_DESC& document, std::string& status);
+    bool_t Debug_SelectCinematicEffectOccurrence(const std::string& trackId, std::string& status);
+    bool_t Debug_PlayCinematicEffectSelection(const EFFECT_DOCUMENT_DESC& full,
+        const EFFECT_DOCUMENT_DESC& selected, const std::vector<std::string>& ids,
+        double startMs, double endMs, bool repeat, std::string& status);
+    bool_t Debug_PreviewCinematicEffectSelection(const EFFECT_DOCUMENT_DESC& full,
+        const EFFECT_DOCUMENT_DESC& selected, const std::vector<std::string>& ids,
+        double startMs, double endMs, std::string& status);
+    bool_t Debug_ClearCinematicEffectPreviews(std::string& status);
+    bool_t Debug_SetEffectCinematicPlaybackRate(double rate);
+
 	bool_t Debug_PrepareActionWorkbenchDestruction(
 		const VALTAN_PATTERN_VIEW& pattern, std::string& status);
 	bool_t Debug_SampleActionWorkbenchDestruction(
@@ -245,6 +280,7 @@ private:
 		std::string_view placementId,
 		std::string_view archetypeId);
 	void Update_WorldDestructionPresentation(f32_t fTimeDelta);
+	void Update_StatusEffectText(f32_t fTimeDelta);
 	bool_t Apply_EncounterPropPresentation();
 	/* Death-screen overlay: real deadscene.gfx panel art + revive button. Local
 	player only, unlimited revives (Handle_RevivePlayer already gates this to
@@ -344,6 +380,16 @@ private:
     VALTAN_CINEMATIC_CAMERA_INPUT m_SourceDeathInput{};
     weak_ptr<CValtan> m_pSourceCinematicBoss;
 #ifdef _DEBUG
+    CWorldSequencePlayer m_EffectCinematicEditorPlayer;
+    EFFECT_CINEMATIC_EDITOR_STATE m_EffectCinematicEditorState;
+    std::shared_ptr<const CLASS_MOVIE_TIMELINE> m_EffectCinematicEditorTimeline;
+    double m_EffectCinematicSelectionStartMs = 0., m_EffectCinematicSelectionEndMs = 0.;
+    std::string m_strEffectCinematicSelectedTrackId;
+    weak_ptr<CValtan> m_EffectCinematicSuppressedBoss;
+    bool_t Prepare_EffectCinematicEditor(std::string& status);
+    bool_t Start_EffectCinematicEditor(std::string& status);
+    bool_t Sample_EffectCinematicEditor(double timeMs, bool discontinuous, std::string& status);
+    void Update_EffectCinematicEditor(f32_t dt);
     CWorldSequencePlayer m_ActionWorkbenchCinematicPlayer;
 	CDestructionSimulationController m_ActionWorkbenchDestruction;
 	CWorldDestructionDocument m_ActionWorkbenchDestructionGroup;
@@ -366,6 +412,7 @@ private:
 	weak_ptr<CTransform> m_pCinematicRestoreTarget;
 	bool_t m_bCinematicRestoreFollowRequested = false;
 	bool_t m_bCinematicCameraApplied = false;
+	bool_t m_bCinematicCameraHidesHUD = false;
 	uint64_t m_iCinematicCameraOwnerId = 0u;
 	CEncounterPatternReference m_ValtanEncounterReference;
 	CValtanCinematicCameraDocument m_ValtanCinematicCameraDocument;
@@ -388,6 +435,7 @@ private:
 	RAID_PRELUDE_BGM_STATE m_eRaidPreludeBgmState =
 		RAID_PRELUDE_BGM_STATE::NONE;
 	CWorldPlayerNameplateView m_PlayerNameplateView;
+	CStatusEffectTextView m_StatusEffectTextView;
 	std::vector<REPLICATED_PLAYER_VIEW> m_NameplatePlayers;
 	shared_ptr<IPlayerCommandSink> m_pPlayerCommandSink;
 	CPartyInteractionView m_PartyInteraction;

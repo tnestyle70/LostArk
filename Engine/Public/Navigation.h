@@ -57,6 +57,13 @@ public:
 	bool_t Try_SampleWalkablePoint(
 		fvector_t vWorldPosition,
 		float3_t& outPosition) const;
+	/* A detail region is another NavGrid navigation for the grid
+	 "<AreaId>.<regionId>" loaded beside this base grid. A query whose XZ lies
+	 inside a region footprint is answered by that region alone, the rule the
+	 Server navigation applies, so predicted height and paths match the
+	 authority. Stacked footprints are told apart by the query height. Regions
+	 do not nest, carry no runtime blockers and path with their own step policy. */
+	HRESULT Attach_Region(unique_ptr<CNavigation> pRegion);
 	bool_t Register_RuntimeBlocker(
 		const std::string& blockerId,
 		const vector<uint32_t>& cellIndices,
@@ -84,6 +91,7 @@ private:
 		const vector<float3_t>& Path,
 		f32_t fMaxStepHeight,
 		vector<float3_t>& OutPath) const;
+	CNavigation* Select_Region(f32_t fX, f32_t fZ, f32_t fHintY) const;
 
 private:
 	MODE									m_eMode = { MODE::LEGACY_TRIANGLE };
@@ -92,6 +100,7 @@ private:
 	shared_ptr<CNavGrid>						m_pNavGrid = { nullptr };
 	unique_ptr<CPathFinder>					m_pPathFinder = { nullptr };
 	f32_t m_fMaxStepHeight = 0.6f;
+	vector<shared_ptr<CNavigation>> m_Regions;
 
 private:
 	shared_ptr<class CTransform>			m_pTargetTransformCom = {};

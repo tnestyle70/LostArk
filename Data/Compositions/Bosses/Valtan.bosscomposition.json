@@ -3,7 +3,7 @@
   "formatVersion": 1,
   "compositionId": "boss.composition.valtan",
   "status": "SHADOW",
-  "revision": 1,
+  "revision": 4,
   "displayName": "Valtan Boss Composition",
   "bossArchetypeId": "BOSS_VALTAN",
   "encounterId": "ENCOUNTER_VALTAN",
@@ -56,9 +56,9 @@
   ],
   "coverage": {
     "kind": "VALTAN_SPLIT_JOIN",
-    "expectedPatternCount": 42,
-    "expectedStageCount": 194,
-    "expectedIdentitySha256": "9ba6f9f2c31f3435a7b793f45e4ce7aba150fe11dc1e757fe756c364e17788ee"
+    "expectedPatternCount": 44,
+    "expectedStageCount": 242,
+    "expectedIdentitySha256": "b9bc5d670d6f257beb0fc9b520cd7677323e4f0839417117cb8aefddfce8d979"
   },
   "patterns": [
     {
@@ -186,6 +186,12 @@
     },
     {
       "patternId": "VALTAN_GROUND_ROAR"
+    },
+    {
+      "patternId": "VALTAN_3H_FLOOR_BREAK_ROCK_ROAR"
+    },
+    {
+      "patternId": "VALTAN_ROAR_3H_DESTROY"
     }
   ]
 }

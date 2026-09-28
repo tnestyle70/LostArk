@@ -592,6 +592,7 @@ def _normalized_v1_cues(
                 "sourceEndMs",
                 "timingBasis",
                 "stageOffsetMs",
+                "stageEndMs",
                 "anchorSlotId",
                 "followPolicy",
                 "stopPolicy",
@@ -619,10 +620,11 @@ def _normalized_v1_cues(
             "anchor": anchor,
             "payload": payload,
         }
-        if cue.get("sourceEndMs") is not None:
-            payload["sourceClock"]["endMs"] = cue["sourceEndMs"]
-            normalized["endMs"] = _resolve_clip_source_ms(
-                stage, clip_id, cue["sourceEndMs"], clamp_to_stage=False
+        source_end = cue.get("stageEndMs" if stage_clock else "sourceEndMs")
+        if source_end is not None:
+            payload["sourceClock"]["endMs"] = source_end
+            normalized["endMs"] = source_end if stage_clock else _resolve_clip_source_ms(
+                stage, clip_id, source_end, clamp_to_stage=False
             )
         result.append(normalized)
     return result
@@ -878,10 +880,11 @@ def _normalized_detached_v1_cue(row: Mapping[str, Any]) -> dict[str, Any]:
         "payload": payload,
         "detachedReason": "OUTSIDE_MANAGED_PATTERN_GRAPH",
     }
-    source_end = row.get("sourceEndMs")
+    end_field = "stageEndMs" if stage_clock else "sourceEndMs"
+    source_end = row.get(end_field)
     if source_end is not None:
         result["endMs"] = _require_nonnegative_int(
-            source_end, f"{cue_id}.sourceEndMs"
+            source_end, f"{cue_id}.{end_field}"
         )
         payload["sourceClock"]["endMs"] = result["endMs"]
     return result
@@ -1136,7 +1139,7 @@ def _validate_combat_object_sound_document(
                 "soundBank",
                 "soundEvent",
             ),
-            ("hitId", "presentationEventId"),
+            ("hitId", "presentationEventId", "playbackOffsetMs"),
             context,
         )
         binding_id = _require_string(row["bindingId"], f"{context}.bindingId")
@@ -1145,6 +1148,10 @@ def _validate_combat_object_sound_document(
                 f"duplicate Combat Object Sound bindingId: {binding_id}"
             )
         binding_ids.add(binding_id)
+        if "playbackOffsetMs" in row:
+            offset = _require_nonnegative_int(row["playbackOffsetMs"], f"{context}.playbackOffsetMs")
+            if offset > 600000:
+                raise CompositionError(f"{context}.playbackOffsetMs must be <= 600000")
         for field in ("combatObjectArchetypeId", "soundBank", "soundEvent"):
             _require_string(row[field], f"{binding_id}.{field}")
         targets = target_index.get(row["combatObjectArchetypeId"])
@@ -1282,7 +1289,10 @@ def _validate_v1_effect_owners(
             if stage_clock
             else ("clipOccurrenceId", "sourceStartMs", "sourceEndMs")
         )
-        _require_exact_fields(row, required, ("scalePolicy", "playbackOffsetMs"), context)
+        optional = {"scalePolicy", "playbackOffsetMs"}
+        if stage_clock:
+            optional.add("stageEndMs")
+        _require_exact_fields(row, required, optional, context)
         if "playbackOffsetMs" in row:
             offset = _require_nonnegative_int(row["playbackOffsetMs"], f"{context}.playbackOffsetMs")
             if offset > 600_000:
@@ -1401,6 +1411,17 @@ def _validate_v1_effect_owners(
         if animation is None:
             raise CompositionError(f"{binding_id}.actionId has no Animation binding")
 
+        if anchor_slot_id.startswith("pattern.landing."):
+            motion = pattern.get("serverMotion")
+            if (
+                anchor_slot_id != "pattern.landing.snapshot"
+                or follow_policy != "snapshot"
+                or not isinstance(motion, dict)
+                or motion.get("kind") not in ("LEAP_TO_ANCHOR", "LEAP_TO_TARGET")
+            ):
+                raise CompositionError(
+                    f"{binding_id} landing anchor requires an admitted Server leap snapshot"
+                )
         if anchor_slot_id.startswith("pattern.target."):
             if (
                 anchor_slot_id != "pattern.target.snapshot"
@@ -1417,6 +1438,9 @@ def _validate_v1_effect_owners(
                 )
         if anchor_slot_id.startswith("arena.center"):
             motion = pattern.get("serverMotion")
+            stage_nearest_after_center = valtan._stage_tracks_nearest_after_center(
+                pattern, stage
+            )
             fixed_center = anchor_slot_id == "arena.center" and follow_policy == "snapshot"
             fixed_facing = (
                 anchor_slot_id == "arena.center.facing"
@@ -1427,8 +1451,10 @@ def _validate_v1_effect_owners(
             target_follow = (
                 anchor_slot_id == "arena.center.target-follow"
                 and follow_policy == "follow"
-                and pattern.get("targetPolicy") == "LOCK_RANDOM_ALIVE_ON_START"
-                and pattern.get("aimPolicy") == "TRACK_TARGET_EACH_TICK"
+                and (stage_nearest_after_center or (
+                    pattern.get("targetPolicy") == "LOCK_RANDOM_ALIVE_ON_START"
+                    and pattern.get("aimPolicy") == "TRACK_TARGET_EACH_TICK"
+                ))
             )
             fixed_center_motion = (
                 isinstance(motion, dict)
@@ -1438,7 +1464,7 @@ def _validate_v1_effect_owners(
                 isinstance(motion, dict)
                 and motion.get("kind") == "LEAP_TO_ANCHOR"
                 and motion.get("moveToAnchorBeforeTakeoff") is True
-            )
+            ) or stage_nearest_after_center
             if (
                 not (fixed_center or fixed_facing or target_follow)
                 or (fixed_center and not fixed_center_motion)
@@ -1454,10 +1480,24 @@ def _validate_v1_effect_owners(
             )
             if start_ms >= stage_duration:
                 raise CompositionError(f"{binding_id}.stageOffsetMs is outside its Stage")
-            if stop_policy != "natural" or repeat_policy != "once":
+            if repeat_policy != "once":
                 raise CompositionError(
-                    f"{binding_id} STAGE_CLOCK requires natural/once policies"
+                    f"{binding_id} STAGE_CLOCK requires once repeatPolicy"
                 )
+            stage_end = row.get("stageEndMs")
+            if stop_policy == "natural":
+                if stage_end is not None:
+                    raise CompositionError(
+                        f"{binding_id}.stageEndMs must be null for natural stopPolicy"
+                    )
+            else:
+                end_ms = _require_nonnegative_int(
+                    stage_end, f"{binding_id}.stageEndMs"
+                )
+                if end_ms <= start_ms or end_ms > MAX_CUE_TIME_MS:
+                    raise CompositionError(
+                        f"{binding_id}.stageEndMs is outside its bounded cue window"
+                    )
             tuple_key = (action_id, "STAGE_CLOCK", occurrence_id)
         else:
             clip_id = _require_owner_stable_id(

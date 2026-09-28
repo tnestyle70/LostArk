@@ -40,6 +40,7 @@
 #include "RuntimeAssetRoot.h"
 #include "Transform.h"
 #include "UIInputRouter.h"
+#include "UILabelFont.h"
 #include "UILayoutRuntime.h"
 #include "ValtanPatternEffectCueDocument.h"
 #include "ValtanPatternTree.h"
@@ -48,6 +49,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstring>
+#include <filesystem>
 #include <fstream>
 #include <sstream>
 #include <unordered_set>
@@ -57,11 +59,38 @@
 
 namespace
 {
+	/* Client/Default/CharacterSelectBrowse.user.log, beside the startup log. */
+	void Write_BrowseLog(const std::string& strLine)
+	{
+		wchar_t szModule[MAX_PATH] = {};
+		const DWORD iLength = GetModuleFileNameW(nullptr, szModule, MAX_PATH);
+		if (0u == iLength || iLength >= MAX_PATH)
+			return;
+		const std::filesystem::path Path = std::filesystem::path(szModule).parent_path()
+			.parent_path().parent_path() / L"Default" / L"CharacterSelectBrowse.user.log";
+		std::ofstream Output(Path, std::ios::binary | std::ios::app);
+		if (!Output)
+			return;
+		SYSTEMTIME Time{};
+		GetLocalTime(&Time);
+		char szStamp[40] = {};
+		(void)sprintf_s(szStamp, "%02u:%02u:%02u.%03u ", Time.wHour, Time.wMinute, Time.wSecond, Time.wMilliseconds);
+		Output << szStamp << strLine << "\n";
+	}
+
 	constexpr f32_t ARENA_INITIAL_TARGET_X = -772.017f;
 	constexpr f32_t ARENA_INITIAL_TARGET_Y = -142.55f;
 	constexpr f32_t ARENA_INITIAL_TARGET_Z = 197.538f;
 	/* Owner token for the camera presentation override the customizing screen holds. */
 	constexpr uint64_t CUSTOMIZING_CAMERA_OWNER_ID = 0x4355'53544F4D'495Aull;
+	/* Owner token for the camera override the class-standing step holds. */
+	constexpr uint64_t SHOWCASE_CAMERA_OWNER_ID = 0x5348'4F57'4341'5345ull;
+	/* Full-body framing from the front: at 4.6 m a 30 degree lens covers about 2.5 m, so a
+	class about 1.8 m tall fills roughly three quarters of the height, as the retail screen does. */
+	constexpr f32_t SHOWCASE_CAMERA_METRES = 4.6f;
+	constexpr f32_t SHOWCASE_EYE_HEIGHT = 1.05f;
+	constexpr f32_t SHOWCASE_LOOK_HEIGHT = 0.95f;
+	constexpr f32_t SHOWCASE_FOV_DEGREES = 30.f;
 	constexpr std::chrono::seconds CONNECTION_TIMEOUT{ 5 };
 	constexpr std::chrono::seconds CLASS_CHANGE_TIMEOUT{ 5 };
 	constexpr std::chrono::seconds ARENA_SPAWN_REQUEST_TIMEOUT{ 5 };
@@ -279,6 +308,7 @@ HRESULT CLevel_CharacterSelect::Initialize()
 	once up front instead of duplicating the same slot list a second time. */
 	Update_ClassList();
 	Update_ArenaSpawnButtons();
+	Update_BrowseButtons();
 
 	m_pCustomizingView = std::make_unique<CCustomizingView>(
 		m_pDevice, m_pContext, ETOUI(LEVEL::CHARACTER_SELECT));
@@ -303,8 +333,73 @@ HRESULT CLevel_CharacterSelect::Initialize()
 	return S_OK;
 }
 
+void CLevel_CharacterSelect::Set_BrowseStage(const CLASS_BROWSE_STAGE eStage, const char* pReason)
+{
+	static constexpr const char* NAMES[] = { "CATEGORY", "PREVIEW", "TRIAL" };
+	Write_BrowseLog(std::string("stage ") + NAMES[static_cast<int>(m_eBrowseStage)] + " -> " +
+		NAMES[static_cast<int>(eStage)] + " reason=" + pReason);
+	/* Leaving the standing step gives the camera back before whatever comes next (a category
+	movie, the trial follow camera) asks for it. */
+	if (CLASS_BROWSE_STAGE::PREVIEW != eStage)
+		End_ClassShowcaseCamera();
+	m_eBrowseStage = eStage;
+}
+
+void CLevel_CharacterSelect::End_ClassShowcaseCamera()
+{
+	if (!m_bShowcaseCameraActive)
+		return;
+	m_bShowcaseCameraActive = false;
+	if (nullptr != m_pCamera)
+		m_pCamera->End_PresentationOverride(SHOWCASE_CAMERA_OWNER_ID);
+}
+
+void CLevel_CharacterSelect::Update_ClassShowcaseCamera()
+{
+	if (!Is_ClassShowcaseOpen() || nullptr == m_pCamera || nullptr == m_pActiveCharacter ||
+		nullptr == m_pActiveCharacter->Get_Transform())
+	{
+		End_ClassShowcaseCamera();
+		return;
+	}
+	if (!m_bShowcaseCameraActive)
+	{
+		if (!m_pCamera->Begin_PresentationOverride(SHOWCASE_CAMERA_OWNER_ID))
+			return;
+		m_bShowcaseCameraActive = true;
+	}
+	/* The camera stands in front of the class along its own facing, so the class looks at the
+	viewer wherever the arena spawned it. */
+	const auto pTransform = m_pActiveCharacter->Get_Transform();
+	const vector_t vPosition = pTransform->Get_State(Engine::STATE::POSITION);
+	vector_t vLook = XMVectorSetY(pTransform->Get_State(Engine::STATE::LOOK), 0.f);
+	if (XMVector3Equal(vLook, XMVectorZero()))
+		vLook = XMVectorSet(0.f, 0.f, 1.f, 0.f);
+	vLook = XMVector3Normalize(vLook);
+	float3_t vEye{}, vAt{};
+	XMStoreFloat3(&vEye, vPosition + vLook * SHOWCASE_CAMERA_METRES +
+		XMVectorSet(0.f, SHOWCASE_EYE_HEIGHT, 0.f, 0.f));
+	XMStoreFloat3(&vAt, vPosition + XMVectorSet(0.f, SHOWCASE_LOOK_HEIGHT, 0.f, 0.f));
+	m_pCamera->Apply_PresentationPose(SHOWCASE_CAMERA_OWNER_ID, vEye, vAt, SHOWCASE_FOV_DEGREES);
+}
+
+void CLevel_CharacterSelect::Log_PresentationGate()
+{
+	static constexpr const char* NAMES[] = { "CATEGORY", "PREVIEW", "TRIAL" };
+	static constexpr const char* MODES[] = { "CONNECTING", "SERVER_ARENA", "RETURNING_TO_LOBBY" };
+	const int32_t iOpen = Is_ProductPresentationOpen() ? 1 : 0;
+	if (iOpen == m_iLoggedPresentationOpen)
+		return;
+	m_iLoggedPresentationOpen = iOpen;
+	Write_BrowseLog(std::string("presentationOpen=") + std::to_string(iOpen) + " stage=" +
+		NAMES[static_cast<int>(m_eBrowseStage)] + " mode=" + MODES[static_cast<int>(m_eMode)] +
+		" customizing=" + std::to_string(Is_CustomizingOpen() ? 1 : 0) +
+		" cinematic=" + std::to_string(Is_ClassCinematicActive() ? 1 : 0));
+}
+
 void CLevel_CharacterSelect::Update(const f32_t fTimeDelta)
 {
+	Log_PresentationGate();
 	__super::Update(fTimeDelta);
 	Update_CustomizingStageVisibility();
 	if (m_pMapEffectPresentation)
@@ -348,13 +443,17 @@ void CLevel_CharacterSelect::Update(const f32_t fTimeDelta)
 	{
 		Hide_ClassList();
 		Hide_ArenaSpawnButtons();
+		/* Hides the preview/trial slots too: it shows nothing while customizing is open. */
+		Update_BrowseButtons();
 	}
 	else
 	{
 		Update_ClassList();
 		Update_ArenaSpawnButtons();
+		Update_BrowseButtons();
 	}
 	Update_Customizing(fTimeDelta);
+	Update_ClassShowcaseCamera();
 	if (!Can_PlayClassCinematic())
 		m_ClassSelectionPresentation.Stop();
 	else
@@ -2176,7 +2275,7 @@ void CLevel_CharacterSelect::Update_CustomizingStageVisibility()
 	7 with no edge anywhere -- a gradient, not a floor -- so the whole stage comes down while
 	the screen is open and every placement goes back to the visibility its own authored record
 	carries on close. */
-	const bool_t wantsStageHidden = Is_CustomizingOpen();
+	const bool_t wantsStageHidden = Is_CustomizingOpen() || Is_ClassShowcaseOpen();
 	if (wantsStageHidden == m_isCustomizingStageHidden)
 		return;
 	m_isCustomizingStageHidden = wantsStageHidden;
@@ -2367,6 +2466,7 @@ void CLevel_CharacterSelect::Open_Customizing()
 	if (nullptr == m_pCustomizingView)
 		return;
 	m_pCustomizingView->Open();
+	End_ClassShowcaseCamera();
 	/* The retail framing is an exact eye/look/FOV, so it goes through the presentation
 	override rather than the follow camera's own smoothed offsets. */
 	if (nullptr != m_pCamera)
@@ -3050,8 +3150,10 @@ void CLevel_CharacterSelect::Update_ClassList()
 		? Get_SelectedJsonClassName(m_iSelectedClassIndex)
 		: string{};
 
+	const bool_t bClassOnShow = !Is_ClassCinematicActive() &&
+		CLASS_BROWSE_STAGE::CATEGORY != m_eBrowseStage;
 	for (const char* pId : ALWAYS_VISIBLE_CLASS_LIST_CHROME)
-		m_pClassSelectView->Set_SlotVisible(pId, !Is_ClassCinematicActive() ||
+		m_pClassSelectView->Set_SlotVisible(pId, bClassOnShow ||
 			0 == std::strcmp(pId, "PanelBgRight") || 0 == std::strcmp(pId, "PanelBgRightBottom") ||
 			0 == std::strcmp(pId, "Frame"));
 	/* ownerClass filter CHUDRuntimeView's own Render(strSelectedClass, revision) used to apply
@@ -3059,13 +3161,14 @@ void CLevel_CharacterSelect::Update_ClassList()
 	own right-panel slots and hides every other class's. */
 	for (const CLASS_OWNED_SLOT& Slot : CLASS_OWNED_SLOTS)
 		m_pClassSelectView->Set_SlotVisible(Slot.pSlotId,
-			!Is_ClassCinematicActive() && strSelectedClass == Slot.pOwnerClass);
+			bClassOnShow && strSelectedClass == Slot.pOwnerClass);
 
 	const bool_t hasCompleteProductButtons =
 		Has_CompleteProductButtonSlots(m_pClassSelectView.get());
 	for (const CHARACTER_SELECT_PRODUCT_SLOT& Slot : PRODUCT_BUTTON_SLOTS)
 		m_pClassSelectView->Set_SlotVisible(Slot.pSlotId, hasCompleteProductButtons &&
-			(!Is_ClassCinematicActive() || 0 == std::strcmp(Slot.pSlotId, "GoBackIcon")));
+			((!Is_ClassCinematicActive() && CLASS_BROWSE_STAGE::TRIAL == m_eBrowseStage) ||
+				0 == std::strcmp(Slot.pSlotId, "GoBackIcon")));
 
 	CUIInputRouter& Router = CUIInputRouter::Get();
 	const f32_t fRefWidth = m_pClassSelectView->Get_ResolutionWidth();
@@ -3128,6 +3231,7 @@ void CLevel_CharacterSelect::Update_ClassList()
 			{
 				CMainApp::Play_UIButtonClickSound();
 				m_iExpandedCategory = bExpanded ? -1 : i;
+				Set_BrowseStage(CLASS_BROWSE_STAGE::CATEGORY, "category-row-click");
 				const bool selectedMovie = Select_ClassCinematic(SUPPORTED_CLASSES[Entry.iSupportedClassIndex]);
 				if (!bExpanded && selectedMovie && m_ClassSelectionPresentation.Has_Class(Get_ClassMovieId()))
 				{
@@ -3181,7 +3285,9 @@ void CLevel_CharacterSelect::Update_ClassList()
 				if (Router.Is_Clicked(Entry.fX, fThumbY, THUMB_W, THUMB_H, fRefWidth, fRefHeight))
 				{
 					CMainApp::Play_UIButtonClickSound();
-					Request_ClassChange(Entry.iSupportedClassIndex);
+					if (Request_ClassChange(Entry.iSupportedClassIndex) &&
+						CLASS_BROWSE_STAGE::CATEGORY == m_eBrowseStage)
+						Set_BrowseStage(CLASS_BROWSE_STAGE::PREVIEW, "class-thumbnail-click");
 				}
 			}
 
@@ -3283,7 +3389,8 @@ void CLevel_CharacterSelect::Render_ClassListText()
 	the tags, so no text is drawn there. */
 	for (const CLASS_LIST_ENTRY& Entry : CLASS_LIST_ENTRIES)
 	{
-		if (Is_ClassCinematicActive() || Entry.iSupportedClassIndex != m_iSelectedClassIndex)
+		if (Is_ClassCinematicActive() || CLASS_BROWSE_STAGE::CATEGORY == m_eBrowseStage ||
+			Entry.iSupportedClassIndex != m_iSelectedClassIndex)
 			continue;
 
 		/* Aligned against Warlord_NameSymbol's current rect (50x50 at y=191.29): text sits to
@@ -3383,7 +3490,8 @@ void CLevel_CharacterSelect::Update_ArenaSpawnButtons()
 	const bool_t bInteractable = MODE::SERVER_ARENA == m_eMode &&
 		!m_isCreateCharacterModalOpen && !Is_ClassCinematicActive() &&
 		!Is_ClassPresentationPreparationPending() &&
-		!CLevelTransitionService::Is_Pending();
+		!CLevelTransitionService::Is_Pending() &&
+		CLASS_BROWSE_STAGE::TRIAL == m_eBrowseStage;
 
 	/* The authored spawn icon rects overlap by a few pixels. Resolve the visually topmost slot
 	first (later draw order wins) so one physical click can submit exactly one typed command. */
@@ -3534,16 +3642,121 @@ void CLevel_CharacterSelect::Update_ArenaSpawnButtons()
 				if (Router.Is_Clicked(fX, fY, fWidth, fHeight, fRefWidth, fRefHeight))
 				{
 					CMainApp::Play_UIButtonClickSound();
-					Leave_ServerArena();
+					if (CLASS_BROWSE_STAGE::TRIAL == m_eBrowseStage)
+						Set_BrowseStage(CLASS_BROWSE_STAGE::PREVIEW, "go-back-icon-click");
+					else
+						Leave_ServerArena();
 				}
 			}
 		}
 	}
 }
 
+void CLevel_CharacterSelect::Update_BrowseButtons()
+{
+	constexpr const char* PREVIEW_STEP_SLOTS[] = {
+		"PreviewButton", "TrialButton", "CreateCharacterCenterButton" };
+	constexpr const char* TRIAL_STEP_SLOTS[] = { "TrialModeBand", "TrialModePlate" };
+	if (nullptr == m_pClassSelectView)
+		return;
+	const bool_t bArena = MODE::SERVER_ARENA == m_eMode && !Is_CustomizingOpen();
+	const bool_t bPreview = bArena && !Is_ClassCinematicActive() &&
+		CLASS_BROWSE_STAGE::PREVIEW == m_eBrowseStage;
+	const bool_t bTrial = bArena && CLASS_BROWSE_STAGE::TRIAL == m_eBrowseStage;
+	for (const char* pId : PREVIEW_STEP_SLOTS)
+		m_pClassSelectView->Set_SlotVisible(pId, bPreview);
+	for (const char* pId : TRIAL_STEP_SLOTS)
+		m_pClassSelectView->Set_SlotVisible(pId, bTrial);
+	if (!bPreview || m_isCreateCharacterModalOpen || CLevelTransitionService::Is_Pending())
+		return;
+
+	CUIInputRouter& Router = CUIInputRouter::Get();
+	const f32_t fRefWidth = m_pClassSelectView->Get_ResolutionWidth();
+	const f32_t fRefHeight = m_pClassSelectView->Get_ResolutionHeight();
+	for (const char* pId : PREVIEW_STEP_SLOTS)
+	{
+		f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
+		if (!m_pClassSelectView->Get_SlotRect(pId, fX, fY, fWidth, fHeight) ||
+			!Router.Is_Hovered(fX, fY, fWidth, fHeight, fRefWidth, fRefHeight))
+			continue;
+		Router.Claim_Mouse_This_Frame();
+		if (!Router.Is_Clicked(fX, fY, fWidth, fHeight, fRefWidth, fRefHeight))
+			continue;
+		CMainApp::Play_UIButtonClickSound();
+		/* Preview has no action yet. Trial waits for a class change still in flight, the same
+		condition the corner create button already waits on. */
+		if (0 == std::strcmp(pId, "TrialButton") && !m_iPendingClassIndex.has_value() &&
+			!Is_ClassPresentationPreparationPending())
+			Set_BrowseStage(CLASS_BROWSE_STAGE::TRIAL, "trial-button-click");
+		else if (0 == std::strcmp(pId, "CreateCharacterCenterButton") &&
+			!m_iPendingClassIndex.has_value())
+			Request_CreateCharacterButtonClick();
+	}
+}
+
+void CLevel_CharacterSelect::Render_BrowseLabels()
+{
+	if (nullptr == m_pClassSelectView || MODE::SERVER_ARENA != m_eMode ||
+		Is_CustomizingOpen() || m_isCreateCharacterModalOpen)
+		return;
+	const bool_t bPreview = !Is_ClassCinematicActive() &&
+		CLASS_BROWSE_STAGE::PREVIEW == m_eBrowseStage;
+	const bool_t bTrial = CLASS_BROWSE_STAGE::TRIAL == m_eBrowseStage;
+	if (!bPreview && !bTrial)
+		return;
+
+	const float2_t vViewportSize = CGameInstance::Get().Get_ViewportSize();
+	const f32_t fScaleX = vViewportSize.x / REF_WIDTH;
+	const f32_t fScaleY = vViewportSize.y / REF_HEIGHT;
+	const f32_t fUiScale = (std::min)(fScaleX, fScaleY);
+	/* Retail px at 1920 wide -> 1280 reference, through the baked label font so the small
+	captions stay sharp; rounded to whole pixels for the same reason. */
+	const auto DrawCentered = [&](const f32_t fX, const f32_t fY, const f32_t fW, const f32_t fH,
+		const wchar_t* pText, const wstring_t& strFamily, const f32_t fRetailPx,
+		const fvector_t& vColor, const bool_t bShadow)
+	{
+		f32_t fTextScale = 1.f;
+		const wstring_t strFont = UILabelFont::Resolve(
+			strFamily, fRetailPx * (2.f / 3.f) * fUiScale, fTextScale);
+		const float2_t vMeasured = CGameInstance::Get().Measure_Text(strFont, pText);
+		const float2_t vPos(
+			std::round((fX + fW * 0.5f) * fScaleX - vMeasured.x * fTextScale * 0.5f),
+			std::round((fY + fH * 0.5f) * fScaleY - vMeasured.y * fTextScale * 0.5f));
+		if (bShadow)
+			CGameInstance::Get().Draw_Text(strFont, pText, float2_t(vPos.x + 1.f, vPos.y + 1.f),
+				XMVectorSet(0.f, 0.f, 0.f, 0.85f), 0.f, float2_t(0.f, 0.f), fTextScale);
+		CGameInstance::Get().Draw_Text(strFont, pText, vPos, vColor, 0.f,
+			float2_t(0.f, 0.f), fTextScale);
+	};
+
+	f32_t fX = 0.f, fY = 0.f, fW = 0.f, fH = 0.f;
+	if (bPreview)
+	{
+		/* pccreate.preview_btn / trymod_btn: $YG760 14; complete_btn: $YoonGasiIIM 18. */
+		if (m_pClassSelectView->Get_SlotRect("PreviewButton", fX, fY, fW, fH))
+			DrawCentered(fX, fY, fW, fH, L"\xBBF8\xB9AC\xBCF4\xAE30", TEXT("Font_YG760"), 14.f,
+				Colors::White, false);
+		if (m_pClassSelectView->Get_SlotRect("TrialButton", fX, fY, fW, fH))
+			DrawCentered(fX, fY, fW, fH, L"\xCCB4\xD5D8 \xD558\xAE30", TEXT("Font_YG760"), 14.f,
+				Colors::White, false);
+		if (m_pClassSelectView->Get_SlotRect("CreateCharacterCenterButton", fX, fY, fW, fH))
+			DrawCentered(fX, fY, fW, fH, L"\xCE90\xB9AD\xD130 \xC0DD\xC131",
+				TEXT("Font_YoonGasiIIM"), 18.f, Colors::White, false);
+	}
+	else
+	{
+		/* exam_title_lb: pccreate.trymode_title, $YoonGasiIIM 26 #FFF6E2 with a drop shadow,
+		in the stage box (660,14) 600x50. */
+		DrawCentered(440.f, 9.333f, 400.f, 33.333f, L"\xCCB4\xD5D8 \xBAA8\xB4DC",
+			TEXT("Font_YoonGasiIIM"), 26.f, XMVectorSet(1.f, 246.f / 255.f, 226.f / 255.f, 1.f), true);
+	}
+}
+
 void CLevel_CharacterSelect::Render_ArenaSpawnLabels()
 {
 	if (Is_ClassCinematicActive()) return;
+	/* Spawn and corner create captions go with their buttons, which only the trial step shows. */
+	if (CLASS_BROWSE_STAGE::TRIAL != m_eBrowseStage) return;
 	/* Same MODE::SERVER_ARENA gate as Update_ClassList/Update_ArenaSpawnButtons -- these are
 	just the text captions for that same button art, so they must disappear and reappear
 	together with it instead of floating on screen without their buttons underneath. */

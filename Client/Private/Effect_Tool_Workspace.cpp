@@ -593,6 +593,9 @@ bool CEffect_Tool::End_ClassMovieEditing()
     if (m_ClassMovieCallbacks.clearPreviews && !m_ClassMovieCallbacks.clearPreviews(m_strClassMovieStatus))
         return false;
     m_strClassMovieId.clear();
+    m_CinematicElementDocuments.clear();
+    m_CinematicElementErrors.clear();
+    m_strCinematicSoloOccurrence.clear();
     m_PreviewIsolationElementIds.clear();
     m_ClassMovieFilterTargetIds.clear();
     m_strPreviewIsolationElementId.clear();
@@ -607,7 +610,9 @@ bool CEffect_Tool::Open_ClassMovie(const std::string& classId, const bool loop, 
 {
     const auto timeline = m_ClassMovieCallbacks.timeline ? m_ClassMovieCallbacks.timeline(classId, loop) : nullptr;
     if (!timeline)
-    { m_strClassMovieStatus = "This Movie is not prepared. Enter Character Select and select an available Movie."; return false; }
+    { m_strClassMovieStatus = classId == "valtan.entrance" ?
+        "Enter Valtan Arena to open the complete entrance cinematic." :
+        "This Movie is not prepared. Enter Character Select and select an available Movie."; return false; }
     const CLASS_MOVIE_TIMELINE_BOX* selected = nullptr;
     for (const auto& row : timeline->rows)
         if (row.kind == "Effect")
@@ -620,7 +625,10 @@ bool CEffect_Tool::Open_ClassMovie(const std::string& classId, const bool loop, 
     if (Has_UnsavedWork() && (!sameEffect || (Has_ClassMovieContext() && m_strClassMovieId != classId)))
     { m_strClassMovieStatus = "Save or discard the current Effect changes before opening another Movie Effect."; return false; }
     if (Has_ClassMovieContext() && m_strClassMovieId != classId && !End_ClassMovieEditing()) return false;
-    if (!sameEffect && !Open_AuthoringResource({EFFECT_RESOURCE_OWNER_KIND::V1_DOCUMENT, selected->resource}))
+    if (Is_ValtanCinematicEditor() && m_ActiveDocument && !Has_UnsavedWork())
+        m_CinematicElementDocuments[m_ActiveDocument->strEffectAssetId] = *m_ActiveDocument;
+    if (!sameEffect && !(classId == "valtan.entrance" ? Try_LoadDocument(selected->resource) :
+        Open_AuthoringResource({EFFECT_RESOURCE_OWNER_KIND::V1_DOCUMENT, selected->resource})))
     { m_strClassMovieStatus = m_strDocumentStatus; return false; }
     if (m_pAuthoringSequencer) m_pAuthoringSequencer->Stop();
     Release_WorldPreview(true);
@@ -635,8 +643,10 @@ bool CEffect_Tool::Open_ClassMovie(const std::string& classId, const bool loop, 
     m_ePreviewFilter = EFFECT_PREVIEW_FILTER::COMPLETE;
     m_bClassMovieLoop = loop;
     m_bClassMovieScrubbing = false;
-    m_bAllEffectsWorldSelected = true;
-    m_bAllEffectsValtanBossSelected = m_bAllEffectsKoukuBossSelected = false;
+    m_bAllEffectsWorldSelected = !Is_ValtanCinematicEditor();
+    m_bAllEffectsValtanBossSelected = Is_ValtanCinematicEditor();
+    m_bAllEffectsKoukuBossSelected = false;
+    if (Is_ValtanCinematicEditor() && m_CinematicElementDocuments.empty()) Refresh_CinematicElementList();
     const auto state = m_ClassMovieCallbacks.state ? m_ClassMovieCallbacks.state(classId) : CLASS_MOVIE_STATE{};
     if (!state.active && m_ClassMovieCallbacks.seek &&
         !m_ClassMovieCallbacks.seek(classId, loop, selected->movieStartMs, m_strClassMovieStatus)) return false;
@@ -647,7 +657,9 @@ bool CEffect_Tool::Open_ClassMovie(const std::string& classId, const bool loop, 
         m_strClassMovieStatus = "Movie editor opened; previous Effect preview retained: " + m_strPreviewStatus;
         return true;
     }
-    m_strClassMovieStatus = "Movie opened in V1. Select an Effect and Element; Play All uses its actors, camera and full timeline.";
+    m_strClassMovieStatus = Is_ValtanCinematicEditor() ?
+        "Entrance opened. All Cinematic Elements lists every source; Play All/Solo follows the original actor animation and timing." :
+        "Movie opened in V1. Select an Effect and Element; Play All uses its actors, camera and full timeline.";
     return true;
 }
 
@@ -789,14 +801,151 @@ bool CEffect_Tool::Try_SetClassMoviePreviewFilter(const EFFECT_PREVIEW_FILTER fi
     return true;
 }
 
+void CEffect_Tool::Refresh_CinematicElementList()
+{
+    const auto timeline = m_ClassMovieCallbacks.timeline ? m_ClassMovieCallbacks.timeline(m_strClassMovieId, false) : nullptr;
+    if (!timeline) return;
+    std::set<std::string> resources;
+    for (const auto& row : timeline->rows)
+        if (row.kind == "Effect")
+            for (const auto& box : row.boxes) resources.insert(box.resource);
+    for (const auto& id : resources)
+    {
+        if (m_ActiveDocument && m_ActiveDocument->strEffectAssetId == id)
+        {
+            m_CinematicElementDocuments[id] = *m_ActiveDocument;
+            m_CinematicElementErrors.erase(id);
+            continue;
+        }
+        const auto path = CProjectDataRoot::Resolve(std::filesystem::path("Effects") / "Authored" / (id + ".effect.json"));
+        EFFECT_DOCUMENT_DESC document;
+        std::string error;
+        if (!path.empty() && CEffectDocumentCodec::Load(path, document, error) && document.strEffectAssetId == id)
+        {
+            m_CinematicElementDocuments[id] = std::move(document);
+            m_CinematicElementErrors.erase(id);
+        }
+        else m_CinematicElementErrors[id] = error.empty() ? "The saved Effect ID/path does not match this occurrence." : error;
+    }
+}
+
+void CEffect_Tool::Render_CinematicElementList()
+{
+    const auto timeline = m_ClassMovieCallbacks.timeline ? m_ClassMovieCallbacks.timeline(m_strClassMovieId, false) : nullptr;
+    if (!timeline) return;
+    ImGui::SeparatorText("All Cinematic Elements");
+    if (ImGui::SmallButton("Refresh Element List")) Refresh_CinematicElementList();
+    ImGui::SameLine();
+    if (ImGui::SmallButton("Solo: All occurrences") && m_ClassMovieCallbacks.selectEffectOccurrence &&
+        m_ClassMovieCallbacks.selectEffectOccurrence({}, m_strClassMovieStatus)) m_strCinematicSoloOccurrence.clear();
+    if (!m_strCinematicSoloOccurrence.empty()) ImGui::TextWrapped("Solo occurrence: %s", m_strCinematicSoloOccurrence.c_str());
+    ImGui::InputText("Find Element", m_CinematicElementSearch.data(), m_CinematicElementSearch.size());
+    const std::string search = m_CinematicElementSearch.data();
+    std::map<std::string, std::vector<const CLASS_MOVIE_TIMELINE_BOX*>> occurrences;
+    for (const auto& row : timeline->rows)
+        if (row.kind == "Effect")
+            for (const auto& box : row.boxes) occurrences[box.resource].push_back(&box);
+    size_t elementCount = 0u, occurrenceCount = 0u;
+    for (const auto& [id, boxes] : occurrences)
+    {
+        const auto cached = m_CinematicElementDocuments.find(id);
+        const auto* document = m_ActiveDocument && m_ActiveDocument->strEffectAssetId == id ? &*m_ActiveDocument :
+            cached != m_CinematicElementDocuments.end() ? &cached->second : nullptr;
+        if (document) { elementCount += document->Elements.size(); occurrenceCount += document->Elements.size() * boxes.size(); }
+    }
+    ImGui::Text("%zu Effects | %zu Elements | %zu Element occurrences", occurrences.size(), elementCount, occurrenceCount);
+    ImGui::TextWrapped("Select any Element to edit it; Solo keeps the animated scene and isolates that Element. Save Changes writes its original shared Effect. Repeated occurrences share edits.");
+    if (ImGui::TreeNode("Linked Animations"))
+    {
+        for (const auto& row : timeline->rows)
+            if (row.kind == "Animation")
+                for (const auto& box : row.boxes)
+                    ImGui::BulletText("%s: %s (%.3f - %.3f s)", row.label.c_str(), box.label.c_str(),
+                        box.movieStartMs * .001, box.movieEndMs * .001);
+        ImGui::TreePop();
+    }
+    std::string openAsset, openElement;
+    bool playSolo = false;
+    ImGui::BeginChild("CinematicElementList", ImVec2(0.f, 360.f), ImGuiChildFlags_Borders);
+    for (const auto& [id, boxes] : occurrences)
+    {
+        const auto cached = m_CinematicElementDocuments.find(id);
+        const auto* document = m_ActiveDocument && m_ActiveDocument->strEffectAssetId == id ? &*m_ActiveDocument :
+            cached != m_CinematicElementDocuments.end() ? &cached->second : nullptr;
+        const bool bodyMatch = search.empty() || Contains_NoCase(id, search) ||
+            (document && Contains_NoCase(document->strDisplayName, search));
+        if (!bodyMatch && (!document || std::none_of(document->Elements.begin(), document->Elements.end(),
+            [&](const auto& e) { return Contains_NoCase(e.strElementId, search) || Contains_NoCase(e.strDisplayName, search); }))) continue;
+        ImGui::PushID(id.c_str());
+        ImGui::SetNextItemOpen(true, search.empty() ? ImGuiCond_Once : ImGuiCond_Always);
+        const bool expanded = ImGui::TreeNodeEx("Effect", ImGuiTreeNodeFlags_OpenOnArrow, "%s (%zu)",
+            document ? document->strDisplayName.c_str() : id.c_str(), document ? document->Elements.size() : 0u);
+        if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", id.c_str());
+        if (expanded)
+        {
+            for (const auto* box : boxes)
+            {
+                ImGui::PushID(box->id.c_str());
+                if (ImGui::RadioButton("Use occurrence", m_strCinematicSoloOccurrence == box->id) &&
+                    m_ClassMovieCallbacks.selectEffectOccurrence &&
+                    m_ClassMovieCallbacks.selectEffectOccurrence(box->id, m_strClassMovieStatus))
+                    m_strCinematicSoloOccurrence = box->id;
+                ImGui::SameLine();
+                ImGui::TextDisabled("%s | %.3f - %.3f s", box->label.c_str(), box->movieStartMs * .001, box->movieEndMs * .001);
+                ImGui::PopID();
+            }
+            if (const auto error = m_CinematicElementErrors.find(id); error != m_CinematicElementErrors.end())
+                ImGui::TextWrapped("Source refresh failed; previous list retained: %s", error->second.c_str());
+            if (document)
+                for (const auto& element : document->Elements)
+                {
+                    if (!bodyMatch && !Contains_NoCase(element.strElementId, search) && !Contains_NoCase(element.strDisplayName, search)) continue;
+                    ImGui::PushID(element.strElementId.c_str());
+                    const bool admitted = Is_ElementPreviewAdmitted(element);
+                    ImGui::BeginDisabled(!admitted);
+                    if (ImGui::SmallButton("Solo")) { openAsset = id; openElement = element.strElementId; playSolo = true; }
+                    ImGui::EndDisabled();
+                    if (!admitted && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+                        ImGui::SetTooltip("This Element is hidden or failed runtime admission. Select it to inspect its details.");
+                    ImGui::SameLine();
+                    const bool selected = m_ActiveDocument && m_ActiveDocument->strEffectAssetId == id && m_strSelectedElementId == element.strElementId;
+                    const std::string label = element.strDisplayName.empty() ? element.strElementId : element.strDisplayName;
+                    if (ImGui::Selectable(label.c_str(), selected)) { openAsset = id; openElement = element.strElementId; playSolo = false; }
+                    if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s\nSource age %.3f s", element.strElementId.c_str(), element.Detail.Timing.fStartDelaySeconds);
+                    ImGui::PopID();
+                }
+            ImGui::TreePop();
+        }
+        ImGui::PopID();
+    }
+    ImGui::EndChild();
+    // Defer document changes until no row retains references into the previous source.
+    if (!openAsset.empty())
+    {
+        const auto& boxes = occurrences.at(openAsset);
+        if (!m_strCinematicSoloOccurrence.empty() && std::none_of(boxes.begin(), boxes.end(),
+            [this](const auto* box) { return box->id == m_strCinematicSoloOccurrence; }) &&
+            m_ClassMovieCallbacks.selectEffectOccurrence &&
+            m_ClassMovieCallbacks.selectEffectOccurrence({}, m_strClassMovieStatus)) m_strCinematicSoloOccurrence.clear();
+        const bool active = m_ActiveDocument && m_ActiveDocument->strEffectAssetId == openAsset;
+        if (active || Open_ClassMovie("valtan.entrance", false, openAsset))
+        {
+            if (Try_SelectElement(openAsset, openElement) && playSolo) (void)Try_SoloElement(openAsset, openElement);
+            if (!m_strElementStatus.empty()) m_strClassMovieStatus = m_strElementStatus;
+        }
+    }
+}
+
 void CEffect_Tool::Render_ClassMovieControls(const bool showEffects)
 {
     Sync_ClassMovieSelection();
     const auto state = m_ClassMovieCallbacks.state ? m_ClassMovieCallbacks.state(m_strClassMovieId) : CLASS_MOVIE_STATE{};
     const auto movie = std::find_if(m_ClassMovieResources.begin(), m_ClassMovieResources.end(),
         [this](const auto& row) { return row.classId == m_strClassMovieId; });
-    ImGui::SeparatorText("Movie / Character Animation");
-    ImGui::TextWrapped("%s", movie == m_ClassMovieResources.end() ? m_strClassMovieId.c_str() : movie->label.c_str());
+    const bool cinematic = Is_ValtanCinematicEditor();
+    ImGui::SeparatorText(cinematic ? "Valtan Entrance / Animation + Effects" : "Movie / Character Animation");
+    ImGui::TextWrapped("%s", cinematic ? "Valtan Entrance" :
+        movie == m_ClassMovieResources.end() ? m_strClassMovieId.c_str() : movie->label.c_str());
     ImGui::BeginDisabled(!state.available);
     if (ImGui::Button("Play All")) (void)Play_ClassMovie();
     ImGui::EndDisabled();
@@ -807,8 +956,11 @@ void CEffect_Tool::Render_ClassMovieControls(const bool showEffects)
     ImGui::SameLine();
     if (ImGui::Button("Stop") && m_ClassMovieCallbacks.stop) m_ClassMovieCallbacks.stop();
     ImGui::EndDisabled();
-    ImGui::SameLine();
-    if (ImGui::Button("Timeline / Camera")) m_PendingClassMovieEditor = m_strClassMovieId;
+    if (!cinematic)
+    {
+        ImGui::SameLine();
+        if (ImGui::Button("Timeline / Camera")) m_PendingClassMovieEditor = m_strClassMovieId;
+    }
     ImGui::TextDisabled("Actors and Effects share Movie time. Element edits preview here; Save stores the Effect.");
     ImGui::BeginDisabled(!state.available);
     float playbackRate = static_cast<float>(state.playbackRate);
@@ -844,9 +996,12 @@ void CEffect_Tool::Render_ClassMovieControls(const bool showEffects)
     }
     if (state.active) ImGui::Text("Playing %s: %.3f / %.3f s%s", state.loop ? "Loop" : "Intro",
         state.clockMs * .001, state.durationMs * .001, state.paused ? " (paused)" : "");
-    if (ImGui::RadioButton("Intro Effects", !m_bClassMovieLoop)) { m_bClassMovieLoop = false; m_bClassMovieScrubbing = false; }
-    ImGui::SameLine();
-    if (ImGui::RadioButton("Loop Effects", m_bClassMovieLoop)) { m_bClassMovieLoop = true; m_bClassMovieScrubbing = false; }
+    if (!cinematic)
+    {
+        if (ImGui::RadioButton("Intro Effects", !m_bClassMovieLoop)) { m_bClassMovieLoop = false; m_bClassMovieScrubbing = false; }
+        ImGui::SameLine();
+        if (ImGui::RadioButton("Loop Effects", m_bClassMovieLoop)) { m_bClassMovieLoop = true; m_bClassMovieScrubbing = false; }
+    }
     const auto timeline = m_ClassMovieCallbacks.timeline ? m_ClassMovieCallbacks.timeline(m_strClassMovieId, m_bClassMovieLoop) : nullptr;
     if (timeline)
     {
@@ -863,7 +1018,8 @@ void CEffect_Tool::Render_ClassMovieControls(const bool showEffects)
                     m_fClassMovieSeekSeconds * 1000., m_strClassMovieStatus);
         }
         ImGui::EndDisabled();
-        if (showEffects)
+        if (cinematic && showEffects) Render_CinematicElementList();
+        if (showEffects && !cinematic)
         {
         ImGui::SeparatorText("Movie Effects");
         std::set<std::string> shown;
@@ -889,7 +1045,7 @@ void CEffect_Tool::Render_ClassMovieControls(const bool showEffects)
                 }
         }
     }
-    m_ClassMovieInspector.Render(m_ClassMovieCallbacks.inspection, m_strClassMovieId, m_bClassMovieLoop);
+    if (!cinematic) m_ClassMovieInspector.Render(m_ClassMovieCallbacks.inspection, m_strClassMovieId, m_bClassMovieLoop);
     if (!state.status.empty()) ImGui::TextWrapped("%s", state.status.c_str());
     if (!m_strClassMovieStatus.empty()) ImGui::TextWrapped("%s", m_strClassMovieStatus.c_str());
     if (showEffects && ImGui::Button("End Movie Editing")) (void)End_ClassMovieEditing();

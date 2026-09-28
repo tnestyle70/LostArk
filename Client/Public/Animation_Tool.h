@@ -637,6 +637,8 @@ private:
 		std::vector<CUSTOM_CHAIN_ENTRY>& Out,
 		std::string& strOutError) const;
 	bool_t Load_CustomChainLibrary();
+	bool_t Load_CustomChainLibrary(const std::filesystem::path& source);
+	bool_t Load_ValtanCustomChainLibrary();
 	/* Whole-file atomic replace. A rejected write leaves the previous library
 	   on disk and in memory so a failed save never costs saved chains. */
 	bool_t Save_CustomChainLibrary();
@@ -678,7 +680,7 @@ private:
 		const VALTAN_PATTERN_VIEW& Pattern,
 		std::string_view strStageFilter = {});
 	bool_t Preview_ValtanSoundAsset(
-		const std::string& strResourceAssetId);
+		const std::string& strResourceAssetId, uint32_t iPlaybackOffsetMs = 0u);
 	std::vector<const VALTAN_PATTERN_VIEW*>
 		Collect_ValtanPatternMasterPatterns() const;
 	bool_t Build_ValtanPatternMasterTimeline(
@@ -940,7 +942,7 @@ private:
 	   current unsaved steps or one stable saved intake chain. The validated
 	   request digest gates Apply so changed fields can never inherit an earlier
 	   green result. Request and diagnostic files remain on disk for inspection. */
-	int32_t m_iValtanPatternCreateSourceKind = 0;
+	int32_t m_iValtanPatternCreateSourceKind = 2;
 	int32_t m_iValtanPatternCreateSavedIndex = 0;
 	char m_ValtanPatternCreatePatternId[161]{};
 	char m_ValtanPatternCreateDisplayName[256]{};
@@ -959,6 +961,7 @@ private:
 	int32_t m_iValtanPatternCreateSourceActionId = -1;
 	int32_t m_iValtanPatternCreateSourceSequenceIndex = -1;
 	bool_t m_bValtanPatternCreateActiveApply = false;
+	bool_t m_bValtanPatternCreateActiveEmpty = false;
 	bool_t m_bValtanPatternCreateHasExitCode = false;
 	uint32_t m_iValtanPatternCreateExitCode = 0u;
 	uint32_t m_iValtanPatternCreateCommandSequence = 0u;

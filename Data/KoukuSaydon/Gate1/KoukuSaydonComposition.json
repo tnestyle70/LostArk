@@ -1,7 +1,7 @@
 {
   "schema": "lostark.kouku-saydon-composition",
   "formatVersion": 3,
-  "revision": 2466,
+  "revision": 2468,
   "compositionId": "boss.composition.kakulsaydon.gate1",
   "encounterId": "ENCOUNTER_KAKULSAYDON_G1",
   "bossArchetypeId": "BOSS_KAKULSAYDON_G1_KOUKU",
@@ -3908,7 +3908,7 @@
     {"resourceId": "subtitle.kouku.cin.37081_31_05", "displayName": "자막 / cin.37081_31_05", "defaultAnchorKind": "MAP", "kind": "SUBTITLE", "assetId": "cin.37081_31_05", "soundEvent": "", "resourceKind": "", "elementId": "", "durationMs": 3200, "shape": "BOX", "colliderKind": "GEOMETRY", "halfExtents": [1, 1, 1], "subtitleText": "아니. 잔혹한, 스릴러...!", "subtitlePosition": "NORMAL", "radiusM": 3, "halfAngleDegrees": 45},
     {"resourceId": "subtitle.kouku.cin.37081_31_02", "displayName": "자막 / cin.37081_31_02", "defaultAnchorKind": "MAP", "kind": "SUBTITLE", "assetId": "cin.37081_31_02", "soundEvent": "", "resourceKind": "", "elementId": "", "durationMs": 3000, "shape": "BOX", "colliderKind": "GEOMETRY", "halfExtents": [1, 1, 1], "subtitleText": "오케이! 다음으로 넘어가자고!", "subtitlePosition": "NORMAL", "radiusM": 3, "halfAngleDegrees": 45},
     {"resourceId": "subtitle.kouku.cin.37081_31_06", "displayName": "자막 / cin.37081_31_06", "defaultAnchorKind": "MAP", "kind": "SUBTITLE", "assetId": "cin.37081_31_06", "soundEvent": "", "resourceKind": "", "elementId": "", "durationMs": 4000, "shape": "BOX", "colliderKind": "GEOMETRY", "halfExtents": [1, 1, 1], "subtitleText": "자, 이제 클라이막스를 시작해볼까?\n자, 이제 클라이막스를 시작해볼까?", "subtitlePosition": "NORMAL", "radiusM": 3, "halfAngleDegrees": 45},
-    {"resourceId": "subtitle.kouku.cin.37081_32_01", "displayName": "자막 / cin.37081_32_01", "defaultAnchorKind": "MAP", "kind": "SUBTITLE", "assetId": "cin.37081_32_01", "soundEvent": "", "resourceKind": "", "elementId": "", "durationMs": 2300, "shape": "BOX", "colliderKind": "GEOMETRY", "halfExtents": [1, 1, 1], "subtitleText": "렛츠, 쇼타임~!", "subtitlePosition": "UPPER", "radiusM": 3, "halfAngleDegrees": 45},
+    {"resourceId": "subtitle.kouku.cin.37081_32_01", "displayName": "자막 / cin.37081_32_01", "defaultAnchorKind": "MAP", "kind": "SUBTITLE", "assetId": "cin.37081_32_01", "soundEvent": "", "resourceKind": "", "elementId": "", "durationMs": 2300, "shape": "BOX", "colliderKind": "GEOMETRY", "halfExtents": [1, 1, 1], "subtitleText": "렛츠, 쇼타임~!", "subtitlePosition": "NORMAL", "radiusM": 3, "halfAngleDegrees": 45},
     {"resourceId": "subtitle.kouku.cin.37081_33_01", "displayName": "자막 / cin.37081_33_01", "defaultAnchorKind": "MAP", "kind": "SUBTITLE", "assetId": "cin.37081_33_01", "soundEvent": "", "resourceKind": "", "elementId": "", "durationMs": 3176, "shape": "BOX", "colliderKind": "GEOMETRY", "halfExtents": [1, 1, 1], "subtitleText": "일어나, 발연기 그만하라고.", "subtitlePosition": "NORMAL", "radiusM": 3, "halfAngleDegrees": 45},
     {"resourceId": "subtitle.kouku.cin.37081_33_02", "displayName": "자막 / cin.37081_33_02", "defaultAnchorKind": "MAP", "kind": "SUBTITLE", "assetId": "cin.37081_33_02", "soundEvent": "", "resourceKind": "", "elementId": "", "durationMs": 3182, "shape": "BOX", "colliderKind": "GEOMETRY", "halfExtents": [1, 1, 1], "subtitleText": "좋아. 오늘은 여기까지!", "subtitlePosition": "NORMAL", "radiusM": 3, "halfAngleDegrees": 45},
     {"resourceId": "subtitle.kouku.cin.37081_33_03", "displayName": "자막 / cin.37081_33_03", "defaultAnchorKind": "MAP", "kind": "SUBTITLE", "assetId": "cin.37081_33_03", "soundEvent": "", "resourceKind": "", "elementId": "", "durationMs": 2970, "shape": "BOX", "colliderKind": "GEOMETRY", "halfExtents": [1, 1, 1], "subtitleText": "계속 분발해.\n자만하지 말고!", "subtitlePosition": "NORMAL", "radiusM": 3, "halfAngleDegrees": 45},
@@ -8207,7 +8207,7 @@
           "logicId": "kakulsaydon.g1.logic.97",
           "startMs": 4810,
           "durationMs": 177,
-          "enabled": true,
+          "enabled": false,
           "onSuccessLogicIds": ["kakulsaydon.g1.logic.98"],
           "onFailLogicIds": [],
           "onTimeoutLogicIds": []
@@ -8217,7 +8217,7 @@
           "logicId": "kakulsaydon.g1.logic.97",
           "startMs": 5317,
           "durationMs": 177,
-          "enabled": true,
+          "enabled": false,
           "onSuccessLogicIds": ["kakulsaydon.g1.logic.98"],
           "onFailLogicIds": [],
           "onTimeoutLogicIds": []
@@ -8227,7 +8227,7 @@
           "logicId": "kakulsaydon.g1.logic.97",
           "startMs": 7148,
           "durationMs": 177,
-          "enabled": true,
+          "enabled": false,
           "onSuccessLogicIds": ["kakulsaydon.g1.logic.98"],
           "onFailLogicIds": [],
           "onTimeoutLogicIds": []
@@ -26673,8 +26673,8 @@
         {
           "occurrenceId": "KAKULSAYDON_G1_PATTERN_109.logic.1",
           "logicId": "kakulsaydon.g1.logic.508",
-          "startMs": 1120,
-          "durationMs": 100,
+          "startMs": 1122,
+          "durationMs": 112,
           "enabled": true,
           "onSuccessLogicIds": ["kakulsaydon.g1.logic.538"],
           "onFailLogicIds": [],
@@ -26694,7 +26694,7 @@
         {"occurrenceId": "KAKULSAYDON_G1_PATTERN_109.presentation.2", "resourceId": "sound.kouku.00402431cdf2c5ea5c87", "startMs": 1, "durationMs": 1999, "positionOffset": [0, 0, 0], "rotationDegrees": [0, 0, 0], "scale": [1, 1, 1], "fadeInMs": 0, "fadeOutMs": 0, "dissolveStart": 0.84999999999999998, "dissolveEnd": 1, "brightnessMultiplier": 1, "volume": 1, "soundSourceStartMs": 0, "followBoss": false, "debugRender": true, "bone": "", "boneTarget": "BODY", "regionId": "", "cardSymbol": "NONE", "cardColor": "NONE", "anchorKind": "BOSS", "worldId": "", "logicOccurrenceId": "", "worldOccurrenceId": ""},
         {"occurrenceId": "KAKULSAYDON_G1_PATTERN_109.presentation.3", "resourceId": "sound.kouku.506dc4d55f2cfd242c16", "startMs": 900, "durationMs": 817, "positionOffset": [0, 0, 0], "rotationDegrees": [0, 0, 0], "scale": [1, 1, 1], "fadeInMs": 0, "fadeOutMs": 0, "dissolveStart": 0.84999999999999998, "dissolveEnd": 1, "brightnessMultiplier": 1, "volume": 1, "soundSourceStartMs": 0, "followBoss": false, "debugRender": true, "bone": "", "boneTarget": "BODY", "regionId": "", "cardSymbol": "NONE", "cardColor": "NONE", "anchorKind": "BOSS", "worldId": "", "logicOccurrenceId": "", "worldOccurrenceId": ""},
         {"occurrenceId": "KAKULSAYDON_G1_PATTERN_109.presentation.4", "resourceId": "sound.kouku.980b0a7f25086a180fb8", "startMs": 1000, "durationMs": 1000, "positionOffset": [0, 0, 0], "rotationDegrees": [0, 0, 0], "scale": [1, 1, 1], "fadeInMs": 0, "fadeOutMs": 0, "dissolveStart": 0.84999999999999998, "dissolveEnd": 1, "brightnessMultiplier": 1, "volume": 1, "soundSourceStartMs": 0, "followBoss": false, "debugRender": true, "bone": "", "boneTarget": "BODY", "regionId": "", "cardSymbol": "NONE", "cardColor": "NONE", "anchorKind": "BOSS", "worldId": "", "logicOccurrenceId": "", "worldOccurrenceId": ""},
-        {"occurrenceId": "KAKULSAYDON_G1_PATTERN_109.presentation.9", "resourceId": "kakulsaydon.g1.presentation.4", "startMs": 1122, "durationMs": 112, "positionOffset": [3, 0.80000001192092896, 0.10000000149011612], "rotationDegrees": [0, 0, 0], "scale": [1, 2.5999999046325684, 1], "fadeInMs": 0, "fadeOutMs": 0, "dissolveStart": 0.84999999999999998, "dissolveEnd": 1, "brightnessMultiplier": 1, "volume": 1, "soundSourceStartMs": 0, "followBoss": true, "debugRender": true, "bone": "", "boneTarget": "BODY", "regionId": "", "cardSymbol": "NONE", "cardColor": "NONE", "anchorKind": "BOSS", "worldId": "", "logicOccurrenceId": "", "worldOccurrenceId": ""}
+        {"occurrenceId": "KAKULSAYDON_G1_PATTERN_109.presentation.9", "resourceId": "kakulsaydon.g1.presentation.4", "startMs": 1122, "durationMs": 112, "positionOffset": [3, 0.80000001192092896, 0.10000000149011612], "rotationDegrees": [0, 0, 0], "scale": [1, 2.5999999046325684, 1], "fadeInMs": 0, "fadeOutMs": 0, "dissolveStart": 0.84999999999999998, "dissolveEnd": 1, "brightnessMultiplier": 1, "volume": 1, "soundSourceStartMs": 0, "followBoss": true, "debugRender": true, "bone": "", "boneTarget": "BODY", "regionId": "", "cardSymbol": "NONE", "cardColor": "NONE", "anchorKind": "BOSS", "worldId": "", "logicOccurrenceId": "KAKULSAYDON_G1_PATTERN_109.logic.1", "worldOccurrenceId": ""}
       ]
     },
     {

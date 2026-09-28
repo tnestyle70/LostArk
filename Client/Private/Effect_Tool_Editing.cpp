@@ -1902,7 +1902,9 @@ bool_t Client::CEffect_Tool::Try_SoloElement(
 	}
     if (Has_ClassMovieContext()) return Try_PreviewElementTimeline(strElementId);
 	if (m_pAuthoringSequencer && !m_ProductPreview &&
-		(Is_SequencerRecoveryEffectAssetId(m_ActiveDocument->strEffectAssetId) ||
+		((m_ActiveDocument->strEffectAssetId.starts_with("effect.valtan.action.") &&
+		  m_ActiveDocument->strEffectAssetId.ends_with(".full.restore")) ||
+		 Is_SequencerRecoveryEffectAssetId(m_ActiveDocument->strEffectAssetId) ||
 		 Is_SceneAnchoredEffectAssetId(m_ActiveDocument->strEffectAssetId)))
 		return Try_PreviewElementTimeline(strElementId);
 	const std::string strPreviousElement = m_strPreviewIsolationElementId;
@@ -2022,6 +2024,18 @@ bool_t Client::CEffect_Tool::Try_SoloElementGroup(
 		m_strPreviewStatus =
 			"Group Solo has no visible authoring-admitted Element to play; hard-locked Elements remain editable and APPROXIMATE Elements remain authoring-preview targets.";
 		return false;
+	}
+	if (m_pAuthoringSequencer && !m_ProductPreview &&
+		((m_ActiveDocument->strEffectAssetId.starts_with("effect.valtan.action.") &&
+		  m_ActiveDocument->strEffectAssetId.ends_with(".full.restore")) ||
+		 Is_SequencerRecoveryEffectAssetId(m_ActiveDocument->strEffectAssetId) ||
+		 Is_SceneAnchoredEffectAssetId(m_ActiveDocument->strEffectAssetId)))
+	{
+		std::vector<std::string> ElementIds;
+		for (const auto& Candidate : m_ActiveDocument->Elements)
+			if (Candidate.strGroupId == strGroupId && Is_ElementPreviewAdmitted(Candidate))
+				ElementIds.push_back(Candidate.strElementId);
+		return Try_PreviewElementsTimeline(ElementIds, false);
 	}
 	const std::string strPreviousElement = m_strPreviewIsolationElementId;
 	const std::string strPreviousGroup = m_strPreviewIsolationGroupId;

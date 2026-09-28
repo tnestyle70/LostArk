@@ -105,6 +105,8 @@ const char_t* Client::CAnimation_Tool::ValtanPatternMasterPathName(
 		return "Wall -> Groggy -> Recovery";
 	case VALTAN_PATTERN_PREVIEW_PATH::PART_BREAK:
 		return "Wall -> Groggy -> Part Break";
+	case VALTAN_PATTERN_PREVIEW_PATH::CAPTURE_SUCCESS:
+		return "Capture Success -> Throw";
 	default:
 		return "Invalid";
 	}
@@ -292,7 +294,7 @@ bool_t Client::CAnimation_Tool::Reload_ValtanCombatObjectSoundCues()
 }
 
 bool_t Client::CAnimation_Tool::Preview_ValtanSoundAsset(
-	const std::string& strResourceAssetId)
+	const std::string& strResourceAssetId, const uint32_t iPlaybackOffsetMs)
 {
 	const std::filesystem::path SoundPath =
 		CRuntimeAssetRoot::Resolve(strResourceAssetId);
@@ -305,14 +307,19 @@ bool_t Client::CAnimation_Tool::Preview_ValtanSoundAsset(
 			strResourceAssetId + ".";
 		return false;
 	}
-	if (FAILED(CGameInstance::Get().Play_Sound(SoundPath.wstring(), 1.f)))
+	const bool_t soundPlayed = 0u == iPlaybackOffsetMs ?
+		SUCCEEDED(CGameInstance::Get().Play_Sound(SoundPath.wstring(), 1.f)) :
+		0u != CGameInstance::Get().Play_SoundCue(
+			SoundPath.wstring(), 1.f, iPlaybackOffsetMs, false, 1.f);
+	if (!soundPlayed)
 	{
 		m_strValtanPatternSoundCueStatus =
 			"Sound asset preview failed: " + strResourceAssetId + ".";
 		return false;
 	}
 	m_strValtanPatternSoundCueStatus =
-		"Previewing sound asset: " + strResourceAssetId + ".";
+		"Previewing sound asset: " + strResourceAssetId +
+		" from " + std::to_string(iPlaybackOffsetMs) + " ms.";
 	return true;
 }
 

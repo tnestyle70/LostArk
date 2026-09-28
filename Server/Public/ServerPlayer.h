@@ -19,6 +19,20 @@
 
 namespace LostArk::Server
 {
+	/* The player's purse: retail's two currencies, shown under the inventory and spent in
+	   NPC shops. Not bag items -- they never take a slot. */
+	enum class SERVER_CURRENCY : std::uint8_t { SILVER, GOLD };
+	struct SERVER_PURSE
+	{
+		std::uint32_t iSilver = 0;
+		std::uint32_t iGold = 0;
+
+		std::uint32_t& Amount(const SERVER_CURRENCY eCurrency)
+		{
+			return SERVER_CURRENCY::GOLD == eCurrency ? iGold : iSilver;
+		}
+	};
+
 	struct SERVER_TRIGGER_MOVE_SAMPLE
 	{
 		std::uint32_t iTimeMs = 0u;
@@ -220,6 +234,12 @@ namespace LostArk::Server
 		// Safe arena revive point retained through the fall's below-floor death pose.
 		std::optional<std::array<float, 3u>> KoukuFallRevivePosition;
 		bool bKoukuFallDeath = false;
+		// A push off the live Waterpang arena revives on the nearest jump box at the fall deadline.
+		bool bWaterpangFall = false;
+		// Last tick a Waterpang cannon jet struck this player; jets re-apply every 0.4 s.
+		std::uint32_t iWaterpangCannonHitTick = 0u;
+		// A Waterpang waterfall launch in flight: it ends in the Waterpang fall, never a landing.
+		bool bWaterpangLaunch = false;
 		LostArk::Shared::PLAYER_MADNESS_FORM ePreMarioForm =
 			LostArk::Shared::PLAYER_MADNESS_FORM::NORMAL;
 		std::uint32_t iLastMarioMoveSequence = 0u;
@@ -350,6 +370,8 @@ namespace LostArk::Server
 		std::uint32_t iShield = 0;
 		/* Set while a death-deny buff has already spent itself on a lethal hit. */
 		std::uint32_t iInvulnerableEndTick = 0;
+		bool bRonaunGuard = false;
+		std::uint32_t iRonaunGrantTick = 0u;
 		std::uint32_t iEstherGuardEndTick = 0;
 		std::int32_t iEstherGuardDamageTakenPercent = 0;
 		// Room policy gates damage gain; fractional units survive small admitted hits.
@@ -552,6 +574,8 @@ namespace LostArk::Server
 		}
 		bool hasAppliedSkillDamage = false;
 		std::bitset<192u> iAppliedHitMask;
+		// (collider repeat index, target) pairs a still-open hit window already judged.
+		std::vector<std::pair<std::uint8_t, LostArk::Shared::NET_ENTITY_ID>> HitWindowTargets;
 		// Bit per projectile definition of the running stage already spawned.
 		std::uint16_t iSpawnedProjectileMask = 0;
 		std::vector<SERVER_SKILL_PROJECTILE> Projectiles;
@@ -576,5 +600,6 @@ namespace LostArk::Server
 		// reused directly since the wire shape and the server truth are the
 		// same {itemId, quantity} pair.
 		std::vector<LostArk::Shared::INVENTORY_ITEM_SNAPSHOT> Inventory;
+		SERVER_PURSE Purse;
 	};
 }

@@ -39,6 +39,9 @@ public:
 		FACE_SLIDER_DOCUMENT FaceSliders;
 		CFaceMorphApplier FaceMorphs;
 		bool HasSkillBindings = false, HasEffectCues = false, HasFaceSliders = false;
+		/* The class's Square Hole instrument model was admitted with the class. It is optional:
+		a missing or unreadable file leaves the class fully playable without the prop. */
+		bool HasSquareHoleInstrument = false;
 		std::string SkillStatus, EffectStatus, FaceSliderStatus;
 	};
 	static std::shared_ptr<const PREPARED_PRESENTATION> Get_PreparedPresentation(

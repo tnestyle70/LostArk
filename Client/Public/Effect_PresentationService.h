@@ -634,6 +634,12 @@ public:
 	// Tool-only, outside ObjectManager iteration: prepare this sampled owner for
 	// the next Late_Update without committing unrelated Product spawn requests.
 	static void Commit_LocalBossPreviewSpawns(const std::shared_ptr<CValtan>& pOwner);
+	// Finite Pattern tails retain their clock while a source cinematic owns the screen.
+	static void Set_BossCinematicSuppressed(
+		const std::shared_ptr<CValtan>& pOwner, bool_t suppressed);
+	// Source cinematics hide local authored cues without discarding their clocks.
+	static void Set_LocalBossPreviewCinematicSuppressed(
+		const std::shared_ptr<CValtan>& pOwner, bool_t suppressed);
 	static void Stop_BossOwner(const std::shared_ptr<CValtan>& pOwner);
     static void Clear_Level(uint32_t iLevelIndex);
     static void Clear_All();

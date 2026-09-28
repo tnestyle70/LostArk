@@ -355,6 +355,20 @@ namespace
 				}
 				entry.animationSetModels.push_back(animationSet.Get_String());
 			}
+			if (const DATA_JSON_VALUE* pWaterGunSets = value.Find("waterGunAnimationSetModels"))
+			{
+				if (!pWaterGunSets->Is_Array())
+					return false;
+				for (const DATA_JSON_VALUE& animationSet : pWaterGunSets->Get_Array())
+				{
+					if (!animationSet.Is_String() ||
+						!IsResourceId(animationSet.Get_String()))
+					{
+						return false;
+					}
+					entry.waterGunAnimationSetModels.push_back(animationSet.Get_String());
+				}
+			}
 			for (const DATA_JSON_VALUE& equipment : pEquipment->Get_Array())
 			{
 				if (!equipment.Is_String() || !IsResourceId(equipment.Get_String()))
@@ -488,6 +502,17 @@ namespace
 			const DATA_JSON_VALUE* pWeaponScale = value.Find("weaponModelPreScale");
 			const DATA_JSON_VALUE* pWeaponRotation =
 				value.Find("weaponModelPreRotationDegrees");
+			if (nullptr != pCombatObjectVisuals && pCombatObjectVisuals->Is_Array() &&
+				pCombatObjectVisuals->Get_Array().size() > MAX_BOSS_COMBAT_OBJECT_VISUALS)
+			{
+				const auto* archetype = value.Find("archetypeId");
+				const std::string owner = nullptr != archetype && archetype->Is_String()
+					? archetype->Get_String() : "<unknown>";
+				g_Status = "Actor catalog contract mismatch: Actors/BossCatalog.json / " + owner +
+					" combatObjectVisuals has " + std::to_string(pCombatObjectVisuals->Get_Array().size()) +
+					" entries (maximum " + std::to_string(MAX_BOSS_COMBAT_OBJECT_VISUALS) + ").";
+				return false;
+			}
 			if (!ReadRequiredString(value, "archetypeId", entry.archetypeId) ||
 				!ReadRequiredString(value, "visualAssetId", entry.visualAssetId) ||
 				!ReadRequiredNumber(
@@ -656,16 +681,30 @@ namespace
 					visual.Is_Object() ? visual.Find("armedEffectAssetId") : nullptr;
 				const DATA_JSON_VALUE* pStopActiveOnHit =
 					visual.Is_Object() ? visual.Find("stopActiveOnHit") : nullptr;
+				const DATA_JSON_VALUE* pStopActiveOnArmed =
+					visual.Is_Object() ? visual.Find("stopActiveOnArmed") : nullptr;
+				const DATA_JSON_VALUE* pArmedOwnsTerminal =
+					visual.Is_Object() ? visual.Find("armedEffectOwnsTerminal") : nullptr;
 				if ((nullptr != pArmedEventId) != (nullptr != pArmedEffectId) ||
 					(nullptr != pArmedEventId &&
 						(!pArmedEventId->Is_String() || !IsStableId(pArmedEventId->Get_String()) ||
 						 !pArmedEffectId->Is_String() || !IsStableId(pArmedEffectId->Get_String()) ||
 						 nullptr != pEffectV2Group)) ||
-					(nullptr != pStopActiveOnHit && !pStopActiveOnHit->Is_Boolean()))
+					(nullptr != pStopActiveOnHit && !pStopActiveOnHit->Is_Boolean()) ||
+					(nullptr != pStopActiveOnArmed &&
+						(!pStopActiveOnArmed->Is_Boolean() || nullptr == pArmedEventId)) ||
+					(nullptr != pArmedOwnsTerminal &&
+						(!pArmedOwnsTerminal->Is_Boolean() ||
+						 (pArmedOwnsTerminal->Get_Boolean() &&
+							(nullptr == pArmedEffectId || nullptr == pHitEffectAssetId ||
+							 !pHitEffectAssetId->Is_String() ||
+							 pArmedEffectId->Get_String() != pHitEffectAssetId->Get_String())))))
 					return false;
 				const size_t expectedVisualFields = 3u +
 					(nullptr != pArmedEventId ? 2u : 0u) +
 					(nullptr != pStopActiveOnHit ? 1u : 0u) +
+					(nullptr != pStopActiveOnArmed ? 1u : 0u) +
+					(nullptr != pArmedOwnsTerminal ? 1u : 0u) +
 					(nullptr != pEffectV2Group ? 1u : 0u) +
 					(visual.Is_Object() && nullptr != visual.Find("worldScale") ? 1u : 0u) +
 					(nullptr != pHitEffectAssetId ? 1u : 0u);
@@ -754,6 +793,10 @@ namespace
 				}
 				entryVisual.stopActiveOnHit = nullptr != pStopActiveOnHit &&
 					pStopActiveOnHit->Get_Boolean();
+				entryVisual.stopActiveOnArmed = nullptr != pStopActiveOnArmed &&
+					pStopActiveOnArmed->Get_Boolean();
+				entryVisual.armedEffectOwnsTerminal = nullptr != pArmedOwnsTerminal &&
+					pArmedOwnsTerminal->Get_Boolean();
 				entry.combatObjectVisuals.push_back(std::move(entryVisual));
 			}
 			staged.push_back(std::move(entry));
@@ -1414,6 +1457,7 @@ bool_t Client::CActorCatalog::Initialize()
 {
 	if (g_isInitialized)
 		return true;
+	g_Status.clear();
 	DATA_JSON_VALUE characters;
 	DATA_JSON_VALUE bosses;
 	DATA_JSON_VALUE npcs;
@@ -1436,7 +1480,8 @@ bool_t Client::CActorCatalog::Initialize()
 		g_Monsters.clear();
 		g_Vehicles.clear();
 		g_VehicleModelMaterials.clear();
-		g_Status = "Actor catalog contract mismatch.";
+		if (g_Status.empty())
+			g_Status = "Actor catalog contract mismatch.";
 		return false;
 	}
 	g_isInitialized = true;

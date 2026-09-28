@@ -76,6 +76,10 @@ public:
 	bool_t Set_FollowPose(const float3_t& vPositionOffset,
 		const float3_t& vLookOffset, f32_t rollDegrees,
 		f32_t fovYDegrees, f32_t followResponse);
+	// Retunes the follow offsets and FOV without restarting the follow blend, for a
+	// lens that eases between presets every frame (the ship zoom steps).
+	bool_t Set_FollowLens(const float3_t& vPositionOffset,
+		const float3_t& vLookOffset, f32_t fovYDegrees);
 	void Frame_Area(const float3_t& center, f32_t radius);
 	void Get_DragonCameraSettings(f32_t& distance, f32_t& pitch, f32_t& height,
 		bool_t& enabled, bool_t& followHeading) const;

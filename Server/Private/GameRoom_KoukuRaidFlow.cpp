@@ -117,6 +117,8 @@ bool LostArk::Server::CGameRoom::Begin_KoukuRaidPreparation(const SESSION_ID ses
     if (request.iActionSourceRevision != currentSource || !currentGate ||
         currentGate->iSequenceRevision != request.iSequenceSourceRevision)
     {
+        if (!m_StagedNumericEntries.empty())
+        { reason = "Balance numbers are being saved; retry Product reload after the numeric result"; return false; }
         auto candidate = std::make_shared<CGameplayCatalog>();
         if (!candidate->Load_PublishedKoukuProduct(m_GameplayCatalog.Active()))
         { reason = "Published raid Product load failed: " + candidate->Get_Status(); return false; }

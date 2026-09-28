@@ -113,7 +113,11 @@ namespace LostArk::Shared
 	// 115 appends authoritative stagger success and Mario hit-source presentation to DAMAGE_EVENT.
 	// 116 carries explicit guide actors, a separate companion roster, dialogue and decision traces.
 	// 117 carries the Server-selected mechanic gauge mode and remaining/maximum.
-	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 117;
+	// 118 carries the immutable Server pattern landing anchor on world snapshots.
+	// 119 adds authoritative World pickups and the Ronaun guard occurrence.
+	// 120 combines Valtan anchors/pickups, NPC shop silver/gold, Waterpang and live numeric balance.
+	// Neither independently published 118 nor 119 peers support this combined layout.
+	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 120;
 
 	enum class WORLD_ID : std::uint16_t
 	{
@@ -424,7 +428,15 @@ namespace LostArk::Shared
 		C2S_ROOM_PING,
 		S2C_ROOM_PING,
 		S2C_GUIDE_PROMPT,
-		S2C_GUIDE_STATE
+		S2C_GUIDE_STATE,
+		// NPC shop basket purchase. The Server checks the shop NPC, its stock, the
+		// price and bag space, then applies the whole basket or none of it and answers
+		// with an S2C_INVENTORY_SNAPSHOT either way.
+		C2S_BUY_ITEMS,
+		C2S_BALANCE_QUERY,
+		S2C_BALANCE_SNAPSHOT,
+		C2S_BALANCE_PATCH,
+		S2C_BALANCE_RESULT
 	};
 
 	//TCP는 메시지 경계를 보존하지 않기 때문에, payload앞에 header를 둔다.
@@ -549,6 +561,11 @@ namespace LostArk::Shared
 		case PACKET_TYPE::C2S_SET_EQUIPMENT:
 		case PACKET_TYPE::C2S_DEBUG_RESUMMON_WAVE_MONSTERS:
 		case PACKET_TYPE::C2S_DEBUG_USE_ESTHER:
+		case PACKET_TYPE::C2S_BUY_ITEMS:
+		case PACKET_TYPE::C2S_BALANCE_QUERY:
+		case PACKET_TYPE::S2C_BALANCE_SNAPSHOT:
+		case PACKET_TYPE::C2S_BALANCE_PATCH:
+		case PACKET_TYPE::S2C_BALANCE_RESULT:
 			return true;
 		default:
 			return  false;

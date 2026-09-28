@@ -492,6 +492,10 @@ CWorldSequencePlayer::TARGET_SET Client::CMapTool::Runtime_AuthoringTargets() co
 			targets.pDeployRuntime = &level->Get_MapAuthoringDeploy();
 			targets.device = level->Get_MapAuthoringDevice();
 			targets.context = level->Get_MapAuthoringContext();
+			targets.previewNpc = [](const std::string& placementId) {
+				auto* active = CLevel_Development::Get_Active(LEVEL::MAHARAKA);
+				return active ? active->Find_MapAuthoringNpc(placementId) : nullptr;
+			};
 			return targets;
 		}
 	}

@@ -21,6 +21,8 @@ struct ATTACK_HIT_TEMPLATE final
     // Omission retains the historical generic ballistic/contact response.
     std::optional<bool> ForcePush;
     std::string strPushDirection = "AWAY_FROM_CONTACT";
+    // Server-only numeric source identity; never serialized as authoring or wire data.
+    std::string strNumericBalanceId;
     bool operator==(const ATTACK_HIT_TEMPLATE&) const = default;
 };
 

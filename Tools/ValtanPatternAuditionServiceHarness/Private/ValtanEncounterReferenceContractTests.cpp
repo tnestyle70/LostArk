@@ -305,7 +305,15 @@ namespace
 			else if (text[begin] == '"') end = text.find('"', begin + 1u) + 1u;
 			if (end == std::string::npos || end <= begin || end > nextPatternAt)
 				return std::string{};
-			text.replace(begin, end - begin, mutation.replacement);
+			if (mutation.replacement == nullptr)
+			{
+				const auto separator = text.find_last_not_of(" \t\r\n", fieldAt - 1u);
+				if (separator == std::string::npos || text[separator] != ',')
+					return std::string{};
+				text.erase(separator, end - separator);
+			}
+			else
+				text.replace(begin, end - begin, mutation.replacement);
 			return text;
 		};
 		const auto invalidGameplayPhase = replaceField(original,
@@ -322,13 +330,104 @@ namespace
 		dynamicFinale = replaceField(std::move(dynamicFinale),
 			{ "VALTAN_GHOST_FINALE", "finale", "ghostPatternIds",
 			  "[\"VALTAN_FOUR_SLASH\",\"VALTAN_WHIRLWIND\"]" });
+		const std::string canonicalFinaleId = "\"VALTAN_GHOST_FINALE\"";
+		const std::string genericFinaleId = "\"VALTAN_FIXTURE_DYNAMIC_FINALE\"";
+		for (size_t at = dynamicFinale.find(canonicalFinaleId); at != std::string::npos;
+			at = dynamicFinale.find(canonicalFinaleId, at + genericFinaleId.size()))
+			dynamicFinale.replace(at, canonicalFinaleId.size(), genericFinaleId);
 		CEncounterPatternReference dynamicFinaleReference;
 		if (!Require(!dynamicFinale.empty() && writeFixture(dynamicFinale) &&
 			dynamicFinaleReference.Load(fixture.File, status) &&
-			nullptr != dynamicFinaleReference.Find_Pattern("VALTAN_GHOST_FINALE"),
+			nullptr != dynamicFinaleReference.Find_Pattern("VALTAN_FIXTURE_DYNAMIC_FINALE"),
 			"data-driven two-child reordered finale was rejected"))
 			return false;
 		const char* extensionError = "Encounter pattern extensions are invalid:";
+		// Exercise the actual whole-Encounter entry reader, including legacy omission.
+		const auto setFinaleInterval = [](std::string text, const char* key, const char* value)
+		{
+			const auto finaleAt = text.find("\"finale\"");
+			const auto begin = text.find('{', finaleAt);
+			const auto end = text.find('}', begin);
+			if (finaleAt == std::string::npos || begin == std::string::npos ||
+				end == std::string::npos) return std::string{};
+			const std::string token = '"' + std::string(key) + '"';
+			const auto keyAt = text.find(token, begin);
+			if (keyAt == std::string::npos || keyAt >= end)
+			{
+				if (nullptr != value) text.insert(end, "," + token + ":" + value);
+				return text;
+			}
+			const auto colon = text.find(':', keyAt);
+			const auto valueAt = text.find_first_not_of(" \t\r\n", colon + 1u);
+			const auto valueEnd = text.find_first_of(",}\r\n", valueAt);
+			if (colon >= end || valueAt >= end || valueEnd == std::string::npos)
+				return std::string{};
+			if (nullptr != value) text.replace(valueAt, valueEnd - valueAt, value);
+			else
+			{
+				const auto commaBefore = text.rfind(',', keyAt);
+				if (commaBefore == std::string::npos || commaBefore < begin)
+					return std::string{};
+				text.erase(commaBefore, valueEnd - commaBefore);
+			}
+			return text;
+		};
+		auto legacyIntervals = setFinaleInterval(original, "auxiliarySpawnIntervalMs", nullptr);
+		legacyIntervals = setFinaleInterval(std::move(legacyIntervals), "portalSpawnIntervalMs", nullptr);
+		if (!Require(!legacyIntervals.empty(), "legacy finale interval fixture was not staged"))
+			return false;
+		size_t intervalAdmissionCount = 0u;
+		for (const auto& intervals : std::array<std::array<const char*, 2u>, 5u>{
+			std::array<const char*, 2u>{ nullptr, nullptr },
+			std::array<const char*, 2u>{ "5000", nullptr },
+			std::array<const char*, 2u>{ nullptr, "10000" },
+			std::array<const char*, 2u>{ "1", "600000" },
+			std::array<const char*, 2u>{ "5000", "10000" } })
+		{
+			auto text = setFinaleInterval(legacyIntervals, "auxiliarySpawnIntervalMs", intervals[0]);
+			text = setFinaleInterval(std::move(text), "portalSpawnIntervalMs", intervals[1]);
+			CEncounterPatternReference accepted;
+			if (!Require(!text.empty() && writeFixture(text) && accepted.Load(fixture.File, status) &&
+				accepted.Get_Patterns().size() == committedCount &&
+				nullptr != accepted.Find_Pattern("VALTAN_GHOST_FINALE"),
+				"whole-Encounter optional finale interval admission failed"))
+				return false;
+			++intervalAdmissionCount;
+		}
+		for (const char* key : { "auxiliarySpawnIntervalMs", "portalSpawnIntervalMs" })
+		{
+			for (const char* invalid : { "0", "-1", "600001", "1.5", "null", "true", "\"5000\"" })
+			{
+				const auto text = setFinaleInterval(legacyIntervals, key, invalid);
+				const auto label = std::string("finale interval ") + key + "=" + invalid;
+				if (!Require(!text.empty(), "invalid finale interval fixture was not staged") ||
+					!rejectedWithoutCommit(text, label.c_str(), extensionError))
+					return false;
+			}
+		}
+		const auto unknownInterval = setFinaleInterval(legacyIntervals, "spawnIntervalMs", "5000");
+		if (!rejectedWithoutCommit(unknownInterval, "unknown finale interval property", extensionError))
+			return false;
+		const auto legacySixPool = replaceField(legacyIntervals,
+			{ "VALTAN_GHOST_FINALE", "finale", "ghostPatternIds",
+			  "[\"VALTAN_WHIRLWIND\",\"VALTAN_FOUR_SLASH\",\"VALTAN_SEQUENCE_FOUR\",\"VALTAN_CROSS\",\"VALTAN_CHARGE\",\"VALTAN_CHARGE_2\"]" });
+		CEncounterPatternReference legacySixReference;
+		if (!Require(!legacySixPool.empty() && writeFixture(legacySixPool) &&
+			legacySixReference.Load(fixture.File, status), "legacy six-child canonical finale was rejected"))
+			return false;
+		// The current death stage transfers to ghost respawn. Keep the older
+		// terminal suppression admission checks on an explicit compatibility fixture.
+		auto legacyGhostDeath = replaceField(original,
+			{ "VALTAN_GHOST_DEATH_AUDITION", "STEP_01", "branches", nullptr });
+		const auto legacySuppression = std::string("23000,\"actions\":[") +
+			actionText("SUPPRESS_INTER_STEP_PURSUIT", "EXIT", "boss.sequence.inter-step-pursuit", 0u, 0u) + "]";
+		legacyGhostDeath = replaceField(std::move(legacyGhostDeath),
+			{ "VALTAN_GHOST_DEATH_AUDITION", "STEP_01", "durationMs", legacySuppression.c_str() });
+		CEncounterPatternReference legacyGhostDeathReference;
+		if (!Require(!legacyGhostDeath.empty() && writeFixture(legacyGhostDeath) &&
+			legacyGhostDeathReference.Load(fixture.File, status),
+			(std::string("legacy terminal suppression fixture was rejected: ") + status).c_str()))
+			return false;
 		const FieldMutation malformedFields[] =
 		{
 			{ "VALTAN_GHOST_FINALE", "finale", "kind", "\"UNKNOWN_FINALE\"", extensionError },
@@ -340,6 +439,12 @@ namespace
 			{ "VALTAN_GHOST_FINALE", "finale", "spawnHalfExtentsM", "[0,10]", extensionError },
 			{ "VALTAN_GHOST_FINALE", "finale", "spawnHalfExtentsM", "[10,101]", extensionError },
 			{ "VALTAN_GHOST_FINALE", "finale", "spawnHalfExtentsM", "[10]", extensionError },
+			{ "VALTAN_GHOST_FINALE", "finale", "ghostPatternIds",
+				"[\"VALTAN_WHIRLWIND\",\"VALTAN_FOUR_SLASH\",\"VALTAN_SEQUENCE_FOUR\",\"VALTAN_CROSS\",\"VALTAN_CHARGE\"]", extensionError },
+			{ "VALTAN_GHOST_FINALE", "finale", "ghostPatternIds",
+				"[\"VALTAN_FOUR_SLASH\",\"VALTAN_WHIRLWIND\",\"VALTAN_SEQUENCE_FOUR\",\"VALTAN_CROSS\"]", extensionError },
+			{ "VALTAN_GHOST_FINALE", "finale", "ghostPatternIds",
+				"[\"VALTAN_FOUR_SLASH\",\"VALTAN_WHIRLWIND\"]", extensionError },
 			{ "VALTAN_GHOST_FINALE", "finale", "ghostPatternIds",
 				"[]", extensionError },
 			{ "VALTAN_GHOST_FINALE", "finale", "ghostPatternIds",
@@ -411,7 +516,9 @@ namespace
 		};
 		for (const auto& mutation : malformedFields)
 		{
-			const auto text = replaceField(original, mutation);
+			const bool legacySuppressionMutation =
+				std::string(mutation.pattern) == "VALTAN_GHOST_DEATH_AUDITION";
+			const auto text = replaceField(legacySuppressionMutation ? legacyGhostDeath : original, mutation);
 			const std::string label = std::string(mutation.pattern) + "/" + mutation.field;
 			if (!Require(!text.empty(), ("encounter mutation field not found: " + label).c_str()) ||
 				!rejectedWithoutCommit(text, label.c_str(), mutation.errorPrefix))
@@ -452,8 +559,8 @@ namespace
 				stageActionsError))
 				return false;
 		}
-		std::cout << "EncounterPatternReference: latest Trash/portal/finale and " <<
-			rejectionCount << " rejection/rollback cases PASS\n";
+		std::cout << "EncounterPatternReference: " << intervalAdmissionCount <<
+			" optional interval admissions; latest Trash/portal/finale and " << rejectionCount << " rejection/rollback cases PASS\n";
 		return true;
 	}
 }

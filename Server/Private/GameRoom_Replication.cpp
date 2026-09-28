@@ -6,6 +6,7 @@
 #include "Network/PacketMessages.h"
 #include "Network/PacketWriter.h"
 #include "Gameplay/WorldCollisionContract.h"
+#include "Gameplay/MaharakaWaterpangContract.h"
 
 #include <algorithm>
 #include <array>
@@ -247,12 +248,14 @@ bool LostArk::Server::CGameRoom::Send_WorldEntitySpawnResult(
 bool LostArk::Server::CGameRoom::Send_InventorySnapshot(
 	const std::shared_ptr<CClientSession>& session,
 	const std::uint32_t requestSequence,
-	const std::vector<LostArk::Shared::INVENTORY_ITEM_SNAPSHOT>& inventory)
+	const SERVER_PLAYER& player)
 {
 	using namespace LostArk::Shared;
 	S2C_INVENTORY_SNAPSHOT message{};
 	message.iRequestSequence = requestSequence;
-	message.Items = inventory;
+	message.Items = player.Inventory;
+	message.iSilver = player.Purse.iSilver;
+	message.iGold = player.Purse.iGold;
 	CPacketWriter writer;
 	return nullptr != session && Write_Message(writer, message) &&
 		session->Send_Frame(
@@ -561,6 +564,14 @@ void LostArk::Server::CGameRoom::Broadcast_WorldSnapshot()
 		snapshot.eAction = player.eAction;
 		snapshot.isKnockbackAirborne = player.eAction == PLAYER_ACTION_STATE::KNOCKDOWN &&
 			player.bKnockbackBallistic && player.fKnockbackRemainingSeconds > 0.f;
+		// Water gun: armed from the intro start tick while the body stands on the
+		// Waterpang arena region; an arena push-off or knockdown keeps it until the
+		// fall resolves. The empty-room reset clears the match and so the gun.
+		snapshot.isWaterpangArmed = WORLD_ID::MAHARAKA == m_eWorldId && m_MaharakaWaterpangIntro &&
+			Has_ReachedServerTick(m_iServerTick, m_MaharakaWaterpangIntro->iStartTick) &&
+			(player.bWaterpangFall || PLAYER_ACTION_STATE::KNOCKDOWN == player.eAction ||
+			 (m_ServerNavigation.Is_Loaded() && m_ServerNavigation.Is_PointWalkableInRegion(
+				MAHARAKA_WATERPANG_REGION_ID, player.fPositionX, player.fPositionZ, player.fPositionY)));
 		snapshot.eStance = player.eStance;
 		snapshot.iSkillId = player.iCurrentSkillId;
 		snapshot.iActionStartTick = player.iActionStartTick;
@@ -647,10 +658,23 @@ void LostArk::Server::CGameRoom::Broadcast_WorldSnapshot()
             snapshot.iFearEndTick = player.iFearEndTick;
             snapshot.strFearPresentationId = player.strFearPresentationId;
         }
-		if (player.iInvulnerabilityZoneContactTick == m_iServerTick && m_iServerTick != 0u &&
+		// A blocked Valtan wipe is a one-tick verdict. Retain its occurrence for one
+		// second so snapshot coalescing cannot erase the text before a Client frame.
+		const bool recentEstherBlock = m_eWorldId == WORLD_ID::VALTAN_ARENA &&
+			player.iInvulnerabilityZonePulseTick != 0u &&
+			player.iInvulnerabilityZoneContactTick == player.iInvulnerabilityZonePulseTick &&
+			m_iServerTick >= player.iInvulnerabilityZonePulseTick &&
+			m_iServerTick - player.iInvulnerabilityZonePulseTick < SERVER_TICK_HZ;
+		if ((player.iInvulnerabilityZoneContactTick == m_iServerTick || recentEstherBlock) && m_iServerTick != 0u &&
 			player.iCurrentHp != 0u && player.isCombatReady && player.eAction != PLAYER_ACTION_STATE::DEAD &&
 			player.eAction != PLAYER_ACTION_STATE::FALLING && player.eAction != PLAYER_ACTION_STATE::GRABBED)
 			snapshot.iInvulnerabilityZonePulseTick = player.iInvulnerabilityZonePulseTick;
+		if (m_eWorldId == WORLD_ID::VALTAN_ARENA && !player.Is_Guide() &&
+			player.iCurrentHp != 0u && player.eAction != PLAYER_ACTION_STATE::DEAD)
+		{
+			snapshot.bRonaunGuard = player.bRonaunGuard;
+			snapshot.iRonaunGrantTick = player.iRonaunGrantTick;
+		}
 		snapshot.iSilenceEndTick = player.iSilenceEndTick;
 		snapshot.iSilenceDurationTicks = player.iSilenceDurationTicks;
 		snapshot.iComboStage = player.iComboStage;
@@ -734,6 +758,16 @@ void LostArk::Server::CGameRoom::Broadcast_WorldSnapshot()
 		{
 			snapshot.iPatternTargetNetEntityId =
 				entity.iPatternTargetEntityId;
+			if (!entity.strPatternId.empty() && entity.fPatternLeapApexHeight > 0.f &&
+				(entity.eAction == SERVER_ENTITY_ACTION::PATTERN_WINDUP ||
+				 entity.eAction == SERVER_ENTITY_ACTION::PATTERN_ACTIVE ||
+				 entity.eAction == SERVER_ENTITY_ACTION::PATTERN_RECOVERY))
+			{
+				snapshot.PatternLanding.isValid = true;
+				snapshot.PatternLanding.fPositionX = entity.fLeapLandingX;
+				snapshot.PatternLanding.fPositionY = entity.fLeapLandingY;
+				snapshot.PatternLanding.fPositionZ = entity.fLeapLandingZ;
+			}
 			if (entity.bPortalMotionActive &&
 				entity.bPortalRushTargetLocked &&
 				BOSS_PATTERN_STAGE_MOTION_KIND::PORTAL_TARGET_RUSH ==
@@ -802,6 +836,9 @@ void LostArk::Server::CGameRoom::Broadcast_WorldSnapshot()
 		packed.fPositionX = bomb.fPositionX;
 		packed.fPositionZ = bomb.fPositionZ;
 	}
+	if (m_eWorldId == WORLD_ID::VALTAN_ARENA)
+		for (const WORLD_PICKUP_RUNTIME& pickup : m_WorldPickups)
+			message.WorldPickups.push_back(pickup.Snapshot);
 	message.BossCombatEvents = m_TickBossCombatEvents;
 	if (!m_CombatObjectRuntime.Build_Snapshots(message.CombatObjects))
 		return;

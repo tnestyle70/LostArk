@@ -349,6 +349,36 @@
       }
     },
     {
+      "id": "world.pickups",
+      "kind": "publisher",
+      "profiles": ["Core", "FullDiagnostic"],
+      "inputs": [
+        "Data/Maps/Authoring/LV_LUT_HEARTRB_ED/*.mapeffects.json",
+        "Data/Maps/Imported/LV_LUT_HEARTRB_ED/*.deployassets",
+        "Data/Maps/Authoring/LV_LUT_HEARTRB_ED/*.deployplacements",
+        "Data/Encounters/Valtan/ValtanWorldEvents.json",
+        "Data/Effects/EffectCatalog.json",
+        "Data/Effects/Authored/effect.valtan.ether.orb.effect.json",
+        "Client/Bin/DataFiles/World/LV_LUT_HEARTRB_ED.worlddestruction.json",
+        "Client/Bin/DataFiles/Navigation/LV_LUT_HEARTRB_ED.navgrid"
+      ],
+      "tools": ["Tools/MapPipeline/Publish-MapAuthoring.ps1"],
+      "outputs": [
+        "Server/Bin/DataFiles/World/VALTAN_ARENA.worldpickupsbootstrap",
+        "Client/Bin/DataFiles/Map/LV_LUT_HEARTRB_ED.mapeffects.json"
+      ],
+      "requiredOutputPatterns": [
+        "Server/Bin/DataFiles/World/VALTAN_ARENA.worldpickupsbootstrap",
+        "Client/Bin/DataFiles/Map/LV_LUT_HEARTRB_ED.mapeffects.json"
+      ],
+      "action": {
+        "executable": "powershell.exe",
+        "arguments": ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File",
+          "Tools/MapPipeline/Publish-MapAuthoring.ps1", "-AreaId", "LV_LUT_HEARTRB_ED",
+          "-Scope", "Effects", "-Mode", "Publish"]
+      }
+    },
+    {
       "id": "gameplay.balance",
       "kind": "publisher",
       "profiles": ["Core", "FullDiagnostic"],

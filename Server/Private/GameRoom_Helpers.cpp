@@ -410,6 +410,7 @@ void Cancel_PlayerActionForPatternStatus(SERVER_PLAYER& player)
 		player.fSkillAimDistance = 0.f;
 		player.hasAppliedSkillDamage = false;
 		player.iAppliedHitMask = 0u;
+		player.HitWindowTargets.clear();
 		player.iSpawnedProjectileMask = 0u;
 		player.Projectiles.clear();
 		player.iComboStage = 0u;
@@ -545,6 +546,7 @@ void Freeze_TimelineAuditionPlayer(SERVER_PLAYER& player)
 		player.fSkillAimDistance = 0.f;
 		player.hasAppliedSkillDamage = false;
 		player.iAppliedHitMask = 0u;
+		player.HitWindowTargets.clear();
 		player.iSpawnedProjectileMask = 0u;
 		player.Projectiles.clear();
 		player.iComboStage = 0u;
@@ -566,6 +568,7 @@ void Prepare_TimelineAuditionPlayer(
 		const std::uint32_t actionTick)
 	{
 		Freeze_TimelineAuditionPlayer(player);
+		player.bRonaunGuard = false; player.iRonaunGrantTick = 0u;
 		player.iCurrentHp = player.iMaximumHp;
 		player.iCurrentResource = player.iMaximumResource;
 		player.iResourceAccumulator = 0u;

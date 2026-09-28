@@ -290,12 +290,13 @@ bool_t Client::CEffect_Tool::Open_ValtanProductEffect(
 		bool_t bPreviewReady = false;
 		if (pPattern->bAuthoringMasterManaged)
 		{
-			constexpr std::array<VALTAN_PATTERN_PREVIEW_PATH, 4u>
+			constexpr std::array<VALTAN_PATTERN_PREVIEW_PATH, 5u>
 				PreviewPaths = {
 					VALTAN_PATTERN_PREVIEW_PATH::NORMAL,
 					VALTAN_PATTERN_PREVIEW_PATH::COUNTER_GROGGY,
 					VALTAN_PATTERN_PREVIEW_PATH::WALL_GROGGY,
-					VALTAN_PATTERN_PREVIEW_PATH::PART_BREAK };
+					VALTAN_PATTERN_PREVIEW_PATH::PART_BREAK,
+					VALTAN_PATTERN_PREVIEW_PATH::CAPTURE_SUCCESS };
 			for (const VALTAN_PATTERN_PREVIEW_PATH ePath : PreviewPaths)
 			{
 				if (Build_ValtanProductPreview(
@@ -359,7 +360,8 @@ void Client::CEffect_Tool::Update(const f32_t fTimeDelta)
     m_pThumbnailCache->Begin_Frame(m_iFrameNumber);
     if (Has_ClassMovieContext())
     {
-        if (CGameInstance::Get().Get_CurrentLevelID() != ETOUI(LEVEL::CHARACTER_SELECT))
+        const auto movieLevel = Is_ValtanCinematicEditor() ? LEVEL::VALTAN_ARENA : LEVEL::CHARACTER_SELECT;
+        if (CGameInstance::Get().Get_CurrentLevelID() != ETOUI(movieLevel))
             (void)End_ClassMovieEditing();
         else
         {
@@ -454,6 +456,15 @@ void Client::CEffect_Tool::Update(const f32_t fTimeDelta)
 	}
 	if (bValtanPatternDraftTargetInvalid)
 		bValtanPatternDraftTimelineRebound = true;
+	if (bStaticAreaEffectActive && m_StaticAreaPreviewPresentation.has_value() &&
+		m_StaticAreaPreviewPresentation->pickup.has_value() && m_bValtanEtherFallPreviewPlaying)
+	{
+		const f32_t duration = m_StaticAreaPreviewPresentation->pickup->fallDurationMs * 0.001f;
+		const f32_t delta = std::isfinite(fTimeDelta) ? (std::clamp)(fTimeDelta, 0.f, 0.1f) : 0.f;
+		m_fValtanEtherPreviewFraction = (std::min)(1.f,
+			m_fValtanEtherPreviewFraction + delta / (std::max)(0.001f, duration));
+		if (m_fValtanEtherPreviewFraction >= 1.f) m_bValtanEtherFallPreviewPlaying = false;
+	}
 	if (bStaticAreaEffectActive && !Update_StaticAreaPreviewRoot())
 	{
 		Release_WorldPreview(true);
@@ -523,8 +534,10 @@ void Client::CEffect_Tool::Update(const f32_t fTimeDelta)
         {
             if (m_bPreviewLoop)
             {
-                m_fPreviewTimeSeconds = std::fmod(
-                    m_fPreviewTimeSeconds, m_fPreviewDurationSeconds);
+                const f32_t fLoopStart = (std::clamp)(Resolve_WorldPreviewStartTime(), 0.f,
+                    (std::max)(0.f, m_fPreviewDurationSeconds - 0.001f));
+                m_fPreviewTimeSeconds = fLoopStart + std::fmod(
+                    m_fPreviewTimeSeconds - fLoopStart, m_fPreviewDurationSeconds - fLoopStart);
                 bSeekAfterLoop = true;
             }
             else
@@ -1075,6 +1088,7 @@ void Client::CEffect_Tool::Render_EffectTypeSelector()
 
 void Client::CEffect_Tool::Hide_WorldPreview()
 {
+	m_bValtanEtherFallPreviewPlaying = false;
     if (Has_ClassMovieContext() && m_ClassMovieCallbacks.stop) m_ClassMovieCallbacks.stop();
     m_bPreviewPlaying = false;
 	m_bPreviewVisibleRequested = false;

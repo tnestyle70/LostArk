@@ -8,6 +8,20 @@
 
 namespace LostArk::Server
 {
+	struct WORLD_PICKUP_DESCRIPTOR final
+	{
+		std::string strPlacementId, strWallGroupId;
+		float fStartX = 0.f, fStartY = 0.f, fStartZ = 0.f;
+		float fLandingX = 0.f, fLandingY = 0.f, fLandingZ = 0.f;
+		std::uint32_t iFallDurationTicks = 0u;
+		float fPickupRadiusM = 0.f;
+	};
+	// Required Valtan World authoring output; parse/validate before replacing descriptors.
+	bool Load_ValtanWorldPickups(std::vector<WORLD_PICKUP_DESCRIPTOR>& descriptors,
+		std::string& status);
+	bool Load_WorldPickupsFromFile(const std::filesystem::path& path,
+		std::vector<WORLD_PICKUP_DESCRIPTOR>& descriptors, std::string& status);
+
 	class CWorldDestructionBootstrap final
 	{
 	public:

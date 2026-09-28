@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <atomic>
 #include <cctype>
+#include <cmath>
 #include <filesystem>
 #include <fstream>
 #include <initializer_list>
@@ -30,9 +31,13 @@ namespace
 	constexpr std::size_t MAX_CUE_COUNT = 256u;
 
 	bool_t Is_ExactObject(const DATA_JSON_VALUE& value,
-		const std::initializer_list<const char_t*> keys)
+		const std::initializer_list<const char_t*> keys,
+		const std::initializer_list<const char_t*> optionalKeys = {})
 	{
-		if (!value.Is_Object() || value.Get_Object().size() != keys.size())
+		const std::size_t optionalCount = std::count_if(
+			optionalKeys.begin(), optionalKeys.end(),
+			[&value](const char_t* key) { return nullptr != value.Find(key); });
+		if (!value.Is_Object() || value.Get_Object().size() != keys.size() + optionalCount)
 			return false;
 		return std::all_of(keys.begin(), keys.end(),
 			[&value](const char_t* key)
@@ -147,8 +152,10 @@ namespace
 					cue.strPresentationEventId << "\",\n";
 			output <<
 				"      \"soundBank\": \"" << cue.strSoundBank << "\",\n"
-				"      \"soundEvent\": \"" << cue.strSoundEvent << "\"\n"
-				"    }";
+				"      \"soundEvent\": \"" << cue.strSoundEvent << "\"";
+			if (cue.iPlaybackOffsetMs != 0u)
+				output << ",\n      \"playbackOffsetMs\": " << cue.iPlaybackOffsetMs;
+			output << "\n    }";
 			if (i + 1u != document.Cues.size())
 				output << ',';
 			output << '\n';
@@ -380,13 +387,25 @@ bool_t Client::CValtanCombatObjectSoundCueDocument::Parse_Text(
 						"soundBank", "soundEvent" } :
 					std::initializer_list<const char_t*>{
 						"bindingId", "combatObjectArchetypeId",
-						"presentationEventId", "soundBank", "soundEvent" }))
+						"presentationEventId", "soundBank", "soundEvent" },
+				{ "playbackOffsetMs" }))
 		{
 			outStatus =
 				"Valtan combat-object Sound cue must own exactly one of hitId or presentationEventId.";
 			return false;
 		}
 		VALTAN_COMBAT_OBJECT_SOUND_CUE cue;
+		if (const DATA_JSON_VALUE* offset = value.Find("playbackOffsetMs"))
+		{
+			if (!offset->Is_Number() || !std::isfinite(offset->Get_Number()) ||
+				offset->Get_Number() < 0.0 || offset->Get_Number() > 600000.0 ||
+				std::floor(offset->Get_Number()) != offset->Get_Number())
+			{
+				outStatus = "Valtan combat-object Sound playbackOffsetMs must be an integer from 0 to 600000.";
+				return false;
+			}
+			cue.iPlaybackOffsetMs = static_cast<uint32_t>(offset->Get_Number());
+		}
 		if (!Read_StableString(value, "bindingId", cue.strBindingId) ||
 			!Read_StableString(value, "combatObjectArchetypeId",
 				cue.strCombatObjectArchetypeId) ||

@@ -10,6 +10,8 @@
 #include "Body_Valtan.h"
 #include "Character.h"
 #include "CharacterCatalog.h"
+#include "CharacterRoster.h"
+#include "PlayerSkillCatalog.h"
 #include "CharacterSelectionState.h"
 #include "ClassSelectionPresentation.h"
 #include "Collider.h"
@@ -250,6 +252,20 @@ HRESULT CLoader::Initialize(
 			m_CharacterAuthoringInputs.emplace(characterClass, std::move(input));
 		}
 	}
+	else if (CActorCatalog::Initialize())
+	{
+		/* The Lobby stands the character-select roster up, so the same owner-thread staging runs
+		for those classes. Any failure here only leaves the Lobby without its characters. */
+		std::string skillStatus;
+		if (!CPlayerSkillCatalog::Get_Skills().empty() || CPlayerSkillCatalog::Load(skillStatus))
+		{
+			for (const CHARACTER_ROSTER_ENTRY& entry : CCharacterRoster::Get_Entries())
+			{
+				if (auto input = CPlayableCharacterAssetService::Capture_AuthoringInput(entry.eCharacterClass))
+					m_CharacterAuthoringInputs.emplace(entry.eCharacterClass, std::move(input));
+			}
+		}
+	}
 	m_eNextLevelID = eNextLevelID;
 	m_iResult.store(S_FALSE, std::memory_order_release);
 	m_eState.store(STATE::RUNNING, std::memory_order_release);
@@ -326,6 +342,12 @@ HRESULT CLoader::Start_Loading()
 	}
 	if (SUCCEEDED(result) && m_isCancellationRequested.load(std::memory_order_acquire))
 		result = HRESULT_FROM_WIN32(ERROR_CANCELLED);
+	if (FAILED(result) && m_pEffectLoadJob)
+	{
+		const auto Failure = m_pEffectLoadJob->Get_FirstFailure();
+		if (Failure && FAILED(static_cast<HRESULT>(Failure->iRootCode)))
+			result = static_cast<HRESULT>(Failure->iRootCode);
+	}
 	if (FAILED(result))
 		Request_Cancellation();
 	m_iResult.store(result, std::memory_order_release);
@@ -498,8 +520,24 @@ void CLoader::Print_Text()
 HRESULT CLoader::Ready_For_Lobby()
 {
 	CLevelResourceRollbackScope rollback(ETOUI(LEVEL::LOBBY));
-	Declare_Phases(2u);
+	Declare_Phases(3u);
 	Set_Status(TEXT("LOBBY: stage selection UI"));
+	/* The character-select window stands the roster's characters up over the Lobby, so their
+	models are prepared here, behind the Loading screen, like any level's playable classes. A
+	failure only costs the window its characters, never the Lobby: the window prepares whichever
+	class is still missing on its own. */
+	Set_Status(TEXT("LOBBY: character stage"));
+	std::vector<LostArk::Shared::CHARACTER_CLASS_ID> stageClasses;
+	for (const CHARACTER_ROSTER_ENTRY& entry : CCharacterRoster::Get_Entries())
+	{
+		if (m_CharacterAuthoringInputs.contains(entry.eCharacterClass))
+			stageClasses.push_back(entry.eCharacterClass);
+	}
+	/* Weapon parts draw with the static-mesh shader, which other levels only get from their map. */
+	if (stageClasses.empty() ||
+		FAILED(Ready_StaticMeshShader(ETOUI(LEVEL::LOBBY))) ||
+		FAILED(Ready_Character_Rendering(ETOUI(LEVEL::LOBBY), stageClasses)))
+		OutputDebugStringA("[Loader][Lobby] Character stage preparation failed; the window prepares its own.\n");
 	Set_Status(TEXT("Lobby loading complete"));
 	rollback.Commit();
 	return S_OK;
@@ -964,6 +1002,15 @@ HRESULT CLoader::Ready_For_Maharaka()
 		selectedClass)))
 		return E_FAIL;
 
+	if (FAILED(CGameInstance::Get().Add_Prototype(ETOUI(LEVEL::MAHARAKA),
+		CWorldSequenceObject::PROTOTYPE_TAG,CWorldSequenceObject::Create(m_pDevice,m_pContext)))) return E_FAIL;
+	std::string waterpangStatus;
+	if (!CWorldSequencePlayer::Prepare_AreaLoad(ETOUI(LEVEL::MAHARAKA),pEntry->pMapAreaId,
+		pEntry->MapLoadScope,waterpangStatus,[this]() { return m_isCancellationRequested.load(std::memory_order_acquire); }))
+	{
+		if (m_isCancellationRequested.load(std::memory_order_acquire)) return HRESULT_FROM_WIN32(ERROR_CANCELLED);
+		OutputDebugStringA(("[Loader][Waterpang] "+waterpangStatus+"\n").c_str());
+	}
 	Set_Status(TEXT("Maharaka loading complete"));
 	rollback.Commit();
 	return S_OK;
@@ -1174,6 +1221,38 @@ HRESULT CLoader::Ready_MapArea(
 					navigationContract.runtimePath.c_str(), maximumStepHeight);
 				if (!navigation)
 					return E_FAIL;
+				/* The Server answers inside detail regions from the region grid, so the
+				   local player's predicted height and paths must use the same grids. */
+				std::vector<MAP_NAVIGATION_REGION> regions;
+				if (!CMapNavigationContract::Read_RuntimeRegionManifest(
+					areaId, regions, navigationStatus))
+				{
+					OutputDebugStringA(("[Loader][Map] " + navigationStatus + "\n").c_str());
+					return E_FAIL;
+				}
+				for (const MAP_NAVIGATION_REGION& region : regions)
+				{
+					MAP_NAVIGATION_CONTRACT regionContract;
+					f32_t regionStepHeight = 0.f;
+					if (!CMapNavigationContract::Resolve_Region(
+							areaId, region.regionId, regionContract, navigationStatus) ||
+						!regionContract.runtimeGridAvailable ||
+						!CMapNavigationContract::Read_RuntimeStepHeight(
+							regionContract, regionStepHeight, navigationStatus) ||
+						std::abs(regionStepHeight - region.stepHeight) > 0.000001f)
+					{
+						OutputDebugStringA(("[Loader][Map] Navigation region rejected: " +
+							region.regionId + " (" + navigationStatus + ")\n").c_str());
+						return E_FAIL;
+					}
+					auto regionNavigation = CNavigation::Create_NavGrid(m_pDevice, m_pContext,
+						regionContract.runtimePath.c_str(), regionStepHeight);
+					if (!regionNavigation ||
+						FAILED(navigation->Attach_Region(std::move(regionNavigation))))
+					{
+						return E_FAIL;
+					}
+				}
 				staged.emplace_back(navigationContract.prototypeTag, std::move(navigation));
 			}
 		}

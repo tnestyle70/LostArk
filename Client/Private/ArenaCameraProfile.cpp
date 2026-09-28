@@ -64,7 +64,7 @@ namespace
 		DATA_JSON_PARSE_LIMITS limits;
 		limits.iMaximumBytes = 8192u;
 		limits.iMaximumDepth = 4u;
-		limits.iMaximumValues = 64u;
+		limits.iMaximumValues = 128u;
 		if (!CDataJson::Parse(text, root, status, limits))
 			return false;
 		const char* area = AreaId(map);
@@ -130,24 +130,55 @@ namespace
 		}
 		if (const auto* ship = root.Find("shipCamera"))
 		{
-			if (map != ARENA_CAMERA_MAP::BERN || !ship->Is_Object() || ship->Get_Object().size() != 7u)
-			{
-				status = "shipCamera is supported only for Bern and requires provenance, fovXDegrees, pitchDegrees, "
-					"yawDegrees, distanceMeters, focusOffsetYMeters and followResponse.";
-				return false;
-			}
-			const auto* provenance = ship->Find("provenance");
-			if (nullptr == provenance || !provenance->Is_String() ||
-				!ReadFloat(ship->Find("fovXDegrees"), staged.shipCamera.fovXDegrees) ||
-				!ReadFloat(ship->Find("pitchDegrees"), staged.shipCamera.pitchDegrees) ||
-				!ReadFloat(ship->Find("yawDegrees"), staged.shipCamera.yawDegrees) ||
-				!ReadFloat(ship->Find("distanceMeters"), staged.shipCamera.distanceMeters) ||
-				!ReadFloat(ship->Find("focusOffsetYMeters"), staged.shipCamera.focusOffsetYMeters) ||
+			const auto* provenance = ship->Is_Object() ? ship->Find("provenance") : nullptr;
+			const auto* steps = ship->Is_Object() ? ship->Find("zoomSteps") : nullptr;
+			const auto* scales = ship->Is_Object() ? ship->Find("shipMeshScales") : nullptr;
+			f32_t openSeaStep = 0.f, anchorStep = 0.f;
+			if (map != ARENA_CAMERA_MAP::BERN || !ship->Is_Object() || ship->Get_Object().size() != 7u ||
+				nullptr == provenance || !provenance->Is_String() || nullptr == steps || !steps->Is_Array() ||
+				steps->Get_Array().size() != staged.shipCamera.zoomSteps.size() ||
+				!ReadFloat(ship->Find("openSeaStep"), openSeaStep) || !ReadFloat(ship->Find("anchorStep"), anchorStep) ||
+				openSeaStep != std::floor(openSeaStep) || anchorStep != std::floor(anchorStep) ||
+				!ReadVector(ship->Find("anchorVolume"), staged.shipCamera.anchorVolume) ||
+				nullptr == scales || !scales->Is_Object() ||
 				!ReadFloat(ship->Find("followResponse"), staged.shipCamera.followResponse))
 			{
-				status = "shipCamera fields must be a provenance string and finite numbers.";
+				status = "shipCamera is supported only for Bern and requires provenance, three zoomSteps, integer "
+					"openSeaStep/anchorStep, anchorVolume [x, z, halfExtent], shipMeshScales and followResponse.";
 				return false;
 			}
+			for (size_t i = 0u; i < staged.shipCamera.zoomSteps.size(); ++i)
+			{
+				// [fovXDegrees, Pitch, Yaw, ZoomDist cm, RelativeZ cm, InterpolationRatio]
+				const auto& row = steps->Get_Array()[i];
+				auto& step = staged.shipCamera.zoomSteps[i];
+				if (!row.Is_Array() || row.Get_Array().size() != 6u ||
+					!ReadFloat(&row.Get_Array()[0], step.fovXDegrees) ||
+					!ReadFloat(&row.Get_Array()[1], step.sourcePitchDegrees) ||
+					!ReadFloat(&row.Get_Array()[2], step.sourceYawDegrees) ||
+					!ReadFloat(&row.Get_Array()[3], step.zoomDistCm) ||
+					!ReadFloat(&row.Get_Array()[4], step.relativeZCm) ||
+					!ReadFloat(&row.Get_Array()[5], step.interpolationRatio))
+				{
+					status = "shipCamera zoomSteps rows are [fovX, Pitch, Yaw, ZoomDist cm, RelativeZ cm, ratio].";
+					return false;
+				}
+			}
+			for (const auto& [key, value] : scales->Get_Object())
+			{
+				ARENA_SHIP_MESH_SCALE row;
+				if (key.empty() || key.size() > 9u ||
+					!std::all_of(key.begin(), key.end(), [](const char c) { return c >= '0' && c <= '9'; }) ||
+					!ReadFloat(&value, row.scale))
+				{
+					status = "shipCamera shipMeshScales maps vehicle ids to finite source mesh scales.";
+					return false;
+				}
+				row.vehicleId = static_cast<uint32_t>(std::stoul(key));
+				staged.shipCamera.shipMeshScales.push_back(row);
+			}
+			staged.shipCamera.openSeaStep = static_cast<uint32_t>((std::max)(0.f, openSeaStep));
+			staged.shipCamera.anchorStep = static_cast<uint32_t>((std::max)(0.f, anchorStep));
 			staged.shipCamera.provenance = provenance->Get_String();
 			staged.hasShipCamera = true;
 		}
@@ -236,12 +267,25 @@ namespace
 				provenance += (c == '\n' || c == '\r' || c == '\t') ? ' ' : c;
 			}
 			output << ",\n  \"shipCamera\": {\n    \"provenance\": \"" << provenance << "\""
-				<< ",\n    \"fovXDegrees\": " << profile.shipCamera.fovXDegrees
-				<< ",\n    \"pitchDegrees\": " << profile.shipCamera.pitchDegrees
-				<< ",\n    \"yawDegrees\": " << profile.shipCamera.yawDegrees
-				<< ",\n    \"distanceMeters\": " << profile.shipCamera.distanceMeters
-				<< ",\n    \"focusOffsetYMeters\": " << profile.shipCamera.focusOffsetYMeters
-				<< ",\n    \"followResponse\": " << profile.shipCamera.followResponse << "\n  }";
+				<< ",\n    \"zoomSteps\": [";
+			for (size_t i = 0u; i < profile.shipCamera.zoomSteps.size(); ++i)
+			{
+				const auto& step = profile.shipCamera.zoomSteps[i];
+				output << (i ? "," : "") << "\n      [" << step.fovXDegrees << ", " << step.sourcePitchDegrees
+					<< ", " << step.sourceYawDegrees << ", " << step.zoomDistCm << ", " << step.relativeZCm
+					<< ", " << step.interpolationRatio << "]";
+			}
+			output << "\n    ],\n    \"openSeaStep\": " << profile.shipCamera.openSeaStep
+				<< ",\n    \"anchorStep\": " << profile.shipCamera.anchorStep
+				<< ",\n    \"anchorVolume\": [" << profile.shipCamera.anchorVolume.x << ", "
+				<< profile.shipCamera.anchorVolume.y << ", " << profile.shipCamera.anchorVolume.z << "]"
+				<< ",\n    \"shipMeshScales\": {";
+			for (size_t i = 0u; i < profile.shipCamera.shipMeshScales.size(); ++i)
+			{
+				const auto& row = profile.shipCamera.shipMeshScales[i];
+				output << (i ? "," : "") << "\n      \"" << row.vehicleId << "\": " << row.scale;
+			}
+			output << "\n    },\n    \"followResponse\": " << profile.shipCamera.followResponse << "\n  }";
 		}
 		if (profile.hasShipFog)
 		{
@@ -399,14 +443,22 @@ bool_t CArenaCameraProfile::Validate(const ARENA_CAMERA_PROFILE& profile, std::s
 		!InRange(profile.mazeHammerRotationDegrees.z, -3600.f, 3600.f) || !InRange(profile.mazeHammerScale.x, .05f, 8.f) ||
 		!InRange(profile.mazeHammerScale.y, .05f, 8.f) || !InRange(profile.mazeHammerScale.z, .05f, 8.f))
 		status = "Maze hammer requires finite position +/-1000 cm, rotation +/-3600 deg and scale 0.05..8.";
-	else if (!InRange(profile.shipCamera.fovXDegrees, 10.f, 150.f) ||
-		!InRange(profile.shipCamera.pitchDegrees, -89.f, 89.f) ||
-		!InRange(profile.shipCamera.yawDegrees, -180.f, 180.f) ||
-		!InRange(profile.shipCamera.distanceMeters, 0.1f, 1000.f) ||
-		!InRange(profile.shipCamera.focusOffsetYMeters, -100.f, 100.f) ||
+	else if (!std::all_of(profile.shipCamera.zoomSteps.begin(), profile.shipCamera.zoomSteps.end(),
+		[](const ARENA_SHIP_CAMERA_STEP& step) {
+			return InRange(step.fovXDegrees, 10.f, 150.f) && InRange(step.sourcePitchDegrees, -89.f, 89.f) &&
+				InRange(step.sourceYawDegrees, -270.f, 90.f) && InRange(step.zoomDistCm, 10.f, 100000.f) &&
+				InRange(step.relativeZCm, -10000.f, 10000.f) && InRange(step.interpolationRatio, 0.f, 60.f); }) ||
+		profile.shipCamera.openSeaStep < 1u || profile.shipCamera.openSeaStep > profile.shipCamera.zoomSteps.size() ||
+		profile.shipCamera.anchorStep < 1u || profile.shipCamera.anchorStep > profile.shipCamera.zoomSteps.size() ||
+		!InRange(profile.shipCamera.anchorVolume.x, -100000.f, 100000.f) ||
+		!InRange(profile.shipCamera.anchorVolume.y, -100000.f, 100000.f) ||
+		!InRange(profile.shipCamera.anchorVolume.z, 0.f, 1000.f) ||
+		!std::all_of(profile.shipCamera.shipMeshScales.begin(), profile.shipCamera.shipMeshScales.end(),
+			[](const ARENA_SHIP_MESH_SCALE& row) { return InRange(row.scale, 0.05f, 4.f); }) ||
 		!InRange(profile.shipCamera.followResponse, 0.f, 60.f))
-		status = "Ship camera requires FOV 10..150, pitch -89..89, yaw -180..180, distance 0.1..1000 m, "
-			"focus offset +/-100 m and response 0..60.";
+		status = "Ship camera requires zoom steps with FOV 10..150, Pitch -89..89, Yaw -270..90, ZoomDist 10..100000 cm, "
+			"RelativeZ +/-10000 cm and ratio 0..60; steps 1..3; anchor half extent 0..1000 m; mesh scales 0.05..4; "
+			"response 0..60.";
 	else if (!InRange(profile.shipFog.densityScale, 0.f, 8.f) ||
 		!InRange(profile.shipFog.startDistanceMeters, -1.f, 10000.f) ||
 		!InRange(profile.shipFog.maximumOpacity, -1.f, 1.f))

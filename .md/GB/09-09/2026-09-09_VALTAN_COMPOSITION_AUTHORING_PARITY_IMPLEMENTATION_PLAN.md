@@ -1,5 +1,291 @@
 # 발탄 Composition 저작 흐름 정리 구현 계획서
 
+## G47. 2026-09-28 추가 — 기존 지형 파괴 패턴의 실제 Append
+
+G46은 새 Stage를 삽입할 수 있는 manual audition에만 맞췄다. 실제 사용자 선택인
+VALTAN_TERRAIN_DESTRUCTION_3_OCLOCK은 정본 encounter Pattern이므로 UI 추가뿐 아니라
+Save serializer와 Python writer도 manual topology 삽입을 거부한다. 사용자 목표는 이 패턴이
+끝난 뒤 별도 패턴 전환의 추적 시간을 거치지 않고 동일 패턴의 다음 Animation으로 진행하는 것이다.
+
+이 패턴은 TAKEOFF 1200 → AIRBORNE 2000 → LANDING 200 → IMPACT 1000의 기본 경로다.
+IMPACT의 clip은 finite EXACT이며 ENTER 지형 이벤트와 hit 67ms가 있다. 기존 Set Stage
+Sequence/Append Animation owner로 마지막 IMPACT의 clip 목록에 추가하면 Stage 수·기존
+ID·착지 Motion·World ENTER·기존 hit offset을 보존하고 끝 시계만 연장할 수 있다.
+
+ValtanActionWorkbench의 Pattern 끝 Append는 manual에서 기존 새 Stage 방식을 유지하고,
+정본 패턴에서는 마지막 Stage의 기존 Animation 편집 경로를 사용한다. Effect도 마지막 Stage
+끝에 독립 cue를 추가하고 수명만큼 Stage를 연장하며 기존 clip은 끝 자세를 유지한다.
+canonical/manual admission이나 공유 gameplay 보호를 우회하지 않는다. 원본 Stage의 자유로운
+순서 변경까지 완료했다고 설명하지 않는다.
+
+이번 검증은 Workbench storage doubles만 사용하지 않는다. 실제 현재 Data를 읽는 Balance owner와
+실제 원본 15-clip Sequence를 연결해 Append하고, 생성된 Save patch를 임시 repository에서
+apply → source 저장 → split/reopen → Product projection까지 확인한다. 기존 Motion·World·hit·
+cue가 보존되는지 비교한다. live Data는 자동 변경하지 않으며 최종 EXE 교체만 사용자 저장·종료 후 한다.
+
+## G46. 2026-09-28 추가 — Append를 패턴 맨 끝에 연결
+
+사용자가 Append를 선택 Stage 안 삽입이 아닌 전체 Stage timeline의 맨 끝 추가로 명확히 했다.
+기존 Resources의 cached STEP_01은 Stage 삭제 뒤에도 남아 선택한 STEP_08과 불일치했으며,
+그 결과 유효 Pattern에서조차 Append 버튼이 비활성화됐다. 숨은 이전 Stage ID를 추가 대상으로
+사용하지 않고 현재 Pattern의 마지막 Stage를 명령 실행 시점에 다시 확인한다.
+
+Animation resource와 Sequence Append는 기존 typed Stage 생성·Animation owner를 이용해
+마지막 Stage 뒤에 추가한다. 명시적인 Replace는 선택 Stage를 대상으로 유지한다. 독립 Effect도
+끝의 새 ACTIVE Stage 안 Stage clock으로 추가하며, 빈 Stage만 남기는 부분 실패가 없도록
+생성과 cue 삽입을 동일 draft transaction에 넣는다. Animation 길이와 Effect lifetime은 기존
+resource resolver를 사용한다. 기존 자료·clip·cue ID를 바꾸거나 live Data를 자동 저장하지 않는다.
+
+Workbench H/CPP의 기존 명령 경로를 수정하고 isolated append·rollback 검사를 수행한다.
+새 C++ 제품 파일은 없으므로 프로젝트 등록 변경은 없다. 최종 링크 전 실행 파일 점유만 확인하고,
+사용자 저장본·메모리 draft를 자동 Reload하거나 프로세스를 종료하지 않는다.
+
+## G45. 2026-09-28 추가 — Earlier/Later 묶음 이동과 선택 영역 정리
+
+ValtanActionWorkbench의 Selected Box에 쿠크와 같은 Earlier/Later를 추가한다. 선택한 Stage와
+Animation의 소속 Stage ID를 중복 제거하고, 각 선택 묶음을 인접한 미선택 Stage 너머로 한 칸
+이동한다. Later는 뒤에서, Earlier는 앞에서 처리해 선택 항목의 내부 순서를 유지한다.
+Animation만 선택해도 소속 Stage를 이동하며 Stage 안의 Effect/Sound/Collider clock과 ID는
+그대로 유지한다. 기존 Balance Move_ValtanManualStage를 한 draft transaction 안에서 호출해
+실패 시 부분 이동을 남기지 않는다. 양 끝에서는 draft와 선택을 보존한다.
+
+ValtanActionWorkbench.h에 방향 이동 메서드를 선언하고 CPP의 Selected Box 버튼에 연결한다.
+성공한 mutation 뒤에는 기존 view 포인터를 더 그리지 않고 다음 프레임에 다시 조회한다.
+Sequencer의 Render_SelectedAnimationTiming 호출은 제거해 Source Start/Source Duration이
+박스 선택 때 펼쳐지지 않게 한다. 별도 Box Detail의 수동 trim 편집과 timeline edge trim은 유지한다.
+기존 파일만 수정하므로 프로젝트 등록은 필요 없다. 실제 방향 이동 함수의 native 회귀,
+최소 컴파일과 최종 Debug Product 빌드를 확인하고 화면 판정은 사용자가 한다.
+
+## G44. 2026-09-28 추가 — 혼합 Move/Delete와 빈 패턴 게시 완료
+
+사용자가 EXE를 종료하고 전체 편집 흐름을 다시 요청했다. 기존 V1 Effect+Sound에만 한정된
+여러 box의 Move/Delete를 Animation/V2/일반 Collider까지 기존 typed owner로 확장한다.
+묶음은 사전 상태와 선택을 보존하고 Balance/Sound/V2 transaction에서 모두 성공한 경우에만
+반영한다. Animation의 기존 연속 slot은 slot 경계에 맞춰 이동하며 연결 cue를 대응시킨다.
+선택한 Stage는 기존 Move_ValtanManualStage를 이용해 원래 순서를 유지하는 block으로
+재배치한다. Stage 소유 자식의 중복 이동은 제거하고 실제 shared gameplay 의존성은 보존한다.
+
+Stage Duplicate와 일반 Collider Delete/Duplicate를 화면 버튼과 기존 단축키에 연결한다.
+빈 패턴에 V2 Effect만 추가했을 때 Source Save 이후 Product projection이 이를 완전히 빈
+seed로 제외하지 않도록 실제 Pattern/Stage/Action scope를 읽는 native/Python 판정을 맞춘다.
+일반 Collider만 있는 source 역시 실제 저작 content로 취급하며 가짜 Animation을 만들지 않는다.
+
+기존 manual Stage 42개에 연결된 Camera Shake 49개도 같은 topology 작업의 의존성이다.
+기존 ValtanPatternShakeCueDocument에 손실 없는 typed draft 직렬화를 추가하고 Stage 복사·삭제와
+Animation 삭제에서 관련 cue를 함께 변경한다. Balance owner payload의 Shake baseline/candidate를
+기존 Source Save/Publish writer로 전달하며 stale·실패 시 다른 owner와 함께 원복한다.
+
+각 실제 owner/function의 성공·실패 rollback과 임시 Source Save/reopen/Product projection을
+검증하고 정상 Debug Product 빌드를 완료한다. 설치와 사용자 UI 판정은 RESULT에 구분한다.
+
+## G43. 2026-09-28 추가 — 독립 Effect와 Stage/Animation 묶음 편집
+
+발탄의 기존 STAGE_CLOCK 데이터와 runtime 경로를 일반 저작에 연결한다. 빈 Stage에서 Effect
+Append를 허용하고 Box Detail의 시작·끝·resource 재생 offset·Boss/Map anchor를 별도로 편집한다.
+기존 clip-owned cue는 유지하며 선택적으로 clock을 전환한다. map anchor는 snapshot policy와
+identity world root를 사용하고 Boss root snapshot과 구분한다. optional stageEndMs는 cue_end의
+절대 Stage-local 끝이며 시작보다 크고 600000ms 이내다. once tail은 Stage 끝을 넘어도 보존한다.
+
+ValtanPatternEffectCueAuthoring, Balance serializer, split Tree, Python typed validator/projector,
+Product cue/binding reader와 Valtan 재생이 같은 shape를 소비한다. Stage-clock에는 가짜 animation
+occurrence나 mappingBasis를 만들지 않는다. 효과만 있는 manual pattern도 게시·재생 대상으로
+인정하고 완전히 빈 seed만 제외한다. Animation occurrence 상한은 boss 편집/저장/재생 모두256으로
+맞추되 player skill 경로의 기존 상한은 유지한다.
+
+Stage를 포함한 영역 선택과 기존 clipboard를 연결한다. Stage 전체 복사는 소유한 Animation,
+Effect, Sound, Collider를 새 stable ID로 옮기고 선택된 자식은 중복 복사하지 않는다. 일반 mixed
+box는 복사된 clip ID를 종속 cue에 대응시킨다. Balance/Sound/V2의 메모리 transaction으로 여러
+owner의 실패를 함께 원복하며 외부 데이터 교체·publish는 해당 기존 명령에서만 수행한다.
+
+검증은 실제 함수·parser와 임시 source 저장소로 수행한다. 새 패턴의 animation NONE을 유지한
+Effect 추가·수정·복사·삭제, Source Save/reopen, Product projection, clip 수 경계, 실패 원복과
+Stage/Animation 혼합 붙여넣기를 확인한 뒤 최종 Debug Product 빌드를 한다. UI/아레나 화면은
+사용자 확인으로 남긴다. 신규 C++ 등록은 없으며 기존 파일의 encoding을 유지한다.
+
+## G42. 2026-09-28 추가 — 원본 Sequence Append와 실제 편집 입력
+
+원본 420623/1의 idle cut은 2333ms이지만 설치 CModel은 67 cooked tick/30으로
+2233ms를 재생한다. 기존 Append는 이를 추론 반복으로 거절한다. 원본의 non-loop cut은
+실제 native 길이로 제한한 occurrence 하나로 가져오고 변경된 길이를 표시한다. 명시적 loop와
+원본에 실제 여러 번 나오는 clip 항목은 유지한다. 실제 입력 15개와 저장 consumer를 확인한다.
+
+ValtanActionWorkbench의 timeline은 빈 lane에서 드래그한 사각형으로 여러 Animation,
+Effect, Sound, Collider box를 선택하며 Shift는 기존 선택에 더한다. 기존 box 이동·trim과
+ruler seek는 유지하고 Escape는 선택 시작 전 상태를 복원한다. Stage 선택에는 Delete Stage
+버튼과 Delete 키를 연결하여 기존 source transaction으로 소유 데이터를 함께 처리한다.
+
+Workbench/CompositionTimeline의 기존 C++ 파일과 기존 Balance stage owner를 수정하며
+신규 C++ 등록은 없다. 원본 Sequence 입력, 사각형 hit 판정, Stage 삭제 후 source 저장과
+실패 보존을 focused 검사하고 최소 컴파일 후 Debug Product를 빌드한다. live Data와 Client
+UI를 자동 조작하지 않으며 설치된 실행 파일과 사용자 화면 확인을 별도로 기록한다.
+
+## G41. 2026-09-28 추가 — 기존 패턴 Append와 Collider 포함 복사
+
+GROUND_ROAR의 Stage는6458ms, 실제 finite clip 합은6233ms이며 끝 자세 유지225ms가 있다.
+BalanceTool의 raw clip Append가 이 차이를 이유로 거부하던 조건을 제거하고 기존 clip 시계부터
+연결한다. Stage는 기존 길이와 새 clip 합의 큰 값으로 유지하며 derived wall을 다시 계산한다.
+반복·무한 loop의 명시적 Stage 분리 경계는 유지한다. source admission과 Product inventory를
+분리하여 저장한 기존/신규 패턴의 편집을 Server 준비 상태로 막지 않는다.
+
+ValtanActionWorkbench의 기존 typed clipboard에 일반 Damage Collider snapshot을 추가한다.
+빈 지원 Stage에는 geometry·피해·반응·상대 타격 시각을 복사하고, 같은 모양·설정의 기존
+Collider에는 중복되지 않는 pulse만 병합한다. Effect/Sound/Collider 묶음도 기존 Balance/Sound
+transaction과 마지막 V2 batch commit을 사용하여 실패 시 전체 원복한다. 임의 다중 모양의
+별도 Collider row나 Grab/attackContacts 저작 체계를 이번 수정에서 새로 만들지 않는다.
+
+실제 native helper·Balance source owner로 끝 hold, 반복 clip ID, 첫 clip, invalid timing,
+Collider Add/merge/충돌 및 실패 보존을 확인한다. 빈 생성부터 Source Save/reopen·Product
+projection·Gameplay publisher·Server reader를 격리 데이터로 연결하고 정상 Product Build를 한다.
+신규 C++ 등록은 없으며 사용자 실제 UI 조작과 시각 판정은 별도다.
+
+## G40. 2026-09-28 추가 — 이름으로 빈 패턴 생성과 생성 뒤 편집 재개
+
+현재 Create는 source chain의 승격만 지원하며 빈 pattern 입력이 없다. 저장 성공 뒤 intake
+재조회는 Animation Tool의 preview asset 이름을 사용하여 data-only Workbench에서 거부되고,
+created event가 전달되지 않아 Workbench는 이전 revision에 남아 Append까지 잠긴다.
+
+Animation_Tool_PatternAuthoring.cpp와 Animation_Tool_ValtanComposition.cpp는 명시적 Valtan
+intake reader를 호출한다. 이름만 받는 Create Pattern은 자동 stable ID로 EMPTY_PATTERN 요청을
+보내며 기존 staged validation·writer lock·freshness·원자 교체를 유지한다. 기존 원본 chain
+승격은 선택적 import로 유지한다. 새로운 빈 pattern은 MANUAL_SERVER_AUDITION/AUDITION_ONLY,
+STEP_01 ACTIVE 1000ms와 animation NONE을 사용하며 clip·Effect·Sound·Collider는 없다.
+
+promote_valtan_animation_chains.py와 valtan_tuning_pipeline.py는 빈 원본 출처를 정직하게
+보존하고 첫 clip append에서 실제 PRIMARY 출처를 연결한다. unbound 빈 pattern은 Source에
+저장하되 Product에서 제외한다. C++ source reader와 Balance append owner도 같은 계약을
+사용한다. 생성 후 shared Workbench는 최신 source와 새 pattern 선택을 채택하여 바로 편집한다.
+정상 기존 패턴과 사용자가 저장한 원본은 바꾸지 않는다. 신규 C++/project 등록은 없다.
+
+빈 생성·Save/reopen·첫 clip/sequence append·cue 연결·duplicate/stale 실패 보존을 기존
+focused 검사에서 확인한다. 변경 CPP 최소 컴파일 뒤 Debug Product 빌드를 수행하고, 실행
+중 EXE가 링크를 막을 때만 저장·종료를 요청한다. Client/UI는 실행하지 않고 최종 화면은
+사용자가 확인한다.
+
+## G39. 2026-09-28 추가 — Composition Resources의 같은 Restore 탐색 기준
+
+Composition Resources는 새 패턴의 cue 유무와 무관하게 전체 물리 저장 소스를 읽으며 기존
+Preview와 Append 경로가 있다. 그러나 Restore 표시가 없고 V1/V2·Patterns·Common에 반복
+분산돼 같은 자료를 찾기 어렵다. `ValtanActionWorkbench.cpp`의 Resources pane 표시 범위에서
+Full Restore를 한글 패턴명 기준 독립 트리로 모으고 `[Full Restore]` 이름 및 선택 요약을
+일치시킨다. exact 원본 클립 index를 사용하며 현재 typed Preview/Append와 새 mixed clipboard,
+stable asset ID 및 신규 패턴 지원 경로는 유지한다. 저장 data나 연결을 자동 추가하지 않는다.
+변경 TU 컴파일 뒤 다른 수정과 함께 설치하며 실제 preview 화면은 사용자 확인으로 남긴다.
+
+## G38. 2026-09-28 추가 — 새 패턴 생성에서 기존 편집 패턴 보존
+
+사용자가 입력한 `VALTAN_3H_FLOOR_BREAK_ROCK_ROAR` / `sequence.420616.1`의 Validate가
+camera duration 5707 오류로 실패했다. 생성 경로가 기존 promotion을 intake에서 모두 다시
+만들어 TRASH STEP_06을5707→4100ms, GHOST_DEATH STEP_01을23000→3667ms로 줄인 반면
+사용자가 저장한 Camera는 유지한 것이 원인이다. 현재 source 자체의 join은 정상이다.
+
+새 패턴 추가는 기존 canonical gameplay/presentation의 편집된 row를 그대로 보존하고 요청한
+새 promotion만 추가한다. 기존 promotion migration/rebuild 명령의 명시적 동작과 구분한다.
+camera를 자르거나 validator를 완화하지 않고 후보 전체의 join·lineage·Product 검증을 유지한다.
+보존된 실제 요청 파일로 Validate 성공을 확인하고 기존 패턴/카메라 데이터가 변경되지 않는지,
+중복 ID와 stale source가 여전히 거부되는지 확인한다. 사용자 편집 source에는 Apply하지 않고
+검증 후보만 준비한다. Client strict-load 수정 후 정상 UI 생성 경로를 사용한다.
+
+## G37. 2026-09-28 추가 — 저장 순서와 시간순 정렬 사이의 잘못된 재게시 요구
+
+게시된 source revision과 162개 generation artifact, 실행 Server bootstrap이 모두 일치해도
+F1/Workbench가 SECOND_SMASH `.01`의 Effect 변경으로 strict join을 거부한다.
+Product cue reader는 clip/start/binding 순으로 정렬하고 master는 저장 배열 순서를 유지한다.
+현재 `.01=101ms`, `.02=99ms`이므로 같은 index의 다른 stable ID를 비교하게 된다.
+
+`ValtanPatternTree.cpp`의 strict parity를 stable binding ID로 join한 뒤 기존 전체 field 비교로
+바꾼다. 개수·중복·누락·실제 값 불일치 검사는 유지한다. 원본 배열 재정렬이나 freshness 검사
+제거로 우회하지 않는다. 현재 파일의 strict load 실패를 native reader로 재현하고 수정 후
+strict load 및 playable inventory 성공, 실제 field 변경 거부를 확인한다. Client/UI 없이
+검사하고 변경 CPP를 후속 Debug Product 빌드에 포함한다. 새 C++/project 항목은 없다.
+
+## G36. 2026-09-28 추가 — All Effects Restore 항목 이름과 목록 높이
+
+사용자는 Full Restore 이펙트를 한글 패턴명과 Restore 표시로 구분하고 작은 내부 박스 없이
+쿠크처럼 여러 항목을 한 번에 보고 싶다고 요청했다. 현재 한국어 검색용 source metadata와
+미게시 원본 편집 경로를 유지하면서 실제 Full Restore cue와 연결된 resource에만 명확한
+표시명을 적용한다. 무관한 공유 asset까지 Restore로 분류하거나 source/binding을 바꾸지 않는다.
+쿠크 목록의 기존 레이아웃을 대조해 발탄 resource 목록의 중첩 고정 높이를 없애고
+`Full Restore → 한글 패턴명 → Effect` 트리로 분리한다. 기본 항목은 한 줄만 차지하며 ID,
+경로, 연결 정보는 펼친 상세에 둔다. 검색 중에는 일치하는 패턴 그룹을 열어 결과를 확인하게 한다.
+기존 검색, 원본 선택, Open Editor 및 draft 전환 보호를 보존한다.
+기존 dirty CPP/H의 해당 줄만 수정하고 변경 CPP 최소 컴파일과 Debug Product 빌드를 한다.
+실제 목록 크기와 읽기 편한 정도는 사용자 화면에서 확인한다.
+
+## G35. 2026-09-28 추가 — 패턴 간 Effect와 Sound 묶음 복사
+
+현재 다중 선택 Copy는 명시적으로 거절되고 Duplicate만 같은 패턴에서 동작한다.
+선택된 V1/V2 Effect와 Sound를 native 값으로 보관하고 가장 이른 시작에 대한 상대 시각을
+유지해 대상 패턴의 playhead에 붙인다. 대상 stage/clip clock으로 연결하고 새 stable ID를
+만들며 trim, transform, follow, repeat 설정을 보존한다. 기존 Balance/Sound rollback과
+마지막 V2 batch commit을 사용해 일부만 남지 않게 한다. 다른 box 종류를 섞으면 변경 전에
+거부한다. 기존 단일 복사와 다른 workbench의 clipboard 경로는 유지한다.
+
+`Use for Create New Pattern`은 선택한 원본 sequence를 생성창의 assembled chain에 채운다.
+실제 Apply는 Animation stage의 manual audition 패턴을 만들며 Effect/Sound/World action을
+자동 복제하지 않는다. 기존 3시/9시 지형파괴 World의 단일 ENTER owner 계약은 유지한다.
+사용자가 패턴/sequence를 지정하지 않은 상태에서 새 패턴 데이터나 파괴 owner를 옮기지 않는다.
+
+실제 native helper의 상대 시각/소스 보존/실패 rollback과 변경 CPP 컴파일을 확인하고 정상
+Debug Product로 설치한다. 새 C++ 파일이나 project/filter 등록은 없으며 실제 Ctrl+C/V 및
+화면 재생은 사용자가 확인한다.
+
+## G34. 2026-09-28 추가 — 피자 경고 occurrence 방향과 종료 시간
+
+사용자가 관찰한 빨간 sector의 역방향 추적은 `VALTAN_SIX_PIZZA_106 / STEP_01`의
+`cue.valtan.requested.20260827.six-pizza.composite`에 한정해 보정한다. 현재 common target-follow
+root에는 이미 yaw180이 있으며 이를 변경하지 않는다. 해당 cue의 `localTransform.rotationDegrees`
+Y에180을 추가해 빨강과 노랑의 상대 방향을 유지한다. 초기 Spawn과 Server/local preview의 추적
+갱신은 모두 같은 LocalTransform을 적용한다. gameplay의 target yaw와 hit 판정은 변경하지 않는다.
+
+같은 cue의 `sourceEndMs=19033`, `stopPolicy=cue_end`로 저장한다. 시작0·rate1·once이므로
+이 occurrence는 패턴19.033초에 끝나고 원본 asset의22.6초 이후 두 번째 cycle은 표시하지 않는다.
+다른 Full Restore cue와 공유 Effect 원본은 보존한다. 최신 디스크의 stable cue ID를 찾아 세 필드만
+병합하며 기존 writer lock·baseline CAS·백업·원자 교체를 사용한다. 후보를 실제 split join과 Product
+projector로 검증한 뒤 새 source revision을 pin해 G33의 전체 게시를 실행한다. 최종 화면은 사용자가
+직접 확인하며 새 C++ 파일이나 컴파일 변경은 없다.
+
+## G33. 2026-09-28 추가 — V2 PNG 검증과 실제 서버 게시 완료
+
+현재 Source `d1d38824baa3`의 Save·candidate 생성·발탄 Product 검증은 성공했지만,
+후속 `Run-FullPipeline -DataOnly`가 `boss.kouku.dj.cardrain`의 PNG base를 DDS 전용
+검사로 거부했다. 현재 `CEffectV2Object::Acquire_Texture`는 DDS/WIC 분기로 같은 PNG를
+지원한다. 사용자가 요청한 현재 저장본의 게시를 기존 전체 domain 경로로 완료한다.
+
+`Tools/EffectToolV2/validate_effect_v2.py`와 같은 resource 검사를 수행하는 binding validator의
+texture suffix를 기존 DDS와 실제 지원하는 PNG에 맞춘다. mesh의 WModel, Resources 상대
+경로·탈출 금지·실물 존재 검사는 보존한다. 관련 focused test에서 PNG 성공과 missing,
+탈출·미지원 형식·잘못된 mesh 거부를 확인하고 실제 V2 corpus를 검증한다. PNG 변환이나
+발탄·쿠크 source 편집, 새 C++·project/filter 등록은 필요 없다.
+
+V1 전환 뒤 보존한 에스더·쿠크 V2 leaf/group과 Composition의 별도 호출자는 기존 clip binding
+목록에 없을 수 있다. 정상 library 전체의 역방향 binding 강제는 제거하되 실제 참조·그룹·문서·
+실물 검증은 유지한다. 전체 게시에서 추가로 확인된 `Publish-ValtanWorldDestruction.ps1`의
+Stage field 검사도 optional `attackContacts`를 인식하게 한다. 타격 geometry·pulse 의미 검증과
+bootstrap 생성은 기존 Gameplay publisher가 소유하며 지형 파괴 게시기는 이를 복제하지 않는다.
+
+현재 source revision을 다시 확인하고 기존 `Run-FullPipeline.ps1 -DataOnly
+-ExpectedValtanSourceRevision`으로 게시한다. exact source 완료 marker와 domain 결과,
+게시된 Server bootstrap 및 presentation generation을 확인한다. 실행 중 Server의 재시작과
+Client 재입장·실제 패턴 화면 확인은 파일 게시와 구분하며 Client/UI를 자동 조작하지 않는다.
+
+## G31. 2026-09-28 추가 — All Effects의 한국어 검색과 미게시 원본 편집
+
+현재 All Effects의 Resource/Existing Authored 검색은 stable ID와 경로 위주이며 한국어 Pattern 이름을 소비하지 않는다. 이름 투영도 strict Product join 뒤에 있어 Source Save 후 미게시 상태에서는 한국어로 찾은 Pattern fallback만 보이고 실제 원본 편집 행은 검색에서 빠진다. DASH_CHARGE의 WINDUP 전조와 현재 CHARGE에 연결된 원본, source clip에 대응하는 Full Restore는 물리 Authored 문서를 기준으로 찾는다. 사용자가 연결을 편집 중이므로 420622 같은 특정 원본의 Pattern 소유 관계를 고정하지 않는다.
+
+`Effect_Tool.h`의 표시 전용 `VALTAN_EFFECT_AUTHORING_LABEL`은 resource별 표시명과 검색 문자열을 소유한다. `Effect_Tool_Valtan.cpp`는 기존 source admission에서 authoring view와 V1/V2 inventory를 읽어 표시 metadata를 stage하고 최신 revision 검증 후 교체한다. 이 작업을 strict Product 성공과 분리하며 source 실패는 이전 metadata를 보존한다. 공유 cue, combat object, full restore의 모든 정확한 Pattern 이름·ID와 저장 표시명을 검색 문자열에 합친다. 기존 DASH N/S source library alias도 같은 검색에 포함한다. 이 metadata가 Product tree나 Server command 권한을 승인하지 않는다.
+
+`Effect_Tool_ValtanWorld.cpp`의 두 목록은 같은 metadata로 한국어 검색과 표시를 수행한다. 편집은 기존 exact authored path 검증과 `Try_LoadDocumentPath(AUTHORED)`를 사용하고 미저장 문서 전환 보호를 유지한다. strict Product가 오래됐다는 이유로 편집 가능한 본체를 숨기지 않으며 저장 데이터·Product cue·리소스 본문은 자동 변경하지 않는다.
+
+새 C++ 파일이나 project/filter 항목은 없다. 실제 source 연결의 한국어 검색과 공유 resource/미게시 Product 조건을 작은 native 검사 및 기존 All Effects 계약 검사로 확인한다. 변경 CPP 최소 컴파일 뒤 정상 Debug Product Build를 수행한다. 실행 중 Client가 출력물을 점유하면 후보 검증을 먼저 마치고 사용자 종료 뒤 링크한다. 사용자 데이터 hash와 diff를 보존하며 실제 Open Editor/Save Changes 및 화면 확인은 사용자에게 남긴다.
+
+## G32. 2026-09-28 추가 — Sound Save 뒤 편집 상태와 Preview 잠금 동기화
+
+사용자는 Sound 편집 뒤 Save하면 `Source saved`와 `Source: not admitted`가 함께 표시되고 Sound 행이 비며 다른 Pattern에서 Discard 후 재진입하면 복구되는 화면을 제공했다. Sound owner는 JSON에 없는 파생 stage index/duration까지 전체 객체로 비교해 자기 저장 결과 채택에 실패한다. 이 직접 원인을 고쳐 기존 Save 성공 후 source 재개방·Workbench revision pin 갱신 경로로 진행하게 한다. 무관한 dirty owner나 동시 디스크 변경은 덮어쓰지 않는다. 저장 freshness/CAS·정본 source 검증을 제거하거나 실패를 강제 성공으로 바꾸지 않는다.
+
+`Animation_Tool_CompositionSounds.cpp`의 저장 채택은 현재 draft를 직렬화한 후보와 transaction 후보 bytes를 비교하고 동일 generation·디스크 exact bytes 검사를 유지한다. Workbench의 기존 Save/Reload와 stale 규칙은 변경하지 않는다. `Animation_Tool_ValtanComposition.cpp`의 Preview stage는 요청 시 현재 dirty 상태로 자기 session lock을 동기화해 저장 전 잠금이 남는 경로를 닫는다. 동일 발탄 owner의 임시 재준비 예외는 유지하되 다른 도구·무관한 미저장 owner의 보호를 해제하지 않는다.
+
+실제 변경 함수의 Save 성공/실패·재개방·다음 Preview 요청을 비UI 검사로 확인하고 후보 CPP를 최소 컴파일한다. 새 C++ 파일·새 runtime·자동 publish는 추가하지 않는다. 사용자 데이터는 편집 중이므로 쓰지 않고, 제품 반영은 실행 파일 잠금 해제 뒤 정상 Debug Product 빌드로 수행한다. 저장 후 같은 패턴의 박스·선택·cursor 유지와 실제 Preview는 사용자 화면 확인으로 구분한다.
+
 ## G30. 2026-09-28 추가 — 같은 frame의 Effect trim과 Detail 저장 일치
 
 현재 Sequencer는 frame 시작의 immutable Pattern을 소비한다. Effect trim이 typed Balance draft를 바꾸고 Detail identity를 비운 뒤 같은 frame의 `Render_Details`가 이전 Pattern 값으로 Detail draft를 다시 채운다. 다음 Save는 최신 Balance cue와 다른 이 값을 미확정 Detail 편집으로 오인해 trim 이전 수치로 되돌릴 수 있다. `Save 19 is running`은 비동기 저장 job 상태이며 이 stale overwrite와 같은 원인으로 단정하지 않는다.
@@ -689,3 +975,98 @@ MSBuild는 설치된 Visual Studio의 `MSBuild.exe`를 resolve해 사용한다. 
 | Client visual fidelity | 사용자 확인 전이다. |
 
 구현 후에는 해당 RESULT에 실행한 검증과 미확인 화면 경계를 기록하고, 실제 public 계약이 바뀐 부분만 `CLAUDE.md`와 팀 사용서에 반영한다. 현재 계획서 작성 단계에서 공유 문서를 먼저 바꿔 구현 완료처럼 만들지 않는다.
+
+## G48. Complete Play 게시 복구와 Animation Delete의 실제 owner 연결
+
+2026-09-28 사용자 오류의 Complete Play는 저장 Source와 Product의 cue·Stage 순서 불일치다.
+현재 저장본으로 격리 projection을 만들고 strict consumer를 통과한 뒤, 사용자가 승인한
+최종 반영을 수행한다. rootmotion까지 생성하는 전체 Save & Publish projection과 Gameplay
+publisher를 사용한다. 단독 PublishV2만으로는 삭제된 Stage의 rootmotion 참조가 남으므로
+복구를 완료할 수 없다. Source Save와 Save & Publish의 구분은 유지한다.
+
+점프후지형파괴3시의 Delete는 clip 기반 V2를 선행 거절하고 V1 참조도 남기는 반면,
+Sound·Shake만 지우는 비대칭 owner 처리다. Workbench의 Animation Delete를 기존 Balance,
+Sound, V2 transaction에 묶어 exact clip 참조만 제거한다. 독립 Stage clock 효과, motion,
+World event, hit와 Stage 시간·ID·순서는 유지한다. 마지막 clip 제거는 기존 NONE 표현을
+Balance editor·patch serializer·Python writer에서 동일하게 지원하며 WAIT/topology 보호는 유지한다.
+
+기존 함수만 변경하며 제품 C++ 파일이나 project/filter 등록은 추가하지 않는다.
+실제 대상의 삭제·실패 rollback·Source Save/reopen·Product NONE 소비를 focused 검사하고,
+정상 Product 증분 빌드와 git diff --check를 실행한다. 실행 중 EXE가 링크를 점유하면
+사용자 종료 이후 링크하며, 에이전트가 Client/UI를 실행하거나 draft Reload를 수행하지 않는다.
+
+## G49. Summon 검색 assertion과 양쪽 지형파괴 후속 패턴
+
+Summon/Logic 설명 text를 마지막 item으로 두고 BeginDragDropSource를 호출하는 경로를
+ID 있는 기존 Copy Resource 버튼 직후로 옮긴다. 실제 ImGui headless frame에서 검색 클릭,
+문자 입력, drag payload를 검사하며 기존 오류를 같은 입력으로 재현해 원인을 분리한다.
+
+사용자가 확인한 후속 정본은 VALTAN_3H_FLOOR_BREAK_ROCK_ROAR다. 현재 편집한 9개 Stage와
+clip·effect 시간은 유지하고, 3시·9시 점프 지형파괴 뒤에 각각 독립 stable ID로 연결한다.
+휠윈드는 Server의 TO_ARENA_CENTER motion으로 Stage 종료 때 중앙에 도착한다. 점프 motion은
+착지 완료 이후의 후속 Stage 위치를 덮어쓰지 않는다. 가장 가까운 플레이어 추적과 피자 sector의
+180도 시각 basis를 같은 Server-facing/Effect anchor 계약으로 연결한다.
+
+돌은 기존 피자 원본 combat-object visual을 사용하며 반지름은 땅구르기 정본6.3639610307m,
+네 방향45/135/225/315도로 배치한다. 발구르기600ms에 생성하고 모아치기 cone hit에 맞은 돌부터
+기존 ownerHitChain으로 폭발, 나머지는1500ms 뒤 폭발한다. 원본 animation notify와 현재
+asset catalog를 근거로 Sound·Shake·Effect와 Server hit를 연결한다. 각 패턴의 돌 owner는
+별도 archetype으로 분리해 기존 피자와 땅구르기를 보존한다.
+
+후보는 out에만 만들고 전체 split/Product/rootmotion 및 Gameplay bootstrap을 검증한다.
+최종 디스크 반영은 사용자 저장 상태와 반영 승인을 받은 뒤 최신 stable ID를 재확인하며
+기존 canonical writer lock·원자 교체·백업·실패 rollback을 사용한다. Client/UI는 실행하지 않는다.
+
+## G50. 잡기 성공 분기와 발악 원본 연결
+
+2026-09-28 추가 요청은 기존 정본의 잡기 후 불어날리기와 3페이즈 전 발악 복원이다.
+CATCH_BREATH의21_03/21_04는 저장본에 이미 있으나 local preview의 TIMEOUT 경로가
+잡기 실패에서 종료해 Timeline과 Stage Play에서도 후반이 가려진다. ANY_PLAYER_GRABBED를
+선택하는 Capture Success 경로를 기존 preview enum에 추가하고, 새 Pattern을 Load할 때
+Normal보다 더 많은 Stage를 보여 주는 경우 성공 경로를 기본 선택한다. Server 잡기 성공·실패
+판정은 유지한다. hand-tuned 전체 묶음 cue를 각 Stage의 원본420623 Effect 연결로 교체하고
+기존 Sound·Shake·실제 clip을 보존한다.
+
+STRUGGLING의 원본12clip을 기준으로 포탈/중앙 이동, 각 플레이어 위치 공격, 안쪽 원형과
+바깥 ring 경고·폭발을 기존 Server motion·volley·hit 경로에 연결한다. 돌4개는 피자 원본
+visual을 쓰며 현재 좁은 배치 간격을 유지한다. 노란 사자후 경고를 해당 원본과 같은 clip을
+쓰는3시·9시 suffix에도 연결한다. 이후 Death→GhostRespawn→40줄 Server 상태와 sequence
+연결을 최소 변경으로 복구하고 사용자가 저장한 무관한 순서·시간은 보존한다.
+
+후보 source와 Effect 문서는 별도 projection root에서 실제 소비 codec/원본 source 계약과
+함께 검증한다. 사용자 '전부 깔끔하게 반영' 요청에 따라 최신 디스크를 재확인한 뒤 canonical
+transaction으로 반영하고 관련 publisher·정상 증분 Product Build까지 완료한다. 실제 Client
+조작과 아레나의 시각 판정은 사용자에게 남긴다.
+
+### G50 후속 검증에서 확인한 source clock 경계
+
+기존 발악 주먹 V2/Sound를 보존하라는 사용자 요청을 우선한다. STEP_06을 발밑 공격의
+Stage 단위로 나눠도 CLIP_OCCURRENCE V2 startMs는 원본 model source time이다.
+sourceStartMs를 뺀 local 값으로 저장하면 실제 EffectV2 runtime은 해당 cue를 잘린 clip 밖으로
+판정해 버린다. 복사된 세 cue는 원래 200/400ms 값을 유지하고 reader는
+`wallStart + (sourceMs - sourceStartMs) / playRate`로 검증한다. STAGE clock은 그대로다.
+
+새 피해 판정은 보존된 native 667ms loop의 실제 9개 시점에 맞춘다. 기존 Sound의 event·ID·
+source clock은 유지하며, clip 경계 양옆의 33ms 이내 sound는 실제 단일 순차 edge가 입증될 때만
+같은 contact 표현으로 인정한다. 그 밖의 이미 저작된 Sound timing 차이는 기존 exact payload·
+animation·hit receipt로 구분한다. 이펙트 시간 불일치를 waiver로 숨기거나 Sound를 이중 추가하지 않는다.
+
+안쪽 원형 object는 STEP_07에 이미 있는 정확한 1000ms PatternSound를 사용한다. 검증기는
+unique static ENTER spawn, timed hit 한 번, 동일 cue/animation/source-to-wall 시각과 중복 audio
+부재를 확인하는 제한된 alias만 인정한다. 조기 branch가 있는 Stage에는 이 alias를 허용하지 않는다.
+
+## G51. 실제 입장 Actor Catalog의 combat-object 정의 한도 일치
+
+G50은 발탄 combatObjectVisuals를9개에서18개로 늘렸지만 CActorCatalog의 보스당 정의 한도는
+16개여서 실제 Loader::Initialize가 Pattern Load 전에 실패했다. PatternTree와 Server만 통과한
+검증은 실제 전체 ActorCatalog Initialize 검증을 대체하지 못한다.
+
+현재 vector 기반 visual definition 저장의 한도를32개로 정하고 native reader·Valtan 저작 검사·
+Gameplay publisher가 같은 경계를 거부하도록 맞춘다. 동시 생성 instance 수/네트워크 snapshot
+한도와는 별개다. 한도 실패에는 파일·보스 ID·실제 개수·허용 개수를 표시하고 이미 생성한 상세
+실패 메시지를 Initialize의 포괄 문구로 덮어쓰지 않는다. 정의를 지우거나 검사를 해제하지 않는다.
+
+실제 CActorCatalog::Initialize로 현재 전체5개 Actor catalog의 실패/수정 성공을 확인하고,
+32개 허용·33개 거부 및 중복/잘못된 정의 거부를 검증한다. 데이터와 게시 bootstrap은 유지한다.
+기존 H/CPP만 수정하므로 프로젝트 등록은 없으며 인코딩과 줄바꿈을 보존한다. 필요한 native
+컴파일을 먼저 마친 뒤 실행 중 Client의 링크 점유 해제가 필요할 때만 사용자 종료를 안내한다.

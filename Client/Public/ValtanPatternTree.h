@@ -337,6 +337,12 @@ struct VALTAN_STAGE_VIEW final
 	uint32_t iPushMs = 0u;
 	bool_t bKnockdown = false;
 	uint32_t iDownMs = 0u;
+	/* Empty inherits the Pattern aim policy; a typed Stage override is read-only. */
+	std::string strAimTargetPolicy;
+	bool_t bHasAimEnd = false;
+	uint32_t iAimEndMs = 0u;
+	bool_t bHasAimResponseScale = false;
+	f32_t fAimResponseScale = 1.f;
 	std::optional<VALTAN_STAGE_MOTION_VIEW> Motion;
 	std::vector<VALTAN_STAGE_ACTION_VIEW> Actions;
 	std::vector<VALTAN_STAGE_BRANCH_VIEW> Branches;
@@ -349,6 +355,8 @@ struct VALTAN_STAGE_VIEW final
 	   is still accepted read-only. */
 	std::vector<VALTAN_CLIP_OCCURRENCE_VIEW> ClipOccurrences;
 	std::vector<VALTAN_PRODUCT_EFFECT_CUE_VIEW> ProductCues;
+	/* Derived from exact scoped V2 source bindings; not a synthetic V1 cue. */
+	bool_t bHasStageEffectV2Bindings = false;
 	std::vector<VALTAN_COMBAT_OBJECT_EFFECT_VIEW> CombatObjectEffects;
 	std::vector<std::string> RuntimeClipNames;
 	std::string strRuntimeClipName;
@@ -392,6 +400,8 @@ struct VALTAN_PATTERN_FINALE_VIEW final
 	std::vector<std::string> GhostPatternIds;
 	std::array<f32_t, 2u> SpawnHalfExtentsM{};
 	uint32_t iMaximumActiveGhosts = 0u;
+	uint32_t iAuxiliarySpawnIntervalMs = 0u;
+	uint32_t iPortalSpawnIntervalMs = 7900u;
 	bool operator==(const VALTAN_PATTERN_FINALE_VIEW&) const = default;
 };
 
@@ -430,6 +440,8 @@ struct VALTAN_SELECTION_SET_VIEW final
 	std::string strSelectionSetId;
 	std::string strMode;
 	std::vector<VALTAN_SELECTION_CANDIDATE_VIEW> Candidates;
+	// Ordered-loop occurrences retain duplicate pattern IDs at their exact ordinals.
+	std::vector<std::string> PatternIds;
 };
 
 struct VALTAN_SELECTION_WINDOW_VIEW final
@@ -569,6 +581,7 @@ enum class VALTAN_PATTERN_PREVIEW_PATH : uint8_t
 	COUNTER_GROGGY,
 	WALL_GROGGY,
 	PART_BREAK,
+	CAPTURE_SUCCESS,
 	END
 };
 
@@ -644,6 +657,8 @@ struct VALTAN_PATTERN_TREE_VIEW final
 	   staged sequence instead of joining a second saved-Flow document. */
 	std::string strScriptedSequenceId;
 	std::string strScriptedSequenceMode;
+	/* Automatic health-loop entrance identity; Flow edits preserve it. */
+	std::string strEntranceCinematicPatternId;
 	uint32_t iScriptedSequenceInterStepPursuitMs = 0u;
 	std::vector<std::string> ScriptedSequencePatternIds;
 	/* One value for each transition after PatternIds[index]. Legacy canonical

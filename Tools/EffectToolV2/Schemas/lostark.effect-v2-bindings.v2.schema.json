@@ -59,6 +59,7 @@
         },
         "clock": {
           "type": "object",
+          "description": "STAGE startMs is stage wall time. CLIP_OCCURRENCE startMs is absolute model source time in the selected occurrence's half-open source window (sourceStartMs..sourceStartMs+playMs for explicit playMs; native clip duration otherwise). The consumer subtracts sourceStartMs, divides by playRate, and adds preceding occurrence wall time.",
           "additionalProperties": false,
           "required": ["basis", "clipOccurrenceId", "startMs", "repeatPolicy"],
           "properties": {

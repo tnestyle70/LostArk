@@ -606,6 +606,18 @@ namespace
 			(snapshot.PortalRushRoute.isValid ?
 				Is_Valid_PortalRushRouteSnapshot(snapshot.PortalRushRoute) :
 				Is_Default_PortalRushRouteSnapshot(snapshot.PortalRushRoute)) &&
+			(snapshot.PatternLanding.isValid ?
+				(snapshot.hasBossCombatState && !snapshot.strPatternId.empty() &&
+				 snapshot.iPatternSequence != 0u && snapshot.iPatternStartTick != 0u &&
+				 (snapshot.eAction == LostArk::Shared::WORLD_ENTITY_ACTION::PATTERN_WINDUP ||
+				  snapshot.eAction == LostArk::Shared::WORLD_ENTITY_ACTION::PATTERN_ACTIVE ||
+				  snapshot.eAction == LostArk::Shared::WORLD_ENTITY_ACTION::PATTERN_RECOVERY) &&
+				 std::isfinite(snapshot.PatternLanding.fPositionX) &&
+				 std::isfinite(snapshot.PatternLanding.fPositionY) &&
+				 std::isfinite(snapshot.PatternLanding.fPositionZ)) :
+				(snapshot.PatternLanding.fPositionX == 0.f &&
+				 snapshot.PatternLanding.fPositionY == 0.f &&
+				 snapshot.PatternLanding.fPositionZ == 0.f)) &&
 			(snapshot.hasBossCombatState ?
 				(Is_Valid_BossCombatSnapshot(snapshot.BossCombat) &&
 				 snapshot.iPhase == snapshot.BossCombat.iGameplayPhase) :
@@ -621,7 +633,8 @@ namespace
 		return
 			damage.iTargetNetEntityId !=
 				LostArk::Shared::INVALID_NET_ENTITY_ID &&
-			(0 != damage.iAmount || 0 != damage.iStaggerAmount || damage.isCounterSuccess || damage.isStaggerSuccess) &&
+			(0 != damage.iAmount || 0 != damage.iStaggerAmount || damage.isCounterSuccess || damage.isStaggerSuccess ||
+				damage.eHitFlag == LostArk::Shared::DAMAGE_HIT_FLAG::INVINCIBLE) &&
 			LostArk::Shared::Is_Valid_DamageHitFlag(damage.eHitFlag) &&
 			static_cast<std::uint8_t>(damage.eMarioHitSource) < static_cast<std::uint8_t>(LostArk::Shared::MARIO_HIT_SOURCE::END) &&
 			(damage.eMarioHitSource == LostArk::Shared::MARIO_HIT_SOURCE::NONE ||
@@ -630,6 +643,12 @@ namespace
 			(LostArk::Shared::DAMAGE_HIT_FLAG::HEAL != damage.eHitFlag ||
 				(damage.isOutgoing && 0 == damage.iStaggerAmount &&
 					!damage.isCounterSuccess && !damage.isStaggerSuccess)) &&
+			/* A blocked outgoing hit carries a verdict, never damage or mechanic credit. */
+			(LostArk::Shared::DAMAGE_HIT_FLAG::INVINCIBLE != damage.eHitFlag ||
+				(damage.isOutgoing && 0u == damage.iAmount && 0u == damage.iStaggerAmount &&
+					!damage.isCounterSuccess && !damage.isStaggerSuccess &&
+					damage.eCardMazeSuit == LostArk::Shared::MECHANIC_CARD_SYMBOL::NONE &&
+					damage.eMarioHitSource == LostArk::Shared::MARIO_HIT_SOURCE::NONE)) &&
 			/* Shield absorption carries only its own positive amount. */
 			(LostArk::Shared::DAMAGE_HIT_FLAG::ABSORB != damage.eHitFlag ||
 				(0u != damage.iAmount && 0u == damage.iStaggerAmount && !damage.isCounterSuccess && !damage.isStaggerSuccess &&
@@ -3093,6 +3112,38 @@ bool LostArk::Shared::Read_Message(
 	return true;
 }
 
+namespace
+{
+	bool Are_Valid_WorldPickups(const LostArk::Shared::S2C_WORLD_SNAPSHOT& snapshot)
+	{
+		using namespace LostArk::Shared;
+		if (snapshot.WorldPickups.size() > MAX_WORLD_PICKUPS ||
+			(snapshot.eWorldId != WORLD_ID::VALTAN_ARENA && !snapshot.WorldPickups.empty()))
+			return false;
+		std::string_view previous;
+		for (const WORLD_PICKUP_SNAPSHOT& pickup : snapshot.WorldPickups)
+		{
+			if (!Is_Valid_StableId(pickup.strPlacementId, false) ||
+				(!previous.empty() && previous >= pickup.strPlacementId) ||
+				pickup.eState >= WORLD_PICKUP_STATE::END || pickup.iStateStartTick == 0u ||
+				!std::isfinite(pickup.fPositionX) || !std::isfinite(pickup.fPositionY) ||
+				!std::isfinite(pickup.fPositionZ) || std::fabs(pickup.fPositionX) > 100000.f ||
+				std::fabs(pickup.fPositionY) > 100000.f || std::fabs(pickup.fPositionZ) > 100000.f)
+				return false;
+			previous = pickup.strPlacementId;
+		}
+		for (const PLAYER_SNAPSHOT& player : snapshot.Players)
+		{
+			if ((player.bRonaunGuard && player.iRonaunGrantTick == 0u) ||
+				((player.bRonaunGuard || player.iRonaunGrantTick != 0u) &&
+				 (snapshot.eWorldId != WORLD_ID::VALTAN_ARENA || player.iCurrentHp == 0u ||
+				  player.eAction == PLAYER_ACTION_STATE::DEAD || player.eControlKind != PLAYER_CONTROL_KIND::HUMAN)))
+				return false;
+		}
+		return true;
+	}
+}
+
 bool LostArk::Shared::Write_Message(CPacketWriter& writer, const S2C_WORLD_SNAPSHOT& message)
 {
     //world의 snapshot write, servertick과 player 정보
@@ -3106,6 +3157,7 @@ bool LostArk::Shared::Write_Message(CPacketWriter& writer, const S2C_WORLD_SNAPS
 		message.BossCombatEvents.size() > MAX_BOSS_COMBAT_EVENTS ||
 		message.CombatObjects.size() > MAX_COMBAT_OBJECTS_PER_SNAPSHOT ||
 		!Is_Valid_BingoBoardSnapshot(message.Bingo) ||
+		!Are_Valid_WorldPickups(message) ||
 		!Are_Valid_RequiredPinnedRevisions(
 			message.ActiveGameplayRevision,
 			message.RequiredPinnedGameplayRevisions) ||
@@ -3176,6 +3228,7 @@ bool LostArk::Shared::Write_Message(CPacketWriter& writer, const S2C_WORLD_SNAPS
 		writer.Write_U32(player.iSkillId);
 		writer.Write_U32(player.iActionStartTick);
 		writer.Write_U8(player.isKnockbackAirborne ? 1u : 0u);
+		writer.Write_U8(player.isWaterpangArmed ? 1u : 0u);
 		writer.Write_U32(player.iAttachmentOwnerNetEntityId);
 		writer.Write_U8(static_cast<std::uint8_t>(player.eAttachmentSlot));
 		writer.Write_F32(player.fAttachmentLocalOffsetX);
@@ -3237,6 +3290,8 @@ bool LostArk::Shared::Write_Message(CPacketWriter& writer, const S2C_WORLD_SNAPS
 		writer.Write_U32(player.iFearEndTick);
 		if (!writer.Write_String(player.strFearPresentationId, MAX_STABLE_NETWORK_ID_BYTES)) return false;
 		writer.Write_U32(player.iInvulnerabilityZonePulseTick);
+		writer.Write_U8(player.bRonaunGuard ? 1u : 0u);
+		writer.Write_U32(player.iRonaunGrantTick);
 		writer.Write_U32(player.iSilenceEndTick);
 		writer.Write_U32(player.iSilenceDurationTicks);
 		writer.Write_U8(player.iComboStage);
@@ -3299,6 +3354,13 @@ bool LostArk::Shared::Write_Message(CPacketWriter& writer, const S2C_WORLD_SNAPS
 			writer.Write_F32(entity.PortalRushRoute.fEndX);
 			writer.Write_F32(entity.PortalRushRoute.fEndY);
 			writer.Write_F32(entity.PortalRushRoute.fEndZ);
+		}
+		writer.Write_U8(entity.PatternLanding.isValid ? 1u : 0u);
+		if (entity.PatternLanding.isValid)
+		{
+			writer.Write_F32(entity.PatternLanding.fPositionX);
+			writer.Write_F32(entity.PatternLanding.fPositionY);
+			writer.Write_F32(entity.PatternLanding.fPositionZ);
 		}
 		writer.Write_U32(entity.iCurrentHp);
 		writer.Write_U32(entity.iMaximumHp);
@@ -3388,6 +3450,17 @@ bool LostArk::Shared::Write_Message(CPacketWriter& writer, const S2C_WORLD_SNAPS
 		}
 	}
 
+	writer.Write_U8(static_cast<std::uint8_t>(message.WorldPickups.size()));
+	for (const WORLD_PICKUP_SNAPSHOT& pickup : message.WorldPickups)
+	{
+		if (!writer.Write_String(pickup.strPlacementId, MAX_STABLE_NETWORK_ID_BYTES))
+			return false;
+		writer.Write_U8(static_cast<std::uint8_t>(pickup.eState));
+		writer.Write_F32(pickup.fPositionX);
+		writer.Write_F32(pickup.fPositionY);
+		writer.Write_F32(pickup.fPositionZ);
+		writer.Write_U32(pickup.iStateStartTick);
+	}
 	return Write_RequiredPinnedRevisions(
 		writer,
 		message.ActiveGameplayRevision,
@@ -3454,8 +3527,10 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader, S2C_WORLD_SNAPSHOT& me
 		std::uint8_t rawStance = 0;
 		std::uint8_t rawAttachmentSlot = 0;
 		std::uint8_t rawKnockbackAirborne = 0u;
+		std::uint8_t rawWaterpangArmed = 0u;
 		std::uint8_t rawHasSkillTarget = 0;
 		std::uint8_t rawCombatReady = 0;
+		std::uint8_t rawRonaunGuard = 0;
 		std::uint8_t rawPatternBound = 0;
 		std::uint8_t rawMadnessForm = 0;
 		std::uint8_t rawCardSymbol = 0;
@@ -3478,6 +3553,7 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader, S2C_WORLD_SNAPSHOT& me
 			!reader.Read_U32(player.iSkillId) ||
 			!reader.Read_U32(player.iActionStartTick) ||
 			!reader.Read_U8(rawKnockbackAirborne) || rawKnockbackAirborne > 1u ||
+			!reader.Read_U8(rawWaterpangArmed) || rawWaterpangArmed > 1u ||
 			!reader.Read_U32(player.iAttachmentOwnerNetEntityId) ||
 			!reader.Read_U8(rawAttachmentSlot) ||
 			!reader.Read_F32(player.fAttachmentLocalOffsetX) ||
@@ -3551,6 +3627,8 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader, S2C_WORLD_SNAPSHOT& me
 			!reader.Read_U32(player.iFearEndTick) ||
 			!reader.Read_String(player.strFearPresentationId, MAX_STABLE_NETWORK_ID_BYTES) ||
 			!reader.Read_U32(player.iInvulnerabilityZonePulseTick) ||
+			!reader.Read_U8(rawRonaunGuard) || rawRonaunGuard > 1u ||
+			!reader.Read_U32(player.iRonaunGrantTick) ||
 			!reader.Read_U32(player.iSilenceEndTick) ||
 			!reader.Read_U32(player.iSilenceDurationTicks) ||
 			!reader.Read_U8(player.iComboStage) ||
@@ -3569,11 +3647,13 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader, S2C_WORLD_SNAPSHOT& me
         player.eControlKind = static_cast<PLAYER_CONTROL_KIND>(rawControlKind);
 		player.eAction = static_cast<PLAYER_ACTION_STATE>(rawAction);
 		player.isKnockbackAirborne = rawKnockbackAirborne != 0u;
+		player.isWaterpangArmed = rawWaterpangArmed != 0u;
 		player.eStance = static_cast<PLAYER_STANCE_ID>(rawStance);
 		player.eAttachmentSlot =
 			static_cast<PLAYER_ATTACHMENT_SLOT>(rawAttachmentSlot);
 		player.hasSkillTarget = 0u != rawHasSkillTarget;
 		player.isCombatReady = 0u != rawCombatReady;
+		player.bRonaunGuard = 0u != rawRonaunGuard;
 		player.isPatternBound = 0u != rawPatternBound;
 		player.eMadnessForm = static_cast<PLAYER_MADNESS_FORM>(rawMadnessForm);
 		player.eMechanicCardSymbol = static_cast<MECHANIC_CARD_SYMBOL>(rawCardSymbol);
@@ -3628,6 +3708,7 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader, S2C_WORLD_SNAPSHOT& me
 		WORLD_ENTITY_SNAPSHOT entity{};
 		std::uint8_t rawAction = 0;
 		std::uint8_t rawHasPortalRushRoute = 0;
+		std::uint8_t rawHasPatternLanding = 0;
 		std::uint8_t rawHasBossCombatState = 0;
 		if (!reader.Read_U32(entity.iNetEntityId) ||
 			!reader.Read_U8(rawAction) ||
@@ -3662,6 +3743,16 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader, S2C_WORLD_SNAPSHOT& me
 			 !reader.Read_F32(entity.PortalRushRoute.fEndX) ||
 			 !reader.Read_F32(entity.PortalRushRoute.fEndY) ||
 			 !reader.Read_F32(entity.PortalRushRoute.fEndZ)))
+		{
+			return false;
+		}
+		if (!reader.Read_U8(rawHasPatternLanding) || rawHasPatternLanding > 1u)
+			return false;
+		entity.PatternLanding.isValid = 0u != rawHasPatternLanding;
+		if (entity.PatternLanding.isValid &&
+			(!reader.Read_F32(entity.PatternLanding.fPositionX) ||
+			 !reader.Read_F32(entity.PatternLanding.fPositionY) ||
+			 !reader.Read_F32(entity.PatternLanding.fPositionZ)))
 		{
 			return false;
 		}
@@ -3824,6 +3915,23 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader, S2C_WORLD_SNAPSHOT& me
 	{
 		return false;
 	}
+	std::uint8_t pickupCount = 0u;
+	if (!reader.Read_U8(pickupCount) || pickupCount > MAX_WORLD_PICKUPS)
+		return false;
+	for (std::uint8_t index = 0u; index < pickupCount; ++index)
+	{
+		WORLD_PICKUP_SNAPSHOT pickup{};
+		std::uint8_t state = 0u;
+		if (!reader.Read_String(pickup.strPlacementId, MAX_STABLE_NETWORK_ID_BYTES) ||
+			!reader.Read_U8(state) || !reader.Read_F32(pickup.fPositionX) ||
+			!reader.Read_F32(pickup.fPositionY) || !reader.Read_F32(pickup.fPositionZ) ||
+			!reader.Read_U32(pickup.iStateStartTick))
+			return false;
+		pickup.eState = static_cast<WORLD_PICKUP_STATE>(state);
+		decoded.WorldPickups.push_back(std::move(pickup));
+	}
+	if (!Are_Valid_WorldPickups(decoded))
+		return false;
 	if (!Read_RequiredPinnedRevisions(
 		reader,
 		decoded.ActiveGameplayRevision,
@@ -5657,6 +5765,8 @@ bool LostArk::Shared::Write_Message(
 		writer.Write_U32(item.iQuantity);
 		writer.Write_U8(static_cast<std::uint8_t>(item.eEquippedSlot));
 	}
+	writer.Write_U32(message.iSilver);
+	writer.Write_U32(message.iGold);
 	return true;
 }
 
@@ -5685,6 +5795,8 @@ bool LostArk::Shared::Read_Message(
 		item.eEquippedSlot = static_cast<EQUIPMENT_SLOT>(equippedSlot);
 		decoded.Items.push_back(std::move(item));
 	}
+	if (!reader.Read_U32(decoded.iSilver) || !reader.Read_U32(decoded.iGold))
+		return false;
 	if (!Is_Valid_InventoryItems(decoded.Items))
 		return false;
 	message = std::move(decoded);
@@ -5746,6 +5858,61 @@ bool LostArk::Shared::Read_Message(
 	if (0u == decoded.iRequestSequence ||
 		EQUIPMENT_SLOT::NONE == decoded.eSlot || decoded.eSlot >= EQUIPMENT_SLOT::END ||
 		(decoded.bEquip ? !Is_Valid_ItemId(decoded.strItemId) : !decoded.strItemId.empty()))
+		return false;
+	message = std::move(decoded);
+	return true;
+}
+
+namespace
+{
+	bool Is_Valid_ShopBasket(const LostArk::Shared::C2S_BUY_ITEMS& message)
+	{
+		using namespace LostArk::Shared;
+		if (0u == message.iRequestSequence || message.strNpcPlacementId.empty() ||
+			message.strNpcPlacementId.size() > MAX_NPC_PLACEMENT_ID_BYTES ||
+			message.Entries.empty() || message.Entries.size() > MAX_SHOP_BASKET_ENTRIES)
+			return false;
+		for (const SHOP_BASKET_ENTRY& entry : message.Entries)
+			if (!Is_Valid_ItemId(entry.strItemId) || 0u == entry.iQuantity ||
+				entry.iQuantity > MAX_SHOP_BASKET_QUANTITY)
+				return false;
+		return true;
+	}
+}
+
+bool LostArk::Shared::Write_Message(
+	CPacketWriter& writer, const C2S_BUY_ITEMS& message)
+{
+	if (!Is_Valid_ShopBasket(message))
+		return false;
+	writer.Write_U32(message.iRequestSequence);
+	if (!writer.Write_String(message.strNpcPlacementId, MAX_NPC_PLACEMENT_ID_BYTES))
+		return false;
+	writer.Write_U8(static_cast<std::uint8_t>(message.Entries.size()));
+	for (const SHOP_BASKET_ENTRY& entry : message.Entries)
+	{
+		if (!writer.Write_String(entry.strItemId, MAX_ITEM_ID_BYTES))
+			return false;
+		writer.Write_U32(entry.iQuantity);
+	}
+	return true;
+}
+
+bool LostArk::Shared::Read_Message(
+	CPacketReader& reader, C2S_BUY_ITEMS& message)
+{
+	C2S_BUY_ITEMS decoded{};
+	std::uint8_t count = 0u;
+	if (!reader.Read_U32(decoded.iRequestSequence) ||
+		!reader.Read_String(decoded.strNpcPlacementId, MAX_NPC_PLACEMENT_ID_BYTES) ||
+		!reader.Read_U8(count) || 0u == count || count > MAX_SHOP_BASKET_ENTRIES)
+		return false;
+	decoded.Entries.resize(count);
+	for (SHOP_BASKET_ENTRY& entry : decoded.Entries)
+		if (!reader.Read_String(entry.strItemId, MAX_ITEM_ID_BYTES) ||
+			!reader.Read_U32(entry.iQuantity))
+			return false;
+	if (!Is_Valid_ShopBasket(decoded))
 		return false;
 	message = std::move(decoded);
 	return true;

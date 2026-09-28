@@ -3,6 +3,7 @@
 #include "BossCombatRuntime.h"
 #include "Gameplay/CombatCollisionContract.h"
 #include "Gameplay/EstherStrikeContract.h"
+#include "Gameplay/KoukuTargetTracking.h"
 #include "Gameplay/WorldCollisionContract.h"
 #include "PlayerSkillSystem.h"
 #include "ServerCombatHitRuntime.h"
@@ -801,8 +802,51 @@ namespace
 		SERVER_WORLD_ENTITY& boss,
 		const BOSS_PATTERN_DEFINITION& pattern,
 		std::map<LostArk::Shared::PLAYER_ID, SERVER_PLAYER>& players,
-		SERVER_PLAYER* nearestTarget)
+		SERVER_PLAYER* nearestTarget, const std::uint32_t serverTick)
 	{
+		const auto* stage = boss.iPatternStageIndex < pattern.Stages.size() ?
+			&pattern.Stages[boss.iPatternStageIndex] : nullptr;
+		std::uint64_t previousTicks = boss.iPatternAimLastElapsedTicks;
+		std::uint64_t elapsedTicks = previousTicks;
+		std::uint64_t endTicks = 0u;
+		if (stage && (stage->bHasAimEnd || stage->bHasAimResponseScale))
+		{
+			// Stage-entry refresh has clock zero; the first simulation tick is
+			// evaluated separately. The integer clock also survives uint32 wrap.
+			elapsedTicks = serverTick == boss.iActionStartTick &&
+				boss.iPatternStageFirstEvaluationTick != serverTick ? 0u :
+				StageElapsedTicks(boss, serverTick);
+			const auto endMs = stage->bHasAimEnd ? stage->iAimEndMs : stage->iDurationMs;
+			endTicks = (static_cast<std::uint64_t>(endMs) * SERVER_TICK_HZ + 999u) / 1000u;
+			if (elapsedTicks >= endTicks) return;
+			previousTicks = (std::min)(previousTicks, elapsedTicks);
+			boss.iPatternAimLastElapsedTicks = elapsedTicks;
+		}
+		const auto applyResponse = [&](const float previousYaw)
+		{
+			if (stage && stage->bHasAimResponseScale && endTicks > previousTicks)
+				boss.fYawDegrees = static_cast<float>(LostArk::Shared::KoukuTargetTracking::RotateOnlyYaw(
+					previousYaw, boss.fYawDegrees, elapsedTicks - previousTicks,
+					endTicks - previousTicks, stage->fAimResponseScale));
+		};
+		if (boss.iPatternStageIndex < pattern.Stages.size() &&
+			pattern.Stages[boss.iPatternStageIndex].bTrackNearestTarget)
+		{
+			// Stage aim uses the current body pivot, including a completed center move.
+			SERVER_PLAYER* selected = SelectNearestEngageableTarget(boss, players);
+			boss.iPatternTargetEntityId = nullptr == selected ?
+				LostArk::Shared::INVALID_NET_ENTITY_ID : selected->iNetEntityId;
+			if (nullptr != selected)
+			{
+				RememberPatternTargetPosition(boss, *selected);
+				const float previousYaw = boss.fYawDegrees;
+				FacePoint(boss, selected->fPositionX, selected->fPositionZ);
+				applyResponse(previousYaw);
+			}
+			else
+				ClearPatternTargetPosition(boss);
+			return;
+		}
 		if (BOSS_PATTERN_TARGET_POLICY::NEAREST_EACH_TICK ==
 			pattern.eTargetPolicy)
 		{
@@ -814,10 +858,13 @@ namespace
 			FindPatternTarget(players, boss.iPatternTargetEntityId);
 		if (nullptr != patternTarget)
 			RememberPatternTargetPosition(boss, *patternTarget);
-		if (BOSS_PATTERN_AIM_POLICY::TRACK_TARGET_EACH_TICK ==
-			pattern.eAimPolicy && nullptr != patternTarget)
+		if (((stage && stage->bTrackPatternTarget) ||
+			BOSS_PATTERN_AIM_POLICY::TRACK_TARGET_EACH_TICK == pattern.eAimPolicy) &&
+			nullptr != patternTarget)
 		{
+			const float previousYaw = boss.fYawDegrees;
 			FacePatternTarget(boss, pattern, *patternTarget);
+			applyResponse(previousYaw);
 		}
 	}
 
@@ -1209,6 +1256,38 @@ namespace
 		const std::uint32_t serverTick,
 		VALTAN_DECISION_TRACE& trace)
 	{
+		const bool healthRotations = nullptr != scriptedSequence &&
+			BOSS_PATTERN_SEQUENCE_MODE::HEALTH_BAR_ROTATIONS == scriptedSequence->eMode;
+		if (healthRotations && !boss.bIntroPatternConsumed &&
+			!boss.bEntranceCinematicConsumed && !boss.bScriptedPatternPlayback &&
+			!boss.bAutomaticPatternSequenceAuditionOverride &&
+			!scriptedSequence->strEntranceCinematicPatternId.empty())
+		{
+			const auto* cinematic = FindPattern(patterns, scriptedSequence->strEntranceCinematicPatternId);
+			if (nullptr == cinematic)
+			{
+				boss.bMechanicLedgerRequiresReset = true;
+				trace.eResult = VALTAN_DECISION_RESULT::MECHANIC_RESET_REQUIRED;
+				return nullptr;
+			}
+			// Keep the existing intro attack unconsumed: it follows this one-time
+			// cutscene with its existing attack geometry and completion contract.
+			boss.bEntranceCinematicConsumed = true;
+			trace.eSource = VALTAN_DECISION_SOURCE::INTRO;
+			trace.eResult = VALTAN_DECISION_RESULT::SELECTED;
+			trace.strSelectedPatternId = cinematic->strPatternId;
+			VALTAN_DECISION_CANDIDATE_TRACE candidate{};
+			candidate.strPatternId = cinematic->strPatternId;
+			candidate.iAuthoredWeight = candidate.iEffectiveWeight = candidate.iWeightEndExclusive = 1u;
+			candidate.bSelected = true;
+			trace.Candidates.push_back(std::move(candidate));
+			return cinematic;
+		}
+		const bool mandatoryEntranceAttack = healthRotations &&
+			boss.bEntranceCinematicConsumed && !boss.bIntroPatternConsumed &&
+			!boss.bScriptedPatternPlayback && !boss.bAutomaticPatternSequenceAuditionOverride &&
+			!scriptedSequence->strEntranceCinematicPatternId.empty();
+		if (healthRotations) scriptedSequence = nullptr;
 		if (boss.PendingPatternFollowup.Is_Pending())
 		{
 			const SERVER_BOSS_PATTERN_FOLLOWUP pending =
@@ -1345,10 +1424,10 @@ namespace
 			return step;
 		}
 		/* The first appearance runs before the health-bar queue and before any
-		weighted roll, so the entrance sweep can never come up again later. It
-		waits at the spawn for its own authored range instead of burning on the
-		tick the encounter activates, because the arena trigger sits far from the
-		boss and the entrance is authored around the spawn point. A missing
+		weighted roll, so the entrance sweep can never come up again later. A
+		configured automatic cinematic makes this attack mandatory on completion;
+		legacy entry and explicit audition keep the authored selection range. The
+		attack geometry remains unchanged in either path. A missing
 		pattern is consumed anyway, so a broken catalog cannot stall the boss on
 		every tick. */
 		if (!boss.bIntroPatternConsumed &&
@@ -1377,8 +1456,8 @@ namespace
 				trace.Candidates.push_back(std::move(candidate));
 				boss.bIntroPatternConsumed = true;
 			}
-			else if (targetDistance >= intro->fMinimumRange &&
-				targetDistance <= intro->fMaximumRange)
+			else if (mandatoryEntranceAttack ||
+				(targetDistance >= intro->fMinimumRange && targetDistance <= intro->fMaximumRange))
 			{
 				boss.bIntroPatternConsumed = true;
 				boss.bAutomaticPatternSequenceAuditionOverride = false;
@@ -1475,6 +1554,44 @@ namespace
 			/* ARM_HEALTH_BAR deliberately waits here until the Debug trigger moves
 			the boss across its staged threshold and queues the forced mechanic. */
 			trace.eSource = VALTAN_DECISION_SOURCE::NONE;
+			trace.eResult = VALTAN_DECISION_RESULT::NO_ELIGIBLE_PATTERN;
+			return nullptr;
+		}
+		// A completed normal pattern advances one ordinal. Health mechanics above
+		// take priority; changing bands starts the new loop at its first occurrence.
+		if (!boss.bScriptedPatternPlayback && nullptr != rotation &&
+			BOSS_PATTERN_ROTATION_SELECTION_MODE::ORDERED_LOOP == rotation->eSelectionMode &&
+			!rotation->PatternIds.empty())
+		{
+			if (boss.strRotationId != rotation->strRotationId)
+			{
+				boss.strRotationId = rotation->strRotationId;
+				boss.iRotationStepIndex = 0u;
+			}
+			boss.iRotationStepIndex %= static_cast<std::uint32_t>(rotation->PatternIds.size());
+			const auto* step = FindPattern(patterns, rotation->PatternIds[boss.iRotationStepIndex]);
+			trace.strRotationId = rotation->strRotationId;
+			trace.iRotationStepIndex = boss.iRotationStepIndex;
+			trace.eSource = VALTAN_DECISION_SOURCE::ORDERED;
+			if (nullptr == step || BOSS_PATTERN_SELECTION::NORMAL != step->eSelection)
+			{
+				boss.bMechanicLedgerRequiresReset = true;
+				trace.eResult = VALTAN_DECISION_RESULT::MECHANIC_RESET_REQUIRED;
+				return nullptr;
+			}
+			boss.bAutomaticPatternSequenceStepRunning = true;
+			boss.iAutomaticPatternSequenceInterStepPursuitTicks = 0u;
+			trace.eResult = VALTAN_DECISION_RESULT::SELECTED;
+			trace.strSelectedPatternId = step->strPatternId;
+			VALTAN_DECISION_CANDIDATE_TRACE candidate{};
+			candidate.strPatternId = step->strPatternId;
+			candidate.iAuthoredWeight = candidate.iEffectiveWeight = candidate.iWeightEndExclusive = 1u;
+			candidate.bSelected = true;
+			trace.Candidates.push_back(std::move(candidate));
+			return step;
+		}
+		if (healthRotations)
+		{
 			trace.eResult = VALTAN_DECISION_RESULT::NO_ELIGIBLE_PATTERN;
 			return nullptr;
 		}
@@ -1691,6 +1808,7 @@ namespace
 		boss.iPatternStageIndex = stageIndex;
 		boss.strPatternStageId = stage.strStageId;
 		boss.iPatternStageDurationMs = stage.iDurationMs;
+		boss.iPatternAimLastElapsedTicks = 0u;
 		boss.iPatternStageFirstEvaluationTick = evaluatesOnEntryTick ?
 			serverTick : NextServerTickSkippingReservedZero(serverTick);
 		boss.fPatternStageOriginX = boss.fPositionX;
@@ -1777,18 +1895,30 @@ namespace
 			boss.fPositionY = boss.fLeapOriginY + boss.fLeapApexHeight;
 			boss.fPositionZ = boss.fLeapOriginZ;
 		}
-		else if (boss.fPatternLeapApexHeight > 0.f &&
+		else if (boss.fLeapApexHeight > 0.f &&
 			stageIndex > boss.iPatternLeapTravelStageIndex)
 		{
-			/* Everything from IMPACT onward is played from the compiled landing
-			anchor, so the landing is exact rather than wherever the last
-			interpolated frame happened to leave the boss. */
+			/* Commit the landing once when leaving the descent. Later stages may
+			move on their own; replaying this snap on every stage would undo that
+			motion and pull the boss back to the original landing anchor. */
 			boss.fPositionX = boss.fLeapLandingX;
 			boss.fPositionY = boss.fLeapLandingY;
 			boss.fPositionZ = boss.fLeapLandingZ;
 			boss.fLeapApexHeight = 0.f;
 		}
 		Advance_ArenaBreakLeap(boss);
+		if (BOSS_PATTERN_STAGE_MOTION_KIND::TO_ARENA_CENTER == stage.Motion.eKind)
+		{
+			// Explicit aim windows own facing even while the body moves to center.
+			// In particular, an endMs=0 tail must not re-face on stage entry.
+			if (!stage.bHasAimEnd && !stage.bHasAimResponseScale)
+				FacePoint(boss, boss.fSpawnPositionX, boss.fSpawnPositionZ);
+			boss.fPatternStageOriginX = boss.fPositionX;
+			boss.fPatternStageOriginZ = boss.fPositionZ;
+			boss.fPatternStageOriginYawDegrees = boss.fYawDegrees;
+			boss.MovePath.clear();
+			boss.PatternStageRootMotion.clear();
+		}
 		if (0.f != stage.fVerticalOffsetM)
 		{
 			boss.fPatternStageVerticalBaseY = boss.fPositionY;
@@ -1819,6 +1949,7 @@ namespace
 		boss.iGrabExecutionCommittedPatternSequence = 0u;
 		boss.iGrabExecutionCommittedStageIndex = 0u;
 		boss.strPatternId = pattern.strPatternId;
+		boss.iPatternStartTick = 0u == serverTick ? 1u : serverTick;
 		boss.bPatternInvulnerable = pattern.bInvulnerableWhileRunning;
 		boss.bPatternMoveToAnchorBeforeTakeoff =
 			pattern.Motion.bMoveToAnchorBeforeTakeoff;
@@ -2006,6 +2137,7 @@ namespace
 			boss.fLeapApexHeight = 0.f;
 		}
 		boss.strPatternId.clear();
+		boss.iPatternStartTick = 0u;
 		boss.strPatternStageId.clear();
 		boss.strActionId.clear();
 		boss.strDamageProfileId.clear();
@@ -2182,7 +2314,8 @@ namespace
 		std::map<LostArk::Shared::PLAYER_ID, SERVER_PLAYER>& players,
 		const CGameplayCatalog& catalog,
 		const BOSS_PATTERN_STAGE_DEFINITION& stage,
-		const std::uint32_t serverTick)
+		const std::uint32_t serverTick,
+		std::vector<LostArk::Shared::DAMAGE_EVENT>& outDamageEvents)
 	{
 		const bool ownsCounterBranch = std::any_of(
 			stage.Branches.begin(), stage.Branches.end(),
@@ -2214,7 +2347,8 @@ namespace
 		}
 
 		const BOSS_RUNTIME_PROFILE* bossProfile =
-			catalog.Find_Boss(boss.strArchetypeId);
+			catalog.Find_Boss(boss.bGhostPhasePatternLoopActive && boss.strArchetypeId == "BOSS_VALTAN" ?
+                "BOSS_VALTAN_GHOST" : boss.strArchetypeId);
 		if (nullptr == bossProfile ||
 			!std::isfinite(bossProfile->fCollisionRadius) ||
 			bossProfile->fCollisionRadius <= 0.f)
@@ -2261,6 +2395,8 @@ namespace
 			counterInteraction.iSourcePlayerId = player.iPlayerId;
 			counterInteraction.iSkillId = skill->iSkillId;
 			counterInteraction.iCounterPower = skill->iCounterPower;
+			counterInteraction.bCounterFromPrimarySlot = Is_PrimaryCounterSkill(*skill);
+			counterInteraction.bCounterFromActiveGuard = true;
 			counterInteraction.iServerTick = serverTick;
 			counterInteraction.fSourceX = player.fPositionX;
 			counterInteraction.fSourceZ = player.fPositionZ;
@@ -2268,6 +2404,17 @@ namespace
 				boss, counterInteraction).bCounterTriggered)
 			{
 				continue;
+			}
+			if (outDamageEvents.size() < LostArk::Shared::MAX_DAMAGE_EVENTS &&
+				(boss.strPatternId == "VALTAN_TRASH" || boss.strPatternId == "VALTAN_TRIPLE_COUNTER"))
+			{
+				LostArk::Shared::DAMAGE_EVENT success{};
+				success.iTargetNetEntityId = boss.iNetEntityId;
+				success.iSourcePlayerId = player.iPlayerId;
+				success.fPositionX = boss.fPositionX; success.fPositionY = boss.fPositionY;
+				success.fPositionZ = boss.fPositionZ;
+				success.isOutgoing = true; success.isCounterSuccess = true;
+				outDamageEvents.push_back(success);
 			}
 			player = std::move(stagedPlayer);
 			return true;
@@ -2584,7 +2731,8 @@ namespace
 			return;
 		}
 		const BOSS_RUNTIME_PROFILE* bossProfile =
-			catalog.Find_Boss(boss.strArchetypeId);
+			catalog.Find_Boss(boss.bGhostPhasePatternLoopActive && boss.strArchetypeId == "BOSS_VALTAN" ?
+                "BOSS_VALTAN_GHOST" : boss.strArchetypeId);
 		const auto& damageProfile = contact ? contact->strDamageProfileId : boss.strDamageProfileId;
 		const bool ignoreDefense = contact && contact->strDamageKind != "PROFILE";
 		const std::uint32_t rawDamage = CGameplayCatalog::Resolve_Damage(
@@ -2875,6 +3023,7 @@ void LostArk::Server::CValtanBrain::Update(
 			SERVER_BOSS_MECHANIC_FAILURE::BOSS_DIED, serverTick);
 		boss.iCurrentHp = 0u;
 		boss.strPatternId.clear();
+		boss.iPatternStartTick = 0u;
 		if (boss.bAutomaticPatternSequenceStepRunning)
 		{
 			boss.bAutomaticPatternSequenceStepRunning = false;
@@ -2906,7 +3055,8 @@ void LostArk::Server::CValtanBrain::Update(
 		return;
 	}
 	const BOSS_RUNTIME_PROFILE* bossProfile =
-		catalog.Find_Boss(boss.strArchetypeId);
+		catalog.Find_Boss(boss.bGhostPhasePatternLoopActive && boss.strArchetypeId == "BOSS_VALTAN" ?
+                "BOSS_VALTAN_GHOST" : boss.strArchetypeId);
 	const auto* patterns = catalog.Find_BossPatterns(boss.strEncounterId);
 	if (nullptr == bossProfile || nullptr == patterns || patterns->empty())
 	{
@@ -2957,6 +3107,7 @@ void LostArk::Server::CValtanBrain::Update(
 		boss.bMechanicLedgerRequiresReset = true;
 	}
 	else if (nullptr != thresholdSequence &&
+		BOSS_PATTERN_SEQUENCE_MODE::ORDERED_ONCE_THEN_IDLE == thresholdSequence->eMode &&
 		!boss.bAutomaticPatternSequenceAuditionOverride)
 	{
 		/* An authored sequence has no HP/bar selector. Advancing only the legacy
@@ -2997,7 +3148,9 @@ void LostArk::Server::CValtanBrain::Update(
 		nullptr != automaticSequenceOverride ? automaticSequenceOverride :
 		catalog.Find_BossPatternSequence(boss.strEncounterId);
 	const bool sequenceIgnoresEngageDistance =
-		nullptr != automaticSequence && !boss.bScriptedPatternPlayback &&
+		nullptr != automaticSequence &&
+		BOSS_PATTERN_SEQUENCE_MODE::ORDERED_ONCE_THEN_IDLE == automaticSequence->eMode &&
+		!boss.bScriptedPatternPlayback &&
 		!boss.bAutomaticPatternSequenceAuditionOverride;
 	const bool continueTargetlessScheduledArenaStage =
 		nullptr == target &&
@@ -3021,25 +3174,18 @@ void LostArk::Server::CValtanBrain::Update(
 		boss.iPatternStageIndex + 1u == runningDefinition->Stages.size() &&
 		0u != boss.iPatternHitCount &&
 		boss.iAppliedPatternHitCount >= boss.iPatternHitCount;
-	const bool runningAutomaticSequenceStep =
-		nullptr != automaticSequence && !boss.bScriptedPatternPlayback &&
-		!boss.bAutomaticPatternSequenceAuditionOverride &&
-		boss.bAutomaticPatternSequenceStepRunning &&
-		boss.strRotationId == automaticSequence->strSequenceId &&
-		boss.iRotationStepIndex < automaticSequence->PatternIds.size() &&
-		!boss.strPatternId.empty() && boss.strPatternId ==
-			automaticSequence->PatternIds[boss.iRotationStepIndex];
-	const bool floorWipeDamageCommitted =
-		"RECOVERY" == boss.strPatternStageId ||
-		("SECOND_SMASH" == boss.strPatternStageId &&
-			0u != boss.iPatternHitCount &&
-			boss.iAppliedPatternHitCount >= boss.iPatternHitCount);
-	const bool continueTargetlessOrderedFloorWipe =
-		nullptr == target && runningAutomaticSequenceStep &&
-		"VALTAN_FLOOR_WIPE_130" ==
-			automaticSequence->PatternIds[boss.iRotationStepIndex] &&
-		"VALTAN_FLOOR_WIPE_130" == boss.strPatternId && !players.empty() &&
-		floorWipeDamageCommitted;
+	const bool floorWipe = "VALTAN_FLOOR_WIPE_130" == boss.strPatternId;
+	const bool highJump = "VALTAN_HIGH_JUMP" == boss.strPatternId;
+	const bool finalHitCommitted = 0u != boss.iPatternHitCount &&
+		boss.iAppliedPatternHitCount >= boss.iPatternHitCount;
+	/* These final strikes own their remaining motion and recovery in stable-ID
+	   auditions as well as ordered play, even when they killed the last target. */
+	const bool continueTargetlessCommittedFinalStrike =
+		nullptr == target && !players.empty() && (floorWipe || highJump) &&
+		("RECOVERY" == boss.strPatternStageId ||
+			(finalHitCommitted &&
+				((floorWipe && "SECOND_SMASH" == boss.strPatternStageId) ||
+				 (highJump && "LAND" == boss.strPatternStageId))));
 	const bool independentFinaleOrChild = !players.empty() &&
 		(LostArk::Shared::INVALID_NET_ENTITY_ID != boss.iOwnerBossNetEntityId ||
 			(nullptr != runningDefinition &&
@@ -3049,7 +3195,7 @@ void LostArk::Server::CValtanBrain::Update(
 		continueTargetlessScheduledArenaStage ||
 		continueTargetlessOwnedGrabPattern ||
 		continueTargetlessOwnedBindPattern ||
-		continueTargetlessOrderedFloorWipe ||
+		continueTargetlessCommittedFinalStrike ||
 		terminalStageDamageCommitted ||
 		continueTargetlessPatternFollowup ||
 		independentFinaleOrChild;
@@ -3231,14 +3377,23 @@ void LostArk::Server::CValtanBrain::Update(
 			SERVER_BOSS_MECHANIC_FAILURE::INVALID_RUNNING_DEFINITION);
 		return;
 	}
-	UpdatePatternTargetAndAim(boss, *currentPattern, players, target);
+	const auto refreshEnteredStageAim = [&]()
+	{
+		if (boss.strPatternId == currentPattern->strPatternId &&
+			boss.iPatternStageIndex < currentPattern->Stages.size() &&
+			(currentPattern->Stages[boss.iPatternStageIndex].bTrackNearestTarget ||
+			 currentPattern->Stages[boss.iPatternStageIndex].bTrackPatternTarget))
+			UpdatePatternTargetAndAim(boss, *currentPattern, players, nullptr, serverTick);
+	};
+	UpdatePatternTargetAndAim(boss, *currentPattern, players, target, serverTick);
 	const BOSS_PATTERN_STAGE_DEFINITION& currentStage =
 		currentPattern->Stages[boss.iPatternStageIndex];
 	(void)TryConsumeDamageLessCounterProxy(
-		boss, players, catalog, currentStage, serverTick);
+		boss, players, catalog, currentStage, serverTick, outDamageEvents);
 	if (ApplyPublishedOutcomeBranch(
 		boss, *currentPattern, currentStage, serverTick))
 	{
+		refreshEnteredStageAim();
 		return;
 	}
 
@@ -3259,6 +3414,7 @@ void LostArk::Server::CValtanBrain::Update(
 			EnterPatternStage(
 				boss, currentPattern->Stages[reactionIndex],
 				reactionIndex, serverTick);
+			refreshEnteredStageAim();
 			return;
 		}
 	}
@@ -3361,6 +3517,7 @@ void LostArk::Server::CValtanBrain::Update(
 	if (ApplyTimeoutBranch(
 		boss, *currentPattern, currentStage, players, serverTick))
 	{
+		refreshEnteredStageAim();
 		return;
 	}
 
@@ -3373,6 +3530,9 @@ void LostArk::Server::CValtanBrain::Update(
 	}
 	EnterPatternStage(
 		boss, currentPattern->Stages[nextStageIndex], nextStageIndex, serverTick);
+	// Publish the new aim stage with its admitted target on the entry snapshot;
+	// zero-offset target-follow cues must not observe a targetless first tick.
+	refreshEnteredStageAim();
 }
 
 bool LostArk::Server::CValtanBrain::Is_ArmorRequirementMet(
@@ -3511,6 +3671,30 @@ bool LostArk::Server::CValtanBrain::Try_BuildStageMotion(
 		BOSS_PATTERN_STAGE_MOTION_KIND::PORTAL_CROSS_ARENA ==
 			boss.ePatternStageMotionKind)
 		return false;
+
+	/* The room consumes this proposal through its ordinary navigation step.
+	Use the current fixed-step endpoint so the final active tick reaches the
+	center before the Brain advances the stage on the next tick. Authored clip
+	root motion is not added to this explicit owner-relative travel. */
+	if (BOSS_PATTERN_STAGE_MOTION_KIND::TO_ARENA_CENTER ==
+		boss.ePatternStageMotionKind)
+	{
+		if (0u == boss.iPatternStageDurationMs ||
+			!std::isfinite(boss.fActionElapsedSeconds) ||
+			!std::isfinite(boss.fPatternStageOriginX) ||
+			!std::isfinite(boss.fPatternStageOriginZ) ||
+			!std::isfinite(boss.fSpawnPositionX) ||
+			!std::isfinite(boss.fSpawnPositionZ))
+			return false;
+		const float ratio = std::clamp(
+			(boss.fActionElapsedSeconds + fixedDeltaSeconds) * 1000.f /
+				static_cast<float>(boss.iPatternStageDurationMs), 0.f, 1.f);
+		outProposedX = boss.fPatternStageOriginX +
+			(boss.fSpawnPositionX - boss.fPatternStageOriginX) * ratio;
+		outProposedZ = boss.fPatternStageOriginZ +
+			(boss.fSpawnPositionZ - boss.fPatternStageOriginZ) * ratio;
+		return std::isfinite(outProposedX) && std::isfinite(outProposedZ);
+	}
 
 	/* Target-rush travel is an explicit Server gameplay contract.  It begins
 	after the authored retarget delay and therefore wins over any residual clip

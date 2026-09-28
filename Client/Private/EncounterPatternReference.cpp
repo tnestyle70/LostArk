@@ -325,9 +325,18 @@ namespace
 		const DATA_JSON_VALUE* finale = pattern.Find("finale");
 		if (nullptr == finale)
 			return true;
-		if (!Is_ExactObject(*finale, { "kind", "ghostArchetypeId", "ghostPatternIds",
-			"spawnHalfExtentsM", "maximumActiveGhosts" }))
+		if (!Is_ExactObjectWithOptional(*finale,
+			{ "kind", "ghostArchetypeId", "ghostPatternIds",
+			  "spawnHalfExtentsM", "maximumActiveGhosts" },
+			{ "auxiliarySpawnIntervalMs", "portalSpawnIntervalMs" }))
 			return false;
+		for (const char_t* intervalKey : { "auxiliarySpawnIntervalMs", "portalSpawnIntervalMs" })
+		{
+			uint32_t intervalMs = 0u;
+			if (nullptr != finale->Find(intervalKey) &&
+				(!Read_Unsigned(*finale, intervalKey, 600000u, intervalMs) || intervalMs == 0u))
+				return false;
+		}
 		std::string kind, archetype;
 		uint32_t maximumActive = 0u;
 		if (!Read_String(*finale, "kind", false, kind) || kind != "GHOST_PORTAL_LOOP" ||
@@ -349,6 +358,21 @@ namespace
 					value.Get_Number() >= 1.0 && value.Get_Number() <= 100.0; }))
 			return false;
 		const DATA_JSON_VALUE* ownerId = pattern.Find("patternId");
+		if (nullptr != ownerId && ownerId->Is_String() &&
+			ownerId->Get_String() == "VALTAN_GHOST_FINALE")
+		{
+			constexpr std::array<const char_t*, 6u> supportedPool{
+				"VALTAN_WHIRLWIND", "VALTAN_FOUR_SLASH", "VALTAN_SEQUENCE_FOUR",
+				"VALTAN_CROSS", "VALTAN_CHARGE", "VALTAN_CHARGE_2" };
+			const auto& pool = children->Get_Array();
+			if (pool.size() != 4u && pool.size() != supportedPool.size())
+				return false;
+			for (size_t index = 0u; index < pool.size(); ++index)
+			{
+				if (!pool[index].Is_String() || pool[index].Get_String() != supportedPool[index])
+					return false;
+			}
+		}
 		std::unordered_set<std::string> childIds;
 		for (const DATA_JSON_VALUE& childId : children->Get_Array())
 		{
@@ -423,6 +447,8 @@ namespace
 				{ return value.Is_Number() && std::isfinite(value.Get_Number()) &&
 					value.Get_Number() >= 1.0 && value.Get_Number() <= 100.0; });
 		}
+		if (kind == "TO_ARENA_CENTER")
+			return Is_ExactObject(*motion, { "kind" });
 		if (!Is_ExactObject(*motion, { "kind", "distance" }) || kind != "FORWARD" ||
 			!Is_FiniteNumber(*motion, "distance"))
 		{
@@ -1102,7 +1128,7 @@ bool_t Client::CEncounterPatternReference::Load(
 					{ "hitOffsetsMs", "motion", "actions", "branches",
 					  "playerResponse", "attachmentSlot", "partDamagePolicy",
 					  "gripLocalOffset", "counterProxy", "bossResponse",
-					  "hitAnchor", "hitActivation", "verticalOffsetM", "attackContacts" }))
+					  "hitAnchor", "hitActivation", "verticalOffsetM", "attackContacts", "aim" }))
 			{
 				outStatus = "Encounter stage has unexpected properties: " +
 					pattern.patternId;
@@ -1314,10 +1340,13 @@ bool_t Client::CEncounterPatternReference::Load(
 				stage.gripLocalOffset = gripOffset;
 			}
             const auto* motion = stageEntry.Find("motion");
+            const auto* motionKind = motion ? motion->Find("kind") : nullptr;
+            const bool_t hasCenterMotion = motionKind && motionKind->Is_String() &&
+                motionKind->Get_String() == "TO_ARENA_CENTER";
             if (!LostArk::Shared::Validate_StageAttackContacts(stage.AttackContacts,
                 stage.iDurationMs, stage.hitOffsetsMs, stage.iHitCount, stage.iHitDelayMs, stage.iHitIntervalMs) ||
                 (!stage.AttackContacts.empty() && (stage.bHasHitActivation || stage.gripLocalOffset.has_value() ||
-                    (motion && !motion->Is_Null()) || stage.hitShape == "NONE")))
+                    (motion && !motion->Is_Null() && !hasCenterMotion) || stage.hitShape == "NONE")))
             {
                 outStatus = "Encounter stage attackContacts contract is invalid: " + pattern.patternId + "/" + stage.stageId;
                 return false;
@@ -1357,6 +1386,26 @@ bool_t Client::CEncounterPatternReference::Load(
 				return false;
 			}
 
+			if (const DATA_JSON_VALUE* aim = stageEntry.Find("aim"))
+			{
+				stage.bHasAimEnd = nullptr != aim->Find("endMs");
+				stage.bHasAimResponseScale = nullptr != aim->Find("responseScale");
+				if (!Is_ExactObjectWithOptional(*aim, { "targetPolicy" },
+						{ "endMs", "responseScale" }) ||
+					!Read_String(*aim, "targetPolicy", false, stage.aimTargetPolicy) ||
+					(stage.aimTargetPolicy != "NEAREST_EACH_TICK" &&
+					 stage.aimTargetPolicy != "PATTERN_TARGET") ||
+					(stage.bHasAimEnd &&
+					 !Read_Unsigned(*aim, "endMs", stage.iDurationMs, stage.iAimEndMs)) ||
+					(stage.bHasAimResponseScale &&
+					 (!Read_Float(*aim, "responseScale", stage.fAimResponseScale) ||
+					  stage.fAimResponseScale < 0.01f || stage.fAimResponseScale > 10.f)))
+				{
+					outStatus = "Encounter stage aim is invalid: " +
+						pattern.patternId + "/" + stage.stageId;
+					return false;
+				}
+			}
 			bool_t hasForwardMotion = false;
 			bool_t hasCounterableEnter = false;
 			bool_t hasCounterableExit = false;
@@ -1368,6 +1417,8 @@ bool_t Client::CEncounterPatternReference::Load(
 					pattern.patternId + "/" + stage.stageId;
 				return false;
 			}
+			if (const DATA_JSON_VALUE* stageMotion = stageEntry.Find("motion"))
+				stage.motionKind = stageMotion->Find("kind")->Get_String();
 			if (!Validate_StageActions(stageEntry, pattern.patternId,
 					&stageEntry == &stages->Get_Array().back(),
 					activeStageActionLifetimes,

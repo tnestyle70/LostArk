@@ -1091,20 +1091,13 @@ namespace
 		return encounterOwned && "ENCOUNTER_VALTAN" == owner;
 	}
 
-	bool Build_NonValtanGameplayRevision(
-		const std::filesystem::path& bootstrapPath,
+	bool Build_NonValtanGameplayRevisionBytes(
+		const std::string_view content,
 		GameplayDataRevision& revision,
 		std::string& status)
 	{
 		revision = {};
-		std::vector<std::uint8_t> bytes;
-		if (!Read_BoundedFile(
-			bootstrapPath, LostArk::Shared::GAMEPLAY_BOOTSTRAP_MAX_BYTES, bytes, status))
-		{
-			return false;
-		}
-		const std::string_view content(
-			reinterpret_cast<const char*>(bytes.data()), bytes.size());
+
 		if (!Is_ValidUtf8(content) ||
 			std::string_view::npos != content.find('\0'))
 		{
@@ -1112,7 +1105,7 @@ namespace
 			return false;
 		}
 		std::string normalized;
-		normalized.reserve(bytes.size());
+		normalized.reserve(content.size());
 		std::uint64_t declaredRowCount = 0u;
 		std::uint64_t actualRowCount = 0u;
 		bool hasHeader = false;
@@ -1180,6 +1173,15 @@ namespace
 		status.clear();
 		return true;
 	}
+
+    bool Build_NonValtanGameplayRevision(const std::filesystem::path& path,
+        GameplayDataRevision& revision, std::string& status)
+    {
+        std::vector<std::uint8_t> bytes;
+        if (!Read_BoundedFile(path, LostArk::Shared::GAMEPLAY_BOOTSTRAP_MAX_BYTES, bytes, status)) return false;
+        return Build_NonValtanGameplayRevisionBytes(std::string_view(
+            reinterpret_cast<const char*>(bytes.data()), bytes.size()), revision, status);
+    }
 
 	bool Parse_JsonBytes(const std::vector<std::uint8_t>& bytes,
 		JSON_VALUE& value, std::string& status)
@@ -2508,8 +2510,12 @@ int LostArk::Server::CServerApp::Run(
 		RUNTIME_GAMEPLAY_GENERATION_SOURCE::PACKAGED_BASELINE;
 	packagedRuntimeGeneration.Revision =
 		packagedGameplayGeneration->Get_ActiveRevision();
-	packagedRuntimeGeneration.BootstrapContentRevision =
-		packagedGameplayGeneration->Get_ActiveRevision();
+    if (!Hash_FileSha256(runtimeGameplayBootstrap,
+        packagedRuntimeGeneration.BootstrapContentRevision, nonValtanStatus))
+    {
+        std::cerr << "Process gameplay content identity failed: " << nonValtanStatus << '\n';
+        return 1;
+    }
 	packagedRuntimeGeneration.NonValtanGameplayRevision =
 		initialNonValtanGameplayRevision;
 	RUNTIME_ACTIVE_GAMEPLAY_GENERATION initialRuntimeGeneration =
@@ -2594,6 +2600,13 @@ int LostArk::Server::CServerApp::Run(
 		m_CharacterSelectArenas.clear();
 		m_GameplayBindingBySessionId.clear();
 	}
+
+    std::string numericStatus;
+    if (!m_NumericBalanceStore.Initialize(m_pActiveGameplayGeneration, numericStatus))
+    {
+        std::cerr << "Numeric balance initialization failed: " << numericStatus << '\n';
+        return 1;
+    }
 
 	if (!m_WinSockContext.Initialize())
 	{
@@ -2739,6 +2752,17 @@ void LostArk::Server::CServerApp::On_SessionFrame(
 				WSAEINVAL,
 				context);
 		};
+    if (frame.ePacketType == PACKET_TYPE::C2S_BALANCE_QUERY || frame.ePacketType == PACKET_TYPE::C2S_BALANCE_PATCH)
+    {
+        SERVER_CONTROL_EVENT event;
+        event.iSessionId = sessionId;
+        const bool query = frame.ePacketType == PACKET_TYPE::C2S_BALANCE_QUERY;
+        event.eKind = query ? SERVER_CONTROL_EVENT_KIND::BALANCE_QUERY : SERVER_CONTROL_EVENT_KIND::BALANCE_PATCH;
+        if (!(query ? Read_Message(reader, event.BalanceQuery) : Read_Message(reader, event.BalancePatch)) || reader.Get_RemainingSize())
+        { closeMalformedPayload(query ? "C2S_BALANCE_QUERY" : "C2S_BALANCE_PATCH"); return; }
+        if (!Queue_ServerControlEvent(std::move(event))) Request_SessionClose(sessionId);
+        return;
+    }
 	if (frame.ePacketType == PACKET_TYPE::C2S_ENTER_WORLD)
 	{
 		CPacketReader entryPrefixReader{ frame.Payload };
@@ -2791,6 +2815,15 @@ void LostArk::Server::CServerApp::On_SessionFrame(
 				"C2S_ENTER_WORLD decode or trailing-byte validation failed");
 			return;
 		}
+        std::unique_lock numericAdmissionLock{m_DataRevisionAdmissionMutex};
+        if (m_NumericAdmissionPaused)
+        {
+            SERVER_CONTROL_EVENT event;
+            event.eKind = SERVER_CONTROL_EVENT_KIND::BALANCE_DEFERRED_ENTRY;
+            event.iSessionId = sessionId; event.DeferredEntry = frame;
+            if (!Queue_ServerControlEvent(std::move(event))) Request_SessionClose(sessionId);
+            return;
+        }
 		const std::shared_ptr<CGameRoom> targetSimulation =
 			Acquire_EntrySimulation(sessionId, enterWorld.eWorldId);
 		if (nullptr == targetSimulation)
@@ -3411,6 +3444,17 @@ void LostArk::Server::CServerApp::On_SessionFrame(
 		}
 		command.eType = ROOM_COMMAND_TYPE::SET_EQUIPMENT;
 		command.SetEquipment = request;
+	}
+	else if (frame.ePacketType == PACKET_TYPE::C2S_BUY_ITEMS)
+	{
+		C2S_BUY_ITEMS request{};
+		if (!Read_Message(reader, request) || 0u != reader.Get_RemainingSize())
+		{
+			closeMalformedPayload("C2S_BUY_ITEMS");
+			return;
+		}
+		command.eType = ROOM_COMMAND_TYPE::BUY_ITEMS;
+		command.BuyItems = std::move(request);
 	}
 	else if (frame.ePacketType == PACKET_TYPE::C2S_DESPAWN_ALL_WORLD_ENTITIES)
 	{
@@ -4528,6 +4572,7 @@ bool LostArk::Server::CServerApp::Commit_DataRevisionTransaction()
 void LostArk::Server::CServerApp::Advance_ServerControlTransactions()
 {
 	using namespace LostArk::Shared;
+    Advance_NumericBalanceTransaction();
 	std::deque<SERVER_CONTROL_EVENT> events;
 	{
 		std::scoped_lock lock{ m_ServerControlMutex };
@@ -4550,6 +4595,16 @@ void LostArk::Server::CServerApp::Advance_ServerControlTransactions()
 		};
 	for (SERVER_CONTROL_EVENT& event : events)
 	{
+        if (event.eKind == SERVER_CONTROL_EVENT_KIND::BALANCE_DEFERRED_ENTRY)
+        {
+            On_SessionFrame(event.iSessionId, event.DeferredEntry);
+            continue;
+        }
+        if (event.eKind == SERVER_CONTROL_EVENT_KIND::BALANCE_QUERY || event.eKind == SERVER_CONTROL_EVENT_KIND::BALANCE_PATCH)
+        {
+            Process_NumericBalanceEvent(event);
+            continue;
+        }
 		if (SERVER_CONTROL_EVENT_KIND::VALTAN_DECISION_TRACE_QUERY ==
 			event.eKind)
 		{
@@ -4664,7 +4719,7 @@ void LostArk::Server::CServerApp::Advance_ServerControlTransactions()
 		if (SERVER_CONTROL_EVENT_KIND::DATA_REVISION_REQUEST != event.eKind)
 			continue;
 
-		if (m_DataRevisionTransaction.Is_Active())
+		if (m_DataRevisionTransaction.Is_Active() || m_NumericBalanceRequester != INVALID_SESSION_ID)
 		{
 			const bool exactDuplicate =
 				m_DataRevisionTransaction.iRequesterSessionId == event.iSessionId &&
@@ -5116,6 +5171,7 @@ bool LostArk::Server::CServerApp::Transfer_SessionWorld(
 	enterCommand.strSpawnPlacementOverrideId = transfer.strSpawnPlacementOverrideId;
 	enterCommand.strRaidReturnNpcPlacementId = transfer.strRaidReturnNpcPlacementId;
 	enterCommand.CarriedInventory = transfer.CarriedInventory;
+	enterCommand.CarriedPurse = transfer.CarriedPurse;
 	enterCommand.iCarriedHonorTitleId = transfer.iHonorTitleId;
 	const ROOM_COMMAND_ENQUEUE_RESULT targetEnterResult =
 		targetSimulation->Enqueue_Detailed(std::move(enterCommand));
@@ -5178,6 +5234,17 @@ void LostArk::Server::CServerApp::Shutdown()
 		m_AcceptThread.join();
 	if (m_RoomThread.joinable())
 		m_RoomThread.join();
+    if (m_NumericBalanceWorker.valid())
+    {
+        if (m_NumericBalanceWorker.wait_for(std::chrono::seconds(30)) != std::future_status::ready)
+        {
+            std::cerr << "Numeric save worker did not stop within the shutdown deadline.\n";
+            ::ExitProcess(ERROR_TIMEOUT);
+        }
+        // Finish an already durable save before discarding process memory.
+        if (m_NumericBalancePersisting) Advance_NumericBalanceTransaction();
+        else { (void)m_NumericBalanceWorker.get(); Finish_NumericBalanceTransaction(false, "Server stopped before saving"); }
+    }
 	Abort_DataRevisionTransaction("Server shutdown aborted data revision prepare");
 
 	std::vector<std::shared_ptr<CClientSession>> sessions;
@@ -5233,4 +5300,224 @@ void LostArk::Server::CServerApp::Shutdown()
 	}
 	m_WinSockContext.Shutdown();
 	Release_RuntimeGameplayProcessMutex(m_hRuntimeGameplayProcessMutex);
+}
+
+
+void LostArk::Server::CServerApp::Send_NumericBalanceResult(
+    const SESSION_ID sessionId, const std::uint32_t sequence,
+    const LostArk::Shared::BALANCE_APPLY_RESULT result, std::string reason)
+{
+    using namespace LostArk::Shared;
+    std::shared_ptr<CClientSession> session;
+    {
+        std::scoped_lock lock{m_SessionsMutex};
+        const auto found = m_Sessions.find(sessionId);
+        if (found != m_Sessions.end()) session = found->second;
+    }
+    if (!session || session->Is_Closing()) return;
+    if (reason.size() > MAX_BALANCE_REASON_BYTES) reason.resize(MAX_BALANCE_REASON_BYTES);
+    const S2C_BALANCE_RESULT response{sequence, result, m_NumericBalanceStore.Get_NumericRevision(), std::move(reason)};
+    CPacketWriter writer;
+    if (!Write_Message(writer, response) || !session->Send_Frame(PACKET_TYPE::S2C_BALANCE_RESULT, writer.Get_Buffer()))
+        Request_SessionClose(sessionId);
+}
+
+void LostArk::Server::CServerApp::Process_NumericBalanceEvent(const SERVER_CONTROL_EVENT& event)
+{
+    using namespace LostArk::Shared;
+    const bool query = event.eKind == SERVER_CONTROL_EVENT_KIND::BALANCE_QUERY;
+    const auto sequence = query ? event.BalanceQuery.iRequestSequence : event.BalancePatch.iRequestSequence;
+    std::shared_ptr<CClientSession> session;
+    std::shared_ptr<const CGameplayCatalog> active;
+    {
+        std::scoped_lock lock{m_SessionsMutex};
+        const auto found = m_Sessions.find(event.iSessionId);
+        const auto binding = m_GameplayBindingBySessionId.find(event.iSessionId);
+        if (found != m_Sessions.end() && binding != m_GameplayBindingBySessionId.end() && binding->second.pSimulation)
+            session = found->second;
+        active = m_pActiveGameplayGeneration;
+    }
+    if (!session || session->Is_Closing())
+    {
+        Send_NumericBalanceResult(event.iSessionId, sequence, BALANCE_APPLY_RESULT::INVALID_SESSION, "Enter a Server world before editing balance");
+        return;
+    }
+    std::string status;
+    // A completed authored-pattern transaction may have replaced the catalogue.
+    if (m_NumericBalanceStore.Get_ActiveGeneration() != active &&
+        !m_NumericBalanceStore.Initialize(active, status))
+    {
+        Send_NumericBalanceResult(event.iSessionId, sequence, BALANCE_APPLY_RESULT::INVALID_CHANGE, status);
+        return;
+    }
+    if (query)
+    {
+        S2C_BALANCE_SNAPSHOT snapshot;
+        if (!m_NumericBalanceStore.BuildSnapshot(sequence, event.BalanceQuery.iPageIndex, snapshot, status))
+        { Send_NumericBalanceResult(event.iSessionId, sequence, BALANCE_APPLY_RESULT::INVALID_CHANGE, status); return; }
+        CPacketWriter writer;
+        if (!Write_Message(writer, snapshot) || !session->Send_Frame(PACKET_TYPE::S2C_BALANCE_SNAPSHOT, writer.Get_Buffer()))
+            Request_SessionClose(event.iSessionId);
+        return;
+    }
+    if (m_DataRevisionTransaction.Is_Active() || m_NumericBalanceRequester != INVALID_SESSION_ID)
+    {
+        Send_NumericBalanceResult(event.iSessionId, sequence, BALANCE_APPLY_RESULT::BUSY, "Another balance or authored-pattern save is being applied; this draft was not changed");
+        return;
+    }
+    if (event.BalancePatch.BaseNumericRevision != m_NumericBalanceStore.Get_NumericRevision())
+    {
+        Send_NumericBalanceResult(event.iSessionId, sequence, BALANCE_APPLY_RESULT::STALE_REVISION, "Server numbers changed since this draft was read; reload the current values before saving");
+        return;
+    }
+    m_NumericBalanceRequester = event.iSessionId;
+    m_NumericBalanceRequestSequence = sequence;
+    if (++m_NumericBalanceTransactionSequence == 0u) ++m_NumericBalanceTransactionSequence;
+    m_NumericBalancePersisting = false;
+    try
+    {
+        const auto runtimeRoot = m_isRuntimeActivePersistenceEnabled ? Resolve_RuntimeActiveGameplayRoot() : std::filesystem::path{};
+        RUNTIME_ACTIVE_GAMEPLAY_GENERATION runtimeBase;
+        runtimeBase.eSource = m_isActiveGameplayGenerationFromCandidate ?
+            RUNTIME_GAMEPLAY_GENERATION_SOURCE::CANDIDATE : RUNTIME_GAMEPLAY_GENERATION_SOURCE::PACKAGED_BASELINE;
+        runtimeBase.Revision = active->Get_ActiveRevision();
+        runtimeBase.BootstrapContentRevision = m_ActiveGameplayBootstrapContentRevision;
+        runtimeBase.NonValtanGameplayRevision = m_ActiveNonValtanGameplayRevision;
+        m_NumericBalanceWorker = std::async(std::launch::async,
+            [store = m_NumericBalanceStore, request = event.BalancePatch, runtimeRoot, runtimeBase]() {
+                BALANCE_WORK_RESULT result;
+                try
+                {
+                    result.Prepared = std::make_shared<SERVER_BALANCE_PREPARED>();
+                    result.Succeeded = store.PreparePatch(request, *result.Prepared, result.Failure, result.Status);
+                    if (result.Succeeded)
+                    {
+                        const auto& bytes = result.Prepared->BootstrapBytes;
+                        result.Succeeded = Hash_BytesSha256(std::span<const std::uint8_t>(
+                            reinterpret_cast<const std::uint8_t*>(bytes.data()), bytes.size()), result.BootstrapRevision) &&
+                            Build_NonValtanGameplayRevisionBytes(bytes, result.NonValtanRevision, result.Status);
+                        if (result.Succeeded && !runtimeRoot.empty() && std::filesystem::exists(runtimeRoot))
+                        {
+                            bool exists = false;
+                            std::vector<std::uint8_t> pointerBytes;
+                            if (!ReadOptionalRuntimeGameplayFile(runtimeRoot, RUNTIME_ACTIVE_POINTER_NAME, exists, pointerBytes, result.Status))
+                                result.Succeeded = false;
+                            else if (exists)
+                            {
+                                RUNTIME_ACTIVE_GAMEPLAY_GENERATION disk;
+                                if (!ParseRuntimeActivePointer(pointerBytes, disk, result.Status) || !RuntimeGenerationEquals(disk, runtimeBase))
+                                { result.Succeeded = false; result.Status = "Durable gameplay pointer changed before numeric save"; }
+                                else
+                                {
+                                    auto next = runtimeBase;
+                                    next.BootstrapContentRevision = result.BootstrapRevision;
+                                    next.NonValtanGameplayRevision = result.NonValtanRevision;
+                                    result.Prepared->RuntimeActivePointerPath = runtimeRoot / RUNTIME_ACTIVE_POINTER_NAME;
+                                    result.Prepared->RuntimeActivePointerBaseBytes.assign(reinterpret_cast<const char*>(pointerBytes.data()), pointerBytes.size());
+                                    result.Prepared->RuntimeActivePointerBytes = BuildRuntimeActivePointerBytes(next);
+                                }
+                            }
+                        }
+                    }
+                }
+                catch (const std::exception& error) { result.Succeeded = false; result.Status = error.what(); }
+                catch (...) { result.Succeeded = false; result.Status = "Numeric candidate validation failed"; }
+                return result;
+            });
+    }
+    catch (const std::exception& error) { Finish_NumericBalanceTransaction(false, error.what()); }
+}
+
+void LostArk::Server::CServerApp::Advance_NumericBalanceTransaction()
+{
+    using namespace LostArk::Shared;
+    if (!m_NumericBalanceWorker.valid() ||
+        m_NumericBalanceWorker.wait_for(std::chrono::seconds(0)) != std::future_status::ready) return;
+    BALANCE_WORK_RESULT completed;
+    try { completed = m_NumericBalanceWorker.get(); }
+    catch (const std::exception& error) { Finish_NumericBalanceTransaction(false, error.what()); return; }
+    if (m_NumericBalancePersisting)
+    {
+        m_NumericBalancePrepared.Failure = BALANCE_APPLY_RESULT::SAVE_FAILED;
+        Finish_NumericBalanceTransaction(completed.Succeeded, std::move(completed.Status));
+        return;
+    }
+    m_NumericBalancePrepared = std::move(completed);
+    if (!m_NumericBalancePrepared.Succeeded)
+    { Finish_NumericBalanceTransaction(false, m_NumericBalancePrepared.Status); return; }
+    std::string status;
+    try
+    {
+        std::unique_lock admissionLock{m_DataRevisionAdmissionMutex};
+        {
+            std::scoped_lock lock{m_SessionsMutex};
+            const auto& prepared = *m_NumericBalancePrepared.Prepared;
+            if (prepared.BaseNumericRevision != m_NumericBalanceStore.Get_NumericRevision() ||
+                m_DataRevisionTransaction.Is_Active())
+                status = "Active balance changed during validation";
+            else
+            {
+                m_NumericBalanceSimulations.reserve(m_SharedGameRooms.size() + m_CharacterSelectArenas.size());
+                for (const auto& [world, room] : m_SharedGameRooms) if (room) m_NumericBalanceSimulations.push_back(room);
+                for (const auto& [owner, room] : m_CharacterSelectArenas) if (room) m_NumericBalanceSimulations.push_back(room);
+                for (const auto& room : m_NumericBalanceSimulations)
+                    if (!room->Stage_NumericBalance(m_NumericBalanceTransactionSequence, prepared.Generation, status)) break;
+                if (status.empty()) m_NumericAdmissionPaused = true;
+            }
+        }
+        admissionLock.unlock();
+        if (!status.empty()) { Finish_NumericBalanceTransaction(false, status); return; }
+        m_NumericBalancePrepared.Failure = BALANCE_APPLY_RESULT::SAVE_FAILED;
+        m_NumericBalancePersisting = true;
+        m_NumericBalanceWorker = std::async(std::launch::async,
+            [store = m_NumericBalanceStore, prepared = m_NumericBalancePrepared.Prepared]() {
+                BALANCE_WORK_RESULT result;
+                result.Failure = BALANCE_APPLY_RESULT::SAVE_FAILED;
+                try { result.Succeeded = store.PersistPrepared(*prepared, result.Status); }
+                catch (const std::exception& error) { result.Status = error.what(); }
+                catch (...) { result.Status = "Numeric persistence failed"; }
+                return result;
+            });
+    }
+    catch (const std::exception& error) { Finish_NumericBalanceTransaction(false, error.what()); }
+}
+
+void LostArk::Server::CServerApp::Finish_NumericBalanceTransaction(const bool commit, std::string status)
+{
+    using namespace LostArk::Shared;
+    const auto requester = m_NumericBalanceRequester;
+    const auto sequence = m_NumericBalanceRequestSequence;
+    const auto failure = m_NumericBalancePrepared.Failure == BALANCE_APPLY_RESULT::APPLIED ?
+        BALANCE_APPLY_RESULT::INVALID_CHANGE : m_NumericBalancePrepared.Failure;
+    std::vector<SESSION_ID> notify;
+    {
+        std::scoped_lock admissionLock{m_DataRevisionAdmissionMutex};
+        std::scoped_lock lock{m_SessionsMutex};
+        if (commit)
+        {
+            // Every room commits before the first room takes the next fixed step.
+            for (const auto& room : m_NumericBalanceSimulations)
+                if (!room->Commit_NumericBalance(m_NumericBalanceTransactionSequence))
+                {
+                    std::cerr << "Durable numeric balance could not activate in a staged room; restart is required.\n";
+                    ::ExitProcess(ERROR_INVALID_STATE);
+                }
+            m_NumericBalanceStore.CommitPrepared(*m_NumericBalancePrepared.Prepared);
+            m_pActiveGameplayGeneration = m_NumericBalancePrepared.Prepared->Generation;
+            m_ActiveGameplayBootstrapContentRevision = m_NumericBalancePrepared.BootstrapRevision;
+            m_ActiveNonValtanGameplayRevision = m_NumericBalancePrepared.NonValtanRevision;
+            for (const auto& [id, binding] : m_GameplayBindingBySessionId)
+                if (id != requester && binding.pSimulation) notify.push_back(id);
+        }
+        else for (const auto& room : m_NumericBalanceSimulations)
+            room->Abort_NumericBalance(m_NumericBalanceTransactionSequence);
+        m_NumericAdmissionPaused = false;
+    }
+    m_NumericBalanceSimulations.clear(); m_NumericBalancePrepared = {};
+    m_NumericBalanceRequester = INVALID_SESSION_ID; m_NumericBalanceRequestSequence = 0u;
+    m_NumericBalancePersisting = false;
+    if (requester != INVALID_SESSION_ID)
+        Send_NumericBalanceResult(requester, sequence, commit ? BALANCE_APPLY_RESULT::APPLIED : failure, std::move(status));
+    if (commit)
+        for (const auto id : notify) Send_NumericBalanceResult(id, 0u, BALANCE_APPLY_RESULT::APPLIED, {});
 }

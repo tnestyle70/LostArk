@@ -155,6 +155,8 @@ LostArk::Server::CGameRoom::CGameRoom(
 		{
 			return;
 		}
+		if (!Initialize_WorldPickups())
+			return;
 		/* The stele slots are repeatable presentation state whose Deploy
 		occurrences stay hidden on the Client until the state becomes INTACT.
 		The authored set now carries the cover circle each raised slot owns, and
@@ -842,7 +844,8 @@ void LostArk::Server::CGameRoom::Tick(const float fixedDeltaSeconds,
 		case ROOM_COMMAND_TYPE::ENTER_WORLD:
 			Join(command.iSessionId, command.EnterWorld,
 				command.strSpawnPlacementOverrideId, command.CarriedInventory,
-				command.iCarriedHonorTitleId, command.strRaidReturnNpcPlacementId);
+				command.iCarriedHonorTitleId, command.strRaidReturnNpcPlacementId,
+				command.CarriedPurse);
 			break;
 		case ROOM_COMMAND_TYPE::MOVE:
 			Handle_Move(command.iSessionId, command.Move);
@@ -970,6 +973,9 @@ void LostArk::Server::CGameRoom::Tick(const float fixedDeltaSeconds,
 		case ROOM_COMMAND_TYPE::SET_EQUIPMENT:
 			Handle_SetEquipment(command.iSessionId, command.SetEquipment);
 			break;
+		case ROOM_COMMAND_TYPE::BUY_ITEMS:
+			Handle_BuyItems(command.iSessionId, command.BuyItems);
+			break;
 		case ROOM_COMMAND_TYPE::DESPAWN_ALL_WORLD_ENTITIES:
 			Handle_DespawnAllWorldEntities(
 				command.iSessionId, command.DespawnAllWorldEntities);
@@ -1053,6 +1059,7 @@ void LostArk::Server::CGameRoom::Tick(const float fixedDeltaSeconds,
 		if (player.eCardMazeRole != LostArk::Shared::CARD_MAZE_ROLE::NONE)
 			m_CardMazePreviousPositions[id] = {player.fPositionX, player.fPositionZ};
 	Update_Guides(fixedDeltaSeconds);
+	Update_WorldPickups(updateTick, false);
 	Update_Players(fixedDeltaSeconds);
 	Update_KoukuCardRainSoldiers(updateTick);
 	Update_CardMaze(updateTick);
@@ -1154,6 +1161,7 @@ void LostArk::Server::CGameRoom::Tick(const float fixedDeltaSeconds,
 		recordTickDuration();
 		return;
 	}
+	Update_WorldPickups(updateTick);
 	Drain_BossCombatEvents();
 	if (!Flush_KoukuSaydonPatternAuditionLifecycle())
 	{
@@ -1373,4 +1381,116 @@ void LostArk::Server::CGameRoom::Tick(const float fixedDeltaSeconds,
 		m_strPendingPerformanceDiagnostic = diagnostic.str();
 		std::cout << m_strPendingPerformanceDiagnostic << '\n';
 	}
+}
+
+
+bool LostArk::Server::CGameRoom::Stage_NumericBalance(
+    const std::uint32_t transactionSequence,
+    const std::shared_ptr<const CGameplayCatalog>& candidate, std::string& status)
+{
+    LostArk::Shared::GameplayDataRevision ignored;
+    std::vector<LostArk::Shared::BALANCE_NUMERIC_ENTRY> entries;
+    if (!candidate || !candidate->Build_NumericBalanceSnapshot(entries, ignored, status)) return false;
+    decltype(m_StagedNumericCatalogRemaps) remaps;
+    for (const auto& original : {m_KoukuRaid.pCatalog, m_KoukuSaydonPatternAudition.pProductGeneration,
+        m_pKoukuPublishedProductGeneration, m_GameplayCatalog.Get_ActiveGeneration()})
+    {
+        if (!original || std::any_of(remaps.begin(),remaps.end(),[&](const auto& pair){return pair.first==original;})) continue;
+        std::shared_ptr<const CGameplayCatalog> replacement = candidate;
+        if (original != m_GameplayCatalog.Get_ActiveGeneration())
+        {
+            auto copy = std::make_shared<CGameplayCatalog>();
+            if (!copy->Load_NumericBalanceValues(*original,*candidate))
+            { status = "Running Kouku Product rejects numeric balance: " + copy->Get_Status(); return false; }
+            replacement = std::move(copy);
+        }
+        remaps.emplace_back(original,std::move(replacement));
+    }
+    if (!m_GameplayCatalog.Stage_NumericBalance(transactionSequence,candidate,status)) return false;
+    m_StagedNumericEntries = std::move(entries);
+    m_StagedNumericCatalogRemaps = std::move(remaps);
+    return true;
+}
+
+bool LostArk::Server::CGameRoom::Commit_NumericBalance(
+    const std::uint32_t transactionSequence) noexcept
+{
+    const auto previous = m_GameplayCatalog.Get_ActiveGeneration();
+    if (!previous || !m_GameplayCatalog.Commit_NumericBalance(transactionSequence)) return false;
+    for (auto* target : {&m_KoukuRaid.pCatalog,&m_KoukuSaydonPatternAudition.pProductGeneration,&m_pKoukuPublishedProductGeneration})
+        for (const auto& pair : m_StagedNumericCatalogRemaps)
+            if (*target == pair.first) { *target = pair.second; break; }
+    m_StagedNumericCatalogRemaps.clear();
+    const auto ratio = [](const std::uint32_t current, const std::uint32_t oldMaximum,
+        const std::uint32_t newMaximum, const bool keepAlive)
+    {
+        if (!current || !newMaximum) return 0u;
+        const auto scaled = oldMaximum ? static_cast<std::uint32_t>((
+            static_cast<std::uint64_t>(current) * newMaximum + oldMaximum / 2u) / oldMaximum) : 0u;
+        return (std::min)(newMaximum, (std::max)(keepAlive ? 1u : 0u, scaled));
+    };
+    for (auto& [sessionId, player] : m_Players)
+    {
+        const auto* profile = m_GameplayCatalog.Find_Player(player.eCharacterClass);
+        if (!profile) continue;
+        player.iCurrentHp = ratio(player.iCurrentHp, player.iMaximumHp, profile->iMaximumHp, true);
+        player.iMaximumHp = profile->iMaximumHp;
+        player.iCurrentResource = ratio(player.iCurrentResource, player.iMaximumResource, profile->iMaximumResource, false);
+        player.iMaximumResource = profile->iMaximumResource;
+        player.iCurrentIdentity = ratio(player.iCurrentIdentity, player.iMaximumIdentity, profile->iMaximumIdentity, false);
+        player.iMaximumIdentity = profile->iMaximumIdentity;
+        player.fMoveSpeed = profile->fMoveSpeed;
+        const auto* oldPlayer = previous->Find_Player(player.eCharacterClass);
+        for (auto& projectile : player.Projectiles)
+        {
+            const auto* oldSkill = previous->Find_Skill(projectile.iSkillId);
+            const auto* newSkill = m_GameplayCatalog.Find_Skill(projectile.iSkillId);
+            const auto* oldDamage = oldSkill ? previous->Find_DamageProfile(oldSkill->strDamageProfileId) : nullptr;
+            const auto* newDamage = newSkill ? m_GameplayCatalog.Active().Find_DamageProfile(newSkill->strDamageProfileId) : nullptr;
+            if (!oldPlayer || !oldDamage || !newDamage) continue;
+            const auto oldRaw = CGameplayCatalog::Resolve_Damage(oldPlayer->iAttackPower, *oldDamage);
+            const auto newRaw = CGameplayCatalog::Resolve_Damage(profile->iAttackPower, *newDamage);
+            if (oldRaw) projectile.iTotalDamage = (std::min)(static_cast<std::uint64_t>((std::numeric_limits<std::uint32_t>::max)()),
+                projectile.iTotalDamage * newRaw / oldRaw);
+        }
+    }
+    m_CombatObjectRuntime.Refresh_NumericBalance(*previous, m_GameplayCatalog.Active(), m_StagedNumericEntries);
+    m_StagedNumericEntries.clear();
+    for (auto& boss : m_WorldEntities)
+    {
+        if (WORLD_BOOTSTRAP_KIND::BOSS != boss.eKind) continue;
+        // Ghost resurrection deliberately retains the primary Valtan entity ID.
+        const auto* profile = m_GameplayCatalog.Find_Boss(
+            boss.bGhostPhasePatternLoopActive && boss.strArchetypeId == "BOSS_VALTAN" ? "BOSS_VALTAN_GHOST" : boss.strArchetypeId);
+        if (!profile) continue;
+        boss.iCurrentHp = ratio(boss.iCurrentHp, boss.iMaximumHp, profile->iMaximumHp, true);
+        boss.iLastEvaluatedHealthBar = ratio(boss.iLastEvaluatedHealthBar, boss.iMaximumHealthBars, profile->iMaximumHealthBars, false);
+        boss.iMaximumHp = profile->iMaximumHp; boss.iMaximumHealthBars = profile->iMaximumHealthBars;
+        boss.iAttackPower = profile->iAttackPower; boss.fCollisionRadius = profile->fCollisionRadius;
+        boss.fEngageDistance = profile->fEngageDistance; boss.fMoveSpeed = profile->fMoveSpeed;
+        if (!boss.BossCombat.iStaggerMaximum) continue;
+        const auto* pinned = m_GameplayCatalog.Resolve(boss.PinnedDefinitionRevision);
+        const auto* patterns = pinned ? pinned->Find_BossPatterns(boss.strEncounterId) : nullptr;
+        if (!patterns) continue;
+        const auto pattern = std::find_if(patterns->begin(), patterns->end(), [&](const auto& p) { return p.strPatternId == boss.strPatternId; });
+        if (pattern == patterns->end() || boss.iPatternStageIndex >= pattern->Stages.size()) continue;
+        for (const auto& action : pattern->Stages[boss.iPatternStageIndex].Actions)
+            if (action.eKind == BOSS_PATTERN_STAGE_ACTION_KIND::SET_STAGGER_GAUGE && action.iValue &&
+                action.eTrigger == BOSS_PATTERN_STAGE_ACTION_TRIGGER::ENTER && action.iValue != boss.BossCombat.iStaggerMaximum)
+            {
+                boss.BossCombat.iStaggerCurrent = ratio(boss.BossCombat.iStaggerCurrent,
+                    boss.BossCombat.iStaggerMaximum, action.iValue, false);
+                boss.BossCombat.iStaggerMaximum = action.iValue;
+                ++boss.BossCombat.iStateRevision;
+                break;
+            }
+    }
+    return true;
+}
+
+void LostArk::Server::CGameRoom::Abort_NumericBalance(const std::uint32_t transactionSequence) noexcept
+{
+    m_GameplayCatalog.Abort_NumericBalance(transactionSequence);
+    m_StagedNumericEntries.clear();
+    m_StagedNumericCatalogRemaps.clear();
 }

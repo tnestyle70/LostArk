@@ -5,163 +5,161 @@
   "bossArchetypeId": "BOSS_VALTAN",
   "rotations": [
     {
-      "rotationId": "rotation.valtan.160.130",
-      "selectionMode": "WEIGHTED_POOL",
+      "rotationId": "rotation.valtan.phase1.160.130",
+      "selectionMode": "ORDERED_LOOP",
       "fromHealthBar": 160,
       "toHealthBar": 130,
       "windowId": "window.valtan.phase1.160.130",
       "gameplayPhase": 1,
-      "selectionSetId": "selectionset.valtan.160.130",
-      "candidates": [
-        {
-          "patternId": "VALTAN_WHIRLWIND",
-          "weight": 20,
-          "enabled": true
-        },
-        {
-          "patternId": "VALTAN_DASH_CHARGE",
-          "weight": 30,
-          "enabled": false
-        },
-        {
-          "patternId": "VALTAN_FOUR_SLASH",
-          "weight": 12,
-          "enabled": true
-        },
-        {
-          "patternId": "VALTAN_FIST_IN_OUT",
-          "weight": 14,
-          "enabled": true
-        },
-        {
-          "patternId": "VALTAN_HIGH_JUMP",
-          "weight": 14,
-          "enabled": true
-        },
-        {
-          "patternId": "VALTAN_TRIPLE_COUNTER",
-          "weight": 4,
-          "enabled": true
-        }
-      ]
-    },
-    {
-      "rotationId": "rotation.valtan.130.109",
-      "selectionMode": "WEIGHTED_POOL",
-      "fromHealthBar": 130,
-      "toHealthBar": 109,
-      "windowId": "window.valtan.phase1.130.109",
-      "gameplayPhase": 1,
-      "selectionSetId": "selectionset.valtan.130.109",
-      "candidates": [
-        {
-          "patternId": "VALTAN_WHIRLWIND",
-          "weight": 20,
-          "enabled": true
-        },
-        {
-          "patternId": "VALTAN_DASH_CHARGE",
-          "weight": 30,
-          "enabled": false
-        },
-        {
-          "patternId": "VALTAN_FOUR_SLASH",
-          "weight": 12,
-          "enabled": true
-        },
-        {
-          "patternId": "VALTAN_FIST_IN_OUT",
-          "weight": 14,
-          "enabled": true
-        },
-        {
-          "patternId": "VALTAN_HIGH_JUMP",
-          "weight": 14,
-          "enabled": true
-        },
-        {
-          "patternId": "VALTAN_TRIPLE_COUNTER",
-          "weight": 4,
-          "enabled": true
-        }
-      ]
-    },
-    {
-      "rotationId": "rotation.valtan.109.100",
-      "selectionMode": "ORDERED_INTRO_THEN_WEIGHTED",
-      "fromHealthBar": 108,
-      "toHealthBar": 100,
+      "selectionSetId": "selectionset.valtan.phase1.160.130",
       "patternIds": [
-        "VALTAN_EARTHQUAKE_SMASH",
-        "VALTAN_EARTHQUAKE_SMASH",
+        "VALTAN_WHIRLWIND",
+        "VALTAN_DASH_CHARGE",
+        "VALTAN_HIGH_JUMP",
+        "VALTAN_FOUR_SLASH",
+        "VALTAN_CROSS",
         "VALTAN_DASH_CHARGE"
       ]
     },
     {
-      "rotationId": "rotation.valtan.100.84",
-      "selectionMode": "ORDERED_INTRO_THEN_WEIGHTED",
-      "fromHealthBar": 99,
-      "toHealthBar": 84,
+      "rotationId": "rotation.valtan.phase1.130.115",
+      "selectionMode": "ORDERED_LOOP",
+      "fromHealthBar": 130,
+      "toHealthBar": 115,
+      "windowId": "window.valtan.phase1.130.115",
+      "gameplayPhase": 1,
+      "selectionSetId": "selectionset.valtan.phase1.130.115",
       "patternIds": [
-        "VALTAN_RED_BLADE_WAVE",
-        "VALTAN_EARTHQUAKE_SMASH",
         "VALTAN_WHIRLWIND",
-        "VALTAN_EARTHQUAKE_SMASH",
-        "VALTAN_FOUR_SLASH"
-      ]
-    },
-    {
-      "rotationId": "rotation.valtan.84.73",
-      "selectionMode": "ORDERED_INTRO_THEN_WEIGHTED",
-      "fromHealthBar": 83,
-      "toHealthBar": 73,
-      "patternIds": [
-        "VALTAN_SUPER_SMASH",
-        "VALTAN_GROUND_WAVE_SMASH"
-      ]
-    },
-    {
-      "rotationId": "rotation.valtan.73.62",
-      "selectionMode": "ORDERED_INTRO_THEN_WEIGHTED",
-      "fromHealthBar": 72,
-      "toHealthBar": 62,
-      "patternIds": [
+        "VALTAN_DASH_CHARGE",
+        "VALTAN_HIGH_JUMP",
         "VALTAN_FOUR_SLASH",
-        "VALTAN_FRONT_BACK_FRONT",
-        "VALTAN_DOWN_SMASH",
-        "VALTAN_DOWN_SMASH"
+        "VALTAN_CROSS",
+        "VALTAN_DASH_CHARGE"
       ]
     },
     {
-      "rotationId": "rotation.valtan.62.30",
-      "selectionMode": "ORDERED_INTRO_THEN_WEIGHTED",
-      "fromHealthBar": 61,
+      "rotationId": "rotation.valtan.phase2.115.105",
+      "selectionMode": "ORDERED_LOOP",
+      "fromHealthBar": 115,
+      "toHealthBar": 105,
+      "windowId": "window.valtan.phase2.115.105",
+      "gameplayPhase": 2,
+      "selectionSetId": "selectionset.valtan.phase2.115.105",
+      "patternIds": [
+        "VALTAN_SILENCE_SLOT",
+        "VALTAN_FOUR_SLASH",
+        "VALTAN_BIND_SLOT",
+        "VALTAN_WHIRLWIND",
+        "VALTAN_STAGGER_SLOT",
+        "VALTAN_CROSS",
+        "VALTAN_DASH_CHARGE",
+        "VALTAN_HIGH_JUMP"
+      ]
+    },
+    {
+      "rotationId": "rotation.valtan.phase2.105.80",
+      "selectionMode": "ORDERED_LOOP",
+      "fromHealthBar": 105,
+      "toHealthBar": 80,
+      "windowId": "window.valtan.phase2.105.80",
+      "gameplayPhase": 2,
+      "selectionSetId": "selectionset.valtan.phase2.105.80",
+      "patternIds": [
+        "VALTAN_SILENCE_SLOT",
+        "VALTAN_FOUR_SLASH",
+        "VALTAN_BIND_SLOT",
+        "VALTAN_SEQUENCE_FOUR",
+        "VALTAN_WHIRLWIND",
+        "VALTAN_STAGGER_SLOT",
+        "VALTAN_CROSS",
+        "VALTAN_DASH_CHARGE",
+        "VALTAN_HIGH_JUMP"
+      ]
+    },
+    {
+      "rotationId": "rotation.valtan.phase2.80.65",
+      "selectionMode": "ORDERED_LOOP",
+      "fromHealthBar": 80,
+      "toHealthBar": 65,
+      "windowId": "window.valtan.phase2.80.65",
+      "gameplayPhase": 2,
+      "selectionSetId": "selectionset.valtan.phase2.80.65",
+      "patternIds": [
+        "VALTAN_CATCH_BREATH",
+        "VALTAN_SILENCE_SLOT",
+        "VALTAN_SEQUENCE_FOUR",
+        "VALTAN_FOUR_SLASH",
+        "VALTAN_BIND_SLOT",
+        "VALTAN_WHIRLWIND",
+        "VALTAN_STAGGER_SLOT",
+        "VALTAN_CROSS",
+        "VALTAN_DASH_CHARGE",
+        "VALTAN_WARP"
+      ]
+    },
+    {
+      "rotationId": "rotation.valtan.phase2.65.30",
+      "selectionMode": "ORDERED_LOOP",
+      "fromHealthBar": 65,
       "toHealthBar": 30,
+      "windowId": "window.valtan.phase2.65.30",
+      "gameplayPhase": 2,
+      "selectionSetId": "selectionset.valtan.phase2.65.30",
       "patternIds": [
-        "VALTAN_DOWN_SMASH",
-        "VALTAN_DOWN_SMASH",
+        "VALTAN_CATCH_BREATH",
+        "VALTAN_SILENCE_SLOT",
         "VALTAN_FOUR_SLASH",
-        "VALTAN_EARTHQUAKE_SMASH",
-        "VALTAN_SUPER_SMASH",
-        "VALTAN_GROUND_WAVE_SMASH"
+        "VALTAN_SEQUENCE_FOUR",
+        "VALTAN_TRIPLE_COUNTER",
+        "VALTAN_WHIRLWIND",
+        "VALTAN_STAGGER_SLOT",
+        "VALTAN_CROSS",
+        "VALTAN_DASH_CHARGE",
+        "VALTAN_WARP"
       ]
     },
     {
-      "rotationId": "rotation.valtan.28.14",
-      "selectionMode": "ORDERED_INTRO_THEN_WEIGHTED",
-      "fromHealthBar": 29,
-      "toHealthBar": 14,
+      "rotationId": "rotation.valtan.phase2.30.15",
+      "selectionMode": "ORDERED_LOOP",
+      "fromHealthBar": 30,
+      "toHealthBar": 15,
+      "windowId": "window.valtan.phase2.30.15",
+      "gameplayPhase": 2,
+      "selectionSetId": "selectionset.valtan.phase2.30.15",
       "patternIds": [
-        "VALTAN_WHIRLWIND",
+        "VALTAN_CATCH_BREATH",
+        "VALTAN_SILENCE_SLOT",
+        "VALTAN_SEQUENCE_FOUR",
         "VALTAN_FOUR_SLASH",
-        "VALTAN_FRONT_BACK_FRONT",
-        "VALTAN_EARTHQUAKE_SMASH"
+        "VALTAN_TRIPLE_COUNTER",
+        "VALTAN_WHIRLWIND",
+        "VALTAN_STAGGER_SLOT",
+        "VALTAN_CROSS",
+        "VALTAN_DASH_CHARGE",
+        "VALTAN_WARP"
+      ]
+    },
+    {
+      "rotationId": "rotation.valtan.phase3.40.0",
+      "selectionMode": "ORDERED_LOOP",
+      "fromHealthBar": 40,
+      "toHealthBar": 0,
+      "windowId": "window.valtan.phase3.40.0",
+      "gameplayPhase": 3,
+      "selectionSetId": "selectionset.valtan.phase3.40.0",
+      "patternIds": [
+        "VALTAN_FOUR_SLASH",
+        "VALTAN_CATCH_BREATH",
+        "VALTAN_WHIRLWIND",
+        "VALTAN_CROSS",
+        "VALTAN_SEQUENCE_FOUR"
       ]
     }
   ],
   "scriptedSequence": {
     "sequenceId": "sequence.valtan.server-authored.v1",
-    "mode": "ORDERED_ONCE_THEN_IDLE",
+    "mode": "HEALTH_BAR_ROTATIONS",
     "interStepPursuitMs": 1000,
     "patternIds": [
       "VALTAN_ENTRANCE_CINEMATIC",
@@ -224,16 +222,16 @@
       "VALTAN_CATCH_BREATH",
       "VALTAN_GROGGY_FOLLOWUP",
       "VALTAN_COUNTER",
-      "VALTAN_GHOST_RESPAWN_AUDITION",
       "VALTAN_STRUGGLING",
+      "VALTAN_GHOST_DEATH_AUDITION",
+      "VALTAN_GHOST_RESPAWN_AUDITION",
       "VALTAN_CROSS",
       "VALTAN_CHARGE_2",
       "VALTAN_WHIRLWIND",
       "VALTAN_CHARGE_2",
       "VALTAN_SEQUENCE_FOUR",
       "VALTAN_CATCH_BREATH",
-      "VALTAN_GHOST_FINALE",
-      "VALTAN_GHOST_DEATH_AUDITION"
+      "VALTAN_GHOST_FINALE"
     ],
     "transitionPursuitMs": [
       1000,
@@ -296,7 +294,6 @@
       1000,
       1000,
       1000,
-      1000,
       0,
       0,
       0,
@@ -304,7 +301,9 @@
       0,
       0,
       0,
-      1000
-    ]
+      0,
+      0
+    ],
+    "entranceCinematicPatternId": "VALTAN_ENTRANCE_CINEMATIC"
   }
 }

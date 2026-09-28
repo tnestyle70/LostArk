@@ -494,6 +494,19 @@ namespace
 				});
 	}
 
+	bool_t Has_DependentEffectProperties(
+		const DATA_JSON_VALUE& row,
+		const std::initializer_list<std::string_view> keys)
+	{
+		const size_t optionalCount =
+			(nullptr != row.Find("playbackOffsetMs") ? 1u : 0u) +
+			(nullptr != row.Find("timingBasis") &&
+			 nullptr != row.Find("stageEndMs") ? 1u : 0u);
+		return row.Is_Object() && row.Get_Object().size() == keys.size() + optionalCount &&
+			std::all_of(keys.begin(), keys.end(),
+				[&row](const std::string_view key) { return nullptr != row.Find(key); });
+	}
+
 	bool_t Has_DependentCueRowShape(
 		const DATA_JSON_VALUE& row,
 		const DEPENDENT_CUE_KIND kind)
@@ -502,22 +515,22 @@ namespace
 		{
 			const bool_t stageClock = nullptr != row.Find("timingBasis");
 			const bool_t exact = (stageClock &&
-				(Has_ExactProperties(row,
+				(Has_DependentEffectProperties(row,
 					{ "bindingId", "occurrenceId", "patternId", "stageId",
 					  "actionId", "timingBasis", "stageOffsetMs", "effectAssetId",
 					  "anchorSlotId", "followPolicy", "stopPolicy",
 					  "repeatPolicy", "localTransform" }) ||
-				 Has_ExactProperties(row,
+				 Has_DependentEffectProperties(row,
 					{ "bindingId", "occurrenceId", "patternId", "stageId",
 					  "actionId", "timingBasis", "stageOffsetMs", "effectAssetId",
 					  "anchorSlotId", "followPolicy", "stopPolicy",
 					  "repeatPolicy", "localTransform", "scalePolicy" }))) ||
-				(!stageClock && (Has_ExactProperties(row,
+				(!stageClock && (Has_DependentEffectProperties(row,
 				{ "bindingId", "occurrenceId", "patternId", "stageId",
 				  "actionId", "clipOccurrenceId", "effectAssetId",
 				  "anchorSlotId", "followPolicy", "stopPolicy",
 				  "repeatPolicy", "sourceStartMs", "sourceEndMs",
-				  "localTransform" }) || Has_ExactProperties(row,
+				  "localTransform" }) || Has_DependentEffectProperties(row,
 				{ "bindingId", "occurrenceId", "patternId", "stageId",
 				  "actionId", "clipOccurrenceId", "effectAssetId",
 				  "anchorSlotId", "followPolicy", "stopPolicy",
@@ -536,15 +549,16 @@ namespace
 			const DATA_JSON_VALUE* const timingBasis = row.Find("timingBasis");
 			const DATA_JSON_VALUE* const start = row.Find(
 				stageClock ? "stageOffsetMs" : "sourceStartMs");
-			const DATA_JSON_VALUE* const end = row.Find("sourceEndMs");
+			const DATA_JSON_VALUE* const end = row.Find(
+				stageClock ? "stageEndMs" : "sourceEndMs");
 			if (nullptr == start || !start->Is_Number() ||
 				!std::isfinite(start->Get_Number()) ||
 				(stageClock && (nullptr == timingBasis ||
 				 !timingBasis->Is_String() ||
 				 "STAGE_CLOCK" != timingBasis->Get_String())) ||
-				(!stageClock && (nullptr == end ||
-				 (!end->Is_Null() && (!end->Is_Number() ||
-				  !std::isfinite(end->Get_Number()))))))
+				(!stageClock && nullptr == end) ||
+				(nullptr != end && !end->Is_Null() &&
+				 (!end->Is_Number() || !std::isfinite(end->Get_Number()))))
 			{
 				return false;
 			}
@@ -700,17 +714,21 @@ namespace
 				const DATA_JSON_VALUE* const repeatPolicy =
 					row.Find("repeatPolicy");
 				const DATA_JSON_VALUE* const sourceEnd =
-					row.Find("sourceEndMs");
+					row.Find(stageClock ? "stageEndMs" : "sourceEndMs");
+				const bool_t natural = nullptr != stopPolicy && stopPolicy->Is_String() &&
+					"natural" == stopPolicy->Get_String();
+				const bool_t trimmed = stageClock && nullptr != stopPolicy &&
+					stopPolicy->Is_String() && "cue_end" == stopPolicy->Get_String();
 				if (DEPENDENT_CUE_KIND::EFFECT != kind ||
-					nullptr == stopPolicy || !stopPolicy->Is_String() ||
-					"natural" != stopPolicy->Get_String() ||
+					(!natural && !trimmed) ||
 					nullptr == repeatPolicy || !repeatPolicy->Is_String() ||
 					"once" != repeatPolicy->Get_String() ||
-					(!stageClock &&
-					 (nullptr == sourceEnd || !sourceEnd->Is_Null())))
+					(natural && ((nullptr == sourceEnd && !stageClock) ||
+					 (nullptr != sourceEnd && !sourceEnd->Is_Null()))) ||
+					(trimmed && (nullptr == sourceEnd || !sourceEnd->Is_Number())))
 				{
 					outStatus =
-						"Only a natural/once Effect stage-clock row may omit clipOccurrenceId: " +
+						"Only a natural or trimmed once Effect stage-clock row may omit clipOccurrenceId: " +
 							binding->strActionId;
 					return false;
 				}
@@ -722,8 +740,13 @@ namespace
 					nullptr == start || !start->Is_Number() ||
 					!std::isfinite(start->Get_Number()) ||
 					start->Get_Number() < 0.0 ||
+					std::floor(start->Get_Number()) != start->Get_Number() ||
 					start->Get_Number() >=
-						static_cast<double>(stageDuration->second))
+						static_cast<double>(stageDuration->second) ||
+					(trimmed && (!std::isfinite(sourceEnd->Get_Number()) ||
+					 std::floor(sourceEnd->Get_Number()) != sourceEnd->Get_Number() ||
+					 sourceEnd->Get_Number() <= start->Get_Number() ||
+					 sourceEnd->Get_Number() > 600000.0)))
 				{
 					outStatus =
 						"Boss pattern stage-clock Effect is outside its Encounter stage wall: " +
@@ -1363,7 +1386,7 @@ bool_t Client::CValtanPatternAnimationBindingDocument::Parse_Text(
 		return false;
 	}
 
-	constexpr std::size_t MAX_BOSS_PATTERN_CHAIN_CLIPS = 16u;
+	constexpr std::size_t MAX_BOSS_PATTERN_CHAIN_CLIPS = MAX_BOSS_PATTERN_ANIMATION_CLIPS;
 	BOSS_PATTERN_ANIMATION_BINDING_DOCUMENT staged;
 	staged.iFormatVersion = formatVersion;
 	staged.strBossArchetypeId = boss->Get_String();
@@ -1601,7 +1624,7 @@ bool_t Client::CValtanPatternAnimationBindingDocument::Validate(
 	{
 		const bool_t bValidPlaybackContract = binding.bSuppressAnimation ?
 			(document.iFormatVersion >= 3u && binding.Clips.empty()) :
-			(!binding.Clips.empty() && binding.Clips.size() <= 16u);
+			(!binding.Clips.empty() && binding.Clips.size() <= MAX_BOSS_PATTERN_ANIMATION_CLIPS);
 		const bool_t bValidBodyVisibilityContract =
 			binding.bHasBodyHiddenWindow ?
 				(document.iFormatVersion >= 4u &&

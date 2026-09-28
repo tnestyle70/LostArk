@@ -5,6 +5,7 @@
 #include "Network/PacketStreamParser.h"
 #include "Network/PacketWriter.h"
 
+#include <algorithm>
 #include <array>
 #include <cstddef>
 #include <cstdint>
@@ -2234,11 +2235,11 @@ namespace
         killed.eResult = DEBUG_KILL_GATE_BOSSES_RESULT::DISABLED; CPacketWriter rejectedKill;
         testRunner.Require(!Write_Message(rejectedKill, killed), "Rejected Gate Kill cannot claim a kill count");
 
-		testRunner.Require(NETWORK_PROTOCOL_VERSION == 117u &&
+		testRunner.Require(NETWORK_PROTOCOL_VERSION == 120u &&
 			Is_Known_Packet_Type(PACKET_TYPE::C2S_DEBUG_USE_ESTHER) &&
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_DEBUG_USE_ESTHER) ==
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_DEBUG_RESUMMON_WAVE_MONSTERS) + 1u,
-			"Protocol 117 combines flight and Debug Esther without renumbering packets");
+			"Protocol 120 combines flight and Debug Esther without renumbering packets");
 		for (const auto esther : { ESTHER_ID::SILLIAN, ESTHER_ID::WEI,
 			ESTHER_ID::BAHUNTUR, ESTHER_ID::NINAV, ESTHER_ID::INANNA })
 		{
@@ -2422,11 +2423,76 @@ namespace
 				unchanged.eDirection == request.eDirection,
 				"Malformed Mario direction or stop preserves output");
 		}
-		testRunner.Require(NETWORK_PROTOCOL_VERSION == 117u && Is_Known_Packet_Type(PACKET_TYPE::C2S_MARIO_MOVE) &&
+		testRunner.Require(NETWORK_PROTOCOL_VERSION == 120u && Is_Known_Packet_Type(PACKET_TYPE::C2S_MARIO_MOVE) &&
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_MARIO_MOVE) ==
 			static_cast<std::uint16_t>(PACKET_TYPE::S2C_DEBUG_MARIO_JUMP_RESULT) + 1u,
-			"Mario direction packet retains its appended identity in protocol 117");
+			"Mario direction packet retains its appended identity in protocol 120");
 	}
+
+
+    void Test_WorldPickupSnapshotProtocol(TEST_RUNNER& testRunner)
+    {
+        S2C_WORLD_SNAPSHOT source{};
+        source.iServerTick = 100u; source.eWorldId = WORLD_ID::VALTAN_ARENA;
+        source.ActiveGameplayRevision = Make_GameplayDataRevision(1u);
+        PLAYER_SNAPSHOT player{}; player.iNetEntityId = 100u;
+        player.eCharacterClass = CHARACTER_CLASS_ID::LANCE_MASTER;
+        player.bRonaunGuard = true; player.iRonaunGrantTick = 99u; player.isWaterpangArmed = true;
+        source.Players = {player};
+        for (std::uint8_t state = 0u; state < static_cast<std::uint8_t>(WORLD_PICKUP_STATE::END); ++state)
+        {
+            WORLD_PICKUP_SNAPSHOT pickup{};
+            pickup.strPlacementId = "world.ether." + std::to_string(state);
+            pickup.eState = static_cast<WORLD_PICKUP_STATE>(state);
+            pickup.fPositionX = 123.f; pickup.fPositionY = 4.f; pickup.fPositionZ = -111.f;
+            pickup.iStateStartTick = 98u;
+            source.WorldPickups.push_back(pickup);
+        }
+        CPacketWriter writer;
+        const bool written = Write_Message(writer, source);
+        CPacketReader reader{writer.Get_Buffer()}; S2C_WORLD_SNAPSHOT decoded{};
+        testRunner.Require(written && Read_Message(reader, decoded) && reader.Get_RemainingSize() == 0u &&
+            decoded.WorldPickups == source.WorldPickups && decoded.Players[0].bRonaunGuard &&
+            decoded.Players[0].iRonaunGrantTick == 99u && decoded.Players[0].isWaterpangArmed,
+            "World pickups preserve all five authoritative states and Ronaun grant occurrence");
+        auto consumed = source; consumed.Players[0].bRonaunGuard = false;
+        CPacketWriter consumedWriter;
+        testRunner.Require(Write_Message(consumedWriter, consumed),
+            "Ronaun grant occurrence remains valid after the one-shot guard is consumed");
+        for (int invalid = 0; invalid < 10; ++invalid)
+        {
+            auto bad = source;
+            if (invalid == 0) bad.WorldPickups[0].fPositionX = std::numeric_limits<float>::quiet_NaN();
+            if (invalid == 1) bad.WorldPickups[0].strPlacementId = "invalid id";
+            if (invalid == 2) bad.WorldPickups[1].strPlacementId = bad.WorldPickups[0].strPlacementId;
+            if (invalid == 3) bad.WorldPickups[0].eState = WORLD_PICKUP_STATE::END;
+            if (invalid == 4) bad.WorldPickups[0].iStateStartTick = 0u;
+            if (invalid == 5) bad.eWorldId = WORLD_ID::BERN;
+            if (invalid == 6) bad.WorldPickups.resize(MAX_WORLD_PICKUPS + 1u);
+            if (invalid == 7) bad.Players[0].iRonaunGrantTick = 0u;
+            if (invalid == 8) bad.Players[0].iCurrentHp = 0u;
+            if (invalid == 9) bad.WorldPickups[0].fPositionY = 100001.f;
+            CPacketWriter rejected;
+            testRunner.Require(!Write_Message(rejected, bad) && rejected.Get_Buffer().empty(),
+                "Malformed World pickup or Ronaun state rejects before bytes are written");
+        }
+        auto other = source; other.WorldPickups[0].eState = WORLD_PICKUP_STATE::FALLING;
+        CPacketWriter otherWriter; const bool otherWritten = Write_Message(otherWriter, other);
+        if (written && otherWritten && writer.Get_Buffer().size() == otherWriter.Get_Buffer().size())
+        {
+            auto malformed = writer.Get_Buffer();
+            const auto mismatch = std::mismatch(malformed.begin(), malformed.end(), otherWriter.Get_Buffer().begin());
+            const bool foundState = mismatch.first != malformed.end();
+            if (foundState) *mismatch.first = 255u;
+            CPacketReader corrupt{malformed}; decoded.iServerTick = 777u;
+            testRunner.Require(foundState && !Read_Message(corrupt, decoded) && decoded.iServerTick == 777u,
+                "Malformed pickup wire enum preserves the previously decoded snapshot");
+        }
+        auto truncated = writer.Get_Buffer(); if (!truncated.empty()) truncated.pop_back();
+        CPacketReader shortReader{truncated}; decoded.iServerTick = 777u;
+        testRunner.Require(!Read_Message(shortReader, decoded) && decoded.iServerTick == 777u,
+            "Truncated pickup snapshot preserves the prior active state");
+    }
 
     void Test_FearSnapshotProtocol(TEST_RUNNER& testRunner)
     {
@@ -2977,11 +3043,11 @@ namespace
 				unchanged.eWorldId == WORLD_ID::BERN && unchanged.eResult == MARIO_RETURN_RESULT::REJECTED_DESTINATION,
 				"Invalid Mario return verdict preserves caller output");
 		}
-		testRunner.Require(NETWORK_PROTOCOL_VERSION == 117u &&
+		testRunner.Require(NETWORK_PROTOCOL_VERSION == 120u &&
 			Is_Known_Packet_Type(PACKET_TYPE::C2S_MARIO_RETURN) && Is_Known_Packet_Type(PACKET_TYPE::S2C_MARIO_RETURN_RESULT) &&
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_MARIO_RETURN) == static_cast<std::uint16_t>(PACKET_TYPE::S2C_SET_VEHICLE_RIDING_RESULT) + 1u &&
 			static_cast<std::uint16_t>(PACKET_TYPE::S2C_MARIO_RETURN_RESULT) == static_cast<std::uint16_t>(PACKET_TYPE::C2S_MARIO_RETURN) + 1u,
-			"Protocol 117 preserves Mario return packet identities");
+			"Protocol 120 preserves Mario return packet identities");
 	}
 
 	void Test_DebugMarioJumpProtocol(TEST_RUNNER& testRunner)
@@ -3098,14 +3164,14 @@ namespace
 				unchanged.eResult == DEBUG_MARIO_JUMP_RESULT::REJECTED_DISABLED,
 				"Mario invalid or truncated verdict preserves caller output");
 		}
-		testRunner.Require(NETWORK_PROTOCOL_VERSION == 117u &&
+		testRunner.Require(NETWORK_PROTOCOL_VERSION == 120u &&
 			Is_Known_Packet_Type(PACKET_TYPE::C2S_DEBUG_MARIO_JUMP) &&
 			Is_Known_Packet_Type(PACKET_TYPE::S2C_DEBUG_MARIO_JUMP_RESULT) &&
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_DEBUG_MARIO_JUMP) ==
 			static_cast<std::uint16_t>(PACKET_TYPE::S2C_SCENE_PROFILE_APPLY) + 1u &&
 			static_cast<std::uint16_t>(PACKET_TYPE::S2C_DEBUG_MARIO_JUMP_RESULT) ==
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_DEBUG_MARIO_JUMP) + 1u,
-			"Protocol 117 preserves Mario jump packet identities without renumbering existing peers");
+			"Protocol 120 preserves Mario jump packet identities without renumbering existing peers");
 	}
 
 	void Test_DebugMadnessFormProtocol(TEST_RUNNER& testRunner)
@@ -3283,14 +3349,14 @@ namespace
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_DEBUG_BINGO_HAMMER) + 1u &&
 			static_cast<std::uint16_t>(PACKET_TYPE::S2C_SET_VEHICLE_RIDING_RESULT) ==
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_SET_VEHICLE_RIDING) + 1u &&
-			NETWORK_PROTOCOL_VERSION == 117u,
+			NETWORK_PROTOCOL_VERSION == 120u,
 			"Riding packet identities append without renumbering peers");
 	}
 
 	void Test_WorldObjectMotionProtocol(TEST_RUNNER& testRunner)
 	{
 		using namespace LostArk::Shared;
-		testRunner.Require(NETWORK_PROTOCOL_VERSION == 117u, "World Object owner lifecycle, fear, zone pulse, wave re-summon, wall climb and ember use protocol 117");
+		testRunner.Require(NETWORK_PROTOCOL_VERSION == 120u, "World Object owner lifecycle, fear, zone pulse, wave re-summon, wall climb and ember use protocol 120");
 		testRunner.Require(
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_DEBUG_MARIO_JUMP) == 72u &&
 			static_cast<std::uint16_t>(PACKET_TYPE::S2C_DEBUG_MARIO_JUMP_RESULT) == 73u &&
@@ -3662,8 +3728,8 @@ namespace
 			static_cast<std::uint16_t>(PACKET_TYPE::S2C_INTERACT_PROMPT) + 1u &&
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_INTERACTION_SLOT) ==
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_INTERACT_TRIGGER) + 1u &&
-			NETWORK_PROTOCOL_VERSION == 117u,
-			"Protocol 117 preserves main trigger identities with WORLD occurrence placement");
+			NETWORK_PROTOCOL_VERSION == 120u,
+			"Protocol 120 preserves main trigger identities with WORLD occurrence placement");
 	}
 
 	void Test_KakulAuthoringCommandProtocol(TEST_RUNNER& testRunner)
@@ -3779,8 +3845,8 @@ namespace
 	void Test_PartyInviteProtocol(TEST_RUNNER& testRunner)
 	{
 		{
-			testRunner.Require(117u == NETWORK_PROTOCOL_VERSION,
-				"KoukuSaydon Source Pin And Existing Contracts Use Protocol 117");
+			testRunner.Require(120u == NETWORK_PROTOCOL_VERSION,
+				"KoukuSaydon Source Pin And Existing Contracts Use Protocol 120");
 			C2S_ENTER_WORLD oldPeer{};
 			oldPeer.iProtocolVersion = 40u;
 			oldPeer.eWorldId = WORLD_ID::BERN;
@@ -4024,8 +4090,8 @@ namespace
         testRunner.Require(!Write_Message(rejectHp, badState), "Guide Trace Rejects HP Outside Unit Interval");
         state.fEvadeScore = std::numeric_limits<float>::quiet_NaN(); CPacketWriter rejectNan;
         testRunner.Require(!Write_Message(rejectNan, state), "Guide Trace Rejects Nonfinite Scores");
-        testRunner.Require(NETWORK_PROTOCOL_VERSION == 117u && Is_Known_Packet_Type(PACKET_TYPE::S2C_GUIDE_PROMPT) &&
-            Is_Known_Packet_Type(PACKET_TYPE::S2C_GUIDE_STATE), "Guide Protocol Requires Matching v117 Peers");
+        testRunner.Require(NETWORK_PROTOCOL_VERSION == 120u && Is_Known_Packet_Type(PACKET_TYPE::S2C_GUIDE_PROMPT) &&
+            Is_Known_Packet_Type(PACKET_TYPE::S2C_GUIDE_STATE), "Guide Protocol Requires Matching v120 Peers");
     }
 
 	void Test_ChatProtocol(TEST_RUNNER& testRunner)
@@ -4245,6 +4311,41 @@ namespace
 		}
 	}
 
+
+    void Test_Integrated120ShopProtocol(TEST_RUNNER& testRunner)
+    {
+        S2C_INVENTORY_SNAPSHOT inventory{};
+        inventory.iRequestSequence = 77u;
+        inventory.Items.push_back({"item.potion", 3u, EQUIPMENT_SLOT::NONE});
+        inventory.iSilver = 123456789u;
+        inventory.iGold = 987654321u;
+        CPacketWriter writer;
+        const bool written = Write_Message(writer, inventory);
+        CPacketReader reader{writer.Get_Buffer()};
+        S2C_INVENTORY_SNAPSHOT decoded{};
+        testRunner.Require(written && Read_Message(reader, decoded) && reader.Get_RemainingSize() == 0u &&
+            decoded.iSilver == inventory.iSilver && decoded.iGold == inventory.iGold &&
+            decoded.Items.size() == 1u && decoded.Items.front().iQuantity == 3u,
+            "Protocol 120 preserves shop purse alongside inventory items");
+        auto truncated = writer.Get_Buffer();
+        if (!truncated.empty()) truncated.pop_back();
+        CPacketReader shortReader{truncated}; decoded.iSilver = 91u; decoded.iGold = 92u;
+        testRunner.Require(!Read_Message(shortReader, decoded) && decoded.iSilver == 91u && decoded.iGold == 92u,
+            "Truncated integrated purse preserves the previous inventory");
+
+        C2S_BUY_ITEMS purchase{};
+        purchase.iRequestSequence = 78u;
+        purchase.strNpcPlacementId = "npc.bern.potion";
+        purchase.Entries.push_back({"item.potion", 2u});
+        CPacketWriter basketWriter;
+        const bool basketWritten = Write_Message(basketWriter, purchase);
+        CPacketReader basketReader{basketWriter.Get_Buffer()}; C2S_BUY_ITEMS basket{};
+        testRunner.Require(basketWritten && Read_Message(basketReader, basket) &&
+            basketReader.Get_RemainingSize() == 0u && basket.strNpcPlacementId == purchase.strNpcPlacementId &&
+            basket.Entries.size() == 1u && basket.Entries.front().iQuantity == 2u &&
+            Is_Known_Packet_Type(PACKET_TYPE::C2S_BUY_ITEMS),
+            "Protocol 120 preserves the appended shop request");
+    }
 	void Test_WorldSnapshotRoundTrip(
 		TEST_RUNNER& testRunner)
 	{
@@ -4396,7 +4497,7 @@ namespace
 		// Protocol 78 adds a fear deadline and the empty presentation string length.
         constexpr std::size_t playerFearBytes = 4 + 2;
         // Protocol 99 carries a zone presentation pulse independently of action state.
-        constexpr std::size_t playerZonePulseBytes = 4;
+        constexpr std::size_t playerZonePulseBytes = 4 + 1 + 4;
 		// Protocol 81 appends the acknowledgement and ordinary movement state.
 		constexpr std::size_t playerPredictionBytes = 4 + 4 + 1 + 1 + (4 * 3);
 		// Protocol 104 adds flight phase, phase clock and duration after the vehicle id.
@@ -4408,7 +4509,7 @@ namespace
 			4 + 1 + (4 * 4) + 1 + 1 + 1 + (4 * 8) + 1 + (4 * 3) + 3 +
 			1 + 1 + 1 + playerAttachmentBytes + playerPatternStatusBytes +
 			playerMadnessBytes + playerInteractionBytes + playerMarioStageBytes + playerCardMazeBytes + playerFearBytes + playerZonePulseBytes + playerPredictionBytes +
-			playerVehicleBytes + playerHonorTitleBytes + 5 + 1 + 1 + 1; // shield, buff count, room mode, airborne knockback
+			playerVehicleBytes + playerHonorTitleBytes + 5 + 1 + 1 + 1 + 1; // shield, buffs, room mode, airborne knockback, Waterpang
 		constexpr std::size_t cooldownBytes = 4 + 4 + 4;
 		/* The first trailing 1 is the optional Portal rush route flag.
 		   The final 1 + 1 + 1 is iPhase, iBrokenArmorMask and the
@@ -4417,12 +4518,12 @@ namespace
 		// Retained presentation has its own IDs and pattern/action/stage clocks.
         const std::size_t entityPresentationBytes =
             2 + entity.strPresentationPatternId.size() + 2 + entity.strPresentationActionId.size() + (4 * 3);
-		// Protocol 117 adds the gauge kind and remaining/maximum U32 pair.
+		// Protocol 120 adds the gauge kind and remaining/maximum U32 pair.
 		constexpr std::size_t mechanicGaugeBytes = 1 + (4 * 2);
 		const std::size_t entityBytes =
 			4 + 1 + 2 + entity.strPatternId.size() + 2 +
 			entity.strActionId.size() + (4 * 4) + 1 + (4 * 7) + 1 + 1 + 1 +
-			4 + 4 + 2 + (4 * 6) + mechanicGaugeBytes + 1 + GAMEPLAY_DATA_REVISION_BYTES + entityPresentationBytes + 1; // boss buff count
+			4 + 4 + 2 + (4 * 6) + mechanicGaugeBytes + 1 + GAMEPLAY_DATA_REVISION_BYTES + entityPresentationBytes + 2; // boss buff count and optional pattern landing
 		constexpr std::size_t bossCombatEventBytes =
 			8 + 4 + 4 + 1 + 4;
 		constexpr std::size_t combatObjectBytes =
@@ -4441,7 +4542,7 @@ namespace
 			bingoBoardBytes +
 			bossCombatEventBytes +
 			combatObjectBytes +
-			snapshotRevisionBytes;
+			snapshotRevisionBytes + 1u; // Empty World pickup count.
 
 		testRunner.Require(
 			expectedPayloadBytes == payload.size(),
@@ -4708,6 +4809,80 @@ namespace
 			decodedPortalRush.Entities[0].PortalRushRoute ==
 				portalRush.Entities[0].PortalRushRoute,
 			"Portal Rush Route Snapshot Round Trip");
+
+		S2C_WORLD_SNAPSHOT landing = source;
+		landing.Entities[0].strPatternId = "VALTAN_HIGH_JUMP";
+		landing.Entities[0].PatternLanding = { true, 156.f, 22.97f, -120.f };
+		S2C_WORLD_SNAPSHOT noLanding = landing;
+		noLanding.Entities[0].PatternLanding = {};
+		std::vector<std::uint8_t> landingPayload;
+		std::vector<std::uint8_t> noLandingPayload;
+		S2C_WORLD_SNAPSHOT decodedLanding;
+		bool landingRoundTrip = Build_WorldSnapshotPayload(landing, landingPayload) &&
+			Build_WorldSnapshotPayload(noLanding, noLandingPayload);
+		if (landingRoundTrip)
+		{
+			CPacketReader landingReader{ landingPayload };
+			landingRoundTrip = Read_Message(landingReader, decodedLanding) &&
+				0u == landingReader.Get_RemainingSize();
+		}
+		testRunner.Require(landingRoundTrip &&
+			landingPayload.size() == noLandingPayload.size() + 3u * sizeof(float) &&
+			decodedLanding.Entities.size() == 1u &&
+			decodedLanding.Entities[0].PatternLanding == landing.Entities[0].PatternLanding,
+			"Immutable Pattern Landing Snapshot Round Trip With Optional XYZ Payload");
+		for (unsigned invalidCase = 0u; invalidCase < 8u; ++invalidCase)
+		{
+			auto invalidLanding = landing;
+			auto& invalidEntity = invalidLanding.Entities[0];
+			if (invalidCase == 0u) invalidEntity.PatternLanding.fPositionX = std::numeric_limits<float>::quiet_NaN();
+			if (invalidCase == 1u) invalidEntity.PatternLanding.fPositionY = std::numeric_limits<float>::infinity();
+			if (invalidCase == 2u) invalidEntity.PatternLanding.fPositionZ = -std::numeric_limits<float>::infinity();
+			if (invalidCase == 3u) invalidEntity.PatternLanding.isValid = false;
+			if (invalidCase == 4u)
+			{
+				invalidEntity.hasBossCombatState = false;
+				invalidEntity.BossCombat = {};
+				invalidEntity.iPatternTargetNetEntityId = INVALID_NET_ENTITY_ID;
+			}
+			if (invalidCase == 5u)
+			{
+				invalidEntity.strPatternId.clear();
+				invalidEntity.iPatternStartTick = 0u;
+			}
+			if (invalidCase == 6u) invalidEntity.iPatternSequence = 0u;
+			if (invalidCase == 7u) invalidEntity.eAction = WORLD_ENTITY_ACTION::IDLE;
+			CPacketWriter invalidLandingWriter;
+			testRunner.Require(!Write_Message(invalidLandingWriter, invalidLanding),
+				"Reject Non-Finite, Dirty-Absent, Non-Boss Or Inactive Pattern Landing");
+		}
+		if (landingRoundTrip)
+		{
+			// The only first difference is the optional landing flag, avoiding a
+			// second hand-written description of the evolving snapshot header.
+			const auto different = std::mismatch(noLandingPayload.begin(), noLandingPayload.end(), landingPayload.begin());
+			const auto landingOffset = static_cast<std::size_t>(different.first - noLandingPayload.begin());
+			bool rejectedMalformedLanding = landingOffset + 1u + 3u * sizeof(float) <= landingPayload.size();
+			for (unsigned invalidCase = 0u; invalidCase < 3u && rejectedMalformedLanding; ++invalidCase)
+			{
+				auto malformed = landingPayload;
+				if (invalidCase == 0u) malformed[landingOffset] = 2u;
+				else if (invalidCase == 1u)
+				{
+					CPacketWriter nanWriter;
+					nanWriter.Write_F32(std::numeric_limits<float>::quiet_NaN());
+					std::copy(nanWriter.Get_Buffer().begin(), nanWriter.Get_Buffer().end(), malformed.begin() + landingOffset + 1u);
+				}
+				else malformed.resize(landingOffset + 1u + 2u * sizeof(float));
+				CPacketReader malformedReader{ malformed };
+				S2C_WORLD_SNAPSHOT retained = source;
+				rejectedMalformedLanding = !Read_Message(malformedReader, retained) &&
+					retained.iServerTick == source.iServerTick && retained.Entities.size() == source.Entities.size() &&
+					retained.Entities[0].PatternLanding == source.Entities[0].PatternLanding;
+			}
+			testRunner.Require(rejectedMalformedLanding,
+				"Reject Malformed Landing Boolean Non-Finite XYZ And Truncation Without Replacing The Prior Snapshot");
+		}
 
 		S2C_WORLD_SNAPSHOT zeroLengthPortalRush = portalRush;
 		zeroLengthPortalRush.Entities[0].PortalRushRoute.fEndX =
@@ -5071,7 +5246,7 @@ namespace
 				4u + 2u + 2u + 2u + 1u + 1u + 1u + 4u + 4u;
 			constexpr std::size_t playerAttachmentSlotByte =
 				worldSnapshotHeaderBytes +
-				4u + 1u + 1u + (4u * 4u) + 1u + 1u + 1u + 4u + 4u + 1u + 4u;
+				4u + 1u + 1u + (4u * 4u) + 1u + 1u + 1u + 4u + 4u + 1u + 1u + 4u; // airborne + Waterpang flags before attachment
 			if (wroteInvalidSlotFixture &&
 				playerAttachmentSlotByte < invalidSlotPayload.size())
 			{
@@ -7254,8 +7429,8 @@ namespace
 		}
 
 		testRunner.Require(
-			117u == NETWORK_PROTOCOL_VERSION,
-			"Session Diagnostics Use Current Protocol Version 117");
+			120u == NETWORK_PROTOCOL_VERSION,
+			"Session Diagnostics Use Current Protocol Version 120");
 		testRunner.Require(
 			allReasonsAreKnown && allValuesAreContiguous,
 			"Every Session Diagnostic Reason Is Known And Append Only");
@@ -7282,8 +7457,8 @@ namespace
 	void Test_DataRevisionHotReloadProtocol(TEST_RUNNER& testRunner)
 	{
 		testRunner.Require(
-			117u == NETWORK_PROTOCOL_VERSION,
-			"World Spawn Pin Complete Play And Two-Revision Restart CAS Use Protocol 117");
+			120u == NETWORK_PROTOCOL_VERSION,
+			"World Spawn Pin Complete Play And Two-Revision Restart CAS Use Protocol 120");
 		const GameplayDataRevision base = Make_GameplayDataRevision(10u);
 		const GameplayDataRevision candidate = Make_GameplayDataRevision(40u);
 		const std::uint32_t required =
@@ -8554,9 +8729,61 @@ namespace
 	}
 }
 
+
+namespace
+{
+    void Test_NumericBalanceProtocol(TEST_RUNNER& tests)
+    {
+        using namespace LostArk::Shared;
+        GameplayDataRevision revision; revision.Bytes[0] = 7u;
+        C2S_BALANCE_PATCH patch{77u, revision, {
+            {BALANCE_DOMAIN::PLAYER, "ARTIST", "moveSpeed", 2.95, 3.125},
+            {BALANCE_DOMAIN::STAGGER, "ENCOUNTER_VALTAN|pattern|stage|0", "staggerGaugeMaximum", 12000., 16000.},
+            {BALANCE_DOMAIN::PATTERN_DAMAGE, "O|ENCOUNTER_KAKULSAYDON_G1|pattern|logic|SUCCESS|0", "maxHpDamagePercent", 10., 8.}}};
+        CPacketWriter writer; const bool wrote = Write_Message(writer, patch);
+        CPacketReader reader(writer.Get_Buffer()); C2S_BALANCE_PATCH decoded;
+        tests.Require(wrote && Read_Message(reader, decoded) && !reader.Get_RemainingSize() &&
+            decoded.Changes.size() == 3 && decoded.Changes[0].fBefore == 2.95 && decoded.Changes[0].fValue == 3.125 &&
+            decoded.Changes[2].eDomain == BALANCE_DOMAIN::PATTERN_DAMAGE && decoded.BaseNumericRevision == revision,
+            "Numeric patch preserves double precision, occurrence identity and version");
+        auto bytes = writer.Get_Buffer(); bytes.pop_back(); CPacketReader truncated(bytes);
+        decoded.iRequestSequence = 999u;
+        tests.Require(!Read_Message(truncated, decoded) && decoded.iRequestSequence == 999u,
+            "Truncated numeric patch preserves the prior destination");
+        auto duplicate = patch; duplicate.Changes.push_back(duplicate.Changes.front()); CPacketWriter duplicateWriter;
+        tests.Require(!Write_Message(duplicateWriter, duplicate) && duplicateWriter.Get_Buffer().empty(),
+            "Duplicate field patch is rejected before serialization");
+        auto invalid = patch; invalid.Changes[0].fValue = std::numeric_limits<double>::infinity(); CPacketWriter infinityWriter;
+        tests.Require(!Write_Message(infinityWriter, invalid), "Nonfinite numeric patch is rejected");
+        invalid = patch; invalid.Changes[0].strField = "../../file.json"; // Values name catalogue fields, never filesystem operations.
+        invalid.Changes[0].strId = "bad\\path"; CPacketWriter pathWriter;
+        tests.Require(!Write_Message(pathWriter, invalid), "Numeric identity rejects backslash and control paths");
+        invalid = patch; invalid.Changes.resize(MAX_BALANCE_CHANGES + 1u); CPacketWriter overflowWriter;
+        tests.Require(!Write_Message(overflowWriter, invalid), "Numeric patch is bounded to 128 changed fields");
+        S2C_BALANCE_SNAPSHOT snapshot{4u, revision, 0u, 2u, {
+            {BALANCE_DOMAIN::PLAYER, "ARTIST", "moveSpeed", 2.95, false},
+            {BALANCE_DOMAIN::PATTERN_DAMAGE, "O|encounter|pattern|logic|SUCCESS|0", "fixedDamage", 9876., true}}};
+        CPacketWriter pageWriter; const bool pageWrote = Write_Message(pageWriter, snapshot);
+        CPacketReader pageReader(pageWriter.Get_Buffer()); S2C_BALANCE_SNAPSHOT page;
+        tests.Require(pageWrote && Read_Message(pageReader, page) && page.Entries.size() == 2u && page.iPageCount == 2u &&
+            page.Entries.back().fValue == 9876., "Numeric page includes fixed damage and coherent revision");
+        snapshot.iPageIndex = snapshot.iPageCount; CPacketWriter rangeWriter;
+        tests.Require(!Write_Message(rangeWriter, snapshot), "Numeric page outside its versioned snapshot is rejected");
+        S2C_BALANCE_RESULT result{0u, BALANCE_APPLY_RESULT::APPLIED, revision, {}};
+        CPacketWriter resultWriter; const bool resultWrote = Write_Message(resultWriter, result);
+        CPacketReader resultReader(resultWriter.Get_Buffer()); S2C_BALANCE_RESULT ack;
+        tests.Require(resultWrote && Read_Message(resultReader, ack) && ack.iRequestSequence == 0u && ack.ActiveNumericRevision == revision,
+            "Unsolicited numeric apply result broadcasts the same active revision");
+        result.eResult = BALANCE_APPLY_RESULT::STALE_REVISION; CPacketWriter unsolicitedFailure;
+        tests.Require(!Write_Message(unsolicitedFailure, result), "Numeric failure requires a correlated request sequence");
+    }
+}
+
 int main(const int argumentCount, char* arguments[])
 {
 	TEST_RUNNER testRunner{};
+    if (argumentCount == 2 && std::string_view(arguments[1]) == "--numeric-balance-only")
+    { Test_NumericBalanceProtocol(testRunner); return testRunner.iFailureCount ? 1 : 0; }
 	if (argumentCount == 2 && std::string_view(arguments[1]) == "--move-prediction-only")
 	{
 		Test_MoveRoundTrip(testRunner);
@@ -8580,6 +8807,7 @@ int main(const int argumentCount, char* arguments[])
 	{
 		Test_MarioMoveProtocol(testRunner);
 		Test_FearSnapshotProtocol(testRunner);
+	Test_WorldPickupSnapshotProtocol(testRunner);
 	Test_MarioStageSnapshotProtocol(testRunner);
 		Test_CardMazeSnapshotProtocol(testRunner);
 	Test_CombatSuccessSnapshotProtocol(testRunner);
@@ -8599,6 +8827,8 @@ int main(const int argumentCount, char* arguments[])
 		return 0u == testRunner.iFailureCount ? 0 : 1;
 	}
 
+    Test_NumericBalanceProtocol(testRunner);
+	Test_Integrated120ShopProtocol(testRunner);
 	Test_EnterWorldRoundTrip(testRunner);
 	Test_PlayerNicknameContract(testRunner);
 	Test_PlayableCharacterRoster(testRunner);
@@ -8633,6 +8863,7 @@ int main(const int argumentCount, char* arguments[])
 	Test_CharacterClassChangeRoundTrip(testRunner);
 	Test_MarioMoveProtocol(testRunner);
 	Test_FearSnapshotProtocol(testRunner);
+	Test_WorldPickupSnapshotProtocol(testRunner);
 	Test_MarioStageSnapshotProtocol(testRunner);
 	Test_CardMazeSnapshotProtocol(testRunner);
 	Test_CombatSuccessSnapshotProtocol(testRunner);

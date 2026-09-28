@@ -73,7 +73,8 @@ namespace
 		const LostArk::Shared::MARIO_HIT_SOURCE marioHitSource = LostArk::Shared::MARIO_HIT_SOURCE::NONE)
 	{
 		/* A counter or stagger-only hit still reaches the combat analyzer. */
-		if ((0u == amount && 0u == staggerAmount && !counterSuccess && !staggerSuccess) ||
+		if ((0u == amount && 0u == staggerAmount && !counterSuccess && !staggerSuccess &&
+			hitFlag != LostArk::Shared::DAMAGE_HIT_FLAG::INVINCIBLE) ||
 			events.size() >= LostArk::Shared::MAX_DAMAGE_EVENTS)
 			return;
 		LostArk::Shared::DAMAGE_EVENT event{};
@@ -351,8 +352,16 @@ LostArk::Server::CServerCombatHitRuntime::Apply_PlayerToWorld(
 		once, then tell the typed runtime that the HP amount is already reduced.
 		The typed part state remains the sole part-durability authority whenever
 		it is authored. */
-		if (target.bPatternInvulnerable)
+		const auto invulnerable = [&]()
+		{
+			if (hit.iRawDamage)
+				PushDamageEvent(target.iNetEntityId, 0u, target.fPositionX, target.fPositionY, target.fPositionZ,
+					true, outDamageEvents, hit.iSourcePlayerId, 0u, false, false,
+					LostArk::Shared::DAMAGE_HIT_FLAG::INVINCIBLE);
 			return SERVER_COMBAT_HIT_RESULT::ABSORBED;
+		};
+		if (target.bPatternInvulnerable)
+			return invulnerable();
 		const bool hasLegacyArmor = !target.ArmorPlates.empty();
 		const bool hasTypedParts = !target.BossCombat.Parts.empty();
 		BOSS_INCOMING_HIT incoming{};
@@ -365,6 +374,7 @@ LostArk::Server::CServerCombatHitRuntime::Apply_PlayerToWorld(
 		incoming.iStaggerDamage = hit.bGuideSource ? 0u : hit.iStaggerDamage;
 		incoming.iPartDamage = hasTypedParts && !hit.bGuideSource ? hit.iPartDamage : 0u;
 		incoming.iCounterPower = hit.bGuideSource ? 0u : hit.iCounterPower;
+		incoming.bCounterFromPrimarySlot = !hit.bGuideSource && hit.bCounterFromPrimarySlot;
 		incoming.iServerTick = hit.iServerTick;
 		incoming.bHealthDamagePreResolved = hasLegacyArmor || hit.bHealthDamagePreResolved;
 		incoming.fSourceX = hit.fSourceX;
@@ -507,10 +517,18 @@ LostArk::Server::CServerCombatHitRuntime::Apply_WorldToPlayer(
 	{
 		return SERVER_COMBAT_HIT_RESULT::NOT_ADMITTED;
 	}
-	if (!hit.bEncounterWipe && hit.iServerTick < target.iInvulnerableEndTick)
-		return SERVER_COMBAT_HIT_RESULT::ABSORBED;
 	const bool estherGuarded = !hit.bEncounterWipe && hit.iServerTick < target.iEstherGuardEndTick;
-	if (estherGuarded && hit.bEstherGuardBlockable)
+	const bool ronaunBlocked = !hit.bEncounterWipe && target.bRonaunGuard && hit.bEstherGuardBlockable;
+	if (ronaunBlocked)
+		target.bRonaunGuard = false;
+	if ((estherGuarded || ronaunBlocked) && hit.bEstherGuardBlockable)
+	{
+		// Reuse Bingo's combat-text occurrence, including when another invulnerability overlaps.
+		target.iInvulnerabilityZoneContactTick = hit.iServerTick;
+		target.iInvulnerabilityZonePulseTick = hit.iServerTick;
+		return SERVER_COMBAT_HIT_RESULT::ABSORBED;
+	}
+	if (!hit.bEncounterWipe && hit.iServerTick < target.iInvulnerableEndTick)
 		return SERVER_COMBAT_HIT_RESULT::ABSORBED;
 	if (!hit.bEncounterWipe && !hit.bIgnoreCounter &&
 		CPlayerSkillSystem::Try_Counter(target, catalog, hit.iServerTick))
@@ -568,6 +586,8 @@ LostArk::Server::CServerCombatHitRuntime::Apply_WorldToPlayer(
 			target.iShield = 0u; target.iInvulnerableEndTick = 0u;
 			target.ActiveBuffs.clear(); target.Clear_Attachment();
 		}
+		target.bRonaunGuard = false;
+		target.iRonaunGrantTick = 0u;
 		target.iEstherGuardEndTick = 0u;
 		target.eAction = PLAYER_ACTION_STATE::DEAD;
 		target.iCurrentSkillId = INVALID_SKILL_ID;

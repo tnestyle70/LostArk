@@ -50,6 +50,8 @@ EFFECT_REPLACEMENT_FIELD = "effectReplacement"
 EFFECT_REPLACEMENT_FIELDS = {
     "templateEffect", "cueId", "effectAssetId", "clip", "sourceStartMs", "anchorSlotId",
 }
+EFFECT_TIMING_OVERRIDE_FIELD = "effectTimingOverride"
+EFFECT_TIMING_OVERRIDE_FIELDS = {"templateEffect", "bindingId", "stageStartMs"}
 ALLOWED_WAIVERS = {
     "HIT", "HIT_SHAPE", "HIT_RESPONSE", "EFFECT", "SOUND", "EXTRA_HIT",
 }
@@ -195,11 +197,13 @@ def validate_template_document(document: dict[str, Any]) -> None:
             isinstance(row, dict) and EXTRA_HIT_OFFSETS_FIELD in row
         )
         has_effect_replacement = isinstance(row, dict) and EFFECT_REPLACEMENT_FIELD in row
+        has_effect_timing_override = isinstance(row, dict) and EFFECT_TIMING_OVERRIDE_FIELD in row
         _exact_fields(
             row,
             ALLOWLIST_FIELDS |
             ({EXTRA_HIT_OFFSETS_FIELD} if has_extra_hit_offsets else set()) |
-            ({EFFECT_REPLACEMENT_FIELD} if has_effect_replacement else set()),
+            ({EFFECT_REPLACEMENT_FIELD} if has_effect_replacement else set()) |
+            ({EFFECT_TIMING_OVERRIDE_FIELD} if has_effect_timing_override else set()),
             context,
         )
         key = tuple(_stable(row[field], f"{context}.{field}") for field in (
@@ -209,7 +213,8 @@ def validate_template_document(document: dict[str, Any]) -> None:
             raise ContractError(f"duplicate allowlist occurrence: {key}")
         allowlist_keys.add(key)
         waivers = row["waivers"]
-        if (not isinstance(waivers, list) or (not waivers and not has_effect_replacement) or
+        if (not isinstance(waivers, list) or
+                (not waivers and not has_effect_replacement and not has_effect_timing_override) or
                 any(value not in ALLOWED_WAIVERS for value in waivers) or
                 len(waivers) != len(set(waivers))):
             raise ContractError(f"{context}.waivers are invalid")
@@ -245,6 +250,32 @@ def validate_template_document(document: dict[str, Any]) -> None:
                                  replacement["effectAssetId"]) or
                     replacement["anchorSlotId"] != "root"):
                 raise ContractError("effect replacement must be an exact Full Restore root cue")
+        if has_effect_timing_override:
+            override_value = row[EFFECT_TIMING_OVERRIDE_FIELD]
+            has_binding_clock = isinstance(override_value, dict) and "bindingClock" in override_value
+            override = _exact_fields(override_value,
+                                     EFFECT_TIMING_OVERRIDE_FIELDS |
+                                     ({"bindingClock"} if has_binding_clock else set()),
+                                     context + ".effectTimingOverride")
+            expected = _exact_fields(override["templateEffect"], EFFECT_FIELDS,
+                                     context + ".effectTimingOverride.templateEffect")
+            if "EFFECT" in waivers or has_effect_replacement:
+                raise ContractError("an exact effect timing override cannot waive or replace EFFECT")
+            if expected["resourceKind"] not in {"GROUP", "LEAF"}:
+                raise ContractError("effect timing override template resource kind is invalid")
+            for field in ("resourceId", "anchorSlotId"):
+                _stable(expected[field], context + ".templateEffect." + field)
+            _integer(expected["clipMs"], context + ".templateEffect.clipMs")
+            _stable(override["bindingId"], context + ".effectTimingOverride.bindingId")
+            _integer(override["stageStartMs"], context + ".effectTimingOverride.stageStartMs")
+            if has_binding_clock:
+                clock = _exact_fields(override["bindingClock"],
+                    {"basis", "clipOccurrenceId", "startMs", "repeatPolicy"},
+                    context + ".effectTimingOverride.bindingClock")
+                if (clock["basis"] != "CLIP_OCCURRENCE" or clock["repeatPolicy"] != "ONCE" or
+                        clock["clipOccurrenceId"] != row["clipOccurrenceId"]):
+                    raise ContractError("effect timing override clock must name its exact one-shot occurrence")
+                _integer(clock["startMs"], context + ".effectTimingOverride.bindingClock.startMs")
         reason = row["reason"]
         if not isinstance(reason, str) or len(reason.strip()) < 20:
             raise ContractError(f"{context}.reason must explain the exception")
@@ -331,6 +362,55 @@ def _occurrence_wall_duration_ms(occurrence: dict[str, Any]) -> int:
     return int(round(play_ms / float(play_rate)))
 
 
+def validate_effect_timing_override(
+        override: dict[str, Any], occurrence_key: tuple[str, str, str, str],
+        occurrence: dict[str, Any], occurrence_start: int, stage: dict[str, Any],
+        binding_rows: list[dict[str, Any]],
+) -> int:
+    """Prove the exact saved binding and return its original template hit clock."""
+    expected_effect = override["templateEffect"]
+    expected_ms = _event_stage_ms(occurrence, occurrence_start, expected_effect["clipMs"])
+    stage_key, occurrence_id = occurrence_key[:3], occurrence_key[3]
+    override_ms = override["stageStartMs"]
+    if (expected_ms is None or override_ms == expected_ms or
+            override_ms >= stage.get("durationMs", 0)):
+        raise ContractError(f"invalid or stale effect timing override: {occurrence_key}")
+    expected_clock = override.get("bindingClock", {
+        "basis": "STAGE", "clipOccurrenceId": None,
+        "startMs": override_ms, "repeatPolicy": "ONCE",
+    })
+    if "bindingClock" in override and (
+            expected_clock.get("basis") != "CLIP_OCCURRENCE" or
+            expected_clock.get("clipOccurrenceId") != occurrence_id or
+            expected_clock.get("repeatPolicy") != "ONCE" or
+            _event_stage_ms(occurrence, occurrence_start, expected_clock["startMs"]) != override_ms):
+        raise ContractError(f"effect timing override source/wall clock drift: {occurrence_key}")
+    # Keep the reviewed binding unique, including at the original clip time.
+    # Independent V1 stage-clock cues do not participate in this V2 contract.
+    named = [binding for binding in binding_rows
+             if binding.get("bindingId") == override["bindingId"]]
+    candidates = []
+    for binding in binding_rows:
+        scope, resource = binding.get("scope", {}), binding.get("resource", {})
+        clock = binding.get("clock", {})
+        if ((scope.get("patternId"), scope.get("stageId"), scope.get("actionId")) != stage_key or
+                (resource.get("kind"), resource.get("id")) !=
+                (expected_effect["resourceKind"], expected_effect["resourceId"])):
+            continue
+        if (clock == expected_clock or (clock.get("basis") == "STAGE" and
+             clock.get("clipOccurrenceId") is None and
+             clock.get("startMs") in {expected_ms, override_ms}) or
+                (clock.get("basis") == "CLIP_OCCURRENCE" and
+                 clock.get("clipOccurrenceId") == occurrence_id and
+                 clock.get("startMs") == expected_effect["clipMs"])):
+            candidates.append(binding)
+    if (len(named) != 1 or len(candidates) != 1 or named[0] is not candidates[0] or
+            named[0].get("clock") != expected_clock or
+            named[0].get("anchor", {}).get("slotId") != expected_effect["anchorSlotId"]):
+        raise ContractError(f"exact effect timing override binding mismatch: {occurrence_key}")
+    return expected_ms
+
+
 def validate_parity(template_document: dict[str, Any], gameplay: dict[str, Any],
                     presentation: dict[str, Any], v2_bindings: dict[str, Any],
                     sound_cues: dict[str, Any], full_restore_animations: dict[str, Any] | None = None) -> dict[str, int]:
@@ -380,6 +460,7 @@ def validate_parity(template_document: dict[str, Any], gameplay: dict[str, Any],
     waiver_reasons: dict[tuple[str, str, str, str], str] = {}
     extra_hit_offsets: dict[tuple[str, str, str, str], list[int]] = {}
     replacements: dict[tuple[str, str, str, str], dict[str, Any]] = {}
+    timing_overrides: dict[tuple[str, str, str, str], dict[str, Any]] = {}
     for row in template_document["allowlist"]:
         key = (row["patternId"], row["stageId"], row["actionId"], row["clipOccurrenceId"])
         if row["clipOccurrenceId"] not in occurrence_ids:
@@ -390,11 +471,14 @@ def validate_parity(template_document: dict[str, Any], gameplay: dict[str, Any],
             extra_hit_offsets[key] = list(row[EXTRA_HIT_OFFSETS_FIELD])
         if EFFECT_REPLACEMENT_FIELD in row:
             replacements[key] = row[EFFECT_REPLACEMENT_FIELD]
+        if EFFECT_TIMING_OVERRIDE_FIELD in row:
+            timing_overrides[key] = row[EFFECT_TIMING_OVERRIDE_FIELD]
 
     binding_rows = v2_bindings.get("bindings", [])
     sound_rows = sound_cues.get("cues", [])
     used_waivers: set[tuple[tuple[str, str, str, str], str]] = set()
     used_replacements: set[tuple[str, str, str, str]] = set()
+    used_timing_overrides: set[tuple[str, str, str, str]] = set()
     covered_occurrences = 0
     checked_hits = 0
     checked_effects = 0
@@ -458,6 +542,14 @@ def validate_parity(template_document: dict[str, Any], gameplay: dict[str, Any],
 
         for expected_effect in template["effects"]:
             expected_ms = _event_stage_ms(occurrence, occurrence_start, expected_effect["clipMs"])
+            override = timing_overrides.get(occurrence_key)
+            if override is not None and override["templateEffect"] == expected_effect:
+                validate_effect_timing_override(
+                    override, occurrence_key, occurrence, occurrence_start, stage, binding_rows
+                )
+                used_timing_overrides.add(occurrence_key)
+                checked_effects += 1
+                continue
             replacement = replacements.get(occurrence_key)
             if replacement is not None and replacement["templateEffect"] == expected_effect:
                 if expected_ms is None or occurrence.get("clip") != replacement["clip"]:
@@ -554,6 +646,8 @@ def validate_parity(template_document: dict[str, Any], gameplay: dict[str, Any],
         raise ContractError("no templated clip occurrence was found")
     if set(replacements) != used_replacements:
         raise ContractError(f"stale exact effect replacement: {set(replacements) - used_replacements}")
+    if set(timing_overrides) != used_timing_overrides:
+        raise ContractError(f"stale exact effect timing override: {set(timing_overrides) - used_timing_overrides}")
     for key, declared in waivers.items():
         for waiver in declared:
             if (key, waiver) not in used_waivers:
@@ -569,6 +663,7 @@ def validate_parity(template_document: dict[str, Any], gameplay: dict[str, Any],
         "sounds": checked_sounds,
         "waivers": len(used_waivers),
         "effectReplacements": len(used_replacements),
+        "effectTimingOverrides": len(used_timing_overrides),
     }
 
 

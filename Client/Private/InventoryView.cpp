@@ -9,9 +9,11 @@
 #include "ItemCatalog.h"
 #include "MainApp.h"
 #include "UIInputRouter.h"
+#include "UILabelFont.h"
 #include "UITextOcclusion.h"
 #include "UILayoutRuntime.h"
 
+#include <cmath>
 #include <utility>
 
 Client::CInventoryView::CInventoryView(
@@ -73,6 +75,8 @@ void Client::CInventoryView::Update(
 	m_pBackgroundView->Set_SlotVisible("Inventory_Button1", true);
 	m_pBackgroundView->Set_SlotVisible("Inventory_CraftingButton", true);
 	m_pBackgroundView->Set_SlotVisible("Inventory_GemButton", true);
+	m_pBackgroundView->Set_SlotVisible("Inventory_SilverIcon", true);
+	m_pBackgroundView->Set_SlotVisible("Inventory_GoldIcon", true);
 	m_pBackgroundView->Set_SlotVisible("Inventory_BottomBars", true);
 	for (int32_t iSlotIndex = 0;; ++iSlotIndex)
 	{
@@ -84,6 +88,12 @@ void Client::CInventoryView::Update(
 	}
 
 	Update_Drag();
+	Update_CloseButton();
+	if (!m_bOpen)
+	{
+		Hide();
+		return;
+	}
 	Update_CategoryTabs();
 	Update_Items(items);
 
@@ -151,6 +161,35 @@ void Client::CInventoryView::Render_Text()
 	{
 		CGameInstance::Get().Draw_Text(TEXT("Font_YG760"), strTitle.c_str(),
 			vTitlePos, Colors::White, 0.f, float2_t(0.5f, 0.5f), fScale * textUiScale);
+	}
+
+	/* The purse along the bottom bar, as retail's costMc (silver) and currencyMc (gold)
+	ARKMoneyLabels draw it: autoSize right, so the figure ends just left of its coin, YG760 16,
+	grouped by thousands. */
+	{
+		const LostArk::Shared::S2C_INVENTORY_SNAPSHOT& Purse = CCombatHUDViewModel::Get().Get_Inventory();
+		const auto DrawAmount = [&](const char* pCoinSlot, const uint32_t iAmount)
+		{
+			f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
+			if (!m_pBackgroundView->Get_SlotRect(pCoinSlot, fX, fY, fWidth, fHeight))
+				return;
+			wstring strAmount = std::to_wstring(iAmount);
+			for (int32_t iAt = static_cast<int32_t>(strAmount.size()) - 3; iAt > 0; iAt -= 3)
+				strAmount.insert(static_cast<size_t>(iAt), L",");
+			/* Retail authors 16 px on its 1920 stage; the layout is 2/3 of that. */
+			f32_t fTextScale = 1.f;
+			const wstring_t strFont = UILabelFont::Resolve(
+				TEXT("Font_YG760"), 16.f * (2.f / 3.f) * textUiScale, fTextScale);
+			const float2_t vAmountSize = CGameInstance::Get().Measure_Text(strFont, strAmount.c_str());
+			const float2_t vAmountPos(
+				std::round((fX - 2.f) * textScaleX - vAmountSize.x * fTextScale),
+				std::round((fY + fHeight * 0.5f) * textScaleY - vAmountSize.y * fTextScale * 0.5f));
+			if (!CUIInputRouter::Get().Is_UnderTopWindow(vAmountPos.x, vAmountPos.y))
+				CGameInstance::Get().Draw_Text(strFont, strAmount.c_str(), vAmountPos,
+					Colors::White, 0.f, float2_t(0.f, 0.f), fTextScale);
+		};
+		DrawAmount("Inventory_SilverIcon", Purse.iSilver);
+		DrawAmount("Inventory_GoldIcon", Purse.iGold);
 	}
 
 	/* Per-slot stack counts and the hovered item's name, resolved from the same
@@ -270,7 +309,11 @@ void Client::CInventoryView::Update_Drag()
 
 	if (!m_bDraggingPanel)
 	{
+		/* The X sits inside the title bar; a press on it is the button's, not a drag. */
 		f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
+		if (Get_CloseHitRect(fX, fY, fWidth, fHeight) &&
+			Router.Is_Hovered(fX, fY, fWidth, fHeight, fRefWidth, fRefHeight))
+			return;
 		if (!m_pBackgroundView->Get_SlotRect("Inventory_Title", fX, fY, fWidth, fHeight))
 			return;
 		if (Router.Is_Clicked(fX, fY, fWidth, fHeight, fRefWidth, fRefHeight))
@@ -299,10 +342,43 @@ void Client::CInventoryView::Update_Drag()
 	Move_Panel(fDeltaX, fDeltaY);
 }
 
+bool_t Client::CInventoryView::Get_CloseHitRect(
+	f32_t& fX, f32_t& fY, f32_t& fWidth, f32_t& fHeight) const
+{
+	if (!m_pBackgroundView->Get_SlotRect("Inventory_CloseBtn", fX, fY, fWidth, fHeight))
+		return false;
+	/* The art is a 13x10 glyph; the press target gets a few pixels around it. */
+	constexpr f32_t PAD = 4.f;
+	fX -= PAD;
+	fY -= PAD;
+	fWidth += PAD * 2.f;
+	fHeight += PAD * 2.f;
+	return true;
+}
+
+void Client::CInventoryView::Update_CloseButton()
+{
+	CUIInputRouter& Router = CUIInputRouter::Get();
+	const f32_t fRefWidth = m_pBackgroundView->Get_ResolutionWidth();
+	const f32_t fRefHeight = m_pBackgroundView->Get_ResolutionHeight();
+	f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
+	if (!Get_CloseHitRect(fX, fY, fWidth, fHeight))
+		return;
+	const bool_t bHovered = Router.Is_Hovered(fX, fY, fWidth, fHeight, fRefWidth, fRefHeight);
+	m_pBackgroundView->Set_SlotTintMultiplier("Inventory_CloseBtn", bHovered ?
+		float4_t(1.4f, 1.4f, 1.4f, 1.f) : float4_t(1.f, 1.f, 1.f, 1.f));
+	if (bHovered && Router.Is_Clicked(fX, fY, fWidth, fHeight, fRefWidth, fRefHeight))
+	{
+		CMainApp::Play_UIButtonClickSound();
+		Close();
+	}
+}
+
 void Client::CInventoryView::Move_Panel(const f32_t fDeltaX, const f32_t fDeltaY)
 {
 	constexpr const char* STATIC_SLOT_IDS[] = {
 		"Inventory_PanelBg", "Inventory_TopDeco", "Inventory_Title", "Inventory_CloseBtn",
+		"Inventory_SilverIcon", "Inventory_GoldIcon",
 		"Inventory_AutoSortBtn", "Inventory_SearchBtn", "Inventory_Button1",
 		"Inventory_CraftingButton", "Inventory_GemButton", "Inventory_BottomBars",
 		"Inventory_Category_All", "Inventory_Category_Combat", "Inventory_Category_Cloth",

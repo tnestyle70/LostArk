@@ -4,6 +4,8 @@
 #include "DataJson.h"
 #include "EncounterPatternReference.h"
 #include "ProjectDataRoot.h"
+#include "ValtanPatternTree.h"
+#include <sstream>
 
 #include <algorithm>
 #include <cctype>
@@ -219,7 +221,6 @@ bool_t Client::CValtanPatternShakeCueDocument::Parse_Text(
 		pOwner->Get_String() != OWNER_ARCHETYPE_ID ||
 		pOwner->Get_String() != Encounter.Get_BossArchetypeId() ||
 		nullptr == pCues || !pCues->Is_Array() ||
-		pCues->Get_Array().empty() ||
 		pCues->Get_Array().size() > MAX_CUE_COUNT)
 	{
 		strOutStatus = "Valtan pattern Shake cue header is invalid.";
@@ -275,6 +276,8 @@ bool_t Client::CValtanPatternShakeCueDocument::Parse_Text(
 			return false;
 		}
 
+		Cue.strPayload = pShake->Get_String();
+
 		/* Only an explicitly suppressed, known action (NONE + []) can leave a
 		stale sound occurrence behind. Typos/unknown actions and broken active
 		clip joins remain corrupt data and must preserve the previous document. */
@@ -299,6 +302,7 @@ bool_t Client::CValtanPatternShakeCueDocument::Parse_Text(
 		if (isSuppressedAnimation)
 		{
 			++iSkippedSuppressedAnimationCount;
+			Staged.PreservedCues.push_back(std::move(Cue));
 			continue;
 		}
 		const BOSS_PATTERN_ANIMATION_CLIP* pAnimationClip =
@@ -329,6 +333,7 @@ bool_t Client::CValtanPatternShakeCueDocument::Parse_Text(
 			OutputDebugStringA(("[Client][Valtan] pattern Shake cue skipped -- "
 				"pattern not yet in Encounter: " + Cue.strPatternId + "\n").c_str());
 			++iSkippedUnimplementedPatternCount;
+			Staged.PreservedCues.push_back(std::move(Cue));
 			continue;
 		}
 		const auto Stage = std::find_if(pPattern->stages.begin(),
@@ -378,6 +383,7 @@ bool_t Client::CValtanPatternShakeCueDocument::Parse_Text(
 					Right.strClipOccurrenceId, Right.iStartMs,
 					Right.strOccurrenceId);
 		});
+	Staged.strSourceBytes = std::string(Text);
 	InOutDocument = std::move(Staged);
 	strOutStatus = "Parsed " + std::to_string(InOutDocument.Cues.size()) +
 		" clip-occurrence-qualified Valtan pattern Shake cue(s), skipped " +
@@ -414,4 +420,112 @@ bool_t Client::CValtanPatternShakeCueDocument::Load_Source(
 		return false;
 	InOutDocument = std::move(Staged);
 	return true;
+}
+
+namespace
+{
+	bool SerializeShakeDraft(const Client::VALTAN_PATTERN_SHAKE_CUE_DOCUMENT& document,
+		std::string& candidate, std::string& status)
+	{
+		if (document.strOwnerArchetypeId != OWNER_ARCHETYPE_ID || document.iFormatVersion != FORMAT_VERSION ||
+			document.Cues.size() + document.PreservedCues.size() > MAX_CUE_COUNT)
+		{ status = "Camera Shake draft header or count is invalid."; return false; }
+		std::unordered_set<std::string> bindings, occurrences;
+		std::ostringstream out;
+		out << "{\n  \"schema\": \"lostark.valtan-pattern-shake-cues\",\n  \"formatVersion\": 1,\n  \"ownerArchetypeId\": \"BOSS_VALTAN\",\n  \"cues\": [";
+		bool first = true;
+		for (const auto* rows : {&document.Cues, &document.PreservedCues}) for (const auto& cue : *rows)
+		{
+			Client::CAMERA_SHAKE_SPEC spec;
+			if (!Is_StableId(cue.strBindingId) || !Is_StableId(cue.strOccurrenceId) || !Is_StableId(cue.strPatternId) ||
+				!Is_StableId(cue.strStageId) || !Is_StableId(cue.strActionId) || !Is_StableId(cue.strClipOccurrenceId) ||
+				!bindings.insert(cue.strBindingId).second || !occurrences.insert(cue.strOccurrenceId).second ||
+				!Client::CCameraShakeService::Parse_PayloadSpec(cue.strPayload, spec, status) || cue.iStartMs > 600000u ||
+				(cue.eRepeatPolicy != Client::VALTAN_PATTERN_SHAKE_REPEAT_POLICY::ONCE &&
+				 cue.eRepeatPolicy != Client::VALTAN_PATTERN_SHAKE_REPEAT_POLICY::EACH_LOOP))
+			{ status = "Camera Shake draft has an invalid or duplicate cue: " + cue.strOccurrenceId + ". " + status; return false; }
+			const auto quote = [](const std::string& value) { return "\"" + Client::CDataJson::Escape(value) + "\""; };
+			if (!first) out << ","; first = false;
+			out << "\n    {\"bindingId\": " << quote(cue.strBindingId) << ", \"occurrenceId\": " << quote(cue.strOccurrenceId)
+				<< ", \"patternId\": " << quote(cue.strPatternId) << ", \"stageId\": " << quote(cue.strStageId)
+				<< ", \"actionId\": " << quote(cue.strActionId) << ", \"clipOccurrenceId\": " << quote(cue.strClipOccurrenceId)
+				<< ", \"repeatPolicy\": \"" << (cue.eRepeatPolicy == Client::VALTAN_PATTERN_SHAKE_REPEAT_POLICY::EACH_LOOP ? "each_loop" : "once")
+				<< "\", \"startMs\": " << cue.iStartMs << ", \"shake\": " << quote(cue.strPayload) << "}";
+		}
+		out << "\n  ]\n}\n"; candidate = out.str(); return true;
+	}
+}
+
+bool_t Client::CValtanPatternShakeCueDocument::Remove_StageDraft(
+	VALTAN_PATTERN_SHAKE_CUE_DOCUMENT& document, const std::string& patternId,
+	const std::string& stageId, std::string& status)
+{
+	return Remove_ClipDraft(document, patternId, stageId, {}, status);
+}
+
+bool_t Client::CValtanPatternShakeCueDocument::Remove_ClipDraft(
+	VALTAN_PATTERN_SHAKE_CUE_DOCUMENT& document, const std::string& patternId,
+	const std::string& stageId, const std::string& clipId, std::string& status)
+{
+	if (document.strSourceBytes.empty()) { status = "Camera Shake source baseline is unavailable; draft preserved."; return false; }
+	std::size_t removed = 0u;
+	for (auto* rows : {&document.Cues, &document.PreservedCues})
+		removed += std::erase_if(*rows, [&](const auto& cue) {
+			return cue.strPatternId == patternId && cue.strStageId == stageId &&
+				(clipId.empty() || cue.strClipOccurrenceId == clipId);
+		});
+	if (removed) { document.bDraftDirty = true; ++document.iDraftGeneration; }
+	return true;
+}
+
+bool_t Client::CValtanPatternShakeCueDocument::Append_StageCopyDraft(
+	VALTAN_PATTERN_SHAKE_CUE_DOCUMENT& document, const std::vector<VALTAN_PATTERN_SHAKE_CUE>& copied,
+	const VALTAN_STAGE_VIEW& source, const VALTAN_STAGE_VIEW& target, const std::string& patternId,
+	const uint32_t stageIndex, std::string& status)
+{
+	if (copied.empty()) return true;
+	if (document.strSourceBytes.empty() || source.ClipOccurrences.size() != target.ClipOccurrences.size())
+	{ status = "Camera Shake copy source or clip mapping is unavailable; draft preserved."; return false; }
+	auto candidate = document;
+	for (auto cue : copied)
+	{
+		const auto clip = std::find_if(source.ClipOccurrences.begin(), source.ClipOccurrences.end(), [&](const auto& row) {
+			return row.strClipOccurrenceId == cue.strClipOccurrenceId;
+		});
+		if (clip == source.ClipOccurrences.end() || cue.strStageId != source.strStageId || cue.strActionId != source.strActionId)
+		{ status = "Camera Shake copy references a stale source clip: " + cue.strOccurrenceId; return false; }
+		const auto& mapped = target.ClipOccurrences[static_cast<std::size_t>(clip - source.ClipOccurrences.begin())];
+		cue.strPatternId = patternId; cue.strStageId = target.strStageId; cue.strActionId = target.strActionId;
+		cue.strClipOccurrenceId = mapped.strClipOccurrenceId; cue.iStageIndex = stageIndex; cue.iStageDurationMs = target.iDurationMs;
+		cue.strBindingId = "cue.shake.composition." + target.strActionId + "." + std::to_string(candidate.Cues.size() + 1u);
+		cue.strOccurrenceId = cue.strBindingId + ".occurrence.1";
+		candidate.Cues.push_back(std::move(cue));
+	}
+	std::string serialized;
+	if (!SerializeShakeDraft(candidate, serialized, status)) return false;
+	candidate.bDraftDirty = true; ++candidate.iDraftGeneration; document = std::move(candidate); return true;
+}
+
+bool_t Client::CValtanPatternShakeCueDocument::Prepare_Save(
+	const VALTAN_PATTERN_SHAKE_CUE_DOCUMENT& document, std::string& baseline, std::string& candidate,
+	uint64_t& generation, std::string& status)
+{
+	baseline.clear(); candidate.clear(); generation = document.iDraftGeneration;
+	if (!document.bDraftDirty) return true;
+	if (document.strSourceBytes.empty()) { status = "Camera Shake Save baseline is unavailable."; return false; }
+	if (!SerializeShakeDraft(document, candidate, status)) return false;
+	baseline = document.strSourceBytes; return true;
+}
+
+bool_t Client::CValtanPatternShakeCueDocument::Accept_Save(
+	VALTAN_PATTERN_SHAKE_CUE_DOCUMENT& document, const uint64_t generation,
+	const std::string& candidate, std::string& status)
+{
+	std::string current;
+	if (document.iDraftGeneration != generation || !SerializeShakeDraft(document, current, status) || current != candidate)
+	{ status = "Camera Shake draft changed while Save completed; local edits were preserved."; return false; }
+	std::ifstream input(Resolve_Path(), std::ios::binary);
+	const std::string disk{std::istreambuf_iterator<char>(input), std::istreambuf_iterator<char>()};
+	if (!input || disk != candidate) { status = "Saved Camera Shake bytes changed before local accept; draft preserved."; return false; }
+	document.strSourceBytes = candidate; document.bDraftDirty = false; return true;
 }

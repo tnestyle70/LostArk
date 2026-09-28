@@ -2,6 +2,604 @@
 
 작성일: 2026-09-09. 갱신: 2026-09-28. 현재 구현 상태는 아래 재개 결과를 따른다.
 
+## 2026-09-28 G51: 실제 입장 Actor Catalog 한도 누락 수정
+
+사용자가 실제 입장에서 `loader.initialize.actor-catalog / Actor catalog contract mismatch`를
+확인했다. 이번 세션이 발탄 visual 정의를9→18개로 늘린 반면 실제 CActorCatalog 한도는16개였다.
+앞선 PatternTree/Server 검증은 전체 ActorCatalog Initialize를 수행하지 않아 이 실패를 놓쳤다.
+G50의 Publish·개별 판독기 통과는 실제 입장 성공의 증거가 아니며 사용자 화면 결과로 정정한다.
+
+native vector 저장의 보스당 정의 한도를32개로 맞추고, 초과 시 BossCatalog 경로·보스 ID·
+실제 개수·한도를 표시한다. Initialize가 기존 상세 오류를 포괄 문구로 덮어쓰지 않도록 했다.
+저작/Python·Gameplay publisher에도 같은 상한을 연결해 초과 정의가 게시되지 않게 한다.
+라이브 pattern/Actor JSON 및 게시 bootstrap은 수정하지 않는다. 변경된 H/CPP는 UTF-8/CRLF를
+보존했으며 신규 C++ 파일·프로젝트 등록은 없다.
+
+실제 pre-fix CActorCatalog Initialize에서 Character/Npc/Monster/Vehicle parse는 통과하고
+Boss18>16만 실패하는 것을 재현했다. 실패 시 전체5개 state rollback도 확인했다.
+`out/ValtanCompletePlay20260928/actor-catalog-native/baseline-live-run.log`.
+수정본의 실제 Initialize PASS: character7/boss8/NPC150/monster20/vehicle16 전체 catalog가
+초기화됐다.32개 승인·33개 상세 진단 거부, 중복 visual·0scale·unsafe Effect ID 거부와
+실패 rollback도 통과했다. 컴파일된 검사 소스는 실제 H/CPP와 같고 live Actor JSON은 보존됐다.
+`out/ValtanCompletePlay20260928/actor-catalog-native/verification.json`.
+
+canonical/closure 및 실제 PowerShell publisher owner guard는1/18/32개 승인·0/33개 거부를
+확인했다. 최대32개에서도 V2 group field/rate/hit-time의 기존 거부를 유지한다.
+`Tools/ValtanPipeline/test_valtan_combat_visual_capacity.py`:3 tests PASS.
+
+최종 정상 Debug Product build는22:40:56 KST에 PASS했다.63.540초, Client OBJ96개/CSO0개,
+PCH 재생성 없이 Client.exe를 교체했다. 게시를 다시 실행하거나 Data를 수정하지 않았다.
+`out/BuildPipeline/runs/20260928T134056084Z-debug-product.json`.
+Client.exe SHA256: `7fa732140f83dee1e6e8eed492384a86ea65f0b4431fe86f8907669361b4d7e5`.
+관련 source·문서·publisher의 git diff --check PASS. 사용자는 새 Client.exe로 재입장해 확인한다.
+Client/UI 실행과 화면 검증은 사용자에게 남긴다.
+
+## 2026-09-28 G48~G50: 정본 후속 패턴·발악 복원 Build·Publish 완료
+
+아래 G47의 EXE 교체 대기는 당시 상태다. 이번 요청은 현재 디스크 저장본을 기준으로 기존
+정본에 후속 패턴을 연결하고 Publish까지 진행하도록 사용자가 승인했다. Source·native shader·
+리소스 후보 51개를 재확인해 변경된 50개를 설치했다. canonical writer lock과 baseline CAS,
+백업·원자 교체를 유지했다. 사용자 편집 원본 VALTAN_3H_FLOOR_BREAK_ROCK_ROAR는 보존했다.
+설치 기록은 `out/ValtanCompletePlay20260928/terrain-combo-candidate/installed.json`이다.
+
+### 실제 연결 범위
+
+- Complete Play 차단은 split Source와 Product의 불일치다. rootmotion을 포함한 전체 11개
+  projection을 다시 생성했고 strict join을 유지했다. 실제 Client reader로 67 patterns,
+  328 stages, 366 occurrences, 124 cues와 44개 Complete Play inventory를 확인했다.
+- 정본 Animation Delete는 exact clip의 V1/V2/Sound/Shake 참조를 같은 transaction에서
+  제거한다. 독립 Stage cue·motion·world·hit를 보존하며 마지막 clip의 NONE과 다시 추가하기를
+  실제 Balance/Source Save 소비자가 지원한다. Summon/Logic drag source는 ID 없는 설명 text
+  뒤에서 ID 있는 Copy 버튼 직후로 옮겨 실제 ImGui assertion 원인을 제거했다.
+- 기존 3시·9시 지형파괴 4개 Stage 뒤에 사용자 편집 원본의 9개 Stage를 각각 연결했다.
+  착지 위치는 중앙에서 X ±6m다. 휠윈드 1500ms 동안 TO_ARENA_CENTER로 중앙에 도착하고
+  이후 Stage는 중앙을 유지한다. 가장 가까운 플레이어 추적은 Server facing을 사용하며
+  피자 sector와 같은 시각 180도 basis를 적용한다. 회전을 두 번 더하지 않는다.
+- 발구르기는 원본 피자 돌을 반지름 6.3639610307m에 4개 만든다. 모아치기 cone에 맞은 돌을
+  먼저 폭발시키고 나머지는 1500ms 뒤 폭발한다. 기존 피자·땅구르기의 archetype은 보존했다.
+- 잡기 후 불기는 기존 ANY_PLAYER_GRABBED 성공 분기를 유지한다. 성공 시 21_03/21_04를
+  재생하고 실패 시 해당 후반을 건너뛴다. 도구는 성공 경로가 더 많은 Stage를 보일 때
+  Capture Success를 기본 표시한다. 원본 420623 Effect를 연결하고 기존 Sound/Shake를 유지했다.
+- 발악은 포탈·중앙 이동, 4방향 공격, 매번 새 플레이어 위치를 찍는 6개 발밑 공격, 안쪽 원과
+  바깥 ring 경고/폭발, 돌 4개, 노란 사자후 경고를 연결했다. 4개 sector는 하나의 원본 Effect
+  문서 안에 독립 element 4개이며 Sequence cue 하나로 시작한다. Effect에서 각각 편집한다.
+  안쪽 판정은 반경 4m/1000ms, 바깥은 내경 3m~외경 15m/3000ms이며 독립 object가
+  clip 종료 후에도 유지한다. 같은 노란 경고를 양쪽 지형파괴 후속 사자후에도 연결했다.
+- 발악 뒤 기존 Death 23000ms와 GhostRespawn 경로를 유지하고 실제 CGameRoom이
+  정본 부활 완료 때 ghost profile 60000HP/40줄로 전환하는 것을 확인했다.
+
+### 실행한 검증과 사용자 화면 확인 경계
+
+실제 Client reader/Balance, Source Save의 실패 rollback, ImGui 검색·drag, 실제 Server
+Catalog/Brain/navigation/combat-object/GameRoom을 이용한 검증을 수행했다. 증거 위치는
+`out/ValtanCompletePlay20260928/native-final`, `native-balance`, `native-contact-negatives`,
+`out/ValtanComposite20260928`이다. 초기 후보의 실제 Server 검사는275 checks가 통과했다.
+최종 주먹9회로 보정한 라이브 bootstrap은274 checks PASS이며 이전10회 후보의 수치와 구분한다.
+실제 Catalog/Brain/GameRoom이 양쪽 지형파괴·중앙 이동/유지·nearest retarget·돌1+3 연쇄·
+발밑6회·4방향·사망23초→부활→40줄을 확인했다.
+`out/ValtanComposite20260928/catalog-motion-installed-receipt.json`.
+최종 실제 Client probe도 overlay 없이 설치 Data를 읽어 strictReady1과44개 playable inventory,
+요청4패턴, 잡기 성공4Stage/실패2Stage 및21_04 tail을 확인했다. 변경 전10회를 기대하던 검사
+fixture만9회로 갱신했으며 제품 consumer 소스·OBJ는 바꾸지 않았다.
+`out/ValtanCompletePlay20260928/native-final/verification.json`.
+
+발악 주먹·양손의 기존 V2/Sound는 사용자 요청대로 유지한다. 새 STEP_06 slice의 V2 복사본
+3개가 source clock 대신 local clock을 저장한 오류를 수정했다. 실제 native
+Resolve_StageSpawnClock으로 정상 9개와 잘못된 기존 참조 3개 거부를 확인했다. Python reader와
+legacy migration도 절대 source clock을 보존하도록 맞췄다. focused reader 26 tests PASS.
+
+최종 주먹 피해는 유지된 V2의 200/400/867/1067/1534/1734/2201/2401/2868ms 총 9회다.
+200ms source는 원본420624 hit15의 반경1.2m/오른쪽+0.4m, 400ms source는 hit16의
+반경1.4m/오른쪽-0.4m를 반복하며 앞쪽은1.2m다. 앞서 후보의 원본 action600ms 주기
+10회·1.2→3m 증가와 구분한다. 사용자 요청대로 기존 V2 반복을 유지한 최종 선택이며,
+원본10회 전체를 복원했다고 설명하지 않는다. 저장된 Sound10개는 ID·bank·event·시간을 유지했다.
+
+2192ms Sound와 다음 slice2201ms 판정은 실제 unbranched 순차 edge를 입증해9ms 차이로
+매칭한다. 976ms Sound와1067ms 판정의91ms 차이는 정확한 이전 Stage의 Sound·animation·
+edge를 고정한 authored receipt로 기록한다. copied whirlwind/roar도 현재 저장된 Sound와
+반복 contact의 의도적 차이를 exact payload receipt로 고정한다. 이펙트-피해 불일치를
+waiver로 숨기지 않는다. Sound를 변경하거나 중복 생성하지 않았다.
+
+안쪽 object hit는 기존 정확한1000ms PatternSound로 이미 표현됨을 binding·cue·animation·
+unique static ENTER spawn까지 검증하는 qualified alias를 사용한다. 조기 conditional branch,
+잘못된 owner/clock, 중복 audio를 거부한다. 관련 focused tests10개 PASS. 최종 전체 정합성은
+108 V2, 공격50/50, object hit19개(18 object sound +1 기존 PatternSound) PASS다.
+
+최종5개 source/Product/audit 파일은 canonical CAS로 반영했다. Source manifest는
+`b872284157c1bccad1f60b6b3e02d133c503edee55554f48948f230ba85afe6d`이며
+`out/ValtanCompletePlay20260928/fist-final-installed.json`에 기록했다.
+최종 canonical Project Validate와 Composition Validate는 모두 통과했다.
+`fist-projection/canonical-validate.log`, `fist-projection/composition-validate.log`.
+설치 후 `slice-source-clock-audit.json`에서도 V2 9개와 Sound10개의 실제 시각을 확인했다.
+
+Composition의 보조 reader는 canonical stageEndMs/stop policy와 중앙 이동 이후의
+NEAREST_EACH_TICK target-follow를 보존하도록 맞췄다. 12 focused tests와 설치 데이터의
+Composition Validate, presentation generation 171 artifacts Validate가 통과했다.
+clip-template parity도 13 templates/35 occurrences/34 reviewed waivers로 통과했다.
+
+8개 Effect 문서는 실제 native codec 및 변경 범위의 source/resource validator를 통과했다.
+45개 원본 material program 중 신규 25개(5248~5272)와 기존 20개를 연결했고 shader ABI와
+부적합 입력 5개 거부를 검증했다. 개별 Mesh/Particle/Decal/Trail fxc compile은 통과했다.
+최종 compiled shader/deployment closure도 PASS했다:252 FxCompile producer,167 Client consumer,
+146 family WARP 검증,8 resource-root case, V1/V2 각각1352 nonzero pixel.
+`out/ValtanCompletePlay20260928/compiled-shader-closure-final.log`.
+이는 실제 Client 아레나의 시각 판정과는 별도다.
+전체 EffectSources 검사는 기존 HEAD에도 있는 쿠크 blade-dance.circle.impact의 runtime carrier
+누락 때문에 실패했다. 발탄 범위의 통과와 저장소 전체 통과를 구분하며 무관한 쿠크를 수정하지 않았다.
+
+원본 Wwise 6개 event의 9개 WAV를 정확한 layer·delay·weight로 생성해 Resources에 설치했다.
+기존 이펙트가 참조하는 93개 DDS/WModel은 이미 설치되어 있어 새 물리 파일이 필요하지 않았다.
+`C:/Users/user/Desktop/GBResources`에는 기존 28개를 유지하고 새 9개를 추가했다. 총 37개,
+26,973,011 bytes가 설치 Resources 및 manifest SHA-256과 일치한다.
+`out/ValtanCompletePlay20260928/resource-delivery-verification.json`.
+
+최종 정상 Debug Product build에서 Server LNK1140이 발생했다. 실패한 link PDB는
+1,020,736,448 bytes였다. 진단을 위해 분리한 실패 PDB는 정상 재생성 확인 후
+게시 공간 확보를 위해 삭제했다. 크기·SHA와 경위는
+`out/ValtanCompletePlay20260928/link-recovery/recovery.json`에 남겼다.
+OBJ/PCH/tlog를 지우거나 Clean/Rebuild하지 않고 해당 generated PDB만 분리한 뒤 같은 정상
+Product build를 재실행했다. 새 Server PDB 76,451,840 bytes로 Server link가 통과했다.
+이는 이번 코드에 1GB PDB가 필수라는 설명과 다르며 기존 증분 PDB 비대화가 원인으로 보인다.
+정확한 비대화 시작 시점까지 판정한 것은 아니다. 정상 Debug Product build는 22:15:07 KST에
+Engine/Shared/Server/Client 모두 PASS했다. 최종 receipt는
+`out/BuildPipeline/runs/20260928T131507064Z-debug-product.json`이고 전체 663.797초다.
+Client는 OBJ 75개와 CSO 6개 및 실행 파일을 생성했고 PCH는 재생성하지 않았다.
+최신 패턴의 정상 live Gameplay Publish도22:31:20 KST에 성공했다.
+67 patterns/328 stages/18 combat objects/52 audition rows,109110행/32,214,710 bytes다.
+bootstrap SHA256은 `4d094d2baebb55621cc3f26688c1679759d206f9ba166d267ffc53256e45bc79`이며
+실제 Server 검사 전후 동일하다. `out/ValtanCompletePlay20260928/publish-live-final.log`.
+Composition Publish도 성공했고 receipt sourceManifestId는
+`f82565d612faccdc0d0558d1e11cb3ec59eb119fa6762b72e5cade4206c1ab04`다.
+`out/ValtanCompletePlay20260928/composition-live-final.log`.
+변경 JSON63개·Client 프로젝트/필터 XML2개 parse 및 git diff --check PASS.
+
+최종 입력은 현재 설치 Source와 위 fist-final-installed 기록이다. out의 이전
+struggling-gameplay/stage_combo 초안은10회 피해·잘못된 copied clock을 포함할 수 있으므로
+재생성 입력으로 재사용하지 않는다. 전체 검사용 복사본이 디스크 공간을 소비한 뒤에는
+검증용 read-only hardlink와 분리된 overlay로 전환했다. 임시 중복 Data를 다시 만들 필요가 없다.
+
+사용자는 새 Server를 시작한 뒤 새 Client의 Lobby→Valtan→Load Pattern→Complete Play로
+검증할 수 있다. 실행 중 Server는 게시 파일을 자동 재로드하지 않는다. Client를 먼저 켰다면
+Server 재시작 후 다시 입장하며, 미저장 editor draft를 자동 Reload하거나 버리지 않는다.
+
+Client/UI와 실제 아레나의 시각 판정은 실행하지 않았다. 파일 설치, runtime 게시,
+실행 중 Server의 활성화, 사용자 화면 확인은 별도 상태이며 사용자 검증 전 시각 PASS로 기록하지 않는다.
+
+## 2026-09-28 G47: 기존 정본 패턴 Append 수정·검증 완료, EXE 교체 대기
+
+18:15 설치본은 Append를 항상 새 Stage 삽입으로 연결했다. 실제 사용자 대상인
+VALTAN_TERRAIN_DESTRUCTION_3_OCLOCK은 manual audition이 아니므로 Balance owner와
+Source Save가 topology 변경을 거부했다. 앞선 storage doubles 검사만으로는 이 실제 대상의
+차단을 발견하지 못했다. 아래 G45~G46의 새 Stage 추가 설명은 manual audition에만 적용된다.
+
+정본 패턴의 Sequence/raw Animation Append는 기존 마지막 Stage의 finite playlist 편집으로
+연결했다. 마지막 Stage 길이만 늘리고 기존 Stage 그래프·ID·Motion·World·hit는 보존한다.
+manual audition은 새 마지막 Stage 방식을 유지한다. 정본의 독립 Effect 끝 추가는 마지막
+Stage의 기존 끝 시간에 cue를 놓고 수명만큼 연장한다. finite EXACT Animation은
+HOLD_LAST_POSE로 바꿔 끝 자세를 유지한다. 기존 owner transaction과 저장 freshness 검사는
+유지하며 canonical Stage Earlier/Later 제한을 해제한 것으로 설명하지 않는다.
+
+실행한 검증:
+
+- 실제 Data, CValtanPatternTree, CBalanceTool, Workbench Append 함수, WModel cut 길이를
+  연결한 native 검사 25 checks PASS. 지형 파괴 3시 패턴에 실제 420616/4의 15클립을
+  추가해 기존 4개 Stage를 유지하고 IMPACT를 16클립·18,149ms로 확장했다. 기존 source
+  cut 200/1000, hit 67ms, LANDING leap owner와 World ENTER floor84를 보존했다.
+  `out/ValtanCanonicalAppend20260928/workbench-native.log`.
+- 실제 native owner가 만든 `terrain3-sequence.patch.json`을 격리 repository에 Source Save
+  한 뒤 split/reopen 및 9개 Product 산출물 검증 PASS. 다른 패턴과 기존 Stage 필드를 비교했다.
+  `out/ValtanCanonicalAppend20260928/terrain3-sequence.patch.roundtrip.json`.
+- 영구 Append routing 검사 23 checks PASS. manual 새 Stage, canonical finite tail,
+  canonical unbounded tail 거부를 구분했다. Effect 함수 추출 회귀 47 checks PASS.
+  실제 Python Source Save/Product 경로에서도 terminal Effect와 HOLD_LAST_POSE를 확인했다.
+- ValtanActionWorkbench.cpp 최소 컴파일 PASS(18:29 KST), `git diff --check` PASS.
+  제품 신규 C++ 파일이나 프로젝트 등록 변경은 없다.
+
+별도 Effect 실제 owner fixture는 컴파일·링크 뒤 초기화 경계에서 access violation으로
+완주하지 못했다. 성공 증거에서 제외하며 Effect의 native 실제 owner 전체 검증은 미완료다.
+Sequence의 실제 owner·저장 검증과 Effect의 storage doubles/Python 검증을 구분한다.
+
+최종 EXE 빌드는 아직 실행하지 않았다. 사용자가 Client/Server에서 계속 편집 중이라고
+답했으며, 종료 확인 뒤 정상 Debug Product 증분 빌드를 진행한다. 현재 실행 중인 EXE는
+G47 수정 전 설치본이다. live Data를 자동 변경·게시하거나 Client/UI를 실행하지 않았다.
+사용자가 클립을 정리한 `발탄_3시지면파괴_땅구르기_사자후` 패턴은 그대로 보존한다.
+이동·돌 생성·사자후·돌 폭발의 Logic/Effect/Collider 구성이 완료됐다는 의미는 아니다.
+
+## 2026-09-28 18:15 KST: G45~G46 Earlier/Later·Pattern 끝 Append 설치 완료
+
+사용자 화면의 Append 차단은 삭제된 STEP_01을 Resources의 별도 target cache가 계속 참조한
+것이었다. 선택된 STEP_08과 숨은 대상이 달라도 cached ID를 우선해 target unavailable이 됐다.
+사용자가 최종 요청한 Append 정책은 현재 선택과 무관한 Pattern 끝 추가다.
+
+- Selected Box의 Earlier/Later는 선택 Stage와 Animation의 소속 Stage를 중복 제거하고 각
+  선택 구간을 인접 미선택 Stage 너머로 한 칸 이동한다. 내부 순서·ID·Stage-local 시간을 유지한다.
+  기존 Balance owner transaction을 사용하며 실패·양끝에서는 전체 draft와 선택을 보존한다.
+- Sequencer의 Render_SelectedAnimationTiming 호출을 제거했다. 박스 선택 때 Source Start /
+  Source Duration 입력은 펼쳐지지 않으며 Box Detail과 timeline edge trim은 유지한다.
+- Animation resource는 마지막 Stage 뒤 새 Stage로 추가한다. Sequence 통째 추가는 원본 순서의
+  clip들을 새 Stage 하나에 넣는다. 마지막 loop, 삭제된 이전 target, 현재 선택 위치와 무관하다.
+  지연 raw Append도 실행 시 최신 마지막 Stage를 조회한다. 새 Stage와 clip을 함께 선택하므로
+  Earlier/Later를 이어서 사용할 수 있다. Replace Stage Slots는 명시적 선택 Stage 교체다.
+- Append Effect to Pattern End는 새 ACTIVE/NONE Stage에 V1 또는 V2 Effect를 Stage clock 0으로
+  추가한다. Stage 길이는 기존 resource 수명 resolver를 사용하고 미정/무한 수명은 1000ms다.
+  생성·cue 추가는 Balance/V2 transaction으로 묶어 실패 시 빈 Stage를 남기지 않는다.
+  선택 Stage 추가는 접힌 optional 메뉴에서 현재 선택을 resolve한다. Sound의 유효 clip도 자동 제안한다.
+
+검증은 실제 Workbench 함수를 추출하고 deterministic typed owner storage로 연결해 수행했다.
+물리 Save/runtime/Client UI 검증을 대체하는 것으로 기록하지 않는다.
+
+- `test_valtan_stage_reorder_native.py`: 42 checks PASS. 세 Stage와 자식 clip의 중복 선택,
+  Animation-only, 떨어진 구간, 양끝, stale 입력과 두 번째 owner 실패 rollback 포함.
+- `test_valtan_pattern_end_append_native.py`: 20 checks PASS. 앞 Stage 선택 무시, 마지막 loop 보존,
+  반복 추가·실행 시 최신 끝 조회, native 실패 복원·64 Stage/저장 중/정본 보호 포함.
+- `test_valtan_effect_append_native.py`: 34 checks PASS. 삭제된 target 복구, Animation 없는 V1/V2
+  끝 추가, 이전 start 값 무시, 실패·마지막 reread 실패의 두 owner/revision/selection 복원 포함.
+- ValtanActionWorkbench.cpp와 SequencerTool.cpp 최소 컴파일 PASS.
+  `out/ValtanEndAppend20260928/compile-workbench.log`.
+- 최종 Debug Product PASS: Engine·Shared·Server·Client 성공, 전체 25.461초.
+  `out/BuildPipeline/runs/20260928T091548067Z-debug-product.json`,
+  `out/ValtanEndAppend20260928/product-build.log`.
+- `Client/Bin/Debug/Client.exe`: 2026-09-28 18:15:47 KST, SHA256
+  `d5190e460e32c029e9ec129114cd603133bd7eb483a7d9788f2a15f9b9861089`.
+- `git diff --check` PASS. 새 테스트 C++ fixture는 Python이 임시 디렉터리에서 컴파일하며 제품
+  프로젝트에 추가하지 않는다. 제품 신규 C++ 파일은 없다.
+
+사용자가 편집 저장 후 Client/Server 종료를 확인한 다음 최종 빌드했다. live Data를 자동
+수정·게시하거나 Client를 실행하지 않았다. Release는 이번 설치 대상이 아니며 실제 화면의
+추가·이동·저장 결과는 사용자 확인이 남아 있다. 기존 manual topology·64 Stage 제한과
+공유 gameplay owner 보호는 유지한다. 아래 17:46 기록은 이전 설치 기록이다.
+
+## 2026-09-28 17:46 KST: G42~G44 최종 Debug 설치 완료
+
+`Invoke-BuildAndRegression.ps1 -Configuration Debug -Profile Product` 최종 결과 PASS.
+Engine·Shared·Server·Client 모두 성공했으며 Client 최종 링크와 배포를 완료했다.
+최종 receipt는 `out/BuildPipeline/runs/20260928T084650453Z-debug-product.json`,
+로그는 `out/ValtanEditorInput20260928/product-build-final.log`다. 실행 시간은 30.524초다.
+
+- `Client/Bin/Debug/Client.exe`: 2026-09-28 17:46:49 KST 갱신.
+  SHA256 `fa3f5c18e4aeadc5e0f4358bd41045f32bad1f6eb4fb2374efefe7b5fe4c2947`.
+- `Server/Bin/Debug/Server.exe`: 최신 소스에 대한 증분 빌드 PASS, 기존 파일 유지.
+  SHA256 `cdcdeb7717063928562d5cfc96a23cfedc684177a4835867b1c15017ab99f0b1`.
+- 필수 runtime presence·Navigation·Item·Valtan reward 검증 PASS, `git diff --check` PASS.
+  이 빌드는 live Data를 게시하지 않았다. 아래 저장·게시 검증은 격리 fixture에서 수행했다.
+- Client/Server를 자동 실행하지 않았다. 실제 화면에서의 입력·드래그·미리보기·소리 확인은
+  사용자 확인이 남아 있다. Release 실행 파일은 이번 최종 변경의 설치 대상이 아니다.
+
+아래 G42~G43의 링크 대기 상태는 이 설치 기록으로 해소됐다. 기능별 지원 경계는 G44를 따른다.
+
+## 2026-09-28 G44: 묶음 이동·삭제와 저장 dependency 완료
+
+사용자가 EXE 종료를 확인한 뒤 남은 혼합 Move/Delete와 Stage 재배치를 완료했다.
+Animation/V1/V2 Effect/Sound/일반 Collider는 동일 transaction에서 이동·삭제하며 선택된 clip의
+cue를 분리했다가 이동한 clip에 재연결한다. Animation은 기존 연속 slot 경계로 이동하고
+선택 간격이 달라지는 배치는 전체 거부한다. Stage는 선택 block의 순서·리소스 ID·내부 시간을
+유지해 재배치한다. Stage Duplicate와 일반 Collider Duplicate/Delete 버튼·Delete 키도 연결했다.
+아래 G42~G43의 V1 Effect+Sound에 한정했던 multi Move/Delete 경계는 이 변경으로 해소했다.
+
+독립 V2만 있는 빈 패턴을 Product에서 제외하던 판정을 native source/inventory/Python에서
+수정했다. 실제 V2 scope와 Collider를 content로 인정하며 마지막 content 삭제는 기존 Product를
+retire하되 편집용 빈 Source는 유지한다. 새 패턴 선택 시 Effect 추가 시간이0으로 초기화되고
+독립 Stage clock이 기본이다. 이전 패턴의 clip 연결 설정이 새 패턴 Append를 막지 않는다.
+
+Camera Shake의 실제128행 중49행은42개 manual Stage와 연결돼 있었다. 기존 read-only
+문서 owner에 typed draft copy/delete/serialize/accept를 추가하고 Stage/Animation 삭제와
+Stage 복사에서 연결을 보존한다. Sound/V2와 같은 writer·baseline/candidate·CAS·rollback으로
+저장하며 source_manifest의 Shake hash 누락도 수정했다. payload와 비활성 원본 행을 보존한다.
+Camera Shake는 기존 제품 재생 경로를 유지하며 새로운 미저장 local Shake 재생은 추가하지 않았다.
+
+추가 검증:
+
+- 실제 production Apply_TimelineGroupEdit와 typed owner 저장 doubles를 이용한 영구 native
+  회귀22 checks PASS. mixed Move/Delete, 뒤늦은 실패의 owner/UI rollback, Collider 단독 Delete.
+  `Tools/ValtanPipeline/test_action_composition_group_edit_native.py`.
+- 실제 shared input/header를 컴파일하는 marquee·Ctrl+C/V/D·실패 시 clipboard 보존37 checks PASS.
+  `Tools/ValtanPipeline/test_valtan_composition_input_native.py`.
+- 실제 Balance/Workbench/Shake owner57 checks PASS. Stage block 이동, Stage delete/clear/copy,
+  Shake4개 원본 payload 보존·새 scope/ID 연결, stale copy/accept·dirty 보존 포함.
+  `out/ValtanStageDelete20260928/workbench-native.log`.
+- 실제 V2 outer transaction18 checks PASS. false/exception/nested rollback, dirty baseline 보존,
+  commit 전 다른 reader 차단 포함. 같은 out 디렉터리의 focused V2 검사.
+- 새 빈 패턴의 V2 Source Save→NONE Animation Product→잘못된 scope 거절→마지막 V2 제거의
+  Product retirement→Collider-only projection PASS. 실제 typed source scope/inventory12 checks PASS.
+- Shake 저장의 invalid scope·stale baseline·중간 쓰기 실패 rollback·실제 PowerShell SourceOnly와
+  typed publish 회귀 PASS. current128행 검사와 실제 native 복사 후보4개 Save/reopen/Product PASS.
+  `test_valtan_source_save.py::test_pattern_shake_source_and_typed_save_atomic_contract`.
+- 변경 C++ 최소 컴파일, PowerShell AST parse와 diff check PASS. 최종 Product 설치 결과는
+  아래 설치 기록에서 별도로 확인한다. 모든 fixture 저장은 임시 저장소에 한정했고 live Data는
+  수정하지 않았다. Client/UI·화면·소리는 자동 실행/판정하지 않았다.
+
+남은 표현 계약은 일반 편집 실패와 구분한다. 공유 Counter/World/motion/Grab/attackContacts 등
+실제 gameplay owner는 해당 typed 편집기를 사용한다. Collider는 Stage당 하나의 geometry로
+같은 설정의 pulse를 합치며 임의 서로 다른 모양을 독립 box로 병합하지 않는다. Sound는 기존
+Animation occurrence에 연결하는 계약이다. 이 변경은 별도 독립 Sound clock을 추가하지 않는다.
+
+## 2026-09-28 G42~G43: Sequence Append·영역 선택·Stage 편집·독립 Effect
+
+### 구현과 격리 검증 완료, 최종 Debug 설치는 상단 기록 참조
+
+사용자 재현 입력 420623/1의 idle cut 2333ms와 설치 모델의 67 cooked tick/30 = 2233ms가
+달라 Append가 one-shot 추론 반복으로 거절됐다. 원본 non-loop 항목은 실제 native 길이로
+제한한 occurrence 하나로 가져오며 보정 수와 길이를 표시한다. 명시적 loop 확장과 원본에
+여러 번 있는 같은 clip 이름은 유지한다. boss Animation 슬롯은 UI/Balance/Tree/Python/
+PowerShell/runtime reader에서 256개로 일치시키고 player skill의 16개 제한은 유지했다.
+
+빈 lane을 드래그하면 Stage/Animation/Effect/Sound/Collider 등 교차 lane 박스를 영역 선택한다.
+Shift는 기존 선택을 유지하며 Escape는 드래그 전 선택을 복원한다. 별도 Detail 선택만 있고
+선택 vector가 비어 있는 경우도 Shift 영역 선택의 기존 대상으로 보존한다. Stage Delete 버튼,
+Delete 키와 Blueprint 삭제를 같은 owner transaction으로 연결했다. 마지막 Stage 삭제는
+stable ID가 같은 1000ms 빈 Stage로 초기화한다. 여러 Stage도 하나의 transaction으로 처리한다.
+
+기존 clipboard의 Animation과 V1/V2 Effect, Sound, 일반 Damage Collider 혼합 Copy/Paste/
+Duplicate를 연결했다. 같은 패턴과 다른 패턴 모두 새 ID를 만들고 복사된 clip ID에 종속 cue를
+대응시킨다. Stage 전체 복사는 선택 Stage 뒤에 삽입하며 소유 자식과 별도 선택한 자식의 중복을
+제거한다. Balance/Sound/V2 outer transaction은 실패 시 draft와 UI 선택을 함께 복원한다.
+
+Resources의 V1 Effect Append 기본은 독립 Stage clock이며 Animation이 없는 Stage에서도
+추가한다. Animation 연결은 선택 사항이다. Detail에서 시작/끝/resource 재생 offset과
+Boss/Map anchor를 편집한다. Stage-clock cue는 clip ID와 mappingBasis를 만들지 않고
+optional stageEndMs로 once tail을 Stage 밖까지 보존한다. Map은 SNAPSHOT + 실제 world
+identity root이며 Boss snapshot과 구분한다. native owner/serializer, split reader, Python
+Source Save/validator/projector, Product parser와 실제 Valtan spawn 경로를 함께 수정했다.
+V1 Effect만 추가한 빈 manual pattern도 Product projection에 포함된다.
+
+현재 검증 증거:
+
+- 실제 Apply_SelectedSequenceToStage와 설치 WModel을 사용한 18개 native 검사 PASS.
+  기존 2개 + 실제 source 15개 = 17개, 재추가 32개와 실패 보존 포함.
+  `Tools/ValtanPipeline/test_valtan_sequence_append_native.py`,
+  `out/ValtanSequenceAppend20260928/result.json`.
+- 실제 Product reader의 17/256 허용·257 거절, NONE Animation의 독립 cue,
+  Map spawn 계약 등 43개 검사 PASS. `out/ValtanSequenceAppend20260928/runtime-probe-run.log`.
+- 실제 Balance/EffectCueAuthoring/Save serializer 13개 검사 PASS: 클립 없는 추가·Map/
+  tail 편집·잘못된 Map FOLLOW의 generation 보존·삭제.
+  `out/ValtanIndependentEffect20260928/workbench-native.log`.
+- 임시 저장소의 빈 Create → 독립 V1 Effect Add/trim/Map/clone → Save/reopen → 실제
+  Product projection → invalid 입력의 bytes 보존 → Remove PASS. 기존 clip tail 저장도 PASS.
+  `test_valtan_source_save.py::test_empty_stage_effect_add_trim_copy_map_save_publish_remove`.
+- 기존 V1 Effect ADD/UPDATE/REMOVE의 실제 저장·canonical projection 회귀 PASS.
+  `test_valtan_effect_cue_authoring_transaction.py`의 기존 focused transaction test.
+- 실제 Capture/Apply/Execute mixed clipboard 62개 검사 PASS, 관련 native helper 57개 PASS.
+  `out/ValtanCreateAppend20260928/mixed_result.json`, `result.json`.
+- 실제 Stage owner 25개 검사 PASS. clip 4개·V1 Effect 4개·Collider를 가진 Stage Copy,
+  fresh EffectCatalog admission, Delete/Clear 포함. native Save patch의 실제 Python apply,
+  split/reopen, source lineage, Product 8-artifact projection 모두 PASS.
+  `out/ValtanStageDelete20260928/workbench-native.log`, `roundtrip.py`.
+- 실제 CompositionTimeline 사각형 판정 16개 검사 PASS.
+  `out/ValtanEditorInput20260928/marquee-result.log`.
+- 변경 C++ 9개 최소 컴파일 PASS. 기존 C4819 경고는 남아 있다.
+  `out/ValtanPatternCreateFlow20260928/compile-product-codepage.log`.
+
+남은 경계:
+
+- 이 항목의 최종 실행 파일 링크는 상단 17:46 설치로 완료했다. 사용자 화면 확인은 남아 있다.
+  아래 G40~G41의 16:43 설치본은 이전 기록이다. 실제 Client/UI를 자동 실행하거나 조작하지 않았다.
+- Stage 전체 복사는 일반 manual audition Stage를 지원한다. 공유 Counter/World/motion,
+  Grab/attackContacts/summon 등의 gameplay 의존성이 있는 Stage는 명시적인 이유로 거부한다.
+  일반 box Copy/Paste와 이 경계를 혼동하지 않는다.
+- 이 단계에서 V1 Effect+Sound에 한정했던 여러 box의 동시 Move/Delete는 G44에서
+  Animation/V1/V2/Sound/일반 Collider까지 확장했다.
+- Collider는 기존 한 Stage 한 geometry 계약을 유지한다. 다른 모양을 한 Stage에 추가하는
+  복제는 명시 거부하며, 같은 geometry의 pulse를 합치는 편집을 지원한다.
+- 실제 사용자 Data와 실행 중 draft는 자동 교체하지 않았다. 모든 저장·projection 검증은
+  임시 fixture 또는 메모리로 수행했다. Release 설치와 화면/audio 판정은 미실시다.
+
+## 2026-09-28 G40~G41: 빈 생성·기존 Append·Clipboard·리소스 박스 최종 Debug 설치
+
+이름만 입력하는 Create Pattern을 기본으로 연결했다. backend가 stable ID와 실제 clip 없는
+STEP_01 ACTIVE/animation NONE을 Source에 원자 저장하고 새 패턴을 선택한다. 기존 chain
+승격은 Import Animation Sequence로 유지한다. source-only 빈 pattern은 Product에서 제외하고,
+실제 raw clip을 추가한 AUDITION_ONLY는 가짜 원본 skill ID 없이 기존 publisher/Server로 연결한다.
+첫 reviewed Sequence는 실제 PRIMARY provenance를 기록한다.
+
+생성 뒤 intake reader가 generic preview asset 이름에 의존하여 실패하던 것을 명시적 Valtan
+reader로 고쳤다. Source 편집 gate와 Server Product inventory를 분리하고 생성 중 다른 Append,
+Paste/Save/Publish 경합을 막는다. created event에서 오래된 검색을 지우고 새 pattern/stage를
+Resources 대상으로 선택한다. 실패 시 기존 draft와 원자 저장/CAS 보호는 유지한다.
+
+GROUND_ROAR의6458ms Stage 안에6233ms clip과225ms 마지막 자세 유지가 있어 raw Append를
+거부하던 조건을 수정했다. 새 clip은 finite clip 끝에 연결하고 Stage는 기존 길이와 새 합의
+큰 값으로 유지한다. 이전 clip의 파생 hold를 다시 계산하며 기존 occurrence ID와 hit 시각을
+보존한다. loop/반복 구조는 해당 이유와 Stage 분리 안내를 유지한다.
+
+V1/V2 Effect·Sound·일반 Damage Collider의 단독/묶음 Ctrl+C/V는 상대 시각과 설정을 보존한다.
+Collider는 같은 Stage의 같은 geometry/피해/반응에 pulse를 추가하며 하나의 Collider 박스로
+표시한다. 다른 모양·Grab·attackContacts·연속 활성 창 병합과 중복 시점은 명시 거부한다.
+묶음은 Balance/Sound transaction과 마지막 V2 batch commit으로 전체 실패를 원복한다.
+
+사용자 추가 요청에 따라 Composition Resources의 Effect tree를 큰 bordered BeginChild에
+담았다. 최대32줄이며 현재 pane의 남은 높이를 사용한다. Preview/Append는 스크롤 박스 밖
+위쪽에 유지한다. 사용자 첨부 이미지의 긴 목록만 분석했고 Client/UI는 실행·조작하지 않았다.
+
+검증 증거:
+
+- Create service29 tests와 UI/process contract9 tests PASS.
+- 실제 native Balance/Tree28 checks PASS: 빈 생성 source 재조회, 첫 clip, 실제 Sequence
+  PRIMARY, GROUND_ROAR hold·타격 보존, repeated clip의 새 ID, stale/loop 실패 보존.
+  `out/ValtanEmptyPattern20260928/workbench-native.log`.
+- Collider/strict intake/native transaction47 checks PASS,
+  실제 batch Capture/Apply44 checks failures0.
+  `out/ValtanCreateAppend20260928/result.json`, `mixed_result.json`.
+- 임시 저장소의 EMPTY Apply → raw clip Source Save → Reopen 동일성 → 실제 Product projection
+  → 격리 Gameplay publisher PASS. 새 PATTERN 존재와 가짜 PATTERNSOURCE 부재 확인.
+- 실제 Server CGameplayCatalog4 checks PASS: 현재 bootstrap, 출처 없는 audition 허용,
+  일반 회전 pattern 출처 누락 거부, 명시적인0 source ID 거부.
+  `out/ValtanPatternCreateFlow20260928/server-results.json`.
+- 변경 C++ 최소 컴파일, Python/PowerShell parse와 `git diff --check` PASS.
+- 실행 중 Client/Server 종료 확인 뒤 정상 Debug Product Build exit0.
+  Engine·Shared·Server·Client 모두 PASS, 전체35.255초. 최종 Client19 OBJ, PCH0/CSO0,
+  executable1 갱신. 기존 C4819 등의 경고는 있으나 컴파일·링크 실패는 없다.
+  `out/BuildPipeline/runs/20260928T074327952Z-debug-product.json`,
+  `out/ValtanPatternCreateFlow20260928/product-build.log`.
+
+설치 실행 파일은 `Client/Bin/Debug/Client.exe`, `Server/Bin/Debug/Server.exe`다.
+Client SHA256: `fd3bd2881ff9dd2034b99d4177bfb7167db65569ba6c9390e17e1a5c4e8f27f3`.
+Server SHA256: `cdcdeb7717063928562d5cfc96a23cfedc684177a4835867b1c15017ab99f0b1`.
+
+실제 사용자 저작 데이터는 이번 코드 수정으로 교체하지 않았다. 검증용 publish는 임시 output만
+사용했고 Product Build는 데이터를 게시하지 않았다. 자동 Client 실행, 화면·audio 판정은
+미실시다. 사용자는 Debug Server + Client로 열어 Create Pattern, 기존 패턴 Append/trim,
+Effect/Sound/Collider copy/paste, Save/reopen 및 Save & Publish를 직접 확인한다.
+Release 설치 및 임의 서로 다른 Collider를 독립 row로 복제하는 기능은 이번 완료 범위가 아니다.
+
+## 2026-09-28 G35~G39 최종 Debug 설치 완료
+
+사용자가 Client/Server 종료를 확인한 뒤 정상 Product 빌드를 실행했다.
+`Invoke-BuildAndRegression.ps1 -Configuration Debug -Profile Product`가 exit0으로 완료됐고
+Engine·Shared·Server·Client 모두 PASS다. Client 변경22개 object와 executable을 생성해
+`Client/Bin/Debug/Client.exe`에 설치했다. 입력한 신규 패턴의 실제 Apply는 수행하지 않았다.
+
+- 완료 시각: 2026-09-28 16:07:58 KST, 전체33,984ms.
+- 빌드 receipt: `out/BuildPipeline/runs/20260928T070758896Z-debug-product.json`.
+- Client SHA256: `304e8cb1e2789f6487f998678b067335e1be615f421d6b8e20372bf53ef0ac31`.
+- 로그: `out/ValtanPublishRecovery20260928/product-build.log`, exit0 기록 포함.
+- 기존 C4819/C4244 및 DirectXTK PDB LNK4099 경고는 남았지만 컴파일·링크 실패는 없다.
+- endpoint 계약3개와 `git diff --check` PASS. 접속 기본값은 `.22:7777`이다.
+- 기존 generation의162개 artifact가 실제 파일과 일치한다. 피자 cue의 yaw180,
+  sourceEndMs19033/cue_end 및 게시 bootstrap SHA도 유지했다. 이번 Product 빌드는 데이터를
+  다시 게시하거나 생성하지 않았다.
+
+실행 중 프로세스·메모리 draft를 종료하거나 자동 Reload하지 않았으며 Client/UI를 실행하지
+않았다. 설치 이후 실제 F1/Play, Restore 목록과 Preview/Append 및 Ctrl+C/V 화면 확인은
+사용자가 `Debug / Server + Client`로 실행해 확인한다. 생성 요청은 보존된 값으로 Validate가
+통과했으며 새 패턴은 `Validate Create Request → Apply Create Pattern`으로 생성하는 상태다.
+
+## 2026-09-28 G39: Composition Resources의 Restore 분류
+
+Resources의 기존 전체 source inventory에서 Full Restore를 독립 한글 패턴 트리로 모았다.
+복원 여부는 Reload가 이미 읽는 FullRestore animation index의 `contains` 결과를 캐시하며
+매 frame 파일을 다시 읽거나 이름 suffix로 추측하지 않는다. 한 줄 표시명, 선택 요약, 검색과
+드래그 이름에 같은 `[Full Restore]` 이름을 쓴다. shared source는 여러 패턴에서 같은 stable
+asset ID로 보이며 Preview/Append는 기존 typed 경로를 그대로 사용한다.
+
+새 패턴에 cue가 없어도 전체 저장 source를 찾을 수 있다. 대상 Animation/Stage 선택과
+mutation admission 검사는 유지하며 분류 작업이 Effect를 복제하거나 source에 자동 연결하지
+않는다. Resources 함수 밖 변경은 metadata cache 필드와 그 초기화이며 새 clipboard 영역이
+작업 직전과 동일함을 확인했다.
+
+최종 Workbench CPP 컴파일 PASS, CPP/H diff check PASS. 기존 C4819 헤더 경고만 남았다.
+증거는 `out/ValtanCompositionRestoreTree20260928/compile-product-codepage.log`와
+`ui-change.diff`다. 실제 Client 창의 Preview/Append와 목록 사용성은 설치 뒤 사용자 확인 사항이다.
+
+## 2026-09-28 G38: 새 패턴 생성 검증 복구
+
+실제 보존 요청 `VALTAN_3H_FLOOR_BREAK_ROCK_ROAR`, 표시명
+`발탄_3시지면파괴_돌생성_사자후`, `sequence.420616.1`의25클립으로 Validate를 재현했다.
+새 요청이 기존 promotion까지 intake에서 재생성하면서 TRASH STEP_06의5707ms를4100ms로,
+GHOST_DEATH STEP_01의23000ms를3667ms로 줄였다. 저장된 Camera는 이전 길이라 후보 검증이
+실패했다. 현재 source 자체는 유효했으며 사용자 입력의 ID나 한국어 이름 오류가 아니었다.
+
+Create 전용 `preserve_existing_patterns`를 사용해 기존 canonical gameplay/presentation pattern
+객체·배열 순서·decisionModel 전체를 보존하고 새 pattern만 추가한다. saved intake는 promoted
+subset의 필수 순서에 맞는 위치에 새 manual 행만 삽입하고 기존 derived 행 상대 순서도 유지한다.
+일반 promotion refresh 기본 동작은 HEAD와 동일하며
+모든 source·lineage·Product 검증은 계속 실행한다. 카메라를 자르거나 validator를 완화하지 않았다.
+
+- 실제 Temp 요청 그대로 `--mode Validate --request-file ...` exit0 PASS.
+- Create service 전체24 tests PASS. CURRENT/SAVED intake 모두 새 행을 제외한 전체 문서와
+  순서가 원본과 같은지 확인했다. 기존 edited animation/stage/camera 보존 및 잘못된 기존
+  camera 거부·쓰기0, stale/duplicate/transaction 검사도 통과했다.
+- 현재 Source/Product bytes 불변. 실제 Apply는 실행하지 않아 입력한 새 패턴은 아직 생성 전이다.
+- 증거: `out/ValtanCreatePatternRecovery20260928/verification.json`, `exact-request-validate.log`.
+  Client의 기존 LOAD_FAILED 상태는 G37 수정 executable 적용 후 해제해야 한다.
+
+## 2026-09-28 G35~G37: 묶음 복사, Restore 탐색과 strict load 수정
+
+### 구현·후보 검증 완료
+
+Workbench에서 여러 V1/V2 Effect와 Sound를 함께 복사해 다른 패턴 playhead에 붙일 수 있다.
+가장 이른 시작 기준 상대 시각과 source trim·transform·follow·repeat를 보존하며 대상 stage와
+clip clock으로 연결한다. 반복 paste는 새 stable ID를 생성한다. Balance와 Sound의 기존 draft
+transaction 안에서 마지막 V2 batch를 commit해 실패 시 일부 Effect/Sound만 남기지 않는다.
+World 파괴 event는 단일 owner 계약으로 Copy하지 않고 기존 Move to Stage 경계를 안내한다.
+
+`Full Restore → 한글 패턴명 → Effect [Full Restore]` 트리를 All Effects의 앞에 표시한다.
+이펙트 기본 행은 한 줄이며 Open Editor는 같은 줄, ID·경로·연결 정보는 접힌 상세에 둔다.
+고정 높이 내부 스크롤을 제거했고 exact V1 Restore는 일반 Resources 중복 목록에서 제외했다.
+공유 원본은 관련 패턴별로 같은 원본을 열며 서로 다른 UI ID를 사용한다. 이름·분류는 저장된
+source metadata에서 준비하며 strict Product 실패가 원본 편집 목록을 숨기지 않는다.
+
+F1 로드와 Workbench Play의 재게시 요구는 별도 Client strict join 오류였다. Product reader는
+action/clip/start/occurrence 순으로 정렬하고 master는 원본 배열 순서를 보존하는데 index로
+비교했다. SECOND_SMASH `.01=101ms`, `.02=99ms`에서 정상 cue를 다르다고 오판했다.
+stable binding ID로 연결한 뒤 기존 전체 field equality를 적용하도록 수정했다.
+
+- `out/ValtanClipboard20260928/verification.json`: Workbench 실제 TU 컴파일 PASS.
+  실제 Capture/Apply/Execute 함수와 clipboard dispatch를 추출한 비UI fixture 31개 PASS.
+  대상 owner는 test double이며 실제 앱 내 다중 편집/Save 화면 검증으로 기록하지 않는다.
+  cross-stage/rate·V2 선택·반복 ID·실패 rollback·원본 및 이전 clipboard 보존을 확인했다.
+- `out/ValtanRestoreTree20260928/compile-product-codepage.log`: Effect Tool 두 CPP 컴파일 PASS.
+  기존 헤더 C4819 경고는 남아 있다. 이번 작업 delta와 기존 dirty 파일 백업을 같은 폴더에 보존했다.
+- `out/ValtanCueStableJoin20260928/regression-results.json`: 실제 C++ reader 컴파일·링크 PASS,
+  native 9/9 PASS. 수정 전 사용자 오류 재현, 수정 후65 patterns/280 stages/94 cues 로드 성공.
+  배열 순서만 바뀐 source도 성공하며 실제 시각/offset/transform/follow 변경과 ID 누락·행 누락·
+  중복은 계속 거부한다. 실패 시 기존 view 보존과 fixture/실제 source hash 불변을 확인했다.
+- 후보 검증 중 Client/UI 조작과 사용자 데이터 변경은 수행하지 않았다. 설치 빌드 및 실제
+  화면 확인 결과는 후속 완료 기록에서 구분한다.
+
+## 2026-09-28 G33~G34: Publish 복구와 피자 방향·종료 반영
+
+사용자 Save job1의 source `d1d38824baa3`는 정상 저장·candidate 생성까지 완료됐지만 전체
+DataOnly 게시는 쿠크 DJ의 PNG를 DDS만 허용하던 V2 Python validator가 거부해 실패했다.
+실제 `CEffectV2Object::Acquire_Texture`는 이미 DDS/WIC를 지원했다. 두 validator의 texture
+형식을 `.dds/.png`로 일치시키고 mesh WModel·상대 경로·실물·실제 binding/group 참조 검사를
+유지했다. V1으로 교체한 에스더와 쿠크 laser의 보존 library를 모두 runtime binding에 연결하도록
+강제하던 역방향 검사는 제거했다. 가짜 Independent 등록이나 PNG 변환은 하지 않았다.
+
+재게시 중 `world.destruction`이 기존 구현된 `attackContacts`를 unknown field로 거부했다.
+`Publish-ValtanWorldDestruction.ps1`에 optional nonempty array 인식을 추가했다. 지형 게시기는
+Stage identity를 소비하고 contact geometry·pulse 의미 검증은 기존 Gameplay publisher와
+Server가 계속 소유한다. 이 작업의 C++ 변경·컴파일은 없다.
+
+사용자 추가 요청은 `VALTAN_SIX_PIZZA_106 / STEP_01`의
+`cue.valtan.requested.20260827.six-pizza.composite` 하나에 적용했다. occurrence yaw를0→180도,
+`sourceEndMs`를 null→19033, `stopPolicy`를 natural→cue_end로 바꿨다. common target-follow
+yaw180과 Server target/hit yaw는 유지한다. 초기 Spawn과 Server/local follow가 같은
+LocalTransform을 적용하며 빨강 sector와 노란 빈틈의 상대 방향을 보존한다. 시작0/rate1/once라
+이 배치는19.033초에 끝나고22.6초 이후 두 번째 cycle은 표시하지 않는다. 공유 Effect 원본,
+다른 cue·Sound·gameplay 입력은 보존했다. 기존 writer lock·baseline CAS·백업·원자 교체를 썼다.
+
+최종 **전체 Publish exit0**, 모든14단계 PASS/REUSED,213.1초. 완료 marker의 source는
+`25c8bd4e0a41a821e6b071ffb8c4ef3469b5d47e93a33c8d731c740ef9603765`이며 종료 후 현재 source와
+같다. 새 Server bootstrap의 presentation generation은
+`8a2a4234d89386dd24238bbb6d9c906917942639f1b0864967189c251a22b35e`다.
+
+실행한 검증:
+
+- V2 focused56tests PASS. 실제 corpus259 authored/106 bindings/60 groups/66 independent/151 textures PASS.
+- 기존 전체59tests의2개는 현재 binding101을102로 기대하고 이전 group 사전을 고정한 corpus
+  snapshot 실패다. HEAD 테스트 원문으로도 같은 실패를 재현했으며 이 작업에서 기대값을 바꾸지 않았다.
+- 지형 파괴 actual Validate와 전체 내장 ContractTest PASS. malformed contact/unknown field 및 기존
+  atomic rollback 검사를 포함한다. Gameplay 사전 Validate와 실제 Publish 모두 PASS,108888행.
+- 실제 split join·Product projection 및 게시된 cue에서 yaw180/end19033/cue_end 일치.
+- bootstrap이 참조하는 generation SHA와162개 artifact의 bytes/hash가 현재 디스크와 모두 일치.
+- 설치 Debug Server.exe의 `--valtan-pattern-control-contract-test` exit0,8checks/failures0.
+  신규 bootstrap으로 실제 방·보스를 로드하고 typed pattern 시작·종료·flow·stale rejection을 확인했다.
+  listener를 열거나 기존 Server/Client를 조작하지 않았다. 이번 피자의 GPU 화면 판정은 아니다.
+
+증거는 `out/ValtanPublishRecovery20260928/`의 `pizza-edit-result.json`,
+`Valtan.presentation.before-pizza.json`, `full-pipeline.log`(첫 재시도 실패),
+`full-pipeline-retry.log`(최종 성공), `gameplay-preflight.log`, `published-verification.json`,
+`server-pattern-control.log`에 보존했다. 파일 게시와 실행 중 Server 메모리는 별개이므로 사용자의
+Server 재시작 및 Client 최신 저장본 재개방/재입장·최종 화면 확인이 남는다. 기존 툴의 실패 receipt를
+강제로 성공 처리하지 않았다.
+
+## 2026-09-28 G31~G32: 한국어 원본 검색과 Sound 저장 후 상태 복구
+
+All Effects의 `EFFECT RESOURCES`와 `EXISTING AUTHORED EFFECTS`는 stable ID뿐 아니라 저장 표시명·분류와 현재 source에 연결된 모든 Pattern 이름을 검색한다. 미게시 source의 표시 metadata는 별도로 stage하고 revision 검증 뒤 채택하며 strict Product 실패가 원본 검색을 비우지 않는다. 편집은 기존 exact authored path와 미저장 전환 보호를 사용한다. Product·Server 권한을 임의 승인하거나 사용자 cue를 게시하지 않았다. 현재 편집 중인 연결을 읽으며 420622 등 특정 원본을 DASH_CHARGE에 강제로 다시 연결하지 않는다.
+
+Sound 저장 직후 owner 채택은 storage-only 재읽기와 runtime stage index/duration이 붙은 draft의 전체 구조체 비교 때문에 실패했다. `Animation_Tool_CompositionSounds.cpp`는 현재 draft의 직렬화한 저장 후보를 비교하고 동일 generation·디스크 exact bytes 검사를 유지한다. 실패는 dirty draft를 보존한다. `Animation_Tool_ValtanComposition.cpp`는 Preview stage 직전 자기 잠금을 실제 dirty 값으로 동기화해 닫힌 Animation Tool 창에 저장 후 잠금 해제를 의존하지 않는다.
+
+실행한 후보 검증:
+
+- `out/ValtanAllEffectsSearch20260928/compile.json`: 제품 기본 문자 설정으로 변경 CPP 4개 `/Zs` 성공. 입력 source hash 안정.
+- 같은 폴더의 `probe-run.log`: production metadata lambda와 실제 source reader를 사용한 비UI native 검사. 미게시 Product 거절 상태에서도362개 검색 metadata, V1 275개 한국어 표시, cue57/object8/full restore79 연결, 공유 resource21개의 모든 Pattern 이름 및 N/S 돌진 library 검색 통과. 잘못된 source·정확한 revision pin 실패 시 이전 map 보존. 실제 창 Open/Save 검사는 아니다.
+- 기존 All Effects의 source join 실패 보존·catalog→authored 실물 확인 2개 계약 검사 통과.
+- `out/ValtanSoundSaveRecovery20260928/result.json`: production placement·직렬화·storage parser·저장 채택·selection 정규화 함수를 추출한 native 93검사 통과. 기존 함수의 stage0/1 이동·trim 뒤 자기 저장 거절을 재현했고 수정 후 정상 채택·stable ID와 범위 보존·dirty 해제·generation 증가를 확인했다. 별도 편집값 변경·generation 변경·디스크 bytes 변경·손상·누락 시 이전 상태 보존, 같은 selection/cursor 유지도 통과했다. 실제 UI Save job 전체 실행과는 구분한다.
+- `out/ValtanPreviewLock20260928`: production 함수 추출 native A/B에서 저장 후 stale lock 거절 재현, 수정 후17조건 통과. 다른 도구·다른 asset·다른 문서 미저장 보호와 실패 후 lock 복구 포함. 변경 CPP 최소 컴파일과 기존 잠금 경계 계약 검사 통과.
+- G31 검색·편집 권한 경계 및 G32 Sound 저장 채택의 독립 코드 리뷰에서 추가 수정 사항 없음. 변경 파일 `git diff --check` 통과.
+
+사용자는 작업 중 Data/Effects 및 Valtan/Sound를 계속 저장했으며 그 변경은 사용자 소유다. G31~G32 후보 검증 당시에는 “지금은 계속 편집할게. 빌드는 보류해줘”라는 요청에 따라 빌드·링크를 보류했다. 이후 사용자가 EXE 종료와 돌·피자 전체 복원·빌드를 승인해 2026-09-28 14:49 최종 Debug Product 빌드에 이 소스 수정도 포함했다. 최종 receipt는 `out/BuildPipeline/runs/20260928T054947539Z-debug-product.json`이다. 원래 사용자 Sound authored/dash Effect bytes는 보존했고 자동 Reload·Client/UI 실행은 하지 않았다. 사용자 실제 저장/화면 확인은 별도이며 돌·피자의 설치·게시·신규17개 검색 검증은 [G04 결과](../09-22/2026-09-22_VALTAN_STONE_PRODUCT_RESULT.md#G04-2026-09-28--붉은-돌-폭발과-중앙-피자-원본-연결)를 따른다.
+
 ## 2026-09-28 G30: trim 뒤 stale Detail 재저장과 V2 clip orphan 방지
 
 Timeline 오른쪽 trim은 정상적으로 Balance draft를 변경했지만, 뒤이어 같은 frame의 Detail이 이전 immutable Pattern에서 cue를 다시 가져왔다. 이후 Save의 pending Detail 적용이 이를 사용자 수정으로 오인해 이전 종료 시각으로 되돌릴 수 있었다. `Save 19 is running` 자체는 기존 비동기 job 상태이며 이 버그를 그 문구의 직접 발생 원인으로 기록하지 않는다.

@@ -43,6 +43,10 @@ class ValtanCanonicalTypedPatchTransactionTests(unittest.TestCase):
             self.root / "Tools/ValtanActionExtractor",
             ignore=shutil.ignore_patterns("__pycache__"),
         )
+        hit_contract_relative = "Tools/KoukuSaydonPipeline/combat_hit_templates.py"
+        hit_contract_target = self.root / hit_contract_relative
+        hit_contract_target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(REPOSITORY_ROOT / hit_contract_relative, hit_contract_target)
         parser_source = (
             REPOSITORY_ROOT
             / "Tools/ModelAssetConverter/retime_wmodel_from_psa.py"

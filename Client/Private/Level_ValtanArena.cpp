@@ -12,6 +12,7 @@ below is a real Release-build feature, so the include is no longer guarded. */
 #include "Camera_Free.h"
 #ifdef _DEBUG
 #include "CameraTool.h"
+#include "ClassSelectionTimeline.h"
 #endif
 #include "Character.h"
 #include "CombatHUDViewModel.h"
@@ -186,6 +187,8 @@ CLevel_ValtanArena::~CLevel_ValtanArena()
 #ifdef _DEBUG
 	std::string destructionStatus;
 	(void)Debug_StopActionWorkbenchDestruction(destructionStatus);
+	Debug_StopEffectCinematic();
+	m_EffectCinematicEditorPlayer.Clear();
 	Debug_StopActionWorkbenchCinematic();
 	m_ActionWorkbenchCinematicPlayer.Clear();
 #endif
@@ -659,6 +662,7 @@ void CLevel_ValtanArena::Update(f32_t fTimeDelta)
 	frame's replicated player list, so Collect_PlayerViews moves here
 	instead of Render(). */
 	m_Replication.Collect_PlayerViews(m_NameplatePlayers);
+	Update_StatusEffectText(fTimeDelta);
 	m_InteractKeyPrompt.Update(fTimeDelta, m_Replication.Get_LocalCharacter(),
 		CCombatHUDViewModel::Get().Get_InteractPromptTriggerId(),
 		!Is_MvpResultVisible());
@@ -726,6 +730,7 @@ void CLevel_ValtanArena::Update(f32_t fTimeDelta)
 	Update_DeadScene(isRaidClearActive, fTimeDelta);
 	Update_ItemAnnounce(fTimeDelta);
 #ifdef _DEBUG
+	Update_EffectCinematicEditor(fTimeDelta);
 	Update_DebugRaidClearKey();
 #endif
 }
@@ -2164,6 +2169,8 @@ void CLevel_ValtanArena::Update_CinematicCamera(const f32_t fTimeDelta)
 	/* The level-owned Map Effect consumer samples the same authoritative tuple
 	   even when this stage has no camera cue.  It owns neither boss gameplay nor
 	   camera state and therefore remains active across camera-tool auditions. */
+	m_MapEffectPresentationRuntime.Set_ServerPickups(
+		m_Replication.Get_WorldPickups(), m_Replication.Get_LastServerTick());
 	m_MapEffectPresentationRuntime.Update_ServerPresentation(boss, fTimeDelta);
 	if (nullptr == m_pCamera)
 	{
@@ -2199,6 +2206,12 @@ void CLevel_ValtanArena::Update_CinematicCamera(const f32_t fTimeDelta)
 	tries to acquire the single camera presentation owner. */
 	End_ReferenceCamera(false);
 #endif
+
+	// The current camera owner, including its bounded exit blend, hides HUD
+	// only for the introduction and ending. A battle camera replaces this flag.
+	m_bCinematicCameraHidesHUD = input.isBossDead ||
+		input.strPatternId == "VALTAN_ENTRANCE_CINEMATIC" ||
+		input.strPatternId == "VALTAN_GHOST_DEATH_AUDITION";
 
 	if (!m_bCinematicCameraApplied)
 	{
@@ -2301,6 +2314,7 @@ void CLevel_ValtanArena::End_CinematicCameraOverride()
 	m_pCinematicRestoreTarget.reset();
 	m_bCinematicRestoreFollowRequested = false;
 	m_bCinematicCameraApplied = false;
+	m_bCinematicCameraHidesHUD = false;
 	m_iCinematicCameraOwnerId = 0u;
 	m_ValtanCinematicCameraController.Cancel_ExitTransition();
 }
@@ -2313,26 +2327,62 @@ void CLevel_ValtanArena::End_CinematicCamera()
 	End_CinematicCameraOverride();
 }
 
+void CLevel_ValtanArena::Update_StatusEffectText(const f32_t fTimeDelta)
+{
+	for (const REPLICATED_PLAYER_VIEW& player : m_NameplatePlayers)
+	{
+		const REPLICATED_PLAYER_HEALTH health =
+			m_Replication.Get_PlayerHealth().Find(player.iNetEntityId);
+		if (!health.hasSnapshot || health.iCurrentHp == 0u)
+		{
+			continue;
+		}
+		CStatusEffectTextView::REQUEST request{};
+		request.iOwnerEntityId = player.iNetEntityId;
+		request.pAnchor = player.pCharacter;
+		if (0u != health.iInvulnerabilityZonePulseTick)
+		{
+			request.iOccurrenceKey = health.iInvulnerabilityZonePulseTick;
+			request.strWord = L"\uBB34\uC801";
+			request.iColorRgb = 0x3399FFu;
+			m_StatusEffectTextView.Submit(request);
+		}
+		if (0u != health.iRonaunGrantTick)
+		{
+			request.iOccurrenceKey = health.iRonaunGrantTick;
+			request.strWord = L"\uB85C\uB098\uC6B4\uC758 \uAE30\uC6B4";
+			request.iColorRgb = 0xFFFFFFu;
+			m_StatusEffectTextView.Submit(request);
+		}
+	}
+	m_StatusEffectTextView.Update(fTimeDelta);
+}
+
 HRESULT CLevel_ValtanArena::Render()
 {
 	if (FAILED(__super::Render()))
 		return E_FAIL;
 
-	/* The award page is a full-screen modal: no world text at all while it is up. */
-	if (!Is_MvpResultVisible())
+	// These world labels bypass the shared product sprite/text pass.
+	if (!Is_CinematicHUDSuppressed())
 	{
-		m_PlayerNameplateView.Render(m_NameplatePlayers, &m_Replication.Get_PartyRoster());
-		m_ChatBubbleView.Render(m_Replication, m_NameplatePlayers);
-	}
-	m_InteractKeyPrompt.Render_Text();
-	m_PartyInteraction.Render(m_pPlayerCommandSink);
-	/* Award page labels over everything else this Level draws; its image layers are
-	   CUI_Sprite objects on Layer_UI and need no call. */
-	m_GateProgressView.Render_Text();
-	if (nullptr != m_pMvpResultView)
-	{
-		CUITextLayerScope PageText(UI_TEXT_LAYER::PAGE);
-		m_pMvpResultView->Render();
+		/* The award page is a full-screen modal: no world text at all while it is up. */
+		if (!Is_MvpResultVisible())
+		{
+			m_PlayerNameplateView.Render(m_NameplatePlayers, &m_Replication.Get_PartyRoster());
+			m_ChatBubbleView.Render(m_Replication, m_NameplatePlayers);
+			m_StatusEffectTextView.Render();
+		}
+		m_InteractKeyPrompt.Render_Text();
+		m_PartyInteraction.Render(m_pPlayerCommandSink);
+		/* Award page labels over everything else this Level draws; its image layers are
+		   CUI_Sprite objects on Layer_UI and need no call. */
+		m_GateProgressView.Render_Text();
+		if (nullptr != m_pMvpResultView)
+		{
+			CUITextLayerScope PageText(UI_TEXT_LAYER::PAGE);
+			m_pMvpResultView->Render();
+		}
 	}
 
 #ifdef _DEBUG
@@ -3574,3 +3624,315 @@ void CLevel_ValtanArena::Stop_SourceCinematic(const bool_t preserveSoundTail)
     m_iSourceCinematicSequence = 0u;
     m_iSourceCinematicEntity = 0u;
 }
+
+#ifdef _DEBUG
+namespace
+{
+    constexpr std::array<const char*, 2u> EFFECT_CINEMATIC_ENTRANCE_INSTANCES = {
+        "world.sequence.instance.valtan.source-preview.entrance",
+        "world.sequence.instance.valtan.source-preview.entrance.colorless"
+    };
+}
+
+std::shared_ptr<const CLASS_MOVIE_TIMELINE> CLevel_ValtanArena::Debug_GetEffectCinematicTimeline()
+{
+    if (m_EffectCinematicEditorTimeline) return m_EffectCinematicEditorTimeline;
+    CWorldSequenceDocument source;
+    std::string status;
+    const auto path = CProjectDataRoot::Resolve(
+        "Maps/Authoring/LV_LUT_HEARTRB_ED/LV_LUT_HEARTRB_ED.worldsequences.json");
+    if (path.empty() || !source.Load(path, "LV_LUT_HEARTRB_ED", {}, {}, status))
+    { m_EffectCinematicEditorState.status = "Entrance authoring document: " + status; return nullptr; }
+    auto timeline = std::make_shared<CLASS_MOVIE_TIMELINE>();
+    timeline->classId = "valtan.entrance";
+    for (const auto* id : EFFECT_CINEMATIC_ENTRANCE_INSTANCES)
+    {
+        const auto* instance = source.Find_Instance(id);
+        const auto* sequence = instance ? source.Find_Template(instance->templateId) : nullptr;
+        if (!instance || !instance->enabled || !sequence || instance->playbackSpeed != 1.f || instance->startDelayMs)
+        { m_EffectCinematicEditorState.status = "Entrance source instance has an unsupported clock: " + std::string(id); return nullptr; }
+        timeline->movieDurationMs = (std::max)(timeline->movieDurationMs, static_cast<double>(sequence->durationMs));
+        for (const auto& track : sequence->animationTracks)
+        {
+            CLASS_MOVIE_TIMELINE_ROW row;
+            row.kind = "Animation"; row.id = std::string(id) + "/" + track.slotId;
+            row.label = sequence->displayName;
+            CLASS_MOVIE_TIMELINE_BOX box;
+            box.id = row.id + "/" + std::to_string(track.startMs);
+            box.label = track.displayName.empty() ? track.clipName : track.displayName;
+            box.resource = track.clipName;
+            box.movieStartMs = track.startMs; box.movieEndMs = sequence->durationMs;
+            for (const auto& next : sequence->animationTracks)
+                if (next.slotId == track.slotId && next.startMs > track.startMs)
+                    box.movieEndMs = (std::min)(box.movieEndMs, static_cast<double>(next.startMs));
+            box.sourceStartMs = track.sourceStartMs;
+            box.sourceEndMs = track.sourceStartMs + (box.movieEndMs - box.movieStartMs) * track.playbackRate;
+            box.sourceOffsetMs = track.sourceStartMs; box.playbackRate = track.playbackRate;
+            box.loopAnimation = track.loop;
+            row.boxes.push_back(std::move(box)); timeline->rows.push_back(std::move(row));
+        }
+        for (const auto& track : sequence->effectTracks)
+        {
+            if (track.resourceKind != "V1_EFFECT")
+            { m_EffectCinematicEditorState.status = "Entrance editor requires the saved V1 Effect owner: " + track.effectTrackId; return nullptr; }
+            CLASS_MOVIE_TIMELINE_ROW row;
+            row.kind = "Effect"; row.id = track.effectTrackId; row.label = track.resourceId;
+            CLASS_MOVIE_TIMELINE_BOX box;
+            box.id = track.effectTrackId; box.label = track.effectTrackId; box.resource = track.resourceId;
+            box.movieStartMs = sequence->EffectStartMs(track);
+            box.movieEndMs = box.movieStartMs + track.durationMs;
+            box.sourceEndMs = track.durationMs; box.loopAnimation = track.loopEffectToDuration;
+            row.boxes.push_back(std::move(box)); timeline->rows.push_back(std::move(row));
+        }
+    }
+    timeline->sourceDurationMs = timeline->movieDurationMs;
+    if (!m_EffectCinematicEditorPlayer.Set_Document(source, SourceCinematicTargets(), status))
+    { m_EffectCinematicEditorState.status = status; return nullptr; }
+    m_EffectCinematicEditorTimeline = std::move(timeline);
+    m_EffectCinematicEditorState.available = true;
+    m_EffectCinematicEditorState.durationMs = m_EffectCinematicEditorTimeline->movieDurationMs;
+    m_EffectCinematicEditorState.status = "Entrance source actors, animation and Effect occurrences loaded.";
+    return m_EffectCinematicEditorTimeline;
+}
+
+bool_t CLevel_ValtanArena::Prepare_EffectCinematicEditor(std::string& status)
+{
+    if (!Debug_GetEffectCinematicTimeline())
+    { status = m_EffectCinematicEditorState.status; return false; }
+    if (!m_strSourceCinematic.empty() || !m_strActionWorkbenchCinematicPatternId.empty())
+    { status = "Stop the current cinematic playback before opening the Effect scene preview."; return false; }
+    std::vector<std::string> assets;
+    for (const auto& row : m_EffectCinematicEditorTimeline->rows)
+        if (row.kind == "Effect")
+            for (const auto& box : row.boxes) assets.push_back(box.resource);
+    std::sort(assets.begin(), assets.end()); assets.erase(std::unique(assets.begin(), assets.end()), assets.end());
+    std::vector<std::string> registered;
+    if (!CEffectPresentationService::Queue_ProductTargets_Priority(assets, registered, status)) return false;
+    const auto probe = CEffectPresentationService::Get_ProductCuePreparationProbe(assets);
+    if (!probe.bCatalogRevisionCurrent || !probe.bSettled || probe.iPreparedCount != assets.size())
+    {
+        status = probe.strBlockingFailure.empty() ? "Preparing entrance Effects; press Play again when preparation finishes." : probe.strBlockingFailure;
+        return false;
+    }
+    auto targets = SourceCinematicTargets();
+    targets.objectPreparationOwner = &m_SourceCinematicPlayer;
+    for (const auto* id : EFFECT_CINEMATIC_ENTRANCE_INSTANCES)
+        if (!m_EffectCinematicEditorPlayer.Prepare_InstanceResources(id, targets))
+        { status = m_EffectCinematicEditorPlayer.Get_Status(); return false; }
+    return true;
+}
+
+bool_t CLevel_ValtanArena::Start_EffectCinematicEditor(std::string& status)
+{
+    if (m_EffectCinematicEditorState.active) return true;
+    if (!Prepare_EffectCinematicEditor(status))
+    { m_EffectCinematicEditorState.status = status; return false; }
+    auto targets = SourceCinematicTargets();
+    targets.objectPreparationOwner = &m_SourceCinematicPlayer;
+    targets.bCommitWorldRootEffectsAfterSpawn = true;
+    m_EffectCinematicEditorPlayer.Set_Paused(true);
+    for (const auto* id : EFFECT_CINEMATIC_ENTRANCE_INSTANCES)
+        if (!m_EffectCinematicEditorPlayer.Play(id, targets))
+        {
+            status = m_EffectCinematicEditorPlayer.Get_Status();
+            m_EffectCinematicEditorPlayer.Stop_All(targets, true);
+            m_EffectCinematicEditorState.status = status;
+            return false;
+        }
+    m_EffectCinematicEditorState.active = true;
+    if (const auto boss = m_Replication.Find_PrimaryValtanPresentation())
+    {
+        m_EffectCinematicSuppressedBoss = boss;
+        boss->Set_CinematicPresentationSuppressed(true);
+    }
+    return true;
+}
+
+bool_t CLevel_ValtanArena::Sample_EffectCinematicEditor(double timeMs, bool discontinuous, std::string& status)
+{
+    if (!std::isfinite(timeMs) || timeMs < 0.) { status = "Entrance time must be finite and non-negative."; return false; }
+    if (!Start_EffectCinematicEditor(status)) return false;
+    const double sampled = (std::min)(timeMs, m_EffectCinematicEditorState.durationMs);
+    auto targets = SourceCinematicTargets();
+    targets.objectPreparationOwner = &m_SourceCinematicPlayer;
+    targets.bCommitWorldRootEffectsAfterSpawn = true;
+    m_EffectCinematicEditorPlayer.Set_Paused(m_EffectCinematicEditorState.paused);
+    for (const auto* id : EFFECT_CINEMATIC_ENTRANCE_INSTANCES)
+        if (!m_EffectCinematicEditorPlayer.Seek_InstanceToMs(id, static_cast<f32_t>(sampled), targets, discontinuous))
+        {
+            status = m_EffectCinematicEditorPlayer.Get_Status();
+            m_EffectCinematicEditorState.status = status;
+            m_EffectCinematicEditorState.paused = true;
+            return false;
+        }
+    m_EffectCinematicEditorState.clockMs = sampled;
+    if (const auto boss = m_EffectCinematicSuppressedBoss.lock()) boss->Set_CinematicPresentationSuppressed(true);
+    status = m_EffectCinematicEditorState.selectionActive ?
+        "Selected Elements follow the entrance actors and original occurrence clock." :
+        "Entrance actors and all saved Effect occurrences share the original scene clock.";
+    m_EffectCinematicEditorState.status = status;
+    return true;
+}
+
+bool_t CLevel_ValtanArena::Debug_PlayEffectCinematic(std::string& status)
+{
+    const auto previous = m_EffectCinematicEditorState;
+    m_EffectCinematicEditorState.selectionActive = false;
+    m_EffectCinematicEditorState.selectionRepeat = false;
+    m_EffectCinematicEditorState.paused = false;
+    if (Sample_EffectCinematicEditor(0., true, status)) return true;
+    m_EffectCinematicEditorState.paused = previous.paused;
+    m_EffectCinematicEditorState.selectionActive = previous.selectionActive;
+    m_EffectCinematicEditorState.selectionRepeat = previous.selectionRepeat;
+    return false;
+}
+
+bool_t CLevel_ValtanArena::Debug_SeekEffectCinematic(double timeMs, std::string& status)
+{
+    const bool paused = m_EffectCinematicEditorState.paused;
+    m_EffectCinematicEditorState.paused = true;
+    if (Sample_EffectCinematicEditor(timeMs, true, status)) return true;
+    m_EffectCinematicEditorState.paused = paused;
+    return false;
+}
+
+void CLevel_ValtanArena::Debug_PauseEffectCinematic(bool paused)
+{
+    m_EffectCinematicEditorState.paused = paused;
+    m_EffectCinematicEditorPlayer.Set_Paused(paused);
+}
+
+void CLevel_ValtanArena::Debug_StopEffectCinematic()
+{
+    m_EffectCinematicEditorPlayer.Stop_All(SourceCinematicTargets(), true);
+    if (const auto boss = m_EffectCinematicSuppressedBoss.lock(); boss && m_strSourceCinematic.empty())
+        boss->Set_CinematicPresentationSuppressed(false);
+    m_EffectCinematicSuppressedBoss.reset();
+    m_EffectCinematicEditorState.active = false;
+    m_EffectCinematicEditorState.paused = true;
+    m_EffectCinematicEditorState.clockMs = 0.;
+    // Stop_All retains draft/Solo filters so a subsequent Seek keeps the same selection.
+}
+
+bool_t CLevel_ValtanArena::Debug_PreviewCinematicEffect(const EFFECT_DOCUMENT_DESC& document, std::string& status)
+{
+    if (!Prepare_EffectCinematicEditor(status)) return false;
+    auto targets = SourceCinematicTargets(); targets.bCommitWorldRootEffectsAfterSpawn = true;
+    if (!m_EffectCinematicEditorPlayer.Preview_EffectDocument(document, targets, status)) return false;
+    m_EffectCinematicEditorState.selectionActive = false;
+    m_EffectCinematicEditorState.selectionRepeat = false;
+    return !m_EffectCinematicEditorState.active || Sample_EffectCinematicEditor(m_EffectCinematicEditorState.clockMs, true, status);
+}
+
+bool_t CLevel_ValtanArena::Debug_SelectCinematicEffectOccurrence(const std::string& trackId, std::string& status)
+{
+    const auto timeline = Debug_GetEffectCinematicTimeline();
+    if (!timeline) { status = m_EffectCinematicEditorState.status; return false; }
+    if (!trackId.empty() && std::none_of(timeline->rows.begin(), timeline->rows.end(), [&](const auto& row) {
+        return row.kind == "Effect" && std::any_of(row.boxes.begin(), row.boxes.end(),
+            [&](const auto& box) { return box.id == trackId; });
+    }))
+    { status = "The selected Effect occurrence is outside this entrance scene."; return false; }
+    m_strEffectCinematicSelectedTrackId = trackId;
+    status = trackId.empty() ? "Element Solo will include every occurrence of its shared Effect." :
+        "Element Solo will isolate occurrence: " + trackId;
+    return true;
+}
+
+bool_t CLevel_ValtanArena::Debug_PreviewCinematicEffectSelection(const EFFECT_DOCUMENT_DESC& full,
+    const EFFECT_DOCUMENT_DESC& selected, const std::vector<std::string>& ids,
+    double startMs, double endMs, std::string& status)
+{
+    if (!std::isfinite(startMs) || !std::isfinite(endMs) || startMs < 0. || endMs <= startMs)
+    { status = "Select a finite Element playback window."; return false; }
+    if (!Prepare_EffectCinematicEditor(status)) return false;
+    const CLASS_MOVIE_TIMELINE_BOX* occurrence = nullptr;
+    if (!m_strEffectCinematicSelectedTrackId.empty())
+    {
+        for (const auto& row : m_EffectCinematicEditorTimeline->rows)
+            if (row.kind == "Effect")
+                for (const auto& box : row.boxes)
+                    if (box.id == m_strEffectCinematicSelectedTrackId && box.resource == full.strEffectAssetId)
+                        occurrence = &box;
+        // A shared-body switch must not inherit an unrelated occurrence filter.
+        if (!occurrence) m_strEffectCinematicSelectedTrackId.clear();
+    }
+    if (!occurrence)
+        for (const auto& row : m_EffectCinematicEditorTimeline->rows)
+            if (row.kind == "Effect")
+                for (const auto& box : row.boxes)
+                    if (box.resource == full.strEffectAssetId && (!occurrence ||
+                        (m_EffectCinematicEditorState.clockMs >= box.movieStartMs && m_EffectCinematicEditorState.clockMs < box.movieEndMs)))
+                        occurrence = &box;
+    if (!occurrence) { status = "The selected Effect is outside this entrance sequence."; return false; }
+    const double begin = (std::min)(occurrence->movieStartMs + startMs, occurrence->movieEndMs);
+    const double end = (std::min)(occurrence->movieStartMs + endMs, occurrence->movieEndMs);
+    if (begin >= end) { status = "The selected Element is outside its entrance occurrence window."; return false; }
+    auto targets = SourceCinematicTargets(); targets.bCommitWorldRootEffectsAfterSpawn = true;
+    // Empty scope includes both eyes; an explicit stable track isolates just one occurrence.
+    if (!m_EffectCinematicEditorPlayer.Preview_EffectSelection(full, selected, ids,
+        m_strEffectCinematicSelectedTrackId, targets, status)) return false;
+    m_EffectCinematicSelectionStartMs = begin; m_EffectCinematicSelectionEndMs = end;
+    m_EffectCinematicEditorState.selectionActive = true;
+    const double clock = (std::clamp)(m_EffectCinematicEditorState.clockMs, begin, end);
+    return !m_EffectCinematicEditorState.active || Sample_EffectCinematicEditor(clock, true, status);
+}
+
+bool_t CLevel_ValtanArena::Debug_PlayCinematicEffectSelection(const EFFECT_DOCUMENT_DESC& full,
+    const EFFECT_DOCUMENT_DESC& selected, const std::vector<std::string>& ids,
+    double startMs, double endMs, bool repeat, std::string& status)
+{
+    if (!Debug_PreviewCinematicEffectSelection(full, selected, ids, startMs, endMs, status)) return false;
+    const bool paused = m_EffectCinematicEditorState.paused;
+    m_EffectCinematicEditorState.paused = false;
+    if (!Sample_EffectCinematicEditor(m_EffectCinematicSelectionStartMs, true, status))
+    { m_EffectCinematicEditorState.paused = paused; return false; }
+    m_EffectCinematicEditorState.selectionRepeat = repeat;
+    return true;
+}
+
+bool_t CLevel_ValtanArena::Debug_ClearCinematicEffectPreviews(std::string& status)
+{
+    Debug_StopEffectCinematic();
+    if (!m_EffectCinematicEditorPlayer.Clear_EffectPreviews(status)) return false;
+    m_EffectCinematicEditorState.selectionActive = false;
+    m_EffectCinematicEditorState.selectionRepeat = false;
+    m_strEffectCinematicSelectedTrackId.clear();
+    return true;
+}
+
+bool_t CLevel_ValtanArena::Debug_SetEffectCinematicPlaybackRate(double rate)
+{
+    if (!std::isfinite(rate) || rate < .05 || rate > 4.) return false;
+    m_EffectCinematicEditorState.playbackRate = rate;
+    return true;
+}
+
+void CLevel_ValtanArena::Update_EffectCinematicEditor(f32_t dt)
+{
+    if (!m_EffectCinematicEditorState.active) return;
+    if (!m_strSourceCinematic.empty() || !m_strActionWorkbenchCinematicPatternId.empty())
+    {
+        Debug_StopEffectCinematic();
+        m_EffectCinematicEditorState.status = "Entrance editor playback yielded to the active cinematic.";
+        return;
+    }
+    if (m_EffectCinematicEditorState.paused || !std::isfinite(dt) || dt <= 0.f) return;
+    double clock = m_EffectCinematicEditorState.clockMs + dt * 1000. * m_EffectCinematicEditorState.playbackRate;
+    const double end = m_EffectCinematicEditorState.selectionActive ? m_EffectCinematicSelectionEndMs : m_EffectCinematicEditorState.durationMs;
+    bool discontinuous = false;
+    if (clock >= end)
+    {
+        if (m_EffectCinematicEditorState.selectionActive && m_EffectCinematicEditorState.selectionRepeat)
+        {
+            clock = m_EffectCinematicSelectionStartMs + std::fmod(clock - m_EffectCinematicSelectionStartMs,
+                m_EffectCinematicSelectionEndMs - m_EffectCinematicSelectionStartMs);
+            discontinuous = true;
+        }
+        else { clock = end; m_EffectCinematicEditorState.paused = true; }
+    }
+    std::string status;
+    if (!Sample_EffectCinematicEditor(clock, discontinuous, status))
+    { m_EffectCinematicEditorState.status = status; m_EffectCinematicEditorState.paused = true; }
+}
+#endif

@@ -659,13 +659,133 @@ bool_t Client::CEffect_Tool::Refresh_ValtanPatternTree()
 	/* A busy publisher is retried without rebuilding the catalog or parsing
 	   the source animation index on every retry. Keep the prior indexes intact. */
 	Initialize_CatalogMetadataView();
-	VALTAN_FULL_RESTORE_CLIP_INDEX SourceClips;
-	if (CValtanPatternTree::Load_FullRestoreSourceClips(CProjectDataRoot::Resolve(
-		"Effects/ValtanFullRestoreAnimations.json"),
-		SourceClips, m_strValtanFullRestoreSourceStatus))
+	// Source names remain available after Source Save, before Product Publish.
+	// Stage them separately so a failed strict join cannot hide editable sources.
+	VALTAN_PATTERN_TREE_VIEW FriendlySourceView;
+	const bool_t bFriendlySourceReady = [&]()
+	{
+		const auto PreserveLabels = [this](const std::string& Status)
+		{
+			m_strValtanEffectAuthoringLabelStatus =
+				"Authored Effect names preserved after refresh failed: " + Status;
+			return false;
+		};
+		std::string FriendlyStatus;
+		if (!CValtanPatternTree::Load_Authoring_WhileAdmitted(
+				CanonicalAdmission, FriendlySourceView, FriendlyStatus))
+			return PreserveLabels(FriendlyStatus);
+		VALTAN_FULL_RESTORE_CLIP_INDEX SourceClips;
+		std::string SourceClipStatus;
+		if (!CValtanPatternTree::Load_FullRestoreSourceClips(
+				CProjectDataRoot::Resolve("Effects/ValtanFullRestoreAnimations.json"),
+				SourceClips, SourceClipStatus))
+			return PreserveLabels(SourceClipStatus);
+		std::vector<CEffectAuthoringResourceTree::RESOURCE> FriendlyV1, Organization;
+		std::vector<EFFECT_V2_RESOURCE_SUMMARY> FriendlyV2;
+		if (!CEffectAuthoringResourceTree::Read_V1Inventory(FriendlyV1, FriendlyStatus) ||
+			!CEffectAuthoringResourceTree::Read_V1Organization(Organization, FriendlyStatus) ||
+			!CEffectV2Catalog::Get().Read_Inventory(FriendlyV2, FriendlyStatus))
+			return PreserveLabels(FriendlyStatus);
+		std::unordered_map<std::string, std::string> SavedNames, SavedSearch;
+		for (const auto& Source : m_ValtanExactAuthoredSources)
+			SavedNames.try_emplace(Source.strEffectAssetId);
+		const auto AddV1Names = [&](const auto& Rows)
+		{
+			for (const auto& Row : Rows)
+			{
+				auto& Name = SavedNames[Row.strAssetId];
+				if (!Row.strDisplayName.empty()) Name = Row.strDisplayName;
+				auto& Search = SavedSearch[Row.strAssetId];
+				Search += " " + Row.strDisplayName;
+				for (const auto& Category : Row.CategoryPath) Search += " " + Category;
+			}
+		};
+		AddV1Names(FriendlyV1);
+		AddV1Names(Organization);
+		for (const auto& Row : FriendlyV2)
+		{
+			SavedNames[Row.strResourceId] = Row.strDisplayName;
+			SavedSearch[Row.strResourceId] += " " + Row.strDisplayName + " " + Row.strCategory;
+		}
+		CValtanPatternTree::Build_EffectResourceDisplayLabels(
+			FriendlySourceView, SavedNames, SourceClips);
+		std::unordered_map<std::string, VALTAN_EFFECT_AUTHORING_LABEL> Labels;
+		for (const auto& [Id, SavedName] : SavedNames)
+		{
+			if (!Id.starts_with("effect.valtan.") && !Id.starts_with("boss.valtan.")) continue;
+			VALTAN_EFFECT_AUTHORING_LABEL Label;
+			Label.strDisplayName = CValtanPatternTree::Describe_EffectResource(
+				FriendlySourceView, Id, SavedName, SourceClips);
+			Label.strSearchText = Id + " " + SavedName + " " + Label.strDisplayName + SavedSearch[Id];
+			const auto Restore = SourceClips.find(Id);
+			if (Restore != SourceClips.end())
+			{
+				Label.strDisplayName += " [Full Restore]";
+				Label.strSearchText += " Full Restore";
+				for (const auto& Clip : Restore->second) Label.strSearchText += " " + Clip.strClipName;
+			}
+			const bool_t bDashLibrary =
+				Id == "effect.valtan.source.fx_mn_rpbf_00_n.par_n_rpbf_dash_01_1" ||
+				Id == "effect.valtan.source.fx_mn_rpbf_00_s.par_s_rpbf_dash_01_1";
+			if (bDashLibrary) Label.strSearchText += " VALTAN_DASH_CHARGE dash-charge";
+			const auto JoinPattern = [&](const VALTAN_PATTERN_VIEW& Pattern)
+			{
+				const bool_t bRestoreMatch = CValtanPatternTree::Matches_FullRestoreSource(
+					Pattern, Id, SourceClips);
+				bool_t bPatternMatches = bRestoreMatch ||
+					(bDashLibrary && Pattern.strPatternId == "VALTAN_DASH_CHARGE");
+				for (const auto& Stage : Pattern.Stages)
+				{
+					const bool_t bCueMatch = std::ranges::any_of(Stage.ProductCues,
+						[&](const auto& Cue) { return Cue.strEffectAssetId == Id || Cue.strV1EffectAssetId == Id; });
+					const bool_t bObjectMatch = std::ranges::any_of(Stage.CombatObjectEffects,
+						[&](const auto& Object) { return Object.strEffectAssetId == Id || Object.strEffectV2GroupId == Id; });
+					const bool_t bClipMatch = bRestoreMatch && Restore != SourceClips.end() &&
+						std::ranges::any_of(Stage.ClipOccurrences, [&](const auto& Clip)
+						{ return std::ranges::any_of(Restore->second, [&](const auto& Source)
+							{ return Source.strClipName == Clip.strClipName; }); });
+					if (!bCueMatch && !bObjectMatch && !bClipMatch) continue;
+					bPatternMatches = true;
+					Label.strSearchText += " " + Stage.strStageId + " " + Stage.strActionId;
+				}
+				if (bPatternMatches)
+				{
+					Label.strSearchText += " " + Pattern.strPatternId + " " + Pattern.strDisplayName;
+					if (Restore != SourceClips.end())
+					{
+						// Cache each source-clip owner label during refresh, never per UI row.
+						VALTAN_PATTERN_TREE_VIEW PatternView;
+						PatternView.Rotation.push_back(Pattern);
+						Label.RestorePatterns.push_back({Pattern.strPatternId, Pattern.strDisplayName,
+							CValtanPatternTree::Describe_EffectResource(PatternView, Id, SavedName, SourceClips) + " [Full Restore]"});
+					}
+				}
+			};
+			for (const auto& Pattern : FriendlySourceView.Gimmicks) JoinPattern(Pattern);
+			for (const auto& Pattern : FriendlySourceView.Rotation) JoinPattern(Pattern);
+			for (const auto& Independent : FriendlySourceView.IndependentEffects)
+				if (Independent.strEffectAssetId == Id)
+					Label.strSearchText += " " + Independent.strDisplayName + " " +
+						Independent.strOwnerPatternId + " " + Independent.strOwnerStageId;
+			Labels.emplace(Id, std::move(Label));
+		}
+		// Display metadata observes the same lock and optional exact Save pin,
+		// but grants no authority to the Product tree or its playback commands.
+		if (!m_strActiveValtanGraphRefreshRevision.empty() &&
+			(nullptr == m_pBalanceTool ||
+			 !m_pBalanceTool->Verify_ValtanCanonicalSourceRevision_WhileAdmitted(
+				CanonicalAdmission, m_strActiveValtanGraphRefreshRevision, FriendlyStatus)))
+			return PreserveLabels(nullptr == m_pBalanceTool ?
+				"Balance revision owner is unavailable." : FriendlyStatus);
+		if (!CanonicalAdmission.Validate_StillCurrent(FriendlyStatus))
+			return PreserveLabels(FriendlyStatus);
+		m_ValtanEffectAuthoringLabels = std::move(Labels);
 		m_ValtanFullRestoreSourceClips = std::move(SourceClips);
-	else
-		m_ValtanFullRestoreSourceClips.clear();
+		m_strValtanFullRestoreSourceStatus = std::move(SourceClipStatus);
+		m_strValtanEffectAuthoringLabelStatus = "Authored Effect names ready: " +
+			std::to_string(m_ValtanEffectAuthoringLabels.size()) + " source resources.";
+		return true;
+	}();
 	if (!CValtanPatternTree::Load_WhileAdmitted(
 			CanonicalAdmission, Staged, Diagnostic))
 	{
@@ -750,28 +870,10 @@ bool_t Client::CEffect_Tool::Refresh_ValtanPatternTree()
 				"Balance revision owner is unavailable." : ExactRevisionStatus);
 		return false;
 	}
-	// Header inventories are read only during refresh, never while drawing a row.
-	std::vector<CEffectAuthoringResourceTree::RESOURCE> FriendlyV1;
-	std::vector<EFFECT_V2_RESOURCE_SUMMARY> FriendlyV2;
-	std::unordered_map<std::string, std::string> FriendlySavedNames;
-	std::string FriendlyStatus;
-	if (CEffectAuthoringResourceTree::Read_V1Inventory(FriendlyV1, FriendlyStatus))
-		for (const auto& Row : FriendlyV1) FriendlySavedNames[Row.strAssetId] = Row.strDisplayName;
-	if (CEffectV2Catalog::Get().Read_Inventory(FriendlyV2, FriendlyStatus))
-		for (const auto& Row : FriendlyV2) FriendlySavedNames[Row.strResourceId] = Row.strDisplayName;
-	// Strict Product includes legacy aliases. Friendly names share Workbench's
-	// source projection, while selection/playback keep the admitted strict tree.
-	VALTAN_PATTERN_TREE_VIEW FriendlySourceView;
-	if (!CValtanPatternTree::Load_Authoring_WhileAdmitted(
-		CanonicalAdmission, FriendlySourceView, FriendlyStatus))
-	{
-		m_strValtanPatternTreeStatus =
-			"Valtan display-name reload preserved the previous tree: " + FriendlyStatus;
-		return false;
-	}
-	CValtanPatternTree::Build_EffectResourceDisplayLabels(
-		FriendlySourceView, FriendlySavedNames, m_ValtanFullRestoreSourceClips);
-	Staged.EffectResourceDisplayLabels = std::move(FriendlySourceView.EffectResourceDisplayLabels);
+	// Reuse the source projection staged above; names do not gate Product admission.
+	Staged.EffectResourceDisplayLabels = bFriendlySourceReady ?
+		std::move(FriendlySourceView.EffectResourceDisplayLabels) :
+		m_ValtanPatternTree.EffectResourceDisplayLabels;
 	const std::string Status = Diagnostic.strStatus;
 	m_ValtanPatternTree = std::move(Staged);
 	m_ValtanToolAuditionInventory = std::move(StagedAuditionInventory);

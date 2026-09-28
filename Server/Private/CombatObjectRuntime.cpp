@@ -363,6 +363,7 @@ bool LostArk::Server::CCombatObjectRuntime::Stage_PlayerProjectile(
 		hit.iStaggerDamage = skill.iStaggerDamage;
 		hit.iPartDamage = skill.iPartDamage;
 		hit.iCounterPower = skill.iCounterPower;
+		hit.bCounterFromPrimarySlot = Is_PrimaryCounterSkill(skill);
 		hit.fPushRangeM = authored.Hit.fPushRange;
 		hit.iPushMs = authored.Hit.iPushMs;
 		for (std::uint32_t repeat = 0u;
@@ -500,6 +501,7 @@ bool LostArk::Server::CCombatObjectRuntime::Stage_BossCombatObject(
 		}
 		object.eSourceKind = SERVER_COMBAT_OBJECT_SOURCE_KIND::WORLD_ENTITY;
 		object.iSourceNetEntityId = boss.iNetEntityId;
+		object.strSourceArchetypeId = boss.bGhostPhasePatternLoopActive && boss.strArchetypeId == "BOSS_VALTAN" ? "BOSS_VALTAN_GHOST" : boss.strArchetypeId;
 		object.iSpawnTick = serverTick;
 		object.strCombatObjectArchetypeId =
 			definition.strCombatObjectArchetypeId;
@@ -667,6 +669,7 @@ bool LostArk::Server::CCombatObjectRuntime::Stage_BossCombatObject(
 		{
 			SERVER_COMBAT_OBJECT_HIT_RUNTIME hit{};
 			hit.strHitId = authored.strHitId;
+			hit.strDamageProfileId = authored.strDamageProfileId;
 			hit.eTrigger =
 				BOSS_COMBAT_OBJECT_HIT_TRIGGER::CONTACT == authored.eTrigger ?
 				SERVER_COMBAT_OBJECT_HIT_TRIGGER::CONTACT :
@@ -702,6 +705,7 @@ bool LostArk::Server::CCombatObjectRuntime::Stage_BossCombatObject(
 		{
 			SERVER_COMBAT_OBJECT_HIT_RUNTIME hit;
 			hit.strHitId = authored.strHitId;
+			hit.strDamageProfileId = authored.strDamageProfileId;
 			hit.eTrigger = authored.strTrigger == "CONTACT" ? SERVER_COMBAT_OBJECT_HIT_TRIGGER::CONTACT : SERVER_COMBAT_OBJECT_HIT_TRIGGER::TIMED;
 			hit.eContactSampling = SERVER_COMBAT_OBJECT_CONTACT_SAMPLING::SWEPT;
 			hit.iAtMs = authored.iAtMs; hit.iEndMs = authored.iEndMs;
@@ -717,6 +721,7 @@ bool LostArk::Server::CCombatObjectRuntime::Stage_BossCombatObject(
 			hit.bInstantDeath = authored.strDamageKind == "INSTANT_DEATH";
 			hit.bIgnoreDefense = authored.strDamageKind != "PROFILE";
 			hit.iDamagePercent = authored.iDamagePercent;
+			hit.strNumericBalanceId = authored.strNumericBalanceId;
 			hit.fRiseHeightM = static_cast<float>(authored.fRiseHeightM);
 			hit.fPushRangeM = static_cast<float>(authored.fPushRangeM);
 			hit.bForcePush = authored.ForcePush.value_or(authored.fRiseHeightM > 0.0);
@@ -1108,6 +1113,7 @@ void LostArk::Server::CCombatObjectRuntime::Update_Objects(
 						incoming.iStaggerDamage = hit.iStaggerDamage;
 						incoming.iPartDamage = hit.iPartDamage;
 						incoming.iCounterPower = hit.iCounterPower;
+						incoming.bCounterFromPrimarySlot = hit.bCounterFromPrimarySlot;
 						incoming.fSourceX =
 							object.LiveState.CurrentPose.fPositionX;
 						incoming.fSourceZ =
@@ -1230,6 +1236,7 @@ void LostArk::Server::CCombatObjectRuntime::Update_Objects(
 						incoming.iStaggerDamage = hit.iStaggerDamage;
 						incoming.iPartDamage = hit.iPartDamage;
 						incoming.iCounterPower = hit.iCounterPower;
+						incoming.bCounterFromPrimarySlot = hit.bCounterFromPrimarySlot;
 						incoming.fSourceX =
 							object.LiveState.CurrentPose.fPositionX;
 						incoming.fSourceZ =
@@ -1456,4 +1463,52 @@ bool LostArk::Server::CCombatObjectRuntime::Build_Snapshots(
 			return left.iCombatObjectId < right.iCombatObjectId;
 		});
 	return outSnapshots.size() <= LostArk::Shared::MAX_COMBAT_OBJECTS_PER_SNAPSHOT;
+}
+
+
+void LostArk::Server::CCombatObjectRuntime::Refresh_NumericBalance(
+    const CGameplayCatalog& previous, const CGameplayCatalog& updated,
+    const std::vector<LostArk::Shared::BALANCE_NUMERIC_ENTRY>& entries) noexcept
+{
+    for (auto& object : m_Objects)
+    {
+        const auto* oldSkill = previous.Find_Skill(object.iSourceSkillId);
+        const auto* newSkill = updated.Find_Skill(object.iSourceSkillId);
+        const auto* boss = updated.Find_Boss(object.strSourceArchetypeId);
+        std::uint32_t oldPlayerDamage = 0u, newPlayerDamage = 0u;
+        if (oldSkill && newSkill)
+        {
+            const auto* oldPlayer = previous.Find_Player(oldSkill->eCharacterClass);
+            const auto* newPlayer = updated.Find_Player(newSkill->eCharacterClass);
+            const auto* oldDamage = previous.Find_DamageProfile(oldSkill->strDamageProfileId);
+            const auto* newDamage = updated.Find_DamageProfile(newSkill->strDamageProfileId);
+            if (oldPlayer && newPlayer && oldDamage && newDamage)
+            {
+                oldPlayerDamage = CGameplayCatalog::Resolve_Damage(oldPlayer->iAttackPower, *oldDamage);
+                newPlayerDamage = CGameplayCatalog::Resolve_Damage(newPlayer->iAttackPower, *newDamage);
+            }
+        }
+        for (auto& hit : object.Hits)
+        {
+            if (newSkill)
+            {
+                hit.iStaggerDamage = newSkill->iStaggerDamage;
+                hit.iPartDamage = newSkill->iPartDamage;
+                if (oldPlayerDamage && newPlayerDamage)
+                    for (auto& damage : hit.RepeatRawDamage)
+                        damage = static_cast<std::uint32_t>((std::min)(static_cast<std::uint64_t>((std::numeric_limits<std::uint32_t>::max)()),
+                            static_cast<std::uint64_t>(damage) * newPlayerDamage / oldPlayerDamage));
+            }
+            else if (boss && !hit.strDamageProfileId.empty())
+            {
+                const auto rate = updated.Find_DamageRatePercent(hit.strDamageProfileId);
+                if (rate) std::fill(hit.RepeatRawDamage.begin(), hit.RepeatRawDamage.end(), CGameplayCatalog::Resolve_Damage(boss->iAttackPower, rate));
+            }
+            if (!hit.strNumericBalanceId.empty())
+                for (const auto& entry : entries)
+                    if (entry.eDomain == LostArk::Shared::BALANCE_DOMAIN::PATTERN_DAMAGE &&
+                        entry.strId == hit.strNumericBalanceId && entry.strField == "maxHpDamagePercent")
+                    { hit.iDamagePercent = static_cast<std::uint32_t>(entry.fValue); break; }
+        }
+    }
 }

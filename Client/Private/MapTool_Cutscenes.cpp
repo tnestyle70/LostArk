@@ -48,6 +48,10 @@ bool_t Client::CMapTool::Build_CutsceneTargets(
 	   Effect requests for this frame. Its newly born V1 world roots therefore
 	   need their scoped post-update commit before the same-frame seek. */
 	outTargets.bCommitWorldRootEffectsAfterSpawn = true;
+	/* Camera Play builds its own target set instead of using the World panel's.
+	   Forward only the live NPC lookup; the editor retains its draft placements. */
+	if (m_bRuntimeAuthoring)
+		outTargets.previewNpc = Runtime_AuthoringTargets().previewNpc;
 	return outTargets.Is_Complete();
 }
 

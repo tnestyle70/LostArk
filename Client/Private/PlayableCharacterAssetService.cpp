@@ -5,6 +5,7 @@
 #include "AssetPreparationBatch.h"
 #include "CharacterCatalog.h"
 #include "CharacterSpec.h"
+#include "EffectFailureDiagnostic.h"
 #include "Effect_Catalog.h"
 #include "BinaryAsset/ModelAssetData.h"
 #include "GameInstance.h"
@@ -12,10 +13,12 @@
 #include "RuntimeAssetRoot.h"
 #include "Profiler.h"
 #include "Prototype.h"
+#include "SquareHoleInstrumentCatalog.h"
 
 #include <array>
 #include <condition_variable>
 #include <exception>
+#include <filesystem>
 #include <stdexcept>
 #include <mutex>
 #include <unordered_map>
@@ -271,9 +274,16 @@ HRESULT Client::CPlayableCharacterAssetService::Prepare_Models(
 		MODEL_ASSET_LOAD_DESC Description;
 		float4x4_t Transform{};
 		bool AnimationSet = false;
+		bool Optional = false;
 	};
+	/* Water-gun clips exist only for Maharaka Waterpang and are delivered outside
+	   Git. Other levels never read them; in Maharaka a missing or unloadable set
+	   is skipped so the class still loads and only arming stays unavailable. */
+	const bool loadWaterGunSets = ETOUI(LEVEL::MAHARAKA) == iLevelIndex;
+	std::vector<std::string> skippedWaterGunSets;
 	const size_t prototypeCount = 1u + pTags->iEquipmentCount + pTags->iWeaponCount;
-	const size_t totalModelCount = prototypeCount + pActor->animationSetModels.size();
+	size_t totalModelCount = prototypeCount + pActor->animationSetModels.size() +
+		(loadWaterGunSets ? pActor->waterGunAnimationSetModels.size() : 0u);
 	std::vector<MODEL_PREPARATION> tasks;
 	tasks.reserve(totalModelCount);
 	const auto captureModel = [&](const tchar_t* tag, const std::string& assetId,
@@ -314,6 +324,23 @@ HRESULT Client::CPlayableCharacterAssetService::Prepare_Models(
 	for (const auto& animationSet : pActor->animationSetModels)
 		if (!captureModel(nullptr, animationSet, MODEL::ANIM, characterTransform, true))
 			return Is_Cancelled(pCancellationRequested) ? HRESULT_FROM_WIN32(ERROR_CANCELLED) : E_FAIL;
+	if (loadWaterGunSets)
+	{
+		for (const auto& animationSet : pActor->waterGunAnimationSetModels)
+		{
+			std::error_code error;
+			const auto path = CRuntimeAssetRoot::Resolve(animationSet);
+			if (path.empty() || !std::filesystem::is_regular_file(path, error))
+			{
+				skippedWaterGunSets.push_back(animationSet + " reason=missing");
+				continue;
+			}
+			if (!captureModel(nullptr, animationSet, MODEL::ANIM, characterTransform, true))
+				return Is_Cancelled(pCancellationRequested) ? HRESULT_FROM_WIN32(ERROR_CANCELLED) : E_FAIL;
+			tasks.back().Optional = true;
+		}
+	}
+	totalModelCount = tasks.size() + pTags->iEquipmentCount + pTags->iWeaponCount;
 	const size_t equipmentBegin = tasks.size();
 	for (size_t index = 0u; index < pTags->iEquipmentCount; ++index)
 		if (!captureModel(pTags->Equipment[index], pActor->equipmentModels[index],
@@ -339,7 +366,8 @@ HRESULT Client::CPlayableCharacterAssetService::Prepare_Models(
 			CModel::Create(pDevice, pContext, task.Type,
 				task.Description.meshPath.string().c_str(), transform) :
 			CModel::Create(pDevice, pContext, task.Type, task.Description, transform);
-		if (!model) return E_FAIL;
+		// An optional water-gun set that fails to load leaves its slot empty.
+		if (!model) return task.Optional ? S_OK : E_FAIL;
 		models[index] = std::move(model);
 		if (Is_Cancelled(pCancellationRequested)) return HRESULT_FROM_WIN32(ERROR_CANCELLED);
 		std::scoped_lock lock{progressMutex};
@@ -357,15 +385,54 @@ HRESULT Client::CPlayableCharacterAssetService::Prepare_Models(
 	}
 	if (Is_Cancelled(pCancellationRequested)) return HRESULT_FROM_WIN32(ERROR_CANCELLED);
 
+	/* The Square Hole instrument is a prop, so it is prepared beside the class but outside the
+	batch above: a file that is absent or will not decode costs the class its instrument, never
+	its admission. */
+	unique_ptr<CModel> instrumentModel;
+	if (const auto instrument = CSquareHoleInstrumentCatalog::Find(characterClass))
+	{
+		Engine::MODEL_ASSET_LOAD_DESC instrumentDesc;
+		instrumentDesc.assetRoot = CRuntimeAssetRoot::Get_ResourceRoot();
+		instrumentDesc.meshPath = CRuntimeAssetRoot::Resolve(instrument->strModelAssetId);
+		std::error_code fileError;
+		if (!instrumentDesc.assetRoot.empty() && !instrumentDesc.meshPath.empty() &&
+			std::filesystem::is_regular_file(instrumentDesc.meshPath, fileError) && !fileError)
+		{
+			instrumentModel = CModel::Create(pDevice, pContext, MODEL::NONANIM, instrumentDesc, XMMatrixIdentity());
+			if (!instrumentModel)
+				OutputDebugStringA(("[PlayableCharacterAssetService] Instrument model did not decode: " +
+					instrument->strModelAssetId + "\n").c_str());
+		}
+		else
+		{
+			OutputDebugStringA(("[PlayableCharacterAssetService] Instrument model is absent: " +
+				instrument->strModelAssetId + "\n").c_str());
+		}
+	}
+	if (Is_Cancelled(pCancellationRequested)) return HRESULT_FROM_WIN32(ERROR_CANCELLED);
+
 	// Cross-model mutation begins only after every independent load joined.
 	// Keep authored animation order and reject hash/clip collisions as before.
 	CModel* pBodyPalette = models.front().get();
 	for (size_t index = 1u; index < equipmentBegin; ++index)
 	{
 		if (Is_Cancelled(pCancellationRequested)) return HRESULT_FROM_WIN32(ERROR_CANCELLED);
-		if (FAILED(pBodyPalette->Attach_AnimationSet(*models[index]))) return E_FAIL;
+		if (tasks[index].Optional && !models[index])
+		{
+			skippedWaterGunSets.push_back(tasks[index].AssetId + " reason=load-failed");
+			continue;
+		}
+		// Attach validates the skeleton and clip names before it changes the body.
+		if (FAILED(pBodyPalette->Attach_AnimationSet(*models[index])))
+		{
+			if (!tasks[index].Optional) return E_FAIL;
+			skippedWaterGunSets.push_back(tasks[index].AssetId + " reason=attach-failed");
+		}
 		models[index].reset();
 	}
+	for (const auto& skipped : skippedWaterGunSets)
+		Write_EffectFailureDiagnostic("maharaka.watergun",
+			"kind=animset-skipped class=" + pActor->assetId + " set=" + skipped);
 	std::string authoredClipStatus;
 	if (!CBoneAnimationDocument::Load_IntoModel(*pBodyPalette, pActor->assetId, authoredClipStatus))
 		OutputDebugStringA(("[AuthoredAnimation] " + authoredClipStatus + "\n").c_str());
@@ -407,14 +474,18 @@ HRESULT Client::CPlayableCharacterAssetService::Prepare_Models(
 			}
 		}
 	}
-	staged.reserve(prototypeCount);
+	staged.reserve(prototypeCount + 1u);
 	for (size_t index = 0u; index < tasks.size(); ++index)
 		if (!tasks[index].AnimationSet)
 			staged.emplace_back(tasks[index].Tag, std::move(models[index]));
+	const bool hasInstrument = nullptr != instrumentModel;
+	if (hasInstrument)
+		staged.emplace_back(CSquareHoleInstrumentCatalog::Get_ModelTag(characterClass), std::move(instrumentModel));
 
 	if (Is_Cancelled(pCancellationRequested)) return HRESULT_FROM_WIN32(ERROR_CANCELLED);
 	Engine::CProfilerScope authoringScope(CGameInstance::Get().Get_Profiler(), "CharacterAssets.Authoring.Prepare");
 	auto documents = std::make_shared<PREPARED_PRESENTATION>();
+	documents->HasSquareHoleInstrument = hasInstrument;
 	std::vector<std::string> clips;
 	clips.reserve(pBodyPalette->Get_NumAnimations());
 	for (uint32_t index = 0u; index < pBodyPalette->Get_NumAnimations(); ++index)

@@ -51,8 +51,61 @@ class ValtanHitPresentationAlignmentTests(unittest.TestCase):
         self.assertGreater(stats["stageHitPoints"], stats["soundAlignedPoints"])
         self.assertGreater(stats["soundTrackExceptions"], 0)
         self.assertGreater(stats["externalBindings"], 0)
-        self.assertEqual(stats["combatObjectHits"], stats["combatObjectSoundCues"])
+        self.assertEqual(stats["combatObjectHits"], stats["combatObjectSoundCues"] +
+                         stats["combatObjectPatternSoundAliases"])
         self.assertGreater(stats["combatV2Contracts"], 0)
+        self.assertEqual(2, stats["effectTimingOverrides"])
+
+    def test_exact_effect_timing_override_rejects_binding_drift_and_duplicates(self) -> None:
+        target_id = "binding.valtan.project-tuned.triple-counter.003.smash-03"
+        for change in ("identity", "scope", "time", "anchor", "resource", "duplicate"):
+            bindings = copy.deepcopy(self.bindings)
+            row = next(row for row in bindings["bindings"] if row["bindingId"] == target_id)
+            if change == "identity":
+                row["bindingId"] += ".changed"
+            elif change == "scope":
+                row["scope"]["stageId"] = "FAIL_2"
+            elif change == "time":
+                row["clock"]["startMs"] += 1
+            elif change == "anchor":
+                row["anchor"]["slotId"] = "root"
+            elif change == "resource":
+                row["resource"]["id"] = "boss.valtan.shout"
+            else:
+                duplicate = copy.deepcopy(row)
+                duplicate["bindingId"] += ".duplicate"
+                bindings["bindings"].append(duplicate)
+            with self.subTest(change=change), self.assertRaisesRegex(
+                    validator.ContractError, "exact effect timing override binding mismatch"):
+                self.validate(bindings=bindings)
+
+    def test_exact_effect_timing_override_rejects_wrong_owner_and_stale_receipt(self) -> None:
+        for change in ("owner", "clip", "template", "time", "waiver", "missing"):
+            templates = copy.deepcopy(self.clip_templates)
+            row = next(row for row in templates["allowlist"] if "effectTimingOverride" in row)
+            if change == "owner":
+                row["stageId"] = "FAIL_2"
+            elif change == "clip":
+                row["clipOccurrenceId"] = "valtan.fixture.unknown"
+            elif change == "template":
+                row["effectTimingOverride"]["templateEffect"]["clipMs"] += 1
+            elif change == "time":
+                row["effectTimingOverride"]["stageStartMs"] += 1
+            elif change == "waiver":
+                row["waivers"] = ["EFFECT"]
+            else:
+                templates["allowlist"].remove(row)
+            with self.subTest(change=change), self.assertRaises(validator.ContractError):
+                self.validate(clip_templates=templates)
+
+    def test_effect_timing_override_still_requires_original_gameplay_hit(self) -> None:
+        for offsets in ([1169], [950]):
+            gameplay = copy.deepcopy(self.gameplay)
+            stage = self.stage(gameplay, "VALTAN_TRIPLE_COUNTER", "FAIL_3")
+            stage["hit"]["schedule"]["offsetsMs"] = offsets
+            with self.subTest(offsets=offsets), self.assertRaisesRegex(
+                    validator.ContractError, "effect timing override lost its template hit"):
+                self.validate(gameplay=gameplay)
 
     def test_stagger_slot_wipe_effect_is_bound_to_damage_clock(self) -> None:
         binding_ids = {
@@ -162,7 +215,9 @@ class ValtanHitPresentationAlignmentTests(unittest.TestCase):
     def test_reviewed_receipts_preserve_shared_attack_roles(self) -> None:
         stats = self.validate()
         self.assertEqual(1, stats["presentationOnlyBindings"])
-        self.assertEqual(4, stats["authoredSoundExceptions"])
+        self.assertEqual(sum(row["rule"] == "PROJECT_AUTHORED_SOUND_TIMING"
+                             for row in self.allowlist["exceptions"]),
+                         stats["authoredSoundExceptions"])
         roles = {row["id"]: row for row in self.roles["resources"]}
         self.assertEqual("ATTACK", roles["boss.valtan.shout.burst"]["role"])
         self.assertEqual("CLIP_TEMPLATE", roles["boss.valtan.shout.burst"]["alignmentPolicy"])

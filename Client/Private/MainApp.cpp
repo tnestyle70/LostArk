@@ -39,6 +39,7 @@
 #include "LevelTransitionService.h"
 #include "Level_Bern.h"
 #include "Level_Development.h"
+#include "Gameplay/MaharakaWaterpangContract.h"
 #include "Level_Lobby.h"
 #include "ActionPresentationTimeline.h"
 #include "Level_CharacterSelect.h"
@@ -76,6 +77,7 @@
 #include "Network/PacketMessages.h"
 #include "InventoryView.h"
 #include "RepairWindowView.h"
+#include "ShopWindowView.h"
 #include "DurabilityHudView.h"
 #include "QuickSlotDragView.h"
 #include "SkillWindowView.h"
@@ -241,6 +243,18 @@ namespace
         CEffect_Tool::CLASS_MOVIE_CALLBACKS movieCallbacks;
         movieCallbacks.state = [](const std::string& classId) {
             CEffect_Tool::CLASS_MOVIE_STATE state;
+            if (classId == "valtan.entrance")
+            {
+                auto* arena = CLevel_ValtanArena::Get_Active();
+                if (!arena || CGameInstance::Get().Get_CurrentLevelID() != ETOUI(LEVEL::VALTAN_ARENA))
+                { state.status = "Enter Valtan Arena to inspect the entrance scene."; return state; }
+                const auto& preview = arena->Debug_GetEffectCinematicState();
+                state.available = preview.available; state.active = preview.active; state.paused = preview.paused;
+                state.clockMs = preview.clockMs; state.durationMs = preview.durationMs; state.playbackRate = preview.playbackRate;
+                state.selectionActive = preview.selectionActive; state.selectionRepeat = preview.selectionRepeat;
+                state.status = preview.status;
+                return state;
+            }
             auto* level = CLevel_CharacterSelect::Get_Active();
             if (!level || CGameInstance::Get().Get_CurrentLevelID() != ETOUI(LEVEL::CHARACTER_SELECT))
             { state.status = "Enter Character Select to edit this Movie."; return state; }
@@ -256,11 +270,24 @@ namespace
             return state;
         };
         movieCallbacks.timeline = [](const std::string& classId, bool loop) -> std::shared_ptr<const CLASS_MOVIE_TIMELINE> {
+            if (classId == "valtan.entrance")
+            {
+                auto* arena = CLevel_ValtanArena::Get_Active();
+                return arena && !loop && CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::VALTAN_ARENA) ?
+                    arena->Debug_GetEffectCinematicTimeline() : nullptr;
+            }
             auto* level = CLevel_CharacterSelect::Get_Active();
             return level && CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::CHARACTER_SELECT) ?
                 level->Get_ClassSelectionPresentation().Get_Timeline(classId, loop) : nullptr;
         };
         movieCallbacks.play = [](const std::string& classId, std::string& status) {
+            if (classId == "valtan.entrance")
+            {
+                auto* arena = CLevel_ValtanArena::Get_Active();
+                if (!arena || CGameInstance::Get().Get_CurrentLevelID() != ETOUI(LEVEL::VALTAN_ARENA))
+                { status = "Enter Valtan Arena to play the entrance scene."; return false; }
+                return arena->Debug_PlayEffectCinematic(status);
+            }
             auto* level = CLevel_CharacterSelect::Get_Active();
             if (!level || CGameInstance::Get().Get_CurrentLevelID() != ETOUI(LEVEL::CHARACTER_SELECT))
             { status = "Enter Character Select to play this Movie."; return false; }
@@ -272,6 +299,13 @@ namespace
             return played;
         };
         movieCallbacks.seek = [](const std::string& classId, bool loop, double timeMs, std::string& status) {
+            if (classId == "valtan.entrance")
+            {
+                auto* arena = CLevel_ValtanArena::Get_Active();
+                if (!arena || loop || CGameInstance::Get().Get_CurrentLevelID() != ETOUI(LEVEL::VALTAN_ARENA))
+                { status = "Enter Valtan Arena to scrub the entrance scene."; return false; }
+                return arena->Debug_SeekEffectCinematic(timeMs, status);
+            }
             auto* level = CLevel_CharacterSelect::Get_Active();
             if (!level || CGameInstance::Get().Get_CurrentLevelID() != ETOUI(LEVEL::CHARACTER_SELECT) || !level->Can_PlayClassCinematic())
             { status = "Wait for Character Select admission and close other character previews."; return false; }
@@ -289,12 +323,21 @@ namespace
             return sampled;
         };
         movieCallbacks.pause = [](bool paused) {
+            if (auto* arena = CLevel_ValtanArena::Get_Active(); arena &&
+                CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::VALTAN_ARENA))
+            { arena->Debug_PauseEffectCinematic(paused); return; }
             if (auto* level = CLevel_CharacterSelect::Get_Active()) level->Get_ClassSelectionPresentation().Set_Paused(paused);
         };
         movieCallbacks.stop = [] {
+            if (auto* arena = CLevel_ValtanArena::Get_Active(); arena &&
+                CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::VALTAN_ARENA))
+            { arena->Debug_StopEffectCinematic(); return; }
             if (auto* level = CLevel_CharacterSelect::Get_Active()) level->Get_ClassSelectionPresentation().Stop();
         };
         movieCallbacks.preview = [](const EFFECT_DOCUMENT_DESC& document, std::string& status) {
+            if (auto* arena = CLevel_ValtanArena::Get_Active(); arena &&
+                CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::VALTAN_ARENA))
+                return arena->Debug_PreviewCinematicEffect(document, status);
             auto* level = CLevel_CharacterSelect::Get_Active();
             if (!level || CGameInstance::Get().Get_CurrentLevelID() != ETOUI(LEVEL::CHARACTER_SELECT))
             { status = "Movie Effect preview requires Character Select."; return false; }
@@ -303,6 +346,13 @@ namespace
         movieCallbacks.playSelection = [](const std::string& classId, bool loop,
             const EFFECT_DOCUMENT_DESC& full, const EFFECT_DOCUMENT_DESC& selected,
             const std::vector<std::string>& drawElementIds, double startAgeMs, double endAgeMs, bool repeat, std::string& status) {
+            if (classId == "valtan.entrance")
+            {
+                auto* arena = CLevel_ValtanArena::Get_Active();
+                if (!arena || loop || CGameInstance::Get().Get_CurrentLevelID() != ETOUI(LEVEL::VALTAN_ARENA))
+                { status = "Enter Valtan Arena to play entrance Elements."; return false; }
+                return arena->Debug_PlayCinematicEffectSelection(full, selected, drawElementIds, startAgeMs, endAgeMs, repeat, status);
+            }
             auto* level = CLevel_CharacterSelect::Get_Active();
             if (!level || CGameInstance::Get().Get_CurrentLevelID() != ETOUI(LEVEL::CHARACTER_SELECT))
             { status = "Enter Character Select to play Movie elements."; return false; }
@@ -314,17 +364,33 @@ namespace
         };
         movieCallbacks.previewSelection = [](const EFFECT_DOCUMENT_DESC& full,
             const EFFECT_DOCUMENT_DESC& selected, const std::vector<std::string>& drawElementIds, double startAgeMs, double endAgeMs, std::string& status) {
+            if (auto* arena = CLevel_ValtanArena::Get_Active(); arena &&
+                CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::VALTAN_ARENA))
+                return arena->Debug_PreviewCinematicEffectSelection(full, selected, drawElementIds, startAgeMs, endAgeMs, status);
             auto* level = CLevel_CharacterSelect::Get_Active();
             if (!level || CGameInstance::Get().Get_CurrentLevelID() != ETOUI(LEVEL::CHARACTER_SELECT))
             { status = "Movie Effect preview requires Character Select."; return false; }
             return level->Get_ClassSelectionPresentation().Preview_EffectSelection(full, selected, drawElementIds, startAgeMs, endAgeMs, status);
         };
+        movieCallbacks.selectEffectOccurrence = [](const std::string& trackId, std::string& status) {
+            if (auto* arena = CLevel_ValtanArena::Get_Active(); arena &&
+                CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::VALTAN_ARENA))
+                return arena->Debug_SelectCinematicEffectOccurrence(trackId, status);
+            status = "Effect occurrence selection requires the Valtan entrance editor.";
+            return false;
+        };
         movieCallbacks.setPlaybackRate = [](double rate) {
+            if (auto* arena = CLevel_ValtanArena::Get_Active(); arena &&
+                CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::VALTAN_ARENA))
+                return arena->Debug_SetEffectCinematicPlaybackRate(rate);
             auto* level = CLevel_CharacterSelect::Get_Active();
             return level && CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::CHARACTER_SELECT) &&
                 level->Get_ClassSelectionPresentation().Set_PlaybackRate(rate);
         };
         movieCallbacks.clearPreviews = [](std::string& status) {
+            if (auto* arena = CLevel_ValtanArena::Get_Active(); arena &&
+                CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::VALTAN_ARENA))
+                return arena->Debug_ClearCinematicEffectPreviews(status);
             auto* level = CLevel_CharacterSelect::Get_Active();
             return !level || CGameInstance::Get().Get_CurrentLevelID() != ETOUI(LEVEL::CHARACTER_SELECT) ||
                 level->Get_ClassSelectionPresentation().Clear_EffectPreviews(status);
@@ -635,6 +701,12 @@ void CMainApp::Open_RepairWindow()
 		m_pRepairWindowView->Open();
 }
 
+void CMainApp::Open_ShopWindow(const string& strNpcPlacementId)
+{
+	if (nullptr != m_pShopWindowView)
+		m_pShopWindowView->Open(strNpcPlacementId);
+}
+
 void CMainApp::Open_ItemUpgradeWindow()
 {
 	if (nullptr == m_pItemUpgradeView || m_bItemUpgradePreviewVisible)
@@ -745,7 +817,8 @@ void CMainApp::Update_CustomizingSceneProfile()
 		"scene.character-select.customizing-dark.v1";
 	auto* characterSelect = CLevel_CharacterSelect::Get_Active();
 	const bool_t wantsDarkStage =
-		nullptr != characterSelect && characterSelect->Is_CustomizingOpen();
+		nullptr != characterSelect &&
+		(characterSelect->Is_CustomizingOpen() || characterSelect->Is_ClassShowcaseOpen());
 	const bool_t holdsDarkStage = !m_strSceneProfileBeforeCustomizing.empty();
 	if (wantsDarkStage == holdsDarkStage)
 		return;
@@ -1211,6 +1284,7 @@ HRESULT CMainApp::Initialize()
 	future real re-introduction. */
 	m_pInventoryView = std::make_unique<CInventoryView>(m_pDevice, m_pContext);
 	m_pRepairWindowView = std::make_unique<CRepairWindowView>(m_pDevice, m_pContext);
+	m_pShopWindowView = std::make_unique<CShopWindowView>(m_pDevice, m_pContext);
 	m_pDurabilityHudView = std::make_unique<CDurabilityHudView>(m_pDevice, m_pContext);
 	m_pChatWindowView = std::make_unique<CChatWindowView>(m_pDevice, m_pContext);
 	m_pPartyWindowView = std::make_unique<CPartyWindowView>(m_pDevice, m_pContext);
@@ -1851,21 +1925,26 @@ void CMainApp::UpdateKoukuGateCompletePlay()
 }
 
 
-void CMainApp::Sync_KoukuCinematicUI()
+void CMainApp::Sync_CinematicUI()
 {
 	auto* arena = CLevel_KakulSaydonArena::Get_Active();
 	// Composition camera sampling follows Engine.Late_Update; refresh the
 	// character owner before queued body/equipment/shadow draws consume it.
 	if (arena) arena->Sync_CinematicPlayerVisibility();
-	const bool_t suppressed = arena &&
-		CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::KAKULSAYDON_ARENA) &&
-		arena->Is_CinematicPresentationActive();
+	const uint32_t currentLevel = CGameInstance::Get().Get_CurrentLevelID();
+	const auto* valtanArena = CLevel_ValtanArena::Get_Active();
+	const bool_t suppressed =
+		(arena && currentLevel == ETOUI(LEVEL::KAKULSAYDON_ARENA) &&
+		 arena->Is_CinematicPresentationActive()) ||
+		(valtanArena && currentLevel == ETOUI(LEVEL::VALTAN_ARENA) &&
+		 valtanArena->Is_CinematicHUDSuppressed());
 	auto& router = CUIInputRouter::Get();
 	if (suppressed && !router.Is_CinematicSuppressed())
 	{
 		// Release may arrive while updates are hidden; no gesture may commit after the cutscene.
 		if (m_pInventoryView) m_pInventoryView->Cancel_Interaction();
 		if (m_pRepairWindowView) m_pRepairWindowView->Cancel_Interaction();
+		if (m_pShopWindowView) m_pShopWindowView->Cancel_Interaction();
 		if (m_pCharacterInfoView) m_pCharacterInfoView->Cancel_Interaction();
 		if (m_pAvatarBookView) m_pAvatarBookView->Cancel_Interaction();
 		if (m_pVehicleWindowView) m_pVehicleWindowView->Cancel_Interaction();
@@ -1896,7 +1975,7 @@ void CMainApp::Update(const f32_t fTimeDelta)
 	applies the gameplay-mouse block for anything that claimed the mouse this frame. */
 	CUIInputRouter::Get().Begin_Frame();
 	CUITextOcclusion::Get().Begin_Frame();
-	Sync_KoukuCinematicUI();
+	Sync_CinematicUI();
 	UpdateProfilerRuntime();
 
 	UpdateDebugToolShortcut();
@@ -3642,15 +3721,33 @@ void CMainApp::Update(const f32_t fTimeDelta)
     if(!(selectedCharacter&&selectedCharacter->Get_PresentationDirectionalControl(controlsBrightness,controlsColor)) && localCharacter)
         localCharacter->Get_PresentationDirectionalControl(controlsBrightness,controlsColor);
     vehicleBrightness=std::clamp(vehicleBrightness*controlsBrightness,0.f,16.f);
+    /* The Lobby's authored scene light is black: it draws no world. While the character-select
+    window stands the roster up, its portraits borrow the creation screen's key light
+    (scene.character-select.customizing-dark.v1 colours), aimed at the characters' faces.
+    It is a per-frame presentation override, so the authored Lobby profile is never touched. */
+    LIGHT_DESC characterSelectLight{};
+    const bool_t characterSelectLit = nullptr != m_pCharacterSelectWindowView &&
+        m_pCharacterSelectWindowView->Is_Open() &&
+        CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::LOBBY);
+    if (characterSelectLit)
+    {
+        characterSelectLight.eType = LIGHT::DIRECTIONAL;
+        XMStoreFloat4(&characterSelectLight.vDirection,
+            XMVector3Normalize(XMVectorSet(-0.35f, -0.6f, -0.72f, 0.f)));
+        characterSelectLight.vDiffuse = float4_t(1.3f, 1.3f, 1.35f, 1.f);
+        characterSelectLight.vAmbient = float4_t(0.53f, 0.53f, 0.55f, 1.f);
+        characterSelectLight.vSpecular = float4_t(0.f, 0.f, 0.f, 1.f);
+    }
     if (!m_RenderingProfiles.Apply_CameraEnvironment(fTimeDelta, environmentStatus,
-        koukuCinematic || valtanCinematic || marioStage || nullptr != pShipFog, nullptr,
+        koukuCinematic || valtanCinematic || marioStage || nullptr != pShipFog,
+        characterSelectLit ? &characterSelectLight : nullptr,
         vehicleBrightness, &controlsColor, shipFogThinned ? &shipFogTuning : nullptr))
         OutputDebugStringA((environmentStatus + "\n").c_str());
 	}
 
 	/* Every shown runtime surface now declares where it covers the screen and on which layer,
 	so each text group can be hidden exactly where a surface above it covers it. */
-	Sync_KoukuCinematicUI();
+	Sync_CinematicUI();
 	Update_WorldHealthBars(fTimeDelta);
 	if (!CUIInputRouter::Get().Is_CinematicSuppressed()) Register_UITextOccluders();
 }
@@ -3664,6 +3761,8 @@ void CMainApp::Register_UITextOccluders()
 		Occlusion.Add_Occluder(UI_TEXT_LAYER::WINDOW_INVENTORY, fX, fY, fWidth, fHeight);
 	if (nullptr != m_pRepairWindowView && m_pRepairWindowView->Get_ScreenRect(fX, fY, fWidth, fHeight))
 		Occlusion.Add_Occluder(UI_TEXT_LAYER::WINDOW_REPAIR, fX, fY, fWidth, fHeight);
+	if (nullptr != m_pShopWindowView && m_pShopWindowView->Get_ScreenRect(fX, fY, fWidth, fHeight))
+		Occlusion.Add_Occluder(UI_TEXT_LAYER::WINDOW_SHOP, fX, fY, fWidth, fHeight);
 	if (nullptr != m_pCharacterInfoView && m_pCharacterInfoView->Get_ScreenRect(fX, fY, fWidth, fHeight))
 		Occlusion.Add_Occluder(UI_TEXT_LAYER::WINDOW_CHARACTER_INFO, fX, fY, fWidth, fHeight);
 	if (nullptr != m_pAvatarBookView && m_pAvatarBookView->Get_ScreenRect(fX, fY, fWidth, fHeight))
@@ -3707,7 +3806,7 @@ HRESULT CMainApp::Render()
         }
         catch (...) { } // Preserve the original rendering failure and transport state.
     };
-	Sync_KoukuCinematicUI();
+	Sync_CinematicUI();
 	float4_t clearColor = { 0.008f, 0.012f, 0.025f, 1.f };
 	HRESULT hBeginResult;
 	{
@@ -3733,6 +3832,9 @@ HRESULT CMainApp::Render()
 		(void)m_pCharacterInfoView->Render_Portrait();
 	if (nullptr != m_pAvatarBookView)
 		(void)m_pAvatarBookView->Render_Portrait();
+	if (nullptr != m_pCharacterSelectWindowView &&
+		CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::LOBBY))
+		m_pCharacterSelectWindowView->Render_Portraits();
 	if (auto* pArena = CLevel_KakulSaydonArena::Get_Active();
 		nullptr != pArena &&
 		CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::KAKULSAYDON_ARENA))
@@ -4280,6 +4382,11 @@ HRESULT CMainApp::Render()
 			m_pRepairWindowView->Render_Text();
 	}
 	{
+		CUITextLayerScope WindowText(UI_TEXT_LAYER::WINDOW_SHOP);
+		if (nullptr != m_pShopWindowView)
+			m_pShopWindowView->Render_Text();
+	}
+	{
 		CUITextLayerScope HudText(UI_TEXT_LAYER::HUD);
 		RenderLobbyButtonText();
 		RenderCharacterSelectWindowText();
@@ -4307,6 +4414,12 @@ HRESULT CMainApp::Render()
 			{
 				CUITextLayerScope HudText(UI_TEXT_LAYER::HUD);
 				pCharacterSelect->Render_ArenaSpawnLabels();
+			}
+			/* Preview-step buttons and the trial banner: the class is on show then, which is
+			exactly when the gate above is closed. */
+			{
+				CUITextLayerScope HudText(UI_TEXT_LAYER::HUD);
+				pCharacterSelect->Render_BrowseLabels();
 			}
 			/* Outside that gate: the nickname step opens from the customizing screen, so the
 			gate that hides the spawn captions would take every glyph of this modal with it. */
@@ -4471,6 +4584,8 @@ void CMainApp::Update_CombatHUD(const f32_t fTimeDelta)
 			m_pInventoryView->Hide();
 		if (nullptr != m_pRepairWindowView)
 			m_pRepairWindowView->Hide();
+		if (nullptr != m_pShopWindowView)
+			m_pShopWindowView->Hide();
 		if (nullptr != m_pDurabilityHudView)
 			m_pDurabilityHudView->Hide();
 		if (nullptr != m_pCharacterInfoView)
@@ -4869,6 +4984,16 @@ void CMainApp::Update_CombatHUD(const f32_t fTimeDelta)
 			consumed here so the button cannot latch, and this is the single place the later
 			vertical slice hooks the typed command into. */
 		}
+	}
+	if (nullptr != m_pShopWindowView)
+	{
+		m_pShopWindowView->Update();
+		/* The Server prices and applies the basket; its inventory answer updates the purse. */
+		string strShopNpcId;
+		vector<LostArk::Shared::SHOP_BASKET_ENTRY> BasketEntries;
+		if (m_pShopWindowView->Try_Consume_BuyRequest(strShopNpcId, BasketEntries))
+			(void)CNetworkManager::Get().Send_BuyItems(
+				m_iNextUseItemSequence++, strShopNpcId, BasketEntries);
 	}
 	/* Part of the combat HUD: shown for as long as this function runs, which is already gated
 	on a valid player in a supported Level. Every part reads NORMAL until a Server message
@@ -5981,6 +6106,7 @@ void CMainApp::Close_RuntimeWindowsForLoading()
 	if (nullptr != m_pCharacterSelectWindowView) m_pCharacterSelectWindowView->Close();
 	if (nullptr != m_pInventoryView) m_pInventoryView->Close();
 	if (nullptr != m_pRepairWindowView) m_pRepairWindowView->Close();
+	if (nullptr != m_pShopWindowView) m_pShopWindowView->Close();
 	if (nullptr != m_pCharacterInfoView) m_pCharacterInfoView->Close();
 	if (nullptr != m_pAvatarBookView) m_pAvatarBookView->Close();
 	if (nullptr != m_pVehicleWindowView) m_pVehicleWindowView->Close();
@@ -6003,6 +6129,7 @@ bool_t CMainApp::Is_AnyRuntimeWindowOpen() const
 	const bool_t bOpen =
 		(nullptr != m_pInventoryView && m_pInventoryView->Is_Open()) ||
 		(nullptr != m_pRepairWindowView && m_pRepairWindowView->Is_Open()) ||
+		(nullptr != m_pShopWindowView && m_pShopWindowView->Is_Open()) ||
 		(nullptr != m_pCharacterInfoView && m_pCharacterInfoView->Is_Open()) ||
 		(nullptr != m_pAvatarBookView && m_pAvatarBookView->Is_Open()) ||
 		(nullptr != m_pVehicleWindowView && m_pVehicleWindowView->Is_Open()) ||
@@ -6021,6 +6148,7 @@ bool_t CMainApp::Is_EscapeWindowOpen(const ESCAPE_WINDOW eWindow) const
 	{
 	case ESCAPE_WINDOW::INVENTORY: return nullptr != m_pInventoryView && m_pInventoryView->Is_Open();
 	case ESCAPE_WINDOW::REPAIR: return nullptr != m_pRepairWindowView && m_pRepairWindowView->Is_Open();
+	case ESCAPE_WINDOW::SHOP: return nullptr != m_pShopWindowView && m_pShopWindowView->Is_Open();
 	case ESCAPE_WINDOW::CHARACTER_INFO: return nullptr != m_pCharacterInfoView && m_pCharacterInfoView->Is_Open();
 	case ESCAPE_WINDOW::AVATAR_BOOK: return nullptr != m_pAvatarBookView && m_pAvatarBookView->Is_Open();
 	case ESCAPE_WINDOW::HONOR_TITLE: return nullptr != m_pHonorTitleWindowView && m_pHonorTitleWindowView->Is_Open();
@@ -6064,6 +6192,7 @@ bool_t CMainApp::Close_TopEscapeWindow()
 	{
 	case ESCAPE_WINDOW::INVENTORY: m_pInventoryView->Close(); break;
 	case ESCAPE_WINDOW::REPAIR: m_pRepairWindowView->Close(); break;
+	case ESCAPE_WINDOW::SHOP: m_pShopWindowView->Close(); break;
 	case ESCAPE_WINDOW::CHARACTER_INFO: m_pCharacterInfoView->Close(); break;
 	case ESCAPE_WINDOW::AVATAR_BOOK: m_pAvatarBookView->Close(); break;
 	case ESCAPE_WINDOW::HONOR_TITLE: m_pHonorTitleWindowView->Close(); break;
@@ -6183,13 +6312,34 @@ void CMainApp::Update_CharacterSelectWindow(const f32_t fTimeDelta)
 		LEVEL::STATIC. */
 		if (m_pCharacterSelectWindowView->Is_Open())
 			m_pCharacterSelectWindowView->Close();
+		m_pCharacterSelectWindowView->Release_Stage();
 		return;
 	}
 
-	m_pCharacterSelectWindowView->Update(fTimeDelta);
+	/* The options window opens over this one from its own icon; while it is up this window
+	keeps drawing but leaves the pointer and Escape to it. */
+	m_pCharacterSelectWindowView->Update(fTimeDelta,
+		nullptr != m_pSystemOptionView && m_pSystemOptionView->Is_Open());
 
 	switch (m_pCharacterSelectWindowView->Consume_Intent())
 	{
+	case CCharacterSelectWindowView::INTENT::START_CHARACTER:
+	{
+		/* The same identity path Character Select's Create Character confirm uses: stage the
+		card's class and nickname as the pending creation, then ask the Server for Bern. The
+		Lobby commits it once Bern is entered and cancels it if the entry fails. */
+		LostArk::Shared::CHARACTER_CLASS_ID eClass = LostArk::Shared::CHARACTER_CLASS_ID::END;
+		string strNickname;
+		m_pCharacterSelectWindowView->Get_StartCharacter(eClass, strNickname);
+		if (CCharacterSelectionState::Stage_Creation(eClass, strNickname) &&
+			!CLevel_Lobby::Submit_ProductCommand(LOBBY_STAGE::BERN))
+			CCharacterSelectionState::Cancel_PendingCreation();
+		break;
+	}
+	case CCharacterSelectWindowView::INTENT::OPEN_OPTIONS:
+		if (nullptr != m_pSystemOptionView)
+			m_pSystemOptionView->Open();
+		break;
 	case CCharacterSelectWindowView::INTENT::NEW_CHARACTER:
 		/* The same product command the Lobby button used to submit directly. The window
 		stays open while the Server approval runs -- success changes the level (the branch
@@ -8108,9 +8258,11 @@ void CMainApp::Update_BossHealthBar()
 	/* Edge-detect against the previous frame's bars-remaining/HP to trigger the two real effects
 	below -- reset instead of comparing on a target swap, or the new boss's lower HP/bar-count would
 	read as damage taken against the old one. */
-	if (boss.strArchetypeId != m_strPreviousBossArchetypeId)
+	if (boss.strArchetypeId != m_strPreviousBossArchetypeId ||
+		boss.iMaximumHp != m_iPreviousBossMaximumHp)
 	{
 		m_strPreviousBossArchetypeId = boss.strArchetypeId;
+		m_iPreviousBossMaximumHp = boss.iMaximumHp;
 		m_iPreviousBossBarsRemaining = iBarsRemaining;
 		m_iPreviousBossCurrentHp = boss.iCurrentHp;
 		m_dBossBarTickFlashStartSeconds = -1.0;
@@ -9336,7 +9488,8 @@ void CMainApp::RenderDamageNumbers()
 			number.fScatterY = spreadY(scatterRandom);
 		}
 		m_dLastDamageSeconds = number.dSpawnSeconds;
-		if (number.iAmount != 0u) m_FloatingDamageNumbers.push_back(number);
+		if (number.iAmount != 0u || number.eHitFlag == LostArk::Shared::DAMAGE_HIT_FLAG::INVINCIBLE)
+			m_FloatingDamageNumbers.push_back(number);
 		const auto appendSuccess = [&](const uint8_t kind, const f32_t offsetY)
 		{
 			auto success = number;
@@ -9444,12 +9597,11 @@ void CMainApp::RenderDamageNumbers()
 			continue;
 		const bool_t isShard =
 			LostArk::Shared::MECHANIC_CARD_SYMBOL::NONE != number.eCardMazeSuit;
-		/* INVINCIBLE is drawn by nothing in retail either. */
-		if (!number.iMechanicSuccess && LostArk::Shared::DAMAGE_HIT_FLAG::INVINCIBLE == number.eHitFlag)
-			continue;
+		const bool_t isInvincible = LostArk::Shared::DAMAGE_HIT_FLAG::INVINCIBLE == number.eHitFlag;
 		const bool_t isAbsorb = LostArk::Shared::DAMAGE_HIT_FLAG::ABSORB == number.eHitFlag;
 		const wstring strAmount = number.iMechanicSuccess == 1u ? L"\uCE74\uC6B4\uD130" :
-			number.iMechanicSuccess == 2u ? L"\uBB34\uB825\uD654" : isAbsorb ? L"\uD761\uC218" : isShard ?
+			number.iMechanicSuccess == 2u ? L"\uBB34\uB825\uD654" : isInvincible ? L"\uBB34\uC801" :
+			isAbsorb ? L"\uD761\uC218" : isShard ?
 			shardText(number.eCardMazeSuit, number.iAmount) :
 			Format_ThousandsSeparated(number.iAmount);
 		const float2_t vMeasured =
@@ -9473,6 +9625,8 @@ void CMainApp::RenderDamageNumbers()
 			vColor = XMVectorSet(0.f, 1.f, 0.f, fAlpha); break;
 		case LostArk::Shared::DAMAGE_HIT_FLAG::ABSORB:
 			vColor = XMVectorSet(0.2f, 0.65f, 1.f, fAlpha); break;
+		case LostArk::Shared::DAMAGE_HIT_FLAG::INVINCIBLE:
+			vColor = XMVectorSet(0.2f, 0.6f, 1.f, fAlpha); break;
 		default: break;
 		}
 		/* A shard is a pickup, not a hit, so it keeps the plain white. */
@@ -11117,6 +11271,65 @@ void CMainApp::RenderArenaCameraAndPlayerControls()
 				CCombatHUDViewModel::Get().Get_InteractPromptTriggerId();
 			ImGui::Text("Interact offer: %s", offered.empty() ? "(none)" : offered.c_str());
 		}
+#ifdef _DEBUG
+		// Maharaka Waterpang water gun: local-only arm override and fire clips/effects.
+		if (nullptr != development && LEVEL::MAHARAKA == level)
+			if (const std::shared_ptr<CCharacter> pWaterGunLocal = development->Get_DebugLocalCharacter())
+			{
+				bool forced = pWaterGunLocal->Is_WaterGunPreviewForced();
+				if (ImGui::Checkbox("Water Gun preview arm", &forced))
+					pWaterGunLocal->Set_WaterGunPreviewForced(forced);
+				for (uint32_t attack = 1u; attack <= 6u; ++attack)
+				{
+					const std::string label = "Fire " + std::to_string(attack) + "##watergun";
+					if (attack > 1u) ImGui::SameLine();
+					if (ImGui::Button(label.c_str()))
+						(void)pWaterGunLocal->Play_WaterGunAttackPreview(attack);
+				}
+			}
+			/* Waterpang patterns on demand: the Debug Server starts a forced event for the
+			   whole room on its clock (hits, notice, telegraph, attack motions, sounds). */
+			if (nullptr != development && LEVEL::MAHARAKA == level)
+			{
+				static std::uint32_t s_WaterpangRequest = 0u, s_WaterpangAwaiting = 0u;
+				static std::string s_WaterpangStatus;
+				const std::shared_ptr<IPlayerCommandSink> waterpangSink = development->Get_DebugCommandSink();
+				const auto requestWaterpang = [&](const char* instanceId, const char* label)
+				{
+					LostArk::Shared::C2S_DEBUG_WORLD_PLAYBACK message{};
+					if (0u == ++s_WaterpangRequest) s_WaterpangRequest = 1u;
+					message.iRequestSequence = s_WaterpangRequest;
+					message.eWorldId = LostArk::Shared::WORLD_ID::MAHARAKA;
+					message.eOperation = LostArk::Shared::DEBUG_WORLD_PLAYBACK_OPERATION::PLAY_SEQUENCE;
+					message.strTargetId = instanceId;
+					const bool sent = waterpangSink && waterpangSink->Request_DebugWorldPlayback(message);
+					s_WaterpangAwaiting = sent ? message.iRequestSequence : 0u;
+					s_WaterpangStatus = std::string(label) + (sent ? ": sent" : ": not sent (no Server connection)");
+				};
+				if (ImGui::Button("물벼락##waterpangdebug"))
+					requestWaterpang(LostArk::Shared::MAHARAKA_WATERPANG_DEBUG_WATERFALL_INSTANCE, "Waterfall");
+				ImGui::SameLine();
+				if (ImGui::Button("워터캐논##waterpangdebug"))
+					requestWaterpang(LostArk::Shared::MAHARAKA_WATERPANG_DEBUG_CANNON_INSTANCE, "Water cannon");
+				LostArk::Shared::S2C_DEBUG_WORLD_PLAYBACK_RESULT waterpangResult{};
+				while (waterpangSink && waterpangSink->Consume_DebugWorldPlaybackResult(waterpangResult))
+				{
+					if (waterpangResult.iRequestSequence != s_WaterpangAwaiting) continue;
+					s_WaterpangAwaiting = 0u;
+					static const char* const RESULTS[] = { "accepted", "disabled (Release Server)", "wrong world",
+						"invalid target", "invalid player", "already used", "rejected (countdown/intro running)",
+						"stale request", "skipped player" };
+					const auto index = static_cast<size_t>(waterpangResult.eResult);
+					s_WaterpangStatus = waterpangResult.strTargetId + ": " +
+						(index < std::size(RESULTS) ? RESULTS[index] : "unknown");
+				}
+				if (!s_WaterpangStatus.empty())
+				{
+					ImGui::SameLine();
+					ImGui::TextUnformatted(s_WaterpangStatus.c_str());
+				}
+			}
+#endif
 
 		// The Server projects every request onto this active world's authored navigation.
 		// Bern needs this same Debug-only path to inspect the separate Bern3 deck.

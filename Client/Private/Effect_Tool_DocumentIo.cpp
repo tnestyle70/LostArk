@@ -246,7 +246,17 @@ bool_t Client::CEffect_Tool::Try_SaveDocument(
     const bool_t bRegisteredDirectProduct =
         CEffectCatalog::Is_DirectAuthoredDocument(
             m_ActiveDocument->strEffectAssetId);
-    if (bRegisteredDirectProduct && !m_bActiveDocumentDrawable)
+    // Deleting the last authored row is an intentional silent Product source.
+    // Partially configured visible rows still require the drawable contract.
+    std::string EmptySourceStatus;
+    const bool_t bEmptyProductSource = bRegisteredDirectProduct &&
+        !m_ActiveDocument->bSourceContract &&
+        m_ActiveDocument->Elements.empty() &&
+        m_ActiveDocument->ModelCues.empty() &&
+        m_ActiveDocument->OwnerControls.empty() &&
+        m_ActiveDocument->RuntimeExtensions.Is_Empty() &&
+        CEffectDocumentCodec::Validate(*m_ActiveDocument, EmptySourceStatus);
+    if (bRegisteredDirectProduct && !m_bActiveDocumentDrawable && !bEmptyProductSource)
     {
         m_strDocumentStatus =
             "Save rejected: this Effect is bound to Product gameplay, so a "
@@ -427,6 +437,12 @@ bool_t Client::CEffect_Tool::Try_SaveDocument(
     {
         m_strDocumentStatus = "Saved the Authored Effect. The Sequencer is previewing another resource.";
         if (bRegisteredDirectProduct) m_strDocumentStatus += " " + ProductReloadStatus;
+    }
+    else if (bEmptyProductSource)
+    {
+        m_strDocumentStatus =
+            "Saved the empty Authored Effect and hot reloaded its silent Product target. " +
+            ProductReloadStatus;
     }
     else if (!m_bActiveDocumentDrawable)
     {

@@ -5,7 +5,7 @@ from __future__ import annotations
 import sys as _cpp_domain_sys
 from pathlib import Path as _CppDomainPath
 _cpp_domain_sys.path.insert(0, str(_CppDomainPath(__file__).resolve().parents[1] / "Build"))
-from cpp_source_domains import read_source_text
+from cpp_source_domains import read_source_text, cpp_function_body
 
 
 from pathlib import Path
@@ -20,18 +20,7 @@ def read(relative: str) -> str:
 
 
 def function_body(source: str, signature: str) -> str:
-    start = source.index(signature)
-    opening = source.index("{", start)
-    depth = 0
-    for cursor in range(opening, len(source)):
-        token = source[cursor]
-        if token == "{":
-            depth += 1
-        elif token == "}":
-            depth -= 1
-            if depth == 0:
-                return source[opening : cursor + 1]
-    raise AssertionError(f"unterminated function: {signature}")
+    return cpp_function_body(source, signature)
 
 
 class ValtanAnimationPatternCreateWorkbenchContractTests(unittest.TestCase):

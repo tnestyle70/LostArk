@@ -9471,11 +9471,13 @@ bool_t Client::CEffectPlayback::Enable_OwnerSustainedSourceLoops(std::string& st
 		std::any_of(document.Elements.begin(), document.Elements.end(),
 			[this](const EFFECT_ELEMENT_DESC& element)
 			{
+				const bool_t bSourceParticle =
+					(element.eKind == EFFECT_ELEMENT_KIND::PARTICLE &&
+						(element.SourceRecipe.strRendererShape == "sprite" ||
+						 element.SourceRecipe.strRendererShape == "mesh")) ||
+					Is_PortableAuthoredRibbonCarrier(element);
 				return !Is_PlaybackElementAdmitted(element) ||
-					element.eKind != EFFECT_ELEMENT_KIND::PARTICLE ||
-					!element.SourceRecipe.bEnabled ||
-					(element.SourceRecipe.strRendererShape != "sprite" &&
-					 element.SourceRecipe.strRendererShape != "mesh") ||
+					!bSourceParticle || !element.SourceRecipe.bEnabled ||
 					!std::isfinite(element.SourceRecipe.fEmitterDurationSeconds) ||
 					element.SourceRecipe.fEmitterDurationSeconds <= 0.f;
 			}) ||
@@ -9485,7 +9487,7 @@ bool_t Client::CEffectPlayback::Enable_OwnerSustainedSourceLoops(std::string& st
 				return element.SourceRecipe.iEmitterLoopCount == 0u;
 			}))
 	{
-		strOutError = "Owner-sustained playback requires admitted source sprite/mesh emitters and at least one EmitterLoops=0 emitter.";
+		strOutError = "Owner-sustained playback requires admitted source sprite/mesh or native Cascade Ribbon emitters and at least one EmitterLoops=0 emitter.";
 		return false;
 	}
 	m_bOwnerSustainedSourceLoops = true;

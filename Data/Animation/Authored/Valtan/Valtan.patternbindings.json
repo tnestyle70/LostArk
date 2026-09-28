@@ -1294,7 +1294,7 @@
           "mappingBasis": "PROJECT_AUTHORED",
           "sourceStartMs": 0,
           "playMs": 1667,
-          "playRate": 1.0,
+          "playRate": 1,
           "loop": false
         }
       ],
@@ -3445,11 +3445,11 @@
         {
           "clipOccurrenceId": "valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-06.clip-01",
           "clip": "mesh_att_battle_19_03",
-          "mappingBasis": "PROJECT_AUTHORED",
+          "mappingBasis": "SOURCE_REVIEWED_DELTA",
           "sourceStartMs": 0,
-          "playMs": 0,
+          "playMs": 600,
           "playRate": 1.0,
-          "loop": true
+          "loop": false
         }
       ],
       "cameraInvocations": []
@@ -4770,6 +4770,842 @@
       "actionId": "valtan.attack.fist-in-out-large.inner",
       "playbackMode": "NONE",
       "clips": [],
+      "cameraInvocations": []
+    },
+    {
+      "actionId": "valtan.sequence.sequence.420616.1.step-01",
+      "playbackMode": "NONE",
+      "clips": []
+    },
+    {
+      "actionId": "valtan.sequence.sequence.420616.1.step-02",
+      "playbackMode": "NONE",
+      "clips": []
+    },
+    {
+      "actionId": "valtan.sequence.sequence.420616.1.step-03",
+      "playbackMode": "NONE",
+      "clips": []
+    },
+    {
+      "actionId": "valtan.sequence.sequence.420616.1.step-04",
+      "playbackMode": "NONE",
+      "clips": []
+    },
+    {
+      "actionId": "valtan.sequence.sequence.420616.1.step-05",
+      "playbackMode": "NONE",
+      "clips": []
+    },
+    {
+      "actionId": "valtan.sequence.sequence.420616.1.step-06",
+      "playbackMode": "NONE",
+      "clips": []
+    },
+    {
+      "actionId": "valtan.sequence.sequence.420616.1.step-07",
+      "playbackMode": "NONE",
+      "clips": []
+    },
+    {
+      "actionId": "valtan.sequence.sequence.420616.1.step-08",
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.sequence.sequence.420616.1.step-08.clip-01",
+          "clip": "mesh_att_battle_16_06",
+          "mappingBasis": "SOURCE_REVIEWED_DELTA",
+          "sourceStartMs": 0,
+          "playMs": 0,
+          "playRate": 1.0,
+          "loop": true
+        }
+      ],
+      "cameraInvocations": []
+    },
+    {
+      "actionId": "valtan.sequence.sequence.420616.1.step-09",
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.sequence.sequence.420616.1.step-09.clip-01",
+          "clip": "mesh_att_battle_16_08",
+          "mappingBasis": "SOURCE_REVIEWED_DELTA",
+          "sourceStartMs": 0,
+          "playMs": 900,
+          "playRate": 1.0,
+          "loop": false
+        }
+      ],
+      "cameraInvocations": []
+    },
+    {
+      "actionId": "valtan.sequence.sequence.420616.1.step-10",
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.sequence.sequence.420616.1.step-10.clip-01",
+          "clip": "mesh_att_battle_16_09",
+          "mappingBasis": "SOURCE_REVIEWED_DELTA",
+          "sourceStartMs": 0,
+          "playMs": 0,
+          "playRate": 1.0,
+          "loop": true
+        }
+      ],
+      "cameraInvocations": []
+    },
+    {
+      "actionId": "valtan.sequence.sequence.420616.1.step-11",
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.sequence.sequence.420616.1.step-11.clip-01",
+          "clip": "mesh_att_battle_16_10",
+          "mappingBasis": "SOURCE_REVIEWED_DELTA",
+          "sourceStartMs": 0,
+          "playMs": 2130,
+          "playRate": 1.0,
+          "loop": false
+        }
+      ],
+      "cameraInvocations": []
+    },
+    {
+      "actionId": "valtan.sequence.sequence.420616.1.step-12",
+      "playbackMode": "NONE",
+      "clips": []
+    },
+    {
+      "actionId": "valtan.sequence.sequence.420616.1.step-13",
+      "playbackMode": "NONE",
+      "clips": []
+    },
+    {
+      "actionId": "valtan.sequence.sequence.420616.1.step-14",
+      "playbackMode": "NONE",
+      "clips": []
+    },
+    {
+      "actionId": "valtan.sequence.sequence.420616.1.step-15",
+      "playbackMode": "NONE",
+      "clips": []
+    },
+    {
+      "actionId": "valtan.sequence.sequence.420616.1.step-16",
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.sequence.sequence.420616.1.step-16.clip-01",
+          "clip": "mesh_evt1_att_battle_5_01_loop",
+          "mappingBasis": "SOURCE_REVIEWED_DELTA",
+          "sourceStartMs": 0,
+          "playMs": 900,
+          "playRate": 1.0,
+          "loop": false
+        }
+      ],
+      "cameraInvocations": []
+    },
+    {
+      "actionId": "valtan.sequence.sequence.420616.1.step-17",
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.sequence.sequence.420616.1.step-17.clip-01",
+          "clip": "mesh_evt1_att_battle_5_01_end",
+          "mappingBasis": "SOURCE_REVIEWED_DELTA",
+          "sourceStartMs": 0,
+          "playMs": 2633,
+          "playRate": 1.0,
+          "loop": false
+        }
+      ],
+      "cameraInvocations": []
+    },
+    {
+      "actionId": "valtan.sequence.sequence.420616.1.step-18",
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.sequence.sequence.420616.1.step-18.clip-01",
+          "clip": "mesh_att_battle_11_01",
+          "mappingBasis": "SOURCE_REVIEWED_DELTA",
+          "sourceStartMs": 0,
+          "playMs": 700,
+          "playRate": 1.0,
+          "loop": false
+        }
+      ],
+      "cameraInvocations": []
+    },
+    {
+      "actionId": "valtan.sequence.sequence.420616.1.step-19",
+      "playbackMode": "NONE",
+      "clips": []
+    },
+    {
+      "actionId": "valtan.sequence.sequence.420616.1.step-20",
+      "playbackMode": "NONE",
+      "clips": []
+    },
+    {
+      "actionId": "valtan.sequence.sequence.420616.1.step-21",
+      "playbackMode": "NONE",
+      "clips": []
+    },
+    {
+      "actionId": "valtan.sequence.sequence.420616.1.step-22",
+      "playbackMode": "NONE",
+      "clips": []
+    },
+    {
+      "actionId": "valtan.sequence.sequence.420616.1.step-23",
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.sequence.sequence.420616.1.step-23.clip-01",
+          "clip": "mesh_att_battle_20_03",
+          "mappingBasis": "SOURCE_REVIEWED_DELTA",
+          "sourceStartMs": 0,
+          "playMs": 0,
+          "playRate": 1.0,
+          "loop": true
+        }
+      ],
+      "cameraInvocations": []
+    },
+    {
+      "actionId": "valtan.sequence.sequence.420616.1.step-24",
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.sequence.sequence.420616.1.step-24.clip-01",
+          "clip": "mesh_att_battle_20_04",
+          "mappingBasis": "SOURCE_REVIEWED_DELTA",
+          "sourceStartMs": 0,
+          "playMs": 1350,
+          "playRate": 1.0,
+          "loop": false
+        }
+      ],
+      "cameraInvocations": []
+    },
+    {
+      "actionId": "valtan.sequence.sequence.420616.1.step-25",
+      "playbackMode": "NONE",
+      "clips": []
+    },
+    {
+      "actionId": "valtan.sequence.sequence.420623.1.step-01",
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.sequence.sequence.420623.1.step-01.clip-01",
+          "clip": "mesh_idle_battle_1",
+          "mappingBasis": "PROJECT_AUTHORED",
+          "sourceStartMs": 0,
+          "playMs": 2333,
+          "playRate": 1.0,
+          "loop": false
+        }
+      ],
+      "cameraInvocations": []
+    },
+    {
+      "actionId": "valtan.sequence.sequence.420623.1.step-02",
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.sequence.sequence.420623.1.step-02.clip-01",
+          "clip": "mesh_att_battle_21_01",
+          "mappingBasis": "PROJECT_AUTHORED",
+          "sourceStartMs": 0,
+          "playMs": 2000,
+          "playRate": 1.0,
+          "loop": false
+        }
+      ],
+      "cameraInvocations": []
+    },
+    {
+      "actionId": "valtan.sequence.sequence.420623.1.step-03",
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.sequence.sequence.420623.1.step-03.clip-01",
+          "clip": "mesh_att_battle_21_02",
+          "mappingBasis": "PROJECT_AUTHORED",
+          "sourceStartMs": 0,
+          "playMs": 400,
+          "playRate": 1.0,
+          "loop": false
+        }
+      ],
+      "cameraInvocations": []
+    },
+    {
+      "actionId": "valtan.sequence.sequence.420623.1.step-04",
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.sequence.sequence.420623.1.step-04.clip-01",
+          "clip": "mesh_att_battle_21_03",
+          "mappingBasis": "PROJECT_AUTHORED",
+          "sourceStartMs": 0,
+          "playMs": 933,
+          "playRate": 1.0,
+          "loop": false
+        }
+      ],
+      "cameraInvocations": []
+    },
+    {
+      "actionId": "valtan.sequence.sequence.420623.1.step-05",
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.sequence.sequence.420623.1.step-05.clip-01",
+          "clip": "mesh_att_battle_21_04",
+          "mappingBasis": "PROJECT_AUTHORED",
+          "sourceStartMs": 0,
+          "playMs": 2000,
+          "playRate": 1.0,
+          "loop": false
+        }
+      ],
+      "cameraInvocations": []
+    },
+    {
+      "actionId": "valtan.sequence.sequence.420623.1.step-06",
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.sequence.sequence.420623.1.step-06.clip-01",
+          "clip": "mesh_att_battle_13_02",
+          "mappingBasis": "PROJECT_AUTHORED",
+          "sourceStartMs": 0,
+          "playMs": 550,
+          "playRate": 1.0,
+          "loop": false
+        }
+      ],
+      "cameraInvocations": []
+    },
+    {
+      "actionId": "valtan.sequence.sequence.420623.1.step-07",
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.sequence.sequence.420623.1.step-07.clip-01",
+          "clip": "mesh_att_battle_13_03",
+          "mappingBasis": "PROJECT_AUTHORED",
+          "sourceStartMs": 0,
+          "playMs": 900,
+          "playRate": 1.0,
+          "loop": false
+        }
+      ],
+      "cameraInvocations": []
+    },
+    {
+      "actionId": "valtan.sequence.sequence.420623.1.step-08",
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.sequence.sequence.420623.1.step-08.clip-01",
+          "clip": "mesh_att_battle_13_04",
+          "mappingBasis": "PROJECT_AUTHORED",
+          "sourceStartMs": 0,
+          "playMs": 667,
+          "playRate": 1.0,
+          "loop": false
+        }
+      ],
+      "cameraInvocations": []
+    },
+    {
+      "actionId": "valtan.sequence.sequence.420623.1.step-09",
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.sequence.sequence.420623.1.step-09.clip-01",
+          "clip": "mesh_att_battle_13_05-1",
+          "mappingBasis": "PROJECT_AUTHORED",
+          "sourceStartMs": 0,
+          "playMs": 300,
+          "playRate": 1.0,
+          "loop": false
+        }
+      ],
+      "cameraInvocations": []
+    },
+    {
+      "actionId": "valtan.sequence.sequence.420623.1.step-10",
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.sequence.sequence.420623.1.step-10.clip-01",
+          "clip": "mesh_att_battle_21_02-1",
+          "mappingBasis": "PROJECT_AUTHORED",
+          "sourceStartMs": 0,
+          "playMs": 400,
+          "playRate": 1.0,
+          "loop": false
+        }
+      ],
+      "cameraInvocations": []
+    },
+    {
+      "actionId": "valtan.sequence.sequence.420623.1.step-11",
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.sequence.sequence.420623.1.step-11.clip-01",
+          "clip": "mesh_att_battle_21_03-1",
+          "mappingBasis": "PROJECT_AUTHORED",
+          "sourceStartMs": 0,
+          "playMs": 933,
+          "playRate": 1.0,
+          "loop": false
+        }
+      ],
+      "cameraInvocations": []
+    },
+    {
+      "actionId": "valtan.sequence.sequence.420623.1.step-12",
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.sequence.sequence.420623.1.step-12.clip-01",
+          "clip": "mesh_att_battle_21_04-1",
+          "mappingBasis": "PROJECT_AUTHORED",
+          "sourceStartMs": 0,
+          "playMs": 2000,
+          "playRate": 1.0,
+          "loop": false
+        }
+      ],
+      "cameraInvocations": []
+    },
+    {
+      "actionId": "valtan.sequence.sequence.420623.1.step-13",
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.sequence.sequence.420623.1.step-13.clip-01",
+          "clip": "mesh_att_battle_13_05-1",
+          "mappingBasis": "PROJECT_AUTHORED",
+          "sourceStartMs": 0,
+          "playMs": 300,
+          "playRate": 1.0,
+          "loop": false
+        }
+      ],
+      "cameraInvocations": []
+    },
+    {
+      "actionId": "valtan.sequence.sequence.420623.1.step-14",
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.sequence.sequence.420623.1.step-14.clip-01",
+          "clip": "mesh_att_battle_21_04",
+          "mappingBasis": "PROJECT_AUTHORED",
+          "sourceStartMs": 0,
+          "playMs": 2000,
+          "playRate": 1.0,
+          "loop": false
+        }
+      ],
+      "cameraInvocations": []
+    },
+    {
+      "actionId": "valtan.sequence.sequence.420623.1.step-15",
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.sequence.sequence.420623.1.step-15.clip-01",
+          "clip": "mesh_att_battle_21_04-1",
+          "mappingBasis": "PROJECT_AUTHORED",
+          "sourceStartMs": 0,
+          "playMs": 2000,
+          "playRate": 1.0,
+          "loop": false
+        }
+      ],
+      "cameraInvocations": []
+    },
+    {
+      "actionId": "valtan.mechanic.terrain-destruction-3.combo.step-23",
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.mechanic.terrain-destruction-3.combo.step-23.clip-01",
+          "clip": "mesh_att_battle_20_03",
+          "mappingBasis": "SOURCE_REVIEWED_DELTA",
+          "sourceStartMs": 0,
+          "playMs": 0,
+          "playRate": 1.0,
+          "loop": true
+        }
+      ],
+      "cameraInvocations": []
+    },
+    {
+      "actionId": "valtan.mechanic.terrain-destruction-3.combo.step-24",
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.mechanic.terrain-destruction-3.combo.step-24.clip-01",
+          "clip": "mesh_att_battle_20_04",
+          "mappingBasis": "SOURCE_REVIEWED_DELTA",
+          "sourceStartMs": 0,
+          "playMs": 1350,
+          "playRate": 1.0,
+          "loop": false
+        }
+      ],
+      "cameraInvocations": []
+    },
+    {
+      "actionId": "valtan.mechanic.terrain-destruction-3.combo.step-18",
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.mechanic.terrain-destruction-3.combo.step-18.clip-01",
+          "clip": "mesh_att_battle_11_01",
+          "mappingBasis": "SOURCE_REVIEWED_DELTA",
+          "sourceStartMs": 0,
+          "playMs": 700,
+          "playRate": 1.0,
+          "loop": false
+        }
+      ],
+      "cameraInvocations": []
+    },
+    {
+      "actionId": "valtan.mechanic.terrain-destruction-3.combo.step-08",
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.mechanic.terrain-destruction-3.combo.step-08.clip-01",
+          "clip": "mesh_att_battle_16_06",
+          "mappingBasis": "SOURCE_REVIEWED_DELTA",
+          "sourceStartMs": 0,
+          "playMs": 0,
+          "playRate": 1.0,
+          "loop": true
+        }
+      ],
+      "cameraInvocations": []
+    },
+    {
+      "actionId": "valtan.mechanic.terrain-destruction-3.combo.step-16",
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.mechanic.terrain-destruction-3.combo.step-16.clip-01",
+          "clip": "mesh_evt1_att_battle_5_01_loop",
+          "mappingBasis": "SOURCE_REVIEWED_DELTA",
+          "sourceStartMs": 0,
+          "playMs": 900,
+          "playRate": 1.0,
+          "loop": false
+        }
+      ],
+      "cameraInvocations": []
+    },
+    {
+      "actionId": "valtan.mechanic.terrain-destruction-3.combo.step-17",
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.mechanic.terrain-destruction-3.combo.step-17.clip-01",
+          "clip": "mesh_evt1_att_battle_5_01_end",
+          "mappingBasis": "SOURCE_REVIEWED_DELTA",
+          "sourceStartMs": 0,
+          "playMs": 2633,
+          "playRate": 1.0,
+          "loop": false
+        }
+      ],
+      "cameraInvocations": []
+    },
+    {
+      "actionId": "valtan.mechanic.terrain-destruction-3.combo.step-09",
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.mechanic.terrain-destruction-3.combo.step-09.clip-01",
+          "clip": "mesh_att_battle_16_08",
+          "mappingBasis": "SOURCE_REVIEWED_DELTA",
+          "sourceStartMs": 0,
+          "playMs": 900,
+          "playRate": 1.0,
+          "loop": false
+        }
+      ],
+      "cameraInvocations": []
+    },
+    {
+      "actionId": "valtan.mechanic.terrain-destruction-3.combo.step-10",
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.mechanic.terrain-destruction-3.combo.step-10.clip-01",
+          "clip": "mesh_att_battle_16_09",
+          "mappingBasis": "SOURCE_REVIEWED_DELTA",
+          "sourceStartMs": 0,
+          "playMs": 0,
+          "playRate": 1.0,
+          "loop": true
+        }
+      ],
+      "cameraInvocations": []
+    },
+    {
+      "actionId": "valtan.mechanic.terrain-destruction-3.combo.step-11",
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.mechanic.terrain-destruction-3.combo.step-11.clip-01",
+          "clip": "mesh_att_battle_16_10",
+          "mappingBasis": "SOURCE_REVIEWED_DELTA",
+          "sourceStartMs": 0,
+          "playMs": 2130,
+          "playRate": 1,
+          "loop": false
+        }
+      ],
+      "cameraInvocations": []
+    },
+    {
+      "actionId": "valtan.mechanic.terrain-destruction-9.combo.step-23",
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.mechanic.terrain-destruction-9.combo.step-23.clip-01",
+          "clip": "mesh_att_battle_20_03",
+          "mappingBasis": "SOURCE_REVIEWED_DELTA",
+          "sourceStartMs": 0,
+          "playMs": 0,
+          "playRate": 1.0,
+          "loop": true
+        }
+      ],
+      "cameraInvocations": []
+    },
+    {
+      "actionId": "valtan.mechanic.terrain-destruction-9.combo.step-24",
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.mechanic.terrain-destruction-9.combo.step-24.clip-01",
+          "clip": "mesh_att_battle_20_04",
+          "mappingBasis": "SOURCE_REVIEWED_DELTA",
+          "sourceStartMs": 0,
+          "playMs": 1350,
+          "playRate": 1.0,
+          "loop": false
+        }
+      ],
+      "cameraInvocations": []
+    },
+    {
+      "actionId": "valtan.mechanic.terrain-destruction-9.combo.step-18",
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.mechanic.terrain-destruction-9.combo.step-18.clip-01",
+          "clip": "mesh_att_battle_11_01",
+          "mappingBasis": "SOURCE_REVIEWED_DELTA",
+          "sourceStartMs": 0,
+          "playMs": 700,
+          "playRate": 1.0,
+          "loop": false
+        }
+      ],
+      "cameraInvocations": []
+    },
+    {
+      "actionId": "valtan.mechanic.terrain-destruction-9.combo.step-08",
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.mechanic.terrain-destruction-9.combo.step-08.clip-01",
+          "clip": "mesh_att_battle_16_06",
+          "mappingBasis": "SOURCE_REVIEWED_DELTA",
+          "sourceStartMs": 0,
+          "playMs": 0,
+          "playRate": 1.0,
+          "loop": true
+        }
+      ],
+      "cameraInvocations": []
+    },
+    {
+      "actionId": "valtan.mechanic.terrain-destruction-9.combo.step-16",
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.mechanic.terrain-destruction-9.combo.step-16.clip-01",
+          "clip": "mesh_evt1_att_battle_5_01_loop",
+          "mappingBasis": "SOURCE_REVIEWED_DELTA",
+          "sourceStartMs": 0,
+          "playMs": 900,
+          "playRate": 1.0,
+          "loop": false
+        }
+      ],
+      "cameraInvocations": []
+    },
+    {
+      "actionId": "valtan.mechanic.terrain-destruction-9.combo.step-17",
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.mechanic.terrain-destruction-9.combo.step-17.clip-01",
+          "clip": "mesh_evt1_att_battle_5_01_end",
+          "mappingBasis": "SOURCE_REVIEWED_DELTA",
+          "sourceStartMs": 0,
+          "playMs": 2633,
+          "playRate": 1.0,
+          "loop": false
+        }
+      ],
+      "cameraInvocations": []
+    },
+    {
+      "actionId": "valtan.mechanic.terrain-destruction-9.combo.step-09",
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.mechanic.terrain-destruction-9.combo.step-09.clip-01",
+          "clip": "mesh_att_battle_16_08",
+          "mappingBasis": "SOURCE_REVIEWED_DELTA",
+          "sourceStartMs": 0,
+          "playMs": 900,
+          "playRate": 1.0,
+          "loop": false
+        }
+      ],
+      "cameraInvocations": []
+    },
+    {
+      "actionId": "valtan.mechanic.terrain-destruction-9.combo.step-10",
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.mechanic.terrain-destruction-9.combo.step-10.clip-01",
+          "clip": "mesh_att_battle_16_09",
+          "mappingBasis": "SOURCE_REVIEWED_DELTA",
+          "sourceStartMs": 0,
+          "playMs": 0,
+          "playRate": 1.0,
+          "loop": true
+        }
+      ],
+      "cameraInvocations": []
+    },
+    {
+      "actionId": "valtan.mechanic.terrain-destruction-9.combo.step-11",
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.mechanic.terrain-destruction-9.combo.step-11.clip-01",
+          "clip": "mesh_att_battle_16_10",
+          "mappingBasis": "SOURCE_REVIEWED_DELTA",
+          "sourceStartMs": 0,
+          "playMs": 2130,
+          "playRate": 1,
+          "loop": false
+        }
+      ],
+      "cameraInvocations": []
+    },
+    {
+      "actionId": "valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-06.target-01",
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-06.target-01.clip-01",
+          "clip": "mesh_att_battle_19_03",
+          "mappingBasis": "SOURCE_REVIEWED_DELTA",
+          "sourceStartMs": 600,
+          "playMs": 67,
+          "playRate": 1.0,
+          "loop": false
+        },
+        {
+          "clipOccurrenceId": "valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-06.target-01.clip-02",
+          "clip": "mesh_att_battle_19_03",
+          "mappingBasis": "SOURCE_REVIEWED_DELTA",
+          "sourceStartMs": 0,
+          "playMs": 333,
+          "playRate": 1.0,
+          "loop": false
+        }
+      ],
+      "cameraInvocations": []
+    },
+    {
+      "actionId": "valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-06.target-02",
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-06.target-02.clip-01",
+          "clip": "mesh_att_battle_19_03",
+          "mappingBasis": "SOURCE_REVIEWED_DELTA",
+          "sourceStartMs": 333,
+          "playMs": 200,
+          "playRate": 1.0,
+          "loop": false
+        }
+      ],
+      "cameraInvocations": []
+    },
+    {
+      "actionId": "valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-06.target-03",
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-06.target-03.clip-01",
+          "clip": "mesh_att_battle_19_03",
+          "mappingBasis": "SOURCE_REVIEWED_DELTA",
+          "sourceStartMs": 533,
+          "playMs": 134,
+          "playRate": 1.0,
+          "loop": false
+        },
+        {
+          "clipOccurrenceId": "valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-06.target-03.clip-02",
+          "clip": "mesh_att_battle_19_03",
+          "mappingBasis": "SOURCE_REVIEWED_DELTA",
+          "sourceStartMs": 0,
+          "playMs": 466,
+          "playRate": 1.0,
+          "loop": false
+        }
+      ],
+      "cameraInvocations": []
+    },
+    {
+      "actionId": "valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-06.target-04",
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-06.target-04.clip-01",
+          "clip": "mesh_att_battle_19_03",
+          "mappingBasis": "SOURCE_REVIEWED_DELTA",
+          "sourceStartMs": 466,
+          "playMs": 201,
+          "playRate": 1.0,
+          "loop": false
+        },
+        {
+          "clipOccurrenceId": "valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-06.target-04.clip-02",
+          "clip": "mesh_att_battle_19_03",
+          "mappingBasis": "SOURCE_REVIEWED_DELTA",
+          "sourceStartMs": 0,
+          "playMs": 199,
+          "playRate": 1.0,
+          "loop": false
+        }
+      ],
+      "cameraInvocations": []
+    },
+    {
+      "actionId": "valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-06.target-05",
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-06.target-05.clip-01",
+          "clip": "mesh_att_battle_19_03",
+          "mappingBasis": "SOURCE_REVIEWED_DELTA",
+          "sourceStartMs": 199,
+          "playMs": 200,
+          "playRate": 1.0,
+          "loop": false
+        }
+      ],
+      "cameraInvocations": []
+    },
+    {
+      "actionId": "valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-06.target-06",
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-06.target-06.clip-01",
+          "clip": "mesh_att_battle_19_03",
+          "mappingBasis": "SOURCE_REVIEWED_DELTA",
+          "sourceStartMs": 399,
+          "playMs": 268,
+          "playRate": 1.0,
+          "loop": false
+        },
+        {
+          "clipOccurrenceId": "valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-06.target-06.clip-02",
+          "clip": "mesh_att_battle_19_03",
+          "mappingBasis": "SOURCE_REVIEWED_DELTA",
+          "sourceStartMs": 0,
+          "playMs": 332,
+          "playRate": 1.0,
+          "loop": false
+        }
+      ],
       "cameraInvocations": []
     }
   ]

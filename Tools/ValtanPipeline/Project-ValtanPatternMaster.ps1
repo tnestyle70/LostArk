@@ -1128,9 +1128,9 @@ foreach ($pattern in @($master.patterns)) {
                 [string]$stage.animation.endPolicy)) {
             throw "$stageContext animation.endPolicy is outside the public vocabulary."
         }
-        Assert-JsonInteger $stage.animation.repeatCount "$stageContext animation.repeatCount" 1 32
+        Assert-JsonInteger $stage.animation.repeatCount "$stageContext animation.repeatCount" 1 256
         $occurrences = @($stage.animation.occurrences)
-        if ($occurrences.Count -eq 0) {
+        if ($occurrences.Count -eq 0 -or $occurrences.Count -gt 256) {
             throw "$stageContext must contain at least one ordered occurrence."
         }
         foreach ($occurrence in $occurrences) {

@@ -517,7 +517,7 @@ class ValtanActionWorkbenchRegressionOracles(unittest.TestCase):
         self.assertIn('"HOLD" != Selected->strMode', apply)
         self.assertIn("bDeterministicHoldChain", apply)
         self.assertIn("IsRoleAwareHoldReplacementChain(ReplacementRoles)", apply)
-        self.assertIn("ReplacementRoles.push_back(ClipReplacementRole", apply)
+        self.assertIn("ReplacementRoles.push_back(Role)", apply)
         self.assertNotIn("3u == Selected->Clips.size()", apply)
         self.assertIn("while (iRemainingMs > NativeDurationsMs[iClip])", apply)
         self.assertIn('"loop" != ClipReplacementRole(', apply)

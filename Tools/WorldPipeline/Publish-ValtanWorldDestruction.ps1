@@ -373,6 +373,27 @@ function Assert-JsonNumber {
     return $number
 }
 
+function Assert-EncounterStageAim {
+    param([object]$Stage, [string]$Context)
+    $aim = $Stage.aim
+    $fields = @('targetPolicy')
+    $hasEnd = $null -ne $aim.PSObject.Properties['endMs']
+    $hasResponse = $null -ne $aim.PSObject.Properties['responseScale']
+    if ($hasEnd) { $fields += 'endMs' }
+    if ($hasResponse) { $fields += 'responseScale' }
+    Assert-ExactProperties $aim $fields "$Context aim"
+    if ($aim.targetPolicy -isnot [string] -or
+        $aim.targetPolicy -cnotin @('NEAREST_EACH_TICK', 'PATTERN_TARGET')) {
+        throw "$Context aim targetPolicy is invalid."
+    }
+    if ($hasEnd) {
+        Assert-JsonInteger $aim.endMs "$Context aim endMs" 0 ([long]$Stage.durationMs)
+    }
+    if ($hasResponse) {
+        $null = Assert-JsonNumber $aim.responseScale "$Context aim responseScale" 0.01 10.0
+    }
+}
+
 function Assert-CanonicalPlacementId {
     param([object]$Value, [string]$Context)
     Assert-StableId $Value $Context
@@ -627,12 +648,22 @@ function Compile-ValtanWorldDestruction {
 			if ($null -ne $stage.PSObject.Properties['actions']) {
 				$expectedStageProperties += 'actions'
 			}
+			$hasStageAim = $null -ne $stage.PSObject.Properties['aim']
+			if ($hasStageAim) { $expectedStageProperties += 'aim' }
 			$hasStageMotion = $null -ne $stage.PSObject.Properties['motion']
 			if ($hasStageMotion) {
 				$expectedStageProperties += 'motion'
 			}
 			if ($null -ne $stage.PSObject.Properties['hitOffsetsMs']) {
 				$expectedStageProperties += 'hitOffsetsMs'
+			}
+			if ($null -ne $stage.PSObject.Properties['attackContacts']) {
+				$expectedStageProperties += 'attackContacts'
+				# Gameplay publishing owns contact geometry and pulse validation.
+				# Destruction joins this stage's identity, not its damage payload.
+				if ($stage.attackContacts -isnot [Array] -or @($stage.attackContacts).Count -eq 0) {
+					throw "Encounter attackContacts must be a non-empty array: $($pattern.patternId)/$($stage.stageId)"
+				}
 			}
 			$hasHitActivation =
 				$null -ne $stage.PSObject.Properties['hitActivation']
@@ -727,6 +758,9 @@ function Compile-ValtanWorldDestruction {
             Assert-StableId $stage.stageId "$($pattern.patternId) stageId"
             Assert-StableId $stage.actionId "$($pattern.patternId) actionId"
             Assert-JsonInteger $stage.durationMs "$($pattern.patternId) durationMs" 1 600000
+            if ($hasStageAim) {
+                Assert-EncounterStageAim $stage "$($pattern.patternId)/$($stage.stageId)"
+            }
 			if ($hasHitActivation) {
 				Assert-ExactProperties -Value $stage.hitActivation -Expected @(
 					'kind','startMs','lifetimeMs','perTargetPolicy') `
@@ -1832,6 +1866,26 @@ function Invoke-ContractTests {
         throw "World destruction compiler must return one artifact set, got $($compilerResults.Count)."
     }
     $canonical = $compilerResults[0]
+	$contactStages = @($encounter.patterns | ForEach-Object { $_.stages } |
+		Where-Object { $null -ne $_.PSObject.Properties['attackContacts'] })
+	if ($contactStages.Count -eq 0) {
+		throw 'World destruction contract fixture has no typed stage attackContacts.'
+	}
+	foreach ($invalidContacts in @($null, 'invalid', @())) {
+		$invalidContactEncounter = Copy-JsonObject $encounter
+		$invalidContactStage = $invalidContactEncounter.patterns | ForEach-Object { $_.stages } |
+			Where-Object { $null -ne $_.PSObject.Properties['attackContacts'] } | Select-Object -First 1
+		$invalidContactStage.attackContacts = $invalidContacts
+		Assert-Throws {
+			Compile-ValtanWorldDestruction $source $invalidContactEncounter $simulation
+		} 'malformed stage attackContacts'
+	}
+	$unknownStageFieldEncounter = Copy-JsonObject $encounter
+	$unknownStageFieldEncounter.patterns[0].stages[0] |
+		Add-Member -NotePropertyName unknownAttackPayload -NotePropertyValue @()
+	Assert-Throws {
+		Compile-ValtanWorldDestruction $source $unknownStageFieldEncounter $simulation
+	} 'unknown stage field remains rejected'
 	$capturePatternId = 'VALTAN_TRASH'
 	$captureStageId = 'STEP_08'
 	$captureStage = ($encounter.patterns | Where-Object {

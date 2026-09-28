@@ -355,7 +355,7 @@ CPrototype (추상, enable_shared_from_this)
 enum class LEVEL { STATIC, LOADING, LOBBY, CHARACTER_SELECT, BERN, VALTAN_ARENA, KAKULSAYDON_ARENA, DEVELOPMENT, MAHARAKA, END };
 ```
 
-시작 Level은 항상 `LOBBY`다. Lobby는 `Test`, `Character Select`, `Valtan`, `KoukuSaydon`, `Bern`, `Maharaka` 여섯 명령을 제공하고 `CLevelRegistry`가 각 `LEVEL`의 생성 함수, Loader 함수, map area와 load scope를 연결한다. 별도 실행 시나리오 catalog, 문자열 기반 Level 분기, direct `Change_Level` 호출을 추가하지 않는다. `Maharaka`는 Debug Lobby에서 `WORLD_ID::MAHARAKA` Server 승인을 받은 뒤 `LEVEL::MAHARAKA`로 들어가며, 2021 마하라카 파라다이스 섬 Area `LV_OCN_EVENTIS_MHP`를 `CLevel_Development` 셸(맵·follow camera·replication·controller)로 띄운다. 이 월드는 protocol 94부터 있다.
+시작 Level은 항상 `LOBBY`다. Lobby는 `Test`, `Character Select`, `Valtan`, `KoukuSaydon`, `Bern`, `Maharaka` 여섯 명령을 제공하고 `CLevelRegistry`가 각 `LEVEL`의 생성 함수, Loader 함수, map area와 load scope를 연결한다. 별도 실행 시나리오 catalog, 문자열 기반 Level 분기, direct `Change_Level` 호출을 추가하지 않는다. `Maharaka`는 Debug Lobby에서 `WORLD_ID::MAHARAKA` Server 승인을 받은 뒤 `LEVEL::MAHARAKA`로 들어가며, 2021 마하라카 파라다이스 섬 Area `LV_OCN_EVENTIS_MHP`를 `CLevel_Development` 셸(맵·follow camera·replication·controller)로 띄운다. 이 월드는 protocol 94부터 있다. 워터팡 경기 중 물총 무장은 Server가 계산해 protocol 118 `PLAYER_SNAPSHOT.isWaterpangArmed`로 복제하며, Client는 `bip001-prop3`에 물총을 달고 직업 무기를 숨긴다.
 
 `LEVEL::STATIC`은 전환 시에도 살아남는 영구 레벨이고, 나머지는 `Change_Level`에서 정리된다. `LEVEL::KAKULSAYDON_ARENA`는 Lobby 버튼을 늘리지 않고 Debug Character Select의 typed Server transfer로 진입한다. 각 레벨 인덱스는 `map<wstring_t, shared_ptr<CLayer>>`를 가지며, `CLayer`는 `list<shared_ptr<CGameObject>>`를 들고 매 프레임 `Priority_Update → Update → Late_Update`를 구동한다.
 
@@ -369,17 +369,25 @@ Level 전환 요청은 `CLevelTransitionService`에 제출한다. `CMainApp`은 
 
 MapTool의 현재 지원 범위인 player spawn/NPC/boss/triggerBox/collisionBox 배치는 `Data/Worlds/<AreaId>/Gameplay.world.json`에 stable placement ID로 저장한다. Valtan monster anchor/wave/group은 같은 Area의 `SpawnGroups.world.json`에 분리하며 triggerBox는 stable group ID만 참조한다. `Tools/WorldPipeline/Publish-WorldGameplay.ps1`이 actor/encounter/shape/spawn 참조와 `MonsterProfiles.json` formatVersion 2의 추적 유지 거리·회전·가속·감속·도착 감속 반경을 검증한 뒤 `Server/Bin/DataFiles/World/*.worldbootstrap`과 spawn-group bootstrap v4를 한 transaction으로 생성하며 데이터 배포 시 이 publisher를 명시 실행한다. 제품 일반 몬스터는 Server에서 타깃 hysteresis, 공격 중 대상/방향 고정, navigation 경로 단축, 제한 회전과 가감속, 기존 원형 body sweep/slide를 사용하고 Client에서 2-tick transform 보간, occurrence 기반 결정적 공격 clip pool, 비공격 중 transient hit clip을 사용한다. presentation clip과 playback rate는 `MonsterCatalog.json` formatVersion 2가 소유하며 Server timing을 바꾸지 않는다. 수업용 `CMonster` 경로는 이 계약에 포함하지 않는다.
 
-Server는 fixed 30 Hz에서 world entity의 transform/action/pattern state를 소유하고 현재 Shared protocol v102 snapshot으로 보낸다. Debug Next Pattern을 live Product/같은 owner Flow/idle에서 채택하는 typed command와 기존 예약·취소 CAS identity/lifecycle을 유지한다. Complete Play와 Restart는 현재 Server-active gameplay definition revision을 wire에 포함해 exact CAS하며, 다른 protocol version의 Server/Client를 섞어 실행하지 않는다. Client의 `CClientReplication`과 `CValtan`은 표현만 담당한다. UI·MapTool·Client GameObject가 제품 보스 판정을 직접 결정하지 않는다.
+Server는 fixed 30 Hz에서 world entity의 transform/action/pattern state를 소유하고 현재 Shared protocol v119 snapshot으로 보낸다. Debug Next Pattern을 live Product/같은 owner Flow/idle에서 채택하는 typed command와 기존 예약·취소 CAS identity/lifecycle을 유지한다. Complete Play와 Restart는 현재 Server-active gameplay definition revision을 wire에 포함해 exact CAS하며, 다른 protocol version의 Server/Client를 섞어 실행하지 않는다. Client의 `CClientReplication`과 `CValtan`은 표현만 담당한다. UI·MapTool·Client GameObject가 제품 보스 판정을 직접 결정하지 않는다.
+
+발탄 World 에테르 구슬은 Area `LV_LUT_HEARTRB_ED.mapeffects.json`의 optional `pickup`이
+정본이다. `Tools/MapPipeline/Publish-MapAuthoring.ps1 -AreaId LV_LUT_HEARTRB_ED -Scope Effects
+-Mode Publish`가 Client mapeffects와 Server `DataFiles/World/VALTAN_ARENA.worldpickupsbootstrap`을
+같은 transaction으로 게시한다. Server domain owner의 `world.pickups`와 Product runtime 존재
+검사가 이 파일을 포함하며, Server는 시작할 때 읽는다. World 도구의 에테르 구슬 1~6에서
+벽 위 위치·착지 위치·벽 ID를 편집하고 낙하를 Preview할 수 있다. 실제 낙하·획득·전멸 보호는
+Server가 판정한다. 게시 후 실행 중 Server는 다시 시작해야 하며 도구 Reload는 별도 동작이다.
 
 Kouku의 `Book1_Monsters`/`Book2_Monsters`와 Valtan의 `Stage_1`/`Stage_2` 웨이브 트리거(각각 `spawn.kouku.book1`/`spawn.kouku.book2`, `spawn.valtan.stage01`/`spawn.valtan.stage03`)는 Release Server에서 지금처럼 밟으면 그룹이 시작된다. Debug Server는 이 네 상자를 밟아도, G를 눌러도 실행하지 않고 안내도 보내지 않으며, F1 `KoukuSaydon Arena`의 `Bingo Board` 아래 `Normal Monster 1/2`와 발탄 아레나 안에서만 보이는 `Valtan Arena`의 같은 이름 버튼이 typed 명령 `C2S_DEBUG_RESUMMON_WAVE_MONSTERS`(현재 protocol 105)를 보낸다. Server는 `CServerTriggerSystem::Find_WaveMonsterButton`의 고정 표로만 (world, button)을 그룹에 연결하고, 그 그룹의 살아 있는 monster를 제거한 뒤 그룹을 초기화해 첫 wave부터 다시 시작한다. monster는 그룹의 저작 anchor에 나타나며 플레이어 위치와 무관하다. 결과 메시지는 없고 monster는 world snapshot으로 온다. Release는 이 명령을 무시한다. `Stage_MiniBoss_Spawn`, `Stage_3`, `Stage_Boss`와 다른 월드의 트리거는 Debug에서도 그대로 동작한다. Debug/Release 구분은 컴파일 시 `_DEBUG`이고 Server/Client는 같은 protocol 105로 함께 빌드·재시작한다. 통합 wire는 무적 구역 연출 펄스, 웨이브 재소환, WALL_CLIMB, GuardianKnight ember snapshot, 카드비 occurrence scale, 고대의 바다 flight 입력·snapshot과 F1 에스더 지정 소환을 포함하며 이전 peer와 호환되지 않는다.
 
 ### 최소 수련장 Area
 
-`dev.training.ground`는 새 Engine Level이 아니라 기존 `LEVEL::DEVELOPMENT`를 사용하는 Debug Map Editor Test 진입이다. 제품 캐릭터 테스트는 `Lobby-approved WORLD_ID::CHARACTER_SELECT_ARENA -> LEVEL::CHARACTER_SELECT -> LV_LOBBY_CLASSSELECT_SL00`을 사용한다. Lobby가 port `7777`의 `S2C_ENTER_ACCEPTED` 전체 payload를 검증한 뒤에만 기존 socket을 one-shot handoff하며 offline Preview와 `Preview / Server Play` 분기는 없다. Character Select는 직접 connect/send하지 않고 queued snapshot을 `CClientReplication`으로 소비해 HUD, 우클릭 이동, class quick-slot 스킬을 Server snapshot으로 반영한다. class thumbnail 선택은 target asset을 admission한 뒤 typed class-change command를 즉시 제출한다. Server는 identity와 살아 있는 위치를 유지하고 새 profile로 전투 상태를 초기화하며, 사망 상태면 원래 spawn을 navigation projection한 위치에서 부활시킨다. Client는 snapshot class 변경을 보고 같은 entity presentation을 transactionally 교체하고 Controller sequence를 보존해 새 class skill을 계속 제출한다. Client host는 process-local `LOSTARK_SERVER_HOST`를 우선하며 값이 없거나 `0.0.0.0`이면 현재 팀 endpoint `192.168.200.113`를 사용한다. 연결 실패·거부·5초 승인 timeout은 Lobby에 남고, 진입 후 disconnect는 Lobby로 복귀하며 자동 local gameplay fallback은 없다. Debug ImGui의 `Monster / Mid Boss (Lugaru) / Valtan` 선택과 `Spawn Selected`는 stable ID만 Server에 보내며, Server가 Character Select의 SpawnGroups 또는 disabled Valtan placement를 검증·활성화한다. Client local spawn은 없고 Valtan presentation asset만 Engine batch prototype commit으로 지연 준비한다. `Show Combat Colliders`는 Server가 복제한 radius의 Debug wire만 토글하며 damage에는 관여하지 않는다. Bern/Valtan map 진입도 마지막 Server 승인 class로 Lobby Server 승인이 필수다.
+`dev.training.ground`는 새 Engine Level이 아니라 기존 `LEVEL::DEVELOPMENT`를 사용하는 Debug Map Editor Test 진입이다. 제품 캐릭터 테스트는 `Lobby-approved WORLD_ID::CHARACTER_SELECT_ARENA -> LEVEL::CHARACTER_SELECT -> LV_LOBBY_CLASSSELECT_SL00`을 사용한다. Lobby가 port `7777`의 `S2C_ENTER_ACCEPTED` 전체 payload를 검증한 뒤에만 기존 socket을 one-shot handoff하며 offline Preview와 `Preview / Server Play` 분기는 없다. Character Select는 직접 connect/send하지 않고 queued snapshot을 `CClientReplication`으로 소비해 HUD, 우클릭 이동, class quick-slot 스킬을 Server snapshot으로 반영한다. class thumbnail 선택은 target asset을 admission한 뒤 typed class-change command를 즉시 제출한다. Server는 identity와 살아 있는 위치를 유지하고 새 profile로 전투 상태를 초기화하며, 사망 상태면 원래 spawn을 navigation projection한 위치에서 부활시킨다. Client는 snapshot class 변경을 보고 같은 entity presentation을 transactionally 교체하고 Controller sequence를 보존해 새 class skill을 계속 제출한다. Client host는 process-local `LOSTARK_SERVER_HOST`를 우선하며 값이 없거나 `0.0.0.0`이면 현재 팀 endpoint `192.168.0.22`를 사용한다. 연결 실패·거부·5초 승인 timeout은 Lobby에 남고, 진입 후 disconnect는 Lobby로 복귀하며 자동 local gameplay fallback은 없다. Debug ImGui의 `Monster / Mid Boss (Lugaru) / Valtan` 선택과 `Spawn Selected`는 stable ID만 Server에 보내며, Server가 Character Select의 SpawnGroups 또는 disabled Valtan placement를 검증·활성화한다. Client local spawn은 없고 Valtan presentation asset만 Engine batch prototype commit으로 지연 준비한다. `Show Combat Colliders`는 Server가 복제한 radius의 Debug wire만 토글하며 damage에는 관여하지 않는다. Bern/Valtan map 진입도 마지막 Server 승인 class로 Lobby Server 승인이 필수다.
 
 Server는 `CHARACTER_SELECT_ARENA` 진입 session마다 독립된 `CGameRoom` simulation을 만든다. 따라서 class 변경, 몬스터 소환, collider 판정과 damage는 모두 Server에서 실행되지만 다른 Character Select session과 player/entity/HP/damage snapshot을 공유하지 않는다. session 퇴장 시 queued `LEAVE`를 room tick이 소비하고 private simulation을 폐기한다. `BERN`, `VALTAN_ARENA`, `TRAINING_GROUND`는 world별 shared simulation을 유지한다.
 
-2026-09-30 23:59 KST까지 공유 LAN Server는 `Framework.slnLaunch`의 `Server + Client` profile로 `0.0.0.0:7777`에 수신하고, 같은 팀 LAN의 Client는 `192.168.200.113:7777`에 접속한다. `Tools/Network/TeamLanEndpoint.json`이 endpoint와 만료일 정본이며 모든 에이전트는 pull 후 `Tools/Network/Sync-TeamLanEndpoint.ps1`을 실행해 Git 제외 debugger 설정을 동기화한다. 공유 x64 debugger 설정과 코드 기본값도 같은 endpoint를 사용하며, 실제 `Ctrl+F5` 시작은 사용자가 수행한다. Visual Studio가 이전 값을 캐시하면 project Reload 또는 IDE 재시작이 필요하다. `0.0.0.0`은 Server bind 주소이지 Client 접속 주소가 아니다. 세부 설정, 동일 revision/build/resource 준비와 `10049` 진단은 `.md/TEAM/TEAM_GAMEPLAY_INTERFACE_HANDBOOK.md`의 `서로 다른 장소에서 Server와 Client 연결`을 따른다.
+2026-09-30 23:59 KST까지 공유 LAN Server는 `Framework.slnLaunch`의 `Server + Client` profile로 `0.0.0.0:7777`에 수신하고, 같은 팀 LAN의 Client는 `192.168.0.22:7777`에 접속한다. `Tools/Network/TeamLanEndpoint.json`이 endpoint와 만료일 정본이며 모든 에이전트는 pull 후 `Tools/Network/Sync-TeamLanEndpoint.ps1`을 실행해 Git 제외 debugger 설정을 동기화한다. 공유 x64 debugger 설정과 코드 기본값도 같은 endpoint를 사용하며, 실제 `Ctrl+F5` 시작은 사용자가 수행한다. Visual Studio가 이전 값을 캐시하면 project Reload 또는 IDE 재시작이 필요하다. `0.0.0.0`은 Server bind 주소이지 Client 접속 주소가 아니다. 세부 설정, 동일 revision/build/resource 준비와 `10049` 진단은 `.md/TEAM/TEAM_GAMEPLAY_INTERFACE_HANDBOOK.md`의 `서로 다른 장소에서 Server와 Client 연결`을 따른다.
 
 개인 로컬 F5 테스트는 `Sync-TeamLanEndpoint.ps1 -EndpointMode Local`로 명시적으로 선택한다.
 Client 접속과 Server bind는 `127.0.0.1:7777`이고 개인 `.vcxproj.user` 선택은 다음 기본 sync에도
@@ -527,14 +535,16 @@ camera box 구간이 같으면 재생을 유지하며, `Save movie`와 Effect의
 저장한다. 임시 preview·저장·게시와 사용자 화면 확인의 세부 경계는
 `.md/TEAM/ANIMATION_TOOL_OWNER_HANDOFF.md`의 World Movie 계약을 따른다.
 
-F1의 `Balance Test`는 공용 Players/Skills/Damage/Bosses/Madness 숫자 scalar 편집과 Server HP/tick 진단을
-제공한다. `Save + Validate`는 stable ID/field의 이전값으로 최신 `Data/Balance` 저장본에 병합하고,
-candidate provenance/gameplay 검증 뒤 freshness 확인과 원자 교체를 수행한다. `Publish Server Data`
-뒤 Server와 Client를 재시작해야 적용된다. Valtan의 typed 패턴 저작 backend와 draft는 별도로 유지한다.
-`Data/Balance/Profiles/Retail.balanceprofile.json`이 가진 필드는 Retail 값으로 표시·저장하고 나머지는
-기존 Players/Skills/Damage/Bosses 원본의 해당 stable ID/field를 편집한다. 공식 Gameplay/World
-publisher와 `Publish-BalanceRuntimeSet.ps1`의 기본 profile은 Retail이다. 같은 서버 카탈로그를
-소비하는 모든 플레이어·레이드와 Debug/Release에 적용된다.
+F1 `Balance Test`는 Players/Skills/Damage/Bosses/Madness/Stagger/Pattern damage의 Server 실효 숫자를
+편집한다. class·slot·skill·pattern 검색과 ALT_V 필터를 제공하며 Skills의 연결 damage profile도 같은
+draft에서 편집한다. `Reload Server Values`는 명시적으로 draft를 버리고 Server 값을 다시 읽는다.
+`Save + Apply`는 typed command로 Server에 최대 128개 변경을 보내고 numeric revision/이전값 검증,
+canonical source·provenance·bootstrap 원자 저장과 전 room 활성화를 한 요청으로 수행한다.
+성공 시 모든 Client는 F1 창이 닫혀 있어도 numeric snapshot으로 skill 비용·범위와 HUD를 갱신한다.
+접속 Client에 Python/PowerShell이나 저작 파일 쓰기 권한이 필요하지 않으며 Server/Client를 재시작하지 않는다.
+Server PC의 `LOSTARK_PROJECT_DATA_ROOT`는 해당 배포의 `Data`여야 한다. 오류·stale revision은 저장본과
+활성값을 보존하고 draft를 남긴다. presentation/패턴 구조 편집은 기존 Valtan/Kouku 저작 경로를 유지한다.
+세부 단위와 영속 저장은 `.md/TEAM/BALANCE_TUNING_AND_HOT_RELOAD_CONTRACT.md`를 따른다.
 Retail Damage의 optional `bossHealthBarDamage`는 기본 0이며, 양수는 ACTIVE 스킬 한 번의
 보스 피해를 대상 최대 HP·전체 체력 줄 수 기준으로 고정하는 기믹 시험값이다. 다단히트에
 총량을 나누고 치명타·피해 편차·버프·방어 배율을 다시 적용하지 않는다. 명중·무적·실드는

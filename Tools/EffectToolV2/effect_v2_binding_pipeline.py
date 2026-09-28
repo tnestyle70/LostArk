@@ -325,10 +325,11 @@ def _asset_id(
     ):
         raise BindingContractError(f"{owner} must be a Resources-relative asset ID")
     if slot is not None:
-        expected_suffix = ".wmodel" if slot == "mesh" else ".dds"
-        if path.suffix.lower() != expected_suffix:
+        # Keep typed leaf validation aligned with CEffectV2Object's DDS/WIC loaders.
+        expected_suffixes = (".wmodel",) if slot == "mesh" else (".dds", ".png")
+        if path.suffix.lower() not in expected_suffixes:
             raise BindingContractError(
-                f"{owner} must reference a {expected_suffix} resource"
+                f"{owner} must reference a {' or '.join(expected_suffixes)} resource"
             )
     if resource_root is not None:
         try:
@@ -911,6 +912,7 @@ def _animation_occurrence_indexes(
         clips = binding.get("clips")
         if not isinstance(clips, list):
             raise BindingContractError(f"Animation binding {action_id}.clips is invalid")
+        stage_wall_start_ms: float | None = 0.0
         for clip_ordinal, clip in enumerate(clips):
             if not isinstance(clip, dict):
                 raise BindingContractError(
@@ -933,6 +935,14 @@ def _animation_occurrence_indexes(
                 clip.get("sourceStartMs"),
                 f"Animation binding {action_id}/{occurrence_id}.sourceStartMs",
             )
+            play_rate = _finite_number(
+                clip.get("playRate", 1.0),
+                f"Animation binding {action_id}/{occurrence_id}.playRate",
+            )
+            if play_rate <= 0:
+                raise BindingContractError(
+                    f"Animation binding {action_id}/{occurrence_id}.playRate must be positive"
+                )
             if not isinstance(clip.get("loop"), bool):
                 raise BindingContractError(
                     f"Animation binding {action_id}/{occurrence_id}.loop is invalid"
@@ -943,10 +953,18 @@ def _animation_occurrence_indexes(
                 "clip": clip_name,
                 "sourceStartMs": source_start_ms,
                 "playMs": play_ms,
+                "playRate": play_rate,
+                "stageWallStartMs": stage_wall_start_ms,
                 "loop": clip["loop"],
             }
             by_clip.setdefault(clip_name, []).append(row)
             by_id.setdefault(occurrence_id, []).append(row)
+            # A zero playMs consumes the native model duration, which is not
+            # present in this JSON index. Its later prefix is checked natively.
+            if play_ms and stage_wall_start_ms is not None:
+                stage_wall_start_ms += play_ms / play_rate
+            else:
+                stage_wall_start_ms = None
     return by_clip, by_id
 
 
@@ -1322,6 +1340,10 @@ def validate_binding_document(
                 raise BindingContractError(
                     f"{binding_id} STAGE clock requires null clipOccurrenceId and ONCE"
                 )
+            if stage_duration and start_ms > stage_duration:
+                raise BindingContractError(
+                    f"{binding_id}.clock.startMs exceeds the scoped Stage"
+                )
         else:
             occurrence_id = _stable(
                 occurrence_id, f"{binding_id}.clock.clipOccurrenceId"
@@ -1341,14 +1363,22 @@ def validate_binding_document(
                     f"{binding_id} EACH_LOOP targets a non-loop occurrence"
                 )
             play_ms = occurrence["playMs"]
-            if play_ms and start_ms > play_ms:
+            source_start_ms = occurrence["sourceStartMs"]
+            if start_ms < source_start_ms or (
+                play_ms and start_ms >= source_start_ms + play_ms
+            ):
                 raise BindingContractError(
-                    f"{binding_id}.clock.startMs exceeds the clip occurrence"
+                    f"{binding_id}.clock.startMs is outside the clip source window"
                 )
-        if stage_duration and start_ms > stage_duration:
-            raise BindingContractError(
-                f"{binding_id}.clock.startMs exceeds the scoped Stage"
-            )
+            # Native Resolve_StageSpawnClock subtracts the source cut before
+            # applying playRate and adding preceding occurrence wall time.
+            wall_start_ms = (start_ms - source_start_ms) / occurrence["playRate"]
+            if occurrence["stageWallStartMs"] is not None:
+                wall_start_ms += occurrence["stageWallStartMs"]
+            if stage_duration and wall_start_ms >= stage_duration:
+                raise BindingContractError(
+                    f"{binding_id}.clock.startMs resolves outside the scoped Stage"
+                )
 
         anchor = _exact(row["anchor"], ANCHOR_FIELDS, f"{binding_id}.anchor")
         _stable(anchor["slotId"], f"{binding_id}.anchor.slotId")
@@ -1831,18 +1861,15 @@ def migrate_v1_document(
             occurrence_id = (
                 None if occurrence is None else occurrence["clipOccurrenceId"]
             )
-            local_start_ms = (
-                start_ms
-                if occurrence is None
-                else max(0, start_ms - occurrence["sourceStartMs"])
-            )
+            # Both the legacy clip binding and the occurrence runtime retain
+            # absolute model source time. Only the runtime converts to wall time.
             seed = {
                 "legacyRowIndex": ordinal,
                 "expansionOrdinal": expansion_ordinal,
                 "resource": resource,
                 "scope": scope,
                 "clipOccurrenceId": occurrence_id,
-                "startMs": local_start_ms,
+                "startMs": start_ms,
                 "anchor": anchor,
                 "stopPolicy": stop_policy,
             }
@@ -1859,7 +1886,7 @@ def migrate_v1_document(
                     "clock": {
                         "basis": "STAGE" if occurrence_id is None else "CLIP_OCCURRENCE",
                         "clipOccurrenceId": occurrence_id,
-                        "startMs": local_start_ms,
+                        "startMs": start_ms,
                         "repeatPolicy": (
                             "EACH_LOOP"
                             if occurrence is not None and occurrence["loop"] is True

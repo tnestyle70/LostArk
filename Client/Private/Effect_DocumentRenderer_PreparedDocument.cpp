@@ -73,7 +73,17 @@ bool_t Client::CEffectDocumentRenderer::Build_PreparedDocument(
 	{
 		return false;
 	}
-	const bool_t bDocumentValid = nullptr == pPreparation ?
+	// A saved Product source may intentionally contain no executable rows after
+	// its final Element is deleted. Keep normal drawable admission for every
+	// nonempty, projected, reconstructed, and authoring-preview document.
+	const bool_t bEmptyProductSource = 0u != iCatalogRevision &&
+		nullptr == pPreparation && nullptr == pVisualProgramProjection &&
+		!Document.bSourceContract && Document.Elements.empty() &&
+		Document.ModelCues.empty() && Document.OwnerControls.empty() &&
+		Document.RuntimeExtensions.Is_Empty();
+	const bool_t bDocumentValid = bEmptyProductSource ?
+		CEffectDocumentCodec::Validate(Document, strOutError) :
+		nullptr == pPreparation ?
 		CEffectDocumentCodec::Validate_Drawable(Document, strOutError) :
 		CEffectDocumentCodec::
 			Validate_Artist31470ReconstructedRuntimeDrawable(

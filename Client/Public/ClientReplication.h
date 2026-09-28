@@ -359,6 +359,7 @@ namespace Client
 		/* Debug tuning only: the live CNpc body of one primary KoukuSaydon
 		arena boss archetype, or null while that boss is not replicated. */
 		std::shared_ptr<CNpc> Find_ArenaBossNpc(std::string_view archetypeId) const;
+		std::shared_ptr<CNpc> Find_NpcPlacement(std::string_view placementId) const;
 		bool_t Try_Get_DeferredLocalCharacterClassReplacement(
 			DEFERRED_LOCAL_CHARACTER_CLASS_REPLACEMENT_VIEW& OutView) const;
 		DEFERRED_LOCAL_CHARACTER_CLASS_REPLACEMENT_RESULT
@@ -408,6 +409,10 @@ namespace Client
 		const VALTAN_PRESENTATION_STATE& Get_ValtanPresentationState() const
 		{
 			return m_ValtanPresentationState;
+		}
+		const std::vector<LostArk::Shared::WORLD_PICKUP_SNAPSHOT>& Get_WorldPickups() const
+		{
+			return m_WorldPickupSnapshots;
 		}
 		uint64_t Get_WorldDestructionPresentationGeneration() const
 		{
@@ -703,6 +708,7 @@ namespace Client
 		std::uint64_t m_iNextDeferredLocalCharacterClassReplacementGeneration = 1u;
 		std::string m_strPendingPresentationFailure;
 		VALTAN_PRESENTATION_STATE m_ValtanPresentationState;
+		std::vector<LostArk::Shared::WORLD_PICKUP_SNAPSHOT> m_WorldPickupSnapshots;
 		CCombatObjectProjectionRuntime m_CombatObjectProjectionRuntime;
         // MainApp owns the player for the active Kouku level; Reset_World drops this view.
         CKoukuSaydonPresentationPlayer* m_pTargetedCombatPresentationPlayer = nullptr;

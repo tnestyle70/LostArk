@@ -392,6 +392,7 @@ namespace Client
 			++m_EstherCutinRequest.iGeneration;
 			m_EstherCutinRequest.strArchetypeId = archetypeId;
 		}
+		void Apply_ServerNumericSnapshot(const std::vector<LostArk::Shared::BALANCE_NUMERIC_ENTRY>& entries);
 		void Reset_RuntimeState();
 		void Apply_WorldHealthBars(std::vector<HUD_WORLD_HEALTH_BAR_STATE>&& states);
 		void Remove_WorldHealthBar(LostArk::Shared::NET_ENTITY_ID entityId);
@@ -579,6 +580,7 @@ namespace Client
 		std::unordered_map<LostArk::Shared::CHARACTER_CLASS_ID,
 			PLAYER_PROFILE_DEFINITION> m_PlayerProfiles;
 		std::unordered_map<std::string, BOSS_PROFILE_DEFINITION> m_BossProfiles;
+		std::vector<LostArk::Shared::BALANCE_NUMERIC_ENTRY> m_ServerNumbers;
 		HUD_PLAYER_STATE m_Player;
 		HUD_KOUKU_GIMMICK_STATE m_KoukuGimmick;
 		HUD_DUNGEON_TIMER_STATE m_DungeonTimer;

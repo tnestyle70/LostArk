@@ -479,7 +479,15 @@ class ValtanManualStageTopologyPipelineTests(unittest.TestCase):
         self.assertEqual(source_stage["actionId"], stage["actionId"])
 
         rejoined = self.round_trip_and_validate_lineage(without_animation)
-        outputs = pipeline.project_v2_products(ROOT, self.documents, rejoined)
+        # Match the editor transaction: removing an owner also stages its exact
+        # V2/Sound dependencies. Keep all other live fixture bindings intact.
+        documents = copy.deepcopy(self.documents)
+        for relative, key in ((pipeline.EFFECT_V2_BINDINGS_REL, "bindings"), (pipeline.PATTERN_SOUND_CUES_REL, "cues")):
+            owner = json.loads((ROOT / relative).read_bytes())
+            owner[key] = [row for row in owner[key]
+                          if row.get("scope", row).get("patternId") != pattern_id or row.get("scope", row).get("stageId") != stage_id]
+            documents[relative] = json.dumps(owner, ensure_ascii=False).encode("utf-8")
+        outputs = pipeline.project_v2_products(ROOT, documents, rejoined)
         bindings = json.loads(outputs[pipeline.BINDINGS_REL])
         binding = next(
             row
@@ -927,21 +935,47 @@ class ValtanManualStageTopologyPipelineTests(unittest.TestCase):
             )
         self.assertEqual(self.master, before)
 
-    def test_original_intake_stage_cannot_be_removed(self) -> None:
+    def test_original_intake_stage_removal_keeps_reference_and_round_trips(self) -> None:
         before = copy.deepcopy(self.master)
-        with self.assertRaises(pipeline.DraftPatchError) as raised:
-            self.apply(
-                before,
-                [
-                    {
-                        "op": "REMOVE_MANUAL_STAGE",
-                        "patternId": "VALTAN_CHARGE",
-                        "stageId": "STEP_02",
-                    }
-                ],
-            )
-        self.assertEqual("SOURCE_STAGE_IMMUTABLE", raised.exception.error_code)
+        source = find_pattern(before, "VALTAN_CHARGE")
+        removed = find_stage(source, "STEP_02")
+        original_debug = copy.deepcopy(self.debug_presentation)
+        candidate = self.apply(before, [{
+            "op": "REMOVE_MANUAL_STAGE", "patternId": "VALTAN_CHARGE", "stageId": "STEP_02",
+        }])
+        pattern = find_pattern(candidate, "VALTAN_CHARGE")
+        self.assertNotIn("STEP_02", [row["stageId"] for row in pattern["stages"]])
+        self.assertEqual(len(source["stages"]) - 1, len(pattern["stages"]))
+        self.assertEqual(pattern["stages"][1]["actionId"], pattern["stages"][0]["defaultNextActionId"])
+        self.assertTrue(all(clip["mappingBasis"] == "SOURCE_REVIEWED_DELTA"
+                            for stage in pattern["stages"] for clip in stage["animation"].get("occurrences", [])))
         self.assertEqual(self.master, before)
+        self.assertEqual(original_debug, self.debug_presentation)
+        self.round_trip_and_validate_lineage(candidate)
+
+    def test_stage_removal_cascades_owned_presentation_and_hit(self) -> None:
+        before = copy.deepcopy(self.master)
+        stage = find_stage(find_pattern(before, "VALTAN_CHARGE"), "STEP_02")
+        stage["hit"] = {"shape": {"kind": "CIRCLE", "radius": 3.0}, "hitOffsetsMs": [100]}
+        stage["effectCues"] = [{"bindingId": "fixture.owned.effect"}]
+        stage["cameraInvocations"] = [{"cameraInvocationId": "fixture.owned.camera"}]
+        candidate = self.apply(before, [{
+            "op": "REMOVE_MANUAL_STAGE", "patternId": "VALTAN_CHARGE", "stageId": "STEP_02",
+        }])
+        self.assertNotIn("STEP_02", [row["stageId"] for row in find_pattern(candidate, "VALTAN_CHARGE")["stages"]])
+        self.assertIn("STEP_02", [row["stageId"] for row in find_pattern(before, "VALTAN_CHARGE")["stages"]])
+        self.round_trip_and_validate_lineage(candidate)
+
+    def test_stage_removal_keeps_external_references_and_last_stage_fail_closed(self) -> None:
+        before = copy.deepcopy(self.master)
+        pattern = find_pattern(before, "VALTAN_CHARGE")
+        pattern["serverMotion"] = {"travelStageId": "STEP_02"}
+        with self.assertRaises(pipeline.DraftPatchError) as raised:
+            self.apply(before, [{"op": "REMOVE_MANUAL_STAGE", "patternId": "VALTAN_CHARGE", "stageId": "STEP_02"}])
+        self.assertEqual("STAGE_REFERENCE_DANGLING", raised.exception.error_code)
+        with self.assertRaises(pipeline.DraftPatchError) as raised:
+            self.apply(self.master, [{"op": "REMOVE_MANUAL_STAGE", "patternId": "VALTAN_SEQUENCE_FOUR", "stageId": "STEP_01"}])
+        self.assertEqual("LAST_STAGE_REMOVAL_FORBIDDEN", raised.exception.error_code)
 
 
 if __name__ == "__main__":

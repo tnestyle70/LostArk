@@ -1,6 +1,7 @@
 #pragma once
 
 #include "ServerIds.h"
+#include "ServerPlayer.h"
 #include "Network/PacketMessages.h"
 
 #include <memory>
@@ -53,6 +54,7 @@ namespace LostArk::Server
 		DEBUG_GIVE_ITEM,
 		USE_ITEM,
 		SET_EQUIPMENT,
+		BUY_ITEMS,
 		DESPAWN_ALL_WORLD_ENTITIES,
 		CONFIRM_NPC_ENTRY,
 		INTERACT_TRIGGER,
@@ -89,6 +91,8 @@ namespace LostArk::Server
 		SERVER_WORLD_TRANSFER_REQUEST::CarriedInventory. Empty means grant the
 		default fresh-entry loadout. */
 		std::vector<LostArk::Shared::INVENTORY_ITEM_SNAPSHOT> CarriedInventory;
+		/* Travels with CarriedInventory: the purse the player had in the source world. */
+		SERVER_PURSE CarriedPurse;
 		/* ENTER_WORLD only, from SERVER_WORLD_TRANSFER_REQUEST::iHonorTitleId: the title the
 		player wore in the source world. INVALID for a fresh Lobby entry. */
 		LostArk::Shared::HONOR_TITLE_ID iCarriedHonorTitleId = LostArk::Shared::INVALID_HONOR_TITLE_ID;
@@ -140,6 +144,7 @@ namespace LostArk::Server
 		LostArk::Shared::C2S_DEBUG_GIVE_ITEM DebugGiveItem;
 		LostArk::Shared::C2S_USE_ITEM UseItem;
 		LostArk::Shared::C2S_SET_EQUIPMENT SetEquipment;
+		LostArk::Shared::C2S_BUY_ITEMS BuyItems;
 		LostArk::Shared::C2S_DESPAWN_ALL_WORLD_ENTITIES DespawnAllWorldEntities;
 		LostArk::Shared::C2S_CONFIRM_NPC_ENTRY ConfirmNpcEntry;
 		LostArk::Shared::C2S_INTERACT_TRIGGER InteractTrigger;

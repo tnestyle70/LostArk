@@ -12,7 +12,7 @@ param(
     [ValidateSet('Validate', 'Check', 'Publish')]
     [string]$Mode = 'Publish',
 
-    [ValidateSet('Area', 'WorldSequences', 'Lights', 'Deploy', 'Placements', 'CameraShots')]
+    [ValidateSet('Area', 'WorldSequences', 'Lights', 'Deploy', 'Placements', 'CameraShots', 'Effects')]
     [string]$Scope = 'Area'
 )
 
@@ -707,6 +707,8 @@ function Read-MapEffectDocument {
                     throw "Map Effect draw distance is invalid: $Path"
                 }
             }
+            $hasPickup = $presentation.PSObject.Properties.Name -contains 'pickup'
+            if ($hasPickup) { $worldProperties += 'pickup' }
             Assert-ExactJsonProperties $presentation $worldProperties 'Map Effect world row'
             if ($presentation.placementId -isnot [string] -or
                 $presentation.placementId -notmatch '^[A-Za-z0-9._-]{1,160}$' -or
@@ -714,11 +716,35 @@ function Read-MapEffectDocument {
                 $presentation.effectAssetId -isnot [string] -or
                 $presentation.effectAssetId -notmatch '^[A-Za-z0-9._-]{1,160}$' -or
                 $presentation.orientationPolicy -notin @('WORLD','CAMERA_FACING_WORLD') -or
-                $presentation.activationPolicy -notin @('LEVEL_ACTIVE','SERVER_PATTERN_WINDOW') -or
+                $presentation.activationPolicy -notin @('LEVEL_ACTIVE','SERVER_PATTERN_WINDOW','SERVER_PICKUP') -or
                 $presentation.playbackPolicy -notin @('LOCAL_LOOP','SOURCE_LOOP','SOURCE_ONCE','SERVER_CLOCK_SAMPLE') -or
                 (($presentation.activationPolicy -eq 'SERVER_PATTERN_WINDOW') -ne
                  ($presentation.playbackPolicy -eq 'SERVER_CLOCK_SAMPLE'))) {
                 throw "Map Effect world identity/policy is invalid: $Path"
+            }
+            if ($hasPickup -ne ($presentation.activationPolicy -ceq 'SERVER_PICKUP')) {
+                throw "Map Effect pickup metadata/policy mismatch: $Path"
+            }
+            if ($hasPickup) {
+                Assert-ExactJsonProperties $presentation.pickup @('wallGroupId','landingPosition','fallDurationMs','pickupRadiusM') 'Map Effect pickup'
+                $pickup = $presentation.pickup
+                if ($AreaId -cne 'LV_LUT_HEARTRB_ED' -or
+                    $presentation.playbackPolicy -cne 'SOURCE_LOOP' -or
+                    $presentation.placementId.Length -gt 128 -or
+                    $pickup.wallGroupId -isnot [string] -or
+                    $pickup.wallGroupId -cnotmatch '^[A-Za-z0-9._-]{1,160}$' -or
+                    $pickup.landingPosition -isnot [System.Array] -or
+                    @($pickup.landingPosition).Count -ne 3 -or
+                    @($pickup.landingPosition | Where-Object {
+                        -not (Test-JsonNumber $_) -or [double]$_ -lt -100000 -or [double]$_ -gt 100000
+                    }).Count -ne 0 -or
+                    -not (Test-JsonNumber $pickup.fallDurationMs) -or
+                    [double]$pickup.fallDurationMs -lt 1 -or [double]$pickup.fallDurationMs -gt 60000 -or
+                    [Math]::Floor([double]$pickup.fallDurationMs) -ne [double]$pickup.fallDurationMs -or
+                    -not (Test-JsonNumber $pickup.pickupRadiusM) -or
+                    [double]$pickup.pickupRadiusM -lt 0.001 -or [double]$pickup.pickupRadiusM -gt 20) {
+                    throw "Map Effect pickup values are invalid: $Path"
+                }
             }
             $position = @($presentation.position)
             $rotation = @($presentation.rotationQuaternion)
@@ -749,10 +775,10 @@ function Read-MapEffectDocument {
                 throw "Map Effect activation windows must be an array: $Path"
             }
             $windows = @($presentation.activationWindows)
-            if ($presentation.activationPolicy -eq 'LEVEL_ACTIVE') {
+            if ($presentation.activationPolicy -in @('LEVEL_ACTIVE','SERVER_PICKUP')) {
                 if (-not [string]::IsNullOrEmpty($presentation.activationSetId) -or
                     $windows.Count -ne 0) {
-                    throw "LEVEL_ACTIVE Map Effect cannot declare a Server set: $Path"
+                    throw "Map Effect policy cannot declare a Server pattern set: $Path"
                 }
             }
             elseif ($presentation.activationSetId -isnot [string] -or
@@ -1090,7 +1116,7 @@ function Resolve-MapEffectAuthoredDocument {
     if ($document.schema -isnot [string] -or
         $document.schema -cne 'lostark.effect-authoring' -or
         -not (Test-JsonNumber $document.version) -or
-        [double]$document.version -ne 13.0 -or
+        [double]$document.version -notin @(13.0,15.0) -or
         $document.effectAssetId -isnot [string] -or
         $document.effectAssetId -cne $EffectAssetId -or
         $document.elements -isnot [System.Array]) {
@@ -1277,6 +1303,62 @@ function Add-MapEffectPublishFile {
             Name = "$AreaId.mapeffects.json"
             Lines = Read-MapEffectDocument $authoringEffectPath
         })
+        if ($AreaId -ceq 'LV_LUT_HEARTRB_ED') {
+            $document = [IO.File]::ReadAllText($authoringEffectPath, [Text.Encoding]::UTF8) | ConvertFrom-Json
+            $pickupRows = @($document.presentations | Where-Object { $_.activationPolicy -ceq 'SERVER_PICKUP' } | Sort-Object placementId)
+            if ($pickupRows.Count -gt 16) { throw 'World pickup count exceeds 16.' }
+            if ($pickupRows.Count -gt 0) {
+            $worldEvents = [IO.File]::ReadAllText($worldDestructionSourcePath, [Text.Encoding]::UTF8) | ConvertFrom-Json
+            $navBytes = [IO.File]::ReadAllBytes((Join-Path $ProjectRoot "Client/Bin/DataFiles/Navigation/$AreaId.navgrid"))
+            if ($navBytes.Length -lt 20) { throw 'Pickup navigation grid is truncated.' }
+            $width = [BitConverter]::ToUInt32($navBytes, 0)
+            $height = [BitConverter]::ToUInt32($navBytes, 4)
+            $cell = [BitConverter]::ToSingle($navBytes, 8)
+            $originX = [BitConverter]::ToSingle($navBytes, 12)
+            $originZ = [BitConverter]::ToSingle($navBytes, 16)
+            $count = [long]$width * [long]$height
+            if ($count -lt 1 -or $count -gt 1000000 -or $navBytes.Length -ne 20 + 5 * $count -or
+                -not (Test-JsonNumber $cell) -or $cell -le 0 -or
+                -not (Test-JsonNumber $originX) -or -not (Test-JsonNumber $originZ)) {
+                throw 'Pickup navigation grid is invalid.'
+            }
+            }
+            $lines = [Collections.Generic.List[string]]::new()
+            $lines.Add("LOSTARK_WORLD_PICKUPS 1 `"$AreaId`" 30 $($pickupRows.Count)")
+            foreach ($row in $pickupRows) {
+                $pickup = $row.pickup
+                $groups = @($worldEvents.groups | Where-Object { $_.groupId -ceq $pickup.wallGroupId })
+                if ($groups.Count -ne 1 -or $groups[0].navPolarity -cne 'BLOCK_WHILE_INTACT') {
+                    throw "Pickup must reference one existing destructible wall: $($row.placementId)"
+                }
+                $mutationIds = @($worldEvents.mutations | Where-Object { $_.groupId -ceq $pickup.wallGroupId } | ForEach-Object { $_.mutationId })
+                $wallBindings = @($worldEvents.bindings | Where-Object { $_.enabled -and $_.mutationId -cin $mutationIds })
+                if ($wallBindings.Count -eq 0 -or [double]$row.position[1] - [double]$pickup.landingPosition[1] -lt 0.01) {
+                    throw "Pickup wall is not active or landing is not below its start: $($row.placementId)"
+                }
+                $x = [int][Math]::Floor(([double]$pickup.landingPosition[0] - $originX) / $cell)
+                $z = [int][Math]::Floor(([double]$pickup.landingPosition[2] - $originZ) / $cell)
+                if ($x -lt 0 -or $x -ge $width -or $z -lt 0 -or $z -ge $height) {
+                    throw "Pickup landing is outside navigation: $($row.placementId)"
+                }
+                $index = $z * $width + $x
+                $ground = [BitConverter]::ToSingle($navBytes, 20 + $count + $index * 4)
+                if ($navBytes[20 + $index] -ne 1 -or -not (Test-JsonNumber $ground) -or
+                    [Math]::Abs([double]$pickup.landingPosition[1] - $ground) -gt 1.5) {
+                    throw "Pickup landing has no reachable base floor: $($row.placementId)"
+                }
+                $numbers = @($row.position) + @($pickup.landingPosition)
+                $encoded = @($numbers | ForEach-Object { ([double]$_).ToString('R', [Globalization.CultureInfo]::InvariantCulture) })
+                $ticks = [uint32][Math]::Ceiling([double]$pickup.fallDurationMs * 30.0 / 1000.0)
+                $radius = ([double]$pickup.pickupRadiusM).ToString('R', [Globalization.CultureInfo]::InvariantCulture)
+                $lines.Add("`"$($row.placementId)`" `"$($pickup.wallGroupId)`" $($encoded -join ' ') $ticks $radius")
+            }
+            $Files.Add([pscustomobject]@{
+                Name = 'VALTAN_ARENA.worldpickupsbootstrap'
+                DestinationKind = 'ServerWorld'
+                Lines = $lines.ToArray()
+            })
+        }
     }
 }
 
@@ -2245,8 +2327,29 @@ function Read-WorldSequenceDocument {
             throw 'World Object effect lanes require one Object Resource binding'
         }
         foreach ($binding in $bindings) {
-            Assert-ExactJsonProperties $binding `
-                @('slotId','targetKind','targetId') 'World sequence binding'
+            $bindingFields = @('slotId','targetKind','targetId')
+            if ($null -ne $binding.PSObject.Properties['previewNpcPlacementId']) { $bindingFields += 'previewNpcPlacementId' }
+            Assert-ExactJsonProperties $binding $bindingFields 'World sequence binding'
+            if ($null -ne $binding.PSObject.Properties['previewNpcPlacementId']) {
+                $resource = $objectResources[$binding.targetId]
+                if ($binding.targetKind -cne 'OBJECT_RESOURCE' -or $null -eq $resource -or -not $resource.animated -or
+                    $binding.previewNpcPlacementId -isnot [string] -or $binding.previewNpcPlacementId -cnotmatch $stableId -or
+                    $bindings.Count -ne 1 -or $instanceAnchor -cne 'WORLD' -or $motionEnd -cnotin @('STOP','HOLD') -or
+                    -not [string]::IsNullOrEmpty($resource.sequenceInstanceId) -or
+                    ($null -ne $template.objectMotion -and $template.objectMotion.count -ne 1) -or
+                    @($template.colliderTracks | Where-Object { $null -ne $_ }).Count -ne 0 -or
+                    $null -ne $resource.PSObject.Properties['combatBody'] -or
+                    $null -ne $resource.PSObject.Properties['presentationBossArchetypeId']) {
+                    throw "Invalid editor NPC replacement: $($instance.instanceId)"
+                }
+                $world = Get-Content -LiteralPath (Join-Path $ProjectRoot "Data/Worlds/$AreaId/Gameplay.world.json") -Raw -Encoding UTF8 | ConvertFrom-Json
+                $npc = @($world.placements | Where-Object { $_.placementId -ceq $binding.previewNpcPlacementId -and $_.kind -ceq 'npc' -and $_.enabled })
+                $npcCatalog = Get-Content -LiteralPath (Join-Path $ProjectRoot 'Data/Actors/NpcCatalog.json') -Raw -Encoding UTF8 | ConvertFrom-Json
+                $actor = @($npcCatalog.npcs | Where-Object { $npc.Count -eq 1 -and $_.archetypeId -ceq $npc[0].archetypeId })
+                if ($npc.Count -ne 1 -or $actor.Count -ne 1 -or $actor[0].modelAssetId -cne $resource.modelAssetId) {
+                    throw "NPC preview must match one enabled placement and its exact model: $($instance.instanceId)"
+                }
+            }
             if ($binding.slotId -isnot [string] -or
                 -not $boundSlots.Add([string]$binding.slotId) -or
                 $binding.targetKind -isnot [string] -or
@@ -3542,7 +3645,7 @@ elseif ([IO.File]::Exists($authoringLightPath)) {
 
 # Placements needs the material declaration so published catalogs keep their
 # v5 material reference; it stages no effect, water or material file itself.
-if ($Scope -in @('Area', 'Placements')) {
+if ($Scope -in @('Area', 'Placements', 'Effects')) {
 $sourceEffectsProperty = $areaEntry.PSObject.Properties['sourceEffects']
 $runtimeEffectsProperty = $areaEntry.PSObject.Properties['effects']
 if (($null -eq $sourceEffectsProperty) -ne ($null -eq $runtimeEffectsProperty)) {
@@ -3665,10 +3768,14 @@ function Invoke-FileSetTransaction {
         foreach ($file in $Files) {
             $staged = Join-Path $stagingRoot $file.Name
             [IO.File]::WriteAllBytes($staged, $file.Bytes)
+            $destinationRoot = if ($file.DestinationKind -ceq 'ServerWorld') {
+                Join-Path $ProjectRoot 'Server/Bin/DataFiles/World'
+            } else { $runtimeRoot }
+            [IO.Directory]::CreateDirectory($destinationRoot) | Out-Null
             $entries.Add([ordered]@{
                 Staged = $staged
-                Destination = Join-Path $runtimeRoot $file.Name
-                Rollback = Join-Path $runtimeRoot ".$($file.Name).rollback.$transactionId"
+                Destination = Join-Path $destinationRoot $file.Name
+                Rollback = Join-Path $destinationRoot ".$($file.Name).rollback.$transactionId"
                 HadPrevious = $false
                 Promoted = $false
             })
@@ -3756,6 +3863,12 @@ function Complete-MapPublish {
     $expectedFiles = [Collections.Generic.List[object]]::new()
     $names = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
     foreach ($file in $Files) {
+        $destinationKind = if ($file.PSObject.Properties.Name -contains 'DestinationKind') { [string]$file.DestinationKind } else { 'ClientMap' }
+        if ($destinationKind -cnotin @('ClientMap','ServerWorld') -or
+            ($destinationKind -ceq 'ServerWorld' -and
+             ($AreaId -cne 'LV_LUT_HEARTRB_ED' -or $file.Name -cne 'VALTAN_ARENA.worldpickupsbootstrap'))) {
+            throw 'Map publish destination kind is invalid.'
+        }
         if ($file.Name -notmatch '^[A-Za-z0-9_.-]+$' -or
             [IO.Path]::GetFileName($file.Name) -ne $file.Name -or
             -not $names.Add($file.Name)) {
@@ -3763,12 +3876,14 @@ function Complete-MapPublish {
         }
         $expectedFiles.Add([pscustomobject]@{
             Name = $file.Name
+            DestinationKind = $destinationKind
             Bytes = $utf8.GetBytes((([string[]]$file.Lines -join "`n") + "`n"))
         })
     }
     if ($Mode -eq 'Check') {
         foreach ($file in $expectedFiles) {
-            $destination = Join-Path $runtimeRoot $file.Name
+            $destinationRoot = if ($file.DestinationKind -ceq 'ServerWorld') { Join-Path $ProjectRoot 'Server/Bin/DataFiles/World' } else { $runtimeRoot }
+            $destination = Join-Path $destinationRoot $file.Name
             if (-not [IO.File]::Exists($destination)) {
                 throw "Map runtime output is missing: $destination"
             }
@@ -3803,6 +3918,15 @@ if ($Scope -eq 'Lights') {
     $files = [Collections.Generic.List[object]]::new()
     Add-MapLightPublishFile $files
     Complete-MapPublish $files 'lights' $runtimeLightPath
+    return
+}
+
+if ($Scope -eq 'Effects') {
+    if (-not $script:mapEffectsDeclared) { throw "Map catalog does not declare effects: $AreaId" }
+    $authoringRows = @()
+    $files = [Collections.Generic.List[object]]::new()
+    Add-MapEffectPublishFile $files
+    Complete-MapPublish $files 'effects' $runtimeEffectPath
     return
 }
 

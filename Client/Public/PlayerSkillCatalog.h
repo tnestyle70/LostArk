@@ -56,6 +56,8 @@ namespace Client
 		/* Percent of the caster's attack power, as authored: display damage is
 		attackPower x rate / 100 and only the server resolves the real number. */
 		std::uint32_t iDamageRatePercent = 0;
+		std::string strDamageProfileId;
+		std::uint32_t iAttackCoefficientBp = 0u, iDamageAddend = 0u;
 		/* Read-only combat traits. The Client may present them, but only the
 		Server uses them to resolve boss stagger, part damage, or counters. */
 		std::uint32_t iStaggerDamage = 0;
@@ -93,6 +95,7 @@ namespace Client
 		kept and outStatus explains why, so a bad edit cannot empty a catalog that
 		a running level is already reading. */
 		static bool Load(std::string& outStatus);
+		static void Apply_ServerNumericSnapshot(const std::vector<LostArk::Shared::BALANCE_NUMERIC_ENTRY>& entries);
 
 		static const std::vector<PLAYER_SKILL_DEFINITION>& Get_Skills();
 

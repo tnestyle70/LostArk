@@ -96,6 +96,9 @@ private:
 		const std::vector<LostArk::Shared::INVENTORY_ITEM_SNAPSHOT>& items) const;
 	/* Every slot this view owns, moved together while dragging the title bar. */
 	void Update_Drag();
+	/* The title bar's X: hover brightens it, a click closes the window. */
+	void Update_CloseButton();
+	bool_t Get_CloseHitRect(f32_t& fX, f32_t& fY, f32_t& fWidth, f32_t& fHeight) const;
 	/* Shifts every panel slot (chrome, category tabs, item slots + icons). */
 	void Move_Panel(f32_t fDeltaX, f32_t fDeltaY);
 	/* Keeps the whole panel inside the reference resolution -- a title drag could otherwise park

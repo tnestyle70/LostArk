@@ -74,6 +74,11 @@ public:
 		double gripForwardM = 0.0;
 		double gripUpM = 0.0;
 		double gripRightM = 0.0;
+		std::string aimTargetPolicy;
+		bool_t bHasAimEnd = false;
+		uint32_t iAimEndMs = 0u;
+		bool_t bHasAimResponseScale = false;
+		f32_t fAimResponseScale = 1.f;
 		std::string motionKind;
 		std::uint32_t portalRetargetDelayMs = 0;
 		double portalSpeedMps = 0.0;
@@ -336,6 +341,9 @@ public:
 		const std::string& stageId, const std::string& clip, std::uint32_t durationMs,
 		bool asNewStage, VALTAN_PATTERN_VIEW& outPattern, std::string& outStageId,
 		std::string& outOccurrenceId, std::string& status);
+	bool Insert_ValtanStageCopyAfter(const std::string& patternId,
+		const std::string& afterStageId, const VALTAN_STAGE_VIEW& source,
+		VALTAN_STAGE_VIEW& outStage, std::string& status);
 	bool Insert_ValtanManualStageAfter(
 		const std::string& patternId,
 		const std::string& afterStageId,
@@ -485,6 +493,8 @@ public:
 	{
 		std::string patternSoundBaselineBytes;
 		std::string patternSoundCandidateBytes;
+		std::string patternShakeBaselineBytes;
+		std::string patternShakeCandidateBytes;
 		std::string effectV2BaselineBytes;
 		std::string effectV2CandidateBytes;
 		std::string effectV2ReadSetBytes;

@@ -53,7 +53,7 @@ Lobby의 `KoukuSaydon` 버튼은 기존 `CLobbyCommandService -> C2S_ENTER_WORLD
 
 Character Select의 `Create Character`는 선택 class와 공통 validator를 통과한 1~32-byte UTF-8 nickname을 `CCharacterSelectionState`의 pending identity로 stage한다. Lobby가 그 exact identity로 Bern entry를 승인받고 loading resource, rendering profile, 실제 `Change_Level(BERN)`까지 성공한 뒤에만 created identity로 commit한다. 중간 실패는 pending만 취소하고 기존 created identity는 유지한다. created identity가 없는 direct Bern, Character Select, Training, Valtan, KoukuSaydon entry는 process-local `Test-<process-id>` audition nickname을 사용한다. Bern은 pending 생성이 있으면 이를 우선하며, Lobby/F1의 직접 audition 입장은 생성 commit을 만들지 않는다. Server의 `SERVER_PLAYER::strNickName`과 world transfer가 session lifetime 동안 exact nickname을 보존하고 `S2C_PLAYER_SPAWNED`로 복제한다. nickname은 display text이며 player lookup, Party member ID, 고유성 검사 또는 Client 재실행 뒤 영구 저장에 사용하지 않는다. Bern과 Valtan은 `CClientReplication::Collect_PlayerViews`의 Server-replicated nickname과 weak character presentation을 `CWorldPlayerNameplateView`에 전달한다. projection, UTF-8 변환, font draw 실패는 gameplay와 replication을 건드리지 않고 해당 nameplate만 생략한다.
 
-2026-09-30 23:59 KST까지 공유 LAN Server는 같은 팀 LAN의 `192.168.200.113:7777`이다. Server PC는 현재 `Wi-Fi`에서 `192.168.200.113/24`를 소유한다. Server는 `0.0.0.0:7777`에 수신하고 Server PC와 다른 PC의 Client는 모두 concrete endpoint `192.168.200.113:7777`을 사용한다. `Tools/Network/TeamLanEndpoint.json`이 endpoint와 만료일 정본이다. 각 에이전트는 pull 후 `Tools/Network/Sync-TeamLanEndpoint.ps1`을 실행하고 출력된 역할에 맞는 target을 안내하며, 실제 `Ctrl+F5` 시작과 UI 조작은 사용자가 수행한다.
+2026-09-30 23:59 KST까지 공유 LAN Server는 같은 팀 LAN의 `192.168.0.22:7777`이다. Server PC는 현재 `Wi-Fi 2`에서 `192.168.0.22/24`를 소유한다. Server는 `0.0.0.0:7777`에 수신하고 Server PC와 다른 PC의 Client는 모두 concrete endpoint `192.168.0.22:7777`을 사용한다. `Tools/Network/TeamLanEndpoint.json`이 endpoint와 만료일 정본이다. 각 에이전트는 pull 후 `Tools/Network/Sync-TeamLanEndpoint.ps1`을 실행하고 출력된 역할에 맞는 target을 안내하며, 실제 `Ctrl+F5` 시작과 UI 조작은 사용자가 수행한다.
 
 쿠크 아레나의 광기와 네 HUD는 `CCombatHUDViewModel::Get_KoukuGimmick()`을 읽는다. v63
 `PLAYER_SNAPSHOT`의 madness, `eKoukuHudMode`, cooldown 종료 tick과 카드 문양·색이 실제 상태를 소유한다.
@@ -88,7 +88,7 @@ Server와 Client가 같은 PC, 같은 LAN, 서로 다른 네트워크 중 어디
 
 | 실행 위치 | Server `--bind-address` | Client `LOSTARK_SERVER_HOST` |
 |---|---|---|
-| 현재 팀 LAN 공유 Server | `0.0.0.0` | `192.168.200.113` |
+| 현재 팀 LAN 공유 Server | `0.0.0.0` | `192.168.0.22` |
 | 같은 PC 격리 harness | 명시적 `127.0.0.1` | 명시적 `127.0.0.1` |
 | 서로 다른 장소/VPN | `0.0.0.0` | Server PC가 실제 소유한 VPN IPv4와 별도 source CIDR 방화벽 규칙 |
 | 일반 NAT 공인 IPv4 | 현 단일 endpoint sync 미지원 | advertised endpoint와 Server owner address 분리 구현을 먼저 추가 |
@@ -117,10 +117,10 @@ Client project만 시작한다. 자동 판정이 예상과 다르면 IP 어댑�
 팀 계약을 갈라놓지 않는다.
 
 ```xml
-<LocalDebuggerEnvironment>LOSTARK_SERVER_HOST=192.168.200.113</LocalDebuggerEnvironment>
+<LocalDebuggerEnvironment>LOSTARK_SERVER_HOST=192.168.0.22</LocalDebuggerEnvironment>
 ```
 
-`0.0.0.0`은 Server의 수신 주소일 뿐 Client 접속 주소로 사용하지 않는다. 현재 Client 기본값은 `192.168.200.113`이다. 주소를 바꾸면 `Tools/Network/TeamLanEndpoint.json`, Server/Client 코드 기본값, 공유 debugger 설정과 이 사용서를 같은 변경 단위에서 갱신하고 `Sync-TeamLanEndpoint.ps1`, NetworkProtocolHarness, Server contract test로 검증한다.
+`0.0.0.0`은 Server의 수신 주소일 뿐 Client 접속 주소로 사용하지 않는다. 현재 Client 기본값은 `192.168.0.22`이다. 주소를 바꾸면 `Tools/Network/TeamLanEndpoint.json`, Server/Client 코드 기본값, 공유 debugger 설정과 이 사용서를 같은 변경 단위에서 갱신하고 `Sync-TeamLanEndpoint.ps1`, NetworkProtocolHarness, Server contract test로 검증한다.
 
 #### pull 후 공유 Server에 들어가는 순서
 
@@ -137,12 +137,12 @@ git rev-parse HEAD
 
 두 PC의 `git rev-parse HEAD`가 같아야 한다. `Client/Bin/Resources`의 `Fonts, Character, Deploy, Effect, Map, Sound, UI` 일곱 물리 폴더도 팀장이 전달한 같은 runtime 입력이어야 하며, Git에 없는 UI/Character/Map/Sound 리소스는 별도 전달을 먼저 완료한다. Debug configuration으로 공유할 때는 두 PC 모두 Debug 정본 빌드를 실행하고, Server를 중지한 상태에서 Server PC가 `Server/Bin/Debug/Server.exe --reset-valtan-runtime-to-packaged`를 한 번 통과시킨다. cross-PC Debug Hot Reload candidate 공유는 지원하지 않는다.
 
-동기화 뒤 Visual Studio project를 Reload하거나 IDE를 재시작한다. Server PC에서 `Machine role: server-host`를 확인하고 `Server + Client` profile을 시작한다. 다른 PC는 `Machine role: client`를 확인하고 `Client Only (Server Already Running)` profile을 시작한다. 직접 EXE를 실행할 때 shell의 오래된 `LOSTARK_SERVER_HOST`가 새 기본값보다 우선하므로 값이 `127.0.0.1`이면 제거하거나 `192.168.200.113`로 맞춘다.
+동기화 뒤 Visual Studio project를 Reload하거나 IDE를 재시작한다. Server PC에서 `Machine role: server-host`를 확인하고 `Server + Client` profile을 시작한다. 다른 PC는 `Machine role: client`를 확인하고 `Client Only (Server Already Running)` profile을 시작한다. 직접 EXE를 실행할 때 shell의 오래된 `LOSTARK_SERVER_HOST`가 새 기본값보다 우선하므로 값이 `127.0.0.1`이면 제거하거나 `192.168.0.22`로 맞춘다.
 
 Server가 `Listening on 0.0.0.0:7777`을 출력한 뒤 다른 PC에서 아래 probe가 성공해야 한다. Windows 네트워크가 `공용`이어도 repository sync가 검증하는 firewall rule은 `Profile Any`, `RemoteAddress LocalSubnet`이므로 직접 IPv4 접속에는 문제가 없다.
 
 ```powershell
-Test-NetConnection 192.168.200.113 -Port 7777
+Test-NetConnection 192.168.0.22 -Port 7777
 ```
 
 `TcpTestSucceeded: False`면 Server listener, endpoint 어댑터, TCP 7777 firewall, 공유기의 AP/client isolation 순서로 본다. `True`인데 Lobby에서 거부되거나 끊기면 서로 다른 commit/binary/protocol/gameplay bootstrap을 먼저 확인한다. 승인 뒤 `Stage loading failed`로 Lobby에 남으면 네트워크가 아니라 Client runtime Resources 또는 Loader 문제다. Bern과 Valtan은 player spawn이 네 개라 Server PC의 Client도 입장하면 다른 PC 세 대까지 같은 room에 들어갈 수 있다. Character Select는 session-private이므로 여러 PC가 같은 Server를 써도 서로 보이지 않으며, 동시 플레이 확인은 Bern 또는 Valtan에서 한다.
@@ -206,7 +206,7 @@ Server\Bin\Debug\Server.exe --bind-address 0.0.0.0 --smoke-timeout-ms 500
 profile을 정상 시작해 listener를 계속 유지한다. 그다음 Client PC에서 확인한다.
 
 ```powershell
-Test-NetConnection 192.168.200.113 -Port 7777
+Test-NetConnection 192.168.0.22 -Port 7777
 ```
 
 `Failed to open TCP listener ... Error=10049`는 `--bind-address`에 적은 주소가 현재 Server PC의 어느 어댑터에도 없다는 뜻이다. Client의 주소나 이전 Wi-Fi 주소를 Server bind 값으로 복사하지 말고 Server는 `0.0.0.0`, Client만 도달 가능한 endpoint를 사용한다.
@@ -841,17 +841,20 @@ Server 실행물을 함께 배포하고 Server를 재시작한다.
 
 UI 담당자는 JSON을 매 프레임 읽지 않는다. `CCombatHUDViewModel::Initialize_Definitions()`가 정의를 준비하고 `CClientReplication`이 snapshot마다 runtime 상태를 적용한다. UI 코드에서 packet이나 socket을 사용하거나 Character·boss GameObject에서 gameplay 수치를 조회하지 않는다. 머리 위 체력바는 ViewModel이 제공한 weak presentation의 표시 위치만 읽는다.
 
-Debug/Release F1의 `Open Balance Test`는 공용 수치 편집용 독립 창을 연다. `Players / Skills /
-Damage / Bosses / Madness`에서 실제 소비하는 수치를 편집하며 일반 수치 panel은 Valtan pattern source를
-로드하지 않는다. `Retail.balanceprofile.json`이 덮는 field는 그 실효값을 읽고 같은 Retail row에
-저장하며, 덮지 않는 movement/timing 등은 base JSON에 저장한다. 별도 Valtan authoring backend는 유지한다.
+Debug/Release의 `F1 -> Balance Test -> Save + Apply`는 현재 Server의 실효 수치를 읽고
+`IPlayerCommandSink`의 typed numeric patch를 보낸다. Server가 base numeric revision과 field 이전값을
+검사하고 canonical source/provenance와 게시 bootstrap을 원자 저장한 뒤 모든 shared/private room의
+같은 tick 경계에서 활성화한다. 모든 접속 Client는 F1을 닫아도 새 numeric snapshot으로 표시·입력
+수치를 갱신한다. 이 경로에는 Client 로컬 JSON 저장, PowerShell 실행, Server/Client 재시작이 없다.
+실패·충돌은 기존 활성값과 편집 draft를 보존한다. 자세한 범위·단위·영속 저장은
+`BALANCE_TUNING_AND_HOT_RELOAD_CONTRACT.md`의 일반 수치 계약을 따른다.
 
-`Save + Validate`는 stable ID와 field 이전값으로 최신 저장본에 병합하고, 변경 field를
-`PROJECT_TUNED`로 동기화한 후보를 검증한 뒤 원자 교체한다. 실패하면 기존 저장본을 보존한다.
-`Publish Server Data`는 Gameplay/World/Items를 같은 Retail profile의 runtime set으로 게시한다.
-파일 저장·게시와 실행 반영은 별도이며 Server와 Client를 재시작한 뒤 Server snapshot/damage event로
-확인한다. 일반 수치 panel은 runtime Hot Reload를 수행하지 않는다. 세부 작업법은
-`BALANCE_TOOL_OWNER_HANDOFF.md`가 정본이다.
+숫자 domain은 Players/Skills/Damage/Bosses/Madness/Stagger/Pattern damage다. Skills는 class·slot·name과
+연결 damage profile을 함께 보여 주고 ALT_V를 따로 찾을 수 있다. `attackCoefficientBp` 10000은 100%,
+`bossHealthBarDamage`는 ACTIVE 한 번의 전체 체력줄 피해다. Stagger는 각 패턴의 실제 gauge threshold이며
+미소비 boss gauge나 전역 배율 UI로 위장하지 않는다. 비율 피해의 `maxHpDamagePercent` 10은 최대 HP 10%의
+원시 피해이며 무적·실드·받는 피해 buff 뒤 최종 HP 감소량과 구분한다. numeric revision은 presentation
+revision과 별개이며 새 패턴/이펙트/콜라이더 구조를 이 경로로 바꾸지 않는다.
 
 Madness는 Retail `madness[policyId=KOUKUSAYDON]`의 피해·공·인형 배율과 접촉 주기/영역을
 소유한다. 피해는 보호막·방어·무적을 처리한 실제 HP 감소 비율에서 계산하고 소수 잔여값을 누적한다.
@@ -938,7 +941,7 @@ rotation, unknown command, 겹침 시 topmost 선택, resolution/letterbox 보�
 factory와 router가 생기기 전까지는 authoring tool의 save 성공만으로 제품 UI 전환 완료를
 선언하지 않는다.
 
-Git 관리 대상 데이터는 Visual Studio Client 프로젝트의 `96.DataFiles` 필터에서 원본을 바로 연다. 이 항목들은 `None` 링크이며 복사본이나 runtime 배포본이 아니다. 수치 튜닝 절차와 무중단 reload를 아직 활성화하지 않은 이유는 `BALANCE_TUNING_AND_HOT_RELOAD_CONTRACT.md`를 따른다.
+Git 관리 대상 데이터는 Visual Studio Client 프로젝트의 `96.DataFiles` 필터에서 원본을 바로 연다. 이 항목들은 `None` 링크이며 복사본이나 runtime 배포본이 아니다. 일반 수치의 Server-owned 즉시 반영과 별도 패턴 저작 reload 범위는 `BALANCE_TUNING_AND_HOT_RELOAD_CONTRACT.md`를 따른다.
 
 ## 7. Valtan Boss
 
@@ -973,7 +976,7 @@ CGameRoom::Tick
 
 | source | 소유 내용 |
 |---|---|
-| `Valtan.gameplay.json` | Server pattern graph, decision, stage, action, hit, motion, volley와 inline `scriptedSequence` 순서·반복·간격 |
+| `Valtan.gameplay.json` | Server pattern graph, decision, stage, action, hit, motion, volley, 자동 전투의 phase/HP rotation·mechanic과 명시적 Play All/Flow의 inline `scriptedSequence` 순서·반복·간격 |
 | `Valtan.presentation.json` | animation occurrence, Effect invocation, camera invocation, cue scale policy |
 | `Valtan.combatobjects.json` | combat-object origin, movement, hit geometry, damage profile reference와 optional 독립 `lifetimeMs` |
 | `Valtan.worldeventsets.json` | stable world-event set membership |
@@ -981,12 +984,34 @@ CGameRoom::Tick
 
 `Data/Valtan/Valtan.pattern.json`은 migration fixture이며 새 값을 저장하지 않는다. publisher는 다섯 split source를
 stable ID로 strict join해 `ValtanEncounter.json`, rotations, combat objects, world events, pattern bindings/cues와
-Server bootstrap을 생성한다. `Valtan.gameplay.json`의 `decisionModel.scriptedSequence`가 Product 순서의 유일한
-저작 정본이며 publisher가 generated `ValtanPatternRotations.json`에 exact 투영한다. 정본이 31 Pattern이면 Product도
-31 Pattern이어야 하며 29 Pattern 상태를 병행 허용하지 않는다. 외부 validator는 `Validate` 하나다. canonical Save는
-source candidate를 먼저 검증하고 같은 transaction에서 Product를 생성·commit하며, 이전 generated Product parity를
-저장 선행조건으로 사용하지 않는다. generated Product는 read-only이고 Server와 Arena가 split source를 두 번째
-런타임으로 직접 읽지 않는다.
+Server bootstrap을 생성한다. 현재 자동 전투는 `decisionModel.scriptedSequence.mode: HEALTH_BAR_ROTATIONS`이며,
+여덟 phase/HP window의 `ORDERED_LOOP`와 일곱 health-bar mechanic을 소비한다. ordered `patternIds`의 순서와
+중복 occurrence를 보존하고 완료마다 한 칸 진행한다. band 변경 시 새 loop의 처음으로 돌아가며 weighted fallback은 없다.
+`WEIGHTED_POOL`의 candidates/weight/enabled는 계속 지원하는 기존 선택 계약이고 현재 발탄 자동 set과 구분한다.
+
+phase 1은 160~130·130~115, phase 2는 115~105·105~80·80~65·65~30·30~15 구간이다.
+각 최대값은 포함하고 최소값은 제외한다. mechanic은 130/115/105/80/65/30/15줄 순서이며 큰 HP 감소로 여러
+threshold를 넘으면 모두 queue해 높은 줄수부터 처리한다. 115줄 지형 전환이 phase 2로, 15줄 발악 후 명시적
+Death→Respawn 연결이 phase 3으로 이어진다. Respawn 성공 완료 때만 동일 primary entity에 ghost profile의
+최대 HP·현재 HP·40줄을 적용하고 phase-3 40~0 loop를 시작한다. 일반 패턴 eligibility는 phase 1~3이고
+window가 실제 구간을 결정한다. `VALTAN_ARENA_BREAK_109`, `VALTAN_SIX_PIZZA_106`과 원본 stage ID는
+immutable 참조이므로 현재 trigger 줄수에 맞춰 이름을 바꾸지 않는다. 상세 경계와 ID 표는 `발탄인수인계서.md` 8.2~8.4를 따른다.
+
+자동 입장은 기존 G trigger → 입장 이동 → optional `entranceCinematicPatternId` → 기존
+`introPatternId` 등장 휠윈드 → health rotation 순서다. 컷씬·등장 휠윈드는 각각 한 번 소비한다.
+같은 primary archetype의 phase3 HUD는 ghost profile의40줄과 snapshot HP를 사용한다.
+finale의 optional `auxiliarySpawnIntervalMs`는 보조 유령 소멸 후 재생성 대기(현재5000ms),
+`portalSpawnIntervalMs`는 삼각 포탈 시작 간격(현재10000ms)이다. `PATTERNFINALEINTERVAL`이
+두 값을 전달하고 기존 `PATTERNFINALE` 형식은 유지한다. 보조 pool4개와 primary loop5개는 별개다.
+없는 필드의 legacy 재생성·7900ms 기본값 및 이전6개 pool 로드는 보존한다.
+
+같은 `scriptedSequence`의 배열·반복·간격은 명시적 Boss Tool `Play All`/Flow 참고 순서의 저작 정본이다.
+publisher는 이를 generated `ValtanPatternRotations.json`에 exact 투영하며 자동 전투의 band 순서로 덮어쓰지 않는다.
+명시적 Flow는 `ORDERED_ONCE_THEN_IDLE` 실행 override를 사용한다. 과거 31개 source와 29개 Product fixture의
+불일치도 parity 실패였으며 그 숫자가 현재 배열 개수 계약은 아니다. 외부 validator는 `Validate` 하나다.
+canonical Save는 source candidate를 먼저 검증하고 같은 transaction에서 Product를 생성·commit하며,
+이전 generated Product parity를 저장 선행조건으로 사용하지 않는다. generated Product는 read-only이고
+Server와 Arena가 split source를 두 번째 런타임으로 직접 읽지 않는다.
 
 `Data/Compositions/Bosses/Valtan.bosscomposition.json`은 위 split source와 Effect V1/V2, Sound,
 Shake owner의 경로·coverage·Pattern index를 묶는 `SHADOW` source manifest다. 값을 다시 복사해 소유하는
@@ -1636,7 +1661,7 @@ Client `CHitAreaWire`는 debug mirror이며 PhysX collider가 hit·카드 판정
 
 `Data/Actors/BossCatalog.json` format v5의 현재 Valtan `presentationScale: 1.0`은 replicated Arena와 Character/Boss
 Preview가 함께 소비하는 Client actor scale이다. 일반 `BOSS_VALTAN.maximumHp`는 `600000`, 종속
-`BOSS_VALTAN_GHOST.maximumHp`는 `60000`이며 health bar 수는 `160`을 유지한다. `BossProfiles.json`의 Server body radius는 scale-one 모델의
+`BOSS_VALTAN_GHOST.maximumHp` 저작 기준값은 `60000`이며 최대 줄수는 일반160/유령40이다. 실제 실행 HP는 publisher가 적용한 balance profile을 소비한다. `BossProfiles.json`의 Server body radius는 scale-one 모델의
 몸통·다리 실측에 맞춘 `1.4m`를 유지하며 Client Debug collider는 같은 replicated radius를 표시한다. 이 의도적인
 시각 배율을 body radius에 다시 곱하지 않는다. 공격 hit geometry와 장판 크기는 별도 저작 값이다.
 Effect cue의 scale policy는 `OWNER_RELATIVE`, `GAMEPLAY_FOOTPRINT`,
@@ -1659,6 +1684,29 @@ protocol v44는 이 owner와 typed 사망 despawn reason을
 추가하므로 Server/Client를 함께 배포한다. Server는 HP 0에서 전투 entity를 제거하고 Client만 유효한
 사망 clip 종료까지 기존 presentation을 보존한다. clip 없음·재생 실패·퇴장은 즉시 정리한다.
 
+Protocol 118의 `WORLD_ENTITY_SNAPSHOT.PatternLanding`은 Server가 패턴 시작에 확정한
+착지 XYZ를 해당 occurrence가 끝날 때까지 복제한다. `pattern.landing.snapshot` cue는
+`LEAP_TO_ANCHOR`/`LEAP_TO_TARGET`에서 snapshot 정책으로만 사용할 수 있다. 현재 보스의
+공중 root나 이동 중인 플레이어의 최신 위치로 착지점을 대신하지 않는다. Preview는 저작된
+landingPosition을 명시적 기준으로 사용한다. Server/Client는 같은 protocol로 함께 배포한다.
+명시적 유한 ONCE tail은 발탄 source 컷씬 동안 표시만 숨기고 시계를 유지하며, 명시 Stop과
+owner 제거에서는 정리한다. 일반 몸체 이펙트의 컷씬 정리 경계는 유지한다.
+
+`VALTAN_TRIPLE_COUNTER`의 `COUNTER_1/2/3`와 `VALTAN_TRASH`의
+`STEP_07/RETRY_WINDUP_02/03`에서는 catalog inputSlot Q/W/E/R의 counter skill 명중과
+활성 COUNTER guard가 공격자의 앞뒤 방향과 무관하게 카운터를 판정한다. 기존 counter
+window, 실제 명중·거리·proxy 검증과 다른 패턴의 방향 조건은 유지한다. 투사체는 생성 당시
+slot 자격을 고정한다. guard 성공도 Server의 피해 0 counter event를 보내며, Client는 같은
+파란 카운터 문구와 저작 GROGGY_FOLLOWUP 전이를 표시한다.
+
+Protocol119는 Area World pickup의 placementId/state/XYZ/stateStartTick과 player의
+Ronaun guard/grantTick을 복제한다. 발탄 에테르는 실제 벽 destruction transaction 성공 뒤
+낙하하며 착지 후 살아 있는 인간 player collider 접촉 한 번으로 소멸·지급한다. 구슬 guard는
+FLOOR_WIPE의 방어 가능한 전멸 타격1회에 소모하고 기존 파란 무적 문구 event를 사용한다.
+사망·아레나 reset은 guard를 지운다. ARENA_BREAK_109의 실제 STAGE binding은 미획득 구슬
+전체를 제거하며 같은 벽을 부수는 일반 돌진은 연결 구슬만 떨어뜨린다. Client 도구 Preview는
+저작용 위치 표현이고 획득 명령이나 로컬 버프 지급 경로가 아니다.
+
 Gameplay bootstrap v26은 `PORTAL_CROSS_ARENA`, `RETURN_TO_ARENA_CENTER`, `ARENA_EJECTION`,
 `NAVIGATION_BLOCKED`, `GHOST_PORTAL_LOOP`와 중앙 접근 옵션을 소비한다. `arena.center`는 중앙/yaw 0,
 `arena.center.facing`은 중앙/해당 occurrence의 서버 확정 yaw를 사용하는 snapshot cue anchor다.
@@ -1678,7 +1726,8 @@ Flow 중에는 현재 occurrence 뒤 남은 재생만 종료하며 저장 배열
 `CValtanPatternAuditionService`가 isolated/Next lifecycle을, `CValtanPatternFlowService`가 Ordered Flow lifecycle을
 각각 소비한다. UI가 NetworkManager queue를 직접 나눠 읽지 않는다. `Save Flow`는 현재 slot을 inline
 `decisionModel.scriptedSequence` draft로 stage하고 gameplay와 generated Product를 한 canonical transaction으로
-commit한다. 물리 commit 성공과 editor reopen/candidate apply 상태를 구분하며, 성공 즉시
+commit한다. 로드한 mode와 반복 ordinal을 보존하고 자동 전투의 selection set/window를 바꾸지 않는다.
+지원하지 않는 ordered 목록 변경은 Save에서 거부해 유실을 막는다. 물리 commit 성공과 editor reopen/candidate apply 상태를 구분하며, 성공 즉시
 `Boss Verification -> Current Patterns`가 saved order를 표시한다. 실행 중 Flow는 pinned 이전 revision을 중간
 교체하지 않는다. `Load Flow`는 `Valtan.gameplay.json` saved sequence를 다시 읽을 뿐 playback을 바꾸지 않는다.
 `Restart Flow (Fresh Arena)`는 최신 saved candidate와 Server-active gameplay revision이 같은지 확인하고,
@@ -2080,6 +2129,14 @@ Composition `INVULNERABILITY_ZONE`은 같은 시간 창의 고정 MAP Collider 1
 Protocol 99의 `SNAPSHOT_PLAYER.iInvulnerabilityZonePulseTick`은 서버가 정한 입장 및 2초 간격의 표시 occurrence이며 밖/종료/비활성에는 0이다. Client는 파란 무적 문구만 표시하고 지역 충돌이나 반복 시간을 판정하지 않는다. 문구 중복 제거는 플레이어와 단어별로 구분해 서로 다른 상태의 tick이 상대 문구를 다시 생성하지 않게 한다. Client와 Server를 함께 빌드·재시작한다.
 
 
+발탄의 바훈투르가 `damage.valtan.omnidirectional-wipe-130`을 차단할 때도 같은 snapshot pulse와
+`CStatusEffectTextView`를 사용해 파란색 `무적`을 표시한다. 기존 소환물 공격4초의 부여 시점,
+전방4.2m 중심·반경7m, 30초 피해50% 감소·피격 반응 면역과 해당 전멸 차단은 유지한다.
+일반 공격의 피해 감소를 완전 무적으로 바꾸지 않으며 일반 피격에는 이 문구를 생성하지 않는다.
+발탄 Client는 `CReplicatedPlayerHealth`의 read-only pulse를 소비하고 기존 상태 문구 표시 옵션을 따른다.
+단발 차단 pulse는 snapshot 병합에 대비해 같은 key로1초간 전송하며 Client는 한 번만 표시한다.
+이 표시 수명은 버프 시간을 연장하지 않는다.
+
 ### 쿠크 Result의 강제 밀림과 아레나 경계 이탈
 
 `MAX_HP_PERCENT_DAMAGE` Result의 양수 `pushRangeM`/`pushMs`는 기존 밀림 시간과 거리를 사용한다. optional `forcePush`와 `pushCanLeaveArena`의 기본값은 false이며, true일 때 양수 거리 또는 상승 높이가 필수다. `pushYawOffsetDegrees`는 기본0, 범위−360~360이고 0이 아닌 값은 `BOSS_FORWARD` 밀림에만 허용한다. 방향은 body local+Z에 yaw offset을 적용하므로 collider의 실제 축이+X라면+90도를 사용한다. 사선 collider는 각자의 저작 축을 소비한다.
@@ -2428,3 +2485,11 @@ Delete from Movie / Restore to Movie는 해당 클래스의 Intro/Loop에 실제
 우선한다. View에서 class를 왕복해도 직접 선택한 헤어를 보존한다. 일반 기본 장착과 헤어 재질의
 소유권은 `CharacterCatalog`의 해당 character가 소유하며 같은 모델의 global lazy override를
 중복 등록하지 않는다.
+
+### Boss combat-object visual 정의 한도
+
+`Data/Actors/BossCatalog.json`의 보스별 `combatObjectVisuals`는 최대32개 정의를 저장한다.
+CActorCatalog 입장 reader, Valtan authoring validator와 Gameplay publisher가 같은 한도를
+검사한다. 이 개수는 생성 인스턴스/snapshot 개수와 별개다. 초과는 전체 카탈로그 로드를
+거부하며 기존 부분 state를 정리하고 파일·보스·개수·한도를 표시한다. 패턴 전용 reader의
+성공만으로 전체 ActorCatalog 초기화 성공을 대신하지 않는다.

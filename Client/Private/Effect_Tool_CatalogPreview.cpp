@@ -1240,8 +1240,8 @@ bool_t Client::CEffect_Tool::Try_PreviewElementsTimeline(
     }
     else if (Is_SequencerRecoveryEffectAssetId(key.strStableId) &&
         !m_pAuthoringSequencer->Uses_Resource(key) && !Prepare_RecoveryPreviewTarget()) return false;
-    const bool result = loop ?
-        m_pAuthoringSequencer->Preview_Elements(key, elementIds, label, duration, focus, true) :
+    const bool result = (loop || elementIds.size() > 1u) ?
+        m_pAuthoringSequencer->Preview_Elements(key, elementIds, label, duration, focus, loop) :
         m_pAuthoringSequencer->Preview_Element(key, elementIds.front(), label, duration, focus);
     m_strPreviewStatus = m_pAuthoringSequencer->Status();
     if (!m_strKoukuPatternPreviewStatus.empty()) m_strPreviewStatus += " " + m_strKoukuPatternPreviewStatus;
@@ -1251,7 +1251,9 @@ bool_t Client::CEffect_Tool::Try_PreviewElementsTimeline(
     Reset_SynchronizedAnimationSequence();
     m_bPreviewPlaying = false;
     m_bPreviewVisibleRequested = false;
-    m_ePreviewFilter = EFFECT_PREVIEW_FILTER::SOLO_SELECTED;
+    m_ePreviewFilter = (loop || elementIds.size() > 1u) ?
+        EFFECT_PREVIEW_FILTER::SOLO_SELECTED_GROUP : EFFECT_PREVIEW_FILTER::SOLO_SELECTED;
+    m_PreviewIsolationElementIds = elementIds;
     m_strPreviewIsolationElementId = elementIds.size() == 1u ? elementIds.front() : std::string{};
     m_strPreviewIsolationGroupId.clear();
     m_fPreviewTimeSeconds = static_cast<float>(focus) * .001f;

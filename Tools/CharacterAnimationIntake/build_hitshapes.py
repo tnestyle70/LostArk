@@ -46,6 +46,7 @@ def read_hit_rows(asset):
             continue
         hits.setdefault(m.group(1), []).append({
             'startMs': int(fields['startms']),
+            'endMs': int(fields.get('endms', fields['startms'])),
             'rep': max(1, int(fields.get('rep', '1'))),
             'repMs': int(fields.get('repms', '0')),
             'area': area,
@@ -136,12 +137,16 @@ def stage_hits(entries, clip_ticks, clip_hits, limit_ms, label):
                 repeat = max(1, min(repeat, (limit_ms - fire_ms) // repeat_ms + 1))
             if repeat == 1:
                 repeat_ms = 0
+            # The notify window: the shape stays live this long after each fire.
+            duration_ms = int(round(max(0, h['endMs'] - h['startMs']) / rate))
+            duration_ms = max(0, min(duration_ms, limit_ms - fire_ms - (repeat - 1) * repeat_ms))
             # Official AreaType: 1 circle/ring, 2 forward box whose AreaAngle
             # is the width in cm, 3 fan whose AreaAngle is the sweep in degrees.
             out.append({
                 'timeMs': fire_ms,
                 'repeatCount': repeat,
                 'repeatMs': repeat_ms,
+                'durationMs': duration_ms,
                 'areaType': h['area'],
                 'range': round(h['ar'] * UNITS_TO_METERS, 2),
                 'angle': min(max(h['aa'], 0), 360) if h['area'] == AREA_FAN else 0,

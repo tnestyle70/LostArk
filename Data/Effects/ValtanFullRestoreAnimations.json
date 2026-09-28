@@ -654,6 +654,48 @@
           "previewWallBasis": "SOURCE_UNCONDITIONAL_STAGE_TRANSITION"
         }
       ]
+    },
+    {
+      "effectAssetId": "effect.valtan.action.420620.stage001.full.restore",
+      "sourceActionId": 420620,
+      "sourceStageIndex": 1,
+      "animationClips": [
+        {
+          "clipName": "mesh_att_battle_12_07",
+          "playMs": 1200,
+          "loop": false,
+          "previewWallMs": 1100,
+          "previewWallBasis": "SOURCE_UNCONDITIONAL_STAGE_TRANSITION"
+        }
+      ]
+    },
+    {
+      "effectAssetId": "effect.valtan.action.420620.stage005.full.restore",
+      "sourceActionId": 420620,
+      "sourceStageIndex": 5,
+      "animationClips": [
+        {
+          "clipName": "mesh_att_battle_12_11",
+          "playMs": 1300,
+          "loop": false,
+          "previewWallMs": 1300,
+          "previewWallBasis": "SOURCE_ANIMATION_WINDOW"
+        }
+      ]
+    },
+    {
+      "effectAssetId": "effect.valtan.action.420620.stage006.full.restore",
+      "sourceActionId": 420620,
+      "sourceStageIndex": 6,
+      "animationClips": [
+        {
+          "clipName": "mesh_att_battle_12_06",
+          "playMs": 1000,
+          "loop": true,
+          "previewWallMs": 6400,
+          "previewWallBasis": "SOURCE_UNCONDITIONAL_STAGE_TRANSITION"
+        }
+      ]
     }
   ]
 }

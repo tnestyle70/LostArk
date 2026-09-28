@@ -14,6 +14,7 @@
 #include "EffectAuthoringTransfer.h"
 #include "Engine_Defines.h"
 #include "MapEffectDocument.h"
+#include "WorldDestructionDocument.h"
 #include "PlayerSkillCatalog.h"
 #include "EncounterPatternReference.h"
 #include "ValtanPatternAuthoringEffectDocument.h"
@@ -572,6 +573,7 @@ public:
             const EFFECT_DOCUMENT_DESC&, const std::vector<std::string>&, double, double, bool, std::string&)> playSelection;
         std::function<bool(const EFFECT_DOCUMENT_DESC&, const EFFECT_DOCUMENT_DESC&, const std::vector<std::string>&, double, double, std::string&)> previewSelection;
         std::function<bool(double)> setPlaybackRate;
+        std::function<bool(const std::string&, std::string&)> selectEffectOccurrence;
         std::function<bool(std::string&)> clearPreviews;
         CLASS_MOVIE_INSPECTION_CALLBACKS inspection;
     };
@@ -599,6 +601,9 @@ private:
     bool Has_ClassMovieContext() const { return !m_strClassMovieId.empty(); }
     bool Is_ClassMovieEffect(const std::string& assetId) const;
     void Render_ClassMovieControls(bool showEffects = true);
+    bool Is_ValtanCinematicEditor() const { return m_strClassMovieId == "valtan.entrance"; }
+    void Refresh_CinematicElementList();
+    void Render_CinematicElementList();
     bool Restart_ClassMoviePreview();
     void Sync_ClassMovieSelection();
     bool Try_SetClassMoviePreviewFilter(EFFECT_PREVIEW_FILTER filter);
@@ -654,6 +659,7 @@ private:
 	bool_t Open_ValtanEffectResource(
 		const EFFECT_RESOURCE_DESCRIPTOR& Resource);
 	void Render_ValtanAreaStaticEffectSection(const std::string& strSearch);
+	void Render_ValtanEtherPickupSection(const std::string& strSearch);
 	bool_t Refresh_ValtanAreaStaticEffects();
 	bool_t Discard_ValtanAreaStaticEffectDraft();
 	bool_t Try_ApplyValtanAreaStaticEffectDraft();
@@ -1149,6 +1155,7 @@ private:
 	bool_t Has_ProductCuePreview() const;
     f32_t Resolve_EffectSampleTime(f32_t fTimelineSeconds) const;
 	f32_t Resolve_EffectTimelineTime(f32_t fEffectSampleSeconds) const;
+	f32_t Resolve_WorldPreviewStartTime() const;
 	bool_t Seek_WorldPreviewWithSourceAnchorHistory(
 		const std::shared_ptr<CEffectObject>& pObject,
 		const EFFECT_DOCUMENT_DESC& Document,
@@ -1251,6 +1258,22 @@ private:
 	   gated by the canonical tree; this list owns no replacement runtime. */
 	std::vector<EFFECT_DIRECT_AUTHORED_SOURCE_ENTRY>
 		m_ValtanExactAuthoredSources;
+	struct VALTAN_EFFECT_AUTHORING_LABEL final
+	{
+		std::string strDisplayName;
+		std::string strSearchText;
+		struct RESTORE_PATTERN_LABEL final
+		{
+			std::string strPatternId;
+			std::string strPatternName;
+			std::string strEffectName;
+		};
+		std::vector<RESTORE_PATTERN_LABEL> RestorePatterns;
+	};
+	// Display/search metadata never grants Product or Server command authority.
+	std::unordered_map<std::string, VALTAN_EFFECT_AUTHORING_LABEL>
+		m_ValtanEffectAuthoringLabels;
+	std::string m_strValtanEffectAuthoringLabelStatus;
 	std::unordered_map<std::string, std::vector<VALTAN_CLIP_OCCURRENCE_VIEW>>
 		m_ValtanFullRestoreSourceClips;
 	std::string m_strValtanFullRestoreSourceStatus;
@@ -1275,6 +1298,11 @@ private:
     bool m_bClassMovieScrubbing = false;
     float m_fClassMovieSeekSeconds = 0.f;
     std::string m_strClassMovieStatus;
+    // Read-only browser snapshots. The selected source retains the normal document/save owner.
+    std::map<std::string, EFFECT_DOCUMENT_DESC> m_CinematicElementDocuments;
+    std::map<std::string, std::string> m_CinematicElementErrors;
+    std::array<char, 192> m_CinematicElementSearch{};
+    std::string m_strCinematicSoloOccurrence;
 	std::unordered_map<std::string, size_t>
 		m_BossProductCueMappingCounts;
 	shared_ptr<const EFFECT_VISUAL_PROGRAM_DOCUMENT_PROJECTION>
@@ -1329,6 +1357,11 @@ private:
 	bool_t m_bValtanAreaMapEffectDirty = false;
 	optional<MAP_EFFECT_WORLD_PRESENTATION>
 		m_StaticAreaPreviewPresentation;
+	CWorldDestructionDocument m_ValtanEtherWallDocument;
+	std::string m_strSelectedValtanEtherPlacement;
+	bool_t m_bValtanEtherWallLoadAttempted = false;
+	bool_t m_bValtanEtherFallPreviewPlaying = false;
+	f32_t m_fValtanEtherPreviewFraction = 0.f;
 	optional<MAP_EFFECT_WORLD_PRESENTATION>
 		m_UnpublishedStaticAreaWorldDraft;
 	VALTAN_TOOL_AUDITION_INVENTORY m_ValtanToolAuditionInventory;

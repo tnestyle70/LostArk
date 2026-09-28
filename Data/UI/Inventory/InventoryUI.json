@@ -213,6 +213,32 @@
       "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
+      "id": "Inventory_SilverIcon",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 982.366272, "y": 460.035034, "width": 16.6666667, "height": 16 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/Common/Money_Silver.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "Inventory_GoldIcon",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 1094.36627, "y": 459.368367, "width": 16, "height": 17.3333333 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/Common/Money_Gold.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
       "id": "Inventory_BottomBars",
       "ownerClass": null,
       "type": 0,

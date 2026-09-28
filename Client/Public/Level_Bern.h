@@ -175,13 +175,14 @@ private:
 	live position is back within interaction range of Schmidt -- no confirm
 	modal, unlike Advance_ValtanEntryWalk. */
 	void Advance_ItemUpgradeNpcWalk();
-	/* Bern's two repair NPCs (npc.bern.src.31 / npc.bern.src.48 -- the pair carrying
-	the anvil symbol in Data/UI/WorldMap/WorldMapNpcSymbols.json). Loaded, picked and
-	walked to exactly like the Schmidt NPC above; there are two of them, so the picked
-	one is remembered by placement id the way the Valtan guides are. */
-	bool_t Ready_RepairNpcs(const std::string& areaId);
-	void Update_RepairNpcInteraction();
-	void Advance_RepairNpcWalk();
+	/* Bern's service NPCs: the two repair NPCs (npc.bern.src.31 / npc.bern.src.48 -- the
+	pair carrying the anvil symbol in Data/UI/WorldMap/WorldMapNpcSymbols.json) and every
+	NPC Data/Items/ItemCatalog.json names as running a shop (the potion merchants). Loaded,
+	picked and walked to exactly like the Schmidt NPC above; the picked one is remembered by
+	placement id the way the Valtan guides are, and arriving opens its window. */
+	bool_t Ready_ServiceNpcs(const std::string& areaId);
+	void Update_ServiceNpcInteraction();
+	void Advance_ServiceNpcWalk();
 
 	/* Ship NPCs (Bern3 harbor): every enabled NPC placement whose archetype starts with NPC_SHIP_.
 	Right-click one, walk to it, and the vehicle window opens in its ship-only mode
@@ -189,9 +190,11 @@ private:
 	bool_t Ready_ShipNpcs(const std::string& areaId);
 	void Update_ShipNpcInteraction();
 	void Advance_ShipNpcWalk();
-	/* While the local player rides a ship the follow camera takes the retail voyage pose
-	(EFTable_CameraSetting 1001 step 1: FOV 60, 17 m); it returns to the map profile on dismount. */
-	void Update_ShipCamera();
+	/* While the local player rides a ship the follow camera takes the retail voyage lens
+	(EFTable_CameraSetting 1001 zoom steps 1-3): the anchor-volume step near the harbour, the
+	open-sea step outside it, the mouse wheel between steps; it returns to the map profile on
+	dismount. */
+	void Update_ShipCamera(f32_t fTimeDelta);
 
 	/* Optional entrance cinematic: one authored camera cue from
 	Data/Encounters/Bern/BernEntranceCamera.json plays exactly once right after
@@ -263,20 +266,34 @@ private:
 	float3_t m_vItemUpgradeNpcPosition{};
 	bool_t m_isWalkingToItemUpgradeNpc = false;
 	bool_t m_wasRightMouseDownForItemUpgradeNpcInteract = false;
-	struct REPAIR_NPC
+	enum class NPC_SERVICE { REPAIR, SHOP };
+	struct SERVICE_NPC
 	{
 		std::string strPlacementId;
 		float3_t vPosition{};
+		NPC_SERVICE eService = NPC_SERVICE::REPAIR;
 	};
-	std::vector<REPAIR_NPC> m_RepairNpcs;
-	bool_t m_isWalkingToRepairNpc = false;
-	std::string m_strRepairNpcPlacementId;
-	bool_t m_wasRightMouseDownForRepairNpcInteract = false;
+	std::vector<SERVICE_NPC> m_ServiceNpcs;
+	bool_t m_isWalkingToServiceNpc = false;
+	std::string m_strServiceNpcPlacementId;
+	bool_t m_wasRightMouseDownForServiceNpcInteract = false;
 
 	std::vector<float3_t> m_ShipNpcPositions;
 	int32_t m_iWalkingToShipNpc = -1;
 	bool_t m_wasRightMouseDownForShipNpcInteract = false;
 	bool_t m_bShipCameraActive = false;
+	/* Eased ship lens in project units; the zoom step is 0-based into shipCamera.zoomSteps. */
+	struct SHIP_LENS final
+	{
+		f32_t distanceMeters = 0.f;
+		f32_t pitchDegrees = 0.f;
+		f32_t yawDegrees = 0.f;
+		f32_t fovXDegrees = 60.f;
+		f32_t focusOffsetYMeters = 0.f;
+	};
+	SHIP_LENS m_ShipLens{};
+	uint32_t m_iShipZoomStep = 0u;
+	bool_t m_bShipInAnchorVolume = false;
 
 	VALTAN_CINEMATIC_CAMERA_CUE m_EntranceCameraCue;
 	bool_t m_hasEntranceCameraCue = false;

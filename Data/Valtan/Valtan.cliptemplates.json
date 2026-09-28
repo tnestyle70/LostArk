@@ -10,7 +10,10 @@
       "hits": [
         {
           "clipMs": 900,
-          "shape": { "kind": "CIRCLE", "outerRadiusM": 12.0 },
+          "shape": {
+            "kind": "CIRCLE",
+            "outerRadiusM": 12.0
+          },
           "serverDamageProfileId": "damage.valtan.ledge-roar",
           "pushRangeM": 2.0,
           "pushMs": 242,
@@ -27,7 +30,10 @@
         }
       ],
       "sounds": [
-        { "soundEvent": "G_Voltan2_Attack18_Shot7", "clipMs": 900 }
+        {
+          "soundEvent": "G_Voltan2_Attack18_Shot7",
+          "clipMs": 900
+        }
       ]
     },
     {
@@ -36,7 +42,10 @@
       "hits": [
         {
           "clipMs": 1200,
-          "shape": { "kind": "CIRCLE", "outerRadiusM": 8.0 },
+          "shape": {
+            "kind": "CIRCLE",
+            "outerRadiusM": 8.0
+          },
           "serverDamageProfileId": "damage.valtan.stomp",
           "pushRangeM": 1.5,
           "pushMs": 150,
@@ -53,7 +62,10 @@
         }
       ],
       "sounds": [
-        { "soundEvent": "G_Voltan2_Attack03_Cast1", "clipMs": 1200 }
+        {
+          "soundEvent": "G_Voltan2_Attack03_Cast1",
+          "clipMs": 1200
+        }
       ]
     },
     {
@@ -62,7 +74,11 @@
       "hits": [
         {
           "clipMs": 1617,
-          "shape": { "kind": "CONE", "angleDegrees": 75.0, "lengthM": 15.0 },
+          "shape": {
+            "kind": "CONE",
+            "angleDegrees": 75.0,
+            "lengthM": 15.0
+          },
           "serverDamageProfileId": "damage.valtan.ground-wave-smash",
           "pushRangeM": 0.4,
           "pushMs": 97,
@@ -79,7 +95,10 @@
         }
       ],
       "sounds": [
-        { "soundEvent": "G_Voltan2_Attack02_Shot1", "clipMs": 1617 }
+        {
+          "soundEvent": "G_Voltan2_Attack02_Shot1",
+          "clipMs": 1617
+        }
       ]
     },
     {
@@ -88,7 +107,11 @@
       "hits": [
         {
           "clipMs": 963,
-          "shape": { "kind": "CONE", "angleDegrees": 75.0, "lengthM": 15.0 },
+          "shape": {
+            "kind": "CONE",
+            "angleDegrees": 75.0,
+            "lengthM": 15.0
+          },
           "serverDamageProfileId": "damage.valtan.ground-wave-smash",
           "pushRangeM": 0.4,
           "pushMs": 97,
@@ -105,7 +128,10 @@
         }
       ],
       "sounds": [
-        { "soundEvent": "G_Voltan2_Attack02_Shot1", "clipMs": 963 }
+        {
+          "soundEvent": "G_Voltan2_Attack02_Shot1",
+          "clipMs": 963
+        }
       ]
     },
     {
@@ -114,7 +140,11 @@
       "hits": [
         {
           "clipMs": 1300,
-          "shape": { "kind": "CONE", "angleDegrees": 75.0, "lengthM": 15.0 },
+          "shape": {
+            "kind": "CONE",
+            "angleDegrees": 75.0,
+            "lengthM": 15.0
+          },
           "serverDamageProfileId": "damage.valtan.ground-wave-smash",
           "pushRangeM": 0.4,
           "pushMs": 97,
@@ -131,7 +161,10 @@
         }
       ],
       "sounds": [
-        { "soundEvent": "G_Voltan2_Attack02_Shot2", "clipMs": 1300 }
+        {
+          "soundEvent": "G_Voltan2_Attack02_Shot2",
+          "clipMs": 1300
+        }
       ]
     },
     {
@@ -140,7 +173,11 @@
       "hits": [
         {
           "clipMs": 1000,
-          "shape": { "kind": "CONE", "angleDegrees": 75.0, "lengthM": 15.0 },
+          "shape": {
+            "kind": "CONE",
+            "angleDegrees": 75.0,
+            "lengthM": 15.0
+          },
           "serverDamageProfileId": "damage.valtan.ground-wave-smash",
           "pushRangeM": 0.4,
           "pushMs": 97,
@@ -157,7 +194,10 @@
         }
       ],
       "sounds": [
-        { "soundEvent": "G_Voltan2_Attack18_Shot5", "clipMs": 1000 }
+        {
+          "soundEvent": "G_Voltan2_Attack18_Shot5",
+          "clipMs": 1000
+        }
       ]
     },
     {
@@ -166,7 +206,10 @@
       "hits": [
         {
           "clipMs": 900,
-          "shape": { "kind": "CIRCLE", "outerRadiusM": 12.0 },
+          "shape": {
+            "kind": "CIRCLE",
+            "outerRadiusM": 12.0
+          },
           "serverDamageProfileId": "damage.valtan.triple-counter",
           "pushRangeM": 0.0,
           "pushMs": 0,
@@ -183,7 +226,10 @@
         }
       ],
       "sounds": [
-        { "soundEvent": "G_Voltan2_Attack13_Shot1", "clipMs": 900 }
+        {
+          "soundEvent": "G_Voltan2_Attack13_Shot1",
+          "clipMs": 900
+        }
       ]
     },
     {
@@ -192,7 +238,10 @@
       "hits": [
         {
           "clipMs": 600,
-          "shape": { "kind": "CIRCLE", "outerRadiusM": 8.0 },
+          "shape": {
+            "kind": "CIRCLE",
+            "outerRadiusM": 8.0
+          },
           "serverDamageProfileId": "damage.valtan.stomp",
           "pushRangeM": 1.5,
           "pushMs": 150,
@@ -201,7 +250,10 @@
         },
         {
           "clipMs": 1300,
-          "shape": { "kind": "CIRCLE", "outerRadiusM": 8.0 },
+          "shape": {
+            "kind": "CIRCLE",
+            "outerRadiusM": 8.0
+          },
           "serverDamageProfileId": "damage.valtan.stomp",
           "pushRangeM": 1.5,
           "pushMs": 150,
@@ -224,8 +276,14 @@
         }
       ],
       "sounds": [
-        { "soundEvent": "G_Voltan2_Attack10_Cast1", "clipMs": 600 },
-        { "soundEvent": "G_Voltan2_Attack10_Cast1", "clipMs": 1300 }
+        {
+          "soundEvent": "G_Voltan2_Attack10_Cast1",
+          "clipMs": 600
+        },
+        {
+          "soundEvent": "G_Voltan2_Attack10_Cast1",
+          "clipMs": 1300
+        }
       ]
     },
     {
@@ -234,7 +292,10 @@
       "hits": [
         {
           "clipMs": 267,
-          "shape": { "kind": "CIRCLE", "outerRadiusM": 8.0 },
+          "shape": {
+            "kind": "CIRCLE",
+            "outerRadiusM": 8.0
+          },
           "serverDamageProfileId": "damage.valtan.jump-spin",
           "pushRangeM": 3.0,
           "pushMs": 242,
@@ -251,7 +312,10 @@
         }
       ],
       "sounds": [
-        { "soundEvent": "G_Voltan2_Attack09_Shot1", "clipMs": 267 }
+        {
+          "soundEvent": "G_Voltan2_Attack09_Shot1",
+          "clipMs": 267
+        }
       ]
     },
     {
@@ -260,7 +324,10 @@
       "hits": [
         {
           "clipMs": 2100,
-          "shape": { "kind": "CIRCLE", "outerRadiusM": 8.0 },
+          "shape": {
+            "kind": "CIRCLE",
+            "outerRadiusM": 8.0
+          },
           "serverDamageProfileId": "damage.valtan.stomp",
           "pushRangeM": 1.5,
           "pushMs": 150,
@@ -277,7 +344,10 @@
         }
       ],
       "sounds": [
-        { "soundEvent": "G_Voltan2_Attack11_Shot4", "clipMs": 2100 }
+        {
+          "soundEvent": "G_Voltan2_Attack11_Shot4",
+          "clipMs": 2100
+        }
       ]
     },
     {
@@ -286,7 +356,10 @@
       "hits": [
         {
           "clipMs": 1300,
-          "shape": { "kind": "CIRCLE", "outerRadiusM": 12.0 },
+          "shape": {
+            "kind": "CIRCLE",
+            "outerRadiusM": 12.0
+          },
           "serverDamageProfileId": "damage.valtan.ledge-roar",
           "pushRangeM": 2.0,
           "pushMs": 242,
@@ -303,7 +376,10 @@
         }
       ],
       "sounds": [
-        { "soundEvent": "G_Voltan2_Attack18_Shot7", "clipMs": 1300 }
+        {
+          "soundEvent": "G_Voltan2_Attack18_Shot7",
+          "clipMs": 1300
+        }
       ]
     },
     {
@@ -312,7 +388,10 @@
       "hits": [
         {
           "clipMs": 250,
-          "shape": { "kind": "CIRCLE", "outerRadiusM": 25.0 },
+          "shape": {
+            "kind": "CIRCLE",
+            "outerRadiusM": 25.0
+          },
           "serverDamageProfileId": "damage.valtan.super-smash",
           "pushRangeM": 3.0,
           "pushMs": 242,
@@ -329,7 +408,10 @@
         }
       ],
       "sounds": [
-        { "soundEvent": "G_Voltan2_Attack11_Shot5", "clipMs": 250 }
+        {
+          "soundEvent": "G_Voltan2_Attack11_Shot5",
+          "clipMs": 250
+        }
       ]
     },
     {
@@ -338,7 +420,11 @@
       "hits": [
         {
           "clipMs": 150,
-          "shape": { "kind": "CONE", "angleDegrees": 90.0, "lengthM": 12.0 },
+          "shape": {
+            "kind": "CONE",
+            "angleDegrees": 90.0,
+            "lengthM": 12.0
+          },
           "serverDamageProfileId": "damage.valtan.ground-wave-smash",
           "pushRangeM": 0.4,
           "pushMs": 97,
@@ -347,7 +433,11 @@
         },
         {
           "clipMs": 700,
-          "shape": { "kind": "CONE", "angleDegrees": 90.0, "lengthM": 12.0 },
+          "shape": {
+            "kind": "CONE",
+            "angleDegrees": 90.0,
+            "lengthM": 12.0
+          },
           "serverDamageProfileId": "damage.valtan.ground-wave-smash",
           "pushRangeM": 0.4,
           "pushMs": 97,
@@ -356,7 +446,11 @@
         },
         {
           "clipMs": 1150,
-          "shape": { "kind": "CONE", "angleDegrees": 90.0, "lengthM": 12.0 },
+          "shape": {
+            "kind": "CONE",
+            "angleDegrees": 90.0,
+            "lengthM": 12.0
+          },
           "serverDamageProfileId": "damage.valtan.ground-wave-smash",
           "pushRangeM": 0.4,
           "pushMs": 97,
@@ -373,9 +467,18 @@
         }
       ],
       "sounds": [
-        { "soundEvent": "G_Voltan2_Attack18_Shot5", "clipMs": 150 },
-        { "soundEvent": "G_Voltan2_Attack18_Shot5", "clipMs": 700 },
-        { "soundEvent": "G_Voltan2_Attack18_Shot5", "clipMs": 1150 }
+        {
+          "soundEvent": "G_Voltan2_Attack18_Shot5",
+          "clipMs": 150
+        },
+        {
+          "soundEvent": "G_Voltan2_Attack18_Shot5",
+          "clipMs": 700
+        },
+        {
+          "soundEvent": "G_Voltan2_Attack18_Shot5",
+          "clipMs": 1150
+        }
       ]
     }
   ],
@@ -395,7 +498,11 @@
       "stageId": "STEP_01",
       "actionId": "valtan.sequence.cross.step-01",
       "clipOccurrenceId": "valtan.sequence.cross.step-01.clip-01",
-      "waivers": ["HIT_SHAPE", "HIT_RESPONSE", "EFFECT"],
+      "waivers": [
+        "HIT_SHAPE",
+        "HIT_RESPONSE",
+        "EFFECT"
+      ],
       "reason": "The reviewed cross-rock occurrence keeps its pattern-specific CROSS shape and V1 cross composition at the shared contact time."
     },
     {
@@ -403,7 +510,10 @@
       "stageId": "STEP_01",
       "actionId": "valtan.sequence.sequence.400440.0.step-01",
       "clipOccurrenceId": "valtan.sequence.sequence.400440.0.step-01.clip-01",
-      "waivers": ["HIT_SHAPE", "HIT_RESPONSE"],
+      "waivers": [
+        "HIT_SHAPE",
+        "HIT_RESPONSE"
+      ],
       "reason": "The single-hit-track Stage merges the 8m stomps and later 12m roar into one 12m ledge-roar response while preserving all three contact times."
     },
     {
@@ -411,8 +521,12 @@
       "stageId": "STEP_03",
       "actionId": "valtan.sequence.three.step-03",
       "clipOccurrenceId": "valtan.sequence.three.step-03.clip-01",
-      "waivers": ["EXTRA_HIT"],
-      "extraHitOffsetsMs": [500],
+      "waivers": [
+        "EXTRA_HIT"
+      ],
+      "extraHitOffsetsMs": [
+        500
+      ],
       "reason": "The reviewed legacy occurrence retains its pre-existing 500ms first pulse in addition to the shared 1300ms clip-template contact."
     },
     {
@@ -420,7 +534,11 @@
       "stageId": "STEP_03",
       "actionId": "valtan.sequence.center-trash-rush-if.step-03",
       "clipOccurrenceId": "valtan.sequence.center-trash-rush-if.step-03.clip-01",
-      "waivers": ["HIT", "EFFECT", "SOUND"],
+      "waivers": [
+        "HIT",
+        "EFFECT",
+        "SOUND"
+      ],
       "reason": "The shared landing clip occurs inside the established grab and counter flow; adding an unapproved area hit here changes existing combat behavior."
     },
     {
@@ -428,7 +546,11 @@
       "stageId": "STEP_03",
       "actionId": "valtan.sequence.jump-whirlwind-roar-roar-charge.step-03",
       "clipOccurrenceId": "valtan.sequence.jump-whirlwind-roar-roar-charge.step-03.clip-01",
-      "waivers": ["HIT", "EFFECT", "SOUND"],
+      "waivers": [
+        "HIT",
+        "EFFECT",
+        "SOUND"
+      ],
       "reason": "This same-clip landing contact was not approved for the existing terrain-destruction sequence and remains presentation-neutral."
     },
     {
@@ -436,7 +558,11 @@
       "stageId": "LANDING",
       "actionId": "valtan.mechanic.terrain-destruction-3.landing",
       "clipOccurrenceId": "valtan.mechanic.terrain-destruction-3.landing.clip-01",
-      "waivers": ["HIT", "EFFECT", "SOUND"],
+      "waivers": [
+        "HIT",
+        "EFFECT",
+        "SOUND"
+      ],
       "reason": "The authored occurrence is truncated to 200ms, before the reviewed 267ms landing contact."
     },
     {
@@ -444,7 +570,11 @@
       "stageId": "LANDING",
       "actionId": "valtan.mechanic.terrain-destruction-9.landing",
       "clipOccurrenceId": "valtan.mechanic.terrain-destruction-9.landing.clip-01",
-      "waivers": ["HIT", "EFFECT", "SOUND"],
+      "waivers": [
+        "HIT",
+        "EFFECT",
+        "SOUND"
+      ],
       "reason": "The authored occurrence is truncated to 200ms, before the reviewed 267ms landing contact."
     },
     {
@@ -452,7 +582,11 @@
       "stageId": "IMPACT_HOLD",
       "actionId": "valtan.mechanic.arena-break-109.impact-hold",
       "clipOccurrenceId": "valtan.mechanic.arena-break-109.impact-hold.clip.01",
-      "waivers": ["HIT", "EFFECT", "SOUND"],
+      "waivers": [
+        "HIT",
+        "EFFECT",
+        "SOUND"
+      ],
       "reason": "The established arena-break pattern already owns its impact in the preceding IMPACT stage; a second unapproved landing hit would change the mechanic."
     },
     {
@@ -496,6 +630,105 @@
         "anchorSlotId": "root"
       },
       "reason": "This reviewed occurrence replaces the generic V2 impact with the exact original Full Restore action-stage cue; native clip, root, source clock and absence of the old generic binding are enforced."
+    },
+    {
+      "patternId": "VALTAN_TERRAIN_DESTRUCTION_3_OCLOCK",
+      "stageId": "COMBO_STEP_18",
+      "actionId": "valtan.mechanic.terrain-destruction-3.combo.step-18",
+      "clipOccurrenceId": "valtan.mechanic.terrain-destruction-3.combo.step-18.clip-01",
+      "waivers": [
+        "HIT",
+        "EFFECT",
+        "SOUND"
+      ],
+      "reason": "SOURCE_REVIEWED_DELTA: This composed occurrence preserves the user-authored mesh_att_battle_11_01 source span0..700ms. Its600ms stomp hit, V2 impact and original impact sound are connected; the second template stomp at1300ms lies outside the saved clip cut and is intentionally absent."
+    },
+    {
+      "patternId": "VALTAN_TERRAIN_DESTRUCTION_9_OCLOCK",
+      "stageId": "COMBO_STEP_18",
+      "actionId": "valtan.mechanic.terrain-destruction-9.combo.step-18",
+      "clipOccurrenceId": "valtan.mechanic.terrain-destruction-9.combo.step-18.clip-01",
+      "waivers": [
+        "HIT",
+        "EFFECT",
+        "SOUND"
+      ],
+      "reason": "SOURCE_REVIEWED_DELTA: This composed occurrence preserves the user-authored mesh_att_battle_11_01 source span0..700ms. Its600ms stomp hit, V2 impact and original impact sound are connected; the second template stomp at1300ms lies outside the saved clip cut and is intentionally absent."
+    },
+    {
+      "patternId": "VALTAN_3H_FLOOR_BREAK_ROCK_ROAR",
+      "stageId": "STEP_18",
+      "actionId": "valtan.sequence.sequence.420616.1.step-18",
+      "clipOccurrenceId": "valtan.sequence.sequence.420616.1.step-18.clip-01",
+      "waivers": [
+        "HIT",
+        "EFFECT",
+        "SOUND"
+      ],
+      "reason": "PROJECT_AUTHORED: Preserve the source Workbench draft exactly as saved: mesh_att_battle_11_01 is trimmed to0..700ms and this STEP_18 has no hit, V2 impact or sound slots. Completed600ms stomp wiring belongs to the two terrain COMBO_STEP_18 copies; the source draft is not rewritten by composition."
+    },
+    {
+      "patternId": "VALTAN_STRUGGLING",
+      "stageId": "STEP_07",
+      "actionId": "valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-07",
+      "clipOccurrenceId": "valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-07.clip-01",
+      "waivers": [
+        "HIT"
+      ],
+      "reason": "SOURCE_REVIEWED_DELTA: Original420624 in/out damage is owned by combatobject.valtan.struggling.in-out, spawned by this stage: inner circle4m at1000ms and ring3..15m at3000ms, forward offset1.6m. The outer hit survives the2600ms clip; adding the generic inline cone would duplicate independent-object damage. Existing twohand V2 and sound remain validated."
+    },
+    {
+      "patternId": "VALTAN_STRUGGLING",
+      "stageId": "STEP_10",
+      "actionId": "valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-10",
+      "clipOccurrenceId": "valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-10.clip-01",
+      "waivers": [
+        "HIT_SHAPE",
+        "EFFECT"
+      ],
+      "reason": "SOURCE_REVIEWED_DELTA: The source finale roar uses its100m encounter warning/contact radius rather than the generic12m clip template. Stage-clock cue cue.valtan.struggling.source.step_10 plays the exact effect.valtan.action.420624.stage012.full.restore from0ms; the generic V2 shout is intentionally replaced. The900ms damage response and original impact sound remain validated."
+    },
+    {
+      "patternId": "VALTAN_TRIPLE_COUNTER",
+      "stageId": "FAIL_3",
+      "actionId": "valtan.reactive.triple-counter.third-fail",
+      "clipOccurrenceId": "valtan.reactive.triple-counter.third-fail.clip.01",
+      "waivers": [],
+      "effectTimingOverride": {
+        "templateEffect": {
+          "resourceKind": "GROUP",
+          "resourceId": "boss.valtan.twohand",
+          "clipMs": 900,
+          "anchorSlotId": "b_effectroot"
+        },
+        "bindingId": "binding.valtan.project-tuned.triple-counter.003.smash-03",
+        "stageStartMs": 1169
+      },
+      "reason": "PROJECT_TUNED: Preserve the user-saved FAIL_3 V2 smash binding at stage1169ms. Only this binding timing differs from the clip template; resource, scope, anchor, uniqueness, the900ms gameplay hit and sound remain validated. The independent STAGE_CLOCK891ms Full Restore cue remains separate."
+    },
+    {
+      "patternId": "VALTAN_SIX_PIZZA_106",
+      "stageId": "STEP_07",
+      "actionId": "valtan.sequence.center-six-pizza-charge.step-07",
+      "clipOccurrenceId": "valtan.sequence.center-six-pizza-charge.step-07.clip-01",
+      "waivers": [],
+      "effectTimingOverride": {
+        "templateEffect": {
+          "resourceKind": "GROUP",
+          "resourceId": "boss.valtan.impact",
+          "clipMs": 250,
+          "anchorSlotId": "b_effectroot"
+        },
+        "bindingId": "binding.valtan.project-tuned.six-pizza.landing",
+        "stageStartMs": 479,
+        "bindingClock": {
+          "basis": "CLIP_OCCURRENCE",
+          "clipOccurrenceId": "valtan.sequence.center-six-pizza-charge.step-07.clip-01",
+          "startMs": 479,
+          "repeatPolicy": "ONCE"
+        }
+      },
+      "reason": "PROJECT_TUNED: Preserve the user-saved six-pizza landing impact at CLIP_OCCURRENCE 479ms (stage479ms). Its exact scope, occurrence, resource, anchor and one-shot clock remain pinned; the250ms gameplay landing hit and original250ms sound remain unchanged and validated."
     }
   ]
 }
