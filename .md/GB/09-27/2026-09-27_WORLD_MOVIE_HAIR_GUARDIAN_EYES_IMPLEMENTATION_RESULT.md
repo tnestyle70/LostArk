@@ -170,3 +170,123 @@ GBResources에 없던 일반 FT43 모델 및 texture 4개도 같은 상대 ID로
 
 Client/UI를 실행·조작하지 않았다. 현재 Debug 실행 파일과 데이터는 설치됐으며 실제 Movie,
 커스터마이징 헤어의 선호 외형 및 특정 시점 유리 표시 여부는 사용자의 화면 확인이 남는다.
+
+## G07. Movie FT43 tangent basis 재검증 (2026-09-29)
+
+이 절과 G08은 이전 G05 이후의 현재 후보 상태를 기록한다. 그 사이 FT43은
+`2026-09-27_KOUKU_AUDIO_MARIO_HUD_POLISH_IMPLEMENTATION_RESULT.md` G05에서 head-rigid
+정책으로 바뀌었다. 이번 기준 설치본 SHA는 `57f4f9cd16b90a579f9ee3e0c64f9702ba6f1a649987dc8f06b65aba316d95c8`다.
+G05의 neck-chain 정책과 `762896...` SHA를 현재 상태로 읽으면 안 된다.
+
+일반 FT43과 설치 Movie 파생본은 76-byte legacy 정점이었다. 생성기의 `(x,-z,-y)`는
+determinant -1인데 implicit tangent sign을 +1로 남겨 실제 `CWMeshReader`가 복원하는
+binormal이 정상 donor의 좌표 변환 결과와 반대였다. 먼저 donor의 implicit +1을 명시
+sign으로 보존하고 반사 시 -1로 변환하도록 생성기를 수정했다. WINT1.6을 이미 읽는 제품
+reader와 동일하게 오프라인 pose reader도 80-byte 정점을 받아들이도록 확장했다.
+
+실제 제품 `CWMeshReader.cpp`를 컴파일하여 5,865정점을 비교했다. 이전 binormal의 기대
+방향 dot은 -1, 후보는 +1이고 최대 성분 오차는 `1.19209e-07`이다. 기존 76-byte 정점의
+position/normal/tangent/UV/weights/indices와 index·bone·material·skeleton·clip·extra UV
+payload는 동일하다. 이 결함은 normal-map 입력 방향 문제이며 사용자가 지적한 머리
+실루엣의 원인이라는 증거는 아니다. 이것만으로 외형 수정을 완료했다고 판단하지 않았다.
+
+증거는 `out/LanceMovieHairBasis20260929/reader-run.log`, `candidate-verification.json` 및
+`preservation-receipt.json`이다. Client/UI는 실행하지 않았다.
+
+## G08. 정상 머리 모델과 Movie 복장 교체 후보 (2026-09-29)
+
+사용자가 정상 커스터마이징 모델 교체를 선택하여 `derive_lance_movie_head.py`를 추가했다.
+일반 `Character/LanceMaster/LanceMaster.wmodel`의 face material3(1,571정점), eyelashes4
+(362정점), eyes5(157+108정점의 두 submesh)를 기존 Movie의 `a12205.p1/p2/p0`에 연결한다.
+두 번째 eye-material head shell도 포함한다. 일반 모델의 face00 geometry·UV·catalog 재질과
+기본 FT43 머리를 사용하며 의상 `a12241.*`, actor transform·scale·camera·clock은 보존한다.
+사용자의 실행 중 morph·색상·preset 메모리를 캡처한 것은 아니며 현재 디스크 기본 모델이 기준이다.
+
+세 파트의 모든 weighted bone은 Movie208본에 이름으로 대응한다. 최초 조사 후보는 Movie
+mesh의 inverse bind를 재사용했으나, Movie 원본에서 사용하지 않던 facial 본의 offset이
+정상 head용으로 유효하지 않아 실제 전정점 skin 검사에서 최대120.122cm 변형을 검출했다.
+그 후보는 설치하지 않았다. 최종 후보는 weighted donor inverse bind를 같은 좌표계로
+변환하여 이름별 이식한다. 생성기에 전정점 neutral pose 오차0.01cm 미만 검사를 추가했다.
+Movie skeleton 및 Intro/Loop 섹션 bytes는 원본과 동일하며 애니메이션을 새로 만들지 않았다.
+
+각 WModel은 기존 `classselect_intro` 1205.010009765625ticks와 `classselect_loop`
+1161.989990234375ticks를 30ticks/s로 포함한다. FT43은 기존 212본(208본 prefix+추가4본)과
+208채널 원본키, head-rigid 정책을 유지한다. 머리카락의 별도 secondary motion은 없다.
+새 Resources는 앞3개이며 기존 Appearance/FT43_Hair 한 파일은 tangent sign 수정본으로 교체한다.
+원본 일반·Movie 모델과 기존 texture를 보존한다.
+
+최종 후보 폴더는 `out/LanceMovieHeadReplacementFinal20260929`다. Resources 아래 공통 경로
+`Character/LanceMaster/Cinematics/ClassSelect/Appearance/`의 결과는 다음과 같다.
+
+| 파일 | SHA256 |
+|---|---|
+| DefaultFace.wmodel | 1bbafc2d5c1570637d7317d87e57eb9e3f0bf6678c83a50fa107afa3796cd1cd |
+| DefaultEyelashes.wmodel | 56e3a0aa124d34b916d81ffe30c1e2006ae8d4a24ff8806ac8bbca62200883fe |
+| DefaultEyes.wmodel | 46cc13b155221f69a6d6ba898c88c759b5c013ecd6cd2d533d863300155238a3 |
+| FT43_Hair.wmodel | b390088076c0287892c980621a09beca1ad574f9fad95fb48bcb1fea46c63cc1 |
+
+`head-replacement-receipt.json`은 source/donor hash, stable object3행의 필드 patch를 기록하고,
+`install-baseline-receipt.json`은 최신 디스크 baseline과 후보 hash를 기록한다. 생성한
+WorldSequences 후보는 modelAssetId·materialSourceModelAssetId 교체와 기존 materialProfile
+제거만 반영한다. templates/instances와 다른 객체는 동일하다. 원본 최신 baseline은
+`c8a4f19bac94466d3e1769319207efb48199e7e0c6ca32bfdf07dad4a78baf99`이며 최종 설치 직전 재검사한다.
+
+일반 속눈썹 native6은 World에서 forward9 연결이 빠져 있었으므로 기존 Character/
+Part_Equipment와 동일한6/7/99 분기를 `WorldSequenceObject.cpp`에 연결했다. shader와
+전역 rendering option은 변경하지 않았다. 현재 Movie authored/runtime exposure·tone scale은1이고
+LUT는 한 번 적용됨을 상위 작업에서 확인했다. 'LUT2배' 추정의 근거가 없어 LUT를 조정하지 않았다.
+Movie의 face02 재질은 일반 face00 catalog 재질로 교체하며 반짝임에 대한 최종 평가는 화면 확인으로 남긴다.
+
+검증 완료 범위는 다음과 같다.
+
+- 실제 `CWModelDecoder`로 최종4개 파일 decode PASS. face/eyelash/eye208본, hair212본,
+  2개 clip과208채널, material slot·정점 count를 확인했다. `native-decoder.log`에 기록했다.
+- donor raw geometry 좌표 반사오차0, weights/UV/weighted bone names 보존. 세 파트의 neutral
+  skin 최대 오차는 각각0.001215293/0.001300970/0.001406202cm다. 기존 modelPreScale0.01을 유지한다.
+- 모든 clip key와 구간 중점 Intro387/Loop3 시점에서 head-relative donor retarget와 후보의
+  정점 오차0, finite PASS. `head-geometry-verification.json`에 기록했다.
+- 독립 검토자가 인메모리30fps sweep으로 Intro1,207+Loop1,163=2,370시점을 검사했다.
+  전체 정점 finite, face head-space extent 약14.309~14.831×10.6318×12.2742cm다.
+  최대2.125851cm 이동은 neck-twist 가중 정점의 기존 Movie 동작이다. 120cm 찢김이나 전체
+  배율 변경은 없다. 7개 catalog material 이름이 각1슬롯, stored texture25개와 native texture
+  closure 존재, UV1/2와 index range 및 최종 후보 bytes 일치도 별도 확인했다.
+- 실제 pass selector 함수와 HEAD를 비교한0..1100 프로그램 회귀 검사에서6/7/99만 변경되고
+  기존600/170/18/84/88과 null/legacy가 보존됐다. `forward-pass.log`가 근거다.
+- 변경 Python3개 py_compile, scoped diff 검사 PASS. `WorldSequenceObject.cpp` Debug 실제 TU
+  최소 컴파일은 상위 작업에서 PASS했다. 이 슬라이스는 새 C++ 파일·프로젝트 등록이 없다.
+
+후보 재현은 저장소 루트에서 다음 명령을 사용한다. output은 아직 없는 새 경로여야 한다.
+
+```powershell
+python Tools/CharacterSelectPipeline/derive_lance_movie_head.py --resources C:/Users/user/Desktop/LostArk/Client/Bin/Resources --output out/LanceMovieHeadReplacementRebuild20260929
+```
+
+이 절 작성 시점은 후보 검증 완료이며 원본 Resources 설치·GBResources 전달·WorldSequences
+publish는 상위 작업에서 최종 hash 재확인 후 수행한다. Client/UI 실행이나 GPU 완성 화면 검증은
+수행하지 않았다. 사용자 Movie 재생에서 얼굴·머리 외형 확인이 남는다.
+
+## G09. 교체 설치와 Product Debug 빌드
+
+사용자의 교체 승인 후 최신 디스크 source·catalog·donor·target hash를 다시 확인했다.
+기존 편집을 3-way로 보존하고 파일별 백업·교체 직전 hash 확인·원자 교체로 원래
+Desktop/LostArk에 소스·데이터를 반영했다. 위 WModel4개는 Runtime Resources와
+Desktop/GBResources에 같은 상대 경로와 SHA로 설치했다. 새 texture나 animation은 없다.
+
+WorldSequences는 격리 overlay에서 Scope WorldSequences Validate/Publish를 통과하고 실제
+설치본 Check도 통과했다. 이후 기존 one-line 형식을 유지한 compact source로 다시 Publish했다.
+최종 source/runtime은 bytes가 같고 SHA는
+`a2003e335915f04091202bf59e3056b6b3d8edf7cad2dce7bf98786c1d6b7afc`다.
+preinstall 대비 a12205.p0/p1/p2 각각 modelAssetId·materialSourceModelAssetId·materialProfile의
+세 필드만 달라지고 다른 모든 object·template·instance·배율·조명은 동일하다.
+증거는 `out/LanceMovieHeadPublisher20260929/compact-receipt.json`, `compact-publish.log`와
+`out/MovieVisibilityBalance20260929/original-install/installed.json`, `compact-installed.json`이다.
+
+사용자가 Client/Server를 저장 후 종료했다고 회신한 뒤 잠금 해제와 파일 hash를 확인하고
+정상 Product Debug를 빌드했다. Engine/Shared/Server/Client compile/link/deploy PASS다.
+실행 증거는 원래 저장소 `out/BuildPipeline/runs/20260928T220610990Z-debug-product.json`이며
+Client OBJ35개와 실행 파일이 갱신됐다. 기존 C4819/외부 PDB 경고는 남고 오류는 없다.
+빌드는 데이터를 재게시하지 않았고 에이전트가 Client/Server를 실행하지 않았다.
+
+사용자는 이후 반짝임이 Movie에 국한되지 않고 일반 캐릭터를 가까이 보아도 나타난다고 정정했다.
+따라서 이 정상 머리 교체를 전체 피부·재질 광택 문제의 해결로 기록하지 않는다. 그 공통 재질
+문제는 별도 조사 대상으로 남고, 이 절의 완료 범위는 머리 교체·게시·빌드다.

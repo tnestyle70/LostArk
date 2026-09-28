@@ -4654,6 +4654,12 @@ winding을 함께 RH로 변환하고 최종 WModel+placement를 원본 grid/heig
 
 ### Movie 검사에서 visibility와 카메라 소유권
 
+- Inspector 기능이 있어도 Sequencer에서 진입할 수 있는지 확인한다. 선택 WORLD의 Mute/Solo와
+  Delete/Restore는 같은 stable-ID owner를 사용하고, Delete 키는 focus·텍스트 입력·drag를 검사한다.
+- 마지막 Element의 Mute는 빈 draw mask를 허용하되 전체 document와 Movie clock을 유지한다.
+  저장형 Visible OFF는 nonempty all-hidden 문서로 검증하고, 비어 있거나 손상된 문서까지
+  drawable 검증에서 허용하지 않는다. 실제 저장·재로드·stale writer 거부와 복원을 함께 확인한다.
+
 - WORLD Solo/Mute/Delete 표시 제외는 draw gate로 처리한다. CWorldSequenceObject::Hide 또는
   authored visibility 변경으로 임시 격리하면 Try_GetObjectPivot/본 부착 소비자가 사라질 수 있다.
 - 외부 샘플링 Effect의 임시 숨김은 Set_Visible(false)와 다르다. 후자는 owner controls/afterimage/
@@ -4672,6 +4678,16 @@ Guardian Movie watersplash native4645~4647에는 원본 shader map에도 별도 
 같은 대상으로 취급하지 않는다. 수치 draw 성공은 사용자가 본 특정 프레임의 가려짐 판정과 다르다.
 
 ### 일반 헤어를 Movie 골격에 연결할 때
+
+- determinant -1의 좌표 변환은 tangent handedness도 반전한다. 76-byte legacy 정점에는
+  sign이 없어 reader가 +1로 복원하므로, 명시 sign을 가진 WINT 정점으로 바꾼 뒤 반전한다.
+  위치·normal·tangent만 같아도 binormal이 반대일 수 있다. 실제 reader의 N/T/B를 대조한다.
+- normal-map basis 결함을 머리 실루엣의 원인으로 단정하지 않는다. 정상 머리를 Movie 의상에
+  조합할 때 geometry·재질을 함께 옮기고 본 이름·inverse bind·animated head-space를 검사한다.
+  기존 Movie clip과 배우 ID는 유지하며 새 파생 WModel의 설치와 데이터 게시를 각각 확인한다.
+- Movie 원본에서 weight가 없던 facial bone은 이름이 있어도 inverse bind가 새 donor 정점에
+  맞지 않을 수 있다. donor의 weighted inverse bind를 좌표 변환해 매핑하고 Movie skeleton과
+  clip은 유지한다. 파일 decode·본 수만 검사하지 말고 실제 skinning 후 원형 오차·전구간 크기를 대조한다.
 
 - donor와 Movie의 본 수가 다르면 양의 weight가 사용하는 실제 본 이름부터 대조한다. 누락된
   본을 버리거나 head에 몰아 붙이지 않고 Movie clip prefix를 유지한 호환 파생 골격을 만든다.

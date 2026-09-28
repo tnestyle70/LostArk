@@ -52,7 +52,16 @@ def derive(resources: Path, output: Path):
     donor_bytes, movie_bytes = donor_path.read_bytes(), movie_path.read_bytes()
     donor = wm.read_wmodel(donor_path, animation_names=())
     movie = wm.read_wmodel(movie_path, animation_names=())
-    dp = geom.parse_skinned_uv_wmodel(rebase_donor_material_paths(donor_bytes, donor_path, resources))
+    donor_material_bytes = rebase_donor_material_paths(donor_bytes, donor_path, resources)
+    dp = geom.parse_skinned_uv_wmodel(donor_material_bytes)
+    if dp["meshHeader"][4] == geom.STRIDE_SKINNED:
+        # CWMeshReader reconstructs legacy binormal as cross(normal, tangent).
+        # A reflection reverses that cross product. Preserve its implicit +1
+        # before changing basis so the explicit sign below can become -1.
+        donor_material_bytes, _ = geom.cook_skinned_basis_uv_contract(
+            donor_material_bytes, {},
+            {index: [1.0] * row[1] for index, row in enumerate(dp["submeshes"])})
+        dp = geom.parse_skinned_uv_wmodel(donor_material_bytes)
     mp = geom.parse_skinned_uv_wmodel(movie_bytes)
     donor_by_name = {b.name: i for i, b in enumerate(donor.skeleton_bones)}
     target_names = [b.name for b in movie.skeleton_bones]
@@ -194,17 +203,19 @@ def derive(resources: Path, output: Path):
         extraBones=target_names[len(movie.skeleton_bones):], positiveInfluenceCount=positive_influences,
         positiveInfluencesBoundToHead=positive_influences, weightsByteIdentical=True, clips=clips,
         basis=BASIS.tolist(), modelPreScale=.01,
+        tangentBasisPreserved=True, tangentHandednessReflectionApplied=True,
         boundary="FT43 silhouette follows animated Movie head rigidly; no secondary hair motion. Original Movie clips and skeleton prefix remain unchanged.")
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--resources", type=Path, default=ROOT / "Client/Bin/Resources")
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--receipt", type=Path, required=True)
     args = parser.parse_args()
     for path in (args.output, args.receipt):
         assert path.resolve().is_relative_to((ROOT / "out").resolve())
-    receipt = derive(ROOT / "Client/Bin/Resources", args.output.resolve())
+    receipt = derive(args.resources.resolve(), args.output.resolve())
     args.receipt.write_text(json.dumps(receipt, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     print(json.dumps(receipt, ensure_ascii=False))
 
