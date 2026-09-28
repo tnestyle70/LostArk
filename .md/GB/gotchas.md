@@ -451,6 +451,11 @@ classSizeMultipliers의 필수 키 수만 늘리면 기존 여섯 클래스 Came
 - 실제 body의 mesh·inverse bind로 skin bounds를 검사하고, 교정하지 않는 필드의 byte 보존과
   재실행 무변경을 확인한다. Resources는 기존 Drive 경계로 별도 전달하며 실행 중 Client의
   메모리까지 갱신됐다고 표현하지 않는다. 근거는 [탈것 결과 G09](../JS/09-14/2026-09-14_VEHICLE_ADDITIONS_RESULT.md)를 따른다.
+- 본인만 정상이고 다른 PC에서 같은 탑승자가 100배 커지면 관찰 PC가 선택한 Resources의
+  `Character/DimensionMaster/AnimSets`를 비교한다. 원격 캐릭터도 관찰 PC의 donor를 사용하며
+  Release 실행 ZIP·Git pull은 별도 Resources 교정본을 전달하지 않는다. 정상 donor에 다시
+  전역 0.01을 곱하지 말고 기존 교정 6개를 같은 상대 경로로 전달한다. 설치 도구는
+  `Tools/VehiclePipeline/Install-DimensionMasterRiderScalePatch.ps1`이며 알 수 없는 파일은 보존한다.
 
 ### 실행 ZIP의 DataFiles와 옵션 팝업 클릭 소비
 
