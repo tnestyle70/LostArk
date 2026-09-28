@@ -3,7 +3,7 @@
   "formatVersion": 1,
   "lightResourceRevision": 30,
   "bossArchetypeId": "BOSS_KAKULSAYDON_G1_KOUKU",
-  "sourceRevision": 2466,
+  "sourceRevision": 2467,
   "bindings": [
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_1.stage.43",
@@ -116257,7 +116257,7 @@
           "halfAngleDegrees": 45,
           "soundEvent": "",
           "subtitleText": "렛츠, 쇼타임~!",
-          "subtitlePosition": "UPPER",
+          "subtitlePosition": "NORMAL",
           "resourceId": "subtitle.kouku.cin.37081_32_01",
           "kind": "SUBTITLE",
           "assetId": "cin.37081_32_01",

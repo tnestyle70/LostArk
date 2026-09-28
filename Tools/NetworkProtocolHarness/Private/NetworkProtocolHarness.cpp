@@ -2235,11 +2235,11 @@ namespace
         killed.eResult = DEBUG_KILL_GATE_BOSSES_RESULT::DISABLED; CPacketWriter rejectedKill;
         testRunner.Require(!Write_Message(rejectedKill, killed), "Rejected Gate Kill cannot claim a kill count");
 
-		testRunner.Require(NETWORK_PROTOCOL_VERSION == 119u &&
+		testRunner.Require(NETWORK_PROTOCOL_VERSION == 120u &&
 			Is_Known_Packet_Type(PACKET_TYPE::C2S_DEBUG_USE_ESTHER) &&
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_DEBUG_USE_ESTHER) ==
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_DEBUG_RESUMMON_WAVE_MONSTERS) + 1u,
-			"Protocol 119 combines flight and Debug Esther without renumbering packets");
+			"Protocol 120 combines flight and Debug Esther without renumbering packets");
 		for (const auto esther : { ESTHER_ID::SILLIAN, ESTHER_ID::WEI,
 			ESTHER_ID::BAHUNTUR, ESTHER_ID::NINAV, ESTHER_ID::INANNA })
 		{
@@ -2423,10 +2423,10 @@ namespace
 				unchanged.eDirection == request.eDirection,
 				"Malformed Mario direction or stop preserves output");
 		}
-		testRunner.Require(NETWORK_PROTOCOL_VERSION == 119u && Is_Known_Packet_Type(PACKET_TYPE::C2S_MARIO_MOVE) &&
+		testRunner.Require(NETWORK_PROTOCOL_VERSION == 120u && Is_Known_Packet_Type(PACKET_TYPE::C2S_MARIO_MOVE) &&
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_MARIO_MOVE) ==
 			static_cast<std::uint16_t>(PACKET_TYPE::S2C_DEBUG_MARIO_JUMP_RESULT) + 1u,
-			"Mario direction packet retains its appended identity in protocol 119");
+			"Mario direction packet retains its appended identity in protocol 120");
 	}
 
 
@@ -2437,7 +2437,7 @@ namespace
         source.ActiveGameplayRevision = Make_GameplayDataRevision(1u);
         PLAYER_SNAPSHOT player{}; player.iNetEntityId = 100u;
         player.eCharacterClass = CHARACTER_CLASS_ID::LANCE_MASTER;
-        player.bRonaunGuard = true; player.iRonaunGrantTick = 99u;
+        player.bRonaunGuard = true; player.iRonaunGrantTick = 99u; player.isWaterpangArmed = true;
         source.Players = {player};
         for (std::uint8_t state = 0u; state < static_cast<std::uint8_t>(WORLD_PICKUP_STATE::END); ++state)
         {
@@ -2453,7 +2453,7 @@ namespace
         CPacketReader reader{writer.Get_Buffer()}; S2C_WORLD_SNAPSHOT decoded{};
         testRunner.Require(written && Read_Message(reader, decoded) && reader.Get_RemainingSize() == 0u &&
             decoded.WorldPickups == source.WorldPickups && decoded.Players[0].bRonaunGuard &&
-            decoded.Players[0].iRonaunGrantTick == 99u,
+            decoded.Players[0].iRonaunGrantTick == 99u && decoded.Players[0].isWaterpangArmed,
             "World pickups preserve all five authoritative states and Ronaun grant occurrence");
         auto consumed = source; consumed.Players[0].bRonaunGuard = false;
         CPacketWriter consumedWriter;
@@ -3043,11 +3043,11 @@ namespace
 				unchanged.eWorldId == WORLD_ID::BERN && unchanged.eResult == MARIO_RETURN_RESULT::REJECTED_DESTINATION,
 				"Invalid Mario return verdict preserves caller output");
 		}
-		testRunner.Require(NETWORK_PROTOCOL_VERSION == 119u &&
+		testRunner.Require(NETWORK_PROTOCOL_VERSION == 120u &&
 			Is_Known_Packet_Type(PACKET_TYPE::C2S_MARIO_RETURN) && Is_Known_Packet_Type(PACKET_TYPE::S2C_MARIO_RETURN_RESULT) &&
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_MARIO_RETURN) == static_cast<std::uint16_t>(PACKET_TYPE::S2C_SET_VEHICLE_RIDING_RESULT) + 1u &&
 			static_cast<std::uint16_t>(PACKET_TYPE::S2C_MARIO_RETURN_RESULT) == static_cast<std::uint16_t>(PACKET_TYPE::C2S_MARIO_RETURN) + 1u,
-			"Protocol 119 preserves Mario return packet identities");
+			"Protocol 120 preserves Mario return packet identities");
 	}
 
 	void Test_DebugMarioJumpProtocol(TEST_RUNNER& testRunner)
@@ -3164,14 +3164,14 @@ namespace
 				unchanged.eResult == DEBUG_MARIO_JUMP_RESULT::REJECTED_DISABLED,
 				"Mario invalid or truncated verdict preserves caller output");
 		}
-		testRunner.Require(NETWORK_PROTOCOL_VERSION == 119u &&
+		testRunner.Require(NETWORK_PROTOCOL_VERSION == 120u &&
 			Is_Known_Packet_Type(PACKET_TYPE::C2S_DEBUG_MARIO_JUMP) &&
 			Is_Known_Packet_Type(PACKET_TYPE::S2C_DEBUG_MARIO_JUMP_RESULT) &&
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_DEBUG_MARIO_JUMP) ==
 			static_cast<std::uint16_t>(PACKET_TYPE::S2C_SCENE_PROFILE_APPLY) + 1u &&
 			static_cast<std::uint16_t>(PACKET_TYPE::S2C_DEBUG_MARIO_JUMP_RESULT) ==
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_DEBUG_MARIO_JUMP) + 1u,
-			"Protocol 119 preserves Mario jump packet identities without renumbering existing peers");
+			"Protocol 120 preserves Mario jump packet identities without renumbering existing peers");
 	}
 
 	void Test_DebugMadnessFormProtocol(TEST_RUNNER& testRunner)
@@ -3349,14 +3349,14 @@ namespace
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_DEBUG_BINGO_HAMMER) + 1u &&
 			static_cast<std::uint16_t>(PACKET_TYPE::S2C_SET_VEHICLE_RIDING_RESULT) ==
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_SET_VEHICLE_RIDING) + 1u &&
-			NETWORK_PROTOCOL_VERSION == 119u,
+			NETWORK_PROTOCOL_VERSION == 120u,
 			"Riding packet identities append without renumbering peers");
 	}
 
 	void Test_WorldObjectMotionProtocol(TEST_RUNNER& testRunner)
 	{
 		using namespace LostArk::Shared;
-		testRunner.Require(NETWORK_PROTOCOL_VERSION == 119u, "World Object owner lifecycle, fear, zone pulse, wave re-summon, wall climb and ember use protocol 119");
+		testRunner.Require(NETWORK_PROTOCOL_VERSION == 120u, "World Object owner lifecycle, fear, zone pulse, wave re-summon, wall climb and ember use protocol 120");
 		testRunner.Require(
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_DEBUG_MARIO_JUMP) == 72u &&
 			static_cast<std::uint16_t>(PACKET_TYPE::S2C_DEBUG_MARIO_JUMP_RESULT) == 73u &&
@@ -3728,8 +3728,8 @@ namespace
 			static_cast<std::uint16_t>(PACKET_TYPE::S2C_INTERACT_PROMPT) + 1u &&
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_INTERACTION_SLOT) ==
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_INTERACT_TRIGGER) + 1u &&
-			NETWORK_PROTOCOL_VERSION == 119u,
-			"Protocol 119 preserves main trigger identities with WORLD occurrence placement");
+			NETWORK_PROTOCOL_VERSION == 120u,
+			"Protocol 120 preserves main trigger identities with WORLD occurrence placement");
 	}
 
 	void Test_KakulAuthoringCommandProtocol(TEST_RUNNER& testRunner)
@@ -3845,8 +3845,8 @@ namespace
 	void Test_PartyInviteProtocol(TEST_RUNNER& testRunner)
 	{
 		{
-			testRunner.Require(119u == NETWORK_PROTOCOL_VERSION,
-				"KoukuSaydon Source Pin And Existing Contracts Use Protocol 119");
+			testRunner.Require(120u == NETWORK_PROTOCOL_VERSION,
+				"KoukuSaydon Source Pin And Existing Contracts Use Protocol 120");
 			C2S_ENTER_WORLD oldPeer{};
 			oldPeer.iProtocolVersion = 40u;
 			oldPeer.eWorldId = WORLD_ID::BERN;
@@ -4090,8 +4090,8 @@ namespace
         testRunner.Require(!Write_Message(rejectHp, badState), "Guide Trace Rejects HP Outside Unit Interval");
         state.fEvadeScore = std::numeric_limits<float>::quiet_NaN(); CPacketWriter rejectNan;
         testRunner.Require(!Write_Message(rejectNan, state), "Guide Trace Rejects Nonfinite Scores");
-        testRunner.Require(NETWORK_PROTOCOL_VERSION == 119u && Is_Known_Packet_Type(PACKET_TYPE::S2C_GUIDE_PROMPT) &&
-            Is_Known_Packet_Type(PACKET_TYPE::S2C_GUIDE_STATE), "Guide Protocol Requires Matching v119 Peers");
+        testRunner.Require(NETWORK_PROTOCOL_VERSION == 120u && Is_Known_Packet_Type(PACKET_TYPE::S2C_GUIDE_PROMPT) &&
+            Is_Known_Packet_Type(PACKET_TYPE::S2C_GUIDE_STATE), "Guide Protocol Requires Matching v120 Peers");
     }
 
 	void Test_ChatProtocol(TEST_RUNNER& testRunner)
@@ -4311,6 +4311,41 @@ namespace
 		}
 	}
 
+
+    void Test_Integrated120ShopProtocol(TEST_RUNNER& testRunner)
+    {
+        S2C_INVENTORY_SNAPSHOT inventory{};
+        inventory.iRequestSequence = 77u;
+        inventory.Items.push_back({"item.potion", 3u, EQUIPMENT_SLOT::NONE});
+        inventory.iSilver = 123456789u;
+        inventory.iGold = 987654321u;
+        CPacketWriter writer;
+        const bool written = Write_Message(writer, inventory);
+        CPacketReader reader{writer.Get_Buffer()};
+        S2C_INVENTORY_SNAPSHOT decoded{};
+        testRunner.Require(written && Read_Message(reader, decoded) && reader.Get_RemainingSize() == 0u &&
+            decoded.iSilver == inventory.iSilver && decoded.iGold == inventory.iGold &&
+            decoded.Items.size() == 1u && decoded.Items.front().iQuantity == 3u,
+            "Protocol 120 preserves shop purse alongside inventory items");
+        auto truncated = writer.Get_Buffer();
+        if (!truncated.empty()) truncated.pop_back();
+        CPacketReader shortReader{truncated}; decoded.iSilver = 91u; decoded.iGold = 92u;
+        testRunner.Require(!Read_Message(shortReader, decoded) && decoded.iSilver == 91u && decoded.iGold == 92u,
+            "Truncated integrated purse preserves the previous inventory");
+
+        C2S_BUY_ITEMS purchase{};
+        purchase.iRequestSequence = 78u;
+        purchase.strNpcPlacementId = "npc.bern.potion";
+        purchase.Entries.push_back({"item.potion", 2u});
+        CPacketWriter basketWriter;
+        const bool basketWritten = Write_Message(basketWriter, purchase);
+        CPacketReader basketReader{basketWriter.Get_Buffer()}; C2S_BUY_ITEMS basket{};
+        testRunner.Require(basketWritten && Read_Message(basketReader, basket) &&
+            basketReader.Get_RemainingSize() == 0u && basket.strNpcPlacementId == purchase.strNpcPlacementId &&
+            basket.Entries.size() == 1u && basket.Entries.front().iQuantity == 2u &&
+            Is_Known_Packet_Type(PACKET_TYPE::C2S_BUY_ITEMS),
+            "Protocol 120 preserves the appended shop request");
+    }
 	void Test_WorldSnapshotRoundTrip(
 		TEST_RUNNER& testRunner)
 	{
@@ -4483,7 +4518,7 @@ namespace
 		// Retained presentation has its own IDs and pattern/action/stage clocks.
         const std::size_t entityPresentationBytes =
             2 + entity.strPresentationPatternId.size() + 2 + entity.strPresentationActionId.size() + (4 * 3);
-		// Protocol 117 adds the gauge kind and remaining/maximum U32 pair.
+		// Protocol 120 adds the gauge kind and remaining/maximum U32 pair.
 		constexpr std::size_t mechanicGaugeBytes = 1 + (4 * 2);
 		const std::size_t entityBytes =
 			4 + 1 + 2 + entity.strPatternId.size() + 2 +
@@ -7394,8 +7429,8 @@ namespace
 		}
 
 		testRunner.Require(
-			119u == NETWORK_PROTOCOL_VERSION,
-			"Session Diagnostics Use Current Protocol Version 118");
+			120u == NETWORK_PROTOCOL_VERSION,
+			"Session Diagnostics Use Current Protocol Version 120");
 		testRunner.Require(
 			allReasonsAreKnown && allValuesAreContiguous,
 			"Every Session Diagnostic Reason Is Known And Append Only");
@@ -7422,8 +7457,8 @@ namespace
 	void Test_DataRevisionHotReloadProtocol(TEST_RUNNER& testRunner)
 	{
 		testRunner.Require(
-			119u == NETWORK_PROTOCOL_VERSION,
-			"World Spawn Pin Complete Play And Two-Revision Restart CAS Use Protocol 119");
+			120u == NETWORK_PROTOCOL_VERSION,
+			"World Spawn Pin Complete Play And Two-Revision Restart CAS Use Protocol 120");
 		const GameplayDataRevision base = Make_GameplayDataRevision(10u);
 		const GameplayDataRevision candidate = Make_GameplayDataRevision(40u);
 		const std::uint32_t required =
@@ -8740,6 +8775,7 @@ int main(const int argumentCount, char* arguments[])
 		return 0u == testRunner.iFailureCount ? 0 : 1;
 	}
 
+	Test_Integrated120ShopProtocol(testRunner);
 	Test_EnterWorldRoundTrip(testRunner);
 	Test_PlayerNicknameContract(testRunner);
 	Test_PlayableCharacterRoster(testRunner);

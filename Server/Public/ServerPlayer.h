@@ -234,6 +234,12 @@ namespace LostArk::Server
 		// Safe arena revive point retained through the fall's below-floor death pose.
 		std::optional<std::array<float, 3u>> KoukuFallRevivePosition;
 		bool bKoukuFallDeath = false;
+		// A push off the live Waterpang arena revives on the nearest jump box at the fall deadline.
+		bool bWaterpangFall = false;
+		// Last tick a Waterpang cannon jet struck this player; jets re-apply every 0.4 s.
+		std::uint32_t iWaterpangCannonHitTick = 0u;
+		// A Waterpang waterfall launch in flight: it ends in the Waterpang fall, never a landing.
+		bool bWaterpangLaunch = false;
 		LostArk::Shared::PLAYER_MADNESS_FORM ePreMarioForm =
 			LostArk::Shared::PLAYER_MADNESS_FORM::NORMAL;
 		std::uint32_t iLastMarioMoveSequence = 0u;

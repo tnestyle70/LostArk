@@ -2,7 +2,7 @@
   "schema": "lostark.camera-shots",
   "formatVersion": 1,
   "areaId": "LV_OCN_EVENTIS_MHP",
-  "revision": 3,
+  "revision": 6,
   "shots": [
     {
       "shotId": "maharaka.waterpang.source.intro15.camera.1",
@@ -6814,7 +6814,7 @@
     },
     {
       "cutsceneId": "cutscene.maharaka.waterpang.source.intro15",
-      "displayName": "워터팡 / 원본 도입 카메라 15 (카메라·효과음)",
+      "displayName": "워터팡 / 도입 15 · 원본 카메라·경기 배치",
       "durationMs": 9507,
       "cameraCuts": [
         {
@@ -6829,7 +6829,10 @@
         }
       ],
       "worldInstanceIds": [
-        "world.sequence.instance.maharaka.waterpang.source.intro15.stage"
+        "world.sequence.instance.maharaka.waterpang.source.intro15.match-stand",
+        "world.sequence.instance.maharaka.waterpang.source.intro15.stage",
+        "world.sequence.instance.maharaka.waterpang.source.intro15.mokomoko",
+        "world.sequence.instance.maharaka.waterpang.source.intro15.cannon"
       ]
     },
     {
@@ -6855,6 +6858,51 @@
       ],
       "worldInstanceIds": [
         "world.sequence.instance.maharaka.waterpang.source.intro20.stage"
+      ]
+    },
+    {
+      "cutsceneId": "cutscene.maharaka.waterpang.attack.mokomoko",
+      "displayName": "워터팡 / 공격 · 큰 모코모코 물벼락 (공격 연출 미리보기)",
+      "durationMs": 6000,
+      "cameraCuts": [],
+      "worldInstanceIds": [
+        "world.sequence.instance.maharaka.waterpang.attack.mokomoko"
+      ]
+    },
+    {
+      "cutsceneId": "cutscene.maharaka.waterpang.attack.cannon.start",
+      "displayName": "워터팡 / 공격 · 워터캐논 시작과 예고 (공격 연출 미리보기)",
+      "durationMs": 1500,
+      "cameraCuts": [],
+      "worldInstanceIds": [
+        "world.sequence.instance.maharaka.waterpang.attack.cannon.start"
+      ]
+    },
+    {
+      "cutsceneId": "cutscene.maharaka.waterpang.attack.cannon.loop.cw",
+      "displayName": "워터팡 / 공격 · 워터캐논 회전 시계 (공격 연출 미리보기)",
+      "durationMs": 24000,
+      "cameraCuts": [],
+      "worldInstanceIds": [
+        "world.sequence.instance.maharaka.waterpang.attack.cannon.loop.cw"
+      ]
+    },
+    {
+      "cutsceneId": "cutscene.maharaka.waterpang.attack.cannon.loop.ccw",
+      "displayName": "워터팡 / 공격 · 워터캐논 회전 반시계 (공격 연출 미리보기)",
+      "durationMs": 24000,
+      "cameraCuts": [],
+      "worldInstanceIds": [
+        "world.sequence.instance.maharaka.waterpang.attack.cannon.loop.ccw"
+      ]
+    },
+    {
+      "cutsceneId": "cutscene.maharaka.waterpang.attack.cannon.end",
+      "displayName": "워터팡 / 공격 · 워터캐논 끝 (공격 연출 미리보기)",
+      "durationMs": 1000,
+      "cameraCuts": [],
+      "worldInstanceIds": [
+        "world.sequence.instance.maharaka.waterpang.attack.cannon.end"
       ]
     }
   ]

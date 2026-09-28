@@ -6,6 +6,7 @@
 #include "Network/PacketMessages.h"
 #include "Network/PacketWriter.h"
 #include "Gameplay/WorldCollisionContract.h"
+#include "Gameplay/MaharakaWaterpangContract.h"
 
 #include <algorithm>
 #include <array>
@@ -159,6 +160,8 @@ void LostArk::Server::CGameRoom::Begin_PlayerFall(
 	player.fFallDeathPlaneY = (player.bKnockbackBallistic ? player.fKnockbackSupportY : player.fPositionY) - fallDepth;
 	player.eAction = PLAYER_ACTION_STATE::FALLING;
 	player.bKoukuFallDeath = m_eWorldId == WORLD_ID::KAKULSAYDON_ARENA && !player.iMarioStage;
+	player.bWaterpangFall = false;
+	player.bWaterpangLaunch = false;
 	player.iActionStartTick = 0u == updateTick ? 1u : updateTick;
 	player.iFallDeathTick = Add_ServerTicksSkippingReservedZero(
 		player.iActionStartTick, FALL_DEATH_TICKS);
@@ -713,6 +716,31 @@ bool LostArk::Server::CGameRoom::Update_PlayerFall(
 			(!std::isfinite(player.fFallDeathPlaneY) || player.fPositionY <= player.fFallDeathPlaneY) : sinceDeadline >= 0;
 		if (!std::isfinite(player.fPositionY) || reachedDeath)
 		{
+			/* A Waterpang fall shows its descent, then returns the player alive on
+			   the jump box nearest the fall so they can jump back onto the arena. */
+			if (player.bWaterpangFall && player.iCurrentHp)
+			{
+				const WORLD_BOOTSTRAP_PLACEMENT* nearest = nullptr;
+				float nearestDistance = (std::numeric_limits<float>::max)();
+				for (const char* id : { "jump1", "jump2" })
+				{
+					const auto* box = Find_Placement(id);
+					if (!box) continue;
+					const float dx = player.fPositionX - box->fPositionX;
+					const float dz = player.fPositionZ - box->fPositionZ;
+					if (dx * dx + dz * dz < nearestDistance) { nearest = box; nearestDistance = dx * dx + dz * dz; }
+				}
+				SERVER_NAV_POINT ground{};
+				if (nearest && m_ServerNavigation.Project_Point(
+					nearest->fPositionX, nearest->fPositionZ, ground, nearest->fPositionY))
+				{
+					player.fPositionX = ground.x; player.fPositionY = ground.y; player.fPositionZ = ground.z;
+					player.fFallVelocityY = 0.f; player.iFallDeathTick = 0u;
+					player.eAction = PLAYER_ACTION_STATE::NONE; player.iActionStartTick = 0u;
+					player.isCombatReady = true; player.bWaterpangFall = false;
+					return true;
+				}
+			}
 			player.iCurrentHp = 0u;
 			player.eAction = PLAYER_ACTION_STATE::DEAD;
 			player.iCurrentSkillId = INVALID_SKILL_ID;
@@ -769,6 +797,7 @@ void LostArk::Server::CGameRoom::Update_Players(const float fixedDeltaSeconds)
         (void)CKoukuSaydonLogicRuntime::Update_PlayerFear(player, updateTick);
 		Update_MarioControlState(player);
 		Update_MarioBombContacts(player, updateTick);
+		Update_MaharakaWaterpangHazards(player, updateTick);
 		if (m_eWorldId == LostArk::Shared::WORLD_ID::KAKULSAYDON_ARENA && player.iCurrentHp &&
 			!player.iMarioStage && !player.TriggerMove.isActive &&
 			player.eAction != LostArk::Shared::PLAYER_ACTION_STATE::FALLING)
@@ -1282,6 +1311,7 @@ void LostArk::Server::CGameRoom::Advance_PlayerKnockback(
 		player.Clear_Attachment();
 		player.fKnockbackRemainingSeconds = 0.f;
 		player.fKnockbackSpeed = 0.f;
+		player.bWaterpangLaunch = false;
 		return;
 	}
 	const float step = (std::min)(
@@ -1293,11 +1323,21 @@ void LostArk::Server::CGameRoom::Advance_PlayerKnockback(
 	const auto gate = Resolve_CurrentKoukuGate();
 	const bool gateFence = !player.iMarioStage && (gate == 1u || gate == 3u);
 	if (gateFence) player.bKnockbackCanLeaveArena = false;
+	// Once the match has started, a push may carry a player off the Waterpang arena.
+	const std::uint32_t knockbackTick =
+		(std::numeric_limits<std::uint32_t>::max)() == m_iServerTick ? 1u : m_iServerTick + 1u;
+	const bool waterpangMatch = m_eWorldId == LostArk::Shared::WORLD_ID::MAHARAKA &&
+		((m_MaharakaWaterpangIntro && Has_ReachedServerTick(knockbackTick, m_MaharakaWaterpangIntro->iStartTick)) ||
+		 Is_MaharakaWaterpangDebugEventLive(knockbackTick));
+	const bool waterpangPush = waterpangMatch &&
+		m_ServerNavigation.Is_PointWalkableInRegion(LostArk::Shared::MAHARAKA_WATERPANG_REGION_ID,
+			player.fPositionX, player.fPositionZ, player.fPositionY);
+	if (waterpangPush) player.bKnockbackCanLeaveArena = true;
 	if (player.bKnockbackBallistic)
 	{
 		// A bounded launch keeps the authored Y arc while its ground footprint
 		// obeys the same navigation and fence collision as ordinary movement.
-		const bool bounded = !player.bKnockbackCanLeaveArena;
+		const bool bounded = !player.bKnockbackCanLeaveArena && !player.bWaterpangLaunch;
 		if (bounded)
 		{
 			SERVER_NAV_POINT reachable{desiredX, player.fKnockbackSupportY, desiredZ};
@@ -1330,6 +1370,19 @@ void LostArk::Server::CGameRoom::Advance_PlayerKnockback(
 			0.5f * player.fKnockbackGravityMps2 * step * step;
 		player.fKnockbackVelocityY -= player.fKnockbackGravityMps2 * step;
 		player.fKnockbackRemainingSeconds = (std::max)(0.f, player.fKnockbackRemainingSeconds - step);
+		/* A Waterpang waterfall launch never lands on the deck, a pier or the pool
+		   floor it crosses: its flight always ends in the Waterpang fall. */
+		if (player.bWaterpangLaunch)
+		{
+			if (player.fKnockbackRemainingSeconds > 0.00001f)
+				return;
+			const float velocityY = player.fKnockbackVelocityY;
+			const std::uint32_t tick = (std::numeric_limits<std::uint32_t>::max)() == m_iServerTick ? 1u : m_iServerTick + 1u;
+			Begin_PlayerFall(player, 0.f, tick);
+			player.fFallVelocityY = velocityY;
+			player.bWaterpangFall = true;
+			return;
+		}
 		const float fallDepth = Resolve_KoukuFallCenter(player) ? KOUKU_CASINO_FALL_DEPTH_M : KOUKU_FALL_DEPTH_M;
 		if (!bounded && m_eWorldId == LostArk::Shared::WORLD_ID::KAKULSAYDON_ARENA &&
 			player.fPositionY <= player.fKnockbackSupportY - fallDepth)
@@ -1380,9 +1433,12 @@ void LostArk::Server::CGameRoom::Advance_PlayerKnockback(
 			else
 			{
 				const float velocityY = player.fKnockbackVelocityY;
+				// A launch leaves the deck before it ends, so the match alone decides.
+				const bool waterpangFall = waterpangMatch && player.bKnockbackCanLeaveArena;
 				const std::uint32_t tick = (std::numeric_limits<std::uint32_t>::max)() == m_iServerTick ? 1u : m_iServerTick + 1u;
 				Begin_PlayerFall(player, 0.f, tick);
 				player.fFallVelocityY = velocityY;
+				player.bWaterpangFall = waterpangFall;
 			}
 		}
 		return;
@@ -1414,7 +1470,7 @@ void LostArk::Server::CGameRoom::Advance_PlayerKnockback(
 		return;
 	}
 	if (m_ServerNavigation.Is_Loaded() &&
-		(m_eWorldId == LostArk::Shared::WORLD_ID::VALTAN_ARENA ||
+		(m_eWorldId == LostArk::Shared::WORLD_ID::VALTAN_ARENA || waterpangPush ||
 		 (m_eWorldId == LostArk::Shared::WORLD_ID::KAKULSAYDON_ARENA &&
 		  player.bKnockbackCanLeaveArena && !player.iMarioStage)))
 	{
@@ -1450,6 +1506,7 @@ void LostArk::Server::CGameRoom::Advance_PlayerKnockback(
 			const std::uint32_t updateTick =
 				(std::numeric_limits<std::uint32_t>::max)() == m_iServerTick ? 1u : m_iServerTick + 1u;
 			Begin_PlayerFall(player, fixedDeltaSeconds, updateTick);
+			player.bWaterpangFall = waterpangPush;
 			return;
 		}
 		player.fKnockbackRemainingSeconds = wasBlocked || FORCED_SURFACE_RESULT::BLOCKED == support ?

@@ -336,6 +336,8 @@ struct WORLD_SEQUENCE_BINDING
 	WORLD_SEQUENCE_TARGET_KIND targetKind =
 		WORLD_SEQUENCE_TARGET_KIND::MAP_PLACEMENT;
 	std::string targetId;
+	// One occurrence replaces only this server NPC's rendering in a live editor.
+	std::string previewNpcPlacementId;
 };
 
 enum class WORLD_SEQUENCE_MOTION_END

@@ -576,8 +576,9 @@ for ordinal, selection in enumerate(selections):
             # GroundEffect 2001 fan uses the same original projection ABI;
             # its radial/angular material expressions remain native.
             'c390f9f83fce2b4791421e47db4cdcc6',
-            # Valtan GroundEffect 2006 red sector retains the exact same
-            # LocalDecal VS and engine-owned CB0[0..3] projection prefix.
+            # Valtan GroundEffect 2006 red sector and Maharaka GroundEffect 1006
+            # behit donut share this LocalDecal VS and engine-owned CB0[0..3]
+            # projection prefix; their sector/ring/angle expressions stay native.
             'cb2536fe3098784eb8a1ce43b3c9efd0')
         if kouku_ground:
             # GroundEffect's LocalDecal VS exports absolute world position at

@@ -359,6 +359,11 @@ bool LostArk::Server::CGameRoom::Initialize_WorldEntities()
 bool LostArk::Server::CGameRoom::Reset_ReplayableArenaWhenEmpty()
 {
 	using LostArk::Shared::WORLD_ID;
+	if (m_eWorldId == WORLD_ID::MAHARAKA && Count_HumanPlayers() == 0u)
+	{
+		m_MaharakaWaterpangIntro.reset();
+		m_MaharakaWaterpangDebugEvent.reset();
+	}
 	if ((WORLD_ID::CHARACTER_SELECT_ARENA != m_eWorldId &&
 		WORLD_ID::VALTAN_ARENA != m_eWorldId &&
 		WORLD_ID::KAKULSAYDON_ARENA != m_eWorldId) || Count_HumanPlayers() != 0u)

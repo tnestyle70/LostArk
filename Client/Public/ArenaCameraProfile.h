@@ -8,6 +8,7 @@
 #include <array>
 #include <filesystem>
 #include <string>
+#include <vector>
 
 NS_BEGIN(Client)
 
@@ -19,20 +20,43 @@ enum class ARENA_CAMERA_MAP
 	VALTAN
 };
 
-// Ship-riding lens (Bern only). Defaults are EFTable_CameraSetting 1001 step 1, the
-// Camera_Ocean row of every EFTable_VoyageShip base ship, converted with the (x, z, -y)
-// basis of the 2026-09-14 camera restoration: FOV 60 (horizontal at 16:9), pitch -45 -> 45,
-// yaw 0 -> 90, ZoomDist 1700 cm -> 17 m, RelativeZ -50 cm -> focus y -0.5 m, ratio 2.
+// One EFTable_CameraSetting ship row in source units. FOV is horizontal at 16:9; Pitch and
+// Yaw use the (x, z, -y) basis of the 2026-09-14 camera restoration (pitch -> -Pitch,
+// yaw -> Yaw + 90); ZoomDist and RelativeZ are cm; the ratio is Isometric_InterpolationRatio.
+struct ARENA_SHIP_CAMERA_STEP final
+{
+	f32_t fovXDegrees = 60.f;
+	f32_t sourcePitchDegrees = -45.f;
+	f32_t sourceYawDegrees = 0.f;
+	f32_t zoomDistCm = 1700.f;
+	f32_t relativeZCm = -50.f;
+	f32_t interpolationRatio = 2.f;
+};
+
+// Source draw scale of a ship mesh (its EFDLShip_* LookInfo DefaultMesh). This project draws
+// the same mesh at 1, so the lens divides the source distances by it to keep the framing.
+struct ARENA_SHIP_MESH_SCALE final
+{
+	uint32_t vehicleId = 0u;
+	f32_t scale = 1.f;
+};
+
+// Ship-riding lens (Bern only). Defaults are EFTable_CameraSetting 1001 steps 1-3, the
+// Camera_Ocean row of every EFTable_VoyageShip base ship: ZoomIn 1 open sea, 2 coast, 3 ship.
 struct ARENA_SHIP_CAMERA final
 {
-	std::string provenance = "EFTable_CameraSetting 1001/1 (VoyageShip.Camera_Ocean)";
-	f32_t fovXDegrees = 60.f;
-	f32_t pitchDegrees = 45.f;
-	f32_t yawDegrees = 90.f;
-	// Source ZoomDist is 17 m; this project's ship models are larger relative to the
-	// camera, so the framing distance is a project value. See Bern.camera.json.
-	f32_t distanceMeters = 40.f;
-	f32_t focusOffsetYMeters = -0.5f;
+	std::string provenance = "EFTable_CameraSetting 1001/1-3 (VoyageShip.Camera_Ocean)";
+	std::array<ARENA_SHIP_CAMERA_STEP, 3u> zoomSteps{ {
+		{ 60.f, -45.f, 0.f, 1700.f, -50.f, 2.f },
+		{ 60.f, -40.f, 0.f, 1300.f, -10.f, 2.f },
+		{ 45.f, -25.f, 0.f, 600.f, 60.f, 1.5f } } };
+	// 1-based steps taken on boarding and whenever the ship crosses the anchor volume;
+	// the mouse wheel moves between steps in between.
+	uint32_t openSeaStep = 1u;
+	uint32_t anchorStep = 2u;
+	// Axis-aligned square in runtime metres: centre X, centre Z, half extent (0 = none).
+	float3_t anchorVolume{};
+	std::vector<ARENA_SHIP_MESH_SCALE> shipMeshScales;
 	f32_t followResponse = 2.f;
 };
 

@@ -25,6 +25,7 @@
 #include "EncounterPropRuntime.h"
 #include "EstherSkillSystem.h"
 #include "Gameplay/EstherStrikeContract.h"
+#include "Gameplay/MaharakaWaterpangContract.h"
 #include "WorldDestructionBootstrap.h"
 #include "WorldDestructionRuntime.h"
 #include "Network/PacketFrame.h"
@@ -1582,6 +1583,14 @@ namespace LostArk::Server
 		void Resolve_CardMazeHammerHit(SERVER_PLAYER& player, std::uint32_t updateTick);
 		void Resolve_MarioHammerHit(SERVER_PLAYER& player, std::uint32_t updateTick);
 		void Update_MarioBombContacts(SERVER_PLAYER& player, std::uint32_t updateTick);
+		// Rotating cannon jets and the big mokoko waterfall of a live Waterpang match.
+		void Update_MaharakaWaterpangHazards(SERVER_PLAYER& player, std::uint32_t updateTick);
+		// The running Debug forced event first, else the match schedule; false when neither runs.
+		bool Sample_MaharakaWaterpangNow(std::uint32_t tick, LostArk::Shared::MAHARAKA_WATERPANG_EVENT_SAMPLE& out) const;
+		// The forced event plus a short tail, so its last push can still leave the deck.
+		bool Is_MaharakaWaterpangDebugEventLive(std::uint32_t tick) const;
+		// Debug F1 Waterpang pattern button: starts a forced event for the whole room.
+		LostArk::Shared::DEBUG_WORLD_PLAYBACK_RESULT Start_MaharakaWaterpangDebugEvent(const std::string& instanceId);
 		std::uint8_t Mario_CurseReleasedMask(std::uint8_t stage, std::uint8_t layout) const;
 		bool Spawn_CardMazeTarget(const CKoukuCardMazeRuntime::SPAWN_REQUEST& request);
 		void Remove_CardMazeTarget(LostArk::Shared::NET_ENTITY_ID id);
@@ -1784,6 +1793,10 @@ namespace LostArk::Server
 		CServerNavigation m_ServerNavigation;
 		CServerCollisionSystem m_ServerCollisionSystem;
 		CServerTriggerSystem m_ServerTriggerSystem;
+		// One room-wide scheduled intro, retained for late join until the room empties.
+		std::optional<LostArk::Shared::S2C_WORLD_SEQUENCE_PLAY> m_MaharakaWaterpangIntro;
+		// Debug forced waterfall/cannon broadcast; replaced by the next press, kept for late join.
+		std::optional<LostArk::Shared::S2C_WORLD_SEQUENCE_PLAY> m_MaharakaWaterpangDebugEvent;
 		CSpawnGroupBootstrap m_SpawnGroupBootstrap;
 		CSpawnGroupRuntime m_SpawnGroupRuntime;
 		std::mt19937 m_MarioLayoutRandom{std::random_device{}()};

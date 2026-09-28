@@ -39,6 +39,7 @@
 #include "LevelTransitionService.h"
 #include "Level_Bern.h"
 #include "Level_Development.h"
+#include "Gameplay/MaharakaWaterpangContract.h"
 #include "Level_Lobby.h"
 #include "ActionPresentationTimeline.h"
 #include "Level_CharacterSelect.h"
@@ -11221,6 +11222,65 @@ void CMainApp::RenderArenaCameraAndPlayerControls()
 				CCombatHUDViewModel::Get().Get_InteractPromptTriggerId();
 			ImGui::Text("Interact offer: %s", offered.empty() ? "(none)" : offered.c_str());
 		}
+#ifdef _DEBUG
+		// Maharaka Waterpang water gun: local-only arm override and fire clips/effects.
+		if (nullptr != development && LEVEL::MAHARAKA == level)
+			if (const std::shared_ptr<CCharacter> pWaterGunLocal = development->Get_DebugLocalCharacter())
+			{
+				bool forced = pWaterGunLocal->Is_WaterGunPreviewForced();
+				if (ImGui::Checkbox("Water Gun preview arm", &forced))
+					pWaterGunLocal->Set_WaterGunPreviewForced(forced);
+				for (uint32_t attack = 1u; attack <= 6u; ++attack)
+				{
+					const std::string label = "Fire " + std::to_string(attack) + "##watergun";
+					if (attack > 1u) ImGui::SameLine();
+					if (ImGui::Button(label.c_str()))
+						(void)pWaterGunLocal->Play_WaterGunAttackPreview(attack);
+				}
+			}
+			/* Waterpang patterns on demand: the Debug Server starts a forced event for the
+			   whole room on its clock (hits, notice, telegraph, attack motions, sounds). */
+			if (nullptr != development && LEVEL::MAHARAKA == level)
+			{
+				static std::uint32_t s_WaterpangRequest = 0u, s_WaterpangAwaiting = 0u;
+				static std::string s_WaterpangStatus;
+				const std::shared_ptr<IPlayerCommandSink> waterpangSink = development->Get_DebugCommandSink();
+				const auto requestWaterpang = [&](const char* instanceId, const char* label)
+				{
+					LostArk::Shared::C2S_DEBUG_WORLD_PLAYBACK message{};
+					if (0u == ++s_WaterpangRequest) s_WaterpangRequest = 1u;
+					message.iRequestSequence = s_WaterpangRequest;
+					message.eWorldId = LostArk::Shared::WORLD_ID::MAHARAKA;
+					message.eOperation = LostArk::Shared::DEBUG_WORLD_PLAYBACK_OPERATION::PLAY_SEQUENCE;
+					message.strTargetId = instanceId;
+					const bool sent = waterpangSink && waterpangSink->Request_DebugWorldPlayback(message);
+					s_WaterpangAwaiting = sent ? message.iRequestSequence : 0u;
+					s_WaterpangStatus = std::string(label) + (sent ? ": sent" : ": not sent (no Server connection)");
+				};
+				if (ImGui::Button("물벼락##waterpangdebug"))
+					requestWaterpang(LostArk::Shared::MAHARAKA_WATERPANG_DEBUG_WATERFALL_INSTANCE, "Waterfall");
+				ImGui::SameLine();
+				if (ImGui::Button("워터캐논##waterpangdebug"))
+					requestWaterpang(LostArk::Shared::MAHARAKA_WATERPANG_DEBUG_CANNON_INSTANCE, "Water cannon");
+				LostArk::Shared::S2C_DEBUG_WORLD_PLAYBACK_RESULT waterpangResult{};
+				while (waterpangSink && waterpangSink->Consume_DebugWorldPlaybackResult(waterpangResult))
+				{
+					if (waterpangResult.iRequestSequence != s_WaterpangAwaiting) continue;
+					s_WaterpangAwaiting = 0u;
+					static const char* const RESULTS[] = { "accepted", "disabled (Release Server)", "wrong world",
+						"invalid target", "invalid player", "already used", "rejected (countdown/intro running)",
+						"stale request", "skipped player" };
+					const auto index = static_cast<size_t>(waterpangResult.eResult);
+					s_WaterpangStatus = waterpangResult.strTargetId + ": " +
+						(index < std::size(RESULTS) ? RESULTS[index] : "unknown");
+				}
+				if (!s_WaterpangStatus.empty())
+				{
+					ImGui::SameLine();
+					ImGui::TextUnformatted(s_WaterpangStatus.c_str());
+				}
+			}
+#endif
 
 		// The Server projects every request onto this active world's authored navigation.
 		// Bern needs this same Debug-only path to inspect the separate Bern3 deck.

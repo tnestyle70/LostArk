@@ -50,6 +50,9 @@ CNavigation::CNavigation(const CNavigation& Prototype)
 {
 	if (MODE::NAVGRID_ASTAR == m_eMode && nullptr != m_pNavGrid)
 		m_pPathFinder = make_unique<CPathFinder>();
+	// Each clone owns its regions' path finders; the region grids stay shared.
+	for (const shared_ptr<CNavigation>& pRegion : Prototype.m_Regions)
+		m_Regions.push_back(shared_ptr<CNavigation>(new CNavigation(*pRegion)));
 }
 
 CNavigation::~CNavigation()
@@ -309,6 +312,13 @@ PATH_RESULT_CODE CNavigation::Find_Path(
 	uint32_t iMaxExpandedNodes,
 	uint32_t* pOutExpandedNodes)
 {
+	// A start inside a detail region paths on that region alone, as on the Server.
+	if (CNavigation* pRegion = Select_Region(XMVectorGetX(vStartPosition),
+		XMVectorGetZ(vStartPosition), XMVectorGetY(vStartPosition)))
+	{
+		return pRegion->Find_Path(vStartPosition, vGoalPosition,
+			pRegion->m_fMaxStepHeight, OutPath, iMaxExpandedNodes, pOutExpandedNodes);
+	}
 	Engine::CProfilerScope cpuPhaseScope(CGameInstance::Get().Get_Profiler(), "Navigation.FindPath");
 	if (nullptr != pOutExpandedNodes)
 		*pOutExpandedNodes = 0;
@@ -402,6 +412,8 @@ bool_t CNavigation::Try_SampleWalkablePoint(
 	const f32_t z = XMVectorGetZ(vWorldPosition);
 	if (!std::isfinite(x) || !std::isfinite(z))
 		return false;
+	if (const CNavigation* pRegion = Select_Region(x, z, XMVectorGetY(vWorldPosition)))
+		return pRegion->Try_SampleWalkablePoint(vWorldPosition, outPosition);
 	int32_t cellX = 0;
 	int32_t cellZ = 0;
 	if (!m_pNavGrid->World_ToCell(vWorldPosition, cellX, cellZ) ||
@@ -449,6 +461,69 @@ uint64_t CNavigation::Get_NavigationRevision() const
 	return MODE::NAVGRID_ASTAR == m_eMode && nullptr != m_pNavGrid ?
 		m_pNavGrid->Get_Revision() :
 		0;
+}
+
+HRESULT CNavigation::Attach_Region(unique_ptr<CNavigation> pRegion)
+{
+	if (MODE::NAVGRID_ASTAR != m_eMode || nullptr == m_pNavGrid ||
+		nullptr == pRegion || MODE::NAVGRID_ASTAR != pRegion->m_eMode ||
+		nullptr == pRegion->m_pNavGrid || nullptr == pRegion->m_pPathFinder ||
+		false == pRegion->m_Regions.empty())
+	{
+		return E_INVALIDARG;
+	}
+	m_Regions.push_back(shared_ptr<CNavigation>(move(pRegion)));
+	return S_OK;
+}
+
+CNavigation* CNavigation::Select_Region(f32_t fX, f32_t fZ, f32_t fHintY) const
+{
+	/* Mirrors CServerNavigation::Select_Region. Zero or one footprint holding the
+	 point decides alone. Stacked footprints prefer a walkable cell, then the
+	 ground nearest the hint, and a tie keeps the region declared first. Without
+	 walkable ground the first region answers, and the query fails there just as
+	 it does on the Server. */
+	const vector_t vPoint = XMVectorSet(fX, 0.f, fZ, 1.f);
+	int32_t cellX = 0;
+	int32_t cellZ = 0;
+	CNavigation* pFirst = nullptr;
+	size_t iCandidateCount = 0;
+	for (const shared_ptr<CNavigation>& pRegion : m_Regions)
+	{
+		if (false == pRegion->m_pNavGrid->World_ToCell(vPoint, cellX, cellZ))
+			continue;
+		if (nullptr == pFirst)
+			pFirst = pRegion.get();
+		++iCandidateCount;
+	}
+	if (iCandidateCount <= 1)
+		return pFirst;
+
+	CNavigation* pBest = nullptr;
+	bool_t bestHasGround = false;
+	f32_t fBestDistance = 0.f;
+	for (const shared_ptr<CNavigation>& pRegion : m_Regions)
+	{
+		if (false == pRegion->m_pNavGrid->World_ToCell(vPoint, cellX, cellZ))
+			continue;
+		const bool_t hasGround = pRegion->m_pNavGrid->Is_Walkable(cellX, cellZ);
+		f32_t fDistance = 0.f;
+		if (hasGround && std::isfinite(fHintY))
+		{
+			fDistance = std::abs(pRegion->m_pNavGrid->Get_Height(
+				pRegion->m_pNavGrid->To_Index(cellX, cellZ)) - fHintY);
+		}
+		const bool_t better = nullptr == pBest ||
+			(hasGround && !bestHasGround) ||
+			(hasGround == bestHasGround && fDistance < fBestDistance);
+		if (better)
+		{
+			pBest = pRegion.get();
+			bestHasGround = hasGround;
+			fBestDistance = fDistance;
+		}
+	}
+	return pBest;
 }
 
 void CNavigation::Simplify_Path(

@@ -309,6 +309,19 @@ bool LostArk::Server::CGameRoom::Build_PlayerEntryFrames(
 		}
 	}
 	S2C_KOUKUSAYDON_RAID_STATE raidState;
+	if (m_MaharakaWaterpangIntro)
+	{
+		auto intro = *m_MaharakaWaterpangIntro;
+		intro.iServerTick = m_iServerTick;
+		if (!append(PACKET_TYPE::S2C_WORLD_SEQUENCE_PLAY, intro)) return false;
+	}
+	// A late joiner also takes a still-running Debug forced event on the same clock.
+	if (m_MaharakaWaterpangDebugEvent && Is_MaharakaWaterpangDebugEventLive(m_iServerTick))
+	{
+		auto forced = *m_MaharakaWaterpangDebugEvent;
+		forced.iServerTick = m_iServerTick;
+		if (!append(PACKET_TYPE::S2C_WORLD_SEQUENCE_PLAY, forced)) return false;
+	}
 	if (Build_KoukuRaidState(raidState) && !append(PACKET_TYPE::S2C_KOUKUSAYDON_RAID_STATE, raidState)) return false;
 	S2C_GATE_PROGRESS_STATE gateState;
 	if (Build_GateProgressState(gateState, false, GATE_PROGRESS_VOTE_RESULT::NONE) &&

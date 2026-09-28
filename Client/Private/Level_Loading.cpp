@@ -682,6 +682,15 @@ bool_t CLevel_Loading::Advance_TargetEffectPreparation()
         m_strEffectPreparationStatus = "Waiting for Valtan source cinematic metadata.";
         return false;
     }
+    /* Maharaka Waterpang attack sequences reference large source documents;
+       they join this Loader worker instead of preparing on the match clock. */
+    if (LEVEL::MAHARAKA == m_eNextLevelID && !m_isEffectPreparationRegistered &&
+        !CWorldSequencePlayer::Try_CollectPreparedAreaV1EffectTargets(
+            ETOUI(LEVEL::MAHARAKA), "LV_OCN_EVENTIS_MHP", sourceCinematicEffects))
+    {
+        m_strEffectPreparationStatus = "Waiting for Maharaka world sequence metadata.";
+        return false;
+    }
 	if (!m_isEffectPreparationRegistered)
 	{
 		std::string Status;
@@ -942,6 +951,15 @@ bool_t CLevel_Loading::Advance_TargetEffectPreparation()
 				m_EffectPreparationTargets.end()),
 				m_EffectPreparationTargets.end());
 		}
+		}
+		if (LEVEL::MAHARAKA == m_eNextLevelID && !sourceCinematicEffects.empty())
+		{
+			std::vector<std::string> preparedSequenceEffects;
+			if (!CEffectPresentationService::Queue_ProductTargets_Priority(
+					sourceCinematicEffects, preparedSequenceEffects, Status))
+				return IsolateFailure(Status);
+			m_EffectPreparationTargets.insert(m_EffectPreparationTargets.end(),
+				preparedSequenceEffects.begin(), preparedSequenceEffects.end());
 		}
 		/* Every published Area world Effect joins the existing loader worker.
 		   The runtime document is optional outside the Valtan contract; malformed

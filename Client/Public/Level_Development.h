@@ -2,9 +2,7 @@
 
 #include "Client_Defines.h"
 #include "ClientReplication.h"
-#ifdef _DEBUG
 #include "DeployPropRuntime.h"
-#endif
 #include "Level.h"
 #include "MapPlacementRuntime.h"
 #include "PlayerController.h"
@@ -15,6 +13,8 @@ class CCamera_Free;
 class CCharacter;
 class CMapLightPresentationRuntime;
 class IPlayerCommandSink;
+class CMaharakaWaterpangPresentation;
+class CInteractKeyPromptView;
 
 class CLevel_Development final : public CLevel
 {
@@ -42,10 +42,15 @@ public:
 #ifdef _DEBUG
 	// Borrow the existing Maharaka map; the Level remains its owner.
 	CMapPlacementRuntime& Get_MapAuthoringRuntime() { return m_MapRuntime; }
-	CDeployPropRuntime& Get_MapAuthoringDeploy() { return m_MapAuthoringDeploy; }
+	CDeployPropRuntime& Get_MapAuthoringDeploy() { return m_WaterpangDeploy; }
 	const ComPtr<ID3D11Device>& Get_MapAuthoringDevice() const { return m_pDevice; }
 	const ComPtr<ID3D11DeviceContext>& Get_MapAuthoringContext() const { return m_pContext; }
-	void Set_MapAuthoringActive(bool_t active) { m_bMapAuthoringActive = active; }
+	void Set_MapAuthoringActive(bool_t active);
+	std::shared_ptr<CCharacter> Get_DebugLocalCharacter() const { return m_Replication.Get_LocalCharacter(); }
+	// Debug F1 typed Server requests (Waterpang forced patterns) go through the level's sink.
+	std::shared_ptr<IPlayerCommandSink> Get_DebugCommandSink() const { return m_pPlayerCommandSink; }
+	std::shared_ptr<CNpc> Find_MapAuthoringNpc(const std::string& placementId) const
+	{ return m_Replication.Find_NpcPlacement(placementId); }
 	void Rebase_MapAuthoringSelfMotions(const std::vector<MAP_PLACEMENT_RECORD>& records)
 	{ m_MapRuntime.Rebase_AuthoringSelfMotions(records); }
 #endif
@@ -59,9 +64,8 @@ private:
 	// Registry entry this instance plays; only DEVELOPMENT may open the Map Editor.
 	LEVEL m_eLevel = LEVEL::DEVELOPMENT;
 	CMapPlacementRuntime m_MapRuntime;
+	CDeployPropRuntime m_WaterpangDeploy;
 #ifdef _DEBUG
-	// Maharaka has no Deploy source pair. Runtime attach still needs a live owner.
-	CDeployPropRuntime m_MapAuthoringDeploy;
 	bool_t m_bMapAuthoringActive = false;
 #endif
 	// Maharaka only: the published source lights of the island, submitted every frame.
@@ -73,6 +77,8 @@ private:
 	CClientReplication m_Replication;
 	shared_ptr<IPlayerCommandSink> m_pPlayerCommandSink;
 	CPlayerController m_PlayerController;
+	std::unique_ptr<CMaharakaWaterpangPresentation> m_Waterpang;
+	std::unique_ptr<CInteractKeyPromptView> m_InteractPrompt;
 	static CLevel_Development* s_pActiveInstance;
 
 public:

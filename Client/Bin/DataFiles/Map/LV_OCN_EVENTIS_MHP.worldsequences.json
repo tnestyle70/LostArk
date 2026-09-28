@@ -2,8 +2,567 @@
   "schema": "lostark.world-sequences",
   "formatVersion": 3,
   "areaId": "LV_OCN_EVENTIS_MHP",
-  "revision": 3,
-  "objectResources": [],
+  "revision": 9,
+  "objectResources": [
+    {
+      "objectId": "world.object.maharaka.waterpang.source.intro15.mokomoko",
+      "displayName": "워터팡 / mokomoko",
+      "modelAssetId": "Character/NPC/Maharaka/MN_ISMP_00/MN_ISMP_00.wmodel",
+      "modelPreScale": 0.01,
+      "animated": true,
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "anchorKind": "WORLD",
+      "materialProfile": {
+        "materialName": "mn_ismp_00-2_mi",
+        "sourceMaterial": "mn_ismp_00.mat.mn_ismp_00-2_mi",
+        "family": "source.character.maharaka-ismp-2.v1",
+        "parameters": {
+          "1.use_dyeing_sp": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "beckmannspecular_constant_max": [
+            3.3499999046325684,
+            3.3499999046325684,
+            3.3499999046325684,
+            3.3499999046325684
+          ],
+          "buffcolor": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "constantoutline": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "constantoutline_blink": [
+            0.5,
+            0.5,
+            0.5,
+            0.5
+          ],
+          "constantoutline_color": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "diffusecolor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "fresnel_radius": [
+            0.949999988079071,
+            0.949999988079071,
+            0.949999988079071,
+            0.949999988079071
+          ],
+          "fresnel_rimlightintensity": [
+            0.5,
+            0.5,
+            0.5,
+            0.5
+          ],
+          "fx_color_desaturation_actiontool": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "fx_color_desaturation_buffsettool": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "fx_color_intensity_actiontool": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "fx_color_intensity_buffsettool": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "hit_color": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "ibl_color_bottom": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "ibl_color_top": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "ibl_exposer": [
+            5,
+            5,
+            5,
+            5
+          ],
+          "ibl_intensity": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "ibl_normal_smooth": [
+            0.699999988079071,
+            0.699999988079071,
+            0.699999988079071,
+            0.699999988079071
+          ],
+          "ibl_reflect_lodbias": [
+            80,
+            80,
+            80,
+            80
+          ],
+          "metalicness_power": [
+            0.5,
+            0.5,
+            0.5,
+            0.5
+          ],
+          "normaltex_intensity": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "opacity_intensity": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "orennayar": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "orennayar_brightness": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "pbr_specular_intensity": [
+            10,
+            10,
+            10,
+            10
+          ],
+          "pbr_specular_power": [
+            6,
+            6,
+            6,
+            6
+          ],
+          "roughness_power": [
+            3,
+            3,
+            3,
+            3
+          ],
+          "selectioncolor": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "shadowfactor": [
+            0.5,
+            0.5,
+            0.5,
+            0.5
+          ],
+          "specular_power_limit": [
+            0.9200000166893005,
+            0.9200000166893005,
+            0.9200000166893005,
+            0.9200000166893005
+          ],
+          "state": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "state_noise": [
+            1,
+            0,
+            0,
+            1
+          ],
+          "trans_rim_hard": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "trans_rim_inradius": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "transcolor": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "transcolor_rimlight ": [
+            1,
+            1,
+            1,
+            1
+          ]
+        },
+        "textures": [
+          {
+            "expressionIndex": 0,
+            "assetId": "Character/NPC/Maharaka/Textures/mn_ismp_00-2_n.dds",
+            "colorSpace": "linear"
+          },
+          {
+            "expressionIndex": 1,
+            "assetId": "Character/NPC/Maharaka/Textures/mn_ismp_00-2_d.dds",
+            "colorSpace": "srgb"
+          },
+          {
+            "expressionIndex": 2,
+            "assetId": "Character/NPC/Maharaka/Textures/mn_ismp_00-2_s.dds",
+            "colorSpace": "srgb"
+          },
+          {
+            "expressionIndex": 3,
+            "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.dds",
+            "colorSpace": "srgb"
+          },
+          {
+            "expressionIndex": 4,
+            "assetId": "Character/SourceMaterials/efmaster_material_prologue/flat_black.dds",
+            "colorSpace": "srgb"
+          },
+          {
+            "expressionIndex": 5,
+            "assetId": "Character/SourceMaterials/efmaster_material_prologue/statefx_default.dds",
+            "colorSpace": "srgb"
+          },
+          {
+            "expressionIndex": 6,
+            "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+            "colorSpace": "linear"
+          }
+        ]
+      }
+    },
+    {
+      "objectId": "world.object.maharaka.waterpang.source.intro15.cannon",
+      "displayName": "워터팡 / cannon",
+      "modelAssetId": "Character/NPC/Maharaka/MN_ISMP_00-1/MN_ISMP_00-1.wmodel",
+      "modelPreScale": 0.01,
+      "animated": true,
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "anchorKind": "WORLD",
+      "materialProfile": {
+        "materialName": "mn_ismp_00-2_mi",
+        "sourceMaterial": "mn_ismp_00.mat.mn_ismp_00-2_mi",
+        "family": "source.character.maharaka-ismp-2.v1",
+        "parameters": {
+          "1.use_dyeing_sp": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "beckmannspecular_constant_max": [
+            3.3499999046325684,
+            3.3499999046325684,
+            3.3499999046325684,
+            3.3499999046325684
+          ],
+          "buffcolor": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "constantoutline": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "constantoutline_blink": [
+            0.5,
+            0.5,
+            0.5,
+            0.5
+          ],
+          "constantoutline_color": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "diffusecolor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "fresnel_radius": [
+            0.949999988079071,
+            0.949999988079071,
+            0.949999988079071,
+            0.949999988079071
+          ],
+          "fresnel_rimlightintensity": [
+            0.5,
+            0.5,
+            0.5,
+            0.5
+          ],
+          "fx_color_desaturation_actiontool": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "fx_color_desaturation_buffsettool": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "fx_color_intensity_actiontool": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "fx_color_intensity_buffsettool": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "hit_color": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "ibl_color_bottom": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "ibl_color_top": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "ibl_exposer": [
+            5,
+            5,
+            5,
+            5
+          ],
+          "ibl_intensity": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "ibl_normal_smooth": [
+            0.699999988079071,
+            0.699999988079071,
+            0.699999988079071,
+            0.699999988079071
+          ],
+          "ibl_reflect_lodbias": [
+            80,
+            80,
+            80,
+            80
+          ],
+          "metalicness_power": [
+            0.5,
+            0.5,
+            0.5,
+            0.5
+          ],
+          "normaltex_intensity": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "opacity_intensity": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "orennayar": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "orennayar_brightness": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "pbr_specular_intensity": [
+            10,
+            10,
+            10,
+            10
+          ],
+          "pbr_specular_power": [
+            6,
+            6,
+            6,
+            6
+          ],
+          "roughness_power": [
+            3,
+            3,
+            3,
+            3
+          ],
+          "selectioncolor": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "shadowfactor": [
+            0.5,
+            0.5,
+            0.5,
+            0.5
+          ],
+          "specular_power_limit": [
+            0.9200000166893005,
+            0.9200000166893005,
+            0.9200000166893005,
+            0.9200000166893005
+          ],
+          "state": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "state_noise": [
+            1,
+            0,
+            0,
+            1
+          ],
+          "trans_rim_hard": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "trans_rim_inradius": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "transcolor": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "transcolor_rimlight ": [
+            1,
+            1,
+            1,
+            1
+          ]
+        },
+        "textures": [
+          {
+            "expressionIndex": 0,
+            "assetId": "Character/NPC/Maharaka/Textures/mn_ismp_00-2_n.dds",
+            "colorSpace": "linear"
+          },
+          {
+            "expressionIndex": 1,
+            "assetId": "Character/NPC/Maharaka/Textures/mn_ismp_00-2_d.dds",
+            "colorSpace": "srgb"
+          },
+          {
+            "expressionIndex": 2,
+            "assetId": "Character/NPC/Maharaka/Textures/mn_ismp_00-2_s.dds",
+            "colorSpace": "srgb"
+          },
+          {
+            "expressionIndex": 3,
+            "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.dds",
+            "colorSpace": "srgb"
+          },
+          {
+            "expressionIndex": 4,
+            "assetId": "Character/SourceMaterials/efmaster_material_prologue/flat_black.dds",
+            "colorSpace": "srgb"
+          },
+          {
+            "expressionIndex": 5,
+            "assetId": "Character/SourceMaterials/efmaster_material_prologue/statefx_default.dds",
+            "colorSpace": "srgb"
+          },
+          {
+            "expressionIndex": 6,
+            "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+            "colorSpace": "linear"
+          }
+        ]
+      }
+    }
+  ],
   "templates": [
     {
       "sequenceId": "sequence.maharaka.waterpang.source.shake",
@@ -389691,6 +390250,1246 @@
           "volume": 1.0
         }
       ]
+    },
+    {
+      "sequenceId": "sequence.maharaka.waterpang.source.intro15.mokomoko",
+      "displayName": "워터팡 / mokomoko 표정",
+      "category": "World",
+      "durationMs": 9507,
+      "interpolation": "LINEAR",
+      "tracks": [
+        {
+          "slotId": "actor",
+          "keys": [
+            {
+              "timeMs": 0,
+              "positionOffset": [
+                81.8360400390625,
+                24.3577745710577,
+                -991.514375
+              ],
+              "rotationQuaternion": [
+                0.0,
+                0.9209172415291894,
+                0.0,
+                -0.3897581740698565
+              ],
+              "scaleMultiplier": [
+                1.0,
+                1.0,
+                1.0
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 9507,
+              "positionOffset": [
+                81.8360400390625,
+                24.3577745710577,
+                -991.514375
+              ],
+              "rotationQuaternion": [
+                0.0,
+                0.9209172415291894,
+                0.0,
+                -0.3897581740698565
+              ],
+              "scaleMultiplier": [
+                1.0,
+                1.0,
+                1.0
+              ],
+              "visible": true
+            }
+          ]
+        }
+      ],
+      "animationTracks": [
+        {
+          "slotId": "actor",
+          "clipName": "idle_normal_1",
+          "startMs": 0,
+          "playbackRate": 1,
+          "loop": true,
+          "holdLastFrame": true
+        }
+      ],
+      "materialTracks": [
+        {
+          "slotId": "actor",
+          "materialName": "mn_ismp_00-2_mi",
+          "curves": [
+            {
+              "parameter": "opacity_intensity",
+              "keys": [
+                {
+                  "timeMs": 0,
+                  "value": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                  ],
+                  "interpolation": "CONSTANT"
+                },
+                {
+                  "timeMs": 6501,
+                  "value": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                  ],
+                  "interpolation": "CONSTANT"
+                },
+                {
+                  "timeMs": 6602,
+                  "value": [
+                    1.0,
+                    0.0,
+                    0.0,
+                    0.0
+                  ],
+                  "interpolation": "CONSTANT"
+                },
+                {
+                  "timeMs": 9502,
+                  "value": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                  ],
+                  "interpolation": "CONSTANT"
+                },
+                {
+                  "timeMs": 9507,
+                  "value": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                  ],
+                  "interpolation": "CONSTANT"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "sequenceId": "sequence.maharaka.waterpang.source.intro15.cannon",
+      "displayName": "워터팡 / cannon 표정",
+      "category": "World",
+      "durationMs": 9507,
+      "interpolation": "LINEAR",
+      "tracks": [
+        {
+          "slotId": "actor",
+          "keys": [
+            {
+              "timeMs": 0,
+              "positionOffset": [
+                75.05,
+                23.66841349,
+                -984.32
+              ],
+              "rotationQuaternion": [
+                0.0,
+                -0.9275104074026151,
+                0.0,
+                0.37379733032732426
+              ],
+              "scaleMultiplier": [
+                1.0,
+                1.0,
+                1.0
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 9507,
+              "positionOffset": [
+                75.05,
+                23.66841349,
+                -984.32
+              ],
+              "rotationQuaternion": [
+                0.0,
+                -0.9275104074026151,
+                0.0,
+                0.37379733032732426
+              ],
+              "scaleMultiplier": [
+                1.0,
+                1.0,
+                1.0
+              ],
+              "visible": true
+            }
+          ]
+        }
+      ],
+      "animationTracks": [
+        {
+          "slotId": "actor",
+          "clipName": "idle_normal_1",
+          "startMs": 0,
+          "playbackRate": 1,
+          "loop": true,
+          "holdLastFrame": true
+        },
+        {
+          "slotId": "actor",
+          "clipName": "att_battle_2_01",
+          "startMs": 8101,
+          "playbackRate": 1,
+          "loop": false,
+          "holdLastFrame": true
+        },
+        {
+          "slotId": "actor",
+          "clipName": "att_battle_2_02",
+          "startMs": 9101,
+          "playbackRate": 1,
+          "loop": true,
+          "holdLastFrame": true
+        }
+      ],
+      "materialTracks": [
+        {
+          "slotId": "actor",
+          "materialName": "mn_ismp_00-2_mi",
+          "curves": [
+            {
+              "parameter": "opacity_intensity",
+              "keys": [
+                {
+                  "timeMs": 0,
+                  "value": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                  ],
+                  "interpolation": "CONSTANT"
+                },
+                {
+                  "timeMs": 6501,
+                  "value": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                  ],
+                  "interpolation": "CONSTANT"
+                },
+                {
+                  "timeMs": 6602,
+                  "value": [
+                    1.0,
+                    0.0,
+                    0.0,
+                    0.0
+                  ],
+                  "interpolation": "CONSTANT"
+                },
+                {
+                  "timeMs": 9502,
+                  "value": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                  ],
+                  "interpolation": "CONSTANT"
+                },
+                {
+                  "timeMs": 9507,
+                  "value": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                  ],
+                  "interpolation": "CONSTANT"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "sequenceId": "sequence.maharaka.waterpang.source.intro15.match-stand",
+      "displayName": "워터팡 / 경기 중 타워 배치",
+      "category": "World",
+      "durationMs": 9507,
+      "interpolation": "LINEAR",
+      "tracks": [
+        {
+          "slotId": "stand",
+          "keys": [
+            {
+              "timeMs": 0,
+              "positionOffset": [
+                15.747189798051751,
+                -0.8413069489423002,
+                -6.656925129515184
+              ],
+              "rotationQuaternion": [
+                0.0,
+                0.3755861784892171,
+                0.0,
+                -0.9267874743045819
+              ],
+              "scaleMultiplier": [
+                1,
+                1,
+                1
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 9507,
+              "positionOffset": [
+                15.747189798051751,
+                -0.8413069489423002,
+                -6.656925129515184
+              ],
+              "rotationQuaternion": [
+                0.0,
+                0.3755861784892171,
+                0.0,
+                -0.9267874743045819
+              ],
+              "scaleMultiplier": [
+                1,
+                1,
+                1
+              ],
+              "visible": true
+            }
+          ]
+        }
+      ],
+      "animationTracks": []
+    },
+    {
+      "sequenceId": "sequence.maharaka.waterpang.attack.mokomoko",
+      "displayName": "Waterpang attack / mokomoko (att_battle_1_01)",
+      "category": "World",
+      "durationMs": 6000,
+      "interpolation": "LINEAR",
+      "tracks": [
+        {
+          "slotId": "actor",
+          "keys": [
+            {
+              "timeMs": 0,
+              "positionOffset": [
+                81.8360400390625,
+                24.3577745710577,
+                -991.514375
+              ],
+              "rotationQuaternion": [
+                0.0,
+                0.9209172415291894,
+                0.0,
+                -0.3897581740698565
+              ],
+              "scaleMultiplier": [
+                1.0,
+                1.0,
+                1.0
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 6000,
+              "positionOffset": [
+                81.8360400390625,
+                24.3577745710577,
+                -991.514375
+              ],
+              "rotationQuaternion": [
+                0.0,
+                0.9209172415291894,
+                0.0,
+                -0.3897581740698565
+              ],
+              "scaleMultiplier": [
+                1.0,
+                1.0,
+                1.0
+              ],
+              "visible": true
+            }
+          ]
+        }
+      ],
+      "animationTracks": [
+        {
+          "slotId": "actor",
+          "clipName": "att_battle_1_01",
+          "startMs": 0,
+          "playbackRate": 1,
+          "loop": false,
+          "holdLastFrame": true
+        }
+      ],
+      "effectTracks": [
+        {
+          "effectTrackId": "fx.mokomoko",
+          "slotId": "actor",
+          "resourceKind": "V1_EFFECT",
+          "resourceId": "effect.maharaka.waterpang.mokomoko.att_battle_1_01.full.restore",
+          "timing": "TIME",
+          "startMs": 0,
+          "durationMs": 6000,
+          "followObject": true,
+          "inheritObjectRotation": true,
+          "bone": "",
+          "positionOffset": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotationDegrees": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        {
+          "slotId": "actor",
+          "resourceKind": "V1_EFFECT",
+          "timing": "TIME",
+          "startMs": 0,
+          "bone": "",
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "effectTrackId": "fx.mokomoko.telegraph",
+          "resourceId": "effect.maharaka.waterpang.mokomoko.telegraph",
+          "durationMs": 2300,
+          "followObject": false,
+          "inheritObjectRotation": false,
+          "positionOffset": [
+            -6.79204,
+            -0.689361,
+            7.207375
+          ],
+          "rotationDegrees": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "slotId": "actor",
+          "resourceKind": "V1_EFFECT",
+          "timing": "TIME",
+          "startMs": 0,
+          "bone": "",
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "effectTrackId": "fx.mokomoko.ground.0",
+          "resourceId": "effect.maharaka.waterpang.mokomoko.ground.att_battle_1_01.full.restore",
+          "durationMs": 6000,
+          "followObject": false,
+          "inheritObjectRotation": false,
+          "positionOffset": [
+            -4e-05,
+            -1.557775,
+            0.000375
+          ],
+          "rotationDegrees": [
+            0.0,
+            226.698035,
+            0.0
+          ]
+        },
+        {
+          "slotId": "actor",
+          "resourceKind": "V1_EFFECT",
+          "timing": "TIME",
+          "startMs": 0,
+          "bone": "",
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "effectTrackId": "fx.mokomoko.ground.1",
+          "resourceId": "effect.maharaka.waterpang.mokomoko.ground.att_battle_1_01.full.restore",
+          "durationMs": 6000,
+          "followObject": false,
+          "inheritObjectRotation": false,
+          "positionOffset": [
+            -9.637485,
+            -1.557775,
+            -2.27817
+          ],
+          "rotationDegrees": [
+            0.0,
+            286.698035,
+            0.0
+          ]
+        },
+        {
+          "slotId": "actor",
+          "resourceKind": "V1_EFFECT",
+          "timing": "TIME",
+          "startMs": 0,
+          "bone": "",
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "effectTrackId": "fx.mokomoko.ground.2",
+          "resourceId": "effect.maharaka.waterpang.mokomoko.ground.att_battle_1_01.full.restore",
+          "durationMs": 6000,
+          "followObject": false,
+          "inheritObjectRotation": false,
+          "positionOffset": [
+            -16.429485,
+            -1.557775,
+            4.92883
+          ],
+          "rotationDegrees": [
+            0.0,
+            346.698035,
+            0.0
+          ]
+        },
+        {
+          "slotId": "actor",
+          "resourceKind": "V1_EFFECT",
+          "timing": "TIME",
+          "startMs": 0,
+          "bone": "",
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "effectTrackId": "fx.mokomoko.ground.3",
+          "resourceId": "effect.maharaka.waterpang.mokomoko.ground.att_battle_1_01.full.restore",
+          "durationMs": 6000,
+          "followObject": false,
+          "inheritObjectRotation": false,
+          "positionOffset": [
+            -13.58404,
+            -1.557775,
+            14.414375
+          ],
+          "rotationDegrees": [
+            0.0,
+            46.698035,
+            0.0
+          ]
+        },
+        {
+          "slotId": "actor",
+          "resourceKind": "V1_EFFECT",
+          "timing": "TIME",
+          "startMs": 0,
+          "bone": "",
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "effectTrackId": "fx.mokomoko.ground.4",
+          "resourceId": "effect.maharaka.waterpang.mokomoko.ground.att_battle_1_01.full.restore",
+          "durationMs": 6000,
+          "followObject": false,
+          "inheritObjectRotation": false,
+          "positionOffset": [
+            -3.946595,
+            -1.557775,
+            16.69292
+          ],
+          "rotationDegrees": [
+            0.0,
+            106.698035,
+            0.0
+          ]
+        },
+        {
+          "slotId": "actor",
+          "resourceKind": "V1_EFFECT",
+          "timing": "TIME",
+          "startMs": 0,
+          "bone": "",
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "effectTrackId": "fx.mokomoko.ground.5",
+          "resourceId": "effect.maharaka.waterpang.mokomoko.ground.att_battle_1_01.full.restore",
+          "durationMs": 6000,
+          "followObject": false,
+          "inheritObjectRotation": false,
+          "positionOffset": [
+            2.845405,
+            -1.557775,
+            9.48592
+          ],
+          "rotationDegrees": [
+            0.0,
+            166.698035,
+            0.0
+          ]
+        }
+      ],
+      "soundTracks": [
+        {
+          "soundTrackId": "sound.mokomoko.cast1",
+          "assetId": "Sound/Maharaka/S_MOB_MOCOCOWATER1/mococowater1_attack01_cast1__884290698.wav",
+          "startMs": 0,
+          "durationMs": 3133,
+          "volume": 1.0
+        },
+        {
+          "soundTrackId": "sound.mokomoko.shot1",
+          "assetId": "Sound/Maharaka/S_MOB_MOCOCOWATER1/mococowater1_attack01_shot1__170625403.wav",
+          "startMs": 2200,
+          "durationMs": 3800,
+          "volume": 1.0
+        }
+      ]
+    },
+    {
+      "sequenceId": "sequence.maharaka.waterpang.attack.cannon.start",
+      "displayName": "Waterpang attack / cannon.start (att_battle_3_01)",
+      "category": "World",
+      "durationMs": 1500,
+      "interpolation": "LINEAR",
+      "tracks": [
+        {
+          "slotId": "actor",
+          "keys": [
+            {
+              "timeMs": 0,
+              "positionOffset": [
+                75.05,
+                23.66841349,
+                -984.32
+              ],
+              "rotationQuaternion": [
+                0.0,
+                -0.9275104074026151,
+                0.0,
+                0.37379733032732426
+              ],
+              "scaleMultiplier": [
+                1.0,
+                1.0,
+                1.0
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 1500,
+              "positionOffset": [
+                75.05,
+                23.66841349,
+                -984.32
+              ],
+              "rotationQuaternion": [
+                0.0,
+                -0.9275104074026151,
+                0.0,
+                0.37379733032732426
+              ],
+              "scaleMultiplier": [
+                1.0,
+                1.0,
+                1.0
+              ],
+              "visible": true
+            }
+          ]
+        }
+      ],
+      "animationTracks": [
+        {
+          "slotId": "actor",
+          "clipName": "att_battle_3_01",
+          "startMs": 0,
+          "playbackRate": 1,
+          "loop": false,
+          "holdLastFrame": true
+        }
+      ],
+      "effectTracks": [
+        {
+          "effectTrackId": "fx.cannon.start",
+          "slotId": "actor",
+          "resourceKind": "V1_EFFECT",
+          "resourceId": "effect.maharaka.waterpang.cannon.att_battle_3_01.full.restore",
+          "timing": "TIME",
+          "startMs": 0,
+          "durationMs": 1500,
+          "followObject": true,
+          "inheritObjectRotation": true,
+          "bone": "",
+          "positionOffset": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotationDegrees": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        {
+          "slotId": "actor",
+          "resourceKind": "V1_EFFECT",
+          "timing": "TIME",
+          "startMs": 0,
+          "bone": "",
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "effectTrackId": "fx.cannon.start.telegraph",
+          "resourceId": "effect.maharaka.waterpang.cannon.telegraph",
+          "durationMs": 1500,
+          "followObject": false,
+          "inheritObjectRotation": false,
+          "positionOffset": [
+            -0.006,
+            0.0,
+            0.013
+          ],
+          "rotationDegrees": [
+            0.0,
+            313.59,
+            0.0
+          ]
+        }
+      ]
+    },
+    {
+      "sequenceId": "sequence.maharaka.waterpang.attack.cannon.loop.cw",
+      "displayName": "Waterpang attack / cannon.loop.cw (att_battle_3_02)",
+      "category": "World",
+      "durationMs": 24000,
+      "interpolation": "LINEAR",
+      "tracks": [
+        {
+          "slotId": "actor",
+          "keys": [
+            {
+              "timeMs": 0,
+              "positionOffset": [
+                75.05,
+                23.66841349,
+                -984.32
+              ],
+              "rotationQuaternion": [
+                0.0,
+                -0.9275104074026151,
+                0.0,
+                0.37379733032732426
+              ],
+              "scaleMultiplier": [
+                1.0,
+                1.0,
+                1.0
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 24000,
+              "positionOffset": [
+                75.05,
+                23.66841349,
+                -984.32
+              ],
+              "rotationQuaternion": [
+                0.0,
+                -0.9275104074026151,
+                0.0,
+                0.37379733032732426
+              ],
+              "scaleMultiplier": [
+                1.0,
+                1.0,
+                1.0
+              ],
+              "visible": true
+            }
+          ]
+        }
+      ],
+      "animationTracks": [
+        {
+          "slotId": "actor",
+          "clipName": "att_battle_3_02",
+          "startMs": 0,
+          "playbackRate": 1,
+          "loop": true,
+          "holdLastFrame": true
+        }
+      ],
+      "effectTracks": [
+        {
+          "effectTrackId": "fx.cannon.loop.cw.part0",
+          "slotId": "actor",
+          "resourceKind": "V1_EFFECT",
+          "resourceId": "effect.maharaka.waterpang.cannon.att_battle_3_02.part0.full.restore",
+          "timing": "TIME",
+          "startMs": 0,
+          "durationMs": 24000,
+          "followObject": true,
+          "inheritObjectRotation": true,
+          "bone": "",
+          "positionOffset": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotationDegrees": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        {
+          "effectTrackId": "fx.cannon.loop.cw.part1",
+          "slotId": "actor",
+          "resourceKind": "V1_EFFECT",
+          "resourceId": "effect.maharaka.waterpang.cannon.att_battle_3_02.part1.full.restore",
+          "timing": "TIME",
+          "startMs": 0,
+          "durationMs": 24000,
+          "followObject": true,
+          "inheritObjectRotation": true,
+          "bone": "",
+          "positionOffset": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotationDegrees": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        {
+          "effectTrackId": "fx.cannon.loop.cw.part2",
+          "slotId": "actor",
+          "resourceKind": "V1_EFFECT",
+          "resourceId": "effect.maharaka.waterpang.cannon.att_battle_3_02.part2.full.restore",
+          "timing": "TIME",
+          "startMs": 0,
+          "durationMs": 24000,
+          "followObject": true,
+          "inheritObjectRotation": true,
+          "bone": "",
+          "positionOffset": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotationDegrees": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        {
+          "effectTrackId": "fx.cannon.loop.cw.part3",
+          "slotId": "actor",
+          "resourceKind": "V1_EFFECT",
+          "resourceId": "effect.maharaka.waterpang.cannon.att_battle_3_02.part3.full.restore",
+          "timing": "TIME",
+          "startMs": 0,
+          "durationMs": 24000,
+          "followObject": true,
+          "inheritObjectRotation": true,
+          "bone": "",
+          "positionOffset": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotationDegrees": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        {
+          "slotId": "actor",
+          "resourceKind": "V1_EFFECT",
+          "timing": "TIME",
+          "startMs": 0,
+          "bone": "",
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "effectTrackId": "fx.cannon.loop.cw.jet",
+          "resourceId": "effect.maharaka.waterpang.cannon.jet.full.restore",
+          "durationMs": 24000,
+          "followObject": true,
+          "inheritObjectRotation": true,
+          "loopEffectToDuration": true,
+          "positionOffset": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotationDegrees": [
+            0.0,
+            180.0,
+            0.0
+          ]
+        }
+      ]
+    },
+    {
+      "sequenceId": "sequence.maharaka.waterpang.attack.cannon.loop.ccw",
+      "displayName": "Waterpang attack / cannon.loop.ccw (att_battle_3_03)",
+      "category": "World",
+      "durationMs": 24000,
+      "interpolation": "LINEAR",
+      "tracks": [
+        {
+          "slotId": "actor",
+          "keys": [
+            {
+              "timeMs": 0,
+              "positionOffset": [
+                75.05,
+                23.66841349,
+                -984.32
+              ],
+              "rotationQuaternion": [
+                0.0,
+                -0.9275104074026151,
+                0.0,
+                0.37379733032732426
+              ],
+              "scaleMultiplier": [
+                1.0,
+                1.0,
+                1.0
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 24000,
+              "positionOffset": [
+                75.05,
+                23.66841349,
+                -984.32
+              ],
+              "rotationQuaternion": [
+                0.0,
+                -0.9275104074026151,
+                0.0,
+                0.37379733032732426
+              ],
+              "scaleMultiplier": [
+                1.0,
+                1.0,
+                1.0
+              ],
+              "visible": true
+            }
+          ]
+        }
+      ],
+      "animationTracks": [
+        {
+          "slotId": "actor",
+          "clipName": "att_battle_3_03",
+          "startMs": 0,
+          "playbackRate": 1,
+          "loop": true,
+          "holdLastFrame": true
+        }
+      ],
+      "effectTracks": [
+        {
+          "effectTrackId": "fx.cannon.loop.ccw.part0",
+          "slotId": "actor",
+          "resourceKind": "V1_EFFECT",
+          "resourceId": "effect.maharaka.waterpang.cannon.att_battle_3_02.part0.full.restore",
+          "timing": "TIME",
+          "startMs": 0,
+          "durationMs": 24000,
+          "followObject": true,
+          "inheritObjectRotation": true,
+          "bone": "",
+          "positionOffset": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotationDegrees": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        {
+          "effectTrackId": "fx.cannon.loop.ccw.part1",
+          "slotId": "actor",
+          "resourceKind": "V1_EFFECT",
+          "resourceId": "effect.maharaka.waterpang.cannon.att_battle_3_02.part1.full.restore",
+          "timing": "TIME",
+          "startMs": 0,
+          "durationMs": 24000,
+          "followObject": true,
+          "inheritObjectRotation": true,
+          "bone": "",
+          "positionOffset": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotationDegrees": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        {
+          "effectTrackId": "fx.cannon.loop.ccw.part2",
+          "slotId": "actor",
+          "resourceKind": "V1_EFFECT",
+          "resourceId": "effect.maharaka.waterpang.cannon.att_battle_3_02.part2.full.restore",
+          "timing": "TIME",
+          "startMs": 0,
+          "durationMs": 24000,
+          "followObject": true,
+          "inheritObjectRotation": true,
+          "bone": "",
+          "positionOffset": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotationDegrees": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        {
+          "effectTrackId": "fx.cannon.loop.ccw.part3",
+          "slotId": "actor",
+          "resourceKind": "V1_EFFECT",
+          "resourceId": "effect.maharaka.waterpang.cannon.att_battle_3_02.part3.full.restore",
+          "timing": "TIME",
+          "startMs": 0,
+          "durationMs": 24000,
+          "followObject": true,
+          "inheritObjectRotation": true,
+          "bone": "",
+          "positionOffset": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotationDegrees": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        {
+          "slotId": "actor",
+          "resourceKind": "V1_EFFECT",
+          "timing": "TIME",
+          "startMs": 0,
+          "bone": "",
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "effectTrackId": "fx.cannon.loop.ccw.jet",
+          "resourceId": "effect.maharaka.waterpang.cannon.jet.full.restore",
+          "durationMs": 24000,
+          "followObject": true,
+          "inheritObjectRotation": true,
+          "loopEffectToDuration": true,
+          "positionOffset": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotationDegrees": [
+            0.0,
+            180.0,
+            0.0
+          ]
+        }
+      ]
+    },
+    {
+      "sequenceId": "sequence.maharaka.waterpang.attack.cannon.end",
+      "displayName": "Waterpang attack / cannon.end (att_battle_3_04)",
+      "category": "World",
+      "durationMs": 1000,
+      "interpolation": "LINEAR",
+      "tracks": [
+        {
+          "slotId": "actor",
+          "keys": [
+            {
+              "timeMs": 0,
+              "positionOffset": [
+                75.05,
+                23.66841349,
+                -984.32
+              ],
+              "rotationQuaternion": [
+                0.0,
+                -0.9275104074026151,
+                0.0,
+                0.37379733032732426
+              ],
+              "scaleMultiplier": [
+                1.0,
+                1.0,
+                1.0
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 1000,
+              "positionOffset": [
+                75.05,
+                23.66841349,
+                -984.32
+              ],
+              "rotationQuaternion": [
+                0.0,
+                -0.9275104074026151,
+                0.0,
+                0.37379733032732426
+              ],
+              "scaleMultiplier": [
+                1.0,
+                1.0,
+                1.0
+              ],
+              "visible": true
+            }
+          ]
+        }
+      ],
+      "animationTracks": [
+        {
+          "slotId": "actor",
+          "clipName": "att_battle_3_04",
+          "startMs": 0,
+          "playbackRate": 1,
+          "loop": false,
+          "holdLastFrame": true
+        }
+      ],
+      "effectTracks": [
+        {
+          "effectTrackId": "fx.cannon.end",
+          "slotId": "actor",
+          "resourceKind": "V1_EFFECT",
+          "resourceId": "effect.maharaka.waterpang.cannon.att_battle_3_04.full.restore",
+          "timing": "TIME",
+          "startMs": 0,
+          "durationMs": 1000,
+          "followObject": true,
+          "inheritObjectRotation": true,
+          "bone": "",
+          "positionOffset": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotationDegrees": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      ]
     }
   ],
   "instances": [
@@ -390285,6 +392084,174 @@
           "slotId": "t18",
           "targetKind": "MAP_PLACEMENT",
           "targetId": "16877432892993290490"
+        }
+      ]
+    },
+    {
+      "instanceId": "world.sequence.instance.maharaka.waterpang.source.intro15.mokomoko",
+      "templateId": "sequence.maharaka.waterpang.source.intro15.mokomoko",
+      "enabled": true,
+      "startDelayMs": 0,
+      "playbackSpeed": 1,
+      "anchorKind": "WORLD",
+      "position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "motionEnd": "HOLD",
+      "bindings": [
+        {
+          "slotId": "actor",
+          "targetKind": "OBJECT_RESOURCE",
+          "targetId": "world.object.maharaka.waterpang.source.intro15.mokomoko",
+          "previewNpcPlacementId": "npc.maharaka.source57009.actor100"
+        }
+      ]
+    },
+    {
+      "instanceId": "world.sequence.instance.maharaka.waterpang.source.intro15.cannon",
+      "templateId": "sequence.maharaka.waterpang.source.intro15.cannon",
+      "enabled": true,
+      "startDelayMs": 0,
+      "playbackSpeed": 1,
+      "anchorKind": "WORLD",
+      "position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "motionEnd": "HOLD",
+      "bindings": [
+        {
+          "slotId": "actor",
+          "targetKind": "OBJECT_RESOURCE",
+          "targetId": "world.object.maharaka.waterpang.source.intro15.cannon",
+          "previewNpcPlacementId": "npc.maharaka.source57009.actor188"
+        }
+      ]
+    },
+    {
+      "instanceId": "world.sequence.instance.maharaka.waterpang.source.intro15.match-stand",
+      "templateId": "sequence.maharaka.waterpang.source.intro15.match-stand",
+      "enabled": true,
+      "startDelayMs": 0,
+      "playbackSpeed": 1,
+      "bindings": [
+        {
+          "slotId": "stand",
+          "targetKind": "MAP_PLACEMENT",
+          "targetId": "14892776262101167312"
+        }
+      ]
+    },
+    {
+      "instanceId": "world.sequence.instance.maharaka.waterpang.attack.mokomoko",
+      "templateId": "sequence.maharaka.waterpang.attack.mokomoko",
+      "enabled": true,
+      "startDelayMs": 0,
+      "playbackSpeed": 1,
+      "anchorKind": "WORLD",
+      "position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "motionEnd": "HOLD",
+      "bindings": [
+        {
+          "slotId": "actor",
+          "targetKind": "OBJECT_RESOURCE",
+          "targetId": "world.object.maharaka.waterpang.source.intro15.mokomoko",
+          "previewNpcPlacementId": "npc.maharaka.source57009.actor100"
+        }
+      ]
+    },
+    {
+      "instanceId": "world.sequence.instance.maharaka.waterpang.attack.cannon.start",
+      "templateId": "sequence.maharaka.waterpang.attack.cannon.start",
+      "enabled": true,
+      "startDelayMs": 0,
+      "playbackSpeed": 1,
+      "anchorKind": "WORLD",
+      "position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "motionEnd": "HOLD",
+      "bindings": [
+        {
+          "slotId": "actor",
+          "targetKind": "OBJECT_RESOURCE",
+          "targetId": "world.object.maharaka.waterpang.source.intro15.cannon",
+          "previewNpcPlacementId": "npc.maharaka.source57009.actor188"
+        }
+      ]
+    },
+    {
+      "instanceId": "world.sequence.instance.maharaka.waterpang.attack.cannon.loop.cw",
+      "templateId": "sequence.maharaka.waterpang.attack.cannon.loop.cw",
+      "enabled": true,
+      "startDelayMs": 0,
+      "playbackSpeed": 1,
+      "anchorKind": "WORLD",
+      "position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "motionEnd": "HOLD",
+      "bindings": [
+        {
+          "slotId": "actor",
+          "targetKind": "OBJECT_RESOURCE",
+          "targetId": "world.object.maharaka.waterpang.source.intro15.cannon",
+          "previewNpcPlacementId": "npc.maharaka.source57009.actor188"
+        }
+      ]
+    },
+    {
+      "instanceId": "world.sequence.instance.maharaka.waterpang.attack.cannon.loop.ccw",
+      "templateId": "sequence.maharaka.waterpang.attack.cannon.loop.ccw",
+      "enabled": true,
+      "startDelayMs": 0,
+      "playbackSpeed": 1,
+      "anchorKind": "WORLD",
+      "position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "motionEnd": "HOLD",
+      "bindings": [
+        {
+          "slotId": "actor",
+          "targetKind": "OBJECT_RESOURCE",
+          "targetId": "world.object.maharaka.waterpang.source.intro15.cannon",
+          "previewNpcPlacementId": "npc.maharaka.source57009.actor188"
+        }
+      ]
+    },
+    {
+      "instanceId": "world.sequence.instance.maharaka.waterpang.attack.cannon.end",
+      "templateId": "sequence.maharaka.waterpang.attack.cannon.end",
+      "enabled": true,
+      "startDelayMs": 0,
+      "playbackSpeed": 1,
+      "anchorKind": "WORLD",
+      "position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "motionEnd": "HOLD",
+      "bindings": [
+        {
+          "slotId": "actor",
+          "targetKind": "OBJECT_RESOURCE",
+          "targetId": "world.object.maharaka.waterpang.source.intro15.cannon",
+          "previewNpcPlacementId": "npc.maharaka.source57009.actor188"
         }
       ]
     }

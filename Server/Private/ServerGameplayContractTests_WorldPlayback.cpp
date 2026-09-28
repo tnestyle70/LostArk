@@ -5,6 +5,7 @@
 #include "Network/PacketReader.h"
 #include "Network/PacketWriter.h"
 #include "ServerTriggerSystem.h"
+#include "Gameplay/MaharakaWaterpangContract.h"
 #include "WorldBootstrap.h"
 #include "WorldDestructionBootstrapContractTests.h"
 #include <Windows.h>
@@ -37,6 +38,92 @@ using namespace LostArk::Shared;
 
 int LostArk::Server::CServerGameplayContractRunner::Run_WorldPlayback(TESTS& tests)
 {
+        {
+            auto room = std::make_unique<CGameRoom>(WORLD_ID::MAHARAKA);
+            tests.Require(room->Is_Ready(), "Waterpang published room loads");
+            room->m_iServerTick=100u;
+            tests.Require(!room->Broadcast_WorldSequencePlay(MAHARAKA_WATERPANG_INTRO_INSTANCE,
+                0.f,0.f,0.f,0.f,0u,{}) && !room->m_MaharakaWaterpangIntro,
+                "Invalid Waterpang packet cannot consume room reservation");
+            tests.Require(room->Broadcast_WorldSequencePlay(MAHARAKA_WATERPANG_INTRO_INSTANCE,
+                1.f,0.f,0.f,0.f,0u,{}) && room->m_MaharakaWaterpangIntro &&
+                room->m_MaharakaWaterpangIntro->iStartTick==400u,
+                "Waterpang reserves exactly ten seconds on the Server clock");
+            room->m_iServerTick=250u;
+            tests.Require(room->Broadcast_WorldSequencePlay(MAHARAKA_WATERPANG_INTRO_INSTANCE,
+                1.f,0.f,0.f,0.f,0u,{}) && room->m_MaharakaWaterpangIntro->iStartTick==400u,
+                "A second arena entry cannot reset countdown");
+            tests.Require(!room->Broadcast_WorldSequencePlay(MAHARAKA_WATERPANG_INTRO_INSTANCE,
+                1.f,0.f,0.f,0.f,0u,{},WORLD_SEQUENCE_OPERATION::REPLAY),
+                "Replay cannot restart an active Waterpang reservation");
+            auto session=std::make_shared<CClientSession>(99001u,INVALID_SOCKET,
+                CClientSession::FRAME_HANDLER{},CClientSession::CLOSED_HANDLER{});
+            C2S_ENTER_WORLD enter{}; enter.iProtocolVersion=NETWORK_PROTOCOL_VERSION;
+            enter.eWorldId=WORLD_ID::MAHARAKA; enter.eCharacterClass=CHARACTER_CLASS_ID::ARTIST;
+            enter.strNickName="WaterpangLateJoin";
+            CGameRoom::STAGED_PLAYER_ENTRY admission{}; SESSION_DIAGNOSTIC_REASON reason{}; std::string admissionStatus;
+            const bool admitted=room->Stage_PlayerEntry(session,enter,{},admission,reason,admissionStatus) &&
+                room->Build_PlayerEntryFrames(admission,std::span<const CGameRoom::STAGED_PLAYER_ENTRY>{&admission,1u},admissionStatus);
+            if (!admitted) std::cout << "Waterpang admission diagnostic: " << admissionStatus << '\n';
+            bool sameReservation=false;
+            for (const auto& frame:admission.Frames)
+                if (frame.ePacketType==PACKET_TYPE::S2C_WORLD_SEQUENCE_PLAY)
+                {
+                    CPacketReader reader(frame.Payload); S2C_WORLD_SEQUENCE_PLAY play;
+                    if (Read_Message(reader,play) && play.strSequenceInstanceId==MAHARAKA_WATERPANG_INTRO_INSTANCE)
+                        sameReservation=play.iStartTick==400u && play.iServerTick==250u;
+                }
+            tests.Require(admitted && sameReservation,"Late Maharaka admission receives original start and current Server tick");
+            tests.Require(room->Reset_ReplayableArenaWhenEmpty() && !room->m_MaharakaWaterpangIntro,
+                "An empty Maharaka room releases Waterpang reservation");
+
+            CServerNavigation navigation; SERVER_NAV_POINT point;
+            tests.Require(navigation.Load("LV_OCN_EVENTIS_MHP") &&
+                navigation.Sample_Position(73.041f,-979.223022f,point) && point.y>22.3f && point.y<22.5f &&
+                navigation.Resolve_TraversalStep(73.041f,-979.223022f,73.1f,-979.4f,point,23.1289997f) && point.y>22.3f,
+                "Waterpang landing and next walking step remain on mesh-baked stage floor");
+
+            CServerTriggerSystem entry; entry.Set_WorldId(WORLD_ID::MAHARAKA);
+            WORLD_BOOTSTRAP_PLACEMENT start{}; start.strPlacementId="waterpang.arena.start";
+            start.eKind=WORLD_BOOTSTRAP_KIND::TRIGGER_BOX; start.isEnabled=true;
+            start.fHalfExtentX=start.fHalfExtentY=start.fHalfExtentZ=1.f;
+            WORLD_TRIGGER_ACTION action{}; action.eKind=WORLD_TRIGGER_ACTION_KIND::PLAY_SEQUENCE;
+            action.strTargetId=MAHARAKA_WATERPANG_INTRO_INSTANCE; start.TriggerActions.push_back(action);
+            std::string status; tests.Require(entry.Initialize({start},status),"Waterpang landing trigger initializes");
+            std::map<PLAYER_ID,SERVER_PLAYER> players;
+            auto& player=players[1u]; player.iPlayerId=1u; player.iCurrentHp=player.iMaximumHp=100u;
+            player.TriggerMove.isActive=true;
+            std::vector<SERVER_WORLD_TRANSFER_REQUEST> transfers; std::vector<SERVER_INTERACT_PROMPT_EDGE> edges;
+            int fired=0; const auto activate=[&](WORLD_TRIGGER_ACTION_KIND,const std::string&){++fired;return true;};
+            entry.Evaluate_Entries(players,1u,transfers,activate,edges);
+            tests.Require(fired==0,"Flying through arena does not start countdown");
+            player.TriggerMove.isActive=false;
+            entry.Evaluate_Entries(players,2u,transfers,activate,edges);
+            tests.Require(fired==1,"Landing inside arena starts countdown without an extra re-entry");
+            entry.Evaluate_Entries(players,3u,transfers,activate,edges);
+            tests.Require(fired==1,"Standing on arena does not repeatedly start countdown");
+            CWorldBootstrap authored;
+            tests.Require(authored.Load(WORLD_ID::MAHARAKA),"Published Waterpang G jumps load");
+            for (const char* name:{"jump1","jump2","jump3"})
+            {
+                const auto box=std::find_if(authored.Get_Placements().begin(),authored.Get_Placements().end(),
+                    [&](const auto& row){return row.strPlacementId==name;});
+                if (box==authored.Get_Placements().end()) { tests.Require(false,"Waterpang jump source missing"); continue; }
+                CServerTriggerSystem jump; jump.Set_WorldId(WORLD_ID::MAHARAKA);
+                tests.Require(jump.Initialize({*box},status),"Waterpang authored jump initializes");
+                player.fPositionX=box->fPositionX; player.fPositionY=box->fPositionY; player.fPositionZ=box->fPositionZ;
+                jump.Evaluate_Entries(players,10u,transfers,activate,edges);
+                tests.Require(!player.TriggerMove.isActive && !edges.empty(),"Waterpang jump offers G without automatic movement");
+                const auto activated=jump.Activate_Here(1u,players,11u,transfers,activate);
+                const auto target=player.TriggerMove;
+                for (unsigned tick=0;tick<40;++tick) jump.Update_PlayerMotion(player,1.f/30.f);
+                tests.Require(activated==1u && !player.TriggerMove.isActive &&
+                    std::abs(player.fPositionX-target.fTargetX)<.001f &&
+                    std::abs(player.fPositionY-target.fTargetY)<.001f &&
+                    std::abs(player.fPositionZ-target.fTargetZ)<.001f,
+                    "Waterpang G travels to the exact authored destination");
+            }
+        }
 		CWorldBootstrap bootstrap;
 		tests.Require(bootstrap.Load(WORLD_ID::KAKULSAYDON_ARENA) && !bootstrap.Get_SequenceInstanceIds().empty(),
 			"Viewer loads published Kouku sequence IDs with the world");

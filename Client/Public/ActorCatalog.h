@@ -55,6 +55,9 @@ struct CHARACTER_ACTOR_ENTRY final
 	borrows -- the Esther call, the customizing idle -- and the list is empty
 	when it borrows none. */
 	std::vector<std::string> animationSetModels;
+	/* Maharaka Waterpang water-gun clips. Drive-delivered and optional: only the
+	Maharaka level admits them, and a missing set only disables water-gun arming. */
+	std::vector<std::string> waterGunAnimationSetModels;
 	std::string animationSetId;
 	std::string runtimeStatus;
 };

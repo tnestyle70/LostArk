@@ -359,6 +359,7 @@ namespace Client
 		/* Debug tuning only: the live CNpc body of one primary KoukuSaydon
 		arena boss archetype, or null while that boss is not replicated. */
 		std::shared_ptr<CNpc> Find_ArenaBossNpc(std::string_view archetypeId) const;
+		std::shared_ptr<CNpc> Find_NpcPlacement(std::string_view placementId) const;
 		bool_t Try_Get_DeferredLocalCharacterClassReplacement(
 			DEFERRED_LOCAL_CHARACTER_CLASS_REPLACEMENT_VIEW& OutView) const;
 		DEFERRED_LOCAL_CHARACTER_CLASS_REPLACEMENT_RESULT

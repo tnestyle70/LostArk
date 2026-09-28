@@ -3228,6 +3228,7 @@ bool LostArk::Shared::Write_Message(CPacketWriter& writer, const S2C_WORLD_SNAPS
 		writer.Write_U32(player.iSkillId);
 		writer.Write_U32(player.iActionStartTick);
 		writer.Write_U8(player.isKnockbackAirborne ? 1u : 0u);
+		writer.Write_U8(player.isWaterpangArmed ? 1u : 0u);
 		writer.Write_U32(player.iAttachmentOwnerNetEntityId);
 		writer.Write_U8(static_cast<std::uint8_t>(player.eAttachmentSlot));
 		writer.Write_F32(player.fAttachmentLocalOffsetX);
@@ -3526,6 +3527,7 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader, S2C_WORLD_SNAPSHOT& me
 		std::uint8_t rawStance = 0;
 		std::uint8_t rawAttachmentSlot = 0;
 		std::uint8_t rawKnockbackAirborne = 0u;
+		std::uint8_t rawWaterpangArmed = 0u;
 		std::uint8_t rawHasSkillTarget = 0;
 		std::uint8_t rawCombatReady = 0;
 		std::uint8_t rawRonaunGuard = 0;
@@ -3551,6 +3553,7 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader, S2C_WORLD_SNAPSHOT& me
 			!reader.Read_U32(player.iSkillId) ||
 			!reader.Read_U32(player.iActionStartTick) ||
 			!reader.Read_U8(rawKnockbackAirborne) || rawKnockbackAirborne > 1u ||
+			!reader.Read_U8(rawWaterpangArmed) || rawWaterpangArmed > 1u ||
 			!reader.Read_U32(player.iAttachmentOwnerNetEntityId) ||
 			!reader.Read_U8(rawAttachmentSlot) ||
 			!reader.Read_F32(player.fAttachmentLocalOffsetX) ||
@@ -3644,6 +3647,7 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader, S2C_WORLD_SNAPSHOT& me
         player.eControlKind = static_cast<PLAYER_CONTROL_KIND>(rawControlKind);
 		player.eAction = static_cast<PLAYER_ACTION_STATE>(rawAction);
 		player.isKnockbackAirborne = rawKnockbackAirborne != 0u;
+		player.isWaterpangArmed = rawWaterpangArmed != 0u;
 		player.eStance = static_cast<PLAYER_STANCE_ID>(rawStance);
 		player.eAttachmentSlot =
 			static_cast<PLAYER_ATTACHMENT_SLOT>(rawAttachmentSlot);

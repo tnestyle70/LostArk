@@ -355,6 +355,20 @@ namespace
 				}
 				entry.animationSetModels.push_back(animationSet.Get_String());
 			}
+			if (const DATA_JSON_VALUE* pWaterGunSets = value.Find("waterGunAnimationSetModels"))
+			{
+				if (!pWaterGunSets->Is_Array())
+					return false;
+				for (const DATA_JSON_VALUE& animationSet : pWaterGunSets->Get_Array())
+				{
+					if (!animationSet.Is_String() ||
+						!IsResourceId(animationSet.Get_String()))
+					{
+						return false;
+					}
+					entry.waterGunAnimationSetModels.push_back(animationSet.Get_String());
+				}
+			}
 			for (const DATA_JSON_VALUE& equipment : pEquipment->Get_Array())
 			{
 				if (!equipment.Is_String() || !IsResourceId(equipment.Get_String()))

@@ -32,6 +32,9 @@
         "Character/LanceMaster/AnimSets/LanceMaster_TerrainJumpAnimSet.wmodel",
         "Character/LanceMaster/AnimSets/LanceMaster_WallClimbAnimSet.wmodel"
       ],
+      "waterGunAnimationSetModels": [
+        "Character/LanceMaster/AnimSets/LanceMaster_WaterGunAnimSet.wmodel"
+      ],
       "animationSetId": "ANIM_LANCE_MASTER",
       "runtimeStatus": "supported",
       "modelMaterialOverrides": [
@@ -3332,6 +3335,9 @@
       "animationSetModels": [
         "Character/GunSlinger/AnimSets/GunSlinger_MazeHammerAnimSet.wmodel",
         "Character/GunSlinger/AnimSets/GunSlinger_WallClimbAnimSet.wmodel"
+      ],
+      "waterGunAnimationSetModels": [
+        "Character/GunSlinger/AnimSets/GunSlinger_WaterGunAnimSet.wmodel"
       ],
       "animationSetId": "ANIM_GUNSLINGER",
       "runtimeStatus": "supported",
@@ -7232,6 +7238,9 @@
       "animationSetModels": [
         "Character/Slayer/AnimSets/Slayer_MazeHammerAnimSet.wmodel",
         "Character/Slayer/AnimSets/Slayer_WallClimbAnimSet.wmodel"
+      ],
+      "waterGunAnimationSetModels": [
+        "Character/Slayer/AnimSets/Slayer_WaterGunAnimSet.wmodel"
       ],
       "animationSetId": "ANIM_SLAYER",
       "runtimeStatus": "supported",
@@ -11737,6 +11746,9 @@
         "Character/Artist/AnimSets/Artist_TerrainJumpAnimSet.wmodel",
         "Character/Artist/AnimSets/Artist_WallClimbAnimSet.wmodel"
       ],
+      "waterGunAnimationSetModels": [
+        "Character/Artist/AnimSets/Artist_WaterGunAnimSet.wmodel"
+      ],
       "animationSetId": "ANIM_ARTIST",
       "runtimeStatus": "supported",
       "modelMaterialOverrides": [
@@ -14928,6 +14940,9 @@
         "Character/DimensionMaster/AnimSets/DimensionMaster_TerrainJumpAnimSet.wmodel",
         "Character/DimensionMaster/AnimSets/DimensionMaster_WallClimbAnimSet.wmodel"
       ],
+      "waterGunAnimationSetModels": [
+        "Character/DimensionMaster/AnimSets/DimensionMaster_WaterGunAnimSet.wmodel"
+      ],
       "animationSetId": "ANIM_DIMENSIONMASTER",
       "runtimeStatus": "supported",
       "modelMaterialOverrides": [
@@ -17517,6 +17532,9 @@
         "Character/Warlord/AnimSets/Warlord_TerrainJumpAnimSet.wmodel",
         "Character/Warlord/AnimSets/Warlord_WallClimbAnimSet.wmodel"
       ],
+      "waterGunAnimationSetModels": [
+        "Character/Warlord/AnimSets/Warlord_WaterGunAnimSet.wmodel"
+      ],
       "animationSetId": "ANIM_WARLORD",
       "runtimeStatus": "supported",
       "modelMaterialOverrides": [
@@ -19645,6 +19663,9 @@
         "Character/GuardianKnight/AnimSets/GuardianKnight_MazeHammerAnimSet.wmodel",
         "Character/GuardianKnight/AnimSets/GuardianKnight_TerrainJumpAnimSet.wmodel",
         "Character/GuardianKnight/AnimSets/GuardianKnight_WallClimbAnimSet.wmodel"
+      ],
+      "waterGunAnimationSetModels": [
+        "Character/GuardianKnight/AnimSets/GuardianKnight_WaterGunAnimSet.wmodel"
       ],
       "animationSetId": "ANIM_GUARDIANKNIGHT",
       "runtimeStatus": "supported",

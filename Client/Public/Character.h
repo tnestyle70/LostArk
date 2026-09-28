@@ -176,6 +176,15 @@ public:
 	   network transform/collider; leaving Mario restores the normal body size. */
 	bool_t Apply_MarioPresentation(bool_t isMario);
 	bool_t Apply_MazePresentation(bool_t isMaze);
+	/* Maharaka Waterpang: the Server-armed water gun rides bip001-prop3, hides the
+	   class weapons and overrides idle/run; disarm restores both. */
+	bool_t Apply_WaterGunPresentation(bool_t isArmed);
+#ifdef _DEBUG
+	void Set_WaterGunPreviewForced(bool_t forced);
+	bool_t Is_WaterGunPreviewForced() const { return m_bWaterGunPreviewForced; }
+	// Local preview of watergun_att_1..6; att_1..4 also spawn their source muzzle effect.
+	bool_t Play_WaterGunAttackPreview(uint32_t attack);
+#endif
 	//charcter represent function
 	bool_t Apply_NetworkState(
 		const float3_t& position,
@@ -430,6 +439,13 @@ private:
 	f32_t m_fPresentationSizeMultiplier = 1.f;
 	bool_t m_bMarioPresentation = false;
 	bool_t m_bMazePresentation = false;
+	bool_t m_bWaterGunPresentation = false;
+	bool_t m_bWaterGunServerArmed = false;
+	bool_t m_hasWaterGunClips = false;
+#ifdef _DEBUG
+	bool_t m_bWaterGunPreviewForced = false;
+	uint32_t m_iWaterGunPreviewSequence = 0u;
+#endif
 	// Part parent pointers refer to this instance member for their whole lifetime.
 	float4x4_t m_PresentationRootMatrix = {};
 	bool_t m_isMoving = { false };
