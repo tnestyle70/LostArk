@@ -372,3 +372,12 @@ PASS했다. 생성된 runtime과 source의 SHA는 모두
 불변이다. 이 단계는 참조 데이터만 변경했으며 추가 Resources와 C++/shader 변경은 없다.
 G09의 Product Debug 빌드 성공 이후의 데이터 반영이므로 mip 수정 자체의 재컴파일은
 필요하지 않다. 최신 실행 화면의 반짝임과 미저장 편집 draft 반영은 확인하지 않았다.
+
+
+후속 실행 준비 확인에서 원본 Debug EXE·Engine DLL·Server EXE와 runtime 필수 파일
+검증 결과를 확인했다. 추가 Debug Product 재검증 시도
+`20260928T222909703Z-debug-product.json`은 다시 실행된 Release Client 4개·Server 1개를
+ProductOutputGuard가 감지하여 **컴파일 전에 중단**했다. 기존 G09의 성공 기록과 구분한다.
+사용자는 현재 테스트 중이므로 프로세스를 종료하지 말라고 명시했다. 이에 실행 중
+프로세스·메모리 상태를 그대로 유지하고 추가 빌드 및 Release EXE 교체는 보류했다.
+이 작업에서 완료한 실행본 빌드는 Debug이며, Release 빌드 완료로 보고하지 않는다.
